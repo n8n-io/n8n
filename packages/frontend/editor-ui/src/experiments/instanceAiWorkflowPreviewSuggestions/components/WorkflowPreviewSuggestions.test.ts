@@ -42,6 +42,7 @@ describe('WorkflowPreviewSuggestions', () => {
 					promptKey: suggestion.promptKey,
 					suggestionId: suggestion.id,
 					suggestionKind: 'prompt',
+					prefillType: 'suggestion_catalog',
 					position: 2,
 				},
 			],

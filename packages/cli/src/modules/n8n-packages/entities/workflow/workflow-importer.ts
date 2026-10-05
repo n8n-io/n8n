@@ -1,7 +1,7 @@
 import { WorkflowEntity } from '@n8n/db';
 import { Service } from '@n8n/di';
 
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { ForbiddenError } from '@n8n/errors';
 import {
 	WorkflowCreationService,
 	type WorkflowCreateBatchContext,
@@ -286,6 +286,11 @@ export class WorkflowImporter {
 			publicApi: true,
 			source: 'import',
 			allowArchivedUpdate: item.existing.isArchived,
+			// `settings.errorWorkflow` is a package reference this importer rebinds. The
+			// handler it now points at can still be unwritten (later in this loop) and is
+			// unpublished until the package-wide sweep, so the write-time check on that
+			// reference cannot apply here.
+			allowUnresolvedErrorWorkflow: true,
 			...(tagIds !== undefined ? { tagIds } : {}),
 		});
 
@@ -392,7 +397,7 @@ function toPlanItem(
 				...prepared,
 				existing,
 				archiveTransition: decideWorkflowArchiveTransition(
-					prepared.entity.isArchived,
+					prepared.sourceArchived,
 					existing.isArchived,
 				),
 			};

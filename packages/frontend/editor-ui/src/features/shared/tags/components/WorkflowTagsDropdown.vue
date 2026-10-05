@@ -6,6 +6,7 @@ import { useTagsStore } from '../tags.store';
 import { TAGS_MANAGER_MODAL_KEY } from '../tags.constants';
 import type { EventBus } from '@n8n/utils/event-bus';
 import { useTagPermissions } from '../useTagPermissions';
+import type { BaseTextKey } from '@n8n/i18n';
 
 interface TagsDropdownWrapperProps {
 	placeholder?: string;
@@ -42,6 +43,13 @@ const tagsById = computed(() => tagsStore.tagsById);
 
 const isCreateEnabled = computed(() => props.createEnabled && canCreate.value);
 const isManageEnabled = computed(() => canManage.value);
+// Only when the user wanted to create but lacks the scope — a consumer that
+// turned creation off itself (e.g. the workflow-list filter) gets no note.
+const isCreateBlocked = computed(() => props.createEnabled && !canCreate.value);
+
+const createBlockedI18nKey = computed<BaseTextKey | undefined>(() =>
+	isCreateBlocked.value ? 'tagsDropdown.noPermissionToCreate' : undefined,
+);
 
 async function createTag(name: string) {
 	return await tagsStore.create(name);
@@ -68,6 +76,7 @@ void tagsStore.fetchAll();
 		v-model="selectedTags"
 		:placeholder="placeholder"
 		:create-enabled="isCreateEnabled"
+		:create-blocked-i18n-key="createBlockedI18nKey"
 		:manage-enabled="isManageEnabled"
 		:event-bus="eventBus"
 		:all-tags="allTags"

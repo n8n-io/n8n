@@ -8,7 +8,8 @@
 #
 # A skipped branch or a hard failure is reported to #alerts-build.
 #
-# The bundle/* integration branches are kept current by sec-sync-bundle-branches.yml.
+# This workflow dispatches the bundle sync after each mirror run. Bundle branches merge the
+# public branch directly, so they never inherit a private-only bundle cut.
 
 name: 'Security: Sync from Public'
 run-name: "${{ github.event_name == 'workflow_dispatch' && format('Security: Sync from Public (force={0})', inputs.force) || '' }}"
@@ -40,7 +41,7 @@ jobs:
           private-key: ${{ secrets.N8N_ASSISTANT_PRIVATE_KEY }}
 
       - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
           token: ${{ steps.app-token.outputs.token }}
@@ -102,25 +103,11 @@ jobs:
           git reset --hard public-1.x
           git push origin 1.x --force-with-lease
 
-      - name: Re-create missing bundle branches
+      - name: Dispatch bundle branch sync
+        if: ${{ !cancelled() }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          EXISTING=$(git ls-remote --heads origin 'refs/heads/bundle/*')
-
-          MISSING=()
-          for BRANCH in bundle/2.x bundle/1.x; do
-            if ! grep -qF "refs/heads/$BRANCH" <<<"$EXISTING"; then
-              MISSING+=("$BRANCH")
-            fi
-          done
-
-          if [ ${#MISSING[@]} -eq 0 ]; then
-            echo 'Both bundle branches exist; nothing to dispatch.'
-            exit 0
-          fi
-
-          echo "Missing: ${MISSING[*]} - dispatching Security: Sync Bundle Branches"
           gh workflow run sec-sync-bundle-branches.yml --ref master
 
       - name: Notify Slack on failure

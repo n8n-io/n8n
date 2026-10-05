@@ -43,7 +43,7 @@ describe('McpClient.listTools()', () => {
 		expect(tools).toHaveLength(0);
 	});
 
-	it('skips an unreachable server, records the failure, and keeps the cache', async () => {
+	it('skips an unreachable server and records the failure', async () => {
 		const client = new McpClient([{ name: 'dead', url: 'http://127.0.0.1:1/sse' }]);
 
 		const tools = await client.listTools();

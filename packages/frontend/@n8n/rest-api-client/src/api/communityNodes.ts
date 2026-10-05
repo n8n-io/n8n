@@ -14,10 +14,9 @@ export async function getInstalledCommunityNodes(
 export async function installNewPackage(
 	context: IRestApiContext,
 	name: string,
-	verify?: boolean,
 	version?: string,
 ): Promise<PublicInstalledPackage> {
-	return await post(context.baseUrl, '/community-packages', { name, verify, version });
+	return await post(context.baseUrl, '/community-packages', { name, version });
 }
 
 export async function uninstallPackage(context: IRestApiContext, name: string): Promise<void> {
@@ -28,13 +27,8 @@ export async function updatePackage(
 	context: IRestApiContext,
 	name: string,
 	version?: string,
-	checksum?: string,
 ): Promise<PublicInstalledPackage> {
-	return await makeRestApiRequest(context, 'PATCH', '/community-packages', {
-		name,
-		version,
-		checksum,
-	});
+	return await makeRestApiRequest(context, 'PATCH', '/community-packages', { name, version });
 }
 
 export async function getAvailableCommunityPackageCount(): Promise<number> {

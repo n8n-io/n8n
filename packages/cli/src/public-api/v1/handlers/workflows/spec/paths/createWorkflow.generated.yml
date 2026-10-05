@@ -98,12 +98,10 @@ requestBody:
                     - 80
                 parameters:
                   type: object
-                  additionalProperties:
-                    nullable: true
+                  additionalProperties: {}
                 credentials:
                   type: object
-                  additionalProperties:
-                    nullable: true
+                  additionalProperties: {}
                   example:
                     jiraSoftwareCloudApi:
                       name: jiraApi
@@ -124,6 +122,8 @@ requestBody:
                           - value
                         additionalProperties: false
                   additionalProperties: false
+                extendsCredential:
+                  type: string
                 createdAt:
                   type: string
                   format: date-time
@@ -284,17 +284,15 @@ requestBody:
               - type: string
                 format: jsonString
               - type: object
-                additionalProperties:
-                  nullable: true
-              - nullable: true
+                additionalProperties: {}
+              - {}
             description: Data the workflow keeps between executions
             example:
               lastId: 1
           pinData:
             type: object
             nullable: true
-            additionalProperties:
-              nullable: true
+            additionalProperties: {}
             description: Pinned sample data for nodes, keyed by node name
           projectId:
             type: string
@@ -551,6 +549,10 @@ requestBody:
                 type: string
                 format: date-time
                 readOnly: true
+          description:
+            type: string
+            description: Description of the workflow
+            example: My workflow description
         required:
           - name
           - nodes
@@ -895,16 +897,21 @@ responses:
                     properties:
                       id:
                         type: string
+                        readOnly: true
+                        example: VmwOO9HeTEj20kxM
                       name:
                         type: string
+                        example: Marketing
                       type:
                         type: string
                         enum:
                           - personal
                           - team
+                        readOnly: true
+                        example: team
                       icon:
                         type: object
-                        nullable: true
+                        description: Icon of the project, or null when the project has none
                         properties:
                           type:
                             type: string
@@ -913,12 +920,16 @@ responses:
                               - icon
                           value:
                             type: string
+                          color:
+                            type: string
                         required:
                           - type
                           - value
+                        nullable: true
                       description:
                         type: string
                         nullable: true
+                        example: Workflows the marketing team owns.
                       customTelemetryTags:
                         type: array
                         items:
@@ -934,12 +945,15 @@ responses:
                       creatorId:
                         type: string
                         nullable: true
+                        example: f9a2cbb8-0b1e-4b64-9c1c-0d5f5f1f2a3b
                       createdAt:
                         type: string
                         format: date-time
+                        readOnly: true
                       updatedAt:
                         type: string
                         format: date-time
+                        readOnly: true
                     required:
                       - id
                       - name

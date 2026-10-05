@@ -1,0 +1,22 @@
+{
+	"id": "intent-explicit-agent-fixed-duty",
+	"userMessage": "Build me an agent that fetches new GitHub stars each night and sends me a digest.",
+	"expectedToolInvocations": {
+		"allOfToolCalls": [
+			{
+				"toolName": "load_skill",
+				"argsContainAny": ["agent-builder"]
+			},
+			{
+				"toolName": "build-agent"
+			}
+		],
+		"noneOfToolCalls": [
+			{
+				"toolName": "build-workflow"
+			}
+		]
+	},
+	"rationale": "The user explicitly selected an Agent artifact. A fixed scheduled duty can be an Agent task, so the assistant must not override that selection with a workflow.",
+	"timeoutMs": 120000
+}

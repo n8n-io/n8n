@@ -1,18 +1,12 @@
 import { GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
-import { TELEGRAM_HITL_WEBHOOK_SUFFIX } from 'n8n-core';
+import { buildResumeUrlSuffix, TELEGRAM_HITL_WEBHOOK_SUFFIX } from 'n8n-core';
 import type { IExecuteFunctions } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
 import { deriveHitlSecretToken } from './tokens';
+import type { TelegramWebhookInfo } from '../GenericFunctions';
 import { apiRequest } from '../GenericFunctions';
-
-interface TelegramWebhookInfo {
-	result?: {
-		url?: string;
-		allowed_updates?: string[];
-	};
-}
 
 function isLoopbackHost(hostname: string): boolean {
 	// A URL's hostname getter always brackets an IPv6 address, so the loopback
@@ -46,7 +40,7 @@ function isLikelyTriggerWebhook(url: string, origin: string, reverseProxyPrefix:
  */
 function getWaitingWebhookBase(context: IExecuteFunctions): { origin: string; path: string } {
 	const signedUrl = new URL(context.getSignedResumeUrl());
-	const suffix = `/${context.getExecutionId()}/${context.getNode().id}`;
+	const suffix = buildResumeUrlSuffix(context.getExecutionId(), context.getNode().id);
 	if (!signedUrl.pathname.endsWith(suffix)) {
 		// Not expected to happen: getSignedResumeUrl's own URL-building convention
 		// changed underneath us. Fall back to the full path rather than guessing,

@@ -1,3 +1,4 @@
+import { EventService } from '@n8n/backend-services';
 import {
 	createTeamProject,
 	createWorkflow,
@@ -28,7 +29,6 @@ import { v4 as uuid } from 'uuid';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { STARTING_NODES } from '@/constants';
-import { EventService } from '@/events/event.service';
 import { ExecutionService } from '@/executions/execution.service';
 import { InstanceRedactionEnforcementService } from '@/modules/redaction/instance-redaction-enforcement.service';
 import { ProjectService } from '@/services/project.service.ee';
@@ -78,7 +78,12 @@ const getStoredParentFolderId = async (workflowId: string) => {
 	return stored?.parentFolder?.id ?? null;
 };
 
+// This suite runs a real `ActiveWorkflowManager` and asserts on the legacy activation
+// path; the one publication-service case below enables the service itself.
+const originalUseWorkflowPublicationService = globalConfig.workflows.useWorkflowPublicationService;
+
 beforeAll(async () => {
+	globalConfig.workflows.useWorkflowPublicationService = false;
 	owner = await createOwnerWithApiKey();
 	Container.get(InstanceSettings).markAsLeader();
 	ownerPersonalProject = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
@@ -143,6 +148,10 @@ beforeEach(async () => {
 	authMemberAgent = testServer.publicApiAgentFor(member);
 
 	globalConfig.tags.disabled = false;
+});
+
+afterAll(() => {
+	globalConfig.workflows.useWorkflowPublicationService = originalUseWorkflowPublicationService;
 });
 
 afterEach(async () => {
@@ -424,7 +433,7 @@ describe('GET /workflows', () => {
 	});
 
 	test('should return all owned workflows filtered by tags', async () => {
-		const tags = await Promise.all([await createTag({}), await createTag({})]);
+		const tags = [await createTag({}), await createTag({})];
 		const tagNames = tags.map((tag) => tag.name).join(',');
 
 		const [workflow1, workflow2] = await Promise.all([
@@ -1142,7 +1151,7 @@ describe('GET /workflows/:id/:versionId', () => {
 	});
 });
 
-describe('GET /workflows/:workflowId/versions/:versionId', () => {
+describe('GET /workflows/:workflowId/versions/:workflowVersionId', () => {
 	test('should fail due to non-existing workflow', async () => {
 		const response = await authOwnerAgent.get('/workflows/non-existing/versions/version-123');
 
@@ -1453,7 +1462,13 @@ describe('DELETE /workflows/:id', () => {
 	});
 
 	test('should not return activeVersion', async () => {
-		const workflow = await createActiveWorkflow({}, member);
+		// Active on the legacy path only: `createActiveWorkflow` also records a published
+		// version, whose RESTRICT FK would block the delete.
+		const workflow = await createWorkflowWithTriggerAndHistory({}, member);
+		await workflowRepository.update(workflow.id, {
+			active: true,
+			activeVersionId: workflow.versionId,
+		});
 
 		const response = await authMemberAgent.delete(`/workflows/${workflow.id}`);
 
@@ -2185,6 +2200,19 @@ describe('POST /workflows', () => {
 		expect(sharedWorkflow?.workflow.nodes).toEqual(payload.nodes);
 		expect(sharedWorkflow?.workflow.settings).toEqual(payload.settings);
 		expect(sharedWorkflow?.role).toEqual('workflow:owner');
+	});
+
+	test('should create a workflow with a description', async () => {
+		const description = 'What this workflow does';
+		const response = await authMemberAgent.post('/workflows').send({
+			...mockPostWorkflowPayload(),
+			description,
+		});
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.description).toBe(description);
+		const stored = await workflowRepository.findOneBy({ id: response.body.id });
+		expect(stored?.description).toBe(description);
 	});
 
 	test.each([
@@ -3748,7 +3776,7 @@ describe('GET /workflows/:id/tags', () => {
 	});
 
 	test('should return all tags of owned workflow', async () => {
-		const tags = await Promise.all([await createTag({}), await createTag({})]);
+		const tags = [await createTag({}), await createTag({})];
 
 		const workflow = await createWorkflowWithHistory({ tags }, member);
 
@@ -3823,7 +3851,7 @@ describe('PUT /workflows/:id/tags', () => {
 
 	test('should add the tags, workflow have not got tags previously', async () => {
 		const workflow = await createWorkflow({}, member);
-		const tags = await Promise.all([await createTag({}), await createTag({})]);
+		const tags = [await createTag({}), await createTag({})];
 
 		const payload = [
 			{
@@ -3881,7 +3909,7 @@ describe('PUT /workflows/:id/tags', () => {
 	});
 
 	test('should add the tags, workflow have some tags previously', async () => {
-		const tags = await Promise.all([await createTag({}), await createTag({}), await createTag({})]);
+		const tags = [await createTag({}), await createTag({}), await createTag({})];
 		const oldTags = [tags[0], tags[1]];
 		const newTags = [tags[0], tags[2]];
 		const workflow = await createWorkflow({ tags: oldTags }, member);
@@ -3967,7 +3995,7 @@ describe('PUT /workflows/:id/tags', () => {
 	});
 
 	test('should fail to add the tags as one does not exist, workflow should maintain previous tags', async () => {
-		const tags = await Promise.all([await createTag({}), await createTag({})]);
+		const tags = [await createTag({}), await createTag({})];
 		const oldTags = [tags[0], tags[1]];
 		const workflow = await createWorkflow({ tags: oldTags }, member);
 

@@ -11,6 +11,7 @@ import {
 import type { DialogSize, TabOptions } from '@n8n/design-system';
 import { type BaseTextKey, useI18n } from '@n8n/i18n';
 import { useDebounceFn } from '@vueuse/core';
+import { partitionLast } from '@n8n/utils/sort/partition-last';
 import { getDebounceTime } from '@n8n/composables/useDebounce';
 import { DEBOUNCE_TIME } from '@/app/constants/durations';
 
@@ -26,6 +27,13 @@ import {
 	type ToolConnectionSettings,
 } from './types';
 
+type PickerCreateAction = {
+	category: ToolCategoryKey;
+	label: string;
+	description?: string;
+	testId?: string;
+};
+
 const props = withDefaults(
 	defineProps<{
 		open?: boolean;
@@ -39,16 +47,33 @@ const props = withDefaults(
 		hideBackButton?: boolean;
 		/** Dialog width. Consumers with more tabs (e.g. the n8n Connect section) can widen it. */
 		size?: DialogSize;
-		allowWorkflowCreation?: boolean;
-		workflowCreationLoading?: boolean;
+		showSuggestionFooter?: boolean;
+		createAction?: PickerCreateAction;
+		createActionLoading?: boolean;
+		emptyMessage?: string;
+		noResultsMessage?: string;
+		/** Render only the modal body when an owning feature supplies the dialog shell. */
+		embedded?: boolean;
+		showConnectActions?: boolean;
+		/** Keep the list scrollbar visible instead of revealing it on hover. */
+		persistentScrollbar?: boolean;
+		connectLabel?: (item: ToolConnectionItem) => string;
+		connectAriaLabel?: (item: ToolConnectionItem) => string;
+		connectedLabel?: (item: ToolConnectionItem) => string;
 	}>(),
 	{
 		open: false,
 		detailItem: null,
 		detailMode: 'detail',
 		size: 'xlarge',
-		allowWorkflowCreation: false,
-		workflowCreationLoading: false,
+		showSuggestionFooter: false,
+		createAction: undefined,
+		createActionLoading: false,
+		emptyMessage: undefined,
+		noResultsMessage: undefined,
+		embedded: false,
+		showConnectActions: false,
+		persistentScrollbar: false,
 	},
 );
 
@@ -64,11 +89,23 @@ const emit = defineEmits<{
 	'new-credential-connect': [item: ToolConnectionItem];
 	'open-detail': [item: ToolConnectionItem];
 	connect: [item: ToolConnectionItem];
-	'create-workflow': [];
+	create: [];
 }>();
 
 const i18n = useI18n();
 const modalTitle = computed(() => props.title ?? i18n.baseText('tools.connection.title'));
+const containerComponent = computed(() => (props.embedded ? 'div' : N8nDialog));
+const containerProps = computed(() =>
+	props.embedded
+		? {}
+		: {
+				open: props.open,
+				size: props.size,
+				header: props.detailItem ? '' : modalTitle.value,
+				showCloseButton: !props.detailItem,
+				'aria-label': modalTitle.value,
+			},
+);
 const searchPlaceholder = computed(
 	() => props.searchPlaceholder ?? i18n.baseText('tools.connection.search.placeholder'),
 );
@@ -124,11 +161,12 @@ onMounted(() => {
 	}
 });
 
-const hasActiveSearch = computed(() => debouncedSearchQuery.value.length > 0);
+const normalizedSearchQuery = computed(() => debouncedSearchQuery.value.trim());
+const hasActiveSearch = computed(() => normalizedSearchQuery.value.length > 0);
 
 function matchesQuery(item: ToolConnectionItem): boolean {
-	if (!debouncedSearchQuery.value) return true;
-	const query = debouncedSearchQuery.value.toLowerCase();
+	if (!normalizedSearchQuery.value) return true;
+	const query = normalizedSearchQuery.value.toLowerCase();
 	return (
 		item.title.toLowerCase().includes(query) ||
 		(item.description ?? '').toLowerCase().includes(query)
@@ -149,6 +187,10 @@ function allSortRank(item: ToolConnectionItem): number {
 	if (hasToolConnection(item.status)) return 0;
 	if (item.freeCredits) return 1;
 	return 2;
+}
+
+function isRestrictedItem(item: ToolConnectionItem): boolean {
+	return item.kind === 'node' && item.restriction !== undefined;
 }
 
 function itemsForCategory(category: ToolCategoryKey): ToolConnectionItem[] {
@@ -186,13 +228,15 @@ function tabCount(category: ToolCategoryKey): string {
 type ListRow = FlattenedRow | { key: 'suggestion' };
 
 const toolRows = computed<FlattenedRow[]>(() =>
-	itemsForCategory(activeCategory.value)
-		.filter(matchesQuery)
-		.map((item) => ({ key: `item:${item.id}`, item })),
+	partitionLast(itemsForCategory(activeCategory.value).filter(matchesQuery), isRestrictedItem).map(
+		(item) => ({ key: `item:${item.id}`, item }),
+	),
 );
 
 const flattenedRows = computed<ListRow[]>(() =>
-	isMcpCategory.value ? [...toolRows.value, { key: 'suggestion' }] : toolRows.value,
+	isMcpCategory.value || props.showSuggestionFooter
+		? [...toolRows.value, { key: 'suggestion' }]
+		: toolRows.value,
 );
 
 /** Categories only worth a tab once they hold something. */
@@ -260,14 +304,16 @@ watch(visibleCategories, (categories) => {
 });
 
 const isListEmpty = computed(() => toolRows.value.length === 0);
-const emptyMessage = computed(() => {
+const resolvedEmptyMessage = computed(() => {
 	if (hasActiveSearch.value) {
+		if (props.noResultsMessage) return props.noResultsMessage;
 		return i18n.baseText('tools.connection.empty.noResults', {
-			interpolate: { query: debouncedSearchQuery.value },
+			interpolate: { query: normalizedSearchQuery.value },
 		});
 	}
-	return i18n.baseText('tools.connection.empty.title');
+	return props.emptyMessage ?? i18n.baseText('tools.connection.empty.title');
 });
+const showCreateAction = computed(() => props.createAction?.category === activeCategory.value);
 
 function openDetail(item: ToolConnectionItem) {
 	emit('open-detail', item);
@@ -287,12 +333,10 @@ function handleOpenChange(value: boolean) {
 </script>
 
 <template>
-	<N8nDialog
-		:open="open"
-		:size="size"
-		:header="detailItem ? '' : modalTitle"
-		:show-close-button="!detailItem"
-		:aria-label="modalTitle"
+	<component
+		:is="containerComponent"
+		v-bind="containerProps"
+		:class="props.embedded && $style.embedded"
 		data-test-id="tools-connection-modal"
 		@update:open="handleOpenChange"
 	>
@@ -361,27 +405,27 @@ function handleOpenChange(value: boolean) {
 				/>
 
 				<button
-					v-if="activeCategory === 'workflows' && allowWorkflowCreation"
+					v-if="showCreateAction && createAction"
 					type="button"
-					:class="$style.createWorkflowRow"
-					:disabled="workflowCreationLoading"
-					:aria-busy="workflowCreationLoading"
-					data-test-id="tools-connection-create-workflow"
-					@click="emit('create-workflow')"
+					:class="$style.createRow"
+					:disabled="createActionLoading"
+					:aria-busy="createActionLoading"
+					:data-test-id="createAction.testId ?? 'tools-connection-create'"
+					@click="emit('create')"
 				>
-					<span :class="$style.createWorkflowIcon" aria-hidden="true">
+					<span :class="$style.createIcon" aria-hidden="true">
 						<N8nIcon
-							:icon="workflowCreationLoading ? 'loader-circle' : 'plus'"
+							:icon="createActionLoading ? 'loader-circle' : 'plus'"
 							:size="20"
-							:spin="workflowCreationLoading"
+							:spin="createActionLoading"
 						/>
 					</span>
-					<span :class="$style.createWorkflowText">
+					<span :class="$style.createText">
 						<N8nText tag="span" bold>
-							{{ i18n.baseText('generic.create.workflow') }}
+							{{ createAction.label }}
 						</N8nText>
-						<N8nText tag="span" size="small" color="text-light">
-							{{ i18n.baseText('projectRoles.workflow:create.tooltip') }}
+						<N8nText v-if="createAction.description" tag="span" size="small" color="text-light">
+							{{ createAction.description }}
 						</N8nText>
 					</span>
 				</button>
@@ -389,9 +433,9 @@ function handleOpenChange(value: boolean) {
 				<div :class="$style.listWrapper">
 					<template v-if="isListEmpty">
 						<div :class="$style.empty" data-test-id="tools-connection-empty">
-							<N8nText color="text-light">{{ emptyMessage }}</N8nText>
+							<N8nText color="text-light">{{ resolvedEmptyMessage }}</N8nText>
 						</div>
-						<div v-if="isMcpCategory" :class="$style.suggestionRow">
+						<div v-if="isMcpCategory || showSuggestionFooter" :class="$style.suggestionRow">
 							<slot name="suggestion-footer" />
 						</div>
 					</template>
@@ -401,12 +445,16 @@ function handleOpenChange(value: boolean) {
 						:items="flattenedRows"
 						:item-size="ITEM_HEIGHT"
 						item-key="key"
-						:class="$style.scroller"
+						:class="[$style.scroller, persistentScrollbar && $style.persistentScrollbar]"
 					>
 						<template #default="{ item: row }">
 							<ToolRow
 								v-if="'item' in row"
 								:item="row.item"
+								:show-connect-action="props.showConnectActions"
+								:connect-label="props.connectLabel?.(row.item)"
+								:connect-aria-label="props.connectAriaLabel?.(row.item)"
+								:connected-label="props.connectedLabel?.(row.item)"
 								@open-detail="openDetail($event)"
 								@connect="emit('connect', $event)"
 								@select-credential="
@@ -425,16 +473,33 @@ function handleOpenChange(value: boolean) {
 				</div>
 			</template>
 		</div>
-	</N8nDialog>
+	</component>
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/mixins' as scrollbar-mixins;
+
 .body {
 	display: flex;
 	flex-direction: column;
 	height: 70vh;
-	max-height: 640px;
+	max-height: calc(var(--height--5xl) * 6);
 	min-height: 0;
+}
+
+.embedded {
+	height: 100%;
+	min-height: 0;
+
+	.body {
+		height: min(60dvh, calc(var(--height--5xl) * 5));
+		max-height: 100%;
+	}
+
+	.searchInput {
+		margin-top: 0;
+		margin-bottom: var(--spacing--lg);
+	}
 }
 
 .searchInput {
@@ -451,7 +516,7 @@ function handleOpenChange(value: boolean) {
 	flex-shrink: 0;
 }
 
-.createWorkflowRow {
+.createRow {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--xs);
@@ -480,7 +545,7 @@ function handleOpenChange(value: boolean) {
 	}
 }
 
-.createWorkflowIcon {
+.createIcon {
 	flex-shrink: 0;
 	width: 32px;
 	height: 32px;
@@ -490,7 +555,7 @@ function handleOpenChange(value: boolean) {
 	color: var(--color--primary);
 }
 
-.createWorkflowText {
+.createText {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--5xs);
@@ -509,6 +574,10 @@ function handleOpenChange(value: boolean) {
 .scroller {
 	height: 100%;
 	overflow-y: auto;
+}
+
+.persistentScrollbar {
+	@include scrollbar-mixins.scroll-bar;
 }
 
 .empty {

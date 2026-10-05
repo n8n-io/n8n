@@ -9,6 +9,8 @@ import {
 	resolveAgentBuilderTarget,
 	saveAgentBuilderTarget,
 	seedAgentBuilderTargetMetadata,
+	threadAuthorizesAgentAdoption,
+	withBoundAgentTarget,
 } from '../agent-target-binding';
 
 /** In-memory thread store shared across "turns" (fresh contexts). */
@@ -438,5 +440,78 @@ describe('clearedAgentBuilderTargetMetadata', () => {
 		const restored = clearedAgentBuilderTargetMetadata(existing);
 
 		expect(restored.instanceAiAgentBuilderTarget).toEqual(existing.instanceAiAgentBuilderTarget);
+	});
+});
+
+describe('withBoundAgentTarget', () => {
+	it('replaces the pending marker rather than leaving both standing', () => {
+		const metadata = withBoundAgentTarget(
+			{ [PENDING_AGENT_METADATA_KEY]: { agentId: 'agent-1', projectId: 'project-1' } },
+			TARGET,
+		);
+
+		expect(metadata[PENDING_AGENT_METADATA_KEY]).toBeUndefined();
+		expect(metadata.instanceAiAgentBuilderTarget).toEqual(TARGET);
+	});
+
+	it('registers the target under its normalized ref so it stays addressable', () => {
+		const metadata = withBoundAgentTarget({}, { ...TARGET, ref: 'Support Triage' });
+
+		expect(metadata.instanceAiAgentBuilderTargets).toEqual({
+			'support-triage': { ...TARGET, ref: 'support-triage' },
+		});
+	});
+
+	it('leaves unrelated metadata alone', () => {
+		const metadata = withBoundAgentTarget({ creditsUsed: 3 }, TARGET);
+
+		expect(metadata.creditsUsed).toBe(3);
+	});
+});
+
+describe('threadAuthorizesAgentAdoption', () => {
+	const target = { agentId: 'agent-1', projectId: 'project-1' };
+
+	it('accepts the pending marker the frontend wrote for this artifact', () => {
+		expect(threadAuthorizesAgentAdoption({ [PENDING_AGENT_METADATA_KEY]: target }, target)).toBe(
+			true,
+		);
+	});
+
+	// Whichever writer binds first deletes the pending marker, so the loser
+	// converging afterwards has only the active binding to prove itself with.
+	it('accepts the active binding once the pending marker is gone', () => {
+		expect(threadAuthorizesAgentAdoption(withBoundAgentTarget({}, { ...target }), target)).toBe(
+			true,
+		);
+	});
+
+	it('rejects a thread with no agent lifecycle metadata', () => {
+		expect(threadAuthorizesAgentAdoption(undefined, target)).toBe(false);
+		expect(threadAuthorizesAgentAdoption({}, target)).toBe(false);
+	});
+
+	it('rejects a different agent or a different project', () => {
+		const pending = { [PENDING_AGENT_METADATA_KEY]: target };
+
+		expect(threadAuthorizesAgentAdoption(pending, { ...target, agentId: 'agent-2' })).toBe(false);
+		expect(threadAuthorizesAgentAdoption(pending, { ...target, projectId: 'project-2' })).toBe(
+			false,
+		);
+	});
+
+	it('rejects a session registry entry that was never the active target', () => {
+		const metadata = agentBuilderTargetMetadata([
+			{ agentId: 'agent-other', projectId: 'project-1', ref: 'other' },
+		]);
+
+		expect(threadAuthorizesAgentAdoption(metadata, target)).toBe(false);
+	});
+
+	it('rejects malformed metadata instead of throwing', () => {
+		expect(threadAuthorizesAgentAdoption({ [PENDING_AGENT_METADATA_KEY]: 'nope' }, target)).toBe(
+			false,
+		);
+		expect(threadAuthorizesAgentAdoption({ instanceAiAgentBuilderTarget: 7 }, target)).toBe(false);
 	});
 });

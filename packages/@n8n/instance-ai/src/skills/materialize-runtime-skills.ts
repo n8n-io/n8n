@@ -1,5 +1,6 @@
 import {
 	RUNTIME_SKILL_FILE_NAME,
+	RUNTIME_SKILL_MAX_OUTPUT_BYTES,
 	type RuntimeSkillContent,
 	type RuntimeSkillDependenciesContract,
 	type RuntimeSkillInterfaceContract,
@@ -15,6 +16,7 @@ import { getWorkspaceRoot } from '@n8n/agents/sandbox';
 import { join as posixJoin, normalize as posixNormalize } from 'node:path/posix';
 
 import type { Logger } from '../logger';
+import { traceSandboxOperation } from '../tracing/sandbox-tracing';
 import {
 	loadPrebakedWorkspaceBundle,
 	materializeWorkspaceBundle,
@@ -90,7 +92,6 @@ const LINKED_FILE_GROUPS = [
 const N8N_SKILL_DIR_TEMPLATE = '$' + '{N8N_SKILL_DIR}';
 const N8N_SKILLS_DIR_TEMPLATE = '$' + '{N8N_SKILLS_DIR}';
 const N8N_WORKSPACE_DIR_TEMPLATE = '$' + '{N8N_WORKSPACE_DIR}';
-const LOAD_SKILL_OUTPUT_LIMIT_BYTES = 64 * 1024;
 
 function isNonEmptyRecord(value: Record<string, unknown>): boolean {
 	return Object.keys(value).length > 0;
@@ -409,13 +410,13 @@ function warnIfExceedsLoadSkillLimit(
 	content: string,
 ): void {
 	const bytes = Buffer.byteLength(content, 'utf8');
-	if (bytes <= LOAD_SKILL_OUTPUT_LIMIT_BYTES) return;
+	if (bytes <= RUNTIME_SKILL_MAX_OUTPUT_BYTES) return;
 
 	logger.warn('Runtime skill file exceeds load_skill output limit', {
 		skill: entry.name,
 		path: filePath,
 		bytes,
-		maxBytes: LOAD_SKILL_OUTPUT_LIMIT_BYTES,
+		maxBytes: RUNTIME_SKILL_MAX_OUTPUT_BYTES,
 	});
 }
 
@@ -524,30 +525,41 @@ export async function materializeRuntimeSkillsIntoWorkspace({
 	root,
 	logger,
 }: MaterializeRuntimeSkillsOptions): Promise<MaterializedRuntimeSkills | undefined> {
-	if (source.registry.skills.length === 0) return undefined;
-
-	return await materializeWorkspaceBundle({
-		workspace,
-		resourceLabel: RUNTIME_SKILL_FILE_LABEL,
-		logger,
-		loadPrebaked: async () =>
-			await loadPrebakedRuntimeSkillsBundle({ source, workspace, root, logger }),
-		buildBundle: async () => {
-			const bundle = await buildRuntimeSkillWorkspaceBundle({ source, root, logger });
-			if (!bundle) {
-				throw new Error('Expected runtime skill bundle after registry validation');
-			}
-			return bundle;
+	return await traceSandboxOperation(
+		'sync-skills',
+		{
+			inputs: { skillsHash: source.registry.skillsHash, skillCount: source.registry.skills.length },
+			processResult: (bundle) => ({
+				outputs: { skillCount: bundle?.skills.length ?? 0, fileCount: bundle?.files.size ?? 0 },
+			}),
 		},
-		materializedLogMessage: 'Materialized runtime skills into workspace',
-		materializedLogContext: (bundle) => ({
-			root,
-			skillsRoot: bundle.rootDir,
-			registryPath: bundle.registryPath,
-			skillsHash: bundle.skillsHash,
-			count: bundle.skills.length,
-		}),
-	});
+		async () => {
+			if (source.registry.skills.length === 0) return undefined;
+
+			return await materializeWorkspaceBundle({
+				workspace,
+				resourceLabel: RUNTIME_SKILL_FILE_LABEL,
+				logger,
+				loadPrebaked: async () =>
+					await loadPrebakedRuntimeSkillsBundle({ source, workspace, root, logger }),
+				buildBundle: async () => {
+					const bundle = await buildRuntimeSkillWorkspaceBundle({ source, root, logger });
+					if (!bundle) {
+						throw new Error('Expected runtime skill bundle after registry validation');
+					}
+					return bundle;
+				},
+				materializedLogMessage: 'Materialized runtime skills into workspace',
+				materializedLogContext: (bundle) => ({
+					root,
+					skillsRoot: bundle.rootDir,
+					registryPath: bundle.registryPath,
+					skillsHash: bundle.skillsHash,
+					count: bundle.skills.length,
+				}),
+			});
+		},
+	);
 }
 
 export function createLazyWorkspaceRuntimeSkillSource({
@@ -583,9 +595,7 @@ export function createLazyWorkspaceRuntimeSkillSource({
 		materializePromise ??= (async () => {
 			const root = await getWorkspaceRoot(runtimeWorkspace);
 			const options = { source, workspace: runtimeWorkspace, root, logger };
-			const result =
-				(await loadPrebakedRuntimeSkillsBundle(options)) ??
-				(await materializeRuntimeSkillsIntoWorkspace(options));
+			const result = await materializeRuntimeSkillsIntoWorkspace(options);
 			if (result) {
 				materialized = result;
 				workspaceSource.registry = result.source.registry;

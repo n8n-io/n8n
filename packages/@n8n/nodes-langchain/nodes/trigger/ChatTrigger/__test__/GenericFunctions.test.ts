@@ -176,11 +176,6 @@ describe('validateAuth', () => {
 				mockContext.getWebhookName.mockReturnValue('default');
 				mockContext.getNodeParameter.calledWith('mode', 'hostedChat').mockReturnValue('hostedChat');
 				mockContext.getWebhookResourceUrl.mockReturnValue(resourceUrl);
-				vi.stubEnv('N8N_ENV_FEAT_CHAT_TRIGGER_OAUTH2', 'true');
-			});
-
-			afterEach(() => {
-				vi.unstubAllEnvs();
 			});
 
 			it('establishes the trigger identity and passes for a valid token', async () => {
@@ -219,19 +214,6 @@ describe('validateAuth', () => {
 				await expect(validateAuth(mockContext)).rejects.toMatchObject({
 					responseCode: 401,
 					message: 'Invalid authentication token',
-				});
-				expect(mockContext.validateN8nOAuth2Token).not.toHaveBeenCalled();
-			});
-
-			// The header only means anything on the split page, so with the flag off it
-			// must not become a second way in.
-			it('should ignore the header when the flag is off', async () => {
-				vi.stubEnv('N8N_ENV_FEAT_CHAT_TRIGGER_OAUTH2', 'false');
-				mockContext.getHeaderData.mockReturnValue({ 'x-auth-token': 'as-token' });
-
-				await expect(validateAuth(mockContext)).rejects.toMatchObject({
-					responseCode: 401,
-					message: 'User not authenticated!',
 				});
 				expect(mockContext.validateN8nOAuth2Token).not.toHaveBeenCalled();
 			});

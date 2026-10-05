@@ -3,6 +3,7 @@ import {
 	ExecutionListPublicDto,
 	ExecutionPublicDto,
 	ExecutionTagsPublicDto,
+	executionIdParamSchema,
 	GetExecutionQueryDto,
 	ListExecutionsQueryDto,
 	MAX_ITEMS_PER_PAGE,
@@ -14,6 +15,7 @@ import {
 	StoppedExecutionsPublicDto,
 	TagIdsPublicDto,
 } from '@n8n/api-types';
+import { EventService, WorkflowSharingService } from '@n8n/backend-services';
 import { ExecutionsConfig } from '@n8n/config';
 import type { AuthenticatedRequest, IExecutionBase, IExecutionResponse } from '@n8n/db';
 import {
@@ -32,35 +34,22 @@ import {
 	Put,
 	Query,
 } from '@n8n/decorators';
+import { isRecord } from '@n8n/utils/is-record';
 import type { Response } from 'express';
 import { replaceCircularReferences, WorkflowOperationError } from 'n8n-workflow';
 
 import { AbortedExecutionRetryError } from '@/errors/aborted-execution-retry.error';
 import { MissingExecutionStopError } from '@/errors/missing-execution-stop.error';
 import { QueuedExecutionRetryError } from '@/errors/queued-execution-retry.error';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { EventService } from '@/events/event.service';
+import { BadRequestError, ConflictError, NotFoundError } from '@n8n/errors';
 import { isRedactableExecution } from '@/executions/execution-redaction';
 import { ExecutionRedactionServiceProxy } from '@/executions/execution-redaction-proxy.service';
 import { ExecutionService } from '@/executions/execution.service';
 import type { StopResult } from '@/executions/execution.types';
+import type { TracingContext } from '@/modules/otel/tracing-context';
 import { decodeCursor, encodeNextCursor } from '@/public-api/v1/shared/services/pagination.service';
-import { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
 
 type PublicExecution = IExecutionBase & Partial<IExecutionResponse>;
-
-/**
- * The legacy spec typed this parameter as `number`, so the request validator rejected a non-numeric
- * id with a 400. The generated spec declares a string, so without this the value reaches the query
- * and fails against the integer column.
- */
-function assertNumericExecutionId(executionId: string): void {
-	if (!/^\d+$/.test(executionId) || Number(executionId) < 1) {
-		throw new BadRequestError('The execution ID must be a positive integer');
-	}
-}
 
 function isCursorObject(
 	value: unknown,
@@ -123,7 +112,7 @@ export class ExecutionsPublicController {
 
 		const sharedWorkflowsIds = await this.workflowSharingService.getSharedWorkflowIdsForScopes(
 			req.user,
-			['workflow:read'],
+			['execution:read'],
 			query.projectId,
 		);
 
@@ -183,14 +172,12 @@ export class ExecutionsPublicController {
 	async getExecution(
 		req: AuthenticatedRequest,
 		_res: Response,
-		@Param('executionId') executionId: string,
+		@Param('executionId', executionIdParamSchema) executionId: string,
 		@Query query: GetExecutionQueryDto,
 	): Promise<ExecutionPublicDto> {
-		assertNumericExecutionId(executionId);
-
 		const sharedWorkflowsIds = await this.workflowSharingService.getSharedWorkflowIdsForScopes(
 			req.user,
-			['workflow:read'],
+			['execution:read'],
 		);
 
 		if (!sharedWorkflowsIds.length) {
@@ -241,13 +228,11 @@ export class ExecutionsPublicController {
 	async deleteExecution(
 		req: AuthenticatedRequest,
 		_res: Response,
-		@Param('executionId') executionId: string,
+		@Param('executionId', executionIdParamSchema) executionId: string,
 	): Promise<DeletedExecutionPublicDto> {
-		assertNumericExecutionId(executionId);
-
 		const sharedWorkflowsIds = await this.workflowSharingService.getSharedWorkflowIdsForScopes(
 			req.user,
-			['workflow:delete'],
+			['execution:delete'],
 		);
 
 		if (!sharedWorkflowsIds.length) {
@@ -270,10 +255,8 @@ export class ExecutionsPublicController {
 	async getExecutionTags(
 		req: AuthenticatedRequest,
 		_res: Response,
-		@Param('executionId') executionId: string,
+		@Param('executionId', executionIdParamSchema) executionId: string,
 	): Promise<ExecutionTagsPublicDto> {
-		assertNumericExecutionId(executionId);
-
 		const sharedWorkflowsIds = await this.workflowSharingService.getSharedWorkflowIdsForScopes(
 			req.user,
 			['workflow:read'],
@@ -298,11 +281,9 @@ export class ExecutionsPublicController {
 	async updateExecutionTags(
 		req: AuthenticatedRequest,
 		_res: Response,
-		@Param('executionId') executionId: string,
+		@Param('executionId', executionIdParamSchema) executionId: string,
 		@Body body: TagIdsPublicDto,
 	): Promise<ExecutionTagsPublicDto> {
-		assertNumericExecutionId(executionId);
-
 		const sharedWorkflowsIds = await this.workflowSharingService.getSharedWorkflowIdsForScopes(
 			req.user,
 			['workflow:update'],
@@ -374,10 +355,8 @@ export class ExecutionsPublicController {
 	async stopExecution(
 		req: AuthenticatedRequest,
 		_res: Response,
-		@Param('executionId') executionId: string,
+		@Param('executionId', executionIdParamSchema) executionId: string,
 	): Promise<StoppedExecutionPublicDto> {
-		assertNumericExecutionId(executionId);
-
 		const sharedWorkflowsIds = await this.workflowSharingService.getSharedWorkflowIdsForScopes(
 			req.user,
 			['workflow:execute'],
@@ -415,11 +394,9 @@ export class ExecutionsPublicController {
 	async retryExecution(
 		req: AuthenticatedRequest,
 		_res: Response,
-		@Param('executionId') executionId: string,
+		@Param('executionId', executionIdParamSchema) executionId: string,
 		@Body body: RetryExecutionPublicDto,
 	): Promise<RetriedExecutionPublicDto> {
-		assertNumericExecutionId(executionId);
-
 		const sharedWorkflowsIds = await this.workflowSharingService.getSharedWorkflowIdsForScopes(
 			req.user,
 			['workflow:execute'],
@@ -456,8 +433,18 @@ export class ExecutionsPublicController {
 	}
 }
 
+function toPublicTracingContext(tracingContext: unknown): TracingContext | null {
+	if (!isRecord(tracingContext)) return null;
+
+	const { traceparent, tracestate } = tracingContext;
+	if (typeof traceparent !== 'string' || traceparent.length === 0) return null;
+
+	return typeof tracestate === 'string' ? { traceparent, tracestate } : { traceparent };
+}
+
 function toBaseFields(execution: PublicExecution) {
 	return {
+		// oxlint-disable-next-line typescript/no-deprecated
 		finished: execution.finished,
 		mode: execution.mode,
 		retryOf: execution.retryOf ?? null,
@@ -470,7 +457,7 @@ function toBaseFields(execution: PublicExecution) {
 		workflowId: execution.workflowId,
 		waitTill: execution.waitTill ? execution.waitTill.toISOString() : null,
 		storedAt: execution.storedAt,
-		tracingContext: execution.tracingContext ?? null,
+		tracingContext: toPublicTracingContext(execution.tracingContext),
 		deduplicationKey: execution.deduplicationKey ?? null,
 		jsonSizeBytes: execution.jsonSizeBytes ?? 0,
 		binaryDataSizeBytes: execution.binaryDataSizeBytes ?? 0,
@@ -482,6 +469,7 @@ function toBaseFields(execution: PublicExecution) {
 function toExecutionListItem(execution: PublicExecution) {
 	return {
 		id: execution.id,
+		// oxlint-disable-next-line typescript/no-deprecated
 		finished: execution.finished,
 		mode: execution.mode,
 		retryOf: execution.retryOf ?? null,
@@ -567,6 +555,7 @@ function toRetriedExecutionPublicDto(
 		mode: retried.mode,
 		startedAt: retried.startedAt.toISOString(),
 		workflowId: retried.workflowId,
+		// oxlint-disable-next-line typescript/no-deprecated
 		finished: retried.finished,
 		retryOf: retried.retryOf ?? null,
 		status: retried.status,

@@ -1,15 +1,17 @@
 import { ref, computed } from 'vue';
-import type { PromotableResource } from '@n8n/api-types';
+import type { PromotableResource, PromotionDirection } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { getPromotableChanges, promoteChanges } from '../promotions.api';
+import { getPromotableChanges } from '../promotions.api';
 
-export function usePromotionChanges(projectId: string) {
+export function usePromotionChanges(projectId: string, direction: PromotionDirection = 'promote') {
 	const rootStore = useRootStore();
 
 	const changes = ref<PromotableResource[]>([]);
+	const commitSha = ref<string | null>(null);
 	const isLoading = ref(false);
 	const error = ref<Error | null>(null);
 	const searchQuery = ref('');
+	const lastRefreshedAt = ref<string | null>(null);
 
 	const selectedIds = ref<Set<string>>(new Set());
 
@@ -39,14 +41,16 @@ export function usePromotionChanges(projectId: string) {
 		selectedIds.value = new Set([...selectedIds.value].filter((id) => availableIds.has(id)));
 	}
 
-	async function fetchChanges(search?: string) {
+	async function fetchChanges() {
+		if (isLoading.value) return;
 		isLoading.value = true;
 		error.value = null;
 		try {
-			changes.value = await getPromotableChanges(rootStore.restApiContext, projectId, {
-				search,
-			});
+			const result = await getPromotableChanges(rootStore.restApiContext, projectId, direction);
+			changes.value = result.changes;
+			commitSha.value = result.commitSha;
 			reconcileSelection();
+			lastRefreshedAt.value = new Date().toISOString();
 		} catch (e) {
 			error.value = e instanceof Error ? e : new Error(String(e));
 		} finally {
@@ -75,19 +79,14 @@ export function usePromotionChanges(projectId: string) {
 		selectedIds.value = next;
 	}
 
-	async function promote(createBranch: boolean) {
-		return await promoteChanges(rootStore.restApiContext, projectId, {
-			workflowIds: [...selectedIds.value],
-			createBranch,
-		});
-	}
-
 	return {
 		changes,
+		commitSha,
 		filteredChanges,
 		isLoading,
 		error,
 		searchQuery,
+		lastRefreshedAt,
 		selectedIds,
 		selectedCount,
 		allSelected,
@@ -95,6 +94,5 @@ export function usePromotionChanges(projectId: string) {
 		fetchChanges,
 		toggleSelected,
 		toggleSelectAll,
-		promote,
 	};
 }

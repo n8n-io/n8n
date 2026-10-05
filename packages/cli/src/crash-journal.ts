@@ -21,7 +21,7 @@ const { n8nFolder } = Container.get(InstanceSettings);
 const journalFile = join(n8nFolder, 'crash.journal');
 
 export const init = async () => {
-	if (!inProduction) return;
+	if (!inProduction || process.env.N8N_DEV_RELOAD === 'true') return;
 
 	if (existsSync(journalFile)) {
 		// Crash detected

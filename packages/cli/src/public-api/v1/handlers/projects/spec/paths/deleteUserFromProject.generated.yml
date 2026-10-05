@@ -1,0 +1,31 @@
+operationId: deleteUserFromProject
+tags:
+  - Projects
+summary: Delete a user from a project
+description: Delete a user from a project on your instance.
+x-required-scope: project:manageMembers
+x-eov-operation-id: unreachable
+x-eov-operation-handler: v1/handlers/decorator-routed.handler
+x-decorator-routed: true
+parameters:
+  - schema:
+      type: string
+    required: true
+    description: The ID of the project.
+    name: projectId
+    in: path
+  - schema:
+      type: string
+    required: true
+    description: The ID of the user.
+    name: userId
+    in: path
+responses:
+  '204':
+    description: Operation successful.
+  '401':
+    $ref: ../../../../shared/spec/responses/unauthorized.yml
+  '403':
+    $ref: ../../../../shared/spec/responses/forbidden.yml
+  '404':
+    $ref: ../../../../shared/spec/responses/notFound.yml

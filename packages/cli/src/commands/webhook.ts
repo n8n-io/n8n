@@ -104,6 +104,8 @@ export class Webhook extends BaseCommand {
 		const { ScalingService } = await import('@/scaling/scaling.service.js');
 		await Container.get(ScalingService).setupQueue();
 		await this.server.start();
+		// After the server started, so the metrics collector is subscribed before the tasks are routed.
+		await this.initSystemTasks();
 		this.server.markAsReady();
 		this.logger.info('Webhook listener waiting for requests.');
 

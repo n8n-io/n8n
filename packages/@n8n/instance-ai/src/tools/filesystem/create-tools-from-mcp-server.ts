@@ -407,6 +407,7 @@ export function createToolsFromLocalMcpServer({
 		const tool = {
 			...baseTool,
 			toMessage: buildNativeMcpMediaMessage,
+			outputTrust: 'untrusted',
 		} satisfies BuiltTool;
 
 		tools.set(toolName, tool);

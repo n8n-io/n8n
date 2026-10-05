@@ -20,7 +20,7 @@ import {
 	N8nActionDropdown,
 	N8nButton,
 	N8nCheckbox,
-	N8nIcon,
+	N8nBadge,
 	N8nTableBase,
 	N8nText,
 } from '@n8n/design-system';
@@ -155,6 +155,7 @@ function originPresentation(thread: AgentExecutionThread): OriginPresentation {
 		case 'telegram':
 		case 'linear':
 		case 'discord':
+		case 'teams':
 			return { icon: source, label: source.charAt(0).toUpperCase() + source.slice(1) };
 		case 'chat':
 		case 'n8n_chat':
@@ -311,10 +312,12 @@ async function onFiltersChange(value: AgentSessionFilters) {
 							</button>
 						</td>
 						<td :class="$style.originCell" data-test-id="agent-session-origin">
-							<span :class="$style.originPill" data-test-id="agent-session-origin-pill">
-								<N8nIcon :icon="originPresentation(thread).icon" size="large" />
-								<span>{{ originPresentation(thread).label }}</span>
-							</span>
+							<N8nBadge
+								:leading-icon="originPresentation(thread).icon"
+								data-test-id="agent-session-origin-pill"
+							>
+								{{ originPresentation(thread).label }}
+							</N8nBadge>
 						</td>
 						<td :class="$style.dateCell" data-test-id="agent-session-updated-at">
 							{{ formatDate(thread.updatedAt) }}
@@ -346,13 +349,22 @@ async function onFiltersChange(value: AgentSessionFilters) {
 					>
 						<td :colspan="5" style="text-align: center; padding: var(--spacing--lg)">
 							<template v-if="!sessionsStore.threads.length && !sessionsStore.loading">
-								<span data-test-id="agent-sessions-empty">
-									{{
-										i18n.baseText(
-											hasActiveFilters ? 'agentSessions.emptyWithFilters' : 'agentSessions.empty',
-										)
-									}}
-								</span>
+								<div :class="$style.emptyState">
+									<span data-test-id="agent-sessions-empty">
+										{{
+											i18n.baseText(
+												hasActiveFilters ? 'agentSessions.emptyWithFilters' : 'agentSessions.empty',
+											)
+										}}
+									</span>
+									<span
+										v-if="!hasActiveFilters"
+										:class="$style.emptyStateDescription"
+										data-test-id="agent-sessions-empty-description"
+									>
+										{{ i18n.baseText('agentSessions.emptyDescription') }}
+									</span>
+								</div>
 							</template>
 						</td>
 					</tr>
@@ -384,6 +396,7 @@ async function onFiltersChange(value: AgentSessionFilters) {
 	gap: var(--spacing--sm);
 	padding: var(--spacing--lg);
 	height: 100%;
+	min-width: 0;
 	min-height: 0;
 	overflow-y: auto;
 	scrollbar-width: thin;
@@ -398,6 +411,8 @@ async function onFiltersChange(value: AgentSessionFilters) {
 
 .tableContainer {
 	width: 100%;
+	min-width: 0;
+	container: sessions / inline-size;
 	overflow-x: auto;
 	scrollbar-width: thin;
 	scrollbar-color: var(--border-color) transparent;
@@ -575,6 +590,101 @@ async function onFiltersChange(value: AgentSessionFilters) {
 
 	&:hover {
 		background-color: transparent;
+	}
+}
+
+.emptyState {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: var(--spacing--4xs);
+	text-align: center;
+}
+
+.emptyStateDescription {
+	max-width: 100%;
+	color: var(--text-color--subtler);
+	white-space: normal;
+}
+
+// No token covers the width needed by this five-column table.
+@container sessions (max-width: 44rem) {
+	.wrapper .sessionsTable table,
+	.wrapper .sessionsTable tbody {
+		display: block;
+		width: 100%;
+	}
+
+	.wrapper .sessionsTable .clickableRow {
+		display: grid;
+		grid-template-areas:
+			'title action'
+			'origin origin'
+			'date token';
+		grid-template-columns: minmax(0, 1fr) auto;
+		gap: var(--spacing--3xs) var(--spacing--xs);
+		padding: var(--spacing--xs);
+		border-left: var(--spacing--4xs) var(--border-style)
+			var(--execution-card--border-color--unknown);
+
+		&[data-status='succeeded'] {
+			border-left-color: var(--execution-card--border-color--success);
+		}
+
+		&[data-status='error'] {
+			border-left-color: var(--execution-card--border-color--error);
+		}
+
+		&[data-status='cancelled'],
+		&[data-status='interrupted'] {
+			border-left-color: var(--border-color--warning);
+		}
+
+		td {
+			display: block;
+			width: auto;
+			min-width: 0;
+			height: auto;
+			padding: 0;
+		}
+
+		.titleCell {
+			grid-area: title;
+			max-width: none;
+			border-left: 0;
+		}
+
+		.originCell {
+			grid-area: origin;
+			overflow: hidden;
+		}
+
+		.dateCell {
+			grid-area: date;
+		}
+
+		.tokenCell {
+			grid-area: token;
+			text-align: right;
+		}
+
+		.actionCell {
+			grid-area: action;
+		}
+	}
+
+	.wrapper .sessionsTable .skeletonRow,
+	.wrapper .sessionsTable .lastRow {
+		display: block;
+
+		td {
+			display: block;
+			width: 100%;
+		}
+	}
+
+	.wrapper .sessionsTable .skeletonRow td:not(:first-child) {
+		display: none;
 	}
 }
 </style>

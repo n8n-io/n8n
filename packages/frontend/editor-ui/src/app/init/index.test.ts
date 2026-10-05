@@ -23,6 +23,7 @@ import { mock } from 'vitest-mock-extended';
 import { telemetry } from '@/app/plugins/telemetry';
 import { registerToastNotifier } from '@/app/init/toastNotifier';
 import * as moduleInitializer from '@/app/moduleInitializer/moduleInitializer';
+import { initializeExpressionEngine } from '@/app/init/expressionEngine';
 
 const showMessage = vi.fn();
 const showToast = vi.fn();
@@ -40,6 +41,7 @@ vi.mock('@/app/moduleInitializer/moduleInitializer', async (importOriginal) => {
 		registerModuleSettingsPages: vi.fn(actual.registerModuleSettingsPages),
 		registerModulePushHandlers: vi.fn(actual.registerModulePushHandlers),
 		registerModuleCommands: vi.fn(actual.registerModuleCommands),
+		registerModuleParameterInputs: vi.fn(actual.registerModuleParameterInputs),
 	};
 });
 
@@ -50,6 +52,7 @@ const moduleRegistrations = [
 	moduleInitializer.registerModuleSettingsPages,
 	moduleInitializer.registerModulePushHandlers,
 	moduleInitializer.registerModuleCommands,
+	moduleInitializer.registerModuleParameterInputs,
 ];
 
 vi.mock('@n8n/composables/useToast', () => ({
@@ -64,6 +67,12 @@ vi.mock('@n8n/composables/useToast', () => ({
 
 vi.mock('@/app/init/toastNotifier', () => ({
 	registerToastNotifier: vi.fn(),
+}));
+
+// The real one dynamically imports the QuickJS runtime bundle, which has no
+// place in this graph. It stays inert on the default `legacy` setting anyway.
+vi.mock('@/app/init/expressionEngine', () => ({
+	initializeExpressionEngine: vi.fn(),
 }));
 
 vi.mock('@n8n/stores/users.store', () => ({
@@ -189,6 +198,29 @@ describe('Init', () => {
 			});
 		});
 
+		it('should start the expression engine from the settings payload', async () => {
+			await initializeCore();
+
+			expect(initializeExpressionEngine).toHaveBeenCalledWith('legacy');
+		});
+
+		// Public settings omit the engine, so an unauthenticated boot leaves the
+		// legacy evaluator in place and the login hook is the first point where
+		// the choice is known.
+		it('should start the expression engine in the login hook with authenticated settings', async () => {
+			settingsStore.getSettings.mockImplementation(async () => {
+				settingsStore.settings.expressionEngine = 'quickjs';
+			});
+			usersStore.registerLoginHook.mockImplementation(async (hook) => {
+				await hook(mock<CurrentUserResponse>({ id: 'userId' }));
+			});
+
+			await initializeCore();
+
+			expect(initializeExpressionEngine).toHaveBeenCalledTimes(2);
+			expect(initializeExpressionEngine).toHaveBeenLastCalledWith('quickjs');
+		});
+
 		it('should re-initialize ssoStore in login hook with authenticated settings', async () => {
 			const saml = { loginEnabled: false, loginLabel: '' };
 			const ldap = { loginEnabled: false, loginLabel: '' };
@@ -199,13 +231,7 @@ describe('Init', () => {
 			};
 
 			settingsStore.userManagement.authenticationMethod = AuthenticationMethod.Oidc;
-			settingsStore.settings.sso = {
-				managedByEnv: false,
-				redirectLoginToSso: true,
-				saml,
-				ldap,
-				oidc,
-			};
+			settingsStore.settings.sso = { managedByEnv: false, saml, ldap, oidc };
 			settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Oidc] = true;
 
 			usersStore.registerLoginHook.mockImplementation(async (hook) => {
@@ -220,8 +246,7 @@ describe('Init', () => {
 			expect(ssoStore.initialize).toHaveBeenLastCalledWith({
 				authenticationMethod: AuthenticationMethod.Oidc,
 				managedByEnv: false,
-				redirectLoginToSso: true,
-				config: { managedByEnv: false, redirectLoginToSso: true, saml, ldap, oidc },
+				config: { managedByEnv: false, saml, ldap, oidc },
 				features: {
 					saml: false,
 					ldap: false,
@@ -236,13 +261,7 @@ describe('Init', () => {
 			const oidc = { loginEnabled: false, loginUrl: '', callbackUrl: '' };
 
 			settingsStore.userManagement.authenticationMethod = AuthenticationMethod.Saml;
-			settingsStore.settings.sso = {
-				managedByEnv: false,
-				redirectLoginToSso: true,
-				saml,
-				ldap,
-				oidc,
-			};
+			settingsStore.settings.sso = { managedByEnv: false, saml, ldap, oidc };
 			settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Saml] = true;
 
 			await initializeCore();
@@ -250,8 +269,7 @@ describe('Init', () => {
 			expect(ssoStore.initialize).toHaveBeenCalledWith({
 				authenticationMethod: AuthenticationMethod.Saml,
 				managedByEnv: false,
-				redirectLoginToSso: true,
-				config: { managedByEnv: false, redirectLoginToSso: true, saml, ldap, oidc },
+				config: { managedByEnv: false, saml, ldap, oidc },
 				features: {
 					saml: true,
 					ldap: false,

@@ -1,0 +1,119 @@
+operationId: getTestRuns
+tags:
+  - Evaluation
+summary: Retrieve test runs
+description: Retrieve the evaluation test runs of a workflow.
+x-required-scope: testRun:list
+parameters:
+  - $ref: ../../../../shared/spec/parameters/limit.yml
+  - $ref: ../../../../shared/spec/parameters/cursor.yml
+  - schema:
+      type: string
+    required: true
+    description: The ID of the workflow.
+    name: workflowId
+    in: path
+  - schema:
+      type: string
+      enum:
+        - new
+        - running
+        - completed
+        - error
+        - cancelled
+      description: Status to filter the test runs by.
+    required: false
+    name: status
+    in: query
+x-eov-operation-id: unreachable
+x-eov-operation-handler: v1/handlers/decorator-routed.handler
+x-decorator-routed: true
+responses:
+  '200':
+    description: Operation successful.
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            data:
+              type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    example: 9f8e7d6c5b4a3210
+                  status:
+                    type: string
+                    enum:
+                      - new
+                      - running
+                      - completed
+                      - error
+                      - cancelled
+                  runAt:
+                    type: string
+                    nullable: true
+                    format: date-time
+                  completedAt:
+                    type: string
+                    nullable: true
+                    format: date-time
+                  metrics:
+                    type: object
+                    description: Aggregated metrics collected across the run's test cases.
+                    additionalProperties: true
+                    nullable: true
+                  errorCode:
+                    type: string
+                    nullable: true
+                  errorDetails:
+                    type: object
+                    additionalProperties: true
+                    nullable: true
+                  finalResult:
+                    type: string
+                    nullable: true
+                    enum:
+                      - success
+                      - error
+                      - warning
+                    description: Overall result of the run, derived from its test cases once completed.
+                  testCaseCount:
+                    type: integer
+                    example: 42
+                  createdAt:
+                    type: string
+                    format: date-time
+                  updatedAt:
+                    type: string
+                    format: date-time
+                required:
+                  - id
+                  - status
+                  - runAt
+                  - completedAt
+                  - metrics
+                  - errorCode
+                  - errorDetails
+                  - finalResult
+                  - testCaseCount
+                  - createdAt
+                  - updatedAt
+            nextCursor:
+              type: string
+              nullable: true
+              description: Paginate through test runs by setting the cursor parameter to the nextCursor attribute returned by a previous request. Default value fetches the first "page" of the collection.
+              example: MTIzZTQ1NjctZTg5Yi0xMmQzLWE0NTYtNDI2NjE0MTc0MDA
+          required:
+            - data
+            - nextCursor
+  '400':
+    $ref: ../../../../shared/spec/responses/badRequest.yml
+  '401':
+    $ref: ../../../../shared/spec/responses/unauthorized.yml
+  '403':
+    $ref: ../../../../shared/spec/responses/forbidden.yml
+  '404':
+    $ref: ../../../../shared/spec/responses/notFound.yml

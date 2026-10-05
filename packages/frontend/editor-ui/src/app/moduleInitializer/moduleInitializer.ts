@@ -5,11 +5,13 @@ import {
 	registerResource,
 	pushHandlerRegistry,
 	commandRegistry,
+	parameterInputRegistry,
 } from '@n8n/frontend-module-sdk';
 import { VIEWS } from '@/app/constants';
 import { modules } from '@/app/modules.manifest';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
+import { AGENTS_SETTINGS_VIEW } from '@/features/agents/constants';
 import {
 	INSTANCE_AI_NEW_VIEW,
 	INSTANCE_AI_SETTINGS_VIEW,
@@ -70,6 +72,9 @@ const checkModuleAvailability = (options: any) => {
 	if (!settingsStore.isModuleActive(options.to.meta.moduleName)) {
 		return false;
 	}
+	if (options.to.meta.moduleName === 'agents' && options.to.name !== AGENTS_SETTINGS_VIEW) {
+		return settingsStore.isAgentsEnabled;
+	}
 
 	// When the admin toggle is off, instance-ai routes are disabled except the
 	// settings route, and the template deep-link route, whose guard falls back
@@ -123,6 +128,23 @@ export const registerModuleCommands = () => {
 	modules.forEach((module) => {
 		module.commands?.forEach((command) => {
 			commandRegistry.register(command);
+		});
+	});
+};
+
+/**
+ * Initialize module parameter inputs, done in init.ts. `ParameterInput` resolves
+ * them by `parameter.type` at render time.
+ *
+ * Deliberately NOT gated on `isModuleActive`: a parameter input is a render
+ * primitive, not a feature. A gated renderer leaves a parameter with nothing to
+ * render it, which is a broken field rather than a hidden feature. Availability
+ * is enforced backend-side.
+ */
+export const registerModuleParameterInputs = () => {
+	modules.forEach((module) => {
+		module.parameterInputs?.forEach((contribution) => {
+			parameterInputRegistry.register(contribution);
 		});
 	});
 };

@@ -9,7 +9,7 @@ import type {
 } from '@/services/protected-resource.registry';
 
 import { triggerResourceGate } from '../resource-gate';
-import { UrlService } from '@/services/url.service';
+import { UrlService } from '@n8n/backend-services';
 import { TestWebhooks } from '@/webhooks/test-webhooks';
 import type { TestWebhookRegistration } from '@/webhooks/test-webhook-registrations.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
@@ -18,9 +18,10 @@ import {
 	WEBHOOK_TRIGGER_SCOPES,
 	methodQueryString,
 	parseMethodParam,
-	resourceUrlToWebhookPath,
 	trimSlashes,
 	trimTrailingSlash,
+	webhookAllowsBrowserFlow,
+	webhookPathFromResourceUrl,
 	webhookResourcePath,
 } from './utils';
 
@@ -50,12 +51,13 @@ export class WorkflowWebhookTestTriggerResourceResolver implements ProtectedReso
 	readonly scopes = WEBHOOK_TRIGGER_SCOPES;
 
 	async resolveByUrl(resourceUrl: string) {
-		const pathname = resourceUrlToWebhookPath(resourceUrl, this.urlService.getTestWebhookBaseUrl());
-		if (pathname === undefined) {
-			this.logger.debug(`Resource URL is not under the test webhook base URL: ${resourceUrl}`);
-			return undefined;
-		}
-		// Can't throw — `resourceUrlToWebhookPath` already parsed the URL.
+		const pathname = webhookPathFromResourceUrl(
+			resourceUrl,
+			this.urlService.getTestWebhookBaseUrl(),
+			this.logger,
+		);
+		if (pathname === undefined) return undefined;
+		// Can't throw — `webhookPathFromResourceUrl` already parsed the URL.
 		return await this.resolveByPath(pathname, new URL(resourceUrl).search);
 	}
 
@@ -144,10 +146,12 @@ export class WorkflowWebhookTestTriggerResourceResolver implements ProtectedReso
 			const audiences = methods.map(urlFor);
 			return {
 				id: `workflow-webhook-test:${workflowEntity.id}:${resourcePath}`,
+				surface: 'trigger' as const,
 				getResourceUrl: () => urlFor(requestedMethod),
 				getAudiences: () => audiences,
 				scopes: WEBHOOK_TRIGGER_SCOPES,
 				displayName: workflowEntity.name,
+				...(webhookAllowsBrowserFlow(node, requestedMethod) && { isFirstParty: true }),
 				...triggerResourceGate(this.workflowFinderService, {
 					audiences,
 					executeAccessWorkflowId: requireExecute ? workflowEntity.id : undefined,

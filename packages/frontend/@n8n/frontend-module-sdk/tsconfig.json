@@ -11,9 +11,10 @@
 			"../design-system/src/shims-modules.d.ts"
 		],
 		"paths": {
-			"@n8n/design-system*": ["../design-system/src*"],
-			"@n8n/composables*": ["../composables/src*"],
-			"@n8n/utils*": ["../../../@n8n/utils/src*"]
+			"@n8n/design-system": ["../design-system/src/index.ts"],
+			"@n8n/design-system/*": ["../design-system/src/*"],
+			"@n8n/composables/*": ["../composables/src/*"],
+			"@n8n/utils/*": ["../../../@n8n/utils/src/*"]
 		}
 	},
 	"include": ["src/**/*.ts", "vite.config.ts"]

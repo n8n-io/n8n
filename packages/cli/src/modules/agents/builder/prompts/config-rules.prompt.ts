@@ -1,8 +1,7 @@
+import { zodSchemaToJsonSchema } from '@n8n/ai-utilities/json-schema';
 import { AgentJsonConfigBaseSchema, AgentModelSchema } from '@n8n/api-types';
-import type { JSONSchema7 } from 'json-schema';
 import type { ZodObject, ZodRawShape } from 'zod';
 import { z } from 'zod';
-import { zodToJsonSchema } from 'zod-to-json-schema';
 
 import { jsonSchemaToCompactText } from '../../json-config/schema-text-serializer';
 
@@ -32,7 +31,6 @@ const BuilderPromptMemoryConfigSchema = z.object({
 			z.object({
 				enabled: z.literal(true),
 				credential: z.string().min(1),
-				extractorModel: BuilderPromptMemoryWorkerModelSchema.optional(),
 				reflectorModel: BuilderPromptMemoryWorkerModelSchema.optional(),
 				topK: z.number().int().min(1).max(100).optional(),
 				maxEntriesPerRun: z.number().int().min(1).max(50).optional(),
@@ -69,7 +67,7 @@ export function getConfigRulesSection(): string {
 
 export function getSchemaReferenceSection(): string {
 	const zodSchema: ZodObject<ZodRawShape> = BuilderPromptAgentJsonConfigSchema;
-	const jsonSchemaText = jsonSchemaToCompactText(zodToJsonSchema(zodSchema) as JSONSchema7);
+	const jsonSchemaText = jsonSchemaToCompactText(zodSchemaToJsonSchema(zodSchema));
 	return `\
 #### Config Schema Reference
 

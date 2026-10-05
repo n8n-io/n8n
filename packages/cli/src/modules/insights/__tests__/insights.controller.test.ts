@@ -5,11 +5,10 @@ import { Container } from '@n8n/di';
 import { DateTime } from 'luxon';
 import { mock } from 'vitest-mock-extended';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
+import { BadRequestError, ForbiddenError } from '@n8n/errors';
+import { WorkflowSharingService } from '@n8n/backend-services';
 
-import { TypeToNumber } from '../database/entities/insights-shared';
+import { TypeToNumber, type TypeUnitNumber } from '../database/entities/insights-shared';
 import { InsightsByPeriodRepository } from '../database/repositories/insights-by-period.repository';
 import { InsightsController } from '../insights.controller';
 
@@ -161,7 +160,7 @@ describe('InsightsController', () => {
 		describe('with query filters', () => {
 			const mockRepositoryResponse: Array<{
 				period: 'previous' | 'current';
-				type: 0 | 1 | 2 | 3;
+				type: TypeUnitNumber;
 				total_value: string | number;
 			}> = [
 				{ period: 'previous', type: TypeToNumber.success, total_value: 16 },

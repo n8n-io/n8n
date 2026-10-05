@@ -46,6 +46,7 @@ export function useInstanceAiCredentialHelp(
 			await startThread(
 				projectId,
 				buildInstanceAiCredentialQuestion(subject),
+				{ kind: 'prefill', prefillType: 'handoff_credential_setup' },
 				{ source: options.source ?? 'credentials_list', origin: 'internal' },
 				undefined,
 				undefined,

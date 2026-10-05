@@ -25,6 +25,15 @@ type EditImageNodeOptions = {
 	quality?: number;
 };
 
+const GRAVITY_MAP: { [horizontal: string]: { [vertical: string]: string } } = {
+	west: { north: 'northwest', middle: 'west', south: 'southwest' },
+	center: { north: 'north', middle: 'center', south: 'south' },
+	east: { north: 'northeast', middle: 'east', south: 'southeast' },
+};
+
+export function resolveGravity(horizontal: string, vertical: string): string {
+	return GRAVITY_MAP[horizontal]?.[vertical] ?? 'northwest';
+}
 const numericOperationParameters: Record<string, string[]> = {
 	blur: ['blur', 'sigma'],
 	border: ['borderWidth', 'borderHeight'],
@@ -362,6 +371,60 @@ const nodeOperationOptions: INodeProperties[] = [
 			},
 		},
 		description: 'Y (vertical) position of the text',
+	},
+	{
+		displayName: 'Horizontal Alignment',
+		name: 'horizontalAlignment',
+		type: 'options',
+		options: [
+			{
+				name: 'Left',
+				value: 'west',
+			},
+			{
+				name: 'Center',
+				value: 'center',
+			},
+			{
+				name: 'Right',
+				value: 'east',
+			},
+		],
+		default: 'center',
+		displayOptions: {
+			show: {
+				operation: ['text'],
+				'@version': [{ _cnd: { gte: 1.1 } }],
+			},
+		},
+		description: 'Horizontal alignment of the text',
+	},
+	{
+		displayName: 'Vertical Alignment',
+		name: 'verticalAlignment',
+		type: 'options',
+		options: [
+			{
+				name: 'Top',
+				value: 'north',
+			},
+			{
+				name: 'Middle',
+				value: 'middle',
+			},
+			{
+				name: 'Bottom',
+				value: 'south',
+			},
+		],
+		default: 'middle',
+		displayOptions: {
+			show: {
+				operation: ['text'],
+				'@version': [{ _cnd: { gte: 1.1 } }],
+			},
+		},
+		description: 'Vertical alignment of the text',
 	},
 	{
 		displayName: 'Max Line Length',
@@ -811,7 +874,8 @@ export class EditImage implements INodeType {
 		icon: 'node:edit-image',
 		iconColor: 'purple',
 		group: ['transform'],
-		version: 1,
+		version: [1, 1.1],
+		defaultVersion: 1.1,
 		description: 'Edits an image like blur, resize or adding border and text',
 		defaults: {
 			name: 'Edit Image',
@@ -1089,7 +1153,17 @@ export class EditImage implements INodeType {
 					resize: ['height', 'resizeOption', 'width'],
 					rotate: ['backgroundColor', 'rotate'],
 					shear: ['degreesX', 'degreesY'],
-					text: ['font', 'fontColor', 'fontSize', 'lineLength', 'positionX', 'positionY', 'text'],
+					text: [
+						'horizontalAlignment',
+						'verticalAlignment',
+						'font',
+						'fontColor',
+						'fontSize',
+						'lineLength',
+						'positionX',
+						'positionY',
+						'text',
+					],
 					transparent: ['color'],
 				};
 
@@ -1333,6 +1407,15 @@ export class EditImage implements INodeType {
 							);
 						}
 
+						const nodeVersion = this.getNode().typeVersion;
+						const gravity =
+							nodeVersion >= 1.1
+								? resolveGravity(
+										operationData.horizontalAlignment as string,
+										operationData.verticalAlignment as string,
+									)
+								: 'northwest';
+
 						gmInstance = gmInstance!
 							.fill(operationData.fontColor as string)
 							.fontSize(operationData.fontSize as number)
@@ -1341,6 +1424,7 @@ export class EditImage implements INodeType {
 								operationData.positionX as number,
 								operationData.positionY as number,
 								renderText,
+								gravity,
 							);
 					} else if (operationData.operation === 'transparent') {
 						gmInstance = gmInstance!.transparent(operationData.color as string);

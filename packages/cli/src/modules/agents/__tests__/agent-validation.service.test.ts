@@ -140,6 +140,79 @@ describe('AgentValidationService — structured issues', () => {
 		vi.clearAllMocks();
 	});
 
+	it.each(['runtime', 'publish'] as const)(
+		'skips disabled readiness checks in %s and preserves issue indexes',
+		async (scope) => {
+			const { service, agentRepository, workflowRepository, nodeTypes } = makeService();
+			const config: AgentJsonConfig = {
+				...runnableConfig,
+				tools: [
+					{ type: 'custom', id: 'missing_custom', enabled: false },
+					{ type: 'workflow', workflow: 'Missing workflow', enabled: false },
+					{
+						type: 'node',
+						name: 'Slack',
+						enabled: false,
+						node: { nodeType: 'n8n-nodes-base.slackTool', nodeTypeVersion: 1, nodeParameters: {} },
+					},
+					{ type: 'custom', id: 'active_missing' },
+				],
+				skills: [{ type: 'skill', id: 'missing_skill', enabled: false }],
+				subAgents: { agents: [{ agentId: 'missing_subagent', enabled: false }] },
+			};
+			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent(config));
+			nodeTypes.getByNameAndVersion.mockReturnValue({
+				description: { properties: [], credentials: [{ name: 'slackApi', required: true }] },
+			} as never);
+			const credentials = makeCredentialProvider([{ id: 'openai-main', type: 'openAiApi' }]);
+
+			const result = await service.validateAgentConfiguration(
+				agentId,
+				projectId,
+				credentials,
+				scope,
+			);
+			expect(result.issues).toEqual([
+				{
+					code: 'missing_reference',
+					path: 'tools.3.id',
+					capability: { kind: 'tool', id: 'active_missing', index: 3, toolType: 'custom' },
+				},
+			]);
+			expect(workflowRepository.findManyByAgentToolReferences).not.toHaveBeenCalled();
+			expect(agentRepository.findByIdsAndProjectId).toHaveBeenCalledWith([], projectId);
+			expect(nodeTypes.getByNameAndVersion).not.toHaveBeenCalled();
+
+			config.tools![3].enabled = false;
+			await expect(
+				service.validateAgentConfiguration(agentId, projectId, credentials, scope),
+			).resolves.toEqual({
+				status: 'valid',
+				issues: [],
+			});
+
+			for (const ref of config.tools!) ref.enabled = true;
+			config.skills![0].enabled = true;
+			config.subAgents!.agents![0].enabled = true;
+			const reactivated = await service.validateAgentConfiguration(
+				agentId,
+				projectId,
+				credentials,
+				scope,
+			);
+			expect(reactivated.issues.map(({ path }) => path)).toEqual(
+				expect.arrayContaining([
+					'tools.0.id',
+					'tools.1.workflow',
+					'tools.2.node.credentials.slackApi',
+					'tools.3.id',
+					'skill:missing_skill',
+					'subAgents.agents.0.agentId',
+				]),
+			);
+		},
+	);
+
 	it('flags a main model credential whose provider does not match the configured model, but not when the model itself is invalid', async () => {
 		const { service, agentRepository } = makeService();
 		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent(runnableConfig));
@@ -891,6 +964,41 @@ describe('AgentValidationService — structured issues', () => {
 			}),
 			expect.objectContaining({
 				code: 'incompatible_credential',
+				path: 'integrations.1.credentialId',
+				capability: { kind: 'channel', id: 'slack', index: 1 },
+			}),
+		]);
+	});
+
+	it('accepts credential-free n8n Chat without relaxing other channel checks', async () => {
+		const { service, agentRepository } = makeService();
+		agentRepository.findByIdAndProjectId.mockResolvedValue(
+			makeAgent(runnableConfig, {}, { integrations: [{ type: 'n8n_chat', credentialId: '' }] }),
+		);
+		const credentials = makeCredentialProvider([{ id: 'openai-main', type: 'openAiApi' }]);
+
+		await expect(
+			service.validateAgentConfiguration(agentId, projectId, credentials),
+		).resolves.toEqual({ status: 'valid', issues: [] });
+
+		agentRepository.findByIdAndProjectId.mockResolvedValue(
+			makeAgent(
+				runnableConfig,
+				{},
+				{
+					integrations: [
+						{ type: 'n8n_chat', credentialId: '' },
+						{ type: 'slack', credentialId: '' },
+					],
+				},
+			),
+		);
+		const result = await service.validateAgentConfiguration(agentId, projectId, credentials);
+
+		expect(result.status).toBe('invalid');
+		expect(result.issues).toEqual([
+			expect.objectContaining({
+				code: 'missing_credential',
 				path: 'integrations.1.credentialId',
 				capability: { kind: 'channel', id: 'slack', index: 1 },
 			}),

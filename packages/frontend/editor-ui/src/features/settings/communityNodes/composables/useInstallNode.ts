@@ -1,3 +1,4 @@
+import { isNodesApiVersionError } from '../communityNodes.utils';
 import { useCommunityNodesStore } from '../communityNodes.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
@@ -10,6 +11,7 @@ import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
 import { removePreviewToken } from '@/features/shared/nodeCreator/nodeCreator.utils';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useSettingsStore } from '@n8n/stores/settings.store';
+import { useTypeAvailabilityPoliciesStore } from '@n8n/frontend-module-type-availability-policies';
 
 type InstallNodeProps = {
 	type: 'verified' | 'unverified';
@@ -46,6 +48,7 @@ export function useInstallNode() {
 	const canvasOperations = useCanvasOperations();
 	const telemetry = useTelemetry();
 	const settingsStore = useSettingsStore();
+	const typeAvailabilityPoliciesStore = useTypeAvailabilityPoliciesStore();
 
 	const getNpmVersion = async (key: string) => {
 		const communityNodeAttributes = await nodeTypesStore.getCommunityNodeAttributes(key);
@@ -77,7 +80,6 @@ export function useInstallNode() {
 			if (props.type === 'verified' && !settingsStore.isUnverifiedPackagesEnabled) {
 				await communityNodesStore.installPackage(
 					props.packageName,
-					true,
 					await getNpmVersion(props.nodeType),
 				);
 			} else {
@@ -89,6 +91,7 @@ export function useInstallNode() {
 				nodeTypesStore.getNodeTypes(),
 				nodeTypesStore.fetchCommunityNodePreviews(),
 				credentialsStore.fetchCredentialTypes(true),
+				typeAvailabilityPoliciesStore.reload(),
 			]);
 			await nextTick();
 
@@ -106,7 +109,14 @@ export function useInstallNode() {
 			});
 			return { success: true };
 		} catch (error) {
-			toast.showError(error, i18n.baseText('settings.communityNodes.messages.install.error'));
+			toast.showError(
+				error,
+				i18n.baseText(
+					isNodesApiVersionError(error)
+						? 'settings.communityNodes.messages.install.incompatible.title'
+						: 'settings.communityNodes.messages.install.error',
+				),
+			);
 			return { success: false, error };
 		} finally {
 			loading.value = false;

@@ -14,8 +14,8 @@
 				"resource": "onlineMeeting",
 				"operation": "create",
 				"subject": "Quarterly Sync",
-				"startDateTime": "2026-09-10T10:00:00Z",
-				"endDateTime": "2026-09-10T10:30:00Z",
+				"startDateTime": "2026-09-10T12:00:00",
+				"endDateTime": "2026-09-10T12:30:00",
 				"options": {
 					"allowAttendeeToEnableCamera": false,
 					"allowAttendeeToEnableMic": true,
@@ -25,7 +25,7 @@
 					"isEntryExitAnnounced": true,
 					"lobbyBypassScope": "organizationAndFederated",
 					"recordAutomatically": false,
-					"passcodeRequired": true
+					"passcodeRequired": false
 				}
 			},
 			"id": "6666-5555-77777",
@@ -72,9 +72,9 @@
 						}
 					},
 					"joinMeetingIdSettings": {
-						"isPasscodeRequired": true,
+						"isPasscodeRequired": false,
 						"joinMeetingId": "1234567890",
-						"passcode": "xK7mp2"
+						"passcode": null
 					}
 				}
 			}
@@ -106,7 +106,8 @@
 	},
 	"active": false,
 	"settings": {
-		"executionOrder": "v1"
+		"executionOrder": "v1",
+		"timezone": "Europe/Berlin"
 	},
 	"versionId": "ec0b4e3d-2fd7-4fac-90e5-f18ecd620a01",
 	"id": "onlineMeetingCreate01",

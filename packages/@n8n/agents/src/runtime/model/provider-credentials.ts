@@ -12,9 +12,10 @@ const apiKeyCreds = z.object({
  */
 export const PROVIDER_CREDENTIAL_SCHEMAS = {
 	openai: apiKeyCreds.extend({
-		// Overrides the base-URL heuristic in `model-factory`: an OpenAI-COMPATIBLE
-		// server only speaks /chat/completions, but a proxy sitting in front of real
-		// OpenAI can serve /responses. Leave unset to keep the heuristic.
+		// Pins the API for a custom baseURL: an OpenAI-COMPATIBLE server only speaks
+		// /chat/completions, but a proxy sitting in front of real OpenAI can serve
+		// /responses. Leave unset to let `model-factory` read the choice off the
+		// endpoint itself.
 		apiStyle: z.enum(['responses', 'chat']).optional(),
 	}),
 	custom: apiKeyCreds.extend({

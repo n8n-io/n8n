@@ -4,6 +4,7 @@
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
+| concurrencyLimit | integer |  | true |  |  | How many occurrences of this job may run at the same time. NULL means no limit. |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | cronExpression | varchar(255) |  | true |  |  | Cron expression. For kind 'cron' it is the schedule; for 'recurring_cron' it lists the candidate run times that the every-N-periods filter then keeps every Nth of. |
 | enabled | boolean | true | false |  |  | Whether the scheduler considers this job for firing. |
@@ -32,6 +33,7 @@
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
+| CHK_scheduled_job_concurrencyLimit | CHECK | CHECK ((("concurrencyLimit" IS NULL) OR (("concurrencyLimit" >= 1) AND ("concurrencyLimit" <= 2147483647)))) |
 | CHK_scheduled_job_cron_expression | CHECK | CHECK ((((kind)::text <> 'cron'::text) OR ("cronExpression" IS NOT NULL))) |
 | CHK_scheduled_job_fire_at | CHECK | CHECK ((((kind)::text <> 'one_off'::text) OR ("fireAt" IS NOT NULL))) |
 | CHK_scheduled_job_interval_seconds | CHECK | CHECK ((((kind)::text <> 'interval'::text) OR ("intervalSeconds" IS NOT NULL))) |
@@ -60,6 +62,7 @@
 
 | Name | Definition |
 | ---- | ---------- |
+| IDX_scheduled_job_concurrencyLimit | CREATE INDEX "IDX_scheduled_job_concurrencyLimit" ON public.scheduled_job USING btree ("concurrencyLimit") WHERE ("concurrencyLimit" IS NOT NULL) |
 | IDX_scheduled_job_name | CREATE UNIQUE INDEX "IDX_scheduled_job_name" ON public.scheduled_job USING btree (name) |
 | IDX_scheduled_job_nextRunAt | CREATE INDEX "IDX_scheduled_job_nextRunAt" ON public.scheduled_job USING btree ("nextRunAt") WHERE ((enabled = true) AND ("nextRunAt" IS NOT NULL)) |
 | IDX_scheduled_job_ownerType_ownerId_ownerMemberId | CREATE INDEX "IDX_scheduled_job_ownerType_ownerId_ownerMemberId" ON public.scheduled_job USING btree ("ownerType", "ownerId", "ownerMemberId") |
@@ -73,6 +76,7 @@ erDiagram
 "public.scheduled_task" }o--|| "public.scheduled_job" : "FOREIGN KEY (#quot;jobId#quot;) REFERENCES scheduled_job(id) ON DELETE CASCADE"
 
 "public.scheduled_job" {
+  integer concurrencyLimit
   timestamp_3__with_time_zone createdAt
   varchar_255_ cronExpression
   boolean enabled

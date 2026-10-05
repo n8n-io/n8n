@@ -1,10 +1,12 @@
 import { VIEWS } from '@/app/constants';
-import { type FrontendModuleDescription } from '@n8n/frontend-module-sdk';
+import { defineFrontendModule } from '@n8n/frontend-module-sdk';
+import { i18n } from '@n8n/i18n';
+import { hasPermission } from '@/app/utils/rbac/permissions';
 import {
 	AGENTS_LIST_VIEW,
+	AGENTS_SETTINGS_VIEW,
 	AGENT_BUILDER_VIEW,
 	AGENT_PREVIEW_VIEW,
-	NEW_AGENT_VIEW,
 	AGENT_VIEW,
 	AGENT_SESSIONS_LIST_VIEW,
 	AGENT_SESSION_DETAIL_VIEW,
@@ -18,20 +20,29 @@ const AgentView = async (): Promise<unknown> =>
 	await import('@/features/agents/views/AgentView.vue');
 const AgentBuilderView = async (): Promise<unknown> =>
 	await import('@/features/agents/views/AgentBuilderView.vue');
-const NewAgentView = async (): Promise<unknown> =>
-	await import('@/features/agents/views/NewAgentView.vue');
 const AgentSessionsListView = async (): Promise<unknown> =>
 	await import('@/features/agents/views/AgentSessionsListView.vue');
 const AgentSessionTimelineView = async (): Promise<unknown> =>
 	await import('@/features/agents/views/AgentSessionTimelineView.vue');
 
-export const AgentsModule: FrontendModuleDescription = {
+export const AgentsModule = defineFrontendModule({
 	id: 'agents',
 	name: 'Agents',
 	description: 'Build and manage AI agents',
 	icon: 'robot',
 	modals: AGENTS_MODALS,
 	routes: [
+		{
+			name: AGENTS_SETTINGS_VIEW,
+			path: 'agents',
+			component: async () => await import('./views/SettingsAgentsView.vue'),
+			meta: {
+				layout: 'settings',
+				middleware: ['authenticated', 'rbac', 'custom'],
+				middlewareOptions: { rbac: { scope: 'agent:manage' } },
+				telemetry: { pageCategory: 'settings' },
+			},
+		},
 		{
 			name: AGENTS_LIST_VIEW,
 			path: '/home/agents',
@@ -46,14 +57,6 @@ export const AgentsModule: FrontendModuleDescription = {
 			component: AgentsListView,
 			meta: {
 				projectRoute: true,
-				middleware: ['authenticated', 'custom'],
-			},
-		},
-		{
-			name: NEW_AGENT_VIEW,
-			path: '/new-agent',
-			component: NewAgentView,
-			meta: {
 				middleware: ['authenticated', 'custom'],
 			},
 		},
@@ -116,10 +119,23 @@ export const AgentsModule: FrontendModuleDescription = {
 			},
 		],
 	},
+	settingsPages: [
+		{
+			id: 'settings-agents',
+			icon: 'robot',
+			label: i18n.baseText('settings.agents'),
+			position: 'top',
+			route: { to: { name: AGENTS_SETTINGS_VIEW } },
+			preview: true,
+			get available() {
+				return hasPermission(['rbac'], { rbac: { scope: 'agent:manage' } });
+			},
+		},
+	],
 	resources: [
 		{
 			key: 'agent',
 			displayName: 'Agent',
 		},
 	],
-};
+});

@@ -48,7 +48,11 @@ describe('resolveArtifactContext', () => {
 	it('fetches and renders a discovered agent ref into the Agent section', async () => {
 		const artifactRefs: ArtifactRef[] = [{ type: 'agent', id: 'agent-x' }];
 		const getPersonalProjectId: Mock = vi.fn().mockResolvedValue('project-1');
-		const getAgentConfig: Mock = vi.fn().mockResolvedValue({ name: 'My Agent' });
+		const getAgentConfig: Mock = vi.fn().mockResolvedValue({
+			name: 'My Agent',
+			model: 'anthropic/claude-sonnet-4-5',
+			instructions: 'Triage requests.',
+		});
 		const getAgentSkills: Mock = vi.fn().mockResolvedValue({});
 		const client = {
 			getPersonalProjectId,

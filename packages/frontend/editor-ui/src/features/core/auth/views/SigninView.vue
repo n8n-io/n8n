@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router';
 
 import AuthView from './AuthView.vue';
 import MfaView from './MfaView.vue';
+import SsoSigninCard from '../components/SsoSigninCard.vue';
 
 import { useToast } from '@n8n/composables/useToast';
 import { useI18n } from '@n8n/i18n';
@@ -15,14 +16,19 @@ import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useSSOStore } from '@/features/settings/sso/sso.store';
 
 import type { IFormBoxConfig } from '@/Interface';
-import { MFA_AUTHENTICATION_REQUIRED_ERROR_CODE, VIEWS, MFA_FORM } from '@/app/constants';
+import {
+	INTERNAL_AUTH_QUERY_PARAM,
+	MFA_AUTHENTICATION_REQUIRED_ERROR_CODE,
+	VIEWS,
+	MFA_FORM,
+} from '@/app/constants';
 import type { LoginRequestDto } from '@n8n/api-types';
 import {
 	SSO_ERROR_ACCESS_DENIED,
 	SSO_ERROR_LOGIN_FAILED,
 	SSO_ERROR_QUERY_PARAM,
+	SSO_LOGIN_REQUIRED_ERROR_CODE,
 } from '@n8n/api-types';
-import { consumeSsoLoginRedirectSuppression } from '@/features/core/auth/ssoLoginRedirectSuppression';
 
 export type EmailOrLdapLoginIdAndPassword = Pick<
 	LoginRequestDto,
@@ -48,6 +54,14 @@ const emailOrLdapLoginId = ref('');
 const password = ref('');
 const reportError = ref(false);
 
+// SSO (SAML or OIDC) is the active login method: lead with it and keep the
+// password form behind a disclosure. `?internalAuth=true` reveals the form up
+// front so an admin can still sign in when the identity provider is down.
+const isSsoLogin = computed(() => ssoStore.showSsoLoginButton);
+const isInternalAuthRequested = computed(() => route.query[INTERNAL_AUTH_QUERY_PARAM] === 'true');
+const ssoLoading = ref(false);
+const ssoRequired = ref(false);
+
 const notificationsStore = useNotificationsStore();
 
 // Notifications are suppressed on the auth views, so lift the suppression just
@@ -58,41 +72,7 @@ const showAuthViewMessage = (messageData: Parameters<typeof toast.showMessage>[0
 	notificationsStore.setNotificationsSuppressed(true);
 };
 
-// The internal-auth fallback: `?internalAuth=true` skips the SSO redirect and
-// shows the email/password form (e.g. for an admin to recover if SSO is down).
-const isInternalAuthRequested = computed(() => route.query.internalAuth === 'true');
-// An SSO error (e.g. "Block access") lands the user back here; without this guard
-// the auto-redirect would bounce them to the IdP again and hide the error / loop.
-const hasSsoError = computed(() => Boolean(route.query[SSO_ERROR_QUERY_PARAM]));
-const redirectingToSso = ref(false);
-
-onMounted(async () => {
-	// Set by the sign-out flow so the user is not immediately re-authenticated by a
-	// still-active IdP session (which would make logout appear to do nothing).
-	const wasLoggedOut = consumeSsoLoginRedirectSuppression();
-
-	// When SSO is the active method, funnel users straight to the provider unless
-	// they explicitly requested the internal-auth fallback, an admin disabled it,
-	// an SSO error must be shown, or the user just logged out.
-	if (
-		ssoStore.showSsoLoginButton &&
-		ssoStore.redirectLoginToSso &&
-		!isInternalAuthRequested.value &&
-		!hasSsoError.value &&
-		!wasLoggedOut
-	) {
-		redirectingToSso.value = true;
-		try {
-			window.location.href = await ssoStore.resolveActiveSsoRedirectUrl(
-				getRedirectQueryParameter(),
-			);
-			return;
-		} catch {
-			// If we cannot build the SSO URL, fall back to showing the login form.
-			redirectingToSso.value = false;
-		}
-	}
-
+onMounted(() => {
 	// An SSO login denied by role mapping ("Block access"): the user authenticated
 	// fine at the IdP, they are simply not allowed in, so say exactly that.
 	if (route.query[SSO_ERROR_QUERY_PARAM] === SSO_ERROR_ACCESS_DENIED) {
@@ -192,6 +172,21 @@ const onEmailPasswordSubmitted = async (form: EmailOrLdapLoginIdAndPassword) => 
 	await login(form);
 };
 
+const onSsoLogin = async () => {
+	// The user acted, so an error about the SSO URL must be visible even after a
+	// session-expiry redirect suppressed notifications.
+	notificationsStore.setNotificationsSuppressed(false);
+	ssoLoading.value = true;
+	try {
+		window.location.href = await ssoStore.getSsoLoginUrl(
+			typeof route.query?.redirect === 'string' ? route.query.redirect : '',
+		);
+	} catch (error) {
+		ssoLoading.value = false;
+		toast.showError(error, locale.baseText('auth.signin.error'));
+	}
+};
+
 const isRedirectSafe = () => {
 	const redirect = getRedirectQueryParameter();
 
@@ -219,6 +214,7 @@ const getRedirectQueryParameter = () => {
 
 const login = async (form: LoginRequestDto) => {
 	notificationsStore.setNotificationsSuppressed(false);
+	ssoRequired.value = false;
 	try {
 		loading.value = true;
 		await usersStore.loginWithCreds({
@@ -264,6 +260,18 @@ const login = async (form: LoginRequestDto) => {
 			result: showMfaView.value ? 'mfa_token_rejected' : 'credentials_error',
 		});
 
+		// The account has to sign in through SSO: explain that inline, next to the
+		// SSO button, instead of surfacing it as a generic login failure.
+		if (
+			error.errorCode === SSO_LOGIN_REQUIRED_ERROR_CODE &&
+			isSsoLogin.value &&
+			!showMfaView.value
+		) {
+			ssoRequired.value = true;
+			loading.value = false;
+			return;
+		}
+
 		if (!showMfaView.value) {
 			toast.showError(error, locale.baseText('auth.signin.error'));
 			loading.value = false;
@@ -294,14 +302,26 @@ const cacheCredentials = (form: EmailOrLdapLoginIdAndPassword) => {
 
 <template>
 	<div>
-		<AuthView
-			v-if="!showMfaView && !redirectingToSso"
-			:form="formConfig"
-			:form-loading="loading"
-			:with-sso="true"
-			data-test-id="signin-form"
-			@submit="onEmailPasswordSubmitted"
-		/>
+		<template v-if="!showMfaView">
+			<AuthView v-if="isSsoLogin" data-test-id="signin-form">
+				<SsoSigninCard
+					:form="formConfig"
+					:form-loading="loading"
+					:sso-loading="ssoLoading"
+					:sso-required="ssoRequired"
+					:default-expanded="isInternalAuthRequested"
+					@submit="onEmailPasswordSubmitted"
+					@sso-login="onSsoLogin"
+				/>
+			</AuthView>
+			<AuthView
+				v-else
+				:form="formConfig"
+				:form-loading="loading"
+				data-test-id="signin-form"
+				@submit="onEmailPasswordSubmitted"
+			/>
+		</template>
 		<MfaView
 			v-if="showMfaView"
 			:report-error="reportError"

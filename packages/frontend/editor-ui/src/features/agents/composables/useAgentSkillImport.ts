@@ -5,6 +5,7 @@ import {
 	AGENT_SKILL_REFERENCES_TOTAL_MAX_LENGTH,
 } from '@n8n/api-types';
 import type { BaseTextKey } from '@n8n/i18n';
+import { isRecord } from '@n8n/utils/is-record';
 
 import type { AgentSkill, AgentSkillReference } from '../types';
 
@@ -25,16 +26,28 @@ type SkillFrontmatter = {
 	allowed_tools?: unknown;
 };
 
+type SkillFile = { file: File; path: string };
+
 export function useAgentSkillImport() {
 	async function importSkillFiles(files: File[]): Promise<AgentSkill> {
-		if (files.length === 0) {
+		return await importFiles(
+			files.map((file) => ({
+				file,
+				path: normalizePath(file.webkitRelativePath || file.name),
+			})),
+		);
+	}
+
+	async function importSkillEntries(entries: FileSystemEntry[]): Promise<AgentSkill> {
+		const files = (await Promise.all(entries.map(readEntry))).flat();
+		return await importFiles(files);
+	}
+
+	async function importFiles(fileEntries: SkillFile[]): Promise<AgentSkill> {
+		if (fileEntries.length === 0) {
 			throw new AgentSkillImportError('agents.builder.skills.import.noFiles');
 		}
 
-		const fileEntries = files.map((file) => ({
-			file,
-			path: normalizePath(file.webkitRelativePath || file.name),
-		}));
 		const skillFile = findSkillFile(fileEntries);
 		if (!skillFile) {
 			throw new AgentSkillImportError('agents.builder.skills.import.missingSkillFile');
@@ -93,7 +106,37 @@ export function useAgentSkillImport() {
 		};
 	}
 
-	return { importSkillFiles };
+	return { importSkillFiles, importSkillEntries };
+}
+
+function isFileEntry(entry: FileSystemEntry): entry is FileSystemFileEntry {
+	return entry.isFile;
+}
+
+function isDirectoryEntry(entry: FileSystemEntry): entry is FileSystemDirectoryEntry {
+	return entry.isDirectory;
+}
+
+async function readEntry(entry: FileSystemEntry): Promise<SkillFile[]> {
+	if (isFileEntry(entry)) {
+		const file = await new Promise<File>((resolve, reject) => entry.file(resolve, reject));
+		return [{ file, path: normalizePath(entry.fullPath) }];
+	}
+	if (!isDirectoryEntry(entry)) return [];
+
+	const reader = entry.createReader();
+	const files: SkillFile[] = [];
+	let entries: FileSystemEntry[];
+	do {
+		// Directory readers can return more than one batch.
+		entries = await new Promise<FileSystemEntry[]>((resolve, reject) =>
+			reader.readEntries(resolve, reject),
+		);
+		for (const child of entries) {
+			files.push(...(await readEntry(child)));
+		}
+	} while (entries.length > 0);
+	return files;
 }
 
 function findSkillFile(entries: Array<{ file: File; path: string }>) {
@@ -170,10 +213,6 @@ function optionalStringArrayProperty<T extends string>(
 	return strings.length > 0
 		? ({ [field]: strings.map((item) => item.trim()) } as Partial<Record<T, string[]>>)
 		: {};
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 function normalizePath(path: string): string {

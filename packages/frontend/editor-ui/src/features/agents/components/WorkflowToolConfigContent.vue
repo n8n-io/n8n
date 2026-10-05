@@ -587,7 +587,6 @@ defineExpose({
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--md);
-	padding: var(--spacing--sm) 0;
 }
 
 .field {

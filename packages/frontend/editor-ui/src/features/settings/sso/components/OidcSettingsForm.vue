@@ -12,10 +12,10 @@ import { useUserRoleProvisioningForm } from '../provisioning/composables/useUser
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { type OidcConfigDto } from '@n8n/api-types';
-import SsoRedirectLoginToggle from './SsoRedirectLoginToggle.vue';
 import ConfirmProvisioningDialog from '../provisioning/components/ConfirmProvisioningDialog.vue';
 import RoleMappingRuleEditor from '../provisioning/components/RoleMappingRuleEditor.vue';
 import UserRoleProvisioningDropdown from '../provisioning/components/UserRoleProvisioningDropdown.vue';
+import { openSafeUrl } from '@/app/utils/htmlUtils';
 
 const i18n = useI18n();
 const ssoStore = useSSOStore();
@@ -74,9 +74,6 @@ const promptDescriptions: PromptDescription[] = [
 const authenticationContextClassReference = ref('');
 const additionalScopes = ref('');
 const rpInitiatedLogoutEnabled = ref(false);
-// Global "redirect login page to SSO" setting. Pending value edited in the form
-// and persisted on Save, so it participates in the form's dirty state.
-const redirectLoginToSso = ref<boolean>(ssoStore.redirectLoginToSso);
 const isAdditionalScopesInvalid = computed(() =>
 	[',', ';'].some((c) => additionalScopes.value.includes(c)),
 );
@@ -92,7 +89,6 @@ const getOidcConfig = async () => {
 		config.authenticationContextClassReference?.join(',') || '';
 	additionalScopes.value = config.additionalScopes ?? '';
 	rpInitiatedLogoutEnabled.value = config.rpInitiatedLogoutEnabled ?? false;
-	redirectLoginToSso.value = ssoStore.redirectLoginToSso;
 };
 
 const loadOidcConfig = async () => {
@@ -106,10 +102,7 @@ const loadOidcConfig = async () => {
 	}
 };
 
-// Whether the OIDC configuration itself is unchanged, excluding the global redirect
-// setting. The redirect toggle is saved independently (see onOidcSettingsSave), so it
-// must not require a valid OIDC configuration to be persisted.
-const isOidcConfigUnchanged = computed(() => {
+const cannotSaveOidcSettings = computed(() => {
 	const currentAcrString = authenticationContextClassReference.value
 		.split(',')
 		.map((s) => s.trim())
@@ -121,28 +114,18 @@ const isOidcConfigUnchanged = computed(() => {
 	const isRuleMappingDirty = roleMappingRuleEditorRef.value?.isDirty ?? false;
 
 	return (
-		ssoStore.oidcConfig?.clientId === clientId.value &&
-		ssoStore.oidcConfig?.clientSecret === clientSecret.value &&
-		ssoStore.oidcConfig?.discoveryEndpoint === discoveryEndpoint.value &&
-		ssoStore.oidcConfig?.loginEnabled === ssoStore.isOidcLoginEnabled &&
-		ssoStore.oidcConfig?.prompt === prompt.value &&
-		ssoStore.oidcConfig?.additionalScopes === additionalScopes.value &&
-		ssoStore.oidcConfig?.rpInitiatedLogoutEnabled === rpInitiatedLogoutEnabled.value &&
-		!isUserRoleProvisioningChanged.value &&
-		!isRuleMappingDirty &&
-		storedAcrString === authenticationContextClassReference.value &&
-		currentAcrString === storedAcrString
-	);
-});
-
-const isRedirectLoginToSsoChanged = computed(
-	() => redirectLoginToSso.value !== ssoStore.redirectLoginToSso,
-);
-
-const cannotSaveOidcSettings = computed(() => {
-	return (
 		isAdditionalScopesInvalid.value ||
-		(isOidcConfigUnchanged.value && !isRedirectLoginToSsoChanged.value)
+		(ssoStore.oidcConfig?.clientId === clientId.value &&
+			ssoStore.oidcConfig?.clientSecret === clientSecret.value &&
+			ssoStore.oidcConfig?.discoveryEndpoint === discoveryEndpoint.value &&
+			ssoStore.oidcConfig?.loginEnabled === ssoStore.isOidcLoginEnabled &&
+			ssoStore.oidcConfig?.prompt === prompt.value &&
+			ssoStore.oidcConfig?.additionalScopes === additionalScopes.value &&
+			ssoStore.oidcConfig?.rpInitiatedLogoutEnabled === rpInitiatedLogoutEnabled.value &&
+			!isUserRoleProvisioningChanged.value &&
+			!isRuleMappingDirty &&
+			storedAcrString === authenticationContextClassReference.value &&
+			currentAcrString === storedAcrString)
 	);
 });
 
@@ -163,28 +146,6 @@ async function onOidcSettingsSave(provisioningChangesConfirmed: boolean = false)
 		} finally {
 			savingForm.value = false;
 		}
-	}
-
-	// The global redirect setting is saved independently of the OIDC config (its own
-	// endpoint), so a toggle-only change does not require a valid OIDC configuration
-	// and a failure must surface its own error, not the generic OIDC save error.
-	if (isRedirectLoginToSsoChanged.value) {
-		try {
-			savingForm.value = true;
-			await ssoStore.toggleRedirectLoginToSso(redirectLoginToSso.value);
-		} catch (error) {
-			toast.showError(error, i18n.baseText('settings.sso.settings.redirectToSso.error'));
-			return false;
-		} finally {
-			savingForm.value = false;
-		}
-	}
-	if (isOidcConfigUnchanged.value) {
-		toast.showMessage({
-			title: i18n.baseText('settings.sso.settings.save.success'),
-			type: 'success',
-		});
-		return true;
 	}
 
 	if (!provisioningChangesConfirmed && roleAssignmentTransition.value !== 'none') {
@@ -294,7 +255,7 @@ const onTest = async () => {
 	try {
 		const { url } = await ssoStore.testOidcConfig();
 		if (typeof window !== 'undefined') {
-			window.open(url, '_blank');
+			openSafeUrl(url);
 		}
 	} catch (error) {
 		toast.showError(error, i18n.baseText('settings.sso.settings.test.error'));
@@ -492,8 +453,6 @@ onMounted(async () => {
 				</div>
 			</div>
 		</div>
-
-		<SsoRedirectLoginToggle v-model="redirectLoginToSso" />
 
 		<div :class="$style.buttons">
 			<N8nButton

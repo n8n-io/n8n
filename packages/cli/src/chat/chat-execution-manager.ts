@@ -17,7 +17,7 @@ import {
 	isHitlToolType,
 } from 'n8n-workflow';
 
-import { NotFoundError } from '../errors/response-errors/not-found.error';
+import { NotFoundError } from '@n8n/errors';
 import { ExecutionPersistence } from '../executions/execution-persistence';
 import * as WorkflowExecuteAdditionalData from '../workflow-execute-additional-data';
 import { preserveInputOverride } from '../workflow-helpers';
@@ -87,7 +87,7 @@ export class ChatExecutionManager {
 			name: workflowData.name,
 			nodes: workflowData.nodes,
 			connections: workflowData.connections,
-			active: workflowData.active,
+			active: workflowData.activeVersionId !== null,
 			nodeTypes: this.nodeTypes,
 			staticData: workflowData.staticData,
 			settings: workflowData.settings,

@@ -1,5 +1,10 @@
 import type { WorkflowBuildOutcome } from '../../../../workflow-loop/workflow-loop-state';
-import { analyzeVerificationResult } from '../analyze-result';
+import {
+	analyzeVerificationResult,
+	buildEmptyOutputNote,
+	INJECTED_TRIGGER_SIMULATION_REASON,
+	WORKFLOW_PIN_SIMULATION_REASON,
+} from '../analyze-result';
 import type { ExecutionRunResult } from '../types';
 
 function makeBuildOutcome(overrides: Partial<WorkflowBuildOutcome> = {}): WorkflowBuildOutcome {
@@ -62,7 +67,10 @@ describe('analyzeVerificationResult — halted wait gates', () => {
 		// covers time-based Wait and Form gates), and non-gate dead ends keep the
 		// seed-and-re-run guidance instead of being attributed to the gate.
 		expect(analysis.coverageNote).not.toContain('human decision');
-		expect(analysis.coverageNote).toContain('NOT behind the gate');
+		expect(analysis.coverageNote).toContain('Other unreached nodes remain unverified');
+		expect(analysis.coverageNote).toContain('not behind a wait gate');
+		expect(analysis.coverageNote).toContain('seed matching test data');
+		expect(analysis.coverageNote).toContain('only when the user has authorized that write');
 	});
 
 	it('keeps the generic partial-coverage guidance when no gate halted the run', () => {
@@ -326,6 +334,46 @@ describe('analyzeVerificationResult — workflow-pinned nodes', () => {
 	});
 });
 
+describe('analyzeVerificationResult — injected trigger output', () => {
+	const injectedRunResult = {
+		executionId: 'exec-1',
+		status: 'success',
+		executedNodeNames: ['Webhook', 'Format'],
+		lastNodeExecuted: 'Format',
+		data: { Webhook: [{}], Format: [{}] },
+		injectedTriggerNodeName: 'Webhook',
+	} as unknown as ExecutionRunResult;
+
+	it('counts the injected trigger as simulated so the run is not a live trigger test', () => {
+		const analysis = analyzeVerificationResult({
+			result: injectedRunResult,
+			buildOutcome: makeBuildOutcome(),
+			simulatedNodes: [],
+			stateBefore: undefined,
+			runId: 'run-1',
+		});
+
+		expect(analysis.reachedSimulatedNodes).toEqual([
+			{ nodeName: 'Webhook', reason: INJECTED_TRIGGER_SIMULATION_REASON },
+		]);
+		expect(analysis.simulationNote).toContain('Webhook');
+	});
+
+	it('does not duplicate a trigger that workflow pins already disclose', () => {
+		const analysis = analyzeVerificationResult({
+			result: { ...injectedRunResult, workflowPinnedNodeNames: ['Webhook'] },
+			buildOutcome: makeBuildOutcome(),
+			simulatedNodes: [],
+			stateBefore: undefined,
+			runId: 'run-1',
+		});
+
+		expect(analysis.reachedSimulatedNodes).toEqual([
+			{ nodeName: 'Webhook', reason: WORKFLOW_PIN_SIMULATION_REASON },
+		]);
+	});
+});
+
 describe('analyzeVerificationResult — trigger-scoped coverage', () => {
 	const twoBranchOutcome = makeBuildOutcome({
 		nodeSimulationPlan: [
@@ -366,6 +414,8 @@ describe('analyzeVerificationResult — trigger-scoped coverage', () => {
 		expect(analysis.nodesNotReached).toEqual(['Post Summary']);
 		expect(analysis.coverageNote).toContain('Every Weekday 9am');
 		expect(analysis.coverageNote).toContain('triggerNodeName');
+		expect(analysis.coverageNote).toContain('union of those passes');
+		expect(analysis.coverageNote).toContain('For unreached main-flow nodes on this branch');
 		// The generic "a lookup returned nothing" cause would send the agent
 		// editing a workflow whose other branch is simply not on this path.
 		expect(analysis.coverageNote).not.toContain('lookup or query returned nothing');
@@ -416,7 +466,7 @@ describe('analyzeVerificationResult — trigger-scoped coverage', () => {
 		expect(analysis.coverageNote).toContain('1st of Month');
 	});
 
-	it('keeps the generic zero-output guidance when no trigger was named', () => {
+	it('gives neutral coverage guidance when no trigger was named', () => {
 		const analysis = analyzeVerificationResult({
 			result: weekdayPass,
 			buildOutcome: twoBranchOutcome,
@@ -425,6 +475,130 @@ describe('analyzeVerificationResult — trigger-scoped coverage', () => {
 			runId: 'run-1',
 		});
 
-		expect(analysis.coverageNote).toContain('Seed matching test data');
+		expect(analysis.coverageNote).toContain('Agent tool calls');
+	});
+});
+
+describe('analyzeVerificationResult — uncalled tools', () => {
+	it('keeps an uncalled tool unverified without diagnosing an empty Agent result', () => {
+		const analysis = analyzeVerificationResult({
+			result: {
+				executionId: 'exec-agent',
+				status: 'success',
+				executedNodeNames: ['Agent'],
+				lastNodeExecuted: 'Agent',
+				data: { Agent: [{ output: 'No tool call needed' }] },
+			},
+			buildOutcome,
+			simulatedNodes: [{ nodeName: 'Publish', reason: 'Sends a message' }],
+			stateBefore: undefined,
+			runId: 'run-1',
+		});
+
+		expect(analysis.reachedSimulatedNodes).toEqual([]);
+		expect(analysis.nodesNotReached).toContain('Publish');
+		expect(analysis.coverageNote).toContain(
+			'A tool can remain uncalled even when its Agent succeeds',
+		);
+		expect(analysis.coverageNote).not.toContain('because it produced no output items');
+		expect(analysis.coverageNote).toContain('if a simulated or pinned lookup returned no items');
+		expect(analysis.coverageNote).toContain('inspect its fixture');
+	});
+});
+
+describe('buildEmptyOutputNote', () => {
+	const connections = {
+		Trigger: { main: [[{ node: 'Tag Record', type: 'main' as const, index: 0 }]] },
+		'Tag Record': { main: [[{ node: 'Post', type: 'main' as const, index: 0 }]] },
+	};
+	const wrap = (value: unknown) =>
+		`<untrusted_data source="execution-output" label="node:test">\n${JSON.stringify(value, null, 2)}\n</untrusted_data>`;
+
+	it('names the first node of a chain that returns only empty items', () => {
+		const note = buildEmptyOutputNote(
+			{ Trigger: wrap([{}]), 'Tag Record': wrap([{}]), Post: wrap([{}]) },
+			connections,
+			new Set(),
+		);
+
+		expect(note).toContain('Node(s) Tag Record returned only empty items');
+		expect(note).toContain("check each node's parameters against its typeVersion");
+	});
+
+	it('names an empty node whose input had data', () => {
+		expect(
+			buildEmptyOutputNote(
+				{ Trigger: [{ name: 'Ada' }], 'Tag Record': [{}], Post: [{ id: 1 }] },
+				connections,
+				new Set(),
+			),
+		).toContain('Node(s) Tag Record returned');
+	});
+
+	it('ignores a simulated node, whose output is a fixture', () => {
+		expect(
+			buildEmptyOutputNote(
+				{ Trigger: [{ name: 'Ada' }], 'Tag Record': [{}] },
+				connections,
+				new Set(['Tag Record']),
+			),
+		).toBeUndefined();
+	});
+
+	it('ignores a node whose items carry file data', () => {
+		expect(
+			buildEmptyOutputNote(
+				{ Trigger: [{ name: 'Ada' }], 'Tag Record': [{}], Post: [{ id: 1 }] },
+				connections,
+				new Set(),
+				['Tag Record'],
+			),
+		).toBeUndefined();
+	});
+
+	it.each([
+		['a size-capped output', { items: [{}], truncated: true, totalItems: 3, shownItems: 1 }],
+		['a collapsed output', { _itemCount: 2, _truncated: true, _firstItemPreview: {} }],
+		[
+			'an output with a collapsed branch',
+			{
+				outputs: [
+					{ index: 0, items: [{}] },
+					{ index: 1, items: { _itemCount: 2, _truncated: true, _firstItemPreview: {} } },
+				],
+				totalItems: 3,
+			},
+		],
+	])('ignores %s, whose hidden items can hold data', (_label, tagRecordOutput) => {
+		expect(
+			buildEmptyOutputNote(
+				{ Trigger: [{ name: 'Ada' }], 'Tag Record': wrap(tagRecordOutput), Post: [{ id: 1 }] },
+				connections,
+				new Set(),
+			),
+		).toBeUndefined();
+	});
+
+	it('names a collapsed output whose only item is empty', () => {
+		expect(
+			buildEmptyOutputNote(
+				{
+					Trigger: [{ name: 'Ada' }],
+					'Tag Record': wrap({ _itemCount: 1, _truncated: true, _firstItemPreview: {} }),
+				},
+				connections,
+				new Set(),
+			),
+		).toContain('Node(s) Tag Record returned');
+	});
+
+	it('ignores an empty trigger when the nodes after it return data', () => {
+		expect(
+			buildEmptyOutputNote(
+				{ Trigger: [{}], 'Tag Record': [{ tag: 'vip' }], Post: [{ id: 1 }] },
+				connections,
+				new Set(),
+			),
+		).toBeUndefined();
 	});
 });

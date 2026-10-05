@@ -1,5 +1,6 @@
 import { UpdateWorkflowHistoryVersionDto } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { EventService } from '@n8n/backend-services';
 import type { User } from '@n8n/db';
 import {
 	WorkflowHistory,
@@ -10,14 +11,12 @@ import {
 import { Service } from '@n8n/di';
 import type { EntityManager } from '@n8n/typeorm';
 import { In } from '@n8n/typeorm';
-import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 import type { IWorkflowBase } from 'n8n-workflow';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { UnexpectedError } from 'n8n-workflow';
 
 import { SharedWorkflowNotFoundError } from '@/errors/shared-workflow-not-found.error';
 import { WorkflowHistoryVersionNotFoundError } from '@/errors/workflow-history-version-not-found.error';
-import { EventService } from '@/events/event.service';
 import type { WorkflowActionSource } from '@/events/maps/relay.event-map';
 
 import { WorkflowFinderService } from '../workflow-finder.service';
@@ -82,18 +81,21 @@ export class WorkflowHistoryService {
 			throw new SharedWorkflowNotFoundError('');
 		}
 
-		const includePublishHistory = settings?.includePublishHistory ?? true;
-		const relations = includePublishHistory ? ['workflowPublishHistory'] : [];
-
 		const hist = await this.workflowHistoryRepository.findOne({
 			where: {
 				workflowId: workflow.id,
 				versionId,
 			},
-			relations,
 		});
 		if (!hist) {
 			throw new WorkflowHistoryVersionNotFoundError('');
+		}
+
+		if (settings?.includePublishHistory ?? true) {
+			hist.workflowPublishHistory = await this.workflowPublishHistoryRepository.findByVersion(
+				workflow.id,
+				versionId,
+			);
 		}
 		return hist;
 	}
@@ -271,10 +273,7 @@ export class WorkflowHistoryService {
 	) {
 		// Cast avoids a TypeORM `QueryDeepPartialEntity` deep-instantiation (TS2589);
 		// same workaround as workflow.service.ts / import.service.ts.
-		await this.workflowHistoryRepository.update(
-			{ versionId, workflowId },
-			updateData as QueryDeepPartialEntity<WorkflowHistory>,
-		);
+		await this.workflowHistoryRepository.update({ versionId, workflowId }, updateData);
 	}
 
 	/**

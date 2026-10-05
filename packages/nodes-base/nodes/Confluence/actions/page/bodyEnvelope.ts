@@ -129,6 +129,12 @@ export function buildBodyEnvelope(
 			if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) {
 				throw new Error('ADF JSON body must be a JSON object, e.g. { "type": "doc", ... }');
 			}
+			// Without this Confluence answers a raw "Error converting ADF to storage format" 400
+			if (!Array.isArray((parsed as IDataObject).content)) {
+				throw new Error(
+					'ADF JSON body must be a document with a "content" array, e.g. { "type": "doc", "version": 1, "content": [] }',
+				);
+			}
 			return { representation: 'atlas_doc_format', value: JSON.stringify(parsed) };
 		}
 

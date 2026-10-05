@@ -1,35 +1,29 @@
 import { defineConfig } from 'eslint/config';
-import { nodeConfig } from '@n8n/eslint-config/node';
+import { backendConfig } from '@n8n/eslint-config/backend';
 
 const AI_SDK_LAZY_IMPORT_MESSAGE =
 	"Import runtime values from 'ai' through the lazy loader in src/runtime/lazy-ai.ts or a dynamic import at the call site, so @n8n/agents stays light at boot.";
 
 export default defineConfig(
-	{ ignores: ['examples/**', 'vitest.integration.config.*', 'vitest.integration.setup.ts', 'src/__tests__/fixtures/**'] },
-	nodeConfig,
 	{
-		rules: {
-			'unicorn/filename-case': ['error', { case: 'kebabCase' }],
-			'@typescript-eslint/naming-convention': [
-				'error',
-				{
-					selector: 'enumMember',
-					format: ['UPPER_CASE', 'PascalCase'],
-				},
-			],
-		},
+		ignores: [
+			'examples/**',
+			'vitest.integration.config.*',
+			'vitest.integration.setup.ts',
+			'src/__tests__/fixtures/**',
+		],
 	},
+	backendConfig,
 	{
 		files: ['src/**/*.ts'],
 		ignores: ['src/**/__tests__/**/*.ts'],
 		rules: {
-			'@typescript-eslint/no-restricted-imports': [
+			'n8n-local-rules/no-static-runtime-import': [
 				'error',
 				{
 					paths: [
 						{
 							name: 'ai',
-							allowTypeImports: true,
 							message: AI_SDK_LAZY_IMPORT_MESSAGE,
 						},
 					],

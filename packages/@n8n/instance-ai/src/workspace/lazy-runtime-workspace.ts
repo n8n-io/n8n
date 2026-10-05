@@ -22,6 +22,13 @@ import {
 	type WriteOptions,
 } from '@n8n/agents';
 
+import {
+	traceSandboxOperation,
+	sandboxFileBytes,
+	sandboxTracePath,
+	sandboxCommandTraceResult,
+} from '../tracing/sandbox-tracing';
+
 export type RuntimeWorkspaceResolver = () => Promise<Workspace | undefined>;
 
 export interface LazyRuntimeWorkspaceOptions {
@@ -219,35 +226,103 @@ class LazyRuntimeFilesystem extends BaseFilesystem {
 	}
 
 	async readFile(path: string, options?: ReadOptions): Promise<string | Buffer> {
-		return await (await this.getFilesystem(options?.abortSignal)).readFile(path, options);
+		return await traceSandboxOperation(
+			'read-file',
+			{
+				kind: 'io',
+				inputs: { path: sandboxTracePath(path, this.basePath) },
+				processResult: (content) => ({ outputs: { bytes: sandboxFileBytes(content) } }),
+			},
+			async () => await (await this.getFilesystem(options?.abortSignal)).readFile(path, options),
+		);
 	}
 
 	async writeFile(path: string, content: FileContent, options?: WriteOptions): Promise<void> {
-		await (await this.getFilesystem(options?.abortSignal)).writeFile(path, content, options);
+		await traceSandboxOperation(
+			'write-file',
+			{
+				kind: 'io',
+				inputs: { path: sandboxTracePath(path, this.basePath), bytes: sandboxFileBytes(content) },
+			},
+			async () => {
+				await (await this.getFilesystem(options?.abortSignal)).writeFile(path, content, options);
+			},
+		);
 	}
 
 	async appendFile(path: string, content: FileContent, options?: AppendOptions): Promise<void> {
-		await (await this.getFilesystem(options?.abortSignal)).appendFile(path, content, options);
+		await traceSandboxOperation(
+			'append-file',
+			{
+				kind: 'io',
+				inputs: { path: sandboxTracePath(path, this.basePath), bytes: sandboxFileBytes(content) },
+			},
+			async () => {
+				await (await this.getFilesystem(options?.abortSignal)).appendFile(path, content, options);
+			},
+		);
 	}
 
 	async deleteFile(path: string, options?: RemoveOptions): Promise<void> {
-		await (await this.getFilesystem(options?.abortSignal)).deleteFile(path, options);
+		await traceSandboxOperation(
+			'delete-file',
+			{ kind: 'io', inputs: { path: sandboxTracePath(path, this.basePath) } },
+			async () => {
+				await (await this.getFilesystem(options?.abortSignal)).deleteFile(path, options);
+			},
+		);
 	}
 
 	async copyFile(src: string, dest: string, options?: CopyOptions): Promise<void> {
-		await (await this.getFilesystem(options?.abortSignal)).copyFile(src, dest, options);
+		await traceSandboxOperation(
+			'copy-file',
+			{
+				kind: 'io',
+				inputs: {
+					src: sandboxTracePath(src, this.basePath),
+					dest: sandboxTracePath(dest, this.basePath),
+				},
+			},
+			async () => {
+				await (await this.getFilesystem(options?.abortSignal)).copyFile(src, dest, options);
+			},
+		);
 	}
 
 	async moveFile(src: string, dest: string, options?: CopyOptions): Promise<void> {
-		await (await this.getFilesystem(options?.abortSignal)).moveFile(src, dest, options);
+		await traceSandboxOperation(
+			'move-file',
+			{
+				kind: 'io',
+				inputs: {
+					src: sandboxTracePath(src, this.basePath),
+					dest: sandboxTracePath(dest, this.basePath),
+				},
+			},
+			async () => {
+				await (await this.getFilesystem(options?.abortSignal)).moveFile(src, dest, options);
+			},
+		);
 	}
 
 	async mkdir(path: string, options?: MkdirOptions): Promise<void> {
-		await (await this.getFilesystem(options?.abortSignal)).mkdir(path, options);
+		await traceSandboxOperation(
+			'mkdir',
+			{ kind: 'io', inputs: { path: sandboxTracePath(path, this.basePath) } },
+			async () => {
+				await (await this.getFilesystem(options?.abortSignal)).mkdir(path, options);
+			},
+		);
 	}
 
 	async rmdir(path: string, options?: RemoveOptions): Promise<void> {
-		await (await this.getFilesystem(options?.abortSignal)).rmdir(path, options);
+		await traceSandboxOperation(
+			'rmdir',
+			{ kind: 'io', inputs: { path: sandboxTracePath(path, this.basePath) } },
+			async () => {
+				await (await this.getFilesystem(options?.abortSignal)).rmdir(path, options);
+			},
+		);
 	}
 
 	async readdir(path: string, options?: ListOptions): Promise<FileEntry[]> {
@@ -322,8 +397,27 @@ class LazyRuntimeSandbox extends BaseSandbox {
 			throw new Error('Instance AI runtime sandbox does not support command execution.');
 		}
 
+		const executeCommand = sandbox.executeCommand.bind(sandbox);
 		try {
-			return await sandbox.executeCommand(command, args, options);
+			return await traceSandboxOperation(
+				'execute-command',
+				{
+					kind: 'io',
+					inputs: {
+						commandBytes: sandboxFileBytes(command),
+						argumentBytes: args.reduce((bytes, arg) => bytes + sandboxFileBytes(arg), 0),
+						argumentCount: args.length,
+						cwd: options?.cwd,
+						timeout: options?.timeout,
+					},
+					processResult: sandboxCommandTraceResult,
+				},
+				async () =>
+					await raceWithAbort(
+						async () => await executeCommand(command, args, options),
+						options?.abortSignal,
+					),
+			);
 		} finally {
 			this.syncStatus(sandbox);
 		}

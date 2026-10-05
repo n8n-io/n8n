@@ -5,6 +5,7 @@ import { mock } from 'vitest-mock-extended';
 import type { AgentExecutionService } from '../agent-execution.service';
 import { AgentInterruptedExecutionSweeper } from '../agent-interrupted-execution-sweeper';
 import type { AgentBackgroundJobService } from '../background/agent-background-job.service';
+import type { AgentWakeService } from '../background/agent-wake.service';
 import type { AgentExecution } from '../entities/agent-execution.entity';
 import type { AgentExecutionRepository } from '../repositories/agent-execution.repository';
 
@@ -12,6 +13,7 @@ function setup(options: { backgroundTasksEnabled?: boolean } = {}) {
 	const repository = mock<AgentExecutionRepository>();
 	const executionService = mock<AgentExecutionService>();
 	const backgroundJobService = mock<AgentBackgroundJobService>();
+	const agentWakeService = mock<AgentWakeService>();
 	const agentsConfig = mock<AgentsConfig>({
 		backgroundTasksEnabled: options.backgroundTasksEnabled ?? false,
 	});
@@ -20,13 +22,18 @@ function setup(options: { backgroundTasksEnabled?: boolean } = {}) {
 		repository,
 		executionService,
 		backgroundJobService,
+		agentWakeService,
 		agentsConfig,
 	);
-	return { sweeper, repository, executionService, backgroundJobService };
+	return { sweeper, repository, executionService, backgroundJobService, agentWakeService };
 }
 
 describe('AgentInterruptedExecutionSweeper', () => {
+	afterEach(() => vi.useRealTimers());
+
 	it('terminalizes an abandoned running execution', async () => {
+		vi.useFakeTimers();
+		vi.setSystemTime(new Date('2026-01-01T00:02:00.000Z'));
 		const { sweeper, repository, executionService } = setup();
 		const execution = {
 			id: 'execution-1',
@@ -40,7 +47,10 @@ describe('AgentInterruptedExecutionSweeper', () => {
 
 		await sweeper.sweep();
 
-		expect(executionService.finalizeInterruptedExecution).toHaveBeenCalledWith(execution);
+		expect(executionService.finalizeInterruptedExecution).toHaveBeenCalledWith(
+			execution,
+			new Date('2026-01-01T00:00:00.000Z'),
+		);
 	});
 
 	it('leaves a recently active execution running in another process', async () => {
@@ -72,5 +82,14 @@ describe('AgentInterruptedExecutionSweeper', () => {
 		await enabled.sweeper.sweep();
 		expect(enabled.backgroundJobService.reconcile).toHaveBeenCalled();
 		expect(enabled.backgroundJobService.reconcileWorkflowJobs).not.toHaveBeenCalled();
+	});
+
+	it('checks for pending job results after reconciliation', async () => {
+		const { sweeper, repository, agentWakeService } = setup();
+		repository.findRunning.mockResolvedValue([]);
+
+		await sweeper.sweep();
+
+		expect(agentWakeService.drainUnconsumed).toHaveBeenCalled();
 	});
 });

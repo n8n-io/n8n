@@ -2,20 +2,15 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
-import { waitFor } from '@testing-library/vue';
 import { useRouter, useRoute } from 'vue-router';
 import SigninView from './SigninView.vue';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
-import { useSSOStore } from '@/features/settings/sso/sso.store';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useNotificationsStore } from '@n8n/stores/notifications.store';
+import { useSSOStore } from '@/features/settings/sso/sso.store';
 import { VIEWS } from '@/app/constants';
-import { consumeSsoLoginRedirectSuppression } from '@/features/core/auth/ssoLoginRedirectSuppression';
-
-vi.mock('@/features/core/auth/ssoLoginRedirectSuppression', () => ({
-	consumeSsoLoginRedirectSuppression: vi.fn(() => false),
-}));
+import { SSO_LOGIN_REQUIRED_ERROR_CODE } from '@n8n/api-types';
 
 vi.mock('vue-router', () => {
 	const push = vi.fn();
@@ -56,6 +51,7 @@ const renderComponent = createComponentRenderer(SigninView);
 let usersStore: ReturnType<typeof mockedStore<typeof useUsersStore>>;
 let settingsStore: ReturnType<typeof mockedStore<typeof useSettingsStore>>;
 let notificationsStore: ReturnType<typeof mockedStore<typeof useNotificationsStore>>;
+let ssoStore: ReturnType<typeof mockedStore<typeof useSSOStore>>;
 
 let router: ReturnType<typeof useRouter>;
 let telemetry: ReturnType<typeof useTelemetry>;
@@ -96,6 +92,7 @@ describe('SigninView', () => {
 		usersStore = mockedStore(useUsersStore);
 		settingsStore = mockedStore(useSettingsStore);
 		notificationsStore = mockedStore(useNotificationsStore);
+		ssoStore = mockedStore(useSSOStore);
 
 		router = useRouter();
 		telemetry = useTelemetry();
@@ -165,6 +162,13 @@ describe('SigninView', () => {
 		expect(notificationsStore.setNotificationsSuppressed.mock.calls).toEqual([[false], [true]]);
 	});
 
+	it('should not render the SSO card when SSO is not the login method', () => {
+		const { queryByTestId, getByTestId } = renderComponent();
+
+		expect(getByTestId('auth-form')).toBeInTheDocument();
+		expect(queryByTestId('sso-signin-card')).not.toBeInTheDocument();
+	});
+
 	it('should show and submit email/password form (happy path)', async () => {
 		await signInWithValidUser();
 
@@ -194,95 +198,6 @@ describe('SigninView', () => {
 		unmount();
 
 		expect(notificationsStore.setNotificationsSuppressed).toHaveBeenCalledWith(false);
-	});
-
-	describe('when SSO is the active authentication method', () => {
-		let ssoStore: ReturnType<typeof mockedStore<typeof useSSOStore>>;
-		let route: ReturnType<typeof useRoute>;
-		const SSO_URL = 'https://idp.example/login';
-
-		beforeEach(() => {
-			ssoStore = mockedStore(useSSOStore);
-			ssoStore.showSsoLoginButton = true;
-			ssoStore.redirectLoginToSso = true;
-			ssoStore.resolveActiveSsoRedirectUrl = vi.fn().mockResolvedValue(SSO_URL);
-
-			route = useRoute();
-			global.window = Object.create(window);
-			Object.defineProperty(window, 'location', {
-				value: { href: '', origin: 'https://n8n.local' },
-				writable: true,
-			});
-		});
-
-		it('redirects to the SSO provider and hides the email/password form', async () => {
-			vi.spyOn(route, 'query', 'get').mockReturnValue({});
-			const hrefSpy = vi.spyOn(window.location, 'href', 'set');
-
-			const { queryByTestId } = renderComponent();
-
-			await waitFor(() => expect(hrefSpy).toHaveBeenCalledWith(SSO_URL));
-			expect(queryByTestId('signin-form')).not.toBeInTheDocument();
-		});
-
-		it('falls back to the login form when the SSO redirect URL cannot be resolved', async () => {
-			ssoStore.resolveActiveSsoRedirectUrl = vi.fn().mockRejectedValue(new Error('no url'));
-			vi.spyOn(route, 'query', 'get').mockReturnValue({});
-			const hrefSpy = vi.spyOn(window.location, 'href', 'set');
-
-			const { getByTestId } = renderComponent();
-
-			await waitFor(() => expect(getByTestId('signin-form')).toBeInTheDocument());
-			expect(hrefSpy).not.toHaveBeenCalled();
-		});
-
-		it('shows the email/password form via the internal-auth fallback (?internalAuth=true)', async () => {
-			vi.spyOn(route, 'query', 'get').mockReturnValue({ internalAuth: 'true' });
-			const hrefSpy = vi.spyOn(window.location, 'href', 'set');
-
-			const { getByTestId } = renderComponent();
-
-			await waitFor(() => expect(getByTestId('signin-form')).toBeInTheDocument());
-			expect(hrefSpy).not.toHaveBeenCalled();
-			expect(ssoStore.resolveActiveSsoRedirectUrl).not.toHaveBeenCalled();
-		});
-
-		it('shows the email/password form when an admin disabled the SSO redirect', async () => {
-			ssoStore.redirectLoginToSso = false;
-			vi.spyOn(route, 'query', 'get').mockReturnValue({});
-			const hrefSpy = vi.spyOn(window.location, 'href', 'set');
-
-			const { getByTestId } = renderComponent();
-
-			await waitFor(() => expect(getByTestId('signin-form')).toBeInTheDocument());
-			expect(hrefSpy).not.toHaveBeenCalled();
-		});
-
-		it('does not redirect when an SSO error must be shown (avoids a redirect loop)', async () => {
-			vi.spyOn(route, 'query', 'get').mockReturnValue({ ssoError: 'access-denied' });
-			const hrefSpy = vi.spyOn(window.location, 'href', 'set');
-
-			const { getByTestId } = renderComponent();
-
-			await waitFor(() => expect(getByTestId('signin-form')).toBeInTheDocument());
-			expect(hrefSpy).not.toHaveBeenCalled();
-			expect(ssoStore.resolveActiveSsoRedirectUrl).not.toHaveBeenCalled();
-			expect(showMessage).toHaveBeenCalledWith(
-				expect.objectContaining({ title: "You don't have access to n8n", type: 'error' }),
-			);
-		});
-
-		it('does not redirect right after a logout', async () => {
-			vi.mocked(consumeSsoLoginRedirectSuppression).mockReturnValueOnce(true);
-			vi.spyOn(route, 'query', 'get').mockReturnValue({});
-			const hrefSpy = vi.spyOn(window.location, 'href', 'set');
-
-			const { getByTestId } = renderComponent();
-
-			await waitFor(() => expect(getByTestId('signin-form')).toBeInTheDocument());
-			expect(hrefSpy).not.toHaveBeenCalled();
-			expect(ssoStore.resolveActiveSsoRedirectUrl).not.toHaveBeenCalled();
-		});
 	});
 
 	describe('when redirect query parameter is set', () => {
@@ -367,6 +282,112 @@ describe('SigninView', () => {
 
 			expect(hrefSpy).not.toHaveBeenCalled();
 			expect(router.push).toHaveBeenCalledWith({ name: VIEWS.HOMEPAGE });
+		});
+	});
+
+	describe('when SSO is the active login method', () => {
+		let route: ReturnType<typeof useRoute>;
+
+		const getEmailInput = (container: Element) => container.querySelector('input[type="email"]');
+
+		const submitPasswordLogin = async (
+			container: Element,
+			getByRole: ReturnType<typeof renderComponent>['getByRole'],
+		) => {
+			const emailInput = getEmailInput(container);
+			const passwordInput = container.querySelector('input[type="password"]');
+			if (!emailInput || !passwordInput) {
+				throw new Error('Inputs not found');
+			}
+
+			await userEvent.type(emailInput, 'member@n8n.io');
+			await userEvent.type(passwordInput, 'password');
+			await userEvent.click(getByRole('button', { name: 'Sign in' }));
+		};
+
+		beforeEach(() => {
+			route = useRoute();
+			ssoStore.showSsoLoginButton = true;
+			settingsStore.isCloudDeployment = false;
+			settingsStore.activeModules = [];
+
+			Object.defineProperty(window, 'location', {
+				value: { href: '', origin: 'https://n8n.local' },
+				writable: true,
+			});
+		});
+
+		it('should lead with the SSO button and keep the password form collapsed', () => {
+			const { getByTestId, getByRole, queryByTestId, container } = renderComponent();
+
+			expect(getByTestId('sso-signin-card')).toBeInTheDocument();
+			expect(queryByTestId('auth-form')).not.toBeInTheDocument();
+			expect(getByRole('button', { name: 'Continue with SSO' })).toBeVisible();
+			expect(getEmailInput(container)).not.toBeVisible();
+		});
+
+		it('should reveal the password form when internalAuth=true is in the URL', () => {
+			vi.spyOn(route, 'query', 'get').mockReturnValue({ internalAuth: 'true' });
+
+			const { container } = renderComponent();
+
+			expect(getEmailInput(container)).toBeVisible();
+		});
+
+		it('should redirect to the SSO login URL for the requested destination', async () => {
+			ssoStore.getSsoLoginUrl.mockResolvedValue('https://idp.example.com/saml');
+			const hrefSpy = vi.spyOn(window.location, 'href', 'set');
+
+			const { getByRole } = renderComponent();
+			await userEvent.click(getByRole('button', { name: 'Continue with SSO' }));
+
+			expect(ssoStore.getSsoLoginUrl).toHaveBeenCalledWith('/home/workflows');
+			expect(hrefSpy).toHaveBeenCalledWith('https://idp.example.com/saml');
+		});
+
+		it('should show a toast when the SSO login URL cannot be resolved', async () => {
+			ssoStore.getSsoLoginUrl.mockRejectedValue(new Error('SAML is not configured'));
+
+			const { getByRole } = renderComponent();
+			await userEvent.click(getByRole('button', { name: 'Continue with SSO' }));
+
+			// Lifted so the error is not swallowed after a session-expiry redirect.
+			expect(notificationsStore.setNotificationsSuppressed).toHaveBeenCalledWith(false);
+			expect(showError).toHaveBeenCalledWith(expect.any(Error), 'Problem logging in');
+		});
+
+		it('should show an inline callout instead of a toast when password sign-in requires SSO', async () => {
+			vi.spyOn(route, 'query', 'get').mockReturnValue({ internalAuth: 'true' });
+			usersStore.loginWithCreds.mockRejectedValueOnce(
+				Object.assign(new Error('SSO is enabled, please log in with SSO'), {
+					errorCode: SSO_LOGIN_REQUIRED_ERROR_CODE,
+				}),
+			);
+
+			const { getByRole, getByTestId, queryByTestId, container } = renderComponent();
+			expect(queryByTestId('sso-required-callout')).not.toBeInTheDocument();
+
+			await submitPasswordLogin(container, getByRole);
+
+			expect(getByTestId('sso-required-callout')).toBeVisible();
+			expect(showError).not.toHaveBeenCalled();
+			expect(telemetry.track).toHaveBeenCalledWith('User attempted to login', {
+				result: 'credentials_error',
+			});
+		});
+
+		it('should still show a toast for other login errors', async () => {
+			vi.spyOn(route, 'query', 'get').mockReturnValue({ internalAuth: 'true' });
+			usersStore.loginWithCreds.mockRejectedValueOnce(
+				Object.assign(new Error('Wrong username or password'), { errorCode: 401 }),
+			);
+
+			const { getByRole, queryByTestId, container } = renderComponent();
+
+			await submitPasswordLogin(container, getByRole);
+
+			expect(queryByTestId('sso-required-callout')).not.toBeInTheDocument();
+			expect(showError).toHaveBeenCalledWith(expect.any(Error), 'Problem logging in');
 		});
 	});
 });

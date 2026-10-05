@@ -1,5 +1,10 @@
 import { AzureOpenAIEmbeddings, OpenAIEmbeddings } from '@langchain/openai';
-import { getProxyAgent, logWrapper, getConnectionHintNoticeField } from '@n8n/ai-utilities';
+import {
+	getProxyAgent,
+	aiClientFetch,
+	logWrapper,
+	getConnectionHintNoticeField,
+} from '@n8n/ai-utilities';
 import {
 	NodeConnectionTypes,
 	NodeOperationError,
@@ -156,8 +161,9 @@ export class EmbeddingsAzureOpenAi implements INodeType {
 				model: modelName,
 				configuration: {
 					baseURL: foundryURL,
+					fetch: aiClientFetch,
 					fetchOptions: {
-						dispatcher: getProxyAgent(foundryURL, {}),
+						dispatcher: getProxyAgent(foundryURL, {}, this.helpers.getSecureEgressFilter()),
 					},
 				},
 				...options,
@@ -180,10 +186,12 @@ export class EmbeddingsAzureOpenAi implements INodeType {
 				? `${credentials.endpoint}/openai/deployments`
 				: undefined,
 			configuration: {
+				fetch: aiClientFetch,
 				fetchOptions: {
 					dispatcher: getProxyAgent(
 						credentials.endpoint ?? `https://${credentials.resourceName}.openai.azure.com`,
 						{},
+						this.helpers.getSecureEgressFilter(),
 					),
 				},
 			},

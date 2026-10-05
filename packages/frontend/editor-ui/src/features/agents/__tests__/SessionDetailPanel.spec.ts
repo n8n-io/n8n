@@ -284,6 +284,38 @@ describe('SessionDetailPanel — HITL sequence', () => {
 });
 
 describe('SessionDetailPanel — other kinds', () => {
+	it('renders skill details with the skill name and tool data', () => {
+		const w = mountIt({
+			kind: 'skill',
+			executionId: 'e1',
+			timestamp: 0,
+			toolName: 'load_skill',
+			skillName: 'Triage',
+			toolInput: { name: 'Triage' },
+			toolOutput: { name: 'Triage' },
+		});
+
+		expect(w.text()).toContain('Triage');
+		expect(w.text()).toContain('Input');
+		expect(w.text()).toContain('Output');
+		expect(w.find('[data-test-id="tool-io-view"]').exists()).toBe(false);
+	});
+
+	it('renders a failed skill call as an error', () => {
+		const w = mountIt({
+			kind: 'skill',
+			executionId: 'e1',
+			timestamp: 0,
+			toolName: 'load_skill',
+			skillName: 'Triage',
+			toolOutcome: 'error',
+			toolOutput: { error: 'Skill failed' },
+		});
+
+		expect(w.find('[data-test-id="tool-error-callout"]').text()).toContain('Skill failed');
+		expect(w.find('[data-test-id="detail-tool-error-badge"]').exists()).toBe(true);
+	});
+
 	it('shows a fatal execution error in a danger callout', () => {
 		const w = mountIt({
 			kind: 'execution-error',
@@ -293,7 +325,7 @@ describe('SessionDetailPanel — other kinds', () => {
 			content: 'Model request failed',
 		});
 
-		expect(w.get('[data-testid="execution-error-callout"]').text()).toContain(
+		expect(w.get('[data-test-id="execution-error-callout"]').text()).toContain(
 			'Model request failed',
 		);
 		expect(w.get('[data-test-id="detail-execution-error-badge"]').text()).toBe('Error');
@@ -488,4 +520,23 @@ describe('SessionDetailPanel — other kinds', () => {
 		const w = mountIt(null);
 		expect(w.text().toLowerCase()).toContain('select');
 	});
+});
+
+it('shows each task and its translated status in signal details', () => {
+	const wrapper = mountIt({
+		kind: 'background-task-signal',
+		executionId: 'e1',
+		timestamp: 1000,
+		backgroundJobSignal: {
+			tasks: [
+				{ id: 'job-1', title: 'Check invoices', kind: 'subagent', status: 'completed' },
+				{ id: 'job-2', title: 'Wait for reply', kind: 'workflow', status: 'cancelled' },
+			],
+		},
+	});
+	expect(wrapper.text()).toContain('Background task results received');
+	const details = wrapper.get('[data-test-id="background-job-signal-details"]');
+	expect(details.findAll('li')).toHaveLength(2);
+	expect(details.text()).toContain('Check invoices — Completed');
+	expect(details.text()).toContain('Wait for reply — Canceled');
 });

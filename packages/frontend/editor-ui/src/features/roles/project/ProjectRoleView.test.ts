@@ -523,6 +523,71 @@ describe('ProjectRoleView', () => {
 		});
 	});
 
+	describe('execution scope coupling', () => {
+		it('renders execution:read as a disabled checkbox that follows workflow:read', async () => {
+			const { getByTestId } = renderComponent();
+
+			await waitFor(() => expect(getByTestId('scope-checkbox-execution:read')).toBeInTheDocument());
+
+			const readCheckbox = getByTestId('scope-checkbox-workflow:read');
+			const executionReadCheckbox = getByTestId('scope-checkbox-execution:read');
+			expect(executionReadCheckbox).toBeDisabled();
+
+			// The viewer preset in this test lacks execution:read: toggling workflow:read
+			// off and on couples it.
+			await userEvent.click(readCheckbox);
+			expect(readCheckbox).not.toBeChecked();
+			expect(executionReadCheckbox).not.toBeChecked();
+
+			await userEvent.click(readCheckbox);
+			expect(readCheckbox).toBeChecked();
+			expect(executionReadCheckbox).toBeChecked();
+		});
+
+		it('unchecks execution:read and execution:delete when workflow:read is unchecked', async () => {
+			const { getByTestId } = renderComponent();
+
+			await waitFor(() =>
+				expect(getByTestId('scope-checkbox-execution:delete')).toBeInTheDocument(),
+			);
+
+			const readCheckbox = getByTestId('scope-checkbox-workflow:read');
+			const executionReadCheckbox = getByTestId('scope-checkbox-execution:read');
+			const executionDeleteCheckbox = getByTestId('scope-checkbox-execution:delete');
+
+			await userEvent.click(readCheckbox);
+			await userEvent.click(readCheckbox);
+			await userEvent.click(executionDeleteCheckbox);
+			expect(executionReadCheckbox).toBeChecked();
+			expect(executionDeleteCheckbox).toBeChecked();
+
+			await userEvent.click(readCheckbox);
+			expect(readCheckbox).not.toBeChecked();
+			expect(executionReadCheckbox).not.toBeChecked();
+			expect(executionDeleteCheckbox).not.toBeChecked();
+		});
+
+		it('auto-checks workflow:read and execution:read when execution:delete is checked without workflow:read', async () => {
+			const { getByTestId } = renderComponent();
+
+			await waitFor(() =>
+				expect(getByTestId('scope-checkbox-execution:delete')).toBeInTheDocument(),
+			);
+
+			const readCheckbox = getByTestId('scope-checkbox-workflow:read');
+			const executionReadCheckbox = getByTestId('scope-checkbox-execution:read');
+			const executionDeleteCheckbox = getByTestId('scope-checkbox-execution:delete');
+
+			await userEvent.click(readCheckbox);
+			expect(readCheckbox).not.toBeChecked();
+
+			await userEvent.click(executionDeleteCheckbox);
+			expect(executionDeleteCheckbox).toBeChecked();
+			expect(readCheckbox).toBeChecked();
+			expect(executionReadCheckbox).toBeChecked();
+		});
+	});
+
 	describe('workflow:execute scope dependency', () => {
 		it('should render workflow:execute checkbox in the UI', async () => {
 			const { getByTestId } = renderComponent();

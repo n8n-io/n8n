@@ -1,5 +1,6 @@
 import type {
 	AgentIntegrationConfig,
+	AgentSseEvent,
 	ChatHubMessageStatus,
 	InstanceAiEvent,
 	PushMessage,
@@ -10,6 +11,12 @@ import type {
 import type { IWorkflowBase, RelatedAgentRun, WorkflowActivateMode } from 'n8n-workflow';
 
 export type PubSubCommandMap = {
+	'relay-agent-queued-chat': {
+		queueId: string;
+		sequence: number;
+		// An omitted event is a relay heartbeat. Null closes the stream.
+		event?: AgentSseEvent | null;
+	};
 	// #region Lifecycle
 
 	'reload-license': never;
@@ -28,7 +35,6 @@ export type PubSubCommandMap = {
 
 	'reload-oidc-config': never;
 	'reload-saml-config': never;
-	'reload-sso-login-redirect': never;
 
 	// # sso provisioning
 	'reload-sso-provisioning-configuration': never;
@@ -41,17 +47,20 @@ export type PubSubCommandMap = {
 
 	'reload-otel-config': never;
 	'reload-instance-ai-settings': never;
+	'reload-agents-settings': never;
 
 	// #region Community packages
 
 	'community-package-install': {
 		packageName: string;
 		packageVersion: string;
+		checksum?: string;
 	};
 
 	'community-package-update': {
 		packageName: string;
 		packageVersion: string;
+		checksum?: string;
 	};
 
 	'community-package-uninstall': {
@@ -131,6 +140,31 @@ export type PubSubCommandMap = {
 		userIds: string[];
 	};
 
+	'cancel-agent-chat-execution': {
+		projectId: string;
+		agentId: string;
+		threadId: string;
+		executionId: string;
+		userId: string;
+		productionN8nChat?: boolean;
+	};
+
+	'relay-agent-message-queue-update': {
+		data: PushPayload<'agentMessageQueueUpdated'>;
+		userIds: string[];
+	};
+
+	'relay-agent-background-tasks-update': {
+		data: PushPayload<'agentBackgroundTasksUpdated'>;
+		userIds: string[];
+	};
+
+	'relay-agent-update': {
+		data: PushPayload<'agentUpdated'>;
+		userIds: string[];
+		excludePushRef?: string;
+	};
+
 	/** Ask mains to wake the agent run a finished sub-execution was parked on. */
 	'resume-agent-workflow-tool': {
 		agentRun: RelatedAgentRun;
@@ -144,6 +178,11 @@ export type PubSubCommandMap = {
 	 */
 	'cancel-agent-background-job': {
 		jobId: string;
+	};
+
+	/** Ask main instances to deliver background job results to the parent thread. */
+	'wake-agent-background-job': {
+		threadId: string;
 	};
 
 	'clear-test-webhooks': {
@@ -207,6 +246,7 @@ export type PubSubCommandMap = {
 	 */
 	'relay-instance-ai-task-control': {
 		threadId: string;
+		userId?: string;
 		taskId?: string;
 		action: 'correct' | 'cancel-task' | 'cancel-thread' | 'clear-thread';
 		correction?: string;

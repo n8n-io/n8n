@@ -8,10 +8,13 @@
 import {
 	analyzeVerificationResult,
 	buildSimulationNote,
+	injectedTriggerSimulations,
+	WORKFLOW_PIN_SIMULATION_REASON,
 	type ChatModelRecoveryOptions,
 	type VerificationAnalysis,
 } from './analyze-result';
 import type { PreparedVerificationRun } from './prepare-run';
+import type { ParameterCheckRun } from './resolved-parameter-warnings';
 import type { ExecutionRunResult } from './types';
 import type { OrchestrationContext } from '../../../types';
 import type {
@@ -38,6 +41,7 @@ export interface ScriptedGateRunArgs {
 	runId: string;
 	chatModelRelatedNodeNames?: ReadonlySet<string>;
 	chatModelRecovery?: ChatModelRecoveryOptions;
+	verificationScope?: ReadonlySet<string>;
 }
 
 interface DecisionPass {
@@ -46,9 +50,11 @@ interface DecisionPass {
 	analysis: VerificationAnalysis;
 }
 
-export async function runScriptedGateVerification(
-	args: ScriptedGateRunArgs,
-): Promise<{ result: ExecutionRunResult; analysis: VerificationAnalysis }> {
+export async function runScriptedGateVerification(args: ScriptedGateRunArgs): Promise<{
+	result: ExecutionRunResult;
+	analysis: VerificationAnalysis;
+	parameterCheckRuns: ParameterCheckRun[];
+}> {
 	const {
 		script,
 		prepared,
@@ -81,11 +87,19 @@ export async function runScriptedGateVerification(
 			runId,
 			chatModelRelatedNodeNames,
 			chatModelRecovery,
+			verificationScope: args.verificationScope,
 		});
 		passes.push({ label: decision.label, result, analysis });
 	}
 
-	return { result: mergeResults(passes), analysis: mergeAnalyses(script, prepared, passes) };
+	return {
+		result: mergeResults(passes),
+		analysis: mergeAnalyses(script, prepared, passes),
+		parameterCheckRuns: passes.map(({ result, analysis }) => ({
+			executionId: result.executionId,
+			nodeNames: analysis.reachedSimulatedNodes.map((node) => node.nodeName),
+		})),
+	};
 }
 
 function mergeResults(passes: DecisionPass[]): ExecutionRunResult {
@@ -93,9 +107,11 @@ function mergeResults(passes: DecisionPass[]): ExecutionRunResult {
 	const failing = passes.find((pass) => !pass.analysis.success);
 	const data: Record<string, unknown> = {};
 	const executedNodeNames = new Set<string>();
+	const binaryOutputNodeNames = new Set<string>();
 	for (const pass of passes) {
 		Object.assign(data, pass.result.data ?? {});
 		for (const name of pass.analysis.reachedNames) executedNodeNames.add(name);
+		for (const name of pass.result.binaryOutputNodeNames ?? []) binaryOutputNodeNames.add(name);
 	}
 
 	// A pass can fail on node errors while its engine status is still
@@ -111,6 +127,7 @@ function mergeResults(passes: DecisionPass[]): ExecutionRunResult {
 		status: failingStatus ?? last.result.status,
 		data: Object.keys(data).length > 0 ? data : undefined,
 		executedNodeNames: [...executedNodeNames],
+		binaryOutputNodeNames: binaryOutputNodeNames.size > 0 ? [...binaryOutputNodeNames] : undefined,
 		error: failing?.result.error ?? failing?.analysis.errorMessage,
 	};
 }
@@ -154,14 +171,33 @@ function mergeAnalyses(
 
 	// Rebuild the note from the union — a node simulated only in an earlier
 	// pass must still be disclosed.
-	const reachedSimulatedNodes = prepared.simulatedNodes.filter((node) =>
+	const plannedSimulated = prepared.simulatedNodes.filter((node) =>
 		reachedNames.has(node.nodeName),
 	);
+	// Pins come from the run result, so they only exist per pass. Without this
+	// union a pin-fed gate run would read as live (INS-1216).
+	const plannedSimulatedNames = new Set(plannedSimulated.map((node) => node.nodeName));
+	const workflowPinnedNodeNames = [
+		...new Set(passes.flatMap((pass) => pass.analysis.workflowPinnedNodeNames)),
+	].filter((name) => !plannedSimulatedNames.has(name));
+	const reachedSimulatedNodes = [
+		...plannedSimulated,
+		...workflowPinnedNodeNames.map((name) => ({
+			nodeName: name,
+			reason: WORKFLOW_PIN_SIMULATION_REASON,
+		})),
+		...injectedTriggerSimulations(
+			passes.find((pass) => pass.result.injectedTriggerNodeName)?.result.injectedTriggerNodeName,
+			reachedNames,
+			new Set([...plannedSimulatedNames, ...workflowPinnedNodeNames]),
+		),
+	];
 
 	return {
 		success: passes.every((pass) => pass.analysis.success),
 		reachedNames,
 		reachedSimulatedNodes,
+		workflowPinnedNodeNames,
 		nodesNotReached,
 		remediation: failing?.analysis.remediation,
 		nodesExecuted: [...reachedNames],

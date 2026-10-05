@@ -93,7 +93,6 @@ export const defaultSettings: FrontendSettings = {
 	saveExecutionProgress: false,
 	sso: {
 		managedByEnv: false,
-		redirectLoginToSso: false,
 		ldap: { loginEnabled: false, loginLabel: '' },
 		saml: { loginEnabled: false, loginLabel: '' },
 		oidc: { loginEnabled: false, loginUrl: '', callbackUrl: '' },
@@ -138,6 +137,8 @@ export const defaultSettings: FrontendSettings = {
 	excludeNodes: [],
 	workflowTagsDisabled: false,
 	workflowsAutosaveDisabled: false,
+	workflowsGroupsWithTriggersEnabled: false,
+	workflowsGroupsWithManyBoundariesEnabled: false,
 	variables: {
 		limit: -1,
 	},
@@ -171,6 +172,7 @@ export const defaultSettings: FrontendSettings = {
 	aiAssistant: {
 		enabled: false,
 		setup: false,
+		cloudUbbEnabled: false,
 	},
 	aiCredits: {
 		enabled: false,
@@ -196,6 +198,7 @@ export const defaultSettings: FrontendSettings = {
 	activeModules: [],
 	canvasOnly: false,
 	envFeatureFlags: {},
+	expressionEngine: 'legacy',
 	dynamicBanners: {
 		endpoint: 'https://api.n8n.io/api/banners',
 		enabled: true,
@@ -204,4 +207,5 @@ export const defaultSettings: FrontendSettings = {
 		},
 	},
 	useWorkflowPublicationService: false,
+	granularCredentialSharing: false,
 };

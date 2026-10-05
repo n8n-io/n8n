@@ -1,0 +1,117 @@
+{
+	"name": "CloudFirestore Document Create Test",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "trigger-id",
+			"name": "When clicking 'Execute Workflow'"
+		},
+		{
+			"parameters": {
+				"keepOnlySet": true,
+				"values": {
+					"string": [
+						{
+							"name": "emptyString",
+							"value": ""
+						},
+						{
+							"name": "numericString",
+							"value": "000123"
+						}
+					],
+					"number": [
+						{
+							"name": "numericZero",
+							"value": 0
+						}
+					],
+					"boolean": [
+						{
+							"name": "falseFlag",
+							"value": false
+						}
+					]
+				},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 1,
+			"position": [200, 0],
+			"id": "set-fields",
+			"name": "Set Fields"
+		},
+		{
+			"parameters": {
+				"authentication": "googleFirebaseCloudFirestoreOAuth2Api",
+				"resource": "document",
+				"operation": "create",
+				"projectId": "test-project",
+				"database": "(default)",
+				"collection": "users",
+				"documentId": "test-doc-id",
+				"columns": "numericZero,falseFlag,emptyString,numericString,missingField",
+				"simple": true
+			},
+			"type": "n8n-nodes-base.googleFirebaseCloudFirestore",
+			"typeVersion": 1.1,
+			"position": [420, 0],
+			"id": "cloudFirestore-create",
+			"name": "Create Document",
+			"credentials": {
+				"googleFirebaseCloudFirestoreOAuth2Api": {
+					"id": "cloudFirestore-oauth-id",
+					"name": "CloudFirestore OAuth2"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Create Document": [
+			{
+				"json": {
+					"_name": "projects/test-project/databases/(default)/documents/users/test-doc-id",
+					"_id": "test-doc-id",
+					"_createTime": "2023-01-01T10:00:00.000Z",
+					"_updateTime": "2023-01-01T10:00:00.000Z",
+					"numericZero": 0,
+					"falseFlag": false,
+					"emptyString": "",
+					"numericString": "000123",
+					"missingField": null
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking 'Execute Workflow'": {
+			"main": [
+				[
+					{
+						"node": "Set Fields",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Set Fields": {
+			"main": [
+				[
+					{
+						"node": "Create Document",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

@@ -13,7 +13,7 @@ export class SubworkflowOperationError extends WorkflowOperationError {
 		this.cause = {
 			name: this.name,
 			message,
-			stack: this.stack as string,
+			stack: this.stack,
 		};
 	}
 }

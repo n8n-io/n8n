@@ -1,6 +1,6 @@
 {
   "name": "@n8n/n8n-extension-insights",
-  "version": "0.21.0",
+  "version": "0.22.0",
   "type": "module",
   "files": [
     "dist",
@@ -31,8 +31,8 @@
     "clean": "rimraf dist .turbo",
     "cleanup": "rimraf dist",
     "dev": "tsdown --watch",
-    "lint": "eslint src --quiet",
-    "lint:fix": "eslint src --fix",
+    "lint": "oxlint src --quiet",
+    "lint:fix": "oxlint src --fix",
     "lint:styles": "stylelint \"src/**/*.{scss,sass,vue}\" --cache",
     "lint:styles:fix": "stylelint \"src/**/*.{scss,sass,vue}\" --fix --cache",
     "typecheck": "vue-tsc --noEmit",
@@ -48,18 +48,24 @@
     "vue-router": "catalog:frontend"
   },
   "devDependencies": {
+    "@n8n/oxlint-config": "workspace:*",
     "@n8n/stylelint-config": "workspace:*",
     "@n8n/typescript-config": "workspace:*",
     "@vitejs/plugin-vue": "catalog:frontend",
     "@vue/tsconfig": "catalog:frontend",
+    "oxlint": "catalog:",
+    "oxlint-tsgolint": "catalog:",
     "stylelint": "catalog:",
     "tsdown": "catalog:",
     "typescript": "catalog:",
     "rimraf": "catalog:",
     "vite": "catalog:",
     "vitest": "catalog:",
-    "vite-plugin-dts": "catalog:",
+    "unplugin-dts": "catalog:",
     "vue-tsc": "catalog:frontend"
+  },
+  "peerDependencies": {
+    "@vue/language-core": "catalog:frontend"
   },
   "license": "LicenseRef-n8n-sustainable-use"
 }

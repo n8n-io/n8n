@@ -11,9 +11,7 @@ import { DateTime } from 'luxon';
 import { UserError } from 'n8n-workflow';
 import { z } from 'zod';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { InternalServerError } from '@/errors/response-errors/internal-server.error';
+import { BadRequestError, ForbiddenError, InternalServerError } from '@n8n/errors';
 
 import { InsightsService } from './insights.service';
 
@@ -71,15 +69,13 @@ export class InsightsController {
 	): Promise<InsightsByTime[]> {
 		const { startDate, endDate, timeZone } = this.prepareDateFilters(query);
 
-		// Cast to full insights by time type
-		// as the service returns all types by default
-		return (await this.insightsService.getInsightsByTime({
+		return await this.insightsService.getInsightsByTime({
 			user: req.user,
 			projectId: query.projectId,
 			startDate,
 			endDate,
 			timeZone,
-		})) as InsightsByTime[];
+		});
 	}
 
 	/**
@@ -95,16 +91,13 @@ export class InsightsController {
 	): Promise<RestrictedInsightsByTime[]> {
 		const { startDate, endDate, timeZone } = this.prepareDateFilters(query);
 
-		// Cast to restricted insights by time type
-		// as the service returns only time saved data
-		return (await this.insightsService.getInsightsByTime({
+		return await this.insightsService.getTimeSavedInsightsByTime({
 			user: req.user,
-			insightTypes: ['time_saved_min'],
 			projectId: query.projectId,
 			startDate,
 			endDate,
 			timeZone,
-		})) as RestrictedInsightsByTime[];
+		});
 	}
 
 	private validateQueryDates(query: InsightsDateFilterDto | ListInsightsWorkflowQueryDto) {

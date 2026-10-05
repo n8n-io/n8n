@@ -28,6 +28,7 @@ import { NodeCrashedError } from '@/errors/node-crashed.error';
 import { WorkflowCrashedError } from '@/errors/workflow-crashed.error';
 import type { EventMessageTypes as EventMessage } from '@/eventbus/event-message-classes';
 import { EventMessageNode } from '@/eventbus/event-message-classes/event-message-node';
+import { ExecutionCrashService } from '@/executions/execution-crash.service';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { ExecutionRecoveryService } from '@/executions/execution-recovery.service';
 import { ExternalHooks } from '@/external-hooks';
@@ -35,7 +36,7 @@ import { Push } from '@/push';
 import { OwnershipService } from '@/services/ownership.service';
 import { WorkflowPublicationNotifier } from '@/workflows/publication/workflow-publication-notifier';
 import { WorkflowPushNotifier } from '@/workflows/workflow-push-notifier.service';
-import { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
+import { WorkflowSharingService } from '@n8n/backend-services';
 import { createExecution } from '@test-integration/db/executions';
 
 import { IN_PROGRESS_EXECUTION_DATA, OOM_WORKFLOW } from './constants';
@@ -77,6 +78,7 @@ describe('ExecutionRecoveryService', () => {
 			ownershipService,
 			projectRelationRepository,
 			workflowPushNotifier,
+			new ExecutionCrashService(executionRepository, mock(), mock(), instanceSettings),
 		);
 	});
 
@@ -127,7 +129,6 @@ describe('ExecutionRecoveryService', () => {
 				 * Arrange
 				 */
 				instanceSettings.markAsFollower();
-				// @ts-expect-error Private method
 				const amendSpy = vi.spyOn(executionRecoveryService, 'amend');
 				const messages = setupMessages('123', 'Some workflow');
 

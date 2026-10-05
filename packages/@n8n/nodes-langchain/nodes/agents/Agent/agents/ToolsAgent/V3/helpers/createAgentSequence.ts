@@ -30,19 +30,26 @@ export function createAgentSequence(
 	outputParser?: N8nOutputParser,
 	memory?: BaseChatMemory,
 	fallbackModel?: BaseChatModel | null,
+	forceToolCall = false,
 ) {
+	const allTools = getAllTools(model, tools);
 	const agent = createToolCallingAgent({
-		llm: model,
-		tools: getAllTools(model, tools),
+		llm:
+			forceToolCall && model.bindTools ? model.bindTools(allTools, { tool_choice: 'any' }) : model,
+		tools: allTools,
 		prompt,
 		streamRunnable: false,
 	});
 
 	let fallbackAgent: AgentRunnableSequence | undefined;
 	if (fallbackModel) {
+		const fallbackTools = getAllTools(fallbackModel, tools);
 		fallbackAgent = createToolCallingAgent({
-			llm: fallbackModel,
-			tools: getAllTools(fallbackModel, tools),
+			llm:
+				forceToolCall && fallbackModel.bindTools
+					? fallbackModel.bindTools(fallbackTools, { tool_choice: 'any' })
+					: fallbackModel,
+			tools: fallbackTools,
 			prompt,
 			streamRunnable: false,
 		});

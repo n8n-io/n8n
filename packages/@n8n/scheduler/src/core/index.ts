@@ -45,6 +45,7 @@ export type {
 	ExistingJob,
 	ProvisionedJob,
 	ProvisionSummary,
+	StoredJobs,
 } from './provisioning';
 export { createDispatchReporter, backoff } from './executor';
 export type {
@@ -56,7 +57,6 @@ export type {
 } from './executor';
 export {
 	DEFAULT_MATERIALIZER_OPTIONS,
-	materialize,
 	totalDiscarded,
 	ownerKeyFor,
 	withOwnerKeys,
@@ -71,7 +71,12 @@ export type {
 } from './materializer';
 export { pollLookaheadSeconds } from './lifecycle';
 export type { ConcurrencyMode, LifecycleOptions } from './lifecycle';
-export type { ReaperOptions, ReapResult } from './reaper';
+export type {
+	ReaperOptions,
+	ReapResult,
+	RetireMissedResult,
+	RetiredTask,
+} from './reaper';
 export {
 	reconcile,
 	DEFAULT_RECONCILIATION_OPTIONS,

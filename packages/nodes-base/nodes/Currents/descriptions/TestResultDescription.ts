@@ -26,7 +26,7 @@ export const testResultOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'GET',
-						url: '=/test-results/{{$parameter["signature"]}}',
+						url: '=/test-results/{{toPathSegment($parameter["signature"])}}',
 					},
 					output: {
 						postReceive: [

@@ -1,14 +1,16 @@
+import type { EventService } from '@n8n/backend-services';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { ExecutionsConfig } from '@n8n/config';
-import type { ExecutionRepository, IExecutionResponse, Project } from '@n8n/db';
+import type { IExecutionResponse, Project } from '@n8n/db';
 import type { ErrorReporter } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
 import { ExecutionAlreadyResumingError } from '@/errors/execution-already-resuming.error';
-import type { EventService } from '@/events/event.service';
 import { EnqueuedExecutionRecoveryService } from '@/executions/enqueued-execution-recovery.service';
+import type { ExecutionCrashService } from '@/executions/execution-crash.service';
 import type { ExecutionService } from '@/executions/execution.service';
 import type { OwnershipService } from '@/services/ownership.service';
+import type { WorkflowPublisherService } from '@/workflows/workflow-publisher.service';
 import type { WorkflowRunner } from '@/workflow-runner';
 
 const project = mock<Project>({ id: 'project-1' });
@@ -21,8 +23,9 @@ describe('EnqueuedExecutionRecoveryService', () => {
 	vi.mocked(logger.scoped).mockReturnValue(logger);
 	const errorReporter = mock<ErrorReporter>();
 	const executionService = mock<ExecutionService>();
-	const executionRepository = mock<ExecutionRepository>();
+	const executionCrashService = mock<ExecutionCrashService>();
 	const ownershipService = mock<OwnershipService>();
+	const workflowPublisherService = mock<WorkflowPublisherService>();
 	const workflowRunner = mock<WorkflowRunner>();
 	const eventService = mock<EventService>();
 
@@ -32,8 +35,9 @@ describe('EnqueuedExecutionRecoveryService', () => {
 			errorReporter,
 			mock<ExecutionsConfig>({ mode }),
 			executionService,
-			executionRepository,
+			executionCrashService,
 			ownershipService,
+			workflowPublisherService,
 			workflowRunner,
 			eventService,
 		);
@@ -83,7 +87,10 @@ describe('EnqueuedExecutionRecoveryService', () => {
 		await createService().recoverEnqueuedExecutions();
 		await new Promise(setImmediate); // `run` is not awaited, let the rejection settle
 
-		expect(executionRepository.markAsCrashed).toHaveBeenCalledExactlyOnceWith('1');
+		expect(executionCrashService.markAsCrashed).toHaveBeenCalledExactlyOnceWith(
+			'1',
+			'start-failure',
+		);
 		expect(errorReporter.error).toHaveBeenCalledTimes(1);
 		expect(workflowRunner.run).toHaveBeenCalledTimes(2);
 	});
@@ -95,7 +102,7 @@ describe('EnqueuedExecutionRecoveryService', () => {
 		await createService().recoverEnqueuedExecutions();
 		await new Promise(setImmediate); // `run` is not awaited, let the rejection settle
 
-		expect(executionRepository.markAsCrashed).not.toHaveBeenCalled();
+		expect(executionCrashService.markAsCrashed).not.toHaveBeenCalled();
 		expect(errorReporter.error).not.toHaveBeenCalled();
 	});
 
@@ -106,7 +113,10 @@ describe('EnqueuedExecutionRecoveryService', () => {
 
 		await createService().recoverEnqueuedExecutions();
 
-		expect(executionRepository.markAsCrashed).toHaveBeenCalledExactlyOnceWith(['2', '3']);
+		expect(executionCrashService.markAsCrashed).toHaveBeenCalledExactlyOnceWith(
+			['2', '3'],
+			'start-failure',
+		);
 		expect(workflowRunner.run).toHaveBeenCalledExactlyOnceWith(
 			expect.anything(),
 			undefined,
@@ -120,7 +130,10 @@ describe('EnqueuedExecutionRecoveryService', () => {
 
 		await createService().recoverEnqueuedExecutions();
 
-		expect(executionRepository.markAsCrashed).toHaveBeenCalledExactlyOnceWith(['1']);
+		expect(executionCrashService.markAsCrashed).toHaveBeenCalledExactlyOnceWith(
+			['1'],
+			'start-failure',
+		);
 		expect(workflowRunner.run).not.toHaveBeenCalled();
 	});
 
@@ -129,7 +142,7 @@ describe('EnqueuedExecutionRecoveryService', () => {
 
 		await createService().recoverEnqueuedExecutions();
 
-		expect(executionRepository.markAsCrashed).not.toHaveBeenCalled();
+		expect(executionCrashService.markAsCrashed).not.toHaveBeenCalled();
 	});
 
 	// A throw used to abort the whole loop, leaving every remaining execution at `new`.
@@ -141,7 +154,10 @@ describe('EnqueuedExecutionRecoveryService', () => {
 
 		await createService().recoverEnqueuedExecutions();
 
-		expect(executionRepository.markAsCrashed).toHaveBeenCalledExactlyOnceWith('1');
+		expect(executionCrashService.markAsCrashed).toHaveBeenCalledExactlyOnceWith(
+			'1',
+			'start-failure',
+		);
 		expect(workflowRunner.run).toHaveBeenCalledExactlyOnceWith(
 			expect.anything(),
 			undefined,

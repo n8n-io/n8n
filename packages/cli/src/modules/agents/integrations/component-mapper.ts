@@ -76,6 +76,24 @@ interface ComponentRenderContext {
 }
 
 /**
+ * Shared by the platforms whose rich cards have no select control. Telegram
+ * keeps its own override because it also rewrites images.
+ */
+export function expandSelectsToButtons(components: SuspendComponent[]): SuspendComponent[] {
+	const normalized: SuspendComponent[] = [];
+	for (const c of components) {
+		if (c.type === 'select' || c.type === 'radio_select') {
+			for (const opt of c.options ?? []) {
+				normalized.push({ type: 'button', label: opt.label, value: opt.value });
+			}
+			continue;
+		}
+		normalized.push(c);
+	}
+	return normalized;
+}
+
+/**
  * Converts agent SDK suspend payloads into Chat SDK Card elements.
  *
  * The `chat` package is ESM-only, so every method dynamically imports it
@@ -225,7 +243,7 @@ export class ComponentMapper {
 		children.push(
 			sdk.Image({
 				url: component.url as string,
-				alt: (component.altText as string) ?? 'image',
+				alt: component.altText ?? 'image',
 			}),
 		);
 	}
@@ -309,7 +327,7 @@ export class ComponentMapper {
 	 * tool's resume schema.
 	 *
 	 * Inspects the JSON Schema top-level properties to determine the shape:
-	 * - Schema has `approved` (boolean) → `{ approved: value === 'true' }`
+	 * - Schema has `approved` → an approval decision, including an optional session scope
 	 * - Schema has `values` (object) → `{ values: { action: value } }`
 	 * - No schema / unknown → try JSON.parse, fall back to `{ value }`
 	 */
@@ -331,6 +349,7 @@ export class ComponentMapper {
 		const props = schema.properties ?? {};
 
 		if ('approved' in props) {
+			if (rawValue === 'session') return { approved: true, scope: 'session' };
 			return { approved: rawValue === 'true' };
 		}
 

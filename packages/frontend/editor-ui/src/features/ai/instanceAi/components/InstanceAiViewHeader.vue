@@ -1,57 +1,88 @@
 <script lang="ts" setup>
 import { computed } from 'vue';
 import { useRoute } from 'vue-router';
-import { N8nCallout, N8nIconButton, N8nTooltip, TOOLTIP_DELAY_MS } from '@n8n/design-system';
+import { N8nCallout } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
+import type { InstanceAiThreadSummary } from '@n8n/api-types';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { useInstanceAiStore } from '../instanceAi.store';
-import { useSidebarState } from '../instanceAiLayout';
 import CreditsSettingsDropdown from '@/features/ai/assistant/components/Agent/CreditsSettingsDropdown.vue';
+import ChatHistoryDropdownTrigger from '@/features/ai/shared/components/ChatHistoryDropdownTrigger.vue';
+import InstanceAiThreadList from './InstanceAiThreadList.vue';
+
+const props = withDefaults(
+	defineProps<{
+		title?: string;
+		/** Falls back to the route param when omitted (the full assistant page's own use). */
+		threadId?: string;
+		/** Passed through to `InstanceAiThreadList` — an embedding host scopes
+		 * and disables the shared history instead of routing through it. */
+		threadList?: {
+			filter?: (thread: InstanceAiThreadSummary) => boolean;
+			navigate?: boolean;
+			disabled?: boolean;
+		};
+	}>(),
+	{
+		title: undefined,
+		threadId: undefined,
+		threadList: undefined,
+	},
+);
+
+const emit = defineEmits<{
+	select: [threadId: string];
+	deleted: [wasActive: boolean];
+}>();
 
 const store = useInstanceAiStore();
 const sourceControlStore = useSourceControlStore();
 const i18n = useI18n();
-const sidebar = useSidebarState();
 const route = useRoute();
 const { goToUpgrade } = usePageRedirectionHelper();
 
 const isReadOnlyEnvironment = computed(() => sourceControlStore.preferences.branchReadOnly);
 
-// The active thread comes from the `:threadId` route param (INSTANCE_AI_THREAD_VIEW);
-// undefined on the empty/new-conversation view, in which case no per-thread total shows.
+// The active thread comes from the `threadId` prop, falling back to the
+// `:threadId` route param (INSTANCE_AI_THREAD_VIEW); undefined on the
+// empty/new-conversation view, in which case no per-thread total shows.
 const activeThreadId = computed(() => {
-	const id = route.params.threadId;
+	if (props.threadId) return props.threadId;
+	const id = route.params?.threadId;
 	return typeof id === 'string' ? id : undefined;
 });
 
 const threadCreditsUsed = computed(() =>
 	activeThreadId.value ? store.threadCreditsUsed(activeThreadId.value) : undefined,
 );
+
+function handleThreadSelect(threadId: string) {
+	emit('select', threadId);
+}
 </script>
 
 <template>
 	<div :class="$style.header">
-		<Transition name="sidebar-toggle-fade">
-			<span v-if="sidebar.collapsed.value" :class="$style.sidebarToggle">
-				<N8nTooltip
-					:content="i18n.baseText('instanceAi.sidebar.chatHistory')"
-					placement="bottom"
-					:show-after="TOOLTIP_DELAY_MS"
-				>
-					<N8nIconButton
-						icon="menu"
-						variant="ghost"
-						size="small"
-						icon-size="large"
+		<div :class="$style.threadHistory">
+			<InstanceAiThreadList
+				max-height="calc(var(--spacing--5xl) + var(--spacing--4xl) + var(--spacing--3xl))"
+				:filter="threadList?.filter"
+				:navigate="threadList?.navigate"
+				:disabled="threadList?.disabled"
+				:active-thread-id="threadId"
+				@select="handleThreadSelect"
+				@deleted="emit('deleted', $event)"
+			>
+				<template #trigger>
+					<ChatHistoryDropdownTrigger
+						:title="props.title"
 						data-test-id="instance-ai-sidebar-toggle"
-						:aria-label="i18n.baseText('instanceAi.sidebar.chatHistory')"
-						@click="sidebar.toggle"
 					/>
-				</N8nTooltip>
-			</span>
-		</Transition>
-		<slot name="title" />
+				</template>
+			</InstanceAiThreadList>
+		</div>
+		<slot name="status" />
 		<div :class="$style.headerActions">
 			<CreditsSettingsDropdown
 				v-if="store.creditsRemaining !== undefined"
@@ -84,39 +115,22 @@ const threadCreditsUsed = computed(() =>
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--2xs);
-	background-color: var(--color--background--light-2);
-}
-
-.sidebarToggle {
-	display: inline-flex;
+	background-color: var(--n8n-ia-header--background, var(--background--surface));
 }
 
 .headerActions {
-	margin-left: auto;
+	margin-inline-start: auto;
+	flex-shrink: 0;
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--4xs);
 }
 
+.threadHistory {
+	min-width: 0;
+}
+
 .readOnlyBanner {
 	margin: var(--spacing--xs) var(--spacing--sm) 0;
-}
-</style>
-
-<style lang="scss">
-// Entry-point icon button: fade in slightly after the sidebar has begun
-// collapsing, fade out quickly when the sidebar starts opening — so the
-// crossover feels intentional rather than abrupt.
-.sidebar-toggle-fade-enter-from,
-.sidebar-toggle-fade-leave-to {
-	opacity: 0;
-}
-
-.sidebar-toggle-fade-enter-active {
-	transition: opacity 0.15s ease;
-}
-
-.sidebar-toggle-fade-leave-active {
-	transition: opacity 0.1s ease;
 }
 </style>

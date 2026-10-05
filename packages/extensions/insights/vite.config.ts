@@ -1,7 +1,7 @@
 import { resolve } from 'path';
 import { defineConfig } from 'vite';
 import vue from '@vitejs/plugin-vue';
-import dts from 'vite-plugin-dts';
+import dts from 'unplugin-dts/vite';
 import { configDefaults as vitestConfig } from 'vitest/config';
 
 const cwd = process.cwd();
@@ -10,8 +10,8 @@ export default defineConfig({
 	plugins: [
 		vue(),
 		dts({
-			rollupTypes: true,
 			tsconfigPath: resolve(cwd, 'tsconfig.frontend.json'),
+			processor: 'vue',
 		}),
 	],
 	build: {

@@ -47,6 +47,7 @@ import {
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
 import { useWorkflowPublicationStatusSync } from '@/app/composables/useWorkflowPublicationStatusSync';
+import { useUnusableWorkflowCredentials } from '@/features/credentials/composables/useUnusableWorkflowCredentials';
 import { useWorkflowReviewsFeature } from '@/features/workflow-reviews/composables/useWorkflowReviewsFeature';
 import WorkflowReviewRequiredToggle from '@/features/workflow-reviews/components/WorkflowReviewRequiredToggle.vue';
 import WorkflowPublishChoiceDialog from '@/features/workflow-reviews/components/WorkflowPublishChoiceDialog.vue';
@@ -78,6 +79,11 @@ const workflowDocumentStore = computed(() =>
 // Pass a getter so the composable re-syncs internally when the user navigates
 // to a different workflow without this component being remounted.
 useWorkflowPublicationStatusSync(() => workflowDocumentStore.value.documentId);
+
+const { reason: unusableCredentialReason } = useUnusableWorkflowCredentials(
+	() => workflowDocumentStore.value.usedCredentials,
+	() => workflowDocumentStore.value.allNodes,
+);
 const { refetch: refetchReviewStatus } = useWorkflowReviewStatusSync(() =>
 	props.isNewWorkflow ? undefined : props.id,
 );
@@ -166,9 +172,9 @@ const containsTrigger = computed((): boolean => {
 	return foundTriggers.value.length > 0;
 });
 
-const nodesWithValidationIssues = computed(
-	() => workflowDocumentStore.value.nodesWithValidationIssues,
-);
+// The nodes that actually block publishing, so the count in the message matches
+// why the button is disabled.
+const nodesWithValidationIssues = computed(() => workflowDocumentStore.value.publishBlockingNodes);
 
 const hasNodeIssues = computed(() => workflowDocumentStore.value.hasPublishBlockingIssues);
 
@@ -369,6 +375,12 @@ const onOpenReviewFromBanner = async () => {
 };
 
 const onPublishButtonClick = async () => {
+	// Event-bus callers skip the disabled button, so show the reason as a toast.
+	if (unusableCredentialReason.value) {
+		toast.showMessage({ title: unusableCredentialReason.value, type: 'warning' });
+		return;
+	}
+
 	if (!(await ensureWorkflowSaved())) return;
 
 	if (isWorkflowReviewsEnabled.value) {
@@ -398,6 +410,19 @@ const onPublishButtonClick = async () => {
 };
 
 const publishButtonConfig = computed(() => {
+	// Published workflows run as the publisher, so check credentials before permissions.
+	if (unusableCredentialReason.value) {
+		return {
+			text: i18n.baseText('workflows.publish'),
+			enabled: false,
+			loading: false,
+			showIndicator: !!activeVersion.value,
+			indicatorClass: activeVersion.value ? 'published' : '',
+			tooltip: unusableCredentialReason.value,
+			showVersionInfo: !!activeVersion.value,
+		};
+	}
+
 	// Handle permission-denied state first
 	if (!hasPublishPermission.value) {
 		const defaultConfigForNoPermission = {
@@ -555,6 +580,22 @@ const shouldDisablePublishButton = computed(() => {
 		!publishButtonConfig.value.enabled ||
 		!hasPublishPermission.value ||
 		(isWorkflowReviewsEnabled.value && isReviewUpdateBlocked.value)
+	);
+});
+
+/**
+ * A workflow that is ready to publish has nothing to explain, so the tooltip
+ * stays off. A credential this user cannot use is the exception: the button is
+ * disabled in that state too, and the reason is the only way to learn why.
+ */
+const isPublishTooltipDisabled = computed(() => {
+	if (unusableCredentialReason.value) return false;
+
+	return (
+		(workflowPublishState.value === 'not-published-eligible' &&
+			props.workflowPermissions.publish) ||
+		(!publishButtonConfig.value.tooltip &&
+			!(publishButtonConfig.value.showVersionInfo && activeVersion.value))
 	);
 });
 
@@ -719,6 +760,7 @@ const onUnpublish = () => {
 	uiStore.openModalWithData({
 		name: WORKFLOW_HISTORY_VERSION_UNPUBLISH,
 		data: {
+			workflowId: props.id,
 			versionName: activeVersion.value.name,
 			eventBus: unpublishEventBus,
 		},
@@ -809,16 +851,7 @@ onBeforeUnmount(() => {
 		</div>
 		<div v-if="!shouldHidePublishButton" :class="$style.publishButtonWrapper">
 			<div :class="$style.buttonGroup">
-				<N8nTooltip
-					:disabled="
-						(workflowPublishState === 'not-published-eligible' &&
-							props.workflowPermissions.publish) ||
-						(!publishButtonConfig.tooltip &&
-							!(publishButtonConfig.showVersionInfo && activeVersion))
-					"
-					:show-after="300"
-					:offset="15"
-				>
+				<N8nTooltip :disabled="isPublishTooltipDisabled" :show-after="300" :offset="15">
 					<template #content>
 						<div>
 							<template v-if="publishButtonConfig.tooltip">

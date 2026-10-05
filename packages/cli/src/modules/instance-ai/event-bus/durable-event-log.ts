@@ -249,6 +249,27 @@ export class DurableEventLog {
 		return await this.repo.getForRuns(threadId, runIds);
 	}
 
+	/** Latest persisted setup panel snapshot per workflow (see repository). */
+	async getSetupItemsSnapshots(threadId: string) {
+		await this.flush(threadId);
+		return await this.repo.getSetupItemsSnapshots(threadId);
+	}
+
+	/** The run that sent the ai-preferences block the thread still carries (see repository). */
+	async getLastPreferencesInjectionRunId(threadId: string) {
+		await this.flush(threadId);
+		return await this.repo.getLastPreferencesInjectionRunId(threadId);
+	}
+
+	/**
+	 * What the thread's latest turn reported as applied (see repository). No flush: the
+	 * caller reads the SSE cursor first, so a fact still queued here replays over SSE,
+	 * and a flush would cut an open text segment in two on every thread open.
+	 */
+	async getLastAppliedPreferences(threadId: string) {
+		return await this.repo.getLastAppliedPreferences(threadId);
+	}
+
 	/**
 	 * The thread's still-open streamed segments, read from the coalesce buffers.
 	 * SYNCHRONOUS on purpose: the SSE bootstrap serves these in its synchronous

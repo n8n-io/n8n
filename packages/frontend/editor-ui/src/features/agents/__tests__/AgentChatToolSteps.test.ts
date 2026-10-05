@@ -60,6 +60,7 @@ vi.mock('@n8n/i18n', () => {
 	const i18n = {
 		translations: {
 			'agents.chat.toolNames.webSearch': 'Web search',
+			'agents.chat.toolNames.flagMemory': 'Memory noted',
 			'instanceAi.tools.search_nodes': 'Search nodes',
 			'agents.chat.difficulty.low': 'Low',
 			'agents.chat.difficulty.medium': 'Medium',
@@ -99,7 +100,11 @@ vi.mock('../composables/useSubAgentNames', () => ({
 
 function mountSteps(
 	toolCalls: ToolCall[],
-	extra: { canFixWithAssistant?: boolean; executionId?: string } = {},
+	extra: {
+		canFixWithAssistant?: boolean;
+		executionId?: string;
+		dismissedToolCallIds?: string[];
+	} = {},
 ) {
 	return mount(AgentChatToolSteps, {
 		props: { toolCalls, projectId: 'project-1', ...extra },
@@ -179,6 +184,43 @@ describe('AgentChatToolSteps', () => {
 
 		expect(wrapper.text()).toContain('Search nodes');
 		expect(wrapper.find('button').exists()).toBe(false);
+	});
+
+	it('shows a completed memory flag as a compact acknowledgement', () => {
+		const running = mountSteps([
+			{
+				tool: 'flag_memory',
+				toolCallId: 'tc-memory-running',
+				state: TOOL_CALL_STATE.RUNNING,
+				input: { content: 'Remember this.' },
+			},
+		]);
+		expect(running.text()).toContain('Flag memory');
+		expect(running.text()).not.toContain('Memory noted');
+
+		const missingResult = mountSteps([
+			{
+				tool: 'flag_memory',
+				toolCallId: 'tc-memory-no-result',
+				state: TOOL_CALL_STATE.DONE,
+				input: { content: 'Remember this.' },
+			},
+		]);
+		expect(missingResult.text()).toContain('Flag memory');
+		expect(missingResult.text()).not.toContain('Memory noted');
+
+		const completed = mountSteps([
+			{
+				tool: 'flag_memory',
+				toolCallId: 'tc-memory-done',
+				state: TOOL_CALL_STATE.DONE,
+				input: { content: 'Remember this.' },
+				output: { status: 'noted' },
+			},
+		]);
+		expect(completed.text()).toContain('Memory noted');
+		expect(completed.find('button').exists()).toBe(false);
+		expect(completed.find('[data-test-id="tool-step-details"]').exists()).toBe(false);
 	});
 
 	it('shows one Fix with Assistant callout with deduplicated failures', async () => {
@@ -264,6 +306,68 @@ describe('AgentChatToolSteps', () => {
 				],
 			],
 		]);
+	});
+
+	it('hides dismissed tool errors and emits only the ones still shown', async () => {
+		const stillShown = mountSteps(
+			[
+				{
+					tool: 'search_nodes',
+					toolCallId: 'tc-gone',
+					state: TOOL_CALL_STATE.ERROR,
+					output: 'Old failure',
+				},
+				{
+					tool: 'http_request',
+					toolCallId: 'tc-stay',
+					state: TOOL_CALL_STATE.ERROR,
+					output: 'Still broken',
+				},
+			],
+			{
+				canFixWithAssistant: true,
+				executionId: 'exec-1',
+				dismissedToolCallIds: ['tc-gone'],
+			},
+		);
+
+		const callout = stillShown.find('[data-test-id="agent-chat-tool-fix-with-assistant-callout"]');
+		expect(callout.exists()).toBe(true);
+		expect(callout.text()).toContain('Still broken');
+		expect(callout.text()).not.toContain('Old failure');
+
+		await stillShown.find('[data-test-id="agent-chat-tool-fix-with-assistant"]').trigger('click');
+		expect(stillShown.emitted('fixWithAssistant')).toEqual([
+			[
+				[
+					{
+						toolCallId: 'tc-stay',
+						toolName: 'http_request',
+						toolDisplayName: 'Http request',
+						error: 'Still broken',
+					},
+				],
+			],
+		]);
+
+		const allDismissed = mountSteps(
+			[
+				{
+					tool: 'search_nodes',
+					toolCallId: 'tc-gone',
+					state: TOOL_CALL_STATE.ERROR,
+					output: 'Old failure',
+				},
+			],
+			{
+				canFixWithAssistant: true,
+				executionId: 'exec-1',
+				dismissedToolCallIds: ['tc-gone'],
+			},
+		);
+		expect(
+			allDismissed.find('[data-test-id="agent-chat-tool-fix-with-assistant-callout"]').exists(),
+		).toBe(false);
 	});
 
 	it('shows a generic error when the failed tool output is empty', () => {

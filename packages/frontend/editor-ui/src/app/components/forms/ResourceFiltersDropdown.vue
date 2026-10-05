@@ -113,7 +113,7 @@ const resetFilters = () => {
 };
 
 const shouldBeIconButton = computed(() => {
-	return !hasFilters.value;
+	return props.justIcon && !hasFilters.value;
 });
 
 watch(filtersLength, (value) => {
@@ -144,7 +144,7 @@ watch(filtersLength, (value) => {
 							v-if="filtersLength > 0"
 							:class="$style['filter-button-count']"
 							data-test-id="resources-list-filters-count"
-							theme="primary"
+							variant="primary"
 						>
 							{{ filtersLength }}
 						</N8nBadge>

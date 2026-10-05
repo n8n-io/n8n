@@ -1,6 +1,6 @@
+import { EventService } from '@n8n/backend-services';
 import { Service } from '@n8n/di';
 
-import { EventService } from '@/events/event.service';
 import type { RelayEventMap } from '@/events/maps/relay.event-map';
 
 @Service()

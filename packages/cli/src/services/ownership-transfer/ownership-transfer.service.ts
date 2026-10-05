@@ -1,3 +1,4 @@
+import { OwnershipTransferHandlerRegistry } from '@n8n/backend-services';
 import { UserRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 
@@ -5,8 +6,6 @@ import { CredentialsService } from '@/credentials/credentials.service';
 import { FolderService } from '@/services/folder.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { WorkflowService } from '@/workflows/workflow.service';
-
-import { OwnershipTransferHandlerRegistry } from './ownership-transfer-handler.registry';
 
 /**
  * The single place where a project's resources change owner (user deletion
@@ -24,7 +23,9 @@ export class OwnershipTransferService {
 		private readonly credentialsService: CredentialsService,
 		private readonly folderService: FolderService,
 		private readonly ownershipService: OwnershipService,
-		private readonly transferHandlers: OwnershipTransferHandlerRegistry,
+		private readonly transferHandlers: OwnershipTransferHandlerRegistry<
+			Parameters<WorkflowService['transferAll']>[2]
+		>,
 	) {}
 
 	/**

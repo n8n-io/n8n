@@ -1,15 +1,19 @@
 <script lang="ts" setup>
-import { computed } from 'vue';
+import { useResizeObserver } from '@vueuse/core';
+import type { ComponentPublicInstance } from 'vue';
+import { computed, ref } from 'vue';
 
+import { useI18n } from '../../composables/useI18n';
 import type { IMenuItem } from '../../types';
-import N8nActionPill from '../N8nActionPill/ActionPill.vue';
+import N8nBadge from '../N8nBadge';
 import N8nIcon from '../N8nIcon';
 import type { IconName } from '../N8nIcon/icons';
 import N8nRoute from '../N8nRoute';
-import N8nTag from '../N8nTag';
 import N8nText from '../N8nText';
 import N8nTooltip from '../N8nTooltip';
-import PreviewTag from '../PreviewTag/PreviewTag.vue';
+import PreviewBadge from '../PreviewBadge/PreviewBadge.vue';
+
+const { t } = useI18n();
 
 const props = defineProps<{
 	item: IMenuItem;
@@ -19,11 +23,26 @@ const props = defineProps<{
 	level?: number;
 	open?: boolean;
 	ariaLabel?: string;
+	scrollLabelOnOverflow?: boolean;
 }>();
 
 const emit = defineEmits<{
 	click: [];
 }>();
+
+const menuItemTextViewport = ref<HTMLElement | null>(null);
+const menuItemText = ref<ComponentPublicInstance | null>(null);
+const labelOverflows = ref(false);
+
+// Observing the text too catches label changes, which do not resize the viewport.
+useResizeObserver([menuItemTextViewport, menuItemText], () => {
+	const viewport = menuItemTextViewport.value;
+	labelOverflows.value = viewport !== null && viewport.scrollWidth > viewport.clientWidth;
+});
+
+const isLabelOverflowing = computed(
+	() => Boolean(props.scrollLabelOnOverflow) && labelOverflows.value,
+);
 
 const to = computed(() => {
 	if (props.item.disabled) {
@@ -107,6 +126,7 @@ const tooltipPlacement = computed(() => {
 						[$style.active]: active,
 						[$style.compact]: compact,
 						[$style.disabled]: item.disabled,
+						[$style.clipOverflowLabel]: props.scrollLabelOnOverflow,
 					},
 				]"
 				:aria-label="props.ariaLabel ?? props.item.label"
@@ -126,21 +146,37 @@ const tooltipPlacement = computed(() => {
 					<N8nIcon v-else-if="icon" :color="iconColor" :icon="icon" />
 				</div>
 				<div :class="$style.menuItemLabel">
-					<N8nText
+					<div
 						v-if="!compact"
-						:class="$style.menuItemText"
-						:color="item.disabled ? 'text-light' : 'text-dark'"
+						ref="menuItemTextViewport"
+						:class="[
+							$style.menuItemTextViewport,
+							{
+								[$style.scrollLabelOnOverflow]: props.scrollLabelOnOverflow,
+								[$style.labelOverflowing]: isLabelOverflowing,
+							},
+						]"
 					>
-						{{ item.label }}
-					</N8nText>
-					<PreviewTag v-if="!compact && item.preview" />
-					<N8nTag
+						<N8nText
+							ref="menuItemText"
+							:class="$style.menuItemText"
+							:color="item.disabled ? 'text-light' : 'text-dark'"
+						>
+							{{ item.label }}
+						</N8nText>
+					</div>
+					<PreviewBadge v-if="!compact && item.preview" />
+					<N8nBadge
 						v-if="!compact && item.new"
-						:clickable="false"
-						text="New"
-						:class="$style.newTag"
-					/>
-					<N8nActionPill v-if="!compact && item.creditsTag" size="small" :text="item.creditsTag" />
+						size="xxsmall"
+						variant="filled"
+						:class="$style.newBadge"
+					>
+						{{ t('menuItem.new') }}
+					</N8nBadge>
+					<N8nBadge v-if="!compact && item.creditsTag" size="xxsmall" variant="success">
+						{{ item.creditsTag }}
+					</N8nBadge>
 				</div>
 				<N8nIcon v-if="item.children && !compact" icon="chevron-right" color="text-light" />
 			</N8nRoute>
@@ -149,6 +185,9 @@ const tooltipPlacement = computed(() => {
 </template>
 
 <style lang="scss" module>
+@use '../../css/mixins/mixins' as scroll-mask;
+@use '../../css/mixins/motion' as motion;
+
 .menuItemWrapper {
 	position: relative;
 	width: 100%;
@@ -201,12 +240,73 @@ const tooltipPlacement = computed(() => {
 	cursor: not-allowed;
 }
 
-.menuItemText {
+.clipOverflowLabel {
+	overflow: hidden;
+}
+
+.menuItemTextViewport {
+	flex: 1;
+	min-width: 0;
 	white-space: nowrap;
 	text-overflow: ellipsis;
 	overflow: hidden;
+}
+
+.menuItemText {
+	display: block;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 	line-height: var(--font-size--lg);
 	min-width: 0;
+}
+
+.scrollLabelOnOverflow {
+	container-type: inline-size;
+	margin-inline-end: calc(var(--spacing--4xs) * -1);
+
+	.menuItemText {
+		display: inline-block;
+		overflow: visible;
+		max-width: none;
+		transition: transform 0s linear;
+		@include motion.reduced-motion;
+	}
+}
+
+.labelOverflowing {
+	@include scroll-mask.scroll-mask(right);
+}
+
+@media (hover: hover) and (pointer: fine) {
+	.menuItem:hover .scrollLabelOnOverflow.labelOverflowing {
+		text-overflow: clip;
+		animation: revealLeftOverflowFade 0s var(--duration--base) forwards;
+		@include motion.reduced-motion;
+
+		.menuItemText {
+			transform: translateX(min(0px, calc(-100% + 100cqi)));
+			transition-duration: calc(var(--duration--slowest) + var(--duration--slowest));
+			transition-delay: var(--duration--base);
+			transition-timing-function: linear;
+		}
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.menuItem:hover .scrollLabelOnOverflow.labelOverflowing {
+		@include scroll-mask.scroll-mask(right);
+
+		.menuItemText {
+			transform: none;
+		}
+	}
+}
+
+@keyframes revealLeftOverflowFade {
+	to {
+		@include scroll-mask.scroll-mask(x);
+	}
 }
 
 .menuItemText * {
@@ -254,16 +354,7 @@ const tooltipPlacement = computed(() => {
 	min-width: 0;
 }
 
-.newTag {
-	background-color: var(--color--foreground--shade-2);
-	color: var(--color--background);
-	border-color: var(--color--foreground--shade-2);
-	font-size: var(--font-size--3xs);
-	font-weight: var(--font-weight--bold);
-	padding: var(--spacing--5xs) var(--spacing--4xs);
-	border-radius: var(--spacing--sm);
-	min-height: auto;
-	height: auto;
-	line-height: 1;
+.menuItem .newBadge {
+	flex-shrink: 0;
 }
 </style>

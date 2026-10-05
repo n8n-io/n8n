@@ -1,1 +1,1 @@
-export { InstanceSettings } from './instance-settings';
+export { InstanceSettings, type DeploymentStateRepo } from './instance-settings';

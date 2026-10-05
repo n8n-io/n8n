@@ -1,4 +1,6 @@
 import {
+	N8N_CHAT_INTEGRATION_TYPE,
+	isCredentialAgentIntegration,
 	isDraftIntegration,
 	type AgentConfigValidationResponse,
 	type AgentJsonConfig,
@@ -6,6 +8,7 @@ import {
 	type AgentVersionListItemDto,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { EventService } from '@n8n/backend-services';
 import { isUniqueConstraintError, type User } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
@@ -15,22 +18,22 @@ import { deepCopy, UserError } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
 import { CredentialsService } from '@/credentials/credentials.service';
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { EventService } from '@/events/event.service';
+import { ConflictError, NotFoundError } from '@n8n/errors';
 import { getMissingSkillIds } from '@/modules/agents/utils/agent-missing-skill-ids';
 import { Telemetry } from '@/telemetry';
 
 import { AgentsCredentialProvider } from './adapters/agents-credential-provider';
 import { AgentCustomToolsService } from './agent-custom-tools.service';
-import { buildAgentConfigurationTelemetryFromConfig } from './agent-telemetry';
+import { buildAgentCapabilityTelemetryProperties } from './agent-telemetry';
 import {
 	AgentModificationTelemetryService,
 	diffAgentConfigParts,
 	type AgentActor,
+	type AgentSidecarChanges,
 } from './agent-modification-telemetry.service';
 import { AgentRuntimeCacheService } from './agent-runtime-cache.service';
 import { AgentSetupCompletionService } from './agent-setup-completion.service';
+import { AgentUpdateBroadcaster } from './agent-update-broadcaster';
 import { AgentValidationService } from './agent-validation.service';
 import type { AgentHistory } from './entities/agent-history.entity';
 import { AgentTask } from './entities/agent-task.entity';
@@ -41,11 +44,7 @@ import { AgentHistoryRepository } from './repositories/agent-history.repository'
 import { AgentTaskSnapshotRepository } from './repositories/agent-task-snapshot.repository';
 import { AgentTaskRepository } from './repositories/agent-task.repository';
 import { AgentRepository } from './repositories/agent.repository';
-import {
-	configuredCapabilityKinds,
-	countAgentCapabilities,
-	totalAgentCapabilities,
-} from './utils/agent-capabilities';
+import { getAgentOrThrow } from './utils/get-agent-or-throw';
 import { saveAgentDraftFenced } from './utils/agent-draft.utils';
 
 export type AgentPublishTrigger = 'explicit' | 'republish';
@@ -69,8 +68,23 @@ function requireValidValidation(
 	validation: AgentConfigValidationResponse,
 ): asserts validation is ValidAgentConfigValidationResponse {
 	if (validation.status !== 'valid') {
+		const unpublishedWorkflows = validation.issues
+			.filter((issue) => issue.reason === 'not_published')
+			.map(({ capability }) => `workflow "${capability.id}" is not published`);
+		if (unpublishedWorkflows.length > 0) {
+			throw new UserError(
+				`Cannot publish agent: ${unpublishedWorkflows.join('; ')}. Publish these workflows first.`,
+			);
+		}
 		throw new UserError('Agent configuration has errors that must be resolved before publishing');
 	}
+}
+
+function draftSchemaFromVersion(schema: AgentJsonConfig | null): AgentJsonConfig | null {
+	if (!schema) return null;
+	const draft = deepCopy(schema);
+	delete draft.integrations;
+	return draft;
 }
 
 export interface PublishAgentResult {
@@ -103,19 +117,19 @@ export class AgentPublishService {
 		private readonly eventService: EventService,
 		private readonly setupCompletionService: AgentSetupCompletionService,
 		private readonly modificationTelemetry: AgentModificationTelemetryService,
+		private readonly agentUpdateBroadcaster: AgentUpdateBroadcaster,
 	) {}
 
+	/** `pushRef`: push connection of the tab that made the change; excluded from the `agentUpdated` broadcast. */
 	async publishAgent(
 		agentId: string,
 		projectId: string,
 		user: User,
 		emitter: AgentPublishEmitter,
 		versionId?: string,
+		pushRef?: string,
 	): Promise<PublishAgentResult> {
-		const agent = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
-		if (!agent) {
-			throw new NotFoundError(`Agent "${agentId}" not found`);
-		}
+		const agent = await getAgentOrThrow(this.agentRepository, agentId, projectId);
 
 		const expectedRevision = agent.revision;
 
@@ -127,14 +141,7 @@ export class AgentPublishService {
 			return { agent };
 		}
 
-		let targetHistory: AgentHistory | undefined;
-		if (versionId) {
-			const target = await this.agentHistoryRepository.findByVersionAndAgentId(versionId, agent.id);
-			if (!target) {
-				throw new NotFoundError(`Version "${versionId}" not found for agent "${agent.id}"`);
-			}
-			targetHistory = target;
-		}
+		const targetHistory = await this.findPublishTarget(versionId, agent.id);
 
 		const tasks = versionId
 			? new Map<string, AgentTask>()
@@ -153,91 +160,16 @@ export class AgentPublishService {
 			targetHistory ? targetHistory.schema : agent.schema,
 		);
 
-		await this.agentRepository.manager.transaction(async (trx) => {
-			let nextActiveVersionId: string;
-			let nextVersionId: string;
-			let nextActiveVersion: AgentHistory | null | undefined;
-
-			if (targetHistory) {
-				nextActiveVersionId = targetHistory.versionId;
-				nextActiveVersion = targetHistory;
-				nextVersionId = uuid();
-			} else {
-				nextVersionId = agent.versionId ?? uuid();
-				try {
-					nextActiveVersion = await this.agentHistoryRepository.saveVersion(
-						{
-							versionId: nextVersionId,
-							agentId: agent.id,
-							schema: agent.schema,
-							tools: this.customToolsService.snapshotConfiguredTools(
-								agent.schema,
-								agent.tools ?? {},
-							),
-							skills: this.pickConfiguredSkillBodies(agent.schema, agent.skills ?? {}),
-							publishedBy: user,
-						},
-						trx,
-					);
-				} catch (error) {
-					// Two concurrent publishes of the same draft share this
-					// versionId, so the loser collides on the history primary
-					// key before it can reach the revision fence. Surface the
-					// same retryable conflict the fence would have produced.
-					if (isUniqueConstraintError(error)) {
-						throw new ConflictError(
-							'Agent was modified concurrently while publishing; please retry',
-						);
-					}
-					throw error;
-				}
-				await this.snapshotConfiguredTasks(trx, nextVersionId, agent.schema, tasks);
-				nextActiveVersionId = nextVersionId;
-			}
-
-			const won = await this.agentRepository.setActiveVersionFenced(
-				agent.id,
-				expectedRevision,
-				{ activeVersionId: nextActiveVersionId, versionId: nextVersionId },
-				trx,
-			);
-			if (!won) {
-				throw new ConflictError('Agent was modified concurrently while publishing; please retry');
-			}
-
-			// Fence first: only mutate the in-memory entity once the row is ours,
-			// so a losing caller never sees phantom published state on the entity
-			// instance it still holds.
-			agent.activeVersionId = nextActiveVersionId;
-			agent.activeVersion = nextActiveVersion;
-			agent.versionId = nextVersionId;
-			agent.revision = expectedRevision + 1;
-		});
+		await this.commitPublication(agent, expectedRevision, user, tasks, targetHistory);
 		this.eventService.emit('agent-saved', { agentId });
+		this.agentUpdateBroadcaster.notify({ projectId, agentId, source: emitter.by }, pushRef);
 
 		this.runtimeCacheService.clearRuntimes(agentId);
 
 		this.trackPublished(agent, projectId, user, emitter, targetHistory);
 		await emitSetupCompleted?.();
 
-		const credentialIntegrations = agent.integrations ?? [];
-		if (credentialIntegrations.length > 0) {
-			await Container.get(ChatIntegrationService)
-				.syncToConfig(agent, [], credentialIntegrations)
-				.catch((error) =>
-					this.logger.warn('Failed to connect integrations on publish', {
-						agentId,
-						error,
-					}),
-				);
-		}
-
-		const { AgentTaskService } = await import('./agent-task.service.js');
-		await Container.get(AgentTaskService)
-			.requestReconcile(agentId)
-			.catch((error) =>
-				this.logger.warn('Failed to register agent tasks on publish', { agentId, error }),
-			);
+		await this.startPublishedServices(agent);
 
 		this.logger.debug('Published SDK agent', { agentId, projectId, userId: user.id });
 
@@ -249,8 +181,8 @@ export class AgentPublishService {
 	 * about to become live, independent of any frontend check. Validating the
 	 * current draft is not enough when a specific historical `versionId` is
 	 * being republished — that snapshot's schema/tool/skill bodies must be
-	 * checked instead. Integrations are never versioned, so the agent's
-	 * *current* integrations are always part of the check.
+	 * checked instead. Credential-backed integrations use the current draft.
+	 * The n8n Chat entry is saved in the published schema.
 	 */
 	private async assertPublishable(
 		agent: Agent,
@@ -263,6 +195,7 @@ export class AgentPublishService {
 			this.credentialsService,
 			projectId,
 			user,
+			agent.id,
 		);
 
 		const validation = targetHistory
@@ -302,6 +235,7 @@ export class AgentPublishService {
 	private async assertChannelsStartable(agent: Agent, projectId: string): Promise<void> {
 		const chatIntegrationService = Container.get(ChatIntegrationService);
 		for (const integration of agent.integrations ?? []) {
+			if (!isCredentialAgentIntegration(integration)) continue;
 			if (isDraftIntegration(integration)) continue;
 			await chatIntegrationService.assertStartupPreconditions(agent.id, integration, projectId);
 		}
@@ -312,39 +246,18 @@ export class AgentPublishService {
 		projectId: string,
 		user: User,
 		by: AgentActor,
+		pushRef?: string,
 	): Promise<Agent> {
-		const agent = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
-		if (!agent) {
-			throw new NotFoundError(`Agent "${agentId}" not found`);
-		}
+		const agent = await getAgentOrThrow(this.agentRepository, agentId, projectId);
 
 		// Same optimistic revision fence as publish: a concurrent edit that bumped
 		// `revision` after this load makes the unpublish lose the fence and surface
 		// a user-retryable conflict instead of rolling back a newer active version.
 		const expectedRevision = agent.revision;
 
-		await this.agentRepository.manager.transaction(async (trx) => {
-			const nextVersionId = uuid();
-
-			// Fence first: only mutate the in-memory entity once the row is ours,
-			// so a losing caller never sees phantom unpublished state on the
-			// entity instance it still holds.
-			const won = await this.agentRepository.setActiveVersionFenced(
-				agent.id,
-				expectedRevision,
-				{ activeVersionId: null, versionId: nextVersionId },
-				trx,
-			);
-			if (!won) {
-				throw new ConflictError('Agent was modified concurrently while unpublishing; please retry');
-			}
-
-			agent.activeVersionId = null;
-			agent.activeVersion = null;
-			agent.versionId = nextVersionId;
-			agent.revision = expectedRevision + 1;
-		});
+		await this.commitUnpublication(agent, expectedRevision);
 		this.eventService.emit('agent-saved', { agentId });
+		this.agentUpdateBroadcaster.notify({ projectId, agentId, source: by }, pushRef);
 
 		this.runtimeCacheService.clearRuntimes(agentId);
 
@@ -384,15 +297,6 @@ export class AgentPublishService {
 		// The snapshot that actually went live, which for a republish is the
 		// version's schema rather than the draft.
 		const published = targetHistory ? targetHistory.schema : agent.schema;
-		const counts = countAgentCapabilities(published, agent.integrations);
-		// Only model and tool_types: this helper's own tool_count folds in MCP
-		// servers, provider tools, web search and sub-agents, which would
-		// disagree with the per-kind counts above.
-		const { model, tool_types } = buildAgentConfigurationTelemetryFromConfig(
-			published,
-			agent.integrations,
-		);
-
 		const properties = {
 			agent_id: agent.id,
 			project_id: projectId,
@@ -403,17 +307,7 @@ export class AgentPublishService {
 			// Set by the transaction above to either targetHistory.versionId or
 			// agent.versionId, so it is never null on this path.
 			version_id: agent.activeVersionId!,
-			capability_kinds: configuredCapabilityKinds(counts),
-			capability_count: totalAgentCapabilities(counts),
-			tool_count: counts.tool,
-			skill_count: counts.skill,
-			sub_agent_count: counts.subAgent,
-			mcp_server_count: counts.mcpServer,
-			vector_store_count: counts.vectorStore,
-			task_count: counts.task,
-			trigger_count: counts.channel,
-			model,
-			tool_types,
+			...buildAgentCapabilityTelemetryProperties(published, agent.integrations),
 		} as const;
 
 		switch (emitter.by) {
@@ -466,11 +360,9 @@ export class AgentPublishService {
 		projectId: string,
 		user: User,
 		modifiedBy: AgentActor,
+		pushRef?: string,
 	): Promise<Agent> {
-		const agent = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
-		if (!agent) {
-			throw new NotFoundError(`Agent "${agentId}" not found`);
-		}
+		const agent = await getAgentOrThrow(this.agentRepository, agentId, projectId);
 
 		const activeVersion = agent.activeVersion;
 		if (!activeVersion) {
@@ -483,7 +375,7 @@ export class AgentPublishService {
 
 		let tasksChanged = false;
 		await this.agentRepository.manager.transaction(async (trx) => {
-			agent.schema = activeVersion.schema ? deepCopy(activeVersion.schema) : null;
+			agent.schema = draftSchemaFromVersion(activeVersion.schema);
 			agent.tools = deepCopy(activeVersion.tools ?? {});
 			agent.skills = deepCopy(activeVersion.skills ?? {});
 			agent.versionId = activeVersion.versionId;
@@ -496,6 +388,7 @@ export class AgentPublishService {
 			tasksChanged = await this.restoreTasksFromSnapshot(trx, agentId, activeVersion.versionId);
 		});
 		this.eventService.emit('agent-saved', { agentId });
+		this.agentUpdateBroadcaster.notify({ projectId, agentId, source: modifiedBy }, pushRef);
 
 		this.runtimeCacheService.clearRuntimes(agentId);
 		await this.recordRevert(agent, projectId, user, modifiedBy, previousSchema, {
@@ -514,11 +407,9 @@ export class AgentPublishService {
 		versionId: string,
 		user: User,
 		modifiedBy: AgentActor,
+		pushRef?: string,
 	): Promise<Agent> {
-		const agent = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
-		if (!agent) {
-			throw new NotFoundError(`Agent "${agentId}" not found`);
-		}
+		const agent = await getAgentOrThrow(this.agentRepository, agentId, projectId);
 
 		const previousSchema = agent.schema;
 		const previousTools = agent.tools ?? {};
@@ -535,7 +426,7 @@ export class AgentPublishService {
 				throw new NotFoundError(`Version "${versionId}" not found`);
 			}
 
-			agent.schema = target.schema ? deepCopy(target.schema) : null;
+			agent.schema = draftSchemaFromVersion(target.schema);
 			agent.tools = deepCopy(target.tools ?? {});
 			agent.skills = deepCopy(target.skills ?? {});
 			agent.versionId = uuid();
@@ -548,6 +439,7 @@ export class AgentPublishService {
 			tasksChanged = await this.restoreTasksFromSnapshot(trx, agentId, target.versionId);
 		});
 		this.eventService.emit('agent-saved', { agentId });
+		this.agentUpdateBroadcaster.notify({ projectId, agentId, source: modifiedBy }, pushRef);
 
 		this.runtimeCacheService.clearRuntimes(agentId);
 		await this.recordRevert(agent, projectId, user, modifiedBy, previousSchema, {
@@ -565,9 +457,8 @@ export class AgentPublishService {
 	}
 
 	/**
-	 * A revert restores a stored schema wholesale, so it is a modification like
-	 * any other config write. Integrations live outside the schema and survive
-	 * the revert untouched, hence the same list on both sides of the diff.
+	 * A revert restores the schema but leaves draft integrations unchanged.
+	 * The published n8n Chat entry is removed from the restored draft schema.
 	 * Sidecar body flags cover tool/skill/task bodies restored outside the schema.
 	 */
 	private async recordRevert(
@@ -576,7 +467,7 @@ export class AgentPublishService {
 		user: User,
 		modifiedBy: AgentActor,
 		previousSchema: AgentJsonConfig | null,
-		sidecarChanges: Partial<Record<'tools' | 'skills' | 'tasks', boolean>>,
+		sidecarChanges: AgentSidecarChanges,
 	): Promise<void> {
 		const integrations = agent.integrations ?? [];
 		this.modificationTelemetry.record({
@@ -614,10 +505,7 @@ export class AgentPublishService {
 		projectId: string,
 		versionId: string,
 	): Promise<{ agent: Agent; version: AgentHistory; tasks: AgentTaskSnapshot[] }> {
-		const agent = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
-		if (!agent) {
-			throw new NotFoundError(`Agent "${agentId}" not found`);
-		}
+		const agent = await getAgentOrThrow(this.agentRepository, agentId, projectId);
 
 		const version = await this.agentHistoryRepository.findByVersionAndAgentId(versionId, agentId);
 		if (!version) {
@@ -634,10 +522,7 @@ export class AgentPublishService {
 		take: number,
 		skip: number,
 	): Promise<AgentVersionListItemDto[]> {
-		const agent = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
-		if (!agent) {
-			throw new NotFoundError(`Agent "${agentId}" not found`);
-		}
+		const agent = await getAgentOrThrow(this.agentRepository, agentId, projectId);
 
 		const versions = await this.agentHistoryRepository.findByAgentId(agentId, take, skip);
 
@@ -727,27 +612,9 @@ export class AgentPublishService {
 		const existing = await repo.findBy({ agentId });
 		const snapshots = await this.agentTaskSnapshotRepository.findByVersionId(versionId, trx);
 
-		const existingBodies = Object.fromEntries(
-			existing.map((row) => [
-				row.id,
-				{
-					name: row.name,
-					objective: row.objective,
-					cronExpression: row.cronExpression,
-					timezone: row.timezone,
-				},
-			]),
-		);
+		const existingBodies = Object.fromEntries(existing.map((row) => [row.id, taskBody(row)]));
 		const snapshotBodies = Object.fromEntries(
-			snapshots.map((snapshot) => [
-				snapshot.taskId,
-				{
-					name: snapshot.name,
-					objective: snapshot.objective,
-					cronExpression: snapshot.cronExpression,
-					timezone: snapshot.timezone,
-				},
-			]),
+			snapshots.map((snapshot) => [snapshot.taskId, taskBody(snapshot)]),
 		);
 		const tasksChanged = !isEqual(existingBodies, snapshotBodies);
 
@@ -759,24 +626,151 @@ export class AgentPublishService {
 		const existingIds = new Set(existing.map((row) => row.id));
 		for (const snapshot of snapshots) {
 			if (existingIds.has(snapshot.taskId)) {
-				await repo.update(snapshot.taskId, {
-					name: snapshot.name,
-					objective: snapshot.objective,
-					cronExpression: snapshot.cronExpression,
-					timezone: snapshot.timezone,
-				});
+				await repo.update(snapshot.taskId, taskBody(snapshot));
 			} else {
 				await repo.insert({
 					id: snapshot.taskId,
 					agentId,
-					name: snapshot.name,
-					objective: snapshot.objective,
-					cronExpression: snapshot.cronExpression,
-					timezone: snapshot.timezone,
+					...taskBody(snapshot),
 				});
 			}
 		}
 
 		return tasksChanged;
 	}
+
+	private async startPublishedServices(agent: Agent): Promise<void> {
+		const agentId = agent.id;
+		const credentialIntegrations = (agent.integrations ?? []).filter(isCredentialAgentIntegration);
+		if (credentialIntegrations.length > 0) {
+			await Container.get(ChatIntegrationService)
+				.syncToConfig(agent, [], credentialIntegrations)
+				.catch((error) =>
+					this.logger.warn('Failed to connect integrations on publish', {
+						agentId,
+						error,
+					}),
+				);
+		}
+
+		const { AgentTaskService } = await import('./agent-task.service.js');
+		await Container.get(AgentTaskService)
+			.requestReconcile(agentId)
+			.catch((error) =>
+				this.logger.warn('Failed to register agent tasks on publish', { agentId, error }),
+			);
+	}
+
+	private async commitUnpublication(agent: Agent, expectedRevision: number): Promise<void> {
+		await this.agentRepository.manager.transaction(async (trx) => {
+			const nextVersionId = uuid();
+
+			// Fence first: only mutate the in-memory entity once the row is ours,
+			// so a losing caller never sees phantom unpublished state on the
+			// entity instance it still holds.
+			const won = await this.agentRepository.setActiveVersionFenced(
+				agent.id,
+				expectedRevision,
+				{ activeVersionId: null, versionId: nextVersionId },
+				trx,
+			);
+			if (!won) {
+				throw new ConflictError('Agent was modified concurrently while unpublishing; please retry');
+			}
+
+			agent.activeVersionId = null;
+			agent.activeVersion = null;
+			agent.versionId = nextVersionId;
+			agent.revision = expectedRevision + 1;
+		});
+	}
+
+	private async findPublishTarget(
+		versionId: string | undefined,
+		agentId: string,
+	): Promise<AgentHistory | undefined> {
+		if (!versionId) return undefined;
+		const target = await this.agentHistoryRepository.findByVersionAndAgentId(versionId, agentId);
+		if (!target) throw new NotFoundError(`Version "${versionId}" not found for agent "${agentId}"`);
+		return target;
+	}
+
+	private async commitPublication(
+		agent: Agent,
+		expectedRevision: number,
+		user: User,
+		tasks: ReadonlyMap<string, AgentTask>,
+		targetHistory?: AgentHistory,
+	): Promise<void> {
+		await this.agentRepository.manager.transaction(async (trx) => {
+			const next = await this.preparePublishedVersion(trx, agent, user, tasks, targetHistory);
+			const won = await this.agentRepository.setActiveVersionFenced(
+				agent.id,
+				expectedRevision,
+				{ activeVersionId: next.activeVersionId, versionId: next.versionId },
+				trx,
+			);
+			if (!won)
+				throw new ConflictError('Agent was modified concurrently while publishing; please retry');
+			// Update the caller's entity only after the revision fence succeeds.
+			agent.activeVersionId = next.activeVersionId;
+			agent.activeVersion = next.activeVersion;
+			agent.versionId = next.versionId;
+			agent.revision = expectedRevision + 1;
+		});
+	}
+
+	private async preparePublishedVersion(
+		trx: EntityManager,
+		agent: Agent,
+		user: User,
+		tasks: ReadonlyMap<string, AgentTask>,
+		targetHistory?: AgentHistory,
+	) {
+		if (targetHistory) {
+			return {
+				activeVersionId: targetHistory.versionId,
+				activeVersion: targetHistory,
+				versionId: uuid(),
+			};
+		}
+		const versionId = agent.versionId ?? uuid();
+		const activeVersion = await this.saveDraftHistory(trx, agent, user, versionId);
+		await this.snapshotConfiguredTasks(trx, versionId, agent.schema, tasks);
+		return { activeVersionId: versionId, activeVersion, versionId };
+	}
+
+	private async saveDraftHistory(trx: EntityManager, agent: Agent, user: User, versionId: string) {
+		try {
+			return await this.agentHistoryRepository.saveVersion(
+				{
+					versionId,
+					agentId: agent.id,
+					schema: agent.schema
+						? {
+								...agent.schema,
+								integrations: (agent.integrations ?? []).filter(
+									(integration) => integration.type === N8N_CHAT_INTEGRATION_TYPE,
+								),
+							}
+						: null,
+					tools: this.customToolsService.snapshotConfiguredTools(agent.schema, agent.tools ?? {}),
+					skills: this.pickConfiguredSkillBodies(agent.schema, agent.skills ?? {}),
+					publishedBy: user,
+				},
+				trx,
+			);
+		} catch (error) {
+			// Concurrent publishes of one draft can collide before they reach the revision fence.
+			if (isUniqueConstraintError(error)) {
+				throw new ConflictError('Agent was modified concurrently while publishing; please retry');
+			}
+			throw error;
+		}
+	}
+}
+
+function taskBody(task: Pick<AgentTask, 'name' | 'objective' | 'cronExpression' | 'timezone'>) {
+	const { name, objective, cronExpression, timezone } = task;
+	return { name, objective, cronExpression, timezone };
 }

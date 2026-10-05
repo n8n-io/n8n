@@ -42,7 +42,7 @@ import {
 } from '@/workflow-helpers';
 import { WorkflowService } from '@/workflows/workflow.service';
 
-const DATA_TABLE_ROWS_FILE_PREFIX = 'data_table_user_';
+import { DATA_TABLE_ROWS_FILE_PREFIX } from './data-table-export.constants';
 
 /**
  * One workflow the content-import policy blocked. It was skipped — the rest of the batch still
@@ -173,11 +173,14 @@ export class ImportService {
 
 			let cleared: PolicyCleared<'contentImport'>;
 			try {
-				cleared = await this.policyEnforcementService.enforceContentImport({
-					workflow: { id: workflow.id ?? null, name: workflow.name, nodes: workflow.nodes },
-					projectId: policyProjectId,
-					transport: 'cli',
-				});
+				cleared = await this.policyEnforcementService.enforceContentImport(
+					{
+						workflow: { id: workflow.id ?? null, name: workflow.name, nodes: workflow.nodes },
+						projectId: policyProjectId,
+						transport: 'cli',
+					},
+					{ kind: 'system', reason: 'cli-import' },
+				);
 			} catch (error) {
 				// A blocked workflow is skipped, not fatal — the operator gets the rest of the batch.
 				// A check that broke is not scoped to one workflow, so it fails the whole import

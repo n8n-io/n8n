@@ -16,9 +16,9 @@ import { createMember, createOwner } from '@test-integration/db/users';
 import { setupTestServer } from '@test-integration/utils';
 
 import { OAuthTokenService } from '@/modules/oauth-server/oauth-token.service';
-import { CacheService } from '@/services/cache/cache.service';
+import { CacheService } from '@n8n/backend-services';
 import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
-import { UrlService } from '@/services/url.service';
+import { UrlService } from '@n8n/backend-services';
 import { TestWebhookRegistrationsService } from '@/webhooks/test-webhook-registrations.service';
 
 import { OAuthClientRepository } from '../database/repositories/oauth-client.repository';
@@ -109,17 +109,12 @@ const resolveResource = async (path: string) =>
 	);
 
 beforeAll(async () => {
-	process.env.N8N_ENV_FEAT_CHAT_TRIGGER_OAUTH2 = 'true'; // gates the chat-trigger resolver
 	owner = await createOwner();
 	member = await createMember();
 	const { endpoints } = Container.get(GlobalConfig);
 	webhookEndpoint = endpoints.webhook;
 	webhookTestEndpoint = endpoints.webhookTest;
 	registrations = Container.get(TestWebhookRegistrationsService);
-});
-
-afterAll(() => {
-	delete process.env.N8N_ENV_FEAT_CHAT_TRIGGER_OAUTH2;
 });
 
 afterEach(async () => {
@@ -213,19 +208,6 @@ describe('protected resource metadata for test chat triggers', () => {
 		const response = await testServer.restlessAgent.get(prmPathFor(path));
 
 		expect(response.statusCode).toBe(404);
-	});
-
-	test('should not resolve when the feature flag is disabled', async () => {
-		const path = chatPath();
-		await registerTestWebhook(path, chatTriggerNode());
-
-		delete process.env.N8N_ENV_FEAT_CHAT_TRIGGER_OAUTH2;
-		try {
-			const response = await testServer.restlessAgent.get(prmPathFor(path));
-			expect(response.statusCode).toBe(404);
-		} finally {
-			process.env.N8N_ENV_FEAT_CHAT_TRIGGER_OAUTH2 = 'true';
-		}
 	});
 
 	test('should not resolve when public chat is disabled instance-wide', async () => {

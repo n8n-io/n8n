@@ -9,7 +9,6 @@ import { AgGridVue } from 'ag-grid-vue3';
 import type { GetRowIdParams, GridReadyEvent, SortChangedEvent } from 'ag-grid-community';
 import { n8nTheme } from '@/features/core/dataTable/components/dataGrid/n8nTheme';
 import { registerAgGridModulesOnce } from '@/features/core/dataTable/components/dataGrid/registerAgGridModulesOnce';
-import SelectedItemsInfo from '@/app/components/common/SelectedItemsInfo.vue';
 import {
 	DATA_TABLE_HEADER_HEIGHT,
 	DATA_TABLE_ROW_HEIGHT,
@@ -29,7 +28,7 @@ import { useI18n } from '@n8n/i18n';
 import { GRID_FILTER_CONFIG } from '@/features/core/dataTable/utils/filterMappings';
 import { useDebounce } from '@n8n/composables/useDebounce';
 
-import { N8nPagination } from '@n8n/design-system';
+import { N8nPagination, N8nSelectedItemsInfo } from '@n8n/design-system';
 registerAgGridModulesOnce();
 
 type Props = {
@@ -224,7 +223,7 @@ defineExpose({
 				/>
 			</div>
 		</div>
-		<SelectedItemsInfo
+		<N8nSelectedItemsInfo
 			:selected-count="selection.selectedCount.value"
 			@delete-selected="dataTableOperations.handleDeleteSelected"
 			@clear-selection="selection.handleClearSelection"

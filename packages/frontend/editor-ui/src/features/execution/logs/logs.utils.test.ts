@@ -7,6 +7,7 @@ import {
 } from '@/__tests__/mocks';
 import {
 	createLogTree,
+	flattenLogEntries,
 	findSelectedLogEntry,
 	findSubExecutionLocator,
 	getDefaultCollapsedEntries,
@@ -14,6 +15,7 @@ import {
 	getGroupTiming,
 	getSubtreeTotalConsumedTokens,
 	getTreeNodeData,
+	isEmptyGroupLog,
 	isSubNodeLog,
 	mergeStartData,
 	restoreChatHistory,
@@ -43,7 +45,7 @@ import {
 } from './logs.types';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 import { createTestLogEntry } from './__test__/mocks';
-import { AGENT_NODE_TYPE, CHAT_TRIGGER_NODE_TYPE } from '@/app/constants';
+import { AGENT_NODE_TYPE, CHAT_TRIGGER_NODE_TYPE, NO_OP_NODE_TYPE } from '@/app/constants';
 
 // A log tree of node entries only, all the way down (overrides the union-typed
 // `children`/`parent` so assertions can read `.node`/`.runData` at any depth).
@@ -1987,6 +1989,30 @@ describe('createLogTree with canvas groups', () => {
 		const logs = createLogTree(createLinearWorkflow(), linearResponse());
 
 		expect(logs.map((e) => e.type)).toEqual(['node', 'node', 'node', 'node']);
+	});
+
+	it('does not expose an empty-group anchor as an expandable child', () => {
+		const anchor = createTestNode({
+			id: 'anchor',
+			name: 'Empty group anchor',
+			type: NO_OP_NODE_TYPE,
+			parameters: { emptyGroupAnchor: true },
+		});
+		const workflow = createTestWorkflowObject({ id: 'w1', nodes: [anchor] });
+		workflow.getNode(anchor.name)!.parameters = { emptyGroupAnchor: true };
+		const response = createTestWorkflowExecutionResponse({
+			id: 'e1',
+			data: createRunExecutionData({
+				resultData: { runData: { [anchor.name]: [createTestTaskData()] } },
+			}),
+		});
+		const logs = createLogTree(workflow, response, {}, {}, undefined, [
+			{ id: 'empty-group', name: 'Empty Group', nodeIds: [anchor.id] },
+		]);
+		const groupEntry = expectGroup(logs[0]);
+
+		expect(isEmptyGroupLog(groupEntry)).toBe(true);
+		expect(flattenLogEntries(logs, {})).toEqual([groupEntry]);
 	});
 
 	it('folds contiguous grouped nodes into a single group segment', () => {

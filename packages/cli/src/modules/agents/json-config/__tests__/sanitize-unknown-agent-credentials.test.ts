@@ -47,7 +47,6 @@ describe('sanitizeUnknownAgentCredentials', () => {
 				episodicMemory: {
 					enabled: true,
 					credential: 'known-cred',
-					extractorModel: workerModel,
 					reflectorModel: workerModel,
 				},
 			},
@@ -66,6 +65,34 @@ describe('sanitizeUnknownAgentCredentials', () => {
 
 		expect(result).toEqual({
 			memory: { episodicMemory: { enabled: true, credential: '' } },
+		});
+	});
+
+	it('preserves the n8n Connect tag on the web search credential', () => {
+		const result = sanitizeUnknownAgentCredentials(
+			{
+				config: {
+					webSearch: { enabled: true, provider: 'brave', credential: AI_GATEWAY_MANAGED_TAG },
+				},
+			},
+			accessibleCredentialIds,
+		);
+
+		expect(result).toEqual({
+			config: {
+				webSearch: { enabled: true, provider: 'brave', credential: AI_GATEWAY_MANAGED_TAG },
+			},
+		});
+	});
+
+	it('clears an unknown web search credential id', () => {
+		const result = sanitizeUnknownAgentCredentials(
+			{ config: { webSearch: { enabled: true, provider: 'brave', credential: 'unknown-cred' } } },
+			accessibleCredentialIds,
+		);
+
+		expect(result).toEqual({
+			config: { webSearch: { enabled: true, provider: 'brave', credential: '' } },
 		});
 	});
 
@@ -150,7 +177,7 @@ describe('sanitizeUnknownAgentCredentials', () => {
 					episodicMemory: {
 						enabled: true,
 						credential: 'managed',
-						extractorModel: { model: 'openai/gpt-4o-mini', credential: 'managed' },
+						reflectorModel: { model: 'openai/gpt-4o-mini', credential: 'managed' },
 					},
 				},
 				tools: [
@@ -194,7 +221,7 @@ describe('sanitizeUnknownAgentCredentials', () => {
 				episodicMemory: {
 					enabled: true,
 					credential: 'managed',
-					extractorModel: { model: 'openai/gpt-4o-mini', credential: '' },
+					reflectorModel: { model: 'openai/gpt-4o-mini', credential: '' },
 				},
 			},
 			tools: [

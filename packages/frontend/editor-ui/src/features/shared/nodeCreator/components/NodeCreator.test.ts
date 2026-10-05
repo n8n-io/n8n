@@ -1,5 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { createPinia } from 'pinia';
+import { onClickOutside } from '@vueuse/core';
+import { OVERLAY_LAYER_SELECTOR } from '@n8n/design-system';
 import { createComponentRenderer } from '@/__tests__/render';
 import NodeCreator from './NodeCreator.vue';
 
@@ -91,5 +93,15 @@ describe('NodeCreator', () => {
 		renderComponent();
 
 		expect(mockFetchConfig).toHaveBeenCalledOnce();
+	});
+
+	it('does not close on clicks inside Element Plus modals or reka overlays', () => {
+		renderComponent();
+
+		expect(vi.mocked(onClickOutside)).toHaveBeenCalledWith(
+			expect.anything(),
+			expect.any(Function),
+			{ ignore: expect.arrayContaining(['.el-overlay-dialog', OVERLAY_LAYER_SELECTOR]) },
+		);
 	});
 });

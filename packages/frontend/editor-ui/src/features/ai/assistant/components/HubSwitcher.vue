@@ -2,16 +2,13 @@
 import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
 
-import { N8nSegmentControl, N8nTooltip } from '@n8n/design-system';
+import { N8nSegmentControl } from '@n8n/design-system';
 
 type Props = {
 	isBuildMode: boolean;
-	disabled?: boolean;
 };
 
-const props = withDefaults(defineProps<Props>(), {
-	disabled: false,
-});
+const props = defineProps<Props>();
 
 const emit = defineEmits<{
 	toggle: [value: boolean];
@@ -30,16 +27,10 @@ function toggle(value: boolean) {
 </script>
 
 <template>
-	<N8nTooltip
-		:content="i18n.baseText('aiAssistant.tabs.builder.disabled.tooltip')"
-		:disabled="!props.disabled"
-	>
-		<N8nSegmentControl
-			size="small"
-			:model-value="props.isBuildMode"
-			:options="options"
-			:disabled="props.disabled"
-			@update:model-value="toggle"
-		/>
-	</N8nTooltip>
+	<N8nSegmentControl
+		size="small"
+		:model-value="props.isBuildMode"
+		:options="options"
+		@update:model-value="toggle"
+	/>
 </template>

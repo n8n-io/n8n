@@ -14,7 +14,7 @@ export class HttpTemplatedCustomAuth implements ICredentialType {
 
 	// No documentationUrl on purpose: the generic HTTP Request docs don't cover
 	// this type, and setting one makes the credential modal render a docs
-	// banner — the guided form and the AI Assistant handle setup help instead.
+	// banner — the guided form and the n8n Assistant handle setup help instead.
 
 	genericAuth = true;
 
@@ -67,7 +67,7 @@ export class HttpTemplatedCustomAuth implements ICredentialType {
 			name: 'docsUrl',
 			type: 'string',
 			description:
-				'Provider page where the user creates/copies the secret (e.g. the API-keys dashboard). The AI Assistant help thread points the user there.',
+				'Provider page where the user creates/copies the secret (e.g. the API-keys dashboard). The n8n Assistant help thread points the user there.',
 			default: '',
 		},
 		{

@@ -232,7 +232,7 @@ const onBreadcrumbItemClick = async (item: PathItem) => {
 						<N8nHeading tag="h2" bold size="small" data-test-id="folder-card-name">
 							{{ data.name }}
 						</N8nHeading>
-						<N8nBadge v-if="readOnly" class="ml-3xs" theme="tertiary" bold>
+						<N8nBadge v-if="readOnly" class="ml-3xs" variant="outline">
 							{{ i18n.baseText('workflows.item.readonly') }}
 						</N8nBadge>
 					</div>
@@ -371,6 +371,8 @@ const onBreadcrumbItemClick = async (item: PathItem) => {
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/breakpoints';
+
 .card {
 	transition: box-shadow 0.3s ease;
 	cursor: pointer;
@@ -428,7 +430,7 @@ const onBreadcrumbItemClick = async (item: PathItem) => {
 	width: 200px;
 }
 
-@include mixins.breakpoint('sm-and-down') {
+@include breakpoints.breakpoint('sm-and-down') {
 	.card {
 		flex-wrap: wrap;
 

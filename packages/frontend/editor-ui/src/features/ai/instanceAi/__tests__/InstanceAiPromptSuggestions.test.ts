@@ -65,6 +65,7 @@ describe('InstanceAiPromptSuggestions', () => {
 					suggestionId: 'build-agent',
 					suggestionKind: 'prompt',
 					position: 2,
+					prefillType: 'v1_opener',
 				},
 			],
 			[
@@ -73,6 +74,7 @@ describe('InstanceAiPromptSuggestions', () => {
 					suggestionId: 'answer-support-requests',
 					suggestionKind: 'quick_example',
 					position: 3,
+					prefillType: 'v1_opener',
 				},
 			],
 		]);
@@ -99,6 +101,7 @@ describe('InstanceAiPromptSuggestions', () => {
 					suggestionId: 'build-workflow',
 					suggestionKind: 'prompt',
 					position: 1,
+					prefillType: 'v1_opener',
 				},
 			],
 		]);

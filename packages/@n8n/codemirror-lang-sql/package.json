@@ -1,6 +1,6 @@
 {
   "name": "@n8n/codemirror-lang-sql",
-  "version": "1.12.0",
+  "version": "1.13.0",
   "description": "SQL + n8n expression language support for CodeMirror 6",
   "scripts": {
     "clean": "rimraf dist .turbo",
@@ -10,8 +10,8 @@
     "build": "tsc -p tsconfig.build.json",
     "build:unchecked": "tsc -p tsconfig.build.json --noCheck",
     "test:unit": "vitest run",
-    "lint": "eslint . --quiet",
-    "lint:fix": "eslint . --fix",
+    "lint": "oxlint --quiet",
+    "lint:fix": "oxlint --fix",
     "format": "biome format --write src test",
     "format:check": "biome ci src test",
     "typecheck": "tsc --noEmit"
@@ -49,7 +49,10 @@
   },
   "devDependencies": {
     "@lezer/generator": "catalog:",
+    "@n8n/oxlint-config": "workspace:*",
     "@n8n/typescript-config": "workspace:*",
+    "oxlint": "catalog:",
+    "oxlint-tsgolint": "catalog:",
     "typescript": "catalog:typescript",
     "@n8n/vitest-config": "workspace:*",
     "vitest": "catalog:"

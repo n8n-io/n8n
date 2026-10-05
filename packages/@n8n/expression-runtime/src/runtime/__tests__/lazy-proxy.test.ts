@@ -240,7 +240,6 @@ describe('createDeepLazyProxy', () => {
 
 		it('does not intercept negative indices', () => {
 			const p = proxyWithLargeArray();
-			// -1 is NaN? No, Number('-1') === -1 which is not NaN, but -1 >= 0 is false
 			p.items[-1];
 			expect(mocks.getArrayElement).not.toHaveBeenCalled();
 		});
@@ -532,19 +531,13 @@ describe('createDeepLazyProxy', () => {
 		}
 
 		describe('array proxies', () => {
-			it('index write is applied and visible to later reads', () => {
-				const p = writableArrayProxy();
-				p[0] = 'X';
-				expect(p[0]).toBe('X');
-				expect(p[1]).toBe('b');
-			});
-
 			it('reads never materialize; first write fetches each element exactly once', () => {
 				const p = writableArrayProxy();
 				expect(p[0]).toBe('a');
 				expect(mocks.getArrayElement).toHaveBeenCalledTimes(1);
 
 				p[0] = 'X';
+				expect(p[0]).toBe('X');
 				// materialization fetches the remaining uncached elements (1, 2)
 				expect(mocks.getArrayElement).toHaveBeenCalledTimes(3);
 
@@ -567,20 +560,7 @@ describe('createDeepLazyProxy', () => {
 				expect(p.pop()).toBe('c');
 				expect(p.length).toBe(2);
 				expect(2 in p).toBe(false);
-			});
-
-			it('splice() removes in place with consistent length and contents', () => {
-				const p = writableArrayProxy();
-				expect(p.splice(0, 2)).toEqual(['a', 'b']);
-				expect(p.length).toBe(1);
-				expect([...p]).toEqual(['c']);
-			});
-
-			it('native sort() mutates in place and is visible to later reads', () => {
-				const p = writableArrayProxy([3, 1, 2]);
-				p.sort();
-				expect([...p]).toEqual([1, 2, 3]);
-				expect(p[0]).toBe(1);
+				expect([...p]).toEqual(['a', 'b']);
 			});
 
 			it('delete removes the element without resurrecting it on the next read', () => {
@@ -598,6 +578,14 @@ describe('createDeepLazyProxy', () => {
 				expect(desc).toMatchObject({ writable: true, value: 'X' });
 			});
 
+			it('a write through a derived object lands on the derived object, not the proxy cache', () => {
+				const p = writableArrayProxy();
+				const derived = Object.create(p);
+				derived.foo = 'X';
+				expect(Object.prototype.hasOwnProperty.call(derived, 'foo')).toBe(true);
+				expect(p.foo).toBeUndefined();
+			});
+
 			it('error sentinel during materialization propagates', () => {
 				const sentinel = { __isError: true, name: 'Error', message: 'fetch failed' };
 				mocks.getArrayElement.mockImplementation((_path: string[], idx: number) =>
@@ -611,13 +599,6 @@ describe('createDeepLazyProxy', () => {
 		});
 
 		describe('object proxies', () => {
-			it('existing-key write is applied and visible to later reads', () => {
-				const p = writableObjectProxy();
-				p.name = 'Zed';
-				expect(p.name).toBe('Zed');
-				expect(p.email).toBe('a@x');
-			});
-
 			it('new-key write is visible and enumerable', () => {
 				const p = writableObjectProxy();
 				p.extra = 42;
@@ -648,13 +629,16 @@ describe('createDeepLazyProxy', () => {
 				expect(p['__proto__']).toBe(protoValue);
 			});
 
-			it('write fetches each key exactly once; later access stays local', () => {
+			it('write fetches each uncached key exactly once; later access stays local', () => {
 				const p = writableObjectProxy();
+				expect(p.name).toBe('Alice');
 				p.name = 'Zed';
-				const callsAfterWrite = mocks.getValueAtPath.mock.calls.length;
+				// The pre-read cached 'name'; materialization fetched only 'email'.
+				expect(mocks.getValueAtPath).toHaveBeenCalledTimes(2);
+				expect(p.name).toBe('Zed');
 				expect(p.email).toBe('a@x');
 				p.email = 'b@x';
-				expect(mocks.getValueAtPath.mock.calls.length).toBe(callsAfterWrite);
+				expect(mocks.getValueAtPath).toHaveBeenCalledTimes(2);
 			});
 		});
 	});

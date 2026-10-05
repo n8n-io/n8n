@@ -1,3 +1,4 @@
+import { EventService, CredentialsFinderService } from '@n8n/backend-services';
 import { isDeepStrictEqual } from 'node:util';
 
 import {
@@ -5,6 +6,7 @@ import {
 	deriveInstanceAiSetupState,
 	INSTANCE_AI_MODEL_CREDENTIAL_TYPES,
 	INSTANCE_AI_SEARCH_CREDENTIAL_TYPES,
+	resolveInstanceAiPermissions,
 } from '@n8n/api-types';
 import type {
 	CreateCredentialDto,
@@ -15,6 +17,7 @@ import type {
 	InstanceAiUserPreferencesUpdateRequest,
 	InstanceAiProviderConnection,
 	InstanceAiPermissions,
+	McpToolPermissions,
 	InstanceAiSandboxProvider,
 	InstanceAiSetupState,
 } from '@n8n/api-types';
@@ -34,17 +37,13 @@ import { ensureError } from '@n8n/utils/errors/ensure-error';
 import type { ICredentialDataDecryptedObject, IUserSettings } from 'n8n-workflow';
 import { jsonParse, UnexpectedError } from 'n8n-workflow';
 
-import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { CredentialsService } from '@/credentials/credentials.service';
 import {
 	InstanceCredentialBroker,
 	type InstanceCredentialUse,
 	type ResolvedInstanceCredential,
 } from '@/credentials/instance-credential-broker';
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
-import { EventService } from '@/events/event.service';
+import { ConflictError, ForbiddenError, UnprocessableRequestError } from '@n8n/errors';
 import { AiService } from '@/services/ai.service';
 import {
 	INSTANCE_AI_DAYTONA_CREDENTIAL_POLICY,
@@ -287,7 +286,7 @@ export class InstanceAiSettingsService {
 	/** Whether n8n Agent is enabled for this instance. */
 	private enabled = true;
 
-	/** Whether users may connect the AI Assistant to MCP servers from the registry. */
+	/** Whether users may connect the n8n Assistant to MCP servers from the registry. */
 	private mcpAccessEnabled = true;
 
 	/** Per-action HITL permission overrides. */
@@ -579,12 +578,12 @@ export class InstanceAiSettingsService {
 			? await Promise.all([
 					this.prepareConnection(
 						INSTANCE_AI_MODEL_CREDENTIAL_POLICY,
-						'AI Assistant model',
+						'n8n Assistant model',
 						modelConnection,
 					),
 					this.prepareConnection(
 						INSTANCE_AI_SEARCH_CREDENTIAL_POLICY,
-						'AI Assistant web search',
+						'n8n Assistant web search',
 						searchConnection,
 					),
 					this.prepareSandboxConnection(sandboxConnection),
@@ -608,7 +607,7 @@ export class InstanceAiSettingsService {
 					modelCredentialId = await this.upsertConnection(
 						user,
 						INSTANCE_AI_MODEL_CREDENTIAL_POLICY,
-						'AI Assistant model',
+						'n8n Assistant model',
 						modelConnection,
 						ctx,
 						modelPrepared,
@@ -618,7 +617,7 @@ export class InstanceAiSettingsService {
 					searchCredentialId = await this.upsertConnection(
 						user,
 						INSTANCE_AI_SEARCH_CREDENTIAL_POLICY,
-						'AI Assistant web search',
+						'n8n Assistant web search',
 						searchConnection,
 						ctx,
 						searchPrepared,
@@ -933,7 +932,7 @@ export class InstanceAiSettingsService {
 				`Connection type "${connection.type}" is not supported for the sandbox`,
 			);
 		}
-		return await this.prepareConnection(policy, 'AI Assistant sandbox', connection);
+		return await this.prepareConnection(policy, 'n8n Assistant sandbox', connection);
 	}
 
 	private async runConnectionHooks(
@@ -960,7 +959,7 @@ export class InstanceAiSettingsService {
 		n8nSandboxCredentialId: string | null;
 		sandboxProvider?: InstanceAiSandboxProvider;
 	}> {
-		const name = 'AI Assistant sandbox';
+		const name = 'n8n Assistant sandbox';
 		if (connection === null) {
 			return {
 				daytonaCredentialId: await this.upsertConnection(
@@ -1086,7 +1085,7 @@ export class InstanceAiSettingsService {
 	): Promise<InstanceAiConnectionUpdate> {
 		const prepared = await this.prepareConnection(
 			INSTANCE_AI_MODEL_CREDENTIAL_POLICY,
-			'AI Assistant model',
+			'n8n Assistant model',
 			connection,
 		);
 		return this.connectionForVerification(prepared);
@@ -1104,7 +1103,7 @@ export class InstanceAiSettingsService {
 	): Promise<InstanceAiConnectionUpdate> {
 		const prepared = await this.prepareConnection(
 			INSTANCE_AI_SEARCH_CREDENTIAL_POLICY,
-			'AI Assistant web search',
+			'n8n Assistant web search',
 			connection,
 		);
 		return this.connectionForVerification(prepared);
@@ -1248,7 +1247,16 @@ export class InstanceAiSettingsService {
 		return { ...this.permissions };
 	}
 
-	/** Whether users may connect the AI Assistant to MCP servers from the registry. */
+	getMcpToolPermissions(): McpToolPermissions {
+		return {
+			categories: {
+				read: this.permissions.mcpRead,
+				write: this.permissions.mcpWrite,
+			},
+		};
+	}
+
+	/** Whether users may connect the n8n Assistant to MCP servers from the registry. */
 	isMcpAccessEnabled(): boolean {
 		return this.mcpAccessEnabled;
 	}
@@ -1274,11 +1282,6 @@ export class InstanceAiSettingsService {
 
 	isBrowserUseEnabled(): boolean {
 		return this.config.browserUseEnabled;
-	}
-
-	/** Whether the non-blocking setup panel replaces the suspending setup wizard. */
-	isInstanceAiSetupPanelEnabled(): boolean {
-		return this.config.instanceAiSetupPanelEnabled;
 	}
 
 	/** Whether this instance is in the activation-capped trial cohort. */
@@ -1735,10 +1738,7 @@ export class InstanceAiSettingsService {
 		const c = this.config;
 		if (persisted.enabled !== undefined) this.enabled = persisted.enabled;
 		if (persisted.permissions) {
-			this.permissions = {
-				...DEFAULT_INSTANCE_AI_PERMISSIONS,
-				...persisted.permissions,
-			};
+			this.permissions = resolveInstanceAiPermissions(persisted.permissions);
 		}
 		if (persisted.mcpServers !== undefined) c.mcpServers = persisted.mcpServers;
 		if (persisted.mcpAccessEnabled !== undefined)
@@ -1860,7 +1860,9 @@ export class InstanceAiSettingsService {
 			this.eventService.emit('instance-ai-settings-updated', {
 				mcpSettingsChanged:
 					current.mcpServers !== previous.mcpServers ||
-					current.mcpAccessEnabled !== previous.mcpAccessEnabled,
+					current.mcpAccessEnabled !== previous.mcpAccessEnabled ||
+					current.permissions?.mcpRead !== previous.permissions?.mcpRead ||
+					current.permissions?.mcpWrite !== previous.permissions?.mcpWrite,
 				credentialSelections,
 			});
 		} catch (error) {

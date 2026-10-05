@@ -15,19 +15,23 @@ import {
 	AiClearSessionRequestDto,
 	AiGatewayUsageQueryDto,
 } from '@n8n/api-types';
+import { GlobalConfig } from '@n8n/config';
 import { AuthenticatedRequest } from '@n8n/db';
 import { Body, Get, Licensed, Post, Query, RestController, GlobalScope } from '@n8n/decorators';
-import { type AiAssistantSDK, APIResponseError } from '@n8n_io/ai-assistant-sdk';
+import { type AiAssistantSDK, APIResponseError, NetworkError } from '@n8n_io/ai-assistant-sdk';
 import { Response } from 'express';
 import { strict as assert } from 'node:assert';
 import { WritableStream } from 'node:stream/web';
 
 import { STREAM_SEPARATOR } from '@/constants';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ContentTooLargeError } from '@/errors/response-errors/content-too-large.error';
-import { InternalServerError } from '@/errors/response-errors/internal-server.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { TooManyRequestsError } from '@/errors/response-errors/too-many-requests.error';
+import {
+	BadRequestError,
+	ContentTooLargeError,
+	InternalServerError,
+	NotFoundError,
+	ServiceUnavailableError,
+	TooManyRequestsError,
+} from '@n8n/errors';
 import { AiGatewayService } from '@/services/ai-gateway.service';
 import { AiUsageService } from '@/services/ai-usage.service';
 import { WorkflowBuilderService } from '@/services/ai-workflow-builder.service';
@@ -44,6 +48,7 @@ export class AiController {
 		private readonly freeAiCreditsService: FreeAiCreditsService,
 		private readonly aiUsageService: AiUsageService,
 		private readonly aiGatewayService: AiGatewayService,
+		private readonly globalConfig: GlobalConfig,
 	) {}
 
 	private toAiAssistantResponseError(error: APIResponseError) {
@@ -59,6 +64,19 @@ export class AiController {
 			default:
 				return new InternalServerError(error.message, error);
 		}
+	}
+
+	/** Maps a failure from a service call to the HTTP error the client should see. */
+	private toResponseError(error: unknown) {
+		// The AI assistant service could not be reached (DNS, refused connection, timeout).
+		if (error instanceof NetworkError) {
+			return new ServiceUnavailableError(error.message);
+		}
+		if (error instanceof APIResponseError) {
+			return this.toAiAssistantResponseError(error);
+		}
+		assert(error instanceof Error);
+		return new InternalServerError(error.message, error);
 	}
 
 	// Use usesTemplates flag to bypass the send() wrapper which would cause
@@ -179,11 +197,7 @@ export class AiController {
 			if (e instanceof DOMException && e.name === 'AbortError') {
 				return;
 			}
-			if (e instanceof APIResponseError) {
-				throw this.toAiAssistantResponseError(e);
-			}
-			assert(e instanceof Error);
-			throw new InternalServerError(e.message, e);
+			throw this.toResponseError(e);
 		}
 	}
 
@@ -196,8 +210,7 @@ export class AiController {
 		try {
 			return await this.aiService.applySuggestion(payload, req.user);
 		} catch (e) {
-			assert(e instanceof Error);
-			throw new InternalServerError(e.message, e);
+			throw this.toResponseError(e);
 		}
 	}
 
@@ -214,14 +227,10 @@ export class AiController {
 		@Body payload: AiAskRequestDto,
 	): Promise<AiAssistantSDK.AskAiResponsePayload> {
 		try {
+			// oxlint-disable-next-line typescript/no-deprecated
 			return await this.aiService.askAi(payload, req.user);
 		} catch (e) {
-			if (e instanceof APIResponseError) {
-				throw this.toAiAssistantResponseError(e);
-			}
-
-			assert(e instanceof Error);
-			throw new InternalServerError(e.message, e);
+			throw this.toResponseError(e);
 		}
 	}
 
@@ -230,8 +239,7 @@ export class AiController {
 		try {
 			return await this.freeAiCreditsService.claim(req.user, payload?.projectId);
 		} catch (e) {
-			assert(e instanceof Error);
-			throw new InternalServerError(e.message, e);
+			throw this.toResponseError(e);
 		}
 	}
 
@@ -250,8 +258,7 @@ export class AiController {
 			);
 			return sessions;
 		} catch (e) {
-			assert(e instanceof Error);
-			throw new InternalServerError(e.message, e);
+			throw this.toResponseError(e);
 		}
 	}
 
@@ -262,8 +269,7 @@ export class AiController {
 		try {
 			return await this.aiGatewayService.getGatewayConfig();
 		} catch (e) {
-			assert(e instanceof Error);
-			throw new InternalServerError(e.message, e);
+			throw this.toResponseError(e);
 		}
 	}
 
@@ -274,8 +280,7 @@ export class AiController {
 		try {
 			return await this.aiGatewayService.getWallet(req.user.id);
 		} catch (e) {
-			assert(e instanceof Error);
-			throw new InternalServerError(e.message, e);
+			throw this.toResponseError(e);
 		}
 	}
 
@@ -290,8 +295,7 @@ export class AiController {
 		try {
 			return await this.aiGatewayService.getUsage(req.user.id, query.offset, query.limit);
 		} catch (e) {
-			assert(e instanceof Error);
-			throw new InternalServerError(e.message, e);
+			throw this.toResponseError(e);
 		}
 	}
 
@@ -304,8 +308,7 @@ export class AiController {
 		try {
 			return await this.workflowBuilderService.getBuilderInstanceCredits(req.user);
 		} catch (e) {
-			assert(e instanceof Error);
-			throw new InternalServerError(e.message, e);
+			throw this.toResponseError(e);
 		}
 	}
 
@@ -325,8 +328,7 @@ export class AiController {
 			);
 			return { success };
 		} catch (e) {
-			assert(e instanceof Error);
-			throw new InternalServerError(e.message, e);
+			throw this.toResponseError(e);
 		}
 	}
 
@@ -341,8 +343,7 @@ export class AiController {
 			await this.workflowBuilderService.clearSession(payload.workflowId, req.user);
 			return { success: true };
 		} catch (e) {
-			assert(e instanceof Error);
-			throw new InternalServerError(e.message, e);
+			throw this.toResponseError(e);
 		}
 	}
 
@@ -353,11 +354,19 @@ export class AiController {
 		_res: Response,
 		@Body payload: AiUsageSettingsRequestDto,
 	): Promise<void> {
+		// The setting is deprecated. It can only be turned on.
+		if (!payload.allowSendingParameterValues) {
+			throw new BadRequestError('Turning off sending parameter values is no longer supported.');
+		}
+		if (!this.globalConfig.ai.allowSendingParameterValues) {
+			throw new BadRequestError(
+				'Sending parameter values is turned off by the N8N_AI_ALLOW_SENDING_PARAMETER_VALUES environment variable. Remove it and restart n8n to turn this on.',
+			);
+		}
 		try {
 			await this.aiUsageService.updateAiUsageSettings(payload.allowSendingParameterValues);
 		} catch (e) {
-			assert(e instanceof Error);
-			throw new InternalServerError(e.message, e);
+			throw this.toResponseError(e);
 		}
 	}
 }

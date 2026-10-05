@@ -3,6 +3,7 @@ import type { BooleanLicenseFeature } from '@n8n/constants';
 import type { Constructable } from '@n8n/di';
 import type { ApiKeyScope, Scope } from '@n8n/permissions';
 import type { RequestHandler, Router } from 'express';
+import type { ZodTypeAny } from 'zod';
 
 import type { KeyedRateLimiterConfig, RateLimiterLimits } from './rate-limit';
 
@@ -23,7 +24,10 @@ export interface ErrorResponse {
 
 export type Method = 'get' | 'post' | 'put' | 'patch' | 'delete' | 'head' | 'options';
 
-export type Arg = { type: 'body' | 'query' } | { type: 'param'; key: string };
+export type Arg =
+	| { type: 'body'; required?: boolean }
+	| { type: 'query' }
+	| { type: 'param'; key: string; schema?: ZodTypeAny };
 
 export interface CorsOptions {
 	allowedOrigins: string[];
@@ -63,6 +67,8 @@ export interface RouteMetadata {
 	/** Whether to apply keyed rate limiting to the route */
 	keyedRateLimit?: KeyedRateLimiterConfig;
 	licenseFeature?: BooleanLicenseFeature;
+	/** Public API only: gate the route on the instance being within its licensed users quota. */
+	requiresUserQuota?: boolean;
 	accessScope?: AccessScope;
 	apiKeyScope?: ApiKeyScopeRequirement;
 	responseDto?: ResponseDtoClass;

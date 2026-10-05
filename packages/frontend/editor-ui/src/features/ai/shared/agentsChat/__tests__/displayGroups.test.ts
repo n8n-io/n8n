@@ -4,6 +4,97 @@ import { buildDisplayGroups, isGroupable } from '../displayGroups';
 import type { AgentsChatMessage } from '../types';
 
 describe('shared agents chat display groups', () => {
+	it('keeps the results entry unchanged when the assistant reply arrives', () => {
+		const previous: AgentsChatMessage = {
+			id: 'previous',
+			role: 'assistant',
+			content: '',
+			toolCalls: [{ tool: 'search', toolCallId: 'search-1', state: 'done' }],
+		};
+		const wake: AgentsChatMessage = {
+			id: 'wake:assistant',
+			executionId: 'wake',
+			role: 'assistant',
+			content: '',
+			backgroundJobSignal: {
+				tasks: [{ id: 'job-1', title: 'Research', kind: 'subagent', status: 'completed' }],
+			},
+		};
+		const initial = buildDisplayGroups([previous, wake]);
+		expect(initial.map(({ kind }) => kind)).toEqual(['toolRun', 'backgroundJobSignal']);
+		const updated = buildDisplayGroups([previous, { ...wake, content: 'Done' }]);
+		expect(updated.map(({ kind }) => kind)).toEqual(['toolRun', 'backgroundJobSignal', 'message']);
+		expect(updated[1]).toEqual(initial[1]);
+		const retry = buildDisplayGroups([
+			wake,
+			{ ...wake, id: 'retry:assistant', executionId: 'retry' },
+		]);
+		expect(retry.map(({ id }) => id)).toEqual([
+			'wake:background-job-signal',
+			'retry:background-job-signal',
+		]);
+	});
+
+	it('keeps budget notices from a tool-only folded message on the group', () => {
+		const messages: AgentsChatMessage[] = [
+			{ id: 'u1', role: 'user', content: 'start' },
+			{
+				id: 'a1',
+				role: 'assistant',
+				content: '',
+				toolCalls: [{ tool: 'search', toolCallId: 'tc1', state: 'done' }],
+				budgetNotices: [{ id: 'n1', code: 'budget.session' }],
+			},
+		];
+
+		const groups = buildDisplayGroups(messages);
+
+		expect(groups[1].kind).toBe('toolRun');
+		if (groups[1].kind === 'toolRun') {
+			expect(groups[1].finalMessage).toBeUndefined();
+			expect(groups[1].budgetNotices).toEqual([{ id: 'n1', code: 'budget.session' }]);
+		}
+	});
+
+	it('merges budget notices across folded messages and dedupes by code', () => {
+		const messages: AgentsChatMessage[] = [
+			{
+				id: 'a1',
+				role: 'assistant',
+				content: '',
+				toolCalls: [{ tool: 'search', toolCallId: 'tc1', state: 'done' }],
+				budgetNotices: [{ id: 'n1', code: 'budget.alert' }],
+			},
+			{
+				id: 'a2',
+				role: 'assistant',
+				content: '',
+				toolCalls: [{ tool: 'write', toolCallId: 'tc2', state: 'done' }],
+				budgetNotices: [
+					{ id: 'n2', code: 'budget.alert' },
+					{ id: 'n3', code: 'budget.monthly' },
+				],
+			},
+			{
+				id: 'a3',
+				role: 'assistant',
+				content: 'final text',
+				budgetNotices: [{ id: 'n4', code: 'budget.session' }],
+			},
+		];
+
+		const groups = buildDisplayGroups(messages);
+
+		expect(groups).toHaveLength(1);
+		if (groups[0].kind === 'toolRun') {
+			expect(groups[0].budgetNotices).toEqual([
+				{ id: 'n1', code: 'budget.alert' },
+				{ id: 'n3', code: 'budget.monthly' },
+				{ id: 'n4', code: 'budget.session' },
+			]);
+		}
+	});
+
 	it('folds consecutive assistant tool-only messages into one tool run', () => {
 		const messages: AgentsChatMessage[] = [
 			{ id: 'u1', role: 'user', content: 'start' },

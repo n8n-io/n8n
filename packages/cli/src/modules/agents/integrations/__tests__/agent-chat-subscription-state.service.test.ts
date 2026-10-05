@@ -6,6 +6,7 @@ import type { StateAdapter, Lock, QueueEntry } from 'chat';
 
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
 
+import { AgentChangePublisher } from '../../agent-change-publisher.service';
 import { AgentChatSubscriptionStateService } from '../agent-chat-subscription-state.service';
 import type { AgentChatSubscriptionRepository } from '../../repositories/agent-chat-subscription.repository';
 import type { AgentIntegrationConfig } from '@n8n/api-types';
@@ -55,10 +56,8 @@ function makeService(multiMainEnabled = true) {
 	} as Partial<GlobalConfig>);
 	const logger = mockLogger();
 	const service = new AgentChatSubscriptionStateService(
-		logger,
 		repository,
-		publisher,
-		globalConfig,
+		new AgentChangePublisher(publisher, globalConfig, logger),
 	);
 
 	return { service, repository, publisher, logger };
@@ -380,7 +379,7 @@ describe('AgentChatSubscriptionStateService', () => {
 		);
 		expect(delegate.subscribe).toHaveBeenCalledWith('thread-1');
 		expect(logger.warn).toHaveBeenCalledWith(
-			'[AgentChatSubscriptionStateService] Failed to publish subscription change',
+			'Failed to publish agent-chat-subscription-changed',
 			expect.objectContaining({ threadId: 'thread-1', action: 'subscribe', error: 'redis down' }),
 		);
 	});

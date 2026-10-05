@@ -11,25 +11,19 @@ type CompactionRunState = {
 	startedAt: number;
 	batchesProcessed: number;
 	rowsCompacted: number;
+	signal: AbortSignal;
 };
 
-type CompactionStopReason = 'max-batches' | 'max-runtime';
+type CompactionStopReason = 'max-batches' | 'max-runtime' | 'aborted';
 
 /**
  * This service is responsible for compacting lower granularity insights data
- * into higher granularity to control the size of the insights data.
+ * into higher granularity to control the size of the insights data. The
+ * periodic cadence, overlap protection, and graceful stop live on the
+ * `insights-compaction` system task's runner.
  */
 @Service()
 export class InsightsCompactionService {
-	private compactInsightsTimer: NodeJS.Timeout | undefined;
-
-	/** Tracks the in-flight compaction run so stopping the timer can await it. */
-	private compactionPromise: Promise<void> | undefined;
-
-	private get isCompactionRunning() {
-		return this.compactionPromise !== undefined;
-	}
-
 	constructor(
 		private readonly insightsByPeriodRepository: InsightsByPeriodRepository,
 		private readonly insightsRawRepository: InsightsRawRepository,
@@ -39,48 +33,13 @@ export class InsightsCompactionService {
 		this.logger = this.logger.scoped('insights');
 	}
 
-	startCompactionTimer() {
-		void this.stopCompactionTimer();
-		this.compactInsightsTimer = setInterval(
-			async () => await this.compactInsights(),
-			this.insightsConfig.compactionIntervalMinutes * Time.minutes.toMilliseconds,
-		);
-		this.logger.debug('Started compaction timer');
-	}
-
-	async stopCompactionTimer() {
-		if (this.compactInsightsTimer !== undefined) {
-			clearInterval(this.compactInsightsTimer);
-			this.compactInsightsTimer = undefined;
-			this.logger.debug('Stopped compaction timer');
-		}
-		// Wait for an in-flight run to finish so its transaction isn't left running
-		// against a connection that may be closed right after stopping.
-		await this.compactionPromise?.catch(() => {});
-	}
-
-	async compactInsights() {
-		if (this.isCompactionRunning) {
-			this.logger.debug('Skipping insights compaction because another compaction run is active');
-			return;
-		}
-
-		const compactionPromise = this.runCompaction();
-		const trackedCompactionPromise = compactionPromise.finally(() => {
-			if (this.compactionPromise === trackedCompactionPromise) {
-				this.compactionPromise = undefined;
-			}
-		});
-		this.compactionPromise = trackedCompactionPromise;
-
-		await this.compactionPromise;
-	}
-
-	private async runCompaction() {
+	/** One full compaction run: raw→hour, hour→day, day→week, in bounded batches. */
+	async compactInsights(signal: AbortSignal) {
 		const runState: CompactionRunState = {
 			startedAt: Date.now(),
 			batchesProcessed: 0,
 			rowsCompacted: 0,
+			signal,
 		};
 
 		const stoppedAfterRawToHour = await this.compactStage({
@@ -148,7 +107,7 @@ export class InsightsCompactionService {
 				return true;
 			}
 
-			await this.waitBeforeNextBatchIfFull(numberOfCompactedData);
+			await this.waitBeforeNextBatchIfFull(numberOfCompactedData, runState);
 		} while (numberOfCompactedData === this.insightsConfig.compactionBatchSize);
 
 		return false;
@@ -157,6 +116,10 @@ export class InsightsCompactionService {
 	private getCompactionRunStopReason(
 		runState: CompactionRunState,
 	): CompactionStopReason | undefined {
+		if (runState.signal.aborted) {
+			return 'aborted';
+		}
+
 		if (
 			this.insightsConfig.compactionMaxBatchesPerRun > 0 &&
 			runState.batchesProcessed >= this.insightsConfig.compactionMaxBatchesPerRun
@@ -180,17 +143,25 @@ export class InsightsCompactionService {
 		stageName: string,
 		runState: CompactionRunState,
 	) {
-		this.logger.warn('Stopping insights compaction because a per-run limit was reached', {
+		const details = {
 			reason,
 			stageName,
 			batchesProcessed: runState.batchesProcessed,
 			rowsCompacted: runState.rowsCompacted,
 			compactionMaxBatchesPerRun: this.insightsConfig.compactionMaxBatchesPerRun,
 			compactionMaxRuntimeSeconds: this.insightsConfig.compactionMaxRuntimeSeconds,
-		});
+		};
+		if (reason === 'aborted') {
+			this.logger.debug('Stopping insights compaction because the run was aborted', details);
+		} else {
+			this.logger.warn('Stopping insights compaction because a per-run limit was reached', details);
+		}
 	}
 
-	private async waitBeforeNextBatchIfFull(numberOfCompactedData: number) {
+	private async waitBeforeNextBatchIfFull(
+		numberOfCompactedData: number,
+		runState: CompactionRunState,
+	) {
 		if (
 			numberOfCompactedData !== this.insightsConfig.compactionBatchSize ||
 			this.insightsConfig.compactionBatchDelayMilliseconds <= 0
@@ -198,7 +169,11 @@ export class InsightsCompactionService {
 			return;
 		}
 
-		await sleep(this.insightsConfig.compactionBatchDelayMilliseconds);
+		try {
+			await sleep(this.insightsConfig.compactionBatchDelayMilliseconds, runState.signal);
+		} catch {
+			// `sleep` rejects only on abort, which the loop checks for on its own.
+		}
 	}
 
 	/**

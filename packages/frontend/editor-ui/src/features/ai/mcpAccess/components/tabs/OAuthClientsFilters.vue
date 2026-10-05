@@ -81,7 +81,7 @@ function resetFilters() {
 						v-if="hasFilters"
 						:class="$style['filter-button-count']"
 						data-test-id="mcp-clients-filters-count"
-						theme="primary"
+						variant="primary"
 					>
 						{{ filtersLength }}
 					</N8nBadge>

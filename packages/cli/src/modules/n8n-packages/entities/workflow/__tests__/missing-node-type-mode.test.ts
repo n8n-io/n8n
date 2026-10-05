@@ -31,6 +31,7 @@ function prepared(
 		} as WorkflowEntity,
 		sourceWorkflowId,
 		sourcePublished: false,
+		sourceArchived: false,
 		parentFolderId: null,
 	};
 }

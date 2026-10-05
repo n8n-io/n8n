@@ -1,15 +1,16 @@
 import { Logger } from '@n8n/backend-common';
+import { EventService } from '@n8n/backend-services';
 import { ExecutionsConfig } from '@n8n/config';
-import { ExecutionRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ErrorReporter } from 'n8n-core';
 import type { IWorkflowExecutionDataProcess } from 'n8n-workflow';
 import { strict as assert } from 'node:assert';
 
 import { ExecutionAlreadyResumingError } from '@/errors/execution-already-resuming.error';
-import { EventService } from '@/events/event.service';
+import { ExecutionCrashService } from '@/executions/execution-crash.service';
 import { ExecutionService } from '@/executions/execution.service';
 import { OwnershipService } from '@/services/ownership.service';
+import { WorkflowPublisherService } from '@/workflows/workflow-publisher.service';
 import { WorkflowRunner } from '@/workflow-runner';
 
 /**
@@ -23,8 +24,9 @@ export class EnqueuedExecutionRecoveryService {
 		private readonly errorReporter: ErrorReporter,
 		private readonly executionsConfig: ExecutionsConfig,
 		private readonly executionService: ExecutionService,
-		private readonly executionRepository: ExecutionRepository,
+		private readonly executionCrashService: ExecutionCrashService,
 		private readonly ownershipService: OwnershipService,
+		private readonly workflowPublisherService: WorkflowPublisherService,
 		private readonly workflowRunner: WorkflowRunner,
 		private readonly eventService: EventService,
 	) {
@@ -54,7 +56,7 @@ export class EnqueuedExecutionRecoveryService {
 			this.logger.warn('Crashing enqueued executions with unreadable data', {
 				executionIds: unreadableIds,
 			});
-			await this.executionRepository.markAsCrashed(unreadableIds);
+			await this.executionCrashService.markAsCrashed(unreadableIds, 'start-failure');
 		}
 
 		if (executions.length === 0) return;
@@ -76,6 +78,9 @@ export class EnqueuedExecutionRecoveryService {
 					executionData: execution.data,
 					workflowData: execution.workflowData,
 					projectId: project.id,
+					// Same as a wait resume: the acting user is not stored, so it has to be
+					// derived again or the recovered run starts without an identity.
+					userId: await this.workflowPublisherService.findActingUserIdForRestart(execution),
 				};
 
 				this.eventService.emit('execution-started-during-bootup', { executionId });
@@ -101,6 +106,6 @@ export class EnqueuedExecutionRecoveryService {
 		this.errorReporter.error(error, { executionId, shouldBeLogged: false });
 		this.logger.error('Failed to run enqueued execution', { executionId, error });
 
-		await this.executionRepository.markAsCrashed(executionId);
+		await this.executionCrashService.markAsCrashed(executionId, 'start-failure');
 	}
 }

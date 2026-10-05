@@ -16,7 +16,7 @@ import type {
 	IExecutionContext,
 	IRun,
 } from 'n8n-workflow';
-import { UnexpectedError, NodeHelpers, WAIT_INDEFINITELY } from 'n8n-workflow';
+import { UnexpectedError, NodeHelpers, WAIT_FOR_SUB_EXECUTION } from 'n8n-workflow';
 import { captor, mock, type MockProxy } from 'vitest-mock-extended';
 
 import { BinaryDataService } from '@/binary-data/binary-data.service';
@@ -366,8 +366,57 @@ export const describeCommonTests = (
 			});
 
 			expect(additionalData.setExecutionStatus).toHaveBeenCalledWith('waiting');
-			expect(runExecutionData.waitTill).toEqual(WAIT_INDEFINITELY);
+			expect(runExecutionData.waitTill).toEqual(WAIT_FOR_SUB_EXECUTION);
 			expect(result.waitTill).toBe(waitTill);
+		});
+
+		describe('tagging the parked task with its waiting sub-executions', () => {
+			beforeEach(() => {
+				delete executeData.metadata;
+			});
+
+			it('should record the id of a sub-execution that went into waiting', async () => {
+				additionalData.executeWorkflow.mockResolvedValue({
+					...executeWorkflowData,
+					executionId: 'child_1',
+					waitTill: new Date(),
+				});
+
+				await context.executeWorkflow(workflowInfo, undefined, undefined, { parentExecution });
+
+				expect(executeData.metadata?.waitingChildExecutionIds).toEqual(['child_1']);
+			});
+
+			it('should record every sub-execution that went into waiting during the same node run', async () => {
+				additionalData.executeWorkflow
+					.mockResolvedValueOnce({
+						...executeWorkflowData,
+						executionId: 'child_1',
+						waitTill: new Date(),
+					})
+					.mockResolvedValueOnce({
+						...executeWorkflowData,
+						executionId: 'child_2',
+						waitTill: new Date(),
+					});
+
+				await context.executeWorkflow(workflowInfo, undefined, undefined, { parentExecution });
+				await context.executeWorkflow(workflowInfo, undefined, undefined, { parentExecution });
+
+				expect(executeData.metadata?.waitingChildExecutionIds).toEqual(['child_1', 'child_2']);
+			});
+
+			it('should not record a sub-execution that ran to completion', async () => {
+				additionalData.executeWorkflow.mockResolvedValue({
+					...executeWorkflowData,
+					executionId: 'child_1',
+					waitTill: undefined,
+				});
+
+				await context.executeWorkflow(workflowInfo, undefined, undefined, { parentExecution });
+
+				expect(executeData.metadata?.waitingChildExecutionIds).toBeUndefined();
+			});
 		});
 
 		describe('execution context propagation to sub-workflows', () => {

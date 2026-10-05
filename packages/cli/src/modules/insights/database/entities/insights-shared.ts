@@ -1,4 +1,4 @@
-import { invert } from '@/utils/inverter';
+import { invert } from '@n8n/utils/invert';
 
 function isValid<T extends Record<number | string | symbol, unknown>>(
 	value: number | string | symbol,
@@ -29,12 +29,15 @@ export const TypeToNumber = {
 	runtime_ms: 1,
 	success: 2,
 	failure: 3,
+	billable: 4,
 } as const;
 
 export type TypeUnit = keyof typeof TypeToNumber;
 
 export type TypeUnitNumber = (typeof TypeToNumber)[TypeUnit];
 export const NumberToType = invert(TypeToNumber);
+
+export type ByTimeInsightType = Exclude<TypeUnit, 'billable'>;
 
 export function isValidTypeNumber(value: number) {
 	return isValid(value, NumberToType);

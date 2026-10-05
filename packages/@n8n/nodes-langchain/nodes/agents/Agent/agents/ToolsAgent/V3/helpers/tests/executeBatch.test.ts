@@ -7,9 +7,10 @@ import { vi } from 'vitest';
 import type { ItemContext } from '../prepareItemContext';
 import { executeBatch } from '../executeBatch';
 
-const { runAgentMock, prepareItemContextMock } = vi.hoisted(() => ({
+const { runAgentMock, prepareItemContextMock, createAgentSequenceMock } = vi.hoisted(() => ({
 	runAgentMock: vi.fn(),
 	prepareItemContextMock: vi.fn(),
+	createAgentSequenceMock: vi.fn(),
 }));
 
 vi.mock('@utils/output_parsers/N8nOutputParser', () => ({
@@ -23,7 +24,7 @@ vi.mock('../prepareItemContext', () => ({ prepareItemContext: prepareItemContext
 vi.mock('../checkMaxIterations', () => ({ checkMaxIterations: vi.fn() }));
 
 vi.mock('../createAgentSequence', () => ({
-	createAgentSequence: vi.fn().mockReturnValue(mock()),
+	createAgentSequence: createAgentSequenceMock,
 }));
 
 vi.mock('../finalizeResult', () => ({ finalizeResult: vi.fn() }));
@@ -37,11 +38,11 @@ beforeEach(() => {
 	mockContext.getNodeParameter.mockReturnValue(10);
 });
 
-function buildItemContext(itemIndex: number): ItemContext {
+function buildItemContext(itemIndex: number, hasSteps = false): ItemContext {
 	return {
 		itemIndex,
 		input: 'test',
-		steps: [],
+		steps: hasSteps ? [mock<ItemContext['steps'][number]>()] : [],
 		tools: [],
 		prompt: mock(),
 		options: {
@@ -51,6 +52,23 @@ function buildItemContext(itemIndex: number): ItemContext {
 		outputParser: undefined,
 	};
 }
+
+describe('executeBatch — forced tool calls', () => {
+	it.each([
+		{ iteration: 'first', hasSteps: false, forceToolCall: true },
+		{ iteration: 'later', hasSteps: true, forceToolCall: false },
+	])('passes the force flag for the $iteration iteration', async ({ hasSteps, forceToolCall }) => {
+		const model = mock<BaseChatModel>();
+		const itemContext = buildItemContext(0, hasSteps);
+		itemContext.options.forceToolCallOnFirstIteration = true;
+		prepareItemContextMock.mockResolvedValue(itemContext);
+		runAgentMock.mockResolvedValue(undefined);
+
+		await executeBatch(mockContext, [{ json: {} }], 0, model, null, undefined);
+
+		expect(createAgentSequenceMock.mock.lastCall?.at(-1)).toBe(forceToolCall);
+	});
+});
 
 describe('executeBatch — error enrichment', () => {
 	it('surfaces a useful message in the output item when a tool throws a plain Error("Error") and continueOnFail is on', async () => {

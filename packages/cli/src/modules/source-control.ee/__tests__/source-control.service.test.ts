@@ -1,3 +1,4 @@
+import type { EventService } from '@n8n/backend-services';
 import type { Mock } from 'vitest';
 import type { SourceControlledFile } from '@n8n/api-types';
 import { isContainedWithin } from '@n8n/backend-common';
@@ -9,8 +10,7 @@ import type { CommitResult, PullResult, PushResult } from 'simple-git';
 
 import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
 import { SourceControlService } from '@/modules/source-control.ee/source-control.service.ee';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import type { EventService } from '@/events/event.service';
+import { ForbiddenError } from '@n8n/errors';
 import type { SourceControlExportService } from '../source-control-export.service.ee';
 import type { SourceControlGitService } from '../source-control-git.service.ee';
 import type { SourceControlImportService } from '../source-control-import.service.ee';
@@ -79,6 +79,8 @@ describe('SourceControlService', () => {
 		vi.spyOn(sourceControlService, 'sanityCheck').mockResolvedValue(undefined);
 		// Reset mock implementations
 		mockStatusService.getStatus.mockReset();
+		// The pull iterates this result, so an unmocked `undefined` would throw.
+		sourceControlImportService.importCredentialsFromWorkFolder.mockResolvedValue([]);
 	});
 
 	describe('pushWorkfolder', () => {
@@ -340,12 +342,6 @@ describe('SourceControlService', () => {
 					{
 						id: 'authorized-wf',
 						type: 'workflow',
-						status: 'deleted',
-						file: 'workflows/other-project-wf.json',
-						name: 'anything',
-						location: 'local',
-						conflict: false,
-						updatedAt: now,
 					},
 				],
 				commitMessage: 'chore: tidy up',
@@ -382,18 +378,7 @@ describe('SourceControlService', () => {
 			// ACT & ASSERT
 			await expect(
 				sourceControlService.pushWorkfolder(user, {
-					fileNames: [
-						{
-							id: 'out-of-scope-wf',
-							type: 'workflow',
-							status: 'deleted',
-							file: 'workflows/out-of-scope-wf.json',
-							name: 'out-of-scope',
-							location: 'local',
-							conflict: false,
-							updatedAt: new Date().toISOString(),
-						},
-					],
+					fileNames: [{ id: 'out-of-scope-wf', type: 'workflow' }],
 				}),
 			).rejects.toThrow('You are not allowed to push these changes');
 
@@ -424,18 +409,7 @@ describe('SourceControlService', () => {
 			// ACT & ASSERT
 			await expect(
 				sourceControlService.pushWorkfolder(user, {
-					fileNames: [
-						{
-							id: 'authorized-wf',
-							type: 'workflow',
-							status: 'modified',
-							file: 'workflows/authorized-wf.json',
-							name: 'authorized',
-							location: 'local',
-							conflict: false,
-							updatedAt: new Date().toISOString(),
-						},
-					],
+					fileNames: [{ id: 'authorized-wf', type: 'workflow' }],
 				}),
 			).rejects.toThrow('File path /outside-git/authorized-wf.json is invalid');
 
@@ -476,18 +450,7 @@ describe('SourceControlService', () => {
 
 			// ACT
 			const result = await sourceControlService.pushWorkfolder(user, {
-				fileNames: [
-					{
-						id: 'wf-1',
-						type: 'workflow',
-						status: 'modified',
-						file: 'workflows/wf-1.json',
-						name: 'Workflow 1',
-						location: 'local',
-						conflict: false,
-						updatedAt: now,
-					},
-				],
+				fileNames: [{ id: 'wf-1', type: 'workflow' }],
 			});
 
 			// ASSERT
@@ -720,6 +683,37 @@ describe('SourceControlService', () => {
 			});
 		});
 
+		it('announces each pulled workflow, but not one skipped by the content policy', async () => {
+			const user = mock<User>({ id: 'user-1' });
+			mockStatusService.getStatus.mockResolvedValueOnce([
+				mock<SourceControlledFile>({ id: 'workflow-1', type: 'workflow', conflict: false }),
+				mock<SourceControlledFile>({ id: 'workflow-2', type: 'workflow', conflict: false }),
+			]);
+			sourceControlImportService.importWorkflowFromWorkFolder.mockResolvedValue([
+				{ id: 'workflow-1', name: 'workflow-1.json', publishingError: undefined },
+				{
+					id: 'workflow-2',
+					name: 'workflow-2.json',
+					publishingError: undefined,
+					contentImportPolicy: {
+						violations: [
+							{ kind: 'node-type-unavailable', checkId: 'test.check', message: 'not allowed' },
+						],
+						checkErrors: [],
+					},
+				},
+			]);
+
+			await sourceControlService.pullWorkfolder(user, { force: true, autoPublish: 'none' });
+
+			expect(eventService.emit).toHaveBeenCalledWith('workflow-imported', {
+				workflowId: 'workflow-1',
+			});
+			expect(eventService.emit).not.toHaveBeenCalledWith('workflow-imported', {
+				workflowId: 'workflow-2',
+			});
+		});
+
 		it('adds the reason a skipped workflow was blocked to the pull result', async () => {
 			const user = mock<User>({ id: 'user-1' });
 			const workflowStatus = mock<SourceControlledFile>({
@@ -753,6 +747,50 @@ describe('SourceControlService', () => {
 				contentImportPolicy: {
 					violations: [
 						{ kind: 'node-type-unavailable', checkId: 'test.check', message: 'not allowed' },
+					],
+					checkErrors: [],
+				},
+			});
+		});
+
+		it('adds the reason a skipped credential was blocked to the pull result, while the rest of the pull lands', async () => {
+			const user = mock<User>({ id: 'user-1' });
+			const credentialStatus = mock<SourceControlledFile>({
+				id: 'cred-1',
+				type: 'credential',
+				status: 'modified',
+				location: 'remote',
+				conflict: false,
+			});
+			mockStatusService.getStatus.mockResolvedValueOnce([credentialStatus]);
+			sourceControlImportService.importWorkflowFromWorkFolder.mockResolvedValue([]);
+			sourceControlImportService.importCredentialsFromWorkFolder.mockResolvedValue([
+				{
+					id: 'cred-1',
+					name: 'cred-1.json',
+					type: 'slackApi',
+					contentImportPolicy: {
+						violations: [
+							{
+								kind: 'credential-type-unavailable',
+								checkId: 'test.check',
+								message: 'not allowed',
+							},
+						],
+						checkErrors: [],
+					},
+				},
+			]);
+
+			const result = await sourceControlService.pullWorkfolder(user, {
+				force: true,
+				autoPublish: 'none',
+			});
+
+			expect(result.statusResult[0]).toMatchObject({
+				contentImportPolicy: {
+					violations: [
+						{ kind: 'credential-type-unavailable', checkId: 'test.check', message: 'not allowed' },
 					],
 					checkErrors: [],
 				},
@@ -1614,6 +1652,7 @@ describe('SourceControlService', () => {
 
 			// Once the push releases the lock, the queued reset runs - but only after the commit.
 			expect(gitService.resetBranch).toHaveBeenCalled();
+			expect(gitService.pull).toHaveBeenCalled();
 			expect(callOrder).toEqual(['commit', 'reset']);
 		});
 

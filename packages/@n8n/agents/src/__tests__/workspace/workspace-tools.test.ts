@@ -104,6 +104,9 @@ describe('createWorkspaceTools', () => {
 		expect(names).toContain('workspace_str_replace_file');
 		expect(names).toContain('workspace_execute_command');
 		expect(names).toHaveLength(13);
+		expect(tools.find((tool) => tool.name === 'workspace_read_tool_result')?.outputTrust).toBe(
+			'untrusted',
+		);
 	});
 
 	describe('tool handlers', () => {

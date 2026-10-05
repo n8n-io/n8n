@@ -1,0 +1,33 @@
+{
+	"type": "object",
+	"properties": {
+		"@odata.type": {
+			"type": "string"
+		},
+		"displayName": {
+			"type": "string"
+		},
+		"email": {
+			"type": "string"
+		},
+		"id": {
+			"type": "string"
+		},
+		"roles": {
+			"type": "array",
+			"items": {
+				"type": "string"
+			}
+		},
+		"tenantId": {
+			"type": "string"
+		},
+		"userId": {
+			"type": "string"
+		},
+		"visibleHistoryStartDateTime": {
+			"type": "string"
+		}
+	},
+	"version": 1
+}

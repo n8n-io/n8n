@@ -32,6 +32,18 @@ export interface ImportPackageFields {
 	tagConflictPolicy?: string;
 }
 
+export interface ImportPackageSelectionFields {
+	/** Source project ID from the package. */
+	selectedProjectId: string;
+	/** Source workflow IDs from the selected project. */
+	selectedWorkflowIds: string[];
+	/** Destination workflow IDs to remove. */
+	deletedWorkflowIds?: string[];
+	workflowConflictPolicy?: string;
+	workflowIdPolicy?: string;
+	overwriteDeletionPolicy?: string;
+}
+
 export interface ExportPackageFields {
 	workflowIds?: string[];
 	folderIds?: string[];
@@ -60,13 +72,6 @@ export interface ExportPackageResult {
 	/** Undefined when talking to an older server that doesn't send the counts header. */
 	counts?: ExportPackageCounts;
 }
-
-/** Outcome of pushing a Git connection's projects to its working copy. */
-export type PushGitConnectionResult = {
-	connectionId: string;
-	counts: ExportPackageCounts;
-	commitSha: string;
-};
 
 export interface ImportPackageCounts {
 	projects: { created: number; updated: number; skipped: number; deleted: number };
@@ -97,10 +102,93 @@ export interface ImportPackageCounts {
 	tags: { matched: number; created: number; renamed: number; reconciled: number; skipped: number };
 }
 
-export type PullGitConnectionResult = {
-	connectionId: string;
-	counts: ImportPackageCounts;
+/** The direction a promotion config, checkout, or operation works in. */
+export type PromotionDirection = 'apply' | 'promote';
+
+/** The Git part of a promotion operation result. */
+export interface PromotionGitResult {
 	commitSha: string;
+	/** For Promote the branch it pushed to, for Apply the branch the package came from. */
+	branchName: string;
+}
+
+/** Outcome of promoting the team projects of a connection. */
+export type PromotePackageResult = {
+	connectionId: string;
+	configId: string;
+	counts: ExportPackageCounts;
+	git: PromotionGitResult;
+};
+
+/** The reviewed source that Apply must still match. Any mismatch reports `source-changed`. */
+export interface PromotionExpectedSource {
+	configId: string;
+	branchName: string;
+	commitSha: string;
+}
+
+/** References in a package that must be set up on this instance before Apply can import it. */
+export interface PromotionBindingPreflight {
+	missingProjects: Array<Record<string, unknown>>;
+	missingBindings: Array<Record<string, unknown>>;
+	accessRequirements: Array<Record<string, unknown>>;
+	conflicts: Array<Record<string, unknown>>;
+	warnings: Array<Record<string, unknown>>;
+}
+
+type ApplyPackageIdentity = {
+	connectionId: string;
+	configId: string;
+	git: PromotionGitResult;
+};
+
+/** Outcome of applying a package to the instance. Only `applied` imported anything. */
+export type ApplyPackageResult =
+	| (ApplyPackageIdentity & {
+			status: 'applied';
+			counts: ImportPackageCounts;
+			warnings: Array<Record<string, unknown>>;
+	  })
+	| (ApplyPackageIdentity & { status: 'blocked'; preflight: PromotionBindingPreflight })
+	| (ApplyPackageIdentity & { status: 'source-changed' });
+
+export interface PromotionChangesQuery {
+	search?: string;
+	sort?: 'name' | 'updatedAt' | 'status';
+	order?: 'asc' | 'desc';
+}
+
+/** One workflow that differs between a project and its configured branch. */
+export interface PromotableResourceSummary {
+	id: string;
+	name: string;
+	type: 'workflow';
+	status: 'new' | 'modified' | 'renamed' | 'renamed-and-modified' | 'archived' | 'deleted';
+	version: number | null;
+	updatedAt: string | null;
+	updatedBy: string | null;
+	dependencyCount: number;
+}
+
+/** The changes of a project in one direction, with the commit they were read from. */
+export interface ProjectPromotionChanges {
+	commitSha: string | null;
+	changes: PromotableResourceSummary[];
+}
+
+/** State of one direction's local checkout, after a clone or a disconnect. */
+export type PromotionCheckoutResult = {
+	connectionId: string;
+	configId: string;
+	direction: PromotionDirection;
+	branchName: string;
+	hasCheckout: boolean;
+};
+
+/** A new provider, with the generated public key for SSH providers. */
+export type PromotionProviderCreatedResult = {
+	provider: Record<string, unknown>;
+	publicKey: string | null;
 };
 
 export class ApiError extends Error {
@@ -259,56 +347,145 @@ export class N8nClient {
 		return limit !== undefined ? results.slice(0, limit) : results;
 	}
 
-	// ─── Git connections ───────────────────────────────────────────
+	// ─── Promotion providers ───────────────────────────────────────
 
-	async listGitConnections(limit?: number) {
-		return await this.paginate<Record<string, unknown>>('/git-connections', {}, limit);
+	async listPromotionProviders(limit?: number) {
+		return await this.paginate<Record<string, unknown>>('/promotions/providers', {}, limit);
 	}
 
-	async getGitConnection(id: string) {
-		return await this.get<Record<string, unknown>>(`/git-connections/${id}`);
+	async getPromotionProvider(id: string) {
+		return await this.get<Record<string, unknown>>(`/promotions/providers/${id}`);
 	}
 
-	async createGitConnection(body: unknown) {
-		return await this.post<Record<string, unknown>>('/git-connections', body);
+	async createPromotionProvider(body: unknown) {
+		return await this.post<PromotionProviderCreatedResult>('/promotions/providers', body);
 	}
 
-	async updateGitConnection(id: string, body: unknown) {
-		return await this.put<Record<string, unknown>>(`/git-connections/${id}`, body);
+	async updatePromotionProvider(id: string, body: unknown) {
+		return await this.put<Record<string, unknown>>(`/promotions/providers/${id}`, body);
 	}
 
-	async cloneGitConnection(id: string, branchName?: string) {
-		return await this.post<Record<string, unknown>>(`/git-connections/${id}/clone`, {
-			...(branchName ? { branchName } : {}),
+	async deletePromotionProvider(id: string) {
+		return await this.del<undefined>(`/promotions/providers/${id}`);
+	}
+
+	// ─── Promotion connections ─────────────────────────────────────
+
+	async listPromotionConnections(query: Record<string, string> = {}, limit?: number) {
+		return await this.paginate<Record<string, unknown>>('/promotions/connections', query, limit);
+	}
+
+	async getPromotionConnection(id: string) {
+		return await this.get<Record<string, unknown>>(`/promotions/connections/${id}`);
+	}
+
+	async createPromotionConnection(body: unknown) {
+		return await this.post<Record<string, unknown>>('/promotions/connections', body);
+	}
+
+	async updatePromotionConnection(id: string, body: unknown) {
+		return await this.put<Record<string, unknown>>(`/promotions/connections/${id}`, body);
+	}
+
+	async deletePromotionConnection(id: string) {
+		return await this.del<undefined>(`/promotions/connections/${id}`);
+	}
+
+	/** Creates the config of one direction, or replaces it with the settings sent. */
+	async setPromotionConfig(id: string, direction: PromotionDirection, body: unknown) {
+		return await this.put<Record<string, unknown>>(
+			`/promotions/connections/${id}/configs/${direction}`,
+			body,
+		);
+	}
+
+	async deletePromotionConfig(id: string, direction: PromotionDirection) {
+		return await this.del<undefined>(`/promotions/connections/${id}/configs/${direction}`);
+	}
+
+	async clonePromotionCheckout(id: string, direction: PromotionDirection) {
+		return await this.post<PromotionCheckoutResult>(
+			`/promotions/connections/${id}/${direction}/clone`,
+		);
+	}
+
+	async disconnectPromotionCheckout(id: string, direction: PromotionDirection) {
+		return await this.post<PromotionCheckoutResult>(
+			`/promotions/connections/${id}/${direction}/disconnect`,
+		);
+	}
+
+	async listPromotionConnectionProjects(id: string) {
+		return await this.get<{ projectIds: string[] }>(`/promotions/connections/${id}/projects`);
+	}
+
+	async addProjectToPromotionConnection(id: string, projectId: string) {
+		return await this.post<{ connectionId: string; projectId: string }>(
+			`/promotions/connections/${id}/projects/${projectId}`,
+		);
+	}
+
+	async removeProjectFromPromotionConnection(id: string, projectId: string) {
+		return await this.del<undefined>(`/promotions/connections/${id}/projects/${projectId}`);
+	}
+
+	async promotePackage(id: string, body: { commitMessage: string; force?: boolean }) {
+		return await this.post<PromotePackageResult>(`/promotions/connections/${id}/promote`, body);
+	}
+
+	async applyPackage(id: string, expectedSource?: PromotionExpectedSource) {
+		return await this.post<ApplyPackageResult>(
+			`/promotions/connections/${id}/apply`,
+			expectedSource ? { expectedSource } : undefined,
+		);
+	}
+
+	async continueApplyPackage(id: string, expectedSource: PromotionExpectedSource) {
+		return await this.post<ApplyPackageResult>(`/promotions/connections/${id}/apply/continue`, {
+			expectedSource,
 		});
 	}
 
-	async disconnectGitConnection(id: string) {
-		return await this.post<Record<string, unknown>>(`/git-connections/${id}/disconnect`);
+	async listProjectPromotionChanges(
+		projectId: string,
+		direction: PromotionDirection,
+		query: PromotionChangesQuery = {},
+	) {
+		return await this.get<ProjectPromotionChanges>(
+			`/promotions/projects/${projectId}/changes/${direction}`,
+			{ ...query },
+		);
 	}
 
-	async deleteGitConnection(id: string) {
-		return await this.del<undefined>(`/git-connections/${id}`);
+	async promoteProjectSelection(projectId: string, workflowIds: string[], commitMessage?: string) {
+		return await this.post<PromotePackageResult>(`/promotions/projects/${projectId}/promote`, {
+			workflowIds,
+			// Dropped by JSON serialization when undefined, so the server default applies.
+			commitMessage,
+		});
 	}
 
-	async pushGitConnectionProjects(id: string, body: { commitMessage: string; force?: boolean }) {
-		return await this.post<PushGitConnectionResult>(`/git-connections/${id}/push`, body);
+	async applyProjectSelection(
+		projectId: string,
+		workflowIds: string[],
+		expectedSource?: PromotionExpectedSource,
+	) {
+		return await this.post<ApplyPackageResult>(`/promotions/projects/${projectId}/apply`, {
+			workflowIds,
+			// Dropped by JSON serialization when undefined, so the branch tip is applied.
+			expectedSource,
+		});
 	}
 
-	async listGitConnectionProjects(id: string) {
-		return await this.get<{ projectIds: string[] }>(`/git-connections/${id}/projects`);
-	}
-
-	async addProjectToGitConnection(id: string, projectId: string) {
-		return await this.post<Record<string, unknown>>(`/git-connections/${id}/projects/${projectId}`);
-	}
-
-	async removeProjectFromGitConnection(id: string, projectId: string) {
-		return await this.del<undefined>(`/git-connections/${id}/projects/${projectId}`);
-	}
-
-	async pullGitConnectionProjects(id: string) {
-		return await this.post<PullGitConnectionResult>(`/git-connections/${id}/pull`);
+	async continueApplyProjectSelection(
+		projectId: string,
+		workflowIds: string[],
+		expectedSource: PromotionExpectedSource,
+	) {
+		return await this.post<ApplyPackageResult>(`/promotions/projects/${projectId}/apply/continue`, {
+			workflowIds,
+			expectedSource,
+		});
 	}
 
 	// ─── Workflows ─────────────────────────────────────────────────
@@ -619,6 +796,31 @@ export class N8nClient {
 			if (typeof value === 'string' && value !== '') form.append(key, value);
 		}
 		return await this.request<Record<string, unknown>>('POST', '/n8n-packages/import', {
+			formData: form,
+		});
+	}
+
+	async importPackageSelection(
+		file: { buffer: Buffer; filename: string },
+		fields: ImportPackageSelectionFields,
+	): Promise<Record<string, unknown>> {
+		const form = new FormData();
+		form.append('package', new Blob([new Uint8Array(file.buffer)]), file.filename);
+		const stringFields: Record<string, string | undefined> = {
+			selectedProjectId: fields.selectedProjectId,
+			workflowConflictPolicy: fields.workflowConflictPolicy,
+			workflowIdPolicy: fields.workflowIdPolicy,
+			overwriteDeletionPolicy: fields.overwriteDeletionPolicy,
+		};
+		for (const [key, value] of Object.entries(stringFields)) {
+			if (typeof value === 'string' && value !== '') form.append(key, value);
+		}
+		// The endpoint expects ID arrays encoded as JSON in multipart text fields.
+		form.append('selectedWorkflowIds', JSON.stringify(fields.selectedWorkflowIds));
+		if (fields.deletedWorkflowIds !== undefined) {
+			form.append('deletedWorkflowIds', JSON.stringify(fields.deletedWorkflowIds));
+		}
+		return await this.request<Record<string, unknown>>('POST', '/n8n-packages/import-selection', {
 			formData: form,
 		});
 	}

@@ -5,18 +5,11 @@ import type { InstanceSettings } from 'n8n-core';
 import type { MockProxy } from 'vitest-mock-extended';
 import { mock } from 'vitest-mock-extended';
 
-import { userHasScopes } from '@/permissions.ee/check-access';
-import type { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
+import type { ProjectScopeService, WorkflowSharingService } from '@n8n/backend-services';
 
-import { TypeToNumber } from '../database/entities/insights-shared';
+import { TypeToNumber, type TypeUnitNumber } from '../database/entities/insights-shared';
 import type { InsightsByPeriodRepository } from '../database/repositories/insights-by-period.repository';
-import type { InsightsCompactionService } from '../insights-compaction.service';
-import type { InsightsPruningService } from '../insights-pruning.service';
 import { InsightsService } from '../insights.service';
-
-vi.mock('@/permissions.ee/check-access', () => ({
-	userHasScopes: vi.fn(),
-}));
 
 const user = mock<User>({ id: 'user-1' });
 
@@ -24,31 +17,28 @@ describe('InsightsService', () => {
 	let insightsService: InsightsService;
 
 	let mockInsightsByPeriodRepository: MockProxy<InsightsByPeriodRepository>;
-	let mockCompactionService: MockProxy<InsightsCompactionService>;
-	let mockPruningService: MockProxy<InsightsPruningService>;
 	let mockLicenseState: MockProxy<LicenseState>;
 	let mockInstanceSettings: MockProxy<InstanceSettings>;
 	let mockWorkflowSharingService: MockProxy<WorkflowSharingService>;
+	let mockProjectScopeService: MockProxy<ProjectScopeService>;
 
 	beforeEach(() => {
 		vi.clearAllMocks();
 
 		mockInsightsByPeriodRepository = mock<InsightsByPeriodRepository>();
-		mockCompactionService = mock<InsightsCompactionService>();
-		mockPruningService = mock<InsightsPruningService>();
 		mockLicenseState = mock<LicenseState>();
 		mockInstanceSettings = mock<InstanceSettings>();
 		mockWorkflowSharingService = mock<WorkflowSharingService>();
-		vi.mocked(userHasScopes).mockResolvedValue(true);
+		mockProjectScopeService = mock<ProjectScopeService>();
+		mockProjectScopeService.getProjectIds.mockResolvedValue(null);
 
 		insightsService = new InsightsService(
 			mockInsightsByPeriodRepository,
-			mockCompactionService,
-			mockPruningService,
 			mockLicenseState,
 			mockInstanceSettings,
 			mockLogger(),
 			mockWorkflowSharingService,
+			mockProjectScopeService,
 		);
 	});
 
@@ -115,7 +105,7 @@ describe('InsightsService', () => {
 		}) => {
 			const aggregates: Array<{
 				period: 'previous' | 'current';
-				type: 0 | 1 | 2 | 3;
+				type: TypeUnitNumber;
 				total_value: string | number;
 			}> = [];
 
@@ -840,6 +830,33 @@ describe('InsightsService', () => {
 			});
 		});
 
+		it('does not expose stored billable aggregates on the summary', async () => {
+			mockInsightsByPeriodRepository.getPreviousAndCurrentPeriodTypeAggregates.mockResolvedValue(
+				createMockAggregates({
+					currentSuccess: 8,
+					currentFailure: 4,
+					previousSuccess: 6,
+					previousFailure: 2,
+				}).concat([
+					{ period: 'current', type: TypeToNumber.billable, total_value: 10 },
+					{ period: 'previous', type: TypeToNumber.billable, total_value: 7 },
+				]),
+			);
+
+			const result = await insightsService.getInsightsSummary({
+				user,
+				startDate,
+				endDate,
+			});
+
+			expect(result.total).toEqual({
+				value: 12,
+				unit: 'count',
+				deviation: 4,
+			});
+			expect(result).not.toHaveProperty('billable');
+		});
+
 		describe('project access', () => {
 			beforeEach(() => {
 				mockInsightsByPeriodRepository.getPreviousAndCurrentPeriodTypeAggregates.mockResolvedValue(
@@ -850,11 +867,11 @@ describe('InsightsService', () => {
 			it('should not check project access when no project is requested', async () => {
 				await insightsService.getInsightsSummary({ user, startDate, endDate });
 
-				expect(userHasScopes).not.toHaveBeenCalled();
+				expect(mockProjectScopeService.getProjectIds).not.toHaveBeenCalled();
 			});
 
 			it('should throw a forbidden error when the requested project is not accessible', async () => {
-				vi.mocked(userHasScopes).mockResolvedValue(false);
+				mockProjectScopeService.getProjectIds.mockResolvedValue([]);
 
 				await expect(
 					insightsService.getInsightsSummary({ user, startDate, endDate, projectId: 'project-1' }),
@@ -873,9 +890,7 @@ describe('InsightsService', () => {
 					projectId: 'project-1',
 				});
 
-				expect(userHasScopes).toHaveBeenCalledWith(user, ['workflow:read'], false, {
-					projectId: 'project-1',
-				});
+				expect(mockProjectScopeService.getProjectIds).toHaveBeenCalledWith(user, ['workflow:read']);
 				expect(
 					mockInsightsByPeriodRepository.getPreviousAndCurrentPeriodTypeAggregates,
 				).toHaveBeenCalledWith(expect.objectContaining({ projectId: 'project-1' }));
@@ -1026,11 +1041,11 @@ describe('InsightsService', () => {
 			it('should not check project access when no project is requested', async () => {
 				await insightsService.getInsightsByWorkflow({ user, startDate, endDate });
 
-				expect(userHasScopes).not.toHaveBeenCalled();
+				expect(mockProjectScopeService.getProjectIds).not.toHaveBeenCalled();
 			});
 
 			it('should throw a forbidden error when the requested project is not accessible', async () => {
-				vi.mocked(userHasScopes).mockResolvedValue(false);
+				mockProjectScopeService.getProjectIds.mockResolvedValue([]);
 
 				await expect(
 					insightsService.getInsightsByWorkflow({
@@ -1087,11 +1102,11 @@ describe('InsightsService', () => {
 			it('should not check project access when no project is requested', async () => {
 				await insightsService.getInsightsByTime({ user, startDate, endDate });
 
-				expect(userHasScopes).not.toHaveBeenCalled();
+				expect(mockProjectScopeService.getProjectIds).not.toHaveBeenCalled();
 			});
 
 			it('should throw a forbidden error when the requested project is not accessible', async () => {
-				vi.mocked(userHasScopes).mockResolvedValue(false);
+				mockProjectScopeService.getProjectIds.mockResolvedValue([]);
 
 				await expect(
 					insightsService.getInsightsByTime({
@@ -1133,6 +1148,29 @@ describe('InsightsService', () => {
 					}),
 				);
 			});
+		});
+	});
+
+	describe('getTimeSavedInsightsByTime', () => {
+		const startDate = new Date('2024-01-01');
+		const endDate = new Date('2024-01-07');
+
+		beforeEach(() => {
+			mockInsightsByPeriodRepository.getInsightsByTime.mockResolvedValue([]);
+		});
+
+		it('requests only time saved', async () => {
+			await insightsService.getTimeSavedInsightsByTime({
+				user,
+				startDate,
+				endDate,
+			});
+
+			expect(mockInsightsByPeriodRepository.getInsightsByTime).toHaveBeenCalledWith(
+				expect.objectContaining({
+					insightTypes: ['time_saved_min'],
+				}),
+			);
 		});
 	});
 });

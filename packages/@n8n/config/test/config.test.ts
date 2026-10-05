@@ -78,7 +78,10 @@ describe('GlobalConfig', () => {
 		proxy_hops: 0,
 		ssl_key: '',
 		ssl_cert: '',
-		canvasOnly: false,
+		canvasOnly: {
+			enabled: false,
+			personalSpaceScopeDenyList: [],
+		},
 		editorBaseUrl: '',
 		webhookUrl: '',
 		dataTable: {
@@ -176,6 +179,8 @@ describe('GlobalConfig', () => {
 					'project-shared': '',
 					'api-key-revoked': '',
 					'mcp-client-revoked': '',
+					'email-change-requested': '',
+					'email-change-completed': '',
 				},
 			},
 		},
@@ -199,7 +204,6 @@ describe('GlobalConfig', () => {
 			override: {},
 		},
 		activityLog: {
-			enabled: false,
 			retentionDays: 0,
 			maxEntries: 1_000,
 		},
@@ -235,7 +239,7 @@ describe('GlobalConfig', () => {
 			callerPolicyDefaultOption: 'workflowsFromSameOwner',
 			activationBatchSize: 1,
 			indexingBatchSize: 10,
-			useWorkflowPublicationService: false,
+			useWorkflowPublicationService: true,
 			publicationOutboxPollIntervalMs: 15_000,
 			publicationOutboxLeaseSeconds: 120,
 			workflowPublicationConcurrency: 5,
@@ -245,6 +249,8 @@ describe('GlobalConfig', () => {
 			publicationOutboxCleanupBatchSize: 1000,
 			publicationReconcileIntervalSeconds: 10,
 			autosaveDisabled: false,
+			groupsWithTriggersEnabled: false,
+			groupsWithManyBoundariesEnabled: false,
 		},
 		endpoints: {
 			metrics: {
@@ -267,11 +273,13 @@ describe('GlobalConfig', () => {
 				includeSchedulerMetrics: false,
 				schedulerMetricsInterval: 20,
 				includePollTriggerMetrics: false,
+				includeSystemTaskMetrics: false,
 				activeWorkflowCountInterval: 60,
 				includeWorkflowStatistics: false,
 				workflowStatisticsInterval: 300,
 				includeExecutionDataMetrics: false,
 				includeSsrfMetrics: false,
+				includeEncryptionMetrics: false,
 				includeDnsCacheMetrics: false,
 				includeWebhookMetrics: false,
 				includeFormMetrics: false,
@@ -279,6 +287,7 @@ describe('GlobalConfig', () => {
 				workflowInfoMetricInterval: 60,
 				includeDbPoolMetrics: false,
 				includeWorkflowPublicationMetrics: false,
+				includeMcpPostSaveMetrics: false,
 				workflowPublicationMetricInterval: 60,
 			},
 			additionalNonUIRoutes: '',
@@ -290,7 +299,6 @@ describe('GlobalConfig', () => {
 			mcp: 'mcp',
 			mcpAppsEnabled: false,
 			mcpBuilderEnabled: true,
-			mcpCanvasGroupsEnabled: false,
 			mcpMaxRegisteredClients: 5000,
 			mcpTest: 'mcp-test',
 			payloadSizeMax: 16,
@@ -333,6 +341,7 @@ describe('GlobalConfig', () => {
 			streamStateTtl: 300,
 		},
 		instanceAi: {
+			workflowSuggestionsEnabled: false,
 			model: 'anthropic/claude-opus-4-8',
 			modelUrl: '',
 			modelApiKey: '',
@@ -344,6 +353,7 @@ describe('GlobalConfig', () => {
 			browserUseEnabled: true,
 			observerMessageTokens: 30_000,
 			reflectorObservationTokens: 40_000,
+			midRunObservation: false,
 			sandboxEnabled: false,
 			sandboxProvider: 'n8n-sandbox',
 			sandboxImage: 'daytonaio/sandbox:0.5.0',
@@ -355,6 +365,7 @@ describe('GlobalConfig', () => {
 			sandboxTimeout: 300000,
 			sandboxNamePrefix: '',
 			sandboxEphemeral: false,
+			evalInstance: false,
 			sandboxAutoStopMinutes: 15,
 			sandboxAutoArchiveMinutes: 60,
 			sandboxAutoDeleteMinutes: 10_080,
@@ -370,10 +381,10 @@ describe('GlobalConfig', () => {
 			confirmationTimeout: 86_400_000,
 			runDebugEnabled: false,
 			thinkingEnabled: true,
-			mcpConnectionsEnabled: false,
 			canvasNodeContextEnabled: false,
-			instanceAiSetupPanelEnabled: false,
+			promptVersion: '',
 			nodeUsageEnabled: false,
+			folderExplorationEnabled: false,
 			activationCapped: false,
 			activationLockMessageThreshold: 1,
 			maxConcurrentRuns: -1,
@@ -497,6 +508,7 @@ describe('GlobalConfig', () => {
 			misfireGraceSeconds: 60,
 			durableCursorsEnabled: false,
 			enabledForSystemTasks: false,
+			enabledForAgentTasks: false,
 			ownerReconciliationEnabled: true,
 			ownerReconciliationIntervalSeconds: 900,
 			ownerReconciliationTimeoutSeconds: 300,
@@ -536,6 +548,7 @@ describe('GlobalConfig', () => {
 			disableBareRepos: true,
 			awsSystemCredentialsAccess: false,
 			awsSystemCredentialsSdkSources: 'all',
+			azureStorageCustomEndpoints: false,
 			enableGitNodeHooks: false,
 			enableGitNodeAllConfigKeys: false,
 			postMessageAllowedOrigins: '',
@@ -575,6 +588,7 @@ describe('GlobalConfig', () => {
 			maxDisplaySize: 100 * 1024 * 1024,
 			webhookResponseRelaySizeMaxMiB: 64,
 			webhookResponseRelayOffloadEnabled: false,
+			preExecuteErrorCreatesExecution: false,
 		},
 		diagnostics: {
 			enabled: true,
@@ -605,7 +619,7 @@ describe('GlobalConfig', () => {
 		},
 		sso: {
 			justInTimeProvisioning: true,
-			redirectLoginToSso: false,
+			redirectLoginToSso: true,
 			saml: {
 				loginEnabled: false,
 				loginLabel: '',
@@ -665,6 +679,7 @@ describe('GlobalConfig', () => {
 		},
 		expressionEngine: {
 			engine: 'vm',
+			frontendEngine: 'legacy',
 			poolSize: 1,
 			maxCodeCacheSize: 1024,
 			bridgeTimeout: 5000,
@@ -674,6 +689,9 @@ describe('GlobalConfig', () => {
 			slowEvaluationThresholdMs: 50,
 			tracesSampleRate: 0.0,
 			allowWebhookIsolateSkip: true,
+			lazyAcquire: false,
+			compileCache: false,
+			nativeEvaluation: false,
 		},
 		instanceSettingsLoader: {
 			ownerManagedByEnv: false,
@@ -706,6 +724,7 @@ describe('GlobalConfig', () => {
 			communityPackages: '',
 		},
 		agents: {
+			planToolsEnabled: false,
 			checkpointTtlSeconds: 345600,
 			tracingEnabled: true,
 			tracingRecordInputs: true,
@@ -774,6 +793,15 @@ describe('GlobalConfig', () => {
 		const config = Container.get(GlobalConfig);
 
 		expect(config.agents.sandboxSnapshot).toBe('n8n/agent-knowledge:1.2.3');
+	});
+
+	it.each([
+		['true', true],
+		['false', false],
+	])('should parse workflow suggestions enabled=%s', (value, expected) => {
+		process.env = { N8N_INSTANCE_AI_WORKFLOW_SUGGESTIONS_ENABLED: value };
+
+		expect(Container.get(GlobalConfig).instanceAi.workflowSuggestionsEnabled).toBe(expected);
 	});
 
 	it('should parse N8N_MANAGED_OAUTH_SHOW_SCOPES from env variables', () => {

@@ -1,5 +1,5 @@
 import { defineConfig, globalIgnores } from 'eslint/config';
-import { nodeConfig } from '@n8n/eslint-config/node';
+import { backendConfig } from '@n8n/eslint-config/backend';
 import { createRequire } from 'node:module';
 
 const require = createRequire(import.meta.url);
@@ -31,6 +31,30 @@ const instanceAiLazyRuntimeImports = [
 	message: INSTANCE_AI_LAZY_IMPORT_MESSAGE,
 }));
 
+// Only JwtService may reach the raw signing API: it derives the `aud` claim from
+// the token's purpose, which is what keeps a token for one purpose from being
+// presented for another. The error classes and types stay importable.
+const jsonwebtokenSigningRestriction = {
+	name: 'jsonwebtoken',
+	// An allowlist, not a denylist: the module's whole runtime surface is off
+	// limits except the error classes, so a member added upstream is restricted
+	// from the start. `allowTypeImports` keeps `Secret`, `Algorithm` and friends
+	// importable. A namespace import is restricted too — the linter cannot see
+	// which members it reaches for.
+	allowImportNames: ['JsonWebTokenError', 'TokenExpiredError', 'NotBeforeError'],
+	allowTypeImports: true,
+	message:
+		'Sign and verify through JwtService, so the token is bound to a purpose in token-purposes.ts.',
+};
+
+// `jsonwebtoken` declares no `exports`, so `jsonwebtoken/sign` and its siblings
+// resolve straight to the same functions and would slip past a name-only rule.
+const jsonwebtokenSubpathRestriction = {
+	group: ['jsonwebtoken/*'],
+	message:
+		'Sign and verify through JwtService, so the token is bound to a purpose in token-purposes.ts.',
+};
+
 const engineV2ModuleOnlyImport = {
 	name: '@n8n/engine',
 	allowTypeImports: true,
@@ -40,21 +64,41 @@ const engineV2ModuleOnlyImport = {
 
 export default defineConfig(
 	globalIgnores(['scripts/**/*.mjs', 'vitest.*.ts', 'coverage/**']),
-	nodeConfig,
+	backendConfig,
 	{
 		rules: {
-			'unicorn/filename-case': ['error', { case: 'kebabCase' }],
-
 			'n8n-local-rules/no-dynamic-import-template': 'error',
 			'n8n-local-rules/misplaced-n8n-typeorm-import': 'error',
-			// The allowlist below is the only place @n8n/typeorm exceptions may live; block inline disables.
-			'n8n-local-rules/no-misplaced-typeorm-import-disable': 'error',
-			// Public API handler-pattern ratchet — the allowlist is the only escape hatch; block inline disables.
-			'n8n-local-rules/no-public-api-guardrail-disable': 'error',
+			// Ratchets: the allowlists below only shrink, so an inline disable is the one way to add a violation.
+			'n8n-local-rules/no-guardrail-disable': [
+				'error',
+				{
+					guarded: [
+						{
+							rule: 'misplaced-n8n-typeorm-import',
+							message:
+								'Keep TypeORM in the persistence layer: put the query behind a use-case repository method in @n8n/db.',
+						},
+						{
+							rule: 'no-repository-in-public-api-handler',
+							message: 'Call a service instead of reaching the repository.',
+						},
+						{
+							rule: 'require-public-api-controller',
+							message: 'Migrate to `@PublicApiController`.',
+						},
+						{
+							rule: 'no-unsealed-workflow-entity-write',
+							message: 'Route the write through a token-gated `WorkflowRepository` method.',
+						},
+						{
+							rule: 'no-unsealed-credentials-entity-write',
+							message: 'Route the write through a token-gated `CredentialsRepository` method.',
+						},
+					],
+				},
+			],
 			'n8n-local-rules/no-type-unsafe-event-emitter': 'error',
-			// Seal WorkflowEntity node-writes to the token-gated repository methods.
-			// Every write site is migrated; there is no allowlist left to grant an exception.
-			'n8n-local-rules/no-unsealed-workflow-entity-write': 'error',
 			// Periodic leader-only work must be a @SystemTask() class; hand-rolled
 			// @OnLeaderTakeover timers are reserved for the allowlisted services below.
 			'n8n-local-rules/no-on-leader-takeover': 'error',
@@ -68,52 +112,27 @@ export default defineConfig(
 				'error',
 				{ acknowledged: acknowledgedProjectOwnedEntities },
 			],
-			// Disabled until we have a plan on how to fix these issues long term
-			'n8n-local-rules/no-import-enterprise-edition': 'off',
 
 			// TODO: Remove this
-			'@typescript-eslint/ban-ts-comment': ['warn', { 'ts-ignore': true }],
+			'@typescript-eslint/ban-ts-comment': 'off',
 			'import-x/no-cycle': 'warn',
-			'import-x/extensions': [
-				'warn',
-				'never',
-				{
-					pathGroupOverrides: [
-						{
-							pattern:
-								'**/*.{service,controller,registry,repository,entity,dto,middleware,module,strategy,handler,helper,error,request,response,mapper,schema,types,constants,config,util,utils}',
-							action: 'ignore',
-						},
-					],
-				},
-			],
-			'import-x/order': 'warn',
+			'import-x/extensions': 'off',
 			'no-ex-assign': 'warn',
 			'no-case-declarations': 'warn',
 			'no-fallthrough': 'warn',
 			'no-unsafe-optional-chaining': 'warn',
-			'no-empty': 'warn',
 			'no-async-promise-executor': 'warn',
-			complexity: 'warn',
-			'@typescript-eslint/require-await': 'warn',
-			'@typescript-eslint/no-empty-object-type': 'warn',
+			complexity: 'off',
 			'@typescript-eslint/prefer-promise-reject-errors': 'warn',
-			'@typescript-eslint/no-unsafe-function-type': 'warn',
-			'@typescript-eslint/naming-convention': 'warn',
 			'@typescript-eslint/no-explicit-any': 'warn',
 			'@typescript-eslint/no-base-to-string': 'warn',
-			'@typescript-eslint/prefer-nullish-coalescing': 'warn',
 			'@typescript-eslint/no-redundant-type-constituents': 'warn',
 			'@typescript-eslint/no-restricted-types': 'warn',
 			'@typescript-eslint/no-unsafe-enum-comparison': 'warn',
 			'@typescript-eslint/no-unsafe-declaration-merging': 'warn',
 			'@typescript-eslint/only-throw-error': 'warn',
 			'@typescript-eslint/no-require-imports': 'warn',
-			'@typescript-eslint/no-unsafe-call': 'warn',
-			'@typescript-eslint/no-unsafe-member-access': 'warn',
 			'@typescript-eslint/array-type': 'warn',
-			'@typescript-eslint/unbound-method': 'warn',
-			'@typescript-eslint/no-unsafe-assignment': 'warn',
 			'no-useless-escape': 'warn',
 			'@typescript-eslint/prefer-optional-chain': 'warn',
 			'@typescript-eslint/no-duplicate-type-constituents': 'warn',
@@ -138,45 +157,12 @@ export default defineConfig(
 		},
 	},
 	{
-		// Ratchet allowlist: handlers/services still reaching a repository directly, pending
-		// migration to the `@PublicApiController` + service pattern (API-70). NEVER add to this
-		// list — a new violation must fail CI. Entries are removed as each file migrates.
-		files: [
-			'./src/public-api/v1/handlers/data-tables/data-tables.handler.ts',
-			'./src/public-api/v1/handlers/data-tables/data-tables.service.ts',
-			'./src/public-api/v1/handlers/projects/projects.handler.ts',
-		],
-		rules: {
-			'n8n-local-rules/no-repository-in-public-api-handler': 'off',
-		},
-	},
-	{
 		// Ratchet allowlist: legacy `export =` handler tuples pending migration to
 		// `@PublicApiController` classes (API-70). NEVER add to this list — a new tuple handler
 		// must fail CI. Entries are removed as each handler becomes a controller.
 		files: [
-			'./src/public-api/v1/handlers/audit/audit.handler.ts',
-			'./src/public-api/v1/handlers/community-packages/community-packages.handler.ts',
-			'./src/public-api/v1/handlers/credentials/credentials.handler.ts',
-			'./src/public-api/v1/handlers/data-tables/data-tables.columns.handler.ts',
-			'./src/public-api/v1/handlers/data-tables/data-tables.handler.ts',
-			'./src/public-api/v1/handlers/data-tables/data-tables.rows.handler.ts',
-			'./src/public-api/v1/handlers/discover/discover.handler.ts',
-			'./src/public-api/v1/handlers/evaluations/evaluations.handler.ts',
-			'./src/public-api/v1/handlers/folders/folders.handler.ts',
-			'./src/public-api/v1/handlers/insights/insights.handler.ts',
-			'./src/public-api/v1/handlers/ldap/ldap.handler.ts',
 			'./src/public-api/v1/handlers/log-streaming/log-streaming.handler.ts',
 			'./src/public-api/v1/handlers/n8n-packages/n8n-packages.handler.ts',
-			'./src/public-api/v1/handlers/otel/otel.handler.ts',
-			'./src/public-api/v1/handlers/projects/projects.handler.ts',
-			'./src/public-api/v1/handlers/security-policy/security-policy.handler.ts',
-			'./src/public-api/v1/handlers/source-control/source-control.handler.ts',
-			'./src/public-api/v1/handlers/sso-oidc/sso-oidc.handler.ts',
-			'./src/public-api/v1/handlers/sso-saml/sso-saml.handler.ts',
-			'./src/public-api/v1/handlers/tags/tags.handler.ts',
-			'./src/public-api/v1/handlers/users/users.handler.ee.ts',
-			'./src/public-api/v1/handlers/variables/variables.handler.ts',
 			'./src/public-api/v1/handlers/workflows/workflows.handler.ts',
 		],
 		rules: {
@@ -191,7 +177,14 @@ export default defineConfig(
 			// wholesale rather than merging them.
 			'@typescript-eslint/no-restricted-imports': [
 				'error',
-				{ paths: [POLICY_INTERNAL_RESTRICTION, engineV2ModuleOnlyImport] },
+				{
+					paths: [
+						POLICY_INTERNAL_RESTRICTION,
+						engineV2ModuleOnlyImport,
+						jsonwebtokenSigningRestriction,
+					],
+					patterns: [jsonwebtokenSubpathRestriction],
+				},
 			],
 		},
 	},
@@ -208,8 +201,62 @@ export default defineConfig(
 						POLICY_INTERNAL_RESTRICTION,
 						...instanceAiLazyRuntimeImports,
 						engineV2ModuleOnlyImport,
+						jsonwebtokenSigningRestriction,
 					],
+					patterns: [jsonwebtokenSubpathRestriction],
 				},
+			],
+		},
+	},
+	{
+		// engine-v2 owns `@n8n/engine`, so the block above skips it wholesale — which
+		// would drop the JWT restriction too. Reinstate it here, without the engine
+		// restriction these files are exempt from.
+		files: ['./src/modules/engine-v2/**/*.ts'],
+		rules: {
+			'@typescript-eslint/no-restricted-imports': [
+				'error',
+				{
+					paths: [POLICY_INTERNAL_RESTRICTION, jsonwebtokenSigningRestriction],
+					patterns: [jsonwebtokenSubpathRestriction],
+				},
+			],
+		},
+	},
+	{
+		// The two places that hold the raw signing API. NEVER add to this list.
+		files: [
+			// Owns the signing key and derives every audience from a purpose.
+			'./src/services/jwt.service.ts',
+			// Verifies subject tokens with a foreign key from the trusted-key store,
+			// against the audience that key is registered for.
+			'./src/modules/token-exchange/services/token-exchange.service.ts',
+		],
+		rules: {
+			'@typescript-eslint/no-restricted-imports': [
+				'error',
+				{ paths: [POLICY_INTERNAL_RESTRICTION, engineV2ModuleOnlyImport] },
+			],
+		},
+	},
+	{
+		// Tests mint tokens as fixtures, including malformed ones a purpose cannot express.
+		files: ['./src/**/__tests__/**/*.ts'],
+		rules: {
+			'@typescript-eslint/no-restricted-imports': [
+				'error',
+				{ paths: [POLICY_INTERNAL_RESTRICTION, engineV2ModuleOnlyImport] },
+			],
+		},
+	},
+	{
+		// engine-v2 tests reach for `@n8n/engine` the same way the module does, and
+		// the tests block above would reinstate the restriction they are exempt from.
+		files: ['./src/modules/engine-v2/**/__tests__/**/*.ts'],
+		rules: {
+			'@typescript-eslint/no-restricted-imports': [
+				'error',
+				{ paths: [POLICY_INTERNAL_RESTRICTION] },
 			],
 		},
 	},
@@ -254,41 +301,29 @@ export default defineConfig(
 		// NEVER add to this list — a new leak must fail CI. Entries are removed as each file migrates.
 		files: [
 			// credentials/
-			'./src/credentials-helper.ts',
 			'./src/credentials/credential-connection-status-provider.interface.ts',
 			'./src/credentials/credential-connection-status-proxy.ts',
 			'./src/credentials/credential-dependency.service.ts',
-			'./src/credentials/credentials-finder.service.ts',
 			'./src/credentials/credentials.controller.ts',
 			'./src/credentials/credentials.service.ee.ts',
 			'./src/credentials/credentials.service.ts',
 			// workflows/
 			'./src/workflows/workflow-finder.service.ts',
 			'./src/workflows/workflow-history/workflow-history.service.ts',
-			'./src/workflows/workflow-sharing.service.ts',
 			'./src/workflows/workflow-validation.service.ts',
 			'./src/workflows/workflow.service.ee.ts',
 			'./src/workflows/workflow.service.ts',
 			'./src/workflows/workflows.controller.ts',
-			// services/ (incl. ownership.service.ts — surfaced only by the deep-path prefix change)
+			// services/
 			'./src/services/export.service.ts',
 			'./src/services/folder.service.ts',
-			'./src/services/folder-finder.service.ts',
 			'./src/services/hooks.service.ts',
 			'./src/services/import.service.ts',
-			'./src/services/ownership.service.ts',
-			'./src/services/ownership-transfer/ownership-transfer-handler.registry.ts',
 			'./src/services/project.service.ee.ts',
 			'./src/services/public-api-key.service.ts',
-			'./src/services/tag.service.ts',
 			// commands / controllers / eventbus / evaluation / public-api
 			'./src/commands/import/credentials.ts',
-			'./src/commands/ldap/reset.ts',
-			'./src/controllers/project.controller.ts',
-			'./src/eventbus/message-event-bus/message-event-bus.ts',
-			'./src/evaluation.ee/evaluation-collection.service.ts',
 			'./src/evaluation.ee/test-runner/test-runner.service.ee.ts',
-			'./src/public-api/v1/handlers/tags/tags.handler.ts',
 			// modules/** non-persistence services surfaced by narrowing the exemption
 			'./src/modules/agents/agent-knowledge.service.ts',
 			'./src/modules/agents/agent-publish.service.ts',
@@ -308,7 +343,6 @@ export default defineConfig(
 			'./src/modules/dynamic-credentials.ee/services/credential-resolver.service.ts',
 			'./src/modules/external-secrets.ee/secrets-providers-connections.service.ee.ts',
 			'./src/modules/favorites/favorites.service.ts',
-			'./src/modules/insights/insights-collection.service.ts',
 			'./src/modules/instance-ai/instance-ai.adapter.service.ts',
 			'./src/modules/instance-ai/mcp/instance-ai-mcp-registry.service.ts',
 			'./src/modules/instance-ai/storage/typeorm-agent-checkpoint-store.ts',
@@ -346,7 +380,6 @@ export default defineConfig(
 			'./src/executions/execution-data/db-store.ts',
 			'./src/executions/execution-persistence.ts',
 			'./src/executions/execution-recovery.service.ts',
-			'./src/executions/execution.service.ts',
 			'./src/instance-settings-loader/loaders/log-streaming.instance-settings-loader.ts',
 			'./src/modules/agents/agents.service.ts',
 			'./src/modules/chat-hub/chat-hub-agent.service.ts',
@@ -388,6 +421,8 @@ export default defineConfig(
 			'./src/modules/agents/integrations/agent-channel-reconciler.service.ts',
 			'./src/modules/agents/integrations/leader-channel-relay.service.ts',
 			'./src/modules/agents/integrations/platforms/discord-integration.ts',
+			'./src/modules/token-exchange/services/trusted-key.service.ts',
+			'./src/services/pruning/workflow-history-compaction.service.ts',
 		],
 		rules: { 'n8n-local-rules/no-on-leader-takeover': 'off' },
 	},
@@ -396,18 +431,8 @@ export default defineConfig(
 		// tasks. NEVER add to this list — new periodic leader work must be a
 		// @SystemTask() class. Entries are removed as each migrates on its own ticket.
 		files: [
-			'./src/license.ts',
-			'./src/modules/agents/integrations/n8n-checkpoint-storage.ts',
-			'./src/modules/insights/insights.service.ts',
-			'./src/modules/instance-ai/instance-ai.service.ts',
-			'./src/modules/instance-registry/checks/check.service.ts',
-			'./src/modules/instance-registry/stale-member-cleanup.service.ts',
-			'./src/modules/token-exchange/services/jti-cleanup.service.ts',
-			'./src/modules/token-exchange/services/trusted-key.service.ts',
 			'./src/services/pruning/executions-pruning.service.ts',
-			'./src/services/pruning/workflow-history-compaction.service.ts',
 			'./src/services/workflow-statistics-rollup.service.ts',
-			'./src/workflows/publication/workflow-publication-outbox-cleanup.service.ts',
 		],
 		rules: { 'n8n-local-rules/no-on-leader-takeover': 'off' },
 	},
@@ -421,14 +446,7 @@ export default defineConfig(
 	{
 		files: ['./src/decorators/**/*.ts'],
 		rules: {
-			'@typescript-eslint/no-restricted-types': [
-				'warn',
-				{
-					types: {
-						Function: false,
-					},
-				},
-			],
+			'@typescript-eslint/no-restricted-types': 'warn',
 		},
 	},
 	{

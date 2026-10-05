@@ -1,3 +1,4 @@
+import { EventService } from '@n8n/backend-services';
 import { mockLogger, mockInstance } from '@n8n/backend-test-utils';
 import type { WorkflowHistory } from '@n8n/db';
 import {
@@ -11,7 +12,6 @@ import { mockClear } from 'vitest-mock-extended';
 
 import { SharedWorkflowNotFoundError } from '@/errors/shared-workflow-not-found.error';
 import { WorkflowHistoryVersionNotFoundError } from '@/errors/workflow-history-version-not-found.error';
-import { EventService } from '@/events/event.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import { getWorkflow, getWorkflowHistory } from '@test-integration/workflow';
@@ -51,6 +51,7 @@ describe('WorkflowHistoryService', () => {
 		mockClear(workflowHistoryRepository.find);
 		mockClear(workflowHistoryRepository.findOne);
 		mockClear(workflowPublishHistoryRepository.find);
+		mockClear(workflowPublishHistoryRepository.findByVersion);
 		mockClear(workflowFinderService.findWorkflowForUser);
 	});
 
@@ -266,6 +267,26 @@ describe('WorkflowHistoryService', () => {
 
 			// Assert
 			expect(workflowHistoryRepository.insert).toHaveBeenCalled();
+		});
+	});
+
+	describe('getVersion', () => {
+		it('should not load publish history when includePublishHistory is false', async () => {
+			// Arrange
+			const workflow = getWorkflow({ addNodeWithoutCreds: true });
+			workflow.id = '123';
+			const version = getWorkflowHistory(workflow, { versionId: 'version1' });
+			workflowFinderService.findWorkflowForUser.mockResolvedValueOnce(workflow);
+			workflowHistoryRepository.findOne.mockResolvedValueOnce(version);
+
+			// Act
+			const result = await workflowHistoryService.getVersion(testUser, workflow.id, 'version1', {
+				includePublishHistory: false,
+			});
+
+			// Assert
+			expect(result).toBe(version);
+			expect(workflowPublishHistoryRepository.findByVersion).not.toHaveBeenCalled();
 		});
 	});
 

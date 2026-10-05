@@ -31,6 +31,7 @@ export interface AzureOpenAIOptions {
 	temperature?: number;
 	topP?: number;
 	responseFormat?: 'text' | 'json_object';
+	extraBody?: string;
 }
 
 /**
@@ -63,6 +64,16 @@ export interface AzureOpenAIOAuth2ModelConfig extends AzureOpenAIBaseModelConfig
 	azureOpenAIApiKey?: undefined;
 	azureADTokenProvider: () => Promise<string>;
 }
+
+/** Audience for the node's inference requests. */
+export const AZURE_OPENAI_INFERENCE_AUDIENCE = 'https://cognitiveservices.azure.com';
+
+/**
+ * Audience for the Foundry deployments-list call. Each tenant's Entra ID app
+ * registration grants access per audience, so this is requested only for the
+ * call that needs it, not for every token the node mints.
+ */
+export const AZURE_AI_FOUNDRY_AUDIENCE = 'https://ai.azure.com';
 
 /**
  * Authentication types supported by Azure OpenAI node
@@ -98,5 +109,5 @@ export type AzureEntraCognitiveServicesOAuth2ApiCredential = OAuth2CredentialDat
 	endpointType?: 'classic' | 'foundry';
 	foundryEndpoint?: string;
 	tenantId: string;
-	oauthTokenData: TokenData;
+	oauthTokenData?: TokenData;
 };

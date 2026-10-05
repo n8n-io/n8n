@@ -1,6 +1,6 @@
 {
   "name": "@n8n/chat",
-  "version": "1.36.0",
+  "version": "1.41.0",
   "scripts": {
     "clean": "rimraf dist .turbo",
     "dev": "pnpm run --dir=../storybook dev --initial-path=/docs/chat-chat--docs",
@@ -57,20 +57,23 @@
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
     "@storybook/vue3": "catalog:storybook",
-    "@storybook/vue3-vite": "catalog:storybook",
     "@testing-library/jest-dom": "catalog:frontend",
     "@testing-library/vue": "catalog:frontend",
     "@types/markdown-it": "catalog:",
     "@types/markdown-it-link-attributes": "catalog:",
     "@vitejs/plugin-vue": "catalog:frontend",
+    "@vitest/coverage-istanbul": "catalog:",
     "@vitest/coverage-v8": "catalog:",
     "@vue/test-utils": "catalog:frontend",
     "unplugin-icons": "^0.19.0",
     "typescript": "catalog:",
     "vite": "catalog:",
-    "vite-plugin-dts": "catalog:",
+    "unplugin-dts": "catalog:",
     "vitest": "catalog:",
     "vue-tsc": "catalog:frontend"
+  },
+  "peerDependencies": {
+    "@vue/language-core": "catalog:frontend"
   },
   "files": [
     "README.md",

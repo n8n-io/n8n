@@ -34,6 +34,7 @@ const props = withDefaults(defineProps<InputNumberProps>(), {
 	controlsPosition: 'right',
 	step: 1,
 	stepSnapping: false,
+	useGrouping: false,
 });
 
 const isControlsRight = computed(() => props.controls && props.controlsPosition === 'right');
@@ -60,8 +61,12 @@ defineExpose<InputNumberExposed>({ focus, blur, select });
 // to preserve full decimal precision and avoid default rounding behavior
 const formatOptions = computed<Intl.NumberFormatOptions>(() =>
 	props.precision !== undefined
-		? { maximumFractionDigits: props.precision, minimumFractionDigits: props.precision }
-		: { maximumFractionDigits: 20 },
+		? {
+				maximumFractionDigits: props.precision,
+				minimumFractionDigits: props.precision,
+				useGrouping: props.useGrouping,
+			}
+		: { maximumFractionDigits: 20, useGrouping: props.useGrouping },
 );
 
 const rootProps = useForwardPropsEmits(

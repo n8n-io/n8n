@@ -1,3 +1,5 @@
+import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
+
 import type { WorkflowSourceCompileFailureReason } from './workflow-source-compiler';
 import { isWorkflowEditorLockedError } from '../../errors/workflow-editor-locked.error';
 import { isWorkflowNotFoundError } from '../../errors/workflow-not-found.error';
@@ -11,7 +13,7 @@ export const INVALID_WORKFLOW_ID_GUIDANCE =
 	'workflowId must be a real n8n workflow id from a prior build-workflow or workflows() tool result — never the first argument of workflow(slug, name).';
 
 function getFailureText(error: unknown): string {
-	return (error instanceof Error ? error.message : String(error)).toLowerCase();
+	return getErrorMessage(error).toLowerCase();
 }
 
 function isCredentialSaveFailure(text: string): boolean {

@@ -4,6 +4,7 @@ import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useToast } from '@n8n/composables/useToast';
 import { registerToastNotifier } from '@/app/init/toastNotifier';
+import { registerExperimentModals } from '@/app/modals.manifest';
 import { isDataWorkerEnabled } from '@/app/workers/isDataWorkerEnabled';
 import { EnterpriseEditionFeature, VIEWS } from '@/app/constants';
 
@@ -11,6 +12,7 @@ import type { AuthenticationMethod } from '@n8n/api-types';
 import {
 	registerModuleCommands,
 	registerModuleModals,
+	registerModuleParameterInputs,
 	registerModuleProjectTabs,
 	registerModulePushHandlers,
 	registerModuleResources,
@@ -36,6 +38,7 @@ import { useRolesStore } from '@n8n/stores/roles.store';
 import { useDataTableStore } from '@/features/core/dataTable/dataTable.store';
 import { useFavoritesStore } from '@/app/stores/favorites.store';
 import { hasPermission } from '@/app/utils/rbac/permissions';
+import { initializeExpressionEngine } from '@/app/init/expressionEngine';
 
 export const state = {
 	initialized: false,
@@ -79,10 +82,17 @@ export async function initializeCore() {
 		});
 	}
 
+	// Must run before any view renders: expressions evaluate as soon as workflow
+	// data is displayed, and the engine has to be in place by then.
+	try {
+		await initializeExpressionEngine(settingsStore.settings.expressionEngine);
+	} catch (error) {
+		console.error('Failed to initialize the expression engine', error);
+	}
+
 	ssoStore.initialize({
 		authenticationMethod: settingsStore.userManagement.authenticationMethod as AuthenticationMethod,
 		managedByEnv: settingsStore.settings.sso.managedByEnv,
-		redirectLoginToSso: settingsStore.settings.sso.redirectLoginToSso,
 		config: settingsStore.settings.sso,
 		features: {
 			saml: settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Saml],
@@ -239,9 +249,11 @@ export async function initializeAuthenticatedFeatures(
 	registerModuleResources();
 	registerModuleProjectTabs();
 	registerModuleModals();
+	registerExperimentModals();
 	registerModuleSettingsPages();
 	registerModulePushHandlers();
 	registerModuleCommands();
+	registerModuleParameterInputs();
 
 	// Initialize run data worker and load node types
 	if (isDataWorkerEnabled()) {
@@ -269,6 +281,16 @@ function registerAuthenticationHooks() {
 	usersStore.registerLoginHook(async (user) => {
 		await settingsStore.getSettings();
 
+		// Start the expression engine now if the app booted unauthenticated.
+		// Public settings omit the engine, so `initializeCore` left the legacy
+		// evaluator in place; this is the first point where the choice is known.
+		// Nothing evaluates an expression before login, so this is early enough.
+		try {
+			await initializeExpressionEngine(settingsStore.settings.expressionEngine);
+		} catch (error) {
+			console.error('Failed to initialize the expression engine', error);
+		}
+
 		// Re-initialize SSO store with authenticated settings.
 		// Before login, public settings omit callbackUrl, leaving it empty.
 		// Without this, navigating to SSO settings after login shows an empty redirect URL.
@@ -276,7 +298,6 @@ function registerAuthenticationHooks() {
 			authenticationMethod: settingsStore.userManagement
 				.authenticationMethod as AuthenticationMethod,
 			managedByEnv: settingsStore.settings.sso.managedByEnv,
-			redirectLoginToSso: settingsStore.settings.sso.redirectLoginToSso,
 			config: settingsStore.settings.sso,
 			features: {
 				saml: settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Saml],

@@ -19,6 +19,7 @@ import TimeAgo from '@/app/components/TimeAgo.vue';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import ProjectCardBadge from '@/features/collaboration/projects/components/ProjectCardBadge.vue';
 import DependencyPill from '@/app/components/DependencyPill.vue';
+import PublicationIndicator from '@/app/components/PublicationIndicator.vue';
 import { type BaseTextKey, useI18n } from '@n8n/i18n';
 import type { WorkflowListPublicationStatus } from '@n8n/api-types';
 import type { StatusDotVariant } from '@n8n/design-system';
@@ -42,7 +43,6 @@ import {
 	N8nBreadcrumbs,
 	N8nCard,
 	N8nIcon,
-	N8nStatusDot,
 	N8nTags,
 	N8nText,
 	N8nTooltip,
@@ -50,7 +50,7 @@ import {
 // Experiment cleanup: remove with openWorkflowInAssistant.
 import OpenInAssistantCardButton from '@/experiments/openWorkflowInAssistant/components/OpenInAssistantCardButton.vue';
 import { useOpenInAssistantCard } from '@/experiments/openWorkflowInAssistant/composables/useOpenInAssistantCard';
-import WorkflowCardMcpToggle from '@/features/ai/mcpAccess/components/WorkflowCardMcpToggle.vue';
+import WorkflowCardMcpToggle from '@/app/components/WorkflowCardMcpToggle.vue';
 import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
 import { useMcp } from '@/features/ai/mcpAccess/composables/useMcp';
 import { useWorkflowActivate } from '@/app/composables/useWorkflowActivate';
@@ -70,6 +70,7 @@ const WORKFLOW_LIST_ITEM_ACTIONS = {
 	ENABLE_MCP_ACCESS: 'enableMCPAccess',
 	REMOVE_MCP_ACCESS: 'removeMCPAccess',
 	UNPUBLISH: 'unpublish',
+	PUBLISH: 'publish',
 	TOGGLE_FAVORITE: 'toggleFavorite',
 };
 
@@ -106,6 +107,7 @@ const emit = defineEmits<{
 	'workflow:archived': [];
 	'workflow:unarchived': [];
 	'workflow:unpublished': [value: { id: string }];
+	'workflow:published': [value: { id: string }];
 	'workflow:active-toggle': [value: { id: string; active: boolean }];
 	'action:move-to-folder': [
 		value: {
@@ -237,22 +239,16 @@ const actions = computed(() => {
 		});
 	}
 
-	if (workflowPermissions.value.delete && !props.readOnly) {
-		if (!props.data.isArchived) {
-			items.push({
-				label: locale.baseText('workflows.item.archive'),
-				value: WORKFLOW_LIST_ITEM_ACTIONS.ARCHIVE,
-			});
-		} else {
-			items.push({
-				label: locale.baseText('workflows.item.delete'),
-				value: WORKFLOW_LIST_ITEM_ACTIONS.DELETE,
-			});
-			items.push({
-				label: locale.baseText('workflows.item.unarchive'),
-				value: WORKFLOW_LIST_ITEM_ACTIONS.UNARCHIVE,
-			});
-		}
+	if (
+		!isWorkflowPublished.value &&
+		workflowPermissions.value.publish &&
+		!props.readOnly &&
+		!props.data.isArchived
+	) {
+		items.push({
+			label: locale.baseText('menuActions.publish'),
+			value: WORKFLOW_LIST_ITEM_ACTIONS.PUBLISH,
+		});
 	}
 
 	if (
@@ -278,11 +274,33 @@ const actions = computed(() => {
 			items.push({
 				label: locale.baseText('workflows.item.disableMCPAccess'),
 				value: WORKFLOW_LIST_ITEM_ACTIONS.REMOVE_MCP_ACCESS,
+				divided: true,
 			});
 		} else {
 			items.push({
 				label: locale.baseText('workflows.item.enableMCPAccess'),
 				value: WORKFLOW_LIST_ITEM_ACTIONS.ENABLE_MCP_ACCESS,
+				divided: true,
+			});
+		}
+	}
+
+	if (workflowPermissions.value.delete && !props.readOnly) {
+		if (!props.data.isArchived) {
+			items.push({
+				label: locale.baseText('workflows.item.archive'),
+				value: WORKFLOW_LIST_ITEM_ACTIONS.ARCHIVE,
+				divided: true,
+			});
+		} else {
+			items.push({
+				label: locale.baseText('workflows.item.delete'),
+				value: WORKFLOW_LIST_ITEM_ACTIONS.DELETE,
+				divided: true,
+			});
+			items.push({
+				label: locale.baseText('workflows.item.unarchive'),
+				value: WORKFLOW_LIST_ITEM_ACTIONS.UNARCHIVE,
 			});
 		}
 	}
@@ -364,7 +382,7 @@ const hasDynamicCredentials = computed(() => {
 	return isPrivateCredentialsEnabled.value && props.data.hasResolvableCredentials;
 });
 
-const workflowHasDependencies = computed(() => hasDependencies(props.data.id));
+const workflowHasDependencies = computed(() => hasDependencies(props.data.id, 'workflow'));
 
 async function onClick(event?: KeyboardEvent | PointerEvent) {
 	// Experiment cleanup: remove with openWorkflowInAssistant.
@@ -447,6 +465,9 @@ async function onAction(action: string) {
 		case WORKFLOW_LIST_ITEM_ACTIONS.UNPUBLISH:
 			await unpublishWorkflow();
 			break;
+		case WORKFLOW_LIST_ITEM_ACTIONS.PUBLISH:
+			await publishWorkflow();
+			break;
 		case WORKFLOW_LIST_ITEM_ACTIONS.ENABLE_MCP_ACCESS:
 			await toggleMCPAccess(true);
 			break;
@@ -456,6 +477,25 @@ async function onAction(action: string) {
 		case WORKFLOW_LIST_ITEM_ACTIONS.TOGGLE_FAVORITE:
 			await favoritesStore.toggleFavorite(props.data.id, 'workflow');
 			break;
+	}
+}
+
+async function publishWorkflow() {
+	// The list item does not carry versionId; fetch the full workflow to get it.
+	const workflow = await workflowsListStore.fetchWorkflow(props.data.id);
+	if (!workflow.versionId) {
+		toast.showMessage({
+			title: locale.baseText('workflows.item.publish.notAvailable'),
+			type: 'warning',
+		});
+		return;
+	}
+
+	const result = await workflowActivate.publishWorkflow(props.data.id, workflow.versionId, {
+		name: props.data.name,
+	});
+	if (result.success) {
+		emit('workflow:published', { id: props.data.id });
 	}
 }
 
@@ -486,6 +526,7 @@ async function unpublishWorkflow() {
 	uiStore.openModalWithData({
 		name: WORKFLOW_HISTORY_VERSION_UNPUBLISH,
 		data: {
+			workflowId: props.data.id,
 			versionName: props.data.name,
 			eventBus: unpublishEventBus,
 		},
@@ -661,7 +702,7 @@ const tags = computed(
 				data-test-id="workflow-card-name"
 			>
 				{{ data.name }}
-				<N8nBadge v-if="!workflowPermissions.update" class="ml-3xs" theme="tertiary" bold>
+				<N8nBadge v-if="!workflowPermissions.update" class="ml-3xs" variant="outline">
 					{{ locale.baseText('workflows.item.readonly') }}
 				</N8nBadge>
 			</N8nText>
@@ -758,32 +799,14 @@ const tags = computed(
 				>
 					{{ locale.baseText('workflows.item.archived') }}
 				</N8nText>
-				<!-- The tooltip is only mounted for the rare partial/failed states; the
-					common published case keeps the plain markup. -->
-				<template v-else-if="publicationIndicator">
-					<div
-						v-if="!publicationIndicator.tooltip"
-						:class="$style.publishIndicator"
-						:data-state="publicationIndicator.state"
-						data-test-id="workflow-card-publish-indicator"
-					>
-						<N8nStatusDot :variant="publicationIndicator.variant" />
-						<N8nText size="small" color="text-base">{{ publicationIndicator.label }}</N8nText>
-					</div>
-					<N8nTooltip v-else placement="top" as-child>
-						<template #content>{{ publicationIndicator.tooltip }}</template>
-						<!-- tabindex makes the explanation keyboard-reachable: the tooltip opens on focus. -->
-						<div
-							:class="$style.publishIndicator"
-							:data-state="publicationIndicator.state"
-							data-test-id="workflow-card-publish-indicator"
-							tabindex="0"
-						>
-							<N8nStatusDot :variant="publicationIndicator.variant" />
-							<N8nText size="small" color="text-base">{{ publicationIndicator.label }}</N8nText>
-						</div>
-					</N8nTooltip>
-				</template>
+				<PublicationIndicator
+					v-else-if="publicationIndicator"
+					:variant="publicationIndicator.variant"
+					:label="publicationIndicator.label"
+					:tooltip="publicationIndicator.tooltip"
+					:data-state="publicationIndicator.state"
+					data-test-id="workflow-card-publish-indicator"
+				/>
 				<WorkflowCardMcpToggle
 					v-if="props.isWorkflowCardMcpToggleEnabled"
 					:workflow-id="data.id"
@@ -808,6 +831,8 @@ const tags = computed(
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/breakpoints';
+
 .cardLink {
 	transition: box-shadow 0.3s ease;
 	cursor: pointer;
@@ -878,6 +903,7 @@ const tags = computed(
 
 .cardBadge {
 	background-color: var(--color--background--light-3);
+	border-radius: var(--radius--full);
 }
 
 .cardBadge.with-breadcrumbs {
@@ -895,21 +921,7 @@ const tags = computed(
 	color: var(--color--text);
 }
 
-.publishIndicator {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--3xs);
-	padding: var(--spacing--4xs) var(--spacing--2xs);
-	border-radius: var(--spacing--4xs);
-	border: var(--border);
-
-	* {
-		// This is needed to line height up with ownership badge
-		line-height: calc(var(--font-size--sm) + 1px);
-	}
-}
-
-@include mixins.breakpoint('sm-and-down') {
+@include breakpoints.breakpoint('sm-and-down') {
 	.cardLink {
 		--card--padding: 0 var(--spacing--sm) var(--spacing--sm);
 		--card--append--width: 100%;
@@ -929,7 +941,7 @@ const tags = computed(
 	}
 }
 
-@include mixins.breakpoint('xs-only') {
+@include breakpoints.breakpoint('xs-only') {
 	.breadcrumbs > div {
 		flex-direction: column;
 	}
