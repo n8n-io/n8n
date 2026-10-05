@@ -275,6 +275,18 @@ describe('NextCloud GenericFunctions', () => {
 			);
 		});
 
+		it('throws NodeOperationError when webDavUrl is missing from credentials', async () => {
+			const { functions, getCredentials, requestWithAuthentication } = buildFunctions();
+			getCredentials.mockResolvedValue({ webDavUrl: undefined as unknown as string });
+			requestWithAuthentication.mockResolvedValue({ status: 'ok' });
+
+			const promise = nextCloudApiRequest.call(functions, 'GET', '/test.txt', '');
+			await expect(promise).rejects.toThrow(NodeOperationError);
+			await expect(promise).rejects.toThrow(
+				'Invalid WebDAV URL in credentials: "". The URL must start with https:// or http://.',
+			);
+		});
+
 		it('normalizes a webDavUrl missing one slash after the protocol', async () => {
 			const { functions, getCredentials, requestWithAuthentication } = buildFunctions();
 			getCredentials.mockResolvedValue({ webDavUrl: 'http:/localhost:8080/remote.php/webdav' });

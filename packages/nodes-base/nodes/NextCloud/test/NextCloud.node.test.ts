@@ -201,6 +201,21 @@ describe('NextCloud Node', () => {
 		});
 	});
 
+	it('does not normalize webDavUrl when it is missing from credentials', async () => {
+		const { executeFunctions, getCredentials } = buildExecuteFunctions({
+			parameters: {
+				resource: 'file',
+				operation: 'delete',
+				path: '/test.txt',
+			},
+		});
+		getCredentials.mockResolvedValue({ webDavUrl: undefined as unknown as string });
+
+		await expect(executeNode(executeFunctions)).rejects.toThrow(
+			'Invalid WebDAV URL in credentials',
+		);
+	});
+
 	describe('file', () => {
 		it('downloads a file as binary data', async () => {
 			const downloadBuffer = Buffer.from('downloaded file');
@@ -308,6 +323,31 @@ describe('NextCloud Node', () => {
 			});
 			expectWebDavUri(requestOptions(requestWithAuthentication).uri);
 			expect(result).toEqual([[{ json: { status: 'copied' }, pairedItem: { item: 0 } }]]);
+		});
+
+		it('normalizes a malformed webDavUrl in the copy Destination header', async () => {
+			const { executeFunctions, getCredentials, requestWithAuthentication } = buildExecuteFunctions(
+				{
+					parameters: {
+						resource: 'file',
+						operation: 'copy',
+						path: '/from.txt',
+						toPath: '/to.txt',
+					},
+				},
+			);
+			getCredentials.mockResolvedValue({
+				webDavUrl: 'https:/nextcloud.example.com/remote.php/webdav',
+			});
+			requestWithAuthentication.mockResolvedValue({ status: 'copied' });
+
+			await executeNode(executeFunctions);
+
+			expect(requestOptions(requestWithAuthentication)).toMatchObject({
+				method: 'COPY',
+				uri: `${webDavUri('/from.txt')}`,
+				headers: { Destination: `${webDavUri('/to.txt')}` },
+			});
 		});
 
 		it('moves a file', async () => {
@@ -690,6 +730,35 @@ describe('NextCloud Node', () => {
 				},
 			});
 			expectWebDavUri(requestOptions(requestWithAuthentication).uri);
+			expect(constructExecutionMetaData).toHaveBeenCalledWith(
+				[{ json: { link: `${baseUrl}/f/55555` } }],
+				{ itemData: { item: 0 } },
+			);
+			expect(result).toEqual([[{ json: { link: `${baseUrl}/f/55555` }, pairedItem: { item: 0 } }]]);
+		});
+
+		it('normalizes a malformed webDavUrl when generating an internal link', async () => {
+			const {
+				constructExecutionMetaData,
+				executeFunctions,
+				getCredentials,
+				requestWithAuthentication,
+			} = buildExecuteFunctions({
+				parameters: {
+					resource,
+					operation: 'share',
+					path,
+					shareType: 200,
+					options: {},
+				},
+			});
+			getCredentials.mockResolvedValue({
+				webDavUrl: 'https:/nextcloud.example.com/remote.php/webdav',
+			});
+			requestWithAuthentication.mockResolvedValue(webDavFilePropfindResponse);
+
+			const result = await executeNode(executeFunctions);
+
 			expect(constructExecutionMetaData).toHaveBeenCalledWith(
 				[{ json: { link: `${baseUrl}/f/55555` } }],
 				{ itemData: { item: 0 } },

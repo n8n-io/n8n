@@ -7,6 +7,11 @@ import {
 	type IDataObject,
 } from 'n8n-workflow';
 
+// Tolerates a webDavUrl missing one slash after the scheme; stricter axios validation now rejects it outright.
+export function normalizeWebDavUrl(webDavUrl: string): string {
+	return (webDavUrl ?? '').replace(/^(https?:)\/(?!\/)/, '$1//');
+}
+
 /**
  * Make an API request to NextCloud
  *
@@ -31,9 +36,7 @@ export async function nextCloudApiRequest(
 		credentials = await this.getCredentials<{ webDavUrl: string }>('nextCloudOAuth2Api');
 	}
 
-	// Tolerate a webDavUrl missing one slash after the scheme; stricter axios validation now rejects it outright.
-	let webDavUrl = credentials.webDavUrl ?? '';
-	webDavUrl = webDavUrl.replace(/^(https?:)\/(?!\/)/, '$1//');
+	const webDavUrl = normalizeWebDavUrl(credentials.webDavUrl);
 
 	if (!URL.canParse(webDavUrl) || !/^https?:\/\//.test(webDavUrl)) {
 		throw new NodeOperationError(

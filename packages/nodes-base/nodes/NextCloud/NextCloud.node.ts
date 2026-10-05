@@ -17,7 +17,7 @@ import {
 import { URLSearchParams } from 'url';
 import { parseString } from 'xml2js';
 
-import { nextCloudApiRequest } from './GenericFunctions';
+import { nextCloudApiRequest, normalizeWebDavUrl } from './GenericFunctions';
 import { wrapData } from '../../utils/utilities';
 
 export class NextCloud implements INodeType {
@@ -882,6 +882,10 @@ export class NextCloud implements INodeType {
 			credentials = await this.getCredentials('nextCloudOAuth2Api');
 		}
 
+		if (typeof credentials.webDavUrl === 'string') {
+			credentials.webDavUrl = normalizeWebDavUrl(credentials.webDavUrl);
+		}
+
 		let resource: string = '';
 		let operation: string = '';
 		let lastOperationWasDownload = false;
@@ -1113,13 +1117,6 @@ export class NextCloud implements INodeType {
 					throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`, {
 						itemIndex: i,
 					});
-				}
-
-				// Make sure that the webdav URL does never have a trailing slash because
-				// one gets added always automatically
-				let webDavUrl = credentials.webDavUrl as string;
-				if (webDavUrl.slice(-1) === '/') {
-					webDavUrl = webDavUrl.slice(0, -1);
 				}
 
 				let encoding = undefined;
