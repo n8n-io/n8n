@@ -9,7 +9,7 @@ import {
 	type TrustedSource,
 	type Verified,
 } from '@n8n/inbound-auth';
-import jwt from 'jsonwebtoken';
+import { decode, verify as verifyJwt, type Jwt } from 'jsonwebtoken';
 
 import { Logger } from '@n8n/backend-common';
 import { getPublicKeyFromJwk } from './key.utils';
@@ -41,7 +41,7 @@ export class Oauth2BearerDriver extends AuthenticationDriver {
 	async selectSource(extracted: Extracted): Promise<TrustedSource | undefined> {
 		let issuer: string | undefined;
 		try {
-			const decoded = jwt.decode(extracted.credential.token);
+			const decoded = decode(extracted.credential.token);
 			issuer = typeof decoded === 'object' && decoded !== null ? decoded?.iss : undefined;
 		} catch (error) {
 			// Handle JWT decode error if necessary
@@ -84,10 +84,10 @@ export class Oauth2BearerDriver extends AuthenticationDriver {
 		const allowedAudiences =
 			source.config.surfaces[extracted.surface]?.audiences ?? extracted.resource.acceptedAudiences;
 
-		let token: jwt.Jwt;
+		let token: Jwt;
 		try {
 			token = await new Promise((resolve, reject) => {
-				jwt.verify(
+				verifyJwt(
 					extracted.credential.token,
 					(header, keyCallback) => {
 						if (!header.kid) {

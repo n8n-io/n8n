@@ -55,6 +55,14 @@ const jsonwebtokenSubpathRestriction = {
 		'Sign and verify through JwtService, so the token is bound to a purpose in token-purposes.ts.',
 };
 
+// Verifying a token signed by a foreign key is the one thing JwtService cannot do.
+// This widens the allowlist to `decode` and `verify` only; `sign` stays restricted.
+const jsonwebtokenVerifyOnlyRestriction = {
+	...jsonwebtokenSigningRestriction,
+	allowImportNames: [...jsonwebtokenSigningRestriction.allowImportNames, 'decode', 'verify'],
+	message: 'Sign through JwtService, so the token is bound to a purpose in token-purposes.ts.',
+};
+
 const engineV2ModuleOnlyImport = {
 	name: '@n8n/engine',
 	allowTypeImports: true,
@@ -233,13 +241,29 @@ export default defineConfig(
 			// Verifies subject tokens with a foreign key from the trusted-key store,
 			// against the audience that key is registered for.
 			'./src/modules/token-exchange/services/token-exchange.service.ts',
-			// Verifies bearer tokens with the JWKS discovered for a trusted source.
-			'./src/modules/inbound-auth-core/oauth2-bearer.driver.ts',
 		],
 		rules: {
 			'@typescript-eslint/no-restricted-imports': [
 				'error',
 				{ paths: [POLICY_INTERNAL_RESTRICTION, engineV2ModuleOnlyImport] },
+			],
+		},
+	},
+	{
+		// Verifies bearer tokens with the JWKS discovered for a trusted source. Only
+		// `decode` and `verify` are admitted; signing stays with JwtService.
+		files: ['./src/modules/inbound-auth-core/oauth2-bearer.driver.ts'],
+		rules: {
+			'@typescript-eslint/no-restricted-imports': [
+				'error',
+				{
+					paths: [
+						POLICY_INTERNAL_RESTRICTION,
+						engineV2ModuleOnlyImport,
+						jsonwebtokenVerifyOnlyRestriction,
+					],
+					patterns: [jsonwebtokenSubpathRestriction],
+				},
 			],
 		},
 	},
