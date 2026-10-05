@@ -103,6 +103,34 @@ it('rejects changed settings even when version IDs do not change', async () => {
 	expect(await suggestions.count()).toBe(0);
 });
 
+it('keeps reads unchanged and closes an outdated suggestion only on refresh', async () => {
+	const { user, saved, workflows, project, baseline, graph } = await fixture();
+	const prepared = await service.prepareSuggestion(baseline, {
+		resultKind: 'fix_ready',
+		graph,
+		explanation: 'Sample fix',
+	});
+	const suggestion = await service.createSuggestion(prepared);
+	await workflows.update(saved.id, { settings: { executionTimeout: 60 } });
+
+	const detail = await service.getProposal(user, project.id, saved.id, suggestion.id);
+	expect(detail.state).toBe('pending');
+	expect((await suggestions.getSuggestion(suggestion.id, baseline)).state).toBe('pending');
+	expect(await suggestions.getActivity(suggestion.id)).toHaveLength(1);
+
+	const refreshed = await service.refreshProposal(user, project.id, saved.id, suggestion.id);
+	expect(refreshed).toMatchObject({ state: 'closed', closedReason: 'outdated' });
+	expect(refreshed.payload).toEqual(detail.payload);
+	expect(refreshed.activity).toEqual(
+		expect.arrayContaining([
+			expect.objectContaining({ action: 'submitted', author: 'assistant', actorId: null }),
+			expect.objectContaining({ action: 'outdated', author: 'system', actorId: null }),
+		]),
+	);
+	await service.refreshProposal(user, project.id, saved.id, suggestion.id);
+	expect(await suggestions.getActivity(suggestion.id)).toHaveLength(2);
+});
+
 it('stores proposed changes that still need credential configuration', async () => {
 	const { user, saved, workflows, project, baseline, graph } = await fixture();
 	graph.nodes.push({

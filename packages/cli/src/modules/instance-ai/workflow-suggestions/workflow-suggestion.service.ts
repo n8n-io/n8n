@@ -51,7 +51,7 @@ export type PreparedWorkflowSuggestion = {
 type WorkflowSuggestionTarget = {
 	workflow: WorkflowEntity | null;
 	projectId: string | undefined;
-	publicationId: number | null;
+	latestPublishHistoryEventId: number | null;
 };
 
 @Service()
@@ -117,8 +117,8 @@ export class WorkflowSuggestionService {
 				checksum: await calculateWorkflowChecksum(workflow),
 				versionCounter: workflow.versionCounter,
 				savedAt: workflow.updatedAt.toISOString(),
-				publicationId:
-					await this.workflowPublishHistoryRepository.getLatestPublicationId(workflowId),
+				latestPublishHistoryEventId:
+					await this.workflowPublishHistoryRepository.getLatestPublishHistoryEventId(workflowId),
 			},
 			original: structuredClone(pick(workflow, WORKFLOW_CHECKSUM_FIELDS)),
 		};
@@ -166,11 +166,9 @@ export class WorkflowSuggestionService {
 			workflowId,
 			ctx,
 		);
-		const publicationId = await this.workflowPublishHistoryRepository.getLatestPublicationId(
-			workflowId,
-			ctx,
-		);
-		return { workflow, projectId: ownerProject?.id, publicationId };
+		const latestPublishHistoryEventId =
+			await this.workflowPublishHistoryRepository.getLatestPublishHistoryEventId(workflowId, ctx);
+		return { workflow, projectId: ownerProject?.id, latestPublishHistoryEventId };
 	}
 
 	async readWorkflowTargetForApply(
@@ -182,11 +180,9 @@ export class WorkflowSuggestionService {
 			workflowId,
 			ctx,
 		);
-		const publicationId = await this.workflowPublishHistoryRepository.getLatestPublicationId(
-			workflowId,
-			ctx,
-		);
-		return { workflow, projectId: ownerProject?.id, publicationId };
+		const latestPublishHistoryEventId =
+			await this.workflowPublishHistoryRepository.getLatestPublishHistoryEventId(workflowId, ctx);
+		return { workflow, projectId: ownerProject?.id, latestPublishHistoryEventId };
 	}
 
 	// Prepare immediately before the caller opens its completion transaction.
@@ -203,9 +199,7 @@ export class WorkflowSuggestionService {
 				throw new ConflictError('The workflow no longer matches the published baseline.');
 			}
 			const previous = await this.suggestions.getPendingForWorkflow(workflowId, ctx);
-			if (previous && !(await this.matchesBaseline(previous, target))) {
-				await this.suggestions.closePending(previous, 'outdated', null, ctx);
-			}
+			if (previous) await this.closeIfOutdated(previous, target, ctx);
 			const suggestion = await this.suggestions.createPending(
 				baseline,
 				payload,
@@ -219,7 +213,7 @@ export class WorkflowSuggestionService {
 
 	async matchesBaseline(
 		baseline: Pick<WorkflowSuggestionBaseline, 'projectId' | 'expectedBaseline'>,
-		{ workflow, projectId, publicationId }: WorkflowSuggestionTarget,
+		{ workflow, projectId, latestPublishHistoryEventId }: WorkflowSuggestionTarget,
 	) {
 		const expected = baseline.expectedBaseline;
 		return (
@@ -228,7 +222,7 @@ export class WorkflowSuggestionService {
 			!workflow.isArchived &&
 			workflow.versionId === expected.savedVersionId &&
 			workflow.activeVersionId === expected.publishedVersionId &&
-			expected.publicationId === publicationId &&
+			expected.latestPublishHistoryEventId === latestPublishHistoryEventId &&
 			workflow.versionCounter === expected.versionCounter &&
 			workflow.updatedAt.toISOString() === expected.savedAt &&
 			(await calculateWorkflowChecksum(workflow)) === expected.checksum
@@ -242,13 +236,26 @@ export class WorkflowSuggestionService {
 	) {
 		return await this.txRunner.run(ctx, async (ctx) => {
 			const target = await this.readWorkflowTarget(scope.workflowId, ctx);
-			let suggestion = await this.suggestions.getSuggestion(suggestionId, scope, ctx);
-			if (suggestion.state === 'pending' && !(await this.matchesBaseline(suggestion, target))) {
-				await this.suggestions.closePending(suggestion, 'outdated', null, ctx);
-				suggestion = await this.suggestions.getSuggestion(suggestionId, scope, ctx);
-			}
-			return { suggestion, target };
+			const suggestion = await this.suggestions.getSuggestion(suggestionId, scope, ctx);
+			return { suggestion: await this.closeIfOutdated(suggestion, target, ctx), target };
 		});
+	}
+
+	private async closeIfOutdated(
+		suggestion: WorkflowSuggestion,
+		target: WorkflowSuggestionTarget,
+		ctx: OperationContext,
+	) {
+		if (suggestion.state !== 'pending' || (await this.matchesBaseline(suggestion, target))) {
+			return suggestion;
+		}
+		await this.suggestions.closePending(
+			suggestion,
+			'outdated',
+			{ author: 'system', actorId: null },
+			ctx,
+		);
+		return await this.suggestions.getSuggestion(suggestion.id, suggestion, ctx);
 	}
 
 	async reconcileWorkflow(workflowId: string) {
@@ -257,23 +264,35 @@ export class WorkflowSuggestionService {
 			await this.reconcilePending(pending.id, { workflowId, projectId: pending.projectId });
 	}
 
+	private async requireProposalAccess(viewer: User, projectId: string, workflowId: string) {
+		const { workflow } = await this.getEditorContext(viewer.id, workflowId);
+		if (workflow.shared.find(({ role }) => role === 'workflow:owner')?.projectId !== projectId) {
+			throw new NotFoundError('Proposal not found.');
+		}
+	}
+
+	async refreshProposal(
+		viewer: User,
+		projectId: string,
+		workflowId: string,
+		suggestionId: string,
+	): Promise<WorkflowSuggestionProposalDetail> {
+		await this.requireProposalAccess(viewer, projectId, workflowId);
+		await this.reconcilePending(suggestionId, { workflowId, projectId });
+		return await this.getProposal(viewer, projectId, workflowId, suggestionId);
+	}
+
 	async getProposal(
 		viewer: User,
 		projectId: string,
 		workflowId: string,
 		suggestionId: string,
 	): Promise<WorkflowSuggestionProposalDetail> {
-		const { workflow } = await this.getEditorContext(viewer.id, workflowId);
-		if (workflow.shared.find(({ role }) => role === 'workflow:owner')?.projectId !== projectId) {
-			throw new NotFoundError('Proposal not found.');
-		}
-		const { suggestion, target: current } = await this.reconcilePending(suggestionId, {
+		await this.requireProposalAccess(viewer, projectId, workflowId);
+		const suggestion = await this.suggestions.getSuggestion(suggestionId, {
 			workflowId,
 			projectId,
 		});
-		if (!current.workflow || current.projectId !== projectId) {
-			throw new NotFoundError('Proposal not found.');
-		}
 		const activity = await this.suggestions.getActivity(suggestionId);
 		return {
 			suggestionId,

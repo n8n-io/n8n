@@ -63,7 +63,7 @@ let suggestion: WorkflowSuggestion;
 beforeEach(async () => {
 	vi.resetAllMocks();
 	users.findByIdWithRole.mockResolvedValue(user);
-	workflowPublishHistoryRepository.getLatestPublicationId.mockResolvedValue(null);
+	workflowPublishHistoryRepository.getLatestPublishHistoryEventId.mockResolvedValue(null);
 	tx.run.mockImplementation(async (_ctx, fn) => await fn(ctx));
 	workflow = Object.assign(new WorkflowEntity(), {
 		id: 'wf',
@@ -89,7 +89,7 @@ beforeEach(async () => {
 			checksum: await calculateWorkflowChecksum(workflow),
 			versionCounter: workflow.versionCounter,
 			savedAt: workflow.updatedAt.toISOString(),
-			publicationId: null,
+			latestPublishHistoryEventId: null,
 		},
 		original: {
 			name: workflow.name,
@@ -359,6 +359,9 @@ it.each([
 	'settings',
 	'version',
 	'published',
+	'version counter',
+	'saved timestamp',
+	'publish history',
 	'archived',
 	'project',
 	'missing owner',
@@ -374,6 +377,10 @@ it.each([
 		if (change === 'settings') workflow.settings = { executionTimeout: 60 };
 		if (change === 'version') workflow.versionId = 'new';
 		if (change === 'published') workflow.activeVersionId = 'new';
+		if (change === 'version counter') workflow.versionCounter += 1;
+		if (change === 'saved timestamp') workflow.updatedAt = new Date('2026-10-01T00:00:00.000Z');
+		if (change === 'publish history')
+			workflowPublishHistoryRepository.getLatestPublishHistoryEventId.mockResolvedValue(1);
 		if (change === 'archived') workflow.isArchived = true;
 		if (change === 'project')
 			sharedWorkflowRepository.getWorkflowOwningProject.mockResolvedValue(
@@ -402,8 +409,12 @@ it.each(['missing', 'disabled', 'no edit access'] as const)(
 		await expect(service.getProposal(user, 'project', workflow.id, suggestion.id)).rejects.toThrow(
 			'edit access',
 		);
+		await expect(
+			service.refreshProposal(user, 'project', workflow.id, suggestion.id),
+		).rejects.toThrow('edit access');
 		expect(suggestions.createPending).not.toHaveBeenCalled();
 		expect(suggestions.getSuggestion).not.toHaveBeenCalled();
+		expect(suggestions.closePending).not.toHaveBeenCalled();
 	},
 );
 
@@ -413,14 +424,10 @@ it('lets another current editor review without publish permission', async () => 
 	const detail = await service.getProposal(viewer, 'project', workflow.id, suggestion.id);
 	expect(detail.payload.proposed).toEqual({ ...baseline.original, ...graph });
 	expect(detail.backgroundUserId).toBe(user.id);
-	expect(suggestions.getSuggestion).toHaveBeenCalledWith(
-		suggestion.id,
-		{
-			workflowId: workflow.id,
-			projectId: 'project',
-		},
-		ctx,
-	);
+	expect(suggestions.getSuggestion).toHaveBeenCalledWith(suggestion.id, {
+		workflowId: workflow.id,
+		projectId: 'project',
+	});
 	expect(finder.findWorkflowForUser).toHaveBeenCalledWith(
 		workflow.id,
 		viewer,
@@ -434,4 +441,8 @@ it('rejects review after ownership changes', async () => {
 	await expect(service.getProposal(user, 'project', workflow.id, suggestion.id)).rejects.toThrow(
 		'not found',
 	);
+	await expect(
+		service.refreshProposal(user, 'project', workflow.id, suggestion.id),
+	).rejects.toThrow('not found');
+	expect(suggestions.closePending).not.toHaveBeenCalled();
 });

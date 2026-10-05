@@ -14,7 +14,7 @@ export type WorkflowSuggestionBaseline = {
 		checksum: string;
 		versionCounter: number;
 		savedAt: string;
-		publicationId: number | null;
+		latestPublishHistoryEventId: number | null;
 	};
 	original: WorkflowSuggestionSnapshot;
 };
@@ -60,5 +60,5 @@ export type WorkflowSuggestionProposalDetail = {
 
 export type WorkflowSuggestionActionResult = WorkflowSuggestionProposalDetail & {
 	/** A publish request error does not establish whether the version is live. */
-	publicationError?: string;
+	publishError?: string;
 };

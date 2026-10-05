@@ -12,7 +12,7 @@ export class WorkflowPublishHistoryRepository extends BaseRepository<WorkflowPub
 		super(WorkflowPublishHistory, dataSource.manager, transactionRunner);
 	}
 
-	async getLatestPublicationId(workflowId: string, ctx: OperationContext = {}) {
+	async getLatestPublishHistoryEventId(workflowId: string, ctx: OperationContext = {}) {
 		const publication = await this.managerFor(ctx).findOne(WorkflowPublishHistory, {
 			where: { workflowId },
 			order: { id: 'DESC' },

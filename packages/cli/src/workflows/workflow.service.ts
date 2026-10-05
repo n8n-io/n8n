@@ -834,9 +834,9 @@ export class WorkflowService {
 		if (tagIds && !tagsDisabled) {
 			await this.workflowTagMappingRepository.overwriteTaggings(workflowId, tagIds, ctx);
 		}
-		const savedWorkflow = await this.workflowRepository.findSavedWorkflow(
-			workflowId,
-			!tagsDisabled,
+		const savedWorkflow = await this.workflowRepository.get(
+			{ id: workflowId },
+			{ relations: tagsDisabled ? ['activeVersion'] : ['tags', 'activeVersion'] },
 			ctx,
 		);
 		if (!savedWorkflow) {

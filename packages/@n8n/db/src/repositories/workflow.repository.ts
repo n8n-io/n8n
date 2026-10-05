@@ -214,8 +214,9 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 	async get(
 		where: FindOptionsWhere<WorkflowEntity>,
 		options?: { relations: string[] | FindOptionsRelations<WorkflowEntity> },
+		ctx: OperationContext = {},
 	) {
-		return await this.findOne({
+		return await this.managerFor(ctx).findOne(WorkflowEntity, {
 			where,
 			relations: options?.relations,
 		});
@@ -312,13 +313,6 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 		await runWorkflowContentWrite(
 			async () => await this.managerFor(ctx).update(WorkflowEntity, id, content),
 		);
-	}
-
-	async findSavedWorkflow(id: string, includeTags: boolean, ctx: OperationContext) {
-		return await this.managerFor(ctx).findOne(WorkflowEntity, {
-			where: { id },
-			relations: includeTags ? ['tags', 'activeVersion'] : ['activeVersion'],
-		});
 	}
 
 	/**

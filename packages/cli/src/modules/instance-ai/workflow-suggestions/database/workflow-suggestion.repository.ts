@@ -81,7 +81,7 @@ export class WorkflowSuggestionRepository extends BaseRepository<WorkflowSuggest
 	async appendActivity(
 		suggestionId: string,
 		action: WorkflowSuggestionActivityDto['action'],
-		actorId: string | null,
+		actor: Pick<WorkflowSuggestionActivityDto, 'author' | 'actorId'>,
 		ctx: OperationContext,
 	) {
 		const manager = this.managerFor(ctx);
@@ -93,8 +93,8 @@ export class WorkflowSuggestionRepository extends BaseRepository<WorkflowSuggest
 				id: generateNanoId(),
 				suggestionId,
 				action,
-				actorId,
-				author: action === 'submitted' ? 'assistant' : actorId ? 'human' : 'system',
+				author: actor.author,
+				actorId: actor.actorId,
 			})
 			.orIgnore()
 			.execute();
@@ -103,7 +103,7 @@ export class WorkflowSuggestionRepository extends BaseRepository<WorkflowSuggest
 	async closePending(
 		suggestion: WorkflowSuggestion,
 		reason: NonNullable<WorkflowSuggestion['closedReason']>,
-		actorId: string | null,
+		actor: Pick<WorkflowSuggestionActivityDto, 'author' | 'actorId'>,
 		ctx: OperationContext,
 		appliedVersion: WorkflowSuggestionAppliedVersion | null = null,
 	) {
@@ -113,7 +113,7 @@ export class WorkflowSuggestionRepository extends BaseRepository<WorkflowSuggest
 			{ state: 'closed', closedReason: reason, closedAt: new Date(), appliedVersion },
 		);
 		if (result.affected !== 1) return false;
-		await this.appendActivity(suggestion.id, reason, actorId, ctx);
+		await this.appendActivity(suggestion.id, reason, actor, ctx);
 		return true;
 	}
 

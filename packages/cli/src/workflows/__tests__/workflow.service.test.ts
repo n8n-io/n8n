@@ -454,7 +454,7 @@ describe('WorkflowService', () => {
 		let workflowRepositoryMock: MockProxy<{
 			update: Mock;
 			updateContent: Mock;
-			findSavedWorkflow: Mock;
+			get: Mock;
 		}>;
 
 		beforeEach(() => {
@@ -537,7 +537,7 @@ describe('WorkflowService', () => {
 				tags: [],
 			});
 			workflowFinderServiceMock.findWorkflowForUser.mockResolvedValue(existingWorkflow);
-			workflowRepositoryMock.findSavedWorkflow.mockResolvedValue(existingWorkflow);
+			workflowRepositoryMock.get.mockResolvedValue(existingWorkflow);
 			return existingWorkflow;
 		}
 
@@ -602,7 +602,11 @@ describe('WorkflowService', () => {
 				expect.anything(),
 				expect.objectContaining({ trx: ctx.trx }),
 			);
-			expect(workflowRepositoryMock.findSavedWorkflow).toHaveBeenCalledWith(original.id, true, ctx);
+			expect(workflowRepositoryMock.get).toHaveBeenCalledWith(
+				{ id: original.id },
+				{ relations: ['tags', 'activeVersion'] },
+				ctx,
+			);
 			expect(externalHooksMock.run).not.toHaveBeenCalledWith(
 				'workflow.afterUpdate',
 				expect.anything(),
@@ -704,7 +708,7 @@ describe('WorkflowService', () => {
 				tags: [],
 			} as unknown as WorkflowEntity;
 			workflowFinderServiceMock.findWorkflowForUser.mockResolvedValue(existingWorkflow);
-			workflowRepositoryMock.findSavedWorkflow.mockResolvedValue(existingWorkflow);
+			workflowRepositoryMock.get.mockResolvedValue(existingWorkflow);
 
 			const user = mock<User>();
 			await workflowService.update(
@@ -2620,7 +2624,7 @@ describe('WorkflowService', () => {
 		let workflowRepositoryMock: MockProxy<{
 			update: Mock;
 			updateContent: Mock;
-			findSavedWorkflow: Mock;
+			get: Mock;
 		}>;
 
 		const WORKFLOW_ID = 'workflow-1';
@@ -2691,7 +2695,7 @@ describe('WorkflowService', () => {
 				tags: [],
 			});
 			workflowFinderServiceMock.findWorkflowForUser.mockResolvedValue(workflow);
-			workflowRepositoryMock.findSavedWorkflow.mockResolvedValue(workflow);
+			workflowRepositoryMock.get.mockResolvedValue(workflow);
 
 			const user = mock<User>({
 				id: 'user-1',
@@ -2739,7 +2743,7 @@ describe('WorkflowService', () => {
 				tags: [],
 			});
 			workflowFinderServiceMock.findWorkflowForUser.mockResolvedValue(workflow);
-			workflowRepositoryMock.findSavedWorkflow.mockResolvedValue(workflow);
+			workflowRepositoryMock.get.mockResolvedValue(workflow);
 
 			const user = mock<User>({
 				id: 'user-1',
@@ -2770,7 +2774,7 @@ describe('WorkflowService', () => {
 		let workflowRepositoryMock: MockProxy<{
 			update: Mock;
 			updateContent: Mock;
-			findSavedWorkflow: Mock;
+			get: Mock;
 		}>;
 
 		const WORKFLOW_ID = 'workflow-1';
@@ -2809,7 +2813,7 @@ describe('WorkflowService', () => {
 
 			const storedWorkflow = makeStoredWorkflow();
 			workflowFinderServiceMock.findWorkflowForUser.mockResolvedValue(storedWorkflow);
-			workflowRepositoryMock.findSavedWorkflow.mockResolvedValue(storedWorkflow);
+			workflowRepositoryMock.get.mockResolvedValue(storedWorkflow);
 
 			workflowService = new WorkflowService(
 				mock(), // logger
@@ -3194,7 +3198,7 @@ describe('WorkflowService', () => {
 		let workflowRepositoryMock: MockProxy<{
 			update: Mock;
 			updateContent: Mock;
-			findSavedWorkflow: Mock;
+			get: Mock;
 		}>;
 
 		const user = mock<User>({ id: 'user-1' });
@@ -3267,7 +3271,7 @@ describe('WorkflowService', () => {
 				tags: [],
 			});
 			workflowFinderServiceMock.findWorkflowForUser.mockResolvedValue(existingWorkflow);
-			workflowRepositoryMock.findSavedWorkflow.mockResolvedValue(existingWorkflow);
+			workflowRepositoryMock.get.mockResolvedValue(existingWorkflow);
 		};
 
 		const update = async (

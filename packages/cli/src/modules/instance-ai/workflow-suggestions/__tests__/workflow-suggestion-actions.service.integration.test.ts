@@ -6,6 +6,7 @@ import {
 import { GlobalConfig } from '@n8n/config';
 import {
 	ProjectRepository,
+	ProjectRelationRepository,
 	SharedWorkflowRepository,
 	TransactionRunner,
 	UserRepository,
@@ -324,7 +325,12 @@ it('closes a proposal as outdated after settings change without a new version', 
 	const { user, original, project, suggestion, act } = await fixture();
 	await workflows.update(original.id, { settings: { executionTimeout: 45 } });
 
-	const detail = await suggestionService.getProposal(user, project.id, original.id, suggestion.id);
+	const detail = await suggestionService.refreshProposal(
+		user,
+		project.id,
+		original.id,
+		suggestion.id,
+	);
 
 	expect(detail).toMatchObject({ state: 'closed', closedReason: 'outdated' });
 	expect(await act('open-in-editor')).toMatchObject({ state: 'closed', closedReason: 'outdated' });
@@ -343,7 +349,12 @@ it('closes a proposal after publication changes even if the original version is 
 		});
 	}
 
-	const detail = await suggestionService.getProposal(user, project.id, original.id, suggestion.id);
+	const detail = await suggestionService.refreshProposal(
+		user,
+		project.id,
+		original.id,
+		suggestion.id,
+	);
 
 	expect(detail).toMatchObject({ state: 'closed', closedReason: 'outdated' });
 	expect(await act('open-in-editor')).toMatchObject({ state: 'closed', closedReason: 'outdated' });
@@ -421,6 +432,59 @@ it('checks the current user state before applying or discarding', async () => {
 		state: 'pending',
 	});
 });
+
+it.each(['disabled user', 'removed membership'] as const)(
+	'rechecks edit access after preparation for a %s',
+	async (access) => {
+		const { user, original, project, suggestion, act } = await fixture();
+		const beforeHistory = await history.countBy({ workflowId: original.id });
+		const beforeActivity = await suggestions.getActivity(suggestion.id);
+		vi.spyOn(Container.get(ExternalHooks), 'run').mockImplementation(async (name) => {
+			if (name !== 'workflow.update') return;
+			if (access === 'disabled user') {
+				await Container.get(UserRepository).update(user.id, { disabled: true });
+			} else {
+				await Container.get(ProjectRelationRepository).delete({
+					userId: user.id,
+					projectId: project.id,
+				});
+			}
+		});
+
+		await expect(act('open-in-editor')).rejects.toThrow('edit access');
+
+		expect(await workflows.findOneByOrFail({ id: original.id })).toEqual(original);
+		expect(await history.countBy({ workflowId: original.id })).toBe(beforeHistory);
+		expect(await suggestions.findOneByOrFail({ id: suggestion.id })).toEqual(suggestion);
+		expect(await suggestions.getActivity(suggestion.id)).toEqual(beforeActivity);
+	},
+);
+
+it.each(['read', 'reconciliation'] as const)(
+	'preserves the save error when recovery %s fails',
+	async (recovery) => {
+		const { original, suggestion, act } = await fixture();
+		const beforeHistory = await history.countBy({ workflowId: original.id });
+		const beforeActivity = await suggestions.getActivity(suggestion.id);
+		const saveError = new Error('Activity unavailable.');
+		const recoveryError = new Error('Recovery unavailable.');
+		vi.spyOn(suggestions, 'appendActivity').mockImplementationOnce(async () => {
+			if (recovery === 'read') {
+				vi.spyOn(suggestions, 'getSuggestion').mockRejectedValueOnce(recoveryError);
+			} else {
+				vi.spyOn(suggestionService, 'reconcilePending').mockRejectedValueOnce(recoveryError);
+			}
+			throw saveError;
+		});
+
+		await expect(act('open-in-editor')).rejects.toBe(saveError);
+
+		expect(await workflows.findOneByOrFail({ id: original.id })).toEqual(original);
+		expect(await history.countBy({ workflowId: original.id })).toBe(beforeHistory);
+		expect(await suggestions.findOneByOrFail({ id: suggestion.id })).toEqual(suggestion);
+		expect(await suggestions.getActivity(suggestion.id)).toEqual(beforeActivity);
+	},
+);
 
 it('rolls back the graph and history when the action activity cannot be saved', async () => {
 	const { original, suggestion, act } = await fixture();
@@ -577,7 +641,7 @@ it('requests normal publication of the applied version and does not repeat it', 
 		closedReason: 'applied',
 		appliedVersion: { versionId: saved.versionId },
 	});
-	expect(detail.publicationError).toBeUndefined();
+	expect(detail.publishError).toBeUndefined();
 	expect(publish).toHaveBeenCalledExactlyOnceWith(
 		expect.objectContaining({ id: user.id }),
 		original.id,
@@ -620,7 +684,7 @@ it('keeps the fix applied when the normal publication guard rejects it', async (
 	const saved = await workflows.findOneByOrFail({ id: original.id });
 	expect(detail).toMatchObject({
 		closedReason: 'applied',
-		publicationError: 'An open review blocks publication.',
+		publishError: 'An open review blocks publication.',
 	});
 	expect(saved.versionId).toBe(detail.appliedVersion?.versionId);
 	expect(saved.activeVersionId).toBe(original.activeVersionId);
@@ -645,7 +709,7 @@ it('returns the applied fix and request error when publication was already queue
 	const detail = await act('approve-and-publish');
 	expect(detail).toMatchObject({
 		closedReason: 'applied',
-		publicationError: 'Response unavailable.',
+		publishError: 'Response unavailable.',
 	});
 	expect(
 		await Container.get(WorkflowPublicationOutboxRepository).findInFlightByWorkflowId(original.id),
@@ -676,7 +740,7 @@ it('returns the applied fix when the editor notification fails after publication
 	expect(detail).toMatchObject({
 		closedReason: 'applied',
 	});
-	expect(detail.publicationError).toBeUndefined();
+	expect(detail.publishError).toBeUndefined();
 	expect(
 		await Container.get(WorkflowPublicationOutboxRepository).findInFlightByWorkflowId(original.id),
 	).toMatchObject({ publishedVersionId: detail.appliedVersion?.versionId });

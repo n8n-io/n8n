@@ -38,7 +38,7 @@ const baseline = (): WorkflowSuggestionBaseline => ({
 		checksum: 'a'.repeat(64),
 		versionCounter: workflow.versionCounter,
 		savedAt: workflow.updatedAt.toISOString(),
-		publicationId: null,
+		latestPublishHistoryEventId: null,
 	},
 	original: { name: 'Example', nodes: [], connections: {} },
 });
@@ -208,7 +208,14 @@ describe.skipIf(process.env.DB_TYPE !== 'postgresdb')('PostgreSQL concurrent wri
 					},
 				);
 			});
-			expect(await suggestions.closePending(current, 'outdated', null, ctx)).toBe(false);
+			expect(
+				await suggestions.closePending(
+					current,
+					'outdated',
+					{ author: 'system', actorId: null },
+					ctx,
+				),
+			).toBe(false);
 			expect(await suggestions.getSuggestion(suggestion.id, suggestion, ctx)).toMatchObject({
 				state: 'closed',
 				closedReason: 'discarded',
