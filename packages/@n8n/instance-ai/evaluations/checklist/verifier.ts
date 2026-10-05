@@ -5,6 +5,7 @@ import { z } from 'zod';
 import {
 	EPHEMERAL_CACHE,
 	createEvalAgent,
+	resolveJudgeModel,
 	resolveEvalModelConfig,
 } from '../../src/utils/eval-agents';
 import type { VerificationArtifact } from '../harness/scenario-execution';
@@ -171,7 +172,7 @@ async function runNativeOpenAiVerifier(
 	assistantText: string;
 	parsed: z.infer<typeof checklistResultSchema> | undefined;
 }> {
-	const model = resolveEvalModelConfig();
+	const model = resolveEvalModelConfig(resolveJudgeModel());
 	const requestBody = {
 		model: model.providerModelId,
 		max_output_tokens: VERIFIER_MAX_OUTPUT_TOKENS,
@@ -395,7 +396,7 @@ export async function verifyChecklist(
 
 	const validIds = new Set(llmItems.map((i) => i.id));
 	const attempts: VerifierAttemptDebug[] = [];
-	const model = resolveEvalModelConfig();
+	const model = resolveEvalModelConfig(resolveJudgeModel());
 	const useNativeOpenAiVerifier = model.provider === 'openai';
 
 	logVerifierDebug('request summary', {
@@ -454,6 +455,7 @@ export async function verifyChecklist(
 				const agent = createEvalAgent('eval-checklist-verifier', {
 					instructions: MOCK_EXECUTION_VERIFY_PROMPT,
 					cache: true,
+					judge: true,
 				}).structuredOutput(checklistResultSchema);
 
 				// The inactivity watchdog arms on the FIRST chunk (inside the consume

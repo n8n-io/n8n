@@ -10,7 +10,7 @@ import { findAgentArtifactRef } from './agent-execution';
 import type { BuildResult } from './build-workflow';
 import type { EvalLogger } from './logger';
 import { classifyScenarioExecutionError } from './transient-error';
-import { SONNET_MODEL } from '../../src/utils/eval-agents';
+import { JUDGE_MODEL } from '../../src/utils/eval-agents';
 import { runBinaryChecks } from '../binaryChecks/index';
 import type { BinaryCheckContext, CheckOutcome } from '../binaryChecks/types';
 import { N8nApiError } from '../clients/n8n-client';
@@ -280,7 +280,7 @@ export async function runWorkflowChecks(args: {
 }): Promise<CheckOutcome[] | undefined> {
 	if (!args.workflow) return undefined;
 
-	const modelId = hasAnthropicKey() ? SONNET_MODEL : undefined;
+	const modelId = hasAnthropicKey() ? JUDGE_MODEL : undefined;
 	const ctx: BinaryCheckContext = {
 		prompt: args.prompt,
 		...(modelId ? { modelId } : {}),

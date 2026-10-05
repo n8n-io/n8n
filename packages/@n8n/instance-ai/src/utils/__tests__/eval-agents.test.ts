@@ -4,6 +4,7 @@ type MockAgentInstance = {
 	model: Mock;
 	instructions: Mock;
 	thinking: Mock;
+	configuration: Mock;
 };
 
 const mockAgentInstances: MockAgentInstance[] = [];
@@ -13,12 +14,22 @@ vi.mock('@n8n/agents', () => ({
 		this.model = vi.fn().mockReturnThis();
 		this.instructions = vi.fn().mockReturnThis();
 		this.thinking = vi.fn().mockReturnThis();
+		this.configuration = vi.fn().mockReturnThis();
 		mockAgentInstances.push(this);
 	}),
 	Tool: vi.fn(),
 }));
 
-import { createEvalAgent, resolveEvalModelConfig } from '../eval-agents';
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
+
+import {
+	JUDGE_MODEL,
+	createEvalAgent,
+	resolveEvalModelConfig,
+	resolveJudgeModel,
+} from '../eval-agents';
 
 const ORIGINAL_ENV = { ...process.env };
 const MODEL_ENV_KEYS = [
@@ -32,6 +43,10 @@ const MODEL_ENV_KEYS = [
 	'OPENAI_API_KEY',
 	'GOOGLE_GENERATIVE_AI_API_KEY',
 	'XAI_API_KEY',
+	'N8N_INSTANCE_AI_EVAL_EFFORT',
+	'N8N_INSTANCE_AI_EVAL_JUDGE_MODEL',
+	'N8N_INSTANCE_AI_EVAL_JUDGE_EFFORT',
+	'N8N_INSTANCE_AI_EVAL_USAGE_LOG',
 ];
 
 function resetModelEnv(): void {
@@ -209,5 +224,102 @@ describe('eval agent model config', () => {
 			apiKey: 'anthropic-eval-key',
 			url: undefined,
 		});
+	});
+});
+
+describe('eval agent judge and effort settings', () => {
+	const lastAgent = () => mockAgentInstances[mockAgentInstances.length - 1];
+	const modelId = () => (lastAgent().model.mock.calls[0][0] as { id: string }).id;
+	const effort = () => (lastAgent().thinking.mock.calls[0][1] as { effort: string }).effort;
+
+	beforeEach(() => {
+		resetModelEnv();
+		process.env.ANTHROPIC_API_KEY = 'provider-key';
+		mockAgentInstances.length = 0;
+		vi.clearAllMocks();
+	});
+
+	afterAll(() => {
+		process.env = ORIGINAL_ENV;
+	});
+
+	it('runs judges on the judge model at high effort by default', () => {
+		createEvalAgent('judge', { instructions: 'x', judge: true });
+
+		expect(modelId()).toBe(JUDGE_MODEL);
+		expect(effort()).toBe('high');
+		expect(resolveJudgeModel()).toBe(JUDGE_MODEL);
+	});
+
+	it('applies the judge model override to judges only', () => {
+		process.env.N8N_INSTANCE_AI_EVAL_JUDGE_MODEL = 'anthropic/claude-sonnet-5';
+
+		createEvalAgent('judge', {
+			instructions: 'x',
+			judge: true,
+			model: 'anthropic/claude-sonnet-4-6',
+		});
+		expect(modelId()).toBe('anthropic/claude-sonnet-5');
+
+		createEvalAgent('proxy', { instructions: 'x' });
+		expect(modelId()).toBe('anthropic/claude-sonnet-4-6');
+	});
+
+	it('routes the eval effort to agents without a pinned model only', () => {
+		process.env.N8N_INSTANCE_AI_EVAL_EFFORT = 'low';
+		process.env.N8N_INSTANCE_AI_EVAL_JUDGE_EFFORT = 'medium';
+
+		createEvalAgent('mock', { instructions: 'x' });
+		expect(effort()).toBe('low');
+
+		createEvalAgent('helper', { instructions: 'x', model: 'anthropic/claude-sonnet-4-6' });
+		expect(effort()).toBe('medium');
+
+		createEvalAgent('judge', { instructions: 'x', judge: true });
+		expect(effort()).toBe('medium');
+	});
+
+	it('rejects an unknown effort value', () => {
+		process.env.N8N_INSTANCE_AI_EVAL_JUDGE_EFFORT = 'hgih';
+
+		expect(() => createEvalAgent('judge', { instructions: 'x', judge: true })).toThrow(
+			'N8N_INSTANCE_AI_EVAL_JUDGE_EFFORT',
+		);
+	});
+
+	it('appends one usage line per model step when the usage log is set', async () => {
+		const dir = mkdtempSync(path.join(tmpdir(), 'eval-usage-'));
+		const file = path.join(dir, 'usage.jsonl');
+		process.env.N8N_INSTANCE_AI_EVAL_USAGE_LOG = file;
+
+		createEvalAgent('judge', { instructions: 'x', judge: true });
+		const hooks = lastAgent().configuration.mock.calls[0][0];
+		hooks.onStepStart({ callId: 'c1', stepNumber: 0 });
+		await hooks.onStepEnd({
+			callId: 'c1',
+			stepNumber: 0,
+			model: { modelId: 'claude-sonnet-5-5' },
+			rawFinishReason: 'end_turn',
+			usage: {
+				inputTokens: 100,
+				inputTokenDetails: { cacheReadTokens: 40, cacheWriteTokens: 10 },
+				outputTokens: 20,
+				outputTokenDetails: { reasoningTokens: 5 },
+			},
+		});
+
+		const line = JSON.parse(readFileSync(file, 'utf8').trim());
+		expect(line).toMatchObject({
+			agent: 'judge',
+			model: 'claude-sonnet-5-5',
+			effort: 'high',
+			stopReason: 'end_turn',
+			inputTokens: 100,
+			cacheReadTokens: 40,
+			cacheWriteTokens: 10,
+			outputTokens: 20,
+			reasoningTokens: 5,
+		});
+		rmSync(dir, { recursive: true, force: true });
 	});
 });
