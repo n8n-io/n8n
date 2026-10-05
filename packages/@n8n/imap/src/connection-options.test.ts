@@ -67,4 +67,16 @@ describe('toImapFlowOptions', () => {
 			rejectUnauthorized: false,
 		});
 	});
+
+	// Providers like 163.com / 126.com / 188.com reject clients that don't announce an IMAP ID
+	// (RFC 2971) with "SELECT Unsafe Login", so a default is sent. imapflow only emits the command
+	// against servers that advertise it, so this stays a no-op elsewhere.
+	it('announces a default IMAP ID, so providers like 163.com accept the client', () => {
+		expect(toImapFlowOptions(CREDENTIALS).clientInfo).toEqual({ name: 'n8n', vendor: 'n8n' });
+	});
+
+	it('lets a caller override the IMAP ID', () => {
+		const clientInfo = { name: 'custom', version: '1.2.3', vendor: 'acme' };
+		expect(toImapFlowOptions({ ...CREDENTIALS, clientInfo }).clientInfo).toEqual(clientInfo);
+	});
 });

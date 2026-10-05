@@ -14,6 +14,17 @@ const IDLE_INTERVAL = 120_000;
  */
 const INACTIVITY_TIMEOUT = 120_000;
 
+/**
+ * Default IMAP ID (RFC 2971) announced on connect. Some providers — notably NetEase mailboxes
+ * (163.com / 126.com / 188.com) — reject clients that don't send an ID with "SELECT Unsafe
+ * Login". imapflow only emits the ID command when `clientInfo` is set, and only against servers
+ * that advertise the ID capability, so this is a no-op elsewhere.
+ */
+const DEFAULT_CLIENT_INFO: NonNullable<ImapFlowOptions['clientInfo']> = {
+	name: 'n8n',
+	vendor: 'n8n',
+};
+
 /** Everything needed to reach an IMAP server. Translated to the driver's own shape internally. */
 export interface ImapConnectionOptions {
 	host: string;
@@ -29,6 +40,8 @@ export interface ImapConnectionOptions {
 	socketTimeout?: number;
 	/** Milliseconds allowed to establish the connection and read the greeting. */
 	authTimeout?: number;
+	/** IMAP ID (RFC 2971) to announce on connect. Overrides the built-in default. */
+	clientInfo?: ImapFlowOptions['clientInfo'];
 }
 
 export function toImapFlowOptions(options: ImapConnectionOptions): ImapFlowOptions {
@@ -54,5 +67,6 @@ export function toImapFlowOptions(options: ImapConnectionOptions): ImapFlowOptio
 		socketTimeout: options.socketTimeout ?? INACTIVITY_TIMEOUT,
 		logger: false,
 		...(Object.keys(tls).length > 0 && { tls }),
+		clientInfo: options.clientInfo ?? DEFAULT_CLIENT_INFO,
 	};
 }
