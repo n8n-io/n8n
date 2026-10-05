@@ -17,6 +17,7 @@ import {
 	SDK_INLINE_CONSTRAINTS,
 	type SdkMethodGroup,
 } from '../../ast-interpreter';
+import { SDK_IMPORTABLE_FUNCTIONS } from '../../codegen/emit-instance-ai';
 
 const GROUP_LABELS: Record<Exclude<SdkMethodGroup, 'internal'>, string> = {
 	workflow: 'Workflow builder',
@@ -63,6 +64,12 @@ function renderBlockedGlobalsLines(): string {
 function renderInlineConstraintLines(): string {
 	return SDK_INLINE_CONSTRAINTS.map((c) => `- ${c}`).join('\n');
 }
+
+/** Every function `@n8n/workflow-sdk` exports for workflow files, with the rule for all other nodes. */
+export const SDK_FUNCTIONS_SENTENCE =
+	`\`@n8n/workflow-sdk\` exports only these functions: ${SDK_IMPORTABLE_FUNCTIONS.map((name) => `\`${name}\``).join(', ')}. ` +
+	"There is no factory for any other node: create Code, Filter, AI Agent, and every other node with `node({ type: 'n8n-nodes-base.code', version, config })`, " +
+	'and attach AI sub-nodes to an Agent through `config.subnodes`.';
 
 const SAFE_METHODS_SENTENCE =
 	`The only non-builder methods available are ${SAFE_JSON_METHOD_NAMES.map((n) => `\`JSON.${n}\``).join(', ')} ` +
@@ -159,6 +166,10 @@ SDK builder code is a **restricted subset of TypeScript**, not a Code node and
 not arbitrary JavaScript. It is parsed by an AST interpreter that builds a static
 workflow graph: the code never executes at build time. Only the constructs below
 are accepted; anything else fails to parse.
+
+## Functions you can import
+
+${SDK_FUNCTIONS_SENTENCE}
 
 ## Methods that chain on SDK objects
 

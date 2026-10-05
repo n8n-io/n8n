@@ -23,6 +23,7 @@ import { z } from 'zod';
 
 import { sanitizeInputSchema } from '../agent/sanitize-mcp-schemas';
 import type { InstanceAiContext, NodeDescription } from '../types';
+import { compactTypeDefinition } from './nodes/compact-type-definition';
 import { needsModelSelection } from './nodes/model-selection';
 import { pickPreferredChatModelNode } from './nodes/preferred-chat-model';
 import { addSetupPreference, type NodeWithSetupPreference } from './nodes/setup-preference';
@@ -388,7 +389,7 @@ async function resolveNodeTypeDefinitions(
 			return {
 				nodeType,
 				version: result.version,
-				content: result.content,
+				content: compactTypeDefinition(result.content, nodeType),
 				...(result.builderHint ? { builderHint: result.builderHint } : {}),
 				...(result.deprecated ? { deprecated: true } : {}),
 			};

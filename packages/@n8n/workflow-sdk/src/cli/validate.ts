@@ -6,6 +6,7 @@ import { resolveNodeDefinitionDirs, NODE_DEFINITION_DIRS_ENV_VAR } from './node-
 import type { WorkflowJSON } from '../types/base';
 import {
 	buildUncheckedNotes,
+	explainUnknownSdkFunction,
 	validateWorkflowBuilder,
 	type CollectedValidationIssue,
 	type ValidationResult,
@@ -250,11 +251,13 @@ export async function validateCommand(argv: string[] = process.argv.slice(3)): P
 	try {
 		mod = (await import(importUrl)) as { default?: unknown };
 	} catch (error) {
+		const reason = error instanceof Error ? error.message : String(error);
+		const hint = explainUnknownSdkFunction(reason);
 		failAndExit(
 			options,
 			earlyUnchecked,
 			'LOAD_FAILED',
-			`Failed to load workflow: ${error instanceof Error ? error.message : String(error)}`,
+			`Failed to load workflow: ${reason}${hint ? ` ${hint}` : ''}`,
 			displayPath,
 		);
 	}
