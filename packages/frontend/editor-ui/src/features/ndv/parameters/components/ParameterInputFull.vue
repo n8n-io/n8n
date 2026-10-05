@@ -619,7 +619,9 @@ function removeOverride(clearField = false) {
 			/>
 		</div>
 		<ParameterOverrideSelectableList
-			v-if="canCreateContentOverride && isContentOverride && fromAIOverride"
+			v-if="
+				inputMode === undefined && canCreateContentOverride && isContentOverride && fromAIOverride
+			"
 			v-model="fromAIOverride"
 			:parameter="parameter"
 			:path="path"

@@ -35,7 +35,7 @@ const emit = defineEmits<{ close: [] }>();
 				/>
 			</template>
 		</N8nTag>
-		<ParameterIssues v-if="issues?.length" :issues="issues" />
+		<ParameterIssues v-if="issues?.length" :class="$style.issues" :issues="issues" />
 	</div>
 </template>
 
@@ -64,6 +64,10 @@ const emit = defineEmits<{ close: [] }>();
 	height: 100%;
 	min-height: 0;
 	padding-block: 0;
+}
+
+.issues {
+	margin-left: auto;
 }
 
 .icon {
