@@ -7,6 +7,7 @@ import {
 import {
 	formatTopLevelItemsMessage,
 	NodeConnectionTypes,
+	outermostGroups,
 	summarizeTopLevelItems,
 	TOP_LEVEL_ITEMS_OVER_CEILING_CODE,
 	type TopLevelItemsSummary,
@@ -168,7 +169,7 @@ export function summarizeWorkflowTopLevelItems(
 		],
 		connectionsBySourceNode,
 	});
-	return { ...summary, groupCount: groups.length };
+	return { ...summary, groupCount: outermostGroups(groups).length };
 }
 
 /**

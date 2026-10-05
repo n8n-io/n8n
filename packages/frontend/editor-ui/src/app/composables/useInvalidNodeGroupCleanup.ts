@@ -52,6 +52,7 @@ export function useInvalidNodeGroupCleanup() {
 			existingNodeGroups: allGroups.filter((other) => other.id !== group.id),
 			allowTriggerInGroup: allowTriggerInGroup.value,
 			allowMultipleBoundaryNodes: allowMultipleBoundaryNodes.value,
+			repeat: group.repeat,
 		}).valid;
 	}
 

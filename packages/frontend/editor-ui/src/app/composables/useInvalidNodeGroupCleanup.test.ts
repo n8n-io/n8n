@@ -136,6 +136,39 @@ describe('useInvalidNodeGroupCleanup', () => {
 		expect(trackSpy).not.toHaveBeenCalled();
 	});
 
+	it('keeps a forEach region inside a group', () => {
+		const store = setupDocumentStore({
+			nodes: [
+				createTestNode({ id: 'node-a', name: 'Node A' }),
+				createTestNode({ id: 'node-b', name: 'Node B' }),
+				createTestNode({ id: 'node-c', name: 'Node C' }),
+			],
+			connections: {
+				...createConnection('Node A', 'Node B'),
+				...createConnection('Node B', 'Node C'),
+			},
+			nodeGroups: [
+				{ id: 'group-1', name: 'Group 1', nodeIds: ['node-a', 'node-b', 'node-c'] },
+				{
+					id: 'region-1',
+					name: 'Each',
+					nodeIds: ['node-b'],
+					repeat: {
+						kind: 'forEach',
+						entry: 'node-b',
+						exits: [{ node: 'node-b', output: 0 }],
+						batchSize: 1,
+					},
+				},
+			],
+		});
+
+		const { removeInvalidNodeGroups } = useInvalidNodeGroupCleanup();
+
+		expect(removeInvalidNodeGroups(store)).toEqual([]);
+		expect(store.allGroups).toHaveLength(2);
+	});
+
 	it('keeps a group with a sticky note member and shows no toast', () => {
 		const store = setupDocumentStore({
 			nodes: [

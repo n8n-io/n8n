@@ -2378,6 +2378,18 @@ function groupIssues(graph: Graph): string[] {
 	const frames = [...regions, ...(graph.groups ?? [])];
 	const sameNodes = (one: readonly string[], other: readonly string[]) =>
 		one.length === other.length && one.every((member) => other.includes(member));
+	const within = (inner: readonly string[], outer: readonly string[]) =>
+		inner.every((member) => outer.includes(member));
+	// n8n keeps one group per node, unless the groups nest around a forEach region.
+	const plainParentOf = (members: readonly string[]) =>
+		(graph.groups ?? []).find(
+			(other) =>
+				other.members.length > members.length &&
+				within(members, other.members) &&
+				!regions.some(
+					(region) => within(members, region.members) && within(region.members, other.members),
+				),
+		);
 	const issues = (graph.groups ?? []).flatMap((group) => {
 		const { name, members } = group;
 		if (members.length === 0) return [`${name}: group needs a body that runs a node`];
@@ -2386,9 +2398,15 @@ function groupIssues(graph: Graph): string[] {
 			return [`Two groups or forEach regions are named "${name}"`];
 		}
 		const same = others.find((other) => sameNodes(other.members, members));
-		return same
+		if (same) {
+			return [
+				`${name}: group has the same nodes as "${same.name}". Remove one, or give the group more nodes`,
+			];
+		}
+		const parent = plainParentOf(members);
+		return parent
 			? [
-					`${name}: group has the same nodes as "${same.name}". Remove one, or give the group more nodes`,
+					`${name}: group is inside group "${parent.name}" with no forEach between them. Remove one of the two groups`,
 				]
 			: [];
 	});

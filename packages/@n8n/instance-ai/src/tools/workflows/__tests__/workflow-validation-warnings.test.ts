@@ -1,12 +1,14 @@
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import {
 	forEach,
+	group,
 	loop,
 	manual,
 	merge,
 	paginate,
 	pollUntil,
 	set,
+	steps,
 	workflow,
 } from '@n8n/workflow-sdk/next';
 import type { IConnections } from 'n8n-workflow';
@@ -371,6 +373,27 @@ describe('contractLoopsOf', () => {
 			['Walk', 'Fetch', 'Walk until', 'Walk next'],
 		]);
 		expect(await boxesOf(json)).toBe(3);
+	});
+
+	it('counts a group around a forEach as one group box', async () => {
+		const json = workflow(
+			'Grouped',
+			manual({ sample: [{ n: 1 }] }),
+			group(
+				{ name: 'Send' },
+				steps(forEach({ name: 'Each', batchSize: 1 }, field('Post')), field('Mark')),
+			),
+			loop(
+				{ name: 'Walk', maxIterations: 5, until: (out) => out.n > 1, next: (out) => out },
+				field('Fetch'),
+			),
+		).toJSON();
+
+		expect(summarizeWorkflowTopLevelItems(json)).toMatchObject({ total: 7, groupCount: 1 });
+		expect(summarizeWorkflowTopLevelItems(json, await contractLoopsOf(json))).toMatchObject({
+			total: 3,
+			groupCount: 1,
+		});
 	});
 
 	it('counts a forEach whose body starts with branches as one box, also in a loop', async () => {

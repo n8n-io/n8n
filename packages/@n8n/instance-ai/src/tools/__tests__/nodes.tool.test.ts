@@ -382,7 +382,7 @@ describe('nodes tool', () => {
 			]);
 		});
 
-		it('lists a vetted community node that is not installed as install-first', async () => {
+		it('does not search uninstalled community nodes without node contracts', async () => {
 			const context = createMockContext();
 			vi.mocked(context.nodeService.listSearchable).mockResolvedValue([]);
 			context.nodeService.searchUninstalledNodes = vi.fn().mockResolvedValue([firecrawlPackage]);
@@ -393,12 +393,12 @@ describe('nodes tool', () => {
 				limit: 5,
 			});
 
-			expect(context.nodeService.searchUninstalledNodes).toHaveBeenCalledWith('firecrawl');
-			expect(result).toEqual({ results: [], totalResults: 0, notInstalled: [firecrawlRow] });
+			expect(context.nodeService.searchUninstalledNodes).not.toHaveBeenCalled();
+			expect(result).toEqual({ results: [], totalResults: 0 });
 		});
 
 		it('lists no uninstalled node when the instance offers none', async () => {
-			const context = createMockContext();
+			const context = createMockContext({ nodeContractsEnabled: true });
 			vi.mocked(context.nodeService.listSearchable).mockResolvedValue([]);
 			context.nodeService.searchUninstalledNodes = vi.fn().mockResolvedValue([]);
 
@@ -408,12 +408,13 @@ describe('nodes tool', () => {
 				limit: 5,
 			});
 
-			expect(result).toEqual({ results: [], totalResults: 0 });
+			expect(context.nodeService.searchUninstalledNodes).toHaveBeenCalledWith('firecrawl');
+			expect(result).not.toHaveProperty('notInstalled');
 		});
 
 		it('still returns installed results when the uninstalled list fails', async () => {
 			const logger = { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() };
-			const context = createMockContext({ logger });
+			const context = createMockContext({ logger, nodeContractsEnabled: true });
 			vi.mocked(context.nodeService.listSearchable).mockResolvedValue([]);
 			context.nodeService.searchUninstalledNodes = vi
 				.fn()
@@ -425,7 +426,8 @@ describe('nodes tool', () => {
 				limit: 5,
 			});
 
-			expect(result).toEqual({ results: [], totalResults: 0 });
+			expect(result).toMatchObject({ results: [], totalResults: 0 });
+			expect(result).not.toHaveProperty('notInstalled');
 			expect(logger.warn).toHaveBeenCalled();
 		});
 

@@ -20,6 +20,7 @@ import {
 	type INode,
 	type INodeTypeDescription,
 	type INodeTypes,
+	type IWorkflowGroup,
 } from '../src';
 
 function makeNode(overrides: Partial<INode> = {}): INode {
@@ -877,7 +878,7 @@ describe('node grouping validation', () => {
 				nodes: [graph.nodes[0], graph.nodes[1], sticky],
 				connectionsBySourceNode: graph.connections,
 				getNodeType: (node) => stickyNodeTypes[node.type],
-				existingNodeGroups: [{ id: 'g1', name: 'Group', nodeIds: ['sticky', 'c'] }],
+				existingNodeGroups: [{ id: 'g1', name: 'Group', nodeIds: ['sticky'] }],
 			});
 
 			expect(result).toEqual({
@@ -1150,15 +1151,15 @@ describe('validateWorkflowGroups', () => {
 		]);
 	});
 
-	it('reports two groups that share some nodes', () => {
+	it('reports a node that belongs to multiple groups', () => {
 		const graph = makeLinearGraph();
 
 		const result = validateWorkflowGroups({
 			nodes: graph.nodes,
 			connectionsBySourceNode: graph.connections,
 			nodeGroups: [
-				{ id: 'g1', name: 'First', nodeIds: ['a', 'b'] },
-				{ id: 'g2', name: 'Second', nodeIds: ['b', 'c'] },
+				{ id: 'g1', name: 'First', nodeIds: ['a'] },
+				{ id: 'g2', name: 'Second', nodeIds: ['a'] },
 			],
 			getNodeType,
 		});
@@ -1167,49 +1168,13 @@ describe('validateWorkflowGroups', () => {
 			{
 				groupId: 'g2',
 				code: 'node-in-multiple-groups',
-				message:
-					'Node "B" belongs to groups "First" and "Second", which do not nest. Put one group inside the other, or keep them apart.',
+				message: 'Node "A" belongs to multiple groups: "First" and "Second".',
 			},
 			// The clean first group still fails its graph rules against the second.
 			{
 				groupId: 'g1',
 				code: 'node-already-grouped',
-				message: 'Node group "First" does not nest with another group: B.',
-			},
-		]);
-	});
-
-	it('accepts a group inside another group', () => {
-		const graph = makeLinearGraph();
-
-		const result = validateWorkflowGroups({
-			nodes: graph.nodes,
-			connectionsBySourceNode: graph.connections,
-			nodeGroups: [
-				{ id: 'g1', name: 'Outer', nodeIds: ['a', 'b', 'c'] },
-				{ id: 'g2', name: 'Inner', nodeIds: ['b'] },
-			],
-			getNodeType,
-		});
-
-		expect(result).toEqual({ valid: true });
-	});
-
-	it('reports two groups with the same nodes', () => {
-		const result = validateWorkflowGroups({
-			nodes: makeLinearGraph().nodes,
-			nodeGroups: [
-				{ id: 'g1', name: 'First', nodeIds: ['a', 'b'] },
-				{ id: 'g2', name: 'Second', nodeIds: ['b', 'a'] },
-			],
-			getNodeType: null,
-		});
-
-		expectViolations(result, [
-			{
-				code: 'node-in-multiple-groups',
-				message:
-					'Node "B" belongs to groups "First" and "Second", which do not nest. Put one group inside the other, or keep them apart.',
+				message: 'Node group "First" contains nodes that already belong to another group: A.',
 			},
 		]);
 	});
@@ -1218,11 +1183,11 @@ describe('validateWorkflowGroups', () => {
 		const unnamed = makeNode({ id: 'node-id-1', name: '' });
 
 		const result = validateWorkflowGroups({
-			nodes: [unnamed, makeNode({ id: 'x', name: 'X' }), makeNode({ id: 'y', name: 'Y' })],
+			nodes: [unnamed],
 			connectionsBySourceNode: {},
 			nodeGroups: [
-				{ id: 'g1', name: 'First', nodeIds: ['node-id-1', 'x'] },
-				{ id: 'g2', name: 'Second', nodeIds: ['node-id-1', 'y'] },
+				{ id: 'g1', name: 'First', nodeIds: ['node-id-1'] },
+				{ id: 'g2', name: 'Second', nodeIds: ['node-id-1'] },
 			],
 			getNodeType: null,
 		});
@@ -1230,8 +1195,7 @@ describe('validateWorkflowGroups', () => {
 		expectViolations(result, [
 			{
 				code: 'node-in-multiple-groups',
-				message:
-					'Node "node-id-1" belongs to groups "First" and "Second", which do not nest. Put one group inside the other, or keep them apart.',
+				message: 'Node "node-id-1" belongs to multiple groups: "First" and "Second".',
 			},
 		]);
 	});
@@ -1511,6 +1475,84 @@ describe('validateWorkflowGroups', () => {
 			]);
 		});
 	});
+
+	describe('nested groups', () => {
+		const nodes = ['A', 'B', 'C', 'D'].map((name) => makeNode({ id: name.toLowerCase(), name }));
+		const connections: IConnections = {
+			A: { main: [mainTo('B')] },
+			B: { main: [mainTo('C')] },
+			C: { main: [mainTo('D')] },
+		};
+		const region = {
+			id: 'region',
+			name: 'Each',
+			nodeIds: ['b', 'c'],
+			repeat: {
+				kind: 'forEach' as const,
+				entry: 'b',
+				exits: [{ node: 'c', output: 0 }],
+				batchSize: 1,
+			},
+		};
+		const outer = { id: 'outer', name: 'Outer', nodeIds: ['a', 'b', 'c', 'd'] };
+		const validate = (nodeGroups: IWorkflowGroup[]) =>
+			validateWorkflowGroups({
+				nodes,
+				connectionsBySourceNode: connections,
+				nodeGroups,
+				getNodeType,
+			});
+
+		it('rejects a group inside another group without a forEach region', () => {
+			expectViolations(validate([outer, { id: 'inner', name: 'Inner', nodeIds: ['b'] }]), [
+				{
+					groupId: 'inner',
+					code: 'node-in-multiple-groups',
+					message: 'Node "B" belongs to multiple groups: "Outer" and "Inner".',
+				},
+				{
+					groupId: 'outer',
+					code: 'node-already-grouped',
+					message: 'Node group "Outer" contains nodes that already belong to another group: B.',
+				},
+			]);
+		});
+
+		it('accepts groups that nest around a forEach region', () => {
+			expect(validate([outer, region, { id: 'inner', name: 'Inner', nodeIds: ['b'] }])).toEqual({
+				valid: true,
+			});
+		});
+
+		it('rejects two groups that nest beside a forEach region', () => {
+			expectViolations(validate([outer, region, { id: 'inner', name: 'Inner', nodeIds: ['a'] }]), [
+				{
+					groupId: 'inner',
+					code: 'node-in-multiple-groups',
+					message: 'Node "A" belongs to multiple groups: "Outer" and "Inner".',
+				},
+				{ groupId: 'outer', code: 'node-already-grouped' },
+			]);
+		});
+
+		it('lets a selection nest in a group only when it is a forEach region', () => {
+			const selection = {
+				nodes: nodes.slice(1, 3),
+				connectionsBySourceNode: connections,
+				getNodeType,
+				existingNodeGroups: [outer],
+			};
+
+			expect(validateNodeSelectionForGrouping({ ...selection, repeat: region.repeat })).toEqual(
+				expect.objectContaining({ valid: true }),
+			);
+			expect(validateNodeSelectionForGrouping(selection)).toEqual({
+				valid: false,
+				reason: 'node-already-grouped',
+				nodeIds: ['b', 'c'],
+			});
+		});
+	});
 });
 
 describe('makeGetNodeTypeForGrouping', () => {
@@ -1613,9 +1655,9 @@ describe('dropInvalidWorkflowGroups', () => {
 	});
 
 	describe('with a shouldDrop predicate', () => {
-		// Two groups sharing only B: the second is flagged for the overlap, and the
-		// first for sharing a node with it. A caller that can only blame one of
-		// them must be able to drop just that one.
+		// Two groups sharing A: the second is flagged for the overlap, and the
+		// first for holding a node that now belongs elsewhere. A caller that can
+		// only blame one of them must be able to drop just that one.
 		const buildOverlapping = () => {
 			const graph = makeLinearGraph();
 			return {
@@ -1623,7 +1665,7 @@ describe('dropInvalidWorkflowGroups', () => {
 				connections: graph.connections,
 				nodeGroups: [
 					{ id: 'g1', name: 'First', nodeIds: ['a', 'b'] },
-					{ id: 'g2', name: 'Second', nodeIds: ['b', 'c'] },
+					{ id: 'g2', name: 'Second', nodeIds: ['a'] },
 				],
 			};
 		};
@@ -1706,6 +1748,22 @@ describe('summarizeTopLevelItems', () => {
 		expect(summary.total).toBe(6);
 		expect(summary.groupCount).toBe(1);
 		expect(summary.groupableNodeNames).toEqual(['N3', 'N4', 'N5', 'N6', 'N7']);
+	});
+
+	it('counts only the outermost group of nested groups', () => {
+		const summary = summarizeTopLevelItems({
+			nodes: plainNodes(8),
+			nodeGroups: [
+				{ nodeIds: ['n1'] },
+				{ nodeIds: ['n0', 'n1', 'n2'] },
+				{ nodeIds: ['n0', 'n1'] },
+				{ nodeIds: ['n3'] },
+			],
+		});
+
+		// 2 outer groups + 4 ungrouped nodes.
+		expect(summary.total).toBe(6);
+		expect(summary.groupCount).toBe(2);
 	});
 
 	it('counts an agent and its sub-nodes as one box', () => {

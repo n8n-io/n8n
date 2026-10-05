@@ -208,8 +208,7 @@ follow its build → publish → assign steps.
    `content_generation`, `triage`, `scraping_and_research`); use
    `nodes(action="search")` for service-specific nodes you cannot name exactly
    (short service names like "Gmail", not task phrases — results include
-   resource/operation/mode discriminators). Ask the user before you use a
-   `notInstalled` node.
+   resource/operation/mode discriminators).
 2. Call `nodes(action="type-definition")` with the exact node IDs you will use
    (up to five per call), including discriminators. Do not speculatively fetch
    definitions for nodes you will not use.

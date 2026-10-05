@@ -1299,6 +1299,12 @@ describe('group', () => {
 				steps(group({ name: 'Stage' }, customers('A')), group({ name: 'Stage' }, customers('B'))),
 			'Two groups or forEach regions are named "Stage"',
 		],
+		[
+			'a parent group and no forEach between them',
+			() =>
+				group({ name: 'Outer' }, steps(group({ name: 'Inner' }, customers('A')), customers('B'))),
+			'Inner: group is inside group "Outer" with no forEach between them',
+		],
 	])('fails the build on a group with %s', (_case, part, issue) => {
 		expect(() => workflow('Bad', manual(), customers('Customers'), part()).toJSON()).toThrow(issue);
 	});

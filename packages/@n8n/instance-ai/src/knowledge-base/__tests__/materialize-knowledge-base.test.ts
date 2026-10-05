@@ -1,5 +1,7 @@
 import { NATIVE_NODE_PREFERENCE } from '@n8n/workflow-sdk/prompts/node-selection';
 import { jsonParse } from 'n8n-workflow';
+import { readFile } from 'node:fs/promises';
+import { join } from 'node:path';
 
 import type { SandboxWorkspace } from '../../workspace/sandbox-fs';
 import {
@@ -257,6 +259,15 @@ describe('buildKnowledgeBaseWorkspaceBundle', () => {
 		expect(rootIndex.templates.indexFile).toBe('templates/index.json');
 		expect(rootIndex.templates.entries).toBeUndefined();
 		expect(withTemplates.contentHash).not.toBe(withoutTemplates.contentHash);
+	});
+
+	// The flag-off builder reads this file, so it must stay the text of the baseline (944afe5c889).
+	it('renders the node-groups reference with the baseline text', async () => {
+		const bundle = await buildKnowledgeBaseWorkspaceBundle({ root: ROOT, logger: mockLogger });
+
+		expect(bundle.files.get(`${ROOT}/${SANDBOX_KNOWLEDGE_BASE_DIR}/reference/node-groups.md`)).toBe(
+			await readFile(join(__dirname, 'node-groups.baseline.md'), 'utf-8'),
+		);
 	});
 });
 

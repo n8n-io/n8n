@@ -343,6 +343,7 @@ type SearchInput = Extract<FullInput, { action: 'search' }>;
 /**
  * Verified community nodes that the query names and that the instance has not installed. The
  * build refuses them until the package is installed, so the agent must ask the user first.
+ * Only node-contract builds list them, so the search without contracts stays the baseline.
  */
 async function notInstalledPartOf(
 	context: InstanceAiContext,
@@ -350,7 +351,12 @@ async function notInstalledPartOf(
 ): Promise<{
 	notInstalled?: Array<{ name: string; displayName: string; description: string; install: string }>;
 }> {
-	if (!input.query || input.connectionType || !context.nodeService.searchUninstalledNodes)
+	if (
+		!context.nodeContractsEnabled ||
+		!input.query ||
+		input.connectionType ||
+		!context.nodeService.searchUninstalledNodes
+	)
 		return {};
 	const nodes = await context.nodeService.searchUninstalledNodes(input.query);
 	if (!nodes.length) return {};
