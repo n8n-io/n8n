@@ -86,6 +86,20 @@ describe('N8nSettingsPageHeader', () => {
 		expect(screen.getByRole('link', { name: 'API reference' })).toBeInTheDocument();
 	});
 
+	it('drops the leading copy when docsLeadingText is explicitly empty', () => {
+		render(N8nSettingsPageHeader, {
+			props: {
+				title: 'Migration report',
+				description: 'Learn more about all breaking changes in our',
+				docsUrl: 'https://docs.n8n.io',
+				docsLeadingText: '',
+			},
+		});
+
+		expect(screen.getByRole('link', { name: 'documentation' })).toBeInTheDocument();
+		expect(screen.queryByText(/Learn more in the/)).not.toBeInTheDocument();
+	});
+
 	it('renders the docs link as an N8nExternalLink that opens in a new tab', () => {
 		render(N8nSettingsPageHeader, {
 			props: {
