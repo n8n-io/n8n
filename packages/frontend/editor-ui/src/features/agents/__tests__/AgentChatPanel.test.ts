@@ -154,6 +154,7 @@ vi.mock('@n8n/design-system', async (importOriginal) => ({
 		emits: ['click'],
 		template: '<button v-bind="$attrs" @click="$emit(\'click\')" />',
 	},
+	N8nScrollArea: { template: '<div><slot /></div>' },
 	N8nText: { template: '<span><slot /></span>' },
 	N8nTooltip: { template: '<div><slot /></div>' },
 	TOOLTIP_DELAY_MS: 500,
@@ -767,41 +768,11 @@ describe('AgentChatPanel', () => {
 		saved.resolve();
 		await flushPromises();
 		const handle = queue.get('[data-queue-id="2"] [data-testid="chat-queue-drag-handle"]');
-		expect(document.activeElement).toBe(handle.element);
+		expect(document.activeElement).not.toBe(handle.element);
 		expect(reorderQueuedMessageMock).toHaveBeenCalledTimes(1);
 		expect(stopGeneratingMock).not.toHaveBeenCalled();
 		wrapper.unmount();
 		container.remove();
-	});
-
-	it('reorders with the keyboard and restores focus on the moved message', async () => {
-		const items = [1, 2, 3].map((id) => ({
-			id: String(id),
-			message: `Message ${id}`,
-			createdAt: '2026-09-24T12:00:00.000Z',
-			steeringExecutionId: null,
-		}));
-		queuedMessagesMock.value = items;
-		reorderQueuedMessageMock.mockImplementationOnce(async () => {
-			queuedMessagesMock.value = [items[1], items[0], items[2]];
-		});
-		const container = document.createElement('div');
-		document.body.append(container);
-		const wrapper = mountPanel({}, container);
-		try {
-			await wrapper.get('button[aria-expanded]').trigger('click');
-			await wrapper
-				.get('[data-queue-id="1"] [data-testid="chat-queue-drag-handle"]')
-				.trigger('keydown', { key: 'ArrowDown' });
-			await flushPromises();
-			expect(reorderQueuedMessageMock).toHaveBeenCalledWith('1', '2', ['1', '2', '3']);
-			expect(document.activeElement).toBe(
-				wrapper.get('[data-queue-id="1"] [data-testid="chat-queue-drag-handle"]').element,
-			);
-		} finally {
-			wrapper.unmount();
-			container.remove();
-		}
 	});
 
 	it('uses the order at drag start and restores the refreshed queue after the reorder settles', async () => {

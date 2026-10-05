@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, useId, useTemplateRef } from 'vue';
+import { computed, useId } from 'vue';
 import Draggable from 'vuedraggable';
 import {
 	N8nButton,
@@ -29,7 +29,6 @@ const emit = defineEmits<{
 	'update:expanded': [value: boolean];
 	'drag-start': [];
 	'drag-end': [event: { oldIndex?: number; newIndex?: number }];
-	move: [event: { from: number; to: number }];
 	steer: [id: string];
 	edit: [id: string];
 	remove: [id: string];
@@ -37,35 +36,15 @@ const emit = defineEmits<{
 
 const locale = useI18n();
 const queueListId = useId();
-const queueElement = useTemplateRef<HTMLDivElement>('messageQueue');
 const expanded = computed({
 	get: () => props.expanded,
 	set: (value: boolean) => emit('update:expanded', value),
 });
-
-function focusItem(id: string) {
-	queueElement.value
-		?.querySelector<HTMLButtonElement>(
-			`[data-queue-id="${id}"] [data-testid="chat-queue-drag-handle"]:not(:disabled)`,
-		)
-		?.focus();
-}
-
-function onQueueHandleKeydown(event: KeyboardEvent, index: number) {
-	if (props.isReordering || event.isComposing || !['ArrowUp', 'ArrowDown'].includes(event.key)) {
-		return;
-	}
-	event.preventDefault();
-	event.stopPropagation();
-	emit('move', { from: index, to: index + (event.key === 'ArrowUp' ? -1 : 1) });
-}
-
-defineExpose({ focusItem });
 </script>
 
 <template>
 	<div :class="$style.messageQueueEntrance">
-		<div ref="messageQueue" :class="$style.messageQueue" data-testid="chat-message-queue">
+		<div :class="$style.messageQueue" data-testid="chat-message-queue">
 			<button
 				v-if="displayedItems.length > 1"
 				type="button"
@@ -148,9 +127,7 @@ defineExpose({ focusItem });
 												interpolate: { position: index + 1, count: displayedItems.length },
 											})
 										"
-										aria-keyshortcuts="ArrowUp ArrowDown"
 										data-testid="chat-queue-drag-handle"
-										@keydown="onQueueHandleKeydown($event, index)"
 									/>
 								</N8nTooltip>
 								<N8nIcon

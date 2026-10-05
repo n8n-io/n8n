@@ -8080,7 +8080,7 @@
 	"agents.chat.queue.editError": "Couldn't save your changes. Try again.",
 	"agents.chat.queue.remove": "Remove queued message",
 	"chat.messageQueue.reorder": "Reorder queued message {position} of {count}",
-	"chat.messageQueue.reorderTooltip": "Drag to reorder. Use the Up and Down arrow keys to move the message.",
+	"chat.messageQueue.reorderTooltip": "Drag to reorder",
 	"agents.chat.queue.reorderUnavailable": "The queue changed. Review the updated order and try again.",
 	"agents.chat.queue.reorderError": "Couldn't change the queue order. Try again.",
 	"agents.chat.queue.loadError": "Couldn't load queued messages. Reopen the chat to try again.",

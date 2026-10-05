@@ -98,25 +98,6 @@ describe('ChatMessageQueue', () => {
 		expect(wrapper.find('[data-testid="chat-queue-drag-handle"]').exists()).toBe(false);
 	});
 
-	it.each([
-		{ key: 'ArrowUp', to: 0 },
-		{ key: 'ArrowDown', to: 2 },
-	])('requests a keyboard move with $key', async ({ key, to }) => {
-		const wrapper = mountQueue({ expanded: true });
-		await wrapper
-			.get('[data-queue-id="2"] [data-testid="chat-queue-drag-handle"]')
-			.trigger('keydown', { key });
-		expect(wrapper.emitted('move')).toEqual([[{ from: 1, to }]]);
-	});
-
-	it('ignores keyboard moves while saving the queue order', async () => {
-		const wrapper = mountQueue({ expanded: true, isReordering: true });
-		await wrapper
-			.get('[data-testid="chat-queue-drag-handle"]')
-			.trigger('keydown', { key: 'ArrowDown' });
-		expect(wrapper.emitted('move')).toBeUndefined();
-	});
-
 	it('forwards drag lifecycle events', async () => {
 		const wrapper = mountQueue();
 		const draggable = wrapper.getComponent(Draggable);
