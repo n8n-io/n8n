@@ -212,7 +212,9 @@ const SHOWN_LENGTH = 80;
 
 /** Issues go to logs and to the AI builder, so a value never shows a secret or a whole body. */
 function shown(value: unknown, at: string, node: JsonSchema): string {
-	if (node.writeOnly || isSensitiveKey(at.split('.').pop() ?? '')) return '[REDACTED]';
+	// An item of a list has the key of the list.
+	const key = (at.split('.').pop() ?? '').replace(/(?:\[\d+\])+$/, '');
+	if (node.writeOnly || isSensitiveKey(key)) return '[REDACTED]';
 	const text = scrubSecretsInText(JSON.stringify(value) ?? String(value));
 	return text.length > SHOWN_LENGTH ? `${text.slice(0, SHOWN_LENGTH - 1)}…` : text;
 }
@@ -229,7 +231,26 @@ interface Place {
 	readonly order: readonly number[];
 }
 
-function placeOf(root: string, value: unknown, instancePath: string): Place {
+/**
+ * The place of a key in its object, plus one. It reads the keys of each object once, so the
+ * issues of a wide object take linear time.
+ */
+function keyPlacesOf() {
+	const places = new WeakMap<object, ReadonlyMap<string, number>>();
+	return (object: object, key: string) => {
+		const known =
+			places.get(object) ?? new Map(Object.keys(object).map((name, index) => [name, index + 1]));
+		places.set(object, known);
+		return known.get(key) ?? 0;
+	};
+}
+
+function placeOf(
+	root: string,
+	value: unknown,
+	instancePath: string,
+	keyPlace: (object: object, key: string) => number,
+): Place {
 	const steps = instancePath
 		.split('/')
 		.slice(1)
@@ -244,7 +265,7 @@ function placeOf(root: string, value: unknown, instancePath: string): Place {
 					}
 				: {
 						at: `${at}.${step}`,
-						order: [...order, (isRecord(current) ? Object.keys(current).indexOf(step) : 0) + 1],
+						order: [...order, isRecord(current) ? keyPlace(current, step) : 1],
 						current: isRecord(current) ? current[step] : undefined,
 					},
 		{ at: root, order: Array.of<number>(), current: value },
@@ -427,8 +448,9 @@ function issuesOf(errors: readonly ErrorObject[], value: unknown, root: string):
 		shownErrors.filter((error) => error.keyword === 'additionalProperties'),
 		(error) => `${error.instancePath} ${error.schemaPath}`,
 	);
+	const keyPlace = keyPlacesOf();
 	const issues = shownErrors.flatMap((error) => {
-		const place = placeOf(root, value, error.instancePath);
+		const place = placeOf(root, value, error.instancePath, keyPlace);
 		if (error.keyword !== 'additionalProperties') {
 			return [{ order: [...place.order, 0], text: issueOf(error, place.at, unionOf(error)) }];
 		}

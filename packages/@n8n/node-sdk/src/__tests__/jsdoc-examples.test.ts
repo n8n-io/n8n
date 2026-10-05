@@ -11,6 +11,7 @@ import {
 	path,
 	promptReply,
 	provider,
+	readAllAs,
 	readAs,
 	ref,
 	replyOutput,
@@ -262,6 +263,13 @@ export const resultIdsOf = (body: unknown) => {
 		read: (page) => [page.results, page.next_cursor],
 	});
 	return { ids: page.results.map(({ id }) => id), drift };
+};
+
+const row = t.obj({ id: t.str() });
+
+export const rowsOf = (body: { readonly values: readonly unknown[] }) => {
+	const rows = readAllAs(row, body.values).map(({ value }) => value);
+	return rows.map(({ id }) => id);
 };
 
 export const chatModel = xAi.provider('chatModel', {

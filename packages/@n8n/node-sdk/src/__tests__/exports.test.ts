@@ -43,6 +43,7 @@ describe('the root of @n8n/node-sdk', () => {
 			'promptMessages',
 			'promptReply',
 			'provider',
+			'readAllAs',
 			'readAs',
 			'ref',
 			'replyOutput',

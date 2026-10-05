@@ -93,6 +93,21 @@ describe('validate', () => {
 			'input: must NOT have more than 1 characters',
 		]);
 	});
+
+	it('gives the issues of an object with many wrong fields in linear time, in key order', () => {
+		const value = Object.fromEntries(
+			Array.from({ length: 10_000 }, (_, index) => [`k${index}`, index]),
+		);
+		const start = performance.now();
+		const issues = validate(value, { type: 'object', additionalProperties: { type: 'string' } });
+		expect(performance.now() - start).toBeLessThan(2000);
+		expect(issues).toHaveLength(10_000);
+		expect(issues.slice(0, 2)).toEqual([
+			'input.k0: must be string, got 0',
+			'input.k1: must be string, got 1',
+		]);
+		expect(issues.at(-1)).toBe('input.k9999: must be string, got 9999');
+	});
 });
 
 describe('validateUntrusted', () => {
@@ -137,6 +152,14 @@ describe('validateUntrusted', () => {
 		const compile = vi.spyOn(Ajv2020.prototype, 'compile');
 		expect(validateUntrusted('a', guestSchema)).toEqual([expect.stringMatching(issue)]);
 		expect(compile).not.toHaveBeenCalled();
+	});
+
+	it('takes a guest pattern of classes that a character that they exclude separates', () => {
+		const email = { type: 'string', pattern: '^[^@\\s]+@[^@\\s]+$' };
+		expect(validateUntrusted('ada@example.com', email)).toEqual([]);
+		expect(validateUntrusted('ada@b@c', email)).toEqual([
+			'input: "ada@b@c" is not ^[^@\\s]+@[^@\\s]+$',
+		]);
 	});
 
 	it('checks a schema text of a guest once', () => {

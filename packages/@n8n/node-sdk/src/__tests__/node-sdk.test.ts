@@ -33,7 +33,7 @@ import {
 } from '../index';
 import { toProperty } from '../properties';
 import { evaluateBundle } from '../runtime';
-import { testPattern } from '../pattern';
+import { stepsPerCharOf, testPattern } from '../pattern';
 import { NODE_CONTRACT_VERSION } from '../version';
 
 const todo = defineNode({
@@ -780,6 +780,36 @@ describe('exampleOf', () => {
 	});
 });
 
+describe('stepsPerCharOf', () => {
+	it.each([
+		'^[^@\\s]+@[^@\\s]+$',
+		'^[0-9]+\\.[0-9]+$',
+		'^[^/]+/[^/]+$',
+		'^[A-Z][A-Z0-9]+-[0-9]+$',
+		'^[^@]+@.*$',
+	])('proves %s linear', (pattern) => {
+		expect(stepsPerCharOf(pattern)).toBeGreaterThan(0);
+	});
+
+	it.each([
+		'^\\s*\\s*$',
+		'^.*\\d+$',
+		'^[a-z]+[a-z0-9]+$',
+		'^a*[^@]+@$',
+		'^[^@]+@?[^@]+$',
+		'[^@]+@[^@]+$',
+		'^(?:[^@]+@)+$',
+		'^\\x61+a+$',
+		'^\\u0061+a+$',
+		'^\\cJ+\n+$',
+		'^\\c+c+$',
+		'^\\01+\u0001+$',
+		'^\uD83D\uDE00+\uD83D\uDE00+$',
+	])('does not prove %j linear', (pattern) => {
+		expect(stepsPerCharOf(pattern)).toBeUndefined();
+	});
+});
+
 describe('testPattern', () => {
 	const ID = '[0-9a-f]{8}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{12}';
 	const page = t.obj({ id: t.str().with({ pattern: ID }) }).with({
@@ -803,7 +833,7 @@ describe('testPattern', () => {
 
 	it.each([
 		['(a+)+$', 'a'.repeat(20)],
-		['^[^@\\s]+@[^@\\s]+$', 'ada@example.com'],
+		['^.*\\d+$', '1'.repeat(20)],
 		['a+b', 'aab'],
 		['^(?:a|b){2,}$', 'ab'],
 		['(a)\\1', 'aa'],
@@ -826,6 +856,8 @@ describe('testPattern', () => {
 			['2026-09-15T09:30Z', '2026-09-15'],
 		],
 		['^[\\]a]$', [']', 'a', 'b']],
+		['^[^@\\s]+@[^@\\s]+$', ['ada@example.com', 'a@b@c', 'a b@c', '@b']],
+		['^[0-9]+\\.[0-9]+$', ['1712345678.123456', '1.', '1.2.3']],
 	])('gives the safeRegex result for %s', (pattern, inputs) => {
 		expect(inputs.map((input) => testPattern(pattern, input))).toEqual(
 			inputs.map((input) => safeRegex.test(pattern, input)),

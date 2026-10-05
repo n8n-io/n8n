@@ -1,7 +1,7 @@
 import {
 	pages,
 	path,
-	readAs,
+	readAllAs,
 	Schema,
 	t,
 	type Infer,
@@ -251,7 +251,7 @@ export const getManyDatabasePages = databasePage.action('getAll', {
 					}
 				: {}),
 		};
-		const results = pages(http, {
+		yield* pages(http, {
 			page: queryPage,
 			request: (cursor, room) => ({
 				method: 'POST',
@@ -263,12 +263,12 @@ export const getManyDatabasePages = databasePage.action('getAll', {
 					...(cursor ? { start_cursor: cursor } : {}),
 				},
 			}),
-			items: (response) => response.results,
+			// Each page is an output, so the host warns about a field in another shape.
+			items: (response) =>
+				readAllAs(page, response.results.map(simplifyPage)).map(({ value }) => value),
 			// Like v3, a missing `has_more` does not end the list.
 			next: (response) => (response.has_more === false ? undefined : response.next_cursor),
 			limit,
 		});
-		// Each page is an output, so the host warns about a field in another shape.
-		for await (const result of results) yield readAs(page, simplifyPage(result)).value;
 	},
 });

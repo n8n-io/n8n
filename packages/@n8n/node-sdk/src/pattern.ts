@@ -38,7 +38,12 @@ function repeatAt(pattern: string, at: number) {
 function atomScanAt(pattern: string, at: number): PatternScan | undefined {
 	const char = pattern[at];
 	const one = (end: number): PatternScan => ({ end, unbounded: 0, paths: 1, length: 1 });
-	if (char === '\\') return /[^1-9k]/.test(pattern[at + 1] ?? '1') ? one(at + 2) : undefined;
+	if (char === '\\') {
+		// Without the `u` flag, `\0` before a digit and `\c` before a non-letter mean other characters.
+		const escape = /\\(?:x[0-9A-Fa-f]{2}|u[0-9A-Fa-f]{4}|c[A-Za-z]|0(?![0-9])|[^0-9ck])/y;
+		escape.lastIndex = at;
+		return escape.exec(pattern) ? one(escape.lastIndex) : undefined;
+	}
 	if (char === '[') {
 		const close = /(?:\\[\s\S]|[^\\\]])*\]/y;
 		close.lastIndex = at + 1;
@@ -67,23 +72,95 @@ function repeatedScanAt(pattern: string, at: number): PatternScan | undefined {
 		: { end, unbounded: 0, paths: high - low + 1, length: high };
 }
 
+/** The most characters that a class lists for `charsOf`. */
+const MAX_LISTED_CHARS = 256;
+
+/** An item of a class: a literal character or a symbol after `\`, or a range of two of them. */
+const CLASS_CHAR = String.raw`\\[^0-9A-Za-z]|[^\\\]]`;
+const CLASS_ITEMS = new RegExp(`(${CLASS_CHAR})(?:-(${CLASS_CHAR}))?`, 'g');
+
+/**
+ * The characters that an atom matches: a literal, a symbol after `\`, or a class of those and
+ * their ranges. `undefined` for any other atom, e.g. `\d`, `.` or `[^@]`.
+ */
+function charsOf(atom: string): string[] | undefined {
+	if (/^[^\\[\]().^$|*+?{}\uD800-\uDFFF]$/.test(atom)) return [atom];
+	if (/^\\[^0-9A-Za-z\uD800-\uDFFF]$/.test(atom)) return [atom.slice(1)];
+	const body = /^\[(?!\^)([\s\S]+)\]$/.exec(atom)?.[1];
+	const items = body === undefined ? [] : [...body.matchAll(CLASS_ITEMS)];
+	if (items.map(([text]) => text).join('') !== body) return undefined;
+	const codes = items.flatMap(([, low = '', high = low]) => {
+		const from = low.slice(-1).charCodeAt(0);
+		const count = Math.min(high.slice(-1).charCodeAt(0) - from + 1, MAX_LISTED_CHARS + 1);
+		return Array.from({ length: Math.max(count, 0) }, (_, index) => from + index);
+	});
+	// Without the `u` flag, a surrogate is half of a character.
+	const listed =
+		codes.length > 0 &&
+		codes.length <= MAX_LISTED_CHARS &&
+		codes.every((code) => code < 0xd800 || code > 0xdfff);
+	return listed ? codes.map((code) => String.fromCharCode(code)) : undefined;
+}
+
+/** `atom` matches one of `chars`, with or without the `u` flag. */
+const matchesOneOf = (atom: string, chars: readonly string[]) =>
+	['', 'u'].some((flags) => {
+		try {
+			const regex = new RegExp(`^(?:${atom})$`, flags);
+			return chars.some((char) => regex.test(char));
+		} catch {
+			// The pattern does not compile with these flags, so it never runs with them.
+			return false;
+		}
+	});
+
+/**
+ * An unbounded atom of one character, followed by a character that it cannot match or by the
+ * final `$`, stops at one place: a step back fails at the next atom at once. A surrogate is not
+ * covered: with the `u` flag, a repeat applies to the full character.
+ */
+function stopsAt(pattern: string, at: number, end: number): boolean {
+	const atom = pattern.slice(at, atomScanAt(pattern, at)?.end);
+	if (!/^(?:\\[^bB]|\[[\s\S]+\]|[^\\(^$\uD800-\uDFFF])$/.test(atom)) return false;
+	if (end === pattern.length - 1 && pattern[end] === '$') return true;
+	const next = atomScanAt(pattern, end);
+	const repeat = next && repeatAt(pattern, next.end);
+	const chars = next && (repeat?.low ?? 1) > 0 ? charsOf(pattern.slice(end, next.end)) : undefined;
+	return chars !== undefined && !matchesOneOf(atom, chars);
+}
+
+/**
+ * With `fixedStops`, an unbounded atom that `stopsAt` its next atom adds no factor when no other
+ * unbounded atom comes before it: each step back fails at the next atom at once.
+ */
 function sequenceScanAt(
 	pattern: string,
 	at: number,
 	scanned = EMPTY_SCAN,
+	fixedStops = false,
 ): PatternScan | undefined {
 	if (at >= pattern.length || pattern[at] === '|' || pattern[at] === ')') {
 		return { ...scanned, end: at };
 	}
 	const next = repeatedScanAt(pattern, at);
+	const stops =
+		fixedStops &&
+		next?.unbounded === 1 &&
+		scanned.unbounded === 0 &&
+		stopsAt(pattern, at, next.end);
 	return (
 		next &&
-		sequenceScanAt(pattern, next.end, {
-			end: next.end,
-			unbounded: scanned.unbounded + next.unbounded,
-			paths: scanned.paths * next.paths,
-			length: scanned.length + next.length,
-		})
+		sequenceScanAt(
+			pattern,
+			next.end,
+			{
+				end: next.end,
+				unbounded: scanned.unbounded + (stops ? 0 : next.unbounded),
+				paths: scanned.paths * next.paths,
+				length: scanned.length + next.length,
+			},
+			fixedStops,
+		)
 	);
 }
 
@@ -108,16 +185,19 @@ const MAX_SCANNED_PATTERN = 1000;
  * The most backtracking steps for each input character, or `undefined` when a match can take
  * more than linear time, e.g. `(a+)+`, `a*a*`, or `a+b` without `^`. A backtracking engine tries
  * each way at each start position. With `^`, only the first position matches, so one unbounded
- * atom adds one factor of the input length.
+ * atom adds one factor of the input length. An unbounded atom of one character before it adds no
+ * factor when its next atom is a character that it cannot match, or the final `$`, e.g. both
+ * atoms of `^[^@\s]+@[^@\s]+$`.
  */
 export function stepsPerCharOf(pattern: string): number | undefined {
 	if (pattern.length > MAX_SCANNED_PATTERN) return undefined;
 	const scan = alternativesScanAt(pattern, 0);
 	if (scan?.end !== pattern.length) return undefined;
-	const anchored = pattern.startsWith('^') && sequenceScanAt(pattern, 0)?.end === pattern.length;
-	return scan.unbounded > (anchored ? 1 : 0)
-		? undefined
-		: scan.paths * (scan.length + pattern.length);
+	const anchored = pattern.startsWith('^')
+		? sequenceScanAt(pattern, 0, EMPTY_SCAN, true)
+		: undefined;
+	const unbounded = anchored?.end === pattern.length ? anchored.unbounded - 1 : scan.unbounded;
+	return unbounded > 0 ? undefined : scan.paths * (scan.length + pattern.length);
 }
 
 /** The most steps of a native match. A match that can need more runs in `safeRegex`, which has a timeout. */

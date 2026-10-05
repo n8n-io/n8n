@@ -126,9 +126,18 @@ export function readAs(
 	options: { readonly path?: string; readonly read?: (value: unknown) => unknown } = {},
 ): { readonly value: unknown; readonly drift: readonly string[] } {
 	const at = options.path ?? 'value';
-	const issues = validate(value, schema.json, { path: at });
+	return readOf(value, validate(value, schema.json, { path: at }), at, options.read);
+}
+
+/** `value` with its `issues` as drift, or the error of the issues at the paths that `read` reads. */
+function readOf(
+	value: unknown,
+	issues: readonly string[],
+	at: string,
+	readFields: ((value: unknown) => unknown) | undefined,
+): { readonly value: unknown; readonly drift: readonly string[] } {
 	if (issues.length === 0) return { value, drift: [] };
-	const read = readPathsOf(value, at, options.read ?? (() => undefined));
+	const read = readPathsOf(value, at, readFields ?? (() => undefined));
 	const failing = issues.filter(
 		(issue) =>
 			!read ||
@@ -137,6 +146,90 @@ export function readAs(
 	);
 	if (failing.length > 0) throw new Error(failing.join('; '));
 	return { value, drift: issues };
+}
+
+/** The keywords that hold what a local `$ref` points to. A ref resolves from the root. */
+const DEFINITIONS = new Set(['$defs', 'definitions']);
+const listSchemas = new WeakMap<JsonSchema, JsonSchema>();
+
+/** A list of `item`, the same object for each call, so the validator compiles it once. */
+function listSchemaOf(item: JsonSchema): JsonSchema {
+	const known = listSchemas.get(item);
+	if (known) return known;
+	const entries = Object.entries(item);
+	const list: JsonSchema = {
+		type: 'array',
+		items: Object.fromEntries(entries.filter(([key]) => !DEFINITIONS.has(key))),
+		...Object.fromEntries(entries.filter(([key]) => DEFINITIONS.has(key))),
+	};
+	listSchemas.set(item, list);
+	return list;
+}
+
+/**
+ * `values.map((value) => readAs(schema, value, options))`, with one validator call for all
+ * values. A sandbox guest makes one host call for each validator call, so read a page of items
+ * with this, not with `readAs` for each item. It throws the error of the first value that
+ * `readAs` would fail on. A local `$ref` in `schema` must point into `$defs` or `definitions`.
+ *
+ * @example
+ * ```ts
+ * const rows = readAllAs(row, body.values).map(({ value }) => value);
+ * ```
+ */
+export function readAllAs<S extends AnySchema>(
+	schema: S,
+	values: readonly unknown[],
+	options?: {
+		/**
+		 * The path of each value in the messages.
+		 *
+		 * @defaultValue `'value'`
+		 */
+		readonly path?: string;
+		/** Reads the fields of one value that must match. Only a value with issues runs it. */
+		readonly read?: (value: Infer<S>) => unknown;
+	},
+): ReadonlyArray<{
+	/** The value as it came, not a copy. */
+	readonly value: Infer<S>;
+	/** The issues of the fields that `read` does not read, e.g. `value.total: is required`. */
+	readonly drift: readonly string[];
+}>;
+export function readAllAs(
+	schema: AnySchema,
+	values: readonly unknown[],
+	options: { readonly path?: string; readonly read?: (value: unknown) => unknown } = {},
+): ReadonlyArray<{ readonly value: unknown; readonly drift: readonly string[] }> {
+	if (values.length === 0) return [];
+	const at = options.path ?? 'value';
+	const prefix = `${at}[`;
+	// The issues of item 3 start with `value[3]`; `readAs` of that item gives them at `value`.
+	const issues = validate(values, listSchemaOf(schema.json), { path: at }).map((issue) => {
+		const close = issue.startsWith(prefix) ? issue.indexOf(']', prefix.length) : -1;
+		return close < 0
+			? { text: issue }
+			: {
+					index: Number(issue.slice(prefix.length, close)),
+					text: `${at}${issue.slice(close + 1)}`,
+				};
+	});
+	const byIndex = new Map<number | undefined, string[]>();
+	for (const { index, text } of issues) {
+		const group = byIndex.get(index);
+		if (group) group.push(text);
+		else byIndex.set(index, [text]);
+	}
+	const shared = byIndex.get(undefined) ?? [];
+	return values.map((value, index) =>
+		readOf(
+			value,
+			// `readAs` gives no issue for `undefined`. A guest sends JSON, where it becomes `null`.
+			value === undefined ? [] : [...shared, ...(byIndex.get(index) ?? [])],
+			at,
+			options.read,
+		),
+	);
 }
 
 const branchOf = (value: Record<string, unknown>, schema: JsonSchema) => {

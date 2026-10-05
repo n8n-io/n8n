@@ -1,3 +1,4 @@
+import Ajv2020 from 'ajv/dist/2020';
 import {
 	NodeApiError,
 	NodeOperationError,
@@ -16,7 +17,9 @@ import {
 	paging,
 	parse,
 	path,
+	readAllAs,
 	readAs,
+	Schema,
 	t,
 	UserError,
 	validate,
@@ -409,6 +412,73 @@ describe('readAs', () => {
 		expect(() => readAs(page, { results: [] }, { read })).toThrow(
 			'value.meta: is required; value.total: is required',
 		);
+	});
+});
+
+describe('readAllAs', () => {
+	const item = t.obj({ id: t.str(), title: t.str() });
+	const values = [
+		{ id: 'a', title: 'A' },
+		{ id: 'b' },
+		undefined,
+		{ id: 'c', title: 'C', extra: 1 },
+	];
+	const read = (value: Infer<typeof item>) => value.id;
+
+	afterEach(() => vi.restoreAllMocks());
+
+	it('gives what readAs gives for each value', () => {
+		expect(readAllAs(item, values)).toEqual(values.map((value) => readAs(item, value)));
+		expect(readAllAs(item, values, { path: 'row', read })).toEqual(
+			values.map((value) => readAs(item, value, { path: 'row', read })),
+		);
+		expect(readAllAs(item, [])).toEqual([]);
+	});
+
+	it('fails with the issues of the first value whose read fields do not match', () => {
+		const failing = [{ id: 'a' }, { title: 'B' }, 'x'];
+		expect(() => readAllAs(item, failing, { read })).toThrow('value.id: is required');
+		expect(() => readAllAs(item, ['x', 1])).toThrow('value: must be object, got "x"');
+		expect(() => readAllAs(t.str(), [1], { path: 'token' })).toThrow(
+			'token: must be string, got [REDACTED]',
+		);
+		expect(() => readAs(t.str(), 1, { path: 'token' })).toThrow(
+			'token: must be string, got [REDACTED]',
+		);
+	});
+
+	it('validates all values in one call, also with a ref into $defs', () => {
+		const compile = Ajv2020.prototype.compile;
+		const checked: unknown[] = [];
+		const compiled: unknown[] = [];
+		vi.spyOn(Ajv2020.prototype, 'compile').mockImplementation(function (
+			this: Ajv2020,
+			...args: Parameters<Ajv2020['compile']>
+		) {
+			compiled.push(args[0]);
+			return new Proxy(compile.apply(this, args), {
+				apply: (target, self, params: unknown[]) => {
+					checked.push(params[0]);
+					return Reflect.apply(target, self, params);
+				},
+			});
+		} as never);
+		const counted = new Schema<{ n: number }>(
+			{
+				type: 'object',
+				properties: { n: { $ref: '#/$defs/count' } },
+				$defs: { count: { type: 'integer' } },
+			} as never,
+			false,
+		);
+		const rows = [{ n: 1 }, { n: 'x' }];
+		expect(readAllAs(counted, rows)).toEqual([
+			{ value: { n: 1 }, drift: [] },
+			{ value: { n: 'x' }, drift: ['value.n: must be integer, got "x"'] },
+		]);
+		expect(checked).toEqual([rows]);
+		expect(compiled).toHaveLength(1);
+		expect(JSON.stringify(compiled[0]).match(/"\$defs"/g)).toHaveLength(1);
 	});
 });
 
