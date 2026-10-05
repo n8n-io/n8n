@@ -10,6 +10,7 @@ import {
 	createAgentEvalDatasetSchema,
 	type AgentEvalDatasetRecord,
 	type AgentEvalRatingRecord,
+	type AgentEvalResultRecord,
 	type AgentEvalRunDetail,
 	type AgentEvalRunList,
 	type AgentEvalRunRecord,
@@ -224,6 +225,19 @@ export class AgentEvalsController {
 		await this.flagGate.assertEnabled(req.user);
 		const { agentId, projectId, runId } = req.params;
 		return await this.service.cancelRun(agentId, projectId, runId);
+	}
+
+	// ---- results ----
+
+	// Re-executes one already-settled case in place — no new run, and no effect
+	// on any other row in the run. `agent:execute`, same as `startRun`: running a
+	// case is the same action, just scoped to one of them.
+	@Post('/:agentId/evals/results/:resultId/rerun')
+	@ProjectScope('agent:execute')
+	async rerunResult(req: AuthenticatedRequest<ResultParam>): Promise<AgentEvalResultRecord> {
+		await this.flagGate.assertEnabled(req.user);
+		const { agentId, projectId, resultId } = req.params;
+		return await this.service.rerunResult(req.user, agentId, projectId, resultId);
 	}
 
 	// ---- ratings ----

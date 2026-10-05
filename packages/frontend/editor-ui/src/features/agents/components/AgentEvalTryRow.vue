@@ -17,6 +17,7 @@ import {
 	type TextColor,
 } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
+import type { ToolCall } from '@/features/ai/shared/agentsChat/types';
 import AgentAvatar, { type AgentAvatarKind } from './AgentAvatar.vue';
 import EvalInitialSample from './EvalInitialSample.vue';
 
@@ -31,9 +32,16 @@ const props = defineProps<{
 	date?: string | null;
 	/** True from "Save check" until the regenerate-and-rerun request resolves. */
 	savingCheck?: boolean;
+	/** True from "Run check" until the rerun request resolves. */
+	runningCheck?: boolean;
 	view?: 'small' | 'complete';
 	/** Why this case errored, read from the result's `errorDetails`. */
 	errorMessage?: string | null;
+	/** Shown between the input and the answer in the expanded sample. */
+	toolCalls?: ToolCall[];
+	projectId?: string;
+	/** The case's "what to check" criteria. Not yet rendered anywhere in this row. */
+	whatToCheck?: string | null;
 	/** No `agent:update` — disables the correction controls (not expanding/viewing). */
 	disabled?: boolean;
 	/** True where there's no backend primitive to persist a correction yet (the
@@ -47,6 +55,8 @@ const emit = defineEmits<{
 	/** The user's note on what the response should have done instead. */
 	'save-check': [suggestion: string];
 	'actually-fine': [];
+	/** "Run check" on a case that doesn't need correction: rerun it as-is. */
+	'rerun-check': [];
 }>();
 
 const i18n = useI18n();
@@ -93,6 +103,10 @@ function onSaveCheck() {
 
 function onActuallyFine() {
 	emit('actually-fine');
+}
+
+function onRunCheck() {
+	emit('rerun-check');
 }
 
 // Once the parent accepts or regenerates this case, its status moves away
@@ -156,11 +170,20 @@ watch(
 			:class="$style.sample"
 			:data-test-id="testId && `${testId}-placeholder`"
 		>
+			<div v-if="whatToCheck" :class="$style.whatToCheck">
+				<N8nText bold color="text-dark" size="medium">{{
+					i18n.baseText('instanceAi.testAgentPreview.rule')
+				}}</N8nText>
+
+				<N8nText color="text-dark" size="medium">{{ whatToCheck }}</N8nText>
+			</div>
 			<EvalInitialSample
 				:preview-input="input"
 				:preview-output="output ?? ''"
 				:error-message="errorMessage ?? undefined"
 				:status="status"
+				:tool-calls="toolCalls"
+				:project-id="projectId"
 			/>
 
 			<template v-if="needsCorrection">
@@ -202,6 +225,20 @@ watch(
 					</N8nButton>
 				</div>
 			</template>
+			<template v-else-if="!hideRevise">
+				<div :class="$style.correctionActions">
+					<N8nButton
+						size="small"
+						variant="subtle"
+						:disabled="disabled"
+						:loading="runningCheck"
+						:data-test-id="testId && `${testId}-run-check`"
+						@click="onRunCheck"
+					>
+						{{ i18n.baseText('instanceAi.testAgentPreview.runCheck') }}
+					</N8nButton>
+				</div>
+			</template>
 		</div>
 	</div>
 </template>
@@ -228,6 +265,13 @@ watch(
 	text-overflow: ellipsis;
 }
 
+.whatToCheck {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--5xs);
+	margin-bottom: var(--spacing--2xs);
+}
+
 .expandToggle {
 	display: flex;
 	align-items: center;
@@ -241,6 +285,10 @@ watch(
 
 .sample {
 	margin-top: var(--spacing--xs);
+	border: var(--border);
+	padding: var(--spacing--sm);
+	border-radius: var(--radius--lg);
+	background-color: var(--color--background);
 }
 
 .correctionHint {

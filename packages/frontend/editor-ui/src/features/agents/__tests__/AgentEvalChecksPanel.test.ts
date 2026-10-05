@@ -26,7 +26,7 @@ vi.mock('../components/AgentEvalTryRow.vue', () => ({
 			disabled: { type: Boolean },
 			hideRevise: { type: Boolean },
 		},
-		emits: ['save-check', 'actually-fine'],
+		emits: ['save-check', 'actually-fine', 'rerun-check'],
 		// A plain, testId-free button: a testid built from the row's own (which
 		// starts with the same "agent-eval-check-" every row testid shares) would
 		// match every row-counting `getAllByTestId(/agent-eval-check-/)` query in
@@ -39,6 +39,7 @@ vi.mock('../components/AgentEvalTryRow.vue', () => ({
 		>
 			{{ input }}
 			<button @click="$emit('actually-fine')">actually fine</button>
+			<button @click="$emit('rerun-check')">run check</button>
 		</div>`,
 	},
 }));
@@ -253,6 +254,18 @@ describe('AgentEvalChecksPanel', () => {
 		await user.click(getByTestId('agent-eval-checks-run-all'));
 
 		expect(emitted('rerun')).toBeTruthy();
+	});
+
+	it('reruns just that one result when a row\'s "Run check" is clicked', async () => {
+		const user = userEvent.setup();
+		const { getByTestId, store } = render({
+			results: [result('c1', 'success'), result('c2', 'success')],
+		});
+
+		await user.click(within(getByTestId('agent-eval-check-c1')).getByText('run check'));
+
+		expect(store.rerunResult).toHaveBeenCalledWith('project-1', 'agent-1', 'c1');
+		expect(store.rerunResult).not.toHaveBeenCalledWith(expect.anything(), expect.anything(), 'c2');
 	});
 
 	it('disables "Run all checks" while a run is already in flight', () => {
@@ -533,7 +546,7 @@ describe('AgentEvalChecksPanel', () => {
 		expect(getAllByTestId(/agent-eval-check-/)).toHaveLength(1);
 
 		const row = getByTestId('agent-eval-check-fail-1');
-		await user.click(within(row).getByRole('button'));
+		await user.click(within(row).getByText('actually fine'));
 
 		// The needs-work pill is gone (nothing needs work anymore) and every row
 		// shows again — "all" is active, not a stale "needs-work" with no pill lit.

@@ -129,4 +129,48 @@ describe('AgentEvalTryRow', () => {
 			expect(getByTestId('row-actually-fine')).toBeDisabled();
 		});
 	});
+
+	describe('"Run check"', () => {
+		const renderPassing = (overrides: Record<string, unknown> = {}) =>
+			renderComponent({
+				props: { status: 'pass', output: 'Order #123 ships tomorrow.', ...overrides },
+			});
+
+		it('shows "Run check" instead of the correction controls for a row that needs no correction', async () => {
+			const user = userEvent.setup();
+			const { getByTestId, queryByTestId } = renderPassing({ testId: 'row' });
+			await user.click(getByTestId('row-toggle'));
+
+			expect(getByTestId('row-run-check')).toBeInTheDocument();
+			expect(queryByTestId('row-suggestion')).not.toBeInTheDocument();
+			expect(queryByTestId('row-save-check')).not.toBeInTheDocument();
+			expect(queryByTestId('row-actually-fine')).not.toBeInTheDocument();
+		});
+
+		it('emits rerun-check when clicked', async () => {
+			const user = userEvent.setup();
+			const { getByTestId, emitted } = renderPassing({ testId: 'row' });
+			await user.click(getByTestId('row-toggle'));
+
+			await user.click(getByTestId('row-run-check'));
+
+			expect(emitted('rerun-check')).toBeTruthy();
+		});
+
+		it('disables "Run check" for a read-only viewer', async () => {
+			const user = userEvent.setup();
+			const { getByTestId } = renderPassing({ testId: 'row', disabled: true });
+			await user.click(getByTestId('row-toggle'));
+
+			expect(getByTestId('row-run-check')).toBeDisabled();
+		});
+
+		it('shows a loading state while runningCheck is true', async () => {
+			const user = userEvent.setup();
+			const { getByTestId } = renderPassing({ testId: 'row', runningCheck: true });
+			await user.click(getByTestId('row-toggle'));
+
+			expect(getByTestId('row-run-check')).toHaveAttribute('aria-busy', 'true');
+		});
+	});
 });

@@ -1,5 +1,6 @@
 import type {
 	AgentEvalDatasetRecord,
+	AgentEvalResultRecord,
 	AgentEvalRunDetail,
 	AgentEvalRunList,
 	AgentEvalRunRecord,
@@ -14,7 +15,7 @@ import type {
 	UpdateAgentEvalDatasetPayload,
 } from '@n8n/api-types';
 import { ModuleRegistry } from '@n8n/backend-common';
-import type { AgentEvalDataset, AgentEvalRun, User } from '@n8n/db';
+import type { AgentEvalDataset, AgentEvalResult, AgentEvalRun, User } from '@n8n/db';
 import {
 	AgentEvalDatasetRepository,
 	AgentEvalResultRepository,
@@ -228,6 +229,28 @@ export class AgentEvalService {
 		return await this.runner.getRunSummary(runId, agentId);
 	}
 
+	// ---- results ----
+
+	// Re-executes one already-settled case in place — no new run, and no effect
+	// on any other result in the run it belongs to. `agent:execute`, same as
+	// `startRun`: running a case is the same action, just scoped to one of them.
+	async rerunResult(
+		user: User,
+		agentId: string,
+		projectId: string,
+		resultId: string,
+	): Promise<AgentEvalResultRecord> {
+		await this.assertAgentInProject(agentId, projectId);
+		const result = await this.resolveResult(agentId, resultId);
+
+		if (result.status === 'new' || result.status === 'running') {
+			throw new BadRequestError(`Agent eval result ${resultId} is already running.`);
+		}
+
+		const updated = await this.runner.rerunResult(result, agentId, projectId, user);
+		return toResultRecord(updated);
+	}
+
 	// Sets the flag rather than stopping anything: running cases abort at their next
 	// checkpoint, so the returned run is still `running` and settles shortly after.
 	async cancelRun(agentId: string, projectId: string, runId: string): Promise<AgentEvalRunRecord> {
@@ -268,5 +291,22 @@ export class AgentEvalService {
 		const run = await this.runRepository.findByIdAndAgentId(runId, agentId);
 		if (!run) throw new NotFoundError(`Agent eval run ${runId} not found.`);
 		return run;
+	}
+
+	/**
+	 * A result is owned through its run, so this resolves the run agent-filtered
+	 * rather than trusting a bare result id. A result on a sibling agent reads as
+	 * missing, not forbidden, so its existence doesn't leak.
+	 */
+	private async resolveResult(agentId: string, resultId: string): Promise<AgentEvalResult> {
+		const notFound = () => new NotFoundError(`Agent eval result ${resultId} not found.`);
+
+		const result = await this.resultRepository.findById(resultId);
+		if (!result) throw notFound();
+
+		const run = await this.runRepository.findByIdAndAgentId(result.runId, agentId);
+		if (!run) throw notFound();
+
+		return result;
 	}
 }

@@ -8,6 +8,7 @@ import { computed, ref, watch } from 'vue';
 import type { AgentEvalDraftCase } from '@n8n/api-types';
 import { N8nButton, N8nIcon, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
+import type { ToolCall } from '@/features/ai/shared/agentsChat/types';
 import AgentAvatar, { type AgentAvatarKind } from '@/features/agents/components/AgentAvatar.vue';
 import AgentEvalExamplesSlider from '@/features/agents/components/AgentEvalExamplesSlider.vue';
 import AgentEvalTryRow from '@/features/agents/components/AgentEvalTryRow.vue';
@@ -15,10 +16,15 @@ import AgentEvalTryRow from '@/features/agents/components/AgentEvalTryRow.vue';
 /** One case of the running suite: its live status and, once settled, its answer. */
 export type SuiteCaseRun = {
 	rowId: number;
+	/** Null until the row has a seeded result to rerun — never the case once
+	 *  `caseRuns` is non-null, since `startRun` seeds every row up front. */
+	resultId: string | null;
 	input: string;
 	label: string;
 	status: AgentAvatarKind;
 	output: string | null;
+	toolCalls: ToolCall[];
+	whatToCheck: string | null;
 };
 
 const props = defineProps<{
@@ -28,6 +34,7 @@ const props = defineProps<{
 	 *  (the builder's own reused test result was never scenario-generated) —
 	 *  falls back to a generic "Your try" label. */
 	previewScenario: string | null;
+	projectId?: string;
 	/** Already fetched in full (up to 10) — the slider only trims the display. */
 	examples: AgentEvalDraftCase[];
 	addingExample?: boolean;
@@ -48,6 +55,10 @@ const emit = defineEmits<{
 	'stop-run': [];
 	/** "Save check" on a case: regenerate it from the user's note and rerun. */
 	'revise-case': [payload: { rowId: number; suggestion: string }];
+	/** "Run check" on a case that needs no correction: rerun just that result.
+	 *  The store patches the result to `running` itself, so the row reads as
+	 *  "waiting" through the ordinary status mapping — nothing here tracks it. */
+	'rerun-case': [resultId: string];
 }>();
 
 const i18n = useI18n();
@@ -82,6 +93,11 @@ function onActuallyFine(rowId: number) {
 
 function onSaveCheck(rowId: number, suggestion: string) {
 	emit('revise-case', { rowId, suggestion });
+}
+
+function onRunCheck(resultId: string | null) {
+	if (!resultId) return;
+	emit('rerun-case', resultId);
 }
 
 // The list the template renders from — `caseRuns` with any "Actually fine"
@@ -128,6 +144,7 @@ function onCheckYourAgent() {
 				:input="previewInput"
 				:output="previewOutput"
 				:label="previewScenario ?? i18n.baseText('instanceAi.testAgentPreview.yourTry')"
+				hide-revise
 				test-id="instance-ai-test-agent-examples-try"
 			/>
 
@@ -222,10 +239,15 @@ function onCheckYourAgent() {
 					:input="run.input"
 					:output="run.output"
 					:label="run.label"
+					:tool-calls="run.toolCalls"
+					:project-id="projectId"
+					:what-to-check="run.whatToCheck"
 					:test-id="`instance-ai-test-agent-examples-case-${run.rowId}`"
 					:saving-check="revisingRowId === run.rowId"
+					:running-check="run.status === 'waiting'"
 					@save-check="onSaveCheck(run.rowId, $event)"
 					@actually-fine="onActuallyFine(run.rowId)"
+					@rerun-check="onRunCheck(run.resultId)"
 				/>
 			</div>
 

@@ -71,6 +71,16 @@ export function readCaseRequest(input: JsonObject | null | undefined): string {
 	return '';
 }
 
+/** The case's "what to check" criteria, written into the snapshot under `criteria`.
+ *  Null when the dataset maps no criteria column — a valid dataset, just one with
+ *  no per-case rule. */
+export function readCaseWhatToCheck(input: JsonObject | null | undefined): string | null {
+	if (!isRecord(input)) return null;
+	const value = input.criteria;
+	if (typeof value === 'string' && value.length > 0) return value;
+	return null;
+}
+
 /** The agent's answer for the case. Null when the run recorded none. */
 export function readAgentAnswer(output: JsonObject | null | undefined): string | null {
 	return readText(output, 'finalText');

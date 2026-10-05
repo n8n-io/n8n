@@ -1433,6 +1433,131 @@ describe('InstanceAiTestAgentPreviewPanel', () => {
 		});
 	});
 
+	describe('"Run check" / rerun flow', () => {
+		it('reruns the suite dataset as-is, without regenerating the case', async () => {
+			const store = useAgentEvalsStore();
+			mockPreviewRun(store, { scenario: 'Upset' });
+			const generateDraftCases = vi.spyOn(store, 'generateDraftCases').mockResolvedValue({
+				cases: [
+					{ input: 'a', whatToCheck: 'b', scenario: 'Vague' },
+					{ input: 'c', whatToCheck: 'd', scenario: 'Sensitive data' },
+				],
+			});
+			mockCommit(store, {
+				rows: [
+					{ rowId: 1, input: 'a', whatToCheck: 'b' },
+					{ rowId: 2, input: 'c', whatToCheck: 'd' },
+				],
+			});
+			const updateCase = vi.spyOn(store, 'updateCase');
+			vi.spyOn(store, 'isRunInFlight').mockReturnValue(false);
+			vi.spyOn(store, 'getReview').mockReturnValue({
+				run: { status: 'completed' } as never,
+				results: [
+					{
+						id: 'result-1',
+						sourceRowId: '1',
+						status: 'success',
+						input: { input: 'a' },
+						output: { finalText: 'b answer' },
+					} as never,
+					{
+						id: 'result-2',
+						sourceRowId: '2',
+						status: 'error',
+						input: { input: 'c' },
+						output: { finalText: 'd answer' },
+					} as never,
+				],
+				resultsCount: 2,
+				ratingsByResultId: {},
+				pendingByResultId: {},
+				draftsByResultId: {},
+				counts: null,
+				loading: false,
+				loadingMore: false,
+			});
+			const rerunResult = vi
+				.spyOn(store, 'rerunResult')
+				.mockResolvedValue({ id: 'result-1', runId: 'suite-run' } as never);
+
+			const user = userEvent.setup();
+			const { getByTestId, findByTestId, findByText } = renderComponent();
+			await waitFor(() =>
+				expect(getByTestId('instance-ai-test-agent-preview-looks-good')).toBeEnabled(),
+			);
+			await user.click(getByTestId('instance-ai-test-agent-preview-looks-good'));
+			await findByTestId('instance-ai-test-agent-examples-check-agent');
+			await user.click(getByTestId('instance-ai-test-agent-examples-check-agent'));
+
+			expect(await findByText('1 of 2 went well, 1 need work')).toBeInTheDocument();
+			await user.click(getByTestId('instance-ai-test-agent-examples-summary-toggle'));
+			// Case 1 passed — it gets "Run check" instead of the correction controls.
+			await user.click(getByTestId('instance-ai-test-agent-examples-case-1-toggle'));
+
+			await user.click(getByTestId('instance-ai-test-agent-examples-case-1-run-check'));
+
+			expect(rerunResult).toHaveBeenCalledWith('project-1', 'agent-1', 'result-1');
+			// No whole-suite rerun, no regeneration — only that one case ran again.
+			expect(store.startRun).toHaveBeenCalledTimes(1);
+			expect(generateDraftCases).toHaveBeenCalledTimes(1);
+			expect(updateCase).not.toHaveBeenCalled();
+		});
+
+		it('toasts an error when the rerun fails, without touching the suite', async () => {
+			const store = useAgentEvalsStore();
+			mockPreviewRun(store, { scenario: 'Upset' });
+			vi.spyOn(store, 'generateDraftCases').mockResolvedValue({
+				cases: [{ input: 'a', whatToCheck: 'b', scenario: 'Vague' }],
+			});
+			mockCommit(store, { rows: [{ rowId: 1, input: 'a', whatToCheck: 'b' }] });
+			vi.spyOn(store, 'isRunInFlight').mockReturnValue(false);
+			vi.spyOn(store, 'getReview').mockReturnValue({
+				run: { status: 'completed' } as never,
+				results: [
+					{
+						id: 'result-1',
+						sourceRowId: '1',
+						status: 'success',
+						input: { input: 'a' },
+						output: { finalText: 'b answer' },
+					} as never,
+				],
+				resultsCount: 1,
+				ratingsByResultId: {},
+				pendingByResultId: {},
+				draftsByResultId: {},
+				counts: null,
+				loading: false,
+				loadingMore: false,
+			});
+			vi.spyOn(store, 'rerunResult').mockRejectedValue(new Error('timeout'));
+
+			const user = userEvent.setup();
+			const { getByTestId, findByTestId } = renderComponent();
+			await waitFor(() =>
+				expect(getByTestId('instance-ai-test-agent-preview-looks-good')).toBeEnabled(),
+			);
+			await user.click(getByTestId('instance-ai-test-agent-preview-looks-good'));
+			await findByTestId('instance-ai-test-agent-examples-check-agent');
+			await user.click(getByTestId('instance-ai-test-agent-examples-check-agent'));
+			await findByTestId('instance-ai-test-agent-examples-summary-toggle');
+			await user.click(getByTestId('instance-ai-test-agent-examples-summary-toggle'));
+			await user.click(getByTestId('instance-ai-test-agent-examples-case-1-toggle'));
+
+			await user.click(getByTestId('instance-ai-test-agent-examples-case-1-run-check'));
+
+			await waitFor(() => expect(showErrorMock).toHaveBeenCalled());
+			// The loading state clears so the row can be retried.
+			await waitFor(() =>
+				expect(getByTestId('instance-ai-test-agent-examples-case-1-run-check')).not.toHaveAttribute(
+					'aria-busy',
+					'true',
+				),
+			);
+		});
+	});
+
 	describe('"Needs work" / sample-input guards', () => {
 		it('ignores a stray "Needs work" click from a stale button reference after confirming', async () => {
 			const store = useAgentEvalsStore();

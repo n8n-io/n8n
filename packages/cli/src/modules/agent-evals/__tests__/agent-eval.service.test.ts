@@ -81,6 +81,26 @@ describe('AgentEvalService', () => {
 			...over,
 		});
 
+	const makeResult = (over: Partial<AgentEvalResult> = {}) =>
+		mock<AgentEvalResult>({
+			id: 'result-1',
+			runId: 'run-1',
+			sourceRowId: '1',
+			runIndex: 0,
+			status: 'success',
+			input: { input: 'hello' },
+			output: { finalText: 'hi' },
+			toolCalls: null,
+			metrics: null,
+			runAt: new Date('2026-01-03T00:00:00.000Z'),
+			completedAt: new Date('2026-01-03T00:00:05.000Z'),
+			errorCode: null,
+			errorDetails: null,
+			createdAt: new Date('2026-01-03T00:00:00.000Z'),
+			updatedAt: new Date('2026-01-03T00:00:05.000Z'),
+			...over,
+		});
+
 	beforeEach(() => {
 		moduleRegistry = mock<ModuleRegistry>();
 		moduleRegistry.isActive.mockReturnValue(true);
@@ -96,6 +116,7 @@ describe('AgentEvalService', () => {
 		runRepository.findByIdAndAgentId.mockResolvedValue(makeRun());
 		runRepository.findAndCountByDatasetIdAndAgentId.mockResolvedValue([[], 0]);
 		resultRepository.findAndCountByRunId.mockResolvedValue([[], 0]);
+		resultRepository.findById.mockResolvedValue(makeResult());
 
 		service = new AgentEvalService(
 			moduleRegistry,
@@ -144,6 +165,10 @@ describe('AgentEvalService', () => {
 			['getRunDetail', async () => await service.getRunDetail(AGENT_ID, PROJECT_ID, 'run-1', PAGE)],
 			['getRunSummary', async () => await service.getRunSummary(AGENT_ID, PROJECT_ID, 'run-1')],
 			['cancelRun', async () => await service.cancelRun(AGENT_ID, PROJECT_ID, 'run-1')],
+			[
+				'rerunResult',
+				async () => await service.rerunResult(user, AGENT_ID, PROJECT_ID, 'result-1'),
+			],
 		];
 
 		it.each(callsRequiringAnAgent)(
@@ -218,6 +243,42 @@ describe('AgentEvalService', () => {
 
 			expect(runner.getRunSummary).toHaveBeenCalledWith('run-1', AGENT_ID);
 		});
+
+		// A result is owned through its run, so a bare result id can't be trusted
+		// on its own — the run it points at has to resolve against this agent too.
+		it('404s a result whose run belongs to another agent, without touching the runner', async () => {
+			runRepository.findByIdAndAgentId.mockResolvedValue(null);
+
+			await expect(service.rerunResult(user, AGENT_ID, PROJECT_ID, 'result-other')).rejects.toThrow(
+				NotFoundError,
+			);
+			expect(runner.rerunResult).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('rerunResult', () => {
+		it.each(['new', 'running'] as const)('refuses to rerun a %s result', async (status) => {
+			resultRepository.findById.mockResolvedValue(makeResult({ status }));
+
+			await expect(service.rerunResult(user, AGENT_ID, PROJECT_ID, 'result-1')).rejects.toThrow(
+				BadRequestError,
+			);
+			expect(runner.rerunResult).not.toHaveBeenCalled();
+		});
+
+		it.each(['success', 'error', 'cancelled'] as const)(
+			'reruns a %s result through the runner and maps the response',
+			async (status) => {
+				const toRerun = makeResult({ status });
+				resultRepository.findById.mockResolvedValue(toRerun);
+				runner.rerunResult.mockResolvedValue(makeResult({ status: 'success' }));
+
+				const result = await service.rerunResult(user, AGENT_ID, PROJECT_ID, 'result-1');
+
+				expect(runner.rerunResult).toHaveBeenCalledWith(toRerun, AGENT_ID, PROJECT_ID, user);
+				expect(result.status).toBe('success');
+			},
+		);
 	});
 
 	describe('createDataset', () => {

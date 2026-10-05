@@ -1,6 +1,7 @@
 import type {
 	AgentEvalDatasetRecord,
 	AgentEvalRatingRecord,
+	AgentEvalResultRecord,
 	AgentEvalRunDetail,
 	AgentEvalRunList,
 	AgentEvalRunRecord,
@@ -198,6 +199,21 @@ export const startRun = async (
 		'POST',
 		`${evalsPath(projectId, agentId)}/datasets/${datasetId}/runs`,
 		{},
+	);
+};
+
+// Re-executes one already-settled case in place — no new run, and no effect on
+// any other row in the run it belongs to. The response is the refreshed result.
+export const rerunResult = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	resultId: string,
+) => {
+	return await makeRestApiRequest<AgentEvalResultRecord>(
+		context,
+		'POST',
+		`${evalsPath(projectId, agentId)}/results/${resultId}/rerun`,
 	);
 };
 

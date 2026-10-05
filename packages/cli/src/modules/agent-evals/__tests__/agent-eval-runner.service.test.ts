@@ -826,6 +826,107 @@ describe('AgentEvalRunnerService', () => {
 		});
 	});
 
+	describe('rerunResult', () => {
+		const result = mock<AgentEvalResult>({
+			id: 'res-1',
+			runId: 'run-1',
+			sourceRowId: 'row-1',
+			input: { input: 'What is 2+2?' },
+			status: 'error',
+		});
+
+		it('refuses when the flag is off for the requesting user', async () => {
+			flagGate.assertEnabled.mockRejectedValue(new NotFoundError('Not found'));
+
+			await expect(service.rerunResult(result, 'agent-1', 'proj-1', user)).rejects.toThrow(
+				NotFoundError,
+			);
+			expect(evalAgentExecutionService.executeWithLlmMock).not.toHaveBeenCalled();
+		});
+
+		it('refuses in queue mode', async () => {
+			globalConfig.executions.mode = 'queue';
+			await expect(service.rerunResult(result, 'agent-1', 'proj-1', user)).rejects.toThrow(
+				'queue mode',
+			);
+		});
+
+		it('rejects when the user cannot run agents in the project', async () => {
+			vi.mocked(userHasScopes).mockResolvedValueOnce(false);
+			await expect(service.rerunResult(result, 'agent-1', 'proj-1', user)).rejects.toThrow(
+				'permission to run agents',
+			);
+		});
+
+		it('rejects a result with no persisted input to rerun', async () => {
+			await expect(
+				service.rerunResult(
+					mock<AgentEvalResult>({ ...result, input: null }),
+					'agent-1',
+					'proj-1',
+					user,
+				),
+			).rejects.toThrow('no input to rerun');
+			expect(evalAgentExecutionService.executeWithLlmMock).not.toHaveBeenCalled();
+		});
+
+		it("re-executes the result's own persisted input, not a re-resolved dataset row", async () => {
+			evalAgentExecutionService.executeWithLlmMock.mockResolvedValue(successExec() as never);
+			resultRepository.findById.mockResolvedValue(
+				mock<AgentEvalResult>({ ...result, status: 'success' }),
+			);
+
+			await service.rerunResult(result, 'agent-1', 'proj-1', user);
+
+			expect(evalAgentExecutionService.executeWithLlmMock).toHaveBeenCalledWith(
+				'agent-1',
+				user,
+				{ projectId: 'proj-1' },
+				'What is 2+2?',
+			);
+			expect(resultRepository.markAsRunning).toHaveBeenCalledWith('res-1');
+			expect(resultRepository.markAsCompleted).toHaveBeenCalledWith(
+				'res-1',
+				expect.objectContaining({ output: expect.objectContaining({ finalText: 'the answer' }) }),
+			);
+		});
+
+		it('returns the refreshed row, not the stale one passed in — no new run is created', async () => {
+			evalAgentExecutionService.executeWithLlmMock.mockResolvedValue(successExec() as never);
+			const refreshed = mock<AgentEvalResult>({ ...result, status: 'success' });
+			resultRepository.findById.mockResolvedValue(refreshed);
+
+			const updated = await service.rerunResult(result, 'agent-1', 'proj-1', user);
+
+			expect(updated).toBe(refreshed);
+			expect(runRepository.createRun).not.toHaveBeenCalled();
+		});
+
+		it('records a failed execution as an error, same as a batch run would', async () => {
+			evalAgentExecutionService.executeWithLlmMock.mockResolvedValue(failExec() as never);
+			resultRepository.findById.mockResolvedValue(
+				mock<AgentEvalResult>({ ...result, status: 'error' }),
+			);
+
+			await service.rerunResult(result, 'agent-1', 'proj-1', user);
+
+			expect(resultRepository.markAsError).toHaveBeenCalledWith(
+				'res-1',
+				'execution_failed',
+				expect.objectContaining({ errors: ['model exploded'] }),
+			);
+		});
+
+		it('404s if the result vanished between execution and the refresh read', async () => {
+			evalAgentExecutionService.executeWithLlmMock.mockResolvedValue(successExec() as never);
+			resultRepository.findById.mockResolvedValue(null);
+
+			await expect(service.rerunResult(result, 'agent-1', 'proj-1', user)).rejects.toThrow(
+				NotFoundError,
+			);
+		});
+	});
+
 	describe('cleanupInterruptedRuns', () => {
 		it('sweeps incomplete runs and never throws', async () => {
 			runRepository.markAllIncompleteAsError.mockResolvedValue({

@@ -128,8 +128,26 @@ describe('InstanceAiTestAgentExamplesPanel', () => {
 
 	describe('while the suite is running', () => {
 		const caseRuns = [
-			{ rowId: 1, input: 'a', label: 'Vague', status: 'pass' as const, output: 'answer a' },
-			{ rowId: 2, input: 'b', label: 'Custom', status: 'waiting' as const, output: null },
+			{
+				rowId: 1,
+				input: 'a',
+				label: 'Vague',
+				status: 'pass' as const,
+				output: 'answer a',
+				toolCalls: [],
+				resultId: null,
+				whatToCheck: null,
+			},
+			{
+				rowId: 2,
+				input: 'b',
+				label: 'Custom',
+				status: 'waiting' as const,
+				output: null,
+				toolCalls: [],
+				resultId: null,
+				whatToCheck: null,
+			},
 		];
 
 		it('hides the confirmed try and shows how many cases are left', () => {
@@ -163,15 +181,36 @@ describe('InstanceAiTestAgentExamplesPanel', () => {
 
 	describe('once the suite has settled', () => {
 		const caseRuns = [
-			{ rowId: 1, input: 'a', label: 'Vague', status: 'pass' as const, output: 'answer a' },
+			{
+				rowId: 1,
+				input: 'a',
+				label: 'Vague',
+				status: 'pass' as const,
+				output: 'answer a',
+				toolCalls: [],
+				resultId: null,
+				whatToCheck: null,
+			},
 			{
 				rowId: 2,
 				input: 'b',
 				label: 'Sensitive data',
 				status: 'work' as const,
 				output: 'answer b',
+				toolCalls: [],
+				resultId: null,
+				whatToCheck: null,
 			},
-			{ rowId: 3, input: 'c', label: 'Custom', status: 'fail' as const, output: null },
+			{
+				rowId: 3,
+				input: 'c',
+				label: 'Custom',
+				status: 'fail' as const,
+				output: null,
+				toolCalls: [],
+				resultId: null,
+				whatToCheck: null,
+			},
 		];
 
 		it('shows the pass/needs-work tally and hides the stop button', () => {
@@ -245,15 +284,36 @@ describe('InstanceAiTestAgentExamplesPanel', () => {
 			// keep it looking passed once its real status is live again.
 			await rerender({
 				caseRuns: [
-					{ rowId: 1, input: 'a', label: 'Vague', status: 'pass' as const, output: 'answer a' },
+					{
+						rowId: 1,
+						input: 'a',
+						label: 'Vague',
+						status: 'pass' as const,
+						output: 'answer a',
+						toolCalls: [],
+						resultId: null,
+						whatToCheck: null,
+					},
 					{
 						rowId: 2,
 						input: 'b',
 						label: 'Sensitive data',
 						status: 'waiting' as const,
 						output: null,
+						toolCalls: [],
+						resultId: null,
+						whatToCheck: null,
 					},
-					{ rowId: 3, input: 'c', label: 'Custom', status: 'fail' as const, output: null },
+					{
+						rowId: 3,
+						input: 'c',
+						label: 'Custom',
+						status: 'fail' as const,
+						output: null,
+						toolCalls: [],
+						resultId: null,
+						whatToCheck: null,
+					},
 				],
 			});
 

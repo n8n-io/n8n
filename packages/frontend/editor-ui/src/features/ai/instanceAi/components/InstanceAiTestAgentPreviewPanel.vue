@@ -17,6 +17,7 @@ import { useToast } from '@n8n/composables/useToast';
 import { useAgentEvalsStore } from '@/features/agents/agentEvals.store';
 import type { AgentEvalCase } from '@/features/agents/agentEvals.types';
 import { readAgentAnswer } from '@/features/agents/utils/agent-eval-review';
+import { toDisplayToolCalls } from '@/features/agents/utils/agent-eval-tool-calls';
 import {
 	isDataTableDataset,
 	resolveCaseColumns,
@@ -125,14 +126,30 @@ const suiteCaseRuns = computed<SuiteCaseRun[] | null>(() => {
 		const label = suiteCaseLabels.value[row.rowId] ?? '';
 		const result = results.find((r) => r.sourceRowId === String(row.rowId));
 		if (!result || result.status === 'new' || result.status === 'running') {
-			return { rowId: row.rowId, input: row.input, label, status: 'waiting', output: null };
+			// A freshly seeded case has no output yet, but a single-case rerun's
+			// result is marked `running` over its own still-successful prior
+			// output — carried through rather than nulled, so the row keeps
+			// showing its last answer while "Run check" repeats it.
+			return {
+				rowId: row.rowId,
+				resultId: result?.id ?? null,
+				input: row.input,
+				label,
+				status: 'waiting',
+				output: result ? readAgentAnswer(result.output) : null,
+				toolCalls: result ? toDisplayToolCalls(result.toolCalls) : [],
+				whatToCheck: row.whatToCheck || null,
+			};
 		}
 		return {
 			rowId: row.rowId,
+			resultId: result.id,
 			input: row.input,
 			label,
 			status: resultStatusToKind(result.status),
 			output: readAgentAnswer(result.output),
+			toolCalls: toDisplayToolCalls(result.toolCalls),
+			whatToCheck: row.whatToCheck || null,
 		};
 	});
 });
@@ -318,10 +335,39 @@ async function onStopSuiteRun() {
 	}
 }
 
-// "Save check" on a single suite case. There is no run primitive scoped to one
-// row, so the only way to pick up the regenerated case is to rerun the whole
-// dataset — every row briefly goes back to "waiting", not just the revised one.
+// "Save check" ends by rerunning the whole suite dataset — there is no run
+// primitive scoped to one row's *revision*, so every row briefly goes back to
+// "waiting", not just the one being revised.
 const revisingRowId = ref<number | null>(null);
+
+/** Starts a fresh run over the current suite dataset and begins following it. */
+async function runSuiteDataset() {
+	if (!suiteDatasetId.value) return;
+	const { projectId, agentId } = props.target;
+	const run = await store.startRun(projectId, agentId, suiteDatasetId.value);
+	if (!isMounted) return;
+	suiteRunId.value = run.id;
+	await store.openRun(projectId, agentId, run.id);
+	if (!isMounted) return;
+	if (store.isRunInFlight(run.id)) {
+		store.startPollingRun(projectId, agentId, run.id);
+	}
+}
+
+// "Run check" on a case that doesn't need correction: reruns just that one
+// result in place, never touching the rest of the suite. The store patches
+// the result to `running` itself (and reverts it on failure), so `suiteCaseRuns`
+// picks up the "waiting" status through the ordinary mapping — nothing here
+// tracks which row is in flight.
+async function onRerunCase(resultId: string) {
+	const { projectId, agentId } = props.target;
+	try {
+		await store.rerunResult(projectId, agentId, resultId);
+	} catch (error) {
+		if (!isMounted) return;
+		toast.showError(error, i18n.baseText('agents.builder.agentEvals.review.rerunCaseError'));
+	}
+}
 
 async function onReviseCase({ rowId, suggestion }: { rowId: number; suggestion: string }) {
 	// One rerun covers every row, so a second revision while the first is still
@@ -365,14 +411,7 @@ async function onReviseCase({ rowId, suggestion }: { rowId: number; suggestion: 
 				c.rowId === rowId ? { ...c, input: revised.input, whatToCheck: revised.whatToCheck } : c,
 			) ?? null;
 
-		const run = await store.startRun(projectId, agentId, suiteDatasetId.value);
-		if (!isMounted) return;
-		suiteRunId.value = run.id;
-		await store.openRun(projectId, agentId, run.id);
-		if (!isMounted) return;
-		if (store.isRunInFlight(run.id)) {
-			store.startPollingRun(projectId, agentId, run.id);
-		}
+		await runSuiteDataset();
 	} catch (error) {
 		if (!isMounted) return;
 		toast.showError(error, i18n.baseText('agents.builder.agentEvals.generateError'));
@@ -428,7 +467,11 @@ function onDontCreateEvals() {
 					i18n.baseText('instanceAi.testAgentPreview.subtitle')
 				}}</N8nText>
 			</N8nCard>
-			<EvalInitialSample :preview-input="previewInput" :preview-output="previewOutput ?? ''" />
+			<EvalInitialSample
+				:preview-input="previewInput"
+				:preview-output="previewOutput ?? ''"
+				hide-banner
+			/>
 
 			<N8nText bold color="text-dark" :class="$style.confirmQuestion">
 				{{ i18n.baseText('instanceAi.testAgentPreview.confirmQuestion') }}
@@ -458,7 +501,11 @@ function onDontCreateEvals() {
 				:text="i18n.baseText('instanceAi.testAgentPreview.needsWork')"
 				status="fail"
 			/>
-			<EvalInitialSample :preview-input="previewInput" :preview-output="previewOutput ?? ''" />
+			<EvalInitialSample
+				:preview-input="previewInput"
+				:preview-output="previewOutput ?? ''"
+				hide-banner
+			/>
 			<N8nText bold>{{ i18n.baseText('instanceAi.testAgentPreview.inputCorrectionHint') }}</N8nText>
 			<N8nInput
 				v-model="sampleInput"
@@ -511,6 +558,7 @@ function onDontCreateEvals() {
 				:preview-input="previewInput"
 				:preview-output="previewOutput ?? ''"
 				:preview-scenario="previewScenario"
+				:project-id="target.projectId"
 				:examples="suiteCases"
 				:case-runs="suiteCaseRuns"
 				:starting-run="startingSuiteRun"
@@ -520,6 +568,7 @@ function onDontCreateEvals() {
 				@check-agent="onCheckAgent"
 				@stop-run="onStopSuiteRun"
 				@revise-case="onReviseCase"
+				@rerun-case="onRerunCase"
 			/>
 		</template>
 	</div>

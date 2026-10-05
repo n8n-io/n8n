@@ -21,6 +21,7 @@ const {
 	listLatestRatingsForRun,
 	rateResult,
 	startRun,
+	rerunResult,
 } = vi.hoisted(() => ({
 	getDatasets: vi.fn(),
 	generateDraftCases: vi.fn(),
@@ -33,6 +34,7 @@ const {
 	listLatestRatingsForRun: vi.fn(),
 	rateResult: vi.fn(),
 	startRun: vi.fn(),
+	rerunResult: vi.fn(),
 }));
 
 vi.mock('../agentEvals.api', () => ({
@@ -47,6 +49,7 @@ vi.mock('../agentEvals.api', () => ({
 	listLatestRatingsForRun,
 	rateResult,
 	startRun,
+	rerunResult,
 }));
 
 vi.mock('@n8n/stores/useRootStore', () => ({
@@ -1132,6 +1135,72 @@ describe('useAgentEvalsStore', () => {
 			await expect(store.startRun(PROJECT_ID, AGENT_ID, DATASET_ID)).rejects.toThrow('at capacity');
 
 			expect(store.isStartingRun(DATASET_ID)).toBe(false);
+		});
+	});
+
+	describe('rerunResult', () => {
+		it('patches the cached result to running before the request lands, then to the real response', async () => {
+			mockRun({ results: [{ ...result('c1'), status: 'error' }], count: 1, ratings: [] });
+			const store = useAgentEvalsStore();
+			await store.openRun(PROJECT_ID, AGENT_ID, RUN_ID);
+
+			let resolveRerun!: (value: AgentEvalResultRecord) => void;
+			rerunResult.mockImplementation(
+				async () => await new Promise<AgentEvalResultRecord>((resolve) => (resolveRerun = resolve)),
+			);
+
+			const pending = store.rerunResult(PROJECT_ID, AGENT_ID, 'c1');
+			// No await yet — the optimistic patch must already be in the cache.
+			expect(store.getReview(RUN_ID).results[0].status).toBe('running');
+
+			resolveRerun({ ...result('c1'), status: 'success' });
+			await pending;
+
+			expect(store.getReview(RUN_ID).results[0].status).toBe('success');
+			// Every other field on the row comes from the real response, not a hand
+			// merge — a stale local copy could silently drift from the server's.
+			expect(store.getReview(RUN_ID).results[0]).toEqual({ ...result('c1'), status: 'success' });
+		});
+
+		it('reverts the optimistic patch when the rerun fails', async () => {
+			mockRun({ results: [{ ...result('c1'), status: 'error' }], count: 1, ratings: [] });
+			const store = useAgentEvalsStore();
+			await store.openRun(PROJECT_ID, AGENT_ID, RUN_ID);
+			rerunResult.mockRejectedValue(new Error('timeout'));
+
+			await expect(store.rerunResult(PROJECT_ID, AGENT_ID, 'c1')).rejects.toThrow('timeout');
+
+			expect(store.getReview(RUN_ID).results[0].status).toBe('error');
+		});
+
+		it('does not fire a second request for a result already showing as running', async () => {
+			mockRun({ results: [{ ...result('c1'), status: 'running' }], count: 1, ratings: [] });
+			const store = useAgentEvalsStore();
+			await store.openRun(PROJECT_ID, AGENT_ID, RUN_ID);
+
+			await store.rerunResult(PROJECT_ID, AGENT_ID, 'c1');
+
+			expect(rerunResult).not.toHaveBeenCalled();
+		});
+
+		it('leaves every other cached result untouched', async () => {
+			mockRun({
+				results: [
+					{ ...result('c1'), status: 'error' },
+					{ ...result('c2'), status: 'success' },
+				],
+				count: 2,
+				ratings: [],
+			});
+			const store = useAgentEvalsStore();
+			await store.openRun(PROJECT_ID, AGENT_ID, RUN_ID);
+			rerunResult.mockImplementation(
+				async () => await new Promise<AgentEvalResultRecord>(() => {}),
+			);
+
+			void store.rerunResult(PROJECT_ID, AGENT_ID, 'c1');
+
+			expect(store.getReview(RUN_ID).results.find((r) => r.id === 'c2')?.status).toBe('success');
 		});
 	});
 

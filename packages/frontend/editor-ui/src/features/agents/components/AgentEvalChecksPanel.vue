@@ -14,9 +14,16 @@ import { N8nButton } from '@n8n/design-system';
 import { useToast } from '@n8n/composables/useToast';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 
+import type { ToolCall } from '@/features/ai/shared/agentsChat/types';
 import { useAgentEvalsStore } from '../agentEvals.store';
 import type { AgentEvalResultStatus } from '../agentEvals.types';
-import { readAgentAnswer, readCaseRequest, readErrorMessage } from '../utils/agent-eval-review';
+import {
+	readAgentAnswer,
+	readCaseRequest,
+	readCaseWhatToCheck,
+	readErrorMessage,
+} from '../utils/agent-eval-review';
+import { toDisplayToolCalls } from '../utils/agent-eval-tool-calls';
 import AgentAvatar, { type AgentAvatarKind } from './AgentAvatar.vue';
 import AgentEvalTryRow from './AgentEvalTryRow.vue';
 
@@ -68,6 +75,8 @@ type CheckRow = {
 	output: string | null;
 	runAt: string | null;
 	errorMessage: string | null;
+	toolCalls: ToolCall[];
+	whatToCheck: string | null;
 };
 
 const rows = computed<CheckRow[]>(() =>
@@ -80,6 +89,8 @@ const rows = computed<CheckRow[]>(() =>
 			output: readAgentAnswer(result.output),
 			runAt: result.runAt,
 			errorMessage: readErrorMessage(result.errorDetails),
+			toolCalls: toDisplayToolCalls(result.toolCalls),
+			whatToCheck: readCaseWhatToCheck(result.input),
 		};
 	}),
 );
@@ -169,6 +180,14 @@ function setStatusFilter(filter: StatusFilter) {
 
 function onActuallyFine(resultId: string) {
 	manualStatusOverrides.value = { ...manualStatusOverrides.value, [resultId]: 'pass' };
+}
+
+async function onRerunCheck(resultId: string) {
+	try {
+		await store.rerunResult(props.projectId, props.agentId, resultId);
+	} catch (error) {
+		toast.showError(error, i18n.baseText('agents.builder.agentEvals.review.rerunCaseError'));
+	}
 }
 
 // Bumped by every `load()` call (including a run switch), and checked after
@@ -323,11 +342,15 @@ onBeforeUnmount(store.stopPollingRun);
 				:output="row.output"
 				:date="row.runAt"
 				:error-message="row.errorMessage"
+				:tool-calls="row.toolCalls"
+				:project-id="projectId"
+				:what-to-check="row.whatToCheck"
 				:disabled="disabled"
-				hide-revise
+				:running-check="row.status === 'waiting'"
 				view="complete"
 				:test-id="`agent-eval-check-${row.id}`"
 				@actually-fine="onActuallyFine(row.id)"
+				@rerun-check="onRerunCheck(row.id)"
 			/>
 		</div>
 

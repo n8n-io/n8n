@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import ChatBubble from './ChatBubble.vue';
 import AgentAnswerCard from './AgentAnswerCard.vue';
+import AgentEvalToolCalls from './AgentEvalToolCalls.vue';
 import { N8nCallout } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
+import type { ToolCall } from '@/features/ai/shared/agentsChat/types';
 import { type AgentAvatarKind } from './AgentAvatar.vue';
 
 const props = defineProps<{
@@ -11,6 +13,10 @@ const props = defineProps<{
 	previewOutput: string;
 	errorMessage?: string;
 	status?: AgentAvatarKind;
+	/** Rendered between the input and the answer, same as the live review row's disclosure. */
+	toolCalls?: ToolCall[];
+	projectId?: string;
+	hideBanner?: boolean;
 }>();
 
 const i18n = useI18n();
@@ -28,12 +34,16 @@ const isFailing = computed(() => props.status === 'work' || props.status === 'fa
 			<ChatBubble :text="previewInput" :status="status" />
 		</div>
 
+		<div v-if="toolCalls && toolCalls.length > 0" :class="$style.tools">
+			<AgentEvalToolCalls :tool-calls="toolCalls" :project-id="projectId" />
+		</div>
+
 		<AgentAnswerCard
 			data-test-id="instance-ai-test-agent-preview-output"
 			:source="previewOutput"
 			:status="status"
 		/>
-		<div v-if="previewOutput" :class="$style.calloutPadding">
+		<div v-if="previewOutput && !hideBanner && status !== 'waiting'" :class="$style.callout">
 			<N8nCallout :theme="isFailing ? 'warning' : 'success'" iconless>
 				<strong>{{
 					i18n.baseText(
@@ -69,7 +79,11 @@ const isFailing = computed(() => props.status === 'work' || props.status === 'fa
 	}
 }
 
-.calloutPadding {
+.tools {
+	margin-left: 35px;
+}
+
+.callout {
 	margin-left: 30px;
 	margin-top: -10px;
 	width: fit-content;

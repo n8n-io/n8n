@@ -188,6 +188,52 @@ export class AgentEvalRunnerService {
 		return { runId: run.id, finished };
 	}
 
+	/**
+	 * Re-executes one already-seeded case in place, overwriting its own result
+	 * row. No new run, no run-level aggregation (counts/status/metrics): the
+	 * run this case belongs to may have settled minutes ago, and every sibling
+	 * result is left exactly as it was. Reuses `runCase`, the same
+	 * self-contained per-case execution `startRun`'s pool calls, with the input
+	 * read back from the result's own persisted snapshot rather than the
+	 * dataset's current Data Table row — a rerun repeats what this case
+	 * actually ran last, even if the row has since changed or been deleted.
+	 */
+	async rerunResult(
+		result: AgentEvalResult,
+		agentId: string,
+		projectId: string,
+		user: User,
+		options: { timeoutMs?: number } = {},
+	): Promise<AgentEvalResult> {
+		await this.flagGate.assertEnabled(user);
+
+		if (this.globalConfig.executions.mode === 'queue') {
+			throw new BadRequestError('Agent eval runs are not supported in queue mode.');
+		}
+
+		assertRequiredModulesActive(this.moduleRegistry);
+
+		// Backstop for direct callers; the REST path asserts before its own lookups.
+		if (!(await userHasScopes(user, ['agent:execute'], false, { projectId }))) {
+			throw new ForbiddenError('You do not have permission to run agents in this project.');
+		}
+
+		const input = readResultInputText(result.input);
+		if (!input) {
+			throw new BadRequestError('This case has no input to rerun.');
+		}
+
+		await this.runCase(
+			result,
+			{ sourceRowId: result.sourceRowId, input, snapshot: result.input ?? {} },
+			{ agentId, projectId, user, timeoutMs: options.timeoutMs },
+		);
+
+		const refreshed = await this.resultRepository.findById(result.id);
+		if (!refreshed) throw new NotFoundError(`Agent eval result ${result.id} not found.`);
+		return refreshed;
+	}
+
 	// Scoped to the agent under test, so a bare run id can't read another agent's
 	// progress even if the caller skipped its own check.
 	async getRunSummary(runId: string, agentId: string): Promise<AgentEvalRunSummary> {
@@ -679,4 +725,18 @@ function cellToJson(value: DataTableColumnJsType | undefined): JsonValue {
 
 function toJsonObject(value: unknown): JsonObject {
 	return jsonParse<JsonObject>(jsonStringify(value), { fallbackValue: {} });
+}
+
+/**
+ * Reads the opening message back out of a result's persisted `input` snapshot
+ * — the same text this case last ran with, not a re-resolved Data Table cell
+ * (the row may have been edited or deleted since). Mirrors the editor's own
+ * `readCaseRequest` reader.
+ */
+function readResultInputText(input: JsonObject | null): string | null {
+	if (!input) return null;
+	const value = input.input;
+	if (typeof value === 'string' && value.length > 0) return value;
+	if (typeof value === 'number' || typeof value === 'boolean') return String(value);
+	return null;
 }

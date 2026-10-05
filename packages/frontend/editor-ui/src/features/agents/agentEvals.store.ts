@@ -984,6 +984,55 @@ export const useAgentEvalsStore = defineStore(STORES.AGENT_EVALS, () => {
 		}
 	};
 
+	/** Finds which cached run page currently holds a given result, if any. */
+	const findCachedResult = (
+		resultId: string,
+	): { runId: string; result: AgentEvalResultRecord } | undefined => {
+		for (const [runId, state] of Object.entries(reviewByRunId.value)) {
+			const result = state.results.find((r) => r.id === resultId);
+			if (result) return { runId, result };
+		}
+		return undefined;
+	};
+
+	const replaceCachedResult = (runId: string, resultId: string, result: AgentEvalResultRecord) => {
+		patchReview(runId, {
+			results: getReview(runId).results.map((r) => (r.id === resultId ? result : r)),
+		});
+	};
+
+	// Re-executes one already-settled case in place — no new run. Patches the
+	// result to `running` in the cache before the request even lands, the same
+	// way a batch run's own seeded rows read while in flight — every consumer
+	// of `getReview` (the checks panel, the suite examples list) picks this up
+	// through the ordinary status → avatar mapping, with nothing rerun-specific
+	// of its own to track. The REST call is a single synchronous round trip, so
+	// this optimistic patch is the only time the UI ever sees `running` at all.
+	const rerunResult = async (projectId: string, agentId: string, resultId: string) => {
+		const cached = findCachedResult(resultId);
+		// Already showing as running from an earlier click — don't fire a second
+		// request the backend would just reject.
+		if (cached?.result.status === 'running') return cached.result;
+
+		if (cached)
+			replaceCachedResult(cached.runId, resultId, { ...cached.result, status: 'running' });
+		try {
+			const updated = await agentEvalsApi.rerunResult(
+				rootStore.restApiContext,
+				projectId,
+				agentId,
+				resultId,
+			);
+			replaceCachedResult(updated.runId, resultId, updated);
+			return updated;
+		} catch (error) {
+			// Revert the optimistic patch so a failed rerun doesn't strand the row
+			// reading as "running" forever.
+			if (cached) replaceCachedResult(cached.runId, resultId, cached.result);
+			throw error;
+		}
+	};
+
 	/** Runs the dataset's cases again against the agent's current config. */
 	const startRun = async (projectId: string, agentId: string, datasetId: string) => {
 		startingRunByDatasetId.value = { ...startingRunByDatasetId.value, [datasetId]: true };
@@ -1032,6 +1081,7 @@ export const useAgentEvalsStore = defineStore(STORES.AGENT_EVALS, () => {
 		stopPollingRun,
 		hasLostTrackOfRun,
 		startRun,
+		rerunResult,
 		cancelRun,
 		isCancellingRun,
 		getCases,
