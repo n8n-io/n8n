@@ -14,6 +14,7 @@ import { createHash } from 'crypto';
 import { execFile } from 'child_process';
 import { readFile } from 'fs/promises';
 import {
+	actions,
 	bundledCredentialsOf,
 	bundledIdsOf,
 	credentialTypeOfManifest,
@@ -33,6 +34,7 @@ import {
 	toVersionedNodeType,
 	toVersionedToolType,
 	toVersionedTriggerType,
+	triggers,
 	versionsOf,
 	withMigratedVersions,
 	type ContractKeys,
@@ -257,12 +259,104 @@ interface ContractNode extends LoadedClass<VersionedNodeType> {
 	readonly versions: readonly FrozenVersion[];
 }
 
-/** The node type of the frozen versions of one id, with the parameters n8n adds to every node. */
-function contractNodeTypeOf(versions: readonly FrozenVersion[]) {
-	const typeOf =
-		versions[0]?.manifest.kind === 'trigger' ? toVersionedTriggerType : toVersionedNodeType;
+/** The packages of the legacy nodes that a contract node can stand for. */
+const LEGACY_PACKAGES = ['n8n-nodes-base', '@n8n/n8n-nodes-langchain'];
+
+/** The icon that a bundled node sets. A node that n8n does not bundle has none. */
+const nodeIconOf = (nodeId: string) =>
+	[...actions, ...triggers].find(({ node }) => node.id === nodeId)?.node.icon;
+
+/** What the editor shows of a node type besides its form: the icon, the panel categories, the color. */
+type Presentation = Pick<INodeTypeDescription, 'icon' | 'iconUrl' | 'iconColor' | 'codex'> & {
+	readonly color?: string;
+};
+
+/**
+ * The presentation of a description. The codex has no aliases: the AI builder search ranks node
+ * types by them, and the nodes panel does not list contract node types.
+ */
+const presentationOf = ({
+	icon,
+	iconUrl,
+	iconColor,
+	codex,
+	defaults,
+}: INodeTypeDescription): Presentation => ({
+	...(icon !== undefined && { icon }),
+	...(iconUrl !== undefined && { iconUrl }),
+	...(iconColor !== undefined && { iconColor }),
+	...(codex !== undefined && {
+		codex: {
+			categories: codex.categories,
+			subcategories: codex.subcategories,
+			resources: codex.resources,
+		},
+	}),
+	...(defaults.color !== undefined && { color: defaults.color }),
+});
+
+const presented = (
+	description: INodeTypeDescription,
+	{ color, ...presentation }: Presentation,
+): INodeTypeDescription => ({
+	...description,
+	...presentation,
+	...(color !== undefined && { defaults: { ...description.defaults, color } }),
+});
+
+/**
+ * The description of the default version of each visible node type of the legacy packages, by
+ * full node type.
+ */
+async function legacyDescriptionsOf(loaders: Readonly<Record<string, NodeLoader>>) {
+	const legacy = LEGACY_PACKAGES.flatMap((name) => loaders[name] ?? []);
+	// A reload of the node contracts can come after the other loaders released their types.
+	await Promise.all(legacy.map(async (loader) => await loader.ensureTypesLoaded()));
+	const isDefault = ({ version, defaultVersion }: INodeTypeDescription) =>
+		defaultVersion === undefined || [version].flat().includes(defaultVersion);
+	return new Map(
+		legacy.flatMap(({ packageName, types }) =>
+			types.nodes
+				.filter((description) => !description.hidden && isDefault(description))
+				.map((description) => [`${packageName}.${description.name}`, description] as const),
+		),
+	);
+}
+
+/**
+ * The presentation of the node type of a contract: that of the legacy node it stands for, else the
+ * icon of its node. The legacy node has the node id as name (`n8n-nodes-base.slack` for
+ * `slack.message.send`), or the action name for an action without a resource
+ * (`n8n-nodes-base.set` for `items.set`).
+ */
+function contractPresentationOf(
+	{ id, node }: Pick<FrozenVersion['manifest']['contract'], 'id' | 'node'>,
+	legacy: ReadonlyMap<string, INodeTypeDescription>,
+): Presentation | undefined {
+	const [, ...segments] = id.split('.');
+	const names = segments.length === 1 ? [node, ...segments] : [node];
+	const twin = names
+		.flatMap((name) => LEGACY_PACKAGES.flatMap((pkg) => legacy.get(`${pkg}.${name}`) ?? []))
+		.at(0);
+	if (twin) return presentationOf(twin);
+	const icon = nodeIconOf(node);
+	return icon && { icon };
+}
+
+/**
+ * The node type of the frozen versions of one id, with the presentation of its legacy node and the
+ * parameters n8n adds to every node.
+ */
+function contractNodeTypeOf(
+	versions: readonly FrozenVersion[],
+	legacy: ReadonlyMap<string, INodeTypeDescription>,
+) {
+	const [head] = versions;
+	const typeOf = head?.manifest.kind === 'trigger' ? toVersionedTriggerType : toVersionedNodeType;
 	const type = new (typeOf(versions))();
+	const presentation = head && contractPresentationOf(head.manifest.contract, legacy);
 	for (const version of Object.values(type.nodeVersions)) {
+		if (presentation) version.description = presented(version.description, presentation);
 		DirectoryLoader.applySpecialNodeParameters(version);
 		validateNodeDescription(version.description);
 	}
@@ -278,7 +372,7 @@ const credentialNamesOf = ({ nodeVersions }: VersionedNodeType) =>
  * The node and credential types of node contracts, from manifests only: one versioned node type
  * for each id with the bundled HEAD and the stored versions of its other majors, and the bundled
  * credential manifests with the stored ones of other names. The type names keep the package name
- * as prefix.
+ * as prefix. A node type shows the icon and codex of the legacy node it stands for.
  */
 export class ContractNodeLoader implements NodeLoader {
 	readonly packageName = NODE_PACKAGE;
@@ -295,7 +389,8 @@ export class ContractNodeLoader implements NodeLoader {
 
 	/**
 	 * `excludeNodes` and `includeNodes` hold full node type names, as `N8N_NODES_EXCLUDE` does.
-	 * `deny` holds the permission classes of `N8N_NODE_PERMISSIONS_DENY`.
+	 * `deny` holds the permission classes of `N8N_NODE_PERMISSIONS_DENY`. `legacyLoaders` gives the
+	 * loaders of the legacy nodes, whose icons and codex the contract nodes show.
 	 */
 	constructor(
 		private readonly excludeNodes: readonly string[] = [],
@@ -303,12 +398,14 @@ export class ContractNodeLoader implements NodeLoader {
 		private readonly openStore: () => Promise<StoredContracts> = openContractStore,
 		private readonly deny: readonly NodePermissionClass[] = [],
 		private readonly hasOtherCredentialType = hasOtherCredentialTypeInN8n,
+		private readonly legacyLoaders: () => Readonly<Record<string, NodeLoader>> = () => ({}),
 	) {}
 
 	async loadAll() {
-		const [stored, storedCredentials] = await Promise.all([
+		const [stored, storedCredentials, legacy] = await Promise.all([
 			this.fromStore(async (store) => await store.versions(), new Map()),
 			this.fromStore(async (store) => await store.credentials(), new Map()),
+			legacyDescriptionsOf(this.legacyLoaders()),
 		]);
 		const bundled = new Set(bundledIdsOf());
 		this.nodes = new Map(
@@ -326,7 +423,11 @@ export class ContractNodeLoader implements NodeLoader {
 				const sourcePath = bundled.has(id)
 					? path.join(EMBEDDED_STORE_DIR, storeIndexFileOf(id))
 					: Container.get(NodeContractsStore).dir;
-				const node: ContractNode = { type: contractNodeTypeOf(versions), sourcePath, versions };
+				const node: ContractNode = {
+					type: contractNodeTypeOf(versions, legacy),
+					sourcePath,
+					versions,
+				};
 				return [[nodeNameOf(id), node] as const];
 			}),
 		);
@@ -734,8 +835,10 @@ function toolNodesOf(loaders: Readonly<Record<string, NodeLoader>>) {
 		const versions = contracts.frozenVersionsOf(nodeNameOf(action.id));
 		if (!base || versions.length === 0) return [];
 		const nodeType = toolTypeOf(action);
+		const presentation = presentationOf(base.type.getNodeType().description);
 		const describe = (description: INodeTypeDescription): INodeTypeDescription => ({
-			...convertNodeToAiTool({ description: deepCopy(description) }).description,
+			...convertNodeToAiTool({ description: deepCopy(presented(description, presentation)) })
+				.description,
 			name: nodeType,
 		});
 		const type = new (toVersionedToolType(versions, describe))();

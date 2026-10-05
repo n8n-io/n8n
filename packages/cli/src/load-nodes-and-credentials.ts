@@ -158,6 +158,8 @@ export class LoadNodesAndCredentials {
 			this.includeNodes,
 			undefined,
 			this.globalConfig.nodes.permissionsDeny,
+			undefined,
+			() => this.loaders,
 		);
 	}
 

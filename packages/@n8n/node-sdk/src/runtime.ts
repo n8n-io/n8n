@@ -2142,6 +2142,8 @@ export function nodeDescriptionOf({
 		name: nodeNameOf(contract.id),
 		version: contract.version,
 		description: contract.summary,
+		// The canvas shows the action under a node that the user renamed.
+		subtitle: contract.action,
 		defaults: { name: contract.action },
 		credentials,
 		properties: [...selector, ...formPropertiesOf(formInput, ui)],

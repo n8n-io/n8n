@@ -1,5 +1,5 @@
 import { isRecord } from '@n8n/utils/is-record';
-import { toHostname, UserError } from 'n8n-workflow';
+import { toHostname, UserError, type IconRef } from 'n8n-workflow';
 
 import type { AnyCredentialType, Credential, CredentialKey, RunCredential } from './credentials';
 import {
@@ -55,8 +55,12 @@ export interface NodeDefinition {
 	 * the egress of every action. The base URL of a credential type with `baseUrl` replaces it.
 	 */
 	readonly baseUrl?: string;
-	/** The icon in the n8n UI, an n8n icon value such as `file:notion.svg`. `toNodeType` does not read it. */
-	readonly icon?: string;
+	/**
+	 * The icon in the n8n UI, e.g. `node:basic-llm-chain` or `fa:robot`, when n8n has no legacy node
+	 * that this node stands for. Else n8n shows the icon of the legacy node. A node contract ships no
+	 * icon files, so it has no `file:` icon.
+	 */
+	readonly icon?: IconRef;
 	/**
 	 * Legacy node types that this node does the whole job of, e.g.
 	 * `@n8n/n8n-nodes-langchain.lmChatOpenAi`. Search shows this node instead of them, so a

@@ -4,6 +4,7 @@ import { defineNode } from '@n8n/node-sdk';
 export const ai = defineNode({
 	id: 'ai',
 	displayName: 'AI',
+	icon: 'node:basic-llm-chain',
 	// Extraction is a prompt with a schema, and sentiment is a classification. The legacy agent
 	// stays in search: no contract node supplies tools or memory yet.
 	replaces: [
