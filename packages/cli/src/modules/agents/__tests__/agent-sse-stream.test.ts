@@ -3,7 +3,14 @@ import type { AgentSseEvent } from '@n8n/api-types';
 import { LoggerProxy } from 'n8n-workflow';
 import { EventEmitter } from 'node:events';
 
-import { emitChunkEvents, initSseStream, type FlushableResponse } from '../agent-sse-stream';
+import {
+	emitChunkEvents,
+	initSseStream,
+	toChatErrorEvent,
+	type FlushableResponse,
+} from '../agent-sse-stream';
+import { AgentN8nChatUnavailableError } from '../agent-n8n-chat-unavailable.error';
+import { AgentTurnAlreadyRunningError } from '../agent-turn-already-running.error';
 import type { SteeredMessageEvent } from '../types/agent-steering';
 
 // ---------------------------------------------------------------------------
@@ -168,11 +175,10 @@ describe('agent-sse-stream — connection setup', () => {
 // stringifyError — tested through emitChunkEvents
 // ---------------------------------------------------------------------------
 
-vi.mock('n8n-workflow', () => ({
-	LoggerProxy: {
-		warn: vi.fn(),
-	},
-}));
+vi.mock(import('n8n-workflow'), async (importOriginal) => {
+	const actual = await importOriginal();
+	return { ...actual, LoggerProxy: { ...actual.LoggerProxy, warn: vi.fn() } };
+});
 
 describe('agent-sse-stream — stringifyError (via error chunk)', () => {
 	it('extracts .message from an Error instance', async () => {
@@ -514,6 +520,20 @@ describe('agent-sse-stream — tool execution lifecycle chunks', () => {
 				isError: true,
 			},
 		]);
+	});
+});
+
+describe('agent-sse-stream — toChatErrorEvent', () => {
+	it.each([
+		[new AgentTurnAlreadyRunningError(), 'turn_already_running'],
+		[new AgentN8nChatUnavailableError(), 'agent_unavailable'],
+		[new Error('boom'), undefined],
+	] as const)('maps %s to errorCode %s', (error, errorCode) => {
+		expect(toChatErrorEvent(error, 'fallback')).toEqual({
+			type: 'error',
+			message: error.message,
+			...(errorCode && { errorCode }),
+		});
 	});
 });
 
