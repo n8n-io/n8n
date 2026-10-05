@@ -187,4 +187,14 @@ describe('S3 Node - File Copy', () => {
 
 		expect(copySourceHeader()).toBe('/test-bucket/my%20report.pdf');
 	});
+
+	// CopyObject reads an optional `?versionId=` selector after the key. Encoding
+	// the `?` would make S3 read the selector as the end of the key.
+	it('keeps the version selector readable while encoding the key', async () => {
+		copyWithSource('/test-bucket/r\u00e9sum\u00e9.pdf?versionId=3HL4kqt');
+
+		await node.execute.call(executeFunctionsMock);
+
+		expect(copySourceHeader()).toBe('/test-bucket/r%C3%A9sum%C3%A9.pdf?versionId=3HL4kqt');
+	});
 });

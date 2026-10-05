@@ -12,7 +12,7 @@ import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 import type { Readable } from 'stream';
 import { Builder } from 'xml2js';
 
-import { uriEncodeS3Pathname } from '../../../../credentials/common/aws/utils';
+import { uriEncodeS3CopySource } from '../../../../credentials/common/aws/utils';
 import { bucketFields, bucketOperations } from './BucketDescription';
 import { fileFields, fileOperations } from './FileDescription';
 import { folderFields, folderOperations } from './FolderDescription';
@@ -501,7 +501,7 @@ export class AwsS3V2 implements INodeType {
 						// The signature covers this header, but an HTTP header cannot carry a
 						// non-ASCII byte, so the client rewrites the value after signing and S3
 						// rejects the mismatch. Encode it the same way the signed path is encoded.
-						headers['x-amz-copy-source'] = uriEncodeS3Pathname(sourcePath);
+						headers['x-amz-copy-source'] = uriEncodeS3CopySource(sourcePath);
 
 						if (additionalFields.requesterPays) {
 							headers['x-amz-request-payer'] = 'requester';

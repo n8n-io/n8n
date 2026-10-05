@@ -12,7 +12,7 @@ import { NodeApiError, NodeConnectionTypes, NodeOperationError } from 'n8n-workf
 import { Builder } from 'xml2js';
 
 import { s3ApiRequestREST, s3ApiRequestSOAP, s3ApiRequestSOAPAllItems } from './GenericFunctions';
-import { uriEncodeS3Pathname } from '../../credentials/common/aws/utils';
+import { uriEncodeS3CopySource } from '../../credentials/common/aws/utils';
 import { bucketFields, bucketOperations } from '../Aws/S3/V1/BucketDescription';
 import { fileFields, fileOperations } from '../Aws/S3/V1/FileDescription';
 import { folderFields, folderOperations } from '../Aws/S3/V1/FolderDescription';
@@ -490,7 +490,7 @@ export class S3 implements INodeType {
 						// The signature covers this header, but an HTTP header cannot carry a
 						// non-ASCII byte, so the client rewrites the value after signing and S3
 						// rejects the mismatch. Encode it the same way the signed path is encoded.
-						headers['x-amz-copy-source'] = uriEncodeS3Pathname(sourcePath);
+						headers['x-amz-copy-source'] = uriEncodeS3CopySource(sourcePath);
 
 						if (additionalFields.requesterPays) {
 							headers['x-amz-request-payer'] = 'requester';
