@@ -941,7 +941,16 @@ function getConversationMarkdown(): string {
 		.join('\n\n---\n\n');
 }
 
-defineExpose({ focusInput, getConversationMarkdown, sendMessageFromOutside, clearBudgetStops });
+defineExpose({
+	focusInput,
+	getConversationMarkdown,
+	sendMessageFromOutside,
+	clearBudgetStops,
+	// Read-only views of the chat state, for hosts that derive side panels from it.
+	messages: computed(() => messages.value),
+	isStreaming,
+	isLoadingHistory: computed(() => isLoadingHistory.value),
+});
 
 onMounted(() => {
 	void loadHistory();

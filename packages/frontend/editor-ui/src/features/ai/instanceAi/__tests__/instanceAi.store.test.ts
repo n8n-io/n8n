@@ -173,6 +173,20 @@ describe('useInstanceAiStore - runtime registry', () => {
 		expect(store.threads.map((thread) => thread.id)).toEqual(['old']);
 	});
 
+	it('refreshThread adds a missing thread and updates the title and metadata of a known one', async () => {
+		const store = useInstanceAiStore();
+		vi.mocked(fetchThread).mockResolvedValueOnce({ thread: historyThread('t') });
+		await store.refreshThread('t');
+		expect(store.threads.map((thread) => thread.id)).toEqual(['t']);
+
+		vi.mocked(fetchThread).mockResolvedValueOnce({
+			thread: { ...historyThread('t'), title: 'Refined', metadata: { key: 'value' } },
+		});
+		await store.refreshThread('t');
+		expect(store.threads).toHaveLength(1);
+		expect(store.threads[0]).toMatchObject({ title: 'Refined', metadata: { key: 'value' } });
+	});
+
 	it('returns the same runtime for the same thread id', () => {
 		const store = useInstanceAiStore();
 

@@ -246,6 +246,27 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		}
 	}
 
+	/**
+	 * Re-read one thread from the server and update every local copy. The Agents
+	 * chat mode calls this after each turn: the server sets the generated title
+	 * and the builder metadata during the turn, and no legacy event reports them.
+	 */
+	async function refreshThread(threadId: string): Promise<InstanceAiThreadInfo> {
+		const { thread } = await fetchThread(rootStore.restApiContext, threadId);
+		persistedThreadIds.add(thread.id);
+		const entries = localThreadEntries(threadId);
+		if (entries.length === 0) {
+			threads.value.push(toThreadSummary(thread));
+			return thread;
+		}
+		for (const entry of entries) {
+			entry.title = thread.title || entry.title;
+			entry.updatedAt = thread.updatedAt;
+			entry.metadata = thread.metadata ?? undefined;
+		}
+		return thread;
+	}
+
 	let threadHistoryCursor: string | undefined;
 	// Bumped by every reset so a response still in flight for the old state is dropped.
 	let threadHistoryRequest = 0;
@@ -496,6 +517,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		setThreadMetadata,
 		loadThreads,
 		loadThread,
+		refreshThread,
 		threadHistory,
 		resetThreadHistory,
 		loadThreadHistoryPage,

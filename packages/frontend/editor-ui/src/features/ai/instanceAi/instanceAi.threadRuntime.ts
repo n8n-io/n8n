@@ -627,8 +627,15 @@ export function createThreadRuntime(
 	let hydrationGeneration = 0;
 	let hydrationPromise: Promise<HistoricalHydrationStatus> | null = null;
 
+	// Agents chat mode: the Agents chat core owns the conversation, its stream and
+	// its history. This runtime only mirrors the chat messages (adapted to the
+	// legacy message shape) so the artifacts panel, preview tabs and to-do list
+	// keep working, and it never opens the legacy SSE.
+	const agentsChatMode = ref(false);
+	const agentsChatWorking = ref(false);
+
 	// --- Computeds ---
-	const isStreaming = computed(() => activeRunId.value !== null);
+	const isStreaming = computed(() => activeRunId.value !== null || agentsChatWorking.value);
 	const isSendingMessage = computed(() => pendingMessageCount.value > 0);
 	const hasMessages = computed(() => messages.value.length > 0);
 	const isHydratingThread = computed(() => hydrationStatus.value === 'hydrating');
@@ -1358,6 +1365,7 @@ export function createThreadRuntime(
 	}
 
 	function connectSSE(): void {
+		if (agentsChatMode.value) return;
 		if (eventSource) {
 			closeSSE();
 		}
@@ -1448,7 +1456,38 @@ export function createThreadRuntime(
 		pendingWorkflowAttachment.value = null;
 		transientWorkflowReferences.clear();
 		pendingHandoff.value = null;
+		agentsChatWorking.value = false;
 		disarmGenerationStallWatchdog();
+	}
+
+	/**
+	 * Switch this runtime to mirror the Agents chat. Closes a legacy SSE that an
+	 * opener sent before the chat mounted, and drops the legacy run state that
+	 * only that SSE could settle.
+	 */
+	function enterAgentsChatMode(): void {
+		agentsChatMode.value = true;
+		closeSSE();
+		activeRunId.value = null;
+		disarmGenerationStallWatchdog();
+		hydrationGeneration += 1;
+		hydrationPromise = null;
+		if (messages.value.length === 0) hydrationStatus.value = 'hydrating';
+	}
+
+	/**
+	 * Replace the mirrored messages with the latest Agents chat state. Messages
+	 * are assigned before the hydration flag flips, so the synchronous preview
+	 * watchers treat the first sync as history and do not auto-open past builds.
+	 */
+	function syncAgentsChat(next: InstanceAiMessage[], working: boolean): void {
+		messages.value = next;
+		agentsChatWorking.value = working;
+		hydrationStatus.value = 'ready';
+	}
+
+	function setProjectId(id: string | undefined): void {
+		projectId.value = id;
 	}
 
 	function dispose(): void {
@@ -1745,6 +1784,9 @@ export function createThreadRuntime(
 				removeOptimisticMessage(optimistic);
 				return false;
 			}
+			// The Agents chat picks the turn up through its own recovery. No legacy
+			// SSE would ever settle this run id, so do not track it here.
+			if (agentsChatMode.value) return true;
 			if (metricGeneration !== responseMetricGeneration) return true;
 			if (runIdAtSend !== null) return true;
 			if (!earlyTerminalRunIds.has(runId)) activeRunId.value = runId;
@@ -1991,6 +2033,10 @@ export function createThreadRuntime(
 		resetState,
 		dispose,
 		applyEvent,
+		agentsChatMode,
+		enterAgentsChatMode,
+		syncAgentsChat,
+		setProjectId,
 		connectSSE,
 		closeSSE,
 		loadHistoricalMessages,

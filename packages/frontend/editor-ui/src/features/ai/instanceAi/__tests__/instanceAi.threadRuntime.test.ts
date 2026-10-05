@@ -3827,3 +3827,86 @@ describe('createThreadRuntime - onboarding exit', () => {
 		expect(hooks.onOnboardingLeft).toHaveBeenCalledWith('thread-onboarding', 'run_failed');
 	});
 });
+
+describe('createThreadRuntime - Agents chat mode', () => {
+	beforeEach(() => {
+		setupRuntimePinia();
+		capturedInstance = null;
+		mockPostMessage.mockReset();
+	});
+
+	it('never opens the event stream and closes an open one', async () => {
+		const runtime = createRuntimeRegistry().getOrCreateRuntime('thread-agents');
+		runtime.connectSSE();
+		expect(capturedInstance).not.toBeNull();
+		runtime.activeRunId = 'run-legacy';
+
+		runtime.enterAgentsChatMode();
+		expect(runtime.sseState).toBe('disconnected');
+		expect(runtime.activeRunId).toBeNull();
+		expect(runtime.hydrationStatus).toBe('hydrating');
+
+		capturedInstance = null;
+		runtime.connectSSE();
+		expect(capturedInstance).toBeNull();
+	});
+
+	it('sends without opening the event stream or tracking the run', async () => {
+		mockPostMessage.mockResolvedValue({ runId: 'run-1' });
+		const runtime = createRuntimeRegistry().getOrCreateRuntime('thread-agents');
+		runtime.enterAgentsChatMode();
+
+		const sent = await runtime.sendMessage('hello', { authorship: USER_TYPED_MESSAGE });
+
+		expect(sent).toBe(true);
+		expect(mockPostMessage).toHaveBeenCalled();
+		expect(capturedInstance).toBeNull();
+		expect(runtime.activeRunId).toBeNull();
+		expect(runtime.isStreaming).toBe(false);
+	});
+
+	it('mirrors the chat messages and working state', async () => {
+		const runtime = createRuntimeRegistry().getOrCreateRuntime('thread-agents');
+		runtime.enterAgentsChatMode();
+
+		runtime.syncAgentsChat(
+			[
+				{
+					id: 'a-1',
+					role: 'assistant',
+					createdAt: '2026-01-01T00:00:00.000Z',
+					content: '',
+					reasoning: '',
+					isStreaming: true,
+					agentTree: {
+						agentId: 'agent-001',
+						role: 'orchestrator',
+						status: 'active',
+						textContent: '',
+						reasoning: '',
+						toolCalls: [
+							{
+								toolCallId: 'tc-1',
+								toolName: 'build-workflow',
+								args: {},
+								result: { success: true, workflowId: 'wf-1', workflowName: 'Orders' },
+								isLoading: false,
+							},
+						],
+						children: [],
+						timeline: [],
+					},
+				},
+			],
+			true,
+		);
+		await nextTick();
+
+		expect(runtime.hydrationStatus).toBe('ready');
+		expect(runtime.isStreaming).toBe(true);
+		expect(runtime.producedArtifacts.get('wf-1')?.name).toBe('Orders');
+
+		runtime.syncAgentsChat(runtime.messages, false);
+		expect(runtime.isStreaming).toBe(false);
+	});
+});

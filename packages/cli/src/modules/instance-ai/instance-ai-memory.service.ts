@@ -315,6 +315,7 @@ export class InstanceAiMemoryService {
 					id: session.id,
 					title: memoryThread?.title || session.title || undefined,
 					resourceId: session.ownerId ?? '',
+					projectId: session.projectId,
 					metadata: memoryThread?.metadata,
 					createdAt: session.createdAt,
 					updatedAt: session.updatedAt,
@@ -856,6 +857,7 @@ export class InstanceAiMemoryService {
 		id: string;
 		title?: string;
 		resourceId: string;
+		projectId?: string;
 		metadata?: Record<string, unknown>;
 		createdAt: Date;
 		updatedAt: Date;
@@ -864,6 +866,7 @@ export class InstanceAiMemoryService {
 			id: thread.id,
 			title: thread.title,
 			resourceId: thread.resourceId,
+			...(thread.projectId ? { projectId: thread.projectId } : {}),
 			createdAt: thread.createdAt.toISOString(),
 			updatedAt: thread.updatedAt.toISOString(),
 			metadata: thread.metadata,

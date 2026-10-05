@@ -48,8 +48,12 @@ export function parseAssistantConfirmationInput(
 	value: unknown,
 ): AssistantConfirmationInput | undefined {
 	if (!isRecord(value) || typeof value.requestId !== 'string') return undefined;
+	// A plain Assistant approval carries only requestId, message and severity.
+	const isPlainApproval = typeof value.message === 'string' && typeof value.severity === 'string';
 	const hasCardField =
-		typeof value.inputType === 'string' || CARD_FIELDS.some((field) => value[field] !== undefined);
+		isPlainApproval ||
+		typeof value.inputType === 'string' ||
+		CARD_FIELDS.some((field) => value[field] !== undefined);
 	if (!hasCardField) return undefined;
 
 	const message = typeof value.message === 'string' ? value.message : '';
