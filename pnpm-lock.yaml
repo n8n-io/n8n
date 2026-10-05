@@ -2135,12 +2135,21 @@ importers:
         specifier: 'catalog:'
         version: 1.4.5
     devDependencies:
+      '@n8n/oxlint-config':
+        specifier: workspace:*
+        version: link:../oxlint-config
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
       '@n8n/vitest-config':
         specifier: workspace:*
         version: link:../vitest-config
+      oxlint:
+        specifier: 'catalog:'
+        version: 1.78.0(oxlint-tsgolint@0.21.1)
+      oxlint-tsgolint:
+        specifier: 'catalog:'
+        version: 0.21.1
       typescript:
         specifier: catalog:typescript
         version: 7.0.2
@@ -2236,12 +2245,21 @@ importers:
       '@lezer/generator':
         specifier: 'catalog:'
         version: 1.8.0
+      '@n8n/oxlint-config':
+        specifier: workspace:*
+        version: link:../oxlint-config
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
       '@n8n/vitest-config':
         specifier: workspace:*
         version: link:../vitest-config
+      oxlint:
+        specifier: 'catalog:'
+        version: 1.78.0(oxlint-tsgolint@0.21.1)
+      oxlint-tsgolint:
+        specifier: 'catalog:'
+        version: 0.21.1
       typescript:
         specifier: catalog:typescript
         version: 7.0.2
@@ -4469,9 +4487,9 @@ importers:
         specifier: 'catalog:'
         version: 3.3.18
     devDependencies:
-      '@n8n/eslint-config':
+      '@n8n/oxlint-config':
         specifier: workspace:*
-        version: link:../eslint-config
+        version: link:../oxlint-config
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
@@ -4484,6 +4502,12 @@ importers:
       fast-check:
         specifier: 'catalog:'
         version: 3.23.2
+      oxlint:
+        specifier: 'catalog:'
+        version: 1.78.0(oxlint-tsgolint@0.21.1)
+      oxlint-tsgolint:
+        specifier: 'catalog:'
+        version: 0.21.1
       tsdown:
         specifier: catalog:typescript
         version: 0.22.8(oxc-resolver@11.21.2)(tsx@4.19.3)(typescript@7.0.2)(unrun@0.2.10(@emnapi/core@1.11.2)(@emnapi/runtime@1.11.2))(vue-tsc@2.2.8(patch_hash=e2aee939ccac8a57fe449bfd92bedd8117841579526217bc39aca26c6b8c317f)(typescript@7.0.2))
@@ -5439,6 +5463,9 @@ importers:
         specifier: catalog:frontend
         version: 4.5.0(vue@3.5.26(typescript@6.0.2))
     devDependencies:
+      '@n8n/oxlint-config':
+        specifier: workspace:*
+        version: link:../../@n8n/oxlint-config
       '@n8n/stylelint-config':
         specifier: workspace:*
         version: link:../../@n8n/stylelint-config
@@ -5451,6 +5478,12 @@ importers:
       '@vue/tsconfig':
         specifier: catalog:frontend
         version: 0.7.0(typescript@6.0.2)(vue@3.5.26(typescript@6.0.2))
+      oxlint:
+        specifier: 'catalog:'
+        version: 1.78.0(oxlint-tsgolint@0.21.1)
+      oxlint-tsgolint:
+        specifier: 'catalog:'
+        version: 0.21.1
       rimraf:
         specifier: 'catalog:'
         version: 6.0.1

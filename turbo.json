@@ -95,6 +95,12 @@
 		"@n8n/client-oauth2#lint": {
 			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
 		},
+		"@n8n/codemirror-lang#lint": {
+			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
+		},
+		"@n8n/codemirror-lang-sql#lint": {
+			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
+		},
 		"@n8n/computer-use#lint": {
 			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
 		},
@@ -137,6 +143,9 @@
 		"@n8n/node-engine-compatibility#lint": {
 			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
 		},
+		"@n8n/n8n-extension-insights#lint": {
+			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
+		},
 		"@n8n/n8n-benchmark#lint": {
 			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
 		},
@@ -156,6 +165,9 @@
 			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
 		},
 		"@n8n/test-impact#lint": {
+			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
+		},
+		"@n8n/utils#lint": {
 			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
 		},
 		"@n8n/workflow-sdk#lint": {
