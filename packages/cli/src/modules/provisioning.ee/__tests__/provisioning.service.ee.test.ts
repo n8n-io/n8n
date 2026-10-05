@@ -11,6 +11,7 @@ import {
 	type Role,
 	type Project,
 	type ProjectRepository,
+	type ProjectRelationRepository,
 	type OperationContext,
 	type ProjectRelation,
 	type TransactionRunner,
@@ -36,6 +37,7 @@ const userRepository = mock<UserRepository>();
 const userService = mock<UserService>();
 const entityManager = mock<EntityManager>();
 const projectRepository = mock<ProjectRepository>({ manager: entityManager });
+const projectRelationRepository = mock<ProjectRelationRepository>();
 const projectService = mock<ProjectService>();
 const eventService = mock<EventService>();
 
@@ -54,6 +56,7 @@ const provisioningService = new ProvisioningService(
 	globalConfig,
 	settingsRepository,
 	projectRepository,
+	projectRelationRepository,
 	projectService,
 	roleRepository,
 	userRepository,
@@ -627,7 +630,7 @@ describe('ProvisioningService', () => {
 
 			await provisioningService.provisionProjectRolesForUser(userId, projectIdToRole);
 
-			expect(projectService.addUser).not.toHaveBeenCalled();
+			expect(projectRelationRepository.addProjectMember).not.toHaveBeenCalled();
 			expect(logger.warn).toHaveBeenCalledTimes(1);
 			expect(logger.warn).toHaveBeenCalledWith(
 				'Skipping project role provisioning. Invalid projectIdToRole type: expected array, received object',
@@ -643,7 +646,7 @@ describe('ProvisioningService', () => {
 
 			await provisioningService.provisionProjectRolesForUser(userId, projectIdToRole);
 
-			expect(projectService.addUser).not.toHaveBeenCalled();
+			expect(projectRelationRepository.addProjectMember).not.toHaveBeenCalled();
 			expect(logger.warn).toHaveBeenCalledTimes(1);
 			expect(logger.warn).toHaveBeenCalledWith(
 				'Skipping project role provisioning. Invalid projectIdToRole type: expected array, received string',
@@ -659,7 +662,7 @@ describe('ProvisioningService', () => {
 
 			await provisioningService.provisionProjectRolesForUser(userId, projectIdToRole);
 
-			expect(projectService.addUser).not.toHaveBeenCalled();
+			expect(projectRelationRepository.addProjectMember).not.toHaveBeenCalled();
 			expect(logger.warn).toHaveBeenCalledTimes(1);
 			expect(logger.warn).toHaveBeenCalledWith(
 				'Skipping invalid project role mapping entry. Expected string, received object.',
@@ -677,7 +680,7 @@ describe('ProvisioningService', () => {
 
 			await provisioningService.provisionProjectRolesForUser(userId, projectIdToRole);
 
-			expect(projectService.addUser).not.toHaveBeenCalled();
+			expect(projectRelationRepository.addProjectMember).not.toHaveBeenCalled();
 		});
 
 		it('should do nothing if the provided role does not exist', async () => {
@@ -690,7 +693,7 @@ describe('ProvisioningService', () => {
 
 			await provisioningService.provisionProjectRolesForUser(userId, projectIdToRole);
 
-			expect(projectService.addUser).not.toHaveBeenCalled();
+			expect(projectRelationRepository.addProjectMember).not.toHaveBeenCalled();
 		});
 
 		it('should do nothing if no valid project to role mappings are found', async () => {
@@ -710,7 +713,7 @@ describe('ProvisioningService', () => {
 
 			await provisioningService.provisionProjectRolesForUser(userId, projectIdToRole);
 
-			expect(projectService.addUser).not.toHaveBeenCalled();
+			expect(projectRelationRepository.addProjectMember).not.toHaveBeenCalled();
 			expect(logger.warn).toHaveBeenCalledWith(
 				'Skipped provisioning project role for project with ID nonExistentProject, because project does not exist or is a personal project.',
 				{
@@ -737,10 +740,11 @@ describe('ProvisioningService', () => {
 
 			await provisioningService.provisionProjectRolesForUser(userId, projectIdToRole);
 
-			expect(projectService.addUser).toHaveBeenCalledTimes(1);
-			expect(projectService.addUser).toHaveBeenCalledWith(
+			expect(projectRelationRepository.addProjectMember).toHaveBeenCalledTimes(1);
+			expect(projectRelationRepository.addProjectMember).toHaveBeenCalledWith(
 				'teamProject1',
-				{ userId, role: 'project:editor' },
+				userId,
+				'project:editor',
 				transactionContext,
 			);
 			expect(logger.warn).toHaveBeenCalledWith(
@@ -768,15 +772,17 @@ describe('ProvisioningService', () => {
 
 			await provisioningService.provisionProjectRolesForUser(userId, projectIdToRole);
 
-			expect(projectService.addUser).toHaveBeenCalledTimes(2);
-			expect(projectService.addUser).toHaveBeenCalledWith(
+			expect(projectRelationRepository.addProjectMember).toHaveBeenCalledTimes(2);
+			expect(projectRelationRepository.addProjectMember).toHaveBeenCalledWith(
 				'project-1',
-				{ userId, role: 'project:viewer' },
+				userId,
+				'project:viewer',
 				transactionContext,
 			);
-			expect(projectService.addUser).toHaveBeenCalledWith(
+			expect(projectRelationRepository.addProjectMember).toHaveBeenCalledWith(
 				'project-2',
-				{ userId, role: 'project:editor' },
+				userId,
+				'project:editor',
 				transactionContext,
 			);
 		});
@@ -790,7 +796,7 @@ describe('ProvisioningService', () => {
 
 			await provisioningService.provisionProjectRolesForUser(userId, projectIdToRole);
 
-			expect(projectService.addUser).not.toHaveBeenCalled();
+			expect(projectRelationRepository.addProjectMember).not.toHaveBeenCalled();
 			expect(logger.warn).toHaveBeenCalledWith(
 				'Skipping project role provisioning for role with slug project:admin, because role does not exist or is not specific to projects.',
 				{ userId, projectId: 'project1', roleSlug: 'project:admin' },
@@ -816,14 +822,15 @@ describe('ProvisioningService', () => {
 			await provisioningService.provisionProjectRolesForUser(userId, projectIdToRole);
 
 			expect(transactionRunner.run).toHaveBeenCalledTimes(1);
-			expect(projectService.deleteProjectMember).toHaveBeenCalledWith(
+			expect(projectRelationRepository.deleteProjectMember).toHaveBeenCalledWith(
 				'project-2',
 				userId,
 				transactionContext,
 			);
-			expect(projectService.addUser).toHaveBeenCalledWith(
+			expect(projectRelationRepository.addProjectMember).toHaveBeenCalledWith(
 				'project-1',
-				{ userId, role: 'project:viewer' },
+				userId,
+				'project:viewer',
 				transactionContext,
 			);
 		});
@@ -864,12 +871,12 @@ describe('ProvisioningService', () => {
 
 			await provisioningService['applyExpressionMappedProjectRoles'](userId, new Map());
 
-			expect(projectService.deleteProjectMember).toHaveBeenCalledWith(
+			expect(projectRelationRepository.deleteProjectMember).toHaveBeenCalledWith(
 				'project-1',
 				userId,
 				transactionContext,
 			);
-			expect(projectService.addUser).not.toHaveBeenCalled();
+			expect(projectRelationRepository.addProjectMember).not.toHaveBeenCalled();
 			expect(eventService.emit).toHaveBeenCalledWith('sso-user-project-access-updated', {
 				projectsAdded: 0,
 				projectsRemoved: 1,
@@ -891,12 +898,12 @@ describe('ProvisioningService', () => {
 				new Map([['nonExistentProject', 'project:viewer']]),
 			);
 
-			expect(projectService.deleteProjectMember).toHaveBeenCalledWith(
+			expect(projectRelationRepository.deleteProjectMember).toHaveBeenCalledWith(
 				'project-existing',
 				userId,
 				transactionContext,
 			);
-			expect(projectService.addUser).not.toHaveBeenCalled();
+			expect(projectRelationRepository.addProjectMember).not.toHaveBeenCalled();
 		});
 
 		it('should do nothing when projectRoleMap is empty and user has no existing access', async () => {
@@ -905,8 +912,8 @@ describe('ProvisioningService', () => {
 
 			await provisioningService['applyExpressionMappedProjectRoles'](userId, new Map());
 
-			expect(projectService.deleteProjectMember).not.toHaveBeenCalled();
-			expect(projectService.addUser).not.toHaveBeenCalled();
+			expect(projectRelationRepository.deleteProjectMember).not.toHaveBeenCalled();
+			expect(projectRelationRepository.addProjectMember).not.toHaveBeenCalled();
 			expect(eventService.emit).not.toHaveBeenCalled();
 		});
 	});
@@ -1499,7 +1506,7 @@ describe('ProvisioningService', () => {
 			await provisioningService.provisionExpressionMappedRolesForUser(user, context);
 
 			// No project rules => project roles are not managed => manual access must survive.
-			expect(projectService.deleteProjectMember).not.toHaveBeenCalled();
+			expect(projectRelationRepository.deleteProjectMember).not.toHaveBeenCalled();
 			expect(eventService.emit).toHaveBeenCalledWith(
 				'expression-mapping-roles-resolved',
 				expect.objectContaining({ projectRoles: [], removedProjectIds: [] }),

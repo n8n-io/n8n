@@ -14,6 +14,7 @@ import {
 	User,
 	UserRepository,
 	Role,
+	ProjectRelationRepository,
 	ProjectRepository,
 	TransactionRunner,
 } from '@n8n/db';
@@ -45,6 +46,7 @@ export class ProvisioningService {
 		private readonly globalConfig: GlobalConfig,
 		private readonly settingsRepository: SettingsRepository,
 		private readonly projectRepository: ProjectRepository,
+		private readonly projectRelationRepository: ProjectRelationRepository,
 		private readonly projectService: ProjectService,
 		private readonly roleRepository: RoleRepository,
 		private readonly userRepository: UserRepository,
@@ -291,11 +293,11 @@ export class ProvisioningService {
 
 		await this.transactionRunner.run({}, async (ctx) => {
 			for (const project of projectsToRemoveAccessFrom) {
-				await this.projectService.deleteProjectMember(project.id, userId, ctx);
+				await this.projectRelationRepository.deleteProjectMember(project.id, userId, ctx);
 			}
 
 			for (const { projectId, roleSlug } of validProjectToRoleMappings) {
-				await this.projectService.addUser(projectId, { userId, role: roleSlug }, ctx);
+				await this.projectRelationRepository.addProjectMember(projectId, userId, roleSlug, ctx);
 			}
 		});
 
@@ -708,10 +710,10 @@ export class ProvisioningService {
 
 		await this.transactionRunner.run({}, async (ctx) => {
 			for (const project of projectsToRemoveAccessFrom) {
-				await this.projectService.deleteProjectMember(project.id, userId, ctx);
+				await this.projectRelationRepository.deleteProjectMember(project.id, userId, ctx);
 			}
 			for (const { projectId, roleSlug } of validMappings) {
-				await this.projectService.addUser(projectId, { userId, role: roleSlug }, ctx);
+				await this.projectRelationRepository.addProjectMember(projectId, userId, roleSlug, ctx);
 			}
 		});
 
