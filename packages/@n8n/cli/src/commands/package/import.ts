@@ -92,7 +92,7 @@ export default class PackageImport extends BaseCommand {
 		}),
 		dataTableSchemaConflictPolicy: Flags.string({
 			description:
-				'How strictly a matched target data table schema is compared: keep-existing (instance default) requires every package column but ignores additional columns the target table has of its own; fail rejects any difference. Neither policy alters the matched target table. overwrite changes the matched target table to match the package (renames the table, adds, removes, and retypes columns, and sets the column order); data in removed or retyped columns is lost, and it needs dataTable:update when a table changes. The changes apply to the table for all workflows that use it, not only for the imported workflows.',
+				'How strictly a matched target data table schema is compared: keep-existing (instance default) requires every package column but ignores additional columns the target table has of its own; fail rejects any difference. keep-existing and fail never alter the matched target table. overwrite changes the matched target table to match the package. It renames the table, adds, removes, and retypes columns, and sets the column order. Data in removed or retyped columns is lost. It needs dataTable:update when a table changes. The changes apply to the table for all workflows that use it, not only for the imported workflows.',
 			options: ['keep-existing', 'fail', 'overwrite'],
 			aliases: ['data-table-schema-conflict-policy'],
 		}),

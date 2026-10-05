@@ -236,10 +236,11 @@ post:
                 the target project. `create` (default) creates it from the package
                 schema, keeping the source id, with no rows; requires the
                 `dataTable:create` scope. `must-preexist` rejects the import.
-                `do-nothing` skips creation of missing tables — matched tables are
-                still validated for schema compatibility and can still block the
-                import. Matched tables are used as-is: never renamed, altered,
-                or filled, except under `dataTableSchemaConflictPolicy=overwrite`.
+                `do-nothing` skips creation of missing tables. Under the
+                `keep-existing` and `fail` schema conflict policies, matched tables
+                are still validated for schema compatibility and can still block
+                the import. Matched tables never get rows. They change only under
+                `dataTableSchemaConflictPolicy=overwrite`.
             dataTableSchemaConflictPolicy:
               type: string
               enum:
@@ -250,13 +251,11 @@ post:
               description: >
                 How strictly a matched data table's schema is compared.
                 `keep-existing` (default) accepts a target table that has every
-                package column with the same name and type, even when the target table
-                also has additional columns of its own. `fail` is the strict
-                drift-detection choice: any difference, including such
-                target-only columns, rejects the import. A missing package
-                column or a type mismatch always rejects. Both policies are
-                non-destructive — the matched target table is never altered, and
-                package columns are never added to it. `overwrite` changes the
+                package column with the same name and type. The target table can
+                have extra columns. `fail` rejects any difference, including
+                target-only columns. Under `keep-existing` and `fail`, a missing
+                package column or a type mismatch rejects the import, and the
+                target table does not change. `overwrite` changes the
                 matched target table to match the package: it renames the table,
                 adds, removes, and retypes columns, and sets the column order.
                 Data in removed or retyped columns is lost. The changes apply to
