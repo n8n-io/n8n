@@ -128,7 +128,7 @@ describe('buildAgentPlanDisplayGroups', () => {
 		}
 	});
 
-	it.each(['pending', 'running'] as const)(
+	it.each(['pending', 'running', 'done'] as const)(
 		'hides a known progress-only %s call before its result arrives',
 		(state) => {
 			const call = update(progress, {
@@ -139,6 +139,36 @@ describe('buildAgentPlanDisplayGroups', () => {
 			expect(visibleCalls([planMessage(initial), call])).toEqual([initialCallId]);
 		},
 	);
+
+	it.each([
+		['progress', { ...initial, revision: 2, document: progress }, false],
+		[
+			'scope change',
+			{ ...initial, revision: 2, document: { ...progress, title: 'New goal' } },
+			true,
+		],
+		['conflict', { error: 'conflict' }, true],
+		['invalid plan', { error: 'invalid_plan' }, true],
+		['null', null, true],
+		['malformed', 'malformed', true],
+	])('uses the %s result after completion without output', (_name, output, visible) => {
+		const previous = planMessage(initial);
+		const message = update(progress, {
+			state: 'running',
+			output: undefined,
+			input: { planId: initial.planId, expectedRevision: 1, document: progress },
+		});
+		const messages = [previous, message];
+		const call = message.toolCalls![0];
+		expect(visibleCalls(messages)).toEqual([initialCallId]);
+
+		call.state = 'done';
+		expect(visibleCalls(messages)).toEqual([initialCallId]);
+		expect(selectLatestAgentPlan(messages)?.revision).toBe(1);
+
+		call.output = output;
+		expect(visibleCalls(messages)).toEqual(visible ? [initialCallId, 'update'] : [initialCallId]);
+	});
 
 	it.each([
 		{ state: 'error' as const },

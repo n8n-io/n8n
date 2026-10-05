@@ -101,7 +101,7 @@ export function buildAgentPlanDisplayGroups(messages: ChatMessage[]): DisplayGro
 			hiddenCalls.delete(call.toolCallId);
 			if (call.canceled) continue;
 
-			if (call.state === TOOL_CALL_STATE.DONE) {
+			if (call.state === TOOL_CALL_STATE.DONE && call.output !== undefined) {
 				if (call.tool === 'read_plan' && call.output === null) plans.clear();
 
 				const result = comparisonPlanSchema.safeParse(call.output);
@@ -126,7 +126,9 @@ export function buildAgentPlanDisplayGroups(messages: ChatMessage[]): DisplayGro
 				plans.set(current.planId, revisions);
 			} else if (
 				call.tool === 'update_plan' &&
-				(call.state === TOOL_CALL_STATE.PENDING || call.state === TOOL_CALL_STATE.RUNNING)
+				(call.state === TOOL_CALL_STATE.PENDING ||
+					call.state === TOOL_CALL_STATE.RUNNING ||
+					(call.state === TOOL_CALL_STATE.DONE && call.output === undefined))
 			) {
 				const input = updateInputSchema.safeParse(call.input);
 				if (!input.success) continue;
