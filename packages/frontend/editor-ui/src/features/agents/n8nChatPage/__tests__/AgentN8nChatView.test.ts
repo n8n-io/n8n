@@ -127,6 +127,7 @@ const agentItem: AgentChatListItem = {
 		gradient: { from: '#000000', to: '#FFFFFF', angle: 0, fromStop: 0, toStop: 100 },
 	},
 	project: { id: 'project-1', name: 'Marketing' },
+	attachments: { image: true, pdf: true, audio: false },
 };
 
 describe('AgentN8nChatView', () => {

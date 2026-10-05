@@ -5,11 +5,13 @@ import {
 	sanitizeAgentJsonConfig,
 	type AgentCapabilitySummary,
 	type AgentCapabilityTool,
+	getProviderAttachmentCapabilities,
 	type AgentChatListItem,
 	type AgentChatListResponse,
 	type AgentIntegrationConfig,
 	type AgentJsonConfig,
 	type AgentModelCredentialConfig,
+	type AgentN8nChatAgentDetails,
 	type AgentN8nChatThreadSummary,
 	type AgentN8nChatThreadsResponse,
 	type AgentSkill,
@@ -370,10 +372,30 @@ export class AgentsService {
 	async findChatReachableAgentForUser(
 		agentId: string,
 		user: User,
-	): Promise<AgentChatListItem | null> {
+	): Promise<AgentN8nChatAgentDetails | null> {
 		const projectIds = await this.projectScopeService.getProjectIds(user, ['agent:execute']);
 		const agent = await this.agentRepository.findChatReachableById(agentId, projectIds);
-		return agent ? toChatListItem(agent) : null;
+		if (!agent) return null;
+
+		const schema = agent.activeVersion?.schema;
+		// Names are labels only: keep disabled sub-agents so older threads that
+		// delegated to them still show a name. Dedupe so a repeated entry shows once.
+		const subAgentIds = [
+			...new Set((schema?.subAgents?.agents ?? []).map((subAgent) => subAgent.agentId)),
+		];
+		const namesById = new Map(
+			(await this.agentRepository.findByIdsAndProjectId(subAgentIds, agent.projectId)).map(
+				(row) => [row.id, row.name],
+			),
+		);
+
+		return {
+			...toChatListItem(agent),
+			subAgents: subAgentIds.flatMap((id) => {
+				const name = namesById.get(id);
+				return name ? [{ id, name }] : [];
+			}),
+		};
 	}
 
 	/**
@@ -619,12 +641,16 @@ export class AgentsService {
 	}
 }
 
-/** Keeps the chat list to what the page renders: icon and blurb from the published snapshot. */
+/** Keeps the chat list to what the page renders: icon, blurb, and attachment support from the published snapshot. */
 function toChatListItem(agent: Agent): AgentChatListItem {
-	const description = agent.activeVersion?.schema?.description;
+	const schema = agent.activeVersion?.schema;
+	const description = schema?.description;
 	return {
 		...toAgentRef(agent),
 		...(description ? { description } : {}),
 		project: { id: agent.projectId, name: agent.project.name },
+		attachments: getProviderAttachmentCapabilities(
+			schema?.model ? splitModelId(schema.model).provider : undefined,
+		),
 	};
 }

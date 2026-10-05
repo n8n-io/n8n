@@ -182,6 +182,13 @@ export const PROVIDER_CAPABILITIES: Record<string, ProviderCapabilities> = {
 	},
 };
 
+/** Attachment support of a provider. Unknown providers support none. */
+export function getProviderAttachmentCapabilities(
+	provider: string | undefined,
+): ProviderAttachmentCapabilities {
+	return (provider && PROVIDER_CAPABILITIES[provider]?.attachments) || NO_ATTACHMENTS;
+}
+
 /**
  * Whether a media type is accepted as an inline file part by the given
  * provider's models, per the static capability map. Unknown providers and
@@ -191,9 +198,8 @@ export function isAttachmentMediaTypeSupported(
 	provider: string | undefined,
 	mediaType: string | undefined,
 ): boolean {
-	if (!provider || !mediaType) return false;
-	const attachments = PROVIDER_CAPABILITIES[provider]?.attachments;
-	if (!attachments) return false;
+	if (!mediaType) return false;
+	const attachments = getProviderAttachmentCapabilities(provider);
 	if (mediaType.startsWith('image/')) return attachments.image;
 	if (mediaType === 'application/pdf') return attachments.pdf;
 	if (mediaType.startsWith('audio/')) return attachments.audio;
