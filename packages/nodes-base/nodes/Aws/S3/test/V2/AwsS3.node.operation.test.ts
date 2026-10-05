@@ -524,3 +524,95 @@ describe('AWS S3 V2 Node - Bucket Search', () => {
 		expect(result[0][0].json).toEqual(singleItem);
 	});
 });
+
+describe('AWS S3 V2 Node - File Copy', () => {
+	const executeFunctionsMock = mockDeep<IExecuteFunctions>();
+	let awsApiRequestRESTSpy: MockInstance;
+	let node: AwsS3V2;
+
+	const copyWithSource = (sourcePath: string) => {
+		executeFunctionsMock.getNodeParameter.mockImplementation((paramName) => {
+			switch (paramName) {
+				case 'resource':
+					return 'file';
+				case 'operation':
+					return 'copy';
+				case 'sourcePath':
+					return sourcePath;
+				case 'destinationPath':
+					return '/test-bucket/backup/index.txt';
+				case 'additionalFields':
+					return {};
+				default:
+					return undefined;
+			}
+		});
+	};
+
+	const copySourceHeader = () =>
+		awsApiRequestRESTSpy.mock.calls[1][5]['x-amz-copy-source'] as string;
+
+	beforeEach(() => {
+		vi.resetAllMocks();
+		awsApiRequestRESTSpy = vi.spyOn(GenericFunctions, 'awsApiRequestREST');
+		node = new AwsS3V2({
+			displayName: 'AWS S3',
+			name: 'awsS3',
+			icon: 'file:s3.svg',
+			group: ['output'],
+			description: 'Sends data to AWS S3',
+		});
+
+		executeFunctionsMock.getCredentials.mockResolvedValue({
+			accessKeyId: 'test-key',
+			secretAccessKey: 'test-secret',
+			region: 'eu-central-1',
+		});
+		executeFunctionsMock.getNode.mockReturnValue({ typeVersion: 2 } as INode);
+		executeFunctionsMock.getInputData.mockReturnValue([{ json: { test: 'data' } }]);
+		executeFunctionsMock.continueOnFail.mockReturnValue(false);
+		executeFunctionsMock.helpers.returnJsonArray.mockImplementation((data) =>
+			Array.isArray(data) ? data.map((item) => ({ json: item })) : [{ json: data }],
+		);
+		executeFunctionsMock.helpers.constructExecutionMetaData.mockImplementation(
+			(data) => data as any,
+		);
+
+		awsApiRequestRESTSpy.mockResolvedValueOnce(mockLocationResponse).mockResolvedValueOnce({});
+	});
+
+	// An HTTP header cannot carry a non-ASCII byte. The signature is computed over
+	// the value we set, so if the client rewrites it on the way out, S3 sees a
+	// different path and answers SignatureDoesNotMatch.
+	it.each([
+		[
+			'Chinese characters',
+			'/test-bucket/workflow/\u540c\u7a0b\u5546\u65c5/index.txt',
+			'/test-bucket/workflow/%E5%90%8C%E7%A8%8B%E5%95%86%E6%97%85/index.txt',
+		],
+		['an accented name', '/test-bucket/r\u00e9sum\u00e9.pdf', '/test-bucket/r%C3%A9sum%C3%A9.pdf'],
+		['a space', '/test-bucket/my report.pdf', '/test-bucket/my%20report.pdf'],
+	])('percent-encodes the copy source for %s', async (_name, sourcePath, expected) => {
+		copyWithSource(sourcePath);
+
+		await node.execute.call(executeFunctionsMock);
+
+		expect(copySourceHeader()).toBe(expected);
+	});
+
+	it('leaves an all-ASCII source path byte-identical', async () => {
+		copyWithSource('/test-bucket/workflow/index.txt');
+
+		await node.execute.call(executeFunctionsMock);
+
+		expect(copySourceHeader()).toBe('/test-bucket/workflow/index.txt');
+	});
+
+	it('does not double-encode a source path the user already encoded', async () => {
+		copyWithSource('/test-bucket/my%20report.pdf');
+
+		await node.execute.call(executeFunctionsMock);
+
+		expect(copySourceHeader()).toBe('/test-bucket/my%20report.pdf');
+	});
+});
