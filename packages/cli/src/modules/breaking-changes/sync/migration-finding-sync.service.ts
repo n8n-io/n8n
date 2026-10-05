@@ -26,11 +26,6 @@ export function computeRuleSetFingerprint(ruleIds: string[]): string {
  * Brings the `migration_finding` table in step with detection results: a full
  * scan over every workflow, or a re-check of one workflow after it was saved.
  * The report routes read from the table, so they run the full sync first.
- *
- * Any main may run the full sync; there is no cross-main lock. Every write is
- * safe to repeat: inserts ignore a row that exists, and status updates go by
- * id. Two mains that sync at the same time do the work twice and end on the
- * same table.
  */
 @Service()
 export class MigrationFindingSyncService {
