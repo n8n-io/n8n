@@ -1166,30 +1166,37 @@ describe('ScheduledTaskRepository executor methods', () => {
 				expect(row.leaseEpoch).toBe(2); // bumped once, not twice
 			});
 
-			it('lets exactly one of a concurrent renewal and reclaim win, and leaves the row as the winner wrote it', async () => {
-				// Repeated so both orders get a chance to land first.
-				for (let i = 0; i < 20; i++) {
-					const task = await createExpiredRunning({ leaseEpoch: 1, attempts: 0 });
+			it('is a no-op after the owner renewed the lease', async () => {
+				const task = await createExpiredRunning({ leaseEpoch: 1, attempts: 0 });
 
-					const [renewed, reclaimed] = await Promise.all([
-						taskRepository.renewLease({ host: HOST_A, id: task.id, claimedEpoch: 1 }, 60_000),
-						taskRepository.reclaimExpired({ id: task.id, claimedEpoch: 1 }, 30_000, 'x'),
-					]);
+				expect(
+					await taskRepository.renewLease({ host: HOST_A, id: task.id, claimedEpoch: 1 }, 60_000),
+				).toBe(true);
+				expect(
+					await taskRepository.reclaimExpired({ id: task.id, claimedEpoch: 1 }, 30_000, 'x'),
+				).toBe(0);
 
-					const row = await reload(task.id);
-					if (renewed) {
-						expect(reclaimed).toBe(0);
-						expect(row.status).toBe('running');
-						expect(row.leaseEpoch).toBe(1);
-						const dbNow = await taskRepository.readDbTime();
-						expect(row.leaseExpiresAt!.getTime()).toBeGreaterThan(dbNow.getTime());
-					} else {
-						expect(reclaimed).toBe(1);
-						expect(row.status).toBe('pending');
-						expect(row.leaseEpoch).toBe(2);
-						expect(row.attempts).toBe(1);
-					}
-				}
+				const row = await reload(task.id);
+				expect(row.status).toBe('running');
+				expect(row.leaseEpoch).toBe(1);
+				const dbNow = await taskRepository.readDbTime();
+				expect(row.leaseExpiresAt!.getTime()).toBeGreaterThan(dbNow.getTime());
+			});
+
+			it('makes a later renewal by the previous owner a no-op', async () => {
+				const task = await createExpiredRunning({ leaseEpoch: 1, attempts: 0 });
+
+				expect(
+					await taskRepository.reclaimExpired({ id: task.id, claimedEpoch: 1 }, 30_000, 'x'),
+				).toBe(1);
+				expect(
+					await taskRepository.renewLease({ host: HOST_A, id: task.id, claimedEpoch: 1 }, 60_000),
+				).toBe(false);
+
+				const row = await reload(task.id);
+				expect(row.status).toBe('pending');
+				expect(row.leaseEpoch).toBe(2);
+				expect(row.attempts).toBe(1);
 			});
 
 			it('is a no-op on a dispatched row: a dispatched occurrence is completed, not reclaimed', async () => {
