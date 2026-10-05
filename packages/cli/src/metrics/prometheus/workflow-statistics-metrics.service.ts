@@ -1,17 +1,14 @@
 import { PrometheusMetricsConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
-import { LicenseMetricsRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import promClient from 'prom-client';
 
 import type { PrometheusMetricsCollector } from './base';
+import { type CachedMetricQuery, toGaugeValue } from './cached-metric-query';
 import {
-	type CachedMetricQuery,
-	CachedMetricQueryFactory,
-	toGaugeValue,
-} from './cached-metric-query';
-
-type LicenseMetrics = Awaited<ReturnType<LicenseMetricsRepository['getLicenseRenewalMetrics']>>;
+	DatabaseMetricQueryService,
+	type WorkflowStatistics as LicenseMetrics,
+} from './database-metric-query.service';
 
 /**
  * Tracks workflow and instance statistics as Gauges (executions, users, workflows, credentials).
@@ -23,8 +20,7 @@ type LicenseMetrics = Awaited<ReturnType<LicenseMetricsRepository['getLicenseRen
 export class PrometheusWorkflowStatisticsMetricsService implements PrometheusMetricsCollector {
 	constructor(
 		private readonly config: PrometheusMetricsConfig,
-		private readonly cachedMetricQueries: CachedMetricQueryFactory,
-		private readonly licenseMetricsRepository: LicenseMetricsRepository,
+		private readonly databaseQueries: DatabaseMetricQueryService,
 	) {}
 
 	get enabled(): boolean {
@@ -33,11 +29,7 @@ export class PrometheusWorkflowStatisticsMetricsService implements PrometheusMet
 
 	init() {
 		const cacheTtl = this.config.workflowStatisticsInterval * Time.seconds.toMilliseconds;
-		const query = this.cachedMetricQueries.create<LicenseMetrics>({
-			cacheKey: 'metrics:workflow-statistics:shared:v2',
-			ttlMs: cacheTtl,
-			query: async () => await this.licenseMetricsRepository.getLicenseRenewalMetrics(),
-		});
+		const query = this.databaseQueries.workflowStatistics(cacheTtl);
 
 		const metricsConfig = [
 			{
