@@ -377,7 +377,7 @@ export class Executor {
 	): Promise<void> {
 		const lease = new AbortController();
 		const heartbeat = new LeaseHeartbeat(
-			async () => await this.store.renewLease(claim, this.leaseMs),
+			async (expiresInMs) => await this.store.renewLease(claim, expiresInMs),
 			{ leaseDurationMs: this.leaseMs, leaseSetAt },
 			{
 				onRenewal: (result) => {
