@@ -149,6 +149,12 @@ describe('shapeWarningsBlock', () => {
 		).toBeUndefined();
 	});
 
+	it('skips a full response with a status outside 2xx: the schema describes the success body', async () => {
+		const fullResponse = workflowOf({ schema: issuesSchema, fullResponse: true, neverError: true });
+		const notFound = { statusCode: 404, headers: {}, body: { error: 'not found' } };
+		expect(await warningsFor(fullResponse, [notFound])).toBeUndefined();
+	});
+
 	it('names at most 10 issues for a node', async () => {
 		const properties = Object.fromEntries(
 			Array.from({ length: 12 }, (_, index) => [`field${index}`, { type: 'string' }]),

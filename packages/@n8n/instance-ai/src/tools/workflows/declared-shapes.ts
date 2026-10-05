@@ -50,7 +50,19 @@ const expectingAll = (schema: JsonSchema, open: boolean): JsonSchema => {
 	};
 };
 
-/** The items of the first output that a check can read: no truncated item and no error item. */
+/**
+ * A full response whose status is outside 2xx. The declared schema describes the success body,
+ * so an error body is no drift: a scenario can expect a 404 that the workflow handles.
+ */
+const isErrorResponse = (item: Record<string, unknown>) =>
+	typeof item.statusCode === 'number' &&
+	'body' in item &&
+	(item.statusCode < 200 || item.statusCode > 299);
+
+/**
+ * The items of the first output that a check can read: no truncated item, no error item and no
+ * error response.
+ */
 function checkedItemsOf(output: NodeOutputResult): Array<Record<string, unknown>> {
 	return (output.outputs[0]?.items ?? [])
 		.map((item) => (typeof item === 'string' ? unwrapUntrustedData(item) : item))
@@ -58,7 +70,8 @@ function checkedItemsOf(output: NodeOutputResult): Array<Record<string, unknown>
 			(item): item is Record<string, unknown> =>
 				isRecord(item) &&
 				item._truncatedItem !== true &&
-				!(Object.keys(item).length === 1 && 'error' in item),
+				!(Object.keys(item).length === 1 && 'error' in item) &&
+				!isErrorResponse(item),
 		);
 }
 
