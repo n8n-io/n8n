@@ -2323,12 +2323,10 @@ export function createWorkflowsTool(
 					return await handleDelete(context, workflowInput, ctx);
 				case 'unarchive':
 					return await handleUnarchive(context, workflowInput, ctx);
-				case 'setup':
-					return await reportWorkflowChange(
-						context,
-						workflowInput.workflowId,
-						await handleSetup(context, workflowInput, ctx, setupState),
-					);
+				case 'setup': {
+					const result = await handleSetup(context, workflowInput, ctx, setupState);
+					return await reportWorkflowChange(context, workflowInput.workflowId, result);
+				}
 				case 'validate':
 					return await handleValidate(context, workflowInput);
 				case 'publish':
@@ -2337,12 +2335,10 @@ export function createWorkflowsTool(
 					return await handleUnpublish(context, workflowInput, ctx);
 				case 'list-versions':
 					return await handleListVersions(context, workflowInput);
-				case 'restore-version':
-					return await reportWorkflowChange(
-						context,
-						workflowInput.workflowId,
-						await handleRestoreVersion(context, workflowInput, ctx),
-					);
+				case 'restore-version': {
+					const result = await handleRestoreVersion(context, workflowInput, ctx);
+					return await reportWorkflowChange(context, workflowInput.workflowId, result);
+				}
 				case 'update-version':
 					return await handleUpdateVersion(context, workflowInput, ctx);
 				default:

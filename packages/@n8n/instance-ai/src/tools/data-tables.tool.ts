@@ -385,7 +385,7 @@ async function resolveDataTableReference(
  * Tell the host that the agent worked on a table, so it shows the table's tab.
  * Reads count too, because the frontend also previews a table the agent reads.
  */
-async function reportDataTable(
+async function reportDataTableAction(
 	context: InstanceAiContext,
 	table: { id: string; name?: string; projectId?: string },
 ) {
@@ -402,13 +402,13 @@ async function reportDataTable(
  * as `dataTableId`, so resolve it to the table's ID. A failed lookup must not
  * fail the change that already happened.
  */
-async function reportResolvedDataTable(context: InstanceAiContext, input: DataTableReferenceInput) {
+async function reportChangedDataTable(context: InstanceAiContext, input: DataTableReferenceInput) {
 	const table = await resolveDataTableReference(context, input, 'read').catch(() => ({
 		dataTableId: input.dataTableId,
 		dataTableName: input.dataTableName,
 		projectId: input.projectId,
 	}));
-	await reportDataTable(context, {
+	await reportDataTableAction(context, {
 		id: table.dataTableId,
 		name: table.dataTableName,
 		projectId: table.projectId,
@@ -431,7 +431,7 @@ async function handleSchema(
 	const columns = await context.dataTableService.getSchema(input.dataTableId, {
 		projectId: input.projectId,
 	});
-	await reportDataTable(context, {
+	await reportDataTableAction(context, {
 		id: table.dataTableId,
 		name: table.dataTableName,
 		projectId: table.projectId,
@@ -502,7 +502,7 @@ async function handleQuery(
 		);
 	}
 
-	await reportDataTable(context, {
+	await reportDataTableAction(context, {
 		id: table.dataTableId,
 		name: table.dataTableName,
 		projectId: table.projectId,
@@ -553,7 +553,7 @@ async function handleCreate(
 		const table = await context.dataTableService.create(input.name, input.columns, {
 			projectId: input.projectId,
 		});
-		await reportDataTable(context, table);
+		await reportDataTableAction(context, table);
 		return { table };
 	} catch (error) {
 		// If table already exists, guide the agent to use the existing one
@@ -648,7 +648,7 @@ async function handleAddColumn(
 		{ name: input.columnName, type: input.type },
 		{ projectId: input.projectId },
 	);
-	await reportResolvedDataTable(context, input);
+	await reportChangedDataTable(context, input);
 	return { column };
 }
 
@@ -692,7 +692,7 @@ async function handleDeleteColumn(
 	await context.dataTableService.deleteColumn(input.dataTableId, input.columnId, {
 		projectId: input.projectId,
 	});
-	await reportResolvedDataTable(context, input);
+	await reportChangedDataTable(context, input);
 	return { success: true };
 }
 
@@ -737,7 +737,7 @@ async function handleRenameColumn(
 	await context.dataTableService.renameColumn(input.dataTableId, input.columnId, input.newName, {
 		projectId: input.projectId,
 	});
-	await reportResolvedDataTable(context, input);
+	await reportChangedDataTable(context, input);
 	return { success: true };
 }
 
@@ -790,7 +790,7 @@ async function handleInsertRows(
 	const result = await context.dataTableService.insertRows(input.dataTableId, input.rows, {
 		projectId: input.projectId,
 	});
-	await reportDataTable(context, {
+	await reportDataTableAction(context, {
 		id: result.dataTableId,
 		name: result.tableName,
 		projectId: result.projectId,
@@ -845,7 +845,7 @@ async function handleUpdateRows(
 		input.data,
 		{ projectId: input.projectId },
 	);
-	await reportDataTable(context, {
+	await reportDataTableAction(context, {
 		id: result.dataTableId,
 		name: result.tableName,
 		projectId: result.projectId,
@@ -893,7 +893,7 @@ async function handleDeleteRows(
 	const result = await context.dataTableService.deleteRows(input.dataTableId, input.filter, {
 		projectId: input.projectId,
 	});
-	await reportDataTable(context, {
+	await reportDataTableAction(context, {
 		id: result.dataTableId,
 		name: result.tableName,
 		projectId: result.projectId,
