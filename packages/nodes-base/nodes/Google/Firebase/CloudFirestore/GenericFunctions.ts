@@ -96,7 +96,7 @@ export function jsonToDocument(
 		return { nullValue: null };
 	} else if (typeof value === 'number' && !Number.isNaN(value)) {
 		if (Number.isInteger(value)) {
-			return { IntegerValue: value };
+			return { integerValue: value };
 		}
 		return { doubleValue: value };
 	} else if (typeof value === 'string' && /[-T:]/.test(value) && isValidDate(value)) {
