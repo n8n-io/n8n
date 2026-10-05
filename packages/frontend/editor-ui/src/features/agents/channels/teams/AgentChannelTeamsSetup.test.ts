@@ -177,6 +177,14 @@ describe('AgentChannelTeamsSetup', () => {
 	});
 
 	describe('step 3, deploy the bot', () => {
+		it('shows the Azure subscription hint', async () => {
+			const { getByText } = renderComponent({ props: props() });
+
+			await waitFor(() =>
+				expect(getByText('agents.channels.teams.setup.createBot.hint')).toBeVisible(),
+			);
+		});
+
 		it('keeps the endpoint URL out of the way, since the deployment sets it', async () => {
 			const { getByTestId, container } = renderComponent({ props: props() });
 
@@ -440,7 +448,7 @@ describe('AgentChannelTeamsSetup', () => {
 			expect(vi.mocked(fetchTeamsAppPackage).mock.calls[0]?.slice(1, 3)).toEqual(['p', 'a']);
 		});
 
-		it('connects once the package is saved, since the modal closes on connect', async () => {
+		it('connects once the package is saved', async () => {
 			withBot();
 			const { getByTestId, emitted } = renderComponent({ props: props({ modelValue: 'cred-1' }) });
 			await waitFor(() => expect(getByTestId('teams-download-package')).toBeEnabled());
@@ -475,6 +483,15 @@ describe('AgentChannelTeamsSetup', () => {
 			expect(emitted().connect).toBeFalsy();
 		});
 
+		it('names the download step and what the package is built from', async () => {
+			const { getByText } = renderComponent({ props: props() });
+
+			await waitFor(() =>
+				expect(getByText('agents.channels.teams.setup.download.title')).toBeVisible(),
+			);
+			expect(getByText('agents.channels.teams.setup.download.description')).toBeVisible();
+		});
+
 		it('reports a failed download and does not connect', async () => {
 			withBot();
 			vi.mocked(fetchTeamsAppPackage).mockRejectedValue(new Error('401'));
@@ -488,6 +505,146 @@ describe('AgentChannelTeamsSetup', () => {
 		});
 	});
 
+	describe('step 6, upload in Teams', () => {
+		const UPLOAD = 'agents.channels.teams.setup.install.description';
+
+		const downloadAndConnect = async () => {
+			withBot();
+			const utils = renderComponent({ props: props({ modelValue: 'cred-1' }) });
+			await waitFor(() => expect(utils.getByTestId('teams-download-package')).toBeEnabled());
+			await fireEvent.click(utils.getByTestId('teams-download-package'));
+			await waitFor(() => expect(utils.emitted().connect).toBeTruthy());
+			return utils;
+		};
+
+		it('says where to upload the zip, and what to do without the option', async () => {
+			const { getByText, getByTestId } = renderComponent({ props: props() });
+
+			await waitFor(() =>
+				expect(getByText('agents.channels.teams.setup.install.title')).toBeVisible(),
+			);
+			expect(getByText(UPLOAD)).toBeVisible();
+			expect(getByTestId('teams-upload-hint')).toHaveTextContent(
+				'agents.channels.teams.setup.install.hint',
+			);
+		});
+
+		it.each([
+			[['teams-scope-channels'], 'agents.channels.teams.setup.install.addTo.teams'],
+			[['teams-scope-groups'], 'agents.channels.teams.setup.install.addTo.chats'],
+			[
+				['teams-scope-channels', 'teams-scope-groups'],
+				'agents.channels.teams.setup.install.addTo.both',
+			],
+		])('tells the user where to add the app for %j', async (scopes, addTo) => {
+			withBot();
+			const { getByTestId, getByText } = renderComponent({
+				props: props({ modelValue: 'cred-1' }),
+			});
+			await openAvailability(getByTestId);
+
+			for (const scope of scopes) await fireEvent.click(getByTestId(scope));
+
+			await waitFor(() => expect(getByText(`${UPLOAD} ${addTo}`)).toBeVisible());
+		});
+
+		it('adds nothing about teams or chats for direct chat only', async () => {
+			const { getByText } = renderComponent({ props: props() });
+
+			await waitFor(() => expect(getByText(UPLOAD)).toBeVisible());
+		});
+
+		it('asks the modal to stay open after connecting in setup, but not in settings', async () => {
+			const Host = defineComponent({
+				components: { AgentChannelTeamsSetup },
+				props: { viewProps: { type: Object, required: true } },
+				setup: () => ({ view: ref<InstanceType<typeof AgentChannelTeamsSetup>>() }),
+				template: `<div><AgentChannelTeamsSetup ref="view" v-bind="viewProps" /><span data-testid="keep-open">{{ String(view?.keepOpenAfterConnect) }}</span></div>`,
+			});
+			const renderHost = createComponentRenderer(Host);
+
+			const setup = renderHost({ props: { viewProps: props() } });
+			await waitFor(() => expect(setup.getByTestId('keep-open')).toHaveTextContent('true'));
+			setup.unmount();
+
+			const settings = renderHost({ props: { viewProps: props({ mode: 'edit' }) } });
+			await waitFor(() => expect(settings.getByTestId('keep-open')).toHaveTextContent('false'));
+		});
+
+		it('keeps Done disabled until the package is downloaded and the channel connected', async () => {
+			withBot();
+			const { getByTestId } = renderComponent({ props: props({ modelValue: 'cred-1' }) });
+			await waitFor(() => expect(getByTestId('teams-download-package')).toBeEnabled());
+			expect(getByTestId('teams-done')).toBeDisabled();
+			await fireEvent.click(getByTestId('teams-download-package'));
+			await waitFor(() => expect(saveAs).toHaveBeenCalled());
+
+			expect(getByTestId('teams-done')).toBeDisabled();
+		});
+
+		it('keeps Done disabled on a connected channel until a package is downloaded', async () => {
+			withBot();
+			const { getByTestId } = renderComponent({
+				props: props({ modelValue: 'cred-1', connected: true }),
+			});
+
+			await waitFor(() => expect(getByTestId('teams-download-package')).toBeEnabled());
+			expect(getByTestId('teams-done')).toBeDisabled();
+		});
+
+		it('finishes on Done once connected, without another toast', async () => {
+			const { getByTestId, emitted, rerender } = await downloadAndConnect();
+			await rerender(props({ modelValue: 'cred-1', connected: true }));
+			await waitFor(() => expect(getByTestId('teams-done')).toBeEnabled());
+			showMessage.mockClear();
+
+			await fireEvent.click(getByTestId('teams-done'));
+
+			expect(emitted().done).toHaveLength(1);
+			expect(showMessage).not.toHaveBeenCalled();
+		});
+
+		it('shows a failed connect in this step, with Done still disabled', async () => {
+			const { getByTestId, rerender } = await downloadAndConnect();
+
+			await rerender(props({ modelValue: 'cred-1', errorMessage: 'Bot rejected' }));
+
+			await waitFor(() => expect(getByTestId('teams-connect-retry')).toBeVisible());
+			const step = getByTestId('teams-install-step');
+			expect(step).toContainElement(getByTestId('teams-connect-error'));
+			expect(step).toContainElement(getByTestId('teams-done'));
+			expect(getByTestId('teams-done')).toBeDisabled();
+		});
+
+		it('asks to publish a connected agent that is not published, next to Done', async () => {
+			withBot();
+			const { getByTestId } = renderComponent({
+				props: props({ modelValue: 'cred-1', connected: true, isPublished: false }),
+			});
+
+			await waitFor(() => expect(getByTestId('teams-publish-notice')).toBeVisible());
+			expect(getByTestId('teams-install-step')).toContainElement(
+				getByTestId('teams-publish-notice'),
+			);
+		});
+
+		it('locks the availability once connected, so a new download matches what was saved', async () => {
+			const { getByTestId, rerender } = await downloadAndConnect();
+
+			await rerender(props({ modelValue: 'cred-1', connected: true }));
+
+			await waitFor(() => expect(getByTestId('teams-availability-step')).toHaveAttribute('inert'));
+		});
+
+		it('does not count a package for a credential that was swapped since', async () => {
+			const { getByTestId, rerender } = await downloadAndConnect();
+
+			await rerender(props({ modelValue: 'cred-2', connected: true }));
+
+			await waitFor(() => expect(getByTestId('teams-done')).toBeDisabled());
+		});
+	});
+
 	describe('settings', () => {
 		const settingsProps = (overrides: Record<string, unknown> = {}) =>
 			props({ mode: 'edit', connected: true, modelValue: 'cred-1', ...overrides });
@@ -496,6 +653,38 @@ describe('AgentChannelTeamsSetup', () => {
 			const { getByTestId } = renderComponent({ props: settingsProps() });
 
 			await waitFor(() => expect(getByTestId('teams-update-notice')).toBeVisible());
+		});
+
+		it('says where to upload the package, for the saved places, and what to do without the option', async () => {
+			const { getByTestId } = renderComponent({
+				props: settingsProps({ savedSettings: { teamChannels: true } }),
+			});
+
+			await waitFor(() =>
+				expect(getByTestId('teams-upload-instructions')).toHaveTextContent(
+					'agents.channels.teams.setup.install.description agents.channels.teams.setup.install.addTo.teams',
+				),
+			);
+			expect(getByTestId('teams-upload-instructions')).toHaveTextContent(
+				'agents.channels.teams.setup.install.hint',
+			);
+		});
+
+		it('adds the admin hint to the toast after a download from the card', async () => {
+			withBot();
+			const { getByTestId } = renderComponent({ props: settingsProps() });
+			await waitFor(() => expect(getByTestId('teams-download-package')).toBeEnabled());
+
+			await fireEvent.click(getByTestId('teams-download-package'));
+
+			await waitFor(() =>
+				expect(showMessage).toHaveBeenCalledWith(
+					expect.objectContaining({
+						title: 'agents.channels.teams.setup.install.downloaded',
+						message: 'agents.channels.teams.setup.install.hint',
+					}),
+				),
+			);
 		});
 
 		it('takes the app name and description from the agent, not from inputs here', async () => {
@@ -752,7 +941,10 @@ describe('AgentChannelTeamsSetup', () => {
 					expect.objectContaining({ groupChats: true }),
 				);
 				expect(showMessage).toHaveBeenCalledWith(
-					expect.objectContaining({ title: 'agents.channels.teams.setup.install.downloaded' }),
+					expect.objectContaining({
+						title: 'agents.channels.teams.setup.install.downloaded',
+						message: 'agents.channels.teams.setup.install.hint',
+					}),
 				);
 			});
 

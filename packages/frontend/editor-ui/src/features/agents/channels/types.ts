@@ -29,6 +29,8 @@ export interface AgentChannelViewExpose {
 	saveLabel?: string;
 	/** Runs after a successful save, before the modal closes. Must not throw. */
 	afterSave?: () => Promise<void>;
+	/** Keeps the modal open after connecting. The view emits `done` to close it. */
+	keepOpenAfterConnect?: boolean;
 }
 
 export interface AgentChannelRuntimeContext {

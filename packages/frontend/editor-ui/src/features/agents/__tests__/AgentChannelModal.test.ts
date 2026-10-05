@@ -6,6 +6,7 @@ import type { AgentApproval, ChatIntegrationDescriptor } from '@n8n/api-types';
 import AgentChannelModal, { type ChannelView } from '../components/AgentChannelModal.vue';
 
 const mocks = vi.hoisted(() => ({
+	keepOpenAfterConnect: false,
 	connect: vi.fn(),
 	disconnect: vi.fn(),
 	fetchStatus: vi.fn(),
@@ -71,7 +72,7 @@ vi.mock('../channels/registry', async () => {
 	const { ref, defineComponent } = await import('vue');
 	const platformView = {
 		props: ['modelValue', 'mode', 'isPublished', 'runtime', 'ensureAgentPersisted'],
-		emits: ['update:modelValue', 'connect', 'connected'],
+		emits: ['update:modelValue', 'connect', 'connected', 'done'],
 		setup: () => {
 			// Platforms that drive their own flow (Slack) report `connected` while
 			// still reporting `loading`, so the two are controlled together here.
@@ -81,6 +82,7 @@ vi.mock('../channels/registry', async () => {
 				validationError: null,
 				beforeSave: mocks.beforeSave,
 				afterSave: mocks.afterSave,
+				keepOpenAfterConnect: mocks.keepOpenAfterConnect,
 				saveLabel: platformSaveLabel,
 				loading,
 				startOwnFlow: () => {
@@ -97,6 +99,7 @@ vi.mock('../channels/registry', async () => {
 			>
 				<button data-testid="select-credential" @click="$emit('update:modelValue', 'credential-new')" />
 				<button data-testid="connect-channel" @click="$emit('connect')" />
+				<button data-testid="platform-done" @click="$emit('done')" />
 				<button data-testid="persist-agent" @click="ensureAgentPersisted?.()" />
 				<button data-testid="platform-own-flow" @click="startOwnFlow(); $emit('connected')" />
 			</div>
@@ -343,6 +346,7 @@ enableAutoUnmount(afterEach);
 describe('AgentChannelModal', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		mocks.keepOpenAfterConnect = false;
 		catalog.value = [exampleIntegration];
 		statuses.value = {};
 		connectedCredentials.value = {};
@@ -453,6 +457,23 @@ describe('AgentChannelModal', () => {
 			mocks.connect.mock.invocationCallOrder[0],
 		);
 		expect(wrapper.emitted('agent-changed')).toHaveLength(1);
+	});
+
+	it('stays open after connecting a view that asks to, until the view is done', async () => {
+		mocks.keepOpenAfterConnect = true;
+		selectedCredentials.value.example = 'credential-new';
+		const wrapper = mountModal('example_setup');
+
+		await wrapper.get('[data-testid="connect-channel"]').trigger('click');
+		await flushPromises();
+
+		expect(mocks.connect).toHaveBeenCalledOnce();
+		expect(wrapper.emitted('channel-connected')).toEqual([['example']]);
+		expect(wrapper.emitted('update:open')).toBeUndefined();
+
+		await wrapper.get('[data-testid="platform-done"]').trigger('click');
+
+		expect(wrapper.emitted('update:open')).toEqual([[false]]);
 	});
 
 	it('lets the platform view save the agent before it needs agent-scoped data', async () => {
