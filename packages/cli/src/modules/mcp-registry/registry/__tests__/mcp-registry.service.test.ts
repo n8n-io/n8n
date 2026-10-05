@@ -112,6 +112,20 @@ describe('McpRegistryService', () => {
 		vi.restoreAllMocks();
 	});
 
+	describe('seedGatewayServers', () => {
+		it('reads the DB clock before fetching, so a slow snapshot cannot win the newest-wins guard', async () => {
+			const { service, repository, aiGatewayService } = createService({ storedServers: null });
+			aiGatewayService.getHostedMcpServers.mockResolvedValue([notionMockServer]);
+
+			await service.init();
+
+			const readOrder = repository.readDbNow.mock.invocationCallOrder[0];
+			const fetchOrder = aiGatewayService.getHostedMcpServers.mock.invocationCallOrder[0];
+			expect(readOrder).toBeLessThan(fetchOrder);
+			expect(repository.upsertFetchedServers.mock.calls[0][1]).toBe(DB_NOW);
+		});
+	});
+
 	describe('getAll / get', () => {
 		it('returns active servers by default', async () => {
 			const deprecated: McpRegistryServer = {

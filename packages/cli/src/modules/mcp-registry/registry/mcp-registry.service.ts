@@ -60,9 +60,12 @@ export class McpRegistryService {
 	 * n8n Connect is off, so nothing is seeded then.
 	 */
 	private async seedGatewayServers(): Promise<void> {
+		// Read the DB clock before the fetch, so a slow run that returns an older
+		// snapshot carries an earlier `fetchedAt` and loses the upsert's newest-wins
+		// guard instead of overwriting fresher data.
+		const fetchedAt = await this.repository.readDbNow();
 		const hosted = await this.aiGatewayService.getHostedMcpServers();
 		if (hosted.length === 0) return;
-		const fetchedAt = await this.repository.readDbNow();
 		await this.saveServers(hosted, fetchedAt);
 	}
 
