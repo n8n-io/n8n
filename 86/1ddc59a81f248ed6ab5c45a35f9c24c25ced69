@@ -1453,6 +1453,7 @@ packages/frontend/editor-ui/src/features/settings/users/components/InviteUsersMo
   s_df6c397ba2c129::t_214b94f2c62b62 367
 packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionSelectModal.vue
   s_df6c397ba2c129::t_214b94f2c62b62 343,367
+  s_c689df69d551c7::t_09221f65db0ddf 478
 packages/frontend/@n8n/design-system/src/components/N8nAlertDialog/AlertDialog.vue
   s_df6c397ba2c129::t_214b94f2c62b62 112
 packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/brand/dots-horizontal-circle--solid-16.svg
@@ -1580,6 +1581,14 @@ packages/frontend/@n8n/design-system/src/components/TableHeaderControlsButton/__
   "base_commit_sha": "861ddc59a81f248ed6ab5c45a35f9c24c25ced69",
   "prompts": {},
   "sessions": {
+    "s_c689df69d551c7": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a10cbb-a7af-76ed-98aa-172b618f4b3d",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
     "s_df6c397ba2c129": {
       "agent_id": {
         "tool": "pi",
