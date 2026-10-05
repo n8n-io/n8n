@@ -19,13 +19,13 @@ export const useAgentsN8nChatFlag = () => computed(isAgentsN8nChatFlagEnabled);
 /**
  * Distinguishes the two active arms of the n8n Chat experiment, for surfaces
  * (like the Instance AI empty state) that behave differently per variant.
- * Both arms stay off while the agents module is inactive: their agent lists would fail.
+ * Both arms stay off while Agents is inactive or turned off: their agent lists would fail.
  */
 export function useAgentsN8nChatVariant() {
 	const posthog = usePostHog();
 	const settingsStore = useSettingsStore();
 	const variant = computed(() =>
-		settingsStore.isModuleActive('agents') ? posthog.getVariant(AGENTS_N8N_CHAT_FLAG) : undefined,
+		settingsStore.isAgentsEnabled ? posthog.getVariant(AGENTS_N8N_CHAT_FLAG) : undefined,
 	);
 	return {
 		isVariantA: computed(() => variant.value === AGENTS_N8N_CHAT_EXPERIMENT.variantA),

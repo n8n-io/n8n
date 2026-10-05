@@ -457,6 +457,7 @@ describe('InstanceAiEmptyView', () => {
 
 	beforeEach(() => {
 		for (const key of Object.keys(routeQuery)) delete routeQuery[key];
+		agentsN8nChatVariant.value = undefined;
 		vi.stubGlobal('localStorage', {
 			getItem: vi.fn(),
 			setItem: vi.fn(),
@@ -1334,10 +1335,6 @@ describe('InstanceAiEmptyView', () => {
 	});
 
 	describe('n8n Chat variant A', () => {
-		beforeEach(() => {
-			agentsN8nChatVariant.value = undefined;
-		});
-
 		it('renders the agent section with no suggestion chips and the default placeholder', () => {
 			agentsN8nChatVariant.value = 'variant-a';
 

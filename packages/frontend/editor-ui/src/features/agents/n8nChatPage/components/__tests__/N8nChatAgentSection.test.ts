@@ -6,6 +6,7 @@ import { i18nInstance } from '@n8n/i18n';
 import type { AgentChatListItem } from '@n8n/api-types';
 
 import { AGENT_N8N_CHAT_LIBRARY_VIEW, AGENT_N8N_CHAT_VIEW } from '../../../constants';
+import SkeletonAgentCard from '@/features/ai/chatHub/components/SkeletonAgentCard.vue';
 import N8nChatAgentCard from '../N8nChatAgentCard.vue';
 import N8nChatAgentSection from '../N8nChatAgentSection.vue';
 
@@ -79,6 +80,7 @@ describe('N8nChatAgentSection', () => {
 
 		expect(wrapper.find('[data-test-id="n8n-chat-agent-section"]').exists()).toBe(true);
 		expect(wrapper.findAllComponents(N8nChatAgentCard)).toHaveLength(0);
+		expect(wrapper.findAllComponents(SkeletonAgentCard)).not.toHaveLength(0);
 	});
 
 	it('renders a card per returned agent', async () => {

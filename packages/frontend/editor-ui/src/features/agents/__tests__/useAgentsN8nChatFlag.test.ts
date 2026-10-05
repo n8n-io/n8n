@@ -48,4 +48,14 @@ describe('useAgentsN8nChatVariant', () => {
 		expect(isVariantA.value).toBe(false);
 		expect(isVariantB.value).toBe(false);
 	});
+
+	it('turns both variants off while Agents is turned off in the settings', () => {
+		useSettingsStore().moduleSettings = {
+			agents: { enabled: false, modules: [], knowledgeBaseEnabled: false, proxyEnabled: false },
+		};
+		usePostHog().overrides = { [AGENTS_N8N_CHAT_FLAG]: { value: 'variant-b' } };
+		const { isVariantA, isVariantB } = useAgentsN8nChatVariant();
+		expect(isVariantA.value).toBe(false);
+		expect(isVariantB.value).toBe(false);
+	});
 });
