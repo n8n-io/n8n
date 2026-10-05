@@ -2,7 +2,7 @@ import { test, expect } from '../../../fixtures/base';
 
 test.describe(
 	'MCP connection parameter copy button',
-	{ annotation: [{ type: 'owner', description: 'AI' }] },
+	{ annotation: [{ type: 'owner', description: 'Adore' }] },
 	() => {
 		test('fills the copy control height on hover', async ({ n8n, api }) => {
 			// ADO-5385: The hover background must reach both edges of the copy control.

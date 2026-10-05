@@ -1,10 +1,89 @@
 import { ModuleMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
+import {
+	AuthenticationService,
+	IdentityService,
+	migrateToLatest,
+	TrustedSourceConfigSchema,
+	TrustedSourceGate,
+	type Extracted,
+	type TrustedSource,
+	type Verified,
+} from '@n8n/inbound-auth';
 
 // Importing the module runs the @BackendModule decorator, registering its metadata.
 import { InboundAuthCoreModule } from '../inbound-auth-core.module';
 
 describe('InboundAuthCoreModule', () => {
+	describe('init', () => {
+		const extracted = {
+			surface: 'instance-mcp',
+			resource: { url: 'https://n8n.example/mcp', acceptedAudiences: ['https://n8n.example/mcp'] },
+			request: { method: 'POST', url: '/mcp', headers: {}, ip: '203.0.113.7' },
+			receivedAt: new Date(),
+			credential: { kind: 'bearer', token: 'a.b.c' },
+		} satisfies Extracted;
+
+		beforeAll(async () => {
+			await new InboundAuthCoreModule().init();
+		});
+
+		it('binds an AuthenticationService that fails closed until a driver is registered', async () => {
+			const result = await Container.get(AuthenticationService).authenticate(extracted);
+
+			expect(result).toMatchObject({ ok: false, reason: 'source-unusable' });
+		});
+
+		it('binds an IdentityService that fails closed until an implementation is registered', async () => {
+			const source: TrustedSource = {
+				id: 'source-1',
+				name: 'Example IdP',
+				type: 'oauth2',
+				issuer: 'https://idp.example',
+				managedBy: 'admin',
+				status: 'unchecked',
+				lastError: null,
+				lastCheckedAt: null,
+				createdAt: '2026-09-30T10:00:00.000Z',
+				updatedAt: '2026-09-30T10:00:00.000Z',
+				config: migrateToLatest(
+					TrustedSourceConfigSchema.parse({
+						version: 1,
+						authentication: { type: 'oauth2' },
+						surfaces: { 'instance-mcp': {} },
+					}),
+				),
+				metadata: null,
+			};
+			const {
+				credential,
+				request: { headers: _headers, ...request },
+				...rest
+			} = extracted;
+			const verified = {
+				...rest,
+				request,
+				credentialKind: credential.kind,
+				source,
+				claims: { sub: 'alice' },
+				expiresAt: new Date(),
+			} satisfies Verified;
+
+			const result = await Container.get(IdentityService).identify(verified);
+
+			expect(result).toMatchObject({ ok: false, reason: 'source-unusable' });
+		});
+
+		it('binds a TrustedSourceGate that denies until an implementation is registered', async () => {
+			const allowed = await Container.get(TrustedSourceGate).authorizeSealed({
+				userId: 'user-1',
+				grant: { audiences: ['https://n8n.example/mcp'] },
+			});
+
+			expect(allowed).toBe(false);
+		});
+	});
+
 	it('registers itself on main, webhook and worker instances without a license flag', () => {
 		const entry = Container.get(ModuleMetadata).get('inbound-auth-core');
 

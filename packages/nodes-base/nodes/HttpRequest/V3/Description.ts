@@ -1143,6 +1143,10 @@ For what a template cannot express, use the matching type for new and existing c
 								],
 								default: 'responseIsEmpty',
 								description: 'When should no further requests be made?',
+								builderHint: {
+									propertyHint:
+										"Use \"responseIsEmpty\" only when you know the API returns a bare JSON array or no body on its last page. It never stops on a JSON object, and most JSON APIs return one: a last page like `{ \"items\": [] }` makes the node request pages until n8n stops it with \"The returned response was identical 5x\". In every other case, including an API whose response shape you do not know, use \"other\" with a completeExpression: on the API's end marker when you know it (e.g. `expr('{{ $response.body.has_more === false }}')`, `expr('{{ !$response.body.next }}')`), or on the list the next nodes read (e.g. `expr('{{ $response.body.items.length === 0 }}')`). For an unknown shape, `expr('{{ !$response.body || (Array.isArray($response.body) ? $response.body.length === 0 : Object.values($response.body).some(Array.isArray) && Object.values($response.body).filter(Array.isArray).every(list => list.length === 0)) }}')` stops when the body is empty, or when it has top-level lists and all of them are empty. It never stops on a list nested deeper, so name that list instead.",
+								},
 							},
 							{
 								displayName: 'Status Code(s) when Complete',
