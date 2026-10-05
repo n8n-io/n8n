@@ -1,36 +1,9 @@
-# Settings select QA
-
-## Personal – OK
-
-- Go to Avatar → Settings → Personal, or `/settings/personal`.
-- Change the theme.
-- `packages/frontend/editor-ui/src/features/core/auth/views/SettingsPersonalView.vue`
-
-## Users – OK – UNCHANGED
-
-- Go to `/settings/users`.
-- Open the role select. Search, clear the search, and pick a system role.
-- Pick a custom role, an unavailable role, and the upgrade path when they are shown.
-- `packages/frontend/editor-ui/src/features/roles/components/RoleSelectDropdown.vue`
-
-## API – OK – COMBOBOX NOTE
-
-- Go to Settings → API, or `/settings/api`.
-- Create or edit an API key.
-- Change the expiration.
-- `packages/frontend/editor-ui/src/features/settings/apiKeys/components/ApiKeyCreateOrEditModal.vue`
-
-## Security – OK – UNCHANTGED
-
-- Go to `/settings/security`.
-- Change the data redaction level. Check both selects.
-- `packages/frontend/editor-ui/src/features/settings/security/DataRedactionSection.vue`
-
 ## n8n Assistant
 
-- Go to `/settings/ai`.
-- Change a permission mode. Open the Preferences group and confirm it offers only Always allow and Blocked.
-- When the default-editor experiment is on, change which editor opens a workflow.
+- Go to `/settings/assistant`.
+- Expand a group under Permissions and change a permission mode.
+- Open the Preferences group. It appears only when the context-preferences experiment is on. Confirm it offers only Always allow and Blocked.
+- When the default-editor experiment is on and you are not an instance admin, change which editor opens a workflow.
 - `packages/frontend/editor-ui/src/features/ai/instanceAi/views/SettingsInstanceAiView.vue`
 - `packages/frontend/editor-ui/src/experiments/openWorkflowInAssistant/components/DefaultEditorSetting.vue`
 
@@ -188,18 +161,8 @@ Then follow one role path.
 - `packages/frontend/editor-ui/src/features/settings/sso/provisioning/components/RuleRow.vue`
 - `packages/frontend/editor-ui/src/features/settings/sso/provisioning/components/ProjectRoleAssignmentSelect.vue`
 
-## Instance roles
 
-- Go to `/settings/instance-roles`.
-- Delete a role.
-- Pick a replacement role in the dialog.
-- `packages/frontend/editor-ui/src/features/roles/instance/components/DeleteInstanceRoleModal.vue`
 
-## Encryption keys
-
-- Go to `/settings/encryption-keys`.
-- Change the sort.
-- `packages/frontend/editor-ui/src/features/settings/encryption-keys/views/SettingsEncryptionKeys.vue`
 
 ## Migration report
 
@@ -273,15 +236,11 @@ When Add Option is a plus menu, that is the collection overhaul. The field selec
 - Search the scope list, clear the search, and pick a scope.
 - `packages/frontend/editor-ui/src/features/settings/context/components/PreferenceModal.vue`
 
-## OpenTelemetry
 
-- Go to `/settings/opentelemetry`.
-- Change the protocol.
-- `packages/modules/otel/frontend/src/SettingsOpenTelemetryView.vue`
 
 ## Promotions
 
-- Open Settings → Promotions when the feature is enabled.
+- Go to `/settings/promotions` when the feature is enabled.
 - Change the connection provider.
 - Add a provider. Change the auth type and, for an SSH key, the key type.
 - `packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionConnectionForm.vue`
