@@ -114,6 +114,8 @@ export class ReproStack {
 			projectName: `repro-${options.name}-${process.pid}-${Date.now().toString(36)}`,
 			postgres: true,
 			workers: options.workers,
+			// A busy Docker VM can take well over the default 60 s to migrate and start.
+			startupTimeoutMs: 180_000,
 			env: {
 				N8N_RUNNERS_MODE: options.runners,
 				N8N_RUNNERS_ENABLED: 'true',
