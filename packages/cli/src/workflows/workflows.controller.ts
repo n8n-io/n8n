@@ -13,6 +13,7 @@ import {
 	type WorkflowTransferPreview,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { EventService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import {
 	AuthenticatedRequest,
