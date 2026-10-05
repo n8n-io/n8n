@@ -1,0 +1,145 @@
+packages/@n8n/api-types/src/dto/packages/__tests__/export-package-request.dto.test.ts
+  s_245defbcefb1bb::t_0566fea2dfc2a1 4-30
+packages/@n8n/api-types/src/dto/packages/export-package-request.dto.ts
+  s_245defbcefb1bb::t_ff2495693343be 6,20-25
+packages/@n8n/cli/README.md
+  s_245defbcefb1bb::t_29727dd03c5da4 73-83
+packages/@n8n/cli/docs/commands/package.md
+  s_245defbcefb1bb::t_bd94f7f3c68d83 3,9-11,14,26-28,33,36,40-53
+packages/@n8n/cli/src/__tests__/client.test.ts
+  s_245defbcefb1bb::t_72e42f04f2ca5a 273-298,385
+packages/@n8n/cli/src/__tests__/package-export.test.ts
+  s_245defbcefb1bb::t_5fa3d798e1cd85 1,13-15,69-130,453,466
+packages/@n8n/cli/src/client.ts
+  s_245defbcefb1bb::t_81420bd2dd6386 48-50,64-65,748-752
+packages/@n8n/cli/src/commands/package/export.ts
+  s_245defbcefb1bb::t_897ae664c44b64 17,28-29,32,44-58,126,137-142,144-152,159-173,195-197,200
+packages/@n8n/permissions/src/__tests__/__snapshots__/scope-information.test.ts.snap
+  s_245defbcefb1bb::t_4b9a208e12eb05 14
+packages/@n8n/permissions/src/constants.ee.ts
+  s_245defbcefb1bb::t_d25413491e85f3 4,106
+packages/@n8n/permissions/src/roles/__tests__/custom-role-scopes.test.ts
+  s_245defbcefb1bb::t_594891a499e103 19,35-53
+packages/@n8n/permissions/src/roles/custom-role-scopes.ee.ts
+  s_245defbcefb1bb::t_341bad13df0bd7 26-36
+packages/@n8n/permissions/src/roles/scopes/global-scopes.ee.ts
+  s_245defbcefb1bb::t_4f0a0ab90563a6 112
+packages/@n8n/permissions/src/roles/scopes/project-scopes.ee.ts
+  s_245defbcefb1bb::t_e1736d9636a174 20,93,155,214
+packages/@n8n/permissions/src/scope-information.ts
+  s_245defbcefb1bb::t_b4c7faf7a7bffd 38-41
+packages/cli/src/events/__tests__/log-streaming-event-relay.test.ts
+  s_245defbcefb1bb::t_740b0086400e91 190,195,219,237,253
+packages/cli/src/events/__tests__/telemetry-event-relay.test.ts
+  s_245defbcefb1bb::t_70d680a73feb85 3233,3237,3253,3268,3277
+packages/cli/src/events/maps/relay.event-map.ts
+  s_245defbcefb1bb::t_bb0fb3b7cd3085 143,155
+packages/cli/src/events/relays/telemetry.event-relay.ts
+  s_245defbcefb1bb::t_be0ce77583b016 1402,1417,1425
+packages/cli/src/modules/agents/__tests__/agent-runtime-reconstruction-integration-tools.test.ts
+  s_245defbcefb1bb::t_6a4646bb0b2974 355
+packages/cli/src/modules/agents/__tests__/agents.service.test.ts
+  s_245defbcefb1bb::t_7b649b1d9c2c73 1,87
+packages/cli/src/modules/agents/agents.service.ts
+  s_245defbcefb1bb::t_4dc0cbcc4c5b6e 20,42-43,85,223-252
+packages/cli/src/modules/agents/repositories/agent.repository.ts
+  s_245defbcefb1bb::t_bb66859ba53f65 62-80
+packages/cli/src/modules/n8n-packages/__tests__/export-agent.integration.test.ts
+  s_245defbcefb1bb::t_5f167d39973e73 1-659
+packages/cli/src/modules/n8n-packages/__tests__/export-git-blob-parity.integration.test.ts
+  s_245defbcefb1bb::t_15ff853306827c 143
+packages/cli/src/modules/n8n-packages/entities/agent/agent-requirements.extractor.ts
+  s_245defbcefb1bb::t_4132b8901cf09e 1-109
+packages/cli/src/modules/n8n-packages/entities/agent/agent-version-policy.ts
+  s_245defbcefb1bb::t_9967584dfe2c9f 1-68
+packages/cli/src/modules/n8n-packages/entities/agent/agent.exporter.ts
+  s_245defbcefb1bb::t_59dac59d022515 1-232
+packages/cli/src/modules/n8n-packages/entities/agent/agent.serializer.ts
+  s_245defbcefb1bb::t_631b0887401eac 1-149
+packages/cli/src/modules/n8n-packages/entities/credential/credential-matcher.ts
+  s_245defbcefb1bb::t_736494311f38dd 152
+packages/cli/src/modules/n8n-packages/entities/credential/credential-requirements.extractor.ts
+  s_245defbcefb1bb::t_9f3d66a6781a98 11-14
+packages/cli/src/modules/n8n-packages/entities/credential/credential.exporter.ts
+  s_245defbcefb1bb::t_c28786a8a30c41 7-8,11,18,20,25,48,83,89,104,108-113,115-116
+packages/cli/src/modules/n8n-packages/entities/credential/credential.types.ts
+  s_245defbcefb1bb::t_3de78a75949f60 1,16-23
+packages/cli/src/modules/n8n-packages/entities/credential/workflow-credential-references.ts
+  s_245defbcefb1bb::t_15922e1dafae6b 16-18
+packages/cli/src/modules/n8n-packages/entities/data-table/data-table-requirements.extractor.ts
+  s_245defbcefb1bb::t_0c663d17b39013 1,12-15,21,26-27
+packages/cli/src/modules/n8n-packages/entities/data-table/data-table.exporter.ts
+  s_245defbcefb1bb::t_4972a66e85bca9 8-9,11,19,48-49,75,82-85,87-89
+packages/cli/src/modules/n8n-packages/entities/data-table/data-table.types.ts
+  s_245defbcefb1bb::t_d690b86a1e49b5 1,15-18
+packages/cli/src/modules/n8n-packages/entities/requirement-source.ts
+  s_245defbcefb1bb::t_94a1a92955dc26 1-20
+packages/cli/src/modules/n8n-packages/entities/requirements.types.ts
+  s_245defbcefb1bb::t_3ffeb7229c2914 1-2,4-5,8-10,12-13
+packages/cli/src/modules/n8n-packages/entities/variable/variable.exporter.ts
+  s_245defbcefb1bb::t_7a3a2bfb8fb62d 9-10,15,23,50-52,77,95,131,143-153,209-212,214-216
+packages/cli/src/modules/n8n-packages/entities/variable/variable.types.ts
+  s_245defbcefb1bb::t_b6a2e49c78dca6 1,14-17,20
+packages/cli/src/modules/n8n-packages/entities/workflow/auto-included-workflow-resolver.ts
+  s_245defbcefb1bb::t_a2d932d315c3d3 47,55-57
+packages/cli/src/modules/n8n-packages/entities/workflow/node-type-usage.ts
+  s_245defbcefb1bb::t_7388b3ec9299b3 2-6,11,14-18,23,27-28,30-31,33-34,39,43,46-49,53
+packages/cli/src/modules/n8n-packages/entities/workflow/references/sub-workflow-node.reference.ts
+  s_245defbcefb1bb::t_f894e325fd1ed0 37-39
+packages/cli/src/modules/n8n-packages/entities/workflow/static-sub-workflow-requirements.ts
+  s_245defbcefb1bb::t_cfd0b8ccb8d2ce 2,7
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow-requirement.exporter.ts
+  s_245defbcefb1bb::t_74572139e8aacb 6-8,14,30,32-36,41,44-47,49-54
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow.types.ts
+  s_245defbcefb1bb::t_b041c97ed749fa 5-12
+packages/cli/src/modules/n8n-packages/io/manifest-entry.ts
+  s_245defbcefb1bb::t_cfe6d4826f84ac 23-28,30-33,41,51-54,62,64,74,82,94,123
+packages/cli/src/modules/n8n-packages/n8n-packages.service.ts
+  s_245defbcefb1bb::t_118731eadf8a96 14-15,17,77,82-85,103,170,181,236,256,264,278-305,307-314,316-319,321-327,339-342,359,372-380,384-388,405,440,454,513,541,633,641,644,688-692
+packages/cli/src/modules/n8n-packages/n8n-packages.types.ts
+  s_245defbcefb1bb::t_663f5c81a028b7 231-235,440
+packages/cli/src/modules/n8n-packages/spec/manifest.schema.ts
+  s_245defbcefb1bb::t_181119b7d3dd09 39,50
+packages/cli/src/modules/n8n-packages/spec/requirements.schema.ts
+  s_245defbcefb1bb::t_9543b67436ec14 3-6,8-43,48-62,73-80,87-92,115-118,167-168
+packages/cli/src/modules/n8n-packages/spec/serialized/agent.schema.ts
+  s_245defbcefb1bb::t_ded92a498f601d 1-51
+packages/cli/src/modules/promotions.ee/__tests__/promotions.service.test.ts
+  s_245defbcefb1bb::t_8e0c9fdf85f688 235,270,294,558
+packages/cli/src/modules/promotions.ee/base-branch-files.ts
+  s_245defbcefb1bb::t_69ba7bd7437c48 14-17,23,26,35
+packages/cli/src/modules/promotions.ee/promotion-change.service.ts
+  s_245defbcefb1bb::t_c98cd1b53e0f64 56,240
+packages/cli/src/modules/promotions.ee/promotions.service.ts
+  s_245defbcefb1bb::t_7d59078a7f0d79 199
+packages/cli/src/public-api/v1/handlers/n8n-packages/__tests__/n8n-packages.handler.test.ts
+  s_245defbcefb1bb::t_460c765a37ca6d 42,57-59,195,211,221,278-280,309-311,414-416,465-467,554-556,585-587,616-618,647-649
+packages/cli/src/public-api/v1/handlers/n8n-packages/n8n-packages.handler.ts
+  s_245defbcefb1bb::t_68cceebf97eb56 30,39-41,77,85,135,147,153-160,163-171,179,184-186,204
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/paths/n8n-packages.export.yml
+  s_245defbcefb1bb::t_d190b85c2e624b 3,7,11-16,19,21-24,26,40
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/schemas/exportPackageRequest.yml
+  s_245defbcefb1bb::t_a60e13c439f667 4-5,8-30,63
+packages/cli/src/workflows/workflow-finder.service.ts
+  s_245defbcefb1bb::t_39dbe7f3eb73cc 204-222
+packages/cli/test/integration/public-api/n8n-packages-export.test.ts
+  s_245defbcefb1bb::t_24c89406b51a6d 2,6,14-17,33,44-107,118,240
+packages/workflow/src/node-helpers.ts
+  s_245defbcefb1bb::t_e4811a0ef97a9a 1911,2172-2174
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8a03e2e7d2cec55a5168239f700b371e574075d5",
+  "prompts": {},
+  "sessions": {
+    "s_245defbcefb1bb": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a10cad-0201-75d2-853e-9cbbe33991f2",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}
