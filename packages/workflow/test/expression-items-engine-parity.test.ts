@@ -8,10 +8,8 @@ import { Workflow } from '../src/workflow';
 // Engine-parity tests for `$items()` boundary behaviour.
 //
 // `$items()` was migrated to a typed-RPC under the VM engine in CAT-2982.
-// This file pins the behaviour of edge-case `runIndex` values across both
-// the legacy and VM engines so any divergence in how the runtime handles
-// host-side errors fails exactly one project. See `vitest.config.ts` for
-// the dual-engine setup.
+// This file pins edge-case `runIndex` values on VM and QuickJS.
+// See `vitest.config.ts` for the two projects.
 
 describe('Expression — $items() boundary behaviour (engine parity)', () => {
 	const workflow = new Workflow({
@@ -97,19 +95,17 @@ describe('Expression — $items() boundary behaviour (engine parity)', () => {
 
 	it('$items("Source", 0, 999) throws ExpressionError "Run X not found"', () => {
 		// Host throws a structured ExpressionError when the runIndex is past
-		// the known length. Both engines should surface this as-is.
+		// the known length. Both projects should surface this as-is.
 		expect(() => evaluate('={{ $items("Source", 0, 999) }}')).toThrowError(ExpressionError);
 	});
 
-	it('$items("Source", 0, -2) returns undefined — host TypeError is swallowed by both engines', () => {
+	it('$items("Source", 0, -2) returns undefined when the host TypeError is swallowed', () => {
 		// Host's `getNodeExecutionData` only special-cases -1; any other
 		// negative runIndex skips the `length <= runIndex` bounds check
 		// (because length > negative) and dereferences `runData[name][-2].data`,
-		// which throws a plain TypeError. Both engines' E() handler swallows
+		// which throws a plain TypeError. Both projects' E() handler swallows
 		// non-ExpressionError throws, so the observable result is undefined.
-		// If a future change makes the VM engine surface the TypeError as an
-		// error (instead of undefined), this test fails on the vm-engine
-		// project and the divergence is caught.
+		// If an engine starts surfacing the TypeError, this contract fails.
 		expect(evaluate('={{ $items("Source", 0, -2) }}')).toBeUndefined();
 	});
 });

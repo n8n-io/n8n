@@ -5,9 +5,7 @@ import type { INodeExecutionData } from '../src/interfaces';
 import { Workflow } from '../src/workflow';
 
 // Feature-parity regressions for `$json` access across nested data shapes.
-// This file lives in `packages/workflow/test/` so vitest runs it under both the
-// `legacy-engine` and `vm-engine` projects (see vitest.config.ts). Any divergence
-// between the two engines fails one project but not the other.
+// Vitest runs these contracts under VM and QuickJS (see vitest.config.ts).
 
 describe('Expression — nested $json shapes (engine parity)', () => {
 	const workflow = new Workflow({

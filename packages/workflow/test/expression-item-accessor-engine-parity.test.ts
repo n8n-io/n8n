@@ -13,8 +13,7 @@ import { Workflow } from '../src/workflow';
 // `$item(0).$nodeId` resolved to undefined at runtime while the legacy engine
 // (and the editor preview) returned the correct value (CAT-3496).
 //
-// These cases run under both the legacy and VM engines (see `vitest.config.ts`)
-// so any divergence fails exactly one project.
+// VM and QuickJS run these contracts (see `vitest.config.ts`).
 
 describe('Expression — legacy $item(index) accessor surface (engine parity)', () => {
 	const workflow = new Workflow({
