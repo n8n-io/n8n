@@ -238,13 +238,14 @@ post:
                 `dataTable:create` scope. `must-preexist` rejects the import.
                 `do-nothing` skips creation of missing tables — matched tables are
                 still validated for schema compatibility and can still block the
-                import. Matched tables are always used as-is: never renamed,
-                altered, or filled.
+                import. Matched tables are used as-is: never renamed, altered,
+                or filled, except under `dataTableSchemaConflictPolicy=overwrite`.
             dataTableSchemaConflictPolicy:
               type: string
               enum:
                 - keep-existing
                 - fail
+                - overwrite
               default: keep-existing
               description: >
                 How strictly a matched data table's schema is compared.
@@ -255,7 +256,13 @@ post:
                 target-only columns, rejects the import. A missing package
                 column or a type mismatch always rejects. Both policies are
                 non-destructive — the matched target table is never altered, and
-                package columns are never added to it.
+                package columns are never added to it. `overwrite` changes the
+                matched target table to match the package: it renames the table,
+                adds, removes, and retypes columns, and sets the column order.
+                Data in removed or retyped columns is lost. The changes apply to
+                the table for all workflows that use it, not only for the imported
+                workflows. Requires the `dataTable:update` scope only when at
+                least one matched table changes.
             variableMissingMode:
               type: string
               enum:
