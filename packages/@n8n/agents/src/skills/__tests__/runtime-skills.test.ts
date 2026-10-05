@@ -895,6 +895,33 @@ describe('reference skills', () => {
 		).resolves.toMatchObject({ success: false });
 	});
 
+	it('hides a reference excluded by the directory loader from its owner file path', async () => {
+		writeBuilderWithReferences();
+		const source = loadRuntimeSkillSourceFromDirectory(root, { exclude: ['models'] });
+
+		expect(source.registry.skills.map((skill) => skill.id)).not.toContain('models');
+		await expect(source.loadSkill('models')).resolves.toBeNull();
+		await expect(source.loadFile?.('builder', 'references/models.md')).resolves.toBeNull();
+		await expect(source.loadFile?.('builder', 'references/notes.md')).resolves.toMatchObject({
+			content: 'Plain notes.',
+		});
+
+		const loadTool = createSkillLoadTool(source);
+		const builder = skillLoadText(await loadTool.handler?.({ skillId: 'builder' }, {}));
+		expect(builder).not.toContain('references/models.md');
+		await expect(
+			loadTool.handler?.({ skillId: 'builder', filePath: 'references/models.md' }, {}),
+		).resolves.toMatchObject({ success: false });
+	});
+
+	it('hides references excluded by the directory loader when all their parents are excluded', async () => {
+		writeBuilderWithReferences();
+		const source = loadRuntimeSkillSourceFromDirectory(root, { exclude: ['builder', 'agents'] });
+
+		expect(source.registry.skills).toEqual([]);
+		await expect(source.loadSkill('models')).resolves.toBeNull();
+	});
+
 	it('rejects references with a name that does not match the file', () => {
 		writeSkill('builder', 'name: builder\ndescription: Build workflows.', 'Build steps.');
 		writeReference('builder', 'models.md', 'name: other\ndescription: Wrong name.', 'Body.');

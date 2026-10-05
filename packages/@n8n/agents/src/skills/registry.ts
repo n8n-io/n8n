@@ -70,49 +70,18 @@ export function filterRuntimeSkillSource(
 	source: RuntimeSkillSource,
 	excludeSkillIds: string[],
 ): RuntimeSkillSource {
-	const excluded = new Set(excludeSkillIds);
-	const remaining = new Set(
-		source.registry.skills.filter((skill) => !excluded.has(skill.id)).map((skill) => skill.id),
+	const { skills, excluded, hiddenFiles } = excludeRuntimeSkills(
+		source.registry.skills,
+		excludeSkillIds,
 	);
-	const skills = source.registry.skills.flatMap((skill) => {
-		if (excluded.has(skill.id)) return [];
-		if (!skill.parents) return [skill];
-		const parents = skill.parents.filter((id) => remaining.has(id));
-		// A reference with no remaining parent cannot be discovered, so it is hidden too.
-		if (parents.length === 0) {
-			excluded.add(skill.id);
-			return [];
-		}
-		return [parents.length === skill.parents.length ? skill : { ...skill, parents }];
-	});
-	// A hidden reference's file must not stay reachable as its owner's linked file.
-	const hiddenFiles = new Set(
-		source.registry.skills.flatMap((skill) =>
-			skill.reference && excluded.has(skill.id)
-				? [linkedFileKey(skill.reference.owner, skill.reference.path)]
-				: [],
-		),
-	);
-	const visibleSkills =
-		hiddenFiles.size === 0
-			? skills
-			: skills.map((skill) => ({
-					...skill,
-					linkedFiles: {
-						...skill.linkedFiles,
-						references: skill.linkedFiles.references.filter(
-							(file) => !hiddenFiles.has(linkedFileKey(skill.id, file.path)),
-						),
-					},
-				}));
 	const { loadFile } = source;
 
 	return {
 		...source,
 		registry: {
 			...source.registry,
-			skillsHash: hashRegistry(visibleSkills),
-			skills: visibleSkills,
+			skillsHash: hashRegistry(skills),
+			skills,
 		},
 		loadSkill: async (skillId) => (excluded.has(skillId) ? null : await source.loadSkill(skillId)),
 		...(loadFile
@@ -131,20 +100,20 @@ export function loadRuntimeSkillSourceFromDirectory(
 	rootDir: string,
 	options: LoadRuntimeSkillSourceFromDirectoryOptions = {},
 ): RuntimeSkillSource {
-	const excludedSkillIds = new Set(options.exclude ?? []);
 	const { transformInstructions = (instructions) => instructions } = options;
 
-	const skills = loadRuntimeSkillsFromDirectory(rootDir)
-		.filter((skill) => !excludedSkillIds.has(skill.id))
-		.map((skill) => {
-			return {
-				...skill,
-				instructions: transformInstructions(skill.instructions),
-			};
-		});
+	// Exclude before building the source, so hashes, parents, and linked files match the result.
+	const { skills } = excludeRuntimeSkills(
+		loadRuntimeSkillsFromDirectory(rootDir),
+		options.exclude ?? [],
+	);
+	const transformedSkills = skills.map((skill) => ({
+		...skill,
+		instructions: transformInstructions(skill.instructions),
+	}));
 
-	const source = createRuntimeSkillSource(skills);
-	const skillsById = new Map(skills.map((skill) => [skill.id, skill]));
+	const source = createRuntimeSkillSource(transformedSkills);
+	const skillsById = new Map(transformedSkills.map((skill) => [skill.id, skill]));
 
 	return {
 		...source,
@@ -167,6 +136,59 @@ export function loadRuntimeSkillSourceFromDirectory(
 			});
 		},
 	};
+}
+
+type ExcludableSkill = Pick<RuntimeSkill, 'id' | 'parents' | 'reference' | 'linkedFiles'>;
+
+/**
+ * Removes the excluded skills, plus references left without a parent. A hidden
+ * reference's file is also removed from its owner's linked files, so it cannot
+ * be read through the owner.
+ */
+function excludeRuntimeSkills<T extends ExcludableSkill>(
+	allSkills: T[],
+	excludeSkillIds: string[],
+): { skills: T[]; excluded: Set<string>; hiddenFiles: Set<string> } {
+	const excluded = new Set(excludeSkillIds);
+	if (excluded.size === 0) return { skills: allSkills, excluded, hiddenFiles: new Set() };
+
+	const remaining = new Set(
+		allSkills.filter((skill) => !excluded.has(skill.id)).map((skill) => skill.id),
+	);
+	const skills = allSkills.flatMap((skill) => {
+		if (excluded.has(skill.id)) return [];
+		if (!skill.parents) return [skill];
+		const parents = skill.parents.filter((id) => remaining.has(id));
+		// A reference with no remaining parent cannot be discovered, so it is hidden too.
+		if (parents.length === 0) {
+			excluded.add(skill.id);
+			return [];
+		}
+		return [parents.length === skill.parents.length ? skill : { ...skill, parents }];
+	});
+	const hiddenFiles = new Set(
+		allSkills.flatMap((skill) =>
+			skill.reference && excluded.has(skill.id)
+				? [linkedFileKey(skill.reference.owner, skill.reference.path)]
+				: [],
+		),
+	);
+	if (hiddenFiles.size === 0) return { skills, excluded, hiddenFiles };
+
+	const visibleSkills = skills.map((skill) =>
+		skill.linkedFiles
+			? {
+					...skill,
+					linkedFiles: {
+						...skill.linkedFiles,
+						references: skill.linkedFiles.references.filter(
+							(file) => !hiddenFiles.has(linkedFileKey(skill.id, file.path)),
+						),
+					},
+				}
+			: skill,
+	);
+	return { skills: visibleSkills, excluded, hiddenFiles };
 }
 
 export function loadRuntimeSkillsFromDirectory(rootDir: string): RuntimeSkill[] {

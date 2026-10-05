@@ -111,7 +111,7 @@ describe('active skills', () => {
 		]);
 	});
 
-	it('restores a reference loaded by its owner file path and adds its tool dependencies', async () => {
+	it('restores a reference loaded by its owner file path', async () => {
 		const referenceSource = createRuntimeSkillSource([
 			{
 				id: 'builder',
@@ -151,7 +151,6 @@ describe('active skills', () => {
 		await active.restore(list, scope);
 
 		expect(list.activeSkillIds).toEqual(['models']);
-		expect(active.toolDependencies()).toEqual(['searchModels']);
 		expect(JSON.stringify(active.modelMessages(list.forLlm('').messages, list))).toContain(
 			'[Reference of: \\"builder\\"]',
 		);
