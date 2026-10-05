@@ -147,6 +147,11 @@ function validateModelCredential({
 	);
 }
 
+/** Kimi models keep their name across hosts, so the name catches hosts that the URL check does not. */
+function isKimiModel(modelName: string, baseUrl: string): boolean {
+	return isMoonshotAiEndpoint(baseUrl) || modelName.toLowerCase().includes('kimi');
+}
+
 function modelCredentialHeaders(
 	credentialType: string,
 	data: Record<string, unknown>,
@@ -1489,8 +1494,9 @@ export class InstanceAiSettingsService {
 		const rawUrl = urlField ? data[urlField] : undefined;
 		const baseUrl = typeof rawUrl === 'string' ? rawUrl : '';
 		// The OpenAI adapter discards Kimi reasoning. Use the Moonshot adapter to retain it.
+		// Switch only for an explicit URL, so the key never moves to Moonshot's default host.
 		const provider =
-			credentialProvider === 'openai' && isMoonshotAiEndpoint(baseUrl)
+			credentialProvider === 'openai' && Boolean(baseUrl) && isKimiModel(modelName, baseUrl)
 				? 'moonshotai'
 				: credentialProvider;
 		const id: `${string}/${string}` = `${provider}/${modelName}`;

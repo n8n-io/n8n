@@ -7,7 +7,7 @@ import { UNTRUSTED_OUTPUT_DOCTRINE } from '../../sdk/untrusted-content';
 import type { AgentExecutionCounter, BuiltTool, JSONObject } from '../../types';
 import type { AgentPersistenceOptions, ExecutionOptions } from '../../types/sdk/agent';
 import { lockAdditionalProperties } from '../../utils/json-schema';
-import { getModelIdString } from '../../utils/model';
+import { configuredModelId, getModelIdString } from '../../utils/model';
 import { isZodSchema } from '../../utils/zod';
 import {
 	createRecallMemoryTool,
@@ -34,6 +34,7 @@ import {
 import {
 	getProviderQuirks,
 	PROVIDER_QUIRKS,
+	replaysPlainReasoning,
 	resolveDefaultMaxOutputTokens,
 } from '../model/provider-quirks';
 import type { ActiveSkills } from '../skills/active-skills';
@@ -76,6 +77,12 @@ export class RuntimeContextBuilder {
 
 	get modelId(): string {
 		return getModelIdString(this.config.model);
+	}
+
+	/** A host-built model, such as the AI service proxy model, keeps the default replay rules. */
+	private replaysPlainReasoning(): boolean {
+		const modelId = configuredModelId(this.config.model);
+		return modelId !== undefined && replaysPlainReasoning(modelId);
 	}
 
 	/** Build run-stable LLM call dependencies shared by all iterations. */
@@ -183,7 +190,7 @@ export class RuntimeContextBuilder {
 							),
 					}
 				: undefined,
-			{ reasoningReplay: getProviderQuirks(getProviderPrefix(this.modelId)).reasoningReplay },
+			{ replayPlainReasoning: this.replaysPlainReasoning() },
 		);
 		// Cache breakpoints apply to this call only. Do not change stored messages or tools.
 		const cached = applyRuntimeCacheBreakpoints({

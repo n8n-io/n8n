@@ -19,15 +19,32 @@ const toolCall = {
 	function: { name: 'list_workflows', arguments: '{}' },
 };
 
-const models: Array<{ name: string; createModel: () => ModelConfig }> = [
+const models: Array<{
+	name: string;
+	createModel: () => ModelConfig;
+	expectedReasoning: string | undefined;
+}> = [
 	{
-		name: 'Moonshot credentials',
+		name: 'Moonshot config',
 		createModel: () => ({ id: 'moonshotai/kimi-k3', apiKey: 'test', url: baseURL }),
+		expectedReasoning: reasoning,
 	},
 	{
-		name: 'Kimi proxy',
+		name: 'custom Kimi config',
+		createModel: () => ({ id: 'custom/moonshotai/Kimi-K3', apiKey: 'test', url: baseURL }),
+		expectedReasoning: reasoning,
+	},
+	{
+		name: 'custom config for another model',
+		createModel: () => ({ id: 'custom/llama-4', apiKey: 'test', url: baseURL }),
+		expectedReasoning: undefined,
+	},
+	{
+		// The AI service proxy hands the runtime a built model, which keeps the default replay rules.
+		name: 'built language model',
 		createModel: () =>
 			createOpenAICompatible({ name: 'moonshotai', apiKey: 'test', baseURL })('kimi-k3'),
+		expectedReasoning: undefined,
 	},
 ];
 
@@ -68,8 +85,8 @@ beforeAll(() => nock.disableNetConnect());
 afterAll(() => nock.enableNetConnect());
 afterEach(() => nock.cleanAll());
 
-describe.each(models)('Kimi reasoning replay — $name', ({ createModel }) => {
-	it('sends the original reasoning with a streamed tool result', async () => {
+describe.each(models)('Kimi reasoning replay — $name', ({ createModel, expectedReasoning }) => {
+	it('sends the expected reasoning with a streamed tool result', async () => {
 		const requests: unknown[] = [];
 		const captureRequest = (body: unknown) => {
 			requests.push(body);
@@ -118,7 +135,7 @@ describe.each(models)('Kimi reasoning replay — $name', ({ createModel }) => {
 		expect(requests).toHaveLength(2);
 		const sent = requestSchema.parse(requests[1]);
 		const assistant = sent.messages.find((message) => message.role === 'assistant');
-		expect(assistant?.reasoning_content).toBe(reasoning);
+		expect(assistant?.reasoning_content).toBe(expectedReasoning);
 		expect(assistant?.tool_calls).toEqual([toolCall]);
 		expect(sent.messages.find((message) => message.role === 'tool')).toEqual({
 			role: 'tool',
@@ -128,7 +145,7 @@ describe.each(models)('Kimi reasoning replay — $name', ({ createModel }) => {
 	});
 
 	it.each(['generate', 'stream'] as const)(
-		'sends reasoning from saved history in a new runtime with %s',
+		'sends the expected reasoning from saved history in a new runtime with %s',
 		async (mode) => {
 			const requests: unknown[] = [];
 			const scope = nock(baseURL)
@@ -174,7 +191,7 @@ describe.each(models)('Kimi reasoning replay — $name', ({ createModel }) => {
 			expect(requests).toHaveLength(2);
 			const sent = requestSchema.parse(requests[1]);
 			const assistant = sent.messages.find((message) => message.role === 'assistant');
-			expect(assistant?.reasoning_content).toBe(reasoning);
+			expect(assistant?.reasoning_content).toBe(expectedReasoning);
 			expect(assistant?.content).toBe('I can help.');
 			expect(sent.messages.at(-1)).toEqual({
 				role: 'user',

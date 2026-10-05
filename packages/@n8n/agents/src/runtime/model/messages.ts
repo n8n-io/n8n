@@ -11,7 +11,7 @@ import type {
 	FinishReason as AiFinishReason,
 } from 'ai';
 
-import { getProviderQuirks, PROVIDER_QUIRKS, type ProviderQuirks } from './provider-quirks';
+import { getProviderQuirks, PROVIDER_QUIRKS } from './provider-quirks';
 import type { FinishReason } from '../../types';
 import type {
 	AgentMessage,
@@ -31,7 +31,8 @@ type AiContentPart = Exclude<ModelMessage['content'], string>[number];
 type AiAssistantContent = Exclude<Extract<ModelMessage, { role: 'assistant' }>['content'], string>;
 
 export interface MessageConversionOptions {
-	reasoningReplay?: ProviderQuirks['reasoningReplay'];
+	/** Keep reasoning that has no replay metadata. See `ProviderQuirks.replaysPlainReasoning`. */
+	replayPlainReasoning?: boolean;
 }
 
 // --- Type guards for MessageContent blocks ---
@@ -262,7 +263,7 @@ function toAiContent(
 			: block.providerOptions;
 		if (
 			isReasoning(block) &&
-			options.reasoningReplay !== 'text' &&
+			!options.replayPlainReasoning &&
 			!hasReplayableReasoningProviderOptions(providerOptions)
 		) {
 			return undefined;

@@ -1951,6 +1951,23 @@ describe('InstanceAiSettingsService', () => {
 			});
 		});
 
+		it.each(['moonshotai/Kimi-K3', 'kimi-k3', 'accounts/fireworks/models/kimi-k3'])(
+			'uses the Moonshot adapter for an OpenAI connection with the Kimi model %s',
+			(modelName) => {
+				const url = 'https://kimi-k3.example.modal.run/v1';
+				const config = service.buildModelConfigForConnection(
+					{ type: 'openAiApi', data: { apiKey: 'key', url } },
+					modelName,
+				);
+
+				expect(config).toEqual({
+					id: `moonshotai/${modelName}`,
+					url,
+					apiKey: 'key',
+				});
+			},
+		);
+
 		it.each([
 			['openAiApi', 'https://api.openai.com/v1', 'openai'],
 			['openAiApi', 'https://proxy.example.com/v1', 'openai'],
@@ -1962,6 +1979,15 @@ describe('InstanceAiSettingsService', () => {
 			);
 
 			expect(config).toEqual({ id: `${provider}/model-name`, url, apiKey: 'key' });
+		});
+
+		it('keeps the OpenAI adapter for a Kimi model name without a URL', () => {
+			const config = service.buildModelConfigForConnection(
+				{ type: 'openAiApi', data: { apiKey: 'key' } },
+				'kimi-k3',
+			);
+
+			expect(config).toEqual({ id: 'openai/kimi-k3', url: '', apiKey: 'key' });
 		});
 
 		it('selects the Moonshot adapter from saved Assistant settings', async () => {
@@ -2124,6 +2150,27 @@ describe('InstanceAiSettingsService', () => {
 
 			globalConfig.instanceAi.modelApiKey = '';
 			await expect(service.resolveModelConfig(mock<User>())).resolves.toBe('openai/gpt-4');
+		});
+
+		// Reasoning replay comes from the agents provider quirks, so env configs stay as they were.
+		it.each([
+			['moonshotai/kimi-k3', '', 'key', { id: 'moonshotai/kimi-k3', url: '', apiKey: 'key' }],
+			['moonshotai/kimi-k3', '', '', 'moonshotai/kimi-k3'],
+			[
+				'custom/moonshotai/Kimi-K3',
+				'https://kimi.example.com/v1',
+				'',
+				{
+					id: 'custom/moonshotai/Kimi-K3',
+					url: 'https://kimi.example.com/v1',
+					supportsStructuredOutputs: true,
+				},
+			],
+		])('keeps the environment model config for %s', async (model, url, key, expected) => {
+			aiService.isProxyEnabled.mockReturnValue(false);
+			Object.assign(globalConfig.instanceAi, { model, modelUrl: url, modelApiKey: key });
+
+			await expect(service.resolveModelConfig(mock<User>())).resolves.toEqual(expected);
 		});
 
 		it('builds google-vertex-anthropic configs from Vertex environment variables', async () => {

@@ -1,5 +1,11 @@
 import type { ModelConfig } from '../types/sdk/agent';
 
+/** The `provider/model` id of a config the runtime builds itself. Undefined for a host-built model. */
+export function configuredModelId(modelConfig: ModelConfig): string | undefined {
+	if (typeof modelConfig === 'string') return modelConfig;
+	return 'id' in modelConfig && typeof modelConfig.id === 'string' ? modelConfig.id : undefined;
+}
+
 export function modelConfigToId(modelConfig: ModelConfig): string | undefined {
 	if (typeof modelConfig === 'string') return modelConfig;
 	if (typeof modelConfig === 'object' && modelConfig !== null && 'id' in modelConfig) {

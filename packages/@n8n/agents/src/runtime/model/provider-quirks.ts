@@ -18,8 +18,11 @@ export interface ProviderQuirks {
 	providerOptionsNamespace?: string;
 	/** providerMetadata keys on reasoning parts that must be copied to providerOptions and survive replay. */
 	reasoningReplayKeys?: string[];
-	/** Whether reasoning text can be replayed without provider metadata. */
-	reasoningReplay?: 'metadata' | 'text';
+	/**
+	 * Model needs its reasoning text replayed even without replay metadata.
+	 * Kimi rejects a later turn unless it gets its original reasoning back.
+	 */
+	replaysPlainReasoning?: (modelName: string) => boolean;
 	/** Provider merges adjacent assistant messages into one; replayable reasoning may only survive on the last of them. */
 	mergesAdjacentAssistantMessages?: boolean;
 	/** Defaults merged under this provider's namespace into every tool's providerOptions (explicit tool values win). */
@@ -176,16 +179,24 @@ export const PROVIDER_QUIRKS: Partial<Record<ProviderId, ProviderQuirks>> = {
 		},
 	},
 	// custom/*: only forward an explicit effort — no provider-level default.
-	custom: reasoningEffortQuirk('custom'),
-	moonshotai: {
-		...reasoningEffortQuirk('moonshotai'),
-		// Kimi requires the original reasoning text on later turns and tool continuations.
-		reasoningReplay: 'text',
+	custom: {
+		...reasoningEffortQuirk('custom'),
+		// Kimi keeps its name across OpenAI-compatible hosts.
+		replaysPlainReasoning: (modelName) => modelName.toLowerCase().includes('kimi'),
 	},
+	moonshotai: { ...reasoningEffortQuirk('moonshotai'), replaysPlainReasoning: () => true },
 };
 
 export function getProviderQuirks(providerId: string): ProviderQuirks {
 	return PROVIDER_QUIRKS[providerId as ProviderId] ?? {};
+}
+
+/** Whether a `provider/model` id needs reasoning replayed without replay metadata. */
+export function replaysPlainReasoning(modelId: string): boolean {
+	const slash = modelId.indexOf('/');
+	if (slash < 0) return false;
+	const quirk = getProviderQuirks(modelId.slice(0, slash)).replaysPlainReasoning;
+	return quirk?.(modelId.slice(slash + 1)) ?? false;
 }
 
 /**
