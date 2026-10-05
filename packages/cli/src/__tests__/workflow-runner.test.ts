@@ -1140,20 +1140,24 @@ describe('enqueueExecution', () => {
 			workflowData: { nodes: [], staticData: {} },
 			executionData: undefined,
 			executionMode: 'webhook',
+			// Take the DB-read branch of the plain-wait fallback, which the mock below serves.
+			forceFullExecutionData: true,
 		});
 		addJob.mockResolvedValueOnce(mock<Job>({ id: 'job-1', data: { executionId: '1' } }));
 		waitForJob.mockResolvedValueOnce(undefined);
 		popJobResult.mockReturnValueOnce(
 			mock<JobFinishedProps>({ success: true, status: 'waiting', suspended: true }),
 		);
-		vi.spyOn(Container.get(ExecutionPersistence), 'findSingleExecution').mockResolvedValueOnce(
-			mock<IExecutionResponse>({
-				status: 'waiting',
-				finished: false,
-				mode: 'webhook',
-				data: createRunExecutionData({ resultData: { runData: {} } }),
-			}),
-		);
+		const findSingleExecution = vi
+			.spyOn(Container.get(ExecutionPersistence), 'findSingleExecution')
+			.mockResolvedValueOnce(
+				mock<IExecutionResponse>({
+					status: 'waiting',
+					finished: false,
+					mode: 'webhook',
+					data: createRunExecutionData({ resultData: { runData: {} } }),
+				}),
+			);
 
 		// @ts-expect-error Private method
 		await runner.enqueueExecution('1', 'workflow-xyz', data);
@@ -1164,6 +1168,7 @@ describe('enqueueExecution', () => {
 				expect.objectContaining({ status: 'waiting' }),
 			),
 		);
+		expect(findSingleExecution).toHaveBeenCalledWith('1', expect.anything());
 	});
 
 	it('should fail the execution when the result cannot be read from the DB after the job ended', async () => {
