@@ -1,5 +1,6 @@
 import type { Logger } from '@n8n/backend-common';
 import type {
+	OperationContext,
 	ProjectRelationRepository,
 	RoleRepository,
 	SharedCredentialsRepository,
@@ -149,6 +150,23 @@ describe('CredentialConnectionStatusService', () => {
 			await service.cleanupOrphanedEntriesForUsers(['user-1'], em);
 
 			expect(repository.deleteByPairs).not.toHaveBeenCalled();
+		});
+
+		it('threads the operation context through cleanup queries', async () => {
+			const ctx: OperationContext = {};
+			repository.findPairsForUsers.mockResolvedValueOnce([
+				{ credentialId: CRED_ID, userId: 'deleted-user' },
+			]);
+			repository.findUsersWithRoleScopes.mockResolvedValueOnce([]);
+
+			await service.cleanupOrphanedEntriesForUsers(['deleted-user'], ctx);
+
+			expect(repository.findPairsForUsers).toHaveBeenCalledWith(['deleted-user'], undefined, ctx);
+			expect(repository.findUsersWithRoleScopes).toHaveBeenCalledWith(['deleted-user'], ctx);
+			expect(repository.deletePairsInContext).toHaveBeenCalledWith(
+				[{ credentialId: CRED_ID, userId: 'deleted-user' }],
+				ctx,
+			);
 		});
 	});
 

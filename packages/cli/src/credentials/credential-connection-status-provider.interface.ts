@@ -1,3 +1,4 @@
+import type { OperationContext } from '@n8n/db';
 import type { EntityManager } from '@n8n/typeorm';
 
 /** One user's connection to one credential. */
@@ -50,7 +51,7 @@ export interface ICredentialConnectionStatusProvider {
 	 */
 	cleanupOrphanedEntriesForUsers(
 		userIds: string[],
-		em?: EntityManager,
+		ctx?: OperationContext,
 		credentialId?: string,
 	): Promise<void>;
 

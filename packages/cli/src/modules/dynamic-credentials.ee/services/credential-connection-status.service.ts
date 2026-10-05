@@ -2,6 +2,7 @@ import { Logger } from '@n8n/backend-common';
 import {
 	CredentialsEntity,
 	In,
+	type OperationContext,
 	ProjectRelationRepository,
 	RoleRepository,
 	SharedCredentialsRepository,
@@ -32,6 +33,9 @@ type CredentialUserPair = { credentialId: string; userId: string };
 const CREDENTIAL_RETAIN_SCOPE = 'credential:connect' as const;
 
 const keyOf = (pair: CredentialUserPair) => `${pair.credentialId}|${pair.userId}`;
+
+const isEntityManager = (value: OperationContext | EntityManager): value is EntityManager =>
+	typeof Reflect.get(value, 'find') === 'function';
 
 /**
  * Reports which credentials a given user has a per-user storage entry for under
@@ -144,24 +148,18 @@ export class CredentialConnectionStatusService implements ICredentialConnectionS
 
 	async cleanupOrphanedEntriesForUsers(
 		userIds: string[],
-		em?: EntityManager,
+		ctx: OperationContext | EntityManager = {},
 		credentialId?: string,
 	): Promise<void> {
 		if (userIds.length === 0) return;
-
-		const manager = em ?? this.repository.manager;
-
-		// When a credentialId is given, scope the scan to that credential so a
-		// single-credential event never re-evaluates unrelated connections.
-		const entries = await manager.find(DynamicCredentialUserEntry, {
-			select: ['credentialId', 'userId'],
-			where: { userId: In(userIds), ...(credentialId ? { credentialId } : {}) },
-		});
+		if (isEntityManager(ctx)) {
+			await this.cleanupOrphanedEntriesForUsersWithManager(userIds, ctx, credentialId);
+			return;
+		}
+		const entries = await this.repository.findPairsForUsers(userIds, credentialId, ctx);
 
 		if (entries.length === 0) return;
-
-		const pairs = entries.map((e) => ({ credentialId: e.credentialId, userId: e.userId }));
-		await this.deleteOrphanedPairs(pairs, manager);
+		await this.deleteOrphanedPairsInContext(entries, ctx);
 	}
 
 	/**
@@ -182,7 +180,66 @@ export class CredentialConnectionStatusService implements ICredentialConnectionS
 		});
 		const userIds = [...new Set(members.map((m) => m.userId))];
 
-		await this.cleanupOrphanedEntriesForUsers(userIds, em, credentialId);
+		await this.cleanupOrphanedEntriesForUsersWithManager(userIds, em, credentialId);
+	}
+
+	private async cleanupOrphanedEntriesForUsersWithManager(
+		userIds: string[],
+		em?: EntityManager,
+		credentialId?: string,
+	): Promise<void> {
+		if (userIds.length === 0) return;
+		const manager = em ?? this.repository.manager;
+		const entries = await manager.find(DynamicCredentialUserEntry, {
+			select: ['credentialId', 'userId'],
+			where: { userId: In(userIds), ...(credentialId ? { credentialId } : {}) },
+		});
+		const pairs = entries.map(({ credentialId: id, userId }) => ({ credentialId: id, userId }));
+		await this.deleteOrphanedPairs(pairs, manager);
+	}
+
+	private async deleteOrphanedPairsInContext(
+		pairs: CredentialUserPair[],
+		ctx: OperationContext,
+	): Promise<void> {
+		if (pairs.length === 0) return;
+		const uniquePairs = [...new Map(pairs.map((pair) => [keyOf(pair), pair])).values()];
+		const users = await this.repository.findUsersWithRoleScopes(
+			uniquePairs.map(({ userId }) => userId),
+			ctx,
+		);
+		const userById = new Map(users.map((user) => [user.id, user]));
+		const pairsToCheck = uniquePairs.filter(({ userId }) => userById.has(userId));
+
+		let projectRetainedKeys = new Set<string>();
+		let globallyConnectableCredentialIds = new Set<string>();
+		if (pairsToCheck.length > 0) {
+			const credentialIds = [...new Set(pairsToCheck.map(({ credentialId }) => credentialId))];
+			const validCredRoles = await this.roleService.rolesWithScope(
+				'credential',
+				CREDENTIAL_RETAIN_SCOPE,
+				async () => await this.repository.findRolesWithScopes(ctx),
+			);
+			const [projectRetained, globalCredentialIds] = await Promise.all([
+				this.repository.findPairsWithCredentialAccess(
+					pairsToCheck,
+					CREDENTIAL_RETAIN_SCOPE,
+					validCredRoles,
+					ctx,
+				),
+				this.repository.findGloballyConnectableCredentialIds(credentialIds, ctx),
+			]);
+			projectRetainedKeys = new Set(projectRetained.map(keyOf));
+			globallyConnectableCredentialIds = new Set(globalCredentialIds);
+		}
+
+		const toDelete = this.selectOrphanedPairs(
+			uniquePairs,
+			userById,
+			projectRetainedKeys,
+			globallyConnectableCredentialIds,
+		);
+		await this.repository.deletePairsInContext(toDelete, ctx);
 	}
 
 	/**

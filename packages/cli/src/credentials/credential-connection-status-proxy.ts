@@ -1,4 +1,5 @@
 import { Service } from '@n8n/di';
+import type { OperationContext } from '@n8n/db';
 import type { EntityManager } from '@n8n/typeorm';
 
 import type {
@@ -40,11 +41,11 @@ export class CredentialConnectionStatusProxy implements ICredentialConnectionSta
 
 	async cleanupOrphanedEntriesForUsers(
 		userIds: string[],
-		em?: EntityManager,
+		ctx?: OperationContext,
 		credentialId?: string,
 	): Promise<void> {
 		if (!this.provider || userIds.length === 0) return;
-		await this.provider.cleanupOrphanedEntriesForUsers(userIds, em, credentialId);
+		await this.provider.cleanupOrphanedEntriesForUsers(userIds, ctx, credentialId);
 	}
 
 	async cleanupOrphanedEntriesForProjects(
