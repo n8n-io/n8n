@@ -211,9 +211,7 @@ const importTagSummarySchema = z
 				'Tags that resolved to an existing tag with the same id and name; attached as-is.',
 		}),
 		created: z.array(z.string()).openapi({
-			description:
-				'Tags created by this import with their package (source) id and name, under ' +
-				'`tagMissingMode=create`.',
+			description: 'Tags created by this import, by name, under `tagMissingMode=create`.',
 		}),
 		renamed: z.array(z.string()).openapi({
 			description:
@@ -241,8 +239,10 @@ const serializedBindingsSchema = z
 		workflows: z.record(z.string(), z.string()),
 		credentials: z.record(z.string(), z.string()).openapi({
 			description:
-				'Credential id from `requirements.credentials` in the package manifest → matched ' +
-				'credential id on the target instance.',
+				'Credential id from `requirements.credentials` in the package manifest → resolved ' +
+				'target credential id on the target instance. Covers both a matched existing ' +
+				'credential and a credential created as a stub under ' +
+				'`credentialMissingMode=create-stub`.',
 		}),
 	})
 	.openapi({

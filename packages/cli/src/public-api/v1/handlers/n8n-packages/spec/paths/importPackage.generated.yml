@@ -373,7 +373,7 @@ responses:
                   type: object
                   additionalProperties:
                     type: string
-                  description: Credential id from `requirements.credentials` in the package manifest → matched credential id on the target instance.
+                  description: Credential id from `requirements.credentials` in the package manifest → resolved target credential id on the target instance. Covers both a matched existing credential and a credential created as a stub under `credentialMissingMode=create-stub`.
               required:
                 - workflows
                 - credentials
@@ -454,7 +454,7 @@ responses:
                   type: array
                   items:
                     type: string
-                  description: Tags created by this import with their package (source) id and name, under `tagMissingMode=create`.
+                  description: Tags created by this import, by name, under `tagMissingMode=create`.
                 renamed:
                   type: array
                   items:
