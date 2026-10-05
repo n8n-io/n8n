@@ -520,6 +520,99 @@ describe('CredentialModeSelector', () => {
 				expect(emitted('update:authType')[0]).toEqual([{ type: 'oAuth2', customOauth: true }]);
 			});
 		});
+
+		// Jira's credential also needs a Site URL, which the instance overwrites
+		// cannot supply. The managed app still exists, so the choice must stay.
+		const jiraOAuth2ApiType: ICredentialType = {
+			name: 'jiraSoftwareCloudOAuth2Api',
+			extends: ['oAuth2Api'],
+			displayName: 'Jira SW Cloud OAuth2 API',
+			properties: [
+				{ displayName: 'Client ID', name: 'clientId', type: 'string', default: '', required: true },
+				{
+					displayName: 'Client Secret',
+					name: 'clientSecret',
+					type: 'string',
+					default: '',
+					required: true,
+				},
+				{ displayName: 'Site URL', name: 'domain', type: 'string', default: '', required: true },
+			],
+			__overwrittenProperties: ['clientId', 'clientSecret'],
+		};
+
+		const jiraApiType: ICredentialType = {
+			name: 'jiraSoftwareCloudApi',
+			displayName: 'Jira SW Cloud API',
+			properties: [{ displayName: 'Email', name: 'email', type: 'string', default: '' }],
+		};
+
+		const jiraNodeType = {
+			displayName: 'Jira Software',
+			name: 'n8n-nodes-base.jira',
+			group: ['output'],
+			version: 1,
+			description: 'Consume Jira Software API',
+			defaults: { name: 'Jira' },
+			inputs: [NodeConnectionTypes.Main],
+			outputs: [NodeConnectionTypes.Main],
+			credentials: [
+				{
+					name: 'jiraSoftwareCloudApi',
+					required: true,
+					displayOptions: { show: { authentication: ['basicAuth'] } },
+				},
+				{
+					name: 'jiraSoftwareCloudOAuth2Api',
+					required: true,
+					displayOptions: { show: { authentication: ['oAuth2'] } },
+				},
+			],
+			properties: [
+				{
+					displayName: 'Authentication',
+					name: 'authentication',
+					type: 'options',
+					options: [
+						{ name: 'Basic Auth', value: 'basicAuth' },
+						{ name: 'OAuth2', value: 'oAuth2' },
+					],
+					default: 'basicAuth',
+				},
+			],
+		} as unknown as INodeTypeDescription;
+
+		it('splits the OAuth option when the managed app leaves a required field to the user', async () => {
+			const pinia = setupStores({
+				nodeType: jiraNodeType,
+				node: makeNode('n8n-nodes-base.jira', 'oAuth2'),
+				credentialTypes: {
+					jiraSoftwareCloudApi: jiraApiType,
+					jiraSoftwareCloudOAuth2Api: jiraOAuth2ApiType,
+				},
+			});
+
+			renderComponent({
+				pinia,
+				props: {
+					credentialType: jiraOAuth2ApiType,
+					showManagedOauthOptions: true,
+					useCustomOauth: false,
+				},
+			});
+
+			await userEvent.click(screen.getByTestId('credential-mode-dropdown-trigger'));
+
+			await waitFor(() => {
+				expect(document.querySelector('[role="menu"]')).toBeInTheDocument();
+			});
+
+			expect(screen.getAllByRole('menuitem').map((el) => el.textContent?.trim())).toEqual([
+				'Managed OAuth2 (recommended)',
+				'Custom OAuth2',
+				'Basic Auth',
+			]);
+		});
 	});
 
 	describe('multiple managed OAuth pairs', () => {
