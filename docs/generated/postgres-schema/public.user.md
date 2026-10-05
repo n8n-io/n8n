@@ -371,7 +371,6 @@ erDiagram
   text report
   varchar_36_ suggestionId FK
   varchar_2000_ summary
-  json trace
   timestamp_3__with_time_zone updatedAt
   json usage
   varchar_36_ workflowId FK

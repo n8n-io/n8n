@@ -121,7 +121,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.scheduled_task](public.scheduled_task.md) | 18 |  | BASE TABLE |
 | [public.scope](public.scope.md) | 3 |  | BASE TABLE |
 | [public.secrets_provider_connection](public.secrets_provider_connection.md) | 7 |  | BASE TABLE |
-| [public.self_healing_result](public.self_healing_result.md) | 16 |  | BASE TABLE |
+| [public.self_healing_result](public.self_healing_result.md) | 15 |  | BASE TABLE |
 | [public.settings](public.settings.md) | 3 |  | BASE TABLE |
 | [public.shared_credentials](public.shared_credentials.md) | 5 |  | BASE TABLE |
 | [public.shared_workflow](public.shared_workflow.md) | 5 |  | BASE TABLE |
@@ -1565,7 +1565,6 @@ erDiagram
   text report
   varchar_36_ suggestionId FK
   varchar_2000_ summary
-  json trace
   timestamp_3__with_time_zone updatedAt
   json usage
   varchar_36_ workflowId FK

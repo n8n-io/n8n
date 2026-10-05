@@ -19,8 +19,7 @@ The future investigation producer owns completion retries.
 | `could_not_fix` | None | Continue in chat, Dismiss |
 
 The report is one string. Usage contains measured credits, turns, and duration in seconds.
-Null means unknown. The review trace contains bounded event or tool summaries.
-It does not contain the private background conversation or tool grants.
+Null means unknown.
 
 Workflow, original-project, background-user, and suggestion deletion cascade to the result.
 Execution pruning and private-thread deletion do not remove reports.

@@ -155,7 +155,6 @@ it.each([
 		report: input.report,
 		reviewState: 'open',
 		usage: null,
-		trace: null,
 		execution: null,
 	});
 	if (withSuggestion) {
@@ -227,18 +226,16 @@ it('rechecks the background user when prepared content is committed', async () =
 	expect(await suggestions.count()).toBe(0);
 });
 
-it('stores scrubbed report and trace text without losing measured usage', async () => {
+it('stores scrubbed report text without losing measured usage', async () => {
 	const { input, user, project, original } = await prepareFixture();
 	const prepared = await service.prepare({
 		...input,
 		report: 'The response included password=example-value.',
-		trace: [{ kind: 'event', label: 'Review', text: 'password=example-value' }],
 		usage: { credits: 0, turns: 1, durationSeconds: null },
 	});
 	const result = await service.create(prepared);
 	const detail = await service.getDetail(user, project.id, original.id, result.id);
 	expect(detail.report).not.toContain('example-value');
-	expect(detail.trace?.[0].text).not.toContain('example-value');
 	expect(detail.usage).toEqual({ credits: 0, turns: 1, durationSeconds: null });
 });
 

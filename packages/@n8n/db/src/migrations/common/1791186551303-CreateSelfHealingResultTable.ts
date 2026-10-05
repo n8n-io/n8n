@@ -26,9 +26,6 @@ export class CreateSelfHealingResultTable1791186551303 implements ReversibleMigr
 				column('usage').json.comment(
 					'Recorded credits, turns, and durationSeconds; null means unknown',
 				),
-				column('trace').json.comment(
-					'Bounded review entries with kind, label, text, and optional toolName',
-				),
 				column('dismissedAt').timestampTimezone(),
 				column('dismissedById').uuid.comment('Reviewer who dismissed the result'),
 				column('createdAt').timestampTimezone().notNull.default('NOW()'),

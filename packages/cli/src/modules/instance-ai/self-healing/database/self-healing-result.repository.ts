@@ -17,7 +17,6 @@ export type CreateSelfHealingResult = Pick<
 	| 'executionId'
 	| 'suggestionId'
 	| 'usage'
-	| 'trace'
 >;
 
 @Service()

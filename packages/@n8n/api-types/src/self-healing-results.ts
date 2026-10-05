@@ -14,30 +14,12 @@ export const selfHealingResultUsageSchema = z
 	.strict();
 export type SelfHealingResultUsage = z.infer<typeof selfHealingResultUsageSchema>;
 
-const reviewTraceFields = {
-	label: z.string().trim().min(1).max(200),
-	text: z.string().max(4000),
-};
-
-export const selfHealingReviewTraceEntrySchema = z.discriminatedUnion('kind', [
-	z.object({ kind: z.literal('event'), ...reviewTraceFields }).strict(),
-	z
-		.object({
-			kind: z.literal('tool'),
-			...reviewTraceFields,
-			toolName: z.string().trim().min(1).max(200),
-		})
-		.strict(),
-]);
-export type SelfHealingReviewTraceEntry = z.infer<typeof selfHealingReviewTraceEntrySchema>;
-
 export const selfHealingResultContentSchema = z
 	.object({
 		outcome: selfHealingResultOutcomeSchema,
 		summary: z.string().trim().min(1).max(2000),
 		report: z.string().trim().min(1).max(50_000),
 		usage: selfHealingResultUsageSchema.nullable().default(null),
-		trace: z.array(selfHealingReviewTraceEntrySchema).max(100).nullable().default(null),
 	})
 	.strict();
 export type SelfHealingResultContent = z.infer<typeof selfHealingResultContentSchema>;

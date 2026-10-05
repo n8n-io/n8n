@@ -16,7 +16,6 @@
 | report | text |  | false |  |  | Saved report, independent of execution and chat data |
 | suggestionId | varchar(36) |  | true |  | [public.workflow_suggestion](public.workflow_suggestion.md) | Optional isolated workflow suggestion |
 | summary | varchar(2000) |  | false |  |  |  |
-| trace | json |  | true |  |  | Bounded review entries with kind, label, text, and optional toolName |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | usage | json |  | true |  |  | Recorded credits, turns, and durationSeconds; null means unknown |
 | workflowId | varchar(36) |  | false |  | [public.workflow_entity](public.workflow_entity.md) | Investigated workflow |
@@ -78,7 +77,6 @@ erDiagram
   text report
   varchar_36_ suggestionId FK
   varchar_2000_ summary
-  json trace
   timestamp_3__with_time_zone updatedAt
   json usage
   varchar_36_ workflowId FK

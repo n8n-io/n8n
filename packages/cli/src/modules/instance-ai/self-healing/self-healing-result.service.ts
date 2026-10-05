@@ -43,8 +43,8 @@ const referenceSchema = z.object({
 		.default(() => new Date()),
 });
 
-export type CreateSelfHealingResult = Omit<SelfHealingResultContent, 'usage' | 'trace'> &
-	Partial<Pick<SelfHealingResultContent, 'usage' | 'trace'>> & {
+export type CreateSelfHealingResult = Omit<SelfHealingResultContent, 'usage'> &
+	Partial<Pick<SelfHealingResultContent, 'usage'>> & {
 		workflowId: string;
 		projectId: string;
 		backgroundUserId: string;
@@ -84,7 +84,6 @@ export class SelfHealingResultService {
 			summary: input.summary,
 			report: input.report,
 			usage: input.usage ?? null,
-			trace: input.trace ?? null,
 		});
 		const prepared = input.suggestion;
 		if (
@@ -184,7 +183,6 @@ export class SelfHealingResultService {
 			summary: result.summary,
 			report: result.report,
 			usage: result.usage,
-			trace: result.trace,
 			createdAt: result.createdAt.toISOString(),
 			updatedAt: result.updatedAt.toISOString(),
 			completedAt: result.completedAt.toISOString(),

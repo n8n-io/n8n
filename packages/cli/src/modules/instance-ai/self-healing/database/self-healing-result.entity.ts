@@ -1,8 +1,4 @@
-import type {
-	SelfHealingResultOutcome,
-	SelfHealingResultUsage,
-	SelfHealingReviewTraceEntry,
-} from '@n8n/api-types';
+import type { SelfHealingResultOutcome, SelfHealingResultUsage } from '@n8n/api-types';
 import {
 	DateTimeColumn,
 	JsonColumn,
@@ -67,9 +63,6 @@ export class SelfHealingResult extends WithTimestampsAndStringId {
 
 	@JsonColumn({ nullable: true })
 	usage: SelfHealingResultUsage | null;
-
-	@JsonColumn({ nullable: true })
-	trace: SelfHealingReviewTraceEntry[] | null;
 
 	@DateTimeColumn({ nullable: true })
 	dismissedAt: Date | null;

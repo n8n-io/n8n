@@ -377,7 +377,6 @@ erDiagram
   TEXT report
   varchar_36_ suggestionId FK
   varchar_2000_ summary
-  TEXT trace
   datetime_3_ updatedAt
   TEXT usage
   varchar_36_ workflowId FK
