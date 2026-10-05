@@ -41,7 +41,7 @@ export class CredentialConnectionStatusProxy implements ICredentialConnectionSta
 
 	async cleanupOrphanedEntriesForUsers(
 		userIds: string[],
-		ctx?: OperationContext,
+		ctx?: OperationContext | EntityManager,
 		credentialId?: string,
 	): Promise<void> {
 		if (!this.provider || userIds.length === 0) return;

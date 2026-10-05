@@ -51,7 +51,7 @@ export interface ICredentialConnectionStatusProvider {
 	 */
 	cleanupOrphanedEntriesForUsers(
 		userIds: string[],
-		ctx?: OperationContext,
+		ctx?: OperationContext | EntityManager,
 		credentialId?: string,
 	): Promise<void>;
 
