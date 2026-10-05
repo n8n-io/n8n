@@ -127,6 +127,29 @@ describe('CanvasNodeToolbar', () => {
 		expect(getByTestId('disable-node-button')).toBeInTheDocument();
 	});
 
+	it('should render disable and delete buttons but no execute button for the webpage render type', () => {
+		// A page view starts no execution, so the node cannot be executed from the canvas.
+		const { getByTestId, queryByTestId } = renderComponent({
+			global: {
+				provide: {
+					...createCanvasNodeProvide({
+						data: {
+							render: {
+								type: CanvasNodeRenderType.Webpage,
+								options: { html: '', width: 480, height: 320 },
+							},
+						},
+					}),
+					...createCanvasProvide(),
+				},
+			},
+		});
+
+		expect(queryByTestId('execute-node-button')).not.toBeInTheDocument();
+		expect(getByTestId('disable-node-button')).toBeInTheDocument();
+		expect(getByTestId('delete-node-button')).toBeInTheDocument();
+	});
+
 	it('should emit "run" when execute node button is clicked', async () => {
 		const { getByTestId, emitted } = renderComponent({
 			global: {

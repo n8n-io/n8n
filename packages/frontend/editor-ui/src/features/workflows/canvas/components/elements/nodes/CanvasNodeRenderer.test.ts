@@ -102,4 +102,29 @@ describe('CanvasNodeRenderer', () => {
 
 		expect(getByTestId('canvas-node-agent')).toBeInTheDocument();
 	});
+
+	it('should dispatch to the webpage card for Webpage nodes', async () => {
+		// The card's own behaviour is covered in CanvasNodeWebpage.test.ts.
+		const { getByTestId } = renderComponent({
+			global: {
+				stubs: {
+					CanvasNodeWebpage: { template: '<div data-test-id="canvas-node-webpage" />' },
+				},
+				provide: {
+					...createCanvasProvide(),
+					...createCanvasNodeProvide({
+						data: {
+							type: 'n8n-nodes-base.webpage',
+							render: {
+								type: CanvasNodeRenderType.Webpage,
+								options: { html: '', width: 480, height: 320 },
+							},
+						},
+					}),
+				},
+			},
+		});
+
+		expect(getByTestId('canvas-node-webpage')).toBeInTheDocument();
+	});
 });

@@ -50,7 +50,8 @@
 	border-radius: var(--radius);
 	background: var(--color--background--light-2);
 
-	.minimap-node-default {
+	.minimap-node-default,
+	.minimap-node-n8n-nodes-base-webpage {
 		fill: var(--color--foreground--shade-1);
 	}
 

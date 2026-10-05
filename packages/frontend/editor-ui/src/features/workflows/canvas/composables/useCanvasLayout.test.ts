@@ -371,6 +371,26 @@ describe('useCanvasLayout', () => {
 		expect(node.y + DEFAULT_NODE_SIZE[1] / 2).toBe(agent.y + AGENT_NODE_SIZE[1] / 2);
 	});
 
+	test('should use the webpage size from its render options when unmeasured', () => {
+		const nodes = [
+			createCanvasGraphNode({
+				id: 'webpage',
+				data: {
+					render: {
+						type: CanvasNodeRenderType.Webpage,
+						options: { html: '', width: 640, height: 400 },
+					},
+				},
+				dimensions: { width: 0, height: 0 },
+			}),
+		];
+
+		const { layout } = createTestSetup(nodes, []);
+		const result = layout('all');
+
+		expect(result.boundingBox).toEqual({ x: 0, y: 0, width: 640, height: 400 });
+	});
+
 	test('should keep a measured agent card on the grid with its handle on the row axis', () => {
 		const nodes = [
 			createCanvasGraphNode({ id: 'node' }),

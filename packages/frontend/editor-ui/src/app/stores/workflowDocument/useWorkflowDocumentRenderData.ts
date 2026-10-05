@@ -39,9 +39,11 @@ import type {
 	CanvasNodeDefaultRender,
 	CanvasNodeDirtinessType,
 	CanvasNodeStickyNoteRender,
+	CanvasNodeWebpageRender,
 } from '@/features/workflows/canvas/canvas.types';
 import { CanvasNodeRenderType } from '@/features/workflows/canvas/canvas.types';
 import { isAgentNodeV2 } from '@/features/agents/utils/agentNode';
+import { getWebpageNodeSize } from '@/app/utils/nodeViewUtils';
 import { CHANGE_ACTION } from './types';
 import type {
 	NodeAddedPayload,
@@ -288,6 +290,25 @@ export function useWorkflowDocumentRenderData(workflowDocumentId: WorkflowDocume
 		};
 	}
 
+	function createWebpageRenderType(
+		node: INodeUi,
+		nodeType: INodeTypeDescription,
+	): CanvasNodeWebpageRender {
+		// Saved workflows can omit parameters that are equal to their defaults.
+		const html =
+			node.parameters.html ??
+			nodeType.properties?.find((property) => property.name === 'html')?.default;
+
+		return {
+			type: CanvasNodeRenderType.Webpage,
+			options: {
+				html: typeof html === 'string' ? html : '',
+				...getWebpageNodeSize(node.parameters),
+				icon: getNodeIconSource(nodeType, node, workflowDocumentStore.getExpressionHandler()),
+			},
+		};
+	}
+
 	function createAddNodesRenderType(): CanvasNodeAddNodesRender {
 		return { type: CanvasNodeRenderType.AddNodes, options: {} };
 	}
@@ -347,6 +368,14 @@ export function useWorkflowDocumentRenderData(workflowDocumentId: WorkflowDocume
 				return isAgentNodeV2(node)
 					? createAgentRenderType(node)
 					: createDefaultNodeRenderType(node);
+			case `${CanvasNodeRenderType.Webpage}`: {
+				// The backend omits the node type when the feature is off. Then the node shows
+				// the unknown-node card, and the page of an imported workflow does not run.
+				const nodeType = nodeTypeDescriptionByNodeId.get(node.id)?.value;
+				return nodeType
+					? createWebpageRenderType(node, nodeType)
+					: createDefaultNodeRenderType(node);
+			}
 			default:
 				return createDefaultNodeRenderType(node);
 		}

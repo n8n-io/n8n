@@ -107,6 +107,7 @@ import {
 	HORIZONTAL_NODE_STEP,
 	NODE_X_SPACING,
 	doRectsOverlap,
+	getWebpageNodeSize,
 } from '@/app/utils/nodeViewUtils';
 import {
 	AGENT_NODE_SIZE,
@@ -145,6 +146,7 @@ import {
 	isEmptyGroupAnchor,
 	isHitlToolType,
 	isResourceLocatorValue,
+	WEBPAGE_NODE_TYPE,
 } from 'n8n-workflow';
 import { TELEMETRY_EVENT, type InferTelemetryProps, type TelemetryEventDef } from '@n8n/telemetry';
 import { computed, nextTick, ref, type DeepReadonly } from 'vue';
@@ -218,7 +220,7 @@ type AddNodeOptions = AddNodesBaseOptions & {
 /**
  * Rendered-width estimate for the multi-node sequential placement step, so a
  * bulk-added node doesn't overlap a wide neighbor. The agent card
- * (AGENT_NODE_SIZE) and default widths are exact; configurable nodes render at
+ * (AGENT_NODE_SIZE), Webpage card and default widths are exact; configurable nodes render at
  * a dynamic width (see calculateNodeSize) that no constant matches, so
  * CONFIGURABLE_NODE_SIZE is an overlap-safe estimate only — exact configurable
  * spacing needs the measured width and is tracked as a follow-up.
@@ -226,6 +228,10 @@ type AddNodeOptions = AddNodesBaseOptions & {
 function getPlacementNodeWidth(node: INodeUi, nodeTypeDescription: INodeTypeDescription): number {
 	if (isAgentNodeV2(node)) {
 		return AGENT_NODE_SIZE[0];
+	}
+
+	if (node.type === WEBPAGE_NODE_TYPE) {
+		return getWebpageNodeSize(node.parameters).width;
 	}
 
 	// A dynamic-inputs expression (e.g. AI Agent) or any non-main input means the
@@ -1931,6 +1937,10 @@ export function useCanvasOperations() {
 						// The agent card is wider than a default node, so offset by its width
 						// to keep the standard gap to its right edge
 						pushOffset += AGENT_NODE_SIZE[0] - DEFAULT_NODE_SIZE[0];
+					} else if (lastInteractedWithNodeObject.type === WEBPAGE_NODE_TYPE) {
+						pushOffset +=
+							getWebpageNodeSize(lastInteractedWithNodeObject.parameters).width -
+							DEFAULT_NODE_SIZE[0];
 					} else if (
 						lastInteractedWithNodeInputTypes.find((input) => input !== NodeConnectionTypes.Main)
 					) {
@@ -2000,6 +2010,9 @@ export function useCanvasOperations() {
 				width: (node.parameters.width as number) || DEFAULT_NODE_SIZE[0],
 				height: (node.parameters.height as number) || DEFAULT_NODE_SIZE[1],
 			};
+		}
+		if (node.type === WEBPAGE_NODE_TYPE) {
+			return { x: node.position[0], y: node.position[1], ...getWebpageNodeSize(node.parameters) };
 		}
 		return {
 			x: node.position[0],

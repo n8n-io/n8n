@@ -5,6 +5,7 @@ import CanvasNodeStickyNote from './render-types/CanvasNodeStickyNote.vue';
 import CanvasNodeAddNodes from './render-types/CanvasNodeAddNodes.vue';
 import CanvasNodeChoicePrompt from './render-types/CanvasNodeChoicePrompt.vue';
 import CanvasNodeAgent from './render-types/CanvasNodeAgent.vue';
+import CanvasNodeWebpage from './render-types/CanvasNodeWebpage.vue';
 import { CanvasNodeKey } from '@/app/constants';
 import { CanvasNodeRenderType } from '../../../canvas.types';
 
@@ -26,6 +27,9 @@ const Render = () => {
 			break;
 		case CanvasNodeRenderType.Agent:
 			Component = CanvasNodeAgent;
+			break;
+		case CanvasNodeRenderType.Webpage:
+			Component = CanvasNodeWebpage;
 			break;
 		default:
 			Component = CanvasNodeDefault;

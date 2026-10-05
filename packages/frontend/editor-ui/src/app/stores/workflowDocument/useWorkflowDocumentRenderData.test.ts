@@ -34,6 +34,23 @@ const TEST_TRIGGER_NODE_TYPE = 'n8n-nodes-base.testTrigger';
 // references are safe under vi.mock hoisting.
 const dirtinessByNameOverride = ref<Record<string, CanvasNodeDirtinessType | undefined>>({});
 const isConfigNodeSpy = vi.fn((..._args: unknown[]) => false);
+// The backend omits the Webpage node type when the feature is off.
+const webpageNodeTypeLoaded = ref(true);
+
+const WEBPAGE_PLACEHOLDER_HTML = '<p>placeholder</p>';
+const webpageNodeTypeDescription = {
+	name: 'n8n-nodes-base.webpage',
+	displayName: 'Webpage',
+	description: '',
+	version: 1,
+	defaults: {},
+	group: ['trigger'],
+	inputs: [],
+	outputs: [],
+	properties: [
+		{ displayName: 'HTML', name: 'html', type: 'string', default: WEBPAGE_PLACEHOLDER_HTML },
+	],
+};
 
 vi.mock('@/app/composables/useNodeDirtiness', () => ({
 	useNodeDirtiness: vi.fn(() => ({
@@ -46,8 +63,11 @@ vi.mock('@/app/stores/nodeTypes.store', () => ({
 		isConfigNode: isConfigNodeSpy,
 		isConfigurableNode: () => false,
 		isTriggerNode: (type: string) => type === 'n8n-nodes-base.testTrigger',
-		getNodeType: (type: string) =>
-			type === 'n8n-nodes-base.testTrigger'
+		getNodeType: (type: string) => {
+			if (type === 'n8n-nodes-base.webpage') {
+				return webpageNodeTypeLoaded.value ? webpageNodeTypeDescription : null;
+			}
+			return type === 'n8n-nodes-base.testTrigger'
 				? {
 						name: 'n8n-nodes-base.testTrigger',
 						displayName: 'Test Trigger',
@@ -59,7 +79,8 @@ vi.mock('@/app/stores/nodeTypes.store', () => ({
 						outputs: ['main'],
 						properties: [],
 					}
-				: null,
+				: null;
+		},
 		communityNodeType: () => undefined,
 		getAllNodeTypes: () => [],
 	})),
@@ -145,6 +166,7 @@ describe('useWorkflowDocumentRenderData — passthroughs', () => {
 describe('useWorkflowDocumentRenderData — fusion projections', () => {
 	beforeEach(() => {
 		setActivePinia(createPinia());
+		webpageNodeTypeLoaded.value = true;
 	});
 
 	it('initializes fusion maps for nodes present at construction time', () => {
@@ -324,6 +346,54 @@ describe('useWorkflowDocumentRenderData — fusion projections', () => {
 		const { renderData } = createRenderData(docId);
 
 		expect(renderData.renderTypeByNodeId.get('ag1')?.value?.type).toBe('default');
+	});
+
+	it('returns a webpage render type with the html and size of Webpage nodes', () => {
+		const { docId } = setupWorkflow('wf-fusion-webpage', [
+			{
+				id: 'wp',
+				name: 'Webpage',
+				type: 'n8n-nodes-base.webpage',
+				parameters: { html: '<h1>Hello</h1>', width: 640, height: 400 },
+			},
+		]);
+		const { renderData } = createRenderData(docId);
+
+		const render = renderData.renderTypeByNodeId.get('wp')?.value;
+		expect(render?.type).toBe('n8n-nodes-base.webpage');
+		expect(render?.options).toMatchObject({ html: '<h1>Hello</h1>', width: 640, height: 400 });
+	});
+
+	it('falls back to the node type defaults when Webpage parameters are missing', () => {
+		const { docId } = setupWorkflow('wf-fusion-webpage-defaults', [
+			{ id: 'wp', name: 'Webpage', type: 'n8n-nodes-base.webpage', parameters: {} },
+		]);
+		const { renderData } = createRenderData(docId);
+
+		const render = renderData.renderTypeByNodeId.get('wp')?.value;
+		expect(render?.type).toBe('n8n-nodes-base.webpage');
+		expect(render?.options).toMatchObject({
+			html: WEBPAGE_PLACEHOLDER_HTML,
+			width: 480,
+			height: 320,
+		});
+	});
+
+	it('returns the default render type when the Webpage node type is not loaded', () => {
+		webpageNodeTypeLoaded.value = false;
+		const { docId } = setupWorkflow('wf-fusion-webpage-unknown', [
+			{
+				id: 'wp',
+				name: 'Webpage',
+				type: 'n8n-nodes-base.webpage',
+				parameters: { html: '<h1>Hello</h1>' },
+			},
+		]);
+		const { renderData } = createRenderData(docId);
+
+		const render = renderData.renderTypeByNodeId.get('wp')?.value;
+		expect(render?.type).toBe('default');
+		expect(render?.options).not.toHaveProperty('html');
 	});
 
 	it('assigns z-index entries only for sticky notes via additionalPropertiesByNodeId', () => {

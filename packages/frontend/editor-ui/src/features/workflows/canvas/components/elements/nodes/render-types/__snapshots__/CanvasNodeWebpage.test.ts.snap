@@ -1,0 +1,24 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`CanvasNodeWebpage > should render the page preview 1`] = `
+"<div class="webpage" style="width: 480px; height: 320px;" data-test-id="canvas-node-webpage">
+  <header class="header">
+    <div class="n8n-node-icon nodeIcon nodeIcon">
+      <div class="nodeIconWrapper" style="width: 16px; height: 16px; font-size: 16px; line-height: 16px;">
+        <!-- ElementUI tooltip is prone to memory-leaking so we only render it if we really need it -->
+        <div class="icon"><svg viewBox="0 0 24 24" width="1em" height="1em" class="n8n-icon" aria-hidden="true" focusable="false" role="img" data-icon="globe" style="max-width: 16px;">
+            <g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2">
+              <circle cx="12" cy="12" r="10"></circle>
+              <path d="M12 2a14.5 14.5 0 0 0 0 20a14.5 14.5 0 0 0 0-20M2 12h20"></path>
+            </g>
+          </svg><!-- Badge icon, for example used for HTTP based nodes -->
+          <!--v-if-->
+        </div>
+      </div>
+    </div><span class="n8n-text size-small bold label label">Landing page</span>
+    <canvas-node-status-icons-stub size="medium" spinnerscrim="false" spinnerlayout="static"></canvas-node-status-icons-stub>
+  </header>
+  <div class="body" data-test-id="canvas-node-webpage-body"><iframe class="frame" srcdoc="<h1>Hello</h1>" sandbox="allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox" referrerpolicy="no-referrer" title="Landing page" data-test-id="canvas-node-webpage-frame"></iframe></div>
+  <!--v-if-->
+</div>"
+`;

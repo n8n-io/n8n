@@ -95,7 +95,8 @@ const isDisableNodeVisible = computed(
 	() =>
 		!props.readOnly &&
 		(render.value.type === CanvasNodeRenderType.Default ||
-			render.value.type === CanvasNodeRenderType.Agent),
+			render.value.type === CanvasNodeRenderType.Agent ||
+			render.value.type === CanvasNodeRenderType.Webpage),
 );
 
 const isDeleteNodeVisible = computed(() => !props.readOnly);

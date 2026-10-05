@@ -14,6 +14,7 @@ import {
 import { isPresent } from '@/app/utils/typesUtils';
 import {
 	DEFAULT_NODE_SIZE,
+	getWebpageNodeSize,
 	GRID_SIZE,
 	NODE_X_SPACING,
 	snapToGrid,
@@ -592,6 +593,10 @@ export function useCanvasLayout(
 		// unmeasured fallback below would feed dagre a 96x96 box for it
 		if (node.data.render?.type === CanvasNodeRenderType.Agent) {
 			return { width: AGENT_NODE_SIZE[0], height: AGENT_NODE_SIZE[1] };
+		}
+
+		if (node.data.render?.type === CanvasNodeRenderType.Webpage) {
+			return getWebpageNodeSize(node.data.render.options);
 		}
 
 		// Fallback to default size
