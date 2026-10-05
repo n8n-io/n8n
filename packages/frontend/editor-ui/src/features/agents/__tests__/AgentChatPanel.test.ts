@@ -539,7 +539,9 @@ describe('AgentChatPanel', () => {
 	});
 
 	it('hides the attach button when the model accepts no attachments', () => {
-		const wrapper = mountPanel({ agentConfig: { ...defaultAgentConfig, model: null } });
+		const wrapper = mountPanel({
+			agentConfig: { ...defaultAgentConfig, model: 'unknown-provider/model' },
+		});
 
 		expect(wrapper.find('[data-test-id="chat-input-attach-button"]').exists()).toBe(false);
 	});
