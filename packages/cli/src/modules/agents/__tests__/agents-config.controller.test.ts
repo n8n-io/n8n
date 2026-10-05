@@ -60,7 +60,7 @@ describe('AgentsConfigController getValidation', () => {
 describe('AgentsConfigController getBudget', () => {
 	it('returns the ledger total for the current month key', async () => {
 		const agentRepository = mock<AgentRepository>();
-		agentRepository.findByIdAndProjectId.mockResolvedValue({ id: 'agent-1' } as never);
+		agentRepository.existsByIdAndProjectId.mockResolvedValue(true);
 		const agentSpendLedger = mock<AgentSpendLedger>();
 		agentSpendLedger.read.mockResolvedValue(12.5);
 		const controller = new AgentsConfigController(
