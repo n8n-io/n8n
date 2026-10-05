@@ -10,16 +10,17 @@ import {
 	N8nTooltip,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import type { AgentChatQueueItem } from '@n8n/api-types';
+import type { ChatMessageQueueSteerAction, ChatMessageQueueItem } from './chatMessageQueue.types';
 
 const props = defineProps<{
-	displayedItems: AgentChatQueueItem[];
+	displayedItems: ChatMessageQueueItem[];
 	expanded: boolean;
 	isReordering: boolean;
 	canEdit: boolean;
-	canSteer: boolean;
+	steerAction?: ChatMessageQueueSteerAction;
+	canSteer?: boolean;
 	canDragQueueItem: (index: number) => boolean;
-	isQueueItemBusy: (item: AgentChatQueueItem) => boolean;
+	isQueueItemBusy: (item: ChatMessageQueueItem) => boolean;
 	canDropQueueItem: (event: { draggedContext: { index: number; futureIndex: number } }) => boolean;
 }>();
 
@@ -28,8 +29,8 @@ const emit = defineEmits<{
 	'drag-start': [];
 	'drag-end': [event: { oldIndex?: number; newIndex?: number }];
 	move: [event: { from: number; to: number }];
-	steer: [id: string];
-	edit: [item: AgentChatQueueItem];
+	'steer': [id: string];
+	edit: [id: string];
 	remove: [id: string];
 }>();
 
@@ -44,7 +45,7 @@ const expanded = computed({
 function focusItem(id: string) {
 	queueElement.value
 		?.querySelector<HTMLButtonElement>(
-			`[data-queue-id="${id}"] [data-testid="agent-queue-drag-handle"]:not(:disabled)`,
+			`[data-queue-id="${id}"] [data-testid="chat-queue-drag-handle"]:not(:disabled)`,
 		)
 		?.focus();
 }
@@ -58,31 +59,19 @@ function onQueueHandleKeydown(event: KeyboardEvent, index: number) {
 	emit('move', { from: index, to: index + (event.key === 'ArrowUp' ? -1 : 1) });
 }
 
-function getQueueNotice(item: AgentChatQueueItem) {
-	if (item.steeringExecutionId) {
-		return locale.baseText('agents.chat.queue.steering');
-	}
-
-	return undefined;
-}
-
-function getAttachmentFileNames(item: AgentChatQueueItem) {
-	return item.attachments?.map((attachment) => attachment.fileName).join(', ');
-}
-
 defineExpose({ focusItem });
 </script>
 
 <template>
 	<div :class="$style.messageQueueEntrance">
-		<div ref="messageQueue" :class="$style.messageQueue" data-testid="agent-message-queue">
+		<div ref="messageQueue" :class="$style.messageQueue" data-testid="chat-message-queue">
 			<button
 				v-if="displayedItems.length > 1"
 				type="button"
 				:class="[$style.queueToggle, { [$style.queueToggleExpanded]: expanded }]"
 				:aria-expanded="expanded"
 				:aria-label="
-					locale.baseText('agents.chat.queue.title', {
+					locale.baseText('chat.messageQueue.title', {
 						adjustToNumber: displayedItems.length,
 						interpolate: { count: displayedItems.length },
 					})
@@ -94,7 +83,7 @@ defineExpose({ focusItem });
 				<N8nIcon icon="list-end" size="medium" color="text-light" aria-hidden="true" />
 				<N8nText bold step="xs" color="text-light">
 					{{
-						locale.baseText('agents.chat.queue.title', {
+						locale.baseText('chat.messageQueue.title', {
 							adjustToNumber: displayedItems.length,
 							interpolate: { count: displayedItems.length },
 						})
@@ -133,10 +122,10 @@ defineExpose({ focusItem });
 					@end="emit('drag-end', $event)"
 				>
 					<template #item="{ element: item, index }">
-						<li :data-queue-id="item.id" data-testid="agent-queued-message">
+						<li :data-queue-id="item.id" data-testid="chat-queued-message">
 							<N8nTooltip
 								v-if="displayedItems.length > 1"
-								:content="locale.baseText('agents.chat.queue.reorderTooltip')"
+								:content="locale.baseText('chat.messageQueue.reorderTooltip')"
 								:disabled="!canDragQueueItem(index)"
 								placement="top"
 							>
@@ -148,12 +137,12 @@ defineExpose({ focusItem });
 									:class="$style.queueDragHandle"
 									:disabled="!canDragQueueItem(index)"
 									:aria-label="
-										locale.baseText('agents.chat.queue.reorder', {
+										locale.baseText('chat.messageQueue.reorder', {
 											interpolate: { position: index + 1, count: displayedItems.length },
 										})
 									"
 									aria-keyshortcuts="ArrowUp ArrowDown"
-									data-testid="agent-queue-drag-handle"
+									data-testid="chat-queue-drag-handle"
 									@keydown="onQueueHandleKeydown($event, index)"
 								/>
 							</N8nTooltip>
@@ -170,11 +159,11 @@ defineExpose({ focusItem });
 									item.message
 								}}</N8nText>
 							</div>
-							<N8nHoverCard v-if="item.attachments?.length" side="top">
+							<N8nHoverCard v-if="item.attachmentNames?.length" side="top">
 								<template #trigger>
 									<span
 										:class="$style.queueIndicator"
-										:aria-label="getAttachmentFileNames(item)"
+										:aria-label="item.attachmentNames?.join(', ')"
 										role="img"
 										tabindex="0"
 									>
@@ -183,43 +172,35 @@ defineExpose({ focusItem });
 								</template>
 								<template #content>
 									<ul :class="$style.queueAttachmentList">
-										<li v-for="attachment in item.attachments" :key="attachment.id">
-											<N8nText size="small">{{ attachment.fileName }}</N8nText>
+										<li v-for="(fileName, index) in item.attachmentNames" :key="index">
+											<N8nText size="small">{{ fileName }}</N8nText>
 										</li>
 									</ul>
 								</template>
 							</N8nHoverCard>
-							<N8nTooltip
-								:content="getQueueNotice(item)"
-								:disabled="!getQueueNotice(item)"
-								placement="top"
-								as-child
-							>
+							<N8nTooltip :content="item.notice" :disabled="!item.notice" placement="top" as-child>
 								<div
-									:class="[
-										$style.queueActions,
-										{ [$style.queueActionsWithNotice]: getQueueNotice(item) },
-									]"
-									:aria-label="getQueueNotice(item)"
-									:tabindex="getQueueNotice(item) ? 0 : undefined"
+									:class="[$style.queueActions, { [$style.queueActionsWithNotice]: item.notice }]"
+									:aria-label="item.notice"
+									:tabindex="item.notice ? 0 : undefined"
 									role="group"
 								>
 									<N8nTooltip
-										v-if="!getQueueNotice(item)"
-										:content="locale.baseText('agents.chat.queue.steerTooltip')"
+										v-if="steerAction && !item.notice"
+										:content="steerAction.tooltip"
 										:disabled="!canSteer || isQueueItemBusy(item)"
 										placement="left"
 									>
 										<N8nButton
 											variant="ghost"
 											size="xsmall"
-											icon="corner-down-right"
+											:icon="steerAction.icon"
 											icon-size="medium"
 											:disabled="!canSteer || isQueueItemBusy(item)"
-											:aria-label="locale.baseText('agents.chat.queue.steer')"
+											:aria-label="steerAction.label"
 											@click="emit('steer', item.id)"
 										>
-											{{ locale.baseText('agents.chat.queue.steer') }}
+											{{ steerAction.label }}
 										</N8nButton>
 									</N8nTooltip>
 									<N8nTooltip
@@ -234,7 +215,7 @@ defineExpose({ focusItem });
 											icon-size="medium"
 											:disabled="!canEdit || isQueueItemBusy(item)"
 											:aria-label="locale.baseText('generic.edit')"
-											@click="emit('edit', item)"
+											@click="emit('edit', item.id)"
 										/>
 									</N8nTooltip>
 									<N8nTooltip
@@ -305,7 +286,7 @@ defineExpose({ focusItem });
 	min-height: 0;
 	overflow-x: hidden;
 	overflow-y: scroll;
-	max-height: 180px;
+	max-height: calc(var(--height--lg) * 5);
 	scrollbar-gutter: stable;
 	@include mixins.hoverable-scroll-bar;
 	@include mixins.scroll-mask(bottom);

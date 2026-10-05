@@ -269,11 +269,10 @@ the top of the composer. Use `--background--subtle` for the queue background.
 Use `--color--neutral-600` for queue text and the Steer label in light mode.
 Use `--text-color--subtler` in dark mode. Use `--color--neutral-400` for all queue
 icons. Use `--border-color--subtle` for the dividers.
-Use `2xs` text and `large` icons. Keep the action targets at least 24 by 24 pixels.
-Keep the first two messages visible.
-Put the third and later messages in a collapsed activity group. Show the number
-of additional pending messages in its header. Keep messages in queue order when
-expanded.
+Use `xs` text and `medium` icons. Keep the action targets at least 24 by 24 pixels.
+Show a single queued message without a toggle or drag handle.
+Collapse the full list when the queue has two or more messages. Show the total
+message count in the header. Keep messages in queue order when expanded.
 Keep pending messages out of the conversation until processing starts. Give each
 message a Remove action. Hide an empty queue section. Removal discards the
 message. It does not restore the composer draft.

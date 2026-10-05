@@ -1,4 +1,4 @@
-import type { AgentChatQueueItem } from '@n8n/api-types';
+import type { ChatMessageQueueSteerAction, ChatMessageQueueItem } from './chatMessageQueue.types';
 import { mount } from '@vue/test-utils';
 import { nextTick } from 'vue';
 import Draggable from 'vuedraggable';
@@ -11,7 +11,7 @@ vi.mock('@n8n/i18n', () => ({
 			key: string,
 			options?: { interpolate?: Record<string, string | number>; adjustToNumber?: number },
 		) => {
-			if (key === 'agents.chat.queue.title') {
+			if (key === 'chat.messageQueue.title') {
 				return `${options?.interpolate?.count} ${options?.adjustToNumber === 1 ? 'message' : 'messages'} up next`;
 			}
 			return key;
@@ -19,38 +19,33 @@ vi.mock('@n8n/i18n', () => ({
 	}),
 }));
 
-const items: AgentChatQueueItem[] = [
+const items: ChatMessageQueueItem[] = [
 	{
 		id: '1',
 		message: 'First message',
-		createdAt: '2026-09-24T12:00:00.000Z',
-		steeringExecutionId: null,
 	},
 	{
 		id: '2',
 		message: '',
-		createdAt: '2026-09-24T12:00:00.000Z',
-		steeringExecutionId: null,
-		attachments: [{ id: 'file-1', fileName: 'notes.txt', mimeType: 'text/plain', sizeBytes: 5 }],
+		attachmentNames: ['notes.txt'],
 	},
 	{
 		id: '3',
 		message: 'Third message',
-		createdAt: '2026-09-24T12:00:00.000Z',
-		steeringExecutionId: null,
 	},
 ];
 
 function mountQueue(
 	overrides: Partial<{
-		displayedItems: AgentChatQueueItem[];
+		displayedItems: ChatMessageQueueItem[];
 
 		expanded: boolean;
 		isReordering: boolean;
 		canEdit: boolean;
+		steerAction: ChatMessageQueueSteerAction;
 		canSteer: boolean;
 		canDragQueueItem: (index: number) => boolean;
-		isQueueItemBusy: (item: AgentChatQueueItem) => boolean;
+		isQueueItemBusy: (item: ChatMessageQueueItem) => boolean;
 	}> = {},
 ) {
 	return mount(ChatMessageQueue, {
@@ -60,6 +55,11 @@ function mountQueue(
 			expanded: false,
 			isReordering: false,
 			canEdit: true,
+			steerAction: {
+				label: 'Send now',
+				tooltip: 'Send to the active turn',
+				icon: 'corner-down-right',
+			},
 			canSteer: true,
 			canDragQueueItem: () => true,
 			isQueueItemBusy: () => false,
@@ -73,7 +73,7 @@ describe('ChatMessageQueue', () => {
 	it('renders the supplied items and attachment names', () => {
 		const wrapper = mountQueue({ displayedItems: items.slice(0, 2) });
 
-		expect(wrapper.findAll('[data-testid="agent-queued-message"]')).toHaveLength(2);
+		expect(wrapper.findAll('[data-testid="chat-queued-message"]')).toHaveLength(2);
 		expect(wrapper.get('[data-queue-id="1"] [title]').text()).toBe('First message');
 		expect(wrapper.find('[aria-label="notes.txt"]').exists()).toBe(true);
 	});
@@ -95,7 +95,7 @@ describe('ChatMessageQueue', () => {
 		});
 
 		expect(wrapper.find('button[aria-expanded]').exists()).toBe(false);
-		expect(wrapper.find('[data-testid="agent-queue-drag-handle"]').exists()).toBe(false);
+		expect(wrapper.find('[data-testid="chat-queue-drag-handle"]').exists()).toBe(false);
 	});
 
 	it.each([
@@ -104,7 +104,7 @@ describe('ChatMessageQueue', () => {
 	])('requests a keyboard move with $key', async ({ key, to }) => {
 		const wrapper = mountQueue({ expanded: true });
 		await wrapper
-			.get('[data-queue-id="2"] [data-testid="agent-queue-drag-handle"]')
+			.get('[data-queue-id="2"] [data-testid="chat-queue-drag-handle"]')
 			.trigger('keydown', { key });
 		expect(wrapper.emitted('move')).toEqual([[{ from: 1, to }]]);
 	});
@@ -112,7 +112,7 @@ describe('ChatMessageQueue', () => {
 	it('ignores keyboard moves while saving the queue order', async () => {
 		const wrapper = mountQueue({ expanded: true, isReordering: true });
 		await wrapper
-			.get('[data-testid="agent-queue-drag-handle"]')
+			.get('[data-testid="chat-queue-drag-handle"]')
 			.trigger('keydown', { key: 'ArrowDown' });
 		expect(wrapper.emitted('move')).toBeUndefined();
 	});
@@ -133,17 +133,17 @@ describe('ChatMessageQueue', () => {
 	it('emits the selected queue actions', async () => {
 		const wrapper = mountQueue({ displayedItems: [items[0]] });
 
-		await wrapper.get('[aria-label="agents.chat.queue.steer"]').trigger('click');
+		await wrapper.get('[aria-label="Send now"]').trigger('click');
 		await wrapper.get('[aria-label="generic.edit"]').trigger('click');
 		await wrapper.get('[aria-label="generic.delete"]').trigger('click');
 
 		expect(wrapper.emitted('steer')).toEqual([['1']]);
-		expect(wrapper.emitted('edit')).toEqual([[items[0]]]);
+		expect(wrapper.emitted('edit')).toEqual([['1']]);
 		expect(wrapper.emitted('remove')).toEqual([['1']]);
 	});
 
 	it('disables actions and dragging for a busy item', () => {
-		const busyItem = { ...items[0], steeringExecutionId: 'execution-1' };
+		const busyItem = { ...items[0], notice: 'Waiting for the next step' };
 		const wrapper = mountQueue({
 			displayedItems: [busyItem, items[1]],
 
@@ -152,12 +152,26 @@ describe('ChatMessageQueue', () => {
 		});
 		const row = wrapper.get('[data-queue-id="1"]');
 
-		expect(row.get('[role="group"]').attributes('aria-label')).toBe('agents.chat.queue.steering');
-		expect(row.get('[data-testid="agent-queue-drag-handle"]').attributes('disabled')).toBeDefined();
-		expect(row.find('[aria-label="agents.chat.queue.steer"]').exists()).toBe(false);
+		expect(row.get('[role="group"]').attributes('aria-label')).toBe('Waiting for the next step');
+		expect(row.get('[data-testid="chat-queue-drag-handle"]').attributes('disabled')).toBeDefined();
+		expect(row.find('[aria-label="Send now"]').exists()).toBe(false);
 		for (const label of ['generic.edit', 'generic.delete']) {
 			expect(row.get(`[aria-label="${label}"]`).attributes('disabled')).toBeDefined();
 		}
+	});
+
+	it('renders without a steer action', () => {
+		const wrapper = mountQueue({ displayedItems: [items[0]], steerAction: undefined });
+
+		expect(wrapper.find('[aria-label="Send now"]').exists()).toBe(false);
+		expect(wrapper.find('[aria-label="generic.edit"]').exists()).toBe(true);
+		expect(wrapper.find('[aria-label="generic.delete"]').exists()).toBe(true);
+	});
+
+	it('disables the steer action when it is not available', () => {
+		const wrapper = mountQueue({ displayedItems: [items[0]], canSteer: false });
+
+		expect(wrapper.get('[aria-label="Send now"]').attributes('disabled')).toBeDefined();
 	});
 
 	it('disables editing independently from other available actions', () => {

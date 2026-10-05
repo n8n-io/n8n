@@ -94,7 +94,7 @@ vi.mock('@n8n/i18n', () => {
 	) => {
 		const translations: Record<string, string> = {
 			'agents.chat.input.placeholder.withAgent': `Message ${options?.interpolate?.agentName}…`,
-			'agents.chat.queue.title': `${options?.interpolate?.count} ${options?.adjustToNumber === 1 ? 'message' : 'messages'} up next`,
+			'chat.messageQueue.title': `${options?.interpolate?.count} ${options?.adjustToNumber === 1 ? 'message' : 'messages'} up next`,
 			'agents.chat.misconfigured.issuesPrefix': 'Check:',
 			'agents.chat.misconfigured.missing.tools': 'Tool configuration',
 			'agents.chat.misconfigured.missing.mcpServers': 'MCP server',
@@ -695,17 +695,17 @@ describe('AgentChatPanel', () => {
 		isStreamingMock.value = true;
 		const wrapper = mountPanel({ backgroundJobsActive: true });
 		const composer = wrapper.findComponent({ name: 'ChatInputBase' });
-		expect(composer.find('[data-testid="agent-message-queue"]').exists()).toBe(true);
+		expect(composer.find('[data-testid="chat-message-queue"]').exists()).toBe(true);
 		expect(composer.find('[data-testid="agent-background-jobs"]').exists()).toBe(false);
-		expect(wrapper.find('[data-testid="agent-message-queue"] [aria-expanded]').exists()).toBe(true);
+		expect(wrapper.find('[data-testid="chat-message-queue"] [aria-expanded]').exists()).toBe(true);
 		expect(
 			wrapper
-				.findAll('[data-testid="agent-queued-message"]')
+				.findAll('[data-testid="chat-queued-message"]')
 				.map((row) => row.get('[title]').text()),
 		).toEqual(['Next message', '']);
 		expect(wrapper.find('[aria-label="notes.txt"]').exists()).toBe(true);
 		expect(wrapper.html().indexOf('agent-background-jobs')).toBeLessThan(
-			wrapper.html().indexOf('agent-message-queue'),
+			wrapper.html().indexOf('chat-message-queue'),
 		);
 		expect(messagesMock.value).toEqual([]);
 		const removeButtons = wrapper.findAll('[aria-label="generic.delete"]');
@@ -713,7 +713,7 @@ describe('AgentChatPanel', () => {
 		expect(removeQueuedMessageMock).toHaveBeenCalledWith('2');
 		queuedMessagesMock.value = [];
 		await nextTick();
-		expect(wrapper.find('[data-testid="agent-message-queue"]').exists()).toBe(false);
+		expect(wrapper.find('[data-testid="chat-message-queue"]').exists()).toBe(false);
 		expect(wrapper.find('[data-testid="agent-background-jobs"]').exists()).toBe(true);
 		wrapper.unmount();
 	});
@@ -729,11 +729,11 @@ describe('AgentChatPanel', () => {
 		const container = document.createElement('div');
 		document.body.append(container);
 		const wrapper = mountPanel({}, container);
-		const queue = wrapper.get('[data-testid="agent-message-queue"]');
+		const queue = wrapper.get('[data-testid="chat-message-queue"]');
 		const draggable = wrapper.getComponent(Draggable);
 		expect(
 			queue
-				.get('[data-queue-id="1"] [data-testid="agent-queue-drag-handle"]')
+				.get('[data-queue-id="1"] [data-testid="chat-queue-drag-handle"]')
 				.attributes('disabled'),
 		).toBeDefined();
 		const saved = createDeferredPromise<void>();
@@ -755,7 +755,7 @@ describe('AgentChatPanel', () => {
 		draggable.vm.$emit('end', { oldIndex: 1, newIndex: 3 });
 		await nextTick();
 		expect(reorderQueuedMessageMock).toHaveBeenCalledWith('2', '4', ['2', '3', '4']);
-		for (const button of queue.findAll('[data-testid="agent-queue-drag-handle"]')) {
+		for (const button of queue.findAll('[data-testid="chat-queue-drag-handle"]')) {
 			expect(button.attributes('disabled')).toBeDefined();
 		}
 		expect(queue.findAll('li').map((row) => row.attributes('data-queue-id'))).toEqual([
@@ -766,7 +766,7 @@ describe('AgentChatPanel', () => {
 		]);
 		saved.resolve();
 		await flushPromises();
-		const handle = queue.get('[data-queue-id="2"] [data-testid="agent-queue-drag-handle"]');
+		const handle = queue.get('[data-queue-id="2"] [data-testid="chat-queue-drag-handle"]');
 		expect(document.activeElement).toBe(handle.element);
 		expect(reorderQueuedMessageMock).toHaveBeenCalledTimes(1);
 		expect(stopGeneratingMock).not.toHaveBeenCalled();
@@ -791,12 +791,12 @@ describe('AgentChatPanel', () => {
 		try {
 			await wrapper.get('button[aria-expanded]').trigger('click');
 			await wrapper
-				.get('[data-queue-id="1"] [data-testid="agent-queue-drag-handle"]')
+				.get('[data-queue-id="1"] [data-testid="chat-queue-drag-handle"]')
 				.trigger('keydown', { key: 'ArrowDown' });
 			await flushPromises();
 			expect(reorderQueuedMessageMock).toHaveBeenCalledWith('1', '2', ['1', '2', '3']);
 			expect(document.activeElement).toBe(
-				wrapper.get('[data-queue-id="1"] [data-testid="agent-queue-drag-handle"]').element,
+				wrapper.get('[data-queue-id="1"] [data-testid="chat-queue-drag-handle"]').element,
 			);
 		} finally {
 			wrapper.unmount();
@@ -845,7 +845,7 @@ describe('AgentChatPanel', () => {
 		await flushPromises();
 		expect(removeQueuedMessageMock).toHaveBeenCalledExactlyOnceWith('1');
 		expect(composer.props('modelValue')).toBe('original');
-		expect(wrapper.find('[data-testid="agent-queued-message"]').exists()).toBe(false);
+		expect(wrapper.find('[data-testid="chat-queued-message"]').exists()).toBe(false);
 		expect(sendMessageMock).not.toHaveBeenCalled();
 		composer.vm.$emit('update:modelValue', 'updated');
 		composer.vm.$emit('submit');
@@ -1030,7 +1030,7 @@ describe('AgentChatPanel', () => {
 		await wrapper.get('[aria-label="generic.edit"]').trigger('click');
 		await flushPromises();
 		expect(wrapper.findComponent({ name: 'ChatInputBase' }).props('modelValue')).toBe('');
-		expect(wrapper.get('[data-testid="agent-queued-message"]').text()).toContain('original');
+		expect(wrapper.get('[data-testid="chat-queued-message"]').text()).toContain('original');
 		wrapper.unmount();
 	});
 
@@ -2867,7 +2867,7 @@ describe('AgentPreviewDock stream lifecycle', () => {
 		const wrapper = mountPreviewDock();
 		try {
 			const composer = wrapper.findComponent({ name: 'ChatInputBase' });
-			expect(wrapper.find('[data-testid="agent-message-queue"]').exists()).toBe(false);
+			expect(wrapper.find('[data-testid="chat-message-queue"]').exists()).toBe(false);
 			composer.vm.$emit('update:modelValue', 'Message from the dock');
 			await nextTick();
 			composer.vm.$emit('submit');

@@ -37,6 +37,10 @@ import { useToast } from '@n8n/composables/useToast';
 import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
 import ChatInputBase from '@/features/ai/shared/components/ChatInputBase.vue';
 import ChatMessageQueue from '@/features/ai/shared/components/ChatMessageQueue.vue';
+import type {
+	ChatMessageQueueSteerAction,
+	ChatMessageQueueItem,
+} from '@/features/ai/shared/components/chatMessageQueue.types';
 import AttachmentPreview from '@/features/ai/instanceAi/components/AttachmentPreview.vue';
 import { useAgentChatStream } from '../composables/useAgentChatStream';
 import {
@@ -210,6 +214,30 @@ const messageQueue = useTemplateRef<InstanceType<typeof ChatMessageQueue>>('mess
 const queueExpanded = ref(false);
 const queueOrder = shallowRef<AgentChatQueueItem[]>();
 const displayedQueueRows = computed(() => queueOrder.value ?? queueRows.value);
+const queueDisplayItems = computed<ChatMessageQueueItem[]>(() =>
+	displayedQueueRows.value.map((item) => ({
+		id: item.id,
+		message: item.message,
+		attachmentNames: item.attachments?.map((attachment) => attachment.fileName),
+		notice: item.steeringExecutionId ? locale.baseText('agents.chat.queue.steering') : undefined,
+	})),
+);
+const queueSteerAction = computed<ChatMessageQueueSteerAction>(() => ({
+	label: locale.baseText('agents.chat.queue.steer'),
+	tooltip: locale.baseText('agents.chat.queue.steerTooltip'),
+	icon: 'corner-down-right',
+}));
+
+function isDisplayedQueueItemBusy(item: ChatMessageQueueItem) {
+	const queuedItem = displayedQueueRows.value.find((entry) => entry.id === item.id);
+	return !queuedItem || isQueueItemBusy(queuedItem);
+}
+
+function editQueuedMessage(id: string) {
+	const item = queuedMessages.value.find((entry) => entry.id === id);
+	if (item) void startQueueEdit(item);
+}
+
 async function startQueueEdit(item: AgentChatQueueItem) {
 	if (hasDraft.value || isQueueItemBusy(item) || isSubmissionBlocked.value) return;
 	queueExpanded.value = true;
@@ -1343,20 +1371,21 @@ onBeforeUnmount(() => {
 						<ChatMessageQueue
 							v-if="displayedQueueRows.length"
 							ref="messageQueue"
-							:displayed-items="displayedQueueRows"
+							:displayed-items="queueDisplayItems"
 							:expanded="queueExpanded"
 							:is-reordering="isReorderingQueue"
 							:can-edit="!hasDraft && !isSubmissionBlocked"
+							:steer-action="queueSteerAction"
 							:can-steer="canSteer"
 							:can-drag-queue-item="canDragQueueItem"
-							:is-queue-item-busy="isQueueItemBusy"
+							:is-queue-item-busy="isDisplayedQueueItemBusy"
 							:can-drop-queue-item="canDropQueueItem"
 							@update:expanded="queueExpanded = $event"
 							@drag-start="startQueueDrag"
 							@drag-end="endQueueDrag"
 							@move="moveQueueItem(queueRows, $event.from, $event.to)"
 							@steer="steerQueuedMessage"
-							@edit="startQueueEdit"
+							@edit="editQueuedMessage"
 							@remove="removeQueuedMessage"
 						/>
 					</template>
