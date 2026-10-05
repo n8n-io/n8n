@@ -252,13 +252,35 @@ export class ReproStack {
 		return id;
 	}
 
-	async webhook(path: string, payload: unknown = {}) {
-		const res = await fetch(`${this.baseUrl}/webhook/${path}`, {
-			method: 'POST',
-			headers: { 'content-type': 'application/json' },
-			body: JSON.stringify(payload),
-		});
-		return { status: res.status, body: await res.text() };
+	/** Calls a production webhook; retries while the webhook is not registered yet, since activation can finish after its response. */
+	async webhook(path: string, payload: unknown = {}, registerTimeoutMs = 15_000) {
+		const deadline = Date.now() + registerTimeoutMs;
+		for (;;) {
+			const res = await fetch(`${this.baseUrl}/webhook/${path}`, {
+				method: 'POST',
+				headers: { 'content-type': 'application/json' },
+				body: JSON.stringify(payload),
+			});
+			const body = await res.text();
+			if (res.status !== 404 || !body.includes('is not registered') || Date.now() > deadline) {
+				return { status: res.status, body };
+			}
+			await new Promise((r) => setTimeout(r, 250));
+		}
+	}
+
+	/** Waits until a production webhook path is registered, without starting the workflow. */
+	async waitForWebhook(path: string, timeoutMs = 15_000) {
+		await until(
+			`webhook ${path} registered`,
+			async () => {
+				const res = await fetch(`${this.baseUrl}/webhook/${path}`, { method: 'OPTIONS' });
+				const body = await res.text();
+				return !(res.status === 404 && body.includes('is not registered'));
+			},
+			timeoutMs,
+			250,
+		);
 	}
 
 	/** Fires a webhook without waiting; `result` settles with the response or the abort. */
@@ -568,6 +590,8 @@ export class Scenario {
 
 	private readonly timeline: Array<{ step: string; ms: number; note?: unknown }> = [];
 
+	private logsCollected = false;
+
 	constructor(
 		readonly name: string,
 		readonly repro: ReproStack,
@@ -609,6 +633,7 @@ export class Scenario {
 
 	/** Writes every n8n container log to the output dir and returns them by name. */
 	async collectLogs(): Promise<Record<string, string>> {
+		this.logsCollected = true;
 		const out: Record<string, string> = {};
 		const dir = join(this.outputDir, 'logs');
 		mkdirSync(dir, { recursive: true });
@@ -631,6 +656,7 @@ export class Scenario {
 		} catch (error) {
 			threw = true;
 			this.result.error = error instanceof Error ? error.message : String(error);
+			if (!this.logsCollected) await this.collectLogs().catch(() => undefined);
 			throw error;
 		} finally {
 			this.finish(!threw && testInfo.errors.length === 0);

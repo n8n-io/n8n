@@ -3,8 +3,9 @@ import { expect, test } from '@playwright/test';
 import { FILES, hook, ReproStack, Scenario, signal, waitForExit } from './harness';
 import { chain, nodes, webhookPath } from './workflows';
 
-const GRACE_S = 60;
 const EXTERNAL = process.env.REPRO_RUNNERS === 'external';
+// The external runner container keeps its own 60 s task timeout, so its window stays below that.
+const GRACE_S = EXTERNAL ? 40 : 60;
 
 test('worker drain: a task longer than the shutdown window ends inside it', async ({}, testInfo) => {
 	test.setTimeout(400_000);
@@ -45,7 +46,9 @@ test('worker drain: a task longer than the shutdown window ends inside it', asyn
 
 		const point = hook(repro.workers(), 'task-in-flight');
 		const hit = point.waitHit(30_000);
-		await s.step('webhook', async () => await repro.webhook(path));
+		const response = await s.step('webhook', async () => await repro.webhook(path));
+		s.set({ webhook: response });
+		expect(response.status, `webhook response: ${response.body}`).toBe(200);
 		const { container: draining, detail } = await hit;
 		s.mark('task-in-flight', detail);
 		const [executionId] = await repro.executionsOf(workflowId);

@@ -53,6 +53,7 @@ test('stalled job that succeeded: main settles the execution and shuts down clea
 			await complete.arm();
 		});
 
+		await repro.waitForWebhook(path);
 		const hit = complete.waitHit(30_000);
 		const request = repro.webhookInBackground(path);
 		const { detail } = await hit;
