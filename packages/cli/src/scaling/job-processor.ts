@@ -108,6 +108,9 @@ export class JobProcessor {
 	/** Cause of the cancellation of each job cancelled so far, kept until its run settles. */
 	private readonly cancellationReasons: Record<JobId, CancellationReason> = {};
 
+	/** Set once at shutdown; jobs that register afterwards suspend right away. */
+	private suspensionRequested = false;
+
 	constructor(
 		private readonly logger: Logger,
 		private readonly executionRepository: ExecutionRepository,
@@ -607,9 +610,6 @@ export class JobProcessor {
 	 * pinned to their session. A pending webhook response is checked at
 	 * suspend time, since the run may still send it.
 	 */
-	/** Set once at shutdown; jobs that register afterwards suspend right away. */
-	private suspensionRequested = false;
-
 	private isJobSuspendable(job: Job, execution: IExecutionResponse): boolean {
 		return (
 			SUSPENDABLE_EXECUTION_MODES.has(execution.mode) &&
