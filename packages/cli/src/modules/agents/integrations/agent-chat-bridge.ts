@@ -411,26 +411,14 @@ export class AgentChatBridge {
 		});
 
 		this.chat.onSubscribedMessage(async (thread, message) => {
-			try {
-				await this.handleFollowUp(thread, message, { inSubscribedThread: true });
-			} catch (error) {
-				await this.postErrorToThread(thread, error);
-			}
+			await this.handleFollowUp(thread, message, { inSubscribedThread: true });
 		});
 
 		if (this.integrationImpl?.shouldHandleUnmentionedMessage) {
 			// No subscribe: a later message is routed here again, so the platform
 			// decides each time, and turning read-all off takes effect at once.
 			this.chat.onNewMessage(/[\s\S]*/, async (thread, message) => {
-				try {
-					await this.handleFollowUp(thread, message, { inSubscribedThread: false });
-				} catch (error) {
-					// Nobody asked the agent here, so an error post would be noise.
-					this.logger.warn('Failed to handle an un-mentioned message', {
-						agentId: this.agentId,
-						error: error instanceof Error ? error.message : String(error),
-					});
-				}
+				await this.handleFollowUp(thread, message, { inSubscribedThread: false });
 			});
 		}
 
@@ -471,26 +459,38 @@ export class AgentChatBridge {
 		message: Message,
 		{ inSubscribedThread }: { inSubscribedThread: boolean },
 	): Promise<void> {
-		if (!this.canUserAccess(message.author)) return;
 		const unaddressed =
 			!message.isMention && this.integrationImpl?.shouldHandleUnmentionedMessage !== undefined;
-		if (
-			unaddressed &&
-			!this.integrationImpl?.shouldHandleUnmentionedMessage?.({
-				thread,
-				message,
-				integration: this.integration,
-			})
-		) {
-			return;
+		try {
+			if (!this.canUserAccess(message.author)) return;
+			if (
+				unaddressed &&
+				!this.integrationImpl?.shouldHandleUnmentionedMessage?.({
+					thread,
+					message,
+					integration: this.integration,
+				})
+			) {
+				return;
+			}
+			const anchoredThread = this.anchorInboundThread(thread, message);
+			await this.handleInboundMessage(anchoredThread, message, {
+				isNewMention: false,
+				inSubscribedThread,
+				// Anyone in a read-all conversation could otherwise reset its session.
+				allowReset: !unaddressed,
+			});
+		} catch (error) {
+			if (!unaddressed) {
+				await this.postErrorToThread(thread, error);
+				return;
+			}
+			// Nobody asked the agent here, so an error post would be noise.
+			this.logger.warn('Failed to handle an un-mentioned message', {
+				agentId: this.agentId,
+				error: error instanceof Error ? error.message : String(error),
+			});
 		}
-		const anchoredThread = this.anchorInboundThread(thread, message);
-		await this.handleInboundMessage(anchoredThread, message, {
-			isNewMention: false,
-			inSubscribedThread,
-			// Anyone in a read-all conversation could otherwise reset its session.
-			allowReset: !unaddressed,
-		});
 	}
 
 	private canUserAccess(author: Author): boolean {

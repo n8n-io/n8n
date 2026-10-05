@@ -3847,6 +3847,8 @@ class ListeningTestIntegration extends AgentChatIntegration {
 	readonly description = '';
 	readonly displayLabel = 'Test Listening';
 	readonly displayIcon = 'circle';
+	// Teams buffers outside DMs, which is where messages without a mention arrive.
+	readonly disableStreaming = true;
 	shouldHandleUnmentionedMessage({ message }: { message: { text: string } }): boolean {
 		return message.text !== 'ignore me';
 	}
@@ -3995,6 +3997,43 @@ describe('AgentChatBridge — un-mentioned messages', () => {
 			await handlers.newMessage!(thread, { id: 'm1', text: 'hello there', author });
 
 			expect(thread.post).not.toHaveBeenCalled();
+		});
+
+		it('does not post an error when a reply the agent chose to send fails to post', async () => {
+			const handlers = makeFailingBridge(
+				makeAgentExecutor([
+					{ type: 'text-delta', id: 't1', delta: 'hi there' },
+					{ type: 'finish', finishReason: 'stop' },
+				] as StreamChunk[]),
+			);
+			const thread = makeThread();
+			thread.post.mockRejectedValue(new Error('Teams refused the post'));
+
+			await handlers.newMessage!(thread, { id: 'm1', text: 'hello there', author });
+
+			const posted = thread.post.mock.calls.map(([arg]) => arg);
+			expect(posted.filter((arg) => typeof arg === 'string' && arg.startsWith('⚠️'))).toEqual([]);
+		});
+
+		it('does not post an error when an unaddressed follow-up fails before it is queued', async () => {
+			const { handlers, queue } = makeBridge('test-listening');
+			queue.enqueue.mockRejectedValue(new Error('queue down'));
+			const thread = makeThread();
+
+			await handlers.subscribed!(thread, { id: 'm1', text: 'hello there', author });
+
+			expect(queue.enqueue).toHaveBeenCalledTimes(1);
+			expect(thread.post).not.toHaveBeenCalled();
+		});
+
+		it('posts the error when a mentioned follow-up fails before it is queued', async () => {
+			const { handlers, queue } = makeBridge('test-listening');
+			queue.enqueue.mockRejectedValue(new Error('queue down'));
+			const thread = makeThread();
+
+			await handlers.subscribed!(thread, { id: 'm1', text: 'hello', isMention: true, author });
+
+			expect(thread.post).toHaveBeenCalledWith(GENERIC_ERROR_MESSAGE);
 		});
 
 		it('still posts the error when the agent was mentioned', async () => {

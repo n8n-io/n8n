@@ -207,7 +207,7 @@ export class AgentChatStreamConsumer {
 			}
 			const text = pendingText;
 			pendingText = '';
-			if (text.trim()) await this.postBufferedText(thread, text);
+			if (text.trim()) await this.postBufferedText(thread, text, responseState);
 		};
 
 		// Don't start streaming post eagerly — wait for first text delta
@@ -285,6 +285,7 @@ export class AgentChatStreamConsumer {
 	private async postBufferedText(
 		thread: Thread<unknown, unknown>,
 		text: string,
+		state: ResponseState,
 		throwOnDeliveryError = false,
 	): Promise<void> {
 		try {
@@ -294,7 +295,7 @@ export class AgentChatStreamConsumer {
 				error: postError instanceof Error ? postError.message : String(postError),
 			});
 			if (throwOnDeliveryError) throw postError;
-			await this.options.postErrorToThread(thread, postError);
+			await this.postError(thread, postError, state);
 		}
 	}
 
@@ -404,7 +405,7 @@ export class AgentChatStreamConsumer {
 			buffer = '';
 			if (!text.trim()) return;
 			await responseLifecycle.startDiscreteResponse();
-			await this.postBufferedText(thread, text, options.throwOnDeliveryError);
+			await this.postBufferedText(thread, text, responseState, options.throwOnDeliveryError);
 			responseState.hasVisibleResponse = true;
 		};
 
