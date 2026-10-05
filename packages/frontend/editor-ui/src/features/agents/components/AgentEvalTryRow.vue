@@ -17,7 +17,10 @@ import {
 	type TextColor,
 } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
+import { MODAL_CONFIRM } from '@/app/constants';
 import type { ToolCall } from '@/features/ai/shared/agentsChat/types';
+import { useAgentConfirmationModal } from '../composables/useAgentConfirmationModal';
+import { usePracticeRunBannerDismissal } from '../composables/usePracticeRunBannerDismissal';
 import AgentAvatar, { type AgentAvatarKind } from './AgentAvatar.vue';
 import EvalInitialSample from './EvalInitialSample.vue';
 
@@ -59,9 +62,14 @@ const emit = defineEmits<{
 	'rerun-check': [];
 	/** The rule's edited text, from the pencil icon's inline editor. */
 	'save-what-to-check': [text: string];
+	/** The trash icon's confirmed delete — this case and its example. */
+	'delete-check': [];
 }>();
 
 const i18n = useI18n();
+const { dismissed: practiceBannerDismissed, dismiss: dismissPracticeBanner } =
+	usePracticeRunBannerDismissal();
+const { openAgentConfirmationModal } = useAgentConfirmationModal();
 
 const expanded = ref(false);
 const suggestion = ref('');
@@ -130,6 +138,22 @@ function onCancelEditWhatToCheck() {
 	editingWhatToCheck.value = false;
 }
 
+async function onDeleteCheck() {
+	const confirmed = await openAgentConfirmationModal({
+		title: i18n.baseText('instanceAi.testAgentPreview.deleteCheck.confirm.title', {
+			interpolate: { title: props.input },
+		}),
+		description: i18n.baseText('instanceAi.testAgentPreview.deleteCheck.confirm.description'),
+		confirmButtonText: i18n.baseText(
+			'instanceAi.testAgentPreview.deleteCheck.confirm.confirmButton',
+		),
+		cancelButtonText: i18n.baseText('instanceAi.testAgentPreview.deleteCheck.confirm.cancelButton'),
+	});
+	if (confirmed !== MODAL_CONFIRM) return;
+
+	emit('delete-check');
+}
+
 // Once the parent accepts or regenerates this case, its status moves away
 // from needing correction — clear the note so a later failure starts blank
 // rather than reshowing stale text.
@@ -144,7 +168,7 @@ watch(
 <template>
 	<div :class="$style.root" :data-test-id="testId">
 		<div v-if="view === 'complete'" :class="$style.header" @click="toggleExpanded">
-			<AgentAvatar :kind="status" size="sm" />
+			<AgentAvatar :kind="status" size="md" />
 			<div :class="$style.headerTitle">
 				<N8nText color="text-dark" size="medium" bold>{{ input }}</N8nText>
 				<N8nText :color="statusColor" size="small">{{ statusText }}</N8nText>
@@ -196,20 +220,34 @@ watch(
 					<N8nText bold color="text-dark" size="medium">{{
 						i18n.baseText('instanceAi.testAgentPreview.rule')
 					}}</N8nText>
-					<N8nButton
-						v-if="!editingWhatToCheck"
-						variant="subtle"
-						size="small"
-						icon-only
-						:disabled="disabled"
-						:aria-label="i18n.baseText('instanceAi.testAgentPreview.editRule')"
-						:data-test-id="testId && `${testId}-edit-rule`"
-						@click="onStartEditWhatToCheck"
-					>
-						<template #icon>
-							<N8nIcon icon="pencil" size="small" />
-						</template>
-					</N8nButton>
+					<div v-if="!editingWhatToCheck" :class="$style.whatToCheckActions">
+						<N8nButton
+							variant="subtle"
+							size="small"
+							icon-only
+							:disabled="disabled"
+							:aria-label="i18n.baseText('instanceAi.testAgentPreview.editRule')"
+							:data-test-id="testId && `${testId}-edit-rule`"
+							@click="onStartEditWhatToCheck"
+						>
+							<template #icon>
+								<N8nIcon icon="pencil" size="small" />
+							</template>
+						</N8nButton>
+						<N8nButton
+							variant="subtle"
+							size="small"
+							icon-only
+							:disabled="disabled"
+							:aria-label="i18n.baseText('instanceAi.testAgentPreview.deleteCheck.label')"
+							:data-test-id="testId && `${testId}-delete-check`"
+							@click="onDeleteCheck"
+						>
+							<template #icon>
+								<N8nIcon icon="trash-2" size="small" />
+							</template>
+						</N8nButton>
+					</div>
 				</div>
 
 				<N8nText v-if="!editingWhatToCheck" color="text-dark" size="medium">{{
@@ -243,14 +281,33 @@ watch(
 					</N8nButton>
 				</div>
 			</div>
-			<EvalInitialSample
-				:preview-input="input"
-				:preview-output="output ?? ''"
-				:error-message="errorMessage ?? undefined"
-				:status="status"
-				:tool-calls="toolCalls"
-				:project-id="projectId"
-			/>
+			<N8nText bold color="text-dark" size="medium">{{
+				i18n.baseText('instanceAi.testAgentPreview.conversation')
+			}}</N8nText>
+			<div>
+				<EvalInitialSample
+					:preview-input="input"
+					:preview-output="output ?? ''"
+					:error-message="errorMessage ?? undefined"
+					:status="status"
+					:tool-calls="toolCalls"
+					:project-id="projectId"
+				/>
+				<div v-if="!practiceBannerDismissed" :class="$style.practiceBanner">
+					<N8nText size="small">
+						<strong> {{ i18n.baseText('instanceAi.testAgentPreview.practiceRunTitle') }}. </strong>
+						{{ i18n.baseText('instanceAi.testAgentPreview.practiceRunDescription') }}
+					</N8nText>
+					<N8nButton
+						variant="ghost"
+						size="xsmall"
+						:data-test-id="testId && `${testId}-practice-banner-dismiss`"
+						@click="dismissPracticeBanner"
+					>
+						{{ i18n.baseText('instanceAi.testAgentPreview.gotIt') }}
+					</N8nButton>
+				</div>
+			</div>
 
 			<template v-if="needsCorrection">
 				<template v-if="!hideRevise">
@@ -345,6 +402,12 @@ watch(
 	gap: var(--spacing--2xs);
 }
 
+.whatToCheckActions {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--3xs);
+}
+
 .whatToCheckEdit {
 	display: flex;
 	align-items: center;
@@ -367,11 +430,9 @@ watch(
 }
 
 .sample {
-	margin-top: var(--spacing--xs);
-	border: var(--border);
-	padding: var(--spacing--sm);
-	border-radius: var(--radius--lg);
-	background-color: var(--color--background);
+	border-left: var(--border);
+	padding: var(--spacing--2xs) var(--spacing--sm) var(--spacing--sm) 32px;
+	margin-left: var(--spacing--xs);
 }
 
 .correctionHint {
@@ -385,5 +446,21 @@ watch(
 	align-items: center;
 	gap: var(--spacing--2xs);
 	margin-top: var(--spacing--2xs);
+}
+
+.practiceBanner {
+	margin-top: -10px;
+	border: var(--border);
+	border-color: var(--callout--border-color--warning);
+	background-color: var(--callout--color--background--warning);
+	color: var(--callout--color--text--warning);
+	display: flex;
+	gap: 1em;
+	justify-content: space-between;
+	align-items: center;
+
+	border-radius: 0 0 var(--radius--lg) var(--radius--lg);
+	display: flex;
+	padding: 9px 10px 9px 12px;
 }
 </style>

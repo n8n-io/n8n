@@ -409,6 +409,34 @@ async function onUpdateWhatToCheck({
 	}
 }
 
+async function onDeleteCase(rowId: number) {
+	const source = resolveSuiteSource();
+	if (!source) return;
+	const { projectId, agentId } = props.target;
+	// Null only before the run starts seeding results — "delete check" isn't
+	// reachable from the UI that early, but a missing result is no reason to
+	// block removing the row itself.
+	const resultId = suiteCaseRuns.value?.find((run) => run.rowId === rowId)?.resultId ?? null;
+
+	try {
+		const deleted = await store.deleteCase(projectId, source, rowId);
+		if (!isMounted) return;
+		if (!deleted) {
+			toast.showError(
+				new Error('Failed to remove the test case'),
+				i18n.baseText('agents.builder.agentEvals.case.removeError'),
+			);
+			return;
+		}
+		if (resultId) await store.deleteResult(projectId, agentId, resultId);
+		if (!isMounted) return;
+		suiteCaseRows.value = suiteCaseRows.value?.filter((c) => c.rowId !== rowId) ?? null;
+	} catch (error) {
+		if (!isMounted) return;
+		toast.showError(error, i18n.baseText('agents.builder.agentEvals.case.removeError'));
+	}
+}
+
 async function onReviseCase({ rowId, suggestion }: { rowId: number; suggestion: string }) {
 	// One rerun covers every row, so a second revision while the first is still
 	// in flight would race it for the same dataset and run — the singleton
@@ -610,6 +638,7 @@ function onDontCreateEvals() {
 				@revise-case="onReviseCase"
 				@rerun-case="onRerunCase"
 				@update-what-to-check="onUpdateWhatToCheck"
+				@delete-case="onDeleteCase"
 			/>
 		</template>
 	</div>

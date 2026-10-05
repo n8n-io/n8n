@@ -253,6 +253,16 @@ export class AgentEvalService {
 		return toResultRecord(updated);
 	}
 
+	// Drops one case's result from its run. The run's own recorded counts and
+	// metrics are left as they were — this edits the suite going forward, not
+	// the history of what that run measured.
+	async deleteResult(agentId: string, projectId: string, resultId: string): Promise<void> {
+		await this.assertAgentInProject(agentId, projectId);
+		const result = await this.resolveResult(agentId, resultId);
+		const deleted = await this.resultRepository.deleteById(resultId, result.runId);
+		if (!deleted) throw new NotFoundError(`Agent eval result ${resultId} not found.`);
+	}
+
 	// Sets the flag rather than stopping anything: running cases abort at their next
 	// checkpoint, so the returned run is still `running` and settles shortly after.
 	async cancelRun(agentId: string, projectId: string, runId: string): Promise<AgentEvalRunRecord> {

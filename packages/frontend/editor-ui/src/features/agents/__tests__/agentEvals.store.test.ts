@@ -1138,6 +1138,40 @@ describe('useAgentEvalsStore', () => {
 		});
 	});
 
+	describe('removeCachedResult', () => {
+		it('drops the result from the cached page and decrements the count', async () => {
+			mockRun({ results: [result('c1'), result('c2')], count: 5, ratings: [] });
+			const store = useAgentEvalsStore();
+			await store.openRun(PROJECT_ID, AGENT_ID, RUN_ID);
+
+			store.removeCachedResult(RUN_ID, 'c1');
+
+			const review = store.getReview(RUN_ID);
+			expect(review.results.map((r) => r.id)).toEqual(['c2']);
+			expect(review.resultsCount).toBe(4);
+		});
+
+		it('never lets the count go negative', async () => {
+			mockRun({ results: [result('c1')], count: 0, ratings: [] });
+			const store = useAgentEvalsStore();
+			await store.openRun(PROJECT_ID, AGENT_ID, RUN_ID);
+
+			store.removeCachedResult(RUN_ID, 'c1');
+
+			expect(store.getReview(RUN_ID).resultsCount).toBe(0);
+		});
+
+		it('is a no-op for a result that is not cached', async () => {
+			mockRun({ results: [result('c1')], count: 1, ratings: [] });
+			const store = useAgentEvalsStore();
+			await store.openRun(PROJECT_ID, AGENT_ID, RUN_ID);
+
+			store.removeCachedResult(RUN_ID, 'does-not-exist');
+
+			expect(store.getReview(RUN_ID).results.map((r) => r.id)).toEqual(['c1']);
+		});
+	});
+
 	describe('rerunResult', () => {
 		it('patches the cached result to running before the request lands, then to the real response', async () => {
 			mockRun({ results: [{ ...result('c1'), status: 'error' }], count: 1, ratings: [] });

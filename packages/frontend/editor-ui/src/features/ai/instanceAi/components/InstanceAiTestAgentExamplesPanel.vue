@@ -61,6 +61,8 @@ const emit = defineEmits<{
 	'rerun-case': [resultId: string];
 	/** The rule's edited text, from the pencil icon's inline editor. */
 	'update-what-to-check': [payload: { rowId: number; resultId: string; whatToCheck: string }];
+	/** The trash icon's confirmed delete — this case and its example. */
+	'delete-case': [rowId: number];
 }>();
 
 const i18n = useI18n();
@@ -100,6 +102,10 @@ function onSaveCheck(rowId: number, suggestion: string) {
 function onRunCheck(resultId: string | null) {
 	if (!resultId) return;
 	emit('rerun-case', resultId);
+}
+
+function onDeleteCheck(rowId: number) {
+	emit('delete-case', rowId);
 }
 
 function onUpdateWhatToCheck(rowId: number, resultId: string | null, whatToCheck: string) {
@@ -256,6 +262,7 @@ function onCheckYourAgent() {
 					@actually-fine="onActuallyFine(run.rowId)"
 					@rerun-check="onRunCheck(run.resultId)"
 					@save-what-to-check="onUpdateWhatToCheck(run.rowId, run.resultId, $event)"
+					@delete-check="onDeleteCheck(run.rowId)"
 				/>
 			</div>
 

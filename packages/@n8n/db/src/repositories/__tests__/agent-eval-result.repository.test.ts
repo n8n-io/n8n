@@ -127,6 +127,25 @@ describe('AgentEvalResultRepository', () => {
 		});
 	});
 
+	describe('deleteById', () => {
+		it('scopes the delete to the id and its own run, reporting whether a row was removed', async () => {
+			entityManager.delete.mockResolvedValueOnce({ affected: 1, raw: [] });
+
+			await expect(repo.deleteById('res-1', 'run-1')).resolves.toBe(true);
+
+			expect(entityManager.delete).toHaveBeenCalledWith(AgentEvalResult, {
+				id: 'res-1',
+				runId: 'run-1',
+			});
+		});
+
+		it('reports false when nothing matched', async () => {
+			entityManager.delete.mockResolvedValueOnce({ affected: 0, raw: [] });
+
+			await expect(repo.deleteById('res-1', 'run-1')).resolves.toBe(false);
+		});
+	});
+
 	describe('findAndCountByRunId', () => {
 		it('scopes to runId ordered by runIndex ascending', async () => {
 			entityManager.findAndCount.mockResolvedValueOnce([[], 0]);

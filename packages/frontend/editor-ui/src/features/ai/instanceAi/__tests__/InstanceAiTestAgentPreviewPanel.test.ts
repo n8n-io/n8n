@@ -5,6 +5,7 @@ import { defineComponent, h } from 'vue';
 import { fireEvent, waitFor, within } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 
+import { MODAL_CANCEL, MODAL_CONFIRM } from '@/app/constants';
 import { createComponentRenderer } from '@/__tests__/render';
 import { useAgentEvalsStore } from '@/features/agents/agentEvals.store';
 import type { AgentEvalDatasetRecord } from '@/features/agents/agentEvals.types';
@@ -13,6 +14,16 @@ import InstanceAiTestAgentPreviewPanel from '../components/InstanceAiTestAgentPr
 const showErrorMock = vi.hoisted(() => vi.fn());
 vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({ showError: showErrorMock }),
+}));
+
+// Rows render `AgentEvalTryRow`, whose delete-check button opens this —
+// mocked so a test can resolve it directly instead of needing the (separately
+// mounted, app-wide) modal component rendered in this tree.
+const { openAgentConfirmationModal } = vi.hoisted(() => ({
+	openAgentConfirmationModal: vi.fn(),
+}));
+vi.mock('@/features/agents/composables/useAgentConfirmationModal', () => ({
+	useAgentConfirmationModal: () => ({ openAgentConfirmationModal }),
 }));
 
 const target = { agentId: 'agent-1', projectId: 'project-1' };
@@ -132,6 +143,7 @@ describe('InstanceAiTestAgentPreviewPanel', () => {
 	beforeEach(() => {
 		setActivePinia(createTestingPinia());
 		showErrorMock.mockClear();
+		openAgentConfirmationModal.mockReset();
 	});
 
 	it('runs a single case, then shows its input and output', async () => {
@@ -1679,6 +1691,193 @@ describe('InstanceAiTestAgentPreviewPanel', () => {
 
 			await waitFor(() => expect(showErrorMock).toHaveBeenCalled());
 			expect(rerunResult).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('deleting a case', () => {
+		it('deletes the case and removes it from the suite once confirmed', async () => {
+			openAgentConfirmationModal.mockResolvedValue(MODAL_CONFIRM);
+			const store = useAgentEvalsStore();
+			mockPreviewRun(store, { scenario: 'Upset' });
+			vi.spyOn(store, 'generateDraftCases').mockResolvedValue({
+				cases: [
+					{ input: 'a', whatToCheck: 'b', scenario: 'Vague' },
+					{ input: 'c', whatToCheck: 'd', scenario: 'Sensitive data' },
+				],
+			});
+			mockCommit(store, {
+				rows: [
+					{ rowId: 1, input: 'a', whatToCheck: 'b' },
+					{ rowId: 2, input: 'c', whatToCheck: 'd' },
+				],
+			});
+			const deleteCase = vi.spyOn(store, 'deleteCase').mockResolvedValue(true);
+			const deleteResult = vi.spyOn(store, 'deleteResult').mockResolvedValue(undefined);
+			vi.spyOn(store, 'isRunInFlight').mockReturnValue(false);
+			vi.spyOn(store, 'getReview').mockReturnValue({
+				run: { status: 'completed' } as never,
+				results: [
+					{
+						id: 'result-1',
+						sourceRowId: '1',
+						status: 'success',
+						input: { input: 'a' },
+						output: { finalText: 'b answer' },
+					} as never,
+					{
+						id: 'result-2',
+						sourceRowId: '2',
+						status: 'success',
+						input: { input: 'c' },
+						output: { finalText: 'd answer' },
+					} as never,
+				],
+				resultsCount: 2,
+				ratingsByResultId: {},
+				pendingByResultId: {},
+				draftsByResultId: {},
+				counts: null,
+				loading: false,
+				loadingMore: false,
+			});
+
+			const user = userEvent.setup();
+			const { getByTestId, findByTestId, queryByTestId } = renderComponent();
+			await waitFor(() =>
+				expect(getByTestId('instance-ai-test-agent-preview-looks-good')).toBeEnabled(),
+			);
+			await user.click(getByTestId('instance-ai-test-agent-preview-looks-good'));
+			await findByTestId('instance-ai-test-agent-examples-check-agent');
+			await user.click(getByTestId('instance-ai-test-agent-examples-check-agent'));
+			await findByTestId('instance-ai-test-agent-examples-summary-toggle');
+			await user.click(getByTestId('instance-ai-test-agent-examples-summary-toggle'));
+			await user.click(getByTestId('instance-ai-test-agent-examples-case-1-toggle'));
+
+			await user.click(getByTestId('instance-ai-test-agent-examples-case-1-delete-check'));
+
+			expect(openAgentConfirmationModal).toHaveBeenCalledWith(
+				expect.objectContaining({
+					title: 'Delete “a”?',
+					confirmButtonText: 'Delete check',
+					cancelButtonText: 'Cancel',
+				}),
+			);
+			await waitFor(() =>
+				expect(deleteCase).toHaveBeenCalledWith(
+					'project-1',
+					{
+						datasetId: 'dataset-2',
+						dataTableId: 'table-2',
+						columns: { input: 'input', whatToCheck: 'criteria' },
+					},
+					1,
+				),
+			);
+			await waitFor(() =>
+				expect(deleteResult).toHaveBeenCalledWith('project-1', 'agent-1', 'result-1'),
+			);
+			await waitFor(() =>
+				expect(queryByTestId('instance-ai-test-agent-examples-case-1')).not.toBeInTheDocument(),
+			);
+			// The other case is untouched.
+			expect(getByTestId('instance-ai-test-agent-examples-case-2')).toBeInTheDocument();
+		});
+
+		it('does not delete anything when the confirmation is cancelled', async () => {
+			openAgentConfirmationModal.mockResolvedValue(MODAL_CANCEL);
+			const store = useAgentEvalsStore();
+			mockPreviewRun(store, { scenario: 'Upset' });
+			vi.spyOn(store, 'generateDraftCases').mockResolvedValue({
+				cases: [{ input: 'a', whatToCheck: 'b', scenario: 'Vague' }],
+			});
+			mockCommit(store, { rows: [{ rowId: 1, input: 'a', whatToCheck: 'b' }] });
+			const deleteCase = vi.spyOn(store, 'deleteCase');
+			vi.spyOn(store, 'isRunInFlight').mockReturnValue(false);
+			vi.spyOn(store, 'getReview').mockReturnValue({
+				run: { status: 'completed' } as never,
+				results: [
+					{
+						id: 'result-1',
+						sourceRowId: '1',
+						status: 'success',
+						input: { input: 'a' },
+						output: { finalText: 'b answer' },
+					} as never,
+				],
+				resultsCount: 1,
+				ratingsByResultId: {},
+				pendingByResultId: {},
+				draftsByResultId: {},
+				counts: null,
+				loading: false,
+				loadingMore: false,
+			});
+
+			const user = userEvent.setup();
+			const { getByTestId, findByTestId } = renderComponent();
+			await waitFor(() =>
+				expect(getByTestId('instance-ai-test-agent-preview-looks-good')).toBeEnabled(),
+			);
+			await user.click(getByTestId('instance-ai-test-agent-preview-looks-good'));
+			await findByTestId('instance-ai-test-agent-examples-check-agent');
+			await user.click(getByTestId('instance-ai-test-agent-examples-check-agent'));
+			await findByTestId('instance-ai-test-agent-examples-summary-toggle');
+			await user.click(getByTestId('instance-ai-test-agent-examples-summary-toggle'));
+			await user.click(getByTestId('instance-ai-test-agent-examples-case-1-toggle'));
+
+			await user.click(getByTestId('instance-ai-test-agent-examples-case-1-delete-check'));
+
+			await waitFor(() => expect(openAgentConfirmationModal).toHaveBeenCalled());
+			expect(deleteCase).not.toHaveBeenCalled();
+			expect(getByTestId('instance-ai-test-agent-examples-case-1')).toBeInTheDocument();
+		});
+
+		it('toasts an error and keeps the case when the delete fails', async () => {
+			openAgentConfirmationModal.mockResolvedValue(MODAL_CONFIRM);
+			const store = useAgentEvalsStore();
+			mockPreviewRun(store, { scenario: 'Upset' });
+			vi.spyOn(store, 'generateDraftCases').mockResolvedValue({
+				cases: [{ input: 'a', whatToCheck: 'b', scenario: 'Vague' }],
+			});
+			mockCommit(store, { rows: [{ rowId: 1, input: 'a', whatToCheck: 'b' }] });
+			vi.spyOn(store, 'deleteCase').mockResolvedValue(false);
+			vi.spyOn(store, 'isRunInFlight').mockReturnValue(false);
+			vi.spyOn(store, 'getReview').mockReturnValue({
+				run: { status: 'completed' } as never,
+				results: [
+					{
+						id: 'result-1',
+						sourceRowId: '1',
+						status: 'success',
+						input: { input: 'a' },
+						output: { finalText: 'b answer' },
+					} as never,
+				],
+				resultsCount: 1,
+				ratingsByResultId: {},
+				pendingByResultId: {},
+				draftsByResultId: {},
+				counts: null,
+				loading: false,
+				loadingMore: false,
+			});
+
+			const user = userEvent.setup();
+			const { getByTestId, findByTestId } = renderComponent();
+			await waitFor(() =>
+				expect(getByTestId('instance-ai-test-agent-preview-looks-good')).toBeEnabled(),
+			);
+			await user.click(getByTestId('instance-ai-test-agent-preview-looks-good'));
+			await findByTestId('instance-ai-test-agent-examples-check-agent');
+			await user.click(getByTestId('instance-ai-test-agent-examples-check-agent'));
+			await findByTestId('instance-ai-test-agent-examples-summary-toggle');
+			await user.click(getByTestId('instance-ai-test-agent-examples-summary-toggle'));
+			await user.click(getByTestId('instance-ai-test-agent-examples-case-1-toggle'));
+
+			await user.click(getByTestId('instance-ai-test-agent-examples-case-1-delete-check'));
+
+			await waitFor(() => expect(showErrorMock).toHaveBeenCalled());
+			expect(getByTestId('instance-ai-test-agent-examples-case-1')).toBeInTheDocument();
 		});
 	});
 

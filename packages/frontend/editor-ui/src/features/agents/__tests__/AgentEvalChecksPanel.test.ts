@@ -26,7 +26,7 @@ vi.mock('../components/AgentEvalTryRow.vue', () => ({
 			disabled: { type: Boolean },
 			hideRevise: { type: Boolean },
 		},
-		emits: ['save-check', 'actually-fine', 'rerun-check', 'save-what-to-check'],
+		emits: ['save-check', 'actually-fine', 'rerun-check', 'save-what-to-check', 'delete-check'],
 		// A plain, testId-free button: a testid built from the row's own (which
 		// starts with the same "agent-eval-check-" every row testid shares) would
 		// match every row-counting `getAllByTestId(/agent-eval-check-/)` query in
@@ -41,6 +41,7 @@ vi.mock('../components/AgentEvalTryRow.vue', () => ({
 			<button @click="$emit('actually-fine')">actually fine</button>
 			<button @click="$emit('rerun-check')">run check</button>
 			<button @click="$emit('save-what-to-check', 'Mentions the refund window.')">save rule</button>
+			<button @click="$emit('delete-check')">delete check</button>
 		</div>`,
 	},
 }));
@@ -282,6 +283,99 @@ describe('AgentEvalChecksPanel', () => {
 
 		expect(store.rerunResult).toHaveBeenCalledWith('project-1', 'agent-1', 'c1', {
 			whatToCheck: 'Mentions the refund window.',
+		});
+	});
+
+	describe('deleting a check', () => {
+		const dataset = {
+			id: 'ds-1',
+			name: 'cases',
+			description: null,
+			agentId: 'agent-1',
+			columnMapping: { input: 'input', criteria: 'criteria' },
+			createdById: null,
+			createdAt: '2026-01-01T00:00:00.000Z',
+			updatedAt: '2026-01-01T00:00:00.000Z',
+			datasetSource: 'data_table' as const,
+			datasetRef: { dataTableId: 'table-1' },
+		};
+
+		const renderWithRun = (resultOverrides: Partial<AgentEvalResultRecord> = {}) => {
+			const pinia = createTestingPinia({ stubActions: true });
+			const store = useAgentEvalsStore();
+			vi.mocked(store.getReview).mockReturnValue({
+				run: {
+					id: 'run-1',
+					datasetId: 'ds-1',
+					agentVersionId: null,
+					status: 'completed',
+					runAt: '2026-01-01T00:00:00.000Z',
+					completedAt: '2026-01-01T00:00:30.000Z',
+					metrics: null,
+					errorCode: null,
+					errorDetails: null,
+					createdById: null,
+					createdAt: '2026-01-01T00:00:00.000Z',
+					updatedAt: '2026-01-01T00:00:30.000Z',
+				},
+				results: [{ ...result('c1', 'success'), sourceRowId: '1', ...resultOverrides }],
+				resultsCount: 1,
+				ratingsByResultId: {},
+				pendingByResultId: {},
+				draftsByResultId: {},
+				counts: null,
+				loading: false,
+				loadingMore: false,
+			});
+			vi.mocked(store.isRunInFlight).mockReturnValue(false);
+			vi.mocked(store.isStartingRun).mockReturnValue(false);
+			vi.mocked(store.getDatasets).mockReturnValue([dataset]);
+			return { ...renderComponent({ pinia }), store };
+		};
+
+		it('deletes the underlying case and drops the row once confirmed', async () => {
+			const user = userEvent.setup();
+			const { getByTestId, queryByTestId, store } = renderWithRun();
+			vi.mocked(store.deleteCase).mockResolvedValue(true);
+
+			await user.click(within(getByTestId('agent-eval-check-c1')).getByText('delete check'));
+
+			expect(store.deleteCase).toHaveBeenCalledWith(
+				'project-1',
+				{
+					datasetId: 'ds-1',
+					dataTableId: 'table-1',
+					columns: { input: 'input', whatToCheck: 'criteria' },
+				},
+				1,
+			);
+			await vi.waitFor(() =>
+				expect(store.deleteResult).toHaveBeenCalledWith('project-1', 'agent-1', 'c1'),
+			);
+			// The mocked row component never actually re-renders itself out of the
+			// tree — this only proves the delete request and cache cleanup ran.
+			expect(queryByTestId('agent-eval-check-c1')).toBeInTheDocument();
+		});
+
+		it('toasts an error and does not touch the cache when the delete fails', async () => {
+			const user = userEvent.setup();
+			const { getByTestId, store } = renderWithRun();
+			vi.mocked(store.deleteCase).mockResolvedValue(false);
+
+			await user.click(within(getByTestId('agent-eval-check-c1')).getByText('delete check'));
+
+			await vi.waitFor(() => expect(store.deleteCase).toHaveBeenCalled());
+			expect(store.deleteResult).not.toHaveBeenCalled();
+		});
+
+		it('toasts an error without calling deleteCase when the dataset cannot be resolved', async () => {
+			const user = userEvent.setup();
+			const { getByTestId, store } = renderWithRun();
+			vi.mocked(store.getDatasets).mockReturnValue([]);
+
+			await user.click(within(getByTestId('agent-eval-check-c1')).getByText('delete check'));
+
+			expect(store.deleteCase).not.toHaveBeenCalled();
 		});
 	});
 

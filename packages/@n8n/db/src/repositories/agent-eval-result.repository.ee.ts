@@ -129,4 +129,11 @@ export class AgentEvalResultRepository extends Repository<AgentEvalResult> {
 	async findById(id: string): Promise<AgentEvalResult | null> {
 		return await this.findOneBy({ id });
 	}
+
+	/** Scoped to the result's own run for defense in depth — the service layer's
+	 *  `resolveResult` is what actually proves the caller's agent owns it. */
+	async deleteById(id: string, runId: string): Promise<boolean> {
+		const result = await this.delete({ id, runId });
+		return (result.affected ?? 0) > 0;
+	}
 }

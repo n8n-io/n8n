@@ -295,6 +295,26 @@ describe('AgentEvalService', () => {
 		});
 	});
 
+	describe('deleteResult', () => {
+		it('deletes the result scoped to its own run', async () => {
+			const toDelete = makeResult({ runId: 'run-1' });
+			resultRepository.findById.mockResolvedValue(toDelete);
+			resultRepository.deleteById.mockResolvedValue(true);
+
+			await expect(service.deleteResult(AGENT_ID, PROJECT_ID, 'result-1')).resolves.toBeUndefined();
+
+			expect(resultRepository.deleteById).toHaveBeenCalledWith('result-1', 'run-1');
+		});
+
+		it('404s when nothing was removed', async () => {
+			resultRepository.deleteById.mockResolvedValue(false);
+
+			await expect(service.deleteResult(AGENT_ID, PROJECT_ID, 'result-1')).rejects.toThrow(
+				NotFoundError,
+			);
+		});
+	});
+
 	describe('createDataset', () => {
 		it('rejects a body whose agentId contradicts the URL', async () => {
 			await expect(

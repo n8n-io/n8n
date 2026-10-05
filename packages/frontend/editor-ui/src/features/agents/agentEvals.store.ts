@@ -307,6 +307,17 @@ export const useAgentEvalsStore = defineStore(STORES.AGENT_EVALS, () => {
 		reviewByRunId.value = { ...reviewByRunId.value, [runId]: { ...current, ...patch } };
 	};
 
+	// Deleting a case drops its Data Table row — nothing the run/result API
+	// knows about — so the result it produced has to be dropped from the
+	// cached page by hand, here, rather than through a server response.
+	const removeCachedResult = (runId: string, resultId: string) => {
+		const current = getReview(runId);
+		patchReview(runId, {
+			results: current.results.filter((result) => result.id !== resultId),
+			resultsCount: Math.max(0, current.resultsCount - 1),
+		});
+	};
+
 	const getLatestRunId = (datasetId: string) => latestRunIdByDatasetId.value[datasetId];
 
 	const isStartingRun = (datasetId: string) => startingRunByDatasetId.value[datasetId] === true;
@@ -1052,6 +1063,16 @@ export const useAgentEvalsStore = defineStore(STORES.AGENT_EVALS, () => {
 		}
 	};
 
+	// Persists the removal server-side, then drops it from the cached page.
+	// `deleteCase` alone only removes the Data Table row it came from — this
+	// result is a separate persisted snapshot that would otherwise survive and
+	// reappear on the next load.
+	const deleteResult = async (projectId: string, agentId: string, resultId: string) => {
+		const cached = findCachedResult(resultId);
+		await agentEvalsApi.deleteResult(rootStore.restApiContext, projectId, agentId, resultId);
+		if (cached) removeCachedResult(cached.runId, resultId);
+	};
+
 	/** Runs the dataset's cases again against the agent's current config. */
 	const startRun = async (projectId: string, agentId: string, datasetId: string) => {
 		startingRunByDatasetId.value = { ...startingRunByDatasetId.value, [datasetId]: true };
@@ -1080,6 +1101,8 @@ export const useAgentEvalsStore = defineStore(STORES.AGENT_EVALS, () => {
 		deleteDataset,
 		previewRun,
 		getReview,
+		removeCachedResult,
+		deleteResult,
 		getLatestRunId,
 		isStartingRun,
 		resolveLatestRunId,

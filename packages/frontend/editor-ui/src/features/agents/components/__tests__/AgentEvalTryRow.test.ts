@@ -1,8 +1,15 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import userEvent from '@testing-library/user-event';
 
 import { createComponentRenderer } from '@/__tests__/render';
 import AgentEvalTryRow from '../AgentEvalTryRow.vue';
+
+// The delete-check button's confirmation dialog needs `useUIStore()`, which
+// needs an active pinia — mocked out here since nothing in this file exercises
+// that flow (covered in `agents/__tests__/AgentEvalTryRow.test.ts` instead).
+vi.mock('../../composables/useAgentConfirmationModal', () => ({
+	useAgentConfirmationModal: () => ({ openAgentConfirmationModal: vi.fn() }),
+}));
 
 const renderComponent = createComponentRenderer(AgentEvalTryRow);
 

@@ -24,6 +24,7 @@ import {
 	readErrorMessage,
 } from '../utils/agent-eval-review';
 import { toDisplayToolCalls } from '../utils/agent-eval-tool-calls';
+import { isDataTableDataset, toCaseSource } from '../utils/agentEvalCases.utils';
 import AgentAvatar, { type AgentAvatarKind } from './AgentAvatar.vue';
 import AgentEvalTryRow from './AgentEvalTryRow.vue';
 
@@ -70,6 +71,10 @@ const manualStatusOverrides = ref<Record<string, AgentAvatarKind>>({});
 
 type CheckRow = {
 	id: string;
+	/** The Data Table row this result came from — null if the run predates
+	 *  `sourceRowId` or the case was created some other way. Deleting the
+	 *  check needs this; nothing else in this row does. */
+	sourceRowId: string | null;
 	status: AgentAvatarKind;
 	input: string;
 	output: string | null;
@@ -84,6 +89,7 @@ const rows = computed<CheckRow[]>(() =>
 		const override = manualStatusOverrides.value[result.id];
 		return {
 			id: result.id,
+			sourceRowId: result.sourceRowId,
 			status: override ?? resultStatusToKind(result.status),
 			input: readCaseRequest(result.input),
 			output: readAgentAnswer(result.output),
@@ -198,6 +204,41 @@ async function onSaveWhatToCheck(resultId: string, whatToCheck: string) {
 		await store.rerunResult(props.projectId, props.agentId, resultId, { whatToCheck });
 	} catch (error) {
 		toast.showError(error, i18n.baseText('agents.builder.agentEvals.review.rerunCaseError'));
+	}
+}
+
+/** Resolves the run's own dataset into a writable case source — the only
+ *  path "delete the check" has to the Data Table row, since this view never
+ *  loads a case list of its own. */
+function resolveCaseSource() {
+	const datasetId = review.value.run?.datasetId;
+	if (!datasetId) return null;
+	const dataset = store.getDatasets(props.agentId).find((d) => d.id === datasetId);
+	return dataset && isDataTableDataset(dataset) ? toCaseSource(dataset) : null;
+}
+
+async function onDeleteCheck(row: CheckRow) {
+	const source = resolveCaseSource();
+	if (!source || !row.sourceRowId) {
+		toast.showError(
+			new Error('Could not resolve this check’s dataset row'),
+			i18n.baseText('agents.builder.agentEvals.case.removeError'),
+		);
+		return;
+	}
+
+	try {
+		const deleted = await store.deleteCase(props.projectId, source, Number(row.sourceRowId));
+		if (!deleted) {
+			toast.showError(
+				new Error('Failed to remove the test case'),
+				i18n.baseText('agents.builder.agentEvals.case.removeError'),
+			);
+			return;
+		}
+		await store.deleteResult(props.projectId, props.agentId, row.id);
+	} catch (error) {
+		toast.showError(error, i18n.baseText('agents.builder.agentEvals.case.removeError'));
 	}
 }
 
@@ -363,6 +404,7 @@ onBeforeUnmount(store.stopPollingRun);
 				@actually-fine="onActuallyFine(row.id)"
 				@rerun-check="onRerunCheck(row.id)"
 				@save-what-to-check="onSaveWhatToCheck(row.id, $event)"
+				@delete-check="onDeleteCheck(row)"
 			/>
 		</div>
 
@@ -401,7 +443,7 @@ onBeforeUnmount(store.stopPollingRun);
 	width: 100%;
 	border-radius: var(--radius--xl);
 	border: var(--border);
-	background-color: var(--background--base);
+	background-color: white;
 }
 
 .list > * {

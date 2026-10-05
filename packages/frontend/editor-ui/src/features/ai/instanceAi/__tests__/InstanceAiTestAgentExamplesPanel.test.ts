@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { createTestingPinia } from '@pinia/testing';
 import { fireEvent } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 
@@ -19,6 +20,9 @@ const examples = [
 	{ input: 'What is our refund policy?', whatToCheck: 'mentions 30 days', scenario: 'Happy path' },
 ];
 
+// `AgentEvalTryRow` needs an active pinia for its delete-check confirmation
+// modal, even though nothing here exercises that flow — a bare `useUIStore()`
+// call during setup still throws without one.
 const renderComponent = createComponentRenderer(InstanceAiTestAgentExamplesPanel, {
 	props: {
 		previewInput: 'Summarize the thread about the Acme SSO outage',
@@ -27,6 +31,7 @@ const renderComponent = createComponentRenderer(InstanceAiTestAgentExamplesPanel
 		examples,
 		caseRuns: null,
 	},
+	pinia: createTestingPinia(),
 });
 
 describe('InstanceAiTestAgentExamplesPanel', () => {

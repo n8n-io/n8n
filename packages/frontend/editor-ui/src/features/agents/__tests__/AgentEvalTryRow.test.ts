@@ -1,8 +1,19 @@
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import userEvent from '@testing-library/user-event';
 
+import { MODAL_CANCEL, MODAL_CONFIRM } from '@/app/constants';
 import { createComponentRenderer } from '@/__tests__/render';
 import AgentEvalTryRow from '../components/AgentEvalTryRow.vue';
+
+const PRACTICE_BANNER_STORAGE_KEY = 'N8N_AGENT_EVAL_PRACTICE_BANNER_DISMISSED';
+
+const { openAgentConfirmationModal } = vi.hoisted(() => ({
+	openAgentConfirmationModal: vi.fn(),
+}));
+
+vi.mock('../composables/useAgentConfirmationModal', () => ({
+	useAgentConfirmationModal: () => ({ openAgentConfirmationModal }),
+}));
 
 const renderComponent = createComponentRenderer(AgentEvalTryRow, {
 	props: {
@@ -14,6 +25,10 @@ const renderComponent = createComponentRenderer(AgentEvalTryRow, {
 });
 
 describe('AgentEvalTryRow', () => {
+	beforeEach(() => {
+		openAgentConfirmationModal.mockReset();
+	});
+
 	describe('view="complete"', () => {
 		it.each([
 			['pass', 'Passes'],
@@ -257,6 +272,101 @@ describe('AgentEvalTryRow', () => {
 			await user.click(getByTestId('row-toggle'));
 
 			expect(getByTestId('row-edit-rule')).toBeDisabled();
+		});
+	});
+
+	describe('deleting the check', () => {
+		const renderWithRule = (overrides: Record<string, unknown> = {}) =>
+			renderComponent({
+				props: { whatToCheck: 'Names the ticket and the priority.', ...overrides },
+			});
+
+		it('asks for confirmation naming the case, and emits delete-check once confirmed', async () => {
+			openAgentConfirmationModal.mockResolvedValue(MODAL_CONFIRM);
+			const user = userEvent.setup();
+			const { getByTestId, emitted } = renderWithRule({ testId: 'row' });
+			await user.click(getByTestId('row-toggle'));
+
+			await user.click(getByTestId('row-delete-check'));
+
+			expect(openAgentConfirmationModal).toHaveBeenCalledWith(
+				expect.objectContaining({
+					title: 'Delete “Where is my order?”?',
+					description: 'This removes the check and its example. You can’t undo this.',
+					confirmButtonText: 'Delete check',
+					cancelButtonText: 'Cancel',
+				}),
+			);
+			expect(emitted('delete-check')).toBeTruthy();
+		});
+
+		it('emits nothing when the confirmation is cancelled', async () => {
+			openAgentConfirmationModal.mockResolvedValue(MODAL_CANCEL);
+			const user = userEvent.setup();
+			const { getByTestId, emitted } = renderWithRule({ testId: 'row' });
+			await user.click(getByTestId('row-toggle'));
+
+			await user.click(getByTestId('row-delete-check'));
+
+			expect(emitted('delete-check')).toBeUndefined();
+		});
+
+		it('disables the delete button for a read-only viewer', async () => {
+			const user = userEvent.setup();
+			const { getByTestId } = renderWithRule({ testId: 'row', disabled: true });
+			await user.click(getByTestId('row-toggle'));
+
+			expect(getByTestId('row-delete-check')).toBeDisabled();
+		});
+	});
+
+	describe('practice run banner', () => {
+		beforeEach(() => {
+			sessionStorage.removeItem(PRACTICE_BANNER_STORAGE_KEY);
+		});
+
+		it('shows the reassurance banner by default when expanded', async () => {
+			const user = userEvent.setup();
+			const { getByText, getByTestId } = renderComponent({ props: { testId: 'row' } });
+
+			await user.click(getByTestId('row-toggle'));
+
+			expect(getByText('Nothing was sent, saved or changed.')).toBeInTheDocument();
+		});
+
+		it('hides the banner and persists the dismissal when "Got it" is clicked', async () => {
+			const user = userEvent.setup();
+			const { queryByText, getByTestId } = renderComponent({ props: { testId: 'row' } });
+			await user.click(getByTestId('row-toggle'));
+
+			await user.click(getByTestId('row-practice-banner-dismiss'));
+
+			expect(queryByText('Nothing was sent, saved or changed.')).not.toBeInTheDocument();
+			expect(sessionStorage.getItem(PRACTICE_BANNER_STORAGE_KEY)).toBe('true');
+		});
+
+		// The whole point of the ask: dismissing on one row hides it on every
+		// other row too, not just the one that was clicked.
+		it('hides the banner on a different, already-rendered row once any row dismisses it', async () => {
+			const user = userEvent.setup();
+			const rowOne = renderComponent({ props: { testId: 'row-one' } });
+			const rowTwo = renderComponent({ props: { testId: 'row-two' } });
+			await user.click(rowOne.getByTestId('row-one-toggle'));
+			await user.click(rowTwo.getByTestId('row-two-toggle'));
+
+			await user.click(rowOne.getByTestId('row-one-practice-banner-dismiss'));
+
+			expect(rowTwo.queryByText('Nothing was sent, saved or changed.')).not.toBeInTheDocument();
+		});
+
+		it('starts dismissed for a freshly mounted row once the session already has it set', async () => {
+			sessionStorage.setItem(PRACTICE_BANNER_STORAGE_KEY, 'true');
+			const user = userEvent.setup();
+			const { queryByText, getByTestId } = renderComponent({ props: { testId: 'row' } });
+
+			await user.click(getByTestId('row-toggle'));
+
+			expect(queryByText('Nothing was sent, saved or changed.')).not.toBeInTheDocument();
 		});
 	});
 });

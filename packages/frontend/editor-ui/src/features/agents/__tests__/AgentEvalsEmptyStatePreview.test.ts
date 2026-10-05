@@ -1,7 +1,13 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { createComponentRenderer } from '@/__tests__/render';
 import AgentEvalsEmptyStatePreview from '../components/AgentEvalsEmptyStatePreview.vue';
+
+// Rows render `AgentEvalTryRow`, whose delete-check confirmation needs
+// `useUIStore()` — mocked out since nothing here exercises that flow.
+vi.mock('../composables/useAgentConfirmationModal', () => ({
+	useAgentConfirmationModal: () => ({ openAgentConfirmationModal: vi.fn() }),
+}));
 
 const examples = [
 	{

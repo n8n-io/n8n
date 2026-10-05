@@ -245,6 +245,18 @@ export class AgentEvalsController {
 		return await this.service.rerunResult(req.user, agentId, projectId, resultId, payload);
 	}
 
+	// Drops one case's result from its run — paired on the frontend with deleting
+	// the Data Table row it came from. `agent:update`: removing a check edits the
+	// eval suite, not something a chat-only `agent:execute` member should do.
+	@Delete('/:agentId/evals/results/:resultId')
+	@ProjectScope('agent:update')
+	async deleteResult(req: AuthenticatedRequest<ResultParam>): Promise<{ success: true }> {
+		await this.flagGate.assertEnabled(req.user);
+		const { agentId, projectId, resultId } = req.params;
+		await this.service.deleteResult(agentId, projectId, resultId);
+		return { success: true };
+	}
+
 	// ---- ratings ----
 
 	/**

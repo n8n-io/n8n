@@ -203,6 +203,22 @@ export const startRun = async (
 	);
 };
 
+// Drops one case's result from its run. Paired with `deleteRows` on the Data
+// Table: deleting the result alone would leave the row behind, and deleting
+// the row alone would leave this result to reappear on the next load.
+export const deleteResult = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	resultId: string,
+) => {
+	return await makeRestApiRequest<{ success: true }>(
+		context,
+		'DELETE',
+		`${evalsPath(projectId, agentId)}/results/${resultId}`,
+	);
+};
+
 // Re-executes one already-settled case in place — no new run, and no effect on
 // any other row in the run it belongs to. The response is the refreshed result.
 export const rerunResult = async (
