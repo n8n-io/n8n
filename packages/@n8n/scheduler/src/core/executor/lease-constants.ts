@@ -9,7 +9,7 @@ export const RENEWALS_PER_LEASE = 3;
 
 /**
  * The shortest time between two renewals, so a short lease does not load the
- * database. A lease shorter than {@link RENEWALS_PER_LEASE} times this gets fewer
+ * database. A lease shorter than {@link RENEWALS_PER_LEASE} plus one times this gets fewer
  * renewals, and one this short or shorter expires before its first renewal.
  */
 export const MIN_RENEWAL_INTERVAL_MS = 5_000;
