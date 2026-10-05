@@ -123,6 +123,12 @@ describe('resolveRoute', () => {
 			],
 			'debug',
 		],
+		['execution debug', [call('executions', { action: 'debug' })], 'debug'],
+		[
+			'execution read before an ask-user card',
+			[call('executions', { action: 'list' }), call('ask-user', { questions: [] })],
+			'debug',
+		],
 		['node output read', [call('executions', { action: 'get-node-output' })], 'debug'],
 		[
 			'resolved parameters read',

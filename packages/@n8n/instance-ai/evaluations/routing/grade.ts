@@ -11,15 +11,9 @@ import type { InstanceAiEvent } from '@n8n/api-types';
 
 import type { AcceptToken, RoutingBucket, RoutingCase } from './cases';
 import type { JudgeInput, JudgeVerdict, Steer } from './judge';
-import {
-	actionOf,
-	isCommittingCall,
-	isCommittingDataTablesAction,
-	isMutatingWorkflowsAction,
-	ORCHESTRATOR_AGENT_ID,
-} from './route-rules';
+import { actionOf, committedRoute, isCommittingCall, ORCHESTRATOR_AGENT_ID } from './route-rules';
 import { askUserInputSchema } from '../../src/tools/shared/ask-user.tool';
-import { DOMAIN_TOOL_IDS, ORCHESTRATION_TOOL_IDS } from '../../src/tools/tool-ids';
+import { DOMAIN_TOOL_IDS } from '../../src/tools/tool-ids';
 import type { DiscoveryStreamStatus } from '../discovery/types';
 
 export type Route =
@@ -56,10 +50,6 @@ export interface RouteResolution {
 	judgeError?: string;
 }
 
-type PendingResolution =
-	| { kind: 'resolved'; resolution: RouteResolution }
-	| { kind: 'judge'; rule: 'ask-user' | 'text'; input: JudgeInput };
-
 export function readRoutingTrial(run: {
 	instanceEvents: readonly InstanceAiEvent[];
 	streamStatus: DiscoveryStreamStatus;
@@ -92,24 +82,7 @@ function describeCall(call: RoutingToolCall): string {
 	return action ? `${call.toolName} ${action}` : call.toolName;
 }
 
-function isOneOffAction(call: RoutingToolCall): boolean {
-	const action = actionOf(call.args);
-	switch (call.toolName) {
-		case DOMAIN_TOOL_IDS.NODES:
-			return action === 'execute';
-		case DOMAIN_TOOL_IDS.EXECUTIONS:
-			return action === 'run' || action === 'run-step' || action === 'stop';
-		case DOMAIN_TOOL_IDS.DATA_TABLES:
-			return isCommittingDataTablesAction(action);
-		case DOMAIN_TOOL_IDS.WORKFLOWS:
-			return isMutatingWorkflowsAction(action);
-		default:
-			return false;
-	}
-}
-
-const DEBUG_EXECUTIONS_ACTIONS: ReadonlySet<string> = new Set([
-	'debug',
+const DEBUG_EXECUTIONS_READ_ACTIONS: ReadonlySet<string> = new Set([
 	'get',
 	'list',
 	'get-node-output',
@@ -117,83 +90,13 @@ const DEBUG_EXECUTIONS_ACTIONS: ReadonlySet<string> = new Set([
 ]);
 
 /** Loading the `debugging-executions` skill alone is not a debug route. */
-function isDebugSignal(call: RoutingToolCall): boolean {
+function isDebugRead(call: RoutingToolCall): boolean {
 	const action = actionOf(call.args);
 	return (
 		call.toolName === DOMAIN_TOOL_IDS.EXECUTIONS &&
 		action !== undefined &&
-		DEBUG_EXECUTIONS_ACTIONS.has(action)
+		DEBUG_EXECUTIONS_READ_ACTIONS.has(action)
 	);
-}
-
-/** Applies the route rules in order. The last two return a judge request. */
-function resolveTrial(routingCase: RoutingCase, trial: RoutingTrial): PendingResolution {
-	const calls = trial.toolCalls;
-	const resolved = (route: Route, evidence: string): PendingResolution => ({
-		kind: 'resolved',
-		resolution: { route, evidence },
-	});
-
-	if (
-		calls.some(
-			(call) =>
-				call.toolName === ORCHESTRATION_TOOL_IDS.BUILD_AGENT && call.args.operation !== 'exploring',
-		)
-	) {
-		return resolved('agent', 'build-agent');
-	}
-
-	const buildWorkflow = calls.find((call) => call.toolName === DOMAIN_TOOL_IDS.BUILD_WORKFLOW);
-	if (buildWorkflow) {
-		return buildWorkflow.args.executionIntent === 'one-off'
-			? resolved('one-off', 'build-workflow executionIntent=one-off')
-			: resolved('workflow', 'build-workflow');
-	}
-
-	if (calls.some((call) => call.toolName === ORCHESTRATION_TOOL_IDS.CREATE_TASKS)) {
-		return resolved('multi', 'create-tasks');
-	}
-
-	const oneOff = calls.find(isOneOffAction);
-	if (oneOff) return resolved('one-off', describeCall(oneOff));
-
-	const debug = calls.find(isDebugSignal);
-	if (debug) return resolved('debug', describeCall(debug));
-
-	const askUser = calls.find((call) => call.toolName === DOMAIN_TOOL_IDS.ASK_USER);
-	if (askUser) {
-		const card = askUserInputSchema.safeParse(askUser.args);
-		return {
-			kind: 'judge',
-			rule: 'ask-user',
-			input: {
-				mode: 'ask-user',
-				userMessage: routingCase.userMessage,
-				askUserIntro: card.data?.introMessage,
-				askUserQuestions: (card.data?.questions ?? []).map(({ question, options }) => ({
-					question,
-					options: options ?? [],
-				})),
-				finalText: trial.finalText,
-			},
-		};
-	}
-
-	// The text of a run that did not finish (for example a timeout) is mid-work narration, not a reply.
-	if (trial.streamStatus !== 'completed' || trial.finalText === '') {
-		return resolved('none', `no committing call and no finished reply (${trial.streamStatus})`);
-	}
-
-	return {
-		kind: 'judge',
-		rule: 'text',
-		input: {
-			mode: 'text',
-			userMessage: routingCase.userMessage,
-			askUserQuestions: [],
-			finalText: trial.finalText,
-		},
-	};
 }
 
 /** Resolves the trial's route, and asks the judge when calls cannot decide it. */
@@ -202,25 +105,63 @@ export async function resolveRoute(
 	trial: RoutingTrial,
 	judge: (input: JudgeInput) => Promise<JudgeVerdict>,
 ): Promise<RouteResolution> {
-	const pending = resolveTrial(routingCase, trial);
-	if (pending.kind === 'resolved') return pending.resolution;
-	const evidence = pending.rule === 'ask-user' ? 'ask-user' : 'final text';
-	try {
-		const verdict = await judge(pending.input);
-		return {
-			// An ask-user card is a question by construction; the judge only gives its steer.
-			route: pending.rule === 'ask-user' ? 'clarify' : verdict.kind,
-			steer: verdict.steer,
-			evidence,
-			judgeReason: verdict.reason,
-		};
-	} catch (error) {
+	const judged = async (input: JudgeInput): Promise<RouteResolution> => {
+		const evidence = input.mode === 'ask-user' ? 'ask-user' : 'final text';
+		try {
+			const verdict = await judge(input);
+			return {
+				// An ask-user card is a question by construction; the judge only gives its steer.
+				route: input.mode === 'ask-user' ? 'clarify' : verdict.kind,
+				steer: verdict.steer,
+				evidence,
+				judgeReason: verdict.reason,
+			};
+		} catch (error) {
+			return {
+				route: 'none',
+				evidence: `${evidence}, judge failed`,
+				judgeError: error instanceof Error ? error.message : String(error),
+			};
+		}
+	};
+
+	// Only the last call can commit (see `readRoutingTrial`).
+	const last = trial.toolCalls.at(-1);
+	const route = last ? committedRoute(last.toolName, last.args) : undefined;
+	if (last && route && route !== 'ask-user') return { route, evidence: describeCall(last) };
+
+	// An execution read before an ask-user card is still a debug route.
+	const debugRead = trial.toolCalls.find(isDebugRead);
+	if (debugRead) return { route: 'debug', evidence: describeCall(debugRead) };
+
+	if (last && route === 'ask-user') {
+		const card = askUserInputSchema.safeParse(last.args);
+		return await judged({
+			mode: 'ask-user',
+			userMessage: routingCase.userMessage,
+			askUserIntro: card.data?.introMessage,
+			askUserQuestions: (card.data?.questions ?? []).map(({ question, options }) => ({
+				question,
+				options: options ?? [],
+			})),
+			finalText: trial.finalText,
+		});
+	}
+
+	// The text of a run that did not finish (for example a timeout) is mid-work narration, not a reply.
+	if (trial.streamStatus !== 'completed' || trial.finalText === '') {
 		return {
 			route: 'none',
-			evidence: `${evidence}, judge failed`,
-			judgeError: error instanceof Error ? error.message : String(error),
+			evidence: `no committing call and no finished reply (${trial.streamStatus})`,
 		};
 	}
+
+	return await judged({
+		mode: 'text',
+		userMessage: routingCase.userMessage,
+		askUserQuestions: [],
+		finalText: trial.finalText,
+	});
 }
 
 /** Short label for output: the route, with the steer for `clarify`. */

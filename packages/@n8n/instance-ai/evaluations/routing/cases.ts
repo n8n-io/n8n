@@ -7,12 +7,13 @@
 // the recorded calls after the run (see grade.ts).
 // ---------------------------------------------------------------------------
 
-import { readFileSync, readdirSync } from 'fs';
-import { basename, join, resolve } from 'path';
+import { readFileSync } from 'fs';
+import { basename, resolve } from 'path';
 import { z } from 'zod';
 
 import { EvalTestCaseSchema } from '../harness/schema';
 import { normalizeExportedCase } from '../langtracer/normalize';
+import { getJsonFiles } from '../utils/get-json-files';
 
 export const ROUTING_BUCKETS = [
 	'agent',
@@ -26,18 +27,7 @@ export const ROUTING_BUCKETS = [
 ] as const;
 export type RoutingBucket = (typeof ROUTING_BUCKETS)[number];
 
-export const ROUTING_ACCEPT_TOKENS = [
-	'agent',
-	'workflow',
-	'one-off',
-	'debug',
-	'multi',
-	'answer',
-	'decline',
-	'clarify',
-	'clarify:agent',
-	'clarify:open',
-] as const;
+export const ROUTING_ACCEPT_TOKENS = [...ROUTING_BUCKETS, 'clarify:agent', 'clarify:open'] as const;
 export type AcceptToken = (typeof ROUTING_ACCEPT_TOKENS)[number];
 
 const routingTagsSchema = z.object({
@@ -106,13 +96,8 @@ export function loadRoutingCases(
 	filter?: string,
 ): { cases: RoutingCase[]; needsSetup: string[] } {
 	const root = resolve(dir);
-	const tokens = (filter ?? '')
-		.split(',')
-		.map((token) => token.trim().toLowerCase())
-		.filter((token) => token.length > 0);
-	const files = readdirSync(root)
-		.filter((file) => file.startsWith('route-') && file.endsWith('.json'))
-		.filter((file) => tokens.length === 0 || tokens.some((token) => file.includes(token)))
+	const files = getJsonFiles(root, filter)
+		.filter((file) => basename(file).startsWith('route-'))
 		.sort();
 
 	const cases: RoutingCase[] = [];
@@ -120,7 +105,7 @@ export function loadRoutingCases(
 	const errors: string[] = [];
 	for (const file of files) {
 		try {
-			const parsed = parseRoutingCaseFile(join(root, file));
+			const parsed = parseRoutingCaseFile(file);
 			if (parsed.kind === 'case') cases.push(parsed.routingCase);
 			else needsSetup.push(parsed.id);
 		} catch (error) {

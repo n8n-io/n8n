@@ -12,13 +12,15 @@ import { DOMAIN_TOOL_IDS, ORCHESTRATION_TOOL_IDS } from '../../src/tools/tool-id
 /** Only the orchestrator's calls pick a route; sub-agents act on its choice. */
 export const ORCHESTRATOR_AGENT_ID = 'n8n-instance-agent';
 
-const DATA_TABLES_READ_ACTIONS: ReadonlySet<string> = new Set(['list', 'get', 'query', 'schema']);
-
 /**
- * Schema-only setup. The Assistant often creates a table before it builds a
- * workflow, so these calls do not pick a route. Row writes and table deletes do.
+ * Reads, and schema-only setup: the Assistant often creates a table before it
+ * builds a workflow. Row writes and table deletes pick a route.
  */
-const DATA_TABLES_SETUP_ACTIONS: ReadonlySet<string> = new Set([
+const DATA_TABLES_EXPLORATION_ACTIONS: ReadonlySet<string> = new Set([
+	'list',
+	'get',
+	'query',
+	'schema',
 	'create',
 	'add-column',
 	'rename-column',
@@ -34,52 +36,46 @@ const WORKFLOWS_READ_ACTIONS: ReadonlySet<string> = new Set([
 	'validate',
 ]);
 
-const EXECUTIONS_COMMITTING_ACTIONS: ReadonlySet<string> = new Set([
-	'run',
-	'run-step',
-	'debug',
-	'stop',
-]);
-
 export function actionOf(args: Record<string, unknown>): string | undefined {
 	return typeof args.action === 'string' ? args.action : undefined;
 }
 
 /**
- * Row writes, table deletes, and unknown actions. A call without an action
- * fails schema validation, so it commits to nothing.
+ * The route a committing call picks, or `undefined` for exploration. An
+ * `ask-user` card needs the judge for its steer. A call without an action
+ * fails schema validation, so it picks nothing.
  */
-export function isCommittingDataTablesAction(action: string | undefined): boolean {
-	return (
-		action !== undefined &&
-		!DATA_TABLES_READ_ACTIONS.has(action) &&
-		!DATA_TABLES_SETUP_ACTIONS.has(action)
-	);
-}
-
-export function isMutatingWorkflowsAction(action: string | undefined): boolean {
-	return action !== undefined && !WORKFLOWS_READ_ACTIONS.has(action);
-}
-
-export function isCommittingCall(toolName: string, args: Record<string, unknown>): boolean {
+export function committedRoute(
+	toolName: string,
+	args: Record<string, unknown>,
+): 'agent' | 'workflow' | 'one-off' | 'multi' | 'debug' | 'ask-user' | undefined {
 	const action = actionOf(args);
 	switch (toolName) {
 		case ORCHESTRATION_TOOL_IDS.BUILD_AGENT:
 			// `exploring` only reads an existing Agent, so it does not commit to a route.
-			return args.operation !== 'exploring';
+			return args.operation === 'exploring' ? undefined : 'agent';
 		case DOMAIN_TOOL_IDS.BUILD_WORKFLOW:
+			return args.executionIntent === 'one-off' ? 'one-off' : 'workflow';
 		case ORCHESTRATION_TOOL_IDS.CREATE_TASKS:
+			return 'multi';
 		case DOMAIN_TOOL_IDS.ASK_USER:
-			return true;
+			return 'ask-user';
 		case DOMAIN_TOOL_IDS.NODES:
-			return action === 'execute';
+			return action === 'execute' ? 'one-off' : undefined;
 		case DOMAIN_TOOL_IDS.EXECUTIONS:
-			return action !== undefined && EXECUTIONS_COMMITTING_ACTIONS.has(action);
+			if (action === 'debug') return 'debug';
+			return action === 'run' || action === 'run-step' || action === 'stop' ? 'one-off' : undefined;
 		case DOMAIN_TOOL_IDS.DATA_TABLES:
-			return isCommittingDataTablesAction(action);
+			return action === undefined || DATA_TABLES_EXPLORATION_ACTIONS.has(action)
+				? undefined
+				: 'one-off';
 		case DOMAIN_TOOL_IDS.WORKFLOWS:
-			return isMutatingWorkflowsAction(action);
+			return action === undefined || WORKFLOWS_READ_ACTIONS.has(action) ? undefined : 'one-off';
 		default:
-			return false;
+			return undefined;
 	}
+}
+
+export function isCommittingCall(toolName: string, args: Record<string, unknown>): boolean {
+	return committedRoute(toolName, args) !== undefined;
 }

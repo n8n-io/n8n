@@ -323,7 +323,7 @@ async function runRoutingMode(args: CliArgs, casesDir: string): Promise<void> {
 		`Running ${String(cases.length)} routing case(s) × ${String(args.trials)} trial(s) (model: ${args.modelId}, concurrency: ${String(args.concurrency)}, stop on route: ${args.stopOnRoute ? 'yes' : 'no'}).\n`,
 	);
 
-	const buckets = new Map<RoutingBucket, { passed: number; total: number }>();
+	const results: Array<{ bucket: RoutingBucket; passed: boolean }> = [];
 	let runErrors = 0;
 	let judgeErrors = 0;
 
@@ -358,21 +358,17 @@ async function runRoutingMode(args: CliArgs, casesDir: string): Promise<void> {
 			if (turn.runError) console.log(`     run error: ${turn.runError}`);
 		}
 
-		const bucket = buckets.get(routingCase.bucket) ?? { passed: 0, total: 0 };
-		bucket.total++;
-		if (passed) bucket.passed++;
-		buckets.set(routingCase.bucket, bucket);
+		results.push({ bucket: routingCase.bucket, passed });
 	}
 
 	console.log('\n=== Routing summary (a case passes when 2/3 of its trials pass) ===');
-	let passedCases = 0;
+	const summaryLine = (name: string, rows: typeof results) =>
+		console.log(`  ${name.padEnd(8)} ${percent(rows.filter((r) => r.passed).length, rows.length)}`);
 	for (const name of ROUTING_BUCKETS) {
-		const bucket = buckets.get(name);
-		if (!bucket) continue;
-		passedCases += bucket.passed;
-		console.log(`  ${name.padEnd(8)} ${percent(bucket.passed, bucket.total)}`);
+		const rows = results.filter((r) => r.bucket === name);
+		if (rows.length > 0) summaryLine(name, rows);
 	}
-	console.log(`  ${'total'.padEnd(8)} ${percent(passedCases, cases.length)}`);
+	summaryLine('total', results);
 	if (runErrors > 0 || judgeErrors > 0) {
 		console.log(`Errored trials: ${String(runErrors)} run, ${String(judgeErrors)} judge.`);
 	}
