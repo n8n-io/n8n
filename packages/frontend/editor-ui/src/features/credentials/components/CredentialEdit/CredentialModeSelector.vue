@@ -11,10 +11,8 @@ import {
 	getNodeAuthOptions,
 	getNodeCredentialForSelectedAuthType,
 } from '@/app/utils/nodeTypesUtils';
-import {
-	hasManagedOAuthApp,
-	useCredentialOAuth,
-} from '@/features/credentials/composables/useCredentialOAuth';
+import { useCredentialOAuth } from '@/features/credentials/composables/useCredentialOAuth';
+import { hasManagedOAuthApp } from '@/features/credentials/credentials.utils';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 
 export interface CredentialModeOption {

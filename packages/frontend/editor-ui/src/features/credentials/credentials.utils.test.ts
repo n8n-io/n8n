@@ -8,7 +8,7 @@ import type { INodeUi } from '@/Interface';
 import { mockedStore } from '@/__tests__/utils';
 import { useCredentialsStore } from './credentials.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { getAutoSelectedCredential } from './credentials.utils';
+import { getAutoSelectedCredential, hasManagedOAuthApp } from './credentials.utils';
 
 const openAiApiCredentialType = {
 	name: 'openAiApi',
@@ -168,5 +168,34 @@ describe('getAutoSelectedCredential', () => {
 			credentialType: 'slackApi',
 			credential: { id: 'slack', name: 'Slack' },
 		});
+	});
+});
+
+describe('hasManagedOAuthApp', () => {
+	const slackOAuth2Api: ICredentialType = {
+		name: 'slackOAuth2Api',
+		extends: ['oAuth2Api'],
+		displayName: 'Slack OAuth2 API',
+		properties: [],
+	};
+
+	it.each([
+		['no overwritten properties', undefined, undefined, false],
+		['only the client ID overwritten', ['clientId'], undefined, false],
+		['only the client secret overwritten', ['clientSecret'], undefined, false],
+		['both client fields overwritten', ['clientId', 'clientSecret'], undefined, true],
+		['managed creation skipped', ['clientId', 'clientSecret'], true, false],
+	])('returns %s', (_case, overwrittenProperties, skipManagedCreation, expected) => {
+		expect(
+			hasManagedOAuthApp({
+				...slackOAuth2Api,
+				__overwrittenProperties: overwrittenProperties,
+				__skipManagedCreation: skipManagedCreation,
+			}),
+		).toBe(expected);
+	});
+
+	it('returns false for a credential type the store does not know', () => {
+		expect(hasManagedOAuthApp(undefined)).toBe(false);
 	});
 });

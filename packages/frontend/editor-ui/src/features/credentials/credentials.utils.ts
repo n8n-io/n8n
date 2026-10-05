@@ -1,4 +1,8 @@
-import type { INodeCredentialsDetails, NodeParameterValueType } from 'n8n-workflow';
+import type {
+	ICredentialType,
+	INodeCredentialsDetails,
+	NodeParameterValueType,
+} from 'n8n-workflow';
 
 import type { INodeUi } from '@/Interface';
 import { isEmpty } from '@/app/utils/typesUtils';
@@ -42,4 +46,21 @@ export function getAutoSelectedCredential(
 		credentialType: mostRecent.type,
 		credential: { id: mostRecent.id, name: mostRecent.name },
 	};
+}
+
+/**
+ * Whether the instance supplies the OAuth app (client ID and secret) for this
+ * credential type. Required fields the overwrites do not cover stay the user's
+ * to fill, so this is a weaker condition than `canOAuthCredentialQuickConnect`.
+ *
+ * Kept here, clear of `useCredentialOAuth`, because several suites mock that
+ * composable as a whole and a production import of it would resolve to nothing.
+ */
+export function hasManagedOAuthApp(credentialType: ICredentialType | null | undefined): boolean {
+	if (!credentialType || credentialType.__skipManagedCreation) return false;
+
+	const overwrittenProperties = credentialType.__overwrittenProperties ?? [];
+	return (
+		overwrittenProperties.includes('clientId') && overwrittenProperties.includes('clientSecret')
+	);
 }

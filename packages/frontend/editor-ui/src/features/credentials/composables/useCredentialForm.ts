@@ -46,7 +46,7 @@ import {
 	parseTemplatedAuthField,
 	TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE,
 } from '../templatedAuth.utils';
-import { hasManagedOAuthApp } from './useCredentialOAuth';
+import { hasManagedOAuthApp } from '../credentials.utils';
 
 const MANAGED_CREDENTIAL_HIDDEN_PROPERTIES = new Set([
 	'scope',

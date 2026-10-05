@@ -3,7 +3,8 @@ import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { CREDENTIAL_DESCRIPTIONS_FLAG } from '@n8n/api-types';
 import { usePostHog } from '@/app/stores/posthog.store';
-import { hasManagedOAuthApp, useCredentialOAuth } from '../useCredentialOAuth';
+import { useCredentialOAuth } from '../useCredentialOAuth';
+import { hasManagedOAuthApp } from '../../credentials.utils';
 import { OAUTH_FLOW_TIMEOUT } from '../oauthCallback';
 import { useCredentialsStore } from '../../credentials.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -384,27 +385,7 @@ describe('useCredentialOAuth', () => {
 		});
 	});
 
-	describe('hasManagedOAuthApp', () => {
-		it.each([
-			['no overwritten properties', undefined, undefined, false],
-			['only the client ID overwritten', ['clientId'], undefined, false],
-			['only the client secret overwritten', ['clientSecret'], undefined, false],
-			['both client fields overwritten', ['clientId', 'clientSecret'], undefined, true],
-			['managed creation skipped', ['clientId', 'clientSecret'], true, false],
-		])('returns %s', (_case, overwrittenProperties, skipManagedCreation, expected) => {
-			expect(
-				hasManagedOAuthApp({
-					...slackOAuth2Api,
-					__overwrittenProperties: overwrittenProperties,
-					__skipManagedCreation: skipManagedCreation,
-				}),
-			).toBe(expected);
-		});
-
-		it('returns false for a credential type the store does not know', () => {
-			expect(hasManagedOAuthApp(undefined)).toBe(false);
-		});
-
+	describe('hasManagedOAuthApp vs canOAuthCredentialQuickConnect', () => {
 		// Jira: the instance supplies the OAuth app, but the Site URL stays the
 		// user's to fill. The managed choice depends on the first answer, and the
 		// one-click path on the second, so the two must not agree here.

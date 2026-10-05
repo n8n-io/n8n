@@ -46,20 +46,6 @@ interface CreateAndAuthorizeOptions {
 }
 
 /**
- * Whether the instance supplies the OAuth app (client ID and secret) for this
- * credential type. Required fields the overwrites do not cover stay the user's
- * to fill, so this is a weaker condition than `canOAuthCredentialQuickConnect`.
- */
-export function hasManagedOAuthApp(credentialType: ICredentialType | null | undefined): boolean {
-	if (!credentialType || credentialType.__skipManagedCreation) return false;
-
-	const overwrittenProperties = credentialType.__overwrittenProperties ?? [];
-	return (
-		overwrittenProperties.includes('clientId') && overwrittenProperties.includes('clientSecret')
-	);
-}
-
-/**
  * Composable for OAuth credential type detection and authorization.
  * Used by NodeCredentials for the quick connect OAuth flow.
  */
