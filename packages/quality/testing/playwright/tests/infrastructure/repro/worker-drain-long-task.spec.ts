@@ -4,14 +4,15 @@ import { FILES, hook, ReproStack, Scenario, signal, waitForExit } from './harnes
 import { chain, nodes, webhookPath } from './workflows';
 
 const GRACE_S = 60;
+const EXTERNAL = process.env.REPRO_RUNNERS === 'external';
 
 test('worker drain: a task longer than the shutdown window ends inside it', async ({}, testInfo) => {
 	test.setTimeout(400_000);
 
 	const repro = await ReproStack.start({
 		name: 'long-task',
-		workers: 2,
-		runners: 'internal',
+		workers: EXTERNAL ? 1 : 2,
+		runners: EXTERNAL ? 'external' : 'internal',
 		scale: 6,
 		env: { N8N_GRACEFUL_SHUTDOWN_TIMEOUT: String(GRACE_S), N8N_RUNNERS_TASK_TIMEOUT: '300' },
 		hooks: [
@@ -26,7 +27,11 @@ test('worker drain: a task longer than the shutdown window ends inside it', asyn
 			},
 		],
 	});
-	const s = new Scenario('worker-drain-long-task', repro, testInfo.outputPath());
+	const s = new Scenario(
+		EXTERNAL ? 'worker-drain-long-task-external' : 'worker-drain-long-task',
+		repro,
+		testInfo.outputPath(),
+	);
 
 	await s.run(testInfo, async () => {
 		await repro.signIn();
@@ -80,7 +85,9 @@ test('worker drain: a task longer than the shutdown window ends inside it', asyn
 		} else {
 			expect.soft(s.result.shutdownTimedOut, 'shutdown timed out').toBe(true);
 			expect.soft(exit?.exitCode, 'worker exit code').toBe(1);
-			expect.soft(execution.stalledError, 'execution failed as stalled').toBe(true);
+			if (!EXTERNAL) {
+				expect.soft(execution.stalledError, 'execution failed as stalled').toBe(true);
+			}
 		}
 	});
 });

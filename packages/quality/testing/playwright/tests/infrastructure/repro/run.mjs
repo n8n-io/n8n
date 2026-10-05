@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Runs repro scenarios on their before and after images and prints a pass table.
-// Usage: node run.mjs [scenario ...] [--runs N] [--variant before|after] [--out DIR]
+// Usage: node run.mjs [scenario ...] [--runs N] [--variant before|after] [--after-image IMAGE] [--out DIR]
 import { spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -27,6 +27,7 @@ const out = option(
 		new Date().toISOString().replace(/[:.]/g, '-'),
 	),
 );
+const afterImage = option('after-image', undefined);
 const selected = args.length ? args : Object.keys(manifest);
 
 for (const name of selected) {
@@ -56,7 +57,8 @@ for (const name of selected) {
 	const scenario = manifest[name];
 	for (const variant of ['before', 'after']) {
 		if (onlyVariant && variant !== onlyVariant) continue;
-		const image = scenario[variant];
+		const image =
+			variant === 'after' && afterImage && scenario.after ? afterImage : scenario[variant];
 		if (!image) {
 			rows.push({ name, variant, image: '-', note: 'no image' });
 			continue;
@@ -82,6 +84,7 @@ for (const name of selected) {
 				stdio: 'inherit',
 				env: {
 					...process.env,
+					...scenario.env,
 					TEST_IMAGE_N8N: image,
 					REPRO_VARIANT: variant,
 					REPRO_RESULTS_FILE: results,
@@ -111,5 +114,7 @@ for (const row of rows) {
 		`${row.name} | ${row.variant} | ${row.image} | ${row.note ?? `${row.passed}/${row.total}`}`,
 	);
 }
-const failed = rows.some((r) => (r.note && r.note !== 'no image') || (!r.note && r.passed !== runs));
+const failed = rows.some(
+	(r) => (r.note && r.note !== 'no image') || (!r.note && r.passed !== runs),
+);
 process.exit(failed ? 1 : 0);

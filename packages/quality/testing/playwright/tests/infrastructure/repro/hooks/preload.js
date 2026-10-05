@@ -142,6 +142,14 @@
 				);
 				return result;
 			}
+			if (hook.kind === 'pause' && hook.phase === 'after') {
+				return Promise.resolve(original.apply(this, args)).then(async (value) => {
+					const after = { ...ctx, result: value };
+					if (!shouldFire(hook, after)) return value;
+					await waitRelease(hook, hit(hook, after));
+					return value;
+				});
+			}
 			if (!shouldFire(hook, ctx)) return original.apply(this, args);
 			if (hook.kind === 'drop') {
 				hit(hook, ctx);

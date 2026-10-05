@@ -3,13 +3,15 @@ import { expect, test } from '@playwright/test';
 import { FILES, hook, ReproStack, Scenario, signal, waitForExit, waitForLog } from './harness';
 import { chain, nodes, webhookPath } from './workflows';
 
+const EXTERNAL = process.env.REPRO_RUNNERS === 'external';
+
 test('worker drain: detached sub-workflow finishes before the worker exits', async ({}, testInfo) => {
 	test.setTimeout(300_000);
 
 	const repro = await ReproStack.start({
 		name: 'detached-sub',
 		workers: 1,
-		runners: 'internal',
+		runners: EXTERNAL ? 'external' : 'internal',
 		scale: 3,
 		hooks: [
 			{
@@ -21,7 +23,11 @@ test('worker drain: detached sub-workflow finishes before the worker exits', asy
 			},
 		],
 	});
-	const s = new Scenario('worker-drain-detached-subworkflow', repro, testInfo.outputPath());
+	const s = new Scenario(
+		EXTERNAL ? 'worker-drain-detached-subworkflow-external' : 'worker-drain-detached-subworkflow',
+		repro,
+		testInfo.outputPath(),
+	);
 
 	await s.run(testInfo, async () => {
 		await repro.signIn();

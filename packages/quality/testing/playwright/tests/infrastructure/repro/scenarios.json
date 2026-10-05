@@ -52,5 +52,35 @@
 		"spec": "fetched-before-lock.spec.ts",
 		"before": "n8nio/n8n:2.42.2",
 		"after": null
+	},
+	"worker-drain-long-task-external": {
+		"issue": "CAT-4338",
+		"spec": "worker-drain-long-task.spec.ts",
+		"before": "n8nio/n8n:2.38.3",
+		"after": "n8nio/n8n:2.38.4",
+		"env": {
+			"REPRO_RUNNERS": "external"
+		}
+	},
+	"worker-drain-detached-subworkflow-external": {
+		"issue": "CAT-4349",
+		"spec": "worker-drain-detached-subworkflow.spec.ts",
+		"before": "n8nio/n8n:2.38.7",
+		"after": "n8nio/n8n:2.39.0",
+		"env": {
+			"REPRO_RUNNERS": "external"
+		}
+	},
+	"worker-drain-dequeued-after-stop": {
+		"issue": "CAT-4728",
+		"spec": "worker-drain-dequeued-after-stop.spec.ts",
+		"before": "n8nio/n8n:2.42.2",
+		"after": "n8nio/n8n:repro-cat4728-fix"
+	},
+	"worker-drain-fetched-on-complete": {
+		"issue": "CAT-4728",
+		"spec": "worker-drain-fetched-on-complete.spec.ts",
+		"before": "n8nio/n8n:2.42.2",
+		"after": "n8nio/n8n:repro-cat4728-fix"
 	}
 }

@@ -36,8 +36,10 @@ cd "$HARNESS/packages/quality/testing/playwright/tests/infrastructure/repro"
 node run.mjs                                   # every scenario, both variants, 5 runs
 node run.mjs worker-drain-fetched-job --runs 1 # one scenario, one run each
 node run.mjs --variant before                  # only the before images
+node run.mjs --after-image n8nio/n8n:repro-x    # every after variant on one image
 ```
 
+- `env` in a `scenarios.json` entry is passed to that scenario's Playwright process; the runner-mode variants use `REPRO_RUNNERS=external`
 - A variant passes when the image behaves as the spec expects for that variant: the bug's failure mode on `before`, correct behaviour on `after`. A `before` run that fails for another reason is reported as a failure
 - Results go to `$TMPDIR/repro-results/<timestamp>/<scenario>.<variant>.jsonl` (or `--out DIR`). Each line holds the outcome fields, `passed` and a timestamped `timeline` of steps
 - Logs of the last run of each test are in `packages/quality/testing/playwright/test-results/*/logs/`
@@ -104,7 +106,7 @@ Hooks patch compiled code at module load. Declare them in `ReproStack.start({ ho
 | `scope` | Only fire inside an async call of another method (`{ file, target, method }`), once per call |
 | `where` | Filters: `[{ path: 'args.0.node.name', equals: 'Pause' }]` |
 | `detail` | Values to log with each hit: `{ executionId: 'args.0.executionId' }`. Paths start at `args`, `this`, `scope.args` or `result` |
-| `phase` | `observe`: `before` the call or `after` it resolves. `fault`: `before` (no call) or `after` (call, then reject) |
+| `phase` | `pause`: `before` the call (default) or `after` it resolves, holding the result; `where` and `detail` can then read `result`. `observe`: `before` the call or `after` it resolves. `fault`: `before` (no call) or `after` (call, then reject) |
 | `preserve` | `fault` after: methods copied from the original return value onto the rejected promise (for example `cancel`) |
 
 Control from the spec: `const p = hook(containers, point)`, then `p.arm()`, `p.waitHit(ms)` (returns the container and detail), `p.release(container)`, `p.disarm(exceptContainer)`. The channel is a file per point under `/tmp/repro-hooks` in the container, written through `docker exec node`.
