@@ -72,6 +72,10 @@
 		"src/rules/ai-node-package-json.test.ts"
 	],
 	"packages/@n8n/extension-sdk": ["src/backend/define.ts"],
+	"packages/@n8n/inbound-auth": [
+		"src/__tests__/trusted-source-config.test.ts",
+		"src/trusted-source-config.ts"
+	],
 	"packages/@n8n/imap": ["src/connection-options.test.ts", "src/connection-options.ts"],
 	"packages/@n8n/instance-ai": [
 		"evaluations/__tests__/agent-report-rendering.test.ts",

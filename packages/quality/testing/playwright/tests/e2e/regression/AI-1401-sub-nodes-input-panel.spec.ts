@@ -3,7 +3,7 @@ import { test, expect } from '../../../fixtures/base';
 test.describe(
 	'AI-1401 AI sub-nodes show node output with no path back in input',
 	{
-		annotation: [{ type: 'owner', description: 'AI' }],
+		annotation: [{ type: 'owner', description: 'Agent' }],
 	},
 	() => {
 		test('should show correct root node for nested sub-nodes in input panel', async ({ n8n }) => {

@@ -215,6 +215,8 @@ describe.skipIf(!REDIS_HOST || !REDIS_PORT)(
 			const leaving = early.slice(30);
 			const leaders = new Set([early[0]]);
 			await registerAll(early, leaders);
+			// Establish the baseline before first-round removals start.
+			await runCycle(mains[0]);
 
 			await runCyclesWhileRegistryChanges({ live: early, joining: late, leaving, leaders });
 			await runCycle(mains[0]);

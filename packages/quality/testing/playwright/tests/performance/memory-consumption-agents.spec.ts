@@ -11,4 +11,4 @@ test.use({
 	},
 });
 
-runMemoryBaseline({ name: 'agents', owner: 'AI' });
+runMemoryBaseline({ name: 'agents', owner: 'Agent' });
