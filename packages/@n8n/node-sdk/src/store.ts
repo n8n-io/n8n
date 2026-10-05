@@ -36,6 +36,7 @@ import {
 	compareSemver,
 	parseManifest,
 	parseNativeManifest,
+	parseSemver,
 	type NodeContractVersion,
 	type VersionManifest,
 } from './version';
@@ -46,6 +47,25 @@ export type StoreManifest = VersionManifest | CredentialManifest | NativeManifes
 /** True for the manifest of a version with a bundle: an action, trigger or provider that the SDK runs. */
 export const isVersionManifest = (manifest: StoreManifest): manifest is VersionManifest =>
 	manifest.kind !== 'credential' && !('native' in manifest);
+
+/**
+ * The credential pins of a manifest that none of `credentials` resolves, e.g. to refuse the
+ * version when a store takes it. A pin `<id>@<major>` needs a credential manifest of that id and
+ * major whose n8n type name the contract lists.
+ */
+export function unresolvedCredentialPinsOf(
+	manifest: Pick<VersionManifest | NativeManifest, 'credentials' | 'contract'>,
+	credentials: readonly CredentialManifest[],
+): string[] {
+	return (manifest.credentials ?? []).filter(
+		(pin) =>
+			!credentials.some(
+				({ id, semver, name }) =>
+					pin === `${id}@${parseSemver(semver).major}` &&
+					manifest.contract.credentials.includes(name),
+			),
+	);
+}
 
 /** One version line of `index/<id>.ndjson`. Freeze writes the fields up to `name`. */
 export interface StoreRecord {
@@ -63,7 +83,7 @@ export interface StoreRecord {
 	readonly bundle?: string;
 	/** The contract hash of the manifest. A credential has none. */
 	readonly contractHash?: string;
-	/** `<name>@<major>` of each credential type that the version pins. */
+	/** `<id>@<major>` of each credential type that the version pins. */
 	readonly credentials?: readonly string[];
 	/** What the version may reach, sorted, so that a host can decide before it downloads. */
 	readonly permissions?: {
@@ -74,7 +94,7 @@ export interface StoreRecord {
 	};
 	/** The legacy node type that runs a native version, e.g. `n8n-nodes-base.webhook`. */
 	readonly native?: string;
-	/** The n8n type name of a credential, e.g. `notionApi`. Versions pin credentials by it. */
+	/** The n8n type name of a credential, e.g. `notionApi`. */
 	readonly name?: string;
 	/** `sha256:<hex>` of the fixtures that publish replayed. */
 	readonly fixtures?: string;

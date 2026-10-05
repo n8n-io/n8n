@@ -100,6 +100,19 @@ const pingToken = defineCredential({
 	baseUrl: 'https://api.ping.test',
 });
 
+/** A native trigger that pins `ping.token@1`. */
+const pingCalled = defineNode({
+	id: 'ping',
+	displayName: 'Ping',
+	credential: credential({ types: [pingToken] }),
+}).trigger('called', {
+	trigger: 'On call',
+	summary: 'Starts on a call.',
+	input: { path: t.str() },
+	output: t.obj({ body: t.str() }),
+	native: { type: 'n8n-nodes-base.webhook', version: 2.2, on: 'webhook' },
+});
+
 const pingSource = `
 import { defineNode, t } from '@n8n/node-sdk';
 import { credential, defineCredential, field } from '@n8n/node-sdk/credentials';
@@ -832,6 +845,67 @@ describe('importContractStore and exportContractStore', () => {
 		expect(instance.current.rows.size).toBe(0);
 	});
 
+	it('refuses a version whose pinned credential manifest n8n does not have', async () => {
+		const dir = await sourceDir();
+		await addToStore(dir, [
+			{
+				manifestText: manifestTextOf(await freezeNative(pingCalled)),
+				signatures: [],
+			},
+		]);
+		await expect(importDir(dir, noKeys)).rejects.toThrow(
+			'ping.called@1.0.0 pins the credential ping.token@1',
+		);
+		expect(instance.current.rows.size).toBe(0);
+	});
+
+	it('admits a version whose pinned credential manifest n8n bundles', async () => {
+		const [head] = versionsOf('notion.user.get');
+		if (!head) throw new Error('notion.user.get is not bundled');
+		expect(head.manifest.credentials).toContain('notion.token@1');
+		const manifestText = manifestTextOf(head.manifest);
+		const admitted = await admitVersions(instance.current.store, [
+			{
+				id: head.manifest.id,
+				version: head.manifest.semver,
+				kind: head.manifest.kind,
+				manifest: 'sha256:notion',
+				manifestText,
+				bundle: await head.readBundle(),
+				origin: 'private',
+			},
+		]);
+		expect(admitted).toHaveLength(1);
+	});
+
+	it('refuses other bytes for a stored credential version', async () => {
+		await importDir(await credentialAndNativeDir());
+		const row = [...instance.current.rows.values()].find(({ kind }) => kind === 'credential');
+		if (!row) throw new Error('no credential imported');
+		await expect(
+			admitVersions(instance.current.store, [{ ...row, manifest: `sha256:${'f'.repeat(64)}` }]),
+		).rejects.toThrow('ping.token@1.0.0 is in the store with other bytes');
+	});
+
+	it('refuses other bytes that another admission stored after the check', async () => {
+		await importDir(await sourceDir());
+		const [row] = instance.current.rows.values();
+		if (!row) throw new Error('nothing imported');
+		const reads = { count: 0 };
+		// The table skips a second row of one id and version, as its unique index does.
+		const racing: InstanceStore = {
+			...instance.current.store,
+			manifests: async (id) => {
+				reads.count += 1;
+				return reads.count === 1 ? [] : await instance.current.store.manifests(id);
+			},
+			insert: async () => {},
+		};
+		await expect(
+			admitVersions(racing, [{ ...row, manifest: `sha256:${'f'.repeat(64)}` }]),
+		).rejects.toThrow('demo.echo@1.0.0 is in the store with other bytes');
+	});
+
 	it('refuses other bytes for a stored version', async () => {
 		await importDir(await sourceDir());
 		const [row] = instance.current.rows.values();
@@ -916,20 +990,9 @@ describe('importContractStore and exportContractStore', () => {
 		const dir = await sourceDir();
 		const pingCredential = await freezeCredential(pingToken);
 		if (!pingCredential) throw new Error('ping.token has no manifest');
-		const called = defineNode({
-			id: 'ping',
-			displayName: 'Ping',
-			credential: credential({ types: [pingToken] }),
-		}).trigger('called', {
-			trigger: 'On call',
-			summary: 'Starts on a call.',
-			input: { path: t.str() },
-			output: t.obj({ body: t.str() }),
-			native: { type: 'n8n-nodes-base.webhook', version: 2.2, on: 'webhook' },
-		});
 		await addToStore(
 			dir,
-			[pingCredential, await freezeNative(called)].map((manifest) => {
+			[pingCredential, await freezeNative(pingCalled)].map((manifest) => {
 				const manifestText = manifestTextOf(manifest);
 				return { manifestText, signatures: [signStoreManifest(manifestText, privateKey)] };
 			}),
@@ -1007,7 +1070,7 @@ describe('contractStore with triggers and credentials', () => {
 
 	it('takes a trigger version and the credential manifest it pins from the registry', async () => {
 		const { trigger, credential, lock } = await publishPing();
-		expect(trigger.manifest).toMatchObject({ kind: 'trigger', credentials: ['pingApi@1'] });
+		expect(trigger.manifest).toMatchObject({ kind: 'trigger', credentials: ['ping.token@1'] });
 		const store = storeOf();
 		expect((await store.locked(lock)).manifest).toEqual(trigger.manifest);
 
@@ -1023,10 +1086,43 @@ describe('contractStore with triggers and credentials', () => {
 	});
 
 	it('takes no credential manifest from the registry without a key', async () => {
-		const { trigger, lock } = await publishPing();
+		const { lock } = await publishPing();
 		const store = storeOf({ keys: noKeys });
-		expect((await store.locked(lock)).manifest).toEqual(trigger.manifest);
+		await expect(store.locked(lock)).rejects.toThrow(
+			'ping.pinged@1.0.0 pins the credential ping.token@1',
+		);
+		expect(instance.current.rows.size).toBe(0);
 		expect((await store.credentials()).has('pingApi')).toBe(false);
+	});
+
+	it('takes the version without a key when the store has its pinned credential manifest', async () => {
+		const { trigger, credential, lock } = await publishPing();
+		const manifestText = manifestTextOf(credential);
+		await admitVersions(instance.current.store, [
+			{
+				id: credential.id,
+				version: credential.semver,
+				kind: 'credential',
+				manifest: 'sha256:ping-token',
+				manifestText,
+				origin: 'private',
+			},
+		]);
+		expect((await storeOf({ keys: noKeys }).locked(lock)).manifest).toEqual(trigger.manifest);
+	});
+
+	it('does not list a stored version whose pinned credential manifest it does not have', async () => {
+		const { trigger } = await ping();
+		instance.current.rows.set('sha256:pinged', {
+			id: trigger.manifest.id,
+			version: trigger.manifest.semver,
+			kind: 'trigger',
+			manifest: 'sha256:pinged',
+			manifestText: manifestTextOf(trigger.manifest),
+			bundle: trigger.bundle,
+			origin: 'private',
+		});
+		expect((await storeOf({ keys: noKeys }).versions()).has('ping.pinged')).toBe(false);
 	});
 
 	it('refuses a pinned credential manifest without the trusted signature', async () => {

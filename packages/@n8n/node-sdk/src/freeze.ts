@@ -43,10 +43,10 @@ export function sdkVersion(): string {
 	return version;
 }
 
-/** `<name>@<major>` of each credential type that has a credential manifest. */
+/** `<id>@<major>` of each credential type that has a credential manifest. */
 const credentialPinsOf = (action: Action | Trigger) =>
-	(action.node.credential?.types ?? []).flatMap(({ name, semver }) =>
-		semver === undefined ? [] : [`${name}@${parseSemver(semver).major}`],
+	(action.node.credential?.types ?? []).flatMap(({ id, semver }) =>
+		semver === undefined ? [] : [`${id}@${parseSemver(semver).major}`],
 	);
 
 /**

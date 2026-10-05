@@ -54,7 +54,7 @@ flowchart LR
 |---|---|---|---|
 | Node Contract version | the spec | `nodeContract` in each manifest; the WIT package version | Yes: the host range `N8N_NODE_CONTRACT_RANGE` (default `>=2.0.0 <3.0.0`) and the newest minor that the host implements |
 | action, trigger, provider version | the content | `semver` (the major is the n8n `typeVersion`). The source sets the major and the minor. Freeze sets the patch: the newest published patch of that minor, plus one when the bundle changed. A build without `N8N_NODE_CONTRACTS_REGISTRY_URL` sets patch 0, so `tolerant` does not take that HEAD for a lock of an older bundle of the same minor | Yes: a workflow pins it |
-| credential version | the content | `semver` of the credential manifest; an action pins `<name>@<major>` in `credentials` | Yes: the pin |
+| credential version | the content | `semver` of the credential manifest; an action pins `<id>@<major>` in `credentials`, e.g. `notion.token@1` | Yes: the pin |
 | SDK version | `@n8n/node-sdk` | `sdk` in each manifest | No: for traceability only |
 | n8n version | the product | — | Only through the Node Contract range it supports |
 
@@ -86,6 +86,10 @@ instance keeps its versions of all kinds, also credential and native manifests, 
 `node_contract_version` table: one row for each manifest digest, with the origin of the version
 from its signing key (see sandboxed-execution.md). `n8n contracts:import --input=<dir>` adds the verified versions of a folder to the
 table, and `n8n contracts:export --output=<dir> [--pinned]` writes the table in this layout.
+The table never takes other bytes for a stored `id@version` of any kind. It refuses a version
+whose credential pin has no credential manifest of that id and major in the same admission, in
+the table, or in the embedded store. n8n does not list a stored version whose pin does not
+resolve, and registers no node type for it.
 
 | File | Content |
 |---|---|

@@ -138,8 +138,9 @@ export interface VersionManifest {
 	/** The `@n8n/node-sdk` version that froze it, for traceability only. An older SDK did not write it. */
 	readonly sdk?: string;
 	/**
-	 * `<name>@<major>` of each credential type of `contract.credentials` that has a credential
-	 * manifest. A compat type has none: its legacy class defines it. Absent when none has one.
+	 * `<id>@<major>` of each credential type of `contract.credentials` that has a credential
+	 * manifest, e.g. `notion.token@1`. A compat type has none: its legacy class defines it. Absent
+	 * when none has one.
 	 */
 	readonly credentials?: readonly string[];
 	/** The normative hash, see `contractHash`. */

@@ -69,6 +69,12 @@ const hex = () => t.str().with({ pattern: '^[0-9a-f]{64}$' });
 
 const names = () => t.arr(t.str());
 
+/** `<id>@<major>` of each credential type with a credential manifest, e.g. `notion.token@1`. */
+const credentialPins = () =>
+	t
+		.arr(t.str().with({ pattern: '^[^.@]+\\.[^.@]+@\\d+$' }))
+		.describe('`<id>@<major>` of each credential type with a credential manifest.');
+
 const flow = typed<ContractDocument['flow']>()(
 	t.obj({
 		effect: t.oneOf('read', 'write', 'transform'),
@@ -179,11 +185,7 @@ export const versionManifestSchema = typed<VersionManifest>()(
 			kind: t.oneOf('action', 'trigger', 'provider').with(SINCE_2_5),
 			nodeContract: nodeContractVersion().with(SINCE_2_5),
 			sdk: t.str().with(SINCE_2_5).optional(),
-			credentials: t
-				.arr(t.str().with({ pattern: '^[^@]+@\\d+$' }))
-				.describe('`<name>@<major>` of each credential type with a credential manifest.')
-				.with(SINCE_2_5)
-				.optional(),
+			credentials: credentialPins().with(SINCE_2_5).optional(),
 			...versionFields,
 			ui: actionUiSchema.optional(),
 		})
@@ -387,7 +389,7 @@ export interface NativeManifest {
 	readonly nodeContract: NodeContractVersion;
 	/** The `@n8n/node-sdk` version that froze it, for traceability only. */
 	readonly sdk: string;
-	/** `<name>@<major>` of each credential type with a credential manifest. Absent when none has one. */
+	/** `<id>@<major>` of each credential type with a credential manifest. Absent when none has one. */
 	readonly credentials?: readonly string[];
 	/** The normative hash of `contract`, see `contractHash`. */
 	readonly contractHash: string;
@@ -422,7 +424,7 @@ export const nativeManifestSchema = typed<NativeManifest>()(
 			semver: semver(),
 			nodeContract: nodeContractVersion(),
 			sdk: t.str(),
-			credentials: t.arr(t.str().with({ pattern: '^[^@]+@\\d+$' })).optional(),
+			credentials: credentialPins().optional(),
 			contractHash: hex(),
 			contract,
 			native: nativeNode,

@@ -3,8 +3,8 @@ import { appendFile, mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/p
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
-import { freezeAction, freezeCredential, type FrozenAction } from '../freeze';
-import { defineCredential, field } from '../entry/credentials';
+import { freezeAction, freezeCredential, freezeNative, type FrozenAction } from '../freeze';
+import { credential, defineCredential, field } from '../entry/credentials';
 import { defineNode, t } from '../index';
 import {
 	credentialChangeOf,
@@ -26,6 +26,7 @@ import {
 	storeFilesOfUrl,
 	storeIndexFileOf,
 	storeReader,
+	unresolvedCredentialPinsOf,
 	verifyStoreSignature,
 	type StoreRecord,
 	type StoreStatusRecord,
@@ -217,6 +218,20 @@ describe('the store layout', () => {
 		).rejects.toThrow('demo.echo@1.0.0 is in the store with other bytes');
 	});
 
+	it('keeps a stored credential version and refuses other bytes for it', async () => {
+		const dir = await newDir('immutable-credential');
+		const textOf = async (type: Parameters<typeof freezeCredential>[0]) => {
+			const manifest = await freezeCredential(type);
+			if (!manifest) throw new Error('no manifest');
+			return manifestTextOf(manifest);
+		};
+		await addToStore(dir, [{ manifestText: await textOf(token) }]);
+		await addToStore(dir, [{ manifestText: await textOf(token) }]);
+		await expect(
+			addToStore(dir, [{ manifestText: await textOf(tokenWith({ displayName: 'Demo' })) }]),
+		).rejects.toThrow('demo.token@1.0.0 is in the store with other bytes');
+	});
+
 	it('refuses an id that is not a store file name', () => {
 		expect(() => storeIndexFileOf('../demo')).toThrow('is not a contract id');
 		expect(() => storeBlobFileOf('sha256:../x')).toThrow('is not a sha256 digest');
@@ -230,6 +245,49 @@ describe('the store layout', () => {
 		expect(await reader.records('demo.echo')).toEqual([record]);
 		expect(await reader.records('demo.other')).toEqual([]);
 		expect(fetch).not.toHaveBeenCalled();
+	});
+});
+
+describe('unresolvedCredentialPinsOf', () => {
+	const pinning = async () =>
+		await freezeNative(
+			defineNode({
+				id: 'demo',
+				displayName: 'Demo',
+				credential: credential({ types: [token] }),
+			}).trigger('hook', {
+				trigger: 'On call',
+				summary: 'Starts on a call.',
+				input: { path: t.str() },
+				output: t.obj({ body: t.str() }),
+				native: { type: 'n8n-nodes-base.webhook', version: 2.2, on: 'webhook' },
+			}),
+		);
+	const credentialOf = async (type: Parameters<typeof freezeCredential>[0]) => {
+		const manifest = await freezeCredential(type);
+		if (!manifest) throw new Error('no manifest');
+		return manifest;
+	};
+
+	it('pins the credential id and major', async () => {
+		expect((await pinning()).credentials).toEqual(['demo.token@1']);
+	});
+
+	it('resolves a pin only by a credential manifest of its id and major', async () => {
+		const manifest = await pinning();
+		expect(unresolvedCredentialPinsOf(manifest, [await credentialOf(token)])).toEqual([]);
+		expect(unresolvedCredentialPinsOf(manifest, [])).toEqual(['demo.token@1']);
+		expect(
+			unresolvedCredentialPinsOf(manifest, [await credentialOf(tokenWith({ version: 2 }))]),
+		).toEqual(['demo.token@1']);
+	});
+
+	it('does not resolve a pin by a credential type that the contract does not list', async () => {
+		const manifest = await pinning();
+		const other = { ...manifest, contract: { ...manifest.contract, credentials: ['otherApi'] } };
+		expect(unresolvedCredentialPinsOf(other, [await credentialOf(token)])).toEqual([
+			'demo.token@1',
+		]);
 	});
 });
 

@@ -11,7 +11,10 @@ import {
 	storeFilesOfUrl,
 	storeReader,
 	toContract,
+	unresolvedCredentialPinsOf,
 	verifyStoreSignature,
+	type CredentialManifest,
+	type NativeManifest,
 	type VersionManifest,
 } from '@n8n/node-sdk/registry';
 import { replayFixtures } from '@n8n/node-sdk/publish';
@@ -68,10 +71,14 @@ describe('action files', () => {
 
 describe('bundled versions', () => {
 	const copy = mkdtempSync(path.join(tmpdir(), 'nodes-base-next-versions-'));
-	const frozen = { manifests: Array.of<VersionManifest>() };
+	const frozen = {
+		manifests: Array.of<VersionManifest>(),
+		credentials: Array.of<CredentialManifest>(),
+		natives: Array.of<NativeManifest>(),
+	};
 
 	beforeAll(async () => {
-		[frozen.manifests] = await Promise.all([
+		[frozen.manifests, frozen.credentials, frozen.natives] = await Promise.all([
 			freezeAll(copy),
 			freezeCredentials(copy),
 			freezeNatives(copy),
@@ -292,13 +299,25 @@ describe('bundled versions', () => {
 		const byId = new Map(frozen.manifests.map((manifest) => [manifest.id, manifest]));
 		expect(byId.get('slack.message.send')).toMatchObject({
 			kind: 'action',
-			credentials: ['slackApi@1'],
+			credentials: ['slack.token@1'],
 		});
 		expect(byId.get('openAi.chatModel')).toMatchObject({ kind: 'provider' });
 		expect(triggers.map(({ id }) => byId.get(id)?.kind)).toEqual(triggers.map(() => 'trigger'));
-		expect(byId.get('gmail.message.send')).toMatchObject({ credentials: ['gmailOAuth2@1'] });
+		expect(byId.get('gmail.message.send')).toMatchObject({ credentials: ['gmail.oauth2@1'] });
 		// A compat credential type has no credential manifest, so no pin.
-		expect(byId.get('github.issue.getAll')?.credentials).not.toContain('githubOAuth2Api@1');
+		expect(byId.get('github.issue.getAll')?.credentials).toEqual(['github.token@1']);
+	});
+
+	it('pin only credential manifests that the embedded store holds', () => {
+		const pinning = [...frozen.manifests, ...frozen.natives];
+		expect(pinning.filter(({ credentials }) => credentials?.length).length).toBeGreaterThan(40);
+		expect(
+			pinning.flatMap((manifest) =>
+				unresolvedCredentialPinsOf(manifest, frozen.credentials).map(
+					(pin) => `${manifest.id} ${pin}`,
+				),
+			),
+		).toEqual([]);
 	});
 
 	it('replay the fixtures of the HEAD through the current executor', async () => {

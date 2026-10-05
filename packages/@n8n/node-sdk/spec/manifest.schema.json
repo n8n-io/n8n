@@ -28,9 +28,9 @@
 					"type": "array",
 					"items": {
 						"type": "string",
-						"pattern": "^[^@]+@\\d+$"
+						"pattern": "^[^.@]+\\.[^.@]+@\\d+$"
 					},
-					"description": "`<name>@<major>` of each credential type with a credential manifest.",
+					"description": "`<id>@<major>` of each credential type with a credential manifest.",
 					"x-n8n-since": "2.5.0"
 				},
 				"id": {
@@ -1092,8 +1092,9 @@
 					"type": "array",
 					"items": {
 						"type": "string",
-						"pattern": "^[^@]+@\\d+$"
-					}
+						"pattern": "^[^.@]+\\.[^.@]+@\\d+$"
+					},
+					"description": "`<id>@<major>` of each credential type with a credential manifest."
 				},
 				"contractHash": {
 					"type": "string",

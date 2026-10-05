@@ -32,6 +32,7 @@ import {
 	storeFilesOfUrl,
 	storeReader,
 	storeStatusTextOf,
+	unresolvedCredentialPinsOf,
 	verifyStoreSignature,
 	withdrawalOf,
 	type CredentialManifest,
@@ -226,7 +227,7 @@ export interface ContractStore {
 	/**
 	 * The newest stored credential manifest of each n8n type name. A version that the store takes
 	 * from the registry brings the credential manifests it pins when a key is set, unless n8n
-	 * bundles that name.
+	 * bundles that id and major.
 	 */
 	credentials(): Promise<ReadonlyMap<string, CredentialManifest>>;
 	/**
@@ -352,16 +353,8 @@ function installsOf(
 	});
 }
 
-/**
- * Inserts checked versions into the store and returns the versions that it did not have. A
- * stored version stays, and other bytes for its id and version are refused.
- */
-export async function admitVersions(
-	store: InstanceStore,
-	versions: readonly StoredVersion[],
-): Promise<StoredVersion[]> {
-	const ids = [...new Set(versions.map(({ id }) => id))];
-	const stored = (await Promise.all(ids.map(async (id) => await store.manifests(id)))).flat();
+/** Refuses a version when the store has other bytes for its id and version. */
+const assertSameBytes = (stored: readonly StoredManifest[], versions: readonly StoredVersion[]) => {
 	const conflict = versions.find((version) =>
 		stored.some(
 			({ id, version: semver, manifest }) =>
@@ -371,13 +364,80 @@ export async function admitVersions(
 	if (conflict) {
 		throw new UserError(`${conflict.id}@${conflict.version} is in the store with other bytes`);
 	}
+};
+
+/** The manifest of a stored version that can pin credentials: a version with a bundle or a native version. */
+const pinningManifestOf = ({ kind, bundle, manifestText }: StoredVersion) => {
+	if (kind === 'credential') return undefined;
+	return bundle === undefined ? parseNativeManifest(manifestText) : parseManifest(manifestText);
+};
+
+/** The credential manifests of stored rows. A row that does not parse is skipped. */
+const parsedCredentialsOf = (rows: ReadonlyArray<Pick<StoredManifest, 'manifestText'>>) =>
+	rows.flatMap((row) => {
+		try {
+			return [parseCredentialManifest(row.manifestText)];
+		} catch {
+			return [];
+		}
+	});
+
+const bundledCredentialManifests = () => bundledCredentialsOf().map(({ manifest }) => manifest);
+
+/**
+ * Refuses the versions whose credential pins resolve to no credential manifest: none in `added`,
+ * none in the store and none that n8n bundles. Without it, n8n cannot project the credential
+ * type that the version signs with.
+ */
+async function assertPinsResolve(store: InstanceStore, added: readonly StoredVersion[]) {
+	const pinning = added.flatMap((version) => {
+		const manifest = pinningManifestOf(version);
+		return manifest?.credentials?.length ? [{ version, manifest }] : [];
+	});
+	if (pinning.length === 0) return;
+	const known = [
+		...bundledCredentialManifests(),
+		...parsedCredentialsOf(await store.credentialManifests()),
+		...parsedCredentialsOf(added.filter(({ kind }) => kind === 'credential')),
+	];
+	const unresolved = pinning.flatMap(({ version, manifest }) => {
+		const pins = unresolvedCredentialPinsOf(manifest, known);
+		return pins.length > 0
+			? [`${version.id}@${version.version} pins the credential ${pins.join(', ')}`]
+			: [];
+	});
+	if (unresolved.length > 0) {
+		throw new UserError(
+			`${unresolved.join('; ')}, but n8n has no credential manifest of that id and major. Add the credential manifest to the store first, e.g. with "n8n contracts:import".`,
+		);
+	}
+}
+
+const storedManifestsOf = async (store: InstanceStore, ids: readonly string[]) =>
+	(await Promise.all(ids.map(async (id) => await store.manifests(id)))).flat();
+
+/**
+ * Inserts checked versions into the store and returns the versions that it did not have. A
+ * stored version stays, and other bytes for its id and version are refused. A version whose
+ * credential pins do not resolve is refused, see `assertPinsResolve`.
+ */
+export async function admitVersions(
+	store: InstanceStore,
+	versions: readonly StoredVersion[],
+): Promise<StoredVersion[]> {
+	const ids = [...new Set(versions.map(({ id }) => id))];
+	const stored = await storedManifestsOf(store, ids);
+	assertSameBytes(stored, versions);
 	const added = versions.filter(
 		(version, index) =>
 			!stored.some(({ manifest }) => manifest === version.manifest) &&
 			versions.findIndex(({ manifest }) => manifest === version.manifest) === index,
 	);
 	if (added.length === 0) return added;
+	await assertPinsResolve(store, added);
 	await store.insert(added);
+	// Another admission can store other bytes after the read above. The table then skips the row.
+	assertSameBytes(await storedManifestsOf(store, ids), added);
 	const installs = installsOf(stored, added);
 	try {
 		if (installs.length > 0) store.installed?.(installs);
@@ -599,34 +659,22 @@ export function contractStore(options: ContractStoreOptions): ContractStore {
 		});
 
 	/**
-	 * The credential manifests that a version pins, from the registry, unless n8n bundles the
-	 * name or the store has the major. A pin that the registry lacks stays: n8n may have a legacy
-	 * type of that name. A manifest with a bad signature fails the download. Without a key,
-	 * nothing comes: the lock anchors the bundle only, not a credential manifest.
+	 * The credential manifests that a version pins, from the registry, unless n8n bundles the id
+	 * and major or the store has them. A pin that the registry lacks fails the admission. A
+	 * manifest with a bad signature fails the download. Without a key, nothing comes: the lock
+	 * anchors the bundle only, not a credential manifest.
 	 */
 	const pinnedCredentials = async (manifest: VersionManifest): Promise<StoredVersion[]> => {
 		if (!hasKey(keys)) return [];
-		const bundled = new Set(bundledCredentialsOf().map((entry) => entry.manifest.name));
-		const have = await storedCredentials();
-		const missing = (manifest.credentials ?? []).flatMap((pin) => {
-			const [name = '', major = ''] = pin.split('@');
-			const has = have.some(
-				(credential) =>
-					credential.name === name && parseSemver(credential.semver).major === Number(major),
-			);
-			return bundled.has(name) || has ? [] : [{ name, major: Number(major) }];
-		});
+		const known = [...bundledCredentialManifests(), ...(await storedCredentials())];
+		const missing = unresolvedCredentialPinsOf(manifest, known);
 		if (missing.length === 0) return [];
 		const registry = registryOf();
-		const catalog = await registry.catalog();
 		const found = await Promise.all(
-			missing.map(async ({ name, major }) => {
-				const ids = catalog.flatMap((line) =>
-					line.kind === 'credential' && line.name === name ? [line.id] : [],
-				);
-				const record = (await Promise.all(ids.map(async (id) => await registry.records(id))))
-					.flat()
-					.filter(({ version }) => parseSemver(version).major === major)
+			missing.map(async (pin) => {
+				const [id = '', major = ''] = pin.split('@');
+				const record = (await registry.records(id))
+					.filter(({ version }) => parseSemver(version).major === Number(major))
 					.sort((a, b) => compareSemver(a.version, b.version))
 					.at(-1);
 				const read = record && (await registry.readManifest(record));
@@ -761,7 +809,20 @@ export function contractStore(options: ContractStoreOptions): ContractStore {
 		},
 
 		async versions() {
-			const [checked, statuses] = await Promise.all([storedManifests(), store.statuses()]);
+			const [all, statuses, credentials] = await Promise.all([
+				storedManifests(),
+				store.statuses(),
+				storedCredentials(),
+			]);
+			const known = [...bundledCredentialManifests(), ...credentials];
+			const checked = all.filter(({ manifest }) => {
+				const pins = unresolvedCredentialPinsOf(manifest, known);
+				if (pins.length === 0) return true;
+				LoggerProxy.warn(
+					`${manifest.id}@${manifest.semver} is not listed: n8n has no credential manifest of its pin ${pins.join(', ')}`,
+				);
+				return false;
+			});
 			const withdrawn = new Set(
 				checked.flatMap((version) => {
 					const applying = statuses.filter(
@@ -1098,17 +1159,12 @@ export async function importContractStore(
 	return added;
 }
 
-/** The `<name>@<major>` pins of the credentials that a stored version uses. */
-const credentialPinsOf = ({ kind, bundle, manifestText }: StoredVersion) => {
-	if (kind === 'credential') return [];
-	const manifest =
-		bundle === undefined ? parseNativeManifest(manifestText) : parseManifest(manifestText);
-	return manifest.credentials ?? [];
-};
+/** The `<id>@<major>` pins of the credentials that a stored version uses. */
+const credentialPinsOf = (version: StoredVersion) => pinningManifestOf(version)?.credentials ?? [];
 
 const credentialPinOf = ({ manifestText }: StoredVersion) => {
-	const { name, semver } = parseCredentialManifest(manifestText);
-	return `${name}@${parseSemver(semver).major}`;
+	const { id, semver } = parseCredentialManifest(manifestText);
+	return `${id}@${parseSemver(semver).major}`;
 };
 
 /**

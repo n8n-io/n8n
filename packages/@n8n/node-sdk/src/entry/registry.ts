@@ -58,6 +58,7 @@ export {
 	storeManifestOf,
 	storeReader,
 	storeStatusTextOf,
+	unresolvedCredentialPinsOf,
 	verifyStoreSignature,
 	withdrawalOf,
 	type StoreDeprecation,
