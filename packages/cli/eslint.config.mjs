@@ -319,7 +319,6 @@ export default defineConfig(
 			'./src/services/folder.service.ts',
 			'./src/services/hooks.service.ts',
 			'./src/services/import.service.ts',
-			'./src/services/ownership-transfer/ownership-transfer-handler.registry.ts',
 			'./src/services/project.service.ee.ts',
 			'./src/services/public-api-key.service.ts',
 			// commands / controllers / eventbus / evaluation / public-api
