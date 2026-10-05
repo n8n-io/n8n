@@ -66,7 +66,7 @@ packages/@n8n/cli/src/commands/tag/                     @n8n-io/adore
 packages/@n8n/cli/src/commands/project/                 @n8n-io/ligo
 packages/@n8n/cli/src/commands/source-control/          @n8n-io/ligo
 packages/@n8n/cli/src/commands/variable/                @n8n-io/ligo
-packages/@n8n/cli/src/commands/skill/                   @n8n-io/ai
+packages/@n8n/cli/src/commands/skill/                   @n8n-io/agent
 
 # packages/cli
 packages/cli/                                           @n8n-io/catalysts
@@ -116,14 +116,16 @@ packages/cli/src/binary-data/                           @n8n-io/catalysts
 packages/cli/src/posthog/                               @n8n-io/adore
 packages/cli/src/modules/data-table/                    @n8n-io/adore
 
-packages/cli/src/evaluation.ee/                         @n8n-io/ai
-packages/cli/src/chat/                                  @n8n-io/ai
-packages/cli/src/tool-generation/                       @n8n-io/ai
-packages/cli/src/modules/workflow-builder/              @n8n-io/ai
+packages/cli/src/evaluation.ee/                         @n8n-io/ai-trust
+packages/cli/src/chat/                                  @n8n-io/chat
+packages/cli/src/tool-generation/                       @n8n-io/agent
+packages/cli/src/modules/workflow-builder/              @n8n-io/ai-assistant
 packages/cli/src/modules/mcp/                           @n8n-io/adore
-packages/cli/src/modules/quick-connect/                 @n8n-io/ai
-packages/cli/src/modules/chat-hub/                      @n8n-io/ai
+packages/cli/src/modules/quick-connect/                 @n8n-io/relay
+packages/cli/src/modules/chat-hub/                      @n8n-io/chat
 packages/cli/src/modules/instance-ai/                   @n8n-io/ai-assistant
+packages/cli/src/modules/agents/                        @n8n-io/agent
+packages/cli/src/modules/agent-evals/                   @n8n-io/agent
 
 packages/cli/src/modules/community-packages/            @n8n-io/nodes
 
@@ -140,8 +142,8 @@ packages/cli/src/controllers/user-settings.controller.ts 						@n8n-io/iam
 packages/cli/src/controllers/api-keys.controller.ts     						@n8n-io/iam
 packages/cli/src/controllers/security-settings.controller.ts 				@n8n-io/iam
 packages/cli/src/controllers/oauth/                     						@n8n-io/iam
-packages/cli/src/controllers/ai.controller.ts           						@n8n-io/ai
-packages/cli/src/controllers/annotation-tags.controller.ee.ts 			@n8n-io/ai
+packages/cli/src/controllers/ai.controller.ts           						@n8n-io/ai-assistant
+packages/cli/src/controllers/annotation-tags.controller.ee.ts 			@n8n-io/ai-trust
 packages/cli/src/controllers/cta.controller.ts         							@n8n-io/adore
 packages/cli/src/controllers/folder.controller.ts       						@n8n-io/adore
 packages/cli/src/controllers/tags.controller.ts         						@n8n-io/adore
@@ -162,10 +164,10 @@ packages/cli/src/services/public-api-key.service.ts     @n8n-io/iam
 packages/cli/src/services/security-settings.service.ts  @n8n-io/iam
 packages/cli/src/services/static-auth-service.ts        @n8n-io/iam
 packages/cli/src/services/access.service.ts             @n8n-io/iam
-packages/cli/src/services/ai.service.ts                 @n8n-io/ai
-packages/cli/src/services/ai-usage.service.ts           @n8n-io/ai
-packages/cli/src/services/ai-workflow-builder.service.ts @n8n-io/ai
-packages/cli/src/services/annotation-tag.service.ee.ts  @n8n-io/ai
+packages/cli/src/services/ai.service.ts                 @n8n-io/ai-assistant
+packages/cli/src/services/ai-usage.service.ts           @n8n-io/ai-assistant
+packages/cli/src/services/ai-workflow-builder.service.ts @n8n-io/ai-assistant
+packages/cli/src/services/annotation-tag.service.ee.ts  @n8n-io/ai-trust
 packages/cli/src/services/folder.service.ts             @n8n-io/adore
 packages/cli/src/services/tag.service.ts                @n8n-io/adore
 packages/cli/src/services/cta.service.ts                @n8n-io/adore
@@ -181,7 +183,17 @@ packages/cli/src/services/dynamic-node-parameters.service.ts @n8n-io/nodes
 # Adore
 
 packages/frontend/editor-ui/                            @n8n-io/frontend
-packages/frontend/editor-ui/src/features/ai/            @n8n-io/ai
+packages/frontend/editor-ui/src/features/ai/            @n8n-io/ai-assistant
+packages/frontend/editor-ui/src/features/ai/assistant-at-mentions/ @n8n-io/ai-assistant
+packages/frontend/editor-ui/src/features/ai/assistant/  @n8n-io/ai-assistant
+packages/frontend/editor-ui/src/features/ai/chatHub/    @n8n-io/chat
+packages/frontend/editor-ui/src/features/ai/components/ @n8n-io/agent
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/ @n8n-io/ai-trust
+packages/frontend/editor-ui/src/features/ai/gateway/    @n8n-io/relay
+packages/frontend/editor-ui/src/features/ai/instanceAi/ @n8n-io/ai-assistant
+packages/frontend/editor-ui/src/features/ai/mcpAccess/  @n8n-io/adore
+packages/frontend/editor-ui/src/features/ai/shared/     @n8n-io/agent
+packages/frontend/editor-ui/src/features/agents/        @n8n-io/agent
 packages/frontend/editor-ui/src/features/credentials/   @n8n-io/iam
 packages/frontend/editor-ui/src/features/execution/     @n8n-io/ligo
 packages/frontend/editor-ui/src/features/integrations/  @n8n-io/ligo
@@ -200,13 +212,13 @@ packages/@n8n/instance-ai/                              @n8n-io/ai-assistant
 packages/@n8n/nodes-langchain/                          @n8n-io/ai
 packages/@n8n/ai-utilities/                             @n8n-io/ai
 packages/@n8n/ai-node-sdk/                              @n8n-io/ai
-packages/@n8n/ai-workflow-builder.ee/                   @n8n-io/ai
-packages/@n8n/agents/                                   @n8n-io/ai
-packages/frontend/@n8n/chat/                            @n8n-io/ai
+packages/@n8n/ai-workflow-builder.ee/                   @n8n-io/ai-assistant
+packages/@n8n/agents/                                   @n8n-io/agent
+packages/frontend/@n8n/chat/                            @n8n-io/chat
 
 # Chat
 
-packages/@n8n/chat-hub/                                 @n8n-io/ai
+packages/@n8n/chat-hub/                                 @n8n-io/chat
 
 # Nodes
 
