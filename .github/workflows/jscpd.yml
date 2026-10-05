@@ -1,0 +1,293 @@
+# 🐱 jscpd — deterministic copy-paste/duplication scan.
+#
+# Runs jscpd against this repo and uploads the full JSON+HTML report, plus
+# the report split into BUCKET_COUNT small JSON files, so a caller can
+# download one small bucket at random per invocation instead of the full
+# report (which can run into tens of MB on a monorepo this size).
+#
+# Reporters/ignores/threshold come from this repo's own .jscpd.json; this
+# workflow passes none of those flags itself.
+
+name: 🐱 jscpd
+
+on:
+  workflow_dispatch:
+
+env:
+  # Number of small sample files the report is split into (split-jscpd-report.mjs).
+  # Fixed, not an input: changing it means adding/removing the matching
+  # per-bucket upload steps below, so it's a code change, not a dispatch option.
+  BUCKET_COUNT: '20'
+
+jobs:
+  jscpd:
+    runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-4vcpu-ubuntu-2204' }}
+    timeout-minutes: 30
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 1
+
+      - name: Run jscpd
+        id: jscpd
+        continue-on-error: true
+        run: |
+          mkdir -p "$RUNNER_TEMP/jscpd-report"
+          version="$(node -p "require('./package.json').devDependencies?.jscpd" 2>/dev/null || true)"
+          case "$version" in [0-9]*) ;; *) version=5.2.0 ;; esac
+          npx --yes "jscpd@$version" . \
+            --output "$RUNNER_TEMP/jscpd-report" \
+            --silent
+
+      - name: Upload jscpd report
+        id: report-artifact
+        if: always()
+        continue-on-error: true
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: jscpd-report-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/jscpd-report
+          retention-days: 31
+          if-no-files-found: warn
+
+      # Splits `duplicates` into BUCKET_COUNT files so a caller can download
+      # one small sample instead of the full report (tens of MB on a large
+      # monorepo). Logic + tests live in split-jscpd-report.mjs.
+      - name: Split report into buckets
+        id: split
+        if: always() && steps.jscpd.outcome == 'success'
+        continue-on-error: true
+        env:
+          REPORT_PATH: ${{ runner.temp }}/jscpd-report/jscpd-report.json
+          OUTPUT_DIR: ${{ runner.temp }}/jscpd-buckets
+          BUCKET_COUNT: ${{ env.BUCKET_COUNT }}
+        run: node .github/scripts/split-jscpd-report.mjs
+
+      # BUCKET_COUNT static upload steps, one per bucket file: GitHub Actions
+      # has no per-job step loop, and each bucket needs its own small
+      # artifact (not one artifact holding all of them) so a caller can
+      # fetch a single sample without pulling the rest. Keep this block's
+      # step count in sync with BUCKET_COUNT above.
+      - name: Upload jscpd bucket 0
+        id: bucket-artifact-0
+        if: always() && steps.split.outcome == 'success'
+        continue-on-error: true
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: jscpd-bucket-${{ github.run_id }}-${{ github.run_attempt }}-0
+          path: ${{ runner.temp }}/jscpd-buckets/bucket-0.json
+          retention-days: 31
+          if-no-files-found: warn
+
+      - name: Upload jscpd bucket 1
+        id: bucket-artifact-1
+        if: always() && steps.split.outcome == 'success'
+        continue-on-error: true
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: jscpd-bucket-${{ github.run_id }}-${{ github.run_attempt }}-1
+          path: ${{ runner.temp }}/jscpd-buckets/bucket-1.json
+          retention-days: 31
+          if-no-files-found: warn
+
+      - name: Upload jscpd bucket 2
+        id: bucket-artifact-2
+        if: always() && steps.split.outcome == 'success'
+        continue-on-error: true
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: jscpd-bucket-${{ github.run_id }}-${{ github.run_attempt }}-2
+          path: ${{ runner.temp }}/jscpd-buckets/bucket-2.json
+          retention-days: 31
+          if-no-files-found: warn
+
+      - name: Upload jscpd bucket 3
+        id: bucket-artifact-3
+        if: always() && steps.split.outcome == 'success'
+        continue-on-error: true
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: jscpd-bucket-${{ github.run_id }}-${{ github.run_attempt }}-3
+          path: ${{ runner.temp }}/jscpd-buckets/bucket-3.json
+          retention-days: 31
+          if-no-files-found: warn
+
+      - name: Upload jscpd bucket 4
+        id: bucket-artifact-4
+        if: always() && steps.split.outcome == 'success'
+        continue-on-error: true
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: jscpd-bucket-${{ github.run_id }}-${{ github.run_attempt }}-4
+          path: ${{ runner.temp }}/jscpd-buckets/bucket-4.json
+          retention-days: 31
+          if-no-files-found: warn
+
+      - name: Upload jscpd bucket 5
+        id: bucket-artifact-5
+        if: always() && steps.split.outcome == 'success'
+        continue-on-error: true
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: jscpd-bucket-${{ github.run_id }}-${{ github.run_attempt }}-5
+          path: ${{ runner.temp }}/jscpd-buckets/bucket-5.json
+          retention-days: 31
+          if-no-files-found: warn
+
+      - name: Upload jscpd bucket 6
+        id: bucket-artifact-6
+        if: always() && steps.split.outcome == 'success'
+        continue-on-error: true
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: jscpd-bucket-${{ github.run_id }}-${{ github.run_attempt }}-6
+          path: ${{ runner.temp }}/jscpd-buckets/bucket-6.json
+          retention-days: 31
+          if-no-files-found: warn
+
+      - name: Upload jscpd bucket 7
+        id: bucket-artifact-7
+        if: always() && steps.split.outcome == 'success'
+        continue-on-error: true
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: jscpd-bucket-${{ github.run_id }}-${{ github.run_attempt }}-7
+          path: ${{ runner.temp }}/jscpd-buckets/bucket-7.json
+          retention-days: 31
+          if-no-files-found: warn
+
+      - name: Upload jscpd bucket 8
+        id: bucket-artifact-8
+        if: always() && steps.split.outcome == 'success'
+        continue-on-error: true
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: jscpd-bucket-${{ github.run_id }}-${{ github.run_attempt }}-8
+          path: ${{ runner.temp }}/jscpd-buckets/bucket-8.json
+          retention-days: 31
+          if-no-files-found: warn
+
+      - name: Upload jscpd bucket 9
+        id: bucket-artifact-9
+        if: always() && steps.split.outcome == 'success'
+        continue-on-error: true
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: jscpd-bucket-${{ github.run_id }}-${{ github.run_attempt }}-9
+          path: ${{ runner.temp }}/jscpd-buckets/bucket-9.json
+          retention-days: 31
+          if-no-files-found: warn
+
+      - name: Upload jscpd bucket 10
+        id: bucket-artifact-10
+        if: always() && steps.split.outcome == 'success'
+        continue-on-error: true
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: jscpd-bucket-${{ github.run_id }}-${{ github.run_attempt }}-10
+          path: ${{ runner.temp }}/jscpd-buckets/bucket-10.json
+          retention-days: 31
+          if-no-files-found: warn
+
+      - name: Upload jscpd bucket 11
+        id: bucket-artifact-11
+        if: always() && steps.split.outcome == 'success'
+        continue-on-error: true
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: jscpd-bucket-${{ github.run_id }}-${{ github.run_attempt }}-11
+          path: ${{ runner.temp }}/jscpd-buckets/bucket-11.json
+          retention-days: 31
+          if-no-files-found: warn
+
+      - name: Upload jscpd bucket 12
+        id: bucket-artifact-12
+        if: always() && steps.split.outcome == 'success'
+        continue-on-error: true
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: jscpd-bucket-${{ github.run_id }}-${{ github.run_attempt }}-12
+          path: ${{ runner.temp }}/jscpd-buckets/bucket-12.json
+          retention-days: 31
+          if-no-files-found: warn
+
+      - name: Upload jscpd bucket 13
+        id: bucket-artifact-13
+        if: always() && steps.split.outcome == 'success'
+        continue-on-error: true
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: jscpd-bucket-${{ github.run_id }}-${{ github.run_attempt }}-13
+          path: ${{ runner.temp }}/jscpd-buckets/bucket-13.json
+          retention-days: 31
+          if-no-files-found: warn
+
+      - name: Upload jscpd bucket 14
+        id: bucket-artifact-14
+        if: always() && steps.split.outcome == 'success'
+        continue-on-error: true
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: jscpd-bucket-${{ github.run_id }}-${{ github.run_attempt }}-14
+          path: ${{ runner.temp }}/jscpd-buckets/bucket-14.json
+          retention-days: 31
+          if-no-files-found: warn
+
+      - name: Upload jscpd bucket 15
+        id: bucket-artifact-15
+        if: always() && steps.split.outcome == 'success'
+        continue-on-error: true
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: jscpd-bucket-${{ github.run_id }}-${{ github.run_attempt }}-15
+          path: ${{ runner.temp }}/jscpd-buckets/bucket-15.json
+          retention-days: 31
+          if-no-files-found: warn
+
+      - name: Upload jscpd bucket 16
+        id: bucket-artifact-16
+        if: always() && steps.split.outcome == 'success'
+        continue-on-error: true
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: jscpd-bucket-${{ github.run_id }}-${{ github.run_attempt }}-16
+          path: ${{ runner.temp }}/jscpd-buckets/bucket-16.json
+          retention-days: 31
+          if-no-files-found: warn
+
+      - name: Upload jscpd bucket 17
+        id: bucket-artifact-17
+        if: always() && steps.split.outcome == 'success'
+        continue-on-error: true
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: jscpd-bucket-${{ github.run_id }}-${{ github.run_attempt }}-17
+          path: ${{ runner.temp }}/jscpd-buckets/bucket-17.json
+          retention-days: 31
+          if-no-files-found: warn
+
+      - name: Upload jscpd bucket 18
+        id: bucket-artifact-18
+        if: always() && steps.split.outcome == 'success'
+        continue-on-error: true
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: jscpd-bucket-${{ github.run_id }}-${{ github.run_attempt }}-18
+          path: ${{ runner.temp }}/jscpd-buckets/bucket-18.json
+          retention-days: 31
+          if-no-files-found: warn
+
+      - name: Upload jscpd bucket 19
+        id: bucket-artifact-19
+        if: always() && steps.split.outcome == 'success'
+        continue-on-error: true
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: jscpd-bucket-${{ github.run_id }}-${{ github.run_attempt }}-19
+          path: ${{ runner.temp }}/jscpd-buckets/bucket-19.json
+          retention-days: 31
+          if-no-files-found: warn
