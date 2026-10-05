@@ -277,16 +277,6 @@ export class SharedWorkflowRepository extends BaseRepository<SharedWorkflow> {
 		)?.project;
 	}
 
-	async getWorkflowOwningProjectIdForUpdate(workflowId: string, ctx: OperationContext) {
-		const manager = this.managerFor(ctx);
-		const lockRows = manager.connection.options.type === 'postgres' && !!ctx.trx;
-		const owner = await manager.findOne(SharedWorkflow, {
-			where: { workflowId, role: 'workflow:owner' },
-			lock: lockRows ? { mode: 'pessimistic_read' } : undefined,
-		});
-		return owner?.projectId;
-	}
-
 	async getRelationsByWorkflowIdsAndProjectIds(workflowIds: string[], projectIds: string[]) {
 		return await this.find({
 			where: {

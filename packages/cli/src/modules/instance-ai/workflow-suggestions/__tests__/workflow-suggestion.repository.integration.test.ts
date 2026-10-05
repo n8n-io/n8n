@@ -3,8 +3,6 @@ import { createWorkflow, createTeamProject, testDb, testModules } from '@n8n/bac
 import {
 	type Project,
 	ProjectRepository,
-	SharedWorkflow,
-	SharedWorkflowRepository,
 	TransactionRunner,
 	type User,
 	UserRepository,
@@ -15,7 +13,7 @@ import {
 	postgresMigrations,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { DataSource, type EntityManager } from '@n8n/typeorm';
+import { DataSource } from '@n8n/typeorm';
 import { randomUUID } from 'node:crypto';
 
 import { createUser } from '@test-integration/db/users';
@@ -221,75 +219,18 @@ describe.skipIf(process.env.DB_TYPE !== 'postgresdb')('PostgreSQL concurrent wri
 		]);
 	});
 
-	async function assertWriteBlocked(write: (manager: EntityManager) => Promise<unknown>) {
+	it('holds a workflow save until the Apply transaction commits', async () => {
+		const settings = { executionTimeout: 60 };
 		await tx.run({}, async (ctx) => {
 			await Container.get(WorkflowSuggestionService).readWorkflowTargetForApply(workflow.id, ctx);
 			await expect(
 				peer.transaction(async (manager) => {
 					await manager.query("SET LOCAL lock_timeout = '250ms'");
-					await write(manager);
+					await manager.update(WorkflowEntity, workflow.id, { settings });
 				}),
 			).rejects.toThrow('lock timeout');
 		});
-		await peer.transaction(write);
-	}
-
-	it('holds a workflow save until the Apply transaction commits', async () => {
-		await assertWriteBlocked(
-			async (manager) =>
-				await manager.update(WorkflowEntity, workflow.id, {
-					settings: { executionTimeout: 60 },
-				}),
-		);
-	});
-
-	it('holds a transfer to an existing sharing until the Apply transaction commits', async () => {
-		const destination = await createTeamProject();
-		await peer.manager.insert(SharedWorkflow, {
-			workflowId: workflow.id,
-			projectId: destination.id,
-			role: 'workflow:editor',
-		});
-		const sharings = Container.get(SharedWorkflowRepository);
-		await assertWriteBlocked(async (manager) => {
-			await sharings.makeOwner([workflow.id], destination.id, manager);
-			await sharings.deleteByIds([workflow.id], project.id, manager);
-		});
-	});
-
-	it('lets an earlier transfer finish before it reads the owner', async () => {
-		const destination = await createTeamProject();
-		const { read } = await peer.transaction(async (manager) => {
-			await manager.delete(SharedWorkflow, { workflowId: workflow.id, projectId: project.id });
-			const read = Promise.allSettled([
-				tx.run(
-					{},
-					async (ctx) =>
-						await Container.get(WorkflowSuggestionService).readWorkflowTargetForApply(
-							workflow.id,
-							ctx,
-						),
-				),
-			]);
-			await vi.waitFor(async () => {
-				const rows = await manager.query<Array<{ blocked: boolean }>>(
-					`SELECT EXISTS (
-						SELECT 1 FROM pg_stat_activity
-						WHERE pg_backend_pid() = ANY(pg_blocking_pids(pid))
-					) AS blocked`,
-				);
-				expect(rows).toEqual([{ blocked: true }]);
-			});
-			await manager.insert(SharedWorkflow, {
-				workflowId: workflow.id,
-				projectId: destination.id,
-				role: 'workflow:owner',
-			});
-			return { read };
-		});
-		const [result] = await read;
-		if (result.status === 'rejected') throw result.reason;
-		expect(result.value.projectId).not.toBe(project.id);
+		await peer.manager.update(WorkflowEntity, workflow.id, { settings });
 	});
 });
 

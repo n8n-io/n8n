@@ -178,7 +178,7 @@ export class WorkflowSuggestionService {
 		ctx: OperationContext,
 	): Promise<WorkflowSuggestionTarget> {
 		const workflow = await this.workflowRepository.findForContentUpdate(workflowId, ctx);
-		const projectId = await this.sharedWorkflowRepository.getWorkflowOwningProjectIdForUpdate(
+		const ownerProject = await this.sharedWorkflowRepository.getWorkflowOwningProject(
 			workflowId,
 			ctx,
 		);
@@ -186,7 +186,7 @@ export class WorkflowSuggestionService {
 			workflowId,
 			ctx,
 		);
-		return { workflow, projectId, publicationId };
+		return { workflow, projectId: ownerProject?.id, publicationId };
 	}
 
 	// Prepare immediately before the caller opens its completion transaction.

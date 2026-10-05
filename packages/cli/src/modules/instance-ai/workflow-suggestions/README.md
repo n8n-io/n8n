@@ -37,6 +37,8 @@ The suggestion table stores its own content. It does not reference workflow hist
 
 A workflow transfer does not transfer its suggestions. Creation and actions reject a changed owner project. Reads, actions, and creation reconcile outdated pending suggestions. Workflow events also request reconciliation. The baseline includes the saved timestamp, content counter, and publication history position. Restoring version pointers does not restore an old suggestion.
 
+Apply checks the current owner without locking the ownership row. A project transfer after this check can overlap with Apply.
+
 Pending and closed suggestions remain until a parent record is deleted. There is no time-based expiry or suggestion cleanup task. Workspace files, investigation reports, and execution evidence have separate retention policies.
 
 Creation rechecks the workflow baseline and records the suggestion and activity in one transaction. It does not explicitly lock the workflow or its owner. A concurrent edit can make a new suggestion outdated. INS-1516 must recheck the baseline before Apply. The edit permission check runs just before the transaction. Apply must check current permissions again.
