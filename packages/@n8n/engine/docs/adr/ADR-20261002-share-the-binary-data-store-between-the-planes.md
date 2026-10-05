@@ -23,7 +23,8 @@ There are four constraints:
    `initialize()` reads the secret from the CP database. So a process cannot create the
    configuration without the encryption key and the CP database, even when it only reads and
    writes files.
-3. `createBinarySignedUrl()` signs a token with that secret.
+3. `createBinarySignedUrl()` signs a token with that secret. No node in this repository calls it.
+   It is part of `BinaryHelperFunctions` in `n8n-workflow`, so community nodes can call it.
 4. The `database` mode stores the bytes in the CP database.
 
 ## Decision
@@ -35,9 +36,10 @@ There are four constraints:
    every process can reach the bucket. `filesystem` works when every host mounts the same volume at
    the same path. `database` is supported only when the DP runs in the CP process. A DP host in
    its own process refuses `database` mode at start.
-3. **Only the CP signs URLs.** A DP asks the CP for a signed URL over the action-scoped CP routes,
-   with the file id and the execution id. The CP checks that the file belongs to that execution
-   before it signs. The signing secret is not given to the DP.
+3. **Engine v2 does not sign URLs.** On engine v2, `createBinarySignedUrl()` throws an error that
+   says the operation is not supported. This applies in every topology, so the behaviour does not
+   change with the deployment model. The method stays in the interface, and v1 keeps it as it is.
+   The signing secret is not given to the DP.
 4. **The storage configuration is split from the signing secret.** A DP builds its
    `BinaryDataService` from the storage settings only, without `InstanceSettings` and without the CP
    database.
@@ -52,7 +54,6 @@ flowchart LR
     DP[Data plane] -- read, write --> Store
     CP -- file references --> DP
     DP -- file references --> CP
-    DP -- signed URL request --> CP
 ```
 
 ## Alternatives Considered
@@ -61,18 +62,23 @@ flowchart LR
    no shared store. It was rejected because every file goes through the CP twice, and large files
    need streaming routes on the CP server. It stays the fallback for a topology with no shared
    store, and it is not planned.
-2. **The DP gets the signing secret and signs URLs itself.** This saves one CP call for each URL.
-   It was rejected because a DP that holds the secret can sign a URL for any file of any execution.
-3. **The DP connects to the CP database in `database` mode.** It was rejected because the DP would
+2. **The CP signs URLs for the DP.** The DP would send the file id and the execution id over the
+   action-scoped CP routes, and the CP would check that the file belongs to that execution before
+   it signs. It was rejected because no node in this repository calls `createBinarySignedUrl()`,
+   so the route and the client would add code that no node uses. It stays the option if a node
+   needs signed URLs on engine v2.
+3. **The DP gets the signing secret and signs URLs itself.** It was rejected because a DP that
+   holds the secret can sign a URL for any file of any execution.
+4. **The DP connects to the CP database in `database` mode.** It was rejected because the DP would
    need the CP database credentials. With SQLite, a DP on another host cannot open the database.
-4. **The engine reads and writes files itself.** It was rejected for the reason in
+5. **The engine reads and writes files itself.** It was rejected for the reason in
    ADR-20260925-delete-binary-files-with-the-execution-that-wrote-them: the engine must not depend
    on `n8n-core`.
 
 ## Consequences
 
-1. Three code changes follow, each in its own ticket: the service on `additionalData`, the split of
-   `BinaryDataConfig`, and the CP route and DP client for signed URLs.
+1. Two code changes follow, each in its own ticket: the service on `additionalData`, with the
+   unsupported error for `createBinarySignedUrl()`, and the split of `BinaryDataConfig`.
 2. Until these changes are merged, a DP that runs nodes which use files must run in the CP process.
 3. An operator who runs `filesystem` mode on more than one host must provide a shared mount. v1
    queue mode has the same requirement.
@@ -81,7 +87,8 @@ flowchart LR
    check, the error shows only when a run handles its first file. That run fails in the middle,
    after earlier nodes have already called external services. A workflow that uses no files never
    shows the error, so the wrong configuration can stay unnoticed for a long time.
-5. A signed URL created on a DP costs one call to the CP.
+5. A community node that calls `createBinarySignedUrl()` fails on engine v2, with an error that
+   names the operation. The same node keeps working on v1.
 6. This decision answers the open question in decision 6 and consequence 3 of
    ADR-20260925-delete-binary-files-with-the-execution-that-wrote-them.
 
