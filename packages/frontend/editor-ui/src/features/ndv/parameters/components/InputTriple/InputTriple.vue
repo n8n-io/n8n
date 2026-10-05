@@ -241,6 +241,10 @@ const isStacked = computed(() => bp.value !== 'default');
 	}
 
 	.item:last-of-type {
+		// Reserve space for the absolutely-positioned options bar (bottom: -22px)
+		// so it stays within this triple instead of overlapping the next row.
+		padding-bottom: var(--parameter-input-options--height, 22px);
+
 		--input--radius--top-left: 0;
 		--input--radius--top-right: 0;
 		--input-triple--radius--top-right: 0;
