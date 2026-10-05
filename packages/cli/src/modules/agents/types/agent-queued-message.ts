@@ -22,6 +22,8 @@ export interface QueuedUserChatMessage extends QueuedMessageInput {
 	messageId?: string;
 	/** Turn options for a code-defined instance agent. The provider defines their shape. */
 	options?: Record<string, unknown>;
+	/** A machine turn: the message is model input only and stays out of the transcript. */
+	hidden?: boolean;
 }
 
 export interface QueuedIntegrationMessage extends QueuedMessageInput {
@@ -41,7 +43,7 @@ export type AgentQueuedMessage = QueuedUserChatMessage | QueuedIntegrationMessag
 
 /** Queue storage keeps dispatch data. Conversation input belongs to the referenced message. */
 export type AgentQueueDispatch =
-	| { kind: QueuedUserChatMessage['kind']; options?: Record<string, unknown> }
+	| { kind: QueuedUserChatMessage['kind']; options?: Record<string, unknown>; hidden?: boolean }
 	| (Omit<
 			QueuedIntegrationMessage,
 			keyof QueuedMessageInput | 'modelMessage' | 'author' | 'platformThreadId' | 'messageContext'

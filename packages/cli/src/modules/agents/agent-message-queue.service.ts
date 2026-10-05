@@ -181,6 +181,7 @@ export class AgentMessageQueueService {
 				kind: dispatch.kind,
 				...(dispatch.options ? { options: dispatch.options } : {}),
 			};
+			if (dispatch.hidden) origin = { source, hidden: true };
 		}
 		const input = await this.messages.createInput(
 			{ id: messageId, threadId, resourceId, content, modelContent, author, origin },

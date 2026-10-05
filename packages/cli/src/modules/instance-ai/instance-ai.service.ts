@@ -248,9 +248,14 @@ import { WorkflowVerificationTaskProjector } from './workflow-verification-task-
 import { AgentExecutionService } from '../agents/agent-execution.service';
 import { formatPreviewSessionContext } from '../agents/builder/format-preview-context';
 
-/**
- * A resource attachment as the trace records it: the reference, not its contents.
- */
+/** A resource attachment as the trace records it: the reference, not its contents. */
+type TracedResourceAttachment = {
+	type: InstanceAiResourceAttachment['type'];
+	id: string;
+	projectId?: string;
+	executionId?: string;
+};
+
 /** Workflow/agent attachments carry a display name; a nodes attachment doesn't. */
 function isNamedResourceAttachment(
 	attachment: InstanceAiResourceAttachment,
@@ -2858,6 +2863,7 @@ export class InstanceAiService {
 			threadId,
 			message,
 			options: toJsonObject(options),
+			hidden: options.resumeReason !== undefined,
 		});
 		if (accepted.status !== 'accepted') return { runId: options.runId, steered: false };
 		// A user message during a running turn joins it at the next step boundary.
@@ -2925,6 +2931,22 @@ export class InstanceAiService {
 				size: attachment.data.length,
 			}));
 		}
+		// `message` is the user's raw text, so without this the trace has no
+		// record that the editor handed the agent a resource.
+		if (contextAttachments.length) {
+			traceInput.resourceAttachments = contextAttachments.map((attachment) => {
+				if (attachment.type === 'nodes') {
+					return { type: attachment.type, id: attachment.workflowId };
+				}
+				const resource: TracedResourceAttachment = { type: attachment.type, id: attachment.id };
+				if (attachment.type === 'agent') resource.projectId = attachment.projectId;
+				if (attachment.type === 'workflow' && attachment.executionId) {
+					resource.executionId = attachment.executionId;
+				}
+				return resource;
+			});
+		}
+		if (threadArtifacts?.artifacts.length) traceInput.threadArtifacts = threadArtifacts;
 		if (messageGroupId) traceInput.messageGroupId = messageGroupId;
 
 		const proxyRunConfig = await this.createProxyRunConfig(user);

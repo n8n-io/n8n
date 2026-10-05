@@ -204,6 +204,7 @@ export class SystemAgentExecutionService {
 		attachments?: StoredAttachmentRef[];
 		options?: SystemAgentTurnOptions;
 		messageId?: string;
+		hidden?: boolean;
 	}) {
 		const thread = await this.getThread(params.agentId, params.user, params.threadId);
 		await this.assertCanUse(params.agentId, params.user, thread.projectId);
@@ -221,6 +222,7 @@ export class SystemAgentExecutionService {
 				attachments: params.attachments,
 				...(params.messageId ? { messageId: params.messageId } : {}),
 				...(params.options ? { options: params.options } : {}),
+				...(params.hidden ? { hidden: true } : {}),
 			},
 		});
 	}
