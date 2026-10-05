@@ -2,7 +2,7 @@ import { createTeamProject, createWorkflow, testDb, testModules } from '@n8n/bac
 import { Container } from '@n8n/di';
 import { DateTime } from 'luxon';
 
-import { InsightsRawRepository } from '@/modules/insights/database/repositories/insights-raw.repository';
+import { InsightsRawRepository } from '../database/repositories/insights-raw.repository';
 
 import {
 	createRawInsightsEvent,

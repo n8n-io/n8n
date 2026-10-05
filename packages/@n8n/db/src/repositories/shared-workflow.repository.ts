@@ -88,6 +88,7 @@ export class SharedWorkflowRepository extends BaseRepository<SharedWorkflow> {
 	async findOwnedWorkflowRemovalCandidates(
 		projectId: string,
 		workflowIds: string[],
+		options: { includeArchived?: boolean } = {},
 	): Promise<Array<{ id: string; name: string; parentFolderId: string | null }>> {
 		const candidates: Array<{ id: string; name: string; parentFolderId: string | null }> = [];
 
@@ -97,7 +98,7 @@ export class SharedWorkflowRepository extends BaseRepository<SharedWorkflow> {
 					projectId,
 					workflowId: In(chunk),
 					role: 'workflow:owner',
-					workflow: { isArchived: false },
+					...(options.includeArchived ? {} : { workflow: { isArchived: false } }),
 				},
 				relations: { workflow: { parentFolder: true } },
 				select: {

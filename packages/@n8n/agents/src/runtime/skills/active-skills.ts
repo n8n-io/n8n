@@ -99,12 +99,6 @@ export class ActiveSkills {
 		return skill;
 	}
 
-	toolDependencies(): string[] {
-		return [
-			...new Set([...this.loaded.values()].flatMap((skill) => skill.dependencies?.tools ?? [])),
-		];
-	}
-
 	/**
 	 * The active skills the anchored path cannot deliver on this call, as one
 	 * block for the top-level system prompt. A skill enters the block only when
