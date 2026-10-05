@@ -1,0 +1,19 @@
+packages/cli/test/integration/workflow-history-compaction-trim.task.test.ts
+  s_d75b8363dac464::t_d3231cdf9a67ad 8,87-94,96,108
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7b678c32bb178a92b4015e77f39de16e9360b405",
+  "prompts": {},
+  "sessions": {
+    "s_d75b8363dac464": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0fb80-8808-7c11-a689-33b9db16d4a4",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Veljko Terzic <veljko.terzic@n8n.io>"
+    }
+  }
+}
