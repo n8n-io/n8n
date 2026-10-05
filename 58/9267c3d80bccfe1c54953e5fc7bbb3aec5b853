@@ -1,0 +1,14 @@
+packages/@n8n/permissions/src/roles/all-roles.ts
+  h_52a137d26d774c 64
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "589267c3d80bccfe1c54953e5fc7bbb3aec5b853",
+  "prompts": {},
+  "humans": {
+    "h_52a137d26d774c": {
+      "author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}
