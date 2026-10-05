@@ -1,0 +1,32 @@
+deprecation-disable-inventory.md
+  s_610f763191b8d6::t_8f8e40430770d8 7-18
+  s_610f763191b8d6::t_93ee67e567b4e5 1-4,6,19-286,291-432
+  s_610f763191b8d6::t_93b65463d2ad29 5
+  s_610f763191b8d6::t_f8b1f67cbd62b0 287-290
+packages/quality/testing/playwright/tests/e2e/workflows/editor/subworkflows/output.spec.ts
+  s_ef48d6974e8f56::t_bd94a0621d3ec8 99-109
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7aedf96d4a13c41c392662e0d69e00b5acb6ccc9",
+  "prompts": {},
+  "sessions": {
+    "s_610f763191b8d6": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f03511198ffe4lBHhPGFL9x9WK",
+        "model": "openai/gpt-5.6-sol"
+      },
+      "human_author": "Matsuuu <matias.huhta@n8n.io>"
+    },
+    "s_ef48d6974e8f56": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_ef571b149ffe7ORy1WtLiNzWgA",
+        "model": "openai/gpt-5.6-sol"
+      },
+      "human_author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}
