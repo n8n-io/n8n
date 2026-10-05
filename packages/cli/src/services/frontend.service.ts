@@ -527,6 +527,7 @@ export class FrontendService {
 		const isS3Licensed = this.license.isBinaryDataS3Licensed();
 		// oxlint-disable-next-line typescript/no-deprecated
 		const isAiAssistantEnabled = this.license.isAiAssistantEnabled();
+		// oxlint-disable-next-line typescript/no-deprecated
 		const isAiCreditsEnabled = this.license.isAiCreditsEnabled();
 		const isAiBuilderEnabled = this.license.isLicensed(LICENSE_FEATURES.AI_BUILDER);
 
