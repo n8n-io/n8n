@@ -5,8 +5,10 @@ import { UserError } from 'n8n-workflow';
 
 import { DataTableService } from '@/modules/data-table/data-table.service';
 
+import { addRequirementUsage, type RequirementUsage } from '../requirement-source';
+
 import { DataTableSerializer } from './data-table.serializer';
-import type { WorkflowDataTableRequirement } from './data-table.types';
+import type { DataTableExportRequirement } from './data-table.types';
 import { projectScopedDirectory, writeManifestEntry } from '../../io/manifest-entry';
 import type { PackageWriter } from '../../io/package-writer';
 import type { ManifestEntry } from '../../spec/manifest.schema';
@@ -14,7 +16,7 @@ import type { PackageDataTableRequirement } from '../../spec/requirements.schema
 
 export interface DataTableExportRequest {
 	user: User;
-	requirements: WorkflowDataTableRequirement[];
+	requirements: DataTableExportRequirement[];
 	writer: PackageWriter;
 	projectTargetsById?: Map<string, string>;
 }
@@ -43,8 +45,8 @@ export class DataTableExporter {
 			);
 		}
 
-		const usedByWorkflowsById = this.groupByDataTableId(request.requirements);
-		const requestedIds = [...usedByWorkflowsById.keys()];
+		const usageById = this.groupByDataTableId(request.requirements);
+		const requestedIds = [...usageById.keys()];
 
 		const dataTables = await this.dataTableService.findDataTablesByIdsForUser(
 			requestedIds,
@@ -70,24 +72,21 @@ export class DataTableExporter {
 			requirements.push({
 				id: dataTable.id,
 				name: dataTable.name,
-				usedByWorkflows: usedByWorkflowsById.get(dataTable.id) ?? [],
+				...usageById.get(dataTable.id)!,
 			});
 		}
 
 		return { entries, requirements };
 	}
 
-	private groupByDataTableId(requirements: WorkflowDataTableRequirement[]): Map<string, string[]> {
-		const grouped = new Map<string, string[]>();
+	private groupByDataTableId(
+		requirements: DataTableExportRequirement[],
+	): Map<string, RequirementUsage> {
+		const grouped = new Map<string, RequirementUsage>();
 		for (const requirement of requirements) {
-			const usedByWorkflows = grouped.get(requirement.dataTableId);
-			if (usedByWorkflows) {
-				if (!usedByWorkflows.includes(requirement.workflowId)) {
-					usedByWorkflows.push(requirement.workflowId);
-				}
-			} else {
-				grouped.set(requirement.dataTableId, [requirement.workflowId]);
-			}
+			const usage = grouped.get(requirement.dataTableId) ?? { usedByWorkflows: [] };
+			addRequirementUsage(usage, requirement);
+			grouped.set(requirement.dataTableId, usage);
 		}
 		return grouped;
 	}

@@ -45,6 +45,9 @@ export interface ImportPackageSelectionFields {
 }
 
 export interface ExportPackageFields {
+	agentIds?: string[];
+	agentVersionPolicy?: string;
+	missingAgentDependencyPolicy?: string;
 	workflowIds?: string[];
 	folderIds?: string[];
 	projectIds?: string[];
@@ -58,6 +61,8 @@ export interface ExportPackageFields {
 
 /** True per-entity counts of what ended up in an exported package. */
 export interface ExportPackageCounts {
+	/** Absent when the server predates agent export. */
+	agents?: number;
 	workflows: number;
 	folders: number;
 	credentials: number;
@@ -740,17 +745,11 @@ export class N8nClient {
 
 	async exportPackage(fields: ExportPackageFields): Promise<ExportPackageResult> {
 		// Empty collections are dropped so the API's per-field "at least one" rule isn't tripped.
-		const body: {
-			workflowIds?: string[];
-			folderIds?: string[];
-			projectIds?: string[];
-			includeVariableValues?: boolean;
-			includeTags?: boolean;
-			missingWorkflowDependencyPolicy?: string;
-			workflowVersionPolicy?: string;
-			credentialExportPolicy?: string;
-			includeArchivedWorkflows?: boolean;
-		} = {};
+		const body: ExportPackageFields = {};
+		if (fields.agentIds?.length) body.agentIds = fields.agentIds;
+		if (fields.agentVersionPolicy) body.agentVersionPolicy = fields.agentVersionPolicy;
+		if (fields.missingAgentDependencyPolicy)
+			body.missingAgentDependencyPolicy = fields.missingAgentDependencyPolicy;
 		if (fields.workflowIds?.length) body.workflowIds = fields.workflowIds;
 		if (fields.folderIds?.length) body.folderIds = fields.folderIds;
 		if (fields.projectIds?.length) body.projectIds = fields.projectIds;

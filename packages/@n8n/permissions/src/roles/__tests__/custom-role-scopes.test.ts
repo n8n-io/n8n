@@ -16,6 +16,7 @@ import {
 } from '@/roles/scopes/credential-sharing-scopes.ee';
 import {
 	GLOBAL_ADMIN_SCOPES,
+	GLOBAL_CHAT_USER_SCOPES,
 	GLOBAL_MEMBER_SCOPES,
 	GLOBAL_OWNER_SCOPES,
 } from '@/roles/scopes/global-scopes.ee';
@@ -30,6 +31,25 @@ import { ALL_SCOPES } from '@/scope-information';
 
 describe('custom role scope whitelists', () => {
 	const allScopes = new Set<string>(ALL_SCOPES);
+
+	it('grants agent export to the same built-in roles as workflow export', () => {
+		const roles: ReadonlyArray<readonly Scope[]> = [
+			GLOBAL_OWNER_SCOPES,
+			GLOBAL_ADMIN_SCOPES,
+			GLOBAL_MEMBER_SCOPES,
+			GLOBAL_CHAT_USER_SCOPES,
+			PERSONAL_PROJECT_OWNER_SCOPES,
+			REGULAR_PROJECT_ADMIN_SCOPES,
+			PROJECT_EDITOR_SCOPES,
+			PROJECT_VIEWER_SCOPES,
+			PROJECT_CHAT_USER_SCOPES,
+		];
+		for (const scopes of roles) {
+			expect(scopes.includes('agent:export')).toBe(scopes.includes('workflow:export'));
+		}
+		expect(PROJECT_CUSTOM_ROLE_SCOPES.has('agent:export')).toBe(true);
+		expect(API_KEY_RESOURCES.agent).toContain('export');
+	});
 
 	it('project and global whitelists are strict subsets of ALL_SCOPES', () => {
 		for (const scope of PROJECT_CUSTOM_ROLE_SCOPES) {

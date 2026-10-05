@@ -1,4 +1,4 @@
-import type { Config } from '@oclif/core';
+import { Parser, type Config } from '@oclif/core';
 import * as fs from 'node:fs';
 import { describe, it, expect, vi, afterEach } from 'vitest';
 
@@ -10,6 +10,9 @@ vi.mock('node:fs');
 const mockedWriteFileSync = vi.mocked(fs.writeFileSync);
 
 interface ExportFlags {
+	agentId?: string[];
+	agentVersionPolicy?: string;
+	missingAgentDependencyPolicy?: string;
 	workflowId?: string[];
 	folderId?: string[];
 	projectId?: string[];
@@ -61,6 +64,68 @@ function stubCommand(
 describe('package export command', () => {
 	afterEach(() => {
 		vi.restoreAllMocks();
+	});
+
+	it('parses repeatable agent IDs and policy aliases', async () => {
+		const { flags } = await Parser.parse(
+			[
+				'--agent-id',
+				'agent-1',
+				'--agent-id=agent-2',
+				'--agent-version-policy=prefer-published',
+				'--missing-agent-dependency-policy=reference-only',
+			],
+			{ flags: PackageExport.flags },
+		);
+		expect(flags).toMatchObject({
+			agentId: ['agent-1', 'agent-2'],
+			agentVersionPolicy: 'prefer-published',
+			missingAgentDependencyPolicy: 'reference-only',
+		});
+	});
+
+	it('exports agents with workflows and folders and reports the bundled agent count', async () => {
+		const { command, internals, exportPackage } = stubCommand(
+			{
+				agentId: ['agent-1', 'agent-2'],
+				workflowId: ['wf-1'],
+				folderId: ['fld-1'],
+				agentVersionPolicy: 'published-strict',
+				missingAgentDependencyPolicy: 'include-in-package',
+				output: '/tmp/agents.n8np',
+			},
+			vi.fn().mockResolvedValue({
+				archive: Buffer.from([1, 2, 3]),
+				counts: { ...DEFAULT_COUNTS, agents: 3, workflows: 1, folders: 1 },
+			}),
+		);
+
+		await command.run();
+
+		expect(exportPackage).toHaveBeenCalledWith({
+			agentIds: ['agent-1', 'agent-2'],
+			workflowIds: ['wf-1'],
+			folderIds: ['fld-1'],
+			agentVersionPolicy: 'published-strict',
+			missingAgentDependencyPolicy: 'include-in-package',
+			missingWorkflowDependencyPolicy: 'fail',
+			includeVariableValues: true,
+			includeTags: true,
+		});
+		expect(mockedWriteFileSync).toHaveBeenCalledWith('/tmp/agents.n8np', Buffer.from([1, 2, 3]));
+		expect(vi.mocked(internals.succeed).mock.calls[0][0]).toContain('3 agent(s)');
+	});
+
+	it('rejects agents combined with whole projects', async () => {
+		const { command, exportPackage } = stubCommand({
+			agentId: ['agent-1'],
+			projectId: ['project-1'],
+			output: '/tmp/agents.n8np',
+		});
+		await expect(command.run()).rejects.toThrow(
+			'Provide either --agent-id/--workflow-id/--folder-id or --project-id, not both',
+		);
+		expect(exportPackage).not.toHaveBeenCalled();
 	});
 
 	it('forwards workflow ids (and an empty folder list) and writes the archive', async () => {
@@ -385,7 +450,7 @@ describe('package export command', () => {
 		});
 
 		await expect(command.run()).rejects.toThrow(
-			'Provide either --workflow-id/--folder-id or --project-id, not both',
+			'Provide either --agent-id/--workflow-id/--folder-id or --project-id, not both',
 		);
 		expect(exportPackage).not.toHaveBeenCalled();
 	});
@@ -398,7 +463,7 @@ describe('package export command', () => {
 		});
 
 		await expect(command.run()).rejects.toThrow(
-			'Provide either --workflow-id/--folder-id or --project-id, not both',
+			'Provide either --agent-id/--workflow-id/--folder-id or --project-id, not both',
 		);
 		expect(exportPackage).not.toHaveBeenCalled();
 	});

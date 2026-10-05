@@ -1,10 +1,33 @@
 type: object
 additionalProperties: false
 description: >-
-  Selects what to export. Provide `workflowIds` and/or `folderIds` to export
-  loose workflows and folders, or `projectIds` to export whole projects, but not
+  Selects what to export. Provide `agentIds`, `workflowIds`, and/or `folderIds` to export
+  loose agents, workflows, and folders, or `projectIds` to export whole projects, but not
   both groups in the same request. At least one id must be supplied.
 properties:
+  agentIds:
+    type: array
+    minItems: 1
+    maxItems: 300
+    description: IDs of the agents to include in the exported package.
+    items:
+      type: string
+      minLength: 1
+  agentVersionPolicy:
+    type: string
+    enum: [published-strict, prefer-published, ignore-unpublished, latest]
+    default: latest
+    description: >-
+      Selects each agent version with the same rules as workflowVersionPolicy.
+      Configuration, skill bodies, custom tools, and tasks use that version.
+      Credential-backed integrations use their current settings.
+  missingAgentDependencyPolicy:
+    type: string
+    enum: [fail, reference-only, include-in-package]
+    default: fail
+    description: >-
+      Selects how to handle agent dependencies outside the package.
+      Uses the same rules as missingWorkflowDependencyPolicy.
   workflowIds:
     type: array
     maxItems: 300
@@ -37,7 +60,7 @@ properties:
     type: boolean
     default: true
     description: >-
-      Whether values of variables referenced by the exported workflows are
+      Whether values of variables referenced by the exported agents or workflows are
       bundled into the package. When `false`, variables still travel as
       name/type files and are listed in the package requirements, but no
       values travel with the package.

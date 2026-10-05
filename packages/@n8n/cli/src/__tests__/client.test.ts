@@ -270,6 +270,32 @@ describe('N8nClient packages', () => {
 	});
 
 	describe('exportPackage', () => {
+		it('sends agent selection and policies and reads agent counts', async () => {
+			const counts = {
+				agents: 2,
+				workflows: 1,
+				folders: 0,
+				credentials: 0,
+				dataTables: 0,
+				variables: 0,
+			};
+			const response = binaryResponse(200, new Uint8Array([1]));
+			response.headers.set('X-N8n-Export-Counts', JSON.stringify(counts));
+			fetchMock.mockResolvedValue(response);
+			const request = {
+				agentIds: ['a', 'b'],
+				workflowIds: ['wf'],
+				agentVersionPolicy: 'prefer-published' as const,
+				missingAgentDependencyPolicy: 'include-in-package' as const,
+			};
+
+			const result = await client.exportPackage(request);
+
+			const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+			expect(JSON.parse(init.body as string)).toEqual(request);
+			expect(result.counts).toEqual(counts);
+		});
+
 		it('posts the workflow IDs as JSON and returns the archive bytes', async () => {
 			fetchMock.mockResolvedValue(binaryResponse(200, new Uint8Array([1, 2, 3])));
 
@@ -356,7 +382,7 @@ describe('N8nClient packages', () => {
 		it('omits an empty collection from the body', async () => {
 			fetchMock.mockResolvedValue(binaryResponse(200, new Uint8Array([1])));
 
-			await client.exportPackage({ workflowIds: [], folderIds: ['f1'] });
+			await client.exportPackage({ agentIds: [], workflowIds: [], folderIds: ['f1'] });
 
 			const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
 			expect(init.body).toBe(JSON.stringify({ folderIds: ['f1'] }));

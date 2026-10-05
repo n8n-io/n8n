@@ -1,3 +1,4 @@
+import type { AgentTaskSnapshotRepository } from '../repositories/agent-task-snapshot.repository';
 /* eslint-disable @typescript-eslint/require-await, @typescript-eslint/unbound-method -- async mock stubs, unbound-method references and short `cb` names are acceptable test idioms */
 
 import { DEFAULT_AGENT_PERSONALISATION } from '@n8n/api-types';
@@ -83,6 +84,7 @@ function makeService() {
 		runtimeCacheService,
 		testChatService,
 		agentTaskRepository,
+		mock<AgentTaskSnapshotRepository>(),
 		subAgentCleanupService,
 		eventService,
 		agentExecutionService,

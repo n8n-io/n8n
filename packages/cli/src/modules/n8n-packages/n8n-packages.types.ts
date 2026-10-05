@@ -228,6 +228,11 @@ export type TagConflictPolicy = (typeof TagConflictPolicy)[keyof typeof TagConfl
 
 export interface ExportPackageRequest {
 	user: User;
+	agentIds?: string[];
+	agentVersionPolicy?: WorkflowVersionPolicy;
+	missingAgentDependencyPolicy?: MissingWorkflowDependencyPolicy;
+	/** Omit for all agents in a whole-project export. An empty array excludes agents. */
+	projectAgentIds?: string[];
 	workflowIds?: string[];
 	folderIds?: string[];
 	projectIds?: string[];
@@ -432,6 +437,7 @@ export type ImportPackageEventCounts = {
 
 /** Per-entity counts for an export, carried on `n8n-package-exported` for telemetry. */
 export type ExportPackageEventCounts = {
+	agents: number;
 	workflows: number;
 	folders: number;
 	credentials: number;

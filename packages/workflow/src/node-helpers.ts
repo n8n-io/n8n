@@ -1908,7 +1908,7 @@ export function isExecutable(
 	);
 }
 
-export function isNodeWithWorkflowSelector(node: INode) {
+export function isNodeWithWorkflowSelector(node: Pick<INode, 'type'>) {
 	return [
 		EXECUTE_WORKFLOW_NODE_TYPE,
 		WORKFLOW_TOOL_LANGCHAIN_NODE_TYPE,
@@ -2169,7 +2169,9 @@ export function getToolDescriptionForNode(
 /**
  * Attempts to retrieve the ID of a subworkflow from a execute workflow node.
  */
-export function getSubworkflowId(node: INode): string | undefined {
+export function getSubworkflowId(node: { type: string; parameters: Record<string, unknown> }):
+	| string
+	| undefined {
 	if (isNodeWithWorkflowSelector(node) && isResourceLocatorValue(node.parameters.workflowId)) {
 		return node.parameters.workflowId.value as string;
 	}

@@ -109,6 +109,7 @@ export const GLOBAL_OWNER_SCOPES: Scope[] = [
 	'projectAiPreference:list',
 	'workflow:create',
 	'workflow:read',
+	'agent:export',
 	'workflow:export',
 	'workflow:import',
 	'workflow:update',

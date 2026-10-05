@@ -1,4 +1,4 @@
-import type { WorkflowEntity } from '@n8n/db';
+import { isRecord } from '@n8n/utils/is-record';
 import { Service } from '@n8n/di';
 import { DATA_TABLE_NODE_TYPES } from 'n8n-workflow';
 
@@ -9,20 +9,22 @@ import type { RequirementsExtractor } from '../requirements-extractor';
 export class DataTableRequirementsExtractor
 	implements RequirementsExtractor<WorkflowDataTableRequirement>
 {
-	extract(workflow: WorkflowEntity): WorkflowDataTableRequirement[] {
+	extract(workflow: {
+		id: string;
+		nodes?: Array<{ type: string; parameters: Record<string, unknown> }>;
+	}): WorkflowDataTableRequirement[] {
 		const byId = new Map<string, WorkflowDataTableRequirement>();
 
 		for (const node of workflow.nodes ?? []) {
 			if (!DATA_TABLE_NODE_TYPES.includes(node.type)) continue;
 
-			const resourceLocator = node.parameters?.dataTableId as
-				| { mode?: string; value?: string }
-				| undefined;
+			const resourceLocator = node.parameters?.dataTableId;
 
 			// Only 'id'/'list' modes carry the table id directly; 'name' mode stores a
 			// name (would need name→id resolution) and expressions can't be resolved statically.
 			if (
-				!resourceLocator?.value ||
+				!isRecord(resourceLocator) ||
+				!resourceLocator.value ||
 				typeof resourceLocator.value !== 'string' ||
 				resourceLocator.mode === 'name' ||
 				resourceLocator.value.includes('{') ||

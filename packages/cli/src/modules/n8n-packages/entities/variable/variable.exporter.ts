@@ -6,11 +6,13 @@ import { ZodError } from 'zod';
 
 import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
 
+import { addRequirementUsage, type RequirementUsage } from '../requirement-source';
+
 import { VariableSerializer } from './variable.serializer';
 import type {
 	VariableExportRequest,
 	VariableExportResult,
-	WorkflowVariableRequirement,
+	VariableExportRequirement,
 } from './variable.types';
 import { projectScopedDirectory, writeManifestEntry } from '../../io/manifest-entry';
 import type { ManifestEntry } from '../../spec/manifest.schema';
@@ -18,9 +20,8 @@ import type { PackageVariableRequirement } from '../../spec/requirements.schema'
 import type { SerializedVariable } from '../../spec/serialized/variable.schema';
 import { PackageExportBlockedError } from '../package-export.errors';
 
-interface ResolvedName {
+interface ResolvedName extends RequirementUsage {
 	name: string;
-	usedByWorkflows: string[];
 	variables: Array<Variables | undefined>;
 }
 
@@ -46,7 +47,9 @@ export class VariableExporter {
 			return { entries: [], requirements: [] };
 		}
 
-		const workflowIds = [...new Set(request.requirements.map((r) => r.workflowId))];
+		const workflowIds = [
+			...new Set(request.requirements.flatMap((r) => ('workflowId' in r ? [r.workflowId] : []))),
+		];
 		// The unfiltered list is what runtime resolves against; the user-filtered
 		// list defines what the caller may bundle. Resolving on the unfiltered list
 		// and then gating on accessibility keeps export in lockstep with runtime
@@ -71,7 +74,7 @@ export class VariableExporter {
 		const bundledVariableIds = new Set<string>();
 		const requirements: PackageVariableRequirement[] = [];
 
-		for (const { name, usedByWorkflows, variables } of resolvedNames) {
+		for (const { name, variables, ...usage } of resolvedNames) {
 			for (const variable of variables) {
 				if (!isBundleableVariable(variable)) continue;
 
@@ -89,7 +92,7 @@ export class VariableExporter {
 				);
 			}
 
-			requirements.push({ name, usedByWorkflows });
+			requirements.push({ name, ...usage });
 		}
 
 		return { entries, requirements };
@@ -125,7 +128,7 @@ export class VariableExporter {
 	 * hidden project variable never falls back to the global it shadows.
 	 */
 	private resolveRequirements(
-		requirements: WorkflowVariableRequirement[],
+		requirements: VariableExportRequirement[],
 		projectIdByWorkflowId: Map<string, string>,
 		allVariables: Variables[],
 		accessibleIds: Set<string>,
@@ -137,21 +140,17 @@ export class VariableExporter {
 			else variablesByKey.set(variable.key, [variable]);
 		}
 
-		const resolveForWorkflow = (name: string, workflowId: string) => {
-			const workflowProjectId = projectIdByWorkflowId.get(workflowId);
-			const picked = pickVariableForProject(
-				variablesByKey.get(name) ?? [],
-				name,
-				workflowProjectId,
-			);
-			return picked && accessibleIds.has(picked.id) ? picked : undefined;
-		};
-
-		return [...this.groupByName(requirements)].map(([name, usedByWorkflows]) => ({
-			name,
-			usedByWorkflows,
-			variables: usedByWorkflows.map((workflowId) => resolveForWorkflow(name, workflowId)),
-		}));
+		return [...this.groupByName(requirements)].map(([name, sources]) => {
+			const usage: RequirementUsage = { usedByWorkflows: [] };
+			const variables = sources.map((source) => {
+				addRequirementUsage(usage, source);
+				const projectId =
+					'workflowId' in source ? projectIdByWorkflowId.get(source.workflowId) : source.projectId;
+				const picked = pickVariableForProject(variablesByKey.get(name) ?? [], name, projectId);
+				return picked && accessibleIds.has(picked.id) ? picked : undefined;
+			});
+			return { name, ...usage, variables };
+		});
 	}
 
 	private async resolveWorkflowProjects(workflowIds: string[]): Promise<Map<string, string>> {
@@ -207,17 +206,14 @@ export class VariableExporter {
 		return false;
 	}
 
-	private groupByName(requirements: WorkflowVariableRequirement[]): Map<string, string[]> {
-		const grouped = new Map<string, string[]>();
+	private groupByName(
+		requirements: VariableExportRequirement[],
+	): Map<string, VariableExportRequirement[]> {
+		const grouped = new Map<string, VariableExportRequirement[]>();
 		for (const requirement of requirements) {
-			const workflowIds = grouped.get(requirement.variableName);
-			if (workflowIds) {
-				if (!workflowIds.includes(requirement.workflowId)) {
-					workflowIds.push(requirement.workflowId);
-				}
-			} else {
-				grouped.set(requirement.variableName, [requirement.workflowId]);
-			}
+			const sources = grouped.get(requirement.variableName) ?? [];
+			sources.push(requirement);
+			grouped.set(requirement.variableName, sources);
 		}
 		return grouped;
 	}

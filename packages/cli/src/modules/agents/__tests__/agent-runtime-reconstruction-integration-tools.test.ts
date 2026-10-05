@@ -352,6 +352,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			runtimeCacheService,
 			agentTestChatService,
 			agentTaskRepository,
+			mock<AgentTaskSnapshotRepository>(),
 			mock<SubAgentCleanupService>(),
 			mock<EventService>(),
 			agentExecutionService,

@@ -70,6 +70,17 @@ n8n-cli --url=https://my-n8n.app.n8n.cloud --api-key=n8n_api_xxxxx workflow list
 
 Every command supports `--help` for detailed usage.
 
+Package export supports selected agents and whole projects. See the
+[package commands](docs/commands/package.md) for all options.
+
+| Agent export flag | Purpose |
+|-------------------|---------|
+| `--agent-id` | Select an agent. Repeat for more agents. Combine with workflow and folder IDs. |
+| `--agent-version-policy` | Choose `latest` (default), `published-strict`, `prefer-published`, or `ignore-unpublished`. |
+| `--missing-agent-dependency-policy` | Choose `fail` (default), `reference-only`, or `include-in-package`. |
+
+Agent packages cannot be imported yet.
+
 ## Output formats
 
 All commands support three output formats via `--format`:

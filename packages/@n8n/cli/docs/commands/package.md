@@ -1,16 +1,17 @@
 # package
 
-Export and import workflows as portable n8n packages (`.n8np` archives).
+Export agents and workflows as portable n8n packages (`.n8np` archives). Import workflow packages.
 
 > **Beta feature:** n8n packages are still under development and there may be breaking changes on APIs.
 
 ## `package export`
 
-Export workflows, folders, or projects into a gzipped `.n8np` archive written
-to disk. Each exported folder includes its nested folders. Provide workflow
-and/or folder IDs, or project IDs, but not both groups in the same command.
+Export agents, workflows, folders, or whole projects into a gzipped `.n8np` archive.
+Whole projects include their agents. Each folder includes its nested folders.
+Combine agent, workflow, and folder IDs as needed. Use project IDs separately.
 
 ```bash
+n8n-cli package export --agent-id=abc --agent-id=def --output=agents.n8np
 n8n-cli package export --workflow-id=abc --output=export.n8np
 n8n-cli package export -w abc -w def -o team.n8np
 n8n-cli package export --folder-id=xyz -o folders.n8np
@@ -22,20 +23,34 @@ n8n-cli package export -w abc --include-tags=false -o export.n8np
 
 | Flag | Description |
 |------|-------------|
+| `--agent-id` | Agent ID to include. Repeat the flag to export several. |
+| `--agent-version-policy` | Select the agent version. Uses the workflow options below. The default is `latest`. |
+| `--missing-agent-dependency-policy` | Handle sub-agents outside the selection. `fail` (default) requires them in the selection. `include-in-package` adds them and their dependencies. `reference-only` records their IDs without their definitions. |
 | `-w, --workflow-id` | Workflow ID to include. Repeat the flag to export several. |
 | `--folder-id` | Folder ID to include with its nested folders. Repeat the flag to export several. |
 | `-p, --project-id` | Project ID to include. Repeat the flag to export several. |
 | `-o, --output` | File to write the package to. Defaults to `export.n8np`. |
-| `--include-variable-values` | `true` (default) or `false`. Whether values of variables referenced by the exported workflows are bundled into the package. When `false`, variables still travel as name/type files (and in the package requirements), just without their values. |
+| `--include-variable-values` | `true` (default) or `false`. Whether values of variables referenced by the exported workflows or agent node tools are bundled into the package. When `false`, variables still travel as name/type files (and in the package requirements), just without their values. |
 | `--include-tags` | `true` (default) or `false`. Whether tags assigned to the exported workflows are bundled into the package. When `false`, no tag data is included in the package. |
 | `--include-archived-workflows` | `false` (default) or `true`. Whether folder and project exports include their archived workflows. When `true`, they travel with `isArchived: true` and are archived on import. Workflows given by `--workflow-id` always export, also when archived. |
-| `--missing-workflow-dependency-policy` | Policy for missing static sub-workflow dependencies: `fail` aborts when any dependency is missing, `include-in-package` automatically adds missing static sub-workflows, and `reference-only` keeps them out of the package, listing them in the package requirements as workflows expected to already exist on the target. |
+| `--missing-workflow-dependency-policy` | Policy for missing static workflow dependencies, including agent workflow tools: `fail` aborts when any dependency is missing, `include-in-package` automatically adds missing static sub-workflows, and `reference-only` keeps them out of the package, listing them in the package requirements as workflows expected to already exist on the target. |
 | `--workflow-version-policy` | Which version of each workflow travels in the package: `latest` (default) exports the latest version whether or not it is published, `published-strict` exports the published version and aborts when any workflow has none, `prefer-published` falls back to the latest version where there is no published one, and `ignore-unpublished` leaves unpublished workflows out of the package entirely. |
 | `--credential-export-policy` | Whether expression values from credential data are bundled into the package: `expression-values-only` (default on the instance) includes credential fields whose value is an n8n expression (for example `={{ $secrets.apiKey }}`); `no-values` keeps credential data out of the package, so each credential file carries only its id, name and type. Literal values never travel either way. |
 
-Provide at least one `--workflow-id`, `--folder-id`, or `--project-id`. Requires
-the API key to hold `workflow:export` when exporting workflows or folders, or
-`project:export` when exporting projects.
+Provide at least one `--agent-id`, `--workflow-id`, `--folder-id`, or `--project-id`.
+The API key needs `agent:export` for selected agents, `workflow:export` for selected
+workflows or folders, and `project:export` for whole projects. Mixed selections need
+each applicable scope. Variable values require `variable:list`.
+
+Each agent contains its authored configuration and separate skill, custom tool, and
+task definitions. Disabled capabilities retain their bodies. Skill reference text
+is included. IDs stay unchanged. Tool and skill IDs belong to their owning agent.
+Published exports use the published configuration, skill and tool bodies, and task
+snapshots. They use the published n8n Chat settings and current credential-backed
+integrations. Publication metadata is stored separately from authored content.
+Knowledge base files and runtime data are excluded.
+
+Agent packages cannot be imported yet. Import rejects them before it writes data.
 
 A workflow has a latest version (what you see in the editor) and, once
 published, a published version; `--workflow-version-policy` picks which one

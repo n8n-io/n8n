@@ -1,14 +1,19 @@
 import { EventService } from '@n8n/backend-services';
-import { createTeamProject, createWorkflow, testDb } from '@n8n/backend-test-utils';
+import { createTeamProject, createWorkflow, testDb, testModules } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
+import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 
 import { createFolder } from '@test-integration/db/folders';
 
 import { createMemberWithApiKey, createOwnerWithApiKey } from '../shared/db/users';
 import type { SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils/';
+
+beforeAll(async () => {
+	await testModules.loadModules(['agents', 'n8n-packages']);
+});
 
 const testServer = utils.setupTestServer({ endpointGroups: ['publicApi'] });
 
@@ -25,6 +30,7 @@ beforeEach(async () => {
 });
 
 afterEach(async () => {
+	await Container.get(AgentRepository).delete({});
 	await testDb.truncate([
 		'Folder',
 		'WorkflowEntity',
@@ -35,6 +41,70 @@ afterEach(async () => {
 });
 
 describe('POST /n8n-packages/export', () => {
+	test('requires agent scope and emits agent counts and IDs on a selected export', async () => {
+		const project = await createTeamProject('Agent project', owner);
+		const repository = Container.get(AgentRepository);
+		const agent = await repository.save(
+			repository.create({
+				name: 'API agent',
+				projectId: project.id,
+				schema: { name: 'API agent', model: '', instructions: 'Help with work' },
+				tools: {},
+				skills: {},
+			}),
+		);
+		const emitSpy = vi.spyOn(Container.get(EventService), 'emit');
+		const limitedOwner = await createOwnerWithApiKey({ scopes: ['workflow:export'] });
+		const denied = await testServer
+			.publicApiAgentFor(limitedOwner)
+			.post('/n8n-packages/export')
+			.send({ agentIds: [agent.id] });
+		expect(denied.statusCode).toBe(403);
+		expect(emitSpy).toHaveBeenCalledWith(
+			'n8n-package-export-failed',
+			expect.objectContaining({ reason: 'access-denied', agentIds: [agent.id] }),
+		);
+
+		const exporter = await createOwnerWithApiKey({ scopes: ['agent:export'] });
+		const response = await testServer
+			.publicApiAgentFor(exporter)
+			.post('/n8n-packages/export')
+			.send({
+				agentIds: [agent.id],
+				agentVersionPolicy: 'latest',
+				missingAgentDependencyPolicy: 'reference-only',
+			});
+		expect(response.statusCode).toBe(200);
+		expect(JSON.parse(response.headers['x-n8n-export-counts'])).toMatchObject({
+			agents: 1,
+			workflows: 0,
+		});
+		expect(emitSpy).toHaveBeenCalledWith(
+			'n8n-package-exported',
+			expect.objectContaining({
+				agentIds: [agent.id],
+				counts: expect.objectContaining({ agents: 1 }),
+			}),
+		);
+
+		const unpublished = await testServer
+			.publicApiAgentFor(exporter)
+			.post('/n8n-packages/export')
+			.send({ agentIds: [agent.id], agentVersionPolicy: 'published-strict' });
+		expect(unpublished.statusCode).toBe(400);
+		expect(unpublished.body.message).toContain('have no published version');
+	});
+
+	test('rejects agent and project selections in one request', async () => {
+		const response = await authOwnerAgent
+			.post('/n8n-packages/export')
+			.send({ agentIds: ['agent-1'], projectIds: ['project-1'] });
+		expect(response.statusCode).toBe(400);
+		expect(response.body.message).toContain(
+			'Provide either agentIds/workflowIds/folderIds or projectIds',
+		);
+	});
+
 	test('rejects requests that provide both workflowIds and projectIds', async () => {
 		const emitSpy = vi.spyOn(Container.get(EventService), 'emit');
 
@@ -45,7 +115,7 @@ describe('POST /n8n-packages/export', () => {
 
 		expect(response.statusCode).toBe(400);
 		expect(response.body).toEqual({
-			message: 'Provide either workflowIds/folderIds or projectIds, not both',
+			message: 'Provide either agentIds/workflowIds/folderIds or projectIds, not both',
 		});
 		expect(emitSpy).toHaveBeenCalledWith(
 			'n8n-package-export-failed',
@@ -167,7 +237,7 @@ describe('POST /n8n-packages/export', () => {
 
 		expect(response.statusCode).toBe(400);
 		expect(response.body).toEqual({
-			message: 'Provide either workflowIds/folderIds or projectIds, not both',
+			message: 'Provide either agentIds/workflowIds/folderIds or projectIds, not both',
 		});
 	});
 

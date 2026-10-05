@@ -1,6 +1,33 @@
 import { ExportPackageRequestDto } from '../export-package-request.dto';
 
 describe('ExportPackageRequestDto', () => {
+	it('accepts agents alongside workflows and folders with the workflow policy defaults', () => {
+		expect(
+			ExportPackageRequestDto.parse({
+				agentIds: [' agent-1 '],
+				workflowIds: ['wf-1'],
+				folderIds: ['fld-1'],
+			}),
+		).toMatchObject({
+			agentIds: ['agent-1'],
+			workflowIds: ['wf-1'],
+			folderIds: ['fld-1'],
+			agentVersionPolicy: 'latest',
+			missingAgentDependencyPolicy: 'fail',
+		});
+	});
+
+	it.each([
+		{ agentIds: [] },
+		{ agentIds: [' '] },
+		{ agentIds: [123] },
+		{ agentIds: Array.from({ length: 301 }, (_, i) => `agent-${i}`) },
+		{ agentIds: ['agent-1'], agentVersionPolicy: 'published' },
+		{ agentIds: ['agent-1'], missingAgentDependencyPolicy: 'skip' },
+	])('rejects invalid agent export options %j', (request) => {
+		expect(ExportPackageRequestDto.safeParse(request).success).toBe(false);
+	});
+
 	describe('workflowIds', () => {
 		it('accepts a non-empty array of workflow ids', () => {
 			const result = ExportPackageRequestDto.safeParse({ workflowIds: ['wf-1', 'wf-2'] });

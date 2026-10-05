@@ -1,3 +1,4 @@
+import type { AgentRequirementSource } from '../requirement-source';
 import type {
 	ImportBindingMap,
 	CredentialMatchingMode,
@@ -11,6 +12,14 @@ export interface WorkflowCredentialRequirement {
 	credentialName: string;
 	credentialType: string;
 }
+
+export type CredentialExportRequirement =
+	| WorkflowCredentialRequirement
+	| (AgentRequirementSource & {
+			credentialId: string;
+			credentialName?: string;
+			credentialType?: string;
+	  });
 
 export type CredentialResolutionFailureKind =
 	| 'not_found'

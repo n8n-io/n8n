@@ -11,16 +11,19 @@ const BASE_BRANCH_ENTITIES = {
 	dataTables: { ...PACKAGE_ENTITY_LAYOUT.dataTables, type: 'dataTable', includeRoot: true },
 	variables: { ...PACKAGE_ENTITY_LAYOUT.variables, type: 'variable', includeRoot: true },
 	tags: { ...PACKAGE_ENTITY_LAYOUT.tags, type: 'tag', includeRoot: true },
-} as const satisfies Record<ManifestEntityCollection, { type: string; includeRoot: boolean }>;
+} as const satisfies Record<
+	Exclude<ManifestEntityCollection, 'agents'>,
+	{ type: string; includeRoot: boolean }
+>;
 
 export type PackageFile = Readonly<{
 	entityId: string;
 	slug: string;
 	projectId: string | null;
-	fileName: (typeof PACKAGE_ENTITY_LAYOUT)[ManifestEntityCollection]['fileName'];
+	fileName: (typeof PACKAGE_ENTITY_LAYOUT)[Exclude<ManifestEntityCollection, 'agents'>]['fileName'];
 	path: string;
 	blobSha: string;
-	type: (typeof BASE_BRANCH_ENTITIES)[ManifestEntityCollection]['type'];
+	type: (typeof BASE_BRANCH_ENTITIES)[Exclude<ManifestEntityCollection, 'agents'>]['type'];
 }>;
 
 export const BASE_BRANCH_DIRECTORIES: string[] = Object.values(BASE_BRANCH_ENTITIES)
@@ -29,7 +32,7 @@ export const BASE_BRANCH_DIRECTORIES: string[] = Object.values(BASE_BRANCH_ENTIT
 
 const ENTITIES_BY_DIRECTORY = new Map<
 	string,
-	(typeof BASE_BRANCH_ENTITIES)[ManifestEntityCollection]
+	(typeof BASE_BRANCH_ENTITIES)[Exclude<ManifestEntityCollection, 'agents'>]
 >(Object.values(BASE_BRANCH_ENTITIES).map((entity) => [entity.directory, entity]));
 
 function entityIdOfSegment(segment: string): string {

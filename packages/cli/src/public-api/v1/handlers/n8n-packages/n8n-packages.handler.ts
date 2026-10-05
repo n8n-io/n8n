@@ -27,7 +27,7 @@ import type { PackageRequest } from '../../../types';
 import type { PublicAPIEndpoint } from '../../shared/handler.types';
 import { publicApiCompositeScope } from '../../shared/middlewares/global.middleware';
 
-const PACKAGE_EXPORT_SCOPES = 'project:export,workflow:export';
+const PACKAGE_EXPORT_SCOPES = 'project:export,workflow:export,agent:export';
 
 /** Header carrying the JSON-serialized true per-entity counts of the exported package. */
 const EXPORT_COUNTS_HEADER = 'X-N8n-Export-Counts';
@@ -36,6 +36,9 @@ type ExportPackageRequest = AuthenticatedRequest<
 	{},
 	{},
 	{
+		agentIds?: string[];
+		agentVersionPolicy?: 'published-strict' | 'prefer-published' | 'ignore-unpublished' | 'latest';
+		missingAgentDependencyPolicy?: 'fail' | 'reference-only' | 'include-in-package';
 		workflowIds?: string[];
 		folderIds?: string[];
 		projectIds?: string[];
@@ -71,6 +74,7 @@ function assertPackageExportApiKeyScopes(
 	workflowIds: string[],
 	folderIds: string[],
 	projectIds: string[],
+	agentIds: string[],
 ): string[] {
 	const apiKeyScopes = req.tokenGrant?.apiKeyScopes;
 	if (!apiKeyScopes) {
@@ -78,6 +82,7 @@ function assertPackageExportApiKeyScopes(
 	}
 
 	const requiredScopes: ApiKeyScope[] = [];
+	if (agentIds.length > 0) requiredScopes.push('agent:export');
 	// Folders are exported as a workflow-organization concern, so they share the workflow:export scope.
 	if (workflowIds.length > 0 || folderIds.length > 0) {
 		requiredScopes.push('workflow:export');
@@ -127,6 +132,7 @@ const n8nPackagesHandlers: N8nPackagesHandlers = {
 	exportPackage: [
 		publicApiCompositeScope(PACKAGE_EXPORT_SCOPES),
 		async (req, res) => {
+			let agentIds: string[] = [];
 			let workflowIds: string[] = [];
 			let folderIds: string[] = [];
 			let projectIds: string[] = [];
@@ -138,18 +144,31 @@ const n8nPackagesHandlers: N8nPackagesHandlers = {
 					throw new BadRequestError(payload.error.errors.map(({ message }) => message).join('; '));
 				}
 
+				agentIds = payload.data.agentIds ?? [];
 				workflowIds = payload.data.workflowIds ?? [];
 				folderIds = payload.data.folderIds ?? [];
 				projectIds = payload.data.projectIds ?? [];
 				includeVariableValues = payload.data.includeVariableValues;
 
-				// A package is either a set of loose workflows/folders or a set of whole projects, not both.
-				if (projectIds.length > 0 && (workflowIds.length > 0 || folderIds.length > 0)) {
-					throw new BadRequestError('Provide either workflowIds/folderIds or projectIds, not both');
+				// A package contains loose agents, workflows, and folders, or whole projects.
+				if (
+					projectIds.length > 0 &&
+					(workflowIds.length > 0 || folderIds.length > 0 || agentIds.length > 0)
+				) {
+					throw new BadRequestError(
+						'Provide either agentIds/workflowIds/folderIds or projectIds, not both',
+					);
 				}
 
-				if (workflowIds.length === 0 && folderIds.length === 0 && projectIds.length === 0) {
-					throw new BadRequestError('At least one workflowId, folderId, or projectId is required');
+				if (
+					agentIds.length === 0 &&
+					workflowIds.length === 0 &&
+					folderIds.length === 0 &&
+					projectIds.length === 0
+				) {
+					throw new BadRequestError(
+						'At least one agentId, workflowId, folderId, or projectId is required',
+					);
 				}
 
 				const apiKeyScopes = assertPackageExportApiKeyScopes(
@@ -157,10 +176,14 @@ const n8nPackagesHandlers: N8nPackagesHandlers = {
 					workflowIds,
 					folderIds,
 					projectIds,
+					agentIds,
 				);
 
 				const exportResult = await Container.get(N8nPackagesService).exportPackage({
 					user: req.user,
+					agentIds,
+					agentVersionPolicy: payload.data.agentVersionPolicy,
+					missingAgentDependencyPolicy: payload.data.missingAgentDependencyPolicy,
 					workflowIds,
 					folderIds,
 					projectIds,
@@ -178,6 +201,7 @@ const n8nPackagesHandlers: N8nPackagesHandlers = {
 				Container.get(EventService).emit('n8n-package-export-failed', {
 					user: req.user,
 					reason: classifyPackageFailure(error),
+					...(agentIds.length ? { agentIds } : {}),
 					...(workflowIds.length ? { workflowIds } : {}),
 					...(folderIds.length ? { folderIds } : {}),
 					...(projectIds.length ? { projectIds } : {}),

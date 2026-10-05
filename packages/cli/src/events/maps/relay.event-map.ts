@@ -140,6 +140,7 @@ export type RelayEventMap = {
 
 	'n8n-package-exported': {
 		user: UserLike;
+		agentIds?: string[];
 		workflowIds?: string[];
 		folderIds?: string[];
 		projectIds?: string[];
@@ -151,6 +152,7 @@ export type RelayEventMap = {
 	'n8n-package-export-failed': {
 		user: UserLike;
 		reason: PackageFailureReason;
+		agentIds?: string[];
 		workflowIds?: string[];
 		folderIds?: string[];
 		projectIds?: string[];

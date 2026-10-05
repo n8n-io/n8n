@@ -23,7 +23,17 @@ export const PROJECT_CUSTOM_ROLE_OPERATIONS = {
 		'enableRedaction',
 		'disableRedaction',
 	],
-	agent: ['read', 'execute', 'list', 'create', 'update', 'delete', 'publish', 'unpublish'],
+	agent: [
+		'read',
+		'execute',
+		'list',
+		'create',
+		'update',
+		'delete',
+		'publish',
+		'unpublish',
+		'export',
+	],
 	credential: [
 		'read',
 		'connect',

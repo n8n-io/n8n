@@ -201,6 +201,25 @@ export class WorkflowFinderService {
 		return new Set(workflows.map(({ id }) => id));
 	}
 
+	async findWorkflowsByNamesOrIdsInProjectForUser(
+		user: User,
+		projectId: string,
+		values: string[],
+		scopes: Scope[],
+	): Promise<WorkflowEntity[]> {
+		if (values.length === 0) return [];
+		const candidates = await this.workflowRepository.findManyByAgentToolReferences(
+			projectId,
+			values,
+			values,
+		);
+		return await this.findWorkflowsByIdsForUser(
+			candidates.map(({ id }) => id),
+			user,
+			scopes,
+		);
+	}
+
 	async findWorkflowsByIdsForUser(
 		workflowIds: string[],
 		user: User,

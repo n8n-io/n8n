@@ -1,16 +1,16 @@
-import type { WorkflowCredentialRequirement } from './credential/credential.types';
-import type { WorkflowDataTableRequirement } from './data-table/data-table.types';
+import type { CredentialExportRequirement } from './credential/credential.types';
+import type { DataTableExportRequirement } from './data-table/data-table.types';
 import type { WorkflowTagUsage } from './tag/tag.types';
-import type { WorkflowVariableRequirement } from './variable/variable.types';
-import type { WorkflowNodeTypeSource } from './workflow/node-type-usage';
+import type { VariableExportRequirement } from './variable/variable.types';
+import type { NodeTypeSource } from './workflow/node-type-usage';
 
 export interface WorkflowExportRequirements {
-	credentials: WorkflowCredentialRequirement[];
-	dataTables: WorkflowDataTableRequirement[];
-	variables: WorkflowVariableRequirement[];
+	credentials: CredentialExportRequirement[];
+	dataTables: DataTableExportRequirement[];
+	variables: VariableExportRequirement[];
 	tags: WorkflowTagUsage[];
-	/** Per-workflow node lists; folded into unique pairs at manifest-assembly time. */
-	nodeTypes: WorkflowNodeTypeSource[];
+	/** Node lists from workflows and agents. The manifest contains each type/version pair once. */
+	nodeTypes: NodeTypeSource[];
 }
 
 export const mergeRequirements = (

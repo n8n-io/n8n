@@ -1,26 +1,65 @@
 import { z } from 'zod';
 
-export const packageCredentialRequirementSchema = z.object({
-	id: z.string().min(1),
-	name: z.string().min(1),
-	type: z.string().min(1),
-	usedByWorkflows: z.array(z.string().min(1)).min(1),
-});
+const requirementUsage = {
+	usedByWorkflows: z.array(z.string().min(1)),
+	usedByAgents: z.array(z.string().min(1)).min(1).optional(),
+};
 
-export const packageDataTableRequirementSchema = z.object({
-	id: z.string().min(1),
-	name: z.string().min(1),
-	usedByWorkflows: z.array(z.string().min(1)).min(1),
-});
+function assertUsage(
+	value: { usedByWorkflows: string[]; usedByAgents?: string[] },
+	ctx: z.RefinementCtx,
+) {
+	if (value.usedByWorkflows.length === 0 && !value.usedByAgents?.length) {
+		ctx.addIssue({
+			code: z.ZodIssueCode.custom,
+			message: 'A requirement must have at least one workflow or agent user.',
+		});
+	}
+}
+
+export const packageCredentialRequirementSchema = z
+	.object({
+		id: z.string().min(1),
+		name: z.string().min(1).optional(),
+		type: z.string().min(1).optional(),
+		...requirementUsage,
+	})
+	.superRefine((value, ctx) => {
+		assertUsage(value, ctx);
+		if (value.usedByWorkflows.length > 0 && (!value.name || !value.type)) {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				message: 'Workflow credential requirements need a name and type.',
+			});
+		}
+	});
+
+export const packageDataTableRequirementSchema = z
+	.object({
+		id: z.string().min(1),
+		name: z.string().min(1),
+		...requirementUsage,
+	})
+	.superRefine(assertUsage);
 
 // `name` is best-effort: a `reference-only` export lists workflows that are
 // not in the package, and their name may not be resolvable by the exporting
 // user — the id alone identifies the requirement.
-export const packageWorkflowRequirementSchema = z.object({
-	id: z.string().min(1),
-	name: z.string().min(1).optional(),
-	usedByWorkflows: z.array(z.string().min(1)).min(1),
-});
+export const packageWorkflowRequirementSchema = z
+	.object({
+		id: z.string().min(1),
+		name: z.string().min(1).optional(),
+		...requirementUsage,
+	})
+	.superRefine(assertUsage);
+
+export const packageAgentRequirementSchema = z
+	.object({
+		id: z.string().min(1),
+		name: z.string().min(1).optional(),
+		...requirementUsage,
+	})
+	.superRefine(assertUsage);
 
 export const packageTagRequirementSchema = z.object({
 	id: z.string().min(1),
@@ -31,22 +70,26 @@ export const packageTagRequirementSchema = z.object({
 // Node types used by the packaged workflows, folded into unique
 // `(type, typeVersion)` pairs. Informational/derived only: import re-derives
 // node type usage from workflow content and never trusts this section.
-export const packageNodeTypeRequirementSchema = z.object({
-	type: z.string().min(1),
-	// `finite()`: JSON like `1e999` parses to Infinity (mirrors the workflow node schema).
-	typeVersion: z.number().finite(),
-	usedByWorkflows: z.array(z.string().min(1)).min(1),
-});
+export const packageNodeTypeRequirementSchema = z
+	.object({
+		type: z.string().min(1),
+		// `finite()`: JSON like `1e999` parses to Infinity (mirrors the workflow node schema).
+		typeVersion: z.number().finite(),
+		...requirementUsage,
+	})
+	.superRefine(assertUsage);
 
 // Variables are keyed by name, not id: a `$vars.<name>` reference resolves
 // project-scope-first then global at runtime, so one requirement may be
 // satisfied by different rows on different instances — no single portable id
 // can travel with it. The requirement states only that the name must exist;
 // any value the package carries travels in the bundled variable file.
-export const packageVariableRequirementSchema = z.object({
-	name: z.string().min(1),
-	usedByWorkflows: z.array(z.string().min(1)).min(1),
-});
+export const packageVariableRequirementSchema = z
+	.object({
+		name: z.string().min(1),
+		...requirementUsage,
+	})
+	.superRefine(assertUsage);
 
 function assertNoDuplicateKey<T>(
 	entries: T[] | undefined,
@@ -69,6 +112,10 @@ function assertNoDuplicateKey<T>(
 }
 
 export const packageRequirementsSchema = z.object({
+	agents: z
+		.array(packageAgentRequirementSchema)
+		.optional()
+		.superRefine((agents, ctx) => assertNoDuplicateKey(agents, ({ id }) => id, 'agent id', ctx)),
 	credentials: z
 		.array(packageCredentialRequirementSchema)
 		.optional()
@@ -117,3 +164,5 @@ export type PackageTagRequirement = z.infer<typeof packageTagRequirementSchema>;
 export type PackageVariableRequirement = z.infer<typeof packageVariableRequirementSchema>;
 export type PackageNodeTypeRequirement = z.infer<typeof packageNodeTypeRequirementSchema>;
 export type PackageRequirements = z.infer<typeof packageRequirementsSchema>;
+
+export type PackageAgentRequirement = z.infer<typeof packageAgentRequirementSchema>;

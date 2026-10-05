@@ -13,7 +13,9 @@ type CredentialVisitor = (credentialType: string, details: INodeCredentialsDetai
  * returns whether it mutated a reference so nested workflow JSON can be updated.
  */
 export function visitWorkflowCredentials(
-	nodes: INode[] | undefined,
+	nodes:
+		| Array<Pick<INode, 'type' | 'credentials'> & { parameters: Record<string, unknown> }>
+		| undefined,
 	visitor: CredentialVisitor,
 ): boolean {
 	if (!nodes) return false;

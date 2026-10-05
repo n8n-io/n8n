@@ -1,3 +1,4 @@
+import type { AgentRequirementSource } from '../requirement-source';
 import type { User } from '@n8n/db';
 
 import type { PackageWriter } from '../../io/package-writer';
@@ -10,9 +11,13 @@ export interface WorkflowVariableRequirement {
 	variableName: string;
 }
 
+export type VariableExportRequirement =
+	| WorkflowVariableRequirement
+	| (AgentRequirementSource & { variableName: string });
+
 export interface VariableExportRequest {
 	user: User;
-	requirements: WorkflowVariableRequirement[];
+	requirements: VariableExportRequirement[];
 	writer: PackageWriter;
 	includeVariableValues: boolean;
 	projectTargetsById?: Map<string, string>;

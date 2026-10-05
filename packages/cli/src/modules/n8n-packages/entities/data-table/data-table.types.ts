@@ -1,3 +1,4 @@
+import type { AgentRequirementSource } from '../requirement-source';
 import type {
 	DataTableMatchingMode,
 	DataTableMissingMode,
@@ -10,6 +11,10 @@ export interface WorkflowDataTableRequirement {
 	workflowId: string;
 	dataTableId: string;
 }
+
+export type DataTableExportRequirement =
+	| WorkflowDataTableRequirement
+	| (AgentRequirementSource & { dataTableId: string });
 
 export type DataTableResolutionFailureKind =
 	| 'missing'

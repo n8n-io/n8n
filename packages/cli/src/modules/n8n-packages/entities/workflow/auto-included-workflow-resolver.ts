@@ -44,6 +44,7 @@ export class AutoIncludedWorkflowResolver {
 		projectWorkflowIds: string[];
 		includeTags: boolean;
 		workflowVersionPolicy: WorkflowVersionPolicy;
+		additionalOrigins?: Map<string, Set<WorkflowExportOrigin>>;
 	}): Promise<AutoIncludedWorkflowResolution> {
 		const originsByWorkflowId = this.seedExportedOrigins({
 			topLevelWorkflowIds: options.topLevelWorkflowIds,
@@ -51,6 +52,9 @@ export class AutoIncludedWorkflowResolver {
 			projectWorkflowIds: options.projectWorkflowIds,
 		});
 		const exportedWorkflowIds = new Set(originsByWorkflowId.keys());
+		for (const [id, origins] of options.additionalOrigins ?? []) {
+			originsByWorkflowId.set(id, new Set([...(originsByWorkflowId.get(id) ?? []), ...origins]));
+		}
 
 		this.propagateOrigins(originsByWorkflowId, options.requirements);
 

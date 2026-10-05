@@ -187,10 +187,12 @@ describe('LogStreamingEventRelay', () => {
 					role: { slug: 'global:admin' },
 				},
 				workflowIds: ['wf-cheddar', 'wf-brie'],
+				agentIds: ['agent-cheddar'],
 				folderIds: ['folder-gouda'],
 				projectIds: ['proj-stilton'],
 				// Telemetry-only; must not appear in the audit payload below.
 				counts: {
+					agents: 1,
 					workflows: 2,
 					folders: 1,
 					credentials: 1,
@@ -214,6 +216,7 @@ describe('LogStreamingEventRelay', () => {
 					_lastName: 'User',
 					globalRole: 'global:admin',
 					workflowIds: ['wf-cheddar', 'wf-brie'],
+					agentIds: ['agent-cheddar'],
 					folderIds: ['folder-gouda'],
 					projectIds: ['proj-stilton'],
 				},
@@ -231,6 +234,7 @@ describe('LogStreamingEventRelay', () => {
 				},
 				reason: 'access-denied',
 				workflowIds: ['wf-stilton'],
+				agentIds: ['agent-stilton'],
 			};
 
 			eventService.emit('n8n-package-export-failed', event);
@@ -246,6 +250,7 @@ describe('LogStreamingEventRelay', () => {
 					operation: 'export',
 					reason: 'access-denied',
 					workflowIds: ['wf-stilton'],
+					agentIds: ['agent-stilton'],
 				},
 			});
 		});

@@ -53,6 +53,7 @@ const DEPENDENCY_COLLECTIONS = {
 	tags: 'tags',
 	workflows: 'workflows',
 	nodeTypes: null,
+	agents: null,
 } as const satisfies Record<keyof PackageRequirements, ManifestEntityCollection | null>;
 
 const GIT_SCOPES = {
@@ -236,6 +237,7 @@ export class PromotionChangeService {
 			{
 				user,
 				projectIds: [projectId],
+				projectAgentIds: [],
 				includeArchivedWorkflows: true,
 				includeTags: true,
 				includeVariableValues: true,

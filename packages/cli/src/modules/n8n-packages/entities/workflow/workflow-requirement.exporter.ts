@@ -3,13 +3,15 @@ import { Service } from '@n8n/di';
 
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
-import type { WorkflowSubWorkflowRequirement } from './workflow.types';
+import { addRequirementUsage, type RequirementUsage } from '../requirement-source';
+
+import type { WorkflowExportRequirement } from './workflow.types';
 import type { ManifestEntry } from '../../spec/manifest.schema';
 import type { PackageWorkflowRequirement } from '../../spec/requirements.schema';
 
 export interface WorkflowRequirementExportRequest {
 	user: User;
-	requirements: WorkflowSubWorkflowRequirement[];
+	requirements: WorkflowExportRequirement[];
 	workflows: ManifestEntry[];
 }
 
@@ -25,37 +27,31 @@ export class WorkflowRequirementExporter {
 		request: WorkflowRequirementExportRequest,
 	): Promise<WorkflowRequirementExportResult> {
 		const workflowsById = new Map(request.workflows.map((workflow) => [workflow.id, workflow]));
-		const usedByWorkflowsByReferencedId = new Map<string, string[]>();
-
+		const usageByReferencedId = new Map<string, RequirementUsage>();
 		for (const requirement of request.requirements) {
-			const usedByWorkflows =
-				usedByWorkflowsByReferencedId.get(requirement.referencedWorkflowId) ?? [];
-
-			if (!usedByWorkflows.includes(requirement.workflowId)) {
-				usedByWorkflows.push(requirement.workflowId);
-			}
-
-			usedByWorkflowsByReferencedId.set(requirement.referencedWorkflowId, usedByWorkflows);
+			const usage = usageByReferencedId.get(requirement.referencedWorkflowId) ?? {
+				usedByWorkflows: [],
+			};
+			addRequirementUsage(usage, requirement);
+			usageByReferencedId.set(requirement.referencedWorkflowId, usage);
 		}
 
 		const missingWorkflowNamesById = await this.findMissingReferencedWorkflowNames(
 			request.user,
-			[...usedByWorkflowsByReferencedId.keys()].filter((id) => !workflowsById.has(id)),
+			[...usageByReferencedId.keys()].filter((id) => !workflowsById.has(id)),
 		);
 
-		const requirements = [...usedByWorkflowsByReferencedId].map(
-			([referencedWorkflowId, usedByWorkflows]) => {
-				const name =
-					workflowsById.get(referencedWorkflowId)?.name ??
-					missingWorkflowNamesById.get(referencedWorkflowId);
+		const requirements = [...usageByReferencedId].map(([referencedWorkflowId, usage]) => {
+			const name =
+				workflowsById.get(referencedWorkflowId)?.name ??
+				missingWorkflowNamesById.get(referencedWorkflowId);
 
-				return {
-					id: referencedWorkflowId,
-					...(name ? { name } : {}),
-					usedByWorkflows,
-				};
-			},
-		);
+			return {
+				id: referencedWorkflowId,
+				...(name ? { name } : {}),
+				...usage,
+			};
+		});
 
 		return { requirements };
 	}

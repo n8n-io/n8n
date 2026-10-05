@@ -20,7 +20,17 @@ export type ManifestEntityCollection = {
  * Import derives a project's scope and a workflow's parent folder from these
  * path segments, so they are part of the package contract.
  */
+type PackageEntityCollection =
+	| ManifestEntityCollection
+	| 'agentSkills'
+	| 'agentTools'
+	| 'agentTasks';
+
 export const PACKAGE_ENTITY_LAYOUT = {
+	agents: { directory: 'agents', fileName: 'agent.json' },
+	agentSkills: { directory: 'skills', fileName: 'skill.json' },
+	agentTools: { directory: 'tools', fileName: 'tool.json' },
+	agentTasks: { directory: 'tasks', fileName: 'task.json' },
 	projects: { directory: 'projects', fileName: 'project.json' },
 	folders: { directory: 'folders', fileName: 'folder.json' },
 	workflows: { directory: 'workflows', fileName: 'workflow.json' },
@@ -28,7 +38,7 @@ export const PACKAGE_ENTITY_LAYOUT = {
 	dataTables: { directory: 'data-tables', fileName: 'data-table.json' },
 	variables: { directory: 'variables', fileName: 'variable.json' },
 	tags: { directory: 'tags', fileName: 'tag.json' },
-} as const satisfies Record<ManifestEntityCollection, { directory: string; fileName: string }>;
+} as const satisfies Record<PackageEntityCollection, { directory: string; fileName: string }>;
 
 // Hyphens delimit the slug and ID in exported directory names.
 const SAFE_ID = /^[A-Za-z0-9_]+$/;
@@ -38,6 +48,10 @@ const MAX_PATH_SEGMENT_LENGTH = 255;
 
 /** Keeps the leaf from starting with a hyphen when a name slugifies to nothing. */
 const FALLBACK_SLUGS = {
+	agents: 'agent',
+	agentSkills: 'skill',
+	agentTools: 'tool',
+	agentTasks: 'task',
 	projects: 'project',
 	folders: 'folder',
 	workflows: 'workflow',
@@ -45,12 +59,9 @@ const FALLBACK_SLUGS = {
 	dataTables: 'data-table',
 	variables: 'variable',
 	tags: 'tag',
-} as const satisfies Record<ManifestEntityCollection, string>;
+} as const satisfies Record<PackageEntityCollection, string>;
 
-export function packageDirectory(
-	collection: ManifestEntityCollection,
-	basePrefix?: string,
-): string {
+export function packageDirectory(collection: PackageEntityCollection, basePrefix?: string): string {
 	const { directory } = PACKAGE_ENTITY_LAYOUT[collection];
 	return basePrefix ? `${basePrefix}/${directory}` : directory;
 }
@@ -60,7 +71,7 @@ export function packageDirectory(
  * otherwise the top-level collection directory.
  */
 export function projectScopedDirectory(
-	collection: ManifestEntityCollection,
+	collection: PackageEntityCollection,
 	ownerProjectId: string | undefined,
 	projectTargetsById: Map<string, string> | undefined,
 ): string {
@@ -68,7 +79,7 @@ export function projectScopedDirectory(
 	return packageDirectory(collection, prefix);
 }
 
-export function entityFilePath(collection: ManifestEntityCollection, target: string): string {
+export function entityFilePath(collection: PackageEntityCollection, target: string): string {
 	return `${target}/${PACKAGE_ENTITY_LAYOUT[collection].fileName}`;
 }
 
@@ -80,7 +91,7 @@ export function workflowMetadataFilePath(target: string): string {
 }
 
 export function createManifestEntry(
-	collection: ManifestEntityCollection,
+	collection: PackageEntityCollection,
 	baseDir: string,
 	entity: { id: string; name: string },
 ): ManifestEntry {
@@ -109,7 +120,7 @@ export function createManifestEntry(
 
 export async function writeManifestEntry(
 	writer: PackageWriter,
-	collection: ManifestEntityCollection,
+	collection: PackageEntityCollection,
 	baseDir: string,
 	entity: { id: string; name: string },
 	serialized: unknown,

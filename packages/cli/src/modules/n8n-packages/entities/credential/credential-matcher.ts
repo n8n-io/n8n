@@ -149,7 +149,7 @@ function partitionByKnownType(
 	const unknownTypeFailures: CredentialResolutionFailure[] = [];
 
 	for (const reference of requirements ?? []) {
-		if (credentialTypes.recognizes(reference.type)) {
+		if (reference.type && credentialTypes.recognizes(reference.type)) {
 			known.push(reference);
 		} else {
 			unknownTypeFailures.push(createFailure(reference, 'unknown_type'));

@@ -59,6 +59,25 @@ export class AgentRepository extends Repository<Agent> {
 		});
 	}
 
+	async findByIdsInProjects(ids: string[], projectIds: string[] | null): Promise<Agent[]> {
+		if (ids.length === 0 || projectIds?.length === 0) return [];
+		return await this.find({
+			where: { id: In(ids), ...(projectIds === null ? {} : { projectId: In(projectIds) }) },
+			relations: { activeVersion: true },
+		});
+	}
+
+	async findIdsInProject(projectId: string): Promise<string[]> {
+		const agents = await this.find({ where: { projectId }, select: ['id'], order: { id: 'ASC' } });
+		return agents.map(({ id }) => id);
+	}
+
+	async findExistingIds(ids: string[]): Promise<Set<string>> {
+		if (ids.length === 0) return new Set();
+		const agents = await this.find({ where: { id: In(ids) }, select: ['id'] });
+		return new Set(agents.map(({ id }) => id));
+	}
+
 	/**
 	 * Lean listing for search surfaces: selects only summary columns, skipping
 	 * the JSON config columns and the activeVersion join, and pushes all

@@ -1399,6 +1399,7 @@ export class TelemetryEventRelay extends EventRelay {
 	}: RelayEventMap['n8n-package-exported']) {
 		this.telemetry.track('User exported n8n package', {
 			user_id: user.id,
+			agent_count: counts.agents,
 			workflow_count: counts.workflows,
 			folder_count: counts.folders,
 			credential_count: counts.credentials,
@@ -1413,6 +1414,7 @@ export class TelemetryEventRelay extends EventRelay {
 	private packageExportFailed({
 		user,
 		reason,
+		agentIds,
 		workflowIds,
 		folderIds,
 		projectIds,
@@ -1420,6 +1422,7 @@ export class TelemetryEventRelay extends EventRelay {
 		this.telemetry.track('User package export failed', {
 			user_id: user.id,
 			reason,
+			agent_count: agentIds?.length ?? 0,
 			workflow_count: workflowIds?.length ?? 0,
 			folder_count: folderIds?.length ?? 0,
 			project_count: projectIds?.length ?? 0,

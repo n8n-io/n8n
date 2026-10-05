@@ -17,7 +17,7 @@ import { Logger } from '@n8n/backend-common';
 import { EventService, ProjectScopeService } from '@n8n/backend-services';
 import { In, isUniqueConstraintError, ProjectRelationRepository, type User } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
-import { hasGlobalScope } from '@n8n/permissions';
+import { hasGlobalScope, type Scope } from '@n8n/permissions';
 import { v4 as uuid } from 'uuid';
 
 // `CredentialsService` reaches `workflow-execute-additional-data`, which
@@ -39,6 +39,8 @@ import { ChatIntegrationService } from './integrations/chat-integration.service'
 import { decomposeJsonConfig } from './json-config/agent-config-composition';
 import { sanitizeUnknownAgentCredentials } from './json-config/sanitize-unknown-agent-credentials';
 import { AgentTaskRepository } from './repositories/agent-task.repository';
+import { AgentTaskSnapshotRepository } from './repositories/agent-task-snapshot.repository';
+import type { AgentTask } from './entities/agent-task.entity';
 import {
 	AgentRepository,
 	type AgentSummary,
@@ -80,6 +82,7 @@ export class AgentsService {
 		private readonly runtimeCacheService: AgentRuntimeCacheService,
 		private readonly testChatService: AgentTestChatService,
 		private readonly agentTaskRepository: AgentTaskRepository,
+		private readonly agentTaskSnapshotRepository: AgentTaskSnapshotRepository,
 		private readonly subAgentCleanupService: SubAgentCleanupService,
 		private readonly eventService: EventService,
 		private readonly agentExecutionService: AgentExecutionService,
@@ -215,6 +218,36 @@ export class AgentsService {
 
 	async findByProjectId(projectId: string): Promise<Agent[]> {
 		return await this.agentRepository.findByProjectId(projectId);
+	}
+
+	async findByIdsForUser(ids: string[], user: User, scopes: Scope[]): Promise<Agent[]> {
+		const projectIds = await this.projectScopeService.getProjectIds(user, scopes);
+		return await this.agentRepository.findByIdsInProjects(ids, projectIds);
+	}
+
+	async findIdsInProject(projectId: string): Promise<string[]> {
+		return await this.agentRepository.findIdsInProject(projectId);
+	}
+
+	async findExistingIds(ids: string[]): Promise<Set<string>> {
+		return await this.agentRepository.findExistingIds(ids);
+	}
+
+	async getTaskDefinitions(
+		agentId: string,
+		versionId?: string,
+	): Promise<Array<Pick<AgentTask, 'id' | 'name' | 'objective' | 'cronExpression' | 'timezone'>>> {
+		if (versionId !== undefined) {
+			const tasks = await this.agentTaskSnapshotRepository.findByVersionId(versionId);
+			return tasks.map(({ taskId, name, objective, cronExpression, timezone }) => ({
+				id: taskId,
+				name,
+				objective,
+				cronExpression,
+				timezone,
+			}));
+		}
+		return await this.agentTaskRepository.findByAgentId(agentId);
 	}
 
 	async findByProjectIdPaginated(
