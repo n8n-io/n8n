@@ -42,7 +42,7 @@ export function Body(
 		return ArgDecorator({ type: 'body' })(targetOrOptions as object, propertyKey, parameterIndex);
 	}
 
-	// Factory form e.g. `@Body() body: MyDto` or `@Body({ required: true })` (public API only)
+	// Factory form e.g. `@Body() body: MyDto` or `@Body({ required: true })`
 	const options = targetOrOptions as BodyOptions | undefined;
 	const arg: Arg = { type: 'body' };
 

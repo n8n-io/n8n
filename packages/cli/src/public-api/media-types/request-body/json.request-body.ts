@@ -5,10 +5,7 @@ import { formatValidationError } from '@/public-api/public-api-validation-error'
 import type { RequestBodyHandler } from './types';
 
 /**
- * The default request body: every route had this before `@Body` could declare a media type. The
- * body itself is already parsed by the app-wide `bodyParser` upstream of the registry, and the
- * registry checks `Content-Type` itself before calling into any handler - so there is nothing
- * left for this one to parse.
+ * The default request body handler if a media type is not specified on a route in `@Body`.
  */
 export const jsonRequestBody: RequestBodyHandler = {
 	mediaType: 'application/json',
