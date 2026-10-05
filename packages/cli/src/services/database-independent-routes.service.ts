@@ -6,11 +6,15 @@ export class DatabaseIndependentRoutes {
 	private readonly paths = new Set<string>();
 
 	add(path: string) {
-		this.paths.add(path);
+		this.paths.add(withoutTrailingSlash(path));
 	}
 
 	/** Matches the path with or without a trailing slash. */
 	has(path: string) {
-		return this.paths.has(path.replace(/\/$/, ''));
+		return this.paths.has(withoutTrailingSlash(path));
 	}
+}
+
+function withoutTrailingSlash(path: string) {
+	return path.replace(/\/$/, '');
 }
