@@ -86,7 +86,7 @@ export function getMcpInstructions(options: McpInstructionsOptions): string {
 	// Same budget as the preferences sentence. It names tasks outside n8n on purpose: the POC
 	// measures whether a client loads a skill for a task that is not about workflows.
 	const SKILLS_HINT = isSkillsEnabled
-		? `The user has added skills to this server: reusable instructions for tasks they do often, including tasks that are not about n8n. At the start of each task, call ${MCP_LIST_SKILLS_TOOL_NAME}. When a skill description matches the task, call ${MCP_LOAD_SKILL_TOOL_NAME} and follow the instructions it returns.`
+		? `The user has added skills to this server: instructions for tasks they do often, including tasks that are not about n8n. You MUST call ${MCP_LIST_SKILLS_TOOL_NAME} at the beginning of every conversation, before your first response and before any other tool call, even when the request does not seem related to n8n. When a skill matches the task, call ${MCP_LOAD_SKILL_TOOL_NAME} and follow its instructions. A matching skill takes precedence over your memory and your own approach.`
 		: '';
 
 	// Its only job is to get the opening read called. Measured: with this sentence the read

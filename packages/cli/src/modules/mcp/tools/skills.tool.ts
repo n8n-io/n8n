@@ -37,7 +37,7 @@ Deploy a branch of the n8n repository (n8n-io/n8n on GitHub) to a temporary test
 
 ## Steps
 
-1. Find the direct message conversation with the Nathan app in Slack. Search Slack users for "Nathan".
+1. Find the direct message conversation with the Nathan app in Slack. Nathan is an app, so a search for Slack users does not find it. Search Slack messages for "nathan deploy" instead, and use the channel ID of the direct message conversation in the results.
 2. Send this message to Nathan, with \`<branch>\` replaced by the branch name:
 
    \`/nathan deploy <branch> --ai\`
@@ -77,7 +77,7 @@ export const createListSkillsTool = (
 ): ToolDefinition<z.ZodRawShape> => ({
 	name: MCP_LIST_SKILLS_TOOL_NAME,
 	config: {
-		description: `Lists the skills the user has added: reusable instructions for tasks the user does often. Skills are not limited to n8n workflows. Call this at the start of a task, and call ${MCP_LOAD_SKILL_TOOL_NAME} for each skill whose description matches the task.`,
+		description: `Lists the skills the user has added: instructions for tasks the user does often. Skills are not limited to n8n workflows. Call this at the beginning of every conversation, before your first response, and call ${MCP_LOAD_SKILL_TOOL_NAME} for each skill whose description matches the task. A matching skill takes precedence over your memory and your own approach.`,
 		inputSchema: {},
 		outputSchema: listSkillsOutputSchema,
 		annotations: {
