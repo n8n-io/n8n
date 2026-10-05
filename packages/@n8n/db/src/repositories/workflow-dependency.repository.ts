@@ -223,9 +223,16 @@ export class WorkflowDependencyRepository extends Repository<WorkflowDependency>
 		});
 		// The workflow version bound stops a stale request from replacing rows a
 		// newer workflow version wrote before this indexer version deployed.
+		const workflow = await tx.findOne(WorkflowEntity, {
+			select: { id: true, versionCounter: true },
+			where: { id: workflowId },
+		});
+		const isCurrentVersion = workflow?.versionCounter === dependencies.workflowVersionId;
 		const outdatedIndexResult = await tx.delete(WorkflowDependency, {
 			workflowId,
-			workflowVersionId: LessThanOrEqual(dependencies.workflowVersionId),
+			...(isCurrentVersion
+				? {}
+				: { workflowVersionId: LessThanOrEqual(dependencies.workflowVersionId) }),
 			indexVersionId: LessThan(WORKFLOW_DEPENDENCY_INDEX_VERSION),
 			publishedVersionId: publishedVersionCondition,
 		});
