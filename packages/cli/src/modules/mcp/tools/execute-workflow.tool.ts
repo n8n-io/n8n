@@ -37,6 +37,7 @@ import {
 import { getMcpWorkflow, type FoundWorkflow } from './workflow-validation.utils';
 
 import type { McpService } from '@/modules/mcp/mcp.service';
+import { nodeGroupsForRun } from '@/node-contracts-run';
 import type { Telemetry } from '@/telemetry';
 import type { WorkflowRunner } from '@/workflow-runner';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
@@ -251,7 +252,7 @@ const getVersionDataForExecution = async (
 		return {
 			nodes: publishedData.publishedVersion.nodes,
 			connections: publishedData.publishedVersion.connections,
-			nodeGroups: publishedData.publishedVersion.nodeGroups,
+			nodeGroups: nodeGroupsForRun(workflow.nodeGroups, publishedData.publishedVersion.nodeGroups),
 		};
 	}
 
@@ -265,7 +266,7 @@ const getVersionDataForExecution = async (
 	return {
 		nodes: workflow.activeVersion?.nodes ?? [],
 		connections: workflow.activeVersion?.connections ?? {},
-		nodeGroups: workflow.activeVersion?.nodeGroups,
+		nodeGroups: nodeGroupsForRun(workflow.nodeGroups, workflow.activeVersion?.nodeGroups),
 	};
 };
 

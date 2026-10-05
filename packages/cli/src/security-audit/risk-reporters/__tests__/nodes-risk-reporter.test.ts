@@ -1,5 +1,7 @@
 import { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
+import { GlobalConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
 import { NODE_PACKAGE, nodeNameOf, versionsOf } from '@n8n/nodes-base-next';
 import type { INode, IWorkflowBase } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
@@ -20,7 +22,7 @@ const nodeOf = (name: string, id: string, type = `${NODE_PACKAGE}.${nodeNameOf(i
 	parameters: {},
 });
 
-test('lists the contract nodes with a URL from input or code, and not the ones with fixed hosts', async () => {
+const auditContractNodes = async () => {
 	mockInstance(Logger);
 	const loader = new ContractNodeLoader([], [], async () => ({
 		versions: async () => new Map(),
@@ -44,9 +46,23 @@ test('lists the contract nodes with a URL from input or code, and not the ones w
 		],
 	});
 
-	const report = await new NodesRiskReporter(loadNodesAndCredentials, packagesRepository).report([
+	return await new NodesRiskReporter(loadNodesAndCredentials, packagesRepository).report([
 		workflow,
 	]);
+};
+
+test('reports no contract nodes with node contracts disabled', async () => {
+	const { instanceAi } = Container.get(GlobalConfig);
+	instanceAi.nodeContractsEnabled = false;
+	try {
+		expect(await auditContractNodes()).toBeNull();
+	} finally {
+		instanceAi.nodeContractsEnabled = true;
+	}
+});
+
+test('lists the contract nodes with a URL from input or code, and not the ones with fixed hosts', async () => {
+	const report = await auditContractNodes();
 
 	const section = (report as Risk.StandardReport | null)?.sections.find(
 		({ title }) => title === NODES_REPORT.SECTIONS.BROAD_PERMISSION_NODES,

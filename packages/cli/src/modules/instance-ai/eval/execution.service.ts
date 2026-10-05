@@ -690,7 +690,9 @@ export class EvalExecutionService {
 				userId: user.id,
 				executionData,
 				pinData,
-				tracingContext: currentBuildTracingContext(),
+				tracingContext: this.instanceAiConfig.nodeContractsEnabled
+					? currentBuildTracingContext()
+					: undefined,
 				configureAdditionalData: (additionalData: IWorkflowExecuteAdditionalData) => {
 					credentialsHelper = new EvalMockedCredentialsHelper(
 						additionalData.credentialsHelper,

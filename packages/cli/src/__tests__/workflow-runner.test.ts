@@ -85,7 +85,10 @@ vi.mock('@/scaling/scaling.service', () => ({
 	ScalingService: MockScalingService,
 }));
 
-vi.mock('@/node-contracts-run', () => ({ prepareNodeContractsRun: vi.fn() }));
+vi.mock('@/node-contracts-run', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@/node-contracts-run')>()),
+	prepareNodeContractsRun: vi.fn(),
+}));
 
 let owner: User;
 let runner: WorkflowRunner;

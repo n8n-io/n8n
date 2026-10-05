@@ -53,7 +53,10 @@ import type { WorkflowExecutionService } from '@/workflows/workflow-execution.se
 import { WorkflowPushNotifier } from '@/workflows/workflow-push-notifier.service';
 import type { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 
-vi.mock('@/node-contracts-run', () => ({ prepareNodeContractsRun: vi.fn() }));
+vi.mock('@/node-contracts-run', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@/node-contracts-run')>()),
+	prepareNodeContractsRun: vi.fn(),
+}));
 
 describe('ActiveWorkflowManager', () => {
 	const WORKFLOW_SCHEDULE_GROUP_TYPE = 'workflow';

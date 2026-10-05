@@ -1,11 +1,13 @@
 import type { LicenseState, Logger } from '@n8n/backend-common';
 import { EventService } from '@n8n/backend-services';
+import { GlobalConfig } from '@n8n/config';
 import type {
 	NodeExecuteAfterContext,
 	NodeExecuteBeforeContext,
 	WorkflowExecuteAfterContext,
 	WorkflowExecuteBeforeContext,
 } from '@n8n/decorators';
+import { Container } from '@n8n/di';
 import type { RunProfile } from '@n8n/nodes-base-next';
 import { mock } from 'vitest-mock-extended';
 import { Workflow } from 'n8n-workflow';
@@ -1135,6 +1137,51 @@ describe('productionExecutionsOnly filter', () => {
 		expect(tracer.startNode).toHaveBeenCalled();
 		expect(tracer.endNode).toHaveBeenCalled();
 		expect(tracer.endCrashedWorkflow).toHaveBeenCalled();
+	});
+
+	describe('with node contracts disabled', () => {
+		const { instanceAi } = Container.get(GlobalConfig);
+		beforeEach(() => {
+			instanceAi.nodeContractsEnabled = false;
+		});
+		afterEach(() => {
+			instanceAi.nodeContractsEnabled = true;
+		});
+
+		it('should not trace a manual execution with a parent trace, nor read its trace context', async () => {
+			const parent: TracingContext = {
+				traceparent: '00-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01',
+			};
+			traceContextService.get.mockResolvedValue(parent);
+			tracer.hasWorkflowSpan.mockReturnValue(true);
+
+			await handler.onWorkflowStart(makeWorkflowStartCtx(publishedWorkflow, 'manual'));
+			await handler.onWorkflowResume({
+				...makeWorkflowStartCtx(publishedWorkflow, 'manual'),
+				type: 'workflowExecuteResume',
+				workflowInstance: createWorkflowInstance(),
+				executionData: emptyExecutionData,
+			});
+			handler.onNodeStart(makeNodeStartCtx(publishedWorkflow, 'manual'));
+			handler.onNodeEnd(makeNodeEndCtx(publishedWorkflow, 'manual'));
+			await handler.onExecutionCrashed({
+				executionId: 'exec-1',
+				workflowId: 'wf-1',
+				workflowName: 'Test',
+				mode: 'manual',
+				startedAt: new Date(),
+				stoppedAt: new Date(),
+				detector: 'queue-recovery',
+				hostId: 'main-1',
+				tracingContext: parent,
+			});
+
+			expect(traceContextService.get).not.toHaveBeenCalled();
+			expect(tracer.startWorkflow).not.toHaveBeenCalled();
+			expect(tracer.startNode).not.toHaveBeenCalled();
+			expect(tracer.endNode).not.toHaveBeenCalled();
+			expect(tracer.endCrashedWorkflow).not.toHaveBeenCalled();
+		});
 	});
 
 	it('should close a span even when settings change to exclude the execution mid-run', async () => {

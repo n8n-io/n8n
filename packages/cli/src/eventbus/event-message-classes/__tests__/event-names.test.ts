@@ -1,4 +1,7 @@
-import { eventNamesAll } from '../index';
+import { GlobalConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
+
+import { eventNamesAll, subscribableEventNames } from '../index';
 
 /**
  * Every log-streaming event group in existence. The destination UI derives its
@@ -33,5 +36,31 @@ describe('log streaming event names', () => {
 				'prefix). Only deliberately introduce a new operational group with sign-off from the owning team, ' +
 				'then add its prefix to KNOWN_EVENT_GROUPS.',
 		).toEqual([]);
+	});
+});
+
+describe('subscribableEventNames', () => {
+	const nodeContractEvents = [
+		'n8n.audit.node.permission.refused',
+		'n8n.audit.node-contract.installed',
+	];
+	const { instanceAi } = Container.get(GlobalConfig);
+
+	afterEach(() => {
+		instanceAi.nodeContractsEnabled = true;
+	});
+
+	it('lists the node contract events with node contracts enabled', () => {
+		expect(subscribableEventNames()).toEqual(eventNamesAll);
+		expect(subscribableEventNames()).toEqual(expect.arrayContaining(nodeContractEvents));
+	});
+
+	it('leaves out the node contract events with node contracts disabled', () => {
+		instanceAi.nodeContractsEnabled = false;
+
+		expect(subscribableEventNames()).toEqual(
+			eventNamesAll.filter((eventName) => !nodeContractEvents.includes(eventName)),
+		);
+		expect(subscribableEventNames()).toHaveLength(eventNamesAll.length - 2);
 	});
 });

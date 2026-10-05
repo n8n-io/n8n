@@ -1,3 +1,6 @@
+import { GlobalConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
+
 import type { EventMessageAiNode } from './event-message-ai-node';
 import type { EventMessageAudit } from './event-message-audit';
 import type { EventMessageExecution } from './event-message-execution';
@@ -216,6 +219,18 @@ export const eventNamesAll = [
 	...eventNamesQueue,
 	...eventNamesMcp,
 ];
+
+const eventNamesNodeContracts = new Set<string>([
+	'n8n.audit.node.permission.refused',
+	'n8n.audit.node-contract.installed',
+]);
+
+/** The event names that destinations can subscribe to. Node contract events need node contracts. */
+export function subscribableEventNames(): string[] {
+	return Container.get(GlobalConfig).instanceAi.nodeContractsEnabled
+		? eventNamesAll
+		: eventNamesAll.filter((eventName) => !eventNamesNodeContracts.has(eventName));
+}
 
 export type EventMessageTypes =
 	| EventMessageGeneric

@@ -5,6 +5,7 @@ import { z } from 'zod';
 
 import { BaseCommand } from '../base-command';
 
+import { assertNodeContractsEnabled } from '@/node-contracts-run';
 import { NodeContractsSync } from '@/node-contracts-sync';
 
 const flagsSchema = z.object({
@@ -29,6 +30,7 @@ const flagsSchema = z.object({
 })
 export class ContractsSyncCommand extends BaseCommand<z.infer<typeof flagsSchema>> {
 	async run() {
+		assertNodeContractsEnabled('contracts:sync');
 		const { added, failed, unsupported } = await Container.get(NodeContractsSync).run({
 			registryUrl: this.flags.registry,
 			refreshNodeTypes: false,

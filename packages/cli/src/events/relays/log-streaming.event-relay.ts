@@ -1,7 +1,8 @@
 import { EventService } from '@n8n/backend-services';
+import { GlobalConfig } from '@n8n/config';
 import { UserRepository } from '@n8n/db';
 import { Redactable } from '@n8n/decorators';
-import { Service } from '@n8n/di';
+import { Container, Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 import type { IWorkflowBase, JsonValue } from 'n8n-workflow';
 
@@ -510,6 +511,7 @@ export class LogStreamingEventRelay extends EventRelay {
 	// #region Node
 
 	private traceIdOf(executionId: string) {
+		if (!Container.get(GlobalConfig).instanceAi.nodeContractsEnabled) return {};
 		const traceId = this.tracer.traceId(executionId);
 		return traceId === undefined ? {} : { traceId };
 	}

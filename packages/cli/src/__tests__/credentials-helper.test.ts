@@ -1,4 +1,5 @@
 import type { LicenseState } from '@n8n/backend-common';
+import { GlobalConfig } from '@n8n/config';
 import {
 	CredentialsEntity,
 	type SecretsProviderConnectionRepository,
@@ -2777,6 +2778,37 @@ describe('CredentialsHelper', () => {
 
 			await expect(preAuthenticate({ token: '' })).rejects.toThrow('down');
 			expect(await preAuthenticate({ token: '' })).toMatchObject({ token: 'T2' });
+		});
+
+		describe('with node contracts disabled', () => {
+			const { instanceAi } = Container.get(GlobalConfig);
+			beforeEach(() => {
+				instanceAi.nodeContractsEnabled = false;
+			});
+			afterEach(() => {
+				instanceAi.nodeContractsEnabled = true;
+			});
+
+			test('sends a token request for each concurrent request', async () => {
+				const results = await Promise.all([
+					preAuthenticate({ user: 'ada', token: '' }),
+					preAuthenticate({ user: 'ada', token: '' }),
+				]);
+
+				expect(login).toHaveBeenCalledTimes(2);
+				expect(credentialsHelper.updateCredentials).toHaveBeenCalledTimes(2);
+				expect(results).toEqual([
+					{ user: 'ada', token: 'T1' },
+					{ user: 'ada', token: 'T2' },
+				]);
+			});
+
+			test('keeps the stored token when the stored expiry has passed', async () => {
+				const past = String(Date.now() - 1_000);
+
+				expect(await preAuthenticate({ token: 'T0', n8n_expires_at: past })).toBeUndefined();
+				expect(login).not.toHaveBeenCalled();
+			});
 		});
 	});
 

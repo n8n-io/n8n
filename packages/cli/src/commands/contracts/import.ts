@@ -8,6 +8,7 @@ import { z } from 'zod';
 import { BaseCommand } from '../base-command';
 
 import { NodeContractsStore } from '@/node-contracts-registry';
+import { assertNodeContractsEnabled } from '@/node-contracts-run';
 
 const flagsSchema = z.object({
 	input: z
@@ -24,6 +25,7 @@ const flagsSchema = z.object({
 })
 export class ContractsImportCommand extends BaseCommand<z.infer<typeof flagsSchema>> {
 	async run() {
+		assertNodeContractsEnabled('contracts:import');
 		const { importContractStore, STORE_CATALOG_FILE, storeFilesOfDir, storeReader } = await import(
 			'@n8n/nodes-base-next'
 		);

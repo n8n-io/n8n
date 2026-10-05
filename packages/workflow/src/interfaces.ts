@@ -4033,6 +4033,11 @@ export interface IWorkflowExecuteAdditionalData {
 		) => void;
 		/** The trace id of the execution, when a trace is active. */
 		traceId: (executionId: string) => string | undefined;
+		/**
+		 * `N8N_INSTANCE_AI_NODE_CONTRACTS_ENABLED`. Only when it is on do authenticated requests get
+		 * trace headers, and the caller's options stay unchanged.
+		 */
+		nodeContractsEnabled?: boolean;
 	};
 }
 

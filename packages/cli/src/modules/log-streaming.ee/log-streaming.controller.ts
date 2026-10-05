@@ -12,7 +12,7 @@ import type { MessageEventBusDestinationOptions } from 'n8n-workflow';
 
 import { CredentialsFinderService } from '@n8n/backend-services';
 import { BadRequestError, ForbiddenError } from '@n8n/errors';
-import { eventNamesAll } from '@/eventbus/event-message-classes';
+import { subscribableEventNames } from '@/eventbus/event-message-classes';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 
 import { createMessageEventBusDestination } from './create-message-event-bus-destination';
@@ -39,7 +39,7 @@ export class EventBusController {
 
 	@Get('/eventnames')
 	async getEventNames(): Promise<string[]> {
-		return eventNamesAll;
+		return subscribableEventNames();
 	}
 
 	@Licensed('feat:logStreaming')

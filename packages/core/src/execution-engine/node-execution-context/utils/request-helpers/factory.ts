@@ -29,12 +29,20 @@ import { requestWithAuthenticationPaginated } from './pagination';
 /**
  * The options with the W3C trace headers of the active span. The options stay the same when no
  * trace is active or when the node set its own `traceparent`.
+ * Without node contracts, the headers go into the caller's options.
  */
 function withTraceHeaders<T extends { headers?: IDataObject }>(
 	options: T,
 	{ otel, executionId }: IWorkflowExecuteAdditionalData,
 	node: INode,
 ): T {
+	if (otel?.injectTraceHeaders && !otel.nodeContractsEnabled) {
+		options.headers ??= {};
+		const injected: Record<string, string> = {};
+		otel.injectTraceHeaders(executionId!, node.name, injected);
+		Object.assign(options.headers, injected);
+		return options;
+	}
 	const { headers = {} } = options;
 	if (
 		!otel?.injectTraceHeaders ||
@@ -140,7 +148,9 @@ export const getRequestHelperFunctions = (
 			return await httpRequestWithAuthentication.call(
 				this,
 				credentialsType,
-				withTraceHeaders(requestOptions, additionalData, node),
+				additionalData.otel?.nodeContractsEnabled
+					? withTraceHeaders(requestOptions, additionalData, node)
+					: requestOptions,
 				workflow,
 				node,
 				additionalData,
@@ -193,7 +203,9 @@ export const getRequestHelperFunctions = (
 			return await requestWithAuthentication.call(
 				this,
 				credentialsType,
-				withTraceHeaders(requestOptions, additionalData, node),
+				additionalData.otel?.nodeContractsEnabled
+					? withTraceHeaders(requestOptions, additionalData, node)
+					: requestOptions,
 				workflow,
 				node,
 				additionalData,

@@ -70,7 +70,7 @@ import {
 	WorkflowPreExecute,
 } from '@/executions/pre-execution-checks';
 import type { UpdateExecutionPayload } from '@/interfaces';
-import { prepareNodeContractsRun } from '@/node-contracts-run';
+import { nodeGroupsForRun, prepareNodeContractsRun } from '@/node-contracts-run';
 import { NodeTypes } from '@/node-types';
 import { Push } from '@/push';
 import { TaskRequester } from '@/task-runners/task-managers/task-requester';
@@ -215,7 +215,10 @@ export async function getPublishedWorkflowData(
 			...publishedData.workflow,
 			nodes: publishedData.publishedVersion.nodes,
 			connections: publishedData.publishedVersion.connections,
-			nodeGroups: publishedData.publishedVersion.nodeGroups,
+			nodeGroups: nodeGroupsForRun(
+				publishedData.workflow.nodeGroups,
+				publishedData.publishedVersion.nodeGroups,
+			),
 		};
 	}
 
@@ -236,7 +239,7 @@ export async function getPublishedWorkflowData(
 			...workflowData,
 			nodes: workflowData.activeVersion.nodes,
 			connections: workflowData.activeVersion.connections,
-			nodeGroups: workflowData.activeVersion.nodeGroups,
+			nodeGroups: nodeGroupsForRun(workflowData.nodeGroups, workflowData.activeVersion.nodeGroups),
 		};
 	}
 

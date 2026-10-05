@@ -1,5 +1,7 @@
 import { EventService } from '@n8n/backend-services';
+import { GlobalConfig } from '@n8n/config';
 import { GLOBAL_OWNER_ROLE, type IWorkflowDb, type User, type UserRepository } from '@n8n/db';
+import { Container } from '@n8n/di';
 import type { InstanceSettings } from 'n8n-core';
 import type { INode, IRun, IWorkflowBase, IWorkflowExecutionDataProcess } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
@@ -1279,6 +1281,50 @@ describe('LogStreamingEventRelay', () => {
 				nodeType: 'n8n-nodes-base.notion',
 				nodeId: 'node1',
 				traceId,
+			};
+			expect(eventBus.sendNodeEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.node.started',
+				payload,
+			});
+			expect(eventBus.sendNodeEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.node.finished',
+				payload,
+			});
+		});
+	});
+
+	describe('node events with node contracts disabled', () => {
+		const { instanceAi } = Container.get(GlobalConfig);
+		beforeEach(() => {
+			instanceAi.nodeContractsEnabled = false;
+		});
+		afterEach(() => {
+			instanceAi.nodeContractsEnabled = true;
+			tracer.traceId.mockReset();
+		});
+
+		it('should not add the trace id to node events', () => {
+			tracer.traceId.mockReturnValue('abcdef1234567890abcdef1234567890');
+			const workflow = mock<IWorkflowBase>({ id: 'wf505', name: 'Traced Workflow' });
+			const event: RelayEventMap['node-pre-execute'] = {
+				executionId: 'exec505',
+				nodeName: 'Notion',
+				workflow,
+				nodeId: 'node1',
+				nodeType: 'n8n-nodes-base.notion',
+			};
+
+			eventService.emit('node-pre-execute', event);
+			eventService.emit('node-post-execute', event);
+
+			expect(tracer.traceId).not.toHaveBeenCalled();
+			const payload = {
+				executionId: 'exec505',
+				nodeName: 'Notion',
+				workflowId: 'wf505',
+				workflowName: 'Traced Workflow',
+				nodeType: 'n8n-nodes-base.notion',
+				nodeId: 'node1',
 			};
 			expect(eventBus.sendNodeEvent).toHaveBeenCalledWith({
 				eventName: 'n8n.node.started',

@@ -1,3 +1,4 @@
+import { GlobalConfig } from '@n8n/config';
 import type { ModuleContext, ModuleInterface } from '@n8n/decorators';
 import { BackendModule, OnShutdown } from '@n8n/decorators';
 import { Container } from '@n8n/di';
@@ -33,6 +34,7 @@ export class OtelModule implements ModuleInterface {
 		return {
 			injectTraceHeaders: tracer.injectTraceHeaders.bind(tracer),
 			traceId: tracer.traceId.bind(tracer),
+			nodeContractsEnabled: Container.get(GlobalConfig).instanceAi.nodeContractsEnabled,
 		};
 	}
 

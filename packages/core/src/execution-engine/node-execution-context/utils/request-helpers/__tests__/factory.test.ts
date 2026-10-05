@@ -37,15 +37,27 @@ describe('getRequestHelperFunctions trace headers', () => {
 				otel,
 			}),
 		);
+	const injectTraceHeaders = (
+		_executionId: string,
+		_nodeName: string | undefined,
+		headers: Record<string, string>,
+	) => {
+		headers.traceparent = traceparent;
+	};
 	const traced = helpersWith({
-		injectTraceHeaders: (_executionId, _nodeName, headers) => {
-			headers.traceparent = traceparent;
-		},
+		injectTraceHeaders,
 		traceId: () => 'a'.repeat(32),
+		nodeContractsEnabled: true,
 	});
 	const untraced = helpersWith({
 		injectTraceHeaders: () => {},
 		traceId: () => undefined,
+		nodeContractsEnabled: true,
+	});
+	const tracedWithoutContracts = helpersWith({
+		injectTraceHeaders,
+		traceId: () => 'a'.repeat(32),
+		nodeContractsEnabled: false,
 	});
 
 	beforeEach(() => {
@@ -116,6 +128,47 @@ describe('getRequestHelperFunctions trace headers', () => {
 		expect(vi.mocked(proxyRequestToAxios).mock.calls[1][3]).toEqual({
 			uri: url,
 			headers: { traceparent },
+		});
+	});
+
+	describe('with node contracts disabled', () => {
+		test('authenticated helpers send the caller options without trace headers', async () => {
+			const httpOptions = { url, headers: { accept: 'application/json' } };
+			const requestOptions = { uri: url };
+
+			await tracedWithoutContracts.httpRequestWithAuthentication.call(
+				context,
+				'notionApi',
+				httpOptions,
+			);
+			await tracedWithoutContracts.requestWithAuthentication.call(
+				context,
+				'notionApi',
+				requestOptions,
+			);
+
+			expect(vi.mocked(httpRequestWithAuthentication).mock.calls[0][1]).toBe(httpOptions);
+			expect(httpOptions).toEqual({ url, headers: { accept: 'application/json' } });
+			expect(vi.mocked(requestWithAuthentication).mock.calls[0][1]).toBe(requestOptions);
+			expect(requestOptions).toEqual({ uri: url });
+		});
+
+		test('httpRequest and request write the trace headers into the caller options', async () => {
+			const own = `00-${'c'.repeat(32)}-${'d'.repeat(16)}-01`;
+			const httpOptions = { url, headers: { traceparent: own } };
+			const options = {};
+			const requestOptions = { uri: url };
+
+			await tracedWithoutContracts.httpRequest(httpOptions);
+			await tracedWithoutContracts.request(url, options);
+			await tracedWithoutContracts.request(requestOptions);
+
+			expect(request.mock.calls[0][0]).toBe(httpOptions);
+			expect(httpOptions.headers).toEqual({ traceparent });
+			expect(vi.mocked(proxyRequestToAxios).mock.calls[0][4]).toBe(options);
+			expect(options).toEqual({ headers: { traceparent } });
+			expect(vi.mocked(proxyRequestToAxios).mock.calls[1][3]).toBe(requestOptions);
+			expect(requestOptions).toEqual({ uri: url, headers: { traceparent } });
 		});
 	});
 });

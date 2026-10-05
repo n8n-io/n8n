@@ -1,12 +1,13 @@
 import { SYSTEM_RESOLVER_ID } from '@n8n/api-types';
 import { LicenseState } from '@n8n/backend-common';
+import { GlobalConfig } from '@n8n/config';
 import type { CredentialsEntity, ICredentialsDb } from '@n8n/db';
 import {
 	CredentialsRepository,
 	isEntityNotFoundError,
 	SecretsProviderConnectionRepository,
 } from '@n8n/db';
-import { Service } from '@n8n/di';
+import { Container, Service } from '@n8n/di';
 import { createHash } from 'node:crypto';
 import { Credentials, FULL_ACCESS_NODE_TYPES, getAdditionalKeys } from 'n8n-core';
 import type {
@@ -219,10 +220,14 @@ export class CredentialsHelper extends ICredentialsHelper {
 
 		if (typeof credentialType.preAuthentication !== 'function') return undefined;
 
+		const { nodeContractsEnabled } = Container.get(GlobalConfig).instanceAi;
 		// A token with a known expiry in the past needs no failed request to be refreshed.
 		const { n8n_expires_at: expiresAt } = credentials;
 		const hasExpired =
-			typeof expiresAt === 'string' && expiresAt !== '' && Number(expiresAt) <= Date.now();
+			nodeContractsEnabled &&
+			typeof expiresAt === 'string' &&
+			expiresAt !== '' &&
+			Number(expiresAt) <= Date.now();
 
 		// if the expirable property is empty in the credentials
 		// or are expired, call pre authentication method
@@ -239,7 +244,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 		const nodeCredentials = node.credentials?.[credentialType.name];
 		const { [expirableProperty.name]: _token, n8n_expires_at: _expiry, ...data } = credentials;
 		const key =
-			nodeCredentials?.id && !isTestingCredentials
+			nodeContractsEnabled && nodeCredentials?.id && !isTestingCredentials
 				? `${nodeCredentials.id}:${createHash('sha256').update(JSON.stringify(data)).digest('hex')}`
 				: undefined;
 		const running =

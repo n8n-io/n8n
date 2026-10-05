@@ -229,7 +229,7 @@ describe('EvalExecutionService', () => {
 	const ownershipService = mock<OwnershipService>();
 	const dataTableService = mock<DataTableService>();
 	const processedDataRepository = mock<ProcessedDataRepository>();
-	const instanceAiConfig = { evalInstance: true } as InstanceAiConfig;
+	const instanceAiConfig = { evalInstance: true, nodeContractsEnabled: true } as InstanceAiConfig;
 
 	// Captured configureAdditionalData closure so tests can re-invoke it on a
 	// stub additionalData without booting the real runner.
@@ -430,6 +430,17 @@ describe('EvalExecutionService', () => {
 			expect(workflowRunner.run.mock.calls[0][0].tracingContext).toEqual({
 				traceparent: '00-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01',
 			});
+		});
+
+		it('passes no trace context to the run with node contracts disabled', async () => {
+			instanceAiConfig.nodeContractsEnabled = false;
+			try {
+				await service.executeWithLlmMock('wf-1', makeUser());
+			} finally {
+				instanceAiConfig.nodeContractsEnabled = true;
+			}
+
+			expect(workflowRunner.run.mock.calls[0][0].tracingContext).toBeUndefined();
 		});
 
 		it('pins the trigger to zero items when the scenario says it emits nothing', async () => {

@@ -1,7 +1,8 @@
 import type { DataTableListOptions, ListDataTableQueryDto } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { GlobalConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
-import { Service } from '@n8n/di';
+import { Container, Service } from '@n8n/di';
 import { type Scope } from '@n8n/permissions';
 import {
 	AddDataTableColumnOptions,
@@ -72,9 +73,11 @@ export class DataTableProxyService implements DataTableProxyProvider {
 	/** A contract node gets the proxy only when the manifest of its version imports `dataTables`. */
 	private async validateRequest(node: INode) {
 		if (isAllowedNode(node.type)) return;
-		const { contractImportsOf } = await import('@/node-contracts-registry.js');
-		if (contractImportsOf(this.loadNodesAndCredentials.loaders, node).includes('dataTables'))
-			return;
+		if (Container.get(GlobalConfig).instanceAi.nodeContractsEnabled) {
+			const { contractImportsOf } = await import('@/node-contracts-registry.js');
+			if (contractImportsOf(this.loadNodesAndCredentials.loaders, node).includes('dataTables'))
+				return;
+		}
 		throw new Error('This proxy is only available for Data table nodes');
 	}
 

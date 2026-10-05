@@ -108,7 +108,10 @@ const getCancelablePromise = async (run: IRun) =>
 
 const processRunExecutionData = vi.fn();
 
-vi.mock('@/node-contracts-run', () => ({ prepareNodeContractsRun: vi.fn() }));
+vi.mock('@/node-contracts-run', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@/node-contracts-run')>()),
+	prepareNodeContractsRun: vi.fn(),
+}));
 
 vi.mock('n8n-core', async () => ({
 	__esModule: true,
@@ -1347,6 +1350,45 @@ describe('WorkflowExecuteAdditionalData', () => {
 				{ id: 'workflow-123' },
 				{ relations: ['activeVersion', 'tags'] },
 			);
+		});
+
+		describe('node groups', () => {
+			const draftGroups = [{ id: 'g-draft', name: 'Draft', nodeIds: ['draft-node'] }];
+			const versionGroups = [{ id: 'g-version', name: 'Version', nodeIds: ['active-node'] }];
+			const useNodeContracts = (enabled: boolean) => {
+				Container.get(GlobalConfig).instanceAi.nodeContractsEnabled = enabled;
+			};
+
+			beforeEach(() => {
+				workflowRepository.get.mockResolvedValue(
+					mock<WorkflowEntity>({
+						id: 'workflow-123',
+						active: true,
+						activeVersionId: 'version-456',
+						nodes: [],
+						connections: {},
+						nodeGroups: draftGroups,
+						activeVersion: { nodes: [], connections: {}, nodeGroups: versionGroups },
+					}),
+				);
+			});
+			afterEach(() => useNodeContracts(true));
+
+			it('takes the node groups of the active version with node contracts enabled', async () => {
+				useNodeContracts(true);
+
+				const result = await getPublishedWorkflowData({ id: 'workflow-123' }, 'parent-id');
+
+				expect(result.nodeGroups).toEqual(versionGroups);
+			});
+
+			it('takes the node groups of the draft with node contracts disabled', async () => {
+				useNodeContracts(false);
+
+				const result = await getPublishedWorkflowData({ id: 'workflow-123' }, 'parent-id');
+
+				expect(result.nodeGroups).toEqual(draftGroups);
+			});
 		});
 
 		it('should throw error when workflow has no active version', async () => {

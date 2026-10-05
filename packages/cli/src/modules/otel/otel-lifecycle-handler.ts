@@ -1,5 +1,6 @@
 import { LicenseState, Logger } from '@n8n/backend-common';
 import { EventService } from '@n8n/backend-services';
+import { GlobalConfig } from '@n8n/config';
 import { OnLifecycleEvent, OnPubSubEvent } from '@n8n/decorators';
 import type {
 	WorkflowExecuteBeforeContext,
@@ -8,7 +9,7 @@ import type {
 	NodeExecuteBeforeContext,
 	NodeExecuteAfterContext,
 } from '@n8n/decorators';
-import { Service } from '@n8n/di';
+import { Container, Service } from '@n8n/di';
 import type { ICustomTelemetryTag, WorkflowExecuteMode } from 'n8n-workflow';
 
 import type { RelayEventMap } from '@/events/maps/relay.event-map';
@@ -71,7 +72,8 @@ export class OtelLifecycleHandler {
 	/**
 	 * `hasParentTrace`: a manual run that continues a trace (for example a run
 	 * that the AI assistant starts during a build) is traced even with
-	 * production-only tracing, because the parent trace asked for it.
+	 * production-only tracing, because the parent trace asked for it. Only with
+	 * node contracts on.
 	 */
 	private shouldTrace(
 		ctx: { type: string; mode: WorkflowExecuteMode },
@@ -80,7 +82,9 @@ export class OtelLifecycleHandler {
 		const { enabled, productionExecutionsOnly, includeNodeSpans } =
 			this.otelSettingsService.getSettings();
 		if (!enabled) return false;
-		if (productionExecutionsOnly && ctx.mode === 'manual' && !hasParentTrace) return false;
+		const parentTraceCounts =
+			hasParentTrace && Container.get(GlobalConfig).instanceAi.nodeContractsEnabled;
+		if (productionExecutionsOnly && ctx.mode === 'manual' && !parentTraceCounts) return false;
 		if ((ctx.type === 'nodeExecuteBefore' || ctx.type === 'nodeExecuteAfter') && !includeNodeSpans)
 			return false;
 		return true;
@@ -88,7 +92,8 @@ export class OtelLifecycleHandler {
 
 	@OnLifecycleEvent('workflowExecuteBefore')
 	async onWorkflowStart(ctx: WorkflowExecuteBeforeContext): Promise<void> {
-		if (!this.otelSettingsService.getSettings().enabled) return;
+		// Assume a parent trace: skip the read when even a parent trace would not count.
+		if (!this.shouldTrace(ctx, true)) return;
 
 		const parentExecutionId = ctx.executionData?.parentExecution?.executionId;
 		const tracingContext = parentExecutionId
@@ -136,7 +141,7 @@ export class OtelLifecycleHandler {
 
 	@OnLifecycleEvent('workflowExecuteResume')
 	async onWorkflowResume(ctx: WorkflowExecuteResumeContext): Promise<void> {
-		if (!this.otelSettingsService.getSettings().enabled) return;
+		if (!this.shouldTrace(ctx, true)) return;
 
 		const previousWorkflowExecution = await this.traceContextService.get(ctx.executionId);
 		if (!this.shouldTrace(ctx, previousWorkflowExecution !== undefined)) return;

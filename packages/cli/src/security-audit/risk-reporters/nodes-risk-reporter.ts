@@ -1,4 +1,5 @@
-import { Service } from '@n8n/di';
+import { GlobalConfig } from '@n8n/config';
+import { Container, Service } from '@n8n/di';
 import glob from 'fast-glob';
 import { CUSTOM_NODES_PACKAGE_NAME } from 'n8n-core';
 import type { IWorkflowBase } from 'n8n-workflow';
@@ -24,19 +25,24 @@ export class NodesRiskReporter implements RiskReporter {
 		private readonly packagesRepository: PackagesRepository,
 	) {}
 
-	async report(workflows: IWorkflowBase[]) {
-		const officialRiskyNodes = getNodeTypes(workflows, (node) =>
-			OFFICIAL_RISKY_NODE_TYPES.has(node.type),
-		);
+	/** A contract node is risky only through what its manifest grants, whatever its origin. */
+	private async getBroadPermissionNodes(workflows: IWorkflowBase[]) {
+		if (!Container.get(GlobalConfig).instanceAi.nodeContractsEnabled) return [];
 		const [{ contractPermissionsOf }, { permissionClassesOf }] = await Promise.all([
 			import('@/node-contracts-registry.js'),
 			import('@n8n/nodes-base-next'),
 		]);
-		// A contract node is risky only through what its manifest grants, whatever its origin.
-		const broadPermissionNodes = getNodeTypes(workflows, (node) => {
+		return getNodeTypes(workflows, (node) => {
 			const permissions = contractPermissionsOf(this.loadNodesAndCredentials.loaders, node);
 			return permissions !== undefined && permissionClassesOf(permissions).length > 0;
 		});
+	}
+
+	async report(workflows: IWorkflowBase[]) {
+		const officialRiskyNodes = getNodeTypes(workflows, (node) =>
+			OFFICIAL_RISKY_NODE_TYPES.has(node.type),
+		);
+		const broadPermissionNodes = await this.getBroadPermissionNodes(workflows);
 
 		const [communityNodes, customNodes] = await Promise.all([
 			this.getCommunityNodeDetails(),

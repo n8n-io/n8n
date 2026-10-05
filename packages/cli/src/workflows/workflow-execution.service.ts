@@ -48,6 +48,7 @@ import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { FailedRunFactory } from '@/executions/failed-run-factory';
 import { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks';
 import type { IWorkflowErrorData } from '@/interfaces';
+import { nodeGroupsForRun } from '@/node-contracts-run';
 import { NodeTypes } from '@/node-types';
 import { InstanceWriteAccessService } from '@/services/instance-write-access.service';
 import { OwnershipService } from '@/services/ownership.service';
@@ -589,7 +590,10 @@ export class WorkflowExecutionService {
 			const workflowData = publishedData.workflow;
 			workflowData.nodes = publishedData.publishedVersion.nodes;
 			workflowData.connections = publishedData.publishedVersion.connections;
-			workflowData.nodeGroups = publishedData.publishedVersion.nodeGroups;
+			workflowData.nodeGroups = nodeGroupsForRun(
+				workflowData.nodeGroups,
+				publishedData.publishedVersion.nodeGroups,
+			);
 			return workflowData;
 		}
 
@@ -610,7 +614,7 @@ export class WorkflowExecutionService {
 		}
 		loaded.nodes = loaded.activeVersion.nodes;
 		loaded.connections = loaded.activeVersion.connections;
-		loaded.nodeGroups = loaded.activeVersion.nodeGroups;
+		loaded.nodeGroups = nodeGroupsForRun(loaded.nodeGroups, loaded.activeVersion.nodeGroups);
 		return loaded;
 	}
 

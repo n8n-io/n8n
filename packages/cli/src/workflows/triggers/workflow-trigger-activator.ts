@@ -38,6 +38,7 @@ import type {
 	PublicationOperationResult,
 	PublicationTriggerOperation,
 } from '@/events/maps/workflow-publication-metrics.event-map';
+import { nodeGroupsForRun } from '@/node-contracts-run';
 import { NodeTypes } from '@/node-types';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import type { WorkflowTriggerVersion } from '@/workflows/triggers/enabled-trigger-nodes';
@@ -583,7 +584,10 @@ export class WorkflowTriggerActivator {
 		dbWorkflow.nodes = version.nodes;
 		dbWorkflow.connections = version.connections;
 		// The engine runs the regions of the version, so its groups go with its nodes.
-		if (version.nodeGroups) dbWorkflow.nodeGroups = version.nodeGroups;
+		dbWorkflow.nodeGroups = nodeGroupsForRun(
+			dbWorkflow.nodeGroups,
+			version.nodeGroups ?? dbWorkflow.nodeGroups,
+		);
 	}
 
 	private createWorkflow(dbWorkflow: WorkflowEntity) {

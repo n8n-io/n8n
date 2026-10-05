@@ -15,6 +15,7 @@ import type { INode, IWebhookData, IHttpRequestMethods, IWorkflowBase } from 'n8
 
 import { NotFoundError } from '@n8n/errors';
 import { WebhookNotFoundError } from '@/errors/response-errors/webhook-not-found.error';
+import { nodeGroupsForRun } from '@/node-contracts-run';
 import { NodeTypes } from '@/node-types';
 import * as WebhookHelpers from '@/webhooks/webhook-helpers';
 import { WebhookService } from '@/webhooks/webhook.service';
@@ -117,7 +118,8 @@ export class LiveWebhooks implements IWebhookManager {
 		const { workflow: workflowData, publishedVersion } = await this.loadWebhookExecutionData(
 			webhook.workflowId,
 		);
-		const { nodes, connections, nodeGroups, versionId } = publishedVersion;
+		const { nodes, connections, versionId } = publishedVersion;
+		const nodeGroups = nodeGroupsForRun(workflowData.nodeGroups, publishedVersion.nodeGroups);
 
 		// Use the published revision for both execution content and metadata.
 		const activeWorkflowData: IWorkflowBase = {

@@ -1,4 +1,6 @@
 import type { Logger } from '@n8n/backend-common';
+import { GlobalConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
 import { versionsOf } from '@n8n/nodes-base-next';
 import { mock } from 'vitest-mock-extended';
 import type { INode, Workflow } from 'n8n-workflow';
@@ -61,6 +63,22 @@ describe('DataTableProxyService', () => {
 				'p1',
 			),
 		).rejects.toThrow('This proxy is only available for Data table nodes');
+	});
+
+	it('refuses a contract node whose manifest imports data tables with node contracts disabled', async () => {
+		const { instanceAi } = Container.get(GlobalConfig);
+		instanceAi.nodeContractsEnabled = false;
+		try {
+			await expect(
+				service.getDataTableAggregateProxy(
+					workflow,
+					nodeOf('@n8n/nodes-base-next.dataTableRowInsert', majorOf('dataTable.row.insert')),
+					'p1',
+				),
+			).rejects.toThrow('This proxy is only available for Data table nodes');
+		} finally {
+			instanceAi.nodeContractsEnabled = true;
+		}
 	});
 
 	it('refuses other nodes', async () => {

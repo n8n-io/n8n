@@ -43,7 +43,7 @@ import {
 } from '@/constants';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { ExternalHooks } from '@/external-hooks';
-import { prepareNodeContractsRun } from '@/node-contracts-run';
+import { nodeGroupsForRun, prepareNodeContractsRun } from '@/node-contracts-run';
 import { NodeTypes } from '@/node-types';
 import { enforceWorkflowPublishPolicy } from '@/policy/enforce-workflow-publish';
 import type { PolicyActor } from '@/policy/policy-enforcement-backend';
@@ -604,7 +604,7 @@ export class ActiveWorkflowManager {
 
 			dbWorkflow.nodes = nodes;
 			dbWorkflow.connections = connections;
-			dbWorkflow.nodeGroups = nodeGroups;
+			dbWorkflow.nodeGroups = nodeGroupsForRun(dbWorkflow.nodeGroups, nodeGroups);
 
 			// Trigger and poller nodes run code at registration, so this gates startup
 			// and leadership change too, not just the activate button.

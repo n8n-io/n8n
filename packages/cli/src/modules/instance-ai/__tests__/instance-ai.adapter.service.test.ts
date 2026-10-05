@@ -119,14 +119,21 @@ import { LlmJudgeProviderRegistry } from '@/evaluation.ee/llm-judge-provider-reg
  * from whatever the test was actually about.
  */
 function globalConfigStub(
-	overrides: { allowSendingParameterValues?: boolean; queueMode?: boolean } = {},
+	overrides: {
+		allowSendingParameterValues?: boolean;
+		queueMode?: boolean;
+		nodeContractsEnabled?: boolean;
+	} = {},
 ): ConstructorParameters<typeof InstanceAiAdapterService>[1] {
 	return {
 		ai: { allowSendingParameterValues: overrides.allowSendingParameterValues ?? false },
 		executions: { mode: overrides.queueMode ? 'queue' : 'regular' },
 		// Node usage is gated on the dependency index being wired too, which these tests do not
 		// pass, so the value here only has to exist. See instance-ai.adapter.node-usage.test.ts.
-		instanceAi: { nodeUsageEnabled: false },
+		instanceAi: {
+			nodeUsageEnabled: false,
+			nodeContractsEnabled: overrides.nodeContractsEnabled ?? false,
+		},
 	} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[1];
 }
 
@@ -5004,6 +5011,7 @@ function createRunAdapterForTests(
 		allowSendingParameterValues?: boolean;
 		nodeTypes?: NodeTypes;
 		getEvalMockHandler?: () => Promise<EvalLlmMockHandler | undefined>;
+		nodeContractsEnabled?: boolean;
 	},
 ) {
 	const mockWorkflowFinderService = {
@@ -5040,6 +5048,7 @@ function createRunAdapterForTests(
 		globalConfigStub({
 			allowSendingParameterValues: options?.allowSendingParameterValues,
 			queueMode: options?.queueMode,
+			nodeContractsEnabled: options?.nodeContractsEnabled,
 		}),
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[2],
 		mockWorkflowFinderService as unknown as ConstructorParameters<
@@ -5637,6 +5646,19 @@ describe('createExecutionAdapter run()', () => {
 	});
 
 	it('passes the build trace context to the run', async () => {
+		const { adapter, mockWorkflowRunner } = createRunAdapterForTests(
+			{ id: 'wf-1', nodes: [makeNode('Schedule Trigger', 'n8n-nodes-base.scheduleTrigger')] },
+			{ nodeContractsEnabled: true },
+		);
+
+		await adapter.run('wf-1');
+
+		expect(mockWorkflowRunner.run.mock.calls[0][0].tracingContext).toEqual({
+			traceparent: '00-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01',
+		});
+	});
+
+	it('passes no trace context to the run with node contracts disabled', async () => {
 		const { adapter, mockWorkflowRunner } = createRunAdapterForTests({
 			id: 'wf-1',
 			nodes: [makeNode('Schedule Trigger', 'n8n-nodes-base.scheduleTrigger')],
@@ -5644,9 +5666,7 @@ describe('createExecutionAdapter run()', () => {
 
 		await adapter.run('wf-1');
 
-		expect(mockWorkflowRunner.run.mock.calls[0][0].tracingContext).toEqual({
-			traceparent: '00-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01',
-		});
+		expect(mockWorkflowRunner.run.mock.calls[0][0].tracingContext).toBeUndefined();
 	});
 
 	describe('trigger selection', () => {
@@ -5993,11 +6013,19 @@ describe('createExecutionAdapter runStep()', () => {
 	});
 
 	it('passes the build trace context to the step run', async () => {
-		const { runData } = await runStepOn(chainWorkflow, 'Send');
+		const { runData } = await runStepOn(chainWorkflow, 'Send', undefined, {
+			nodeContractsEnabled: true,
+		});
 
 		expect(runData.tracingContext).toEqual({
 			traceparent: '00-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01',
 		});
+	});
+
+	it('passes no trace context to the step run with node contracts disabled', async () => {
+		const { runData } = await runStepOn(chainWorkflow, 'Send');
+
+		expect(runData.tracingContext).toBeUndefined();
 	});
 
 	it('always runs in manual mode, because pin data is dropped in any other mode', async () => {

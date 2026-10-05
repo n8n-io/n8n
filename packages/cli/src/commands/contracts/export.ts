@@ -6,6 +6,7 @@ import { z } from 'zod';
 import { BaseCommand } from '../base-command';
 
 import { NodeContractsStore } from '@/node-contracts-registry';
+import { assertNodeContractsEnabled } from '@/node-contracts-run';
 import { NodeContractsSync } from '@/node-contracts-sync';
 
 const flagsSchema = z.object({
@@ -25,6 +26,7 @@ const flagsSchema = z.object({
 })
 export class ContractsExportCommand extends BaseCommand<z.infer<typeof flagsSchema>> {
 	async run() {
+		assertNodeContractsEnabled('contracts:export');
 		const { exportContractStore } = await import('@n8n/nodes-base-next');
 		const { output, pinned } = this.flags;
 		const locks = pinned ? await Container.get(NodeContractsSync).locks() : undefined;

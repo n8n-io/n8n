@@ -1,6 +1,8 @@
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { ExpressionEngineConfig, WorkflowsConfig } from '@n8n/config';
+import { GlobalConfig } from '@n8n/config';
 import type { WebhookEntity, WorkflowEntity, WorkflowHistory, WorkflowRepository } from '@n8n/db';
+import { Container } from '@n8n/di';
 import type { Response } from 'express';
 import type {
 	IConnections,
@@ -417,6 +419,65 @@ describe('LiveWebhooks', () => {
 			// Verify it does NOT have draft nodes
 			expect(capturedWorkflowData!.nodes[0].id).not.toBe('webhook-node-draft');
 			expect(capturedWorkflowData!.nodes[1].id).not.toBe('set-node-draft');
+		});
+
+		describe('node groups', () => {
+			const draftGroups = [{ id: 'g-draft', name: 'Draft', nodeIds: ['webhook-node'] }];
+			const versionGroups = [{ id: 'g-version', name: 'Version', nodeIds: ['webhook-node'] }];
+			const { instanceAi } = Container.get(GlobalConfig);
+
+			afterEach(() => {
+				instanceAi.nodeContractsEnabled = true;
+			});
+
+			const runWebhook = async () => {
+				const nodes: INode[] = [
+					{
+						id: 'webhook-node',
+						name: NODE_NAME,
+						type: 'n8n-nodes-base.webhook',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: { path: WEBHOOK_PATH },
+					},
+				];
+				const workflowEntity = mock<WorkflowEntity>({
+					id: WORKFLOW_ID,
+					name: 'Test Workflow',
+					activeVersionId: 'v1',
+					nodes,
+					connections: {},
+					nodeGroups: draftGroups,
+					staticData: {},
+					activeVersion: mock<WorkflowHistory>({
+						versionId: 'v1',
+						nodes,
+						connections: {},
+						nodeGroups: versionGroups,
+					}),
+					shared: [],
+				});
+				const captured: IWorkflowBase[] = [];
+				const request = setupExecuteWebhookMocks(workflowEntity, {
+					onExecuteWebhook: ({ workflowData }) => captured.push(workflowData),
+				});
+
+				await liveWebhooks.executeWebhook(request, mock<Response>());
+
+				return captured[0];
+			};
+
+			it('takes the node groups of the published version with node contracts enabled', async () => {
+				instanceAi.nodeContractsEnabled = true;
+
+				expect((await runWebhook()).nodeGroups).toEqual(versionGroups);
+			});
+
+			it('takes the node groups of the draft with node contracts disabled', async () => {
+				instanceAi.nodeContractsEnabled = false;
+
+				expect((await runWebhook()).nodeGroups).toEqual(draftGroups);
+			});
 		});
 
 		it('rejects (does not hang) when executeWebhook throws before invoking the callback', async () => {

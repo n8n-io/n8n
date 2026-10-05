@@ -2189,7 +2189,9 @@ export class InstanceAiAdapterService {
 					// had broken — the one side effect node simulation cannot pin, since
 					// it is dispatched by the execution lifecycle, not by a node.
 					...(options?.isVerificationRun ? { suppressErrorWorkflow: true } : {}),
-					tracingContext: currentBuildTracingContext(),
+					tracingContext: globalConfig.instanceAi.nodeContractsEnabled
+						? currentBuildTracingContext()
+						: undefined,
 				};
 
 				const pinDataPlan = buildInstanceAiRunPinDataPlan({
@@ -2543,7 +2545,9 @@ export class InstanceAiAdapterService {
 					dirtyNodeNames: plan.dirtyNodeNames,
 					agentRequest,
 					source: 'instance_ai',
-					tracingContext: currentBuildTracingContext(),
+					tracingContext: globalConfig.instanceAi.nodeContractsEnabled
+						? currentBuildTracingContext()
+						: undefined,
 				};
 
 				// A trigger has no upstream to run, so the chain and the partial paths
