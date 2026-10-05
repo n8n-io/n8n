@@ -491,6 +491,7 @@ describe('AgentBackgroundJobRepository', () => {
 			});
 		}
 		await repository.requestPause(agentId, 'parent', 'draft-chat:user-1', pauseRequestId);
+		expect(await repository.hasRequestedStop('parent', 'draft-chat:user-1')).toBe(true);
 		await repository.settleIfActive(cancelled, { status: 'cancelled' });
 		expect(await repository.findWakeableUnconsumed('parent')).toEqual([]);
 		await repository.settleIfActive(completed, { status: 'completed', result: 'Done' });
@@ -499,12 +500,13 @@ describe('AgentBackgroundJobRepository', () => {
 			[cancelled, completed].sort(),
 		);
 		expect(await repository.markMailConsumed('parent', [cancelled, completed])).toBe(0);
+		expect(await repository.hasRequestedStop('parent', 'draft-chat:user-1')).toBe(true);
 		expect(await repository.markMailConsumed('parent', [cancelled, completed], true)).toBe(2);
 		const delivered = await repository.findById(cancelled);
 		await repository.requestPause(agentId, 'parent', 'draft-chat:user-1', uuidv7());
 		expect(await repository.findById(cancelled)).toEqual(delivered);
 		expect(await repository.findWakeableUnconsumed('parent')).toEqual([]);
-		expect(await repository.hasRequestedStop('parent', 'draft-chat:user-1')).toBe(true);
+		expect(await repository.hasRequestedStop('parent', 'draft-chat:user-1')).toBe(false);
 		expect(await repository.hasRequestedStop('parent', 'draft-chat:other')).toBe(false);
 		expect(await repository.hasRequestedStop('other', 'draft-chat:user-1')).toBe(false);
 	});

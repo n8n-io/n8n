@@ -213,6 +213,13 @@ test.describe(
 					.poll(async () => await n8nContainer.services.proxy.wasRequestMade(reportRequest))
 					.toBe(true);
 				const earlyContinue = await chat('Continue');
+				await expect
+					.poll(async () => {
+						const queued = earlyContinue.events.find((event) => event.type === 'message-queued');
+						const { items } = await api.agents.queuedMessages(project.id, agent.id, threadId);
+						return items.some((item) => item.id === queued?.queueId);
+					})
+					.toBe(true);
 				expect((await jobs()).tasks).toEqual([]);
 				expect((await api.workflows.getExecution(original.id)).status).toBe('canceled');
 				const oldCallback = await api.webhooks.trigger(beforeStop.callbackPath, {

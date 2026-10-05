@@ -324,15 +324,20 @@ describe('AgentWakeService', () => {
 
 	describe('getBackgroundUpdates', () => {
 		it.each([
-			{ state: 'empty', jobs: [] },
-			{ state: 'suspended', jobs: [makeJob({ status: 'suspended', settledAt: null })] },
-		])('returns no hint when the thread has no pending results ($state)', async ({ jobs }) => {
+			{ state: 'empty', jobs: [], stoppedHere: false },
+			{
+				state: 'suspended',
+				jobs: [makeJob({ status: 'suspended', settledAt: null })],
+				stoppedHere: false,
+			},
+			{ state: 'requested stop', jobs: [], stoppedHere: true },
+		])('returns a stop hint only for a requested stop ($state)', async ({ jobs, stoppedHere }) => {
 			const { service, jobRepository } = setup();
 			jobRepository.findWakeableUnconsumed.mockResolvedValue(jobs);
+			jobRepository.hasRequestedStop.mockResolvedValue(stoppedHere);
 
-			await expect(
-				service.getBackgroundUpdates('thread-1', `draft-chat:${user.id}`),
-			).resolves.toBeUndefined();
+			const hint = await service.getBackgroundUpdates('thread-1', `draft-chat:${user.id}`);
+			expect(hint !== undefined).toBe(stoppedHere);
 		});
 
 		it('quotes job titles in the hint to check settled jobs', async () => {

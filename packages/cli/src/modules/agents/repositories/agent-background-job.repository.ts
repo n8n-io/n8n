@@ -242,7 +242,7 @@ export class AgentBackgroundJobRepository extends BaseRepository<AgentBackground
 		const scope = { parentThreadId, parentResourceId, pauseRequestId: Not(IsNull()) };
 		return await this.existsBy([
 			{ ...scope, kind: 'subagent', status: In(['running', 'suspended', 'paused']) },
-			{ ...scope, kind: 'workflow' },
+			{ ...scope, kind: 'workflow', notifiedAt: IsNull() },
 		]);
 	}
 
