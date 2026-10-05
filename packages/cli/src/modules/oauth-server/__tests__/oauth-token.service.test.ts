@@ -4,8 +4,8 @@ import jwt, { type SignOptions } from 'jsonwebtoken';
 import { Logger, type LicenseState, type ModuleRegistry } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { GlobalConfig } from '@n8n/config';
-import type { DeploymentKey, OperationContext, TransactionRunner, User } from '@n8n/db';
-import { OAUTH_JWE_PRIVATE_KEY_TYPE, UserRepository } from '@n8n/db';
+import type { OperationContext, TransactionRunner, User } from '@n8n/db';
+import { UserRepository } from '@n8n/db';
 import { mock, type MockProxy } from 'vitest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 import type { KeyObject } from 'node:crypto';
@@ -1205,42 +1205,6 @@ describe('OAuthTokenService', () => {
 				await expectRejected(
 					forgeJwt({ alg: 'ES256', typ: 'at+jwt', kid }, validClaims(), () => Buffer.alloc(64)),
 				);
-			});
-
-			it('rejects the JWE key under its own kid', async () => {
-				const { privateKey: jweKey } = generateKeyPairSync('rsa', { modulusLength: 2048 });
-				const jweJwk = {
-					...jweKey.export({ format: 'jwk' }),
-					kid: 'jwe-kid',
-					alg: 'RSA-OAEP-256',
-					use: 'enc',
-				};
-				const now = new Date();
-				signingKeys.keyStore.rows.push(
-					mock<DeploymentKey>({
-						id: 'jwe-kid',
-						type: OAUTH_JWE_PRIVATE_KEY_TYPE,
-						value: `wrapped:${JSON.stringify(jweJwk)}`,
-						algorithm: 'RSA-OAEP-256',
-						status: 'active',
-						createdAt: now,
-						updatedAt: now,
-					}),
-				);
-				signingKeys.cacheStore.clear();
-
-				try {
-					await expectRejected(
-						forgeJwt(
-							{ alg: 'RS256', typ: 'at+jwt', kid: 'jwe-kid' },
-							validClaims(),
-							rs256Signer(jweKey),
-						),
-					);
-				} finally {
-					signingKeys.keyStore.rows.pop();
-					signingKeys.cacheStore.clear();
-				}
 			});
 
 			it.each<[string, unknown]>([

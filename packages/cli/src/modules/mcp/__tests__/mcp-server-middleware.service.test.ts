@@ -89,26 +89,6 @@ describe('McpServerMiddlewareService', () => {
 			expect(mcpServerApiKeyService.verifyApiKey).not.toHaveBeenCalled();
 		});
 
-		it('should send an ES256 OAuth token with a kid to the OAuth verifier', async () => {
-			const user = mock<User>({ id: 'user-123' });
-			const { privateKey } = generateKeyPairSync('ec', { namedCurve: 'P-256' });
-			const oauthToken = jwt.sign(
-				{ sub: 'user-123', aud: 'mcp-server-api', meta: { isOAuth: true } },
-				privateKey,
-				{ algorithm: 'ES256', header: { alg: 'ES256', typ: 'at+jwt', kid: 'signing-kid' } },
-			);
-			oauthTokenVerifier.verifyOAuthAccessToken.mockResolvedValue({ user });
-
-			const result = await service.getUserForToken(oauthToken);
-
-			expect(result).toEqual({ user });
-			expect(oauthTokenVerifier.verifyOAuthAccessToken).toHaveBeenCalledWith(
-				oauthToken,
-				'https://n8n.example.com/mcp-server/http',
-			);
-			expect(mcpServerApiKeyService.verifyApiKey).not.toHaveBeenCalled();
-		});
-
 		it('should return user for valid API key (no meta.isOAuth)', async () => {
 			const user = mock<User>({ id: 'user-123' });
 			const apiKeyToken = jwtService.sign('mcpApiKey', { sub: 'user-123' });

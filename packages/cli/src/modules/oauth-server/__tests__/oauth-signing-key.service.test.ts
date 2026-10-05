@@ -21,7 +21,7 @@ const AUDIENCE = `${ISSUER}/mcp-server/http`;
 /** The audience is passed to `signAccessToken` on its own. */
 const claims = () => {
 	const now = Math.floor(Date.now() / 1000);
-	return { iss: ISSUER, sub: 'user-1', iat: now, exp: now + 3600 };
+	return { iss: ISSUER, sub: 'user-1', iat: now, exp: now + OAUTH_ACCESS_TOKEN_TTL_SECONDS };
 };
 
 const makeUniqueViolation = (code: string): QueryFailedError => {
@@ -140,6 +140,34 @@ describe('OAuthSigningKeyService', () => {
 		expect(jwks).toHaveLength(1);
 		expect(Object.keys(jwks[0]).sort()).toEqual(['alg', 'crv', 'kid', 'kty', 'use', 'x', 'y']);
 		expect(jwks[0]).toMatchObject({ kty: 'EC', crv: 'P-256', alg: 'ES256', use: 'sig' });
+	});
+
+	it('neither publishes nor verifies with a signing-key row that is not ES256', async () => {
+		const { service, keyStore } = createSigningKeyService();
+		const { privateKey } = generateKeyPairSync('rsa', { modulusLength: 2048 });
+		const privateJwk = {
+			...privateKey.export({ format: 'jwk' }),
+			kid: 'rs256-key',
+			alg: 'RS256',
+			use: 'sig',
+		};
+		keyStore.rows.push(
+			makeKeyRow('rs256-key', {
+				algorithm: 'RS256',
+				value: `wrapped:${JSON.stringify(privateJwk)}`,
+			}),
+		);
+		await service.initialize();
+		const token = jwt.sign(claims(), privateKey, {
+			algorithm: 'RS256',
+			audience: AUDIENCE,
+			header: { alg: 'RS256', typ: 'at+jwt', kid: 'rs256-key' },
+		});
+
+		expect((await service.getPublicJwks()).map((k) => k.kid)).not.toContain('rs256-key');
+		await expect(
+			service.verifyAccessToken(token, { kid: 'rs256-key', audiences: [AUDIENCE], issuer: ISSUER }),
+		).rejects.toThrow('kid is unknown');
 	});
 
 	describe('retired keys', () => {

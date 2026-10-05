@@ -140,7 +140,7 @@ export class JwtService {
 	 * Verifies an OAuth access token that n8n signed with the HMAC secret,
 	 * before it signed access tokens with ES256. Accepts HS256 only.
 	 *
-	 * @deprecated Remove with `OAuthTokenService.verifyLegacyHmacJwt`, after the
+	 * DEPRECATED: remove with `OAuthTokenService.verifyLegacyHmacJwt`, after the
 	 * last HS256 access tokens have expired.
 	 */
 	verifyLegacyHmacAccessToken<T = JwtPayload>(
