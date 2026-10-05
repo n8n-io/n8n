@@ -20,6 +20,7 @@ import {
 	COMMUNITY_PACKAGE_TOOLS,
 	getAllowedToolNames,
 	INSTANCE_CONTEXT_TOOLS,
+	SCOPE_FREE_TOOLS,
 	TOOLS_BY_SCOPE,
 } from '../mcp-scopes';
 import { McpConfig } from '../mcp.config';
@@ -64,7 +65,7 @@ vi.mock('@n8n/mcp-apps/server', async (importOriginal) => ({
 	registerWorkflowPreviewApp: vi.fn(),
 }));
 
-const ALL_MAPPED_TOOLS = new Set(Object.values(TOOLS_BY_SCOPE).flat());
+const ALL_MAPPED_TOOLS = new Set([...Object.values(TOOLS_BY_SCOPE).flat(), ...SCOPE_FREE_TOOLS]);
 
 const mcpFeatureFlags = (overrides: Partial<McpFeatureFlags> = {}): McpFeatureFlags => ({
 	mcpApps: { enabled: false, variant: 'unassigned' },
@@ -110,10 +111,8 @@ describe('getAllowedToolNames', () => {
 		);
 	});
 
-	it('resolves the preferences scope to its read tool and the skills tools', () => {
-		expect(getAllowedToolNames(['aiPreference:read'])).toEqual(
-			new Set(['get_user_preferences', 'list_skills', 'load_skill']),
-		);
+	it('resolves the preferences scope to its one tool', () => {
+		expect(getAllowedToolNames(['aiPreference:read'])).toEqual(new Set(['get_user_preferences']));
 	});
 
 	// The read tool does not ride along on the write grant: the consent screen shows them as
@@ -577,7 +576,10 @@ describe('McpService scope enforcement', () => {
 		// Instance-context tools ride on this scope but need their own flag and the `instance-ai`
 		// module, neither of which is on here.
 		expect(getRegisteredToolNames(server)).toEqual(
-			new Set(TOOLS_BY_SCOPE['workflow:read'].filter((name) => !INSTANCE_CONTEXT_TOOLS.has(name))),
+			new Set([
+				...TOOLS_BY_SCOPE['workflow:read'].filter((name) => !INSTANCE_CONTEXT_TOOLS.has(name)),
+				...SCOPE_FREE_TOOLS,
+			]),
 		);
 	});
 
@@ -596,16 +598,17 @@ describe('McpService scope enforcement', () => {
 				'get_workflow_history',
 				'get_workflow_version',
 				'get_workflow_versions_diff',
+				...SCOPE_FREE_TOOLS,
 			]),
 		);
 	});
 
-	it('registers no tools for an empty grant', async () => {
+	it('registers only the scope-free tools for an empty grant', async () => {
 		const server = await buildService().getServer(user, mcpFeatureFlags(), undefined, {
 			grantedScopes: [],
 		});
 
-		expect(getRegisteredToolNames(server)).toEqual(new Set());
+		expect(getRegisteredToolNames(server)).toEqual(new Set(SCOPE_FREE_TOOLS));
 	});
 
 	it('does not register the MCP app when the create tool is out of scope', async () => {

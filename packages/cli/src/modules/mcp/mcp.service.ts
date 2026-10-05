@@ -56,7 +56,6 @@ import {
 	INSTALL_COMMUNITY_NODE_TOOL,
 	MCP_CREATE_AGENT_TOOL_NAME,
 	MCP_GET_USER_PREFERENCES_TOOL_NAME,
-	MCP_LIST_SKILLS_TOOL_NAME,
 	MCP_PREVIEW_RENDER_REQUESTED_EVENT,
 	USER_CALLED_MCP_TOOL_EVENT,
 } from './mcp.constants';
@@ -470,7 +469,6 @@ export class McpService {
 		const userPreferencesInstructionsEnabled =
 			featureFlags.aiPreferencesEnabled &&
 			(allowedToolNames?.has(MCP_GET_USER_PREFERENCES_TOOL_NAME) ?? true);
-		const skillsInstructionsEnabled = allowedToolNames?.has(MCP_LIST_SKILLS_TOOL_NAME) ?? true;
 		const server = new McpServer(
 			{
 				name: 'n8n MCP Server',
@@ -486,7 +484,7 @@ export class McpService {
 					isN8nConnectAvailable: n8nConnectAvailable,
 					isAgentsEnabled: agentInstructionsEnabled,
 					isUserPreferencesEnabled: userPreferencesInstructionsEnabled,
-					isSkillsEnabled: skillsInstructionsEnabled,
+					isSkillsEnabled: true,
 					credentialDescriptionsEnabled: featureFlags.credentialDescriptionsEnabled === true,
 				}),
 			},
@@ -799,9 +797,10 @@ export class McpService {
 			);
 		}
 
-		// POC: hardcoded skills, not gated by a feature flag or the builder.
-		registerIfAllowed(createListSkillsTool(user, this.telemetry));
-		registerIfAllowed(createLoadSkillTool(user, this.telemetry));
+		// POC: hardcoded skills, registered for every caller. They bypass the scope filter, see
+		// SCOPE_FREE_TOOLS.
+		registerTool(createListSkillsTool(user, this.telemetry));
+		registerTool(createLoadSkillTool(user, this.telemetry));
 
 		// Workflow builder tools (enabled via N8N_MCP_BUILDER_ENABLED)
 		if (builderEnabled) {

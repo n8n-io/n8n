@@ -113,12 +113,7 @@ export const TOOLS_BY_SCOPE: Record<McpScope, readonly string[]> = {
 	// `ai_preference` is a first-class resource, so reading it rides on a normal scope rather
 	// than an MCP-only string. Not builder-gated: preferences apply to Agents, data tables and
 	// folders too, none of which need the builder.
-	// POC: skills ride on the preferences read scope until they get a scope of their own.
-	'aiPreference:read': [
-		MCP_GET_USER_PREFERENCES_TOOL_NAME,
-		MCP_LIST_SKILLS_TOOL_NAME,
-		MCP_LOAD_SKILL_TOOL_NAME,
-	],
+	'aiPreference:read': [MCP_GET_USER_PREFERENCES_TOOL_NAME],
 	// The read tool does not ride along: a client that may write is expected to read first, and
 	// the consent screen shows that as two scopes. Undo is here rather than on a delete scope
 	// because it only removes what this surface wrote.
@@ -194,6 +189,16 @@ export const AGENT_TOOLS: ReadonlySet<string> = new Set([
 	...TOOLS_BY_SCOPE['agent:read'],
 	...TOOLS_BY_SCOPE['agent:write'],
 	...TOOLS_BY_SCOPE['agent:execute'],
+]);
+
+/**
+ * POC: tools registered for every caller, whatever scopes the grant holds. Skills do not ride
+ * on `aiPreference:read`, because the consent screen offers that scope only to the preferences
+ * experiment arm.
+ */
+export const SCOPE_FREE_TOOLS: ReadonlySet<string> = new Set([
+	MCP_LIST_SKILLS_TOOL_NAME,
+	MCP_LOAD_SKILL_TOOL_NAME,
 ]);
 
 function isMcpScope(scope: string): scope is McpScope {
