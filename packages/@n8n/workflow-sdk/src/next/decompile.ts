@@ -389,12 +389,22 @@ function lambdaOf(body: string, reads: ReadonlySet<Rewrite['reads']>): string {
 	return `${reads.size === 0 ? '()' : params} => ${body}`;
 }
 
+/**
+ * The lambdas to try for a body. A block body compiles to `(() => { … })()`, so that body reads
+ * back as the block first.
+ */
+function lambdasOf({ text, reads }: LambdaBody): string[] {
+	const block = /^\(\(\) => (\{[\s\S]*\})\)\(\)$/.exec(text)?.[1];
+	return [...(block ? [lambdaOf(block, reads)] : []), lambdaOf(text, reads)];
+}
+
 /** A lambda whose compiled JavaScript is exactly `js`. */
 function lambdaForJs(js: string, names: ReadonlySet<string>): string | undefined {
 	const body = lambdaBody(js);
-	const lambda = body ? lambdaOf(body.text, body.reads) : undefined;
-	const compiled = lambda ? compileLambdaSource(lambda, names) : undefined;
-	return compiled?.ok && compiled.js === js ? lambda : undefined;
+	return (body ? lambdasOf(body) : []).find((lambda) => {
+		const compiled = compileLambdaSource(lambda, names);
+		return compiled.ok && compiled.js === js;
+	});
 }
 
 /** `=Hi {{ $json.name }}` → `` (item) => `Hi ${item.name}` ``. */
@@ -418,10 +428,7 @@ function templateLambda(expression: string): string | undefined {
 function lambdaForExpression(expression: string, names: ReadonlySet<string>): string | undefined {
 	const whole = /^=\{\{ ([\s\S]*) \}\}$/.exec(expression)?.[1];
 	const wholeBody = whole === undefined ? undefined : lambdaBody(whole);
-	const candidates = [
-		wholeBody ? lambdaOf(wholeBody.text, wholeBody.reads) : undefined,
-		templateLambda(expression),
-	];
+	const candidates = [...(wholeBody ? lambdasOf(wholeBody) : []), templateLambda(expression)];
 	return candidates.find((lambda) => {
 		const compiled = lambda ? compileLambdaSource(lambda, names) : undefined;
 		return compiled?.ok && compiled.expression === expression;

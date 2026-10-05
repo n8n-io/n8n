@@ -1,8 +1,8 @@
 // The n8n expressions of a source file for the language service: TypeScript 6 finds the spans,
 // `check` builds the shadow and decides what counts. An expression is a `'={{ … }}'` literal in a
-// field that also takes a function, or a call with one `'{{ … }}'` literal in such a field (e.g.
-// `expr()`). The check knows no flow SDK API: the field's own type says that it takes an
-// expression.
+// field that also takes a function or whose type the call infers from its value, or a call with
+// one `'{{ … }}'` literal in such a field (e.g. `expr()`). The check knows no flow SDK API: the
+// field's own type says that it takes an expression.
 import type ts from 'typescript';
 
 import {
@@ -30,20 +30,28 @@ declare function __n8nExpression<A extends unknown[], T>(args: A, body: (scope: 
 });
 
 /**
- * A field takes an expression when its contextual type has a call signature, or when a call
- * there returns a branded value (the field's type follows its value).
+ * A field takes an expression when its contextual type has a call signature, or when the call
+ * infers the field's type from its value: a call there returns a branded value, or a literal is
+ * a property of an object whose type the call infers from that object.
  */
 function takesExpression(typescript: Ts, checker: ts.TypeChecker, node: ts.Expression): boolean {
 	const contextual = checker.getContextualType(node);
 	if (!contextual) return false;
 	const parts = contextual.isUnion() ? contextual.types : [contextual];
-	return (
+	if (
 		parts.some(
 			(part) => checker.getSignaturesOfType(part, typescript.SignatureKind.Call).length > 0,
-		) ||
-		(typescript.isCallExpression(node) &&
-			checker.getPropertyOfType(contextual, EXPRESSION_BRAND) !== undefined)
-	);
+		)
+	) {
+		return true;
+	}
+	if (typescript.isCallExpression(node)) {
+		return checker.getPropertyOfType(contextual, EXPRESSION_BRAND) !== undefined;
+	}
+	const { parent } = node;
+	if (!typescript.isPropertyAssignment(parent)) return false;
+	const symbol = checker.getContextualType(parent.parent)?.getSymbol();
+	return symbol !== undefined && (symbol.flags & typescript.SymbolFlags.ObjectLiteral) !== 0;
 }
 
 /** The expressions of a file in fields that take an expression. */

@@ -8,6 +8,7 @@ const FIXTURE = `type Value<I, V> = V | ((item: I) => V) | \`=\${string}\`;
 interface Item { id: string; subject: string; count: number }
 declare function step(parameters: { id?: Value<Item, string>; max?: Value<Item, number>; note?: string }): void;
 declare function expr(text: string): \`=\${string}\`;
+declare function fields<F extends Record<string, string | ((item: Item) => unknown)>>(fields: F): F;
 
 step({ id: '={{ $json.idd }}' });
 step({ id: '=after:{{ $now.toISO() }} {{ $now.toISo() }}' });
@@ -17,6 +18,7 @@ step({ id: expr('{{ $json.subjcet }}') });
 step({ note: '={{ $json.nope }}' });
 step({ id: '={{ $json.subject.toTitleCase() }}', max: '={{ $json.count + 1 }}' });
 step({ id: '={{ String($) }}' });
+fields({ label: '=Re: {{ $json.subjetc }}', id: '={{ $json.id }}' });
 export {};
 `;
 
@@ -88,6 +90,7 @@ describe('expression tsserver plugin', () => {
 			`${position('$pageCount')} TS2304: Cannot find name '$pageCount'.`,
 			`${position("'={{ $json.subject }}'")} TS2322: The expression result does not fit the field: Type 'string' is not assignable to type 'number'.`,
 			`${position('$json.subjcet', 6)} TS2551: Property 'subjcet' does not exist on type 'Item'. Did you mean 'subject'?`,
+			`${position('$json.subjetc', 6)} TS2551: Property 'subjetc' does not exist on type 'Item'. Did you mean 'subject'?`,
 			`${position('$) }}')} TS0: n8n: Cannot access "$" without calling it as a function.`,
 		]);
 	});

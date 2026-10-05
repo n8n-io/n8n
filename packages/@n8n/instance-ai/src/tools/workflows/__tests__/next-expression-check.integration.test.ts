@@ -686,6 +686,8 @@ export default workflow(
 		const reads = [
 			"set({ name: 'Read', fields: { a: (item) => item.total } })",
 			"set({ name: 'Read', fields: { a: expr('{{ $json.total }}') } })",
+			"set({ name: 'Read', fields: { a: '={{ $json.total }}' } })",
+			"set({ name: 'Read', fields: { a: '=Total: {{ $json.total }}' } })",
 			"httpRequest.get({ name: 'Read', url: '={{ $json.total }}' })",
 			"node({ name: 'Read', type: 'n8n-nodes-base.noOp', version: 1, parameters: { note: '={{ $json.total }}' } })",
 			"node({ name: 'Read', type: 'n8n-nodes-base.noOp', version: 1, parameters: { note: '={{ $(\"Fetch\").item.json.total }}' } })",
@@ -697,6 +699,13 @@ export default workflow(
 				expect.stringContaining("Property 'total' does not exist"),
 			]);
 		}
+		const raw = source(
+			"set({ name: 'Read', fields: { a: '={{ $json.body.id + 1 }}', b: '={{ $json.body.idd }}' } })",
+		);
+		const located = await build(raw);
+		expect(located.success ? [] : located.errors).toEqual([
+			`${at(raw, 'idd')}: error TS2339: Property 'idd' does not exist on type '{ id: number; }'.`,
+		]);
 	}, 120_000);
 
 	it('types the next steps by the declared body schema of httpRequest.get, on each surface', async () => {
@@ -720,6 +729,7 @@ export default workflow(
 		const reads = [
 			"set({ name: 'Read', fields: { a: (item) => item.users } })",
 			"set({ name: 'Read', fields: { a: expr('{{ $json.users }}') } })",
+			"set({ name: 'Read', fields: { a: '={{ $json.users }}' } })",
 			"httpRequest.get({ name: 'Read', url: '={{ $json.users }}' })",
 			"set({ name: 'Read', fields: { a: (_item, $) => $('Fetch').users } })",
 			"code.javaScript({ name: 'Read', code: 'return $input.all().map((i) => ({ a: i.json.users }));' })",

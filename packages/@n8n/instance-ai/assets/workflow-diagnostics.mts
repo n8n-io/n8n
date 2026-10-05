@@ -8,6 +8,7 @@ import {
 	API,
 	DiagnosticCategory,
 	SignatureKind,
+	SymbolFlags,
 	type Checker,
 	type Diagnostic,
 	type Program,
@@ -68,8 +69,9 @@ function formatError(source: SourceFile, file: string, pos: number, error: strin
 // ── n8n expressions ─────────────────────────────────────────────────────────
 // The host lists the strings that the built workflow keeps as n8n expressions or as Code node
 // JavaScript. A literal with such a text, or a call whose one argument is such a literal (e.g.
-// `expr('…')`, which adds the `=`), in a field that also takes a lambda, becomes a lambda in a
-// shadow copy of its file (`@n8n/expression-types/check`, shared with the editor plugin).
+// `expr('…')`, which adds the `=`), in a field that also takes a lambda or whose type the call
+// infers from its value (a `set()` field), becomes a lambda in a shadow copy of its file
+// (`@n8n/expression-types/check`, shared with the editor plugin).
 // TypeScript then types it in place, as it types a lambda: `$json` is the item of the node
 // before, `$('Node')` an earlier node, and the result must fit the field. This worker finds the
 // spans and runs the programs; the check package builds the shadow and decides what counts.
@@ -103,7 +105,8 @@ function listOf(value: unknown, key: string): Set<string> {
 
 /**
  * A field takes a lambda when its contextual type has a call signature. A field whose type the
- * call infers from its value, e.g. a `set()` field, has the type of the value there: its brand.
+ * call infers from its value, e.g. a `set()` field, has the type of the value there: its brand,
+ * or for a plain string the type of an object that the call infers from its own literal.
  */
 async function takesLambda(ast: Ast, check: Check, checker: Checker, node: Node): Promise<boolean> {
 	if (!ast.isExpression(node)) return false;
@@ -114,10 +117,21 @@ async function takesLambda(ast: Ast, check: Check, checker: Checker, node: Node)
 		parts.map(async (part) => await checker.getSignaturesOfType(part, SignatureKind.Call)),
 	);
 	if (signatures.some((list) => list.length > 0)) return true;
-	return (
-		ast.isCallExpression(node) &&
-		(await checker.getPropertyOfType(contextual, check.EXPRESSION_BRAND)) !== undefined
-	);
+	if (ast.isCallExpression(node)) {
+		return (await checker.getPropertyOfType(contextual, check.EXPRESSION_BRAND)) !== undefined;
+	}
+	return await isInferredField(ast, checker, node);
+}
+
+/** A property value of an object literal whose contextual type the call infers from that literal. */
+async function isInferredField(ast: Ast, checker: Checker, node: Node): Promise<boolean> {
+	const { parent } = node;
+	if (!ast.isPropertyAssignment(parent) || !ast.isObjectLiteralExpression(parent.parent)) {
+		return false;
+	}
+	const objectType = await checker.getContextualType(parent.parent);
+	const symbol = await objectType?.getSymbol();
+	return symbol !== undefined && (symbol.flags & SymbolFlags.ObjectLiteral) !== 0;
 }
 
 /** The listed expressions and Code texts of a file that sit in a field that takes a lambda. */

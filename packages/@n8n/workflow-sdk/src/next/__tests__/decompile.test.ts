@@ -1176,11 +1176,21 @@ describe('decompileWorkflow', () => {
 					},
 				},
 			}),
+			ai.agent({
+				name: 'Agent',
+				model: openAi.chatModel({ name: 'Model', model: 'gpt-4o' }),
+				prompt: (item) => {
+					const n = item.text.length;
+					return n > 3 ? 'long' : 'short';
+				},
+			}),
 		).toJSON();
 		const { source, rebuilt, again } = roundTrip(json);
 		expect(withoutIds(rebuilt)).toEqual(withoutIds(json));
 		expect(again).toBe(source);
-		expect(source).toContain('text: (item) => (() => {');
+		expect(source).toContain('text: (item) => {');
+		expect(source).toContain('prompt: (item) => {');
+		expect(source).not.toContain('(() =>');
 	});
 
 	it('reads an Edit Fields node with dotted keys and kept field paths as set', () => {
