@@ -91,6 +91,30 @@ function endsTurn(batch: ToolCallBatchResult, toolMap: Map<string, BuiltTool>): 
 	);
 }
 
+/**
+ * A resumed batch holds only the calls that were pending, so the calls that
+ * settled before the suspension are read back from their assistant message.
+ */
+function resumedTurnEnds(
+	messages: readonly AgentMessage[],
+	resumedToolCallId: string,
+	toolMap: Map<string, BuiltTool>,
+): boolean {
+	const calls = messages
+		.flatMap((message) => ('content' in message ? [message.content] : []))
+		.find((content) =>
+			content.some((c) => c.type === 'tool-call' && c.toolCallId === resumedToolCallId),
+		);
+	return (
+		calls?.some(
+			(c) =>
+				c.type === 'tool-call' &&
+				c.state === 'resolved' &&
+				toolMap.get(c.toolName)?.endsTurn?.(c.output) === true,
+		) ?? false
+	);
+}
+
 /** Retries for a `stop` turn that produced no output at all (see isEmptyModelTurn). */
 const MAX_EMPTY_TURN_RETRIES = 2;
 const logger = createFilteredLogger();
@@ -967,6 +991,10 @@ export class AgentRuntime {
 		if (settlement.suspended) return settlement;
 		// Resumed tool results form a new observation boundary before the next model call.
 		await this.memory.maybeObserveMidRun(ctx.list, ctx.options);
+		if (resumedTurnEnds(ctx.list.messages(), pendingResume.resumeToolCallId, toolMap)) {
+			state.lastFinishReason = 'stop';
+			state.reachedStopCondition = true;
+		}
 		return settlement;
 	}
 
