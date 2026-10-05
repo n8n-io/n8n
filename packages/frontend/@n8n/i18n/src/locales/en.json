@@ -6500,6 +6500,7 @@
 	"agentSelector.createNewAgent": "Create an agent in {projectName}",
 	"agentSelector.createNewAgent.noProject": "Create a new agent",
 	"agentSelector.mode.list.placeholder": "Select an agent",
+	"agentNode.agentsDisabled": "Agents are disabled on this instance. Ask an instance admin to enable them.",
 	"agentNode.card.defaultName": "AI Agent",
 	"agentNode.card.openAgent": "Open agent",
 	"agentNode.card.moreChips": "+{count}",

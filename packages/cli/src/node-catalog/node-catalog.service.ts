@@ -3,8 +3,8 @@ import type {
 	NodeRequest,
 	NodeTypeParser,
 } from '@n8n/ai-utilities/node-catalog';
-import { Logger } from '@n8n/backend-common';
-import { BUILTIN_NODES_PACKAGES } from '@n8n/constants';
+import { Logger, ModuleRegistry } from '@n8n/backend-common';
+import { BUILTIN_NODES_PACKAGES, MODULE_GATED_NODE_TYPES } from '@n8n/constants';
 import { Container, Service } from '@n8n/di';
 import * as fs from 'fs/promises';
 import { LRUCache } from 'lru-cache';
@@ -17,6 +17,16 @@ import { synthesizeNodeTypeDef } from '@/modules/mcp-registry/synthesize-type-de
 import { findRegistryMatches, type RegistryCandidate } from './registry-lookup';
 
 export type NodeFilter = (nodeId: string) => boolean;
+
+/** Narrows `nodeFilter` so it also rejects `excluded`. Returns `nodeFilter` unchanged when nothing is excluded. */
+const withoutNodeTypes = (
+	nodeFilter: NodeFilter | undefined,
+	excluded: string[],
+): NodeFilter | undefined => {
+	if (excluded.length === 0) return nodeFilter;
+	const excludedSet = new Set(excluded);
+	return (nodeId) => !excludedSet.has(nodeId) && (nodeFilter?.(nodeId) ?? true);
+};
 
 const isBuiltinNodeId = (nodeId: string): boolean =>
 	BUILTIN_NODES_PACKAGES.some((pkg) => nodeId.startsWith(`${pkg}.`));
@@ -96,7 +106,7 @@ export interface NodeTypeDefinitionResult {
 }
 
 interface SearchState {
-	search?: (queries: string[]) => CodeBuilderSearchResult;
+	search?: (queries: string[], nodeFilter?: NodeFilter) => CodeBuilderSearchResult;
 	cache: Map<string, CodeBuilderSearchResult>;
 }
 
@@ -211,6 +221,7 @@ export class NodeCatalogService {
 	constructor(
 		private readonly loadNodesAndCredentials: LoadNodesAndCredentials,
 		private readonly logger: Logger,
+		private readonly moduleRegistry: ModuleRegistry,
 	) {
 		this.loadNodesAndCredentials.addPostProcessor(async () => await this.refreshNodeTypes());
 	}
@@ -264,20 +275,22 @@ export class NodeCatalogService {
 			this.searchStates.set(stateKey, state);
 		}
 
-		const cacheKey = JSON.stringify([...queries].sort());
+		// Agents can be turned on and off at runtime, so the gated-off set is part of the key.
+		const disabledNodeTypes = this.getModuleDisabledNodeTypes();
+		const cacheKey = JSON.stringify([disabledNodeTypes, [...queries].sort()]);
 		const cached = state.cache.get(cacheKey);
 		if (cached) return cached;
 
 		if (!state.search) {
 			const { searchCodeBuilderNodes } = await import('@n8n/ai-utilities/node-catalog');
 			const nodeTypeParser = this.getNodeTypeParser();
-			state.search = (searchQueries: string[]) =>
-				nodeFilter
-					? searchCodeBuilderNodes(nodeTypeParser, searchQueries, { nodeFilter })
+			state.search = (searchQueries: string[], filter?: NodeFilter) =>
+				filter
+					? searchCodeBuilderNodes(nodeTypeParser, searchQueries, { nodeFilter: filter })
 					: searchCodeBuilderNodes(nodeTypeParser, searchQueries);
 		}
 
-		const result = state.search(queries);
+		const result = state.search(queries, withoutNodeTypes(nodeFilter, disabledNodeTypes));
 		state.cache.set(cacheKey, result);
 		return result;
 	}
@@ -701,6 +714,19 @@ export class NodeCatalogService {
 		});
 	}
 
+	/** Module-gated node types whose module is off. Search does not offer them. */
+	private getModuleDisabledNodeTypes(): string[] {
+		return Object.entries(MODULE_GATED_NODE_TYPES)
+			.filter(([, moduleName]) => !this.isModuleEnabled(moduleName))
+			.map(([nodeType]) => nodeType);
+	}
+
+	private isModuleEnabled(moduleName: string): boolean {
+		if (!this.moduleRegistry.getActiveModules().includes(moduleName)) return false;
+		// An admin can turn agents off in Settings > Agents. The module then reports `enabled: false`.
+		return this.moduleRegistry.settings.get(moduleName)?.enabled !== false;
+	}
+
 	private indexDescriptions(descriptions: INodeTypeDescription[]): void {
 		this.descriptionsById.clear();
 		for (const description of descriptions) {
@@ -717,9 +743,8 @@ export class NodeCatalogService {
 	 * Built-in node IDs resolve through the richer, discriminator-aware on-disk
 	 * type defs; everything else (MCP registry, custom and community nodes) has
 	 * no on-disk artifact and is synthesized from its in-memory description.
-	 * Hidden built-ins (e.g. messageAnAgent, surfaced in search but skipped by
-	 * the build-time generator) are synthesized too — the on-disk lookup would
-	 * report them as not found.
+	 * Hidden (retired) built-ins are skipped by the build-time generator, so
+	 * they are synthesized too — the on-disk lookup would report them as not found.
 	 */
 	private resolvesFromDisk(request: NodeTypeDefinitionRequest): boolean {
 		if (!isBuiltinNodeId(request.nodeId)) return false;

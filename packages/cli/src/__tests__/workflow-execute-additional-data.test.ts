@@ -1,3 +1,4 @@
+import { ModuleRegistry } from '@n8n/backend-common';
 import { EventService, UrlService } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { ExecutionsConfig, GlobalConfig, WorkflowsConfig } from '@n8n/config';
@@ -1665,6 +1666,9 @@ describe('WorkflowExecuteAdditionalData', () => {
 			// Both this and the getBase describe call mockInstance(OwnershipService),
 			// which each Container.set a fresh mock. Re-bind ours so the source resolves it.
 			Container.set(OwnershipService, ownershipService);
+			vi.spyOn(Container.get(ModuleRegistry), 'isActive').mockImplementation(
+				(moduleName) => moduleName === 'agents',
+			);
 			agentWorkflowExecutionService.executeForWorkflow.mockResolvedValue(
 				mock<Awaited<ReturnType<typeof agentWorkflowExecutionService.executeForWorkflow>>>(),
 			);
@@ -2027,6 +2031,22 @@ describe('WorkflowExecuteAdditionalData', () => {
 				undefined,
 				executionSandboxScope,
 			);
+		});
+
+		it('throws a clear error when the agents module is disabled', async () => {
+			vi.spyOn(Container.get(ModuleRegistry), 'isActive').mockReturnValue(false);
+			const additionalData = mock<IWorkflowExecuteAdditionalData>({
+				userId: 'user-1',
+				projectId: 'project-1',
+				workflowId: 'workflow-1',
+			});
+
+			await expect(
+				executeAgent({ agentId: AGENT_ID }, MESSAGE, EXEC_ID, THREAD_ID, additionalData, 'manual'),
+			).rejects.toThrow(
+				'Agents are disabled on this instance. Ask an instance admin to enable the agents module.',
+			);
+			expect(agentWorkflowExecutionService.executeForWorkflow).not.toHaveBeenCalled();
 		});
 
 		it('throws when projectId is missing and no workflowId is available to resolve it', async () => {

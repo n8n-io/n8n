@@ -1,4 +1,4 @@
-import type { Logger } from '@n8n/backend-common';
+import type { Logger, ModuleRegistry } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import type { Mocked } from 'vitest';
@@ -47,6 +47,8 @@ describe('NodeCatalogService', () => {
 	let service: NodeCatalogService;
 	let loadNodesAndCredentials: Mocked<LoadNodesAndCredentials>;
 	let postProcessorCallback: (() => Promise<void>) | undefined;
+	let activeModules: string[];
+	let moduleSettings: Map<string, Record<string, unknown>>;
 
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -78,7 +80,15 @@ describe('NodeCatalogService', () => {
 
 		MockNodeTypeParser.mockClear();
 
-		service = new NodeCatalogService(loadNodesAndCredentials, mockLogger());
+		activeModules = ['data-table', 'agents'];
+		moduleSettings = new Map();
+		// A plain stub: a deep mock would proxy the settings Map and break `Map#get`.
+		const moduleRegistry = {
+			getActiveModules: () => activeModules,
+			settings: moduleSettings,
+		} as unknown as ModuleRegistry;
+
+		service = new NodeCatalogService(loadNodesAndCredentials, mockLogger(), moduleRegistry);
 	});
 
 	describe('getNodeTypeParser', () => {
@@ -251,6 +261,72 @@ describe('NodeCatalogService', () => {
 
 			// Two distinct search states, each invoked once.
 			expect(mockSearchCodeBuilderNodes).toHaveBeenCalledTimes(2);
+		});
+
+		describe('module-gated node types', () => {
+			const searchFilter = (): ((nodeId: string) => boolean) => {
+				const options = mockSearchCodeBuilderNodes.mock.lastCall?.[2] as
+					| { nodeFilter: (nodeId: string) => boolean }
+					| undefined;
+				if (!options) throw new Error('search ran without a node filter');
+				return options.nodeFilter;
+			};
+
+			test('does not filter search while every gating module is enabled', async () => {
+				await service.initialize();
+
+				await service.searchNodes(['agent']);
+
+				expect(mockSearchCodeBuilderNodes).toHaveBeenCalledWith(expect.anything(), ['agent']);
+			});
+
+			test('leaves out the Data table nodes while the data-table module is inactive', async () => {
+				activeModules = ['agents'];
+				await service.initialize();
+
+				await service.searchNodes(['table']);
+
+				const filter = searchFilter();
+				expect(filter('n8n-nodes-base.dataTable')).toBe(false);
+				expect(filter('n8n-nodes-base.dataTableTool')).toBe(false);
+				expect(filter('n8n-nodes-base.messageAnAgent')).toBe(true);
+				expect(filter('n8n-nodes-base.set')).toBe(true);
+			});
+
+			test('leaves out the Message an Agent nodes while an admin has turned agents off', async () => {
+				moduleSettings.set('agents', { enabled: false });
+				await service.initialize();
+
+				await service.searchNodes(['agent']);
+
+				const filter = searchFilter();
+				expect(filter('n8n-nodes-base.messageAnAgent')).toBe(false);
+				expect(filter('n8n-nodes-base.messageAnAgentTool')).toBe(false);
+				expect(filter('n8n-nodes-base.dataTable')).toBe(true);
+			});
+
+			test('keeps the caller filter when it narrows the gated search', async () => {
+				activeModules = [];
+				await service.initialize();
+
+				await service.searchNodes(['set'], { nodeFilter: (id) => id !== 'n8n-nodes-base.set' });
+
+				const filter = searchFilter();
+				expect(filter('n8n-nodes-base.set')).toBe(false);
+				expect(filter('n8n-nodes-base.webhook')).toBe(true);
+				expect(filter('n8n-nodes-base.dataTable')).toBe(false);
+			});
+
+			test('searches again after agents are turned off at runtime', async () => {
+				await service.initialize();
+
+				await service.searchNodes(['agent']);
+				moduleSettings.set('agents', { enabled: false });
+				await service.searchNodes(['agent']);
+
+				expect(mockSearchCodeBuilderNodes).toHaveBeenCalledTimes(2);
+				expect(searchFilter()('n8n-nodes-base.messageAnAgent')).toBe(false);
+			});
 		});
 	});
 
