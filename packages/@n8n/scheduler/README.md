@@ -401,7 +401,7 @@ The design leans on a few ideas working together.
 - **Lease.** A claim comes with an expiry (a *lease*). While the lease is valid the
   run belongs to that server. If the server dies, the lease lapses and the recovery
   pass can safely take the run back. Without leases a crashed server would strand
-  its runs forever. While a handler runs, a heartbeat renews its lease every third
+  its runs forever. While a handler runs, a heartbeat renews its lease every quarter
   of the lease, but never more often than every five seconds, so a long run keeps
   its claim while its renewals succeed. A lease of five seconds or less
   expires before its first renewal, and n8n warns about it at startup.
