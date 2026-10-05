@@ -1825,6 +1825,9 @@ importers:
       '@n8n/backend-common':
         specifier: workspace:*
         version: link:../backend-common
+      '@n8n/backend-network':
+        specifier: workspace:*
+        version: link:../backend-network
       '@n8n/config':
         specifier: workspace:*
         version: link:../config
@@ -1907,6 +1910,9 @@ importers:
       vitest-mock-extended:
         specifier: 'catalog:'
         version: 3.1.0(typescript@7.0.2)(vitest@5.0.1)
+      zod:
+        specifier: 3.25.76
+        version: 3.25.76
 
   packages/@n8n/backend-test-utils:
     dependencies:

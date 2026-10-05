@@ -25,6 +25,7 @@
   "dependencies": {
     "@n8n/api-types": "workspace:*",
     "@n8n/backend-common": "workspace:*",
+    "@n8n/backend-network": "workspace:*",
     "@n8n/config": "workspace:*",
     "@n8n/constants": "workspace:*",
     "@n8n/decorators": "workspace:*",
@@ -37,6 +38,9 @@
     "express-openapi-validator": "5.5.3",
     "ioredis": "5.3.2",
     "n8n-workflow": "workspace:*"
+  },
+  "peerDependencies": {
+    "zod": "catalog:"
   },
   "devDependencies": {
     "@n8n/backend-test-utils": "workspace:*",
@@ -53,7 +57,8 @@
     "oxlint-tsgolint": "catalog:",
     "typescript": "catalog:typescript",
     "vitest": "catalog:",
-    "vitest-mock-extended": "catalog:"
+    "vitest-mock-extended": "catalog:",
+    "zod": "catalog:"
   },
   "license": "LicenseRef-n8n-sustainable-use"
 }
