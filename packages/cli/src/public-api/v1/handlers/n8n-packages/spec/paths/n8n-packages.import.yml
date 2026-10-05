@@ -386,7 +386,9 @@ post:
         Import blocked by at least one conflict among the issues — a workflow
         source-id conflict, a folder conflict (id under a different parent, id
         owned by another project, or a `fail`-policy match), a tag conflict
-        (rename drift or name collision), a variable whose bundled value
+        (rename drift or name collision), a data table conflict (id owned by
+        another project, or a name that another table in the project has), a
+        variable whose bundled value
         differs from the resolved target's under
         `variableConflictPolicy=fail`, or one row two projects of a package
         would overwrite with different values.
