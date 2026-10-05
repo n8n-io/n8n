@@ -19,6 +19,7 @@ import {
 	type ICredentialType,
 	type IExecuteFunctions,
 	type INodeTypeDescription,
+	type IVersionedNodeType,
 	type KnownNodesAndCredentials,
 } from 'n8n-workflow';
 import { readFileSync } from 'node:fs';
@@ -315,10 +316,8 @@ describe('ContractNodeLoader', () => {
 			continueOnFail: () => false,
 			setMetadata: () => {},
 		} as unknown as IExecuteFunctions;
-		const result = await instance
-			.getNode('@n8n/nodes-core.noOpPass')
-			.type.getNodeType(1)
-			.execute?.call(context);
+		const noOp = instance.getNode('@n8n/nodes-core.noOpPass').type as IVersionedNodeType;
+		const result = await noOp.getNodeType(1).execute?.call(context);
 		expect(result).toEqual([[{ json: { a: 1 }, pairedItem: { item: 0 } }]]);
 	});
 
