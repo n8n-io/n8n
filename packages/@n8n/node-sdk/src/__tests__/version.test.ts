@@ -472,6 +472,34 @@ describe('checkPublish', () => {
 		});
 	});
 
+	it('needs a major for a ui change that moves the stored parameters', async () => {
+		await writeShout('text.toUpperCase()');
+		const input =
+			"{ text: str(), note: str().optional(), body: t.variant('kind', { a: { a: str() } }).optional() }";
+		const prev = (await freeze({ input })).manifest;
+		const next = await freeze({ input }, olderBundleOf(prev));
+		const withUi = (ui: VersionManifest['ui']): FrozenAction => ({
+			...next,
+			manifest: { ...next.manifest, ui },
+		});
+
+		await expect(
+			checkPublish(prev, withUi({ advanced: ['note'] }), fixturesOf('HELLO!')),
+		).rejects.toThrow(
+			'demo.echo@1.0.1 is a patch bump from 1.0.0, but the change is major (the form moves the stored parameters of note)',
+		);
+		await expect(
+			checkPublish(prev, withUi({ fields: { body: { widget: 'json' } } }), fixturesOf('HELLO!')),
+		).rejects.toThrow('the form moves the stored parameters of body');
+		await expect(
+			checkPublish(
+				prev,
+				withUi({ order: ['note'], fields: { note: { placeholder: 'x' } } }),
+				fixturesOf('HELLO!'),
+			),
+		).resolves.toMatchObject({ kind: 'patch' });
+	});
+
 	it('refuses an older version and failing fixtures', async () => {
 		const prev = await v1();
 		await expect(checkPublish(prev, await freeze(), fixturesOf('HELLO!'))).rejects.toThrow(

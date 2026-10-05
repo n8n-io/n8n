@@ -95,7 +95,7 @@ describe('node contracts in their runtimes', () => {
 			parameters: {
 				method: 'POST',
 				url: `${state.url}/echo`,
-				body: '{"kind":"json","json":{"name":"Ada"}}',
+				body: { kind: 'json', json: { name: 'Ada' } },
 			},
 		};
 		const workflow = await createWorkflow(

@@ -4,9 +4,15 @@ import { UnexpectedError, UserError } from 'n8n-workflow';
 
 import type { AnyCredentialType } from './credentials';
 import { replyContractOf, toContract, type Action, type Trigger } from './define';
-import { credentialManifestOf, type CredentialManifest, type NativeManifest } from './manifest';
+import {
+	actionUiSchema,
+	credentialManifestOf,
+	type CredentialManifest,
+	type NativeManifest,
+} from './manifest';
 import { evaluateBundle } from './runtime';
 import { manifestTextOf, type StoreRecord } from './store';
+import { matches } from './validate';
 import {
 	contractHash,
 	manifestKindOf,
@@ -249,6 +255,10 @@ export async function freezeAction(
 		);
 	}
 	const contract = toContract(action);
+	const ui = 'ui' in action ? action.ui : undefined;
+	if (ui !== undefined && !matches(actionUiSchema, ui)) {
+		throw new UserError(`${exportName} in ${entryFile} has a ui block that is not valid`);
+	}
 	const credentials = credentialPinsOf(action);
 	const bundleHash = sha256(bundle);
 	const semver = await semverOf(
@@ -266,6 +276,7 @@ export async function freezeAction(
 		contractHash: contractHash(contract),
 		bundleHash,
 		contract,
+		...(ui ? { ui } : {}),
 	};
 	return { manifest, bundle, action };
 }

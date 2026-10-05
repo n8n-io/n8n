@@ -13,6 +13,11 @@ export { isToolContract, resourceLookupsOf, type ResourceLookupCall } from '../d
 export { credentialTypeOfManifest, toCredentialType } from '../credentials';
 export { setCodeLanguages } from '../host-imports';
 export {
+	nodeParametersOf,
+	type ActionUiDocument,
+	type FieldUiDocument,
+} from '../properties';
+export {
 	AUTHENTICATION,
 	nodeDescriptionOf,
 	nodeNameOf,

@@ -45,7 +45,6 @@ import type {
 	NodeConnectionType,
 	IWorkflowExecuteAdditionalData,
 	DataTableProxyProvider,
-	NodeParameterValue,
 	Workflow,
 } from 'n8n-workflow';
 
@@ -135,14 +134,9 @@ export interface SubnodeUnderTest extends Omit<NodeUnderTest, 'subnodes'> {
 	readonly connection: NodeConnectionType;
 }
 
-const parameterOf = (value: unknown): NodeParameterValue =>
-	typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean'
-		? value
-		: JSON.stringify(value);
-
 /**
- * A contract action as a workflow node. Complex fields hold JSON text, as the editor stores a
- * `json` parameter.
+ * A contract action as a workflow node. Complex fields hold the contract value as an object, as
+ * the workflow SDK writes it. A variant must: n8n turns text under a collection into `{}`.
  */
 export const actionNode = (
 	action: Action,
@@ -154,9 +148,7 @@ export const actionNode = (
 		nodeType: new NodeType(),
 		type: nodeTypeOf(action),
 		typeVersion: action.version,
-		parameters: Object.fromEntries(
-			Object.entries(parameters).map(([name, value]) => [name, parameterOf(value)]),
-		),
+		parameters: { ...parameters } as INodeParameters,
 		...(credential ? { credential } : {}),
 	};
 };

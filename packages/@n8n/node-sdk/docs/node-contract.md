@@ -152,12 +152,33 @@ host without a registry, import a copy of the registry folder.
 - The contract hash covers only `contract`. The manifest fields `kind`, `nodeContract`, `sdk`
   and `credentials` are outside it.
 - A manifest has no node description. The host makes the description of each version from
-  `contract` (`nodeDescriptionOf`), so the editor shows only what the contract types. The
-  contract gives the labels (`nodeDisplayName`, `action`, `summary`, field `title` and
-  `x-n8n-hint`), `credentialOptional` (the user can pick no credential) and, for a webhook
-  trigger, `endpoint` (default `POST` on `webhook`; the contract keeps only values that differ
-  from the default). Each Node Contract version to 2.6.0 has
-  the same projection. A later version that changes it adds a branch on `nodeContract`.
+  `contract` and the optional `ui` block (`nodeDescriptionOf`), so the editor shows only what
+  the contract types. The contract gives the labels (`nodeDisplayName`, `action`, `summary`,
+  field `title` and `x-n8n-hint`), `credentialOptional` (the user can pick no credential) and,
+  for a webhook trigger, `endpoint` (default `POST` on `webhook`; the contract keeps only
+  values that differ from the default). All versions have the same projection.
+- The form: the label of a field is its `title` (`.title()`). An options field shows the
+  labels of `x-n8n-options` (`.options()`). The first of `examples` is the placeholder.
+  `minimum` and `maximum` limit a number. A variant is a collection with a tag dropdown (the
+  branch `title` is the label, `t.variant(tag, branches, labels)`) and the fields of each
+  branch, which show only for their tag. The collection holds the contract value as it is.
+  `fields.<variant>.widget: 'json'` keeps one JSON field for a variant instead.
+- The limit of a variant collection: n8n stores it as a node-parameter collection. n8n core
+  turns a string under a collection into `{}`. So JSON text or one whole-field expression
+  (`={{ … }}`) for a variant is not kept. An expression inside a branch field works. The form
+  of an agent tool keeps a variant as JSON.
+- The `ui` block (`ui` of an action, `manifest.ui`) is for the n8n form only: `order`,
+  `advanced` and `fields` (a placeholder and a widget per field, `field.branchField` in a
+  variant). Agents and MCP do not read it, and it is outside the contract hash. An `advanced`
+  field goes into one "Options" collection, so its n8n parameter is `options.<field>`
+  (`nodeParametersOf` writes a contract value so). n8n stores the parameters in the form of the
+  newest version of a major. So a change that moves where or how a field is stored (into or out
+  of `advanced`, a variant to or from the `json` widget) is a major. A widget is an entry of
+  the `Widgets` interface: the value type it edits and its config. The host shows an unknown
+  widget as the default field. The form of an agent tool keeps each field at the top and a variant as JSON,
+  because the model fills a whole field with one `$fromAI()` expression.
+- `missingTitlesOf` lists the form fields without a `title`. `checkAction` and the publish
+  gate refuse them only when `REQUIRE_FIELD_TITLES` is true.
 - A credential major changes when stored data or a saved workflow can break: a new required
   field, a new host, a new scheme. A compat credential type has no manifest and no pin.
 - An action major changes when it adds a permission: a scope, an egress host, an import, a
@@ -189,7 +210,7 @@ The publish gate (`checkPublish`) refuses a smaller bump. A patch must keep the 
 
 | Change | Kind |
 |---|---|
-| Prose only (`title`, `description`, `x-n8n-hint`, `examples`, summary, `nodeDisplayName`) | patch |
+| Prose only (`title`, `description`, `x-n8n-hint`, `examples`, `x-n8n-options`, summary, `nodeDisplayName`), or the `ui` block (`order`, placeholders, a widget that keeps the stored form) | patch |
 | An optional input, or a required input with a default | minor |
 | A required output field becomes typical (`x-n8n-claim: 'typical'`, not in `required`) | minor |
 | An optional or typical output field becomes typical or required | minor |
@@ -197,6 +218,7 @@ The publish gate (`checkPublish`) refuses a smaller bump. A patch must keep the 
 | Other `loadOptions` calls in `x-n8n-resource`, with the same `method` and `input` | minor |
 | An added key pattern (`patternProperties`, e.g. `t.indexedBinaries()`); its first binary is binary data access, a major | minor |
 | A new required input, or a narrower input | major |
+| A `ui` change that moves a stored parameter: a field into or out of `advanced`, a variant to or from the `json` widget | major |
 | A removed output field, a removed key pattern, or an output field that becomes optional (from required or typical) | major |
 | An added or removed `x-n8n-resource`, or another `method` or `input` in it | major |
 | A credential that becomes optional (`credentialOptional`) | minor |

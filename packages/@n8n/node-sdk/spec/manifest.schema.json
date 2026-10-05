@@ -321,6 +321,44 @@
 						"output"
 					],
 					"additionalProperties": false
+				},
+				"ui": {
+					"type": "object",
+					"properties": {
+						"order": {
+							"type": "array",
+							"items": {
+								"type": "string"
+							}
+						},
+						"advanced": {
+							"type": "array",
+							"items": {
+								"type": "string"
+							}
+						},
+						"fields": {
+							"type": "object",
+							"additionalProperties": {
+								"type": "object",
+								"properties": {
+									"widget": {
+										"type": "string"
+									},
+									"config": {
+										"type": "object",
+										"additionalProperties": {}
+									},
+									"placeholder": {
+										"type": "string"
+									}
+								},
+								"additionalProperties": false
+							}
+						}
+					},
+					"additionalProperties": false,
+					"description": "The layout and widgets of the n8n form. Not in contractHash; agents and MCP do not read it."
 				}
 			},
 			"required": [

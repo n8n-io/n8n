@@ -529,7 +529,7 @@ describe('toNodeType', () => {
 		expect(description.credentials).toEqual([{ name: 'todoApi', required: true }]);
 		expect(description.properties.map((p) => [p.name, p.type, p.required, p.default])).toEqual([
 			['project', 'string', true, ''],
-			['paging', 'json', true, '{}'],
+			['paging', 'collection', true, { mode: 'all' }],
 			['status', 'options', false, ''],
 		]);
 	});

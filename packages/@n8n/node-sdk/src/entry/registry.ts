@@ -2,6 +2,8 @@ export {
 	actionFileOf,
 	checkAction,
 	lintContract,
+	missingTitlesOf,
+	REQUIRE_FIELD_TITLES,
 	replyContractOf,
 	toContract,
 	type ContractDocument,

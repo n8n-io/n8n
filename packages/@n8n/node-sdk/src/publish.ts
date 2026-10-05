@@ -2,7 +2,14 @@ import { Readable } from 'node:stream';
 import { UnexpectedError, UserError, type INode, type INodeExecutionData } from 'n8n-workflow';
 
 import { isSecretField, type AnyCredentialType } from './credentials';
-import type { Action, DataTable, DataTables, Trigger } from './define';
+import {
+	missingTitlesOf,
+	REQUIRE_FIELD_TITLES,
+	type Action,
+	type DataTable,
+	type DataTables,
+	type Trigger,
+} from './define';
 import {
 	freezeAction,
 	freezeCredential,
@@ -25,7 +32,9 @@ import {
 	type Executor,
 	type ExecutorHost,
 } from './runtime';
+import { parameterPathOf, toProperty } from './properties';
 import { providedKindOf, providerInputsOf, replayCapability, type ProviderKind } from './providers';
+import { shapeOf } from './schema';
 import type { CredentialManifest, NativeManifest } from './manifest';
 import {
 	addStatusToStore,
@@ -371,10 +380,33 @@ function checkContractBump(previous: ContractVersion, manifest: ContractVersion)
 	return { diff, bump };
 }
 
+type FormVersion = Pick<VersionManifest, 'contract' | 'ui'>;
+
+/**
+ * The input fields that the next form stores in another place or shape: a parameter path, or a
+ * collection against one value. The editor form of a major comes from its newest version, so a
+ * stored workflow loses the value of such a field.
+ */
+function movedParametersOf(previous: FormVersion, next: FormVersion): string[] {
+	const storageOf = ({ contract: { input }, ui }: FormVersion) => {
+		const pathOf = parameterPathOf(input, ui);
+		return new Map(
+			Object.entries(shapeOf(input)).map(([name, schema]) => [
+				name,
+				`${pathOf(name)} ${toProperty(name, schema, ui?.fields).type === 'collection'}`,
+			]),
+		);
+	};
+	const after = storageOf(next);
+	return [...storageOf(previous)]
+		.filter(([name, stored]) => after.has(name) && after.get(name) !== stored)
+		.map(([name]) => name);
+}
+
 /**
  * The publish gate. It refuses a bump lower than the computed change, a patch whose contract
- * hash moved, a major that breaks old input without `migrate` and a fixture pair, and
- * fixtures that fail. `previous` is the newest published version below the new one.
+ * hash moved, a minor or patch whose form moves stored parameters, a major that breaks old input
+ * without `migrate` and a fixture pair, and fixtures that fail. `previous` is the newest published version below the new one.
  */
 export async function checkPublish(
 	previous: VersionManifest | undefined,
@@ -388,6 +420,11 @@ export async function checkPublish(
 		throw new UserError(`${at} needs an execution fixture`);
 	}
 	const checked = previous && checkContractBump(previous, manifest);
+	const moved = previous ? movedParametersOf(previous, manifest) : [];
+	if (previous && checked && moved.length > 0) {
+		const why = `the form moves the stored parameters of ${moved.join(', ')}`;
+		checkBump(at, previous.semver, checked.bump, 'major', why);
+	}
 	if (previous && checked?.bump === 'major' && checked.diff.breaksInput) {
 		const fromMajor = previous.contract.version;
 		if (!action.migrate) {
@@ -397,6 +434,8 @@ export async function checkPublish(
 			throw new UserError(`${at} needs a migration fixture from major ${fromMajor}`);
 		}
 	}
+	const untitled = REQUIRE_FIELD_TITLES ? missingTitlesOf(manifest.contract) : [];
+	if (untitled.length > 0) throw new UserError(`${at} needs field titles: ${untitled.join('; ')}`);
 	const issues = await replayFixtures(frozen, fixtures);
 	if (issues.length > 0) throw new UserError(`${at} fails its fixtures: ${issues.join('; ')}`);
 	return checked?.diff;

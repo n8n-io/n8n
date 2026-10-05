@@ -10,6 +10,7 @@ import {
 	type ContractDocument,
 } from './define';
 import { permissionsOf, type ContractPermissions } from './egress';
+import type { ActionUiDocument } from './properties';
 import { nativeManifestSchema, versionManifestSchema, type NativeManifest } from './manifest';
 import { hasPageValue, type JsonSchema } from './schema';
 import { providedOf } from './providers';
@@ -141,6 +142,12 @@ export interface VersionManifest {
 	readonly bundleHash: string;
 	/** The contract document of the version. The host projects the node description from it. */
 	readonly contract: ContractDocument;
+	/**
+	 * The layout and widgets of the n8n form. It is not in `contractHash`. A change is a patch, but
+	 * a change that moves a stored parameter is a major (`checkPublish`). Agents and MCP do not
+	 * read it.
+	 */
+	readonly ui?: ActionUiDocument;
 }
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -162,7 +169,7 @@ export const canonicalJson = (value: unknown) => JSON.stringify(sortKeys(value))
 
 export const sha256 = (text: string) => createHash('sha256').update(text).digest('hex');
 
-const PROSE_KEYWORDS = new Set(['title', 'description', 'x-n8n-hint', 'examples']);
+const PROSE_KEYWORDS = new Set(['title', 'description', 'x-n8n-hint', 'examples', 'x-n8n-options']);
 const SCHEMA_MAPS = new Set(['properties', 'patternProperties', 'x-n8n-value-types']);
 
 /** A schema without its prose keywords. Property names stay, also `description`. */
@@ -290,7 +297,7 @@ export function parseManifest(text: string): VersionManifest {
 	) {
 		throw new UnexpectedError('The version manifest is not valid or its contract changed');
 	}
-	const { kind, id, semver, nodeContract, sdk, credentials, bundleHash, contract } = value;
+	const { kind, id, semver, nodeContract, sdk, credentials, bundleHash, contract, ui } = value;
 	// Fields that this host does not know stay out.
 	return {
 		kind,
@@ -302,6 +309,7 @@ export function parseManifest(text: string): VersionManifest {
 		contractHash: value.contractHash,
 		bundleHash,
 		contract,
+		...(ui ? { ui } : {}),
 	};
 }
 

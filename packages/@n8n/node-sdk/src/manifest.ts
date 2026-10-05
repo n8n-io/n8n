@@ -15,6 +15,7 @@ import type {
 	Notice,
 } from './credentials';
 import type { ActionRuntime, ContractDocument, NativeNode } from './define';
+import type { ActionUiDocument, FieldUiDocument } from './properties';
 import { Schema, t, type AnySchema, type Infer, type JsonSchema } from './schema';
 import { matches } from './validate';
 import type { StoreDeprecation, StoreRecord, StoreRevoke, StoreYank } from './store';
@@ -140,6 +141,29 @@ const contract = typed<ContractDocument>()(
 	}),
 );
 
+/** The `ui` block of a manifest. */
+export const actionUiSchema = typed<ActionUiDocument>()(
+	t
+		.obj({
+			order: names().optional(),
+			advanced: names().optional(),
+			fields: t
+				.record(
+					typed<FieldUiDocument>()(
+						t.obj({
+							widget: t.str().optional(),
+							config: t.record(t.jsonValue()).optional(),
+							placeholder: t.str().optional(),
+						}),
+					),
+				)
+				.optional(),
+		})
+		.describe(
+			'The layout and widgets of the n8n form. Not in contractHash; agents and MCP do not read it.',
+		),
+);
+
 const versionFields = {
 	id: t.str(),
 	semver: semver(),
@@ -161,6 +185,7 @@ export const versionManifestSchema = typed<VersionManifest>()(
 				.with(SINCE_2_5)
 				.optional(),
 			...versionFields,
+			ui: actionUiSchema.optional(),
 		})
 		.with({ title: 'Action, trigger or provider manifest', ...OPEN }),
 );

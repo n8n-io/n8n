@@ -45,8 +45,8 @@ import {
 	reportRedirectRefusal,
 	reportRefusal,
 } from './egress';
-import type { CredentialManifest } from './manifest';
-import { parameterValue, toProperty } from './properties';
+import { actionUiSchema, type CredentialManifest } from './manifest';
+import { formPropertiesOf, inputReaderOf, parameterPathOf, toolUiOf } from './properties';
 import {
 	bytesOf,
 	payloadOf,
@@ -563,8 +563,10 @@ export interface ExecutorHost {
 	/** The workflow node that runs the action. */
 	readonly node: INode;
 	/**
-	 * The parameter value, as `getNodeParameter` returns it. `raw` keeps its expressions
-	 * unresolved, for a field with a `t.pageValue()` that `run()` reads for each page.
+	 * The parameter value of the input field `name`, as `getNodeParameter` returns it. An n8n host
+	 * reads it at the parameter path of the form, e.g. `options.<name>` for an advanced field.
+	 * `raw` keeps its expressions unresolved, for a field with a `t.pageValue()` that `run()`
+	 * reads for each page.
 	 */
 	parameter(name: string, itemIndex: number, raw?: boolean): unknown;
 	/** Sends a request with the credential of `credentialType` applied, as n8n does. */
@@ -701,11 +703,26 @@ const hostBaseOf = (context: NodeContext) => ({
 // n8n gives sub-nodes the root item 0, as the legacy chains read their model.
 const SUPPLY_ITEM = 0;
 
-const hostOf = (context: IExecuteFunctions): ExecutorHost => ({
+/**
+ * n8n does not fill the defaults of collection options, so an unset advanced field has no
+ * parameter. The runtime reads '' as unset. A top-level field always has its default.
+ */
+const unsetValueOf = (name: string, path: string) => (path === name ? undefined : '');
+
+/** `pathOf` gives the n8n parameter of an input field, see `parameterPathOf`. */
+const hostOf = (
+	context: IExecuteFunctions,
+	pathOf: (name: string) => string = (name) => name,
+): ExecutorHost => ({
 	...hostBaseOf(context),
 	items: context.getInputData(),
 	parameter: (name, itemIndex, raw) =>
-		context.getNodeParameter(name, itemIndex, undefined, raw ? { rawExpressions: true } : {}),
+		context.getNodeParameter(
+			pathOf(name),
+			itemIndex,
+			unsetValueOf(name, pathOf(name)),
+			raw ? { rawExpressions: true } : {},
+		),
 	continueOnFail: () => context.continueOnFail(),
 	inputItems: (index) => {
 		try {
@@ -727,11 +744,20 @@ const hostOf = (context: IExecuteFunctions): ExecutorHost => ({
  * A sub-node runs as one item. Its parameters resolve against item `itemIndex` of the root
  * node, and a failure always reaches the root node.
  */
-const supplyHostOf = (context: ISupplyDataFunctions, itemIndex: number): ExecutorHost => ({
+const supplyHostOf = (
+	context: ISupplyDataFunctions,
+	itemIndex: number,
+	pathOf: (name: string) => string = (name) => name,
+): ExecutorHost => ({
 	...hostBaseOf(context),
 	items: [{ json: {} }],
 	parameter: (name, _itemIndex, raw) =>
-		context.getNodeParameter(name, itemIndex, undefined, raw ? { rawExpressions: true } : {}),
+		context.getNodeParameter(
+			pathOf(name),
+			itemIndex,
+			unsetValueOf(name, pathOf(name)),
+			raw ? { rawExpressions: true } : {},
+		),
 	continueOnFail: () => false,
 	supplied: async (kind) =>
 		await context.getInputConnectionData(PROVIDER_CONNECTIONS[kind], itemIndex),
@@ -1007,11 +1033,10 @@ export function executorOf<S extends Shape, O extends AnySchema>(
 	const providerFields = providerInputsOf(action.input);
 	const providerNames = new Set(providerFields.map(({ name }) => name));
 	const inputKeys = Object.keys(action.input).filter((key) => !providerNames.has(key));
-	const jsonKeys = new Set(
-		Object.entries(action.input)
-			.filter(([name, schema]) => toProperty(name, schema).type === 'json')
-			.map(([name]) => name),
+	const readers = new Map(
+		Object.entries(action.input).map(([name, schema]) => [name, inputReaderOf(schema)]),
 	);
+	const readerOf = (key: string) => readers.get(key) ?? ((value: unknown) => value);
 	const rawKeys = new Set(
 		Object.entries(action.input)
 			.filter(([, schema]) => hasPageValue(schema.json))
@@ -1396,10 +1421,7 @@ export function executorOf<S extends Shape, O extends AnySchema>(
 				inputKeys
 					.map(
 						(key) =>
-							[
-								key,
-								parameterValue(host.parameter(key, itemIndex, rawKeys.has(key)), jsonKeys.has(key)),
-							] as const,
+							[key, readerOf(key)(host.parameter(key, itemIndex, rawKeys.has(key)))] as const,
 					)
 					.filter(([, value]) => value !== undefined && value !== ''),
 			);
@@ -1733,7 +1755,7 @@ export function executorOf<S extends Shape, O extends AnySchema>(
 			const { outputs } = action;
 			if (outputs === undefined || !('each' in outputs)) return outputs;
 			try {
-				const entries = parameterValue(host.parameter(outputs.each, 0), jsonKeys.has(outputs.each));
+				const entries = readerOf(outputs.each)(host.parameter(outputs.each, 0));
 				return outputNamesOf(outputs, { [outputs.each]: entries });
 			} catch (error) {
 				if (!host.continueOnFail()) throw error;
@@ -2021,7 +2043,7 @@ function webhookOf({
 
 /**
  * The n8n node description of one version of an action, trigger or provider. The host projects it
- * from the contract, so the editor shows only what the contract types. Every Node Contract version
+ * from the contract and the `ui` block, so the editor shows only what the contract types. Every Node Contract version
  * up to this host's has the same projection. A later version that changes the description adds a
  * branch on `nodeContract`.
  *
@@ -2029,9 +2051,18 @@ function webhookOf({
  */
 export function nodeDescriptionOf({
 	contract,
-}: Pick<VersionManifest, 'contract' | 'nodeContract'>): INodeTypeDescription {
+	ui,
+}: Pick<VersionManifest, 'contract' | 'nodeContract' | 'ui'>): INodeTypeDescription {
 	const input = shapeOf(contract.input);
 	const { selector, credentials } = credentialDescriptionOf(contract);
+	const formInput: JsonSchema = {
+		...contract.input,
+		properties: Object.fromEntries(
+			Object.entries(contract.input.properties ?? {}).filter(
+				([, schema]) => providerInputOf(schema) === undefined,
+			),
+		),
+	};
 	const base = {
 		displayName: `${contract.nodeDisplayName}: ${contract.action}`,
 		name: nodeNameOf(contract.id),
@@ -2039,12 +2070,7 @@ export function nodeDescriptionOf({
 		description: contract.summary,
 		defaults: { name: contract.action },
 		credentials,
-		properties: [
-			...selector,
-			...Object.entries(input)
-				.filter(([, schema]) => providerInputOf(schema.json) === undefined)
-				.map(([name, schema]) => toProperty(name, schema)),
-		],
+		properties: [...selector, ...formPropertiesOf(formInput, ui)],
 	};
 	const { trigger } = contract;
 	if (trigger === undefined) {
@@ -2067,19 +2093,23 @@ export function toNodeType<S extends Shape, O extends AnySchema>(
 	action: Action<S, O>,
 ): new () => INodeType {
 	if (action.native) throw nativeRunError(action);
+	const ui = matches(actionUiSchema, action.ui) ? action.ui : undefined;
 	const description = nodeDescriptionOf({
 		contract: toContract(action),
 		nodeContract: NODE_CONTRACT_VERSION,
+		ui,
 	});
 
 	const run = executorOf(action);
+	const pathOf = parameterPathOf(action.inputSchema, ui);
 	const kind = providedKindOf(action.output.json);
 	if (kind) {
 		return class implements INodeType {
 			description = description;
 
 			async supplyData(this: ISupplyDataFunctions, itemIndex: number) {
-				return supplyDataOf(action.id, kind, await run(supplyHostOf(this, itemIndex)), this);
+				const outputs = await run(supplyHostOf(this, itemIndex, pathOf));
+				return supplyDataOf(action.id, kind, outputs, this);
 			}
 		};
 	}
@@ -2087,7 +2117,7 @@ export function toNodeType<S extends Shape, O extends AnySchema>(
 		description = description;
 
 		async execute(this: IExecuteFunctions) {
-			return await run(hostOf(this));
+			return await run(hostOf(this, pathOf));
 		}
 	};
 }
@@ -2321,16 +2351,20 @@ async function versionExecutorOf(context: NodeContext, head: FrozenVersion) {
 	return { executor, manifest: frozen.manifest, cached };
 }
 
+/** The n8n parameter paths follow the form of `head`, which the editor shows and stores. */
+const headPathOf = ({ manifest }: FrozenVersion) =>
+	parameterPathOf(manifest.contract.input, manifest.ui);
+
 async function executeVersion(context: IExecuteFunctions, head: FrozenVersion) {
 	const slot = runProfileListener();
 	if (!slot) {
 		const { executor, manifest } = await versionExecutorOf(context, head);
-		const outputs = await executor(hostOf(context));
+		const outputs = await executor(hostOf(context, headPathOf(head)));
 		recordVersion(context, manifest);
 		return outputs;
 	}
 	const { listener, payloads } = slot;
-	const host = hostOf(context);
+	const host = hostOf(context, headPathOf(head));
 	const { recorder, profile } = runRecorder(host.items.length, payloads);
 	const loadStart = recorder.now();
 	const { executor, manifest, cached } = await versionExecutorOf(context, head);
@@ -2375,7 +2409,7 @@ async function supplyVersion(
 	itemIndex: number,
 ) {
 	const { executor, manifest } = await versionExecutorOf(context, head);
-	const outputs = await executor(supplyHostOf(context, itemIndex));
+	const outputs = await executor(supplyHostOf(context, itemIndex, headPathOf(head)));
 	return supplyDataOf(manifest.id, kind, outputs, context);
 }
 
@@ -2537,7 +2571,12 @@ export const toVersionedToolType = (
 	versionedTypeOf(
 		versions,
 		(frozen): INodeType => ({
-			description: describe(nodeDescriptionOf(frozen.manifest)),
+			description: describe(
+				nodeDescriptionOf({
+					...frozen.manifest,
+					ui: toolUiOf(frozen.manifest.contract.input, frozen.manifest.ui),
+				}),
+			),
 			async supplyData(this: ISupplyDataFunctions, itemIndex: number) {
 				return { response: recordedSupply(toolOf(this, frozen, itemIndex), 'tool', this) };
 			},

@@ -62,6 +62,7 @@ describe('the root of @n8n/node-sdk', () => {
 			'ActionOutputs',
 			'ActionPath',
 			'ActionSpec',
+			'ActionUi',
 			'AnySchema',
 			'BatchContext',
 			'Binaries',
@@ -96,6 +97,7 @@ describe('the root of @n8n/node-sdk', () => {
 			'Embeddings',
 			'Emit',
 			'EncodedPath',
+			'FieldUi',
 			'HostImport',
 			'HostImports',
 			'Http',
@@ -161,6 +163,7 @@ describe('the root of @n8n/node-sdk', () => {
 			'WebhookConfig',
 			'WebhookEndpoint',
 			'WebhookRequest',
+			'Widgets',
 		]);
 	});
 

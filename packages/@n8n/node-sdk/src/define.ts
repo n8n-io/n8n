@@ -32,6 +32,7 @@ import type {
 	WebhookEndpoint,
 	WebhookRequest,
 } from './triggers';
+import type { ActionUi } from './properties';
 import { exampleOf, firstMatchOf, outputBinaryKeys, readAs, validate } from './validate';
 
 /**
@@ -492,11 +493,13 @@ export async function* pages<P, T>(
  * ```
  */
 export const paging = t
-	.variant('mode', {
-		all: {},
-		limit: { max: t.int().with({ minimum: 1 }) },
-	})
-	.default({ mode: 'limit', max: 50 });
+	.variant(
+		'mode',
+		{ all: {}, limit: { max: t.int().with({ minimum: 1 }).title('Max items') } },
+		{ all: 'All items', limit: 'Up to a limit' },
+	)
+	.default({ mode: 'limit', max: 50 })
+	.title('Items');
 
 /** The item limit of `paging` for `pages`: undefined for all items. @see {@link paging} */
 export const limitOf = (value: Infer<typeof paging>) =>
@@ -1286,6 +1289,11 @@ interface ActionSpecBase<
 	readonly imports?: Im;
 	/** Named or counted inputs, for an action that joins item streams. */
 	readonly inputs?: Ins;
+	/**
+	 * The layout and widgets of the n8n form, keyed by the input fields. Labels, hints and option
+	 * labels stay on the fields (`.title()`, `.hint()`, `.options()`), because agents read them too.
+	 */
+	readonly ui?: ActionUi<NoInfer<Full>>;
 	/**
 	 * Pure hatch: the output shape for these parameters (fields a filter guarantees, fields a
 	 * mapping creates). Leaves other than discriminators may still be expression strings.
@@ -2254,14 +2262,42 @@ function deriveOutputIssues(action: Action): string[] {
 }
 
 /**
+ * When true, `checkAction` and the publish gate refuse an input field without a `title`. It stays
+ * off until every first-party field has a title.
+ */
+export const REQUIRE_FIELD_TITLES = false;
+
+/**
+ * The input fields of the n8n form that have no `title`, one line each: the top-level fields and
+ * the fields of each variant branch. A sub-node input is no form field.
+ */
+export function missingTitlesOf({ id, input }: Pick<ContractDocument, 'id' | 'input'>): string[] {
+	// The tag of a variant is a dropdown under the title of the variant field.
+	const untitled = (schema: JsonSchema, at: string, tag?: string): string[] =>
+		Object.entries(schema.properties ?? {})
+			.filter(([name, field]) => name !== tag && providerInputOf(field) === undefined)
+			.flatMap(([name, field]) => [
+				...(field.title === undefined ? [`${id}: ${at}.${name} has no title`] : []),
+				...(field.discriminator
+					? (field.oneOf ?? []).flatMap((branch) =>
+							untitled(branch, `${at}.${name}`, field.discriminator?.propertyName),
+						)
+					: []),
+			]);
+	return [...new Set(untitled(input, 'input'))];
+}
+
+/**
  * The problems of an action or a trigger, one line each: `<id>: <schema path>: <problem>`.
  * It adds to `lintContract` what needs the code: `examples` against their schema, `deriveOutput`
  * against `output`, and scopes against the credential of the node.
  */
 export function checkAction(action: Action | Trigger): string[] {
 	const scopes = Object.keys(action.node.credential?.scopes ?? {});
+	const contract = toContract(action);
 	return [
-		...lintContract(toContract(action)),
+		...lintContract(contract),
+		...(REQUIRE_FIELD_TITLES ? missingTitlesOf(contract) : []),
 		...[
 			...exampleIssues(action.inputSchema, 'input'),
 			...exampleIssues(action.output.json, 'output'),

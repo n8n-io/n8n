@@ -118,6 +118,15 @@ export interface OptionLabel {
 	readonly description?: string;
 }
 
+const optionLabelsOf = (
+	labels: Readonly<Record<string, string | OptionLabel | undefined>>,
+): Record<string, OptionLabel> =>
+	Object.fromEntries(
+		Object.entries(labels).flatMap(([value, label]) =>
+			label === undefined ? [] : [[value, typeof label === 'string' ? { name: label } : label]],
+		),
+	);
+
 /** Output fields that the entries of an input list name, e.g. one field per form field. */
 export interface EntryFields {
 	/** The path of the list in the input, e.g. `['formFields', 'values']`. */
@@ -215,6 +224,36 @@ export class Schema<T, Opt extends boolean = false, Def extends boolean = boolea
 		return new Schema<T, Opt, Def, Run>({ ...this.json, description: text }, this.isOptional);
 	}
 
+	/**
+	 * The label of the field (`title`), e.g. `Thread`. The n8n form, agents and MCP show it.
+	 *
+	 * @example
+	 * ```ts
+	 * replyBroadcast: t.bool().default(false).title('Also send to channel'),
+	 * ```
+	 */
+	title(text: string): Schema<T, Opt, Def, Run> {
+		return new Schema<T, Opt, Def, Run>({ ...this.json, title: text }, this.isOptional);
+	}
+
+	/**
+	 * The label of each value of a `t.oneOf()` field (`x-n8n-options`), as text or with a
+	 * description. A value without a label shows as it is.
+	 *
+	 * @example
+	 * ```ts
+	 * method: t.oneOf('GET', 'POST').options({ GET: 'Read', POST: { name: 'Send', description: 'With a body' } }),
+	 * ```
+	 */
+	options(
+		labels: { readonly [V in Extract<T, string>]?: string | OptionLabel },
+	): Schema<T, Opt, Def, Run> {
+		return new Schema<T, Opt, Def, Run>(
+			{ ...this.json, 'x-n8n-options': optionLabelsOf(labels) },
+			this.isOptional,
+		);
+	}
+
 	/** Extra JSON Schema keywords (`pattern`, `minLength`, `format`, …). */
 	with(keywords: JsonSchema): Schema<T, Opt, Def, Run> {
 		return new Schema<T, Opt, Def, Run>({ ...this.json, ...keywords }, this.isOptional);
@@ -310,7 +349,7 @@ const lit = <const V extends string | number | boolean>(value: V) =>
 	new Schema<V>({ const: value, 'x-n8n-literal': true }, false);
 
 /**
- * One string of a fixed set (`enum`). Label the values with `.with({ 'x-n8n-options': … })`.
+ * One string of a fixed set (`enum`). Label the values with `.options()`.
  *
  * @example
  * ```ts
@@ -480,27 +519,44 @@ type RunVariantOf<Tag extends string, B extends Record<string, Shape>> = {
 
 /**
  * A tagged union. The tag is a literal selector, so each branch lists only the fields it
- * needs, and a field is never conditionally required.
+ * needs, and a field is never conditionally required. `labels` names the branches for the
+ * n8n form, agents and MCP: each one is the `title` (and `description`) of its branch.
+ *
+ * The n8n form stores a variant as a node-parameter collection. n8n core turns a string under a
+ * collection into `{}`, so JSON text or one whole-field expression for a variant is not kept.
+ * An expression inside a branch field works. `widget: 'json'` in `ui.fields` keeps one JSON
+ * field. The form of an agent tool keeps a variant as JSON.
  *
  * @example
  * ```ts
  * body: t.variant('type', {
  *   text: { text: t.str() },
  *   file: { file: t.binary() },
- * }),
+ * }, { text: 'Raw text', file: 'File' }),
  * ```
  */
 function variant<const Tag extends string, B extends Record<string, Shape>>(
 	tag: Tag,
 	branches: B,
+	labels: { readonly [K in keyof B & string]?: string | OptionLabel } = {},
 ): Schema<VariantOf<Tag, B>, false, boolean, RunVariantOf<Tag, B>> {
+	const named = optionLabelsOf(labels);
 	return new Schema<VariantOf<Tag, B>, false, boolean, RunVariantOf<Tag, B>>(
 		{
 			type: 'object',
 			discriminator: { propertyName: tag },
-			oneOf: Object.entries(branches).map(([name, shape]) =>
-				objectJson({ [tag]: lit(name), ...shape }),
-			),
+			oneOf: Object.entries(branches).map(([name, shape]) => {
+				const label = named[name];
+				return objectJson(
+					{ [tag]: lit(name), ...shape },
+					label
+						? {
+								title: label.name,
+								...(label.description ? { description: label.description } : {}),
+							}
+						: {},
+				);
+			}),
 		},
 		false,
 	);

@@ -60,6 +60,16 @@ describe('freezeAction', () => {
 		expect(manifest.nodeContract).toBe('2.7.0');
 	});
 
+	it('writes the ui block beside the contract, and refuses one that is not valid', async () => {
+		const ui = { order: ['value'], fields: { value: { widget: 'textarea' } } };
+		const { manifest } = await freeze("'x'", '', `ui: ${JSON.stringify(ui)},`);
+		expect(manifest.ui).toEqual(ui);
+		expect(manifest.contract).not.toHaveProperty('ui');
+		await expect(freeze("'x'", '', "ui: { order: 'value' },")).rejects.toThrow(
+			'has a ui block that is not valid',
+		);
+	});
+
 	it('refuses an image without a digest', async () => {
 		await expect(freeze("'x'", '', "runtime: { image: 'node:24-slim' },")).rejects.toThrow(
 			'Pin it by digest',

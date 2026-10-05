@@ -140,4 +140,5 @@ export type {
 	WebhookEndpoint,
 	WebhookRequest,
 } from './triggers';
+export type { ActionUi, FieldUi, Widgets } from './properties';
 export { list, matches, parse, readAs, validate } from './validate';
