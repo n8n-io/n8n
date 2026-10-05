@@ -6,7 +6,6 @@ import {
 } from '@n8n/backend-test-utils';
 import {
 	WorkflowHistoryRepository,
-	WorkflowPublishHistoryRepository,
 	WorkflowPublishedVersionRepository,
 	WorkflowReviewRequestRepository,
 	WorkflowReviewRequestWorkflowRepository,
@@ -279,12 +278,12 @@ describe('WorkflowHistoryRepository', () => {
 				createdAt: secondsAgo(1),
 			});
 			const repository = Container.get(WorkflowHistoryRepository);
-			const publishHistoryRepository = Container.get(WorkflowPublishHistoryRepository);
-			const getPublishedVersions = vi
-				.spyOn(publishHistoryRepository, 'getPublishedVersions')
-				.mockImplementation(async () => {
+			const originalDelete = repository.delete.bind(repository);
+			const deleteSpy = vi
+				.spyOn(repository, 'delete')
+				.mockImplementationOnce(async (criteria: Parameters<typeof originalDelete>[0]) => {
 					await repository.update({ versionId: id1 }, { name: 'named late' });
-					return [];
+					return await originalDelete(criteria);
 				});
 
 			const aDayAgo = new Date(Date.now() - 24 * 60 * 60_000);
@@ -292,7 +291,7 @@ describe('WorkflowHistoryRepository', () => {
 			const { deleted } = await repository.pruneHistory(workflow.id, aDayAgo, nextDay, [
 				alwaysMergeRule,
 			]);
-			getPublishedVersions.mockRestore();
+			deleteSpy.mockRestore();
 
 			expect(deleted).toBe(0);
 			const history = await repository.find({ order: { createdAt: 'ASC' } });
@@ -313,12 +312,12 @@ describe('WorkflowHistoryRepository', () => {
 				createdAt: secondsAgo(1),
 			});
 			const repository = Container.get(WorkflowHistoryRepository);
-			const publishHistoryRepository = Container.get(WorkflowPublishHistoryRepository);
-			const getPublishedVersions = vi
-				.spyOn(publishHistoryRepository, 'getPublishedVersions')
-				.mockImplementation(async () => {
+			const originalDelete = repository.delete.bind(repository);
+			const deleteSpy = vi
+				.spyOn(repository, 'delete')
+				.mockImplementationOnce(async (criteria: Parameters<typeof originalDelete>[0]) => {
 					await repository.update({ versionId: id1 }, { description: 'described late' });
-					return [];
+					return await originalDelete(criteria);
 				});
 
 			const { deleted, seen } = await repository.pruneHistory(
@@ -327,7 +326,7 @@ describe('WorkflowHistoryRepository', () => {
 				new Date(),
 				[alwaysMergeRule],
 			);
-			getPublishedVersions.mockRestore();
+			deleteSpy.mockRestore();
 
 			expect({ seen, deleted }).toEqual({ seen: 2, deleted: 0 });
 			await expect(repository.count()).resolves.toBe(2);

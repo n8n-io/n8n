@@ -2,9 +2,13 @@ import { Service } from '@n8n/di';
 import { DataSource, In, IsNull, LessThan } from '@n8n/typeorm';
 import { DiffMetaData, DiffRule, groupWorkflows, SKIP_RULES } from 'n8n-workflow';
 
-import { WorkflowHistory, WorkflowEntity, WorkflowPublishedVersion } from '../entities';
+import {
+	WorkflowHistory,
+	WorkflowEntity,
+	WorkflowPublishedVersion,
+	WorkflowPublishHistory,
+} from '../entities';
 import { BaseRepository } from './base-repository';
-import { WorkflowPublishHistoryRepository } from './workflow-publish-history.repository';
 import { WorkflowReviewRequestWorkflow } from '../entities/workflow-review-request-workflow.ee';
 import { WorkflowReviewRequest } from '../entities/workflow-review-request.ee';
 import type { OperationContext } from '../services/transaction';
@@ -12,11 +16,7 @@ import { TransactionRunner } from '../services/transaction';
 
 @Service()
 export class WorkflowHistoryRepository extends BaseRepository<WorkflowHistory> {
-	constructor(
-		dataSource: DataSource,
-		private readonly workflowPublishHistoryRepository: WorkflowPublishHistoryRepository,
-		transactionRunner: TransactionRunner,
-	) {
+	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
 		super(WorkflowHistory, dataSource.manager, transactionRunner);
 	}
 
@@ -150,8 +150,21 @@ export class WorkflowHistoryRepository extends BaseRepository<WorkflowHistory> {
 		skipRules: DiffRule[] = [],
 		metaData?: Partial<Record<keyof DiffMetaData, boolean>>,
 	): Promise<{ seen: number; deleted: number }> {
-		const workflows = await this.manager
+		const publishedVersionSubquery = this.manager
+			.createQueryBuilder()
+			.subQuery()
+			.select('1')
+			.from(WorkflowPublishHistory, 'wph')
+			.where('wph.workflowId = wh.workflowId')
+			.andWhere('wph.versionId = wh.versionId')
+			.getQuery();
+		const { entities: workflows, raw } = await this.manager
 			.createQueryBuilder(WorkflowHistory, 'wh')
+			.leftJoin(WorkflowEntity, 'w', 'w.id = wh.workflowId')
+			.addSelect(
+				`CASE WHEN w.versionId = wh.versionId OR EXISTS ${publishedVersionSubquery} THEN 1 ELSE 0 END`,
+				'isProtected',
+			)
 			.where('wh.workflowId = :workflowId', { workflowId })
 			.andWhere('wh.createdAt <= :endDate', {
 				endDate,
@@ -161,19 +174,12 @@ export class WorkflowHistoryRepository extends BaseRepository<WorkflowHistory> {
 			})
 			.orderBy('wh.createdAt', 'ASC')
 			.addOrderBy('wh.versionId', 'ASC')
-			.getMany();
+			.getRawAndEntities<{ wh_versionId: string; isProtected: number }>();
 
-		const publishedVersions =
-			await this.workflowPublishHistoryRepository.getPublishedVersions(workflowId);
-		const current = await this.manager
-			.createQueryBuilder(WorkflowEntity, 'w')
-			.select('w.versionId', 'versionId')
-			.where('w.id = :workflowId', { workflowId })
-			.getRawOne<{ versionId: string }>();
+		// The current version and every version that was ever published stay.
 		const protectedVersions = new Set(
-			publishedVersions.map((v) => v.versionId).filter((v) => v !== null),
+			raw.filter((row) => Number(row.isProtected) === 1).map((row) => row.wh_versionId),
 		);
-		if (current) protectedVersions.add(current.versionId);
 		const grouped = groupWorkflows<WorkflowHistory>(
 			workflows,
 			rules,
