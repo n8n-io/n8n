@@ -477,13 +477,23 @@ describe('PollTriggerTaskHandler', () => {
 
 		test('discards an abandoned poll that fails after the timeout', async () => {
 			let rejectPoll: (error: Error) => void = () => {};
-			triggersAndPollers.runPollFunction.mockReturnValue(
-				new Promise((_resolve, reject) => {
-					rejectPoll = reject;
-				}),
+			const pollPromise = new Promise<null>((_resolve, reject) => {
+				rejectPoll = reject;
+			});
+			// A plain stub, because a vi.fn() subscribes to the promise it returns and so
+			// would mark the late rejection as handled.
+			const plainHandler = new PollTriggerTaskHandler(
+				rootLogger,
+				triggerExecutionContextFactory,
+				mock<TriggersAndPollers>({ runPollFunction: async () => await pollPromise }),
+				workflowRepository,
+				errorReporter,
+				pollBackoffService,
+				eventService,
+				globalConfig,
 			);
 
-			const executing = handler.execute(buildTask(), report);
+			const executing = plainHandler.execute(buildTask(), report);
 			await vi.advanceTimersByTimeAsync(pollTimeoutMs);
 			await executing;
 			rejectPoll(new Error('poll source unreachable'));
@@ -491,6 +501,7 @@ describe('PollTriggerTaskHandler', () => {
 
 			// The tick was already reported as abandoned, so the late failure is dropped
 			// rather than routed to the error workflow.
+			expect(eventService.emit).toHaveBeenCalledWith('poll-tick-timed-out', expect.anything());
 			expect(pollFunctions.__emitError).not.toHaveBeenCalled();
 			expect(onDispatch).not.toHaveBeenCalled();
 		});
