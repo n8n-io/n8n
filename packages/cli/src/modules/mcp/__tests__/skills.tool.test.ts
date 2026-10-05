@@ -24,6 +24,10 @@ describe('skills MCP tools', () => {
 						name: SKILL_NAME,
 						description: 'Use when the user wants to deploy test n8n instance.',
 					},
+					{
+						name: 'create diagram',
+						description: expect.stringContaining('diagram'),
+					},
 				],
 			});
 		});
@@ -39,6 +43,15 @@ describe('skills MCP tools', () => {
 			expect(result.isError).toBeUndefined();
 			const [content] = result.content as Array<{ type: 'text'; text: string }>;
 			expect(content.text).toContain('/nathan deploy <branch> --ai');
+		});
+
+		test('returns the instructions of the diagram skill', async () => {
+			const tool = createLoadSkillTool(user, telemetry);
+
+			const result = await tool.handler({ name: 'create diagram' });
+
+			const [content] = result.content as Array<{ type: 'text'; text: string }>;
+			expect(content.text).toContain('%% Title:');
 		});
 
 		test('matches the name without regard to case or surrounding spaces', async () => {

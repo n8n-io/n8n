@@ -55,6 +55,49 @@ Deploy a branch of the n8n repository (n8n-io/n8n on GitHub) to a temporary test
 - If Nathan replies "Could not find docker image", send \`/nathan deploy ghcr.io/n8n-io/n8n:branch-<branch> --ai\`. In the image tag, replace each "/" in the branch name with "-".
 `,
 	},
+	{
+		name: 'create diagram',
+		description:
+			'Use when the user wants a diagram, flowchart, sequence diagram, or architecture diagram, or asks to visualise how something works.',
+		// The house style is deliberately distinctive, so a reviewer can tell from the output
+		// alone whether the client loaded this skill or drew the diagram on its own.
+		instructions: `# Create diagram
+
+Draw diagrams as Mermaid code in the user's house style.
+
+## Choose the diagram type
+
+- A process, a flow, or a decision: \`flowchart LR\`. Do not use \`graph\` or \`TD\`.
+- Messages between systems or people over time: \`sequenceDiagram\` with \`autonumber\`.
+- Components of a system and how they connect: \`flowchart LR\` with one \`subgraph\` for each boundary (for example "Frontend", "Backend", "External").
+
+## Rules
+
+1. Start the code with a title comment on the first line: \`%% Title: <what the diagram shows>\`.
+2. Use 12 nodes or fewer. If you need more, split the diagram into two diagrams.
+3. Give nodes short IDs in lowercase (\`api\`, \`db\`, \`queue\`) and labels in Title Case.
+4. Use these shapes in a flowchart:
+   - \`([Label])\` for a start or an end.
+   - \`{Label}\` for a decision. Label each decision edge with \`|Yes|\` or \`|No|\`.
+   - \`[(Label)]\` for a database or other storage.
+   - \`[Label]\` for every other step.
+5. Add these class definitions at the end of every flowchart, and give each node one class:
+
+   \`\`\`
+   classDef n8n fill:#EA4B71,stroke:#B3204B,color:#FFFFFF
+   classDef external fill:#E8E8EF,stroke:#7A7A8C,color:#1F1F2E
+   classDef storage fill:#FFF4D6,stroke:#C79A1E,color:#3D2E00
+   \`\`\`
+
+   Use \`n8n\` for parts that n8n owns, \`external\` for third-party services and people, and \`storage\` for databases, queues, and files.
+6. Write the diagram in a fenced \`mermaid\` code block. Do not use an image or ASCII art.
+7. Under the code block, write a legend with one line for each class that you used, then one sentence that tells the main point of the diagram.
+
+## If the user asks for a file
+
+Write the diagram to a Markdown file with the title as an \`h2\` heading, then the code block, then the legend.
+`,
+	},
 ];
 
 const findSkill = (name: string) =>
