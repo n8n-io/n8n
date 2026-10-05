@@ -31,6 +31,26 @@ import type {
 import type { RawActionToolOperation, RawContextToolOperation } from './integration-tool-schema';
 
 /** Resume shape for the action tool, including a follow-up interactive card. */
+/**
+ * True when an action tool result reports that no reply will be sent
+ * (`do_not_respond`), on its own or inside a batch.
+ */
+export function isSilentActionOutput(output: unknown): boolean {
+	if (!isRecord(output)) return false;
+	if (output.silent === true) return true;
+	return (
+		Array.isArray(output.results) &&
+		output.results.some(
+			(entry) =>
+				isRecord(entry) &&
+				entry.action === 'do_not_respond' &&
+				isRecord(entry.result) &&
+				entry.result.ok === true &&
+				entry.result.silent === true,
+		)
+	);
+}
+
 export const INTEGRATION_ACTION_RESUME_SCHEMA = z.record(z.string(), z.unknown());
 
 export function integrationActionApprovalKey(connectionId: string, action: string): string {

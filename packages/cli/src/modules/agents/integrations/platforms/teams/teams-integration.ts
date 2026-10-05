@@ -35,7 +35,7 @@ const OPTIONAL_REPLY_NOTE = [
 	'<reply_guidance>',
 	'This message does not mention you. You read it because you can read every message in this conversation.',
 	'Reply only if the message is meant for you or you can add something useful within your role.',
-	'Otherwise call do_not_respond and write no text.',
+	'If not, call do_not_respond once. That ends your turn.',
 	'</reply_guidance>',
 ].join('\n');
 

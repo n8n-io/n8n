@@ -1,5 +1,4 @@
 import type { StreamChunk } from '@n8n/agents';
-import { isRecord } from '@n8n/utils/is-record';
 import type { Thread } from 'chat';
 import { OperationalError, type Logger } from 'n8n-workflow';
 
@@ -8,6 +7,7 @@ import type { BridgeStatusHandle } from './agent-chat-integration';
 import { isIntegrationActionSuspendPayload } from './agent-chat-suspension-cards';
 import { type TextEndFn, type TextYieldFn } from './types';
 import { isRateLimitedToolOutput } from './channel-rate-limit';
+import { isSilentActionOutput } from './integration-tool-execution';
 
 type SuspendedChunk = Extract<StreamChunk, { type: 'tool-call-suspended' }>;
 type MessageChunk = Extract<StreamChunk, { type: 'message' }>;
@@ -316,20 +316,7 @@ export class AgentChatStreamConsumer {
 		if (chunk.isError || !(this.options.isIntegrationActionTool?.(chunk.toolName) ?? false)) {
 			return false;
 		}
-		if (!isRecord(chunk.output)) return false;
-		if (chunk.output.silent === true) return true;
-		// Batched action calls nest per-operation results under `results`.
-		return (
-			Array.isArray(chunk.output.results) &&
-			chunk.output.results.some(
-				(entry) =>
-					isRecord(entry) &&
-					entry.action === 'do_not_respond' &&
-					isRecord(entry.result) &&
-					entry.result.ok === true &&
-					entry.result.silent === true,
-			)
-		);
+		return isSilentActionOutput(chunk.output);
 	}
 
 	private createResponseLifecycle(options: {

@@ -25,6 +25,7 @@ import {
 	executeContextToolOperation,
 	INTEGRATION_ACTION_RESUME_SCHEMA,
 	integrationActionApprovalKey,
+	isSilentActionOutput,
 } from './integration-tool-execution';
 import { INTEGRATION_ERROR_CODES } from './integration-error-codes';
 import {
@@ -167,65 +168,69 @@ export function createIntegrationActionTool(params: {
 }) {
 	const { descriptor, messageContextStore, actionExecutor } = params;
 
-	return new Tool(descriptor.actionToolName)
-		.description(buildActionToolDescription(descriptor))
-		.input(buildActionInputSchema(descriptor.actionToolDefinitions))
-		.suspend(actionSuspendSchema)
-		.resume(INTEGRATION_ACTION_RESUME_SCHEMA)
-		.handler(async (input, ctx) => {
-			const interruptCtx = ctx as InterruptibleToolContext;
-			const approvalDecision = readApprovalDecision(interruptCtx);
+	return (
+		new Tool(descriptor.actionToolName)
+			.description(buildActionToolDescription(descriptor))
+			.input(buildActionInputSchema(descriptor.actionToolDefinitions))
+			.suspend(actionSuspendSchema)
+			.resume(INTEGRATION_ACTION_RESUME_SCHEMA)
+			// The model is told to stop after staying silent, but may call it again.
+			.endsTurnWhen(isSilentActionOutput)
+			.handler(async (input, ctx) => {
+				const interruptCtx = ctx as InterruptibleToolContext;
+				const approvalDecision = readApprovalDecision(interruptCtx);
 
-			// A card resume carries the user's answer straight back to the model. An
-			// approval resume is a decision about work that has not run yet, so it
-			// either falls through to execution below or stops here.
-			if (approvalDecision === undefined && ctx.resumeData) {
-				return ctx.resumeData;
-			}
-			if (approvalDecision) {
-				const { action, ...decision } = approvalDecision;
-				if (decision.scope === 'session' && !ctx.approvalContext) {
-					throw new UserError('Session approvals are not available for this tool.');
+				// A card resume carries the user's answer straight back to the model. An
+				// approval resume is a decision about work that has not run yet, so it
+				// either falls through to execution below or stops here.
+				if (approvalDecision === undefined && ctx.resumeData) {
+					return ctx.resumeData;
 				}
-				await ctx.approvalContext?.onDecision(
-					integrationActionApprovalKey(descriptor.integrationConnectionId, action),
-					decision,
-				);
-				ctx.abortSignal?.throwIfAborted();
-			}
-			if (approvalDecision?.approved === false) {
-				return {
-					ok: false,
-					error: {
-						code: INTEGRATION_ERROR_CODES.ACTION_DECLINED,
-						message: `The action "${approvalDecision.action}" was not approved.`,
-					},
-				};
-			}
+				if (approvalDecision) {
+					const { action, ...decision } = approvalDecision;
+					if (decision.scope === 'session' && !ctx.approvalContext) {
+						throw new UserError('Session approvals are not available for this tool.');
+					}
+					await ctx.approvalContext?.onDecision(
+						integrationActionApprovalKey(descriptor.integrationConnectionId, action),
+						decision,
+					);
+					ctx.abortSignal?.throwIfAborted();
+				}
+				if (approvalDecision?.approved === false) {
+					return {
+						ok: false,
+						error: {
+							code: INTEGRATION_ERROR_CODES.ACTION_DECLINED,
+							message: `The action "${approvalDecision.action}" was not approved.`,
+						},
+					};
+				}
 
-			const toolInput = input;
+				const toolInput = input;
 
-			if (toolInput.actions !== undefined) {
-				return await executeActionToolBatch({
-					operations: toolInput.actions.map(toSingleActionOperation),
+				if (toolInput.actions !== undefined) {
+					return await executeActionToolBatch({
+						operations: toolInput.actions.map(toSingleActionOperation),
+						descriptor,
+						messageContextStore,
+						actionExecutor,
+						ctx,
+					});
+				}
+
+				return await executeActionToolOperation({
+					operation: toSingleActionOperation(toolInput),
 					descriptor,
 					messageContextStore,
 					actionExecutor,
 					ctx,
+					interruptCtx,
+					allowSuspend: true,
+					...(approvalDecision ? { approvedAction: approvalDecision.action } : {}),
 				});
-			}
-
-			return await executeActionToolOperation({
-				operation: toSingleActionOperation(toolInput),
-				descriptor,
-				messageContextStore,
-				actionExecutor,
-				ctx,
-				interruptCtx,
-				allowSuspend: true,
-				...(approvalDecision ? { approvedAction: approvalDecision.action } : {}),
-			});
-		});
+			})
+	);
 }
 
 /**
