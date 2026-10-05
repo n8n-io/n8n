@@ -271,7 +271,7 @@ const sessionValue = computed(() => {
 
 .rowValue {
 	display: flex;
-	align-items: flex-start;
+	align-items: center;
 	gap: var(--spacing--xs);
 }
 
