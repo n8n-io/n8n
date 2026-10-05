@@ -229,6 +229,25 @@ describe('WaitingForms', () => {
 			expect(result).toBe('Form2');
 		});
 
+		it('should not render a form for an execution parked at a node boundary', async () => {
+			const execution = mock<IExecutionResponse>({
+				status: 'waiting',
+				data: { waitReason: 'suspended', resumeToken: undefined, resultData: { error: undefined } },
+			});
+			executionPersistence.findSingleExecution.mockResolvedValue(execution);
+
+			const req = mock<WaitingWebhookRequest>({
+				headers: {},
+				params: { path: '123', suffix: undefined },
+			});
+			const res = mock<express.Response>();
+
+			const result = await waitingForms.executeWebhook(req, res);
+
+			expect(result).toEqual({ noWebhookResponse: true });
+			expect(res.render).not.toHaveBeenCalled();
+		});
+
 		it('should return status of execution if suffix is WAITING_FORMS_EXECUTION_STATUS', async () => {
 			const execution = mock<IExecutionResponse>({
 				status: 'success',

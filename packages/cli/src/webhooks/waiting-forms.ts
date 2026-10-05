@@ -103,7 +103,9 @@ export class WaitingForms extends WaitingWebhooks {
 			throw new ConflictError(message);
 		}
 
-		if (execution.status === 'running') {
+		// A run parked at a node boundary is not waiting for a form page. Treated
+		// like a running run, so the page keeps polling until the run resumes.
+		if (execution.status === 'running' || execution.data.waitReason === 'suspended') {
 			return { noWebhookResponse: true };
 		}
 

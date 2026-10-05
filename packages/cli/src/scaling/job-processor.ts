@@ -21,6 +21,7 @@ import {
 	TimeoutExecutionCancelledError,
 	Workflow,
 	UnexpectedError,
+	CHAT_TRIGGER_NODE_TYPE,
 	createRunExecutionData,
 	runDataAttemptedDynamicCredentials,
 	runDataUsedDynamicCredentials,
@@ -607,14 +608,20 @@ export class JobProcessor {
 	 * Whether a job may be suspended at worker shutdown. Only production
 	 * executions qualify: manual and evaluation runs are tied to a session,
 	 * streaming responses cannot migrate mid-stream, and MCP executions are
-	 * pinned to their session. A pending webhook response is checked at
-	 * suspend time, since the run may still send it.
+	 * pinned to their session, and so is a chat conversation, whose client polls
+	 * the waiting state and would mistake a parked run for a reply. A pending
+	 * webhook response is checked at suspend time, since the run may still send it.
 	 */
 	private isJobSuspendable(job: Job, execution: IExecutionResponse): boolean {
+		const hasChatTrigger = execution.workflowData.nodes.some(
+			(node) => node.type === CHAT_TRIGGER_NODE_TYPE && !node.disabled,
+		);
+
 		return (
 			SUSPENDABLE_EXECUTION_MODES.has(execution.mode) &&
 			!job.data.streamingEnabled &&
 			!job.data.isMcpExecution &&
+			!hasChatTrigger &&
 			execution.data.executionData !== undefined
 		);
 	}

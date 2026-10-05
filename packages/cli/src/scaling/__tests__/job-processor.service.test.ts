@@ -53,6 +53,7 @@ import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.serv
 import { JobProcessor } from '../job-processor';
 import type { Job } from '../scaling.types';
 import { WebhookResponseRelay } from '../webhook-response-relay';
+import { CHAT_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 
 mockInstance(WorkflowPublishHistoryRepository);
 mockInstance(VariablesService, {
@@ -487,6 +488,7 @@ describe('JobProcessor', () => {
 			});
 			const cleanExecution = mock<IExecutionResponse>({
 				mode: 'webhook',
+				workflowData: { nodes: [] },
 				data: mock<IRunExecutionData>(),
 			});
 			// @ts-expect-error private method
@@ -517,6 +519,14 @@ describe('JobProcessor', () => {
 			it('should refuse an MCP execution', () => {
 				const job = mock<Job>({ data: { streamingEnabled: false, isMcpExecution: true } });
 				expect(isJobSuspendable(job, cleanExecution)).toBe(false);
+			});
+
+			it('should refuse a workflow with a chat trigger', () => {
+				const execution = {
+					...cleanExecution,
+					workflowData: { nodes: [{ type: CHAT_TRIGGER_NODE_TYPE, disabled: false }] },
+				} as unknown as IExecutionResponse;
+				expect(isJobSuspendable(cleanJob, execution)).toBe(false);
 			});
 
 			it('should refuse an execution without run state', () => {

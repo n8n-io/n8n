@@ -78,6 +78,26 @@ describe('WaitingWebhooks', () => {
 		await expect(promise).rejects.toThrowError(NotFoundError);
 	});
 
+	it('should throw ConflictError if the execution to resume was parked at a node boundary', async () => {
+		executionPersistence.findSingleExecution.mockResolvedValue(
+			mock<IExecutionResponse>({
+				status: 'waiting',
+				data: {
+					waitReason: 'suspended',
+					resumeToken: undefined,
+					resultData: { lastNodeExecuted: undefined, error: undefined },
+				},
+			}),
+		);
+
+		const promise = waitingWebhooks.executeWebhook(
+			mock<WaitingWebhookRequest>(),
+			mock<express.Response>(),
+		);
+
+		await expect(promise).rejects.toThrowError(ConflictError);
+	});
+
 	it('should throw ConflictError if the execution to resume is already running', async () => {
 		/**
 		 * Arrange
