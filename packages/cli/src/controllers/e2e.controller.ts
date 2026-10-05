@@ -20,8 +20,6 @@ import { Request } from 'express';
 import type nodeFs from 'node:fs';
 import type { Profiler } from 'node:inspector';
 import type * as nodeInspectorPromises from 'node:inspector/promises';
-import type nodePath from 'node:path';
-import type nodeV8 from 'node:v8';
 import { v4 as uuid } from 'uuid';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
@@ -32,9 +30,11 @@ import { MfaService } from '@/mfa/mfa.service';
 import { LogStreamingDestinationService } from '@/modules/log-streaming.ee/log-streaming-destination.service';
 import { Push } from '@/push';
 import { WorkflowScheduledJobOwner } from '@/scheduling/workflow-scheduled-job-owner';
-import { CacheService } from '@/services/cache/cache.service';
+import { CacheService } from '@n8n/backend-services';
 import { FrontendService } from '@/services/frontend.service';
+import { HeapDiagnosticsService } from '@/services/heap-diagnostics.service';
 import { PasswordUtility } from '@/services/password.utility';
+import { ProcessInternalsService } from '@/services/process-internals.service';
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 
 if (!inE2ETests) {
@@ -208,6 +208,8 @@ export class E2EController {
 		private readonly workflowScheduledJobOwner: WorkflowScheduledJobOwner,
 		private readonly pollerStateRepository: PollerStateRepository,
 		private readonly workflowStaticDataService: WorkflowStaticDataService,
+		private readonly processInternalsService: ProcessInternalsService,
+		private readonly heapDiagnosticsService: HeapDiagnosticsService,
 	) {
 		license.isLicensed = (feature: BooleanLicenseFeature) => this.enabledFeatures[feature] ?? false;
 
@@ -374,52 +376,17 @@ export class E2EController {
 	 */
 	@Post('/gc', { skipAuth: true })
 	triggerGarbageCollection() {
-		if (typeof global.gc === 'function') {
-			// Call GC twice to allow for more reclaimation
-			global.gc();
-			global.gc();
-			return { success: true, message: 'Garbage collection triggered' };
-		}
-		return {
-			success: false,
-			message: 'Garbage collection not available. Ensure Node.js is started with --expose-gc flag.',
-		};
+		return this.heapDiagnosticsService.collectGarbage();
 	}
 
 	/**
-	 * Write a V8 heap snapshot for memory leak analysis.
-	 * Triggers GC first for a cleaner snapshot.
-	 * Returns the file path inside the container — retrieve via `docker cp` or keepalive mode.
+	 * Write a V8 heap snapshot for memory leak analysis. Triggers GC first.
+	 * Returns the file name to pass to the download route.
 	 */
 	@Post('/heap-snapshot', { skipAuth: true })
 	takeHeapSnapshot() {
-		const v8 = require('node:v8') as typeof nodeV8;
-		const fs = require('node:fs') as typeof nodeFs;
-
-		if (typeof global.gc === 'function') {
-			global.gc();
-			global.gc();
-		}
-
-		const filePath = v8.writeHeapSnapshot();
-		if (!filePath) {
-			return { success: false, message: 'Failed to write heap snapshot' };
-		}
-
-		const path = require('node:path') as typeof nodePath;
-		const stats = fs.statSync(filePath);
-		const filename = path.basename(filePath);
-		this.heapSnapshotPaths.set(filename, filePath);
-
-		return {
-			success: true,
-			filePath: filename,
-			sizeBytes: stats.size,
-			sizeMB: Math.round(stats.size / 1024 / 1024),
-		};
+		return this.heapDiagnosticsService.writeHeapSnapshot();
 	}
-
-	private heapSnapshotPaths = new Map<string, string>();
 
 	/**
 	 * Download a heap snapshot file as a stream.
@@ -427,21 +394,7 @@ export class E2EController {
 	 */
 	@Get('/heap-snapshot/:filename', { skipAuth: true })
 	downloadHeapSnapshot(req: Request) {
-		const fs = require('node:fs') as typeof nodeFs;
-		const path = require('node:path') as typeof nodePath;
-
-		const filename = path.basename(req.params.filename);
-		if (!filename.endsWith('.heapsnapshot')) {
-			throw new Error('Invalid file type');
-		}
-
-		// Look up the full path stored during POST, or try cwd
-		const filePath = this.heapSnapshotPaths.get(filename) ?? path.resolve(filename);
-		if (!fs.existsSync(filePath)) {
-			throw new Error(`Snapshot not found: ${filename} (tried ${filePath})`);
-		}
-
-		return fs.createReadStream(filePath);
+		return this.heapDiagnosticsService.openHeapSnapshot(String(req.params.filename));
 	}
 
 	// --- Per-spec backend V8 coverage (DEVP-370) -----------------------------
@@ -525,6 +478,15 @@ export class E2EController {
 		if (!this.coverageSession) return { success: false, result: [] };
 		const { result } = await this.coverageSession.post('Profiler.getBestEffortCoverage');
 		return { success: true, result: E2EController.deltaCoverage(result, this.coverageBaseline) };
+	}
+
+	/**
+	 * Return counts of this process's in-memory state (collections, libuv
+	 * resources, memory). Tests diff two readings to find unbounded growth.
+	 */
+	@Get('/internals', { skipAuth: true })
+	getInternals() {
+		return this.processInternalsService.collect();
 	}
 
 	/**
@@ -742,6 +704,7 @@ export class E2EController {
 					owner.mfaRecoveryCodes,
 				);
 
+			// oxlint-disable-next-line typescript/no-deprecated
 			await this.userRepository.update(newOwner.user.id, {
 				mfaSecret: encryptedSecret,
 				mfaRecoveryCodes: encryptedRecoveryCodes,

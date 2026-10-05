@@ -1,4 +1,4 @@
-import type { ComputedRef, InjectionKey } from 'vue';
+import type { ComputedRef, InjectionKey, Ref } from 'vue';
 
 export const WORKFLOW_REVIEW_REQUESTS_VIEW = 'WorkflowReviewRequestsView';
 
@@ -19,6 +19,10 @@ export type ReviewLinkedWorkflowContext = {
 export const ReviewLinkedWorkflowsKey: InjectionKey<
 	ComputedRef<Map<string, ReviewLinkedWorkflowContext>>
 > = Symbol('reviewLinkedWorkflows');
+
+/** The detail pane's scroll area, which the activity feed scrolls in. */
+export const ReviewDetailScrollContainerKey: InjectionKey<Readonly<Ref<HTMLElement | null>>> =
+	Symbol('reviewDetailScrollContainer');
 
 /**
  * Routing contract for the review inbox.

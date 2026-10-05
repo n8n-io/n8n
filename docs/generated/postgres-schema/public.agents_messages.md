@@ -78,6 +78,9 @@ erDiagram
   bigint id
   varchar_36_ messageId FK
   json payload
+  integer position
+  varchar_36_ steeringExecutionId FK
+  integer steeringOrder
   varchar_128_ threadId FK
   timestamp_3__with_time_zone updatedAt
 }

@@ -1,4 +1,5 @@
 import { Logger } from '@n8n/backend-common';
+import { EventService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import type { IWorkflowDb, PollerCursor, PollLeaseFence } from '@n8n/db';
@@ -33,7 +34,6 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 
 import { ActiveExecutions } from '@/active-executions';
 import { DuplicateExecutionError } from '@/errors/duplicate-execution.error';
-import { EventService } from '@/events/event.service';
 import { executeErrorWorkflow } from '@/execution-lifecycle/execute-error-workflow';
 import { ExecutionService } from '@/executions/execution.service';
 import { NodeTypes } from '@/node-types';
@@ -123,11 +123,7 @@ export class TriggerExecutionContextFactory {
 		emit: EngineV2ActiveTriggerEmit,
 	): void {
 		try {
-			// Files first, because this check deletes what it refuses: a refusal for
-			// any other reason would otherwise leave the stored files behind, owned by
-			// no execution.
-			this.engineV2ActiveTriggers.assertPayloadSupported(data);
-			this.engineV2ActiveTriggers.assertSupported(emit);
+			this.engineV2ActiveTriggers.assertSupported(emit, data);
 		} catch (error) {
 			emit.responsePromise?.reject(ensureError(error));
 			throw error;
@@ -370,13 +366,6 @@ export class TriggerExecutionContextFactory {
 			) => {
 				this.logger.debug(`Received event to trigger execution for workflow "${workflow.name}"`);
 
-				// Ahead of the cursor take, so a refused poll leaves its window to be
-				// retried. Reads the registration's copy of the workflow rather than the
-				// fresh one for the same reason: the fresh read comes too late.
-				if (this.engineV2ActiveTriggers.handles(workflowData, mode)) {
-					this.engineV2ActiveTriggers.assertPayloadSupported(data);
-				}
-
 				const cursor = takeStagedCursor();
 
 				// A migrated node's cursor lives in `poller_state`, not static data, so
@@ -388,19 +377,8 @@ export class TriggerExecutionContextFactory {
 				// can feature-flag between in-memory data and the published data
 				// service. Once the flag is removed, we'll call the service directly.
 				const executePromise = resolveWorkflowData().then(async (freshWorkflowData) => {
-					// The registration snapshot above can be stale by the time this
-					// resolves (e.g. the workflow was just republished onto engine v2),
-					// so a payload that slipped past that check is guarded again here,
-					// against the copy that actually decides where this run goes.
+					// Decided on the fresh copy, which is the one the dispatcher decides on.
 					const routesToV2 = this.engineV2ActiveTriggers.handles(freshWorkflowData, mode);
-					if (routesToV2) {
-						try {
-							this.engineV2ActiveTriggers.assertPayloadSupported(data);
-						} catch (error) {
-							responsePromise?.reject(ensureError(error));
-							throw error;
-						}
-					}
 
 					const runAdditionalData = await this.attributeToPublisher(
 						additionalData,

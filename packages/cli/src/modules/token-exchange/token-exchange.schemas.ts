@@ -84,6 +84,12 @@ export const TrustedKeyDataSchema = z.object({
 
 export type TrustedKeyData = z.infer<typeof TrustedKeyDataSchema>;
 
+/** Resolved keys and the optional cache lifetime returned by a JWKS endpoint. */
+export type ResolvedSourceKeys = {
+	keys: Array<{ kid: string; data: TrustedKeyData }>;
+	cacheTtlSeconds?: number;
+};
+
 /**
  * A trusted key that has been normalized and resolved to an in-memory
  * representation ready for JWT verification. The raw key material from

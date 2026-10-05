@@ -2,7 +2,7 @@ import { renderComponent } from '@/__tests__/render';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { defineComponent, h, ref } from 'vue';
-import { useKeybindings } from './useKeybindings';
+import { useKeybindings, type KeyMap } from './useKeybindings';
 
 const renderTestComponent = async (...args: Parameters<typeof useKeybindings>) => {
 	return renderComponent(
@@ -42,6 +42,141 @@ describe('useKeybindings', () => {
 
 		expect(saveSpy).not.toHaveBeenCalled();
 		expect(saveAllSpy).not.toHaveBeenCalled();
+	});
+
+	describe('allowInInputs', () => {
+		async function renderInputKeybindings(
+			keymap: KeyMap,
+			{
+				tag = 'input',
+				parentAttributes = {},
+				disabled = false,
+			}: {
+				tag?: string;
+				parentAttributes?: Record<string, string>;
+				disabled?: boolean;
+			} = {},
+		) {
+			const result = renderComponent(
+				defineComponent({
+					setup() {
+						useKeybindings(keymap, { disabled });
+						return () =>
+							h('div', parentAttributes, [
+								h(tag, {
+									role: 'textbox',
+									tabindex: 0,
+									contenteditable: tag === 'div' ? 'true' : undefined,
+								}),
+							]);
+					},
+				}),
+			);
+			await userEvent.click(result.getByRole('textbox'));
+			return result;
+		}
+
+		it.each(['input', 'textarea', 'div'])(
+			'should run an opted-in action when %s has focus',
+			async (tag) => {
+				const handler = vi.fn();
+				await renderInputKeybindings({ ctrl_j: { allowInInputs: true, run: handler } }, { tag });
+
+				await userEvent.keyboard('{Control>}j{/Control}');
+
+				expect(handler).toHaveBeenCalledTimes(1);
+			},
+		);
+
+		it.each(['input', 'textarea', 'div'])(
+			'should block actions without opt-in when %s has focus',
+			async (tag) => {
+				const omittedHandler = vi.fn();
+				const falseHandler = vi.fn();
+				const functionHandler = vi.fn();
+				await renderInputKeybindings(
+					{
+						ctrl_j: { run: omittedHandler },
+						ctrl_k: { allowInInputs: false, run: falseHandler },
+						ctrl_l: functionHandler,
+					},
+					{ tag },
+				);
+
+				await userEvent.keyboard('{Control>}jkl{/Control}');
+
+				expect(omittedHandler).not.toHaveBeenCalled();
+				expect(falseHandler).not.toHaveBeenCalled();
+				expect(functionHandler).not.toHaveBeenCalled();
+			},
+		);
+
+		it('should apply the opt-in only to its own action', async () => {
+			const allowedHandler = vi.fn();
+			const blockedHandler = vi.fn();
+			await renderInputKeybindings({
+				ctrl_j: { allowInInputs: true, run: allowedHandler },
+				ctrl_k: { run: blockedHandler },
+			});
+
+			await userEvent.keyboard('{Control>}jk{/Control}');
+
+			expect(allowedHandler).toHaveBeenCalledTimes(1);
+			expect(blockedHandler).not.toHaveBeenCalled();
+		});
+
+		it('should block an opted-in action when the action is disabled', async () => {
+			const handler = vi.fn();
+			await renderInputKeybindings({
+				ctrl_j: { allowInInputs: true, disabled: () => true, run: handler },
+			});
+
+			await userEvent.keyboard('{Control>}j{/Control}');
+
+			expect(handler).not.toHaveBeenCalled();
+		});
+
+		it('should block an opted-in action when the keymap is disabled', async () => {
+			const handler = vi.fn();
+			await renderInputKeybindings(
+				{ ctrl_j: { allowInInputs: true, run: handler } },
+				{ disabled: true },
+			);
+
+			await userEvent.keyboard('{Control>}j{/Control}');
+
+			expect(handler).not.toHaveBeenCalled();
+		});
+
+		it.each<{ name: string; parentAttributes: Record<string, string> }>([
+			{ name: 'dialog', parentAttributes: { role: 'dialog' } },
+			{
+				name: 'canvas ignore container',
+				parentAttributes: { class: 'ignore-key-press-canvas' },
+			},
+		])('should block an opted-in action inside a $name', async ({ parentAttributes }) => {
+			const handler = vi.fn();
+			await renderInputKeybindings(
+				{ ctrl_j: { allowInInputs: true, run: handler } },
+				{ parentAttributes },
+			);
+
+			await userEvent.keyboard('{Control>}j{/Control}');
+
+			expect(handler).not.toHaveBeenCalled();
+		});
+
+		it('should block an opted-in action on an input with a canvas ignore marker', async () => {
+			const handler = vi.fn();
+			const { getByRole } = await renderInputKeybindings({
+				ctrl_j: { allowInInputs: true, run: handler },
+			});
+			getByRole('textbox').classList.add('ignore-key-press-canvas');
+
+			await userEvent.keyboard('{Control>}j{/Control}');
+
+			expect(handler).not.toHaveBeenCalled();
+		});
 	});
 
 	it('should call the correct handler for a single key press', async () => {

@@ -65,6 +65,8 @@ import { useResizeObserver } from '@vueuse/core';
 import CommunityNodeFooter from '@/features/settings/communityNodes/components/nodeCreator/CommunityNodeFooter.vue';
 import CommunityNodeUpdateInfo from '@/features/settings/communityNodes/components/nodeCreator/CommunityNodeUpdateInfo.vue';
 import QuickConnectBanner from '@/features/credentials/quickConnect/components/QuickConnectBanner.vue';
+import { useGatewayCreditsPromotion } from '@/features/credentials/gatewayCreditsPromotion/useGatewayCreditsPromotion';
+import GatewayCreditsPromotion from '@/features/credentials/gatewayCreditsPromotion/GatewayCreditsPromotion.vue';
 import { useQuickConnect } from '@/features/credentials/quickConnect/composables/useQuickConnect';
 
 import { N8nBlockUi, N8nIcon, N8nNotice, N8nText } from '@n8n/design-system';
@@ -281,6 +283,12 @@ const showQuickConnectBanner = computed(
 		!props.isEmbeddedInCanvas,
 );
 
+const { promotionText } = useGatewayCreditsPromotion({ nodeType: () => node.value?.type });
+const showGatewayCreditsPromotion = computed(
+	() =>
+		!!promotionText.value && !isReadOnly.value && !isDemoPreview.value && !props.isEmbeddedInCanvas,
+);
+
 const showNoParametersNotice = computed(
 	() =>
 		!isDisplayingCredentials.value &&
@@ -439,6 +447,7 @@ const valueChanged = (parameterData: IUpdateInformation) => {
 
 			nodeHelpers.updateNodeParameterIssuesByName(_node.name);
 			nodeHelpers.updateNodeCredentialIssuesByName(_node.name);
+			nodeHelpers.updateNodeInputIssuesByName(_node.name);
 		}
 	} else if (nameIsParameter(parameterData)) {
 		// A node parameter changed
@@ -460,7 +469,8 @@ const valueChanged = (parameterData: IUpdateInformation) => {
 		workflowDocumentStore?.value?.setNodeValue({
 			name: _node.name,
 			key: topLevelKey,
-			value: nodeValues.value[topLevelKey] as NodeParameterValue,
+			// Keep the node separate from values that inputs can mutate before emitting an edit.
+			value: deepCopy(nodeValues.value[topLevelKey]) as NodeParameterValue,
 		});
 	} else {
 		// A property on the node itself changed
@@ -785,6 +795,11 @@ function handleSelectAction(params: INodeParameters) {
 						:disclaimer="quickConnect?.disclaimer"
 						:class="$style.quickConnectBanner"
 					/>
+					<GatewayCreditsPromotion
+						v-if="showGatewayCreditsPromotion"
+						:text="promotionText ?? ''"
+						:class="$style.gatewayCreditsPromotion"
+					/>
 					<NodeCredentials
 						v-if="!isEmbeddedInCanvas && !isDemoPreview"
 						:node="node"
@@ -911,6 +926,10 @@ function handleSelectAction(params: INodeParameters) {
 }
 
 .quickConnectBanner {
+	margin-top: var(--spacing--sm);
+}
+
+.gatewayCreditsPromotion {
 	margin-top: var(--spacing--sm);
 }
 

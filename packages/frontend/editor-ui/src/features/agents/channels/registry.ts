@@ -1,4 +1,4 @@
-import type { AgentIntegrationDisconnectWarning } from '@n8n/api-types';
+import { N8N_CHAT_INTEGRATION_TYPE, type AgentIntegrationDisconnectWarning } from '@n8n/api-types';
 import { h, readonly, ref } from 'vue';
 
 import AgentChannelDiscordSetup from '../components/AgentChannelDiscordSetup.vue';
@@ -6,6 +6,7 @@ import AgentChannelDiscordEditView from './discord/AgentChannelDiscordEditView.v
 import AgentChannelFallbackView from './fallback/AgentChannelFallbackView.vue';
 import AgentChannelLinearEditView from './linear/AgentChannelLinearEditView.vue';
 import AgentChannelLinearSetup from './linear/AgentChannelLinearSetup.vue';
+import AgentChannelN8nChatView from './n8nChat/AgentChannelN8nChatView.vue';
 import AgentChannelSlackEditView from './slack/AgentChannelSlackEditView.vue';
 import AgentChannelSlackRemoveConfirmation from './slack/AgentChannelSlackRemoveConfirmation.vue';
 import AgentChannelSlackSetupKindSelector from './slack/AgentChannelSlackSetupKindSelector.vue';
@@ -113,6 +114,12 @@ const platforms = {
 		setupComponent: AgentChannelTeamsSetup,
 		editComponent: AgentChannelTeamsEditView,
 		getConnectAction: ({ text }) => ({ label: text('generic.connect') }),
+	},
+	[N8N_CHAT_INTEGRATION_TYPE]: {
+		type: N8N_CHAT_INTEGRATION_TYPE,
+		setupComponent: AgentChannelN8nChatView,
+		editComponent: AgentChannelN8nChatView,
+		getConnectAction: ({ text }) => ({ label: text('agents.channels.n8nChat.makeAvailable') }),
 	},
 } satisfies Record<string, AgentChannelPlatform>;
 

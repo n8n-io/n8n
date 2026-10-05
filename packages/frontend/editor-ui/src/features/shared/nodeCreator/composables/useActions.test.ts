@@ -4,7 +4,7 @@ import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.s
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useActions } from './useActions';
-import { mockRestrictedNodeTypes } from '@/__tests__/mocks';
+import { mockRestrictedNodeTypes } from '@n8n/frontend-module-type-availability-policies/__tests__/mocks';
 import {
 	AGENT_NODE_TYPE,
 	AI_CATEGORY_LANGUAGE_MODELS,

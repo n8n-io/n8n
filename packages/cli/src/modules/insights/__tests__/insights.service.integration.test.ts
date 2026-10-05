@@ -19,7 +19,7 @@ import type { MockProxy } from 'vitest-mock-extended';
 import { mock } from 'vitest-mock-extended';
 
 import { ForbiddenError } from '@n8n/errors';
-import type { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
+import type { WorkflowSharingService } from '@n8n/backend-services';
 import { createMember } from '@test-integration/db/users';
 
 import { createCompactedInsightsEvent } from '../database/entities/__tests__/db-utils';

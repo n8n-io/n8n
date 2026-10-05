@@ -13,6 +13,7 @@ import type {
 	RoleMembersResponse,
 	RoleProjectMembersResponse,
 } from '@n8n/api-types';
+import { EventService, RoleService } from '@n8n/backend-services';
 import { LICENSE_FEATURES } from '@n8n/constants';
 import { AuthenticatedRequest } from '@n8n/db';
 import {
@@ -30,10 +31,8 @@ import {
 import { Role as RoleDTO } from '@n8n/permissions';
 
 import { NotFoundError } from '@n8n/errors';
-import { EventService } from '@/events/event.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { assertCanManageRoleType, canReassignUsers } from '@/services/role-authorization';
-import { RoleService } from '@/services/role.service';
 
 @RestController('/roles')
 export class RoleController {

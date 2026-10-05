@@ -12,7 +12,7 @@ import {
 } from '../../helpers/utils';
 import { listRLC, untilSiteSelected } from '../../list';
 import { resolveSiteId, siteRLC } from '../../site';
-import { microsoftApiRequestAllItems } from '../../transport';
+import { microsoftApiRequestAllItems } from '../../../transport';
 
 const properties: INodeProperties[] = [
 	{

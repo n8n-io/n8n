@@ -1,3 +1,4 @@
+import type { AgentMessageSteeringService } from '../agent-message-steering.service';
 import type { SerializableAgentState } from '@n8n/agents';
 import { LockService } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
@@ -8,6 +9,7 @@ import { mock } from 'vitest-mock-extended';
 import { NotFoundError } from '@n8n/errors';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
 
+import type { AgentBackgroundJobService } from '../background/agent-background-job.service';
 import { AgentChatExecutionService } from '../agent-chat-execution.service';
 import type { AgentExecutionService } from '../agent-execution.service';
 import type { AgentExecutionUpdateBroadcaster } from '../agent-execution-update-broadcaster';
@@ -61,6 +63,8 @@ function makeService(isMultiMain = true) {
 	const checkpointStorage = mock<N8NCheckpointStorage>();
 	const publisher = mock<Publisher>();
 	const updates = mock<AgentExecutionUpdateBroadcaster>();
+	const steering = mock<AgentMessageSteeringService>();
+	const backgroundJobs = mock<AgentBackgroundJobService>();
 	const service = new AgentChatExecutionService(
 		Container.get(LockService),
 		repository,
@@ -69,6 +73,8 @@ function makeService(isMultiMain = true) {
 		publisher,
 		mock<InstanceSettings>({ isMultiMain }),
 		updates,
+		steering,
+		backgroundJobs,
 	);
 	executionService.findThreadById.mockResolvedValue(thread);
 	repository.findOneBy.mockImplementation(async (where) =>
@@ -80,10 +86,48 @@ function makeService(isMultiMain = true) {
 	checkpointStorage.findSuspendedForThread.mockResolvedValue(checkpoint);
 	checkpointStorage.getStatus.mockResolvedValue({ status: 'active', checkpoint });
 	checkpointStorage.cancelSuspended.mockResolvedValue(true);
-	return { service, repository, executionService, checkpointStorage, publisher, updates };
+	return {
+		service,
+		repository,
+		executionService,
+		checkpointStorage,
+		publisher,
+		updates,
+		steering,
+		backgroundJobs,
+	};
 }
 
 beforeEach(() => Container.reset());
+
+it('closes steering admission before signaling Stop', async () => {
+	const { service, steering } = makeService();
+	const controller = new AbortController();
+	service.register(context, controller);
+	const committed = createDeferredPromise();
+	steering.close.mockReturnValue(committed.promise);
+	const stopping = service.requestCancel(context);
+	await vi.waitFor(() =>
+		expect(steering.close).toHaveBeenCalledWith(context.threadId, context.executionId),
+	);
+	try {
+		expect(controller.signal.aborted).toBe(false);
+	} finally {
+		committed.resolve();
+	}
+	await stopping;
+	expect(controller.signal.aborted).toBe(true);
+	await service.settle(context.executionId, async () => {});
+});
+
+it('leaves background children running when a connection closes during suspension', async () => {
+	const { service, backgroundJobs } = makeService();
+	const controller = new AbortController();
+	service.register(context, controller);
+	controller.abort();
+	await service.settle(context.executionId, async () => {}, 'run-1');
+	expect(backgroundJobs.cancelForParent).not.toHaveBeenCalled();
+});
 
 it.each([
 	{ userId: 'other-user' },
@@ -112,11 +156,21 @@ it('relays Stop to the owning main and leaves other and later executions running
 	mainA.service.register(context, controller);
 	mainA.service.register({ ...context, threadId: 'thread-2', executionId: 'execution-2' }, other);
 	expect(await mainB.service.requestCancel(context)).toBe(true);
+	expect(mainB.backgroundJobs.cancelForParent).toHaveBeenCalledWith(
+		'agent-1',
+		'thread-1',
+		'draft-chat:user-1',
+	);
 	expect(mainB.publisher.publishCommand).toHaveBeenCalledExactlyOnceWith({
 		command: 'cancel-agent-chat-execution',
 		payload: context,
 	});
 	await mainA.service.handleCancel(context);
+	expect(mainA.backgroundJobs.cancelForParent).toHaveBeenCalledWith(
+		'agent-1',
+		'thread-1',
+		'draft-chat:user-1',
+	);
 	await mainA.service.handleCancel(context);
 	expect(controller.signal.aborted).toBe(true);
 	expect(other.signal.aborted).toBe(false);

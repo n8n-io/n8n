@@ -1,4 +1,5 @@
 import { DeleteExecutionsDto } from '@n8n/api-types';
+import type { EventService } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import type {
@@ -23,7 +24,6 @@ import type { ConcurrencyControlService } from '@/concurrency/concurrency-contro
 import { AbortedExecutionRetryError } from '@/errors/aborted-execution-retry.error';
 import { MissingExecutionStopError } from '@/errors/missing-execution-stop.error';
 import { BadRequestError, NotFoundError } from '@n8n/errors';
-import type { EventService } from '@/events/event.service';
 import type { EngineV2ExecutionReader } from '@/executions/engine-v2-execution-reader.service';
 import { MissingExecutionDataError } from '@/executions/execution-data/missing-execution-data.error';
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
@@ -34,6 +34,7 @@ import type { ExecutionStopService } from '@/scaling/execution-stop.service';
 import { ScalingService } from '@/scaling/scaling.service';
 import type { Job } from '@/scaling/scaling.types';
 import type { OwnershipService } from '@/services/ownership.service';
+import type { EngineDataPlaneProxyService } from '@/services/engine-data-plane-proxy.service';
 import type { WaitTracker } from '@/wait-tracker';
 import type { WorkflowRunner } from '@/workflow-runner';
 
@@ -55,6 +56,7 @@ describe('ExecutionService', () => {
 	const ownershipService = mock<OwnershipService>();
 	const eventService = mock<EventService>();
 	const engineV2ExecutionReader = mock<EngineV2ExecutionReader>();
+	const engineDataPlane = mock<EngineDataPlaneProxyService>();
 
 	const executionService = new ExecutionService(
 		globalConfig,
@@ -76,6 +78,7 @@ describe('ExecutionService', () => {
 		executionStopService,
 		ownershipService,
 		engineV2ExecutionReader,
+		engineDataPlane,
 	);
 
 	beforeEach(() => {
@@ -255,6 +258,7 @@ describe('ExecutionService', () => {
 				executionStopService,
 				ownershipService,
 				mock(),
+				mock(),
 			);
 
 			const mockUser = mock<User>({ id: 'user-1' });
@@ -336,6 +340,7 @@ describe('ExecutionService', () => {
 				redactionProxy,
 				mock(),
 				ownershipService,
+				mock(),
 				mock(),
 			);
 
@@ -565,6 +570,78 @@ describe('ExecutionService', () => {
 			 * Assert
 			 */
 			await expect(stop).rejects.toThrowError(WorkflowOperationError);
+		});
+
+		describe('engine v2', () => {
+			const executionId = '01a038ae-c4a8-7799-8a3e-e3c2ca055cfa';
+			const startedAt = new Date('2026-09-28T10:00:00.000Z');
+			// A plain object: `mock()` would wrap the date in a proxy.
+			const running = {
+				id: executionId,
+				status: 'running',
+				mode: 'manual',
+				startedAt,
+			} as IExecutionResponse;
+
+			it('cancels a running execution through the engine', async () => {
+				engineV2ExecutionReader.findOne.mockResolvedValue(running);
+				const finishedAt = new Date('2026-09-28T10:00:05.000Z');
+				engineDataPlane.cancelExecution.mockResolvedValue({ cancelled: true, finishedAt });
+
+				const result = await executionService.stop(executionId, ['wf-1']);
+
+				expect(engineV2ExecutionReader.findOne).toHaveBeenCalledWith(executionId, ['wf-1']);
+				expect(engineDataPlane.cancelExecution).toHaveBeenCalledWith(executionId);
+				expect(result).toEqual({
+					mode: 'manual',
+					startedAt,
+					stoppedAt: finishedAt,
+					finished: false,
+					status: 'canceled',
+				});
+				expect(executionPersistence.findWithUnflattenedData).not.toHaveBeenCalled();
+			});
+
+			it('throws when the execution is absent or not visible to the caller', async () => {
+				engineV2ExecutionReader.findOne.mockResolvedValue(undefined);
+
+				await expect(executionService.stop(executionId, ['wf-1'])).rejects.toThrowError(
+					MissingExecutionStopError,
+				);
+				expect(engineDataPlane.cancelExecution).not.toHaveBeenCalled();
+			});
+
+			it('throws when the execution has already ended', async () => {
+				engineV2ExecutionReader.findOne.mockResolvedValue(
+					mock<IExecutionResponse>({ id: executionId, status: 'success' }),
+				);
+
+				await expect(executionService.stop(executionId, ['wf-1'])).rejects.toThrowError(
+					WorkflowOperationError,
+				);
+				expect(engineDataPlane.cancelExecution).not.toHaveBeenCalled();
+			});
+
+			it('throws when the engine reports the execution ended meanwhile', async () => {
+				engineV2ExecutionReader.findOne.mockResolvedValue(running);
+				engineDataPlane.cancelExecution.mockResolvedValue({
+					cancelled: false,
+					status: 'completed',
+				});
+
+				await expect(executionService.stop(executionId, ['wf-1'])).rejects.toThrowError(
+					WorkflowOperationError,
+				);
+			});
+
+			it('throws when the engine no longer has the execution', async () => {
+				engineV2ExecutionReader.findOne.mockResolvedValue(running);
+				engineDataPlane.cancelExecution.mockResolvedValue(undefined);
+
+				await expect(executionService.stop(executionId, ['wf-1'])).rejects.toThrowError(
+					MissingExecutionStopError,
+				);
+			});
 		});
 
 		describe('regular mode', () => {

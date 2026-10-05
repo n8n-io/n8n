@@ -72,6 +72,8 @@ export interface CreateDispatcherTransportOptions {
 	timeouts?: TransportTimeoutOptions;
 	/** When set, it runs on every dispatched request (including each redirect hop) after the SSRF check */
 	authorize?: RequestAuthorizer;
+	/** When set, `asCustomFetch()` bounds each response body to this decoded-byte limit. */
+	responseSizeLimit?: ResponseSizeLimit;
 }
 
 /**
@@ -216,12 +218,16 @@ export function createDispatcherTransport(
 	const ssrf = options?.ssrf ?? 'disabled';
 	const timeouts = options?.timeouts;
 	const authorize = options?.authorize;
+	const responseSizeLimit = options?.responseSizeLimit;
 
 	const lazyDispatcher = lazyValue(() => buildDispatcher(proxy, ssrf, { timeouts, authorize }));
 
 	return {
+		// `getDispatcher()` returns a bare dispatcher, which sees only wire bytes;
+		// the response-size limit is a decoded-body concern, so it is applied here
+		// on the fetch path where the body is already decompressed.
 		asCustomFetch: () => async (input, init) =>
-			await dispatchedFetch(lazyDispatcher(), input, init),
+			await dispatchedFetch(lazyDispatcher(), input, init, responseSizeLimit),
 		getDispatcher: () => lazyDispatcher(),
 	};
 }
@@ -334,16 +340,76 @@ function failDispatch(handler: FailableDispatchHandler, error: Error): void {
 }
 
 /**
+ * Response-size limit for {@link dispatchedFetch} and {@link limitResponseBody}.
+ * `maxBytes <= 0` disables the limit.
+ *
+ * The count is of *decoded* bytes: `fetch` reverses any `Content-Encoding`
+ * before the body reaches this stream, so a compressed payload cannot expand
+ * past the cap. `createError` lets a caller supply its own error type (n8n's
+ * `OperationalError`, say) without this pure subpath importing `n8n-workflow`.
+ */
+export interface ResponseSizeLimit {
+	maxBytes: number;
+	createError?: (maxBytes: number) => Error;
+}
+
+function defaultResponseSizeError(maxBytes: number): Error {
+	return new Error(`Response body exceeded the maximum allowed size of ${maxBytes} bytes`);
+}
+
+/**
+ * A `TransformStream` that throws once the decoded bytes pass `maxBytes`. This
+ * rejects the whole response; it does not truncate the body to `maxBytes`. Its
+ * own function so it can be unit-tested without a live response.
+ */
+export function createResponseSizeLimit({
+	maxBytes,
+	createError = defaultResponseSizeError,
+}: ResponseSizeLimit): TransformStream<Uint8Array, Uint8Array> {
+	let received = 0;
+	return new TransformStream({
+		transform(chunk, controller) {
+			received += chunk.byteLength;
+			if (received > maxBytes) throw createError(maxBytes);
+			controller.enqueue(chunk);
+		},
+	});
+}
+
+/**
+ * Wraps a fetch `Response` so that reading its body throws once the decoded
+ * size passes `limit.maxBytes`. The response is rejected in full, not truncated
+ * to the cap. Returns the response unchanged when the limit is disabled
+ * (`maxBytes <= 0`) or the body is empty.
+ */
+export function limitResponseBody(response: Response, limit: ResponseSizeLimit): Response {
+	if (limit.maxBytes <= 0 || !response.body) return response;
+	const body = response.body.pipeThrough(createResponseSizeLimit(limit));
+	// `new Response(body, response)` drops these read-only fields; restore them.
+	return Object.defineProperties(new Response(body, response), {
+		url: { value: response.url },
+		redirected: { value: response.redirected },
+		type: { value: response.type },
+	});
+}
+
+/**
  * Performs a `fetch` bound to the given undici dispatcher (the engine behind `asCustomFetch`).
  * Without a dispatcher it falls through to this undici's default dispatcher.
+ *
+ * Pass `responseSizeLimit` to reject a response whose decoded body passes the
+ * cap: reading the body then throws, rather than the body being truncated. It
+ * is opt-in; without it the response streams unchanged.
  */
 export async function dispatchedFetch(
 	dispatcher: Dispatcher | undefined,
 	input: RequestInfo | URL,
 	init?: RequestInit,
+	responseSizeLimit?: ResponseSizeLimit,
 ): Promise<Response> {
-	return (await undiciFetch(
+	const response = (await undiciFetch(
 		input as Parameters<typeof undiciFetch>[0],
 		{ ...(init ?? {}), dispatcher } as Parameters<typeof undiciFetch>[1],
 	)) as unknown as Response;
+	return responseSizeLimit ? limitResponseBody(response, responseSizeLimit) : response;
 }

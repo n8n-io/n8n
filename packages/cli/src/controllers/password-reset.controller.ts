@@ -4,6 +4,7 @@ import {
 	ResolvePasswordTokenQueryDto,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { EventService } from '@n8n/backend-services';
 import { Time } from '@n8n/constants';
 import { GLOBAL_OWNER_ROLE, UserRepository } from '@n8n/db';
 import {
@@ -27,7 +28,6 @@ import {
 	NotFoundError,
 	UnprocessableRequestError,
 } from '@n8n/errors';
-import { EventService } from '@/events/event.service';
 import { ExternalHooks } from '@/external-hooks';
 import { License } from '@/license';
 import { MfaService } from '@/mfa/mfa.service';
@@ -93,6 +93,7 @@ export class PasswordResetController {
 				return;
 			}
 
+			// oxlint-disable-next-line typescript/no-deprecated
 			if (user.role.slug !== GLOBAL_OWNER_ROLE.slug && !this.license.isWithinUsersLimit()) {
 				this.logger.debug(
 					'Request to send password reset email failed because the user limit was reached',
@@ -122,6 +123,7 @@ export class PasswordResetController {
 				return;
 			}
 
+			// oxlint-disable-next-line typescript/no-deprecated
 			if (this.license.isLdapEnabled() && ldapIdentity) {
 				throw new UnprocessableRequestError('forgotPassword.ldapUserPasswordResetUnavailable');
 			}
@@ -178,6 +180,7 @@ export class PasswordResetController {
 		const user = await this.authService.resolvePasswordResetToken(token);
 		if (!user) throw new NotFoundError('');
 
+		// oxlint-disable-next-line typescript/no-deprecated
 		if (user.role.slug !== GLOBAL_OWNER_ROLE.slug && !this.license.isWithinUsersLimit()) {
 			this.logger.debug(
 				'Request to resolve password token failed because the user limit was reached',

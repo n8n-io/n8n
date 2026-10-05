@@ -118,9 +118,15 @@ export { SamlPreferencesAttributeMapping } from './saml/saml-preferences.dto';
 export { UpdateSamlConfigurationDto } from './saml/saml-preferences.dto';
 export { SamlToggleDto } from './saml/saml-toggle.dto';
 export { type SamlConfigurationResponse } from './saml/saml-configuration-response.dto';
+export {
+	SamlConfigurationPublicDto,
+	UpdateSamlConfigurationPublicDto,
+} from './saml/saml-configuration-public.dto';
 
-export { UpdateLdapConfigurationDto } from './ldap/ldap-configuration.dto';
-export { type LdapConfigurationResponse } from './ldap/ldap-configuration-response.dto';
+export {
+	LdapConfigurationPublicDto,
+	UpdateLdapConfigurationPublicDto,
+} from './ldap/ldap-configuration-public.dto';
 export { LdapSyncDto } from './ldap/ldap-sync.dto';
 
 export { PasswordUpdateRequestDto } from './user/password-update-request.dto';
@@ -422,12 +428,26 @@ export { TestOidcConfigResponseDto } from './oidc/test-oidc-config-response.dto'
 export { CreateDataTableDto } from './data-table/create-data-table.dto';
 export { UpdateDataTableDto } from './data-table/update-data-table.dto';
 export {
+	ClearDataTableRowsResponsePublicDto,
+	CreateDataTableColumnPublicDto,
 	CreateDataTablePublicDto,
+	CreateDataTableRowsPublicDto,
 	DataTableColumnListPublicDto,
+	DataTableColumnPublicDto,
 	DataTableListPublicDto,
 	DataTablePublicDto,
+	DataTableRowListPublicDto,
+	DeleteDataTableRowsPublicQueryDto,
+	DeleteDataTableRowsResponsePublicDto,
+	InsertDataTableRowsResponsePublicDto,
+	UpdateDataTableColumnPublicDto,
 	UpdateDataTablePublicDto,
+	UpdateDataTableRowPublicDto,
+	UpdateDataTableRowResponsePublicDto,
+	UpsertDataTableRowPublicDto,
+	UpsertDataTableRowResponsePublicDto,
 	dataTablePublicSchema,
+	dataTableRowPublicSchema,
 	type DataTablePublic,
 } from './data-table/data-table-public.dto';
 export { UpdateDataTableRowDto } from './data-table/update-data-table-row.dto';
@@ -439,17 +459,13 @@ export {
 } from './data-table/list-data-table-query.dto';
 export {
 	ListDataTableContentQueryDto,
-	PublicApiListDataTableContentQueryDto,
+	PublicApiListDataTableRowsQueryDto,
 } from './data-table/list-data-table-content-query.dto';
 export { CreateDataTableColumnDto } from './data-table/create-data-table-column.dto';
 export { AddDataTableRowsDto } from './data-table/add-data-table-rows.dto';
 export { AddDataTableColumnDto } from './data-table/add-data-table-column.dto';
 export { MoveDataTableColumnDto } from './data-table/move-data-table-column.dto';
 export { RenameDataTableColumnDto } from './data-table/rename-data-table-column.dto';
-export {
-	updateDataTableColumnSchema,
-	type UpdateDataTableColumnDto,
-} from './data-table/update-data-table-column.dto';
 export { DownloadDataTableCsvQueryDto } from './data-table/download-data-table-csv-query.dto';
 export { ImportCsvToDataTableDto } from './data-table/import-csv-to-data-table.dto';
 
@@ -460,6 +476,7 @@ export {
 	IMPORT_PACKAGE_SELECTION_REQUEST_FORM_FIELDS,
 } from './packages/import-package-request.dto';
 export { ExportPackageRequestDto } from './packages/export-package-request.dto';
+export { CommunityPackageRequestDto } from './community-packages/community-package-request.dto';
 
 export * from './evaluations';
 
@@ -588,6 +605,15 @@ export {
 	type OtlpProtocol,
 } from './otel/update-otel-settings.dto';
 export { TestOtelTraceDto } from './otel/test-otel-trace.dto';
+export {
+	OtelSettingsPublicDto,
+	OtelSettingsQueryPublicDto,
+	UpdateOtelSettingsPublicDto,
+} from './otel/otel-settings-public.dto';
+export {
+	OtelTestTraceRequestPublicDto,
+	OtelTestTraceResultPublicDto,
+} from './otel/otel-test-trace-public.dto';
 
 export {
 	PromotionChangesDto,
@@ -682,7 +708,9 @@ export {
 export {
 	ApplyPackageDto,
 	ApplyPackageResultDto,
+	ApplySelectionDto,
 	ContinueApplyPackageDto,
+	ContinueApplySelectionDto,
 	PromotePackageDto,
 	PromotePackageResultDto,
 	applyPackageCountsSchema,

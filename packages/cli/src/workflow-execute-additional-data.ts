@@ -3,6 +3,7 @@
 import type { PushMessage, PushType } from '@n8n/api-types';
 import { Logger, ModuleRegistry } from '@n8n/backend-common';
 import { SsrfProtectionService } from '@n8n/backend-network';
+import { EventService, UrlService } from '@n8n/backend-services';
 import { ExecutionsConfig, GlobalConfig, SsrfProtectionConfig, WorkflowsConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import { ExecutionRepository, WorkflowRepository } from '@n8n/db';
@@ -43,6 +44,8 @@ import {
 	Workflow,
 	createRunExecutionData,
 	mergeRunsPerBranch,
+	collectSubWorkflowOutput,
+	getSubWorkflowOutputPolicy,
 	attachDynamicCredentialsUsage,
 	summarizeDynamicCredentialsUsage,
 } from 'n8n-workflow';
@@ -56,7 +59,6 @@ import { RuntimeCredentialProxyService } from './services/runtime-credential-pro
 import { ActiveExecutions } from '@/active-executions';
 import { CredentialsHelper } from '@/credentials-helper';
 import { PreExecuteBlockedError } from '@/errors/pre-execute-blocked.error';
-import { EventService } from '@/events/event.service';
 import type { AiEventPayload } from '@/events/maps/ai.event-map';
 import { getLifecycleHooksForSubExecutions } from '@/execution-lifecycle/execution-lifecycle-hooks';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
@@ -70,7 +72,6 @@ import {
 import type { UpdateExecutionPayload } from '@/interfaces';
 import { NodeTypes } from '@/node-types';
 import { Push } from '@/push';
-import { UrlService } from '@n8n/backend-services';
 import { TaskRequester } from '@/task-runners/task-managers/task-requester';
 import { findSubworkflowStart } from '@/utils';
 import { objectToError } from '@/utils/object-to-error';
@@ -155,9 +156,9 @@ async function fetchWorkflowData(
 	} else {
 		const workflowData = workflowInfo.code;
 		if (workflowData) {
-			if (!workflowData.id) {
-				workflowData.id = parentWorkflowId;
-			}
+			// An inline sub-workflow is part of the parent that embeds it, not a
+			// workflow of its own, so it runs under the parent workflow's id.
+			workflowData.id = parentWorkflowId;
 			workflowData.settings ??= parentWorkflowSettings;
 		}
 		return workflowData;
@@ -322,6 +323,13 @@ export async function executeWorkflow(
 
 	const runData =
 		options.loadedRunData ?? getRunData(workflowData, options.inputData, options.parentExecution);
+
+	if (runData.executionData) {
+		runData.executionData.subWorkflowOutput ??= getSubWorkflowOutputPolicy(
+			workflowData.nodes,
+			options.returnLastRunOnly ?? false,
+		);
+	}
 
 	try {
 		await Container.get(WorkflowPreExecute).run(
@@ -688,6 +696,7 @@ async function startExecution(
 		const fullExecutionData: UpdateExecutionPayload = {
 			data: fullRunData.data,
 			mode: fullRunData.mode,
+			// oxlint-disable-next-line typescript/no-deprecated
 			finished: fullRunData.finished ? fullRunData.finished : false,
 			startedAt: fullRunData.startedAt,
 			stoppedAt: fullRunData.stoppedAt,
@@ -724,6 +733,7 @@ async function startExecution(
 	}
 
 	// subworkflow either finished, or is in status waiting due to a wait node, both cases are considered successes here
+	// oxlint-disable-next-line typescript/no-deprecated
 	if (data.finished === true || data.status === 'waiting') {
 		// Workflow did finish successfully
 
@@ -731,7 +741,9 @@ async function startExecution(
 
 		return {
 			executionId,
-			data: buildSubWorkflowOutput(data, workflowData.nodes, options.returnLastRunOnly ?? false),
+			data: data.data.subWorkflowOutput
+				? await collectSubWorkflowOutput(data, workflow, data.data.subWorkflowOutput)
+				: buildSubWorkflowOutput(data, workflowData.nodes, options.returnLastRunOnly ?? false),
 			waitTill: data.waitTill,
 			// Report private-credential usage to the caller (detached runs return earlier, skipping this).
 			...summarizeDynamicCredentialsUsage(data.data),

@@ -1,4 +1,5 @@
 import { LicenseState, Logger } from '@n8n/backend-common';
+import type { EventService } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
 import type { INode, IRunExecutionData, ITaskData, WorkflowExecuteMode } from 'n8n-workflow';
@@ -6,7 +7,6 @@ import { shouldRedactConsoleOutput } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import { ForbiddenError, ScopeForbiddenError } from '@n8n/errors';
-import type { EventService } from '@/events/event.service';
 import type {
 	ExecutionRedactionOptions,
 	RedactableExecution,

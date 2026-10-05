@@ -4,7 +4,8 @@ import type {
 	CanvasNodeInjectionData,
 	GroupExpansionMode,
 } from '@/features/workflows/canvas/canvas.types';
-import type { ComputedRef, InjectionKey, Ref, ShallowRef } from 'vue';
+import type { ComputedRef, InjectionKey, MaybeRefOrGetter, Ref, ShallowRef } from 'vue';
+import type { LogsPanelContext } from '@/features/execution/logs/logs.types';
 import type { ExpressionLocalResolveContext } from '@/app/types/expressions';
 import type { TelemetryContext } from '@/app/types/telemetry';
 import type { useExecutionDataStore } from '@/app/stores/executionData.store';
@@ -99,3 +100,18 @@ export type EditorEnabledFeatures = Partial<Record<EditorFeature, boolean>> & {
 };
 export const EditorEnabledFeaturesKey: InjectionKey<Readonly<Ref<EditorEnabledFeatures>>> =
 	Symbol('EditorEnabledFeatures');
+
+/**
+ * Host-specific setup of the logs panel (INS-1192). The editor provides nothing:
+ * `useLogsPanelLayout` falls back to the editor setup. A host that renders the
+ * panel inside a pane, like the Instance AI artifact, provides its own.
+ */
+export interface LogsPanelHost {
+	/** Host name in the `User toggled log view` telemetry event. */
+	context: LogsPanelContext;
+	/** localStorage key of the panel height. Each host keeps its own height. */
+	heightStorageKey: string;
+	/** Element the panel height is relative to. Defaults to the document body. */
+	heightContainer?: MaybeRefOrGetter<HTMLElement | null | undefined>;
+}
+export const LogsPanelHostKey: InjectionKey<LogsPanelHost> = Symbol('LogsPanelHost');

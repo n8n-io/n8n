@@ -7,6 +7,7 @@ import {
 	INSTANCE_ACTIVITY_CONTEXT_FLAG,
 } from '@n8n/api-types';
 import { LicenseState, Logger, ModuleRegistry } from '@n8n/backend-common';
+import { EventService, UrlService, RoleService, FolderFinderService } from '@n8n/backend-services';
 import { ExecutionsConfig, GlobalConfig, WorkflowsConfig } from '@n8n/config';
 import { ExecutionRepository, ProjectRepository, SharedWorkflowRepository, User } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
@@ -26,25 +27,23 @@ import { ActiveExecutions } from '@/active-executions';
 import { CollaborationService } from '@/collaboration/collaboration.service';
 import { N8N_VERSION } from '@/constants';
 import { CredentialsService } from '@/credentials/credentials.service';
-import { EventService } from '@/events/event.service';
 import { ExecutionListService } from '@/executions/execution-list.service';
+import { ExecutionRedactionServiceProxy } from '@/executions/execution-redaction-proxy.service';
 import { ExecutionService } from '@/executions/execution.service';
-import { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks/subworkflow-policy-checker';
 import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.service';
 import { NodeCatalogService } from '@/node-catalog';
 import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';
 import { AiGatewayService } from '@/services/ai-gateway.service';
 import { AiPreferenceService } from '@/services/ai-preference.service';
-import { FolderFinderService } from '@/services/folder-finder.service';
 import { FolderService } from '@/services/folder.service';
 import { NodeResourceExplorerService } from '@/services/node-resource-explorer.service';
 import { ProjectService } from '@/services/project.service.ee';
-import { RoleService } from '@/services/role.service';
+
 import { TagService } from '@/services/tag.service';
-import { UrlService } from '@n8n/backend-services';
 import { Telemetry } from '@/telemetry';
 import { WorkflowRunner } from '@/workflow-runner';
+import { ErrorWorkflowValidationService } from '@/workflows/error-workflow-validation.service';
 import { WorkflowCreationService } from '@/workflows/workflow-creation.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
@@ -263,7 +262,7 @@ export class McpService {
 		private readonly workflowHistoryService: WorkflowHistoryService,
 		private readonly workflowsConfig: WorkflowsConfig,
 		private readonly workflowPublishedDataService: WorkflowPublishedDataService,
-		private readonly subworkflowPolicyChecker: SubworkflowPolicyChecker,
+		private readonly errorWorkflowValidationService: ErrorWorkflowValidationService,
 		private readonly aiGatewayService: AiGatewayService,
 		private readonly postSaveMetrics: McpPostSaveMetricsService,
 		private readonly moduleRegistry: ModuleRegistry,
@@ -271,6 +270,7 @@ export class McpService {
 		private readonly folderService: FolderService,
 		private readonly aiPreferenceService: AiPreferenceService,
 		private readonly mcpConfig: McpConfig,
+		private readonly executionRedactionServiceProxy: ExecutionRedactionServiceProxy,
 	) {}
 
 	/** Resolves user experience flags and the shared activity gate. */
@@ -522,6 +522,7 @@ export class McpService {
 			this.executionRepository,
 			this.workflowFinderService,
 			this.telemetry,
+			this.executionRedactionServiceProxy,
 		);
 		registerIfAllowed(getExecutionTool);
 
@@ -1056,8 +1057,7 @@ export class McpService {
 			dataTableOps,
 			this.tagService,
 			this.globalConfig,
-			this.subworkflowPolicyChecker,
-			this.workflowPublishedDataService,
+			this.errorWorkflowValidationService,
 			this.aiGatewayService,
 			uninstalledNodeOptions,
 			this.logger,

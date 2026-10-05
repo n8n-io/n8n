@@ -8,7 +8,7 @@ import {
 	type WorkflowLoop,
 } from '../graph';
 import type { LifecycleEventPublisher } from '../lifecycle-events';
-import type { ExecutionResponseSender } from '../response-channel';
+import { createResponseEmitter, type ExecutionResponseSender } from '../response-channel';
 import { runBatchStep } from './batch-step';
 import type { OrchestrationMessage, StepReadyEvent, WorkQueue } from '../queue';
 import type { ExecutionRecord, ExecutionStore } from './execution-store';
@@ -61,11 +61,8 @@ export class StepReadyHandler {
 		const step = await this.stepStore.claimStep(event.stepId);
 		if (!step) return;
 
-		// NOTE: we would prefer to do this validation before the claim,
-		// but we need to check the execution status AFTER the claim to
-		// avoid executing a step for a failed or cancelled execution.
-		// Reconciliation or a more robust consistency story will improve
-		// this in the future (CAT-2938, CAT-3930).
+		// Read after the claim, so an execution that ended in between is seen
+		// here and the step is not run.
 		const execution = await this.executionStore.loadExecution(event.executionId);
 		const node = validateStepContext(step, execution);
 
@@ -77,9 +74,11 @@ export class StepReadyHandler {
 			node.type === 'batch' || step.resumeCause !== null ? undefined : this.executorFor(step, node);
 
 		if (!isLiveExecutionStatus(execution.status)) {
-			// The execution has ended, so we don't run the step. The step is left
-			// `running` for reconciliation (CAT-2938) or internal consistency
-			// checks (CAT-3930) to resolve.
+			// The execution ended after this step was announced, or after it was
+			// claimed. Settle the row here, where both facts are known, so no
+			// cancelled execution keeps a `running` step. Nothing is announced: the
+			// step never ran, like the ones the cancellation sweep settles.
+			await this.stepStore.cancelStep(step.id);
 			return;
 		}
 
@@ -185,8 +184,9 @@ export class StepReadyHandler {
 				mode: execution.mode,
 				iteration: step.iteration,
 				callerContext: execution.callerContext,
+				responseExpectation: execution.responseExpectation,
 			},
-			respond: this.responseSender.emitterFor(execution.id),
+			respond: createResponseEmitter(this.responseSender, execution),
 		});
 
 		if (result.wait) validateWaitDeclaration(step.id, result.wait);

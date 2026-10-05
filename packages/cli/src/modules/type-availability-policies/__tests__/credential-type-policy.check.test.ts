@@ -7,6 +7,8 @@ import type {
 import type { INode } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
+import type { NodeTypes } from '@/node-types';
+
 import { CredentialTypePolicyCheck } from '../credential-type-policy.check';
 import type {
 	ComposedTypeEvaluation,
@@ -85,7 +87,8 @@ const versions: ComposedTypeEvaluation['versions'] = [
 describe('CredentialTypePolicyCheck', () => {
 	const service = mock<TypeAvailabilityPolicyService>();
 	const licenseState = mock<LicenseState>();
-	const check = new CredentialTypePolicyCheck(service, licenseState);
+	const nodeTypes = mock<NodeTypes>();
+	const check = new CredentialTypePolicyCheck(service, licenseState, nodeTypes);
 
 	/** Denies whichever of the requested types are in `deniedTypes`. */
 	const denying = (deniedTypes: string[], verdictOverrides: Partial<ComposedTypeVerdict> = {}) =>
@@ -215,6 +218,131 @@ describe('CredentialTypePolicyCheck', () => {
 				[HTTP_BASIC, SLACK_API],
 			);
 			expect(result.violations.map((violation) => violation.subject)).toEqual([SLACK_API]);
+		});
+	});
+
+	describe('a credential type named by parameter', () => {
+		// Mirrors HTTP Request: the selector only counts while its auth mode is chosen.
+		const httpRequestDescription = {
+			credentials: [],
+			properties: [
+				{
+					name: 'nodeCredentialType',
+					type: 'credentialsSelect',
+					displayOptions: { show: { authentication: ['predefinedCredentialType'] } },
+				},
+				{
+					name: 'genericAuthType',
+					type: 'credentialsSelect',
+					displayOptions: { show: { authentication: ['genericCredentialType'] } },
+				},
+			],
+		};
+
+		const httpRequest = (parameters: INode['parameters'], name = 'HTTP Request'): INode =>
+			({
+				id: name,
+				name,
+				type: HTTP_REQUEST,
+				typeVersion: 4.2,
+				position: [0, 0],
+				parameters,
+			}) as INode;
+
+		const saveNew = async (nodes: INode[]) =>
+			await check.onWorkflowSave({
+				workflow: workflow(nodes, null),
+				storedWorkflow: null,
+				projectId: 'project-1',
+			});
+
+		beforeEach(() => {
+			nodeTypes.getByNameAndVersion.mockReturnValue({
+				description: httpRequestDescription,
+			} as never);
+		});
+
+		it('reports a predefined type the node names without selecting a credential', async () => {
+			const result = await saveNew([
+				httpRequest({ authentication: 'predefinedCredentialType', nodeCredentialType: SLACK_API }),
+			]);
+
+			expect(result.violations.map((violation) => violation.subject)).toEqual([SLACK_API]);
+		});
+
+		it('reports a generic auth type the node names without selecting a credential', async () => {
+			denying([HTTP_BASIC]);
+
+			const result = await saveNew([
+				httpRequest({ authentication: 'genericCredentialType', genericAuthType: HTTP_BASIC }),
+			]);
+
+			expect(result.violations.map((violation) => violation.subject)).toEqual([HTTP_BASIC]);
+		});
+
+		it('ignores a leftover type whose selector the current auth mode hides', async () => {
+			const result = await saveNew([
+				httpRequest({ authentication: 'none', nodeCredentialType: SLACK_API }),
+			]);
+
+			expect(result.violations).toEqual([]);
+			expect(service.evaluateComposedTypesFor).not.toHaveBeenCalled();
+		});
+
+		it('adds nothing for a type given as an expression', async () => {
+			const result = await saveNew([
+				httpRequest({
+					authentication: 'predefinedCredentialType',
+					nodeCredentialType: '={{ "slackApi" }}',
+				}),
+			]);
+
+			expect(result.violations).toEqual([]);
+		});
+
+		it('adds nothing when the node type is not installed', async () => {
+			nodeTypes.getByNameAndVersion.mockImplementation(() => {
+				throw new Error('Unrecognized node type');
+			});
+
+			const result = await saveNew([
+				httpRequest({ authentication: 'predefinedCredentialType', nodeCredentialType: SLACK_API }),
+			]);
+
+			expect(result.violations).toEqual([]);
+		});
+
+		it('grandfathers a type the stored workflow already named by parameter', async () => {
+			const nodes = [
+				httpRequest({ authentication: 'predefinedCredentialType', nodeCredentialType: SLACK_API }),
+			];
+
+			const result = await check.onWorkflowSave({
+				workflow: workflow([...nodes, httpRequest({ ...nodes[0].parameters }, 'Copy')]),
+				storedWorkflow: workflow(nodes),
+				projectId: 'project-1',
+			});
+
+			expect(result.violations).toEqual([]);
+		});
+
+		it('reports one violation when the named type is also selected as a credential', async () => {
+			const result = await saveNew([
+				{
+					...httpRequest({
+						authentication: 'predefinedCredentialType',
+						nodeCredentialType: SLACK_API,
+					}),
+					credentials: { [SLACK_API]: { id: 'cred-1', name: 'Slack account' } },
+				},
+			]);
+
+			expect(result.violations).toHaveLength(1);
+			expect(service.evaluateComposedTypesFor).toHaveBeenCalledWith(
+				'credential-types',
+				'project-1',
+				[SLACK_API],
+			);
 		});
 	});
 

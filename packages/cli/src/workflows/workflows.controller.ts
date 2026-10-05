@@ -12,6 +12,7 @@ import {
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { OutboundHttp, SsrfBlockedIpError } from '@n8n/backend-network';
+import { EventService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import {
 	AuthenticatedRequest,
@@ -42,7 +43,6 @@ import { calculateWorkflowChecksum } from 'n8n-workflow';
 
 import { AuthService } from '@/auth/auth.service';
 import { BadRequestError, ForbiddenError, NotFoundError } from '@n8n/errors';
-import { EventService } from '@/events/event.service';
 import { ExecutionService } from '@/executions/execution.service';
 import { IWorkflowResponse } from '@/interfaces';
 import { License } from '@/license';
@@ -124,6 +124,7 @@ export class WorkflowsController {
 		return { ...savedWorkflowWithMetaData, scopes, checksum };
 	}
 
+	// oxlint-disable-next-line typescript/no-deprecated
 	@Get('/', { middlewares: listQueryMiddleware })
 	async getAll(req: WorkflowRequest.GetMany, res: express.Response) {
 		try {
@@ -207,6 +208,7 @@ export class WorkflowsController {
 	async getWorkflow(req: WorkflowRequest.Get) {
 		const { workflowId } = req.params;
 
+		// oxlint-disable-next-line typescript/no-deprecated
 		if (this.license.isSharingEnabled()) {
 			const relations: FindOptionsRelations<WorkflowEntity> = {
 				shared: {
@@ -318,6 +320,7 @@ export class WorkflowsController {
 		const updateData = createWorkflowEntityFromPayload(rest);
 
 		// Credential tamper protection is enforced centrally in WorkflowService.update
+		// oxlint-disable-next-line typescript/no-deprecated
 		const isSharingEnabled = this.license.isSharingEnabled();
 		const updatedWorkflow = await this.workflowService.update(req.user, updateData, workflowId, {
 			tagIds: tags,

@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "instance_ai_mcp_registry_connections" ("id" varchar PRIMARY KEY NOT NULL, "credentialId" varchar(36) NOT NULL, "serverSlug" varchar(255) NOT NULL, "toolFilter" text, "userId" varchar NOT NULL, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "FK_1e826120e7e53ebc4681f026de8" FOREIGN KEY ("credentialId") REFERENCES "credentials_entity" ("id") ON DELETE CASCADE, CONSTRAINT "FK_1d25707354d2012da256eb2ec0a" FOREIGN KEY ("serverSlug") REFERENCES "mcp_registry_server" ("slug") ON DELETE CASCADE, CONSTRAINT "FK_8b42c08a531d76410980c639a5b" FOREIGN KEY ("userId") REFERENCES "user" ("id") ON DELETE CASCADE)
+CREATE TABLE "instance_ai_mcp_registry_connections" ("id" varchar PRIMARY KEY NOT NULL, "credentialId" varchar(36) NOT NULL, "serverSlug" varchar(255) NOT NULL, "userId" varchar NOT NULL, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "toolPermissions" text NOT NULL, CONSTRAINT "FK_1e826120e7e53ebc4681f026de8" FOREIGN KEY ("credentialId") REFERENCES "credentials_entity" ("id") ON DELETE CASCADE ON UPDATE NO ACTION, CONSTRAINT "FK_1d25707354d2012da256eb2ec0a" FOREIGN KEY ("serverSlug") REFERENCES "mcp_registry_server" ("slug") ON DELETE CASCADE ON UPDATE NO ACTION, CONSTRAINT "FK_8b42c08a531d76410980c639a5b" FOREIGN KEY ("userId") REFERENCES "user" ("id") ON DELETE CASCADE ON UPDATE NO ACTION)
 ```
 
 </details>
@@ -19,7 +19,7 @@ CREATE TABLE "instance_ai_mcp_registry_connections" ("id" varchar PRIMARY KEY NO
 | credentialId | varchar(36) |  | false |  | [credentials_entity](credentials_entity.md) |  |
 | id | varchar |  | false |  |  |  |
 | serverSlug | varchar(255) |  | false |  | [mcp_registry_server](mcp_registry_server.md) |  |
-| toolFilter | TEXT |  | true |  |  |  |
+| toolPermissions | TEXT |  | false |  |  |  |
 | updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 | userId | varchar |  | false |  | [user](user.md) |  |
 
@@ -54,7 +54,7 @@ erDiagram
   varchar_36_ credentialId FK
   varchar id PK
   varchar_255_ serverSlug FK
-  TEXT toolFilter
+  TEXT toolPermissions
   datetime_3_ updatedAt
   varchar userId FK
 }

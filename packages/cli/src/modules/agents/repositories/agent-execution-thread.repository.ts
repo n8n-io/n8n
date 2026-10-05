@@ -146,6 +146,11 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 		cursor?: string,
 		filters: AgentSessionQueryFilters = {},
 	): Promise<AgentExecutionThreadPage> {
+		// SQLite timestamps can omit milliseconds, so compare them in one format.
+		const updatedAt =
+			this.manager.connection.options.type === 'postgres'
+				? 'thread.updatedAt'
+				: "STRFTIME('%Y-%m-%d %H:%M:%f', thread.updatedAt)";
 		const query = this.createQueryBuilder('thread')
 			.where('thread.projectId = :projectId', { projectId })
 			.andWhere('thread.agentId = :agentId', { agentId })
@@ -157,9 +162,9 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 			.take(limit + 1);
 
 		if (cursor) {
-			query.andWhere('thread.updatedAt < :cursor', { cursor: new Date(cursor) });
+			query.andWhere(`${updatedAt} < :cursor`, { cursor: new Date(cursor) });
 		}
-		this.applyListFilters(query, filters);
+		this.applyListFilters(query, filters, userId, updatedAt);
 		const threads = await query.getMany();
 		const hasMore = threads.length > limit;
 		if (hasMore) threads.pop();
@@ -173,14 +178,19 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 	private applyListFilters(
 		query: SelectQueryBuilder<AgentExecutionThread>,
 		filters: AgentSessionQueryFilters,
+		userId: string,
+		updatedAt: string,
 	) {
+		if (filters.scope === 'mine') {
+			query.andWhere('thread.ownerId = :userId', { userId });
+		}
 		if (filters.updatedAfter) {
-			query.andWhere('thread.updatedAt >= :updatedAfter', {
+			query.andWhere(`${updatedAt} >= :updatedAfter`, {
 				updatedAfter: filters.updatedAfter,
 			});
 		}
 		if (filters.updatedBefore) {
-			query.andWhere('thread.updatedAt <= :updatedBefore', {
+			query.andWhere(`${updatedAt} <= :updatedBefore`, {
 				updatedBefore: filters.updatedBefore,
 			});
 		}
@@ -198,14 +208,8 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 		status: NonNullable<AgentSessionQueryFilters['status']>,
 	) {
 		const latestStatus = this.latestExecutionStatusSubquery(query);
-		const failureExists = this.failureExistsSubquery(query);
 		if (status === 'succeeded') {
-			query.andWhere(`(${latestStatus}) = 'success' AND NOT EXISTS ${failureExists}`);
-		} else if (status === 'error') {
-			query.andWhere(
-				`((${latestStatus}) = 'error' OR ` +
-					`((${latestStatus}) = 'success' AND EXISTS ${failureExists}))`,
-			);
+			query.andWhere(`(${latestStatus}) = 'success'`);
 		} else {
 			query.andWhere(`(${latestStatus}) = :sessionStatus`, { sessionStatus: status });
 		}
@@ -230,16 +234,6 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 			.orderBy('latestExecution.createdAt', 'DESC')
 			.addOrderBy('latestExecution.id', 'DESC')
 			.limit(1)
-			.getQuery();
-	}
-
-	private failureExistsSubquery(query: SelectQueryBuilder<AgentExecutionThread>): string {
-		return query
-			.subQuery()
-			.select('1')
-			.from(AgentExecution, 'failedExecution')
-			.where('failedExecution.threadId = thread.id')
-			.andWhere('failedExecution.failureSummary IS NOT NULL')
 			.getQuery();
 	}
 

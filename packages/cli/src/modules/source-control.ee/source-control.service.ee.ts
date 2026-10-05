@@ -1,5 +1,6 @@
 import type { PullWorkFolderRequestDto, SourceControlledFile } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { EventService } from '@n8n/backend-services';
 import { type User } from '@n8n/db';
 import { OnPubSubEvent } from '@n8n/decorators';
 import { Service } from '@n8n/di';
@@ -10,7 +11,6 @@ import * as path from 'path';
 import type { PushResult } from 'simple-git';
 
 import { BadRequestError, ForbiddenError } from '@n8n/errors';
-import { EventService } from '@/events/event.service';
 import { IWorkflowToImport } from '@/interfaces';
 
 import {
@@ -636,6 +636,9 @@ export class SourceControlService {
 					`Skipped workflow ${id}: ${contentImportPolicy.violations.length} content-import policy violation(s)`,
 					{ violations: contentImportPolicy.violations },
 				);
+			} else {
+				// A pull writes the workflow directly, so no save event fires for it.
+				this.eventService.emit('workflow-imported', { workflowId: id });
 			}
 
 			if (contentImportPolicy && statusItem) {

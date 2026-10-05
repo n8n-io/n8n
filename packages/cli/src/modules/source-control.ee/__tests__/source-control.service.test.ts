@@ -1,3 +1,4 @@
+import type { EventService } from '@n8n/backend-services';
 import type { Mock } from 'vitest';
 import type { SourceControlledFile } from '@n8n/api-types';
 import { isContainedWithin } from '@n8n/backend-common';
@@ -10,7 +11,6 @@ import type { CommitResult, PullResult, PushResult } from 'simple-git';
 import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
 import { SourceControlService } from '@/modules/source-control.ee/source-control.service.ee';
 import { ForbiddenError } from '@n8n/errors';
-import type { EventService } from '@/events/event.service';
 import type { SourceControlExportService } from '../source-control-export.service.ee';
 import type { SourceControlGitService } from '../source-control-git.service.ee';
 import type { SourceControlImportService } from '../source-control-import.service.ee';
@@ -680,6 +680,37 @@ describe('SourceControlService', () => {
 					reason: 'review_pending',
 					workflowReviewRequestId: 'review-1',
 				},
+			});
+		});
+
+		it('announces each pulled workflow, but not one skipped by the content policy', async () => {
+			const user = mock<User>({ id: 'user-1' });
+			mockStatusService.getStatus.mockResolvedValueOnce([
+				mock<SourceControlledFile>({ id: 'workflow-1', type: 'workflow', conflict: false }),
+				mock<SourceControlledFile>({ id: 'workflow-2', type: 'workflow', conflict: false }),
+			]);
+			sourceControlImportService.importWorkflowFromWorkFolder.mockResolvedValue([
+				{ id: 'workflow-1', name: 'workflow-1.json', publishingError: undefined },
+				{
+					id: 'workflow-2',
+					name: 'workflow-2.json',
+					publishingError: undefined,
+					contentImportPolicy: {
+						violations: [
+							{ kind: 'node-type-unavailable', checkId: 'test.check', message: 'not allowed' },
+						],
+						checkErrors: [],
+					},
+				},
+			]);
+
+			await sourceControlService.pullWorkfolder(user, { force: true, autoPublish: 'none' });
+
+			expect(eventService.emit).toHaveBeenCalledWith('workflow-imported', {
+				workflowId: 'workflow-1',
+			});
+			expect(eventService.emit).not.toHaveBeenCalledWith('workflow-imported', {
+				workflowId: 'workflow-2',
 			});
 		});
 
@@ -1621,6 +1652,7 @@ describe('SourceControlService', () => {
 
 			// Once the push releases the lock, the queued reset runs - but only after the commit.
 			expect(gitService.resetBranch).toHaveBeenCalled();
+			expect(gitService.pull).toHaveBeenCalled();
 			expect(callOrder).toEqual(['commit', 'reset']);
 		});
 

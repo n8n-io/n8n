@@ -4,7 +4,8 @@
   "type": "module",
   "main": "src/index.ts",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./__tests__/mocks": "./src/__tests__/mocks.ts"
   },
   "scripts": {
     "clean": "rimraf .turbo",

@@ -1,3 +1,4 @@
+import type { EventService } from '@n8n/backend-services';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type {
 	ProjectSecretsProviderAccess,
@@ -11,7 +12,6 @@ import { mock } from 'vitest-mock-extended';
 
 import type { CredentialDependencyService } from '@/credentials/credential-dependency.service';
 import { NotFoundError } from '@n8n/errors';
-import type { EventService } from '@/events/event.service';
 import type { ExternalSecretsManager } from '@/modules/external-secrets.ee/external-secrets-manager.ee';
 import type { ExternalSecretsProviderRegistry } from '@/modules/external-secrets.ee/provider-registry.service';
 import type { RedactionService } from '@/modules/external-secrets.ee/redaction.service.ee';

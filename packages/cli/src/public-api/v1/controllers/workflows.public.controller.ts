@@ -23,6 +23,7 @@ import {
 	workflowIdParamSchema,
 	workflowVersionIdParamSchema,
 } from '@n8n/api-types';
+import { EventService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import type {
 	AuthenticatedRequest,
@@ -58,7 +59,6 @@ import { FolderNotFoundError } from '@/errors/folder-not-found.error';
 import { ResponseError, BadRequestError, NotFoundError } from '@n8n/errors';
 import { SharedWorkflowNotFoundError } from '@/errors/shared-workflow-not-found.error';
 import { WorkflowHistoryVersionNotFoundError } from '@/errors/workflow-history-version-not-found.error';
-import { EventService } from '@/events/event.service';
 import { RedactionEnforcementService } from '@/modules/redaction/redaction-enforcement.service';
 import { PolicyViolationError } from '@/policy/policy-violation.error';
 import { toPublicProject } from '@/public-api/v1/shared/project.mapper';
@@ -276,6 +276,7 @@ export class WorkflowsPublicController {
 			data: workflows.map((workflow) => ({
 				id: workflow.id,
 				name: workflow.name,
+				// oxlint-disable-next-line typescript/no-deprecated
 				active: workflow.active,
 				activeVersionId: workflow.activeVersionId,
 				createdAt: workflow.createdAt.toISOString(),
@@ -537,6 +538,7 @@ export class WorkflowsPublicController {
 			id: workflow.id,
 			name: workflow.name,
 			description: workflow.description,
+			// oxlint-disable-next-line typescript/no-deprecated
 			active: workflow.active,
 			activeVersionId: workflow.activeVersionId,
 			createdAt: workflow.createdAt.toISOString(),

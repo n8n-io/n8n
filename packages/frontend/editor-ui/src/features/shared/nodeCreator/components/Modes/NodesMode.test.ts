@@ -22,7 +22,7 @@ import { useKeyboardNavigation } from '@/features/shared/nodeCreator/composables
 import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
 import { createComponentRenderer } from '@/__tests__/render';
 import { waitAllPromises } from '@n8n/frontend-test-utils';
-import { mockRestrictedNodeTypes } from '@/__tests__/mocks';
+import { mockRestrictedNodeTypes } from '@n8n/frontend-module-type-availability-policies/__tests__/mocks';
 import { mockSimplifiedNodeType } from '../../__tests__/utils';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import NodesMode from './NodesMode.vue';

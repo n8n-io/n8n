@@ -9,6 +9,7 @@ import {
 	type AgentJsonToolConfig,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { EventService } from '@n8n/backend-services';
 import { WorkflowRepository, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { isRecord } from '@n8n/utils/is-record';
@@ -16,7 +17,6 @@ import { UserError } from 'n8n-workflow';
 
 import { CredentialsService } from '@/credentials/credentials.service';
 import { ConflictError } from '@n8n/errors';
-import { EventService } from '@/events/event.service';
 
 import {
 	type AgentConfigPart,
@@ -185,20 +185,28 @@ export class AgentConfigService {
 			);
 		}
 
+		const clearOmitted = options.clearOmittedOptionalFields === true;
 		const { validatedConfig, credentialProvider, existingTaskIds } = await this.prepareConfig(
 			entity,
 			config,
 			user,
+			clearOmitted,
 		);
-		const replacement = this.buildConfigReplacement(entity, validatedConfig, config, options);
+		const replacement = this.buildConfigReplacement(entity, validatedConfig, config, clearOmitted);
 		entity.schema = replacement.nextSchema;
 		entity.name = validatedConfig.name;
 		entity.integrations = replacement.nextIntegrations;
 		markAgentDraftDirty(entity);
-		this.removeUnreferencedResources(entity, validatedConfig);
+		this.removeUnreferencedResources(entity, validatedConfig, clearOmitted);
 
 		const saved = await this.saveConfig(entity, credentialProvider, user, options, replacement);
-		return await this.finishConfigUpdate(saved, validatedConfig, existingTaskIds, replacement);
+		return await this.finishConfigUpdate(
+			saved,
+			validatedConfig,
+			existingTaskIds,
+			replacement,
+			clearOmitted,
+		);
 	}
 
 	private async finishConfigUpdate(
@@ -206,9 +214,10 @@ export class AgentConfigService {
 		validatedConfig: AgentJsonConfig,
 		existingTaskIds: string[],
 		replacement: ConfigReplacement,
+		clearOmitted: boolean,
 	): Promise<AgentConfigMutationResponse> {
-		await this.removeUnreferencedTasks(validatedConfig, existingTaskIds);
-		if (validatedConfig.integrations !== undefined) {
+		await this.removeUnreferencedTasks(validatedConfig, existingTaskIds, clearOmitted);
+		if (writesField(validatedConfig, 'integrations', clearOmitted)) {
 			await syncAgentIntegrations(
 				saved,
 				replacement.previousIntegrations,
@@ -228,9 +237,10 @@ export class AgentConfigService {
 	private async removeUnreferencedTasks(
 		config: AgentJsonConfig,
 		existingTaskIds: string[],
+		clearOmitted: boolean,
 	): Promise<void> {
-		if (config.tasks === undefined) return;
-		const referencedTaskIds = new Set(config.tasks.map((ref) => ref.id));
+		if (!writesField(config, 'tasks', clearOmitted)) return;
+		const referencedTaskIds = new Set((config.tasks ?? []).map((ref) => ref.id));
 		const orphanTaskIds = existingTaskIds.filter((id) => !referencedTaskIds.has(id));
 		if (orphanTaskIds.length > 0) await this.agentTaskRepository.delete(orphanTaskIds);
 	}
@@ -277,10 +287,17 @@ export class AgentConfigService {
 		return saved;
 	}
 
-	private removeUnreferencedResources(entity: Agent, config: AgentJsonConfig): void {
-		if (config.tools !== undefined) this.removeUnreferencedCustomTools(entity, config);
-		if (config.skills !== undefined)
+	private removeUnreferencedResources(
+		entity: Agent,
+		config: AgentJsonConfig,
+		clearOmitted: boolean,
+	): void {
+		if (writesField(config, 'tools', clearOmitted)) {
+			this.removeUnreferencedCustomTools(entity, config);
+		}
+		if (writesField(config, 'skills', clearOmitted)) {
 			this.agentSkillsService.removeUnreferencedSkills(entity, config);
+		}
 	}
 
 	private removeUnreferencedCustomTools(entity: Agent, config: AgentJsonConfig): void {
@@ -303,18 +320,19 @@ export class AgentConfigService {
 		entity: Agent,
 		validatedConfig: AgentJsonConfig,
 		rawConfig: unknown,
-		options: AgentConfigUpdateOptions,
+		clearOmitted: boolean,
 	): ConfigReplacement {
 		const previousIntegrations = entity.integrations ?? [];
 		const previousSchema = entity.schema ?? null;
 		const { schemaConfig, integrations } = decomposeJsonConfig(validatedConfig);
-		const nextIntegrations =
-			validatedConfig.integrations !== undefined ? integrations : previousIntegrations;
+		const nextIntegrations = writesField(validatedConfig, 'integrations', clearOmitted)
+			? integrations
+			: previousIntegrations;
 		const nextSchema = this.mergeConfigSchema(
 			schemaConfig,
 			previousSchema,
 			rawConfig,
-			options.clearOmittedOptionalFields,
+			clearOmitted,
 		);
 		// Compare before the entity is changed.
 		const changedParts = diffAgentConfigParts(
@@ -336,72 +354,36 @@ export class AgentConfigService {
 		decomposedSchema: AgentJsonConfig,
 		previousSchema: AgentJsonConfig | null,
 		config: unknown,
-		clearOmitted: boolean | undefined,
+		clearOmitted: boolean,
 	): AgentJsonConfig {
+		const nextSchema: AgentJsonConfig = {
+			...previousSchema,
+			name: decomposedSchema.name,
+			model: decomposedSchema.model,
+			instructions: decomposedSchema.instructions,
+		};
+		for (const field of OPTIONAL_SCHEMA_FIELDS) {
+			applyOptionalField(nextSchema, decomposedSchema, field, clearOmitted);
+		}
+
 		// Under clearOmittedOptionalFields an omitted gradient is a deliberate
 		// removal, so the schema default wins instead of the previous gradient.
-		let nextPersonalisation = decomposedSchema.personalisation;
 		if (decomposedSchema.personalisation !== undefined && !clearOmitted) {
-			nextPersonalisation = mergePersonalisationWithPreviousGradient(
+			nextSchema.personalisation = mergePersonalisationWithPreviousGradient(
 				decomposedSchema.personalisation,
 				previousSchema,
 				config,
 			);
 		}
 
-		const nextSchema: AgentJsonConfig = {
-			...omitLegacyAgentDescription(previousSchema),
-			name: decomposedSchema.name,
-			model: decomposedSchema.model,
-			instructions: decomposedSchema.instructions,
-			...(decomposedSchema.credential !== undefined
-				? { credential: decomposedSchema.credential }
-				: {}),
-			...(decomposedSchema.personalisation !== undefined
-				? { personalisation: nextPersonalisation }
-				: {}),
-			...(decomposedSchema.memory !== undefined ? { memory: decomposedSchema.memory } : {}),
-			...(decomposedSchema.subAgents !== undefined
-				? { subAgents: decomposedSchema.subAgents }
-				: {}),
-			...(decomposedSchema.tools !== undefined ? { tools: decomposedSchema.tools } : {}),
-			...(decomposedSchema.skills !== undefined ? { skills: decomposedSchema.skills } : {}),
-			...(decomposedSchema.tasks !== undefined ? { tasks: decomposedSchema.tasks } : {}),
-			...(decomposedSchema.providerTools !== undefined
-				? { providerTools: decomposedSchema.providerTools }
-				: {}),
-			...(decomposedSchema.config !== undefined ? { config: decomposedSchema.config } : {}),
-			...(decomposedSchema.mcpServers !== undefined
-				? { mcpServers: decomposedSchema.mcpServers }
-				: {}),
-			...(decomposedSchema.vectorStores !== undefined
-				? { vectorStores: decomposedSchema.vectorStores }
-				: {}),
-		};
-		this.normalizeOptionalConfigFields(nextSchema, decomposedSchema, clearOmitted);
+		// Both are trimmed by the schema; an empty string clears the stored value.
+		for (const field of ['description', 'modelDeploymentName'] as const) {
+			if (decomposedSchema[field] === '') delete nextSchema[field];
+		}
 		return nextSchema;
 	}
 
-	private normalizeOptionalConfigFields(
-		nextSchema: AgentJsonConfig,
-		validatedConfig: AgentJsonConfig,
-		clearOmitted: boolean | undefined,
-	): void {
-		if (validatedConfig.modelDeploymentName !== undefined) {
-			const deploymentName = validatedConfig.modelDeploymentName?.trim();
-			if (deploymentName) {
-				nextSchema.modelDeploymentName = deploymentName;
-			} else {
-				delete nextSchema.modelDeploymentName;
-			}
-		}
-
-		if (clearOmitted) {
-			clearOmittedOptionalFields(nextSchema, validatedConfig);
-		}
-	}
-
-	private async prepareConfig(entity: Agent, config: unknown, user: User) {
+	private async prepareConfig(entity: Agent, config: unknown, user: User, clearOmitted: boolean) {
 		const { id: agentId, projectId } = entity;
 		const credentialProvider = createAgentCredentialProvider(
 			this.credentialsService,
@@ -430,14 +412,13 @@ export class AgentConfigService {
 
 		if (validatedConfig.tools !== undefined) {
 			await this.nodeToolAiGatewayService.assignManagedCredentials(
-				validatedConfig.tools,
+				validatedConfig.tools.filter((tool) => tool.enabled !== false),
 				new Set(accessibleCredentials.map((credential) => credential.type)),
 			);
 		}
 		await normalizeWorkflowToolRefs(this.workflowRepository, validatedConfig, projectId);
 
-		const tasksProvided = validatedConfig.tasks !== undefined;
-		const existingTaskIds = tasksProvided
+		const existingTaskIds = writesField(validatedConfig, 'tasks', clearOmitted)
 			? (await this.agentTaskRepository.findByAgentId(agentId)).map((task) => task.id)
 			: [];
 
@@ -457,12 +438,24 @@ export class AgentConfigService {
 	): Promise<ResolvedSubAgentRef[]> {
 		if (config.skills !== undefined) {
 			const skills = entity.skills ?? {};
-			config.skills = config.skills.filter((ref) => Boolean(skills[ref.id]));
+			const existingSkillIds = new Set((entity.schema?.skills ?? []).map((ref) => ref.id));
+			config.skills = config.skills.filter(
+				(ref) => ref.enabled === false || existingSkillIds.has(ref.id) || Boolean(skills[ref.id]),
+			);
 		}
 
 		if (config.tools !== undefined) {
 			const tools = entity.tools ?? {};
-			config.tools = config.tools.filter((ref) => ref.type !== 'custom' || Boolean(tools[ref.id]));
+			const existingToolIds = new Set(
+				(entity.schema?.tools ?? []).filter((ref) => ref.type === 'custom').map((ref) => ref.id),
+			);
+			config.tools = config.tools.filter(
+				(ref) =>
+					ref.enabled === false ||
+					ref.type !== 'custom' ||
+					existingToolIds.has(ref.id) ||
+					Boolean(tools[ref.id]),
+			);
 		}
 
 		if (config.tasks !== undefined) {
@@ -470,17 +463,17 @@ export class AgentConfigService {
 		}
 
 		if (config.subAgents?.agents !== undefined) {
+			const existingAgentIds = new Set(
+				(entity.schema?.subAgents?.agents ?? []).map((ref) => ref.agentId),
+			);
 			const resolvedSubAgents = await resolveUniqueSubAgents({
 				refs: config.subAgents.agents,
 				projectId: entity.projectId,
 				agentRepository: this.agentRepository,
 			});
 			config.subAgents.agents = resolvedSubAgents
-				.filter(({ agent }) => agent !== null)
-				.map(({ agentId, useWhen }) => ({
-					agentId,
-					...(useWhen ? { useWhen } : {}),
-				}));
+				.filter(({ agentId, agent }) => existingAgentIds.has(agentId) || agent !== null)
+				.map(({ agent: _agent, ...ref }) => ref);
 			return resolvedSubAgents;
 		}
 
@@ -488,8 +481,7 @@ export class AgentConfigService {
 	}
 
 	private validateSubAgentRefs(resolvedSubAgents: ResolvedSubAgentRef[], entity: Agent) {
-		for (const { agentId, agent } of resolvedSubAgents) {
-			if (!agent) continue;
+		for (const { agentId } of resolvedSubAgents) {
 			if (agentId === entity.id) {
 				throw new UserError('Invalid agent config: An agent cannot use itself as a subagent');
 			}
@@ -523,32 +515,41 @@ function hasNodeToolInputSchema(raw: unknown): boolean {
 	return raw.tools.some((tool) => isRecord(tool) && tool.type === 'node' && 'inputSchema' in tool);
 }
 
-/** Drop optional fields the submitted config omitted instead of retaining the previous value. */
-function clearOmittedOptionalFields(schema: AgentJsonConfig, submitted: AgentJsonConfig): void {
-	const optionalFields = [
-		'credential',
-		'modelDeploymentName',
-		'personalisation',
-		'memory',
-		'subAgents',
-		'tools',
-		'skills',
-		'tasks',
-		'providerTools',
-		'config',
-		'mcpServers',
-		'vectorStores',
-	] as const;
-	for (const field of optionalFields) {
-		if (submitted[field] === undefined) delete schema[field];
-	}
+const OPTIONAL_SCHEMA_FIELDS = [
+	'credential',
+	'description',
+	'modelDeploymentName',
+	'personalisation',
+	'memory',
+	'subAgents',
+	'tools',
+	'skills',
+	'tasks',
+	'providerTools',
+	'config',
+	'mcpServers',
+	'vectorStores',
+] as const;
+
+/**
+ * Whether a write decides `field`. A sent value always does. An omitted field
+ * does only when the write clears omitted fields; otherwise it keeps the stored value.
+ */
+function writesField(
+	config: AgentJsonConfig,
+	field: keyof AgentJsonConfig,
+	clearOmitted: boolean,
+): boolean {
+	return config[field] !== undefined || clearOmitted;
 }
 
-function omitLegacyAgentDescription(config: AgentJsonConfig | null): Partial<AgentJsonConfig> {
-	if (!config) return {};
-
-	const { description: _description, ...rest } = config as AgentJsonConfig & {
-		description?: unknown;
-	};
-	return rest;
+function applyOptionalField<K extends keyof AgentJsonConfig>(
+	target: AgentJsonConfig,
+	submitted: AgentJsonConfig,
+	field: K,
+	clearOmitted: boolean,
+): void {
+	if (!writesField(submitted, field, clearOmitted)) return;
+	if (submitted[field] === undefined) delete target[field];
+	else target[field] = submitted[field];
 }

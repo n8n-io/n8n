@@ -83,6 +83,9 @@ erDiagram
   INTEGER id
   varchar_36_ messageId FK
   TEXT payload
+  INTEGER position
+  varchar_36_ steeringExecutionId FK
+  INTEGER steeringOrder
   varchar_128_ threadId FK
   datetime_3_ updatedAt
 }

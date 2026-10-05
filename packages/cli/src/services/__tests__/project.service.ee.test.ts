@@ -1,8 +1,10 @@
 import type { ProjectRelation } from '@n8n/api-types';
 import type { Logger, ModuleRegistry } from '@n8n/backend-common';
+import { type EventService, type RoleService } from '@n8n/backend-services';
 import {
 	type Project,
 	type ProjectRepository,
+	type RoleRepository,
 	type SharedCredentialsRepository,
 	type SharedWorkflowRepository,
 	type ProjectRelationRepository,
@@ -20,11 +22,9 @@ import { mock } from 'vitest-mock-extended';
 
 import type { OwnershipService } from '../ownership.service';
 import { ProjectService } from '../project.service.ee';
-import type { RoleService } from '../role.service';
 
 import type { ICredentialConnectionStatusProvider } from '@/credentials/credential-connection-status-provider.interface';
 import { BadRequestError, ForbiddenError } from '@n8n/errors';
-import type { EventService } from '@/events/event.service';
 import type { AgentChatAttachmentService } from '@/modules/agents/agent-chat-attachment.service';
 import type { AgentExecutionService } from '@/modules/agents/agent-execution.service';
 import type { AgentKnowledgeService } from '@/modules/agents/agent-knowledge.service';
@@ -48,6 +48,7 @@ describe('ProjectService', () => {
 	const eventService = mock<EventService>();
 	const userManagementMailer = mock<UserManagementMailer>();
 	const userRepository = mock<UserRepository>();
+	const roleRepository = mock<RoleRepository>();
 	const user = mock<User>({ id: 'actor-user', role: mock({ slug: 'global:owner' }) });
 	const projectService = new ProjectService(
 		sharedWorkflowRepository,
@@ -63,6 +64,7 @@ describe('ProjectService', () => {
 		eventService,
 		userManagementMailer,
 		userRepository,
+		roleRepository,
 	);
 
 	beforeEach(() => {

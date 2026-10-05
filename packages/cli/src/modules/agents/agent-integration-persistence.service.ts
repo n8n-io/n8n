@@ -1,16 +1,16 @@
 import {
-	AgentIntegrationSchema,
+	AgentIntegrationConfigSchema,
 	isDraftIntegration,
 	type AgentIntegrationConfig,
 	type ChatIntegrationDescriptor,
 } from '@n8n/api-types';
+import { EventService } from '@n8n/backend-services';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { OperationalError, UserError } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
 import { CredentialsService } from '@/credentials/credentials.service';
-import { EventService } from '@/events/event.service';
 
 import {
 	AgentModificationTelemetryService,
@@ -163,9 +163,12 @@ export class AgentIntegrationPersistenceService {
 		);
 	}
 
-	/** Reject anything that must never reach the `integrations` column. */
+	/**
+	 * Reject anything that must never reach the `integrations` column. The config
+	 * schema also covers n8n Chat; `isDraftIntegration` still rejects a blank credential.
+	 */
 	private validateAddition(integration: AgentIntegrationConfig): AgentIntegrationConfig {
-		const parseResult = AgentIntegrationSchema.safeParse(integration);
+		const parseResult = AgentIntegrationConfigSchema.safeParse(integration);
 		if (!parseResult.success) {
 			throw new UserError(`Invalid credential integration: ${parseResult.error.message}`);
 		}

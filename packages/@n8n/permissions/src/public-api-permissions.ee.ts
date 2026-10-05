@@ -146,6 +146,10 @@ export const MEMBER_API_KEY_SCOPES: ApiKeyScope[] = [
 	'credential:update',
 	'credential:move',
 	'credential:delete',
+	'variable:create',
+	'variable:delete',
+	'variable:list',
+	'variable:update',
 	'dataTable:create',
 	'dataTable:read',
 	'dataTable:update',
@@ -206,6 +210,11 @@ export const API_KEY_SCOPES_FOR_IMPLICIT_PERSONAL_PROJECT: ApiKeyScope[] = [
 	'credential:update',
 	'credential:move',
 	'credential:delete',
+	// Members hold these for team projects where they are editor or admin.
+	// The variables service checks the project role on every request.
+	'variable:create',
+	'variable:delete',
+	'variable:update',
 	'dataTable:create',
 	'dataTable:read',
 	'dataTable:update',
