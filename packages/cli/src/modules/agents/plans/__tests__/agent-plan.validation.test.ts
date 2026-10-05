@@ -57,6 +57,31 @@ const setStatuses = (document: AgentPlanDocument, statuses: Record<string, Agent
 };
 
 describe('Agent plan schema', () => {
+	it('accepts optional presentation text without changing work or timestamps', () => {
+		const initial = prepare(plan(task()));
+		const completed = prepare(setStatuses(initial, { [initial.items[0].id]: 'done' }), initial);
+		const presentation = { label: 'Research complete', detail: 'Found three suitable options.' };
+		const updated = prepare({ ...completed, presentation }, completed, ended);
+		expect(updated.presentation).toEqual(presentation);
+		expect(updated.items).toEqual(completed.items);
+		expect(initial.presentation).toBeUndefined();
+		expect(prepare({ ...initial, presentation: { label: ' Researching ' } }).presentation).toEqual({
+			label: 'Researching',
+		});
+	});
+
+	it.each([
+		null,
+		{},
+		{ label: ' ' },
+		{ label: 12 },
+		{ label: 'Researching', detail: ' ' },
+		{ label: 'Researching', detail: 12 },
+		{ label: 'Researching', status: 'done' },
+	])('rejects invalid presentation fields: %j', (presentation) => {
+		expect(() => prepare({ ...plan(), presentation })).toThrow(AgentPlanValidationError);
+	});
+
 	it('parses both item types and initializes timestamps without changing input', () => {
 		const data = plan(task({ resultSummary: 'A summary' }), group([task()]));
 		const before = structuredClone(data);
