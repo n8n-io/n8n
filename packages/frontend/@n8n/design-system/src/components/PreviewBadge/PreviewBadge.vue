@@ -56,9 +56,11 @@ const { t } = useI18n();
 		transform: translateX(-100%);
 	}
 
-	&:hover::after,
-	:global(:hover) > &::after {
-		animation: previewBadgeShimmer 6400ms var(--easing--ease-in-out) infinite;
+	@media (hover: hover) {
+		&:hover::after,
+		:global(:hover) > &::after {
+			animation: previewBadgeShimmer 6400ms var(--easing--ease-in-out) infinite;
+		}
 	}
 
 	:global(.n8n-text) {

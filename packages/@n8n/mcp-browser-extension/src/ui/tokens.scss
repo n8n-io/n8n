@@ -6,6 +6,7 @@
 	color-scheme: light dark;
 	@include primitives.primitives;
 	@include tokens.theme;
+	--row-marker-size: var(--height--xl);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -27,4 +28,20 @@ body {
 	-webkit-font-smoothing: antialiased;
 	background-color: var(--color--background);
 	color: var(--color--text--shade-1);
+}
+
+/** Keep the shared card layout for extension panels. */
+.panel {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--lg);
+	background: var(--background--surface);
+	border: var(--border);
+	border-radius: var(--radius--lg);
+	padding: var(--spacing--lg);
+	min-height: 0;
+}
+
+.panel + .panel {
+	margin-top: var(--spacing--md);
 }

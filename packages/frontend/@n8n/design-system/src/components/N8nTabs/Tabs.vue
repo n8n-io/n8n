@@ -359,11 +359,11 @@ const scrollRight = () => scroll(50);
 }
 
 .disabledTab {
-	color: var(--text-color--subtle--tint-1);
+	color: var(--text-color--disabled);
 	cursor: not-allowed;
 
 	&:hover {
-		color: var(--text-color--subtle--tint-1);
+		color: var(--text-color--disabled);
 	}
 }
 
