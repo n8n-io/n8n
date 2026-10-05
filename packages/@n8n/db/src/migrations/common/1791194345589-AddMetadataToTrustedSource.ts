@@ -7,7 +7,7 @@ const table = 'trusted_source';
  * discovery run that holds the lease on the row, so two instances never refresh the same source at
  * once; `discoveryClaimedAt` only tells when that lease expires.
  */
-export class AddMetadataToTrustedSource1790795921000 implements ReversibleMigration {
+export class AddMetadataToTrustedSource1791194345589 implements ReversibleMigration {
 	async up({ schemaBuilder: { addColumns, column } }: MigrationContext) {
 		await addColumns(
 			table,

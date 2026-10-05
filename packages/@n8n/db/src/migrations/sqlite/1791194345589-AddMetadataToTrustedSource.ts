@@ -1,4 +1,4 @@
-import { AddMetadataToTrustedSource1790795921000 as BaseMigration } from '../common/1790795921000-AddMetadataToTrustedSource';
+import { AddMetadataToTrustedSource1791194345589 as BaseMigration } from '../common/1791194345589-AddMetadataToTrustedSource';
 
 /**
  * Adding and dropping the columns recreates `trusted_source` on SQLite. `trusted_source_identity`
@@ -6,6 +6,6 @@ import { AddMetadataToTrustedSource1790795921000 as BaseMigration } from '../com
  * turns foreign keys off before the `up` transaction opens, but issues that pragma inside the
  * rollback transaction, where SQLite ignores it. This flag keeps the drop local on both paths.
  */
-export class AddMetadataToTrustedSource1790795921000 extends BaseMigration {
+export class AddMetadataToTrustedSource1791194345589 extends BaseMigration {
 	withFKsDisabled = true as const;
 }
