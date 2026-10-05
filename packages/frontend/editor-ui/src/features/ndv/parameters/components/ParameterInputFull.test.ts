@@ -117,6 +117,29 @@ describe('ParameterInputFull.vue', () => {
 		expect(getByTestId('from-ai-override-button')).toBeInTheDocument();
 	});
 
+	it('keeps explicit input modes separate from the parameter value', async () => {
+		const { findByDisplayValue, getByRole, getByText, getByTestId, emitted, rerender } =
+			renderComponent({
+				props: { inputMode: 'fixed', value: '=literal', displayOptions: true },
+			});
+
+		expect(await findByDisplayValue('=literal')).toBeInTheDocument();
+
+		await fireEvent.click(getByText('Expression'));
+		expect(emitted()['update:inputMode']).toEqual([['expression']]);
+
+		await fireEvent.click(getByTestId('from-ai-override-button'));
+		expect(emitted()['update:inputMode']).toEqual([['expression'], ['ai']]);
+		expect(emitted().update).toBeUndefined();
+
+		await rerender({ inputMode: 'ai' });
+		expect(getByTestId('fromAI-override-field')).toBeInTheDocument();
+
+		await fireEvent.click(getByRole('button', { name: 'Edit value' }));
+		expect(emitted()['update:inputMode']).toEqual([['expression'], ['ai'], ['fixed']]);
+		expect(emitted().update).toBeUndefined();
+	});
+
 	it('does not offer a model override when disabled', () => {
 		mockNodeTypesState.getNodeType = vi.fn().mockReturnValue({
 			codex: {

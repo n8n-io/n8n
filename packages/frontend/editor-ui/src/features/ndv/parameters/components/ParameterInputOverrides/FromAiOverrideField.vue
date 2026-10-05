@@ -16,12 +16,12 @@ const emit = defineEmits<{ close: [] }>();
 		<N8nTag
 			:text="i18n.baseText('parameterOverride.overridePanelText')"
 			:clickable="false"
-			size="lg"
+			size="md"
 			:class="$style.tag"
 		>
 			<template #tag>
-				<N8nIcon icon="sparkles" size="large" :class="$style.icon" />
-				<N8nText :class="$style.label">
+				<N8nIcon icon="sparkles" size="small" :class="$style.icon" />
+				<N8nText size="small" compact :class="$style.label">
 					{{ i18n.baseText('parameterOverride.overridePanelText') }}
 				</N8nText>
 				<N8nIconButton
@@ -43,13 +43,15 @@ const emit = defineEmits<{ close: [] }>();
 @use '@n8n/design-system/css/mixins/_input.scss' as input;
 
 .field {
-	@include input.size-variables;
+	@include input.size-variables('small');
 	@include input.theme-variables;
 	display: flex;
 	align-items: center;
 	width: 100%;
+	height: var(--input--height);
+	box-sizing: border-box;
 	gap: var(--spacing--4xs);
-	padding: var(--spacing--4xs);
+	padding: var(--spacing--5xs);
 	border-radius: var(--input--radius);
 	background-color: var(--input--color--background);
 	box-shadow: inset var(--input--border--shadow);
@@ -59,8 +61,8 @@ const emit = defineEmits<{ close: [] }>();
 	--tag--min-width: 0;
 	--tag--max-width: 100%;
 	gap: var(--spacing--3xs);
-	height: auto;
-	min-height: var(--height--sm);
+	height: 100%;
+	min-height: 0;
 	padding-block: 0;
 }
 
@@ -70,7 +72,9 @@ const emit = defineEmits<{ close: [] }>();
 
 .label {
 	min-width: 0;
-	overflow-wrap: anywhere;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 }
 
 .remove {

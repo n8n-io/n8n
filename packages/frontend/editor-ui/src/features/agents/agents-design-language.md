@@ -214,10 +214,12 @@ global Design System guidance.
 
 ## Model-defined inputs
 
-Use the shared `FromAiOverrideField` for workflow inputs that AI fills.
-Node tool parameters use the same field through the parameter editor.
-Keep mode changes and input guidance in the caller. Hide the Edit value action
-in read-only forms. Keep input issues visible beside the model label.
+Use `ParameterInputFull` for workflow inputs and node tool parameters.
+It owns the field label, Fixed/Expression controls, AI button, model chip,
+and hover and focus behavior. Use its controlled input mode for workflow
+bindings. Keep binding conversion and optional input guidance in the caller.
+Hide the Edit value action in read-only forms. Keep input issues visible
+beside the model label.
 
 ## Tool approvals
 

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, provide, ref, toRaw, useId, watch } from 'vue';
-import { N8nIconButton, N8nInput, N8nText, N8nTooltip } from '@n8n/design-system';
+import { N8nInput, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { AgentJsonWorkflowToolInputField } from '@n8n/api-types';
 import { WORKFLOW_TOOL_LANGCHAIN_NODE_TYPE, type INodeProperties } from 'n8n-workflow';
@@ -17,15 +17,13 @@ import {
 	useWorkflowExecutionStateStore,
 } from '@/app/stores/workflowExecutionState.store';
 import { disposeNDVStore, useNDVStore } from '@/features/ndv/shared/ndv.store';
-import ParameterInputWrapper from '@/features/ndv/parameters/components/ParameterInputWrapper.vue';
-import ParameterOptions from '@/features/ndv/parameters/components/ParameterOptions.vue';
+import ParameterInputFull from '@/features/ndv/parameters/components/ParameterInputFull.vue';
 import {
 	formatWorkflowToolFixedValue,
 	parseWorkflowToolFixedValue,
 	type WorkflowToolInputFieldDef,
 } from '../utils/workflowToolInputFields';
 import type { WorkflowToolRef } from '../types';
-import FromAiOverrideField from '@/features/ndv/parameters/components/ParameterInputOverrides/FromAiOverrideField.vue';
 
 const props = defineProps<{
 	fields: WorkflowToolInputFieldDef[];
@@ -91,7 +89,13 @@ function parameterFor(field: WorkflowToolInputFieldDef): INodeProperties {
 	let type: INodeProperties['type'] = 'string';
 	if (field.type === 'number' || field.type === 'boolean') type = field.type;
 	if (['array', 'object', 'any'].includes(field.type ?? '')) type = 'json';
-	return { displayName: field.name, name: field.name, type, default: '', typeOptions: { rows: 3 } };
+	return {
+		displayName: `${field.name} (${field.type ?? 'string'})`,
+		name: field.name,
+		type,
+		default: '',
+		typeOptions: { rows: 3 },
+	};
 }
 
 function displayValue(field: WorkflowToolInputFieldDef) {
@@ -122,11 +126,6 @@ function setMode(field: WorkflowToolInputFieldDef, mode: AgentJsonWorkflowToolIn
 		};
 	}
 	inputs.value = next;
-}
-
-function changeExpressionMode(field: WorkflowToolInputFieldDef, action: string) {
-	if (action === 'addExpression') setMode(field, 'expression');
-	if (action === 'removeExpression') setMode(field, 'fixed');
 }
 
 function updateValue(field: WorkflowToolInputFieldDef, update: IUpdateInformation) {
@@ -201,25 +200,22 @@ watch(fieldsWithErrors, (fields) => emit('update:valid', fields.length === 0), {
 			:class="$style.field"
 			:data-test-id="`agent-workflow-tool-input-${encodeURIComponent(field.name)}`"
 			role="group"
-			:aria-labelledby="`${id}-${index}-label`"
+			:aria-label="field.name"
 		>
-			<div :class="$style.header">
-				<N8nText :id="`${id}-${index}-label`" size="small" bold :class="$style.name">
-					{{ field.name }}
-					<N8nText size="xsmall" color="text-light">{{ field.type ?? 'string' }}</N8nText>
-				</N8nText>
-				<ParameterOptions
-					v-if="bindingFor(field.name).mode !== 'ai'"
-					:parameter="parameterFor(field)"
-					:value="bindingFor(field.name).mode === 'expression' ? '=' : ''"
-					:is-read-only="false"
-					:show-options="false"
-					:show-focus-panel="false"
-					@update:model-value="changeExpressionMode(field, $event)"
-				/>
-			</div>
+			<ParameterInputFull
+				:parameter="parameterFor(field)"
+				:value="displayValue(field)"
+				:input-mode="bindingFor(field.name).mode"
+				:path="`inputs.${field.name}`"
+				:rows="3"
+				:display-options="true"
+				:options-overrides="{ hideFocusPanelButton: true }"
+				:external-issues="submitted && inputError(field) ? [inputError(field)!] : []"
+				@update="updateValue(field, $event)"
+				@text-input="updateValue(field, $event)"
+				@update:input-mode="setMode(field, $event)"
+			/>
 			<template v-if="bindingFor(field.name).mode === 'ai'">
-				<FromAiOverrideField @close="setMode(field, 'fixed')" />
 				<label :for="`${id}-${index}-description`" :class="$style.descriptionLabel">
 					{{ i18n.baseText('agents.toolConfig.workflow.inputs.description') }}
 				</label>
@@ -232,32 +228,6 @@ watch(fieldsWithErrors, (fields) => emit('update:valid', fields.length === 0), {
 					@update:model-value="updateDescription(field.name, String($event))"
 				/>
 			</template>
-			<ParameterInputWrapper
-				v-else
-				:parameter="{
-					...parameterFor(field),
-					noDataExpression: bindingFor(field.name).mode === 'fixed',
-				}"
-				:model-value="displayValue(field)"
-				:path="`inputs.${field.name}`"
-				:rows="3"
-				can-be-overridden
-				:external-issues="submitted && inputError(field) ? [inputError(field)!] : []"
-				@update="updateValue(field, $event)"
-				@text-input="updateValue(field, $event)"
-			>
-				<template #overrideButton>
-					<N8nTooltip :content="i18n.baseText('parameterOverride.applyOverrideButtonTooltip')">
-						<N8nIconButton
-							icon="sparkles"
-							variant="ghost"
-							size="small"
-							:aria-label="i18n.baseText('parameterOverride.applyOverrideButtonTooltip')"
-							@click="setMode(field, 'ai')"
-						/>
-					</N8nTooltip>
-				</template>
-			</ParameterInputWrapper>
 			<N8nText v-if="submitted && inputError(field)" size="xsmall" color="danger" role="alert">
 				{{ inputError(field) }}
 			</N8nText>
@@ -277,18 +247,6 @@ watch(fieldsWithErrors, (fields) => emit('update:valid', fields.length === 0), {
 	flex-direction: column;
 	gap: var(--spacing--3xs);
 	min-width: 0;
-}
-
-.header {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	flex-wrap: wrap;
-	gap: var(--spacing--3xs);
-}
-
-.name {
-	overflow-wrap: anywhere;
 }
 
 .descriptionLabel {
