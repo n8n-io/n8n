@@ -1,0 +1,52 @@
+packages/cli/src/modules/agents/scheduling/__tests__/agent-task-task-handler.test.ts
+  s_b30ec406386d61::t_260e9bca20ac3a 92-94,103-104
+  s_b30ec406386d61::t_7d2e86784ef7f2 95,97,99-102
+packages/frontend/editor-ui/src/features/ai/mcpAccess/SettingsMCPView.vue
+  s_b30ec406386d61::t_85d22bd1130586 59,140,381
+packages/cli/src/modules/agents/repositories/agent-message-queue.repository.ts
+  s_b30ec406386d61::t_85d22bd1130586 37-38,171-173
+packages/cli/src/modules/agents/__tests__/agent-task.service.test.ts
+  s_b30ec406386d61::t_260e9bca20ac3a 16,136,160,166-167,929,934-943
+packages/cli/test/integration/agents/agents-settings.test.ts
+  s_b30ec406386d61::t_c8f80ea87566cc 67
+  s_b30ec406386d61::t_d76f915a5736f1 2,16-19
+  s_b30ec406386d61::t_260e9bca20ac3a 5,59-66,68
+packages/cli/src/modules/agents/__tests__/instance-ai-builder-delegate.adapter.test.ts
+  s_b30ec406386d61::t_260e9bca20ac3a 42-49,51
+  s_b30ec406386d61::t_c8f80ea87566cc 50
+packages/cli/src/modules/agents/agents-settings.service.ts
+  s_b30ec406386d61::t_c8f80ea87566cc 1,26,47-57
+  s_b30ec406386d61::t_85d22bd1130586 2,6-13,18-25,27,30-33,40-46,58-71,74-75
+packages/cli/src/modules/agents/agent-task.service.ts
+  s_b30ec406386d61::t_85d22bd1130586 25,81,476-478
+packages/cli/src/modules/agents/scheduling/agent-task-task-handler.ts
+  s_b30ec406386d61::t_85d22bd1130586 59-60
+packages/@n8n/db/src/repositories/settings.repository.ts
+  s_b30ec406386d61::t_85d22bd1130586 25-45
+packages/cli/test/integration/database/repositories/agent-execution.repository.test.ts
+  s_b30ec406386d61::t_c8f80ea87566cc 221
+  s_b30ec406386d61::t_9a78042f216c2f 1683-1685,1687-1715
+  s_b30ec406386d61::t_4112ff084c14cf 1609
+  s_b30ec406386d61::t_c08dce20f16173 1619-1638,1640-1666,1668-1681
+  s_b30ec406386d61::t_260e9bca20ac3a 213-220,222
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_b30ec406386d61::t_85d22bd1130586 5629
+packages/cli/src/modules/agents/agent-message-queue.service.ts
+  s_b30ec406386d61::t_85d22bd1130586 100
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "4a7ce30890bb840604d473573d8bcd7719f8c8ec",
+  "prompts": {},
+  "sessions": {
+    "s_b30ec406386d61": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0fbac-6028-7b12-99ba-e8426f20ba57",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

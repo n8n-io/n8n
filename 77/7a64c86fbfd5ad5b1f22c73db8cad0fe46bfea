@@ -1,0 +1,40 @@
+packages/frontend/editor-ui/src/features/agents/n8nChatPage/components/N8nChatAgentCard.vue
+  s_e3560b551eac11::t_2574da4ffe78e2 2,7,14-15,23-27,29,31-32,34,47,50,56
+  ai_agent 40
+  s_e3560b551eac11::t_447120f4f44a5c 11,20,28,30,42
+  s_e3560b551eac11::t_9dac449235c7af 41,43-44
+packages/frontend/editor-ui/src/features/agents/n8nChatPage/components/N8nChatAgentPicker.vue
+  s_e3560b551eac11::t_447120f4f44a5c 18,53
+packages/frontend/editor-ui/src/features/agents/n8nChatPage/N8nChatAgentLibraryView.vue
+  s_e3560b551eac11::t_a07a1efb23551a 46-49
+  s_e3560b551eac11::t_2574da4ffe78e2 9,43-45,50,95-100
+packages/frontend/editor-ui/src/features/agents/n8nChatPage/components/__tests__/N8nChatAgentGrid.test.ts
+  s_e3560b551eac11::t_d9d1a357fdfeee 7,25
+  s_e3560b551eac11::t_b3fdd22da4a84d 34-36,44-50
+packages/frontend/editor-ui/src/features/agents/n8nChatPage/__tests__/N8nChatAgentLibraryView.test.ts
+  s_e3560b551eac11::t_a07a1efb23551a 99-106
+  s_e3560b551eac11::t_45d100cf179778 16-26,96-98,107-127
+  s_e3560b551eac11::t_d9d1a357fdfeee 38
+packages/frontend/editor-ui/src/features/agents/n8nChatPage/components/__tests__/N8nChatAgentCard.test.ts
+  s_e3560b551eac11::t_b3fdd22da4a84d 7,25,48-59
+packages/frontend/editor-ui/src/features/agents/n8nChatPage/components/N8nChatAgentGrid.vue
+  s_e3560b551eac11::t_2574da4ffe78e2 13-14,16,33
+packages/frontend/editor-ui/src/features/agents/n8nChatPage/composables/useN8nAssistantIdentity.ts
+  s_e3560b551eac11::t_447120f4f44a5c 1-26
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "777a64c86fbfd5ad5b1f22c73db8cad0fe46bfea",
+  "prompts": {},
+  "sessions": {
+    "s_e3560b551eac11": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a7b46ea8-2f97-424a-81d9-bb9c3745b1ba",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}
