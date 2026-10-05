@@ -501,7 +501,7 @@ describe('Expression - fast native evaluation parity', () => {
 				nativeOn('{{ $json.many.some(n => $json.big.includes(n)) }}', { $json: { many, big } }),
 			).toEqual({ handled: false });
 			expect(
-				nativeOn('{{ $json.many.some(n => ($json.big + n).length < 0) }}', {
+				nativeOn('{{ $json.many.some(n => ($json.big + "").length < n.length) }}', {
 					$json: { many, big },
 				}),
 			).toEqual({ handled: false });
