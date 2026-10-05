@@ -10,8 +10,7 @@ import { randomUUID } from 'crypto';
 import { DateTime } from 'luxon';
 import { InstanceSettings, ScheduledTaskManager, type ScheduledTaskGroup } from 'n8n-core';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { BadRequestError, NotFoundError } from '@n8n/errors';
 import type { PubSubCommandMap } from '@/scaling/pubsub/pubsub.event-map';
 
 import {
@@ -23,6 +22,7 @@ import {
 import { AgentExecutionOrchestratorService } from './agent-execution-orchestrator.service';
 import { AgentChangePublisher } from './agent-change-publisher.service';
 import { AgentUpdateBroadcaster } from './agent-update-broadcaster';
+import { AgentsSettingsService } from './agents-settings.service';
 import { AgentTaskJobRegistrar } from './scheduling/agent-task-job-registrar';
 import { knownTaskTimezone } from './scheduling/task-timezone';
 import { Agent } from './entities/agent.entity';
@@ -78,6 +78,7 @@ export class AgentTaskService {
 		private readonly modificationTelemetry: AgentModificationTelemetryService,
 		private readonly durableJobRegistrar: AgentTaskJobRegistrar,
 		private readonly agentUpdateBroadcaster: AgentUpdateBroadcaster,
+		private readonly settingsService: AgentsSettingsService,
 	) {}
 
 	// ── CRUD ──────────────────────────────────────────────────────────────
@@ -198,12 +199,23 @@ export class AgentTaskService {
 		dto: UpdateAgentTaskDto,
 		context: AgentMutationTelemetryContext,
 	): Promise<AgentTaskDto> {
+		const { task } = await this.updateWithChange(agentId, projectId, taskId, dto, context);
+		return task;
+	}
+
+	async updateWithChange(
+		agentId: string,
+		projectId: string,
+		taskId: string,
+		dto: UpdateAgentTaskDto,
+		context: AgentMutationTelemetryContext,
+	): Promise<{ task: AgentTaskDto; changed: boolean }> {
 		const task = await this.getOrThrow(agentId, taskId);
 
 		const changed = this.applyTaskUpdates(task, dto);
 
 		// Nothing actually changed — skip the agent lookup, draft-dirty bump, and writes.
-		if (!changed) return this.toDto(task);
+		if (!changed) return { task: this.toDto(task), changed: false };
 
 		const agent = await getAgentOrThrow(this.agentRepository, agentId, projectId);
 
@@ -224,7 +236,7 @@ export class AgentTaskService {
 			buildAgentMutationEvent(agent, projectId, context, previous, { tasks: true }),
 		);
 
-		return this.toDto(saved);
+		return { task: this.toDto(saved), changed: true };
 	}
 
 	/** Delete a task body and remove its config ref in one transaction. */
@@ -461,7 +473,9 @@ export class AgentTaskService {
 	async startScheduledRun(
 		agentId: string,
 		taskId: string,
-	): Promise<'started' | 'skipped-active' | 'stale'> {
+	): Promise<'started' | 'skipped-active' | 'skipped-disabled' | 'stale'> {
+		if (!(await this.settingsService.getEnabled())) return 'skipped-disabled';
+
 		// Body comes from the PUBLISHED snapshot row, so name/objective/cron
 		// reflect publish time rather than live draft edits.
 		const agent = await this.agentRepository.findOne({ where: { id: agentId } });

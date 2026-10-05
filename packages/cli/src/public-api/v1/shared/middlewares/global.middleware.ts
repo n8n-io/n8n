@@ -8,7 +8,7 @@ import type express from 'express';
 import type { NextFunction, Request, Response } from 'express';
 
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { NotFoundError } from '@n8n/errors';
 import { License } from '@/license';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { USER_QUOTA_FORBIDDEN_MESSAGE } from '@/public-api/constants';
@@ -172,6 +172,7 @@ export const validLicenseWithUserQuota = (
 	next: express.NextFunction,
 ): express.Response | void => {
 	const license = Container.get(License);
+	// oxlint-disable-next-line typescript/no-deprecated
 	if (license.getUsersLimit() !== UNLIMITED_LICENSE_QUOTA) {
 		return res.status(403).json({
 			message: USER_QUOTA_FORBIDDEN_MESSAGE,

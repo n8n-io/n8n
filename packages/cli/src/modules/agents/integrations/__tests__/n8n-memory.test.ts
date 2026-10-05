@@ -1,5 +1,5 @@
 import { hashEpisodicMemoryEvidence, type NewObservationLogEntry } from '@n8n/agents';
-import { Equal, In, IsNull, LessThan, Like, MoreThan } from '@n8n/typeorm';
+import { In, IsNull, Like } from '@n8n/typeorm';
 import type { Mock, Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
@@ -209,242 +209,75 @@ describe('N8nMemory', () => {
 		memory = memoryService.getImplementation('agent-1');
 	});
 
-	function makeMessageEntity(id: string, createdAt: Date, text: string): AgentMessageEntity {
-		return {
-			id,
+	it.each([
+		['user-1', 'user-1'],
+		['integration:slack:U_ALICE', undefined],
+		[undefined, undefined],
+		['', ''],
+	])('loads the correct message scope for resource %s', async (resourceId, expectedResource) => {
+		messageRepository.findRuntimeMessages.mockResolvedValue([]);
+		const before = new Date('2026-01-01');
+		await memory.getMessages('thread-1', { resourceId, before, limit: 2 });
+		expect(messageRepository.findRuntimeMessages).toHaveBeenCalledWith(
+			{ threadId: 'thread-1', resourceId: expectedResource },
+			{ resourceId, before, limit: 2 },
+		);
+	});
+
+	it('hydrates model content and ordering from message columns for both runtime readers', async () => {
+		const createdAt = new Date('2026-01-01T00:00:01Z');
+		const modelContextAt = new Date('2026-01-01T00:00:02Z');
+		const original = {
+			role: 'user' as const,
+			content: [{ type: 'text' as const, text: 'original' }],
+		};
+		const projected = {
+			role: 'user' as const,
+			content: [{ type: 'text' as const, text: 'enriched' }],
+		};
+		const legacy = Object.assign(mock<AgentMessageEntity>(), {
+			id: 'legacy',
+			createdAt,
+			modelContextAt: null,
+			modelContent: null,
+			content: Object.assign({}, original, { createdAt: createdAt.toISOString() }),
+		});
+		const current = Object.assign(mock<AgentMessageEntity>(), {
+			id: 'current',
+			createdAt,
+			modelContextAt,
+			content: original,
+			modelContent: projected,
+		});
+		messageRepository.findRuntimeMessages.mockResolvedValue([legacy, current]);
+		const expected = [
+			{ ...original, id: 'legacy', createdAt },
+			{ ...projected, id: 'current', createdAt: modelContextAt },
+		];
+		expect(await memory.getMessages('thread-1')).toEqual(expected);
+		const since = { sinceCreatedAt: createdAt, sinceMessageId: 'older' };
+		expect(await memory.getMessagesForObservationScope('thread-1', { since })).toEqual(expected);
+		expect(messageRepository.findRuntimeMessages).toHaveBeenLastCalledWith(
+			{ threadId: 'thread-1' },
+			{ since },
+		);
+	});
+
+	it('passes execution ownership to message persistence when host metadata is present', async () => {
+		const messages = [
+			{ id: 'm-1', createdAt: new Date(), role: 'assistant' as const, content: [] },
+		];
+		await memory.saveMessages({
 			threadId: 'thread-1',
 			resourceId: 'user-1',
-			role: 'user',
-			type: null,
-			content: {
-				id,
-				createdAt,
-				role: 'user',
-				content: [{ type: 'text', text }],
-			},
-			createdAt,
-			updatedAt: createdAt,
-		} as unknown as AgentMessageEntity;
-	}
-
-	describe('saveMessages — hydrated file parts', () => {
-		it('strips data from fileRef file parts before upserting, keeping the reference', async () => {
-			const bytes = new Uint8Array([1, 2, 3]);
-			await memory.saveMessages({
-				threadId: 'thread-1',
-				resourceId: 'user-1',
-				messages: [
-					{
-						id: 'm-1',
-						createdAt: new Date('2026-05-12T10:00:00Z'),
-						role: 'user',
-						content: [
-							{ type: 'text', text: 'look at this' },
-							{
-								type: 'file',
-								mediaType: 'image/png',
-								data: bytes,
-								fileRef: { id: 'att-1', fileName: 'photo.png', sizeBytes: 3 },
-							},
-						],
-					},
-				],
-			});
-
-			expect(messageRepository.upsert).toHaveBeenCalledTimes(1);
-			const [entities] = messageRepository.upsert.mock.calls[0];
-			const content = (entities as Array<{ content: { content: unknown[] } }>)[0].content;
-			const filePart = content.content[1] as Record<string, unknown>;
-			expect(filePart.data).toBeUndefined();
-			expect(filePart.fileRef).toEqual({ id: 'att-1', fileName: 'photo.png', sizeBytes: 3 });
+			messages,
+			hostMetadata: { n8nExecutionId: 'execution-1' },
 		});
-	});
-
-	describe('getMessages — resourceId filter', () => {
-		beforeEach(() => {
-			messageRepository.find.mockResolvedValue([]);
-		});
-
-		it('includes resourceId in the where clause when provided', async () => {
-			await memory.getMessages('thread-1', { resourceId: 'user-1' });
-
-			expect(messageRepository.find).toHaveBeenCalledWith(
-				expect.objectContaining({
-					where: { threadId: 'thread-1', resourceId: 'user-1' },
-				}),
-			);
-		});
-
-		it('loads messages from every author in an integration thread', async () => {
-			await memory.getMessages('thread-1', { resourceId: 'integration:slack:U_ALICE' });
-
-			expect(messageRepository.find).toHaveBeenCalledWith(
-				expect.objectContaining({
-					where: { threadId: 'thread-1' },
-				}),
-			);
-		});
-
-		it('omits resourceId from the where clause when not provided', async () => {
-			await memory.getMessages('thread-1');
-
-			expect(messageRepository.find).toHaveBeenCalledWith(
-				expect.objectContaining({
-					where: { threadId: 'thread-1' },
-				}),
-			);
-		});
-
-		it('preserves an empty-string resourceId in the filter instead of dropping it', async () => {
-			// Guard against the previous `...(opts?.resourceId && ...)` bug: a
-			// falsy userId must NOT widen the query to every user's messages
-			// on a shared thread.
-			await memory.getMessages('thread-1', { resourceId: '' });
-
-			expect(messageRepository.find).toHaveBeenCalledWith(
-				expect.objectContaining({
-					where: { threadId: 'thread-1', resourceId: '' },
-				}),
-			);
-		});
-
-		it('combines resourceId with the `before` filter', async () => {
-			const before = new Date('2026-01-01');
-
-			await memory.getMessages('thread-1', { resourceId: 'user-1', before });
-
-			const call = messageRepository.find.mock.calls[0][0];
-			expect(call?.where).toMatchObject({
-				threadId: 'thread-1',
-				resourceId: 'user-1',
-				createdAt: LessThan(before),
-			});
-		});
-	});
-
-	describe('getMessages — limit window', () => {
-		it('loads the newest limited messages and returns them chronologically', async () => {
-			const middle = makeMessageEntity('m2', new Date('2026-01-01T00:00:02.000Z'), 'middle');
-			const newest = makeMessageEntity('m3', new Date('2026-01-01T00:00:03.000Z'), 'newest');
-			messageRepository.find.mockResolvedValue([newest, middle]);
-
-			const result = await memory.getMessages('thread-1', { limit: 2 });
-
-			expect(messageRepository.find).toHaveBeenCalledWith(
-				expect.objectContaining({
-					where: { threadId: 'thread-1' },
-					order: { createdAt: 'DESC' },
-					take: 2,
-				}),
-			);
-			expect(result.map((m) => m.id)).toEqual(['m2', 'm3']);
-		});
-
-		it('combines limit with before and resourceId while still asking for newest first', async () => {
-			const before = new Date('2026-01-01T00:00:04.000Z');
-			messageRepository.find.mockResolvedValue([
-				makeMessageEntity('m3', new Date('2026-01-01T00:00:03.000Z'), 'newest'),
-				makeMessageEntity('m2', new Date('2026-01-01T00:00:02.000Z'), 'middle'),
-			]);
-
-			const result = await memory.getMessages('thread-1', {
-				before,
-				limit: 2,
-				resourceId: 'user-1',
-			});
-
-			const call = messageRepository.find.mock.calls[0][0];
-			expect(call?.where).toMatchObject({
-				threadId: 'thread-1',
-				resourceId: 'user-1',
-				createdAt: LessThan(before),
-			});
-			expect(call?.order).toEqual({ createdAt: 'DESC' });
-			expect(call?.take).toBe(2);
-			expect(result.map((m) => m.id)).toEqual(['m2', 'm3']);
-		});
-	});
-
-	describe('getMessages — persisted JSON hydration', () => {
-		it('returns createdAt as a Date when the content JSON stores it as an ISO string', async () => {
-			const createdAt = new Date('2026-01-01T00:00:02.000Z');
-			const entity = makeMessageEntity('m2', createdAt, 'middle');
-			entity.content = {
-				...entity.content,
-				createdAt: createdAt.toISOString(),
-			};
-			messageRepository.find.mockResolvedValue([entity]);
-
-			const [result] = await memory.getMessages('thread-1');
-
-			expect(result.createdAt).toBeInstanceOf(Date);
-			expect(result.createdAt.toISOString()).toBe(createdAt.toISOString());
-		});
-	});
-
-	describe('getMessagesForObservationScope', () => {
-		it('queries source messages by observation scope id', async () => {
-			const createdAt = new Date('2026-01-01T00:00:02.000Z');
-			messageRepository.find.mockResolvedValue([makeMessageEntity('m2', createdAt, 'middle')]);
-
-			const result = await memory.getMessagesForObservationScope('thread-1');
-
-			expect(messageRepository.find).toHaveBeenCalledWith(
-				expect.objectContaining({
-					where: [{ threadId: 'thread-1' }],
-					order: { createdAt: 'ASC', id: 'ASC' },
-				}),
-			);
-			expect(result.map((m) => m.id)).toEqual(['m2']);
-		});
-
-		it('does not filter source messages by resourceId', async () => {
-			messageRepository.find.mockResolvedValue([]);
-
-			await memory.getMessagesForObservationScope('thread-1');
-
-			expect(messageRepository.find).toHaveBeenCalledWith(
-				expect.objectContaining({
-					where: [{ threadId: 'thread-1' }],
-				}),
-			);
-		});
-
-		it('applies the cursor keyset for observation scopes', async () => {
-			const sinceCreatedAt = new Date('2026-01-01T00:00:01.000Z');
-			messageRepository.find.mockResolvedValue([]);
-
-			await memory.getMessagesForObservationScope('thread-1', {
-				since: { sinceCreatedAt, sinceMessageId: 'm1' },
-			});
-
-			expect(messageRepository.find).toHaveBeenCalledWith(
-				expect.objectContaining({
-					where: [
-						{ threadId: 'thread-1', createdAt: MoreThan(sinceCreatedAt) },
-						{
-							threadId: 'thread-1',
-							createdAt: Equal(sinceCreatedAt),
-							id: MoreThan('m1'),
-						},
-					],
-				}),
-			);
-		});
-
-		it('returns createdAt as a Date when the content JSON stores it as an ISO string', async () => {
-			const createdAt = new Date('2026-01-01T00:00:02.000Z');
-			const entity = makeMessageEntity('m2', createdAt, 'middle');
-			entity.content = {
-				...entity.content,
-				createdAt: createdAt.toISOString(),
-			};
-			messageRepository.find.mockResolvedValue([entity]);
-
-			const [result] = await memory.getMessagesForObservationScope('thread-1');
-
-			expect(result.createdAt).toBeInstanceOf(Date);
-			expect(result.createdAt.toISOString()).toBe(createdAt.toISOString());
+		expect(messageRepository.saveRuntimeMessages).toHaveBeenCalledWith({
+			threadId: 'thread-1',
+			resourceId: 'user-1',
+			messages,
+			executionId: 'execution-1',
 		});
 	});
 
@@ -530,34 +363,6 @@ describe('N8nMemory', () => {
 			expect(JSON.parse(savedThread.metadata ?? '{}')).toEqual({
 				currentMessageContext,
 				summary: 'Support thread',
-			});
-		});
-	});
-
-	describe('deleteMessagesByThread', () => {
-		it('deletes only the caller’s messages when resourceId is provided', async () => {
-			await memory.deleteMessagesByThread('thread-1', 'user-1');
-
-			expect(messageRepository.delete).toHaveBeenCalledWith({
-				threadId: 'thread-1',
-				resourceId: 'user-1',
-			});
-		});
-
-		it('deletes every message on the thread when resourceId is omitted', async () => {
-			await memory.deleteMessagesByThread('thread-1');
-
-			expect(messageRepository.delete).toHaveBeenCalledWith({ threadId: 'thread-1' });
-		});
-
-		it('does not widen the delete to all users when resourceId is an empty string', async () => {
-			// Same security invariant as getMessages: an accidental falsy userId
-			// must never fall through to "delete everyone's messages".
-			await memory.deleteMessagesByThread('thread-1', '');
-
-			expect(messageRepository.delete).toHaveBeenCalledWith({
-				threadId: 'thread-1',
-				resourceId: '',
 			});
 		});
 	});

@@ -1,3 +1,4 @@
+import { EventService } from '@n8n/backend-services';
 import {
 	createTeamProject,
 	createWorkflow,
@@ -28,7 +29,6 @@ import { v4 as uuid } from 'uuid';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { STARTING_NODES } from '@/constants';
-import { EventService } from '@/events/event.service';
 import { ExecutionService } from '@/executions/execution.service';
 import { InstanceRedactionEnforcementService } from '@/modules/redaction/instance-redaction-enforcement.service';
 import { ProjectService } from '@/services/project.service.ee';
@@ -2166,6 +2166,19 @@ describe('POST /workflows', () => {
 		expect(sharedWorkflow?.workflow.nodes).toEqual(payload.nodes);
 		expect(sharedWorkflow?.workflow.settings).toEqual(payload.settings);
 		expect(sharedWorkflow?.role).toEqual('workflow:owner');
+	});
+
+	test('should create a workflow with a description', async () => {
+		const description = 'What this workflow does';
+		const response = await authMemberAgent.post('/workflows').send({
+			...mockPostWorkflowPayload(),
+			description,
+		});
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.description).toBe(description);
+		const stored = await workflowRepository.findOneBy({ id: response.body.id });
+		expect(stored?.description).toBe(description);
 	});
 
 	test.each([

@@ -28,23 +28,26 @@ export const HTTP_METHODS = [
 ] as const;
 export type HttpMethod = (typeof HTTP_METHODS)[number];
 
-export type ResolvedRouteArg =
-	| { type: 'param'; key: string; schema?: ZodTypeAny }
-	| { type: 'body'; dto: ZodClass; required?: boolean }
-	| { type: 'query'; dto: ZodClass };
+export type ParamArg = { type: 'param'; key: string; schema?: ZodTypeAny };
+type BodyArg = { type: 'body'; dto: ZodClass; required?: boolean };
+type QueryArg = { type: 'query'; dto: ZodClass };
 
-export function isDtoArg(
-	arg: ResolvedRouteArg,
-	type: 'body' | 'query',
-): arg is Extract<ResolvedRouteArg, { type: 'body' | 'query' }> {
-	return arg.type === type;
+/** A `ParamArg` whose `@Param` declared a schema, so its value is validated before the handler. */
+export type ValidatedParamArg = ParamArg & { schema: ZodTypeAny };
+
+export type ResolvedRouteArg = ParamArg | BodyArg | QueryArg;
+
+export function findBodyArg(args: ResolvedRouteArg[]): BodyArg | undefined {
+	return args.find((arg): arg is BodyArg => arg.type === 'body');
 }
 
-export function findBodyArg(
-	args: ResolvedRouteArg[],
-): Extract<ResolvedRouteArg, { type: 'body' }> | undefined {
-	return args.find(
-		(arg): arg is Extract<ResolvedRouteArg, { type: 'body' }> => arg.type === 'body',
+function findQueryArg(args: ResolvedRouteArg[]): QueryArg | undefined {
+	return args.find((arg): arg is QueryArg => arg.type === 'query');
+}
+
+export function findValidatedParamArgs(args: ResolvedRouteArg[]): ValidatedParamArg[] {
+	return args.filter(
+		(arg): arg is ValidatedParamArg => arg.type === 'param' && arg.schema !== undefined,
 	);
 }
 
@@ -251,7 +254,7 @@ export function resolvePublicApiRoutes(): ResolvedPublicApiRoute[] {
 			const requestBodyArg = findBodyArg(args);
 			const requestBodyDto = requestBodyArg?.dto;
 			const requestBodyRequired = requestBodyArg?.required;
-			const requestQueryDto = args.find((arg) => isDtoArg(arg, 'query'))?.dto;
+			const requestQueryDto = findQueryArg(args)?.dto;
 
 			const joined = `${prefix}${route.path}`.replace(/\/+/g, '/');
 			const path = joined.length > 1 ? joined.replace(/\/$/, '') : joined || '/';

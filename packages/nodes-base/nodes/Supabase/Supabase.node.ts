@@ -1,11 +1,7 @@
 import type {
 	IExecuteFunctions,
-	ICredentialDataDecryptedObject,
-	ICredentialsDecrypted,
-	ICredentialTestFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
-	INodeCredentialTestResult,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
@@ -20,9 +16,9 @@ import {
 	buildQuery,
 	getApiDefinition,
 	getSchemaHeader,
+	getSupabaseProjects,
 	mapPairedItemsFrom,
 	supabaseApiRequest,
-	validateCredentials,
 } from './GenericFunctions';
 import { rowFields, rowOperations } from './RowDescription';
 
@@ -50,7 +46,20 @@ export class Supabase implements INodeType {
 			{
 				name: 'supabaseApi',
 				required: true,
-				testedBy: 'supabaseApiCredentialTest',
+				displayOptions: {
+					show: {
+						authentication: ['secretKey'],
+					},
+				},
+			},
+			{
+				name: 'supabaseOAuth2Api',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: ['oAuth2'],
+					},
+				},
 			},
 		],
 		hints: [
@@ -64,6 +73,53 @@ export class Supabase implements INodeType {
 			},
 		],
 		properties: [
+			{
+				displayName: 'Authentication',
+				name: 'authentication',
+				type: 'options',
+				options: [
+					{
+						name: 'Secret Key',
+						value: 'secretKey',
+					},
+					{
+						name: 'OAuth2',
+						value: 'oAuth2',
+					},
+				],
+				default: 'secretKey',
+			},
+			{
+				displayName: 'Resource',
+				name: 'resource',
+				type: 'options',
+				noDataExpression: true,
+				options: [
+					{
+						name: 'Row',
+						value: 'row',
+					},
+				],
+				default: 'row',
+			},
+			...rowOperations,
+			{
+				displayName: 'Project Name or ID',
+				name: 'projectRef',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getProjects',
+				},
+				required: true,
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
+				displayOptions: {
+					show: {
+						authentication: ['oAuth2'],
+					},
+				},
+				default: '',
+			},
 			{
 				displayName: 'Use Custom Schema',
 				name: 'useCustomSchema',
@@ -82,26 +138,19 @@ export class Supabase implements INodeType {
 				noDataExpression: false,
 				displayOptions: { show: { useCustomSchema: [true] } },
 			},
-			{
-				displayName: 'Resource',
-				name: 'resource',
-				type: 'options',
-				noDataExpression: true,
-				options: [
-					{
-						name: 'Row',
-						value: 'row',
-					},
-				],
-				default: 'row',
-			},
-			...rowOperations,
 			...rowFields,
 		],
 	};
 
 	methods = {
 		loadOptions: {
+			async getProjects(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const projects = await getSupabaseProjects.call(this);
+				return projects.map((project) => ({
+					name: project.name,
+					value: project.ref,
+				}));
+			},
 			async getTables(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 				const { paths } = await getApiDefinition.call(this);
@@ -135,26 +184,6 @@ export class Supabase implements INodeType {
 					});
 				}
 				return returnData;
-			},
-		},
-		credentialTest: {
-			async supabaseApiCredentialTest(
-				this: ICredentialTestFunctions,
-				credential: ICredentialsDecrypted,
-			): Promise<INodeCredentialTestResult> {
-				try {
-					await validateCredentials.call(this, credential.data as ICredentialDataDecryptedObject);
-				} catch (error) {
-					return {
-						status: 'Error',
-						message: 'The Service Key is invalid',
-					};
-				}
-
-				return {
-					status: 'OK',
-					message: 'Connection successful!',
-				};
 			},
 		},
 	};
@@ -272,6 +301,7 @@ export class Supabase implements INodeType {
 							qs,
 							undefined,
 							header,
+							i,
 						);
 					} catch (error) {
 						if (this.continueOnFail()) {
@@ -312,7 +342,16 @@ export class Supabase implements INodeType {
 					}
 
 					try {
-						rows = await supabaseApiRequest.call(this, 'GET', endpoint, {}, qs, undefined, header);
+						rows = await supabaseApiRequest.call(
+							this,
+							'GET',
+							endpoint,
+							{},
+							qs,
+							undefined,
+							header,
+							i,
+						);
 					} catch (error) {
 						if (this.continueOnFail()) {
 							const executionData = this.helpers.constructExecutionMetaData(
@@ -387,6 +426,7 @@ export class Supabase implements INodeType {
 								qs,
 								undefined,
 								header,
+								i,
 							);
 							responseLength = newRows.length;
 							rows = rows.concat(newRows);
@@ -478,6 +518,7 @@ export class Supabase implements INodeType {
 							qs,
 							undefined,
 							header,
+							i,
 						);
 						const executionData = this.helpers.constructExecutionMetaData(
 							this.helpers.returnJsonArray(updatedRow as IDataObject[]),

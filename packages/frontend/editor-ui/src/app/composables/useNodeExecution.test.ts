@@ -8,6 +8,8 @@ import { useNodeExecution } from '@/app/composables/useNodeExecution';
 import { useUIStore } from '@/app/stores/ui.store';
 import { needsAgentInput } from '@/app/utils/nodes/nodeTransforms';
 import type { INodeUi } from '@/Interface';
+import type { IUsedCredential } from '@/features/credentials/credentials.types';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import {
 	WEBHOOK_NODE_TYPE,
 	MANUAL_TRIGGER_NODE_TYPE,
@@ -70,6 +72,8 @@ const {
 		getStartNode: vi.fn(),
 		checkIfNodeHasChatParent: vi.fn(),
 		pinData: {} as Record<string, unknown>,
+		usedCredentials: {} as Record<string, IUsedCredential>,
+		allNodes: [] as INodeUi[],
 	},
 	mockNodeHelpers: {
 		getNodeInputData: vi.fn().mockReturnValue([]),
@@ -148,10 +152,17 @@ vi.mock('@n8n/composables/useTelemetry', () => ({
 	}),
 }));
 
+// Keeps the interpolated values in the returned string, so a test can assert
+// what a message was built from without depending on the copy.
+const baseTextMock = vi.hoisted(
+	() => (key: string, options?: { interpolate?: Record<string, string> }) =>
+		options?.interpolate ? `${key} ${Object.values(options.interpolate).join(' ')}` : key,
+);
+
 vi.mock('@n8n/i18n', () => ({
-	i18n: { baseText: vi.fn().mockImplementation((key: string) => key) },
+	i18n: { baseText: vi.fn().mockImplementation(baseTextMock) },
 	useI18n: vi.fn().mockReturnValue({
-		baseText: vi.fn().mockImplementation((key: string) => key),
+		baseText: vi.fn().mockImplementation(baseTextMock),
 	}),
 }));
 
@@ -208,6 +219,8 @@ describe('useNodeExecution', () => {
 		mockNodeHelpers.getNodeInputData.mockReset().mockReturnValue([]);
 		mockWorkflowDocumentStore.getNodeByName.mockReset();
 		mockWorkflowDocumentStore.pinData = {};
+		mockWorkflowDocumentStore.usedCredentials = {};
+		mockWorkflowDocumentStore.allNodes = [];
 
 		mockNodeTypesStore.getNodeType.mockReturnValue(null);
 		mockNodeTypesStore.isTriggerNode.mockReturnValue(false);
@@ -455,6 +468,115 @@ describe('useNodeExecution', () => {
 			const { disabledReason } = useNodeExecution(node);
 
 			expect(disabledReason.value).toBe('');
+		});
+
+		describe('unusable credential', () => {
+			const foreignCredential: IUsedCredential = {
+				id: 'c1',
+				name: "Alice's Gmail",
+				credentialType: 'gmailOAuth2',
+				currentUserCanUse: false,
+				homeProject: {
+					id: 'p1',
+					name: 'Alice Chen <alice@acme.io>',
+					type: 'personal',
+					icon: null,
+					createdAt: '',
+					updatedAt: '',
+				},
+			};
+
+			const useCredential = (credential: IUsedCredential) => {
+				mockWorkflowDocumentStore.usedCredentials = { [credential.id]: credential };
+				mockWorkflowDocumentStore.allNodes = [
+					createTestNode({
+						name: 'Gmail',
+						credentials: { gmailOAuth2: { id: credential.id, name: credential.name } },
+					}),
+				];
+			};
+
+			beforeEach(() => {
+				useSettingsStore().settings.granularCredentialSharing = true;
+			});
+
+			it('should name the credential and its owner when the user cannot use it', () => {
+				useCredential(foreignCredential);
+				const node = ref(createTestNode());
+
+				const { disabledReason } = useNodeExecution(node);
+
+				expect(disabledReason.value).toContain('credentialSharing.blocked');
+				expect(disabledReason.value).toContain("Alice's Gmail");
+				expect(disabledReason.value).toContain('Alice Chen');
+			});
+
+			// The whole workflow stops, not only the node that holds the credential.
+			it('should block a node that does not hold the credential', () => {
+				useCredential(foreignCredential);
+				const node = ref(createTestNode({ name: 'Set' }));
+
+				const { disabledReason } = useNodeExecution(node);
+
+				expect(disabledReason.value).toContain('credentialSharing.blocked');
+			});
+
+			// No per-node fix makes the run possible, so the credential reason is the
+			// one worth showing.
+			it.each([
+				['a trigger node with issues', { issues: { parameters: { param1: ['error'] } } }],
+				['a disabled node', { disabled: true }],
+			])('should outrank %s', (_name, overrides) => {
+				mockNodeTypesStore.isTriggerNode.mockReturnValue(true);
+				useCredential(foreignCredential);
+				const node = ref(createTestNode(overrides));
+
+				const { disabledReason } = useNodeExecution(node);
+
+				expect(disabledReason.value).toContain('credentialSharing.blocked');
+			});
+
+			it('should outrank a workflow that is already running', () => {
+				mockWorkflowExecutionStateStore.isWorkflowRunning = true;
+				mockWorkflowsStore.executedNode = 'Other Node';
+				useCredential(foreignCredential);
+				const node = ref(createTestNode({ name: 'Test Node' }));
+
+				const { disabledReason } = useNodeExecution(node);
+
+				expect(disabledReason.value).toContain('credentialSharing.blocked');
+			});
+
+			// The button says "Stop listening" there, so it has to stay clickable.
+			it('should not outrank a node that is listening', () => {
+				mockNodeTypesStore.isTriggerNode.mockReturnValue(true);
+				mockWorkflowExecutionStateStore.executionWaitingForWebhook = true;
+				useCredential(foreignCredential);
+				const node = ref(createTestNode({ type: WEBHOOK_NODE_TYPE }));
+
+				const { disabledReason } = useNodeExecution(node);
+
+				expect(disabledReason.value).toBe('');
+			});
+
+			it('should return empty string when the user can use the credential', () => {
+				useCredential({ ...foreignCredential, currentUserCanUse: true });
+				const node = ref(createTestNode());
+
+				const { disabledReason } = useNodeExecution(node);
+
+				expect(disabledReason.value).toBe('');
+			});
+
+			it('should return empty string while the feature flag is off', () => {
+				useSettingsStore().settings.granularCredentialSharing = false;
+				useCredential(foreignCredential);
+				const node = ref(createTestNode());
+
+				const { disabledReason } = useNodeExecution(node);
+
+				expect(disabledReason.value).toBe('');
+			});
 		});
 	});
 

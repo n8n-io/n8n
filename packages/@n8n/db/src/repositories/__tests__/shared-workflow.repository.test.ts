@@ -3,7 +3,7 @@ import { In, type SelectQueryBuilder } from '@n8n/typeorm';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import type { Project } from '../../entities';
+import type { Folder, Project, WorkflowEntity } from '../../entities';
 import { SharedWorkflow } from '../../entities';
 import { mockEntityManager } from '../../utils/test-utils/mock-entity-manager';
 import { SharedWorkflowRepository } from '../shared-workflow.repository';
@@ -24,6 +24,191 @@ describe('SharedWorkflowRepository', () => {
 		queryBuilder.select.mockReturnThis();
 
 		vi.spyOn(sharedWorkflowRepository, 'createQueryBuilder').mockReturnValue(queryBuilder);
+	});
+
+	describe('workflow access IDs', () => {
+		const rows = [
+			mock<SharedWorkflow>({ workflowId: 'workflow-1' }),
+			mock<SharedWorkflow>({ workflowId: 'workflow-2' }),
+		];
+
+		it('finds all workflow IDs for global access', async () => {
+			entityManager.find.mockResolvedValue(rows);
+
+			const result = await sharedWorkflowRepository.findWorkflowIdsForGlobalAccess();
+
+			expect(entityManager.find).toHaveBeenCalledWith(SharedWorkflow, {
+				select: ['workflowId'],
+			});
+			expect(result).toEqual(['workflow-1', 'workflow-2']);
+		});
+
+		it('limits global access workflow IDs to a project', async () => {
+			entityManager.find.mockResolvedValue(rows);
+
+			await sharedWorkflowRepository.findWorkflowIdsForGlobalAccess('project-1');
+
+			expect(entityManager.find).toHaveBeenCalledWith(SharedWorkflow, {
+				select: ['workflowId'],
+				where: { projectId: 'project-1' },
+			});
+		});
+
+		it('finds workflow IDs accessible through project and workflow roles', async () => {
+			entityManager.find.mockResolvedValue(rows);
+
+			const result = await sharedWorkflowRepository.findWorkflowIdsAccessibleToUser(
+				'user-1',
+				['workflow:owner'],
+				['project:viewer'],
+			);
+
+			expect(entityManager.find).toHaveBeenCalledWith(SharedWorkflow, {
+				select: ['workflowId'],
+				where: {
+					role: In(['workflow:owner']),
+					project: {
+						projectRelations: {
+							userId: 'user-1',
+							role: { slug: In(['project:viewer']) },
+						},
+					},
+				},
+			});
+			expect(result).toEqual(['workflow-1', 'workflow-2']);
+		});
+
+		it('finds workflow IDs shared with a user', async () => {
+			entityManager.find.mockResolvedValue(rows);
+
+			const result = await sharedWorkflowRepository.findWorkflowIdsSharedWithUser('user-1');
+
+			expect(entityManager.find).toHaveBeenCalledWith(SharedWorkflow, {
+				select: ['workflowId'],
+				where: {
+					role: 'workflow:editor',
+					project: {
+						projectRelations: {
+							userId: 'user-1',
+							role: { slug: 'project:personalOwner' },
+						},
+					},
+				},
+			});
+			expect(result).toEqual(['workflow-1', 'workflow-2']);
+		});
+
+		it('finds workflow IDs owned in a personal project', async () => {
+			entityManager.find.mockResolvedValue(rows);
+
+			const result = await sharedWorkflowRepository.findOwnedWorkflowIdsInPersonalProject('user-1');
+
+			expect(entityManager.find).toHaveBeenCalledWith(SharedWorkflow, {
+				select: ['workflowId'],
+				where: {
+					role: 'workflow:owner',
+					project: {
+						projectRelations: {
+							userId: 'user-1',
+							role: { slug: 'project:personalOwner' },
+						},
+					},
+				},
+			});
+			expect(result).toEqual(['workflow-1', 'workflow-2']);
+		});
+	});
+
+	describe('findOwnedWorkflowRemovalCandidates', () => {
+		const rootWorkflow = mock<WorkflowEntity>({
+			id: 'root',
+			name: 'Root workflow',
+			parentFolder: null,
+		});
+		const folderWorkflow = mock<WorkflowEntity>({
+			id: 'nested',
+			name: 'Nested workflow',
+			parentFolder: mock<Folder>({ id: 'folder' }),
+		});
+		const rootRow = mock<SharedWorkflow>({ workflow: rootWorkflow });
+		const folderRow = mock<SharedWorkflow>({ workflow: folderWorkflow });
+
+		it('returns no candidates without querying for an empty list', async () => {
+			expect(
+				await sharedWorkflowRepository.findOwnedWorkflowRemovalCandidates('project', []),
+			).toEqual([]);
+			expect(entityManager.find).not.toHaveBeenCalled();
+		});
+
+		it('limits the query to distinct requested ids owned by the project and not archived', async () => {
+			entityManager.find.mockResolvedValue([rootRow, folderRow]);
+
+			const result = await sharedWorkflowRepository.findOwnedWorkflowRemovalCandidates('project', [
+				'root',
+				'nested',
+				'root',
+			]);
+
+			expect(entityManager.find).toHaveBeenCalledExactlyOnceWith(SharedWorkflow, {
+				where: {
+					projectId: 'project',
+					workflowId: In(['root', 'nested']),
+					role: 'workflow:owner',
+					workflow: { isArchived: false },
+				},
+				relations: { workflow: { parentFolder: true } },
+				select: {
+					workflowId: true,
+					workflow: { id: true, name: true, parentFolder: { id: true } },
+				},
+			});
+			expect(result).toEqual([
+				{ id: 'root', name: 'Root workflow', parentFolderId: null },
+				{ id: 'nested', name: 'Nested workflow', parentFolderId: 'folder' },
+			]);
+		});
+
+		it('combines candidates from bounded queries for a large list', async () => {
+			const middleIds = Array.from({ length: 9_999 }, (_, index) => `workflow-${index}`);
+			entityManager.find.mockResolvedValueOnce([rootRow]).mockResolvedValueOnce([folderRow]);
+
+			const result = await sharedWorkflowRepository.findOwnedWorkflowRemovalCandidates('project', [
+				'root',
+				...middleIds,
+				'root',
+				'nested',
+			]);
+
+			expect(entityManager.find).toHaveBeenCalledTimes(2);
+			expect(entityManager.find).toHaveBeenNthCalledWith(
+				1,
+				SharedWorkflow,
+				expect.objectContaining({
+					where: {
+						projectId: 'project',
+						workflowId: In(['root', ...middleIds]),
+						role: 'workflow:owner',
+						workflow: { isArchived: false },
+					},
+				}),
+			);
+			expect(entityManager.find).toHaveBeenNthCalledWith(
+				2,
+				SharedWorkflow,
+				expect.objectContaining({
+					where: {
+						projectId: 'project',
+						workflowId: In(['nested']),
+						role: 'workflow:owner',
+						workflow: { isArchived: false },
+					},
+				}),
+			);
+			expect(result).toEqual([
+				{ id: 'root', name: 'Root workflow', parentFolderId: null },
+				{ id: 'nested', name: 'Nested workflow', parentFolderId: 'folder' },
+			]);
+		});
 	});
 
 	describe('getSharedPersonalWorkflowsCount', () => {

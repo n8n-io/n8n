@@ -11,7 +11,7 @@ import { Container } from '@n8n/di';
 import type { Response } from 'express';
 import { mock } from 'vitest-mock-extended';
 
-import { ServiceUnavailableError } from '@/errors/response-errors/service-unavailable.error';
+import { ServiceUnavailableError } from '@n8n/errors';
 import { NODE_TYPES_KIND } from '@/modules/type-availability-policies/constants';
 import type { EffectivePolicy } from '@/modules/type-availability-policies/type-availability-policy.service';
 import { TypeAvailabilityPolicyService } from '@/modules/type-availability-policies/type-availability-policy.service';

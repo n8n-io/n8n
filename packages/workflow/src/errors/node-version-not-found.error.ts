@@ -1,4 +1,4 @@
-import { UserError } from './base/user.error';
+import { UserError } from '@n8n/errors';
 
 /**
  * Thrown when a node type is resolved at a `typeVersion` that does not exist in

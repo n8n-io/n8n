@@ -7,6 +7,7 @@ import {
 	N8nIconButton,
 	N8nMarkdownEditor,
 	N8nText,
+	N8nTooltip,
 } from '@n8n/design-system';
 import { SUB_AGENT_USE_WHEN_MAX_LENGTH } from '@n8n/api-types';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
@@ -213,10 +214,19 @@ function onConfirm() {
 					<N8nText size="small" :bold="true">
 						{{ i18n.baseText('agents.builder.subAgents.useWhen.label') }}
 					</N8nText>
+					<N8nTooltip
+						:content="i18n.baseText('agents.builder.subAgents.useWhen.hint')"
+						placement="top"
+					>
+						<span
+							:class="$style.infoIcon"
+							:aria-label="i18n.baseText('agents.builder.subAgents.useWhen.hint')"
+							tabindex="0"
+						>
+							<N8nIcon icon="info" size="small" />
+						</span>
+					</N8nTooltip>
 				</label>
-				<N8nText size="small" color="text-light">
-					{{ i18n.baseText('agents.builder.subAgents.useWhen.hint') }}
-				</N8nText>
 				<N8nMarkdownEditor
 					:class="$style.useWhenEditor"
 					:model-value="useWhen"
@@ -276,7 +286,15 @@ function onConfirm() {
 }
 
 .label {
-	display: block;
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
+}
+
+.infoIcon {
+	display: inline-flex;
+	color: var(--color--text--tint-1);
+	cursor: help;
 }
 
 .useWhenEditor {

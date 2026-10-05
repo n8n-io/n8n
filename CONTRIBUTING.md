@@ -441,7 +441,7 @@ Each instance gets its own port, and the webhook URL matches the main URL. Multi
 >- This does not work with Podman out of the box. You need to [configure Testcontainers for Podman](https://podman-desktop.io/tutorial/testcontainers-with-podman) first.
 >- Alternatively, you can use colima and set DOCKER_HOST and TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE environment variables as described [here](https://node.testcontainers.org/supported-container-runtimes/#colima)
 
-Refer to [packages/testing/containers/README.md](packages/testing/containers/README.md) for more information.
+Refer to [packages/quality/environments/containers/README.md](packages/quality/environments/containers/README.md) for more information.
 
 ### Work locally with syslog
 
@@ -670,7 +670,7 @@ E2E tests can be started via one of the following commands:
 - `pnpm --filter=n8n-playwright test:local --ui` - Run tests in interactive UI mode (useful for debugging)
 - `pnpm --filter=n8n-playwright test:local --grep="test-name"` - Run specific tests matching pattern
 
-See `packages/testing/playwright/README.md` for more test commands and `packages/testing/playwright/CONTRIBUTING.md` for writing guidelines.
+See `packages/quality/testing/playwright/README.md` for more test commands and `packages/quality/testing/playwright/CONTRIBUTING.md` for writing guidelines.
 
 ## Create custom nodes
 

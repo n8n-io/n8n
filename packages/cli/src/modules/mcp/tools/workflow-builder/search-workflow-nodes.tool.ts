@@ -16,6 +16,7 @@ import type {
 	ToolDefinition,
 	UserCalledMCPToolEventPayload,
 } from '../../mcp.types';
+import { trackAndRethrowToolError } from '../tool-error.utils';
 
 const inputSchema = {
 	queries: z
@@ -153,12 +154,7 @@ export const createSearchWorkflowNodesTool = (
 				structuredContent: structured,
 			};
 		} catch (error) {
-			telemetryPayload.results = {
-				success: false,
-				error: error instanceof Error ? error.message : String(error),
-			};
-			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
-			throw error;
+			trackAndRethrowToolError(telemetry, telemetryPayload, error);
 		}
 	},
 });

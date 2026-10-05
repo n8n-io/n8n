@@ -180,6 +180,11 @@ export interface FrontendSettings {
 	workflowsGroupsWithTriggersEnabled: boolean;
 	workflowsGroupsWithManyBoundariesEnabled: boolean;
 	useWorkflowPublicationService: boolean;
+	/**
+	 * Granular credential sharing: a personal credential is usable in any
+	 * project its owner works in. Set from `N8N_ENV_FEAT_CRED_SHARING`.
+	 */
+	granularCredentialSharing: boolean;
 	logLevel: LogLevel;
 	hiringBannerEnabled: boolean;
 	previewMode: boolean;
@@ -420,6 +425,7 @@ export type FrontendModuleSettings = {
 	 * Client settings for the agents module.
 	 */
 	agents?: {
+		enabled?: boolean;
 		/**
 		 * Enabled agent sub-feature modules. Each token unlocks a specific
 		 * capability inside the agents module (see the backend's

@@ -1,4 +1,5 @@
 import { Logger } from '@n8n/backend-common';
+import { EventService } from '@n8n/backend-services';
 import { testDb } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import { ScheduledJobMisfirePolicy, ScheduledJobOwnerType } from '@n8n/constants';
@@ -10,7 +11,6 @@ import { ErrorReporter } from 'n8n-core';
 import { inc } from 'semver';
 
 import { N8N_VERSION } from '@/constants';
-import { EventService } from '@/events/event.service';
 import { DurableJobProvisioner } from '@/scheduling/durable-job-provisioner';
 import {
 	SystemTaskJobRegistrar,
@@ -82,12 +82,29 @@ describe('system task provisioning', () => {
 			maxAttempts: 3,
 			misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
 			misfireGraceSeconds: 60,
+			concurrencyLimit: 1,
 		});
 		expect(row.nextRunAt?.getTime()).toBeGreaterThanOrEqual(before.getTime());
 
 		const seeded = await taskRepo.findBy({ jobId: row.id });
 		expect(seeded.length).toBeGreaterThan(0);
 		expect(seeded.every((occurrence) => occurrence.status === 'pending')).toBe(true);
+	});
+
+	it('seeds a claimable occurrence at once for an interval task', async () => {
+		const before = new Date();
+
+		await provision();
+
+		const after = new Date();
+		const row = await jobRepo.findOneByOrFail({ name: JOB_NAME });
+		const [first] = (await taskRepo.findBy({ jobId: row.id })).sort(
+			(a, b) => a.runAt.getTime() - b.runAt.getTime(),
+		);
+		expect(first.status).toBe('pending');
+		expect(first.runAt.getTime()).toBeGreaterThanOrEqual(before.getTime());
+		expect(first.runAt.getTime()).toBeLessThanOrEqual(after.getTime());
+		expect(first.missedAfter!.getTime()).toBeGreaterThan(after.getTime());
 	});
 
 	it('leaves an identical second provision alone, keeping the row and its occurrences', async () => {
@@ -108,10 +125,7 @@ describe('system task provisioning', () => {
 	it('rewrites a changed cadence in place, withdrawing the occurrences of the old one', async () => {
 		await provision();
 		const inserted = await jobRepo.findOneByOrFail({ name: JOB_NAME });
-		const staleIds = (await taskRepo.findBy({ jobId: inserted.id })).map(
-			(occurrence) => occurrence.id,
-		);
-		expect(staleIds.length).toBeGreaterThan(0);
+		expect(await taskRepo.countBy({ jobId: inserted.id })).toBeGreaterThan(0);
 
 		const schedule: SystemTaskSchedule = { kind: 'interval', intervalSeconds: 300 };
 		const summary = await provision({ schedule });
@@ -121,8 +135,34 @@ describe('system task provisioning', () => {
 		expect(row.id).toBe(inserted.id);
 		expect(row.intervalSeconds).toBe(300);
 		expect(row.nextRunAt?.getTime()).toBeGreaterThan(inserted.nextRunAt!.getTime());
+		// SQLite reuses a deleted row's id, so the old occurrences are told apart by instant.
 		const remaining = await taskRepo.findBy({ jobId: row.id });
-		expect(remaining.filter((occurrence) => staleIds.includes(occurrence.id))).toEqual([]);
+		expect(remaining.map((occurrence) => occurrence.scheduledFor)).toEqual([
+			new Date(row.nextRunAt!.getTime() - 300 * 1000),
+		]);
+	});
+
+	it.each([
+		['permits overlap', null],
+		['raises the ceiling', 4],
+	])('stores the concurrency limit a task declares when it %s', async (_case, concurrencyLimit) => {
+		await provision({ concurrencyLimit });
+
+		const row = await jobRepo.findOneByOrFail({ name: JOB_NAME });
+		expect(row.concurrencyLimit).toBe(concurrencyLimit);
+	});
+
+	it('reconciles a changed concurrency limit on an unchanged cadence', async () => {
+		await provision();
+		const inserted = await jobRepo.findOneByOrFail({ name: JOB_NAME });
+		expect(inserted.concurrencyLimit).toBe(1);
+
+		const summary = await provision({ concurrencyLimit: null });
+
+		expect(summary.unchanged).toEqual([{ id: inserted.id, name: JOB_NAME }]);
+		const row = await jobRepo.findOneByOrFail({ name: JOB_NAME });
+		expect(row.id).toBe(inserted.id);
+		expect(row.concurrencyLimit).toBeNull();
 	});
 
 	it('reconciles a changed attempts ceiling on an unchanged cadence', async () => {

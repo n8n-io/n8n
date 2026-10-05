@@ -59,6 +59,7 @@ export async function searchModels(
 			this.getNode(),
 			credential,
 			AZURE_AI_FOUNDRY_AUDIENCE,
+			egressFilter,
 		).getToken();
 		if (!token) {
 			throw new NodeOperationError(this.getNode(), 'Failed to retrieve access token');

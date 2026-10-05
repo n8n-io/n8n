@@ -2,7 +2,7 @@ import { Service } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
 import { UserError } from 'n8n-workflow';
 
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { ForbiddenError } from '@n8n/errors';
 import { TagService } from '@/services/tag.service';
 
 import { decideTagImportAction } from './tag-import-decision';

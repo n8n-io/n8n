@@ -150,6 +150,7 @@ export function createObservationLogObserveFn(
 	options: CreateObservationLogObserveFnOptions = {},
 ): ObservationLogObserveFn {
 	return async (input) => {
+		// oxlint-disable-next-line typescript/no-deprecated
 		const { text, usage, providerMetadata } = await loadAi().generateText({
 			model: createModel(model),
 			instructions: options.observerPrompt ?? DEFAULT_OBSERVATION_LOG_OBSERVER_PROMPT,
@@ -158,19 +159,18 @@ export function createObservationLogObserveFn(
 		});
 		incrementTokenCountFromUsage(input.executionCounter, usage);
 
-		if (options.onUsage) {
-			const tokenUsage = toTokenUsage(usage, providerMetadata);
-			if (tokenUsage) {
-				await options.onUsage({
-					task: 'observer',
-					model: getModelIdString(model),
-					usage: tokenUsage,
-					reportId: crypto.randomUUID(),
-				});
-			}
+		const tokenUsage = toTokenUsage(usage, providerMetadata);
+		const modelId = getModelIdString(model);
+		if (options.onUsage && tokenUsage) {
+			await options.onUsage({
+				task: 'observer',
+				model: modelId,
+				usage: tokenUsage,
+				reportId: crypto.randomUUID(),
+			});
 		}
 
-		return text.trim();
+		return { text: text.trim(), usage: tokenUsage, model: modelId };
 	};
 }
 
@@ -318,6 +318,7 @@ export function createObservationLogReflectFn(
 				parentId: entry.parentId ? (referenceById.get(entry.parentId) ?? null) : null,
 			})),
 		);
+		// oxlint-disable-next-line typescript/no-deprecated
 		const { text, usage, providerMetadata } = await loadAi().generateText({
 			model: createModel(model),
 			instructions: options.reflectorPrompt ?? DEFAULT_OBSERVATION_LOG_REFLECTOR_PROMPT,
@@ -326,16 +327,15 @@ export function createObservationLogReflectFn(
 		});
 		incrementTokenCountFromUsage(input.executionCounter, usage);
 
-		if (options.onUsage) {
-			const tokenUsage = toTokenUsage(usage, providerMetadata);
-			if (tokenUsage) {
-				await options.onUsage({
-					task: 'reflector',
-					model: getModelIdString(model),
-					usage: tokenUsage,
-					reportId: crypto.randomUUID(),
-				});
-			}
+		const tokenUsage = toTokenUsage(usage, providerMetadata);
+		const modelId = getModelIdString(model);
+		if (options.onUsage && tokenUsage) {
+			await options.onUsage({
+				task: 'reflector',
+				model: modelId,
+				usage: tokenUsage,
+				reportId: crypto.randomUUID(),
+			});
 		}
 
 		const reflection = parseObservationLogReflectionJson(text);
@@ -344,15 +344,19 @@ export function createObservationLogReflectFn(
 			if (id === undefined) throw new Error(`Unknown observation reference: ${reference}`);
 			return id;
 		};
-		return JSON.stringify({
-			drop: reflection.drop.map(resolveId),
-			merge: reflection.merge.map((merge) => ({
-				...merge,
-				supersedes: merge.supersedes.map(resolveId),
-				...(merge.parentId !== undefined && {
-					parentId: merge.parentId === null ? null : resolveId(merge.parentId),
-				}),
-			})),
-		});
+		return {
+			text: JSON.stringify({
+				drop: reflection.drop.map(resolveId),
+				merge: reflection.merge.map((merge) => ({
+					...merge,
+					supersedes: merge.supersedes.map(resolveId),
+					...(merge.parentId !== undefined && {
+						parentId: merge.parentId === null ? null : resolveId(merge.parentId),
+					}),
+				})),
+			}),
+			usage: tokenUsage,
+			model: modelId,
+		};
 	};
 }

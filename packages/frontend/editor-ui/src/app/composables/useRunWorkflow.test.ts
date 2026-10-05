@@ -465,6 +465,22 @@ describe('useRunWorkflow({ router })', () => {
 				await runWorkflow({});
 
 				expect(workflowSaving.saveCurrentWorkflow).toHaveBeenCalledTimes(1);
+				expect(workflowsStore.runWorkflow).toHaveBeenCalledTimes(1);
+			});
+
+			it('should not run when the save before execute fails with autosave enabled', async () => {
+				vi.spyOn(settingsStore, 'isAutosaveEnabled', 'get').mockReturnValue(true);
+				vi.mocked(uiStore).stateIsDirty = true;
+				vi.mocked(workflowsStore).isWorkflowSaved = { '123': true };
+
+				const workflowSaving = useWorkflowSaving({ router });
+				vi.mocked(workflowSaving.saveCurrentWorkflow).mockResolvedValueOnce(false);
+				const { runWorkflow } = useRunWorkflow({ router });
+				const result = await runWorkflow({});
+
+				expect(workflowSaving.saveCurrentWorkflow).toHaveBeenCalledTimes(1);
+				expect(workflowsStore.runWorkflow).not.toHaveBeenCalled();
+				expect(result).toBeUndefined();
 			});
 
 			it('should prompt the user and save when they confirm if autosave is disabled and state is dirty (ADO-5328)', async () => {
@@ -513,6 +529,21 @@ describe('useRunWorkflow({ router })', () => {
 				await runWorkflow({});
 
 				expect(workflowSaving.saveCurrentWorkflow).toHaveBeenCalledTimes(1);
+			});
+
+			it('should not run a new workflow when its first save fails', async () => {
+				vi.spyOn(settingsStore, 'isAutosaveEnabled', 'get').mockReturnValue(false);
+				vi.mocked(uiStore).stateIsDirty = false;
+				vi.mocked(workflowsStore).isWorkflowSaved = {};
+
+				const workflowSaving = useWorkflowSaving({ router });
+				vi.mocked(workflowSaving.saveCurrentWorkflow).mockResolvedValueOnce(false);
+				const { runWorkflow } = useRunWorkflow({ router });
+				const result = await runWorkflow({});
+
+				expect(workflowSaving.saveCurrentWorkflow).toHaveBeenCalledTimes(1);
+				expect(workflowsStore.runWorkflow).not.toHaveBeenCalled();
+				expect(result).toBeUndefined();
 			});
 		});
 

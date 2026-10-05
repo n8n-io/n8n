@@ -396,6 +396,7 @@ async function onFiltersChange(value: AgentSessionFilters) {
 	gap: var(--spacing--sm);
 	padding: var(--spacing--lg);
 	height: 100%;
+	min-width: 0;
 	min-height: 0;
 	overflow-y: auto;
 	scrollbar-width: thin;
@@ -410,6 +411,8 @@ async function onFiltersChange(value: AgentSessionFilters) {
 
 .tableContainer {
 	width: 100%;
+	min-width: 0;
+	container: sessions / inline-size;
 	overflow-x: auto;
 	scrollbar-width: thin;
 	scrollbar-color: var(--border-color) transparent;
@@ -602,5 +605,86 @@ async function onFiltersChange(value: AgentSessionFilters) {
 	max-width: 100%;
 	color: var(--text-color--subtler);
 	white-space: normal;
+}
+
+// No token covers the width needed by this five-column table.
+@container sessions (max-width: 44rem) {
+	.wrapper .sessionsTable table,
+	.wrapper .sessionsTable tbody {
+		display: block;
+		width: 100%;
+	}
+
+	.wrapper .sessionsTable .clickableRow {
+		display: grid;
+		grid-template-areas:
+			'title action'
+			'origin origin'
+			'date token';
+		grid-template-columns: minmax(0, 1fr) auto;
+		gap: var(--spacing--3xs) var(--spacing--xs);
+		padding: var(--spacing--xs);
+		border-left: var(--spacing--4xs) var(--border-style)
+			var(--execution-card--border-color--unknown);
+
+		&[data-status='succeeded'] {
+			border-left-color: var(--execution-card--border-color--success);
+		}
+
+		&[data-status='error'] {
+			border-left-color: var(--execution-card--border-color--error);
+		}
+
+		&[data-status='cancelled'],
+		&[data-status='interrupted'] {
+			border-left-color: var(--border-color--warning);
+		}
+
+		td {
+			display: block;
+			width: auto;
+			min-width: 0;
+			height: auto;
+			padding: 0;
+		}
+
+		.titleCell {
+			grid-area: title;
+			max-width: none;
+			border-left: 0;
+		}
+
+		.originCell {
+			grid-area: origin;
+			overflow: hidden;
+		}
+
+		.dateCell {
+			grid-area: date;
+		}
+
+		.tokenCell {
+			grid-area: token;
+			text-align: right;
+		}
+
+		.actionCell {
+			grid-area: action;
+		}
+	}
+
+	.wrapper .sessionsTable .skeletonRow,
+	.wrapper .sessionsTable .lastRow {
+		display: block;
+
+		td {
+			display: block;
+			width: 100%;
+		}
+	}
+
+	.wrapper .sessionsTable .skeletonRow td:not(:first-child) {
+		display: none;
+	}
 }
 </style>

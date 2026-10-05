@@ -1,7 +1,7 @@
 import { ref } from 'vue';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { useNodeCommands } from './useNodeCommands';
-import { mockRestrictedNodeTypes } from '@/__tests__/mocks';
+import { mockRestrictedNodeTypes } from '@n8n/frontend-module-type-availability-policies/__tests__/mocks';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
@@ -48,7 +48,8 @@ vi.mock('@/features/shared/nodeCreator/composables/useActionsGeneration', () => 
 	}),
 }));
 
-vi.mock('@n8n/permissions', () => ({
+vi.mock('@n8n/permissions', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@n8n/permissions')>()),
 	getResourcePermissions: vi.fn(),
 }));
 
@@ -90,6 +91,7 @@ describe('useNodeCommands', () => {
 		mockCanvasEventBusEmit = vi.mocked(canvasEventBus.emit);
 
 		mockNodeTypesStore = useNodeTypesStore();
+		vi.spyOn(mockNodeTypesStore, 'isNodeTypeUnavailable').mockReturnValue(false);
 		mockSourceControlStore = useSourceControlStore();
 		mockWorkflowsStore = useWorkflowsStore();
 
@@ -341,6 +343,17 @@ describe('useNodeCommands', () => {
 
 			const stickyCommand = commands.value.find((cmd) => cmd.id === 'add-sticky');
 			expect(stickyCommand).toBeDefined();
+		});
+
+		it('should not include add sticky note command when the sticky note type is not loaded', () => {
+			vi.mocked(mockNodeTypesStore.isNodeTypeUnavailable).mockReturnValue(true);
+
+			const { commands } = useNodeCommands({
+				lastQuery: ref(''),
+				activeNodeId: ref(null),
+			});
+
+			expect(commands.value.find((cmd) => cmd.id === 'add-sticky')).toBeUndefined();
 		});
 
 		it('should not include add sticky note command when user lacks update permission', () => {

@@ -11,7 +11,9 @@ import {
 	WORKFLOW_SETTINGS_MODAL_KEY,
 	NODE_CREATOR_OPEN_SOURCES,
 	TIME_SAVED_NODE_TYPE,
+	EXECUTE_WORKFLOW_NODE_TYPE,
 } from '@/app/constants';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 
 import { EXECUTION_LOGIC_V2_EXPERIMENT } from '@/app/constants/experiments';
 import {
@@ -93,6 +95,7 @@ const canUpdateCredentialResolver = hasPermission(['rbac'], {
 
 const rootStore = useRootStore();
 const settingsStore = useSettingsStore();
+const nodeTypesStore = useNodeTypesStore();
 const sourceControlStore = useSourceControlStore();
 const collaborationStore = useCollaborationStore();
 const workflowsStore = useWorkflowsStore();
@@ -913,7 +916,7 @@ onMounted(async () => {
 		workflowSettingsData.callerPolicy = defaultValues.value
 			.workflowCallerPolicy as WorkflowSettings.CallerPolicy;
 	}
-	if (settingsStore.isExecuteWorkflowNodeExcluded) {
+	if (nodeTypesStore.isNodeTypeUnavailable(EXECUTE_WORKFLOW_NODE_TYPE)) {
 		workflowSettingsData.callerPolicy = 'none';
 	}
 	if (workflowSettingsData.executionTimeout === undefined) {
@@ -1162,7 +1165,7 @@ onBeforeUnmount(() => {
 								:disabled="
 									readOnlyEnv ||
 									!workflowPermissions.update ||
-									settingsStore.isExecuteWorkflowNodeExcluded
+									nodeTypesStore.isNodeTypeUnavailable(EXECUTE_WORKFLOW_NODE_TYPE)
 								"
 								:placeholder="i18n.baseText('workflowSettings.selectOption')"
 								filterable
@@ -1585,7 +1588,7 @@ onBeforeUnmount(() => {
 					v-if="(workflowSettings.executionTimeout ?? -1) > -1"
 					data-test-id="workflow-settings-timeout-form"
 				>
-					<ElRow>
+					<ElRow :class="$style['timeout-row']">
 						<ElCol :span="10" :class="$style['setting-name']">
 							{{ i18n.baseText('workflowSettings.timeoutAfter') }}
 							<N8nTooltip placement="top">
@@ -1811,6 +1814,7 @@ onBeforeUnmount(() => {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--3xs);
+	container-type: inline-size;
 
 	:global(.el-row) {
 		display: flex;
@@ -1828,6 +1832,8 @@ onBeforeUnmount(() => {
 }
 
 .setting-name {
+	min-width: 0;
+
 	&,
 	& label {
 		display: flex;
@@ -1873,6 +1879,41 @@ onBeforeUnmount(() => {
 
 .timeout-input {
 	margin-left: var(--spacing--3xs);
+}
+
+@container (max-width: #{$breakpoint-2xs}) {
+	.workflow-settings {
+		> :global(.el-row),
+		> div > :global(.el-row) {
+			flex-wrap: wrap;
+			align-items: flex-start;
+			row-gap: var(--spacing--3xs);
+
+			> :global(.el-col) {
+				flex: 0 0 100%;
+				max-width: 100%;
+				margin-left: 0;
+			}
+		}
+
+		.timeout-row {
+			column-gap: var(--spacing--3xs);
+
+			> :global(.el-col):not(.setting-name) {
+				flex: 1 1 var(--spacing--4xl);
+				min-width: var(--spacing--4xl);
+				max-width: 100%;
+			}
+		}
+
+		.dynamic-credentials-hint > :global(.el-col:first-child) {
+			display: none;
+		}
+	}
+
+	.timeout-input {
+		margin-left: 0;
+	}
 }
 
 .time-saved {

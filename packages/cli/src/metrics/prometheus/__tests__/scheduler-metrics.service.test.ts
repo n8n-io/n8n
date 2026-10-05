@@ -9,7 +9,7 @@ import { mock } from 'vitest-mock-extended';
 
 import { PrometheusSchedulerMetricsService } from '../scheduler-metrics.service';
 
-import type { CacheService } from '@/services/cache/cache.service';
+import type { CacheService } from '@n8n/backend-services';
 
 vi.mock('prom-client');
 

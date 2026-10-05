@@ -216,6 +216,26 @@ n8n-cli promotion-connection promote <id> -m "Promote team projects"
 n8n-cli promotion-connection apply <id>
 ```
 
+Apply a reviewed commit only:
+
+```bash
+# Review the changes. Take the commit SHA from the same response as the rows:
+# a second request can read a newer commit.
+n8n-cli promotion-connection list-changes <projectId> apply --sort=updatedAt --order=desc --json > reviewed-changes.json
+jq '{commitSha, changes}' reviewed-changes.json
+# The config ID and branch come from the connection.
+n8n-cli promotion-connection get <id> --jq '.configs.apply.id'
+n8n-cli promotion-connection get <id> --jq '.configs.apply.settings.branchName'
+
+n8n-cli promotion-connection apply <id> \
+  --expected-config-id=<configId> --expected-branch=<branch> --expected-commit-sha=<full sha>
+# Exit 3: the source changed since the review. Review again.
+# Exit 4: preflight found missing bindings, access requirements, or conflicts. Resolve them,
+# then run the apply-continue command that apply printed:
+n8n-cli promotion-connection apply-continue <id> \
+  --expected-config-id=<configId> --expected-branch=<branch> --expected-commit-sha=<full sha>
+```
+
 Connection JSON for step 2:
 
 ```json
@@ -274,6 +294,12 @@ Key points:
 - `createBranchOnPromotion` is always required in a promote configuration.
 - `promote` and `apply` work on the `instance` connection only, and need their
   direction cloned first. Cloning one direction does not make the other ready.
+- `apply` and `apply-continue` import nothing on exit code `3` (`source-changed`)
+  or `4` (`blocked`). Check `$?`, or the `status` field in JSON output, before you
+  read `counts`. With `--json`, a `blocked` result lists what is missing under
+  `preflight`.
+- The `--expected-*` flags go together: pass all three or none. The commit SHA
+  must be the full SHA.
 - API key scopes for this group are named `gitConnection:*`. `promote` also needs
   `variable:list` when the workflows reference variables.
 

@@ -59,4 +59,10 @@ describe('InMemoryBinaryDataRule', () => {
 			}
 		});
 	});
+
+	describe('getMetadata()', () => {
+		it('should report a behaviorChanges impact because the storage mode is migrated automatically', () => {
+			expect(rule.getMetadata().impact).toBe('behaviorChanges');
+		});
+	});
 });

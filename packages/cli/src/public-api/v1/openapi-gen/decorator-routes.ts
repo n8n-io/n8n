@@ -20,6 +20,8 @@ import {
 	toOpenApiPathTemplate,
 } from '@/public-api/public-api-route-resolver';
 
+import { stripUntypedNullable } from './untyped-nullable';
+
 const REQUEST_BODY_COMPONENT = 'RequestBody';
 
 // Query fields backed by shared hand-written parameter files instead of being generated
@@ -39,6 +41,7 @@ export const ERROR_RESPONSE_REFS = {
 	409: { $ref: '../../../../shared/spec/responses/conflict.yml' },
 	415: { $ref: '../../../../shared/spec/responses/unsupportedMediaType.yml' },
 	422: { $ref: '../../../../shared/spec/responses/unprocessableEntity.yml' },
+	500: { $ref: '../../../../shared/spec/responses/internalServerError.yml' },
 	503: { $ref: '../../../../shared/spec/responses/serviceUnavailable.yml' },
 } as const satisfies Record<number, { $ref: string }>;
 
@@ -61,6 +64,7 @@ export const ERROR_RESPONSE_DESCRIPTIONS: Record<DocumentedErrorStatus, string> 
 	409: 'Conflict',
 	415: 'Unsupported media type.',
 	422: 'Unprocessable Entity',
+	500: 'Internal server error.',
 	503: 'The requested service is temporarily unavailable.',
 };
 
@@ -185,6 +189,10 @@ export function buildRequestBodyJsonSchema(
 
 	const { components } = new OpenApiGeneratorV3(registry.definitions).generateComponents();
 	const schema = components?.schemas?.[REQUEST_BODY_COMPONENT];
+
+	// Keep in sync with `buildArtifactsFromRegistry`, both convert the same DTOs to OpenAPI
+	// and `/discover` serves this schema straight from a route at runtime.
+	stripUntypedNullable(schema);
 
 	return isRecord(schema) ? schema : undefined;
 }

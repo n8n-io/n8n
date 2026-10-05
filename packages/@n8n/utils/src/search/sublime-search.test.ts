@@ -38,6 +38,28 @@ describe('sublimeSearch', () => {
 		);
 	});
 
+	// The Azure node is labelled 'Azure AI Foundry Chat Model' but was called 'Azure OpenAI Chat
+	// Model' until ENT-470. Its codex alias is what keeps the old name working, so search for the
+	// node rather than for the string to prove the rename costs no one their muscle memory.
+	describe('the renamed Azure node stays findable', () => {
+		const AZURE = '@n8n/n8n-nodes-langchain.lmChatAzureOpenAi';
+
+		// The full former label matters most and is the easiest to miss: fuzzy search matches a
+		// pattern into a target, so a query longer than the alias it should hit finds nothing.
+		it.each([
+			'Azure OpenAI Chat Model',
+			'Azure OpenAI',
+			'Azure AI Foundry',
+			'Foundry',
+			'Azure',
+			'openai',
+		])('should find it by %s', (term) => {
+			const keys = sublimeSearch(term, topLevel).map((r) => r.item.key);
+
+			expect(keys).toContain(AZURE);
+		});
+	});
+
 	it('should keep only the highest-scoring results when a limit is provided', () => {
 		const items = [{ name: 'x request archive' }, { name: 'request' }, { name: 'zz request' }];
 

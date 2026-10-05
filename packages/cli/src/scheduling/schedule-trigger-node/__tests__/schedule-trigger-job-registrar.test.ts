@@ -6,8 +6,15 @@ import type { GlobalConfig, WorkflowsConfig } from '@n8n/config';
 import type { EntityManager } from '@n8n/db';
 import type { CronDefinition } from '@n8n/scheduler';
 import { ScheduleTrigger } from 'n8n-nodes-base/nodes/Schedule/ScheduleTrigger.node';
-import type { Cron, CronExpression, INode, INodeParameters, INodeTypes } from 'n8n-workflow';
-import { SCHEDULE_TRIGGER_NODE_TYPE, Workflow } from 'n8n-workflow';
+import type {
+	Cron,
+	CronExpression,
+	INode,
+	INodeParameters,
+	INodeTypes,
+	TriggerTime,
+} from 'n8n-workflow';
+import { CRON_NODE_TYPE, SCHEDULE_TRIGGER_NODE_TYPE, Workflow } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import type { DurableJobProvisioner } from '../../durable-job-provisioner';
@@ -27,6 +34,7 @@ const jobNamePattern = new RegExp(`^${WORKFLOW_ID}:${NODE_ID}:[0-9a-f]{16}:\\d+$
 
 const workflow = { id: WORKFLOW_ID, settings: {} } as unknown as Workflow;
 const scheduleNode = mock<INode>({ id: NODE_ID, type: SCHEDULE_TRIGGER_NODE_TYPE });
+const cronNode = mock<INode>({ id: NODE_ID, type: CRON_NODE_TYPE });
 
 const makeNode = ({
 	id = NODE_ID,
@@ -111,24 +119,28 @@ describe('ScheduleTriggerJobRegistrar', () => {
 		vi.useRealTimers();
 	});
 
-	describe('interceptsNode', () => {
-		it('intercepts a schedule trigger node when the durable scheduler and publication path are on', () => {
-			expect(makeRegistrar().interceptsNode(scheduleNode)).toBe(true);
+	describe.each([scheduleNode, cronNode])('interceptsNode ($type)', (triggerNode) => {
+		it('intercepts the node when the durable scheduler and publication path are on', () => {
+			expect(makeRegistrar().interceptsNode(triggerNode)).toBe(true);
 		});
 
 		it('does not intercept when the durable scheduler is off', () => {
-			expect(makeRegistrar({ schedulerEnabled: false }).interceptsNode(scheduleNode)).toBe(false);
+			expect(makeRegistrar({ schedulerEnabled: false }).interceptsNode(triggerNode)).toBe(false);
 		});
 
 		it('does not intercept on the legacy activation path', () => {
-			expect(makeRegistrar({ publicationEnabled: false }).interceptsNode(scheduleNode)).toBe(false);
+			expect(makeRegistrar({ publicationEnabled: false }).interceptsNode(triggerNode)).toBe(false);
 		});
+	});
 
+	describe('interceptsNode', () => {
 		it('does not intercept other node types', () => {
 			const other = mock<INode>({ id: NODE_ID, type: 'n8n-nodes-base.gmailTrigger' });
 			expect(makeRegistrar().interceptsNode(other)).toBe(false);
 		});
 
+		// Only the Schedule Trigger declares `skipDurableScheduler`; the Workflow
+		// constructor strips it from any other node, so the toggle cases use that type.
 		it('does not intercept a node opted out via skip when the escape hatch is enabled', () => {
 			const skippingNode = mock<INode>({
 				id: NODE_ID,
@@ -160,6 +172,66 @@ describe('ScheduleTriggerJobRegistrar', () => {
 			expect(makeRegistrar({ allowSkipDurableScheduler: true }).interceptsNode(keepingNode)).toBe(
 				true,
 			);
+		});
+	});
+
+	describe('cron registration', () => {
+		it('keeps job names and schedules stable when generated offsets change', async () => {
+			const triggerTime: TriggerTime = { mode: 'everyX', unit: 'hours', value: 2 };
+			const collect = async (expression: CronExpression) => {
+				const session = makeRegistrar().createSession();
+				session
+					.createCollector(workflow, cronNode)
+					.registerCron({ expression, triggerTime }, vi.fn());
+				await session.commit(WORKFLOW_ID, NODE_ID);
+				return lastDesired()[0];
+			};
+
+			const first = await collect('1 2 */2 * * *');
+			vi.setSystemTime(new Date('2026-01-06T00:00:00.000Z'));
+			const second = await collect('3 4 */2 * * *');
+
+			expect(second.name).toBe(first.name);
+			expect(second.schedule).toEqual(first.schedule);
+		});
+
+		it('registers the same custom expression independently for each node', async () => {
+			const session = makeRegistrar().createSession();
+			const otherNode = mock<INode>({ id: 'node-2', type: CRON_NODE_TYPE });
+			const cron: Cron = {
+				expression: '0 0 9 * * *',
+				triggerTime: { mode: 'custom', cronExpression: '0 0 9 * * *' },
+			};
+
+			for (const targetNode of [cronNode, otherNode]) {
+				const collector = session.createCollector(workflow, targetNode);
+				collector.registerCron(cron, vi.fn());
+				collector.registerCron(cron, vi.fn());
+				await session.commit(WORKFLOW_ID, targetNode.id);
+
+				expect(lastDesired()).toHaveLength(1);
+				expect(lastRequest().owner).toEqual(ownerOf(WORKFLOW_ID, targetNode.id));
+			}
+		});
+
+		it('registers the same custom expression independently in overlapping activation sessions', async () => {
+			const registrar = makeRegistrar();
+			const sessions = [registrar.createSession(), registrar.createSession()];
+			const cron: Cron = {
+				expression: '0 0 9 * * *',
+				triggerTime: { mode: 'custom', cronExpression: '0 0 9 * * *' },
+			};
+
+			for (const session of sessions) {
+				const collector = session.createCollector(workflow, cronNode);
+				collector.registerCron(cron, vi.fn());
+				collector.registerCron(cron, vi.fn());
+			}
+
+			for (const session of sessions) {
+				await session.commit(WORKFLOW_ID, NODE_ID);
+				expect(lastDesired()).toHaveLength(1);
+			}
 		});
 	});
 

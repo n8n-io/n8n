@@ -7,7 +7,7 @@ import type { InstanceSettings } from 'n8n-core';
 import { JwtService } from '@/services/jwt.service';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
-import type { UrlService } from '@/services/url.service';
+import type { UrlService } from '@n8n/backend-services';
 
 import type { Agent } from '../../../../entities/agent.entity';
 import { AgentCredentialLookupService } from '../../../agent-credential-lookup.service';
@@ -27,6 +27,7 @@ const user = mock<User>({ id: 'user-1' });
 const jwtService = new JwtService(
 	mock<InstanceSettings>({ encryptionKey: 'test-encryption-key' }),
 	mock<GlobalConfig>({ userManagement: { jwtSecret: 'test-jwt-secret' } }),
+	mock(),
 );
 
 describe('TeamsSetupService', () => {

@@ -14,6 +14,9 @@ import { useTelemetryInitializer } from '@/app/composables/useTelemetryInitializ
 import { useWorkflowDiffRouting } from '@/app/composables/useWorkflowDiffRouting';
 import { useModulePushDispatcher } from '@/app/composables/useModulePushDispatcher';
 import { useTrialIntroModalAutoOpen } from '@/experiments/trialIntroModal/useTrialIntroModalAutoOpen';
+// Experiment cleanup (119_surface_assistant_on_workflow_error)
+import WorkflowErrorNudge from '@/experiments/surfaceAssistantOnWorkflowError/components/WorkflowErrorNudge.vue';
+// EOF Experiment cleanup
 import { CODEMIRROR_TOOLTIP_CONTAINER_ELEMENT_ID, HIRING_BANNER, VIEWS } from '@/app/constants';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
@@ -143,6 +146,9 @@ useExposeCssVar('--ask-assistant--floating-button--margin-bottom', askAiFloating
 		<template #overlays>
 			<div :id="CODEMIRROR_TOOLTIP_CONTAINER_ELEMENT_ID" />
 			<E2ETestModeMarker />
+			<!-- Experiment cleanup (119_surface_assistant_on_workflow_error) -->
+			<WorkflowErrorNudge />
+			<!-- EOF Experiment cleanup -->
 		</template>
 		<template #aside>
 			<AppChatPanel v-if="layoutRef" :layout-ref="layoutRef" />

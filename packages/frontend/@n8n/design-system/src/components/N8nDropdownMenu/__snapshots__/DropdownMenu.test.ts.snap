@@ -6,12 +6,12 @@ exports[`N8nDropdownMenu > disabled state > should render trigger with disabled 
   aria-expanded="false"
   aria-haspopup="menu"
   aria-live="polite"
-  class="button button ghost xsmall iconOnly disabled is-disabled"
+  class="button button ghost xsmall iconOnly disabled is-disabled trigger"
   data-disabled=""
   data-icon-only="true"
   data-state="closed"
   disabled=""
-  id="reka-dropdown-menu-trigger-v-0"
+  id="reka-dropdown-menu-trigger-v-1"
   type="button"
 >
   <transition-stub
@@ -72,10 +72,10 @@ exports[`N8nDropdownMenu > rendering > should render default trigger button 1`] 
   aria-expanded="false"
   aria-haspopup="menu"
   aria-live="polite"
-  class="button button ghost xsmall iconOnly"
+  class="button button ghost xsmall iconOnly trigger"
   data-icon-only="true"
   data-state="closed"
-  id="reka-dropdown-menu-trigger-v-0"
+  id="reka-dropdown-menu-trigger-v-1"
   type="button"
 >
   <transition-stub
@@ -136,10 +136,10 @@ exports[`N8nDropdownMenu > rendering > should render with emoji activator 1`] = 
   aria-expanded="false"
   aria-haspopup="menu"
   aria-live="polite"
-  class="button button ghost xsmall iconOnly"
+  class="button button ghost xsmall iconOnly trigger"
   data-icon-only="true"
   data-state="closed"
-  id="reka-dropdown-menu-trigger-v-0"
+  id="reka-dropdown-menu-trigger-v-1"
   type="button"
 >
   <transition-stub

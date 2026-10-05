@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 import {
 	computed,
+	inject,
 	nextTick,
 	onMounted,
 	onUnmounted,
@@ -54,6 +55,12 @@ import {
 	type PendingComposerDraft,
 } from '../composables/useInstanceAiHandoff';
 import type { InstanceAiMessageAuthorship } from '../prefills';
+import type {
+	AssistantMentionArtifactReference,
+	AssistantMentionCounts,
+	WorkflowArtifactReference,
+} from '@/features/ai/assistant-at-mentions/assistantAtMentions.types';
+import { EMPTY_ASSISTANT_MENTION_COUNTS } from '@/features/ai/assistant-at-mentions/assistantAtMentions.types';
 import { INSTANCE_AI_AGENT_PREVIEW_VIEW_METADATA_KEY } from '../constants';
 import {
 	agentPreviewContextIcon,
@@ -69,8 +76,10 @@ import AttachmentPreview from './AttachmentPreview.vue';
 import InstanceAiStatusBar from './InstanceAiStatusBar.vue';
 import InstanceAiConfirmationPanel from './InstanceAiConfirmationPanel.vue';
 import WorkflowBuilderUnavailableNotice from './WorkflowBuilderUnavailableNotice.vue';
+import LimitedModeNotice from './LimitedModeNotice.vue';
 import AgentSection from './AgentSection.vue';
 import { collectActiveBuilderAgents, messageHasVisibleContent } from '../builderAgents';
+import AiThinkingBlock from '../../shared/components/AiThinkingBlock.vue';
 import CreditWarningBanner from '@/features/ai/assistant/components/Agent/CreditWarningBanner.vue';
 
 const props = defineProps<{
@@ -86,6 +95,8 @@ const props = defineProps<{
 	subject?: InstanceAiEmbedSubject;
 	/** Extra scroll space for a panel that overlays messages above the input. */
 	aboveInputOverlapHeight?: number;
+	/** Enables the dormant mention integration after the rollout gate resolves true. */
+	mentionsEnabled?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -109,6 +120,10 @@ const settingsStore = useInstanceAiSettingsStore();
 // `isCurrentThreadRuntime()` compares against `store.getRuntime(thread.id)` to detect a
 // disposed/recreated runtime, so an unregistered runtime object would never connect.
 const thread = useThread();
+const openWorkflowPreview = inject<((workflowId: string) => boolean) | undefined>(
+	'openWorkflowPreview',
+	undefined,
+);
 const { showCreditWarning, quotaLocked } = storeToRefs(store);
 const rootStore = useRootStore();
 const i18n = useI18n();
@@ -142,6 +157,40 @@ const currentAgentAttachment = computed<InstanceAiAgentAttachment | null>(() => 
 		...(name ? { name } : {}),
 	};
 });
+const reservedComposerAttachmentCount = computed(
+	() =>
+		Number(Boolean(currentAgentAttachment.value)) +
+		Number(Boolean(thread.pendingWorkflowAttachment)),
+);
+const mentionArtifacts = computed<WorkflowArtifactReference[]>(() =>
+	[...thread.producedArtifacts.values()]
+		.filter((artifact) => artifact.type === 'workflow' && artifact.archived !== true)
+		.map(({ id, name }) => {
+			const origin = thread.producedArtifactOrigins.get(id);
+			return { id, name, ...(origin ? { origin } : {}) };
+		}),
+);
+const mentionActiveWorkflowId = computed(() => {
+	const activeArtifactId = thread.activeArtifactId;
+	return activeArtifactId && thread.producedArtifacts.get(activeArtifactId)?.type === 'workflow'
+		? activeArtifactId
+		: undefined;
+});
+
+function addMentionReference(reference: AssistantMentionArtifactReference): void {
+	thread.upsertTransientWorkflowReference({
+		...reference,
+		...(thread.projectId ? { projectId: thread.projectId } : {}),
+	});
+}
+
+function removeMentionReference(referenceId: string): void {
+	thread.removeTransientWorkflowReference(referenceId);
+}
+
+function openMentionWorkflow(workflowId: string): void {
+	void nextTick(() => openWorkflowPreview?.(workflowId));
+}
 
 // Running builders render in a dedicated bottom section of the conversation.
 // Once a builder finishes it falls out of this list and AgentTimeline renders
@@ -168,16 +217,92 @@ watch(
 // Show the input disclaimer only once the AI has produced a visible response.
 const hasAssistantResponse = computed(() => displayedMessages.some((m) => m.role === 'assistant'));
 
+// ponytail: the host-seeded onboarding greeting shows line by line (CSS below), then the shared
+// thinking block plays a thinking beat, then the apps card takes the input slot. Once per
+// mount, so a reload replays it. `isStreaming` on the greeting copy hides the message actions.
+/** The third line has risen at ~1.7 s, the card lands at ~2.7 s. */
+const GREETING_LINES_MS = 1760;
+const GREETING_THINKING_MS = 940;
+/** Longer than the greeting's beat, so the last question does not land the moment the card closes. */
+const FOLLOW_UP_THINKING_MS = 1800;
+const greetingPhase = ref<'lines' | 'thinking' | null>(null);
+let greetingShown = false;
+let greetingTimer: ReturnType<typeof setTimeout> | null = null;
+const onboardingGreeting = computed(() => {
+	const [first, second] = displayedMessages;
+	const alone = first?.role === 'assistant' && !second;
+	return alone && store.isOnboardingChromeHidden(thread.id) ? first : null;
+});
+watch(
+	onboardingGreeting,
+	(greeting) => {
+		if (!greeting || greetingShown) return;
+		greetingShown = true;
+		greetingPhase.value = 'lines';
+		greetingTimer = setTimeout(() => {
+			greetingPhase.value = 'thinking';
+			greetingTimer = setTimeout(() => {
+				greetingPhase.value = null;
+				greetingTimer = null;
+			}, GREETING_THINKING_MS);
+		}, GREETING_LINES_MS);
+	},
+	{ immediate: true },
+);
+// ponytail: the host answers the card without a model turn, so its follow-up would land in the
+// same frame as the click. Hold it behind the thinking block for one beat, like the greeting.
+const followUpHeld = ref(false);
+let followUpTimer: ReturnType<typeof setTimeout> | null = null;
+watch(
+	() => displayedMessages.length,
+	(length, previous) => {
+		if (previous !== 1 || length !== 2 || displayedMessages[1].role !== 'assistant') return;
+		if (!store.isOnboardingChromeHidden(thread.id)) return;
+		followUpHeld.value = true;
+		followUpTimer = setTimeout(() => {
+			followUpHeld.value = false;
+			followUpTimer = null;
+		}, FOLLOW_UP_THINKING_MS);
+	},
+);
+onUnmounted(() => {
+	if (greetingTimer) clearTimeout(greetingTimer);
+	if (followUpTimer) clearTimeout(followUpTimer);
+});
+/**
+ * While the greeting plays: the greeting without its agent tree (the message renders its text
+ * from the tree when it has one). While the follow-up is held: the greeting only. The stored
+ * messages otherwise.
+ */
+const renderedMessages = computed(() => {
+	const greeting = onboardingGreeting.value;
+	if (greeting && greetingPhase.value !== null) {
+		return [{ ...greeting, agentTree: undefined, isStreaming: true }];
+	}
+	return followUpHeld.value ? displayedMessages.slice(0, 1) : displayedMessages;
+});
+
 // True when at least one pending confirmation should occupy the chat-input
 // slot (questions, generic approvals, or domain/web-search access). Drives
-// the swap between the input and the floating confirmation panel.
-const hasFloatingConfirmation = computed(() =>
-	thread.pendingConfirmations.some(isPendingItemFloating),
+// the swap between the input and the floating confirmation panel. The
+// onboarding card waits until the greeting has played.
+const hasFloatingConfirmation = computed(
+	() => greetingPhase.value === null && thread.pendingConfirmations.some(isPendingItemFloating),
+);
+// ponytail: an onboarding thread hides the chat input until its greeting has hydrated; the phase
+// gate above takes over in the same tick, so the input never shows before the card.
+const awaitingOnboardingGreeting = computed(
+	() => thread.hydrationStatus !== 'ready' && store.isOnboardingChromeHidden(thread.id),
 );
 
 const composerContextChip = computed(() => {
 	const agentAttachment = currentAgentAttachment.value;
-	if (agentAttachment && pendingComposerContext.value?.source !== 'agent-preview') {
+	const isNewAgent =
+		agentAttachment !== null &&
+		pendingAgentAttachment.value?.id === agentAttachment.id &&
+		pendingAgentAttachment.value.pending === true;
+	// A brand-new agent is already the focus of the builder — no composer chip.
+	if (agentAttachment && !isNewAgent && pendingComposerContext.value?.source !== 'agent-preview') {
 		// Prefer the host's live subject name when it refers to the same agent as
 		// the stashed attachment, so a rename in the builder updates the chip
 		// without re-stashing. Falls back to the stashed snapshot otherwise.
@@ -189,9 +314,6 @@ const composerContextChip = computed(() => {
 			type: 'agent-artifact' as const,
 			agentId: agentAttachment.id,
 			projectId: agentAttachment.projectId,
-			isNewAgent:
-				pendingAgentAttachment.value?.id === agentAttachment.id &&
-				pendingAgentAttachment.value.pending === true,
 			key: `pending-agent:${agentAttachment.id}`,
 			label: liveSubjectName ?? agentAttachment.name ?? i18n.baseText('agents.new.defaultName'),
 			icon: 'robot',
@@ -254,6 +376,10 @@ const composerContextChip = computed(() => {
 
 	return null;
 });
+
+// The new-agent placeholder no longer rides the context chip (a pending agent
+// shows none), so it is passed to the input as an explicit placeholder key.
+const isPendingAgentComposer = computed(() => pendingAgentAttachment.value?.pending === true);
 
 const workflowHandoffGreeting = computed(() => {
 	const attachment = thread.pendingWorkflowAttachment;
@@ -503,6 +629,9 @@ async function handleSubmit(
 	restoreDraft: () => boolean,
 	authorship: InstanceAiMessageAuthorship,
 	responseStartedAtEpochMs?: number,
+	acceptDraft: () => void = () => {},
+	mentionCounts: AssistantMentionCounts = EMPTY_ASSISTANT_MENTION_COUNTS,
+	mentionedWorkflowIds: readonly string[] = [],
 ) {
 	if (!settingsStore.isWorkflowBuilderAvailable) {
 		return;
@@ -534,6 +663,7 @@ async function handleSubmit(
 				restoreFailedSubmission(restoreDraft);
 				return;
 			}
+			acceptDraft();
 			// Only an accepted request revises the plan. Tracking up front would
 			// also count a dropped or failed submit the run never saw.
 			telemetry.track('User finished providing input', {
@@ -586,13 +716,16 @@ async function handleSubmit(
 			attachments: submittedAttachments,
 			pushRef: rootStore.pushRef,
 			handoffContext,
-			responseStartedAtEpochMs,
+			...(responseStartedAtEpochMs !== undefined ? { responseStartedAtEpochMs } : {}),
+			...(mentionCounts.total > 0 ? { mentionCounts } : {}),
+			...(mentionedWorkflowIds.length > 0 ? { mentionedWorkflowIds } : {}),
 		})
 		.then((sent) => {
 			if (!sent) {
 				restoreFailedSubmission(restoreDraft);
 				return;
 			}
+			acceptDraft();
 			// Track message-with-nodes only after a successful send, so failed
 			// sends and retries don't inflate the node-count metric.
 			if (nodeCount > 0) {
@@ -694,7 +827,7 @@ function dismissPendingComposerContext(key: string): boolean {
 async function dismissComposerContextChip() {
 	if (!composerContextChip.value) return;
 
-	if (pendingAgentAttachment.value && pendingComposerContext.value?.source !== 'agent-preview') {
+	if (composerContextChip.value.type === 'agent-artifact' && pendingAgentAttachment.value) {
 		clearPendingAgentAttachment(thread.id);
 		pendingAgentAttachment.value = null;
 		return;
@@ -789,11 +922,29 @@ defineExpose({
 					</N8nChatMessage>
 					<TransitionGroup name="message-slide">
 						<InstanceAiMessage
-							v-for="message in displayedMessages"
+							v-for="message in renderedMessages"
 							:key="message.id"
 							:message="message"
+							:class="{ [$style.greetingLines]: greetingPhase !== null }"
 						/>
 					</TransitionGroup>
+					<Transition name="message-slide">
+						<N8nChatMessage
+							v-if="greetingPhase === 'thinking' || followUpHeld"
+							role="assistant"
+							data-test-id="instance-ai-onboarding-thinking"
+						>
+							<AiThinkingBlock
+								:segments="[]"
+								:active="true"
+								:activity-label="
+									greetingPhase === 'thinking'
+										? i18n.baseText('instanceAi.onboardingGreeting.thinkingActivity')
+										: undefined
+								"
+							/>
+						</N8nChatMessage>
+					</Transition>
 					<!-- Builder sub-agents are extracted from their parent assistant
 	     messages and rendered here so they always sit at the bottom
 	     of the conversation. -->
@@ -851,6 +1002,7 @@ defineExpose({
 					<div :class="$style.inputContainer">
 						<div :class="$style.inputConstraint">
 							<WorkflowBuilderUnavailableNotice v-if="!settingsStore.isWorkflowBuilderAvailable" />
+							<LimitedModeNotice />
 							<CreditWarningBanner
 								v-if="creditBanner.visible.value"
 								:credits-remaining="store.creditsRemaining"
@@ -868,7 +1020,7 @@ defineExpose({
 										kind="floating"
 									/>
 									<InstanceAiInput
-										v-else
+										v-else-if="greetingPhase === null && !awaitingOnboardingGreeting"
 										ref="chatInputRef"
 										key="chat-input"
 										:is-streaming="thread.isStreaming"
@@ -884,10 +1036,21 @@ defineExpose({
 										:current-thread-id="thread.id"
 										:amend-context="thread.amendContext"
 										:context-chip="composerContextChip"
+										:placeholder-key="
+											isPendingAgentComposer ? 'instanceAi.input.newAgentPlaceholder' : undefined
+										"
 										:contextual-suggestion="thread.contextualSuggestion"
+										:mentions-enabled="props.mentionsEnabled"
+										:mention-project-id="thread.projectId"
+										:mention-artifacts="mentionArtifacts"
+										:mention-active-workflow-id="mentionActiveWorkflowId"
+										:reserved-attachment-count="reservedComposerAttachmentCount"
 										@submit="handleSubmit"
 										@stop="handleStop"
 										@dismiss-context-chip="dismissComposerContextChip"
+										@mention-reference-added="addMentionReference"
+										@mention-reference-removed="removeMentionReference"
+										@mention-workflow-open="openMentionWorkflow"
 									/>
 								</Transition>
 							</div>
@@ -1049,6 +1212,39 @@ defineExpose({
 // the cross-fade.
 .inputSwap {
 	position: relative;
+}
+
+// The onboarding greeting's paragraphs rise one after the other while `greetingPhase` is set.
+// One rule per paragraph of `ONBOARDING_OPENING.greeting` in the backend.
+.greetingLines p {
+	animation: greeting-rise 300ms cubic-bezier(0.2, 0.8, 0.2, 1) 180ms both;
+}
+
+.greetingLines p:nth-of-type(2) {
+	animation: greeting-rise 280ms ease-out 780ms both;
+}
+
+.greetingLines p:nth-of-type(3) {
+	animation: greeting-rise 280ms ease-out 1380ms both;
+}
+
+@keyframes greeting-rise {
+	from {
+		opacity: 0;
+		transform: translateY(9px);
+	}
+
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	// `:nth-of-type(n)` matches the specificity of the per-line rules, so it overrides them too.
+	.greetingLines p:nth-of-type(n) {
+		animation: none;
+	}
 }
 </style>
 

@@ -77,6 +77,12 @@ describe('messageHasVisibleContent', () => {
 });
 
 describe('getAgentSectionTitle', () => {
+	test('uses the translated activity for an Agent Builder', () => {
+		const node = makeAgentNode({ activity: 'exploring', role: 'agent-builder' });
+
+		expect(getAgentSectionTitle(node, 'Exploring agent')).toBe('Exploring agent');
+	});
+
 	test('uses the title when the backend set one', () => {
 		const node = makeAgentNode({ title: 'Building agent', role: 'agent-builder' });
 

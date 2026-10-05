@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
+import { EventService, UrlService, RoleCacheService } from '@n8n/backend-services';
 import { HTML_NONCE_PLACEHOLDER, LICENSE_FEATURES } from '@n8n/constants';
 import {
 	AuthRolesService,
@@ -29,7 +30,6 @@ import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { DeprecationService } from '@/deprecation/deprecation.service';
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
-import { EventService } from '@/events/event.service';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { MultiMainSetup } from '@/scaling/multi-main-setup.ee';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
@@ -42,8 +42,7 @@ import { Server } from '@/server';
 import { JwtService } from '@/services/jwt.service';
 import { ExecutionsPruningService } from '@/services/pruning/executions-pruning.service';
 import { WorkflowHistoryCompactionService } from '@/services/pruning/workflow-history-compaction.service';
-import { RoleCacheService } from '@/services/role-cache.service';
-import { UrlService } from '@/services/url.service';
+
 import { WorkflowStatisticsRollupService } from '@/services/workflow-statistics-rollup.service';
 import { WaitTracker } from '@/wait-tracker';
 
@@ -290,8 +289,6 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 		this.logger.debug('Data deduplication service init complete');
 		await this.initExternalHooks();
 		this.logger.debug('External hooks init complete');
-		this.initWorkflowHistory();
-		this.logger.debug('Workflow history init complete');
 
 		if (!isMultiMainEnabled) {
 			await this.cleanupTestRunner();
@@ -360,6 +357,7 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 	 * database yet when the follower starts up.
 	 */
 	private async ensureMultiMainLicensed() {
+		// oxlint-disable-next-line typescript/no-deprecated
 		if (this.license.isMultiMainLicensed()) return;
 
 		if (!this.instanceSettings.isLeader) {
@@ -371,6 +369,7 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 				);
 				await sleep(delayMs);
 				await this.license.reload();
+				// oxlint-disable-next-line typescript/no-deprecated
 				if (this.license.isMultiMainLicensed()) return;
 			}
 		}

@@ -2,8 +2,8 @@ import { mockInstance } from '@n8n/backend-test-utils';
 import { User } from '@n8n/db';
 
 import { CollaborationService } from '@/collaboration/collaboration.service';
-import { LockedError } from '@/errors/response-errors/locked.error';
-import { ProjectScopeService } from '@/permissions.ee/project-scope.service';
+import { LockedError } from '@n8n/errors';
+import { ProjectScopeService } from '@n8n/backend-services';
 
 import { AgentMcpAccessService } from '../agent-mcp-access.service';
 import { AgentRepository } from '../repositories/agent.repository';

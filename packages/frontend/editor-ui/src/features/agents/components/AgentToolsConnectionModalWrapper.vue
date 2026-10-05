@@ -34,10 +34,13 @@ import { useInstallNode } from '@/features/settings/communityNodes/composables/u
 import { useUsersStore } from '@n8n/stores/users.store';
 import {
 	filterAndSearchNodes,
+	getNodeItemRestriction,
 	isAiGatewayEligibleNode,
 	isNodePreviewKey,
 	removePreviewToken,
 } from '@/features/shared/nodeCreator/nodeCreator.utils';
+import { useRestrictedNodeWarning } from '@/features/shared/nodeCreator/composables/useRestrictedNodeWarning';
+import { useTypeAvailabilityPoliciesStore } from '@n8n/frontend-module-type-availability-policies';
 import type { IWorkflowDb } from '@/Interface';
 import ToolsConnectionModal from '@/features/shared/toolsConnection/ToolsConnectionModal.vue';
 import McpRegistrySuggestionFooter from '@/app/components/McpRegistrySuggestionFooter.vue';
@@ -122,6 +125,7 @@ const toast = useToast();
 const workflowsStore = useWorkflowsStore();
 const projectsStore = useProjectsStore();
 const sourceControlStore = useSourceControlStore();
+const typeAvailabilityPoliciesStore = useTypeAvailabilityPoliciesStore();
 const toolTelemetry = useAgentToolTelemetry(props.data.agentId);
 const {
 	availableToolTypes,
@@ -131,6 +135,7 @@ const {
 	resolveToolNodeType,
 } = useAgentToolCatalog();
 const { installNode: installCommunityNode } = useInstallNode();
+const { warnIfRestricted } = useRestrictedNodeWarning();
 const usersStore = useUsersStore();
 
 const searchQuery = ref('');
@@ -292,6 +297,14 @@ onMounted(() => {
 	}
 });
 
+watch(
+	() => props.data.projectId,
+	(projectId) => {
+		if (projectId) void typeAvailabilityPoliciesStore.fetchForProject(projectId);
+	},
+	{ immediate: true },
+);
+
 function makeUniqueName(
 	baseName: string,
 	existingNames: string[],
@@ -330,6 +343,9 @@ function commit() {
 }
 
 function addToolRef(savedRef: AgentJsonToolRef) {
+	// The policy can finish loading while the config form is open.
+	if (savedRef.type === 'node' && warnIfRestricted(savedRef.node.nodeType)) return;
+
 	workingToolEntries.value = [...workingToolEntries.value, { localId: uuidv4(), ref: savedRef }];
 	commit();
 }
@@ -424,6 +440,7 @@ async function installAndAddCommunityPreview(nodeType: INodeTypeDescription) {
 			);
 			return;
 		}
+		if (warnIfRestricted(installed.name)) return;
 		addNodeTool(installed);
 	} finally {
 		installingToolName.value = null;
@@ -431,6 +448,8 @@ async function installAndAddCommunityPreview(nodeType: INodeTypeDescription) {
 }
 
 async function handleAddTool(nodeType: INodeTypeDescription) {
+	if (getNodeItemRestriction(nodeType.name)) return;
+
 	if (isMcpRelatedNodeType(nodeType.name)) {
 		handleAddMcpServer(nodeType);
 		return;
@@ -468,6 +487,8 @@ function addNodeTool(nodeType: INodeTypeDescription) {
  * the n8n Connect managed credential is pre-selected, so no credential setup.
  */
 function addManagedNodeTool(nodeType: INodeTypeDescription) {
+	if (getNodeItemRestriction(nodeType.name)) return;
+
 	toolTelemetry.trackAddStarted('node');
 	const newRef = nodeTypeToNewToolRef(nodeType);
 
@@ -646,6 +667,7 @@ function connectedToolItem(entry: WorkingToolEntry): ToolConnectionItem | null {
 		iconSource: toToolIconSource(nodeType),
 		credentials: credentialsFromNode(node),
 		verified: isVerifiedCommunityTool(nodeType),
+		restriction: getNodeItemRestriction(nodeType.name),
 	};
 	return item;
 }
@@ -665,6 +687,7 @@ function connectedMcpItem(entry: WorkingMcpServerEntry): ToolConnectionItem | nu
 		status: 'connected',
 		iconSource: toToolIconSource(nodeType),
 		credentials: credentialsFromNode(node),
+		restriction: getNodeItemRestriction(nodeType.name),
 	};
 	return item;
 }
@@ -686,6 +709,7 @@ function availableNodeItem(nodeType: INodeTypeDescription): NodeConnectionItem {
 		communityPreview,
 		installing: installingToolName.value === nodeType.name,
 		installDisabled: communityPreview && !usersStore.isAdminOrOwner,
+		restriction: getNodeItemRestriction(nodeType.name),
 	};
 }
 
@@ -840,6 +864,7 @@ function handleRowActivate(item: ToolConnectionItem) {
 	// Disabled rows (e.g. incompatible workflows) are visible-but-not-selectable;
 	// the row's own tooltip already explains why, so activating does nothing.
 	if (item.disabled) return;
+	if (item.kind === 'node' && item.restriction) return;
 	if (item.status === 'connecting') return;
 	if (hasToolConnection(item.status)) {
 		if (item.id.startsWith('mcp:')) {

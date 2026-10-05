@@ -139,7 +139,15 @@ describe('GET /community-packages', () => {
 
 		await authAgent.get('/community-packages').expect(200);
 
-		const args = [['outdated', '--json'], { doNotHandleError: true, cwd: expect.any(String) }];
+		const args = [
+			['outdated', '--json'],
+			{
+				doNotHandleError: true,
+				cwd: expect.any(String),
+				registry: 'https://registry.npmjs.org',
+				authToken: undefined,
+			},
+		];
 
 		expect(mockedExecuteNpmCommand).toHaveBeenCalledWith(...args);
 	});
@@ -253,6 +261,8 @@ describe('PATCH /community-packages', () => {
 	});
 
 	test('should reject if package is not installed', async () => {
+		communityPackagesService.parseNpmPackageName.mockReturnValue(parsedNpmPackageName);
+
 		const {
 			body: { message },
 		} = await authAgent.patch('/community-packages').send({ name: mockPackageName() }).expect(400);

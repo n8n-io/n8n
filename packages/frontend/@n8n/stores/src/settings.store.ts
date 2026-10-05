@@ -13,12 +13,7 @@ import * as moduleSettingsApi from '@n8n/rest-api-client/api/module-settings';
 import * as settingsApi from '@n8n/rest-api-client/api/settings';
 import { testHealthEndpoint } from '@n8n/rest-api-client/api/templates';
 import Bowser from 'bowser';
-import {
-	EXECUTE_WORKFLOW_NODE_TYPE,
-	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
-	type IDataObject,
-	type WorkflowSettings,
-} from 'n8n-workflow';
+import type { IDataObject, WorkflowSettings } from 'n8n-workflow';
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 
@@ -144,6 +139,10 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		return activeModules.value?.includes(moduleName);
 	};
 
+	const isAgentsEnabled = computed(
+		() => isModuleActive('agents') && moduleSettings.value.agents?.enabled !== false,
+	);
+
 	/**
 	 * Checks whether an agents-module sub-feature token (listed in
 	 * `N8N_AGENTS_MODULES` on the backend) is enabled. Returns `false`
@@ -153,9 +152,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 	 * Known tokens: see `AGENTS_MODULE_NAMES` in `agents.config.ts`.
 	 */
 	const isAgentModuleActive = (name: string): boolean => {
-		return (
-			isModuleActive('agents') && moduleSettings.value.agents?.modules?.includes(name) === true
-		);
+		return isAgentsEnabled.value && moduleSettings.value.agents?.modules?.includes(name) === true;
 	};
 
 	const isAiCreditsEnabled = computed(
@@ -219,7 +216,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 
 	// Opt-in flag controlled by the backend's N8N_AGENTS_AI_SANDBOX_ENABLED setting.
 	const isAgentsKnowledgeBaseFeatureEnabled = computed(
-		() => isModuleActive('agents') && moduleSettings.value.agents?.knowledgeBaseEnabled === true,
+		() => isAgentsEnabled.value && moduleSettings.value.agents?.knowledgeBaseEnabled === true,
 	);
 
 	const isPublicChatTriggerDisabled = computed(
@@ -261,20 +258,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 
 	const workflowCallerPolicyDefaultOption = computed(
 		() => settings.value.workflowCallerPolicyDefaultOption,
-	);
-
-	const isNodeTypeExcluded = (nodeType: string) => {
-		const excludeNodes = settings.value.excludeNodes;
-		return Array.isArray(excludeNodes) && excludeNodes.includes(nodeType);
-	};
-
-	const isExecuteWorkflowNodeExcluded = computed(() =>
-		isNodeTypeExcluded(EXECUTE_WORKFLOW_NODE_TYPE),
-	);
-
-	const isSubworkflowConversionDisabled = computed(
-		() =>
-			isExecuteWorkflowNodeExcluded.value || isNodeTypeExcluded(EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE),
 	);
 
 	const permanentlyDismissedBanners = computed(() => settings.value.banners?.dismissed ?? []);
@@ -508,8 +491,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		isMultiMain,
 		isWorkerViewAvailable,
 		workflowCallerPolicyDefaultOption,
-		isExecuteWorkflowNodeExcluded,
-		isSubworkflowConversionDisabled,
 		permanentlyDismissedBanners,
 		saveDataErrorExecution,
 		saveDataSuccessExecution,
@@ -541,6 +522,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		isMFAEnforced,
 		activeModules,
 		isModuleActive,
+		isAgentsEnabled,
 		isAgentModuleActive,
 		isDataTableFeatureEnabled,
 		isChatFeatureEnabled,

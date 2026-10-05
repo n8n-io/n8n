@@ -19,6 +19,7 @@ import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useToast } from '@n8n/composables/useToast';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import { useUnusableWorkflowCredentials } from '@/features/credentials/composables/useUnusableWorkflowCredentials';
 
 import { needsAgentInput } from '@/app/utils/nodes/nodeTransforms';
 
@@ -90,6 +91,10 @@ export function useNodeExecution(
 	const uiStore = useUIStore();
 
 	const workflowDocumentStore = injectWorkflowDocumentStore();
+	const { reason: unusableCredentialReason } = useUnusableWorkflowCredentials(
+		() => workflowDocumentStore.value.usedCredentials,
+		() => workflowDocumentStore.value.allNodes,
+	);
 	const ndvStore = computed(() => useNDVStore(workflowDocumentStore.value.documentId));
 	const workflowExecutionStateStore = injectWorkflowExecutionStateStore();
 
@@ -172,6 +177,11 @@ export function useNodeExecution(
 	const disabledReason = computed(() => {
 		if (isListening.value) {
 			return '';
+		}
+
+		// An unusable credential blocks the whole run, so it outranks per-node reasons.
+		if (unusableCredentialReason.value) {
+			return unusableCredentialReason.value;
 		}
 
 		if (nodeRef.value?.disabled) {
