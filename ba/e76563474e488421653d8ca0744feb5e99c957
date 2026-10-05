@@ -1,0 +1,134 @@
+docs/generated/postgres-schema/README.md
+  s_0a1a804042c15b::t_e2396d155528cd 12,432
+docs/generated/postgres-schema/public.agent_background_job.md
+  s_0a1a804042c15b::t_d52bf458d8be9a 18,21,33,78
+docs/generated/postgres-schema/public.agents.md
+  s_0a1a804042c15b::t_be20c8f6d60b95 115
+docs/generated/sqlite-schema/README.md
+  s_0a1a804042c15b::t_b1932bc8fe267c 12,418
+docs/generated/sqlite-schema/agent_background_job.md
+  s_0a1a804042c15b::t_422996e3bbca6d 9,29,43-44,80
+docs/generated/sqlite-schema/agents.md
+  s_0a1a804042c15b::t_e64b9d1e8af76f 117
+packages/@n8n/agents/src/runtime/__tests__/agent-runtime.test.ts
+  s_0a1a804042c15b::t_5ae7b1d5806e41 1073-1105,3453-3519,3523-3531,3533-3540,3546,3548-3552,3561-3564,3566,3568-3569,3571-3574,3589-3600,3661-3682
+  s_0a1a804042c15b::t_aa8ad3693b122c 3541-3545,3547,3575
+  s_0a1a804042c15b::t_6e06c7223a4125 7259
+  s_0a1a804042c15b::t_4a2fa51df93435 3601-3635
+  s_0a1a804042c15b::t_8f4c0898051898 7212,7214-7221,7226,7228-7256,7262-7263
+  s_0a1a804042c15b::t_c608908ccf8855 3636-3660
+  s_0a1a804042c15b::t_65015bb3514ac0 3520-3522,3532,3553-3560,3565,3567,3570,3576-3588
+packages/@n8n/agents/src/runtime/loop/agent-runtime.ts
+  s_0a1a804042c15b::t_95f78f349d4d0d 400-408,412-420,426-433,437-440,671,787-796,798-805,1038,1289,1301,1305-1310
+  s_0a1a804042c15b::t_aa8ad3693b122c 409-411
+  s_0a1a804042c15b::t_4a2fa51df93435 786,797
+  s_0a1a804042c15b::t_689e835296b2e3 344,368,390-395
+  s_0a1a804042c15b::t_04a0b0dd74293c 421-425,434-436
+packages/@n8n/agents/src/runtime/loop/generate-sink.ts
+  s_0a1a804042c15b::t_3fab07d0f0cdf5 81
+packages/@n8n/agents/src/runtime/loop/stream-sink.ts
+  s_0a1a804042c15b::t_6e7b0d3e93b687 457
+packages/@n8n/agents/src/sdk/agent.ts
+  s_0a1a804042c15b::t_b79dbd0acb6357 834-847
+packages/@n8n/agents/src/types/runtime/agent-loop.ts
+  s_0a1a804042c15b::t_fe46aa2257cd61 78
+packages/@n8n/agents/src/types/sdk/agent.ts
+  s_0a1a804042c15b::t_81535a0b1a47da 35,226-229,442-446
+packages/@n8n/api-types/src/agents/background-job.ts
+  s_0a1a804042c15b::t_fb415f934ea38d 8,22
+  s_0a1a804042c15b::t_c2f508cbb59801 9-10
+packages/@n8n/db/src/migrations/common/1790937677019-AddAgentBackgroundJobPause.ts
+  s_0a1a804042c15b::t_496ff29d6f1446 1-2,4-36,46-60
+  s_0a1a804042c15b::t_9a8d939f72c642 37-40,42-45
+  s_0a1a804042c15b::t_9e8aa0c6aebd71 41
+  s_0a1a804042c15b::t_80afa7b7ef2ded 3
+packages/cli/src/modules/agents/background/agent-wake.service.ts
+  s_0a1a804042c15b::t_9292febef707bb 336-337
+  s_0a1a804042c15b::t_afa07841ab6269 111-117,119-120,130-139,169-171,181-185,208,329,332-335
+packages/cli/src/modules/agents/entities/agent-background-job.entity.ts
+  s_0a1a804042c15b::t_c27b0c37af1cc9 29-31
+packages/cli/src/modules/agents/integrations/n8n-checkpoint-storage.ts
+  s_0a1a804042c15b::t_9e1cf7b8c44269 305-323
+packages/cli/src/modules/agents/repositories/agent-background-job.repository.ts
+  s_0a1a804042c15b::t_3b1409a72eeefe 12,38,154-162,164-165,168-172,175,180-182,230-240,249,306-311,323-347,349-359,361-362,370-374,491,502,506
+  s_0a1a804042c15b::t_981f01cfc43201 163
+  s_0a1a804042c15b::t_a82fb3d1fc3ade 300
+  s_0a1a804042c15b::t_edff4067d3a9b3 1,3-4,13,44,46,55-61,64-73,100-105,255-275,493-495,503
+  s_0a1a804042c15b::t_5790c2e605f8b8 51,122-131
+packages/cli/src/modules/agents/repositories/agent-checkpoint.repository.ts
+  s_0a1a804042c15b::t_13af5655ed92fa 83-96
+packages/cli/test/integration/database/repositories/agent-background-job.repository.test.ts
+  s_0a1a804042c15b::t_07fc0863a826f7 31-33,396-401,404-426,433-434,437-449,451-494,526-527,529-555,557,582-591,612-630
+  s_0a1a804042c15b::t_a82fb3d1fc3ade 402-403,427-432,435-436
+  s_0a1a804042c15b::t_1de888377db332 89-98,107-130,275-327,450
+  s_0a1a804042c15b::t_c8fe2b9b134629 1,25,528,556,558-581,592-611
+  s_0a1a804042c15b::t_b168150076730f 29,358,716
+packages/cli/test/integration/database/repositories/agent-execution.repository.test.ts
+  s_0a1a804042c15b::t_f8f7ede6731ac3 2913-2976
+  s_0a1a804042c15b::t_4954152273cb5e 488-491
+packages/cli/test/migration/1790937677019-add-agent-background-job-pause.test.ts
+  s_0a1a804042c15b::t_3ced32523c1871 1-12,14-34,36-93,97-101,103-107,111-113,115,117-119,125,149-157
+  s_0a1a804042c15b::t_9a8d939f72c642 35,94-96,102,108-110,114,116,120-124,126-148
+  s_0a1a804042c15b::t_5799fd1403a7e9 13
+packages/frontend/editor-ui/src/features/agents/components/AgentChatPanel.vue
+  s_0a1a804042c15b::t_f497ebb87d5de4 400-417
+packages/@n8n/instance-ai/evaluations/discovery/__tests__/stream-status.test.ts
+  s_0a1a804042c15b::t_e82d44292bcecd 61-66
+packages/@n8n/instance-ai/evaluations/discovery/stream-status.ts
+  s_0a1a804042c15b::t_9bed9ddbc14fd2 24-25
+packages/cli/src/modules/agents/background/__tests__/agent-background-job.service.test.ts
+  s_0a1a804042c15b::t_d9632f8134171d 85,371,374,376,445,450-452,457
+  s_0a1a804042c15b::t_7d9a78c51c0247 17-19,74,93,109,116,152-153,158-159,188,266,279-287,289-300,302-306,309-313,317-362,755
+packages/cli/src/modules/agents/background/agent-background-job.service.ts
+  s_0a1a804042c15b::t_33fbad43db92e1 165-171,173
+  s_0a1a804042c15b::t_c8fb9c21c0525f 26,30,62,152,224,238,243,262-268,279-286,288-291,293-312,314-334,351-357,359-361,427-437,443-458,460-463,467,471-472,486-491,529-533,539,542-551,594,607-610,615-616,618-622,648,678-679,785,796
+packages/cli/src/modules/agents/__tests__/agent-chat.controller.test.ts
+  s_0a1a804042c15b::t_9068221fafd7e4 3,187,245,247-248,260-262,280-293,323,367
+  s_0a1a804042c15b::t_d8b67f3b17e9f2 249-259,267-279
+packages/cli/src/modules/agents/__tests__/agent-execution-orchestrator.service.test.ts
+  s_0a1a804042c15b::t_8dcc105aa89b5c 2385-2404,2410-2418
+packages/cli/src/modules/agents/agent-chat.controller.ts
+  s_0a1a804042c15b::t_669630721c2a2e 16,86,785-791,798,815-843
+packages/cli/src/modules/agents/agent-execution-orchestrator.service.ts
+  s_0a1a804042c15b::t_5bdae71ef85341 68-71,218,261,964-965,1506-1508,1517-1531,1666
+packages/cli/src/modules/agents/agent-runtime-reconstruction.service.ts
+  s_0a1a804042c15b::t_6abaa74bc550f6 1180,1192-1200
+packages/cli/src/modules/agents/background/__tests__/agent-wake.service.test.ts
+  s_0a1a804042c15b::t_767333afe7cca4 87,129-132,150-161,162-164,178-182,184-189,389,416-427,457,546-550,723-727,799-803
+packages/cli/src/modules/agents/background/__tests__/background-job-tools.test.ts
+  s_0a1a804042c15b::t_f7566d9788a786 9-10,14,19-22,43,336-340,342-349,354,356-359,362-375,377-382,384-386
+packages/cli/src/modules/agents/background/__tests__/sub-agent-background-runner.test.ts
+  s_0a1a804042c15b::t_91885744d6f489 1-5,12,90,92-98,100-105,131,137-140,142-145,147-148,150-159,161-169,179-180,184,190,192-196,198-202,246-250,252-258
+  s_0a1a804042c15b::t_76ff7d9788175e 106-130
+packages/cli/src/modules/agents/background/background-job-messages.ts
+  s_0a1a804042c15b::t_1fbcae77e4d2b3 1,10-28,62-65
+packages/cli/src/modules/agents/background/background-job-tools.ts
+  s_0a1a804042c15b::t_ef3da9c2a873bc 12-16,223-225,234,242-276,278-282,291-296
+packages/cli/src/modules/agents/background/sub-agent-background-runner.ts
+  s_0a1a804042c15b::t_49302b892bf8b8 141,168-169,210,213,220,256-258,260-264,266-278,280-324,330-333,335-341,343-348,349-367,411
+packages/cli/src/modules/agents/background/sub-agent-background-state.ts
+  s_0a1a804042c15b::t_1b9df6428df0c4 14,34
+packages/cli/src/modules/agents/sub-agents/__tests__/sub-agent-source-resolver.test.ts
+  s_0a1a804042c15b::t_804c9c65387ba1 116-121,129-139,154-162
+  s_0a1a804042c15b::t_1a04bb0b915e65 3,140-153
+packages/cli/src/modules/agents/sub-agents/sub-agent-runner.ts
+  s_0a1a804042c15b::t_5377139176fe18 62-65,119-120,127,155-160,208-227,249-251,255,291-292,317,358,370-387,389-397,398,400-408,410-414,415-417,427-430,435,565,578-579
+packages/cli/src/modules/agents/sub-agents/sub-agent-source-resolver.ts
+  s_0a1a804042c15b::t_782d022c9bb264 26-27,62-64,71-72,74-75
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "bae76563474e488421653d8ca0744feb5e99c957",
+  "prompts": {},
+  "sessions": {
+    "s_0a1a804042c15b": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0f809-8653-78a0-a76c-4b8db92d8a2b",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}
