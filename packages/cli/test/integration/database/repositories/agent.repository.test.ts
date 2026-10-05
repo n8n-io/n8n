@@ -670,9 +670,10 @@ describe('AgentRepository', () => {
 				createdAt: new Date('2024-02-01T00:00:00Z'),
 			} as Partial<Agent>);
 
-			const { data } = await listByUsage();
+			const { data, count } = await listByUsage();
 
 			expect(data.map((agent) => agent.id)).toEqual([newer.id, older.id]);
+			expect(count).toBe(2);
 		});
 
 		it('ranks agents by usage count, usage above none', async () => {
@@ -680,7 +681,7 @@ describe('AgentRepository', () => {
 			const lightlyUsed = await createAgent({ name: 'Lightly used' });
 			const heavilyUsed = await createAgent({ name: 'Heavily used' });
 
-			const { data } = await listByUsage(
+			const { data, count } = await listByUsage(
 				new Map([
 					[heavilyUsed.id, 2],
 					[lightlyUsed.id, 1],
@@ -688,6 +689,7 @@ describe('AgentRepository', () => {
 			);
 
 			expect(data.map((agent) => agent.id)).toEqual([heavilyUsed.id, lightlyUsed.id, unused.id]);
+			expect(count).toBe(3);
 		});
 	});
 });

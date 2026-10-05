@@ -54,6 +54,26 @@ function makeThread(overrides: Partial<AgentExecutionThread> = {}): AgentExecuti
 	} as AgentExecutionThread;
 }
 
+function makeThreadWithAgent(
+	overrides: Partial<AgentExecutionThread> = {},
+	schemaOverrides: Record<string, unknown> = {},
+): AgentExecutionThread {
+	return makeThread({
+		id: 'thread-1',
+		title: 'Refund status',
+		updatedAt: new Date('2025-01-02T00:00:00Z'),
+		agent: {
+			id: 'agent-1',
+			name: 'Support',
+			projectId: 'project-1',
+			activeVersion: {
+				schema: { name: 'Support', model: 'm', instructions: 'i', ...schemaOverrides },
+			},
+		},
+		...overrides,
+	} as never);
+}
+
 function makeMessageRecord(overrides: Partial<MessageRecord> = {}): MessageRecord {
 	return {
 		assistantResponse: 'Done',
@@ -1608,30 +1628,6 @@ describe('AgentExecutionService', () => {
 	describe('findN8nChatThreadsForAgents', () => {
 		const userId = 'user-1';
 
-		function makeThreadWithAgent(
-			overrides: Partial<AgentExecutionThread> = {},
-		): AgentExecutionThread {
-			return makeThread({
-				id: 'thread-1',
-				title: 'Refund status',
-				updatedAt: new Date('2025-01-02T00:00:00Z'),
-				agent: {
-					id: 'agent-1',
-					name: 'Support',
-					projectId: 'project-1',
-					activeVersion: {
-						schema: {
-							name: 'Support',
-							model: 'm',
-							instructions: 'i',
-							personalisation: { icon: 'bot', gradient: { from: '#000000', to: '#FFFFFF' } },
-						},
-					},
-				},
-				...overrides,
-			} as never);
-		}
-
 		it('forwards the agent ids and page request to the repository', async () => {
 			agentExecutionThreadRepository.findN8nChatThreadsForOwner.mockResolvedValue({
 				threads: [],
@@ -1650,7 +1646,12 @@ describe('AgentExecutionService', () => {
 
 		it('maps each thread to the narrow chat-item shape, never the agent config', async () => {
 			agentExecutionThreadRepository.findN8nChatThreadsForOwner.mockResolvedValue({
-				threads: [makeThreadWithAgent()],
+				threads: [
+					makeThreadWithAgent(
+						{},
+						{ personalisation: { icon: 'bot', gradient: { from: '#000000', to: '#FFFFFF' } } },
+					),
+				],
 				nextCursor: 'next-cursor',
 			});
 
@@ -1698,25 +1699,6 @@ describe('AgentExecutionService', () => {
 
 	describe('findN8nChatThreadForAgents', () => {
 		const userId = 'user-1';
-
-		function makeThreadWithAgent(
-			overrides: Partial<AgentExecutionThread> = {},
-		): AgentExecutionThread {
-			return makeThread({
-				id: 'thread-1',
-				title: 'Refund status',
-				updatedAt: new Date('2025-01-02T00:00:00Z'),
-				agent: {
-					id: 'agent-1',
-					name: 'Support',
-					projectId: 'project-1',
-					activeVersion: {
-						schema: { name: 'Support', model: 'm', instructions: 'i' },
-					},
-				},
-				...overrides,
-			} as never);
-		}
 
 		it('forwards the agent ids and thread id to the repository', async () => {
 			agentExecutionThreadRepository.findN8nChatThreadForOwner.mockResolvedValue(null);

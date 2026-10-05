@@ -28,7 +28,9 @@ export const AGENTS_LIST_SORT_OPTIONS = [
 	'createdAt:desc',
 	'updatedAt:asc',
 	'updatedAt:desc',
-	// Ranks by the requesting user's n8n Chat thread count per agent.
+	// Ranks by the requesting user's n8n Chat thread count per agent. Only the
+	// chat-filtered list supplies usage counts; other consumers of this sort
+	// option fall back to createdAt desc.
 	'usage:desc',
 ] as const;
 

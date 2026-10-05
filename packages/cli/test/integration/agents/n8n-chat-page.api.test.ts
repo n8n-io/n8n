@@ -113,7 +113,11 @@ describe('n8n Chat page HTTP routes', () => {
 	});
 
 	it('lists chat agents sorted by usage', async () => {
-		const { chatUser, agent } = await setup();
+		const { chatUser, project, agent } = await setup();
+		const busierAgent = await createPublishedAgent(project.id);
+		await createN8nChatThread(agent.id, project.id, chatUser.id);
+		await createN8nChatThread(busierAgent.id, project.id, chatUser.id);
+		await createN8nChatThread(busierAgent.id, project.id, chatUser.id);
 
 		const response = await server
 			.authAgentFor(chatUser)
@@ -121,7 +125,10 @@ describe('n8n Chat page HTTP routes', () => {
 			.query({ filter: JSON.stringify({ availableInChat: true }), sortBy: 'usage:desc' })
 			.expect(200);
 
-		expect(response.body).toMatchObject({ count: 1, data: [{ id: agent.id }] });
+		expect(response.body).toMatchObject({
+			count: 2,
+			data: [{ id: busierAgent.id }, { id: agent.id }],
+		});
 	});
 
 	it("lists the user's own n8n Chat threads", async () => {
