@@ -5,12 +5,14 @@ import type { User } from '@n8n/db';
 import { GLOBAL_MEMBER_ROLE, ProjectRepository, UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
+import nock from 'nock';
 
 import { BadRequestError } from '@n8n/errors';
 import { PromotionConfigRepository } from '@/modules/promotions.ee/database/repositories/promotion-config.repository';
 import { PromotionConnectionProjectRepository } from '@/modules/promotions.ee/database/repositories/promotion-connection-project.repository';
 import { PromotionConnectionRepository } from '@/modules/promotions.ee/database/repositories/promotion-connection.repository';
 import { PromotionProviderRepository } from '@/modules/promotions.ee/database/repositories/promotion-provider.repository';
+import { GitLabHostClient } from '@/modules/promotions.ee/git-hosts/gitlab-host.client';
 import { PromotionChangeService } from '@/modules/promotions.ee/promotion-change.service';
 import { PromotionProvidersService } from '@/modules/promotions.ee/promotion-providers.service';
 import { PromotionsService } from '@/modules/promotions.ee/promotions.service';
@@ -356,6 +358,202 @@ describe('Promotions in Public API', () => {
 
 		expect(response.status).toBe(400);
 		expect(await Container.get(PromotionConnectionRepository).count()).toBe(0);
+	});
+
+	describe('GitLab providers', () => {
+		const gitLabProviderPayload = {
+			name: 'GitLab',
+			type: 'gitlab',
+			auth: { authType: 'token', username: 'bot', password: 'glpat-token' },
+			config: { schemaVersion: 1, baseUrl: 'https://gitlab.example.com' },
+		};
+		const repository = (path: string) => ({
+			id: path,
+			fullPath: path,
+			remoteUrl: `https://gitlab.example.com/${path}.git`,
+		});
+
+		beforeEach(() => {
+			nock('https://gitlab.example.com')
+				.matchHeader('PRIVATE-TOKEN', 'glpat-token')
+				.get('/api/v4/user')
+				.reply(200, { id: 1 })
+				.get('/api/v4/projects')
+				.query(true)
+				.reply(200, []);
+		});
+
+		afterEach(() => {
+			vi.restoreAllMocks();
+			nock.cleanAll();
+		});
+
+		it('does not save an invalid token and returns a clear error', async () => {
+			nock('https://gitlab.example.com')
+				.matchHeader('PRIVATE-TOKEN', 'expired-token')
+				.get('/api/v4/user')
+				.reply(401, { message: 'Unauthorized' });
+
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.post('/promotions/providers')
+				.send({
+					...gitLabProviderPayload,
+					auth: { authType: 'token', username: 'bot', password: 'expired-token' },
+				});
+
+			expect(response.status).toBe(400);
+			expect(response.body.message).toContain('GitLab rejected the access token');
+			expect(await Container.get(PromotionProviderRepository).count()).toBe(0);
+			expect(JSON.stringify(response.body)).not.toContain('expired-token');
+		});
+
+		it('keeps the old token and URL when an update fails validation', async () => {
+			const agent = testServer.publicApiAgentFor(owner);
+			const providerId = await createProvider(agent, gitLabProviderPayload);
+			const before = await Container.get(PromotionProviderRepository).findOneByOrFail({
+				id: providerId,
+			});
+			nock('https://gitlab.internal').get('/api/v4/user').reply(401, { message: 'Unauthorized' });
+
+			const response = await agent.put(`/promotions/providers/${providerId}`).send({
+				config: { schemaVersion: 1, baseUrl: 'https://gitlab.internal' },
+				auth: { authType: 'token', username: 'bot', password: 'expired-token' },
+			});
+
+			expect(response.status).toBe(400);
+			const after = await Container.get(PromotionProviderRepository).findOneByOrFail({
+				id: providerId,
+			});
+			expect(after.auth).toBe(before.auth);
+			expect(after.config).toEqual(before.config);
+		});
+
+		it('keeps project assignment and branching configuration on a GitLab connection', async () => {
+			const agent = testServer.publicApiAgentFor(owner);
+			const providerId = await createProvider(agent, gitLabProviderPayload);
+			const project = await createTeamProject('Deployment project', owner);
+			const id = await createConnection(agent, {
+				providerId,
+				scope: 'projects',
+				target: {
+					schemaVersion: 1,
+					remoteUrl: 'https://gitlab.example.com/platform/workflows.git',
+				},
+			});
+
+			const link = await agent.post(`/promotions/connections/${id}/projects/${project.id}`);
+			const detail = await agent.get(`/promotions/connections/${id}`);
+
+			expect(link.status, JSON.stringify(link.body)).toBe(200);
+			expect(detail.body.provider).toMatchObject({ id: providerId, type: 'gitlab' });
+			expect(detail.body.configs).toMatchObject({
+				apply: { settings: { branchName: 'main' } },
+				promote: { settings: { baseBranchName: 'main', createBranchOnPromotion: false } },
+			});
+		});
+
+		it('returns the base URL and keeps the token hidden', async () => {
+			const agent = testServer.publicApiAgentFor(owner);
+			const providerId = await createProvider(agent, gitLabProviderPayload);
+
+			const response = await agent.get(`/promotions/providers/${providerId}`);
+
+			expect(response.status).toBe(200);
+			expect(response.body).toMatchObject({
+				type: 'gitlab',
+				authType: 'token',
+				config: { schemaVersion: 1, baseUrl: 'https://gitlab.example.com' },
+			});
+			expect(JSON.stringify(response.body)).not.toContain('glpat-token');
+		});
+
+		it('rejects an SSH key or a missing base URL', async () => {
+			const agent = testServer.publicApiAgentFor(owner);
+
+			const sshKey = await agent
+				.post('/promotions/providers')
+				.send({ ...gitLabProviderPayload, auth: { authType: 'ssh-key' } });
+			const noBaseUrl = await agent
+				.post('/promotions/providers')
+				.send({ ...gitLabProviderPayload, config: undefined });
+
+			expect(sshKey.status).toBe(400);
+			expect(noBaseUrl.status).toBe(400);
+			expect(await Container.get(PromotionProviderRepository).count()).toBe(0);
+		});
+
+		it('lists repositories page by page with the stored token', async () => {
+			const agent = testServer.publicApiAgentFor(owner);
+			const providerId = await createProvider(agent, gitLabProviderPayload);
+			const listRepositories = vi
+				.spyOn(Container.get(GitLabHostClient), 'listRepositories')
+				.mockResolvedValueOnce({ repositories: [repository('platform/api')], hasNextPage: true })
+				.mockResolvedValueOnce({ repositories: [repository('platform/web')], hasNextPage: false });
+			const path = `/promotions/providers/${providerId}/repositories`;
+
+			const first = await agent.get(path).query({ limit: 1, search: 'platform' });
+			const second = await agent
+				.get(path)
+				.query({ cursor: first.body.nextCursor, search: 'platform' });
+
+			expect(first.status, JSON.stringify(first.body)).toBe(200);
+			expect(first.body.data).toEqual([
+				{
+					id: 'platform/api',
+					fullPath: 'platform/api',
+					remoteUrl: 'https://gitlab.example.com/platform/api.git',
+				},
+			]);
+			expect(first.body.nextCursor).toEqual(expect.any(String));
+			expect(second.status).toBe(200);
+			expect(second.body.nextCursor).toBeNull();
+			expect(listRepositories).toHaveBeenNthCalledWith(
+				1,
+				{ baseUrl: 'https://gitlab.example.com', username: 'n8n', accessToken: 'glpat-token' },
+				{ search: 'platform', offset: 0, limit: 1 },
+			);
+			expect(listRepositories).toHaveBeenNthCalledWith(2, expect.anything(), {
+				search: 'platform',
+				offset: 1,
+				limit: 1,
+			});
+		});
+
+		it('rejects a cursor that does not start a page', async () => {
+			const agent = testServer.publicApiAgentFor(owner);
+			const providerId = await createProvider(agent, gitLabProviderPayload);
+			const cursor = Buffer.from(JSON.stringify({ offset: 5, limit: 20 })).toString('base64');
+
+			const response = await agent
+				.get(`/promotions/providers/${providerId}/repositories`)
+				.query({ cursor });
+
+			expect(response.status).toBe(400);
+		});
+
+		it('rejects a plain Git provider, which has no repository list', async () => {
+			const agent = testServer.publicApiAgentFor(owner);
+			const providerId = await createProvider(agent);
+
+			const response = await agent.get(`/promotions/providers/${providerId}/repositories`);
+
+			expect(response.status).toBe(400);
+		});
+
+		it('requires the read scope on the key and on the user', async () => {
+			const agent = testServer.publicApiAgentFor(owner);
+			const providerId = await createProvider(agent, gitLabProviderPayload);
+			const path = `/promotions/providers/${providerId}/repositories`;
+			const unscopedOwner = await createOwnerWithApiKey({ scopes: ['gitConnection:list'] });
+			const member = await createMemberWithApiKey({ scopes: ['gitConnection:read'] });
+
+			const withoutKeyScope = await testServer.publicApiAgentFor(unscopedOwner).get(path);
+			const withoutUserScope = await testServer.publicApiAgentFor(member).get(path);
+
+			expect(withoutKeyScope.status).toBe(403);
+			expect(withoutUserScope.status).toBe(403);
+		});
 	});
 
 	describe('provider sharing', () => {

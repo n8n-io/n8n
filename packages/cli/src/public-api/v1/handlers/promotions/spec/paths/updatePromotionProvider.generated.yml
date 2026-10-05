@@ -2,7 +2,7 @@ operationId: updatePromotionProvider
 tags:
   - Promotions
 summary: Update a promotion provider
-description: Renames the provider, and replaces its credentials when `auth` is sent. New credentials apply to every connection that uses this provider. The authentication method cannot change.
+description: Renames the provider, and replaces its credentials when `auth` is sent. A Git host provider can also update its base URL. Changed credentials and host settings are validated before they save. New credentials apply to every connection that uses this provider. The authentication method cannot change.
 x-required-scope: gitConnection:update
 x-eov-operation-id: unreachable
 x-eov-operation-handler: v1/handlers/decorator-routed.handler
@@ -58,6 +58,19 @@ requestBody:
                   - username
                   - password
                 additionalProperties: false
+          config:
+            type: object
+            properties:
+              schemaVersion:
+                type: number
+                enum:
+                  - 1
+              baseUrl:
+                type: string
+            required:
+              - schemaVersion
+              - baseUrl
+            additionalProperties: false
         additionalProperties: false
         minProperties: 1
 responses:

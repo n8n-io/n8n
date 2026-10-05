@@ -1,12 +1,12 @@
 import { createTestingPinia } from '@pinia/testing';
 import type { IUser } from '@n8n/rest-api-client';
 import { useUsersStore } from '@n8n/stores/users.store';
-import { waitFor } from '@testing-library/vue';
+import { waitFor, within } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { mock } from 'vitest-mock-extended';
 
 import { createComponentRenderer } from '@/__tests__/render';
-import { mockedStore } from '@/__tests__/utils';
+import { getDropdownItems, mockedStore } from '@/__tests__/utils';
 import type * as PromotionsApi from '../promotionsSettings.api';
 import type { PromotionConnection, PromotionProviderSummary } from '../promotionsSettings.api';
 import PromotionConnectionForm from './PromotionConnectionForm.vue';
@@ -15,6 +15,7 @@ const api = vi.hoisted(() => ({
 	createPromotionConnection: vi.fn<typeof PromotionsApi.createPromotionConnection>(),
 	clonePromotionCheckout: vi.fn<typeof PromotionsApi.clonePromotionCheckout>(),
 	disconnectPromotionCheckout: vi.fn<typeof PromotionsApi.disconnectPromotionCheckout>(),
+	fetchPromotionRepositories: vi.fn<typeof PromotionsApi.fetchPromotionRepositories>(),
 }));
 
 vi.mock('../promotionsSettings.api', () => api);
@@ -80,6 +81,14 @@ const lastSaved = (emitted: (event: string) => unknown[]): PromotionConnection =
 
 describe('PromotionConnectionForm', () => {
 	let usersStore: ReturnType<typeof mockedStore<typeof useUsersStore>>;
+
+	const gitLabProvider = {
+		id: 'provider-gitlab',
+		name: 'GitLab',
+		type: 'gitlab',
+		authType: 'token',
+		...timestamps,
+	} as PromotionProviderSummary;
 
 	beforeEach(() => {
 		vi.resetAllMocks();
@@ -192,5 +201,68 @@ describe('PromotionConnectionForm', () => {
 		await waitFor(() => expect(mockShowError).toHaveBeenCalledWith(failure, expect.any(String)));
 		expect(emitted('saved')).toBeUndefined();
 		expect(getByTestId('promotion-checkout-connect')).toBeEnabled();
+	});
+	it('picks a repository for a GitLab provider instead of taking a URL', async () => {
+		api.fetchPromotionRepositories.mockResolvedValue({ data: [], nextCursor: null });
+		const gitLabConnection = {
+			...connectionWith({}),
+			target: { schemaVersion: 1, remoteUrl: 'https://gitlab.example.com/acme/workflows.git' },
+			provider: gitLabProvider,
+		} as PromotionConnection;
+
+		const { getByTestId, queryByTestId } = renderComponent({
+			props: { providers: [provider, gitLabProvider], connection: gitLabConnection },
+		});
+
+		expect(getByTestId('promotion-connection-repository-select')).toBeInTheDocument();
+		expect(queryByTestId('promotion-connection-remote-url-input')).not.toBeInTheDocument();
+		await waitFor(() =>
+			expect(api.fetchPromotionRepositories).toHaveBeenCalledWith(
+				expect.anything(),
+				'provider-gitlab',
+				{ search: undefined },
+			),
+		);
+	});
+
+	it('takes a remote URL for a plain Git provider', () => {
+		const { getByTestId, queryByTestId } = renderComponent({
+			props: { connection: connectionWith() },
+		});
+
+		expect(getByTestId('promotion-connection-remote-url-input')).toBeInTheDocument();
+		expect(queryByTestId('promotion-connection-repository-select')).not.toBeInTheDocument();
+		expect(api.fetchPromotionRepositories).not.toHaveBeenCalled();
+	});
+
+	it('requires a new repository when another Git host provider is selected', async () => {
+		api.fetchPromotionRepositories.mockResolvedValue({ data: [], nextCursor: null });
+		const other = { ...gitLabProvider, id: 'provider-other', name: 'Other GitLab' };
+		const connection = {
+			...connectionWith({}),
+			provider: gitLabProvider,
+			target: {
+				schemaVersion: 1 as const,
+				remoteUrl: 'https://gitlab.example.com/previous/repo.git',
+			},
+		};
+		const { getByTestId, queryByText } = renderComponent({
+			props: { providers: [provider, gitLabProvider, other], connection },
+		});
+		const options = await getDropdownItems(getByTestId('promotion-connection-provider-select'));
+
+		await userEvent.click(options[2]);
+
+		await waitFor(() =>
+			expect(api.fetchPromotionRepositories).toHaveBeenLastCalledWith(expect.anything(), other.id, {
+				search: undefined,
+			}),
+		);
+		expect(queryByText(connection.target.remoteUrl)).not.toBeInTheDocument();
+		expect(
+			within(getByTestId('promotion-connection-save-bar')).getByRole('button', {
+				name: /save settings/i,
+			}),
+		).toBeDisabled();
 	});
 });

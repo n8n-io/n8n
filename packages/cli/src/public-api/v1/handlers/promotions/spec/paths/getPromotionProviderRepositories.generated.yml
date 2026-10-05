@@ -1,12 +1,24 @@
-operationId: getPromotionProviders
+operationId: getPromotionProviderRepositories
 tags:
   - Promotions
-summary: List promotion providers
-description: Returns a cursor-paginated list of providers, without their public configuration.
-x-required-scope: gitConnection:list
+summary: List the repositories of a promotion provider
+description: Returns a cursor-paginated list of the repositories that the provider credentials can reach on its Git host. Only a Git host provider, such as GitLab, has this list. Use a `remoteUrl` as the target of a connection.
+x-required-scope: gitConnection:read
 parameters:
   - $ref: ../../../../shared/spec/parameters/limit.yml
   - $ref: ../../../../shared/spec/parameters/cursor.yml
+  - schema:
+      type: string
+    required: true
+    description: The ID of the promotion provider.
+    name: promotionProviderId
+    in: path
+  - schema:
+      type: string
+      maxLength: 255
+    required: false
+    name: search
+    in: query
 x-eov-operation-id: unreachable
 x-eov-operation-handler: v1/handlers/decorator-routed.handler
 x-decorator-routed: true
@@ -25,33 +37,14 @@ responses:
                 properties:
                   id:
                     type: string
-                    minLength: 1
-                    maxLength: 36
-                  name:
+                  fullPath:
                     type: string
-                  type:
+                  remoteUrl:
                     type: string
-                    enum:
-                      - git
-                      - gitlab
-                  authType:
-                    type: string
-                    enum:
-                      - ssh-key
-                      - token
-                  createdAt:
-                    type: string
-                    format: date-time
-                  updatedAt:
-                    type: string
-                    format: date-time
                 required:
                   - id
-                  - name
-                  - type
-                  - authType
-                  - createdAt
-                  - updatedAt
+                  - fullPath
+                  - remoteUrl
             nextCursor:
               type: string
               nullable: true
@@ -64,5 +57,7 @@ responses:
     $ref: ../../../../shared/spec/responses/unauthorized.yml
   '403':
     $ref: ../../../../shared/spec/responses/forbidden.yml
+  '404':
+    $ref: ../../../../shared/spec/responses/notFound.yml
   '503':
     $ref: ../../../../shared/spec/responses/serviceUnavailable.yml

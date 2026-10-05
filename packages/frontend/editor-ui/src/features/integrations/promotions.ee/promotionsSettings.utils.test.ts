@@ -116,6 +116,68 @@ describe('buildProviderCreatePayload', () => {
 	});
 });
 
+describe('GitLab provider payloads', () => {
+	const gitLabProvider = (): PromotionProvider =>
+		({
+			...tokenProvider(),
+			id: 'provider-gitlab',
+			type: 'gitlab',
+			config: { schemaVersion: 1, baseUrl: 'https://gitlab.example.com' },
+		}) as PromotionProvider;
+
+	it('sends the trimmed base URL and the group access token', () => {
+		const payload = buildProviderCreatePayload({
+			...emptyProviderForm(),
+			name: 'GitLab',
+			type: 'gitlab',
+			baseUrl: '  https://gitlab.example.com  ',
+			authType: 'token',
+			password: 'glgat-token',
+		});
+
+		// GitLab ignores the username of a group access token, so the form has none.
+		expect(payload).toEqual({
+			name: 'GitLab',
+			type: 'gitlab',
+			auth: { authType: 'token', username: 'n8n', password: 'glgat-token' },
+			config: { schemaVersion: 1, baseUrl: 'https://gitlab.example.com' },
+		});
+	});
+
+	it('replaces the token without a username', () => {
+		const current = gitLabProvider();
+
+		expect(
+			buildProviderUpdatePayload({ ...providerFormFrom(current), password: 'glgat-new' }, current),
+		).toEqual({ auth: { authType: 'token', username: 'n8n', password: 'glgat-new' } });
+	});
+
+	it('reads the stored base URL into the form', () => {
+		expect(providerFormFrom(gitLabProvider())).toMatchObject({
+			type: 'gitlab',
+			baseUrl: 'https://gitlab.example.com',
+		});
+	});
+
+	it('sends the config only when the base URL changes', () => {
+		const current = gitLabProvider();
+
+		expect(buildProviderUpdatePayload(providerFormFrom(current), current)).toEqual({});
+		expect(
+			buildProviderUpdatePayload(
+				{ ...providerFormFrom(current), baseUrl: 'https://gitlab.internal' },
+				current,
+			),
+		).toEqual({ config: { schemaVersion: 1, baseUrl: 'https://gitlab.internal' } });
+	});
+
+	it('sends no config for a plain Git provider', () => {
+		expect(buildProviderCreatePayload({ ...emptyProviderForm(), name: 'Key' })).not.toHaveProperty(
+			'config',
+		);
+	});
+});
+
 describe('buildProviderUpdatePayload', () => {
 	it('renames the provider without changing its credentials', () => {
 		const current = sshProvider();

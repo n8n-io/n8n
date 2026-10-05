@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { PromotionConfigCheckout, PromotionDirection } from '@n8n/api-types';
+import { isPromotionGitHostType } from '@n8n/api-types';
 import { useToast } from '@n8n/composables/useToast';
 import {
 	N8nButton,
@@ -18,7 +19,7 @@ import { useI18n } from '@n8n/i18n';
 import { getResourcePermissions } from '@n8n/permissions';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUsersStore } from '@n8n/stores/users.store';
-import { computed, reactive, ref } from 'vue';
+import { computed, reactive, ref, watch } from 'vue';
 
 import { usePromotionConnectionSave } from '../composables/usePromotionConnectionSave';
 import {
@@ -29,6 +30,7 @@ import {
 	type PromotionProviderSummary,
 } from '../promotionsSettings.api';
 import PromotionCheckoutStatus from './PromotionCheckoutStatus.vue';
+import PromotionRepositorySelect from './PromotionRepositorySelect.vue';
 import {
 	buildConnectionCreatePayload,
 	connectionFormFrom,
@@ -75,12 +77,22 @@ const resetTo = (connection: PromotionConnection | null) => {
 };
 
 const isSaving = computed(() => isCreating.value || save.isSaving.value);
+
+// A Git host provider can list its repositories, so the user picks one instead of typing a URL.
+const usesRepositoryPicker = computed(() => {
+	const provider = props.providers.find(({ id }) => id === form.providerId);
+	return provider !== undefined && isPromotionGitHostType(provider.type);
+});
 const isDirty = computed(() => JSON.stringify(form) !== baseline.value);
 
 // Let the API validate remote URLs so frontend rules cannot drift.
 const saveDisabledReason = computed(() => {
 	if (!form.providerId || !form.name.trim() || !form.remoteUrl.trim())
-		return i18n.baseText('settings.promotions.connection.form.incomplete');
+		return i18n.baseText(
+			usesRepositoryPicker.value
+				? 'settings.promotions.connection.form.repository.incomplete'
+				: 'settings.promotions.connection.form.incomplete',
+		);
 	if (
 		(form.apply.enabled && !form.apply.branchName.trim()) ||
 		(form.promote.enabled && !form.promote.baseBranchName.trim())
@@ -243,6 +255,20 @@ function selectProvider(id: string) {
 	form.providerId = id;
 }
 
+watch(
+	() => form.providerId,
+	(providerId, previousProviderId) => {
+		const hostChanged = props.providers.some(
+			(provider) =>
+				(provider.id === providerId || provider.id === previousProviderId) &&
+				isPromotionGitHostType(provider.type),
+		);
+		// A host's selected repository must not follow another provider's credentials.
+		if (hostChanged) form.remoteUrl = '';
+	},
+	{ flush: 'sync' },
+);
+
 defineExpose({ selectProvider });
 </script>
 
@@ -294,6 +320,21 @@ defineExpose({ selectProvider });
 		</N8nInputLabel>
 
 		<N8nInputLabel
+			v-if="usesRepositoryPicker"
+			input-name="promotion-connection-repository"
+			:label="i18n.baseText('settings.promotions.connection.form.repository')"
+			required
+		>
+			<PromotionRepositorySelect
+				id="promotion-connection-repository"
+				v-model="form.remoteUrl"
+				:provider-id="form.providerId"
+				:disabled="isSaving"
+			/>
+		</N8nInputLabel>
+
+		<N8nInputLabel
+			v-else
 			input-name="promotion-connection-remote-url"
 			:label="i18n.baseText('settings.promotions.connection.form.remoteUrl')"
 			required

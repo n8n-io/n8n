@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { isPromotionGitHostType } from '@n8n/api-types';
 import { useToast } from '@n8n/composables/useToast';
 import {
 	N8nEmptyState,
@@ -20,6 +21,7 @@ import PromoteInstanceSection from '../components/PromoteInstanceSection.vue';
 import PromotionConnectionForm from '../components/PromotionConnectionForm.vue';
 import PromotionProviderDialog from '../components/PromotionProviderDialog.vue';
 import { invalidateInstancePromotionConnection } from '../composables/useInstancePromotionConnection';
+import { PROMOTION_PROVIDER_TYPE_LABELS } from '../promotions.constants';
 import {
 	fetchPromotionConnection,
 	fetchPromotionConnections,
@@ -82,7 +84,11 @@ onMounted(async () => {
 	await load();
 });
 
-function authTypeLabel(provider: PromotionProviderSummary) {
+// A Git host provider always uses a token, so its type says more than its auth.
+function providerDescription(provider: PromotionProviderSummary) {
+	if (isPromotionGitHostType(provider.type)) {
+		return i18n.baseText(PROMOTION_PROVIDER_TYPE_LABELS[provider.type]);
+	}
 	return i18n.baseText(
 		provider.authType === 'ssh-key'
 			? 'settings.promotions.providers.authType.sshKey'
@@ -169,7 +175,7 @@ async function onDialogOpenChange(open: boolean) {
 						<N8nSettingsRow
 							clickable
 							:title="provider.name"
-							:description="authTypeLabel(provider)"
+							:description="providerDescription(provider)"
 							:data-provider-id="provider.id"
 							data-test-id="promotion-provider-row"
 							@click="openEditDialog(provider.id)"

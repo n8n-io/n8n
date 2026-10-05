@@ -140,6 +140,55 @@ describe('UpdatePromotionProviderDto', () => {
 	});
 });
 
+describe('Git host config', () => {
+	const gitLab = { name: 'GitLab', type: 'gitlab' as const, auth: tokenAuth };
+	const withBaseUrl = (baseUrl: string) => ({
+		...gitLab,
+		config: { schemaVersion: 1 as const, baseUrl },
+	});
+
+	it('accepts a base URL, with a subpath and a port', () => {
+		for (const baseUrl of [
+			'https://gitlab.com',
+			'http://localhost:8929',
+			'https://example.com/gitlab/',
+		]) {
+			expect(CreatePromotionProviderDto.safeParse(withBaseUrl(baseUrl)).success).toBe(true);
+		}
+	});
+
+	it('trims the base URL', () => {
+		const result = CreatePromotionProviderDto.safeParse(withBaseUrl('  https://gitlab.com  '));
+
+		if (!result.success) throw result.error;
+		expect(result.data.config).toEqual({ schemaVersion: 1, baseUrl: 'https://gitlab.com' });
+	});
+
+	it('rejects a base URL that is not plain HTTP(S)', () => {
+		for (const baseUrl of [
+			'gitlab.com',
+			'ssh://gitlab.com',
+			'file:///etc',
+			'https://user:token@gitlab.com',
+			'https://gitlab.com?private_token=x',
+			'https://gitlab.com/#top',
+			'https://git\nlab.com',
+			'https://git\tlab.com',
+			'https://gitlab.com/\u0000',
+		]) {
+			expect(CreatePromotionProviderDto.safeParse(withBaseUrl(baseUrl)).success).toBe(false);
+		}
+	});
+
+	it('lets an update move a provider to another base URL', () => {
+		expect(
+			UpdatePromotionProviderDto.safeParse({
+				config: { schemaVersion: 1, baseUrl: 'https://gitlab.example.com' },
+			}).success,
+		).toBe(true);
+	});
+});
+
 describe('provider responses', () => {
 	it('leaves out the encrypted credentials', () => {
 		const result = PromotionProviderPublicDto.safeParse({ ...publicProvider, auth: 'encrypted' });

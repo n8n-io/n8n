@@ -1,4 +1,10 @@
 <script setup lang="ts">
+import {
+	isPromotionGitHostType,
+	promotionProviderTypeCapabilities,
+	promotionProviderTypeSchema,
+	supportsPromotionAuthType,
+} from '@n8n/api-types';
 import { useToast } from '@n8n/composables/useToast';
 import {
 	N8nButton,
@@ -18,9 +24,13 @@ import {
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { computed, nextTick, onMounted, reactive, ref, useTemplateRef } from 'vue';
+import { computed, nextTick, onMounted, reactive, ref, useTemplateRef, watch } from 'vue';
 
 import { MODAL_CONFIRM } from '@/app/constants';
+import {
+	PROMOTION_GIT_HOST_FORM_TEXT,
+	PROMOTION_PROVIDER_TYPE_LABELS,
+} from '../promotions.constants';
 import {
 	createPromotionProvider,
 	deletePromotionProvider,
@@ -62,10 +72,32 @@ const usedBy = ref<PromotionConnectionSummary[]>([]);
 const generatedPublicKey = ref<string | null>(null);
 const isLoading = ref(false);
 const isSubmitting = ref(false);
+const isBusy = computed(() => isLoading.value || isSubmitting.value);
 const nameInput = useTemplateRef<InstanceType<typeof N8nInput>>('nameInput');
 const doneButton = useTemplateRef<{ $el?: HTMLElement }>('doneButton');
 
 const isEdit = computed(() => props.providerId !== undefined);
+const isGitHost = computed(() => isPromotionGitHostType(form.type));
+const needsUsername = computed(
+	() => promotionProviderTypeCapabilities[form.type].tokenUsername === null,
+);
+const hostFormText = computed(() =>
+	isPromotionGitHostType(form.type) ? PROMOTION_GIT_HOST_FORM_TEXT[form.type] : undefined,
+);
+const authTypes = computed(() => promotionProviderTypeCapabilities[form.type].authTypes);
+
+const typeOptions = promotionProviderTypeSchema.options.map((value) => ({
+	value,
+	label: i18n.baseText(PROMOTION_PROVIDER_TYPE_LABELS[value]),
+}));
+
+// A Git host type supports fewer auth types, so move to one it supports.
+watch(
+	() => form.type,
+	(type) => {
+		if (!supportsPromotionAuthType(type, form.authType)) form.authType = authTypes.value[0];
+	},
+);
 
 const title = computed(() => {
 	if (step.value === 'key') return i18n.baseText('settings.promotions.provider.dialog.title.key');
@@ -99,6 +131,8 @@ const hasPassword = computed(() => form.password.length > 0);
 // Token credentials change as a pair. Empty edit fields keep the stored credentials.
 const areCredentialsIncomplete = computed(() => {
 	if (form.authType !== 'token') return false;
+	// A Git host token has no username, so the token alone is the credential.
+	if (!needsUsername.value) return !isEdit.value && !hasPassword.value;
 	if (!isEdit.value) return !(hasUsername.value && hasPassword.value);
 	if (!hasUsername.value && !hasPassword.value) return false;
 	return !(hasUsername.value && hasPassword.value);
@@ -109,17 +143,24 @@ const hasChanges = computed(() => {
 	return Object.keys(buildProviderUpdatePayload(form, current.value)).length > 0;
 });
 
+const credentialsRequiredText = computed(() =>
+	i18n.baseText(
+		hostFormText.value
+			? hostFormText.value.accessTokenRequired
+			: 'settings.promotions.provider.form.credentials.required',
+	),
+);
+
 const saveDisabledReason = computed(() => {
 	if (!form.name.trim()) return i18n.baseText('settings.promotions.provider.form.incomplete');
-	if (areCredentialsIncomplete.value)
-		return i18n.baseText('settings.promotions.provider.form.credentials.required');
+	if (isGitHost.value && !form.baseUrl.trim())
+		return i18n.baseText('settings.promotions.provider.form.baseUrl.required');
+	if (areCredentialsIncomplete.value) return credentialsRequiredText.value;
 	if (!hasChanges.value) return i18n.baseText('settings.promotions.provider.form.noChanges');
 	return undefined;
 });
 
-const isSaveDisabled = computed(
-	() => isSubmitting.value || isLoading.value || saveDisabledReason.value !== undefined,
-);
+const isSaveDisabled = computed(() => isBusy.value || saveDisabledReason.value !== undefined);
 
 function close() {
 	emit('update:open', false);
@@ -322,12 +363,54 @@ async function onDelete() {
 					id="promotion-provider-name"
 					ref="nameInput"
 					v-model="form.name"
-					:disabled="isLoading"
+					:disabled="isBusy"
 					data-test-id="promotion-provider-name-input"
 				/>
 			</N8nInputLabel>
 
 			<N8nInputLabel
+				input-name="promotion-provider-type"
+				:label="i18n.baseText('settings.promotions.provider.form.type')"
+				:tooltip-text="
+					isEdit ? i18n.baseText('settings.promotions.provider.form.type.locked') : undefined
+				"
+			>
+				<N8nSelect
+					id="promotion-provider-type"
+					v-model="form.type"
+					:teleported="false"
+					:disabled="isBusy || isEdit"
+					data-test-id="promotion-provider-type-select"
+				>
+					<N8nOption
+						v-for="option in typeOptions"
+						:key="option.value"
+						:value="option.value"
+						:label="option.label"
+					/>
+				</N8nSelect>
+			</N8nInputLabel>
+
+			<N8nInputLabel
+				v-if="hostFormText"
+				input-name="promotion-provider-base-url"
+				:label="i18n.baseText(hostFormText.baseUrlLabel)"
+				required
+			>
+				<N8nInput
+					id="promotion-provider-base-url"
+					v-model="form.baseUrl"
+					type="url"
+					:disabled="isBusy"
+					data-test-id="promotion-provider-base-url-input"
+				/>
+				<N8nText size="small" color="text-light">
+					{{ i18n.baseText(hostFormText.baseUrlHint) }}
+				</N8nText>
+			</N8nInputLabel>
+
+			<N8nInputLabel
+				v-if="authTypes.length > 1"
 				input-name="promotion-provider-auth-type"
 				:label="i18n.baseText('settings.promotions.provider.form.authType')"
 				:tooltip-text="
@@ -338,7 +421,7 @@ async function onDelete() {
 					id="promotion-provider-auth-type"
 					v-model="form.authType"
 					:teleported="false"
-					:disabled="isLoading || isEdit"
+					:disabled="isBusy || isEdit"
 					data-test-id="promotion-provider-auth-type-select"
 				>
 					<N8nOption
@@ -362,7 +445,7 @@ async function onDelete() {
 						id="promotion-provider-key-type"
 						v-model="form.keyType"
 						:teleported="false"
-						:disabled="isLoading"
+						:disabled="isBusy"
 						data-test-id="promotion-provider-key-type-select"
 					>
 						<N8nOption value="ed25519" label="ED25519" />
@@ -386,7 +469,7 @@ async function onDelete() {
 					<N8nCheckbox
 						v-model="form.regenerateKey"
 						:label="i18n.baseText('settings.promotions.provider.regenerateKey')"
-						:disabled="isLoading"
+						:disabled="isBusy"
 						data-test-id="promotion-provider-regenerate-key"
 					/>
 					<N8nText v-if="form.regenerateKey" size="small" color="text-light">
@@ -397,6 +480,7 @@ async function onDelete() {
 
 			<template v-else>
 				<N8nInputLabel
+					v-if="needsUsername"
 					input-name="promotion-provider-username"
 					:label="i18n.baseText('settings.promotions.provider.form.username')"
 					:required="!isEdit"
@@ -404,14 +488,20 @@ async function onDelete() {
 					<N8nInput
 						id="promotion-provider-username"
 						v-model="form.username"
-						:disabled="isLoading"
+						:disabled="isBusy"
 						data-test-id="promotion-provider-username-input"
 					/>
 				</N8nInputLabel>
 
 				<N8nInputLabel
 					input-name="promotion-provider-password"
-					:label="i18n.baseText('settings.promotions.provider.form.password')"
+					:label="
+						i18n.baseText(
+							hostFormText
+								? hostFormText.accessTokenLabel
+								: 'settings.promotions.provider.form.password',
+						)
+					"
 					:required="!isEdit"
 				>
 					<N8nInput
@@ -419,13 +509,16 @@ async function onDelete() {
 						v-model="form.password"
 						type="password"
 						autocomplete="new-password"
-						:disabled="isLoading"
+						:disabled="isBusy"
 						data-test-id="promotion-provider-password-input"
 					/>
+					<N8nText v-if="hostFormText" size="small" color="text-light">
+						{{ i18n.baseText(hostFormText.accessTokenHint) }}
+					</N8nText>
 				</N8nInputLabel>
 
-				<N8nText v-if="hasUsername !== hasPassword" size="small" color="danger">
-					{{ i18n.baseText('settings.promotions.provider.form.credentials.required') }}
+				<N8nText v-if="needsUsername && hasUsername !== hasPassword" size="small" color="danger">
+					{{ credentialsRequiredText }}
 				</N8nText>
 
 				<N8nText v-if="isEdit" size="small" color="text-light">

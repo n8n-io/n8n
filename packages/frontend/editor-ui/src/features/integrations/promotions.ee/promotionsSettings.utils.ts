@@ -3,17 +3,23 @@ import type {
 	CreatePromotionProviderDto,
 	PromotionDirection,
 	PromotionProviderAuthType,
+	PromotionProviderType,
 	PromotionSshKeyType,
 	UpdatePromotionConnectionDto,
 	UpdatePromotionProviderDto,
 	UpsertPromotionApplyConfigDto,
 	UpsertPromotionPromoteConfigDto,
 } from '@n8n/api-types';
+import { isPromotionGitHostType, promotionProviderTypeCapabilities } from '@n8n/api-types';
 
 import type { PromotionConnection, PromotionProvider } from './promotionsSettings.api';
 
 export type ProviderFormState = {
 	name: string;
+	/** Cannot change after creation. */
+	type: PromotionProviderType;
+	/** Only a Git host type, such as GitLab, has a base URL. */
+	baseUrl: string;
 	/** Cannot change after creation. */
 	authType: PromotionProviderAuthType;
 	keyType: PromotionSshKeyType;
@@ -44,6 +50,8 @@ export type ConnectionWrite =
 
 export const emptyProviderForm = (): ProviderFormState => ({
 	name: '',
+	type: 'git',
+	baseUrl: '',
 	authType: 'ssh-key',
 	keyType: 'ed25519',
 	username: '',
@@ -51,9 +59,17 @@ export const emptyProviderForm = (): ProviderFormState => ({
 	regenerateKey: false,
 });
 
+const tokenUsername = (form: ProviderFormState) =>
+	promotionProviderTypeCapabilities[form.type].tokenUsername ?? form.username.trim();
+
+const baseUrlOf = (provider: PromotionProvider) =>
+	'baseUrl' in provider.config ? provider.config.baseUrl : '';
+
 export const providerFormFrom = (provider: PromotionProvider): ProviderFormState => ({
 	...emptyProviderForm(),
 	name: provider.name,
+	type: provider.type,
+	baseUrl: baseUrlOf(provider),
 	authType: provider.authType,
 	keyType: 'keyType' in provider.config ? provider.config.keyType : 'ed25519',
 });
@@ -106,11 +122,14 @@ export const buildProviderCreatePayload = (
 	form: ProviderFormState,
 ): CreatePromotionProviderDto => ({
 	name: form.name.trim(),
-	type: 'git',
+	type: form.type,
 	auth:
 		form.authType === 'ssh-key'
 			? { authType: 'ssh-key', keyType: form.keyType }
-			: { authType: 'token', username: form.username.trim(), password: form.password },
+			: { authType: 'token', username: tokenUsername(form), password: form.password },
+	...(isPromotionGitHostType(form.type) && {
+		config: { schemaVersion: 1, baseUrl: form.baseUrl.trim() },
+	}),
 });
 
 /** If credentials are absent, the API keeps them. SSH rotation keeps the key type. */
@@ -123,14 +142,15 @@ export const buildProviderUpdatePayload = (
 	const name = form.name.trim();
 	if (name !== current.name) payload.name = name;
 
+	const baseUrl = form.baseUrl.trim();
+	if (isPromotionGitHostType(current.type) && baseUrl !== baseUrlOf(current)) {
+		payload.config = { schemaVersion: 1, baseUrl };
+	}
+
 	if (form.authType === 'ssh-key' && form.regenerateKey) {
 		payload.auth = { authType: 'ssh-key' };
-	} else if (form.authType === 'token' && form.username.trim() && form.password) {
-		payload.auth = {
-			authType: 'token',
-			username: form.username.trim(),
-			password: form.password,
-		};
+	} else if (form.authType === 'token' && tokenUsername(form) && form.password) {
+		payload.auth = { authType: 'token', username: tokenUsername(form), password: form.password };
 	}
 
 	return payload;

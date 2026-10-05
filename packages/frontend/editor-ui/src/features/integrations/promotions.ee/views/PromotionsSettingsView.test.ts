@@ -22,6 +22,7 @@ const api = vi.hoisted(() => ({
 	upsertPromotionApplyConfig: vi.fn<typeof PromotionsApi.upsertPromotionApplyConfig>(),
 	upsertPromotionPromoteConfig: vi.fn<typeof PromotionsApi.upsertPromotionPromoteConfig>(),
 	deletePromotionConfig: vi.fn<typeof PromotionsApi.deletePromotionConfig>(),
+	fetchPromotionRepositories: vi.fn<typeof PromotionsApi.fetchPromotionRepositories>(),
 }));
 
 vi.mock('../promotionsSettings.api', () => api);
@@ -132,6 +133,7 @@ describe('PromotionsSettingsView', () => {
 		api.fetchPromotionConnections.mockResolvedValue([]);
 		api.deletePromotionProvider.mockResolvedValue(undefined);
 		api.deletePromotionConfig.mockResolvedValue(undefined);
+		api.fetchPromotionRepositories.mockResolvedValue({ data: [], nextCursor: null });
 	});
 
 	describe('providers', () => {
@@ -192,6 +194,46 @@ describe('PromotionsSettingsView', () => {
 			await waitFor(() => expect(screen.queryByTestId('promotion-provider-dialog')).toBeNull());
 		});
 
+		it('creates a GitLab provider with a base URL and a group access token', async () => {
+			const gitLab = sshProvider({
+				name: 'Self-managed',
+				type: 'gitlab',
+				authType: 'token',
+				config: { schemaVersion: 1, baseUrl: 'https://gitlab.example.com' },
+			});
+			api.createPromotionProvider.mockResolvedValue({ provider: gitLab, publicKey: null });
+			api.fetchPromotionProviders.mockResolvedValueOnce([]).mockResolvedValue([summaryOf(gitLab)]);
+			await renderReadyView();
+			await openProviderDialog();
+
+			await userEvent.type(screen.getByTestId('promotion-provider-name-input'), 'Self-managed');
+			await selectInDialog(screen.getByTestId('promotion-provider-type-select'), 'GitLab');
+
+			// GitLab takes only a group access token, so there is no auth choice or username.
+			expect(screen.queryByTestId('promotion-provider-auth-type-select')).toBeNull();
+			expect(screen.queryByTestId('promotion-provider-username-input')).toBeNull();
+			expect(screen.getByText('Access token')).toBeInTheDocument();
+			await userEvent.type(screen.getByTestId('promotion-provider-password-input'), 'glgat-token');
+			expect(screen.getByTestId('promotion-provider-save-button')).toBeDisabled();
+			await userEvent.type(
+				screen.getByTestId('promotion-provider-base-url-input'),
+				'https://gitlab.example.com',
+			);
+			await userEvent.click(screen.getByTestId('promotion-provider-save-button'));
+
+			await waitFor(() =>
+				expect(api.createPromotionProvider).toHaveBeenCalledWith(expect.anything(), {
+					name: 'Self-managed',
+					type: 'gitlab',
+					auth: { authType: 'token', username: 'n8n', password: 'glgat-token' },
+					config: { schemaVersion: 1, baseUrl: 'https://gitlab.example.com' },
+				}),
+			);
+			const row = await screen.findByTestId('promotion-provider-row');
+			expect(within(row).getByText('Self-managed')).toBeInTheDocument();
+			expect(within(row).getByText('GitLab')).toBeInTheDocument();
+		});
+
 		it('shows the stored key and prevents deletion of a provider in use', async () => {
 			api.fetchPromotionProviders.mockResolvedValue([summaryOf(sshProvider())]);
 			api.fetchPromotionConnections.mockResolvedValue([instanceConnection()]);
@@ -203,6 +245,61 @@ describe('PromotionsSettingsView', () => {
 			const notice = screen.getByTestId('promotion-provider-in-use');
 			expect(notice).toHaveTextContent('Production');
 			expect(screen.getByTestId('promotion-provider-delete-button')).toBeDisabled();
+		});
+
+		it('keeps the GitLab form open and its values intact when validation fails', async () => {
+			const error = new Error(
+				'GitLab rejected the access token. Update the provider with a valid token.',
+			);
+			api.createPromotionProvider.mockRejectedValueOnce(error);
+			await renderReadyView();
+			await openProviderDialog();
+			await userEvent.type(screen.getByTestId('promotion-provider-name-input'), 'GitLab');
+			await selectInDialog(screen.getByTestId('promotion-provider-type-select'), 'GitLab');
+			await userEvent.type(
+				screen.getByTestId('promotion-provider-base-url-input'),
+				'https://gitlab.example.com',
+			);
+			await userEvent.type(
+				screen.getByTestId('promotion-provider-password-input'),
+				'expired-token',
+			);
+
+			await userEvent.click(screen.getByTestId('promotion-provider-save-button'));
+
+			await waitFor(() => expect(mockShowError).toHaveBeenCalledWith(error, expect.any(String)));
+			expect(screen.getByTestId('promotion-provider-form-step')).toBeInTheDocument();
+			expect(screen.getByTestId('promotion-provider-base-url-input')).toHaveValue(
+				'https://gitlab.example.com',
+			);
+			expect(screen.getByTestId('promotion-provider-password-input')).toHaveValue('expired-token');
+			expect(screen.getByTestId('promotion-provider-save-button')).toBeEnabled();
+			expect(mockShowMessage).not.toHaveBeenCalled();
+		});
+
+		it('renames a GitLab provider without replacing its token', async () => {
+			const gitlab = sshProvider({
+				name: 'GitLab',
+				type: 'gitlab',
+				authType: 'token',
+				config: { schemaVersion: 1, baseUrl: 'https://gitlab.example.com' },
+			});
+			api.fetchPromotionProviders.mockResolvedValue([summaryOf(gitlab)]);
+			api.fetchPromotionProvider.mockResolvedValue(gitlab);
+			api.updatePromotionProvider.mockResolvedValue({ ...gitlab, name: 'GitLab internal' });
+			await renderReadyView();
+			await openProviderDialog(await screen.findByTestId('promotion-provider-row'));
+			await screen.findByDisplayValue('https://gitlab.example.com');
+
+			await userEvent.type(screen.getByTestId('promotion-provider-name-input'), ' internal');
+			await userEvent.click(screen.getByTestId('promotion-provider-save-button'));
+
+			await waitFor(() =>
+				expect(api.updatePromotionProvider).toHaveBeenCalledWith(expect.anything(), gitlab.id, {
+					name: 'GitLab internal',
+				}),
+			);
+			expect(screen.queryByTestId('promotion-provider-form-step')).not.toBeInTheDocument();
 		});
 
 		it('shows the new deploy key after regeneration', async () => {

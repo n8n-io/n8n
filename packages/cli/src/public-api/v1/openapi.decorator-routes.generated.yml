@@ -225,6 +225,9 @@ paths:
       $ref: ./handlers/promotions/spec/paths/updatePromotionProvider.generated.yml
     delete:
       $ref: ./handlers/promotions/spec/paths/deletePromotionProvider.generated.yml
+  /promotions/providers/{promotionProviderId}/repositories:
+    get:
+      $ref: ./handlers/promotions/spec/paths/getPromotionProviderRepositories.generated.yml
   /promotions/connections:
     post:
       $ref: ./handlers/promotions/spec/paths/createPromotionConnection.generated.yml

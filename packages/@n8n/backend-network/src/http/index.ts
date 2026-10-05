@@ -12,7 +12,12 @@ export { binaryToBuffer, streamToBuffer } from './binary-buffer';
 export { binaryToString } from './binary-string';
 export type { UseDefaultSsrfPolicy } from './use-default-ssrf-policy';
 export type { CustomFetch } from './undici/transport';
-export { OutboundHttp, type HttpRequestClient, type HttpTransport } from './outbound-http';
+export {
+	OutboundHttp,
+	type HttpRequestClient,
+	type HttpTransport,
+	type TypedHttpFullResponse,
+} from './outbound-http';
 export { markNonRetryable, retryabilityFromError } from './retryability';
 export {
 	httpStatusFromError,
