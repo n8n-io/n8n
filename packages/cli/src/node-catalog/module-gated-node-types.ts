@@ -1,18 +1,17 @@
 import type { ModuleRegistry } from '@n8n/backend-common';
-import { MODULE_GATED_NODE_TYPES } from '@n8n/constants';
+import {
+	getNodeGatingModule,
+	MODULE_GATED_NODE_TYPES,
+	type NodeGatingModule,
+} from '@n8n/constants';
 
-/** Tells the AI builder why a gated node is unavailable, so it can tell the user. */
-const MODULE_DISABLED_NOTICES: Readonly<Record<string, string>> = {
-	agents:
-		'Agents are disabled on this instance, so this node cannot run. Do not build with it. Tell the user that an instance admin must enable agents first.',
-	'data-table':
-		'Data tables are disabled on this instance, so this node cannot run. Do not build with it. Tell the user that an instance admin must enable data tables first.',
-};
+function isModuleEnabled(moduleRegistry: ModuleRegistry, moduleName: NodeGatingModule): boolean {
+	return moduleRegistry.isActive(moduleName) && !isTurnedOffInSettings(moduleRegistry, moduleName);
+}
 
-function isModuleEnabled(moduleRegistry: ModuleRegistry, moduleName: string): boolean {
-	if (!moduleRegistry.getActiveModules().includes(moduleName)) return false;
-	// An admin can turn agents off in Settings > Agents. The module then reports `enabled: false`.
-	return moduleRegistry.settings.get(moduleName)?.enabled !== false;
+// An admin can turn agents off in Settings > Agents. The module then reports `enabled: false`.
+function isTurnedOffInSettings(moduleRegistry: ModuleRegistry, moduleName: NodeGatingModule) {
+	return moduleRegistry.settings.get(moduleName)?.enabled === false;
 }
 
 /** Module-gated node types whose module is off. Node discovery must not offer them. */
@@ -27,7 +26,12 @@ export function getModuleDisabledNotice(
 	moduleRegistry: ModuleRegistry,
 	nodeType: string,
 ): string | undefined {
-	const moduleName = MODULE_GATED_NODE_TYPES[nodeType];
+	const moduleName = getNodeGatingModule(nodeType);
 	if (!moduleName || isModuleEnabled(moduleRegistry, moduleName)) return undefined;
-	return MODULE_DISABLED_NOTICES[moduleName];
+
+	const fix = moduleRegistry.isActive(moduleName)
+		? `An admin turned "${moduleName}" off in the instance settings.`
+		: `The "${moduleName}" module is disabled on this instance.`;
+
+	return `This node cannot run, so do not build with it. ${fix}`;
 }

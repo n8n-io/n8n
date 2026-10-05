@@ -2113,10 +2113,20 @@ describe('createNodeAdapter', () => {
 
 		let activeModules: string[];
 
+		// Create the adapter before turning modules on: an active agents module also makes
+		// `createContext` wire the Agent Builder delegate, which these tests do not need.
+		const createAdapter = (modules: string[]) => {
+			const adapter = createNodeAdapterForTests(gatedNodes);
+			activeModules = modules;
+			return adapter;
+		};
+
 		beforeEach(() => {
-			activeModules = ['agents'];
+			activeModules = [];
 			const moduleRegistry = Container.get(ModuleRegistry);
-			vi.spyOn(moduleRegistry, 'getActiveModules').mockImplementation(() => activeModules);
+			vi.spyOn(moduleRegistry, 'isActive').mockImplementation((moduleName) =>
+				activeModules.includes(moduleName),
+			);
 			moduleRegistry.settings.delete('agents');
 		});
 
@@ -2126,7 +2136,7 @@ describe('createNodeAdapter', () => {
 		});
 
 		it('offers Message an Agent while agents are enabled', async () => {
-			const adapter = createNodeAdapterForTests(gatedNodes);
+			const adapter = createAdapter(['agents']);
 
 			const searchable = await adapter.listSearchable();
 			const available = await adapter.listAvailable();
@@ -2139,8 +2149,7 @@ describe('createNodeAdapter', () => {
 		});
 
 		it('leaves Message an Agent out of discovery while the agents module is inactive', async () => {
-			activeModules = [];
-			const adapter = createNodeAdapterForTests(gatedNodes);
+			const adapter = createAdapter([]);
 
 			const searchable = await adapter.listSearchable();
 			const available = await adapter.listAvailable();
@@ -2149,18 +2158,28 @@ describe('createNodeAdapter', () => {
 			expect(available.map((n) => n.name)).toEqual(['n8n-nodes-base.set']);
 		});
 
+		it('names the module to enable when the agents module is inactive', async () => {
+			const adapter = createAdapter([]);
+
+			const description = await adapter.getDescription('n8n-nodes-base.messageAnAgent');
+
+			expect(description.unavailable).toMatch(/The "agents" module is disabled on this instance\./);
+		});
+
 		it('says why Message an Agent is unavailable when an admin has turned agents off', async () => {
 			Container.get(ModuleRegistry).settings.set('agents', { enabled: false });
-			const adapter = createNodeAdapterForTests(gatedNodes);
+			const adapter = createAdapter(['agents']);
 
 			const description = await adapter.getDescription('n8n-nodes-base.messageAnAgent');
 			const definition = await adapter.getNodeTypeDefinition?.('n8n-nodes-base.messageAnAgent');
 
-			expect(description.unavailable).toMatch(/^Agents are disabled on this instance/);
+			expect(description.unavailable).toMatch(
+				/An admin turned "agents" off in the instance settings\./,
+			);
 			expect(definition).toEqual(
 				expect.objectContaining({
 					content: 'node-def',
-					unavailable: expect.stringMatching(/^Agents are disabled on this instance/),
+					unavailable: expect.stringMatching(/An admin turned "agents" off/),
 				}),
 			);
 		});

@@ -84,7 +84,7 @@ describe('NodeCatalogService', () => {
 		moduleSettings = new Map();
 		// A plain stub: a deep mock would proxy the settings Map and break `Map#get`.
 		const moduleRegistry = {
-			getActiveModules: () => activeModules,
+			isActive: (moduleName: string) => activeModules.includes(moduleName),
 			settings: moduleSettings,
 		} as unknown as ModuleRegistry;
 

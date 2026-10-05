@@ -408,7 +408,6 @@ export interface NodeDescription extends NodeSummary {
 	polling?: boolean;
 	triggerPanel?: unknown;
 	aiGateway?: AiGatewayNodeMeta;
-	/** Set when the node cannot run on this instance, because the feature it needs is off. */
 	unavailable?: string;
 }
 
