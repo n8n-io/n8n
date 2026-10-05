@@ -13,21 +13,35 @@
 					"Status": "new"
 				}
 			},
-			"responses": [
+			"routes": [
 				{
-					"sheets": [
-						{
-							"properties": {
-								"sheetId": 7,
-								"title": "Leads"
-							}
+					"path": "/1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms",
+					"reply": {
+						"json": {
+							"sheets": [
+								{
+									"properties": {
+										"sheetId": 7,
+										"title": "Leads"
+									}
+								}
+							]
 						}
-					]
+					}
 				},
 				{
-					"values": [["Name", "Status"], ["Ada", "new"]]
+					"path": "/1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms/values/'Leads'",
+					"reply": {
+						"json": {
+							"values": [["Name", "Status"], ["Ada", "new"]]
+						}
+					}
 				},
-				{}
+				{
+					"method": "POST",
+					"path": "/1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms/values/'Leads'!3%3A3:append",
+					"reply": { "json": {} }
+				}
 			],
 			"output": [
 				{

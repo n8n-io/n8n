@@ -400,9 +400,7 @@ describe('publishAction', () => {
 				entryFile: dirs.entry,
 				exportName: 'echo',
 				fixtures: {
-					executions: [
-						{ name: 'echo', params: { text: 'hi' }, responses: [], output: [{ text: 'hi' }] },
-					],
+					executions: [{ name: 'echo', params: { text: 'hi' }, output: [{ text: 'hi' }] }],
 				},
 				registryDir: registry,
 				privateKey,

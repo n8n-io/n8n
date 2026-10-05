@@ -53,7 +53,7 @@
 					}
 				]
 			},
-			"responses": [],
+
 			"output": [
 				{
 					"text": "Order 7 has shipped."

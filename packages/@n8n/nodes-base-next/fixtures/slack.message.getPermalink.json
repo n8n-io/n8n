@@ -2,15 +2,28 @@
 	"executions": [
 		{
 			"name": "permalink",
-			"params": {
-				"channel": "C0OPS",
-				"ts": "1700000000.000100"
+			"params": { "channel": "C0OPS", "ts": "1700000000.000100" },
+			"legacy": {
+				"type": "n8n-nodes-base.slack",
+				"version": 2.7,
+				"parameters": {
+					"authentication": "accessToken",
+					"resource": "message",
+					"operation": "getPermalink",
+					"channelId": { "__rl": true, "mode": "id", "value": "C0OPS" },
+					"timestamp": "1700000000.000100"
+				}
 			},
-			"responses": [
+			"routes": [
 				{
-					"ok": true,
-					"channel": "C0OPS",
-					"permalink": "https://acme.slack.com/archives/C0OPS/p1700000000000100"
+					"path": "/chat.getPermalink",
+					"reply": {
+						"json": {
+							"ok": true,
+							"channel": "C0OPS",
+							"permalink": "https://acme.slack.com/archives/C0OPS/p1700000000000100"
+						}
+					}
 				}
 			],
 			"output": [

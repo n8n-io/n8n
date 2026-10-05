@@ -5,12 +5,18 @@
 			"params": {
 				"name": "Reports"
 			},
-			"responses": [
+			"routes": [
 				{
-					"kind": "drive#file",
-					"id": "1FolderAbCdEfGhIjKlMnOpQrStUvWx",
-					"name": "Reports",
-					"mimeType": "application/vnd.google-apps.folder"
+					"method": "POST",
+					"path": "/drive/v3/files",
+					"reply": {
+						"json": {
+							"kind": "drive#file",
+							"id": "1FolderAbCdEfGhIjKlMnOpQrStUvWx",
+							"name": "Reports",
+							"mimeType": "application/vnd.google-apps.folder"
+						}
+					}
 				}
 			],
 			"output": [

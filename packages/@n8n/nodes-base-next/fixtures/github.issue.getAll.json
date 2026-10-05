@@ -13,90 +13,91 @@
 					"direction": "desc"
 				}
 			},
-			"responses": [
+			"routes": [
 				{
-					"body": [
-						{
-							"id": 1101,
-							"number": 101,
-							"title": "Login returns 500",
-							"state": "open",
-							"html_url": "https://github.com/acme/widgets/issues/101",
-							"body": null,
-							"user": {
-								"login": "ada",
-								"id": 7
+					"path": "/repos/acme/widgets/issues",
+					"reply": {
+						"json": [
+							{
+								"id": 1101,
+								"number": 101,
+								"title": "Login returns 500",
+								"state": "open",
+								"html_url": "https://github.com/acme/widgets/issues/101",
+								"body": null,
+								"user": {
+									"login": "ada",
+									"id": 7
+								},
+								"labels": [
+									{
+										"id": 10,
+										"name": "bug",
+										"color": "d73a4a"
+									}
+								],
+								"assignees": [],
+								"comments": 0,
+								"created_at": "2026-09-01T09:00:00Z",
+								"updated_at": "2026-09-02T09:00:00Z",
+								"closed_at": null,
+								"locked": false,
+								"milestone": null
 							},
-							"labels": [
-								{
-									"id": 10,
-									"name": "bug",
-									"color": "d73a4a"
-								}
-							],
-							"assignees": [],
-							"comments": 0,
-							"created_at": "2026-09-01T09:00:00Z",
-							"updated_at": "2026-09-02T09:00:00Z",
-							"closed_at": null,
-							"locked": false,
-							"milestone": null
-						},
-						{
-							"id": 1104,
-							"number": 104,
-							"title": "Timezone off by one",
-							"state": "open",
-							"html_url": "https://github.com/acme/widgets/issues/104",
-							"body": null,
-							"user": {
-								"login": "ada",
-								"id": 7
+							{
+								"id": 1104,
+								"number": 104,
+								"title": "Timezone off by one",
+								"state": "open",
+								"html_url": "https://github.com/acme/widgets/issues/104",
+								"body": null,
+								"user": {
+									"login": "ada",
+									"id": 7
+								},
+								"labels": [
+									{
+										"id": 10,
+										"name": "bug",
+										"color": "d73a4a"
+									}
+								],
+								"assignees": [],
+								"comments": 0,
+								"created_at": "2026-09-01T09:00:00Z",
+								"updated_at": "2026-09-02T09:00:00Z",
+								"closed_at": null,
+								"locked": false,
+								"milestone": null
 							},
-							"labels": [
-								{
-									"id": 10,
-									"name": "bug",
-									"color": "d73a4a"
-								}
-							],
-							"assignees": [],
-							"comments": 0,
-							"created_at": "2026-09-01T09:00:00Z",
-							"updated_at": "2026-09-02T09:00:00Z",
-							"closed_at": null,
-							"locked": false,
-							"milestone": null
-						},
-						{
-							"id": 1110,
-							"number": 110,
-							"title": "CSV export truncates",
-							"state": "open",
-							"html_url": "https://github.com/acme/widgets/issues/110",
-							"body": null,
-							"user": {
-								"login": "ada",
-								"id": 7
-							},
-							"labels": [
-								{
-									"id": 10,
-									"name": "bug",
-									"color": "d73a4a"
-								}
-							],
-							"assignees": [],
-							"comments": 0,
-							"created_at": "2026-09-01T09:00:00Z",
-							"updated_at": "2026-09-02T09:00:00Z",
-							"closed_at": null,
-							"locked": false,
-							"milestone": null
-						}
-					],
-					"headers": {},
-					"statusCode": 200
+							{
+								"id": 1110,
+								"number": 110,
+								"title": "CSV export truncates",
+								"state": "open",
+								"html_url": "https://github.com/acme/widgets/issues/110",
+								"body": null,
+								"user": {
+									"login": "ada",
+									"id": 7
+								},
+								"labels": [
+									{
+										"id": 10,
+										"name": "bug",
+										"color": "d73a4a"
+									}
+								],
+								"assignees": [],
+								"comments": 0,
+								"created_at": "2026-09-01T09:00:00Z",
+								"updated_at": "2026-09-02T09:00:00Z",
+								"closed_at": null,
+								"locked": false,
+								"milestone": null
+							}
+						]
+					}
 				}
 			],
 			"output": [
@@ -193,103 +194,107 @@
 					"mode": "all"
 				}
 			},
-			"responses": [
+			"routes": [
 				{
-					"body": [
-						{
-							"id": 1101,
-							"number": 101,
-							"title": "Login returns 500",
-							"state": "open",
-							"html_url": "https://github.com/acme/widgets/issues/101",
-							"body": null,
-							"user": {
-								"login": "ada",
-								"id": 7
-							},
-							"labels": [
-								{
-									"id": 10,
-									"name": "bug",
-									"color": "d73a4a"
-								}
-							],
-							"assignees": [],
-							"comments": 0,
-							"created_at": "2026-09-01T09:00:00Z",
-							"updated_at": "2026-09-02T09:00:00Z",
-							"closed_at": null,
-							"locked": false,
-							"milestone": null
+					"path": "/repos/acme/widgets/issues",
+					"reply": {
+						"headers": {
+							"link": "<https://api.github.com/repositories/1/issues?state=open&per_page=100&page=2>; rel=\"next\", <https://api.github.com/repositories/1/issues?state=open&per_page=100&page=2>; rel=\"last\""
 						},
-						{
-							"id": 1105,
-							"number": 105,
-							"title": "Fix login",
-							"state": "open",
-							"html_url": "https://github.com/acme/widgets/issues/105",
-							"body": null,
-							"user": {
-								"login": "ada",
-								"id": 7
+						"json": [
+							{
+								"id": 1101,
+								"number": 101,
+								"title": "Login returns 500",
+								"state": "open",
+								"html_url": "https://github.com/acme/widgets/issues/101",
+								"body": null,
+								"user": {
+									"login": "ada",
+									"id": 7
+								},
+								"labels": [
+									{
+										"id": 10,
+										"name": "bug",
+										"color": "d73a4a"
+									}
+								],
+								"assignees": [],
+								"comments": 0,
+								"created_at": "2026-09-01T09:00:00Z",
+								"updated_at": "2026-09-02T09:00:00Z",
+								"closed_at": null,
+								"locked": false,
+								"milestone": null
 							},
-							"labels": [
-								{
-									"id": 10,
-									"name": "bug",
-									"color": "d73a4a"
-								}
-							],
-							"assignees": [],
-							"comments": 0,
-							"created_at": "2026-09-01T09:00:00Z",
-							"updated_at": "2026-09-02T09:00:00Z",
-							"closed_at": null,
-							"pull_request": {
-								"html_url": "https://github.com/acme/widgets/pull/105"
-							},
-							"locked": false,
-							"milestone": null
-						}
-					],
-					"headers": {
-						"link": "<https://api.github.com/repositories/1/issues?state=open&per_page=100&page=2>; rel=\"next\", <https://api.github.com/repositories/1/issues?state=open&per_page=100&page=2>; rel=\"last\""
-					},
-					"statusCode": 200
+							{
+								"id": 1105,
+								"number": 105,
+								"title": "Fix login",
+								"state": "open",
+								"html_url": "https://github.com/acme/widgets/issues/105",
+								"body": null,
+								"user": {
+									"login": "ada",
+									"id": 7
+								},
+								"labels": [
+									{
+										"id": 10,
+										"name": "bug",
+										"color": "d73a4a"
+									}
+								],
+								"assignees": [],
+								"comments": 0,
+								"created_at": "2026-09-01T09:00:00Z",
+								"updated_at": "2026-09-02T09:00:00Z",
+								"closed_at": null,
+								"pull_request": {
+									"html_url": "https://github.com/acme/widgets/pull/105"
+								},
+								"locked": false,
+								"milestone": null
+							}
+						]
+					}
 				},
 				{
-					"body": [
-						{
-							"id": 1110,
-							"number": 110,
-							"title": "CSV export truncates",
-							"state": "open",
-							"html_url": "https://github.com/acme/widgets/issues/110",
-							"body": null,
-							"user": {
-								"login": "ada",
-								"id": 7
-							},
-							"labels": [
-								{
-									"id": 10,
-									"name": "bug",
-									"color": "d73a4a"
-								}
-							],
-							"assignees": [],
-							"comments": 0,
-							"created_at": "2026-09-01T09:00:00Z",
-							"updated_at": "2026-09-02T09:00:00Z",
-							"closed_at": null,
-							"locked": false,
-							"milestone": null
-						}
-					],
-					"headers": {
-						"link": "<https://api.github.com/repositories/1/issues?state=open&per_page=100&page=1>; rel=\"prev\""
-					},
-					"statusCode": 200
+					"path": "/repositories/1/issues",
+					"reply": {
+						"headers": {
+							"link": "<https://api.github.com/repositories/1/issues?state=open&per_page=100&page=1>; rel=\"prev\""
+						},
+						"json": [
+							{
+								"id": 1110,
+								"number": 110,
+								"title": "CSV export truncates",
+								"state": "open",
+								"html_url": "https://github.com/acme/widgets/issues/110",
+								"body": null,
+								"user": {
+									"login": "ada",
+									"id": 7
+								},
+								"labels": [
+									{
+										"id": 10,
+										"name": "bug",
+										"color": "d73a4a"
+									}
+								],
+								"assignees": [],
+								"comments": 0,
+								"created_at": "2026-09-01T09:00:00Z",
+								"updated_at": "2026-09-02T09:00:00Z",
+								"closed_at": null,
+								"locked": false,
+								"milestone": null
+							}
+						]
+					}
 				}
 			],
 			"output": [
@@ -357,13 +362,7 @@
 				"owner": "acme",
 				"repository": "widgets"
 			},
-			"responses": [
-				{
-					"body": [],
-					"headers": {},
-					"statusCode": 200
-				}
-			],
+			"routes": [{ "path": "/repos/acme/widgets/issues", "reply": { "json": [] } }],
 			"output": [],
 			"credential": {
 				"server": "https://api.github.com"

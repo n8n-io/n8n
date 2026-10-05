@@ -2,18 +2,19 @@
 	"executions": [
 		{
 			"name": "a person",
-			"params": {
-				"user": "6794760a-1f15-45cd-9c65-0dfe42f5135a"
-			},
-			"responses": [
+			"params": { "user": "6794760a-1f15-45cd-9c65-0dfe42f5135a" },
+			"routes": [
 				{
-					"object": "user",
-					"id": "6794760a-1f15-45cd-9c65-0dfe42f5135a",
-					"type": "person",
-					"name": "Ada",
-					"avatar_url": null,
-					"person": {
-						"email": "ada@example.com"
+					"path": "/users/6794760a-1f15-45cd-9c65-0dfe42f5135a",
+					"reply": {
+						"json": {
+							"object": "user",
+							"id": "6794760a-1f15-45cd-9c65-0dfe42f5135a",
+							"type": "person",
+							"name": "Ada",
+							"avatar_url": null,
+							"person": { "email": "ada@example.com" }
+						}
 					}
 				}
 			],
@@ -24,9 +25,7 @@
 					"type": "person",
 					"name": "Ada",
 					"avatar_url": null,
-					"person": {
-						"email": "ada@example.com"
-					}
+					"person": { "email": "ada@example.com" }
 				}
 			]
 		}

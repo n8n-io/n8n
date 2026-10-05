@@ -2,49 +2,44 @@
 	"executions": [
 		{
 			"name": "two pages",
-			"params": {
-				"paging": {
-					"mode": "all"
-				}
-			},
-			"responses": [
+			"params": { "paging": { "mode": "all" } },
+			"routes": [
 				{
-					"ok": true,
-					"channels": [
-						{
-							"id": "C0GENERAL1",
-							"name": "general",
-							"is_channel": true,
-							"is_private": false,
-							"is_archived": false,
-							"is_member": true,
-							"created": 1700000000,
-							"creator": "U01",
-							"topic": {
-								"value": "Company news"
-							},
-							"purpose": {
-								"value": "Everyone"
-							},
-							"num_members": 42
+					"path": "/conversations.list",
+					"times": 1,
+					"reply": {
+						"json": {
+							"ok": true,
+							"channels": [
+								{
+									"id": "C0GENERAL1",
+									"name": "general",
+									"is_channel": true,
+									"is_private": false,
+									"is_archived": false,
+									"is_member": true,
+									"created": 1700000000,
+									"creator": "U01",
+									"topic": { "value": "Company news" },
+									"purpose": { "value": "Everyone" },
+									"num_members": 42
+								}
+							],
+							"response_metadata": { "next_cursor": "c2" }
 						}
-					],
-					"response_metadata": {
-						"next_cursor": "c2"
 					}
 				},
 				{
-					"ok": true,
-					"channels": [
-						{
-							"id": "C0RANDOM01",
-							"name": "random",
-							"is_channel": true,
-							"is_private": false
+					"path": "/conversations.list",
+					"times": 1,
+					"reply": {
+						"json": {
+							"ok": true,
+							"channels": [
+								{ "id": "C0RANDOM01", "name": "random", "is_channel": true, "is_private": false }
+							],
+							"response_metadata": { "next_cursor": "" }
 						}
-					],
-					"response_metadata": {
-						"next_cursor": ""
 					}
 				}
 			],
@@ -58,20 +53,64 @@
 					"is_member": true,
 					"created": 1700000000,
 					"creator": "U01",
-					"topic": {
-						"value": "Company news"
-					},
-					"purpose": {
-						"value": "Everyone"
-					},
+					"topic": { "value": "Company news" },
+					"purpose": { "value": "Everyone" },
 					"num_members": 42
 				},
-				{
-					"id": "C0RANDOM01",
-					"name": "random",
-					"is_channel": true,
-					"is_private": false
+				{ "id": "C0RANDOM01", "name": "random", "is_channel": true, "is_private": false }
+			]
+		},
+		{
+			"name": "first page up to the limit, with filters",
+			"params": {
+				"types": ["public_channel", "private_channel"],
+				"excludeArchived": true,
+				"paging": { "mode": "limit", "max": 2 }
+			},
+			"legacy": {
+				"type": "n8n-nodes-base.slack",
+				"version": 2.7,
+				"parameters": {
+					"authentication": "accessToken",
+					"resource": "channel",
+					"operation": "getAll",
+					"returnAll": false,
+					"limit": 2,
+					"filters": { "types": ["public_channel", "private_channel"], "excludeArchived": true }
 				}
+			},
+			"routes": [
+				{
+					"path": "/conversations.list",
+					"reply": {
+						"json": {
+							"ok": true,
+							"channels": [
+								{
+									"id": "C0GENERAL1",
+									"name": "general",
+									"is_channel": true,
+									"is_private": false,
+									"is_member": true,
+									"topic": { "value": "News" }
+								},
+								{ "id": "C0RANDOM01", "name": "random" }
+							],
+							"response_metadata": { "next_cursor": "c2" }
+						}
+					}
+				}
+			],
+			"output": [
+				{
+					"id": "C0GENERAL1",
+					"name": "general",
+					"is_channel": true,
+					"is_private": false,
+					"is_member": true,
+					"topic": { "value": "News" }
+				},
+				{ "id": "C0RANDOM01", "name": "random" }
 			]
 		}
 	]

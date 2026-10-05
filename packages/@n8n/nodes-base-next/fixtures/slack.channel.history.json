@@ -3,25 +3,76 @@
 		{
 			"name": "newest messages up to the limit",
 			"params": { "channel": "C0GENERAL1", "paging": { "mode": "limit", "max": 2 } },
-			"responses": [
+			"routes": [
 				{
-					"ok": true,
-					"messages": [
-						{ "type": "message", "user": "U01", "text": "Deploy done", "ts": "1700000200.000100" },
-						{
-							"type": "message",
-							"user": "U02",
-							"text": "Starting deploy",
-							"ts": "1700000100.000100"
+					"path": "/conversations.history",
+					"reply": {
+						"json": {
+							"ok": true,
+							"messages": [
+								{
+									"type": "message",
+									"user": "U01",
+									"text": "Deploy done",
+									"ts": "1700000200.000100"
+								},
+								{
+									"type": "message",
+									"user": "U02",
+									"text": "Starting deploy",
+									"ts": "1700000100.000100"
+								}
+							],
+							"has_more": true,
+							"response_metadata": { "next_cursor": "bmV4dA==" }
 						}
-					],
-					"has_more": true,
-					"response_metadata": { "next_cursor": "bmV4dA==" }
+					}
 				}
 			],
 			"output": [
 				{ "type": "message", "user": "U01", "text": "Deploy done", "ts": "1700000200.000100" },
 				{ "type": "message", "user": "U02", "text": "Starting deploy", "ts": "1700000100.000100" }
+			]
+		},
+		{
+			"name": "messages after a date, newest first",
+			"params": {
+				"channel": "C0GENERAL1",
+				"paging": { "mode": "limit", "max": 10 },
+				"filters": { "oldest": "2023-11-14T00:00:00.000Z", "inclusive": true }
+			},
+			"legacy": {
+				"type": "n8n-nodes-base.slack",
+				"version": 2.7,
+				"parameters": {
+					"authentication": "accessToken",
+					"resource": "channel",
+					"operation": "history",
+					"channelId": { "__rl": true, "mode": "id", "value": "C0GENERAL1" },
+					"returnAll": false,
+					"limit": 10,
+					"filters": { "oldest": "2023-11-14T00:00:00.000Z", "inclusive": true }
+				}
+			},
+			"routes": [
+				{
+					"path": "/conversations.history",
+					"reply": {
+						"json": {
+							"ok": true,
+							"messages": [
+								{ "type": "message", "user": "U01", "text": "older", "ts": "1700000100.000100" },
+								{ "type": "message", "user": "U01", "text": "newer", "ts": "1700000200.000100" }
+							],
+							"has_more": false,
+							"response_metadata": { "next_cursor": "" }
+						}
+					}
+				}
+			],
+			"output": [
+				{ "type": "message", "user": "U01", "text": "newer", "ts": "1700000200.000100" },
+				{ "type": "message", "user": "U01", "text": "older", "ts": "1700000100.000100" }
 			]
 		}
 	]

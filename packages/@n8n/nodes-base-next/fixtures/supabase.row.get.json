@@ -8,13 +8,18 @@
 					"id": 3
 				}
 			},
-			"responses": [
-				[
-					{
-						"id": 3,
-						"plan": "free"
+			"routes": [
+				{
+					"path": "/rest/v1/customers",
+					"reply": {
+						"json": [
+							{
+								"id": 3,
+								"plan": "free"
+							}
+						]
 					}
-				]
+				}
 			],
 			"output": [
 				{

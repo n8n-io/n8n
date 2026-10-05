@@ -27,6 +27,7 @@ export {
 	type ContractDiff,
 	type ContractFixtures,
 	type ExecutionFixture,
+	type LegacyFixture,
 	type MigrationFixture,
 	type NodeContractLock,
 	type NodeContractsPolicy,

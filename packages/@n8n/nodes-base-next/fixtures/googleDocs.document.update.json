@@ -9,28 +9,39 @@
 					"markdown": "## More\n- Q3"
 				}
 			},
-			"responses": [
+			"routes": [
 				{
-					"documentId": "1QuestionsDocAbCdEfGhIjKlMnOpQrStUv",
-					"body": {
-						"content": [
-							{
-								"endIndex": 1,
-								"sectionBreak": {}
-							},
-							{
-								"startIndex": 1,
-								"endIndex": 20,
-								"paragraph": {
-									"elements": []
-								}
+					"path": "/documents/1QuestionsDocAbCdEfGhIjKlMnOpQrStUv",
+					"reply": {
+						"json": {
+							"documentId": "1QuestionsDocAbCdEfGhIjKlMnOpQrStUv",
+							"body": {
+								"content": [
+									{
+										"endIndex": 1,
+										"sectionBreak": {}
+									},
+									{
+										"startIndex": 1,
+										"endIndex": 20,
+										"paragraph": {
+											"elements": []
+										}
+									}
+								]
 							}
-						]
+						}
 					}
 				},
 				{
-					"documentId": "1QuestionsDocAbCdEfGhIjKlMnOpQrStUv",
-					"replies": []
+					"method": "POST",
+					"path": "/documents/1QuestionsDocAbCdEfGhIjKlMnOpQrStUv:batchUpdate",
+					"reply": {
+						"json": {
+							"documentId": "1QuestionsDocAbCdEfGhIjKlMnOpQrStUv",
+							"replies": []
+						}
+					}
 				}
 			],
 			"output": [
@@ -49,10 +60,16 @@
 					"text": "Done."
 				}
 			},
-			"responses": [
+			"routes": [
 				{
-					"documentId": "1QuestionsDocAbCdEfGhIjKlMnOpQrStUv",
-					"replies": []
+					"method": "POST",
+					"path": "/documents/1QuestionsDocAbCdEfGhIjKlMnOpQrStUv:batchUpdate",
+					"reply": {
+						"json": {
+							"documentId": "1QuestionsDocAbCdEfGhIjKlMnOpQrStUv",
+							"replies": []
+						}
+					}
 				}
 			],
 			"output": [

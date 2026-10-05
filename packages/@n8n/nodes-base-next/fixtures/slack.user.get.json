@@ -2,26 +2,36 @@
 	"executions": [
 		{
 			"name": "by id",
-			"params": {
-				"user": {
-					"by": "id",
-					"id": "U0ADA"
+			"params": { "user": { "by": "id", "id": "U0ADA" } },
+			"legacy": {
+				"type": "n8n-nodes-base.slack",
+				"version": 2.7,
+				"parameters": {
+					"authentication": "accessToken",
+					"resource": "user",
+					"operation": "info",
+					"user": { "__rl": true, "mode": "id", "value": "U0ADA" }
 				}
 			},
-			"responses": [
+			"routes": [
 				{
-					"ok": true,
-					"user": {
-						"id": "U0ADA",
-						"name": "ada",
-						"real_name": "Ada Lovelace",
-						"deleted": false,
-						"is_bot": false,
-						"tz": "Europe/London",
-						"profile": {
-							"email": "ada@example.com",
-							"display_name": "ada",
-							"real_name": "Ada Lovelace"
+					"path": "/users.info",
+					"reply": {
+						"json": {
+							"ok": true,
+							"user": {
+								"id": "U0ADA",
+								"name": "ada",
+								"real_name": "Ada Lovelace",
+								"deleted": false,
+								"is_bot": false,
+								"tz": "Europe/London",
+								"profile": {
+									"email": "ada@example.com",
+									"display_name": "ada",
+									"real_name": "Ada Lovelace"
+								}
+							}
 						}
 					}
 				}
@@ -44,26 +54,36 @@
 		},
 		{
 			"name": "by email",
-			"params": {
-				"user": {
-					"by": "email",
+			"params": { "user": { "by": "email", "email": "ada@example.com" } },
+			"legacy": {
+				"type": "n8n-nodes-base.slack",
+				"version": 2.7,
+				"parameters": {
+					"authentication": "accessToken",
+					"resource": "user",
+					"operation": "lookupByEmail",
 					"email": "ada@example.com"
 				}
 			},
-			"responses": [
+			"routes": [
 				{
-					"ok": true,
-					"user": {
-						"id": "U0ADA",
-						"name": "ada",
-						"real_name": "Ada Lovelace",
-						"deleted": false,
-						"is_bot": false,
-						"tz": "Europe/London",
-						"profile": {
-							"email": "ada@example.com",
-							"display_name": "ada",
-							"real_name": "Ada Lovelace"
+					"path": "/users.lookupByEmail",
+					"reply": {
+						"json": {
+							"ok": true,
+							"user": {
+								"id": "U0ADA",
+								"name": "ada",
+								"real_name": "Ada Lovelace",
+								"deleted": false,
+								"is_bot": false,
+								"tz": "Europe/London",
+								"profile": {
+									"email": "ada@example.com",
+									"display_name": "ada",
+									"real_name": "Ada Lovelace"
+								}
+							}
 						}
 					}
 				}

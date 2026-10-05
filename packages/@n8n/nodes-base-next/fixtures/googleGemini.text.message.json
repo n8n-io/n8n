@@ -11,25 +11,31 @@
 					}
 				]
 			},
-			"responses": [
+			"routes": [
 				{
-					"candidates": [
-						{
-							"content": {
-								"parts": [
-									{
-										"text": "Hello"
+					"method": "POST",
+					"path": "/models/gemini-2.5-flash:generateContent",
+					"reply": {
+						"json": {
+							"candidates": [
+								{
+									"content": {
+										"parts": [
+											{
+												"text": "Hello"
+											},
+											{
+												"text": " there"
+											}
+										],
+										"role": "model"
 									},
-									{
-										"text": " there"
-									}
-								],
-								"role": "model"
-							},
-							"finishReason": "STOP",
-							"index": 0
+									"finishReason": "STOP",
+									"index": 0
+								}
+							]
 						}
-					]
+					}
 				}
 			],
 			"output": [

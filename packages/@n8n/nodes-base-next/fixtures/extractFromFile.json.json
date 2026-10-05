@@ -12,7 +12,7 @@
 					"fileName": "orders.json"
 				}
 			},
-			"responses": [],
+
 			"imports": [
 				{
 					"orders": [
@@ -48,7 +48,7 @@
 					"fileName": "empty.json"
 				}
 			},
-			"responses": [],
+
 			"imports": [{}],
 			"output": [
 				{

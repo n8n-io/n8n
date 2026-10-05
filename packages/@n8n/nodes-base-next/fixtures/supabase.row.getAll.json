@@ -19,17 +19,22 @@
 					"max": 2
 				}
 			},
-			"responses": [
-				[
-					{
-						"id": 1,
-						"plan": "free"
-					},
-					{
-						"id": 2,
-						"plan": "free"
+			"routes": [
+				{
+					"path": "/rest/v1/customers",
+					"reply": {
+						"json": [
+							{
+								"id": 1,
+								"plan": "free"
+							},
+							{
+								"id": 2,
+								"plan": "free"
+							}
+						]
 					}
-				]
+				}
 			],
 			"output": [
 				{

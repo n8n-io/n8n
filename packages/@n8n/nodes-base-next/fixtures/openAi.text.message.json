@@ -7,21 +7,27 @@
 				"prompt": "Translate to German: Hello",
 				"system": "Reply with the translation only"
 			},
-			"responses": [
+			"routes": [
 				{
-					"choices": [
-						{
-							"index": 0,
-							"message": {
-								"role": "assistant",
-								"content": "Hallo"
-							},
-							"finish_reason": "stop"
+					"method": "POST",
+					"path": "/chat/completions",
+					"reply": {
+						"json": {
+							"choices": [
+								{
+									"index": 0,
+									"message": {
+										"role": "assistant",
+										"content": "Hallo"
+									},
+									"finish_reason": "stop"
+								}
+							],
+							"usage": {
+								"prompt_tokens": 5,
+								"completion_tokens": 1
+							}
 						}
-					],
-					"usage": {
-						"prompt_tokens": 5,
-						"completion_tokens": 1
 					}
 				}
 			],
@@ -46,21 +52,27 @@
 					"required": ["label"]
 				}
 			},
-			"responses": [
+			"routes": [
 				{
-					"choices": [
-						{
-							"index": 0,
-							"message": {
-								"role": "assistant",
-								"content": "{\"label\":\"complaint\"}"
-							},
-							"finish_reason": "stop"
+					"method": "POST",
+					"path": "/chat/completions",
+					"reply": {
+						"json": {
+							"choices": [
+								{
+									"index": 0,
+									"message": {
+										"role": "assistant",
+										"content": "{\"label\":\"complaint\"}"
+									},
+									"finish_reason": "stop"
+								}
+							],
+							"usage": {
+								"prompt_tokens": 5,
+								"completion_tokens": 1
+							}
 						}
-					],
-					"usage": {
-						"prompt_tokens": 5,
-						"completion_tokens": 1
 					}
 				}
 			],

@@ -4,7 +4,7 @@
 			"name": "emits the state of the next pass",
 			"params": { "state": { "n": 2, "Count pass": 1 } },
 			"items": [{ "n": 1 }],
-			"responses": [],
+
 			"output": [{ "n": 2, "Count pass": 1 }]
 		}
 	]

@@ -12,7 +12,7 @@
 					"fileName": "plans.csv"
 				}
 			},
-			"responses": [],
+
 			"imports": [
 				[
 					{
@@ -48,7 +48,7 @@
 					"fileName": "notes.csv"
 				}
 			},
-			"responses": [],
+
 			"imports": [[["id", "note"], ["1", ""], ["2", "late"]]],
 			"output": [
 				{

@@ -8,15 +8,20 @@
 					"page": "1"
 				}
 			},
-			"responses": [
-				[
-					{
-						"id": 1
-					},
-					{
-						"id": 2
+			"routes": [
+				{
+					"path": "/items",
+					"reply": {
+						"json": [
+							{
+								"id": 1
+							},
+							{
+								"id": 2
+							}
+						]
 					}
-				]
+				}
 			],
 			"output": [
 				{
@@ -41,33 +46,37 @@
 					"more": "={{ $response.body.has_more }}"
 				}
 			},
-			"responses": [
+			"routes": [
 				{
-					"body": {
-						"data": [
-							{
-								"id": "cus_1"
-							},
-							{
-								"id": "cus_2"
-							}
-						],
-						"has_more": true
-					},
-					"headers": {},
-					"statusCode": 200
+					"path": "/v1/customers",
+					"times": 1,
+					"reply": {
+						"json": {
+							"data": [
+								{
+									"id": "cus_1"
+								},
+								{
+									"id": "cus_2"
+								}
+							],
+							"has_more": true
+						}
+					}
 				},
 				{
-					"body": {
-						"data": [
-							{
-								"id": "cus_3"
-							}
-						],
-						"has_more": false
-					},
-					"headers": {},
-					"statusCode": 200
+					"path": "/v1/customers",
+					"times": 1,
+					"reply": {
+						"json": {
+							"data": [
+								{
+									"id": "cus_3"
+								}
+							],
+							"has_more": false
+						}
+					}
 				}
 			],
 			"output": [

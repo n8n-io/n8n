@@ -25,24 +25,30 @@
 					]
 				}
 			],
-			"responses": [
+			"routes": [
 				{
-					"id": "chatcmpl-1",
-					"object": "chat.completion",
-					"choices": [
-						{
-							"index": 0,
-							"message": {
-								"role": "assistant",
-								"content": "Hello!"
-							},
-							"finish_reason": "stop"
+					"method": "POST",
+					"path": "/chat/completions",
+					"reply": {
+						"json": {
+							"id": "chatcmpl-1",
+							"object": "chat.completion",
+							"choices": [
+								{
+									"index": 0,
+									"message": {
+										"role": "assistant",
+										"content": "Hello!"
+									},
+									"finish_reason": "stop"
+								}
+							],
+							"usage": {
+								"prompt_tokens": 9,
+								"completion_tokens": 2,
+								"total_tokens": 11
+							}
 						}
-					],
-					"usage": {
-						"prompt_tokens": 9,
-						"completion_tokens": 2,
-						"total_tokens": 11
 					}
 				}
 			],
@@ -92,28 +98,34 @@
 					]
 				}
 			],
-			"responses": [
+			"routes": [
 				{
-					"choices": [
-						{
-							"index": 0,
-							"message": {
-								"role": "assistant",
-								"content": null,
-								"tool_calls": [
-									{
-										"id": "call_1",
-										"type": "function",
-										"function": {
-											"name": "order",
-											"arguments": "{\"id\":7}"
-										}
-									}
-								]
-							},
-							"finish_reason": "tool_calls"
+					"method": "POST",
+					"path": "/chat/completions",
+					"reply": {
+						"json": {
+							"choices": [
+								{
+									"index": 0,
+									"message": {
+										"role": "assistant",
+										"content": null,
+										"tool_calls": [
+											{
+												"id": "call_1",
+												"type": "function",
+												"function": {
+													"name": "order",
+													"arguments": "{\"id\":7}"
+												}
+											}
+										]
+									},
+									"finish_reason": "tool_calls"
+								}
+							]
 						}
-					]
+					}
 				}
 			],
 			"output": [

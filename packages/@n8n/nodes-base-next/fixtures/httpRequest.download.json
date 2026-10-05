@@ -5,11 +5,16 @@
 			"params": {
 				"url": "https://files.test/reports/q3.csv"
 			},
-			"responses": [
+			"routes": [
 				{
-					"data": "aWQsdG90YWwKMSw0Mgo=",
-					"mimeType": "text/csv",
-					"fileName": "q3.csv"
+					"path": "/reports/q3.csv",
+					"reply": {
+						"binary": {
+							"data": "aWQsdG90YWwKMSw0Mgo=",
+							"mimeType": "text/csv",
+							"fileName": "q3.csv"
+						}
+					}
 				}
 			],
 			"output": [{}],

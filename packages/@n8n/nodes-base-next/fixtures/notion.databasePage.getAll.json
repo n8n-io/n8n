@@ -10,82 +10,54 @@
 						{
 							"property": "Status",
 							"type": "status",
-							"condition": {
-								"op": "equals",
-								"value": "Done"
-							}
+							"condition": { "op": "equals", "value": "Done" }
 						}
 					]
 				}
 			},
-			"responses": [
+			"routes": [
 				{
-					"data_sources": [
-						{
-							"id": "ds-1"
-						}
-					]
+					"path": "/databases/5b9e2c1d0a7f4c3e9d217f6a8b9c0d1e",
+					"reply": { "json": { "data_sources": [{ "id": "ds-1" }] } }
 				},
 				{
-					"results": [
-						{
-							"object": "page",
-							"id": "2a3b4c5d-6e7f-4081-8293-000000000001",
-							"url": "https://www.notion.so/p1",
-							"parent": {
-								"type": "data_source_id",
-								"data_source_id": "ds"
-							},
-							"properties": {
-								"Name": {
-									"id": "title",
-									"type": "title",
-									"title": [
-										{
-											"type": "text",
-											"plain_text": "Launch v2"
-										}
-									]
+					"method": "POST",
+					"path": "/data_sources/ds-1/query",
+					"reply": {
+						"json": {
+							"results": [
+								{
+									"object": "page",
+									"id": "2a3b4c5d-6e7f-4081-8293-000000000001",
+									"url": "https://www.notion.so/p1",
+									"parent": { "type": "data_source_id", "data_source_id": "ds" },
+									"properties": {
+										"Name": {
+											"id": "title",
+											"type": "title",
+											"title": [{ "type": "text", "plain_text": "Launch v2" }]
+										},
+										"Status": { "id": "s", "type": "status", "status": { "name": "Done" } }
+									}
 								},
-								"Status": {
-									"id": "s",
-									"type": "status",
-									"status": {
-										"name": "Done"
+								{
+									"object": "page",
+									"id": "2a3b4c5d-6e7f-4081-8293-000000000002",
+									"url": "https://www.notion.so/p2",
+									"parent": { "type": "data_source_id", "data_source_id": "ds" },
+									"properties": {
+										"Name": {
+											"id": "title",
+											"type": "title",
+											"title": [{ "type": "text", "plain_text": "Launch v2" }]
+										},
+										"Status": { "id": "s", "type": "status", "status": { "name": "Done" } }
 									}
 								}
-							}
-						},
-						{
-							"object": "page",
-							"id": "2a3b4c5d-6e7f-4081-8293-000000000002",
-							"url": "https://www.notion.so/p2",
-							"parent": {
-								"type": "data_source_id",
-								"data_source_id": "ds"
-							},
-							"properties": {
-								"Name": {
-									"id": "title",
-									"type": "title",
-									"title": [
-										{
-											"type": "text",
-											"plain_text": "Launch v2"
-										}
-									]
-								},
-								"Status": {
-									"id": "s",
-									"type": "status",
-									"status": {
-										"name": "Done"
-									}
-								}
-							}
+							],
+							"next_cursor": null
 						}
-					],
-					"next_cursor": null
+					}
 				}
 			],
 			"output": [
@@ -102,6 +74,424 @@
 					"url": "https://www.notion.so/p2",
 					"property_name": "Launch v2",
 					"property_status": "Done"
+				}
+			]
+		},
+		{
+			"name": "filters, sort and limit over two pages",
+			"params": {
+				"database": "2a3b4c5d6e7f40818293a4b5c6d7e8f9",
+				"where": {
+					"match": "all",
+					"conditions": [
+						{
+							"property": "Status",
+							"type": "status",
+							"condition": { "op": "equals", "value": "Done" }
+						},
+						{
+							"property": "Story Points",
+							"type": "number",
+							"condition": { "op": "greater_than", "value": 2 }
+						},
+						{
+							"property": "Due",
+							"type": "date",
+							"condition": { "op": "on_or_after", "value": "2026-09-01" }
+						}
+					]
+				},
+				"limit": 3,
+				"sort": [{ "by": "property", "property": "Name", "direction": "ascending" }]
+			},
+			"legacy": {
+				"type": "n8n-nodes-base.notion",
+				"version": 3,
+				"parameters": {
+					"resource": "databasePage",
+					"operation": "getAll",
+					"dataSourceId": {
+						"__rl": true,
+						"mode": "id",
+						"value": "2a3b4c5d6e7f40818293a4b5c6d7e8f9"
+					},
+					"returnAll": false,
+					"limit": 3,
+					"filterType": "manual",
+					"matchType": "allFilters",
+					"filters": {
+						"conditions": [
+							{ "key": "Status|status", "condition": "equals", "optionValue": "Done" },
+							{ "key": "Story Points|number", "condition": "greater_than", "numberValue": 2 },
+							{ "key": "Due|date", "condition": "on_or_after", "dateValue": "2026-09-01" }
+						]
+					},
+					"simple": true,
+					"options": {
+						"sort": {
+							"sortValue": [{ "timestamp": false, "key": "Name|title", "direction": "ascending" }]
+						}
+					}
+				}
+			},
+			"routes": [
+				{
+					"path": "/v1/databases/2a3b4c5d6e7f40818293a4b5c6d7e8f9",
+					"reply": {
+						"json": {
+							"object": "database",
+							"data_sources": [{ "id": "2a3b4c5d6e7f40818293a4b5c6d7e8f9" }]
+						}
+					}
+				},
+				{
+					"method": "POST",
+					"path": "/v1/data_sources/2a3b4c5d6e7f40818293a4b5c6d7e8f9/query",
+					"times": 1,
+					"reply": {
+						"json": {
+							"results": [
+								{
+									"object": "page",
+									"id": "2a3b4c5d-6e7f-4081-8293-000000000001",
+									"url": "https://www.notion.so/1",
+									"parent": {
+										"type": "data_source_id",
+										"data_source_id": "2a3b4c5d6e7f40818293a4b5c6d7e8f9"
+									},
+									"properties": {
+										"Name": {
+											"id": "title",
+											"type": "title",
+											"title": [{ "type": "text", "plain_text": "One" }]
+										},
+										"Status": { "id": "s", "type": "status", "status": { "name": "Done" } },
+										"Notes": {
+											"id": "r",
+											"type": "rich_text",
+											"rich_text": [
+												{ "type": "text", "plain_text": "Ask " },
+												{ "type": "mention", "plain_text": "@Ada" }
+											]
+										},
+										"Due": {
+											"id": "d",
+											"type": "date",
+											"date": { "start": "2026-09-03", "end": null, "time_zone": null }
+										},
+										"Owners": {
+											"id": "o",
+											"type": "people",
+											"people": [{ "object": "user", "person": { "email": "a@x.io" } }]
+										},
+										"Story Points": { "id": "n", "type": "number", "number": 3 },
+										"Tags": {
+											"id": "t",
+											"type": "multi_select",
+											"multi_select": [{ "name": "web" }]
+										},
+										"Priority": { "id": "p", "type": "select", "select": null },
+										"Done": { "id": "c", "type": "checkbox", "checkbox": true },
+										"Link": { "id": "u", "type": "url", "url": null },
+										"Related": { "id": "l", "type": "relation", "relation": [{ "id": "rel-1" }] },
+										"Score": {
+											"id": "f",
+											"type": "formula",
+											"formula": { "type": "number", "number": 7 }
+										},
+										"Total": {
+											"id": "x",
+											"type": "rollup",
+											"rollup": { "type": "number", "number": 9, "function": "count" }
+										},
+										"Files": {
+											"id": "i",
+											"type": "files",
+											"files": [
+												{
+													"name": "a.pdf",
+													"type": "file",
+													"file": { "url": "https://files.example/a.pdf" }
+												}
+											]
+										}
+									}
+								},
+								{
+									"object": "page",
+									"id": "2a3b4c5d-6e7f-4081-8293-000000000002",
+									"url": "https://www.notion.so/2",
+									"parent": {
+										"type": "data_source_id",
+										"data_source_id": "2a3b4c5d6e7f40818293a4b5c6d7e8f9"
+									},
+									"properties": {
+										"Name": {
+											"id": "title",
+											"type": "title",
+											"title": [{ "type": "text", "plain_text": "Two" }]
+										},
+										"Status": { "id": "s", "type": "status", "status": { "name": "Done" } },
+										"Notes": {
+											"id": "r",
+											"type": "rich_text",
+											"rich_text": [
+												{ "type": "text", "plain_text": "Ask " },
+												{ "type": "mention", "plain_text": "@Ada" }
+											]
+										},
+										"Due": {
+											"id": "d",
+											"type": "date",
+											"date": { "start": "2026-09-03", "end": null, "time_zone": null }
+										},
+										"Owners": {
+											"id": "o",
+											"type": "people",
+											"people": [{ "object": "user", "person": { "email": "a@x.io" } }]
+										},
+										"Story Points": { "id": "n", "type": "number", "number": 3 },
+										"Tags": {
+											"id": "t",
+											"type": "multi_select",
+											"multi_select": [{ "name": "web" }]
+										},
+										"Priority": { "id": "p", "type": "select", "select": null },
+										"Done": { "id": "c", "type": "checkbox", "checkbox": true },
+										"Link": { "id": "u", "type": "url", "url": null },
+										"Related": { "id": "l", "type": "relation", "relation": [{ "id": "rel-1" }] },
+										"Score": {
+											"id": "f",
+											"type": "formula",
+											"formula": { "type": "number", "number": 7 }
+										},
+										"Total": {
+											"id": "x",
+											"type": "rollup",
+											"rollup": { "type": "number", "number": 9, "function": "count" }
+										},
+										"Files": {
+											"id": "i",
+											"type": "files",
+											"files": [
+												{
+													"name": "a.pdf",
+													"type": "file",
+													"file": { "url": "https://files.example/a.pdf" }
+												}
+											]
+										}
+									}
+								}
+							],
+							"next_cursor": "cursor-2",
+							"has_more": true
+						}
+					}
+				},
+				{
+					"method": "POST",
+					"path": "/v1/data_sources/2a3b4c5d6e7f40818293a4b5c6d7e8f9/query",
+					"times": 1,
+					"reply": {
+						"json": {
+							"results": [
+								{
+									"object": "page",
+									"id": "2a3b4c5d-6e7f-4081-8293-000000000003",
+									"url": "https://www.notion.so/3",
+									"parent": {
+										"type": "data_source_id",
+										"data_source_id": "2a3b4c5d6e7f40818293a4b5c6d7e8f9"
+									},
+									"properties": {
+										"Name": {
+											"id": "title",
+											"type": "title",
+											"title": [{ "type": "text", "plain_text": "Three" }]
+										},
+										"Status": { "id": "s", "type": "status", "status": { "name": "Done" } },
+										"Notes": {
+											"id": "r",
+											"type": "rich_text",
+											"rich_text": [
+												{ "type": "text", "plain_text": "Ask " },
+												{ "type": "mention", "plain_text": "@Ada" }
+											]
+										},
+										"Due": {
+											"id": "d",
+											"type": "date",
+											"date": { "start": "2026-09-03", "end": null, "time_zone": null }
+										},
+										"Owners": {
+											"id": "o",
+											"type": "people",
+											"people": [{ "object": "user", "person": { "email": "a@x.io" } }]
+										},
+										"Story Points": { "id": "n", "type": "number", "number": 3 },
+										"Tags": {
+											"id": "t",
+											"type": "multi_select",
+											"multi_select": [{ "name": "web" }]
+										},
+										"Priority": { "id": "p", "type": "select", "select": null },
+										"Done": { "id": "c", "type": "checkbox", "checkbox": true },
+										"Link": { "id": "u", "type": "url", "url": null },
+										"Related": { "id": "l", "type": "relation", "relation": [{ "id": "rel-1" }] },
+										"Score": {
+											"id": "f",
+											"type": "formula",
+											"formula": { "type": "number", "number": 7 }
+										},
+										"Total": {
+											"id": "x",
+											"type": "rollup",
+											"rollup": { "type": "number", "number": 9, "function": "count" }
+										},
+										"Files": {
+											"id": "i",
+											"type": "files",
+											"files": [
+												{
+													"name": "a.pdf",
+													"type": "file",
+													"file": { "url": "https://files.example/a.pdf" }
+												}
+											]
+										}
+									}
+								},
+								{
+									"object": "page",
+									"id": "2a3b4c5d-6e7f-4081-8293-000000000004",
+									"url": "https://www.notion.so/4",
+									"parent": {
+										"type": "data_source_id",
+										"data_source_id": "2a3b4c5d6e7f40818293a4b5c6d7e8f9"
+									},
+									"properties": {
+										"Name": {
+											"id": "title",
+											"type": "title",
+											"title": [{ "type": "text", "plain_text": "Four" }]
+										},
+										"Status": { "id": "s", "type": "status", "status": { "name": "Done" } },
+										"Notes": {
+											"id": "r",
+											"type": "rich_text",
+											"rich_text": [
+												{ "type": "text", "plain_text": "Ask " },
+												{ "type": "mention", "plain_text": "@Ada" }
+											]
+										},
+										"Due": {
+											"id": "d",
+											"type": "date",
+											"date": { "start": "2026-09-03", "end": null, "time_zone": null }
+										},
+										"Owners": {
+											"id": "o",
+											"type": "people",
+											"people": [{ "object": "user", "person": { "email": "a@x.io" } }]
+										},
+										"Story Points": { "id": "n", "type": "number", "number": 3 },
+										"Tags": {
+											"id": "t",
+											"type": "multi_select",
+											"multi_select": [{ "name": "web" }]
+										},
+										"Priority": { "id": "p", "type": "select", "select": null },
+										"Done": { "id": "c", "type": "checkbox", "checkbox": true },
+										"Link": { "id": "u", "type": "url", "url": null },
+										"Related": { "id": "l", "type": "relation", "relation": [{ "id": "rel-1" }] },
+										"Score": {
+											"id": "f",
+											"type": "formula",
+											"formula": { "type": "number", "number": 7 }
+										},
+										"Total": {
+											"id": "x",
+											"type": "rollup",
+											"rollup": { "type": "number", "number": 9, "function": "count" }
+										},
+										"Files": {
+											"id": "i",
+											"type": "files",
+											"files": [
+												{
+													"name": "a.pdf",
+													"type": "file",
+													"file": { "url": "https://files.example/a.pdf" }
+												}
+											]
+										}
+									}
+								}
+							],
+							"next_cursor": null,
+							"has_more": false
+						}
+					}
+				}
+			],
+			"output": [
+				{
+					"id": "2a3b4c5d-6e7f-4081-8293-000000000001",
+					"name": "One",
+					"url": "https://www.notion.so/1",
+					"property_name": "One",
+					"property_status": "Done",
+					"property_notes": "Ask @Ada",
+					"property_due": { "start": "2026-09-03", "end": null, "time_zone": null },
+					"property_owners": ["a@x.io"],
+					"property_story_points": 3,
+					"property_tags": ["web"],
+					"property_priority": null,
+					"property_done": true,
+					"property_link": null,
+					"property_related": ["rel-1"],
+					"property_score": 7,
+					"property_total": 9,
+					"property_files": ["https://files.example/a.pdf"]
+				},
+				{
+					"id": "2a3b4c5d-6e7f-4081-8293-000000000002",
+					"name": "Two",
+					"url": "https://www.notion.so/2",
+					"property_name": "Two",
+					"property_status": "Done",
+					"property_notes": "Ask @Ada",
+					"property_due": { "start": "2026-09-03", "end": null, "time_zone": null },
+					"property_owners": ["a@x.io"],
+					"property_story_points": 3,
+					"property_tags": ["web"],
+					"property_priority": null,
+					"property_done": true,
+					"property_link": null,
+					"property_related": ["rel-1"],
+					"property_score": 7,
+					"property_total": 9,
+					"property_files": ["https://files.example/a.pdf"]
+				},
+				{
+					"id": "2a3b4c5d-6e7f-4081-8293-000000000003",
+					"name": "Three",
+					"url": "https://www.notion.so/3",
+					"property_name": "Three",
+					"property_status": "Done",
+					"property_notes": "Ask @Ada",
+					"property_due": { "start": "2026-09-03", "end": null, "time_zone": null },
+					"property_owners": ["a@x.io"],
+					"property_story_points": 3,
+					"property_tags": ["web"],
+					"property_priority": null,
+					"property_done": true,
+					"property_link": null,
+					"property_related": ["rel-1"],
+					"property_score": 7,
+					"property_total": 9,
+					"property_files": ["https://files.example/a.pdf"]
 				}
 			]
 		}

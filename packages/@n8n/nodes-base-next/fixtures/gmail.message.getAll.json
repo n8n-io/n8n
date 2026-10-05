@@ -8,67 +8,87 @@
 					"max": 2
 				}
 			},
-			"responses": [
+			"routes": [
 				{
-					"messages": [
-						{
-							"id": "m1"
-						},
-						{
-							"id": "m2"
+					"path": "/messages",
+					"reply": {
+						"json": {
+							"messages": [
+								{
+									"id": "m1"
+								},
+								{
+									"id": "m2"
+								}
+							]
 						}
-					]
-				},
-				{
-					"labels": [
-						{
-							"id": "INBOX",
-							"name": "INBOX"
-						}
-					]
-				},
-				{
-					"id": "m1",
-					"threadId": "t-m1",
-					"snippet": "Hi",
-					"historyId": "9",
-					"internalDate": "1767225600000",
-					"sizeEstimate": 120,
-					"labelIds": ["INBOX"],
-					"payload": {
-						"mimeType": "text/plain",
-						"headers": [
-							{
-								"name": "From",
-								"value": "Ada <ada@example.com>"
-							},
-							{
-								"name": "Subject",
-								"value": "Hello"
-							}
-						]
 					}
 				},
 				{
-					"id": "m2",
-					"threadId": "t-m2",
-					"snippet": "Hi",
-					"historyId": "9",
-					"internalDate": "1767225600000",
-					"sizeEstimate": 120,
-					"labelIds": ["INBOX"],
-					"payload": {
-						"mimeType": "text/plain",
-						"headers": [
-							{
-								"name": "From",
-								"value": "Ada <ada@example.com>"
-							},
-							{
-								"name": "Subject",
-								"value": "Hello"
+					"path": "/labels",
+					"reply": {
+						"json": {
+							"labels": [
+								{
+									"id": "INBOX",
+									"name": "INBOX"
+								}
+							]
+						}
+					}
+				},
+				{
+					"path": "/messages/m1",
+					"reply": {
+						"json": {
+							"id": "m1",
+							"threadId": "t-m1",
+							"snippet": "Hi",
+							"historyId": "9",
+							"internalDate": "1767225600000",
+							"sizeEstimate": 120,
+							"labelIds": ["INBOX"],
+							"payload": {
+								"mimeType": "text/plain",
+								"headers": [
+									{
+										"name": "From",
+										"value": "Ada <ada@example.com>"
+									},
+									{
+										"name": "Subject",
+										"value": "Hello"
+									}
+								]
 							}
-						]
+						}
+					}
+				},
+				{
+					"path": "/messages/m2",
+					"reply": {
+						"json": {
+							"id": "m2",
+							"threadId": "t-m2",
+							"snippet": "Hi",
+							"historyId": "9",
+							"internalDate": "1767225600000",
+							"sizeEstimate": 120,
+							"labelIds": ["INBOX"],
+							"payload": {
+								"mimeType": "text/plain",
+								"headers": [
+									{
+										"name": "From",
+										"value": "Ada <ada@example.com>"
+									},
+									{
+										"name": "Subject",
+										"value": "Hello"
+									}
+								]
+							}
+						}
 					}
 				}
 			],
@@ -122,32 +142,47 @@
 				},
 				"simplify": false
 			},
-			"responses": [
+			"routes": [
 				{
-					"messages": [
-						{
-							"id": "m1"
-						},
-						{
-							"id": "m2"
+					"path": "/messages",
+					"reply": {
+						"json": {
+							"messages": [
+								{
+									"id": "m1"
+								},
+								{
+									"id": "m2"
+								}
+							]
 						}
-					]
+					}
 				},
 				{
-					"id": "m1",
-					"threadId": "t-m1",
-					"labelIds": ["INBOX"],
-					"sizeEstimate": 512,
-					"snippet": "ignored",
-					"raw": "RnJvbTogIkFkYSBMb3ZlbGFjZSIgPGFkYUBleGFtcGxlLmNvbT4NClRvOiBncmFjZUBleGFtcGxlLmNvbSwgIkRvZSwgSm9obiIgPGpvaG5AZXhhbXBsZS5jb20-DQpTdWJqZWN0OiA9P1VURi04P0I_UjNMRHZNT2ZaU0JoZFhNZ1M4TzJiRzQ9Pz0NCkRhdGU6IFRodSwgMDEgSmFuIDIwMjYgMTA6MDA6MDAgKzAwMDANCk1lc3NhZ2UtSUQ6IDxtMUBtYWlsLmV4YW1wbGUuY29tPg0KQ29udGVudC1UeXBlOiBtdWx0aXBhcnQvYWx0ZXJuYXRpdmU7IGJvdW5kYXJ5PSJiMSINCg0KLS1iMQ0KQ29udGVudC1UeXBlOiB0ZXh0L3BsYWluOyBjaGFyc2V0PVVURi04DQpDb250ZW50LVRyYW5zZmVyLUVuY29kaW5nOiBxdW90ZWQtcHJpbnRhYmxlDQoNCkNhZj1DMz1BOSBvcGVucyBhdCA5LiBTZWUgaHR0cHM6Ly9uOG4uaW8vZG9jcy4NCi0tYjENCkNvbnRlbnQtVHlwZTogdGV4dC9odG1sOyBjaGFyc2V0PVVURi04DQoNCjxwPkNhZiZlYWN1dGU7IG9wZW5zIGF0IDkuPC9wPg0KLS1iMS0tDQo"
+					"path": "/messages/m1",
+					"reply": {
+						"json": {
+							"id": "m1",
+							"threadId": "t-m1",
+							"labelIds": ["INBOX"],
+							"sizeEstimate": 512,
+							"snippet": "ignored",
+							"raw": "RnJvbTogIkFkYSBMb3ZlbGFjZSIgPGFkYUBleGFtcGxlLmNvbT4NClRvOiBncmFjZUBleGFtcGxlLmNvbSwgIkRvZSwgSm9obiIgPGpvaG5AZXhhbXBsZS5jb20-DQpTdWJqZWN0OiA9P1VURi04P0I_UjNMRHZNT2ZaU0JoZFhNZ1M4TzJiRzQ9Pz0NCkRhdGU6IFRodSwgMDEgSmFuIDIwMjYgMTA6MDA6MDAgKzAwMDANCk1lc3NhZ2UtSUQ6IDxtMUBtYWlsLmV4YW1wbGUuY29tPg0KQ29udGVudC1UeXBlOiBtdWx0aXBhcnQvYWx0ZXJuYXRpdmU7IGJvdW5kYXJ5PSJiMSINCg0KLS1iMQ0KQ29udGVudC1UeXBlOiB0ZXh0L3BsYWluOyBjaGFyc2V0PVVURi04DQpDb250ZW50LVRyYW5zZmVyLUVuY29kaW5nOiBxdW90ZWQtcHJpbnRhYmxlDQoNCkNhZj1DMz1BOSBvcGVucyBhdCA5LiBTZWUgaHR0cHM6Ly9uOG4uaW8vZG9jcy4NCi0tYjENCkNvbnRlbnQtVHlwZTogdGV4dC9odG1sOyBjaGFyc2V0PVVURi04DQoNCjxwPkNhZiZlYWN1dGU7IG9wZW5zIGF0IDkuPC9wPg0KLS1iMS0tDQo"
+						}
+					}
 				},
 				{
-					"id": "m2",
-					"threadId": "t-m2",
-					"labelIds": ["INBOX"],
-					"sizeEstimate": 512,
-					"snippet": "ignored",
-					"raw": "RnJvbTogPT9JU08tODg1OS0xP1E_Sj1GNnJnPz0gPGpvZXJnQGV4YW1wbGUuZGU-DQpUbzogYWRhQGV4YW1wbGUuY29tDQpTdWJqZWN0OiA9P0lTTy04ODU5LTE_UT9Hcj1GQz1ERmU_PQ0KRGF0ZTogRnJpLCAwMiBKYW4gMjAyNiAwODowMDowMCArMDEwMA0KSW4tUmVwbHktVG86IDxtMUBtYWlsLmV4YW1wbGUuY29tPg0KUmVmZXJlbmNlczogPG0wQG1haWwuZXhhbXBsZS5jb20-IDxtMUBtYWlsLmV4YW1wbGUuY29tPg0KQ29udGVudC1UeXBlOiB0ZXh0L3BsYWluOyBjaGFyc2V0PUlTTy04ODU5LTENCkNvbnRlbnQtVHJhbnNmZXItRW5jb2Rpbmc6IHF1b3RlZC1wcmludGFibGUNCg0KR3I9RkM9REZlIGF1cyBNPUZDbmNoZW4NCg"
+					"path": "/messages/m2",
+					"reply": {
+						"json": {
+							"id": "m2",
+							"threadId": "t-m2",
+							"labelIds": ["INBOX"],
+							"sizeEstimate": 512,
+							"snippet": "ignored",
+							"raw": "RnJvbTogPT9JU08tODg1OS0xP1E_Sj1GNnJnPz0gPGpvZXJnQGV4YW1wbGUuZGU-DQpUbzogYWRhQGV4YW1wbGUuY29tDQpTdWJqZWN0OiA9P0lTTy04ODU5LTE_UT9Hcj1GQz1ERmU_PQ0KRGF0ZTogRnJpLCAwMiBKYW4gMjAyNiAwODowMDowMCArMDEwMA0KSW4tUmVwbHktVG86IDxtMUBtYWlsLmV4YW1wbGUuY29tPg0KUmVmZXJlbmNlczogPG0wQG1haWwuZXhhbXBsZS5jb20-IDxtMUBtYWlsLmV4YW1wbGUuY29tPg0KQ29udGVudC1UeXBlOiB0ZXh0L3BsYWluOyBjaGFyc2V0PUlTTy04ODU5LTENCkNvbnRlbnQtVHJhbnNmZXItRW5jb2Rpbmc6IHF1b3RlZC1wcmludGFibGUNCg0KR3I9RkM9REZlIGF1cyBNPUZDbmNoZW4NCg"
+						}
+					}
 				}
 			],
 			"output": [

@@ -5,10 +5,16 @@
 			"params": {
 				"fileId": "https://drive.google.com/file/d/1FileAbCdEfGhIjKlMnOpQrStUvWxYz0/view"
 			},
-			"responses": [
+			"routes": [
 				{
-					"id": "1FileAbCdEfGhIjKlMnOpQrStUvWxYz0",
-					"trashed": true
+					"method": "PATCH",
+					"path": "/drive/v3/files/1FileAbCdEfGhIjKlMnOpQrStUvWxYz0",
+					"reply": {
+						"json": {
+							"id": "1FileAbCdEfGhIjKlMnOpQrStUvWxYz0",
+							"trashed": true
+						}
+					}
 				}
 			],
 			"output": [

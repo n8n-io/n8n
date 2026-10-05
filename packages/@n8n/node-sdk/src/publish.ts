@@ -50,6 +50,7 @@ import {
 	type StoreRecord,
 	type StoreStatusRecord,
 } from './store';
+import { mockHttp, sendRequest } from './testing';
 import { validate } from './validator';
 import {
 	canonicalJson,
@@ -73,9 +74,6 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 const errorMessage = (error: unknown) => (error instanceof Error ? error.message : String(error));
 
 const bytesOf = ({ data }: FixtureBinary) => Buffer.from(data, 'base64');
-
-const isFullResponse = (value: unknown) =>
-	isRecord(value) && typeof value.statusCode === 'number' && 'body' in value;
 
 async function bufferOf(stream: AsyncIterable<unknown>): Promise<Buffer> {
 	const chunks: Uint8Array[] = [];
@@ -160,22 +158,6 @@ function fixtureCredential(action: Action, type: string, data: ExecutionFixture[
 		);
 	}
 	return { ...Object.fromEntries(secrets.map((key) => [key, 'fixture'])), ...data };
-}
-
-/** The recorded binary as the HTTP client gives a streamed response. */
-function streamedResponse(recorded: unknown) {
-	if (!isFixtureBinary(recorded)) {
-		throw new UserError('A binary response needs a recorded { data, mimeType, fileName? }');
-	}
-	const { mimeType, fileName } = recorded;
-	return {
-		body: Readable.from([bytesOf(recorded)]),
-		headers: {
-			'content-type': mimeType,
-			...(fileName ? { 'content-disposition': `attachment; filename="${fileName}"` } : {}),
-		},
-		statusCode: 200,
-	};
 }
 
 /** The binaries of each output item as a fixture records them, or none when no item has one. */
@@ -287,7 +269,7 @@ export async function replayFixtures(
 	};
 	const executions = await Promise.all(
 		fixtures.executions.map(async (fixture) => {
-			const responses = [...fixture.responses];
+			const fetchFn = mockHttp(fixture.routes ?? []);
 			const inputs = fixture.inputs?.map((list) => list.map((json) => ({ json: { ...json } })));
 			const imports = fixtureImports(fixture);
 			const host: ExecutorHost = {
@@ -296,15 +278,7 @@ export async function replayFixtures(
 				...imports.host,
 				node,
 				parameter: (name) => fixture.params[name] ?? defaults.get(name),
-				request: async (options) => {
-					if (responses.length === 0) throw new UserError('No recorded response is left');
-					const recorded = responses.shift();
-					if (options.encoding === 'stream') return streamedResponse(recorded);
-					// A fixture records the body only, unless the action reads the full response.
-					return options.returnFullResponse && !isFullResponse(recorded)
-						? { body: recorded, headers: {}, statusCode: 200 }
-						: recorded;
-				},
+				request: async (options) => await sendRequest(fetchFn, options),
 				continueOnFail: () => false,
 				binary: fixtureBinaryStore(fixture),
 				supplied: fixtureCapabilities(fixture, providerFields),
@@ -333,7 +307,6 @@ export async function replayFixtures(
 					...(canonicalJson(outputBinary) === canonicalJson(fixture.outputBinary)
 						? []
 						: [`${at}: output binaries ${JSON.stringify(outputBinary)}`]),
-					...(responses.length ? [`${at}: ${responses.length} responses not requested`] : []),
 					...(imports.unused() ? [`${at}: ${imports.unused()} import answers not used`] : []),
 					...(fixture.error === undefined ? [] : [`${at}: no error, expected "${fixture.error}"`]),
 				];

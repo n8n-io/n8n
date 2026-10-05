@@ -2,21 +2,23 @@
 	"executions": [
 		{
 			"name": "reaction",
-			"params": {
-				"channel": "C0OPS",
-				"ts": "1700000000.000100",
-				"name": "white_check_mark"
+			"params": { "channel": "C0OPS", "ts": "1700000000.000100", "name": "white_check_mark" },
+			"legacy": {
+				"type": "n8n-nodes-base.slack",
+				"version": 2.7,
+				"parameters": {
+					"authentication": "accessToken",
+					"resource": "reaction",
+					"operation": "add",
+					"channelId": { "__rl": true, "mode": "id", "value": "C0OPS" },
+					"timestamp": "1700000000.000100",
+					"name": "white_check_mark"
+				}
 			},
-			"responses": [
-				{
-					"ok": true
-				}
+			"routes": [
+				{ "method": "POST", "path": "/reactions.add", "reply": { "json": { "ok": true } } }
 			],
-			"output": [
-				{
-					"ok": true
-				}
-			]
+			"output": [{ "ok": true }]
 		}
 	]
 }

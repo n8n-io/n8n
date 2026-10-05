@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { UnexpectedError, UserError, type IDataObject } from 'n8n-workflow';
+import { UnexpectedError, UserError, type IDataObject, type INodeParameters } from 'n8n-workflow';
 
 import {
 	inputCountOf,
@@ -15,6 +15,7 @@ import type { ActionUiDocument } from './properties';
 import { nativeManifestSchema, versionManifestSchema, type NativeManifest } from './manifest';
 import { hasPageValue, type JsonSchema } from './schema';
 import { providedOf } from './providers';
+import type { MockRoute } from './testing';
 import { matches } from './validate';
 
 /**
@@ -743,6 +744,19 @@ export interface FixtureCall {
 	readonly args: readonly unknown[];
 }
 
+/**
+ * The legacy node that a parity test runs against the routes of the fixture, to compare it with the
+ * action. Publish and the replay do not read it.
+ */
+export interface LegacyFixture {
+	/** The workflow node type, e.g. `n8n-nodes-base.slack`. */
+	readonly type: string;
+	/** The node type version, e.g. `2.7`. */
+	readonly version: number;
+	/** The parameters of the legacy node, as n8n stores them. */
+	readonly parameters: INodeParameters;
+}
+
 /** One recorded run. */
 export type ExecutionFixture = {
 	/** What the run shows, e.g. `gets one page`. */
@@ -753,8 +767,13 @@ export type ExecutionFixture = {
 	readonly items?: readonly IDataObject[];
 	/** The binaries of the first input item, by field name. */
 	readonly binary?: Readonly<Record<string, FixtureBinary>>;
-	/** HTTP response bodies, in request order. A `response: 'binary'` request gets a `FixtureBinary`. */
-	readonly responses: readonly unknown[];
+	/**
+	 * The HTTP routes that answer the requests of the run, as `mockHttp` answers them. A
+	 * `response: 'binary'` request gets the bytes of the reply. No HTTP request when omitted.
+	 */
+	readonly routes?: readonly MockRoute[];
+	/** The legacy node with the same function, for a parity test. */
+	readonly legacy?: LegacyFixture;
 	/** The items of each named input. They replace `items`. */
 	readonly inputs?: ReadonlyArray<readonly IDataObject[]>;
 	/**
@@ -828,6 +847,31 @@ const isSupplyMap = (value: unknown) =>
 const isFixtureCall = (value: unknown): value is FixtureCall =>
 	isRecord(value) && typeof value.method === 'string' && Array.isArray(value.args);
 
+const isQueryValue = (value: unknown) => ['string', 'number', 'boolean'].includes(typeof value);
+
+const isMockRoute = (value: unknown): value is MockRoute =>
+	isRecord(value) &&
+	(value.method === undefined || typeof value.method === 'string') &&
+	typeof value.path === 'string' &&
+	(value.query === undefined ||
+		(isRecord(value.query) &&
+			Object.values(value.query).every((entry) =>
+				Array.isArray(entry) ? entry.every(isQueryValue) : isQueryValue(entry),
+			))) &&
+	(value.times === undefined || typeof value.times === 'number') &&
+	isRecord(value.reply) &&
+	(value.reply.status === undefined || typeof value.reply.status === 'number') &&
+	(value.reply.headers === undefined ||
+		(isRecord(value.reply.headers) &&
+			Object.values(value.reply.headers).every((entry) => typeof entry === 'string'))) &&
+	(value.reply.binary === undefined || isFixtureBinary(value.reply.binary));
+
+const isLegacyFixture = (value: unknown): value is LegacyFixture =>
+	isRecord(value) &&
+	typeof value.type === 'string' &&
+	typeof value.version === 'number' &&
+	isRecord(value.parameters);
+
 const isExecutionFixture = (value: unknown): value is ExecutionFixture =>
 	isRecord(value) &&
 	typeof value.name === 'string' &&
@@ -838,7 +882,11 @@ const isExecutionFixture = (value: unknown): value is ExecutionFixture =>
 			value.inputs.every((list) => Array.isArray(list) && list.every(isRecord)))) &&
 	(value.imports === undefined || Array.isArray(value.imports)) &&
 	(value.error === undefined || typeof value.error === 'string') &&
-	Array.isArray(value.responses) &&
+	// A fixture of an older SDK holds `responses`. Without this check, it fails only at replay.
+	value.responses === undefined &&
+	(value.routes === undefined ||
+		(Array.isArray(value.routes) && value.routes.every(isMockRoute))) &&
+	(value.legacy === undefined || isLegacyFixture(value.legacy)) &&
 	(value.binary === undefined || isBinaryMap(value.binary)) &&
 	(value.supplied === undefined || isSupplyMap(value.supplied)) &&
 	(value.calls === undefined || (Array.isArray(value.calls) && value.calls.every(isFixtureCall))) &&

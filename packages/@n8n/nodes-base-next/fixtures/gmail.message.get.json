@@ -5,35 +5,45 @@
 			"params": {
 				"messageId": "m1"
 			},
-			"responses": [
+			"routes": [
 				{
-					"labels": [
-						{
-							"id": "INBOX",
-							"name": "INBOX"
+					"path": "/labels",
+					"reply": {
+						"json": {
+							"labels": [
+								{
+									"id": "INBOX",
+									"name": "INBOX"
+								}
+							]
 						}
-					]
+					}
 				},
 				{
-					"id": "m1",
-					"threadId": "t-m1",
-					"snippet": "Hi",
-					"historyId": "9",
-					"internalDate": "1767225600000",
-					"sizeEstimate": 120,
-					"labelIds": ["INBOX"],
-					"payload": {
-						"mimeType": "text/plain",
-						"headers": [
-							{
-								"name": "From",
-								"value": "Ada <ada@example.com>"
-							},
-							{
-								"name": "Subject",
-								"value": "Hello"
+					"path": "/messages/m1",
+					"reply": {
+						"json": {
+							"id": "m1",
+							"threadId": "t-m1",
+							"snippet": "Hi",
+							"historyId": "9",
+							"internalDate": "1767225600000",
+							"sizeEstimate": 120,
+							"labelIds": ["INBOX"],
+							"payload": {
+								"mimeType": "text/plain",
+								"headers": [
+									{
+										"name": "From",
+										"value": "Ada <ada@example.com>"
+									},
+									{
+										"name": "Subject",
+										"value": "Hello"
+									}
+								]
 							}
-						]
+						}
 					}
 				}
 			],
@@ -65,14 +75,19 @@
 				"messageId": "m1",
 				"simplify": false
 			},
-			"responses": [
+			"routes": [
 				{
-					"id": "m1",
-					"threadId": "t-m1",
-					"labelIds": ["INBOX"],
-					"sizeEstimate": 512,
-					"snippet": "ignored",
-					"raw": "RnJvbTogIkFkYSBMb3ZlbGFjZSIgPGFkYUBleGFtcGxlLmNvbT4NClRvOiBncmFjZUBleGFtcGxlLmNvbSwgIkRvZSwgSm9obiIgPGpvaG5AZXhhbXBsZS5jb20-DQpTdWJqZWN0OiA9P1VURi04P0I_UjNMRHZNT2ZaU0JoZFhNZ1M4TzJiRzQ9Pz0NCkRhdGU6IFRodSwgMDEgSmFuIDIwMjYgMTA6MDA6MDAgKzAwMDANCk1lc3NhZ2UtSUQ6IDxtMUBtYWlsLmV4YW1wbGUuY29tPg0KQ29udGVudC1UeXBlOiBtdWx0aXBhcnQvYWx0ZXJuYXRpdmU7IGJvdW5kYXJ5PSJiMSINCg0KLS1iMQ0KQ29udGVudC1UeXBlOiB0ZXh0L3BsYWluOyBjaGFyc2V0PVVURi04DQpDb250ZW50LVRyYW5zZmVyLUVuY29kaW5nOiBxdW90ZWQtcHJpbnRhYmxlDQoNCkNhZj1DMz1BOSBvcGVucyBhdCA5LiBTZWUgaHR0cHM6Ly9uOG4uaW8vZG9jcy4NCi0tYjENCkNvbnRlbnQtVHlwZTogdGV4dC9odG1sOyBjaGFyc2V0PVVURi04DQoNCjxwPkNhZiZlYWN1dGU7IG9wZW5zIGF0IDkuPC9wPg0KLS1iMS0tDQo"
+					"path": "/messages/m1",
+					"reply": {
+						"json": {
+							"id": "m1",
+							"threadId": "t-m1",
+							"labelIds": ["INBOX"],
+							"sizeEstimate": 512,
+							"snippet": "ignored",
+							"raw": "RnJvbTogIkFkYSBMb3ZlbGFjZSIgPGFkYUBleGFtcGxlLmNvbT4NClRvOiBncmFjZUBleGFtcGxlLmNvbSwgIkRvZSwgSm9obiIgPGpvaG5AZXhhbXBsZS5jb20-DQpTdWJqZWN0OiA9P1VURi04P0I_UjNMRHZNT2ZaU0JoZFhNZ1M4TzJiRzQ9Pz0NCkRhdGU6IFRodSwgMDEgSmFuIDIwMjYgMTA6MDA6MDAgKzAwMDANCk1lc3NhZ2UtSUQ6IDxtMUBtYWlsLmV4YW1wbGUuY29tPg0KQ29udGVudC1UeXBlOiBtdWx0aXBhcnQvYWx0ZXJuYXRpdmU7IGJvdW5kYXJ5PSJiMSINCg0KLS1iMQ0KQ29udGVudC1UeXBlOiB0ZXh0L3BsYWluOyBjaGFyc2V0PVVURi04DQpDb250ZW50LVRyYW5zZmVyLUVuY29kaW5nOiBxdW90ZWQtcHJpbnRhYmxlDQoNCkNhZj1DMz1BOSBvcGVucyBhdCA5LiBTZWUgaHR0cHM6Ly9uOG4uaW8vZG9jcy4NCi0tYjENCkNvbnRlbnQtVHlwZTogdGV4dC9odG1sOyBjaGFyc2V0PVVURi04DQoNCjxwPkNhZiZlYWN1dGU7IG9wZW5zIGF0IDkuPC9wPg0KLS1iMS0tDQo"
+						}
+					}
 				}
 			],
 			"output": [
@@ -129,14 +144,19 @@
 				"simplify": false,
 				"downloadAttachments": true
 			},
-			"responses": [
+			"routes": [
 				{
-					"id": "m3",
-					"threadId": "t-m3",
-					"labelIds": ["INBOX"],
-					"sizeEstimate": 640,
-					"snippet": "ignored",
-					"raw": "RnJvbTogYmlsbGluZ0BleGFtcGxlLmNvbQ0KVG86IEFkYSA8YWRhQGV4YW1wbGUuY29tPg0KU3ViamVjdDogVHdvIGZpbGVzDQpEYXRlOiBTYXQsIDAzIEphbiAyMDI2IDEyOjAwOjAwICswMTAwDQpDb250ZW50LVR5cGU6IG11bHRpcGFydC9taXhlZDsgYm91bmRhcnk9Im91dGVyIg0KDQotLW91dGVyDQpDb250ZW50LVR5cGU6IHRleHQvcGxhaW47IGNoYXJzZXQ9VVRGLTgNCg0KVGhlIGludm9pY2UgYW5kIHRoZSB1c2FnZSByZXBvcnQuDQotLW91dGVyDQpDb250ZW50LVR5cGU6IGFwcGxpY2F0aW9uL3BkZjsgbmFtZT0iaW52b2ljZS5wZGYiDQpDb250ZW50LURpc3Bvc2l0aW9uOiBhdHRhY2htZW50OyBmaWxlbmFtZT0iaW52b2ljZS5wZGYiDQpDb250ZW50LVRyYW5zZmVyLUVuY29kaW5nOiBiYXNlNjQNCg0KSlZCRVJpMHhMalFnYVc1MmIybGpaUT09DQotLW91dGVyDQpDb250ZW50LVR5cGU6IHRleHQvY3N2OyBuYW1lPSI9P1VURi04P1E_TnV0enVuZ19NPUMzPUE0cnouY3N2Pz0iDQpDb250ZW50LURpc3Bvc2l0aW9uOiBhdHRhY2htZW50DQpDb250ZW50LVRyYW5zZmVyLUVuY29kaW5nOiBxdW90ZWQtcHJpbnRhYmxlDQoNCmRheSxjYWxscz0wRA0KMSw0Mg0KLS1vdXRlci0tDQo"
+					"path": "/messages/m3",
+					"reply": {
+						"json": {
+							"id": "m3",
+							"threadId": "t-m3",
+							"labelIds": ["INBOX"],
+							"sizeEstimate": 640,
+							"snippet": "ignored",
+							"raw": "RnJvbTogYmlsbGluZ0BleGFtcGxlLmNvbQ0KVG86IEFkYSA8YWRhQGV4YW1wbGUuY29tPg0KU3ViamVjdDogVHdvIGZpbGVzDQpEYXRlOiBTYXQsIDAzIEphbiAyMDI2IDEyOjAwOjAwICswMTAwDQpDb250ZW50LVR5cGU6IG11bHRpcGFydC9taXhlZDsgYm91bmRhcnk9Im91dGVyIg0KDQotLW91dGVyDQpDb250ZW50LVR5cGU6IHRleHQvcGxhaW47IGNoYXJzZXQ9VVRGLTgNCg0KVGhlIGludm9pY2UgYW5kIHRoZSB1c2FnZSByZXBvcnQuDQotLW91dGVyDQpDb250ZW50LVR5cGU6IGFwcGxpY2F0aW9uL3BkZjsgbmFtZT0iaW52b2ljZS5wZGYiDQpDb250ZW50LURpc3Bvc2l0aW9uOiBhdHRhY2htZW50OyBmaWxlbmFtZT0iaW52b2ljZS5wZGYiDQpDb250ZW50LVRyYW5zZmVyLUVuY29kaW5nOiBiYXNlNjQNCg0KSlZCRVJpMHhMalFnYVc1MmIybGpaUT09DQotLW91dGVyDQpDb250ZW50LVR5cGU6IHRleHQvY3N2OyBuYW1lPSI9P1VURi04P1E_TnV0enVuZ19NPUMzPUE0cnouY3N2Pz0iDQpDb250ZW50LURpc3Bvc2l0aW9uOiBhdHRhY2htZW50DQpDb250ZW50LVRyYW5zZmVyLUVuY29kaW5nOiBxdW90ZWQtcHJpbnRhYmxlDQoNCmRheSxjYWxscz0wRA0KMSw0Mg0KLS1vdXRlci0tDQo"
+						}
+					}
 				}
 			],
 			"output": [

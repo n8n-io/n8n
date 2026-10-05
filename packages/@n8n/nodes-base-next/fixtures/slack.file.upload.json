@@ -2,41 +2,44 @@
 	"executions": [
 		{
 			"name": "share in channel",
-			"params": {
-				"file": "data",
-				"channel": "C0OPS",
-				"initialComment": "Q3 numbers"
+			"params": { "file": "data", "channel": "C0OPS", "initialComment": "Q3 numbers" },
+			"legacy": {
+				"type": "n8n-nodes-base.slack",
+				"version": 2.7,
+				"parameters": {
+					"authentication": "accessToken",
+					"resource": "file",
+					"operation": "upload",
+					"binaryPropertyName": "data",
+					"options": { "channelId": "C0OPS", "initialComment": "Q3 numbers" }
+				}
 			},
 			"binary": {
-				"data": {
-					"data": "aWQsdG90YWwKMSw0Mgo=",
-					"mimeType": "text/csv",
-					"fileName": "q3.csv"
-				}
+				"data": { "data": "aWQsdG90YWwKMSw0Mgo=", "mimeType": "text/csv", "fileName": "q3.csv" }
 			},
-			"responses": [
+			"routes": [
 				{
-					"ok": true,
-					"upload_url": "https://files.slack.com/upload/v1/ABC",
-					"file_id": "F0REPORT"
-				},
-				"OK - 13",
-				{
-					"ok": true,
-					"files": [
-						{
-							"id": "F0REPORT",
-							"title": "q3.csv"
+					"path": "/files.getUploadURLExternal",
+					"reply": {
+						"json": {
+							"ok": true,
+							"upload_url": "https://files.slack.com/upload/v1/ABC",
+							"file_id": "F0REPORT"
 						}
-					]
+					}
+				},
+				{
+					"method": "POST",
+					"path": "/upload/v1/ABC",
+					"reply": { "binary": { "data": "T0sgLSAxMw==", "mimeType": "text/plain" } }
+				},
+				{
+					"method": "POST",
+					"path": "/files.completeUploadExternal",
+					"reply": { "json": { "ok": true, "files": [{ "id": "F0REPORT", "title": "q3.csv" }] } }
 				}
 			],
-			"output": [
-				{
-					"id": "F0REPORT",
-					"title": "q3.csv"
-				}
-			]
+			"output": [{ "id": "F0REPORT", "title": "q3.csv" }]
 		}
 	]
 }

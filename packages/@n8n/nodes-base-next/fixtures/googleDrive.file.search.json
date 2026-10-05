@@ -8,26 +8,38 @@
 					"mode": "all"
 				}
 			},
-			"responses": [
+			"routes": [
 				{
-					"files": [
-						{
-							"id": "1FileAbCdEfGhIjKlMnOpQrStUvWxYz0",
-							"name": "report.pdf",
-							"mimeType": "application/pdf",
-							"webViewLink": "https://drive.google.com/file/d/1FileAbCdEfGhIjKlMnOpQrStUvWxYz0/view"
+					"path": "/drive/v3/files",
+					"times": 1,
+					"reply": {
+						"json": {
+							"files": [
+								{
+									"id": "1FileAbCdEfGhIjKlMnOpQrStUvWxYz0",
+									"name": "report.pdf",
+									"mimeType": "application/pdf",
+									"webViewLink": "https://drive.google.com/file/d/1FileAbCdEfGhIjKlMnOpQrStUvWxYz0/view"
+								}
+							],
+							"nextPageToken": "p2"
 						}
-					],
-					"nextPageToken": "p2"
+					}
 				},
 				{
-					"files": [
-						{
-							"id": "1FolderAbCdEfGhIjKlMnOpQrStUvWx",
-							"name": "Reports",
-							"mimeType": "application/vnd.google-apps.folder"
+					"path": "/drive/v3/files",
+					"times": 1,
+					"reply": {
+						"json": {
+							"files": [
+								{
+									"id": "1FolderAbCdEfGhIjKlMnOpQrStUvWx",
+									"name": "Reports",
+									"mimeType": "application/vnd.google-apps.folder"
+								}
+							]
 						}
-					]
+					}
 				}
 			],
 			"output": [

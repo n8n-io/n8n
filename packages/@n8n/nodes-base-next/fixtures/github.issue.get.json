@@ -8,32 +8,37 @@
 				"repository": "widgets",
 				"issueNumber": 101
 			},
-			"responses": [
+			"routes": [
 				{
-					"id": 1101,
-					"number": 101,
-					"title": "Login returns 500",
-					"state": "open",
-					"html_url": "https://github.com/acme/widgets/issues/101",
-					"body": null,
-					"user": {
-						"login": "ada",
-						"id": 7
-					},
-					"labels": [
-						{
-							"id": 10,
-							"name": "bug",
-							"color": "d73a4a"
+					"path": "/repos/acme/widgets/issues/101",
+					"reply": {
+						"json": {
+							"id": 1101,
+							"number": 101,
+							"title": "Login returns 500",
+							"state": "open",
+							"html_url": "https://github.com/acme/widgets/issues/101",
+							"body": null,
+							"user": {
+								"login": "ada",
+								"id": 7
+							},
+							"labels": [
+								{
+									"id": 10,
+									"name": "bug",
+									"color": "d73a4a"
+								}
+							],
+							"assignees": [],
+							"comments": 0,
+							"created_at": "2026-09-01T09:00:00Z",
+							"updated_at": "2026-09-02T09:00:00Z",
+							"closed_at": null,
+							"locked": false,
+							"milestone": null
 						}
-					],
-					"assignees": [],
-					"comments": 0,
-					"created_at": "2026-09-01T09:00:00Z",
-					"updated_at": "2026-09-02T09:00:00Z",
-					"closed_at": null,
-					"locked": false,
-					"milestone": null
+					}
 				}
 			],
 			"output": [

@@ -3,16 +3,36 @@
 		{
 			"name": "channel message with attribution",
 			"params": { "channel": "#ops-digest", "text": "3 open tickets" },
-			"responses": [
+			"legacy": {
+				"type": "n8n-nodes-base.slack",
+				"version": 2.7,
+				"parameters": {
+					"authentication": "accessToken",
+					"resource": "message",
+					"operation": "post",
+					"select": "channel",
+					"channelId": { "__rl": true, "mode": "name", "value": "#ops-digest" },
+					"messageType": "text",
+					"text": "3 open tickets",
+					"otherOptions": {}
+				}
+			},
+			"routes": [
 				{
-					"ok": true,
-					"channel": "C0OPSDIGEST",
-					"ts": "1700000000.000100",
-					"message": {
-						"type": "message",
-						"user": "U0BOT",
-						"text": "3 open tickets\n_Automated with <https://n8n.io/?utm_source=n8n-internal&utm_medium=powered_by&utm_campaign=n8n-nodes-base.slack|n8n>_",
-						"ts": "1700000000.000100"
+					"method": "POST",
+					"path": "/chat.postMessage",
+					"reply": {
+						"json": {
+							"ok": true,
+							"channel": "C0OPSDIGEST",
+							"ts": "1700000000.000100",
+							"message": {
+								"type": "message",
+								"user": "U0BOT",
+								"text": "3 open tickets\n_Automated with <https://n8n.io/?utm_source=n8n-internal&utm_medium=powered_by&utm_campaign=n8n-nodes-base.slack|n8n>_",
+								"ts": "1700000000.000100"
+							}
+						}
 					}
 				}
 			],
@@ -35,19 +55,47 @@
 			"params": {
 				"channel": "C0OPSDIGEST",
 				"text": "Fixed",
-				"threadTs": "1700000000.000100",
+				"blocks": [{ "type": "section", "text": { "type": "mrkdwn", "text": "*Fixed*" } }],
+				"threadTs": "1700000000.0001",
+				"replyBroadcast": true,
 				"appendAttribution": false
 			},
-			"responses": [
+			"legacy": {
+				"type": "n8n-nodes-base.slack",
+				"version": 2.7,
+				"parameters": {
+					"authentication": "accessToken",
+					"resource": "message",
+					"operation": "post",
+					"select": "channel",
+					"channelId": { "__rl": true, "mode": "id", "value": "C0OPSDIGEST" },
+					"messageType": "block",
+					"blocksUi": "{\"blocks\":[{\"type\":\"section\",\"text\":{\"type\":\"mrkdwn\",\"text\":\"*Fixed*\"}}]}",
+					"text": "Fixed",
+					"otherOptions": {
+						"includeLinkToWorkflow": false,
+						"thread_ts": {
+							"replyValues": { "thread_ts": 1700000000.0001, "reply_broadcast": true }
+						}
+					}
+				}
+			},
+			"routes": [
 				{
-					"ok": true,
-					"channel": "C0OPSDIGEST",
-					"ts": "1700000001.000200",
-					"message": {
-						"type": "message",
-						"text": "Fixed",
-						"ts": "1700000001.000200",
-						"thread_ts": "1700000000.000100"
+					"method": "POST",
+					"path": "/chat.postMessage",
+					"reply": {
+						"json": {
+							"ok": true,
+							"channel": "C0OPSDIGEST",
+							"ts": "1700000001.000200",
+							"message": {
+								"type": "message",
+								"text": "Fixed",
+								"ts": "1700000001.000200",
+								"thread_ts": "1700000000.000100"
+							}
+						}
 					}
 				}
 			],
@@ -64,6 +112,99 @@
 					}
 				}
 			]
+		},
+		{
+			"name": "one message per item, without attribution",
+			"params": {
+				"channel": "#ops",
+				"text": "=Open tickets: {{ $json.count }}",
+				"appendAttribution": false
+			},
+			"legacy": {
+				"type": "n8n-nodes-base.slack",
+				"version": 2.7,
+				"parameters": {
+					"authentication": "accessToken",
+					"resource": "message",
+					"operation": "post",
+					"select": "channel",
+					"channelId": { "__rl": true, "mode": "name", "value": "#ops" },
+					"messageType": "text",
+					"text": "=Open tickets: {{ $json.count }}",
+					"otherOptions": { "includeLinkToWorkflow": false }
+				}
+			},
+			"items": [{ "count": 3 }, { "count": 4 }],
+			"routes": [
+				{
+					"method": "POST",
+					"path": "/chat.postMessage",
+					"reply": {
+						"json": {
+							"ok": true,
+							"channel": "C0OPS",
+							"ts": "1700000000.000100",
+							"message": {
+								"type": "message",
+								"user": "U0BOT",
+								"text": "Open tickets",
+								"ts": "1700000000.000100"
+							}
+						}
+					}
+				}
+			],
+			"output": [
+				{
+					"ok": true,
+					"channel": "C0OPS",
+					"ts": "1700000000.000100",
+					"message": {
+						"type": "message",
+						"user": "U0BOT",
+						"text": "Open tickets",
+						"ts": "1700000000.000100"
+					}
+				},
+				{
+					"ok": true,
+					"channel": "C0OPS",
+					"ts": "1700000000.000100",
+					"message": {
+						"type": "message",
+						"user": "U0BOT",
+						"text": "Open tickets",
+						"ts": "1700000000.000100"
+					}
+				}
+			]
+		},
+		{
+			"name": "Slack error",
+			"params": { "channel": "#ops", "text": "x", "appendAttribution": false },
+			"legacy": {
+				"type": "n8n-nodes-base.slack",
+				"version": 2.7,
+				"parameters": {
+					"authentication": "accessToken",
+					"resource": "message",
+					"operation": "post",
+					"select": "channel",
+					"channelId": { "__rl": true, "mode": "name", "value": "#ops" },
+					"messageType": "text",
+					"text": "x",
+					"otherOptions": { "includeLinkToWorkflow": false }
+				}
+			},
+			"routes": [
+				{
+					"method": "POST",
+					"path": "/chat.postMessage",
+					"reply": { "json": { "ok": false, "error": "channel_not_found" } }
+				}
+			],
+			"output": [],
+			"error": "Slack error response: \"channel_not_found\""
 		}
 	]
 }

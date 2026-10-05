@@ -15,7 +15,7 @@
 					}
 				]
 			},
-			"responses": [],
+
 			"imports": [
 				{
 					"count": 0,
@@ -72,7 +72,7 @@
 					}
 				]
 			},
-			"responses": [],
+
 			"imports": [
 				{
 					"count": 1,

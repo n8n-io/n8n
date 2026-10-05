@@ -12,10 +12,16 @@
 					}
 				}
 			},
-			"responses": [
+			"routes": [
 				{
-					"id": 3,
-					"name": "Ada"
+					"method": "POST",
+					"path": "/items",
+					"reply": {
+						"json": {
+							"id": 3,
+							"name": "Ada"
+						}
+					}
 				}
 			],
 			"output": [
@@ -42,9 +48,15 @@
 					"fileName": "q3.csv"
 				}
 			},
-			"responses": [
+			"routes": [
 				{
-					"stored": true
+					"method": "PUT",
+					"path": "/files/q3.csv",
+					"reply": {
+						"json": {
+							"stored": true
+						}
+					}
 				}
 			],
 			"output": [

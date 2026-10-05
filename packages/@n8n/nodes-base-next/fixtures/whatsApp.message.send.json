@@ -7,11 +7,17 @@
 				"to": "+49 151 1234 5678",
 				"message": { "type": "text", "body": "Standard tier: 2 credits. Reply YES to confirm." }
 			},
-			"responses": [
+			"routes": [
 				{
-					"messaging_product": "whatsapp",
-					"contacts": [{ "input": "4915112345678", "wa_id": "4915112345678" }],
-					"messages": [{ "id": "wamid.HBgNNDkxNTExMjM0NTY3OBUCABEYEjQ" }]
+					"method": "POST",
+					"path": "/106540352242922/messages",
+					"reply": {
+						"json": {
+							"messaging_product": "whatsapp",
+							"contacts": [{ "input": "4915112345678", "wa_id": "4915112345678" }],
+							"messages": [{ "id": "wamid.HBgNNDkxNTExMjM0NTY3OBUCABEYEjQ" }]
+						}
+					}
 				}
 			],
 			"output": [
@@ -33,11 +39,17 @@
 					"caption": "Weekly chart"
 				}
 			},
-			"responses": [
+			"routes": [
 				{
-					"messaging_product": "whatsapp",
-					"contacts": [{ "input": "4915112345678", "wa_id": "4915112345678" }],
-					"messages": [{ "id": "wamid.IMAGE1", "message_status": "accepted" }]
+					"method": "POST",
+					"path": "/106540352242922/messages",
+					"reply": {
+						"json": {
+							"messaging_product": "whatsapp",
+							"contacts": [{ "input": "4915112345678", "wa_id": "4915112345678" }],
+							"messages": [{ "id": "wamid.IMAGE1", "message_status": "accepted" }]
+						}
+					}
 				}
 			],
 			"output": [

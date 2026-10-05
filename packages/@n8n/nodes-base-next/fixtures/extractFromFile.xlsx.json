@@ -12,7 +12,7 @@
 					"fileName": "scores.xlsx"
 				}
 			},
-			"responses": [],
+
 			"imports": [
 				[
 					{
@@ -50,7 +50,7 @@
 					"fileName": "scores.xlsx"
 				}
 			},
-			"responses": [],
+
 			"imports": [[["name", "score"], ["Ada", 3], ["Grace", 5]]],
 			"output": [
 				{

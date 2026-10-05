@@ -2,7 +2,6 @@
 // turn, so machine load hits all alike, and checks each output against `in-process`.
 // Usage: pnpm exec tsx scripts/bench-runtimes.ts --runtime in-process,worker+pool+chunk,wasm --scenario fixed,w2
 // Scenarios: fixed w1 w2 w3 payload binary (default: all).
-import { isRecord } from '@n8n/utils/is-record';
 import type { IBinaryData, IDataObject, INodeExecutionData } from 'n8n-workflow';
 import { execFile } from 'node:child_process';
 import { mkdirSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
@@ -21,6 +20,7 @@ import {
 	type FrozenVersion,
 } from '../src/runtime';
 import { sandboxedVersionOf, type GuestRuntime, type SandboxOptions } from '../src/sandbox';
+import type { MockRoute } from '../src/testing';
 import { parseFixtures } from '../src/version';
 import { pooledRuntime } from '../src/runtimes/pool';
 import { IN_PROCESS, runtimeByName } from './runtimes';
@@ -36,7 +36,7 @@ interface Runtime {
 interface Workload {
 	readonly items: readonly IDataObject[];
 	readonly params: Readonly<Record<string, unknown>>;
-	readonly responses?: readonly unknown[];
+	readonly routes?: readonly MockRoute[];
 	readonly latencyMs?: number;
 }
 
@@ -136,7 +136,7 @@ const binaryStore: BinaryStore = {
 
 const hostFor = (
 	head: FrozenVersion,
-	{ items, params, responses = [], latencyMs = 0 }: Workload,
+	{ items, params, routes = [], latencyMs = 0 }: Workload,
 ): ExecutorHost => {
 	const description = nodeDescriptionOf(head.manifest);
 	const defaults = new Map(description.properties.map((p) => [p.name, p.default]));
@@ -160,10 +160,12 @@ const hostFor = (
 			// The network drains a streamed upload body.
 			if (options.body instanceof Readable) for await (const _ of options.body);
 			if (latencyMs) await new Promise((resolve) => setTimeout(resolve, latencyMs));
-			const recorded = responses[calls.count++ % Math.max(responses.length, 1)];
-			return options.returnFullResponse && !(isRecord(recorded) && 'statusCode' in recorded)
-				? { body: recorded, headers: {}, statusCode: 200 }
-				: recorded;
+			const {
+				json,
+				headers = {},
+				status = 200,
+			} = routes[calls.count++ % Math.max(routes.length, 1)]?.reply ?? {};
+			return options.returnFullResponse ? { body: json, headers, statusCode: status } : json;
 		},
 		continueOnFail: () => false,
 		binary: binaryStore,
@@ -348,8 +350,8 @@ async function w1(runtimes: readonly Runtime[]) {
 		'RSS per guest',
 		'peak host RSS',
 	);
-	const { params, responses } = fixtureOf(id);
-	const workload: Workload = { items: [{}], params, responses };
+	const { params, routes } = fixtureOf(id);
+	const workload: Workload = { items: [{}], params, routes };
 	const checks = new Map<string, string | undefined>();
 	for (const runtime of runtimes)
 		checks.set(runtime.name, await outputCheck(id, runtime, workload));
@@ -402,10 +404,10 @@ async function w2(runtimes: readonly Runtime[]) {
 		['items.aggregate', 'batch'],
 	];
 	for (const [id, kind] of cases) {
-		const { params, responses } = fixtureOf(id);
+		const { params, routes } = fixtureOf(id);
 		for (const count of [1, 100, 1000, 10000]) {
 			const runs = count >= 10000 ? 3 : count >= 1000 ? 5 : 10;
-			const workload = { items: people(count), params, responses };
+			const workload = { items: people(count), params, routes };
 			await compare(`${id} (${kind}) × ${count}`, id, workload, runs, runtimes);
 		}
 	}
@@ -417,8 +419,8 @@ async function w3(runtimes: readonly Runtime[]) {
 	const rounds = 3;
 	console.log(`\n### W3: ${id}, ${loop} executions in a row (median of ${rounds} rounds)\n`);
 	table('runtime', `${loop} executions`, 'per execution');
-	const { items, params, responses } = fixtureOf(id);
-	const workload: Workload = { items: items ?? [{}], params, responses };
+	const { items, params, routes } = fixtureOf(id);
+	const workload: Workload = { items: items ?? [{}], params, routes };
 	const notes = new Map<string, string | undefined>();
 	for (const runtime of runtimes) notes.set(runtime.name, await outputCheck(id, runtime, workload));
 	const totals = new Map<string, number[]>(runtimes.map(({ name }) => [name, []]));
@@ -480,7 +482,7 @@ async function binary(runtimes: readonly Runtime[]) {
 		const workload = {
 			items: [{}],
 			params: { ...gmail.params, attachments: [fileName] },
-			responses: gmail.responses,
+			routes: gmail.routes,
 		};
 		const label = `gmail.message.send, ${size} MB attachment (guest reads bytes)`;
 		await compare(label, 'gmail.message.send', workload, size >= 10 ? 3 : 7, runtimes);
@@ -492,7 +494,7 @@ async function binary(runtimes: readonly Runtime[]) {
 		const workload = {
 			items: [{}],
 			params: { ...drive.params, file: fileName },
-			responses: drive.responses,
+			routes: drive.routes,
 		};
 		const label = `googleDrive.file.upload, ${size} MB (host streams bytes)`;
 		await compare(label, 'googleDrive.file.upload', workload, size >= 100 ? 3 : 5, runtimes);

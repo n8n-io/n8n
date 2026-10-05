@@ -12,7 +12,7 @@
 					"fileName": "notes.txt"
 				}
 			},
-			"responses": [],
+
 			"imports": ["Ship on Monday.\nCall Ada first.\n"],
 			"output": [
 				{

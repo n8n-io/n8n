@@ -8,17 +8,38 @@
 				"text": "Fixed",
 				"appendAttribution": false
 			},
-			"responses": [
-				{
-					"ok": true,
-					"channel": "C0OPS",
+			"legacy": {
+				"type": "n8n-nodes-base.slack",
+				"version": 2.7,
+				"parameters": {
+					"authentication": "accessToken",
+					"resource": "message",
+					"operation": "update",
+					"channelId": { "__rl": true, "mode": "id", "value": "C0OPS" },
 					"ts": "1700000000.000100",
+					"messageType": "text",
 					"text": "Fixed",
-					"message": {
-						"type": "message",
-						"user": "U0BOT",
-						"text": "Fixed",
-						"ts": "1700000000.000100"
+					"updateFields": {},
+					"otherOptions": { "includeLinkToWorkflow": false }
+				}
+			},
+			"routes": [
+				{
+					"method": "POST",
+					"path": "/chat.update",
+					"reply": {
+						"json": {
+							"ok": true,
+							"channel": "C0OPS",
+							"ts": "1700000000.000100",
+							"text": "Fixed",
+							"message": {
+								"type": "message",
+								"user": "U0BOT",
+								"text": "Fixed",
+								"ts": "1700000000.000100"
+							}
+						}
 					}
 				}
 			],

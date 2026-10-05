@@ -2,24 +2,27 @@
 	"executions": [
 		{
 			"name": "delete",
-			"params": {
-				"channel": "C0OPS",
-				"ts": "1700000000.000100"
+			"params": { "channel": "C0OPS", "ts": "1700000000.000100" },
+			"legacy": {
+				"type": "n8n-nodes-base.slack",
+				"version": 2.7,
+				"parameters": {
+					"authentication": "accessToken",
+					"resource": "message",
+					"operation": "delete",
+					"select": "channel",
+					"channelId": { "__rl": true, "mode": "id", "value": "C0OPS" },
+					"timestamp": "1700000000.000100"
+				}
 			},
-			"responses": [
+			"routes": [
 				{
-					"ok": true,
-					"channel": "C0OPS",
-					"ts": "1700000000.000100"
+					"method": "POST",
+					"path": "/chat.delete",
+					"reply": { "json": { "ok": true, "channel": "C0OPS", "ts": "1700000000.000100" } }
 				}
 			],
-			"output": [
-				{
-					"ok": true,
-					"channel": "C0OPS",
-					"ts": "1700000000.000100"
-				}
-			]
+			"output": [{ "ok": true, "channel": "C0OPS", "ts": "1700000000.000100" }]
 		}
 	]
 }

@@ -5,65 +5,70 @@
 			"params": {
 				"document": "https://docs.google.com/document/d/1QuestionsDocAbCdEfGhIjKlMnOpQrStUv/edit"
 			},
-			"responses": [
+			"routes": [
 				{
-					"documentId": "1QuestionsDocAbCdEfGhIjKlMnOpQrStUv",
-					"title": "Acme – SWE questions",
-					"body": {
-						"content": [
-							{
-								"endIndex": 1,
-								"sectionBreak": {}
-							},
-							{
-								"startIndex": 1,
-								"endIndex": 20,
-								"paragraph": {
-									"elements": [
-										{
-											"startIndex": 1,
-											"endIndex": 20,
-											"textRun": {
-												"content": "Interview questions\n"
-											}
-										}
-									]
-								}
-							},
-							{
-								"startIndex": 20,
-								"endIndex": 60,
-								"paragraph": {
-									"elements": [
-										{
-											"textRun": {
-												"content": "1. Explain "
-											}
-										},
-										{
-											"textRun": {
-												"content": "closures",
-												"textStyle": {
-													"bold": true
+					"path": "/documents/1QuestionsDocAbCdEfGhIjKlMnOpQrStUv",
+					"reply": {
+						"json": {
+							"documentId": "1QuestionsDocAbCdEfGhIjKlMnOpQrStUv",
+							"title": "Acme – SWE questions",
+							"body": {
+								"content": [
+									{
+										"endIndex": 1,
+										"sectionBreak": {}
+									},
+									{
+										"startIndex": 1,
+										"endIndex": 20,
+										"paragraph": {
+											"elements": [
+												{
+													"startIndex": 1,
+													"endIndex": 20,
+													"textRun": {
+														"content": "Interview questions\n"
+													}
 												}
-											}
-										},
-										{
-											"textRun": {
-												"content": ".\n"
-											}
+											]
 										}
-									]
-								}
-							},
-							{
-								"startIndex": 60,
-								"endIndex": 80,
-								"table": {
-									"tableRows": []
-								}
+									},
+									{
+										"startIndex": 20,
+										"endIndex": 60,
+										"paragraph": {
+											"elements": [
+												{
+													"textRun": {
+														"content": "1. Explain "
+													}
+												},
+												{
+													"textRun": {
+														"content": "closures",
+														"textStyle": {
+															"bold": true
+														}
+													}
+												},
+												{
+													"textRun": {
+														"content": ".\n"
+													}
+												}
+											]
+										}
+									},
+									{
+										"startIndex": 60,
+										"endIndex": 80,
+										"table": {
+											"tableRows": []
+										}
+									}
+								]
 							}
-						]
+						}
 					}
 				}
 			],

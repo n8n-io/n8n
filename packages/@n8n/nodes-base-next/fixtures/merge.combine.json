@@ -32,7 +32,7 @@
 					}
 				]
 			],
-			"responses": [],
+
 			"output": [
 				{
 					"id": 1,
@@ -71,7 +71,7 @@
 					}
 				]
 			],
-			"responses": [],
+
 			"output": [
 				{
 					"a": 1,

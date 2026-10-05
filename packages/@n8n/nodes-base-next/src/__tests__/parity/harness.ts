@@ -17,7 +17,7 @@
  * - Everywhere, a key with an undefined value equals a missing key.
  * - The run error message, when a run fails.
  */
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -27,6 +27,8 @@ import type * as Core from '../../../../../core/dist/index.js';
 import type Nock from '../../../../../core/node_modules/nock';
 import type { Action } from '@n8n/node-sdk';
 import { toNodeType } from '@n8n/node-sdk/host';
+import { parseFixtures } from '@n8n/node-sdk/registry';
+import type { MockRoute } from '@n8n/node-sdk/testing';
 import type * as N8nWorkflow from 'n8n-workflow';
 import type {
 	IBinaryData,
@@ -163,7 +165,8 @@ export interface ParityCase {
 	readonly input: readonly IDataObject[];
 	/** The binaries of every input item. */
 	readonly binary?: IBinaryKeyData;
-	readonly routes: readonly Route[];
+	/** Hand-written routes, or the routes of a fixture. */
+	readonly routes: ReadonlyArray<Route | MockRoute>;
 	/** Lower-case request header names to compare. */
 	readonly headers?: readonly string[];
 	/** The workflow time zone. The n8n default when omitted. */
@@ -407,8 +410,71 @@ const describeUnmatched = (request: unknown) => {
 	return `${textOf(request.method)} ${decodeURIComponent(target)}`;
 };
 
+const isFixtureRoute = (route: Route | MockRoute): route is MockRoute => !('url' in route);
+
+/** A fixture route matches the end of the path on any host, as `mockHttp` matches it. */
+function interceptorOf(route: Route | MockRoute) {
+	if (isFixtureRoute(route)) {
+		return nock(/.*/)
+			.intercept(
+				(requestPath) => (requestPath.split('?')[0] ?? '').endsWith(route.path),
+				(route.method ?? 'GET').toUpperCase(),
+			)
+			.query((actual) =>
+				Object.entries(route.query ?? {}).every(
+					([key, value]) =>
+						JSON.stringify([actual[key] ?? []].flat()) ===
+						JSON.stringify([value].flat().map(String)),
+				),
+			);
+	}
+	const target = new URL(route.url);
+	return nock(target.origin)
+		.intercept(
+			(requestPath) =>
+				decodeURIComponent(requestPath.split('?')[0] ?? '') === decodeURIComponent(target.pathname),
+			route.method,
+		)
+		.query((actual) =>
+			Object.entries(route.query ?? {}).every(([key, value]) => actual[key] === value),
+		);
+}
+
+const replyOf = (route: Route | MockRoute): [number, string | Buffer, Record<string, string>] => {
+	if (!isFixtureRoute(route)) {
+		return route.raw
+			? [route.status ?? 200, route.raw.body, { ...route.raw.headers }]
+			: [route.status ?? 200, JSON.stringify(route.json), { 'content-type': 'application/json' }];
+	}
+	const { status = 200, json, binary, headers } = route.reply;
+	return binary
+		? [
+				status,
+				Buffer.from(binary.data, 'base64'),
+				{
+					'content-type': binary.mimeType,
+					...(binary.fileName
+						? { 'content-disposition': `attachment; filename="${binary.fileName}"` }
+						: {}),
+					...headers,
+				},
+			]
+		: [
+				status,
+				json === undefined ? '' : JSON.stringify(json),
+				{ 'content-type': 'application/json', ...headers },
+			];
+};
+
+/** The origin of an intercepted request. Its options hold the full URL. */
+const originOf = (request: object, route: Route | MockRoute) => {
+	const options: unknown = Reflect.get(request, 'options');
+	if (isRecord(options) && typeof options.href === 'string') return new URL(options.href).origin;
+	return isFixtureRoute(route) ? 'http://localhost' : new URL(route.url).origin;
+};
+
 /** Registers `routes` with nock. Answered and unmatched requests go to the returned lists. */
-function mockRoutes(routes: readonly Route[], headerNames: readonly string[]) {
+function mockRoutes(routes: ReadonlyArray<Route | MockRoute>, headerNames: readonly string[]) {
 	const sent: SentRequest[] = [];
 	const unmatched: string[] = [];
 	nock.cleanAll();
@@ -416,20 +482,10 @@ function mockRoutes(routes: readonly Route[], headerNames: readonly string[]) {
 	nock.emitter.removeAllListeners('no match');
 	nock.emitter.on('no match', (request: unknown) => unmatched.push(describeUnmatched(request)));
 	routes.forEach((route) => {
-		const target = new URL(route.url);
-		const interceptor = nock(target.origin)
-			.intercept(
-				(requestPath) =>
-					decodeURIComponent(requestPath.split('?')[0] ?? '') ===
-					decodeURIComponent(target.pathname),
-				route.method,
-			)
-			.query((actual) =>
-				Object.entries(route.query ?? {}).every(([key, value]) => actual[key] === value),
-			);
+		const interceptor = interceptorOf(route);
 		const counted = route.times === undefined ? interceptor : interceptor.times(route.times);
 		const scope = counted.reply(function (uri, body) {
-			const url = new URL(uri, target.origin);
+			const url = new URL(uri, originOf(this.req, route));
 			sent.push({
 				method: this.req.method,
 				url: `${url.origin}${decodeURIComponent(url.pathname)}`,
@@ -444,9 +500,7 @@ function mockRoutes(routes: readonly Route[], headerNames: readonly string[]) {
 						}),
 				),
 			});
-			return route.raw
-				? [route.status ?? 200, route.raw.body, route.raw.headers]
-				: [route.status ?? 200, JSON.stringify(route.json), { 'content-type': 'application/json' }];
+			return replyOf(route);
 		});
 		if (route.times === undefined) scope.persist();
 	});
@@ -646,3 +700,95 @@ export const explained = (
 	unexplained: found.filter((difference) => !allowlist.some((entry) => covers(entry, difference))),
 	stale: allowlist.filter((entry) => !found.some((difference) => covers(entry, difference))),
 });
+
+const FIXTURES_DIR = path.resolve(__dirname, '../../../fixtures');
+
+/** By fixture name: what a fixture parity test allows and checks beyond the comparison rules. */
+export interface FixtureParityCase {
+	readonly allowed?: readonly AllowedDifference[];
+	/** More checks of the two runs, e.g. of an allowed difference. */
+	readonly check?: (legacy: ParityRun, next: ParityRun) => void;
+}
+
+/** How the fixture parity tests of an action run its legacy node. */
+export interface FixtureParity {
+	/** The legacy node class. The `legacy.type` of each fixture names it. */
+	readonly nodeType: INodeType | IVersionedNodeType;
+	readonly credential?: ParityCase['credential'];
+	/** Lower-case request header names to compare. */
+	readonly headers?: readonly string[];
+	readonly cases?: Readonly<Record<string, FixtureParityCase>>;
+}
+
+/**
+ * Defines one parity test for each fixture of `action` with a `legacy` block. The action runs
+ * with the fixture params, the legacy node with `legacy.parameters`, both against the fixture
+ * routes. The action must emit the fixture output, and the runs may differ only as allowed.
+ */
+export function describeFixtureParity(action: Action, parity: FixtureParity) {
+	const fixtures = parseFixtures(
+		readFileSync(path.join(FIXTURES_DIR, `${action.id}.json`), 'utf8'),
+	).executions.flatMap((fixture) =>
+		fixture.legacy ? [{ ...fixture, legacy: fixture.legacy }] : [],
+	);
+	const names = fixtures.map(({ name }) => name);
+	const unknown = Object.keys(parity.cases ?? {}).filter((name) => !names.includes(name));
+	const legacyName = parity.nodeType.description.name;
+	const otherTypes = fixtures.filter(({ legacy }) => !legacy.type.endsWith(`.${legacyName}`));
+	if (fixtures.length === 0 || unknown.length > 0 || otherTypes.length > 0) {
+		throw new Error(
+			`${action.id}: needs fixtures with a legacy ${legacyName} node; cases without a fixture: ${unknown.join(', ') || 'none'}; other legacy types: ${otherTypes.map(({ name, legacy }) => `${name} (${legacy.type})`).join(', ') || 'none'}`,
+		);
+	}
+	const credential = parity.credential?.types[0]?.name;
+	describe(`${action.id} parity with its legacy node`, () => {
+		it.each(fixtures)('$name', async (fixture) => {
+			const parityCase: ParityCase = {
+				...(parity.credential ? { credential: parity.credential } : {}),
+				input: fixture.items ?? [{}],
+				...(fixture.inputs ? { inputs: fixture.inputs } : {}),
+				...(fixture.binary
+					? {
+							binary: Object.fromEntries(
+								Object.entries(fixture.binary).map(([key, file]) => [key, { ...file }]),
+							),
+						}
+					: {}),
+				// nock answers with the first matching route, mockHttp with the one that lists most query
+				// parameters. This order makes both pick the same route.
+				routes: [...(fixture.routes ?? [])].sort(
+					(a, b) => Object.keys(b.query ?? {}).length - Object.keys(a.query ?? {}).length,
+				),
+				...(parity.headers ? { headers: parity.headers } : {}),
+			};
+			const legacy = await runNode(
+				{
+					nodeType: parity.nodeType,
+					type: fixture.legacy.type,
+					typeVersion: fixture.legacy.version,
+					parameters: fixture.legacy.parameters,
+					...(credential ? { credential } : {}),
+				},
+				parityCase,
+			);
+			const next = await runNode(
+				actionNode(
+					action,
+					{ ...(credential ? { authentication: credential } : {}), ...fixture.params },
+					credential,
+				),
+				parityCase,
+			);
+			const { allowed = [], check } = parity.cases?.[fixture.name] ?? {};
+			if (fixture.error === undefined) {
+				expect(legacy.error, legacy.unmatched.join('; ')).toBeUndefined();
+			}
+			expect(next.error).toBe(fixture.error);
+			expect(
+				[next.items, ...next.otherOutputs].map((items) => items.map(({ json }) => json)),
+			).toEqual(fixture.outputs ?? [fixture.output]);
+			check?.(legacy, next);
+			expect(compareRuns(legacy, next, allowed)).toEqual({ unexplained: [], stale: [] });
+		});
+	});
+}

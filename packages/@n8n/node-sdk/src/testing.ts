@@ -1,6 +1,8 @@
 import { errorChain } from '@n8n/utils/errors/error-chain';
 import { isRecord } from '@n8n/utils/is-record';
 import { scrubSecretsInText } from '@n8n/utils/scrub-secrets';
+import { Readable } from 'node:stream';
+import { buffer } from 'node:stream/consumers';
 import type {
 	ICredentialDataDecryptedObject,
 	ICredentialType,
@@ -19,6 +21,7 @@ import {
 } from './define';
 import { AUTHENTICATION, executorOf, nodeNameOf, type ExecutorHost } from './runtime';
 import type { ProviderCapabilities, ProviderKind } from './providers';
+import type { FixtureBinary } from './version';
 
 /** What `runAction` runs an action with: the parameters, items, credential and host stubs. */
 export interface RunActionOptions {
@@ -158,8 +161,30 @@ const expirableFieldOf = (type: ICredentialType) =>
 		(property) => property.type === 'hidden' && property.typeOptions?.expirable === true,
 	)?.name;
 
-/** Sends what the executor would pass to n8n's `httpRequest`. */
-async function send(fetchFn: typeof fetch, options: IHttpRequestOptions) {
+/** A JSON value goes as JSON text. Text and bytes go as they are; a stream goes as its bytes. */
+async function requestBodyOf(body: IHttpRequestOptions['body']) {
+	if (body === undefined || typeof body === 'string') return { body, isJson: false };
+	// The fetch types take bytes over an ArrayBuffer only, so copy them.
+	if (body instanceof Uint8Array) return { body: new Uint8Array(body), isJson: false };
+	if (body instanceof Readable) return { body: new Uint8Array(await buffer(body)), isJson: false };
+	return { body: asText(body), isJson: true };
+}
+
+/**
+ * Sends the options that the executor gives n8n's `httpRequest` through `fetchFn`, as n8n core
+ * sends them: the query, a JSON body, a full response, a stream response. A failed status throws
+ * an `HttpError`. `runAction` and the fixture replay of publish use it.
+ *
+ * @example
+ * ```ts
+ * const fetch = mockHttp([{ path: '/users', reply: { json: [] } }]);
+ * await sendRequest(fetch, { url: 'https://api.test/users' }); // []
+ * ```
+ */
+export async function sendRequest(
+	fetchFn: typeof fetch,
+	options: IHttpRequestOptions,
+): Promise<unknown> {
 	const url = new URL(options.url);
 	Object.entries(options.qs ?? {})
 		.flatMap(([key, value]) =>
@@ -167,10 +192,10 @@ async function send(fetchFn: typeof fetch, options: IHttpRequestOptions) {
 		)
 		.filter(([, value]) => value !== undefined && value !== null)
 		.forEach(([key, value]) => url.searchParams.append(key, asText(value)));
-	const isJsonBody = options.body !== undefined && typeof options.body !== 'string';
+	const { body, isJson } = await requestBodyOf(options.body);
 	const headers = Object.fromEntries(
 		Object.entries({
-			...(isJsonBody ? { 'content-type': 'application/json' } : {}),
+			...(isJson ? { 'content-type': 'application/json' } : {}),
 			...options.headers,
 		}).map(([key, value]) => [key, asText(value)]),
 	);
@@ -178,24 +203,29 @@ async function send(fetchFn: typeof fetch, options: IHttpRequestOptions) {
 	const response = await fetchFn(url, {
 		method,
 		headers,
-		...(options.body === undefined ? {} : { body: asText(options.body) }),
+		...(body === undefined ? {} : { body }),
 		...(options.timeout ? { signal: AbortSignal.timeout(options.timeout) } : {}),
 	});
-	const text = await response.text();
-	const body: unknown =
-		text && /json/.test(response.headers.get('content-type') ?? '') ? JSON.parse(text) : text;
 	const responseHeaders = Object.fromEntries(response.headers);
-	if (!response.ok) {
-		throw new ResponseError(
+	const failure = (text: string, responseBody: unknown) =>
+		new ResponseError(
 			`${method} ${url.origin}${url.pathname} failed with ${response.status}: ${scrubSecretsInText(text).slice(0, 300)}`,
 			response.status,
 			responseHeaders,
-			body,
+			responseBody,
 		);
+	if (options.encoding === 'stream') {
+		const bytes = Buffer.from(await response.arrayBuffer());
+		if (!response.ok) throw failure(bytes.toString(), bytes.toString());
+		return { body: Readable.from([bytes]), headers: responseHeaders, statusCode: response.status };
 	}
+	const text = await response.text();
+	const parsed: unknown =
+		text && /json/.test(response.headers.get('content-type') ?? '') ? JSON.parse(text) : text;
+	if (!response.ok) throw failure(text, parsed);
 	return options.returnFullResponse
-		? { body, headers: responseHeaders, statusCode: response.status }
-		: body;
+		? { body: parsed, headers: responseHeaders, statusCode: response.status }
+		: parsed;
 }
 
 /** The first failing field in an executor message, e.g. `input.limit` or `output[0].id`. */
@@ -270,7 +300,7 @@ export async function runAction(
 		if (!current && !refresh && data[field]) return data;
 		const helper = {
 			helpers: {
-				httpRequest: async (options: IHttpRequestOptions) => await send(fetchFn, options),
+				httpRequest: async (options: IHttpRequestOptions) => await sendRequest(fetchFn, options),
 			},
 		};
 		const next = preAuthentication.call(helper, { ...data }).then((output) => {
@@ -299,9 +329,12 @@ export async function runAction(
 		// A credential problem fails the first request, after the input check, as in n8n.
 		request: async (request) => {
 			if (typeof credential === 'string') throw new Error(credential);
-			if (!credential) return await send(fetchFn, request);
+			if (!credential) return await sendRequest(fetchFn, request);
 			const attempt = async (refresh: boolean) =>
-				await send(fetchFn, await authenticate(credential, await tokenData(refresh), request));
+				await sendRequest(
+					fetchFn,
+					await authenticate(credential, await tokenData(refresh), request),
+				);
 			// As n8n core: after a 401, one new token request and one more attempt.
 			return await attempt(false).catch(async (error: unknown) => {
 				if (!credential.preAuthentication || !isHttpError(error) || error.status !== 401) {
@@ -369,7 +402,9 @@ export interface MockRoute {
 		readonly status?: number;
 		/** The JSON body. No body when omitted. */
 		readonly json?: unknown;
-		/** More response headers. `content-type` is `application/json` unless set. */
+		/** A body that is not JSON, e.g. a file or plain text. Use it instead of `json`. */
+		readonly binary?: FixtureBinary;
+		/** More response headers. `content-type` is `application/json`, or the MIME type of `binary`, unless set. */
 		readonly headers?: Readonly<Record<string, string>>;
 	};
 }
@@ -386,7 +421,7 @@ export interface MockCall {
 	readonly query: Record<string, string | string[]>;
 	/** Lower-case names, e.g. `authorization`. */
 	readonly headers: Record<string, string>;
-	/** A JSON body is already parsed. */
+	/** A JSON body is already parsed. A byte body is UTF-8 text. */
 	readonly body: unknown;
 }
 
@@ -433,7 +468,12 @@ export function mockHttp(routes: readonly MockRoute[]): MockFetch {
 			path: url.pathname,
 			query: queryOf(url.searchParams),
 			headers: Object.fromEntries(new Headers(init.headers)),
-			body: text && /^\s*[[{]/.test(text) ? JSON.parse(text) : text,
+			body:
+				init.body instanceof Uint8Array
+					? Buffer.from(init.body).toString()
+					: text && /^\s*[[{]/.test(text)
+						? JSON.parse(text)
+						: text,
 		};
 		calls.push(call);
 		// A paging loop over mocks only runs microtasks, so a test timeout never fires.
@@ -467,10 +507,21 @@ export function mockHttp(routes: readonly MockRoute[]): MockFetch {
 			);
 		}
 		answered.set(route, (answered.get(route) ?? 0) + 1);
-		const { status = 200, json, headers } = route.reply;
-		return new Response(json === undefined ? null : JSON.stringify(json), {
+		const { status = 200, json, binary, headers } = route.reply;
+		const body = binary
+			? Buffer.from(binary.data, 'base64')
+			: json === undefined
+				? null
+				: JSON.stringify(json);
+		return new Response(body, {
 			status,
-			headers: { 'content-type': 'application/json', ...headers },
+			headers: {
+				'content-type': binary?.mimeType ?? 'application/json',
+				...(binary?.fileName
+					? { 'content-disposition': `attachment; filename="${binary.fileName}"` }
+					: {}),
+				...headers,
+			},
 		});
 	};
 	return Object.assign(mock, { calls });

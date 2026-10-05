@@ -7,14 +7,20 @@
 				"prompt": "A red hiking backpack on white",
 				"size": "1024x1024"
 			},
-			"responses": [
+			"routes": [
 				{
-					"created": 1,
-					"data": [
-						{
-							"b64_json": "iVBORw0KGgpmYWtlLWltYWdl"
+					"method": "POST",
+					"path": "/images/generations",
+					"reply": {
+						"json": {
+							"created": 1,
+							"data": [
+								{
+									"b64_json": "iVBORw0KGgpmYWtlLWltYWdl"
+								}
+							]
 						}
-					]
+					}
 				}
 			],
 			"output": [{}],
@@ -35,15 +41,21 @@
 				"prompt": "A backpack",
 				"quality": "hd"
 			},
-			"responses": [
+			"routes": [
 				{
-					"created": 1,
-					"data": [
-						{
-							"b64_json": "iVBORw0KGgpmYWtlLWltYWdl",
-							"revised_prompt": "A red backpack"
+					"method": "POST",
+					"path": "/images/generations",
+					"reply": {
+						"json": {
+							"created": 1,
+							"data": [
+								{
+									"b64_json": "iVBORw0KGgpmYWtlLWltYWdl",
+									"revised_prompt": "A red backpack"
+								}
+							]
 						}
-					]
+					}
 				}
 			],
 			"output": [

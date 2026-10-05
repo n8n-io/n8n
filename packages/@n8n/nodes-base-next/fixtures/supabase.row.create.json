@@ -9,14 +9,20 @@
 					"plan": "pro"
 				}
 			},
-			"responses": [
-				[
-					{
-						"id": 4,
-						"email": "d@example.com",
-						"plan": "pro"
+			"routes": [
+				{
+					"method": "POST",
+					"path": "/rest/v1/customers",
+					"reply": {
+						"json": [
+							{
+								"id": 4,
+								"email": "d@example.com",
+								"plan": "pro"
+							}
+						]
 					}
-				]
+				}
 			],
 			"output": [
 				{

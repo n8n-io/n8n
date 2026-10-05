@@ -2,29 +2,36 @@
 	"executions": [
 		{
 			"name": "private channel",
-			"params": {
-				"name": "#launch",
-				"isPrivate": true
+			"params": { "name": "#launch", "isPrivate": true },
+			"legacy": {
+				"type": "n8n-nodes-base.slack",
+				"version": 2.7,
+				"parameters": {
+					"authentication": "accessToken",
+					"resource": "channel",
+					"operation": "create",
+					"channelId": "#launch",
+					"channelVisibility": "private"
+				}
 			},
-			"responses": [
+			"routes": [
 				{
-					"ok": true,
-					"channel": {
-						"id": "C0LAUNCH01",
-						"name": "launch",
-						"is_channel": true,
-						"is_private": true
+					"method": "POST",
+					"path": "/conversations.create",
+					"reply": {
+						"json": {
+							"ok": true,
+							"channel": {
+								"id": "C0LAUNCH01",
+								"name": "launch",
+								"is_channel": true,
+								"is_private": true
+							}
+						}
 					}
 				}
 			],
-			"output": [
-				{
-					"id": "C0LAUNCH01",
-					"name": "launch",
-					"is_channel": true,
-					"is_private": true
-				}
-			]
+			"output": [{ "id": "C0LAUNCH01", "name": "launch", "is_channel": true, "is_private": true }]
 		}
 	]
 }

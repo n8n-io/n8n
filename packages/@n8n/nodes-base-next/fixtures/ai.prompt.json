@@ -20,7 +20,7 @@
 					]
 				}
 			},
-			"responses": [],
+
 			"output": [
 				{
 					"text": "Hi"
@@ -55,7 +55,7 @@
 					]
 				}
 			},
-			"responses": [],
+
 			"output": [
 				{
 					"text": "```json\n{\"colour\":\"red\"}\n```",

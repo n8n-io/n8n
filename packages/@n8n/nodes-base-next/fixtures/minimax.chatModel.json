@@ -20,18 +20,24 @@
 					]
 				}
 			],
-			"responses": [
+			"routes": [
 				{
-					"choices": [
-						{
-							"index": 0,
-							"message": {
-								"role": "assistant",
-								"content": "Hello"
-							},
-							"finish_reason": "stop"
+					"method": "POST",
+					"path": "/chat/completions",
+					"reply": {
+						"json": {
+							"choices": [
+								{
+									"index": 0,
+									"message": {
+										"role": "assistant",
+										"content": "Hello"
+									},
+									"finish_reason": "stop"
+								}
+							]
 						}
-					]
+					}
 				}
 			],
 			"output": [

@@ -141,8 +141,8 @@ assert.deepEqual(fetch.calls[0]?.body, { name: 'A' });
 - A route matches on `method` (default `GET`), the end of the URL path, and each listed `query` parameter
   (other parameters may also be present). When more routes match, the route with the most listed query
   parameters answers. `times: n` answers at most n calls, then the next matching route answers.
-- `reply`: `{ status?, json?, headers? }`. A call that no route matches fails with the list of routes.
+- `reply`: `{ status?, json?, binary?, headers? }`. `binary` is a body that is not JSON (base64 `data`). A call that no route matches fails with the list of routes.
 - `fetch.calls[i]`: `{ method, url, path, query, headers, body }`. Query values are strings (a repeated
-  key is an array), header names are lower case, a JSON body is already parsed.
+  key is an array), header names are lower case, a JSON body is already parsed, a byte body is text.
 - Compare the whole result with `assert.deepEqual(result, ...)`: a failure then shows `result.error`.
 - A run with more than 1000 mock calls fails: the code loops over the same page.

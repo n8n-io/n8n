@@ -10,37 +10,43 @@
 				"body": "Steps: open, save.",
 				"labels": ["bug", "p1"]
 			},
-			"responses": [
+			"routes": [
 				{
-					"id": 1111,
-					"number": 111,
-					"title": "Crash on save",
-					"state": "open",
-					"html_url": "https://github.com/acme/widgets/issues/111",
-					"body": null,
-					"user": {
-						"login": "ada",
-						"id": 7
-					},
-					"labels": [
-						{
-							"id": 10,
-							"name": "bug",
-							"color": "d73a4a"
-						},
-						{
-							"id": 11,
-							"name": "p1",
-							"color": "d73a4a"
+					"method": "POST",
+					"path": "/repos/acme/widgets/issues",
+					"reply": {
+						"json": {
+							"id": 1111,
+							"number": 111,
+							"title": "Crash on save",
+							"state": "open",
+							"html_url": "https://github.com/acme/widgets/issues/111",
+							"body": null,
+							"user": {
+								"login": "ada",
+								"id": 7
+							},
+							"labels": [
+								{
+									"id": 10,
+									"name": "bug",
+									"color": "d73a4a"
+								},
+								{
+									"id": 11,
+									"name": "p1",
+									"color": "d73a4a"
+								}
+							],
+							"assignees": [],
+							"comments": 0,
+							"created_at": "2026-09-01T09:00:00Z",
+							"updated_at": "2026-09-02T09:00:00Z",
+							"closed_at": null,
+							"locked": false,
+							"milestone": null
 						}
-					],
-					"assignees": [],
-					"comments": 0,
-					"created_at": "2026-09-01T09:00:00Z",
-					"updated_at": "2026-09-02T09:00:00Z",
-					"closed_at": null,
-					"locked": false,
-					"milestone": null
+					}
 				}
 			],
 			"output": [

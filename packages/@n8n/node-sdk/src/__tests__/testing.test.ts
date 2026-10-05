@@ -1,7 +1,10 @@
 import { compat, credential, defineCredential, field } from '../entry/credentials';
 import { toCredentialType } from '../entry/host';
 import { defineNode, isHttpError, isRecord, path, t } from '../index';
-import { mockHttp, runAction } from '../testing';
+import { Readable } from 'node:stream';
+import { buffer } from 'node:stream/consumers';
+
+import { mockHttp, runAction, sendRequest } from '../testing';
 
 const todoApi = defineCredential({
 	id: 'todo.token',
@@ -251,6 +254,36 @@ describe('runAction', () => {
 			ok: false,
 			error: { message: 'No credential definition for legacyApi. Pass it in "credentials".' },
 		});
+	});
+});
+
+describe('sendRequest', () => {
+	it('sends a stream body as bytes and gives a binary reply as a stream', async () => {
+		const fetch = mockHttp([
+			{
+				method: 'POST',
+				path: '/files',
+				reply: { binary: { data: 'aGk=', mimeType: 'text/plain', fileName: 'hi.txt' } },
+			},
+		]);
+		const response = await sendRequest(fetch, {
+			method: 'POST',
+			url: 'https://todo.test/v1/files',
+			body: Readable.from([Buffer.from('a,b')]),
+			encoding: 'stream',
+		});
+
+		expect(fetch.calls[0]?.headers['content-type']).toBeUndefined();
+		expect(response).toMatchObject({
+			statusCode: 200,
+			headers: {
+				'content-type': 'text/plain',
+				'content-disposition': 'attachment; filename="hi.txt"',
+			},
+		});
+		const body: unknown = isRecord(response) ? response.body : undefined;
+		expect(body instanceof Readable && (await buffer(body)).toString()).toBe('hi');
+		expect(fetch.calls[0]?.body).toBe('a,b');
 	});
 });
 

@@ -18,13 +18,19 @@
 					"plan": "pro"
 				}
 			},
-			"responses": [
-				[
-					{
-						"id": 3,
-						"plan": "pro"
+			"routes": [
+				{
+					"method": "PATCH",
+					"path": "/rest/v1/customers",
+					"reply": {
+						"json": [
+							{
+								"id": 3,
+								"plan": "pro"
+							}
+						]
 					}
-				]
+				}
 			],
 			"output": [
 				{

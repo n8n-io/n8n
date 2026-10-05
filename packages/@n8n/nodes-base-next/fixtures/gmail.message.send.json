@@ -11,14 +11,25 @@
 				},
 				"senderName": "Bob"
 			},
-			"responses": [
+			"routes": [
 				{
-					"emailAddress": "me@example.com"
+					"path": "/profile",
+					"reply": {
+						"json": {
+							"emailAddress": "me@example.com"
+						}
+					}
 				},
 				{
-					"id": "m9",
-					"threadId": "t9",
-					"labelIds": ["SENT"]
+					"method": "POST",
+					"path": "/messages/send",
+					"reply": {
+						"json": {
+							"id": "m9",
+							"threadId": "t9",
+							"labelIds": ["SENT"]
+						}
+					}
 				}
 			],
 			"output": [
@@ -47,11 +58,17 @@
 					"fileName": "q3.csv"
 				}
 			},
-			"responses": [
+			"routes": [
 				{
-					"id": "m10",
-					"threadId": "t10",
-					"labelIds": ["SENT"]
+					"method": "POST",
+					"path": "/upload/gmail/v1/users/me/messages/send",
+					"reply": {
+						"json": {
+							"id": "m10",
+							"threadId": "t10",
+							"labelIds": ["SENT"]
+						}
+					}
 				}
 			],
 			"output": [

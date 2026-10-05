@@ -13,20 +13,29 @@
 					"fileName": "image.jpg"
 				}
 			},
-			"responses": [
+			"routes": [
 				{
-					"body": "",
-					"headers": {
-						"location": "https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable&upload_id=abc"
-					},
-					"statusCode": 200
+					"method": "POST",
+					"path": "/upload/drive/v3/files",
+					"reply": {
+						"headers": {
+							"location": "https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable&upload_id=abc"
+						},
+						"json": ""
+					}
 				},
 				{
-					"kind": "drive#file",
-					"id": "1UploadedAbCdEfGhIjKlMnOpQrStUvWx",
-					"name": "ai_media.jpg",
-					"mimeType": "image/jpeg",
-					"webViewLink": "https://drive.google.com/file/d/1UploadedAbCdEfGhIjKlMnOpQrStUvWx/view"
+					"method": "PUT",
+					"path": "/upload/drive/v3/files",
+					"reply": {
+						"json": {
+							"kind": "drive#file",
+							"id": "1UploadedAbCdEfGhIjKlMnOpQrStUvWx",
+							"name": "ai_media.jpg",
+							"mimeType": "image/jpeg",
+							"webViewLink": "https://drive.google.com/file/d/1UploadedAbCdEfGhIjKlMnOpQrStUvWx/view"
+						}
+					}
 				}
 			],
 			"output": [

@@ -88,4 +88,4 @@ ai.prompt({
 
 A root fixture records each capability in `supplied` (by input field): its data members and
 the results of its method calls, in order. A provider fixture lists `calls` of its
-capability; `output` holds their results, and `responses` holds the HTTP responses of the calls.
+capability; `output` holds their results, and `routes` answer the HTTP requests of the calls.

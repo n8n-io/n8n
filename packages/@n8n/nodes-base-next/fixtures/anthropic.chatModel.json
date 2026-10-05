@@ -24,21 +24,27 @@
 					]
 				}
 			],
-			"responses": [
+			"routes": [
 				{
-					"id": "msg_1",
-					"type": "message",
-					"role": "assistant",
-					"content": [
-						{
-							"type": "text",
-							"text": "Hello!"
+					"method": "POST",
+					"path": "/v1/messages",
+					"reply": {
+						"json": {
+							"id": "msg_1",
+							"type": "message",
+							"role": "assistant",
+							"content": [
+								{
+									"type": "text",
+									"text": "Hello!"
+								}
+							],
+							"stop_reason": "end_turn",
+							"usage": {
+								"input_tokens": 10,
+								"output_tokens": 3
+							}
 						}
-					],
-					"stop_reason": "end_turn",
-					"usage": {
-						"input_tokens": 10,
-						"output_tokens": 3
 					}
 				}
 			],
@@ -82,22 +88,28 @@
 					]
 				}
 			],
-			"responses": [
+			"routes": [
 				{
-					"content": [
-						{
-							"type": "tool_use",
-							"id": "toolu_1",
-							"name": "__n8n_output",
-							"input": {
-								"colour": "red"
+					"method": "POST",
+					"path": "/v1/messages",
+					"reply": {
+						"json": {
+							"content": [
+								{
+									"type": "tool_use",
+									"id": "toolu_1",
+									"name": "__n8n_output",
+									"input": {
+										"colour": "red"
+									}
+								}
+							],
+							"stop_reason": "tool_use",
+							"usage": {
+								"input_tokens": 12,
+								"output_tokens": 5
 							}
 						}
-					],
-					"stop_reason": "tool_use",
-					"usage": {
-						"input_tokens": 12,
-						"output_tokens": 5
 					}
 				}
 			],

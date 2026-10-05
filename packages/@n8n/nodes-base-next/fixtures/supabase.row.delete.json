@@ -20,15 +20,21 @@
 					]
 				}
 			},
-			"responses": [
-				[
-					{
-						"id": 3,
-						"email": "c@example.com",
-						"status": "churned",
-						"plan": "free"
+			"routes": [
+				{
+					"method": "DELETE",
+					"path": "/rest/v1/customers",
+					"reply": {
+						"json": [
+							{
+								"id": 3,
+								"email": "c@example.com",
+								"status": "churned",
+								"plan": "free"
+							}
+						]
 					}
-				]
+				}
 			],
 			"output": [
 				{
@@ -57,7 +63,7 @@
 					]
 				}
 			},
-			"responses": [[]],
+			"routes": [{ "method": "DELETE", "path": "/rest/v1/customers", "reply": { "json": [] } }],
 			"output": [],
 			"credential": {
 				"host": "https://acme.supabase.co"

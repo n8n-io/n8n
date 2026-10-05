@@ -30,6 +30,7 @@ import { checkPublish, lastPublishedIn, publishAction, replayFixtures } from '..
 import { isVersionManifest, storeFilesOfDir, storeReader } from '../store';
 import { evaluateBundle } from '../runtime';
 import type { AnySchema } from '../schema';
+import type { MockRoute } from '../testing';
 import {
 	DEFAULT_NODE_CONTRACT_RANGE,
 	NODE_CONTRACT_VERSION,
@@ -126,11 +127,40 @@ describe('named outputs', () => {
 describe('parseFixtures', () => {
 	it('needs exactly one of output and outputs in a recorded run', () => {
 		const fixture = (expected: object) =>
-			JSON.stringify({ executions: [{ name: 'a', params: {}, responses: [], ...expected }] });
+			JSON.stringify({ executions: [{ name: 'a', params: {}, ...expected }] });
 		expect(parseFixtures(fixture({ output: [] })).executions).toHaveLength(1);
 		expect(parseFixtures(fixture({ outputs: [[], []] })).executions).toHaveLength(1);
 		expect(() => parseFixtures(fixture({}))).toThrow('not valid');
 		expect(() => parseFixtures(fixture({ output: [], outputs: [[]] }))).toThrow('not valid');
+	});
+
+	it('reads routes and a legacy node', () => {
+		const fixture = (extra: object) =>
+			JSON.stringify({ executions: [{ name: 'a', params: {}, output: [], ...extra }] });
+		const routes = [
+			{ method: 'POST', path: '/chat.postMessage', times: 1, reply: { json: { ok: true } } },
+			{
+				path: '/file',
+				query: { id: ['1', 2] },
+				reply: { binary: { data: 'aGk=', mimeType: 'text/plain' } },
+			},
+		];
+		const legacy = {
+			type: 'n8n-nodes-base.slack',
+			version: 2.7,
+			parameters: { resource: 'message' },
+		};
+
+		expect(parseFixtures(fixture({ routes, legacy })).executions[0]).toMatchObject({
+			routes,
+			legacy,
+		});
+		expect(() => parseFixtures(fixture({ routes: [{ reply: {} }] }))).toThrow('not valid');
+		expect(() => parseFixtures(fixture({ routes: [{ path: '/a' }] }))).toThrow('not valid');
+		expect(() => parseFixtures(fixture({ legacy: { type: 'x', version: '1' } }))).toThrow(
+			'not valid',
+		);
+		expect(() => parseFixtures(fixture({ responses: [] }))).toThrow('not valid');
 	});
 });
 
@@ -353,9 +383,11 @@ export const echo = demo.action('echo', {
 });
 `;
 
+const suffixRoutes = [{ path: '/suffix', reply: { json: '!' } }];
+
 const fixturesOf = (output: string, extra: Partial<ContractFixtures> = {}): ContractFixtures => ({
 	executions: [
-		{ name: 'echo', params: { text: 'hello' }, responses: ['!'], output: [{ text: output }] },
+		{ name: 'echo', params: { text: 'hello' }, routes: suffixRoutes, output: [{ text: output }] },
 	],
 	...extra,
 });
@@ -518,7 +550,7 @@ describe('checkPublish', () => {
 		await writeShout('text.toUpperCase()');
 		const frozen = await freeze();
 		const fixtures = (params: Record<string, unknown>) => ({
-			executions: [{ name: 'echo', params, responses: ['!'], output: [{ text: 'HELLO!' }] }],
+			executions: [{ name: 'echo', params, routes: suffixRoutes, output: [{ text: 'HELLO!' }] }],
 		});
 
 		await expect(replayFixtures(frozen, fixtures({ text: 'hello' }))).resolves.toEqual([]);
@@ -530,14 +562,37 @@ describe('checkPublish', () => {
 				{
 					name: 'echo',
 					params: { text: 'hello', txt: 'x' },
-					responses: [],
 					output: [],
-					error: 'No recorded response is left',
+					error: 'mockHttp: no route for GET /suffix. Routes: none',
 				},
 			],
 		};
 		await expect(replayFixtures(frozen, failing)).resolves.toEqual([
 			'demo.echo@1.0.0 fixture "echo": params not declared: txt',
+		]);
+	});
+
+	it('answers each request from the route of its method and path', async () => {
+		await writeShout('text.toUpperCase()');
+		const frozen = await freeze();
+		const fixtures = (routes: MockRoute[]) => ({
+			executions: [{ name: 'echo', params: { text: 'hi' }, routes, output: [{ text: 'HI!' }] }],
+		});
+
+		await expect(
+			replayFixtures(
+				frozen,
+				fixtures([
+					{ method: 'POST', path: '/suffix', reply: { json: '?' } },
+					{ path: '/other', reply: { json: '?' } },
+					...suffixRoutes,
+				]),
+			),
+		).resolves.toEqual([]);
+		await expect(
+			replayFixtures(frozen, fixtures([{ path: '/suffix', reply: { status: 404, json: {} } }])),
+		).resolves.toEqual([
+			'demo.echo@1.0.0 fixture "echo": GET https://demo.test/suffix failed with 404: {}',
 		]);
 	});
 
@@ -549,7 +604,7 @@ describe('checkPublish', () => {
 			{
 				name: 'echo',
 				params: { message: 'hello' },
-				responses: ['!'],
+				routes: suffixRoutes,
 				output: [{ text: 'HELLO!' }],
 			},
 		];
@@ -653,7 +708,13 @@ export const read = demo.action('read', {
 		const frozen = await freezeAction(entry, 'read');
 		const fixture = (credential?: Record<string, unknown>) => ({
 			executions: [
-				{ name: 'read', params: {}, responses: ['hi'], output: [{ text: 'hi' }], credential },
+				{
+					name: 'read',
+					params: {},
+					routes: [{ path: '/text', reply: { json: 'hi' } }],
+					output: [{ text: 'hi' }],
+					credential,
+				},
 			],
 		});
 

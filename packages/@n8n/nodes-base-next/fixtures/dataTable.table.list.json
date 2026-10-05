@@ -3,7 +3,7 @@
 		{
 			"name": "lists every table",
 			"params": {},
-			"responses": [],
+
 			"imports": [
 				{
 					"count": 1,

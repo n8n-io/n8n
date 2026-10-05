@@ -2,28 +2,59 @@
 	"executions": [
 		{
 			"name": "channel",
-			"params": {
-				"channel": "C0GENERAL1"
+			"params": { "channel": "C0GENERAL1" },
+			"legacy": {
+				"type": "n8n-nodes-base.slack",
+				"version": 2.7,
+				"parameters": {
+					"authentication": "accessToken",
+					"resource": "channel",
+					"operation": "get",
+					"channelId": { "__rl": true, "mode": "id", "value": "C0GENERAL1" }
+				}
 			},
-			"responses": [
+			"routes": [
 				{
-					"ok": true,
-					"channel": {
-						"id": "C0GENERAL1",
-						"name": "general",
-						"is_channel": true,
-						"is_private": false,
-						"is_archived": false,
-						"is_member": true,
-						"created": 1700000000,
-						"creator": "U01",
-						"topic": {
-							"value": "Company news"
-						},
-						"purpose": {
-							"value": "Everyone"
-						},
-						"num_members": 42
+					"method": "POST",
+					"path": "/conversations.info",
+					"reply": {
+						"json": {
+							"ok": true,
+							"channel": {
+								"id": "C0GENERAL1",
+								"name": "general",
+								"is_channel": true,
+								"is_private": false,
+								"is_archived": false,
+								"is_member": true,
+								"created": 1700000000,
+								"creator": "U01",
+								"topic": { "value": "Company news" },
+								"purpose": { "value": "Everyone" },
+								"num_members": 42
+							}
+						}
+					}
+				},
+				{
+					"path": "/conversations.info",
+					"reply": {
+						"json": {
+							"ok": true,
+							"channel": {
+								"id": "C0GENERAL1",
+								"name": "general",
+								"is_channel": true,
+								"is_private": false,
+								"is_archived": false,
+								"is_member": true,
+								"created": 1700000000,
+								"creator": "U01",
+								"topic": { "value": "Company news" },
+								"purpose": { "value": "Everyone" },
+								"num_members": 42
+							}
+						}
 					}
 				}
 			],
@@ -37,12 +68,8 @@
 					"is_member": true,
 					"created": 1700000000,
 					"creator": "U01",
-					"topic": {
-						"value": "Company news"
-					},
-					"purpose": {
-						"value": "Everyone"
-					},
+					"topic": { "value": "Company news" },
+					"purpose": { "value": "Everyone" },
 					"num_members": 42
 				}
 			]

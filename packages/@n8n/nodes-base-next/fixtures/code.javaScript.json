@@ -14,7 +14,7 @@
 					"name": "bo"
 				}
 			],
-			"responses": [],
+
 			"imports": [
 				[
 					{
@@ -54,7 +54,7 @@
 					"price": 2
 				}
 			],
-			"responses": [],
+
 			"imports": [
 				[
 					{

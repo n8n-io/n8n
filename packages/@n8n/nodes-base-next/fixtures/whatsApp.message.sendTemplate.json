@@ -25,20 +25,26 @@
 					}
 				]
 			},
-			"responses": [
+			"routes": [
 				{
-					"messaging_product": "whatsapp",
-					"contacts": [
-						{
-							"input": "4915112345678",
-							"wa_id": "4915112345678"
+					"method": "POST",
+					"path": "/106540352242922/messages",
+					"reply": {
+						"json": {
+							"messaging_product": "whatsapp",
+							"contacts": [
+								{
+									"input": "4915112345678",
+									"wa_id": "4915112345678"
+								}
+							],
+							"messages": [
+								{
+									"id": "wamid.TEMPLATE1"
+								}
+							]
 						}
-					],
-					"messages": [
-						{
-							"id": "wamid.TEMPLATE1"
-						}
-					]
+					}
 				}
 			],
 			"output": [

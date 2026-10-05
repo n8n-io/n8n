@@ -10,16 +10,28 @@
 					"markdown": "# Guide\n\n- **Q1** first\n- Q2"
 				}
 			},
-			"responses": [
+			"routes": [
 				{
-					"kind": "drive#file",
-					"id": "1NewDocAbCdEfGhIjKlMnOpQrStUvWxYz",
-					"name": "Acme guide",
-					"mimeType": "application/vnd.google-apps.document"
+					"method": "POST",
+					"path": "/drive/v3/files",
+					"reply": {
+						"json": {
+							"kind": "drive#file",
+							"id": "1NewDocAbCdEfGhIjKlMnOpQrStUvWxYz",
+							"name": "Acme guide",
+							"mimeType": "application/vnd.google-apps.document"
+						}
+					}
 				},
 				{
-					"documentId": "1NewDocAbCdEfGhIjKlMnOpQrStUvWxYz",
-					"replies": []
+					"method": "POST",
+					"path": "/documents/1NewDocAbCdEfGhIjKlMnOpQrStUvWxYz:batchUpdate",
+					"reply": {
+						"json": {
+							"documentId": "1NewDocAbCdEfGhIjKlMnOpQrStUvWxYz",
+							"replies": []
+						}
+					}
 				}
 			],
 			"output": [
@@ -35,12 +47,18 @@
 			"params": {
 				"title": "Empty"
 			},
-			"responses": [
+			"routes": [
 				{
-					"kind": "drive#file",
-					"id": "1EmptyDocAbCdEfGhIjKlMnOpQrStUvWxY",
-					"name": "Empty",
-					"mimeType": "application/vnd.google-apps.document"
+					"method": "POST",
+					"path": "/drive/v3/files",
+					"reply": {
+						"json": {
+							"kind": "drive#file",
+							"id": "1EmptyDocAbCdEfGhIjKlMnOpQrStUvWxY",
+							"name": "Empty",
+							"mimeType": "application/vnd.google-apps.document"
+						}
+					}
 				}
 			],
 			"output": [
