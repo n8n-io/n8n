@@ -4,7 +4,7 @@ import type { OperationContext } from '@n8n/db';
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 
-import type { AgentPlanService } from '../agent-plan.service';
+import type { AgentPlanService, AgentPlanSnapshot } from '../agent-plan.service';
 import { AgentPlanWriteConflictError } from '../repositories/agent-plan.repository';
 import {
 	AGENT_PLAN_FORMAT_VERSION,
@@ -39,10 +39,12 @@ const writeInput = z
 	})
 	.strict();
 
-type ToolDocument = z.infer<typeof documentInput>;
-type StoredPlan = NonNullable<Awaited<ReturnType<AgentPlanService['findActivePlan']>>>;
+type AgentPlanDocumentInput = z.infer<typeof documentInput>;
 
-function prepareDocument(data: ToolDocument, previous?: AgentPlanDocument): AgentPlanDocument {
+function prepareDocument(
+	data: AgentPlanDocumentInput,
+	previous?: AgentPlanDocument,
+): AgentPlanDocument {
 	const existing = new Map(
 		previous?.items
 			.flatMap((item) => (item.kind === 'group' ? [item, ...item.tasks] : [item]))
@@ -52,6 +54,7 @@ function prepareDocument(data: ToolDocument, previous?: AgentPlanDocument): Agen
 	const items = data.items.flatMap((item) =>
 		item.kind === 'group' ? [item, ...item.tasks] : [item],
 	);
+
 	for (const item of items) {
 		if (item.id.startsWith('new:')) {
 			if (aliases.has(item.id)) {
@@ -62,24 +65,28 @@ function prepareDocument(data: ToolDocument, previous?: AgentPlanDocument): Agen
 			throw new AgentPlanValidationError(`Use a new: temporary ID for the new item: ${item.id}`);
 		}
 	}
+
 	const resolveId = (id: string): string => {
 		if (!id.startsWith('new:')) return id;
 		const resolved = aliases.get(id);
 		if (!resolved) throw new AgentPlanValidationError(`Unknown temporary ID: ${id}`);
 		return resolved;
 	};
-	const restoreItem = (item: ToolDocument['items'][number]) => ({
+
+	const restoreItem = (item: AgentPlanDocumentInput['items'][number]) => ({
 		...item,
 		id: resolveId(item.id),
 		dependsOn: item.dependsOn.map(resolveId),
 		startedAt: existing.get(item.id)?.startedAt ?? null,
 		endedAt: existing.get(item.id)?.endedAt ?? null,
 	});
+
 	const restoreTask = (task: z.infer<typeof taskInput>) => ({
 		...restoreItem(task),
 		kind: task.kind,
 		...(task.fallbackFor !== undefined ? { fallbackFor: resolveId(task.fallbackFor) } : {}),
 	});
+
 	return {
 		...data,
 		items: data.items.map((item) =>
@@ -90,12 +97,14 @@ function prepareDocument(data: ToolDocument, previous?: AgentPlanDocument): Agen
 	};
 }
 
-function presentPlan(plan: StoredPlan | null) {
+function presentPlan(plan: AgentPlanSnapshot | null) {
 	if (!plan) return null;
+
 	const withoutTiming = <Item extends AgentPlanItem>(item: Item) => {
 		const { startedAt, endedAt, ...visible } = item;
 		return visible;
 	};
+
 	return {
 		planId: plan.id,
 		revision: plan.revision,
@@ -120,7 +129,7 @@ function scopedTool<Schema extends z.ZodType>(
 		input: z.output<Schema>,
 		threadId: string,
 		ctx: OperationContext,
-	) => Promise<StoredPlan | null>,
+	) => Promise<AgentPlanSnapshot | null>,
 ) {
 	return new Tool(name)
 		.description(description)
@@ -133,6 +142,7 @@ function scopedTool<Schema extends z.ZodType>(
 					message: 'Plan tools need a persisted conversation thread.',
 				};
 			}
+
 			try {
 				return presentPlan(await handler(schema.parse(input), threadId, {}));
 			} catch (error) {
@@ -143,9 +153,11 @@ function scopedTool<Schema extends z.ZodType>(
 							'The plan write conflicts with the stored state. Call read_plan before another write.',
 					};
 				}
+
 				if (error instanceof AgentPlanValidationError || error instanceof z.ZodError) {
 					return { error: 'invalid_plan', message: error.message };
 				}
+
 				throw error;
 			}
 		});
