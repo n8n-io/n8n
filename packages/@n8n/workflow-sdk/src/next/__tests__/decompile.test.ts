@@ -8,6 +8,7 @@ import {
 	type ContractFactory,
 } from '../decompile';
 import * as next from '../index';
+import { compileLambdaSource } from '../lambda';
 import {
 	contractStep,
 	contractProvider,
@@ -697,6 +698,41 @@ describe('decompileWorkflow', () => {
 		expect(withoutIds(rebuilt)).toEqual(withoutIds(json));
 		expect(again).toBe(source);
 		expect(source).toContain('url: (item) => `https://x.example.com/');
+	});
+
+	it('round-trips a lambda whose minified text has adjacent braces', () => {
+		const sent = workflow(
+			'Braces',
+			manual({ sample: [{ email: 'a@b.c' }] }),
+			httpRequest.send({
+				name: 'Send',
+				method: 'POST',
+				url: 'https://x.example.com',
+				body: { kind: 'json', json: (item) => ({ properties: { email: item.email } }) },
+			}),
+		).toJSON();
+		const minified = compileLambdaSource(
+			'(item)=>({properties:{email:item.email,tag:"}}"}})',
+			new Set(),
+		);
+		if (!minified.ok) throw new Error(minified.error);
+		const json = {
+			...sent,
+			nodes: sent.nodes.map((n) =>
+				n.type === SEND_TYPE
+					? {
+							...n,
+							parameters: { ...n.parameters, body: { kind: 'json', json: minified.expression } },
+						}
+					: n,
+			),
+		};
+		const { source, rebuilt, again } = roundTrip(json);
+
+		expect(minified.expression).toBe('={{ ({properties:{email:$json.email,tag:"}\\}"} }) }}');
+		expect(withoutIds(rebuilt)).toEqual(withoutIds(json));
+		expect(again).toBe(source);
+		expect(source).toContain('json: (item) => ({properties:{email:item.email,tag:"}\\}"} })');
 	});
 
 	it('drops host-set parameters of a contract node', () => {

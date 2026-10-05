@@ -376,7 +376,8 @@ function bodyExpression(fn: acorn.Function): acorn.Expression | undefined {
 
 /**
  * Compile a lambda to an n8n expression. A template literal body becomes mixed text
- * (`=Hi {{ $json.name }}`); any other body becomes `={{ … }}`. The lambda runs per item in
+ * (`=Hi {{ $json.name }}`) if n8n can read its text as text; any other body becomes `={{ … }}`.
+ * The code has no `{{` or `}}`, so n8n reads it whole. The lambda runs per item in
  * n8n, so it may read only its parameters and JavaScript globals.
  */
 export function compileLambda(
@@ -414,23 +415,72 @@ export function compileLambdaSource(
 	if (compiler.errors.length > 0) return { ok: false, error: compiler.errors.join('; ') };
 
 	const rewritten = compiler.rewrite(source, body);
-	const js =
+	const js = splitBraces(
 		body.type === 'BlockStatement'
 			? `(() => ${rewritten})()`
 			: body.type === 'ObjectExpression'
 				? `(${rewritten})`
-				: rewritten;
-	if (body.type === 'TemplateLiteral') {
-		const text = body.quasis
-			.map((quasi, index) => {
-				const expression = body.expressions[index];
-				const literal = quasi.value.cooked ?? quasi.value.raw;
-				return expression ? `${literal}{{ ${compiler.rewrite(source, expression)} }}` : literal;
-			})
-			.join('');
-		return { ok: true, js, expression: `=${text}` };
-	}
-	return { ok: true, js, expression: `={{ ${js} }}` };
+				: rewritten,
+	);
+	const text =
+		body.type === 'TemplateLiteral'
+			? mixedText(body, (expression) => splitBraces(compiler.rewrite(source, expression)))
+			: undefined;
+	return { ok: true, js, expression: text ?? `={{ ${js} }}` };
+}
+
+/**
+ * n8n ends the code of an expression at the first `}}`, also in a string, and reads `{{` in
+ * text as the start of code. Separate each pair of equal braces: with a space in code, and with
+ * an escape in a string, template or regular expression, which keeps its value.
+ */
+function splitBraces(js: string): string {
+	const literals: Array<readonly [number, number]> = [];
+	const collect = (node: acorn.AnyNode): void => {
+		if (node.type === 'Literal' || node.type === 'TemplateElement') {
+			literals.push([node.start, node.end]);
+		} else {
+			childNodes(node).forEach(collect);
+		}
+	};
+	collect(acorn.parseExpressionAt(js, 0, { ecmaVersion: 'latest' }));
+	const inLiteral = (index: number) =>
+		literals.some(([start, end]) => index >= start && index < end);
+	return js
+		.split('')
+		.reduce(
+			(acc, char, index) =>
+				(char === '{' || char === '}') && acc.endsWith(char)
+					? `${acc}${inLiteral(index) ? '\\' : ' '}${char}`
+					: acc + char,
+			'',
+		);
+}
+
+/**
+ * The mixed text (`=Hi {{ $json.name }}`) of a template literal body, or `undefined` when n8n
+ * would read its text in another way: text with `{{`, or text before code that has `\\` or
+ * ends with `{` or `\`.
+ */
+function mixedText(
+	body: acorn.TemplateLiteral,
+	code: (expression: acorn.Expression) => string,
+): string | undefined {
+	const parts = body.quasis.map((quasi, index) => ({
+		literal: quasi.value.cooked ?? quasi.value.raw,
+		expression: body.expressions[index],
+	}));
+	const isPlain = parts.every(
+		({ literal, expression }) =>
+			!literal.includes('{{') && !(expression && /\\\\|[{\\]$/.test(literal)),
+	);
+	if (!isPlain) return undefined;
+	const text = parts
+		.map(({ literal, expression }) =>
+			expression ? `${literal}{{ ${code(expression)} }}` : literal,
+		)
+		.join('');
+	return `=${text}`;
 }
 
 const BINARY_KEY_ERROR =

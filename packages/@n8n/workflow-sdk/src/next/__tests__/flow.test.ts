@@ -1,3 +1,5 @@
+import { Expression } from 'n8n-workflow';
+
 import {
 	binaryKeys,
 	contractStep,
@@ -202,6 +204,58 @@ describe('compileLambda', () => {
 		expect(compileLambdaSource("(item) => 'Hi ' + placeholder('Name')", names)).toEqual({
 			ok: false,
 			error: expect.stringContaining('Give placeholder(…) as the whole field value'),
+		});
+	});
+
+	describe('braces in the compiled expression', () => {
+		const item = { email: 'a@b.c', company: 'Acme' };
+		/**
+		 * Compile minified lambda text, as the sandbox build gives it, and run it in n8n. `#{`
+		 * stands for `${`, which lint rejects in a quoted string.
+		 */
+		const run = (source: string) => {
+			const result = compileLambdaSource(source.replaceAll('#{', '$' + '{'), names);
+			if (!result.ok) throw new Error(result.error);
+			return {
+				...result,
+				value: Expression.resolveWithoutWorkflow(result.expression.slice(1), { $json: item }),
+			};
+		};
+
+		it.each([
+			[
+				'nested objects',
+				'(item)=>({properties:{email:item.email,company:item.company}})',
+				{ properties: { email: 'a@b.c', company: 'Acme' } },
+			],
+			[
+				'a block body',
+				'(item)=>{if(item.email){return{a:{b:item.email}}}return{}}',
+				{ a: { b: 'a@b.c' } },
+			],
+			[
+				'braces in strings, templates, and regular expressions',
+				'(item)=>({s:"{{x}}}",t:`{{#{item.company}}}`,o:`#{{k:item.email}.k}`,r:/^x{2}}$/.test("xx}")})',
+				{ s: '{{x}}}', t: '{{Acme}}', o: 'a@b.c', r: true },
+			],
+			['text that ends in a brace', '(item)=>`{#{item.company}}`', '{Acme}'],
+			['text with braces', '(item)=>`{{ x }} #{item.company}`', '{{ x }} Acme'],
+			['text with a backslash', '(item)=>`a\\\\#{item.company}`', 'a\\Acme'],
+			['text with two backslashes', '(item)=>`a\\\\\\\\b #{item.company}`', 'a\\\\b Acme'],
+		])('gives n8n a valid expression for %s', (_case, source, expected) => {
+			const { js, value } = run(source);
+			expect(value).toEqual(expected);
+			expect(js).not.toMatch(/\{\{|\}\}/);
+		});
+
+		it('keeps the text of an expression without adjacent braces', () => {
+			expect(run('(item)=>({a:item.email,b:[1]})').expression).toBe(
+				'={{ ({a:$json.email,b:[1]}) }}',
+			);
+			expect(run('(item)=>`Hi { #{item.company} }`')).toMatchObject({
+				expression: '=Hi { {{ $json.company }} }',
+				value: 'Hi { Acme }',
+			});
 		});
 	});
 
