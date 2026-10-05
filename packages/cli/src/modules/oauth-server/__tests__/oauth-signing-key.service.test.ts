@@ -1,15 +1,21 @@
 import { mock } from 'vitest-mock-extended';
+import { mockInstance } from '@n8n/backend-test-utils';
 import type { DeploymentKey } from '@n8n/db';
 import { QueryFailedError } from '@n8n/typeorm';
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { createLocalJWKSet, jwtVerify } from 'jose';
 import jwt from 'jsonwebtoken';
 import { generateKeyPairSync } from 'node:crypto';
+
+import { Publisher } from '@/scaling/pubsub/publisher.service';
 
 import {
 	OAUTH_ACCESS_TOKEN_TTL_SECONDS,
 	OAUTH_SIGNING_ALGORITHM,
 	OAUTH_SIGNING_KEY_TYPE,
 	RETIRED_SIGNING_KEY_GRACE_MS,
+	SIGNING_KEYS_REFRESH_MS,
+	UNKNOWN_KID_REFRESH_MS,
 } from '../oauth-signing-key.constants';
 import type { OAuthSigningKeyService } from '../oauth-signing-key.service';
 import { createSigningKeyService, readStoredPrivateKey } from './signing-key-fixtures';
@@ -51,7 +57,24 @@ const makeKeyRow = (id: string, overrides: Partial<DeploymentKey> = {}): Deploym
 	});
 };
 
+/** Signs with a stored key that the service under test did not create. */
+const signWithRow = (row: DeploymentKey) =>
+	jwt.sign(claims(), readStoredPrivateKey(row), {
+		algorithm: 'ES256',
+		audience: AUDIENCE,
+		header: { alg: 'ES256', typ: 'at+jwt', kid: row.id },
+	});
+
+const verifyToken = async (service: OAuthSigningKeyService, token: string, kid: string) =>
+	await service.verifyAccessToken(token, { kid, audiences: [AUDIENCE], issuer: ISSUER });
+
 describe('OAuthSigningKeyService', () => {
+	let publisher: Publisher;
+
+	beforeEach(() => {
+		publisher = mockInstance(Publisher, { publishCommand: vi.fn() });
+	});
+
 	afterEach(() => {
 		vi.useRealTimers();
 	});
@@ -64,6 +87,7 @@ describe('OAuthSigningKeyService', () => {
 			await service.initialize();
 
 			expect(keyStore.repository.insertActiveOAuthSigningKey).not.toHaveBeenCalled();
+			expect(publisher.publishCommand).not.toHaveBeenCalled();
 			expect(
 				jwt.decode(service.signAccessToken(claims(), AUDIENCE), { complete: true })?.header.kid,
 			).toBe('existing-key');
@@ -213,6 +237,165 @@ describe('OAuthSigningKeyService', () => {
 
 			expect(await publishedKids(service)).not.toContain('retired');
 			await expect(verify(service, token)).rejects.toThrow('kid is unknown');
+		});
+	});
+
+	describe('in-memory key list', () => {
+		const setUp = async () => {
+			vi.useFakeTimers({ toFake: ['Date'] });
+			const { service, keyStore } = createSigningKeyService();
+			await service.initialize();
+			return {
+				service,
+				keyStore,
+				kid: keyStore.rows[0].id,
+				token: service.signAccessToken(claims(), AUDIENCE),
+				reads: keyStore.repository.findOAuthSigningKeys,
+			};
+		};
+
+		it('reads the rows once for all verifications within the refresh window', async () => {
+			const { service, kid, token, reads } = await setUp();
+
+			await verifyToken(service, token, kid);
+			vi.advanceTimersByTime(SIGNING_KEYS_REFRESH_MS - 1);
+			await verifyToken(service, token, kid);
+			await service.getPublicJwks();
+
+			expect(reads).toHaveBeenCalledTimes(1);
+		});
+
+		it('reads the rows again after the refresh window', async () => {
+			const { service, kid, token, reads } = await setUp();
+
+			await verifyToken(service, token, kid);
+			vi.advanceTimersByTime(SIGNING_KEYS_REFRESH_MS);
+			await verifyToken(service, token, kid);
+
+			expect(reads).toHaveBeenCalledTimes(2);
+		});
+
+		it('reads the rows again for an unknown kid at most once per cooldown', async () => {
+			const { service, kid, token, reads } = await setUp();
+			await verifyToken(service, token, kid);
+			vi.advanceTimersByTime(UNKNOWN_KID_REFRESH_MS);
+
+			await expect(verifyToken(service, token, 'unknown-1')).rejects.toThrow('kid is unknown');
+			expect(reads).toHaveBeenCalledTimes(2);
+
+			vi.advanceTimersByTime(UNKNOWN_KID_REFRESH_MS - 1);
+			await expect(verifyToken(service, token, 'unknown-2')).rejects.toThrow('kid is unknown');
+			expect(reads).toHaveBeenCalledTimes(2);
+		});
+
+		it('shares one read between concurrent verifications', async () => {
+			const { service, kid, token, reads } = await setUp();
+
+			await Promise.all(
+				Array.from({ length: 5 }, async () => await verifyToken(service, token, kid)),
+			);
+
+			expect(reads).toHaveBeenCalledTimes(1);
+		});
+	});
+
+	describe('reload across processes', () => {
+		it('tells the other processes when it generates a key', async () => {
+			const { service } = createSigningKeyService();
+
+			await service.initialize();
+
+			expect(publisher.publishCommand).toHaveBeenCalledTimes(1);
+			expect(publisher.publishCommand).toHaveBeenCalledWith({
+				command: 'reload-oauth-signing-keys',
+			});
+		});
+
+		it('does not tell the other processes when it loses the insert race', async () => {
+			const { service, keyStore } = createSigningKeyService();
+			keyStore.repository.insertActiveOAuthSigningKey.mockImplementation(async () => {
+				keyStore.rows.push(makeKeyRow('winner'));
+				throw makeUniqueViolation('23505');
+			});
+
+			await service.initialize();
+
+			expect(publisher.publishCommand).not.toHaveBeenCalled();
+		});
+
+		it('logs a failed publish and still initializes', async () => {
+			const { service, logger } = createSigningKeyService();
+			const error = new Error('Connection is closed.');
+			vi.mocked(publisher.publishCommand).mockRejectedValue(error);
+
+			await expect(service.initialize()).resolves.toBeUndefined();
+
+			expect(logger.warn).toHaveBeenCalledWith(expect.any(String), { error });
+			expect(() => service.signAccessToken(claims(), AUDIENCE)).not.toThrow();
+		});
+
+		it('reads the rows again after a reload, within both refresh windows', async () => {
+			vi.useFakeTimers({ toFake: ['Date'] });
+			const { service, keyStore } = createSigningKeyService();
+			await service.initialize();
+			await service.getPublicJwks();
+			// Another process creates a key after this process read the list.
+			const newKey = makeKeyRow('new-key');
+			keyStore.rows.push(newKey);
+			const token = signWithRow(newKey);
+
+			await expect(verifyToken(service, token, newKey.id)).rejects.toThrow('kid is unknown');
+
+			service.reloadPublishedKeys();
+
+			await expect(verifyToken(service, token, newKey.id)).resolves.toMatchObject({
+				sub: 'user-1',
+			});
+			expect(keyStore.repository.findOAuthSigningKeys).toHaveBeenCalledTimes(2);
+		});
+
+		it('does not keep a read that started before a reload', async () => {
+			vi.useFakeTimers({ toFake: ['Date'] });
+			const { service, keyStore } = createSigningKeyService();
+			await service.initialize();
+			const rowsBeforeInsert = [...keyStore.rows];
+			const staleRead = createDeferredPromise<DeploymentKey[]>();
+			keyStore.repository.findOAuthSigningKeys.mockReturnValueOnce(staleRead.promise);
+			const inFlight = service.getPublicJwks();
+
+			// Another process creates a key and broadcasts while the read is in flight.
+			const newKey = makeKeyRow('new-key');
+			keyStore.rows.push(newKey);
+			service.reloadPublishedKeys();
+			staleRead.resolve(rowsBeforeInsert);
+			await inFlight;
+
+			await expect(verifyToken(service, signWithRow(newKey), newKey.id)).resolves.toMatchObject({
+				sub: 'user-1',
+			});
+			expect(keyStore.repository.findOAuthSigningKeys).toHaveBeenCalledTimes(2);
+		});
+
+		it('keeps sharing the read that started after a reload', async () => {
+			const { service, keyStore } = createSigningKeyService();
+			await service.initialize();
+			const reads = keyStore.repository.findOAuthSigningKeys;
+			const readBeforeReload = createDeferredPromise<DeploymentKey[]>();
+			const readAfterReload = createDeferredPromise<DeploymentKey[]>();
+			reads
+				.mockReturnValueOnce(readBeforeReload.promise)
+				.mockReturnValueOnce(readAfterReload.promise);
+
+			const first = service.getPublicJwks();
+			service.reloadPublishedKeys();
+			const second = service.getPublicJwks();
+			readBeforeReload.resolve([...keyStore.rows]);
+			await first;
+			const third = service.getPublicJwks();
+			readAfterReload.resolve([...keyStore.rows]);
+			await Promise.all([second, third]);
+
+			expect(reads).toHaveBeenCalledTimes(2);
 		});
 	});
 

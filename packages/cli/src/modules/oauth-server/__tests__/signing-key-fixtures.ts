@@ -62,13 +62,9 @@ export const createSigningKeyService = () => {
 		mock(),
 		mock(),
 	);
-	const service = new OAuthSigningKeyService(
-		keyStore.repository,
-		cipher,
-		mock<Logger>(),
-		jwtService,
-	);
-	return { service, keyStore, cipher };
+	const logger = mock<Logger>();
+	const service = new OAuthSigningKeyService(keyStore.repository, cipher, logger, jwtService);
+	return { service, keyStore, cipher, logger };
 };
 
 /** Reads a stored private key back, e.g. to sign tokens the service would not sign. */

@@ -1,7 +1,8 @@
 import { Logger } from '@n8n/backend-common';
 import { DeploymentKeyRepository, isUniqueConstraintError } from '@n8n/db';
 import type { DeploymentKey } from '@n8n/db';
-import { Service } from '@n8n/di';
+import { OnPubSubEvent } from '@n8n/decorators';
+import { Container, Service } from '@n8n/di';
 import { generateNanoId } from '@n8n/utils/generate-nano-id';
 import type { JWK } from 'jose';
 import { JsonWebTokenError } from 'jsonwebtoken';
@@ -65,7 +66,8 @@ const PUBLIC_JWK_FIELDS = ['kty', 'crv', 'x', 'y', 'kid', 'alg', 'use'] as const
  * Signing is synchronous: {@link initialize} loads the private key into
  * memory once. Each process also keeps the public keys in memory, so
  * verification does not call Redis or the database for each token. Workers
- * read the public keys on first use and never keep a private key.
+ * read the public keys on first use and never keep a private key. A process
+ * that creates a key tells the others to drop their list.
  */
 @Service()
 export class OAuthSigningKeyService {
@@ -74,6 +76,9 @@ export class OAuthSigningKeyService {
 	private publishedKeys: PublishedKeyList | null = null;
 
 	private pendingRead: Promise<PublishedKeyList> | null = null;
+
+	/** Goes up on each reload, so a read that started before it is not kept. */
+	private keysGeneration = 0;
 
 	constructor(
 		private readonly deploymentKeyRepository: DeploymentKeyRepository,
@@ -197,9 +202,17 @@ export class OAuthSigningKeyService {
 
 	/** Concurrent callers share one database read. */
 	private async readPublishedKeys(): Promise<PublishedKeyList> {
-		this.pendingRead ??= this.readPublishedKeyRows().finally(() => {
-			this.pendingRead = null;
-		});
+		if (!this.pendingRead) {
+			const generation = this.keysGeneration;
+			this.pendingRead = this.readPublishedKeyRows()
+				.then((list) => {
+					if (generation === this.keysGeneration) this.publishedKeys = list;
+					return list;
+				})
+				.finally(() => {
+					if (generation === this.keysGeneration) this.pendingRead = null;
+				});
+		}
 		return await this.pendingRead;
 	}
 
@@ -219,8 +232,7 @@ export class OAuthSigningKeyService {
 				};
 			});
 
-		this.publishedKeys = { keys, readAt: Date.now() };
-		return this.publishedKeys;
+		return { keys, readAt: Date.now() };
 	}
 
 	private readPrivateJwk(row: DeploymentKey): JsonWebKey {
@@ -258,15 +270,50 @@ export class OAuthSigningKeyService {
 				encryptedPrivate,
 				OAUTH_SIGNING_ALGORITHM,
 			);
-			// Other processes read the new key when they first see its kid.
-			this.publishedKeys = null;
-
-			this.logger.info('Generated new OAuth access-token signing key', { kid: id });
 		} catch (error) {
 			if (!isUniqueConstraintError(error)) throw error;
 
+			// The winner already told the other processes.
 			this.logger.debug('OAuth signing key insert raced with another process; re-reading winner');
+			return;
 		}
+
+		this.logger.info('Generated new OAuth access-token signing key', { kid: id });
+
+		this.reloadPublishedKeys();
+		await this.broadcastReloadSigningKeysCommand();
+	}
+
+	/**
+	 * Not limited to multi-main: workers and webhook processes verify tokens
+	 * too. Outside queue mode the publisher does nothing.
+	 */
+	private async broadcastReloadSigningKeysCommand(): Promise<void> {
+		try {
+			const { Publisher } = await import('@/scaling/pubsub/publisher.service.js');
+			await Container.get(Publisher).publishCommand({ command: 'reload-oauth-signing-keys' });
+		} catch (error) {
+			// The key is already stored. The other processes read it when their list expires.
+			this.logger.warn('Failed to tell other processes about the new OAuth signing key', {
+				error,
+			});
+		}
+	}
+
+	/**
+	 * Drops the list. The next call reads it from the database.
+	 *
+	 * This does not reload the private key, which {@link initialize} loads
+	 * once. That is safe only while a key is created only when no key is
+	 * active. Key rotation must also reload the private key here. If it does
+	 * not, a process signs with the retired key, and its tokens fail after
+	 * {@link RETIRED_SIGNING_KEY_GRACE_MS}.
+	 */
+	@OnPubSubEvent('reload-oauth-signing-keys')
+	reloadPublishedKeys(): void {
+		this.keysGeneration++;
+		this.publishedKeys = null;
+		this.pendingRead = null;
 	}
 }
 
