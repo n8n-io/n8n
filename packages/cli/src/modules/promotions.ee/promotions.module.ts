@@ -12,6 +12,7 @@ import { Container } from '@n8n/di';
 export class PromotionsModule implements ModuleInterface {
 	async init() {
 		await import('./promotion-changes.controller.js');
+		await import('./promotion-reviews.controller.js');
 
 		const { PromotionsService } = await import('./promotions.service.js');
 		Container.get(PromotionsService);
@@ -26,6 +27,13 @@ export class PromotionsModule implements ModuleInterface {
 			'./database/entities/promotion-connection-project.entity.js'
 		);
 		const { PromotionConfig } = await import('./database/entities/promotion-config.entity.js');
-		return [PromotionProvider, PromotionConnection, PromotionConnectionProject, PromotionConfig];
+		const { PromotionRun } = await import('./database/entities/promotion-run.entity.js');
+		return [
+			PromotionProvider,
+			PromotionConnection,
+			PromotionConnectionProject,
+			PromotionConfig,
+			PromotionRun,
+		];
 	}
 }

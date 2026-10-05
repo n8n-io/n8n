@@ -26,7 +26,7 @@ import type { PromotionProvider } from './database/entities/promotion-provider.e
 import { PromotionConnectionRepository } from './database/repositories/promotion-connection.repository';
 import { PromotionProviderRepository } from './database/repositories/promotion-provider.repository';
 import { GitHostClients } from './git-hosts/git-host-clients';
-import type { GitHostRepositoryQuery } from './git-hosts/git-host.types';
+import type { GitHostAccess, GitHostRepositoryQuery } from './git-hosts/git-host.types';
 import { mapPromotionConflicts } from './promotion-conflicts';
 import { PromotionsGitService } from './promotions-git.service';
 import {
@@ -155,7 +155,18 @@ export class PromotionProvidersService {
 		await this.gitHosts.clientFor(provider.type).validateAccess(await this.hostAccess(provider));
 	}
 
-	private async hostAccess(provider: Pick<PromotionProvider, 'config' | 'authType' | 'auth'>) {
+	/** Host API access for a stored Git host provider, read fresh for one call. */
+	async hostAccessFor(providerId: string): Promise<GitHostAccess> {
+		const provider = await this.getEntity(providerId);
+		if (!isPromotionGitHostType(provider.type)) {
+			throw new BadRequestError('Only a Git host provider, such as GitLab, has a host API');
+		}
+		return await this.hostAccess(provider);
+	}
+
+	private async hostAccess(
+		provider: Pick<PromotionProvider, 'config' | 'authType' | 'auth'>,
+	): Promise<GitHostAccess> {
 		const config = promotionGitHostConfigSchema.safeParse(provider.config);
 		if (!config.success) {
 			throw new BadRequestError(

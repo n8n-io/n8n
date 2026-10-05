@@ -472,6 +472,88 @@ export class PromotionsGitService {
 		}
 	}
 
+	/**
+	 * Reads what a Promotion Review needs from the checkout: the Review Baseline
+	 * and the package trees at the baseline and at the pushed commit. The base
+	 * branch is fetched first, because the baseline is the merge base against the
+	 * *current* base, not the one the push saw. A frozen baseline skips that.
+	 */
+	async readReviewTrees({
+		headCommitSha,
+		frozenBaselineCommitSha,
+		pathspecs,
+		...operation
+	}: GitOperation & {
+		headCommitSha: string;
+		frozenBaselineCommitSha: string | null;
+		pathspecs: string[];
+	}): Promise<{
+		baselineCommitSha: string | null;
+		headTree: string;
+		baselineTree: string;
+		warnings: string[];
+	}> {
+		const { paths, branchName, configId } = operation;
+		if (!COMMIT_SHA.test(headCommitSha)) {
+			throw new UnexpectedError('The commit SHA is not a Git object name');
+		}
+		if (frozenBaselineCommitSha !== null && !COMMIT_SHA.test(frozenBaselineCommitSha)) {
+			throw new UnexpectedError('The baseline SHA is not a Git object name');
+		}
+		try {
+			return await this.lockCheckout(paths.repositoryFolder, async () => {
+				const warnings: string[] = [];
+				const git = simpleGit({ ...BASE_GIT_OPTIONS, baseDir: paths.repositoryFolder });
+
+				try {
+					await this.fetchBranch(operation);
+				} catch {
+					warnings.push(
+						'Could not fetch the base branch. The baseline uses the last fetched state.',
+					);
+				}
+				await this.ensureCommit(operation, git, headCommitSha);
+
+				let baselineCommitSha = frozenBaselineCommitSha;
+				if (baselineCommitSha === null) {
+					try {
+						baselineCommitSha =
+							(await git.raw(['merge-base', headCommitSha, `origin/${branchName}`])).trim() || null;
+					} catch {
+						warnings.push('Could not compute the baseline. Every workflow shows as added.');
+					}
+				} else {
+					await this.ensureCommit(operation, git, baselineCommitSha);
+				}
+
+				const headTree = await git.raw(['ls-tree', '-r', '-z', headCommitSha, '--', ...pathspecs]);
+				const baselineTree = baselineCommitSha
+					? await git.raw(['ls-tree', '-r', '-z', baselineCommitSha, '--', ...pathspecs])
+					: '';
+				return { baselineCommitSha, headTree, baselineTree, warnings };
+			});
+		} catch (error) {
+			throw this.mapGitError(error, { configId, branchName });
+		}
+	}
+
+	/** The pushed commit is usually local already. After a re-clone it is fetched by SHA. */
+	private async ensureCommit(operation: GitOperation, git: SimpleGit, commitSha: string) {
+		try {
+			await git.raw(['cat-file', '-e', `${commitSha}^{commit}`]);
+			return;
+		} catch {
+			// Not local yet. Fall through to the fetch.
+		}
+		const { remoteUrl, credentials, paths } = operation;
+		await this.withGit(
+			{ remoteUrl, credentials, repoDir: paths.repositoryFolder, sshDir: paths.sshDir },
+			async (remote) => {
+				await remote.fetch('origin', commitSha, ['--progress']);
+			},
+		);
+	}
+
 	async readFilesAtCommit({
 		paths,
 		branchName,

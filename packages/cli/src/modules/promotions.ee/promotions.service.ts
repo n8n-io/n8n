@@ -59,6 +59,7 @@ import {
 import { PromotionBindingPreflightService } from './promotion-binding-preflight.service';
 import { PromotionConfigResolver } from './promotion-config.resolver';
 import { PromotionProvidersService } from './promotion-providers.service';
+import { PromotionReviewsService } from './promotion-reviews.service';
 import { PromotionWorkingDirectoryService } from './promotion-working-directory.service';
 import { PromotionsGitService } from './promotions-git.service';
 import {
@@ -116,6 +117,7 @@ export class PromotionsService {
 		private readonly bindingPreflight: PromotionBindingPreflightService,
 		private readonly inventoryReader: PackageDirectoryInventoryReader,
 		private readonly packageImportConfig: PackageImportConfig,
+		private readonly reviewsService: PromotionReviewsService,
 		private readonly logger: Logger,
 	) {
 		this.logger = this.logger.scoped('promotions');
@@ -240,10 +242,43 @@ export class PromotionsService {
 				configId: input.configId,
 				counts: exportResult.counts,
 				git: { commitSha, branchName: targetBranchName ?? branchName },
+				...(await this.openReview(input, actor, {
+					targetBranchName,
+					commitSha,
+					title: request.commitMessage,
+					projectId: null,
+				})),
 			};
 		} finally {
 			await rm(stagingFolder, { recursive: true, force: true });
 		}
+	}
+
+	/**
+	 * A branched push on a Git host gets a merge request, which is the Promotion
+	 * Review. A direct push to the base branch has nothing to review.
+	 */
+	private async openReview(
+		input: PromotionOperationInput,
+		actor: User,
+		run: {
+			targetBranchName: string | undefined;
+			commitSha: string;
+			title: string;
+			projectId: string | null;
+		},
+	): Promise<Pick<PromotePackageResultDto, 'mergeRequest' | 'warnings'>> {
+		if (!run.targetBranchName) return {};
+		const { mergeRequest, warnings } = await this.reviewsService.openMergeRequest(input, actor, {
+			branchName: run.targetBranchName,
+			commitSha: run.commitSha,
+			title: run.title.split('\n')[0].slice(0, 255),
+			projectId: run.projectId,
+		});
+		return {
+			...(mergeRequest && { mergeRequest }),
+			...(warnings.length > 0 && { warnings }),
+		};
 	}
 
 	/**
@@ -346,6 +381,12 @@ export class PromotionsService {
 				configId: input.configId,
 				counts,
 				git: { commitSha, branchName: targetBranchName ?? branchName },
+				...(await this.openReview(input, actor, {
+					targetBranchName,
+					commitSha,
+					title: request.commitMessage,
+					projectId: selection.projectId,
+				})),
 			};
 		} catch (error) {
 			if (backedUp) {

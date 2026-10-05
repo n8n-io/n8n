@@ -5,7 +5,7 @@
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
-| id | varchar(36) |  | false | [public.promotion_config](public.promotion_config.md) [public.promotion_connection_project](public.promotion_connection_project.md) |  |  |
+| id | varchar(36) |  | false | [public.promotion_config](public.promotion_config.md) [public.promotion_connection_project](public.promotion_connection_project.md) [public.promotion_run](public.promotion_run.md) |  |  |
 | name | varchar(128) |  | false |  |  |  |
 | providerId | varchar(36) |  | false |  | [public.promotion_provider](public.promotion_provider.md) | The provider whose credentials this connection uses. |
 | scope | varchar(16) |  | false |  |  | PromotionConnectionScope enum: "instance", "projects". Cannot change after creation. |
@@ -42,6 +42,7 @@ erDiagram
 
 "public.promotion_config" }o--|| "public.promotion_connection" : "FOREIGN KEY (#quot;connectionId#quot;) REFERENCES promotion_connection(id) ON DELETE CASCADE"
 "public.promotion_connection_project" }o--|| "public.promotion_connection" : "FOREIGN KEY (#quot;connectionId#quot;) REFERENCES promotion_connection(id) ON DELETE CASCADE"
+"public.promotion_run" }o--o| "public.promotion_connection" : "FOREIGN KEY (#quot;connectionId#quot;) REFERENCES promotion_connection(id) ON DELETE SET NULL"
 "public.promotion_connection" }o--|| "public.promotion_provider" : "FOREIGN KEY (#quot;providerId#quot;) REFERENCES promotion_provider(id) ON DELETE RESTRICT"
 
 "public.promotion_connection" {
@@ -67,6 +68,28 @@ erDiagram
   timestamp_3__with_time_zone createdAt
   varchar_36_ projectId FK
   timestamp_3__with_time_zone updatedAt
+}
+"public.promotion_run" {
+  timestamp_3__with_time_zone approvedAt
+  uuid approvedById FK
+  varchar_64_ baselineCommitSha
+  varchar_255_ branchName
+  timestamp_3__with_time_zone closedAt
+  varchar_64_ commitSha
+  varchar_36_ connectionId FK
+  timestamp_3__with_time_zone createdAt
+  uuid createdById FK
+  integer gitlabProjectId
+  boolean hasConflicts
+  varchar_36_ id
+  timestamp_3__with_time_zone lastSyncedAt
+  integer mergeRequestIid
+  timestamp_3__with_time_zone mergedAt
+  varchar_36_ projectId FK
+  varchar_16_ state
+  varchar_255_ title
+  timestamp_3__with_time_zone updatedAt
+  text webUrl
 }
 "public.promotion_provider" {
   text auth
