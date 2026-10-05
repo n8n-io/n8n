@@ -238,7 +238,12 @@ vi.mock('../composables/useAgentChatStream', () => ({
 	useAgentChatStream: (options: { onHistoryLoaded: (count: number) => void }) => {
 		onHistoryLoaded = options.onHistoryLoaded;
 		return {
-			capabilities: computed(() => ({ steer: true, backgroundTasks: true, previewHistory: true })),
+			capabilities: computed(() => ({
+				steer: true,
+				reorder: true,
+				backgroundTasks: true,
+				previewHistory: true,
+			})),
 			messages: messagesMock,
 			isStreaming: isStreamingMock,
 			isSubmitting: isSubmittingMock,
