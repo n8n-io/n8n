@@ -31,6 +31,7 @@ import type {
 } from '@n8n/api-types';
 import type { OutputSchemaLookup, WorkflowJSON } from '@n8n/workflow-sdk';
 import type {
+	ExecutionStatus,
 	GenericValue,
 	IDisplayOptions,
 	INodeInputConfiguration,
@@ -151,6 +152,8 @@ export interface ExecutionNodeError {
 
 export interface ExecutionResult {
 	executionId: string;
+	/** Absent when unknown, e.g. while the execution is still running. */
+	workflowId?: string;
 	status: 'running' | 'success' | 'error' | 'waiting' | 'unknown';
 	data?: Record<string, unknown>;
 	/**
@@ -618,7 +621,7 @@ export interface ExecutionSummary {
 export interface InstanceAiExecutionService {
 	list(options?: {
 		workflowId?: string;
-		status?: string;
+		status?: ExecutionStatus;
 		limit?: number;
 	}): Promise<ExecutionSummary[]>;
 	run(

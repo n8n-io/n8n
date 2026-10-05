@@ -1,6 +1,6 @@
 /**
- * Consolidated executions tool — list, get, run, debug, get-node-output,
- * get-resolved-node-parameters, stop.
+ * Consolidated executions tool — list, get, run, run-step, debug,
+ * get-node-output, get-resolved-node-parameters, stop.
  */
 import {
 	buildRunStepSessionGrantKey,
@@ -11,6 +11,7 @@ import {
 } from '@n8n/api-types';
 import type { InstanceAiApprovalDetails } from '@n8n/api-types';
 import { Tool } from '@n8n/agents';
+import { ExecutionStatusList } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
@@ -19,31 +20,19 @@ import type { InstanceAiContext } from '../types';
 import { approvalSummarySchema, formatApprovalMessage } from './approval-copy';
 import { recordLiveRunVerification } from './orchestration/verification/record-live-run';
 
-// ── Constants ──────────────────────────────────────────────────────────────
-
-const MAX_TIMEOUT_MS = 600_000;
-
 // ── Action schemas ─────────────────────────────────────────────────────────
 
 const listAction = z.object({
 	action: z
 		.literal('list')
 		.describe(
-			'List recent workflow executions. Each row carries the `workflowVersionId` it ran. ' +
-				'With `workflowId`, the result also carries `workflow.activeVersionId` (the published ' +
-				'version, null while unpublished) and `workflow.draftVersionId`. Use them to answer ' +
-				'whether the LIVE workflow works: a row ran the published code only when its ' +
-				'`workflowVersionId` and `workflow.activeVersionId` are both set and equal. Two nulls ' +
-				'are not a match — a null `activeVersionId` means the workflow is not published, so no ' +
-				'row can prove production works, and a row with a null `workflowVersionId` ran an ' +
-				'unknown version, which is not the same as a draft. A draft version different from the ' +
-				'published one means the latest changes are not live yet.',
+			'List recent executions. With `workflowId`, only rows with `ranPublishedVersion: true` prove the live workflow works.',
 		),
 	workflowId: z.string().optional().describe('Workflow ID'),
 	status: z
-		.string()
+		.enum(ExecutionStatusList)
 		.optional()
-		.describe('Filter by status (e.g. "success", "error", "running", "waiting")'),
+		.describe('Filter by status. Failed runs are "error" or "crashed".'),
 	limit: z
 		.number()
 		.int()
@@ -57,9 +46,7 @@ const getAction = z.object({
 	action: z
 		.literal('get')
 		.describe(
-			'Get execution status without blocking (poll running ones). `workflowVersionId` is the ' +
-				'version this run executed; it only tells you whether the run was live when compared ' +
-				"with the workflow's `activeVersionId`.",
+			'Get execution status without blocking (poll running ones). `ranPublishedVersion` says whether the live version ran.',
 		),
 	executionId: z.string().describe('Execution ID'),
 });
@@ -72,50 +59,26 @@ const runAction = z.object({
 		.record(z.unknown())
 		.optional()
 		.describe(
-			'Input data passed to the workflow trigger. Works for ANY trigger type — ' +
-				'the system injects inputData as the trigger node output, bypassing the need for a real event. ' +
-				'For webhook triggers, a flat inputData is treated as the request body (placed under `body`; ' +
-				'`query`, `headers` and `params` stay empty). To exercise $json.query.*, $json.headers.* or ' +
-				'$json.params.*, pass the request envelope { body: {...}, query: {...}, headers: {...}, params: {...} } instead. ' +
-				'For event-based triggers (e.g. Linear, GitHub, Slack), pass inputData matching ' +
-				'the shape the trigger would emit (e.g. { action: "create", data: { ... } }).',
+			'Injected as the trigger output, for any trigger type. For a webhook, flat data becomes `body`; ' +
+				'pass { body, query, headers, params } to set the others.',
 		),
 	triggerNodeName: z
 		.string()
 		.optional()
 		.describe(
-			'Name of the trigger node to start the run from. REQUIRED when the workflow has ' +
-				'more than one trigger: without it a single trigger is auto-detected and the other ' +
-				"triggers' branches never run. To run each branch, call run once per trigger. " +
-				"Trigger names come from build-workflow's `triggerNodes` or " +
-				'workflows(action="get-as-code"). Never disable, delete, or otherwise edit a saved ' +
-				'workflow to reach a branch — use this instead.',
+			'Trigger to start from. Required when the workflow has more than one trigger: run once per trigger. ' +
+				'Never edit the workflow to reach a branch.',
 		),
-	timeout: z
-		.number()
-		.int()
-		.min(1000)
-		.max(MAX_TIMEOUT_MS)
-		.optional()
-		.describe('Max wait time in milliseconds (default 300000, max 600000)'),
 });
 
 const runStepAction = z.object({
 	action: z
 		.literal('run-step')
 		.describe(
-			'Run ONE node of a saved workflow and return its real output — the canvas ' +
-				'"Execute step". The node runs inside the real workflow, so expressions ' +
-				'that reference other nodes resolve, sub-nodes (model, memory, tools) come ' +
-				"along, and the run lands in the workflow's execution history. " +
-				"This is a REAL run with the user's real credentials against their real " +
-				'systems. Use it on reads and transforms. Do not use it to debug a node ' +
-				'that writes (create/update/delete/send/append, non-GET HTTP) — that ' +
-				'performs the effect again. Read the failed execution with action="debug" ' +
-				'and action="get-resolved-node-parameters" instead. When unsure, treat the ' +
-				'node as a write. A tool runs through the node that owns it (the Agent), so ' +
-				"mockInput and reuseExecutionId feed that node and the tool's own " +
-				'arguments come from toolArguments. No other sub-node kind can run.',
+			"Run ONE node of a saved workflow for real, with the user's credentials. Use it on reads " +
+				'and transforms. NEVER on a node that writes (create/update/delete/send, non-GET HTTP); ' +
+				'debug those with action="debug" or "get-resolved-node-parameters". When unsure, treat ' +
+				'the node as a write.',
 		),
 	workflowId: z.string().describe('Workflow ID'),
 	nodeName: z.string().describe('Name of the node, as named in the workflow the action targets'),
@@ -123,44 +86,18 @@ const runStepAction = z.object({
 		.string()
 		.optional()
 		.describe(
-			"Replay this past execution's data for the nodes above the target, then run " +
-				'only the target. Use when debugging a node that already failed a real run: ' +
-				'it is the fastest option and the input is real. The execution must belong ' +
-				'to the same workflow.',
+			"Replay this past execution's data for the nodes above the target. Same workflow only.",
 		),
 	mockInput: z
 		.array(z.record(z.unknown()))
 		.optional()
-		.describe(
-			'Items to feed the target node, skipping every node above it. Good for ' +
-				'studying one node on its own: probing an edge case, or holding the input ' +
-				'still while upstream data changes between runs. The result shows the node ' +
-				'handles THIS input; it shows nothing about what the workflow really ' +
-				'produces, so use reuseExecutionId or a chain run when that is the ' +
-				'question. This does not make a write node safe: the node still runs for ' +
-				'real, only its input is invented.',
-		),
+		.describe('Items to feed the target node, skipping every node above it.'),
 	toolArguments: z
 		.union([z.string(), z.record(z.unknown())])
 		.optional()
 		.describe(
-			'Only for a tool node: the arguments an agent would pass it. Keys are the ' +
-				"tool's $fromAI argument names. Pass a plain string for a tool that takes " +
-				'one free-text input (Wikipedia, Code Tool, a vector store used as a ' +
-				'tool). Required when the node declares $fromAI arguments, because the ' +
-				'tool runs with empty arguments otherwise.',
+			'Only for a tool node: its $fromAI arguments, or a plain string for a free-text tool. Required when it declares $fromAI arguments.',
 		),
-	versionId: z
-		.string()
-		.optional()
-		.describe('Run a past version of the workflow instead of the current draft'),
-	timeout: z
-		.number()
-		.int()
-		.min(1000)
-		.max(MAX_TIMEOUT_MS)
-		.optional()
-		.describe('Max wait time in milliseconds (default 300000, max 600000)'),
 });
 
 const debugAction = z.object({
@@ -196,11 +133,9 @@ const getResolvedNodeParametersAction = z.object({
 	action: z
 		.literal('get-resolved-node-parameters')
 		.describe(
-			"Replay expression resolution for a node's parameters against a past execution. " +
-				'Returns raw `parameters`, the `resolved` tree, `failedExpressions`, and ' +
-				'`emptyResolutions` (resolved to `null`/`undefined`/`""` — the common silent ' +
-				'cause of empty downstream fields). Use when debugging why a node received an ' +
-				'unexpected value — more precise than guessing from raw expressions or input data.',
+			"Replay a node's expression resolution against a past execution: raw `parameters`, " +
+				'the `resolved` tree, `failedExpressions`, and `emptyResolutions` (the usual silent ' +
+				'cause of empty fields). Use it to debug why a node got an unexpected value.',
 		),
 	executionId: z.string().describe('Execution ID'),
 	nodeName: z.string().describe('Name of the node, as named in the workflow the action targets'),
@@ -223,20 +158,30 @@ const stopAction = z.object({
 	executionId: z.string().describe('Execution ID'),
 });
 
-const inputSchema = sanitizeInputSchema(
-	z.discriminatedUnion('action', [
-		listAction,
-		getAction,
-		runAction,
-		runStepAction,
-		debugAction,
-		getNodeOutputAction,
-		getResolvedNodeParametersAction,
-		stopAction,
-	]),
-);
+function buildInputSchema(context: InstanceAiContext) {
+	return sanitizeInputSchema(
+		z.discriminatedUnion('action', [
+			listAction,
+			getAction,
+			runAction,
+			...(context.executionService.runStep ? [runStepAction] : []),
+			debugAction,
+			getNodeOutputAction,
+			getResolvedNodeParametersAction,
+			stopAction,
+		]),
+	);
+}
 
-type Input = z.infer<typeof inputSchema>;
+type Input =
+	| z.infer<typeof listAction>
+	| z.infer<typeof getAction>
+	| z.infer<typeof runAction>
+	| z.infer<typeof runStepAction>
+	| z.infer<typeof debugAction>
+	| z.infer<typeof getNodeOutputAction>
+	| z.infer<typeof getResolvedNodeParametersAction>
+	| z.infer<typeof stopAction>;
 
 // ── Suspend / resume schemas (used by `run`) ───────────────────────────────
 
@@ -260,18 +205,30 @@ async function handleList(context: InstanceAiContext, input: Extract<Input, { ac
 			status: input.status,
 			limit: input.limit,
 		}),
-		resolveListedWorkflowVersions(context, input.workflowId),
+		resolveWorkflowVersions(context, input.workflowId),
 	]);
 
-	return workflow === undefined ? { executions } : { executions, workflow };
+	if (workflow === undefined) return { executions };
+
+	const { activeVersionId, draftVersionId } = workflow;
+	return {
+		executions: executions.map((execution) => ({
+			...execution,
+			ranPublishedVersion: ranPublishedVersion(execution.workflowVersionId, activeVersionId),
+		})),
+		workflow: {
+			...workflow,
+			hasUnpublishedChanges: activeVersionId !== null && activeVersionId !== draftVersionId,
+		},
+	};
 }
 
 /**
- * Published and draft version of the listed workflow. Only for a list scoped to
- * one workflow: without it, "did the live version run?" is unanswerable from
- * the rows alone. A failed read drops the block rather than the whole list.
+ * Published and draft version of one workflow. Without it, "did the live
+ * version run?" is unanswerable from execution rows alone. A failed read drops
+ * the version fields rather than the whole result.
  */
-async function resolveListedWorkflowVersions(
+async function resolveWorkflowVersions(
 	context: InstanceAiContext,
 	workflowId: string | undefined,
 ): Promise<{ activeVersionId: string | null; draftVersionId: string } | undefined> {
@@ -290,7 +247,27 @@ async function resolveListedWorkflowVersions(
 }
 
 async function handleGet(context: InstanceAiContext, input: Extract<Input, { action: 'get' }>) {
-	return await context.executionService.getStatus(input.executionId);
+	const result = await context.executionService.getStatus(input.executionId);
+	const workflow = await resolveWorkflowVersions(context, result.workflowId);
+	if (workflow === undefined) return result;
+
+	return {
+		...result,
+		ranPublishedVersion: ranPublishedVersion(result.workflowVersionId, workflow.activeVersionId),
+	};
+}
+
+/** A null on either side is an unknown or unpublished version, never a match. */
+function ranPublishedVersion(
+	workflowVersionId: string | null | undefined,
+	activeVersionId: string | null,
+): boolean {
+	return (
+		activeVersionId !== null &&
+		workflowVersionId !== null &&
+		workflowVersionId !== undefined &&
+		workflowVersionId === activeVersionId
+	);
 }
 
 function normalizeWorkflowName(name: string): string {
@@ -430,7 +407,6 @@ async function handleRun(
 
 	// Approved or always_allow — execute
 	const result = await context.executionService.run(workflowId, input.inputData, {
-		timeout: input.timeout,
 		triggerNodeName: input.triggerNodeName,
 		abortSignal,
 	});
@@ -532,8 +508,6 @@ async function handleRunStep(
 		reuseExecutionId: input.reuseExecutionId,
 		mockInput: input.mockInput,
 		toolArguments: input.toolArguments,
-		versionId: input.versionId,
-		timeout: input.timeout,
 		abortSignal,
 	});
 }
@@ -575,20 +549,13 @@ async function handleStop(context: InstanceAiContext, input: Extract<Input, { ac
 export function createExecutionsTool(context: InstanceAiContext) {
 	return new Tool('executions')
 		.description(
-			'Manage workflow executions — list, inspect, run, run one node, debug, ' +
-				'get node output, get resolved node parameters for a past run, and stop. ' +
-				'action="run" is how you satisfy "trigger/run my <workflow>": find the workflow with ' +
-				'workflows(action="list"), then run it here with the user\'s values as inputData — ' +
-				'do not treat such a request as a request to build something. ' +
-				'To verify a workflow you built, use verify-built-workflow, not action="run". ' +
-				'Reserve action="run" for runs the user explicitly asked for: it runs the workflow live with no pin data and prompts the user for approval. ' +
-				'action="run-step" runs a single node of the saved workflow, like the canvas ' +
-				'"Execute step" button. Use it to see what one node really returns — when ' +
-				'debugging a read node that failed a real execution, pass reuseExecutionId so ' +
-				'the node re-runs on the data it actually received. It runs for real, so do ' +
-				'not point it at a node that writes.',
+			'Inspect, run, debug, and stop workflow executions. ' +
+				'"Trigger/run my <workflow>" is action="run" (find it with workflows(action="list"), ' +
+				'pass the user\'s values as inputData), not a build request. Reserve action="run" for ' +
+				'runs the user asked for: it runs live with no pin data and asks for approval. ' +
+				'To verify a workflow you built, use verify-built-workflow instead.',
 		)
-		.input(inputSchema)
+		.input(buildInputSchema(context))
 		.suspend(suspendSchema)
 		.resume(resumeSchema)
 		.handler(async (input: Input, ctx) => {

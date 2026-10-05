@@ -386,6 +386,26 @@ describe('stop execution — workflow:execute scope', () => {
 			'workflow:read',
 		]);
 	});
+
+	it('getStatus returns the workflow and version of a running execution', async () => {
+		executionRepository.findSingleExecution.mockReset().mockResolvedValue({
+			id: 'exec-1',
+			workflowId: 'wf-1',
+			workflowVersionId: 'version-1',
+		} as never);
+		workflowFinderService.findWorkflowForUser.mockResolvedValue({ id: 'wf-1' } as never);
+		activeExecutions.has.mockReturnValue(true);
+
+		const ctx = service.createContext(user);
+		const result = await ctx.executionService.getStatus('exec-1');
+
+		expect(result).toEqual({
+			executionId: 'exec-1',
+			workflowId: 'wf-1',
+			workflowVersionId: 'version-1',
+			status: 'running',
+		});
+	});
 });
 
 // ---------------------------------------------------------------------------
