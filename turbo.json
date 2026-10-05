@@ -131,6 +131,9 @@
 		"@n8n/engine#lint": {
 			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
 		},
+		"@n8n/extension-sdk#lint": {
+			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
+		},
 		"@n8n/errors#lint": {
 			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
 		},
@@ -207,6 +210,9 @@
 			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
 		},
 		"n8n-playwright#lint": {
+			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
+		},
+		"n8n-workflow#lint": {
 			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
 		},
 		"n8n#lint": {

@@ -217,15 +217,19 @@ packages/nodes-base/                                    @n8n-io/nodes
 packages/@n8n/decorators/                               @n8n-io/catalysts
 packages/node-dev/                                      @n8n-io/nodes
 packages/@n8n/create-node/                              @n8n-io/nodes
-packages/@n8n/node-cli/                                 @n8n-io/nodes
+packages/@n8n/node-cli/                                 @n8n-io/community-engineering
 packages/@n8n/imap/                                     @n8n-io/iam
 packages/@n8n/syslog-client/                            @n8n-io/iam
-packages/@n8n/scan-community-package/                   @n8n-io/nodes
-packages/@n8n/eslint-plugin-community-nodes/            @n8n-io/nodes
+packages/@n8n/scan-community-package/                   @n8n-io/community-engineering
+packages/@n8n/eslint-plugin-community-nodes/            @n8n-io/community-engineering
 packages/@n8n/computer-use/                             @n8n-io/nodes
 packages/@n8n/local-gateway/                            @n8n-io/nodes
 packages/@n8n/mcp-browser/                              @n8n-io/nodes
 packages/@n8n/mcp-browser-extension/                    @n8n-io/nodes
+
+# Community engineering
+.agents/skills/create-community-node-lint-rule/         @n8n-io/community-engineering
+.agents/skills/community-pr-readiness-check/            @n8n-io/community-engineering
 
 # IAM
 
@@ -246,6 +250,7 @@ packages/cli/src/modules/type-availability-policies/    @n8n-io/governance-and-o
 
 .github/                                       					@n8n-io/qa-dx
 .github/workflows/                                      @n8n-io/qa-dx required
+.github/workflows/community-pr-close-stale.yml          @n8n-io/community-engineering
 .github/scripts/                                        @n8n-io/qa-dx required
 .github/actions/                                        @n8n-io/qa-dx required
 .github/poutine-rules/                                  @n8n-io/qa-dx required
