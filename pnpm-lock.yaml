@@ -2948,6 +2948,9 @@ importers:
         specifier: 3.25.76
         version: 3.25.76
     devDependencies:
+      '@n8n/oxlint-config':
+        specifier: workspace:*
+        version: link:../oxlint-config
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
@@ -2957,6 +2960,12 @@ importers:
       '@vue/tsconfig':
         specifier: catalog:frontend
         version: 0.7.0(@typescript/typescript6@6.0.2)(vue@3.5.26(@typescript/typescript6@6.0.2))
+      oxlint:
+        specifier: 'catalog:'
+        version: 1.78.0(oxlint-tsgolint@0.21.1)
+      oxlint-tsgolint:
+        specifier: 'catalog:'
+        version: 0.21.1
       prettier:
         specifier: 'catalog:'
         version: 3.6.2
@@ -8248,6 +8257,9 @@ importers:
       '@n8n/config':
         specifier: workspace:*
         version: link:../@n8n/config
+      '@n8n/oxlint-config':
+        specifier: workspace:*
+        version: link:../@n8n/oxlint-config
       '@n8n/playwright-janitor':
         specifier: workspace:*
         version: link:../quality/testing/janitor
@@ -8296,6 +8308,12 @@ importers:
       nock:
         specifier: 'catalog:'
         version: 14.0.14
+      oxlint:
+        specifier: 'catalog:'
+        version: 1.78.0(oxlint-tsgolint@0.21.1)
+      oxlint-tsgolint:
+        specifier: 'catalog:'
+        version: 0.21.1
       typescript:
         specifier: catalog:typescript
         version: 7.0.2
