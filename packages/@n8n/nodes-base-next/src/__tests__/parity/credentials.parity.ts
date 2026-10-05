@@ -423,29 +423,20 @@ describe('credential types against the legacy classes', () => {
 		).toEqual(clean);
 	});
 
-	it('facebook.app: fields only, the same form as the legacy type with its parent', async () => {
-		const legacy = new FacebookGraphAppApi();
-		// As `CredentialsHelper.getCredentialsProperties`: the parent fields first.
-		const form = {
-			...legacy,
-			properties: [...new FacebookGraphApi().properties, ...legacy.properties],
-		};
+	it('facebook.app: fields only, extends facebookGraphApi with the same form', async () => {
+		const parent = new FacebookGraphApi();
+		const legacy = formOf(parent, new FacebookGraphAppApi());
+		const next = formOf(parent, projected(facebookApp));
+		expect(next.extends).toEqual(['facebookGraphApi']);
+		const data = { accessToken: 'a-1', appSecret: 's-1' };
+		const request = { url: 'https://graph.facebook.com/v8.0/me' };
 		expect(
-			await compareCredential(
-				form,
-				facebookApp,
-				[
-					{
-						data: { accessToken: 'a-1', appSecret: 's-1' },
-						request: { url: 'https://graph.facebook.com/v8.0/me' },
-					},
-				],
-				[
-					intended(
-						'described.extends',
-						'The type declares the parent field; nothing reads the parent',
-					),
-				],
+			explained(
+				differences(
+					{ described: described(legacy), signed: await signRequest(legacy, data, request) },
+					{ described: described(next), signed: await signRequest(next, data, request) },
+				),
+				[],
 			),
 		).toEqual(clean);
 	});

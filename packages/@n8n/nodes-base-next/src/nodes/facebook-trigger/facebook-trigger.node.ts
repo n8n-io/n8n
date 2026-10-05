@@ -1,12 +1,16 @@
 import { defineNode } from '@n8n/node-sdk';
 import { credential, defineCredential, field } from '@n8n/node-sdk/credentials';
 
-/** The Facebook app. The legacy trigger node reads its fields and signs nothing through n8n. */
+/**
+ * The Facebook app. The legacy trigger node reads its fields and signs nothing through n8n. It
+ * extends the legacy Graph API type, so the instance overwrites of that type apply.
+ */
 export const facebookApp = defineCredential({
 	id: 'facebook.app',
 	legacyName: 'facebookGraphAppApi',
 	displayName: 'Facebook Graph API (App)',
 	docs: 'facebookapp',
+	legacyParent: 'facebookGraphApi',
 	fields: {
 		accessToken: field.secret('Access Token').optional(),
 		appSecret: field

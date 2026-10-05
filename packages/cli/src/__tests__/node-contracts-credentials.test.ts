@@ -1,4 +1,4 @@
-import type { GlobalConfig } from '@n8n/config';
+import type { CommaSeparatedStringArray, GlobalConfig } from '@n8n/config';
 import { bundledCredentialsOf } from '@n8n/nodes-base-next';
 import { LazyPackageDirectoryLoader } from 'n8n-core';
 import type {
@@ -13,7 +13,7 @@ import { mock } from 'vitest-mock-extended';
 
 import { CredentialTypes } from '../credential-types';
 import { CredentialsHelper } from '../credentials-helper';
-import type { CredentialsOverwrites } from '../credentials-overwrites';
+import { CredentialsOverwrites } from '../credentials-overwrites';
 import { LoadNodesAndCredentials } from '../load-nodes-and-credentials';
 import { ContractNodeLoader } from '../node-contracts-registry';
 
@@ -223,6 +223,44 @@ describe('credential types of the node contracts package', () => {
 			},
 			{ source: 'nodes-base/dist/credentials/OpenAiApi.credentials.js', headers },
 		]);
+	});
+
+	it('apply the overwrites of the legacy parent of facebookGraphAppApi as the legacy class does', async () => {
+		const [on, off] = await Promise.all(
+			[true, false].map(async (enabled) => {
+				const { instance, credentialTypes, helper } = await loaded(enabled);
+				const overwrites = new CredentialsOverwrites(
+					mock<GlobalConfig>({
+						credentials: {
+							overwrite: {
+								data: JSON.stringify({ facebookGraphApi: { accessToken: 'o-1' } }),
+								persistence: false,
+								skipTypes: [] as unknown as CommaSeparatedStringArray<string>,
+							},
+						},
+					}),
+					credentialTypes,
+					mock(),
+					mock(),
+					mock(),
+				);
+				await overwrites.init();
+				return {
+					source: instance.knownCredentials.facebookGraphAppApi.sourcePath,
+					parents: credentialTypes.getParentTypes('facebookGraphAppApi'),
+					form: helper.getCredentialsProperties('facebookGraphAppApi'),
+					data: overwrites.applyOverwrite('facebookGraphAppApi', { appSecret: 's-1' }),
+				};
+			}),
+		);
+
+		expect(on.source).toContain(NEXT);
+		expect(path.relative(PACKAGES, off.source)).toBe(
+			'nodes-base/dist/credentials/FacebookGraphAppApi.credentials.js',
+		);
+		expect(on.parents).toEqual(['facebookGraphApi']);
+		expect(on.data).toEqual({ appSecret: 's-1', accessToken: 'o-1' });
+		expect({ ...on, source: undefined }).toEqual({ ...off, source: undefined });
 	});
 
 	it('sign a stored openAiApi credential without its newer fields', async () => {
