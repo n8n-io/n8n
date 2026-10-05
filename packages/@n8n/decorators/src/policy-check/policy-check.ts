@@ -108,7 +108,6 @@ export type CredentialSaveContext = {
 
 export type CredentialTransferContext = {
 	readonly credential: PolicedCredential;
-	/** The project the credential is moving *into* — that's whose policy applies. */
 	readonly targetProjectId: string | null;
 };
 

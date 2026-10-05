@@ -139,7 +139,6 @@ export class CredentialTypePolicyCheck implements RegisteredPolicyCheck {
 		return await this.checkTypes([credential.type], projectId);
 	}
 
-	/** The target project's policy decides — grandfathering does not travel into a new scope. */
 	async onCredentialTransfer({
 		credential,
 		targetProjectId,

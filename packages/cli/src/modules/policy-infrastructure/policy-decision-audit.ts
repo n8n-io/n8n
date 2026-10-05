@@ -103,7 +103,6 @@ function targetOf(context: AnyPolicyContext) {
 		};
 	}
 
-	// credentialTransfer: the project it moves into is the one whose policy was read.
 	if ('credential' in context && 'targetProjectId' in context) {
 		return {
 			credentialId: context.credential.id,
