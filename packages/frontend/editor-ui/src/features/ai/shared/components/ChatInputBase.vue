@@ -306,7 +306,13 @@ defineExpose({
 				</N8nTooltip>
 				<N8nTooltip
 					v-if="showVoice && speechInput.isSupported"
-					:content="i18n.baseText('chatInputBase.button.dictate')"
+					:content="
+						i18n.baseText(
+							isStreaming
+								? 'chatInputBase.button.dictate.stopResponse'
+								: 'chatInputBase.button.dictate',
+						)
+					"
 					placement="top"
 				>
 					<N8nIconButton
