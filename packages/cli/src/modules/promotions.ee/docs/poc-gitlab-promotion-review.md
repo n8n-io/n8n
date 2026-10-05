@@ -337,7 +337,8 @@ see their project's runs.
 5. `POST /rest/promotions/reviews/:runId/approve`. — Done
 6. FE: `promotionReviews.store.ts` and api, interleave into
    `WorkflowReviewRequestsView.vue`, row kind, `PromotionReviewDetail`. — Done
-7. Manual demo against local GitLab (Docker, group access token). Record it.
+7. Manual demo against local GitLab (Docker, group access token). — Set up,
+   see "Manual demo". Recording still open.
 8. Stretch: bindings and dependencies tabs; MR notes in the detail.
 
 ## Implementation notes
@@ -371,7 +372,44 @@ Where the code differs from the plan above:
 Prerequisites: a GitLab project reachable from the instance, a token with
 `api` scope and at least Maintainer role, and a license with the
 `workflow-reviews` and `git-connections` features (both modules are
-license-gated; see decision E1).
+license-gated; see decision E1). The `promotions` module is not a default
+module: start the instance with `N8N_ENABLED_MODULES=promotions`.
+
+### Local setup used for the POC
+
+The demo runs against a local GitLab CE 18.9 container on
+`http://localhost:8929` and a copy of the developer's `~/.n8n` data in
+`~/.n8n-promotion-demo/.n8n` (`N8N_USER_FOLDER` is the parent of `.n8n`). The
+copy keeps the encryption key, the license and the users, so the real data
+folder stays untouched. Files next to it hold the secrets: `gitlab-token`
+(a PAT with `api` scope), `n8n-api-key` (a public API key with the
+`gitConnection:*` scopes) and `admin-password` (a demo password for a test
+admin account, set in the copy only).
+
+```bash
+cd packages/cli
+N8N_USER_FOLDER=$HOME/.n8n-promotion-demo \
+N8N_ENABLED_MODULES=promotions \
+N8N_RUNNERS_ENABLED=true N8N_RUNNERS_BROKER_PORT=5699 \
+./bin/n8n start
+```
+
+The instance connection `Local GitLab` points at
+`promote-demo-1787588222/promotion-reviews-poc` with Promote on `main` and
+branching on. Two runs exist: MR !1 (every team project, merged in GitLab to
+seed the baseline) and MR !2 (one modified workflow, open, ready for the
+"Approve and merge" step).
+
+To create a new run from the shell:
+
+```bash
+curl -s -H "X-N8N-API-KEY: $(cat ~/.n8n-promotion-demo/n8n-api-key)" \
+  -H 'Content-Type: application/json' \
+  -X POST http://localhost:5678/api/v1/promotions/connections/djL7S3BLv0JcA8X2/promote \
+  -d '{"commitMessage":"<title of the merge request>"}'
+```
+
+### Script
 
 1. Create a GitLab promotion connection and a promote config for a project.
 2. Change a workflow in that project and run Promote.
@@ -389,6 +427,24 @@ license-gated; see decision E1).
 7. Negative path: close an MR in GitLab, reload `/reviews`. Expect the row
    in "Closed" with state `Closed`. Delete an MR, reload. Expect state
    `Unavailable`.
+
+Steps 1 to 5 and the "merged in GitLab" half of step 7 are verified on the
+local setup. Step 6 is left for the live demo.
+
+### Findings from the first run
+
+- The batch sync sent `iids[][0]=1`, which GitLab answers with an empty
+  list. Every open run was marked `unavailable` on the first inbox load.
+  Fixed with `arrayFormat: 'brackets'`. A contract test against a real
+  GitLab would have caught this; the unit test only mirrored the request.
+- `unavailable` is terminal. A wrong or transient empty answer from GitLab
+  freezes the row, and only a manual database edit recovers it. v1 should
+  retry `unavailable` rows on sync, or only mark a row after a 404 on the
+  single-MR route.
+- The "Open" and "Closed" tab counters count Workflow Reviews only. The
+  Promotion rows are in the list but not in the number.
+- The public API key created in the UI expires. A legacy `n8n_api_` key
+  inserted in the database does not, which is what the demo uses.
 
 ## Follow-ups outside the POC
 
