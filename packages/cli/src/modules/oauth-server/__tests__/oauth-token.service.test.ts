@@ -4,18 +4,29 @@ import jwt from 'jsonwebtoken';
 import { Logger, type LicenseState, type ModuleRegistry } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { GlobalConfig } from '@n8n/config';
-import type { OperationContext, TransactionRunner, User } from '@n8n/db';
-import { UserRepository } from '@n8n/db';
+import type { DeploymentKey, OperationContext, TransactionRunner, User } from '@n8n/db';
+import { OAUTH_JWE_PRIVATE_KEY_TYPE, UserRepository } from '@n8n/db';
 import { mock, type MockProxy } from 'vitest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
+import type { KeyObject } from 'node:crypto';
+import { createHmac, createPublicKey, generateKeyPairSync } from 'node:crypto';
 
-import { JwtService } from '@/services/jwt.service';
+import { JwtService, type PurposedSignOptions } from '@/services/jwt.service';
 
 import type { AccessToken } from '../database/entities/oauth-access-token.entity';
 import type { RefreshToken } from '../database/entities/oauth-refresh-token.entity';
 import { AccessTokenRepository } from '../database/repositories/oauth-access-token.repository';
 import { RefreshTokenRepository } from '../database/repositories/oauth-refresh-token.repository';
+import { OAUTH_ACCESS_TOKEN_TTL_SECONDS } from '../oauth-signing-key.constants';
 import { OAuthTokenService } from '../oauth-token.service';
+import { JWTVerificationError } from '../oauth.errors';
+import {
+	createSigningKeyService,
+	es256Signer,
+	forgeJwt,
+	readStoredPrivateKey,
+	rs256Signer,
+} from './signing-key-fixtures';
 import { McpProtectedResource } from '@/modules/mcp/mcp-protected-resource';
 import type { McpConfig } from '@/modules/mcp/mcp.config';
 import type { McpSettingsService } from '@/modules/mcp/mcp.settings.service';
@@ -34,6 +45,8 @@ let urlService: MockProxy<UrlService>;
 let service: OAuthTokenService;
 let txRunner: MockProxy<TransactionRunner>;
 const workflowFinderService = mock<WorkflowFinderService>();
+const signingKeys = createSigningKeyService();
+const signingKeyService = signingKeys.service;
 
 const TEST_BASE_URL = 'https://n8n.example.com';
 const TEST_RESOURCE_URL = `${TEST_BASE_URL}/mcp-server/http`;
@@ -52,7 +65,9 @@ registry.register({
 });
 
 describe('OAuthTokenService', () => {
-	beforeAll(() => {
+	beforeAll(async () => {
+		await signingKeyService.initialize();
+
 		logger = mockInstance(Logger);
 		userRepository = mockInstance(UserRepository);
 		accessTokenRepository = mockInstance(AccessTokenRepository) as Mocked<AccessTokenRepository>;
@@ -77,6 +92,7 @@ describe('OAuthTokenService', () => {
 			txRunner,
 			workflowFinderService,
 			urlService,
+			signingKeyService,
 		);
 	});
 
@@ -109,8 +125,11 @@ describe('OAuthTokenService', () => {
 			expect(decoded.exp).toBeDefined();
 
 			const fullToken = jwt.decode(accessToken, { complete: true });
-			expect(fullToken?.header.typ).toBe('at+jwt');
-			expect(fullToken?.header.alg).toBe('HS256');
+			expect(fullToken?.header).toEqual({
+				alg: 'ES256',
+				typ: 'at+jwt',
+				kid: signingKeys.keyStore.rows[0].id,
+			});
 
 			expect(refreshToken).toHaveLength(64); // 32 bytes hex = 64 characters
 			expect(refreshToken).toMatch(/^[a-f0-9]{64}$/);
@@ -371,6 +390,7 @@ describe('OAuthTokenService', () => {
 				txRunner,
 				workflowFinderService,
 				urlService,
+				signingKeyService,
 			);
 		});
 
@@ -792,6 +812,7 @@ describe('OAuthTokenService', () => {
 				txRunner,
 				workflowFinderService,
 				urlService,
+				signingKeyService,
 			);
 		});
 
@@ -873,6 +894,7 @@ describe('OAuthTokenService', () => {
 				txRunner,
 				workflowFinderService,
 				urlService,
+				signingKeyService,
 			);
 		});
 
@@ -993,6 +1015,7 @@ describe('OAuthTokenService', () => {
 				txRunner,
 				workflowFinderService,
 				urlService,
+				signingKeyService,
 			);
 		});
 
@@ -1023,6 +1046,273 @@ describe('OAuthTokenService', () => {
 			await expect(
 				configuredService.verifyAccessToken(token, CONFIGURED_RESOURCE_URL),
 			).rejects.toThrow('JWT Verification Failed');
+		});
+	});
+
+	describe('ES256 access tokens', () => {
+		const USER_ID = 'user-123';
+		const CLIENT_ID = 'client-456';
+		const ATTACKER_KEY = generateKeyPairSync('ec', { namedCurve: 'P-256' });
+		let kid: string;
+		let privateKey: KeyObject;
+
+		const validClaims = () => {
+			const now = Math.floor(Date.now() / 1000);
+			return {
+				iss: TEST_BASE_URL,
+				sub: USER_ID,
+				aud: TEST_RESOURCE_URL,
+				client_id: CLIENT_ID,
+				jti: 'jti-1',
+				iat: now,
+				exp: now + OAUTH_ACCESS_TOKEN_TTL_SECONDS,
+				scope: '',
+				meta: { isOAuth: true },
+			};
+		};
+
+		const signEs256 = (claims: Record<string, unknown>, header: Record<string, unknown> = {}) =>
+			forgeJwt({ alg: 'ES256', typ: 'at+jwt', kid, ...header }, claims, es256Signer(privateKey));
+
+		const hmacSigner = (secret: string | Buffer) => (signingInput: string) =>
+			createHmac('sha256', secret).update(signingInput).digest();
+
+		/** Signs with the HMAC secret, the way n8n minted access tokens before ES256. */
+		const signHmac = (options: PurposedSignOptions) => {
+			const { aud, ...claims } = validClaims();
+			return jwtService.signForResource(claims, aud, options);
+		};
+
+		const storeToken = (token: string) => {
+			accessTokenRepository.findOne.mockResolvedValue(
+				mock<AccessToken>({ token, clientId: CLIENT_ID, userId: USER_ID }),
+			);
+		};
+
+		/** The token is in the database, so only its signature and claims can fail it. */
+		const expectRejected = async (token: string) => {
+			storeToken(token);
+			await expect(service.verifyAccessToken(token, TEST_RESOURCE_URL)).rejects.toThrow(
+				JWTVerificationError,
+			);
+		};
+
+		beforeAll(() => {
+			const [row] = signingKeys.keyStore.rows;
+			kid = row.id;
+			privateKey = readStoredPrivateKey(row);
+		});
+
+		describe('with a kid', () => {
+			it('verifies against the key the kid names and never against the HMAC secret', async () => {
+				const { accessToken } = service.generateTokenPair(USER_ID, CLIENT_ID, undefined, []);
+				storeToken(accessToken);
+				const signingVerify = vi.spyOn(signingKeyService, 'verifyAccessToken');
+				const hmacVerify = vi.spyOn(jwtService, 'verify');
+
+				try {
+					await expect(
+						service.verifyAccessToken(accessToken, TEST_RESOURCE_URL),
+					).resolves.toMatchObject({ clientId: CLIENT_ID, extra: { userId: USER_ID } });
+					expect(signingVerify).toHaveBeenCalledWith(
+						accessToken,
+						expect.objectContaining({ kid, issuer: TEST_BASE_URL }),
+					);
+					expect(hmacVerify).not.toHaveBeenCalled();
+				} finally {
+					signingVerify.mockRestore();
+					hmacVerify.mockRestore();
+				}
+			});
+
+			it.each<[string, Record<string, unknown>, Record<string, unknown>]>([
+				['a wrong aud', { aud: 'https://other.example.com/mcp' }, {}],
+				['a wrong iss', { iss: 'https://attacker.example.com' }, {}],
+				['a wrong typ', {}, { typ: 'JWT' }],
+				['an expired exp', { exp: 1 }, {}],
+			])('rejects a token with %s', async (_, claimOverrides, headerOverrides) => {
+				await expectRejected(signEs256({ ...validClaims(), ...claimOverrides }, headerOverrides));
+			});
+		});
+
+		describe('algorithm confusion', () => {
+			it('rejects HS256 signed with the public key PEM as the secret', async () => {
+				const pem = createPublicKey(privateKey).export({ type: 'spki', format: 'pem' });
+
+				await expectRejected(
+					forgeJwt({ alg: 'HS256', typ: 'at+jwt', kid }, validClaims(), hmacSigner(pem)),
+				);
+			});
+
+			it('rejects HS256 signed with the public JWK JSON as the secret', async () => {
+				const [publicJwk] = await signingKeyService.getPublicJwks();
+
+				await expectRejected(
+					forgeJwt(
+						{ alg: 'HS256', typ: 'at+jwt', kid },
+						validClaims(),
+						hmacSigner(JSON.stringify(publicJwk)),
+					),
+				);
+			});
+
+			it('rejects a valid HMAC token with a kid added', async () => {
+				const token = signHmac({
+					keyid: kid,
+					header: { alg: 'HS256', typ: 'at+jwt' },
+				});
+
+				await expectRejected(token);
+			});
+
+			it('rejects alg none', async () => {
+				await expectRejected(forgeJwt({ alg: 'none', typ: 'at+jwt', kid }, validClaims(), null));
+			});
+
+			it('rejects ES384 in the header over a signature from the real key', async () => {
+				await expectRejected(
+					forgeJwt({ alg: 'ES384', typ: 'at+jwt', kid }, validClaims(), es256Signer(privateKey)),
+				);
+			});
+
+			it('rejects RS256 signed with an RSA key under the real kid', async () => {
+				const { privateKey: rsaKey } = generateKeyPairSync('rsa', { modulusLength: 2048 });
+
+				await expectRejected(
+					forgeJwt({ alg: 'RS256', typ: 'at+jwt', kid }, validClaims(), rs256Signer(rsaKey)),
+				);
+			});
+
+			it('rejects another P-256 key under the real kid', async () => {
+				await expectRejected(
+					forgeJwt(
+						{ alg: 'ES256', typ: 'at+jwt', kid },
+						validClaims(),
+						es256Signer(ATTACKER_KEY.privateKey),
+					),
+				);
+			});
+
+			it('rejects a P-384 key under the real kid', async () => {
+				const { privateKey: p384Key } = generateKeyPairSync('ec', { namedCurve: 'P-384' });
+
+				await expectRejected(
+					forgeJwt({ alg: 'ES256', typ: 'at+jwt', kid }, validClaims(), es256Signer(p384Key)),
+				);
+			});
+
+			it('rejects an all-zero signature', async () => {
+				await expectRejected(
+					forgeJwt({ alg: 'ES256', typ: 'at+jwt', kid }, validClaims(), () => Buffer.alloc(64)),
+				);
+			});
+
+			it('rejects the JWE key under its own kid', async () => {
+				const { privateKey: jweKey } = generateKeyPairSync('rsa', { modulusLength: 2048 });
+				const jweJwk = {
+					...jweKey.export({ format: 'jwk' }),
+					kid: 'jwe-kid',
+					alg: 'RSA-OAEP-256',
+					use: 'enc',
+				};
+				const now = new Date();
+				signingKeys.keyStore.rows.push(
+					mock<DeploymentKey>({
+						id: 'jwe-kid',
+						type: OAUTH_JWE_PRIVATE_KEY_TYPE,
+						value: `wrapped:${JSON.stringify(jweJwk)}`,
+						algorithm: 'RSA-OAEP-256',
+						status: 'active',
+						createdAt: now,
+						updatedAt: now,
+					}),
+				);
+				signingKeys.cacheStore.clear();
+
+				try {
+					await expectRejected(
+						forgeJwt(
+							{ alg: 'RS256', typ: 'at+jwt', kid: 'jwe-kid' },
+							validClaims(),
+							rs256Signer(jweKey),
+						),
+					);
+				} finally {
+					signingKeys.keyStore.rows.pop();
+					signingKeys.cacheStore.clear();
+				}
+			});
+
+			it.each<[string, unknown]>([
+				['an unknown kid', 'unknown-kid'],
+				['an empty kid', ''],
+				['a numeric kid', 123],
+				['an object kid', { id: 'x' }],
+			])('rejects %s', async (_, badKid) => {
+				await expectRejected(signEs256(validClaims(), { kid: badKid }));
+			});
+
+			it('ignores an embedded jwk header', async () => {
+				const jwk = ATTACKER_KEY.publicKey.export({ format: 'jwk' });
+
+				await expectRejected(
+					forgeJwt(
+						{ alg: 'ES256', typ: 'at+jwt', kid, jwk },
+						validClaims(),
+						es256Signer(ATTACKER_KEY.privateKey),
+					),
+				);
+			});
+
+			it('ignores a jku header', async () => {
+				await expectRejected(
+					forgeJwt(
+						{ alg: 'ES256', typ: 'at+jwt', kid, jku: 'https://attacker.example.com/jwks.json' },
+						validClaims(),
+						es256Signer(ATTACKER_KEY.privateKey),
+					),
+				);
+			});
+		});
+
+		describe('without a kid', () => {
+			it('rejects an ES256 token whose kid was removed', async () => {
+				await expectRejected(
+					forgeJwt({ alg: 'ES256', typ: 'at+jwt' }, validClaims(), es256Signer(privateKey)),
+				);
+			});
+
+			it('accepts a legacy HS256 token until it expires', async () => {
+				vi.useFakeTimers({ toFake: ['Date'] });
+				try {
+					// Minted the way n8n did before ES256.
+					const accessToken = signHmac({
+						header: { typ: 'at+jwt', alg: 'HS256' },
+					});
+					storeToken(accessToken);
+
+					await expect(
+						service.verifyAccessToken(accessToken, TEST_RESOURCE_URL),
+					).resolves.toMatchObject({ clientId: CLIENT_ID });
+
+					vi.advanceTimersByTime((OAUTH_ACCESS_TOKEN_TTL_SECONDS + 1) * 1000);
+
+					await expect(service.verifyAccessToken(accessToken, TEST_RESOURCE_URL)).rejects.toThrow(
+						JWTVerificationError,
+					);
+				} finally {
+					vi.useRealTimers();
+				}
+			});
+
+			it('rejects HS512', async () => {
+				const token = signHmac({
+					algorithm: 'HS512',
+					header: { alg: 'HS512', typ: 'at+jwt' },
+				});
+
+				await expectRejected(token);
+			});
 		});
 	});
 });

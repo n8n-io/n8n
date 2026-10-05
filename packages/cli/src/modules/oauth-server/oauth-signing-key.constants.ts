@@ -13,6 +13,9 @@ export const OAUTH_SIGNING_CURVE = 'P-256';
  */
 export const OAUTH_SIGNING_KEYS_CACHE_KEY = 'oauth-server:signing-keys';
 
+/** RFC 9068 §2.1 `typ` values. */
+export const ACCESS_TOKEN_TYPES = ['at+jwt', 'application/at+jwt'] as const;
+
 export const OAUTH_ACCESS_TOKEN_TTL_SECONDS = 1 * Time.hours.toSeconds;
 
 /** A retired key must verify every token it signed, with margin for clock skew. */

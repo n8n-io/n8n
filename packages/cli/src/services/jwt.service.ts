@@ -105,6 +105,14 @@ export class JwtService {
 		return jwt.decode(token) as T;
 	}
 
+	/**
+	 * Like {@link decodeUnverified}, but also returns the header, e.g. to route
+	 * a token by its `kid`. The same rule applies: never make a decision on it.
+	 */
+	decodeUnverifiedWithHeader(token: string) {
+		return jwt.decode(token, { complete: true });
+	}
+
 	/** Verifies a token and requires it to carry the audience of `purpose`. */
 	verify<T = JwtPayload>(
 		purpose: TokenPurpose,
@@ -128,6 +136,20 @@ export class JwtService {
 		options: PurposedVerifyOptions = {},
 	) {
 		return jwt.verify(token, this.jwtSecret, { ...options, audience }) as T;
+	}
+
+	/**
+	 * Like {@link verifyForResource}, but verifies with an asymmetric public key
+	 * that the caller owns, such as an OAuth access-token signing key. Returns
+	 * the header and the payload.
+	 */
+	verifyForResourceWithKey(
+		token: string,
+		audience: string | [string, ...string[]],
+		publicKey: KeyObject,
+		options: PurposedVerifyOptions = {},
+	) {
+		return jwt.verify(token, publicKey, { ...options, audience, complete: true });
 	}
 
 	/**

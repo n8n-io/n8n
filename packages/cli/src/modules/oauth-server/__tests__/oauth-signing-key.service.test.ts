@@ -6,13 +6,14 @@ import jwt from 'jsonwebtoken';
 import { generateKeyPairSync } from 'node:crypto';
 
 import {
+	OAUTH_ACCESS_TOKEN_TTL_SECONDS,
 	OAUTH_SIGNING_ALGORITHM,
 	OAUTH_SIGNING_KEY_TYPE,
 	OAUTH_SIGNING_KEYS_CACHE_KEY,
 	RETIRED_SIGNING_KEY_GRACE_MS,
 } from '../oauth-signing-key.constants';
 import type { OAuthSigningKeyService } from '../oauth-signing-key.service';
-import { createSigningKeyService } from './signing-key-fixtures';
+import { createSigningKeyService, readStoredPrivateKey } from './signing-key-fixtures';
 
 const ISSUER = 'https://n8n.example.com';
 const AUDIENCE = `${ISSUER}/mcp-server/http`;
@@ -145,29 +146,47 @@ describe('OAuthSigningKeyService', () => {
 		const setUp = async () => {
 			vi.useFakeTimers({ toFake: ['Date'] });
 			const { service, keyStore } = createSigningKeyService();
-			keyStore.rows.push(makeKeyRow('retired', { status: 'inactive', updatedAt: new Date() }));
+			const retired = makeKeyRow('retired', { status: 'inactive', updatedAt: new Date() });
+			keyStore.rows.push(retired);
 			await service.initialize();
-			return { service };
+			const token = jwt.sign(claims(), readStoredPrivateKey(retired), {
+				algorithm: 'ES256',
+				audience: AUDIENCE,
+				header: { alg: 'ES256', typ: 'at+jwt', kid: 'retired' },
+			});
+			return { service, token };
 		};
 
 		const publishedKids = async (service: OAuthSigningKeyService) =>
 			(await service.getPublicJwks()).map((k) => k.kid);
 
-		it('stay published within the grace window', async () => {
-			const { service } = await setUp();
+		const verify = async (service: OAuthSigningKeyService, token: string) =>
+			await service.verifyAccessToken(token, {
+				kid: 'retired',
+				audiences: [AUDIENCE],
+				issuer: ISSUER,
+			});
+
+		it('stay published and verifiable within the grace window', async () => {
+			const { service, token } = await setUp();
+
+			// A token signed at retirement verifies until it expires.
+			vi.advanceTimersByTime(OAUTH_ACCESS_TOKEN_TTL_SECONDS * 1000 - 1000);
+			await expect(verify(service, token)).resolves.toMatchObject({ sub: 'user-1' });
 
 			// One second before the window closes.
-			vi.advanceTimersByTime(RETIRED_SIGNING_KEY_GRACE_MS - 1000);
+			vi.advanceTimersByTime(RETIRED_SIGNING_KEY_GRACE_MS - OAUTH_ACCESS_TOKEN_TTL_SECONDS * 1000);
 			expect(await publishedKids(service)).toContain('retired');
 		});
 
 		it('drop out after the grace window, even from a cached key list', async () => {
-			const { service } = await setUp();
+			const { service, token } = await setUp();
 			// Fill the cache while the retired key is still in its window.
 			await service.getPublicJwks();
 			vi.advanceTimersByTime(RETIRED_SIGNING_KEY_GRACE_MS + 1000);
 
 			expect(await publishedKids(service)).not.toContain('retired');
+			await expect(verify(service, token)).rejects.toThrow('kid is unknown');
 		});
 	});
 

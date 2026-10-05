@@ -75,15 +75,20 @@ describe('OAuthSigningKeyService (integration)', () => {
 		expect(jwk).toMatchObject({ kid: rows[0].id, use: 'sig' });
 	});
 
-	it('keeps the key across a restart', async () => {
+	it('keeps the key across a restart, and the restarted process verifies older tokens', async () => {
 		const before = createProcess();
 		await before.initialize();
+		const token = before.signAccessToken(claims(), AUDIENCE);
 
 		const after = createProcess();
 		await after.initialize();
 
 		expect(await activeRows()).toHaveLength(1);
 		expect(await after.getPublicJwks()).toEqual(await before.getPublicJwks());
+		const [{ kid }] = await after.getPublicJwks();
+		await expect(
+			after.verifyAccessToken(token, { kid, audiences: [AUDIENCE], issuer: ISSUER }),
+		).resolves.toMatchObject({ sub: 'user-1' });
 	});
 
 	it('keeps one active key when two processes initialize at the same time', async () => {
