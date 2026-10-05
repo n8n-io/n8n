@@ -1,4 +1,6 @@
 import { createComponentRenderer } from '@/__tests__/render';
+import { useCredentialsStore } from '@/features/credentials/credentials.store';
+import * as credentialsApi from '@/features/credentials/credentials.api';
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import { createTestingPinia } from '@pinia/testing';
 import { configure, fireEvent, waitFor, within } from '@testing-library/vue';
@@ -34,6 +36,8 @@ const { showMessage, showError } = vi.hoisted(() => ({ showMessage: vi.fn(), sho
 vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({ showMessage, showError }),
 }));
+
+vi.mock('@/features/credentials/credentials.api');
 
 vi.mock('./api', () => ({
 	checkTeamsCredential: vi.fn(),
@@ -173,6 +177,65 @@ describe('AgentChannelTeamsSetup', () => {
 			await fireEvent.click(getByTestId('teams-credential-recheck'));
 
 			await waitFor(() => expect(checkTeamsCredential).toHaveBeenCalled());
+		});
+
+		const saveCredential = async (id: string) => {
+			vi.mocked(credentialsApi.updateCredential).mockResolvedValue({
+				id,
+				name: 'Entra',
+				type: 'microsoftEntraServicePrincipalApi',
+			} as Awaited<ReturnType<typeof credentialsApi.updateCredential>>);
+			await useCredentialsStore().updateCredential({ id, data: {} as never });
+		};
+
+		it('checks the credential again once it is saved with fixed details', async () => {
+			vi.mocked(checkTeamsCredential).mockResolvedValue({ status: 'failed', reason: 'rejected' });
+			const { getByTestId, queryByTestId } = renderComponent({
+				props: props({ modelValue: 'cred-1' }),
+			});
+			await waitFor(() => expect(getByTestId('teams-credential-problem')).toBeVisible());
+			vi.mocked(getTeamsSetupState).mockClear();
+
+			vi.mocked(checkTeamsCredential).mockResolvedValue({ status: 'ok' });
+			await saveCredential('cred-1');
+
+			await waitFor(() => expect(getByTestId('teams-credential-verified')).toBeVisible());
+			expect(queryByTestId('teams-credential-problem')).toBeNull();
+			expect(getTeamsSetupState).toHaveBeenCalledWith(expect.anything(), 'p', 'a', 'cred-1');
+		});
+
+		it('does not check again when a different credential is saved', async () => {
+			renderComponent({ props: props({ modelValue: 'cred-1' }) });
+			await waitFor(() => expect(checkTeamsCredential).toHaveBeenCalledTimes(1));
+
+			await saveCredential('cred-2');
+			await flushPromises();
+
+			expect(checkTeamsCredential).toHaveBeenCalledTimes(1);
+		});
+
+		it('stops listening for saves once the view is gone', async () => {
+			const { unmount } = renderComponent({ props: props({ modelValue: 'cred-1' }) });
+			await waitFor(() => expect(checkTeamsCredential).toHaveBeenCalledTimes(1));
+			unmount();
+
+			await saveCredential('cred-1');
+			await flushPromises();
+
+			expect(checkTeamsCredential).toHaveBeenCalledTimes(1);
+		});
+
+		it('only reloads the setup state when the credential is saved from settings', async () => {
+			renderComponent({ props: props({ mode: 'edit', connected: true, modelValue: 'cred-1' }) });
+			await waitFor(() => expect(getTeamsSetupState).toHaveBeenCalled());
+			vi.mocked(getTeamsSetupState).mockClear();
+
+			await saveCredential('cred-1');
+
+			await waitFor(() =>
+				expect(getTeamsSetupState).toHaveBeenCalledWith(expect.anything(), 'p', 'a', 'cred-1'),
+			);
+			expect(checkTeamsCredential).not.toHaveBeenCalled();
 		});
 	});
 

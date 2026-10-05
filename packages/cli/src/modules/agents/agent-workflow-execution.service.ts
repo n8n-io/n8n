@@ -259,7 +259,7 @@ export class AgentWorkflowExecutionService {
 				sandboxPrincipalHash,
 				// A workflow execution cannot resume a suspended run — it throws
 				// instead (see `recorder.suspended` below).
-				{ supportsHitl: false },
+				{ supportsHitl: false, allowPlanTools: false },
 			);
 			const applied = this.applyPerCallAgentExtras(reconstructed.agent, outputSchema, extraTools);
 			if (!applied.ok) return applied;
