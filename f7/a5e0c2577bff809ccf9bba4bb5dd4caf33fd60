@@ -1,8 +1,8 @@
 packages/frontend/@n8n/eslint-plugin-design-system/src/rules/no-static-element-interactions.test.ts
-  ai_agent 37-51,31
-  s_51b74b4c66402b::t_4878079419808f 30
+  ai_agent 31,37-51
+  s_51b74b4c66402b::t_4878079419808f 28-31,30
 packages/frontend/@n8n/eslint-plugin-design-system/src/rules/no-static-element-interactions.ts
-  s_51b74b4c66402b::t_4746d7a025f37a 24,40-41,49-51,17-18,52-62,87,90-91
+  s_51b74b4c66402b::t_4746d7a025f37a 17-18,24,40-41,49-51,52-62,87,90-91
   ai_agent 16,42-48,88-89,96-97
   s_51b74b4c66402b::t_3146cdd3ecb324 12,92-95
 ---
