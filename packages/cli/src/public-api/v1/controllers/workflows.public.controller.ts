@@ -76,6 +76,7 @@ import { WorkflowService } from '@/workflows/workflow.service';
 import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
 
 const DEPRECATED_ALIAS_SINCE = new Date('2026-07-23T00:00:00Z');
+const VERSION_PATH_DEPRECATED_SINCE = new Date('2026-08-26T00:00:00Z');
 
 const UPDATE_CONFLICT_DESCRIPTION =
 	'Conflict, e.g. re-publication blocked by an open workflow review (then `reason` and ' +
@@ -830,5 +831,32 @@ export class WorkflowsPublicController {
 		const tags = await this.workflowService.updateWorkflowTags(req.user, workflowId, tagIds);
 
 		return tags.map(toPublicTag);
+	}
+
+	// Keep this last: history and tags must match first. Evaluations mounts before workflows for test-runs.
+	@Get('/:workflowId/:workflowVersionId')
+	@Deprecated({ since: VERSION_PATH_DEPRECATED_SINCE })
+	@ApiKeyScope('workflow:read')
+	@ProjectScope('workflow:read')
+	@ApiSummary('Retrieves a specific version of a workflow')
+	@ApiDescription(
+		'Deprecated: use GET /workflows/{workflowId}/versions/{workflowVersionId} instead. ' +
+			'Retrieves a specific version of a workflow from workflow history.',
+	)
+	@ApiTags(['Workflow'])
+	@ApiResponse(200, WorkflowVersionPublicDto)
+	@ApiErrorResponse(404)
+	async getDeprecatedWorkflowVersion(
+		req: AuthenticatedRequest,
+		res: Response,
+		@Param('workflowId', workflowIdParamSchema) workflowId: string,
+		@Param('workflowVersionId', workflowVersionIdParamSchema) workflowVersionId: string,
+	): Promise<WorkflowVersionPublicDto> {
+		try {
+			return await this.getWorkflowVersion(req, res, workflowId, workflowVersionId);
+		} catch (error) {
+			if (error instanceof NotFoundError) throw new NotFoundError('Version not found');
+			throw error;
+		}
 	}
 }

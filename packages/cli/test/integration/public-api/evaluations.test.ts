@@ -58,6 +58,7 @@ describe('GET /workflows/:workflowId/test-runs', () => {
 		const response = await authOwnerAgent.get(`/workflows/${workflow.id}/test-runs`);
 
 		expect(response.statusCode).toBe(200);
+		expect(response.headers.deprecation).toBeUndefined();
 		expect(response.body.data).toHaveLength(2);
 		expect(response.body.nextCursor).toBeNull();
 		expect(response.body.data.map((r: { id: string }) => r.id).sort()).toEqual(

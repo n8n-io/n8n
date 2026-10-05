@@ -1073,6 +1073,7 @@ describe('GET /workflows/:id/:versionId', () => {
 		const response = await authOwnerAgent.get('/workflows/non-existing/version-123');
 
 		expect(response.statusCode).toBe(404);
+		expect(response.headers.deprecation).toBe('@1787702400');
 		// The deprecated path keeps one message for both cases. Callers may match on it.
 		expect(response.body.message).toBe('Version not found');
 	});
@@ -1108,8 +1109,16 @@ describe('GET /workflows/:id/:versionId', () => {
 		};
 		await createWorkflowHistoryItem(workflow.id, versionData);
 
+		const emit = vi.spyOn(Container.get(EventService), 'emit');
 		const response = await authOwnerAgent.get(`/workflows/${workflow.id}/${versionId}`);
 
+		expect(response.statusCode).toBe(200);
+		expect(response.headers.deprecation).toBe('@1787702400');
+		expect(emit.mock.calls.filter(([event]) => event === 'public-api-invoked')).toHaveLength(1);
+		expect(
+			emit.mock.calls.filter(([event]) => event === 'user-retrieved-workflow-version'),
+		).toHaveLength(1);
+		emit.mockRestore();
 		const body = response.body as Partial<WorkflowHistory>;
 		expect(body).toEqual({
 			workflowId: workflow.id,
@@ -1270,6 +1279,7 @@ describe('GET /workflows/:id/history', () => {
 		const response = await authOwnerAgent.get(`/workflows/${workflow.id}/history`);
 
 		expect(response.statusCode).toBe(200);
+		expect(response.headers.deprecation).toBeUndefined();
 		expect(response.body).toEqual({ data: [], nextCursor: null });
 	});
 
@@ -3783,6 +3793,7 @@ describe('GET /workflows/:id/tags', () => {
 		const response = await authMemberAgent.get(`/workflows/${workflow.id}/tags`);
 
 		expect(response.statusCode).toBe(200);
+		expect(response.headers.deprecation).toBeUndefined();
 		expect(Array.isArray(response.body)).toBe(true);
 		expect(response.body.length).toBe(2);
 

@@ -417,3 +417,6 @@ paths:
       $ref: ./handlers/workflows/spec/paths/getWorkflowTags.generated.yml
     put:
       $ref: ./handlers/workflows/spec/paths/updateWorkflowTags.generated.yml
+  /workflows/{workflowId}/{workflowVersionId}:
+    get:
+      $ref: ./handlers/workflows/spec/paths/getDeprecatedWorkflowVersion.generated.yml
