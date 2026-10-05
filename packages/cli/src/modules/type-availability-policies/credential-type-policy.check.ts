@@ -4,6 +4,7 @@ import type {
 	ContentImportContext,
 	CredentialDecryptContext,
 	CredentialSaveContext,
+	CredentialTransferContext,
 	PolicedWorkflow,
 	PolicyCheckResult,
 	PolicyViolation,
@@ -136,6 +137,14 @@ export class CredentialTypePolicyCheck implements RegisteredPolicyCheck {
 		if (storedCredential?.type === credential.type) return NO_VIOLATIONS;
 
 		return await this.checkTypes([credential.type], projectId);
+	}
+
+	/** The target project's policy decides — grandfathering does not travel into a new scope. */
+	async onCredentialTransfer({
+		credential,
+		targetProjectId,
+	}: CredentialTransferContext): Promise<PolicyCheckResult> {
+		return await this.checkTypes([credential.type], targetProjectId);
 	}
 
 	/**

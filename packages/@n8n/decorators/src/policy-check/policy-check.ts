@@ -17,6 +17,7 @@ export const ENFORCEMENT_POINTS = [
 	'workflowStart',
 	'workflowTransfer',
 	'credentialSave',
+	'credentialTransfer',
 	'credentialDecrypt',
 	'contentImport',
 ] as const;
@@ -103,6 +104,12 @@ export type CredentialSaveContext = {
 	readonly storedCredential: PolicedCredential | null;
 	/** The owning project; `null` for an instance-scoped credential. */
 	readonly projectId: string | null;
+};
+
+export type CredentialTransferContext = {
+	readonly credential: PolicedCredential;
+	/** The project the credential is moving *into* — that's whose policy applies. */
+	readonly targetProjectId: string | null;
 };
 
 export type CredentialDecryptContext = {
@@ -217,6 +224,10 @@ export interface RegisteredPolicyCheck {
 		signal: AbortSignal,
 	): Promise<PolicyCheckResult>;
 	onCredentialSave?(ctx: CredentialSaveContext, signal: AbortSignal): Promise<PolicyCheckResult>;
+	onCredentialTransfer?(
+		ctx: CredentialTransferContext,
+		signal: AbortSignal,
+	): Promise<PolicyCheckResult>;
 	onCredentialDecrypt?(
 		ctx: CredentialDecryptContext,
 		signal: AbortSignal,
@@ -242,6 +253,7 @@ export const ENFORCEMENT_POINT_METHODS: {
 	workflowStart: 'onWorkflowStart',
 	workflowTransfer: 'onWorkflowTransfer',
 	credentialSave: 'onCredentialSave',
+	credentialTransfer: 'onCredentialTransfer',
 	credentialDecrypt: 'onCredentialDecrypt',
 	contentImport: 'onContentImport',
 };

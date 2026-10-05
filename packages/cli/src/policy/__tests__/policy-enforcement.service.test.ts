@@ -54,6 +54,14 @@ const enforceCalls = (service: PolicyEnforcementService) => ({
 			},
 			{ kind: 'system', reason: 'execution' },
 		),
+	credentialTransfer: async () =>
+		await service.enforceCredentialTransfer(
+			{
+				credential: { id: 'cred-1', type: 'slackApi' },
+				targetProjectId: 'proj-2',
+			},
+			{ kind: 'system', reason: 'execution' },
+		),
 	credentialDecrypt: async () =>
 		await service.enforceCredentialDecrypt(
 			{

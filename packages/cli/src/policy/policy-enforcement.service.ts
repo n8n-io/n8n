@@ -2,6 +2,7 @@ import type {
 	ContentImportContext,
 	CredentialDecryptContext,
 	CredentialSaveContext,
+	CredentialTransferContext,
 	EnforcementPoint,
 	PolicyDecision,
 	WorkflowPublishContext,
@@ -130,6 +131,18 @@ export class PolicyEnforcementService {
 
 	async evaluateCredentialSave(context: CredentialSaveContext): Promise<PolicyDecision> {
 		return await this.evaluate('credentialSave', context);
+	}
+
+	async enforceCredentialTransfer(
+		context: CredentialTransferContext,
+		actor: PolicyActor,
+	): Promise<PolicyCleared<'credentialTransfer'>> {
+		return await this.enforce(
+			'credentialTransfer',
+			context,
+			actor,
+			credentialSubject(context.credential),
+		);
 	}
 
 	async enforceCredentialDecrypt(
