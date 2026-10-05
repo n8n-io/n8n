@@ -3850,6 +3850,9 @@ class ListeningTestIntegration extends AgentChatIntegration {
 	shouldHandleUnmentionedMessage({ message }: { message: { text: string } }): boolean {
 		return message.text !== 'ignore me';
 	}
+	getReplyExpectation({ message }: { message: { isMention?: boolean } }): 'required' | 'optional' {
+		return message.isMention ? 'required' : 'optional';
+	}
 	async createAdapter(_ctx: AgentChatIntegrationContext): Promise<unknown> {
 		return {};
 	}
@@ -3947,6 +3950,79 @@ describe('AgentChatBridge — un-mentioned messages', () => {
 			author,
 		});
 		expect(queue.enqueue).toHaveBeenCalledTimes(1);
+	});
+
+	describe('errors in a turn whose reply was optional', () => {
+		function makeFailingBridge(executor: ReturnType<typeof makeAgentExecutor>) {
+			const { bot, handlers } = makeBot();
+			makeQueuedBridge(
+				bot as unknown as ChatBotLike,
+				'agent-1',
+				executor as never,
+				componentMapper,
+				logger,
+				'project-1',
+				{ type: 'test-listening', credentialId: 'cred-1' } as unknown as AgentIntegrationConfig,
+			);
+			return handlers;
+		}
+
+		const author = { userId: 'u1', userName: 'user1' };
+
+		it('does not post a thrown error when nobody mentioned the agent', async () => {
+			const executor = makeAgentExecutor([finish]);
+			executor.executeForChatPublished.mockImplementation(() => {
+				throw new Error('provider down');
+			});
+			const handlers = makeFailingBridge(executor);
+			const thread = makeThread();
+
+			await handlers.newMessage!(thread, { id: 'm1', text: 'hello there', author });
+
+			expect(executor.executeForChatPublished).toHaveBeenCalledTimes(1);
+			expect(thread.post).not.toHaveBeenCalled();
+		});
+
+		it('does not post a streamed error when nobody mentioned the agent', async () => {
+			const handlers = makeFailingBridge(
+				makeAgentExecutor([
+					{ type: 'error', error: new Error('provider down') },
+					{ type: 'finish', finishReason: 'error' },
+				]),
+			);
+			const thread = makeThread();
+
+			await handlers.newMessage!(thread, { id: 'm1', text: 'hello there', author });
+
+			expect(thread.post).not.toHaveBeenCalled();
+		});
+
+		it('still posts the error when the agent was mentioned', async () => {
+			const executor = makeAgentExecutor([finish]);
+			executor.executeForChatPublished.mockImplementation(() => {
+				throw new Error('provider down');
+			});
+			const handlers = makeFailingBridge(executor);
+			const thread = makeThread();
+
+			await handlers.subscribed!(thread, { id: 'm1', text: 'hello', isMention: true, author });
+
+			expect(thread.post).toHaveBeenCalledWith(GENERIC_ERROR_MESSAGE);
+		});
+	});
+
+	it('ignores /new from a message that does not mention the agent', async () => {
+		const { handlers, queue } = makeBridge('test-listening');
+		const thread = makeThread();
+
+		await handlers.newMessage!(thread, {
+			id: 'm1',
+			text: '/new',
+			author: { userId: 'u1', userName: 'user1' },
+		});
+
+		expect(queue.enqueue).not.toHaveBeenCalled();
+		expect(thread.post).not.toHaveBeenCalled();
 	});
 
 	it('runs every subscribed follow-up when the platform has no hook', async () => {

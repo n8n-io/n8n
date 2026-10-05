@@ -165,6 +165,8 @@ export interface BridgeMessageContextParams {
 	 * thread context that the agent has never seen.
 	 */
 	isNewMention: boolean;
+	/** True when the message arrived in a thread the agent already joined. */
+	inSubscribedThread?: boolean;
 	/**
 	 * The turn's reply policy ('required' when the platform has none).
 	 * Platforms use 'optional' to skip reply-signalling side effects

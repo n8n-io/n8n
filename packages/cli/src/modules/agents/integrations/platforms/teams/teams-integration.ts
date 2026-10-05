@@ -40,6 +40,15 @@ const OPTIONAL_REPLY_NOTE = [
 	'</reply_guidance>',
 ].join('\n');
 
+/** A follow-up in a thread the agent joined may answer the agent itself. */
+const JOINED_THREAD_REPLY_NOTE = [
+	'<reply_guidance>',
+	'This message does not mention you, but it is in a conversation you joined earlier.',
+	'Reply if it continues your conversation or asks you something.',
+	'If it is aimed at someone else, call do_not_respond once. That ends your turn.',
+	'</reply_guidance>',
+].join('\n');
+
 function conversationTypeOf(activity: unknown): unknown {
 	return isRecord(activity) && isRecord(activity.conversation)
 		? activity.conversation.conversationType
@@ -106,8 +115,7 @@ export class TeamsIntegration extends AgentChatIntegration {
 		capabilities: [
 			'Receive Microsoft Teams direct messages, team channel messages and group chat messages as agent triggers.',
 			'Respond in the same Microsoft Teams conversation, and in the same channel thread.',
-			'Stay in the conversation after an @-mention, so later messages need no mention.',
-			'When the setup turns on reading all messages, run on every team channel or group chat message and decide whether to reply, or stay silent.',
+			'In a team channel or group chat, run when @-mentioned. When the setup turns on reading all messages there, run on every message and decide whether to reply, or stay silent.',
 			'Add emoji reactions to messages.',
 			'Render Adaptive Cards with buttons.',
 		],
@@ -260,7 +268,13 @@ export class TeamsIntegration extends AgentChatIntegration {
 		const streamable = params.thread.isDM;
 		return {
 			platformAgentContext: {},
-			...(params.replyExpectation === 'optional' ? { historyContext: OPTIONAL_REPLY_NOTE } : {}),
+			...(params.replyExpectation === 'optional'
+				? {
+						historyContext: params.inSubscribedThread
+							? JOINED_THREAD_REPLY_NOTE
+							: OPTIONAL_REPLY_NOTE,
+					}
+				: {}),
 			forceBuffered: !streamable,
 			// A queued message is only captured here; the turn that would clear the
 			// indicator runs later, so starting one now leaves it refreshing alone.

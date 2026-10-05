@@ -53,6 +53,11 @@ interface ConsumeStreamOptions {
 	 * be addressed to them. Absent for a turn no user drove.
 	 */
 	actingUserId?: string;
+	/**
+	 * Log errors instead of posting them. For a turn whose reply was optional:
+	 * nobody asked the agent, so an error post would be noise.
+	 */
+	quietErrors?: boolean;
 }
 
 interface ResponseState {
@@ -74,6 +79,7 @@ interface ResponseState {
 	 */
 	fallbackSource: 'tool-error' | 'suspension' | 'rate-limit' | null;
 	fallbackError: unknown;
+	quietErrors: boolean;
 }
 
 interface ResponseLifecycle {
@@ -82,11 +88,12 @@ interface ResponseLifecycle {
 	finish: () => Promise<void>;
 }
 
-const createResponseState = (): ResponseState => ({
+const createResponseState = (options: ConsumeStreamOptions): ResponseState => ({
 	hasVisibleResponse: false,
 	suppressText: false,
 	fallbackSource: null,
 	fallbackError: null,
+	quietErrors: options.quietErrors === true,
 });
 
 export class AgentChatStreamConsumer {
@@ -195,7 +202,7 @@ export class AgentChatStreamConsumer {
 				if (!streamingPostRejected) {
 					pendingText = '';
 				} else if (!pendingText.trim()) {
-					await this.options.postErrorToThread(thread, streamingPostError);
+					await this.postError(thread, streamingPostError, responseState);
 				}
 			}
 			const text = pendingText;
@@ -213,7 +220,7 @@ export class AgentChatStreamConsumer {
 			ensureStreamingPost,
 			endStreamingPost,
 		});
-		const responseState = createResponseState();
+		const responseState = createResponseState(options);
 
 		try {
 			for await (const chunk of stream) {
@@ -247,7 +254,7 @@ export class AgentChatStreamConsumer {
 						break;
 					case 'error':
 						await responseLifecycle.startDiscreteResponse();
-						await this.options.postErrorToThread(thread, chunk.error);
+						await this.postError(thread, chunk.error, responseState);
 						responseState.hasVisibleResponse = true;
 						break;
 					case 'tool-result':
@@ -289,6 +296,22 @@ export class AgentChatStreamConsumer {
 			if (throwOnDeliveryError) throw postError;
 			await this.options.postErrorToThread(thread, postError);
 		}
+	}
+
+	private async postError(
+		thread: Thread<unknown, unknown>,
+		error: unknown,
+		state: ResponseState,
+		throwOnDeliveryError?: boolean,
+	): Promise<void> {
+		if (state.quietErrors) {
+			this.options.logger.warn('[AgentChatBridge] Error in a turn whose reply was optional', {
+				threadId: thread.id,
+				error: error instanceof Error ? error.message : String(error),
+			});
+			return;
+		}
+		await this.options.postErrorToThread(thread, error, throwOnDeliveryError);
 	}
 
 	private noteToolResult(chunk: ToolResultChunk, state: ResponseState): void {
@@ -361,7 +384,7 @@ export class AgentChatStreamConsumer {
 		if (state.fallbackSource === 'tool-error' && state.hasVisibleResponse) return;
 		// 'rate-limit' and 'suspension' always post.
 		await lifecycle.startDiscreteResponse();
-		await this.options.postErrorToThread(thread, state.fallbackError, throwOnDeliveryError);
+		await this.postError(thread, state.fallbackError, state, throwOnDeliveryError);
 		state.hasVisibleResponse = true;
 	}
 
@@ -371,7 +394,7 @@ export class AgentChatStreamConsumer {
 		options: ConsumeStreamOptions = {},
 	): Promise<void> {
 		let buffer = '';
-		const responseState = createResponseState();
+		const responseState = createResponseState(options);
 		const responseLifecycle = this.createResponseLifecycle({
 			statusHandle: options.statusHandle,
 		});
@@ -424,7 +447,7 @@ export class AgentChatStreamConsumer {
 					case 'error':
 						await flushBuffer();
 						await responseLifecycle.startDiscreteResponse();
-						await this.options.postErrorToThread(thread, chunk.error, options.throwOnDeliveryError);
+						await this.postError(thread, chunk.error, responseState, options.throwOnDeliveryError);
 						responseState.hasVisibleResponse = true;
 						break;
 					case 'tool-result':

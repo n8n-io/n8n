@@ -751,6 +751,23 @@ describe('Microsoft Teams messages without a mention', () => {
 		}
 	});
 
+	it('tells the model a follow-up in a joined thread may continue its conversation', async () => {
+		const ctx = await createTeamsReplayContext({ settings: READ_ALL });
+		try {
+			await ctx.sendWebhook(channelMention);
+			await ctx.sendWebhook(channelFollowUp);
+
+			expect(ctx.latestContext()?.replyExpectation).toBe('optional');
+			expect(ctx.agentExecutor.executeForChatPublished).toHaveBeenLastCalledWith(
+				expect.objectContaining({
+					modelMessage: expect.stringContaining('a conversation you joined earlier'),
+				}),
+			);
+		} finally {
+			await ctx.shutdown();
+		}
+	});
+
 	it('keeps a reply required for a mention when reading all messages', async () => {
 		const ctx = await createTeamsReplayContext({ settings: READ_ALL });
 		try {
@@ -808,6 +825,37 @@ describe('Microsoft Teams messages without a mention', () => {
 			await ctx.sendWebhook(selfMessage);
 
 			expect(ctx.agentExecutor.executeForChatPublished).not.toHaveBeenCalled();
+		} finally {
+			await ctx.shutdown();
+		}
+	});
+
+	const FAILED: StreamChunk[] = [
+		{ type: 'error', error: { type: 'api_error', message: 'provider down' } },
+		{ type: 'finish', finishReason: 'error' },
+	];
+
+	it('posts no error when a run fails on a message without a mention', async () => {
+		const ctx = await createTeamsReplayContext({ settings: READ_ALL, stream: FAILED });
+		try {
+			await ctx.sendWebhook(channelRootPost);
+
+			expect(ctx.agentExecutor.executeForChatPublished).toHaveBeenCalledTimes(1);
+			expect(ctx.activities()).toEqual([]);
+		} finally {
+			await ctx.shutdown();
+		}
+	});
+
+	it('still posts the error when a run fails on a mention', async () => {
+		const ctx = await createTeamsReplayContext({ settings: READ_ALL, stream: FAILED });
+		try {
+			await ctx.sendWebhook(channelMention);
+
+			expect(ctx.lastPost()?.body).toMatchObject({
+				type: 'message',
+				conversation: { id: TEAMS_CHANNEL_CONVERSATION_ID },
+			});
 		} finally {
 			await ctx.shutdown();
 		}
