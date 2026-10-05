@@ -5,16 +5,11 @@ import type { InstanceSettings } from 'n8n-core';
 import type { MockProxy } from 'vitest-mock-extended';
 import { mock } from 'vitest-mock-extended';
 
-import { userHasScopes } from '@/permissions.ee/check-access';
-import type { WorkflowSharingService } from '@n8n/backend-services';
+import type { ProjectScopeService, WorkflowSharingService } from '@n8n/backend-services';
 
 import { TypeToNumber, type TypeUnitNumber } from '../database/entities/insights-shared';
 import type { InsightsByPeriodRepository } from '../database/repositories/insights-by-period.repository';
 import { InsightsService } from '../insights.service';
-
-vi.mock('@/permissions.ee/check-access', () => ({
-	userHasScopes: vi.fn(),
-}));
 
 const user = mock<User>({ id: 'user-1' });
 
@@ -25,6 +20,7 @@ describe('InsightsService', () => {
 	let mockLicenseState: MockProxy<LicenseState>;
 	let mockInstanceSettings: MockProxy<InstanceSettings>;
 	let mockWorkflowSharingService: MockProxy<WorkflowSharingService>;
+	let mockProjectScopeService: MockProxy<ProjectScopeService>;
 
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -33,7 +29,8 @@ describe('InsightsService', () => {
 		mockLicenseState = mock<LicenseState>();
 		mockInstanceSettings = mock<InstanceSettings>();
 		mockWorkflowSharingService = mock<WorkflowSharingService>();
-		vi.mocked(userHasScopes).mockResolvedValue(true);
+		mockProjectScopeService = mock<ProjectScopeService>();
+		mockProjectScopeService.getProjectIds.mockResolvedValue(null);
 
 		insightsService = new InsightsService(
 			mockInsightsByPeriodRepository,
@@ -41,6 +38,7 @@ describe('InsightsService', () => {
 			mockInstanceSettings,
 			mockLogger(),
 			mockWorkflowSharingService,
+			mockProjectScopeService,
 		);
 	});
 
@@ -869,11 +867,11 @@ describe('InsightsService', () => {
 			it('should not check project access when no project is requested', async () => {
 				await insightsService.getInsightsSummary({ user, startDate, endDate });
 
-				expect(userHasScopes).not.toHaveBeenCalled();
+				expect(mockProjectScopeService.getProjectIds).not.toHaveBeenCalled();
 			});
 
 			it('should throw a forbidden error when the requested project is not accessible', async () => {
-				vi.mocked(userHasScopes).mockResolvedValue(false);
+				mockProjectScopeService.getProjectIds.mockResolvedValue([]);
 
 				await expect(
 					insightsService.getInsightsSummary({ user, startDate, endDate, projectId: 'project-1' }),
@@ -892,9 +890,7 @@ describe('InsightsService', () => {
 					projectId: 'project-1',
 				});
 
-				expect(userHasScopes).toHaveBeenCalledWith(user, ['workflow:read'], false, {
-					projectId: 'project-1',
-				});
+				expect(mockProjectScopeService.getProjectIds).toHaveBeenCalledWith(user, ['workflow:read']);
 				expect(
 					mockInsightsByPeriodRepository.getPreviousAndCurrentPeriodTypeAggregates,
 				).toHaveBeenCalledWith(expect.objectContaining({ projectId: 'project-1' }));
@@ -1045,11 +1041,11 @@ describe('InsightsService', () => {
 			it('should not check project access when no project is requested', async () => {
 				await insightsService.getInsightsByWorkflow({ user, startDate, endDate });
 
-				expect(userHasScopes).not.toHaveBeenCalled();
+				expect(mockProjectScopeService.getProjectIds).not.toHaveBeenCalled();
 			});
 
 			it('should throw a forbidden error when the requested project is not accessible', async () => {
-				vi.mocked(userHasScopes).mockResolvedValue(false);
+				mockProjectScopeService.getProjectIds.mockResolvedValue([]);
 
 				await expect(
 					insightsService.getInsightsByWorkflow({
@@ -1106,11 +1102,11 @@ describe('InsightsService', () => {
 			it('should not check project access when no project is requested', async () => {
 				await insightsService.getInsightsByTime({ user, startDate, endDate });
 
-				expect(userHasScopes).not.toHaveBeenCalled();
+				expect(mockProjectScopeService.getProjectIds).not.toHaveBeenCalled();
 			});
 
 			it('should throw a forbidden error when the requested project is not accessible', async () => {
-				vi.mocked(userHasScopes).mockResolvedValue(false);
+				mockProjectScopeService.getProjectIds.mockResolvedValue([]);
 
 				await expect(
 					insightsService.getInsightsByTime({
