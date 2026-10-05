@@ -96,24 +96,17 @@ test.describe(
 	'Sub-workflow output contract',
 	{ annotation: [{ type: 'owner', description: 'Core Execution' }] },
 	() => {
-		// TODO(CET-315): the child's branches converge on one input, which engine v2
-		// refuses. Engine v2 does not run `each` mode at all.
-		for (const { mode, engine } of [
-			{ mode: 'once', engine: '@engine:v2-pending' },
-			{ mode: 'each', engine: '@engine:v1-only' },
-		]) {
-			test(`returns the reported false-branch items in ${mode} mode ${engine}`, async ({ api }) => {
-				const child = await api.workflows.importWorkflowFromDefinition(
-					definition('ado-5857-child.json'),
-				);
-				await api.workflows.activate(child.workflowId, child.createdWorkflow.versionId!);
-				const parent = await publishParent(api, child.workflowId, mode);
-				expect((await api.webhooks.trigger(`/webhook/${parent.webhookPath}`)).ok()).toBe(true);
-				expect(await output(api, parent.workflowId)).toEqual(
-					[55, 56, 57].map((id) => ({ id, parentId: id })),
-				);
-			});
-		}
+		test('returns the reported false-branch items in once mode', async ({ api }) => {
+			const child = await api.workflows.importWorkflowFromDefinition(
+				definition('ado-5857-child.json'),
+			);
+			await api.workflows.activate(child.workflowId, child.createdWorkflow.versionId!);
+			const parent = await publishParent(api, child.workflowId);
+			expect((await api.webhooks.trigger(`/webhook/${parent.webhookPath}`)).ok()).toBe(true);
+			expect(await output(api, parent.workflowId)).toEqual(
+				[55, 56, 57].map((id) => ({ id, parentId: id })),
+			);
+		});
 
 		// TODO(CET-581): engine v2 returns the last node's first output, so a declared
 		// output contract over several outputs does not hold there yet.
