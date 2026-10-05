@@ -7,7 +7,13 @@ import {
 	type INodeTypeDescription,
 } from 'n8n-workflow';
 
-import { nodeDescriptionOf, nodeParametersOf } from '../entry/host';
+import {
+	advancedFieldsOf,
+	jsonFieldPathsOf,
+	nodeDescriptionOf,
+	nodeParametersOf,
+	toolUiOf,
+} from '../entry/host';
 import {
 	checkAction,
 	contractHash,
@@ -16,7 +22,6 @@ import {
 	toContract,
 } from '../entry/registry';
 import { defineNode, defineResource, ref, t, type Action } from '../index';
-import { toolUiOf } from '../properties';
 import { toNodeType } from '../runtime';
 
 const slack = defineNode({ id: 'slack', displayName: 'Slack', baseUrl: 'https://slack.com/api' });
@@ -400,6 +405,34 @@ describe('node parameters', () => {
 			),
 		);
 		expect(read).toEqual(read.map(() => ({ method: 'POST', body: value })));
+	});
+});
+
+describe('jsonFieldPathsOf', () => {
+	it('lists the fields whose JSON editor keeps an edit as text, which the run reads as its value', async () => {
+		expect(jsonFieldPathsOf(sendMessage.inputSchema, sendMessage.ui)).toEqual([['blocks']]);
+		expect(jsonFieldPathsOf(sendRequest.inputSchema, sendRequest.ui)).toEqual([
+			['body', 'json'],
+			['body', 'fields'],
+		]);
+		expect(jsonFieldPathsOf(sendRequestJson.inputSchema, sendRequestJson.ui)).toEqual([['body']]);
+		const toolUi = toolUiOf(sendRequest.inputSchema, sendRequest.ui);
+		expect(jsonFieldPathsOf(sendRequest.inputSchema, toolUi)).toEqual([['body']]);
+		const edited = { channel: '#general', text: 'Hi', options: { blocks: '[{"type":"divider"}]' } };
+		const { input } = await runInputOf(sendMessage, edited);
+		expect(input).toMatchObject({ blocks: [{ type: 'divider' }] });
+	});
+});
+
+describe('advancedFieldsOf', () => {
+	it('lists the optional advanced fields in input order', () => {
+		expect(advancedFieldsOf(sendMessage.inputSchema, sendMessage.ui)).toEqual([
+			'blocks',
+			'appendAttribution',
+			'threadTs',
+			'replyBroadcast',
+		]);
+		expect(advancedFieldsOf(sendRequest.inputSchema, sendRequest.ui)).toEqual([]);
 	});
 });
 

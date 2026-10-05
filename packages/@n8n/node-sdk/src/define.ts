@@ -2041,6 +2041,18 @@ export interface ContractDocument {
 }
 
 /**
+ * The values of the `authentication` parameter that picks the credential type, e.g.
+ * `['notionApi', 'notionOAuth2Api']`. Empty when the node has one required credential or none.
+ */
+export function credentialOptionsOf({
+	credentials,
+	credentialOptional,
+}: Pick<ContractDocument, 'credentials' | 'credentialOptional'>): readonly string[] {
+	const optional = credentialOptional === true;
+	return credentials.length > 1 || optional ? [...(optional ? ['none'] : []), ...credentials] : [];
+}
+
+/**
  * A manifest generated from a legacy node description or an MCP tool. It makes weak claims:
  * consumers that need guarantees check `derived`.
  */

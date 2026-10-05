@@ -101,6 +101,7 @@ import {
 	type RunLimits,
 	toContract,
 	type ContractDocument,
+	credentialOptionsOf,
 	type Trigger,
 } from './define';
 import { testPattern } from './pattern';
@@ -509,17 +510,15 @@ function credentialDescriptionOf({
 }: Pick<ContractDocument, 'credentials' | 'credentialOptional'>) {
 	// A selector lets setup see one credential slot; each credential shows for its own value.
 	const optional = credentialOptional === true;
+	const options = credentialOptionsOf({ credentials: credentialTypes, credentialOptional });
 	const selector: INodeProperties[] =
-		credentialTypes.length > 1 || optional
+		options.length > 0
 			? [
 					{
 						displayName: 'Authentication',
 						name: AUTHENTICATION,
 						type: 'options',
-						options: [...(optional ? ['none'] : []), ...credentialTypes].map((value) => ({
-							name: value,
-							value,
-						})),
+						options: options.map((value) => ({ name: value, value })),
 						default: optional ? 'none' : (credentialTypes[0] ?? 'none'),
 					},
 				]

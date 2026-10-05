@@ -88,10 +88,23 @@ export interface ContractFactory {
 	readonly path: string;
 	/** The node version the factory emits: the action major, or the version of a composed node. */
 	readonly version: number;
-	/** The parameters the factory takes. The host sets the others, e.g. `authentication`. */
+	/**
+	 * The parameters the factory takes, e.g. its input fields and `authentication`. A node with
+	 * another parameter keeps its JSON, because the next build would lose that parameter.
+	 */
 	readonly inputKeys: readonly string[];
-	/** No host sets a parameter, as for a native node. A node with another parameter keeps its JSON. */
-	readonly closed?: boolean;
+	/**
+	 * Saved parameters that the build sets, so the read drops them, e.g. the `authentication` of a
+	 * contract node that the factory builds as a composed node.
+	 */
+	readonly hostKeys?: readonly string[];
+	/** The input fields that the n8n form keeps in the `options` parameter. */
+	readonly advancedKeys?: readonly string[];
+	/**
+	 * The paths of the input fields that the n8n form shows in the JSON editor, e.g.
+	 * `[['blocks'], ['body', 'json']]`. The editor keeps the value as text after an edit.
+	 */
+	readonly jsonPaths?: ReadonlyArray<readonly string[]>;
 	/** The inputs whose typed field takes an `=` expression string as its whole value. */
 	readonly expressionKeys: readonly string[];
 	/** The inputs that take a binary of the item: n8n keeps the binary key as plain text. */
@@ -115,8 +128,10 @@ export interface ContractRead {
 	/** The factory that the node reads as. */
 	readonly factory: ContractFactory;
 	/** The parameters that the factory takes. */
-	readonly parameters: NonNullable<NodeJSON['parameters']>;
+	readonly parameters: NodeParameters;
 }
+
+type NodeParameters = Readonly<Record<string, unknown>>;
 
 /** Reads a saved legacy node as a typed factory call, or gives nothing. */
 export type LegacyReader = (node: NodeJSON) => ContractRead | undefined;
@@ -746,19 +761,28 @@ const fillsFromModel = ({ parameters }: ContractShape) =>
 		(value) => value instanceof Code && value.text.startsWith('fromModel('),
 	);
 
+const isHostKey = (factory: ContractFactory, key: string) =>
+	factory.hostKeys?.includes(key) === true;
+
+/** The saved parameters that the factory does not take. */
+const unknownKeysOf = ({ factory, parameters }: ContractRead) =>
+	Object.entries(parameters).flatMap(([key, value]) =>
+		value === undefined || factory.inputKeys.includes(key) || isHostKey(factory, key) ? [] : [key],
+	);
+
 function contractShape(
 	node: NamedNode,
 	names: ReadonlySet<string>,
-	factory: ContractFactory | undefined,
+	read: ContractRead | undefined,
 ): ContractShape | undefined {
-	if (factory?.version !== node.typeVersion) return undefined;
-	const inputs = new Set(factory.inputKeys);
-	const unknownKey = Object.keys(node.parameters ?? {}).some((key) => !inputs.has(key));
-	if (factory.closed && unknownKey) return undefined;
+	if (read?.factory.version !== node.typeVersion || unknownKeysOf(read).length > 0) {
+		return undefined;
+	}
+	const { factory } = read;
 	const takesExpression = new Set(factory.expressionKeys);
 	const takesBinary = new Set(factory.binaryKeys ?? []);
-	const parameters = Object.entries(node.parameters ?? {}).flatMap(([key, value]) => {
-		if (!inputs.has(key) || value === undefined) return [];
+	const parameters = Object.entries(read.parameters).flatMap(([key, value]) => {
+		if (value === undefined || isHostKey(factory, key)) return [];
 		const description = factory.tool ? fromAiDescriptionOf(value) : undefined;
 		if (description !== undefined) return [[key, fromModelCode(description)] as const];
 		// n8n keeps the binary key of a binary field as plain text.
@@ -776,14 +800,62 @@ function contractShape(
 		: undefined;
 }
 
-/** The slot decides first, so a legacy field of another slot never reads as contract input. */
-function factoryOf(node: NamedNode, factories: ReadonlyMap<string, ContractFactory>) {
-	const { resource, operation } = node.parameters ?? {};
+/**
+ * A contract node as its factory and the parameters the factory takes. The slot decides first, so
+ * a legacy field of another slot never reads as contract input. The build sets the slot.
+ */
+function contractReadOf(
+	node: NamedNode,
+	factories: ReadonlyMap<string, ContractFactory>,
+): ContractRead | undefined {
+	const { resource, operation, ...fields } = node.parameters ?? {};
 	const composed =
 		typeof resource === 'string' && typeof operation === 'string'
 			? factories.get(composedFactoryKey(node.type, node.typeVersion, resource, operation))
 			: undefined;
-	return composed ?? factories.get(node.type);
+	if (composed) return inputRead(composed, fields);
+	const factory = factories.get(node.type);
+	return factory && inputRead(factory, node.parameters ?? {});
+}
+
+/**
+ * The saved parameters as input fields: the fields of the `options` collection move up, and the
+ * JSON text of an edit reads as its value, as the runtime reads them.
+ */
+function inputRead(factory: ContractFactory, saved: NodeParameters): ContractRead {
+	const { options, ...rest } = saved;
+	const advanced = factory.advancedKeys ?? [];
+	const moves =
+		isRecord(options) &&
+		advanced.length > 0 &&
+		Object.keys(options).every((key) => advanced.includes(key) && !(key in rest));
+	const parameters = moves ? { ...rest, ...options } : saved;
+	return {
+		factory,
+		parameters: (factory.jsonPaths ?? []).reduce<NodeParameters>(
+			(read, path) => withJsonAt(read, path),
+			parameters,
+		),
+	};
+}
+
+/** n8n keeps a `json` parameter as text after an edit. Text that does not parse stays text. */
+function parsedJson(value: unknown): unknown {
+	if (typeof value !== 'string' || !/^\s*[[{]/.test(value)) return value;
+	try {
+		const parsed: unknown = JSON.parse(value);
+		return parsed;
+	} catch {
+		return value;
+	}
+}
+
+function withJsonAt(parameters: NodeParameters, path: readonly string[]): NodeParameters {
+	const [head, ...rest] = path;
+	if (head === undefined || !(head in parameters)) return parameters;
+	const value = parameters[head];
+	if (rest.length === 0) return { ...parameters, [head]: parsedJson(value) };
+	return isRecord(value) ? { ...parameters, [head]: withJsonAt(value, rest) } : parameters;
 }
 
 function shapeOf(
@@ -803,8 +875,8 @@ function shapeOf(
 		if (isManual) return { kind: 'manual' };
 		// A contract trigger, e.g. the typed Webhook node, reads back as its module factory.
 		return (
-			contractShape(node, names, factoryOf(node, factories)) ??
-			legacyShape(node, names, readLegacy) ?? { kind: 'trigger' }
+			contractShape(node, names, contractReadOf(node, factories)) ??
+			contractShape(node, names, readLegacy(node)) ?? { kind: 'trigger' }
 		);
 	}
 	return (
@@ -815,18 +887,12 @@ function shapeOf(
 		setShape(node, names) ??
 		// A node() item is Loose, so a lambda over it can fail tsc (an implicit any) where the
 		// saved expression is correct. The expression check reads a string in place.
-		contractShape(node, names, factoryOf(node, factories)) ??
-		legacyShape(node, names, readLegacy) ?? {
+		contractShape(node, names, contractReadOf(node, factories)) ??
+		contractShape(node, names, readLegacy(node)) ?? {
 			kind: 'node',
 			parameters: plainTree(node.parameters ?? {}),
 		}
 	);
-}
-
-/** A legacy node that the reader maps to a factory. It keeps its JSON when tsc would reject the read. */
-function legacyShape(node: NamedNode, names: ReadonlySet<string>, readLegacy: LegacyReader) {
-	const read = readLegacy(node);
-	return read && contractShape({ ...node, parameters: read.parameters }, names, read.factory);
 }
 
 // ── Graph to flows ──────────────────────────────────────────────────────────
@@ -1859,11 +1925,14 @@ function render(
  * `recover` when the handler continues. `factories` maps
  * each contract node type, and each `composedFactoryKey`, to its typed module factory.
  * `readLegacy` reads other legacy nodes as factory calls, e.g. the nodes of derived modules.
+ * `untyped` gets the name of each contract node that keeps its JSON because it has a parameter
+ * that its factory does not take, and the reason.
  */
 export function decompileWorkflow(
 	json: WorkflowJSON,
 	factories: ReadonlyMap<string, ContractFactory>,
 	readLegacy: LegacyReader = () => undefined,
+	untyped: (node: string, reason: string) => void = () => undefined,
 ): string | undefined {
 	const edges = edgesOf(json.connections ?? {});
 	const plain = json.nodes.filter(isPlainNode);
@@ -1905,8 +1974,8 @@ export function decompileWorkflow(
 	const providerEntries = (parent: string, derived: boolean): Array<[string, ContractShape]> =>
 		(children.get(parent) ?? []).flatMap(({ node }) => {
 			const shape =
-				contractShape(node, names, factoryOf(node, factories)) ??
-				(derived ? legacyShape(node, names, readLegacy) : undefined);
+				contractShape(node, names, contractReadOf(node, factories)) ??
+				(derived ? contractShape(node, names, readLegacy(node)) : undefined);
 			return [
 				...(shape ? [[node.name, shape] satisfies [string, ContractShape]] : []),
 				...providerEntries(node.name, shape?.factory.groupsProviders === true),
@@ -1949,6 +2018,19 @@ export function decompileWorkflow(
 			segments: chain(graph, [{ node: root.name, output: 0 }], new Set([root.name])).segments,
 		}));
 	if (flows.length === 0 || !replaysGraph(graph, flows)) return undefined;
+	// A macro or a legacy reader can type a node that its factory does not read.
+	const rendersJson = (name: string) =>
+		providerNames.has(name)
+			? !providerShapes.has(name)
+			: ['node', 'trigger'].includes(shapes.get(name)?.kind ?? '');
+	for (const node of plain.filter(({ name }) => rendersJson(name))) {
+		const read = contractReadOf(node, factories);
+		const unknown = read?.factory.version === node.typeVersion ? unknownKeysOf(read) : [];
+		if (read && unknown.length > 0) {
+			const keys = unknown.map((key) => JSON.stringify(key)).join(', ');
+			untyped(node.name, `${read.factory.module}.${read.factory.path} does not take ${keys}`);
+		}
+	}
 	return render(json.name, json.settings, graph, flows);
 }
 

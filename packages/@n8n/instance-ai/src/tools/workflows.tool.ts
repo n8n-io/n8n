@@ -15,7 +15,9 @@ import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
-import { toTs } from '@n8n/node-sdk/codegen';
+import { credentialOptionsOf, toTs } from '@n8n/node-sdk/codegen';
+import { advancedFieldsOf, jsonFieldPathsOf, toolUiOf } from '@n8n/node-sdk/host';
+import { toContract } from '@n8n/node-sdk/registry';
 import { migratedTargetOf, nodeTypeOf, toolActions, toolTypeOf } from '@n8n/nodes-base-next';
 import type { composedFactoryKey, ContractFactory } from '@n8n/workflow-sdk/next';
 
@@ -811,47 +813,62 @@ async function readConsistentWorkflowSnapshot(
 	throw new WorkflowSnapshotChangedError(workflowId);
 }
 
+/** A contract node type with a credential selector takes `authentication`, as its module does. */
+const authenticationKeys = (contract: Parameters<typeof credentialOptionsOf>[0]) =>
+	credentialOptionsOf(contract).length > 0 ? ['authentication'] : [];
+
 /**
  * The typed module factory of each contract node type and composed node slot, for
- * `decompileWorkflow`. Both read back as the same factory, which builds the composed node.
+ * `decompileWorkflow`. Both read back as the same factory, which builds the composed node. A
+ * composed or native node keeps the legacy selector, which its module does not type.
  */
 const contractFactories = (composedKey: typeof composedFactoryKey) =>
 	new Map<string, ContractFactory>([
-		...nextTriggerFactories.map(({ contract, nodeType, typeVersion, resource, operation }) => {
-			// A variant input, e.g. Respond to Webhook, has its fields in its branches.
-			const fields = [contract.input, ...(contract.input.oneOf ?? [])].flatMap((schema) =>
-				Object.entries(schema.properties ?? {}),
-			);
-			const factory: ContractFactory = {
-				module: contract.node,
-				from: `@n8n/nodes/${contract.node}`,
-				path: [resource, operation].filter(Boolean).join('.'),
-				version: typeVersion ?? contract.version,
-				// A native node has no host-set parameters: the contract input is all of them.
-				closed: typeVersion !== undefined,
-				inputKeys: [...new Set(fields.map(([key]) => key))],
-				// A trigger input takes plain values: there is no item to read yet. A reply step
-				// reads its item, as an action does.
-				expressionKeys: contract.trigger
-					? []
-					: [
-							...new Set(
-								fields.flatMap(([key, schema]) =>
-									toTs(schema, { input: true, indent: '' }).startsWith('Value<') ? [key] : [],
+		...nextTriggerFactories.map(
+			({ contract, nodeType, typeVersion, slot, resource, operation }) => {
+				// A variant input, e.g. Respond to Webhook, has its fields in its branches.
+				const fields = [contract.input, ...(contract.input.oneOf ?? [])].flatMap((schema) =>
+					Object.entries(schema.properties ?? {}),
+				);
+				const factory: ContractFactory = {
+					module: contract.node,
+					from: `@n8n/nodes/${contract.node}`,
+					path: [resource, operation].filter(Boolean).join('.'),
+					version: typeVersion ?? contract.version,
+					inputKeys: [
+						...new Set(fields.map(([key]) => key)),
+						...(typeVersion === undefined && slot === undefined
+							? authenticationKeys(contract)
+							: []),
+					],
+					// A trigger input takes plain values: there is no item to read yet. A reply step
+					// reads its item, as an action does.
+					expressionKeys: contract.trigger
+						? []
+						: [
+								...new Set(
+									fields.flatMap(([key, schema]) =>
+										toTs(schema, { input: true, indent: '' }).startsWith('Value<') ? [key] : [],
+									),
 								),
-							),
-						],
-				binaryKeys: fields.flatMap(([key, schema]) => (schema['x-n8n-binary'] ? [key] : [])),
-			};
-			return [nodeType, factory] as const;
-		}),
+							],
+					binaryKeys: fields.flatMap(([key, schema]) => (schema['x-n8n-binary'] ? [key] : [])),
+					...(typeVersion === undefined ? { jsonPaths: jsonFieldPathsOf(contract.input) } : {}),
+				};
+				return [nodeType, factory] as const;
+			},
+		),
 		...nextActions.flatMap((action) => {
+			const target = migratedTargetOf(action);
+			const selector = action.native ? [] : authenticationKeys(toContract(action));
+			const { inputSchema, ui } = action;
+			const advancedKeys = advancedFieldsOf(inputSchema, ui);
 			const factory: ContractFactory = {
 				module: action.node.id,
 				from: `@n8n/nodes/${action.node.id}`,
 				path: factoryPathOf(action),
 				version: action.version,
-				inputKeys: Object.keys(action.input),
+				inputKeys: [...Object.keys(action.input), ...(target ? [] : selector)],
 				// The generated field type decides: a `Value<…>` field takes an expression string.
 				expressionKeys: Object.entries(action.input).flatMap(([key, schema]) =>
 					toTs(schema.json, { input: true, indent: '' }).startsWith('Value<') ? [key] : [],
@@ -860,8 +877,9 @@ const contractFactories = (composedKey: typeof composedFactoryKey) =>
 					schema.json['x-n8n-binary'] ? [key] : [],
 				),
 				...(action.outputs ? { outputs: action.outputs } : {}),
+				...(advancedKeys.length > 0 ? { advancedKeys } : {}),
+				...(action.native ? {} : { jsonPaths: jsonFieldPathsOf(inputSchema, ui) }),
 			};
-			const target = migratedTargetOf(action);
 			const composed = target
 				? [
 						[
@@ -870,21 +888,27 @@ const contractFactories = (composedKey: typeof composedFactoryKey) =>
 						] as const,
 					]
 				: [];
+			// A contract node of the action reads back as the module factory, which builds the
+			// composed node. The bound credential picks the type there, so its selector value goes.
+			const own = target && selector.length > 0 ? { ...factory, hostKeys: selector } : factory;
 			// The host makes a tool node type of a tool action; a `$fromAI()` field is `fromModel()`.
+			// Its form keeps every field at the top and each variant as JSON.
+			const { advancedKeys: _advanced, ...topLevel } = factory;
 			const tool = toolActions.includes(action)
 				? [
 						[
 							toolTypeOf(action),
 							{
-								...factory,
+								...topLevel,
 								path: `${factory.path}Tool`,
 								inputKeys: ['toolDescription', ...factory.inputKeys],
+								jsonPaths: jsonFieldPathsOf(inputSchema, toolUiOf(inputSchema, ui)),
 								tool: true,
 							},
 						] as const,
 					]
 				: [];
-			return [[nodeTypeOf(action), factory] as const, ...composed, ...tool];
+			return [[nodeTypeOf(action), own] as const, ...composed, ...tool];
 		}),
 	]);
 
@@ -918,22 +942,27 @@ async function handleGetAsCode(
 	input: Extract<Input, { action: 'get-as-code' }>,
 ) {
 	const { generateWorkflowCode, buildImports } = await import('@n8n/workflow-sdk');
-	// Why each node of a derived module type stays node(), by node name.
+	// Why each node of a derived module type, or a contract node, stays node(), by node name.
 	const untyped = new Map<string, string>();
 	// Node contracts: edit in the typed format when it can express the saved workflow.
 	const toNextCode = async (json: WorkflowJSON): Promise<string | undefined> => {
 		if (context.nodeContractsEnabled !== true) return undefined;
 		const { composedFactoryKey, decompileWorkflow } = await import('@n8n/workflow-sdk/next');
 		// A node of a derived module reads back as its factory call when the read is lossless.
-		return decompileWorkflow(json, contractFactories(composedFactoryKey), (node) => {
-			const read = derivedReadOf(node, context);
-			if (!read || !node.name) return undefined;
-			untyped.set(
-				node.name,
-				'reason' in read ? read.reason : 'a saved value does not fit the type of its field',
-			);
-			return 'reason' in read ? undefined : read;
-		});
+		return decompileWorkflow(
+			json,
+			contractFactories(composedFactoryKey),
+			(node) => {
+				const read = derivedReadOf(node, context);
+				if (!read || !node.name) return undefined;
+				untyped.set(
+					node.name,
+					'reason' in read ? read.reason : 'a saved value does not fit the type of its field',
+				);
+				return 'reason' in read ? undefined : read;
+			},
+			(name, reason) => untyped.set(name, reason),
+		);
 	};
 	const indexNodes = async (json: WorkflowJSON, source: string) =>
 		workflowSourceSdk(context, source) === 'next'

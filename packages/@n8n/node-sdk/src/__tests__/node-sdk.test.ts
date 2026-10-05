@@ -972,6 +972,36 @@ describe('generateNodeModule', () => {
 		expect(text).not.toContain('getAllTool');
 	});
 
+	it('types the credential selector of a contract node type, but not of a composed node', () => {
+		const open = defineNode({
+			id: 'web',
+			displayName: 'Web',
+			credential: credential({ types: [compat('a'), compat('b')], optional: true }),
+		});
+		const contract = toContract({ ...listTasks, node: open, credentialTypes: ['a', 'b'] });
+		const generated = { contract, nodeType: 'n8n-nodes-base.todo', operation: 'getAll' };
+		const text = generateNodeModule('todo', [generated]);
+		const composed = generateNodeModule('todo', [
+			{ ...generated, slot: { typeVersion: 4, operation: 'getAll' } },
+		]);
+		expect(text).toContain('settings?: NodeSettings; authentication?: "none" | "a" | "b" }');
+		expect(composed).not.toContain('authentication');
+		expect(moduleOf(listTasks)).not.toContain('authentication');
+	});
+
+	it('passes the advanced fields of the form to the step, which stores them in options', () => {
+		const generated = {
+			contract: toContract(listTasks),
+			nodeType: '@n8n/nodes-base-next.todo.task.getAll',
+			operation: 'getAll',
+		};
+		const text = generateNodeModule('todo', [{ ...generated, ui: { advanced: ['status'] } }]);
+		expect(text).toMatch(
+			/contractStep\("@n8n\/nodes-base-next.todo.task.getAll", config, .*\["status"\]\)/,
+		);
+		expect(generateNodeModule('todo', [generated])).not.toContain('["status"]');
+	});
+
 	it('emits the operation-only slot of a derived action', () => {
 		const text = generateNodeModule('todo', [
 			{

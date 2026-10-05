@@ -1,3 +1,4 @@
+export { credentialOptionsOf } from '../define';
 export {
 	generatedTriggersOf,
 	generateNodeModule,

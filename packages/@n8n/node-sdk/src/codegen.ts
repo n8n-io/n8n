@@ -1,4 +1,5 @@
 import {
+	credentialOptionsOf,
 	inputCountOf,
 	isToolContract,
 	replyContractOf,
@@ -9,6 +10,7 @@ import {
 	type Trigger,
 } from './define';
 import { permissionsOf } from './egress';
+import { advancedFieldsOf, type ActionUiDocument } from './properties';
 import { hasBinary, type EntryFields as EntryFieldsSpec, type JsonSchema } from './schema';
 import { providedOf } from './providers';
 import { exampleOf } from './validate';
@@ -426,6 +428,8 @@ export interface GeneratedAction {
 	readonly native?: boolean;
 	/** The native trigger and reply step pair that the flow build checks. */
 	readonly pairing?: Pairing;
+	/** The n8n form of the action. The build stores its advanced fields in the `options` parameter. */
+	readonly ui?: ActionUiDocument;
 }
 
 /**
@@ -526,6 +530,23 @@ const scopesNote = (contract: ContractDocument) => {
 	const { scopes } = permissionsOf(contract);
 	return scopes?.length ? `; scopes: ${scopes.join(', ')}` : '';
 };
+
+/**
+ * The `authentication` config key of a contract node type with a credential selector. A composed
+ * or native node keeps the legacy selector, which has other values.
+ */
+const authenticationKey = (contract: ContractDocument, legacy: boolean) => {
+	const options = legacy ? [] : credentialOptionsOf(contract);
+	return options.length > 0
+		? `authentication?: ${options.map((option) => JSON.stringify(option)).join(' | ')}`
+		: undefined;
+};
+
+/** The input fields that the n8n form keeps in the `options` parameter, as an argument text. */
+function advancedArg(input: JsonSchema, ui: ActionUiDocument | undefined): string {
+	const advanced = advancedFieldsOf(input, ui);
+	return advanced.length > 0 ? JSON.stringify(advanced) : 'undefined';
+}
 
 /** The hosts the action may reach; the credential hosts also apply. */
 const egressNote = (contract: ContractDocument) => {
@@ -785,20 +806,41 @@ export function generateNodeModule(nodeId: string, contracts: readonly Generated
 		].join('\n');
 	});
 	const factories = named.map(
-		({ contract, name, nodeType, slot, resource, operation, typeVersion, pairing }): Factory => {
+		({
+			contract,
+			name,
+			nodeType,
+			slot,
+			resource,
+			operation,
+			typeVersion,
+			native,
+			pairing,
+			ui,
+		}): Factory => {
 			const path = resource === undefined ? [operation] : [resource, operation];
 			const provided = providedOf(contract.output);
+			const advanced = advancedArg(contract.input, ui);
+			const authKey = authenticationKey(
+				contract,
+				slot !== undefined || typeVersion !== undefined || native === true,
+			);
+			const auth = authKey ? `; ${authKey}` : '';
 			if (provided) {
 				const nodeVersion = slot?.typeVersion ?? typeVersion ?? contract.version;
-				const selected =
-					slot && `, ${JSON.stringify({ resource: slot.resource, operation: slot.operation })}`;
-				const version = nodeVersion === 1 && !selected ? '' : `, ${nodeVersion}${selected ?? ''}`;
+				const version = trailingArgs([
+					String(nodeVersion),
+					slot
+						? JSON.stringify({ resource: slot.resource, operation: slot.operation })
+						: 'undefined',
+					advanced,
+				]);
 				return {
 					path,
 					summary: `${contract.action}. ${contract.summary} (provider: ${provided})`,
 					text: [
 						'<In, Ctx>(',
-						`\tconfig: { name: string; settings?: NodeSettings } & ${name}Input<In, Ctx>,`,
+						`\tconfig: { name: string; settings?: NodeSettings${auth} } & ${name}Input<In, Ctx>,`,
 						`): Provider<In, Ctx, ${JSON.stringify(provided)}> =>`,
 						`\tcontractProvider(${JSON.stringify(nodeType)}, ${JSON.stringify(provided)}, config${version})`,
 					].join('\n'),
@@ -810,17 +852,23 @@ export function generateNodeModule(nodeId: string, contracts: readonly Generated
 			const requires = requiresOf(contract);
 			const nodeVersion = typeVersion ?? contract.version;
 			const pageFields = pageFieldsOf(contract.input);
+			const head = [
+				String(slot?.typeVersion ?? nodeVersion),
+				slot ? JSON.stringify({ resource: slot.resource, operation: slot.operation }) : 'undefined',
+				requires ?? 'undefined',
+			];
 			// A routed step has no reply pairing and no page values.
 			const args = (routed: boolean) =>
-				trailingArgs([
-					String(slot?.typeVersion ?? nodeVersion),
-					slot
-						? JSON.stringify({ resource: slot.resource, operation: slot.operation })
-						: 'undefined',
-					requires ?? 'undefined',
-					pairing && !routed ? JSON.stringify(pairing) : 'undefined',
-					pageFields.length && !routed ? JSON.stringify(pageFields) : 'undefined',
-				]);
+				trailingArgs(
+					routed
+						? [...head, advanced]
+						: [
+								...head,
+								pairing ? JSON.stringify(pairing) : 'undefined',
+								pageFields.length ? JSON.stringify(pageFields) : 'undefined',
+								advanced,
+							],
+				);
 			const input = `${name}Input<In, Ctx>`;
 			const binaryPaths = binaryPathsOf(contract.input);
 			// The build compiles the lambda of a binary field to the key of a binary of the item.
@@ -836,7 +884,7 @@ export function generateNodeModule(nodeId: string, contracts: readonly Generated
 				`<In, Ctx, const N extends string${more}${passed ? '' : `, S extends DeepPartial<${output}> = never`}>(`;
 			const item = passed ? 'In' : `Sampled<${output}, S>`;
 			const samples = passed ? 'In[]' : `Array<S & Exact<S, ${output}>>`;
-			const config = `{ name: N; sample?: ${samples}; settings?: NodeSettings }`;
+			const config = `{ name: N; sample?: ${samples}; settings?: NodeSettings${auth} }`;
 			// The entries or the aggregated input type the output, so the config is generic and
 			// checked key by key.
 			const aggregated = contract.output['x-n8n-aggregate'];
@@ -849,7 +897,7 @@ export function generateNodeModule(nodeId: string, contracts: readonly Generated
 				configuredItem && !outputs
 					? [
 							`<In, Ctx, const N extends string, const C extends ${input}>(`,
-							`\tconfig: { name: N; sample?: Array<DeepPartial<${configuredItem}>>; settings?: NodeSettings } & C & Exact<C, ${input} & { name: string; sample?: unknown; settings?: NodeSettings }>,`,
+							`\tconfig: { name: N; sample?: Array<DeepPartial<${configuredItem}>>; settings?: NodeSettings${auth} } & C & Exact<C, ${input} & { name: string; sample?: unknown; settings?: NodeSettings${auth} }>,`,
 							`): Step<In, Ctx, ${configuredItem}, N> =>`,
 							`\tcontractStep(${JSON.stringify(nodeType)}, ${configArg}${args(false)})`,
 						]
@@ -889,6 +937,7 @@ export function generateNodeModule(nodeId: string, contracts: readonly Generated
 	);
 	const toolFactories = tools.map(({ contract, name, nodeType, resource, operation }): Factory => {
 		const tool = `${operation}Tool`;
+		const authKey = authenticationKey(contract, false);
 		const pageFields = pageFieldsOf(contract.input);
 		const args = trailingArgs([
 			String(contract.version),
@@ -899,7 +948,7 @@ export function generateNodeModule(nodeId: string, contracts: readonly Generated
 			path: resource === undefined ? [tool] : [resource, tool],
 			summary: `${contract.action}, as an agent tool (${contract.flow.effect}${idempotent})`,
 			text: [
-				`<In, Ctx>(config: ToolConfig<${name}Input<In, Ctx>>): Provider<In, Ctx, "tool"> =>`,
+				`<In, Ctx>(config: ToolConfig<${name}Input<In, Ctx>>${authKey ? ` & { ${authKey} }` : ''}): Provider<In, Ctx, "tool"> =>`,
 				`\tcontractTool(${JSON.stringify(`${nodeType}Tool`)}, config${args})`,
 			].join('\n'),
 		};
@@ -928,6 +977,8 @@ export function generateNodeModule(nodeId: string, contracts: readonly Generated
 			const out = `OutputOf<N, ${item}>`;
 			const requires = requiresOf(contract);
 			const nodeVersion = slot?.typeVersion ?? typeVersion ?? contract.version;
+			const authKey = authenticationKey(contract, slot !== undefined || typeVersion !== undefined);
+			const auth = authKey ? `; ${authKey}` : '';
 			// The example fills the fields that a sample item or a declared schema leaves out.
 			const options = JSON.stringify({
 				...(pairing ? { pairing } : {}),
@@ -944,8 +995,8 @@ export function generateNodeModule(nodeId: string, contracts: readonly Generated
 				...(entries ? [`const C extends ${name}Input`] : []),
 			];
 			const samples = `Array<DeepPartial<${item}>>`;
-			const head = `{ name: N;${declared.length ? ' schema?: S;' : ''} sample?: ${samples}; settings?: NodeSettings }`;
-			const flowKeys = `{ name: string;${declared.length ? ' schema?: unknown;' : ''} sample?: unknown; settings?: NodeSettings }`;
+			const head = `{ name: N;${declared.length ? ' schema?: S;' : ''} sample?: ${samples}; settings?: NodeSettings${auth} }`;
+			const flowKeys = `{ name: string;${declared.length ? ' schema?: unknown;' : ''} sample?: unknown; settings?: NodeSettings${auth} }`;
 			const input = entries ? `C & Exact<C, ${name}Input & ${flowKeys}>` : `${name}Input`;
 			const text = [
 				`<${generics.join(', ')}>(`,

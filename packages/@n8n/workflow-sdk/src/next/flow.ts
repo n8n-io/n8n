@@ -1999,6 +1999,8 @@ export function contractStep<In, Ctx, Out, N extends string>(
 	pairing?: Pairing,
 	/** The paths of the fields whose lambdas read each response page, e.g. `[['pages', 'next']]`. */
 	pageFields: ReadonlyArray<readonly string[]> = [],
+	/** The fields that the n8n form keeps in the `options` parameter. */
+	advanced: readonly string[] = [],
 ): Step<In, Ctx, Out, N> {
 	const { name, sample, settings, providers: grouped, ...fields } = config;
 	const { parameters, providers, unslotted } = splitConfig(fields, grouped);
@@ -2021,9 +2023,26 @@ export function contractStep<In, Ctx, Out, N extends string>(
 				modelFieldIssues(compiler, parameters);
 				const compiled = compileWithPages(compiler, parameters, pageFields);
 				// The slot goes last: no contract field may change the action that runs.
-				return { ...(isDataObject(compiled) ? compiled : {}), ...slot };
+				return { ...withOptions(isDataObject(compiled) ? compiled : {}, advanced), ...slot };
 			},
 		},
+	};
+}
+
+/**
+ * The parameters as the n8n form stores them: the `advanced` fields go into the `options`
+ * collection. n8n drops a top-level parameter that the form does not show.
+ */
+function withOptions(
+	parameters: Readonly<Record<string, unknown>>,
+	advanced: readonly string[],
+): Readonly<Record<string, unknown>> {
+	const entries = Object.entries(parameters);
+	const options = entries.filter(([key]) => advanced.includes(key));
+	if (options.length === 0) return parameters;
+	return {
+		...Object.fromEntries(entries.filter(([key]) => !advanced.includes(key))),
+		options: Object.fromEntries(options),
 	};
 }
 
@@ -2064,6 +2083,8 @@ export function contractProvider<In, Ctx, const K extends ProviderKind | Provide
 	},
 	version = 1,
 	selector?: Selector,
+	/** The fields that the n8n form keeps in the `options` parameter. */
+	advanced: readonly string[] = [],
 ): Provider<In, Ctx, K> {
 	const { name, settings, providers: grouped, ...fields } = config;
 	const { parameters, providers, unslotted } = splitConfig(fields, grouped);
@@ -2081,7 +2102,7 @@ export function contractProvider<In, Ctx, const K extends ProviderKind | Provide
 				);
 				modelFieldIssues(compiler, parameters);
 				const compiled = compiler.value(parameters);
-				return { ...(isDataObject(compiled) ? compiled : {}), ...selector };
+				return { ...withOptions(isDataObject(compiled) ? compiled : {}, advanced), ...selector };
 			},
 		},
 	};
@@ -2326,8 +2347,19 @@ export function routedStep<In, Ctx, Out, N extends string, Names extends string>
 		readonly operation?: string;
 	},
 	requires?: Requires,
+	/** The fields that the n8n form keeps in the `options` parameter. */
+	advanced: readonly string[] = [],
 ): RoutedStep<In, Ctx, Out, N, Names> {
-	const step = contractStep<In, Ctx, Out, N>(id, config, version, slot, requires);
+	const step = contractStep<In, Ctx, Out, N>(
+		id,
+		config,
+		version,
+		slot,
+		requires,
+		undefined,
+		[],
+		advanced,
+	);
 	const names = outputNamesOf(outputs, config);
 	return { ...step, spec: { ...step.spec, outputs: names.length }, outputs: names };
 }

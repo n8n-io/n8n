@@ -178,12 +178,17 @@ host without a registry, import a copy of the registry folder.
   `advanced` and `fields` (a placeholder and a widget per field, `field.branchField` in a
   variant). Agents and MCP do not read it, and it is outside the contract hash. An `advanced`
   field goes into one "Options" collection, so its n8n parameter is `options.<field>`
-  (`nodeParametersOf` writes a contract value so). n8n stores the parameters in the form of the
+  (`nodeParametersOf` writes a contract value so, and the typed flow build does the same with
+  `advancedFieldsOf`). n8n stores the parameters in the form of the
   newest version of a major. So a change that moves where or how a field is stored (into or out
   of `advanced`, a variant to or from the `json` widget) is a major. A widget is an entry of
   the `Widgets` interface: the value type it edits and its config. The host shows an unknown
   widget as the default field. The form of an agent tool keeps each field at the top and a variant as JSON,
   because the model fills a whole field with one `$fromAI()` expression.
+- The JSON editor of a `json` field keeps the value as text after an edit. The runtime reads
+  the text as its value, and so does the typed source of a saved workflow (`jsonFieldPathsOf`).
+- A node with a credential selector stores the picked type in the `authentication` parameter.
+  The generated module of the node type takes `authentication`, so typed source keeps it.
 - `missingTitlesOf` lists the form fields without a `title`. `checkAction` and the publish
   gate refuse them only when `REQUIRE_FIELD_TITLES` is true.
 - A credential major changes when stored data or a saved workflow can break: a new required

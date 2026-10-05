@@ -204,6 +204,7 @@ async function describe(root: string, id: string | undefined) {
 		nodeType: `${packageName}.${nodeNameOf(action.id)}`,
 		resource: action.resource,
 		operation: action.operation,
+		ui: action.ui,
 	}));
 	console.log(generateNodeModule(project.node.id, generated));
 }

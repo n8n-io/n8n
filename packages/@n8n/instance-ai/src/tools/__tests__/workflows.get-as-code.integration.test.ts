@@ -61,6 +61,7 @@ function makeContractWorkflow(): WorkflowJSON {
 					method: 'POST',
 					url: 'https://reports.example.com/api/done',
 					body: { kind: 'json', json: '={{ ({name:$json.name,url:$json.url}) }}' },
+					authentication: 'httpBearerAuth',
 				},
 			},
 		],
@@ -178,8 +179,9 @@ describe('workflows get-as-code integration', () => {
 			expect(result.code).toContain('notion.databasePage.getAll({');
 			expect(result.code).toContain('httpRequest.send({');
 			expect(result.code).toContain('json: (item) => ({name:item.name,url:item.url}),');
-			// The build sets `authentication` from the bound credential.
-			expect(result.code).not.toContain('authentication');
+			// The Notion module builds the composed node, so the contract selector value goes there.
+			expect(result.code).toContain('authentication: "httpBearerAuth"');
+			expect(result.code).not.toContain('notionApi');
 			expect(files.get(result.filePath ?? '')).toBe(result.code);
 			const lines = result.code.split('\n');
 			expect(result.nodes).toHaveLength(3);
@@ -195,16 +197,17 @@ describe('workflows get-as-code integration', () => {
 		it('reads the owned slot of a composed Notion v4 node back as the typed step', async () => {
 			const files = new Map<string, string>();
 			const workflow = makeContractWorkflow();
-			const composed = workflow.nodes.map((node) =>
-				node.name === 'Get Done Pages'
-					? {
-							...node,
-							type: 'n8n-nodes-base.notion',
-							typeVersion: 4,
-							parameters: { ...node.parameters, resource: 'databasePage', operation: 'getAll' },
-						}
-					: node,
-			);
+			const composed = workflow.nodes.map((node) => {
+				if (node.name !== 'Get Done Pages') return node;
+				// The legacy selector of Notion v4 has other values than the contract node type.
+				const { authentication: _selector, ...parameters } = node.parameters ?? {};
+				return {
+					...node,
+					type: 'n8n-nodes-base.notion',
+					typeVersion: 4,
+					parameters: { ...parameters, resource: 'databasePage', operation: 'getAll' },
+				};
+			});
 			const context = makeContext({ ...workflow, nodes: composed }, files);
 			context.nodeContractsEnabled = true;
 			const tool = createWorkflowsTool(context);
@@ -260,6 +263,30 @@ describe('workflows get-as-code integration', () => {
 			expect(result.nodes?.find(({ name }) => name === 'Post')).not.toHaveProperty('untyped');
 			expect(result.nodes?.find(({ name }) => name === 'Old')?.untyped).toBe(
 				'version 2; the derived module types version 2.3',
+			);
+		});
+
+		it('keeps a contract node with a parameter that its module does not take in node(), with a reason', async () => {
+			const files = new Map<string, string>();
+			const workflow = makeContractWorkflow();
+			const nodes = workflow.nodes.map((node) =>
+				node.name === 'Get Done Pages'
+					? { ...node, parameters: { ...node.parameters, unfurlLinks: true } }
+					: node,
+			);
+			const context = makeContext({ ...workflow, nodes }, files);
+			context.nodeContractsEnabled = true;
+			const tool = createWorkflowsTool(context);
+
+			const result = await executeTool<GetAsCodeResult>(tool, {
+				action: 'get-as-code',
+				workflowId: 'wf-managed',
+			});
+
+			expect(result.code).toContain('type: "@n8n/nodes-base-next.notionDatabasePageGetAll"');
+			expect(result.code).toContain('unfurlLinks: true');
+			expect(result.nodes?.find(({ name }) => name === 'Get Done Pages')?.untyped).toBe(
+				'notion.databasePage.getAll does not take "unfurlLinks"',
 			);
 		});
 

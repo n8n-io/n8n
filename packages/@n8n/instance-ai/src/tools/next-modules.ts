@@ -76,12 +76,12 @@ const triggersOfNode = (nodeId: string) =>
 
 /** An action that owns a slot of a composed node emits that node, e.g. Notion v4. */
 function generatedActionOf(action: Action): GeneratedAction {
-	const { resource, operation } = action;
+	const { resource, operation, ui } = action;
 	const contract = toContract(action);
 	const target = migratedTargetOf(action);
-	if (!target) return { contract, nodeType: nodeTypeOf(action), resource, operation };
+	if (!target) return { contract, nodeType: nodeTypeOf(action), resource, operation, ui };
 	const { nodeType, ...slot } = target;
-	return { contract, nodeType, resource, operation, slot };
+	return { contract, nodeType, resource, operation, slot, ui };
 }
 
 /** The trigger factories of all modules, with the reply steps of native triggers. */

@@ -160,6 +160,29 @@ function advancedOf(input: JsonSchema, ui: ActionUiDocument): ReadonlySet<string
 	);
 }
 
+/** The input fields that the form puts into the Options collection, in input order. */
+export function advancedFieldsOf(input: JsonSchema, ui: ActionUiDocument = {}): string[] {
+	const advanced = advancedOf(input, ui);
+	return Object.keys(input.properties ?? {}).filter((name) => advanced.has(name));
+}
+
+/**
+ * The path of each input field that the form shows in the JSON editor, e.g.
+ * `[['blocks'], ['body', 'json']]`. The editor keeps the value as text after an edit. A path into
+ * a variant names the branch field.
+ */
+export function jsonFieldPathsOf(input: JsonSchema, ui: ActionUiDocument = {}): string[][] {
+	return Object.entries(shapeOf(input)).flatMap(([name, schema]) => {
+		const property = toProperty(name, schema, ui.fields);
+		if (property.type === 'json') return [[name]];
+		if (property.type !== 'collection') return [];
+		const children = (property.options ?? []).flatMap((child) =>
+			'type' in child && child.type === 'json' ? [child.name] : [],
+		);
+		return [...new Set(children)].map((child) => [name, child]);
+	});
+}
+
 /** The n8n parameter path of each input field: an advanced field is in the Options collection. */
 export function parameterPathOf(
 	input: JsonSchema,

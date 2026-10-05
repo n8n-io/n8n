@@ -13,7 +13,10 @@ export { isToolContract, resourceLookupsOf, type ResourceLookupCall } from '../d
 export { credentialTypeOfManifest, toCredentialType } from '../credentials';
 export { setCodeLanguages, setFileExtractor, type FileExtractor } from '../host-imports';
 export {
+	advancedFieldsOf,
+	jsonFieldPathsOf,
 	nodeParametersOf,
+	toolUiOf,
 	type ActionUiDocument,
 	type FieldUiDocument,
 } from '../properties';

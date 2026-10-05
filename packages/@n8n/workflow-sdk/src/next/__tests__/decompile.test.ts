@@ -1,5 +1,7 @@
 import vm from 'node:vm';
 
+import type { IDataObject } from 'n8n-workflow';
+
 import type { WorkflowJSON } from '../../types/base';
 import {
 	composedFactoryKey,
@@ -58,6 +60,7 @@ const notion = {
 			database: string;
 			where?: Where;
 			settings?: NodeSettings;
+			authentication?: 'notionApi' | 'notionOAuth2Api';
 		}): Step<In, Ctx, Page, N> => contractStep(NOTION_TYPE, config),
 	},
 };
@@ -137,6 +140,25 @@ const webhook = {
 		contractStep(RESPOND_TYPE, config, 1.5, undefined, undefined, pairing),
 };
 
+const SLACK_TYPE = '@n8n/nodes-base-next.slackMessageSend';
+
+// A stand-in for a module whose form keeps `threadTs` and `blocks` in the Options collection.
+const slack = {
+	message: {
+		send: <In, Ctx, const N extends string>(config: {
+			name: N;
+			channel: string;
+			text: string;
+			threadTs?: string;
+			blocks?: Array<{ type: string }>;
+		}): Step<In, Ctx, { ts: string }, N> =>
+			contractStep(SLACK_TYPE, config, 1, undefined, undefined, undefined, undefined, [
+				'threadTs',
+				'blocks',
+			]),
+	},
+};
+
 const EXISTS_TYPE = '@n8n/nodes-base-next.dataTableRowExists';
 
 const dataTable = {
@@ -161,6 +183,19 @@ const drive = {
 };
 
 const factories = new Map<string, ContractFactory>([
+	[
+		SLACK_TYPE,
+		{
+			module: 'slack',
+			from: '@n8n/nodes/slack',
+			path: 'message.send',
+			version: 1,
+			inputKeys: ['channel', 'text', 'threadTs', 'blocks'],
+			expressionKeys: ['channel', 'text', 'threadTs'],
+			advancedKeys: ['threadTs', 'blocks'],
+			jsonPaths: [['blocks']],
+		},
+	],
 	[
 		GET_TOOL_TYPE,
 		{
@@ -228,7 +263,6 @@ const factories = new Map<string, ContractFactory>([
 			version: 2.2,
 			inputKeys: ['httpMethod', 'path', 'responseMode'],
 			expressionKeys: [],
-			closed: true,
 		},
 	],
 	[
@@ -240,7 +274,6 @@ const factories = new Map<string, ContractFactory>([
 			version: 1.5,
 			inputKeys: ['respondWith', 'responseBody'],
 			expressionKeys: [],
-			closed: true,
 		},
 	],
 	[
@@ -250,7 +283,7 @@ const factories = new Map<string, ContractFactory>([
 			from: '@n8n/nodes/notion',
 			path: 'databasePage.getAll',
 			version: 1,
-			inputKeys: ['database', 'where', 'limit', 'sort'],
+			inputKeys: ['database', 'where', 'limit', 'sort', 'authentication'],
 			expressionKeys: ['database', 'limit'],
 		},
 	],
@@ -374,6 +407,7 @@ const modules: Record<string, unknown> = {
 	'@n8n/nodes/webhook': { webhook },
 	'@n8n/nodes/dataTable': { dataTable },
 	'@n8n/nodes/drive': { drive },
+	'@n8n/nodes/slack': { slack },
 };
 
 /** Run decompiled source as the sandbox does, with its imports bound to the modules above. */
@@ -735,23 +769,124 @@ describe('decompileWorkflow', () => {
 		expect(source).toContain('json: (item) => ({properties:{email:item.email,tag:"}\\}"} })');
 	});
 
-	it('drops host-set parameters of a contract node', () => {
+	it('keeps the credential selector of a contract node', () => {
 		const json = notionWorkflow().toJSON();
 		const withAuth = {
 			...json,
 			nodes: json.nodes.map((n) =>
 				n.type === NOTION_TYPE
+					? { ...n, parameters: { ...n.parameters, authentication: 'notionOAuth2Api' } }
+					: n,
+			),
+		};
+		const { source, rebuilt, again } = roundTrip(withAuth);
+		expect(source).toContain('notion.databasePage.getAll({');
+		expect(source).toContain('authentication: "notionOAuth2Api"');
+		expect(withoutIds(rebuilt)).toEqual(withoutIds(withAuth));
+		expect(again).toBe(source);
+	});
+
+	it('keeps a contract node with a parameter that its factory does not take in node()', () => {
+		const json = notionWorkflow().toJSON();
+		const changed = {
+			...json,
+			nodes: json.nodes.map((n) =>
+				n.type === NOTION_TYPE
 					? {
 							...n,
-							parameters: { ...n.parameters, authentication: 'notionApi' },
-							credentials: { notionApi: { id: 'c1', name: 'Notion account' } },
+							parameters: { ...n.parameters, authentication: 'notionApi', unfurlLinks: true },
 						}
 					: n,
 			),
 		};
-		const source = decompileWorkflow(withAuth, factories);
-		expect(source).toContain('notion.databasePage.getAll({');
-		expect(source).not.toContain('authentication');
+		const reasons: Array<[string, string]> = [];
+		const source = decompileWorkflow(changed, factories, undefined, (name, reason) =>
+			reasons.push([name, reason]),
+		);
+		if (source === undefined) throw new Error('workflow did not decompile');
+		expect(source).toContain(`type: "${NOTION_TYPE}"`);
+		expect(source).toContain('unfurlLinks: true');
+		expect(withoutIds(build(source))).toEqual(withoutIds(changed));
+		expect(reasons).toEqual([
+			['Get Done Pages', 'notion.databasePage.getAll does not take "unfurlLinks"'],
+		]);
+	});
+
+	it('gives no untyped reason for a node that reads back as a macro', () => {
+		const withIf = new Map([
+			...factories,
+			[
+				'@n8n/nodes-base-next.conditionIf',
+				{
+					module: 'condition',
+					from: '@n8n/nodes/condition',
+					path: 'if',
+					version: 1,
+					inputKeys: [],
+					expressionKeys: [],
+				},
+			],
+		]);
+		const reasons: string[] = [];
+		const source = decompileWorkflow(branchWorkflow().toJSON(), withIf, undefined, (name) =>
+			reasons.push(name),
+		);
+		expect(source).toContain('  when({');
+		expect(reasons).toEqual([]);
+	});
+
+	describe('a form with an Options collection', () => {
+		const slackWorkflow = () =>
+			workflow(
+				'Slack reply',
+				manual(),
+				slack.message.send({ name: 'Reply', channel: '#general', text: 'Hi', threadTs: '1.2' }),
+			).toJSON();
+		const withSlack = (json: WorkflowJSON, parameters: IDataObject): WorkflowJSON => ({
+			...json,
+			nodes: json.nodes.map((n) => (n.type === SLACK_TYPE ? { ...n, parameters } : n)),
+		});
+
+		it('builds the advanced fields into options and reads them back as input fields', () => {
+			const json = slackWorkflow();
+			const { source, rebuilt, again } = roundTrip(json);
+			expect(json.nodes.find((n) => n.type === SLACK_TYPE)?.parameters).toEqual({
+				channel: '#general',
+				text: 'Hi',
+				options: { threadTs: '1.2' },
+			});
+			expect(source).toContain('threadTs: "1.2"');
+			expect(source).not.toContain('options');
+			expect(withoutIds(rebuilt)).toEqual(withoutIds(json));
+			expect(again).toBe(source);
+		});
+
+		it('reads the JSON text of an edit in the JSON editor as its value', () => {
+			const json = withSlack(slackWorkflow(), {
+				channel: '#general',
+				text: 'Hi',
+				options: { blocks: '[{"type":"divider"}]' },
+			});
+			const { source, rebuilt } = roundTrip(json);
+			expect(source).toContain('slack.message.send({');
+			expect(source).toMatch(/blocks: \[\s+\{\s+type: "divider",/);
+			expect(rebuilt.nodes.find((n) => n.type === SLACK_TYPE)?.parameters).toEqual({
+				channel: '#general',
+				text: 'Hi',
+				options: { blocks: [{ type: 'divider' }] },
+			});
+		});
+
+		it('keeps a node in node() when options holds a field that is not advanced', () => {
+			const json = withSlack(slackWorkflow(), {
+				channel: '#general',
+				text: 'Hi',
+				options: { unfurlLinks: true },
+			});
+			const { source, rebuilt } = roundTrip(json);
+			expect(source).toContain(`type: "${SLACK_TYPE}"`);
+			expect(withoutIds(rebuilt)).toEqual(withoutIds(json));
+		});
 	});
 
 	it('keeps an expression without a lambda form as expr() in the typed contract step', () => {

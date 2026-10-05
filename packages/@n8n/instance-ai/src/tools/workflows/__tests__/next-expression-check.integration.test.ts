@@ -418,6 +418,48 @@ export default workflow(
 		}
 	}, 120_000);
 
+	it('builds a decompiled contract node with its credential selector and an edited JSON field', async () => {
+		const saved: WorkflowJSON = {
+			id: 'wf-edited',
+			name: 'Edited in the editor',
+			nodes: [
+				{
+					id: 'n1',
+					name: 'Start',
+					type: 'n8n-nodes-base.manualTrigger',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				},
+				{
+					id: 'n2',
+					name: 'Post',
+					type: '@n8n/nodes-base-next.httpRequestSend',
+					typeVersion: 3,
+					position: [224, 0],
+					parameters: {
+						method: 'POST',
+						url: 'https://reports.example.com/api/done',
+						body: { kind: 'json', json: '{"done":true}' },
+						authentication: 'httpBearerAuth',
+					},
+				},
+			],
+			connections: { Start: { main: [[{ node: 'Post', type: 'main', index: 0 }]] } },
+		};
+		const { code } = await getAsCode(context, saved);
+		expect(code).toContain('authentication: "httpBearerAuth"');
+		const result = await build(code);
+		expect(result.success ? [] : result.errors).toEqual([]);
+		if (!result.success) return;
+		expect(result.workflow.nodes.find((node) => node.name === 'Post')?.parameters).toEqual({
+			method: 'POST',
+			url: 'https://reports.example.com/api/done',
+			body: { kind: 'json', json: { done: true } },
+			authentication: 'httpBearerAuth',
+		});
+	}, 120_000);
+
 	it('builds the legacy SDK source of a saved loop workflow unchanged, with its node settings', async () => {
 		const seed: WorkflowJSON = JSON.parse(
 			await readFile(join(__dirname, 'order-sync-loop.workflow.json'), 'utf8'),
