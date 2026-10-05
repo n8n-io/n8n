@@ -318,8 +318,8 @@ describe('ActivityEventRepository', () => {
 				await Promise.all([createMember(), createMember(), createMember()])
 			).map((user) => user.id);
 		});
-		const entry = (resourceId: string, userId: string | null) =>
-			repository.record({
+		const entry = async (resourceId: string, userId: string | null) =>
+			await repository.record({
 				category: 'workflow',
 				action: 'saved',
 				projectId: project.id,
