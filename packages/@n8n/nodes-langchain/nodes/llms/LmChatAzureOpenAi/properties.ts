@@ -61,7 +61,7 @@ export const properties: INodeProperties[] = [
 		displayName: 'Model (Deployment)',
 		name: 'model',
 		type: 'resourceLocator',
-		default: { mode: 'list', value: '' },
+		default: { mode: 'id', value: '' },
 		required: true,
 		builderHint: {
 			propertyHint:
