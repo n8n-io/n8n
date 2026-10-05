@@ -217,6 +217,8 @@ packages/frontend/editor-ui/src/features/shared/toolsConnection/DefaultDetailBod
   s_9b9696034972ce::t_b960cc009eadc4 1-2,4-17,19,21,23-34,42-49
 packages/frontend/editor-ui/src/features/agents/__tests__/AgentSubAgentsModal.spec.ts
   s_7396ec8a4dae48::t_51e6b3bb0df83f 48
+packages/frontend/editor-ui/src/features/shared/editors/components/CodeNodeEditor/CodeNodeEditor.vue
+  s_49d09312ac2b67::t_367b2c826cfcef 199-200,217
 ---
 {
   "schema_version": "authorship/3.0.0",
@@ -325,6 +327,14 @@ packages/frontend/editor-ui/src/features/agents/__tests__/AgentSubAgentsModal.sp
         "tool": "pi",
         "id": "01a0ab25-a648-775a-944f-5e7d172319de",
         "model": "gpt-5.6-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_49d09312ac2b67": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a07c18-1909-7252-8e7b-03e49e669623",
+        "model": "gpt-5.6-luna"
       },
       "human_author": "heymynameisrob <robhough180@gmail.com>"
     },
