@@ -212,6 +212,7 @@ export async function getPublishedWorkflowData(
 		}
 		return {
 			...publishedData.workflow,
+			versionId: publishedData.publishedVersion.versionId,
 			nodes: publishedData.publishedVersion.nodes,
 			connections: publishedData.publishedVersion.connections,
 		};
@@ -232,6 +233,7 @@ export async function getPublishedWorkflowData(
 	if (workflowData && 'activeVersion' in workflowData && workflowData.activeVersion) {
 		return {
 			...workflowData,
+			versionId: workflowData.activeVersion.versionId,
 			nodes: workflowData.activeVersion.nodes,
 			connections: workflowData.activeVersion.connections,
 		};

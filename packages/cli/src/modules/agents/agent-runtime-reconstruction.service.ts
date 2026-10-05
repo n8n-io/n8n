@@ -832,6 +832,7 @@ export class AgentRuntimeReconstructionService {
 		);
 		const context = {
 			workflowLoader: Container.get(WorkflowToolWorkflowLoader),
+			executor: this.ephemeralNodeExecutor,
 			workflowRunner: await getWorkflowRunner(),
 			subworkflowPolicyChecker: Container.get(SubworkflowPolicyChecker),
 			activeExecutions: this.activeExecutions,

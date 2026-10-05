@@ -1,12 +1,13 @@
 import type { INode } from 'n8n-workflow';
 import { z } from 'zod';
+import { zodSchemaToJsonSchema } from '@n8n/ai-utilities/json-schema';
 
 import {
 	getFixedWorkflowToolInputs,
 	inferInputSchema,
 	listWorkflowInputFields,
 	mergeWorkflowToolInput,
-	omitFixedFieldsFromSchema,
+	buildWorkflowToolInputSchema,
 } from '../workflow-tool-factory';
 
 function makeExecuteWorkflowTrigger(parameters: INode['parameters']): INode {
@@ -142,17 +143,20 @@ describe('inferInputSchema — executeWorkflow', () => {
 	});
 });
 
-describe('fixed workflow tool inputs', () => {
-	it('extracts fixed values and omits them from the LLM schema', () => {
+describe('configured workflow tool inputs', () => {
+	it('advertises AI inputs and merges configured values', () => {
 		const schema = z.object({
 			chatId: z.string().optional(),
 			shoppingListId: z.string().optional(),
 			botName: z.string().optional(),
+			count: z.number().optional(),
 		});
 		const inputs = {
 			shoppingListId: { mode: 'fixed' as const, value: 'OySx3QNU0BcCs8yz' },
 			botName: { mode: 'fixed' as const, value: 'Jarvis' },
-			chatId: { mode: 'ai' as const },
+			chatId: { mode: 'ai' as const, description: 'Input guidance' },
+			count: { mode: 'expression' as const, value: '={{ 2 }}' },
+			constructor: { mode: 'ai' as const, description: 'Removed input' },
 		};
 
 		expect(getFixedWorkflowToolInputs(inputs)).toEqual({
@@ -160,25 +164,30 @@ describe('fixed workflow tool inputs', () => {
 			botName: 'Jarvis',
 		});
 
-		const llmSchema = omitFixedFieldsFromSchema(schema, inputs);
+		const llmSchema = buildWorkflowToolInputSchema(schema, inputs);
 		expect(Object.keys(llmSchema.shape)).toEqual(['chatId']);
+		expect(zodSchemaToJsonSchema(llmSchema)).toMatchObject({
+			properties: { chatId: { description: inputs.chatId.description } },
+		});
 		expect(
 			mergeWorkflowToolInput(
 				llmSchema.parse({ chatId: '42' }) as Record<string, unknown>,
 				inputs,
 				schema,
+				{ count: 2 },
 			),
 		).toEqual({
 			chatId: '42',
 			shoppingListId: 'OySx3QNU0BcCs8yz',
 			botName: 'Jarvis',
+			count: 2,
 		});
 	});
 
 	it('preserves catchall when omitting fixed keys from an open schema', () => {
 		const schema = z.object({}).catchall(z.unknown());
 		const inputs = { pinned: { mode: 'fixed' as const, value: 'yes' } };
-		const llmSchema = omitFixedFieldsFromSchema(schema, inputs);
+		const llmSchema = buildWorkflowToolInputSchema(schema, inputs);
 		expect(llmSchema.parse({ anything: 1 })).toEqual({ anything: 1 });
 		expect(mergeWorkflowToolInput({ anything: 1 }, inputs, schema)).toEqual({
 			anything: 1,

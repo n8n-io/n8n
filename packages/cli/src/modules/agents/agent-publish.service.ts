@@ -82,7 +82,7 @@ function requireValidValidation(
 
 function draftSchemaFromVersion(schema: AgentJsonConfig | null): AgentJsonConfig | null {
 	if (!schema) return null;
-	const draft = deepCopy(schema);
+	const draft = structuredClone(schema);
 	delete draft.integrations;
 	return draft;
 }
