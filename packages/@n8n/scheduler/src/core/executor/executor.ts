@@ -402,6 +402,7 @@ export class Executor {
 			() => this.hooks.onLongRunningTask?.(task, longRunMs / Time.seconds.toMilliseconds),
 			longRunMs,
 		);
+		longRunTimer.unref();
 		try {
 			await handler.execute(task, report, lease.signal);
 		} finally {

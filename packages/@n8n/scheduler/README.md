@@ -409,7 +409,8 @@ The design leans on a few ideas working together.
   handler's signal aborts, unless the run is already recorded as dispatched.
   A handler that stops on this abort uses up an attempt, as when the reaper takes
   back an expired lease, even if a later renewal kept the claim.
-  A run still running after sixty leases logs a warning, since it may be stuck.
+  A run still running after sixty leases, or after about 24 days if that comes
+  first, logs a warning, since it may be stuck.
 - **Fencing.** Each claim carries a version number (an *epoch*) that increases every
   time a run is claimed. Every final write ("mark succeeded", "mark failed") is
   guarded by that number. So if a slow server comes back from the dead after its
@@ -552,8 +553,8 @@ A few things that are not obvious from the code but save a lot of confusion.
   All three default to no-ops, and a throwing hook is swallowed so a broken logger
   or exporter can never break the scheduling it was only meant to observe.
 
-- **Two warnings tell an operator their timing is off.** Both arrive through the
-  event sink at `warn` level, so they land in the host's logs:
+- **Two event-sink warnings tell an operator their timing is off.** Both arrive
+  through the event sink at `warn` level, so they land in the host's logs:
   - a **clock-skew warning** at start-up. Due-ness and leases are judged on the
     clock the scheduler coordinates on (the host supplies it via `now`, e.g. the
     shared store's clock), but fire timers are armed on this instance's own clock. When

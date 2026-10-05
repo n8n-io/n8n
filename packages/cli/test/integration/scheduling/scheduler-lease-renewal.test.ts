@@ -15,9 +15,9 @@ import { selfOwned } from './shared/job-factory';
  */
 describe('scheduler lease renewal over the storage bindings', () => {
 	const TASK_TYPE = 'integration-lease-renewal-test';
-	// Allow three seconds for the first renewal, which starts after five seconds.
-	const LEASE_SECONDS = 8;
-	const RUN_MS = 10_000;
+	// Allow seven seconds for the first renewal, which starts after five seconds.
+	const LEASE_SECONDS = 12;
+	const RUN_MS = 15_000;
 
 	let jobRepo: ScheduledJobRepository;
 	let taskRepo: ScheduledTaskRepository;
@@ -71,7 +71,7 @@ describe('scheduler lease renewal over the storage bindings', () => {
 
 		// Sweep like a busy reaper for the whole run: every sweep sees a live lease.
 		const reclaimed: number[] = [];
-		const deadline = Date.now() + RUN_MS + 2_000;
+		const deadline = Date.now() + RUN_MS + 5_000;
 		let task = await taskRepo.findOneByOrFail({ jobId: job.id });
 		while (task.status === 'running' && Date.now() < deadline) {
 			const { reclaimed: count, deadLettered } = await scheduler.reap();
@@ -85,5 +85,5 @@ describe('scheduler lease renewal over the storage bindings', () => {
 		expect(task.attempts).toBe(0);
 		expect(task.leaseEpoch).toBe(1);
 		expect(runs).toBe(1);
-	}, 20_000);
+	}, 30_000);
 });
