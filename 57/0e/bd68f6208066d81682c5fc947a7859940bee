@@ -1,0 +1,14 @@
+packages/frontend/editor-ui/src/features/ai/shared/components/ChatMessageQueue.vue
+  h_f8b427917eda26 106,335,341,348-357,412-417,448-451,459
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "570ebd68f6208066d81682c5fc947a7859940bee",
+  "prompts": {},
+  "humans": {
+    "h_f8b427917eda26": {
+      "author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}
