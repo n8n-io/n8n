@@ -214,7 +214,7 @@ function onMenuSelect(id: string) {
 		</div>
 		<div :class="$style.right">
 			<span
-				v-if="saveStatus === 'saving' || saveStatus === 'saved'"
+				v-if="saveStatus && saveStatus !== 'idle'"
 				:class="$style.saveStatus"
 				data-testid="agent-header-save-status"
 			>

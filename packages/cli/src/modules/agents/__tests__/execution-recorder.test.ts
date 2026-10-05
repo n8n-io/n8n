@@ -1,6 +1,6 @@
 import type { BuiltTool, StreamChunk } from '@n8n/agents';
 
-import { buildToolCallDetails, ExecutionRecorder, type TimelineEvent } from '../execution-recorder';
+import { ExecutionRecorder, type TimelineEvent } from '../execution-recorder';
 import { buildToolRegistry } from '../tool-registry';
 
 function makeToolCallChunk(toolName: string, input: unknown, toolCallId = 'tc1'): StreamChunk {
@@ -50,44 +50,6 @@ describe('ExecutionRecorder', () => {
 			...initial,
 			expect.objectContaining({ type: 'text', content: 'Done' }),
 		]);
-	});
-
-	it('builds full node tool details when the model input is empty', () => {
-		const registry = buildToolRegistry([
-			{
-				name: 'check_ledger',
-				description: 'Read rows from the configured ledger table',
-				metadata: {
-					kind: 'node',
-					nodeType: 'n8n-nodes-base.dataTableTool',
-					nodeTypeVersion: 1.1,
-					displayName: 'Check ledger',
-					nodeParameters: {
-						resource: 'row',
-						operation: 'get',
-						dataTableId: { mode: 'id', value: 'table-1' },
-						returnAll: true,
-					},
-				},
-			} satisfies BuiltTool,
-		]);
-
-		expect(buildToolCallDetails(registry, 'check_ledger', {})).toEqual({
-			toolName: 'check_ledger',
-			displayName: 'Check ledger',
-			kind: 'node',
-			input: {},
-			node: {
-				type: 'n8n-nodes-base.dataTableTool',
-				typeVersion: 1.1,
-				parameters: {
-					resource: 'row',
-					operation: 'get',
-					dataTableId: { mode: 'id', value: 'table-1' },
-					returnAll: true,
-				},
-			},
-		});
 	});
 
 	describe('per-tool execution timing', () => {

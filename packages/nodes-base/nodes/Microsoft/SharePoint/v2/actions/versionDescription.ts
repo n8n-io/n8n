@@ -5,7 +5,7 @@ import { NodeConnectionTypes } from 'n8n-workflow';
 import * as file from './file';
 import * as item from './item';
 import * as list from './list';
-import { SERVICE_PRINCIPAL_AUTH } from '../transport';
+import { SERVICE_PRINCIPAL_AUTH } from '../../transport';
 
 export const versionDescription: INodeTypeDescription = {
 	displayName: 'Microsoft SharePoint',

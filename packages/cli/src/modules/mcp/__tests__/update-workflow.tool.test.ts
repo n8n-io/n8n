@@ -27,6 +27,7 @@ import { TagService } from '@/services/tag.service';
 import { UrlService } from '@n8n/backend-services';
 import { Telemetry } from '@/telemetry';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import { ErrorWorkflowValidationService } from '@/workflows/error-workflow-validation.service';
 import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 
@@ -201,6 +202,20 @@ describe('update-workflow MCP tool', () => {
 		incrementPostSaveFailure: vi.fn(),
 	});
 
+	/**
+	 * Built per tool, not once in `beforeEach`: a test may swap `globalConfig`
+	 * (custom error-trigger type) before building its tool, and the service reads
+	 * the config it was constructed with.
+	 */
+	const buildErrorWorkflowValidationService = () =>
+		new ErrorWorkflowValidationService(
+			globalConfig,
+			nodeTypes,
+			workflowFinderService,
+			workflowPublishedDataService,
+			subworkflowPolicyChecker,
+		);
+
 	const createTool = () =>
 		createUpdateWorkflowTool(
 			user,
@@ -215,8 +230,7 @@ describe('update-workflow MCP tool', () => {
 			dataTableOps as never,
 			tagService,
 			globalConfig,
-			subworkflowPolicyChecker,
-			workflowPublishedDataService,
+			buildErrorWorkflowValidationService(),
 			aiGatewayService,
 			{},
 			logger,
@@ -2347,6 +2361,26 @@ describe('update-workflow MCP tool', () => {
 				expect(saved.settings).toEqual(expect.objectContaining({ errorWorkflow: 'DEFAULT' }));
 			});
 
+			// Nothing evaluates `settings.errorWorkflow`; `executeErrorWorkflow` uses it
+			// as a literal workflow id. Saving an expression would look like it worked
+			// and then silently never run a handler.
+			test('rejects an expression instead of saving a reference that never resolves', async () => {
+				const result = await callHandler({
+					workflowId: 'wf-1',
+					operations: [
+						{
+							type: 'setWorkflowSettings',
+							settings: { errorWorkflow: '={{ $json.handlerId }}' },
+						},
+					],
+				});
+
+				const response = parseResult(result);
+				expect(result.isError).toBe(true);
+				expect(response.error).toContain('does not accept expressions');
+				expect(workflowService.update).not.toHaveBeenCalled();
+			});
+
 			test('does not attach settings for node-only edits', async () => {
 				await callHandler({
 					workflowId: 'wf-1',
@@ -2525,8 +2559,7 @@ describe('update-workflow MCP tool', () => {
 					dataTableOps as never,
 					tagService,
 					globalConfig,
-					subworkflowPolicyChecker,
-					workflowPublishedDataService,
+					buildErrorWorkflowValidationService(),
 					aiGatewayService,
 					{},
 					logger,
@@ -3887,8 +3920,7 @@ describe('update-workflow MCP tool', () => {
 					dataTableOps as never,
 					tagService,
 					globalConfig,
-					subworkflowPolicyChecker,
-					workflowPublishedDataService,
+					buildErrorWorkflowValidationService(),
 					aiGatewayService,
 					{},
 					logger,
@@ -3927,8 +3959,7 @@ describe('update-workflow MCP tool', () => {
 					dataTableOps as never,
 					tagService,
 					globalConfig,
-					subworkflowPolicyChecker,
-					workflowPublishedDataService,
+					buildErrorWorkflowValidationService(),
 					aiGatewayService,
 					{},
 					logger,
@@ -3967,8 +3998,7 @@ describe('update-workflow MCP tool', () => {
 					dataTableOps as never,
 					tagService,
 					globalConfig,
-					subworkflowPolicyChecker,
-					workflowPublishedDataService,
+					buildErrorWorkflowValidationService(),
 					aiGatewayService,
 					{},
 					logger,

@@ -9,7 +9,7 @@ import type { EntityManager } from '@n8n/typeorm';
 import type { INodeCredentials } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
+import type { CredentialsFinderService } from '@n8n/backend-services';
 import type { CredentialsService } from '@/credentials/credentials.service';
 import { BadRequestError, ForbiddenError } from '@n8n/errors';
 

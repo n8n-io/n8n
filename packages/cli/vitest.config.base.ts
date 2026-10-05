@@ -1,9 +1,9 @@
 import { createVitestConfigWithDecorators } from '@n8n/vitest-config/node-decorators';
+import { tscDecoratorTransform } from '@n8n/vitest-config/tsc-decorator-transform';
 import path from 'node:path';
 import { mergeConfig } from 'vite';
 import { configDefaults } from 'vitest/config';
 
-import { tscEntityTransform } from './vitest.tsc-entity-transform';
 import { workspaceDistExternals } from './vitest.workspace-externals';
 
 /**
@@ -15,7 +15,6 @@ const alias = {
 	'@test-integration': path.resolve(__dirname, 'test/integration/shared'),
 	'@test': path.resolve(__dirname, 'test/shared'),
 	'@n8n/mcp-apps/server': path.resolve(__dirname, '../@n8n/mcp-apps/src/server/index.ts'),
-	'@n8n/backend-test-utils': path.resolve(__dirname, '../@n8n/backend-test-utils/src/index.ts'),
 	'@n8n/telemetry': path.resolve(__dirname, '../@n8n/telemetry/src'),
 	'@': path.resolve(__dirname, 'src'),
 };
@@ -26,10 +25,13 @@ const alias = {
  * on top of this.
  */
 export const baseConfig = mergeConfig(createVitestConfigWithDecorators(), {
-	// `workspaceDistExternals` must run before `tscEntityTransform`: once a
-	// workspace package is externalized to its built dist, the entity transform
-	// (which only targets first-party `src/**/*.entity.ts`) never sees it.
-	plugins: [workspaceDistExternals(), tscEntityTransform()],
+	// `workspaceDistExternals` must run before `tscDecoratorTransform`: once a
+	// workspace package is externalized to its built dist, the decorator transform
+	// never sees its entity and config source files.
+	plugins: [
+		workspaceDistExternals(),
+		tscDecoratorTransform({ filePredicate: (fileName) => /\.(entity|config)\.ts$/.test(fileName) }),
+	],
 	resolve: { alias },
 	test: {
 		// Run each test file in its own forked process.

@@ -21,7 +21,7 @@ export class WorkflowHistoryCompactionOptimizeTask implements SystemTask {
 
 	readonly effects: SystemTaskEffects = 'idempotent';
 
-	readonly placement: SystemTaskPlacement = { scope: 'cluster', durable: false };
+	readonly placement: SystemTaskPlacement = { scope: 'cluster', durable: true };
 
 	constructor(
 		private readonly config: WorkflowHistoryCompactionConfig,

@@ -64,6 +64,20 @@ describe('agent channel platform registry', () => {
 		expect(platform.disconnectConfirmationComponent).toBeDefined();
 	});
 
+	it('registers n8n Chat with its "Make available" connect action', () => {
+		const platform = getAgentChannelPlatform('n8n_chat');
+		const action = platform.getConnectAction(
+			{ text },
+			{ loading: ref(false), load: async () => {} },
+		);
+
+		expect(platform.type).toBe('n8n_chat');
+		expect(action).toEqual({ label: 'agents.channels.n8nChat.makeAvailable' });
+		expect(platform.setupComponent).toBeDefined();
+		expect(platform.editComponent).toBeDefined();
+		expect(platform.setupComponent).toBe(platform.editComponent);
+	});
+
 	it('presents the generic Slack disconnect warning contract', () => {
 		const platform = getAgentChannelPlatform('slack');
 		const presentation = platform.presentDisconnectWarning?.(

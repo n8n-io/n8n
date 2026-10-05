@@ -17,9 +17,11 @@ import * as breakingChangesApi from '@n8n/rest-api-client/api/breaking-changes';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useAsyncState } from '@vueuse/core';
 import { computed, ref, useCssModule } from 'vue';
+import { I18nT } from 'vue-i18n';
 import orderBy from 'lodash/orderBy';
 import ImpactTag from './components/ImpactTag.vue';
 import EmptyTab from './components/EmptyTab.vue';
+import TimeAgo from '@/app/components/TimeAgo.vue';
 import { useI18n } from '@n8n/i18n';
 import { MIGRATION_REPORT_TARGET_VERSION } from '@n8n/api-types';
 import type { BreakingChangeRuleImpact } from '@n8n/api-types';
@@ -32,7 +34,6 @@ const i18n = useI18n();
 useDocumentTitle().set(i18n.baseText('settings.migrationReport'));
 
 const currentTab = ref('workflow-issues');
-const shouldShowRefreshButton = ref(false);
 
 const versionQuery = MIGRATION_REPORT_TARGET_VERSION
 	? { version: MIGRATION_REPORT_TARGET_VERSION }
@@ -52,14 +53,10 @@ const { state, isLoading, execute } = useAsyncState(async (refresh: boolean = fa
 		) {
 			currentTab.value = 'instance-issues';
 		}
-		shouldShowRefreshButton.value = response.shouldCache;
 
 		return response;
 	}
-	const response = await breakingChangesApi.getReport(rootStore.restApiContext, versionQuery);
-	shouldShowRefreshButton.value = response.shouldCache;
-
-	return response;
+	return await breakingChangesApi.getReport(rootStore.restApiContext, versionQuery);
 }, undefined);
 
 async function refreshReport() {
@@ -101,11 +98,24 @@ const instanceTooltips = computed<Record<BreakingChangeRuleImpact, string>>(() =
 
 const compatibleWorkflowsCount = computed(() => {
 	if (!state.value) return 0;
-	return (
-		state.value.totalWorkflows -
-		state.value.report.workflowResults.reduce((acc, issue) => acc + issue.nbAffectedWorkflows, 0)
-	);
+	return state.value.totalWorkflows - state.value.totalAffectedWorkflows;
 });
+
+const compatiblePercentage = computed(() => {
+	const total = state.value?.totalWorkflows ?? 0;
+	if (total === 0) return 0;
+	// Floor so the bar only fills once every workflow is compatible
+	return Math.floor((compatibleWorkflowsCount.value / total) * 100);
+});
+
+const progressLabel = computed(() =>
+	i18n.baseText('settings.migrationReport.progress.label', {
+		interpolate: {
+			compatibleCount: compatibleWorkflowsCount.value.toLocaleString(),
+			totalCount: (state.value?.totalWorkflows ?? 0).toLocaleString(),
+		},
+	}),
+);
 
 // Impact order: the impact that blocks the update comes first, the one with no
 // runtime effect comes last.
@@ -142,8 +152,8 @@ const sortedInstanceResults = computed(() => {
 			:description="
 				i18n.baseText('settings.migrationReport.description', {
 					interpolate: {
-						compatibleCount: String(compatibleWorkflowsCount),
-						totalCount: String(state?.totalWorkflows ?? 0),
+						compatibleCount: compatibleWorkflowsCount.toLocaleString(),
+						totalCount: (state?.totalWorkflows ?? 0).toLocaleString(),
 						version: targetVersionDisplay,
 					},
 				})
@@ -153,17 +163,46 @@ const sortedInstanceResults = computed(() => {
 			docs-leading-text=""
 		/>
 		<div>
+			<div v-if="state" :class="$style.Progress">
+				<div
+					:class="$style.ProgressTrack"
+					role="progressbar"
+					:aria-valuenow="compatiblePercentage"
+					aria-valuemin="0"
+					aria-valuemax="100"
+					:aria-label="progressLabel"
+					data-test-id="migration-report-progress"
+				>
+					<div :class="$style.ProgressFill" :style="{ width: `${compatiblePercentage}%` }" />
+				</div>
+				<N8nText size="medium" color="text-base" :class="$style.NoLineBreak">
+					{{ progressLabel }}
+				</N8nText>
+			</div>
 			<div :class="$style.ActionBar">
 				<N8nTabs v-model="currentTab" :options="tabs" variant="modern" />
-				<N8nButton
-					variant="subtle"
-					v-if="shouldShowRefreshButton"
-					:label="i18n.baseText('settings.migrationReport.refreshButton')"
-					icon="refresh-cw"
-					:loading="isLoading"
-					:disabled="isLoading"
-					@click="refreshReport"
-				/>
+				<div :class="$style.RefreshGroup">
+					<N8nText
+						v-if="state?.report.generatedAt"
+						size="small"
+						color="text-light"
+						data-test-id="migration-report-last-synced"
+					>
+						<I18nT keypath="settings.migrationReport.lastSynced" tag="span" scope="global">
+							<template #time>
+								<TimeAgo :date="state.report.generatedAt.toString()" />
+							</template>
+						</I18nT>
+					</N8nText>
+					<N8nButton
+						variant="subtle"
+						:label="i18n.baseText('settings.migrationReport.refreshButton')"
+						icon="refresh-cw"
+						:loading="isLoading"
+						:disabled="isLoading"
+						@click="refreshReport"
+					/>
+				</div>
 			</div>
 
 			<N8nSettingsRowGroup v-if="isLoading">
@@ -306,11 +345,38 @@ const sortedInstanceResults = computed(() => {
 	gap: var(--spacing--4xs);
 }
 
+.Progress {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--lg);
+	margin-bottom: var(--spacing--xl);
+}
+
+.ProgressTrack {
+	flex: 1;
+	height: var(--height--5xs);
+	border-radius: var(--radius--3xs);
+	background-color: var(--color--foreground--tint-1);
+	overflow: hidden;
+}
+
+.ProgressFill {
+	height: 100%;
+	border-radius: inherit;
+	background-color: var(--color--primary);
+}
+
 .ActionBar {
 	display: flex;
 	justify-content: space-between;
 	align-items: center;
 	margin-bottom: var(--spacing--sm);
+}
+
+.RefreshGroup {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--xs);
 }
 
 .PLoading {

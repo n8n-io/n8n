@@ -14,8 +14,12 @@ import type { AgentBackgroundJob } from '../../entities/agent-background-job.ent
 import type { AgentExecutionUpdateBroadcaster } from '../../agent-execution-update-broadcaster';
 import type { AgentBackgroundJobRepository } from '../../repositories/agent-background-job.repository';
 import type { AgentExecutionRepository } from '../../repositories/agent-execution.repository';
+import type { AgentMessageRepository } from '../../repositories/agent-message.repository';
+import type { AgentMessageEntity } from '../../entities/agent-message.entity';
+import type { AgentExecution } from '../../entities/agent-execution.entity';
 import {
 	AgentBackgroundJobService,
+	EXPIRED_BACKGROUND_CHECKPOINT_ERROR,
 	MAX_RUNNING_JOBS_PER_THREAD,
 	SETTLED_JOB_RETENTION_MS,
 	SUB_AGENT_BACKGROUND_TIMEOUT_MS,
@@ -67,17 +71,18 @@ function setup(options: { backgroundTasksEnabled?: boolean } = {}) {
 	const jobRepository = mock<AgentBackgroundJobRepository>();
 	const checkpointStorage = mock<N8NCheckpointStorage>();
 	const executionRepository = mock<AgentExecutionRepository>();
+	const messageRepository = mock<AgentMessageRepository>();
 	const executionPersistence = mock<ExecutionPersistence>();
 	const publisher = mock<Publisher>();
 	const logger = mock<Logger>();
 	const updateBroadcaster = mock<AgentExecutionUpdateBroadcaster>();
 	const agentsConfig = mock<AgentsConfig>({
 		backgroundTasksEnabled: options.backgroundTasksEnabled ?? false,
+		checkpointTtlSeconds: 96 * 3600,
 	});
 	(logger.scoped as Mock).mockReturnValue(logger);
 
-	jobRepository.countActiveSubAgentsByParentThread.mockResolvedValue(0);
-	jobRepository.insertJob.mockResolvedValue(undefined);
+	jobRepository.insertSubAgentJobIfCapacity.mockResolvedValue(true);
 	jobRepository.insertWorkflowJobOrGetExisting.mockResolvedValue({ inserted: true });
 	jobRepository.settleIfActive.mockResolvedValue(true);
 	jobRepository.findByParentThread.mockResolvedValue([]);
@@ -85,6 +90,11 @@ function setup(options: { backgroundTasksEnabled?: boolean } = {}) {
 	jobRepository.findRunningJobs.mockResolvedValue([]);
 	jobRepository.findActivePastTimeout.mockResolvedValue([]);
 	jobRepository.findSettledSubAgentsWithCheckpoints.mockResolvedValue([]);
+	jobRepository.findRequestedPauses.mockResolvedValue([]);
+	jobRepository.findPausedWithoutCheckpoint.mockResolvedValue([]);
+	jobRepository.retainLatestPausedGroup.mockResolvedValue([]);
+	jobRepository.reservePausedGroup.mockResolvedValue('reserved');
+	executionRepository.findRunningByThread.mockResolvedValue([]);
 	executionRepository.findLatestStatusesByThreadIds.mockResolvedValue(new Map());
 
 	const service = new AgentBackgroundJobService(
@@ -96,12 +106,14 @@ function setup(options: { backgroundTasksEnabled?: boolean } = {}) {
 		agentsConfig,
 		updateBroadcaster,
 		checkpointStorage,
+		messageRepository,
 	);
 	return {
 		service,
 		checkpointStorage,
 		jobRepository,
 		executionRepository,
+		messageRepository,
 		executionPersistence,
 		publisher,
 		logger,
@@ -137,9 +149,215 @@ describe('markMailConsumed', () => {
 			expect(wakeService.isWakeActive).toHaveBeenCalledWith('thread-1');
 			expect(count).toBe(active ? 0 : 1);
 			if (active) expect(jobRepository.markMailConsumed).not.toHaveBeenCalled();
-			else expect(jobRepository.markMailConsumed).toHaveBeenCalledWith('thread-1', ['job-1']);
+			else
+				expect(jobRepository.markMailConsumed).toHaveBeenCalledWith('thread-1', ['job-1'], false);
 		},
 	);
+});
+
+describe('user pause', () => {
+	it.each([
+		{
+			name: 'a retained checkpoint',
+			checkpoint: true,
+			active: false,
+			status: 'running',
+			expected: 'running',
+		},
+		{
+			name: 'an active child',
+			checkpoint: false,
+			active: true,
+			status: 'running',
+			expected: 'running',
+		},
+		{
+			name: 'an already paused job',
+			checkpoint: false,
+			active: false,
+			status: 'paused',
+			expected: 'paused',
+		},
+		{
+			name: 'a lost checkpoint',
+			checkpoint: false,
+			active: false,
+			status: 'running',
+			expected: 'failed',
+		},
+	] as const)(
+		'handles $name when a paused result cannot be recorded',
+		async ({ checkpoint, active, status, expected }) => {
+			const { service, jobRepository, executionRepository, checkpointStorage } = setup();
+			const job = makeJob({ status, pauseRequestId: 'stop-1' });
+			vi.spyOn(service, 'suspend').mockResolvedValue(false);
+			vi.spyOn(service, 'getCheckpoint').mockResolvedValue(checkpoint ? mock() : undefined);
+			executionRepository.existsRunningByThread.mockResolvedValue(active);
+			jobRepository.findById.mockResolvedValue(job);
+			jobRepository.settleIfActive.mockImplementation(async (_id, settlement) => {
+				job.status = settlement.status;
+				job.error = settlement.error ?? null;
+				return true;
+			});
+
+			await service.settlePausedSubAgent(job.id, { status: 'running' });
+
+			expect(job.status).toBe(expected);
+			expect(job.error).toBe(expected === 'failed' ? EXPIRED_BACKGROUND_CHECKPOINT_ERROR : null);
+			expect(checkpointStorage.deleteDelegatedForThread.mock.calls.length).toBe(
+				expected === 'failed' ? 1 : 0,
+			);
+		},
+	);
+
+	it.each<{
+		name: string;
+		job?: Partial<AgentBackgroundJob>;
+		receivedAt?: number;
+		execution?: Partial<AgentExecution>;
+		input?: Partial<AgentMessageEntity>;
+		admission?: 'limit-reached';
+		expected: 'stopping' | 'ready' | 'unavailable' | 'limit-reached';
+	}>([
+		{
+			name: 'a running job',
+			job: { status: 'running', notifiedAt: null },
+			expected: 'stopping',
+		},
+		{ name: 'an unreported pause', job: { notifiedAt: null }, expected: 'stopping' },
+		{ name: 'input received before the report', receivedAt: 1000, expected: 'stopping' },
+		{ name: 'input received after the report', expected: 'ready' },
+		{ name: 'too few active slots', admission: 'limit-reached', expected: 'limit-reached' },
+		{
+			name: 'a resume reservation from an earlier parent turn',
+			job: { status: 'suspended', updatedAt: new Date(2500) },
+			execution: { startedAt: new Date(4000) },
+			expected: 'ready',
+		},
+		{
+			name: 'a resume reservation from the current parent turn',
+			job: { status: 'suspended', updatedAt: new Date(4500) },
+			execution: { startedAt: new Date(4000) },
+			expected: 'stopping',
+		},
+		{
+			name: 'a finished parent execution',
+			execution: { status: 'success' },
+			expected: 'unavailable',
+		},
+		{
+			name: 'a parent execution in another thread',
+			execution: { threadId: 'other-thread' },
+			expected: 'unavailable',
+		},
+		{
+			name: 'only hidden input',
+			input: { origin: { source: null, hidden: true } },
+			expected: 'unavailable',
+		},
+		{
+			name: 'input from another resource',
+			input: { resourceId: 'draft-chat:other' },
+			expected: 'unavailable',
+		},
+	])(
+		'returns $expected for $name',
+		async ({ job: jobOverrides, receivedAt = 3000, execution, input, admission, expected }) => {
+			const { service, jobRepository, executionRepository, messageRepository } = setup();
+			const job = makeJob({
+				status: 'paused',
+				pauseRequestId: 'stop-1',
+				notifiedAt: new Date(2000),
+				...jobOverrides,
+			});
+			jobRepository.findRequestedPauses.mockResolvedValue([job]);
+			jobRepository.releasePausedResume.mockImplementation(async () => {
+				job.status = 'paused';
+				job.timeoutAt = null;
+				return true;
+			});
+			jobRepository.findByParentThread.mockResolvedValue([
+				job,
+				makeJob({
+					id: 'other-job',
+					parentResourceId: 'draft-chat:other',
+					pauseRequestId: 'stop-2',
+				}),
+			]);
+			executionRepository.findExecution.mockResolvedValue(
+				mock<AgentExecution>({ threadId: 'thread-1', status: 'running', ...execution }),
+			);
+			messageRepository.findExecutionInputs.mockResolvedValue(
+				new Map([
+					[
+						'execution-1',
+						[
+							mock<AgentMessageEntity>({
+								role: 'user',
+								origin: null,
+								threadId: 'thread-1',
+								resourceId: 'draft-chat:user-1',
+								createdAt: new Date(receivedAt),
+								...input,
+							}),
+						],
+					],
+				]),
+			);
+			if (admission) jobRepository.reservePausedGroup.mockResolvedValue(admission);
+			const result = await service.preparePausedResume(
+				'agent-1',
+				'thread-1',
+				'draft-chat:user-1',
+				'execution-1',
+			);
+			expect(result).toMatchObject({ status: expected, jobs: expected === 'ready' ? [job] : [] });
+			if (expected === 'stopping' || expected === 'unavailable')
+				expect(jobRepository.reservePausedGroup).not.toHaveBeenCalled();
+		},
+	);
+
+	it('keeps stopped children visible until their stop group settles and retains other tasks', async () => {
+		const { service, jobRepository } = setup();
+		const stopping = makeJob({ pauseRequestId: 'stop-1', createdAt: new Date(1000) });
+		const last = makeJob({
+			id: 'job-2',
+			status: 'suspended',
+			pauseRequestId: 'stop-1',
+			createdAt: new Date(2000),
+		});
+		const workflow = makeWorkflowJob({ createdAt: new Date(3000) });
+		jobRepository.findGroupCandidates.mockResolvedValue([stopping, last, workflow]);
+		expect(await service.listCurrentGroupForThread('agent-1', 'thread-1')).toEqual([
+			stopping,
+			last,
+			workflow,
+		]);
+		const paused = { ...stopping, status: 'paused' as const, settledAt: new Date(4000) };
+		jobRepository.findGroupCandidates.mockResolvedValue([paused, last, workflow]);
+		expect(await service.listCurrentGroupForThread('agent-1', 'thread-1')).toEqual([
+			paused,
+			last,
+			workflow,
+		]);
+		const later = makeJob({ id: 'later', createdAt: new Date(5000) });
+		for (const status of ['paused', 'completed', 'failed', 'cancelled'] as const) {
+			jobRepository.findGroupCandidates.mockResolvedValue([
+				paused,
+				{ ...last, status },
+				workflow,
+				later,
+			]);
+			expect(await service.listCurrentGroupForThread('agent-1', 'thread-1')).toEqual([
+				workflow,
+				later,
+			]);
+		}
+		jobRepository.findGroupCandidates.mockResolvedValue([paused]);
+		expect(await service.listCurrentGroupForThread('agent-1', 'thread-1')).toEqual([]);
+		jobRepository.findGroupCandidates.mockResolvedValue([{ ...stopping, pauseRequestId: null }]);
+		expect(await service.listCurrentGroupForThread('agent-1', 'thread-1')).toHaveLength(1);
+	});
 });
 
 describe('background task notifications', () => {
@@ -150,14 +368,12 @@ describe('background task notifications', () => {
 			'agent-1',
 			'thread-1',
 		);
-		expect(jobRepository.insertJob.mock.invocationCallOrder[0]).toBeLessThan(
+		expect(jobRepository.insertSubAgentJobIfCapacity.mock.invocationCallOrder[0]).toBeLessThan(
 			updateBroadcaster.notifyBackgroundJobsUpdated.mock.invocationCallOrder[0],
 		);
-		jobRepository.countActiveSubAgentsByParentThread.mockResolvedValueOnce(
-			MAX_RUNNING_JOBS_PER_THREAD,
-		);
+		jobRepository.insertSubAgentJobIfCapacity.mockResolvedValueOnce(false);
 		await service.registerSubAgentJob(registerParams);
-		jobRepository.insertJob.mockRejectedValueOnce(new Error('insert failed'));
+		jobRepository.insertSubAgentJobIfCapacity.mockRejectedValueOnce(new Error('insert failed'));
 		await expect(service.registerSubAgentJob(registerParams)).rejects.toThrow('insert failed');
 		expect(updateBroadcaster.notifyBackgroundJobsUpdated).toHaveBeenCalledOnce();
 	});
@@ -226,30 +442,23 @@ describe('registerSubAgentJob', () => {
 		const receipt = await service.registerSubAgentJob(registerParams);
 
 		expect(receipt).toEqual({ status: 'started', jobId: 'job-1' });
-		const inserted = jobRepository.insertJob.mock.calls[0][0];
+		const inserted = jobRepository.insertSubAgentJobIfCapacity.mock.calls[0][0];
 		if (inserted.kind !== 'subagent') throw new Error('expected a subagent job insert');
 		const expectedTimeout = Date.now() + SUB_AGENT_BACKGROUND_TIMEOUT_MS;
 		expect(inserted.timeoutAt.getTime()).toBeGreaterThan(expectedTimeout - 5000);
 		expect(inserted.timeoutAt.getTime()).toBeLessThanOrEqual(expectedTimeout);
+		expect(jobRepository.insertSubAgentJobIfCapacity.mock.calls[0][1]).toBe(
+			MAX_RUNNING_JOBS_PER_THREAD,
+		);
 	});
 
 	it('returns limit-reached when the thread is at the running-job cap', async () => {
 		const { service, jobRepository } = setup();
-		jobRepository.countActiveSubAgentsByParentThread.mockResolvedValue(MAX_RUNNING_JOBS_PER_THREAD);
+		jobRepository.insertSubAgentJobIfCapacity.mockResolvedValue(false);
 
 		const receipt = await service.registerSubAgentJob(registerParams);
 
 		expect(receipt).toEqual({ status: 'limit-reached' });
-		expect(jobRepository.insertJob).not.toHaveBeenCalled();
-	});
-
-	it('counts only running sub-agent jobs toward the cap', async () => {
-		const { service, jobRepository } = setup();
-
-		const receipt = await service.registerSubAgentJob(registerParams);
-
-		expect(receipt).toEqual({ status: 'started', jobId: 'job-1' });
-		expect(jobRepository.countActiveSubAgentsByParentThread).toHaveBeenCalledWith('thread-1');
 	});
 });
 
@@ -476,19 +685,80 @@ describe('result consumption updates', () => {
 });
 
 describe('cancel', () => {
-	it('claims the row and aborts the live handle without a pubsub round-trip', async () => {
+	it.each([false, true])(
+		'retains paused tasks when the parent reply is cancelled (stale snapshot: %s)',
+		async (staleSnapshot) => {
+			const { service, jobRepository, checkpointStorage } = setup();
+			const paused = makeJob({
+				id: 'paused',
+				status: 'paused',
+				pauseRequestId: 'stop-1',
+				childThreadId: 'paused-thread',
+			});
+			const jobs = [
+				paused,
+				...(['running', 'suspended'] as const).map((status) =>
+					makeJob({ id: status, status, childThreadId: status }),
+				),
+			];
+			jobRepository.findByParentThread.mockImplementation(async (_threadId, ids) => {
+				if (ids) return jobs.filter((job) => ids.includes(job.id));
+				return jobs.map((job) => ({
+					...job,
+					status: staleSnapshot && job.id === paused.id ? 'running' : job.status,
+				}));
+			});
+			jobRepository.settleIfActive.mockImplementation(async (id, settlement, expected) => {
+				const job = jobs.find((candidate) => candidate.id === id);
+				if (!job || (expected && job.status !== expected.status)) return false;
+				job.status = settlement.status;
+				return true;
+			});
+
+			await service.cancelForParent('agent-1', 'thread-1', 'draft-chat:user-1');
+
+			expect(jobs.map((job) => job.status)).toEqual(['paused', 'cancelled', 'cancelled']);
+			expect(
+				checkpointStorage.deleteDelegatedForThread.mock.calls.map(([, threadId]) => threadId),
+			).toEqual(['running', 'suspended']);
+			expect(await service.cancel('thread-1', paused.id)).toBe('cancelled');
+			expect(paused.status).toBe('cancelled');
+			expect(checkpointStorage.deleteDelegatedForThread).toHaveBeenLastCalledWith(
+				'sub-1',
+				'paused-thread',
+			);
+		},
+	);
+
+	it('aborts a resumed run on another main when a local handle still exists', async () => {
 		const { service, jobRepository, publisher } = setup();
+		const { service: resumedService } = setup();
 		jobRepository.findByParentThread.mockResolvedValue([makeJob()]);
 		const controller = new AbortController();
+		const resumedController = new AbortController();
 		service.registerAbortController('job-1', controller);
+		resumedService.registerAbortController('job-1', resumedController);
+		publisher.publishCommand.mockImplementation(async (command) => {
+			if (command.command === 'cancel-agent-background-job') {
+				resumedService.handleCancelRelay(command.payload);
+			}
+		});
 
 		const outcome = await service.cancel('thread-1', 'job-1');
 
 		expect(outcome).toBe('cancelled');
-		expect(jobRepository.settleIfActive).toHaveBeenCalledWith('job-1', { status: 'cancelled' });
-		expect(jobRepository.markMailConsumed).toHaveBeenCalledWith('thread-1', ['job-1']);
+		expect(jobRepository.settleIfActive).toHaveBeenCalledWith(
+			'job-1',
+			{ status: 'cancelled' },
+			undefined,
+		);
+		expect(jobRepository.markMailConsumed).toHaveBeenCalledWith('thread-1', ['job-1'], false);
 		expect(controller.signal.aborted).toBe(true);
-		expect(publisher.publishCommand).not.toHaveBeenCalled();
+		expect(resumedController.signal.aborted).toBe(true);
+		expect(publisher.publishCommand).toHaveBeenCalledWith({
+			command: 'cancel-agent-background-job',
+			payload: { jobId: 'job-1' },
+		});
 	});
 
 	it('stops the child and reports cancellation when marking the result as delivered fails', async () => {
@@ -532,11 +802,20 @@ describe('cancel', () => {
 	});
 
 	it('returns already-settled when the claim loses', async () => {
-		const { service, jobRepository } = setup();
-		jobRepository.findByParentThread.mockResolvedValue([makeJob({ status: 'completed' })]);
+		const { service, jobRepository, publisher } = setup();
+		jobRepository.findByParentThread.mockResolvedValue([makeJob()]);
 		jobRepository.settleIfActive.mockResolvedValue(false);
+		const controller = new AbortController();
+		service.registerAbortController('job-1', controller);
 
 		expect(await service.cancel('thread-1', 'job-1')).toBe('already-settled');
+		expect(jobRepository.settleIfActive).toHaveBeenCalledWith(
+			'job-1',
+			{ status: 'cancelled' },
+			undefined,
+		);
+		expect(controller.signal.aborted).toBe(false);
+		expect(publisher.publishCommand).not.toHaveBeenCalled();
 	});
 });
 

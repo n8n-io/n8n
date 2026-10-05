@@ -1,6 +1,7 @@
 import type {
 	AgentBackgroundJobSignal,
 	AgentBackgroundJobsResponse,
+	AgentChatResumeDto,
 	PushMessage,
 } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -10,7 +11,7 @@ import { computed, onScopeDispose, ref, toValue, watch, type MaybeRefOrGetter } 
 import { TIME } from '@/app/constants/durations';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 
-import { getAgentBackgroundJobs } from './useAgentApi';
+import { getAgentBackgroundJobs, resumeAgentBackgroundJob } from './useAgentApi';
 
 interface BackgroundJobsTarget {
 	projectId: MaybeRefOrGetter<string>;
@@ -34,7 +35,8 @@ export function useAgentBackgroundJobs(target: BackgroundJobsTarget) {
 			...job,
 			status: received.get(job.id)?.status ?? job.status,
 		}));
-		if (current.some((job) => job.status === 'running')) return current;
+		if (current.some((job) => job.status === 'running' || job.status === 'suspended'))
+			return current;
 		return group.value.pendingTaskIds?.some((id) => !received.has(id)) ? current : [];
 	});
 	const active = computed(() => toValue(target.active) && visibility.value === 'visible');
@@ -120,6 +122,33 @@ export function useAgentBackgroundJobs(target: BackgroundJobsTarget) {
 		scheduleRefresh();
 	}
 
+	async function respondToApproval(payload: AgentChatResumeDto) {
+		const threadId = toValue(target.threadId);
+		if (!threadId) return;
+		const requestGeneration = generation;
+		try {
+			await resumeAgentBackgroundJob(
+				rootStore.restApiContext,
+				toValue(target.projectId),
+				toValue(target.agentId),
+				threadId,
+				payload,
+			);
+			if (generation === requestGeneration) {
+				for (const job of group.value.tasks) {
+					if (
+						job.approval?.runId === payload.runId &&
+						job.approval.toolCallId === payload.toolCallId
+					) {
+						delete job.approval;
+					}
+				}
+			}
+		} finally {
+			refresh();
+		}
+	}
+
 	// The chat stream owns the shared connection. Subscribe before the first fetch.
 	const removeListener = pushStore.addEventListener((event: PushMessage) => {
 		if (
@@ -171,5 +200,5 @@ export function useAgentBackgroundJobs(target: BackgroundJobsTarget) {
 		removeListener();
 	});
 
-	return { jobs };
+	return { jobs, respondToApproval };
 }

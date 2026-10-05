@@ -185,6 +185,36 @@ describe('shared schema registry', () => {
 		expect(op1).not.toContain('\\');
 	});
 
+	it('strips the untyped nullable an unknown array item generates, leaving items: {}', () => {
+		const registry = new OpenAPIRegistry();
+		const widget = registry.register(
+			'Widget',
+			z.object({ id: z.string(), nodes: z.array(z.unknown()) }),
+		);
+
+		registry.registerPath({
+			method: 'get',
+			path: '/widgets',
+			responses: {
+				200: { description: 'ok', content: { 'application/json': { schema: widget } } },
+			},
+		});
+
+		const artifacts = buildArtifactsFromRegistry(registry, [
+			{
+				outputPath: 'handlers/widgets/spec/paths/getWidgets.generated.yml',
+				pathKey: '/widgets',
+				method: 'get',
+			},
+		]);
+
+		const schemaFile = artifacts.find(
+			(a) => a.outputPath === 'shared/spec/schemas/widget.generated.yml',
+		);
+		expect(schemaFile?.content).toContain('nodes:\n    type: array\n    items: {}\n');
+		expect(schemaFile?.content).not.toContain('nullable');
+	});
+
 	it('inlines a schema referenced by only one operation', () => {
 		const registry = new OpenAPIRegistry();
 		// A schema not registered as a component stays inline wherever it is used.

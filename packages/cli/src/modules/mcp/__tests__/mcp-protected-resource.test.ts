@@ -44,7 +44,7 @@ describe('McpProtectedResource', () => {
 	const urlService = mock<UrlService>();
 	const mcpSettingsService = mock<McpSettingsService>();
 	const mcpConfig = mock<McpConfig>();
-	const moduleRegistry = mock<ModuleRegistry>();
+	const moduleRegistry = mock<ModuleRegistry>({ settings: mock<ModuleRegistry['settings']>() });
 	const licenseState = mock<LicenseState>();
 	const postHogClient = mock<PostHogClient>();
 	const resource = new McpProtectedResource(
@@ -65,6 +65,7 @@ describe('McpProtectedResource', () => {
 		});
 		mcpConfig.baseUrl = '';
 		moduleRegistry.isActive.mockReturnValue(true);
+		vi.mocked(moduleRegistry.settings.get).mockReturnValue(undefined);
 		licenseState.isFoldersLicensed.mockReturnValue(true);
 		Container.set(
 			CommunityPackagesConfig,
@@ -73,6 +74,14 @@ describe('McpProtectedResource', () => {
 	});
 
 	describe('getScopeTools', () => {
+		it('withholds Agent scopes and tools when Agents is disabled', async () => {
+			vi.mocked(moduleRegistry.settings.get).mockReturnValue({ enabled: false });
+			const scopeTools = await resource.getScopeTools();
+			expect(resource.scopes).not.toContain('agent:read');
+			expect(resource.scopes).not.toContain('agent:write');
+			expect(scopeTools['agent:read']).toBeUndefined();
+		});
+
 		it('should expose the full tool mapping when all features are enabled', async () => {
 			const scopeTools = await resource.getScopeTools();
 
