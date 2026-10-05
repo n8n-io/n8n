@@ -1,5 +1,7 @@
+import Ajv2020 from 'ajv/dist/2020';
 import { readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
+import { isDeepStrictEqual } from 'node:util';
 import type { INodeType, WebhookSetupMethodNames } from 'n8n-workflow';
 
 import {
@@ -46,7 +48,7 @@ import {
 	type CredentialManifest,
 	type NativeManifest,
 } from '../manifest';
-import type { AnySchema, BinaryMeta, Shape } from '../schema';
+import type { AnySchema, BinaryMeta, JsonSchema, Shape } from '../schema';
 import {
 	PROVIDER_CONNECTIONS,
 	type ChatModel,
@@ -61,6 +63,7 @@ import {
 	type ToolCall,
 	type ToolDefinition,
 } from '../providers';
+import { parseStoreIndex, storeBlobFileOf } from '../store';
 import { validate } from '../validate';
 import { compareSemver, NODE_CONTRACT_VERSION, type VersionManifest } from '../version';
 
@@ -83,6 +86,65 @@ const membersOf =
 		values;
 
 const sorted = (values: readonly string[]) => [...values].sort();
+
+/** The `x-n8n-*` keywords of the contract format. A missing keyword fails `tsc`. */
+const N8N_KEYWORDS = keysOf<Pick<JsonSchema, Extract<keyof JsonSchema, `x-n8n-${string}`>>>()([
+	'x-n8n-hint',
+	'x-n8n-literal',
+	'x-n8n-ref',
+	'x-n8n-passed',
+	'x-n8n-value-types',
+	'x-n8n-binary',
+	'x-n8n-supply',
+	'x-n8n-model-catalog',
+	'x-n8n-declared',
+	'x-n8n-entry-fields',
+	'x-n8n-aggregate',
+	'x-n8n-claim',
+	'x-n8n-resource',
+	'x-n8n-options',
+	'x-n8n-base-url',
+	'x-n8n-page',
+	'x-n8n-since',
+]);
+
+/** The formats that the SDK validator checks. Each other format is an error here. */
+const FORMATS = ['date', 'date-time', 'uri', 'email', 'uuid'];
+
+/**
+ * A JSON Schema 2020-12 validator that refuses each keyword and format it does not know. As in
+ * 2020-12, a format is an annotation: the validator does not check it.
+ */
+const strictAjv = () =>
+	new Ajv2020({
+		strict: true,
+		discriminator: true,
+		allErrors: true,
+		keywords: [...N8N_KEYWORDS],
+		formats: Object.fromEntries(FORMATS.map((format) => [format, true])),
+	});
+
+interface ShippedManifest {
+	kind: string;
+	fields?: JsonSchema;
+	contract?: { input: JsonSchema; output: JsonSchema };
+	reply?: { contract: { input: JsonSchema; output: JsonSchema } };
+}
+
+const STORE_DIR = path.resolve(__dirname, '../../../nodes-base-next/dist/store');
+
+/** Each manifest of each version in the store that nodes-base-next builds. */
+const shippedManifests = () =>
+	readdirSync(path.join(STORE_DIR, 'index')).flatMap((file) => {
+		const id = path.basename(file, '.ndjson');
+		const records = parseStoreIndex(readFileSync(path.join(STORE_DIR, 'index', file), 'utf8'), id);
+		return records.map(({ version, manifest }) => ({
+			file: `${id}@${version}`,
+			manifest: JSON.parse(
+				readFileSync(path.join(STORE_DIR, storeBlobFileOf(manifest)), 'utf8'),
+			) as ShippedManifest,
+		}));
+	});
 
 /** The parsed WIT, with lookups by name. Items newer than `implemented` stay out. */
 function shapeOf(pkg: WitPackage, implemented = pkg.version) {
@@ -559,5 +621,147 @@ describe('spec/manifest.schema.json', () => {
 		expect(validate(manifest, versionManifestSchema.json, { path: 'manifest' })).toEqual(
 			expect.arrayContaining(['manifest.nodeContract: is required']),
 		);
+	});
+
+	describe('as JSON Schema 2020-12', () => {
+		const ajv = strictAjv();
+		const validateManifest = ajv.compile(schema as JsonSchema);
+		const branches = [versionManifestSchema, credentialManifestSchema, nativeManifestSchema].map(
+			({ json }) => ajv.compile(json),
+		);
+		const branchesOf = (manifest: unknown) => branches.map((branch) => branch(manifest));
+
+		it('refuses a keyword that the contract format does not have', () => {
+			expect(() => strictAjv().compile({ type: 'string', 'x-n8n-unknown': true })).toThrow(
+				/unknown keyword/,
+			);
+		});
+
+		it('accepts each manifest that nodes-base-next ships, with exactly one branch', () => {
+			const shipped = shippedManifests();
+			expect(shipped.length).toBeGreaterThan(100);
+			const failures = shipped.flatMap(({ file, manifest }) => {
+				const expected = [
+					!('native' in manifest) && manifest.kind !== 'credential',
+					manifest.kind === 'credential',
+					'native' in manifest,
+				];
+				return validateManifest(manifest) && isDeepStrictEqual(branchesOf(manifest), expected)
+					? []
+					: [{ file, branches: branchesOf(manifest), errors: validateManifest.errors }];
+			});
+			expect(failures).toEqual([]);
+			expect(new Set(shipped.map(({ manifest }) => manifest.kind))).toEqual(
+				new Set(['action', 'trigger', 'provider', 'credential']),
+			);
+			expect(shipped.some(({ manifest }) => 'native' in manifest)).toBe(true);
+		});
+
+		it('compiles each contract and credential schema that nodes-base-next ships', () => {
+			const schemas = shippedManifests().flatMap(({ file, manifest }) =>
+				[
+					manifest.fields,
+					manifest.contract?.input,
+					manifest.contract?.output,
+					manifest.reply?.contract.input,
+					manifest.reply?.contract.output,
+				].flatMap((json) => (json === undefined ? [] : [{ file, json }])),
+			);
+			const failures = schemas.flatMap(({ file, json }) => {
+				try {
+					ajv.compile(json);
+					return [];
+				} catch (error) {
+					return [`${file}: ${String(error)}`];
+				}
+			});
+			expect(failures).toEqual([]);
+		});
+
+		describe('with a changed shipped manifest', () => {
+			const shippedOf = (isNative: boolean) => {
+				const found = shippedManifests().find(
+					({ manifest }) => manifest.kind === 'action' && 'native' in manifest === isNative,
+				);
+				if (!found) throw new Error(`no shipped action with native ${isNative}`);
+				return found.manifest;
+			};
+			it('refuses a manifest that matches no branch', () => {
+				const manifest = { kind: 'action', id: 'a.b', semver: '1.0.0' };
+				expect(branchesOf(manifest)).toEqual([false, false, false]);
+				expect(validateManifest(manifest)).toBe(false);
+			});
+
+			it('refuses a kind that no branch has', () => {
+				const action = shippedOf(false);
+				const native = shippedOf(true);
+				expect(validateManifest({ ...action, kind: 'lookup' })).toBe(false);
+				expect(validateManifest({ ...native, kind: 'provider' })).toBe(false);
+			});
+
+			it('accepts an unknown top-level field, and refuses one in the contract', () => {
+				const action = shippedOf(false);
+				expect(validateManifest({ ...action, annotation: true })).toBe(true);
+				expect(validateManifest({ ...action, contract: { ...action.contract, extra: true } })).toBe(
+					false,
+				);
+			});
+
+			it('refuses a native manifest with a bundle hash, which the SDK validator accepts', () => {
+				const manifest = { ...shippedOf(true), bundleHash: '0'.repeat(64) };
+				expect(branchesOf(manifest)).toEqual([true, false, true]);
+				expect(validateManifest(manifest)).toBe(false);
+				expect(validate(manifest, schema as JsonSchema)).toEqual([]);
+			});
+		});
+
+		it.each<[string, JsonSchema, unknown, boolean, boolean]>([
+			[
+				'oneOf with two matching branches',
+				{ oneOf: [{ type: 'string' }, { type: 'string', minLength: 1 }] },
+				'a',
+				true,
+				false,
+			],
+			[
+				'a keyword next to anyOf',
+				{
+					type: 'object',
+					properties: { a: { type: 'string' } },
+					required: ['a'],
+					anyOf: [{ type: 'object' }],
+				},
+				{},
+				true,
+				false,
+			],
+			['const of an object', { const: { a: 1 } }, { a: 1 }, false, true],
+			['enum of an array', { enum: [[1]] }, [1], false, true],
+			['format', { type: 'string', format: 'uri' }, 'no uri', false, true],
+			['minLength of a surrogate pair', { type: 'string', minLength: 2 }, '😀', true, false],
+			['pattern dot on a surrogate pair', { type: 'string', pattern: '^.$' }, '😀', false, true],
+			[
+				'two matching patternProperties',
+				{
+					type: 'object',
+					patternProperties: { '^a': { type: 'string' }, b$: { type: 'string', minLength: 2 } },
+				},
+				{ ab: 'x' },
+				true,
+				false,
+			],
+			[
+				'a keyword outside the contract format',
+				{ type: 'string', maxLength: 1 } as JsonSchema,
+				'ab',
+				true,
+				false,
+			],
+		])('disagrees with the SDK validator on %s', (_, json, value, sdk, jsonSchema) => {
+			expect([validate(value, json).length === 0, strictAjv().compile(json)(value)]).toEqual([
+				sdk,
+				jsonSchema,
+			]);
+		});
 	});
 });
