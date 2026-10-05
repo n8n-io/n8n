@@ -1,5 +1,15 @@
 import type { StreamChunk } from '@n8n/agents';
+import type { Logger } from '@n8n/backend-common';
 import { isRecord } from '@n8n/utils/is-record';
+import { mock } from 'vitest-mock-extended';
+
+import type { AgentRepository } from '../../../../repositories/agent.repository';
+import { ChatIntegrationRegistry } from '../../../agent-chat-integration';
+import { ChannelRateLimitGuard } from '../../../channel-rate-limit.guard';
+import type { ChatIntegrationService } from '../../../chat-integration.service';
+import { ChatIntegrationActionExecutor } from '../../../integration-action-executor';
+import { getIntegrationToolConnectionDescriptors } from '../../../integration-tools';
+import { TeamsIntegration } from '../../teams/teams-integration';
 
 import {
 	createTeamsReplayContext,
@@ -789,6 +799,83 @@ describe('Microsoft Teams messages without a mention', () => {
 			// No typing indicator either: every activity, typing included, is a post.
 			expect(ctx.activities()).toEqual([]);
 			expect(ctx.edits()).toEqual([]);
+		} finally {
+			await ctx.shutdown();
+		}
+	});
+});
+
+describe('Microsoft Teams reactions', () => {
+	async function react(ctx: Awaited<ReturnType<typeof createTeamsReplayContext>>, emoji: string) {
+		const registry = new ChatIntegrationRegistry();
+		const teams = new TeamsIntegration(mock<Logger>(), mock<AgentRepository>());
+		registry.register(teams);
+		const service = mock<ChatIntegrationService>();
+		service.getChatInstanceForTools.mockResolvedValue(ctx.chat);
+		const executor = new ChatIntegrationActionExecutor(
+			service,
+			registry,
+			new ChannelRateLimitGuard(),
+		);
+		const [descriptor] = getIntegrationToolConnectionDescriptors(
+			[{ type: 'teams', credentialId: 'cred-teams' }],
+			'agent-1',
+		);
+		return await executor.execute({
+			descriptor,
+			action: 'add_reaction',
+			input: { emoji },
+			awaitResponse: false,
+			currentMessageContext: ctx.latestContext(),
+		});
+	}
+
+	function reactionPath(ctx: Awaited<ReturnType<typeof createTeamsReplayContext>>) {
+		const uri = ctx.reactions().at(-1)?.body.uri;
+		return typeof uri === 'string' ? decodeURIComponent(uri) : undefined;
+	}
+
+	it('offers add_reaction and do_not_respond', () => {
+		const teams = new TeamsIntegration(mock<Logger>(), mock<AgentRepository>());
+
+		expect(teams.actionToolDefinitions.map(({ name }) => name)).toEqual(
+			expect.arrayContaining(['add_reaction', 'do_not_respond']),
+		);
+	});
+
+	it('reacts to the current message in mention-only mode', async () => {
+		const ctx = await createTeamsReplayContext();
+		try {
+			await ctx.sendWebhook(channelMention);
+
+			await expect(react(ctx, 'thumbs_up')).resolves.toMatchObject({ ok: true });
+
+			expect(reactionPath(ctx)).toMatch(
+				`/v3/conversations/${TEAMS_CHANNEL_CONVERSATION_ID}/activities/${channelMention.id}/reactions/like`,
+			);
+		} finally {
+			await ctx.shutdown();
+		}
+	});
+
+	it.each([
+		['thumbs_up', 'like'],
+		['eyes', '1f440_eyes'],
+		['check', '2705_whiteheavycheckmark'],
+		['x', '274c_crossmark'],
+		['rocket', 'launch'],
+		['thinking', 'think'],
+		['pin', '1f4cc_pushpin'],
+	])('maps %s to the Teams reaction %s when reading all messages', async (emoji, teamsType) => {
+		const ctx = await createTeamsReplayContext({ settings: READ_ALL, stream: SILENT });
+		try {
+			await ctx.sendWebhook(channelRootPost);
+
+			await expect(react(ctx, emoji)).resolves.toMatchObject({ ok: true });
+
+			expect(reactionPath(ctx)).toMatch(
+				new RegExp(`/activities/${channelRootPost.id}/reactions/${teamsType}$`),
+			);
 		} finally {
 			await ctx.shutdown();
 		}

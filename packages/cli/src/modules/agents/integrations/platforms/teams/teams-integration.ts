@@ -119,10 +119,16 @@ export class TeamsIntegration extends AgentChatIntegration {
 		'image',
 	];
 
-	readonly actionToolDefinitions = resolveIntegrationActionDefinitions(['respond', 'edit_message']);
+	readonly actionToolDefinitions = resolveIntegrationActionDefinitions([
+		'respond',
+		'edit_message',
+		'add_reaction',
+		'do_not_respond',
+	]);
 
 	readonly actionToolGuidance = [
 		'For edit_message, pass the messageId returned by a previous Teams action or get_current_message_context. The current Teams conversation is selected automatically.',
+		'For add_reaction, use one of thumbs_up, eyes, check, x, rocket, thinking or pin, or a Teams reaction type such as like, heart or laugh.',
 	];
 
 	/**
