@@ -1,5 +1,4 @@
 import { Logger } from '@n8n/backend-common';
-import { CacheService } from '@n8n/backend-services';
 import { DeploymentKeyRepository, isUniqueConstraintError } from '@n8n/db';
 import type { DeploymentKey } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -19,19 +18,27 @@ import {
 	OAUTH_SIGNING_ALGORITHM,
 	OAUTH_SIGNING_CURVE,
 	OAUTH_SIGNING_KEY_USE,
-	OAUTH_SIGNING_KEYS_CACHE_KEY,
 	RETIRED_SIGNING_KEY_GRACE_MS,
+	SIGNING_KEYS_REFRESH_MS,
+	UNKNOWN_KID_REFRESH_MS,
 } from './oauth-signing-key.constants';
 
 const generateKeyPairAsync = promisify(generateKeyPair);
 
-/** A signing key as the shared cache holds it. It never holds the private key. */
+/** A signing key as process memory holds it. It never holds the private key. */
 type PublishedSigningKey = {
 	kid: string;
 	publicJwk: JWK;
+	publicKey: KeyObject;
 	active: boolean;
 	/** Epoch ms of the last row update. For an inactive key, this is when it was retired. */
 	updatedAt: number;
+};
+
+type PublishedKeyList = {
+	keys: PublishedSigningKey[];
+	/** Epoch ms of the database read. */
+	readAt: number;
 };
 
 type ActiveSigningKey = {
@@ -56,19 +63,21 @@ const PUBLIC_JWK_FIELDS = ['kty', 'crv', 'x', 'y', 'kid', 'alg', 'use'] as const
  * `deployment_key.id` are the same nanoid, as for the JWE keys.
  *
  * Signing is synchronous: {@link initialize} loads the private key into
- * memory once. Verification loads public keys lazily from the shared cache,
- * so workers verify without a private key.
+ * memory once. Each process also keeps the public keys in memory, so
+ * verification does not call Redis or the database for each token. Workers
+ * read the public keys on first use and never keep a private key.
  */
 @Service()
 export class OAuthSigningKeyService {
 	private activeKey: ActiveSigningKey | null = null;
 
-	private readonly publicKeyObjects = new Map<string, KeyObject>();
+	private publishedKeys: PublishedKeyList | null = null;
+
+	private pendingRead: Promise<PublishedKeyList> | null = null;
 
 	constructor(
 		private readonly deploymentKeyRepository: DeploymentKeyRepository,
 		private readonly cipher: Cipher,
-		private readonly cacheService: CacheService,
 		private readonly logger: Logger,
 		private readonly jwtService: JwtService,
 	) {}
@@ -113,7 +122,7 @@ export class OAuthSigningKeyService {
 	/**
 	 * Public JWKs of the active key and of the keys retired within
 	 * {@link RETIRED_SIGNING_KEY_GRACE_MS}. The window is checked on every
-	 * call, so a cached list does not keep a retired key alive.
+	 * call, so the in-memory list does not keep a retired key alive.
 	 */
 	async getPublicJwks(): Promise<JWK[]> {
 		const keys = await this.loadPublishedKeys();
@@ -133,8 +142,7 @@ export class OAuthSigningKeyService {
 			throw new JsonWebTokenError('kid is invalid');
 		}
 
-		const keys = await this.loadPublishedKeys();
-		const key = keys.find((k) => k.kid === kid);
+		const key = await this.findPublishedKey(kid);
 		if (!key) {
 			throw new JsonWebTokenError('kid is unknown');
 		}
@@ -142,7 +150,7 @@ export class OAuthSigningKeyService {
 		const verified = this.jwtService.verifyForResource(
 			token,
 			audiences as [string, ...string[]],
-			this.getPublicKeyObject(key),
+			key.publicKey,
 			{ algorithms: [OAUTH_SIGNING_ALGORITHM], issuer },
 		);
 
@@ -159,40 +167,60 @@ export class OAuthSigningKeyService {
 		return payload;
 	}
 
-	private async loadPublishedKeys(): Promise<PublishedSigningKey[]> {
-		const keys = await this.cacheService.get<PublishedSigningKey[]>(OAUTH_SIGNING_KEYS_CACHE_KEY, {
-			refreshFn: async () => await this.readPublishedKeys(),
-		});
+	/**
+	 * A kid that is not in the list reads the list again, because another
+	 * process may have created the key since this process read it.
+	 */
+	private async findPublishedKey(kid: string): Promise<PublishedSigningKey | undefined> {
+		const keys = await this.loadPublishedKeys(SIGNING_KEYS_REFRESH_MS);
+		const key = keys.find((k) => k.kid === kid);
+		if (key) return key;
+
+		const refreshed = await this.loadPublishedKeys(UNKNOWN_KID_REFRESH_MS);
+		return refreshed.find((k) => k.kid === kid);
+	}
+
+	/** Reads the list again only when it is older than `maxAgeMs`. */
+	private async loadPublishedKeys(
+		maxAgeMs = SIGNING_KEYS_REFRESH_MS,
+	): Promise<PublishedSigningKey[]> {
+		let list = this.publishedKeys;
+		if (!list || Date.now() - list.readAt >= maxAgeMs) {
+			list = await this.readPublishedKeys();
+		}
 
 		const now = Date.now();
-		return (keys ?? []).filter(
+		return list.keys.filter(
 			(key) => key.active || now - key.updatedAt <= RETIRED_SIGNING_KEY_GRACE_MS,
 		);
 	}
 
-	/** Returns `undefined` when there are no keys, so an empty list is never cached. */
-	private async readPublishedKeys(): Promise<PublishedSigningKey[] | undefined> {
+	/** Concurrent callers share one database read. */
+	private async readPublishedKeys(): Promise<PublishedKeyList> {
+		this.pendingRead ??= this.readPublishedKeyRows().finally(() => {
+			this.pendingRead = null;
+		});
+		return await this.pendingRead;
+	}
+
+	private async readPublishedKeyRows(): Promise<PublishedKeyList> {
 		const rows = await this.deploymentKeyRepository.findOAuthSigningKeys();
 		const keys = rows
 			.filter((row) => row.algorithm === OAUTH_SIGNING_ALGORITHM)
-			.map((row) => ({
-				kid: row.id,
-				publicJwk: toPublicJwk(this.readPrivateJwk(row)),
-				active: row.status === 'active',
-				updatedAt: new Date(row.updatedAt).getTime(),
-			}));
+			.map((row) => {
+				const publicJwk = toPublicJwk(this.readPrivateJwk(row));
+				const { kty, crv, x, y } = publicJwk;
+				return {
+					kid: row.id,
+					publicJwk,
+					publicKey: createPublicKey({ key: { kty, crv, x, y }, format: 'jwk' }),
+					active: row.status === 'active',
+					updatedAt: new Date(row.updatedAt).getTime(),
+				};
+			});
 
-		return keys.length > 0 ? keys : undefined;
-	}
-
-	private getPublicKeyObject(key: PublishedSigningKey): KeyObject {
-		let keyObject = this.publicKeyObjects.get(key.kid);
-		if (!keyObject) {
-			const { kty, crv, x, y } = key.publicJwk;
-			keyObject = createPublicKey({ key: { kty, crv, x, y }, format: 'jwk' });
-			this.publicKeyObjects.set(key.kid, keyObject);
-		}
-		return keyObject;
+		this.publishedKeys = { keys, readAt: Date.now() };
+		return this.publishedKeys;
 	}
 
 	private readPrivateJwk(row: DeploymentKey): JsonWebKey {
@@ -230,8 +258,8 @@ export class OAuthSigningKeyService {
 				encryptedPrivate,
 				OAUTH_SIGNING_ALGORITHM,
 			);
-			// Another process may hold a list read before this key existed.
-			await this.cacheService.delete(OAUTH_SIGNING_KEYS_CACHE_KEY);
+			// Other processes read the new key when they first see its kid.
+			this.publishedKeys = null;
 
 			this.logger.info('Generated new OAuth access-token signing key', { kid: id });
 		} catch (error) {

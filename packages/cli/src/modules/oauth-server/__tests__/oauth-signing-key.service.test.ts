@@ -9,7 +9,6 @@ import {
 	OAUTH_ACCESS_TOKEN_TTL_SECONDS,
 	OAUTH_SIGNING_ALGORITHM,
 	OAUTH_SIGNING_KEY_TYPE,
-	OAUTH_SIGNING_KEYS_CACHE_KEY,
 	RETIRED_SIGNING_KEY_GRACE_MS,
 } from '../oauth-signing-key.constants';
 import type { OAuthSigningKeyService } from '../oauth-signing-key.service';
@@ -70,8 +69,8 @@ describe('OAuthSigningKeyService', () => {
 			).toBe('existing-key');
 		});
 
-		it('generates a key whose kid is the row id, wraps it, and drops the cached key list', async () => {
-			const { service, keyStore, cipher, cache } = createSigningKeyService();
+		it('generates a key whose kid is the row id, and wraps it', async () => {
+			const { service, keyStore, cipher } = createSigningKeyService();
 
 			await service.initialize();
 
@@ -87,7 +86,6 @@ describe('OAuthSigningKeyService', () => {
 				kty: 'EC',
 				crv: 'P-256',
 			});
-			expect(cache.delete).toHaveBeenCalledWith(OAUTH_SIGNING_KEYS_CACHE_KEY);
 			expect(
 				jwt.decode(service.signAccessToken(claims(), AUDIENCE), { complete: true })?.header.kid,
 			).toBe(id);
@@ -207,9 +205,9 @@ describe('OAuthSigningKeyService', () => {
 			expect(await publishedKids(service)).toContain('retired');
 		});
 
-		it('drop out after the grace window, even from a cached key list', async () => {
+		it('drop out after the grace window', async () => {
 			const { service, token } = await setUp();
-			// Fill the cache while the retired key is still in its window.
+			// Read the list while the retired key is still in its window.
 			await service.getPublicJwks();
 			vi.advanceTimersByTime(RETIRED_SIGNING_KEY_GRACE_MS + 1000);
 

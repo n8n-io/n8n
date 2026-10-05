@@ -7,11 +7,14 @@ export const OAUTH_SIGNING_ALGORITHM = 'ES256';
 export const OAUTH_SIGNING_KEY_USE = 'sig';
 export const OAUTH_SIGNING_CURVE = 'P-256';
 
+/** How long a process uses its in-memory list of public keys before it reads the list again. */
+export const SIGNING_KEYS_REFRESH_MS = 5 * Time.minutes.toMilliseconds;
+
 /**
- * Public signing keys only. The private key stays in process memory.
- * Delete this entry whenever a signing key is added or changes status.
+ * An unknown `kid` reads the list again only when the list is older than
+ * this, so tokens with made-up kids cannot load the database.
  */
-export const OAUTH_SIGNING_KEYS_CACHE_KEY = 'oauth-server:signing-keys';
+export const UNKNOWN_KID_REFRESH_MS = 30 * Time.seconds.toMilliseconds;
 
 /** RFC 9068 §2.1 `typ` values. */
 export const ACCESS_TOKEN_TYPES = ['at+jwt', 'application/at+jwt'] as const;

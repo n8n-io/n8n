@@ -1,5 +1,4 @@
 import type { Logger } from '@n8n/backend-common';
-import type { CacheService } from '@n8n/backend-services';
 import type { DeploymentKey, DeploymentKeyRepository } from '@n8n/db';
 import type { Cipher, InstanceSettings } from 'n8n-core';
 import type { JsonWebKey, KeyObject } from 'node:crypto';
@@ -21,22 +20,6 @@ export const createTaggingCipher = () => {
 		value.slice(WRAP_PREFIX.length),
 	);
 	return cipher;
-};
-
-/** A cache backed by a map, with the `refreshFn` semantics of `CacheService.get`. */
-export const createMapCache = () => {
-	const store = new Map<string, unknown>();
-	const cache = mock<CacheService>();
-	cache.get.mockImplementation(async (key, options) => {
-		if (store.has(key)) return store.get(key);
-		const value = await options?.refreshFn?.(key);
-		if (value !== undefined) store.set(key, value);
-		return value;
-	});
-	cache.delete.mockImplementation(async (key) => {
-		store.delete(key);
-	});
-	return { cache, store };
 };
 
 /** `deployment_key` rows in memory, behind the repository methods the service calls. */
@@ -74,7 +57,6 @@ export const createDeploymentKeyStore = () => {
 export const createSigningKeyService = () => {
 	const keyStore = createDeploymentKeyStore();
 	const cipher = createTaggingCipher();
-	const { cache, store: cacheStore } = createMapCache();
 	const jwtService = new JwtService(
 		mock<InstanceSettings>({ encryptionKey: 'test-key' }),
 		mock(),
@@ -83,11 +65,10 @@ export const createSigningKeyService = () => {
 	const service = new OAuthSigningKeyService(
 		keyStore.repository,
 		cipher,
-		cache,
 		mock<Logger>(),
 		jwtService,
 	);
-	return { service, keyStore, cipher, cache, cacheStore };
+	return { service, keyStore, cipher };
 };
 
 /** Reads a stored private key back, e.g. to sign tokens the service would not sign. */
