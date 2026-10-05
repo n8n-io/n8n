@@ -2,12 +2,18 @@ import { getParsedExpression } from '@n8n/tournament';
 import type { ParsedCode } from '@n8n/tournament';
 import { LruCache } from '@n8n/utils/lru-cache';
 
-import { EngineFallbackError, bounded, evalChunk, type Env } from './evaluator';
+import { EngineFallbackError, bounded, createEnv, evalChunk } from './evaluator';
 import { MAX_RESULT_LENGTH, clone, isObj, type SimpleNode } from './grammar';
 import { parseSimple } from './parser';
 import type { IWorkflowDataProxyData } from '../../interfaces';
 
-export { CALLABLE_METHODS, ITERATOR_METHODS, MAX_RESULT_LENGTH, MAX_STEPS } from './grammar';
+export {
+	CALLABLE_METHODS,
+	ITERATOR_METHODS,
+	MAX_RESULT_LENGTH,
+	MAX_STEPS,
+	MAX_WORK,
+} from './grammar';
 
 // Fast native evaluation: an in-process interpreter for a closed subset of
 // the expression grammar.
@@ -160,7 +166,7 @@ function copyResult(value: unknown): unknown {
 }
 
 function evalCompiled(compiled: CompiledExpression, data: IWorkflowDataProxyData): unknown {
-	const env: Env = { data, param: undefined, steps: 0 };
+	const env = createEnv(data);
 
 	if (compiled.isWholeValue) {
 		const code = compiled.chunks[1];

@@ -7,6 +7,7 @@ import {
 	MAX_DEPTH,
 	MAX_RESULT_LENGTH,
 	MAX_STEPS,
+	MAX_WORK,
 	NUMBER_METHODS,
 	STRING_METHODS,
 	hasOwn,
@@ -27,15 +28,28 @@ import {
 
 /**
  * One evaluation's state: the data proxy, the value bound to the callback
- * parameter while a body runs, and the callback steps spent so far. Only one
- * callback is ever in scope (a nested one is unrepresentable), so a single
- * slot holds the parameter, and the step budget is shared by every iterate
- * node of the expression.
+ * parameter while a body runs, and the step and work budgets spent so far.
+ * Only one callback is ever in scope (a nested one is unrepresentable), so a
+ * single slot holds the parameter, and both budgets are shared by every node
+ * of the expression.
  */
 export interface Env {
 	data: IWorkflowDataProxyData;
 	param: unknown;
 	steps: number;
+	work: number;
+}
+
+export const createEnv = (data: IWorkflowDataProxyData): Env => ({
+	data,
+	param: undefined,
+	steps: 0,
+	work: 0,
+});
+
+function charge(env: Env, units: number): void {
+	env.work += units;
+	if (env.work > MAX_WORK) throw new EngineFallbackError();
 }
 
 /**
@@ -178,9 +192,10 @@ function isAllowedArgument(method: string, arg: unknown): boolean {
  * interrupted, so the input size is the budget. A receiver above the result
  * cap goes to the engine before any work is done, and the amplifying methods
  * (which can allocate far beyond MAX_RESULT_LENGTH before bounded() sees the
- * result) bail on an upper bound of their output.
+ * result) bail on an upper bound of their output. Returns that bound, which
+ * the caller charges against the expression's work budget.
  */
-function assertPreflightSize(receiver: unknown, method: string, args: unknown[]): void {
+function preflightSize(receiver: unknown, method: string, args: unknown[]): number {
 	let upperBound = typeof receiver === 'number' ? 0 : (receiver as { length: number }).length;
 
 	if (method === 'concat') {
@@ -218,6 +233,8 @@ function assertPreflightSize(receiver: unknown, method: string, args: unknown[])
 	if (upperBound > MAX_RESULT_LENGTH) {
 		throw new EngineFallbackError();
 	}
+
+	return upperBound;
 }
 
 /**
@@ -344,7 +361,7 @@ function evalCall(node: Extract<SimpleNode, { kind: 'call' }>, env: Env): unknow
 		if (STRINGIFIES_ELEMENTS.has(node.method)) assertPrimitiveElements(receiver);
 		if (node.method === 'concat') assertConcatWeight(receiver, args);
 	}
-	assertPreflightSize(receiver, node.method, args);
+	charge(env, preflightSize(receiver, node.method, args));
 
 	return bounded(method.apply(receiver, args));
 }
@@ -352,7 +369,7 @@ function evalCall(node: Extract<SimpleNode, { kind: 'call' }>, env: Env): unknow
 /**
  * `some`/`every`/`find`/`filter`/`map` with a callback body. The native
  * method drives the iteration; the body runs per element with the element
- * bound to the parameter, under the shared step budget. map is the one
+ * bound to the parameter, under the shared step and work budgets. map is the one
  * method whose result is new content per element, so it is bounded by the
  * content weight of its results the way concat is bounded by its operands.
  */
@@ -366,7 +383,7 @@ function evalIterate(node: Extract<SimpleNode, { kind: 'iterate' }>, env: Env): 
 	const method = ITERATOR_NATIVES.get(node.method);
 	if (method === undefined) throw new EngineFallbackError();
 
-	assertPreflightSize(receiver, node.method, []);
+	charge(env, preflightSize(receiver, node.method, []));
 
 	let weight = 0;
 	const visit = (element: unknown) => {
@@ -437,7 +454,13 @@ function evalBinary(node: Extract<SimpleNode, { kind: 'binary' }>, env: Env): un
 		throw new EngineFallbackError();
 	}
 
-	return binaryOps[node.op](left, right);
+	const result = binaryOps[node.op](left, right);
+
+	// `+` is the one operator that allocates; a body concatenating a payload
+	// string per element repeats that allocation.
+	if (typeof result === 'string') charge(env, result.length);
+
+	return result;
 }
 
 function evalLogical(node: Extract<SimpleNode, { kind: 'logical' }>, env: Env): unknown {

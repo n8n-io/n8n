@@ -187,6 +187,13 @@ export const MAX_RESULT_LENGTH = 1_000_000;
 // (a replaceAll per element) repeat a million times on the main thread.
 export const MAX_STEPS = 100_000;
 
+// Characters one expression may put through its method calls and string
+// concatenations in total. The step cap bounds visits, not the work one
+// visit does (a body can scan a MAX_RESULT_LENGTH string per element); this
+// bounds the product, in units the interpreter already computes, so it does
+// not depend on the clock or the machine.
+export const MAX_WORK = 10 * MAX_RESULT_LENGTH;
+
 // Nesting depth of the subset grammar. Parsing and evaluation both recurse
 // once per level, so this keeps a pathological expression off the host stack;
 // real expressions are a handful of levels deep.

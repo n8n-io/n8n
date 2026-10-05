@@ -10,6 +10,7 @@ import {
 	ITERATOR_METHODS,
 	MAX_RESULT_LENGTH,
 	MAX_STEPS,
+	MAX_WORK,
 } from '../src/expressions/native-evaluation';
 import { WorkflowDataProxy } from '../src/workflow-data-proxy';
 import { Expression } from '../src/expression';
@@ -484,6 +485,41 @@ describe('Expression - fast native evaluation parity', () => {
 			expect(
 				nativeOn('{{ $json.half.map(n => n).length + $json.half.map(n => n).length }}', {
 					$json: { half },
+				}),
+			).toEqual({ handled: false });
+		});
+
+		// Visits are cheap to count but not to run: a body can scan or copy a
+		// payload string per element. Method inputs and `+` results are charged
+		// against a work budget, so the loop hands off after a few visits however
+		// many elements there are.
+		test('callback work is budgeted by the characters it touches', () => {
+			const big = 'x'.repeat(MAX_RESULT_LENGTH);
+			const many = new Array<string>(100).fill('y');
+			const visits = Math.ceil(MAX_WORK / MAX_RESULT_LENGTH);
+			expect(
+				nativeOn('{{ $json.many.some(n => $json.big.includes(n)) }}', { $json: { many, big } }),
+			).toEqual({ handled: false });
+			expect(
+				nativeOn('{{ $json.many.some(n => ($json.big + n).length < 0) }}', {
+					$json: { many, big },
+				}),
+			).toEqual({ handled: false });
+			expect(
+				nativeOn('{{ $json.many.some(n => $json.small.includes(n)) }}', {
+					$json: { many, small: 'z' },
+				}),
+			).toEqual({ handled: true, value: false });
+			// The loop's own receiver counts too, so one scan short of the budget
+			// is handled and the budget's worth of scans bails.
+			expect(
+				nativeOn('{{ $json.few.some(n => $json.big.includes(n)) }}', {
+					$json: { few: many.slice(0, visits - 1), big },
+				}),
+			).toEqual({ handled: true, value: false });
+			expect(
+				nativeOn('{{ $json.few.some(n => $json.big.includes(n)) }}', {
+					$json: { few: many.slice(0, visits), big },
 				}),
 			).toEqual({ handled: false });
 		});
