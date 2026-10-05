@@ -1,6 +1,6 @@
 import { BaseRepository, dbNowLiteral, TransactionRunner } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { DataSource, type EntityManager } from '@n8n/typeorm';
+import { DataSource, In, type EntityManager } from '@n8n/typeorm';
 import { isRecord } from '@n8n/utils/is-record';
 import { UnexpectedError } from 'n8n-workflow';
 
@@ -42,7 +42,8 @@ export class AgentBudgetSpendRepository extends BaseRepository<AgentBudgetSpend>
 
 	/** Returns the stored total for a ledger key. A missing key is 0. */
 	async readTotal(key: string): Promise<number> {
-		return await this.readTotalWith(this.managerFor({}), key);
+		const totals = await this.readTotalsWith(this.managerFor({}), [key]);
+		return totals.get(key) ?? 0;
 	}
 
 	/**
@@ -56,25 +57,24 @@ export class AgentBudgetSpendRepository extends BaseRepository<AgentBudgetSpend>
 	): Promise<AgentBudgetSpendTotal[]> {
 		return await this.runInTransaction({}, async (manager) => {
 			const inserted = await this.insertAppliedCall(manager, callId);
-			if (!inserted) {
-				const totals: AgentBudgetSpendTotal[] = [];
-				for (const entry of entries) {
-					const totalUsd = await this.readTotalWith(manager, entry.key);
-					totals.push({ key: entry.key, totalUsd, previousUsd: totalUsd });
+			if (inserted) await this.incrementKeys(manager, entries);
+			const stored = await this.readTotalsWith(
+				manager,
+				entries.map((entry) => entry.key),
+			);
+			return entries.map((entry) => {
+				const totalUsd = stored.get(entry.key);
+				if (totalUsd === undefined) {
+					if (inserted) throw new UnexpectedError('Budget spend row is missing after insert');
+					// Replay of a call whose spend never landed: the key has no row yet.
+					return { key: entry.key, totalUsd: 0, previousUsd: 0 };
 				}
-				return totals;
-			}
-
-			const totals: AgentBudgetSpendTotal[] = [];
-			for (const entry of entries) {
-				const totalUsd = await this.incrementKey(manager, entry.key, entry.usd);
-				totals.push({
+				return {
 					key: entry.key,
 					totalUsd,
-					previousUsd: previousTotalUsd(totalUsd, entry.usd),
-				});
-			}
-			return totals;
+					previousUsd: inserted ? previousTotalUsd(totalUsd, entry.usd) : totalUsd,
+				};
+			});
 		});
 	}
 
@@ -92,34 +92,45 @@ export class AgentBudgetSpendRepository extends BaseRepository<AgentBudgetSpend>
 	}
 
 	/**
-	 * Adds `usd` to the key and returns the new total.
+	 * Adds each entry's `usd` to its key in one statement.
 	 * The addition runs in SQL so two mains cannot drop each other's update.
-	 * The SQLite driver discards RETURNING rows on INSERT, so the new total is read back here.
+	 * The SQLite driver discards RETURNING rows on INSERT, so the new totals are
+	 * read back in `applySpend`.
 	 */
-	private async incrementKey(manager: EntityManager, key: string, usd: number): Promise<number> {
-		const tableName = this.tableName(manager, AgentBudgetSpend);
-		const table = this.quote(manager, tableName);
+	private async incrementKeys(
+		manager: EntityManager,
+		entries: AgentBudgetSpendEntry[],
+	): Promise<void> {
+		if (entries.length === 0) return;
+		const table = this.quote(manager, this.tableName(manager, AgentBudgetSpend));
 		const keyColumn = this.quote(manager, 'key');
 		const totalColumn = this.quote(manager, 'totalUsd');
 		const createdAtColumn = this.quote(manager, 'createdAt');
 		const updatedAtColumn = this.quote(manager, 'updatedAt');
 		const now = dbNowLiteral(this.isPostgres(manager));
+		// Sort so concurrent writers lock the rows in the same order.
+		const sorted = [...entries].sort((a, b) => a.key.localeCompare(b.key));
+		const values = sorted.map((_, i) => `(:key${i}, :usd${i}, ${now}, ${now})`).join(', ');
 		const sql =
 			`INSERT INTO ${table} (${keyColumn}, ${totalColumn}, ${createdAtColumn}, ${updatedAtColumn}) ` +
-			`VALUES (:key, :usd, ${now}, ${now}) ` +
+			`VALUES ${values} ` +
 			`ON CONFLICT (${keyColumn}) DO UPDATE SET ${totalColumn} = ` +
 			`${table}.${totalColumn} + EXCLUDED.${totalColumn}, ${updatedAtColumn} = ${now}`;
-		await this.execute(manager, sql, { key, usd });
-		const row = await manager.findOneBy(AgentBudgetSpend, { key });
-		if (!row) {
-			throw new UnexpectedError('Budget spend row is missing after insert');
-		}
-		return Number(row.totalUsd);
+		const parameters: Record<string, unknown> = {};
+		sorted.forEach((entry, i) => {
+			parameters[`key${i}`] = entry.key;
+			parameters[`usd${i}`] = entry.usd;
+		});
+		await this.execute(manager, sql, parameters);
 	}
 
-	private async readTotalWith(manager: EntityManager, key: string): Promise<number> {
-		const row = await manager.findOneBy(AgentBudgetSpend, { key });
-		return row ? Number(row.totalUsd) : 0;
+	private async readTotalsWith(
+		manager: EntityManager,
+		keys: string[],
+	): Promise<Map<string, number>> {
+		if (keys.length === 0) return new Map();
+		const rows = await manager.findBy(AgentBudgetSpend, { key: In(keys) });
+		return new Map(rows.map((row) => [row.key, Number(row.totalUsd)]));
 	}
 
 	private async execute(

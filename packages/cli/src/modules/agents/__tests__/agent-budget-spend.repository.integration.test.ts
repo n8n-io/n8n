@@ -53,21 +53,30 @@ describe('AgentBudgetSpendRepository', () => {
 		expect(second).toEqual([{ key, totalUsd: 8.2, previousUsd: 8 }]);
 	});
 
-	it('counts both calls when two writers add to the same key at the same time', async () => {
-		const key = 'thread-1';
+	it('counts both calls when two writers add to the same keys at the same time', async () => {
+		const sessionKey = 'thread-1';
+		const monthKey = 'agent-1:2026-10';
 
-		// Two mains can add spend for the same key at the same time. The atomic
+		// Two mains can add spend for the same keys at the same time. The atomic
 		// upsert must count both. SQLite serializes the two transactions through
 		// the write connection; on Postgres they run as real concurrent transactions.
 		const [first, second] = await Promise.all([
-			repository.applySpend(randomUUID(), [{ key, usd: 1.25 }]),
-			repository.applySpend(randomUUID(), [{ key, usd: 0.75 }]),
+			repository.applySpend(randomUUID(), [
+				{ key: sessionKey, usd: 1.25 },
+				{ key: monthKey, usd: 1.25 },
+			]),
+			repository.applySpend(randomUUID(), [
+				{ key: sessionKey, usd: 0.75 },
+				{ key: monthKey, usd: 0.75 },
+			]),
 		]);
 
-		const results = [...first, ...second];
-		expect(results.filter((r) => r.previousUsd === 0)).toHaveLength(1);
-		expect(results.filter((r) => r.totalUsd === 2)).toHaveLength(1);
-		await expect(repository.readTotal(key)).resolves.toBe(2);
+		for (const key of [sessionKey, monthKey]) {
+			const results = [...first, ...second].filter((r) => r.key === key);
+			expect(results.filter((r) => r.previousUsd === 0)).toHaveLength(1);
+			expect(results.filter((r) => r.totalUsd === 2)).toHaveLength(1);
+			await expect(repository.readTotal(key)).resolves.toBe(2);
+		}
 	});
 
 	it('does not add spend again when callId repeats', async () => {
