@@ -1,3 +1,11 @@
+---
+name: config-eval-playbook
+description: >-
+  Load after config-evals when you need exact `eval-config` action fields,
+  config shapes, or worked examples to list, create, change, run, or remove a
+  config evaluation.
+---
+
 # Config Eval Playbook
 
 Recipes and worked examples for the `eval-config` tool. All actions are

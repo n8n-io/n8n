@@ -191,8 +191,11 @@ export function buildCallPromptCacheOptions(
  * Both breakpoints are added only while the running total of Anthropic
  * `cacheControl` markers stays within the 4-breakpoint limit, so pre-existing
  * caller breakpoints (via `.instructions()` / `Tool.providerOptions()`) are
- * never pushed over the limit and always take priority. No-op for non-Anthropic
- * models or when prompt caching is disabled.
+ * never pushed over the limit and always take priority. Only the first system
+ * message can carry a caller marker; a marker on a later system message is the
+ * runtime's own active-skill marker (see `buildSystemMessages`) and gets the
+ * lowest priority: it stays only if a slot is left after everything else.
+ * No-op for non-Anthropic models or when prompt caching is disabled.
  */
 export function applyRuntimeCacheBreakpoints(params: {
 	system: SystemModelMessage | SystemModelMessage[];
@@ -201,13 +204,18 @@ export function applyRuntimeCacheBreakpoints(params: {
 	promptCaching: PromptCachingConfig | undefined;
 	modelId: string;
 	staticToolCacheName: string | undefined;
-}): { messages: ModelMessage[]; aiTools: ToolSet } {
+}): {
+	system: SystemModelMessage | SystemModelMessage[];
+	messages: ModelMessage[];
+	aiTools: ToolSet;
+} {
 	const { system, messages, aiTools, promptCaching, modelId, staticToolCacheName } = params;
 	if (!isAnthropicMessagesProvider(modelId) || !isEnabledForProvider(promptCaching, 'anthropic')) {
-		return { messages, aiTools };
+		return { system, messages, aiTools };
 	}
 
-	let used = countAnthropicBreakpoints(system, aiTools, messages);
+	const instructions = Array.isArray(system) ? system.slice(0, 1) : system;
+	let used = countAnthropicBreakpoints(instructions, aiTools, messages);
 	const cacheControl = buildAnthropicCacheControl(promptCaching);
 
 	let nextMessages = messages;
@@ -241,8 +249,34 @@ export function applyRuntimeCacheBreakpoints(params: {
 					providerOptions: mergeProviderOptions(staticTool.providerOptions, cacheControl),
 				},
 			};
+			used++;
 		}
 	}
 
-	return { messages: nextMessages, aiTools: nextTools };
+	return {
+		system: fitLaterSystemBreakpoints(system, used),
+		messages: nextMessages,
+		aiTools: nextTools,
+	};
+}
+
+/** Keeps the runtime's markers on system messages after the first while slots remain. */
+function fitLaterSystemBreakpoints(
+	system: SystemModelMessage | SystemModelMessage[],
+	used: number,
+): SystemModelMessage | SystemModelMessage[] {
+	if (!Array.isArray(system)) return system;
+	let remaining = MAX_ANTHROPIC_CACHE_BREAKPOINTS - used;
+	let changed = false;
+	const fitted = system.map((message, index) => {
+		if (index === 0 || !hasAnthropicCacheControl(message.providerOptions)) return message;
+		if (remaining > 0) {
+			remaining--;
+			return message;
+		}
+		changed = true;
+		const { providerOptions: _marker, ...rest } = message;
+		return rest;
+	});
+	return changed ? fitted : system;
 }

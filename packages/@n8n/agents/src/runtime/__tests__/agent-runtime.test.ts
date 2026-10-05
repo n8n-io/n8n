@@ -17,7 +17,12 @@ import type { RuntimeSkillSource } from '../../skills/types';
 import type { CheckpointStore, ModelConfig, SerializableAgentState } from '../../types';
 import { AgentEvent } from '../../types/runtime/event';
 import type { AgentEventData } from '../../types/runtime/event';
-import type { ExecutionOptions, GenerateResult, StreamChunk } from '../../types/sdk/agent';
+import type {
+	ExecutionOptions,
+	GenerateResult,
+	PromptCachingConfig,
+	StreamChunk,
+} from '../../types/sdk/agent';
 import type {
 	GuardrailDecision,
 	GuardrailsOptions,
@@ -33,7 +38,7 @@ import type {
 import type { BuiltTelemetry } from '../../types/telemetry';
 import { Workspace, getToolResultRunDirectory } from '../../workspace';
 import { createBudgetGuardrail, InMemorySpendLedger } from '../guardrails/budget-guardrail';
-import { AgentRuntime } from '../loop/agent-runtime';
+import { AgentRuntime, type AgentRuntimeConfig } from '../loop/agent-runtime';
 import { InMemoryMemory } from '../memory/memory-store';
 import { OBSERVATION_CONTINUATION_REMINDER } from '../model/message-list';
 import { AgentEventBus } from '../state/event-bus';
@@ -8480,6 +8485,8 @@ describe('AgentRuntime — mid-run observation', () => {
 			deferredTools?: BuiltTool[];
 			checkpointStorage?: CheckpointStore;
 			model?: ModelConfig;
+			promptCaching?: PromptCachingConfig;
+			instructionProviderOptions?: AgentRuntimeConfig['instructionProviderOptions'];
 		},
 	): AgentRuntime {
 		return new AgentRuntime({
@@ -8489,6 +8496,10 @@ describe('AgentRuntime — mid-run observation', () => {
 			memory,
 			tools: extra?.tools ?? [makeStepTool()],
 			deferredTools: extra?.deferredTools,
+			...(extra?.promptCaching ? { promptCaching: extra.promptCaching } : {}),
+			...(extra?.instructionProviderOptions
+				? { instructionProviderOptions: extra.instructionProviderOptions }
+				: {}),
 			...(extra?.skillSource ? { skillSource: extra.skillSource } : {}),
 			...(extra?.checkpointStorage ? { checkpointStorage: extra.checkpointStorage } : {}),
 			observationalMemory: {
@@ -8601,6 +8612,91 @@ describe('AgentRuntime — mid-run observation', () => {
 			'Wait for a real execution',
 		);
 		expect(JSON.stringify(capturedCall(2).messages)).not.toContain('Wait for a real execution');
+	});
+
+	it('keeps an Anthropic call within 4 cache breakpoints when a skill falls back into the system prompt', async () => {
+		const source = createRuntimeSkillSource([
+			{
+				id: 'builder',
+				name: 'builder',
+				description: 'Build workflows.',
+				instructions: 'Wait for a real execution before extending the workflow.',
+			},
+		]);
+		const callerMarked = (name: string): BuiltTool => ({
+			...makeMockTool(name, async () => await Promise.resolve({ done: true })),
+			providerOptions: { anthropic: { cacheControl: { type: 'ephemeral' } } },
+		});
+		const runtime = buildMidRunRuntime(new InMemoryMemory(), {
+			model: 'anthropic/claude-sonnet-4-5',
+			promptCaching: { enabled: true },
+			skillSource: source,
+			tools: [
+				...createRuntimeSkillTools(source),
+				callerMarked('marked_a'),
+				callerMarked('marked_b'),
+				callerMarked('marked_c'),
+			],
+		});
+		generateText
+			.mockResolvedValueOnce(
+				makeGenerateWithToolCall('load-builder', 'load_skill', { skillId: 'builder' }),
+			)
+			.mockResolvedValueOnce(makeGenerateSuccess('Please test the first workflow.'));
+
+		await runtime.generate('Build it', { persistence: PERSISTENCE });
+		await runtime.dispose();
+
+		const call = capturedCall(1);
+		expect(flattenInstructions(call.instructions)).toContain('<active_skills>');
+		const isMarked = (entry: unknown) =>
+			JSON.stringify((entry as { providerOptions?: unknown }).providerOptions ?? {}).includes(
+				'cacheControl',
+			);
+		const systemMessages = Array.isArray(call.instructions)
+			? call.instructions
+			: [call.instructions];
+		const markers =
+			systemMessages.filter(isMarked).length +
+			Object.values(call.tools).filter(isMarked).length +
+			call.messages.filter(isMarked).length;
+		expect(markers).toBe(4);
+	});
+
+	it('does not copy caller cache markers onto the skill message for providers the runtime does not budget', async () => {
+		const source = createRuntimeSkillSource([
+			{
+				id: 'builder',
+				name: 'builder',
+				description: 'Build workflows.',
+				instructions: 'Wait for a real execution before extending the workflow.',
+			},
+		]);
+		const callerMarker = { anthropic: { cacheControl: { type: 'ephemeral' } } };
+		const runtime = buildMidRunRuntime(new InMemoryMemory(), {
+			model: 'openrouter/anthropic/claude-sonnet-4.5',
+			promptCaching: { enabled: true },
+			instructionProviderOptions: callerMarker,
+			skillSource: source,
+			tools: createRuntimeSkillTools(source),
+		});
+		generateText
+			.mockResolvedValueOnce(
+				makeGenerateWithToolCall('load-builder', 'load_skill', { skillId: 'builder' }),
+			)
+			.mockResolvedValueOnce(makeGenerateSuccess('Please test the first workflow.'));
+
+		await runtime.generate('Build it', { persistence: PERSISTENCE });
+		await runtime.dispose();
+
+		const instructions = capturedCall(1).instructions as Array<{
+			content: string;
+			providerOptions?: unknown;
+		}>;
+		expect(instructions[0]).toMatchObject({ providerOptions: callerMarker });
+		const skillMessage = instructions.find((entry) => entry.content.includes('<active_skills>'));
+		expect(skillMessage).toBeDefined();
+		expect(skillMessage).not.toHaveProperty('providerOptions');
 	});
 
 	it.each(['load_skill', 'inspect_node'])(
