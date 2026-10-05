@@ -2,15 +2,20 @@
 import {
 	computed,
 	ref,
+	shallowRef,
 	toRef,
 	watch,
 	onMounted,
 	onBeforeUnmount,
 	useTemplateRef,
 	nextTick,
+	useId,
 } from 'vue';
+import Draggable from 'vuedraggable';
 import {
 	N8nAiActivityStepGroup,
+	N8nAiActivityStepButton,
+	N8nAiActivityStepChevron,
 	N8nButton,
 	N8nCallout,
 	N8nIcon,
@@ -19,7 +24,7 @@ import {
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
-import { createReusableTemplate, useDocumentVisibility, useIntervalFn } from '@vueuse/core';
+import { useDocumentVisibility, useIntervalFn } from '@vueuse/core';
 import { useI18n } from '@n8n/i18n';
 import {
 	type AgentChatQueueItem,
@@ -50,6 +55,11 @@ import type {
 import { useAgentTelemetry } from '../composables/useAgentTelemetry';
 import { buildAgentConfigFingerprint } from '../composables/agentTelemetry.utils';
 import { AGENT_SESSION_DETAIL_VIEW, TOOL_CALL_STATE } from '../constants';
+import {
+	isBudgetStopCode,
+	budgetNoticeCodesForField,
+	type BudgetAmountField,
+} from '../utils/budget-config';
 import { TIME } from '@/app/constants/durations';
 import { useAgentBackgroundJobs } from '../composables/useAgentBackgroundJobs';
 import ApprovalCard from './interactive/ApprovalCard.vue';
@@ -65,24 +75,31 @@ const props = withDefaults(
 		agentConfig: AgentJsonConfig | null;
 		agentStatus: 'draft' | 'production';
 		connectedTriggers: string[];
-		canEditAgent?: boolean;
 		canSendToAssistant?: boolean;
 		dismissedFixToolCallIds?: string[];
 		beforeSend?: () => Promise<void> | void;
 		inputDraft?: string;
 		backgroundJobsActive?: boolean;
+		budgetCards?: boolean;
+		/**
+		 * Persists a raised budget cap. Omitted when the user cannot edit the
+		 * agent (or editing is locked) — the notice cards then hide the
+		 * increase action. Resolves true once the new cap is saved.
+		 */
+		increaseBudget?: (payload: { field: BudgetAmountField; amount: number }) => Promise<boolean>;
 	}>(),
 	{
 		visible: true,
 		mode: 'panel',
 		continueSessionId: undefined,
 		newSession: false,
-		canEditAgent: true,
 		canSendToAssistant: false,
 		dismissedFixToolCallIds: () => [],
 		beforeSend: undefined,
 		inputDraft: undefined,
 		backgroundJobsActive: false,
+		budgetCards: false,
+		increaseBudget: undefined,
 	},
 );
 
@@ -110,6 +127,8 @@ const {
 	steerQueuedMessage,
 	removeQueuedMessage,
 	updateQueuedMessage,
+	reorderQueuedMessage,
+	isReorderingQueue,
 	isSubmitting,
 	isLoadingHistory,
 	isStreaming,
@@ -126,6 +145,7 @@ const {
 	cancelAndSteer,
 	dismissFatalError,
 	dismissWarning,
+	clearBudgetNotices,
 } = useAgentChatStream({
 	projectId: toRef(props, 'projectId'),
 	agentId: toRef(props, 'agentId'),
@@ -137,6 +157,7 @@ const {
 		}
 	},
 	onSessionCreated: (sessionId) => emit('session-created', sessionId),
+	budgetCards: props.budgetCards,
 });
 
 const queueEdit = ref<{
@@ -152,9 +173,14 @@ const queueRows = computed(() => {
 	}
 	return queuedMessages.value;
 });
-const [DefineQueueList, QueueList] = createReusableTemplate<{ items: AgentChatQueueItem[] }>({
-	inheritAttrs: false,
-});
+const queueElement = useTemplateRef<HTMLDivElement>('messageQueue');
+const queueListId = useId();
+const queueExpanded = ref(false);
+const queueOrder = shallowRef<AgentChatQueueItem[]>();
+const displayedQueueRows = computed(() => queueOrder.value ?? queueRows.value);
+const visibleQueueRows = computed(() =>
+	queueExpanded.value ? displayedQueueRows.value : displayedQueueRows.value.slice(0, 2),
+);
 const canSaveQueueEdit = computed(() => {
 	const edit = queueEdit.value;
 	return (
@@ -176,10 +202,63 @@ function startQueueEdit(item: AgentChatQueueItem) {
 }
 function isQueueItemBusy(item: AgentChatQueueItem) {
 	return (
+		isReorderingQueue.value ||
 		!!item.steeringExecutionId ||
 		steeringQueueIds.value.has(item.id) ||
 		removingQueueIds.value.has(item.id)
 	);
+}
+function canMoveQueueItem(items: AgentChatQueueItem[], from: number, to: number) {
+	if (queueEdit.value || from === to || !items[from] || !items[to]) return false;
+	return !items.slice(Math.min(from, to), Math.max(from, to) + 1).some(isQueueItemBusy);
+}
+function canDragQueueItem(index: number) {
+	const items = displayedQueueRows.value;
+	return canMoveQueueItem(items, index, index - 1) || canMoveQueueItem(items, index, index + 1);
+}
+function startQueueDrag() {
+	queueOrder.value = [...queueRows.value];
+	queueExpanded.value = true;
+}
+function canDropQueueItem(event: { draggedContext: { index: number; futureIndex: number } }) {
+	const { index, futureIndex } = event.draggedContext;
+	return canMoveQueueItem(displayedQueueRows.value, index, futureIndex);
+}
+function endQueueDrag(event: { oldIndex?: number; newIndex?: number }) {
+	const items = queueOrder.value;
+	queueOrder.value = undefined;
+	if (items && event.oldIndex !== undefined && event.newIndex !== undefined) {
+		void moveQueueItem(items, event.oldIndex, event.newIndex);
+	}
+}
+async function moveQueueItem(items: AgentChatQueueItem[], from: number, to: number) {
+	if (!canMoveQueueItem(items, from, to)) return;
+	const item = items[from];
+	const reordered = [...items];
+	reordered.splice(from, 1);
+	reordered.splice(to, 0, item);
+	queueOrder.value = reordered;
+	queueExpanded.value = true;
+	await reorderQueuedMessage(
+		item.id,
+		items[to].id,
+		items.filter((entry) => !entry.steeringExecutionId).map((entry) => entry.id),
+	);
+	if (queueOrder.value !== reordered) return;
+	queueOrder.value = undefined;
+	await nextTick();
+	queueElement.value
+		?.querySelector<HTMLButtonElement>(
+			`[data-queue-id="${item.id}"] [data-testid="agent-queue-drag-handle"]:not(:disabled)`,
+		)
+		?.focus();
+}
+function onQueueHandleKeydown(event: KeyboardEvent, index: number) {
+	if (queueOrder.value || !['ArrowUp', 'ArrowDown'].includes(event.key)) return;
+	event.preventDefault();
+	event.stopPropagation();
+	const delta = event.key === 'ArrowUp' ? -1 : 1;
+	void moveQueueItem(queueRows.value, index, index + delta);
 }
 async function saveQueueEdit() {
 	const edit = queueEdit.value;
@@ -318,19 +397,24 @@ async function respondToBackgroundApproval(
 	}
 }
 const backgroundJobRows = computed(() =>
-	backgroundJobs.value.map((job) => ({
-		...job,
-		label: locale.baseText(
-			job.kind === 'workflow'
-				? 'agents.chat.backgroundTasks.workflow'
-				: 'agents.chat.backgroundTasks.subagent',
-			{ interpolate: { title: job.title } },
-		),
-		indicator:
-			backgroundJobStatuses.value[
-				job.kind === 'workflow' && job.status === 'running' ? 'waiting' : job.status
-			],
-	})),
+	backgroundJobs.value.flatMap((job) => {
+		if (job.status === 'paused') return [];
+		return [
+			{
+				...job,
+				label: locale.baseText(
+					job.kind === 'workflow'
+						? 'agents.chat.backgroundTasks.workflow'
+						: 'agents.chat.backgroundTasks.subagent',
+					{ interpolate: { title: job.title } },
+				),
+				indicator:
+					backgroundJobStatuses.value[
+						job.kind === 'workflow' && job.status === 'running' ? 'waiting' : job.status
+					],
+			},
+		];
+	}),
 );
 const now = ref(Date.now());
 const documentVisibility = useDocumentVisibility();
@@ -550,8 +634,16 @@ const hasOpenSuspension = computed(
 			(toolCall) => toolCall.state === TOOL_CALL_STATE.SUSPENDED && toolCall.runId,
 		) ?? false,
 );
+const hasBudgetStop = computed(() =>
+	messages.value.some((message) =>
+		message.budgetNotices?.some((notice) => isBudgetStopCode(notice.code)),
+	),
+);
+const canIncreaseBudget = computed(() => props.increaseBudget !== undefined);
+const budgetIncreasePending = ref(false);
 const isSubmissionBlocked = computed(
-	() => isPreparingToSend.value || isSubmitting.value || isLoadingHistory.value,
+	() =>
+		isPreparingToSend.value || isSubmitting.value || isLoadingHistory.value || hasBudgetStop.value,
 );
 // Tools still pending/running after the stream ended (desync): the backend
 // finished but their terminal events never arrived. Surfacing Stop here lets
@@ -604,6 +696,8 @@ watch(
 	() => {
 		queuedExternalMessage = undefined;
 		queueEdit.value = undefined;
+		queueExpanded.value = false;
+		queueOrder.value = undefined;
 	},
 );
 
@@ -674,6 +768,39 @@ async function onSubmit(): Promise<SubmitResult> {
 	}
 }
 
+/**
+ * Drops the stop notices a persisted cap change resolves. Call only after the
+ * new cap is saved: a failed or skipped save must keep the stop card up and
+ * Send blocked, because the next run would stop against the old cap again.
+ */
+function clearBudgetStops(fields: BudgetAmountField[]) {
+	clearBudgetNotices(new Set(fields.flatMap(budgetNoticeCodesForField)));
+}
+
+async function onIncreaseBudget(payload: { field: BudgetAmountField; amount: number }) {
+	if (!props.increaseBudget || budgetIncreasePending.value) return;
+	// The save outlives this panel. A session switch reuses the instance, and
+	// clearing then would drop the new session's stop and unblock its Send.
+	const target = {
+		projectId: props.projectId,
+		agentId: props.agentId,
+		continueSessionId: props.continueSessionId,
+	};
+	budgetIncreasePending.value = true;
+	try {
+		const saved = await props.increaseBudget(payload);
+		const stillCurrent =
+			!disposed &&
+			props.projectId === target.projectId &&
+			props.agentId === target.agentId &&
+			props.continueSessionId === target.continueSessionId;
+		if (!saved || !stillCurrent) return;
+		clearBudgetStops([payload.field]);
+	} finally {
+		budgetIncreasePending.value = false;
+	}
+}
+
 function sendMessageFromOutside(message: string) {
 	queuedExternalMessage = message;
 	inputText.value = message;
@@ -712,7 +839,7 @@ function getConversationMarkdown(): string {
 		.join('\n\n---\n\n');
 }
 
-defineExpose({ focusInput, getConversationMarkdown, sendMessageFromOutside });
+defineExpose({ focusInput, getConversationMarkdown, sendMessageFromOutside, clearBudgetStops });
 
 onMounted(() => {
 	void loadHistory();
@@ -794,8 +921,11 @@ onBeforeUnmount(() => {
 			:session-id="continueSessionId"
 			:can-send-to-assistant="canSendToAssistant"
 			:dismissed-fix-tool-call-ids="dismissedFixToolCallIds"
+			:can-increase-budget="canIncreaseBudget"
+			:budget-increase-pending="budgetIncreasePending"
 			@resume="resume"
 			@send-to-assistant="emit('send-to-assistant', $event)"
+			@increase-budget="onIncreaseBudget"
 		/>
 
 		<div :class="$style.inputArea">
@@ -914,14 +1044,52 @@ onBeforeUnmount(() => {
 				@stop="stopGenerating"
 				@files-selected="handleFilesSelected"
 			>
-				<template v-if="queueRows.length" #header>
-					<div :class="$style.messageQueue" data-testid="agent-message-queue">
-						<DefineQueueList v-slot="{ items }">
-							<ul :class="[$style.backgroundJobList, $style.queueList]">
-								<li v-for="item in items" :key="item.id" data-testid="agent-queued-message">
+				<template v-if="displayedQueueRows.length" #header>
+					<div ref="messageQueue" :class="$style.messageQueue" data-testid="agent-message-queue">
+						<Draggable
+							:id="queueListId"
+							:model-value="visibleQueueRows"
+							item-key="id"
+							tag="ul"
+							:class="[$style.backgroundJobList, $style.queueList]"
+							:handle="`.${$style.queueDragHandle}:not(:disabled)`"
+							:disabled="!!queueEdit || isReorderingQueue"
+							:move="canDropQueueItem"
+							:ghost-class="$style.queueGhost"
+							:drag-class="$style.queueDragging"
+							@start="startQueueDrag"
+							@end="endQueueDrag"
+						>
+							<template #item="{ element: item, index }">
+								<li :data-queue-id="item.id" data-testid="agent-queued-message">
+									<N8nTooltip
+										:content="locale.baseText('agents.chat.queue.reorderTooltip')"
+										:disabled="!canDragQueueItem(index)"
+										placement="top"
+									>
+										<N8nButton
+											icon-only
+											variant="ghost"
+											size="xsmall"
+											:class="$style.queueDragHandle"
+											:disabled="!canDragQueueItem(index)"
+											:aria-label="
+												locale.baseText('agents.chat.queue.reorder', {
+													interpolate: { position: index + 1, count: displayedQueueRows.length },
+												})
+											"
+											aria-keyshortcuts="ArrowUp ArrowDown"
+											data-testid="agent-queue-drag-handle"
+											@keydown="onQueueHandleKeydown($event, index)"
+										>
+											<template #icon>
+												<N8nIcon icon="grip-vertical" size="large" aria-hidden="true" />
+											</template>
+										</N8nButton>
+									</N8nTooltip>
 									<div :class="$style.queuePreview" :title="item.message">
 										<N8nInput
-											v-if="queueEdit?.item.id === item.id"
+											v-if="queueEdit && queueEdit.item.id === item.id"
 											v-model="queueEdit.text"
 											type="textarea"
 											size="small"
@@ -933,7 +1101,7 @@ onBeforeUnmount(() => {
 										/>
 										<span v-else-if="item.message">{{ item.message }}</span>
 										<p
-											v-if="queueEdit?.item.id === item.id && queueEdit.unavailable"
+											v-if="queueEdit && queueEdit.item.id === item.id && queueEdit.unavailable"
 											:class="$style.queueEditNotice"
 											role="status"
 										>
@@ -957,7 +1125,7 @@ onBeforeUnmount(() => {
 										}}</span>
 									</div>
 									<div :class="$style.queueActions">
-										<template v-if="queueEdit?.item.id === item.id">
+										<template v-if="queueEdit && queueEdit.item.id === item.id">
 											<N8nTooltip
 												:content="locale.baseText('agents.chat.queue.save')"
 												:disabled="!canSaveQueueEdit"
@@ -1053,25 +1221,28 @@ onBeforeUnmount(() => {
 										</template>
 									</div>
 								</li>
-							</ul>
-						</DefineQueueList>
-						<QueueList :items="queueRows.slice(0, 2)" />
-						<N8nAiActivityStepGroup
-							v-if="queueRows.length > 2"
-							:key="continueSessionId"
-							:label="
+							</template>
+						</Draggable>
+						<N8nAiActivityStepButton
+							v-if="displayedQueueRows.length > 2"
+							:aria-expanded="queueExpanded"
+							:aria-controls="queueListId"
+							:disabled="!!queueOrder"
+							full-width
+							@click="queueExpanded = !queueExpanded"
+						>
+							{{
 								queuedMessages.length > 2
 									? locale.baseText('agents.chat.queue.title', {
 											adjustToNumber: queuedMessages.length - 2,
 											interpolate: { count: queuedMessages.length - 2 },
 										})
 									: locale.baseText('agents.chat.queue.edit')
-							"
-							full-width
-							content-position="above"
-						>
-							<QueueList :items="queueRows.slice(2)" />
-						</N8nAiActivityStepGroup>
+							}}
+							<template #suffix>
+								<N8nAiActivityStepChevron :open="queueExpanded" direction="down" />
+							</template>
+						</N8nAiActivityStepButton>
 					</div>
 				</template>
 				<template v-if="attachedFiles.length > 0" #attachments>
@@ -1142,16 +1313,18 @@ onBeforeUnmount(() => {
 }
 
 .messageQueue {
-	--text-color: var(--text-color--subtle);
+	--text-color: light-dark(var(--color--neutral-600), var(--text-color--subtler));
+	--icon-color: var(--color--neutral-400);
 
 	margin: calc(-1 * var(--spacing--2xs)) calc(-1 * var(--spacing--2xs)) 0;
 	background: var(--background--subtle);
 	border-radius: var(--radius--lg) var(--radius--lg) 0 0;
 	border-bottom: var(--border);
+	border-bottom-color: var(--border-color--subtle);
 }
 
 .messageQueue :global(.n8n-icon) {
-	color: light-dark(var(--color--neutral-600), var(--color--neutral-400));
+	color: var(--icon-color);
 }
 
 .backgroundJobDetails {
@@ -1195,11 +1368,16 @@ onBeforeUnmount(() => {
 	font-size: var(--font-size--2xs);
 }
 
+.queueList {
+	max-height: calc(20vh + 2 * var(--height--xl));
+}
+
 .queueList > li {
 	align-items: center;
 	padding-inline: var(--spacing--sm);
 	color: var(--text-color);
 	border-bottom: var(--border);
+	border-bottom-color: var(--border-color--subtle);
 	line-height: var(--line-height--md);
 }
 
@@ -1219,6 +1397,30 @@ onBeforeUnmount(() => {
 	display: flex;
 	align-self: center;
 	flex-shrink: 0;
+}
+
+.queueDragHandle {
+	flex-shrink: 0;
+	cursor: grab;
+	touch-action: none;
+
+	&:active {
+		cursor: grabbing;
+	}
+
+	&:disabled {
+		cursor: default;
+	}
+}
+
+.queueGhost {
+	opacity: 0.4;
+}
+
+.queueDragging {
+	background: var(--background--subtle);
+	box-shadow: var(--shadow--sm);
+	cursor: grabbing;
 }
 
 .queueEditNotice {

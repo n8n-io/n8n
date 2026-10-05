@@ -217,7 +217,7 @@ describe('computeLineStats', () => {
 			['*.snap extension', 'src/foo.snap'],
 			['fixtures/ directory', 'src/fixtures/data.json'],
 			['__mocks__/ directory', 'src/__mocks__/axios.ts'],
-			['packages/testing/**', 'packages/testing/playwright/spec.ts'],
+			['packages/quality/**', 'packages/quality/testing/playwright/spec.ts'],
 			['dot-directory *.test.mjs', '.github/scripts/owners/owners.test.mjs'],
 		]) {
 			it(`classifies ${label} as testFiles`, () => {

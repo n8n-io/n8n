@@ -385,7 +385,9 @@ export class StreamSink implements RunOutputSink<void> {
 
 		const aiFinishReason = await settle(result.finishReason);
 		const usage = await settle(result.usage);
+		// oxlint-disable-next-line typescript/no-deprecated
 		const providerMetadata = await settle(result.providerMetadata);
+		// oxlint-disable-next-line typescript/no-deprecated
 		const response = await settle(result.response);
 		const newMessages = fromAiMessages(response.messages);
 		const errorReason = classifyModelTurnError({
@@ -452,7 +454,7 @@ export class StreamSink implements RunOutputSink<void> {
 		const costUsage = this.services.applyCost(emission.usage);
 		await this.guard.write({
 			type: 'finish',
-			finishReason: 'tool-calls',
+			finishReason: emission.finishReason ?? 'tool-calls',
 			...(costUsage && { usage: costUsage }),
 			model: this.services.modelId,
 		});

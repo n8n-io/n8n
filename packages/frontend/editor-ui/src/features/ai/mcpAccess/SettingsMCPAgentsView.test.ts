@@ -86,7 +86,7 @@ describe('SettingsMCPAgentsView', () => {
 				autoExposeNewWorkflows: false,
 			},
 		};
-		settingsStore.isModuleActive.mockReturnValue(true);
+		settingsStore.isAgentsEnabled = true;
 
 		mockAgentPages();
 	});
@@ -111,8 +111,8 @@ describe('SettingsMCPAgentsView', () => {
 		expect(mcpStore.fetchAgentsAvailableForMCPPage).not.toHaveBeenCalled();
 	});
 
-	it('should redirect to the MCP settings view when the agents module is inactive', async () => {
-		settingsStore.isModuleActive.mockReturnValue(false);
+	it('should redirect to the MCP settings view when agents are disabled', async () => {
+		settingsStore.isAgentsEnabled = false;
 
 		createComponent({ pinia });
 		await nextTick();
@@ -220,7 +220,7 @@ describe('SettingsMCPAgentsView', () => {
 			);
 		});
 
-		it('should remove MCP access for bulk-selected agents and refresh the table', async () => {
+		it('should disable MCP access for bulk-selected agents and refresh the table', async () => {
 			const { getByTestId } = createComponent({ pinia });
 			await nextTick();
 			mcpStore.fetchAgentsAvailableForMCPPage.mockClear();

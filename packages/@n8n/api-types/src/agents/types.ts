@@ -441,6 +441,11 @@ export interface AgentSessionLangSmithExportResponse {
  * it for one agent, `applyFilters` for the `availableInChat` list filter.
  */
 export const N8N_CHAT_INTEGRATION_TYPE = 'n8n_chat' as const;
+/**
+ * Multivariate PostHog flag for the agents' n8n Chat surfaces. Every variant
+ * except `control` turns them on.
+ */
+export const AGENTS_N8N_CHAT_FLAG = '125_agents_n8n_chat';
 /** Fixed tool names for the implicit in-app chat integration (no credential suffixes). */
 export const N8N_CHAT_ACTION_TOOL_NAME = 'chat_action' as const;
 export const N8N_CHAT_CONTEXT_TOOL_NAME = 'chat_context' as const;

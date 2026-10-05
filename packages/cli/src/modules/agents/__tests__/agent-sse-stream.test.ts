@@ -264,16 +264,31 @@ describe('agent-sse-stream — stream completion', () => {
 		]);
 	});
 
-	it('leaves completion delivery to the caller when it receives a finish chunk', async () => {
+	it('forwards the finish reason and leaves completion delivery to the caller', async () => {
 		const events = await collectEvents([
 			{ type: 'text-delta', id: 't-1', delta: 'hello' },
 			{ type: 'text-end', id: 't-1' },
-			{ type: 'finish', finishReason: 'stop' },
+			{
+				type: 'finish',
+				finishReason: 'stop',
+				usage: { promptTokens: 1, completionTokens: 1, totalTokens: 2 },
+			},
 		]);
 
 		expect(events).toEqual([
 			{ type: 'text-delta', id: 't-1', delta: 'hello' },
 			{ type: 'text-end', id: 't-1' },
+			{ type: 'finish', finishReason: 'stop' },
+		]);
+	});
+
+	it('forwards the guardrail code when a hook stopped the run', async () => {
+		const events = await collectEvents([
+			{ type: 'finish', finishReason: 'guardrail', guardrail: { code: 'budget.session' } },
+		]);
+
+		expect(events).toEqual([
+			{ type: 'finish', finishReason: 'guardrail', guardrail: { code: 'budget.session' } },
 		]);
 	});
 
@@ -316,6 +331,7 @@ describe('agent-sse-stream — stream completion', () => {
 					input: { question: 'Second question' },
 				},
 			},
+			{ type: 'finish', finishReason: 'other' },
 		]);
 	});
 });

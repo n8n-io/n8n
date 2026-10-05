@@ -143,6 +143,12 @@
 		"@n8n/mcp-browser#lint": {
 			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
 		},
+		"@n8n/node-cli#lint": {
+			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
+		},
+		"@n8n/node-engine-compatibility#lint": {
+			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
+		},
 		"@n8n/n8n-benchmark#lint": {
 			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
 		},
@@ -165,6 +171,9 @@
 			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
 		},
 		"@n8n/telemetry#lint": {
+			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
+		}
+		"@n8n/test-impact#lint": {
 			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
 		},
 		"@n8n/workflow-sdk#lint": {

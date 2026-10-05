@@ -59,6 +59,7 @@ import type {
 } from '@/modules/type-availability-policies/policy-rule.types';
 import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';
+import { OwnershipService } from '@/services/ownership.service';
 
 import { EventRelay } from './event-relay';
 import { Telemetry } from '../../telemetry';
@@ -204,6 +205,7 @@ export class TelemetryEventRelay extends EventRelay {
 		private readonly loadNodesAndCredentials: LoadNodesAndCredentials,
 		// Experiment cleanup: remove with emptyCanvasGroups (121_empty_canvas_groups).
 		private readonly postHogClient: PostHogClient,
+		private readonly ownershipService: OwnershipService,
 	) {
 		super(eventService);
 	}
@@ -1589,6 +1591,7 @@ export class TelemetryEventRelay extends EventRelay {
 			runData.status = 'canceled';
 		}
 
+		// oxlint-disable-next-line typescript/no-deprecated
 		telemetryProperties.success = !!runData?.finished;
 
 		// const executionStatus: ExecutionStatus = runData?.status ?? 'unknown';
@@ -1765,6 +1768,7 @@ export class TelemetryEventRelay extends EventRelay {
 
 		const isS3Selected = this.binaryDataConfig.mode === 's3';
 		const isS3Available = this.binaryDataConfig.availableModes.includes('s3');
+		// oxlint-disable-next-line typescript/no-deprecated
 		const isS3Licensed = this.license.isBinaryDataS3Licensed();
 		const authenticationMethod = config.getEnv('userManagement.authenticationMethod');
 		const dbVersion = await this.dbConnection.getDbVersion();
@@ -1845,10 +1849,37 @@ export class TelemetryEventRelay extends EventRelay {
 			},
 		};
 
-		const versionParts = getSemanticVersioning(N8N_VERSION);
+		const firstWorkflow = await this.workflowRepository.findOne({
+			select: ['createdAt'],
+			order: { createdAt: 'ASC' },
+			where: {},
+		});
 
-		// Instance information available at group level on PostHog & Rudderstack
-		const telemetryInstanceInfo = {
+		const instanceGroupFacts = await this.getInstanceGroupFacts();
+
+		// Inject instance info on telemetry instance group. PostHog refuses a group
+		// update with no real person behind it, so it gets the owner once setup is done.
+		this.telemetry.groupIdentify({
+			traits: instanceGroupFacts,
+			postHog: { userId: await this.getInstanceOwnerId(), traits: instanceGroupFacts },
+		});
+
+		this.telemetry.identify(info);
+		this.telemetry.track(TELEMETRY_EVENT.INSTANCE.INSTANCE_STARTED, {
+			...info,
+			earliest_workflow_created: firstWorkflow?.createdAt,
+			otel,
+			settings_managed_by_env_vars: settingsManagedByEnvVars,
+		});
+	}
+
+	// Instance information available at group level on PostHog & Rudderstack
+	private async getInstanceGroupFacts() {
+		const versionParts = getSemanticVersioning(N8N_VERSION);
+		const authenticationMethod = config.getEnv('userManagement.authenticationMethod');
+		const dbVersion = await this.dbConnection.getDbVersion();
+
+		return this.telemetry.sanitizeTelemetryProperties({
 			// Main instance settings
 			n8n_host: this.globalConfig.host,
 			version_cli: N8N_VERSION,
@@ -1889,26 +1920,14 @@ export class TelemetryEventRelay extends EventRelay {
 			smtp_set_up: this.globalConfig.userManagement.emails.mode === 'smtp',
 			ldap_allowed: authenticationMethod === 'ldap',
 			saml_enabled: authenticationMethod === 'saml',
-		};
-
-		const firstWorkflow = await this.workflowRepository.findOne({
-			select: ['createdAt'],
-			order: { createdAt: 'ASC' },
-			where: {},
 		});
+	}
 
-		// Inject instance info on telemetry instance group
-		this.telemetry.groupIdentify({
-			traits: this.telemetry.sanitizeTelemetryProperties(telemetryInstanceInfo),
-		});
+	/** Owner user ID once setup is complete, `undefined` while only the placeholder owner row exists. */
+	private async getInstanceOwnerId() {
+		if (!(await this.ownershipService.hasInstanceOwner())) return undefined;
 
-		this.telemetry.identify(info);
-		this.telemetry.track(TELEMETRY_EVENT.INSTANCE.INSTANCE_STARTED, {
-			...info,
-			earliest_workflow_created: firstWorkflow?.createdAt,
-			otel,
-			settings_managed_by_env_vars: settingsManagedByEnvVars,
-		});
+		return (await this.ownershipService.getInstanceOwner()).id;
 	}
 
 	private async getOtelTelemetryInfo() {
@@ -1998,9 +2017,11 @@ export class TelemetryEventRelay extends EventRelay {
 	}
 
 	private async instanceOwnerSetup({ userId }: RelayEventMap['instance-owner-setup']) {
-		// Attach owner to instance group on telemetry
+		// Attach owner to instance group on telemetry. PostHog also gets the instance
+		// facts now: the startup update skipped them while no owner existed.
 		this.telemetry.groupIdentify({
 			userId,
+			postHog: { userId, traits: await this.getInstanceGroupFacts() },
 		});
 
 		this.telemetry.track('Owner finished instance setup', { user_id: userId });

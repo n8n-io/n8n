@@ -149,6 +149,7 @@ import { useActivityDetection } from '@/app/composables/useActivityDetection';
 import { useCollaborationStore } from '@/features/collaboration/collaboration/collaboration.store';
 import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import { useUnusableWorkflowCredentials } from '@/features/credentials/composables/useUnusableWorkflowCredentials';
 
 import {
 	N8nCallout,
@@ -1273,7 +1274,32 @@ const isExecutionWaitingForWebhook = computed(
 	() => workflowExecutionState.value.executionWaitingForWebhook,
 );
 
+const { reason: unusableCredentialReason } = useUnusableWorkflowCredentials(
+	() => workflowDocumentStore.value.usedCredentials,
+	() => workflowDocumentStore.value.allNodes,
+);
+
+/**
+ * Ctrl+Enter reaches `runEntireWorkflow` straight from the canvas keymap, past
+ * the button's own disabled state, so it has to ask the same question. There is
+ * nothing to hover, so the reason is shown as a toast instead of a tooltip.
+ */
+function onRunWorkflowShortcut() {
+	if (unusableCredentialReason.value) {
+		toast.showMessage({ title: unusableCredentialReason.value, type: 'warning' });
+		return;
+	}
+
+	void runEntireWorkflow('main');
+}
+
 const isExecutionDisabled = computed(() => {
+	// A run is checked against the person it acts as, so a credential this user
+	// cannot use stops the workflow. The backend refuses it either way.
+	if (unusableCredentialReason.value) {
+		return true;
+	}
+
 	if (
 		containsChatTriggerNodes.value &&
 		isOnlyChatTriggerNodeActive.value &&
@@ -2199,7 +2225,7 @@ onBeforeUnmount(() => {
 			@copy:nodes="onCopyNodes"
 			@cut:nodes="onCutNodes"
 			@replace:node="onClickReplaceNode"
-			@run:workflow="runEntireWorkflow('main')"
+			@run:workflow="onRunWorkflowShortcut"
 			@save:workflow="onSaveWorkflow"
 			@create:workflow="onCreateWorkflow"
 			@viewport:change="onViewportChange"
@@ -2235,6 +2261,7 @@ onBeforeUnmount(() => {
 				<div :class="$style.executionButtons">
 					<CanvasRunWorkflowButton
 						v-if="isRunWorkflowButtonVisible"
+						:disabled-reason="unusableCredentialReason"
 						:waiting-for-webhook="isExecutionWaitingForWebhook"
 						:disabled="isExecutionDisabled"
 						:executing="isWorkflowRunning"
