@@ -101,10 +101,13 @@ export class GitLabMergeRequestClient {
 		iids: number[],
 	): Promise<GitLabMergeRequest[]> {
 		if (iids.length === 0) return [];
+		// GitLab reads `iids[]=1&iids[]=2`. The default serializer writes
+		// `iids[][0]=1`, which GitLab answers with an empty list.
 		const { body } = await this.request(access, {
 			method: 'GET',
 			path: `projects/${projectId}/merge_requests`,
-			qs: { 'iids[]': iids, per_page: Math.min(iids.length, 100), state: 'all' },
+			qs: { iids, per_page: Math.min(iids.length, 100), state: 'all' },
+			arrayFormat: 'brackets',
 		});
 		const parsed = z.array(mergeRequestSchema).safeParse(body);
 		if (!parsed.success) throw unexpectedResponseError();
@@ -162,8 +165,15 @@ export class GitLabMergeRequestClient {
 			method,
 			path,
 			qs,
+			arrayFormat,
 			body,
-		}: { method: IHttpRequestMethods; path: string; qs?: IDataObject; body?: IDataObject },
+		}: {
+			method: IHttpRequestMethods;
+			path: string;
+			qs?: IDataObject;
+			arrayFormat?: 'brackets';
+			body?: IDataObject;
+		},
 	): Promise<TypedHttpFullResponse<unknown>> {
 		let response;
 		try {
@@ -171,6 +181,7 @@ export class GitLabMergeRequestClient {
 				method,
 				url: apiUrl(access.baseUrl, path),
 				qs,
+				arrayFormat,
 				body,
 				headers: { 'PRIVATE-TOKEN': access.accessToken },
 				json: true,

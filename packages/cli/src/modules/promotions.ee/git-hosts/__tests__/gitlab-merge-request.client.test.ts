@@ -93,7 +93,8 @@ describe('GitLabMergeRequestClient', () => {
 		expect(lastRequest()).toMatchObject({
 			method: 'GET',
 			url: 'https://gitlab.example.com/gitlab/api/v4/projects/7/merge_requests',
-			qs: { 'iids[]': [3, 4], state: 'all' },
+			qs: { iids: [3, 4], state: 'all' },
+			arrayFormat: 'brackets',
 		});
 
 		http.request.mockClear();
