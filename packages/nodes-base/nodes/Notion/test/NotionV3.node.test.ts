@@ -7,6 +7,7 @@ import type {
 	INodeExecutionData,
 	IPairedItemData,
 } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -1112,6 +1113,128 @@ describe('NotionV3', () => {
 			},
 			{},
 		);
+	});
+
+	describe('formula filters Notion cannot type', () => {
+		const formulaError = new NodeApiError(
+			{ name: 'Notion', type: 'n8n-nodes-base.notion', typeVersion: 3 } as INode,
+			{
+				response: {
+					status: 400,
+					data: { message: 'Unable to filter based on a formula of unknown type.' },
+				},
+			},
+		);
+		const birthdayPage = {
+			id: 'birthday',
+			properties: {
+				'Is Birthday ?': { type: 'formula', formula: { type: 'boolean', boolean: true } },
+			},
+		};
+		const otherPage = {
+			id: 'other',
+			properties: { 'Is Birthday ?': { type: 'formula', formula: { type: 'string', string: '' } } },
+		};
+		const deceasedPage = {
+			id: 'deceased',
+			properties: {
+				'Is Birthday ?': { type: 'formula', formula: { type: 'boolean', boolean: false } },
+			},
+		};
+		const formulaCondition = {
+			key: 'Is Birthday ?|formula',
+			type: 'formula',
+			condition: 'equals',
+			returnType: 'checkbox',
+			checkboxValue: true,
+		};
+		const dateCondition = { key: 'Décès|date', type: 'date', condition: 'is_empty' };
+
+		function getAllContext(matchType: string, extra: IDataObject = {}) {
+			return createMockExecuteFunction({
+				resource: 'databasePage',
+				operation: 'getAll',
+				'dataSourceId.value': 'data-source-id',
+				dataSourceId: { __rl: true, mode: 'id', value: 'data-source-id' },
+				returnAll: true,
+				filterType: 'manual',
+				matchType,
+				'filters.conditions': [formulaCondition, dateCondition],
+				options: {},
+				simple: false,
+				...extra,
+			});
+		}
+
+		it('sends the other conditions to Notion and evaluates the formula ones on the results', async () => {
+			mockNotionApiRequestAllItems
+				.mockRejectedValueOnce(formulaError)
+				.mockResolvedValueOnce([birthdayPage, otherPage]);
+
+			const result = await node.execute.call(getAllContext('allFilters'));
+
+			expect(mockNotionApiRequestAllItems).toHaveBeenLastCalledWith(
+				'results',
+				'POST',
+				'/data_sources/data-source-id/query',
+				{ filter: { and: [{ property: 'Décès', date: { is_empty: true } }] } },
+			);
+			expect(result[0].map((item) => item.json.id)).toEqual(['birthday']);
+		});
+
+		it('applies the limit after evaluating the formula conditions', async () => {
+			mockNotionApiRequestAllItems
+				.mockRejectedValueOnce(formulaError)
+				.mockResolvedValueOnce([otherPage, birthdayPage, { ...birthdayPage, id: 'birthday-2' }]);
+
+			const result = await node.execute.call(
+				getAllContext('allFilters', { returnAll: false, limit: 1 }),
+			);
+
+			expect(mockNotionApiRequestAllItems).toHaveBeenLastCalledWith(
+				'results',
+				'POST',
+				'/data_sources/data-source-id/query',
+				{ filter: { and: [{ property: 'Décès', date: { is_empty: true } }] } },
+			);
+			expect(result[0].map((item) => item.json.id)).toEqual(['birthday']);
+		});
+
+		it('keeps pages matching either a formula or another condition with any filter', async () => {
+			mockNotionApiRequestAllItems
+				.mockRejectedValueOnce(formulaError)
+				.mockResolvedValueOnce([otherPage])
+				.mockResolvedValueOnce([birthdayPage, otherPage, deceasedPage]);
+
+			const result = await node.execute.call(getAllContext('anyFilter'));
+
+			expect(mockNotionApiRequestAllItems).toHaveBeenNthCalledWith(
+				2,
+				'results',
+				'POST',
+				'/data_sources/data-source-id/query',
+				{ filter: { or: [{ property: 'Décès', date: { is_empty: true } }] } },
+			);
+			expect(mockNotionApiRequestAllItems).toHaveBeenNthCalledWith(
+				3,
+				'results',
+				'POST',
+				'/data_sources/data-source-id/query',
+				{},
+			);
+			expect(result[0].map((item) => item.json.id)).toEqual(['birthday', 'other']);
+		});
+
+		it('rethrows other Notion errors', async () => {
+			const otherError = new NodeApiError(
+				{ name: 'Notion', type: 'n8n-nodes-base.notion', typeVersion: 3 } as INode,
+				{ response: { status: 400, data: { message: 'body.filter is invalid' } } },
+			);
+			mockNotionApiRequestAllItems.mockRejectedValueOnce(otherError);
+
+			await expect(node.execute.call(getAllContext('allFilters'))).rejects.toThrow(otherError);
+			expect(mockNotionApiRequestAllItems).toHaveBeenCalledTimes(1);
+		});
 	});
 
 	it('downloads files from data source page results when requested', async () => {

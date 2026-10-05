@@ -7,6 +7,11 @@ import type {
 import { toPathSegment, NodeOperationError, setSafeObjectProperty } from 'n8n-workflow';
 
 import { dataSourceSearchFilterDescriptions, mapDataSourceFilters } from './DataSourceFilters';
+import {
+	isFormulaFilter,
+	isFormulaOfUnknownTypeError,
+	matchesFormulaFilter,
+} from './FormulaFilterFallback';
 import { downloadFiles, type FileRecord } from '../../../shared/GenericFunctions';
 import {
 	getIconFromOptions,
@@ -600,6 +605,57 @@ export async function get(this: IExecuteFunctions, items: INodeExecutionData[]) 
 	return returnData;
 }
 
+async function queryAllPages(this: IExecuteFunctions, endpoint: string, body: IDataObject) {
+	return await notionApiRequestAllItemsV3.call(this, 'results', 'POST', endpoint, body);
+}
+
+/**
+ * Notion refuses to filter on a formula whose result type it cannot determine.
+ * Sends the other conditions to Notion and evaluates the formula ones on the
+ * computed values of the returned pages instead.
+ */
+async function queryWithLocalFormulaFilters(
+	this: IExecuteFunctions,
+	endpoint: string,
+	sorts: unknown,
+	{
+		conditions,
+		matchType,
+		limit,
+	}: { conditions: IDataObject[]; matchType: string; limit?: number },
+) {
+	const timezone = this.getTimezone();
+	const formulaConditions = conditions.filter(isFormulaFilter);
+	const otherConditions = conditions.filter((condition) => !isFormulaFilter(condition));
+	const otherFilter = mapDataSourceFilters(otherConditions, matchType, timezone);
+	const sortBody: IDataObject = sorts ? { sorts } : {};
+
+	let pages: IDataObject[];
+	if (matchType === 'allFilters') {
+		pages = await queryAllPages.call(this, endpoint, {
+			...sortBody,
+			...(otherFilter ? { filter: otherFilter } : {}),
+		});
+		pages = pages.filter((page) =>
+			formulaConditions.every((condition) => matchesFormulaFilter(page, condition, timezone)),
+		);
+	} else {
+		const matchedIds = new Set<unknown>();
+		if (otherFilter) {
+			const matchedPages = await queryAllPages.call(this, endpoint, { filter: otherFilter });
+			for (const page of matchedPages) matchedIds.add(page.id);
+		}
+		pages = await queryAllPages.call(this, endpoint, { ...sortBody });
+		pages = pages.filter(
+			(page) =>
+				matchedIds.has(page.id) ||
+				formulaConditions.some((condition) => matchesFormulaFilter(page, condition, timezone)),
+		);
+	}
+
+	return limit ? pages.slice(0, limit) : pages;
+}
+
 export async function getAll(this: IExecuteFunctions, items: INodeExecutionData[]) {
 	const returnData: INodeExecutionData[] = [];
 	for (let i = 0; i < items.length; i++) {
@@ -632,15 +688,31 @@ export async function getAll(this: IExecuteFunctions, items: INodeExecutionData[
 				body.sorts = mapSorting(sort);
 			}
 			const limit = returnAll ? undefined : this.getNodeParameter('limit', i);
-			if (limit) body.page_size = Math.min(limit, 100);
-			const response: IDataObject[] = await notionApiRequestAllItemsV3.call(
-				this,
-				'results',
-				'POST',
-				`/data_sources/${toPathSegment(dataSourceId)}/query`,
-				body,
-				limit ? { limit } : {},
-			);
+			const queryEndpoint = `/data_sources/${toPathSegment(dataSourceId)}/query`;
+			let response: IDataObject[];
+			try {
+				response = await notionApiRequestAllItemsV3.call(
+					this,
+					'results',
+					'POST',
+					queryEndpoint,
+					limit ? { ...body, page_size: Math.min(limit, 100) } : body,
+					limit ? { limit } : {},
+				);
+			} catch (error) {
+				const conditions =
+					filterType === 'manual'
+						? (this.getNodeParameter('filters.conditions', i, []) as IDataObject[])
+						: [];
+				if (!isFormulaOfUnknownTypeError(error) || !conditions.some(isFormulaFilter)) {
+					throw error;
+				}
+				response = await queryWithLocalFormulaFilters.call(this, queryEndpoint, body.sorts, {
+					conditions,
+					matchType: this.getNodeParameter('matchType', i) as string,
+					limit,
+				});
+			}
 			const download = this.getNodeParameter('options.downloadFiles', i, false) as boolean;
 			const simple = this.getNodeParameter('simple', i) as boolean;
 			let executionData: INodeExecutionData[];
