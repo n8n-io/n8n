@@ -58,12 +58,13 @@ describe('loadRoutingCases', () => {
 			'route-debug-token.json': routingCase('route-debug-token', { accepts: ['clarify:workflow'] }),
 			'route-debug-extra.json': routingCase('route-debug-extra', { expectedToolInvocations: {} }),
 			'route-debug-broken.json': '{',
+			'route-workflow-mislabeled.json': routingCase('route-workflow-mislabeled'),
 		});
 
 		expect(() => loadRoutingCases(dir)).toThrow(
 			expect.objectContaining({
 				message: expect.stringMatching(
-					/route-debug-broken\.json[\s\S]*route-debug-extra\.json: \(root\)[\s\S]*route-debug-renamed\.json: id "route-debug-other" must match[\s\S]*route-debug-token\.json: accepts\.0/,
+					/route-debug-broken\.json[\s\S]*route-debug-extra\.json: \(root\)[\s\S]*route-debug-renamed\.json: id "route-debug-other" must match[\s\S]*route-debug-token\.json: accepts\.0[\s\S]*route-workflow-mislabeled\.json: id: id must start with route-<bucket>-/,
 				),
 			}),
 		);

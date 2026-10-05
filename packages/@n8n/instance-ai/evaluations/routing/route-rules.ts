@@ -34,7 +34,12 @@ const WORKFLOWS_READ_ACTIONS: ReadonlySet<string> = new Set([
 	'validate',
 ]);
 
-const EXECUTIONS_COMMITTING_ACTIONS: ReadonlySet<string> = new Set(['run', 'debug', 'stop']);
+const EXECUTIONS_COMMITTING_ACTIONS: ReadonlySet<string> = new Set([
+	'run',
+	'run-step',
+	'debug',
+	'stop',
+]);
 
 export function actionOf(args: Record<string, unknown>): string | undefined {
 	return typeof args.action === 'string' ? args.action : undefined;

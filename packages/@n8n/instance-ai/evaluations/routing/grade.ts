@@ -98,7 +98,7 @@ function isOneOffAction(call: RoutingToolCall): boolean {
 		case DOMAIN_TOOL_IDS.NODES:
 			return action === 'execute';
 		case DOMAIN_TOOL_IDS.EXECUTIONS:
-			return action === 'run' || action === 'stop';
+			return action === 'run' || action === 'run-step' || action === 'stop';
 		case DOMAIN_TOOL_IDS.DATA_TABLES:
 			return isCommittingDataTablesAction(action);
 		case DOMAIN_TOOL_IDS.WORKFLOWS:
@@ -108,12 +108,21 @@ function isOneOffAction(call: RoutingToolCall): boolean {
 	}
 }
 
+const DEBUG_EXECUTIONS_ACTIONS: ReadonlySet<string> = new Set([
+	'debug',
+	'get',
+	'list',
+	'get-node-output',
+	'get-resolved-node-parameters',
+]);
+
 /** Loading the `debugging-executions` skill alone is not a debug route. */
 function isDebugSignal(call: RoutingToolCall): boolean {
 	const action = actionOf(call.args);
 	return (
 		call.toolName === DOMAIN_TOOL_IDS.EXECUTIONS &&
-		(action === 'debug' || action === 'get' || action === 'list')
+		action !== undefined &&
+		DEBUG_EXECUTIONS_ACTIONS.has(action)
 	);
 }
 

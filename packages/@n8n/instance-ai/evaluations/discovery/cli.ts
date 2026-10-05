@@ -146,6 +146,11 @@ function parseArgs(argv: string[]): CliArgs {
 				break;
 			case '--cases-dir':
 				args.casesDir = argv[++i];
+				// Without a directory the CLI would fall back to the full discovery suite.
+				if (!args.casesDir) {
+					console.error('--cases-dir needs a directory of routing cases.');
+					process.exit(1);
+				}
 				break;
 			case '--stop-on-route':
 				args.stopOnRoute = true;

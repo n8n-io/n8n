@@ -59,7 +59,12 @@ export const routingCaseSchema = z
 			.regex(/^[a-z]{3}$/, 'language must be an ISO 639-3 code, e.g. "eng"')
 			.optional(),
 	})
-	.strict();
+	.strict()
+	// `--filter` matches file names, so the id prefix must name the real bucket.
+	.refine((c) => c.id.startsWith(`route-${c.bucket}-`), {
+		message: 'id must start with route-<bucket>-',
+		path: ['id'],
+	});
 
 export type RoutingCase = z.infer<typeof routingCaseSchema>;
 

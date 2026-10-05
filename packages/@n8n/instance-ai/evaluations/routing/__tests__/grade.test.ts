@@ -113,6 +113,7 @@ describe('resolveRoute', () => {
 		],
 		['data-table row write', [call('data-tables', { action: 'insert-rows' })], 'one-off'],
 		['node execution', [call('nodes', { action: 'execute' })], 'one-off'],
+		['step run', [call('executions', { action: 'run-step' })], 'one-off'],
 		['workflow publish', [call('workflows', { action: 'publish' })], 'one-off'],
 		[
 			'execution read after the debugging skill',
@@ -120,6 +121,12 @@ describe('resolveRoute', () => {
 				call('load_skill', { skillId: 'debugging-executions' }),
 				call('executions', { action: 'get' }),
 			],
+			'debug',
+		],
+		['node output read', [call('executions', { action: 'get-node-output' })], 'debug'],
+		[
+			'resolved parameters read',
+			[call('executions', { action: 'get-resolved-node-parameters' })],
 			'debug',
 		],
 	])('routes %s from the calls alone', async (_name, calls, route) => {
