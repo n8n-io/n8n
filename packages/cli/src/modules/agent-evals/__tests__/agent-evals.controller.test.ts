@@ -101,6 +101,7 @@ describe('AgentEvalsController', () => {
 			rateResult: 'agent:update',
 			cancelRun: 'agent:update',
 			startRun: 'agent:execute',
+			rerunResult: 'agent:execute',
 		} as const;
 
 		it.each(Object.entries(expectedScopes))('%s uses %s', (handlerName, scope) => {
@@ -284,6 +285,20 @@ describe('AgentEvalsController', () => {
 			await controller.rateResult(resultReq(), undefined, payload);
 
 			expect(ratingService.rateResult).toHaveBeenCalledWith(
+				user,
+				AGENT_ID,
+				PROJECT_ID,
+				'res-1',
+				payload,
+			);
+		});
+
+		it('reruns a result scoped to the path agent, forwarding the edited rule', async () => {
+			const payload = { whatToCheck: 'Mentions the refund window.' };
+
+			await controller.rerunResult(resultReq(), undefined, payload);
+
+			expect(service.rerunResult).toHaveBeenCalledWith(
 				user,
 				AGENT_ID,
 				PROJECT_ID,

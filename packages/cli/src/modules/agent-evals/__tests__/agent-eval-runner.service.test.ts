@@ -925,6 +925,42 @@ describe('AgentEvalRunnerService', () => {
 				NotFoundError,
 			);
 		});
+
+		// The checks view has no editable case row of its own — only this
+		// result's own snapshot — so an edited rule is persisted onto it directly,
+		// ahead of the case that reruns using it.
+		it('persists an edited rule onto the snapshot before rerunning, keeping the request text', async () => {
+			evalAgentExecutionService.executeWithLlmMock.mockResolvedValue(successExec() as never);
+			resultRepository.findById.mockResolvedValue(
+				mock<AgentEvalResult>({ ...result, status: 'success' }),
+			);
+
+			await service.rerunResult(result, 'agent-1', 'proj-1', user, {
+				whatToCheck: 'Mentions the refund window.',
+			});
+
+			expect(resultRepository.updateInput).toHaveBeenCalledWith('res-1', {
+				input: 'What is 2+2?',
+				criteria: 'Mentions the refund window.',
+			});
+			expect(evalAgentExecutionService.executeWithLlmMock).toHaveBeenCalledWith(
+				'agent-1',
+				user,
+				{ projectId: 'proj-1' },
+				'What is 2+2?',
+			);
+		});
+
+		it('leaves the snapshot untouched for a plain rerun with no edited rule', async () => {
+			evalAgentExecutionService.executeWithLlmMock.mockResolvedValue(successExec() as never);
+			resultRepository.findById.mockResolvedValue(
+				mock<AgentEvalResult>({ ...result, status: 'success' }),
+			);
+
+			await service.rerunResult(result, 'agent-1', 'proj-1', user);
+
+			expect(resultRepository.updateInput).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('cleanupInterruptedRuns', () => {

@@ -13,6 +13,7 @@ import type {
 	GenerateDraftCasesResult,
 	PreviewRunOptions,
 	PreviewRunResult,
+	RerunResultOptions,
 } from '@n8n/api-types';
 import type { IRestApiContext } from '@n8n/rest-api-client';
 import { makeRestApiRequest } from '@n8n/rest-api-client';
@@ -209,11 +210,13 @@ export const rerunResult = async (
 	projectId: string,
 	agentId: string,
 	resultId: string,
+	options: RerunResultOptions = {},
 ) => {
 	return await makeRestApiRequest<AgentEvalResultRecord>(
 		context,
 		'POST',
 		`${evalsPath(projectId, agentId)}/results/${resultId}/rerun`,
+		options,
 	);
 };
 

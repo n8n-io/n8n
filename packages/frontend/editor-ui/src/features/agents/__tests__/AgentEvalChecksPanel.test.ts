@@ -26,7 +26,7 @@ vi.mock('../components/AgentEvalTryRow.vue', () => ({
 			disabled: { type: Boolean },
 			hideRevise: { type: Boolean },
 		},
-		emits: ['save-check', 'actually-fine', 'rerun-check'],
+		emits: ['save-check', 'actually-fine', 'rerun-check', 'save-what-to-check'],
 		// A plain, testId-free button: a testid built from the row's own (which
 		// starts with the same "agent-eval-check-" every row testid shares) would
 		// match every row-counting `getAllByTestId(/agent-eval-check-/)` query in
@@ -40,6 +40,7 @@ vi.mock('../components/AgentEvalTryRow.vue', () => ({
 			{{ input }}
 			<button @click="$emit('actually-fine')">actually fine</button>
 			<button @click="$emit('rerun-check')">run check</button>
+			<button @click="$emit('save-what-to-check', 'Mentions the refund window.')">save rule</button>
 		</div>`,
 	},
 }));
@@ -268,21 +269,35 @@ describe('AgentEvalChecksPanel', () => {
 		expect(store.rerunResult).not.toHaveBeenCalledWith(expect.anything(), expect.anything(), 'c2');
 	});
 
+	// There is no editable case row here — only the result's own snapshot — so
+	// saving the rule reruns through the same single-result primitive, with the
+	// edited text bundled into the request rather than a separate write.
+	it('reruns that one result with the edited rule when "save rule" is emitted', async () => {
+		const user = userEvent.setup();
+		const { getByTestId, store } = render({
+			results: [result('c1', 'success'), result('c2', 'success')],
+		});
+
+		await user.click(within(getByTestId('agent-eval-check-c1')).getByText('save rule'));
+
+		expect(store.rerunResult).toHaveBeenCalledWith('project-1', 'agent-1', 'c1', {
+			whatToCheck: 'Mentions the refund window.',
+		});
+	});
+
 	it('disables "Run all checks" while a run is already in flight', () => {
 		const { getByTestId } = render({ results: [result('c1', 'running')] }, true);
 
 		expect(getByTestId('agent-eval-checks-run-all')).toHaveAttribute('disabled');
 	});
 
-	it('forwards disabled and hides the no-op Save-check flow on every row', () => {
+	it('forwards disabled to every row', () => {
 		const { getByTestId } = render({
 			results: [result('c1', 'success')],
 			disabled: true,
 		});
 
-		const row = getByTestId('agent-eval-check-c1');
-		expect(row).toHaveAttribute('data-disabled', 'true');
-		expect(row).toHaveAttribute('data-hide-revise', 'true');
+		expect(getByTestId('agent-eval-check-c1')).toHaveAttribute('data-disabled', 'true');
 	});
 
 	// Filtering by status needs the whole run, not just the first loaded page —

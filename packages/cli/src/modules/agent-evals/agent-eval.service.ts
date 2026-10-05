@@ -12,6 +12,7 @@ import type {
 	GenerateDraftCasesResult,
 	PreviewRunOptions,
 	PreviewRunResult,
+	RerunResultOptions,
 	UpdateAgentEvalDatasetPayload,
 } from '@n8n/api-types';
 import { ModuleRegistry } from '@n8n/backend-common';
@@ -239,6 +240,7 @@ export class AgentEvalService {
 		agentId: string,
 		projectId: string,
 		resultId: string,
+		options: RerunResultOptions = {},
 	): Promise<AgentEvalResultRecord> {
 		await this.assertAgentInProject(agentId, projectId);
 		const result = await this.resolveResult(agentId, resultId);
@@ -247,7 +249,7 @@ export class AgentEvalService {
 			throw new BadRequestError(`Agent eval result ${resultId} is already running.`);
 		}
 
-		const updated = await this.runner.rerunResult(result, agentId, projectId, user);
+		const updated = await this.runner.rerunResult(result, agentId, projectId, user, options);
 		return toResultRecord(updated);
 	}
 

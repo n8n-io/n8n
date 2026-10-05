@@ -6,6 +6,7 @@ import {
 	GenerateDraftCasesOptionsDto,
 	PaginationDto,
 	PreviewRunOptionsDto,
+	RerunResultOptionsDto,
 	UpdateAgentEvalDatasetDto,
 	createAgentEvalDatasetSchema,
 	type AgentEvalDatasetRecord,
@@ -234,10 +235,14 @@ export class AgentEvalsController {
 	// case is the same action, just scoped to one of them.
 	@Post('/:agentId/evals/results/:resultId/rerun')
 	@ProjectScope('agent:execute')
-	async rerunResult(req: AuthenticatedRequest<ResultParam>): Promise<AgentEvalResultRecord> {
+	async rerunResult(
+		req: AuthenticatedRequest<ResultParam>,
+		_res: unknown,
+		@Body payload: RerunResultOptionsDto,
+	): Promise<AgentEvalResultRecord> {
 		await this.flagGate.assertEnabled(req.user);
 		const { agentId, projectId, resultId } = req.params;
-		return await this.service.rerunResult(req.user, agentId, projectId, resultId);
+		return await this.service.rerunResult(req.user, agentId, projectId, resultId, payload);
 	}
 
 	// ---- ratings ----

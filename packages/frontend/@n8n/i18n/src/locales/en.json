@@ -7648,6 +7648,7 @@
 	"instanceAi.testAgentPreview.submit": "Submit",
 	"instanceAi.testAgentPreview.inputCorrectionHint": "What should have happened?",
 	"instanceAi.testAgentPreview.rule": "Rule",
+	"instanceAi.testAgentPreview.editRule": "Edit rule",
 	"instanceAi.testAgentPreview.inputCorrectionPlaceholder": "Your suggestion",
 	"instanceAi.testAgentPreview.saveCorrection": "Save check",
 	"instanceAi.testAgentPreview.runCheck": "Run check",

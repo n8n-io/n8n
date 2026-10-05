@@ -275,10 +275,24 @@ describe('AgentEvalService', () => {
 
 				const result = await service.rerunResult(user, AGENT_ID, PROJECT_ID, 'result-1');
 
-				expect(runner.rerunResult).toHaveBeenCalledWith(toRerun, AGENT_ID, PROJECT_ID, user);
+				expect(runner.rerunResult).toHaveBeenCalledWith(toRerun, AGENT_ID, PROJECT_ID, user, {});
 				expect(result.status).toBe('success');
 			},
 		);
+
+		it('forwards an edited rule through to the runner', async () => {
+			const toRerun = makeResult({ status: 'error' });
+			resultRepository.findById.mockResolvedValue(toRerun);
+			runner.rerunResult.mockResolvedValue(makeResult({ status: 'success' }));
+
+			await service.rerunResult(user, AGENT_ID, PROJECT_ID, 'result-1', {
+				whatToCheck: 'Mentions the refund window.',
+			});
+
+			expect(runner.rerunResult).toHaveBeenCalledWith(toRerun, AGENT_ID, PROJECT_ID, user, {
+				whatToCheck: 'Mentions the refund window.',
+			});
+		});
 	});
 
 	describe('createDataset', () => {

@@ -845,6 +845,8 @@ export {
 	CreateDraftDatasetOptionsDto,
 	previewRunOptionsSchema,
 	PreviewRunOptionsDto,
+	rerunResultOptionsSchema,
+	RerunResultOptionsDto,
 } from './schemas/agent-evals.schema';
 export type {
 	AgentEvalColumnMapping,
@@ -871,6 +873,7 @@ export type {
 	CreateDraftDatasetResult,
 	PreviewRunOptions,
 	PreviewRunResult,
+	RerunResultOptions,
 } from './schemas/agent-evals.schema';
 
 export {

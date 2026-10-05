@@ -173,4 +173,90 @@ describe('AgentEvalTryRow', () => {
 			expect(getByTestId('row-run-check')).toHaveAttribute('aria-busy', 'true');
 		});
 	});
+
+	describe('rule editing', () => {
+		const renderWithRule = (overrides: Record<string, unknown> = {}) =>
+			renderComponent({
+				props: { whatToCheck: 'Names the ticket and the priority.', ...overrides },
+			});
+
+		it('shows the rule as plain text with an edit button, not an input', async () => {
+			const user = userEvent.setup();
+			const { getByTestId, queryByTestId } = renderWithRule({ testId: 'row' });
+			await user.click(getByTestId('row-toggle'));
+
+			expect(getByTestId('row')).toHaveTextContent('Names the ticket and the priority.');
+			expect(getByTestId('row-edit-rule')).toBeInTheDocument();
+			expect(queryByTestId('row-rule-input')).not.toBeInTheDocument();
+		});
+
+		it('shows nothing at all when there is no rule', async () => {
+			const user = userEvent.setup();
+			const { getByTestId, queryByTestId } = renderWithRule({ testId: 'row', whatToCheck: null });
+			await user.click(getByTestId('row-toggle'));
+
+			expect(queryByTestId('row-edit-rule')).not.toBeInTheDocument();
+		});
+
+		it('switches to an input pre-filled with the current rule when the edit button is clicked', async () => {
+			const user = userEvent.setup();
+			const { getByTestId, queryByTestId } = renderWithRule({ testId: 'row' });
+			await user.click(getByTestId('row-toggle'));
+
+			await user.click(getByTestId('row-edit-rule'));
+
+			expect(getByTestId('row-rule-input')).toHaveValue('Names the ticket and the priority.');
+			expect(queryByTestId('row-edit-rule')).not.toBeInTheDocument();
+			expect(getByTestId('row-rule-save')).toBeInTheDocument();
+			expect(getByTestId('row-rule-cancel')).toBeInTheDocument();
+		});
+
+		it('emits save-what-to-check with the edited text and returns to plain text', async () => {
+			const user = userEvent.setup();
+			const { getByTestId, queryByTestId, emitted } = renderWithRule({ testId: 'row' });
+			await user.click(getByTestId('row-toggle'));
+			await user.click(getByTestId('row-edit-rule'));
+
+			await user.clear(getByTestId('row-rule-input'));
+			await user.type(getByTestId('row-rule-input'), 'Mentions the refund window.');
+			await user.click(getByTestId('row-rule-save'));
+
+			expect(emitted('save-what-to-check')).toEqual([['Mentions the refund window.']]);
+			expect(queryByTestId('row-rule-input')).not.toBeInTheDocument();
+			expect(getByTestId('row-edit-rule')).toBeInTheDocument();
+		});
+
+		it('discards the edit and emits nothing when "Cancel" is clicked', async () => {
+			const user = userEvent.setup();
+			const { getByTestId, emitted } = renderWithRule({ testId: 'row' });
+			await user.click(getByTestId('row-toggle'));
+			await user.click(getByTestId('row-edit-rule'));
+
+			await user.clear(getByTestId('row-rule-input'));
+			await user.type(getByTestId('row-rule-input'), 'Something else entirely.');
+			await user.click(getByTestId('row-rule-cancel'));
+
+			expect(emitted('save-what-to-check')).toBeUndefined();
+			expect(getByTestId('row')).toHaveTextContent('Names the ticket and the priority.');
+		});
+
+		it('disables saving a blank rule', async () => {
+			const user = userEvent.setup();
+			const { getByTestId } = renderWithRule({ testId: 'row' });
+			await user.click(getByTestId('row-toggle'));
+			await user.click(getByTestId('row-edit-rule'));
+
+			await user.clear(getByTestId('row-rule-input'));
+
+			expect(getByTestId('row-rule-save')).toBeDisabled();
+		});
+
+		it('disables the edit button for a read-only viewer', async () => {
+			const user = userEvent.setup();
+			const { getByTestId } = renderWithRule({ testId: 'row', disabled: true });
+			await user.click(getByTestId('row-toggle'));
+
+			expect(getByTestId('row-edit-rule')).toBeDisabled();
+		});
+	});
 });

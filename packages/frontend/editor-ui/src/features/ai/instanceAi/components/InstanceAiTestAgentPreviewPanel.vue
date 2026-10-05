@@ -369,6 +369,46 @@ async function onRerunCase(resultId: string) {
 	}
 }
 
+// Editing the rule writes the case row itself (so a later whole-suite rerun
+// keeps using it too), then reruns just this one result — same action as
+// "Run check", with the write folded in ahead of it.
+async function onUpdateWhatToCheck({
+	rowId,
+	resultId,
+	whatToCheck,
+}: {
+	rowId: number;
+	resultId: string;
+	whatToCheck: string;
+}) {
+	const source = resolveSuiteSource();
+	const row = suiteCaseRows.value?.find((c) => c.rowId === rowId);
+	if (!source || !row) return;
+	const { projectId, agentId } = props.target;
+
+	try {
+		const updated = await store.updateCase(projectId, source, rowId, {
+			input: row.input,
+			whatToCheck,
+		});
+		if (!isMounted) return;
+		if (!updated) {
+			toast.showError(
+				new Error('Failed to save the rule'),
+				i18n.baseText('agents.builder.agentEvals.generateError'),
+			);
+			return;
+		}
+		suiteCaseRows.value =
+			suiteCaseRows.value?.map((c) => (c.rowId === rowId ? { ...c, whatToCheck } : c)) ?? null;
+
+		await store.rerunResult(projectId, agentId, resultId);
+	} catch (error) {
+		if (!isMounted) return;
+		toast.showError(error, i18n.baseText('agents.builder.agentEvals.review.rerunCaseError'));
+	}
+}
+
 async function onReviseCase({ rowId, suggestion }: { rowId: number; suggestion: string }) {
 	// One rerun covers every row, so a second revision while the first is still
 	// in flight would race it for the same dataset and run — the singleton
@@ -569,6 +609,7 @@ function onDontCreateEvals() {
 				@stop-run="onStopSuiteRun"
 				@revise-case="onReviseCase"
 				@rerun-case="onRerunCase"
+				@update-what-to-check="onUpdateWhatToCheck"
 			/>
 		</template>
 	</div>

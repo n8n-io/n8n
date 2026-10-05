@@ -190,6 +190,17 @@ async function onRerunCheck(resultId: string) {
 	}
 }
 
+// There is no editable case row to write the rule to here — only this
+// result's own snapshot — so the backend persists it directly as part of the
+// same request that reruns the case with it.
+async function onSaveWhatToCheck(resultId: string, whatToCheck: string) {
+	try {
+		await store.rerunResult(props.projectId, props.agentId, resultId, { whatToCheck });
+	} catch (error) {
+		toast.showError(error, i18n.baseText('agents.builder.agentEvals.review.rerunCaseError'));
+	}
+}
+
 // Bumped by every `load()` call (including a run switch), and checked after
 // every await in both `load` and `loadRemainingResults` — a response that
 // lands after the run has moved on is discarded rather than patched into (or
@@ -351,6 +362,7 @@ onBeforeUnmount(store.stopPollingRun);
 				:test-id="`agent-eval-check-${row.id}`"
 				@actually-fine="onActuallyFine(row.id)"
 				@rerun-check="onRerunCheck(row.id)"
+				@save-what-to-check="onSaveWhatToCheck(row.id, $event)"
 			/>
 		</div>
 

@@ -40,7 +40,7 @@ const props = defineProps<{
 	/** Shown between the input and the answer in the expanded sample. */
 	toolCalls?: ToolCall[];
 	projectId?: string;
-	/** The case's "what to check" criteria. Not yet rendered anywhere in this row. */
+	/** The case's "what to check" criteria. */
 	whatToCheck?: string | null;
 	/** No `agent:update` — disables the correction controls (not expanding/viewing). */
 	disabled?: boolean;
@@ -57,6 +57,8 @@ const emit = defineEmits<{
 	'actually-fine': [];
 	/** "Run check" on a case that doesn't need correction: rerun it as-is. */
 	'rerun-check': [];
+	/** The rule's edited text, from the pencil icon's inline editor. */
+	'save-what-to-check': [text: string];
 }>();
 
 const i18n = useI18n();
@@ -107,6 +109,25 @@ function onActuallyFine() {
 
 function onRunCheck() {
 	emit('rerun-check');
+}
+
+const editingWhatToCheck = ref(false);
+const whatToCheckDraft = ref('');
+
+function onStartEditWhatToCheck() {
+	whatToCheckDraft.value = props.whatToCheck ?? '';
+	editingWhatToCheck.value = true;
+}
+
+function onSaveWhatToCheck() {
+	const value = whatToCheckDraft.value.trim();
+	if (!value) return;
+	emit('save-what-to-check', value);
+	editingWhatToCheck.value = false;
+}
+
+function onCancelEditWhatToCheck() {
+	editingWhatToCheck.value = false;
 }
 
 // Once the parent accepts or regenerates this case, its status moves away
@@ -171,11 +192,56 @@ watch(
 			:data-test-id="testId && `${testId}-placeholder`"
 		>
 			<div v-if="whatToCheck" :class="$style.whatToCheck">
-				<N8nText bold color="text-dark" size="medium">{{
-					i18n.baseText('instanceAi.testAgentPreview.rule')
-				}}</N8nText>
+				<div :class="$style.whatToCheckHeader">
+					<N8nText bold color="text-dark" size="medium">{{
+						i18n.baseText('instanceAi.testAgentPreview.rule')
+					}}</N8nText>
+					<N8nButton
+						v-if="!editingWhatToCheck"
+						variant="subtle"
+						size="small"
+						icon-only
+						:disabled="disabled"
+						:aria-label="i18n.baseText('instanceAi.testAgentPreview.editRule')"
+						:data-test-id="testId && `${testId}-edit-rule`"
+						@click="onStartEditWhatToCheck"
+					>
+						<template #icon>
+							<N8nIcon icon="pencil" size="small" />
+						</template>
+					</N8nButton>
+				</div>
 
-				<N8nText color="text-dark" size="medium">{{ whatToCheck }}</N8nText>
+				<N8nText v-if="!editingWhatToCheck" color="text-dark" size="medium">{{
+					whatToCheck
+				}}</N8nText>
+				<div v-else :class="$style.whatToCheckEdit">
+					<N8nInput
+						v-model="whatToCheckDraft"
+						size="medium"
+						:data-test-id="testId && `${testId}-rule-input`"
+						@keydown.meta.enter="onSaveWhatToCheck"
+						@keydown.ctrl.enter="onSaveWhatToCheck"
+						@keydown.esc="onCancelEditWhatToCheck"
+					/>
+					<N8nButton
+						variant="solid"
+						size="small"
+						:disabled="!whatToCheckDraft.trim()"
+						:data-test-id="testId && `${testId}-rule-save`"
+						@click="onSaveWhatToCheck"
+					>
+						{{ i18n.baseText('generic.save') }}
+					</N8nButton>
+					<N8nButton
+						variant="subtle"
+						size="small"
+						:data-test-id="testId && `${testId}-rule-cancel`"
+						@click="onCancelEditWhatToCheck"
+					>
+						{{ i18n.baseText('generic.cancel') }}
+					</N8nButton>
+				</div>
 			</div>
 			<EvalInitialSample
 				:preview-input="input"
@@ -270,6 +336,23 @@ watch(
 	flex-direction: column;
 	gap: var(--spacing--5xs);
 	margin-bottom: var(--spacing--2xs);
+}
+
+.whatToCheckHeader {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--spacing--2xs);
+}
+
+.whatToCheckEdit {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+}
+
+.whatToCheckEdit > :first-child {
+	flex: 1;
 }
 
 .expandToggle {

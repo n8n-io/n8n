@@ -103,6 +103,12 @@ export class AgentEvalResultRepository extends Repository<AgentEvalResult> {
 		});
 	}
 
+	/** Overwrites the persisted case snapshot — used to carry an edited rule
+	 *  into a result that already ran, ahead of rerunning it. */
+	async updateInput(id: string, input: JsonObject) {
+		return await this.update(id, { input });
+	}
+
 	/**
 	 * Paged in SQL, not by slicing a full read: every row carries its `input`,
 	 * `output` and `toolCalls` JSON. `runIndex` is distinct per run, so it is

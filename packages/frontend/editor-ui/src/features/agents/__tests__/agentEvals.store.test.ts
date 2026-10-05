@@ -1202,6 +1202,54 @@ describe('useAgentEvalsStore', () => {
 
 			expect(store.getReview(RUN_ID).results.find((r) => r.id === 'c2')?.status).toBe('success');
 		});
+
+		it('forwards an edited rule to the API and shows it immediately, before the request lands', async () => {
+			mockRun({ results: [{ ...result('c1'), status: 'error' }], count: 1, ratings: [] });
+			const store = useAgentEvalsStore();
+			await store.openRun(PROJECT_ID, AGENT_ID, RUN_ID);
+
+			let resolveRerun!: (value: AgentEvalResultRecord) => void;
+			rerunResult.mockImplementation(
+				async () => await new Promise<AgentEvalResultRecord>((resolve) => (resolveRerun = resolve)),
+			);
+
+			const pending = store.rerunResult(PROJECT_ID, AGENT_ID, 'c1', {
+				whatToCheck: 'Mentions the refund window.',
+			});
+
+			expect(rerunResult).toHaveBeenCalledWith(REST_CONTEXT, PROJECT_ID, AGENT_ID, 'c1', {
+				whatToCheck: 'Mentions the refund window.',
+			});
+			expect(store.getReview(RUN_ID).results[0].input).toEqual({
+				input: 'request c1',
+				criteria: 'Mentions the refund window.',
+			});
+
+			resolveRerun({
+				...result('c1'),
+				status: 'success',
+				input: { input: 'request c1', criteria: 'Mentions the refund window.' },
+			});
+			await pending;
+
+			expect(store.getReview(RUN_ID).results[0].input).toEqual({
+				input: 'request c1',
+				criteria: 'Mentions the refund window.',
+			});
+		});
+
+		it('reverts an edited rule along with the status when the rerun fails', async () => {
+			mockRun({ results: [{ ...result('c1'), status: 'error' }], count: 1, ratings: [] });
+			const store = useAgentEvalsStore();
+			await store.openRun(PROJECT_ID, AGENT_ID, RUN_ID);
+			rerunResult.mockRejectedValue(new Error('timeout'));
+
+			await expect(
+				store.rerunResult(PROJECT_ID, AGENT_ID, 'c1', { whatToCheck: 'New rule.' }),
+			).rejects.toThrow('timeout');
+
+			expect(store.getReview(RUN_ID).results[0].input).toEqual(result('c1').input);
+		});
 	});
 
 	describe('evals focus request', () => {

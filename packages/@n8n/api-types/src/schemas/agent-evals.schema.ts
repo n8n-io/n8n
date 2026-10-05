@@ -325,3 +325,15 @@ export class PreviewRunOptionsDto extends Z.class(previewRunOptionsShape) {}
 export type PreviewRunResult =
 	| { status: 'completed'; input: string; whatToCheck: string; scenario: string; response: string }
 	| { status: 'failed' };
+
+// Request body for rerunning one already-seeded result in place. `whatToCheck`
+// is optional: a plain "Run check" repeats the case as-is, while editing the
+// rule from the checks view (which has no editable case row of its own, only
+// the result's own snapshot) bundles the new text into the same request —
+// persisted onto the result's snapshot before it re-executes.
+const rerunResultOptionsShape = {
+	whatToCheck: z.string().min(1).optional(),
+};
+export const rerunResultOptionsSchema = z.object(rerunResultOptionsShape);
+export type RerunResultOptions = z.infer<typeof rerunResultOptionsSchema>;
+export class RerunResultOptionsDto extends Z.class(rerunResultOptionsShape) {}

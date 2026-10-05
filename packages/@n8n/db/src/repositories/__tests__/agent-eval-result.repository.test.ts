@@ -113,6 +113,20 @@ describe('AgentEvalResultRepository', () => {
 		});
 	});
 
+	describe('updateInput', () => {
+		it('overwrites the persisted snapshot', async () => {
+			entityManager.update.mockResolvedValueOnce({ affected: 1, generatedMaps: [], raw: [] });
+
+			await repo.updateInput('res-1', { input: 'Q', criteria: 'Mentions the refund window.' });
+
+			const callArgs = entityManager.update.mock.calls[0];
+			expect(callArgs?.[1]).toBe('res-1');
+			expect(callArgs?.[2]).toEqual({
+				input: { input: 'Q', criteria: 'Mentions the refund window.' },
+			});
+		});
+	});
+
 	describe('findAndCountByRunId', () => {
 		it('scopes to runId ordered by runIndex ascending', async () => {
 			entityManager.findAndCount.mockResolvedValueOnce([[], 0]);

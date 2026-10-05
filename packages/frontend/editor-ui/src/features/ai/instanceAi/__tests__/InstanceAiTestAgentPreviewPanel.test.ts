@@ -1558,6 +1558,130 @@ describe('InstanceAiTestAgentPreviewPanel', () => {
 		});
 	});
 
+	describe('rule editing', () => {
+		it('updates the case, reruns just that result, and shows the edited rule', async () => {
+			const store = useAgentEvalsStore();
+			mockPreviewRun(store, { scenario: 'Upset' });
+			vi.spyOn(store, 'generateDraftCases').mockResolvedValue({
+				cases: [{ input: 'a', whatToCheck: 'b', scenario: 'Vague' }],
+			});
+			mockCommit(store, { rows: [{ rowId: 1, input: 'a', whatToCheck: 'b' }] });
+			const updateCase = vi.spyOn(store, 'updateCase').mockResolvedValue(true);
+			const rerunResult = vi
+				.spyOn(store, 'rerunResult')
+				.mockResolvedValue({ id: 'result-1', runId: 'suite-run' } as never);
+			vi.spyOn(store, 'isRunInFlight').mockReturnValue(false);
+			vi.spyOn(store, 'getReview').mockReturnValue({
+				run: { status: 'completed' } as never,
+				results: [
+					{
+						id: 'result-1',
+						sourceRowId: '1',
+						status: 'success',
+						input: { input: 'a' },
+						output: { finalText: 'b answer' },
+					} as never,
+				],
+				resultsCount: 1,
+				ratingsByResultId: {},
+				pendingByResultId: {},
+				draftsByResultId: {},
+				counts: null,
+				loading: false,
+				loadingMore: false,
+			});
+
+			const user = userEvent.setup();
+			const { getByTestId, findByTestId, findByText } = renderComponent();
+			await waitFor(() =>
+				expect(getByTestId('instance-ai-test-agent-preview-looks-good')).toBeEnabled(),
+			);
+			await user.click(getByTestId('instance-ai-test-agent-preview-looks-good'));
+			await findByTestId('instance-ai-test-agent-examples-check-agent');
+			await user.click(getByTestId('instance-ai-test-agent-examples-check-agent'));
+			await findByTestId('instance-ai-test-agent-examples-summary-toggle');
+			await user.click(getByTestId('instance-ai-test-agent-examples-summary-toggle'));
+			await user.click(getByTestId('instance-ai-test-agent-examples-case-1-toggle'));
+
+			await user.click(getByTestId('instance-ai-test-agent-examples-case-1-edit-rule'));
+			await user.clear(getByTestId('instance-ai-test-agent-examples-case-1-rule-input'));
+			await user.type(
+				getByTestId('instance-ai-test-agent-examples-case-1-rule-input'),
+				'Mentions the refund window.',
+			);
+			await user.click(getByTestId('instance-ai-test-agent-examples-case-1-rule-save'));
+
+			expect(updateCase).toHaveBeenCalledWith(
+				'project-1',
+				{
+					datasetId: 'dataset-2',
+					dataTableId: 'table-2',
+					columns: { input: 'input', whatToCheck: 'criteria' },
+				},
+				1,
+				{ input: 'a', whatToCheck: 'Mentions the refund window.' },
+			);
+			await waitFor(() =>
+				expect(rerunResult).toHaveBeenCalledWith('project-1', 'agent-1', 'result-1'),
+			);
+			expect(await findByText('Mentions the refund window.')).toBeInTheDocument();
+		});
+
+		it('toasts an error and does not rerun when saving the rule fails', async () => {
+			const store = useAgentEvalsStore();
+			mockPreviewRun(store, { scenario: 'Upset' });
+			vi.spyOn(store, 'generateDraftCases').mockResolvedValue({
+				cases: [{ input: 'a', whatToCheck: 'b', scenario: 'Vague' }],
+			});
+			mockCommit(store, { rows: [{ rowId: 1, input: 'a', whatToCheck: 'b' }] });
+			vi.spyOn(store, 'updateCase').mockResolvedValue(false);
+			const rerunResult = vi.spyOn(store, 'rerunResult');
+			vi.spyOn(store, 'isRunInFlight').mockReturnValue(false);
+			vi.spyOn(store, 'getReview').mockReturnValue({
+				run: { status: 'completed' } as never,
+				results: [
+					{
+						id: 'result-1',
+						sourceRowId: '1',
+						status: 'success',
+						input: { input: 'a' },
+						output: { finalText: 'b answer' },
+					} as never,
+				],
+				resultsCount: 1,
+				ratingsByResultId: {},
+				pendingByResultId: {},
+				draftsByResultId: {},
+				counts: null,
+				loading: false,
+				loadingMore: false,
+			});
+
+			const user = userEvent.setup();
+			const { getByTestId, findByTestId } = renderComponent();
+			await waitFor(() =>
+				expect(getByTestId('instance-ai-test-agent-preview-looks-good')).toBeEnabled(),
+			);
+			await user.click(getByTestId('instance-ai-test-agent-preview-looks-good'));
+			await findByTestId('instance-ai-test-agent-examples-check-agent');
+			await user.click(getByTestId('instance-ai-test-agent-examples-check-agent'));
+			await findByTestId('instance-ai-test-agent-examples-summary-toggle');
+			await user.click(getByTestId('instance-ai-test-agent-examples-summary-toggle'));
+			await user.click(getByTestId('instance-ai-test-agent-examples-case-1-toggle'));
+
+			await user.click(getByTestId('instance-ai-test-agent-examples-case-1-edit-rule'));
+			await user.clear(getByTestId('instance-ai-test-agent-examples-case-1-rule-input'));
+			await user.type(
+				getByTestId('instance-ai-test-agent-examples-case-1-rule-input'),
+				'New rule.',
+			);
+			await user.click(getByTestId('instance-ai-test-agent-examples-case-1-rule-save'));
+
+			await waitFor(() => expect(showErrorMock).toHaveBeenCalled());
+			expect(rerunResult).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('"Needs work" / sample-input guards', () => {
 		it('ignores a stray "Needs work" click from a stale button reference after confirming', async () => {
 			const store = useAgentEvalsStore();

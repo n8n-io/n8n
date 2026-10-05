@@ -203,7 +203,7 @@ export class AgentEvalRunnerService {
 		agentId: string,
 		projectId: string,
 		user: User,
-		options: { timeoutMs?: number } = {},
+		options: { timeoutMs?: number; whatToCheck?: string } = {},
 	): Promise<AgentEvalResult> {
 		await this.flagGate.assertEnabled(user);
 
@@ -223,9 +223,19 @@ export class AgentEvalRunnerService {
 			throw new BadRequestError('This case has no input to rerun.');
 		}
 
+		// An edited rule has no case row of its own to write back to here (the
+		// checks view only ever has this result's own snapshot) — so it's
+		// persisted onto that snapshot directly, ahead of the rerun that uses it.
+		let caseToRun = result;
+		if (options.whatToCheck !== undefined) {
+			const snapshot = toJsonObject({ ...(result.input ?? {}), criteria: options.whatToCheck });
+			await this.resultRepository.updateInput(result.id, snapshot);
+			caseToRun = { ...result, input: snapshot };
+		}
+
 		await this.runCase(
-			result,
-			{ sourceRowId: result.sourceRowId, input, snapshot: result.input ?? {} },
+			caseToRun,
+			{ sourceRowId: caseToRun.sourceRowId, input, snapshot: caseToRun.input ?? {} },
 			{ agentId, projectId, user, timeoutMs: options.timeoutMs },
 		);
 

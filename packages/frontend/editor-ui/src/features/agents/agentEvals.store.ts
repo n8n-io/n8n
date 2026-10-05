@@ -21,6 +21,7 @@ import type {
 	CreateDraftDatasetOptions,
 	GenerateDraftCasesOptions,
 	PreviewRunOptions,
+	RerunResultOptions,
 } from './agentEvals.types';
 import { AGENT_EVAL_RESULTS_DEFAULT_TAKE, MAX_ITEMS_PER_PAGE } from './agentEvals.types';
 import { AGENT_EVAL_CASES_PAGE_SIZE } from './constants';
@@ -1008,26 +1009,44 @@ export const useAgentEvalsStore = defineStore(STORES.AGENT_EVALS, () => {
 	// through the ordinary status → avatar mapping, with nothing rerun-specific
 	// of its own to track. The REST call is a single synchronous round trip, so
 	// this optimistic patch is the only time the UI ever sees `running` at all.
-	const rerunResult = async (projectId: string, agentId: string, resultId: string) => {
+	const rerunResult = async (
+		projectId: string,
+		agentId: string,
+		resultId: string,
+		options: RerunResultOptions = {},
+	) => {
 		const cached = findCachedResult(resultId);
 		// Already showing as running from an earlier click — don't fire a second
 		// request the backend would just reject.
 		if (cached?.result.status === 'running') return cached.result;
 
-		if (cached)
-			replaceCachedResult(cached.runId, resultId, { ...cached.result, status: 'running' });
+		if (cached) {
+			// An edited rule reads instantly too, rather than waiting on the round
+			// trip — the real response (which the backend has already persisted
+			// onto the same snapshot) replaces this once it lands either way.
+			const optimisticInput =
+				options.whatToCheck !== undefined
+					? { ...(cached.result.input ?? {}), criteria: options.whatToCheck }
+					: cached.result.input;
+			replaceCachedResult(cached.runId, resultId, {
+				...cached.result,
+				status: 'running',
+				input: optimisticInput,
+			});
+		}
 		try {
 			const updated = await agentEvalsApi.rerunResult(
 				rootStore.restApiContext,
 				projectId,
 				agentId,
 				resultId,
+				options,
 			);
 			replaceCachedResult(updated.runId, resultId, updated);
 			return updated;
 		} catch (error) {
 			// Revert the optimistic patch so a failed rerun doesn't strand the row
-			// reading as "running" forever.
+			// reading as "running" (or showing the unsaved rule) forever.
 			if (cached) replaceCachedResult(cached.runId, resultId, cached.result);
 			throw error;
 		}

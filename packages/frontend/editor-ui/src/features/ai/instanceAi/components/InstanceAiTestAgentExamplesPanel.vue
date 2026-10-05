@@ -59,6 +59,8 @@ const emit = defineEmits<{
 	 *  The store patches the result to `running` itself, so the row reads as
 	 *  "waiting" through the ordinary status mapping — nothing here tracks it. */
 	'rerun-case': [resultId: string];
+	/** The rule's edited text, from the pencil icon's inline editor. */
+	'update-what-to-check': [payload: { rowId: number; resultId: string; whatToCheck: string }];
 }>();
 
 const i18n = useI18n();
@@ -98,6 +100,11 @@ function onSaveCheck(rowId: number, suggestion: string) {
 function onRunCheck(resultId: string | null) {
 	if (!resultId) return;
 	emit('rerun-case', resultId);
+}
+
+function onUpdateWhatToCheck(rowId: number, resultId: string | null, whatToCheck: string) {
+	if (!resultId) return;
+	emit('update-what-to-check', { rowId, resultId, whatToCheck });
 }
 
 // The list the template renders from — `caseRuns` with any "Actually fine"
@@ -248,6 +255,7 @@ function onCheckYourAgent() {
 					@save-check="onSaveCheck(run.rowId, $event)"
 					@actually-fine="onActuallyFine(run.rowId)"
 					@rerun-check="onRunCheck(run.resultId)"
+					@save-what-to-check="onUpdateWhatToCheck(run.rowId, run.resultId, $event)"
 				/>
 			</div>
 
