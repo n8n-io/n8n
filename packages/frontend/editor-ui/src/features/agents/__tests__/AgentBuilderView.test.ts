@@ -5741,7 +5741,7 @@ describe(
 			};
 			const wrapper = await renderView();
 			await flushPromises();
-			const { useMCPStore } = await import('@/features/ai/mcpAccess/mcp.store');
+			const { useMCPStore } = await import('@n8n/frontend-module-mcp');
 			vi.spyOn(useMCPStore(), 'toggleAgentMcpAccess').mockRejectedValue(
 				new Error('mcp save failed'),
 			);
