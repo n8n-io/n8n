@@ -1129,8 +1129,7 @@ type CronRecurrenceRule =
 /**
  * @deprecated Remnant of the legacy in-memory scheduling path. `registerCron`
  * takes {@link Cron}, not this type; the durable scheduler path never uses it.
- * Only `ScheduledTaskManager` and its helper still reference it (and only for
- * `CronContext['recurrence']`). Slated to go away with `ScheduledTaskManager`.
+ * Legacy test helpers still use it. Use {@link Cron} for new scheduling code.
  */
 export type CronContext = {
 	nodeId: string;
@@ -3219,6 +3218,9 @@ export type WebhookType = 'default' | 'setup';
  * resolvers for its expression-template fields, keyed by field name. Populated
  * by `webhookDescriptionFields()` and read via `resolveWebhookDescriptionField()`.
  * Backend-only: not serialized with the description.
+ *
+ * TODO(native-evaluation rollout, CAT-4699): remove with `NativeParameterResolvers` and the
+ * `[WEBHOOK_RESOLVERS]` index below.
  */
 export const WEBHOOK_RESOLVERS: unique symbol = Symbol.for('n8n.webhookDescriptionResolvers');
 
@@ -3787,14 +3789,19 @@ export interface IWorkflowExecutionDataProcess {
 	httpResponse?: express.Response; // Used for streaming responses
 	streamingEnabled?: boolean;
 	/**
+	 * Only engine v2 reads this. The data-plane execution id, set by a caller that
+	 * minted it before the run starts: to subscribe to the run's answer, or because
+	 * the trigger node already stored files under it. Without it, the dispatcher
+	 * mints one.
+	 */
+	engineV2ExecutionId?: string;
+	/**
 	 * Only engine v2 reads this. A caller that waits for the run's answer sets
-	 * it. The caller mints the data-plane execution id, so it can subscribe
-	 * before the run starts. `responseMode` tells the engine which answer the
-	 * caller waits for. Without this field, nobody waits for an answer.
+	 * it, together with `engineV2ExecutionId`. `responseMode` tells the engine
+	 * which answer the caller waits for. Without this field, nobody waits.
 	 */
 	engineV2Response?: {
-		executionId: string;
-		responseMode: 'lastNode' | 'responseNode';
+		responseMode: 'lastNode' | 'responseNode' | 'streaming';
 	};
 	startedAt?: Date;
 

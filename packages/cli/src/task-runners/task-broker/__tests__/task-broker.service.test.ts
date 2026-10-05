@@ -2473,5 +2473,158 @@ describe('TaskBroker', () => {
 
 			handleTimeoutSpy.mockRestore();
 		});
+
+		describe('with a shutdown deadline', () => {
+			it('expires a pending request at the deadline instead of its full timeout', async () => {
+				vi.useFakeTimers();
+
+				const requesterId = 'requester1';
+				const requesterCallback = vi.fn();
+				taskBroker.registerRequester(requesterId, requesterCallback);
+
+				const request: TaskRequest = {
+					requestId: 'request1',
+					requesterId,
+					taskType: 'taskType1',
+					timeout: taskBroker['createRequestTimeout']('request1'),
+				};
+				taskBroker.taskRequested(request);
+
+				const deadline = Date.now() + 20_000;
+				taskBroker.capTaskTimeoutsForShutdown(deadline);
+
+				vi.advanceTimersByTime(20_000 - 1);
+				await Promise.resolve();
+
+				expect(requesterCallback).not.toHaveBeenCalledWith(
+					expect.objectContaining({ type: 'broker:requestexpired' }),
+				);
+
+				vi.advanceTimersByTime(1);
+				await Promise.resolve();
+
+				expect(requesterCallback).toHaveBeenCalledWith({
+					type: 'broker:requestexpired',
+					requestId: 'request1',
+					reason: 'timeout',
+				});
+			});
+
+			it('expires a request made after the deadline was set at that deadline', async () => {
+				vi.useFakeTimers();
+
+				const requesterId = 'requester1';
+				const requesterCallback = vi.fn();
+				taskBroker.registerRequester(requesterId, requesterCallback);
+
+				const deadline = Date.now() + 20_000;
+				taskBroker.capTaskTimeoutsForShutdown(deadline);
+
+				const request: TaskRequest = {
+					requestId: 'request1',
+					requesterId,
+					taskType: 'taskType1',
+					timeout: taskBroker['createRequestTimeout']('request1'),
+				};
+				taskBroker.taskRequested(request);
+
+				vi.advanceTimersByTime(20_000);
+				await Promise.resolve();
+
+				expect(requesterCallback).toHaveBeenCalledWith({
+					type: 'broker:requestexpired',
+					requestId: 'request1',
+					reason: 'timeout',
+				});
+			});
+
+			it('does not extend a request whose own timeout is due before the deadline', async () => {
+				vi.useFakeTimers();
+
+				const requesterId = 'requester1';
+				const requesterCallback = vi.fn();
+				taskBroker.registerRequester(requesterId, requesterCallback);
+
+				const request: TaskRequest = {
+					requestId: 'request1',
+					requesterId,
+					taskType: 'taskType1',
+					timeout: taskBroker['createRequestTimeout']('request1'),
+				};
+				taskBroker.taskRequested(request);
+
+				vi.advanceTimersByTime(30_000);
+
+				taskBroker.capTaskTimeoutsForShutdown(Date.now() + 120_000);
+
+				vi.advanceTimersByTime(29_999);
+				await Promise.resolve();
+
+				expect(requesterCallback).not.toHaveBeenCalledWith(
+					expect.objectContaining({ type: 'broker:requestexpired' }),
+				);
+
+				vi.advanceTimersByTime(1);
+				await Promise.resolve();
+
+				expect(requesterCallback).toHaveBeenCalledWith({
+					type: 'broker:requestexpired',
+					requestId: 'request1',
+					reason: 'timeout',
+				});
+			});
+
+			it('still expires a refreshed request no later than the deadline', async () => {
+				vi.useFakeTimers();
+
+				const requesterId = 'requester1';
+				const requesterCallback = vi.fn();
+				taskBroker.registerRequester(requesterId, requesterCallback);
+				taskBroker.registerRunner(mock<TaskRunner>({ id: 'runner1', taskTypes: [] }), vi.fn());
+
+				const request: TaskRequest = {
+					requestId: 'request1',
+					requesterId,
+					taskType: 'taskType1',
+					timeout: taskBroker['createRequestTimeout']('request1'),
+					acceptInProgress: true,
+				};
+				taskBroker.setPendingTaskRequests([request]);
+
+				const deadline = Date.now() + 10_000;
+				taskBroker.capTaskTimeoutsForShutdown(deadline);
+
+				vi.advanceTimersByTime(5_000);
+
+				const acceptPromise = taskBroker.acceptOffer(
+					{
+						offerId: 'offer1',
+						runnerId: 'runner1',
+						taskType: 'taskType1',
+						validFor: 10_000,
+						validUntil: createValidUntil(10_000),
+					},
+					request,
+				);
+				vi.advanceTimersByTime(2_100);
+				await acceptPromise;
+
+				vi.advanceTimersByTime(deadline - Date.now() - 1);
+				await Promise.resolve();
+
+				expect(requesterCallback).not.toHaveBeenCalledWith(
+					expect.objectContaining({ type: 'broker:requestexpired' }),
+				);
+
+				vi.advanceTimersByTime(1);
+				await Promise.resolve();
+
+				expect(requesterCallback).toHaveBeenCalledWith({
+					type: 'broker:requestexpired',
+					requestId: 'request1',
+					reason: 'timeout',
+				});
+			});
+		});
 	});
 });

@@ -1,5 +1,11 @@
 import type { IDataObject, INodeParameters, INodeType, INodeTypes } from 'n8n-workflow';
-import { Workflow, WEBHOOK_RESOLVERS, webhookDescriptionIsNativelyResolvable } from 'n8n-workflow';
+import {
+	Expression,
+	Workflow,
+	WEBHOOK_RESOLVERS,
+	isNativelyEvaluable,
+	webhookDescriptionIsNativelyResolvable,
+} from 'n8n-workflow';
 
 import { defaultWebhookDescription } from '../description';
 import { Webhook } from '../Webhook.node';
@@ -54,9 +60,11 @@ describe('defaultWebhookDescription', () => {
 			responseHeaders: '={{$parameter["options"]["responseHeaders"]}}',
 			path: '={{$parameter["path"]}}',
 		});
-		// The function-body templates inline the functions' source, as before.
-		expect(defaultWebhookDescription.responseCode).toMatch(/^=\{\{\(.+\)\(\$parameter\)\}\}$/s);
-		expect(defaultWebhookDescription.responseData).toMatch(/^=\{\{\(.+\)\(\$parameter\)\}\}$/s);
+		// responseCode/responseData are hand-written in the native subset
+		// grammar (fromExpression) so they evaluate in-process; the parity
+		// suite below pins them to their resolvers.
+		expect(isNativelyEvaluable(String(defaultWebhookDescription.responseCode).slice(1))).toBe(true);
+		expect(isNativelyEvaluable(String(defaultWebhookDescription.responseData).slice(1))).toBe(true);
 	});
 
 	describe('resolvers match their templates', () => {
@@ -99,20 +107,32 @@ describe('defaultWebhookDescription', () => {
 
 		const resolvers = defaultWebhookDescription[WEBHOOK_RESOLVERS]!;
 
-		describe.each(parameterSets)('$case', ({ parameters }) => {
-			const { workflow, node } = nodeWithParameters(parameters);
+		afterEach(() => {
+			Expression.setNativeEvaluation(false);
+		});
 
-			test.each(Object.keys(resolvers))('%s', (field) => {
-				const native = resolvers[field].resolve(node.parameters);
+		// The template is evaluated both through the engine and natively, so
+		// resolver, template and native evaluation are pinned to each other.
+		describe.each([
+			{ path: 'engine', nativeEvaluation: false },
+			{ path: 'native evaluation', nativeEvaluation: true },
+		])('via $path', ({ nativeEvaluation }) => {
+			describe.each(parameterSets)('$case', ({ parameters }) => {
+				const { workflow, node } = nodeWithParameters(parameters);
 
-				const viaEngine = workflow.expression.getSimpleParameterValue(
-					node,
-					defaultWebhookDescription[field] as string,
-					'internal',
-					{},
-				);
+				test.each(Object.keys(resolvers))('%s', (field) => {
+					const native = resolvers[field].resolve(node.parameters);
 
-				expect(native).toEqual(viaEngine);
+					Expression.setNativeEvaluation(nativeEvaluation);
+					const viaTemplate = workflow.expression.getSimpleParameterValue(
+						node,
+						defaultWebhookDescription[field] as string,
+						'internal',
+						{},
+					);
+
+					expect(native).toEqual(viaTemplate);
+				});
 			});
 		});
 	});

@@ -582,6 +582,8 @@ export function useCanvasPreview({ thread, initialAgentId, tabsStorage }: UseCan
 	return {
 		activeTabId,
 		openTabs,
+		/** False until the stored tabs of the thread load. */
+		tabsLoaded: tabs.isLoaded,
 		activeWorkflowId,
 		activeDataTableId,
 		activeDataTableProjectId,

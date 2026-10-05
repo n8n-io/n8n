@@ -49,14 +49,20 @@ export const EVAL_ATTRIBUTIONS = [
 ] as const;
 
 export type EvalAttribution = (typeof EVAL_ATTRIBUTIONS)[number];
+export type VerifierCategory = (typeof VERIFIER_CATEGORIES)[number];
 
 export function isEvalAttribution(value: unknown): value is EvalAttribution {
 	return EVAL_ATTRIBUTIONS.includes(value as EvalAttribution);
 }
 
+export function isVerifierCategory(value: unknown): value is VerifierCategory {
+	return VERIFIER_CATEGORIES.includes(value as VerifierCategory);
+}
+
 /**
- * Attribution for a category the LLM verifier chose — an identity map, since
- * the two enums are now the same list.
+ * Attribution for a category the LLM verifier chose — an identity map over the
+ * verifier's own list. `timeout` is the harness's bucket alone, so a verifier
+ * that emits it is off-enum like any other unknown value.
  *
  * Anything off-enum — including a failing verdict it left uncategorised, which
  * `checklist/verifier.ts` back-fills as `verification_failure` — is the
@@ -66,7 +72,7 @@ export function isEvalAttribution(value: unknown): value is EvalAttribution {
  * failure' category."
  */
 export function attributionFromVerifierCategory(category: string | undefined): EvalAttribution {
-	return isEvalAttribution(category) ? category : 'builder_issue';
+	return isVerifierCategory(category) ? category : 'builder_issue';
 }
 
 /**

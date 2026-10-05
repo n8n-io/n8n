@@ -7,7 +7,7 @@
 // embedded as an `<n8n-demo>` web component so reviewers can poke at the
 // canvas inline.
 //
-// https://github.com/n8n-io/n8n-demo-webcomponent
+// https://www.npmjs.com/package/@n8n_io/n8n-demo-component
 // ---------------------------------------------------------------------------
 
 import { jsonParse } from 'n8n-workflow';

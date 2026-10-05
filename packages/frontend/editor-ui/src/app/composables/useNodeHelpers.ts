@@ -10,6 +10,7 @@ import {
 	getChildNodes,
 	getParentNodes,
 	nodeIssuesToString,
+	getUnconnectedRequiredInputs,
 } from 'n8n-workflow';
 import type {
 	INodeProperties,
@@ -18,7 +19,6 @@ import type {
 	INodeIssues,
 	ICredentialType,
 	INodeIssueObjectProperty,
-	INodeInputConfiguration,
 	INodeExecutionData,
 	ITaskDataConnections,
 	IBinaryKeyData,
@@ -105,6 +105,10 @@ export function useNodeHelpers() {
 	 *   AND
 	 * - It is either explicitly marked as `executable`, OR uses foreign credentials
 	 *   (credentials the current user cannot access, allowed under Workflow Sharing).
+	 *
+	 * The foreign-credential arm decides whether the button is offered, not whether
+	 * the run is allowed. `useNodeExecution`'s `disabledReason` blocks the run and
+	 * shows why, so removing this arm would hide that reason.
 	 *
 	 * @param node The node to check
 	 * @param executable Whether the node is in a state that allows execution (e.g. not readonly)
@@ -223,11 +227,16 @@ export function useNodeHelpers() {
 				}
 			}
 
-			const nodeInputIssues = getNodeInputIssues(workflow, node, nodeType);
-			if (nodeIssues === null) {
-				nodeIssues = nodeInputIssues;
-			} else {
-				NodeHelpers.mergeIssues(nodeIssues, nodeInputIssues);
+			// Honoured like the other kinds: the tool-config panel passes a partial
+			// accessor (getNode only) and opts out of input issues, so the shared
+			// check must not run against it.
+			if (!ignoreIssues.includes('input')) {
+				const nodeInputIssues = getNodeInputIssues(workflow, node, nodeType);
+				if (nodeIssues === null) {
+					nodeIssues = nodeInputIssues;
+				} else {
+					NodeHelpers.mergeIssues(nodeIssues, nodeInputIssues);
+				}
 			}
 		}
 
@@ -291,6 +300,14 @@ export function useNodeHelpers() {
 			type: 'input',
 			value: nodeInputIssues?.input ? nodeInputIssues.input : null,
 		});
+	}
+
+	function updateNodeInputIssuesByName(name: string): void {
+		const node = workflowDocumentStore.value.getNodeByName(name) ?? null;
+
+		if (node) {
+			updateNodeInputIssues(node);
+		}
 	}
 
 	function updateNodesInputIssues() {
@@ -387,25 +404,22 @@ export function useNodeHelpers() {
 		const foundIssues: INodeIssueObjectProperty = {};
 
 		const workflowNode = workflow.getNode(node.name);
-		let inputs: Array<NodeConnectionType | INodeInputConfiguration> = [];
-		if (nodeType && workflowNode) {
-			inputs = NodeHelpers.getNodeInputs(workflow, workflowNode, nodeType);
-		}
+		// Detection is shared with the backend publish check; only wording is local.
+		const unconnected =
+			nodeType && workflowNode
+				? getUnconnectedRequiredInputs(workflow, workflowNode, nodeType)
+				: [];
 
-		inputs.forEach((input) => {
-			if (typeof input === 'string' || input.required !== true) {
-				return;
-			}
-
-			const parentNodes = workflow.getParentNodes(node.name, input.type, 1);
-
-			if (parentNodes.length === 0) {
-				foundIssues[input.type] = [
-					i18n.baseText('nodeIssues.input.missing', {
-						interpolate: { inputName: input.displayName || input.type },
-					}),
-				];
-			}
+		unconnected.forEach((input) => {
+			// Accumulate: a node can leave two inputs of one type unconnected, e.g.
+			// an agent's Chat Model and Fallback Model are both `ai_languageModel`.
+			// Assigning would drop all but the last.
+			foundIssues[input.type] = [
+				...(foundIssues[input.type] ?? []),
+				i18n.baseText('nodeIssues.input.missing', {
+					interpolate: { inputName: input.displayName || input.type },
+				}),
+			];
 		});
 
 		if (Object.keys(foundIssues).length) {
@@ -1092,6 +1106,7 @@ export function useNodeHelpers() {
 		updateNodesExecutionIssues,
 		updateNodesParameterIssues,
 		updateNodeInputIssues,
+		updateNodeInputIssuesByName,
 		updateNodeCredentialIssuesByName,
 		updateNodeCredentialIssues,
 		updateNodeParameterIssuesByName,

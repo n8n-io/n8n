@@ -32,7 +32,7 @@
   "scripts": {
     "clean": "rimraf dist",
     "dev": "tsdown --watch",
-    "lint": "eslint . --quiet",
+    "lint": "oxlint src scripts --quiet",
     "typecheck": "pnpm --sequential run \"/^typecheck:.+/\"",
     "typecheck:frontend": "tsc --noEmit --project tsconfig.frontend.json",
     "typecheck:backend": "tsc --noEmit --project tsconfig.backend.json",
@@ -47,11 +47,14 @@
     "vue-router": "catalog:frontend"
   },
   "devDependencies": {
+    "@n8n/oxlint-config": "workspace:*",
     "@n8n/typescript-config": "workspace:*",
     "@vue/tsconfig": "catalog:frontend",
     "prettier": "catalog:",
     "tsdown": "catalog:",
     "@typescript/native": "catalog:typescript-tooling",
+    "oxlint": "catalog:",
+    "oxlint-tsgolint": "catalog:",
     "typescript": "catalog:typescript-tooling",
     "rimraf": "catalog:",
     "vite": "catalog:",

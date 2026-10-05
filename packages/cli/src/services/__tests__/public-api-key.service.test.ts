@@ -104,12 +104,13 @@ describe('PublicApiKeyService', () => {
 			});
 
 			apiKeyRepository.findOne.mockResolvedValue(existingKey);
-			jwtService.decode.mockReturnValue({ exp: futureExp });
+			jwtService.decodeUnverified.mockReturnValue({ exp: futureExp });
 			jwtService.sign.mockReturnValue('new-token');
 
 			const result = await service.rotateApiKey(owner, 'key-1');
 
 			expect(jwtService.sign).toHaveBeenCalledWith(
+				'publicApiKey',
 				expect.objectContaining({ sub: 'owner-1' }),
 				expect.objectContaining({ expiresIn: expect.any(Number) }),
 			);
@@ -137,7 +138,7 @@ describe('PublicApiKeyService', () => {
 			apiKeyRepository.findOne.mockResolvedValue(
 				mock<ApiKey>({ id: 'key-1', userId: 'owner-1', apiKey: 'old-token' }),
 			);
-			jwtService.decode.mockReturnValue({ exp: pastExp });
+			jwtService.decodeUnverified.mockReturnValue({ exp: pastExp });
 
 			await expect(service.rotateApiKey(owner, 'key-1')).rejects.toThrow(BadRequestError);
 			expect(apiKeyRepository.update).not.toHaveBeenCalled();

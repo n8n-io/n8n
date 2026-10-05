@@ -1,11 +1,8 @@
 import type {
-	AddDataTableRowsDto,
-	UpdateDataTableRowDto,
-	UpsertDataTableRowDto,
 	PublicCreateDestination,
+	UpdateOtelSettingsDto,
 	TestOtelTraceDto,
 	UpdateSamlConfigurationDto,
-	UpdateLdapConfigurationDto,
 	LdapSyncDto,
 } from '@n8n/api-types';
 import type { AuthenticatedRequest } from '@n8n/db';
@@ -118,45 +115,6 @@ export interface IJsonSchema {
 }
 
 // ----------------------------------
-//           /data-tables
-// ----------------------------------
-
-export declare namespace DataTableRequest {
-	type GetRows = AuthenticatedRequest<
-		{ dataTableId: string },
-		{},
-		{},
-		{
-			limit?: number;
-			cursor?: string;
-			offset?: number;
-			filter?: string;
-			sortBy?: string;
-			search?: string;
-		}
-	>;
-
-	type InsertRows = AuthenticatedRequest<{ dataTableId: string }, {}, AddDataTableRowsDto, {}>;
-
-	type UpdateRows = AuthenticatedRequest<{ dataTableId: string }, {}, UpdateDataTableRowDto, {}>;
-
-	type UpsertRow = AuthenticatedRequest<{ dataTableId: string }, {}, UpsertDataTableRowDto, {}>;
-
-	type Clear = AuthenticatedRequest<{ dataTableId: string }, {}, {}, {}>;
-
-	type DeleteRows = AuthenticatedRequest<
-		{ dataTableId: string },
-		{},
-		{},
-		{
-			filter?: string;
-			returnData?: string | boolean;
-			dryRun?: string | boolean;
-		}
-	>;
-}
-
-// ----------------------------------
 //           /community-packages
 // ----------------------------------
 
@@ -178,6 +136,15 @@ export declare namespace LogStreamingRequest {
 }
 
 // ----------------------------------
+//        /settings/otel
+// ----------------------------------
+
+export declare namespace OtelSettingsRequest {
+	type Update = AuthenticatedRequest<{}, {}, UpdateOtelSettingsDto>;
+	type Test = AuthenticatedRequest<{}, {}, TestOtelTraceDto>;
+}
+
+// ----------------------------------
 //        /settings/sso/saml
 // ----------------------------------
 
@@ -187,20 +154,10 @@ export declare namespace SsoSamlRequest {
 }
 
 // ----------------------------------
-//        /settings/otel
-// ----------------------------------
-
-export declare namespace OtelSettingsRequest {
-	type Test = AuthenticatedRequest<{}, {}, TestOtelTraceDto>;
-}
-
-// ----------------------------------
 //        /settings/ldap
 // ----------------------------------
 
 export declare namespace LdapRequest {
-	type GetConfig = AuthenticatedRequest;
-	type UpdateConfig = AuthenticatedRequest<{}, {}, UpdateLdapConfigurationDto>;
 	type GetSync = PaginatedRequest;
 	type RunSync = AuthenticatedRequest<{}, {}, LdapSyncDto>;
 }

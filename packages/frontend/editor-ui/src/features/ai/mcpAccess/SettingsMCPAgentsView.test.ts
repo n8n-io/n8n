@@ -2,8 +2,7 @@ import { nextTick } from 'vue';
 import { createTestingPinia } from '@pinia/testing';
 import { waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
-import { createComponentRenderer } from '@/__tests__/render';
-import { mockedStore, type MockedStore } from '@/__tests__/utils';
+import { createComponentRenderer, mockedStore, type MockedStore } from '@n8n/frontend-test-utils';
 import SettingsMCPAgentsView from '@/features/ai/mcpAccess/SettingsMCPAgentsView.vue';
 import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
@@ -27,7 +26,7 @@ vi.mock('vue-router', async (importOriginal) => ({
 	},
 }));
 
-vi.mock('@/app/composables/useDocumentTitle', () => ({
+vi.mock('@n8n/composables/useDocumentTitle', () => ({
 	useDocumentTitle: () => ({
 		set: vi.fn(),
 	}),
@@ -87,7 +86,7 @@ describe('SettingsMCPAgentsView', () => {
 				autoExposeNewWorkflows: false,
 			},
 		};
-		settingsStore.isModuleActive.mockReturnValue(true);
+		settingsStore.isAgentsEnabled = true;
 
 		mockAgentPages();
 	});
@@ -112,8 +111,8 @@ describe('SettingsMCPAgentsView', () => {
 		expect(mcpStore.fetchAgentsAvailableForMCPPage).not.toHaveBeenCalled();
 	});
 
-	it('should redirect to the MCP settings view when the agents module is inactive', async () => {
-		settingsStore.isModuleActive.mockReturnValue(false);
+	it('should redirect to the MCP settings view when agents are disabled', async () => {
+		settingsStore.isAgentsEnabled = false;
 
 		createComponent({ pinia });
 		await nextTick();
@@ -221,7 +220,7 @@ describe('SettingsMCPAgentsView', () => {
 			);
 		});
 
-		it('should remove MCP access for bulk-selected agents and refresh the table', async () => {
+		it('should disable MCP access for bulk-selected agents and refresh the table', async () => {
 			const { getByTestId } = createComponent({ pinia });
 			await nextTick();
 			mcpStore.fetchAgentsAvailableForMCPPage.mockClear();

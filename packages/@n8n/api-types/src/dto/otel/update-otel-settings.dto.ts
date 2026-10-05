@@ -10,6 +10,7 @@ export const otlpProtocolSchema = z.enum(OTLP_PROTOCOLS);
 
 export const exporterEndpointSchema = z
 	.string()
+	.trim()
 	.url()
 	.regex(/^https?:\/\//i, 'Endpoint must start with http:// or https://. The scheme selects TLS.');
 

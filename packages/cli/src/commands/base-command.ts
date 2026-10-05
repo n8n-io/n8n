@@ -52,7 +52,6 @@ import { PostHogClient } from '@/posthog';
 import { instanceSystemTasks } from '@/scheduling/system-tasks/instance-system-tasks';
 import { ShutdownService } from '@/shutdown/shutdown.service';
 import { resolveBackendHealthEndpointPath } from '@/utils/health-endpoint.util';
-import { WorkflowHistoryManager } from '@/workflows/workflow-history/workflow-history-manager';
 
 export abstract class BaseCommand<F = never> {
 	readonly flags: F;
@@ -269,6 +268,7 @@ export abstract class BaseCommand<F = never> {
 				idleTimeout,
 				lazyAcquire,
 				compileCache,
+				nativeEvaluation,
 			} = this.globalConfig.expressionEngine;
 			const observability = Container.get(ExpressionObservabilityProvider);
 			try {
@@ -281,6 +281,7 @@ export abstract class BaseCommand<F = never> {
 					idleTimeoutMs: idleTimeout === undefined ? undefined : idleTimeout * 1000,
 					lazyAcquire,
 					compileCache,
+					nativeEvaluation,
 					observability,
 				});
 			} catch (error) {
@@ -559,10 +560,6 @@ export abstract class BaseCommand<F = never> {
 	 */
 	async initPolicyEnforcement() {
 		await this.moduleRegistry.initModules(this.instanceSettings.instanceType, POLICY_MODULES);
-	}
-
-	initWorkflowHistory() {
-		Container.get(WorkflowHistoryManager).init();
 	}
 
 	async cleanupTestRunner() {
