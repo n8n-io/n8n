@@ -118,26 +118,27 @@ describe('WorkflowExecutionsSidebar', () => {
 		const headingRule = source.match(/\.heading\s*\{[^}]*\}/)?.[0];
 		if (!headingRule) throw new Error('Sidebar heading style not found');
 
+		settingsStore.concurrency = 5;
+		const { getByTestId, getByRole, getByText } = renderComponent({
+			props: {
+				loading: false,
+				loadingMore: false,
+				hasMore: false,
+				executions: [],
+			},
+		});
+		const heading = getByRole('heading', { name: 'Executions', level: 2 }).parentElement;
+		if (!heading) throw new Error('Sidebar heading element not found');
+		const status = getByText('No active executions');
+
 		const style = document.createElement('style');
-		style.textContent = headingRule;
+		style.textContent = headingRule.replace('.heading', `.${heading.classList[0]}`);
 		document.head.append(style);
 
 		try {
-			settingsStore.concurrency = 5;
-			const { getByTestId, getByText } = renderComponent({
-				props: {
-					loading: false,
-					loadingMore: false,
-					hasMore: false,
-					executions: [],
-				},
-			});
-			const heading = getByTestId('executions-sidebar').querySelector<HTMLElement>('.heading');
-			const status = getByText('No active executions');
-
-			expect(heading).not.toBeNull();
+			expect(getByTestId('executions-sidebar')).toContainElement(heading);
 			expect(getByTestId('concurrent-executions-header')).toContainElement(status);
-			expect.soft(getComputedStyle(heading!).alignItems).toBe('baseline');
+			expect.soft(getComputedStyle(heading).alignItems).toBe('baseline');
 			expect.soft(status).toHaveClass('text-light');
 		} finally {
 			style.remove();
