@@ -90,37 +90,40 @@ function intersects(a: Box, b: Box): boolean {
 	);
 }
 
-interface Edge {
-	from: string;
-	to: string;
-	type: string;
+interface Links {
+	parentsOf: (name: string) => string[];
+	childrenOf: (name: string) => string[];
 }
 
-/** Every connection by node name, across all connection types. */
-function edgesOf(json: WorkflowJSON): Edge[] {
-	const edges: Edge[] = [];
+/** Connections by node name in both directions, for the connection types that `keep` accepts. */
+function linksOf(json: WorkflowJSON, keep: (type: string) => boolean = () => true): Links {
+	const parents = new Map<string, string[]>();
+	const children = new Map<string, string[]>();
+	const push = (map: Map<string, string[]>, key: string, value: string) => {
+		const list = map.get(key);
+		if (list) list.push(value);
+		else map.set(key, [value]);
+	};
 	for (const [from, connectionsByType] of Object.entries(json.connections ?? {})) {
 		if (!isRecord(connectionsByType)) continue;
 		for (const [type, groups] of Object.entries(connectionsByType)) {
-			if (!Array.isArray(groups)) continue;
+			if (!keep(type) || !Array.isArray(groups)) continue;
 			for (const group of groups) {
 				if (!Array.isArray(group)) continue;
 				for (const connection of group) {
 					if (isRecord(connection) && typeof connection.node === 'string') {
-						edges.push({ from, to: connection.node, type });
+						push(children, from, connection.node);
+						push(parents, connection.node, from);
 					}
 				}
 			}
 		}
 	}
-	return edges;
+	return {
+		parentsOf: (name) => parents.get(name) ?? [],
+		childrenOf: (name) => children.get(name) ?? [],
+	};
 }
-
-const parentsOf = (edges: Edge[], name: string) =>
-	edges.filter((edge) => edge.to === name).map((edge) => edge.from);
-
-const childrenOf = (edges: Edge[], name: string) =>
-	edges.filter((edge) => edge.from === name).map((edge) => edge.to);
 
 interface Survivor {
 	node: NodeJSON;
@@ -150,9 +153,8 @@ function makeRoomForInsertions(
 	// Without a re-layout, the build's gaps say nothing about the saved canvas.
 	if (!wasRelaidOut(survivors)) return new Map();
 
-	const edges = edgesOf(json);
-	const mainEdges = edges.filter((edge) => edge.type === 'main');
-	const aiEdges = edges.filter((edge) => edge.type.startsWith('ai_'));
+	const main = linksOf(json, (type) => type === 'main');
+	const ai = linksOf(json, (type) => type.startsWith('ai_'));
 	const groups = groupMembers(json).map((members) => members.map(nameOf));
 	const survivorByName = new Map(survivors.map((survivor) => [nameOf(survivor.node), survivor]));
 	const addedNames = new Set(added.map(nameOf));
@@ -160,17 +162,17 @@ function makeRoomForInsertions(
 
 	for (const node of added) {
 		const parent = survivors.find((survivor) =>
-			childrenOf(mainEdges, nameOf(survivor.node)).includes(nameOf(node)),
+			main.childrenOf(nameOf(survivor.node)).includes(nameOf(node)),
 		);
 		if (!parent) continue;
 
 		// The first existing nodes after the insert, reached through added nodes only.
 		const run = reach([nameOf(node)], (name) =>
-			childrenOf(mainEdges, name).filter((child) => addedNames.has(child)),
+			main.childrenOf(name).filter((child) => addedNames.has(child)),
 		);
 		const next = new Set(
 			[...run]
-				.flatMap((name) => childrenOf(mainEdges, name))
+				.flatMap((name) => main.childrenOf(name))
 				.flatMap((child) => survivorByName.get(child) ?? []),
 		);
 		// Appended after the parent, not inserted.
@@ -180,8 +182,8 @@ function makeRoomForInsertions(
 		const downstream = reach(
 			[...next].map((survivor) => nameOf(survivor.node)),
 			(name) => [
-				...childrenOf(mainEdges, name),
-				...parentsOf(aiEdges, name),
+				...main.childrenOf(name),
+				...ai.parentsOf(name),
 				...groups.filter((group) => group.includes(name)).flat(),
 			],
 		);
@@ -242,19 +244,19 @@ function resolveTranslation(
 	// only the added nodes were placed — in a frame unrelated to the saved canvas.
 	// Anchor on a wired neighbour that did survive.
 	const savedByName = new Map(survivors.map(({ node, saved }) => [nameOf(node), saved]));
-	const edges = edgesOf(json);
+	const { parentsOf, childrenOf } = linksOf(json);
 
 	for (const node of added) {
 		if (!node.name) continue;
 
-		for (const parent of parentsOf(edges, node.name)) {
+		for (const parent of parentsOf(node.name)) {
 			const anchor = savedByName.get(parent);
 			if (anchor) {
 				return [anchor[0] + NODE_STEP_X - node.position[0], anchor[1] - node.position[1]];
 			}
 		}
 
-		for (const child of childrenOf(edges, node.name)) {
+		for (const child of childrenOf(node.name)) {
 			const anchor = savedByName.get(child);
 			if (anchor) {
 				return [anchor[0] - NODE_STEP_X - node.position[0], anchor[1] - node.position[1]];
@@ -323,7 +325,7 @@ function separateAddedNodes(added: NodeJSON[], json: WorkflowJSON): void {
 	const addedSet = new Set(added);
 	const addedByName = new Map(added.map((node) => [nameOf(node), node]));
 	const groups = groupMembers(json);
-	const edges = edgesOf(json);
+	const { parentsOf, childrenOf } = linksOf(json);
 	const sizes = getWorkflowNodeDimensions(json);
 
 	const boxesOf = (members: NodeJSON[]): Box[] =>
@@ -347,7 +349,7 @@ function separateAddedNodes(added: NodeJSON[], json: WorkflowJSON): void {
 	// Added nodes wired to the node or in a group with it.
 	const linkedTo = (node: NodeJSON) =>
 		[
-			...[...parentsOf(edges, nameOf(node)), ...childrenOf(edges, nameOf(node))].flatMap(
+			...[...parentsOf(nameOf(node)), ...childrenOf(nameOf(node))].flatMap(
 				(name) => addedByName.get(name) ?? [],
 			),
 			...groups.filter((group) => group.includes(node)).flat(),
