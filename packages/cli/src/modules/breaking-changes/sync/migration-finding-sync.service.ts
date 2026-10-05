@@ -6,7 +6,7 @@ import {
 import { Logger } from '@n8n/backend-common';
 import { TransactionRunner, WorkflowRepository, type OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { ErrorReporter, InstanceSettings } from 'n8n-core';
+import { ErrorReporter } from 'n8n-core';
 import { createHash } from 'node:crypto';
 
 import { RuleRegistry } from '../breaking-changes.rule-registry.service';
@@ -26,6 +26,11 @@ export function computeRuleSetFingerprint(ruleIds: string[]): string {
  * Brings the `migration_finding` table in step with detection results: a full
  * scan over every workflow, or a re-check of one workflow after it was saved.
  * The report routes read from the table, so they run the full sync first.
+ *
+ * Any main may run the full sync; there is no cross-main lock. Every write is
+ * safe to repeat: inserts ignore a row that exists, and status updates go by
+ * id. Two mains that sync at the same time do the work twice and end on the
+ * same table.
  */
 @Service()
 export class MigrationFindingSyncService {
@@ -44,7 +49,6 @@ export class MigrationFindingSyncService {
 		private readonly findingRepository: MigrationFindingRepository,
 		private readonly syncRepository: MigrationFindingSyncRepository,
 		private readonly txRunner: TransactionRunner,
-		private readonly instanceSettings: InstanceSettings,
 		private readonly logger: Logger,
 		private readonly errorReporter: ErrorReporter,
 	) {
@@ -54,8 +58,6 @@ export class MigrationFindingSyncService {
 	/**
 	 * Syncs when the table has never been filled for the version, or when the
 	 * registered rule set changed since the last sync (for example after an upgrade).
-	 * A follower never writes, so on a follower this is a no-op and the table
-	 * shows the last leader sync.
 	 */
 	async syncIfStale(targetVersion: BreakingChangeVersion): Promise<void> {
 		// A read during a sync waits for it, so the table is never read mid-sync.
@@ -77,14 +79,6 @@ export class MigrationFindingSyncService {
 	}
 
 	async sync(targetVersion: BreakingChangeVersion): Promise<void> {
-		// Only the leader writes, so followers in a multi-main setup do not race on the table.
-		if (!this.instanceSettings.isLeader) {
-			this.logger.debug('Skipping migration finding sync on a non-leader instance', {
-				targetVersion,
-			});
-			return;
-		}
-
 		const ongoing = this.ongoingSyncs.get(targetVersion);
 		if (ongoing) {
 			this.logger.debug('Reusing ongoing migration finding sync', { targetVersion });
@@ -104,7 +98,7 @@ export class MigrationFindingSyncService {
 		this.logger.debug('Starting migration finding sync', { targetVersion });
 
 		// The record is written again only after every batch succeeded. A sync that stops
-		// early (failed batch, lost leadership, error) leaves none, so the next read syncs again.
+		// early (failed batch, error) leaves none, so the next read syncs again.
 		await this.syncRepository.deleteForVersion(targetVersion, {});
 
 		// One full, uncached scan. Batch rules need every workflow to produce a result,
@@ -131,16 +125,6 @@ export class MigrationFindingSyncService {
 		let failedBatches = 0;
 		do {
 			workflowIds = await this.workflowRepository.getIdsAfter(afterId, take);
-
-			// The scan can take long. A follower must not write, so leadership is
-			// checked again before every batch; the sync record stays cleared.
-			if (!this.instanceSettings.isLeader) {
-				this.logger.info('Stopping migration finding sync, this instance is no longer the leader', {
-					targetVersion,
-				});
-				return;
-			}
-
 			try {
 				await this.syncBatch(targetVersion, workflowIds, hitsByWorkflow, unknownByWorkflow);
 			} catch (error) {
@@ -181,9 +165,9 @@ export class MigrationFindingSyncService {
 
 	/**
 	 * Re-checks one workflow and updates its findings in one transaction.
-	 * It runs on whichever main handled the save, so it is not leader-gated: the
-	 * write is small and scoped to one workflow, and a later full sync corrects
-	 * any drift. The sync record marks a full scan, so this path never writes it.
+	 * It runs on whichever main handled the save. The write is small and scoped
+	 * to one workflow, and a later full sync corrects any drift. The sync record
+	 * marks a full scan, so this path never writes it.
 	 * Errors are reported, not thrown, so the save that triggered it is unaffected.
 	 */
 	async syncWorkflow(workflowId: string): Promise<void> {
