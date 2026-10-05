@@ -296,9 +296,7 @@ const {
 	receivedJobs: () => messages.value.flatMap((message) => message.backgroundJobSignal?.tasks ?? []),
 });
 const canStopBackgroundJobs = computed(() =>
-	backgroundJobs.value.some(
-		(job) => job.kind === 'subagent' && (job.status === 'running' || job.status === 'suspended'),
-	),
+	backgroundJobs.value.some((job) => job.status === 'running' || job.status === 'suspended'),
 );
 const backgroundStoppingIds = computed(
 	() =>
@@ -306,7 +304,6 @@ const backgroundStoppingIds = computed(
 			backgroundJobs.value
 				.filter(
 					(job) =>
-						job.kind === 'subagent' &&
 						(job.status === 'running' || job.status === 'suspended') &&
 						(isStopping.value || job.pauseRequested),
 				)
@@ -464,13 +461,18 @@ async function respondToBackgroundApproval(
 const backgroundJobRows = computed(() =>
 	backgroundJobs.value.map((job) => {
 		const stopping = backgroundStoppingIds.value.has(job.id);
+		const stopped =
+			job.status === 'paused' ||
+			(job.kind === 'workflow' && job.status === 'cancelled' && job.pauseRequested);
 		let indicator = backgroundJobStatuses.value[job.status];
 		if (stopping) indicator = backgroundJobStatuses.value.stopping;
+		else if (stopped) indicator = backgroundJobStatuses.value.paused;
 		else if (job.kind === 'workflow' && job.status === 'running')
 			indicator = backgroundJobStatuses.value.waiting;
 		return {
 			...job,
 			stopping,
+			stopped,
 			label: locale.baseText(
 				job.kind === 'workflow'
 					? 'agents.chat.backgroundTasks.workflow'
@@ -1051,7 +1053,7 @@ onBeforeUnmount(() => {
 								</span>
 								<span :class="$style.jobLabel">{{ job.label }}</span>
 								<N8nText
-									v-if="job.stopping || job.status === 'paused'"
+									v-if="job.stopping || job.stopped"
 									:class="$style.jobProgress"
 									size="small"
 									color="text-light"
