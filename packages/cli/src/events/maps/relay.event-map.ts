@@ -131,6 +131,7 @@ export type RelayEventMap = {
 		projectIds: string[];
 		folderId: string | null;
 		workflowIds: string[];
+		agentIds: string[];
 		options: ImportPackageEventOptions;
 		packageSourceId: string;
 		packageVersion: string;

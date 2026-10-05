@@ -46,9 +46,25 @@ export default class PackageImport extends BaseCommand {
 		}),
 		missingNodeTypeMode: Flags.string({
 			description:
-				'What to do when a workflow uses a node type or version this instance does not have (default on the instance: fail). With import-anyway, affected workflows are imported but never published',
+				'What to do when a workflow or agent uses an unavailable node type or version. With import-anyway, affected entities are imported but cannot be published',
 			options: ['fail', 'import-anyway'],
 			aliases: ['missing-node-type-mode'],
+		}),
+		agentConflictPolicy: Flags.string({
+			description: 'What to do when an agent already exists in the target project',
+			options: ['new-version', 'fail', 'skip'],
+			aliases: ['agent-conflict-policy'],
+		}),
+		agentPublishingPolicy: Flags.string({
+			description:
+				'Apply workflow publication rules to agents. The default preserves the target publication state',
+			options: ['preserve-published-state', 'match-source', 'publish-all', 'unpublish-all'],
+			aliases: ['agent-publishing-policy'],
+		}),
+		agentIdPolicy: Flags.string({
+			description: 'Keep source agent IDs (default) or assign new IDs',
+			options: ['new', 'source'],
+			aliases: ['agent-id-policy'],
 		}),
 		projectConflictPolicy: Flags.string({
 			description:
@@ -152,6 +168,9 @@ export default class PackageImport extends BaseCommand {
 						workflowConflictPolicy: flags.workflowConflictPolicy,
 						workflowPublishingPolicy: flags.workflowPublishingPolicy,
 						workflowIdPolicy: flags.workflowIdPolicy,
+						agentConflictPolicy: flags.agentConflictPolicy,
+						agentPublishingPolicy: flags.agentPublishingPolicy,
+						agentIdPolicy: flags.agentIdPolicy,
 						missingNodeTypeMode: flags.missingNodeTypeMode,
 						projectConflictPolicy: flags.projectConflictPolicy,
 						folderConflictPolicy: flags.folderConflictPolicy,

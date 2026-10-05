@@ -1,5 +1,43 @@
 oneOf:
   - type: object
+    description: An agent conflicts with an existing target ID or import source ID.
+    required: [type, sourceAgentId, existingAgentIds]
+    properties:
+      type:
+        type: string
+        enum: [agent-conflict, agent-id-conflict, agent-lineage-conflict]
+      sourceAgentId:
+        type: string
+      existingAgentIds:
+        type: array
+        items:
+          type: string
+  - type: object
+    description: A task ID belongs to a different agent.
+    required: [type, sourceAgentId, taskId]
+    properties:
+      type:
+        type: string
+        enum: [agent-task-id-conflict]
+      sourceAgentId:
+        type: string
+      taskId:
+        type: string
+  - type: object
+    description: An agent references an unavailable or inaccessible dependency.
+    required: [type, sourceAgentId, dependencyKind, dependencyId]
+    properties:
+      type:
+        type: string
+        enum: [agent-dependency-unresolved]
+      sourceAgentId:
+        type: string
+      dependencyKind:
+        type: string
+        enum: [agent, workflow]
+      dependencyId:
+        type: string
+  - type: object
     description: >
       A selected workflow resolves to a destination id in `deletedWorkflowIds`.
       The import stops before any writes, including when the conflict policy is `skip`.
@@ -304,6 +342,10 @@ oneOf:
         type: array
         items:
           type: string
+      usedByAgents:
+        type: array
+        items:
+          type: string
         description: Package workflow ids that use this node type and version.
   - type: object
     description: A credential reference that could not be resolved in the target project.
@@ -339,6 +381,10 @@ oneOf:
         description: >
           For `type_mismatch`: the actual type of the resolved target credential.
       usedByWorkflows:
+        type: array
+        items:
+          type: string
+      usedByAgents:
         type: array
         items:
           type: string
@@ -398,6 +444,10 @@ oneOf:
         type: array
         items:
           type: string
+      usedByAgents:
+        type: array
+        items:
+          type: string
         description: >
           Package workflow ids (non-skipped) that reference the source tag — not
           workflows attached to the contested target tag.
@@ -418,6 +468,10 @@ oneOf:
         type: string
         description: Requirement name with no match in the target project or global scope.
       usedByWorkflows:
+        type: array
+        items:
+          type: string
+      usedByAgents:
         type: array
         items:
           type: string
@@ -447,6 +501,10 @@ oneOf:
           Project owning the resolved variable. Absent when it resolved at the
           global scope.
       usedByWorkflows:
+        type: array
+        items:
+          type: string
+      usedByAgents:
         type: array
         items:
           type: string
@@ -484,6 +542,10 @@ oneOf:
           type: string
         description: The unique variable names the import would create.
       usedByWorkflows:
+        type: array
+        items:
+          type: string
+      usedByAgents:
         type: array
         items:
           type: string

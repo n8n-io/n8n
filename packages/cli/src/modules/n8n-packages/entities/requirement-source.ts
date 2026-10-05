@@ -7,6 +7,14 @@ export interface RequirementUsage {
 	usedByAgents?: string[];
 }
 
+export function mergeRequirementUsage(requirements: RequirementUsage[]): RequirementUsage {
+	const usedByAgents = [...new Set(requirements.flatMap((item) => item.usedByAgents ?? []))].sort();
+	return {
+		usedByWorkflows: [...new Set(requirements.flatMap((item) => item.usedByWorkflows))].sort(),
+		...(usedByAgents.length > 0 ? { usedByAgents } : {}),
+	};
+}
+
 /** Keep agent IDs out of the workflow usage list, including when IDs coincide. */
 export function addRequirementUsage(usage: RequirementUsage, source: RequirementSource): void {
 	if ('workflowId' in source) {

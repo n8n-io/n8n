@@ -112,6 +112,7 @@ export const GLOBAL_OWNER_SCOPES: Scope[] = [
 	'agent:export',
 	'workflow:export',
 	'workflow:import',
+	'agent:import',
 	'workflow:update',
 	'workflow:publish',
 	'workflow:unpublish',

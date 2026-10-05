@@ -18,6 +18,9 @@ interface ImportFlags {
 	workflowConflictPolicy?: string;
 	workflowPublishingPolicy?: string;
 	workflowIdPolicy?: string;
+	agentConflictPolicy?: string;
+	agentPublishingPolicy?: string;
+	agentIdPolicy?: string;
 	missingNodeTypeMode?: string;
 	projectConflictPolicy?: string;
 	folderConflictPolicy?: string;
@@ -70,6 +73,9 @@ describe('package import command', () => {
 			workflowConflictPolicy: 'fail',
 			workflowPublishingPolicy: 'publish-all',
 			workflowIdPolicy: 'new',
+			agentConflictPolicy: 'skip',
+			agentPublishingPolicy: 'match-source',
+			agentIdPolicy: 'source',
 			missingNodeTypeMode: 'import-anyway',
 			projectConflictPolicy: 'overwrite',
 			folderConflictPolicy: 'merge',
@@ -100,6 +106,9 @@ describe('package import command', () => {
 			workflowConflictPolicy: 'fail',
 			workflowPublishingPolicy: 'publish-all',
 			workflowIdPolicy: 'new',
+			agentConflictPolicy: 'skip',
+			agentPublishingPolicy: 'match-source',
+			agentIdPolicy: 'source',
 			missingNodeTypeMode: 'import-anyway',
 			projectConflictPolicy: 'overwrite',
 			folderConflictPolicy: 'merge',

@@ -2,6 +2,7 @@ import { LicenseState } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 
 import { ForbiddenError } from '@n8n/errors';
+import { AgentImporter } from '../entities/agent/agent-importer';
 
 import type { CredentialBindingRequest } from '../entities/credential/credential.types';
 import { removesUnpackagedWorkflows } from '../entities/folder/folder-conflict-policy';
@@ -62,6 +63,7 @@ export class ProjectPackageImporter {
 		private readonly importOrchestrator: ImportOrchestrator,
 		private readonly workflowPublisher: WorkflowPublisher,
 		private readonly licenseState: LicenseState,
+		private readonly agentImporter: AgentImporter,
 	) {}
 
 	async import(
@@ -174,6 +176,7 @@ export class ProjectPackageImporter {
 		});
 
 		const workflows: ImportedWorkflowSummary[] = [];
+		const agents = await this.agentImporter.applyToPackage(applied, request.agentPublishingPolicy);
 		const removedWorkflows: RemovedWorkflowSummary[] = [];
 		const removedFolders: RemovedFolderSummary[] = [];
 		const folders: ImportedFolderSummary[] = [];
@@ -222,6 +225,7 @@ export class ProjectPackageImporter {
 
 		const result = buildImportResult({
 			package: toPackageSummary(manifest),
+			agents,
 			workflows,
 			removedWorkflows,
 			removedFolders,
@@ -256,6 +260,7 @@ export class ProjectPackageImporter {
 		const basePrefix = `${project.target}/`;
 		const folders = await this.packageParser.getFolders(reader, basePrefix);
 		const allWorkflows = await this.packageParser.getWorkflows(reader, basePrefix);
+		const agents = request.selection ? [] : await this.packageParser.getAgents(reader, basePrefix);
 
 		// Do not expand the selection to include referenced sub-workflows.
 		const workflows = request.selection
@@ -266,7 +271,11 @@ export class ProjectPackageImporter {
 
 		// Requirements and bindings are both scoped to this project's workflows so another project's
 		// binding is not seen as an orphan here (which would block the whole multi-project import).
-		const requirements = identifyRequirements(manifest.requirements?.credentials, workflows);
+		const requirements = identifyRequirements(
+			manifest.requirements?.credentials,
+			workflows,
+			agents,
+		);
 		const credentialRequest: CredentialBindingRequest = {
 			requirements,
 			matchingMode: request.credentialMatchingMode,
@@ -278,7 +287,7 @@ export class ProjectPackageImporter {
 		};
 
 		const dataTableRequest: DataTableImportRequest = {
-			requirements: identifyRequirements(manifest.requirements?.dataTables, workflows),
+			requirements: identifyRequirements(manifest.requirements?.dataTables, workflows, agents),
 			packageDataTables: await this.packageParser.getDataTables(reader),
 			matchingMode: request.dataTableMatchingMode,
 			missingMode: request.dataTableMissingMode,
@@ -287,7 +296,7 @@ export class ProjectPackageImporter {
 
 		const variableRequest: VariableImportRequest = {
 			requirements: placeByLayout({
-				requirements: identifyRequirements(manifest.requirements?.variables, workflows),
+				requirements: identifyRequirements(manifest.requirements?.variables, workflows, agents),
 				manifestVariables: manifest.variables,
 				scopePrefix: basePrefix,
 				bundledVariables,
@@ -312,6 +321,7 @@ export class ProjectPackageImporter {
 			},
 			folders,
 			workflows,
+			agents,
 			credentialRequest,
 			dataTableRequest,
 			variableRequest,
@@ -321,7 +331,11 @@ export class ProjectPackageImporter {
 			importSource,
 			// Scoped like the requirements above: reconciliation must retain a referenced-but-not-carried
 			// sub-workflow, or it would archive a dependency and leave its packaged parent unpublishable.
-			subWorkflowRequirements: identifyRequirements(manifest.requirements?.workflows, workflows),
+			subWorkflowRequirements: identifyRequirements(
+				manifest.requirements?.workflows,
+				workflows,
+				agents,
+			),
 			explicitDeleteWorkflowIds: deletesForProject(request.selection, project.id),
 		};
 	}
@@ -346,6 +360,8 @@ export class ProjectPackageImporter {
 		if ((manifest.workflows?.length ?? 0) > 0) {
 			assertPackageImportApiKeyScopes(request.apiKeyScopes, ['workflow:import']);
 		}
+		if (!request.selection && manifest.agents?.length)
+			assertPackageImportApiKeyScopes(request.apiKeyScopes, ['agent:import']);
 
 		// `overwrite` archives workflows the package omits, so require the scope up front rather than
 		// discovering mid-import that the caller may not remove what reconciliation demands.

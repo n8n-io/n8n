@@ -1,11 +1,14 @@
 import { EventService } from '@n8n/backend-services';
-import { createTeamProject, mockInstance, testDb } from '@n8n/backend-test-utils';
+import { createTeamProject, mockInstance, testDb, testModules } from '@n8n/backend-test-utils';
 import type { Project, User } from '@n8n/db';
 import { ProjectRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 
 import { CredentialTypes } from '@/credential-types';
+import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
+import { N8nPackagesService } from '@/modules/n8n-packages/n8n-packages.service';
+import { streamToBuffer } from '@/modules/n8n-packages/__tests__/utils/tar-support';
 import {
 	buildImportPackageBuffer,
 	serializedWorkflow,
@@ -21,6 +24,8 @@ import type { SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils/';
 
 mockInstance(Telemetry);
+
+beforeAll(async () => await testModules.loadModules(['agents', 'n8n-packages']));
 
 const testServer = utils.setupTestServer({ endpointGroups: ['publicApi'] });
 
@@ -43,6 +48,7 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
+	await Container.get(AgentRepository).delete({});
 	await testDb.truncate([
 		'WorkflowEntity',
 		'SharedWorkflow',
@@ -128,6 +134,74 @@ async function buildImportPackage(
 }
 
 describe('POST /n8n-packages/import', () => {
+	test('accepts agent-only API keys and applies agent ID, conflict, and publication policies', async () => {
+		const repository = Container.get(AgentRepository);
+		const agent = await repository.save(
+			repository.create({
+				name: 'API agent',
+				projectId: ownerPersonalProject.id,
+				schema: null,
+				tools: {},
+				skills: {},
+			}),
+		);
+		const buffer = await streamToBuffer(
+			(await Container.get(N8nPackagesService).exportPackage({ user: owner, agentIds: [agent.id] }))
+				.stream,
+		);
+		const importer = await createOwnerWithApiKey({ scopes: ['agent:import'] });
+		const api = testServer.publicApiAgentFor(importer);
+		const response = await api
+			.post('/n8n-packages/import')
+			.field('workflowConflictPolicy', 'new-version')
+			.field('agentIdPolicy', 'new')
+			.field('agentPublishingPolicy', 'unpublish-all')
+			.attach('package', buffer, 'agents.n8np');
+		expect(response.statusCode).toBe(200);
+		expect(response.body.agents).toEqual([
+			expect.objectContaining({
+				sourceAgentId: agent.id,
+				status: 'created',
+				activeVersionId: null,
+			}),
+		]);
+		expect(response.body.agents[0].localId).not.toBe(agent.id);
+		const conflict = await api
+			.post('/n8n-packages/import')
+			.field('workflowConflictPolicy', 'new-version')
+			.field('agentConflictPolicy', 'fail')
+			.attach('package', buffer, 'agents.n8np');
+		expect(conflict.statusCode).toBe(409);
+		expect(conflict.body.issues[0].type).toBe('agent-conflict');
+		const skipped = await api
+			.post('/n8n-packages/import')
+			.field('workflowConflictPolicy', 'new-version')
+			.field('agentConflictPolicy', 'skip')
+			.attach('package', buffer, 'agents.n8np');
+		expect(skipped.statusCode).toBe(200);
+		expect(skipped.body.agents[0]).toMatchObject({
+			status: 'skipped',
+			localId: response.body.agents[0].localId,
+		});
+
+		const workflowKey = await createOwnerWithApiKey({ scopes: ['workflow:import'] });
+		const denied = await testServer
+			.publicApiAgentFor(workflowKey)
+			.post('/n8n-packages/import')
+			.field('workflowConflictPolicy', 'new-version')
+			.attach('package', buffer, 'agents.n8np');
+		expect(denied.statusCode, `agent package: ${JSON.stringify(denied.body)}`).toBe(403);
+		const workflowBuffer = await buildImportPackage();
+		const workflowDenied = await api
+			.post('/n8n-packages/import')
+			.field('workflowConflictPolicy', 'new-version')
+			.attach('package', workflowBuffer, 'workflows.n8np');
+		expect(
+			workflowDenied.statusCode,
+			`workflow package: ${JSON.stringify(workflowDenied.body)}`,
+		).toBe(403);
+	});
+
 	test('should fail due to missing API Key', testWithAPIKey('post', '/n8n-packages/import', null));
 
 	test(
@@ -232,6 +306,7 @@ describe('POST /n8n-packages/import', () => {
 
 		expect(response.statusCode).toBe(200);
 		expect(response.body).toEqual({
+			agents: [],
 			package: {
 				sourceN8nVersion: '1.0.0',
 				sourceId: 'http-integration-source',
@@ -255,6 +330,7 @@ describe('POST /n8n-packages/import', () => {
 			folders: [],
 			projects: [],
 			bindings: {
+				agents: {},
 				workflows: { 'wf-http-source': expect.any(String) },
 				credentials: {},
 			},

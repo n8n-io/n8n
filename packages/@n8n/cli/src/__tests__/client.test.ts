@@ -538,6 +538,9 @@ describe('N8nClient packages', () => {
 					projectId: 'proj-1',
 					folderId: '',
 					workflowIdPolicy: 'new',
+					agentConflictPolicy: 'skip',
+					agentPublishingPolicy: 'publish-all',
+					agentIdPolicy: 'new',
 					credentialMatchingMode: undefined,
 					missingNodeTypeMode: undefined,
 				},
@@ -551,6 +554,9 @@ describe('N8nClient packages', () => {
 			expect(form.get('workflowConflictPolicy')).toBe('fail');
 			expect(form.get('projectId')).toBe('proj-1');
 			expect(form.get('workflowIdPolicy')).toBe('new');
+			expect(form.get('agentConflictPolicy')).toBe('skip');
+			expect(form.get('agentPublishingPolicy')).toBe('publish-all');
+			expect(form.get('agentIdPolicy')).toBe('new');
 			// Empty/undefined fields are omitted entirely (an omitted CLI flag
 			// means the instance default decides).
 			expect(form.has('folderId')).toBe(false);

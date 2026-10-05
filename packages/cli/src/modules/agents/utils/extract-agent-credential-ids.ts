@@ -13,19 +13,28 @@ const DEFAULT_ID_KEYS: ReadonlySet<string> = new Set(['credential', 'credentialI
  */
 export const AGENT_CONFIG_ID_KEYS: ReadonlySet<string> = new Set(['credential']);
 
-function addCredentialId(value: unknown, credentialIds: Set<string>): void {
+type CredentialVisitor = (id: string, replace: (id: string) => void) => void;
+
+function visitCredentialId(
+	record: Record<string, unknown>,
+	key: string,
+	visit: CredentialVisitor,
+): void {
+	const value = record[key];
 	if (typeof value === 'string' && value !== '' && !MANAGED_CREDENTIAL_IDS.has(value)) {
-		credentialIds.add(value);
+		visit(value, (id) => {
+			record[key] = id;
+		});
 	}
 }
 
-function collectCredentialIds(
+export function visitAgentCredentialIds(
 	value: unknown,
-	credentialIds: Set<string>,
-	idKeys: ReadonlySet<string>,
+	visit: CredentialVisitor,
+	idKeys: ReadonlySet<string> = DEFAULT_ID_KEYS,
 ): void {
 	if (Array.isArray(value)) {
-		for (const entry of value) collectCredentialIds(entry, credentialIds, idKeys);
+		for (const entry of value) visitAgentCredentialIds(entry, visit, idKeys);
 		return;
 	}
 
@@ -33,16 +42,16 @@ function collectCredentialIds(
 
 	for (const [key, entry] of Object.entries(value)) {
 		if (idKeys.has(key)) {
-			addCredentialId(entry, credentialIds);
+			visitCredentialId(value, key, visit);
 		} else if (key === 'credentials' && isRecord(entry)) {
 			for (const credentialReference of Object.values(entry)) {
 				if (isRecord(credentialReference)) {
-					addCredentialId(credentialReference.id, credentialIds);
+					visitCredentialId(credentialReference, 'id', visit);
 				}
 			}
 		}
 
-		collectCredentialIds(entry, credentialIds, idKeys);
+		visitAgentCredentialIds(entry, visit, idKeys);
 	}
 }
 
@@ -51,6 +60,12 @@ export function extractAgentCredentialIds(
 	idKeys: ReadonlySet<string> = DEFAULT_ID_KEYS,
 ): Set<string> {
 	const credentialIds = new Set<string>();
-	collectCredentialIds(value, credentialIds, idKeys);
+	visitAgentCredentialIds(
+		value,
+		(id) => {
+			credentialIds.add(id);
+		},
+		idKeys,
+	);
 	return credentialIds;
 }

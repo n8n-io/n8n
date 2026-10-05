@@ -11,7 +11,7 @@ import type { WorkflowConflictPolicy } from '../../n8n-packages.types';
 /* eslint-disable @typescript-eslint/naming-convention -- API workflow conflict policy keys */
 const WORKFLOW_CONFLICT_POLICIES: Record<
 	WorkflowConflictPolicy,
-	(existing: WorkflowEntity | null) => WorkflowDecision
+	(existing: Pick<WorkflowEntity, 'id'> | null) => WorkflowDecision
 > = {
 	'new-version': (existing) => ({ action: existing ? 'update' : 'create', blocked: false }),
 	fail: (existing) => ({ action: 'create', blocked: existing !== null }),
@@ -21,7 +21,7 @@ const WORKFLOW_CONFLICT_POLICIES: Record<
 
 export function decideWorkflowConflictAction(
 	policy: WorkflowConflictPolicy,
-	existing: WorkflowEntity | null,
+	existing: Pick<WorkflowEntity, 'id'> | null,
 ): WorkflowDecision {
 	return WORKFLOW_CONFLICT_POLICIES[policy](existing);
 }

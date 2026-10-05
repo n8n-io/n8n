@@ -29,6 +29,7 @@ import type {
 	VariableResolutionFailure,
 } from './variable.types';
 import { VariableConflictPolicy } from '../../n8n-packages.types';
+import { mergeRequirementUsage } from '../requirement-source';
 import type { ImportContext } from '../../n8n-packages.types';
 
 @Service()
@@ -76,15 +77,15 @@ export class VariableImporter {
 				}
 
 				const scope = picked.project ? { projectId: picked.project.id } : {};
-				const usedByWorkflows = [...new Set(requirement.usedByWorkflows)].sort();
-				conflicts.push({ name: requirement.name, ...scope, usedByWorkflows });
+				const usage = mergeRequirementUsage([requirement]);
+				conflicts.push({ name: requirement.name, ...scope, ...usage });
 				if (overwritesConflicts) {
 					overwrites.push({
 						variableId: picked.id,
 						name: requirement.name,
 						...scope,
 						value: packageValue,
-						usedByWorkflows,
+						...usage,
 					});
 				}
 				continue;
@@ -96,7 +97,7 @@ export class VariableImporter {
 					name: requirement.name,
 					...(requirement.globalPlacement ? {} : { projectId: context.projectId }),
 					...(value !== undefined ? { value } : {}),
-					usedByWorkflows: [...new Set(requirement.usedByWorkflows)].sort(),
+					...mergeRequirementUsage([requirement]),
 				});
 			}
 		}

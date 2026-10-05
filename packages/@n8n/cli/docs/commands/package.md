@@ -70,7 +70,7 @@ already exist on the target instance.
 
 ## `package import`
 
-Import a `.n8np` archive into a project.
+Import workflows and agents from a `.n8np` archive into a project. Agent definitions include skills, custom tools, and tasks. Knowledge base files and runtime data are excluded.
 
 ```bash
 n8n-cli package import --file=export.n8np
@@ -87,6 +87,9 @@ n8n-cli package import --file=export.n8np --workflow-conflict-policy=fail --bind
 | `--folder-id` | Target folder ID within the project. Defaults to the project root. (alias: `--folder`) |
 | `--workflow-publishing-policy` | Whether imported workflows end up published. `preserve-published-state` (instance default) never publishes drafts — an updated workflow is republished only when it was already published and the package carries the version the source publishes; `match-source` publishes the version the package carries when the source publishes it and unpublishes when the source publishes nothing, but leaves the target's published version alone when the source publishes a version the package does not carry; `publish-all` publishes every imported workflow; `unpublish-all` leaves new workflows unpublished and unpublishes updated ones. |
 | `--workflow-id-policy` | Whether imported workflows keep their source ID (`source`) or receive a new one (`new`). |
+| `--agent-conflict-policy` | Apply workflow conflict rules to agents: `new-version` (default), `fail`, or `skip`. |
+| `--agent-id-policy` | Keep source agent IDs (`source`, default) or assign new IDs (`new`). Repeated imports match the stored source ID. |
+| `--agent-publishing-policy` | Apply the workflow publication rules above to agents. Supports `preserve-published-state` (default), `match-source`, `publish-all`, and `unpublish-all`. |
 | `--missing-node-type-mode` | What to do when a workflow uses a node type — or a version of a node type — this instance does not have. `fail` (instance default) rejects the import before anything is written, listing every missing node type and the workflows that use it; `import-anyway` imports the package, but the affected workflows are never published by the import, regardless of the publishing policy. |
 | `--project-conflict-policy` | What to do when a project in the package already exists on the instance, matched by ID, and by default how its contents are treated too (project packages only): `merge` (instance default) is purely additive — the existing project's name, description, icon and custom span attributes are left alone and the package's contents are added alongside; `overwrite` makes the package authoritative, replacing those details (a detail the package omits is left as it is, not cleared) and, via `--folder-conflict-policy`, removing contents the package does not carry; `fail` rejects the import before anything is written. |
 | `--folder-conflict-policy` | What to do when a package folder already exists in the target project. **Defaults to whatever `--project-conflict-policy` is**, so you state the intent once; for a workflow package, which defines no projects, it defaults to `merge`. `merge` reuses the existing folder and merges the package's children into it; `fail` rejects the import; `overwrite` additionally removes workflows the package does not contain, at the project root and in package-defined folders (see `--overwrite-deletion-policy`), and is rejected unless `--project-conflict-policy` is also `overwrite`. Folders the package does not define are removed too, but only once nothing is left inside them, so target-only content is never swept up. Requires a folders-enabled license when the package contains folders, and the `workflow:delete` and `folder:delete` scopes for `overwrite`. |
@@ -103,9 +106,12 @@ n8n-cli package import --file=export.n8np --workflow-conflict-policy=fail --bind
 | `--tag-conflict-policy` | What to do when a referenced tag conflicts on the target instance — the same-id target tag carries a different name (rename drift), or the tag's name is held by a different tag (name collision). `skip` (instance default) imports the workflows without the conflicted tags and lists them under `tags.skipped`; `fail` rejects the import; `rename` renames a drifted target tag to the package name and reconciles a name collision by re-keying the existing tag to the package (source) id, keeping its name and taggings; a drifted tag whose package name is held by another tag still rejects the import. |
 | `--bindings` | Explicit source→target id bindings as a JSON object keyed by entity type, e.g. `{"credentials":{"<sourceId>":"<targetId>"}}`. Only `credentials` is honoured today; these bindings are applied before `--credential-matching-mode` resolution runs. |
 
+The result includes agent IDs, import status, and publication outcomes under `agents`. Check `publishing.state` for `blocked` or `failed` outcomes before treating the operation as complete.
+
 Requires the API key to hold:
 
-- `workflow:import` — always
+- `workflow:import` — when the package contains workflows
+- `agent:import` — when the package contains agents
 - `workflow:delete` and `folder:delete` — when the effective folder conflict policy is `overwrite` (set directly, or inherited from `--project-conflict-policy=overwrite`)
 - `dataTable:create` — when the package references data tables and `--data-table-missing-mode` is `create`
 - `variable:create` — when the import actually creates a variable, i.e. `--variable-missing-mode` is `create-with-value` (the default) or `create-stub` and at least one referenced variable does not already resolve. A package whose variables all resolve creates nothing and needs neither this scope nor a variables-enabled license.

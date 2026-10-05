@@ -83,7 +83,10 @@ export interface ImportedProjectSummary {
 	status: 'created' | 'updated' | 'skipped';
 }
 
-export type SerializedBindings = Record<'workflows' | 'credentials', Record<string, string>>;
+export type SerializedBindings = Record<
+	'agents' | 'workflows' | 'credentials',
+	Record<string, string>
+>;
 
 export interface ImportPackageSummary {
 	sourceN8nVersion: string;
@@ -121,6 +124,7 @@ export interface ImportTagSummary {
 
 export interface ImportResult {
 	package: ImportPackageSummary;
+	agents: ImportedAgentSummary[];
 	workflows: ImportedWorkflowSummary[];
 	/** Workflows the package did not contain, removed under `folderConflictPolicy=overwrite`. */
 	removedWorkflows: RemovedWorkflowSummary[];
@@ -133,4 +137,14 @@ export interface ImportResult {
 	dataTables: ImportDataTableSummary;
 	variables: ImportVariableSummary;
 	tags: ImportTagSummary;
+}
+
+export interface ImportedAgentSummary {
+	sourceAgentId: string;
+	localId: string;
+	name: string;
+	projectId: string;
+	activeVersionId: string | null;
+	publishing: WorkflowPublishingOutcome;
+	status: 'created' | 'updated' | 'skipped';
 }

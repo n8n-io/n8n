@@ -28,6 +28,7 @@ const makeWorkflow = (id: string): WorkflowEntity =>
 	});
 
 const bindings: PackageImportBindings = {
+	agents: new Map(),
 	credentials: new Map(),
 	workflows: new Map(),
 };
@@ -238,6 +239,7 @@ describe('WorkflowImporter.apply', () => {
 		createWorkflow.mockResolvedValue(makeWorkflow('created'));
 
 		await importer.apply(context, plan, {
+			agents: new Map(),
 			credentials: new Map([['source-credential', 'target-credential']]),
 			workflows: new Map(),
 		});

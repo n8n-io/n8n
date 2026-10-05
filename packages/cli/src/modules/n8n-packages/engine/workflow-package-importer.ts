@@ -9,6 +9,7 @@ import { FolderService } from '@/services/folder.service';
 import { ProjectService } from '@/services/project.service.ee';
 
 import type { CredentialBindingRequest } from '../entities/credential/credential.types';
+import { AgentImporter } from '../entities/agent/agent-importer';
 import type { DataTableImportRequest } from '../entities/data-table/data-table.types';
 import type { TagImportRequest } from '../entities/tag/tag.types';
 import type { VariableImportRequest } from '../entities/variable/variable.types';
@@ -48,6 +49,7 @@ export class WorkflowPackageImporter {
 		private readonly projectService: ProjectService,
 		private readonly folderService: FolderService,
 		private readonly licenseState: LicenseState,
+		private readonly agentImporter: AgentImporter,
 	) {}
 
 	async import(
@@ -66,11 +68,16 @@ export class WorkflowPackageImporter {
 			request.projectId,
 			request.folderId,
 			folders.length > 0,
+			(manifest.workflows?.length ?? 0) > 0 || (manifest.agents?.length ?? 0) === 0,
 		);
 
 		const workflows = await this.packageParser.getWorkflows(reader);
+		const agents = await this.packageParser.getAgents(reader);
+		if (agents.length) assertPackageImportApiKeyScopes(request.apiKeyScopes, ['agent:import']);
+		if (workflows.length)
+			assertPackageImportApiKeyScopes(request.apiKeyScopes, ['workflow:import']);
 		const credentialRequest: CredentialBindingRequest = {
-			requirements: identifyRequirements(manifest.requirements?.credentials, workflows),
+			requirements: identifyRequirements(manifest.requirements?.credentials, workflows, agents),
 			matchingMode: request.credentialMatchingMode,
 			missingMode: request.credentialMissingMode,
 			credentialBindings: request.bindings?.credentials,
@@ -79,6 +86,7 @@ export class WorkflowPackageImporter {
 		const dataTableRequirements = identifyRequirements(
 			manifest.requirements?.dataTables,
 			workflows,
+			agents,
 		);
 		if (dataTableRequirements?.length && request.dataTableMissingMode === 'create') {
 			assertPackageImportApiKeyScopes(request.apiKeyScopes, ['dataTable:create']);
@@ -91,7 +99,11 @@ export class WorkflowPackageImporter {
 			schemaConflictPolicy: request.dataTableSchemaConflictPolicy,
 		};
 
-		const variableRequirements = identifyRequirements(manifest.requirements?.variables, workflows);
+		const variableRequirements = identifyRequirements(
+			manifest.requirements?.variables,
+			workflows,
+			agents,
+		);
 		const bundledVariables = needsBundledVariableValues(
 			request,
 			(variableRequirements?.length ?? 0) > 0,
@@ -119,12 +131,17 @@ export class WorkflowPackageImporter {
 			context,
 			folders,
 			workflows,
+			agents,
 			credentialRequest,
 			dataTableRequest,
 			variableRequest,
 			tagRequest,
 			options: request,
-			subWorkflowRequirements: identifyRequirements(manifest.requirements?.workflows, workflows),
+			subWorkflowRequirements: identifyRequirements(
+				manifest.requirements?.workflows,
+				workflows,
+				agents,
+			),
 		});
 
 		assertTagWritesAllowed(request.apiKeyScopes, [plan.tagPlan]);
@@ -153,8 +170,14 @@ export class WorkflowPackageImporter {
 			},
 		];
 
+		const importedAgents = await this.agentImporter.applyToPackage(
+			[{ plan, content }],
+			request.agentPublishingPolicy,
+		);
+
 		const result = buildImportResult({
 			package: toPackageSummary(manifest),
+			agents: importedAgents,
 			workflows: toImportedWorkflowSummaries(
 				content.workflowOutcomes,
 				context.projectId,
@@ -194,10 +217,10 @@ export class WorkflowPackageImporter {
 		projectId: string | undefined,
 		folderId: string | undefined,
 		needsFolderCreate: boolean,
+		needsWorkflowImport: boolean,
 	): Promise<ImportContext> {
-		const scopes: Scope[] = needsFolderCreate
-			? ['workflow:import', 'folder:create', 'folder:update']
-			: ['workflow:import'];
+		const scopes: Scope[] = [needsWorkflowImport ? 'workflow:import' : 'agent:import'];
+		if (needsFolderCreate) scopes.push('folder:create', 'folder:update');
 		const project = await this.resolveImportProject(user, projectId, scopes);
 		await this.assertFolderExistsInProject(folderId, project.id);
 

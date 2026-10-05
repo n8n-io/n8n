@@ -1,9 +1,4 @@
-import {
-	getSubworkflowId,
-	isNodeWithWorkflowSelector,
-	isResourceLocatorValue,
-	type INode,
-} from 'n8n-workflow';
+import { getSubworkflowId, isNodeWithWorkflowSelector, isResourceLocatorValue } from 'n8n-workflow';
 
 import type { EntityReference } from '../../reference';
 import type { WorkflowSubWorkflowRequirement } from '../workflow.types';
@@ -46,7 +41,10 @@ export function getStaticSubworkflowId(node: { type: string; parameters: Record<
 	return toStaticId(getSubworkflowId(node) ?? storedWorkflowId);
 }
 
-export function setStaticSubworkflowId(node: INode, workflowId: string): void {
+export function setStaticSubworkflowId(
+	node: { parameters: Record<string, unknown> },
+	workflowId: string,
+): void {
 	const stored = node.parameters.workflowId;
 	if (isResourceLocatorValue(stored)) {
 		stored.value = workflowId;

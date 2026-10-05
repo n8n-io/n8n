@@ -2,6 +2,7 @@
 type: object
 required:
   - package
+  - agents
   - workflows
   - removedWorkflows
   - removedFolders
@@ -27,6 +28,30 @@ properties:
       exportedAt:
         type: string
         format: date-time
+  agents:
+    type: array
+    items:
+      type: object
+      required: [sourceAgentId, localId, name, projectId, activeVersionId, publishing, status]
+      properties:
+        sourceAgentId:
+          type: string
+          description: Agent ID in the package.
+        localId:
+          type: string
+          description: Agent ID on the target instance.
+        name:
+          type: string
+        projectId:
+          type: string
+        activeVersionId:
+          type: string
+          nullable: true
+        publishing:
+          $ref: './packagePublishingOutcome.yml'
+        status:
+          type: string
+          enum: [created, updated, skipped]
   workflows:
     type: array
     items:
@@ -72,51 +97,7 @@ properties:
             `new-version` this follows the package's `isArchived` flag. A skipped
             workflow keeps its own state.
         publishing:
-          type: object
-          required:
-            - state
-          description: >
-            Outcome of applying the selected publishing policy to this workflow.
-          properties:
-            state:
-              type: string
-              enum:
-                - published
-                - unpublished
-                - unchanged
-                - blocked
-                - failed
-              description: >
-                `blocked` means the imported version could not be published
-                and no version is active (for example because the workflow
-                uses a stubbed credential, or uses a node type this instance
-                does not have). When a prior published version
-                remains active, `state` is `unchanged` with
-                `skippedPublishReason` instead. `failed` means publish or
-                unpublish was attempted but did not succeed.
-            error:
-              type: string
-              description: >
-                Present when `state` is `failed`. Explains why publish or unpublish
-                could not be applied.
-            blockedReason:
-              type: string
-              enum:
-                - stub-credential
-                - missing-node-type
-              description: >
-                Present when `state` is `blocked`: the imported version
-                could not be published and no version is active.
-            skippedPublishReason:
-              type: string
-              enum:
-                - stub-credential
-                - missing-node-type
-              description: >
-                Present when `state` is `unchanged` but the policy wanted
-                to publish the imported version: a prior published version
-                is still active (for example after an update with stubbed
-                credentials).
+          $ref: './packagePublishingOutcome.yml'
         status:
           type: string
           enum:
@@ -396,9 +377,14 @@ properties:
       entity type. Each value maps an id as it appeared in the package to
       the id on the target instance.
     required:
+      - agents
       - workflows
       - credentials
     properties:
+      agents:
+        type: object
+        additionalProperties:
+          type: string
       workflows:
         type: object
         additionalProperties:

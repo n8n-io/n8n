@@ -11,7 +11,7 @@ import {
 	testDb,
 	testModules,
 } from '@n8n/backend-test-utils';
-import { WorkflowRepository, type Project, type User } from '@n8n/db';
+import type { Project, User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { randomUUID } from 'node:crypto';
 import { mkdtemp, readFile, rm } from 'node:fs/promises';
@@ -34,9 +34,8 @@ import { N8nPackagesService } from '../n8n-packages.service';
 import type { ExportPackageRequest, WorkflowVersionPolicy } from '../n8n-packages.types';
 import { serializedAgentSchema } from '../spec/serialized/agent.schema';
 import { packageManifestSchema } from '../spec/manifest.schema';
-import { readExport, streamToBuffer, type UnpackedEntry } from './utils/tar-support';
+import { readExport, type UnpackedEntry } from './utils/tar-support';
 import { buildWorkflowCallingSubWorkflow } from './utils/test-builders';
-import { importPackageRequest } from './fixtures/import-request';
 
 let service: N8nPackagesService;
 let owner: User;
@@ -624,24 +623,6 @@ describe('agent package export', () => {
 			).toBe(false);
 		},
 	);
-
-	it('rejects agent imports before any entities are written', async () => {
-		const agent = await createCompleteAgent(project);
-		const workflow = await createWorkflow({}, project);
-		const { stream } = await service.exportPackage({
-			user: owner,
-			agentIds: [agent.id],
-			workflowIds: [workflow.id],
-		});
-		const packageBuffer = await streamToBuffer(stream);
-		await expect(
-			service.importPackage(
-				importPackageRequest({ user: owner, packageBuffer, projectId: project.id }),
-			),
-		).rejects.toThrow('Packages containing agents cannot be imported yet');
-		expect(await Container.get(AgentRepository).count()).toBe(1);
-		expect(await Container.get(WorkflowRepository).count()).toBe(1);
-	});
 
 	it('keeps workflow-only exports available when the agents module is disabled', async () => {
 		const registry = Container.get(ModuleRegistry);

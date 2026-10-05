@@ -7,6 +7,7 @@ const workflow = (callerIds: unknown): WorkflowEntity =>
 	({ id: 'parent', settings: { callerIds } }) as WorkflowEntity;
 const bindings = (workflows: Map<string, string>): PackageImportBindings => ({
 	workflows,
+	agents: new Map(),
 	credentials: new Map(),
 });
 

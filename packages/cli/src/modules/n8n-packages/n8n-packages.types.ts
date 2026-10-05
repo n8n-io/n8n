@@ -7,6 +7,7 @@ export type {
 	ImportVariableSummary,
 	ImportDataTableSummary,
 	ImportTagSummary,
+	ImportedAgentSummary,
 	ImportedWorkflowSummary,
 	ImportedFolderSummary,
 	ImportedProjectSummary,
@@ -277,6 +278,7 @@ export type ImportRequest = {
 	selection?: ImportSelection;
 } & ImportCredentialProperties &
 	ImportWorkflowProperties &
+	ImportAgentProperties &
 	ImportProjectProperties &
 	ImportFolderProperties &
 	ImportDataTableProperties &
@@ -330,6 +332,12 @@ export type ImportWorkflowProperties = {
 	workflowPublishingPolicy: WorkflowPublishingPolicy;
 	workflowIdPolicy: WorkflowIdPolicy;
 	missingNodeTypeMode: MissingNodeTypeMode;
+};
+
+export type ImportAgentProperties = {
+	agentConflictPolicy?: WorkflowConflictPolicy;
+	agentPublishingPolicy?: WorkflowPublishingPolicy;
+	agentIdPolicy?: WorkflowIdPolicy;
 };
 
 /** Only project packages define projects; a workflow package imports into an existing project. */
@@ -390,6 +398,7 @@ export interface ImportContext {
 
 export type ImportPackageEventOptions = ImportCredentialProperties &
 	ImportWorkflowProperties &
+	ImportAgentProperties &
 	ImportProjectProperties &
 	ResolvedImportFolderProperties &
 	ImportDataTableProperties &
@@ -408,6 +417,7 @@ export type ImportAuditCredentialIds = {
  * Counts only — no ids — so they can be relayed to analytics without leaking data.
  */
 export type ImportPackageEventCounts = {
+	agents: { created: number; updated: number; skipped: number };
 	workflows: {
 		created: number;
 		updated: number;
@@ -493,6 +503,18 @@ export interface ExportPackageDirectoryResult extends ExportPackageSummary {
  * The import aborts when any are present.
  */
 export type BlockingIssue =
+	| {
+			type: 'agent-conflict' | 'agent-id-conflict' | 'agent-lineage-conflict';
+			sourceAgentId: string;
+			existingAgentIds: string[];
+	  }
+	| { type: 'agent-task-id-conflict'; sourceAgentId: string; taskId: string }
+	| {
+			type: 'agent-dependency-unresolved';
+			sourceAgentId: string;
+			dependencyKind: 'agent' | 'workflow';
+			dependencyId: string;
+	  }
 	| ({ type: 'workflow-conflict' } & WorkflowConflict)
 	| ({ type: 'workflow-lineage-conflict' } & WorkflowLineageConflict)
 	| ({ type: 'workflow-id-conflict' } & WorkflowIdConflict)
@@ -508,6 +530,7 @@ export type BlockingIssue =
 			/** For `type_mismatch`: the actual type of the resolved target credential. */
 			actualType?: string;
 			usedByWorkflows: string[];
+			usedByAgents?: string[];
 	  }
 	| ({ type: 'project-conflict' } & ProjectConflict)
 	| ({ type: 'folder-conflict' } & FolderConflict)
@@ -525,6 +548,7 @@ export type BlockingIssue =
 			nodeType: string;
 			typeVersion: number;
 			usedByWorkflows: string[];
+			usedByAgents?: string[];
 	  }
 	| {
 			type: 'policy-violation';
@@ -585,12 +609,14 @@ export type ImportBindingMap = Map<string, string>;
  * entity type.
  */
 export interface PackageImportBindings {
+	agents: ImportBindingMap;
 	workflows: ImportBindingMap;
 	credentials: ImportBindingMap;
 }
 
 export function createBindings(seed: Partial<PackageImportBindings> = {}): PackageImportBindings {
 	return {
+		agents: new Map(),
 		workflows: new Map(),
 		credentials: new Map(),
 		...seed,
@@ -600,6 +626,7 @@ export function createBindings(seed: Partial<PackageImportBindings> = {}): Packa
 /** Combines per-scope binding maps into one — used when a project package imports several scopes. */
 export function mergeBindings(...bindings: PackageImportBindings[]): PackageImportBindings {
 	return {
+		agents: new Map(bindings.flatMap(({ agents }) => [...agents])),
 		workflows: new Map(bindings.flatMap(({ workflows }) => [...workflows])),
 		credentials: new Map(bindings.flatMap(({ credentials }) => [...credentials])),
 	};
@@ -608,6 +635,7 @@ export function mergeBindings(...bindings: PackageImportBindings[]): PackageImpo
 /** Flattens the internal binding `Map`s into the plain objects exposed over the wire. */
 export function serializeBindings(bindings: PackageImportBindings): SerializedBindings {
 	return {
+		agents: Object.fromEntries(bindings.agents),
 		workflows: Object.fromEntries(bindings.workflows),
 		credentials: Object.fromEntries(bindings.credentials),
 	};

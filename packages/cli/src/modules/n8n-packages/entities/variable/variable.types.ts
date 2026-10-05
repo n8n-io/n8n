@@ -1,4 +1,4 @@
-import type { AgentRequirementSource } from '../requirement-source';
+import { mergeRequirementUsage, type AgentRequirementSource } from '../requirement-source';
 import type { User } from '@n8n/db';
 
 import type { PackageWriter } from '../../io/package-writer';
@@ -43,6 +43,7 @@ export interface VariableImportRequest {
 export interface VariableResolutionFailure {
 	name: string;
 	usedByWorkflows: string[];
+	usedByAgents?: string[];
 }
 
 export interface VariableCreation {
@@ -50,12 +51,14 @@ export interface VariableCreation {
 	projectId?: string;
 	value?: string;
 	usedByWorkflows: string[];
+	usedByAgents?: string[];
 }
 
 export interface VariableConflict {
 	name: string;
 	projectId?: string;
 	usedByWorkflows: string[];
+	usedByAgents?: string[];
 }
 
 export interface VariableOverwrite {
@@ -64,6 +67,7 @@ export interface VariableOverwrite {
 	projectId?: string;
 	value: string;
 	usedByWorkflows: string[];
+	usedByAgents?: string[];
 }
 
 export interface VariableLimitFailure {
@@ -72,12 +76,13 @@ export interface VariableLimitFailure {
 	requested: number;
 	names: string[];
 	usedByWorkflows: string[];
+	usedByAgents?: string[];
 }
 
 export function createFailure(requirement: PackageVariableRequirement): VariableResolutionFailure {
 	return {
 		name: requirement.name,
-		usedByWorkflows: [...new Set(requirement.usedByWorkflows)].sort(),
+		...mergeRequirementUsage([requirement]),
 	};
 }
 
@@ -94,12 +99,10 @@ export function dedupeCreationsByDestination(creations: VariableCreation[]): Var
 		const existing = byDestination.get(key);
 		if (!existing) {
 			// Copied because the caller goes on to apply these creations.
-			byDestination.set(key, { ...creation, usedByWorkflows: [...creation.usedByWorkflows] });
+			byDestination.set(key, { ...creation, ...mergeRequirementUsage([creation]) });
 			continue;
 		}
-		existing.usedByWorkflows = [
-			...new Set([...existing.usedByWorkflows, ...creation.usedByWorkflows]),
-		].sort();
+		Object.assign(existing, mergeRequirementUsage([existing, creation]));
 	}
 	return [...byDestination.values()];
 }
@@ -134,7 +137,7 @@ export function computeVariableLimitFailure(
 		remaining: quota.remaining,
 		requested: creations.length,
 		names: [...new Set(creations.map((creation) => creation.name))].sort(),
-		usedByWorkflows: [...new Set(creations.flatMap((creation) => creation.usedByWorkflows))].sort(),
+		...mergeRequirementUsage(creations),
 	};
 }
 

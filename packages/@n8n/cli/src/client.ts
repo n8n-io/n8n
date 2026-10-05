@@ -18,6 +18,9 @@ export interface ImportPackageFields {
 	workflowConflictPolicy: string;
 	workflowPublishingPolicy?: string;
 	workflowIdPolicy?: string;
+	agentConflictPolicy?: string;
+	agentPublishingPolicy?: string;
+	agentIdPolicy?: string;
 	missingNodeTypeMode?: string;
 	projectConflictPolicy?: string;
 	folderConflictPolicy?: string;

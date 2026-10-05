@@ -100,9 +100,12 @@ function assertPackageExportApiKeyScopes(
 	return apiKeyScopes;
 }
 
-function assertPackageImportApiKeyScopes(req: AuthenticatedRequest) {
+function assertPackageImportApiKeyScopes(req: AuthenticatedRequest, allowAgents = false) {
 	const apiKeyScopes = req.tokenGrant?.apiKeyScopes;
-	if (!apiKeyScopes?.includes('workflow:import')) {
+	if (
+		!apiKeyScopes?.includes('workflow:import') &&
+		!(allowAgents && apiKeyScopes?.includes('agent:import'))
+	) {
 		throw new ForbiddenError('Forbidden');
 	}
 }
@@ -218,7 +221,7 @@ const n8nPackagesHandlers: N8nPackagesHandlers = {
 		},
 	],
 	importPackage: [
-		publicApiCompositeScope('workflow:import'),
+		publicApiCompositeScope('workflow:import,agent:import'),
 		async (req, res) => {
 			let projectId: string | undefined;
 			let folderId: string | undefined;
@@ -232,7 +235,7 @@ const n8nPackagesHandlers: N8nPackagesHandlers = {
 				projectId = payload.data.projectId;
 				folderId = payload.data.folderId;
 
-				assertPackageImportApiKeyScopes(req);
+				assertPackageImportApiKeyScopes(req, true);
 
 				const packageFile = resolveImportPackageUpload(req);
 
@@ -249,6 +252,9 @@ const n8nPackagesHandlers: N8nPackagesHandlers = {
 					workflowConflictPolicy: payload.data.workflowConflictPolicy,
 					workflowPublishingPolicy: payload.data.workflowPublishingPolicy,
 					workflowIdPolicy: payload.data.workflowIdPolicy,
+					agentConflictPolicy: payload.data.agentConflictPolicy,
+					agentPublishingPolicy: payload.data.agentPublishingPolicy,
+					agentIdPolicy: payload.data.agentIdPolicy,
 					missingNodeTypeMode: payload.data.missingNodeTypeMode,
 					projectConflictPolicy: payload.data.projectConflictPolicy,
 					folderConflictPolicy: payload.data.folderConflictPolicy,

@@ -35,6 +35,7 @@ const workflow = (nodes: INode[], id = 'parent'): WorkflowEntity =>
 	({ id, nodes }) as WorkflowEntity;
 const bindings = (workflows: Map<string, string>): PackageImportBindings => ({
 	workflows,
+	agents: new Map(),
 	credentials: new Map(),
 });
 

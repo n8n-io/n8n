@@ -2,14 +2,16 @@ import { Logger } from '@n8n/backend-common';
 import { WorkflowEntity } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { jsonParse, UserError } from 'n8n-workflow';
-import { ZodError } from 'zod';
+import { ZodError, type z } from 'zod';
 
 import { BadRequestError } from '@n8n/errors';
 import { NodeTypes } from '@/node-types';
+import { isValidCronExpression } from '@/modules/agents/integrations/cron-validation';
 import * as WorkflowHelpers from '@/workflow-helpers';
 
 import { deriveParentFolderId, foldersInScope, workflowsInScope } from './package-layout';
 import type { PreparedFolder } from '../entities/folder/folder-import.types';
+import type { PreparedAgent } from '../entities/agent/agent-import.types';
 import type { PreparedProject } from '../entities/project/project-import.types';
 import type { PreparedWorkflow } from '../entities/workflow/workflow-import.types';
 import { derivePublishedState } from '../entities/workflow/workflow-published-state';
@@ -31,6 +33,13 @@ import {
 	type SerializedWorkflowMetadata,
 } from '../spec/serialized/workflow-metadata.schema';
 import type { SerializedWorkflow } from '../spec/serialized/workflow.schema';
+import {
+	serializedAgentSchema,
+	serializedAgentMetadataSchema,
+	serializedAgentSkillSchema,
+	serializedAgentToolSchema,
+	serializedAgentTaskSchema,
+} from '../spec/serialized/agent.schema';
 
 /**
  * Parses the typed entities out of a `.n8np` package — the read-side counterpart
@@ -77,6 +86,139 @@ export class N8nPackageParser {
 			folders.push(await this.readFolder(reader, entry));
 		}
 		return folders;
+	}
+
+	async getAgents(reader: PackageReader, basePrefix = ''): Promise<PreparedAgent[]> {
+		const manifest = await this.getManifest(reader);
+		const agents: PreparedAgent[] = [];
+		for (const entry of manifest.agents ?? []) {
+			if (!entry.target.startsWith(`${basePrefix}agents/`)) continue;
+			const definition = await this.readAgentFile(
+				reader,
+				entityFilePath('agents', entry.target),
+				serializedAgentSchema,
+			);
+			if (definition.id !== entry.id)
+				throw new UserError(`Package agent ID does not match its manifest entry: ${entry.id}`);
+			const metadata = await this.readAgentFile(
+				reader,
+				`${entry.target}/agent-metadata.json`,
+				serializedAgentMetadataSchema,
+			);
+			const skills = await this.readAgentAssets(
+				reader,
+				entry,
+				'skills',
+				definition.skills,
+				serializedAgentSkillSchema,
+			);
+			const tools = await this.readAgentAssets(
+				reader,
+				entry,
+				'tools',
+				definition.tools,
+				serializedAgentToolSchema,
+			);
+			const tasks = await this.readAgentAssets(
+				reader,
+				entry,
+				'tasks',
+				definition.tasks,
+				serializedAgentTaskSchema,
+			);
+			const config = definition.config;
+			this.assertAgentBodies(
+				entry.id,
+				'skill',
+				(config?.skills ?? []).map(({ id }) => id),
+				skills,
+			);
+			this.assertAgentBodies(
+				entry.id,
+				'tool',
+				(config?.tools ?? []).flatMap((tool) => (tool.type === 'custom' ? [tool.id] : [])),
+				tools,
+			);
+			this.assertAgentBodies(
+				entry.id,
+				'task',
+				(config?.tasks ?? []).map(({ id }) => id),
+				tasks,
+			);
+			for (const task of tasks) {
+				if (!isValidCronExpression(task.cronExpression))
+					throw new UserError(
+						`Package agent "${entry.id}" has an invalid task schedule: ${task.id}`,
+					);
+			}
+			const sourcePublished = derivePublishedState(metadata);
+			agents.push({
+				sourceAgentId: entry.id,
+				...(sourcePublished !== undefined ? { sourcePublished } : {}),
+				definition: {
+					name: definition.name,
+					config,
+					availableInMCP: definition.availableInMCP,
+					skills: Object.fromEntries(skills.map(({ id, ...skill }) => [id, skill])),
+					tools: Object.fromEntries(tools.map(({ id, ...tool }) => [id, tool])),
+					tasks,
+				},
+			});
+		}
+		return agents;
+	}
+
+	private async readAgentAssets<T extends { id: string }>(
+		reader: PackageReader,
+		owner: ManifestEntry,
+		kind: 'skills' | 'tools' | 'tasks',
+		entries: ManifestEntry[],
+		schema: z.ZodType<T, z.ZodTypeDef, unknown>,
+	): Promise<T[]> {
+		const seen = new Set<string>();
+		const bodies: T[] = [];
+		const fileNames = { skills: 'skill.json', tools: 'tool.json', tasks: 'task.json' };
+		for (const entry of entries) {
+			if (seen.has(entry.id) || !entry.target.startsWith(`${owner.target}/${kind}/`)) {
+				throw new UserError(
+					`Package agent "${owner.id}" has an invalid ${kind} entry: ${entry.id}`,
+				);
+			}
+			seen.add(entry.id);
+			const body = await this.readAgentFile(reader, `${entry.target}/${fileNames[kind]}`, schema);
+			if (body.id !== entry.id)
+				throw new UserError(`Package agent body ID does not match its index: ${entry.id}`);
+			bodies.push(body);
+		}
+		return bodies;
+	}
+
+	private assertAgentBodies(
+		agentId: string,
+		kind: string,
+		refs: string[],
+		bodies: Array<{ id: string }>,
+	) {
+		const ids = new Set(bodies.map(({ id }) => id));
+		const missing = refs.filter((id) => !ids.has(id));
+		if (missing.length)
+			throw new UserError(
+				`Package agent "${agentId}" has missing ${kind} bodies: ${missing.join(', ')}`,
+			);
+	}
+
+	private async readAgentFile<T>(
+		reader: PackageReader,
+		path: string,
+		schema: z.ZodType<T, z.ZodTypeDef, unknown>,
+	): Promise<T> {
+		const wire = await this.readJson(reader, path, 'agent');
+		const result = schema.safeParse(wire);
+		if (!result.success)
+			throw new UserError(`Package agent file at ${path} failed schema validation.`, {
+				cause: result.error,
+			});
+		return result.data;
 	}
 
 	/** Reads the package's data table schemas. */

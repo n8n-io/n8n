@@ -1,3 +1,4 @@
+import { mergeRequirementUsage } from '../requirement-source';
 import { ModuleRegistry } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import { UserError } from 'n8n-workflow';
@@ -53,7 +54,7 @@ export class DataTableImporter {
 		if (!this.moduleRegistry.isActive('data-table')) {
 			return {
 				creations: [],
-				failures: [{ kind: 'module-disabled', usedByWorkflows: workflowsUsing(requirements) }],
+				failures: [{ kind: 'module-disabled', ...mergeRequirementUsage(requirements) }],
 				matchedCount: 0,
 			};
 		}
@@ -138,7 +139,7 @@ export class DataTableImporter {
 		if (!canCreate) {
 			failures.push({
 				kind: 'permission-denied',
-				usedByWorkflows: workflowsUsing(creations.map(({ requirement }) => requirement)),
+				...mergeRequirementUsage(creations.map(({ requirement }) => requirement)),
 			});
 		}
 
@@ -212,9 +213,4 @@ function resolveRequirement(
 		};
 	}
 	return effect;
-}
-
-/** Sorted unique workflow ids referencing the given requirements. */
-function workflowsUsing(requirements: PackageDataTableRequirement[]): string[] {
-	return [...new Set(requirements.flatMap(({ usedByWorkflows }) => usedByWorkflows))].sort();
 }

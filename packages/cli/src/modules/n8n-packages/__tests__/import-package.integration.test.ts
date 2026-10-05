@@ -1271,6 +1271,7 @@ describe('Package import event emission', () => {
 			expect(importedPayload.packageSourceId).toBeDefined();
 			expect(importedPayload.packageVersion).toBe(FORMAT_VERSION);
 			expect(importedPayload.counts).toEqual({
+				agents: { created: 0, updated: 0, skipped: 0 },
 				workflows: {
 					created: 2,
 					updated: 0,
@@ -1370,6 +1371,7 @@ describe('Package import event emission', () => {
 			expect(importedPayload.credentialIds.created[0]).toBe('missing-cred');
 			expect(importedPayload.credentialIds.updated).toEqual([]);
 			expect(importedPayload.counts).toEqual({
+				agents: { created: 0, updated: 0, skipped: 0 },
 				workflows: {
 					created: 3,
 					updated: 0,
@@ -1439,6 +1441,7 @@ describe('Package import event emission', () => {
 			expect(workflowIds).toEqual([createdWorkflow!.localId]);
 			expect(result.workflows.find(({ status }) => status === 'skipped')).toBeDefined();
 			expect(counts).toEqual({
+				agents: { created: 0, updated: 0, skipped: 0 },
 				workflows: {
 					created: 1,
 					updated: 0,
@@ -1510,6 +1513,7 @@ describe('Package import event emission', () => {
 
 			const { counts } = importedEvents[0][1] as RelayEventMap['n8n-package-imported'];
 			expect(counts).toEqual({
+				agents: { created: 0, updated: 0, skipped: 0 },
 				workflows: {
 					created: 0,
 					updated: 1,

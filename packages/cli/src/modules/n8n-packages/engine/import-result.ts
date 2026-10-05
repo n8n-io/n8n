@@ -5,6 +5,7 @@ import type {
 	PreparedWorkflow,
 } from '../entities/workflow/workflow-import.types';
 import type { PackagePublishingResults } from '../entities/workflow/workflow-publisher';
+import type { PreparedAgent } from '../entities/agent/agent-import.types';
 import { serializeBindings } from '../n8n-packages.types';
 import type {
 	RemovedFolderSummary,
@@ -15,6 +16,7 @@ import type {
 	ImportedFolderSummary,
 	ImportedProjectSummary,
 	ImportedWorkflowSummary,
+	ImportedAgentSummary,
 	ImportPackageSummary,
 	ImportResult,
 	ImportTagSummary,
@@ -64,6 +66,7 @@ export function toImportedWorkflowSummaries(
 export function buildImportResult(input: {
 	package: ImportPackageSummary;
 	workflows: ImportedWorkflowSummary[];
+	agents?: ImportedAgentSummary[];
 	removedWorkflows: RemovedWorkflowSummary[];
 	removedFolders: RemovedFolderSummary[];
 	folders: ImportedFolderSummary[];
@@ -76,6 +79,7 @@ export function buildImportResult(input: {
 }): ImportResult {
 	return {
 		package: input.package,
+		agents: input.agents ?? [],
 		workflows: input.workflows,
 		removedWorkflows: input.removedWorkflows,
 		removedFolders: input.removedFolders,
@@ -161,21 +165,31 @@ export function unionTagSummaries(summaries: ImportTagSummary[]): ImportTagSumma
 }
 
 /**
- * Keeps only the requirements used by the imported workflows, trimming `usedByWorkflows` to match.
+ * Keep requirements used by the imported workflows and agents. Trim usage to match.
  */
-export function identifyRequirements<T extends { usedByWorkflows: string[] }>(
+export function identifyRequirements<
+	T extends { usedByWorkflows: string[]; usedByAgents?: string[] },
+>(
 	requirements: T[] | undefined,
 	workflows: PreparedWorkflow[],
+	agents: PreparedAgent[] = [],
 ): T[] | undefined {
 	if (!requirements) return undefined;
 
 	const importedIds = new Set(workflows.map((workflow) => workflow.sourceWorkflowId));
+	const agentIds = new Set(agents.map((agent) => agent.sourceAgentId));
 	return requirements
 		.map((requirement) => ({
 			...requirement,
 			usedByWorkflows: requirement.usedByWorkflows.filter((id) => importedIds.has(id)),
+			...(requirement.usedByAgents
+				? { usedByAgents: requirement.usedByAgents.filter((id) => agentIds.has(id)) }
+				: {}),
 		}))
-		.filter((requirement) => requirement.usedByWorkflows.length > 0);
+		.filter(
+			(requirement) =>
+				requirement.usedByWorkflows.length > 0 || (requirement.usedByAgents?.length ?? 0) > 0,
+		);
 }
 
 /**

@@ -2,6 +2,9 @@ import { LicenseState } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 
 import { NodeTypes } from '@/node-types';
+import { AgentImporter } from '../entities/agent/agent-importer';
+import { includeAgentCredentialRequirements } from '../entities/agent/agent-import-references';
+import type { AgentImportPlan, PreparedAgent } from '../entities/agent/agent-import.types';
 
 import { CredentialImporter } from '../entities/credential/credential-importer';
 import { workflowsBlockedFromPublish } from '../entities/credential/credential-missing-mode';
@@ -58,6 +61,8 @@ import type {
 	ImportContext,
 	ImportedFolderSummary,
 	ImportWorkflowProperties,
+	ImportAgentProperties,
+	ImportedAgentSummary,
 	MissingNodeTypeMode,
 	PackageImportBindings,
 	PackageImportSource,
@@ -74,11 +79,12 @@ export interface ImportOrchestrationInput {
 	context: ImportContext;
 	folders: PreparedFolder[];
 	workflows: PreparedWorkflow[];
+	agents?: PreparedAgent[];
 	credentialRequest: CredentialBindingRequest;
 	dataTableRequest: DataTableImportRequest;
 	variableRequest: VariableImportRequest;
 	tagRequest: TagImportRequest;
-	options: ImportWorkflowProperties & ResolvedImportFolderProperties;
+	options: ImportWorkflowProperties & ImportAgentProperties & ResolvedImportFolderProperties;
 	/** The target project does not exist yet and will be created by this import (project packages). */
 	projectPendingCreation?: boolean;
 	/** Sub-workflow dependency graph from the manifest, used to order the import. */
@@ -93,6 +99,7 @@ export interface ImportOrchestrationInput {
  * sweep runs. Telemetry consumes this shape directly — it only reads statuses and ids.
  */
 export interface ImportContentResult {
+	agentSummaries: ImportedAgentSummary[];
 	workflowOutcomes: PersistedWorkflowOutcome[];
 	removedWorkflows: RemovedWorkflowSummary[];
 	removedFolders: RemovedFolderSummary[];
@@ -106,6 +113,7 @@ export interface ImportContentResult {
 }
 
 export interface ImportPlan {
+	agentPlan?: AgentImportPlan;
 	input: ImportOrchestrationInput;
 	folderContext: FolderImportContext;
 	credentialPlan: CredentialResolution;
@@ -139,6 +147,7 @@ export class ImportOrchestrator {
 		private readonly contentImportPolicyGate: ContentImportPolicyGate,
 		private readonly nodeTypes: NodeTypes,
 		private readonly licenseState: LicenseState,
+		private readonly agentImporter: AgentImporter,
 	) {}
 
 	/**
@@ -173,6 +182,7 @@ export class ImportOrchestrator {
 		}
 
 		const issues = plans.flatMap((plan) => plan.blockingIssues);
+		issues.push(...(await this.agentImporter.dependencyFailures(plans)));
 
 		issues.push(
 			...contestedReconcileTargetFailures(
@@ -212,6 +222,17 @@ export class ImportOrchestrator {
 			input.projectPendingCreation,
 		);
 
+		const agentPlan = await this.agentImporter.plan(
+			context,
+			input.agents ?? [],
+			options,
+			input.projectPendingCreation,
+		);
+		credentialRequest.requirements = includeAgentCredentialRequirements(
+			credentialRequest.requirements,
+			input.agents ?? [],
+			context.projectId,
+		);
 		const credentialPlan = await this.credentialImporter.plan(context, credentialRequest);
 		const dataTablePlan = await this.dataTableImporter.plan(context, dataTableRequest);
 		const variablePlan = await this.variableImporter.plan(context, variableRequest);
@@ -276,9 +297,11 @@ export class ImportOrchestrator {
 		});
 
 		blockingIssues.push(...refusedByPolicy);
+		blockingIssues.push(...agentPlan.blockingIssues);
 
 		return {
 			input,
+			agentPlan,
 			folderContext,
 			credentialPlan,
 			workflowPlan,
@@ -365,6 +388,7 @@ export class ImportOrchestrator {
 		const removedFolders = await this.folderRemover.apply(context, plan.folderRemovalPlan);
 
 		return {
+			agentSummaries: [],
 			workflowOutcomes: outcomes.map((outcome) =>
 				withBlockedFromPublish(outcome, blockedFromPublish.get(outcome.sourceWorkflowId)),
 			),
@@ -469,7 +493,8 @@ function withBlockedFromPublish(
 }
 
 function toCredentialBlockingIssue(failure: CredentialResolutionFailure): BlockingIssue {
-	const { kind, sourceId, targetId, expectedType, actualType, usedByWorkflows } = failure;
+	const { kind, sourceId, targetId, expectedType, actualType, usedByWorkflows, usedByAgents } =
+		failure;
 	return {
 		type: 'credential-unresolved',
 		kind,
@@ -478,5 +503,6 @@ function toCredentialBlockingIssue(failure: CredentialResolutionFailure): Blocki
 		...(expectedType ? { expectedType } : {}),
 		...(actualType ? { actualType } : {}),
 		usedByWorkflows,
+		...(usedByAgents ? { usedByAgents } : {}),
 	};
 }

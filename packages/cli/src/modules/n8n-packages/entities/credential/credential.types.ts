@@ -1,4 +1,4 @@
-import type { AgentRequirementSource } from '../requirement-source';
+import { mergeRequirementUsage, type AgentRequirementSource } from '../requirement-source';
 import type {
 	ImportBindingMap,
 	CredentialMatchingMode,
@@ -38,6 +38,7 @@ export type CredentialResolutionFailure = {
 	/** For `type_mismatch`: the actual type of the resolved target credential. */
 	actualType?: string;
 	usedByWorkflows: string[];
+	usedByAgents?: string[];
 };
 
 export interface CredentialResolution {
@@ -67,6 +68,6 @@ export function createFailure(
 		sourceId: reference.id,
 		name: reference.name,
 		type: reference.type,
-		usedByWorkflows: [...reference.usedByWorkflows].sort(),
+		...mergeRequirementUsage([reference]),
 	};
 }

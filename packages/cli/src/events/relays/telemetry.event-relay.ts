@@ -1347,6 +1347,12 @@ export class TelemetryEventRelay extends EventRelay {
 	private packageImported({ user, options, counts }: RelayEventMap['n8n-package-imported']) {
 		this.telemetry.track('User imported n8n package', {
 			user_id: user.id,
+			agent_conflict_policy: options.agentConflictPolicy,
+			agent_id_policy: options.agentIdPolicy,
+			agent_publishing_policy: options.agentPublishingPolicy,
+			agents_created: counts.agents.created,
+			agents_updated: counts.agents.updated,
+			agents_skipped: counts.agents.skipped,
 			workflow_conflict_policy: options.workflowConflictPolicy,
 			workflow_id_policy: options.workflowIdPolicy,
 			credential_matching_mode: options.credentialMatchingMode,

@@ -54,6 +54,17 @@ export const packageManifestSchema = z
 		assertNoDuplicateIds(manifest.dataTables, 'data table', ctx);
 		assertNoDuplicateIds(manifest.variables, 'variable', ctx);
 		assertNoDuplicateIds(manifest.tags, 'tag', ctx);
+		const agentPrefixes = manifest.projects?.length
+			? manifest.projects.map(({ target }) => `${target}/agents/`)
+			: ['agents/'];
+		for (const agent of manifest.agents ?? []) {
+			if (!agentPrefixes.some((prefix) => agent.target.startsWith(prefix))) {
+				ctx.addIssue({
+					code: z.ZodIssueCode.custom,
+					message: `Agent ${agent.id} is outside the package projects.`,
+				});
+			}
+		}
 	});
 
 export type ManifestEntry = z.infer<typeof manifestEntrySchema>;

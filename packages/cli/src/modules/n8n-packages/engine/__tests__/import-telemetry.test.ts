@@ -89,11 +89,12 @@ const scope = (input: {
 	const tags = input.tags ?? {};
 	const toTagRefs = (ids: string[] = []) => ids.map((id) => ({ id, name: `name-of-${id}` }));
 	const imported: ImportContentResult = {
+		agentSummaries: [],
 		workflowOutcomes: input.outcomes,
 		removedWorkflows: input.removedWorkflows ?? [],
 		removedFolders: input.removedFolders ?? [],
 		folderSummaries: [],
-		bindings: { workflows: new Map(), credentials: new Map() },
+		bindings: { agents: new Map(), workflows: new Map(), credentials: new Map() },
 		credentialResult: input.credentialResult,
 		dataTablePlan: { creations: new Array(dt.created), failures: [], matchedCount: dt.matched },
 		variablePlan: {
@@ -253,6 +254,7 @@ describe('emitPackageImportedEvent', () => {
 			updated: [],
 		});
 		expect(payload.counts).toEqual({
+			agents: { created: 0, updated: 0, skipped: 0 },
 			workflows: { created: 1, updated: 1, skipped: 1, archived: 0, deleted: 0 },
 			folders: { removed: 0 },
 			credentials: { matched: 1, created: 1, requirements: 2 },

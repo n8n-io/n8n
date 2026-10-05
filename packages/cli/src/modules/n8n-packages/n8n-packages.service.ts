@@ -451,7 +451,6 @@ export class N8nPackagesService {
 	async importPackage(request: ImportPackageRequest): Promise<ImportResult> {
 		const reader = new TarPackageReader(request.packageBuffer, this.packageImportConfig);
 		const manifest = await this.packageParser.getManifest(reader);
-		assertAgentImportSupported(manifest);
 		const { result, scopes } = await this.dispatchImport(
 			request,
 			reader,
@@ -510,7 +509,6 @@ export class N8nPackagesService {
 	): Promise<ImportResult> {
 		const reader = new TarPackageReader(request.packageBuffer, this.packageImportConfig);
 		const manifest = await this.packageParser.getManifest(reader);
-		assertAgentImportSupported(manifest);
 		if (!isProjectPackage(manifest)) {
 			throw new BadRequestError('A selection import requires a project package.');
 		}
@@ -538,7 +536,6 @@ export class N8nPackagesService {
 		const reader = new DirectoryPackageReader(source.sourceDir, this.packageImportConfig);
 		await reader.listEntries();
 		const manifest = await this.packageParser.getManifest(reader);
-		assertAgentImportSupported(manifest);
 		if (isProjectPackage(manifest)) {
 			return { status: 'project', reader, manifest };
 		}
@@ -661,6 +658,7 @@ function hasContentWithoutProjects(manifest: PackageManifest): boolean {
 	return (
 		[
 			manifest.workflows,
+			manifest.agents,
 			manifest.folders,
 			manifest.credentials,
 			manifest.dataTables,
@@ -684,9 +682,4 @@ function emptyImportResult(manifest: PackageManifest): ImportResult {
 		variables: { matched: [], created: [], stubbed: [], updated: [], missing: [] },
 		tags: { matched: [], created: [], renamed: [], reconciled: [], skipped: [] },
 	});
-}
-
-function assertAgentImportSupported(manifest: PackageManifest): void {
-	if (manifest.agents?.length)
-		throw new BadRequestError('Packages containing agents cannot be imported yet.');
 }

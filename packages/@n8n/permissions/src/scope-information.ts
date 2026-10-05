@@ -35,6 +35,10 @@ export const scopeInformation: Partial<Record<Scope, ScopeInformation>> = {
 		displayName: 'Read Agent',
 		description: 'Allows reading agent configuration and history.',
 	},
+	'agent:import': {
+		displayName: 'Import agent',
+		description: 'Import agents from n8n packages.',
+	},
 	'agent:export': {
 		displayName: 'Export agent',
 		description: 'Export agents as n8n packages.',

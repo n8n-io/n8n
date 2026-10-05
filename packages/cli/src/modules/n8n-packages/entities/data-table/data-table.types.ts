@@ -1,4 +1,4 @@
-import type { AgentRequirementSource } from '../requirement-source';
+import { mergeRequirementUsage, type AgentRequirementSource } from '../requirement-source';
 import type {
 	DataTableMatchingMode,
 	DataTableMissingMode,
@@ -44,6 +44,7 @@ export type DataTableResolutionFailure = {
 	/** For `schema-incompatible` under the `fail` policy: target columns not in the package schema. */
 	extraColumns?: string[];
 	usedByWorkflows: string[];
+	usedByAgents?: string[];
 };
 
 export function createFailure(
@@ -60,7 +61,7 @@ export function createFailure(
 		kind,
 		sourceId: requirement.id,
 		name: requirement.name,
-		usedByWorkflows: [...new Set(requirement.usedByWorkflows)].sort(),
+		...mergeRequirementUsage([requirement]),
 		...details,
 	};
 }

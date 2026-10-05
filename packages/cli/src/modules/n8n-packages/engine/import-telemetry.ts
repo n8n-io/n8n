@@ -41,6 +41,7 @@ export function emitPackageImportedEvent(
 	const { request, manifest, scopes } = params;
 
 	const workflowOutcomes = scopes.flatMap(({ imported }) => imported.workflowOutcomes);
+	const agents = scopes.flatMap(({ imported }) => imported.agentSummaries);
 	const removedWorkflows = scopes.flatMap(({ imported }) => imported.removedWorkflows);
 	const credentialResults = scopes.map(({ imported }) => imported.credentialResult);
 	const importedWorkflows = workflowOutcomes.filter(({ status }) => status !== 'skipped');
@@ -104,7 +105,11 @@ export function emitPackageImportedEvent(
 		projectIds: scopes.map(({ context }) => context.projectId),
 		folderId,
 		workflowIds: importedWorkflows.map(({ workflow }) => workflow.id),
+		agentIds: agents.filter(({ status }) => status !== 'skipped').map(({ localId }) => localId),
 		options: {
+			agentConflictPolicy: request.agentConflictPolicy ?? 'new-version',
+			agentPublishingPolicy: request.agentPublishingPolicy ?? 'preserve-published-state',
+			agentIdPolicy: request.agentIdPolicy ?? 'source',
 			workflowConflictPolicy: request.workflowConflictPolicy,
 			workflowIdPolicy: request.workflowIdPolicy,
 			credentialMatchingMode: request.credentialMatchingMode,
@@ -134,6 +139,11 @@ export function emitPackageImportedEvent(
 			updated: [],
 		},
 		counts: {
+			agents: {
+				created: agents.filter(({ status }) => status === 'created').length,
+				updated: agents.filter(({ status }) => status === 'updated').length,
+				skipped: agents.filter(({ status }) => status === 'skipped').length,
+			},
 			workflows: {
 				created: countByStatus('created'),
 				updated: countByStatus('updated'),
