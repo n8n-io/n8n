@@ -27,6 +27,7 @@ import {
 	workflowIdParamSchema,
 	workflowVersionIdParamSchema,
 } from '@n8n/api-types';
+import { EventService } from '@n8n/backend-services';
 import type {
 	AuthenticatedRequest,
 	Folder,
