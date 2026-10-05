@@ -51,11 +51,15 @@ const steeringQueueIdsMock = ref(new Set<string>());
 const isCancellingMock = ref(false);
 const backgroundJobsMock = ref<AgentBackgroundJobDto[]>([]);
 const respondToApprovalMock = vi.fn();
+const stopAllMock = vi.fn();
+const isStoppingMock = ref(false);
 const showErrorMock = vi.fn();
 vi.mock('../composables/useAgentBackgroundJobs', () => ({
 	useAgentBackgroundJobs: () => ({
 		jobs: backgroundJobsMock,
 		respondToApproval: respondToApprovalMock,
+		stopAll: stopAllMock,
+		isStopping: isStoppingMock,
 	}),
 }));
 let onHistoryLoaded: ((count: number) => void) | undefined;
@@ -83,13 +87,17 @@ vi.mock('@n8n/i18n', () => {
 			'agents.chat.backgroundTasks.finished':
 				options?.adjustToNumber === 1 ? 'Background task finished' : 'Background tasks finished',
 			'agents.chat.backgroundTasks.runningCount': `Running ${options?.interpolate?.count} background ${String(options?.interpolate?.count) === '1' ? 'task' : 'tasks'}`,
+			'agents.chat.backgroundTasks.stoppingCount': `Stopping ${options?.interpolate?.count} background ${options?.adjustToNumber === 1 ? 'task' : 'tasks'}…`,
 			'agents.chat.backgroundTasks.subagent': `Sub-agent — ${options?.interpolate?.title}`,
 			'agents.chat.backgroundTasks.workflow': `Workflow — ${options?.interpolate?.title}`,
 			'agents.chat.backgroundTasks.viewTrace': 'View trace',
+			'agents.chat.backgroundTasks.stopAll': 'Stop all tasks',
 			'agents.chat.backgroundTasks.status.waiting': 'Waiting',
 			'agents.chat.backgroundTasks.status.suspended': 'Waiting for approval',
 			'agents.chat.backgroundTasks.approvalFor': `Approval for ${options?.interpolate?.title}`,
 			'agents.chat.backgroundTasks.status.running': 'Running',
+			'agents.chat.backgroundTasks.status.stopping': 'Stopping…',
+			'agents.chat.backgroundTasks.status.paused': 'Stopped',
 			'agents.chat.backgroundTasks.status.completed': 'Completed',
 			'agents.chat.backgroundTasks.status.failed': 'Failed',
 			'agents.chat.backgroundTasks.status.cancelled': 'Canceled',
@@ -285,6 +293,8 @@ describe('AgentChatPanel', () => {
 		steeringQueueIdsMock.value = new Set();
 		isCancellingMock.value = false;
 		backgroundJobsMock.value = [];
+		stopAllMock.mockReset();
+		isStoppingMock.value = false;
 		respondToApprovalMock.mockReset().mockResolvedValue(undefined);
 		fatalErrorMock.value = null;
 		onHistoryLoaded = undefined;
@@ -675,6 +685,124 @@ describe('AgentChatPanel', () => {
 				args: { to: 'team@example.com' },
 			},
 		};
+
+		it('restores composer focus when the pending stop disables the focused button', async () => {
+			backgroundJobsMock.value = [job];
+			const wrapper = mountPanel(
+				{ backgroundJobsActive: true, continueSessionId: 't1' },
+				document.body,
+			);
+			try {
+				await wrapper.get('[data-testid="agent-background-jobs"] button').trigger('click');
+				const stop = wrapper.get<HTMLButtonElement>('[data-testid="agent-background-jobs-stop"]');
+				stop.element.focus();
+				stopAllMock.mockImplementationOnce(async () => {
+					stop.element.blur();
+					backgroundJobsMock.value = [];
+				});
+				await stop.trigger('click');
+				await flushPromises();
+				expect(document.activeElement).toBe(wrapper.get('textarea').element);
+			} finally {
+				wrapper.unmount();
+			}
+		});
+
+		it('restores composer focus when sub-agents stop after acceptance and a workflow remains', async () => {
+			const workflow: AgentBackgroundJobDto = { ...job, id: 'workflow', kind: 'workflow' };
+			backgroundJobsMock.value = [job, workflow];
+			const wrapper = mountPanel(
+				{ backgroundJobsActive: true, continueSessionId: 't1' },
+				document.body,
+			);
+			try {
+				await wrapper.get('[data-testid="agent-background-jobs"] button').trigger('click');
+				const stop = wrapper.get<HTMLButtonElement>('[data-testid="agent-background-jobs-stop"]');
+				stop.element.focus();
+				await stop.trigger('click');
+				await flushPromises();
+				expect(document.activeElement).toBe(stop.element);
+
+				backgroundJobsMock.value = [workflow];
+				await flushPromises();
+				expect(wrapper.find('[data-testid="agent-background-jobs-stop"]').exists()).toBe(false);
+				expect(wrapper.find('[data-testid="agent-background-jobs"]').exists()).toBe(true);
+				expect(document.activeElement).toBe(wrapper.get('textarea').element);
+			} finally {
+				wrapper.unmount();
+			}
+		});
+
+		it('stops sub-agents from an accessible button and keeps failures retryable', async () => {
+			backgroundJobsMock.value = [job];
+			const wrapper = mountPanel({ backgroundJobsActive: true }, document.body);
+			await wrapper.get('[data-testid="agent-background-jobs"] button').trigger('click');
+			const stop = wrapper.get('button[data-testid="agent-background-jobs-stop"]');
+			expect(stop.text()).toBe('Stop all tasks');
+			isStoppingMock.value = true;
+			await nextTick();
+			expect(stop.attributes('disabled')).toBeDefined();
+			expect(wrapper.text()).toContain('Stopping 1 background task…');
+			expect(wrapper.get('[aria-label="Stopping…"]').isVisible()).toBe(true);
+			isStoppingMock.value = false;
+			const error = new Error('Request failed');
+			stopAllMock.mockRejectedValueOnce(error);
+			await nextTick();
+			await stop.trigger('click');
+			await flushPromises();
+			expect(showErrorMock).toHaveBeenCalledWith(error, 'agents.chat.backgroundTasks.stopError');
+			expect(stop.attributes('disabled')).toBeUndefined();
+			expect(wrapper.text()).toContain(job.title);
+			expect(wrapper.text()).not.toContain('Stopping');
+			backgroundJobsMock.value = [{ ...job, kind: 'workflow' }];
+			await nextTick();
+			expect(wrapper.find('[data-testid="agent-background-jobs-stop"]').exists()).toBe(false);
+			wrapper.unmount();
+		});
+
+		it.each(['running', 'suspended'] as const)(
+			'keeps stopped rows visible while a %s sub-agent is still stopping',
+			async (status) => {
+				const workflow: AgentBackgroundJobDto = { ...job, id: 'workflow', kind: 'workflow' };
+				const stopping = { ...job, status, pauseRequested: true };
+				const sibling = { ...job, id: 'sibling', title: 'Second task', pauseRequested: true };
+				backgroundJobsMock.value = [stopping, sibling, workflow];
+				const wrapper = mountPanel(
+					{ backgroundJobsActive: true, continueSessionId: 't1' },
+					document.body,
+				);
+				try {
+					expect(wrapper.text()).toContain('Stopping 2 background tasks…');
+					await wrapper.get('[data-testid="agent-background-jobs"] button').trigger('click');
+					expect(wrapper.findAll('[aria-label="Stopping…"]')).toHaveLength(2);
+					expect(wrapper.get('[aria-label="Waiting"]').isVisible()).toBe(true);
+					expect(wrapper.get('li').text()).toContain('Stopping…');
+
+					const later = { ...job, id: 'later', title: 'Another task' };
+					backgroundJobsMock.value = [stopping, { ...sibling, status: 'paused' }, workflow, later];
+					await nextTick();
+					expect(wrapper.text()).toContain('Stopping 1 background task…');
+					expect(wrapper.findAll('li')).toHaveLength(4);
+					expect(wrapper.findAll('[aria-label="Stopping…"]')).toHaveLength(1);
+					expect(wrapper.get('[aria-label="Stopped"]').isVisible()).toBe(true);
+					expect(wrapper.findAll('li')[1].text()).toContain('Second task');
+					expect(wrapper.findAll('li')[1].text()).toContain('Stopped');
+					expect(wrapper.findAll('[aria-label="Running"]')).toHaveLength(1);
+
+					backgroundJobsMock.value = [workflow, later];
+					await nextTick();
+					expect(wrapper.text()).not.toContain('Stopping');
+					expect(wrapper.text()).not.toContain('Stopped');
+					expect(wrapper.find('[data-testid="agent-background-jobs"]').exists()).toBe(true);
+					backgroundJobsMock.value = [job, workflow, later];
+					await nextTick();
+					expect(wrapper.text()).not.toContain('Stopping');
+					expect(wrapper.findAll('[aria-label="Running"]')).toHaveLength(2);
+				} finally {
+					wrapper.unmount();
+				}
+			},
+		);
 
 		it.each([
 			{ action: 'allow-once', decision: { approved: true } },

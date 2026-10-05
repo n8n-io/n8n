@@ -272,10 +272,15 @@ export class WorkflowFinderService {
 		return byFolder;
 	}
 
-	async findOwnedWorkflowRemovalCandidates(projectId: string, workflowIds: string[]) {
+	async findOwnedWorkflowRemovalCandidates(
+		projectId: string,
+		workflowIds: string[],
+		options: { includeArchived?: boolean } = {},
+	) {
 		return await this.sharedWorkflowRepository.findOwnedWorkflowRemovalCandidates(
 			projectId,
 			workflowIds,
+			options,
 		);
 	}
 
