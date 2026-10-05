@@ -53,7 +53,7 @@ Call `WorkflowSuggestionActionsService.act()` from trusted backend code. These a
 
 Use **Approve and publish** as the action label. All actions require an enabled user with current edit access. Approval also requires publish access. Save and publication respect editor write locks. Publication keeps the existing credential checks and enterprise review guards.
 
-Apply locks the workflow and rechecks the suggestion baseline after normal save preparation. It commits workflow content, required history, the applied-version record, and activity together. A failed transaction cannot leave a saved fix with a pending suggestion. History records the human editor and Assistant authorship. Activity keeps the background user separate from the human actor.
+Apply calls `WorkflowService.prepareUpdate()` for normal save validation and preparation. It then opens a transaction, locks the workflow, and rechecks the suggestion baseline. `savePreparedUpdate()` saves the workflow and required history in that transaction. The action records the applied version and closes the suggestion before commit. After commit, `finishUpdate()` runs the normal after-save hooks and events. A failed transaction cannot leave a saved fix with a pending suggestion. History records the human editor and Assistant authorship. Activity keeps the background user separate from the human actor.
 
 Suggestion reads do not request row locks. Closure updates only pending suggestions. Competing actions return the recorded result. Apply rolls back its workflow changes if another action closes the suggestion first.
 

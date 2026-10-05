@@ -12,7 +12,6 @@ import type {
 	OperationContext,
 } from '@n8n/db';
 import {
-	TransactionRunner,
 	SharedWorkflow,
 	WorkflowEntity,
 	FolderRepository,
@@ -26,6 +25,7 @@ import {
 	ProjectRepository,
 } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
+import type { PolicyCleared } from '@n8n/decorators';
 import type { ApiKeyScope, Scope } from '@n8n/permissions';
 import { hasGlobalScope } from '@n8n/permissions';
 import type { EntityManager } from '@n8n/typeorm';
@@ -103,6 +103,43 @@ export type GetManyOptions = {
 	requiredScopes?: Scope[];
 };
 
+type WorkflowUpdateOptions = {
+	tagIds?: string[];
+	parentFolderId?: string;
+	forceSave?: boolean;
+	publicApi?: boolean;
+	publishIfActive?: boolean;
+	/** Scopes of the API key behind this call; omitted when the caller is not key-authenticated. */
+	apiKeyScopes?: readonly string[];
+	aiBuilderAssisted?: boolean;
+	expectedChecksum?: string;
+	autosaved?: boolean;
+	source?: WorkflowActionSource;
+	versionName?: string;
+	versionDescription?: string;
+	/** Allows a package import to update archived content. */
+	allowArchivedUpdate?: boolean;
+	/** Skips the settings.errorWorkflow check for a package import. */
+	allowUnresolvedErrorWorkflow?: boolean;
+};
+
+type PreparedWorkflowUpdate = {
+	user: User;
+	previousWorkflow: WorkflowEntity;
+	workflow: WorkflowEntity;
+	changes: WorkflowEntity;
+	updatePayload: QueryDeepPartialEntity<WorkflowEntity>;
+	cleared: PolicyCleared<'workflowSave'>;
+	saveNewVersion: boolean;
+	tagsDisabled: boolean;
+	versionIdToPublish: string | null;
+	settingsChanged: boolean;
+	options: WorkflowUpdateOptions &
+		Required<
+			Pick<WorkflowUpdateOptions, 'autosaved' | 'source' | 'publicApi' | 'aiBuilderAssisted'>
+		>;
+};
+
 @Service()
 export class WorkflowService {
 	constructor(
@@ -142,7 +179,6 @@ export class WorkflowService {
 		private readonly policyEnforcementService: PolicyEnforcementService,
 		private readonly workflowPublicationStatusService: WorkflowPublicationStatusService,
 		private readonly nodeGroupRulesFlagGate: NodeGroupRulesFlagGate,
-		private readonly transactionRunner: TransactionRunner,
 		private readonly errorWorkflowValidationService: ErrorWorkflowValidationService,
 	) {}
 
@@ -463,41 +499,25 @@ export class WorkflowService {
 	 * For explicit activation or deactivation, use the activate/deactivate methods.
 	 */
 
-	// eslint-disable-next-line complexity
 	async update(
 		user: User,
 		workflowUpdateData: WorkflowEntity,
 		workflowId: string,
-		options: {
-			tagIds?: string[];
-			parentFolderId?: string;
-			forceSave?: boolean;
-			publicApi?: boolean;
-			publishIfActive?: boolean;
-			/** Scopes of the API key behind this call; omitted when the caller is not key-authenticated. */
-			apiKeyScopes?: readonly string[];
-			aiBuilderAssisted?: boolean;
-			expectedChecksum?: string;
-			autosaved?: boolean;
-			source?: WorkflowActionSource;
-			versionName?: string;
-			versionDescription?: string;
-			/** Allows a package import to update archived content. */
-			allowArchivedUpdate?: boolean;
-			/** Both callbacks run inside the save transaction. A callback failure rolls back all writes. */
-			guardedUpdate?: {
-				/** Validate the prepared workflow before any writes. */
-				beforeSave: (ctx: OperationContext, prepared: WorkflowEntity) => Promise<void>;
-				/** Save related state after the workflow and history writes, before commit. */
-				afterSave: (ctx: OperationContext, saved: WorkflowEntity) => Promise<void>;
-			};
-			/**
-			 * Skips the `settings.errorWorkflow` write-time check for a package import.
-			 * See {@link assertErrorWorkflowChangeAllowed}.
-			 */
-			allowUnresolvedErrorWorkflow?: boolean;
-		} = {},
+		options: WorkflowUpdateOptions = {},
 	): Promise<WorkflowEntity> {
+		const prepared = await this.prepareUpdate(user, workflowUpdateData, workflowId, options);
+		const saved = await this.savePreparedUpdate(prepared);
+		return await this.finishUpdate(prepared, saved);
+	}
+
+	/** Prepare before opening a transaction. Only save the returned data through savePreparedUpdate. */
+	// eslint-disable-next-line complexity
+	async prepareUpdate(
+		user: User,
+		workflowUpdateData: WorkflowEntity,
+		workflowId: string,
+		options: WorkflowUpdateOptions = {},
+	): Promise<PreparedWorkflowUpdate> {
 		const {
 			expectedChecksum,
 			tagIds,
@@ -512,7 +532,6 @@ export class WorkflowService {
 			versionName,
 			versionDescription,
 			allowArchivedUpdate = false,
-			guardedUpdate,
 			allowUnresolvedErrorWorkflow = false,
 		} = options;
 		const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
@@ -527,10 +546,6 @@ export class WorkflowService {
 			throw new NotFoundError(
 				'You do not have permission to update this workflow. Ask the owner to share it with you.',
 			);
-		}
-
-		if (guardedUpdate && tagIds) {
-			throw new BadRequestError('A guarded workflow save cannot change tags.');
 		}
 
 		if (workflow.isArchived && !allowArchivedUpdate) {
@@ -761,61 +776,82 @@ export class WorkflowService {
 			}
 			updatePayload.parentFolder = parentFolderId === PROJECT_ROOT ? null : { id: parentFolderId };
 		}
-		const tagsDisabled = this.globalConfig.tags.disabled;
-		const persist = async (ctx: OperationContext) => {
-			if (guardedUpdate) {
-				await guardedUpdate.beforeSave(
-					ctx,
-					Object.assign(new WorkflowEntity(), workflow, updatePayload),
-				);
-			}
-			if (saveNewVersion) {
-				const versionMetadata =
-					versionName || versionDescription
-						? { name: versionName, description: versionDescription }
-						: undefined;
-				if (guardedUpdate) {
-					await this.workflowHistoryService.saveVersionRequired(
-						{ user, workflow: workflowUpdateData, workflowId, autosaved, source, versionMetadata },
-						ctx,
-					);
-				} else {
-					await this.workflowHistoryService.saveVersion(
-						user,
-						workflowUpdateData,
-						workflowId,
-						autosaved,
-						source,
-						undefined,
-						versionMetadata,
-					);
-				}
-			}
-			await this.workflowRepository.updateContent(workflowId, updatePayload, {
-				...ctx,
-				policyCleared: cleared,
-			});
-			if (tagIds && !tagsDisabled) {
-				await this.workflowTagMappingRepository.overwriteTaggings(workflowId, tagIds);
-			}
-			const savedWorkflow = await this.workflowRepository.findSavedWorkflow(
-				workflowId,
-				!tagsDisabled,
-				ctx,
-			);
-			if (!savedWorkflow) {
-				throw new BadRequestError(
-					`Workflow with ID "${workflowId}" could not be found to be updated.`,
-				);
-			}
-			if (guardedUpdate) {
-				await guardedUpdate.afterSave(ctx, savedWorkflow);
-			}
-			return savedWorkflow;
+		return {
+			user,
+			previousWorkflow: workflow,
+			workflow: Object.assign(new WorkflowEntity(), workflow, updatePayload),
+			changes: workflowUpdateData,
+			updatePayload,
+			cleared,
+			saveNewVersion,
+			tagsDisabled: this.globalConfig.tags.disabled,
+			versionIdToPublish,
+			settingsChanged,
+			options: {
+				tagIds,
+				autosaved,
+				source,
+				publicApi,
+				apiKeyScopes,
+				aiBuilderAssisted,
+				versionName,
+				versionDescription,
+			},
 		};
-		const updatedWorkflow = guardedUpdate
-			? await this.transactionRunner.run({}, persist)
-			: await persist({});
+	}
+
+	/** Pass the caller's context to include the workflow and history in its transaction. */
+	async savePreparedUpdate(prepared: PreparedWorkflowUpdate, ctx: OperationContext = {}) {
+		const { user, changes, updatePayload, cleared, saveNewVersion, tagsDisabled } = prepared;
+		const workflowId = prepared.workflow.id;
+		const { tagIds, autosaved, source, versionName, versionDescription } = prepared.options;
+		if (saveNewVersion) {
+			const versionMetadata =
+				versionName || versionDescription
+					? { name: versionName, description: versionDescription }
+					: undefined;
+			if (ctx.trx) {
+				await this.workflowHistoryService.saveVersionRequired(
+					{ user, workflow: changes, workflowId, autosaved, source, versionMetadata },
+					ctx,
+				);
+			} else {
+				await this.workflowHistoryService.saveVersion(
+					user,
+					changes,
+					workflowId,
+					autosaved,
+					source,
+					undefined,
+					versionMetadata,
+				);
+			}
+		}
+		await this.workflowRepository.updateContent(workflowId, updatePayload, {
+			...ctx,
+			policyCleared: cleared,
+		});
+		if (tagIds && !tagsDisabled) {
+			await this.workflowTagMappingRepository.overwriteTaggings(workflowId, tagIds, ctx);
+		}
+		const savedWorkflow = await this.workflowRepository.findSavedWorkflow(
+			workflowId,
+			!tagsDisabled,
+			ctx,
+		);
+		if (!savedWorkflow) {
+			throw new BadRequestError(
+				`Workflow with ID "${workflowId}" could not be found to be updated.`,
+			);
+		}
+		return savedWorkflow;
+	}
+
+	/** Run once after the save transaction commits. */
+	async finishUpdate(prepared: PreparedWorkflowUpdate, updatedWorkflow: WorkflowEntity) {
+		const { user, previousWorkflow: workflow, versionIdToPublish, settingsChanged } = prepared;
+		const workflowId = workflow.id;
+		const { tagIds, source, publicApi, apiKeyScopes, aiBuilderAssisted } = prepared.options;
 
 		if (updatedWorkflow.tags?.length && tagIds?.length) {
 			updatedWorkflow.tags = this.tagService.sortByRequestOrder(updatedWorkflow.tags, {

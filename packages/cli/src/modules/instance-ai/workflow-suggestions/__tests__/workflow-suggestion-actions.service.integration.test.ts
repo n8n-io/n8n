@@ -170,15 +170,22 @@ it('saves one version when two requests apply the same proposal at once', async 
 });
 
 it('returns the committed application when an after-update hook fails', async () => {
-	const { original, act } = await fixture();
+	const { original, suggestion, act } = await fixture();
 	const beforeHistory = await history.countBy({ workflowId: original.id });
+	let appliedVersionAtHook: string | undefined;
 	vi.spyOn(Container.get(ExternalHooks), 'run').mockImplementation(async (name) => {
-		if (name === 'workflow.afterUpdate') throw new Error('After-update hook failed.');
+		if (name === 'workflow.afterUpdate') {
+			const committed = await suggestions.findOneByOrFail({ id: suggestion.id });
+			appliedVersionAtHook = committed.appliedVersion?.versionId;
+			throw new Error('After-update hook failed.');
+		}
 	});
 
 	const detail = await act('open-in-editor');
 
 	expect(detail).toMatchObject({ state: 'closed', closedReason: 'applied' });
+	expect(appliedVersionAtHook).toBe(detail.appliedVersion?.versionId);
+	expect(appliedVersionAtHook).toBeDefined();
 	expect(detail.appliedVersion?.versionId).toBe(
 		(await workflows.findOneByOrFail({ id: original.id })).versionId,
 	);

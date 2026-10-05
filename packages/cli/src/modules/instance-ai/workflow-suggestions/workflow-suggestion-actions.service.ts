@@ -102,35 +102,32 @@ export class WorkflowSuggestionActionsService {
 
 		let attemptedVersion: WorkflowSuggestionAppliedVersion | undefined;
 		try {
-			await this.workflows.update(
+			const prepared = await this.workflows.prepareUpdate(
 				user,
 				Object.assign(new WorkflowEntity(), structuredClone(suggestion.payload.candidate)),
 				workflowId,
-				{
-					expectedChecksum: suggestion.expectedBaseline.checksum,
-					source: 'n8n-ai',
-					guardedUpdate: {
-						beforeSave: async (ctx, prepared) =>
-							await this.validatePreparedWorkflow(suggestion, prepared, ctx),
-						afterSave: async (ctx, saved) => {
-							attemptedVersion = {
-								versionId: saved.versionId,
-								checksum: await calculateWorkflowChecksum(saved),
-								action,
-								actorId: user.id,
-							};
-							const closed = await this.suggestions.closePending(
-								suggestion,
-								'applied',
-								user.id,
-								ctx,
-								attemptedVersion,
-							);
-							if (!closed) throw new ConflictError('The suggestion has already closed.');
-						},
-					},
-				},
+				{ expectedChecksum: suggestion.expectedBaseline.checksum, source: 'n8n-ai' },
 			);
+			const saved = await this.txRunner.run({}, async (ctx) => {
+				await this.validatePreparedWorkflow(suggestion, prepared.workflow, ctx);
+				const saved = await this.workflows.savePreparedUpdate(prepared, ctx);
+				attemptedVersion = {
+					versionId: saved.versionId,
+					checksum: await calculateWorkflowChecksum(saved),
+					action,
+					actorId: user.id,
+				};
+				const closed = await this.suggestions.closePending(
+					suggestion,
+					'applied',
+					user.id,
+					ctx,
+					attemptedVersion,
+				);
+				if (!closed) throw new ConflictError('The suggestion has already closed.');
+				return saved;
+			});
+			await this.workflows.finishUpdate(prepared, saved);
 		} catch (error) {
 			// After-update hooks can fail after the transaction commits.
 			const current = await this.suggestions.getSuggestion(suggestion.id, {
