@@ -179,7 +179,6 @@ describe('Start - AuthRolesService initialization', () => {
 		// @ts-expect-error - Accessing protected method for testing
 		start.initDataDeduplicationService = vi.fn().mockResolvedValue(undefined);
 		start.initExternalHooks = vi.fn().mockResolvedValue(undefined);
-		start.initWorkflowHistory = vi.fn();
 		// @ts-expect-error - Accessing private method for testing
 		start.initInstanceSettingsLoader = vi.fn().mockResolvedValue(undefined);
 		start.cleanupTestRunner = vi.fn().mockResolvedValue(undefined);

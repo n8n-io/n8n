@@ -2288,6 +2288,68 @@
 				"message": "packages/cli turns 'typescript/no-duplicate-type-constituents' down to 'warn' for the whole package.",
 				"hash": "9e547bb1eaae"
 			}
+		],
+		"packages/@n8n/codemirror-lang/oxlint.config.mts": [
+			{
+				"rule": "lint-config-layering",
+				"line": 9,
+				"message": "packages/@n8n/codemirror-lang turns 'no-useless-escape' down to 'off' for the whole package.",
+				"hash": "4bd19dd38f45"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 10,
+				"message": "packages/@n8n/codemirror-lang turns 'typescript/no-deprecated' down to 'off' for the whole package.",
+				"hash": "88d4fdb29a70"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 11,
+				"message": "packages/@n8n/codemirror-lang turns 'typescript/no-unnecessary-type-assertion' down to 'off' for the whole package.",
+				"hash": "9a0850d08ae2"
+			}
+		],
+		"packages/@n8n/codemirror-lang-sql/oxlint.config.mts": [
+			{
+				"rule": "lint-config-layering",
+				"line": 9,
+				"message": "packages/@n8n/codemirror-lang-sql turns 'no-useless-escape' down to 'off' for the whole package.",
+				"hash": "86922af68b52"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 10,
+				"message": "packages/@n8n/codemirror-lang-sql turns 'typescript/no-deprecated' down to 'off' for the whole package.",
+				"hash": "2b0304930bf0"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 11,
+				"message": "packages/@n8n/codemirror-lang-sql turns 'typescript/no-unsafe-enum-comparison' down to 'off' for the whole package.",
+				"hash": "116fe6103a29"
+			}
+		],
+		"packages/@n8n/utils/oxlint.config.mts": [
+			{
+				"rule": "lint-config-layering",
+				"line": 8,
+				"message": "packages/@n8n/utils turns 'no-prototype-builtins' down to 'off' for the whole package.",
+				"hash": "0877964b8dda"
+			},
+			{
+				"rule": "lint-config-layering",
+				"line": 9,
+				"message": "packages/@n8n/utils turns 'typescript/no-deprecated' down to 'off' for the whole package.",
+				"hash": "26b2999a3856"
+			}
+		],
+		"packages/extensions/insights/oxlint.config.mts": [
+			{
+				"rule": "lint-config-layering",
+				"line": 9,
+				"message": "packages/extensions/insights turns 'typescript/no-deprecated' down to 'off' for the whole package.",
+				"hash": "f936bed8fa8d"
+			}
 		]
 	}
 }
