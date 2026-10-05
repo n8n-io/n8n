@@ -1,7 +1,7 @@
 import { DataTableCreateColumnSchema } from '@n8n/api-types';
-import { withTransaction } from '@n8n/db';
+import { BaseRepository, TransactionRunner, withTransaction } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { DataSource, EntityManager, Repository } from '@n8n/typeorm';
+import { DataSource, EntityManager } from '@n8n/typeorm';
 import {
 	DATA_TABLE_SYSTEM_COLUMNS,
 	DATA_TABLE_SYSTEM_TESTING_COLUMN,
@@ -18,12 +18,13 @@ import { DataTableSystemColumnNameConflictError } from './errors/data-table-syst
 import { DataTableValidationError } from './errors/data-table-validation.error';
 
 @Service()
-export class DataTableColumnRepository extends Repository<DataTableColumn> {
+export class DataTableColumnRepository extends BaseRepository<DataTableColumn> {
 	constructor(
 		dataSource: DataSource,
 		private ddlService: DataTableDDLService,
+		transactionRunner: TransactionRunner,
 	) {
-		super(DataTableColumn, dataSource.manager);
+		super(DataTableColumn, dataSource.manager, transactionRunner);
 	}
 
 	/**
@@ -139,13 +140,13 @@ export class DataTableColumnRepository extends Repository<DataTableColumn> {
 		});
 	}
 
-	/** Drops every column before adding any: SQLite column names are case-insensitive, so `foo` must go before `Foo` is added. */
+	/** Drops removed and retyped columns before it adds columns: SQLite column names are case-insensitive, so `foo` must go before `Foo` is added. */
 	async replaceSchema(
 		dataTableId: string,
 		projectId: string,
 		schema: { name: string; columns: Array<Pick<DataTableColumn, 'name' | 'type'>> },
 	) {
-		await this.manager.transaction(async (em) => {
+		await this.runInTransaction({}, async (em) => {
 			if (!(await em.existsBy(DataTable, { id: dataTableId, projectId }))) {
 				throw new DataTableNotFoundError(dataTableId);
 			}

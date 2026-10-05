@@ -287,7 +287,7 @@ export class DataTableService {
 	async replaceSchema(
 		dataTableId: string,
 		projectId: string,
-		schema: { name: string; columns: Array<{ name: string; type: DataTableColumnType }> },
+		schema: { name: string; columns: Array<Pick<DataTableColumn, 'name' | 'type'>> },
 	) {
 		const table = await this.validateDataTableExists(dataTableId, projectId);
 		if (table.name !== schema.name) await this.validateUniqueName(schema.name, projectId);
