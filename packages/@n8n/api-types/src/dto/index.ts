@@ -127,7 +127,13 @@ export {
 	LdapConfigurationPublicDto,
 	UpdateLdapConfigurationPublicDto,
 } from './ldap/ldap-configuration-public.dto';
-export { LdapSyncDto } from './ldap/ldap-sync.dto';
+export {
+	LdapSyncDto,
+	LdapSyncHistoryListPublicDto,
+	LdapSyncHistoryPublicDto,
+	ListLdapSyncHistoryQueryDto,
+	RunLdapSyncPublicDto,
+} from './ldap/ldap-sync-public.dto';
 
 export { PasswordUpdateRequestDto } from './user/password-update-request.dto';
 export { RoleChangeRequestDto } from './user/role-change-request.dto';
