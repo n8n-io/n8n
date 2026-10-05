@@ -2008,6 +2008,29 @@ describe('verify-built-workflow tool — trigger selection', () => {
 		expect(run.mock.calls[0][2]).toMatchObject({ triggerNodeName: 'First of Month' });
 	});
 
+	it('rejects a named webpage node, which starts no execution', async () => {
+		const { ctx } = makeContext(
+			makeBuildOutcome(),
+			{ executionId: 'exec-page', status: 'success' },
+			{
+				workflowNodes: [
+					{ name: 'Landing Page', type: 'n8n-nodes-base.webpage' },
+					{ name: 'Signup Webhook', type: 'n8n-nodes-base.webhook' },
+				],
+			},
+		);
+
+		const result = await runTool(ctx, {
+			workItemId: 'wi-1',
+			workflowId: 'wf-1',
+			triggerNodeName: 'Landing Page',
+		});
+
+		expect(result.success).toBe(false);
+		expect(result.error).toContain('Could not find trigger "Landing Page" in this workflow.');
+		expect(ctx.domainContext.executionService.run).not.toHaveBeenCalled();
+	});
+
 	it('leaves the trigger auto-detected when no trigger is named', async () => {
 		const { ctx } = makeContext(makeBuildOutcome(), {
 			executionId: 'exec-auto',

@@ -136,6 +136,7 @@ type BuildToolOutput = {
 	workflowId?: string;
 	workflowName?: string;
 	workItemId?: string;
+	triggerNodes?: Array<{ nodeName: string; nodeType: string }>;
 	verificationReadiness?: {
 		status: string;
 		reason?: string;
@@ -1016,6 +1017,40 @@ describe('createBuildWorkflowTool', () => {
 		expect(result.postBuildFlow).toMatchObject({
 			skillId: 'post-build-flow',
 			reason: 'direct-build-succeeded',
+		});
+	});
+
+	it('does not offer a webpage node as a trigger to verify from', async () => {
+		const { context, filePath } = makeContext({ source: 'workflow source from workspace' });
+		vi.mocked(compileWorkflowSource).mockResolvedValue({
+			success: true,
+			workflow: {
+				...structuredClone(generatedWorkflow),
+				nodes: [
+					{
+						id: 'page-1',
+						name: 'Landing Page',
+						type: 'n8n-nodes-base.webpage',
+						typeVersion: 1,
+						position: [0, 0] as [number, number],
+						parameters: { path: 'my-page' },
+					},
+				],
+			},
+			warnings: [],
+			compiler: 'sandbox-tsx',
+		});
+
+		const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
+			filePath,
+			name: 'Landing page',
+		});
+
+		expect(result.success).toBe(true);
+		expect(result.triggerNodes).toEqual([]);
+		expect(result.verificationReadiness).toMatchObject({
+			status: 'not_verifiable',
+			reason: 'no-trigger-node',
 		});
 	});
 

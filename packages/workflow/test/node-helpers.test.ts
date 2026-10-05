@@ -7339,6 +7339,7 @@ describe('NodeHelpers', () => {
 			'n8n-nodes-base.emailReadImap',
 			'n8n-nodes-base.telegramBot',
 			'n8n-nodes-base.start',
+			'n8n-nodes-base.webpage',
 		])('recognises the explicitly-listed trigger type %s', (type) => {
 			expect(isTriggerNodeType(type)).toBe(true);
 		});

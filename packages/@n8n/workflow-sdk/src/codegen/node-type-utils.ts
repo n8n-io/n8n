@@ -2,13 +2,17 @@
  * Node type utility functions for code generation
  */
 
+import { WEBPAGE_NODE_TYPE } from 'n8n-workflow';
+
 import { isWebhookType, isStickyNoteType, isMergeNodeType } from '../constants/node-types';
 
 /**
  * Check if node is a trigger type
  */
 export function isTriggerType(type: string): boolean {
-	return type.toLowerCase().includes('trigger') || isWebhookType(type);
+	return (
+		type.toLowerCase().includes('trigger') || isWebhookType(type) || type === WEBPAGE_NODE_TYPE
+	);
 }
 
 /**

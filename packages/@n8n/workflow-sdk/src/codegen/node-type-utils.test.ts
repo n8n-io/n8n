@@ -16,6 +16,10 @@ describe('node-type-utils', () => {
 			expect(isTriggerType('n8n-nodes-base.webhook')).toBe(true);
 		});
 
+		it('returns true for webpage', () => {
+			expect(isTriggerType('n8n-nodes-base.webpage')).toBe(true);
+		});
+
 		it('returns false for non-trigger types', () => {
 			expect(isTriggerType('n8n-nodes-base.httpRequest')).toBe(false);
 			expect(isTriggerType('n8n-nodes-base.set')).toBe(false);

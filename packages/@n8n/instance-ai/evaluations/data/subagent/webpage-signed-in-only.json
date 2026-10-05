@@ -1,0 +1,5 @@
+{
+	"id": "webpage-signed-in-only",
+	"description": "PREREQUISITES TO RUN: start the target n8n instance with N8N_ENV_FEAT_WEBPAGE_NODE=true. Without the flag, the Webpage node and the webpage-builder skill do not load, and this case does not test the feature. Run it with `pnpm eval:subagent --filter webpage`.",
+	"prompt": "Build an internal team handbook page served at /handbook with sections for onboarding, tools and holidays. Only signed-in n8n users should be able to open it."
+}

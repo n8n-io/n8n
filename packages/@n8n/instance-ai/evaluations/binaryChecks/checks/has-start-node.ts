@@ -1,5 +1,5 @@
 import type { BinaryCheck } from '../types';
-import { isTriggerNode } from '../utils';
+import { isTriggerNode, WEBPAGE_TYPE } from '../utils';
 
 function hasDownstreamConnection(
 	sourceName: string,
@@ -31,6 +31,11 @@ export const hasStartNode: BinaryCheck = {
 
 		if (triggers.length === 0) {
 			return { pass: false, comment: 'No trigger node found' };
+		}
+
+		// A Webpage node has no outputs, so a page-only workflow has no downstream nodes.
+		if (triggers.every((trigger) => trigger.type === WEBPAGE_TYPE)) {
+			return { pass: true, applicable: false };
 		}
 
 		for (const trigger of triggers) {

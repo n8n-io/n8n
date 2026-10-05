@@ -38,6 +38,7 @@ const WEBHOOK_NODE_TYPES = new Set([
 	'n8n-nodes-base.webhook',
 	'n8n-nodes-base.formTrigger',
 	'@n8n/n8n-nodes-langchain.mcpTrigger',
+	'n8n-nodes-base.webpage',
 ]);
 
 /**

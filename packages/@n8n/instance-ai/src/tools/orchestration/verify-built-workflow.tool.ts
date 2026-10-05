@@ -7,7 +7,6 @@
  */
 
 import { Tool } from '@n8n/agents';
-import { isTriggerNodeType } from 'n8n-workflow';
 import { z } from 'zod';
 
 import type { OrchestrationContext } from '../../types';
@@ -42,6 +41,7 @@ import {
 	verificationClaimSchema,
 } from '../../workflow-loop/workflow-loop-state';
 import { collectChatModelRecoveryContext } from '../workflows/chat-model-validation';
+import { isRunnableTriggerNodeType } from '../workflows/workflow-json-utils';
 
 const DEFAULT_NODE_PREVIEW_CHARS = 600;
 
@@ -266,7 +266,8 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 				Array.isArray(workflow.nodes) &&
 				resolvedInput.triggerNodeName !== undefined &&
 				!workflow.nodes.some(
-					(node) => node.name === resolvedInput.triggerNodeName && isTriggerNodeType(node.type),
+					(node) =>
+						node.name === resolvedInput.triggerNodeName && isRunnableTriggerNodeType(node.type),
 				)
 			) {
 				return {
