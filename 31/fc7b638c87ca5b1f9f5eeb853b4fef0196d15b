@@ -77,8 +77,8 @@ pnpm-lock.yaml
 packages/cli/src/modules/oauth-server/__tests__/oauth-consent.controller.api.test.ts
   s_5b85161403cb3c::t_43714391bb256c 105
 packages/cli/src/modules/oauth-server/__tests__/oauth-server.service.test.ts
-  s_5b85161403cb3c::t_f3cfaff4a70d71 71,1222,1359,1368,1901
-  s_5b85161403cb3c::t_5d0b8d7559c3d7 177,190,202,1231,1911
+  s_5b85161403cb3c::t_f3cfaff4a70d71 71,1221,1358,1367,1900
+  s_5b85161403cb3c::t_5d0b8d7559c3d7 177,190,202,1230,1910
 packages/cli/src/modules/oauth-server/__tests__/oauth-token.service.test.ts
   s_5b85161403cb3c::t_40d62c4cc8a9a4 45,338,347,356,768,857
   s_5b85161403cb3c::t_5d0b8d7559c3d7 777
@@ -109,7 +109,7 @@ packages/@n8n/backend-services/package.json
 {
   "schema_version": "authorship/3.0.0",
   "git_ai_version": "1.7.5",
-  "base_commit_sha": "e430bab5b55c77dee689f610d2ee3fceaf9bf4e4",
+  "base_commit_sha": "31fc7b638c87ca5b1f9f5eeb853b4fef0196d15b",
   "prompts": {},
   "sessions": {
     "s_5b85161403cb3c": {
