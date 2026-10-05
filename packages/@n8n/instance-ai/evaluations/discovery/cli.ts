@@ -6,16 +6,31 @@
 //   pnpm eval:discovery                                # run all scenarios, 3 trials each
 //   pnpm eval:discovery --filter slack-oauth --verbose
 //   pnpm eval:discovery --trials 5
+//   pnpm eval:discovery --cases-dir <dir> --stop-on-route   # routing mode
 //
 // Loads scenarios from evaluations/data/discovery/, runs each scenario × N
 // trials via the in-process runner, reports per-scenario pass-rates, exits
 // non-zero on any scenario below threshold, or on any scenario with zero passes
 // when --fail-on-zero-pass is set.
+//
+// Routing mode (`--cases-dir`) loads `route-*.json` cases from that folder,
+// grades the route of each trial, and prints a pass rate per bucket. It always
+// exits 0: it measures routing and does not gate a merge.
 // ---------------------------------------------------------------------------
 
-import { runDiscoveryScenario, type DiscoveryRunResult } from './runner';
+import { runDiscoveryScenario, runOrchestratorTurn, type DiscoveryRunResult } from './runner';
 import type { DiscoveryTestCase } from './types';
+import { isAgentFeatureEnabled } from '../../src/utils/agent-feature-enabled';
 import { loadDiscoveryTestCasesWithFiles } from '../data/discovery';
+import { loadRoutingCases, ROUTING_BUCKETS, type RoutingBucket } from '../routing/cases';
+import {
+	casePasses,
+	readRoutingTrial,
+	resolveRoute,
+	routeLabel,
+	trialPasses,
+} from '../routing/grade';
+import { judgeRoute } from '../routing/judge';
 
 // ---------------------------------------------------------------------------
 // Args
@@ -33,6 +48,9 @@ interface CliArgs {
 	concurrency: number;
 	nodesJsonPath?: string;
 	failOnZeroPass: boolean;
+	/** Folder of routing cases. Set switches the CLI to routing mode. */
+	casesDir?: string;
+	stopOnRoute: boolean;
 }
 
 const DEFAULT_MODEL = process.env.N8N_INSTANCE_AI_EVAL_MODEL ?? 'anthropic/claude-sonnet-4-6';
@@ -89,6 +107,7 @@ function parseArgs(argv: string[]): CliArgs {
 		modelId: DEFAULT_MODEL,
 		concurrency: 3,
 		failOnZeroPass: false,
+		stopOnRoute: false,
 	};
 
 	for (let i = 0; i < argv.length; i++) {
@@ -125,12 +144,33 @@ function parseArgs(argv: string[]): CliArgs {
 			case '--fail-on-zero-pass':
 				args.failOnZeroPass = true;
 				break;
+			case '--cases-dir':
+				args.casesDir = argv[++i];
+				break;
+			case '--stop-on-route':
+				args.stopOnRoute = true;
+				break;
 			default:
 				break;
 		}
 	}
 
+	if (args.stopOnRoute && !args.casesDir) {
+		console.error('--stop-on-route needs --cases-dir: only routing cases can stop on their route.');
+		process.exit(1);
+	}
+
 	return args;
+}
+
+/** Runs `args.trials` trials, at most `args.concurrency` at a time. */
+async function runTrials<T>(args: CliArgs, runTrial: () => Promise<T>): Promise<T[]> {
+	const results: T[] = [];
+	for (let i = 0; i < args.trials; i += args.concurrency) {
+		const batchSize = Math.min(args.concurrency, args.trials - i);
+		results.push(...(await Promise.all(Array.from({ length: batchSize }, runTrial))));
+	}
+	return results;
 }
 
 // ---------------------------------------------------------------------------
@@ -162,25 +202,17 @@ async function runLocalMode(args: CliArgs): Promise<void> {
 	// — keeps the load profile predictable and per-scenario reports atomic.
 	for (const { testCase, fileSlug } of cases) {
 		process.stdout.write(`▸ ${fileSlug} ... `);
-		const trialResults: DiscoveryRunResult[] = [];
-
-		for (let i = 0; i < args.trials; i += args.concurrency) {
-			const batchSize = Math.min(args.concurrency, args.trials - i);
-			const batch = await Promise.all(
-				Array.from(
-					{ length: batchSize },
-					async () =>
-						await runDiscoveryScenario({
-							scenario: testCase,
-							modelId: args.modelId,
-							maxSteps: args.maxSteps,
-							timeoutMs: args.timeoutMs,
-							...(args.nodesJsonPath ? { nodesJsonPath: args.nodesJsonPath } : {}),
-						}),
-				),
-			);
-			trialResults.push(...batch);
-		}
+		const trialResults = await runTrials(
+			args,
+			async () =>
+				await runDiscoveryScenario({
+					scenario: testCase,
+					modelId: args.modelId,
+					maxSteps: args.maxSteps,
+					timeoutMs: args.timeoutMs,
+					...(args.nodesJsonPath ? { nodesJsonPath: args.nodesJsonPath } : {}),
+				}),
+		);
 
 		const passCount = trialResults.filter((r) => r.check.pass).length;
 		const passRate = passCount / trialResults.length;
@@ -257,6 +289,85 @@ function printSummary(aggregates: ScenarioAggregate[], args: CliArgs): void {
 }
 
 // ---------------------------------------------------------------------------
+// Routing mode
+// ---------------------------------------------------------------------------
+
+function percent(passed: number, total: number): string {
+	return `${String(passed)}/${String(total)} (${total > 0 ? ((passed / total) * 100).toFixed(0) : '0'}%)`;
+}
+
+async function runRoutingMode(args: CliArgs, casesDir: string): Promise<void> {
+	const cases = loadRoutingCases(casesDir, args.filter);
+	if (cases.length === 0) {
+		console.log(`No routing cases found in ${casesDir}.`);
+		return;
+	}
+	if (!isAgentFeatureEnabled()) {
+		console.warn(
+			'Warning: the Agents module is off, so the Assistant cannot build an Agent and agent cases fail. Set N8N_ENABLED_MODULES=agents,instance-ai.',
+		);
+	}
+
+	console.log(
+		`Running ${String(cases.length)} routing case(s) × ${String(args.trials)} trial(s) (model: ${args.modelId}, concurrency: ${String(args.concurrency)}, stop on route: ${args.stopOnRoute ? 'yes' : 'no'}).\n`,
+	);
+
+	const buckets = new Map<RoutingBucket, { passed: number; total: number }>();
+	let runErrors = 0;
+	let judgeErrors = 0;
+
+	for (const routingCase of cases) {
+		process.stdout.write(`▸ ${routingCase.id} ... `);
+		const trials = await runTrials(args, async () => {
+			const turn = await runOrchestratorTurn({
+				scenario: routingCase,
+				modelId: args.modelId,
+				maxSteps: args.maxSteps,
+				timeoutMs: args.timeoutMs,
+				stopOnRoute: args.stopOnRoute,
+				...(args.nodesJsonPath ? { nodesJsonPath: args.nodesJsonPath } : {}),
+			});
+			const resolution = await resolveRoute(routingCase, readRoutingTrial(turn), judgeRoute);
+			return { turn, resolution, passed: trialPasses(routingCase, resolution) };
+		});
+
+		const passed = casePasses(trials.filter((t) => t.passed).length, trials.length);
+		console.log(
+			`${passed ? '✓' : '✗'} ${trials.map((t) => routeLabel(t.resolution)).join(', ')} (accepts ${routingCase.accepts.join(' | ')})`,
+		);
+		for (const [idx, { turn, resolution, passed: trialPassed }] of trials.entries()) {
+			if (turn.runError) runErrors++;
+			if (resolution.judgeError) judgeErrors++;
+			if (!args.verbose) continue;
+			console.log(
+				`  ${trialPassed ? '✓' : '✗'} trial ${String(idx + 1)} (${(turn.durationMs / 1000).toFixed(1)}s, ${turn.streamStatus}) — ${routeLabel(resolution)} from ${resolution.evidence}`,
+			);
+			if (resolution.judgeReason) console.log(`     judge: ${resolution.judgeReason}`);
+			if (resolution.judgeError) console.log(`     judge error: ${resolution.judgeError}`);
+			if (turn.runError) console.log(`     run error: ${turn.runError}`);
+		}
+
+		const bucket = buckets.get(routingCase.bucket) ?? { passed: 0, total: 0 };
+		bucket.total++;
+		if (passed) bucket.passed++;
+		buckets.set(routingCase.bucket, bucket);
+	}
+
+	console.log('\n=== Routing summary (a case passes when 2/3 of its trials pass) ===');
+	let passedCases = 0;
+	for (const name of ROUTING_BUCKETS) {
+		const bucket = buckets.get(name);
+		if (!bucket) continue;
+		passedCases += bucket.passed;
+		console.log(`  ${name.padEnd(8)} ${percent(bucket.passed, bucket.total)}`);
+	}
+	console.log(`  ${'total'.padEnd(8)} ${percent(passedCases, cases.length)}`);
+	if (runErrors > 0 || judgeErrors > 0) {
+		console.log(`Errored trials: ${String(runErrors)} run, ${String(judgeErrors)} judge.`);
+	}
+}
+
+// ---------------------------------------------------------------------------
 // Main
 // ---------------------------------------------------------------------------
 
@@ -270,7 +381,11 @@ async function main(): Promise<void> {
 		process.exit(1);
 	}
 
-	await runLocalMode(args);
+	if (args.casesDir) {
+		await runRoutingMode(args, args.casesDir);
+	} else {
+		await runLocalMode(args);
+	}
 }
 
 main()

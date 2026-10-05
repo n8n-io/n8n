@@ -94,12 +94,20 @@ export interface DiscoveryTestCase {
 	timeoutMs?: number;
 }
 
+/** What the runner reads from a case. Routing cases carry no tool expectations. */
+export type DiscoveryScenario = Pick<
+	DiscoveryTestCase,
+	'userMessage' | 'instanceState' | 'confirmations' | 'maxSteps' | 'timeoutMs'
+>;
+
 export type DiscoveryStreamStatus =
 	| 'completed'
 	| 'errored'
 	| 'timed-out'
 	| 'suspended'
-	| 'step-exhausted';
+	| 'step-exhausted'
+	/** The runner ended the run at the orchestrator's first committing call. */
+	| 'stopped-on-route';
 
 export interface DiscoveryTrialFacts {
 	streamStatus: DiscoveryStreamStatus;
