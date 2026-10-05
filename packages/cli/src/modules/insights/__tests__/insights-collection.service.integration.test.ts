@@ -359,14 +359,18 @@ describe('workflowExecuteAfterHandler - cacheMetadata', () => {
 			]),
 		);
 
+		repositoryMocks.findOwnerProjectsByWorkflowIds.mockClear();
+		repositoryMocks.findByWorkflowIds.mockClear();
+		repositoryMocks.upsertWorkflowMetadata.mockClear();
+
 		// ACT AGAIN with the same workflow
 		await insightsCollectionService.handleWorkflowExecuteAfter(ctx);
 		await insightsCollectionService.flushEvents();
 
 		// ASSERT AGAIN
-		repositoryMocks.findOwnerProjectsByWorkflowIds.mockClear();
-		repositoryMocks.upsertWorkflowMetadata.mockClear();
-		expect(repositoryMocks.findOwnerProjectsByWorkflowIds).not.toHaveBeenCalled();
+		expect(repositoryMocks.findOwnerProjectsByWorkflowIds).toHaveBeenCalledOnce();
+		expect(repositoryMocks.findOwnerProjectsByWorkflowIds).toHaveBeenCalledWith([workflow.id]);
+		expect(repositoryMocks.findByWorkflowIds).not.toHaveBeenCalled();
 		expect(repositoryMocks.upsertWorkflowMetadata).not.toHaveBeenCalled();
 	});
 

@@ -259,14 +259,16 @@ export class InsightsCollectionService {
 			}
 		}
 
-		this.logger.debug(`Saving ${metadataToUpsert.length} insights metadata for workflows`);
-		await this.insightsMetadataRepository.upsertWorkflowMetadata(metadataToUpsert);
+		if (metadataToUpsert.length > 0) {
+			this.logger.debug(`Saving ${metadataToUpsert.length} insights metadata for workflows`);
+			await this.insightsMetadataRepository.upsertWorkflowMetadata(metadataToUpsert);
 
-		const upsertMetadata = await this.insightsMetadataRepository.findByWorkflowIds(
-			metadataToUpsert.map((metadata) => metadata.workflowId),
-		);
-		for (const metadata of upsertMetadata) {
-			this.cachedMetadata.set(metadata.workflowId, metadata);
+			const upsertMetadata = await this.insightsMetadataRepository.findByWorkflowIds(
+				metadataToUpsert.map((metadata) => metadata.workflowId),
+			);
+			for (const metadata of upsertMetadata) {
+				this.cachedMetadata.set(metadata.workflowId, metadata);
+			}
 		}
 
 		const events: InsightsRaw[] = [];
