@@ -1,0 +1,38 @@
+packages/core/src/errors/error-reporter.ts
+  h_52a137d26d774c 364
+packages/core/src/execution-engine/eval-mock-helpers.ts
+  h_52a137d26d774c 171,173
+packages/core/src/execution-engine/node-execution-context/credentials-test-context.ts
+  h_52a137d26d774c 18
+packages/core/src/execution-engine/node-execution-context/supply-data-context.ts
+  h_52a137d26d774c 160
+packages/core/src/execution-engine/node-execution-context/utils/request-helpers/authentication.ts
+  h_52a137d26d774c 85,89,198,227,231,282,313
+packages/core/src/execution-engine/node-execution-context/utils/request-helpers/factory.ts
+  h_52a137d26d774c 166,178,194,208,215,230
+packages/core/src/execution-engine/node-execution-context/utils/request-helpers/legacy-request-adapter.ts
+  h_52a137d26d774c 1
+packages/core/src/execution-engine/node-execution-context/utils/request-helpers/oauth.ts
+  h_52a137d26d774c 1
+packages/core/src/execution-engine/node-execution-context/utils/request-helpers/pagination.ts
+  h_52a137d26d774c 1
+packages/core/src/execution-engine/node-execution-context/utils/scheduling-helper-functions.ts
+  h_52a137d26d774c 16
+packages/core/src/execution-engine/routing-node.ts
+  h_52a137d26d774c 188,205-206,210-212,1258-1266
+packages/core/src/execution-engine/scheduled-task-manager.ts
+  h_52a137d26d774c 24
+packages/core/src/execution-engine/workflow-execute.ts
+  h_52a137d26d774c 111,1907,2952
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8483db8738bf78f5383e08ef2260d0b65320ba80",
+  "prompts": {},
+  "humans": {
+    "h_52a137d26d774c": {
+      "author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}

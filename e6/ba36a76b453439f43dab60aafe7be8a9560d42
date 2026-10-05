@@ -1,0 +1,96 @@
+packages/@n8n/db/src/repositories/workflow-history.repository.ts
+  s_be34f2a9936255::t_d3b04718f19892 2,163,182,185-186
+  s_be34f2a9936255::t_aef7943f67ff3d 2,163,182,185-186
+packages/cli/src/services/pruning/__tests__/workflow-history-compaction.service.test.ts
+  s_be34f2a9936255::t_a633801c8504f8 26,233-236,244-245,249-328
+  s_be34f2a9936255::t_1a3b279bad261d 26
+  s_be34f2a9936255::t_a3f26d737f139d 233-236,244-245,249-277,280-281,287,290,306,315
+  s_be34f2a9936255::t_8925be3dd477d0 278-279
+  s_be34f2a9936255::t_01a7a858407305 282-286
+  s_be34f2a9936255::t_8d26ee0eae83bb 288-289
+  s_be34f2a9936255::t_b08dd6e85205c2 291-293,303-305
+  s_be34f2a9936255::t_0e835b9bbf85f1 307-309,312-314
+  s_be34f2a9936255::t_f8a74345347dd3 316-318
+  s_d75b8363dac464::t_fcafd4ca985b39 294-302,310-311,319-328
+packages/cli/src/services/pruning/workflow-history-compaction.service.ts
+  s_be34f2a9936255::t_a7294d9b016230 11,129,171,183-188,190,200-201
+  s_be34f2a9936255::t_aef7943f67ff3d 11,129,171,183-188,190,200-201
+packages/cli/test/integration/database/repositories/workflow-history.repository.test.ts
+  s_be34f2a9936255::t_ff5ec03c7ec1f5 9,30-32,59-83,140-164,205,207,210-216,219-225,228-234,267-477
+  s_be34f2a9936255::t_90c39dffe1b0e0 267-289,297-313,315-320,338,351,357,378,407,416,435
+  s_be34f2a9936255::t_0d327f00742ab6 9
+  s_be34f2a9936255::t_7c0d5924d7763e 205,207,210-216,219-225,228-234,340,342-343,345,381,387-388,390,392,394-395,397,405,436,442-443,445-446,452-453,455,465,473
+  s_be34f2a9936255::t_84bc85790dac17 314
+  s_be34f2a9936255::t_cbee4a76baf5f1 140-164
+  s_be34f2a9936255::t_544e1019347fc5 59-83
+  s_be34f2a9936255::t_fdb4e848c66af7 30-32
+  s_be34f2a9936255::t_94b78e7e96189a 290-296
+  s_be34f2a9936255::t_e4205efc94773d 321-323,335-337
+  s_be34f2a9936255::t_762de075009339 339
+  s_be34f2a9936255::t_88fb5beeb0330e 341
+  s_be34f2a9936255::t_3e0fe463cd41e8 344
+  s_be34f2a9936255::t_23361ca242452e 346-350
+  s_be34f2a9936255::t_4ffef3e6ee9174 352-356
+  s_be34f2a9936255::t_5cb305509e508a 358-360,375-377
+  s_be34f2a9936255::t_f3e5cbe96d850f 379-380
+  s_be34f2a9936255::t_85bbffe6d4f3b9 382-386
+  s_be34f2a9936255::t_4149de7ec8252c 389
+  s_be34f2a9936255::t_b6797f36a0c7f9 391
+  s_be34f2a9936255::t_429e2845249770 393
+  s_be34f2a9936255::t_569fd42cbbddda 396
+  s_be34f2a9936255::t_1cf7aa8dd957fe 398-400,402-404
+  s_be34f2a9936255::t_06287d67f4187b 406
+  s_be34f2a9936255::t_a5218bee263d9c 408-410,413-415
+  s_be34f2a9936255::t_f44a399d2f7ec3 417-419,432-434
+  s_be34f2a9936255::t_345dd061e73cb5 437-441
+  s_be34f2a9936255::t_a24069b084f3c5 444
+  s_be34f2a9936255::t_3788dfb54c1e18 447-451
+  s_be34f2a9936255::t_b5357b196ffe57 454
+  s_be34f2a9936255::t_2c5f6758f92af0 456-458,462-464
+  s_be34f2a9936255::t_9a1162954e4f80 466-468,470-472
+  s_be34f2a9936255::t_ba3c2eaed0b45a 474-476
+  s_d75b8363dac464::t_75a3a13959ab68 324-334,361-374,401,411-412,420-431,459-461,469,477
+packages/cli/test/integration/workflow-history-compaction-trim.task.test.ts
+  s_be34f2a9936255::t_01ecd0ca9d476e 8,43-52,87-94,96,107-123,129,154-195
+  s_be34f2a9936255::t_b13d4a9defa640 194
+  s_be34f2a9936255::t_27ea1315b13a5e 154,156,162-165,167-169,171-172,174-178,179-181,187-193
+  s_be34f2a9936255::t_78614abee37b59 119-120
+  s_be34f2a9936255::t_8003dddf1c1730 43-50
+  s_be34f2a9936255::t_c126b6c63bc56c 182-186
+  s_be34f2a9936255::t_8a8a468f29c810 107,109-118
+  s_be34f2a9936255::t_f5690cd6c89993 51-52
+  s_d75b8363dac464::t_0808ea70062725 121-123,195
+  s_d75b8363dac464::t_d3231cdf9a67ad 8,87-94,96,108
+  s_be34f2a9936255::t_5a6f7f38a14cae 155,157-161,166,170,173
+  s_be34f2a9936255::t_ad5073af603de5 129
+packages/workflow/src/workflow-diff.ts
+  s_be34f2a9936255::t_e5c94bccaefb8b 364-365,367
+  s_be34f2a9936255::t_aef7943f67ff3d 364-365,367
+packages/workflow/test/workflow-diff.test.ts
+  s_be34f2a9936255::t_49fdde303ca1f6 27,1394-1579
+  s_d75b8363dac464::t_bca71b6eaf004a 27,1394-1579
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e6ba36a76b453439f43dab60aafe7be8a9560d42",
+  "prompts": {},
+  "sessions": {
+    "s_be34f2a9936255": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9a0f2c47-6407-4069-a583-c102c8290868",
+        "model": "unknown"
+      },
+      "human_author": "Veljko Terzic <veljko.terzic@n8n.io>"
+    },
+    "s_d75b8363dac464": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0fb80-8808-7c11-a689-33b9db16d4a4",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Veljko Terzic <veljko.terzic@n8n.io>"
+    }
+  }
+}
