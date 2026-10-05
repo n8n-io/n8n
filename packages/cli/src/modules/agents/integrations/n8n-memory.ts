@@ -196,9 +196,9 @@ export class N8nMemoryImpl
 	}
 
 	/**
-	 * Read, update and write one thread in order. Unlike `saveThread`, the
-	 * update replaces the metadata, so a caller can remove keys. Updates to the
-	 * same thread run one after another in this process.
+	 * Read, update and write one thread in one transaction. Unlike `saveThread`,
+	 * the update replaces the metadata, so a caller can remove keys. Updates to
+	 * the same thread also run one after another in this process.
 	 */
 	async patchThread(args: {
 		threadId: string;
@@ -209,16 +209,27 @@ export class N8nMemoryImpl
 		const previous = patchQueues.get(args.threadId) ?? Promise.resolve();
 		const next = previous
 			.catch(() => {})
-			.then(async () => {
-				const entity = await this.threadRepository.findOneBy({ id: args.threadId });
-				if (!entity) return null;
-				const current = this.toThread(entity);
-				const patch = args.update({ ...current, metadata: { ...(current.metadata ?? {}) } });
-				if (!patch) return current;
-				if (patch.title !== undefined) entity.title = patch.title;
-				if (patch.metadata !== undefined) entity.metadata = JSON.stringify(patch.metadata);
-				return this.toThread(await this.threadRepository.save(entity));
-			});
+			.then(
+				async () =>
+					// One transaction with a row lock (Postgres), so concurrent patches
+					// from different mains cannot lose an update.
+					await this.threadRepository.runInTransaction({}, async (trx) => {
+						const entity = await trx.findOne(AgentThreadEntity, {
+							where: { id: args.threadId },
+							lock:
+								trx.connection.options.type === 'postgres'
+									? { mode: 'pessimistic_write' }
+									: undefined,
+						});
+						if (!entity) return null;
+						const current = this.toThread(entity);
+						const patch = args.update({ ...current, metadata: { ...(current.metadata ?? {}) } });
+						if (!patch) return current;
+						if (patch.title !== undefined) entity.title = patch.title;
+						if (patch.metadata !== undefined) entity.metadata = JSON.stringify(patch.metadata);
+						return this.toThread(await trx.save(entity));
+					}),
+			);
 		patchQueues.set(args.threadId, next);
 		try {
 			return await next;

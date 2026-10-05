@@ -368,6 +368,19 @@ describe('N8nMemory', () => {
 	});
 
 	describe('patchThread', () => {
+		beforeEach(() => {
+			// The transaction manager delegates to the repository double.
+			const trx = {
+				connection: { options: { type: 'sqlite' } },
+				findOne: async (_entity: unknown, options: { where: { id: string } }) =>
+					await threadRepository.findOneBy({ id: options.where.id }),
+				save: async (entity: AgentThreadEntity) => await threadRepository.save(entity),
+			};
+			threadRepository.runInTransaction.mockImplementation(
+				async (_ctx, fn) => await fn(trx as never, {}),
+			);
+		});
+
 		/** A row store behind the repository double, so each patch reads the last write. */
 		function seedThread(metadata: Record<string, unknown> | null) {
 			const row = {
