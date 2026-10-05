@@ -172,7 +172,7 @@
 		},
 		"@n8n/telemetry#lint": {
 			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
-		}
+		},
 		"@n8n/test-impact#lint": {
 			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
 		},
