@@ -636,6 +636,29 @@ describe('AgentChannelTeamsSetup', () => {
 			await waitFor(() => expect(getByTestId('teams-availability-step')).toHaveAttribute('inert'));
 		});
 
+		it('locks the availability from the download on, even when connecting fails', async () => {
+			withBot();
+			let release: ((blob: Blob) => void) | undefined;
+			vi.mocked(fetchTeamsAppPackage).mockImplementation(
+				async () => await new Promise((resolve) => (release = resolve)),
+			);
+			const { getByTestId, emitted, rerender } = renderComponent({
+				props: props({ modelValue: 'cred-1' }),
+			});
+			await waitFor(() => expect(getByTestId('teams-download-package')).toBeEnabled());
+			expect(getByTestId('teams-availability-step')).not.toHaveAttribute('inert');
+
+			await fireEvent.click(getByTestId('teams-download-package'));
+			await waitFor(() => expect(getByTestId('teams-availability-step')).toHaveAttribute('inert'));
+
+			release?.(new Blob(['zip']));
+			await waitFor(() => expect(emitted().connect).toBeTruthy());
+			await rerender(props({ modelValue: 'cred-1', errorMessage: 'Bot rejected' }));
+
+			await waitFor(() => expect(getByTestId('teams-connect-retry')).toBeVisible());
+			expect(getByTestId('teams-availability-step')).toHaveAttribute('inert');
+		});
+
 		it('does not count a package for a credential that was swapped since', async () => {
 			const { getByTestId, rerender } = await downloadAndConnect();
 

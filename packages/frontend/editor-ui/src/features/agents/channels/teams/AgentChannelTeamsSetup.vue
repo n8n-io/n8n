@@ -287,9 +287,15 @@ async function downloadAndConnect() {
 	if (!props.connected) emit('connect');
 }
 
-// Connecting saved these settings, and a later download would build from unsaved ones.
+// The package fixes these settings, and connecting saves them, so they lock from the download on.
 // Channel settings is where they change after that.
-const availabilityLocked = computed(() => !ready.value || props.connected);
+const availabilityLocked = computed(
+	() =>
+		!ready.value ||
+		props.connected ||
+		downloading.value ||
+		downloadedFor.value === credentialId.value,
+);
 
 const canFinish = computed(() => downloadedFor.value === credentialId.value && props.connected);
 
