@@ -122,33 +122,28 @@ export class DataTableImporter {
 	 * references already resolve.
 	 */
 	async apply(context: ImportContext, plan: DataTableImportPlan): Promise<void> {
-		if (plan.creations.length > 0) {
-			// Defense in depth: the plan phase already reports a missing scope as a
-			// blocking issue, but apply re-checks before writing anything.
-			if (!(await hasProjectScope(context, 'dataTable:create'))) {
-				throw new ForbiddenError('User is missing a scope required to create a data table');
-			}
-
-			for (const table of plan.creations) {
-				await this.dataTableService.createDataTable(
-					context.projectId,
-					{ name: table.name, columns: table.columns },
-					table.id,
-				);
-			}
+		// Defense in depth: the plan phase already reports a missing scope as a
+		// blocking issue, but apply re-checks before writing anything.
+		if (plan.creations.length > 0 && !(await hasProjectScope(context, 'dataTable:create'))) {
+			throw new ForbiddenError('User is missing a scope required to create a data table');
+		}
+		if (plan.updates.length > 0 && !(await hasProjectScope(context, 'dataTable:update'))) {
+			throw new ForbiddenError('User is missing a scope required to update a data table');
 		}
 
-		if (plan.updates.length > 0) {
-			if (!(await hasProjectScope(context, 'dataTable:update'))) {
-				throw new ForbiddenError('User is missing a scope required to update a data table');
-			}
+		for (const table of plan.creations) {
+			await this.dataTableService.createDataTable(
+				context.projectId,
+				{ name: table.name, columns: table.columns },
+				table.id,
+			);
+		}
 
-			for (const { table } of plan.updates) {
-				await this.dataTableService.replaceSchema(table.id, context.projectId, {
-					name: table.name,
-					columns: table.columns,
-				});
-			}
+		for (const { table } of plan.updates) {
+			await this.dataTableService.replaceSchema(table.id, context.projectId, {
+				name: table.name,
+				columns: table.columns,
+			});
 		}
 	}
 
