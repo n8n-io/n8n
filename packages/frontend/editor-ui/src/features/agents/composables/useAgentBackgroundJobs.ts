@@ -11,7 +11,11 @@ import { computed, onScopeDispose, ref, toValue, watch, type MaybeRefOrGetter } 
 import { TIME } from '@/app/constants/durations';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 
-import { getAgentBackgroundJobs, resumeAgentBackgroundJob } from './useAgentApi';
+import {
+	getAgentBackgroundJobs,
+	resumeAgentBackgroundJob,
+	stopAgentBackgroundJobs,
+} from './useAgentApi';
 
 interface BackgroundJobsTarget {
 	projectId: MaybeRefOrGetter<string>;
@@ -28,6 +32,7 @@ export function useAgentBackgroundJobs(target: BackgroundJobsTarget) {
 	const pushStore = usePushConnectionStore();
 	const visibility = useDocumentVisibility();
 	const group = ref<AgentBackgroundJobsResponse>({ tasks: [] });
+	const isStopping = ref(false);
 	const jobs = computed(() => {
 		const received = new Map(toValue(target.receivedJobs)?.map((job) => [job.id, job]));
 		// A late job response must not restore a running status after its chat signal arrives.
@@ -59,7 +64,7 @@ export function useAgentBackgroundJobs(target: BackgroundJobsTarget) {
 		const agentId = toValue(target.agentId);
 		const threadId = toValue(target.threadId);
 		if (disposed || !active.value || !threadId) return;
-		if (inFlight) {
+		if (inFlight || isStopping.value) {
 			queued = true;
 			return;
 		}
@@ -149,6 +154,28 @@ export function useAgentBackgroundJobs(target: BackgroundJobsTarget) {
 		}
 	}
 
+	async function stopAll() {
+		const threadId = toValue(target.threadId);
+		if (!threadId || !active.value || isStopping.value) return;
+		const requestGeneration = ++generation;
+		isStopping.value = true;
+		clearRetry();
+		try {
+			const result = await stopAgentBackgroundJobs(
+				rootStore.restApiContext,
+				toValue(target.projectId),
+				toValue(target.agentId),
+				threadId,
+			);
+			if (!disposed && generation === requestGeneration) group.value = result;
+		} catch (error) {
+			if (!disposed && generation === requestGeneration) throw error;
+		} finally {
+			if (generation === requestGeneration) isStopping.value = false;
+			refresh();
+		}
+	}
+
 	// The chat stream owns the shared connection. Subscribe before the first fetch.
 	const removeListener = pushStore.addEventListener((event: PushMessage) => {
 		if (
@@ -168,6 +195,7 @@ export function useAgentBackgroundJobs(target: BackgroundJobsTarget) {
 		],
 		() => {
 			generation++;
+			isStopping.value = false;
 			inFlight = undefined;
 			queued = false;
 			group.value = { tasks: [] };
@@ -180,6 +208,7 @@ export function useAgentBackgroundJobs(target: BackgroundJobsTarget) {
 		active,
 		(enabled) => {
 			generation++;
+			isStopping.value = false;
 			inFlight = undefined;
 			queued = false;
 			clearRetry();
@@ -200,5 +229,5 @@ export function useAgentBackgroundJobs(target: BackgroundJobsTarget) {
 		removeListener();
 	});
 
-	return { jobs, respondToApproval };
+	return { jobs, respondToApproval, stopAll, isStopping };
 }

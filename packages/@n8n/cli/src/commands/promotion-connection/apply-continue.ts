@@ -1,6 +1,6 @@
 import { Args } from '@oclif/core';
 
-import { PromotionApplyCommand } from './apply-command';
+import { PromotionApplyCommand, connectionContinueCommand } from './apply-command';
 import { expectedSourceFlags, toExpectedSource } from './expected-source';
 import { BaseCommand } from '../../base-command';
 
@@ -26,7 +26,7 @@ export default class PromotionConnectionApplyContinue extends PromotionApplyComm
 		if (!expectedSource) this.error('Pass all three --expected-* flags');
 		await this.execute(async () => {
 			const result = await this.getClient(flags).continueApplyPackage(args.id, expectedSource);
-			this.reportApplyResult(result, flags, args.id);
+			this.reportApplyResult(result, flags, connectionContinueCommand(args.id));
 		});
 	}
 }
