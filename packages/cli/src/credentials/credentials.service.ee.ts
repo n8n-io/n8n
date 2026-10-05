@@ -240,7 +240,6 @@ export class EnterpriseCredentialsService {
 			await this.credentialsService.ensureCanManageEndUserCredential(user, destinationProject.id);
 		}
 
-		// 6. validate against the destination project's policy
 		await this.policyEnforcementService.enforceCredentialTransfer(
 			{
 				credential: { id: credential.id, type: credential.type },
@@ -249,7 +248,7 @@ export class EnterpriseCredentialsService {
 			{ kind: 'user', user },
 		);
 
-		// 7. validate that the destination project has access to all external secret providers
+		// 6. validate that the destination project has access to all external secret providers
 		if (
 			this.licenseState.isExternalSecretsLicensed() &&
 			this.externalSecretsConfig.externalSecretsForProjects
@@ -263,11 +262,11 @@ export class EnterpriseCredentialsService {
 			);
 		}
 
-		// 8. projects losing access — the move drops all their sharings
+		// 7. projects losing access — the move drops all their sharings
 		const affectedProjectIds = [...new Set(credential.shared.map((s) => s.projectId))];
 
 		await this.sharedCredentialsRepository.manager.transaction(async (trx) => {
-			// 9. transfer the credential
+			// 8. transfer the credential
 			// remove all sharings
 			await trx.remove(credential.shared);
 
@@ -280,7 +279,7 @@ export class EnterpriseCredentialsService {
 				}),
 			);
 
-			// 10. drop connections for members who lost access in the new project
+			// 9. drop connections for members who lost access in the new project
 			await this.connectionStatusProxy.cleanupOrphanedEntriesForProjects(
 				credential.id,
 				affectedProjectIds,

@@ -729,8 +729,6 @@ describe('EnterpriseWorkflowService', () => {
 			workflowRepository.find.mockResolvedValue(workflows);
 			projectService.getProjectWithScope.mockResolvedValue(destinationProject);
 			policyEnforcementService.enforceWorkflowTransfer.mockResolvedValue(mock());
-			// `vi.clearAllMocks()` keeps implementations, and the reactivation tests above leave
-			// these two rejecting.
 			activeWorkflowManager.remove.mockResolvedValue(undefined);
 			activeWorkflowManager.add.mockResolvedValue({ webhooks: true, triggersAndPollers: true });
 			// eslint-disable-next-line @typescript-eslint/no-explicit-any

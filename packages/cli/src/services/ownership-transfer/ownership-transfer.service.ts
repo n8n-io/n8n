@@ -39,12 +39,6 @@ export class OwnershipTransferService {
 		private readonly policyEnforcementService: PolicyEnforcementService,
 	) {}
 
-	/**
-	 * Check every workflow and credential the source project owns against the
-	 * destination project's policy, before anything moves. Throws on the first
-	 * violation. Callers run this ahead of the transfer; `transferAllResources`
-	 * itself stays unchecked because the LDAP reset command has no user to act as.
-	 */
 	async enforceTransferPolicy(
 		fromProjectId: string,
 		toProjectId: string,
