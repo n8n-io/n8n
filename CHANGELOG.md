@@ -1,3 +1,16 @@
+## [2.41.7](https://github.com/n8n-io/n8n/compare/n8n@2.41.6...n8n@2.41.7) (2026-10-05)
+
+
+### Bug Fixes
+
+* **API:** Let global members grant variable scopes to API keys ([#40151](https://github.com/n8n-io/n8n/issues/40151)) ([cc25c71](https://github.com/n8n-io/n8n/commit/cc25c71c691a98a4c3a2d9596a085cca8438c19c))
+
+
+### Features
+
+* **editor:** Show Gateway credits promotions on community nodes ([#40109](https://github.com/n8n-io/n8n/issues/40109)) ([a509d92](https://github.com/n8n-io/n8n/commit/a509d9233ca58ca30dc8b0c3d67649498e66d5d8))
+
+
 ## [2.41.6](https://github.com/n8n-io/n8n/compare/n8n@2.41.5...n8n@2.41.6) (2026-10-02)
 
 
