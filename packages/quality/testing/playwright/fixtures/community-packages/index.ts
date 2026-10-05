@@ -1,3 +1,5 @@
+import { N8N_NODES_API_VERSION } from '@n8n/constants';
+
 import { test as base } from '../base';
 import { IMPORT_MARKER_DIR, PUBLISHED_PACKAGES, type FixturePackage } from './fixture-packages';
 
@@ -41,11 +43,8 @@ export const test = base.extend<
 		{ scope: 'worker', auto: true },
 	],
 
-	supportedNodesApiVersion: async ({ api }, use) => {
-		const response = await api.request.get('/rest/settings');
-		const { data } = (await response.json()) as { data: { versionCli: string } };
-		const major = Number(data.versionCli.split('.')[0]);
-		await use(major < 3 ? 1 : major);
+	supportedNodesApiVersion: async (_fixtures, use) => {
+		await use(N8N_NODES_API_VERSION);
 	},
 
 	packageDisk: async ({ n8nContainer }, use) => {
