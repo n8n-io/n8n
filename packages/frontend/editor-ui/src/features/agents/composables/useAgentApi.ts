@@ -589,6 +589,19 @@ export const resumeAgentBackgroundJob = async (
 	);
 };
 
+export const stopAgentBackgroundJobs = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	threadId: string,
+): Promise<AgentBackgroundJobsResponse> => {
+	return await makeRestApiRequest<AgentBackgroundJobsResponse>(
+		context,
+		'POST',
+		`/projects/${encodeURIComponent(projectId)}/agents/v2/${encodeURIComponent(agentId)}/chat/${encodeURIComponent(threadId)}/background-tasks/stop`,
+	);
+};
+
 export const getAgentChatQueue = async (
 	context: IRestApiContext,
 	projectId: string,

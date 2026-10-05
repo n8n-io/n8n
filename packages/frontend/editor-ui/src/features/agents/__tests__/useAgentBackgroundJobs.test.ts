@@ -9,11 +9,16 @@ import { flushPromises } from '@vue/test-utils';
 import { effectScope, reactive, ref, type EffectScope } from 'vue';
 
 import { useAgentBackgroundJobs } from '../composables/useAgentBackgroundJobs';
-import { getAgentBackgroundJobs, resumeAgentBackgroundJob } from '../composables/useAgentApi';
+import {
+	getAgentBackgroundJobs,
+	resumeAgentBackgroundJob,
+	stopAgentBackgroundJobs,
+} from '../composables/useAgentApi';
 
 vi.mock('../composables/useAgentApi', () => ({
 	getAgentBackgroundJobs: vi.fn(),
 	resumeAgentBackgroundJob: vi.fn(),
+	stopAgentBackgroundJobs: vi.fn(),
 }));
 vi.mock('@n8n/stores/useRootStore', () => ({ useRootStore: () => ({ restApiContext: {} }) }));
 vi.mock('@/app/stores/pushConnection.store', () => ({ usePushConnectionStore: () => pushStore }));
@@ -72,6 +77,78 @@ describe('useAgentBackgroundJobs', () => {
 	afterEach(() => {
 		scope?.stop();
 		vi.useRealTimers();
+	});
+
+	it('keeps accepted stops visible until settlement and ignores an earlier fetch', async () => {
+		const workflow = { ...job, id: 'workflow', kind: 'workflow' as const };
+		const sibling = { ...job, id: 'sibling' };
+		vi.mocked(getAgentBackgroundJobs).mockResolvedValue({ tasks: [job, sibling, workflow] });
+		const { jobs, stopAll, isStopping } = create();
+		await flushPromises();
+		const stale = createDeferredPromise<AgentBackgroundJobsResponse>();
+		vi.mocked(getAgentBackgroundJobs).mockReturnValueOnce(stale.promise);
+		onEvent(update);
+		await flushPromises();
+		const stopped = createDeferredPromise<AgentBackgroundJobsResponse>();
+		vi.mocked(stopAgentBackgroundJobs).mockReturnValue(stopped.promise);
+		const stopping = stopAll();
+		expect(isStopping.value).toBe(true);
+		expect(jobs.value).toHaveLength(3);
+		await stopAll();
+		expect(stopAgentBackgroundJobs).toHaveBeenCalledExactlyOnceWith({}, 'p1', 'a1', 't1');
+		const pausingJob = { ...job, pauseRequested: true };
+		const pausingSibling = { ...sibling, pauseRequested: true };
+		stopped.resolve({ tasks: [pausingJob, pausingSibling, workflow] });
+		await stopping;
+		expect(isStopping.value).toBe(false);
+		expect(jobs.value).toEqual([pausingJob, pausingSibling, workflow]);
+		const paused = { ...pausingJob, status: 'paused' as const };
+		vi.mocked(getAgentBackgroundJobs).mockResolvedValue({
+			tasks: [paused, pausingSibling, workflow],
+		});
+		onEvent(update);
+		stale.resolve({ tasks: [job, sibling, workflow] });
+		await flushPromises();
+		expect(jobs.value).toEqual([paused, pausingSibling, workflow]);
+		vi.mocked(getAgentBackgroundJobs).mockResolvedValue({ tasks: [workflow] });
+		onEvent(update);
+		await flushPromises();
+		expect(jobs.value).toEqual([workflow]);
+		vi.mocked(getAgentBackgroundJobs).mockResolvedValue({ tasks: [job, workflow] });
+		onEvent(update);
+		await flushPromises();
+		expect(jobs.value).toEqual([job, workflow]);
+	});
+
+	it('keeps rows after a failed stop and permits a retry', async () => {
+		const { jobs, stopAll, isStopping } = create();
+		await flushPromises();
+		vi.mocked(stopAgentBackgroundJobs).mockRejectedValueOnce(new Error('Unavailable'));
+		await expect(stopAll()).rejects.toThrow('Unavailable');
+		expect(isStopping.value).toBe(false);
+		expect(jobs.value).toEqual([job]);
+		vi.mocked(stopAgentBackgroundJobs).mockResolvedValue({ tasks: [] });
+		vi.mocked(getAgentBackgroundJobs).mockResolvedValue({ tasks: [] });
+		await stopAll();
+		await flushPromises();
+		expect(jobs.value).toEqual([]);
+	});
+
+	it('does not apply a stop response to another conversation', async () => {
+		const { jobs, stopAll, isStopping } = create();
+		await flushPromises();
+		const stopped = createDeferredPromise<AgentBackgroundJobsResponse>();
+		vi.mocked(stopAgentBackgroundJobs).mockReturnValue(stopped.promise);
+		const stopping = stopAll();
+		const other = { ...job, id: 'other' };
+		vi.mocked(getAgentBackgroundJobs).mockResolvedValue({ tasks: [other] });
+		threadId.value = 't2';
+		await flushPromises();
+		stopped.resolve({ tasks: [] });
+		await stopping;
+		await flushPromises();
+		expect(jobs.value).toEqual([other]);
+		expect(isStopping.value).toBe(false);
 	});
 
 	it('subscribes before fetching and refreshes only on matching notifications', async () => {
