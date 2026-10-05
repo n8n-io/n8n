@@ -433,7 +433,7 @@ export class AgentBackgroundJobRepository extends BaseRepository<AgentBackground
 		return result.affected === 1;
 	}
 
-	async retainLatestPausedGroup(
+	async retainLatestStopGroup(
 		parentAgentId: string,
 		parentThreadId: string,
 		parentResourceId: string,
@@ -441,10 +441,10 @@ export class AgentBackgroundJobRepository extends BaseRepository<AgentBackground
 	): Promise<AgentBackgroundJob[]> {
 		return await this.runInTransaction({}, async (manager, ctx) => {
 			await this.threadRepository.lockById(parentThreadId, ctx);
-			const scope = { parentAgentId, parentThreadId, parentResourceId, kind: 'subagent' as const };
+			const scope = { parentAgentId, parentThreadId, parentResourceId };
 			const latest = await manager
 				.createQueryBuilder(AgentBackgroundJob, 'job')
-				.where({ ...scope, status: 'paused', pauseRequestId: Not(IsNull()) })
+				.where({ ...scope, pauseRequestId: Not(IsNull()) })
 				.andWhere(`NOT EXISTS ${this.activePauseGroup()}`)
 				.orderBy(
 					"CASE WHEN SUBSTR(CAST(job.pauseRequestId AS text), 15, 1) = '7' THEN 1 ELSE 0 END",
@@ -456,7 +456,7 @@ export class AgentBackgroundJobRepository extends BaseRepository<AgentBackground
 			const latestId = latest.pauseRequestId;
 			const older = (
 				await manager.find(AgentBackgroundJob, {
-					where: { ...scope, status: 'paused', pauseRequestId: Not(IsNull()) },
+					where: { ...scope, kind: 'subagent', status: 'paused', pauseRequestId: Not(IsNull()) },
 				})
 			).filter((job) => {
 				if (!job.pauseRequestId || job.pauseRequestId === latestId) return false;
@@ -478,7 +478,7 @@ export class AgentBackgroundJobRepository extends BaseRepository<AgentBackground
 			if (!latest.result?.includes(replacementNotice)) {
 				await manager.update(
 					AgentBackgroundJob,
-					{ id: latest.id, status: 'paused', pauseRequestId: latestId },
+					{ id: latest.id, status: latest.status, pauseRequestId: latestId },
 					{ result: `${latest.result ?? ''}\n${replacementNotice}` },
 				);
 			}

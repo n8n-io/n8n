@@ -27,6 +27,7 @@ import type { AgentBackgroundJobService } from '../agent-background-job.service'
 import {
 	formatPauseHandoff,
 	formatWakeMessage,
+	REPLACED_PAUSE_GROUP_NOTICE,
 	WAKE_RESULT_TEXT_MAX_CHARS,
 } from '../background-job-messages';
 
@@ -127,7 +128,7 @@ function setup(options: { worker?: boolean; enabled?: boolean } = {}) {
 
 describe('AgentWakeService', () => {
 	it('delivers a stopped group once and marks it only after the report finishes', async () => {
-		const { service, jobRepository, orchestrator } = setup();
+		const { service, backgroundJobService, jobRepository, orchestrator } = setup();
 		const report = createDeferredPromise();
 		const started = createDeferredPromise();
 		const handoffs = Array.from({ length: 5 }, (_, index) => ({
@@ -153,12 +154,20 @@ describe('AgentWakeService', () => {
 				kind: 'workflow',
 				status: 'cancelled',
 				pauseRequestId: 'stop-1',
-				result: null,
+				result: `\n${REPLACED_PAUSE_GROUP_NOTICE}`,
 			}),
 		);
 		jobRepository.findWakeableUnconsumed
-			.mockResolvedValueOnce([...jobs, makeJob({ id: 'later' })])
+			.mockResolvedValueOnce(
+				jobs.map((job) => (job.kind === 'workflow' ? { ...job, result: null } : job)),
+			)
 			.mockResolvedValue([]);
+		backgroundJobService.retainLatestStopGroup.mockImplementationOnce(async () => {
+			jobRepository.findWakeableUnconsumed.mockResolvedValueOnce([
+				...jobs,
+				makeJob({ id: 'later' }),
+			]);
+		});
 		orchestrator.executeForWake.mockImplementation(async () => {
 			started.resolve();
 			await report.promise;
@@ -189,7 +198,9 @@ describe('AgentWakeService', () => {
 			kind: 'workflow',
 			status: 'cancelled',
 			progressUnavailable: true,
+			previousStoppedGroupReplaced: true,
 		});
+		expect(payload[5]).not.toHaveProperty('result');
 		expect(jobRepository.markMailConsumed).not.toHaveBeenCalled();
 		report.resolve();
 		await wake;
@@ -890,7 +901,13 @@ describe('formatPauseHandoff', () => {
 describe('formatWakeMessage', () => {
 	it('divides the text limit equally between jobs and marks truncated text', () => {
 		const jobs = [
-			makeJob({ id: 'job-1', result: 'a'.repeat(WAKE_RESULT_TEXT_MAX_CHARS) }),
+			makeJob({
+				id: 'job-1',
+				kind: 'workflow',
+				status: 'cancelled',
+				pauseRequestId: 'stop-1',
+				result: `${'a'.repeat(WAKE_RESULT_TEXT_MAX_CHARS)}\n${REPLACED_PAUSE_GROUP_NOTICE}`,
+			}),
 			makeJob({ id: 'job-2', title: 'Second job', result: null, error: 'b'.repeat(100) }),
 		];
 
@@ -903,7 +920,11 @@ describe('formatWakeMessage', () => {
 		) as Array<{ jobId: string; result?: string; error?: string; truncated?: boolean }>;
 
 		expect(payload).toHaveLength(2);
-		expect(payload[0]).toMatchObject({ jobId: 'job-1', truncated: true });
+		expect(payload[0]).toMatchObject({
+			jobId: 'job-1',
+			truncated: true,
+			previousStoppedGroupReplaced: true,
+		});
 		expect(payload[0]?.result).toHaveLength(WAKE_RESULT_TEXT_MAX_CHARS / 2);
 		expect(payload[1]).toMatchObject({ jobId: 'job-2', error: 'b'.repeat(100) });
 		expect(payload[1]?.truncated).toBeUndefined();
