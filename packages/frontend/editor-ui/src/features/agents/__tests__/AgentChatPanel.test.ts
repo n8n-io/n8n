@@ -532,6 +532,18 @@ describe('AgentChatPanel', () => {
 		wrapper.unmount();
 	});
 
+	it('renders the attach button in the composer footer when the model accepts attachments', () => {
+		const wrapper = mountPanel();
+
+		expect(wrapper.find('[data-test-id="chat-input-attach-button"]').exists()).toBe(true);
+	});
+
+	it('hides the attach button when the model accepts no attachments', () => {
+		const wrapper = mountPanel({ agentConfig: { ...defaultAgentConfig, model: null } });
+
+		expect(wrapper.find('[data-test-id="chat-input-attach-button"]').exists()).toBe(false);
+	});
+
 	it('edits queued text inline while preserving attachments and the composer draft', async () => {
 		queuedMessagesMock.value = [
 			{
