@@ -37,10 +37,11 @@ packages/cli/test/integration/inbound-auth-core/trusted-source.store.integration
   s_5b85161403cb3c::t_9030d28d1172b7 61,74-81,335,340,346,355,364,401,409-417,419-422,425,428,430,441,446,449,451,464,467,473,482,500,502-503,508-528,530-533
   s_5b85161403cb3c::t_2c8ac471e9f65f 475-479,504-507
 packages/@n8n/inbound-auth/src/__tests__/trusted-source-config.test.ts
-  s_c6e9e8119f0e51::t_5eaddee919079d 129,131,136-140
+  s_c6e9e8119f0e51::t_5eaddee919079d 119,121,126-130
+  s_5b85161403cb3c::t_ed18b073e185ff 5,26
 packages/@n8n/inbound-auth/src/trusted-source-config.ts
-  h_435b1d7d3e52c0 83
-  s_f8cb8d8b517ca9::t_a99815d9e07ef4 153
+  h_435b1d7d3e52c0 82
+  s_f8cb8d8b517ca9::t_a99815d9e07ef4 152
 packages/cli/src/modules/inbound-auth-core/database/repositories/trusted-source-identity.repository.ts
   s_c6e9e8119f0e51::t_888c5688d9fe85 19
   h_435b1d7d3e52c0 1,11-14,24-28
@@ -91,10 +92,11 @@ packages/@n8n/inbound-auth/src/inbound.ts
 packages/@n8n/inbound-auth/package.json
   s_5b85161403cb3c::t_8365422805ef75 26
 packages/cli/src/modules/inbound-auth-core/__tests__/inbound-auth-core.module.test.ts
-  s_5b85161403cb3c::t_48a419059a9c9c 3-5,9,11,13-14,24-32,35,37-39,51-57,83-84,86,88-89,91-106
-  s_5b85161403cb3c::t_5d0b8d7559c3d7 7-8,12,58-82,85,87,90
-  s_5b85161403cb3c::t_98c8582d4d5474 1,6,10,15-16,20-21,33-34,36,40-50,115-119
-  s_5b85161403cb3c::t_20159381057fa8 120-121
+  s_5b85161403cb3c::t_48a419059a9c9c 3-5,9,11,13-14,26-34,37,40-42,46,56-58,84-85,87,89-90,92-107
+  s_5b85161403cb3c::t_5d0b8d7559c3d7 7-8,12,59-83,86,88,91
+  s_5b85161403cb3c::t_98c8582d4d5474 1,6,10,15-16,22-23,35-36,38,43-53,116-120
+  s_5b85161403cb3c::t_20159381057fa8 121-122
+  s_5b85161403cb3c::t_44e676bd615ae0 19,21,39,54-55
 packages/@n8n/inbound-auth/src/index.ts
   s_5b85161403cb3c::t_ce859d40cc15e7 3
   s_5b85161403cb3c::t_997a3ab6486ec2 1-2,4
@@ -124,16 +126,20 @@ packages/@n8n/inbound-auth/src/trusted-source.ts
   s_5b85161403cb3c::t_f8bde852b1231b 104-105,107,111,118-135,137-142
   s_5b85161403cb3c::t_8b66e297361fb3 12,20,25-26,28,31-33,57,95-102
 packages/@n8n/inbound-auth/src/contracts.ts
-  s_5b85161403cb3c::t_f32783e238b59c 1-5,7-29,31-76,78-82,84-116,124-131
+  s_5b85161403cb3c::t_f32783e238b59c 1-4,7-29,31-76,78-82,84-103,123-135,143-150
   s_5b85161403cb3c::t_f05fbf4740e639 77,83
-  s_5b85161403cb3c::t_d0c17490296f55 6,117-121
-  s_5b85161403cb3c::t_0c81d7fa178c0c 122-123
+  s_5b85161403cb3c::t_d0c17490296f55 6,136-140
+  s_5b85161403cb3c::t_0c81d7fa178c0c 141-142
+  s_5b85161403cb3c::t_b8c2f04ef3e5b3 5,104-112,114-120
+  h_435b1d7d3e52c0 113
+  s_5b85161403cb3c::t_6526d9f5280cf3 121-122
 packages/cli/src/modules/mcp/mcp-tool-availability.ts
   s_5b85161403cb3c::t_9ed68630dc65ee 4,62
 packages/cli/src/modules/inbound-auth-core/inbound-auth-core.module.ts
-  s_5b85161403cb3c::t_a0ef99c059153d 3-6,8,11,13-16,18-41,55-57,61,86-87
-  s_5b85161403cb3c::t_5d0b8d7559c3d7 62-71
-  s_5b85161403cb3c::t_0b04f2a9bbeb7e 7,9-10,12,17,43-53,72-85
+  s_5b85161403cb3c::t_a0ef99c059153d 3-6,8,12-15,17-28,17,18-28,42-44,48,73-74
+  s_5b85161403cb3c::t_5d0b8d7559c3d7 49,50-55
+  s_5b85161403cb3c::t_0b04f2a9bbeb7e 7,9-10,11,16,30-40,56-63,67-72
+  h_435b1d7d3e52c0 64-66
 packages/cli/src/modules/oauth-server/protected-resource-resolvers/workflow-webhook-trigger-resource.resolver.ts
   s_5b85161403cb3c::t_848c30858a2c6a 170
 packages/cli/src/modules/oauth-server/protected-resource-resolvers/form-trigger-resource.resolver.ts
@@ -153,6 +159,7 @@ packages/cli/src/modules/oauth-server/__tests__/oauth-consent.controller.api.tes
 packages/cli/src/modules/oauth-server/__tests__/oauth-server.service.test.ts
   s_5b85161403cb3c::t_f3cfaff4a70d71 71,1222,1359,1368,1901
   s_5b85161403cb3c::t_5d0b8d7559c3d7 177,190,202,1231,1911
+  s_5b85161403cb3c::t_a1b3e67b6ce902 314
 packages/cli/src/modules/oauth-server/__tests__/oauth-token.service.test.ts
   s_5b85161403cb3c::t_40d62c4cc8a9a4 45,338,347,356,768,857
   s_5b85161403cb3c::t_5d0b8d7559c3d7 777
@@ -191,17 +198,18 @@ packages/cli/src/modules/inbound-auth-core/trusted-source-discovery.task.ts
 packages/cli/src/modules/inbound-auth-core/database/entities/trusted-source.entity.ts
   s_5b85161403cb3c::t_d0c17490296f55 40-44,50-51
   s_5b85161403cb3c::t_73545acc79e418 45-49
-packages/@n8n/db/src/migrations/common/1790795921000-AddMetadataToTrustedSource.ts
-  s_5b85161403cb3c::t_d0c17490296f55 1-5,9-13,19-23,27-28
+packages/@n8n/db/src/migrations/common/1791194345589-AddMetadataToTrustedSource.ts
+  s_5b85161403cb3c::t_d0c17490296f55 1-5,9,11-13,19-23,27-28
   s_5b85161403cb3c::t_73545acc79e418 6-8,14-18,24-26
+  s_5b85161403cb3c::t_390c536a23a2ce 1-28
 packages/cli/src/modules/inbound-auth-core/trusted-source-discovery.service.ts
   s_5b85161403cb3c::t_424d838163fc41 1-4,14,16,19-30,35-36,40-41,146-147
   s_5b85161403cb3c::t_0b04f2a9bbeb7e 5-13,15,31-34,37-39,42,45-55,56-57,58,62-90,98-100,102-145
   s_5b85161403cb3c::t_a821f3618cdc6b 91-97,101
   s_5b85161403cb3c::t_8b8f5dd2acc584 17-18,43-44,59-61
 docs/generated/postgres-schema/README.md
-  s_5b85161403cb3c::t_db88cdbb777130 1633,1639
-  s_5b85161403cb3c::t_f35c0fc71db388 133,1632
+  s_5b85161403cb3c::t_db88cdbb777130 1655,1661
+  s_5b85161403cb3c::t_f35c0fc71db388 135,1654
 docs/generated/postgres-schema/public.trusted_source.md
   s_5b85161403cb3c::t_deae6772a7f186 11,17,59,65
   s_5b85161403cb3c::t_46147d3dd16bc0 10,58
@@ -209,23 +217,51 @@ docs/generated/postgres-schema/public.trusted_source_identity.md
   s_5b85161403cb3c::t_49268c20f1bc9f 61,67
   s_5b85161403cb3c::t_9c52390bd1587e 60
 docs/generated/sqlite-schema/README.md
-  s_5b85161403cb3c::t_8d373e1f257ac1 1621,1627
-  s_5b85161403cb3c::t_e0d646107965a4 133,1620
+  s_5b85161403cb3c::t_8d373e1f257ac1 1643,1649
+  s_5b85161403cb3c::t_e0d646107965a4 135,1642
 docs/generated/sqlite-schema/trusted_source.md
   s_5b85161403cb3c::t_48e92cf42af293 22,28,61,67
   s_5b85161403cb3c::t_57fb169be09ced 9,21,60
 docs/generated/sqlite-schema/trusted_source_identity.md
   s_5b85161403cb3c::t_50928629869cab 67,73
   s_5b85161403cb3c::t_c729c6f33b9e3d 66
-packages/@n8n/db/src/migrations/sqlite/1790795921000-AddMetadataToTrustedSource.ts
-  s_5b85161403cb3c::t_fd58709ece4e15 1-11
+packages/@n8n/db/src/migrations/sqlite/1791194345589-AddMetadataToTrustedSource.ts
+  s_5b85161403cb3c::t_fd58709ece4e15 2-8,10-11
+  s_5b85161403cb3c::t_390c536a23a2ce 1-11
 packages/cli/src/modules/inbound-auth-core/__tests__/trusted-source-discovery.task.test.ts
   s_5b85161403cb3c::t_f280574945ffaa 1-25
+packages/cli/src/modules/inbound-auth-core/__tests__/oauth2-bearer.driver.test.ts
+  s_5b85161403cb3c::t_0139d9623b7235 2,4-14,16,18-21,23-32,41-92,99-107,109-113,120-123,128-140,142-147,149-154,156-160,163-203,205-206,208-212,214-225,234-313,318-342
+  s_5b85161403cb3c::t_a3b16445f2bd95 3,114-119
+  s_5b85161403cb3c::t_fff49a31ad7317 33-40,93-98,161-162,226-232,314-317
+  s_5b85161403cb3c::t_ed18b073e185ff 1,108,124-127,141,148,155
+  s_5b85161403cb3c::t_44e676bd615ae0 15
+  s_5b85161403cb3c::t_58ffc46e51be56 17,22,213,233
+  s_5b85161403cb3c::t_bcbdb782a18680 204,207
+packages/cli/src/modules/inbound-auth-core/authentication.service.ts
+  s_5b85161403cb3c::t_b8c2f04ef3e5b3 1-4,6-27,84-86,88,102-103
+  h_435b1d7d3e52c0 5,28-83,87,89-101
+packages/cli/test/integration/inbound-auth-core/authentication.service.integration.test.ts
+  s_5b85161403cb3c::t_fff49a31ad7317 39-46,54-59,151-153
+  s_5b85161403cb3c::t_ab356e9dcad1e9 1-5,7-38,47-53,60-107,114-150,154-175
+  s_5b85161403cb3c::t_a3b16445f2bd95 6,108-113
+packages/cli/src/modules/inbound-auth-core/__tests__/authentication.service.test.ts
+  s_5b85161403cb3c::t_a3b16445f2bd95 220-222
+  s_5b85161403cb3c::t_fff49a31ad7317 78-83,184-194,241-242
+  s_5b85161403cb3c::t_ed18b073e185ff 142
+  s_5b85161403cb3c::t_714a5d538ed57c 1-77,84-141,143-183,195-219,223-240,243-268
+packages/cli/src/modules/inbound-auth-core/oauth2-bearer.driver.ts
+  h_435b1d7d3e52c0 4,12,14-15,18,20-23,31-32,34-35,38,41-68,71-172,176-177,179-190
+  s_5b85161403cb3c::t_b8c2f04ef3e5b3 1-3,5-11,13,16-17,19,24-30,33,36-37,39-40,69-70,173-175,178,191-192
+packages/@n8n/config/src/configs/logging.config.ts
+  h_435b1d7d3e52c0 61
+packages/cli/src/modules/inbound-auth-core/key.utils.ts
+  h_435b1d7d3e52c0 1-17
 ---
 {
   "schema_version": "authorship/3.0.0",
   "git_ai_version": "1.7.5",
-  "base_commit_sha": "90cfef62999c25500ba38e3265c34162fbd4d5dd",
+  "base_commit_sha": "c554553dcb7c05a770f61adf833d18019a2a83dc",
   "prompts": {},
   "humans": {
     "h_435b1d7d3e52c0": {

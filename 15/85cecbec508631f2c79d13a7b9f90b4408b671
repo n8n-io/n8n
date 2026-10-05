@@ -1,3 +1,48 @@
+packages/cli/src/modules/inbound-auth-core/trusted-source.store.ts
+  s_c6e9e8119f0e51::t_0dc5edd1f22813 2,4,10,14,15,17-20,29-47,54-61,69-70,85-86,93-94,102-103,121-123,127,149-150,210-211
+  s_c6e9e8119f0e51::t_c4c081a01dcaf9 12
+  s_c6e9e8119f0e51::t_0e8ced084636ba 1,3,21,24,78,101,138,148,155-209
+  s_c6e9e8119f0e51::t_26174ff818d87d 11,13
+  h_435b1d7d3e52c0 5-7,9,16,22-23,25,26,27,28,62-64,67,68,71-76,77,79-81,82,83-84,87-88,89,90-92,95-97,98,99-100,104,108-119,124-126,128-132,136-137,139,141,145-147,151-154
+  s_c1d15edfc515bc::t_323e9eec51d3c3 140,142-144
+  s_ce505727311d94::t_4729b092916923 65-66
+  s_f8cb8d8b517ca9::t_2b557b8fe38d29 120
+  s_f8cb8d8b517ca9::t_91be328cad2fc5 48-53
+  s_f8cb8d8b517ca9::t_25aef87e2dd7d2 8
+  s_f8cb8d8b517ca9::t_7dfe6144c79605 105-107
+  s_f8cb8d8b517ca9::t_d5c1e99442a209 133-135
+packages/cli/test/integration/inbound-auth-core/trusted-source.store.integration.test.ts
+  s_c6e9e8119f0e51::t_1760e301fc74bd 13,22-23,29
+  s_c6e9e8119f0e51::t_45f3088c5c32ab 64-69,238-241,340-350
+  s_c6e9e8119f0e51::t_8d80bfc95fab2a 80,86
+  s_c6e9e8119f0e51::t_4f238328bcb6bc 278-301
+  s_c6e9e8119f0e51::t_2e5305d020545b 1-4,10-12,14-19,21,24-28,30-32,34-63,70-79,81-85,87-96,100-132,134-235,242-277,302-339,351-352
+  h_435b1d7d3e52c0 20
+  s_f8cb8d8b517ca9::t_d8b9a71947136d 133
+  s_f8cb8d8b517ca9::t_9644fc5648350e 5-9,33
+  s_f8cb8d8b517ca9::t_4a4ad0a0050f1a 97-99
+  s_f8cb8d8b517ca9::t_e024c6a54d9480 236-237
+packages/@n8n/inbound-auth/src/__tests__/trusted-source-config.test.ts
+  s_c6e9e8119f0e51::t_5eaddee919079d 129,131,136-140
+packages/@n8n/inbound-auth/src/trusted-source-config.ts
+  h_435b1d7d3e52c0 83
+  s_f8cb8d8b517ca9::t_a99815d9e07ef4 153
+packages/cli/src/modules/inbound-auth-core/database/repositories/trusted-source-identity.repository.ts
+  s_c6e9e8119f0e51::t_888c5688d9fe85 19
+  h_435b1d7d3e52c0 1,11-14,24-28
+  s_c6e9e8119f0e51::t_5755f9e107de45 29
+packages/cli/src/modules/inbound-auth-core/database/repositories/trusted-source.repository.ts
+  h_435b1d7d3e52c0 1,7,11-14,17-33,39-43,45-64
+  s_c6e9e8119f0e51::t_d3246afd4c7483 36
+  s_c6e9e8119f0e51::t_5a543a32052637 44
+packages/@n8n/backend-test-utils/src/test-db.ts
+  s_c6e9e8119f0e51::t_55d73f8d9db0e6 237
+  s_c6e9e8119f0e51::t_c05eeb7980aafe 236
+packages/@n8n/backend-services/src/services/cache/cache.service.ts
+  h_435b1d7d3e52c0 184,187-188,209
+  h_435b1d7d3e52c0 185-186,189
+packages/@n8n/backend-services/src/services/cache/__tests__/cache.service.test.ts
+  s_f8cb8d8b517ca9::t_10091f51bffd33 165-173
 packages/@n8n/inbound-auth/src/__tests__/trusted-source.test.ts
   s_5b85161403cb3c::t_b6e4af90349d30 132,230
   s_5b85161403cb3c::t_ab5c1f7e8040ab 1-14,16,20,22,31,44-45,47-50,53,55-58,60,62-71,88-91,96-103,110-112,118-121,127-128,227-229,231-232
@@ -73,12 +118,12 @@ packages/cli/src/modules/oauth-server/protected-resource-resolvers/workflow-mcp-
   s_5b85161403cb3c::t_848c30858a2c6a 105
 pnpm-lock.yaml
   s_5b85161403cb3c::t_fc4f1a4f9ed35a 3093-3095
-  s_5b85161403cb3c::t_13ab6b0bbbf403 1828-1830,1867-1869
 packages/cli/src/modules/oauth-server/__tests__/oauth-consent.controller.api.test.ts
   s_5b85161403cb3c::t_43714391bb256c 105
 packages/cli/src/modules/oauth-server/__tests__/oauth-server.service.test.ts
   s_5b85161403cb3c::t_f3cfaff4a70d71 71,1222,1359,1368,1901
   s_5b85161403cb3c::t_5d0b8d7559c3d7 177,190,202,1231,1911
+  s_5b85161403cb3c::t_a1b3e67b6ce902 314
 packages/cli/src/modules/oauth-server/__tests__/oauth-token.service.test.ts
   s_5b85161403cb3c::t_40d62c4cc8a9a4 45,338,347,356,768,857
   s_5b85161403cb3c::t_5d0b8d7559c3d7 777
@@ -93,29 +138,54 @@ packages/@n8n/backend-common/src/modules/__tests__/module-registry.test.ts
   s_5b85161403cb3c::t_fb5e32945a34cf 76,114
 packages/@n8n/backend-common/src/modules/module-registry.ts
   s_5b85161403cb3c::t_5d0b8d7559c3d7 49-52
-packages/@n8n/backend-services/src/index.ts
-  s_5b85161403cb3c::t_ab5abf2845897f 37-46
-packages/@n8n/backend-services/src/services/__tests__/oauth-discovery-client.test.ts
-  s_5b85161403cb3c::t_480ebe1bb0fcb1 1-83,87-161,163-238,240-257,259-271,273-277,284,287-405
-  s_5b85161403cb3c::t_4ee95656fb7b29 84-86,162,239,258,272
-  s_5b85161403cb3c::t_56161b0e80deeb 278-283,285-286
-packages/@n8n/backend-services/src/services/oauth-discovery-client.ts
-  s_5b85161403cb3c::t_e94ddc849e8ef5 114-116
-  s_5b85161403cb3c::t_a5f2c254b35921 3-5,8-13,44-113,117-135,137-162,174,176-179,182-185,189-256,258-293,295
-  s_5b85161403cb3c::t_ab5abf2845897f 1-2,6-7,14-43,136,163-173,175,180-181,186-188,257,294,296-297
-packages/@n8n/backend-services/package.json
-  s_5b85161403cb3c::t_ab5abf2845897f 28,40-41
 ---
 {
   "schema_version": "authorship/3.0.0",
   "git_ai_version": "1.7.5",
-  "base_commit_sha": "e430bab5b55c77dee689f610d2ee3fceaf9bf4e4",
+  "base_commit_sha": "1585cecbec508631f2c79d13a7b9f90b4408b671",
   "prompts": {},
+  "humans": {
+    "h_435b1d7d3e52c0": {
+      "author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  },
   "sessions": {
     "s_5b85161403cb3c": {
       "agent_id": {
         "tool": "claude",
         "id": "10dcb3c0-c4f9-4155-9b96-4af4ab2eb20d",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    },
+    "s_c1d15edfc515bc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "38efac4b-39f8-40a8-b56f-93fd96992492",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    },
+    "s_c6e9e8119f0e51": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d779ba28-a639-4965-bd57-87a0acd88bc2",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    },
+    "s_ce505727311d94": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9b284dce-3657-4e4f-b93d-08c5a5dd1a48",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    },
+    "s_f8cb8d8b517ca9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "17c2e625-bf80-47f8-a09b-3dd8e07f5a0b",
         "model": "claude-fable-5-1"
       },
       "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
