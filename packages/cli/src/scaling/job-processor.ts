@@ -28,6 +28,7 @@ import {
 import type {
 	CancellationReason,
 	ExecutionStatus,
+	WorkflowExecuteMode,
 	IDataObject,
 	IExecuteData,
 	IExecuteFunctions,
@@ -93,6 +94,9 @@ function scheduleAt(timestamp: number, fn: () => void): () => void {
 
 	return () => clearTimeout(timer);
 }
+
+/** Production runs that may be parked at worker shutdown and resumed elsewhere. */
+const SUSPENDABLE_EXECUTION_MODES = new Set<WorkflowExecuteMode>(['webhook', 'trigger', 'retry']);
 
 /**
  * Responsible for processing jobs from the queue, i.e. running enqueued executions.
@@ -607,10 +611,8 @@ export class JobProcessor {
 	private suspensionRequested = false;
 
 	private isJobSuspendable(job: Job, execution: IExecutionResponse): boolean {
-		const isProductionMode = ['webhook', 'trigger', 'retry'].includes(execution.mode);
-
 		return (
-			isProductionMode &&
+			SUSPENDABLE_EXECUTION_MODES.has(execution.mode) &&
 			!job.data.streamingEnabled &&
 			!job.data.isMcpExecution &&
 			execution.data.executionData !== undefined
