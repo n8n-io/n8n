@@ -1,0 +1,28 @@
+packages/cli/src/services/__tests__/workflow-statistics.service.integration.test.ts
+  s_d5551888afa75e::t_937c15813064fe 20,750-757,761-766
+  s_0f218cc55b7d30::t_6969753c8f2898 758-760
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "4893ef0b000fb7c97dba4f64a15fcaf186a6501b",
+  "prompts": {},
+  "sessions": {
+    "s_0f218cc55b7d30": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "48bc53ad-abd9-4d2d-bf4d-6d098a289bbd",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    },
+    "s_d5551888afa75e": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0fcbd-bad1-7702-b43c-9b949b9649de",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

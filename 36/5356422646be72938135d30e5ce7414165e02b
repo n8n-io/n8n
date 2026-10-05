@@ -1,0 +1,33 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiMessage.vue
+  s_9d374da5e4b63c::t_90bad14ffdd397 21,115-135,206-207,299-301
+  s_9d374da5e4b63c::t_12981e14e840d1 302
+packages/cli/src/modules/instance-ai/onboarding-opening.ts
+  s_9d374da5e4b63c::t_b3c6edf9b9a12e 9-10
+packages/frontend/@n8n/design-system/src/components/N8nChatMessage/ChatMessage.vue
+  s_9d374da5e4b63c::t_36984a061c3157 36-37,52
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/__tests__/InstanceAiConversation.test.ts
+  s_9d374da5e4b63c::t_5991e5d5d5a9cd 215-222,225-238
+  s_9d374da5e4b63c::t_712fee79b7dea0 223-224
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiMessage.test.ts
+  s_9d374da5e4b63c::t_038c47d63de081 383-433
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiConversation.vue
+  s_9d374da5e4b63c::t_11df8e5cc5d51f 222-223,1211,1215
+  s_9d374da5e4b63c::t_b3c6edf9b9a12e 1205,1212-1214
+  s_9d374da5e4b63c::t_4b81493a80a4a3 1013
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "365356422646be72938135d30e5ce7414165e02b",
+  "prompts": {},
+  "sessions": {
+    "s_9d374da5e4b63c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "df5e2375-89ec-4f11-8122-ce64b3da72d2",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

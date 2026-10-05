@@ -82,6 +82,12 @@ packages/cli/src/services/engine-v2-webhook-responder.service.ts
 packages/cli/src/services/engine-v2-dispatcher.service.ts
   s_4c46dcfe1ba789::t_c0ade72f4ad765 11,14,107-109
   s_71c6da2ee47cd3::t_11151294bf63cb 86-91
+packages/@n8n/agents/src/runtime/__tests__/delegate-sub-agent-tool.test.ts
+  s_c5954c3047b5ed::t_fb1d9dfdf164ed 1078,1083
+packages/@n8n/db/src/migrations/common/1790241069212-CreateAgentMessageQueue.ts
+  s_c5954c3047b5ed::t_b974208cf43ef2 1-47
+packages/cli/test/migration/1790241069212-create-agent-message-queue.test.ts
+  s_c5954c3047b5ed::t_b974208cf43ef2 1-48
 ---
 {
   "schema_version": "authorship/3.0.0",
@@ -94,6 +100,14 @@ packages/cli/src/services/engine-v2-dispatcher.service.ts
     }
   },
   "sessions": {
+    "s_0ed5271cdd014d": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0d3f3-6fd7-7481-922e-2a901b1c46ca",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
     "s_270aabb0735a56": {
       "agent_id": {
         "tool": "codex",
@@ -189,6 +203,14 @@ packages/cli/src/services/engine-v2-dispatcher.service.ts
         "model": "claude-opus-5"
       },
       "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    },
+    "s_c5954c3047b5ed": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0cf61-9581-7951-a01f-21637c8a6267",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
     }
   }
 }

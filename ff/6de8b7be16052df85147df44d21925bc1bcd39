@@ -1,0 +1,38 @@
+packages/cli/src/modules/agents/types/agent-steering.ts
+  s_ffa0492de4d6b4::t_224b3af033c3c8 1,6-7
+packages/cli/src/modules/agents/integrations/agent-chat-bridge.ts
+  s_ffa0492de4d6b4::t_224b3af033c3c8 26,143,509
+packages/cli/src/modules/agents/__tests__/agent-sse-stream.test.ts
+  s_ffa0492de4d6b4::t_defea44306f017 7,122,125-137,142
+packages/cli/src/modules/agents/agent-turn-execution.service.ts
+  s_ffa0492de4d6b4::t_224b3af033c3c8 21,125,216,228
+packages/cli/test/integration/database/repositories/agent-execution.repository.test.ts
+  s_ffa0492de4d6b4::t_defea44306f017 43,306-307,1246-1253,1255-1256
+  s_ffa0492de4d6b4::t_f2777d288e0b0c 6
+packages/cli/src/modules/agents/agent-sse-stream.ts
+  s_ffa0492de4d6b4::t_224b3af033c3c8 12-13,61,217-220,222-224
+packages/cli/src/modules/agents/integrations/agent-chat-stream-consumer.ts
+  s_ffa0492de4d6b4::t_224b3af033c3c8 6,96,382
+packages/cli/src/modules/agents/__tests__/agent-execution-orchestrator.service.test.ts
+  s_ffa0492de4d6b4::t_e438d0d50e4d7b 45,282-283
+packages/cli/src/modules/agents/agent-execution-orchestrator.service.ts
+  s_ffa0492de4d6b4::t_543b537ba2acf9 1,65,427,445,467,558,649,702-704,816,820-821,870-872,901-904
+packages/cli/src/modules/agents/agent-test-run.service.ts
+  s_ffa0492de4d6b4::t_9ca0412932e523 28,57,355,421,435
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "ff6de8b7be16052df85147df44d21925bc1bcd39",
+  "prompts": {},
+  "sessions": {
+    "s_ffa0492de4d6b4": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0e727-f897-7aa3-9669-92beda795bb5",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

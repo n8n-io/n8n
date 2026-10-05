@@ -1,0 +1,38 @@
+packages/frontend/@n8n/design-system/src/components/N8nToolsConnection/CreateWorkflowRow.vue
+  s_69e862a8712a35::t_5314cf5a3a4fbf 1-8,15-29,31-35,44-55,57-85,89-93
+  s_69e862a8712a35::t_676bbb8888ee7f 56
+  s_69e862a8712a35::t_18e3ea2ca9f4fc 94-96
+  s_7396ec8a4dae48::t_3981da931bc602 9-14,30,36-43,86-88
+packages/frontend/@n8n/design-system/src/components/N8nToolsConnection/ToolsConnectionModal.vue
+  s_69e862a8712a35::t_07661ab862e91c 238-240,264-269,291,378,380-383,385,389,391,396,400-401,405,409-415,418-421,438,440,448,467,472-474
+  s_69e862a8712a35::t_4702dd2d8f4d1c 250-252,254-263,603,613
+  s_69e862a8712a35::t_75e32f1b344086 18,575,577,583-584,586,605,610-611,622
+  s_69e862a8712a35::t_fc185fbd7a1f3e 615,621
+  s_69e862a8712a35::t_89796486bd2eb4 623
+  s_7396ec8a4dae48::t_5daacda82cfdfc 607-609
+  s_7396ec8a4dae48::t_6888ada734282d 248-249,253,384,416-417,578-582,585,604,606,612
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "112c0c487c4dc947e685a73eb08610def5e79a12",
+  "prompts": {},
+  "sessions": {
+    "s_69e862a8712a35": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0aebb-32e6-723a-817d-2447b18c6f59",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_7396ec8a4dae48": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0ec4a-a5a2-7699-9a7d-9e91eb66f4ad",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,19 @@
+packages/cli/test/integration/scheduling/system-task-durable-metrics.test.ts
+  s_08e391f1ba0f84::t_597b4114096201 44-47
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "63d47c74c7f047f0baebc0d30f938e50e58e6e59",
+  "prompts": {},
+  "sessions": {
+    "s_08e391f1ba0f84": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "795a5129-6c91-4c1b-a6bc-e164a8649a7e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

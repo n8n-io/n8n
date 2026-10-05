@@ -27,6 +27,14 @@ packages/cli/test/integration/engine-v2-webhooks.test.ts
       },
       "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
     },
+    "s_c5954c3047b5ed": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0cf61-9581-7951-a01f-21637c8a6267",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
     "s_e092ff55a47017": {
       "agent_id": {
         "tool": "codex",
