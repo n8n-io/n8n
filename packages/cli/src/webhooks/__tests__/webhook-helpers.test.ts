@@ -29,6 +29,7 @@ import type {
 	INodeType,
 	IDataObject,
 	IWebhookResponseData,
+	WebhookResponseMode,
 	IN8nHttpFullResponse,
 	IWorkflowBase,
 	IRunExecutionData,
@@ -1632,6 +1633,7 @@ describe('executeWebhook credential-status gate', () => {
 		authentication: string;
 		gateResult?: CredentialCheckResult;
 		webhookResult?: IWebhookResponseData;
+		responseMode?: WebhookResponseMode;
 	}) => {
 		const checkCredentialStatus = vi.fn().mockResolvedValue(options.gateResult);
 
@@ -1669,7 +1671,7 @@ describe('executeWebhook credential-status gate', () => {
 					.mockReturnValue(mock<INodeType>({ description: { name: 'webhook' } })),
 			},
 			expression: {
-				getSimpleParameterValue: vi.fn().mockReturnValue('onReceived'),
+				getSimpleParameterValue: vi.fn().mockReturnValue(options.responseMode ?? 'onReceived'),
 				getComplexParameterValue: vi.fn().mockReturnValue('firstEntryJson'),
 			},
 		});
@@ -1747,11 +1749,28 @@ describe('executeWebhook credential-status gate', () => {
 		expect(workflowRunner.run).toHaveBeenCalled();
 	});
 
-	it('marks an onReceived run as owing no webhook response', async () => {
-		await runGate({ authentication: 'none', gateResult: missingGateResult });
+	it.each(['onReceived', 'hostedChat'] as const)(
+		'marks a %s run as owing no webhook response, since main answers at enqueue',
+		async (responseMode) => {
+			// Not awaited: non-onReceived modes then wait on a post-execute promise that never settles here.
+			void runGate({ authentication: 'none', gateResult: missingGateResult, responseMode });
+			await vi.waitFor(() => expect(workflowRunner.run).toHaveBeenCalled());
+
+			const [runData] = vi.mocked(workflowRunner.run).mock.calls[0];
+			expect(runData.webhookResponsePending).toBe(false);
+		},
+	);
+
+	it('marks a lastNode run as owing a webhook response', async () => {
+		void runGate({
+			authentication: 'none',
+			gateResult: missingGateResult,
+			responseMode: 'lastNode',
+		});
+		await vi.waitFor(() => expect(workflowRunner.run).toHaveBeenCalled());
 
 		const [runData] = vi.mocked(workflowRunner.run).mock.calls[0];
-		expect(runData.webhookResponsePending).toBe(false);
+		expect(runData.webhookResponsePending).toBe(true);
 	});
 
 	it('does not gate webhooks that do not establish a triggering identity', async () => {
