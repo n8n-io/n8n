@@ -53,6 +53,23 @@ describe('AgentBudgetSpendRepository', () => {
 		expect(second).toEqual([{ key, totalUsd: 8.2, previousUsd: 8 }]);
 	});
 
+	it('adds repeated keys in one call in entry order', async () => {
+		const key = 'thread-1';
+
+		// The ledger contract allows repeated keys. Postgres rejects two rows with
+		// the same conflict target in one statement, so the upsert coalesces them.
+		const totals = await repository.applySpend(randomUUID(), [
+			{ key, usd: 1.25 },
+			{ key, usd: 0.75 },
+		]);
+
+		expect(totals).toEqual([
+			{ key, totalUsd: 1.25, previousUsd: 0 },
+			{ key, totalUsd: 2, previousUsd: 1.25 },
+		]);
+		await expect(repository.readTotal(key)).resolves.toBe(2);
+	});
+
 	it('counts both calls when two writers add to the same keys at the same time', async () => {
 		const sessionKey = 'thread-1';
 		const monthKey = 'agent-1:2026-10';

@@ -3,7 +3,6 @@ import type {
 	UpdateOtelSettingsDto,
 	TestOtelTraceDto,
 	UpdateSamlConfigurationDto,
-	LdapSyncDto,
 } from '@n8n/api-types';
 import type { AuthenticatedRequest } from '@n8n/db';
 
@@ -151,13 +150,4 @@ export declare namespace OtelSettingsRequest {
 export declare namespace SsoSamlRequest {
 	type Get = AuthenticatedRequest;
 	type Update = AuthenticatedRequest<{}, {}, UpdateSamlConfigurationDto>;
-}
-
-// ----------------------------------
-//        /settings/ldap
-// ----------------------------------
-
-export declare namespace LdapRequest {
-	type GetSync = PaginatedRequest;
-	type RunSync = AuthenticatedRequest<{}, {}, LdapSyncDto>;
 }

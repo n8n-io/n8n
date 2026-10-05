@@ -160,6 +160,11 @@ paths:
       $ref: ./handlers/settings/spec/paths/getLdapConfiguration.generated.yml
     put:
       $ref: ./handlers/settings/spec/paths/updateLdapConfiguration.generated.yml
+  /settings/ldap/sync:
+    get:
+      $ref: ./handlers/settings/spec/paths/getLdapSync.generated.yml
+    post:
+      $ref: ./handlers/settings/spec/paths/runLdapSync.generated.yml
   /node-type-policies/instance:
     get:
       $ref: ./handlers/node-type-policies/spec/paths/getNodeTypeInstancePolicy.generated.yml

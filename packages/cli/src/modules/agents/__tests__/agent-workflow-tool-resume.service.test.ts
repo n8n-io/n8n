@@ -497,14 +497,15 @@ describe('AgentWorkflowToolResumeService → background job settlement', () => {
 
 	it('settles the job with only the last node’s output serialized', async () => {
 		const { service, backgroundJobService } = setup();
+		const ctx = afterContextWithOutput('success');
 
-		await service.handleWorkflowExecuteAfter(afterContextWithOutput('success'));
+		await service.handleWorkflowExecuteAfter(ctx);
 
-		expect(backgroundJobService.settleWorkflowJobByExecutionId).toHaveBeenCalledWith('exec-1', {
-			status: 'completed',
-			result: '{"Set":[{"ok":true}]}',
-			error: null,
-		});
+		expect(backgroundJobService.settleWorkflowJobByExecutionId).toHaveBeenCalledWith(
+			'exec-1',
+			{ status: 'completed', result: '{"Set":[{"ok":true}]}', error: null },
+			ctx.runData.data.resultData.runData,
+		);
 	});
 
 	it('does not settle a success callback for a run that has not finished', async () => {
@@ -524,11 +525,11 @@ describe('AgentWorkflowToolResumeService → background job settlement', () => {
 
 		await service.handleWorkflowExecuteAfter(ctx);
 
-		expect(backgroundJobService.settleWorkflowJobByExecutionId).toHaveBeenCalledWith('exec-1', {
-			status: 'failed',
-			result: null,
-			error: 'boom',
-		});
+		expect(backgroundJobService.settleWorkflowJobByExecutionId).toHaveBeenCalledWith(
+			'exec-1',
+			{ status: 'failed', result: null, error: 'boom' },
+			ctx.runData.data.resultData.runData,
+		);
 	});
 
 	it('does not settle while the execution is still waiting', async () => {

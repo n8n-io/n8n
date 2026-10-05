@@ -4,7 +4,7 @@ import type { MigrationContext, ReversibleMigration } from '../migration-types';
  * Running budget totals and the model call ids that already added spend.
  * A restart and a second main read the same rows.
  */
-export class CreateAgentBudgetSpendTables1791198843580 implements ReversibleMigration {
+export class CreateAgentBudgetSpendTables1791209478293 implements ReversibleMigration {
 	async up({ schemaBuilder: { createTable, column }, tablePrefix, escape }: MigrationContext) {
 		await createTable('agent_budget_spend')
 			.withColumns(

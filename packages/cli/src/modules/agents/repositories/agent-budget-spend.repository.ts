@@ -62,6 +62,11 @@ export class AgentBudgetSpendRepository extends BaseRepository<AgentBudgetSpend>
 				manager,
 				entries.map((entry) => entry.key),
 			);
+			// Repeated keys share one stored total: walk it back in entry order.
+			const unapplied = new Map<string, number>();
+			for (const entry of entries) {
+				unapplied.set(entry.key, (unapplied.get(entry.key) ?? 0) + entry.usd);
+			}
 			return entries.map((entry) => {
 				const totalUsd = stored.get(entry.key);
 				if (totalUsd === undefined) {
@@ -69,10 +74,14 @@ export class AgentBudgetSpendRepository extends BaseRepository<AgentBudgetSpend>
 					// Replay of a call whose spend never landed: the key has no row yet.
 					return { key: entry.key, totalUsd: 0, previousUsd: 0 };
 				}
+				if (!inserted) return { key: entry.key, totalUsd, previousUsd: totalUsd };
+				const left = unapplied.get(entry.key) ?? entry.usd;
+				const stillLeft = previousTotalUsd(left, entry.usd);
+				unapplied.set(entry.key, stillLeft);
 				return {
 					key: entry.key,
-					totalUsd,
-					previousUsd: inserted ? previousTotalUsd(totalUsd, entry.usd) : totalUsd,
+					totalUsd: previousTotalUsd(totalUsd, stillLeft),
+					previousUsd: previousTotalUsd(totalUsd, left),
 				};
 			});
 		});
@@ -108,18 +117,21 @@ export class AgentBudgetSpendRepository extends BaseRepository<AgentBudgetSpend>
 		const createdAtColumn = this.quote(manager, 'createdAt');
 		const updatedAtColumn = this.quote(manager, 'updatedAt');
 		const now = dbNowLiteral(this.isPostgres(manager));
-		// Sort so concurrent writers lock the rows in the same order.
-		const sorted = [...entries].sort((a, b) => a.key.localeCompare(b.key));
-		const values = sorted.map((_, i) => `(:key${i}, :usd${i}, ${now}, ${now})`).join(', ');
+		// Coalesce repeated keys: Postgres rejects two rows with the same conflict
+		// target in one statement. Sort so concurrent writers lock rows in one order.
+		const byKey = new Map<string, number>();
+		for (const entry of entries) byKey.set(entry.key, (byKey.get(entry.key) ?? 0) + entry.usd);
+		const rows = [...byKey.entries()].sort(([a], [b]) => a.localeCompare(b));
+		const values = rows.map((_, i) => `(:key${i}, :usd${i}, ${now}, ${now})`).join(', ');
 		const sql =
 			`INSERT INTO ${table} (${keyColumn}, ${totalColumn}, ${createdAtColumn}, ${updatedAtColumn}) ` +
 			`VALUES ${values} ` +
 			`ON CONFLICT (${keyColumn}) DO UPDATE SET ${totalColumn} = ` +
 			`${table}.${totalColumn} + EXCLUDED.${totalColumn}, ${updatedAtColumn} = ${now}`;
 		const parameters: Record<string, unknown> = {};
-		sorted.forEach((entry, i) => {
-			parameters[`key${i}`] = entry.key;
-			parameters[`usd${i}`] = entry.usd;
+		rows.forEach(([key, usd], i) => {
+			parameters[`key${i}`] = key;
+			parameters[`usd${i}`] = usd;
 		});
 		await this.execute(manager, sql, parameters);
 	}
