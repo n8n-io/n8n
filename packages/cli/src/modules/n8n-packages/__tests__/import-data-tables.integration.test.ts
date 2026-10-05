@@ -1022,16 +1022,20 @@ describe('workflow package import — with data tables', () => {
 				}),
 			]);
 			const ddlService = Container.get(DataTableDDLService);
+			const realAddColumn = ddlService.addColumn.bind(ddlService);
 			const addColumn = vi
 				.spyOn(ddlService, 'addColumn')
-				.mockImplementationOnce(ddlService.addColumn.bind(ddlService))
+				.mockImplementationOnce(realAddColumn)
 				.mockRejectedValueOnce(new Error('Column could not be added'));
 
 			try {
 				await expect(importWithOverwrite({ user: owner, packageBuffer })).rejects.toThrow(
 					'Column could not be added',
 				);
-				expect(addColumn).toHaveBeenCalledTimes(2);
+				expect(addColumn.mock.calls.map(([, column]) => column.name)).toEqual([
+					'first_new',
+					'second_new',
+				]);
 			} finally {
 				addColumn.mockRestore();
 			}

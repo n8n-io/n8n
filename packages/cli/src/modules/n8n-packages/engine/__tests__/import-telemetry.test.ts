@@ -44,7 +44,7 @@ const scope = (input: {
 	removedFolders?: RemovedFolderSummary[];
 	credentialResult: CredentialApplyResult;
 	requirements?: PackageCredentialRequirement[];
-	dataTable?: { matched: number; created: number; requirements: number };
+	dataTable?: { matched: number; created: number; updated?: number; requirements: number };
 	variables?: {
 		matched: number;
 		missing: number;
@@ -97,7 +97,7 @@ const scope = (input: {
 		credentialResult: input.credentialResult,
 		dataTablePlan: {
 			creations: new Array(dt.created),
-			updates: [],
+			updates: new Array(dt.updated ?? 0),
 			failures: [],
 			matchedCount: dt.matched,
 		},
@@ -211,7 +211,7 @@ describe('emitPackageImportedEvent', () => {
 						stubbed: [],
 					},
 					requirements: [requirement('credA')],
-					dataTable: { matched: 1, created: 0, requirements: 1 },
+					dataTable: { matched: 1, created: 0, updated: 1, requirements: 2 },
 					variables: { matched: 1, missing: 0, requirements: 1 },
 					tags: { matched: ['T1'], created: ['T2'], requirementIds: ['T1', 'T2'] },
 				}),
@@ -261,7 +261,7 @@ describe('emitPackageImportedEvent', () => {
 			workflows: { created: 1, updated: 1, skipped: 1, archived: 0, deleted: 0 },
 			folders: { removed: 0 },
 			credentials: { matched: 1, created: 1, requirements: 2 },
-			dataTables: { matched: 1, created: 2, updated: 0, requirements: 3 },
+			dataTables: { matched: 1, created: 2, updated: 1, requirements: 4 },
 			// scope 2's two missing requirements were created, so post-apply missing is 0; its
 			// overwritten name matched first but is counted as updated, not matched.
 			variables: { matched: 1, missing: 0, created: 1, stubbed: 1, updated: 1, requirements: 4 },
