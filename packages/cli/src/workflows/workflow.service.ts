@@ -1,7 +1,7 @@
 import { UpdateWorkflowHistoryVersionDto } from '@n8n/api-types';
 import type { WorkflowListPublicationStatus } from '@n8n/api-types';
 import { LicenseState, Logger } from '@n8n/backend-common';
-import { EventService } from '@n8n/backend-services';
+import { EventService, RoleService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import type { User, ListQueryDb, Project, WorkflowFolderUnionFull, WorkflowHistory } from '@n8n/db';
 import {
@@ -71,7 +71,7 @@ import { ScheduleTriggerJobRegistrar } from '@/scheduling/schedule-trigger-node/
 import { WorkflowScheduledJobOwner } from '@/scheduling/workflow-scheduled-job-owner';
 import { OwnershipService } from '@/services/ownership.service';
 import { ProjectService } from '@/services/project.service.ee';
-import { RoleService } from '@/services/role.service';
+
 import { TagService } from '@/services/tag.service';
 import { WEBHOOK_CONFLICT_MESSAGE } from '@/webhooks/constants';
 import { WebhookService } from '@/webhooks/webhook.service';
@@ -818,6 +818,7 @@ export class WorkflowService {
 				versionId: versionIdToPublish,
 				source,
 			});
+			// oxlint-disable-next-line typescript/no-deprecated
 			updatedWorkflow.active = publishedWorkflow.active;
 			updatedWorkflow.activeVersionId = publishedWorkflow.activeVersionId;
 			updatedWorkflow.activeVersion = publishedWorkflow.activeVersion;
@@ -906,6 +907,7 @@ export class WorkflowService {
 			await this.workflowRepository.update(workflowId, rollbackPayload);
 
 			// Also set it in the returned data
+			// oxlint-disable-next-line typescript/no-deprecated
 			workflow.active = rollbackPayload.active;
 			workflow.activeVersionId = rollbackPayload.activeVersionId;
 			workflow.activeVersion = rollbackPayload.activeVersion;
@@ -1321,6 +1323,7 @@ export class WorkflowService {
 		await this._teardownActiveVersion(workflow, deactivatedVersionId, user.id);
 
 		// Update the workflow object for response
+		// oxlint-disable-next-line typescript/no-deprecated
 		workflow.active = false;
 		workflow.activeVersionId = null;
 		workflow.activeVersion = null;
@@ -1425,6 +1428,7 @@ export class WorkflowService {
 		// guard re-checks the same condition atomically; this early return just
 		// skips the doomed version-row insert.
 		if (
+			// oxlint-disable-next-line typescript/no-deprecated
 			!workflow?.active ||
 			workflow.activeVersionId === null ||
 			workflow.activeVersionId !== expectedActiveVersionId
@@ -1576,6 +1580,7 @@ export class WorkflowService {
 		// to cascade away, so `afterWorkflowsDeleted` can still explain what happened.
 		await this.workflowMutationHooks.beforeWorkflowDeleted(workflowId, user.id);
 
+		// oxlint-disable-next-line typescript/no-deprecated
 		if (workflow.active) {
 			// deactivate before deleting
 			await this.activeWorkflowManager.remove(workflowId);
@@ -1667,6 +1672,7 @@ export class WorkflowService {
 		const versionId = uuid();
 		workflow.versionId = versionId;
 		workflow.isArchived = true;
+		// oxlint-disable-next-line typescript/no-deprecated
 		workflow.active = false;
 		workflow.activeVersionId = null;
 		workflow.activeVersion = null;

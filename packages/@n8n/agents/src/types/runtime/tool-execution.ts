@@ -10,8 +10,10 @@ import type {
 	AgentExecutionCounter,
 	BuiltTelemetry,
 	BuiltTool,
+	GuardrailsOptions,
 	PendingToolCall,
 	ToolSuspendOptions,
+	ToolApprovalContext,
 } from '../index';
 import type { AgentPersistenceOptions, ToolResultEntry } from '../sdk/agent';
 import type { AgentMessage } from '../sdk/message';
@@ -103,6 +105,8 @@ export interface ToolBatchContext {
 	persistence?: AgentPersistenceOptions;
 	telemetry?: BuiltTelemetry;
 	executionCounter?: AgentExecutionCounter;
+	guardrails?: GuardrailsOptions;
+	approvalContext?: ToolApprovalContext;
 	abortSignal: AbortSignal;
 	isAborted: () => boolean;
 }
@@ -120,9 +124,13 @@ export interface ProcessToolCallParams extends ToolCallIdentity {
 	resumeData?: unknown;
 	resolvedTelemetry?: BuiltTelemetry;
 	executionCounter?: AgentExecutionCounter;
+	guardrails?: GuardrailsOptions;
+	approvalContext?: ToolApprovalContext;
 	abortSignal?: AbortSignal;
 	/** Whether this counts as a new tool-call invocation. Default `true`; `false` on resume. */
 	countToolCall?: boolean;
+	/** The call already suspended, so `beforeTool` already ran. */
+	previouslySuspended?: boolean;
 	/** Checkpointed suspend payload of the tool call being resumed. */
 	suspendPayload?: unknown;
 	/** Checkpointed private continuation of the tool call being resumed. */

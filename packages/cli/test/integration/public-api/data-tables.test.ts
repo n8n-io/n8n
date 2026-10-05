@@ -1257,6 +1257,73 @@ describe('PATCH /data-tables/:dataTableId/rows/update', () => {
 		testWithAPIKey('patch', '/data-tables/123/rows/update', 'abcXYZ'),
 	);
 
+	test('should reject updating rows without dataTableRow:update', async () => {
+		const dataTable = await createDataTable(ownerPersonalProject, {
+			columns: [{ name: 'status', type: 'string' }],
+			data: [{ status: 'pending' }],
+		});
+		const unscopedAgent = await createUnscopedAgent();
+
+		const response = await unscopedAgent.patch(`/data-tables/${dataTable.id}/rows/update`).send({
+			filter: {
+				type: 'and',
+				filters: [{ columnName: 'status', condition: 'eq', value: 'pending' }],
+			},
+			data: { status: 'completed' },
+		});
+
+		expect(response.statusCode).toBe(403);
+		expect(response.body).toHaveProperty('message', 'Forbidden');
+	});
+
+	test('should reject a filter entry missing condition', async () => {
+		const dataTable = await createDataTable(ownerPersonalProject, {
+			columns: [{ name: 'status', type: 'string' }],
+			data: [{ status: 'pending' }],
+		});
+
+		const response = await authOwnerAgent.patch(`/data-tables/${dataTable.id}/rows/update`).send({
+			filter: {
+				type: 'and',
+				filters: [{ columnName: 'status', value: 'pending' }],
+			},
+			data: { status: 'completed' },
+		});
+
+		expect(response.statusCode).toBe(400);
+	});
+
+	test('should reject an empty filters array', async () => {
+		const dataTable = await createDataTable(ownerPersonalProject, {
+			columns: [{ name: 'status', type: 'string' }],
+			data: [{ status: 'pending' }],
+		});
+
+		const response = await authOwnerAgent.patch(`/data-tables/${dataTable.id}/rows/update`).send({
+			filter: { type: 'and', filters: [] },
+			data: { status: 'completed' },
+		});
+
+		expect(response.statusCode).toBe(400);
+	});
+
+	test('should reject isEmpty and isNotEmpty conditions', async () => {
+		const dataTable = await createDataTable(ownerPersonalProject, {
+			columns: [{ name: 'status', type: 'string' }],
+			data: [{ status: 'pending' }],
+		});
+
+		const response = await authOwnerAgent.patch(`/data-tables/${dataTable.id}/rows/update`).send({
+			filter: {
+				type: 'and',
+				filters: [{ columnName: 'status', condition: 'isEmpty', value: null }],
+			},
+			data: { status: 'completed' },
+		});
+
+		expect(response.statusCode).toBe(400);
+	});
+
 	test('should update rows with returnData false', async () => {
 		const dataTable = await createDataTable(ownerPersonalProject, {
 			columns: [
@@ -1392,6 +1459,37 @@ describe('POST /data-tables/:dataTableId/rows/upsert', () => {
 		expect(response.statusCode).toBe(400);
 	});
 
+	test('should reject an empty filters array', async () => {
+		const dataTable = await createDataTable(ownerPersonalProject, {
+			columns: [{ name: 'email', type: 'string' }],
+			data: [{ email: 'test@example.com' }],
+		});
+
+		const response = await authOwnerAgent.post(`/data-tables/${dataTable.id}/rows/upsert`).send({
+			filter: { type: 'and', filters: [] },
+			data: { email: 'updated@example.com' },
+		});
+
+		expect(response.statusCode).toBe(400);
+	});
+
+	test('should reject isEmpty and isNotEmpty conditions', async () => {
+		const dataTable = await createDataTable(ownerPersonalProject, {
+			columns: [{ name: 'email', type: 'string' }],
+			data: [{ email: 'test@example.com' }],
+		});
+
+		const response = await authOwnerAgent.post(`/data-tables/${dataTable.id}/rows/upsert`).send({
+			filter: {
+				type: 'and',
+				filters: [{ columnName: 'email', condition: 'isNotEmpty', value: null }],
+			},
+			data: { email: 'updated@example.com' },
+		});
+
+		expect(response.statusCode).toBe(400);
+	});
+
 	test('should upsert row with returnData false', async () => {
 		const dataTable = await createDataTable(ownerPersonalProject, {
 			columns: [
@@ -1489,6 +1587,85 @@ describe('DELETE /data-tables/:dataTableId/rows/delete', () => {
 		testWithAPIKey('delete', '/data-tables/123/rows/delete', 'abcXYZ'),
 	);
 
+	test('should reject deleting rows without dataTableRow:delete', async () => {
+		const dataTable = await createDataTable(ownerPersonalProject, {
+			columns: [{ name: 'status', type: 'string' }],
+			data: [{ status: 'old' }],
+		});
+		const unscopedAgent = await createUnscopedAgent();
+
+		const filter = JSON.stringify({
+			type: 'and',
+			filters: [{ columnName: 'status', condition: 'eq', value: 'old' }],
+		});
+
+		const response = await unscopedAgent
+			.delete(`/data-tables/${dataTable.id}/rows/delete`)
+			.query({ filter });
+
+		expect(response.statusCode).toBe(403);
+		expect(response.body).toHaveProperty('message', 'Forbidden');
+	});
+
+	test('should default a filter entry missing condition to eq', async () => {
+		const dataTable = await createDataTable(ownerPersonalProject, {
+			columns: [{ name: 'status', type: 'string' }],
+			data: [{ status: 'old' }, { status: 'active' }],
+		});
+
+		const filter = JSON.stringify({
+			type: 'and',
+			filters: [{ columnName: 'status', value: 'old' }],
+		});
+
+		const response = await authOwnerAgent
+			.delete(`/data-tables/${dataTable.id}/rows/delete`)
+			.query({ filter, returnData: 'true' });
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body).toHaveLength(1);
+		expect(response.body[0]).toHaveProperty('status', 'old');
+	});
+
+	test('should accept isEmpty condition', async () => {
+		const dataTable = await createDataTable(ownerPersonalProject, {
+			columns: [{ name: 'status', type: 'string' }],
+			data: [{ status: null }, { status: 'archived' }],
+		});
+
+		const filter = JSON.stringify({
+			type: 'and',
+			filters: [{ columnName: 'status', condition: 'isEmpty', value: null }],
+		});
+
+		const response = await authOwnerAgent
+			.delete(`/data-tables/${dataTable.id}/rows/delete`)
+			.query({ filter, returnData: 'true' });
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body).toHaveLength(1);
+	});
+
+	test('should accept isNotEmpty condition', async () => {
+		const dataTable = await createDataTable(ownerPersonalProject, {
+			columns: [{ name: 'status', type: 'string' }],
+			data: [{ status: null }, { status: 'archived' }],
+		});
+
+		const filter = JSON.stringify({
+			type: 'and',
+			filters: [{ columnName: 'status', condition: 'isNotEmpty', value: null }],
+		});
+
+		const response = await authOwnerAgent
+			.delete(`/data-tables/${dataTable.id}/rows/delete`)
+			.query({ filter, returnData: 'true' });
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body).toHaveLength(1);
+		expect(response.body[0]).toHaveProperty('status', 'archived');
+	});
+
 	test('should delete rows with returnData false', async () => {
 		const dataTable = await createDataTable(ownerPersonalProject, {
 			columns: [{ name: 'status', type: 'string' }],
@@ -1583,6 +1760,95 @@ describe('DELETE /data-tables/:dataTableId/rows/delete', () => {
 			'message',
 			"request/query must have required property 'filter'",
 		);
+	});
+
+	test('should reject a non-boolean dryRun value instead of coercing it', async () => {
+		const dataTable = await createDataTable(ownerPersonalProject, {
+			columns: [{ name: 'status', type: 'string' }],
+			data: [{ status: 'old' }],
+		});
+
+		const filter = JSON.stringify({
+			type: 'and',
+			filters: [{ columnName: 'status', condition: 'eq', value: 'old' }],
+		});
+
+		const response = await authOwnerAgent
+			.delete(`/data-tables/${dataTable.id}/rows/delete`)
+			.query({ filter, dryRun: '1' });
+
+		expect(response.statusCode).toBe(400);
+
+		// Verify data was not actually deleted
+		const getResponse = await authOwnerAgent.get(`/data-tables/${dataTable.id}/rows`);
+		expect(getResponse.body.data).toHaveLength(1);
+	});
+
+	test('should reject an empty filters array with the delete-specific message', async () => {
+		const dataTable = await createDataTable(ownerPersonalProject, {
+			columns: [{ name: 'status', type: 'string' }],
+			data: [{ status: 'old' }],
+		});
+
+		const filter = JSON.stringify({ type: 'and', filters: [] });
+
+		const response = await authOwnerAgent
+			.delete(`/data-tables/${dataTable.id}/rows/delete`)
+			.query({ filter });
+
+		expect(response.statusCode).toBe(400);
+		expect(response.body.message).toContain(
+			'At least one filter condition is required for delete operations',
+		);
+	});
+});
+
+describe('DELETE /data-tables/:dataTableId/rows/clear', () => {
+	test(
+		'should fail due to missing API Key',
+		testWithAPIKey('delete', '/data-tables/123/rows/clear', null),
+	);
+
+	test(
+		'should fail due to invalid API Key',
+		testWithAPIKey('delete', '/data-tables/123/rows/clear', 'abcXYZ'),
+	);
+
+	test('should reject clearing rows without dataTableRow:delete', async () => {
+		const dataTable = await createDataTable(ownerPersonalProject, {
+			columns: [{ name: 'status', type: 'string' }],
+		});
+		const unscopedAgent = await createUnscopedAgent();
+
+		const response = await unscopedAgent.delete(`/data-tables/${dataTable.id}/rows/clear`);
+
+		expect(response.statusCode).toBe(403);
+	});
+
+	test('should return 404 for non-existing data table', async () => {
+		const nonExistentId = 'abcd1234efgh5678'; // Valid nanoid format but doesn't exist
+		const response = await authOwnerAgent.delete(`/data-tables/${nonExistentId}/rows/clear`);
+
+		expect(response.statusCode).toBe(404);
+		expect(response.body).toHaveProperty(
+			'message',
+			`Could not find the data table: '${nonExistentId}'`,
+		);
+	});
+
+	test('should clear all rows from a data table', async () => {
+		const dataTable = await createDataTable(ownerPersonalProject, {
+			columns: [{ name: 'status', type: 'string' }],
+			data: [{ status: 'active' }, { status: 'archived' }, { status: 'active' }],
+		});
+
+		const response = await authOwnerAgent.delete(`/data-tables/${dataTable.id}/rows/clear`);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body).toStrictEqual({ deletedCount: 3 });
+
+		const getResponse = await authOwnerAgent.get(`/data-tables/${dataTable.id}/rows`);
+		expect(getResponse.body.data).toHaveLength(0);
 	});
 });
 

@@ -1,8 +1,10 @@
 import '../../openapi-extend';
 
+import { jsonParse } from 'n8n-workflow';
 import { z } from 'zod';
 
 import {
+	clearDataTableRowsFieldDocs,
 	createDataTableColumnFieldDocs,
 	createDataTableFieldDocs,
 	createDataTableRowsFieldDocs,
@@ -11,13 +13,16 @@ import {
 	dataTableListFieldDocs,
 	dataTableRowFieldDocs,
 	dataTableRowListFieldDocs,
+	deleteDataTableRowsQueryDocs,
 	updateDataTableColumnFieldDocs,
 	updateDataTableFieldDocs,
+	updateDataTableRowFieldDocs,
 	upsertDataTableRowFieldDocs,
 } from './data-table-public.openapi';
+import { booleanFromString } from '../../schemas/boolean-from-string';
 import {
-	FilterConditionSchema,
 	dataTableFilterRecordSchema,
+	dataTableFilterSchema,
 	dataTableFilterTypeSchema,
 } from '../../schemas/data-table-filter.schema';
 import {
@@ -173,15 +178,26 @@ export class InsertDataTableRowsResponsePublicDto {
 	}
 }
 
-const publicUpsertFilterSchema = z
-	.object({
-		type: dataTableFilterTypeSchema.default('and'),
-		filters: z.array(dataTableFilterRecordSchema.extend({ condition: FilterConditionSchema })),
-	})
-	.refine((filter) => filter.filters.length > 0, { message: 'filter must not be empty' });
+const legacyFilterConditionSchema = z.union([
+	z.literal('eq'),
+	z.literal('neq'),
+	z.literal('like'),
+	z.literal('ilike'),
+	z.literal('gt'),
+	z.literal('gte'),
+	z.literal('lt'),
+	z.literal('lte'),
+]);
+
+const publicUpsertUpdateFilterSchema = z.object({
+	type: dataTableFilterTypeSchema.default('and'),
+	filters: z
+		.array(dataTableFilterRecordSchema.extend({ condition: legacyFilterConditionSchema }))
+		.min(1, 'filter must not be empty'),
+});
 
 export class UpsertDataTableRowPublicDto extends Z.class({
-	filter: publicUpsertFilterSchema.openapi(upsertDataTableRowFieldDocs.filter),
+	filter: publicUpsertUpdateFilterSchema.openapi(upsertDataTableRowFieldDocs.filter),
 	data: z
 		.record(dataTableColumnNameSchema, dataTableColumnValueSchema)
 		.refine((obj) => Object.keys(obj).length > 0, { message: 'data must not be empty' })
@@ -222,3 +238,108 @@ export class UpsertDataTableRowResponsePublicDto {
 		return upsertDataTableRowResponseSchema.safeParse(data);
 	}
 }
+
+export class UpdateDataTableRowPublicDto extends Z.class({
+	filter: publicUpsertUpdateFilterSchema.openapi(updateDataTableRowFieldDocs.filter),
+	data: z
+		.record(dataTableColumnNameSchema, dataTableColumnValueSchema)
+		.refine((obj) => Object.keys(obj).length > 0, { message: 'data must not be empty' })
+		.openapi(updateDataTableRowFieldDocs.data),
+	returnData: z.boolean().optional().default(false).openapi(updateDataTableRowFieldDocs.returnData),
+	dryRun: z.boolean().optional().default(false).openapi(updateDataTableRowFieldDocs.dryRun),
+}) {}
+
+const updateDataTableRowResponseSchema = z.union([
+	z.boolean().openapi({ description: 'Returned when returnData is false and dryRun is false' }),
+	z.array(dataTableRowWithStatePublicSchema).openapi({
+		description: 'Returned when dryRun is true: one entry per row per before/after state',
+	}),
+	z
+		.array(dataTableRowPublicSchema)
+		.openapi({ description: 'Returned when returnData is true and dryRun is false' }),
+]);
+
+export class UpdateDataTableRowResponsePublicDto {
+	static schema = updateDataTableRowResponseSchema;
+
+	static parse(data: unknown) {
+		return updateDataTableRowResponseSchema.parse(data);
+	}
+
+	static safeParse(data: unknown) {
+		return updateDataTableRowResponseSchema.safeParse(data);
+	}
+}
+
+const publicRowFilterQueryValidator = z.string().transform((val, ctx) => {
+	let parsed: unknown;
+	try {
+		parsed = jsonParse(val);
+	} catch {
+		ctx.addIssue({
+			code: z.ZodIssueCode.custom,
+			message: 'Invalid filter format',
+			path: ['filter'],
+		});
+		return z.NEVER;
+	}
+
+	const result = dataTableFilterSchema.safeParse(parsed);
+	if (!result.success) {
+		ctx.addIssue({
+			code: z.ZodIssueCode.custom,
+			message: 'Invalid filter fields',
+			path: ['filter'],
+		});
+		return z.NEVER;
+	}
+
+	if (result.data.filters.length === 0) {
+		ctx.addIssue({
+			code: z.ZodIssueCode.custom,
+			message: 'At least one filter condition is required for delete operations',
+			path: ['filter'],
+		});
+		return z.NEVER;
+	}
+
+	return result.data;
+});
+
+export class DeleteDataTableRowsPublicQueryDto extends Z.class({
+	filter: publicRowFilterQueryValidator.openapi(deleteDataTableRowsQueryDocs.filter),
+	returnData: booleanFromString
+		.optional()
+		.default('false')
+		.openapi(deleteDataTableRowsQueryDocs.returnData),
+	dryRun: booleanFromString
+		.optional()
+		.default('false')
+		.openapi(deleteDataTableRowsQueryDocs.dryRun),
+}) {}
+
+const deleteDataTableRowsResponseSchema = z.union([
+	z.boolean().openapi({ description: 'Returned when returnData is false and dryRun is false' }),
+	z.array(dataTableRowWithStatePublicSchema).openapi({
+		description: 'Returned when dryRun is true: one entry per row per before/after state',
+	}),
+	z
+		.array(dataTableRowPublicSchema)
+		.openapi({ description: 'Returned when returnData is true and dryRun is false' }),
+]);
+
+export class DeleteDataTableRowsResponsePublicDto {
+	static schema = deleteDataTableRowsResponseSchema;
+
+	static parse(data: unknown) {
+		return deleteDataTableRowsResponseSchema.parse(data);
+	}
+
+	static safeParse(data: unknown) {
+		return deleteDataTableRowsResponseSchema.safeParse(data);
+	}
+}
+
+export class ClearDataTableRowsResponsePublicDto extends Z.class({
+	deletedCount: z.number().int().openapi(clearDataTableRowsFieldDocs.deletedCount),
+}) {}

@@ -1,8 +1,8 @@
 import type {
-	UpdateDataTableRowDto,
 	PublicCreateDestination,
+	UpdateOtelSettingsDto,
+	TestOtelTraceDto,
 	UpdateSamlConfigurationDto,
-	UpdateLdapConfigurationDto,
 	LdapSyncDto,
 } from '@n8n/api-types';
 import type { AuthenticatedRequest } from '@n8n/db';
@@ -115,27 +115,6 @@ export interface IJsonSchema {
 }
 
 // ----------------------------------
-//           /data-tables
-// ----------------------------------
-
-export declare namespace DataTableRequest {
-	type UpdateRows = AuthenticatedRequest<{ dataTableId: string }, {}, UpdateDataTableRowDto, {}>;
-
-	type Clear = AuthenticatedRequest<{ dataTableId: string }, {}, {}, {}>;
-
-	type DeleteRows = AuthenticatedRequest<
-		{ dataTableId: string },
-		{},
-		{},
-		{
-			filter?: string;
-			returnData?: string | boolean;
-			dryRun?: string | boolean;
-		}
-	>;
-}
-
-// ----------------------------------
 //           /community-packages
 // ----------------------------------
 
@@ -157,6 +136,15 @@ export declare namespace LogStreamingRequest {
 }
 
 // ----------------------------------
+//        /settings/otel
+// ----------------------------------
+
+export declare namespace OtelSettingsRequest {
+	type Update = AuthenticatedRequest<{}, {}, UpdateOtelSettingsDto>;
+	type Test = AuthenticatedRequest<{}, {}, TestOtelTraceDto>;
+}
+
+// ----------------------------------
 //        /settings/sso/saml
 // ----------------------------------
 
@@ -170,8 +158,6 @@ export declare namespace SsoSamlRequest {
 // ----------------------------------
 
 export declare namespace LdapRequest {
-	type GetConfig = AuthenticatedRequest;
-	type UpdateConfig = AuthenticatedRequest<{}, {}, UpdateLdapConfigurationDto>;
 	type GetSync = PaginatedRequest;
 	type RunSync = AuthenticatedRequest<{}, {}, LdapSyncDto>;
 }

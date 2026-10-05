@@ -1,7 +1,8 @@
-import type { SerializableAgentState } from '@n8n/agents';
+import { redactDeep, type SerializableAgentState } from '@n8n/agents';
 import type { AgentChatMessagesResponse, AgentPersistedMessageDto } from '@n8n/api-types';
 
 import { messagesToDto } from '../agent-message-mapper';
+import { isApprovalSuspendPayload } from '../integrations/agent-chat-suspension-cards';
 
 type MessageContentPart = AgentPersistedMessageDto['content'][number];
 
@@ -96,7 +97,9 @@ export function withOpenSuspensions(
 		.map((tc) => ({
 			toolCallId: tc.toolCallId,
 			runId: tc.runId,
-			suspendPayload: tc.suspendPayload,
+			suspendPayload: isApprovalSuspendPayload(tc.suspendPayload)
+				? redactDeep(tc.suspendPayload, { redactSensitiveKeys: true }).value
+				: tc.suspendPayload,
 		}));
 
 	const openToolCallIds = new Set(openSuspensions.map((s) => s.toolCallId));

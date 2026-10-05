@@ -193,7 +193,7 @@ function getMessageAnAgentNode(
 	nodeTypesStore: ReturnType<typeof useNodeTypesStore>,
 	settingsStore: ReturnType<typeof useSettingsStore>,
 ) {
-	if (!settingsStore.isModuleActive('agents')) return [];
+	if (!settingsStore.isAgentsEnabled) return [];
 
 	const node = nodeTypesStore.getNodeType(MESSAGE_AN_AGENT_NODE_TYPE);
 	if (!node) return [];

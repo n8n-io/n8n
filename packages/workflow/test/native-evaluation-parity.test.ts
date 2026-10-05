@@ -291,6 +291,66 @@ describe('Expression - fast native evaluation parity', () => {
 			}
 		};
 
+		// join and toSorted stringify elements; on nested arrays that work is
+		// proportional to the nested size, so they only run over primitives.
+		test('join and toSorted hand nested elements to the engine', () => {
+			const big = new Array<number>(600_000).fill(0);
+			const rows = { $json: { rows: [big, big], flat: [3, 1, 2] } };
+			expect(nativeOn('{{ $json.rows.join() }}', rows)).toEqual({ handled: false });
+			expect(nativeOn('{{ $json.rows.toSorted() }}', rows)).toEqual({ handled: false });
+			// The hand-off happens before any element is stringified.
+			let stringified = false;
+			const spy = {
+				toString() {
+					stringified = true;
+					return 'spy';
+				},
+			};
+			expect(nativeOn('{{ $json.list.join() }}', { $json: { list: [spy, 1] } })).toEqual({
+				handled: false,
+			});
+			expect(nativeOn('{{ $json.list.toSorted() }}', { $json: { list: [spy, 1] } })).toEqual({
+				handled: false,
+			});
+			expect(stringified).toBe(false);
+			expect(nativeOn('{{ $json.flat.toSorted() }}', rows)).toEqual({
+				handled: true,
+				value: [1, 2, 3],
+			});
+			expect(nativeOn('{{ $json.rows.at(0).length }}', rows)).toEqual({
+				handled: true,
+				value: 600_000,
+			});
+		});
+
+		// concat can reference one payload string many times; the clone of the
+		// result and every downstream method then pay for each reference, so it
+		// is bounded by content size, not element count.
+		test('concat is bounded by the content it references', () => {
+			const a = ['p'.repeat(300_000), 'q'.repeat(300_000)];
+			expect(nativeOn('{{ $json.a.concat($json.a).length }}', { $json: { a } })).toEqual({
+				handled: false,
+			});
+			expect(
+				nativeOn('{{ $json.a.concat($json.one).length }}', { $json: { a, one: [1] } }),
+			).toEqual({
+				handled: true,
+				value: 3,
+			});
+			const n = [{ k: 'r'.repeat(400_000) }];
+			expect(nativeOn('{{ $json.n.concat($json.n, $json.n).length }}', { $json: { n } })).toEqual({
+				handled: false,
+			});
+			// Fan-out of one payload string into hundreds of references bails
+			// before anything is cloned.
+			const fanOut = `{{ $json.big.concat(${'$json.big, '.repeat(499)}$json.big).length }}`;
+			const start = performance.now();
+			expect(nativeOn(fanOut, { $json: { big: ['x'.repeat(MAX_RESULT_LENGTH)] } })).toEqual({
+				handled: false,
+			});
+			expect(performance.now() - start).toBeLessThan(200);
+		});
+
 		test('nesting deeper than the cap is declined', () => {
 			expect(isNativelyEvaluable(`{{ ${'!'.repeat(20)}$json.item.active }}`)).toBe(true);
 			expect(isNativelyEvaluable(`{{ ${'!'.repeat(100)}$json.item.active }}`)).toBe(false);
@@ -310,6 +370,24 @@ describe('Expression - fast native evaluation parity', () => {
 			expect(nativeOn('{{ $json.rows.flat(0) }}', { $json: { rows: [big, big] } }).handled).toBe(
 				true,
 			);
+		});
+
+		// A single replacement with context tokens can expand to many times the
+		// receiver, so replace bails like replaceAll before anything is built.
+		// Receiver and expansion both stay under the size cap here, so only the
+		// token check can decline; a token-free twin of the same size is handled.
+		test('replace bails on context tokens before allocating', () => {
+			const text = 'a'.repeat(1_000) + 'b';
+			const context = '$`'.repeat(400);
+			const plain = 'x'.repeat(800);
+			expect(
+				nativeOn('{{ $json.text.replace("b", $json.to) }}', { $json: { text, to: context } }),
+			).toEqual({
+				handled: false,
+			});
+			expect(
+				nativeOn('{{ $json.text.replace("b", $json.to).length }}', { $json: { text, to: plain } }),
+			).toEqual({ handled: true, value: 1_800 });
 		});
 
 		test('an inherited member below the root hands off to the engine', () => {

@@ -18,7 +18,7 @@ import {
 	odataFieldEqualsClause,
 } from '../helpers/utils';
 import { resolveSiteId } from '../site';
-import { microsoftApiRequest, microsoftApiRequestAllItems } from '../transport';
+import { microsoftApiRequest, microsoftApiRequestAllItems } from '../../transport';
 
 /** Keeps the item field hidden until a list is chosen. */
 export const untilListSelected = { list: [''] };

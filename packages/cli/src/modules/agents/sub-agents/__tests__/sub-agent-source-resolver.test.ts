@@ -1,5 +1,6 @@
 import type { ToolDescriptor } from '@n8n/agents';
 import { type AgentJsonConfig } from '@n8n/api-types';
+import { UnexpectedError, UserError } from 'n8n-workflow';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
@@ -110,6 +111,70 @@ describe('SubAgentSourceResolver', () => {
 				config: runnableConfig,
 			},
 		});
+	});
+
+	it('retains background configuration and tool bodies after a draft edit', async () => {
+		agentRepository.findByIdAndProjectId.mockResolvedValue(
+			makeAgent({
+				tools: {
+					lookup: { descriptor: customToolDescriptor, code: 'original tool body' },
+				},
+				skills: {
+					original_skill: {
+						name: 'Original skill',
+						description: 'Original description',
+						instructions: 'Original skill body',
+					},
+				},
+			}),
+		);
+		const original = await resolver.resolveForRuntime({ agentId }, { projectId });
+		agentRepository.findByIdAndProjectId.mockResolvedValue(
+			makeAgent({ schema: { name: 'Incomplete draft', model: '', instructions: '' }, tools: {} }),
+		);
+		const resumed = await resolver.resolveForRuntime(
+			{ agentId },
+			{ projectId, runtimeSnapshot: JSON.stringify(original) },
+		);
+		expect(resumed).toEqual(original);
+		const mismatchedSnapshot = resolver.resolveForRuntime(
+			{ agentId },
+			{
+				projectId,
+				runtimeSnapshot: JSON.stringify({
+					...original,
+					source: { ...original.source, sourceId: 'agent-2' },
+				}),
+			},
+		);
+		await expect(mismatchedSnapshot).rejects.toThrow(UserError);
+		await expect(mismatchedSnapshot).rejects.toThrow(
+			'Saved background task configuration does not match this agent',
+		);
+		agentRepository.findByIdAndProjectId.mockResolvedValue(null);
+		await expect(
+			resolver.resolveForRuntime(
+				{ agentId },
+				{ projectId, runtimeSnapshot: JSON.stringify(original) },
+			),
+		).rejects.toThrow();
+	});
+
+	it.each([
+		['empty snapshot', ''],
+		['invalid JSON', '{'],
+		['null snapshot', 'null'],
+		['missing source', '{}'],
+		['null source', '{"source":null}'],
+		['missing source ID', JSON.stringify({ source: { config: runnableConfig } })],
+		['invalid config', JSON.stringify({ source: { sourceId: agentId, config: {} } })],
+	])('rejects saved background configuration with %s', async (_description, runtimeSnapshot) => {
+		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+
+		const result = resolver.resolveForRuntime({ agentId }, { projectId, runtimeSnapshot });
+
+		await expect(result).rejects.toThrow(UnexpectedError);
+		await expect(result).rejects.toThrow('Invalid saved background task configuration');
 	});
 
 	it('pins a resumed version over the currently published one in production runs', async () => {

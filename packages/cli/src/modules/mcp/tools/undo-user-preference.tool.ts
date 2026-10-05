@@ -101,6 +101,7 @@ export const createUndoUserPreferenceTool = (
 		// The same pair the chat card fires on Undo and the review form fires on remove, so one
 		// number covers every way a user takes back an assistant write.
 		telemetry.track(TELEMETRY_EVENT.CONTEXT.USER_DELETED_PREFERENCES, {
+			user_id: user.id,
 			count: 1,
 			source: 'rejected',
 			scope_types: [preferenceScopeOf(removed)],
@@ -108,6 +109,7 @@ export const createUndoUserPreferenceTool = (
 			seconds_since_saved: secondsSinceSaved(removed),
 		});
 		telemetry.track(TELEMETRY_EVENT.CONTEXT.PREFERENCE_CONFIRMATION_RESOLVED, {
+			user_id: user.id,
 			surface: 'mcp',
 			outcome: 'rejected',
 			scope_type: preferenceScopeOf(removed),

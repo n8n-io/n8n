@@ -6,7 +6,7 @@ on:
     branches:
       - master
     paths:
-      - 'packages/@n8n/benchmark/**'
+      - 'packages/quality/efficiency/scale/benchmark/**'
       - 'pnpm-lock.yaml'
       - 'pnpm-workspace.yaml'
       - '.github/workflows/build-benchmark-image.yml'
@@ -33,7 +33,7 @@ jobs:
           DOCKER_BUILD_SUMMARY: false
         with:
           context: .
-          file: ./packages/@n8n/benchmark/Dockerfile
+          file: ./packages/quality/efficiency/scale/benchmark/Dockerfile
           platforms: linux/amd64
           provenance: false
           push: true

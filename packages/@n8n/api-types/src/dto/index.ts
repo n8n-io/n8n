@@ -118,9 +118,15 @@ export { SamlPreferencesAttributeMapping } from './saml/saml-preferences.dto';
 export { UpdateSamlConfigurationDto } from './saml/saml-preferences.dto';
 export { SamlToggleDto } from './saml/saml-toggle.dto';
 export { type SamlConfigurationResponse } from './saml/saml-configuration-response.dto';
+export {
+	SamlConfigurationPublicDto,
+	UpdateSamlConfigurationPublicDto,
+} from './saml/saml-configuration-public.dto';
 
-export { UpdateLdapConfigurationDto } from './ldap/ldap-configuration.dto';
-export { type LdapConfigurationResponse } from './ldap/ldap-configuration-response.dto';
+export {
+	LdapConfigurationPublicDto,
+	UpdateLdapConfigurationPublicDto,
+} from './ldap/ldap-configuration-public.dto';
 export { LdapSyncDto } from './ldap/ldap-sync.dto';
 
 export { PasswordUpdateRequestDto } from './user/password-update-request.dto';
@@ -422,6 +428,7 @@ export { TestOidcConfigResponseDto } from './oidc/test-oidc-config-response.dto'
 export { CreateDataTableDto } from './data-table/create-data-table.dto';
 export { UpdateDataTableDto } from './data-table/update-data-table.dto';
 export {
+	ClearDataTableRowsResponsePublicDto,
 	CreateDataTableColumnPublicDto,
 	CreateDataTablePublicDto,
 	CreateDataTableRowsPublicDto,
@@ -430,9 +437,13 @@ export {
 	DataTableListPublicDto,
 	DataTablePublicDto,
 	DataTableRowListPublicDto,
+	DeleteDataTableRowsPublicQueryDto,
+	DeleteDataTableRowsResponsePublicDto,
 	InsertDataTableRowsResponsePublicDto,
 	UpdateDataTableColumnPublicDto,
 	UpdateDataTablePublicDto,
+	UpdateDataTableRowPublicDto,
+	UpdateDataTableRowResponsePublicDto,
 	UpsertDataTableRowPublicDto,
 	UpsertDataTableRowResponsePublicDto,
 	dataTablePublicSchema,

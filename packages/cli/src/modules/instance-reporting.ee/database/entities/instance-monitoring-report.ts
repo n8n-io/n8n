@@ -9,11 +9,16 @@ export type InstanceReportDataPoint =
 /**
  * Where a report stands.
  *
+ * `sending` means a main has claimed the row for one request.
  * `skipped_after_max_retries` means the instance stopped trying that day, not
  * that the numbers were lost: only a delivered report crosses a day off, so a
  * skipped day is measured again and covered by the next report.
  */
-export type InstanceReportStatus = 'pending' | 'delivered' | 'skipped_after_max_retries';
+export type InstanceReportStatus =
+	| 'pending'
+	| 'sending'
+	| 'delivered'
+	| 'skipped_after_max_retries';
 
 /**
  * One instance report: what was sent to the central monitoring receiver, and
@@ -59,9 +64,9 @@ export class InstanceMonitoringReport extends WithTimestamps {
 	attempts: number;
 
 	/**
-	 * When the last attempt finished, successful or not; `null` before the first.
-	 *
-	 * Persisted so the wait between attempts survives a restart.
+	 * When an active attempt started, or when the last attempt finished.
+	 * Uses the database clock. `null` before the first attempt.
+	 * While sending, this timestamp identifies the claim that can record a failure.
 	 */
 	@DateTimeColumn({ nullable: true })
 	lastAttemptAt: Date | null;

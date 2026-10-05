@@ -364,7 +364,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 				mock<IWorkflowBase>({
 					id: 'sub-id',
 					name: 'Sub Workflow',
-					nodes,
+					nodes: structuredClone(nodes),
 					connections: {},
 					staticData: {},
 					settings: {},
@@ -481,13 +481,18 @@ describe('WorkflowExecuteAdditionalData', () => {
 			});
 
 			it('falls back to the project check for an inline sub-workflow without a triggering user', async () => {
+				const workflowData = subWorkflowData();
 				await executeWorkflow(
-					mock<IExecuteWorkflowInfo>({ id: undefined, code: subWorkflowData() }),
+					mock<IExecuteWorkflowInfo>({ id: undefined, code: workflowData }),
 					mock<IWorkflowExecuteAdditionalData>({ userId: undefined }),
 					{ parentWorkflowId: 'parent-1', executionMode: 'webhook' },
 				);
 
-				expect(credentialsPermissionChecker.check).toHaveBeenCalledWith('parent-1', nodes);
+				expect(credentialsPermissionChecker.check).toHaveBeenCalledWith(
+					'parent-1',
+					workflowData.nodes,
+					undefined,
+				);
 				expect(credentialsPermissionChecker.checkForUser).not.toHaveBeenCalled();
 				expect(activeExecutions.add).toHaveBeenCalledWith(
 					expect.objectContaining({
@@ -499,8 +504,10 @@ describe('WorkflowExecuteAdditionalData', () => {
 			});
 
 			it('keeps the parent identity for nested inline sub-workflows', async () => {
+				const workflowData = subWorkflowData();
+				const nestedWorkflowData = subWorkflowData();
 				await executeWorkflow(
-					{ code: subWorkflowData() },
+					{ code: workflowData },
 					mock<IWorkflowExecuteAdditionalData>({ userId: undefined }),
 					{ parentWorkflowId: 'parent-1', executionMode: 'webhook' },
 				);
@@ -508,13 +515,23 @@ describe('WorkflowExecuteAdditionalData', () => {
 				const parentWorkflowId = integratedAdditionalData.workflowId;
 				if (!parentWorkflowId) throw new Error('Expected a parent workflow ID');
 
-				await executeWorkflow({ code: subWorkflowData() }, integratedAdditionalData, {
+				await executeWorkflow({ code: nestedWorkflowData }, integratedAdditionalData, {
 					parentWorkflowId,
 					executionMode: 'webhook',
 				});
 
-				expect(credentialsPermissionChecker.check).toHaveBeenNthCalledWith(1, 'parent-1', nodes);
-				expect(credentialsPermissionChecker.check).toHaveBeenNthCalledWith(2, 'parent-1', nodes);
+				expect(credentialsPermissionChecker.check).toHaveBeenNthCalledWith(
+					1,
+					'parent-1',
+					workflowData.nodes,
+					undefined,
+				);
+				expect(credentialsPermissionChecker.check).toHaveBeenNthCalledWith(
+					2,
+					'parent-1',
+					nestedWorkflowData.nodes,
+					undefined,
+				);
 			});
 
 			it('preserves parent static-data persistence for inline definitions without an id', async () => {
