@@ -37,7 +37,6 @@ const baseline = (): WorkflowSuggestionBaseline => ({
 		publishedVersionId: randomUUID(),
 		checksum: 'a'.repeat(64),
 		versionCounter: workflow.versionCounter,
-		savedAt: workflow.updatedAt.toISOString(),
 		latestPublishHistoryEventId: null,
 	},
 	original: { name: 'Example', nodes: [], connections: {} },

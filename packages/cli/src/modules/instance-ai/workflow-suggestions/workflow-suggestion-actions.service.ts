@@ -121,7 +121,6 @@ export class WorkflowSuggestionActionsService {
 			'update',
 		);
 
-		let attemptedVersion: WorkflowSuggestionAppliedVersion | undefined;
 		try {
 			const prepared = await this.workflows.prepareUpdate(
 				user,
@@ -129,11 +128,11 @@ export class WorkflowSuggestionActionsService {
 				workflowId,
 				{ expectedChecksum: suggestion.expectedBaseline.checksum, source: 'n8n-ai' },
 			);
-			const saved = await this.txRunner.run({}, async (ctx) => {
+			const { saved, appliedVersion } = await this.txRunner.run({}, async (ctx) => {
 				await this.validatePreparedWorkflow(suggestion, prepared.workflow, ctx);
 				await this.service.requireEditor(user.id, workflowId, ctx);
 				const saved = await this.workflows.savePreparedUpdate(prepared, ctx);
-				attemptedVersion = {
+				const appliedVersion: WorkflowSuggestionAppliedVersion = {
 					versionId: saved.versionId,
 					checksum: await calculateWorkflowChecksum(saved),
 					action,
@@ -144,32 +143,32 @@ export class WorkflowSuggestionActionsService {
 					'applied',
 					{ author: 'human', actorId: user.id },
 					ctx,
-					attemptedVersion,
+					appliedVersion,
 				);
 				if (!closed) throw new ConflictError('The suggestion has already closed.');
-				return saved;
+				return { saved, appliedVersion };
 			});
-			await this.workflows.finishUpdate(prepared, saved);
+			try {
+				await this.workflows.finishUpdate(prepared, saved);
+			} catch (error) {
+				this.logger.warn('Could not finish the workflow update after Apply committed', {
+					suggestionId,
+					error,
+				});
+			}
+			return appliedVersion;
 		} catch (error) {
-			// After-update hooks can fail after the transaction commits.
 			try {
 				const current = await this.suggestions.getSuggestion(suggestion.id, scope);
-				if (current.state === 'closed') {
-					// Only return the version committed by this request.
-					return attemptedVersion?.versionId === current.appliedVersion?.versionId
-						? attemptedVersion
-						: undefined;
-				}
-				await this.service.reconcilePending(suggestion.id, scope);
+				if (current.state === 'closed') return undefined;
 			} catch (recoveryError) {
-				this.logger.warn('Could not refresh the suggestion after Apply failed', {
+				this.logger.warn('Could not read the suggestion after Apply failed', {
 					suggestionId,
 					error: recoveryError,
 				});
 			}
 			throw error;
 		}
-		return attemptedVersion;
 	}
 
 	private async validatePreparedWorkflow(

@@ -88,7 +88,6 @@ beforeEach(async () => {
 			publishedVersionId: versionId,
 			checksum: await calculateWorkflowChecksum(workflow),
 			versionCounter: workflow.versionCounter,
-			savedAt: workflow.updatedAt.toISOString(),
 			latestPublishHistoryEventId: null,
 		},
 		original: {
@@ -360,7 +359,6 @@ it.each([
 	'version',
 	'published',
 	'version counter',
-	'saved timestamp',
 	'publish history',
 	'archived',
 	'project',
@@ -378,7 +376,6 @@ it.each([
 		if (change === 'version') workflow.versionId = 'new';
 		if (change === 'published') workflow.activeVersionId = 'new';
 		if (change === 'version counter') workflow.versionCounter += 1;
-		if (change === 'saved timestamp') workflow.updatedAt = new Date('2026-10-01T00:00:00.000Z');
 		if (change === 'publish history')
 			workflowPublishHistoryRepository.getLatestPublishHistoryEventId.mockResolvedValue(1);
 		if (change === 'archived') workflow.isArchived = true;

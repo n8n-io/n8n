@@ -1,3 +1,4 @@
+import { LicenseState } from '@n8n/backend-common';
 import {
 	createWorkflowWithHistory,
 	shareWorkflowWithUsers,
@@ -19,6 +20,8 @@ import { Container } from '@n8n/di';
 import { ForbiddenError, NotFoundError } from '@n8n/errors';
 import { DataSource } from '@n8n/typeorm';
 
+import { License } from '@/license';
+import { WorkflowService } from '@/workflows/workflow.service';
 import { createUser } from '@test-integration/db/users';
 
 import { WorkflowSuggestionActivity } from '../database/workflow-suggestion-activity.entity';
@@ -31,6 +34,7 @@ let suggestions: WorkflowSuggestionRepository;
 beforeAll(async () => {
 	await testModules.loadModules(['instance-ai']);
 	await testDb.init();
+	Container.get(LicenseState).setLicenseProvider(Container.get(License));
 	suggestions = Container.get(WorkflowSuggestionRepository);
 	service = Container.get(WorkflowSuggestionService);
 });
@@ -101,6 +105,35 @@ it('rejects changed settings even when version IDs do not change', async () => {
 	await workflows.update(saved.id, { settings: { executionTimeout: 60 } });
 	await expect(service.createSuggestion(prepared)).rejects.toThrow('baseline');
 	expect(await suggestions.count()).toBe(0);
+});
+
+it('keeps a suggestion pending after an autosave with no content changes', async () => {
+	const { user, saved, workflows, project, graph } = await fixture();
+	const previousTimestamp = new Date('2020-01-01T00:00:00.000Z');
+	await workflows.update(saved.id, { updatedAt: previousTimestamp });
+	const baseline = await service.captureBaseline(saved.id, user.id);
+	const prepared = await service.prepareSuggestion(baseline, {
+		resultKind: 'fix_ready',
+		graph,
+		explanation: 'Sample fix',
+	});
+	const suggestion = await service.createSuggestion(prepared);
+
+	const updated = await Container.get(WorkflowService).update(
+		user,
+		Object.assign(new WorkflowEntity(), {
+			nodes: structuredClone(saved.nodes),
+			connections: structuredClone(saved.connections),
+		}),
+		saved.id,
+		{ autosaved: true, expectedChecksum: baseline.expectedBaseline.checksum },
+	);
+
+	expect(updated).toMatchObject({ ...saved, updatedAt: expect.any(Date) });
+	expect(updated.updatedAt.getTime()).toBeGreaterThan(previousTimestamp.getTime());
+	const detail = await service.refreshProposal(user, project.id, saved.id, suggestion.id);
+	expect(detail).toMatchObject({ state: 'pending', closedReason: null });
+	expect(detail.activity).toHaveLength(1);
 });
 
 it('keeps reads unchanged and closes an outdated suggestion only on refresh', async () => {

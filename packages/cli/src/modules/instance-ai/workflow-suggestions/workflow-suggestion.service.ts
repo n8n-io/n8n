@@ -116,7 +116,6 @@ export class WorkflowSuggestionService {
 				publishedVersionId: workflow.versionId,
 				checksum: await calculateWorkflowChecksum(workflow),
 				versionCounter: workflow.versionCounter,
-				savedAt: workflow.updatedAt.toISOString(),
 				latestPublishHistoryEventId:
 					await this.workflowPublishHistoryRepository.getLatestPublishHistoryEventId(workflowId),
 			},
@@ -224,7 +223,6 @@ export class WorkflowSuggestionService {
 			workflow.activeVersionId === expected.publishedVersionId &&
 			expected.latestPublishHistoryEventId === latestPublishHistoryEventId &&
 			workflow.versionCounter === expected.versionCounter &&
-			workflow.updatedAt.toISOString() === expected.savedAt &&
 			(await calculateWorkflowChecksum(workflow)) === expected.checksum
 		);
 	}

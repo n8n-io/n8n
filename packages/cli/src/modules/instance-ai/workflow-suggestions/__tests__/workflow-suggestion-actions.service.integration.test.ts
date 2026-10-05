@@ -170,9 +170,10 @@ it('saves one version when two requests apply the same proposal at once', async 
 	).toHaveLength(1);
 });
 
-it('returns the committed application when an after-update hook fails', async () => {
+it('publishes the committed application once when an after-update hook fails', async () => {
 	const { original, suggestion, act } = await fixture();
 	const beforeHistory = await history.countBy({ workflowId: original.id });
+	const publish = vi.spyOn(workflowService, 'activateWorkflow');
 	let appliedVersionAtHook: string | undefined;
 	vi.spyOn(Container.get(ExternalHooks), 'run').mockImplementation(async (name) => {
 		if (name === 'workflow.afterUpdate') {
@@ -182,15 +183,18 @@ it('returns the committed application when an after-update hook fails', async ()
 		}
 	});
 
-	const detail = await act('open-in-editor');
+	const detail = await act('approve-and-publish');
 
 	expect(detail).toMatchObject({ state: 'closed', closedReason: 'applied' });
+	expect(publish).toHaveBeenCalledOnce();
+	expect(detail.publishError).toBeUndefined();
 	expect(appliedVersionAtHook).toBe(detail.appliedVersion?.versionId);
 	expect(appliedVersionAtHook).toBeDefined();
 	expect(detail.appliedVersion?.versionId).toBe(
 		(await workflows.findOneByOrFail({ id: original.id })).versionId,
 	);
-	await act('open-in-editor');
+	await act('approve-and-publish');
+	expect(publish).toHaveBeenCalledOnce();
 	expect(await history.countBy({ workflowId: original.id })).toBe(beforeHistory + 1);
 });
 
@@ -460,31 +464,23 @@ it.each(['disabled user', 'removed membership'] as const)(
 	},
 );
 
-it.each(['read', 'reconciliation'] as const)(
-	'preserves the save error when recovery %s fails',
-	async (recovery) => {
-		const { original, suggestion, act } = await fixture();
-		const beforeHistory = await history.countBy({ workflowId: original.id });
-		const beforeActivity = await suggestions.getActivity(suggestion.id);
-		const saveError = new Error('Activity unavailable.');
-		const recoveryError = new Error('Recovery unavailable.');
-		vi.spyOn(suggestions, 'appendActivity').mockImplementationOnce(async () => {
-			if (recovery === 'read') {
-				vi.spyOn(suggestions, 'getSuggestion').mockRejectedValueOnce(recoveryError);
-			} else {
-				vi.spyOn(suggestionService, 'reconcilePending').mockRejectedValueOnce(recoveryError);
-			}
-			throw saveError;
-		});
+it('preserves the save error when the recovery read fails', async () => {
+	const { original, suggestion, act } = await fixture();
+	const beforeHistory = await history.countBy({ workflowId: original.id });
+	const beforeActivity = await suggestions.getActivity(suggestion.id);
+	const saveError = new Error('Activity unavailable.');
+	vi.spyOn(suggestions, 'appendActivity').mockImplementationOnce(async () => {
+		vi.spyOn(suggestions, 'getSuggestion').mockRejectedValueOnce(new Error('Read unavailable.'));
+		throw saveError;
+	});
 
-		await expect(act('open-in-editor')).rejects.toBe(saveError);
+	await expect(act('open-in-editor')).rejects.toBe(saveError);
 
-		expect(await workflows.findOneByOrFail({ id: original.id })).toEqual(original);
-		expect(await history.countBy({ workflowId: original.id })).toBe(beforeHistory);
-		expect(await suggestions.findOneByOrFail({ id: suggestion.id })).toEqual(suggestion);
-		expect(await suggestions.getActivity(suggestion.id)).toEqual(beforeActivity);
-	},
-);
+	expect(await workflows.findOneByOrFail({ id: original.id })).toEqual(original);
+	expect(await history.countBy({ workflowId: original.id })).toBe(beforeHistory);
+	expect(await suggestions.findOneByOrFail({ id: suggestion.id })).toEqual(suggestion);
+	expect(await suggestions.getActivity(suggestion.id)).toEqual(beforeActivity);
+});
 
 it('rolls back the graph and history when the action activity cannot be saved', async () => {
 	const { original, suggestion, act } = await fixture();
@@ -574,8 +570,8 @@ it.skipIf(process.env.DB_TYPE !== 'postgresdb')(
 	},
 );
 
-it('rejects Apply when an editor saves after suggestion preparation', async () => {
-	const { user, original, graph, suggestion, act } = await fixture();
+it('rejects an intervening edit and closes the suggestion only on refresh', async () => {
+	const { user, original, project, graph, suggestion, act } = await fixture();
 	const editorNodes = original.nodes.map((node) => ({
 		...node,
 		position: [300, 300] as [number, number],
@@ -612,10 +608,15 @@ it('rejects Apply when an editor saves after suggestion preparation', async () =
 		expect(saved.activeVersionId).toBe(original.activeVersionId);
 		expect(await history.countBy({ workflowId: original.id })).toBe(beforeHistory + 1);
 		expect(await suggestions.findOneByOrFail({ id: suggestion.id })).toMatchObject({
-			state: 'closed',
-			closedReason: 'outdated',
+			state: 'pending',
 			appliedVersion: null,
 		});
+		expect((await suggestions.getActivity(suggestion.id)).map(({ action }) => action)).toEqual([
+			'submitted',
+		]);
+		expect(
+			await suggestionService.refreshProposal(user, project.id, original.id, suggestion.id),
+		).toMatchObject({ state: 'closed', closedReason: 'outdated' });
 		expect(
 			(await suggestions.getActivity(suggestion.id)).map(({ action }) => action).sort(),
 		).toEqual(['outdated', 'submitted']);

@@ -13,7 +13,6 @@ export type WorkflowSuggestionBaseline = {
 		publishedVersionId: string;
 		checksum: string;
 		versionCounter: number;
-		savedAt: string;
 		latestPublishHistoryEventId: number | null;
 	};
 	original: WorkflowSuggestionSnapshot;

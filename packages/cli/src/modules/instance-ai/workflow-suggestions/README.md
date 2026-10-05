@@ -36,7 +36,7 @@ Use **Approve and publish** as the action label. Only `fix_ready` permits Apply.
 
 Apply calls `WorkflowService.prepareUpdate()` for normal save validation and preparation. Inside a transaction, it locks the workflow and rechecks the baseline and edit access. `savePreparedUpdate()` saves the workflow and required history. The action records the applied version, closes the suggestion, and adds human activity before commit. `finishUpdate()` runs after-save hooks and events after commit.
 
-A failed transaction rolls back the workflow, history, suggestion closure, and activity. A save error leaves the suggestion pending unless its baseline changed. If a follow-up status check also fails, the action preserves the original save error.
+A failed transaction rolls back the workflow, history, suggestion closure, and activity. A save error does not close the suggestion as outdated. Workflow events and review refreshes update that state. A competing action can still close the suggestion. If the follow-up status read also fails, the action preserves the original save error. After-save hook failures are logged and leave the committed application intact.
 
 Approve and publish calls the normal publisher with the saved version and checksum. A publish failure leaves the suggestion applied and returns `publishError`. Applied means saved, not published or verified fixed. The UI should open the editor after either Apply action. The editor owns publication status, errors, and retries.
 
@@ -46,7 +46,7 @@ Pass the caller's transaction to `discard(user, projectId, workflowId, suggestio
 
 ## Storage and limits
 
-The review migration assumes empty suggestion tables before a producer starts writing. Baseline metadata and the outcome are required. There is no legacy-row backfill. The baseline includes the saved timestamp, content counter, and `latestPublishHistoryEventId`. Restoring version pointers does not revive an old suggestion.
+The review migration assumes empty suggestion tables before a producer starts writing. Baseline metadata and the outcome are required. There is no legacy-row backfill. The baseline includes the saved and published versions, checksum, content counter, and `latestPublishHistoryEventId`. A save that only changes the update timestamp does not invalidate a suggestion. Restoring version pointers does not revive an old suggestion.
 
 A workflow transfer does not transfer its suggestions. Apply checks the current owner without locking the ownership row. A project transfer after this check can overlap with Apply. Ordinary saves keep their existing conflict checks; a save started before Apply can finish after it.
 
