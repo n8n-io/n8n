@@ -4,6 +4,8 @@
  * drives the contract document, the runtime validator, and the `run()` input type.
  */
 
+import { isRecord } from '@n8n/utils/is-record';
+
 /**
  * The JSON Schema subset of a contract: JSON Schema 2020-12 keywords plus closed `x-n8n-*`
  * keywords. `spec/manifest.schema.json` lists them.
@@ -741,6 +743,42 @@ export function pageValueOf(expression: string, page: ResponsePage): unknown {
 
 /** The expression is one that `pageValueOf` reads. */
 export const isPageExpression = (expression: string) => PAGE_EXPRESSION.test(expression.trim());
+
+/** An n8n expression, e.g. `={{ $json.id }}`, which n8n resolves before a run. */
+const isExpression = (value: unknown): value is string =>
+	typeof value === 'string' && value.startsWith('=');
+
+/**
+ * A binary field holds the key of a binary of the input item, e.g. `data`, as n8n stores it.
+ * An expression gives the binary itself, not its key.
+ */
+export const binaryKeyIssue = (value: unknown, at: string): string | undefined =>
+	typeof value === 'string' && value !== '' && !isExpression(value)
+		? undefined
+		: `${at}: must be the key of a binary of the input item, e.g. "data". Write (item) => item.binary.data`;
+
+/** One value of each `format` that the `t` builders make, for examples and issues. */
+export const FORMAT_EXAMPLES: Readonly<Record<string, string>> = {
+	date: '2026-09-15',
+	'date-time': '2026-09-15T09:30:00.000Z',
+	email: 'ada@example.com',
+	uri: 'https://example.com/item/1',
+	uuid: '8f14e45f-ceea-467a-9575-2a3b4c5d6e7f',
+};
+
+/** The tag of a `t.variant` branch. */
+export const variantTagOf = (branch: JsonSchema, propertyName: string) =>
+	branch.properties?.[propertyName]?.const;
+
+/** The `t.variant` branch of the tag of `value`. Without a tag, the branch whose tag is optional: the default. */
+export const variantBranchOf = (branches: readonly JsonSchema[], name: string, value: unknown) => {
+	const tag = isRecord(value) ? value[name] : undefined;
+	return branches.find((candidate) =>
+		tag === undefined
+			? !(candidate.required ?? []).includes(name) && variantTagOf(candidate, name) !== undefined
+			: variantTagOf(candidate, name) === tag,
+	);
+};
 
 /** The schema or one of its sub-schemas is a `t.pageValue()`. */
 export const hasPageValue = (schema: JsonSchema): boolean =>

@@ -2,10 +2,10 @@
 	"openrpc": "1.3.2",
 	"info": {
 		"title": "n8n Node Contract: the action interface",
-		"version": "2.8.0",
+		"version": "2.9.0",
 		"description": "Generated from spec/wit (world action-bundle) by scripts/spec.ts. Do not edit.\n\nAn action: it reads items and gives items. The host gives an optional import only to an\naction whose manifest needs it: `binary` for a `t.binary()` field, `supplied` for a\n`provider.input()` field, the others when the manifest `imports` lists them.\n\nBoth sides send requests on one connection. `x-direction` tells which side answers a method. A method without `result` is a notification. Names in brackets are not WIT functions: the JSON-RPC mapping adds them."
 	},
-	"x-world": "n8n:node-contract/action-bundle@2.8.0",
+	"x-world": "n8n:node-contract/action-bundle@2.9.0",
 	"x-since": "2.0.0",
 	"methods": [
 		{
@@ -2232,6 +2232,52 @@
 			},
 			"x-direction": "guest-to-host",
 			"x-since": "2.8.0"
+		},
+		{
+			"name": "schema.validate",
+			"description": "The issues of `value` against the JSON Schema 2020-12 `schema`, one line each, e.g.\n`page.results: must be array`, or none. `path` names the value in the issues. With\n`allow-expressions`, a field may hold a `={{ }}` expression, as at build time.",
+			"paramStructure": "by-name",
+			"params": [
+				{
+					"name": "value",
+					"required": true,
+					"schema": {
+						"$ref": "#/components/schemas/types.json"
+					}
+				},
+				{
+					"name": "schema",
+					"required": true,
+					"schema": {
+						"$ref": "#/components/schemas/types.json"
+					}
+				},
+				{
+					"name": "path",
+					"required": true,
+					"schema": {
+						"type": "string"
+					}
+				},
+				{
+					"name": "allowExpressions",
+					"required": true,
+					"schema": {
+						"type": "boolean"
+					}
+				}
+			],
+			"result": {
+				"name": "result",
+				"schema": {
+					"type": "array",
+					"items": {
+						"type": "string"
+					}
+				}
+			},
+			"x-direction": "guest-to-host",
+			"x-since": "2.9.0"
 		}
 	],
 	"components": {

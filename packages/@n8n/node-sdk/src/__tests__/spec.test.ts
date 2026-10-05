@@ -64,7 +64,7 @@ import {
 	type ToolDefinition,
 } from '../providers';
 import { parseStoreIndex, storeBlobFileOf } from '../store';
-import { validate } from '../validate';
+import { validate } from '../validator';
 import { compareSemver, NODE_CONTRACT_VERSION, type VersionManifest } from '../version';
 
 /** The keys of `T`. A missing key fails `tsc`. */
@@ -319,9 +319,10 @@ describe('the action interface', () => {
 			{ run: unknown }
 		>;
 		const credential = keysOf<Pick<Parameters<Bound['run']>[0], 'credential'>>()(['credential']);
-		// `chunk` names the item of a chunk-run to the host; `run()` never sees it.
+		// `chunk` names the item of a chunk-run to the host, and `schema` serves `validate`;
+		// `run()` never sees them.
 		const imports = action.imports
-			.filter((name) => name !== 'chunk')
+			.filter((name) => name !== 'chunk' && name !== 'schema')
 			.map((name) => (name === 'runCredential' ? 'credential' : name));
 		expect(sorted(['input', 'item', ...imports])).toEqual(
 			sorted([...context, ...optional, ...credential, 'supplied']),
@@ -707,20 +708,21 @@ describe('spec/manifest.schema.json', () => {
 				);
 			});
 
-			it('refuses a native manifest with a bundle hash, which the SDK validator accepts', () => {
+			it('refuses a native manifest with a bundle hash, as the SDK validator does', () => {
 				const manifest = { ...shippedOf(true), bundleHash: '0'.repeat(64) };
 				expect(branchesOf(manifest)).toEqual([true, false, true]);
 				expect(validateManifest(manifest)).toBe(false);
-				expect(validate(manifest, schema as JsonSchema)).toEqual([]);
+				expect(validate(manifest, schema as JsonSchema)).toEqual([
+					'input: does not match any allowed shape',
+				]);
 			});
 		});
 
-		it.each<[string, JsonSchema, unknown, boolean, boolean]>([
+		it.each<[string, JsonSchema, unknown, boolean]>([
 			[
 				'oneOf with two matching branches',
 				{ oneOf: [{ type: 'string' }, { type: 'string', minLength: 1 }] },
 				'a',
-				true,
 				false,
 			],
 			[
@@ -732,14 +734,12 @@ describe('spec/manifest.schema.json', () => {
 					anyOf: [{ type: 'object' }],
 				},
 				{},
-				true,
 				false,
 			],
-			['const of an object', { const: { a: 1 } }, { a: 1 }, false, true],
-			['enum of an array', { enum: [[1]] }, [1], false, true],
-			['format', { type: 'string', format: 'uri' }, 'no uri', false, true],
-			['minLength of a surrogate pair', { type: 'string', minLength: 2 }, '😀', true, false],
-			['pattern dot on a surrogate pair', { type: 'string', pattern: '^.$' }, '😀', false, true],
+			['const of an object', { const: { a: 1 } }, { a: 1 }, true],
+			['enum of an array', { enum: [[1]] }, [1], true],
+			['minLength of a surrogate pair', { type: 'string', minLength: 2 }, '😀', false],
+			['pattern dot on a surrogate pair', { type: 'string', pattern: '^.$' }, '😀', true],
 			[
 				'two matching patternProperties',
 				{
@@ -747,21 +747,28 @@ describe('spec/manifest.schema.json', () => {
 					patternProperties: { '^a': { type: 'string' }, b$: { type: 'string', minLength: 2 } },
 				},
 				{ ab: 'x' },
-				true,
 				false,
 			],
 			[
 				'a keyword outside the contract format',
 				{ type: 'string', maxLength: 1 } as JsonSchema,
 				'ab',
-				true,
 				false,
 			],
-		])('disagrees with the SDK validator on %s', (_, json, value, sdk, jsonSchema) => {
+		])('agrees with the SDK validator on %s', (_, json, value, valid) => {
 			expect([validate(value, json).length === 0, strictAjv().compile(json)(value)]).toEqual([
-				sdk,
-				jsonSchema,
+				valid,
+				valid,
 			]);
+		});
+
+		it('asserts a format, which JSON Schema 2020-12 only annotates', () => {
+			const json: JsonSchema = { type: 'string', format: 'uri' };
+			expect([validate('no uri', json).length === 0, strictAjv().compile(json)('no uri')]).toEqual([
+				false,
+				true,
+			]);
+			expect(validate('', json)).toEqual([]);
 		});
 	});
 });

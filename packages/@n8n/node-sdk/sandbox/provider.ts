@@ -1,7 +1,7 @@
 // The generic JS guest of the provider interface: it runs a provider bundle and exports the
 // capability that its `supply()` makes.
-import type * as wit from 'n8n:node-contract/capabilities@2.8.0';
-import { get as witLimits } from 'n8n:node-contract/limits@2.8.0';
+import type * as wit from 'n8n:node-contract/capabilities@2.9.0';
+import { get as witLimits } from 'n8n:node-contract/limits@2.9.0';
 
 import type { Binaries } from '../src/define';
 import {

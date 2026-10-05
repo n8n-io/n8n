@@ -29,7 +29,8 @@ import {
 	type OptionLabel,
 	type Shape,
 } from './schema';
-import { applyDefaults, validate } from './validate';
+import { applyDefaults } from './validate';
+import { validate } from './validator';
 
 type NoFields = Record<never, never>;
 type Values = Readonly<Record<string, string>>;

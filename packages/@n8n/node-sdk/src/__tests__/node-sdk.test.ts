@@ -33,7 +33,7 @@ import {
 } from '../index';
 import { toProperty } from '../properties';
 import { evaluateBundle } from '../runtime';
-import { testPattern } from '../validate';
+import { testPattern } from '../pattern';
 import { NODE_CONTRACT_VERSION } from '../version';
 
 const todo = defineNode({

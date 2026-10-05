@@ -50,7 +50,7 @@ import {
 	type StoreRecord,
 	type StoreStatusRecord,
 } from './store';
-import { validate } from './validate';
+import { validate } from './validator';
 import {
 	canonicalJson,
 	compareSemver,

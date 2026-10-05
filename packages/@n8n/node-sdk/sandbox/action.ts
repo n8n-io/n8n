@@ -1,14 +1,14 @@
 // The generic JS guest of the action interface: it runs an action bundle and gives it the run
 // context over the imports of the action world.
-import * as witBinary from 'n8n:node-contract/binary@2.8.0';
-import { item as witChunkItem } from 'n8n:node-contract/chunk@2.8.0';
-import { run as witCode } from 'n8n:node-contract/code@2.8.0';
-import * as witTables from 'n8n:node-contract/data-tables@2.8.0';
-import { get as witInputOf } from 'n8n:node-contract/input-of@2.8.0';
-import { get as witLimits } from 'n8n:node-contract/limits@2.8.0';
-import { extract as witExtract } from 'n8n:node-contract/parsers@2.8.0';
-import { open as witSupplied } from 'n8n:node-contract/supplied@2.8.0';
-import { until as witUntil } from 'n8n:node-contract/wait@2.8.0';
+import * as witBinary from 'n8n:node-contract/binary@2.9.0';
+import { item as witChunkItem } from 'n8n:node-contract/chunk@2.9.0';
+import { run as witCode } from 'n8n:node-contract/code@2.9.0';
+import * as witTables from 'n8n:node-contract/data-tables@2.9.0';
+import { get as witInputOf } from 'n8n:node-contract/input-of@2.9.0';
+import { get as witLimits } from 'n8n:node-contract/limits@2.9.0';
+import { extract as witExtract } from 'n8n:node-contract/parsers@2.9.0';
+import { open as witSupplied } from 'n8n:node-contract/supplied@2.9.0';
+import { until as witUntil } from 'n8n:node-contract/wait@2.9.0';
 
 import type {
 	Action,

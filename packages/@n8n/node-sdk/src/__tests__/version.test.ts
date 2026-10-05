@@ -877,9 +877,10 @@ describe('published versions', () => {
 				toVersionedNodeType([frozenOf({ ...manifest, nodeContract }, bundle)]);
 
 			expect(() => typeOf('3.0.0')).toThrow(
-				'demo.echo@1.0.0 needs Node Contract 3.0.0. This host runs >=2.0.0 <3.0.0 and implements 2.8.0.',
+				'demo.echo@1.0.0 needs Node Contract 3.0.0. This host runs >=2.0.0 <3.0.0 and implements 2.9.0.',
 			);
-			expect(() => typeOf('2.9.0')).toThrow('needs Node Contract 2.9.0');
+			expect(() => typeOf('2.10.0')).toThrow('needs Node Contract 2.10.0');
+			expect(() => typeOf('2.9.0')).not.toThrow();
 			expect(() => typeOf('2.8.0')).not.toThrow();
 			expect(() => typeOf('2.7.0')).not.toThrow();
 			expect(() => typeOf('2.6.0')).not.toThrow();
@@ -892,7 +893,7 @@ describe('published versions', () => {
 
 			setNodeContractRange('>=1.0.0 <3.0.0');
 			expect(() => typeOf('1.0.0')).toThrow(
-				'needs Node Contract 1.0.0. This host runs >=1.0.0 <3.0.0 and implements 2.8.0.',
+				'needs Node Contract 1.0.0. This host runs >=1.0.0 <3.0.0 and implements 2.9.0.',
 			);
 			// The range also applies at run time, to a version the registry loader picks.
 			setNodeContractRange(DEFAULT_NODE_CONTRACT_RANGE);
@@ -943,9 +944,9 @@ describe('published versions', () => {
 			expect(() => evaluateBundle(bundle, '3.0.0')).toThrow(
 				'This host cannot run Node Contract 3.0.0',
 			);
-			expect(() => evaluateBundle(bundle, '2.9.0')).toThrow('cannot run');
+			expect(() => evaluateBundle(bundle, '2.10.0')).toThrow('cannot run');
 			expect(() => evaluateBundle(bundle, '1.0.0')).toThrow(
-				'This host cannot run Node Contract 1.0.0. It implements 2.8.0.',
+				'This host cannot run Node Contract 1.0.0. It implements 2.9.0.',
 			);
 			expect(evaluateBundle(bundle, '2.0.0').id).toBe('demo.echo');
 			expect(evaluateBundle(bundle, '2.1.0').id).toBe('demo.echo');

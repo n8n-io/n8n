@@ -315,7 +315,10 @@ and runs these tests, so they do not skip there.
 A bundle must use web APIs only. `freezeAction` refuses a bundle that uses what the guest does not
 have:
 
-- a module other than `n8n-workflow` (from the esbuild metafile);
+- a module other than `n8n-workflow` and `@n8n/node-sdk/validator` (from the esbuild metafile).
+  Freeze keeps the SDK validator out of each bundle as `@n8n/node-sdk/validator`: the host gives
+  it, and a guest calls the host through the `schema` import;
+- ajv, which the host already has;
 - a global of `GUEST_LACKS` (`Buffer`, `process`, `setImmediate`, `Intl`, `__dirname`, …) or
   `fetch` that no scope binds and that the bundle does not test with `typeof`. The guest has
   `fetch` only as a stub that throws. In the n8n process, `fetch` would send a request past the

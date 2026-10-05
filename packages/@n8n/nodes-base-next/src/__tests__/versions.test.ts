@@ -95,6 +95,19 @@ describe('bundled versions', () => {
 		expect(filesOf(copy)).toEqual(filesOf(EMBEDDED_STORE_DIR));
 	});
 
+	it('carry no JSON Schema validator: the host gives it', () => {
+		const blobs = path.join(EMBEDDED_STORE_DIR, 'blobs', 'sha256');
+		const carrying = readdirSync(blobs).filter((file) => {
+			const text = readFileSync(path.join(blobs, file), 'utf8');
+			// The first is a message of ajv, the second an issue text of the SDK validator.
+			return (
+				text.includes('must NOT have additional properties') ||
+				text.includes('does not match any allowed shape')
+			);
+		});
+		expect(carrying).toEqual([]);
+	});
+
 	it('hold a manifest without a bundle for each native contract', () => {
 		const catalog = parseStoreCatalog(readFileSync(path.join(copy, STORE_CATALOG_FILE), 'utf8'));
 		const lineOf = (id: string) => catalog.find((line) => line.id === id);
@@ -150,14 +163,35 @@ describe('bundled versions', () => {
 		const versions = Object.fromEntries(
 			frozen.manifests.map(({ id, nodeContract }) => [id, nodeContract]),
 		);
+		// A bundle that validates takes the validator from the host, which has it since 2.9.0.
+		const validating = new Set([
+			'ai.agent',
+			'ai.classify',
+			'ai.prompt',
+			'code.javaScript',
+			'code.python',
+			'gmail.message.get',
+			'gmail.message.getAll',
+			'gmail.message.send',
+			'googleSheets.sheet.read',
+			'httpRequest.get',
+			'notion.databasePage.getAll',
+			'openAi.text.message',
+			'slack.channel.getAll',
+			'slack.channel.history',
+			'whatsApp.message.send',
+			'whatsApp.message.sendTemplate',
+		]);
 		expect(versions).toEqual(
 			Object.fromEntries(
 				contracts.map((contract) => [
 					contract.id,
-					requiredNodeContractOf(
-						toContract(contract),
-						'list' in contract && contract.list !== undefined,
-					),
+					validating.has(contract.id)
+						? '2.9.0'
+						: requiredNodeContractOf(
+								toContract(contract),
+								'list' in contract && contract.list !== undefined,
+							),
 				]),
 			),
 		);
@@ -168,6 +202,7 @@ describe('bundled versions', () => {
 			Object.keys(versions)
 				.filter((id) => versions[id] === version)
 				.sort();
+		expect(withVersion('2.9.0')).toEqual([...validating].sort());
 		expect(withVersion('2.8.0')).toEqual([
 			'extractFromFile.csv',
 			'extractFromFile.json',
@@ -175,26 +210,15 @@ describe('bundled versions', () => {
 			'extractFromFile.text',
 			'extractFromFile.xlsx',
 		]);
-		expect(withVersion('2.6.0')).toEqual([
-			'gmail.message.get',
-			'gmail.message.getAll',
-			'merge.append',
-			'merge.combineByPosition',
-		]);
+		expect(withVersion('2.6.0')).toEqual(['merge.append', 'merge.combineByPosition']);
 		expect(withVersion('2.5.0')).toEqual([]);
 		expect(withVersion('2.4.0')).toEqual([
 			'github.issue.getAll',
 			'googleDrive.file.search',
-			'httpRequest.get',
 			'supabase.row.getAll',
 		]);
 		expect(withVersion('2.3.0')).toEqual([
-			'ai.agent',
-			'ai.classify',
-			'ai.prompt',
 			'anthropic.chatModel',
-			'code.javaScript',
-			'code.python',
 			'dataTable.row.delete',
 			'dataTable.row.exists',
 			'dataTable.row.get',
@@ -215,7 +239,6 @@ describe('bundled versions', () => {
 			'xAi.chatModel',
 		]);
 		expect(withVersion('2.2.0')).toEqual([
-			'gmail.message.send',
 			'googleDrive.file.upload',
 			'httpRequest.download',
 			'httpRequest.send',
@@ -322,7 +345,7 @@ describe('bundled versions', () => {
 					action: 'httpRequest.get',
 					version: head?.manifest.semver,
 					bundleHash: head?.manifest.bundleHash,
-					nodeContract: '2.4.0',
+					nodeContract: '2.9.0',
 				},
 			},
 		]);

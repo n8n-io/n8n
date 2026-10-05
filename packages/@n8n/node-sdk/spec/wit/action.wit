@@ -1,4 +1,4 @@
-package n8n:node-contract@2.8.0;
+package n8n:node-contract@2.9.0;
 
 /// What an action bundle exports.
 ///
@@ -147,5 +147,7 @@ world action-bundle {
     import chunk;
     @since(version = 2.8.0)
     import parsers;
+    @since(version = 2.9.0)
+    import schema;
     export action;
 }

@@ -4,7 +4,7 @@ import { isRecord } from '@n8n/utils/is-record';
 import { OperationalError, UserError } from './errors';
 import type { ChatMessage, ChatModel, ChatReply } from './providers';
 import { t, type JsonSchema } from './schema';
-import { validate } from './validate';
+import { validate } from './validator';
 
 /** The system message, when there is one, then the prompt. */
 export const promptMessages = (system: string | undefined, prompt: string): ChatMessage[] => [
@@ -27,9 +27,7 @@ export const replySchema = t
 	})
 	.with({ additionalProperties: true, 'x-n8n-literal': true })
 	.optional()
-	.hint(
-		'JSON Schema of the reply; leave a field the model may not find out of `required`',
-	);
+	.hint('JSON Schema of the reply; leave a field the model may not find out of `required`');
 
 const replyText = t.str().hint('The reply text');
 

@@ -34,11 +34,11 @@ const TOOLS: readonly McpTool[] = [
 	{
 		name: 'create_page',
 		description: 'Create a page.',
-		// A server may send keywords outside the checked subset.
 		inputSchema: {
 			type: 'object',
 			properties: { parent: { $ref: '#/$defs/parent' }, title: { type: 'string' } },
 			required: ['parent', 'title'],
+			$defs: { parent: { type: 'object', properties: { page: { type: 'string' } } } },
 		} as JsonSchema,
 		annotations: { destructiveHint: false },
 	},
@@ -87,7 +87,11 @@ describe('liftMcpTool', () => {
 			flow: { effect: 'write' },
 			outputClaim: 'unknown',
 		});
-		expect(create?.issues).toEqual(['input.properties.parent.$ref']);
+		expect(create?.contract.input.properties?.parent).toEqual({
+			type: 'object',
+			properties: { page: { type: 'string' } },
+		});
+		expect(create?.issues).toEqual([]);
 	});
 
 	it('runs the tool through the executor: input checked, structured output emitted', async () => {
@@ -128,5 +132,75 @@ describe('liftMcpTool', () => {
 			ok: false,
 			error: { message: 'MCP tool create_page failed: pick a title' },
 		});
+	});
+
+	it('opens a ref that it cannot inline, and still runs the tool', async () => {
+		const server = fakeServer();
+		const tree: McpTool = {
+			name: 'save_tree',
+			inputSchema: {
+				type: 'object',
+				properties: {
+					root: { $ref: '#/$defs/node' },
+					owner: { $ref: '#/definitions/owner', description: 'Who owns the tree.' },
+				},
+				required: ['root'],
+				$defs: {
+					node: {
+						type: 'object',
+						properties: {
+							name: { type: 'string' },
+							children: { type: 'array', items: { $ref: '#/$defs/node' } },
+						},
+					},
+				},
+			} as JsonSchema,
+		};
+		const lifted = liftMcpTool(notion, tree, server.client);
+		expect(lifted.issues).toEqual([
+			'input.properties.root.properties.children.items.$ref: not inlined (recursive)',
+			'input.properties.owner.$ref: not inlined (dangling)',
+		]);
+		expect(lifted.contract.input.properties).toEqual({
+			root: {
+				type: 'object',
+				properties: { name: { type: 'string' }, children: { type: 'array', items: {} } },
+			},
+			owner: { description: 'Who owns the tree.' },
+		});
+		expect(
+			await runAction(lifted.action, {
+				input: { root: { name: 'a', children: [{ name: 1 }] }, owner: 7 },
+				credential: { type: 'notionApi', data: {} },
+				credentials: [{ name: 'notionApi', displayName: 'Notion', properties: [] }],
+			}),
+		).toEqual({ ok: true, items: [{ text: 'created p-1' }] });
+	});
+
+	it('stops inlining after 1000 refs in one field', () => {
+		const server = fakeServer();
+		const $defs = Object.fromEntries(
+			Array.from({ length: 12 }, (_, index) => [
+				`d${index}`,
+				{
+					type: 'object',
+					properties: {
+						a: { $ref: `#/$defs/d${index + 1}` },
+						b: { $ref: `#/$defs/d${index + 1}` },
+					},
+				},
+			]),
+		);
+		const wide: McpTool = {
+			name: 'wide',
+			inputSchema: {
+				type: 'object',
+				properties: { root: { $ref: '#/$defs/d0' } },
+				$defs,
+			} as JsonSchema,
+		};
+		const { issues } = liftMcpTool(notion, wide, server.client);
+		expect(issues.filter((issue) => issue.endsWith('(too many refs)')).length).toBeGreaterThan(0);
+		expect(issues.length).toBeLessThan(2_000);
 	});
 });

@@ -110,6 +110,8 @@ export async function componentize({ kind, guest, wit, out, componentizeJs }: Co
 async function bundleGuest(name: string, guest: string) {
 	const { build } = await import('esbuild');
 	const source = path.join(ROOT, 'src');
+	const hostValidator = path.join(source, 'validator.ts');
+	const guestValidator = path.join(SANDBOX, 'validator.ts');
 	await build({
 		entryPoints: [path.join(SANDBOX, `${name}.ts`)],
 		outfile: guest,
@@ -126,7 +128,12 @@ async function bundleGuest(name: string, guest: string) {
 				setup(bundler) {
 					bundler.onResolve({ filter: /^\.\.?\/[\w./-]+$/ }, ({ importer, path: file }) => {
 						const resolved = path.resolve(path.dirname(importer), `${file}.ts`);
-						return resolved.startsWith(source) ? { path: resolved, sideEffects: false } : undefined;
+						if (!resolved.startsWith(source)) return undefined;
+						// ajv stays in the host: the guest validates through the `schema` import.
+						return {
+							path: resolved === hostValidator ? guestValidator : resolved,
+							sideEffects: false,
+						};
 					});
 					// A world import that no kept code reads drops out, so each guest imports only
 					// what its world has.

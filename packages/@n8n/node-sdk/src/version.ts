@@ -35,11 +35,13 @@ import { matches } from './validate';
  * 2.7.0 adds the `runtime` of a version, a container image pinned by digest, and the `chunk`
  * import and `chunk-run` of the sandbox guest.
  * 2.8.0 adds the `parsers` host import, which reads the content of a file with the parsers of n8n.
+ * 2.9.0 adds the host module `@n8n/node-sdk/validator` and the `schema` host import: the host
+ * validates values against JSON Schema 2020-12, so no bundle and no guest carries a validator.
  */
 export type NodeContractVersion = `${number}.${number}.${number}`;
 
 /** The newest version this host implements. */
-export const NODE_CONTRACT_VERSION: NodeContractVersion = '2.8.0';
+export const NODE_CONTRACT_VERSION: NodeContractVersion = '2.9.0';
 
 /** The newest version of each major that this host runs. */
 export const IMPLEMENTED_NODE_CONTRACTS: readonly NodeContractVersion[] = [NODE_CONTRACT_VERSION];

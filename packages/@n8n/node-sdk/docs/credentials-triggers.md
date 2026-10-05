@@ -266,8 +266,9 @@ export const webhookTrigger = webhook.trigger('trigger', {
   `items(page, input)`, and optional `pages` (`cursor`, `link` or `offset`). The host checks each
   page, follows the pages, and applies the `paging` input that `pages` adds. `run()` uses `pages()`.
 - `liftMcpTool` maps `readOnlyHint` to `read` (idempotent), any other tool to `write`. The input
-  is the tool's JSON Schema. The output is typed only with `outputSchema`. It reports schema
-  keywords that the validator does not check, e.g. `$ref`.
+  is the tool's JSON Schema. The output is typed only with `outputSchema`. Each field gets the
+  definitions that its `$ref`s name (`#/$defs/<name>`, `#/definitions/<name>`). A recursive,
+  remote or missing ref becomes an open schema, and `issues` reports it.
 
 ## Known differences from the legacy GitHub trigger
 

@@ -83,6 +83,7 @@
   },
   "dependencies": {
     "@n8n/utils": "workspace:*",
+    "ajv": "^8.18.0",
     "esbuild": "catalog:",
     "n8n-workflow": "workspace:*",
     "oxlint": "catalog:",
@@ -93,7 +94,6 @@
     "@n8n/eslint-config": "workspace:*",
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
-    "ajv": "^8.18.0",
     "vitest": "catalog:"
   },
   "license": "LicenseRef-n8n-sustainable-use"

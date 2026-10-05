@@ -120,6 +120,25 @@ describe('freezeAction', () => {
 		await expect(freeze(value)).resolves.toMatchObject({ manifest: { id: 'probe.probe' } });
 	});
 
+	it('refuses a bundle that carries ajv', async () => {
+		const header = `import Ajv from ${JSON.stringify(require.resolve('ajv'))};`;
+		await expect(freeze("new Ajv().validate({ type: 'string' }, 'x')", header)).rejects.toThrow(
+			'ajv (use validate of @n8n/node-sdk: the host gives it)',
+		);
+	});
+
+	it('takes validate from the host module, which needs Node Contract 2.9.0', async () => {
+		const { manifest, bundle, action } = await freeze(
+			'validate(1, t.str().json).join()',
+			"import { validate } from '@n8n/node-sdk';",
+		);
+		expect(bundle).toContain('require("@n8n/node-sdk/validator")');
+		expect(bundle).not.toContain('does not match any allowed shape');
+		expect(manifest.nodeContract).toBe('2.9.0');
+		const { run } = action as unknown as { run: () => Promise<{ value: string }> };
+		await expect(run()).resolves.toEqual({ value: 'input: must be string, got 1' });
+	});
+
 	it('writes no node description: the host projects it from the contract', async () => {
 		const { manifest, action } = await freeze('1');
 		expect(manifest).not.toHaveProperty('description');

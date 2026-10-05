@@ -10,10 +10,11 @@ import {
 	type CredentialManifest,
 	type NativeManifest,
 } from './manifest';
-import { evaluateBundle } from './runtime';
+import { evaluateBundle, isHostModule, VALIDATOR_MODULE } from './runtime';
 import { manifestTextOf, type StoreRecord } from './store';
 import { matches } from './validate';
 import {
+	compareSemver,
 	contractHash,
 	manifestKindOf,
 	NODE_CONTRACT_VERSION,
@@ -25,6 +26,9 @@ import {
 
 /** The SDK source inlines into each bundle, so a version keeps the SDK helpers it was frozen with. */
 const SDK_SOURCE = path.resolve(__dirname, '..', 'src');
+
+/** The SDK module that the host gives each bundle as `VALIDATOR_MODULE`, with ajv. */
+const VALIDATOR_SOURCE = path.join(SDK_SOURCE, 'validator.ts');
 
 /** The `@n8n/node-sdk` version, recorded in each manifest for traceability. */
 export function sdkVersion(): string {
@@ -93,12 +97,16 @@ const REFUSED_GLOBALS = [...GUEST_LACKS, 'fetch', 'setTimeout', 'setInterval'];
 const LACKS_MARKER = '__n8n_guest_lacks_';
 
 /**
- * What a bundle may not use: a module other than `n8n-workflow`, a global
+ * What a bundle may not use: a module that the host does not give, ajv, a global
  * of `REFUSED_GLOBALS`, or a Unicode property escape (`\p{…}`). esbuild replaces only a global that
  * no scope binds. A global that the bundle also tests with `typeof` counts as guarded. A name
  * built at run time is not found: the sandbox still stops it.
  */
-async function sandboxGapsOf(bundle: string, modules: readonly string[]): Promise<string[]> {
+async function sandboxGapsOf(
+	bundle: string,
+	modules: readonly string[],
+	inputs: readonly string[],
+): Promise<string[]> {
 	const { transform } = await import('esbuild');
 	const { code } = await transform(bundle, {
 		loader: 'js',
@@ -117,9 +125,11 @@ async function sandboxGapsOf(bundle: string, modules: readonly string[]): Promis
 	const guarded = namesAfter('typeof ');
 	const globals = [...namesAfter('')].filter((name) => !guarded.has(name));
 	return [
-		...modules
-			.filter((module) => module !== 'n8n-workflow')
-			.map((module) => `the module ${module}`),
+		...modules.filter((module) => !isHostModule(module)).map((module) => `the module ${module}`),
+		// The host validates with its own ajv, so a bundle that carries ajv only grows.
+		...(inputs.some((input) => /(^|\/)node_modules\/ajv\//.test(input))
+			? ['ajv (use validate of @n8n/node-sdk: the host gives it)']
+			: []),
 		...globals.map((name) => `the global ${name}`),
 		...(/\\[pP]\{/.test(code)
 			? ['a Unicode property escape (\\p{…}) in a regular expression']
@@ -228,9 +238,12 @@ export async function freezeAction(
 					}));
 					bundler.onResolve({ filter: /^\.\.?\/[\w./-]+$/ }, ({ importer, path: file }) => {
 						const resolved = path.resolve(path.dirname(importer), `${file}.ts`);
-						return importer.startsWith(SDK_SOURCE) && resolved.startsWith(SDK_SOURCE)
-							? { path: resolved, sideEffects: false }
-							: undefined;
+						if (!importer.startsWith(SDK_SOURCE) || !resolved.startsWith(SDK_SOURCE)) {
+							return undefined;
+						}
+						return resolved === VALIDATOR_SOURCE
+							? { path: VALIDATOR_MODULE, external: true, sideEffects: false }
+							: { path: resolved, sideEffects: false };
 					});
 				},
 			},
@@ -240,7 +253,8 @@ export async function freezeAction(
 	const modules = Object.values(result.metafile.outputs).flatMap(({ imports }) =>
 		imports.filter(({ external }) => external).map(({ path: module }) => module),
 	);
-	const gaps = await sandboxGapsOf(bundle, [...new Set(modules)]);
+	const imported = [...new Set(modules)];
+	const gaps = await sandboxGapsOf(bundle, imported, Object.keys(result.metafile.inputs));
 	if (gaps.length > 0) {
 		throw new UserError(
 			`${exportName} in ${entryFile} uses what a bundle may not use: ${gaps.join(', ')}. Use web APIs, http.request for requests, no timers, and no Unicode property escapes.`,
@@ -266,11 +280,16 @@ export async function freezeAction(
 		lastOf,
 		(last) => last.bundle === `sha256:${bundleHash}`,
 	);
+	const required = requiredNodeContractOf(contract, 'list' in action && action.list !== undefined);
 	const manifest: VersionManifest = {
 		kind: manifestKindOf(contract),
 		id: action.id,
 		semver,
-		nodeContract: requiredNodeContractOf(contract, 'list' in action && action.list !== undefined),
+		// The host gives the validator module since 2.9.0.
+		nodeContract:
+			imported.includes(VALIDATOR_MODULE) && compareSemver(required, '2.9.0') < 0
+				? '2.9.0'
+				: required,
 		sdk: sdkVersion(),
 		...(credentials.length ? { credentials } : {}),
 		contractHash: contractHash(contract),

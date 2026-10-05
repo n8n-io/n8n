@@ -8,7 +8,7 @@
 /// import, export or field. A major breaks. `@since` tells which minor added an item. A
 /// bundle states the lowest version that has all it uses (`nodeContract` in its manifest), so
 /// an older host still runs it.
-package n8n:node-contract@2.8.0;
+package n8n:node-contract@2.9.0;
 
 @since(version = 2.0.0)
 interface types {
@@ -311,6 +311,19 @@ interface data-tables {
     /// `list` is a WIT keyword. The JSON-RPC method is `data-tables.list`.
     %list: func(query: list-query) -> result<table-page, string>;
     create: func(table: new-table) -> result<table-info, string>;
+}
+
+/// The JSON Schema validator of the host, so that no guest carries one. Each world gets it. The
+/// host refuses a schema of more than 256 KiB, of more than 64 levels, or with a pattern that
+/// can take more than linear time, with one issue.
+@since(version = 2.9.0)
+interface schema {
+    use types.{json};
+
+    /// The issues of `value` against the JSON Schema 2020-12 `schema`, one line each, e.g.
+    /// `page.results: must be array`, or none. `path` names the value in the issues. With
+    /// `allow-expressions`, a field may hold a `={{ }}` expression, as at build time.
+    validate: func(value: json, schema: json, path: string, allow-expressions: bool) -> list<string>;
 }
 
 /// Reads the content of a file with the parsers of n8n. The bytes stay in the host, so a bundle

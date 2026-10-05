@@ -13,6 +13,7 @@ const IMPORTS = path.join(SANDBOX, 'node', 'imports.ts');
 // As in the WASM guest: the plain forms of what the guest takes from `n8n-workflow`.
 const WORKFLOW = path.join(SANDBOX, 'n8n-workflow.ts');
 const OUTDIR = path.join(ROOT, 'dist', 'guest');
+const GUEST_VALIDATOR = path.join(SANDBOX, 'validator.ts');
 
 const contentsOf = (module: string) =>
 	module === 'n8n-workflow'
@@ -50,7 +51,12 @@ void (async () => {
 					// As in `scripts/sandbox.ts`: an SDK module that the guest does not use drops out.
 					bundler.onResolve({ filter: /^\.\.?\/[\w./-]+$/ }, ({ importer, path: file }) => {
 						const resolved = path.resolve(path.dirname(importer), `${file}.ts`);
-						return resolved.startsWith(SOURCE) ? { path: resolved, sideEffects: false } : undefined;
+						if (!resolved.startsWith(SOURCE)) return undefined;
+						// ajv stays in the host: the guest validates through the `schema` import.
+						return {
+							path: resolved === path.join(SOURCE, 'validator.ts') ? GUEST_VALIDATOR : resolved,
+							sideEffects: false,
+						};
 					});
 				},
 			},

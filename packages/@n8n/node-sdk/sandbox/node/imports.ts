@@ -315,6 +315,18 @@ const code = {
 	run: (request: unknown) => text(call('code.run', { request }, asText)),
 };
 
+const schema = {
+	validate: (value: string, json: string, path: string, allowExpressions: boolean) =>
+		list(
+			call('schema.validate', {
+				value: JSON.parse(value),
+				schema: JSON.parse(json),
+				path,
+				allowExpressions,
+			}),
+		).map(String),
+};
+
 const wait = {
 	until: (at: bigint) => {
 		call('wait.until', { at: Number(at) }, asText);
@@ -481,6 +493,7 @@ export const modules: Readonly<Record<string, object>> = {
 	'data-tables': dataTables,
 	parsers,
 	code,
+	schema,
 	wait,
 	'input-of': inputOf,
 	capabilities: { ChatModel, Memory, Tool, Embeddings },

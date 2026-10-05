@@ -201,7 +201,7 @@ The seams are two setters in `@n8n/node-sdk/src/runtime.ts`: `setContractVersion
 
 | Level | Example | Who sets it | What it decides |
 |---|---|---|---|
-| Node Contract | `2.8.0` | The spec. Freeze writes the lowest that a bundle needs | Whether this n8n can run the bundle |
+| Node Contract | `2.9.0` | The spec. Freeze writes the lowest that a bundle needs | Whether this n8n can run the bundle |
 | Action major | `notion.databasePage.getAll@1` | The author; a new permission forces a new major | The n8n `typeVersion`. A saved node keeps its major |
 | Action minor and patch | `1.2.3` | The author (minor), freeze (patch) | Which bundle a node runs inside its major |
 | Lock | `meta.nodeContracts.<node>` | The AI builder | The exact bundle that a saved workflow runs |

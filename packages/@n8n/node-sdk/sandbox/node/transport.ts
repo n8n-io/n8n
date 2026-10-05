@@ -3,7 +3,7 @@
 import { createHash } from 'node:crypto';
 import { readFileSync, readSync, writeSync } from 'node:fs';
 import { StringDecoder } from 'node:string_decoder';
-import type * as wit from 'n8n:node-contract/capabilities@2.8.0';
+import type * as wit from 'n8n:node-contract/capabilities@2.9.0';
 
 import { action } from '../action';
 import { capabilities, provider } from '../provider';
@@ -33,10 +33,10 @@ export interface GuestArgs {
 	readonly nodeContract: string;
 }
 
-const NODE_CONTRACT = '2.8.0';
+const NODE_CONTRACT = '2.9.0';
 
 /** The imports of each world, by WIT interface name. */
-const BASE_IMPORTS = ['http', 'log', 'limits', 'run-credential'];
+const BASE_IMPORTS = ['http', 'log', 'limits', 'run-credential', 'schema'];
 const WORLD_IMPORTS: Readonly<Record<GuestArgs['kind'], ReadonlySet<string>>> = {
 	action: new Set([
 		...BASE_IMPORTS,

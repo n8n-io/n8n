@@ -49,7 +49,8 @@ import {
 	type FrozenVersion,
 } from './runtime';
 import { Schema, type Shape } from './schema';
-import { readAs, validate } from './validate';
+import { readAs } from './validate';
+import { validate } from './validator';
 import { canonicalJson, NODE_CONTRACT_VERSION } from './version';
 
 /**

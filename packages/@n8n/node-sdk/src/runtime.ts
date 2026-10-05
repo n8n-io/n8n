@@ -103,7 +103,9 @@ import {
 	type ContractDocument,
 	type Trigger,
 } from './define';
+import { testPattern } from './pattern';
 import {
+	binaryKeyIssue,
 	hasBinary,
 	hasPageValue,
 	shapeOf,
@@ -123,16 +125,8 @@ import {
 	type ProviderKind,
 	type Tool,
 } from './providers';
-import {
-	applyDefaults,
-	binaryKeyIssue,
-	list,
-	matches,
-	outputBinaryKeys,
-	readAs,
-	testPattern,
-	validate,
-} from './validate';
+import { applyDefaults, list, matches, outputBinaryKeys, readAs } from './validate';
+import { validate } from './validator';
 import type { WebhookEndpoint } from './triggers';
 import {
 	assertNodeContract,
@@ -2178,14 +2172,24 @@ export interface FrozenVersion {
 }
 
 /**
- * Host modules a frozen bundle may import. They are part of every Node Contract version. A
- * bundle checks its outputs with the SDK `validate`, which calls `safeRegex.test` for each key,
- * so `test` is `testPattern`: the same result, without a `vm` call for a pattern that it allows.
+ * The host module of the SDK validator, since Node Contract 2.9.0. Freeze keeps the SDK
+ * `validator` module out of each bundle, so no bundle carries ajv.
+ */
+export const VALIDATOR_MODULE = '@n8n/node-sdk/validator';
+
+/**
+ * Host modules a frozen bundle may import. `n8n-workflow` is part of every Node Contract
+ * version. A bundle tests patterns with `safeRegex.test`, so `test` is `testPattern`: the same
+ * result, without a `vm` call for a pattern that it allows.
  */
 const HOST_MODULES: Readonly<Record<string, unknown>> = {
 	// The host classes, so the host classifies the errors that a frozen bundle throws.
 	'n8n-workflow': { safeRegex: { ...safeRegex, test: testPattern }, OperationalError, UserError },
+	[VALIDATOR_MODULE]: { validate },
 };
+
+/** The host gives a frozen bundle the module of this name. */
+export const isHostModule = (name: string) => Object.hasOwn(HOST_MODULES, name);
 
 const isContract = (value: unknown): value is Action | Trigger =>
 	isRecord(value) &&

@@ -59,6 +59,7 @@ import {
 	type ToolDefinition,
 } from './providers';
 import { outputBinaryKeys } from './validate';
+import { validateUntrusted } from './validator';
 import {
 	assertWebhookSignature,
 	loadTriggerExecutor,
@@ -246,12 +247,13 @@ const chunksItems = ({ kind, contract }: VersionManifest, { chunkItems }: Sandbo
  * trigger gets no credential data: the host applies the credential to each request.
  */
 const grantsOf = ({ kind, contract }: VersionManifest, chunked: boolean) => {
-	if (kind === 'trigger') return ['http', 'log', 'limits'];
+	if (kind === 'trigger') return ['http', 'log', 'limits', 'schema'];
 	const { imports, binary, supplied } = permissionsOf(contract);
 	return [
 		'http',
 		'log',
 		'limits',
+		'schema',
 		'run-credential',
 		...(chunked ? ['chunk'] : []),
 		...(kind === 'provider'
@@ -1136,6 +1138,11 @@ function callsOf(
 				const { limits } = contextOf();
 				return { maxRequests: limits.maxRequests, maxItems: limits.maxItems };
 			}
+			case 'schema.validate':
+				return validateUntrusted(params.value, params.schema, {
+					path: typeof params.path === 'string' ? params.path : undefined,
+					allowExpressions: params.allowExpressions === true,
+				});
 			case 'run-credential.get':
 				try {
 					const { credential } = contextOf();
@@ -2159,6 +2166,17 @@ export async function sandboxedVersionOf(frozen: FrozenVersion, options: Sandbox
 	const { manifest } = frozen;
 	const missing = unsupported(manifest);
 	if (missing) throw new UserError(missing);
+	// The host compiles the contract schemas, so they get the same guards as a schema of the guest.
+	const refused =
+		frozen.origin === 'first-party'
+			? []
+			: [
+					...validateUntrusted(undefined, manifest.contract.input, { path: 'input' }),
+					...validateUntrusted(undefined, manifest.contract.output, { path: 'output' }),
+				];
+	if (refused.length > 0) {
+		throw new UserError(`The contract of ${manifest.id}@${manifest.semver}: ${refused.join('; ')}`);
+	}
 	const kind: SandboxKind = manifest.kind;
 	const code = await verifiedCodeOf(frozen);
 	const config: GuestSession = {

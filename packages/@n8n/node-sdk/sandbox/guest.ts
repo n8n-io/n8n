@@ -3,20 +3,21 @@
 // JS realm, so this code is not a trust boundary: the sidecar links only the granted imports,
 // and the host checks every call and every output.
 import { source } from 'n8n:js-guest/bundle@1.0.0';
-import type * as wit from 'n8n:node-contract/capabilities@2.8.0';
+import type * as wit from 'n8n:node-contract/capabilities@2.9.0';
 import {
 	request as witRequest,
 	type HttpError as WitHttpError,
 	type HttpFailure,
 	type HttpRequest as WitHttpRequest,
-} from 'n8n:node-contract/http@2.8.0';
-import { log as witLog } from 'n8n:node-contract/log@2.8.0';
-import { get as witCredential } from 'n8n:node-contract/run-credential@2.8.0';
+} from 'n8n:node-contract/http@2.9.0';
+import { log as witLog } from 'n8n:node-contract/log@2.9.0';
+import { get as witCredential } from 'n8n:node-contract/run-credential@2.9.0';
 import { OperationalError, safeRegex, UserError } from 'n8n-workflow';
 
 import { isHttpError, type Action, type Http, type HttpRequest, type Trigger } from '../src/define';
 import type { Binary, JsonSchema } from '../src/schema';
 import type { ChatMessage, ChatReply, ChatRequest, ToolCall } from '../src/providers';
+import { validate } from './validator';
 
 export const isRecord = (value: unknown): value is Record<string, unknown> =>
 	typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -51,9 +52,10 @@ if (typeof URL.canParse !== 'function') {
 	});
 }
 
-/** Host modules a bundle may import, as in the host process. */
+/** Host modules a bundle may import, as in the host process (`HOST_MODULES` of `runtime.ts`). */
 const HOST_MODULES: Readonly<Record<string, unknown>> = {
 	'n8n-workflow': { safeRegex, OperationalError, UserError },
+	'@n8n/node-sdk/validator': { validate },
 };
 
 /**

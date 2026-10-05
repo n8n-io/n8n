@@ -6,6 +6,7 @@ import { actions } from '../../../nodes-base-next/dist/index.js';
 import { versionsOf } from '../../../nodes-base-next/dist/registry.js';
 import { freezeAction } from '../freeze';
 import { replayFixtures } from '../publish';
+import { t } from '../schema';
 import type { ExecutorHost } from '../runtime';
 import { WORKER_GUEST, workerRuntime } from '../runtimes/worker';
 import { sandboxedVersionOf, type SandboxOptions } from '../sandbox';
@@ -47,7 +48,7 @@ async function replay(id: string, sandbox: SandboxOptions): Promise<string[]> {
 	);
 }
 
-const PROBES = `import { defineNode, t } from '@n8n/node-sdk';
+const PROBES = `import { defineNode, t, validate } from '@n8n/node-sdk';
 const probe = defineNode({ id: 'probe', displayName: 'Probe' });
 const spec = (run: (context: any) => Promise<unknown>) =>
 	probe.action('probe', {
@@ -68,6 +69,16 @@ export const memoryProbe = spec(async () => {
 	const kept: unknown[] = [];
 	for (;;) kept.push(new Array(1_000_000).fill(kept.length));
 });
+export const validateProbe = spec(async () => ({
+	value: validate(
+		{ id: 1, tags: ['a', 2], extra: true },
+		t.obj({ id: t.str(), tags: t.arr(t.str()) }).json,
+		{ path: 'page' },
+	).join('; '),
+}));
+export const slowPatternProbe = spec(async () => ({
+	value: validate('a', t.str().with({ pattern: '(a+)+$' }).json).join('; '),
+}));
 // A name built at run time passes the freeze check.
 export const exitProbe = spec(async () => {
 	(globalThis as any)[['pro', 'cess'].join('')].exit(3);
@@ -84,6 +95,17 @@ const host: ExecutorHost = {
 };
 
 const CASES = ['items.set', 'slack.message.send', 'gmail.message.send', 'dataTable.row.upsert'];
+
+it('refuses a community contract schema that a guest could not send', async () => {
+	const [head] = versionsOf('items.set');
+	const output = t.obj({ id: t.str().with({ pattern: '(a+)+$' }) }).json;
+	const manifest = { ...head!.manifest, contract: { ...head!.manifest.contract, output } };
+	await expect(
+		sandboxedVersionOf({ ...head!, manifest, origin: 'community' }, options()),
+	).rejects.toThrow(
+		`The contract of items.set@${manifest.semver}: output: the schema pattern "(a+)+$" can take more than linear time`,
+	);
+});
 
 describe.skipIf(!existsSync(WORKER_GUEST))('worker runtime', () => {
 	const runtime = workerRuntime();
@@ -109,6 +131,22 @@ describe.skipIf(!existsSync(WORKER_GUEST))('worker runtime', () => {
 			expect(await replay(id, options(runtime))).toEqual(await replay(id, options()));
 		},
 	);
+
+	it('gives the issues of validate in the host process and in the guest', async () => {
+		const { action } = await freezeAction(file, 'validateProbe');
+		const { run } = action as unknown as { run: () => Promise<{ value: string }> };
+		const inProcess = await run();
+		expect(inProcess.value).toBe(
+			'page.id: must be string, got 1; page.tags[1]: must be string, got 2; page: unknown field(s) extra. Allowed: id, tags',
+		);
+		expect((await runProbe('validateProbe'))[0]?.[0]?.json).toEqual(inProcess);
+	});
+
+	it('refuses a schema pattern of the guest that can take more than linear time', async () => {
+		expect((await runProbe('slowPatternProbe'))[0]?.[0]?.json).toEqual({
+			value: 'input: the schema pattern "(a+)+$" can take more than linear time',
+		});
+	});
 
 	it('refuses an import that the manifest does not grant, before the host sees it', async () => {
 		await expect(runProbe('undeclaredProbe')).rejects.toThrow(

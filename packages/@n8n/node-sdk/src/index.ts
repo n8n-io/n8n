@@ -152,4 +152,5 @@ export type {
 	WebhookRequest,
 } from './triggers';
 export type { ActionUi, FieldUi, Widgets } from './properties';
-export { list, matches, parse, readAs, validate } from './validate';
+export { list, matches, parse, readAs } from './validate';
+export { validate } from './validator';

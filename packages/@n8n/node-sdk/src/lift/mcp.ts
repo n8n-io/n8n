@@ -3,6 +3,7 @@
  * its annotations set the flow, and `run` calls the tool through the host's MCP client. The
  * output is typed only when the tool declares an `outputSchema`.
  */
+import { isRecord } from '@n8n/utils/is-record';
 import { OperationalError } from 'n8n-workflow';
 
 import {
@@ -78,19 +79,91 @@ export interface LiftedMcpTool {
 	readonly action: Action;
 	/** The derived manifest of the action. */
 	readonly contract: DerivedManifest;
-	/** Schema keywords the validator does not check, e.g. `input.$ref`. */
+	/**
+	 * Each `$ref` that the lift could not inline and opened to any value, e.g.
+	 * `input.properties.parent.$ref: not inlined (recursive)`.
+	 */
 	readonly issues: readonly string[];
 }
 
-const UNCHECKED = ['$ref', 'allOf', 'not', 'if', 'then', 'else', 'dependentSchemas'];
+/** The keywords that hold what a local `$ref` points to. */
+const DEFINITIONS = new Set(['$defs', 'definitions']);
 
-/** Keywords outside the checked subset, by path. */
-function uncheckedKeywords(schema: unknown, at: string): string[] {
-	if (typeof schema !== 'object' || schema === null) return [];
-	return Object.entries(schema).flatMap(([keyword, value]) => [
-		...(UNCHECKED.includes(keyword) ? [`${at}.${keyword}`] : []),
-		...(typeof value === 'object' ? uncheckedKeywords(value, `${at}.${keyword}`) : []),
-	]);
+/** Keywords whose value is data, not a schema. */
+const DATA = new Set(['const', 'enum', 'default', 'examples']);
+
+/** A ref into the definitions of the tool schema, e.g. `#/$defs/parent`. */
+const DEFINITION_REF = /^#\/(\$defs|definitions)\/([^/]+)$/;
+
+/** The most refs that the lift inlines into one schema: refs can repeat a definition many times. */
+const MAX_INLINED = 1_000;
+
+const isSchemaObject = (value: unknown): value is JsonSchema => isRecord(value);
+
+/** The definition that a ref names, e.g. `#/$defs/parent`, if it is an object. */
+function definitionOf(root: unknown, ref: string): Record<string, unknown> | undefined {
+	const [, keyword = '', pointer = ''] = DEFINITION_REF.exec(ref) ?? [];
+	// A JSON Pointer token in a URI fragment (RFC 6901). `decodeURIComponent` throws on a bad escape.
+	if (/%(?![0-9a-fA-F]{2})/.test(pointer)) return undefined;
+	const name = decodeURIComponent(pointer).replaceAll('~1', '/').replaceAll('~0', '~');
+	const definitions = isRecord(root) ? root[keyword] : undefined;
+	const definition = isRecord(definitions) ? definitions[name] : undefined;
+	return isRecord(definition) ? definition : undefined;
+}
+
+interface Inlined {
+	readonly schema: unknown;
+	readonly issues: readonly string[];
+}
+
+/**
+ * `schema` with each ref into the definitions of `root` replaced by the definition. The lift
+ * cuts the tool schema into fields, so a ref there has no root to point into. A ref that the
+ * lift cannot inline (recursive, remote, not found, too many) becomes an open schema and an issue,
+ * so a tool with a loose schema still runs.
+ */
+function inlined(schema: unknown, root: unknown, at: string): Inlined {
+	const budget = { left: MAX_INLINED };
+	const walk = (node: unknown, path: string, refs: readonly string[]): Inlined => {
+		if (Array.isArray(node)) {
+			const parts = node.map((item, index) => walk(item, `${path}[${index}]`, refs));
+			return {
+				schema: parts.map((part) => part.schema),
+				issues: parts.flatMap((part) => part.issues),
+			};
+		}
+		if (!isRecord(node)) return { schema: node, issues: [] };
+		const ref = typeof node.$ref === 'string' ? node.$ref : undefined;
+		const parts = Object.entries(node)
+			.filter(([key]) => !DEFINITIONS.has(key) && !(key === '$ref' && ref !== undefined))
+			.map(([key, value]): [string, Inlined] => [
+				key,
+				DATA.has(key) ? { schema: value, issues: [] } : walk(value, `${path}.${key}`, refs),
+			]);
+		const own = Object.fromEntries(parts.map(([key, part]) => [key, part.schema]));
+		const issues = parts.flatMap(([, part]) => part.issues);
+		if (ref === undefined) return { schema: own, issues };
+		const definition = definitionOf(root, ref);
+		const reason = !ref.startsWith('#')
+			? 'remote'
+			: definition === undefined
+				? 'dangling'
+				: refs.includes(ref)
+					? 'recursive'
+					: budget.left <= 0
+						? 'too many refs'
+						: undefined;
+		if (reason !== undefined || definition === undefined) {
+			return { schema: own, issues: [`${path}.$ref: not inlined (${reason})`, ...issues] };
+		}
+		budget.left -= 1;
+		const target = walk(definition, path, [...refs, ref]);
+		return {
+			schema: isRecord(target.schema) ? { ...target.schema, ...own } : own,
+			issues: [...target.issues, ...issues],
+		};
+	};
+	return walk(schema, at, []);
 }
 
 /** `search-pages` and `search_pages` → `searchPages`. */
@@ -113,15 +186,28 @@ const flowOf = ({ annotations = {} }: McpTool): ActionFlow => ({
 		: {}),
 });
 
-/** Each top-level property of the tool input as a field. The JSON Schema stays as it is. */
-function inputOf({ inputSchema }: McpTool): Shape {
+/** Each top-level property of the tool input as a field, with its refs inlined. */
+function inputOf({ inputSchema }: McpTool): { shape: Shape; issues: readonly string[] } {
 	const required = new Set(inputSchema.required ?? []);
-	return Object.fromEntries(
-		Object.entries(inputSchema.properties ?? {}).map(([name, schema]) => [
-			name,
-			new Schema<unknown, boolean>(schema, !required.has(name)),
-		]),
-	);
+	const fields = Object.entries(inputSchema.properties ?? {}).map(([name, schema]) => ({
+		name,
+		...inlined(schema, inputSchema, `input.properties.${name}`),
+	}));
+	return {
+		// A boolean field schema (`true`) takes any value.
+		shape: Object.fromEntries(
+			fields.map(({ name, schema }) => [
+				name,
+				new Schema<unknown, boolean>(isSchemaObject(schema) ? schema : {}, !required.has(name)),
+			]),
+		),
+		issues: fields.flatMap(({ issues }) => issues),
+	};
+}
+
+/** The tool output, with its refs inlined, or `undefined` when the tool declares none. */
+function outputOf({ outputSchema }: McpTool): Inlined | undefined {
+	return outputSchema ? inlined(outputSchema, outputSchema, 'output') : undefined;
 }
 
 /** The item of a call: the structured content, else the text parts joined. */
@@ -148,15 +234,18 @@ export function liftMcpTool(
 ): LiftedMcpTool {
 	const builder = defineNode(node);
 	const target = options.resource === undefined ? builder : builder.resource(options.resource);
-	const output = tool.outputSchema
-		? new Schema<Record<string, unknown>>(tool.outputSchema, false)
-		: t.json();
+	const input = inputOf(tool);
+	const declared = outputOf(tool);
+	const output =
+		declared && isSchemaObject(declared.schema)
+			? new Schema<Record<string, unknown>>(declared.schema, false)
+			: t.json();
 	const lifted = target.action(operationOf(tool.name), {
 		action: tool.title ?? tool.name,
 		summary: summaryOf(tool),
 		flow: flowOf(tool),
 		...(options.scopes ? { scopes: options.scopes } : {}),
-		input: inputOf(tool),
+		input: input.shape,
 		output,
 		async run({ input }) {
 			return itemOf(tool, await client.callTool({ name: tool.name, arguments: { ...input } }));
@@ -171,9 +260,6 @@ export function liftMcpTool(
 			semver: `${action.version}.0.0`,
 			outputClaim: tool.outputSchema ? 'inferred' : 'unknown',
 		},
-		issues: [
-			...uncheckedKeywords(tool.inputSchema, 'input'),
-			...uncheckedKeywords(tool.outputSchema, 'output'),
-		],
+		issues: [...input.issues, ...(declared?.issues ?? [])],
 	};
 }

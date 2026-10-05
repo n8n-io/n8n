@@ -33,7 +33,9 @@ import type {
 	WebhookRequest,
 } from './triggers';
 import type { ActionUi } from './properties';
-import { exampleOf, firstMatchOf, outputBinaryKeys, readAs, validate } from './validate';
+import { firstMatchOf } from './pattern';
+import { exampleOf, outputBinaryKeys, readAs } from './validate';
+import { validate } from './validator';
 
 /**
  * The integration identity: name, credential, and base URL shared by its actions.

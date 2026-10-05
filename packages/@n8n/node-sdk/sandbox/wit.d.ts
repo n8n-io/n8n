@@ -6,7 +6,7 @@ declare module 'n8n:js-guest/bundle@1.0.0' {
 	export function source(): string;
 }
 
-declare module 'n8n:node-contract/http@2.8.0' {
+declare module 'n8n:node-contract/http@2.9.0' {
 	export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE' | 'HEAD';
 	export type HttpTarget = { tag: 'url'; val: string } | { tag: 'path'; val: string };
 	export interface HttpRequest {
@@ -33,19 +33,28 @@ declare module 'n8n:node-contract/http@2.8.0' {
 	export function request(request: HttpRequest): HttpResponse;
 }
 
-declare module 'n8n:node-contract/log@2.8.0' {
+declare module 'n8n:node-contract/log@2.9.0' {
 	export function log(level: 'debug' | 'info' | 'warn' | 'error', message: string): void;
 }
 
-declare module 'n8n:node-contract/limits@2.8.0' {
+declare module 'n8n:node-contract/limits@2.9.0' {
 	export function get(): { maxRequests: number; maxItems: number };
 }
 
-declare module 'n8n:node-contract/chunk@2.8.0' {
+declare module 'n8n:node-contract/schema@2.9.0' {
+	export function validate(
+		value: string,
+		schema: string,
+		path: string,
+		allowExpressions: boolean,
+	): string[];
+}
+
+declare module 'n8n:node-contract/chunk@2.9.0' {
 	export function item(index: number): void;
 }
 
-declare module 'n8n:node-contract/data-tables@2.8.0' {
+declare module 'n8n:node-contract/data-tables@2.9.0' {
 	export type ColumnType = 'string' | 'number' | 'boolean' | 'date';
 	export interface Column {
 		name: string;
@@ -101,8 +110,8 @@ declare module 'n8n:node-contract/data-tables@2.8.0' {
 	export function create(table: { name: string; columns: Column[] }): TableInfo;
 }
 
-declare module 'n8n:node-contract/parsers@2.8.0' {
-	import type { Binary } from 'n8n:node-contract/binary@2.8.0';
+declare module 'n8n:node-contract/parsers@2.9.0' {
+	import type { Binary } from 'n8n:node-contract/binary@2.9.0';
 	/** The host checks the format and its options. */
 	export function extract(
 		file: Binary,
@@ -110,7 +119,7 @@ declare module 'n8n:node-contract/parsers@2.8.0' {
 	): string;
 }
 
-declare module 'n8n:node-contract/code@2.8.0' {
+declare module 'n8n:node-contract/code@2.9.0' {
 	export function run(request: {
 		language: 'javascript' | 'python';
 		code: string;
@@ -118,20 +127,20 @@ declare module 'n8n:node-contract/code@2.8.0' {
 	}): string;
 }
 
-declare module 'n8n:node-contract/wait@2.8.0' {
+declare module 'n8n:node-contract/wait@2.9.0' {
 	export function until(at: bigint): void;
 }
 
-declare module 'n8n:node-contract/input-of@2.8.0' {
+declare module 'n8n:node-contract/input-of@2.9.0' {
 	export function get(item: number): string;
 }
 
-declare module 'n8n:node-contract/run-credential@2.8.0' {
+declare module 'n8n:node-contract/run-credential@2.9.0' {
 	export function get(): { type: string; fields: string } | undefined;
 }
 
-declare module 'n8n:node-contract/binary@2.8.0' {
-	import type { HttpRequest, HttpResponse } from 'n8n:node-contract/http@2.8.0';
+declare module 'n8n:node-contract/binary@2.9.0' {
+	import type { HttpRequest, HttpResponse } from 'n8n:node-contract/http@2.9.0';
 	export interface BinaryMeta {
 		mimeType: string;
 		fileName?: string;
@@ -158,7 +167,7 @@ declare module 'n8n:node-contract/binary@2.8.0' {
 	): { status: number; headers: Array<[string, string]>; body: Binary };
 }
 
-declare module 'n8n:node-contract/capabilities@2.8.0' {
+declare module 'n8n:node-contract/capabilities@2.9.0' {
 	export interface ToolCall {
 		id: string;
 		name: string;
@@ -203,7 +212,7 @@ declare module 'n8n:node-contract/capabilities@2.8.0' {
 		| { tag: 'embeddings'; val: Embeddings };
 }
 
-declare module 'n8n:node-contract/supplied@2.8.0' {
-	import type { Capability } from 'n8n:node-contract/capabilities@2.8.0';
+declare module 'n8n:node-contract/supplied@2.9.0' {
+	import type { Capability } from 'n8n:node-contract/capabilities@2.9.0';
 	export function open(id: bigint): Capability;
 }
