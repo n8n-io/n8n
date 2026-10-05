@@ -261,7 +261,7 @@ describe('emitPackageImportedEvent', () => {
 			workflows: { created: 1, updated: 1, skipped: 1, archived: 0, deleted: 0 },
 			folders: { removed: 0 },
 			credentials: { matched: 1, created: 1, requirements: 2 },
-			dataTables: { matched: 1, created: 2, requirements: 3 },
+			dataTables: { matched: 1, created: 2, updated: 0, requirements: 3 },
 			// scope 2's two missing requirements were created, so post-apply missing is 0; its
 			// overwritten name matched first but is counted as updated, not matched.
 			variables: { matched: 1, missing: 0, created: 1, stubbed: 1, updated: 1, requirements: 4 },

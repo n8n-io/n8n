@@ -410,6 +410,7 @@ export type ImportPackageEventCounts = {
 	dataTables: {
 		matched: number;
 		created: number;
+		updated: number;
 		requirements: number;
 	};
 	variables: {

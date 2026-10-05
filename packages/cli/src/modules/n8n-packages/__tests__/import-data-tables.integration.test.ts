@@ -197,7 +197,12 @@ describe('workflow package import — with data tables', () => {
 				expect(options.dataTableMatchingMode).toBe('by-id');
 				expect(options.dataTableMissingMode).toBe('create');
 				expect(options.dataTableSchemaConflictPolicy).toBe('keep-existing');
-				expect(counts.dataTables).toEqual({ matched: 1, created: 1, requirements: 2 });
+				expect(counts.dataTables).toEqual({
+					matched: 1,
+					created: 1,
+					updated: 0,
+					requirements: 2,
+				});
 			} finally {
 				emitSpy.mockRestore();
 			}
