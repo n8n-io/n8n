@@ -187,7 +187,8 @@ export class ScalingModeConfig {
 	 * Whether a worker that receives a shutdown signal suspends in-flight
 	 * production executions at the next node boundary. Suspended executions are
 	 * persisted as 'waiting' and resumed on another worker, instead of running
-	 * to completion (or force-kill) on the exiting worker.
+	 * to completion (or force-kill) on the exiting worker. An execution that
+	 * still owes its webhook caller a response is not suspended.
 	 */
 	@Env('N8N_WORKER_SUSPEND_EXECUTIONS_ON_SHUTDOWN')
 	suspendExecutionsOnShutdown: boolean = false;

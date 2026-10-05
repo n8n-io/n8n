@@ -235,6 +235,9 @@ export class JobProcessor {
 			});
 		}
 
+		// An older main sends no flag, so a webhook run is assumed to owe a response.
+		let webhookResponsePending = job.data.webhookResponsePending ?? execution.mode === 'webhook';
+
 		lifecycleHooks.addHandler('sendResponse', async (response): Promise<void> => {
 			// An MCP Service call takes its result from the execution's stored data, so a
 			// response relayed to main has no reader. Relaying one would also reach main
@@ -273,6 +276,9 @@ export class JobProcessor {
 			};
 
 			await job.progress(msg);
+
+			webhookResponsePending = false;
+			if (this.suspensionRequested) this.runningJobs[job.id]?.suspend?.();
 		});
 
 		lifecycleHooks.addHandler('sendChunk', async (chunk: StructuredChunk): Promise<void> => {
@@ -368,7 +374,11 @@ export class JobProcessor {
 
 		if (workflowExecute && this.isJobSuspendable(job, execution)) {
 			const suspendable = workflowExecute;
-			runningJob.suspend = () => suspendable.suspend();
+			runningJob.suspend = () => {
+				if (webhookResponsePending) return false;
+				suspendable.suspend();
+				return true;
+			};
 			// A job that was still in its preflight reads when shutdown asked the
 			// running jobs to suspend would otherwise run to completion unasked.
 			if (this.suspensionRequested) runningJob.suspend();
@@ -590,7 +600,8 @@ export class JobProcessor {
 	 * Whether a job may be suspended at worker shutdown. Only production
 	 * executions qualify: manual and evaluation runs are tied to a session,
 	 * streaming responses cannot migrate mid-stream, and MCP executions are
-	 * pinned to their session.
+	 * pinned to their session. A pending webhook response is checked at
+	 * suspend time, since the run may still send it.
 	 */
 	/** Set once at shutdown; jobs that register afterwards suspend right away. */
 	private suspensionRequested = false;
@@ -612,8 +623,7 @@ export class JobProcessor {
 		const executionIds: string[] = [];
 
 		for (const runningJob of Object.values(this.runningJobs)) {
-			if (!runningJob.suspend) continue;
-			runningJob.suspend();
+			if (!runningJob.suspend?.()) continue;
 			executionIds.push(runningJob.executionId);
 		}
 
