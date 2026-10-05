@@ -1522,10 +1522,10 @@ export class WorkflowExecute {
 				this.mode,
 			);
 
-			if (this.runExecutionData.resumeInstruction === 'run-stack-head') {
+			if (this.runExecutionData.waitReason === 'suspended') {
 				// The engine was suspended at a node boundary, so the stack head has
 				// not executed yet: run it normally instead of passing it through.
-				this.runExecutionData.resumeInstruction = undefined;
+				this.runExecutionData.waitReason = undefined;
 				return;
 			}
 
@@ -2278,7 +2278,7 @@ export class WorkflowExecute {
 					// The cancel check above must win over suspension.
 					if (this.suspensionRequested) {
 						this.runExecutionData.waitTill = new Date();
-						this.runExecutionData.resumeInstruction = 'run-stack-head';
+						this.runExecutionData.waitReason = 'suspended';
 						this.additionalData.setExecutionStatus?.('waiting');
 						return;
 					}
@@ -2925,7 +2925,7 @@ export class WorkflowExecute {
 			// resumable. A genuine Wait-node waitTill is never cleared here.
 			if (this.suspensionRequested) {
 				this.runExecutionData.waitTill = undefined;
-				this.runExecutionData.resumeInstruction = undefined;
+				this.runExecutionData.waitReason = undefined;
 			}
 			Logger.debug('Workflow execution finished with error', {
 				error: executionError,

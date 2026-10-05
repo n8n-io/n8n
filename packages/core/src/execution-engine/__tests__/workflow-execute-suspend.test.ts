@@ -51,7 +51,7 @@ describe('WorkflowExecute suspension', () => {
 		expect(hookRun.waitTill).toBeInstanceOf(Date);
 		expect(run.waitTill).toBeInstanceOf(Date);
 		expect(run.finished).not.toBe(true);
-		expect(run.data.resumeInstruction).toBe('run-stack-head');
+		expect(run.data.waitReason).toBe('suspended');
 
 		// The next, not-yet-executed node is the stack head, untouched.
 		const stack = run.data.executionData!.nodeExecutionStack;
@@ -64,7 +64,7 @@ describe('WorkflowExecute suspension', () => {
 		expect(run.data.resultData.runData.node2).toBeUndefined();
 	});
 
-	test('resume executes the stack head normally and clears the instruction', async () => {
+	test('resume executes the stack head normally and clears the wait reason', async () => {
 		const { run, workflow } = await runAndSuspend('node1');
 
 		const additionalData = Helpers.WorkflowExecuteAdditionalData(createDeferredPromise<IRun>());
@@ -76,7 +76,7 @@ describe('WorkflowExecute suspension', () => {
 
 		expect(resumed.status).toBe('success');
 		expect(resumed.finished).toBe(true);
-		expect(resumed.data.resumeInstruction).toBeUndefined();
+		expect(resumed.data.waitReason).toBeUndefined();
 
 		// node2 ran normally: not disabled, exactly one run recorded.
 		expect(node2.disabled).toBe(false);
@@ -85,7 +85,7 @@ describe('WorkflowExecute suspension', () => {
 		expect(resumed.data.resultData.runData.node1).toHaveLength(1);
 	});
 
-	test('legacy waiting state (no resume instruction) keeps the skip-head behavior', async () => {
+	test('legacy waiting state (no wait reason) keeps the skip-head behavior', async () => {
 		const workflow = createWorkflow();
 		// A Wait-node-style parked state: the executed node pushed back onto the
 		// stack head, its run recorded, waitTill set, no resume instruction.
@@ -128,7 +128,7 @@ describe('WorkflowExecute suspension', () => {
 		expect(run.status).toBe('success');
 		expect(run.finished).toBe(true);
 		expect(run.waitTill).toBeUndefined();
-		expect(run.data.resumeInstruction).toBeUndefined();
+		expect(run.data.waitReason).toBeUndefined();
 	});
 
 	test('suspend before the run starts is a no-op', async () => {
@@ -141,7 +141,7 @@ describe('WorkflowExecute suspension', () => {
 		const run = await workflowExecute.run({ workflow, startNode: trigger });
 
 		expect(run.status).toBe('success');
-		expect(run.data.resumeInstruction).toBeUndefined();
+		expect(run.data.waitReason).toBeUndefined();
 	});
 
 	test('an error after suspension clears the resume markers', async () => {
@@ -157,7 +157,7 @@ describe('WorkflowExecute suspension', () => {
 		// @ts-expect-error private property
 		const runExecutionData: IRunExecutionData = workflowExecute.runExecutionData;
 		runExecutionData.waitTill = new Date();
-		runExecutionData.resumeInstruction = 'run-stack-head';
+		runExecutionData.waitReason = 'suspended';
 
 		const run = await workflowExecute.processSuccessExecution(
 			new Date(),
@@ -168,6 +168,6 @@ describe('WorkflowExecute suspension', () => {
 		expect(run.status).toBe('canceled');
 		expect(run.waitTill).toBeUndefined();
 		expect(run.data.waitTill).toBeUndefined();
-		expect(run.data.resumeInstruction).toBeUndefined();
+		expect(run.data.waitReason).toBeUndefined();
 	});
 });
