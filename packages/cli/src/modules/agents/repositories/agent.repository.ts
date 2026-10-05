@@ -217,6 +217,18 @@ export class AgentRepository extends Repository<Agent> {
 	 * for callers whose access check does not hinge on a specific project (e.g.
 	 * users with global agent scopes).
 	 */
+	/** Create or rename the row for a code-defined instance agent. */
+	async ensureInstanceAgent(id: string, name: string): Promise<void> {
+		const existing = await this.findOneBy({ id });
+		if (existing) {
+			if (existing.name !== name || existing.scope !== 'instance') {
+				await this.update({ id }, { name, scope: 'instance' });
+			}
+			return;
+		}
+		await this.insert({ id, name, scope: 'instance', schema: null });
+	}
+
 	async findById(id: string): Promise<Agent | null> {
 		return await this.findOne({
 			where: { id },

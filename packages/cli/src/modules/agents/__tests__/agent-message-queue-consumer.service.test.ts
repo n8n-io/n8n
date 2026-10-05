@@ -21,6 +21,7 @@ import type { AgentChatBridge } from '../integrations/agent-chat-bridge';
 import type { ChatIntegrationService } from '../integrations/chat-integration.service';
 import type { AgentMessageQueueRepository } from '../repositories/agent-message-queue.repository';
 import type { AgentQueueDispatch, QueuedIntegrationMessage } from '../types/agent-queued-message';
+import { SystemAgentRegistry } from '../system-agents/system-agent-registry';
 
 vi.mock('@/permissions.ee/check-access', () => ({ userHasScopes: vi.fn() }));
 
@@ -116,6 +117,7 @@ describe('AgentMessageQueueConsumer', () => {
 			integrations,
 			orchestrator,
 			mockLogger(),
+			new SystemAgentRegistry(),
 		);
 	});
 

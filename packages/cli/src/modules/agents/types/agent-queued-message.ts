@@ -20,6 +20,8 @@ export interface QueuedUserChatMessage extends QueuedMessageInput {
 	kind: 'preview' | 'n8n_chat';
 	userId: string;
 	messageId?: string;
+	/** Turn options for a code-defined instance agent. The provider defines their shape. */
+	options?: Record<string, unknown>;
 }
 
 export interface QueuedIntegrationMessage extends QueuedMessageInput {
@@ -39,7 +41,7 @@ export type AgentQueuedMessage = QueuedUserChatMessage | QueuedIntegrationMessag
 
 /** Queue storage keeps dispatch data. Conversation input belongs to the referenced message. */
 export type AgentQueueDispatch =
-	| { kind: QueuedUserChatMessage['kind'] }
+	| { kind: QueuedUserChatMessage['kind']; options?: Record<string, unknown> }
 	| (Omit<
 			QueuedIntegrationMessage,
 			keyof QueuedMessageInput | 'modelMessage' | 'author' | 'platformThreadId' | 'messageContext'

@@ -2,7 +2,7 @@ import type { AgentSseEvent } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { UserRepository, type User } from '@n8n/db';
 import { OnShutdown } from '@n8n/decorators';
-import { Service } from '@n8n/di';
+import { Container, Service } from '@n8n/di';
 import { OperationalError, UnexpectedError, UserError } from 'n8n-workflow';
 
 import { CredentialsService } from '@/credentials/credentials.service';
@@ -20,6 +20,7 @@ import type { AgentExecutionThread } from './entities/agent-execution-thread.ent
 import type { AgentChatBridge } from './integrations/agent-chat-bridge';
 import { ChatIntegrationService } from './integrations/chat-integration.service';
 import { AgentMessageQueueRepository } from './repositories/agent-message-queue.repository';
+import { SystemAgentRegistry } from './system-agents/system-agent-registry';
 
 @Service()
 export class AgentMessageQueueConsumer {
@@ -40,6 +41,7 @@ export class AgentMessageQueueConsumer {
 		private readonly integrations: ChatIntegrationService,
 		private readonly orchestrator: AgentExecutionOrchestratorService,
 		private readonly logger: Logger,
+		private readonly systemAgents: SystemAgentRegistry,
 	) {}
 
 	start(): void {
@@ -157,9 +159,11 @@ export class AgentMessageQueueConsumer {
 					message: payload.message,
 				});
 				await this.chatExecutionService.settle(admission.executionId, async () =>
-					payload.kind === 'n8n_chat'
-						? await this.consumeN8nChat(claim, user, signal, sender.send)
-						: await this.consumePreview(claim, user, signal, sender.send),
+					this.systemAgents.has(thread.agentId)
+						? await this.consumeSystemAgent(claim, user, signal, sender.send)
+						: payload.kind === 'n8n_chat'
+							? await this.consumeN8nChat(claim, user, signal, sender.send)
+							: await this.consumePreview(claim, user, signal, sender.send),
 				);
 			} else {
 				await this.consumeIntegration(claim, signal, bridge);
@@ -184,14 +188,29 @@ export class AgentMessageQueueConsumer {
 	private async getThreadOwner(thread: AgentExecutionThread): Promise<User> {
 		if (!thread.ownerId) throw new UserError('You can no longer execute this agent');
 		const user = await this.userRepository.findByIdWithRole(thread.ownerId);
+		const systemAgent = this.systemAgents.get(thread.agentId);
 		if (
 			!user ||
 			user.disabled ||
-			!(await userHasScopes(user, ['agent:execute'], false, { projectId: thread.projectId }))
+			!(systemAgent
+				? await systemAgent.authorize(user, thread.projectId)
+				: await userHasScopes(user, ['agent:execute'], false, { projectId: thread.projectId }))
 		) {
 			throw new UserError('You can no longer execute this agent');
 		}
 		return user;
+	}
+
+	private async consumeSystemAgent(
+		claim: ClaimedAgentMessage,
+		user: User,
+		signal: AbortSignal,
+		send: (event: AgentSseEvent) => void,
+	): Promise<void> {
+		const { SystemAgentExecutionService } = await import(
+			'./system-agents/system-agent-execution.service.js'
+		);
+		await Container.get(SystemAgentExecutionService).consume(claim, user, signal, send);
 	}
 
 	private async consumePreview(

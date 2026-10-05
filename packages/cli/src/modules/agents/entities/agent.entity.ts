@@ -10,12 +10,22 @@ export class Agent extends WithTimestampsAndStringId {
 	@Column({ type: 'varchar', length: 128 })
 	name: string;
 
-	@ManyToOne(() => Project, { onDelete: 'CASCADE' })
+	@ManyToOne(() => Project, { onDelete: 'CASCADE', nullable: true })
 	@JoinColumn({ name: 'projectId' })
 	project: Project;
 
-	@Column()
+	/**
+	 * Null in the database for an instance agent (`scope = 'instance'`). Its
+	 * threads carry their own working project. Project-scoped queries never
+	 * return instance agents, so project code can keep treating this as set.
+	 * PoC shortcut: the type does not show the null yet.
+	 */
+	@Column({ type: 'varchar', nullable: true })
 	projectId: string;
+
+	/** `instance` agents belong to no project and get their runtime from code. */
+	@Column({ type: 'varchar', length: 16, default: 'project' })
+	scope: 'project' | 'instance';
 
 	@JsonColumn({ nullable: true, default: null })
 	schema: AgentJsonConfig | null;

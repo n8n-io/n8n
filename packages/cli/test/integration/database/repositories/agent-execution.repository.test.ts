@@ -97,6 +97,7 @@ import { AgentRepository } from '@/modules/agents/repositories/agent.repository'
 import { N8N_CHAT_PRODUCTION_SOURCE } from '@/modules/agents/utils/agent-thread-access';
 
 import { createMember, createAdmin } from '../../shared/db/users';
+import { SystemAgentRegistry } from '@/modules/agents/system-agents/system-agent-registry';
 
 // Share the transaction class loaded by the built BaseRepository.
 const { TypeOrmTransaction, TypeOrmTransactionRunner } = createRequire(__filename)(
@@ -243,6 +244,7 @@ describe('AgentExecutionRepository', () => {
 			messageRepository,
 			steering,
 			settingsService,
+			new SystemAgentRegistry(),
 		);
 		const chatExecutionService = mock<AgentChatExecutionService>();
 		chatExecutionService.settle.mockImplementation(async (_executionId, finalize) => {

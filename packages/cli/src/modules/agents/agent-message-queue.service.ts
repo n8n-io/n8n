@@ -15,6 +15,7 @@ import type { AgentExecutionThread } from './entities/agent-execution-thread.ent
 import type { AgentMessageQueue } from './entities/agent-message-queue.entity';
 import type { AgentMessageOrigin } from './entities/agent-message.entity';
 import { ExecutionRecorder } from './execution-recorder';
+import { SystemAgentRegistry } from './system-agents/system-agent-registry';
 import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
 import { AgentExecutionRepository } from './repositories/agent-execution.repository';
 import { AgentExecutionThreadRepository } from './repositories/agent-execution-thread.repository';
@@ -75,6 +76,7 @@ export class AgentMessageQueueService {
 		private readonly messages: AgentMessageRepository,
 		private readonly steering: AgentMessageSteeringService,
 		private readonly settingsService: AgentsSettingsService,
+		private readonly systemAgents: SystemAgentRegistry,
 	) {}
 
 	/** Save a pending message. It is durably accepted when the transaction commits. */
@@ -89,15 +91,19 @@ export class AgentMessageQueueService {
 		},
 		onInserted?: (queueId: string) => void,
 	): Promise<{ status: 'accepted'; item: AgentMessageQueue } | { status: 'duplicate' }> {
-		await this.settingsService.assertEnabled();
-		const agent = await this.agentRepository.findByIdAndProjectId(input.agentId, input.projectId);
+		const systemAgent = this.systemAgents.get(input.agentId);
+		// Instance agents run even when the Agents feature is off for project agents.
+		if (!systemAgent) await this.settingsService.assertEnabled();
+		const agent =
+			systemAgent ??
+			(await this.agentRepository.findByIdAndProjectId(input.agentId, input.projectId));
 		if (!agent) throw new UserError('Agent not found');
 		const { payload } = input;
 		const messageId = queuedMessageId(input.agentId, input.threadId, payload);
 		let item: AgentMessageQueue;
 		try {
 			item = await this.txRunner.run({}, async (ctx) => {
-				await this.settingsService.assertEnabled(ctx);
+				if (!systemAgent) await this.settingsService.assertEnabled(ctx);
 				await this.executionService.prepareThread(
 					{
 						...input,
@@ -171,7 +177,10 @@ export class AgentMessageQueueService {
 				platformThreadId,
 			};
 		} else {
-			queueDispatch = { kind: dispatch.kind };
+			queueDispatch = {
+				kind: dispatch.kind,
+				...(dispatch.options ? { options: dispatch.options } : {}),
+			};
 		}
 		const input = await this.messages.createInput(
 			{ id: messageId, threadId, resourceId, content, modelContent, author, origin },
@@ -345,9 +354,10 @@ export class AgentMessageQueueService {
 	): Promise<ClaimedAgentMessage | null> {
 		let steeringChanged = false;
 		const claimed = await this.txRunner.run({}, async (ctx) => {
-			if (!(await this.settingsService.getEnabled(ctx))) return null;
 			const thread = await this.threadRepository.lockById(threadId, ctx);
 			if (!thread) return null;
+			if (!this.systemAgents.has(thread.agentId) && !(await this.settingsService.getEnabled(ctx)))
+				return null;
 			steeringChanged = await this.steering.releaseInactive(thread, ctx);
 			if (await this.isBlocked(thread, ctx)) return null;
 			const active = await this.repository.findActive(threadId, ctx);
