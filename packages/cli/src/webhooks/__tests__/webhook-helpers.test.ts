@@ -1747,6 +1747,13 @@ describe('executeWebhook credential-status gate', () => {
 		expect(workflowRunner.run).toHaveBeenCalled();
 	});
 
+	it('marks an onReceived run as owing no webhook response', async () => {
+		await runGate({ authentication: 'none', gateResult: missingGateResult });
+
+		const [runData] = vi.mocked(workflowRunner.run).mock.calls[0];
+		expect(runData.webhookResponsePending).toBe(false);
+	});
+
 	it('does not gate webhooks that do not establish a triggering identity', async () => {
 		const { checkCredentialStatus, responseCallback } = await runGate({
 			authentication: 'none',

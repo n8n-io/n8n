@@ -310,6 +310,7 @@ describe('JobProcessor', () => {
 					loadStaticData: false,
 					streamingEnabled: false,
 					isMcpExecution: false,
+					webhookResponsePending: false,
 				},
 			});
 
@@ -348,6 +349,7 @@ describe('JobProcessor', () => {
 					loadStaticData: false,
 					streamingEnabled: false,
 					isMcpExecution: false,
+					webhookResponsePending: false,
 				},
 			});
 
@@ -369,6 +371,75 @@ describe('JobProcessor', () => {
 
 			resolveRun(successRun());
 			await processPromise;
+		});
+
+		const startWebhookJob = async (jobData: Partial<Job['data']>) => {
+			const executionPersistence = mock<ExecutionPersistence>();
+			executionPersistence.findSingleExecution.mockResolvedValue(
+				mock<IExecutionResponse>({
+					mode: 'webhook',
+					workflowData: { nodes: [], staticData: {} },
+					data: mock<IRunExecutionData>(),
+				}),
+			);
+			const additionalData = mock<IWorkflowExecuteAdditionalData>();
+			vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(additionalData);
+			const jobProcessor = createJobProcessor(executionPersistence);
+
+			let resolveRun!: (run: IRun) => void;
+			processRunExecutionDataMock.mockReturnValue(new Promise<IRun>((r) => (resolveRun = r)));
+
+			const job = mock<Job>({
+				id: 'job-1',
+				data: {
+					executionId: 'exec-1',
+					loadStaticData: false,
+					streamingEnabled: false,
+					isMcpExecution: false,
+					...jobData,
+				},
+			});
+			const processPromise = jobProcessor.processJob(job);
+			await vi.waitFor(() => expect(jobProcessor.getRunningJobIds()).toEqual(['job-1']));
+
+			const finish = async () => {
+				resolveRun(successRun());
+				await processPromise;
+			};
+			return { jobProcessor, hooks: additionalData.hooks!, finish };
+		};
+
+		it('should not suspend a webhook job while its response is still pending', async () => {
+			const { jobProcessor, finish } = await startWebhookJob({ webhookResponsePending: true });
+
+			jobProcessor.suspendRunningJobs();
+			expect(workflowExecuteSuspendMock).not.toHaveBeenCalled();
+			expect(logger.info).not.toHaveBeenCalledWith(expect.stringContaining('Requested suspension'));
+
+			await finish();
+		});
+
+		it('should treat a webhook job without the flag as owing a response', async () => {
+			const { jobProcessor, finish } = await startWebhookJob({ webhookResponsePending: undefined });
+
+			jobProcessor.suspendRunningJobs();
+			expect(workflowExecuteSuspendMock).not.toHaveBeenCalled();
+
+			await finish();
+		});
+
+		it('should suspend a webhook job once it has relayed its response', async () => {
+			const { jobProcessor, hooks, finish } = await startWebhookJob({
+				webhookResponsePending: true,
+			});
+
+			jobProcessor.suspendRunningJobs();
+			expect(workflowExecuteSuspendMock).not.toHaveBeenCalled();
+
+			await hooks.runHook('sendResponse', [{ body: {}, headers: {}, statusCode: 200 }]);
+			expect(workflowExecuteSuspendMock).toHaveBeenCalledTimes(1);
+
+			await finish();
 		});
 
 		it('should not attach a suspend handle to a non-suspendable job', async () => {
