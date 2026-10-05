@@ -579,6 +579,7 @@ export class JobProcessor {
 			usedDynamicCredentials: !!run.data.executionData?.runtimeData?.credentials,
 			metadata: run.data.resultData.metadata,
 			waitTill: run.waitTill ?? null,
+			suspended: run.status === 'waiting' && run.data.resumeInstruction === 'run-stack-head',
 		};
 	}
 

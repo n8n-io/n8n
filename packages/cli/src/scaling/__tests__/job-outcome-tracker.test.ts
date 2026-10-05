@@ -142,6 +142,15 @@ describe('JobOutcomeTracker', () => {
 			expect(activeExecutions.resolveResponsePromise).toHaveBeenCalledWith('exec-1', {});
 		});
 
+		it('should leave the request unanswered when the worker parked the run for shutdown', async () => {
+			const wait = tracker.waitFor(job);
+
+			tracker.recordFinished('exec-1', { ...result, status: 'waiting', suspended: true });
+			await wait;
+
+			expect(activeExecutions.resolveResponsePromise).not.toHaveBeenCalled();
+		});
+
 		it('should answer the request with an error when the job failed', async () => {
 			const wait = tracker.waitFor(job);
 

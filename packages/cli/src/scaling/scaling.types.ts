@@ -90,6 +90,11 @@ export type JobFinishedProps = {
 	usedDynamicCredentials?: boolean;
 	metadata?: Record<string, string>;
 	waitTill?: Date | null;
+	/**
+	 * The worker parked the run at a node boundary for its shutdown. The run
+	 * continues on another worker, so this is a segment, not an outcome.
+	 */
+	suspended?: boolean;
 	startedAt: Date;
 	stoppedAt: Date;
 };

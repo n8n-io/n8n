@@ -480,6 +480,32 @@ describe('JobProcessor', () => {
 			await processPromise;
 		});
 
+		describe('deriveJobFinishedProps', () => {
+			const jobProcessor = createJobProcessor(mock<ExecutionPersistence>());
+			// @ts-expect-error private method
+			const derive = jobProcessor.deriveJobFinishedProps.bind(jobProcessor) as (
+				run: IRun,
+				startedAt: Date,
+			) => { suspended?: boolean };
+			const waitingRun = (resumeInstruction?: 'run-stack-head') =>
+				mock<IRun>({
+					status: 'waiting',
+					stoppedAt: new Date(),
+					data: mock<IRunExecutionData>({
+						resumeInstruction,
+						resultData: { error: undefined, runData: {} },
+					}),
+				});
+
+			it('should report a segment parked at a node boundary as suspended', () => {
+				expect(derive(waitingRun('run-stack-head'), new Date()).suspended).toBe(true);
+			});
+
+			it('should not report a Wait node pause as suspended', () => {
+				expect(derive(waitingRun(), new Date()).suspended).toBe(false);
+			});
+		});
+
 		describe('isJobSuspendable', () => {
 			const jobProcessor = createJobProcessor(mock<ExecutionPersistence>());
 			const cleanJob = mock<Job>({

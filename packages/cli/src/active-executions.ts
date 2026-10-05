@@ -126,7 +126,8 @@ export class ActiveExecutions {
 				// Is an existing execution we want to finish so update in DB
 				executionId = existingExecution.executionId;
 
-				if (shouldReserveCapacity) {
+				// A suspended run still holds the reservation from its first segment.
+				if (shouldReserveCapacity && !this.activeExecutions[executionId]?.suspended) {
 					await capacityReservation.reserve({ mode, executionId });
 				}
 
@@ -159,7 +160,11 @@ export class ActiveExecutions {
 		}
 
 		const resumingExecution = this.activeExecutions[executionId];
-		const postExecutePromise = createDeferredPromise<IRun | undefined>();
+		// A run parked for a worker shutdown keeps its promise, so the request that
+		// started it answers from the final run instead of the parked segment.
+		const postExecutePromise = resumingExecution?.suspended
+			? resumingExecution.postExecutePromise
+			: createDeferredPromise<IRun | undefined>();
 
 		const execution: IExecutingWorkflowData = {
 			executionData,
@@ -179,6 +184,8 @@ export class ActiveExecutions {
 			})
 			.finally(() => {
 				capacityReservation.release();
+				// A resume of a suspended run owns this entry now.
+				if (this.activeExecutions[executionId] !== execution) return;
 				if (execution.status === 'waiting') {
 					// Do not hold on a reference to the previous WorkflowExecute instance, since a resuming execution will use a new instance
 					delete execution.workflowExecution;
@@ -260,6 +267,12 @@ export class ActiveExecutions {
 	}
 
 	/** Resolve the post-execution promise in an execution. */
+	/** Mark that a worker parked this run for its shutdown and it is about to be resumed here. */
+	markSuspended(executionId: string) {
+		if (!this.has(executionId)) return;
+		this.getExecutionOrFail(executionId).suspended = true;
+	}
+
 	finalizeExecution(executionId: string, fullRunData?: IRun) {
 		if (!this.has(executionId)) return;
 		const execution = this.getExecutionOrFail(executionId);

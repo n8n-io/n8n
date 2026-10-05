@@ -541,7 +541,11 @@ export class ScalingService {
 					break;
 				}
 				case 'job-finished':
-					if (msg.success) {
+					// A suspended segment is not an outcome: the run continues on another
+					// worker and still owes the caller its response.
+					if (msg.version === 2 && msg.suspended) {
+						// keep the response promise open
+					} else if (msg.success) {
 						this.activeExecutions.resolveResponsePromise(msg.executionId, {});
 					} else {
 						this.activeExecutions.resolveResponsePromise(msg.executionId, {
@@ -576,6 +580,7 @@ export class ScalingService {
 									// for a finished one and delete it when the workflow does not
 									// save successful executions
 									waitTill: msg.waitTill ? new Date(msg.waitTill) : null,
+									suspended: msg.suspended,
 								}
 							: undefined,
 					);

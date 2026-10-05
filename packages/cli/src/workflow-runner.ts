@@ -41,6 +41,7 @@ import PCancelable from 'p-cancelable';
 
 import { ActiveExecutions } from '@/active-executions';
 import { ExecutionNotFoundError } from '@/errors/execution-not-found-error';
+import { ExecutionAlreadyResumingError } from '@/errors/execution-already-resuming.error';
 import { MaxStalledCountError } from '@/errors/max-stalled-count.error';
 import { PreExecuteBlockedError } from '@/errors/pre-execute-blocked.error';
 // `no-cycle` still reports a cycle here, but only through the dynamic import
@@ -731,6 +732,23 @@ export class WorkflowRunner {
 		}
 	}
 
+	/**
+	 * Resume a run that a worker parked for its shutdown, on this process, so the
+	 * request that started the run keeps waiting for the final run instead of the
+	 * parked segment. Returns false when another process claimed the resume first.
+	 */
+	private async resumeSuspendedExecution(executionId: string): Promise<boolean> {
+		this.activeExecutions.markSuspended(executionId);
+		const { WaitTracker } = await import('@/wait-tracker.js');
+		try {
+			await Container.get(WaitTracker).startExecution(executionId);
+			return true;
+		} catch (error) {
+			if (error instanceof ExecutionAlreadyResumingError) return false;
+			throw error;
+		}
+	}
+
 	private async enqueueExecution(
 		executionId: string,
 		workflowId: string,
@@ -852,6 +870,24 @@ export class WorkflowRunner {
 				}
 
 				const jobResult = this.scalingService.popJobResult(executionId);
+
+				if (jobResult?.suspended) {
+					try {
+						if (await this.resumeSuspendedExecution(executionId)) {
+							return resolve(await this.activeExecutions.getPostExecutePromise(executionId));
+						}
+					} catch (error) {
+						await this.processError(
+							error,
+							new Date(),
+							data.executionMode,
+							executionId,
+							getLifecycleHooksForScalingWorker(data, executionId),
+						);
+						return reject(error);
+					}
+					// Another process claimed the resume, so this segment settles as a plain wait below.
+				}
 
 				let runData: IRun;
 

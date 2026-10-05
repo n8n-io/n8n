@@ -856,6 +856,48 @@ describe('ScalingService', () => {
 			expect(activeExecutions.resolveResponsePromise).toHaveBeenCalledWith('exec-123', {});
 		});
 
+		it('should keep responsePromise open when job-finished reports a suspended segment', async () => {
+			const activeExecutions = mock<ActiveExecutions>();
+			scalingService = new ScalingService(
+				mockLogger(),
+				mock(),
+				activeExecutions,
+				jobProcessor,
+				globalConfig,
+				mock(),
+				mock(),
+				instanceSettings,
+				mock(),
+				webhookResponseRelay,
+				executionCrashService,
+				jobOutcomeTracker,
+			);
+
+			await scalingService.setupQueue();
+
+			const messageHandler = queue.on.mock.calls.find(
+				([event]) => (event as string) === 'global:progress',
+			)?.[1] as (jobId: JobId, msg: unknown) => void;
+
+			messageHandler('job-789', {
+				kind: 'job-finished',
+				version: 2,
+				executionId: 'exec-123',
+				workerId: 'worker-456',
+				success: true,
+				status: 'waiting',
+				suspended: true,
+				startedAt: new Date().toISOString(),
+				stoppedAt: new Date().toISOString(),
+			});
+
+			expect(activeExecutions.resolveResponsePromise).not.toHaveBeenCalled();
+			expect(jobOutcomeTracker.recordFinished).toHaveBeenCalledWith(
+				'exec-123',
+				expect.objectContaining({ suspended: true }),
+			);
+		});
+
 		it('should resolve responsePromise with error response when job-finished has success=false', async () => {
 			const activeExecutions = mock<ActiveExecutions>();
 			scalingService = new ScalingService(

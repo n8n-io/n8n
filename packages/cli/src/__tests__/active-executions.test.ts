@@ -174,6 +174,20 @@ describe('ActiveExecutions', () => {
 		expect(update).not.toHaveProperty('startedAt');
 	});
 
+	test('Should resume a suspended run on the same post-execute promise, without a second reservation', async () => {
+		const executionId = await activeExecutions.add(executionData);
+		const firstSegment = activeExecutions.getPostExecutePromise(executionId);
+		activeExecutions.markSuspended(executionId);
+
+		await activeExecutions.add(executionData, { executionId, expectedStatus: 'waiting' });
+		const finalRun = mock<IRun>({ status: 'success' });
+		activeExecutions.finalizeExecution(executionId, finalRun);
+
+		await expect(firstSegment).resolves.toBe(finalRun);
+		expect(concurrencyControl.throttle).toHaveBeenCalledTimes(1);
+		expect(activeExecutions.has(executionId)).toBe(false);
+	});
+
 	test('Should preserve startedAt when resuming a waiting execution', async () => {
 		await activeExecutions.add(executionData, {
 			executionId: FAKE_SECOND_EXECUTION_ID,

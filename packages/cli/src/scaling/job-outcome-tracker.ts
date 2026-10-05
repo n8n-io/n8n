@@ -19,6 +19,8 @@ type JobOutcome = {
 	error?: Error;
 	/** Whether the request that started the job should get a success response. */
 	succeeded: boolean;
+	/** The run continues on another worker, so the request is not answered yet. */
+	suspended?: boolean;
 };
 
 /** Bull job IDs are unique per queue only, so pool queues can reuse them. */
@@ -91,7 +93,7 @@ export class JobOutcomeTracker {
 			this.results.set(executionId, result);
 		}
 
-		this.settle(executionId, { succeeded: result?.success ?? true });
+		this.settle(executionId, { succeeded: result?.success ?? true, suspended: result?.suspended });
 	}
 
 	/** Record a failure the worker reported, or reject the wait for it at once. */
@@ -225,10 +227,12 @@ export class JobOutcomeTracker {
 
 		// The request may still wait for a response the worker sent while this process
 		// was disconnected. Resolving twice is a no-op.
-		this.activeExecutions.resolveResponsePromise(
-			executionId,
-			outcome.succeeded ? {} : FAILED_RESPONSE,
-		);
+		if (!outcome.suspended) {
+			this.activeExecutions.resolveResponsePromise(
+				executionId,
+				outcome.succeeded ? {} : FAILED_RESPONSE,
+			);
+		}
 
 		if (outcome.error) {
 			wait.reject(outcome.error);

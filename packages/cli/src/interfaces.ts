@@ -154,6 +154,8 @@ export interface IExecutingWorkflowData {
 	workflowExecution?: PCancelable<IRun>;
 	status: ExecutionStatus;
 	isQueueJob?: boolean;
+	/** A worker parked the run for its shutdown; the next `add` resumes it on the same promise. */
+	suspended?: boolean;
 }
 
 export interface IActiveDirectorySettings {

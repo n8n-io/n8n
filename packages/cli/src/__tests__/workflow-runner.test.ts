@@ -59,6 +59,9 @@ import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-da
 import { EXECUTION_ENDED_WITHOUT_RESPONSE } from '@/webhooks/constants';
 import type { Job } from '@/scaling/scaling.types';
 import { WorkflowRunner } from '@/workflow-runner';
+import { WaitTracker } from '@/wait-tracker';
+import { ExecutionAlreadyResumingError } from '@/errors/execution-already-resuming.error';
+import type { JobFinishedProps } from '@/scaling/scaling.types';
 
 // `@/scaling/scaling.service` is dynamically imported by `enqueueExecution`.
 // Define the mock at module top-level so the `vi.mock` factory (hoisted) can
@@ -1091,6 +1094,76 @@ describe('enqueueExecution', () => {
 		await expect(runner.enqueueExecution('1', 'workflow-xyz', data)).rejects.toThrowError(error);
 
 		expect(setupQueue).toHaveBeenCalledTimes(1);
+	});
+
+	it('resumes a suspended run on this process and settles the request with the final run', async () => {
+		const activeExecutions = Container.get(ActiveExecutions);
+		let workflowExecution: PCancelable<IRun> | undefined;
+		vi.spyOn(activeExecutions, 'attachWorkflowExecution').mockImplementation((_, execution) => {
+			workflowExecution = execution;
+		});
+		const finalRun = mock<IRun>({ status: 'success' });
+		const markSuspended = vi.spyOn(activeExecutions, 'markSuspended').mockReturnValue();
+		vi.spyOn(activeExecutions, 'getPostExecutePromise').mockResolvedValueOnce(finalRun);
+		const finalizeExecution = vi.spyOn(activeExecutions, 'finalizeExecution');
+		const startExecution = vi
+			.spyOn(Container.get(WaitTracker), 'startExecution')
+			.mockResolvedValueOnce();
+		const data = mock<IWorkflowExecutionDataProcess>({
+			workflowData: { nodes: [], staticData: {} },
+			executionData: undefined,
+		});
+		addJob.mockResolvedValueOnce(mock<Job>({ id: 'job-1', data: { executionId: '1' } }));
+		waitForJob.mockResolvedValueOnce(undefined);
+		popJobResult.mockReturnValueOnce(
+			mock<JobFinishedProps>({ success: true, status: 'waiting', suspended: true }),
+		);
+
+		// @ts-expect-error Private method
+		await runner.enqueueExecution('1', 'workflow-xyz', data);
+
+		await expect(workflowExecution).resolves.toBe(finalRun);
+		expect(markSuspended).toHaveBeenCalledWith('1');
+		expect(startExecution).toHaveBeenCalledWith('1');
+		expect(finalizeExecution).not.toHaveBeenCalled();
+	});
+
+	it('settles a suspended segment as a plain wait when another process claimed the resume', async () => {
+		const activeExecutions = Container.get(ActiveExecutions);
+		vi.spyOn(activeExecutions, 'attachWorkflowExecution').mockReturnValue();
+		vi.spyOn(activeExecutions, 'markSuspended').mockReturnValue();
+		const finalizeExecution = vi.spyOn(activeExecutions, 'finalizeExecution').mockReturnValue();
+		vi.spyOn(Container.get(WaitTracker), 'startExecution').mockRejectedValueOnce(
+			new ExecutionAlreadyResumingError('1'),
+		);
+		const data = mock<IWorkflowExecutionDataProcess>({
+			workflowData: { nodes: [], staticData: {} },
+			executionData: undefined,
+			executionMode: 'webhook',
+		});
+		addJob.mockResolvedValueOnce(mock<Job>({ id: 'job-1', data: { executionId: '1' } }));
+		waitForJob.mockResolvedValueOnce(undefined);
+		popJobResult.mockReturnValueOnce(
+			mock<JobFinishedProps>({ success: true, status: 'waiting', suspended: true }),
+		);
+		vi.spyOn(Container.get(ExecutionPersistence), 'findSingleExecution').mockResolvedValueOnce(
+			mock<IExecutionResponse>({
+				status: 'waiting',
+				finished: false,
+				mode: 'webhook',
+				data: createRunExecutionData({ resultData: { runData: {} } }),
+			}),
+		);
+
+		// @ts-expect-error Private method
+		await runner.enqueueExecution('1', 'workflow-xyz', data);
+
+		await vi.waitFor(() =>
+			expect(finalizeExecution).toHaveBeenCalledWith(
+				'1',
+				expect.objectContaining({ status: 'waiting' }),
+			),
+		);
 	});
 
 	it('should fail the execution when the result cannot be read from the DB after the job ended', async () => {
