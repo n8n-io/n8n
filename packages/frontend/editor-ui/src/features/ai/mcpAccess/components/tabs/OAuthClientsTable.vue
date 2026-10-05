@@ -10,6 +10,7 @@ import {
 	N8nLoading,
 	N8nTabs,
 	N8nText,
+	N8nTimeAgo,
 } from '@n8n/design-system';
 import type { IUser, TabOptions } from '@n8n/design-system';
 import { computed, ref } from 'vue';
@@ -17,10 +18,10 @@ import debounce from 'lodash/debounce';
 import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
 import { useRBACStore } from '@n8n/stores/rbac.store';
 import { useUsersStore } from '@n8n/stores/users.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import { getDebounceTime } from '@n8n/composables/useDebounce';
-import { DEBOUNCE_TIME } from '@/app/constants';
+import { DEBOUNCE_TIME } from '@n8n/frontend-constants/durations';
 import type { TableHeader } from '@n8n/design-system';
-import TimeAgo from '@/app/components/TimeAgo.vue';
 import { EMPTY_OAUTH_CLIENT_FILTERS, getAccessSummary, getClientBrand } from '../../clients.utils';
 import type { OAuthClientFilters } from '../../clients.utils';
 import McpEmptyStateCard from '../McpEmptyStateCard.vue';
@@ -32,6 +33,7 @@ const i18n = useI18n();
 const mcpStore = useMCPStore();
 const rbacStore = useRBACStore();
 const usersStore = useUsersStore();
+const rootStore = useRootStore();
 
 type Props = {
 	clients: OAuthClientResponseDto[];
@@ -328,7 +330,11 @@ function onRevoke(item: OAuthClientResponseDto) {
 				</template>
 				<template #[`item.grantedAt`]="{ item }">
 					<N8nText data-test-id="mcp-client-created-at" color="text-base">
-						<TimeAgo :date="new Date(item.grantedAt).toISOString()" capitalize />
+						<N8nTimeAgo
+							:date="new Date(item.grantedAt).toISOString()"
+							capitalize
+							:locale="rootStore.defaultLocale"
+						/>
 					</N8nText>
 				</template>
 				<template #[`item.actions`]="{ item }">

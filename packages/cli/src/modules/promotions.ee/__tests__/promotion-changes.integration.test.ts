@@ -407,6 +407,10 @@ it('detects variable and data table changes without reporting shadowed or unrela
 	expect((await agent.get(endpoint).expect(200)).body.data.changes).toEqual([]);
 	await variables.update(scoped.id, { value: 'changed project' });
 	await Container.get(VariablesService).updateCache();
+	expect((await agent.get(endpoint).expect(200)).body.data.changes).toEqual([]);
+	// The workflow falls back to the global variable.
+	await variables.delete(scoped.id);
+	await Container.get(VariablesService).updateCache();
 	await tables.addColumn(table.id, project.id, { name: 'total', type: 'number' });
 	expect((await agent.get(endpoint).expect(200)).body.data.changes).toEqual([
 		expect.objectContaining({ id: withTable.id, status: 'modified', dependencyCount: 1 }),
@@ -416,7 +420,7 @@ it('detects variable and data table changes without reporting shadowed or unrela
 		commitMessage: 'Dependencies',
 		canExportVariableValues: true,
 	});
-	await variables.delete([scoped.id, global.id]);
+	await variables.delete(global.id);
 	await Container.get(VariablesService).updateCache();
 	expect((await agent.get(endpoint).expect(200)).body.data.changes).toEqual([
 		expect.objectContaining({ id: withVariable.id, status: 'modified', dependencyCount: 1 }),
@@ -468,9 +472,7 @@ it('lists what applying the branch changes on this instance, named and archived 
 	await workflows.update(archived.id, { isArchived: false });
 	await workflows.delete(incoming.id);
 	const outgoing = await createWorkflow({ name: 'Outgoing', nodes: [], connections: {} }, project);
-	await Container.get(VariablesRepository).update(variable.id, {
-		value: 'https://after.example.com',
-	});
+	await Container.get(VariablesRepository).delete(variable.id);
 	await Container.get(VariablesService).updateCache();
 
 	const response = await agent.get(applyEndpoint).expect(200);
@@ -525,6 +527,48 @@ it('lists what applying the branch changes on this instance, named and archived 
 	const after = await agent.get(applyEndpoint).expect(200);
 	expect(after.body.data).toEqual({ commitSha: await remoteHead(), changes: [] });
 	expect(after.body.data.commitSha).not.toBe(baseline);
+}, 30_000);
+
+it('counts a variable on apply only when this instance lacks it in the scope of the branch', async () => {
+	const owner = await createOwner();
+	const project = await createTeamProject('Destination', owner);
+	const promoted = await createVariable('API_URL', 'https://source.example.com');
+	await Container.get(VariablesService).updateCache();
+	const dependent = await buildWorkflowReferencingVariables({
+		name: 'Dependent',
+		project,
+		variableNames: ['API_URL'],
+	});
+	const connection = await createConnection(['promote', 'apply']);
+	await Container.get(PromotionsService).promote(connection.id, owner, {
+		commitMessage: 'Baseline',
+		canExportVariableValues: true,
+	});
+	const agent = server.authAgentFor(owner);
+	const applyEndpoint = `/promotions/${project.id}/changes/apply`;
+	const variables = Container.get(VariablesRepository);
+
+	// A binding creates the variable with a new ID and the destination's own value.
+	await variables.delete(promoted.id);
+	const bound = await createVariable('API_URL', 'https://destination.example.com');
+	await Container.get(VariablesService).updateCache();
+	expect((await agent.get(applyEndpoint).expect(200)).body.data.changes).toEqual([]);
+
+	// A project variable that shadows the global one leaves the global out of this instance export.
+	await variables.save({
+		id: 'ProjectUrl',
+		key: 'API_URL',
+		value: 'https://project.example.com',
+		project,
+	});
+	await Container.get(VariablesService).updateCache();
+	expect((await agent.get(applyEndpoint).expect(200)).body.data.changes).toEqual([]);
+
+	await variables.delete(bound.id);
+	await Container.get(VariablesService).updateCache();
+	expect((await agent.get(applyEndpoint).expect(200)).body.data.changes).toEqual([
+		expect.objectContaining({ id: dependent.id, status: 'modified', dependencyCount: 1 }),
+	]);
 }, 30_000);
 
 it('answers for a destination that has only an apply configuration', async () => {

@@ -273,11 +273,14 @@ export class ImportCredentialsCommand extends BaseCommand<z.infer<typeof flagsSc
 
 		let cleared: PolicyCleared<'contentImport'>;
 		try {
-			cleared = await Container.get(PolicyEnforcementService).enforceContentImport({
-				credential: { id: credential.id ?? null, type },
-				projectId: credential.usageScope === 'instance' ? null : landingProjectId,
-				transport: 'cli',
-			});
+			cleared = await Container.get(PolicyEnforcementService).enforceContentImport(
+				{
+					credential: { id: credential.id ?? null, type },
+					projectId: credential.usageScope === 'instance' ? null : landingProjectId,
+					transport: 'cli',
+				},
+				{ kind: 'system', reason: 'cli-import' },
+			);
 		} catch (error) {
 			if (!(error instanceof PolicyViolationError)) throw error;
 

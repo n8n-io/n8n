@@ -4,7 +4,6 @@ import {
 	NEW_VARIABLE_KEY_REGEX,
 } from '@n8n/api-types';
 import { LicenseState } from '@n8n/backend-common';
-import { EventService } from '@n8n/backend-services';
 import { UNLIMITED_LICENSE_QUOTA } from '@n8n/constants';
 import type { User, Variables } from '@n8n/db';
 import { generateNanoId, VariablesRepository } from '@n8n/db';
@@ -15,7 +14,7 @@ import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import { ForbiddenError, NotFoundError } from '@n8n/errors';
 import { VariableCountLimitReachedError } from '@/errors/variable-count-limit-reached.error';
 import { VariableValidationError } from '@/errors/variable-validation.error';
-import { CacheService } from '@/services/cache/cache.service';
+import { CacheService, EventService } from '@n8n/backend-services';
 import { ProjectService } from '@/services/project.service.ee';
 
 const projectVariableScopes: Partial<Record<Scope, Scope>> = {

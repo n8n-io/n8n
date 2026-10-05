@@ -7,7 +7,7 @@ import {
 	SecretsProviderConnectionRepository,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { Credentials, getAdditionalKeys } from 'n8n-core';
+import { Credentials, FULL_ACCESS_NODE_TYPES, getAdditionalKeys } from 'n8n-core';
 import type {
 	CredentialInformation,
 	ICredentialDataDecryptedObject,
@@ -30,6 +30,7 @@ import type {
 import {
 	ICredentialsHelper,
 	NodeHelpers,
+	OPEN_AI_API_CREDENTIAL_TYPE,
 	Workflow,
 	UnexpectedError,
 	UserError,
@@ -43,6 +44,7 @@ import { CredentialTypes } from '@/credential-types';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { DCR_MANAGED_CREDENTIAL_FIELDS, OAUTH_PINNED_FIELDS } from '@/oauth/dcr-managed-fields';
 import { ExternalSecretsConfig } from '@/modules/external-secrets.ee/external-secrets.config';
+import type { PolicyActor } from '@/policy/policy-enforcement-backend';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { AiGatewayService } from '@/services/ai-gateway.service';
 
@@ -99,6 +101,13 @@ const mockNode = {
 const { nodeTypes: mockNodeTypes } = createMockNodeTypes();
 
 const INVALID_JSON_VALUE = Symbol('invalidJsonValue');
+
+/** A run names no user: the starter is not known reliably on every path, so a run never guesses. */
+function decryptActor({ executionId, userId }: IWorkflowExecuteAdditionalData): PolicyActor {
+	if (executionId) return { kind: 'system', reason: 'execution', executionId };
+	if (userId) return { kind: 'user', user: { id: userId } };
+	return { kind: 'system', reason: 'execution' };
+}
 
 @Service()
 export class CredentialsHelper extends ICredentialsHelper {
@@ -564,7 +573,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 		executeData?: IExecuteData,
 		raw?: boolean,
 		expressionResolveValues?: ICredentialsExpressionResolveValues,
-		options?: IGetDecryptedCredentialsOptions,
+		options?: IGetDecryptedCredentialsOptions & { actor?: PolicyActor },
 	): Promise<ICredentialDataDecryptedObject> {
 		// Sub-nodes, such as a chat model connected to a chain or agent, inherit executeData.node
 		// from their parent. Prefer expressionResolveValues.node when present: it is always
@@ -585,13 +594,26 @@ export class CredentialsHelper extends ICredentialsHelper {
 
 		const credentialsEntity = await this.getCredentialsEntity(nodeCredentials, type);
 
+		// Managed OpenAI credentials are unavailable to nodes that can request undeclared types.
+		if (
+			credentialsEntity.isManaged &&
+			type === OPEN_AI_API_CREDENTIAL_TYPE &&
+			consumerNode &&
+			FULL_ACCESS_NODE_TYPES.has(consumerNode.type)
+		) {
+			throw new UserError('Managed credentials are not supported by this node');
+		}
+
 		// Validate against the executing project's policy before any decryption happens.
-		await this.policyEnforcementService.enforceCredentialDecrypt({
-			credentialType: type,
-			credentialId: credentialsEntity.id,
-			consumer: consumerNode ? { nodeType: consumerNode.type } : null,
-			projectId: additionalData.projectId ?? null,
-		});
+		await this.policyEnforcementService.enforceCredentialDecrypt(
+			{
+				credentialType: type,
+				credentialId: credentialsEntity.id,
+				consumer: consumerNode ? { nodeType: consumerNode.type } : null,
+				projectId: additionalData.projectId ?? null,
+			},
+			options?.actor ?? decryptActor(additionalData),
+		);
 
 		const credentials = new Credentials(
 			{ id: credentialsEntity.id, name: credentialsEntity.name },

@@ -1,15 +1,8 @@
 import type { Logger } from '@n8n/backend-common';
 import type { OutboundHttp } from '@n8n/backend-network';
 import type { Context } from '@opentelemetry/api';
-import {
-	context,
-	createContextKey,
-	propagation,
-	ProxyTracerProvider,
-	ROOT_CONTEXT,
-	trace,
-} from '@opentelemetry/api';
-import type { ReadableSpan } from '@opentelemetry/sdk-trace-base';
+import { context, createContextKey, propagation, ROOT_CONTEXT, trace } from '@opentelemetry/api';
+import { AlwaysOffSampler, type ReadableSpan } from '@opentelemetry/sdk-trace-base';
 import {
 	InMemorySpanExporter,
 	NodeTracerProvider,
@@ -71,13 +64,6 @@ const markedContext = ROOT_CONTEXT.setValue(createContextKey('marker'), 'marked'
 
 function activeContextInside(ctx: Context): Context {
 	return context.with(ctx, () => context.active());
-}
-
-function globalTracerProviderDelegate() {
-	const globalProvider = trace.getTracerProvider();
-	return globalProvider instanceof ProxyTracerProvider
-		? globalProvider.getDelegate()
-		: globalProvider;
 }
 
 function registerForeignProvider() {
@@ -155,8 +141,29 @@ describe('OtelService tracer provider', () => {
 			expect(foreign?.exporter.getFinishedSpans().map((span) => span.name)).toEqual([
 				'GET /webhook',
 			]);
-			expect(globalTracerProviderDelegate()).toBe(foreign?.provider);
 			expect(activeContextInside(markedContext)).toBe(markedContext);
+
+			await service.shutdown();
+			expect(service.getTracer('n8n-workflow').startSpan('workflow.execute').isRecording()).toBe(
+				false,
+			);
+			expect(trace.getTracer('foreign').startSpan('another request').isRecording()).toBe(true);
+		});
+
+		it('does not replace a foreign provider that samples no spans', async () => {
+			await foreign?.provider.shutdown();
+			trace.disable();
+			const provider = new NodeTracerProvider({ sampler: new AlwaysOffSampler() });
+			provider.register();
+			foreign = { provider, exporter: new InMemorySpanExporter() };
+
+			await service.init();
+			await service.restart();
+
+			expect(trace.getTracer('foreign').startSpan('test').isRecording()).toBe(false);
+			service.getTracer('n8n-workflow').startSpan('workflow.execute').end();
+			expect(exportedSpanNames()).toEqual(['workflow.execute']);
+			expect(logger.info).toHaveBeenCalledTimes(1);
 		});
 
 		it('logs the foreign owner once for the lifetime of the service', async () => {

@@ -1,3 +1,5 @@
+import { N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api-types';
+import type { AgentIntegrationConfig, AgentJsonConfig } from '@n8n/api-types';
 import { createTeamProject, testDb, testModules } from '@n8n/backend-test-utils';
 import { Container } from '@n8n/di';
 import { v4 as uuid } from 'uuid';
@@ -389,6 +391,184 @@ describe('AgentRepository', () => {
 			await createPublishedAgent();
 
 			await expect(agentRepo.findPublishedIds([])).resolves.toEqual(new Set());
+		});
+	});
+
+	describe('findByProjectIdsPaginated - availableInChat filter', () => {
+		// Reachability lives in the **published** snapshot, not the draft column:
+		// AGENT-963 writes the channel into `agent_history.schema.integrations` on
+		// publish, so a draft edit does not move what production chat serves.
+		// Nothing writes it on this branch yet, so the tests seed the snapshot.
+		const chatChannel: AgentIntegrationConfig = {
+			type: N8N_CHAT_INTEGRATION_TYPE,
+			credentialId: '',
+		};
+		const publishedSchema = (integrations: AgentIntegrationConfig[]): AgentJsonConfig => ({
+			name: 'Published',
+			model: 'm',
+			instructions: 'i',
+			integrations,
+		});
+
+		/** Publishes `snapshotIntegrations`, while the draft column keeps `overrides`. */
+		async function createPublishedAgent(
+			snapshotIntegrations: AgentIntegrationConfig[],
+			overrides: Partial<Agent> = {},
+		): Promise<Agent> {
+			const versionId = uuid();
+			const agent = await createAgent(overrides);
+			await agentHistoryRepo.save({
+				versionId,
+				agentId: agent.id,
+				author: 'test',
+				schema: publishedSchema(snapshotIntegrations),
+				tools: null,
+				skills: null,
+			});
+			await agentRepo.update({ id: agent.id }, { activeVersionId: versionId });
+			return (await agentRepo.findById(agent.id)) as Agent;
+		}
+
+		async function listReachable(availableInChat = true) {
+			return await agentRepo.findByProjectIdsPaginated([projectId], {
+				skip: 0,
+				take: 10,
+				filter: { availableInChat },
+			});
+		}
+
+		it('returns an agent whose published config carries the channel', async () => {
+			const agent = await createPublishedAgent([chatChannel]);
+
+			const { count, data } = await listReachable();
+
+			expect(count).toBe(1);
+			expect(data.map((a) => a.id)).toEqual([agent.id]);
+		});
+
+		it('excludes an agent whose published config has no channel', async () => {
+			await createPublishedAgent([]);
+
+			const { count, data } = await listReachable();
+
+			expect(count).toBe(0);
+			expect(data).toEqual([]);
+		});
+
+		it('excludes an agent that has the channel only in its unpublished draft', async () => {
+			// The draft carries it, the snapshot does not: production chat refuses
+			// this agent, so the list must not offer it.
+			await createPublishedAgent([], {
+				integrations: [chatChannel] as unknown as Agent['integrations'],
+			});
+
+			const { count, data } = await listReachable();
+
+			expect(count).toBe(0);
+			expect(data).toEqual([]);
+		});
+
+		it('returns an agent whose draft dropped the channel but whose published config keeps it', async () => {
+			// The mirror case: production chat still serves this agent until the
+			// next publish, so the list must keep offering it.
+			const agent = await createPublishedAgent([chatChannel], { integrations: [] });
+
+			const { count, data } = await listReachable();
+
+			expect(count).toBe(1);
+			expect(data.map((a) => a.id)).toEqual([agent.id]);
+		});
+
+		it('excludes an unpublished agent', async () => {
+			await createAgent({
+				integrations: [chatChannel] as unknown as Agent['integrations'],
+				activeVersionId: null,
+			});
+
+			const { count, data } = await listReachable();
+
+			expect(count).toBe(0);
+			expect(data).toEqual([]);
+		});
+
+		it('excludes a published agent in another project', async () => {
+			const otherProject = await createTeamProject();
+			await createPublishedAgent([chatChannel], { projectId: otherProject.id });
+
+			const { count, data } = await listReachable();
+
+			expect(count).toBe(0);
+			expect(data).toEqual([]);
+		});
+
+		it('excludes a telegram allowlist entry that happens to equal the channel type', async () => {
+			// Publish snapshots only the chat entries today, so this shape cannot
+			// occur yet. It pins the predicate on the entry's `type` regardless:
+			// the value sits in `settings`, where a text match would still hit it.
+			await createPublishedAgent([
+				{
+					type: 'telegram',
+					credentialId: 'cred-1',
+					settings: { accessMode: 'private', allowedUsers: [N8N_CHAT_INTEGRATION_TYPE] },
+				},
+			]);
+
+			const { count, data } = await listReachable();
+
+			expect(count).toBe(0);
+			expect(data).toEqual([]);
+		});
+
+		it('applies the strict complement when false', async () => {
+			const reachable = await createPublishedAgent([chatChannel]);
+			const publishedWithout = await createPublishedAgent([]);
+			const unpublished = await createAgent({ activeVersionId: null });
+
+			const { count, data } = await listReachable(false);
+
+			expect(count).toBe(2);
+			expect(data.map((a) => a.id).sort()).toEqual([publishedWithout.id, unpublished.id].sort());
+			expect(data.map((a) => a.id)).not.toContain(reachable.id);
+		});
+
+		it('agrees with isN8nChatPublished, the gate the production chat route uses', async () => {
+			// The list decides what a user is offered and `isN8nChatPublished` decides
+			// whether the run is allowed. If they ever disagree the page offers an
+			// agent whose first message is refused, so pin them to each other.
+			const reachable = await createPublishedAgent([chatChannel]);
+			const draftOnly = await createPublishedAgent([], { integrations: [chatChannel] });
+			const snapshotOnly = await createPublishedAgent([chatChannel], { integrations: [] });
+			const unpublished = await createAgent({ integrations: [chatChannel], activeVersionId: null });
+
+			const listed = new Set((await listReachable()).data.map((agent) => agent.id));
+
+			for (const agent of [reachable, draftOnly, snapshotOnly, unpublished]) {
+				expect({
+					id: agent.id,
+					listed: listed.has(agent.id),
+				}).toEqual({
+					id: agent.id,
+					listed: await agentRepo.isN8nChatPublished(agent.id, projectId),
+				});
+			}
+		});
+
+		it('keeps count and skip/take pagination correct with the filter applied', async () => {
+			const agents: Agent[] = [];
+			for (let i = 0; i < 3; i++) {
+				agents.push(await createPublishedAgent([chatChannel]));
+			}
+			await createPublishedAgent([]);
+
+			const page = await agentRepo.findByProjectIdsPaginated([projectId], {
+				skip: 1,
+				take: 1,
+				sortBy: 'name:asc',
+				filter: { availableInChat: true },
+			});
+
+			expect(page.count).toBe(agents.length);
+			expect(page.data).toHaveLength(1);
 		});
 	});
 });

@@ -62,7 +62,22 @@
 		"@n8n/ai-node-sdk#lint": {
 			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
 		},
+		"@n8n/agents#lint": {
+			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
+		},
+		"@n8n/ai-utilities#lint": {
+			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
+		},
+		"@n8n/ai-workflow-builder#lint": {
+			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
+		},
+		"@n8n/api-types#lint": {
+			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
+		},
 		"@n8n/backend-common#lint": {
+			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
+		},
+		"@n8n/backend-network#lint": {
 			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
 		},
 		"@n8n/backend-services#lint": {
@@ -71,10 +86,25 @@
 		"@n8n/backend-test-utils#lint": {
 			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
 		},
+		"@n8n/blob-storage#lint": {
+			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
+		},
+		"@n8n/chat-hub#lint": {
+			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
+		},
 		"@n8n/cli#lint": {
 			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
 		},
+		"@n8n/code-health#lint": {
+			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
+		},
 		"@n8n/client-oauth2#lint": {
+			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
+		},
+		"@n8n/codemirror-lang#lint": {
+			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
+		},
+		"@n8n/codemirror-lang-sql#lint": {
 			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
 		},
 		"@n8n/computer-use#lint": {
@@ -83,7 +113,13 @@
 		"@n8n/config#lint": {
 			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
 		},
+		"@n8n/constants#lint": {
+			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
+		},
 		"@n8n/crdt#lint": {
+			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
+		},
+		"@n8n/db#lint": {
 			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
 		},
 		"@n8n/decorators#lint": {
@@ -92,10 +128,22 @@
 		"@n8n/di#lint": {
 			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
 		},
+		"@n8n/engine#lint": {
+			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
+		},
 		"@n8n/errors#lint": {
 			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
 		},
 		"@n8n/imap#lint": {
+			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
+		},
+		"@n8n/inbound-auth#lint": {
+			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
+		},
+		"@n8n/instance-ai#lint": {
+			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
+		},
+		"@n8n/json-schema-to-zod#lint": {
 			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
 		},
 		"@n8n/local-gateway#lint": {
@@ -104,7 +152,28 @@
 		"@n8n/mcp-browser#lint": {
 			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
 		},
+		"@n8n/mcp-browser-extension#lint": {
+			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
+		},
+		"@n8n/node-cli#lint": {
+			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
+		},
+		"@n8n/node-engine-compatibility#lint": {
+			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
+		},
+		"@n8n/n8n-extension-insights#lint": {
+			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
+		},
 		"@n8n/n8n-benchmark#lint": {
+			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
+		},
+		"@n8n/playwright-janitor#lint": {
+			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
+		},
+		"@n8n/permissions#lint": {
+			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
+		},
+		"@n8n/rules-engine#lint": {
 			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
 		},
 		"@n8n/scheduler#lint": {
@@ -113,7 +182,31 @@
 		"@n8n/syslog-client#lint": {
 			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
 		},
+		"@n8n/task-runner#lint": {
+			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
+		},
+		"@n8n/tournament#lint": {
+			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
+    },
+		"@n8n/telemetry#lint": {
+			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
+		},
 		"@n8n/test-impact#lint": {
+			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
+		},
+		"@n8n/utils#lint": {
+			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
+		},
+		"@n8n/workflow-sdk#lint": {
+			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
+		},
+		"n8n-core#lint": {
+			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
+		},
+		"n8n-containers#lint": {
+			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
+		},
+		"n8n-playwright#lint": {
 			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
 		},
 		"n8n#lint": {

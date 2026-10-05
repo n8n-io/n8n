@@ -3125,7 +3125,7 @@ describe('CredentialsHelper', () => {
 		});
 	});
 
-	describe('getDecrypted - credentialDecrypt policy enforcement', () => {
+	describe('getDecrypted', () => {
 		const nodeCredentials: INodeCredentialsDetails = {
 			id: 'cred-policy',
 			name: 'Policy Test Credential',
@@ -3139,6 +3139,19 @@ describe('CredentialsHelper', () => {
 			isResolvable: false,
 			usageScope: 'project',
 		} as CredentialsEntity;
+
+		const executeDataFor = (nodeType: string): IExecuteData => ({
+			node: {
+				id: nodeType,
+				name: nodeType,
+				type: nodeType,
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: {},
+			},
+			data: {},
+			source: null,
+		});
 
 		let helper: CredentialsHelper;
 
@@ -3159,103 +3172,222 @@ describe('CredentialsHelper', () => {
 			);
 		});
 
-		test('calls enforceCredentialDecrypt with the credential, consumer and project context', async () => {
-			const executeData = {
-				node: {
-					name: 'Slack1',
-					type: 'n8n-nodes-base.slack',
-					typeVersion: 1,
-					position: [0, 0],
-					parameters: {},
-				},
-				data: {},
-				source: null,
-			} as IExecuteData;
+		describe('managed credential access', () => {
+			const useManagedCredential = (type: string) => {
+				credentialsRepository.findOneByOrFail.mockResolvedValue(
+					mock<CredentialsEntity>({
+						...credentialEntity,
+						type,
+						isManaged: true,
+					}),
+				);
+			};
 
-			const additionalData = mock<IWorkflowExecuteAdditionalData>({ projectId: 'proj-1' });
+			test('does not resolve managed OpenAI credentials for full-access nodes', async () => {
+				useManagedCredential('openAiApi');
 
-			await helper.getDecrypted(
-				additionalData,
-				nodeCredentials,
-				'testApi',
-				'manual',
-				executeData,
-				true,
-			);
+				await expect(
+					helper.getDecrypted(
+						mock<IWorkflowExecuteAdditionalData>(),
+						nodeCredentials,
+						'openAiApi',
+						'manual',
+						executeDataFor('n8n-nodes-base.httpRequest'),
+						true,
+					),
+				).rejects.toThrow('Managed credentials are not supported by this node');
+				expect(policyEnforcementService.enforceCredentialDecrypt).not.toHaveBeenCalled();
+			});
 
-			expect(policyEnforcementService.enforceCredentialDecrypt).toHaveBeenCalledExactlyOnceWith({
-				credentialType: 'testApi',
-				credentialId: 'cred-policy',
-				consumer: { nodeType: 'n8n-nodes-base.slack' },
-				projectId: 'proj-1',
+			test.each([
+				['other managed credential types', 'slackApi', 'n8n-nodes-base.httpRequest'],
+				['managed OpenAI credentials in regular nodes', 'openAiApi', 'n8n-nodes-base.openAi'],
+			])('resolves %s', async (_scenario, credentialType, nodeType) => {
+				useManagedCredential(credentialType);
+
+				const result = await helper.getDecrypted(
+					mock<IWorkflowExecuteAdditionalData>({
+						projectId: 'proj-1',
+						executionId: undefined,
+						userId: undefined,
+					}),
+					nodeCredentials,
+					credentialType,
+					'manual',
+					executeDataFor(nodeType),
+					true,
+				);
+
+				expect(result).toEqual({ apiKey: 'test' });
+				expect(policyEnforcementService.enforceCredentialDecrypt).toHaveBeenCalledExactlyOnceWith(
+					{
+						credentialType,
+						credentialId: 'cred-policy',
+						consumer: { nodeType },
+						projectId: 'proj-1',
+					},
+					{ kind: 'system', reason: 'execution' },
+				);
 			});
 		});
 
-		test('passes a null consumer when no node is asking, e.g. a credential test', async () => {
-			const additionalData = mock<IWorkflowExecuteAdditionalData>({ projectId: undefined });
+		describe('credentialDecrypt policy enforcement', () => {
+			test('calls enforceCredentialDecrypt with the credential, consumer and project context', async () => {
+				const executeData = {
+					node: {
+						name: 'Slack1',
+						type: 'n8n-nodes-base.slack',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+					},
+					data: {},
+					source: null,
+				} as IExecuteData;
 
-			await helper.getDecrypted(
-				additionalData,
-				nodeCredentials,
-				'testApi',
-				'manual',
-				undefined,
-				true,
-			);
+				const additionalData = mock<IWorkflowExecuteAdditionalData>({
+					projectId: 'proj-1',
+					executionId: 'exec-1',
+					userId: 'user-1',
+				});
 
-			expect(policyEnforcementService.enforceCredentialDecrypt).toHaveBeenCalledExactlyOnceWith(
-				expect.objectContaining({ consumer: null, projectId: null }),
-			);
-		});
+				await helper.getDecrypted(
+					additionalData,
+					nodeCredentials,
+					'testApi',
+					'manual',
+					executeData,
+					true,
+				);
 
-		test('resolves the credential before enforcing the policy check', async () => {
-			const callOrder: string[] = [];
-			credentialsRepository.findOneByOrFail.mockImplementation(async () => {
-				callOrder.push('findOneByOrFail');
-				return credentialEntity;
+				expect(policyEnforcementService.enforceCredentialDecrypt).toHaveBeenCalledExactlyOnceWith(
+					{
+						credentialType: 'testApi',
+						credentialId: 'cred-policy',
+						consumer: { nodeType: 'n8n-nodes-base.slack' },
+						projectId: 'proj-1',
+					},
+					{ kind: 'system', reason: 'execution', executionId: 'exec-1' },
+				);
 			});
-			policyEnforcementService.enforceCredentialDecrypt.mockImplementation(async () => {
-				callOrder.push('enforceCredentialDecrypt');
-				return await mock();
+
+			test('names the user when the decrypt is outside a run, e.g. an OAuth flow', async () => {
+				const additionalData = mock<IWorkflowExecuteAdditionalData>({
+					projectId: undefined,
+					executionId: undefined,
+					userId: 'user-1',
+				});
+
+				await helper.getDecrypted(
+					additionalData,
+					nodeCredentials,
+					'testApi',
+					'internal',
+					undefined,
+					true,
+				);
+
+				expect(policyEnforcementService.enforceCredentialDecrypt).toHaveBeenCalledExactlyOnceWith(
+					expect.anything(),
+					{ kind: 'user', user: { id: 'user-1' } },
+				);
 			});
 
-			await helper.getDecrypted(
-				mock<IWorkflowExecuteAdditionalData>(),
-				nodeCredentials,
-				'testApi',
-				'manual',
-				undefined,
-				true,
-			);
+			test('uses the actor the caller names over the derived one', async () => {
+				const additionalData = mock<IWorkflowExecuteAdditionalData>({
+					projectId: undefined,
+					executionId: undefined,
+					userId: undefined,
+				});
 
-			expect(callOrder).toEqual(['findOneByOrFail', 'enforceCredentialDecrypt']);
-		});
+				await helper.getDecrypted(
+					additionalData,
+					nodeCredentials,
+					'testApi',
+					'internal',
+					undefined,
+					true,
+					undefined,
+					{ actor: { kind: 'system', reason: 'log-streaming' } },
+				);
 
-		test('blocks decryption when the policy check throws', async () => {
-			const violation = new Error('blocked by policy');
-			policyEnforcementService.enforceCredentialDecrypt.mockRejectedValueOnce(violation);
+				expect(policyEnforcementService.enforceCredentialDecrypt).toHaveBeenCalledExactlyOnceWith(
+					expect.anything(),
+					{ kind: 'system', reason: 'log-streaming' },
+				);
+			});
 
-			await expect(
-				helper.getDecrypted(
+			test('passes a null consumer when no node is asking, e.g. a credential test', async () => {
+				const additionalData = mock<IWorkflowExecuteAdditionalData>({
+					projectId: undefined,
+					executionId: undefined,
+					userId: undefined,
+				});
+
+				await helper.getDecrypted(
+					additionalData,
+					nodeCredentials,
+					'testApi',
+					'manual',
+					undefined,
+					true,
+				);
+
+				expect(policyEnforcementService.enforceCredentialDecrypt).toHaveBeenCalledExactlyOnceWith(
+					expect.objectContaining({ consumer: null, projectId: null }),
+					{ kind: 'system', reason: 'execution' },
+				);
+			});
+
+			test('resolves the credential before enforcing the policy check', async () => {
+				const callOrder: string[] = [];
+				credentialsRepository.findOneByOrFail.mockImplementation(async () => {
+					callOrder.push('findOneByOrFail');
+					return credentialEntity;
+				});
+				policyEnforcementService.enforceCredentialDecrypt.mockImplementation(async () => {
+					callOrder.push('enforceCredentialDecrypt');
+					return await mock();
+				});
+
+				await helper.getDecrypted(
 					mock<IWorkflowExecuteAdditionalData>(),
 					nodeCredentials,
 					'testApi',
 					'manual',
-				),
-			).rejects.toThrow(violation);
-		});
+					undefined,
+					true,
+				);
 
-		test('decryption behavior is unchanged when the policy check clears', async () => {
-			const result = await helper.getDecrypted(
-				mock<IWorkflowExecuteAdditionalData>(),
-				nodeCredentials,
-				'testApi',
-				'manual',
-				undefined,
-				true,
-			);
+				expect(callOrder).toEqual(['findOneByOrFail', 'enforceCredentialDecrypt']);
+			});
 
-			expect(result).toEqual({ apiKey: 'test' });
+			test('blocks decryption when the policy check throws', async () => {
+				const violation = new Error('blocked by policy');
+				policyEnforcementService.enforceCredentialDecrypt.mockRejectedValueOnce(violation);
+
+				await expect(
+					helper.getDecrypted(
+						mock<IWorkflowExecuteAdditionalData>(),
+						nodeCredentials,
+						'testApi',
+						'manual',
+					),
+				).rejects.toThrow(violation);
+			});
+
+			test('decryption behavior is unchanged when the policy check clears', async () => {
+				const result = await helper.getDecrypted(
+					mock<IWorkflowExecuteAdditionalData>(),
+					nodeCredentials,
+					'testApi',
+					'manual',
+					undefined,
+					true,
+				);
+
+				expect(result).toEqual({ apiKey: 'test' });
+			});
 		});
 	});
 });

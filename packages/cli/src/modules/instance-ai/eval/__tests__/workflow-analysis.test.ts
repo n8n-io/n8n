@@ -236,6 +236,28 @@ describe('identifyNodesForPinData', () => {
 			expect(result.map((n) => n.name)).toEqual(['Cache']);
 		});
 	});
+
+	it('leaves only the Data Table reads in the live set unpinned', () => {
+		const read = (name: string, operation: string) =>
+			makeNode({
+				name,
+				type: 'n8n-nodes-base.dataTable',
+				parameters: { resource: 'row', operation },
+			});
+		const nodes = [
+			read('Read Seeded', 'get'),
+			read('Read Other', 'rowExists'),
+			makeNode({ name: 'Cache', type: 'n8n-nodes-base.redis' }),
+		];
+
+		const result = identifyNodesForPinData(
+			makeWorkflow(nodes),
+			undefined,
+			new Set(['Read Seeded', 'Cache']),
+		);
+
+		expect(result.map((n) => n.name)).toEqual(['Read Other', 'Cache']);
+	});
 });
 
 describe('partitionAiRoots', () => {

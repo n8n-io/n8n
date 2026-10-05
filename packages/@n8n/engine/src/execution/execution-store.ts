@@ -28,11 +28,15 @@ interface BaseExecutionRecord {
 export type NewExecutionRecord = BaseExecutionRecord;
 
 /**
- * What running an execution needs of its row. No timing: the execution path
- * decides on `status`, never on when anything happened. The read path has its
+ * What running an execution needs of its row. The execution path decides on
+ * `status`, never on when anything happened, so the only time it carries is
+ * `finishedAt`, which it reports but never decides on. The read path has its
  * own view (`ExecutionView`).
  */
-export type ExecutionRecord = BaseExecutionRecord;
+export type ExecutionRecord = BaseExecutionRecord & {
+	/** When the execution ended, or `null` while it has not. */
+	finishedAt: Date | null;
+};
 
 /** Thrown by `loadExecution` when no execution exists for the given id. */
 export class ExecutionNotFoundError extends Error {
@@ -59,9 +63,17 @@ export interface ExecutionStore {
 	/**
 	 * Record an execution's outcome: writes the final status and the finish time
 	 * together, as a compare-and-set on the live statuses, so they can't be
-	 * observed apart.
+	 * observed apart. Returns the finish time it wrote, so the caller reports the
+	 * time the row records, or `null` when the compare-and-set lost.
 	 */
-	finishExecution(id: string, status: 'completed' | 'failed'): Promise<boolean>;
+	finishExecution(id: string, status: 'completed' | 'failed'): Promise<{ finishedAt: Date } | null>;
+
+	/**
+	 * End an execution on request, from any status that has not ended. Returns
+	 * the finish time it wrote, so the caller reports the time the row records,
+	 * or `null` when the execution had already ended.
+	 */
+	cancelExecution(id: string): Promise<{ finishedAt: Date } | null>;
 
 	/**
 	 * Sets a live execution's status from the state of its steps: `waiting` when

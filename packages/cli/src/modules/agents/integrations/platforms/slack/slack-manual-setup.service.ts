@@ -5,7 +5,7 @@ import { Service } from '@n8n/di';
 import { randomBytes } from 'node:crypto';
 
 import { BadRequestError, ForbiddenError, NotFoundError } from '@n8n/errors';
-import { CacheService } from '@/services/cache/cache.service';
+import { CacheService } from '@n8n/backend-services';
 import { ProjectService } from '@/services/project.service.ee';
 
 import { SlackMethodsService } from './slack-methods.service';

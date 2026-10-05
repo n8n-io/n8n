@@ -92,6 +92,7 @@ export class AgentMessageRepository extends BaseRepository<AgentMessageEntity> {
 		return await manager.findOneByOrFail(AgentMessageEntity, { id: message.id });
 	}
 
+	/** The caller holds the session lock so concurrent input cannot take the same position. */
 	async linkExecutionInput(
 		executionId: string,
 		messageId: string,
@@ -108,11 +109,17 @@ export class AgentMessageRepository extends BaseRepository<AgentMessageEntity> {
 		) {
 			throw new UnexpectedError('The input message does not belong to this session and resource');
 		}
+		const inputs = await manager.find(AgentExecutionMessageLink, {
+			select: ['messageId', 'position'],
+			where: { executionId, direction: 'input' },
+			order: { position: 'DESC' },
+		});
+		if (inputs.some((input) => input.messageId === messageId)) return;
 		await manager.insert(AgentExecutionMessageLink, {
 			executionId,
 			messageId,
 			direction: 'input',
-			position: 0,
+			position: (inputs[0]?.position ?? -1) + 1,
 		});
 	}
 
@@ -183,9 +190,10 @@ export class AgentMessageRepository extends BaseRepository<AgentMessageEntity> {
 			messages: AgentDbMessage[];
 			executionId?: string;
 		},
+		ctx: OperationContext = {},
 	): Promise<void> {
 		if (params.messages.length === 0) return;
-		await this.runInTransaction({}, async (manager) => {
+		await this.runInTransaction(ctx, async (manager) => {
 			const now = new Date();
 			if (params.executionId) {
 				const ownership = await manager.update(

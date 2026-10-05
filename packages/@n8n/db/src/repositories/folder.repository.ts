@@ -8,6 +8,9 @@ import type { FolderWithWorkflowAndSubFolderCountAndPath, ListQuery } from '../e
 import { chunkIds } from '../utils/chunk-ids';
 import { parseListQuerySortBy } from '../utils/list-query-sort';
 
+// oxlint-disable-next-line typescript/no-deprecated
+type FolderListQueryOptions = ListQuery.Options;
+
 @Service()
 export class FolderRepository extends Repository<Folder> {
 	constructor(dataSource: DataSource) {
@@ -39,7 +42,7 @@ export class FolderRepository extends Repository<Folder> {
 		return [...folders.values()];
 	}
 
-	async getManyAndCount(options: ListQuery.Options = {}) {
+	async getManyAndCount(options: FolderListQueryOptions = {}) {
 		const query = this.getManyQuery(options);
 		return (await query.getManyAndCount()) as unknown as [
 			FolderWithWorkflowAndSubFolderCountAndPath[],
@@ -47,12 +50,12 @@ export class FolderRepository extends Repository<Folder> {
 		];
 	}
 
-	async getMany(options: ListQuery.Options = {}) {
+	async getMany(options: FolderListQueryOptions = {}) {
 		const query = this.getManyQuery(options);
 		return (await query.getMany()) as unknown as FolderWithWorkflowAndSubFolderCountAndPath[];
 	}
 
-	getManyQuery(options: ListQuery.Options = {}): SelectQueryBuilder<Folder> {
+	getManyQuery(options: FolderListQueryOptions = {}): SelectQueryBuilder<Folder> {
 		const query = this.createQueryBuilder('folder');
 
 		this.applySelections(query, options.select, options.filter);
@@ -65,8 +68,8 @@ export class FolderRepository extends Repository<Folder> {
 
 	private applySelections(
 		query: SelectQueryBuilder<Folder>,
-		select?: ListQuery.Options['select'],
-		filter?: ListQuery.Options['filter'],
+		select?: FolderListQueryOptions['select'],
+		filter?: FolderListQueryOptions['filter'],
 	): void {
 		if (select) {
 			this.applyCustomSelect(query, select, filter);
@@ -77,7 +80,7 @@ export class FolderRepository extends Repository<Folder> {
 
 	private applyWorkflowCountSelect(
 		query: SelectQueryBuilder<Folder>,
-		filter?: ListQuery.Options['filter'],
+		filter?: FolderListQueryOptions['filter'],
 	): void {
 		if (typeof filter?.isArchived === 'boolean') {
 			query.loadRelationCountAndMap('folder.workflowCount', 'folder.workflows', 'workflow', (qb) =>
@@ -92,7 +95,7 @@ export class FolderRepository extends Repository<Folder> {
 
 	private applyDefaultSelect(
 		query: SelectQueryBuilder<Folder>,
-		filter?: ListQuery.Options['filter'],
+		filter?: FolderListQueryOptions['filter'],
 	): void {
 		this.applyWorkflowCountSelect(query, filter);
 
@@ -111,8 +114,8 @@ export class FolderRepository extends Repository<Folder> {
 
 	private applyCustomSelect(
 		query: SelectQueryBuilder<Folder>,
-		select?: ListQuery.Options['select'],
-		filter?: ListQuery.Options['filter'],
+		select?: FolderListQueryOptions['select'],
+		filter?: FolderListQueryOptions['filter'],
 	): void {
 		const selections = ['folder.id'];
 
@@ -122,7 +125,7 @@ export class FolderRepository extends Repository<Folder> {
 		query.select(selections);
 	}
 
-	private addBasicFields(selections: string[], select?: ListQuery.Options['select']): void {
+	private addBasicFields(selections: string[], select?: FolderListQueryOptions['select']): void {
 		if (select?.name) selections.push('folder.name');
 		if (select?.createdAt) selections.push('folder.createdAt');
 		if (select?.updatedAt) selections.push('folder.updatedAt');
@@ -131,8 +134,8 @@ export class FolderRepository extends Repository<Folder> {
 	private addRelationFields(
 		query: SelectQueryBuilder<Folder>,
 		selections: string[],
-		select?: ListQuery.Options['select'],
-		filter?: ListQuery.Options['filter'],
+		select?: FolderListQueryOptions['select'],
+		filter?: FolderListQueryOptions['filter'],
 	): void {
 		if (select?.project) {
 			query.leftJoin('folder.homeProject', 'homeProject');
@@ -174,7 +177,7 @@ export class FolderRepository extends Repository<Folder> {
 
 	private applyFilters(
 		query: SelectQueryBuilder<Folder>,
-		filter?: ListQuery.Options['filter'],
+		filter?: FolderListQueryOptions['filter'],
 	): void {
 		if (!filter) return;
 
@@ -191,7 +194,7 @@ export class FolderRepository extends Repository<Folder> {
 
 	private applyBasicFilters(
 		query: SelectQueryBuilder<Folder>,
-		filter: ListQuery.Options['filter'],
+		filter: FolderListQueryOptions['filter'],
 	): void {
 		if (filter?.folderIds && Array.isArray(filter.folderIds)) {
 			query.andWhere('folder.id IN (:...folderIds)', {
@@ -273,7 +276,10 @@ export class FolderRepository extends Repository<Folder> {
 		}
 	}
 
-	private applyPagination(query: SelectQueryBuilder<Folder>, options: ListQuery.Options): void {
+	private applyPagination(
+		query: SelectQueryBuilder<Folder>,
+		options: FolderListQueryOptions,
+	): void {
 		if (options?.take) {
 			query.skip(options.skip ?? 0).take(options.take);
 		}

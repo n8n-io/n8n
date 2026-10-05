@@ -1,6 +1,6 @@
 import type { CreateCredentialDto, CredentialConnectionStatus } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { EventService } from '@n8n/backend-services';
+import { EventService, RoleService, CredentialsFinderService } from '@n8n/backend-services';
 import { Time } from '@n8n/constants';
 import {
 	Project,
@@ -70,12 +70,12 @@ import { SecretsProviderAccessCheckService } from '@/modules/external-secrets.ee
 import { DCR_MANAGED_CREDENTIAL_FIELDS } from '@/oauth/dcr-managed-fields';
 import { validateOAuthUrl } from '@/oauth/validate-oauth-url';
 import { userHasScopes } from '@/permissions.ee/check-access';
+import type { PolicyActor } from '@/policy/policy-enforcement-backend';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import type { CredentialRequest, ListQuery } from '@/requests';
 import { CredentialsTester } from '@/services/credentials-tester.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { ProjectService } from '@/services/project.service.ee';
-import { RoleService } from '@/services/role.service';
 
 import { CredentialConnectionStatusProxy } from './credential-connection-status-proxy';
 import { CredentialDescriptionsService } from './credential-descriptions.service';
@@ -83,7 +83,6 @@ import {
 	CredentialDependencyService,
 	type CredentialDependencyFilter,
 } from './credential-dependency.service';
-import { CredentialsFinderService } from './credentials-finder.service';
 import { getExternalSecretExpressionPaths } from './external-secrets.utils';
 import { InstanceCredentialUseRegistry } from './instance-credential-use.registry';
 import {
@@ -1013,7 +1012,7 @@ export class CredentialsService {
 	 * deliberately carries `oauthTokenData` forward, so a "Disconnect" action on a
 	 * fixed OAuth credential needs this dedicated path.
 	 */
-	async clearOauthTokenData(credential: CredentialsEntity): Promise<void> {
+	async clearOauthTokenData(credential: CredentialsEntity, actor: PolicyActor): Promise<void> {
 		// Decrypt via the core credential so a decryption failure aborts the
 		// disconnect. `this.decrypt` swallows CredentialDataError and returns `{}`,
 		// which would otherwise overwrite the whole credential with empty data.
@@ -1028,7 +1027,7 @@ export class CredentialsService {
 			data: decryptedData,
 		});
 
-		await this.update(credential.id, newCredentialData, decryptedData);
+		await this.update(credential.id, newCredentialData, actor, decryptedData);
 	}
 
 	/**
@@ -1060,6 +1059,7 @@ export class CredentialsService {
 	async update(
 		credentialId: string,
 		newCredentialData: ICredentialsDb,
+		actor: PolicyActor,
 		decryptedCredentialData?: ICredentialDataDecryptedObject,
 		options?: UpdateOptions,
 	) {
@@ -1067,7 +1067,7 @@ export class CredentialsService {
 		await this.externalHooks.run('credentials.update', [newCredentialData]);
 		await this.credentialDescriptions.stripIfDisabled(newCredentialData);
 
-		const cleared = await this.enforceCredentialUpdate(credentialId, newCredentialData.type);
+		const cleared = await this.enforceCredentialUpdate(credentialId, newCredentialData.type, actor);
 		if (cleared === null) return null;
 
 		const persist = async (transactionManager: EntityManager, ctx: OperationContext) => {
@@ -1198,11 +1198,14 @@ export class CredentialsService {
 		);
 		await this.validateInstanceCredentialUpdate(credential, hookedData, undefined, ctx);
 		// The type cannot change here, so the check sees the same stored and new type.
-		const cleared = await this.policyEnforcementService.enforceCredentialSave({
-			credential: { id: credential.id, type: credential.type },
-			storedCredential: { id: credential.id, type: credential.type },
-			projectId: null,
-		});
+		const cleared = await this.policyEnforcementService.enforceCredentialSave(
+			{
+				credential: { id: credential.id, type: credential.type },
+				storedCredential: { id: credential.id, type: credential.type },
+				projectId: null,
+			},
+			{ kind: 'user', user },
+		);
 		const updated = await this.credentialsRepository.updateInstanceCredential(
 			credential.id,
 			encrypted,
@@ -1262,7 +1265,7 @@ export class CredentialsService {
 
 		// Gate the save on policy before persisting, so the author learns about a blocked type
 		// while setting the credential up rather than at run time. No stored credential: this one is new.
-		const cleared = await this.enforceCredentialCreate(newCredential.type, project.id);
+		const cleared = await this.enforceCredentialCreate(newCredential.type, project.id, user);
 
 		const result = await this.credentialsRepository.runInTransaction(
 			{ policyCleared: cleared },
@@ -1309,26 +1312,29 @@ export class CredentialsService {
 	private async enforceCredentialUpdate(
 		credentialId: string,
 		newType: string | undefined,
+		actor: PolicyActor,
 	): Promise<PolicyCleared<'credentialSave'> | null> {
 		const stored = await this.credentialsRepository.findOneBy({ id: credentialId });
 		if (!stored) return null;
 		const owningProject =
 			await this.sharedCredentialsRepository.findCredentialOwningProject(credentialId);
 
-		return await this.policyEnforcementService.enforceCredentialSave({
-			credential: { id: credentialId, type: newType ?? stored.type },
-			storedCredential: { id: credentialId, type: stored.type },
-			projectId: owningProject?.id ?? null,
-		});
+		return await this.policyEnforcementService.enforceCredentialSave(
+			{
+				credential: { id: credentialId, type: newType ?? stored.type },
+				storedCredential: { id: credentialId, type: stored.type },
+				projectId: owningProject?.id ?? null,
+			},
+			actor,
+		);
 	}
 
 	/** A create binds to its type: the row has no committed id yet, whatever the payload claims. */
-	private async enforceCredentialCreate(type: string, projectId: string | null) {
-		return await this.policyEnforcementService.enforceCredentialSave({
-			credential: { id: null, type },
-			storedCredential: null,
-			projectId,
-		});
+	private async enforceCredentialCreate(type: string, projectId: string | null, user: User) {
+		return await this.policyEnforcementService.enforceCredentialSave(
+			{ credential: { id: null, type }, storedCredential: null, projectId },
+			{ kind: 'user', user },
+		);
 	}
 
 	private async insertProjectCredential(
@@ -1357,7 +1363,7 @@ export class CredentialsService {
 				"You don't have the permissions to save the credential in this project.",
 			);
 		}
-		const cleared = await this.enforceCredentialCreate(newCredential.type, project.id);
+		const cleared = await this.enforceCredentialCreate(newCredential.type, project.id, user);
 		const saved = await this.transactionRunner.run({ policyCleared: cleared }, async (ctx) => {
 			return await this.credentialsRepository.insertProjectCredentialWithOwner(
 				newCredential,
@@ -1507,7 +1513,7 @@ export class CredentialsService {
 		const mergedCredentials = await this.prepareCredentialsForTest({
 			storedCredential,
 			user,
-			credentialsToTest: credentials,
+			credentialsToTest: storedCredential.isManaged ? undefined : credentials,
 		});
 
 		return await this.test(user.id, mergedCredentials);
@@ -2303,7 +2309,7 @@ export class CredentialsService {
 		});
 
 		// After the hooks ran: the type checked has to be the type written.
-		const cleared = await this.enforceCredentialCreate(credentialEntity.type, null);
+		const cleared = await this.enforceCredentialCreate(credentialEntity.type, null, user);
 		const savedCredential = await this.credentialsRepository.saveInstanceCredential(
 			credentialEntity,
 			{ ...ctx, policyCleared: cleared },

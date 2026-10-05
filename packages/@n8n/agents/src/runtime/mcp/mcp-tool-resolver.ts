@@ -64,6 +64,7 @@ export class McpToolResolver {
 			mcpTool: true,
 			mcpServerName: connection.name,
 			mcpToolName: originalName,
+			...(tool.annotations ? { mcpAnnotations: tool.annotations } : {}),
 		};
 
 		return builtTool;

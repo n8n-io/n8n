@@ -1,4 +1,9 @@
-import { isAttachmentValidationError, type AgentMessage, type StreamChunk } from '@n8n/agents';
+import {
+	APPROVAL_RESUME_SCHEMA,
+	isAttachmentValidationError,
+	type AgentMessage,
+	type StreamChunk,
+} from '@n8n/agents';
 import {
 	MAX_AGENT_CHAT_ATTACHMENT_FILENAME_LENGTH,
 	MAX_AGENT_CHAT_ATTACHMENT_SIZE_BYTES,
@@ -14,7 +19,7 @@ import { isRecord } from '@n8n/utils/is-record';
 import type { Attachment, Author, CardElement, Chat, Message, Thread } from 'chat';
 import { UserError, type Logger } from 'n8n-workflow';
 
-import { CacheService } from '@/services/cache/cache.service';
+import { CacheService } from '@n8n/backend-services';
 
 import { AgentChatAttachmentService } from '../agent-chat-attachment.service';
 import { AgentMessageQueueService } from '../agent-message-queue.service';
@@ -23,6 +28,7 @@ import type {
 	QueuedIntegrationMessage,
 } from '../types/agent-queued-message';
 import type { StoredAttachmentRef } from '../types/agent-chat-attachment';
+import type { AgentExecutionStreamChunk } from '../types/agent-steering';
 import { AgentConversationStateService } from '../agent-conversation-state.service';
 import type {
 	AgentExecutionOrchestratorService,
@@ -139,7 +145,7 @@ interface AgentExecutor extends Pick<AgentExecutionOrchestratorService, 'resumeF
 		config: Omit<ExecuteForChatPublishedConfig, 'memory'> & {
 			memory: { threadId: InternalThread; resourceId: string };
 		},
-	): AsyncGenerator<StreamChunk>;
+	): AsyncGenerator<AgentExecutionStreamChunk>;
 
 	/** An open approval prevents automatic session rotation. */
 	findOpenSuspension?(config: {
@@ -505,7 +511,7 @@ export class AgentChatBridge {
 
 	async deliverWakeResponse(
 		threadId: string,
-		chunks: StreamChunk[],
+		chunks: AgentExecutionStreamChunk[],
 		cardRecipientId?: string,
 	): Promise<void> {
 		await this.streamConsumer.consume(
@@ -518,6 +524,42 @@ export class AgentChatBridge {
 				...(cardRecipientId ? { actingUserId: cardRecipientId } : {}),
 			},
 		);
+	}
+
+	async deliverBackgroundApproval(
+		threadId: string,
+		{
+			jobId,
+			title,
+			token,
+			toolCall,
+		}: {
+			jobId: string;
+			title: string;
+			token: string;
+			toolCall: Extract<StreamChunk, { type: 'tool-call-suspended' }>;
+		},
+	): Promise<void> {
+		const payload = buildSuspendCardPayload(toolCall.suspendPayload);
+		if (!payload) throw new UserError('This background approval cannot be displayed');
+		const card = await this.componentMapper.toCard(
+			{ ...payload, title: `${title}: Approval required` },
+			toolCall.runId,
+			toolCall.toolCallId,
+			toolCall.resumeSchema,
+			async (_actionId, value) => {
+				const response = APPROVAL_RESUME_SCHEMA.safeParse(JSON.parse(value));
+				if (!response.success) {
+					throw new UserError('Invalid background approval response');
+				}
+				let decision = response.data.approved ? '1' : '0';
+				if (response.data.approved && response.data.scope === 'session') decision = 's';
+				// The durable checkpoint resolves this 64-byte callback after a restart.
+				return { id: `bg:${jobId}:${token}:${decision}`, value: '' };
+			},
+			this.integration.type,
+		);
+		await this.chat.thread(threadId).post({ card });
 	}
 
 	private resolvePlatformThreadId(thread: Thread<unknown, unknown>) {

@@ -2,7 +2,7 @@ import type { Logger } from '@n8n/backend-common';
 import type { WorkflowPublishedVersionRepository, WorkflowPublishedVersion } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
-import type { CacheService } from '@/services/cache/cache.service';
+import type { CacheService } from '@n8n/backend-services';
 import {
 	WorkflowPublishedDataService,
 	type PublishedWorkflowDataForExecution,

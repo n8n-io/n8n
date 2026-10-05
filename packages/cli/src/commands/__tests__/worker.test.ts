@@ -8,6 +8,7 @@ import { DbConnection, DeploymentKeyRepository } from '@n8n/db';
 import type { ExecutionRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { BinaryDataConfig, ErrorReporter } from 'n8n-core';
+import type { InstanceSettings } from 'n8n-core';
 import type { IWorkflowExecutionDataProcess } from 'n8n-workflow';
 import http from 'node:http';
 import https from 'node:https';
@@ -33,13 +34,21 @@ import { WorkerServer } from '@/scaling/worker-server';
 import { WorkerStatusService } from '@/scaling/worker-status.service.ee';
 import { SystemTaskRunner } from '@/scheduling/system-tasks/system-task-runner';
 import { JwtService } from '@/services/jwt.service';
-import { RedisClientService } from '@/services/redis-client.service';
+import { RedisClientService } from '@n8n/backend-services';
 import { ShutdownService } from '@/shutdown/shutdown.service';
 import { TaskRunnerModule } from '@/task-runners/task-runner-module';
 
 import { Worker } from '../worker';
 
 vi.mock('@/crash-journal');
+
+const e2eFlags = vi.hoisted(() => ({ inE2ETests: false }));
+vi.mock('@/constants', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@/constants')>()),
+	get inE2ETests() {
+		return e2eFlags.inE2ETests;
+	},
+}));
 
 const dbConnection = mockInstance(DbConnection);
 dbConnection.init.mockResolvedValue(undefined);
@@ -78,6 +87,7 @@ const systemTaskRunner = mockInstance(SystemTaskRunner);
 describe('Worker', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		e2eFlags.inE2ETests = false;
 	});
 
 	/** Worker with the init steps that go beyond `super.init()` stubbed, as in start.test.ts. */
@@ -233,6 +243,7 @@ describe('Worker', () => {
 				mock<ConcurrencyControlService>(),
 				mock<EventService>(),
 				mock<ExecutionsConfig>({ mode: 'queue' }),
+				mock<InstanceSettings>({ instanceType: 'worker' }),
 			);
 
 			const drainLoopInterval = 500;
@@ -320,6 +331,19 @@ describe('Worker', () => {
 			expect(mockWorkerServer.markAsReady).not.toHaveBeenCalled();
 			// The job processor is registered regardless of whether endpoints are enabled.
 			expect(mockScalingService.setupWorker).toHaveBeenCalledWith(10);
+		});
+
+		it('should initialize WorkerServer for E2E diagnostics when no other endpoints are enabled', async () => {
+			e2eFlags.inE2ETests = true;
+
+			await createWorkerForRun().run();
+
+			expect(mockWorkerServer.init).toHaveBeenCalledWith({
+				health: false,
+				overwrites: false,
+				metrics: false,
+			});
+			expect(mockWorkerServer.markAsReady).toHaveBeenCalled();
 		});
 
 		it('should start the system tasks once the server is up', async () => {

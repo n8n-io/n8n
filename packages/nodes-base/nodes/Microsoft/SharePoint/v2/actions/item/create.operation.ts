@@ -15,7 +15,7 @@ import { buildItemFieldsPayload, resolveItemMapperValues } from '../../item';
 import { listRLC, untilSiteSelected } from '../../list';
 import { itemColumns } from '../../list/columns';
 import { resolveSiteId, siteRLC } from '../../site';
-import { microsoftApiRequest } from '../../transport';
+import { microsoftApiRequest } from '../../../transport';
 
 const properties: INodeProperties[] = [
 	{

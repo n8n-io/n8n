@@ -72,10 +72,29 @@ describe('formatPreviewSessionContext', () => {
 			makeExecution({
 				id: 'exec-1',
 				userMessage: 'First question',
+				inputMessages: [
+					{
+						id: 'initial-input',
+						role: 'user',
+						content: [{ type: 'text', text: 'First question' }],
+					},
+					{
+						id: 'steered-input',
+						role: 'user',
+						content: [
+							{ type: 'file', fileId: 'file-1', fileName: 'orders.csv', mimeType: 'text/csv' },
+						],
+					},
+				],
 				timeline: [
 					{ type: 'reasoning', content: 'I should search the orders.', timestamp: 0, endTime: 1 },
 					toolCallEvent(),
 					{ type: 'text', content: 'Here are your orders.', timestamp: 1, endTime: 2 },
+					{
+						type: 'input',
+						timestamp: 3,
+						messageId: 'steered-input',
+					},
 				],
 			}),
 			makeExecution({ id: 'exec-2', userMessage: 'Second question' }),
@@ -95,6 +114,11 @@ describe('formatPreviewSessionContext', () => {
 		expect(block).toContain('Input: {"query":"open orders"}');
 		expect(block).toContain('Output: {"count":2}');
 		expect(block).toContain('Assistant: Here are your orders.');
+		expect(block!.match(/User: First question/g)).toHaveLength(1);
+		expect(block!.match(/User: \[Attachment: orders\.csv\]/g)).toHaveLength(1);
+		expect(block!.indexOf('User: [Attachment: orders.csv]')).toBeGreaterThan(
+			block!.indexOf('Assistant: Here are your orders.'),
+		);
 	});
 
 	it('scopes a single turn to the anchor plus trailing resume continuations', () => {

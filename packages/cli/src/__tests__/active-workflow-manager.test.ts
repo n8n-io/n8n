@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 import type { Logger } from '@n8n/backend-common';
-import type { EventService } from '@n8n/backend-services';
+import type { EventService, WorkflowSharingService } from '@n8n/backend-services';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { GlobalConfig, WorkflowsConfig } from '@n8n/config';
 import type { Project, WorkflowEntity, WorkflowHistory, WorkflowRepository } from '@n8n/db';
@@ -50,7 +50,6 @@ import type { PollCursorService } from '@/workflows/triggers/poll-cursor.service
 import { TriggerExecutionContextFactory } from '@/workflows/triggers/trigger-execution-context.factory';
 import type { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
 import { WorkflowPushNotifier } from '@/workflows/workflow-push-notifier.service';
-import type { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
 import type { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 
 describe('ActiveWorkflowManager', () => {
@@ -262,10 +261,13 @@ describe('ActiveWorkflowManager', () => {
 			// Registration fails here (no real node types); the check runs before it.
 			await activeWorkflowManager.add('wf-1', 'activate').catch(() => {});
 
-			expect(policyEnforcementService.enforceWorkflowPublish).toHaveBeenCalledExactlyOnceWith({
-				workflow: { id: 'wf-1', name: 'My workflow', nodes: VERSION_NODES },
-				projectId: 'project-1',
-			});
+			expect(policyEnforcementService.enforceWorkflowPublish).toHaveBeenCalledExactlyOnceWith(
+				{
+					workflow: { id: 'wf-1', name: 'My workflow', nodes: VERSION_NODES },
+					projectId: 'project-1',
+				},
+				{ kind: 'system', reason: 'activation' },
+			);
 		});
 
 		test('registers nothing and records an activation error when policy blocks', async () => {

@@ -25,6 +25,7 @@ import type {
 
 import { BadRequestError, ForbiddenError, NotFoundError } from '@n8n/errors';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
+import { ExecutionRedactionServiceProxy } from '@/executions/execution-redaction-proxy.service';
 import type { DataTableColumn } from '@/modules/data-table/data-table-column.entity';
 import { DataTableService } from '@/modules/data-table/data-table.service';
 import { userHasScopes } from '@/permissions.ee/check-access';
@@ -38,6 +39,7 @@ export class EvaluationDatasetService {
 	constructor(
 		private readonly configRepository: EvaluationConfigRepository,
 		private readonly executionPersistence: ExecutionPersistence,
+		private readonly executionRedactionServiceProxy: ExecutionRedactionServiceProxy,
 		private readonly dataTableService: DataTableService,
 		private readonly instanceWriteAccess: InstanceWriteAccessService,
 	) {}
@@ -54,7 +56,11 @@ export class EvaluationDatasetService {
 		executionId: string,
 	): Promise<DatasetCandidateResponse> {
 		const config = await this.loadDataTableConfig(workflowId, configId);
-		const { workflowData, runData } = await this.loadSuccessfulExecution(workflowId, executionId);
+		const { workflowData, runData } = await this.loadSuccessfulExecution(
+			workflowId,
+			executionId,
+			user,
+		);
 
 		const dataTableId = this.dataTableId(config);
 		// Workflow access alone is not enough: the config's data table may live in a
@@ -91,6 +97,7 @@ export class EvaluationDatasetService {
 		const { workflowData, runData } = await this.loadSuccessfulExecution(
 			workflowId,
 			dto.executionId,
+			user,
 		);
 
 		const dataTableId = this.dataTableId(config);
@@ -154,6 +161,7 @@ export class EvaluationDatasetService {
 	private async loadSuccessfulExecution(
 		workflowId: string,
 		executionId: string,
+		user: User,
 	): Promise<{ workflowData: IWorkflowBase; runData: IRunData }> {
 		// Load via ExecutionPersistence (not the raw repository): it reads the run
 		// data from the store recorded in `storedAt` (`db` or `fs`). The raw
@@ -174,6 +182,11 @@ export class EvaluationDatasetService {
 		if (execution.mode === 'evaluation') {
 			throw new BadRequestError('Evaluation runs cannot be added to a dataset');
 		}
+
+		// Apply the same redaction the normal execution-read path enforces (in
+		// particular, hiding a private-credential execution's data from anyone but
+		// the user it ran as) before any field is extracted from it below.
+		await this.executionRedactionServiceProxy.processExecution(execution, { user });
 
 		const runData = execution.data?.resultData?.runData;
 		if (!runData) {

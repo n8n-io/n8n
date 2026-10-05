@@ -5,7 +5,12 @@ import {
 	type HttpRequestClient,
 	type SsrfBridge,
 } from '@n8n/backend-network';
-import { EventService, UrlService } from '@n8n/backend-services';
+import {
+	CacheService,
+	EventService,
+	UrlService,
+	CredentialsFinderService,
+} from '@n8n/backend-services';
 import { GlobalConfig, SsrfProtectionConfig } from '@n8n/config';
 import type { AuthenticatedRequest, CredentialsEntity, ICredentialsDb } from '@n8n/db';
 import { CredentialsRepository } from '@n8n/db';
@@ -22,7 +27,6 @@ import {
 	RESPONSE_ERROR_MESSAGES,
 } from '@/constants';
 import { AuthService } from '@/auth/auth.service';
-import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { CredentialsHelper } from '@/credentials-helper';
 import { AuthError, BadRequestError, NotFoundError } from '@n8n/errors';
 import type { OAuthRequest } from '@/requests';
@@ -66,7 +70,6 @@ import { CredentialStoreMetadata } from '@/credentials/dynamic-credential-storag
 import { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy';
 import { OAuthJweServiceProxy } from '@/oauth/oauth-jwe-service.proxy';
 import { OAuthBrowserBindingService } from '@/oauth/oauth-browser-binding.service';
-import { CacheService } from '@/services/cache/cache.service';
 import { Time } from '@n8n/constants';
 
 /**
@@ -111,6 +114,10 @@ export function shouldSkipAuthOnOAuthCallback() {
 export const skipAuthOnOAuthCallback = shouldSkipAuthOnOAuthCallback();
 
 export { OauthVersion, type OAuth1CredentialData, type CreateCsrfStateData, type CsrfState };
+
+/** The user who started the flow. An externally started dynamic-credential flow has none. */
+const csrfUserId = (csrfData: CreateCsrfStateData) =>
+	typeof csrfData.userId === 'string' ? csrfData.userId : undefined;
 
 export class InvalidTargetError extends BadRequestError {
 	constructor(message: string) {
@@ -346,8 +353,9 @@ export class OauthService {
 		};
 	}
 
-	protected async getAdditionalData() {
-		return await WorkflowExecuteAdditionalData.getBase();
+	/** `userId` names the user on a policy block while the credential is decrypted. */
+	protected async getAdditionalData(userId?: string) {
+		return await WorkflowExecuteAdditionalData.getBase({ userId });
 	}
 
 	/**
@@ -610,7 +618,8 @@ export class OauthService {
 			throw new NotFoundError(RESPONSE_ERROR_MESSAGES.NO_CREDENTIAL);
 		}
 
-		const additionalData = await this.getAdditionalData();
+		// The state holds the verified starter; the callback request may carry no user at all.
+		const additionalData = await this.getAdditionalData(csrfUserId(state));
 		const decryptedDataOriginal = await this.getDecryptedDataForCallback(
 			credential,
 			additionalData,
@@ -662,8 +671,8 @@ export class OauthService {
 		return causes.length ? causes.join(': ') : undefined;
 	}
 
-	async getOAuthCredentials<T>(credential: CredentialsEntity): Promise<T> {
-		const additionalData = await this.getAdditionalData();
+	async getOAuthCredentials<T>(credential: CredentialsEntity, userId?: string): Promise<T> {
+		const additionalData = await this.getAdditionalData(userId);
 		const decryptedDataOriginal = await this.getDecryptedDataForAuthUri(credential, additionalData);
 
 		// At some point in the past we saved hidden scopes to credentials (but shouldn't)
@@ -1014,7 +1023,7 @@ export class OauthService {
 		this.applyBrowserBindingIfEnabled(csrfData, req, res);
 
 		const oauthCredentials: OAuth2CredentialData =
-			await this.getOAuthCredentials<OAuth2CredentialData>(credential);
+			await this.getOAuthCredentials<OAuth2CredentialData>(credential, csrfUserId(csrfData));
 
 		const toUpdate: ICredentialDataDecryptedObject = {};
 		const toDelete: string[] = [];
@@ -1253,7 +1262,7 @@ export class OauthService {
 		this.applyBrowserBindingIfEnabled(csrfData, req, res);
 
 		const oauthCredentials: OAuth1CredentialData =
-			await this.getOAuthCredentials<OAuth1CredentialData>(credential);
+			await this.getOAuthCredentials<OAuth1CredentialData>(credential, csrfUserId(csrfData));
 
 		this.validateOAuthUrlOrThrow(oauthCredentials.authUrl ?? '');
 		this.validateOAuthUrlOrThrow(oauthCredentials.requestTokenUrl ?? '');

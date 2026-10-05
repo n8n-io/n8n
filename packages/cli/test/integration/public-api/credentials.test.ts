@@ -26,7 +26,7 @@ import { mock } from 'vitest-mock-extended';
 
 import { CredentialsService } from '@/credentials/credentials.service';
 import { ExternalSecretsConfig } from '@/modules/external-secrets.ee/external-secrets.config';
-import { RoleCacheService } from '@/services/role-cache.service';
+import { RoleCacheService } from '@n8n/backend-services';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { PostHogClient } from '@/posthog';
 import { CredentialsTester } from '@/services/credentials-tester.service';

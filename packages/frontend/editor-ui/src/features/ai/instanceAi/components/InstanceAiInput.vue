@@ -451,9 +451,6 @@ const placeholder = computed(() => {
 	if (props.contextualSuggestion) {
 		return props.contextualSuggestion;
 	}
-	if (props.contextChip?.type === 'agent-artifact' && props.contextChip.isNewAgent) {
-		return i18n.baseText('instanceAi.input.newAgentPlaceholder');
-	}
 	return i18n.baseText(props.placeholderKey ?? 'instanceAi.input.placeholder');
 });
 
