@@ -1,9 +1,5 @@
 import { Logger } from '@n8n/backend-common';
-<<<<<<< HEAD
-=======
 import { EventService } from '@n8n/backend-services';
-import { ExecutionsConfig } from '@n8n/config';
->>>>>>> 388b4036d4e351363bfa5c3db0274a02721999f3
 import type { User } from '@n8n/db';
 import { ExecutionRepository, UserRepository } from '@n8n/db';
 import { LifecycleMetadata } from '@n8n/decorators';

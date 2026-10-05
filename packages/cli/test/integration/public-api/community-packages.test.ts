@@ -63,13 +63,9 @@ describe('Community packages (Public API)', () => {
 
 	beforeEach(async () => {
 		vi.resetAllMocks();
-<<<<<<< HEAD
 		// Most tests here assert the npm-based update check, which only runs when
 		// unverified packages are enabled - opt in instead of relying on the default.
-		Container.get(CommunityPackagesConfig).unverifiedEnabled = true;
-=======
 		communityPackagesConfig.unverifiedEnabled = true;
->>>>>>> 388b4036d4e351363bfa5c3db0274a02721999f3
 		communityPackagesService.withLoadStatus.mockImplementation((packages) => packages);
 		communityNodeTypesService.findVetted.mockResolvedValue(mockedVettedPackage);
 		await testDb.truncate(['User']);
@@ -178,10 +174,9 @@ describe('Community packages (Public API)', () => {
 				expect.objectContaining({ doNotHandleError: true, cwd: expect.any(String) }),
 			);
 		});
-<<<<<<< HEAD
 
 		it('should not run npm outdated when unverified packages are disabled', async () => {
-			Container.get(CommunityPackagesConfig).unverifiedEnabled = false;
+			communityPackagesConfig.unverifiedEnabled = false;
 			const pkg = mockPackage();
 			communityPackagesService.getAllInstalledPackages.mockResolvedValue([pkg]);
 			communityPackagesService.matchPackagesWithUpdates.mockReturnValue([pkg]);
@@ -192,41 +187,6 @@ describe('Community packages (Public API)', () => {
 			expect(response.body).toHaveLength(1);
 			expect(mockedExecuteNpmCommand).not.toHaveBeenCalled();
 		});
-
-		it('should return packages with updateAvailable when outdated', async () => {
-			const pkg = mockPackage();
-			communityPackagesService.getAllInstalledPackages.mockResolvedValue([pkg]);
-
-			mockedExecuteNpmCommand.mockImplementation(() => {
-				const error = new Error('npm outdated');
-				Object.assign(error, {
-					code: 1,
-					stdout: JSON.stringify({
-						[pkg.packageName]: {
-							current: COMMUNITY_PACKAGE_VERSION.CURRENT,
-							wanted: COMMUNITY_PACKAGE_VERSION.CURRENT,
-							latest: COMMUNITY_PACKAGE_VERSION.UPDATED,
-							location: path.join('node_modules', pkg.packageName),
-						},
-					}),
-				});
-				throw error;
-			});
-
-			communityPackagesService.matchPackagesWithUpdates.mockReturnValue([
-				{
-					...pkg,
-					updateAvailable: COMMUNITY_PACKAGE_VERSION.UPDATED,
-				},
-			]);
-
-			const response = await testServer.publicApiAgentFor(owner).get('/community-packages');
-
-			expect(response.status).toBe(200);
-			expect(response.body[0].updateAvailable).toBe(COMMUNITY_PACKAGE_VERSION.UPDATED);
-		});
-=======
->>>>>>> 388b4036d4e351363bfa5c3db0274a02721999f3
 	});
 
 	describe('POST /community-packages', () => {

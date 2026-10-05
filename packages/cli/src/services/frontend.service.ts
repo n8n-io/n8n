@@ -514,12 +514,7 @@ export class FrontendService {
 		const isS3Licensed = this.license.isBinaryDataS3Licensed();
 		// oxlint-disable-next-line typescript/no-deprecated
 		const isAiAssistantEnabled = this.license.isAiAssistantEnabled();
-<<<<<<< HEAD
-=======
 		// oxlint-disable-next-line typescript/no-deprecated
-		const isAskAiEnabled = this.license.isAskAiEnabled();
-		// oxlint-disable-next-line typescript/no-deprecated
->>>>>>> 388b4036d4e351363bfa5c3db0274a02721999f3
 		const isAiCreditsEnabled = this.license.isAiCreditsEnabled();
 		const isAiBuilderEnabled = this.license.isLicensed(LICENSE_FEATURES.AI_BUILDER);
 
@@ -612,14 +607,6 @@ export class FrontendService {
 				this.licenseState.isAiAssistantCloudUbbEntitlementLicensed();
 		}
 
-<<<<<<< HEAD
-=======
-		if (isAskAiEnabled) {
-			// oxlint-disable-next-line typescript/no-deprecated
-			this.settings.askAi.enabled = isAskAiEnabled;
-		}
-
->>>>>>> 388b4036d4e351363bfa5c3db0274a02721999f3
 		if (isAiCreditsEnabled) {
 			this.settings.aiCredits.enabled = isAiCreditsEnabled;
 			// oxlint-disable-next-line typescript/no-deprecated

@@ -1,10 +1,6 @@
 import type { RedactionFloor } from '@n8n/api-types';
 import { LicenseState, Logger } from '@n8n/backend-common';
-<<<<<<< HEAD
-=======
 import { EventService, CredentialsFinderService } from '@n8n/backend-services';
-import { GlobalConfig } from '@n8n/config';
->>>>>>> 388b4036d4e351363bfa5c3db0274a02721999f3
 import type { EntityManager, User, Project, Folder } from '@n8n/db';
 import {
 	ProjectRepository,

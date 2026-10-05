@@ -5,10 +5,6 @@ import { mock } from 'vitest-mock-extended';
 
 import { WorkflowsController } from '../workflows.controller';
 
-<<<<<<< HEAD
-=======
-import { BadRequestError, ForbiddenError } from '@n8n/errors';
->>>>>>> 388b4036d4e351363bfa5c3db0274a02721999f3
 import type { ExecutionService } from '@/executions/execution.service';
 import type { ProjectService } from '@/services/project.service.ee';
 

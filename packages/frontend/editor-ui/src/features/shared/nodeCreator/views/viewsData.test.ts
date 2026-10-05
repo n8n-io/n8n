@@ -102,14 +102,7 @@ describe('viewsData', () => {
 
 		test('should include Message an Agent node before the agent node when agents module is active', () => {
 			const settingsStore = useSettingsStore();
-<<<<<<< HEAD
-			vi.spyOn(settingsStore, 'isModuleActive').mockImplementation(
-				(name: string) => name === 'agents',
-			);
-=======
-			vi.spyOn(settingsStore, 'isAskAiEnabled', 'get').mockReturnValue(false);
 			vi.spyOn(settingsStore, 'isAgentsEnabled', 'get').mockReturnValue(true);
->>>>>>> 388b4036d4e351363bfa5c3db0274a02721999f3
 
 			const result = AIView([]);
 			const messageAgentItem = result.items.find((item) => item.key === MESSAGE_AN_AGENT_NODE_TYPE);
@@ -124,12 +117,7 @@ describe('viewsData', () => {
 
 		test('should not include Message an Agent node when agents module is inactive', () => {
 			const settingsStore = useSettingsStore();
-<<<<<<< HEAD
-			vi.spyOn(settingsStore, 'isModuleActive').mockReturnValue(false);
-=======
-			vi.spyOn(settingsStore, 'isAskAiEnabled', 'get').mockReturnValue(false);
 			vi.spyOn(settingsStore, 'isAgentsEnabled', 'get').mockReturnValue(false);
->>>>>>> 388b4036d4e351363bfa5c3db0274a02721999f3
 
 			const result = AIView([]);
 			const messageAgentItem = result.items.find((item) => item.key === MESSAGE_AN_AGENT_NODE_TYPE);

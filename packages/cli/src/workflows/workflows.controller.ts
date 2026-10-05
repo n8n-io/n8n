@@ -10,11 +10,7 @@ import {
 	type WorkflowPublicationStatus,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-<<<<<<< HEAD
-=======
-import { OutboundHttp, SsrfBlockedIpError } from '@n8n/backend-network';
 import { EventService } from '@n8n/backend-services';
->>>>>>> 388b4036d4e351363bfa5c3db0274a02721999f3
 import { GlobalConfig } from '@n8n/config';
 import {
 	AuthenticatedRequest,

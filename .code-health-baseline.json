@@ -445,18 +445,8 @@
 			{
 				"rule": "catalog-violations",
 				"line": 38,
-				"message": "@oclif/core appears in 4 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
-<<<<<<< HEAD
-				"hash": "67f9d81d9528"
-			},
-			{
-				"rule": "catalog-violations",
-				"line": 38,
 				"message": "@oclif/core appears in 3 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
-				"hash": "6c742564e868"
-=======
-				"hash": "e07bb1da47d7"
->>>>>>> 388b4036d4e351363bfa5c3db0274a02721999f3
+				"hash": "654187703480"
 			}
 		],
 		"packages/@n8n/cli/package.json": [

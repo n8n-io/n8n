@@ -179,18 +179,11 @@ export function useNodeExecution(
 			return '';
 		}
 
-<<<<<<< HEAD
-=======
-		if (codeGenerationInProgress.value) {
-			return i18n.baseText('ndv.execute.generatingCode');
-		}
-
 		// An unusable credential blocks the whole run, so it outranks per-node reasons.
 		if (unusableCredentialReason.value) {
 			return unusableCredentialReason.value;
 		}
 
->>>>>>> 388b4036d4e351363bfa5c3db0274a02721999f3
 		if (nodeRef.value?.disabled) {
 			return i18n.baseText('ndv.execute.nodeIsDisabled');
 		}

@@ -650,9 +650,7 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 	}
 
 	function subcategoryItems(stack: ViewStack): INodeCreateElement[] {
-		const items = (itemsBySubcategory.value[stack.subcategory ?? DEFAULT_SUBCATEGORY] ?? []).filter(
-			(item) => settingsStore.isAskAiEnabled || item.key !== AI_TRANSFORM_NODE_TYPE,
-		);
+		const items = itemsBySubcategory.value[stack.subcategory ?? DEFAULT_SUBCATEGORY] ?? [];
 		return stack.sections ? groupItemsInSections(items, stack.sections) : items;
 	}
 
@@ -708,48 +706,8 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 		const stack = getLastActiveStack();
 		if (!stack || !activeViewStack.value.uuid) return;
 
-<<<<<<< HEAD
-		let stackItems = stack?.items ?? [];
-
-		if (!stack?.items) {
-			const subcategory = stack?.subcategory ?? DEFAULT_SUBCATEGORY;
-			// Copy: `stackItems` is mutated below via `forceIncludeNodes`, and the
-			// source array lives inside the `itemsBySubcategory` computed.
-			const itemsInSubcategory: INodeCreateElement[] = [
-				...(itemsBySubcategory.value[subcategory] ?? []),
-			];
-
-			const sections = stack.sections;
-
-			if (sections) {
-				stackItems = groupItemsInSections(itemsInSubcategory, sections);
-			} else {
-				stackItems = itemsInSubcategory;
-			}
-		}
-
-		// Ensure that the nodes specified in `stack.forceIncludeNodes` are always included,
-		// regardless of whether the subcategory is matched
-		if ((stack.forceIncludeNodes ?? []).length > 0) {
-			const matchedNodes = nodeCreatorStore.mergedNodes
-				.filter((item) => stack.forceIncludeNodes?.includes(item.name))
-				.map((item) => transformNodeType(item, stack.subcategory));
-
-			stackItems.push(...matchedNodes);
-		}
-
-		if (stack.baseFilter) {
-			stackItems = stackItems.filter(stack.baseFilter);
-		}
-
-		if (stack.itemsMapper) {
-			stackItems = stackItems.map(stack.itemsMapper);
-		}
-
-=======
 		const items = collectStackItems(stack);
 		const mapped = stack.itemsMapper ? items.map(stack.itemsMapper) : items;
->>>>>>> 388b4036d4e351363bfa5c3db0274a02721999f3
 		// Sort only if non-root view
 		updateCurrentViewStack({
 			baselineItems: stack.items ? mapped : sortNodeCreateElements(mapped),

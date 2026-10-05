@@ -51,8 +51,6 @@ export class SlackApi implements ICredentialType {
 			type: 'hidden',
 			default: '',
 		},
-<<<<<<< HEAD
-=======
 		{
 			// Set when n8n builds the Slack app for an Agent: the app sends its events to that Agent only
 			displayName: 'Agent ID',
@@ -60,19 +58,6 @@ export class SlackApi implements ICredentialType {
 			type: 'hidden',
 			default: '',
 		},
-		{
-			displayName:
-				'We strongly recommend setting up a <a href="https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.slacktrigger/#verify-the-webhook" target="_blank">signing secret</a> to ensure the authenticity of requests.',
-			name: 'notice',
-			type: 'notice',
-			default: '',
-			displayOptions: {
-				show: {
-					signatureSecret: [''],
-				},
-			},
-		},
->>>>>>> 388b4036d4e351363bfa5c3db0274a02721999f3
 	];
 
 	authenticate: IAuthenticateGeneric = {
