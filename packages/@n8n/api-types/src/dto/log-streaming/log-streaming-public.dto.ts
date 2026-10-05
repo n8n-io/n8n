@@ -37,10 +37,8 @@ export class LogStreamingEventTypesPublicDto extends Z.class(
 	static schema = logStreamingEventTypesPublicSchema;
 }
 
-// These schemas are scoped to the fields the log streaming UI currently supports; backend-only
-// fields (credential auth, extra circuit-breaker knobs, batch/response options, etc.) and the
-// server-generated id are excluded. Every field is taken from the canonical `n8n-workflow` schema
-// so validation stays in sync; `.openapi()` only adds the documentation.
+// Only the fields the log streaming UI exposes. Credentials and auth settings stay out, so a
+// read never returns them.
 
 const commonDocs = logStreamingDestinationCommonFieldDocs;
 const baseShape = MessageEventBusDestinationOptionsSchema.shape;
