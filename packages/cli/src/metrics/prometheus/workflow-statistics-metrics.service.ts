@@ -4,7 +4,8 @@ import { Service } from '@n8n/di';
 import promClient from 'prom-client';
 
 import type { PrometheusMetricsCollector } from './base';
-import { type CachedMetricQuery, toGaugeValue } from './cached-metric-query';
+import type { CachedMetricQuery } from './cached-metric-query';
+import { toGaugeValue } from './cached-metric-query';
 import {
 	DatabaseMetricQueryService,
 	type WorkflowStatistics as LicenseMetrics,
