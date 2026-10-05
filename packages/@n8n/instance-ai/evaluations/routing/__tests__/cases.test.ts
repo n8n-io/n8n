@@ -28,13 +28,18 @@ describe('loadRoutingCases', () => {
 		const dir = caseDir({
 			'route-debug-two.json': routingCase('route-debug-two'),
 			'route-debug-one.json': routingCase('route-debug-one', { language: 'deu' }),
+			'route-prod-debug-three.json': routingCase('route-prod-debug-three'),
 			'results.json': '{}',
 			'route-notes.md': 'not a case',
 		});
 
 		const cases = loadRoutingCases(dir);
 
-		expect(cases.map((c) => c.id)).toEqual(['route-debug-one', 'route-debug-two']);
+		expect(cases.map((c) => c.id)).toEqual([
+			'route-debug-one',
+			'route-debug-two',
+			'route-prod-debug-three',
+		]);
 		expect(cases[0].language).toBe('deu');
 	});
 
@@ -58,13 +63,12 @@ describe('loadRoutingCases', () => {
 			'route-debug-token.json': routingCase('route-debug-token', { accepts: ['clarify:workflow'] }),
 			'route-debug-extra.json': routingCase('route-debug-extra', { expectedToolInvocations: {} }),
 			'route-debug-broken.json': '{',
-			'route-workflow-mislabeled.json': routingCase('route-workflow-mislabeled'),
 		});
 
 		expect(() => loadRoutingCases(dir)).toThrow(
 			expect.objectContaining({
 				message: expect.stringMatching(
-					/route-debug-broken\.json[\s\S]*route-debug-extra\.json: \(root\)[\s\S]*route-debug-renamed\.json: id "route-debug-other" must match[\s\S]*route-debug-token\.json: accepts\.0[\s\S]*route-workflow-mislabeled\.json: id: id must start with route-<bucket>-/,
+					/route-debug-broken\.json[\s\S]*route-debug-extra\.json: \(root\)[\s\S]*route-debug-renamed\.json: id "route-debug-other" must match[\s\S]*route-debug-token\.json: accepts\.0/,
 				),
 			}),
 		);

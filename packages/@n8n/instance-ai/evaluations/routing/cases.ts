@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// Loader for routing eval cases: one `route-<bucket>-<slug>.json` file per case.
+// Loader for routing eval cases: one `route-<slug>.json` file per case.
 //
 // Routing cases carry no tool expectations. The grader resolves the route from
 // the recorded calls after the run (see grade.ts).
@@ -39,7 +39,12 @@ export type AcceptToken = (typeof ROUTING_ACCEPT_TOKENS)[number];
 
 export const routingCaseSchema = z
 	.object({
-		id: z.string().regex(/^route-[a-z0-9-]+$/, 'id must look like route-<bucket>-<slug>'),
+		id: z
+			.string()
+			.regex(
+				/^route-[a-z0-9-]+$/,
+				'id must be route- and then lowercase letters, digits or hyphens',
+			),
 		/** The main expected route. Reports group cases by it. */
 		bucket: z.enum(ROUTING_BUCKETS),
 		/** The request reads like a standing role, whatever the bucket. */
@@ -59,12 +64,9 @@ export const routingCaseSchema = z
 			.regex(/^[a-z]{3}$/, 'language must be an ISO 639-3 code, e.g. "eng"')
 			.optional(),
 	})
-	.strict()
-	// `--filter` matches file names, so the id prefix must name the real bucket.
-	.refine((c) => c.id.startsWith(`route-${c.bucket}-`), {
-		message: 'id must start with route-<bucket>-',
-		path: ['id'],
-	});
+	// The id does not have to name the bucket: suite ids like `route-prod-agent-*` and
+	// `route-v2-agent-*` add a source prefix. Grading reads `bucket`, never the id.
+	.strict();
 
 export type RoutingCase = z.infer<typeof routingCaseSchema>;
 
