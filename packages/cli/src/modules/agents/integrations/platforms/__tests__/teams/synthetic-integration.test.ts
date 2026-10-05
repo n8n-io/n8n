@@ -709,6 +709,10 @@ describe('Microsoft Teams messages without a mention', () => {
 		try {
 			await ctx.sendWebhook(channelRootPost);
 			expect(ctx.latestContext()?.replyExpectation).toBe('optional');
+			// The same published-chat run a mention gets, so the agent budget applies.
+			expect(ctx.agentExecutor.executeForChatPublished).toHaveBeenCalledWith(
+				expect.objectContaining({ agentId: 'agent-1', integrationType: 'teams' }),
+			);
 
 			await ctx.sendWebhook(channelUnjoinedReply);
 
