@@ -86,7 +86,7 @@ export default class PackageImport extends BaseCommand {
 		}),
 		dataTableMissingMode: Flags.string({
 			description:
-				'What to do when a referenced data table is absent in the target project (default on the instance: create). Matched tables are always schema-validated, even with do-nothing',
+				'What to do when a referenced data table is absent in the target project (default on the instance: create). Under the keep-existing and fail schema conflict policies, matched tables are schema-validated, even with do-nothing. Matched tables change only under --data-table-schema-conflict-policy=overwrite',
 			options: ['create', 'must-preexist', 'do-nothing'],
 			aliases: ['data-table-missing-mode'],
 		}),

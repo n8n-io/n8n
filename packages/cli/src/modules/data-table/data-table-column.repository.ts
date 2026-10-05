@@ -140,7 +140,7 @@ export class DataTableColumnRepository extends BaseRepository<DataTableColumn> {
 		});
 	}
 
-	/** Drops removed and retyped columns before it adds columns: SQLite column names are case-insensitive, so `foo` must go before `Foo` is added. */
+	/** Drops changed columns before it adds new ones. SQLite column names are case-insensitive, so `foo` must go before `Foo` is added. */
 	async replaceSchema(
 		dataTableId: string,
 		projectId: string,
