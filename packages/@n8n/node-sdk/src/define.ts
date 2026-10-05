@@ -892,13 +892,185 @@ export interface Wait {
 	until(at: Date): Promise<void>;
 }
 
+/** A cell of a table file. A CSV cell is text. An empty cell of a row list is `null`. */
+export type FileCell = string | number | boolean | null;
+
 /**
- * The optional host imports of Node Contract 2.3.0. An action lists the ones it uses in
- * `imports`, its run context gets only those, and its bundle targets 2.3.0.
+ * One row of a table file: an object by column name when the file has a header row, else the
+ * list of its cells.
+ */
+export type FileRow = Readonly<Record<string, FileCell>> | readonly FileCell[];
+
+/** How `parsers.extract` reads a CSV file. */
+export interface CsvExtractOptions {
+	/**
+	 * The text between two cells.
+	 *
+	 * @defaultValue `','`
+	 */
+	readonly delimiter?: string;
+	/**
+	 * The first line to read, from 1.
+	 *
+	 * @defaultValue `1`
+	 */
+	readonly fromLine?: number;
+	/** The most rows to read. All rows when omitted. */
+	readonly maxRows?: number;
+	/**
+	 * True: the first row names the columns, and each row is an object. False: each row is a list.
+	 *
+	 * @defaultValue `true`
+	 */
+	readonly header?: boolean;
+	/**
+	 * Keep an empty cell as `''` in a row object. Without it, the object has no such field.
+	 *
+	 * @defaultValue `false`
+	 */
+	readonly includeEmptyCells?: boolean;
+	/**
+	 * Accept a quote in a cell that does not start with a quote.
+	 *
+	 * @defaultValue `false`
+	 */
+	readonly relaxQuotes?: boolean;
+	/**
+	 * The text encoding of the file.
+	 *
+	 * @defaultValue `'utf8'`
+	 */
+	readonly encoding?: 'utf8' | 'utf16le' | 'latin1' | 'ascii' | 'ucs2';
+	/**
+	 * Remove a byte order mark at the start of the file.
+	 *
+	 * @defaultValue `false`
+	 */
+	readonly bom?: boolean;
+}
+
+/** How `parsers.extract` reads a spreadsheet. */
+export interface SheetExtractOptions {
+	/** The sheet to read. The first sheet when omitted. */
+	readonly sheet?: string;
+	/** The cells to read: an A1 range, e.g. `A2:D20`, or the row to start at, from 0, e.g. `2`. */
+	readonly range?: string;
+	/**
+	 * True: the first row names the columns, and each row is an object. False: each row is a list.
+	 *
+	 * @defaultValue `true`
+	 */
+	readonly header?: boolean;
+	/**
+	 * Keep an empty cell as `''`. Without it, a row object has no such field.
+	 *
+	 * @defaultValue `false`
+	 */
+	readonly includeEmptyCells?: boolean;
+}
+
+/** How `parsers.extract` reads a text or JSON file. */
+export interface TextExtractOptions {
+	/**
+	 * The text encoding of the file, as iconv-lite names it, e.g. `utf8`, `latin1`, `win1252`.
+	 *
+	 * @defaultValue `'utf8'`
+	 */
+	readonly encoding?: string;
+	/**
+	 * Remove a byte order mark at the start of the text.
+	 *
+	 * @defaultValue `true`
+	 */
+	readonly stripBom?: boolean;
+}
+
+/** How `parsers.extract` reads a PDF file. */
+export interface PdfExtractOptions {
+	/** The password of an encrypted file. */
+	readonly password?: string;
+	/** The most pages to read, from the first page. All pages when omitted. */
+	readonly maxPages?: number;
+}
+
+/** The text and the document data of a PDF file. */
+export interface PdfContent {
+	/** The text of each page that the host read, in page order. */
+	readonly pages: readonly string[];
+	/** The number of pages of the file, also of the pages that the host did not read. */
+	readonly pageCount: number;
+	/** The document information dictionary, e.g. `Title`, `Author`, `CreationDate`. */
+	readonly info?: Readonly<Record<string, unknown>>;
+	/** The XMP metadata by name, e.g. `dc:title`. */
+	readonly metadata?: Readonly<Record<string, unknown>>;
+}
+
+/** What `parsers.extract` takes and gives for one file format. */
+interface ExtractFormat<Options, Result> {
+	/** How to read the file. */
+	readonly options: Options;
+	/** The content of the file. */
+	readonly result: Result;
+}
+
+/** The options and the result of `parsers.extract` for each file format. */
+export interface FileFormats {
+	/** A CSV file gives its rows. */
+	readonly csv: ExtractFormat<CsvExtractOptions, readonly FileRow[]>;
+	/** An Excel 2007+ workbook gives the rows of one sheet. */
+	readonly xlsx: ExtractFormat<SheetExtractOptions, readonly FileRow[]>;
+	/** A JSON file gives its value. An empty file gives `{}`. */
+	readonly json: ExtractFormat<TextExtractOptions, unknown>;
+	/** A text file gives its text. */
+	readonly text: ExtractFormat<TextExtractOptions, string>;
+	/** A PDF file gives the text of its pages and its document data. */
+	readonly pdf: ExtractFormat<PdfExtractOptions, PdfContent>;
+}
+
+/** A file format that `parsers.extract` reads. */
+export type FileFormat = keyof FileFormats;
+
+/** What `parsers.extract` asks the host for: a format and its options. */
+export type FileExtractRequest = {
+	readonly [F in FileFormat]: {
+		/** The format to read the file as. */
+		readonly format: F;
+		/** How to read it. */
+		readonly options: FileFormats[F]['options'];
+	};
+}[FileFormat];
+
+/**
+ * Reads the content of a file with the parsers of n8n. The bytes stay in the host, so a bundle
+ * needs no parser and the file never crosses into the sandbox.
+ */
+export interface Parsers {
+	/**
+	 * The content of `file` in `format`. It fails when the file is not in that format.
+	 *
+	 * @example
+	 * ```ts
+	 * const rows = await parsers.extract(input.file, 'csv', { delimiter: ';' });
+	 * const { pages } = await parsers.extract(input.file, 'pdf');
+	 * ```
+	 */
+	extract<F extends FileFormat>(
+		file: Binary,
+		format: F,
+		options?: FileFormats[F]['options'],
+	): Promise<FileFormats[F]['result']>;
+}
+
+/**
+ * The optional host imports of Node Contract 2.3.0 and later. An action lists the ones it uses
+ * in `imports`, its run context gets only those, and its bundle targets the minor that added
+ * them: 2.3.0, or 2.8.0 for `parsers`.
  */
 export interface HostImports<Input> {
 	/** The n8n data tables of the project. Import name: `dataTables`. */
 	readonly dataTables: DataTables;
+	/** The content of files, read with the parsers of n8n (Node Contract 2.8.0). Import name: `parsers`. */
+	readonly parsers: Parsers;
 	/** User code in the n8n task runner. Import name: `code`. */
 	readonly code: CodeRunner;
 	/** A wait until a time. Import name: `wait`. */
@@ -2049,6 +2221,10 @@ export const usesBinary = (contract: Pick<ContractDocument, 'input' | 'output'>)
 export const usesHostImports = (contract: Pick<ContractDocument, 'imports' | 'inputs'>) =>
 	Boolean(contract.imports?.length) || contract.inputs !== undefined;
 
+/** The action imports `parsers`, so its bundle targets Node Contract 2.8.0. */
+export const usesParsers = (contract: Pick<ContractDocument, 'imports'>) =>
+	contract.imports?.includes('parsers') === true;
+
 /** The count field of counted inputs, and the bounds and the default that its schema sets. */
 export interface InputCountField {
 	readonly field: string;
@@ -2121,6 +2297,7 @@ export function isToolContract(contract: ContractDocument): boolean {
 
 const HOST_IMPORTS: ReadonlySet<string> = new Set<HostImport>([
 	'dataTables',
+	'parsers',
 	'code',
 	'wait',
 	'inputOf',

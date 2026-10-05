@@ -152,24 +152,14 @@ const parseText = (textContent: PdfTextContent) => {
 	return text.join('');
 };
 
-export async function extractDataFromPDF(
-	this: IExecuteFunctions,
-	binaryPropertyName: string,
-	password?: string,
-	maxPages?: number,
-	joinPages = true,
-	itemIndex = 0,
+/**
+ * The text of each page and the document data of a PDF. `maxPages` 0 reads no page; without
+ * it, every page is read.
+ */
+export async function readPdf(
+	data: Uint8Array,
+	{ password, maxPages }: { password?: string; maxPages?: number } = {},
 ) {
-	const binaryData = this.helpers.assertBinaryData(itemIndex, binaryPropertyName);
-
-	let buffer: Buffer;
-	if (binaryData.id) {
-		const stream = await this.helpers.getBinaryStream(binaryData.id);
-		buffer = await this.helpers.binaryToBuffer(stream);
-	} else {
-		buffer = Buffer.from(binaryData.data, BINARY_ENCODING);
-	}
-
 	// Polyfill DOMMatrix for pdfjs-dist in Node.js environments without canvas
 	if (typeof globalThis.DOMMatrix === 'undefined') {
 		const { default: DOMMatrix } = await import('@thednp/dommatrix');
@@ -182,7 +172,7 @@ export async function extractDataFromPDF(
 	const document = await readPDF({
 		password,
 		isEvalSupported: false,
-		data: new Uint8Array(buffer),
+		data,
 	}).promise;
 	const { info, metadata } = await document
 		.getMetadata()
@@ -201,15 +191,45 @@ export async function extractDataFromPDF(
 		}
 	}
 
-	const text = joinPages ? pages.join('\n\n') : pages;
-
-	const returnData = {
+	return {
 		numpages: document.numPages,
-		numrender: document.numPages,
 		info,
 		metadata: (metadata && Object.fromEntries([...metadata])) ?? undefined,
-		text,
+		pages,
 		version: pdfJsVersion,
+	};
+}
+
+export async function extractDataFromPDF(
+	this: IExecuteFunctions,
+	binaryPropertyName: string,
+	password?: string,
+	maxPages?: number,
+	joinPages = true,
+	itemIndex = 0,
+) {
+	const binaryData = this.helpers.assertBinaryData(itemIndex, binaryPropertyName);
+
+	let buffer: Buffer;
+	if (binaryData.id) {
+		const stream = await this.helpers.getBinaryStream(binaryData.id);
+		buffer = await this.helpers.binaryToBuffer(stream);
+	} else {
+		buffer = Buffer.from(binaryData.data, BINARY_ENCODING);
+	}
+
+	const { numpages, info, metadata, pages, version } = await readPdf(new Uint8Array(buffer), {
+		password,
+		maxPages,
+	});
+
+	const returnData = {
+		numpages,
+		numrender: numpages,
+		info,
+		metadata,
+		text: joinPages ? pages.join('\n\n') : pages,
+		version,
 	};
 
 	return returnData;

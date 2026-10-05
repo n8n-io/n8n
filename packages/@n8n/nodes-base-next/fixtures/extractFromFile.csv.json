@@ -1,0 +1,66 @@
+{
+	"executions": [
+		{
+			"name": "one item per row, by the header names",
+			"params": {
+				"file": "data"
+			},
+			"binary": {
+				"data": {
+					"data": "bmFtZSxwbGFuCkFkYSxwcm8KR3JhY2UsCg==",
+					"mimeType": "text/csv",
+					"fileName": "plans.csv"
+				}
+			},
+			"responses": [],
+			"imports": [
+				[
+					{
+						"name": "Ada",
+						"plan": "pro"
+					},
+					{
+						"name": "Grace"
+					}
+				]
+			],
+			"output": [
+				{
+					"name": "Ada",
+					"plan": "pro"
+				},
+				{
+					"name": "Grace"
+				}
+			]
+		},
+		{
+			"name": "rows as cell lists without a header row",
+			"params": {
+				"file": "data",
+				"delimiter": ";",
+				"header": false
+			},
+			"binary": {
+				"data": {
+					"data": "aWQ7bm90ZQoxOwoyO2xhdGUK",
+					"mimeType": "text/csv",
+					"fileName": "notes.csv"
+				}
+			},
+			"responses": [],
+			"imports": [[["id", "note"], ["1", ""], ["2", "late"]]],
+			"output": [
+				{
+					"row": ["id", "note"]
+				},
+				{
+					"row": ["1", ""]
+				},
+				{
+					"row": ["2", "late"]
+				}
+			]
+		}
+	]
+}

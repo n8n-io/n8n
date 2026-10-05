@@ -1,12 +1,13 @@
-import type { Sheet2JSONOpts, ParsingOptions } from '@e965/xlsx';
+import type { Sheet2JSONOpts, ParsingOptions, WorkSheet } from '@e965/xlsx';
 import { read as xlsxRead, utils as xlsxUtils } from '@e965/xlsx';
 import { parse as createCSVParser, type Options as CSVOptions } from 'csv-parse';
+import type { Readable } from 'node:stream';
 import type { IExecuteFunctions, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 import { BINARY_ENCODING, NodeOperationError } from 'n8n-workflow';
 
 import { binaryProperty, fromFileOptions } from '../description';
 
-interface Options {
+export interface Options {
 	maxRowCount?: number;
 	delimiter?: string;
 	fromLine?: number;
@@ -82,6 +83,76 @@ export interface FromFileOptions {
 	failOnCsvBufferError?: boolean;
 }
 
+/** A CSV parser with the options of the node. It adds each record to `rows`. */
+export function csvParserOf(options: Options, rows: unknown[]) {
+	const maxRowCount = options.maxRowCount as number;
+	const csvOptions: CSVOptions = {
+		delimiter: options.delimiter,
+		fromLine: options.fromLine,
+		encoding: options.encoding,
+		bom: options.enableBOM,
+		to: maxRowCount > -1 ? maxRowCount : undefined,
+		skip_records_with_error: options.skipRecordsWithErrors?.value?.enabled,
+		skip_empty_lines: true,
+		columns: options.headerRow !== false,
+		relax_quotes: options.relaxQuotes,
+		onRecord: (record) => {
+			const filtered = options.includeEmptyCells
+				? record
+				: Object.fromEntries(Object.entries(record).filter(([_key, value]) => value !== ''));
+			rows.push(filtered);
+		},
+	};
+	return createCSVParser(csvOptions);
+}
+
+/** The rows of a CSV stream. A parse error rejects. */
+export async function readCsvRows(stream: Readable, options: Options) {
+	const rows: unknown[] = [];
+	const parser = csvParserOf(options, rows);
+	// The rows come from `onRecord`, so nothing reads the parser output; without this it never ends.
+	parser.resume();
+	await new Promise<void>((resolve, reject) => {
+		stream.on('error', reject);
+		parser.on('error', reject);
+		parser.on('end', resolve);
+		stream.pipe(parser);
+	});
+	return rows;
+}
+
+/** A workbook in a file format that SheetJS reads, e.g. XLSX, XLS, ODS. */
+export function readWorkbook(buffer: Buffer, options: Options) {
+	const xlsxOptions: ParsingOptions = { raw: options.rawData as boolean };
+	if (options.readAsString) {
+		xlsxOptions.type = 'binary';
+		return xlsxRead(buffer.toString('binary'), xlsxOptions);
+	}
+	return xlsxRead(buffer, xlsxOptions);
+}
+
+/** The rows of one sheet: objects by column name, or lists of cells without `headerRow`. */
+export function sheetRowsOf(sheet: WorkSheet, options: Options): unknown[] {
+	const sheetToJsonOptions: Sheet2JSONOpts = {};
+	if (options.range) {
+		if (isNaN(options.range as number)) {
+			sheetToJsonOptions.range = options.range;
+		} else {
+			sheetToJsonOptions.range = parseInt(options.range as string, 10);
+		}
+	}
+
+	if (options.includeEmptyCells) {
+		sheetToJsonOptions.defval = '';
+	}
+
+	if (options.headerRow === false) {
+		sheetToJsonOptions.header = 1; // Consider the first row as a data row
+	}
+
+	return xlsxUtils.sheet_to_json(sheet, sheetToJsonOptions);
+}
+
 export async function execute(
 	this: IExecuteFunctions,
 	items: INodeExecutionData[],
@@ -111,26 +182,8 @@ export async function execute(
 			}
 
 			if (fileFormat === 'csv') {
-				const maxRowCount = options.maxRowCount as number;
 				const skipRecordsWithErrors = options.skipRecordsWithErrors?.value?.enabled;
-				const csvOptions: CSVOptions = {
-					delimiter: options.delimiter,
-					fromLine: options.fromLine,
-					encoding: options.encoding,
-					bom: options.enableBOM,
-					to: maxRowCount > -1 ? maxRowCount : undefined,
-					skip_records_with_error: skipRecordsWithErrors,
-					skip_empty_lines: true,
-					columns: options.headerRow !== false,
-					relax_quotes: options.relaxQuotes,
-					onRecord: (record) => {
-						const filtered = options.includeEmptyCells
-							? record
-							: Object.fromEntries(Object.entries(record).filter(([_key, value]) => value !== ''));
-						rows.push(filtered);
-					},
-				};
-				const parser = createCSVParser(csvOptions);
+				const parser = csvParserOf(options, rows);
 
 				let skippedRecords = 0;
 				parser.on('skip', (_err) => {
@@ -169,8 +222,6 @@ export async function execute(
 					});
 				}
 			} else {
-				const xlsxOptions: ParsingOptions = { raw: options.rawData as boolean };
-
 				let buffer: Buffer;
 				if (binaryData.id) {
 					const chunkSize = 256 * 1024;
@@ -180,14 +231,7 @@ export async function execute(
 					buffer = Buffer.from(binaryData.data, BINARY_ENCODING);
 				}
 
-				let workbook;
-				if (options.readAsString) {
-					xlsxOptions.type = 'binary';
-					const binaryString = buffer.toString('binary');
-					workbook = xlsxRead(binaryString, xlsxOptions);
-				} else {
-					workbook = xlsxRead(buffer, xlsxOptions);
-				}
+				const workbook = readWorkbook(buffer, options);
 
 				if (workbook.SheetNames.length === 0) {
 					throw new NodeOperationError(this.getNode(), 'Spreadsheet does not have any sheets!', {
@@ -207,25 +251,7 @@ export async function execute(
 					sheetName = options.sheetName as string;
 				}
 
-				// Convert it to json
-				const sheetToJsonOptions: Sheet2JSONOpts = {};
-				if (options.range) {
-					if (isNaN(options.range as number)) {
-						sheetToJsonOptions.range = options.range;
-					} else {
-						sheetToJsonOptions.range = parseInt(options.range as string, 10);
-					}
-				}
-
-				if (options.includeEmptyCells) {
-					sheetToJsonOptions.defval = '';
-				}
-
-				if (options.headerRow === false) {
-					sheetToJsonOptions.header = 1; // Consider the first row as a data row
-				}
-
-				rows = xlsxUtils.sheet_to_json(workbook.Sheets[sheetName], sheetToJsonOptions);
+				rows = sheetRowsOf(workbook.Sheets[sheetName], options);
 
 				// Check if data could be found in file
 				if (rows.length === 0) {

@@ -245,7 +245,13 @@ describe('the action interface', () => {
 		]);
 		// An action gets an optional import only when its manifest lists it. A provider capability
 		// comes in the input, at a `provider.input()` field.
-		const optional = keysOf<HostImports<unknown>>()(['dataTables', 'code', 'wait', 'inputOf']);
+		const optional = keysOf<HostImports<unknown>>()([
+			'dataTables',
+			'parsers',
+			'code',
+			'wait',
+			'inputOf',
+		]);
 		type Bound = Extract<
 			ActionBinding<Shape, AnySchema, ActionFlow, string, undefined>,
 			{ run: unknown }

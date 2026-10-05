@@ -182,6 +182,12 @@ export const binaryProbe = spec(
 		egress: { hosts: ['api.example.com'] },
 	},
 );
+export const parsersProbe = spec(
+	async ({ input, parsers }) => ({
+		value: JSON.stringify(await parsers.extract(input.file, 'csv', { delimiter: ';', header: false })),
+	}),
+	{ input: { file: binary() }, imports: ['parsers'] },
+);
 export const migrateProbe = spec(async ({ input }) => ({ value: input.message }), {
 	version: 2,
 	input: { message: str() },
@@ -222,6 +228,7 @@ const PROBE_NAMES = [
 	'credentialProbe',
 	'credentialErrorProbe',
 	'binaryProbe',
+	'parsersProbe',
 	'openStreamsProbe',
 	'globalsProbe',
 	'migrateProbe',
@@ -718,6 +725,44 @@ describe.skipIf(!existsSync(SIDECAR) || !existsSync(GUEST))('the sandbox', () =>
 			mimeType: 'application/octet-stream',
 			fileName: 'copy.bin',
 		});
+	});
+
+	it('reads a file through the host, so the bytes and the parser stay in the host', async () => {
+		const csv = Buffer.from('a;b\n1;2\n');
+		const store: BinaryStore = {
+			input: async () => ({
+				data: csv.toString('base64'),
+				mimeType: 'text/csv',
+				bytes: csv.length,
+			}),
+			read: async (entry) => Readable.from([Buffer.from(entry.data, 'base64')]),
+			write: async () => await Promise.reject(new Error('no writes in this test')),
+		};
+		const reads: unknown[] = [];
+		const value = await run('parsersProbe', {
+			...hostOf(),
+			parameter: (name) => (name === 'file' ? 'data' : undefined),
+			binary: store,
+			extractFile: async (file, request) => {
+				reads.push({ meta: file.meta, request });
+				return [
+					['a', 'b'],
+					['1', '2'],
+				];
+			},
+		});
+		expect(value).toBe(
+			JSON.stringify([
+				['a', 'b'],
+				['1', '2'],
+			]),
+		);
+		expect(reads).toEqual([
+			{
+				meta: { mimeType: 'text/csv', bytes: csv.length },
+				request: { format: 'csv', options: { delimiter: ';', header: false } },
+			},
+		]);
 	});
 
 	it('stops a binary download over the limit of the host, as in-process', async () => {

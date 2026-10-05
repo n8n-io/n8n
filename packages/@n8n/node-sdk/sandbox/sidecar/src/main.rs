@@ -189,6 +189,14 @@ impl Spec {
         }
     }
 
+    /// The resource that a handle names. A `use` of a resource in another interface is an alias.
+    fn resource_of(&self, id: TypeId) -> TypeId {
+        match &self.resolve.types[id].kind {
+            TypeDefKind::Type(Type::Id(inner)) => self.resource_of(*inner),
+            _ => id,
+        }
+    }
+
     fn kind_of<'a>(&'a self, ty: &'a Type) -> Option<&'a TypeDefKind> {
         match self.dealias(ty) {
             Type::Id(id) => Some(&self.resolve.types[*id].kind),
@@ -454,7 +462,7 @@ impl Codec {
                 TypeDefKind::Handle(Handle::Own(resource) | Handle::Borrow(resource)),
                 Val::Resource(any),
             ) => {
-                if let Some(&ty) = spec.host_resources.get(resource) {
+                if let Some(&ty) = spec.host_resources.get(&spec.resource_of(*resource)) {
                     let handle = ResourceDynamic::try_from_resource_any(any, &mut *store)?;
                     if handle.ty() != ty {
                         bail!("a handle of another resource type");
@@ -670,7 +678,7 @@ impl Codec {
                     Handle::Own(resource) => (resource, true),
                     Handle::Borrow(resource) => (resource, false),
                 };
-                if let Some(&ty) = spec.host_resources.get(resource) {
+                if let Some(&ty) = spec.host_resources.get(&spec.resource_of(*resource)) {
                     let rep = u32::try_from(number)?;
                     let handle = if own {
                         ResourceDynamic::new_own(rep, ty)
@@ -788,15 +796,26 @@ fn link_spec_import(
     for (item_name, item) in items {
         match item {
             ComponentItem::Resource(_) => {
-                let resource = *wit
-                    .types
-                    .get(&item_name)
-                    .ok_or_else(|| format_err!("{name} has no resource {item_name}"))?;
+                let resource = spec.resource_of(
+                    *wit.types
+                        .get(&item_name)
+                        .ok_or_else(|| format_err!("{name} has no resource {item_name}"))?,
+                );
                 let ty = *spec
                     .host_resources
                     .get(&resource)
                     .ok_or_else(|| format_err!("{item_name} is not a host resource"))?;
-                let method = format!("{}.{item_name}.[drop]", spec.interface_name(interface));
+                // A resource that the interface uses from another one drops in its own interface.
+                let def = &spec.resolve.types[resource];
+                let owner = match def.owner {
+                    TypeOwner::Interface(owner) => owner,
+                    _ => interface,
+                };
+                let method = format!(
+                    "{}.{}.[drop]",
+                    spec.interface_name(owner),
+                    def.name.as_deref().unwrap_or(&item_name)
+                );
                 instance.resource(
                     &item_name,
                     ResourceType::host_dynamic(ty),
@@ -1485,6 +1504,22 @@ mod tests {
             .collect();
         exports.sort();
         assert_eq!(exports, ["capabilities", "provider"]);
+    }
+
+    #[test]
+    fn a_binary_that_another_interface_uses_is_the_host_resource_binary() {
+        let codec = codec();
+        let spec = codec.spec();
+        let borrowed = |name: &str, index: usize| {
+            let function = function(&codec, &spec.imports, name);
+            match spec.kind_of(&function.params[index].ty) {
+                Some(TypeDefKind::Handle(Handle::Borrow(resource))) => spec.resource_of(*resource),
+                _ => panic!("{name} takes no borrowed handle"),
+            }
+        };
+        let file = borrowed("parsers.extract", 0);
+        assert_eq!(file, borrowed("binary.send", 1));
+        assert!(spec.host_resources.contains_key(&file));
     }
 
     #[test]

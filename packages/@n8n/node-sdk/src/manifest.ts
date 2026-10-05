@@ -124,7 +124,7 @@ const contract = typed<ContractDocument>()(
 			.union(names().with({ minItems: 1 }), t.obj({ each: t.str(), then: names().optional() }))
 			.optional(),
 		egress: t.obj({ hosts: names().optional(), fromInput: t.str().optional() }).optional(),
-		imports: t.arr(t.oneOf('dataTables', 'code', 'wait', 'inputOf')).optional(),
+		imports: t.arr(t.oneOf('dataTables', 'parsers', 'code', 'wait', 'inputOf')).optional(),
 		inputs: t
 			.union(
 				names().with({ minItems: 2 }),

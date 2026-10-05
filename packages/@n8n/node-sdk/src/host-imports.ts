@@ -1,7 +1,7 @@
 /**
- * The n8n side of the optional host imports of Node Contract 2.3.0: data tables, code in the
- * task runner, and wait. Each one maps the typed import of `define.ts` to an n8n service and
- * knows nothing about the node that uses it.
+ * The n8n side of the optional host imports: data tables, parsers, code in the task runner, and
+ * wait. Each one maps the typed import of `define.ts` to an n8n service and knows nothing about
+ * the node that uses it.
  */
 import { isRecord } from '@n8n/utils/is-record';
 import {
@@ -29,7 +29,11 @@ import type {
 	DataTables,
 	DataTableValue,
 	DataTableValues,
+	FileExtractRequest,
+	FileFormat,
+	FileFormats,
 } from './define';
+import type { Binary } from './schema';
 
 /** The data table services of the project that owns the workflow. */
 export interface DataTableHost {
@@ -297,6 +301,110 @@ export function dataTableHostOf(context: IExecuteFunctions): DataTableHost {
 }
 
 const CODE_LANGUAGES = new Map<'languages', ReadonlySet<CodeRequest['language']>>();
+
+/**
+ * Reads the content of a file for the `parsers` import. The executor checks the shape of the
+ * answer for the format, so a host can give its parser output as it is.
+ */
+export type FileExtractor = (file: Binary, request: FileExtractRequest) => Promise<unknown>;
+
+// One slot: the host sets its parsers once at start.
+const FILE_EXTRACTOR = new Map<'extractor', FileExtractor>();
+
+/** Sets the parsers of the `parsers` import of every node run. Without it, `parsers` fails. */
+export const setFileExtractor = (extractor: FileExtractor) => {
+	FILE_EXTRACTOR.set('extractor', extractor);
+};
+
+export const fileExtractor = (): FileExtractor | undefined => FILE_EXTRACTOR.get('extractor');
+
+type OptionCheck = (value: unknown) => boolean;
+
+const isText: OptionCheck = (value) => typeof value === 'string';
+const isFlag: OptionCheck = (value) => typeof value === 'boolean';
+const isAtLeast =
+	(least: number): OptionCheck =>
+	(value) =>
+		typeof value === 'number' && Number.isInteger(value) && value >= least;
+const CSV_ENCODINGS: ReadonlySet<unknown> = new Set(['utf8', 'utf16le', 'latin1', 'ascii', 'ucs2']);
+const TEXT_OPTIONS = { encoding: isText, stripBom: isFlag };
+
+/** The check of each option of each format. A key without a check is not an option. */
+const FILE_OPTIONS: Readonly<Record<FileFormat, Readonly<Record<string, OptionCheck>>>> = {
+	csv: {
+		delimiter: isText,
+		fromLine: isAtLeast(1),
+		maxRows: isAtLeast(1),
+		header: isFlag,
+		includeEmptyCells: isFlag,
+		relaxQuotes: isFlag,
+		encoding: (value) => CSV_ENCODINGS.has(value),
+		bom: isFlag,
+	},
+	xlsx: { sheet: isText, range: isText, header: isFlag, includeEmptyCells: isFlag },
+	json: TEXT_OPTIONS,
+	text: TEXT_OPTIONS,
+	pdf: { password: isText, maxPages: isAtLeast(1) },
+};
+
+const isFileFormat = (value: unknown): value is FileFormat =>
+	typeof value === 'string' && Object.hasOwn(FILE_OPTIONS, value);
+
+/** Why a `parsers.extract` request is not one the host reads: an unknown format or a bad option. */
+export function fileRequestIssues(request: unknown): string[] {
+	const format = isRecord(request) ? request.format : undefined;
+	if (!isRecord(request) || !isFileFormat(format)) {
+		return [`parsers.extract reads ${Object.keys(FILE_OPTIONS).join(', ')}, not ${String(format)}`];
+	}
+	if (!isRecord(request.options)) return [`The ${format} options are not an object`];
+	const checks = FILE_OPTIONS[format];
+	return Object.entries(request.options).flatMap(([name, value]) => {
+		if (value === undefined) return [];
+		const check = Object.hasOwn(checks, name) ? checks[name] : undefined;
+		if (check === undefined) return [`${name} is not an option of ${format}`];
+		return check(value) ? [] : [`The ${format} option ${name} has a value it cannot have`];
+	});
+}
+
+export const isFileExtractRequest = (request: unknown): request is FileExtractRequest =>
+	fileRequestIssues(request).length === 0;
+
+const isFileCell = (value: unknown) =>
+	value === null || ['string', 'number', 'boolean'].includes(typeof value);
+
+const isFileRow = (value: unknown) =>
+	Array.isArray(value)
+		? value.every(isFileCell)
+		: isRecord(value) && Object.values(value).every(isFileCell);
+
+const isOptionalRecord = (value: unknown) => value === undefined || isRecord(value);
+
+/** A host answer has the shape of the result of its format. The sandbox guest checks it too. */
+export function isFileResult<F extends FileFormat>(
+	format: F,
+	value: unknown,
+): value is FileFormats[F]['result'] {
+	switch (format) {
+		case 'csv':
+		case 'xlsx':
+			return Array.isArray(value) && value.every(isFileRow);
+		case 'json':
+			return value !== undefined;
+		case 'text':
+			return typeof value === 'string';
+		case 'pdf':
+			return (
+				isRecord(value) &&
+				Array.isArray(value.pages) &&
+				value.pages.every((page) => typeof page === 'string') &&
+				typeof value.pageCount === 'number' &&
+				isOptionalRecord(value.info) &&
+				isOptionalRecord(value.metadata)
+			);
+		default:
+			return false;
+	}
+}
 
 /** The languages the instance allows, e.g. without Python when `N8N_PYTHON_ENABLED` is false. */
 export const setCodeLanguages = (languages: ReadonlyArray<CodeRequest['language']>) => {

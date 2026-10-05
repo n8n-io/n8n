@@ -37,6 +37,7 @@ import { NodeContractsSync } from '../node-contracts-sync';
 
 const registered: ContractRegistryOptions[] = [];
 const languages: string[][] = [];
+const extractors: Array<(file: unknown, request: unknown) => Promise<unknown>> = [];
 const closed: string[] = [];
 const warmed: object[] = [];
 vi.mock('@n8n/nodes-base-next', () => ({
@@ -46,6 +47,7 @@ vi.mock('@n8n/nodes-base-next', () => ({
 	isStoreStatusRecord: (value: unknown) =>
 		typeof value === 'object' && value !== null && 'yank' in value,
 	setCodeLanguages: (allowed: string[]) => languages.push(allowed),
+	setFileExtractor: (extractor: (typeof extractors)[number]) => extractors.push(extractor),
 	contractStore: (options: ContractStoreOptions) => options,
 	locksOf: () => [['Echo', { action: 'demo.echo', version: '1.0.0' }]],
 	syncContractStore: async () => ({
@@ -144,6 +146,13 @@ describe('useNodeContractsRegistry', () => {
 		expect(workflowRepository.findByIds).toHaveBeenCalledWith(['wf'], { fields: ['meta'] });
 		// N8N_PYTHON_ENABLED=false turns Python off for the Code contracts too.
 		expect(languages).toEqual([['javascript']]);
+		const [extractor] = extractors;
+		const file = {
+			async *read() {
+				yield Buffer.from('{"a":1}');
+			},
+		};
+		expect(await extractor?.(file, { format: 'json', options: {} })).toEqual({ a: 1 });
 	});
 
 	it('passes the default lists, a worker pool, and the runtimes that cannot start', async () => {

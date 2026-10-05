@@ -328,6 +328,7 @@ function basePropertyOf(
 				...base,
 				type: 'string',
 				default: typeof json.default === 'string' ? json.default : '',
+				...(json.writeOnly ? { typeOptions: { password: true } } : {}),
 			};
 		case 'number':
 		case 'integer': {

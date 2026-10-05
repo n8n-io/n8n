@@ -1,13 +1,14 @@
 // The generic JS guest of the action interface: it runs an action bundle and gives it the run
 // context over the imports of the action world.
-import * as witBinary from 'n8n:node-contract/binary@2.7.0';
-import { item as witChunkItem } from 'n8n:node-contract/chunk@2.7.0';
-import { run as witCode } from 'n8n:node-contract/code@2.7.0';
-import * as witTables from 'n8n:node-contract/data-tables@2.7.0';
-import { get as witInputOf } from 'n8n:node-contract/input-of@2.7.0';
-import { get as witLimits } from 'n8n:node-contract/limits@2.7.0';
-import { open as witSupplied } from 'n8n:node-contract/supplied@2.7.0';
-import { until as witUntil } from 'n8n:node-contract/wait@2.7.0';
+import * as witBinary from 'n8n:node-contract/binary@2.8.0';
+import { item as witChunkItem } from 'n8n:node-contract/chunk@2.8.0';
+import { run as witCode } from 'n8n:node-contract/code@2.8.0';
+import * as witTables from 'n8n:node-contract/data-tables@2.8.0';
+import { get as witInputOf } from 'n8n:node-contract/input-of@2.8.0';
+import { get as witLimits } from 'n8n:node-contract/limits@2.8.0';
+import { extract as witExtract } from 'n8n:node-contract/parsers@2.8.0';
+import { open as witSupplied } from 'n8n:node-contract/supplied@2.8.0';
+import { until as witUntil } from 'n8n:node-contract/wait@2.8.0';
 
 import type {
 	Action,
@@ -19,8 +20,9 @@ import type {
 	Http,
 	HttpRequest,
 	InputItem,
+	Parsers,
 } from '../src/define';
-import { isDataTableRows } from '../src/host-imports';
+import { isDataTableRows, isFileResult } from '../src/host-imports';
 import { checkedResponse, listItems, requestOf, withBinaries } from '../src/runtime';
 import type { Binary } from '../src/schema';
 import { providerInputsOf, type ChatMessage, type ChatRequest } from '../src/providers';
@@ -197,6 +199,18 @@ const dataTables: DataTables = {
 	create: async (table) => call(() => witTables.create({ ...table, columns: [...table.columns] })),
 };
 
+const parsers: Parsers = {
+	async extract(file, format, options = {}) {
+		const resource = resourceOf(file);
+		if (resource === undefined) throw new Error('parsers.extract needs a binary of this run');
+		const value = call(() => parsed(witExtract(resource, { tag: format, val: { ...options } })));
+		if (!isFileResult(format, value)) {
+			throw new Error(`The host gave the ${format} content of a file in another shape`);
+		}
+		return value;
+	},
+};
+
 /** The index of an input item by identity, or -1. A run with many items looks up each output. */
 const indexOfIn = (items: readonly unknown[]) => {
 	const indexes = new Map(items.map((item, index) => [item, index]));
@@ -208,6 +222,7 @@ const importsOf = (items: readonly InputItem[]): HostImports<Record<string, unkn
 	const indexOf = indexOfIn(items);
 	return {
 		dataTables,
+		parsers,
 		code: { run: async (request) => call(() => parsed(witCode(request))) },
 		wait: { until: async (at) => call(() => witUntil(BigInt(at.getTime()))) },
 		inputOf: async (item) => {

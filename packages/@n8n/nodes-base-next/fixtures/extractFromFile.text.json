@@ -1,0 +1,24 @@
+{
+	"executions": [
+		{
+			"name": "reads the text into data",
+			"params": {
+				"file": "data"
+			},
+			"binary": {
+				"data": {
+					"data": "U2hpcCBvbiBNb25kYXkuCkNhbGwgQWRhIGZpcnN0Lgo=",
+					"mimeType": "text/plain",
+					"fileName": "notes.txt"
+				}
+			},
+			"responses": [],
+			"imports": ["Ship on Monday.\nCall Ada first.\n"],
+			"output": [
+				{
+					"data": "Ship on Monday.\nCall Ada first.\n"
+				}
+			]
+		}
+	]
+}

@@ -2,10 +2,10 @@
 	"openrpc": "1.3.2",
 	"info": {
 		"title": "n8n Node Contract: the action interface",
-		"version": "2.7.0",
+		"version": "2.8.0",
 		"description": "Generated from spec/wit (world action-bundle) by scripts/spec.ts. Do not edit.\n\nAn action: it reads items and gives items. The host gives an optional import only to an\naction whose manifest needs it: `binary` for a `t.binary()` field, `supplied` for a\n`provider.input()` field, the others when the manifest `imports` lists them.\n\nBoth sides send requests on one connection. `x-direction` tells which side answers a method. A method without `result` is a notification. Names in brackets are not WIT functions: the JSON-RPC mapping adds them."
 	},
-	"x-world": "n8n:node-contract/action-bundle@2.7.0",
+	"x-world": "n8n:node-contract/action-bundle@2.8.0",
 	"x-since": "2.0.0",
 	"methods": [
 		{
@@ -2192,6 +2192,46 @@
 			],
 			"x-direction": "guest-to-host",
 			"x-since": "2.7.0"
+		},
+		{
+			"name": "parsers.extract",
+			"description": "The content of `file`. `csv` and `xlsx`: a list of rows. `json`: the value of the file.\n`text`: the text as a JSON string. `pdf`: `{ pages, pageCount, info?, metadata? }`, with\nthe text of each page that the host read. An error when the file is not in the format.",
+			"paramStructure": "by-name",
+			"params": [
+				{
+					"name": "file",
+					"required": true,
+					"schema": {
+						"type": "integer",
+						"minimum": 0,
+						"description": "A handle of binary.binary. The side that creates the resource numbers it."
+					}
+				},
+				{
+					"name": "request",
+					"required": true,
+					"schema": {
+						"$ref": "#/components/schemas/parsers.extract-request"
+					}
+				}
+			],
+			"result": {
+				"name": "result",
+				"schema": {
+					"$ref": "#/components/schemas/types.json"
+				}
+			},
+			"errors": [
+				{
+					"code": -32000,
+					"message": "The error of the WIT result."
+				}
+			],
+			"x-error": {
+				"type": "string"
+			},
+			"x-direction": "guest-to-host",
+			"x-since": "2.8.0"
 		}
 	],
 	"components": {
@@ -3469,6 +3509,189 @@
 					"warn",
 					"error"
 				]
+			},
+			"parsers.csv-options": {
+				"description": "A CSV file. Each row is an object by column name, or a list of cells without `header`.",
+				"type": "object",
+				"properties": {
+					"delimiter": {
+						"description": "`,` when none.",
+						"type": "string"
+					},
+					"fromLine": {
+						"description": "The first line to read, from 1.",
+						"type": "integer",
+						"minimum": 0,
+						"maximum": 4294967295
+					},
+					"maxRows": {
+						"description": "All rows when none.",
+						"type": "integer",
+						"minimum": 0,
+						"maximum": 4294967295
+					},
+					"header": {
+						"description": "True when none: the first row names the columns.",
+						"type": "boolean"
+					},
+					"includeEmptyCells": {
+						"description": "Keep an empty cell as an empty string in a row object.",
+						"type": "boolean"
+					},
+					"relaxQuotes": {
+						"description": "Accept a quote in a cell that does not start with a quote.",
+						"type": "boolean"
+					},
+					"encoding": {
+						"description": "`utf8`, `utf16le`, `latin1`, `ascii` or `ucs2`. `utf8` when none.",
+						"type": "string"
+					},
+					"bom": {
+						"description": "Remove a byte order mark at the start.",
+						"type": "boolean"
+					}
+				},
+				"additionalProperties": false
+			},
+			"parsers.extract-request": {
+				"description": "The format to read the file as, with its options.",
+				"oneOf": [
+					{
+						"type": "object",
+						"properties": {
+							"tag": {
+								"const": "csv"
+							},
+							"val": {
+								"$ref": "#/components/schemas/parsers.csv-options"
+							}
+						},
+						"required": [
+							"tag",
+							"val"
+						],
+						"additionalProperties": false
+					},
+					{
+						"type": "object",
+						"properties": {
+							"tag": {
+								"const": "xlsx"
+							},
+							"val": {
+								"$ref": "#/components/schemas/parsers.sheet-options"
+							}
+						},
+						"required": [
+							"tag",
+							"val"
+						],
+						"additionalProperties": false
+					},
+					{
+						"type": "object",
+						"properties": {
+							"tag": {
+								"const": "json"
+							},
+							"val": {
+								"$ref": "#/components/schemas/parsers.text-options"
+							}
+						},
+						"required": [
+							"tag",
+							"val"
+						],
+						"additionalProperties": false
+					},
+					{
+						"type": "object",
+						"properties": {
+							"tag": {
+								"const": "text"
+							},
+							"val": {
+								"$ref": "#/components/schemas/parsers.text-options"
+							}
+						},
+						"required": [
+							"tag",
+							"val"
+						],
+						"additionalProperties": false
+					},
+					{
+						"type": "object",
+						"properties": {
+							"tag": {
+								"const": "pdf"
+							},
+							"val": {
+								"$ref": "#/components/schemas/parsers.pdf-options"
+							}
+						},
+						"required": [
+							"tag",
+							"val"
+						],
+						"additionalProperties": false
+					}
+				]
+			},
+			"parsers.pdf-options": {
+				"description": "A PDF file.",
+				"type": "object",
+				"properties": {
+					"password": {
+						"description": "The password of an encrypted file.",
+						"type": "string"
+					},
+					"maxPages": {
+						"description": "All pages when none.",
+						"type": "integer",
+						"minimum": 0,
+						"maximum": 4294967295
+					}
+				},
+				"additionalProperties": false
+			},
+			"parsers.sheet-options": {
+				"description": "One sheet of an Excel 2007+ workbook. Each row is an object by column name, or a list\nof cells without `header`.",
+				"type": "object",
+				"properties": {
+					"sheet": {
+						"description": "The first sheet when none.",
+						"type": "string"
+					},
+					"range": {
+						"description": "An A1 range, e.g. `A2:D20`, or the row to start at, from 0.",
+						"type": "string"
+					},
+					"header": {
+						"description": "True when none: the first row names the columns.",
+						"type": "boolean"
+					},
+					"includeEmptyCells": {
+						"description": "Keep an empty cell as an empty string.",
+						"type": "boolean"
+					}
+				},
+				"additionalProperties": false
+			},
+			"parsers.text-options": {
+				"description": "A text or JSON file.",
+				"type": "object",
+				"properties": {
+					"encoding": {
+						"description": "An iconv-lite encoding name. `utf8` when none.",
+						"type": "string"
+					},
+					"stripBom": {
+						"description": "True when none: remove a byte order mark at the start.",
+						"type": "boolean"
+					}
+				},
+				"additionalProperties": false
 			},
 			"run-credential.run-credential": {
 				"type": "object",

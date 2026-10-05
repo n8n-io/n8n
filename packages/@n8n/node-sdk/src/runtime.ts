@@ -36,7 +36,16 @@ import {
 } from 'n8n-workflow';
 
 import { credentialBaseUrlOf, plainFieldsOf, redactedValue, secretRedactorOf } from './credentials';
-import { codeRunnerOf, dataTableHostOf, dataTablesOf } from './host-imports';
+import {
+	codeRunnerOf,
+	dataTableHostOf,
+	dataTablesOf,
+	fileExtractor,
+	fileRequestIssues,
+	isFileExtractRequest,
+	isFileResult,
+	type FileExtractor,
+} from './host-imports';
 import {
 	actionHostsOf,
 	credentialHostsOf,
@@ -609,6 +618,11 @@ export interface ExecutorHost {
 	inputItems?(index: number): readonly INodeExecutionData[];
 	/** Needed by an action that imports `dataTables`. */
 	readonly dataTables?: DataTables;
+	/**
+	 * Needed by an action that imports `parsers`. It gets a binary of the run, never another one.
+	 * The executor checks the shape of the answer.
+	 */
+	readonly extractFile?: FileExtractor;
 	/** Needed by an action that imports `code`. */
 	readonly code?: CodeRunner;
 	/** Needed by an action that imports `wait`: the next nodes run at `at`, not before. */
@@ -733,6 +747,7 @@ const hostOf = (
 		}
 	},
 	dataTables: dataTablesOf(dataTableHostOf(context)),
+	extractFile: fileExtractor(),
 	code: codeRunnerOf(context),
 	// A time wait gives no resume URL, as the Wait node does for a time interval.
 	waitUntil: async (at) => await context.putExecutionToWait(at, { acceptsResumeRequest: false }),
@@ -1514,6 +1529,27 @@ export function executorOf<S extends Shape, O extends AnySchema>(
 				},
 				list: async (query) => await hostService('dataTables', host.dataTables).list(query),
 				create: async (table) => await hostService('dataTables', host.dataTables).create(table),
+			},
+			parsers: {
+				async extract(file, format, options = {}) {
+					const extract = hostService('parsers', host.extractFile);
+					// A bundle can make an object that looks like a binary. Only a handle of this run is read.
+					if (!entries.has(file)) {
+						throw new UnexpectedError(`${action.id} reads a file that is not a binary of this run`);
+					}
+					// The options come from the bundle, so the host checks them before its parser reads them.
+					const request = { format, options };
+					if (!isFileExtractRequest(request)) {
+						throw new UserError(fileRequestIssues(request).join('; '));
+					}
+					const value = await extract(file, request);
+					if (!isFileResult(format, value)) {
+						throw new UnexpectedError(
+							`The host gave the ${format} content of a file in another shape`,
+						);
+					}
+					return value;
+				},
 			},
 			code: { run: async (request) => await hostService('code', host.code).run(request) },
 			wait: {

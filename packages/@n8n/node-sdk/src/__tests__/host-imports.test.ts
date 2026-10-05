@@ -1,3 +1,4 @@
+import { Readable } from 'node:stream';
 import {
 	NodeHelpers,
 	Workflow,
@@ -14,7 +15,9 @@ import {
 	t,
 	validate,
 	type DataTableFilter,
+	type Binary,
 	type DataTableRow,
+	type FileExtractRequest,
 	type InputItem,
 	type JsonSchema,
 } from '../index';
@@ -27,7 +30,13 @@ import {
 	tableIdByName,
 	type DataTableHost,
 } from '../host-imports';
-import { countedInputsOf, executorOf, toNodeType, type ExecutorHost } from '../runtime';
+import {
+	countedInputsOf,
+	executorOf,
+	toNodeType,
+	type BinaryStore,
+	type ExecutorHost,
+} from '../runtime';
 import { contractHash, diffContracts, requiredNodeContractOf } from '../version';
 
 const demo = defineNode({ id: 'demo', displayName: 'Demo' });
@@ -420,6 +429,140 @@ describe('imports', () => {
 				yield* [];
 			},
 		});
+	});
+});
+
+describe('parsers', () => {
+	const csv = Buffer.from('name,plan\nAda,pro\n');
+	const store: BinaryStore = {
+		input: async (_itemIndex, value) => {
+			if (value !== 'data') throw new Error(`No binary ${String(value)}`);
+			return { data: csv.toString('base64'), mimeType: 'text/csv', bytes: csv.length };
+		},
+		read: async (entry) => Readable.from([Buffer.from(entry.data, 'base64')]),
+		write: async () => await Promise.reject(new Error('no writes in this test')),
+	};
+	const rowsOf = demo.action('rows', {
+		action: 'Rows',
+		summary: 'One item per row of a CSV file.',
+		flow: { effect: 'transform', cardinality: '1:N' },
+		imports: ['parsers'],
+		input: { file: t.binary(), header: t.bool().default(true) },
+		output: t.json(),
+		async *run({ input, parsers }) {
+			const rows = await parsers.extract(input.file, 'csv', { header: input.header });
+			yield* rows.map((row) => (Array.isArray(row) ? { row } : { ...row }));
+		},
+	});
+	const parameters =
+		(header = true) =>
+		(name: string) =>
+			name === 'file' ? 'data' : header;
+	const reads = () => {
+		const requests: Array<{ text: string; request: FileExtractRequest }> = [];
+		const extractFile = async (file: Binary, request: FileExtractRequest) => {
+			const chunks: Uint8Array[] = [];
+			for await (const chunk of file.read()) chunks.push(chunk);
+			requests.push({ text: Buffer.concat(chunks).toString(), request });
+			return request.format === 'csv' && request.options.header === false
+				? [
+						['name', 'plan'],
+						['Ada', 'pro'],
+					]
+				: [{ name: 'Ada', plan: 'pro' }];
+		};
+		return { requests, extractFile };
+	};
+
+	it('reads a binary of the run through the host, with the format and its options', async () => {
+		const { requests, extractFile } = reads();
+		const [output] = await executorOf(rowsOf)(
+			hostOf({ parameter: parameters(), binary: store, extractFile }),
+		);
+		expect(output?.map(({ json }) => json)).toEqual([{ name: 'Ada', plan: 'pro' }]);
+		expect(requests).toEqual([
+			{ text: 'name,plan\nAda,pro\n', request: { format: 'csv', options: { header: true } } },
+		]);
+		const [lists] = await executorOf(rowsOf)(
+			hostOf({ parameter: parameters(false), binary: store, extractFile }),
+		);
+		expect(lists?.map(({ json }) => json)).toEqual([
+			{ row: ['name', 'plan'] },
+			{ row: ['Ada', 'pro'] },
+		]);
+	});
+
+	it('refuses an answer in another shape than its format gives', async () => {
+		const host = hostOf({
+			parameter: parameters(),
+			binary: store,
+			extractFile: async () => [{ name: { first: 'Ada' } }],
+		});
+		await expect(executorOf(rowsOf)(host)).rejects.toThrow(
+			'The host gave the csv content of a file in another shape',
+		);
+	});
+
+	it('refuses a file that is not a binary of the run, and options the format does not have', async () => {
+		const { requests, extractFile } = reads();
+		const forged = demo.action('forged', {
+			action: 'Forged',
+			summary: 'Reads a file it made up.',
+			flow: { effect: 'transform', cardinality: 'per-item' },
+			imports: ['parsers'],
+			input: { file: t.binary() },
+			output: t.json(),
+			async run({ parsers }) {
+				const file: Binary = { meta: { mimeType: 'text/csv' }, async *read() {} };
+				return { rows: await parsers.extract(file, 'csv') };
+			},
+		});
+		await expect(
+			executorOf(forged)(hostOf({ parameter: parameters(), binary: store, extractFile })),
+		).rejects.toThrow('demo.forged reads a file that is not a binary of this run');
+		const wrong = demo.action('wrong', {
+			action: 'Wrong',
+			summary: 'Passes options of another format.',
+			flow: { effect: 'transform', cardinality: 'per-item' },
+			imports: ['parsers'],
+			input: { file: t.binary() },
+			output: t.json(),
+			async run({ input, parsers }) {
+				const options = { password: 'x', fromLine: 0 };
+				return { rows: await parsers.extract(input.file, 'csv', options) };
+			},
+		});
+		await expect(
+			executorOf(wrong)(hostOf({ parameter: parameters(), binary: store, extractFile })),
+		).rejects.toThrow(
+			'password is not an option of csv; The csv option fromLine has a value it cannot have',
+		);
+		expect(requests).toEqual([]);
+	});
+
+	it('fails without a host answer, and refuses an undeclared import', async () => {
+		await expect(
+			executorOf(rowsOf)(hostOf({ parameter: parameters(), binary: store })),
+		).rejects.toThrow('demo.rows imports "parsers", and this host has none');
+		const { extractFile } = reads();
+		const sneaky = demo.action('sneakyParsers', {
+			action: 'Sneaky parsers',
+			summary: 'Reads a file without the import.',
+			flow: { effect: 'transform', cardinality: 'per-item' },
+			input: { file: t.binary() },
+			output: t.json(),
+			async run(context) {
+				const wide = context as unknown as { parsers: { extract(...args: unknown[]): unknown } };
+				return { rows: await wide.parsers.extract(context.input.file, 'csv') };
+			},
+		});
+		await expect(
+			executorOf(sneaky)(hostOf({ parameter: parameters(), binary: store, extractFile })),
+		).rejects.toThrow('demo.sneakyParsers does not list "parsers" in its imports');
+	});
+
+	it('needs Node Contract 2.8.0', () => {
+		expect(requiredNodeContractOf(toContract(rowsOf))).toBe('2.8.0');
 	});
 });
 

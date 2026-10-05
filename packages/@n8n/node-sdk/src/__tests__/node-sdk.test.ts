@@ -541,6 +541,13 @@ describe('toNodeType', () => {
 		expect(defaultOf(t.oneOf('first', 'last').optional())).toBe('');
 	});
 
+	it('masks a writeOnly string input in the UI', () => {
+		expect(toProperty('password', t.str().with({ writeOnly: true })).typeOptions).toEqual({
+			password: true,
+		});
+		expect(toProperty('name', t.str()).typeOptions).toBeUndefined();
+	});
+
 	it('adds one authentication selector when the node takes several credential types', () => {
 		const open = defineNode({
 			id: 'web',

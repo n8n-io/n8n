@@ -306,6 +306,11 @@ const dataTables = {
 	create: (table: unknown) => call('data-tables.create', { table }, asText),
 };
 
+const parsers = {
+	extract: (file: Binary, request: { tag: string; val: Record<string, unknown> }) =>
+		text(call('parsers.extract', { file: file.self, request }, asText)),
+};
+
 const code = {
 	run: (request: unknown) => text(call('code.run', { request }, asText)),
 };
@@ -474,6 +479,7 @@ export const modules: Readonly<Record<string, object>> = {
 	'run-credential': runCredential,
 	binary,
 	'data-tables': dataTables,
+	parsers,
 	code,
 	wait,
 	'input-of': inputOf,

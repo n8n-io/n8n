@@ -161,13 +161,20 @@ describe('bundled versions', () => {
 				]),
 			),
 		);
-		// Only counted inputs and binary key patterns need 2.6.0, only the paged lists need 2.4.0,
-		// only the actions with host imports, named inputs or providers need 2.3.0, and only the
-		// actions with binary data need 2.2.0.
+		// Only the file readers need 2.8.0, only counted inputs and binary key patterns need 2.6.0,
+		// only the paged lists need 2.4.0, only the actions with host imports, named inputs or
+		// providers need 2.3.0, and only the actions with binary data need 2.2.0.
 		const withVersion = (version: string) =>
 			Object.keys(versions)
 				.filter((id) => versions[id] === version)
 				.sort();
+		expect(withVersion('2.8.0')).toEqual([
+			'extractFromFile.csv',
+			'extractFromFile.json',
+			'extractFromFile.pdf',
+			'extractFromFile.text',
+			'extractFromFile.xlsx',
+		]);
 		expect(withVersion('2.6.0')).toEqual([
 			'gmail.message.get',
 			'gmail.message.getAll',

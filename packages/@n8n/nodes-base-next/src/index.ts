@@ -10,6 +10,11 @@ import { anthropicChatModel } from './nodes/anthropic/actions/chat-model';
 import { filterItems } from './nodes/condition/actions/filter';
 import { ifCondition } from './nodes/condition/actions/if';
 import { switchCases } from './nodes/condition/actions/switch';
+import { extractCsv } from './nodes/extract-from-file/actions/csv';
+import { extractJson } from './nodes/extract-from-file/actions/json';
+import { extractPdf } from './nodes/extract-from-file/actions/pdf';
+import { extractText } from './nodes/extract-from-file/actions/text';
+import { extractXlsx } from './nodes/extract-from-file/actions/xlsx';
 import { aggregateItems } from './nodes/items/actions/aggregate';
 import { dateTime } from './nodes/items/actions/date-time';
 import { limitItems } from './nodes/items/actions/limit';
@@ -143,6 +148,7 @@ export {
 	permissionsOf,
 	runsNodeContract,
 	setCodeLanguages,
+	setFileExtractor,
 	toVersionedNodeType,
 	toVersionedToolType,
 	toVersionedTriggerType,
@@ -264,6 +270,11 @@ export const actions: readonly Action[] = [
 	createFolder,
 	getSupabaseRows,
 	updateSupabaseRows,
+	extractCsv,
+	extractXlsx,
+	extractJson,
+	extractText,
+	extractPdf,
 ];
 
 /** Every trigger this package ships, one n8n node type each. */

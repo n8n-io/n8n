@@ -87,7 +87,7 @@ async function bufferOf(stream: AsyncIterable<unknown>): Promise<Buffer> {
 }
 
 /** A binary store in memory, with the input binaries of the fixture. */
-/** The host imports of a fixture: each data table call and code run takes the next recorded answer. */
+/** The host imports of a fixture: each data table call, file read and code run takes the next recorded answer. */
 function fixtureImports(fixture: ExecutionFixture) {
 	const answers = [...(fixture.imports ?? [])];
 	const next = <T>(what: string, guard: (value: unknown) => value is T): T => {
@@ -116,8 +116,10 @@ function fixtureImports(fixture: ExecutionFixture) {
 		list: async () => next('list', isDataTableList),
 		create: async () => next('create', isDataTableInfo),
 	};
-	const host: Pick<ExecutorHost, 'dataTables' | 'code' | 'waitUntil'> = {
+	const host: Pick<ExecutorHost, 'dataTables' | 'extractFile' | 'code' | 'waitUntil'> = {
 		dataTables,
+		// The executor checks the shape of the answer for the format.
+		extractFile: async () => next('parsers', anything),
 		code: { run: async () => next('code', anything) },
 		waitUntil: async () => await Promise.resolve(),
 	};

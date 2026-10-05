@@ -29,6 +29,7 @@ import {
 	type RunLimits,
 } from './define';
 import { allowsHost, permissionsOf } from './egress';
+import { fileRequestIssues, isFileExtractRequest } from './host-imports';
 import type { RunRecorder, RunRequest, RunRpc } from './profile';
 import {
 	credentialManifestOf,
@@ -227,6 +228,7 @@ export interface GuestRuntime {
 
 const IMPORT_INTERFACES: Readonly<Record<HostImport, string>> = {
 	dataTables: 'data-tables',
+	parsers: 'parsers',
 	code: 'code',
 	wait: 'wait',
 	inputOf: 'input-of',
@@ -1427,6 +1429,25 @@ function callsOf(
 				}
 				const name = table.name;
 				return await tableResult(async () => await dataTables().create({ name, columns }));
+			}
+			case 'parsers.extract': {
+				const parsers = imports('parsers');
+				const { request } = params;
+				if (!('extract' in parsers) || !isRecord(request) || !isRecord(request.val)) {
+					throw new RpcError(-32602, 'parsers.extract needs an extract-request');
+				}
+				// A WIT option that is none crosses as null.
+				const options = Object.fromEntries(
+					Object.entries(request.val).filter(([, value]) => value !== null),
+				);
+				const read = { format: request.tag, options };
+				if (!isFileExtractRequest(read)) {
+					throw new RpcError(-32602, fileRequestIssues(read).join('; '));
+				}
+				const file = fileOf(params.file);
+				return await tableResult(
+					async () => await parsers.extract(file, read.format, read.options),
+				);
 			}
 			case 'code.run': {
 				const { request } = params;

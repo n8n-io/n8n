@@ -544,6 +544,7 @@ export async function useNodeContractsRegistry() {
 		pooledRuntime,
 		sandboxCredentialTypeOf,
 		setCodeLanguages,
+		setFileExtractor,
 		useContractRegistry,
 		warmSandbox,
 		wasmReuseRuntime,
@@ -551,6 +552,13 @@ export async function useNodeContractsRegistry() {
 	} = await import('@n8n/nodes-base-next');
 	// The Code contracts follow the same switch as the Code node.
 	setCodeLanguages(nodes.pythonEnabled ? ['javascript', 'python'] : ['javascript']);
+	// The `parsers` import uses the parsers of the Extract from File node. They load at the first read.
+	setFileExtractor(async (file, request) => {
+		const { extractFile } = await import(
+			'n8n-nodes-base/dist/nodes/Files/ExtractFromFile/extractFile.js'
+		);
+		return await extractFile(file, request);
+	});
 	const metaByExecution = new Map<string, Promise<unknown>>();
 
 	const metaOf = async (workflowId: string | undefined) => {

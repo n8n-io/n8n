@@ -1,4 +1,4 @@
-package n8n:node-contract@2.7.0;
+package n8n:node-contract@2.8.0;
 
 /// What an action bundle exports.
 ///
@@ -145,5 +145,7 @@ world action-bundle {
     import run-credential;
     @since(version = 2.7.0)
     import chunk;
+    @since(version = 2.8.0)
+    import parsers;
     export action;
 }

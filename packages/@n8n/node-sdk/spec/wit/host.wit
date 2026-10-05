@@ -8,7 +8,7 @@
 /// import, export or field. A major breaks. `@since` tells which minor added an item. A
 /// bundle states the lowest version that has all it uses (`nodeContract` in its manifest), so
 /// an older host still runs it.
-package n8n:node-contract@2.7.0;
+package n8n:node-contract@2.8.0;
 
 @since(version = 2.0.0)
 interface types {
@@ -311,6 +311,77 @@ interface data-tables {
     /// `list` is a WIT keyword. The JSON-RPC method is `data-tables.list`.
     %list: func(query: list-query) -> result<table-page, string>;
     create: func(table: new-table) -> result<table-info, string>;
+}
+
+/// Reads the content of a file with the parsers of n8n. The bytes stay in the host, so a bundle
+/// needs no parser. Only an action that lists `parsers` in its manifest `imports` gets it.
+@since(version = 2.8.0)
+interface parsers {
+    use types.{json};
+    use binary.{binary};
+
+    /// A CSV file. Each row is an object by column name, or a list of cells without `header`.
+    record csv-options {
+        /// `,` when none.
+        delimiter: option<string>,
+        /// The first line to read, from 1.
+        from-line: option<u32>,
+        /// All rows when none.
+        max-rows: option<u32>,
+        /// True when none: the first row names the columns.
+        header: option<bool>,
+        /// Keep an empty cell as an empty string in a row object.
+        include-empty-cells: option<bool>,
+        /// Accept a quote in a cell that does not start with a quote.
+        relax-quotes: option<bool>,
+        /// `utf8`, `utf16le`, `latin1`, `ascii` or `ucs2`. `utf8` when none.
+        encoding: option<string>,
+        /// Remove a byte order mark at the start.
+        bom: option<bool>,
+    }
+
+    /// One sheet of an Excel 2007+ workbook. Each row is an object by column name, or a list
+    /// of cells without `header`.
+    record sheet-options {
+        /// The first sheet when none.
+        sheet: option<string>,
+        /// An A1 range, e.g. `A2:D20`, or the row to start at, from 0.
+        range: option<string>,
+        /// True when none: the first row names the columns.
+        header: option<bool>,
+        /// Keep an empty cell as an empty string.
+        include-empty-cells: option<bool>,
+    }
+
+    /// A text or JSON file.
+    record text-options {
+        /// An iconv-lite encoding name. `utf8` when none.
+        encoding: option<string>,
+        /// True when none: remove a byte order mark at the start.
+        strip-bom: option<bool>,
+    }
+
+    /// A PDF file.
+    record pdf-options {
+        /// The password of an encrypted file.
+        password: option<string>,
+        /// All pages when none.
+        max-pages: option<u32>,
+    }
+
+    /// The format to read the file as, with its options.
+    variant extract-request {
+        csv(csv-options),
+        xlsx(sheet-options),
+        json(text-options),
+        text(text-options),
+        pdf(pdf-options),
+    }
+
+    /// The content of `file`. `csv` and `xlsx`: a list of rows. `json`: the value of the file.
+    /// `text`: the text as a JSON string. `pdf`: `{ pages, pageCount, info?, metadata? }`, with
+    /// the text of each page that the host read. An error when the file is not in the format.
+    extract: func(file: borrow<binary>, request: extract-request) -> result<json, string>;
 }
 
 /// User code in the n8n task runner, as the Code node runs it. The code reads the input items

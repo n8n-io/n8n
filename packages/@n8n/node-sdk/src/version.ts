@@ -6,6 +6,7 @@ import {
 	usesBinary,
 	usesBinaryKeyPattern,
 	usesHostImports,
+	usesParsers,
 	usesProviders,
 	type ContractDocument,
 } from './define';
@@ -33,11 +34,12 @@ import { matches } from './validate';
  * patterns that hold binaries (`t.indexedBinaries()`).
  * 2.7.0 adds the `runtime` of a version, a container image pinned by digest, and the `chunk`
  * import and `chunk-run` of the sandbox guest.
+ * 2.8.0 adds the `parsers` host import, which reads the content of a file with the parsers of n8n.
  */
 export type NodeContractVersion = `${number}.${number}.${number}`;
 
 /** The newest version this host implements. */
-export const NODE_CONTRACT_VERSION: NodeContractVersion = '2.7.0';
+export const NODE_CONTRACT_VERSION: NodeContractVersion = '2.8.0';
 
 /** The newest version of each major that this host runs. */
 export const IMPLEMENTED_NODE_CONTRACTS: readonly NodeContractVersion[] = [NODE_CONTRACT_VERSION];
@@ -66,17 +68,19 @@ export const requiredNodeContractOf = (
 	contract: Pick<ContractDocument, 'input' | 'output' | 'imports' | 'inputs' | 'runtime'>,
 	list = false,
 ): NodeContractVersion =>
-	contract.runtime
-		? '2.7.0'
-		: inputCountOf(contract) !== undefined || usesBinaryKeyPattern(contract)
-			? '2.6.0'
-			: list || hasPageValue(contract.input)
-				? '2.4.0'
-				: usesHostImports(contract) || usesProviders(contract)
-					? '2.3.0'
-					: usesBinary(contract)
-						? '2.2.0'
-						: '2.1.0';
+	usesParsers(contract)
+		? '2.8.0'
+		: contract.runtime
+			? '2.7.0'
+			: inputCountOf(contract) !== undefined || usesBinaryKeyPattern(contract)
+				? '2.6.0'
+				: list || hasPageValue(contract.input)
+					? '2.4.0'
+					: usesHostImports(contract) || usesProviders(contract)
+						? '2.3.0'
+						: usesBinary(contract)
+							? '2.2.0'
+							: '2.1.0';
 
 /** A newer minor than the host has uses imports or fields that the host lacks. */
 export const implementsNodeContract = (version: NodeContractVersion) => {
@@ -753,7 +757,7 @@ export type ExecutionFixture = {
 	/**
 	 * The answers of the host imports, in call order: one for each data table call (`columns`,
 	 * `rows`, `insert`, `update`, `upsert`, `delete`, `clear`, `rename`, `drop`, `list`,
-	 * `create`) and each code run. Opening a table and a wait answer at once.
+	 * `create`), each file read and each code run. Opening a table and a wait answer at once.
 	 */
 	readonly imports?: readonly unknown[];
 	/** The message of the error the run ends with. The output is then empty. */

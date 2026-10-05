@@ -1,0 +1,60 @@
+{
+	"executions": [
+		{
+			"name": "parses the file into data",
+			"params": {
+				"file": "data"
+			},
+			"binary": {
+				"data": {
+					"data": "eyJvcmRlcnMiOlt7ImlkIjoxLCJ0b3RhbCI6OS41fV19",
+					"mimeType": "application/json",
+					"fileName": "orders.json"
+				}
+			},
+			"responses": [],
+			"imports": [
+				{
+					"orders": [
+						{
+							"id": 1,
+							"total": 9.5
+						}
+					]
+				}
+			],
+			"output": [
+				{
+					"data": {
+						"orders": [
+							{
+								"id": 1,
+								"total": 9.5
+							}
+						]
+					}
+				}
+			]
+		},
+		{
+			"name": "an empty file gives an empty object",
+			"params": {
+				"file": "data"
+			},
+			"binary": {
+				"data": {
+					"data": "",
+					"mimeType": "application/json",
+					"fileName": "empty.json"
+				}
+			},
+			"responses": [],
+			"imports": [{}],
+			"output": [
+				{
+					"data": {}
+				}
+			]
+		}
+	]
+}
