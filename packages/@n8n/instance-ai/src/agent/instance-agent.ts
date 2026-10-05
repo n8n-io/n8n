@@ -28,7 +28,11 @@ import {
 	DOMAIN_TOOL_IDS,
 	ORCHESTRATION_TOOL_IDS,
 } from '../tools/tool-ids';
-import { asReverifyTool, withBuildVerification } from '../tools/workflows/build-and-verify';
+import {
+	asReverifyTool,
+	withBuildVerification,
+	type BuildVerificationSources,
+} from '../tools/workflows/build-and-verify';
 import { isSetupPanelEnabled } from '../tools/workflows/setup-items';
 import {
 	buildAgentTraceInputs,
@@ -196,21 +200,24 @@ export async function createInstanceAgent(
 	const buildTool = allOrchestratorTools.get(DOMAIN_TOOL_IDS.BUILD_WORKFLOW);
 	const verifyTool = allOrchestratorTools.get(ORCHESTRATION_TOOL_IDS.VERIFY_BUILT_WORKFLOW);
 	if (domainContext.nodeContractsEnabled && buildTool) {
+		const verificationSources: BuildVerificationSources = {
+			getWorkflow: async (workflowId) =>
+				await domainContext.workflowService.getAsWorkflowJSON(workflowId),
+			getBuildOutcome: async (workItemId) =>
+				await orchestrationContext?.workflowTaskService?.getBuildOutcome(workItemId),
+			getResolvedNodeParameters: async (executionId, nodeName) =>
+				await domainContext.executionService.getResolvedNodeParameters(executionId, nodeName),
+			getNodeOutput: async (executionId, nodeName) =>
+				await domainContext.executionService.getNodeOutput(executionId, nodeName),
+		};
 		allOrchestratorTools.set(
 			DOMAIN_TOOL_IDS.BUILD_WORKFLOW,
-			withBuildVerification(buildTool, verifyTool, {
-				getWorkflow: async (workflowId) =>
-					await domainContext.workflowService.getAsWorkflowJSON(workflowId),
-				getBuildOutcome: async (workItemId) =>
-					await orchestrationContext?.workflowTaskService?.getBuildOutcome(workItemId),
-				getResolvedNodeParameters: async (executionId, nodeName) =>
-					await domainContext.executionService.getResolvedNodeParameters(executionId, nodeName),
-			}),
+			withBuildVerification(buildTool, verifyTool, verificationSources),
 		);
 		if (verifyTool) {
 			allOrchestratorTools.set(
 				ORCHESTRATION_TOOL_IDS.VERIFY_BUILT_WORKFLOW,
-				asReverifyTool(verifyTool),
+				asReverifyTool(verifyTool, verificationSources),
 			);
 		}
 	}

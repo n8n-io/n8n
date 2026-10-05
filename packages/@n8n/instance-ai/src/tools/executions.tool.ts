@@ -15,9 +15,10 @@ import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
 import { sanitizeInputSchema } from '../agent/sanitize-mcp-schemas';
-import type { InstanceAiContext } from '../types';
+import type { InstanceAiContext, StepExecutionResult } from '../types';
 import { approvalSummarySchema, formatApprovalMessage } from './approval-copy';
 import { recordLiveRunVerification } from './orchestration/verification/record-live-run';
+import { shapeWarningsBlock } from './workflows/declared-shapes';
 
 // ── Constants ──────────────────────────────────────────────────────────────
 
@@ -528,7 +529,7 @@ async function handleRunStep(
 		await context.grantSessionToolApproval?.(stepGrantKey);
 	}
 
-	return await context.executionService.runStep(input.workflowId, input.nodeName, {
+	const result = await context.executionService.runStep(input.workflowId, input.nodeName, {
 		reuseExecutionId: input.reuseExecutionId,
 		mockInput: input.mockInput,
 		toolArguments: input.toolArguments,
@@ -536,6 +537,35 @@ async function handleRunStep(
 		timeout: input.timeout,
 		abortSignal,
 	});
+	const shapeWarnings = await stepShapeWarnings(context, input, result);
+	return shapeWarnings ? { ...result, shapeWarnings } : result;
+}
+
+/**
+ * Node contracts: where the output of the step differs from the shape that the node declares,
+ * e.g. an HTTP `schema`. The node ran for real, so its output is the real response.
+ */
+async function stepShapeWarnings(
+	context: InstanceAiContext,
+	input: Extract<Input, { action: 'run-step' }>,
+	result: StepExecutionResult | undefined,
+): Promise<string | undefined> {
+	if (!context.nodeContractsEnabled || !result?.executionId) return undefined;
+	const { executionId } = result;
+	try {
+		const workflow = await context.workflowService.getAsWorkflowJSON(
+			input.workflowId,
+			input.versionId,
+		);
+		return await shapeWarningsBlock({
+			workflow,
+			reached: [input.nodeName],
+			readOutput: async (nodeName) =>
+				await context.executionService.getNodeOutput(executionId, nodeName),
+		});
+	} catch {
+		return undefined;
+	}
 }
 
 async function handleDebug(context: InstanceAiContext, input: Extract<Input, { action: 'debug' }>) {

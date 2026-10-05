@@ -184,6 +184,43 @@ describe('resolvedValueLines', () => {
 		);
 	});
 
+	describe('an HTTP read', () => {
+		const fetched: WorkflowJSON = {
+			name: 'Fetched',
+			connections: chain('Start', 'Fetch', 'Upsert'),
+			nodes: [
+				node('Start', 'n8n-nodes-base.manualTrigger', {}),
+				node('Fetch', '@n8n/nodes-base-next.httpRequestGet', {
+					url: 'https://api.example.com/deal',
+					schema: { type: 'object', properties: { stage: { type: 'string' } } },
+				}),
+				node('Upsert', UPSERT, { matchOn: 'Stage', values: { Stage: '={{ $json.stage }}' } }),
+			],
+		};
+		const upsert = new Map([
+			[
+				'Upsert',
+				resolution('Upsert', fetched.nodes[2].parameters ?? {}, { values: { Stage: 'example' } }),
+			],
+		]);
+
+		it('tags a field of a fixture made from a declared schema as declared', () => {
+			expect(resolvedValueLines(fetched, outcomeOf(fetched), upsert)).toContain(
+				'  values.Stage <- $json.stage = "example"  [Fetch.stage; declared]',
+			);
+		});
+
+		it('tags a field of a service node that ran as observed', () => {
+			const ran = {
+				nodeSimulationPlan: [simulate('Upsert')],
+				simulationFixtures: { Upsert: [{}] },
+			};
+			expect(resolvedValueLines(fetched, ran, upsert)).toContain(
+				'  values.Stage <- $json.stage = "example"  [Fetch.stage; observed]',
+			);
+		});
+	});
+
 	it('leaves out nodes that have no resolution', () => {
 		expect(resolvedValueLines(deals, outcome, new Map())).toEqual([]);
 	});

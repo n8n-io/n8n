@@ -248,6 +248,100 @@ describe('withBuildVerification resolved values', () => {
 	});
 });
 
+describe('declared shapes in verification', () => {
+	const json: WorkflowJSON = {
+		name: 'W',
+		nodes: [
+			{
+				id: 'Start',
+				name: 'Start',
+				type: 'n8n-nodes-base.scheduleTrigger',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: {},
+			},
+			{
+				id: 'Fetch',
+				name: 'Fetch',
+				type: '@n8n/nodes-base-next.httpRequestGet',
+				typeVersion: 3,
+				position: [0, 0],
+				parameters: {
+					url: 'https://api.example.com/x',
+					schema: { type: 'object', properties: { ids: { type: 'array' } } },
+				},
+			},
+		],
+		connections: { Start: { main: [[{ node: 'Fetch', type: 'main', index: 0 }]] } },
+	};
+	const outcome = {
+		nodeSimulationPlan: [
+			{
+				nodeName: 'Fetch',
+				verdict: 'simulate',
+				reason: 'test',
+				confidence: 'high',
+				source: 'deterministic',
+			},
+		],
+		simulationFixtures: { Fetch: [{ ids: ['a'] }] },
+		fixtureOrigins: { Fetch: 'declared' },
+	} as unknown as WorkflowBuildOutcome;
+	const getNodeOutput = vi.fn(
+		async (_executionId: string, nodeName: string) =>
+			await Promise.resolve({
+				nodeName,
+				outputs: [
+					{
+						index: 0,
+						totalItems: 1,
+						items: [wrapUntrustedData('{"userIds": ["a"]}', 'execution-output')],
+					},
+				],
+				totalItems: 1,
+				returned: { from: 0, to: 1 },
+			}),
+	);
+	const sources: BuildVerificationSources = {
+		getWorkflow: async () => await Promise.resolve(json),
+		getBuildOutcome: async () => await Promise.resolve(outcome),
+		getNodeOutput,
+	};
+	const ran = { success: true, executionId: 'e1', nodesExecuted: ['Start', 'Fetch'] };
+	const verify = tool('verify-built-workflow', async () => await Promise.resolve(ran));
+
+	it('warns where the output differs from the declared schema and says the fixture is declared', async () => {
+		const build = tool(
+			'build-workflow',
+			async () =>
+				await Promise.resolve({
+					...ready,
+					triggerNodes: [{ nodeName: 'Start', nodeType: 'n8n-nodes-base.scheduleTrigger' }],
+				}),
+		);
+		const result = await withBuildVerification(build, verify, sources).handler?.({}, {} as never);
+		expect(getNodeOutput).toHaveBeenCalledWith('e1', 'Fetch');
+		expect(result).toMatchObject({
+			verification: {
+				shapeWarnings: expect.stringContaining(
+					'Fetch: the output does not match its declared schema: $json.ids: missing; $json: unknown field(s) userIds. Allowed: ids',
+				),
+				declaredShapeNote: expect.stringContaining('declared `schema` of Fetch'),
+			},
+		});
+	});
+
+	it('warns on a re-run too', async () => {
+		const result = await asReverifyTool(verify, sources).handler?.(
+			{ workflowId: 'wf_1' },
+			{} as never,
+		);
+		expect(result).toMatchObject({
+			shapeWarnings: expect.stringContaining('$json: unknown field(s) userIds'),
+		});
+	});
+});
+
 const wrap = (label: string, body: string) =>
 	`<untrusted_data source="execution-output" label="node:${label}">\n${body}\n</untrusted_data>`;
 

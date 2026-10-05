@@ -541,6 +541,9 @@ describe('httpRequest.get', () => {
 		expect(getRequest.deriveOutput?.({ url, schema: open })).toEqual(open);
 		expect(sendRequest.deriveOutput?.({ method: 'POST', url, schema: issue })).toEqual(closedIssue);
 		expect(validate({ url, schema: body }, getRequest.inputSchema)).toEqual([]);
+		for (const action of [getRequest, sendRequest]) {
+			expect(action.inputSchema.properties?.schema?.['x-n8n-declared']).toBe(true);
+		}
 		expect(
 			validate({ url, schema: '={{ {} }}' }, getRequest.inputSchema, { allowExpressions: true }),
 		).toEqual(['input.schema: must be a plain value, not an expression']);

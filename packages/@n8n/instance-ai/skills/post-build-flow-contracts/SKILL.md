@@ -72,13 +72,16 @@ make a run pass.
   what is not confirmed.
 - `success: true` is not proof. A run with all writes simulated also succeeds.
 - Name the nodes in `nodesNotReached` and `simulatedNodes`. Relay
-  `simulationNote`, `coverageNote`, and `liveStateNote` when present.
+  `simulationNote`, `coverageNote`, `liveStateNote`, and `declaredShapeNote`
+  when present.
 - `resolvedParameterWarnings`: fix the input shape or the expression, then
   verify again. Never report that field as working while a warning stands.
 - `skippedParameterChecks`: say that these dynamic fields are not checked.
+- `shapeWarnings`: an output does not match its declared `schema`. Fix the
+  schema or the reads that it names, then build again.
 - `resolvedValues` shows the source field of each mapped field. A
-  `synthesized`, `pattern key`, or `mock` value proves only the wiring. Check
-  that the source field and its hint fit the target field.
+  `synthesized`, `declared`, `pattern key`, or `mock` value proves only the
+  wiring. Check that the source field and its hint fit the target field.
 - Simulated or pinned output is fixture data. Never quote it as real output.
   Do not state counts or written values that you did not read back.
 - A node that ran is not proof. Read the output of the node that the fix

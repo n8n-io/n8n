@@ -40,10 +40,13 @@ const fullResponse = t.obj({
 	statusCode: t.int(),
 });
 
-/** The build reads the schema to type the items, so it is a literal. */
+/**
+ * The build reads the schema to type the items, so it is a literal. The host compares the output
+ * that a run gives with it (`x-n8n-declared`).
+ */
 export const bodySchema = t
 	.json()
-	.with({ 'x-n8n-literal': true })
+	.with({ 'x-n8n-literal': true, 'x-n8n-declared': true })
 	.hint('JSON Schema of the body from the API docs. Types the items; objects are closed')
 	.optional();
 

@@ -78,7 +78,11 @@ export interface JsonSchema {
 	'x-n8n-supply'?: string;
 	/** A model ID of this provider in the model catalog (models.dev), e.g. `openai`. */
 	'x-n8n-model-catalog'?: string;
-	/** A trigger output field whose JSON Schema the workflow declares, e.g. a webhook body. */
+	/**
+	 * A trigger output field whose JSON Schema the workflow declares, e.g. a webhook body. On an
+	 * input field: a JSON Schema that the workflow declares and `deriveOutput` makes the output
+	 * from, e.g. an HTTP body. The host checks the output of a run against it.
+	 */
 	'x-n8n-declared'?: true;
 	/** On a trigger output: one more field per entry of an input list, e.g. per form field. */
 	'x-n8n-entry-fields'?: EntryFields;

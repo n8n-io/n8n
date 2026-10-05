@@ -369,8 +369,11 @@ export const groupingOutcomeSchema = z.object({
 
 export type GroupingOutcome = z.infer<typeof groupingOutcomeSchema>;
 
-/** The source of a node contract fixture: the output schema, a `sample`, or a resource lookup. */
-export const fixtureOriginSchema = z.enum(['synthesized', 'sample', 'lookup']);
+/**
+ * The source of a node contract fixture: the output schema, a `sample`, a resource lookup, or a
+ * JSON Schema that the workflow declares for the output, e.g. an HTTP `schema`.
+ */
+export const fixtureOriginSchema = z.enum(['synthesized', 'sample', 'lookup', 'declared']);
 
 export type FixtureOrigin = z.infer<typeof fixtureOriginSchema>;
 

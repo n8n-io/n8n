@@ -215,7 +215,9 @@ function originOf(view: WorkflowView, source: FieldSource): string {
 	const node = view.node(source.nodeName);
 	const action = node && actionOfNode(node);
 	if (!view.isSimulated(source.nodeName)) {
-		return action && runsLocally(action) ? 'local run' : 'ran';
+		if (!action) return 'ran';
+		// A contract service node that ran gave a real response.
+		return runsLocally(action) ? 'local run' : 'observed';
 	}
 	if (view.outcome.sampledKeys?.[source.nodeName]?.includes(source.key)) return 'sample';
 	const fixture = view.outcome.fixtureOrigins?.[source.nodeName];
@@ -225,6 +227,7 @@ function originOf(view: WorkflowView, source: FieldSource): string {
 	if (!described) return fixture;
 	const { schema, field } = described;
 	if (field) {
+		if (fixture === 'declared') return 'declared';
 		return Array.isArray(field.examples) && field.examples.length > 0 ? 'example' : 'synthesized';
 	}
 	// A lookup closes the key space, so a key outside the schema is a property it listed.

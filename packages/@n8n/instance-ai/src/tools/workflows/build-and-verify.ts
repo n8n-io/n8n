@@ -9,10 +9,11 @@ import {
 } from 'n8n-workflow';
 import { z } from 'zod';
 
+import { declaredShapeNote, shapeWarningsBlock } from './declared-shapes';
 import { resolvedCredentialSchema } from './resolved-credential.schema';
 import { resolvedValuesBlock } from './resolved-values';
 import { REVERIFY_DESCRIPTION, reverifyInputSchema } from './reverify-description';
-import type { ResolvedNodeParametersResult } from '../../types';
+import type { NodeOutputResult, ResolvedNodeParametersResult } from '../../types';
 import type { WorkflowBuildOutcome } from '../../workflow-loop/workflow-loop-state';
 
 interface ReadyBuild {
@@ -60,6 +61,7 @@ export interface BuildVerificationSources {
 		executionId: string,
 		nodeName: string,
 	): Promise<ResolvedNodeParametersResult>;
+	getNodeOutput?(executionId: string, nodeName: string): Promise<NodeOutputResult>;
 }
 
 const allStrings = (value: unknown): string[] => {
@@ -119,41 +121,89 @@ const needsInputResult = (triggerNodeName: string) => ({
 	guidance: `Verification did not run: the workflow reads the output of trigger "${triggerNodeName}", and it has no sample. This is not a workflow error. Call verify-built-workflow with triggerNodeName "${triggerNodeName}" and inputData shaped like its output, or add a \`sample\` to the trigger and build again.`,
 });
 
+/** The nodes that the run reached, when the verification lists them. */
+const reachedOf = (verification: Record<string, unknown>) =>
+	Array.isArray(verification.nodesExecuted)
+		? verification.nodesExecuted.filter((name): name is string => typeof name === 'string')
+		: undefined;
+
+/** `shapeWarnings` for a run with an execution, when the sources can read node output. */
+async function shapeWarningsOf(
+	verification: Record<string, unknown>,
+	workflow: WorkflowJSON,
+	sources: BuildVerificationSources | undefined,
+): Promise<string | undefined> {
+	const read = sources?.getNodeOutput?.bind(sources);
+	const { executionId } = verification;
+	if (!read || typeof executionId !== 'string') return undefined;
+	return await shapeWarningsBlock({
+		workflow,
+		reached: reachedOf(verification),
+		readOutput: async (nodeName) => await read(executionId, nodeName),
+	});
+}
+
 /**
- * Adds `resolvedValues` to a verification that ran: the value of each mapped field of the write
- * and condition nodes, with its source field and origin.
+ * Adds to a verification that ran: `resolvedValues`, the value of each mapped field of the write
+ * and condition nodes, with its source field and origin; `shapeWarnings`, where an output differs
+ * from its declared shape; and `declaredShapeNote`, the nodes pinned with a declared fixture.
  */
-async function withResolvedValues(
+async function withReadback(
 	verification: unknown,
 	ids: { workItemId: string },
 	workflow: WorkflowJSON | undefined,
 	sources: BuildVerificationSources | undefined,
 ): Promise<unknown> {
-	const resolve = sources?.getResolvedNodeParameters?.bind(sources);
-	if (!resolve || !workflow || !isRecord(verification)) return verification;
+	if (!sources || !workflow || !isRecord(verification)) return verification;
 	const { executionId } = verification;
 	if (typeof executionId !== 'string') return verification;
 	// Verification can update the plan, so read the outcome after the run.
-	const outcome = await sources?.getBuildOutcome(ids.workItemId).catch(() => undefined);
-	if (!outcome) return verification;
-	const { nodesExecuted } = verification;
-	const resolvedValues = await resolvedValuesBlock({
-		workflow,
-		outcome,
-		reached: Array.isArray(nodesExecuted)
-			? nodesExecuted.filter((name): name is string => typeof name === 'string')
+	const outcome = await sources.getBuildOutcome(ids.workItemId).catch(() => undefined);
+	const reached = reachedOf(verification);
+	const resolve = sources.getResolvedNodeParameters?.bind(sources);
+	const [resolvedValues, shapeWarnings] = await Promise.all([
+		resolve && outcome
+			? resolvedValuesBlock({
+					workflow,
+					outcome,
+					reached,
+					resolve: async (nodeName) => await resolve(executionId, nodeName),
+				}).catch(() => undefined)
 			: undefined,
-		resolve: async (nodeName) => await resolve(executionId, nodeName),
-	}).catch(() => undefined);
-	return resolvedValues ? { ...verification, resolvedValues } : verification;
+		shapeWarningsOf(verification, workflow, sources),
+	]);
+	const note = outcome && declaredShapeNote(workflow, outcome, reached);
+	return {
+		...verification,
+		...(resolvedValues ? { resolvedValues } : {}),
+		...(shapeWarnings ? { shapeWarnings } : {}),
+		...(note ? { declaredShapeNote: note } : {}),
+	};
 }
 
-/** Node contracts: the build already verifies, so the verify tool only describes a re-run. */
-export function asReverifyTool(verify: BuiltTool): BuiltTool {
-	return {
+/**
+ * Node contracts: the build already verifies, so the verify tool only describes a re-run. With
+ * `sources`, a re-run also gets `shapeWarnings`.
+ */
+export function asReverifyTool(verify: BuiltTool, sources?: BuildVerificationSources): BuiltTool {
+	const handler = verify.handler;
+	const described = {
 		...verify,
 		description: REVERIFY_DESCRIPTION,
 		inputSchema: reverifyInputSchema(verify.inputSchema),
+	};
+	if (!handler || !sources?.getNodeOutput) return described;
+	return {
+		...described,
+		handler: async (input, ctx) => {
+			const result: unknown = await handler(input, ctx);
+			if (!isRecord(input) || typeof input.workflowId !== 'string' || !isRecord(result)) {
+				return result;
+			}
+			const workflow = await sources.getWorkflow(input.workflowId).catch(() => undefined);
+			const shapeWarnings = workflow && (await shapeWarningsOf(result, workflow, sources));
+			return shapeWarnings ? { ...result, shapeWarnings } : result;
+		},
 	};
 }
 
@@ -331,7 +381,7 @@ export function withBuildVerification(
 				const [only] = runs;
 				const verification = only?.needsInput
 					? needsInputResult(only.triggerNodeName)
-					: await withResolvedValues(await verifyHandler(ids, ctx), ids, workflow, sources);
+					: await withReadback(await verifyHandler(ids, ctx), ids, workflow, sources);
 				return { ...result, verification, verificationNote: VERIFIED_NOTE };
 			}
 			// One run at a time: each run records its trigger in the same build outcome.
@@ -340,7 +390,7 @@ export function withBuildVerification(
 					...(await previous),
 					[triggerNodeName]: needsInput
 						? needsInputResult(triggerNodeName)
-						: await withResolvedValues(
+						: await withReadback(
 								await verifyHandler({ ...ids, triggerNodeName }, ctx),
 								ids,
 								workflow,

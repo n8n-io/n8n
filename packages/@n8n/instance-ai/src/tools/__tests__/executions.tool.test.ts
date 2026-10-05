@@ -1133,6 +1133,73 @@ describe('executions tool', () => {
 			expect(suspendFn).toHaveBeenCalled();
 			expect(context.executionService.runStep).not.toHaveBeenCalled();
 		});
+
+		describe('declared schema', () => {
+			const fetchInput = { action: 'run-step' as const, workflowId: 'wf-1', nodeName: 'Fetch' };
+			const workflow = {
+				name: 'W',
+				connections: {},
+				nodes: [
+					{
+						id: 'Fetch',
+						name: 'Fetch',
+						type: '@n8n/nodes-base-next.httpRequestGet',
+						typeVersion: 3,
+						position: [0, 0],
+						parameters: {
+							url: 'https://api.example.com/x',
+							schema: { type: 'object', properties: { ids: { type: 'array' } } },
+						},
+					},
+				],
+			};
+			const stepContext = (nodeContractsEnabled: boolean) => {
+				const context = createMockContext({ permissions: {}, nodeContractsEnabled });
+				context.workflowService.getAsWorkflowJSON = vi.fn().mockResolvedValue(workflow);
+				vi.mocked(context.executionService.runStep!).mockResolvedValue({
+					executionId: 'exec-1',
+					status: 'success',
+					nodeName: 'Fetch',
+					inputMode: 'chain',
+					mockedNodeNames: [],
+				});
+				vi.mocked(context.executionService.getNodeOutput).mockResolvedValue({
+					nodeName: 'Fetch',
+					outputs: [{ index: 0, totalItems: 1, items: [{ userIds: ['a'] }] }],
+					totalItems: 1,
+					returned: { from: 0, to: 1 },
+				});
+				return context;
+			};
+
+			it('warns where the real output differs from the declared schema', async () => {
+				const context = stepContext(true);
+				const result = await executeTool(
+					createExecutionsTool(context),
+					fetchInput,
+					createAgentCtx({ resumeData: { approved: true } }) as never,
+				);
+				expect(context.executionService.getNodeOutput).toHaveBeenCalledWith('exec-1', 'Fetch');
+				expect(result).toMatchObject({
+					executionId: 'exec-1',
+					shapeWarnings: expect.stringContaining(
+						'Fetch: the output does not match its declared schema: $json.ids: missing',
+					),
+				});
+			});
+
+			it('adds nothing without node contracts', async () => {
+				const context = stepContext(false);
+				const result = await executeTool(
+					createExecutionsTool(context),
+					fetchInput,
+					createAgentCtx({ resumeData: { approved: true } }) as never,
+				);
+				expect(result).not.toHaveProperty('shapeWarnings');
+				expect(context.workflowService.getAsWorkflowJSON).not.toHaveBeenCalled();
+				expect(context.executionService.getNodeOutput).not.toHaveBeenCalled();
+			});
+		});
 	});
 
 	describe('debug action', () => {

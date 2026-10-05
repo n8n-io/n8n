@@ -192,6 +192,21 @@ export function outputOf(
 	}
 }
 
+/**
+ * The output that the workflow declares for the node: the output for its parameters when an input
+ * marked `x-n8n-declared` holds a JSON Schema, e.g. the body `schema` of an HTTP step.
+ */
+export function declaredOutputOf(node: WorkflowJSON['nodes'][number]): JsonSchema | undefined {
+	const action = actionOfNode(node);
+	const parameters = node.parameters ?? {};
+	if (!action) return undefined;
+	const declares = Object.entries(action.inputSchema.properties ?? {}).some(
+		([key, field]) => field['x-n8n-declared'] === true && isRecord(parameters[key]),
+	);
+	const output = declares ? outputOf(action, parameters) : undefined;
+	return output === action.output.json ? undefined : output;
+}
+
 /** Resource fields by node name, from `fetchResourceFields`. */
 export type ResourceFields = ReadonlyMap<string, readonly ResourceField[]>;
 
@@ -470,6 +485,10 @@ export function fixtureOriginsOf(
 	resourceFields: ResourceFields = new Map(),
 ): Record<string, FixtureOrigin> {
 	const filled = actionNodeNames(workflow, false);
+	const declaresOutput = (name: string) => {
+		const node = workflow.nodes.find((candidate) => candidate.name === name);
+		return node !== undefined && declaredOutputOf(node) !== undefined;
+	};
 	return Object.fromEntries(
 		Object.keys(fixtures).map((name): [string, FixtureOrigin] => [
 			name,
@@ -477,7 +496,9 @@ export function fixtureOriginsOf(
 				? 'sample'
 				: resourceFields.has(name)
 					? 'lookup'
-					: 'synthesized',
+					: declaresOutput(name)
+						? 'declared'
+						: 'synthesized',
 		]),
 	);
 }
