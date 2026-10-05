@@ -58,7 +58,7 @@ packages/@n8n/backend-test-utils/src/test-db.ts
   s_c6e9e8119f0e51::t_55d73f8d9db0e6 237
   s_c6e9e8119f0e51::t_c05eeb7980aafe 236
 packages/@n8n/backend-services/src/services/cache/cache.service.ts
-  h_435b1d7d3e52c0 184,187-188,209
+  h_435b1d7d3e52c0 184,185-186,187-188,189,209
   h_435b1d7d3e52c0 185-186,189
 packages/@n8n/backend-services/src/services/cache/__tests__/cache.service.test.ts
   s_f8cb8d8b517ca9::t_10091f51bffd33 165-173
