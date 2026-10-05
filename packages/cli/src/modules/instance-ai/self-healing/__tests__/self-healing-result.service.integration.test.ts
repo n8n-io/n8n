@@ -240,16 +240,17 @@ it('rechecks the background user when prepared content is committed', async () =
 	expect(await suggestions.count()).toBe(0);
 });
 
-it('stores scrubbed report text without losing measured usage', async () => {
+it('preserves report text and measured usage', async () => {
 	const { input, user, project, original } = await prepareFixture();
+	const report = 'Configure the password parameter before retrying: password=example-value.';
 	const prepared = await service.prepare({
 		...input,
-		report: 'The response included password=example-value.',
+		report,
 		usage: { credits: 0, turns: 1, durationSeconds: null },
 	});
 	const result = await service.create(prepared);
 	const detail = await service.getDetail(user, project.id, original.id, result.id);
-	expect(detail.report).not.toContain('example-value');
+	expect(detail.report).toBe(report);
 	expect(detail.usage).toEqual({ credits: 0, turns: 1, durationSeconds: null });
 });
 

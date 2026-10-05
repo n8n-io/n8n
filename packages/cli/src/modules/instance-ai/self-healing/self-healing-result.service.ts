@@ -15,7 +15,6 @@ import {
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { BadRequestError, ConflictError, NotFoundError } from '@n8n/errors';
-import { redactDeep } from '@n8n/utils/redaction/redact-text';
 import { z } from 'zod';
 
 import { WorkflowSuggestionActionsService } from '../workflow-suggestions/workflow-suggestion-actions.service';
@@ -104,10 +103,7 @@ export class SelfHealingResultService {
 			references.workflowId,
 			references.executionId,
 		);
-		const safeContent = selfHealingResultContentSchema.parse(
-			redactDeep(content, { redactSensitiveKeys: true }).value,
-		);
-		return { references, content: safeContent, suggestion: prepared };
+		return { references, content, suggestion: prepared };
 	}
 
 	// Prepare before opening the caller's transaction so evidence reads cannot hold it open.

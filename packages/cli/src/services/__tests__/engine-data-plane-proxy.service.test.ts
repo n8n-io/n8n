@@ -82,13 +82,9 @@ describe('EngineDataPlaneProxyService', () => {
 	it('passes the read options through to the provider', async () => {
 		const provider = mock<EngineDataPlaneProvider>();
 		proxy.registerProvider(provider);
-		const abortSignal = new AbortController().signal;
 
-		await proxy.getExecution(executionId, { includeSteps: false, abortSignal });
+		await proxy.getExecution(executionId, { includeSteps: true });
 
-		expect(provider.getExecution).toHaveBeenCalledWith(executionId, {
-			includeSteps: false,
-			abortSignal,
-		});
+		expect(provider.getExecution).toHaveBeenCalledWith(executionId, { includeSteps: true });
 	});
 });

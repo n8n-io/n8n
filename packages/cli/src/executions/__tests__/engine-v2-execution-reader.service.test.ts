@@ -179,23 +179,7 @@ describe('EngineV2ExecutionReader', () => {
 			});
 			expect(dataPlane.getExecution).toHaveBeenCalledWith(EXECUTION_ID, {
 				includeSteps: false,
-				abortSignal: undefined,
 			});
-		});
-
-		it('cancels an identity read when the caller aborts', async () => {
-			const controller = new AbortController();
-			const error = new Error('Reference lookup timed out.');
-			dataPlane.getExecution.mockImplementationOnce(
-				async (_id, options) =>
-					await new Promise<never>((_resolve, reject) => {
-						options?.abortSignal?.addEventListener('abort', () => reject(error), { once: true });
-					}),
-			);
-			const read = reader.findReference(EXECUTION_ID, controller.signal);
-			const rejection = expect(read).rejects.toBe(error);
-			controller.abort();
-			await rejection;
 		});
 
 		it('returns the identity even when the workflow snapshot is unavailable', async () => {

@@ -1,16 +1,13 @@
-import type { Logger } from '@n8n/backend-common';
-import {
+import type {
+	HttpRequestClient,
+	HttpRequestClientOptions,
 	OutboundHttp,
-	type HttpRequestClient,
-	type HttpRequestClientOptions,
-	type SsrfProtectionService,
 } from '@n8n/backend-network';
-import type { EngineConfig, SsrfProtectionConfig } from '@n8n/config';
+import type { EngineConfig } from '@n8n/config';
 import { SharedSecretIdentityVerifier } from '@n8n/engine';
 import type { StartExecutionRequest } from '@n8n/engine';
 import type { InstanceSettings } from 'n8n-core';
 import { OperationalError } from 'n8n-workflow';
-import nock from 'nock';
 import { mock } from 'vitest-mock-extended';
 
 import type { ExecutionIdV2 } from '@/executions/execution-id';
@@ -223,34 +220,6 @@ describe('EngineDataPlaneClient', () => {
 	});
 
 	describe('getExecution', () => {
-		it('cancels a stalled HTTP read when the caller aborts', async () => {
-			const controller = new AbortController();
-			const transport = new OutboundHttp(
-				mock<SsrfProtectionService>(),
-				mock<SsrfProtectionConfig>(),
-				mock<Logger>(),
-			);
-			const boundedClient = new EngineDataPlaneClient(
-				mock<EngineConfig>({ baseUrl: 'http://engine.test', authSecret }),
-				transport,
-				mock<InstanceSettings>({ instanceId: 'instance-1' }),
-			);
-			const scope = nock('http://engine.test')
-				.get(`/api/workflow-executions/${EXECUTION_ID}`)
-				.delayConnection(1000)
-				.reply(200, {});
-			scope.on('request', () => controller.abort());
-			try {
-				await expect(
-					boundedClient.getExecution(EXECUTION_ID, { abortSignal: controller.signal }),
-				).rejects.toMatchObject({ code: 'ERR_CANCELED' });
-				expect(scope.isDone()).toBe(true);
-			} finally {
-				nock.abortPendingRequests();
-				nock.cleanAll();
-			}
-		});
-
 		it('reads the execution from the engine', async () => {
 			const snapshot = { id: EXECUTION_ID, workflowId: 'wf-1', status: 'completed' };
 			respondWith(200, snapshot);

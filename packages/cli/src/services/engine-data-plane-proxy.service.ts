@@ -46,7 +46,7 @@ export interface EngineDataPlaneProvider {
 	 */
 	getExecution(
 		id: ExecutionIdV2,
-		options?: { includeSteps?: boolean; abortSignal?: AbortSignal },
+		options?: { includeSteps?: boolean },
 	): Promise<ExecutionSnapshot | undefined>;
 }
 
@@ -88,7 +88,7 @@ export class EngineDataPlaneProxyService implements EngineDataPlaneProvider {
 	/** No provider means no v2 execution can exist, so this is a miss, not an error. */
 	async getExecution(
 		id: ExecutionIdV2,
-		options?: { includeSteps?: boolean; abortSignal?: AbortSignal },
+		options?: { includeSteps?: boolean },
 	): Promise<ExecutionSnapshot | undefined> {
 		if (!this.provider) return undefined;
 

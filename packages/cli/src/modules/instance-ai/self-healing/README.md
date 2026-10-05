@@ -8,12 +8,14 @@ It provides the result review API. It does not start investigations.
 Prepare optional workflow changes with `WorkflowSuggestionService.prepareSuggestion()`.
 Pass them to `SelfHealingResultService.prepare()` with the outcome, report, original execution ID,
 and usage object. Supply measured usage from the existing runtime and accounting services.
-Preparation validates references and redacts saved text. Run it before opening a transaction.
+Preparation validates references and report content. Run it before opening a transaction.
 Call `create(prepared, ctx)` to save the result, suggestion, and submission activity together.
 The service joins a supplied transaction and checks current editor access and ownership again.
 The future investigation producer owns completion retries.
 It submits accepted investigation outcomes. Technical failures without an accepted result stay
 in the Assistant run history and do not create a report or suggestion.
+The investigation instructions must keep sensitive values out of reports, summaries, and
+suggestion explanations and error context. Persistence does not scrub these fields.
 
 | Outcome | Suggestion | Actions |
 | --- | --- | --- |
@@ -28,7 +30,8 @@ Workflow, original-project, background-user, and suggestion deletion cascade to 
 Execution pruning and private-thread deletion do not remove reports or the stored execution ID.
 Execution references can point to either execution engine. Reads check current workflow and
 execution read access and workflow association. Missing or inaccessible execution references
-return `unavailable` without an ID. Optional v2 lookups stop after two seconds.
+return `unavailable` without an ID. Execution lookups use the normal transport timeout.
+The review UI owns loading feedback while result details are fetched.
 
 ## Review a result
 

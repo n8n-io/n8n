@@ -91,14 +91,13 @@ export class EngineDataPlaneClient implements EngineDataPlaneProvider {
 
 	async getExecution(
 		id: ExecutionIdV2,
-		options?: { includeSteps?: boolean; abortSignal?: AbortSignal },
+		options?: { includeSteps?: boolean },
 	): Promise<ExecutionSnapshot | undefined> {
 		const response = await this.http.request<ExecutionSnapshot | EngineErrorResponse>({
 			url: `/api/workflow-executions/${encodeURIComponent(id)}`,
 			method: 'GET',
 			// The engine accepts only `true` or `false`.
 			qs: options?.includeSteps ? { includeSteps: 'true' } : undefined,
-			abortSignal: options?.abortSignal,
 			json: true,
 			returnFullResponse: true,
 			ignoreHttpStatusErrors: true,

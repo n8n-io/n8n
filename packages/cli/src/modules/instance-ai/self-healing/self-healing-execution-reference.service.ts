@@ -24,8 +24,7 @@ export class SelfHealingExecutionReferenceService {
 	): Promise<SelfHealingExecutionReference> {
 		try {
 			if (!(await this.canReadExecution(user, workflowId))) return { status: 'unavailable' };
-			// Optional evidence must not delay access to a saved report.
-			const execution = await this.findReference(executionId, AbortSignal.timeout(2000));
+			const execution = await this.findReference(executionId);
 			return execution?.workflowId === workflowId
 				? { status: 'available', id: execution.id }
 				: { status: 'unavailable' };
@@ -58,9 +57,9 @@ export class SelfHealingExecutionReferenceService {
 		]));
 	}
 
-	private async findReference(executionId: string, abortSignal?: AbortSignal) {
+	private async findReference(executionId: string) {
 		if (isExecutionIdV2(executionId)) {
-			return await this.engineV2.findReference(executionId, abortSignal);
+			return await this.engineV2.findReference(executionId);
 		}
 		const execution = await this.executions.findSingleExecution(executionId, {
 			includeData: false,
