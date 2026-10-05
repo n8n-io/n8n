@@ -1,0 +1,33 @@
+packages/@n8n/instance-ai/evaluations/routing/__tests__/cases.test.ts
+  s_fd6e130ca898c8::t_28897a696fba88 61,67
+packages/@n8n/instance-ai/evaluations/routing/grade.ts
+  s_fd6e130ca898c8::t_5d380fc1f04c54 101
+  s_fd6e130ca898c8::t_84da3c5d87c3c6 111-118,124-125
+packages/@n8n/instance-ai/evaluations/routing/cases.ts
+  s_fd6e130ca898c8::t_0ec981630a8555 62-67
+packages/@n8n/instance-ai/evaluations/routing/__tests__/grade.test.ts
+  s_fd6e130ca898c8::t_02657a4ee9ce1f 116,126-129
+  s_fd6e130ca898c8::t_b452bae17736ed 130-131
+packages/@n8n/instance-ai/evaluations/discovery/cli.ts
+  s_fd6e130ca898c8::t_8ffdda9c8bc092 149-153
+packages/@n8n/instance-ai/evaluations/routing/__tests__/route-rules.test.ts
+  s_fd6e130ca898c8::t_02657a4ee9ce1f 11,35-36
+packages/@n8n/instance-ai/evaluations/routing/route-rules.ts
+  s_fd6e130ca898c8::t_80f68bcc63a486 37-42
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c5d6c60e39bfcbabdd77f74daed4925077ed262f",
+  "prompts": {},
+  "sessions": {
+    "s_fd6e130ca898c8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1ed1908b-631c-440c-bb45-2628551c070a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}
