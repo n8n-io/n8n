@@ -57,9 +57,10 @@ n8n reads it; GitLab owns it.
 _Avoid_: pull request, PR
 
 **Promotion Review state**:
-`open` (MR `opened` or `locked`), `merged`, or `closed` (closed without merge).
-Read from GitLab on each load. Never mapped onto the Workflow Review
-`decision` values.
+`open` (MR `opened` or `locked`), `merged`, `closed` (closed without merge),
+or `unavailable` (the MR or its Connection is gone). GitLab is authoritative
+while `open`; n8n stores the state and is authoritative once terminal. Never
+mapped onto the Workflow Review `decision` values.
 _Avoid_: approved, changes requested, pending (Workflow Review words)
 
 **Review Baseline**:
