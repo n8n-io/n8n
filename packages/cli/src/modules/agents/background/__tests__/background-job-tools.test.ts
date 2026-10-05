@@ -358,7 +358,20 @@ describe('resume_background_jobs', () => {
 			mock<AgentBackgroundJob>({ id: 'job-2' }),
 		];
 		const timeoutAt = new Date(Date.now() + 60_000);
-		jobService.preparePausedResume.mockResolvedValue({ status: 'ready', jobs, timeoutAt });
+		const workflowsToRestart = [
+			{
+				jobId: 'workflow-job',
+				title: 'Send request',
+				workflowId: 'workflow-1',
+				previousExecutionId: 'execution-1',
+			},
+		];
+		jobService.preparePausedResume.mockResolvedValue({
+			status: 'ready',
+			jobs,
+			timeoutAt,
+			workflowsToRestart,
+		});
 		backgroundRunner.resumePaused
 			.mockResolvedValueOnce(undefined)
 			.mockRejectedValueOnce(new Error('checkpoint has expired'));
@@ -372,6 +385,7 @@ describe('resume_background_jobs', () => {
 					error: expect.stringContaining('checkpoint has expired'),
 				},
 			],
+			workflowsToRestart,
 		});
 		expect(jobService.preparePausedResume).toHaveBeenLastCalledWith(
 			'agent-1',
@@ -381,6 +395,19 @@ describe('resume_background_jobs', () => {
 		);
 		expect(backgroundRunner.resumePaused).toHaveBeenCalledTimes(2);
 		expect(jobService.releaseResumeReservations).toHaveBeenCalledWith(jobs, timeoutAt);
+		backgroundRunner.resumePaused.mockClear();
+		jobService.preparePausedResume.mockResolvedValue({
+			status: 'ready',
+			jobs: [],
+			timeoutAt,
+			workflowsToRestart,
+		});
+		expect(await tool.handler!({}, { persistence: userPersistence })).toMatchObject({
+			status: 'ready',
+			jobs: [],
+			workflowsToRestart,
+		});
+		expect(backgroundRunner.resumePaused).not.toHaveBeenCalled();
 	});
 });
 

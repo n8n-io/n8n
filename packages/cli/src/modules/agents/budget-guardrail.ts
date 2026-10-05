@@ -1,17 +1,113 @@
 import {
 	createBudgetGuardrail,
-	InMemorySpendLedger,
 	type ExecutionOptions,
 	type RunOptions,
+	type SpendEntry,
 	type SpendLedger,
+	type SpendTotal,
 } from '@n8n/agents';
 import type { BudgetGuardrailConfig } from '@n8n/api-types';
+import { Logger } from '@n8n/backend-common';
 import { Container, Service } from '@n8n/di';
 
-/** One ledger for this process. Queue mode and multi-main need a later adapter. */
+import {
+	AgentBudgetSpendRepository,
+	previousTotalUsd,
+} from './repositories/agent-budget-spend.repository';
+
+/** Past this many buffered calls the oldest drops, so a long outage cannot grow memory. */
+const PENDING_CALLS_CAP = 10_000;
+
+/**
+ * Budget spend shared by every main. Reads and writes the database rows.
+ * A database error does not stop a turn: the spend is buffered in memory and
+ * retried on the next ledger call. Buffered spend is lost on a process crash,
+ * and an alert crossing during an outage can go unnoticed.
+ */
 @Service()
-export class AgentSpendLedger {
-	readonly ledger: SpendLedger = new InMemorySpendLedger();
+export class AgentSpendLedger implements SpendLedger {
+	/** Calls not yet recorded, in arrival order. */
+	private readonly pending = new Map<string, SpendEntry[]>();
+
+	constructor(
+		private readonly budgetSpendRepository: AgentBudgetSpendRepository,
+		private readonly logger: Logger,
+	) {}
+
+	async add(callId: string, entries: SpendEntry[]): Promise<SpendTotal[]> {
+		await this.flushPending();
+		try {
+			return await this.budgetSpendRepository.applySpend(callId, entries);
+		} catch (error) {
+			this.logger.warn('Failed to record budget spend; buffered the call for a later retry', {
+				callId,
+				error: error instanceof Error ? error.message : String(error),
+			});
+			this.buffer(callId, entries);
+			return this.bufferedTotals(entries);
+		}
+	}
+
+	async read(key: string): Promise<number> {
+		await this.flushPending();
+		try {
+			const stored = await this.budgetSpendRepository.readTotal(key);
+			return stored + this.bufferedTotalFor(key);
+		} catch (error) {
+			this.logger.warn('Failed to read budget spend; using the buffered totals', {
+				key,
+				error: error instanceof Error ? error.message : String(error),
+			});
+			return this.bufferedTotalFor(key);
+		}
+	}
+
+	/**
+	 * Replays buffered calls in arrival order. `applySpend` is idempotent on
+	 * `callId`, so a retry after an ambiguous failure cannot add spend twice.
+	 * Stops at the first failure: the database is still down.
+	 */
+	private async flushPending(): Promise<void> {
+		for (const [callId, entries] of this.pending) {
+			try {
+				await this.budgetSpendRepository.applySpend(callId, entries);
+			} catch {
+				return;
+			}
+			this.pending.delete(callId);
+		}
+	}
+
+	private buffer(callId: string, entries: SpendEntry[]): void {
+		if (this.pending.size >= PENDING_CALLS_CAP && !this.pending.has(callId)) {
+			const oldest = this.pending.keys().next().value;
+			if (oldest !== undefined) {
+				this.pending.delete(oldest);
+				this.logger.warn('Budget spend buffer is full; dropped the oldest buffered call', {
+					callId: oldest,
+				});
+			}
+		}
+		this.pending.set(callId, entries);
+	}
+
+	/** Totals from the buffer alone. The database share is unknown during an outage. */
+	private bufferedTotals(entries: SpendEntry[]): SpendTotal[] {
+		return entries.map((entry) => {
+			const totalUsd = this.bufferedTotalFor(entry.key);
+			return { key: entry.key, totalUsd, previousUsd: previousTotalUsd(totalUsd, entry.usd) };
+		});
+	}
+
+	private bufferedTotalFor(key: string): number {
+		let totalUsd = 0;
+		for (const entries of this.pending.values()) {
+			for (const entry of entries) {
+				if (entry.key === key) totalUsd += entry.usd;
+			}
+		}
+		return totalUsd;
+	}
 }
 
 export interface BudgetAttachInput {
@@ -81,7 +177,7 @@ export function withBudgetGuardrail<T extends RunOptions & ExecutionOptions>(
 	const limits = resolveBudgetLimits(input);
 	if (!limits) return options;
 
-	const ledger = input.ledger ?? Container.get(AgentSpendLedger).ledger;
+	const ledger = input.ledger ?? Container.get(AgentSpendLedger);
 	const hook = createBudgetGuardrail({
 		ledger,
 		...limits,

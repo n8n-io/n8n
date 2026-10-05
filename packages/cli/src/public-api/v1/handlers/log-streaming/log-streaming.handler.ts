@@ -5,7 +5,6 @@ import { Container } from '@n8n/di';
 import type { MessageEventBusDestinationOptions } from 'n8n-workflow';
 
 import { BadRequestError, ConflictError, NotFoundError } from '@n8n/errors';
-import { eventNamesAll } from '@/eventbus/event-message-classes';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { createMessageEventBusDestination } from '@/modules/log-streaming.ee/create-message-event-bus-destination';
 import { assertUserCanUseDestinationCredentials } from '@/modules/log-streaming.ee/destinations/destination-credentials-access';
@@ -41,7 +40,6 @@ const getCredentialsFinderService = async () => {
 };
 
 type LogStreamingHandlers = {
-	getEventTypes: PublicAPIEndpoint<LogStreamingRequest.GetEventTypes>;
 	getDestinations: PublicAPIEndpoint<LogStreamingRequest.GetDestinations>;
 	getDestination: PublicAPIEndpoint<LogStreamingRequest.GetDestination>;
 	createDestination: PublicAPIEndpoint<LogStreamingRequest.CreateDestination>;
@@ -51,14 +49,6 @@ type LogStreamingHandlers = {
 };
 
 const logStreamingHandlers: LogStreamingHandlers = {
-	getEventTypes: [
-		isLicensed('feat:logStreaming'),
-		apiKeyHasScopeWithGlobalScopeFallback({ scope: 'eventBusDestination:list' }),
-		async (_req, res) => {
-			return res.json({ data: eventNamesAll });
-		},
-	],
-
 	getDestinations: [
 		isLicensed('feat:logStreaming'),
 		apiKeyHasScopeWithGlobalScopeFallback({ scope: 'eventBusDestination:list' }),
