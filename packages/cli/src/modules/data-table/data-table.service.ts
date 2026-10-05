@@ -284,6 +284,17 @@ export class DataTableService {
 		return result;
 	}
 
+	async replaceSchema(
+		dataTableId: string,
+		projectId: string,
+		schema: { name: string; columns: Array<{ name: string; type: DataTableColumnType }> },
+	) {
+		const table = await this.validateDataTableExists(dataTableId, projectId);
+		if (table.name !== schema.name) await this.validateUniqueName(schema.name, projectId);
+
+		await this.dataTableColumnRepository.replaceSchema(dataTableId, projectId, schema);
+	}
+
 	async moveColumn(
 		dataTableId: string,
 		projectId: string,
