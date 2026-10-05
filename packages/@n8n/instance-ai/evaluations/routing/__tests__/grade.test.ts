@@ -35,7 +35,7 @@ function routingCase(
 	bucket: RoutingCase['bucket'],
 	accepts: RoutingCase['accepts'] = [],
 ): RoutingCase {
-	return { id: `route-${bucket}-x`, bucket, userMessage: 'Do the thing.', accepts, source: 'test' };
+	return { id: `route-${bucket}-x`, bucket, userMessage: 'Do the thing.', accepts };
 }
 
 function call(toolName: string, args: Record<string, unknown> = {}): RoutingToolCall {

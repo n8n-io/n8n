@@ -1,7 +1,9 @@
 // ---------------------------------------------------------------------------
-// Loader for routing eval cases: one `route-<slug>.json` file per case.
+// Loader for routing eval cases: one `route-<slug>.json` file per case, in the
+// main eval case format that LangTracer exports. The slug is the case id.
 //
-// Routing cases carry no tool expectations. The grader resolves the route from
+// The routing labels are tags: `routing`, one `bucket:<route>`, and one
+// `accepts:<token>` for each accepted route. The grader resolves the route from
 // the recorded calls after the run (see grade.ts).
 // ---------------------------------------------------------------------------
 
@@ -9,7 +11,7 @@ import { readFileSync, readdirSync } from 'fs';
 import { basename, join, resolve } from 'path';
 import { z } from 'zod';
 
-import { discoveryTestCaseSchema } from '../data/discovery';
+import { EvalTestCaseSchema } from '../harness/schema';
 
 export const ROUTING_BUCKETS = [
 	'agent',
@@ -37,58 +39,55 @@ export const ROUTING_ACCEPT_TOKENS = [
 ] as const;
 export type AcceptToken = (typeof ROUTING_ACCEPT_TOKENS)[number];
 
-export const routingCaseSchema = z
-	.object({
-		id: z
-			.string()
-			.regex(
-				/^route-[a-z0-9-]+$/,
-				'id must be route- and then lowercase letters, digits or hyphens',
-			),
-		/** The main expected route. Reports group cases by it. */
-		bucket: z.enum(ROUTING_BUCKETS),
-		/** The request reads like a standing role, whatever the bucket. */
-		agentShaped: z.boolean().optional(),
-		userMessage: z.string().min(1),
-		/** A trial passes when its route matches one of these tokens. */
-		accepts: z.array(z.enum(ROUTING_ACCEPT_TOKENS)).min(1),
-		/** The right route depends on product policy, not only on the prompt. */
-		policyDependent: z.boolean().optional(),
-		/** Where the prompt came from, for example a real conversation or a spike. */
-		source: z.string().min(1),
-		rationale: z.string().min(1).optional(),
-		instanceState: discoveryTestCaseSchema.shape.instanceState,
-		/** ISO 639-3 code of `userMessage`. Absent means English. */
-		language: z
-			.string()
-			.regex(/^[a-z]{3}$/, 'language must be an ISO 639-3 code, e.g. "eng"')
-			.optional(),
-	})
-	// The id does not have to name the bucket: suite ids like `route-prod-agent-*` and
-	// `route-v2-agent-*` add a source prefix. Grading reads `bucket`, never the id.
-	.strict();
+const routingTagsSchema = z.object({
+	/** The main expected route. Reports group cases by it. */
+	bucket: z
+		.array(z.enum(ROUTING_BUCKETS))
+		.length(1, 'needs exactly one bucket:<route> tag')
+		.transform((buckets) => buckets[0]),
+	/** A trial passes when its route matches one of these tokens. */
+	accepts: z.array(z.enum(ROUTING_ACCEPT_TOKENS)).min(1, 'needs an accepts:<route> tag'),
+});
 
-export type RoutingCase = z.infer<typeof routingCaseSchema>;
+export type RoutingCase = z.infer<typeof routingTagsSchema> & { id: string; userMessage: string };
 
-function parseRoutingCaseFile(filePath: string): RoutingCase {
+type ParsedFile = { kind: 'case'; routingCase: RoutingCase } | { kind: 'needs-setup'; id: string };
+
+function tagValues(tags: string[], prefix: string): string[] {
+	return tags.filter((tag) => tag.startsWith(prefix)).map((tag) => tag.slice(prefix.length));
+}
+
+function formatIssues(error: z.ZodError): string {
+	return error.issues
+		.map((issue) => `${issue.path.join('.') || '(root)'}: ${issue.message}`)
+		.join('; ');
+}
+
+function parseRoutingCaseFile(filePath: string): ParsedFile {
+	const id = basename(filePath, '.json');
 	let raw: unknown;
 	try {
 		raw = JSON.parse(readFileSync(filePath, 'utf-8'));
 	} catch (error) {
 		throw new Error(`${filePath}: ${error instanceof Error ? error.message : String(error)}`);
 	}
-	const parsed = routingCaseSchema.safeParse(raw);
-	if (!parsed.success) {
-		const issues = parsed.error.issues.map(
-			(issue) => `${issue.path.join('.') || '(root)'}: ${issue.message}`,
-		);
-		throw new Error(`${filePath}: ${issues.join('; ')}`);
+	const parsed = EvalTestCaseSchema.safeParse(raw);
+	if (!parsed.success) throw new Error(`${filePath}: ${formatIssues(parsed.error)}`);
+
+	const { tags, conversation = [], seed, credentials, credentialFixture } = parsed.data;
+	if (!tags.includes('routing')) throw new Error(`${filePath}: has no "routing" tag`);
+	// ponytail: the runner cannot create earlier messages, an open workflow or Agent, or accounts yet.
+	if (seed || credentials || credentialFixture) {
+		return { kind: 'needs-setup', id };
 	}
-	const slug = basename(filePath, '.json');
-	if (parsed.data.id !== slug) {
-		throw new Error(`${filePath}: id "${parsed.data.id}" must match the file name "${slug}"`);
-	}
-	return parsed.data;
+	if (conversation.length !== 1) throw new Error(`${filePath}: needs exactly one message`);
+
+	const labels = routingTagsSchema.safeParse({
+		bucket: tagValues(tags, 'bucket:'),
+		accepts: tagValues(tags, 'accepts:'),
+	});
+	if (!labels.success) throw new Error(`${filePath}: ${formatIssues(labels.error)}`);
+	return { kind: 'case', routingCase: { id, userMessage: conversation[0].text, ...labels.data } };
 }
 
 /**
@@ -96,8 +95,12 @@ function parseRoutingCaseFile(filePath: string): RoutingCase {
  * results kept next to the cases are not read as cases. `filter` keeps the
  * files whose name contains one of its comma-separated tokens. All invalid
  * files are reported in one error, so an author can fix them in one pass.
+ * Cases that need setup are returned by id in `needsSetup` and do not run.
  */
-export function loadRoutingCases(dir: string, filter?: string): RoutingCase[] {
+export function loadRoutingCases(
+	dir: string,
+	filter?: string,
+): { cases: RoutingCase[]; needsSetup: string[] } {
 	const root = resolve(dir);
 	const tokens = (filter ?? '')
 		.split(',')
@@ -109,10 +112,13 @@ export function loadRoutingCases(dir: string, filter?: string): RoutingCase[] {
 		.sort();
 
 	const cases: RoutingCase[] = [];
+	const needsSetup: string[] = [];
 	const errors: string[] = [];
 	for (const file of files) {
 		try {
-			cases.push(parseRoutingCaseFile(join(root, file)));
+			const parsed = parseRoutingCaseFile(join(root, file));
+			if (parsed.kind === 'case') cases.push(parsed.routingCase);
+			else needsSetup.push(parsed.id);
 		} catch (error) {
 			errors.push(error instanceof Error ? error.message : String(error));
 		}
@@ -122,5 +128,5 @@ export function loadRoutingCases(dir: string, filter?: string): RoutingCase[] {
 			`Invalid routing case(s) in ${root}:\n${errors.map((e) => `  - ${e}`).join('\n')}`,
 		);
 	}
-	return cases;
+	return { cases, needsSetup };
 }

@@ -4,13 +4,15 @@ import { join } from 'node:path';
 
 import { loadRoutingCases } from '../cases';
 
-function routingCase(id: string, overrides: Record<string, unknown> = {}) {
+/** A case as LangTracer's `export_suite` writes it. */
+function exportedCase(tags: string[] = [], overrides: Record<string, unknown> = {}) {
 	return {
-		id,
-		bucket: 'debug',
-		userMessage: 'It failed again.',
-		accepts: ['debug', 'clarify'],
-		source: 'synthetic',
+		complexity: 'simple',
+		tags: ['routing', 'bucket:debug', 'accepts:debug', 'accepts:clarify', 'lang:eng', ...tags],
+		executionScenarios: [],
+		conversation: [{ role: 'user', text: 'It failed again.' }],
+		description: 'A failed run with no other context.',
+		processExpectations: ['Routes to one of: debug, clarify'],
 		...overrides,
 	};
 }
@@ -24,51 +26,99 @@ function caseDir(files: Record<string, unknown>): string {
 }
 
 describe('loadRoutingCases', () => {
-	it('loads the route-*.json files in name order and skips other files', () => {
+	it('loads the route-*.json files in name order and reads the labels from the tags', () => {
 		const dir = caseDir({
-			'route-debug-two.json': routingCase('route-debug-two'),
-			'route-debug-one.json': routingCase('route-debug-one', { language: 'deu' }),
-			'route-prod-debug-three.json': routingCase('route-prod-debug-three'),
+			'route-debug-two.json': exportedCase(),
+			'route-prod-agent-one.json': exportedCase([], {
+				tags: ['routing', 'bucket:agent', 'accepts:agent', 'accepts:clarify:agent'],
+				conversation: [{ role: 'user', text: ['Answer our support inbox.', 'Use our FAQ.'] }],
+			}),
 			'results.json': '{}',
 			'route-notes.md': 'not a case',
 		});
 
-		const cases = loadRoutingCases(dir);
+		const { cases, needsSetup } = loadRoutingCases(dir);
 
-		expect(cases.map((c) => c.id)).toEqual([
-			'route-debug-one',
-			'route-debug-two',
-			'route-prod-debug-three',
+		expect(cases).toEqual([
+			{
+				id: 'route-debug-two',
+				bucket: 'debug',
+				accepts: ['debug', 'clarify'],
+				userMessage: 'It failed again.',
+			},
+			{
+				id: 'route-prod-agent-one',
+				bucket: 'agent',
+				accepts: ['agent', 'clarify:agent'],
+				userMessage: 'Answer our support inbox.\nUse our FAQ.',
+			},
 		]);
-		expect(cases[0].language).toBe('deu');
+		expect(needsSetup).toEqual([]);
 	});
 
 	it('keeps the files whose name contains one of the filter tokens', () => {
 		const dir = caseDir({
-			'route-agent-one.json': routingCase('route-agent-one', { bucket: 'agent' }),
-			'route-debug-one.json': routingCase('route-debug-one'),
-			'route-answer-one.json': routingCase('route-answer-one', { bucket: 'answer' }),
+			'route-agent-one.json': exportedCase(),
+			'route-debug-one.json': exportedCase(),
+			'route-answer-one.json': exportedCase(),
 		});
 
-		expect(loadRoutingCases(dir, 'AGENT, debug').map((c) => c.id)).toEqual([
+		expect(loadRoutingCases(dir, 'AGENT, debug').cases.map((c) => c.id)).toEqual([
 			'route-agent-one',
 			'route-debug-one',
 		]);
 	});
 
-	it('reports every invalid file in one error', () => {
+	it('returns the cases that need setup without running them', () => {
 		const dir = caseDir({
-			'route-debug-ok.json': routingCase('route-debug-ok'),
-			'route-debug-renamed.json': routingCase('route-debug-other'),
-			'route-debug-token.json': routingCase('route-debug-token', { accepts: ['clarify:workflow'] }),
-			'route-debug-extra.json': routingCase('route-debug-extra', { expectedToolInvocations: {} }),
+			'route-debug-ok.json': exportedCase(),
+			'route-debug-seeded.json': exportedCase([], {
+				seed: { mode: 'inline', messages: [{ role: 'user', text: 'Build me a daily report.' }] },
+			}),
+			'route-debug-with-account.json': exportedCase([], { credentials: [{ type: 'slackApi' }] }),
+			'route-debug-in-browser.json': exportedCase([], { credentialFixture: 'local' }),
+		});
+
+		const { cases, needsSetup } = loadRoutingCases(dir);
+
+		expect(cases.map((c) => c.id)).toEqual(['route-debug-ok']);
+		expect(needsSetup).toEqual([
+			'route-debug-in-browser',
+			'route-debug-seeded',
+			'route-debug-with-account',
+		]);
+	});
+
+	it('reports every invalid file in one error', () => {
+		const tags = (...extra: string[]) => ({ tags: ['routing', ...extra] });
+		const dir = caseDir({
+			'route-debug-ok.json': exportedCase(),
 			'route-debug-broken.json': '{',
+			'route-debug-extra.json': exportedCase([], { expectedToolInvocations: {} }),
+			'route-debug-no-routing-tag.json': exportedCase([], {
+				tags: ['bucket:debug', 'accepts:debug'],
+			}),
+			'route-debug-two-buckets.json': exportedCase(
+				[],
+				tags('bucket:debug', 'bucket:agent', 'accepts:debug'),
+			),
+			'route-debug-no-accepts.json': exportedCase([], tags('bucket:debug')),
+			'route-debug-bad-token.json': exportedCase(
+				[],
+				tags('bucket:debug', 'accepts:clarify:workflow'),
+			),
+			'route-debug-two-turns.json': exportedCase([], {
+				conversation: [
+					{ role: 'user', text: 'It failed.' },
+					{ role: 'user', text: 'Again.' },
+				],
+			}),
 		});
 
 		expect(() => loadRoutingCases(dir)).toThrow(
 			expect.objectContaining({
 				message: expect.stringMatching(
-					/route-debug-broken\.json[\s\S]*route-debug-extra\.json: \(root\)[\s\S]*route-debug-renamed\.json: id "route-debug-other" must match[\s\S]*route-debug-token\.json: accepts\.0/,
+					/route-debug-bad-token\.json: accepts\.0[\s\S]*route-debug-broken\.json[\s\S]*route-debug-extra\.json: \(root\)[\s\S]*route-debug-no-accepts\.json: accepts: needs an accepts:<route> tag[\s\S]*route-debug-no-routing-tag\.json: has no "routing" tag[\s\S]*route-debug-two-buckets\.json: bucket: needs exactly one bucket:<route> tag[\s\S]*route-debug-two-turns\.json: needs exactly one message/,
 				),
 			}),
 		);

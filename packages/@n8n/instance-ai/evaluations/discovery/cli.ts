@@ -13,8 +13,9 @@
 // non-zero on any scenario below threshold, or on any scenario with zero passes
 // when --fail-on-zero-pass is set.
 //
-// Routing mode (`--cases-dir`) loads `route-*.json` cases from that folder,
-// grades the route of each trial, and prints a pass rate per bucket. It always
+// Routing mode (`--cases-dir`) loads `route-*.json` cases from that folder, in
+// the format LangTracer exports, grades the route of each trial, and prints a
+// pass rate per bucket. It always
 // exits 0: it measures routing and does not gate a merge.
 // ---------------------------------------------------------------------------
 
@@ -302,7 +303,12 @@ function percent(passed: number, total: number): string {
 }
 
 async function runRoutingMode(args: CliArgs, casesDir: string): Promise<void> {
-	const cases = loadRoutingCases(casesDir, args.filter);
+	const { cases, needsSetup } = loadRoutingCases(casesDir, args.filter);
+	if (needsSetup.length > 0) {
+		console.log(
+			`Skipping ${String(needsSetup.length)} case(s) that need setup (earlier messages, an open workflow or Agent, or accounts): ${needsSetup.join(', ')}`,
+		);
+	}
 	if (cases.length === 0) {
 		console.log(`No routing cases found in ${casesDir}.`);
 		return;
