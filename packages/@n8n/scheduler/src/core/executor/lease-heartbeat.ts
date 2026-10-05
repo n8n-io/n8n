@@ -62,7 +62,7 @@ export class LeaseHeartbeat {
 			Math.floor(options.leaseDurationMs / (RENEWALS_PER_LEASE + 1)),
 		);
 		this.armExpiry(options.leaseSetAt);
-		this.scheduleBeat(performance.now());
+		this.scheduleBeat(options.leaseSetAt);
 	}
 
 	stop(): void {

@@ -219,6 +219,20 @@ describe('LeaseHeartbeat', () => {
 		heartbeat.stop();
 	});
 
+	it('counts the first beat from the lease write, so a late start does not delay it', async () => {
+		const renew = vi.fn().mockResolvedValue(true);
+		const heartbeat = new LeaseHeartbeat(renew, {
+			leaseDurationMs: LEASE_MS,
+			leaseSetAt: performance.now() - INTERVAL_MS + 1,
+		});
+
+		expect(renew).not.toHaveBeenCalled();
+		await vi.advanceTimersByTimeAsync(1);
+		expect(renew).toHaveBeenCalledTimes(1);
+
+		heartbeat.stop();
+	});
+
 	it('measures the lease on a monotonic clock, so a wall-clock jump does not delay the expiry', async () => {
 		const renew = vi
 			.fn()
