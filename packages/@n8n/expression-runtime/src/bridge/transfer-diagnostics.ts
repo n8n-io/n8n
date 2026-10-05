@@ -24,13 +24,6 @@ interface Member {
 	descriptor: PropertyDescriptor;
 }
 
-interface WalkState {
-	probe: TransferProbe;
-	seen: Set<object>;
-	deadline: number;
-	exhausted: boolean;
-}
-
 const ARRAY_INDEX = /^(?:0|[1-9]\d*)$/;
 const IDENTIFIER_KEY = /^[A-Za-z_$][A-Za-z0-9_$]*$/;
 
@@ -82,70 +75,6 @@ function describe(value: unknown): string | undefined {
 	return undefined;
 }
 
-function probe(state: WalkState, value: unknown): boolean {
-	if (Date.now() > state.deadline) {
-		// Report the value as accepted so the walk unwinds; `exhausted` is what the caller reads.
-		state.exhausted = true;
-		return true;
-	}
-	try {
-		return state.probe(value);
-	} catch {
-		return false;
-	}
-}
-
-function defineMember(holder: object, key: string, value: unknown): void {
-	Object.defineProperty(holder, key, {
-		value,
-		enumerable: true,
-		writable: true,
-		configurable: true,
-	});
-}
-
-/** Holds the owner's data properties alone, so asking about one getter never runs another. */
-function dataReceiver(members: Member[]): object {
-	const receiver = {};
-	for (const member of members) {
-		if (!('value' in member.descriptor)) continue;
-		try {
-			defineMember(receiver, member.key, member.descriptor.value);
-		} catch {}
-	}
-	return receiver;
-}
-
-function memberHolder(member: Member, receiverFor: () => object): object | undefined {
-	const holder = {};
-	try {
-		if ('value' in member.descriptor) {
-			defineMember(holder, member.key, member.descriptor.value);
-			return holder;
-		}
-		const getter = member.descriptor.get;
-		if (getter === undefined) {
-			return Object.defineProperty(holder, member.key, member.descriptor);
-		}
-		// Keep the getter's own object as its receiver, so it reads the siblings it expects.
-		const receiver = receiverFor();
-		return Object.defineProperty(holder, member.key, {
-			enumerable: true,
-			configurable: true,
-			get: () => getter.call(receiver),
-		});
-	} catch {
-		return undefined;
-	}
-}
-
-function acceptsMember(state: WalkState, member: Member, receiverFor: () => object): boolean {
-	if ('value' in member.descriptor && alwaysTransferable(member.descriptor.value)) return true;
-	const holder = memberHolder(member, receiverFor);
-	if (holder === undefined) return false;
-	return probe(state, holder);
-}
-
 function ownMembers(value: object, path: string): Member[] | undefined {
 	let keys: string[];
 	try {
@@ -170,42 +99,6 @@ function ownMembers(value: object, path: string): Member[] | undefined {
 		});
 	}
 	return members;
-}
-
-function walk(
-	value: unknown,
-	path: string,
-	depth: number,
-	state: WalkState,
-): TransferRejection | undefined {
-	if (state.exhausted) return undefined;
-	if (value === null || typeof value !== 'object') return { path, descriptor: describe(value) };
-	if (types.isProxy(value)) return { path, descriptor: 'a proxy' };
-	if (state.seen.has(value)) return { path, descriptor: 'a circular reference' };
-	if (depth >= TRANSFER_MAX_DEPTH) {
-		state.exhausted = true;
-		return undefined;
-	}
-	state.seen.add(value);
-
-	const members = ownMembers(value, path);
-	if (members === undefined) return { path, descriptor: describe(value) };
-
-	let receiver: object | undefined;
-	const receiverFor = () => (receiver ??= dataReceiver(members));
-
-	for (const member of members) {
-		if (Date.now() > state.deadline) {
-			state.exhausted = true;
-			return undefined;
-		}
-		const accepted = acceptsMember(state, member, receiverFor);
-		if (state.exhausted) return undefined;
-		if (accepted) continue;
-		if (!('value' in member.descriptor)) return { path: member.path, descriptor: 'a getter' };
-		return walk(member.descriptor.value, member.path, depth + 1, state);
-	}
-	return { path, descriptor: describe(value) };
 }
 
 function refusalMessage(
@@ -300,42 +193,18 @@ function nodeNameForCall(rawMsg: unknown, data: WorkflowData): string | undefine
 	return undefined;
 }
 
-/**
- * Build the error for a value the engine refuses, naming the node and the key path of the
- * member it refused. Asks the engine itself through `transferProbe`, until `deadline`.
- */
-function untransferableItemError(
-	value: unknown,
-	transferProbe: TransferProbe,
-	rawMsg: unknown,
-	data: WorkflowData,
-	deadline: number,
-): ExpressionError {
-	let subject: CallSubject = { text: 'item from an upstream node' };
-	try {
-		subject = subjectForCall(rawMsg, data);
-	} catch {}
-	try {
-		const state: WalkState = {
-			probe: transferProbe,
-			seen: new Set<object>(),
-			deadline,
-			exhausted: false,
-		};
-		const found = walk(value, '', 0, state);
-		return buildError(subject, found, state.exhausted);
-	} catch {
-		return buildError(subject, undefined, false);
-	}
-}
-
 interface SanitiseState {
 	probe: TransferProbe;
 	deadline: number;
 	subject: CallSubject;
+	seen: Set<object>;
+	first?: TransferRejection;
+	stopped: boolean;
 }
 
-function marker(state: SanitiseState, path: string, descriptor: string | undefined): object {
+/** Replace a refused member by a marker, keeping the first refusal for the error message. */
+function refuse(state: SanitiseState, path: string, descriptor: string | undefined): object {
+	state.first ??= { path, descriptor };
 	return {
 		[TRANSFER_UNUSABLE_KEY]: true,
 		message: refusalMessage(state.subject, { path, descriptor }, false),
@@ -349,7 +218,7 @@ function sanitiseMembers(
 	depth: number,
 ): unknown {
 	const members = ownMembers(value, path);
-	if (members === undefined) return marker(state, path, describe(value));
+	if (members === undefined) return refuse(state, path, describe(value));
 
 	// An array rebuilds by index, which keeps the length and the holes; a structured clone
 	// drops the non-index keys of an array too.
@@ -357,7 +226,7 @@ function sanitiseMembers(
 	const copy: Record<string, unknown> = {};
 	for (const member of members) {
 		const sanitised = !('value' in member.descriptor)
-			? marker(state, member.path, 'a getter')
+			? refuse(state, member.path, 'a getter')
 			: sanitiseValue(state, member.descriptor.value, member.path, depth + 1);
 		if (indexed === undefined) copy[member.key] = sanitised;
 		else if (ARRAY_INDEX.test(member.key)) indexed[Number(member.key)] = sanitised;
@@ -365,57 +234,39 @@ function sanitiseMembers(
 	return indexed ?? copy;
 }
 
+function stopEarly(state: SanitiseState, path: string): object {
+	state.stopped = true;
+	return refuse(state, path, 'the search for it stopped early');
+}
+
 function sanitiseValue(state: SanitiseState, value: unknown, path: string, depth: number): unknown {
 	if (alwaysTransferable(value)) return value;
-	if (Date.now() > state.deadline) return marker(state, path, 'the search for it stopped early');
+	if (Date.now() > state.deadline) return stopEarly(state, path);
+	// Every object in `seen` is an ancestor the engine already refused, so a member that
+	// points back at one is refused too, and naming the cycle beats rebuilding it to the cap.
+	if (typeof value === 'object' && value !== null && state.seen.has(value)) {
+		return refuse(state, path, 'a circular reference');
+	}
 	try {
 		if (state.probe(value)) return value;
 	} catch {}
-	if (value === null || typeof value !== 'object') return marker(state, path, describe(value));
-	if (depth >= TRANSFER_MAX_DEPTH) return marker(state, path, 'the search for it stopped early');
+	if (value === null || typeof value !== 'object') return refuse(state, path, describe(value));
+	if (depth >= TRANSFER_MAX_DEPTH) return stopEarly(state, path);
 	// A proxy rebuilds from its keys; anything else with a kind of its own (a Map, a promise)
 	// would rebuild into the wrong thing, so it stays refused.
 	const kind = describe(value);
-	if (kind !== undefined && !types.isProxy(value)) return marker(state, path, kind);
+	if (kind !== undefined && !types.isProxy(value)) return refuse(state, path, kind);
+	state.seen.add(value);
 	return sanitiseMembers(state, value, path, depth);
-}
-
-/**
- * Rebuild `value` with every member the engine refuses replaced by a marker the runtime
- * turns into a throwing read, so a sibling key still crosses. Returns undefined when the
- * rebuilt value is itself refused.
- */
-function sanitiseForTransfer(
-	value: unknown,
-	transferProbe: TransferProbe,
-	rawMsg: unknown,
-	data: WorkflowData,
-	deadline: number,
-): object | undefined {
-	let subject: CallSubject = { text: 'item from an upstream node' };
-	try {
-		subject = subjectForCall(rawMsg, data);
-	} catch {}
-	try {
-		const state: SanitiseState = {
-			probe: transferProbe,
-			deadline,
-			subject,
-		};
-		const sanitised = sanitiseValue(state, value, '', 0);
-		const envelope = { [TRANSFER_SANITISED_KEY]: true, value: sanitised };
-		return transferProbe(envelope) ? envelope : undefined;
-	} catch {
-		return undefined;
-	}
 }
 
 export type TransferOutcome = { envelope: object } | { error: ExpressionError };
 
 /**
- * Take `value` across as an envelope the engine accepts, or explain why it cannot.
- * Both passes share one deadline, taken from what is left of the expression's own
- * budget, so diagnosing a refusal cannot turn an expression into a timeout.
+ * Take `value` across with every member the engine refuses replaced by a marker the runtime
+ * turns into a throwing read, so a sibling key still crosses. Returns the error instead when
+ * the rebuilt value is itself refused. The rebuild stops at `msLeft`, so diagnosing a refusal
+ * cannot turn an expression into a timeout.
  */
 export function transferOrExplain(
 	value: unknown,
@@ -424,8 +275,20 @@ export function transferOrExplain(
 	data: WorkflowData,
 	msLeft: number,
 ): TransferOutcome {
-	const deadline = Date.now() + diagnosticBudgetMs(msLeft);
-	const envelope = sanitiseForTransfer(value, transferProbe, rawMsg, data, deadline);
-	if (envelope !== undefined) return { envelope };
-	return { error: untransferableItemError(value, transferProbe, rawMsg, data, deadline) };
+	let subject: CallSubject = { text: 'item from an upstream node' };
+	try {
+		subject = subjectForCall(rawMsg, data);
+	} catch {}
+	const state: SanitiseState = {
+		probe: transferProbe,
+		deadline: Date.now() + diagnosticBudgetMs(msLeft),
+		subject,
+		seen: new Set<object>(),
+		stopped: false,
+	};
+	try {
+		const envelope = { [TRANSFER_SANITISED_KEY]: true, value: sanitiseValue(state, value, '', 0) };
+		if (transferProbe(envelope)) return { envelope };
+	} catch {}
+	return { error: buildError(subject, state.first, state.stopped) };
 }
