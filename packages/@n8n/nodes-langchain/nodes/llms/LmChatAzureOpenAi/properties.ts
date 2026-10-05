@@ -37,14 +37,6 @@ export const properties: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Project',
-		name: 'project',
-		type: 'string',
-		description:
-			'The Azure AI Foundry project that owns the deployment. Required for an Azure AI Foundry resource; leave empty for a classic Azure OpenAI resource.',
-		default: '',
-	},
-	{
 		displayName: 'Model (Deployment) Name',
 		name: 'model',
 		type: 'string',
@@ -56,6 +48,14 @@ export const properties: INodeProperties[] = [
 				'@version': [1],
 			},
 		},
+	},
+	{
+		displayName: 'Project',
+		name: 'project',
+		type: 'string',
+		description:
+			'The Azure AI Foundry project that owns the deployment. Required for an Azure AI Foundry resource; leave empty for a classic Azure OpenAI resource.',
+		default: '',
 	},
 	{
 		displayName: 'Model (Deployment)',
