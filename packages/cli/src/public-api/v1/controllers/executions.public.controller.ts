@@ -545,7 +545,7 @@ function toStoppedExecutionPublicDto(stopResult: StopResult): StoppedExecutionPu
 		mode: stopResult.mode,
 		startedAt: stopResult.startedAt.toISOString(),
 		stoppedAt: stopResult.stoppedAt?.toISOString(),
-		finished: stopResult.finished,
+		finished: isTerminalExecutionStatus(stopResult.status),
 		status: stopResult.status,
 	};
 }

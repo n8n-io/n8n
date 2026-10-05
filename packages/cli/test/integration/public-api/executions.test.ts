@@ -1461,6 +1461,19 @@ describe('POST /executions/:id/stop', () => {
 		},
 	);
 
+	test('should report a stopped execution as finished on stop and retrieval', async () => {
+		const workflow = await createWorkflow({}, user1);
+		const execution = await createExecution({ status: 'running', finished: false }, workflow);
+
+		const stopped = await authUser1Agent.post(`/executions/${execution.id}/stop`);
+		const retrieved = await authUser1Agent.get(`/executions/${execution.id}`);
+
+		expect(stopped.statusCode).toBe(200);
+		expect(stopped.body).toEqual(expect.objectContaining({ status: 'canceled', finished: true }));
+		expect(retrieved.statusCode).toBe(200);
+		expect(retrieved.body).toEqual(expect.objectContaining({ status: 'canceled', finished: true }));
+	});
+
 	test('should stop a running execution', async () => {
 		const mockedStopResponse = {
 			mode: 'manual',
@@ -1483,7 +1496,7 @@ describe('POST /executions/:id/stop', () => {
 		const response = await authUser1Agent.post(`/executions/${execution.id}/stop`);
 
 		expect(response.statusCode).toBe(200);
-		expect(response.body).toEqual(mockedStopResponse);
+		expect(response.body).toEqual({ ...mockedStopResponse, finished: true });
 		expect(executionServiceSpy).toHaveBeenCalled();
 		// The execution ID from the route parameter is passed to the service
 		const calledExecutionId = executionServiceSpy.mock.calls[0][0];
@@ -1538,7 +1551,7 @@ describe('POST /executions/:id/stop', () => {
 		const response = await authUser2Agent.post(`/executions/${execution.id}/stop`);
 
 		expect(response.statusCode).toBe(200);
-		expect(response.body).toEqual(mockedStopResponse);
+		expect(response.body).toEqual({ ...mockedStopResponse, finished: true });
 
 		executionServiceSpy.mockRestore();
 	});
@@ -1561,6 +1574,7 @@ describe('POST /executions/:id/stop', () => {
 
 		expect(response.statusCode).toBe(200);
 		expect(response.body).not.toHaveProperty('stoppedAt');
+		expect(response.body.finished).toBe(true);
 
 		executionServiceSpy.mockRestore();
 	});
