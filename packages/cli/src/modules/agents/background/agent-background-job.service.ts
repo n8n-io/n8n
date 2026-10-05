@@ -132,6 +132,8 @@ export function serializeWorkflowJobResult(
 }
 
 function latestStopGroup(jobs: AgentBackgroundJob[]): AgentBackgroundJob[] {
+	// UUIDv7 IDs sort by creation time. Index 14 holds the UUID version.
+	// Prefer v7 IDs, then sort descending to select the latest stop group.
 	const latestId = jobs
 		.flatMap((job) => (job.pauseRequestId ? [job.pauseRequestId] : []))
 		.sort((a, b) => Number(b[14] === '7') - Number(a[14] === '7') || b.localeCompare(a))[0];
@@ -384,6 +386,8 @@ export class AgentBackgroundJobService {
 				workflowId: job.workflowId,
 				previousExecutionId: job.childExecutionId,
 			}));
+		// Resume the latest paused sub-agent group, even if a later stop request
+		// contains only workflows.
 		const paused = latestStopGroup(
 			jobs.filter((job) => job.kind === 'subagent' && job.status === 'paused'),
 		);
