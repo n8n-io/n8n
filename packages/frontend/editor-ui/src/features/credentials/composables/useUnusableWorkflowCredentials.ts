@@ -12,7 +12,7 @@ import { useCredentialSharing } from './useCredentialSharing';
  * with their email appended, so only the name is shown; a team project is
  * named directly.
  */
-export function getCredentialOwnerName(
+export function getCredentialOwnerShortName(
 	credential: DeepReadonly<Pick<IUsedCredential, 'homeProject'>> | undefined,
 ): string | undefined {
 	const project = credential?.homeProject;
@@ -63,7 +63,7 @@ export function useUnusableWorkflowCredentials(
 	/** Running and publishing both stop; editing and saving do not. */
 	const isBlocked = computed(() => unusable.value.length > 0);
 
-	const owner = computed(() => getCredentialOwnerName(unusable.value[0]));
+	const owner = computed(() => getCredentialOwnerShortName(unusable.value[0]));
 
 	const credentialName = computed(() => unusable.value[0]?.name ?? '');
 

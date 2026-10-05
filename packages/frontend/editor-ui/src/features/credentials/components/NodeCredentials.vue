@@ -57,7 +57,7 @@ import {
 import { getAutoSelectedCredential } from '../credentials.utils';
 import { usePrivateCredentials } from '@/features/resolvers/composables/usePrivateCredentials';
 import { useCredentialSharing } from '../composables/useCredentialSharing';
-import { getCredentialOwnerName } from '../composables/useUnusableWorkflowCredentials';
+import { getCredentialOwnerShortName } from '../composables/useUnusableWorkflowCredentials';
 import {
 	AI_GATEWAY_MANAGED_TAG,
 	SYSTEM_RESOLVER_ID,
@@ -297,7 +297,7 @@ function isUnusableCredentialId(id: string | null | undefined): boolean {
 
 function getUnusableOwnerName(credentialType: string): string {
 	return (
-		getCredentialOwnerName(getUnusableSelected(credentialType)) ??
+		getCredentialOwnerShortName(getUnusableSelected(credentialType)) ??
 		i18n.baseText('credentialEdit.credentialSharing.info.sharee.fallback')
 	);
 }
@@ -1189,7 +1189,7 @@ function buildUnusableRows(credentialType: string): CredentialRow[] {
 /** The tooltip on the warning next to the field, naming the owner to ask. */
 function unusableTooltip(credentialType: string): { title: string; lines: string[] } {
 	const credential = getUnusableSelected(credentialType);
-	const ownerName = getCredentialOwnerName(credential);
+	const ownerName = getCredentialOwnerShortName(credential);
 	const owner = getUnusableOwnerName(credentialType);
 	const projectName = pickerHomeProject.value?.name;
 	// A person is addressed by first name where the copy is personal; the full
