@@ -81,6 +81,7 @@ export class N8nPackagesPublicController {
 	@ApiDescription(IMPORT_DESCRIPTION)
 	@ApiTags(tags)
 	@ApiResponse(200, ImportResultDto)
+	@ApiErrorResponse(404)
 	@ApiErrorResponse(409, { dto: ImportBlockedErrorDto, description: IMPORT_409_DESCRIPTION })
 	@ApiErrorResponse(422, { dto: ImportBlockedErrorDto, description: IMPORT_422_DESCRIPTION })
 	async importPackage(
