@@ -172,7 +172,6 @@ describe('processRunExecutionData', () => {
 			expect(hooks).toEqual(['workflowExecuteBefore', 'workflowExecuteAfter']);
 		});
 
-		// A policy refusal at the hook must not be hidden by the node issues.
 		test('is reported ahead of the workflow issues', async () => {
 			const nodeWithIssues = createNodeData({
 				name: 'node',

@@ -189,8 +189,6 @@ const publishBlockedReason = computed(() => {
 	if (isWorkflowPublishable.value) return '';
 	if (!containsTrigger.value) return i18n.baseText('workflows.publishModal.noTriggerMessage');
 
-	// A restricted node blocks publishing whatever its parameters say, so its parameter
-	// issues must not hide the restriction.
 	for (const node of workflowDocumentStore.value.allNodes) {
 		const restriction = getNodeTypeRestriction(node.type);
 		if (restriction) return describeNodeTypeRestriction(node.name, restriction.scope, 'replace');

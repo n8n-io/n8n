@@ -900,7 +900,6 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 			expect(getByTestId('workflow-open-publish-modal-button')).toBeDisabled();
 		});
 
-		// The restriction blocks publishing on its own, so it must not hide behind the issues.
 		it('should name the restricted node before its parameter issues', () => {
 			const restrictedNodeWithIssues: INodeUi = {
 				id: 'http-1',
