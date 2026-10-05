@@ -35,7 +35,7 @@ test.use({
 test.describe(
 	'Workflow Builder @auth:owner @ai',
 	{
-		annotation: [{ type: 'owner', description: 'AI' }],
+		annotation: [{ type: 'owner', description: 'instanceAI' }],
 	},
 	() => {
 		test.beforeEach(async ({ setupRequirements, services }) => {

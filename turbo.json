@@ -71,6 +71,9 @@
 		"@n8n/ai-workflow-builder#lint": {
 			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
 		},
+		"@n8n/api-types#lint": {
+			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
+		},
 		"@n8n/backend-common#lint": {
 			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
 		},
@@ -84,6 +87,9 @@
 			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
 		},
 		"@n8n/blob-storage#lint": {
+			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
+		},
+		"@n8n/chat-hub#lint": {
 			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
 		},
 		"@n8n/cli#lint": {
@@ -107,6 +113,9 @@
 		"@n8n/config#lint": {
 			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
 		},
+		"@n8n/constants#lint": {
+			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
+		},
 		"@n8n/crdt#lint": {
 			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
 		},
@@ -126,6 +135,9 @@
 			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
 		},
 		"@n8n/imap#lint": {
+			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
+		},
+		"@n8n/inbound-auth#lint": {
 			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
 		},
 		"@n8n/instance-ai#lint": {
@@ -152,6 +164,9 @@
 		"@n8n/playwright-janitor#lint": {
 			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
 		},
+		"@n8n/permissions#lint": {
+			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
+		},
 		"@n8n/rules-engine#lint": {
 			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
 		},
@@ -162,6 +177,9 @@
 			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
 		},
 		"@n8n/task-runner#lint": {
+			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
+		},
+		"@n8n/telemetry#lint": {
 			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
 		},
 		"@n8n/test-impact#lint": {
