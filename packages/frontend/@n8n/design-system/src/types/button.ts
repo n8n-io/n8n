@@ -7,7 +7,7 @@ const BUTTON_VARIANT = ['solid', 'brand', 'ghost', 'outline', 'destructive', 'su
 export type ButtonVariant = (typeof BUTTON_VARIANT)[number];
 
 /** @deprecated Use 'ghost' or 'outline' instead */
-export type LegacyButtonVariant = 'highlight' | 'highlight-fill';
+export type LegacyButtonVariant = 'highlight' | 'highlight-fill' | 'subtle';
 
 const BUTTON_SIZE = ['mini', 'xmini', 'small', 'medium', 'large', 'xlarge', 'xsmall'] as const;
 export type ButtonSize = (typeof BUTTON_SIZE)[number];

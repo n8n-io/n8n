@@ -76,7 +76,8 @@ withDefaults(defineProps<SpinnerProps>(), {
 	--n8n-spinner-block--size: 14px;
 
 	display: grid;
-	grid-template-columns: repeat(3, calc(var(--n8n-spinner-block--size) / 3));
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+	grid-template-rows: repeat(3, minmax(0, 1fr));
 	gap: 1px;
 	width: var(--n8n-spinner-block--size);
 	height: var(--n8n-spinner-block--size);
@@ -106,8 +107,6 @@ withDefaults(defineProps<SpinnerProps>(), {
 	--ld-duration: 900ms;
 	--ld-step: 0;
 
-	width: calc(var(--n8n-spinner-block--size) / 3);
-	height: calc(var(--n8n-spinner-block--size) / 3);
 	border-radius: 1px;
 	background: var(--color--primary);
 	animation: blocks-spinner-opacity var(--ld-duration) var(--easing--spring) infinite;

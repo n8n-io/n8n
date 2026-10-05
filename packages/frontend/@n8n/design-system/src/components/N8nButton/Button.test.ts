@@ -7,6 +7,11 @@ const stubs = ['N8nSpinner', 'N8nIcon'];
 
 describe('components', () => {
 	describe('N8nButton', () => {
+		it('maps the legacy subtle variant to brand', () => {
+			const wrapper = render(N8nButton, { props: { variant: 'subtle' }, global: { stubs } });
+			expect(wrapper.getByRole('button').className).toContain('brand');
+		});
+
 		describe('rendering', () => {
 			it('should render correctly with default props', () => {
 				const wrapper = render(N8nButton, {

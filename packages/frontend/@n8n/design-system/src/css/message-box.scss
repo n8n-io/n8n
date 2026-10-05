@@ -180,6 +180,9 @@
 			--button--shadow: none;
 			--button--shadow--hover: none;
 			--button--shadow--active: none;
+			--button--border--shadow: 0 0 0 0 transparent;
+			--button--border--shadow--hover: 0 0 0 0 transparent;
+			--button--border--shadow--active: 0 0 0 0 transparent;
 			--button--border-color: transparent;
 			--button--border-color--hover: transparent;
 			--button--border-color--active: transparent;
@@ -194,7 +197,9 @@
 			border: 1px solid var(--button--border-color);
 			background-color: var(--button--color--background);
 			color: var(--button--color);
-			box-shadow: var(--button--shadow);
+			box-shadow:
+				inset var(--button--border--shadow),
+				var(--button--shadow);
 			display: inline-flex;
 			align-items: center;
 			justify-content: center;
@@ -204,29 +209,37 @@
 		& .btn--confirm:hover,
 		& .btn--cancel:hover {
 			background-color: var(--button--color--background-hover);
-			box-shadow: var(--button--shadow--hover);
+			box-shadow:
+				inset var(--button--border--shadow--hover),
+				var(--button--shadow--hover);
 			border-color: var(--button--border-color--hover);
 		}
 
 		& .btn--confirm:active,
 		& .btn--cancel:active {
 			background-color: var(--button--color--background-active);
-			box-shadow: var(--button--shadow--active);
+			box-shadow:
+				inset var(--button--border--shadow--active),
+				var(--button--shadow--active);
 			border-color: var(--button--border-color--active);
 		}
 
 		& .btn--confirm {
 			--button--color--background: var(--color--primary);
 			--button--color--background-hover: color-mix(
+				in srgb,
 				var(--color--primary),
 				light-dark(white, black) 10%
 			);
 			--button--color--background-active: color-mix(
+				in srgb,
 				var(--color--primary),
 				light-dark(white, black) 12%
 			);
 			--button--color: var(--text-color--inverse);
 			--button--border-color: var(--color--primary);
+			--button--border-color--hover: var(--button--color--background-hover);
+			--button--border-color--active: var(--button--color--background-active);
 			--button--border--shadow: 0 0 0 1px var(--button--border-color);
 			--button--border--shadow--hover: 0 0 0 1px var(--button--border-color--hover);
 			--button--border--shadow--active: 0 0 0 1px var(--button--border-color--active);

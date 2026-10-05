@@ -47,7 +47,7 @@ onMounted(() => {
 	const logoEl = svg.value!.$el;
 
 	/** Reuse the SVG as the favicon. These must use HEX values. */
-	const hexColor = releaseChannel === 'dev' ? '#898989' : '#ff91ac';
+	const hexColor = '#898989';
 	const faviconSvg = logoEl.outerHTML.replace('>', `><style>path { fill: ${hexColor}; }</style>`);
 	const blob = new Blob([faviconSvg], { type: 'image/svg+xml' });
 	useFavicon(URL.createObjectURL(blob));
@@ -74,7 +74,7 @@ onMounted(() => {
 .logo,
 .logoText {
 	width: auto;
-	height: 16px;
+	height: var(--height--3xs);
 	max-width: 100%;
 }
 
@@ -96,6 +96,6 @@ onMounted(() => {
 
 .large {
 	margin-bottom: var(--spacing--xl);
-	height: 20px;
+	height: var(--height--2xs);
 }
 </style>

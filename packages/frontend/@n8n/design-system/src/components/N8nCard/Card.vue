@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, useAttrs, useCssModule } from 'vue';
+import { useAttrs, useCssModule } from 'vue';
 
 interface CardProps {
 	hoverable?: boolean;
@@ -17,17 +17,17 @@ function hasClickHandler(): boolean {
 }
 
 const $style = useCssModule();
-const classes = computed(function getClasses() {
+function getClasses() {
 	return {
 		card: true,
 		[$style.card]: true,
 		[$style.hoverable]: props.hoverable || hasClickHandler(),
 	};
-});
+}
 </script>
 
 <template>
-	<div :class="classes" v-bind="$attrs">
+	<div :class="getClasses()" v-bind="$attrs">
 		<div v-if="$slots.prepend" data-test-id="card-prepend" :class="$style.icon">
 			<slot name="prepend" />
 		</div>
