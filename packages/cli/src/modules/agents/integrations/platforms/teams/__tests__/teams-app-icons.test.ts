@@ -1,11 +1,21 @@
 import type { AgentPersonalisation } from '@n8n/api-types';
+import { Logger } from '@n8n/backend-common';
+import { mockInstance } from '@n8n/backend-test-utils';
 import { icons as lucide } from '@iconify-json/lucide';
 import { readFileSync } from 'node:fs';
+import { readFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { join } from 'node:path';
 
 import { readRgbaPixels, type Rgba } from './png-pixels';
 import { renderTeamsAppIcons } from '../teams-app-icons';
+
+vi.mock('node:fs/promises', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('node:fs/promises')>();
+	return { ...actual, readFile: vi.fn(actual.readFile) };
+});
+
+const logger = mockInstance(Logger);
 
 const personalisation = (
 	icon: string,
@@ -113,6 +123,36 @@ describe('renderTeamsAppIcons', () => {
 		await expect(
 			renderTeamsAppIcons(personalisation('not-a-lucide-icon')),
 		).resolves.toBeUndefined();
+	});
+
+	describe('when the icon cannot be drawn', () => {
+		const readFileMock = vi.mocked(readFile);
+
+		it('keeps the bundled icons when the icon set cannot be read', async () => {
+			readFileMock.mockRejectedValueOnce(new Error('EACCES'));
+
+			await expect(renderTeamsAppIcons(personalisation('bot'))).resolves.toBeUndefined();
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Could not draw the agent icon for the Teams app',
+				expect.objectContaining({ icon: 'bot' }),
+			);
+		});
+
+		it('keeps the bundled icons when a path uses syntax the renderer does not know', async () => {
+			const body = '<path fill="none" stroke="currentColor" d="M0 0X1 1"/>';
+			readFileMock.mockResolvedValueOnce(JSON.stringify({ icons: { bot: { body } } }));
+
+			await expect(renderTeamsAppIcons(personalisation('bot'))).resolves.toBeUndefined();
+			expect(logger.warn).toHaveBeenCalled();
+		});
+
+		it('does not log an icon name Lucide does not have', async () => {
+			logger.warn.mockClear();
+
+			await renderTeamsAppIcons(personalisation('not-a-lucide-icon'));
+
+			expect(logger.warn).not.toHaveBeenCalled();
+		});
 	});
 
 	it('draws every stroked Lucide icon', async () => {

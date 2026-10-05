@@ -42,10 +42,10 @@ export async function renderTeamsAppIcons(
 	personalisation?: AgentPersonalisation | null,
 ): Promise<TeamsAppIcons | undefined> {
 	const { icon, gradient } = resolveAgentPersonalisation(personalisation);
-	const body = await lucideBody(icon);
-	if (!body) return undefined;
-
 	try {
+		const body = await lucideBody(icon);
+		if (!body) return undefined;
+
 		const glyph = parseGlyph(body);
 		const colorAt = gradientSampler(gradient);
 		return {
@@ -54,8 +54,8 @@ export async function renderTeamsAppIcons(
 			accentColor: toHex(colorAt(stopProgress(gradient, 0.5))),
 		};
 	} catch (error) {
-		// A later Lucide release can add path syntax this does not parse. That
-		// must not block the package download.
+		// Reading the icon set, or path syntax a later Lucide release adds, must
+		// not block the package download.
 		Container.get(Logger).warn('Could not draw the agent icon for the Teams app', {
 			icon,
 			error,
