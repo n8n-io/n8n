@@ -56,10 +56,10 @@ export class LeaseHeartbeat {
 		if (!Number.isInteger(options.leaseDurationMs) || options.leaseDurationMs <= 0) {
 			throw new InvalidLeaseDurationError(options.leaseDurationMs);
 		}
-		// Rounded down, so the last renewal of a lease still lands before it expires.
+		// One spare interval, so the last renewal of a lease still lands before it expires.
 		this.intervalMs = Math.max(
 			MIN_RENEWAL_INTERVAL_MS,
-			Math.floor(options.leaseDurationMs / RENEWALS_PER_LEASE),
+			Math.floor(options.leaseDurationMs / (RENEWALS_PER_LEASE + 1)),
 		);
 		this.armExpiry(options.leaseSetAt);
 		this.scheduleBeat();

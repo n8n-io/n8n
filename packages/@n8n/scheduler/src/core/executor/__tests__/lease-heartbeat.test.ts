@@ -49,15 +49,23 @@ describe('LeaseHeartbeat', () => {
 		heartbeat.stop();
 	});
 
-	it('rounds the interval down, so the last renewal of a lease lands before it expires', async () => {
-		const renew = vi.fn().mockResolvedValue(true);
-		const heartbeat = new LeaseHeartbeat(renew, {
-			leaseDurationMs: 15_002,
-			leaseSetAt: performance.now(),
-		});
+	it('lands a third renewal before the lease expires when the first two fail', async () => {
+		const leaseDurationMs = 60_000;
+		const renew = vi
+			.fn()
+			.mockRejectedValueOnce(new Error('db down'))
+			.mockRejectedValueOnce(new Error('db down'))
+			.mockResolvedValue(true);
+		const onRenewal = vi.fn();
+		const heartbeat = new LeaseHeartbeat(
+			renew,
+			{ leaseDurationMs, leaseSetAt: performance.now() },
+			{ onRenewal },
+		);
 
-		await vi.advanceTimersByTimeAsync(15_000);
-		expect(renew).toHaveBeenCalledTimes(3);
+		await vi.advanceTimersByTimeAsync(leaseDurationMs);
+		expect(onRenewal).toHaveBeenCalledWith('renewed');
+		expect(onRenewal).not.toHaveBeenCalledWith('expired');
 
 		heartbeat.stop();
 	});
