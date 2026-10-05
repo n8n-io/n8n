@@ -11,6 +11,7 @@ import {
 import { CONFIG_EVALS_SKILL_ID, disabledInstanceAiSkillIds } from '../skill-gates';
 
 const ORIGINAL_ENABLED_MODULES = process.env.N8N_ENABLED_MODULES;
+const ORIGINAL_WEBPAGE_NODE_FLAG = process.env.N8N_ENV_FEAT_WEBPAGE_NODE;
 const AGENTS_MODULE_SKILL_IDS = ['agent-builder', 'intent-recognition'] as const;
 
 describe('Instance AI runtime skills', () => {
@@ -19,6 +20,11 @@ describe('Instance AI runtime skills', () => {
 			delete process.env.N8N_ENABLED_MODULES;
 		} else {
 			process.env.N8N_ENABLED_MODULES = ORIGINAL_ENABLED_MODULES;
+		}
+		if (ORIGINAL_WEBPAGE_NODE_FLAG === undefined) {
+			delete process.env.N8N_ENV_FEAT_WEBPAGE_NODE;
+		} else {
+			process.env.N8N_ENV_FEAT_WEBPAGE_NODE = ORIGINAL_WEBPAGE_NODE_FLAG;
 		}
 	});
 
@@ -266,6 +272,28 @@ describe('Instance AI runtime skills', () => {
 			const loadResult = await loadTool.handler?.({ skillId }, {});
 			expect(skillLoadText(loadResult)).toContain(`[Skill: "${skillId}"]`);
 		}
+	});
+
+	it('excludes the webpage-builder skill unless the Webpage node flag is on', async () => {
+		const source = await loadRuntimeSkillSourceWithWebpageNodeFlag(undefined);
+
+		expect(source.registry.skills).not.toContainEqual(
+			expect.objectContaining({ id: 'webpage-builder' }),
+		);
+		await expect(source.loadSkill('webpage-builder')).resolves.toBeNull();
+	});
+
+	it('loads the webpage-builder skill when the Webpage node flag is on', async () => {
+		const source = await loadRuntimeSkillSourceWithWebpageNodeFlag('true');
+		const skill = source.registry.skills.find((entry) => entry.id === 'webpage-builder');
+
+		expect(skill?.description).toContain('landing');
+		expect(skill?.description).toContain('load workflow-builder before build-workflow');
+
+		const loaded = await source.loadSkill('webpage-builder');
+		expect(loaded?.instructions).toContain('n8n-nodes-base.webpage');
+		expect(loaded?.instructions).toContain('{webhookBaseUrl}/{path}');
+		expect(loaded?.instructions).toContain('"not_verifiable"');
 	});
 
 	it('loads the bundled agent-builder skill', async () => {
@@ -601,6 +629,18 @@ function skillLoadText(output: unknown): string {
 		throw new Error(`Expected content-form skill load output, got: ${JSON.stringify(output)}`);
 	}
 	return record.value.map((part) => part.text).join('\n');
+}
+
+async function loadRuntimeSkillSourceWithWebpageNodeFlag(flag: string | undefined) {
+	vi.resetModules();
+	if (flag === undefined) {
+		delete process.env.N8N_ENV_FEAT_WEBPAGE_NODE;
+	} else {
+		process.env.N8N_ENV_FEAT_WEBPAGE_NODE = flag;
+	}
+
+	const { loadInstanceAiRuntimeSkillSource } = await import('../runtime-skills.js');
+	return loadInstanceAiRuntimeSkillSource();
 }
 
 async function loadRuntimeSkillSourceWithEnabledModules(enabledModules: string | undefined) {

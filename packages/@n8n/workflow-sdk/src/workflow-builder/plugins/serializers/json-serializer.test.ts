@@ -113,6 +113,23 @@ describe('jsonSerializer', () => {
 			expect(result.nodes[0]?.parameters).toEqual({});
 		});
 
+		it('gives a webpage node a webhookId so its URL does not depend on the node name', () => {
+			const page = trigger({
+				type: 'n8n-nodes-base.webpage',
+				version: 1,
+				config: { name: 'Landing Page', parameters: { path: 'my-page' } },
+			});
+			const ctx = createMockSerializerContext({
+				nodes: new Map<string, GraphNode>([
+					['Landing Page', { instance: page, connections: new Map() }],
+				]),
+			});
+
+			const result = jsonSerializer.serialize(ctx);
+
+			expect(result.nodes[0]?.webhookId).toEqual(expect.any(String));
+		});
+
 		it('omits null and undefined optional top-level node keys', () => {
 			const httpNode = node({
 				type: 'n8n-nodes-base.httpRequest',

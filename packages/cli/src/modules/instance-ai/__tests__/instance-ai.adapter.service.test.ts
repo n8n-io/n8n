@@ -5632,6 +5632,20 @@ describe('createExecutionAdapter run()', () => {
 			expect(startedFrom(mockWorkflowRunner)).toBe('On Chat Message');
 		});
 
+		it('never auto-detects a webpage node, which starts no execution', async () => {
+			const { adapter, mockWorkflowRunner } = createRunAdapterForTests({
+				id: 'wf-1',
+				nodes: [
+					triggerNode('Landing Page', { type: 'n8n-nodes-base.webpage' }),
+					triggerNode('On Interval', { type: 'n8n-nodes-base.cron' }),
+				],
+			});
+
+			await adapter.run('wf-1');
+
+			expect(startedFrom(mockWorkflowRunner)).toBe('On Interval');
+		});
+
 		it('rejects an unknown trigger name instead of running a different branch', async () => {
 			const { adapter, mockWorkflowRunner } = createRunAdapterForTests({
 				id: 'wf-1',
@@ -5668,6 +5682,24 @@ describe('createExecutionAdapter run()', () => {
 			await expect(
 				adapter.run('wf-1', undefined, { triggerNodeName: 'Compute Daily' }),
 			).rejects.toThrow(/Compute Daily/);
+			expect(mockWorkflowRunner.run).not.toHaveBeenCalled();
+		});
+
+		it('rejects a named webpage node and does not list it as available', async () => {
+			const { adapter, mockWorkflowRunner } = createRunAdapterForTests({
+				id: 'wf-1',
+				nodes: [
+					triggerNode('Landing Page', { type: 'n8n-nodes-base.webpage' }),
+					triggerNode('Signup Webhook', { type: 'n8n-nodes-base.webhook' }),
+				],
+			});
+
+			const run = adapter.run('wf-1', undefined, { triggerNodeName: 'Landing Page' });
+
+			await expect(run).rejects.toThrow(UserError);
+			await expect(run).rejects.toThrow(
+				'"Landing Page" is not a trigger node that can start a run. Available trigger nodes: "Signup Webhook".',
+			);
 			expect(mockWorkflowRunner.run).not.toHaveBeenCalled();
 		});
 	});

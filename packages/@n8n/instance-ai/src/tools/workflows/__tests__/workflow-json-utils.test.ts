@@ -7,6 +7,7 @@ import {
 	preserveExistingNodeIds,
 	hasLostAllSavedNodeIds,
 	isMockableTriggerNodeType,
+	isRunnableTriggerNodeType,
 	isTriggerNodeType,
 	isWaitGateNode,
 	nodeCanReachItself,
@@ -29,6 +30,14 @@ describe('trigger detection', () => {
 		expect(isTriggerNodeType(undefined)).toBe(false);
 	});
 
+	it('treats a webpage node as a trigger that verification cannot start from', () => {
+		expect(isTriggerNodeType('n8n-nodes-base.webpage')).toBe(true);
+		expect(isRunnableTriggerNodeType('n8n-nodes-base.webpage')).toBe(false);
+		expect(isRunnableTriggerNodeType('n8n-nodes-base.webhook')).toBe(true);
+		expect(isRunnableTriggerNodeType('n8n-nodes-base.slack')).toBe(false);
+		expect(isRunnableTriggerNodeType(undefined)).toBe(false);
+	});
+
 	it('marks only the deterministic-input trigger types as mockable', () => {
 		expect(isMockableTriggerNodeType('n8n-nodes-base.manualTrigger')).toBe(true);
 		expect(isMockableTriggerNodeType('n8n-nodes-base.webhook')).toBe(true);
@@ -41,6 +50,34 @@ describe('trigger detection', () => {
 });
 
 describe('ensureWebhookIds', () => {
+	it('keeps the webhook ID of a webpage node across updates', async () => {
+		const workflow: WorkflowJSON = {
+			name: 'Landing page',
+			nodes: [
+				{
+					id: 'page-1',
+					name: 'Landing Page',
+					type: 'n8n-nodes-base.webpage',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: { path: 'my-page' },
+				},
+			],
+			connections: {},
+		};
+		const context = {
+			workflowService: {
+				getAsWorkflowJSON: vi.fn().mockResolvedValue({
+					nodes: [{ name: 'Landing Page', webhookId: 'existing-webhook-id' }],
+				}),
+			},
+		} as unknown as InstanceAiContext;
+
+		await ensureWebhookIds(workflow, 'wf-1', context);
+
+		expect(workflow.nodes[0]?.webhookId).toBe('existing-webhook-id');
+	});
+
 	it('fails updates when existing webhook IDs cannot be loaded', async () => {
 		const workflow: WorkflowJSON = {
 			name: 'Webhook workflow',

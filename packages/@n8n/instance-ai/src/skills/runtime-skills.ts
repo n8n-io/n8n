@@ -15,6 +15,13 @@ import { composeSkillVariants } from '../prompts/skill-variants';
 
 export const INSTANCE_AI_SKILLS_DIR = resolve(__dirname, '..', '..', 'skills');
 const AGENTS_MODULE_RUNTIME_SKILLS = new Set(['agent-builder', 'intent-recognition']);
+// The Webpage node loads only when this flag is on. Without the flag, hide its skill so that
+// the model does not build with a node that does not exist.
+const WEBPAGE_RUNTIME_SKILL = 'webpage-builder';
+
+function isWebpageNodeEnabled(): boolean {
+	return process.env.N8N_ENV_FEAT_WEBPAGE_NODE === 'true';
+}
 
 let cachedRuntimeSkillSource: RuntimeSkillSource | undefined;
 const cachedProfiles = new Map<string, ReturnType<typeof composeSkillVariants>>();
@@ -33,7 +40,10 @@ export function substituteSkillPlaceholders(instructions: string): string {
 
 export function loadInstanceAiRuntimeSkillSource(): RuntimeSkillSource {
 	cachedRuntimeSkillSource ??= loadRuntimeSkillSourceFromDirectory(INSTANCE_AI_SKILLS_DIR, {
-		exclude: isAgentFeatureEnabled() ? [] : [...AGENTS_MODULE_RUNTIME_SKILLS],
+		exclude: [
+			...(isAgentFeatureEnabled() ? [] : AGENTS_MODULE_RUNTIME_SKILLS),
+			...(isWebpageNodeEnabled() ? [] : [WEBPAGE_RUNTIME_SKILL]),
+		],
 		transformInstructions: substituteSkillPlaceholders,
 	});
 	return cachedRuntimeSkillSource;

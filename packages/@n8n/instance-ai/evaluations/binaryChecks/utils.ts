@@ -17,6 +17,8 @@ export const HTTP_REQUEST_TOOL_TYPE = 'n8n-nodes-base.httpRequestTool';
  *  nodes-base tool variant above, with its own `parametersQuery.values[]` shape. */
 export const LANGCHAIN_HTTP_TOOL_TYPE = '@n8n/n8n-nodes-langchain.toolHttpRequest';
 export const GOOGLE_SHEETS_TYPE = 'n8n-nodes-base.googleSheets';
+/** Serves a page on its own. It has no inputs or outputs, so it never connects. */
+export const WEBPAGE_TYPE = 'n8n-nodes-base.webpage';
 
 // ---------------------------------------------------------------------------
 // Trigger detection
@@ -32,6 +34,7 @@ const KNOWN_TRIGGER_TYPES = new Set([
 	'n8n-nodes-base.formTrigger',
 	'@n8n/n8n-nodes-langchain.chatTrigger',
 	'@n8n/n8n-nodes-langchain.mcpTrigger',
+	WEBPAGE_TYPE,
 ]);
 
 export function isTriggerNode(type: string): boolean {

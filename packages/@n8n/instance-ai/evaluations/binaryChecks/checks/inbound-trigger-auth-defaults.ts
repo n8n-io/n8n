@@ -1,11 +1,13 @@
 import type { WorkflowNodeResponse } from '../../clients/n8n-client';
 import type { BinaryCheck } from '../types';
+import { WEBPAGE_TYPE } from '../utils';
 
 const INBOUND_TRIGGER_TYPES = new Set([
 	'n8n-nodes-base.webhook',
 	'n8n-nodes-base.formTrigger',
 	'@n8n/n8n-nodes-langchain.chatTrigger',
 	'@n8n/n8n-nodes-langchain.mcpTrigger',
+	WEBPAGE_TYPE,
 ]);
 
 const EXPLICIT_INBOUND_AUTH_PATTERNS = [
@@ -15,8 +17,20 @@ const EXPLICIT_INBOUND_AUTH_PATTERNS = [
 	/\b(?:webhook|form|chat|mcp|inbound|incoming)\b.{0,80}\b(?:require|protect|secure|authenticate)\b/i,
 ];
 
-function explicitlyRequestsInboundAuth(prompt: string): boolean {
-	return EXPLICIT_INBOUND_AUTH_PATTERNS.some((pattern) => pattern.test(prompt));
+// "Page", "site" and "login" are common words in prompts that ask for no inbound
+// auth, so these patterns apply only to Webpage nodes.
+const EXPLICIT_PAGE_AUTH_PATTERNS = [
+	/\bauthenticated\s+(?:page|site|website)\b/i,
+	/\b(?:page|site|website)\b.{0,80}\b(?:auth|authenticated|authentication|authorization|bearer|jwt|basic auth|header auth|api key|token|password)\b/i,
+	/\b(?:require|requires|requiring|protect|secure|authenticate)\b.{0,80}\b(?:page|site|website)\b/i,
+	/\b(?:page|site|website)\b.{0,80}\b(?:require|protect|secure|authenticate)\b/i,
+	// "Only signed-in users can open the page" asks for the n8n user auth of a Webpage node.
+	/\b(?:signed|logged)[- ]in\b.{0,40}\b(?:users?|members?|accounts?)\b/i,
+	/\b(?:require|requires|requiring)\b.{0,40}\b(?:log[- ]?in|sign[- ]?in)\b/i,
+];
+
+function matchesAny(patterns: RegExp[], prompt: string): boolean {
+	return patterns.some((pattern) => pattern.test(prompt));
 }
 
 function hasNonDefaultAuthentication(node: WorkflowNodeResponse): boolean {
@@ -40,9 +54,12 @@ export const inboundTriggerAuthDefaults: BinaryCheck = {
 		);
 		if (inboundTriggers.length === 0) return { pass: true, applicable: false };
 
-		if (explicitlyRequestsInboundAuth(ctx.prompt)) return { pass: true };
+		const requestsInboundAuth = matchesAny(EXPLICIT_INBOUND_AUTH_PATTERNS, ctx.prompt);
+		const requestsPageAuth =
+			requestsInboundAuth || matchesAny(EXPLICIT_PAGE_AUTH_PATTERNS, ctx.prompt);
 
 		const issues = inboundTriggers
+			.filter((node) => !(node.type === WEBPAGE_TYPE ? requestsPageAuth : requestsInboundAuth))
 			.filter(hasNonDefaultAuthentication)
 			.map((node) => `"${node.name}" sets authentication to "${getAuthentication(node)}"`);
 

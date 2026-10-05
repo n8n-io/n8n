@@ -141,6 +141,7 @@ import {
 	CHAT_TRIGGER_NODE_TYPE,
 	FORM_TRIGGER_NODE_TYPE,
 	WEBHOOK_NODE_TYPE,
+	WEBPAGE_NODE_TYPE,
 	SCHEDULE_TRIGGER_NODE_TYPE,
 	TimeoutExecutionCancelledError,
 	UnexpectedError,
@@ -5114,6 +5115,11 @@ const KNOWN_TRIGGER_TYPES = new Set([
 	SCHEDULE_TRIGGER_NODE_TYPE,
 ]);
 
+/** A Webpage node only serves its HTML and starts no execution, so a run cannot start from it. */
+function isRunnableTriggerNodeType(type: string): boolean {
+	return isTriggerNodeType(type) && type !== WEBPAGE_NODE_TYPE;
+}
+
 /**
  * Find the trigger node to start from: known types first, then the canonical
  * n8n-workflow detection — the same detection the instance-ai simulation planner
@@ -5129,7 +5135,7 @@ const KNOWN_TRIGGER_TYPES = new Set([
 function findTriggerNode(nodes: INode[]): INode | undefined {
 	const byPreference = [
 		(n: INode) => KNOWN_TRIGGER_TYPES.has(n.type),
-		(n: INode) => isTriggerNodeType(n.type),
+		(n: INode) => isRunnableTriggerNodeType(n.type),
 	];
 
 	for (const isEligible of byPreference) {
@@ -5154,11 +5160,13 @@ function findTriggerNode(nodes: INode[]): INode | undefined {
  */
 function resolveRequestedTriggerNode(nodes: INode[], triggerNodeName: string): INode {
 	const requested = nodes.find((n) => n.name === triggerNodeName);
-	if (requested && isTriggerNodeType(requested.type)) return requested;
+	if (requested && isRunnableTriggerNodeType(requested.type)) return requested;
 
-	const available = nodes.filter((n) => isTriggerNodeType(n.type)).map((n) => `"${n.name}"`);
+	const available = nodes
+		.filter((n) => isRunnableTriggerNodeType(n.type))
+		.map((n) => `"${n.name}"`);
 	const reason = requested
-		? `"${triggerNodeName}" is not a trigger node`
+		? `"${triggerNodeName}" is not a trigger node that can start a run`
 		: `Trigger node "${triggerNodeName}" not found in the workflow`;
 	throw new UserError(
 		`${reason}. ${

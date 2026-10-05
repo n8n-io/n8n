@@ -114,7 +114,7 @@ describe('planVerificationSimulation — simulated trigger verdicts', () => {
 		expect(fixtureInput.plan.map((verdict) => verdict.nodeName)).toContain('On New Email');
 	});
 
-	it('does not inject verdicts for deterministic-input or disabled triggers', async () => {
+	it('does not inject verdicts for deterministic-input, disabled, or webpage triggers', async () => {
 		mockClassify.mockResolvedValue([]);
 
 		const { nodeSimulationPlan } = await planVerificationSimulation({
@@ -123,6 +123,7 @@ describe('planVerificationSimulation — simulated trigger verdicts', () => {
 				{ name: 'Hook', type: 'n8n-nodes-base.webhook' },
 				{ name: 'Chat', type: '@n8n/n8n-nodes-langchain.chatTrigger' },
 				{ name: 'Off', type: 'n8n-nodes-base.gmailTrigger', disabled: true },
+				{ name: 'Page', type: 'n8n-nodes-base.webpage' },
 				{ name: 'Set', type: 'n8n-nodes-base.set' },
 			]),
 			workflowId: 'wf-1',

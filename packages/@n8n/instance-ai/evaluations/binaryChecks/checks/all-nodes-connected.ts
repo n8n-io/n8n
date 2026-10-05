@@ -1,6 +1,6 @@
 import type { WorkflowResponse } from '../../clients/n8n-client';
 import type { BinaryCheck } from '../types';
-import { collectAllConnectedNodes, getActiveNodes } from '../utils';
+import { collectAllConnectedNodes, getActiveNodes, WEBPAGE_TYPE } from '../utils';
 
 export const allNodesConnected: BinaryCheck = {
 	name: 'all_nodes_connected',
@@ -8,7 +8,7 @@ export const allNodesConnected: BinaryCheck = {
 	kind: 'deterministic',
 	dimension: 'connection_topology',
 	run(workflow: WorkflowResponse) {
-		const activeNodes = getActiveNodes(workflow.nodes ?? []);
+		const activeNodes = getActiveNodes(workflow.nodes ?? []).filter((n) => n.type !== WEBPAGE_TYPE);
 		if (activeNodes.length === 0) return { pass: true };
 
 		const connected = collectAllConnectedNodes(workflow.connections ?? {});

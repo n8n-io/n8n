@@ -237,6 +237,19 @@ describe('buildSetupRequests', () => {
 		expect(result).toHaveLength(0);
 	});
 
+	it('skips a webpage node, which has no event to test', async () => {
+		(context.nodeService.getDescription as Mock).mockResolvedValue({
+			group: ['trigger'],
+			webhooks: [{}],
+			triggerPanel: {},
+		});
+		const node = makeNode({ name: 'Landing Page', type: 'n8n-nodes-base.webpage', typeVersion: 1 });
+
+		const result = await buildSetupRequests(context, node);
+
+		expect(result).toEqual([]);
+	});
+
 	it('detects credential types from node description', async () => {
 		(context.credentialService.list as Mock).mockResolvedValue([
 			{ id: 'cred-1', name: 'My Slack', updatedAt: '2025-01-01T00:00:00.000Z' },

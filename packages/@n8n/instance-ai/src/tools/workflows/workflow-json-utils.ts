@@ -8,6 +8,7 @@ import {
 	MCP_TRIGGER_NODE_TYPE,
 	SCHEDULE_TRIGGER_NODE_TYPE,
 	WEBHOOK_NODE_TYPE,
+	WEBPAGE_NODE_TYPE,
 	isTriggerNodeType as isCanonicalTriggerNodeType,
 } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
@@ -32,6 +33,7 @@ const WEBHOOK_NODE_TYPES = new Set([
 	FORM_TRIGGER_NODE_TYPE,
 	MCP_TRIGGER_NODE_TYPE,
 	CHAT_TRIGGER_NODE_TYPE,
+	WEBPAGE_NODE_TYPE,
 ]);
 
 export function isMockableTriggerNodeType(nodeType: string | undefined): boolean {
@@ -46,6 +48,14 @@ export function isMockableTriggerNodeType(nodeType: string | undefined): boolean
 export function isTriggerNodeType(nodeType: string | undefined): boolean {
 	if (!nodeType) return false;
 	return isCanonicalTriggerNodeType(nodeType);
+}
+
+/**
+ * A Webpage node only serves its HTML and never starts an execution, so
+ * verification cannot start from it and has nothing to simulate for it.
+ */
+export function isRunnableTriggerNodeType(nodeType: string | undefined): boolean {
+	return isTriggerNodeType(nodeType) && nodeType !== WEBPAGE_NODE_TYPE;
 }
 
 /** Mid-flow node types that park the execution until an external resume. */

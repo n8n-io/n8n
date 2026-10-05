@@ -22,6 +22,10 @@ export class Webpage implements INodeType {
 		defaults: {
 			name: 'Webpage',
 		},
+		builderHint: {
+			searchHint:
+				'Serves a complete HTML page at a custom URL path: landing page, website, portfolio, docs or another static page. Put the whole self-contained HTML5 document in `html`. A page view starts no execution, so the node has no outputs and needs no other nodes. Prefer it over Webhook + Respond to Webhook for pages. For live data, let the page script fetch a Webhook in the same workflow that responds with JSON.',
+		},
 		inputs: [],
 		outputs: [],
 		parameterPane: 'wide',
@@ -53,6 +57,11 @@ export class Webpage implements INodeType {
 				default: '',
 				placeholder: 'my-page',
 				description: "The final segment of the page's production URL",
+				builderHint: {
+					propertyHint:
+						"URL path without a leading slash, for example 'my-page' for /my-page. Use the path that the user names. Otherwise use a short kebab-case slug.",
+					placeholderSupported: false,
+				},
 			},
 			{
 				displayName: 'Authentication',
@@ -76,6 +85,10 @@ export class Webpage implements INodeType {
 				// The resolvers read the raw value, so it must never be an expression.
 				noDataExpression: true,
 				description: 'Who can open the page',
+				builderHint: {
+					propertyHint:
+						"Default to 'none'. n8n exposes inbound trigger URLs publicly by design. Use 'n8nOAuth2' only when the user explicitly asks that only signed-in n8n users can open the page. This protects only the HTML: a Webhook that the page calls with fetch() stays public.",
+				},
 			},
 			{
 				displayName: 'HTML',
@@ -88,6 +101,11 @@ export class Webpage implements INodeType {
 				default: placeholder,
 				noDataExpression: true,
 				description: 'The HTML document to serve. n8n sends it as is.',
+				builderHint: {
+					propertyHint:
+						'A complete, self-contained HTML5 document, from the doctype to the closing html tag, with real copy for the request. Never use lorem ipsum. Inline style and script tags and CDN links are allowed. n8n serves it as is and does not resolve expressions. The page runs in a sandbox with an opaque origin: it cannot use cookies, localStorage or the n8n session of the visitor, but its scripts can fetch other webhook URLs of this instance. In the SDK source, escape each backslash first, then each backtick and each dollar sign that comes before an opening brace, in the template literal.',
+					placeholderSupported: false,
+				},
 			},
 			// The canvas size of the node. The canvas writes these values.
 			{

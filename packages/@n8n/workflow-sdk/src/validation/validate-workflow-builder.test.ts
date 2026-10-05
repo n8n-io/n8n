@@ -61,6 +61,21 @@ describe('validateWorkflowBuilder', () => {
 		expect(result.blocking).toHaveLength(0);
 	});
 
+	it('accepts a single webpage node as a complete workflow', () => {
+		const page = trigger({
+			type: 'n8n-nodes-base.webpage',
+			version: 1,
+			config: { name: 'Landing Page', parameters: { path: 'my-page' } },
+		});
+		const wf = workflow('id', 'name').add(page);
+
+		const result = validateWorkflowBuilder(wf);
+
+		const codes = result.informational.map((issue) => issue.code);
+		expect(codes).not.toContain('MISSING_TRIGGER');
+		expect(codes).not.toContain('DISCONNECTED_NODE');
+	});
+
 	it('includes source lint when lint: true and source is provided', () => {
 		const t = trigger({
 			type: 'n8n-nodes-base.manualTrigger',

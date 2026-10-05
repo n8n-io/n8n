@@ -28,7 +28,7 @@ import {
 import { deriveWaitGateScripts } from './wait-gate-script';
 import {
 	isMockableTriggerNodeType,
-	isTriggerNodeType,
+	isRunnableTriggerNodeType,
 	isWaitGateNode,
 	nodeCanReachItself,
 } from './workflow-json-utils';
@@ -87,7 +87,7 @@ function withSimulatedTriggerVerdicts(
 
 	for (const node of workflow.nodes ?? []) {
 		if (!node.name || node.disabled || plannedNodeNames.has(node.name)) continue;
-		if (!isTriggerNodeType(node.type) || isMockableTriggerNodeType(node.type)) continue;
+		if (!isRunnableTriggerNodeType(node.type) || isMockableTriggerNodeType(node.type)) continue;
 		verdicts.push({
 			nodeName: node.name,
 			verdict: 'simulate',

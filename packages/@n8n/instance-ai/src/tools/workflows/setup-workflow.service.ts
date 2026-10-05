@@ -14,7 +14,10 @@ import {
 import { findPlaceholderDetails } from '@n8n/utils/placeholder';
 import type { IDataObject, NodeJSON, DisplayOptions, WorkflowJSON } from '@n8n/workflow-sdk';
 import { matchesDisplayOptions } from '@n8n/workflow-sdk';
-import { getCredentialActivationParameters as getCredentialActivationParametersByDisplayOptions } from 'n8n-workflow';
+import {
+	WEBPAGE_NODE_TYPE,
+	getCredentialActivationParameters as getCredentialActivationParametersByDisplayOptions,
+} from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 
 import { computeUnavailableLocatorIssues } from './chat-model-validation';
@@ -805,6 +808,8 @@ export async function buildSetupRequests(
 	const isTrigger = nodeDesc?.group?.includes('trigger') ?? false;
 	const isTestable =
 		isTrigger &&
+		// A Webpage node starts no execution, so it has no event to test.
+		node.type !== WEBPAGE_NODE_TYPE &&
 		((nodeDesc?.webhooks !== undefined && nodeDesc.webhooks.length > 0) ||
 			nodeDesc?.polling === true ||
 			nodeDesc?.triggerPanel !== undefined);
