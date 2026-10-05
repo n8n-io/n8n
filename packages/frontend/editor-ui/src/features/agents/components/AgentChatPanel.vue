@@ -47,6 +47,9 @@ import {
 } from '@/features/ai/shared/agentsChat/messageMappers';
 import AgentChatEmptyState from './AgentChatEmptyState.vue';
 import AgentChatMessageList from './AgentChatMessageList.vue';
+import AgentChatPlan from './AgentChatPlan.vue';
+import { selectLatestAgentPlan } from '../utils/agent-plan';
+import { formatAgentElapsedTime } from '../utils/agent-elapsed-time';
 import type {
 	AgentContinueLoadedEvent,
 	AgentSendToAssistantEvent,
@@ -159,6 +162,8 @@ const {
 	onSessionCreated: (sessionId) => emit('session-created', sessionId),
 	budgetCards: props.budgetCards,
 });
+
+const currentPlan = computed(() => selectLatestAgentPlan(messages.value));
 
 const queueEdit = ref<{
 	item: AgentChatQueueItem;
@@ -511,12 +516,7 @@ const backgroundElapsed = computed(() => {
 	const end = backgroundInProgress.value
 		? now.value
 		: Math.max(...backgroundJobs.value.map((job) => Date.parse(job.settledAt ?? '') || now.value));
-	const seconds = Number.isFinite(start) ? Math.max(0, Math.floor((end - start) / TIME.SECOND)) : 0;
-	const minutes = Math.floor(seconds / 60);
-	const remainder = String(seconds % 60).padStart(2, '0');
-	return minutes < 60
-		? `${minutes}:${remainder}`
-		: `${Math.floor(minutes / 60)}:${String(minutes % 60).padStart(2, '0')}:${remainder}`;
+	return formatAgentElapsedTime(end - start);
 });
 
 const attachedFiles = ref<File[]>([]);
@@ -1143,8 +1143,19 @@ onBeforeUnmount(() => {
 				@stop="stopGenerating"
 				@files-selected="handleFilesSelected"
 			>
-				<template v-if="displayedQueueRows.length" #header>
-					<div ref="messageQueue" :class="$style.messageQueue" data-testid="agent-message-queue">
+				<template v-if="currentPlan || displayedQueueRows.length" #header>
+					<AgentChatPlan
+						v-if="currentPlan"
+						:key="`${agentId}:${continueSessionId ?? ''}:${currentPlan.planId}`"
+						:plan="currentPlan"
+						:trace-route="continueSessionId ? backgroundTraceRoute : undefined"
+					/>
+					<div
+						v-if="displayedQueueRows.length"
+						ref="messageQueue"
+						:class="$style.messageQueue"
+						data-testid="agent-message-queue"
+					>
 						<Draggable
 							:id="queueListId"
 							:model-value="visibleQueueRows"
@@ -1406,6 +1417,7 @@ onBeforeUnmount(() => {
 }
 
 .backgroundJobs {
+	display: none;
 	background: var(--background--surface);
 	box-shadow: var(--shadow--outline), var(--shadow--xs);
 	border-radius: var(--radius--xs);
