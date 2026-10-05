@@ -40,7 +40,19 @@ export type SimpleNode =
 	| { kind: 'binary'; op: BinaryOp; left: SimpleNode; right: SimpleNode }
 	| { kind: 'logical'; op: LogicalOp; left: SimpleNode; right: SimpleNode }
 	| { kind: 'conditional'; test: SimpleNode; consequent: SimpleNode; alternate: SimpleNode }
-	| { kind: 'call'; receiver: SimpleNode; method: string; args: SimpleNode[]; optional: boolean };
+	| { kind: 'call'; receiver: SimpleNode; method: string; args: SimpleNode[]; optional: boolean }
+	| { kind: 'array'; elements: Literal[] }
+	| { kind: 'param' }
+	| {
+			kind: 'iterate';
+			receiver: SimpleNode;
+			method: IteratorMethod;
+			param: string;
+			body: SimpleNode;
+			optional: boolean;
+	  };
+
+export type Literal = Extract<SimpleNode, { kind: 'literal' }>;
 
 // Data roots: plain reads off the data proxy. `$now`/`$today` are excluded on
 // purpose: they are Luxon DateTimes whose methods would make every useful
@@ -100,9 +112,9 @@ const captureMethods = (proto: object, names: string[]): ReadonlyMap<string, Nat
 // natives pass through untouched) - pinned by a test in the parity corpus.
 // The receiver's type is only known at runtime: a receiver whose type has no
 // allowlist entry for the method makes the evaluation bail to the engine
-// (EngineFallbackError below). Callback-taking forms (regex/function args,
-// array callbacks) are unrepresentable: those argument nodes decline parsing.
-// Accepting callbacks is CAT-4698.
+// (EngineFallbackError below). Regex and function arguments are
+// unrepresentable: those argument nodes decline parsing. The one callback
+// form is ITERATOR_METHODS below.
 export const STRING_METHODS = captureMethods(String.prototype, [
 	'toUpperCase',
 	'toLowerCase',
@@ -144,6 +156,20 @@ export const ARRAY_METHODS = captureMethods(Array.prototype, [
 	'toReversed',
 ]);
 
+// Array methods that take one callback. The callback is a single-parameter
+// arrow function with an expression body in the same closed grammar; the
+// parameter is the only name it adds, and a nested callback declines. These
+// are the only calls where the interpreter runs an expression per element,
+// so they are a grammar kind of their own (iterate), under MAX_STEPS.
+export const ITERATOR_METHODS = ['some', 'every', 'find', 'filter', 'map'] as const;
+export type IteratorMethod = (typeof ITERATOR_METHODS)[number];
+export const ITERATOR_NATIVES = captureMethods(Array.prototype, [...ITERATOR_METHODS]);
+
+// A callback parameter may not take one of these names: the body would then
+// read the parameter where this grammar reads the root. `undefined` is a
+// legal parameter name in JS; here it is a literal.
+export const RESERVED_NAMES = new Set<string>([...DATA_ROOTS, '$input', '$node', '$', 'undefined']);
+
 export const CALLABLE_METHODS = new Set([
 	...STRING_METHODS.keys(),
 	...NUMBER_METHODS.keys(),
@@ -155,6 +181,11 @@ export const CALLABLE_METHODS = new Set([
 // engine so those limits apply (nested replaceAll('', ...) or concat chains
 // can otherwise expand without bound on the main thread).
 export const MAX_RESULT_LENGTH = 1_000_000;
+
+// Callback body evaluations one expression may run, across all its iterate
+// nodes. The receiver cap alone would let a body with its own allocation
+// (a replaceAll per element) repeat a million times on the main thread.
+export const MAX_STEPS = 100_000;
 
 // Nesting depth of the subset grammar. Parsing and evaluation both recurse
 // once per level, so this keeps a pathological expression off the host stack;

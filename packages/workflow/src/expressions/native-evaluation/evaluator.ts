@@ -3,8 +3,10 @@ import { ExpressionError } from '../../errors/expression.error';
 import type { IWorkflowDataProxyData } from '../../interfaces';
 import {
 	ARRAY_METHODS,
+	ITERATOR_NATIVES,
 	MAX_DEPTH,
 	MAX_RESULT_LENGTH,
+	MAX_STEPS,
 	NUMBER_METHODS,
 	STRING_METHODS,
 	hasOwn,
@@ -22,6 +24,19 @@ import {
 // evalNode reads only fields parseSimple constructed, because those are the
 // only fields that exist. The switch has no default branch: adding a kind to
 // the grammar stops compilation until it is handled here.
+
+/**
+ * One evaluation's state: the data proxy, the value bound to the callback
+ * parameter while a body runs, and the callback steps spent so far. Only one
+ * callback is ever in scope (a nested one is unrepresentable), so a single
+ * slot holds the parameter, and the step budget is shared by every iterate
+ * node of the expression.
+ */
+export interface Env {
+	data: IWorkflowDataProxyData;
+	param: unknown;
+	steps: number;
+}
 
 /**
  * Thrown when a runtime value falls outside what parsing proved statically
@@ -90,11 +105,8 @@ const binaryOps: Record<BinaryOp, (l: any, r: any) => unknown> = Object.freeze({
 });
 /* eslint-enable @typescript-eslint/no-explicit-any */
 
-function evalMember(
-	node: Extract<SimpleNode, { kind: 'member' }>,
-	data: IWorkflowDataProxyData,
-): unknown {
-	const object = evalNode(node.object, data);
+function evalMember(node: Extract<SimpleNode, { kind: 'member' }>, env: Env): unknown {
+	const object = evalNode(node.object, env);
 
 	if (node.optional && (object === null || object === undefined)) {
 		throw chainShortCircuit;
@@ -290,11 +302,11 @@ function assertConcatWeight(receiver: unknown[], args: unknown[]): void {
 	if (weight > MAX_RESULT_LENGTH) throw new EngineFallbackError();
 }
 
-function evalCall(
-	node: Extract<SimpleNode, { kind: 'call' }>,
-	data: IWorkflowDataProxyData,
-): unknown {
-	const receiver = evalNode(node.receiver, data);
+function evalReceiver(
+	node: Extract<SimpleNode, { kind: 'call' | 'iterate' }>,
+	env: Env,
+): NonNullable<unknown> {
+	const receiver = evalNode(node.receiver, env);
 	const receiverMissing = receiver === null || receiver === undefined;
 
 	if (node.optional && receiverMissing) {
@@ -304,6 +316,12 @@ function evalCall(
 	if (receiverMissing) {
 		throw new TypeError(`Cannot read properties of ${toStr(receiver)} (reading '${node.method}')`);
 	}
+
+	return receiver;
+}
+
+function evalCall(node: Extract<SimpleNode, { kind: 'call' }>, env: Env): unknown {
+	const receiver = evalReceiver(node, env);
 
 	if (node.receiver.kind === 'nodeRef') {
 		return evalNodeRefCall(receiver, node.method);
@@ -317,7 +335,7 @@ function evalCall(
 
 	const method = methodFor(receiver, node.method);
 
-	const args = node.args.map((argument) => evalNode(argument, data));
+	const args = node.args.map((argument) => evalNode(argument, env));
 	if (!args.every((arg) => isAllowedArgument(node.method, arg))) {
 		throw new EngineFallbackError();
 	}
@@ -332,6 +350,43 @@ function evalCall(
 }
 
 /**
+ * `some`/`every`/`find`/`filter`/`map` with a callback body. The native
+ * method drives the iteration; the body runs per element with the element
+ * bound to the parameter, under the shared step budget. map is the one
+ * method whose result is new content per element, so it is bounded by the
+ * content weight of its results the way concat is bounded by its operands.
+ */
+function evalIterate(node: Extract<SimpleNode, { kind: 'iterate' }>, env: Env): unknown {
+	const receiver = evalReceiver(node, env);
+
+	if (!isArray(receiver) || hasOwn(receiver, node.method)) {
+		throw new EngineFallbackError();
+	}
+
+	const method = ITERATOR_NATIVES.get(node.method);
+	if (method === undefined) throw new EngineFallbackError();
+
+	assertPreflightSize(receiver, node.method, []);
+
+	let weight = 0;
+	const visit = (element: unknown) => {
+		if (++env.steps > MAX_STEPS) throw new EngineFallbackError();
+
+		env.param = element;
+		const result = evalNode(node.body, env);
+
+		if (node.method === 'map') {
+			weight += contentWeight(result, MAX_RESULT_LENGTH - weight);
+			if (weight > MAX_RESULT_LENGTH) throw new EngineFallbackError();
+		}
+
+		return result;
+	};
+
+	return bounded(method.call(receiver, visit));
+}
+
+/**
  * `first()`, `last()` and `all()` on a node proxy. The proxy hands back a
  * host function that reads run data for the node the reference names, which
  * is what the engines call too (the vm bridge routes it through typed RPC).
@@ -343,22 +398,16 @@ function evalNodeRefCall(proxy: unknown, method: string): unknown {
 	return bounded(fn.call(proxy));
 }
 
-function evalNodeRef(
-	node: Extract<SimpleNode, { kind: 'nodeRef' }>,
-	data: IWorkflowDataProxyData,
-): unknown {
-	if (node.ref === 'input') return data.$input;
-	if (node.ref === 'legacy') return data.$node[node.name];
+function evalNodeRef(node: Extract<SimpleNode, { kind: 'nodeRef' }>, env: Env): unknown {
+	if (node.ref === 'input') return env.data.$input;
+	if (node.ref === 'legacy') return env.data.$node[node.name];
 
-	return data.$(node.name);
+	return env.data.$(node.name);
 }
 
-function evalChain(
-	node: Extract<SimpleNode, { kind: 'chain' }>,
-	data: IWorkflowDataProxyData,
-): unknown {
+function evalChain(node: Extract<SimpleNode, { kind: 'chain' }>, env: Env): unknown {
 	try {
-		return evalNode(node.expression, data);
+		return evalNode(node.expression, env);
 	} catch (error) {
 		if (error === chainShortCircuit) return undefined;
 
@@ -366,11 +415,8 @@ function evalChain(
 	}
 }
 
-function evalUnary(
-	node: Extract<SimpleNode, { kind: 'unary' }>,
-	data: IWorkflowDataProxyData,
-): unknown {
-	const argument = evalNode(node.argument, data);
+function evalUnary(node: Extract<SimpleNode, { kind: 'unary' }>, env: Env): unknown {
+	const argument = evalNode(node.argument, env);
 
 	if (node.op === '!') {
 		return !argument;
@@ -383,12 +429,9 @@ function evalUnary(
 	return node.op === '-' ? -toNum(argument) : toNum(argument);
 }
 
-function evalBinary(
-	node: Extract<SimpleNode, { kind: 'binary' }>,
-	data: IWorkflowDataProxyData,
-): unknown {
-	const left = evalNode(node.left, data);
-	const right = evalNode(node.right, data);
+function evalBinary(node: Extract<SimpleNode, { kind: 'binary' }>, env: Env): unknown {
+	const left = evalNode(node.left, env);
+	const right = evalNode(node.right, env);
 
 	if (!isPrimitive(left) || !isPrimitive(right)) {
 		throw new EngineFallbackError();
@@ -397,48 +440,51 @@ function evalBinary(
 	return binaryOps[node.op](left, right);
 }
 
-function evalLogical(
-	node: Extract<SimpleNode, { kind: 'logical' }>,
-	data: IWorkflowDataProxyData,
-): unknown {
-	const left = evalNode(node.left, data);
+function evalLogical(node: Extract<SimpleNode, { kind: 'logical' }>, env: Env): unknown {
+	const left = evalNode(node.left, env);
 
 	switch (node.op) {
 		case '&&':
-			return left ? evalNode(node.right, data) : left;
+			return left ? evalNode(node.right, env) : left;
 		case '||':
-			return left ? left : evalNode(node.right, data);
+			return left ? left : evalNode(node.right, env);
 		case '??':
-			return left ?? evalNode(node.right, data);
+			return left ?? evalNode(node.right, env);
 	}
 }
 
-function evalNode(node: SimpleNode, data: IWorkflowDataProxyData): unknown {
+function evalNode(node: SimpleNode, env: Env): unknown {
 	switch (node.kind) {
 		case 'literal':
 			return node.value;
 		case 'root':
-			return data[node.name];
+			return env.data[node.name];
 		case 'nodeRef':
-			return evalNodeRef(node, data);
+			return evalNodeRef(node, env);
 		case 'undefined':
 			return undefined;
 		case 'member':
-			return evalMember(node, data);
+			return evalMember(node, env);
 		case 'chain':
-			return evalChain(node, data);
+			return evalChain(node, env);
 		case 'unary':
-			return evalUnary(node, data);
+			return evalUnary(node, env);
 		case 'binary':
-			return evalBinary(node, data);
+			return evalBinary(node, env);
 		case 'logical':
-			return evalLogical(node, data);
+			return evalLogical(node, env);
 		case 'conditional':
-			return evalNode(node.test, data)
-				? evalNode(node.consequent, data)
-				: evalNode(node.alternate, data);
+			return evalNode(node.test, env)
+				? evalNode(node.consequent, env)
+				: evalNode(node.alternate, env);
 		case 'call':
-			return evalCall(node, data);
+			return evalCall(node, env);
+		case 'array':
+			return node.elements.map((element) => element.value);
+		case 'param':
+			return env.param;
+		case 'iterate':
+			return evalIterate(node, env);
 	}
 }
 
@@ -447,9 +493,9 @@ function evalNode(node: SimpleNode, data: IWorkflowDataProxyData): unknown {
  * handler, which rethrows ExpressionErrors and swallows everything else (the
  * chunk then yields undefined). Mirror that exactly.
  */
-export function evalChunk(node: SimpleNode, data: IWorkflowDataProxyData): unknown {
+export function evalChunk(node: SimpleNode, env: Env): unknown {
 	try {
-		return evalNode(node, data);
+		return evalNode(node, env);
 	} catch (error) {
 		const rethrow =
 			error instanceof EngineFallbackError ||

@@ -188,6 +188,48 @@ export const HANDLED_CORPUS: string[] = [
 	'={{ $input.last().json.item.count }}',
 	'={{ $input.all().length }}',
 	'={{ $input.all()[0].json.item.name }}',
+	// Array literals of literals, standing alone or as a receiver.
+	'={{ [1, 2, 3] }}',
+	"={{ ['a', 2, true, null] }}",
+	'={{ [] }}',
+	'={{ [].length }}',
+	"={{ ['bar', 'qux'].includes($json.item.name) }}",
+	'={{ [1, 2].indexOf($json.item.count) }}',
+	// Callbacks: one parameter, an expression body in the same subset. The
+	// body sees the roots too, and the parameter name is free (`item` is
+	// not a root).
+	"={{ $json.item.names.filter((n) => n.includes('bar')) }}",
+	"={{ $json.item.names.some(n => n.startsWith('b')) }}",
+	'={{ $json.item.names.every(n => n.length === 3) }}',
+	"={{ $json.item.names.find(n => n === 'baz') }}",
+	"={{ $json.item.names.find(n => n === 'nope') }}",
+	'={{ $json.item.names.map(n => n.toUpperCase()) }}',
+	'={{ $json.item.names.map(n => n.length) }}',
+	'={{ $json.item.names.map(n => $json.item.count) }}',
+	'={{ $json.item.names.map(item => item) }}',
+	'={{ $json.item.names.map($n => $json.item.name + $n) }}',
+	"={{ $json.item.names.filter(n => n.startsWith('b')).map(n => n.toUpperCase()).join(', ') }}",
+	'={{ $input.all().map(i => i.json.item.name) }}',
+	'={{ $input.all().filter(i => i.json.item.count > 1).length }}',
+	"={{ $('Source').all().some(i => i.json.item.active) }}",
+	"={{ $json.item.names.map(n => n.missing?.deep ?? 'd') }}",
+	'={{ $json.item.missing?.map(n => n) }}',
+	'={{ $json.item.names?.map(n => n) }}',
+	"={{ [1, 'a'].map(x => x + 1) }}",
+	// Empty receivers. (Sparse ones are pinned per engine in the parity test.)
+	'={{ $json.item.empty.some(n => true) }}',
+	'={{ $json.item.empty.every(n => false) }}',
+	'={{ $json.item.empty.map(n => n) }}',
+	'={{ [].find(n => true) }}',
+	// A body that throws mid-iteration: tournament swallows the TypeError on
+	// both paths, so the chunk yields undefined.
+	'={{ $json.item.names.filter(n => n.missing.deep) }}',
+	// Short-circuiting methods stop before the step budget does.
+	'={{ $json.item.manyZeros.some(n => n === 0) }}',
+	'={{ $json.item.names.map(n => $json.item.filler).length }}',
+	// The Internal only-run-if that moved callbacks into Foundation (CAT-4698).
+	"={{ !!($json.body?.data?.identifiers?.id) && ['research', 'interview', 'survey'].some(s => ($json.body?.data?.subject ?? '').toLowerCase().includes(s)) }}",
+	"={{ !!($json.item.my_object?.addresses?.primary) && ['main', 'elm'].some(s => ($json.item.my_object?.addresses?.primary ?? '').toLowerCase().includes(s)) }}",
 ];
 
 // Fits the subset, but a runtime value falls outside what the parse proved:
@@ -236,6 +278,18 @@ export const RUNTIME_BAILOUT_CORPUS: string[] = [
 	// Items are objects: an operator on one hands off like any object operand.
 	"={{ $('Source').item === $input.item }}",
 	"=item: {{ $('Source').item }}",
+	// Iterators need a real array receiver without an own property of the
+	// same name.
+	'={{ $json.item.name.some(s => s) }}',
+	'={{ $json.item.my_object.map(x => x) }}',
+	'={{ $json.item.count.filter(x => x) }}',
+	// A body that bails mid-iteration bails the whole expression.
+	'={{ $json.item.mixed.map(n => n.toUpperCase()) }}',
+	// Past the step budget, the engine runs the loop.
+	'={{ $json.item.manyZeros.every(n => n === 0) }}',
+	'={{ $json.item.manyZeros.map(n => n) }}',
+	// map is bounded by the content it produces, not the element count.
+	'={{ $json.item.manyEmpty.map(s => $json.item.filler) }}',
 ];
 
 export const DECLINED_CORPUS: string[] = [
@@ -283,7 +337,6 @@ export const DECLINED_CORPUS: string[] = [
 	'={{ $position }}',
 	'={{ $items() }}',
 	'={{ $item(0).$json.item.name }}',
-	"={{ $json.item.names.filter((n) => n.includes('bar')) }}",
 	'={{ $json.item.names.first() }}',
 	'={{ Object.keys($json.item) }}',
 	'={{ $json.item[$json.item.name] }}',
@@ -293,8 +346,47 @@ export const DECLINED_CORPUS: string[] = [
 	'={{ `hi ${$json.item.name}` }}',
 	'={{ /foo/.test($json.item.name) }}',
 	'={{ (function () { return 1 })() }}',
-	'={{ [1, 2, 3] }}',
 	'={{ { a: 1 } }}',
+	// Array literals hold literals only.
+	'={{ [1, $json.item.count] }}',
+	'={{ [[1]] }}',
+	'={{ [-1] }}',
+	'={{ [1, , 3] }}',
+	'={{ [...$json.item.names] }}',
+	'={{ [{ a: 1 }] }}',
+	'={{ [1n] }}',
+	'={{ [/x/] }}',
+	// Callbacks: exactly one arrow function with one plain identifier
+	// parameter and an expression body, on the five iterator methods only.
+	'={{ $json.item.names.some() }}',
+	'={{ $json.item.names.some(n => n, $json.item) }}',
+	'={{ $json.item.names.some((a, b) => a) }}',
+	'={{ $json.item.names.some(() => true) }}',
+	'={{ $json.item.names.some(n => { return n }) }}',
+	'={{ $json.item.names.some(function (n) { return n }) }}',
+	'={{ $json.item.names.some(async n => n) }}',
+	'={{ $json.item.names.some((n = 1) => n) }}',
+	'={{ $json.item.names.some(({ length }) => length) }}',
+	'={{ $json.item.names.some(([n]) => n) }}',
+	'={{ $json.item.names.some((...n) => n) }}',
+	'={{ $json.item.names.some(n => this) }}',
+	'={{ $json.item.names.some(n => $json.item.names.some(m => m === n)) }}',
+	'={{ $json.item.names.some(n => true) && n }}',
+	'={{ $json.item.names.some($json => $json) }}',
+	'={{ $json.item.names.some($input => $input) }}',
+	'={{ $json.item.names.some($ => $) }}',
+	'={{ $json.item.names.some(undefined => undefined) }}',
+	'={{ $json.item.names.some(__proto__ => 1) }}',
+	'={{ $json.item.names.some(constructor => 1) }}',
+	'={{ $json.item.names.some(n => n.first()) }}',
+	// eslint-disable-next-line n8n-local-rules/no-interpolation-in-regular-string
+	'={{ $json.item.names.some(n => `${n}`) }}',
+	'={{ $json.item.names.reduce((a, b) => a + b) }}',
+	'={{ $json.item.names.forEach(n => n) }}',
+	'={{ $json.item.names.flatMap(n => n) }}',
+	'={{ $json.item.names.findIndex(n => n) }}',
+	'={{ $json.item.names.findLast(n => n) }}',
+	"={{ $json.item.names['some'](n => n) }}",
 	// Extension methods and non-allowlisted natives stay on the engine.
 	'={{ $json.item.name.isEmpty() }}',
 	'={{ $json.item.name.hash() }}',

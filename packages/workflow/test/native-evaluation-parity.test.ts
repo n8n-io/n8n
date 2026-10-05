@@ -7,7 +7,9 @@ import {
 	evaluateNatively,
 	isNativelyEvaluable,
 	CALLABLE_METHODS,
+	ITERATOR_METHODS,
 	MAX_RESULT_LENGTH,
+	MAX_STEPS,
 } from '../src/expressions/native-evaluation';
 import { WorkflowDataProxy } from '../src/workflow-data-proxy';
 import { Expression } from '../src/expression';
@@ -58,6 +60,10 @@ describe('Expression - fast native evaluation parity', () => {
 	});
 	const expression = workflow.expression;
 
+	const sparse = new Array<number>(3);
+	sparse[0] = 1;
+	sparse[2] = 3;
+
 	const makeItem = () => ({
 		pairedItem: { item: 0 },
 		binary: {
@@ -72,6 +78,10 @@ describe('Expression - fast native evaluation parity', () => {
 				nothing: null,
 				my_object: { addresses: { primary: '123 Main St' } },
 				names: ['bar', 'baz'],
+				mixed: ['a', 1],
+				empty: [] as number[],
+				sparse,
+				manyZeros: new Array<number>(MAX_STEPS * 2).fill(0),
 				filler: 'x'.repeat(Math.ceil(Math.cbrt(MAX_RESULT_LENGTH))),
 				big: 'y'.repeat(20_000),
 				bigger: 'y'.repeat(150_000),
@@ -239,6 +249,30 @@ describe('Expression - fast native evaluation parity', () => {
 			const nativeError = capture(true);
 			expect(nativeError).toBeInstanceOf(engineError.constructor);
 			expect(nativeError.message).toBe(engineError.message);
+		});
+	});
+
+	// Holes are not JSON. The isolates copy the data in and fill them (vm with
+	// undefined, quickjs with null); legacy and native iterate the live array,
+	// where the iterators skip them (find visits them). Pinned so a change on
+	// either side is visible.
+	describe('sparse receivers follow the live array, as under legacy', () => {
+		test.each([
+			['={{ $json.item.sparse.filter(n => true) }}', [1, 3]],
+			['={{ $json.item.sparse.some(n => n === undefined) }}', false],
+			['={{ $json.item.sparse.every(n => n > 0) }}', true],
+			['={{ $json.item.sparse.find(n => n === undefined) }}', undefined],
+		])('%s', (expr, expected) => {
+			expect(evaluate(expr, true)).toStrictEqual(expected);
+
+			const viaEngine = evaluate(expr, false);
+			const skipsHoles =
+				Expression.getActiveImplementation() === 'legacy' || expected === undefined;
+			if (skipsHoles) {
+				expect(viaEngine).toStrictEqual(expected);
+			} else {
+				expect(viaEngine).not.toStrictEqual(expected);
+			}
 		});
 	});
 
@@ -435,6 +469,44 @@ describe('Expression - fast native evaluation parity', () => {
 			}
 		});
 
+		// The budget is shared by every iterate node of one expression; a chain
+		// of two half-budget loops bails where either alone is handled.
+		test('callback steps are budgeted per expression', () => {
+			const half = new Array<number>(MAX_STEPS / 2 + 1).fill(1);
+			expect(nativeOn('{{ $json.half.map(n => n).length }}', { $json: { half } })).toEqual({
+				handled: true,
+				value: half.length,
+			});
+			expect(
+				nativeOn('{{ $json.half.map(n => n).filter(n => n).length }}', { $json: { half } }),
+			).toEqual({ handled: false });
+			expect(
+				nativeOn('{{ $json.half.map(n => n).length + $json.half.map(n => n).length }}', {
+					$json: { half },
+				}),
+			).toEqual({ handled: false });
+		});
+
+		// map results that reference one payload string are bounded like concat
+		// operands: by content, before the result is cloned.
+		test('map is bounded by the content its results reference', () => {
+			const big = 'x'.repeat(600_000);
+			const two = [1, 2];
+			expect(
+				nativeOn('{{ $json.two.map(n => $json.big).length }}', { $json: { two, big } }),
+			).toEqual({ handled: false });
+			expect(
+				nativeOn('{{ $json.two.map(n => $json.big.length) }}', { $json: { two, big } }),
+			).toEqual({ handled: true, value: [600_000, 600_000] });
+		});
+
+		test('an inherited member on a callback element hands off to the engine', () => {
+			const list = [Object.create({ inherited: 1 }) as object];
+			expect(nativeOn('{{ $json.list.map(n => n.inherited) }}', { $json: { list } })).toEqual({
+				handled: false,
+			});
+		});
+
 		test('an own property shadowing a method hands off to the engine', () => {
 			const $json = { list: Object.assign(['a'], { join: null }) };
 			expect(nativeOn('{{ $json.list.join() }}', { $json })).toEqual({ handled: false });
@@ -449,7 +521,7 @@ describe('Expression - fast native evaluation parity', () => {
 		const extensionNames = new Set(
 			ExpressionExtensions.flatMap((extension) => Object.keys(extension.functions)),
 		);
-		for (const method of CALLABLE_METHODS) {
+		for (const method of [...CALLABLE_METHODS, ...ITERATOR_METHODS]) {
 			expect(extensionNames.has(method)).toBe(false);
 		}
 	});

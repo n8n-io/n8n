@@ -2,12 +2,12 @@ import { getParsedExpression } from '@n8n/tournament';
 import type { ParsedCode } from '@n8n/tournament';
 import { LruCache } from '@n8n/utils/lru-cache';
 
-import { EngineFallbackError, bounded, evalChunk } from './evaluator';
+import { EngineFallbackError, bounded, evalChunk, type Env } from './evaluator';
 import { MAX_RESULT_LENGTH, clone, isObj, type SimpleNode } from './grammar';
 import { parseSimple } from './parser';
 import type { IWorkflowDataProxyData } from '../../interfaces';
 
-export { CALLABLE_METHODS, MAX_RESULT_LENGTH } from './grammar';
+export { CALLABLE_METHODS, ITERATOR_METHODS, MAX_RESULT_LENGTH, MAX_STEPS } from './grammar';
 
 // Fast native evaluation: an in-process interpreter for a closed subset of
 // the expression grammar.
@@ -15,12 +15,15 @@ export { CALLABLE_METHODS, MAX_RESULT_LENGTH } from './grammar';
 // The subset is data path access on the data roots (`$json`, `$parameter`,
 // `$vars`, `$binary`, `$itemIndex`, `$runIndex`) and on node references
 // (`$('Name').item`, `$('Name').first()`, `$input.item`, `$node['Name'].json`),
-// literals, a fixed set of operators, and calls to a closed allowlist of
-// native string/number/array methods. Such expressions cannot loop, reach
-// prototypes, or touch anything outside the data proxy, so they are
-// interpreted here without the sandbox AST hooks, the global-context setup,
-// or an engine (isolate) evaluation. Anything that does not fit the subset
-// is declined and takes the regular pipeline.
+// literals (array literals of literals included), a fixed set of operators,
+// calls to a closed allowlist of native string/number/array methods, and the
+// five array iterators (some/every/find/filter/map) with a one-parameter
+// arrow callback whose body is in the same subset. Such expressions cannot
+// reach prototypes or touch anything outside the data proxy, and the only
+// loop is a native iterator over a size-capped array under a step budget, so
+// they are interpreted here without the sandbox AST hooks, the
+// global-context setup, or an engine (isolate) evaluation. Anything that
+// does not fit the subset is declined and takes the regular pipeline.
 //
 // Structure follows "parse, don't validate": the esprima AST is not checked
 // in place, it is re-parsed into the closed {@link SimpleNode} grammar below.
@@ -157,10 +160,12 @@ function copyResult(value: unknown): unknown {
 }
 
 function evalCompiled(compiled: CompiledExpression, data: IWorkflowDataProxyData): unknown {
+	const env: Env = { data, param: undefined, steps: 0 };
+
 	if (compiled.isWholeValue) {
 		const code = compiled.chunks[1];
 		// isWholeValue guarantees chunks = [text '', code]
-		return code.type === 'code' ? evalChunk(code.node, data) : '';
+		return code.type === 'code' ? evalChunk(code.node, env) : '';
 	}
 
 	// String concatenation, mirroring tmpl semantics: falsy chunk values other
@@ -174,7 +179,7 @@ function evalCompiled(compiled: CompiledExpression, data: IWorkflowDataProxyData
 			continue;
 		}
 
-		const value = evalChunk(chunk.node, data);
+		const value = evalChunk(chunk.node, env);
 
 		// An object here would coerce through its toString on the host.
 		if (isObj(value)) {
