@@ -749,12 +749,10 @@ describe('run', () => {
 	it('reloads static data for a new queued execution', async () => {
 		globalConfig.executions.mode = 'queue';
 		try {
-			// @ts-expect-error Private method
-			vi.spyOn(runner, 'establishContextForPersistence').mockResolvedValue();
+			vi.spyOn(runner, 'establishContextForPersistence').mockResolvedValue(undefined);
 			vi.spyOn(runner, 'prepareNewExecution').mockResolvedValue(mock<Workflow>());
 			vi.spyOn(Container.get(CredentialsPermissionChecker), 'check').mockResolvedValueOnce();
 			vi.spyOn(Container.get(ActiveExecutions), 'add').mockResolvedValue('1');
-			// @ts-expect-error Private method
 			const enqueueExecution = vi.spyOn(runner, 'enqueueExecution').mockResolvedValue();
 
 			const data = mock<IWorkflowExecutionDataProcess>({
