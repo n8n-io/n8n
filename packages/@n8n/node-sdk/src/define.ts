@@ -2271,6 +2271,13 @@ const withoutIndexedBinaries = (output: JsonSchema): JsonSchema => ({
 });
 
 /**
+ * The host imports that a tool call gets. `code` and `wait` need the execution of a step: the
+ * task runner and a paused execution. `inputOf` reads other inputs, and a tool node has none.
+ * `parsers` reads a binary, and no action that imports it is a tool today.
+ */
+const TOOL_IMPORTS: ReadonlySet<HostImport> = new Set<HostImport>(['dataTables']);
+
+/**
  * The host makes an agent tool of the action: a model calls it with JSON and reads its JSON
  * result. It reads or writes, one run for each call, with one data input and one data output.
  * A transform is no tool, because the model can change data itself. A batch reads all input
@@ -2283,8 +2290,8 @@ export function isToolContract(contract: ContractDocument): boolean {
 		contract.trigger === undefined &&
 		contract.flow.effect !== 'transform' &&
 		contract.flow.cardinality !== 'batch' &&
-		// A tool call runs without the host imports of a step.
-		!usesHostImports(contract) &&
+		contract.inputs === undefined &&
+		(contract.imports ?? []).every((name) => TOOL_IMPORTS.has(name)) &&
 		contract.outputs === undefined &&
 		contract.output['x-n8n-passed'] !== true &&
 		!usesProviders(contract) &&

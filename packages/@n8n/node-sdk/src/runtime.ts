@@ -2010,14 +2010,52 @@ function connectionsOf(
 	return { ...mainInputsOf(contract, supplyInputs), ...outputsOf(contract.outputs) };
 }
 
+/** How often a call runs before its error stays, and the wait between two tries. */
+interface Tries {
+	readonly count: number;
+	readonly waitMs: number;
+}
+
+const ONE_TRY: Tries = { count: 1, waitMs: 0 };
+
+/**
+ * The tries of a tool call that a root node makes, from the node settings. The bounds are those
+ * of `makeHandleToolInvocation` in n8n core, which calls a legacy tool node.
+ */
+const toolTriesOf = ({ retryOnFail, maxTries, waitBetweenTries }: INode): Tries =>
+	retryOnFail === true
+		? {
+				count: Math.min(5, Math.max(2, maxTries ?? 3)),
+				waitMs: Math.min(5000, Math.max(0, waitBetweenTries ?? 1000)),
+			}
+		: ONE_TRY;
+
+async function tried<T>(
+	run: () => Promise<T>,
+	tries: Tries,
+	signalOf: () => AbortSignal | undefined,
+	done = 1,
+): Promise<T> {
+	try {
+		return await run();
+	} catch (error) {
+		if (done >= tries.count) throw error;
+		const signal = signalOf();
+		if (signal?.aborted) throw error;
+		await sleep(tries.waitMs, signal);
+		return await tried(run, tries, signalOf, done + 1);
+	}
+}
+
 /**
  * Records each call of a capability as a run of the sub-node, as the legacy sub-nodes do, so
- * the editor and the execution data show what the root node asked and got.
+ * the editor and the execution data show what the root node asked and got. Each try is one run.
  */
 function recordedSupply(
 	value: Record<string, unknown>,
 	kind: ProviderKind,
 	context: ISupplyDataFunctions,
+	tries = ONE_TRY,
 ): Record<string, unknown> {
 	const type = PROVIDER_CONNECTIONS[kind];
 	// A JSON copy: the run data must not hold functions or change with the capability.
@@ -2029,7 +2067,7 @@ function recordedSupply(
 	return Object.fromEntries(
 		Object.entries(value).map(([key, member]) => {
 			if (typeof member !== 'function') return [key, member];
-			const call = async (...args: unknown[]) => {
+			const once = async (args: unknown[]) => {
 				const { index } = context.addInputData(type, [[{ json: { [key]: dataOf(args[0]) } }]]);
 				try {
 					const result: unknown = await Reflect.apply(member, value, args);
@@ -2044,6 +2082,12 @@ function recordedSupply(
 					throw error;
 				}
 			};
+			const call = async (...args: unknown[]) =>
+				await tried(
+					async () => await once(args),
+					tries,
+					() => context.getExecutionCancelSignal(),
+				);
 			return [key, call];
 		}),
 	);
@@ -2557,7 +2601,7 @@ function toolInputOf(input: JsonSchema, descriptions: ReadonlyMap<string, string
 /**
  * The tool of one tool node. The model gives the fields that the workflow sets to `$fromAI()`,
  * and the workflow fixes the others. A call runs the version the node runs, with the same
- * credential, egress and limits as a step. The bundle loads on the first call.
+ * credential, egress, limits and data tables as a step. The bundle loads on the first call.
  */
 function toolOf(context: NodeContext, frozen: FrozenVersion, itemIndex: number) {
 	const node = context.getNode();
@@ -2594,6 +2638,7 @@ function toolOf(context: NodeContext, frozen: FrozenVersion, itemIndex: number) 
 								raw ? { rawExpressions: true } : {},
 							),
 				continueOnFail: () => false,
+				dataTables: dataTablesOf(dataTableHostOf(context)),
 			});
 			return (outputs[0] ?? []).map(({ json }) => json);
 		},
@@ -2618,9 +2663,11 @@ export const toVersionedToolType = (
 				}),
 			),
 			async supplyData(this: ISupplyDataFunctions, itemIndex: number) {
-				return { response: recordedSupply(toolOf(this, frozen, itemIndex), 'tool', this) };
+				const tool = toolOf(this, frozen, itemIndex);
+				return { response: recordedSupply(tool, 'tool', this, toolTriesOf(this.getNode())) };
 			},
 			// An agent that has the engine run its tool calls runs this node: each item is one call.
+			// The engine retries the node as its settings say, so `execute()` tries each call once.
 			async execute(this: IExecuteFunctions) {
 				const outputs = await this.getInputData().reduce<Promise<INodeExecutionData[]>>(
 					async (done, item, index) => {

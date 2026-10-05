@@ -274,8 +274,13 @@ export async function tableIdByName(name: string, read: TablePage): Promise<stri
 	)?.id;
 }
 
-/** The data table services of an n8n execution, as the Data table node reads them. */
-export function dataTableHostOf(context: IExecuteFunctions): DataTableHost {
+/**
+ * The data table services of an n8n execution, as the Data table node reads them. A step and a
+ * tool call (`supplyData()`) get the same services of the workflow's project.
+ */
+export function dataTableHostOf(
+	context: Pick<IExecuteFunctions, 'helpers' | 'getNode'>,
+): DataTableHost {
 	// n8n has no data table helpers when the data table module is off.
 	const helpers = () => {
 		const { getDataTableProxy, getDataTableAggregateProxy } = context.helpers;

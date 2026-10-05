@@ -13,6 +13,7 @@ import {
 	type AnySchema,
 	type ChatModel,
 	type ChatRequest,
+	type HostImport,
 	type Shape,
 	type Tool,
 } from '../index';
@@ -223,6 +224,7 @@ describe('provider contracts', () => {
 			flow: ActionFlow,
 			input: Shape = { id: t.str() },
 			output: AnySchema = t.obj({ ok: t.str() }),
+			imports: HostImport[] = [],
 		) =>
 			isToolContract(
 				toContract(
@@ -230,6 +232,7 @@ describe('provider contracts', () => {
 						action: 'Probe',
 						summary: 'Probe.',
 						flow,
+						imports,
 						input,
 						output,
 						async run() {
@@ -248,6 +251,13 @@ describe('provider contracts', () => {
 		expect(tool(read, { id: t.str() }, t.obj({ file: t.binary() }))).toBe(false);
 		const indexed = t.indexedBinaries(t.obj({ ok: t.str() }), 'attachment_');
 		expect(tool(read, { id: t.str() }, t.union(t.obj({ id: t.str() }), indexed))).toBe(true);
+		const fields = { id: t.str() };
+		const ok = t.obj({ ok: t.str() });
+		expect(tool(read, fields, ok, ['dataTables'])).toBe(true);
+		expect(tool(read, fields, ok, ['code'])).toBe(false);
+		expect(tool(read, fields, ok, ['wait'])).toBe(false);
+		expect(tool(read, fields, ok, ['inputOf'])).toBe(false);
+		expect(tool(read, fields, ok, ['parsers'])).toBe(false);
 		expect(isToolContract(toContract(chatModel))).toBe(false);
 		expect(isToolContract(toContract(ask))).toBe(false);
 	});

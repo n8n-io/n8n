@@ -1,6 +1,7 @@
 import { provider } from '@n8n/node-sdk';
 import type {
 	IDataObject,
+	IDataTableProjectService,
 	IExecuteFunctions,
 	IHttpRequestOptions,
 	INode,
@@ -10,16 +11,33 @@ import type {
 
 import { toolActions, toolTypeOf, toVersionedToolType, versionsOf } from '../index';
 
-const supplyTool = async (parameters: INodeParameters) => {
+const DATE = '2026-09-15T09:30:00.000Z';
+
+const supplyTool = async (
+	parameters: INodeParameters,
+	{
+		action = 'httpRequest.get',
+		settings = {},
+		helpers = {},
+		respond = async () => [{ title: 'Hello' }, { title: 'World' }],
+	}: {
+		action?: string;
+		settings?: Partial<INode>;
+		helpers?: Record<string, unknown>;
+		respond?: (options: IHttpRequestOptions) => Promise<unknown>;
+	} = {},
+) => {
 	const requests: IHttpRequestOptions[] = [];
 	const recorded: Array<[string, unknown]> = [];
+	const hints: unknown[] = [];
 	const node: INode = {
 		id: '1',
 		name: 'Fetch page',
-		type: '@n8n/nodes-base-next.httpRequestGetTool',
+		type: `@n8n/nodes-base-next.${action}Tool`,
 		typeVersion: 3,
 		position: [0, 0],
 		parameters,
+		...settings,
 	};
 	const context = {
 		getNode: () => node,
@@ -38,25 +56,28 @@ const supplyTool = async (parameters: INodeParameters) => {
 		getCredentials: async () => ({}),
 		getExecutionCancelSignal: () => undefined,
 		logger: { debug: () => {}, info: () => {}, warn: () => {}, error: () => {} },
+		addExecutionHints: (hint: unknown) => hints.push(hint),
 		helpers: {
 			httpRequest: async (options: IHttpRequestOptions) => {
 				requests.push(options);
-				return [{ title: 'Hello' }, { title: 'World' }];
+				return await respond(options);
 			},
+			...helpers,
 		},
 		addInputData: (_type: string, data: Array<Array<{ json: unknown }>>) => {
 			recorded.push(['input', data[0]?.[0]?.json]);
 			return { index: 0 };
 		},
-		addOutputData: (_type: string, _index: number, data: Array<Array<{ json: unknown }>>) => {
-			recorded.push(['output', data[0]?.[0]?.json]);
+		addOutputData: (
+			_type: string,
+			_index: number,
+			data: Array<Array<{ json: unknown }>> | Error,
+		) => {
+			recorded.push(['output', data instanceof Error ? data.message : data[0]?.[0]?.json]);
 		},
 	};
-	const NodeType = toVersionedToolType(versionsOf('httpRequest.get'), (description) => ({
-		...description,
-		name: 'httpRequestGetTool',
-	}));
-	const version = new NodeType().getNodeType(3);
+	const NodeType = toVersionedToolType(versionsOf(action), (description) => description);
+	const version = new NodeType().getNodeType();
 	const supply = await version.supplyData?.call(context as unknown as ISupplyDataFunctions, 0);
 	const metadata: unknown[] = [];
 	const execute = async (items: Array<{ json: IDataObject }>) =>
@@ -65,7 +86,7 @@ const supplyTool = async (parameters: INodeParameters) => {
 			getInputData: () => items,
 			setMetadata: (value: unknown) => metadata.push(value),
 		} as unknown as IExecuteFunctions);
-	return { tool: supply?.response, requests, recorded, execute, metadata };
+	return { tool: supply?.response, requests, recorded, execute, metadata, hints };
 };
 
 describe('contract actions as agent tools', () => {
@@ -131,12 +152,99 @@ describe('contract actions as agent tools', () => {
 
 	it('give a tool node type for each action that reads or writes one call at a time', () => {
 		const ids = toolActions.map(({ id }) => id);
-		expect(ids).toEqual(expect.arrayContaining(['httpRequest.get', 'slack.message.send']));
-		expect(ids).not.toContain('dataTable.row.get');
+		expect(ids).toEqual(
+			expect.arrayContaining(['httpRequest.get', 'slack.message.send', 'dataTable.row.get']),
+		);
+		expect(ids).not.toContain('code.javaScript');
+		expect(ids).not.toContain('wait.interval');
 		expect(ids).not.toContain('httpRequest.download');
 		expect(ids).not.toContain('items.set');
 		expect(ids).not.toContain('openAi.chatModel');
 		expect(ids).not.toContain('dataTable.row.insert');
 		expect(toolTypeOf({ id: 'httpRequest.get' })).toBe('@n8n/nodes-base-next.httpRequestGetTool');
+	});
+
+	it('read a data table of the project in a tool call', async () => {
+		const opened: string[] = [];
+		const queries: unknown[] = [];
+		const stored = { id: 1, email: 'ada@acme.dev', createdAt: DATE, updatedAt: DATE };
+		const table = {
+			getColumns: async () => [{ name: 'email', type: 'string', index: 0 }],
+			getManyRowsAndCount: async (query: unknown) => {
+				queries.push(query);
+				return { count: 1, data: [stored] };
+			},
+		} as unknown as IDataTableProjectService;
+		const { tool, hints } = await supplyTool(
+			{
+				table: { id: 't1' },
+				where: "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('where', 'The rows') }}",
+			},
+			{
+				action: 'dataTable.row.get',
+				helpers: {
+					getDataTableAggregateProxy: async () => ({}),
+					getDataTableProxy: async (id: string) => {
+						opened.push(id);
+						return table;
+					},
+				},
+			},
+		);
+		if (!provider.is('tool', tool)) throw new Error('no tool');
+		expect(Object.keys(tool.input.properties ?? {})).toEqual(['where']);
+
+		const rows = await tool.call({
+			table: { id: 'other' },
+			where: { match: 'all', conditions: [{ column: 'email', op: 'like', value: '%acme%' }] },
+		});
+
+		expect(rows).toEqual([stored]);
+		expect(opened).toEqual(['t1']);
+		expect(queries).toEqual([
+			expect.objectContaining({
+				filter: {
+					type: 'and',
+					filters: [{ columnName: 'email', condition: 'like', value: '%acme%' }],
+				},
+			}),
+		]);
+		expect(hints).toEqual([]);
+	});
+
+	it('retry a failed tool call as the node settings say, and try once on the engine path that retries itself', async () => {
+		const failures = [new Error('boom')];
+		const { tool, requests, recorded, execute } = await supplyTool(
+			{ url: "={{ $fromAI('url', 'The page URL') }}" },
+			{
+				settings: { retryOnFail: true, maxTries: 2, waitBetweenTries: 0 },
+				respond: async () => {
+					const failure = failures.shift();
+					if (failure) throw failure;
+					return [{ title: 'Hello' }];
+				},
+			},
+		);
+		if (!provider.is('tool', tool)) throw new Error('no tool');
+
+		expect(await tool.call({ url: 'https://acme.dev/a' })).toEqual([{ title: 'Hello' }]);
+		expect(requests).toHaveLength(2);
+		expect(recorded.map(([kind]) => kind)).toEqual(['input', 'output', 'input', 'output']);
+		expect(recorded[1]?.[1]).toContain('boom');
+
+		failures.push(new Error('again'));
+		await expect(execute([{ json: { url: 'https://acme.dev/b' } }])).rejects.toThrow('again');
+		expect(requests).toHaveLength(3);
+	});
+
+	it('try a tool call once when the node does not retry', async () => {
+		const { tool, requests } = await supplyTool(
+			{ url: "={{ $fromAI('url', 'The page URL') }}" },
+			{ respond: async () => await Promise.reject(new Error('boom')) },
+		);
+		if (!provider.is('tool', tool)) throw new Error('no tool');
+
+		await expect(tool.call({ url: 'https://acme.dev/a' })).rejects.toThrow('boom');
+		expect(requests).toHaveLength(1);
 	});
 });
