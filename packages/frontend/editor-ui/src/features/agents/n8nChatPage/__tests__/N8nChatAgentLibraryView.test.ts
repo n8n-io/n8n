@@ -181,6 +181,17 @@ describe('N8nChatAgentLibraryView', () => {
 		expect(retryMock).toHaveBeenCalledOnce();
 	});
 
+	it('keeps the n8n Assistant card next to the error state for variant B on a failed fetch', () => {
+		isVariantB.value = true;
+		const wrapper = setup({ agents: [], count: 0, isLoading: false, loadFailed: true });
+
+		expect(wrapper.find('[data-testid="n8n-chat-library-error"]').exists()).toBe(true);
+		const grid = wrapper.findComponent(N8nChatAgentGrid);
+		expect(grid.exists()).toBe(true);
+		expect(grid.props('includeAssistant')).toBe(true);
+		expect(grid.props('agents')).toEqual([]);
+	});
+
 	it('resets to page 1 once the search query actually changes', async () => {
 		const wrapper = setup({ agents: [], count: 0, isLoading: false });
 		const options = useN8nChatAgentsMock.mock.calls[0][0] as Options;

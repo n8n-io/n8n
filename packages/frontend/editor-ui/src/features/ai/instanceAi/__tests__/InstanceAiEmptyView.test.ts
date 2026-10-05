@@ -7,6 +7,7 @@ import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { fireEvent } from '@testing-library/vue';
 import { flushPromises } from '@vue/test-utils';
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
 import InstanceAiEmptyView from '../InstanceAiEmptyView.vue';
@@ -1579,6 +1580,31 @@ describe('InstanceAiEmptyView', () => {
 			await flushPromises();
 
 			expect(consumePendingN8nChatMessage('agent-1')).toBeUndefined();
+		});
+
+		it('keeps a second hand-off when the first submission fails navigation after the second was stashed', async () => {
+			const firstPush = createDeferredPromise<unknown>();
+			pushMock.mockImplementationOnce(async () => await firstPush.promise);
+			const { getByTestId } = renderView();
+
+			await fireEvent.click(getByTestId('n8n-chat-agent-picker-stub-select-agent'));
+			await nextTick();
+			// First submission: push 1 stays pending, no files.
+			await fireEvent.click(getByTestId('instance-ai-input-stub-submit'));
+
+			// Second submission lands while push 1 is still pending — the composer
+			// stays live, so nothing blocks it. A file tells the two apart.
+			await fireEvent.click(getByTestId('instance-ai-input-stub-attach-file'));
+			await fireEvent.click(getByTestId('instance-ai-input-stub-submit'));
+			await flushPromises();
+
+			// Push 1 fails after the second stash is in place.
+			firstPush.resolve(new Error('navigation aborted'));
+			await flushPromises();
+
+			const pendingMessage = consumePendingN8nChatMessage('agent-1');
+			expect(pendingMessage?.files).toHaveLength(1);
+			expect(pendingMessage?.files[0]?.name).toBe('context.txt');
 		});
 	});
 });

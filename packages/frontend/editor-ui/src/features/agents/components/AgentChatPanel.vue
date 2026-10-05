@@ -694,6 +694,9 @@ const isPreparingToSend = ref(false);
 let disposed = false;
 let queuedExternalMessage: string | undefined;
 let submittingQueuedExternalMessage = false;
+// Files a hand-off staged into `attachedFiles`, tracked so an abandoned hand-off
+// can drop only its own files and leave the user's own picks alone.
+let externalAttachedFiles: File[] = [];
 
 type SubmitResult = 'sent' | 'busy' | 'rejected';
 
@@ -855,6 +858,14 @@ watch(
 		queueExpanded.value = false;
 		queueOrder.value = undefined;
 		firstMessagePreview.value = undefined;
+		// A blocked hand-off's own files must not ride out with the next message to
+		// the new target; a file the user picked themselves stays.
+		if (externalAttachedFiles.length) {
+			attachedFiles.value = attachedFiles.value.filter(
+				(file) => !externalAttachedFiles.includes(file),
+			);
+			externalAttachedFiles = [];
+		}
 	},
 );
 
@@ -924,6 +935,7 @@ async function onSubmit(): Promise<SubmitResult> {
 		if (!isCurrentTarget()) return 'rejected';
 
 		previewFirstMessage(text, files);
+		const installedPreview = firstMessagePreview.value;
 		let accepted = false;
 		const sending = sendMessage(text, files.length > 0 ? files : undefined, () => {
 			accepted = true;
@@ -937,14 +949,19 @@ async function onSubmit(): Promise<SubmitResult> {
 			}
 			if (inputText.value.trim() === text) inputText.value = '';
 			attachedFiles.value = attachedFiles.value.filter((file) => !files.includes(file));
+			externalAttachedFiles = [];
 			consumeQueuedExternalMessage(text);
 			trackSentToN8nChat(hadNoMessagesBeforeSend);
 		});
 		isPreparingToSend.value = false;
 		const result = await sending;
 		// A send the server never accepted (busy, failed, lost) won't bring the real
-		// messages that replace the preview, so drop it here.
-		if (!accepted) firstMessagePreview.value = undefined;
+		// messages that replace the preview, so drop it here -- but only while this
+		// send's own preview is still the one showing. A newer hand-off's own preview
+		// must survive this one settling late.
+		if (!accepted && firstMessagePreview.value === installedPreview) {
+			firstMessagePreview.value = undefined;
+		}
 		if (result === 'busy') return 'busy';
 		return 'sent';
 	} finally {
@@ -987,6 +1004,7 @@ async function onIncreaseBudget(payload: { field: BudgetAmountField; amount: num
 
 function sendMessageFromOutside(message: string, files?: File[]) {
 	queuedExternalMessage = message;
+	externalAttachedFiles = files ?? [];
 	// Staged as the composer's own attachments, with the same count and size checks
 	// as a picked file: `onSubmit` reads `attachedFiles`, so they ride along with
 	// every retry `submitQueuedExternalMessage` makes while blocked.
@@ -1015,6 +1033,8 @@ async function submitQueuedExternalMessage() {
 	if (result === 'rejected' && queuedExternalMessage === message) {
 		queuedExternalMessage = undefined;
 		firstMessagePreview.value = undefined;
+		// The files stay in the composer as the user's draft now.
+		externalAttachedFiles = [];
 	}
 	if (
 		queuedExternalMessage !== undefined &&

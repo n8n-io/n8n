@@ -96,7 +96,7 @@ import { AGENT_N8N_CHAT_VIEW } from '@/features/agents/constants';
 import N8nChatAgentSection from '@/features/agents/n8nChatPage/components/N8nChatAgentSection.vue';
 import N8nChatAgentPicker from '@/features/agents/n8nChatPage/components/N8nChatAgentPicker.vue';
 import {
-	consumePendingN8nChatMessage,
+	discardPendingN8nChatMessage,
 	stashPendingN8nChatMessage,
 } from '@/features/agents/n8nChatPage/pendingN8nChatMessage';
 import { base64ToFile } from '@/app/utils/fileUtils';
@@ -643,12 +643,15 @@ async function handleSubmit(
 			restoreDraftAfterFailedSubmit(restoreDraft);
 			return;
 		}
-		stashPendingN8nChatMessage({ agentId, text: message, files });
+		const pendingMessage = { agentId, text: message, files };
+		stashPendingN8nChatMessage(pendingMessage);
 		acceptDraft();
 		const failure = await router.push({ name: AGENT_N8N_CHAT_VIEW, params: { agentId } });
-		// A blocked or cancelled navigation must not leave the hand-off for a later visit.
-		if (failure) {
-			consumePendingN8nChatMessage(agentId);
+		// A blocked or cancelled navigation must not leave the hand-off for a later
+		// visit. Only discard and restore the draft if the slot still holds this
+		// submission: a second submit made while this push was pending already
+		// replaced it, and that one must not lose its stash or its draft.
+		if (failure && discardPendingN8nChatMessage(pendingMessage)) {
 			restoreDraftAfterFailedSubmit(restoreDraft);
 		}
 		return;

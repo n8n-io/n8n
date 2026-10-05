@@ -459,6 +459,29 @@ describe('AgentN8nChatView', () => {
 
 			expect(sendMessageFromOutsideMock).not.toHaveBeenCalled();
 		});
+
+		it('discards a hand-off for an agent abandoned before its panel ever mounts', async () => {
+			// `RouterView` isn't keyed on `agentId`: this same view instance is reused
+			// for agent-2 while agent-1 is still loading, so agent-1's panel never mounts.
+			const agentOneLoad = createDeferredPromise<AgentChatListItem>();
+			const agentTwoLoad = createDeferredPromise<AgentChatListItem>();
+			getN8nChatAgentMock.mockReturnValueOnce(agentOneLoad.promise);
+			getN8nChatAgentMock.mockReturnValueOnce(agentTwoLoad.promise);
+			stashPendingN8nChatMessage({ agentId: 'agent-1', text: 'hello agent one', files: [] });
+
+			const wrapper = renderView({ agentId: 'agent-1' });
+			await flushPromises();
+
+			await wrapper.setProps({ agentId: 'agent-2' });
+			await flushPromises();
+
+			agentTwoLoad.resolve({ ...agentItem, id: 'agent-2', name: 'Other Agent' });
+			await flushPromises();
+			agentOneLoad.resolve(agentItem);
+			await flushPromises();
+
+			expect(sendMessageFromOutsideMock).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('refreshing the n8n Chat threads store', () => {

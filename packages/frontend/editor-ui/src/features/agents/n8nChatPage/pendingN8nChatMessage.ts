@@ -27,3 +27,14 @@ export function consumePendingN8nChatMessage(agentId: string): PendingN8nChatMes
 	pending = undefined;
 	return message?.agentId === agentId ? message : undefined;
 }
+
+/**
+ * Clears the slot only if it still holds this exact message. Use this to back
+ * out of a stash after a failed hand-off: a later stash may already have
+ * replaced it, and that later one must survive.
+ */
+export function discardPendingN8nChatMessage(message: PendingN8nChatMessage): boolean {
+	if (pending !== message) return false;
+	pending = undefined;
+	return true;
+}

@@ -18,6 +18,8 @@ import type { AgentJsonConfig } from '../types';
 import AgentChatPlan from '../components/AgentChatPlan.vue';
 import { planMessage, planView } from './fixtures/agent-plan';
 
+type PanelVm = { sendMessageFromOutside: (message: string, files?: File[]) => void };
+
 const sendMessageMock = vi.fn();
 const stopGeneratingMock = vi.fn();
 const detachStreamMock = vi.fn();
@@ -390,7 +392,6 @@ describe('AgentChatPanel', () => {
 		});
 
 		describe('first message preview', () => {
-			type PanelVm = { sendMessageFromOutside: (message: string, files?: File[]) => void };
 			const messageList = (wrapper: ReturnType<typeof mountPanel>) =>
 				wrapper.findComponent({ name: 'AgentChatMessageList' });
 
@@ -508,6 +509,40 @@ describe('AgentChatPanel', () => {
 				expect(messageList(wrapper).exists()).toBe(false);
 				wrapper.unmount();
 			});
+
+			it('ignores a stale, unaccepted send after the target has moved on to a newer hand-off', async () => {
+				const firstSend = createDeferredPromise<'sent' | 'busy'>();
+				sendMessageMock.mockReturnValueOnce(firstSend.promise);
+				const wrapper = mountPanel({
+					centerEmptyState: true,
+					newSession: true,
+					continueSessionId: 's1',
+				});
+
+				(wrapper.vm as unknown as PanelVm).sendMessageFromOutside('hello agent');
+				await flushPromises();
+				expect(messageList(wrapper).props('messages')).toEqual([
+					expect.objectContaining({ content: 'hello agent' }),
+				]);
+
+				// Reused for a different session before the stale first send settles.
+				await wrapper.setProps({ continueSessionId: 's2' });
+				sendMessageMock.mockReturnValueOnce(new Promise(() => {}));
+				(wrapper.vm as unknown as PanelVm).sendMessageFromOutside('hello again');
+				await flushPromises();
+				expect(messageList(wrapper).props('messages')).toEqual([
+					expect.objectContaining({ content: 'hello again' }),
+				]);
+
+				// The first send's response arrives late, never accepted.
+				firstSend.resolve('sent');
+				await flushPromises();
+
+				expect(messageList(wrapper).props('messages')).toEqual([
+					expect.objectContaining({ content: 'hello again' }),
+				]);
+				wrapper.unmount();
+			});
 		});
 
 		it('does not center a continued thread or without the prop', () => {
@@ -516,6 +551,30 @@ describe('AgentChatPanel', () => {
 			);
 			expect(isCentered(mountPanel())).toBe(false);
 		});
+	});
+
+	it('drops only a blocked hand-off own files when its target is abandoned, keeping user picks', async () => {
+		isLoadingHistoryMock.value = true;
+		const wrapper = mountPanel({ continueSessionId: 's1' });
+		const handOffFile = new File(['a'], 'hand-off.txt', { type: 'text/plain' });
+
+		(wrapper.vm as unknown as PanelVm).sendMessageFromOutside('hello agent', [handOffFile]);
+		await flushPromises();
+		expect(sendMessageMock).not.toHaveBeenCalled();
+
+		// Reused for a different session — the blocked hand-off is abandoned.
+		await wrapper.setProps({ continueSessionId: 's2' });
+		isLoadingHistoryMock.value = false;
+
+		const input = wrapper.findComponent({ name: 'ChatInputBase' });
+		const userFile = new File(['b'], 'user-picked.txt', { type: 'text/plain' });
+		input.vm.$emit('files-selected', [userFile]);
+		input.vm.$emit('update:modelValue', 'new message');
+		input.vm.$emit('submit');
+		await flushPromises();
+
+		expect(sendMessageMock).toHaveBeenCalledWith('new message', [userFile], expect.any(Function));
+		wrapper.unmount();
 	});
 
 	it('keeps two pending messages in the composer below background tasks and removes them without adding conversation bubbles', async () => {
