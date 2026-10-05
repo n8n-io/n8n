@@ -856,11 +856,13 @@ export async function pinnedNodesOf(
 	nodes: readonly INode[],
 	storedNodes: readonly INode[] = [],
 ): Promise<INode[]> {
+	// The pin runs before the save validation, so a node may have no type yet.
 	const mayPin = ({ type, contract }: INode) =>
-		contract !== undefined || isContractNodeType(type) || type in MIGRATED_NODES;
+		typeof type === 'string' &&
+		(contract !== undefined || isContractNodeType(type) || type in MIGRATED_NODES);
 	if (!nodes.some(mayPin)) return [...nodes];
 	const { loaders } = Container.get(LoadNodesAndCredentials);
-	const actions = nodes.map((node) => contractActionOf(loaders, node));
+	const actions = nodes.map((node) => (mayPin(node) ? contractActionOf(loaders, node) : undefined));
 	if (nodes.every((node, index) => !actions[index] && node.contract === undefined)) {
 		return [...nodes];
 	}
