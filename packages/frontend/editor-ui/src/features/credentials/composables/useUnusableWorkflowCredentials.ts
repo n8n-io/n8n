@@ -8,10 +8,24 @@ import type { IUsedCredential } from '../credentials.types';
 import { useCredentialSharing } from './useCredentialSharing';
 
 /**
+ * Who to ask about a credential. A personal project is named after its owner,
+ * with their email appended, so only the name is shown; a team project is
+ * named directly.
+ */
+export function getCredentialOwnerShortName(
+	credential: DeepReadonly<Pick<IUsedCredential, 'homeProject'>> | undefined,
+): string | undefined {
+	const project = credential?.homeProject;
+	if (!project?.name) return undefined;
+	if (project.type === ProjectTypes.Team) return project.name;
+
+	const { name, email } = splitName(project.name);
+	return name ?? email;
+}
+
+/**
  * The workflow's credentials the current user cannot use, and the reason to
  * show in place of running or publishing it.
- *
- * Reads `currentUserCanUse` (can-use), not `currentUserHasAccess` (can-see).
  *
  * @param usedCredentials getter for the workflow's used credentials.
  * @param nodes the workflow's current nodes, to stay live between saves.
@@ -23,12 +37,6 @@ export function useUnusableWorkflowCredentials(
 	const i18n = useI18n();
 	const { isEnabled } = useCredentialSharing();
 
-	/**
-	 * The credential ids the nodes reference now. The used-credential metadata
-	 * only changes when the workflow is loaded or saved, so a credential the user
-	 * has just switched away from is still in it. A disabled node does not run,
-	 * and the backend skips it too.
-	 */
 	const referencedIds = computed(() => {
 		const ids = new Set<string>();
 
@@ -55,26 +63,10 @@ export function useUnusableWorkflowCredentials(
 	/** Running and publishing both stop; editing and saving do not. */
 	const isBlocked = computed(() => unusable.value.length > 0);
 
-	/**
-	 * Who to ask. A personal project is named after its owner, with their email
-	 * appended, so only the name is shown; a team project is named directly.
-	 */
-	const owner = computed(() => {
-		const project = unusable.value[0]?.homeProject;
-		if (!project?.name) return undefined;
-		if (project.type === ProjectTypes.Team) return project.name;
-
-		const { name, email } = splitName(project.name);
-		return name ?? email;
-	});
+	const owner = computed(() => getCredentialOwnerShortName(unusable.value[0]));
 
 	const credentialName = computed(() => unusable.value[0]?.name ?? '');
 
-	/**
-	 * One sentence for both running and publishing: the credential is not this
-	 * user's to use either way. Empty when nothing is blocked, so a caller can
-	 * use it as the whole condition.
-	 */
 	const reason = computed(() => {
 		if (!isBlocked.value) return '';
 
