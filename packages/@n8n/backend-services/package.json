@@ -39,6 +39,7 @@
     "n8n-workflow": "workspace:*"
   },
   "devDependencies": {
+    "@n8n/backend-test-utils": "workspace:*",
     "@n8n/eslint-config": "workspace:*",
     "@n8n/oxlint-config": "workspace:*",
     "@n8n/typescript-config": "workspace:*",
