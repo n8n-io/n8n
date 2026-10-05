@@ -283,17 +283,74 @@ function onQueueEditKeydown(event: KeyboardEvent) {
 	}
 }
 
-const { jobs: backgroundJobs, respondToApproval } = useAgentBackgroundJobs({
+const {
+	jobs: backgroundJobs,
+	respondToApproval,
+	stopAll,
+	isStopping,
+} = useAgentBackgroundJobs({
 	projectId: () => props.projectId,
 	agentId: () => props.agentId,
 	threadId: () => props.continueSessionId,
 	active: () => props.backgroundJobsActive,
 	receivedJobs: () => messages.value.flatMap((message) => message.backgroundJobSignal?.tasks ?? []),
 });
+const canStopBackgroundJobs = computed(() =>
+	backgroundJobs.value.some(
+		(job) => job.kind === 'subagent' && (job.status === 'running' || job.status === 'suspended'),
+	),
+);
+const backgroundStoppingIds = computed(
+	() =>
+		new Set(
+			backgroundJobs.value
+				.filter(
+					(job) =>
+						job.kind === 'subagent' &&
+						(job.status === 'running' || job.status === 'suspended') &&
+						(isStopping.value || job.pauseRequested),
+				)
+				.map((job) => job.id),
+		),
+);
+
+async function stopBackgroundJobs(event: MouseEvent) {
+	const button = event.currentTarget;
+	const restoreFocus = button === document.activeElement;
+	const threadId = props.continueSessionId;
+	try {
+		await stopAll();
+	} catch (error) {
+		toast.showError(error, locale.baseText('agents.chat.backgroundTasks.stopError'));
+	}
+	// Disabling the button can clear focus before the task rows disappear.
+	await nextTick();
+	if (
+		!restoreFocus ||
+		disposed ||
+		!props.visible ||
+		props.continueSessionId !== threadId ||
+		hasPendingApprovals.value ||
+		document.activeElement !== document.body
+	)
+		return;
+	if (button instanceof HTMLElement && button.isConnected) button.focus({ preventScroll: true });
+	else focusInput({ preventScroll: true });
+}
 const backgroundRunningCount = computed(
 	() => backgroundJobs.value.filter((job) => job.status === 'running').length,
 );
+const backgroundInProgress = computed(
+	() => backgroundRunningCount.value > 0 || backgroundStoppingIds.value.size > 0,
+);
 const backgroundTitle = computed(() => {
+	const stoppingCount = backgroundStoppingIds.value.size;
+	if (stoppingCount > 0) {
+		return locale.baseText('agents.chat.backgroundTasks.stoppingCount', {
+			adjustToNumber: stoppingCount,
+			interpolate: { count: stoppingCount },
+		});
+	}
 	if (backgroundJobs.value.some((job) => job.status === 'suspended')) {
 		return locale.baseText('agents.chat.backgroundTasks.status.suspended');
 	}
@@ -317,6 +374,14 @@ const backgroundTraceRoute = computed(() => ({
 	},
 }));
 const backgroundJobStatuses = computed(() => ({
+	stopping: {
+		icon: 'loader-circle',
+		label: locale.baseText('agents.chat.backgroundTasks.status.stopping'),
+	},
+	paused: {
+		icon: 'circle-pause',
+		label: locale.baseText('agents.chat.backgroundTasks.status.paused'),
+	},
 	running: {
 		icon: 'loader-circle',
 		label: locale.baseText('agents.chat.backgroundTasks.status.running'),
@@ -397,23 +462,23 @@ async function respondToBackgroundApproval(
 	}
 }
 const backgroundJobRows = computed(() =>
-	backgroundJobs.value.flatMap((job) => {
-		if (job.status === 'paused') return [];
-		return [
-			{
-				...job,
-				label: locale.baseText(
-					job.kind === 'workflow'
-						? 'agents.chat.backgroundTasks.workflow'
-						: 'agents.chat.backgroundTasks.subagent',
-					{ interpolate: { title: job.title } },
-				),
-				indicator:
-					backgroundJobStatuses.value[
-						job.kind === 'workflow' && job.status === 'running' ? 'waiting' : job.status
-					],
-			},
-		];
+	backgroundJobs.value.map((job) => {
+		const stopping = backgroundStoppingIds.value.has(job.id);
+		let indicator = backgroundJobStatuses.value[job.status];
+		if (stopping) indicator = backgroundJobStatuses.value.stopping;
+		else if (job.kind === 'workflow' && job.status === 'running')
+			indicator = backgroundJobStatuses.value.waiting;
+		return {
+			...job,
+			stopping,
+			label: locale.baseText(
+				job.kind === 'workflow'
+					? 'agents.chat.backgroundTasks.workflow'
+					: 'agents.chat.backgroundTasks.subagent',
+				{ interpolate: { title: job.title } },
+			),
+			indicator,
+		};
 	}),
 );
 const now = ref(Date.now());
@@ -428,7 +493,7 @@ const { pause: pauseTimer, resume: resumeTimer } = useIntervalFn(
 watch(
 	() =>
 		props.backgroundJobsActive &&
-		backgroundRunningCount.value > 0 &&
+		backgroundInProgress.value &&
 		documentVisibility.value === 'visible',
 	(active) => {
 		if (active) {
@@ -441,7 +506,7 @@ watch(
 const backgroundElapsed = computed(() => {
 	const startedAt = backgroundJobs.value[0]?.startedAt;
 	const start = startedAt ? Date.parse(startedAt) : now.value;
-	const end = backgroundRunningCount.value
+	const end = backgroundInProgress.value
 		? now.value
 		: Math.max(...backgroundJobs.value.map((job) => Date.parse(job.settledAt ?? '') || now.value));
 	const seconds = Number.isFinite(start) ? Math.max(0, Math.floor((end - start) / TIME.SECOND)) : 0;
@@ -455,6 +520,8 @@ const backgroundElapsed = computed(() => {
 const attachedFiles = ref<File[]>([]);
 const chatInput = useTemplateRef<InstanceType<typeof ChatInputBase>>('chatInput');
 const backgroundJobCard = useTemplateRef<HTMLDivElement>('backgroundJobCard');
+const backgroundJobStopButton =
+	useTemplateRef<InstanceType<typeof N8nButton>>('backgroundJobStopButton');
 const approvalCards = useTemplateRef<HTMLDivElement>('approvalCards');
 const showBackgroundJobs = computed(
 	() => props.backgroundJobsActive && backgroundJobs.value.length > 0,
@@ -467,6 +534,7 @@ function focusInput(options?: FocusOptions) {
 watch(
 	[
 		showBackgroundJobs,
+		canStopBackgroundJobs,
 		hasPendingApprovals,
 		() => props.projectId,
 		() => props.agentId,
@@ -474,17 +542,20 @@ watch(
 		() => props.visible,
 	],
 	async (
-		[shown, approvalsShown, ...target],
-		[wasShown, approvalsWereShown, ...previousTarget],
+		[shown, stopShown, approvalsShown, ...target],
+		[wasShown, stopWasShown, approvalsWereShown, ...previousTarget],
 		onCleanup,
 	) => {
-		const removedFocusedCard =
+		const removedFocusedControl =
 			(!shown && wasShown && backgroundJobCard.value?.contains(document.activeElement)) ||
+			(!stopShown &&
+				stopWasShown &&
+				backgroundJobStopButton.value?.$el === document.activeElement) ||
 			(!approvalsShown &&
 				approvalsWereShown &&
 				approvalCards.value?.contains(document.activeElement));
 		if (
-			!removedFocusedCard ||
+			!removedFocusedControl ||
 			!props.visible ||
 			target.some((value, index) => value !== previousTarget[index])
 		) {
@@ -495,7 +566,7 @@ watch(
 		onCleanup(() => {
 			cancelled = true;
 		});
-		// Check focus before the card disappears, then wait for the composer to update.
+		// Check focus before the control disappears, then wait for the composer to update.
 		await nextTick();
 		if (
 			cancelled ||
@@ -943,10 +1014,10 @@ onBeforeUnmount(() => {
 				>
 					<template #prefix>
 						<N8nIcon
-							:icon="backgroundRunningCount ? 'loader-circle' : 'circle'"
-							:spin="backgroundRunningCount > 0"
+							:icon="backgroundInProgress ? 'loader-circle' : 'circle'"
+							:spin="backgroundInProgress"
 							size="small"
-							:class="{ [$style.jobSpinner]: backgroundRunningCount > 0 }"
+							:class="{ [$style.jobSpinner]: backgroundInProgress }"
 							aria-hidden="true"
 						/>
 					</template>
@@ -978,22 +1049,48 @@ onBeforeUnmount(() => {
 										:class="{ [$style.jobSpinner]: job.indicator.icon === 'loader-circle' }"
 									/>
 								</span>
-								<span>{{ job.label }}</span>
+								<span :class="$style.jobLabel">{{ job.label }}</span>
+								<N8nText
+									v-if="job.stopping || job.status === 'paused'"
+									:class="$style.jobProgress"
+									size="small"
+									color="text-light"
+									aria-hidden="true"
+								>
+									{{ job.indicator.label }}
+								</N8nText>
 							</li>
 						</ul>
-						<N8nLink
-							v-if="continueSessionId"
-							:to="backgroundTraceRoute"
-							theme="text"
-							size="small"
-							underline
-							data-testid="agent-background-jobs-trace"
-						>
-							<span :class="$style.jobTraceLabel">
-								<N8nIcon icon="arrow-right" size="small" aria-hidden="true" />
-								{{ locale.baseText('agents.chat.backgroundTasks.viewTrace') }}
-							</span>
-						</N8nLink>
+						<div :class="$style.backgroundJobActions">
+							<N8nLink
+								v-if="continueSessionId"
+								:to="backgroundTraceRoute"
+								theme="text"
+								size="small"
+								underline
+								data-testid="agent-background-jobs-trace"
+							>
+								<span :class="$style.jobTraceLabel">
+									<N8nIcon icon="arrow-right" size="small" aria-hidden="true" />
+									{{ locale.baseText('agents.chat.backgroundTasks.viewTrace') }}
+								</span>
+							</N8nLink>
+							<N8nButton
+								v-if="canStopBackgroundJobs"
+								ref="backgroundJobStopButton"
+								variant="ghost"
+								size="small"
+								:class="$style.jobStopButton"
+								:disabled="isStopping"
+								data-testid="agent-background-jobs-stop"
+								@click="stopBackgroundJobs"
+							>
+								<span :class="$style.jobTraceLabel">
+									<N8nIcon icon="filled-square" size="small" aria-hidden="true" />
+									{{ locale.baseText('agents.chat.backgroundTasks.stopAll') }}
+								</span>
+							</N8nButton>
+						</div>
 					</div>
 				</N8nAiActivityStepGroup>
 			</div>
@@ -1353,7 +1450,7 @@ onBeforeUnmount(() => {
 
 	li {
 		display: flex;
-		align-items: flex-start;
+		align-items: baseline;
 		gap: var(--spacing--2xs);
 		padding-block: var(--spacing--3xs);
 		font-size: var(--font-size--sm);
@@ -1361,6 +1458,16 @@ onBeforeUnmount(() => {
 		overflow-wrap: anywhere;
 		line-height: var(--line-height--lg);
 	}
+}
+
+.jobLabel {
+	flex: 1;
+	min-width: 0;
+}
+
+.jobProgress {
+	flex-shrink: 0;
+	white-space: nowrap;
 }
 
 .messageQueue :global(button[aria-expanded]),
@@ -1465,6 +1572,32 @@ onBeforeUnmount(() => {
 	display: inline-flex;
 	align-items: center;
 	gap: var(--spacing--2xs);
+}
+
+.backgroundJobActions {
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: var(--spacing--sm);
+}
+
+.jobStopButton {
+	--button--color: var(--color--text);
+	--button--color--background-hover: transparent;
+	--button--color--background-active: transparent;
+
+	padding: 0;
+	font-size: var(--font-size--2xs);
+	font-weight: var(--font-weight--regular);
+	line-height: var(--line-height--lg);
+
+	&:hover:not(:disabled) {
+		color: var(--color--primary);
+	}
+
+	&:active:not(:disabled) {
+		color: var(--color--primary--shade-1);
+	}
 }
 
 .jobSpinner {

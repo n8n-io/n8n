@@ -447,6 +447,7 @@ const valueChanged = (parameterData: IUpdateInformation) => {
 
 			nodeHelpers.updateNodeParameterIssuesByName(_node.name);
 			nodeHelpers.updateNodeCredentialIssuesByName(_node.name);
+			nodeHelpers.updateNodeInputIssuesByName(_node.name);
 		}
 	} else if (nameIsParameter(parameterData)) {
 		// A node parameter changed

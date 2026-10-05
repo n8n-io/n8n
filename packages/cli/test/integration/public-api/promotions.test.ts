@@ -863,6 +863,174 @@ describe('Promotions in Public API', () => {
 		});
 	});
 
+	describe('selective apply', () => {
+		const selectionBody = {
+			workflowIds: ['w1', 'w2'],
+			expectedSource: { configId: 'config1', branchName: 'main', commitSha: 'a'.repeat(40) },
+		};
+
+		it.each(['apply', 'apply/continue'])('%s requires the pull API-key scope', async (route) => {
+			const restrictedOwner = await createOwnerWithApiKey({ scopes: ['variable:list'] });
+			const response = await testServer
+				.publicApiAgentFor(restrictedOwner)
+				.post(`/promotions/projects/proj1/${route}`)
+				.send(selectionBody);
+			expect(response.status).toBe(403);
+		});
+
+		it.each(['apply', 'apply/continue'])(
+			'%s rejects a user without the pull grant',
+			async (route) => {
+				// The key carries the pull scope, but a member's role does not grant it.
+				const member = await createMemberWithApiKey({ scopes: ['gitConnection:pull'] });
+				const response = await testServer
+					.publicApiAgentFor(member)
+					.post(`/promotions/projects/proj1/${route}`)
+					.send(selectionBody);
+				expect(response.status).toBe(403);
+			},
+		);
+
+		it.each(['apply', 'apply/continue'])(
+			'%s requires a licensed and active module',
+			async (route) => {
+				const agent = testServer.publicApiAgentFor(owner);
+				testServer.license.disable('feat:gitConnections');
+				expect(
+					(await agent.post(`/promotions/projects/proj1/${route}`).send(selectionBody)).status,
+				).toBe(403);
+				testServer.license.enable('feat:gitConnections');
+				const active = vi.spyOn(Container.get(ModuleRegistry), 'isActive').mockReturnValue(false);
+				try {
+					expect(
+						(await agent.post(`/promotions/projects/proj1/${route}`).send(selectionBody)).status,
+					).toBe(503);
+				} finally {
+					active.mockRestore();
+				}
+			},
+		);
+
+		it('rejects an empty selection with 400 on both routes', async () => {
+			const agent = testServer.publicApiAgentFor(owner);
+			expect(
+				(await agent.post('/promotions/projects/proj1/apply').send({ workflowIds: [] })).status,
+			).toBe(400);
+			expect(
+				(
+					await agent
+						.post('/promotions/projects/proj1/apply/continue')
+						.send({ workflowIds: [], expectedSource: selectionBody.expectedSource })
+				).status,
+			).toBe(400);
+		});
+
+		it('requires workflowIds and a supported source on Continue', async () => {
+			const agent = testServer.publicApiAgentFor(owner);
+			for (const body of [
+				{ expectedSource: selectionBody.expectedSource }, // no workflowIds
+				{ workflowIds: ['w1'] }, // no expectedSource
+				{ ...selectionBody, force: true }, // unexpected field
+				{
+					workflowIds: ['w1'],
+					expectedSource: { ...selectionBody.expectedSource, commitSha: 'HEAD' },
+				},
+			]) {
+				const response = await agent.post('/promotions/projects/proj1/apply/continue').send(body);
+				expect(response.status, JSON.stringify(response.body)).toBe(400);
+			}
+		});
+
+		it.each(['blocked', 'applied', 'source-changed'] as const)(
+			'returns the %s contract through both selective apply routes with only the pull scope',
+			async (status) => {
+				const consumers = [
+					{
+						project: { id: 'project1', name: 'Orders' },
+						workflows: [{ id: 'w1', name: 'Process order' }],
+					},
+				];
+				const warnings = [
+					{
+						kind: 'variable',
+						code: 'variable-shadowed',
+						name: 'API_URL',
+						scope: { kind: 'global' },
+						consumers,
+					},
+				];
+				const result = ApplyPackageResultDto.parse({
+					status,
+					connectionId: 'conn1',
+					configId: selectionBody.expectedSource.configId,
+					git: { branchName: 'main', commitSha: selectionBody.expectedSource.commitSha },
+					preflight: {
+						missingProjects: [],
+						missingBindings: [
+							{
+								kind: 'variable',
+								name: 'API_URL',
+								variableType: 'string',
+								scope: { kind: 'global' },
+								sourceValue: '',
+								consumers,
+							},
+						],
+						accessRequirements: [],
+						conflicts: [],
+						warnings,
+					},
+					warnings,
+					counts: {
+						projects: { created: 0, updated: 0, skipped: 0, deleted: 0 },
+						folders: { created: 0, skipped: 0, removed: 0 },
+						workflows: {
+							created: 0,
+							updated: 0,
+							skipped: 0,
+							archived: 0,
+							deleted: 0,
+							publishing: { published: 0, unpublished: 0, unchanged: 0, blocked: 0, failed: 0 },
+						},
+						credentials: { matched: 0, stubbed: 0 },
+						dataTables: { matched: 0, created: 0 },
+						variables: { matched: 0, created: 0, updated: 0, stubbed: 0, missing: 0 },
+						tags: { matched: 0, created: 0, renamed: 0, reconciled: 0, skipped: 0 },
+					},
+				});
+				const service = Container.get(PromotionsService);
+				const initial = vi.spyOn(service, 'applyProjectSelection').mockResolvedValue(result);
+				const continuation = vi
+					.spyOn(service, 'continueApplyProjectSelection')
+					.mockResolvedValue(result);
+				try {
+					const restrictedOwner = await createOwnerWithApiKey({ scopes: ['gitConnection:pull'] });
+					const agent = testServer.publicApiAgentFor(restrictedOwner);
+					for (const route of ['apply', 'apply/continue']) {
+						const response = await agent
+							.post(`/promotions/projects/proj1/${route}`)
+							.send(selectionBody);
+						expect(response.status, JSON.stringify(response.body)).toBe(200);
+						expect(response.body).toEqual(result);
+					}
+					expect(initial).toHaveBeenCalledWith(
+						'proj1',
+						expect.objectContaining({ id: restrictedOwner.id }),
+						selectionBody,
+					);
+					expect(continuation).toHaveBeenCalledWith(
+						'proj1',
+						expect.objectContaining({ id: restrictedOwner.id }),
+						selectionBody,
+					);
+				} finally {
+					initial.mockRestore();
+					continuation.mockRestore();
+				}
+			},
+		);
+	});
+
 	describe('package operations', () => {
 		const continueBody: ContinueApplyPackageDto = {
 			expectedSource: { configId: 'config1', branchName: 'main', commitSha: 'a'.repeat(40) },
