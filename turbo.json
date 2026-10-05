@@ -125,10 +125,16 @@
 		"@n8n/instance-ai#lint": {
 			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
 		},
+		"@n8n/json-schema-to-zod#lint": {
+			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
+		},
 		"@n8n/local-gateway#lint": {
 			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
 		},
 		"@n8n/mcp-browser#lint": {
+			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
+		},
+		"@n8n/mcp-browser-extension#lint": {
 			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
 		},
 		"@n8n/node-cli#lint": {
@@ -153,6 +159,9 @@
 			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
 		},
 		"@n8n/task-runner#lint": {
+			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
+		},
+		"@n8n/tournament#lint": {
 			"dependsOn": ["^build", "@n8n/oxlint-config#build"]
 		},
 		"@n8n/test-impact#lint": {

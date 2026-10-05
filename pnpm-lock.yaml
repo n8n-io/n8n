@@ -3200,6 +3200,9 @@ importers:
 
   packages/@n8n/json-schema-to-zod:
     devDependencies:
+      '@n8n/oxlint-config':
+        specifier: workspace:*
+        version: link:../oxlint-config
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
@@ -3212,6 +3215,12 @@ importers:
       '@vitest/coverage-v8':
         specifier: 'catalog:'
         version: 5.0.1(@vitest/browser@5.0.1)(vitest@5.0.1)
+      oxlint:
+        specifier: 'catalog:'
+        version: 1.78.0(oxlint-tsgolint@0.21.1)
+      oxlint-tsgolint:
+        specifier: 'catalog:'
+        version: 0.21.1
       typescript:
         specifier: catalog:typescript
         version: 7.0.2
@@ -3438,6 +3447,9 @@ importers:
       '@iconify-json/lucide':
         specifier: 'catalog:'
         version: 1.2.114
+      '@n8n/oxlint-config':
+        specifier: workspace:*
+        version: link:../oxlint-config
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
@@ -3456,6 +3468,12 @@ importers:
       '@vue/test-utils':
         specifier: catalog:frontend
         version: 2.4.6
+      oxlint:
+        specifier: 'catalog:'
+        version: 1.78.0(oxlint-tsgolint@0.21.1)
+      oxlint-tsgolint:
+        specifier: 'catalog:'
+        version: 0.21.1
       typescript:
         specifier: catalog:typescript-tooling
         version: '@typescript/typescript6@6.0.2'
@@ -4321,6 +4339,9 @@ importers:
         specifier: ^0.22.0
         version: 0.22.0
     devDependencies:
+      '@n8n/oxlint-config':
+        specifier: workspace:*
+        version: link:../oxlint-config
       '@n8n/vitest-config':
         specifier: workspace:*
         version: link:../vitest-config
@@ -4330,6 +4351,12 @@ importers:
       '@vitest/coverage-v8':
         specifier: 'catalog:'
         version: 5.0.1(@vitest/browser@5.0.1)(vitest@5.0.1)
+      oxlint:
+        specifier: 'catalog:'
+        version: 1.78.0(oxlint-tsgolint@0.21.1)
+      oxlint-tsgolint:
+        specifier: 'catalog:'
+        version: 0.21.1
       typescript:
         specifier: catalog:typescript
         version: 7.0.2
