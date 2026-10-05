@@ -39,7 +39,7 @@ import {
 } from '@n8n/api-types';
 import { Logger, ModuleRegistry } from '@n8n/backend-common';
 import { SsrfProtectionService } from '@n8n/backend-network';
-import { EventService, UrlService } from '@n8n/backend-services';
+import { EventService, InstanceWriteAccessService, UrlService } from '@n8n/backend-services';
 import {
 	GlobalConfig,
 	SsrfProtectionConfig,
@@ -169,7 +169,6 @@ import {
 } from '@/services/ai-preference.service';
 import { AiUsageService } from '@/services/ai-usage.service';
 import { AiService } from '@/services/ai.service';
-import { InstanceWriteAccessService } from '@/services/instance-write-access.service';
 import { ProxyTokenManager } from '@/services/proxy-token-manager';
 import { Telemetry } from '@/telemetry';
 import { assertNever } from '@/utils';
