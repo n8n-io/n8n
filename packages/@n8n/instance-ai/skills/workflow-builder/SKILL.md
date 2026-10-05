@@ -59,6 +59,20 @@ first action turn (each extra sequential turn resends the whole context). When
 unsure which nodes to use, load this skill first and follow its research
 process below.
 
+## Early service connections
+
+When the `credentials(action="setup")` schema offers `filePath`, announce
+known service credentials immediately after the first node definitions or
+credential type search. Do this before detailed planning, SDK research, or
+source generation. Do not wait for every service to be resolved.
+
+Pick the source `filePath` and call credential setup with the complete list
+of types known so far. Make it the only tool call in that response. Wait for
+its successful `preBuild: true` result before continuing. Add later discoveries
+with another complete list. Do not batch setup with source writing.
+
+When early setup is unavailable, keep the post-build setup flow below.
+
 ## Repair Strategy
 
 When the edit is to fix a node the user reports as erroring or showing a red
@@ -97,10 +111,12 @@ resources, credentials, channel IDs, or timezone; use placeholders or unresolved
 for a capability the user did not name,
 discover coverage first and use a Gateway credits–covered node instead of asking
 when the user has no credential for a comparable tool (see Gateway credits
-Preference). Setup details — recipients, accounts,
-resources, channels, credentials, timezone — belong in placeholders or
-unresolved `newCredential()` calls until post-build setup. After the first
-build, use `ask-user` when stuck or genuinely ambiguous; do not retry the same
+Preference). Setup details such as recipients, accounts, resources,
+channels, credentials, and timezone belong in placeholders or
+unresolved `newCredential()` calls. Announce known credentials through early
+setup when available, then continue building without waiting for the user.
+After the first build, resolve remaining setup and use `ask-user` when stuck
+or when choices are ambiguous; do not retry the same
 failing approach more than twice. Never re-ask an answered, deferred, or skipped
 question. A skip grants no additional permission. Choose defaults only for
 unspecified details within the requested task. If a skipped question seeks

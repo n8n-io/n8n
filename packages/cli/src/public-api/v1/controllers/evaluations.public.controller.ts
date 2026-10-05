@@ -30,9 +30,7 @@ import type { Response } from 'express';
 import { ErrorReporter } from 'n8n-core';
 import { EVALUATION_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { ConflictError, ForbiddenError, NotFoundError } from '@n8n/errors';
 import { EvaluationTestRunService } from '@/evaluation.ee/evaluation-test-run.service';
 import { TestRunnerService } from '@/evaluation.ee/test-runner/test-runner.service.ee';
 import {

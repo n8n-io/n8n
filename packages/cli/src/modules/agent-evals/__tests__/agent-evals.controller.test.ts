@@ -9,8 +9,7 @@ import { ControllerRegistryMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { mock, type MockProxy } from 'vitest-mock-extended';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { BadRequestError, NotFoundError } from '@n8n/errors';
 
 import type { AgentEvalRatingService } from '../agent-eval-rating.service';
 import type { AgentEvalService } from '../agent-eval.service';

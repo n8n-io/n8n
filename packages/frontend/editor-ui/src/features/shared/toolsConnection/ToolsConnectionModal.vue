@@ -11,6 +11,7 @@ import {
 import type { DialogSize, TabOptions } from '@n8n/design-system';
 import { type BaseTextKey, useI18n } from '@n8n/i18n';
 import { useDebounceFn } from '@vueuse/core';
+import { partitionLast } from '@n8n/utils/sort/partition-last';
 import { getDebounceTime } from '@n8n/composables/useDebounce';
 import { DEBOUNCE_TIME } from '@/app/constants/durations';
 
@@ -46,6 +47,7 @@ const props = withDefaults(
 		hideBackButton?: boolean;
 		/** Dialog width. Consumers with more tabs (e.g. the n8n Connect section) can widen it. */
 		size?: DialogSize;
+		showSuggestionFooter?: boolean;
 		createAction?: PickerCreateAction;
 		createActionLoading?: boolean;
 		emptyMessage?: string;
@@ -64,6 +66,7 @@ const props = withDefaults(
 		detailItem: null,
 		detailMode: 'detail',
 		size: 'xlarge',
+		showSuggestionFooter: false,
 		createAction: undefined,
 		createActionLoading: false,
 		emptyMessage: undefined,
@@ -186,6 +189,10 @@ function allSortRank(item: ToolConnectionItem): number {
 	return 2;
 }
 
+function isRestrictedItem(item: ToolConnectionItem): boolean {
+	return item.kind === 'node' && item.restriction !== undefined;
+}
+
 function itemsForCategory(category: ToolCategoryKey): ToolConnectionItem[] {
 	// Stable sort keeps each bucket in its original order (Array.sort is stable).
 	if (category === 'all') return [...props.items].sort((a, b) => allSortRank(a) - allSortRank(b));
@@ -221,13 +228,15 @@ function tabCount(category: ToolCategoryKey): string {
 type ListRow = FlattenedRow | { key: 'suggestion' };
 
 const toolRows = computed<FlattenedRow[]>(() =>
-	itemsForCategory(activeCategory.value)
-		.filter(matchesQuery)
-		.map((item) => ({ key: `item:${item.id}`, item })),
+	partitionLast(itemsForCategory(activeCategory.value).filter(matchesQuery), isRestrictedItem).map(
+		(item) => ({ key: `item:${item.id}`, item }),
+	),
 );
 
 const flattenedRows = computed<ListRow[]>(() =>
-	isMcpCategory.value ? [...toolRows.value, { key: 'suggestion' }] : toolRows.value,
+	isMcpCategory.value || props.showSuggestionFooter
+		? [...toolRows.value, { key: 'suggestion' }]
+		: toolRows.value,
 );
 
 /** Categories only worth a tab once they hold something. */
@@ -426,7 +435,7 @@ function handleOpenChange(value: boolean) {
 						<div :class="$style.empty" data-test-id="tools-connection-empty">
 							<N8nText color="text-light">{{ resolvedEmptyMessage }}</N8nText>
 						</div>
-						<div v-if="isMcpCategory" :class="$style.suggestionRow">
+						<div v-if="isMcpCategory || showSuggestionFooter" :class="$style.suggestionRow">
 							<slot name="suggestion-footer" />
 						</div>
 					</template>

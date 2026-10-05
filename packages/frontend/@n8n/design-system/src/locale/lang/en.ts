@@ -2,6 +2,12 @@
 import type { N8nLocale } from '../../types';
 
 export default {
+	'approvalCard.alwaysAllow': 'Always allow',
+	'approvalCard.alwaysAllowSuffix': 'during this session',
+	'approvalCard.allowOnce': 'Allow once',
+	'approvalCard.deny': 'Deny',
+	'approvalCard.allowed': 'Allowed',
+	'approvalCard.denied': 'Denied',
 	'setupPanel.label': 'Workflow setup',
 	'setupPanel.back': 'Back to setup checklist',
 	'setupPanel.complete': 'Complete',
@@ -230,6 +236,7 @@ export default {
 	'collapsiblePanel.expand': 'Expand',
 	'collapsiblePanel.dragToReorder': 'Drag to reorder',
 	'collapsiblePanel.delete': 'Delete',
+	'combobox.loading': 'Searching',
 	'combobox.clearSelection': 'Clear selection',
 	'combobox.showPopup': 'Show popup',
 	'combobox.placeholder': 'Select an option',
@@ -256,7 +263,7 @@ export default {
 	'markdownEditor.expand': 'Expand editor',
 	'markdownEditor.collapse': 'Collapse editor',
 	'markdownEditor.openExpandedView': 'Expand editor',
-	'markdownEditor.closeExpandedView': 'Collapse editor',
+	'markdownEditor.closeExpandedView': 'Close editor',
 	'markdownEditor.expandedViewTitle': 'Markdown editor',
 	'markdownEditor.linkDialogTitle': 'Add link',
 	'markdownEditor.linkUrl': 'Link URL',

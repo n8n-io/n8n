@@ -1,4 +1,5 @@
 import type {
+	AgentActor,
 	AgentIntegrationConfig,
 	SlackAgentAppManifest,
 	SlackApiErrorMeta,
@@ -12,9 +13,8 @@ import { Cipher } from 'n8n-core';
 import { jsonParse } from 'n8n-workflow';
 
 import { CredentialsService } from '@/credentials/credentials.service';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { CacheService } from '@/services/cache/cache.service';
-import { UrlService } from '@n8n/backend-services';
+import { BadRequestError } from '@n8n/errors';
+import { CacheService, UrlService } from '@n8n/backend-services';
 
 import { getAgentOrThrow } from '../../../utils/get-agent-or-throw';
 import {
@@ -204,6 +204,7 @@ export class SlackMethodsService {
 		user: User,
 		accessToken: string,
 		session: SlackAppSetupSession,
+		modifiedBy?: AgentActor,
 	): Promise<string> {
 		const credentialData = {
 			name: this.credentialName(session.teamName, agent.name),
@@ -211,6 +212,7 @@ export class SlackMethodsService {
 			data: {
 				accessToken,
 				signatureSecret: session.signingSecret,
+				agentId: session.agentId,
 				...(session.managerCredentialId
 					? {
 							managedAppId: session.appId,
@@ -234,6 +236,7 @@ export class SlackMethodsService {
 				agent,
 				user,
 				integration,
+				...(modifiedBy ? { modifiedBy } : {}),
 			});
 		} catch (error) {
 			await this.deleteUnreferencedCredential(agent.id, credential.id, user);
@@ -295,7 +298,7 @@ export class SlackMethodsService {
 		}
 	}
 
-	private webhookUrl(projectId: string, agentId: string): string {
+	webhookUrl(projectId: string, agentId: string): string {
 		return `${this.urlService.getWebhookBaseUrl()}rest/projects/${projectId}/agents/v2/${agentId}/webhooks/slack`;
 	}
 

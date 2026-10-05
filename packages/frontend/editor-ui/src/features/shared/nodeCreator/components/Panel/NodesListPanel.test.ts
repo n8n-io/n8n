@@ -5,13 +5,31 @@ import { screen, fireEvent, waitFor } from '@testing-library/vue';
 import type { INodeTypeDescription } from 'n8n-workflow';
 import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
 import { useViewStacks } from '@/features/shared/nodeCreator/composables/useViewStacks';
-import { mockRestrictedNodeTypes } from '@/__tests__/mocks';
-import { mockSimplifiedNodeType } from '../../__tests__/utils';
+import { mockRestrictedNodeTypes } from '@n8n/frontend-module-type-availability-policies/__tests__/mocks';
+import { mockNodeTypeDescription } from '@/__tests__/mocks';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { mockActionCreateElement, mockSimplifiedNodeType } from '../../__tests__/utils';
 import NodesListPanel from './NodesListPanel.vue';
 import {
-	REGULAR_NODE_CREATOR_VIEW,
+	AI_CATEGORY_AGENTS,
+	AI_CATEGORY_LANGUAGE_MODELS,
+	AI_CATEGORY_ROOT_NODES,
+	AI_NODE_CREATOR_VIEW,
+	AI_SUBCATEGORY,
+	CORE_NODES_CATEGORY,
 	DEBOUNCE_TIME,
+	FLOWS_CONTROL_SUBCATEGORY,
+	HELPERS_SUBCATEGORY,
+	HITL_SUBCATEGORY,
+	HUMAN_IN_THE_LOOP_CATEGORY,
+	TRANSFORM_DATA_SUBCATEGORY,
+	OTHER_TRIGGER_NODES_SUBCATEGORY,
+	REGULAR_NODE_CREATOR_VIEW,
+	SCHEDULE_TRIGGER_NODE_TYPE,
+	CUSTOM_API_CALL_KEY,
+	HTTP_REQUEST_NODE_TYPE,
 	NODE_CREATOR_OPEN_SOURCES,
+	TRIGGER_NODE_CREATOR_VIEW,
 } from '@/app/constants';
 import type { ActionTypeDescription, NodeFilterType, SimplifiedNodeType } from '@/Interface';
 import { createComponentRenderer } from '@/__tests__/render';
@@ -92,6 +110,7 @@ describe('NodesListPanel', () => {
 			const { container } = getWrapperComponent(() => {
 				const { setMergeNodes } = useNodeCreatorStore();
 
+				vi.spyOn(useNodeTypesStore(), 'isNodeTypeUnavailable').mockReturnValue(false);
 				setMergeNodes([...mockedTriggerNodes, ...mockedRegularNodes]);
 				return {};
 			});
@@ -115,7 +134,20 @@ describe('NodesListPanel', () => {
 			await fireEvent.click(container.querySelector('.backButton')!);
 			await nextTick();
 
-			expect(screen.queryAllByTestId('item-iterator-item')).toHaveLength(10);
+			expect(screen.queryAllByTestId('item-iterator-item')).toHaveLength(9);
+		});
+
+		it('should hide a listed trigger whose node type is not loaded', async () => {
+			getWrapperComponent(() => {
+				vi.spyOn(useNodeTypesStore(), 'isNodeTypeUnavailable').mockImplementation(
+					(type) => type === SCHEDULE_TRIGGER_NODE_TYPE,
+				);
+				return {};
+			});
+			await nextTick();
+
+			expect(screen.queryByText('On a schedule')).not.toBeInTheDocument();
+			expect(screen.getByText('Trigger manually')).toBeInTheDocument();
 		});
 
 		it('should render regular nodes', async () => {
@@ -125,6 +157,20 @@ describe('NodesListPanel', () => {
 						name: `Node ${n}`,
 						displayName: `Node ${n}`,
 						group: ['input'],
+					}) as INodeTypeDescription,
+			);
+			const categorizedNodes = [
+				[CORE_NODES_CATEGORY, TRANSFORM_DATA_SUBCATEGORY],
+				[CORE_NODES_CATEGORY, FLOWS_CONTROL_SUBCATEGORY],
+				[CORE_NODES_CATEGORY, HELPERS_SUBCATEGORY],
+				[HUMAN_IN_THE_LOOP_CATEGORY, HITL_SUBCATEGORY],
+			].map(
+				([category, subcategory]) =>
+					mockSimplifiedNodeType({
+						name: subcategory,
+						displayName: subcategory,
+						group: ['input'],
+						codex: { categories: [category], subcategories: { [category]: [subcategory] } },
 					}) as INodeTypeDescription,
 			);
 
@@ -145,6 +191,7 @@ describe('NodesListPanel', () => {
 				},
 				setup(props) {
 					const { setMergeNodes, setSelectedView } = useNodeCreatorStore();
+					vi.spyOn(useNodeTypesStore(), 'isNodeTypeUnavailable').mockReturnValue(false);
 
 					watch(
 						() => props.nodeTypes,
@@ -169,14 +216,24 @@ describe('NodesListPanel', () => {
 			renderComponent({
 				pinia: createPinia(),
 				props: {
-					nodeTypes: mockedNodes,
+					nodeTypes: [...mockedNodes, ...categorizedNodes],
 					selectedView: REGULAR_NODE_CREATOR_VIEW,
 				},
 			});
 
 			await nextTick();
 			expect(screen.getByText('What happens next?')).toBeInTheDocument();
-			expect(screen.queryAllByTestId('item-iterator-item')).toHaveLength(7);
+			expect(screen.queryAllByTestId('item-iterator-item').map((item) => item.textContent)).toEqual(
+				[
+					expect.stringContaining('Action in an app'),
+					expect.stringContaining('Data transformation'),
+					expect.stringContaining('Flow'),
+					expect.stringContaining('Core'),
+					expect.stringContaining('Human review'),
+					expect.stringContaining('Add another trigger'),
+					expect.stringContaining('Group'),
+				],
+			);
 
 			screen.getByText('Action in an app').click();
 			await nextTick();
@@ -309,8 +366,8 @@ describe('NodesListPanel', () => {
 				target: { value: '    Node 1' },
 			});
 
-			await waitFor(() => expect(screen.queryAllByTestId('item-iterator-item')).toHaveLength(1));
-			expect(screen.queryByText('Node 1')).toBeInTheDocument();
+			await waitFor(() => expect(screen.queryByText('Node 1')).toBeInTheDocument());
+			expect(screen.queryAllByTestId('item-iterator-item')).toHaveLength(1);
 
 			expect(screen.getByTestId('node-creator-search-bar')).toHaveValue('Node 1');
 		});
@@ -372,7 +429,10 @@ describe('NodesListPanel', () => {
 				const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(''));
 				workflowDocumentStore.setNodes([source]);
 
+				const appNode = mockNodeTypeDescription({ name: 'appNode', displayName: 'App Node' });
+				useNodeTypesStore().setNodeTypes([appNode]);
 				const nodeCreatorStore = useNodeCreatorStore();
+				nodeCreatorStore.setMergeNodes([appNode]);
 				nodeCreatorStore.openingContext = 'replacement';
 				nodeCreatorStore.setSelectedView(REGULAR_NODE_CREATOR_VIEW);
 			});
@@ -785,6 +845,139 @@ describe('NodesListPanel', () => {
 
 			// Context should still be 'replacement' after search
 			expect(nodeCreatorStore.openingContext).toBe('replacement');
+		});
+	});
+
+	describe('custom API call hint', () => {
+		it.each([
+			[false, true],
+			[true, false],
+		])(
+			'should set hint visibility when HTTP Request unavailable is %s (visible: %s)',
+			async (httpUnavailable, hintVisible) => {
+				getWrapperComponent(() => {
+					vi.spyOn(useNodeTypesStore(), 'isNodeTypeUnavailable').mockImplementation(
+						(type) => httpUnavailable && type === HTTP_REQUEST_NODE_TYPE,
+					);
+					return {};
+				});
+				await nextTick();
+
+				useViewStacks().pushViewStack({
+					title: 'Slack',
+					subcategory: 'Slack',
+					mode: 'actions',
+					hasSearch: true,
+					items: [
+						mockActionCreateElement('Slack'),
+						mockActionCreateElement('Slack', { actionKey: CUSTOM_API_CALL_KEY }),
+					],
+				});
+				await nextTick();
+
+				expect(screen.queryByText(/custom Slack API call/) !== null).toBe(hintVisible);
+			},
+		);
+	});
+
+	describe('entries without nodes', () => {
+		const otherTrigger = mockNodeTypeDescription({
+			name: 'otherTrigger',
+			displayName: 'Other Trigger',
+			group: ['trigger'],
+			codex: {
+				categories: [CORE_NODES_CATEGORY],
+				subcategories: { [CORE_NODES_CATEGORY]: [OTHER_TRIGGER_NODES_SUBCATEGORY] },
+			},
+		});
+		const agent = mockNodeTypeDescription({
+			name: 'agent',
+			displayName: 'Agent',
+			codex: { categories: [AI_SUBCATEGORY], subcategories: { AI: [AI_CATEGORY_AGENTS] } },
+		});
+		const languageModel = mockNodeTypeDescription({
+			name: 'languageModel',
+			displayName: 'Language Model',
+			codex: { categories: [AI_SUBCATEGORY], subcategories: { AI: [AI_CATEGORY_LANGUAGE_MODELS] } },
+		});
+		const unlistedAiNode = mockNodeTypeDescription({
+			name: 'unlistedAiNode',
+			displayName: 'Unlisted AI Node',
+			codex: { categories: [AI_SUBCATEGORY], subcategories: { AI: [AI_CATEGORY_ROOT_NODES] } },
+		});
+
+		function renderView(
+			view: NodeFilterType,
+			nodes: INodeTypeDescription[],
+			restricted: Record<string, 'instance'> = {},
+		) {
+			getWrapperComponent(() => {
+				const { setMergeNodes, setSelectedView } = useNodeCreatorStore();
+				useNodeTypesStore().setNodeTypes(nodes);
+				mockRestrictedNodeTypes(restricted);
+				setMergeNodes(nodes);
+				setSelectedView(view);
+				return {};
+			});
+			return nextTick();
+		}
+
+		it('should not list a subcategory that contains no nodes', async () => {
+			await renderView(TRIGGER_NODE_CREATOR_VIEW, []);
+
+			expect(screen.queryByText('Other ways...')).not.toBeInTheDocument();
+		});
+
+		it('should list a subcategory that contains a node', async () => {
+			await renderView(TRIGGER_NODE_CREATOR_VIEW, [otherTrigger]);
+
+			expect(screen.getByText('Other ways...')).toBeInTheDocument();
+		});
+
+		it('should not list a view whose subcategories contain no nodes', async () => {
+			await renderView(AI_NODE_CREATOR_VIEW, [agent]);
+
+			expect(screen.getByText('Agent')).toBeInTheDocument();
+			expect(screen.queryByText('Other AI Nodes')).not.toBeInTheDocument();
+		});
+
+		it('should not list a view inside a section that contains no nodes', async () => {
+			await renderView(REGULAR_NODE_CREATOR_VIEW, [agent]);
+
+			expect(screen.queryByText('Add another trigger')).not.toBeInTheDocument();
+		});
+
+		it('should list a view inside a section that contains a node', async () => {
+			const trigger = mockSimplifiedNodeType({
+				name: 'otherTrigger',
+				group: ['trigger'],
+				codex: {
+					categories: [CORE_NODES_CATEGORY],
+					subcategories: { [CORE_NODES_CATEGORY]: [OTHER_TRIGGER_NODES_SUBCATEGORY] },
+				},
+			}) as INodeTypeDescription;
+			await renderView(REGULAR_NODE_CREATOR_VIEW, [agent, trigger]);
+
+			expect(screen.getByText('Add another trigger')).toBeInTheDocument();
+		});
+
+		it('should list a view when one of its subcategories contains a node', async () => {
+			await renderView(AI_NODE_CREATOR_VIEW, [agent, languageModel]);
+
+			expect(screen.getByText('Other AI Nodes')).toBeInTheDocument();
+		});
+
+		it('should not count links as content', async () => {
+			await renderView(REGULAR_NODE_CREATOR_VIEW, [unlistedAiNode]);
+
+			expect(screen.getByText('What happens next?')).toBeInTheDocument();
+			expect(screen.queryByText('AI')).not.toBeInTheDocument();
+		});
+
+		it('should not count restricted nodes as content', async () => {
+			await renderView(TRIGGER_NODE_CREATOR_VIEW, [otherTrigger], { otherTrigger: 'instance' });
+
+			expect(screen.queryByText('Other ways...')).not.toBeInTheDocument();
 		});
 	});
 

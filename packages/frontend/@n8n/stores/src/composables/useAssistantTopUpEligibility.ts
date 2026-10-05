@@ -1,17 +1,15 @@
-import { useNow } from '@vueuse/core';
 import { computed } from 'vue';
 
 import { useCloudPlanStore } from '../cloudPlan.store';
 import { useSettingsStore } from '../settings.store';
 import { useUsersStore } from '../users.store';
+import { ASSISTANT_CLOUD_UBB_GA_DATE, useCloudUbbActive } from './useCloudUbbActive';
 
 /**
- * GA date for the assistant Cloud UBB top-up flow. After this instant every
- * cloud deployment gets the top-up destination without a per-instance license
- * flag; before it, the flow is opt-in through
- * `feat:aiAssistantCloudUbbEntitlement`.
+ * @deprecated Prefer importing {@link ASSISTANT_CLOUD_UBB_GA_DATE} from
+ * `useCloudUbbActive`. Re-exported here so existing callers keep resolving.
  */
-export const ASSISTANT_TOP_UP_GA_DATE = new Date('2026-10-01T00:00:00Z');
+export const ASSISTANT_TOP_UP_GA_DATE = ASSISTANT_CLOUD_UBB_GA_DATE;
 
 /**
  * Whether a click on an assistant credit CTA should route to the Cloud
@@ -23,18 +21,14 @@ export function useAssistantTopUpEligibility() {
 	const settingsStore = useSettingsStore();
 	const usersStore = useUsersStore();
 	const cloudPlanStore = useCloudPlanStore();
-	// Reactive clock so a tab kept open across the GA cutoff re-computes eligibility on its own.
-	// One-minute polling is enough for a date-based flip and keeps the ticker cheap.
-	const now = useNow({ interval: 60_000 });
+	const { isActive: isCloudUbbActive } = useCloudUbbActive();
 
 	const isEligible = computed(() => {
 		if (!settingsStore.isCloudDeployment) return false;
 		if (!usersStore.isInstanceOwner) return false;
 		if (cloudPlanStore.userIsTrialing) return false;
 		if (settingsStore.moduleSettings?.['instance-ai']?.activationCapped) return false;
-
-		const pastGa = now.value.getTime() >= ASSISTANT_TOP_UP_GA_DATE.getTime();
-		return pastGa || settingsStore.isAiAssistantCloudUbbEnabled;
+		return isCloudUbbActive.value;
 	});
 
 	return { isEligible };

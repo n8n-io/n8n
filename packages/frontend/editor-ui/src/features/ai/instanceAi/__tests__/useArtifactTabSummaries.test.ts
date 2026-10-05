@@ -95,11 +95,13 @@ describe('useArtifactTabSummaries', () => {
 		expect(getSummary(workflowTab('wf-1'))).toEqual({
 			updatedAt: UPDATED_AT,
 			type: 'workflow',
+			name: 'Workflow wf-1',
 			published: true,
 		});
 		expect(getSummary(workflowTab('wf-2'))).toEqual({
 			updatedAt: UPDATED_AT,
 			type: 'workflow',
+			name: 'Workflow wf-2',
 			published: false,
 		});
 	});
@@ -217,10 +219,34 @@ describe('useArtifactTabSummaries', () => {
 		// The count includes the system id column, like the data table cards.
 		expect(getSummary(dataTableTab('dt-1'))).toEqual({
 			type: 'data-table',
+			name: 'Table dt-1',
 			updatedAt: UPDATED_AT,
 			columnCount: 4,
 		});
 		expect(getSummary(dataTableTab('dt-2'))).toBeNull();
+	});
+
+	it('uses the loaded name only to correct a stale name from the page load', async () => {
+		mocks.searchWorkflows.mockResolvedValue([{ ...workflowRow('wf-1'), name: 'Current name' }]);
+		const { displayName } = setup([{ ...workflowTab('wf-1'), name: 'Stale name' }]);
+		await flushPromises();
+
+		expect(displayName({ ...workflowTab('wf-1'), name: 'Stale name' })).toBe('Current name');
+	});
+
+	it('shows a rename from this session even when the refresh returns the old name', async () => {
+		mocks.searchWorkflows.mockResolvedValue([{ ...workflowRow('wf-1'), name: 'Name 2' }]);
+		const { tabs, displayName } = setup([{ ...workflowTab('wf-1'), name: 'Name 2' }]);
+		await flushPromises();
+		mocks.searchWorkflows.mockClear();
+
+		// The refresh runs before the rename is saved, so the server still has the old name.
+		tabs.value = [{ ...workflowTab('wf-1'), name: 'Name 3' }];
+		await nextTick();
+		await flushPromises();
+
+		expect(mocks.searchWorkflows).toHaveBeenCalledWith(expect.objectContaining({ ids: ['wf-1'] }));
+		expect(displayName({ ...workflowTab('wf-1'), name: 'Name 3' })).toBe('Name 3');
 	});
 
 	it('does not load details for agent tabs', async () => {

@@ -24,7 +24,14 @@ export type SystemTaskRunResult = 'success' | 'failure' | 'aborted';
  * after the run signal had already aborted during stepdown, or the process
  * slept through it and the timer coalesced it into one late fire.
  */
-export type SystemTaskSkipReason = 'overlap' | 'provisioned_elsewhere' | 'aborted' | 'coalesced';
+export const SYSTEM_TASK_SKIP_REASONS = [
+	'overlap',
+	'provisioned_elsewhere',
+	'aborted',
+	'coalesced',
+] as const;
+
+export type SystemTaskSkipReason = (typeof SYSTEM_TASK_SKIP_REASONS)[number];
 
 export type SystemTaskMetricsEventMap = {
 	'system-task-routed': {

@@ -18,8 +18,8 @@ import type { MockInstance, Mocked } from 'vitest';
 import type { MockProxy } from 'vitest-mock-extended';
 import { mock } from 'vitest-mock-extended';
 
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import type { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
+import { ForbiddenError } from '@n8n/errors';
+import type { ProjectScopeService, WorkflowSharingService } from '@n8n/backend-services';
 import { createMember } from '@test-integration/db/users';
 
 import { createCompactedInsightsEvent } from '../database/entities/__tests__/db-utils';
@@ -69,6 +69,7 @@ describe('InsightsService (Integration)', () => {
 				instanceSettings,
 				mockLogger(),
 				mock<WorkflowSharingService>(),
+				mock<ProjectScopeService>(),
 			);
 
 			// Get the real service from the container and spy on it
@@ -1561,6 +1562,62 @@ describe('InsightsService (Integration)', () => {
 		});
 	});
 
+	describe('getDailyExecutionTotals', () => {
+		test('sums succeeded and failed executions of all workflows for each UTC day', async () => {
+			const insightsService = Container.get(InsightsService);
+			const workflow1 = await createWorkflow({}, await createTeamProject());
+			const workflow2 = await createWorkflow({}, await createTeamProject());
+			const at = (iso: string) => DateTime.fromISO(iso, { zone: 'utc' });
+
+			await createCompactedInsightsEvent(workflow1, {
+				type: 'success',
+				value: 3,
+				periodUnit: 'day',
+				periodStart: at('2025-06-10'),
+			});
+			await createCompactedInsightsEvent(workflow2, {
+				type: 'failure',
+				value: 2,
+				periodUnit: 'day',
+				periodStart: at('2025-06-10'),
+			});
+			// Other types on the same day do not count as executions.
+			for (const type of ['runtime_ms', 'time_saved_min', 'billable'] as const) {
+				await createCompactedInsightsEvent(workflow1, {
+					type,
+					value: 100,
+					periodUnit: 'day',
+					periodStart: at('2025-06-10'),
+				});
+			}
+			// Hourly rows on both sides of the UTC day boundary.
+			await createCompactedInsightsEvent(workflow1, {
+				type: 'success',
+				value: 1,
+				periodUnit: 'hour',
+				periodStart: at('2025-06-10T23:00:00'),
+			});
+			await createCompactedInsightsEvent(workflow2, {
+				type: 'failure',
+				value: 4,
+				periodUnit: 'hour',
+				periodStart: at('2025-06-11T00:00:00'),
+			});
+
+			const totals = await insightsService.getDailyExecutionTotals({
+				startDate: at('2025-06-10').toJSDate(),
+				endDate: at('2025-06-11').toJSDate(),
+			});
+
+			expect(totals).toEqual(
+				new Map([
+					['2025-06-10', 6],
+					['2025-06-11', 4],
+				]),
+			);
+		});
+	});
+
 	describe('validateDateFiltersLicense', () => {
 		let licenseStateMock: Mocked<LicenseState>;
 		let insightsService: InsightsService;
@@ -1573,6 +1630,7 @@ describe('InsightsService (Integration)', () => {
 				mock<InstanceSettings>(),
 				mockLogger(),
 				mock<WorkflowSharingService>(),
+				mock<ProjectScopeService>(),
 			);
 		});
 
@@ -1672,6 +1730,7 @@ describe('InsightsService (Integration)', () => {
 				mock<InstanceSettings>({ instanceType: 'main' }),
 				mockLogger(),
 				mock<WorkflowSharingService>(),
+				mock<ProjectScopeService>(),
 			);
 		});
 

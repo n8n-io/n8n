@@ -1,6 +1,6 @@
 import type { Logger } from '@n8n/backend-common';
 import type { OutboundHttp } from '@n8n/backend-network';
-import { diag } from '@opentelemetry/api';
+import { diag, trace } from '@opentelemetry/api';
 import { OTLPTraceExporter as OTLPGrpcTraceExporter } from '@opentelemetry/exporter-trace-otlp-grpc';
 import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-proto';
 import { BasicTracerProvider } from '@opentelemetry/sdk-trace-base';
@@ -13,7 +13,6 @@ import type { OtelConfig } from '../otel.config';
 import { ATTR, OTEL_TEST_SPAN_NAME } from '../otel.constants';
 import { OtelService } from '../otel.service';
 
-const register = vi.fn();
 const shutdown = vi.fn();
 const providerGetTracer = vi.fn();
 
@@ -115,6 +114,7 @@ vi.mock('@grpc/grpc-js', () => ({
 }));
 
 vi.mock('@opentelemetry/sdk-trace-base', () => ({
+	AlwaysOffSampler: vi.fn(),
 	BatchSpanProcessor: vi.fn(),
 	BasicTracerProvider: vi.fn().mockImplementation(function (config: {
 		spanProcessors?: unknown[];
@@ -123,7 +123,7 @@ vi.mock('@opentelemetry/sdk-trace-base', () => ({
 		mockSpanEnd.mockImplementation(() => {
 			for (const processor of processors) processor.onEnd({ name: 'n8n.test_trace' });
 		});
-		mockStartSpan.mockReturnValue({ end: mockSpanEnd });
+		mockStartSpan.mockReturnValue({ end: mockSpanEnd, isRecording: () => false });
 		mockGetTracer.mockReturnValue({ startSpan: mockStartSpan });
 		return { getTracer: mockGetTracer, shutdown: mockProviderShutdown };
 	}),
@@ -142,7 +142,7 @@ vi.mock('@opentelemetry/sdk-trace-node', () => ({
 		return {};
 	}),
 	NodeTracerProvider: vi.fn().mockImplementation(function () {
-		return { register, shutdown, getTracer: providerGetTracer };
+		return { shutdown, getTracer: providerGetTracer };
 	}),
 }));
 
@@ -196,6 +196,7 @@ describe('OtelService', () => {
 		);
 		service = new OtelService(otelSettingsService, instanceSettings, logger, outboundHttp);
 	});
+	afterEach(() => vi.restoreAllMocks());
 
 	describe('init', () => {
 		it('does not start a tracer provider when enabled is false', async () => {
@@ -484,7 +485,7 @@ describe('OtelService', () => {
 
 		it('shuts the provider down when registering it with the global API throws', async () => {
 			otelSettingsService.loadSettings.mockResolvedValue(enabledSettings);
-			register.mockImplementationOnce(() => {
+			vi.spyOn(trace, 'setGlobalTracerProvider').mockImplementationOnce(() => {
 				throw new Error('provider registration failed');
 			});
 

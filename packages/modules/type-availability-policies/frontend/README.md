@@ -13,8 +13,9 @@ in a dev instance with `N8N_ENABLED_MODULES=type-availability-policies`.
 `useTypeAvailabilityPoliciesStore` answers whether a project may use a node type. The store is
 passive: it does not watch the route or the active project, because the projects store lives in the
 shell. The shell calls `fetchForProject(projectId)` when a workflow opens or the active project
-changes. When the module is off, the request fails, a request is in flight for a different project,
-or nothing has loaded yet, every lookup reports "available".
+changes, and `reload()` after a community node install, because the server answers only for the
+node types it has loaded. When the module is off, the request fails, a request is in flight for a
+different project, or nothing has loaded yet, every lookup reports "available".
 
 ```bash
 pnpm turbo typecheck lint test --filter=@n8n/frontend-module-type-availability-policies
@@ -26,6 +27,8 @@ and on a cold tree turbo builds them first.
 `useNodeTypeRestriction(type)` turns the store answer into `isRestricted` and `restrictionScope`
 for one node type. `isNodeTypeRestricted(type)` is the plain predicate for a list of nodes. The
 shell reads restriction through these and never through the store directly.
+
+Tests stub the store through `mockRestrictedNodeTypes` from the module's `__tests__/mocks`.
 
 `ContactInstanceAdminModal` lists the instance owners with a mail link. The surfaces below render it
 as a sibling of their own content, so a popover that closes never unmounts the open dialog.

@@ -3,15 +3,14 @@ import {
 	ImportPackageRequestDto,
 	ImportPackageSelectionRequestDto,
 } from '@n8n/api-types';
+import { EventService } from '@n8n/backend-services';
 import type { AuthenticatedRequest } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { ApiKeyScope } from '@n8n/permissions';
 import type { Response } from 'express';
 import { UserError } from 'n8n-workflow';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { EventService } from '@/events/event.service';
+import { BadRequestError, ForbiddenError } from '@n8n/errors';
 import {
 	PackageEntityAccessDeniedError,
 	PackageEntityNotFoundError,
@@ -274,6 +273,7 @@ const n8nPackagesHandlers: N8nPackagesHandlers = {
 						apiKeyScopes: req.tokenGrant?.apiKeyScopes,
 						workflowConflictPolicy: payload.data.workflowConflictPolicy,
 						workflowIdPolicy: payload.data.workflowIdPolicy,
+						overwriteDeletionPolicy: payload.data.overwriteDeletionPolicy,
 						packageBuffer: packageFile.buffer,
 					},
 					{

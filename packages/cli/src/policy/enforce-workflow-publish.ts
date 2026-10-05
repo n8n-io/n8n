@@ -2,6 +2,7 @@ import type { PolicedWorkflow } from '@n8n/decorators';
 
 import type { OwnershipService } from '@/services/ownership.service';
 
+import type { PolicyActor } from './policy-enforcement-backend';
 import type { PolicyEnforcementService } from './policy-enforcement.service';
 
 /**
@@ -20,10 +21,11 @@ export async function enforceWorkflowPublishPolicy(
 	policyEnforcementService: PolicyEnforcementService,
 	ownershipService: OwnershipService,
 	workflow: PolicedWorkflow & { id: string },
+	actor: PolicyActor,
 ): Promise<void> {
 	if (!policyEnforcementService.hasChecksFor('workflowPublish')) return;
 
 	const project = await ownershipService.getWorkflowProjectCached(workflow.id);
 
-	await policyEnforcementService.enforceWorkflowPublish({ workflow, projectId: project.id });
+	await policyEnforcementService.enforceWorkflowPublish({ workflow, projectId: project.id }, actor);
 }

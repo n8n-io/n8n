@@ -185,7 +185,7 @@ export function isAgentConfigBlank(config: AgentJsonConfig): boolean {
 /**
  * Returns the config with the template written onto it, or `null` when the
  * agent already has content (instructions or tools). `name` is only replaced
- * while it still equals `defaultName` (the seeded "New Agent"), so a renamed
+ * while it still equals `defaultName` (the seeded "Untitled"), so a renamed
  * agent keeps its name. The template icon and gradient replace the
  * personalisation. `model` and every other field are preserved.
  */

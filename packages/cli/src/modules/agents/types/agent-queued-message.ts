@@ -15,9 +15,11 @@ interface QueuedMessageInput {
 	attachments?: StoredAttachmentRef[];
 }
 
-export interface QueuedPreviewMessage extends QueuedMessageInput {
-	kind: 'preview';
+/** A message from an n8n user. Preview runs the draft agent. n8n Chat runs the published agent. */
+export interface QueuedUserChatMessage extends QueuedMessageInput {
+	kind: 'preview' | 'n8n_chat';
 	userId: string;
+	messageId?: string;
 }
 
 export interface QueuedIntegrationMessage extends QueuedMessageInput {
@@ -33,7 +35,20 @@ export interface QueuedIntegrationMessage extends QueuedMessageInput {
 	slackThreadContext?: BridgeExecutionContext['slackThreadContext'];
 }
 
-export type AgentQueuedMessage = QueuedPreviewMessage | QueuedIntegrationMessage;
+export type AgentQueuedMessage = QueuedUserChatMessage | QueuedIntegrationMessage;
+
+/** Queue storage keeps dispatch data. Conversation input belongs to the referenced message. */
+export type AgentQueueDispatch =
+	| { kind: QueuedUserChatMessage['kind'] }
+	| (Omit<
+			QueuedIntegrationMessage,
+			keyof QueuedMessageInput | 'modelMessage' | 'author' | 'platformThreadId' | 'messageContext'
+	  > & {
+			messageContext: Omit<
+				IntegrationMessageContext,
+				'platform' | 'integrationConnectionId' | 'messageId'
+			>;
+	  });
 
 /** A committed execution reservation. Runtime preparation must reuse it. */
 export interface AgentExecutionAdmission {

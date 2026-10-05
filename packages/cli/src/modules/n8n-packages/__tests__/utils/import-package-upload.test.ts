@@ -3,7 +3,7 @@ import { GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import multer from 'multer';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { BadRequestError } from '@n8n/errors';
 
 import {
 	createN8nPackageMulterOptions,

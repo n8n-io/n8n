@@ -297,12 +297,12 @@ export function flattenCreateElements(items: INodeCreateElement[]): INodeCreateE
 	return items.map((item) => (item.type === 'section' ? item.children : item)).flat();
 }
 /** Restriction lookups for node creator items, with credential-only nodes following HTTP Request. */
-export function getNodeItemRestriction(nodeTypeName: string): NodeTypeAvailability | null {
-	return getNodeTypeRestriction(toPolicyNodeType(nodeTypeName));
+export function getNodeItemRestriction(nodeTypeName: string): NodeTypeAvailability | undefined {
+	return getNodeTypeRestriction(toPolicyNodeType(nodeTypeName)) ?? undefined;
 }
 
 export function isNodeItemRestricted(nodeTypeName: string): boolean {
-	return getNodeItemRestriction(nodeTypeName) !== null;
+	return getNodeItemRestriction(nodeTypeName) !== undefined;
 }
 
 type IsRestricted = (nodeTypeName: string) => boolean;

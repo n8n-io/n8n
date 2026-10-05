@@ -1,4 +1,5 @@
 import { LicenseState } from '@n8n/backend-common';
+import { EventService } from '@n8n/backend-services';
 import type { BooleanLicenseFeature } from '@n8n/constants';
 import { UNLIMITED_LICENSE_QUOTA } from '@n8n/constants';
 import type { AuthenticatedRequest } from '@n8n/db';
@@ -11,8 +12,7 @@ import { z } from 'zod';
 import type { ZodTypeAny } from 'zod';
 
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { EventService } from '@/events/event.service';
+import { BadRequestError } from '@n8n/errors';
 import { License } from '@/license';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { USER_QUOTA_FORBIDDEN_MESSAGE } from '@/public-api/constants';

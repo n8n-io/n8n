@@ -25,9 +25,70 @@ export class SharedWorkflowRepository extends BaseRepository<SharedWorkflow> {
 		super(SharedWorkflow, dataSource.manager, transactionRunner);
 	}
 
+	async findWorkflowIdsForGlobalAccess(projectId?: string): Promise<string[]> {
+		const rows = await this.find({
+			select: ['workflowId'],
+			...(projectId ? { where: { projectId } } : {}),
+		});
+		return rows.map(({ workflowId }) => workflowId);
+	}
+
+	async findWorkflowIdsAccessibleToUser(
+		userId: string,
+		workflowRoleSlugs: string[],
+		projectRoleSlugs: string[],
+	): Promise<string[]> {
+		const rows = await this.find({
+			where: {
+				role: In(workflowRoleSlugs),
+				project: {
+					projectRelations: {
+						userId,
+						role: { slug: In(projectRoleSlugs) },
+					},
+				},
+			},
+			select: ['workflowId'],
+		});
+		return rows.map(({ workflowId }) => workflowId);
+	}
+
+	async findWorkflowIdsSharedWithUser(userId: string): Promise<string[]> {
+		const rows = await this.find({
+			select: ['workflowId'],
+			where: {
+				role: 'workflow:editor',
+				project: {
+					projectRelations: {
+						userId,
+						role: { slug: PROJECT_OWNER_ROLE_SLUG },
+					},
+				},
+			},
+		});
+		return rows.map(({ workflowId }) => workflowId);
+	}
+
+	async findOwnedWorkflowIdsInPersonalProject(userId: string): Promise<string[]> {
+		const rows = await this.find({
+			select: ['workflowId'],
+			where: {
+				role: 'workflow:owner',
+				project: {
+					projectRelations: {
+						userId,
+						role: { slug: PROJECT_OWNER_ROLE_SLUG },
+					},
+				},
+			},
+		});
+		return rows.map(({ workflowId }) => workflowId);
+	}
+
 	async findOwnedWorkflowRemovalCandidates(
 		projectId: string,
 		workflowIds: string[],
+		options: { includeArchived?: boolean } = {},
 	): Promise<Array<{ id: string; name: string; parentFolderId: string | null }>> {
 		const candidates: Array<{ id: string; name: string; parentFolderId: string | null }> = [];
 
@@ -37,7 +98,7 @@ export class SharedWorkflowRepository extends BaseRepository<SharedWorkflow> {
 					projectId,
 					workflowId: In(chunk),
 					role: 'workflow:owner',
-					workflow: { isArchived: false },
+					...(options.includeArchived ? {} : { workflow: { isArchived: false } }),
 				},
 				relations: { workflow: { parentFolder: true } },
 				select: {
@@ -83,6 +144,18 @@ export class SharedWorkflowRepository extends BaseRepository<SharedWorkflow> {
 		}
 
 		return found;
+	}
+
+	/** IDs of the workflows owned by any of the given projects. */
+	async findOwnedWorkflowIdsByProjects(projectIds: string[]): Promise<string[]> {
+		if (projectIds.length === 0) return [];
+
+		const rows = await this.find({
+			select: { workflowId: true },
+			where: { projectId: In(projectIds), role: 'workflow:owner' },
+		});
+
+		return rows.map(({ workflowId }) => workflowId);
 	}
 
 	/** Owner project of each workflow, keyed by workflow id. */

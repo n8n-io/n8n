@@ -1,8 +1,7 @@
+import type { EventService } from '@n8n/backend-services';
 import type { SystemTask } from '@n8n/decorators';
 import { SpanStatus, type Span, type StartSpanOpts, type Tracing } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
-
-import type { EventService } from '@/events/event.service';
 
 import { observeSystemTaskRun } from '../system-task-run-observer';
 

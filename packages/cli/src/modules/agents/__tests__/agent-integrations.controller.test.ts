@@ -13,7 +13,7 @@ import type { ChatIntegrationService } from '../integrations/chat-integration.se
 import type { AgentChannelStatusRepository } from '../repositories/agent-channel-status.repository';
 import type { AgentRepository } from '../repositories/agent.repository';
 import type { CollaborationService } from '@/collaboration/collaboration.service';
-import { LockedError } from '@/errors/response-errors/locked.error';
+import { LockedError } from '@n8n/errors';
 import {
 	expectProjectScopedAgentRoutes,
 	getRoutesByHandlerName,
@@ -165,6 +165,29 @@ describe('AgentIntegrationsController integration management', () => {
 		expect(managementService.connect).toHaveBeenCalledWith(
 			expect.objectContaining({ agent, user, integration }),
 		);
+	});
+
+	it('delegates a credential-less n8n Chat connect', async () => {
+		const { controller, managementService, agentRepository } = makeController();
+		const integration = { type: 'n8n_chat', credentialId: '' } satisfies AgentIntegrationConfig;
+		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+		managementService.connect.mockResolvedValue({ integration, savedAgent: agent });
+
+		const result = await controller.connectIntegration(
+			{
+				params: { projectId: agent.projectId },
+				user,
+				body: integration,
+			} as never,
+			undefined as never,
+			agent.id,
+			integration as never,
+		);
+
+		expect(managementService.connect).toHaveBeenCalledWith(
+			expect.objectContaining({ agent, user, integration }),
+		);
+		expect(result).toEqual({ status: 'connected' });
 	});
 
 	it('reports configured when the saved agent is unpublished', async () => {

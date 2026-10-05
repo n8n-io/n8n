@@ -56,7 +56,13 @@ describe('production n8n Chat HTTP route', () => {
 		await Container.get(AgentRepository).update({ id: agentId }, { activeVersionId: versionId });
 	}
 
-	async function createThread(agentId: string, projectId: string, ownerId: string, source: string) {
+	async function createThread(
+		agentId: string,
+		projectId: string,
+		ownerId: string,
+		source: string,
+		accessScope: 'user' | 'project' = 'user',
+	) {
 		const threadRepository = Container.get(AgentExecutionThreadRepository);
 		const thread = await threadRepository.save(
 			threadRepository.create({
@@ -64,7 +70,7 @@ describe('production n8n Chat HTTP route', () => {
 				agentId,
 				agentName: 'Agent',
 				projectId,
-				accessScope: 'user',
+				accessScope,
 				ownerId,
 				sessionNumber: 1,
 			}),
@@ -161,6 +167,34 @@ describe('production n8n Chat HTTP route', () => {
 		]);
 		const detail = await server.authAgentFor(owner).get(`${sessionsUrl}/${thread.id}`).expect(200);
 		expect(detail.body.data.thread.canContinueInPreview).toBe(false);
+	});
+
+	it('scopes the production session list to the requesting user', async () => {
+		const owner = await createOwner();
+		const other = await createMember();
+		const { project, agent } = await createAgent(owner.id);
+		await linkUserToProject(other, project, 'project:editor');
+		await activateChat(agent.id);
+		const mine = await createThread(agent.id, project.id, owner.id, 'n8n_chat_production');
+		// A shared session stays visible to the whole project, so only `scope` filters it out.
+		const theirs = await createThread(
+			agent.id,
+			project.id,
+			other.id,
+			'n8n_chat_production',
+			'project',
+		);
+		const url = `/projects/${project.id}/agents/v2/${agent.id}/threads?origin=n8n_chat_production`;
+
+		const all = await server.authAgentFor(owner).get(url).expect(200);
+		expect(all.body.data.threads).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({ id: mine.thread.id }),
+				expect.objectContaining({ id: theirs.thread.id }),
+			]),
+		);
+		const scoped = await server.authAgentFor(owner).get(`${url}&scope=mine`).expect(200);
+		expect(scoped.body.data.threads).toEqual([expect.objectContaining({ id: mine.thread.id })]);
 	});
 
 	it('keeps another project member out of a private production session', async () => {

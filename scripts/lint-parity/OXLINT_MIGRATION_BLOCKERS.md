@@ -5,6 +5,8 @@ Oxlint version: 1.78.0
 
 This file is the working backlog for the ESLint to Oxlint migration. It focuses on rules that block an Oxlint-only lint command for many packages. `oxlint-gap.json` is the machine-readable source of truth for shared-layer parity.
 
+Oxlint configs are the executable policy for migrated packages. ESLint policy twins may remain temporarily for parity review, but migration tooling must also support packages that have removed them.
+
 ## Completion criteria
 
 A blocker is complete when all of these conditions are true:
@@ -26,7 +28,7 @@ These rules come from the shared base or backend layers. Resolve these first bec
 | P2 | `import/export` | A native rule exists, but it is still in the nursery category. | Run parity samples and enable it after it becomes stable. |
 | P3 | `no-octal` | Oxlint has no rule. The parser already rejects relevant octal syntax in module and strict-mode code. | Confirm parser coverage and retire the explicit rule if no supported source form remains. |
 
-## Package-level typed blocker
+## Package-level blockers
 
 ### `@typescript-eslint/naming-convention`
 
@@ -40,6 +42,38 @@ Possible approaches:
 4. Keep a narrow ESLint pass only in packages whose convention protects an API contract.
 
 Audit every package configuration before conversion. Do not copy the full generic naming rule into a new custom implementation.
+
+Phase 3 decisions:
+
+- `@n8n/agents`: retire the enum-member casing selector. It enforces style only.
+- `@n8n/instance-ai`: retire the quoted object-property selector. It only exempts names that require quotes and protects no API contract.
+- `@n8n/instance-ai`: remove the stale package-wide filename exception. The package no longer contains files that need it.
+- `@n8n/instance-ai`: override the removed Node 10 module resolution in the scripts tsconfig so tsgolint can keep linting `scripts/**/*.ts`.
+
+### Testing infrastructure decisions
+
+- `@n8n/rules-engine`, `@n8n/code-health`, and `@n8n/playwright-janitor`: retire the exemption-only rule-ID selectors. They enforce no positive naming contract.
+- `n8n-containers`: retire the Docker label exemption. Object literal keys are data, not identifier contracts.
+- `n8n-playwright`: retire the broad style selectors. Workflow names, fixture keys, and spec paths are data, while identifier casing has no runtime contract.
+
+### Workflow SDK decisions
+
+- Retire the package naming selectors. They enforce style only and exempt node names, AST types, and API fields.
+- Retire the stale `adm-zip` restriction. Its referenced lazy loader no longer exists, and the shared dependency rule already rejects the dev-only package from production source.
+- Keep `@n8n/eslint-plugin-community-nodes` on ESLint as external tooling. Validate its `no-builder-hint-leakage` rule through the Oxlint bridge when Workflow SDK consumes it.
+
+### Backend storage decisions
+
+- `@n8n/backend-network`: retire the package naming selectors. They enforce style only and exempt protocol-defined header and charset names.
+- `@n8n/blob-storage`: retire the package naming selectors. They enforce style only and exempt AWS and HTTP field names.
+
+## Retirement exceptions
+
+### `n8n-node-dev`
+
+Keep `n8n-node-dev` on ESLint. The v3 removal plan makes an Oxlint migration unnecessary.
+
+Reconsider this exception only if the package removal plan changes.
 
 ## Frontend package blockers
 

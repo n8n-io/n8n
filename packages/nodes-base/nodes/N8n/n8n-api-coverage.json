@@ -289,6 +289,12 @@
 		"POST /promotions/projects/{projectId}/promote": {
 			"status": "gap"
 		},
+		"POST /promotions/projects/{projectId}/apply": {
+			"status": "gap"
+		},
+		"POST /promotions/projects/{projectId}/apply/continue": {
+			"status": "gap"
+		},
 		"POST /promotions/connections/{promotionConnectionId}/apply/continue": {
 			"status": "gap"
 		},

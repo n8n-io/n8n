@@ -39,7 +39,7 @@ function generateUserManagementEmailTemplates() {
 	// One mjml process for all templates: each `pnpm mjml` start costs about 0.3s.
 	// With several inputs, mjml writes `<name>.html` into the output directory.
 	const sources = templates.map((template) => `"${path.resolve(sourceDir, template)}"`).join(' ');
-	const result = shell.exec(`pnpm mjml ${sources} --output "${destinationDir}${path.sep}"`, {
+	const result = shell.exec(`pnpm mjml ${sources} --output "${destinationDir}"`, {
 		silent: false,
 	});
 	if (result.code !== 0) {

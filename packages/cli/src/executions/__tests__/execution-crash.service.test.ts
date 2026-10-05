@@ -1,8 +1,8 @@
+import type { EventService } from '@n8n/backend-services';
 import type { CrashedExecution, ExecutionRepository } from '@n8n/db';
 import type { InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
-import type { EventService } from '@/events/event.service';
 import { ExecutionCrashService } from '@/executions/execution-crash.service';
 import type { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
 

@@ -1,4 +1,5 @@
 import { Logger } from '@n8n/backend-common';
+import { EventService } from '@n8n/backend-services';
 import { GlobalConfig, WorkflowHistoryCompactionConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import { DbConnection, WorkflowHistoryRepository } from '@n8n/db';
@@ -10,7 +11,6 @@ import { sleep } from '@n8n/utils/sleep';
 import { DiffMetaData, DiffRule, RULES, SKIP_RULES } from 'n8n-workflow';
 import { strict } from 'node:assert';
 
-import { EventService } from '@/events/event.service';
 import { RelayEventMap } from '@/events/maps/relay.event-map';
 
 export function getCompactionWindowDeltas(minimumAge: number, timeWindow: number, unitMs: number) {

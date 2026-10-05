@@ -8,6 +8,7 @@ import type { CredentialsService } from '@/credentials/credentials.service';
 import { userHasScopes } from '@/permissions.ee/check-access';
 
 import type { AgentChatExecutionService } from '../agent-chat-execution.service';
+import type { AgentExecutionOrchestratorService } from '../agent-execution-orchestrator.service';
 import type { AgentExecutionService } from '../agent-execution.service';
 import { AgentMessageQueueConsumer } from '../agent-message-queue-consumer.service';
 import type { AgentMessageQueueService, ClaimedAgentMessage } from '../agent-message-queue.service';
@@ -15,10 +16,11 @@ import type { AgentQueuedPreviewStreamService } from '../agent-queued-preview-st
 import type { AgentTestRunService } from '../agent-test-run.service';
 import type { AgentExecutionThread } from '../entities/agent-execution-thread.entity';
 import type { AgentMessageQueue } from '../entities/agent-message-queue.entity';
+import type { AgentMessageEntity } from '../entities/agent-message.entity';
 import type { AgentChatBridge } from '../integrations/agent-chat-bridge';
 import type { ChatIntegrationService } from '../integrations/chat-integration.service';
 import type { AgentMessageQueueRepository } from '../repositories/agent-message-queue.repository';
-import type { QueuedIntegrationMessage } from '../types/agent-queued-message';
+import type { AgentQueueDispatch, QueuedIntegrationMessage } from '../types/agent-queued-message';
 
 vi.mock('@/permissions.ee/check-access', () => ({ userHasScopes: vi.fn() }));
 
@@ -31,25 +33,41 @@ describe('AgentMessageQueueConsumer', () => {
 	const users = mock<UserRepository>();
 	const chatExecutions = mock<AgentChatExecutionService>();
 	const integrations = mock<ChatIntegrationService>();
+	const orchestrator = mock<AgentExecutionOrchestratorService>();
 	const sender = { send: vi.fn(), close: vi.fn(async () => {}) };
 	let consumer: AgentMessageQueueConsumer;
 
 	function claim(threadId: string, integration = false): ClaimedAgentMessage {
+		const payload: ClaimedAgentMessage['payload'] = integration
+			? mock<QueuedIntegrationMessage>({
+					kind: 'integration',
+					message: 'input',
+					credentialId: 'credential',
+					platformThreadId: 'slack:channel:thread',
+					messageContext: {
+						platform: 'slack',
+						integrationConnectionId: 'slack:credential',
+						target: { type: 'thread', threadId: 'slack:channel:thread' },
+						updatedAt: '2026-06-01T12:00:00.000Z',
+					},
+				})
+			: { kind: 'preview', message: 'input', resourceId: 'draft-chat:user' };
 		return {
+			payload,
 			item: mock<AgentMessageQueue>({
 				id: threadId,
 				threadId,
-				source: integration ? 'slack' : 'chat',
+				message: mock<AgentMessageEntity>({ origin: { source: integration ? 'slack' : 'chat' } }),
 				payload: integration
-					? mock<QueuedIntegrationMessage>({
-							kind: 'integration',
-							message: 'input',
-							credentialId: 'credential',
-							platformThreadId: 'slack:channel:thread',
-						})
-					: { kind: 'preview', message: 'input', userId: 'user', resourceId: 'draft-chat:user' },
+					? mock<AgentQueueDispatch>({ kind: 'integration', credentialId: 'credential' })
+					: { kind: 'preview' },
 			}),
-			thread: mock<AgentExecutionThread>({ id: threadId, agentId: 'agent', projectId: 'project' }),
+			thread: mock<AgentExecutionThread>({
+				id: threadId,
+				agentId: 'agent',
+				projectId: 'project',
+				ownerId: integration ? null : 'user',
+			}),
 			admission: {
 				executionId: `execution-${threadId}`,
 				startedAt: new Date(),
@@ -62,6 +80,7 @@ describe('AgentMessageQueueConsumer', () => {
 				agentName: 'Agent',
 				projectId: 'project',
 				userMessage: 'input',
+				source: integration ? 'slack' : 'chat',
 				access: { accessScope: 'user', ownerId: 'user' },
 			},
 		};
@@ -95,6 +114,7 @@ describe('AgentMessageQueueConsumer', () => {
 			mock<CredentialsService>(),
 			chatExecutions,
 			integrations,
+			orchestrator,
 			mockLogger(),
 		);
 	});
@@ -103,8 +123,8 @@ describe('AgentMessageQueueConsumer', () => {
 
 	it('runs independent sessions without waiting and reuses each claimed execution', async () => {
 		const first = claim('first');
-		first.item.payload.message = 'edited first message';
-		first.recording.userMessage = first.item.payload.message;
+		first.payload.message = 'edited first message';
+		first.recording.userMessage = first.payload.message;
 		const second = claim('second');
 		const waiting = createDeferredPromise();
 		repository.findThreadIds.mockResolvedValue(['first', 'second']);
@@ -126,6 +146,11 @@ describe('AgentMessageQueueConsumer', () => {
 				expect(queue.settle).toHaveBeenCalledWith('second', second.admission.executionId),
 			);
 			expect(queue.settle).not.toHaveBeenCalledWith('first', first.admission.executionId);
+			expect(users.findByIdWithRole).toHaveBeenCalledWith(first.thread.ownerId);
+			expect(chatExecutions.register).toHaveBeenCalledWith(
+				expect.objectContaining({ userId: first.thread.ownerId, threadId: 'first' }),
+				expect.any(AbortController),
+			);
 			expect(sender.send).toHaveBeenCalledWith({
 				type: 'execution-started',
 				inputMessageIds: ['message-1'],
@@ -143,6 +168,7 @@ describe('AgentMessageQueueConsumer', () => {
 				expect.objectContaining({
 					sessionId: 'first',
 					sessionMode: 'existing',
+					source: 'chat',
 					admittedExecution: first.admission,
 				}),
 			);
@@ -154,31 +180,136 @@ describe('AgentMessageQueueConsumer', () => {
 		);
 	});
 
-	it.each(['revoked access', 'invalid draft'] as const)(
-		'records %s on the claimed execution and releases the item',
-		async (failure) => {
-			const item = claim('session');
-			if (failure === 'revoked access') vi.mocked(userHasScopes).mockResolvedValue(false);
-			else
+	it('forwards a budget notice from the preview run to the stream', async () => {
+		const item = claim('session');
+		repository.findThreadIds.mockResolvedValue(['session']);
+		queue.claimNext.mockResolvedValueOnce(item).mockResolvedValue(null);
+		testRuns.executePreparedDraftRun.mockImplementation(async (input) => {
+			input.onBudgetNotice?.();
+			return {
+				status: 'completed',
+				response: '',
+				executionId: input.admittedExecution!.executionId,
+			};
+		});
+		consumer.start();
+		await vi.waitFor(() =>
+			expect(queue.settle).toHaveBeenCalledWith('session', item.admission.executionId),
+		);
+		expect(sender.send).toHaveBeenCalledWith({ type: 'budget-notice', code: 'budget.alert' });
+	});
+
+	it('runs n8n Chat messages against the published agent on the claimed execution', async () => {
+		const item = claim('session');
+		item.payload = { kind: 'n8n_chat', message: 'input', resourceId: 'n8n-chat:user' };
+		item.item.payload = { kind: 'n8n_chat' };
+		repository.findThreadIds.mockResolvedValue(['session']);
+		queue.claimNext.mockResolvedValueOnce(item).mockResolvedValue(null);
+		orchestrator.executeForN8nChatPublished.mockImplementation(async function* () {
+			yield { type: 'text-delta', id: 'text', delta: 'hi' };
+		});
+		consumer.start();
+		await vi.waitFor(() =>
+			expect(queue.settle).toHaveBeenCalledWith('session', item.admission.executionId),
+		);
+		expect(chatExecutions.register).toHaveBeenCalledWith(
+			expect.objectContaining({ userId: 'user', productionN8nChat: true }),
+			expect.any(AbortController),
+		);
+		expect(orchestrator.executeForN8nChatPublished).toHaveBeenCalledWith(
+			expect.objectContaining({
+				user: expect.objectContaining({ id: 'user' }),
+				memory: { threadId: 'session', resourceId: 'n8n-chat:user' },
+				sessionMode: 'existing',
+				admittedExecution: item.admission,
+			}),
+		);
+		expect(testRuns.prepareDraftRun).not.toHaveBeenCalled();
+		expect(sender.send).toHaveBeenCalledWith({
+			type: 'done',
+			sessionId: 'session',
+			executionId: item.admission.executionId,
+		});
+		expect(queue.recordFailure).not.toHaveBeenCalled();
+	});
+
+	it('does not finish an n8n Chat turn that suspended for HITL', async () => {
+		const item = claim('session');
+		item.payload = { kind: 'n8n_chat', message: 'input', resourceId: 'n8n-chat:user' };
+		item.item.payload = { kind: 'n8n_chat' };
+		repository.findThreadIds.mockResolvedValue(['session']);
+		queue.claimNext.mockResolvedValueOnce(item).mockResolvedValue(null);
+		orchestrator.executeForN8nChatPublished.mockImplementation(async function* () {
+			yield {
+				type: 'tool-call-suspended',
+				toolCallId: 'call-1',
+				toolName: 'ask_questions',
+				runId: 'run-1',
+				suspendPayload: { type: 'questions', questions: [] },
+			};
+		});
+		consumer.start();
+		await vi.waitFor(() =>
+			expect(queue.settle).toHaveBeenCalledWith('session', item.admission.executionId),
+		);
+		expect(sender.send).toHaveBeenCalledWith(
+			expect.objectContaining({ type: 'tool-call-suspended' }),
+		);
+		expect(sender.send).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'done' }));
+	});
+
+	it.each([
+		'missing owner',
+		'deleted owner',
+		'disabled owner',
+		'revoked access',
+		'invalid draft',
+	] as const)('records %s on the claimed execution and releases the item', async (failure) => {
+		const item = claim('session');
+		switch (failure) {
+			case 'missing owner':
+				item.thread.ownerId = null;
+				break;
+			case 'deleted owner':
+				users.findByIdWithRole.mockResolvedValue(null);
+				break;
+			case 'disabled owner':
+				users.findByIdWithRole.mockResolvedValue(mock<User>({ id: 'user', disabled: true }));
+				break;
+			case 'revoked access':
+				vi.mocked(userHasScopes).mockResolvedValue(false);
+				break;
+			case 'invalid draft':
 				testRuns.prepareDraftRun.mockResolvedValue({
 					status: 'agent_misconfigured',
 					missing: ['model'],
 				});
-			repository.findThreadIds.mockResolvedValue(['session']);
-			queue.claimNext.mockResolvedValueOnce(item).mockResolvedValue(null);
-			consumer.start();
-			await vi.waitFor(() =>
-				expect(queue.settle).toHaveBeenCalledWith('session', item.admission.executionId),
-			);
-			expect(queue.recordFailure).toHaveBeenCalledWith(
-				item,
-				expect.any(Error),
-				expect.any(AbortSignal),
-			);
-			expect(testRuns.executePreparedDraftRun).not.toHaveBeenCalled();
-			expect(sender.send).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }));
-		},
-	);
+				break;
+		}
+		repository.findThreadIds.mockResolvedValue(['session']);
+		queue.claimNext.mockResolvedValueOnce(item).mockResolvedValue(null);
+		consumer.start();
+		await vi.waitFor(() =>
+			expect(queue.settle).toHaveBeenCalledWith('session', item.admission.executionId),
+		);
+		expect(queue.recordFailure).toHaveBeenCalledWith(
+			item,
+			expect.objectContaining({
+				message:
+					failure === 'invalid draft'
+						? 'This agent is not ready to run yet.'
+						: 'You can no longer execute this agent',
+			}),
+			expect.any(AbortSignal),
+		);
+		expect(testRuns.executePreparedDraftRun).not.toHaveBeenCalled();
+		if (failure !== 'invalid draft') {
+			expect(chatExecutions.register).not.toHaveBeenCalled();
+			expect(testRuns.prepareDraftRun).not.toHaveBeenCalled();
+		}
+		if (failure === 'missing owner') expect(users.findByIdWithRole).not.toHaveBeenCalled();
+		expect(sender.send).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }));
+	});
 
 	it('leaves integration work pending until its bridge is available and stops admission during shutdown', async () => {
 		const item = claim('session', true);
@@ -187,9 +318,16 @@ describe('AgentMessageQueueConsumer', () => {
 		const release = vi.fn();
 		repository.findThreadIds.mockResolvedValue(['session']);
 		queue.claimNext.mockImplementationOnce(async (_threadId, canConsume) => {
+			item.item.message.origin = null;
+			await expect(canConsume(item.item, item.thread, {})).rejects.toThrow(
+				'Queued integration input has no source',
+			);
+			expect(repository.findPublishedConnection).not.toHaveBeenCalled();
+			item.item.message.origin = { source: 'slack' };
 			expect(await canConsume(item.item, item.thread, {})).toBe(false);
 			integrations.acquireQueueBridge.mockReturnValue({ bridge: mock<AgentChatBridge>(), release });
 			expect(await canConsume(item.item, item.thread, {})).toBe(true);
+			expect(integrations.acquireQueueBridge).toHaveBeenCalledWith('agent', 'slack', 'credential');
 			checked.resolve();
 			await resume.promise;
 			expect(await canConsume(item.item, item.thread, {})).toBe(false);
@@ -234,7 +372,7 @@ describe('AgentMessageQueueConsumer', () => {
 				if (outcome === 'accepted') {
 					await vi.waitFor(() =>
 						expect(bridge.consumeQueuedMessage).toHaveBeenCalledWith(
-							item.item.payload,
+							item.payload,
 							item.thread.id,
 							item.admission,
 							expect.any(AbortSignal),
@@ -242,6 +380,12 @@ describe('AgentMessageQueueConsumer', () => {
 						),
 					);
 					expect(release).not.toHaveBeenCalled();
+					expect(repository.findPublishedConnection).toHaveBeenCalledWith(
+						'agent',
+						'project',
+						'slack',
+						'credential',
+					);
 				}
 			} finally {
 				running.resolve();

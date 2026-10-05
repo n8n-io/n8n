@@ -4,7 +4,7 @@ import type { ActionScope } from '@n8n/engine';
 import { InvalidActionTokenError, verifyActionToken } from '@n8n/engine';
 import type { NextFunction, Request, Response } from 'express';
 
-import { UnauthenticatedError } from '@/errors/response-errors/unauthenticated.error';
+import { UnauthenticatedError } from '@n8n/errors';
 
 const BEARER_PREFIX = /^bearer /i;
 

@@ -26,9 +26,7 @@ import {
 	type AgentTreeSnapshot,
 } from '@n8n/instance-ai';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { BadRequestError, ForbiddenError, NotFoundError } from '@n8n/errors';
 
 import type { InstanceAiCheckpoint } from './entities/instance-ai-checkpoint.entity';
 import { DurableLogMetrics } from './event-bus/durable-log-metrics';

@@ -855,11 +855,11 @@ describe('content-import policy', () => {
 		const service = Container.get(PolicyEnforcementService);
 		// The prototype method, not `service.enforceContentImport`: that is the spy itself.
 		const clearance = PolicyEnforcementService.prototype.enforceContentImport;
-		enforceContentImport.mockImplementation(async (context: ContentImportContext) => {
+		enforceContentImport.mockImplementation(async (context: ContentImportContext, actor) => {
 			if ('credential' in context && context.credential.type === blockedType) {
 				throw new PolicyViolationError([violation]);
 			}
-			return await clearance.call(service, context);
+			return await clearance.call(service, context, actor);
 		});
 	};
 
@@ -893,11 +893,14 @@ describe('content-import policy', () => {
 
 		await command.run([`--input=${inputPath}`]);
 
-		expect(enforceContentImport).toHaveBeenCalledWith({
-			credential: { id: 'blocked', type: 'slackApi' },
-			projectId: ownerProject.id,
-			transport: 'cli',
-		});
+		expect(enforceContentImport).toHaveBeenCalledWith(
+			{
+				credential: { id: 'blocked', type: 'slackApi' },
+				projectId: ownerProject.id,
+				transport: 'cli',
+			},
+			{ kind: 'system', reason: 'cli-import' },
+		);
 		const after = {
 			credentials: await getAllCredentials(),
 			sharings: await getAllSharedCredentials(),
@@ -921,11 +924,14 @@ describe('content-import policy', () => {
 		// Flagless re-import: the batch target is the owner's project, but the row stays the member's.
 		await command.run([`--input=${inputPath}`]);
 
-		expect(enforceContentImport).toHaveBeenCalledWith({
-			credential: { id: 'existing', type: 'aws' },
-			projectId: memberProject.id,
-			transport: 'cli',
-		});
+		expect(enforceContentImport).toHaveBeenCalledWith(
+			{
+				credential: { id: 'existing', type: 'aws' },
+				projectId: memberProject.id,
+				transport: 'cli',
+			},
+			{ kind: 'system', reason: 'cli-import' },
+		);
 	});
 
 	test('fails the import when the policy layer errors', async () => {

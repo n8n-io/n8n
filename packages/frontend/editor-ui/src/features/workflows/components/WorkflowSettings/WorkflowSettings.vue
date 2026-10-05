@@ -11,7 +11,9 @@ import {
 	WORKFLOW_SETTINGS_MODAL_KEY,
 	NODE_CREATOR_OPEN_SOURCES,
 	TIME_SAVED_NODE_TYPE,
+	EXECUTE_WORKFLOW_NODE_TYPE,
 } from '@/app/constants';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 
 import { EXECUTION_LOGIC_V2_EXPERIMENT } from '@/app/constants/experiments';
 import {
@@ -93,6 +95,7 @@ const canUpdateCredentialResolver = hasPermission(['rbac'], {
 
 const rootStore = useRootStore();
 const settingsStore = useSettingsStore();
+const nodeTypesStore = useNodeTypesStore();
 const sourceControlStore = useSourceControlStore();
 const collaborationStore = useCollaborationStore();
 const workflowsStore = useWorkflowsStore();
@@ -913,7 +916,7 @@ onMounted(async () => {
 		workflowSettingsData.callerPolicy = defaultValues.value
 			.workflowCallerPolicy as WorkflowSettings.CallerPolicy;
 	}
-	if (settingsStore.isExecuteWorkflowNodeExcluded) {
+	if (nodeTypesStore.isNodeTypeUnavailable(EXECUTE_WORKFLOW_NODE_TYPE)) {
 		workflowSettingsData.callerPolicy = 'none';
 	}
 	if (workflowSettingsData.executionTimeout === undefined) {
@@ -1162,7 +1165,7 @@ onBeforeUnmount(() => {
 								:disabled="
 									readOnlyEnv ||
 									!workflowPermissions.update ||
-									settingsStore.isExecuteWorkflowNodeExcluded
+									nodeTypesStore.isNodeTypeUnavailable(EXECUTE_WORKFLOW_NODE_TYPE)
 								"
 								:placeholder="i18n.baseText('workflowSettings.selectOption')"
 								filterable
