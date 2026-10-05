@@ -21,6 +21,7 @@ import { loadTeamsAdapter } from '../../esm-loader';
 import { resolveIntegrationActionDefinitions } from '../../integration-tool-definitions';
 import type { ReplyExpectation } from '../../integration-tool-types';
 import { startTypingIndicator } from '../typing-indicator';
+import { READ_PERMISSIONS } from './teams-manifest.service';
 
 /** Pinned so a stray TEAMS_API_URL env var cannot redirect proactive sends. */
 const TEAMS_API_URL = 'https://smba.trafficmanager.net/teams';
@@ -39,24 +40,10 @@ const OPTIONAL_REPLY_NOTE = [
 	'</reply_guidance>',
 ].join('\n');
 
-/** Interval picked to match Discord's; Teams does not document the expiry. */
-const TEAMS_TYPING_REFRESH_MS = 8000;
-
-/**
- * A tenant ID is a GUID or a verified domain. The value reaches the Teams SDK,
- * which interpolates it into a token URL path, so the shape is checked before
- * it gets there.
- *
- * The domain form is matched per label rather than by alphabet: a value of `.`
- * or `..` passes an alphabet check, and URL normalization then drops the tenant
- * segment entirely. Two labels minimum, each starting and ending alphanumeric.
- */
-type TeamsConversationType = 'personal' | 'groupChat' | 'channel';
-
-function conversationTypeOf(activity: unknown): TeamsConversationType | undefined {
-	if (!isRecord(activity) || !isRecord(activity.conversation)) return undefined;
-	const type = activity.conversation.conversationType;
-	return type === 'personal' || type === 'groupChat' || type === 'channel' ? type : undefined;
+function conversationTypeOf(activity: unknown): unknown {
+	return isRecord(activity) && isRecord(activity.conversation)
+		? activity.conversation.conversationType
+		: undefined;
 }
 
 /**
@@ -69,6 +56,18 @@ function isFromBot(activity: unknown): boolean {
 	return role === 'bot' || (typeof id === 'string' && id.startsWith('28:'));
 }
 
+/** Interval picked to match Discord's; Teams does not document the expiry. */
+const TEAMS_TYPING_REFRESH_MS = 8000;
+
+/**
+ * A tenant ID is a GUID or a verified domain. The value reaches the Teams SDK,
+ * which interpolates it into a token URL path, so the shape is checked before
+ * it gets there.
+ *
+ * The domain form is matched per label rather than by alphabet: a value of `.`
+ * or `..` passes an alphabet check, and URL normalization then drops the tenant
+ * segment entirely. Two labels minimum, each starting and ending alphanumeric.
+ */
 const TENANT_ID_GUID = /^[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}$/;
 const TENANT_ID_DOMAIN =
 	/^[A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?(\.[A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?)+$/;
@@ -184,14 +183,13 @@ export class TeamsIntegration extends AgentChatIntegration {
 	}): boolean {
 		if (isFromBot(message.raw)) return false;
 		const settings = integration.type === 'teams' ? integration.settings : undefined;
-		switch (conversationTypeOf(message.raw)) {
-			case 'channel':
-				return settings?.teamChannels === true && settings.readAllChannelMessages === true;
-			case 'groupChat':
-				return settings?.groupChats === true && settings.readAllGroupMessages === true;
-			default:
-				return false;
-		}
+		const type = conversationTypeOf(message.raw);
+		const permission = READ_PERMISSIONS.find((p) => p.conversationType === type);
+		return (
+			permission !== undefined &&
+			settings?.[permission.requires] === true &&
+			settings[permission.setting] === true
+		);
 	}
 
 	/** Only a direct message or a mention obliges the agent to answer. */

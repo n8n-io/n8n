@@ -31,6 +31,8 @@ import type {
 import type { RawActionToolOperation, RawContextToolOperation } from './integration-tool-schema';
 
 /** Resume shape for the action tool, including a follow-up interactive card. */
+export const INTEGRATION_ACTION_RESUME_SCHEMA = z.record(z.string(), z.unknown());
+
 /**
  * True when an action tool result reports that no reply will be sent
  * (`do_not_respond`), on its own or inside a batch.
@@ -38,6 +40,7 @@ import type { RawActionToolOperation, RawContextToolOperation } from './integrat
 export function isSilentActionOutput(output: unknown): boolean {
 	if (!isRecord(output)) return false;
 	if (output.silent === true) return true;
+	// Batched action calls nest per-operation results under `results`.
 	return (
 		Array.isArray(output.results) &&
 		output.results.some(
@@ -50,8 +53,6 @@ export function isSilentActionOutput(output: unknown): boolean {
 		)
 	);
 }
-
-export const INTEGRATION_ACTION_RESUME_SCHEMA = z.record(z.string(), z.unknown());
 
 export function integrationActionApprovalKey(connectionId: string, action: string): string {
 	return JSON.stringify(['integration_action', connectionId, action]);

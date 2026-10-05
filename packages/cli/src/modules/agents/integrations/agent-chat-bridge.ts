@@ -405,10 +405,7 @@ export class AgentChatBridge {
 
 		this.chat.onSubscribedMessage(async (thread, message) => {
 			try {
-				if (!this.canUserAccess(message.author)) return;
-				if (!message.isMention && !this.acceptsUnmentionedMessage(thread, message)) return;
-				const anchoredThread = this.anchorInboundThread(thread, message);
-				await this.handleInboundMessage(anchoredThread, message, { isNewMention: false });
+				await this.handleFollowUp(thread, message);
 			} catch (error) {
 				await this.postErrorToThread(thread, error);
 			}
@@ -419,10 +416,7 @@ export class AgentChatBridge {
 			// decides each time, and turning read-all off takes effect at once.
 			this.chat.onNewMessage(/[\s\S]*/, async (thread, message) => {
 				try {
-					if (!this.acceptsUnmentionedMessage(thread, message)) return;
-					if (!this.canUserAccess(message.author)) return;
-					const anchoredThread = this.anchorInboundThread(thread, message);
-					await this.handleInboundMessage(anchoredThread, message, { isNewMention: false });
+					await this.handleFollowUp(thread, message);
 				} catch (error) {
 					// Nobody asked the agent here, so an error post would be noise.
 					this.logger.warn('Failed to handle an un-mentioned message', {
@@ -461,15 +455,23 @@ export class AgentChatBridge {
 		});
 	}
 
-	/** Platforms without the hook accept every message they deliver. */
-	private acceptsUnmentionedMessage(thread: Thread, message: Message): boolean {
-		return (
-			this.integrationImpl?.shouldHandleUnmentionedMessage?.({
+	/**
+	 * A message that is not a new mention. Without a mention the platform's hook
+	 * decides; platforms without one accept every message they deliver.
+	 */
+	private async handleFollowUp(thread: Thread, message: Message): Promise<void> {
+		if (!this.canUserAccess(message.author)) return;
+		const accepted =
+			message.isMention ||
+			(this.integrationImpl?.shouldHandleUnmentionedMessage?.({
 				thread,
 				message,
 				integration: this.integration,
-			}) ?? true
-		);
+			}) ??
+				true);
+		if (!accepted) return;
+		const anchoredThread = this.anchorInboundThread(thread, message);
+		await this.handleInboundMessage(anchoredThread, message, { isNewMention: false });
 	}
 
 	private canUserAccess(author: Author): boolean {
