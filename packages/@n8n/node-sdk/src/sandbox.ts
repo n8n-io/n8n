@@ -30,7 +30,7 @@ import {
 } from './define';
 import { allowsHost, permissionsOf } from './egress';
 import { fileRequestIssues, isFileExtractRequest } from './host-imports';
-import type { RunRecorder, RunRequest, RunRpc } from './profile';
+import type { RunRecorder, RunRequest, RunRpc, RunSandboxStats } from './profile';
 import {
 	credentialManifestOf,
 	executorOf,
@@ -2250,17 +2250,21 @@ function sandboxedExecutor(
 		const { recorder } = host;
 		recorder?.path('sandbox');
 		const opened = new Map<'connection', Promise<Connection>>();
-		const shared = async () => {
-			const connection = opened.get('connection') ?? start(recorder);
-			opened.set('connection', connection);
-			return await connection;
-		};
 		const traced = recorder && {
 			...recorder,
 			request: (request: RunRequest) => {
 				const rpc = guestCalls.getStore();
 				recorder.request(rpc === undefined ? request : { ...request, rpc });
 			},
+			// `[stats]` only measures the run, so the profile does not count it as a message of the run.
+			rpc: (rpc: RunRpc) => {
+				if (rpc.method !== '[stats]') recorder.rpc(rpc);
+			},
+		};
+		const shared = async () => {
+			const connection = opened.get('connection') ?? start(traced);
+			opened.set('connection', connection);
+			return await connection;
 		};
 		try {
 			return await sessions.run(
@@ -2268,12 +2272,36 @@ function sandboxedExecutor(
 				async () => await executor(traced ? { ...host, recorder: traced } : host),
 			);
 		} finally {
-			void opened.get('connection')?.then(
-				(connection) => connection.close(),
+			const connection = opened.get('connection');
+			const stats = recorder && connection && (await sandboxStatsOf(connection));
+			if (stats) recorder.sandbox(stats);
+			void connection?.then(
+				(session) => session.close(),
 				() => undefined,
 			);
 		}
 	};
+}
+
+/**
+ * What the guest used, from the `[stats]` answer of its runner. A runner that exited, or that does
+ * not measure its guest, gives nothing.
+ */
+async function sandboxStatsOf(
+	connection: Promise<Connection>,
+): Promise<RunSandboxStats | undefined> {
+	try {
+		const stats = await (await connection).request('[stats]', {});
+		if (!isRecord(stats)) return undefined;
+		const { guestCpuMs, memoryPeakBytes, instantiateMs } = stats;
+		const isAmount = (value: unknown): value is number =>
+			typeof value === 'number' && Number.isFinite(value) && value >= 0;
+		return isAmount(guestCpuMs) && isAmount(memoryPeakBytes) && isAmount(instantiateMs)
+			? { guestCpuMs, memoryPeakBytes, instantiateMs }
+			: undefined;
+	} catch {
+		return undefined;
+	}
 }
 
 /**

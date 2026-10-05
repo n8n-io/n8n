@@ -20,6 +20,7 @@ import {
 	sandboxedVersionOf,
 	warmSandbox,
 	wasmSidecarRuntime,
+	type GuestRuntime,
 	type SandboxOptions,
 } from '../sandbox';
 import {
@@ -245,6 +246,33 @@ const RESPONSE_HEADERS = {
 	'X-Secret': 'internal',
 };
 
+const IDENTITY = {
+	action: 'probe',
+	version: '1.0.0',
+	bundleHash: 'hash',
+	nodeContract: NODE_CONTRACT_VERSION,
+};
+
+const WASM_PAGE_BYTES = 65_536;
+
+/** The sidecar runtime, with each request method in `methods`. */
+const recordedMethods = (methods: string[]): GuestRuntime => {
+	const inner = wasmSidecarRuntime({ sidecar: SIDECAR, guests: GUESTS });
+	return {
+		name: inner.name,
+		async start(session) {
+			const connection = await inner.start(session);
+			return {
+				...connection,
+				request: async (method, params) => {
+					methods.push(method);
+					return await connection.request(method, params);
+				},
+			};
+		},
+	};
+};
+
 describe.skipIf(!existsSync(SIDECAR) || !existsSync(GUEST))('the sandbox', () => {
 	const dirs = { root: '' };
 	const canary = { hits: 0, server: undefined as Server | undefined };
@@ -351,16 +379,51 @@ describe.skipIf(!existsSync(SIDECAR) || !existsSync(GUEST))('the sandbox', () =>
 
 	it('stops an endless loop at the CPU limit', async () => {
 		const started = Date.now();
-		await expect(run('loopProbe')).rejects.toThrow(
+		const { recorder, profile } = runRecorder(1);
+		await expect(run('loopProbe', { ...hostOf(), recorder })).rejects.toThrow(
 			'The bundle used its CPU time of 1000 ms and was stopped',
 		);
 		expect(Date.now() - started).toBeLessThan(10_000);
+		expect(
+			profile(IDENTITY, { errorType: 'UserError' }).sandbox?.guestCpuMs,
+		).toBeGreaterThanOrEqual(1_000);
 	});
 
 	it('stops a memory blow-up at the memory limit', async () => {
-		await expect(run('memoryProbe')).rejects.toThrow(
+		const { recorder, profile } = runRecorder(1);
+		await expect(run('memoryProbe', { ...hostOf(), recorder })).rejects.toThrow(
 			'The bundle reached its memory limit of 64 MB and was stopped',
 		);
+		const peak = profile(IDENTITY, { errorType: 'UserError' }).sandbox?.memoryPeakBytes;
+		expect(peak).toBeGreaterThan(32 * 2 ** 20);
+		expect(peak).toBeLessThanOrEqual(64 * 2 ** 20);
+	});
+
+	it('records the guest CPU time, the memory peak and the instantiate time of a run', async () => {
+		const methods: string[] = [];
+		const sandbox = { ...options(), runtime: recordedMethods(methods) };
+		const { recorder, profile } = runRecorder(1);
+
+		await run('echoProbe', { ...hostOf(), recorder }, sandbox);
+
+		const recorded = profile(IDENTITY, { outputItems: 1 });
+		const { guestCpuMs = 0, memoryPeakBytes = 0, instantiateMs = -1 } = recorded.sandbox ?? {};
+		expect(guestCpuMs).toBeGreaterThan(0);
+		expect(memoryPeakBytes).toBeGreaterThanOrEqual(WASM_PAGE_BYTES);
+		expect(memoryPeakBytes % WASM_PAGE_BYTES).toBe(0);
+		expect(instantiateMs).toBeGreaterThanOrEqual(0);
+		expect(methods.filter((method) => method === '[stats]')).toHaveLength(1);
+		expect(recorded.rpcs.map(({ method }) => method)).not.toContain('[stats]');
+	});
+
+	it('sends no [stats] request without a run profile', async () => {
+		const methods: string[] = [];
+		const sandbox = { ...options(), runtime: recordedMethods(methods) };
+
+		await run('echoProbe', hostOf(), sandbox);
+
+		expect(methods).toContain('action.item-run.[take]');
+		expect(methods).not.toContain('[stats]');
 	});
 
 	it('refuses an import that the manifest does not grant, before the host sees it', async () => {

@@ -1210,6 +1210,7 @@ describe('ExecutionLevelTracer', () => {
 					{ name: 'load', startMs: t0, endMs: t0 + 1, cached: true },
 					{ name: 'sandboxStart', startMs: t0 + 1, endMs: t0 + 2, compileCached: false },
 				],
+				sandbox: { guestCpuMs: 4.9, memoryPeakBytes: 9_502_720, instantiateMs: 0.06 },
 				rpcs: [
 					{
 						...rpc,
@@ -1251,7 +1252,12 @@ describe('ExecutionLevelTracer', () => {
 			const runId = run.spanContext().spanId;
 			[start, take, call, log, stop].forEach((span) => expect(parentOf(span)).toBe(runId));
 			expect(named('POST').map(parentOf)).toEqual([call.spanContext().spanId, runId]);
-			expect(start.attributes).toEqual({ 'n8n.sandbox.compile_cached': false });
+			expect(start.attributes).toEqual({
+				'n8n.sandbox.compile_cached': false,
+				'n8n.sandbox.guest_cpu_ms': 4.9,
+				'n8n.sandbox.memory_peak_bytes': 9_502_720,
+				'n8n.sandbox.instantiate_ms': 0.06,
+			});
 			expect(take.kind).toBe(SpanKind.CLIENT);
 			expect(call.kind).toBe(SpanKind.SERVER);
 			expect(call.attributes).toEqual({

@@ -289,7 +289,7 @@ export class ExecutionLevelTracer {
 				this.tracer
 					.startSpan(
 						PHASE_SPAN_NAMES[phase.name],
-						{ startTime: phase.startMs, attributes: phaseAttributes(phase) },
+						{ startTime: phase.startMs, attributes: phaseAttributes(phase, profile.sandbox) },
 						parent,
 					)
 					.end(phase.endMs);
@@ -468,7 +468,11 @@ function contractRunAttributes(profile: RunProfile): Attributes {
 	};
 }
 
-function phaseAttributes(phase: RunProfile['phases'][number]): Attributes {
+/** `sandbox.start` is the one span of the sandbox, so it also holds what the guest used in the session. */
+function phaseAttributes(
+	phase: RunProfile['phases'][number],
+	sandbox: RunProfile['sandbox'],
+): Attributes {
 	switch (phase.name) {
 		case 'load':
 			return { [ATTR.CONTRACT_LOAD_CACHED]: phase.cached };
@@ -478,7 +482,12 @@ function phaseAttributes(phase: RunProfile['phases'][number]): Attributes {
 				[ATTR.CREDENTIAL_SCHEME]: phase.scheme,
 			};
 		case 'sandboxStart':
-			return { [ATTR.SANDBOX_COMPILE_CACHED]: phase.compileCached };
+			return {
+				[ATTR.SANDBOX_COMPILE_CACHED]: phase.compileCached,
+				[ATTR.SANDBOX_GUEST_CPU_MS]: sandbox?.guestCpuMs,
+				[ATTR.SANDBOX_MEMORY_PEAK_BYTES]: sandbox?.memoryPeakBytes,
+				[ATTR.SANDBOX_INSTANTIATE_MS]: sandbox?.instantiateMs,
+			};
 	}
 }
 

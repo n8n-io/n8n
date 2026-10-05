@@ -936,6 +936,26 @@ struct Live {
     funcs: HashMap<String, Func>,
 }
 
+/// What the current instance used, for `[stats]`. It stays after a stop, until `[reset]`.
+#[derive(Clone, Copy, Default)]
+struct Usage {
+    instantiate: Duration,
+    guest_cpu: Duration,
+    /// Linear memory cannot shrink, so the memory that the limiter counts now is the peak.
+    memory_peak: usize,
+}
+
+impl Usage {
+    fn json(&self) -> Value {
+        let ms = |duration: Duration| duration.as_secs_f64() * 1000.0;
+        json!({
+            "guestCpuMs": ms(self.guest_cpu),
+            "memoryPeakBytes": self.memory_peak,
+            "instantiateMs": ms(self.instantiate),
+        })
+    }
+}
+
 struct Host {
     args: Args,
     engine: Engine,
@@ -946,6 +966,7 @@ struct Host {
     live: Option<Live>,
     /// The error that stopped the component. Every later call gets it.
     stopped: Option<String>,
+    usage: Usage,
 }
 
 impl Host {
@@ -1080,7 +1101,13 @@ impl Host {
         let mut store = Store::new(&self.engine, state);
         store.limiter(|state| &mut state.limiter);
         store.set_epoch_deadline(ticks(Duration::from_millis(self.args.cpu_ms)));
+        let started = Instant::now();
         let instance = pre.instantiate(&mut store)?;
+        self.usage = Usage {
+            instantiate: started.elapsed(),
+            guest_cpu: Duration::ZERO,
+            memory_peak: store.data().limiter.total,
+        };
         self.live = Some(Live {
             store,
             instance,
@@ -1164,7 +1191,10 @@ impl Host {
             live.store.set_epoch_deadline(ticks(budget));
             let outcome = func.call(&mut live.store, &values, &mut results);
             live.store.data_mut().spend();
-            let refused = live.store.data().limiter.refused;
+            let state = live.store.data();
+            self.usage.guest_cpu = Duration::from_millis(cpu_ms).saturating_sub(state.budget);
+            self.usage.memory_peak = state.limiter.total;
+            let refused = state.limiter.refused;
             // The JS engine can catch its out-of-memory error; the run stops anyway.
             let outcome = if refused && outcome.is_ok() {
                 Err(format_err!("out of memory"))
@@ -1243,7 +1273,11 @@ impl Host {
             // memory, CPU budget, memory limit, handle tables and bundle state.
             self.live = None;
             self.stopped = None;
+            self.usage = Usage::default();
             return Ok(Value::Null);
+        }
+        if method == "[stats]" {
+            return Ok(self.usage.json());
         }
         if let Some(message) = &self.stopped {
             return Err(rpc_error(-32000, message.clone()));
@@ -1337,6 +1371,7 @@ fn main() -> Result<()> {
         pre: None,
         live: None,
         stopped: None,
+        usage: Usage::default(),
     };
     loop {
         let message = io
@@ -1520,6 +1555,69 @@ mod tests {
         let file = borrowed("parsers.extract", 0);
         assert_eq!(file, borrowed("binary.send", 1));
         assert!(spec.host_resources.contains_key(&file));
+    }
+
+    #[test]
+    fn stats_give_what_the_instance_used_until_reset() {
+        let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("..");
+        let component = root.join("dist/action.wasm");
+        if !component.exists() {
+            eprintln!("skipped: build the guests first (pnpm sandbox:build)");
+            return;
+        }
+        let wit = root.join("../spec/wit");
+        let spec = Arc::new(Spec::load(&wit, "action-bundle").unwrap());
+        let version = spec.version.clone();
+        let mut config = Config::new();
+        config.epoch_interruption(true);
+        let mut host = Host {
+            args: Args {
+                wit,
+                world: "action-bundle".into(),
+                component,
+                component_sha256: None,
+                grants: Vec::new(),
+                bundle: None,
+                bundle_sha256: None,
+                node_contract: version.clone(),
+                memory_mb: 64,
+                cpu_ms: 1_000,
+                cache: None,
+            },
+            engine: Engine::new(&config).unwrap(),
+            io: Arc::new(Mutex::new(Io {
+                input: BufReader::new(std::io::stdin()),
+                output: std::io::stdout(),
+            })),
+            spec,
+            pre: None,
+            live: None,
+            stopped: None,
+            usage: Usage::default(),
+        };
+        let zero = json!({ "guestCpuMs": 0.0, "memoryPeakBytes": 0, "instantiateMs": 0.0 });
+        assert_eq!(host.dispatch("[stats]", &Value::Null).unwrap(), zero);
+
+        host.dispatch("[initialize]", &json!({ "nodeContract": version }))
+            .unwrap();
+        let started = host.dispatch("[stats]", &Value::Null).unwrap();
+        let peak = started["memoryPeakBytes"].as_u64().unwrap();
+        assert!(peak > 0 && peak % 65_536 == 0, "{started}");
+        assert!(
+            started["instantiateMs"].as_f64().unwrap() > 0.0,
+            "{started}"
+        );
+        assert_eq!(started["guestCpuMs"], 0.0);
+
+        // The bundle is empty, so the guest fails. Its CPU time counts all the same.
+        let _ = host.dispatch("action.describe", &json!({}));
+        let ran = host.dispatch("[stats]", &Value::Null).unwrap();
+        assert!(ran["guestCpuMs"].as_f64().unwrap() > 0.0, "{ran}");
+        assert!(ran["memoryPeakBytes"].as_u64().unwrap() >= peak, "{ran}");
+        assert_eq!(ran["instantiateMs"], started["instantiateMs"]);
+
+        host.dispatch("[reset]", &Value::Null).unwrap();
+        assert_eq!(host.dispatch("[stats]", &Value::Null).unwrap(), zero);
     }
 
     #[test]

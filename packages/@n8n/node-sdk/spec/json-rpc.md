@@ -47,6 +47,7 @@ function (`data-tables.table.drop` deletes a table; `data-tables.table.[drop]` f
 |---|---|
 | `[initialize]` | `{ nodeContract }` → `{ nodeContract, kind }` |
 | `[reset]` | `{}` → `null`. Drops the component instance. The next `[initialize]` starts a fresh one. |
+| `[stats]` | `{}` → `{ guestCpuMs, memoryPeakBytes, instantiateMs }`, what the current instance used. See [Stats](#stats). |
 | `<interface>.<resource>.[new]` | the constructor parameters → handle |
 | `<interface>.<resource>.[drop]` | `{ self }`. A notification. |
 | `<interface>.<resource>.[take]` | `{ self, max }` → `{ outputs, done, error? }`, for a resource with `next` |
@@ -97,6 +98,22 @@ for the next one. The new instance shares no state with the old one: it gets its
 budget, memory limit and handle tables, and it evaluates the bundle again. The process arguments
 (component, bundle, grants, limits) stay the same, so a runner reuses a process only for sessions
 with the same arguments. `[reset]` also clears the error of a stopped component.
+
+## Stats
+
+`[stats]` gives what the instance of the current session used:
+
+| Field | Unit | Value |
+|---|---|---|
+| `guestCpuMs` | milliseconds, with a fraction | The wall clock time in guest code, the same time that the CPU limit counts. The time in host calls does not count. A guest that the CPU limit stopped shows the limit. |
+| `memoryPeakBytes` | bytes | The largest size of the linear memories of the guest. Linear memory does not shrink, so this is also the size now. |
+| `instantiateMs` | milliseconds, with a fraction | The time to instantiate the component in `[initialize]`. The compile is not in it. |
+
+The host can send `[stats]` at each time that it can send a request: not while the guest waits
+for the answer to its call. A component that stopped still answers `[stats]` with what it used
+until the stop. Before `[initialize]` and after `[reset]`, all values are 0. A runner that does
+not measure its guest answers −32601 (method not found). The n8n host sends `[stats]` only when
+it records a run profile, once at the end of a session.
 
 ## Transports
 

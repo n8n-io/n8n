@@ -46,6 +46,7 @@ export {
 	type RunProfileMeta,
 	type RunRequest,
 	type RunRpc,
+	type RunSandboxStats,
 	type RpcDirection,
 } from '../profile';
 export { toTriggerNodeType, toVersionedTriggerType } from '../triggers';

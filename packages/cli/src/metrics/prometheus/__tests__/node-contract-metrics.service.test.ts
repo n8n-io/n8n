@@ -40,6 +40,7 @@ describe('PrometheusNodeContractMetricsService', () => {
 			{ ...request, startMs: 1_460, endMs: 1_470, resendCount: 1, errorType: 'ECONNRESET' },
 		],
 		requestCount: 6,
+		sandbox: { guestCpuMs: 250, memoryPeakBytes: 9_502_720, instantiateMs: 0.06 },
 		rpcs: [],
 		rpcCount: 0,
 		retryCount: 1,
@@ -80,7 +81,7 @@ describe('PrometheusNodeContractMetricsService', () => {
 		).toBe(false);
 	});
 
-	it('records the run, its HTTP attempts and the sandbox start of one profiled run', async () => {
+	it('records the run, its HTTP attempts, the sandbox start and the guest usage of one profiled run', async () => {
 		setup().emit('node-contract-run-profiled', {
 			executionId: 'exec-1',
 			nodeName: 'Notion',
@@ -109,9 +110,15 @@ describe('PrometheusNodeContractMetricsService', () => {
 		expect(await series('n8n_node_contract_sandbox_start_duration_seconds_sum')).toEqual([
 			{ labels: { compile_cached: 'false' }, value: 0.25 },
 		]);
+		expect(await series('n8n_node_contract_sandbox_guest_cpu_seconds_sum')).toEqual([
+			{ labels: { action, result: 'error' }, value: 0.25 },
+		]);
+		expect(await series('n8n_node_contract_sandbox_memory_peak_bytes_sum')).toEqual([
+			{ labels: { action, result: 'error' }, value: 9_502_720 },
+		]);
 	});
 
-	it('records a successful in-process run without HTTP attempts or sandbox start', async () => {
+	it('records a successful in-process run without HTTP attempts, sandbox start or guest usage', async () => {
 		setup().emit('node-contract-run-profiled', {
 			executionId: 'exec-2',
 			nodeName: 'Notion',
@@ -122,6 +129,7 @@ describe('PrometheusNodeContractMetricsService', () => {
 				phases: [profile.phases[0]],
 				requests: [],
 				requestCount: 0,
+				sandbox: undefined,
 			},
 		});
 
@@ -130,5 +138,7 @@ describe('PrometheusNodeContractMetricsService', () => {
 		]);
 		expect(await series('n8n_node_contract_http_requests_total')).toEqual([]);
 		expect(await series('n8n_node_contract_sandbox_start_duration_seconds_count')).toEqual([]);
+		expect(await series('n8n_node_contract_sandbox_guest_cpu_seconds_count')).toEqual([]);
+		expect(await series('n8n_node_contract_sandbox_memory_peak_bytes_count')).toEqual([]);
 	});
 });

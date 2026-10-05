@@ -5,7 +5,7 @@ import type { RunProfile } from '@n8n/nodes-base-next';
 import promClient from 'prom-client';
 
 import type { PrometheusMetricsCollector } from './base';
-import { DURATION_BUCKETS_SECONDS } from './constant';
+import { DURATION_BUCKETS_SECONDS, SIZE_BUCKETS_BYTES } from './constant';
 
 type RunRequest = RunProfile['requests'][number];
 
@@ -20,8 +20,8 @@ const statusClassOf = ({ status, errorType }: RunRequest) => {
 
 /**
  * Observes contract node runs from the `node-contract-run-profiled` event: run duration,
- * HTTP attempts and sandbox start. Labels are bounded: the action id is bounded by the
- * installed actions, and no host, URL, workflow or node name is a label.
+ * HTTP attempts, sandbox start and what the sandbox guest used. Labels are bounded: the action
+ * id is bounded by the installed actions, and no host, URL, workflow or node name is a label.
  */
 @Service()
 export class PrometheusNodeContractMetricsService implements PrometheusMetricsCollector {
@@ -64,16 +64,31 @@ export class PrometheusNodeContractMetricsService implements PrometheusMetricsCo
 			buckets: DURATION_BUCKETS_SECONDS,
 		});
 
+		const sandboxGuestCpu = new promClient.Histogram({
+			name: `${prefix}node_contract_sandbox_guest_cpu_seconds`,
+			help: 'Guest CPU time in seconds of sandboxed contract node runs, without the time in host calls, by action and result.',
+			labelNames: ['action', 'result'] as const,
+			buckets: DURATION_BUCKETS_SECONDS,
+		});
+
+		const sandboxMemoryPeak = new promClient.Histogram({
+			name: `${prefix}node_contract_sandbox_memory_peak_bytes`,
+			help: 'Peak guest linear memory in bytes of sandboxed contract node runs, by action and result.',
+			labelNames: ['action', 'result'] as const,
+			buckets: SIZE_BUCKETS_BYTES,
+		});
+
 		this.eventService.on('node-contract-run-profiled', ({ profile }) => {
 			const { action } = profile;
+			const result = profile.errorType === undefined ? 'success' : 'error';
 			runDuration.observe(
-				{
-					action,
-					path: profile.path ?? 'unknown',
-					result: profile.errorType === undefined ? 'success' : 'error',
-				},
+				{ action, path: profile.path ?? 'unknown', result },
 				(profile.endMs - profile.startMs) / 1000,
 			);
+			if (profile.sandbox) {
+				sandboxGuestCpu.observe({ action, result }, profile.sandbox.guestCpuMs / 1000);
+				sandboxMemoryPeak.observe({ action, result }, profile.sandbox.memoryPeakBytes);
+			}
 
 			for (const request of profile.requests) {
 				const labels = { action, status_class: statusClassOf(request) };

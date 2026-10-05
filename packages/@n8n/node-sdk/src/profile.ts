@@ -127,6 +127,19 @@ export interface RunRpc {
 	readonly errorType?: string;
 }
 
+/** What the sandbox guest of a run used, as its runner measured it. */
+export interface RunSandboxStats {
+	/**
+	 * The wall clock time in guest code, in milliseconds. Time in host calls does not count. A
+	 * guest that the CPU limit stopped shows the limit.
+	 */
+	readonly guestCpuMs: number;
+	/** The largest size of the linear memory of the guest, in bytes. */
+	readonly memoryPeakBytes: number;
+	/** The time to instantiate the guest component, in milliseconds. */
+	readonly instantiateMs: number;
+}
+
 /** What one execution of a contract node did, as plain data. The host turns it into spans or metrics. */
 export interface RunProfile {
 	/** The action id, e.g. `notion.databasePage.getAll`. */
@@ -171,6 +184,8 @@ export interface RunProfile {
 	readonly driftIssues: number;
 	/** The input and output items. Set only with a payload capture mode. */
 	readonly payloads?: RunPayloads;
+	/** What the guest used. Set only for a sandbox run whose runner answers `[stats]`. */
+	readonly sandbox?: RunSandboxStats;
 }
 
 /** The node run of a profile: the host finds its trace span from these. */
@@ -327,6 +342,8 @@ export interface RunRecorder {
 	output(ms: number, payload?: () => string): void;
 	/** Sets the count of output issues that passed on. */
 	drift(issues: number): void;
+	/** Sets what the sandbox guest used. */
+	sandbox(stats: RunSandboxStats): void;
 }
 
 type Identity = Pick<RunProfile, 'action' | 'version' | 'bundleHash' | 'nodeContract'>;
@@ -345,7 +362,7 @@ export function runRecorder(inputItems: number, payloads?: PayloadCapture) {
 	const keep = (list: string[], payload: (() => string) | undefined) => {
 		if (payload && list.length < MAX_PAYLOADS) list.push(payload());
 	};
-	const totals: { path?: RunProfile['path'] } & Record<
+	const totals: { path?: RunPath; sandbox?: RunSandboxStats } & Record<
 		'requests' | 'rpcs' | 'retries' | 'pages' | 'inputMs' | 'outputMs' | 'drift',
 		number
 	> = {
@@ -387,6 +404,9 @@ export function runRecorder(inputItems: number, payloads?: PayloadCapture) {
 		drift: (issues) => {
 			totals.drift = issues;
 		},
+		sandbox: (stats) => {
+			totals.sandbox = stats;
+		},
 	};
 	const profile = (identity: Identity, outcome: Outcome): RunProfile => ({
 		...identity,
@@ -409,6 +429,7 @@ export function runRecorder(inputItems: number, payloads?: PayloadCapture) {
 		...(payloads
 			? { payloads: { capture: payloads, inputs: [...inputs], outputs: [...outputs] } }
 			: {}),
+		...(totals.sandbox ? { sandbox: totals.sandbox } : {}),
 	});
 	return { recorder, profile };
 }
