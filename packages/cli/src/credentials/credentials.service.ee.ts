@@ -16,6 +16,7 @@ import { NotFoundError } from '@n8n/errors';
 import { TransferCredentialError } from '@/errors/response-errors/transfer-credential.error';
 import { ExternalSecretsConfig } from '@/modules/external-secrets.ee/external-secrets.config';
 import { SecretsProviderAccessCheckService } from '@/modules/external-secrets.ee/secret-provider-access-check.service.ee';
+import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { RoleService, CredentialsFinderService } from '@n8n/backend-services';
@@ -37,6 +38,7 @@ export class EnterpriseCredentialsService {
 		private readonly externalSecretsProviderAccessCheckService: SecretsProviderAccessCheckService,
 		private readonly licenseState: LicenseState,
 		private readonly connectionStatusProxy: CredentialConnectionStatusProxy,
+		private readonly policyEnforcementService: PolicyEnforcementService,
 	) {}
 
 	async shareWithProjects(
@@ -238,7 +240,16 @@ export class EnterpriseCredentialsService {
 			await this.credentialsService.ensureCanManageEndUserCredential(user, destinationProject.id);
 		}
 
-		// 6. validate that the destination project has access to all external secret providers
+		// 6. validate against the destination project's policy
+		await this.policyEnforcementService.enforceCredentialTransfer(
+			{
+				credential: { id: credential.id, type: credential.type },
+				targetProjectId: destinationProject.id,
+			},
+			{ kind: 'user', user },
+		);
+
+		// 7. validate that the destination project has access to all external secret providers
 		if (
 			this.licenseState.isExternalSecretsLicensed() &&
 			this.externalSecretsConfig.externalSecretsForProjects
@@ -252,11 +263,11 @@ export class EnterpriseCredentialsService {
 			);
 		}
 
-		// 7. projects losing access — the move drops all their sharings
+		// 8. projects losing access — the move drops all their sharings
 		const affectedProjectIds = [...new Set(credential.shared.map((s) => s.projectId))];
 
 		await this.sharedCredentialsRepository.manager.transaction(async (trx) => {
-			// 8. transfer the credential
+			// 9. transfer the credential
 			// remove all sharings
 			await trx.remove(credential.shared);
 
@@ -269,7 +280,7 @@ export class EnterpriseCredentialsService {
 				}),
 			);
 
-			// 9. drop connections for members who lost access in the new project
+			// 10. drop connections for members who lost access in the new project
 			await this.connectionStatusProxy.cleanupOrphanedEntriesForProjects(
 				credential.id,
 				affectedProjectIds,

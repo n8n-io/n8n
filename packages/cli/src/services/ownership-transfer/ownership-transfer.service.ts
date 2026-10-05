@@ -1,8 +1,15 @@
 import { OwnershipTransferHandlerRegistry } from '@n8n/backend-services';
-import { UserRepository } from '@n8n/db';
+import {
+	SharedCredentialsRepository,
+	SharedWorkflowRepository,
+	UserRepository,
+	WorkflowRepository,
+} from '@n8n/db';
 import { Service } from '@n8n/di';
 
 import { CredentialsService } from '@/credentials/credentials.service';
+import type { PolicyActor } from '@/policy/policy-enforcement-backend';
+import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { FolderService } from '@/services/folder.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { WorkflowService } from '@/workflows/workflow.service';
@@ -26,7 +33,52 @@ export class OwnershipTransferService {
 		private readonly transferHandlers: OwnershipTransferHandlerRegistry<
 			Parameters<WorkflowService['transferAll']>[2]
 		>,
+		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
+		private readonly workflowRepository: WorkflowRepository,
+		private readonly sharedCredentialsRepository: SharedCredentialsRepository,
+		private readonly policyEnforcementService: PolicyEnforcementService,
 	) {}
+
+	/**
+	 * Check every workflow and credential the source project owns against the
+	 * destination project's policy, before anything moves. Throws on the first
+	 * violation. Callers run this ahead of the transfer; `transferAllResources`
+	 * itself stays unchecked because the LDAP reset command has no user to act as.
+	 */
+	async enforceTransferPolicy(
+		fromProjectId: string,
+		toProjectId: string,
+		actor: PolicyActor,
+	): Promise<void> {
+		const ownedWorkflows = await this.sharedWorkflowRepository.find({
+			select: { workflowId: true },
+			where: { projectId: fromProjectId, role: 'workflow:owner' },
+		});
+		const workflows = await this.workflowRepository.findByIds(
+			ownedWorkflows.map(({ workflowId }) => workflowId),
+			{ fields: ['name', 'nodes'] },
+		);
+		for (const workflow of workflows) {
+			await this.policyEnforcementService.enforceWorkflowTransfer(
+				{ workflow, targetProjectId: toProjectId },
+				actor,
+			);
+		}
+
+		const ownedCredentials = await this.sharedCredentialsRepository.find({
+			where: { projectId: fromProjectId, role: 'credential:owner' },
+			relations: { credentials: true },
+		});
+		for (const { credentials } of ownedCredentials) {
+			await this.policyEnforcementService.enforceCredentialTransfer(
+				{
+					credential: { id: credentials.id, type: credentials.type },
+					targetProjectId: toProjectId,
+				},
+				actor,
+			);
+		}
+	}
 
 	/**
 	 * Transfer all resources owned by the given projects to the destination

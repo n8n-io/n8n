@@ -2,11 +2,22 @@ import {
 	OwnershipTransferHandlerRegistry,
 	type ProjectOwnershipTransferHandler,
 } from '@n8n/backend-services';
-import type { UserRepository } from '@n8n/db';
+import type {
+	CredentialsEntity,
+	SharedCredentials,
+	SharedCredentialsRepository,
+	SharedWorkflow,
+	SharedWorkflowRepository,
+	UserRepository,
+	WorkflowEntity,
+	WorkflowRepository,
+} from '@n8n/db';
 import type { EntityManager } from '@n8n/typeorm';
 import { mock } from 'vitest-mock-extended';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
+import type { PolicyActor } from '@/policy/policy-enforcement-backend';
+import type { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import type { FolderService } from '@/services/folder.service';
 import type { OwnershipService } from '@/services/ownership.service';
 import type { WorkflowService } from '@/workflows/workflow.service';
@@ -22,6 +33,10 @@ describe('OwnershipTransferService', () => {
 	const folderService = mock<FolderService>();
 	const ownershipService = mock<OwnershipService>();
 	const handler = mock<ProjectOwnershipTransferHandler<EntityManager>>();
+	const sharedWorkflowRepository = mock<SharedWorkflowRepository>();
+	const workflowRepository = mock<WorkflowRepository>();
+	const sharedCredentialsRepository = mock<SharedCredentialsRepository>();
+	const policyEnforcementService = mock<PolicyEnforcementService>();
 
 	let service: OwnershipTransferService;
 
@@ -43,7 +58,64 @@ describe('OwnershipTransferService', () => {
 			folderService,
 			ownershipService,
 			transferHandlers,
+			sharedWorkflowRepository,
+			workflowRepository,
+			sharedCredentialsRepository,
+			policyEnforcementService,
 		);
+	});
+
+	describe('enforceTransferPolicy', () => {
+		const actor: PolicyActor = { kind: 'user', user: { id: 'user-1' } };
+		const workflows = [
+			mock<WorkflowEntity>({ id: 'wf-1', name: 'One', nodes: [] }),
+			mock<WorkflowEntity>({ id: 'wf-2', name: 'Two', nodes: [] }),
+		];
+		const credentials = [
+			mock<SharedCredentials>({
+				credentials: mock<CredentialsEntity>({ id: 'cred-1', type: 'slackApi' }),
+			}),
+		];
+
+		beforeEach(() => {
+			sharedWorkflowRepository.find.mockResolvedValue([
+				mock<SharedWorkflow>({ workflowId: 'wf-1' }),
+				mock<SharedWorkflow>({ workflowId: 'wf-2' }),
+			]);
+			workflowRepository.findByIds.mockResolvedValue(workflows);
+			sharedCredentialsRepository.find.mockResolvedValue(credentials);
+			policyEnforcementService.enforceWorkflowTransfer.mockResolvedValue(mock());
+			policyEnforcementService.enforceCredentialTransfer.mockResolvedValue(mock());
+		});
+
+		it('checks every owned workflow and credential against the destination project', async () => {
+			await service.enforceTransferPolicy('from', 'to', actor);
+
+			expect(workflowRepository.findByIds).toHaveBeenCalledWith(['wf-1', 'wf-2'], {
+				fields: ['name', 'nodes'],
+			});
+			for (const workflow of workflows) {
+				expect(policyEnforcementService.enforceWorkflowTransfer).toHaveBeenCalledWith(
+					{ workflow, targetProjectId: 'to' },
+					actor,
+				);
+			}
+			expect(policyEnforcementService.enforceCredentialTransfer).toHaveBeenCalledExactlyOnceWith(
+				{ credential: { id: 'cred-1', type: 'slackApi' }, targetProjectId: 'to' },
+				actor,
+			);
+			expect(manager.transaction).not.toHaveBeenCalled();
+		});
+
+		it('propagates the first violation and checks nothing after it', async () => {
+			const violation = new Error('blocked by policy');
+			policyEnforcementService.enforceWorkflowTransfer.mockRejectedValueOnce(violation);
+
+			await expect(service.enforceTransferPolicy('from', 'to', actor)).rejects.toThrow(violation);
+
+			expect(policyEnforcementService.enforceWorkflowTransfer).toHaveBeenCalledTimes(1);
+			expect(policyEnforcementService.enforceCredentialTransfer).not.toHaveBeenCalled();
+		});
 	});
 
 	it('should transfer workflows, credentials and folders for each project in one transaction', async () => {
