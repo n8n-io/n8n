@@ -40,11 +40,14 @@ export function assertVariableWritesAllowed(options: {
 	if (hasOverwrites) assertPackageImportApiKeyScopes(apiKeyScopes, ['variable:update']);
 }
 
-/** Changing a matched table needs `dataTable:update`; a create-only or unchanged import does not. */
+/** Plan-derived: a scope is needed only when the plan creates or changes a table, also for project packages, which have no pre-plan create gate. */
 export function assertDataTableWritesAllowed(
 	apiKeyScopes: string[] | undefined,
 	dataTablePlans: DataTableImportPlan[],
 ): void {
+	if (dataTablePlans.some((plan) => plan.creations.length > 0)) {
+		assertPackageImportApiKeyScopes(apiKeyScopes, ['dataTable:create']);
+	}
 	if (dataTablePlans.some((plan) => plan.updates.length > 0)) {
 		assertPackageImportApiKeyScopes(apiKeyScopes, ['dataTable:update']);
 	}

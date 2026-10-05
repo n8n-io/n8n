@@ -2,7 +2,7 @@ import { LicenseState, ModuleRegistry } from '@n8n/backend-common';
 import { EventService } from '@n8n/backend-services';
 import { createTeamProject, linkUserToProject, testDb, testModules } from '@n8n/backend-test-utils';
 import type { Project, User } from '@n8n/db';
-import { FolderRepository, WorkflowRepository } from '@n8n/db';
+import { FolderRepository, ProjectRepository, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { INode, INodeParameterResourceLocator, Workflow } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
@@ -30,6 +30,7 @@ import {
 	buildEntityPackageBuffer,
 	dataTableRequirement,
 	serializedDataTable,
+	serializedProject,
 	serializedWorkflowWithDataTable,
 	type PackageWorkflow,
 } from './fixtures/package-fixtures';
@@ -683,6 +684,41 @@ describe('workflow package import — with data tables', () => {
 			});
 
 			expect(await tablesInProject(project.id)).toHaveLength(1);
+		});
+
+		it('rejects a project package that creates a table when the API key lacks the dataTable:create scope', async () => {
+			licenseMocker.enable('feat:projectRole:admin');
+			licenseMocker.setQuota('quota:maxTeamProjects', 100);
+			const table = serializedDataTable();
+			const packageBuffer = await buildEntityPackageBuffer({
+				projects: [{ target: 'projects/p1', project: serializedProject({ id: 'P1', name: 'p1' }) }],
+				workflows: [
+					{
+						target: 'projects/p1/workflows/wf-0',
+						workflow: serializedWorkflowWithDataTable({
+							id: 'wf-0',
+							name: 'Workflow 0',
+							dataTableId: table.id,
+						}),
+					},
+				],
+				dataTables: [{ target: 'data-tables/dt-0', dataTable: table }],
+				manifestExtras: { requirements: { dataTables: [dataTableRequirement(table, ['wf-0'])] } },
+			});
+
+			await expect(
+				service.importPackage(
+					importPackageRequest({
+						user: owner,
+						packageBuffer,
+						apiKeyScopes: ['project:create', 'project:update', 'workflow:import'],
+					}),
+				),
+			).rejects.toBeInstanceOf(ForbiddenError);
+
+			expect(await Container.get(ProjectRepository).findOneBy({ id: 'P1' })).toBeNull();
+			expect(await dataTableRepository.count()).toBe(0);
+			expect(await workflowRepository.count()).toBe(0);
 		});
 	});
 
