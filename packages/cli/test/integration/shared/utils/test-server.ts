@@ -397,7 +397,7 @@ export const setupTestServer = ({
 						break;
 
 					case 'insights':
-						await import('@n8n/backend-module-insights');
+						await import('@n8n/backend-module-insights/module');
 						break;
 
 					case 'data-table':

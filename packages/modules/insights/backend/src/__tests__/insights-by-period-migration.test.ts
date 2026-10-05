@@ -17,7 +17,7 @@ describe('ChangeValueTypesForInsights - insights_by_period table', () => {
 
 	beforeAll(async () => {
 		await testModules.loadModules(['insights'], {
-			insights: async () => await import('../index.js'),
+			insights: async () => await import('../insights.module.js'),
 		});
 
 		// Initialize DB connection without running migrations

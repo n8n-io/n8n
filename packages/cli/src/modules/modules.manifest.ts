@@ -5,5 +5,5 @@ import type { PackagedModules } from '@n8n/backend-common';
  * Keep each import in a thunk so an ineligible module is not imported.
  */
 export const packagedModules: PackagedModules = {
-	insights: async () => await import('@n8n/backend-module-insights'),
+	insights: async () => await import('@n8n/backend-module-insights/module'),
 };

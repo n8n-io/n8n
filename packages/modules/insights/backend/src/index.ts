@@ -1,4 +1,3 @@
-export { InsightsModule } from './insights.module';
 export { InsightsConfig } from './insights.config';
 export { InsightsService } from './insights.service';
 export { InsightsCollectionService } from './insights-collection.service';

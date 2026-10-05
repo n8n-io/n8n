@@ -16,7 +16,7 @@ import { InsightsConfig } from '../insights.config';
 
 beforeAll(async () => {
 	await testModules.loadModules(['insights'], {
-		insights: async () => await import('../index.js'),
+		insights: async () => await import('../insights.module.js'),
 	});
 	await testDb.init();
 });

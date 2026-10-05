@@ -14,6 +14,18 @@ import { workspaceDistExternals } from './vitest.workspace-externals';
 const alias = {
 	'@test-integration': path.resolve(__dirname, 'test/integration/shared'),
 	'@test': path.resolve(__dirname, 'test/shared'),
+	'@n8n/backend-module-insights/testing': path.resolve(
+		__dirname,
+		'../modules/insights/backend/src/testing.ts',
+	),
+	'@n8n/backend-module-insights/module': path.resolve(
+		__dirname,
+		'../modules/insights/backend/src/insights.module.ts',
+	),
+	'@n8n/backend-module-insights': path.resolve(
+		__dirname,
+		'../modules/insights/backend/src/index.ts',
+	),
 	'@n8n/mcp-apps/server': path.resolve(__dirname, '../@n8n/mcp-apps/src/server/index.ts'),
 	'@n8n/telemetry': path.resolve(__dirname, '../@n8n/telemetry/src'),
 	'@': path.resolve(__dirname, 'src'),

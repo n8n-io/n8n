@@ -10,6 +10,11 @@
       "import": "./dist/index.js",
       "require": "./dist/index.js"
     },
+    "./module": {
+      "types": "./dist/insights.module.d.ts",
+      "import": "./dist/insights.module.js",
+      "require": "./dist/insights.module.js"
+    },
     "./testing": {
       "types": "./dist/testing.d.ts",
       "import": "./dist/testing.js",
@@ -18,6 +23,9 @@
   },
   "typesVersions": {
     "*": {
+      "module": [
+        "dist/insights.module.d.ts"
+      ],
       "testing": [
         "dist/testing.d.ts"
       ]
