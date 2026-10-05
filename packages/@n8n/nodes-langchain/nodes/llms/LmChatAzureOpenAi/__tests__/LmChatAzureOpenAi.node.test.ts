@@ -413,28 +413,18 @@ describe('LmChatAzureOpenAi', () => {
 			expect(shown).toHaveLength(1);
 			expect(shown[0].type).toBe('resourceLocator');
 			expect(shown[0].modes?.map((m) => m.name)).toEqual(['list', 'id']);
+			// The list needs a Foundry credential, and new credentials default to classic.
+			expect(shown[0].default).toEqual({ mode: 'id', value: '' });
 			expect(shown[0].modes?.[0].typeOptions?.searchListMethod).toBe('searchModels');
 			expect(description.defaultVersion).toBe(1.1);
 		});
 
-		it('resolves a version 1.1 picker value to the deployment name', async () => {
+		it('reads the deployment name with extractValue, so both version shapes resolve', async () => {
 			const ctx = setupMockContext('azureOpenAiApi', apiKeyCredential);
-			// Mirrors the real helper: a picker value is unwrapped only when `extractValue` is set.
-			ctx.getNodeParameter = vi
-				.fn()
-				.mockImplementation(
-					(paramName: string, _i: number, _d: unknown, opts?: { extractValue?: boolean }) => {
-						if (paramName === 'authentication') return 'azureOpenAiApi';
-						if (paramName === 'model') {
-							return opts?.extractValue ? 'gpt-4o' : { __rl: true, mode: 'list', value: 'gpt-4o' };
-						}
-						if (paramName === 'options') return {};
-						return undefined;
-					},
-				);
 
 			await new LmChatAzureOpenAi().supplyData.call(ctx, 0);
 
+			expect(ctx.getNodeParameter).toHaveBeenCalledWith('model', 0, '', { extractValue: true });
 			expect(vi.mocked(AzureChatOpenAI).mock.calls[0][0]).toMatchObject({
 				model: 'gpt-4o',
 				azureOpenAIApiDeploymentName: 'gpt-4o',
