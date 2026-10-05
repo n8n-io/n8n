@@ -64,6 +64,20 @@ describe('ScheduledTaskManager', () => {
 		expect(scheduledTaskManager.getTargetIds(ctx.group)).toEqual(['test-node-id']);
 	});
 
+	it('keeps recurrence rules distinct when their cron expressions match', () => {
+		const first = cronContext({
+			recurrence: { activated: true, index: 0, intervalSize: 1, typeInterval: 'hours' },
+		});
+		const second = cronContext({
+			recurrence: { activated: true, index: 0, intervalSize: 2, typeInterval: 'hours' },
+		});
+
+		expect(scheduledTaskManager.register(first, onTick)).toBe(true);
+		expect(scheduledTaskManager.register(second, onTick)).toBe(true);
+		expect(scheduledTaskManager.register(first, onTick)).toBe(false);
+		expect(scheduledTaskManager.getDiagnosticCounts()).toEqual({ crons: 2 });
+	});
+
 	it('does not fire duplicate cron contexts twice', () => {
 		const ctx = cronContext();
 
