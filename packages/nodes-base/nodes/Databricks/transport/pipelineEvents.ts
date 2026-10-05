@@ -10,7 +10,9 @@ import {
 } from '../actions/helpers';
 import { clampPageSize, collectPages, toPage, type Page, type PageLimits } from './pagination';
 
-export const PIPELINE_EVENTS_MAX_PAGE_SIZE = 1000;
+// The API reference lists 1000, but the server rejects anything above 250 with
+// "Cannot have more than 250 events per page."
+export const PIPELINE_EVENTS_MAX_PAGE_SIZE = 250;
 export const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const ISO_TIMESTAMP_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,9})?Z$/;
 
