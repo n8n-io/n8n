@@ -28,6 +28,7 @@ describe('LeaseHeartbeat', () => {
 
 		await vi.advanceTimersByTimeAsync(1 + 2 * INTERVAL_MS);
 		expect(renew).toHaveBeenCalledTimes(3);
+		expect(renew).toHaveBeenCalledWith(LEASE_MS);
 		expect(onRenewal).toHaveBeenCalledTimes(3);
 		expect(onRenewal).toHaveBeenCalledWith('renewed');
 
