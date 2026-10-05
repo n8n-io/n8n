@@ -10,7 +10,10 @@ import type { BudgetGuardrailConfig } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { Container, Service } from '@n8n/di';
 
-import { AgentBudgetSpendRepository } from './repositories/agent-budget-spend.repository';
+import {
+	AgentBudgetSpendRepository,
+	previousTotalUsd,
+} from './repositories/agent-budget-spend.repository';
 
 /** Past this many buffered calls the oldest drops, so a long outage cannot grow memory. */
 const PENDING_CALLS_CAP = 10_000;
@@ -48,7 +51,8 @@ export class AgentSpendLedger implements SpendLedger {
 	async read(key: string): Promise<number> {
 		await this.flushPending();
 		try {
-			return await this.budgetSpendRepository.readTotal(key);
+			const stored = await this.budgetSpendRepository.readTotal(key);
+			return stored + this.bufferedTotalFor(key);
 		} catch (error) {
 			this.logger.warn('Failed to read budget spend; using the buffered totals', {
 				key,
@@ -91,7 +95,7 @@ export class AgentSpendLedger implements SpendLedger {
 	private bufferedTotals(entries: SpendEntry[]): SpendTotal[] {
 		return entries.map((entry) => {
 			const totalUsd = this.bufferedTotalFor(entry.key);
-			return { key: entry.key, totalUsd, previousUsd: totalUsd - entry.usd };
+			return { key: entry.key, totalUsd, previousUsd: previousTotalUsd(totalUsd, entry.usd) };
 		});
 	}
 

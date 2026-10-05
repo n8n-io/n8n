@@ -21,6 +21,16 @@ export interface AgentBudgetSpendTotal {
 }
 
 /**
+ * Reconstructs the pre-increment total from the new total. The subtraction
+ * keeps the as-applied value under concurrent writers, but binary float adds
+ * noise (8.2 - 0.2 = 7.999999999999999) that can re-fire an alert crossing.
+ * Twelve significant digits drop the noise and keep real cost precision.
+ */
+export function previousTotalUsd(totalUsd: number, usd: number): number {
+	return Number((totalUsd - usd).toPrecision(12));
+}
+
+/**
  * Stores agent budget totals and the call ids that already added spend.
  * `applySpend` inserts the call id and increments the totals in one transaction.
  */
@@ -58,7 +68,11 @@ export class AgentBudgetSpendRepository extends BaseRepository<AgentBudgetSpend>
 			const totals: AgentBudgetSpendTotal[] = [];
 			for (const entry of entries) {
 				const totalUsd = await this.incrementKey(manager, entry.key, entry.usd);
-				totals.push({ key: entry.key, totalUsd, previousUsd: totalUsd - entry.usd });
+				totals.push({
+					key: entry.key,
+					totalUsd,
+					previousUsd: previousTotalUsd(totalUsd, entry.usd),
+				});
 			}
 			return totals;
 		});

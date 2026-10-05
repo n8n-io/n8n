@@ -42,6 +42,17 @@ describe('AgentBudgetSpendRepository', () => {
 		await expect(repository.readTotal(key)).resolves.toBe(2);
 	});
 
+	it('returns the exact pre-increment total at a float boundary', async () => {
+		const key = 'thread-1';
+
+		await repository.applySpend(randomUUID(), [{ key, usd: 8 }]);
+		const second = await repository.applySpend(randomUUID(), [{ key, usd: 0.2 }]);
+
+		// 8.2 - 0.2 is 7.999999999999999 in binary float. The alert check compares
+		// previousUsd with the alert line, so the value must be exactly 8.
+		expect(second).toEqual([{ key, totalUsd: 8.2, previousUsd: 8 }]);
+	});
+
 	it('counts both calls when two writers add to the same key at the same time', async () => {
 		const key = 'thread-1';
 

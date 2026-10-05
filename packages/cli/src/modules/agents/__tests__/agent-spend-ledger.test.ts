@@ -54,6 +54,31 @@ describe('AgentSpendLedger', () => {
 		await expect(ledger.read('unknown')).resolves.toBe(0);
 	});
 
+	it('includes buffered spend when a read succeeds after a failed flush', async () => {
+		const repository = mock<AgentBudgetSpendRepository>();
+		// Writes keep failing (write-lock timeout); reads succeed.
+		repository.applySpend.mockRejectedValue(new Error('write lock timeout'));
+		repository.readTotal.mockResolvedValue(0.25);
+		const ledger = new AgentSpendLedger(repository, mock<Logger>());
+
+		await ledger.add('call-1', [entry('session-1', 1.5)]);
+
+		// 0.25 stored + 1.50 still buffered: a 1 USD session cap must stop the next call.
+		await expect(ledger.read('session-1')).resolves.toBe(1.75);
+	});
+
+	it('reconstructs the buffered previous total without float noise', async () => {
+		const { repository } = flakyRepository();
+		const ledger = new AgentSpendLedger(repository, mock<Logger>());
+
+		await ledger.add('call-1', [entry('k', 8)]);
+
+		// 8.2 - 0.2 is 7.999999999999999 in binary float; the alert check needs exactly 8.
+		await expect(ledger.add('call-2', [entry('k', 0.2)])).resolves.toEqual([
+			{ key: 'k', totalUsd: 8.2, previousUsd: 8 },
+		]);
+	});
+
 	it('flushes buffered calls in arrival order on the next add after recovery', async () => {
 		const { repository, state } = flakyRepository();
 		const ledger = new AgentSpendLedger(repository, mock<Logger>());
