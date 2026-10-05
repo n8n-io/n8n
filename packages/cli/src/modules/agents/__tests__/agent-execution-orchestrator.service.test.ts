@@ -52,6 +52,7 @@ import { AgentTurnExecutionService } from '../agent-turn-execution.service';
 import type { AgentExecutionStreamChunk } from '../types/agent-steering';
 import type { AgentToolApprovalService } from '../agent-tool-approval.service';
 import type { AgentValidationService } from '../agent-validation.service';
+import { AgentSpendLedger } from '../budget-guardrail';
 import type { Agent } from '../entities/agent.entity';
 import type { AgentBackgroundJob } from '../entities/agent-background-job.entity';
 import type { AgentExecutionThread } from '../entities/agent-execution-thread.entity';
@@ -238,6 +239,16 @@ function makeService(sandboxEnabled = false) {
 	});
 	const wakeService = mock<AgentWakeService>();
 	Container.set(AgentWakeService, wakeService);
+
+	// The budget guardrail resolves its ledger from the container. Stub it with
+	// an empty ledger: reads stay under every cap, and `add` reports each entry's
+	// cost as the new total so alert-crossing tests can pick a crossing amount.
+	const spendLedger = mock<AgentSpendLedger>();
+	spendLedger.read.mockResolvedValue(0);
+	spendLedger.add.mockImplementation(async (_callId, entries) =>
+		entries.map((entry) => ({ key: entry.key, totalUsd: entry.usd, previousUsd: 0 })),
+	);
+	Container.set(AgentSpendLedger, spendLedger);
 
 	executionService.canUseDraftThread.mockResolvedValue(true);
 	executionService.findThreadById.mockResolvedValue({
