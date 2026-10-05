@@ -184,11 +184,13 @@ function errorText(error: unknown): string {
 /**
  * Bridges Chat SDK events to the agent execution pipeline.
  *
- * Registers four handlers on a Chat SDK `Bot` instance:
+ * Registers these handlers on a Chat SDK `Bot` instance:
  * 1. `onNewMention` — new @mentions and DMs → subscribe + enqueue
  * 2. `onSubscribedMessage` — follow-up messages in subscribed threads
- * 3. `onAction` — button clicks for HITL resume flow
- * 4. `onSlashCommand` — /new session reset for adapters that never deliver a
+ * 3. `onNewMessage` — every other message, only for platforms that implement
+ *    `shouldHandleUnmentionedMessage`
+ * 4. `onAction` — button clicks for HITL resume flow
+ * 5. `onSlashCommand` — /new session reset for adapters that never deliver a
  *    leading "/" as a plain message (e.g. Telegram)
  *
  * Stream consumption has two strategies, selected per integration via the
@@ -410,6 +412,29 @@ export class AgentChatBridge {
 				await this.postErrorToThread(thread, error);
 			}
 		});
+
+		if (this.integrationImpl?.shouldHandleUnmentionedMessage) {
+			// No subscribe: a later message is routed here again, so the platform
+			// decides each time, and turning read-all off takes effect at once.
+			this.chat.onNewMessage(/[\s\S]*/, async (thread, message) => {
+				try {
+					const accepted = this.integrationImpl?.shouldHandleUnmentionedMessage?.({
+						thread,
+						message,
+						integration: this.integration,
+					});
+					if (!accepted || !this.canUserAccess(message.author)) return;
+					const anchoredThread = this.anchorInboundThread(thread, message);
+					await this.handleInboundMessage(anchoredThread, message, { isNewMention: false });
+				} catch (error) {
+					// Nobody asked the agent here, so an error post would be noise.
+					this.logger.warn('Failed to handle an un-mentioned message', {
+						agentId: this.agentId,
+						error: error instanceof Error ? error.message : String(error),
+					});
+				}
+			});
+		}
 
 		this.chat.onAction(async (event) => {
 			try {

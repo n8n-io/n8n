@@ -105,6 +105,8 @@ function makeBot() {
 	const handlers: {
 		mention?: (thread: unknown, message: unknown) => Promise<void>;
 		subscribed?: (thread: unknown, message: unknown) => Promise<void>;
+		newMessage?: (thread: unknown, message: unknown) => Promise<void>;
+		newMessagePattern?: RegExp;
 		action?: (event: unknown) => Promise<void>;
 		slashCommand?: (event: unknown) => Promise<void>;
 	} = {};
@@ -119,6 +121,14 @@ function makeBot() {
 		},
 		onSubscribedMessage: (h: typeof handlers.subscribed) => {
 			handlers.subscribed = async (thread, message) => {
+				threads.set((thread as FakeThread).id, thread);
+				await h?.(thread, message);
+				await drainQueuedMessages.get(bot)?.();
+			};
+		},
+		onNewMessage: (pattern: RegExp, h: typeof handlers.newMessage) => {
+			handlers.newMessagePattern = pattern;
+			handlers.newMessage = async (thread, message) => {
 				threads.set((thread as FakeThread).id, thread);
 				await h?.(thread, message);
 				await drainQueuedMessages.get(bot)?.();
@@ -3826,5 +3836,100 @@ describe('AgentChatBridge — Slack thread history', () => {
 		// The full 2000-char message is not surfaced; it is cut to 1500 chars + ellipsis.
 		expect(call.modelMessage).not.toContain(longText);
 		expect(call.modelMessage).toContain(`${'a'.repeat(1500)}…`);
+	});
+});
+
+/** Stands in for a platform that delivers every message, such as Teams with RSC. */
+class ListeningTestIntegration extends AgentChatIntegration {
+	readonly type = 'test-listening';
+	readonly credentialTypes: string[] = [];
+	readonly supportedComponents: readonly RichCardComponentType[] = [];
+	readonly description = '';
+	readonly displayLabel = 'Test Listening';
+	readonly displayIcon = 'circle';
+	shouldHandleUnmentionedMessage({ message }: { message: { text: string } }): boolean {
+		return message.text !== 'ignore me';
+	}
+	async createAdapter(_ctx: AgentChatIntegrationContext): Promise<unknown> {
+		return {};
+	}
+}
+
+describe('AgentChatBridge — un-mentioned messages', () => {
+	const componentMapper = mock<ComponentMapper>();
+	const logger = mock<Logger>();
+	const finish: StreamChunk = { type: 'finish', finishReason: 'stop' };
+
+	beforeEach(() => {
+		const registry = new ChatIntegrationRegistry();
+		registry.register(new ListeningTestIntegration());
+		registry.register(new StreamingTestIntegration());
+		Container.set(ChatIntegrationRegistry, registry);
+		mockSessionGenerations();
+	});
+
+	afterEach(() => {
+		Container.reset();
+		vi.clearAllMocks();
+	});
+
+	function makeBridge(type: string) {
+		const { bot, handlers } = makeBot();
+		const executor = makeAgentExecutor([finish]);
+		const queue = mock<AgentMessageQueueService>();
+		queue.enqueue.mockResolvedValue({ status: 'accepted', item: mock<AgentMessageQueue>() });
+		new AgentChatBridge(
+			bot as unknown as ChatBotLike,
+			'agent-1',
+			executor as never,
+			componentMapper,
+			logger,
+			'project-1',
+			{ type, credentialId: 'cred-1' } as unknown as AgentIntegrationConfig,
+			undefined,
+			undefined,
+			undefined,
+			queue,
+		);
+		return { handlers, queue };
+	}
+
+	it('does not listen for un-mentioned messages when the platform has no hook', () => {
+		const { handlers } = makeBridge('test-streaming');
+
+		expect(handlers.newMessage).toBeUndefined();
+	});
+
+	it('listens for every un-mentioned message when the platform has the hook', () => {
+		const { handlers } = makeBridge('test-listening');
+
+		expect(handlers.newMessagePattern?.test('')).toBe(true);
+		expect(handlers.newMessagePattern?.test('any\ntext')).toBe(true);
+	});
+
+	it('enqueues one turn for an accepted message, without subscribing the thread', async () => {
+		const { handlers, queue } = makeBridge('test-listening');
+		const thread = makeThread();
+
+		await handlers.newMessage!(thread, {
+			id: 'm1',
+			text: 'hello there',
+			author: { userId: 'u1', userName: 'user1' },
+		});
+
+		expect(queue.enqueue).toHaveBeenCalledTimes(1);
+		expect(thread.subscribe).not.toHaveBeenCalled();
+	});
+
+	it('drops a message the platform does not accept', async () => {
+		const { handlers, queue } = makeBridge('test-listening');
+
+		await handlers.newMessage!(makeThread(), {
+			id: 'm1',
+			text: 'ignore me',
+			author: { userId: 'u1', userName: 'user1' },
+		});
+
+		expect(queue.enqueue).not.toHaveBeenCalled();
 	});
 });

@@ -521,6 +521,18 @@ export abstract class AgentChatIntegration {
 	}): boolean;
 
 	/**
+	 * Whether a message that neither mentions the bot nor arrives in a
+	 * subscribed thread should run the agent. Only platforms that deliver every
+	 * message implement this (Teams with read-all permissions). Without it the
+	 * bridge never listens for such messages.
+	 */
+	shouldHandleUnmentionedMessage?(params: {
+		thread: Thread<unknown, unknown>;
+		message: Message<unknown>;
+		integration: AgentIntegrationConfig;
+	}): boolean;
+
+	/**
 	 * Optional per-message execution policy for platform-specific bridge behavior,
 	 * such as status indicators or forcing buffered output for a specific thread.
 	 */
