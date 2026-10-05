@@ -9,7 +9,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | Name | Columns | Comment | Type |
 | ---- | ------- | ------- | ---- |
 | [public.activity_event](public.activity_event.md) | 11 |  | BASE TABLE |
-| [public.agent_background_job](public.agent_background_job.md) | 19 |  | BASE TABLE |
+| [public.agent_background_job](public.agent_background_job.md) | 20 |  | BASE TABLE |
 | [public.agent_channel_status](public.agent_channel_status.md) | 11 |  | BASE TABLE |
 | [public.agent_chat_attachments](public.agent_chat_attachments.md) | 12 |  | BASE TABLE |
 | [public.agent_chat_subscriptions](public.agent_chat_subscriptions.md) | 6 |  | BASE TABLE |
@@ -24,10 +24,11 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.agent_execution_threads](public.agent_execution_threads.md) | 19 |  | BASE TABLE |
 | [public.agent_files](public.agent_files.md) | 10 |  | BASE TABLE |
 | [public.agent_history](public.agent_history.md) | 9 |  | BASE TABLE |
-| [public.agent_message_queue](public.agent_message_queue.md) | 9 |  | BASE TABLE |
+| [public.agent_message_queue](public.agent_message_queue.md) | 10 |  | BASE TABLE |
 | [public.agent_task_definition](public.agent_task_definition.md) | 8 |  | BASE TABLE |
 | [public.agent_task_run_lock](public.agent_task_run_lock.md) | 6 |  | BASE TABLE |
 | [public.agent_task_snapshot](public.agent_task_snapshot.md) | 9 |  | BASE TABLE |
+| [public.agent_thread_grants](public.agent_thread_grants.md) | 4 |  | BASE TABLE |
 | [public.agent_workflow_dependency](public.agent_workflow_dependency.md) | 3 |  | BASE TABLE |
 | [public.agents](public.agents.md) | 14 |  | BASE TABLE |
 | [public.agents_memory_entries](public.agents_memory_entries.md) | 13 |  | BASE TABLE |
@@ -156,6 +157,8 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.workflow_review_request_workflow](public.workflow_review_request_workflow.md) | 5 |  | BASE TABLE |
 | [public.workflow_statistics](public.workflow_statistics.md) | 7 |  | BASE TABLE |
 | [public.workflow_statistics_delta](public.workflow_statistics_delta.md) | 6 |  | BASE TABLE |
+| [public.workflow_suggestion](public.workflow_suggestion.md) | 11 |  | BASE TABLE |
+| [public.workflow_suggestion_activity](public.workflow_suggestion_activity.md) | 6 |  | BASE TABLE |
 | [public.workflows_tags](public.workflows_tags.md) | 2 |  | BASE TABLE |
 
 ## Stored procedures and functions
@@ -214,6 +217,7 @@ erDiagram
 "public.agent_task_definition" }o--|| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
 "public.agent_task_run_lock" }o--|| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
 "public.agent_task_snapshot" }o--|| "public.agent_history" : "FOREIGN KEY (#quot;versionId#quot;) REFERENCES agent_history(#quot;versionId#quot;) ON DELETE CASCADE"
+"public.agent_thread_grants" }o--|| "public.agent_execution_threads" : "FOREIGN KEY (#quot;threadId#quot;) REFERENCES agent_execution_threads(id) ON DELETE CASCADE"
 "public.agent_workflow_dependency" }o--|| "public.workflow_entity" : "FOREIGN KEY (#quot;workflowId#quot;) REFERENCES workflow_entity(id) ON DELETE CASCADE"
 "public.agent_workflow_dependency" }o--|| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
 "public.agents" }o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
@@ -393,6 +397,10 @@ erDiagram
 "public.workflow_review_request_workflow" }o--o| "public.workflow_history" : "FOREIGN KEY (#quot;workflowVersionId#quot;) REFERENCES workflow_history(#quot;versionId#quot;) ON DELETE SET NULL"
 "public.workflow_review_request_workflow" }o--o| "public.workflow_history" : "FOREIGN KEY (#quot;baselineVersionId#quot;) REFERENCES workflow_history(#quot;versionId#quot;) ON DELETE SET NULL"
 "public.workflow_review_request_workflow" }o--|| "public.workflow_review_request" : "FOREIGN KEY (#quot;workflowReviewRequestId#quot;) REFERENCES workflow_review_request(id) ON DELETE CASCADE"
+"public.workflow_suggestion" }o--|| "public.user" : "FOREIGN KEY (#quot;backgroundUserId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE CASCADE"
+"public.workflow_suggestion" }o--|| "public.workflow_entity" : "FOREIGN KEY (#quot;workflowId#quot;) REFERENCES workflow_entity(id) ON DELETE CASCADE"
+"public.workflow_suggestion" }o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
+"public.workflow_suggestion_activity" }o--|| "public.workflow_suggestion" : "FOREIGN KEY (#quot;suggestionId#quot;) REFERENCES workflow_suggestion(id) ON DELETE CASCADE"
 "public.workflows_tags" }o--|| "public.workflow_entity" : "FOREIGN KEY (#quot;workflowId#quot;) REFERENCES workflow_entity(id) ON DELETE CASCADE"
 "public.workflows_tags" }o--|| "public.tag_entity" : "FOREIGN KEY (#quot;tagId#quot;) REFERENCES tag_entity(id) ON DELETE CASCADE"
 
@@ -421,6 +429,7 @@ erDiagram
   varchar_64_ parentPrincipalHash
   varchar_255_ parentResourceId
   varchar_128_ parentThreadId
+  uuid pauseRequestId
   text result
   timestamp_3__with_time_zone settledAt
   varchar_16_ status
@@ -616,6 +625,7 @@ erDiagram
   bigint id
   varchar_36_ messageId FK
   json payload
+  integer position
   varchar_36_ steeringExecutionId FK
   integer steeringOrder
   varchar_128_ threadId FK
@@ -649,6 +659,12 @@ erDiagram
   varchar_64_ timezone
   timestamp_3__with_time_zone updatedAt
   varchar_36_ versionId FK
+}
+"public.agent_thread_grants" {
+  timestamp_3__with_time_zone createdAt
+  varchar_512_ grantKey
+  varchar_128_ threadId FK
+  timestamp_3__with_time_zone updatedAt
 }
 "public.agent_workflow_dependency" {
   varchar_36_ agentId FK
@@ -1870,6 +1886,27 @@ erDiagram
   smallint rootCountDelta
   varchar_36_ workflowId
   varchar_128_ workflowName
+}
+"public.workflow_suggestion" {
+  uuid backgroundUserId FK
+  timestamp_3__with_time_zone closedAt
+  varchar_16_ closedReason
+  timestamp_3__with_time_zone createdAt
+  json expectedBaseline
+  varchar_36_ id
+  json payload
+  varchar_36_ projectId FK
+  varchar_16_ state
+  timestamp_3__with_time_zone updatedAt
+  varchar_36_ workflowId FK
+}
+"public.workflow_suggestion_activity" {
+  varchar_16_ action
+  varchar_16_ author
+  timestamp_3__with_time_zone createdAt
+  varchar_36_ id
+  varchar_36_ suggestionId FK
+  timestamp_3__with_time_zone updatedAt
 }
 "public.workflows_tags" {
   varchar_36_ tagId FK

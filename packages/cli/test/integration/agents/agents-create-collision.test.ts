@@ -10,6 +10,7 @@ import { Container } from '@n8n/di';
 import { ConflictError } from '@n8n/errors';
 
 import { AgentsService } from '@/modules/agents/agents.service';
+import { AgentsSettingsService } from '@/modules/agents/agents-settings.service';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 
 describe('AgentsService.create — client-minted id', () => {
@@ -19,6 +20,7 @@ describe('AgentsService.create — client-minted id', () => {
 	beforeAll(async () => {
 		await testModules.loadModules(['agents']);
 		await testDb.init();
+		await Container.get(AgentsSettingsService).setEnabled(true);
 		agentsService = Container.get(AgentsService);
 		agentRepo = Container.get(AgentRepository);
 	});
@@ -39,6 +41,22 @@ describe('AgentsService.create — client-minted id', () => {
 			projectId: project.id,
 		});
 	});
+
+	it.each(['create', 'createOrAdopt'] as const)(
+		'blocks %s when Agents is disabled',
+		async (method) => {
+			const settings = Container.get(AgentsSettingsService);
+			await settings.setEnabled(false);
+			try {
+				const project = await createTeamProject();
+				await expect(agentsService[method](project.id, 'Disabled Agent')).rejects.toThrow(
+					'Agents are disabled',
+				);
+			} finally {
+				await settings.setEnabled(true);
+			}
+		},
+	);
 
 	it('rejects an id that names a row in the same project', async () => {
 		const project = await createTeamProject();

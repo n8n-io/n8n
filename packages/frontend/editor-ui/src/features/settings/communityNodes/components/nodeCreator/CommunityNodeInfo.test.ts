@@ -28,6 +28,7 @@ const getCommunityNodeAttributes = vi.fn();
 vi.mock('@/app/stores/nodeTypes.store', () => ({
 	useNodeTypesStore: vi.fn(() => ({
 		getCommunityNodeAttributes,
+		communityNodeType: vi.fn(),
 		getNodeType: vi.fn(),
 		getAllNodeTypes: vi.fn().mockReturnValue({
 			nodeTypes: {},

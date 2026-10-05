@@ -180,15 +180,27 @@ describe('save_user_preference MCP tool', () => {
 
 			expect(telemetry.track).toHaveBeenCalledWith(
 				TELEMETRY_EVENT.CONTEXT.ASSISTANT_SAVED_PREFERENCE,
-				{ surface: 'mcp', scope_type: 'user', text_length: TEXT.length, replaced_existing: false },
+				{
+					user_id: 'user-1',
+					surface: 'mcp',
+					scope_type: 'user',
+					text_length: TEXT.length,
+					replaced_existing: false,
+				},
 			);
 			expect(telemetry.track).toHaveBeenCalledWith(
 				TELEMETRY_EVENT.CONTEXT.PREFERENCE_CONFIRMATION_SHOWN,
-				{ surface: 'mcp', scope_type: 'user', text_length: TEXT.length },
+				{ user_id: 'user-1', surface: 'mcp', scope_type: 'user', text_length: TEXT.length },
 			);
 			expect(telemetry.track).toHaveBeenCalledWith(
 				TELEMETRY_EVENT.CONTEXT.PREFERENCE_CONFIRMATION_RESOLVED,
-				{ surface: 'mcp', outcome: 'accepted', scope_type: 'user', text_length: TEXT.length },
+				{
+					user_id: 'user-1',
+					surface: 'mcp',
+					outcome: 'accepted',
+					scope_type: 'user',
+					text_length: TEXT.length,
+				},
 			);
 		});
 
@@ -272,7 +284,13 @@ describe('save_user_preference MCP tool', () => {
 				expect(text(result)).toContain('Nothing was saved');
 				expect(telemetry.track).toHaveBeenCalledWith(
 					TELEMETRY_EVENT.CONTEXT.PREFERENCE_WRITE_REJECTED,
-					{ surface: 'mcp', reason, scope_type: 'user', text_length: TEXT.length },
+					{
+						user_id: 'user-1',
+						surface: 'mcp',
+						reason,
+						scope_type: 'user',
+						text_length: TEXT.length,
+					},
 				);
 			},
 		);
@@ -316,7 +334,7 @@ describe('save_user_preference MCP tool', () => {
 			expect(message).toContain('"Save, update and undo AI preferences" permission');
 			expect(telemetry.track).toHaveBeenCalledWith(
 				TELEMETRY_EVENT.CONTEXT.PREFERENCE_CONFIRMATION_SHOWN,
-				{ surface: 'mcp', scope_type: 'user', text_length: TEXT.length },
+				{ user_id: 'user-1', surface: 'mcp', scope_type: 'user', text_length: TEXT.length },
 			);
 		});
 
@@ -364,6 +382,7 @@ describe('save_user_preference MCP tool', () => {
 			expect(telemetry.track).toHaveBeenCalledWith(
 				TELEMETRY_EVENT.CONTEXT.PREFERENCE_SCOPE_ACCEPTED,
 				{
+					user_id: 'user-1',
 					surface: 'mcp',
 					offered_scope: 'user',
 					accepted_scope: 'instance',
@@ -372,7 +391,13 @@ describe('save_user_preference MCP tool', () => {
 			);
 			expect(telemetry.track).toHaveBeenCalledWith(
 				TELEMETRY_EVENT.CONTEXT.USER_UPDATED_PREFERENCE,
-				{ scope_type: 'instance', text_length: TEXT.length, scope_changed: true, surface: 'mcp' },
+				{
+					user_id: 'user-1',
+					scope_type: 'instance',
+					text_length: TEXT.length,
+					scope_changed: true,
+					surface: 'mcp',
+				},
 			);
 		});
 
@@ -436,6 +461,7 @@ describe('save_user_preference MCP tool', () => {
 			expect(telemetry.track).toHaveBeenCalledWith(
 				TELEMETRY_EVENT.CONTEXT.PREFERENCE_CONFIRMATION_RESOLVED,
 				{
+					user_id: 'user-1',
 					surface: 'mcp',
 					outcome: 'accepted_after_edit',
 					scope_type: 'user',
@@ -460,6 +486,7 @@ describe('save_user_preference MCP tool', () => {
 			expect(telemetry.track).toHaveBeenCalledWith(
 				TELEMETRY_EVENT.CONTEXT.USER_DELETED_PREFERENCES,
 				{
+					user_id: 'user-1',
 					count: 1,
 					source: 'rejected',
 					scope_types: ['user'],
@@ -470,7 +497,13 @@ describe('save_user_preference MCP tool', () => {
 			// The removal closes the funnel the write opened with `accepted`.
 			expect(telemetry.track).toHaveBeenCalledWith(
 				TELEMETRY_EVENT.CONTEXT.PREFERENCE_CONFIRMATION_RESOLVED,
-				{ surface: 'mcp', outcome: 'rejected', scope_type: 'user', text_length: TEXT.length },
+				{
+					user_id: 'user-1',
+					surface: 'mcp',
+					outcome: 'rejected',
+					scope_type: 'user',
+					text_length: TEXT.length,
+				},
 			);
 		});
 
@@ -535,7 +568,13 @@ describe('save_user_preference MCP tool', () => {
 			});
 			expect(telemetry.track).toHaveBeenCalledWith(
 				TELEMETRY_EVENT.CONTEXT.PREFERENCE_WRITE_REJECTED,
-				{ surface: 'mcp', reason: 'too_long', scope_type: 'user', text_length: tooLong.length },
+				{
+					user_id: 'user-1',
+					surface: 'mcp',
+					reason: 'too_long',
+					scope_type: 'user',
+					text_length: tooLong.length,
+				},
 			);
 		});
 

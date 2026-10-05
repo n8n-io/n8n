@@ -12,8 +12,10 @@ import { Tool } from '@n8n/agents/tool';
 import { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
 import { createEvalAgent, extractText } from '@n8n/instance-ai';
+import { sleep } from '@n8n/utils/sleep';
 import type { EvalLlmMockHandler, EvalMockHttpResponse, FixtureSizeHint } from 'n8n-core';
 import { buildPdfWithText, synthesizeBinaryFixture } from 'n8n-core';
+import { OperationalError } from 'n8n-workflow';
 import { z } from 'zod';
 
 import { buildDateAnchors } from './date-anchors';
@@ -56,7 +58,7 @@ Response SHAPE comes from your knowledge of the real API; DATA VALUES come from 
 
 **Node response-handling options are not part of the body.** The node config may include options that control how n8n post-processes the response — \`fullResponse\`, \`responseFormat\`, \`outputPropertyName\`, pagination. These are applied AFTER you return and must NOT change the body you produce: always return the raw body the real API sends over the wire. Never reshape the body to mimic them — a body shaped like \`{ statusCode, headers, body }\` (mimicking \`fullResponse\`) or \`{ <outputPropertyName>: ... }\` is wrong.
 
-**Response envelope.** Return the body exactly as the real service sends it over the wire, including any top-level wrapper the API puts around results — e.g. \`{ "data": [...], "nextCursor": null }\`, \`{ "results": [...] }\`, \`{ "items": [...], "has_more": false }\`, \`{ "ok": true, "result": ... }\`. Match the real API's top-level shape exactly: many list endpoints wrap their items, but plenty return a bare top-level array (e.g. an endpoint that returns an array of IDs). Follow what the real API actually returns — don't default to wrapping a bare-array response, and don't strip a wrapper the API really uses.
+**Response envelope.** Return the body exactly as the real service sends it over the wire, including any top-level wrapper the API puts around results — e.g. \`{ "data": [...] }\`, \`{ "results": [...] }\`, \`{ "items": [...] }\`, \`{ "ok": true, "result": ... }\`. Match the real API's top-level shape exactly: many list endpoints wrap their items, but plenty return a bare top-level array (e.g. an endpoint that returns an array of IDs). Follow what the real API actually returns — don't default to wrapping a bare-array response, and don't strip a wrapper the API really uses.
 
 Node-config patterns to know:
   - "__rl" object: "value" is the selected resource id
@@ -65,7 +67,9 @@ Node-config patterns to know:
 
 **Time-relative fields.** The user prompt ends with a "## Date anchors" block listing today's date plus a handful of relative anchors (yesterday, 7 days ago, etc.). EVERY timestamp, date, hourly/daily entry, and time-relative field in your response MUST be derived from those anchors — never from training data or from example dates you remember for this API. Workflows commonly filter mock responses by today's date; values outside the current window are silently discarded and the scenario fails.
 
-Match THIS request only (URL + method): a node may make multiple sequential calls; reply to the specific one shown. Echo identifiers, placeholders, and reference values from the request back into the response. Return a single page (don't expect multi-page cursor follow-up), but keep the API's real envelope and mark it as the final page (e.g. \`nextCursor: null\`, \`has_more: false\`).
+Match THIS request only (URL + method): a node may make multiple sequential calls; reply to the specific one shown. Echo identifiers, placeholders, and reference values from the request back into the response.
+
+**Pagination.** Unless the scenario defines pages, the first page holds ALL the data: return it as one page, and make it the last page exactly the way THIS API marks its last page. APIs differ, and a wrong marker makes the client ask for more pages forever. Some APIs leave the next-page field out of the last page (Airtable \`offset\`, Google \`nextPageToken\`). Some always send it and set it to \`null\` on the last page (Asana \`next_page\`, list endpoints with a \`next\` link). Some set a has-more flag to \`false\` (Notion and Stripe \`has_more\`). Use this API's own convention, and never copy another API's marker. So, unless the scenario defines pages, a request for any later page (a page number above the first, or an offset, cursor or token) gets this API's empty last page: the same envelope, no items, and the same last-page marker. Never serve items again on a later page.
 
 **Keep list responses small.** Generate the MINIMUM data that satisfies the request, scenario, and workflow logic. For list/feed/forecast endpoints, return only as many entries as the downstream logic needs — a 5-day hourly forecast does not need all 40 entries, just enough to cover the window the workflow filters on (default 5-8 entries, at most ~20). Exception: when the scenario, hints, or the request's own parameters state an exact count or a larger dataset, honor that exactly — never shrink an explicitly-specified dataset. Oversized responses are slow to generate and risk aborting the whole request.
 
@@ -118,7 +122,13 @@ interface MockHandlerOptions {
 	/** Compact summary of Phase-1.5 pinned node outputs — fixed data the mock must stay consistent with. */
 	pinnedOutputs?: string;
 	maxRetries?: number;
+	/** Aborted when the run ends: every later request fails, like a cancelled real request. */
+	signal?: AbortSignal;
 }
+
+// A real request never answers in zero time. Instant cache hits let a node that
+// repeats one request loop without yielding, which starves the run's budget timer.
+const CACHED_REPLY_DELAY_MS = 20;
 
 interface MockResponseSpec {
 	type: 'json' | 'text' | 'binary' | 'error';
@@ -150,6 +160,11 @@ export function createLlmMockHandler(options?: MockHandlerOptions): EvalLlmMockH
 	const responseCache = new Map<string, Promise<EvalMockHttpResponse>>();
 
 	return async (requestOptions, node) => {
+		// Thrown past the catch-all below: a node that ignores HTTP errors must not keep looping.
+		if (options?.signal?.aborted) {
+			throw new OperationalError('The eval run has ended, so this mocked request was cancelled');
+		}
+
 		// Catch-all: a defect anywhere in the mock pipeline must surface as an
 		// `_evalMockError` sentinel (verifier categorizes it mock_issue) with a
 		// full stack in the server log — never as an opaque crash of the
@@ -166,6 +181,7 @@ export function createLlmMockHandler(options?: MockHandlerOptions): EvalLlmMockH
 				Container.get(Logger).debug(
 					`[EvalMock] Serving cached mock for ${requestOptions.method ?? 'GET'} ${extractEndpoint(requestOptions.url)} ("${node.name}")`,
 				);
+				await sleep(CACHED_REPLY_DELAY_MS);
 				return cloneMockResponse(await cached);
 			}
 

@@ -376,8 +376,9 @@ describe('MigrationFindingQueryService', () => {
 			);
 		});
 
-		it('takes the issues of a batch rule from one full scan, keyed by workflow', async () => {
-			ruleRegistry.getRule.mockReturnValue(batchRule('batch-rule'));
+		it('takes the issues of a batch rule from a scan of that rule alone, keyed by workflow', async () => {
+			const rule = batchRule('batch-rule');
+			ruleRegistry.getRule.mockReturnValue(rule);
 			findingRepository.listOpenForRule.mockResolvedValue([
 				openFinding(1, 'batch-rule', {
 					id: 'wf-1',
@@ -398,29 +399,38 @@ describe('MigrationFindingQueryService', () => {
 				level: 'warning',
 				nodeId: 'wf-1-node-0',
 			};
-			breakingChangeService.detect.mockResolvedValue({
-				report: {
-					generatedAt: new Date(),
-					targetVersion: TARGET_VERSION,
-					currentVersion: '3.0.0',
-					instanceResults: [],
-					workflowResults: [
-						{ ruleId: 'other-rule', affectedWorkflows: [{ id: 'wf-2', issues: [issue] }] },
-						{ ruleId: 'batch-rule', affectedWorkflows: [{ id: 'wf-1', issues: [issue] }] },
-					] as BreakingChangeWorkflowRuleResult[],
-				},
-				totalWorkflows: 2,
-				shouldCache: false,
-				failedChecks: [],
-			});
+			breakingChangeService.detectRule.mockResolvedValue({
+				ruleId: 'batch-rule',
+				affectedWorkflows: [{ id: 'wf-1', issues: [issue] }],
+			} as BreakingChangeWorkflowRuleResult);
 
 			const result = await service.getRuleFindings(TARGET_VERSION, 'batch-rule');
 
-			expect(breakingChangeService.detect).toHaveBeenCalledTimes(1);
-			expect(breakingChangeService.detect).toHaveBeenCalledWith(TARGET_VERSION);
+			expect(breakingChangeService.detectRule).toHaveBeenCalledTimes(1);
+			expect(breakingChangeService.detectRule).toHaveBeenCalledWith(TARGET_VERSION, rule);
+			expect(breakingChangeService.detect).not.toHaveBeenCalled();
 			expect(result.affectedWorkflows).toEqual([
 				expect.objectContaining({ id: 'wf-1', issues: [issue] }),
 				expect.objectContaining({ id: 'wf-2', issues: [] }),
+			]);
+		});
+
+		it('lists every finding of a batch rule without issues when the rule now affects nothing', async () => {
+			ruleRegistry.getRule.mockReturnValue(batchRule('batch-rule'));
+			findingRepository.listOpenForRule.mockResolvedValue([
+				openFinding(1, 'batch-rule', {
+					id: 'wf-1',
+					name: 'Fixed since the sync',
+					activeVersionId: null,
+					updatedAt: UPDATED_AT,
+				}),
+			]);
+			breakingChangeService.detectRule.mockResolvedValue(undefined);
+
+			const result = await service.getRuleFindings(TARGET_VERSION, 'batch-rule');
+
+			expect(result.affectedWorkflows).toEqual([
+				expect.objectContaining({ id: 'wf-1', issues: [] }),
 			]);
 		});
 

@@ -6,6 +6,7 @@ import { MainConfig } from './config/main-config';
 import type { HealthCheckServer } from './health-check-server';
 import { JsTaskRunner } from './js-task-runner/js-task-runner';
 import { TaskRunnerSentry } from './task-runner-sentry';
+import { onUnhandledRejection } from './unhandled-rejection';
 
 process.title = 'n8n task-runner';
 
@@ -70,6 +71,7 @@ function createSignalHandler(
 }
 
 void (async function start() {
+	process.on('unhandledRejection', onUnhandledRejection);
 	const config = Container.get(MainConfig);
 
 	setGlobalState({

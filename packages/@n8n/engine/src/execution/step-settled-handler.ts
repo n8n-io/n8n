@@ -101,7 +101,6 @@ export class StepSettledHandler {
 			this.announceEnd(execution, step, node, 'failed');
 		}
 
-		// TODO(CAT-3990): this sweep names no rows, so it announces nothing.
 		await this.stepStore.cancelPendingSteps(execution.id);
 	}
 

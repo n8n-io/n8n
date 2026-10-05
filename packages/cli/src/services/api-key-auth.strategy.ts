@@ -9,6 +9,7 @@ import { isApiKeyAuthEnabled } from '@/public-api';
 
 import type { AuthStrategy, AuthStrategyOptions } from './auth-strategy.types';
 import { JwtService } from './jwt.service';
+import { API_KEY_PURPOSES } from './token-purposes';
 import { API_KEY_AUDIENCE, API_KEY_ISSUER, PREFIX_LEGACY_API_KEY } from './public-api-key.service';
 
 const API_KEY_HEADER = 'x-n8n-api-key';
@@ -35,8 +36,8 @@ export class ApiKeyAuthStrategy implements AuthStrategy {
 		// Legacy keys (PREFIX_LEGACY_API_KEY prefix) are never JWTs — skip the decode for them.
 		// A null decode means the string is not a structurally valid JWT — reject authentication.
 		if (!token.startsWith(PREFIX_LEGACY_API_KEY)) {
-			const decoded = this.jwtService.decode<{ iss?: string }>(token);
-			// Note: JwtService.decode casts its return as T, but jwt.decode() can still return null at runtime.
+			const decoded = this.jwtService.decodeUnverified<{ iss?: string }>(token);
+			// Note: decodeUnverified casts its return as T, but jwt.decode() can still return null at runtime.
 			if (decoded === null) return false;
 			if (decoded.iss !== issuer) return null;
 		}
@@ -52,10 +53,7 @@ export class ApiKeyAuthStrategy implements AuthStrategy {
 
 		if (!token.startsWith(PREFIX_LEGACY_API_KEY)) {
 			try {
-				this.jwtService.verify(token, {
-					issuer,
-					audience,
-				});
+				this.jwtService.verify(API_KEY_PURPOSES[audience], token, { issuer });
 			} catch (e) {
 				if (e instanceof TokenExpiredError) return false;
 				throw e;

@@ -69,7 +69,7 @@ vi.mock('@n8n/design-system', async (importOriginal) => {
 			props: ['modelValue', 'placeholder', 'clearable', 'size'],
 			emits: ['update:modelValue'],
 			template: `
-				<div data-test-id="secrets-providers-search">
+				<div data-test-id="secrets-providers-search" :data-size="size">
 					<input
 						:value="modelValue"
 						:placeholder="placeholder"
@@ -315,6 +315,19 @@ describe('ProjectExternalSecrets', () => {
 				const searchInput = screen.getByTestId('secrets-providers-search').querySelector('input');
 				expect(searchInput).toHaveAttribute('placeholder', 'Search secrets...');
 			});
+		});
+
+		it('should render the search field at the default input size, level with the add button', async () => {
+			renderComponent();
+
+			await vi.waitFor(() => {
+				expect(screen.getByTestId('secrets-providers-search')).toBeInTheDocument();
+			});
+
+			// No size override: the field keeps the design-system default (large), the height
+			// of every other input on the project settings page. The button matches that row.
+			expect(screen.getByTestId('secrets-providers-search')).not.toHaveAttribute('data-size');
+			expect(screen.getByTestId('external-secrets-add-button')).toHaveClass('large');
 		});
 
 		it('should filter secrets by name', async () => {

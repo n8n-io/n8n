@@ -62,7 +62,7 @@ export class CommunityPackagesPublicController {
 		@Body body: InstallCommunityPackagePublicDto,
 	): Promise<CommunityPackagePublicDto> {
 		const installedPackage = await this.communityPackagesLifecycleService.install(
-			{ name: body.name, version: body.version, verify: body.verify ?? true },
+			{ name: body.name, version: body.version },
 			req.user,
 			'publicApi',
 		);
@@ -84,7 +84,7 @@ export class CommunityPackagesPublicController {
 		@Body body: UpdateCommunityPackagePublicDto,
 	): Promise<CommunityPackagePublicDto> {
 		const updated = await this.communityPackagesLifecycleService.update(
-			{ name, version: body.version, verify: body.verify ?? true },
+			{ name, version: body.version },
 			req.user,
 			'notFound',
 		);

@@ -389,7 +389,7 @@ describe('AgentWorkflowToolResumeService → preview chat', () => {
 	// with nothing attached — recording the turn is what puts it in the transcript.
 	it('drives the resume headlessly against the draft version', async () => {
 		const { service, userRepository, agentTestRunService, chatIntegrationService } = setup();
-		userRepository.findOneBy.mockResolvedValue(mock<User>({ id: 'user-1' }));
+		userRepository.findByIdWithRole.mockResolvedValue(mock<User>({ id: 'user-1' }));
 		agentTestRunService.resumeDraftRun.mockResolvedValue(completed);
 
 		await service.resume(previewRun, 'success');
@@ -415,7 +415,7 @@ describe('AgentWorkflowToolResumeService → preview chat', () => {
 		['another draft surface', previewRun, undefined],
 	])('carries the preview flag of %s into the resume', async (_label, run, expected) => {
 		const { service, userRepository, agentTestRunService } = setup();
-		userRepository.findOneBy.mockResolvedValue(mock<User>({ id: 'user-1' }));
+		userRepository.findByIdWithRole.mockResolvedValue(mock<User>({ id: 'user-1' }));
 		agentTestRunService.resumeDraftRun.mockResolvedValue(completed);
 
 		await service.resume(run, 'success');
@@ -433,7 +433,7 @@ describe('AgentWorkflowToolResumeService → preview chat', () => {
 		],
 	])('pushes the recorded execution after %s', async (_label, result) => {
 		const { service, userRepository, agentTestRunService, broadcaster } = setup();
-		userRepository.findOneBy.mockResolvedValue(mock<User>({ id: 'user-1' }));
+		userRepository.findByIdWithRole.mockResolvedValue(mock<User>({ id: 'user-1' }));
 		const execution = createDeferredPromise<typeof result>();
 		agentTestRunService.resumeDraftRun.mockReturnValue(execution.promise);
 
@@ -453,7 +453,7 @@ describe('AgentWorkflowToolResumeService → preview chat', () => {
 
 	it('does not push when the session could not be resumed', async () => {
 		const { service, logger, userRepository, agentTestRunService, broadcaster } = setup();
-		userRepository.findOneBy.mockResolvedValue(mock<User>({ id: 'user-1' }));
+		userRepository.findByIdWithRole.mockResolvedValue(mock<User>({ id: 'user-1' }));
 		agentTestRunService.resumeDraftRun.mockResolvedValue({ status: 'session_not_found' });
 
 		await service.resume(previewRun, 'success');
@@ -472,7 +472,7 @@ describe('AgentWorkflowToolResumeService → preview chat', () => {
 		['the user no longer exists', 'user-1', null],
 	])('warns and stops when %s', async (_label, userId, found) => {
 		const { service, logger, userRepository, agentTestRunService } = setup();
-		userRepository.findOneBy.mockResolvedValue(found);
+		userRepository.findByIdWithRole.mockResolvedValue(found);
 
 		await service.resume({ ...previewRun, userId }, 'success');
 
