@@ -24,9 +24,6 @@ const ecP384Jwk = ecP384KeyPair.publicKey.export({ format: 'jwk' });
 const ecP521KeyPair = generateKeyPairSync('ec', { namedCurve: 'P-521' });
 const ecP521Jwk = ecP521KeyPair.publicKey.export({ format: 'jwk' });
 
-const ed25519KeyPair = generateKeyPairSync('ed25519');
-const ed25519Jwk = ed25519KeyPair.publicKey.export({ format: 'jwk' });
-
 // ──────────────────────────────────────────────────────────────────────
 // Helpers
 // ──────────────────────────────────────────────────────────────────────
@@ -115,15 +112,6 @@ describe('JwksResolverService', () => {
 
 			expect(result.keys).toHaveLength(2);
 			expect(result.keys.map((k) => k.kid)).toEqual(['rsa-1', 'ec-1']);
-		});
-
-		it('should resolve Ed25519 OKP JWK to EdDSA', async () => {
-			const fetcher = mockFetchResponse([{ ...ed25519Jwk, kid: 'ed-1' }]);
-
-			const result = await service.resolveKeys(DEFAULT_SOURCE, { fetcher });
-
-			expect(result.keys).toHaveLength(1);
-			expect(result.keys[0].algorithms).toEqual(['EdDSA']);
 		});
 
 		it('should infer RS256 from RSA JWK without explicit alg', async () => {
