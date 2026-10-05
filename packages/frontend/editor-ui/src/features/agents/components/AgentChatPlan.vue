@@ -160,7 +160,7 @@ const summary = computed(() => {
 				</ul>
 			</div>
 			<p
-				v-if="plan.document.presentation?.detail"
+				v-if="!plan.closed && plan.document.presentation?.detail"
 				:class="$style.detail"
 				:title="plan.document.presentation.detail"
 			>

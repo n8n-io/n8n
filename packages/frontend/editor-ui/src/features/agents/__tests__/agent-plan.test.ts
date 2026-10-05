@@ -213,7 +213,6 @@ describe('selectLatestAgentPlan', () => {
 				planMessage(initial),
 				planMessage(latest, { tool: 'close_plan' }),
 				planMessage(planView({ revision: 2 }), { tool: 'read_plan' }),
-				planMessage(latest, { tool: 'read_plan' }),
 			]),
 		).toEqual(latest);
 	});

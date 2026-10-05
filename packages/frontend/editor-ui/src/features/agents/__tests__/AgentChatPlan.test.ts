@@ -193,7 +193,7 @@ describe('AgentChatPlan', () => {
 		expect(wrapper.get('[data-testid="agent-chat-plan-details"]').attributes('aria-label')).toBe(
 			'Research options',
 		);
-		expect(wrapper.text()).toContain('Reviewed two of three sources.');
+		expect(wrapper.get('p').text()).toBe('Reviewed two of three sources.');
 		await wrapper.setProps({
 			plan: {
 				...plan,
@@ -213,7 +213,7 @@ describe('AgentChatPlan', () => {
 		expect(wrapper.text()).not.toContain('Plan closed');
 		expect(trigger.text()).not.toContain('Stopped checking');
 		expect(indicator().props()).toMatchObject({ icon: 'list-checks', spin: false });
-		expect(wrapper.text()).toContain('One source remains unchecked.');
+		expect(wrapper.text().match(/One source remains unchecked\./g)).toHaveLength(1);
 		expect(wrapper.findAll('[data-status]').map((row) => row.attributes('data-status'))).toEqual([
 			'in_progress',
 			'failed',
