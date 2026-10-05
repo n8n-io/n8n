@@ -18,17 +18,19 @@ const randomInteger = (random: () => number, min: number, max: number) =>
 	Math.round(randomInRange(random, min, max));
 
 function hexChannel(value: number) {
-	return Math.round(clamp(value, 0, 1) * 255)
-		.toString(16)
-		.padStart(2, '0')
-		.toUpperCase();
+	return value.toString(16).padStart(2, '0').toUpperCase();
 }
 
 function linearSrgbToSrgb(value: number) {
 	return value >= 0.0031308 ? 1.055 * Math.pow(value, 1 / 2.4) - 0.055 : 12.92 * value;
 }
 
-function oklchToHex(lightness: number, chroma: number, hue: number) {
+/** Returns 0..255 sRGB channels, clipped to the sRGB gamut. */
+export function oklchToRgb(
+	lightness: number,
+	chroma: number,
+	hue: number,
+): [number, number, number] {
 	const hueRadians = (hue * Math.PI) / 180;
 	const a = chroma * Math.cos(hueRadians);
 	const b = chroma * Math.sin(hueRadians);
@@ -41,11 +43,16 @@ function oklchToHex(lightness: number, chroma: number, hue: number) {
 	const m = m_ ** 3;
 	const s = s_ ** 3;
 
-	const red = linearSrgbToSrgb(4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s);
-	const green = linearSrgbToSrgb(-1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s);
-	const blue = linearSrgbToSrgb(-0.0041960863 * l - 0.7034186147 * m + 1.707614701 * s);
+	const channel = (value: number) => Math.round(clamp(linearSrgbToSrgb(value)) * 255);
+	return [
+		channel(4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s),
+		channel(-1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s),
+		channel(-0.0041960863 * l - 0.7034186147 * m + 1.707614701 * s),
+	];
+}
 
-	return `#${[red, green, blue].map(hexChannel).join('')}`;
+function oklchToHex(lightness: number, chroma: number, hue: number) {
+	return `#${oklchToRgb(lightness, chroma, hue).map(hexChannel).join('')}`;
 }
 
 function randomComplementaryColors(random: () => number) {
@@ -80,6 +87,15 @@ export function getRandomAgentPersonalisationGradient(
 		from,
 		to: to === from ? DEFAULT_AGENT_PERSONALISATION.gradient.to : to,
 		...getRandomGradientLayout(random),
+	};
+}
+
+export function resolveAgentPersonalisation(
+	value?: Partial<AgentPersonalisation> | null,
+): AgentPersonalisation {
+	return {
+		icon: value?.icon ?? DEFAULT_AGENT_PERSONALISATION_ICON,
+		gradient: { ...DEFAULT_AGENT_PERSONALISATION.gradient, ...value?.gradient },
 	};
 }
 
