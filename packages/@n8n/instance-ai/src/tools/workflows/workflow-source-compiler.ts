@@ -30,6 +30,7 @@ import {
 	fixtureOriginsOf,
 	liveReadNodeNames,
 	sampledKeysOf,
+	sampledReadIssues,
 	lockNodeContracts,
 	missingNodeTypeErrors,
 	NEXT_TSCONFIG_FILENAME,
@@ -559,6 +560,10 @@ async function compileNextWorkflowSource(
 		),
 		sampledKeys: sampledKeysOf(built.workflow, built.declaredOutputFixtures),
 		liveReadNodeNames: liveReadNodeNames(built.workflow, built.declaredOutputFixtures),
+		warnings: [
+			...built.warnings,
+			...sampledReadIssues(built.workflow, built.declaredOutputFixtures),
+		],
 	};
 }
 

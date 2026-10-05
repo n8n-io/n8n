@@ -7,6 +7,7 @@ import { declaredShapeNote, shapeWarningsBlock } from '../declared-shapes';
 import {
 	fixtureOriginsOf,
 	liveReadNodeNames,
+	sampledReadIssues,
 	splitLiveReadFixtures,
 	synthesizedFixtures,
 } from '../next-workflow-build';
@@ -84,13 +85,41 @@ describe('shapeWarningsBlock', () => {
 		for (const issue of [
 			'$json: unknown field(s) extra. Allowed: issues, total',
 			'$json.issues[].title: must be string, got 5',
-			'$json.issues[]: unknown field(s) state. Allowed: title',
 			'$json.total: missing',
 			'$json.total: must be integer, got null',
 		]) {
 			expect(block).toContain(issue);
 		}
+		expect(block).not.toContain('state');
 		expect(block).toContain('Fix the `schema` to match the real output, or fix the reads');
+	});
+
+	it('does not warn for fields that the response has and the declared schema leaves out', async () => {
+		const workflow = workflowOf({
+			fullResponse: true,
+			schema: {
+				type: 'object',
+				properties: {
+					metrics: { type: 'object', properties: { employees: { type: 'number' } } },
+					organization: {
+						anyOf: [{ type: 'object', properties: { name: { type: 'string' } } }, { type: 'null' }],
+					},
+				},
+			},
+		});
+		const body = {
+			metrics: { employees: 120, employeesRange: '100-250' },
+			organization: { name: 'Acme', domain: 'acme.com' },
+			logo: null,
+		};
+		expect(await warningsFor(workflow, [{ body, headers: {}, statusCode: 200 }])).toBeUndefined();
+	});
+
+	it('names the fields of an object that misses a declared field', async () => {
+		const block = await warningsFor(declared, [{ userIds: [1], total: 1 }]);
+		expect(block).toContain(
+			'Fetch: the output does not match its declared schema: $json.issues: missing; $json: unknown field(s) userIds. Allowed: issues, total',
+		);
 	});
 
 	it('names a repeated issue once', async () => {
@@ -118,11 +147,10 @@ describe('shapeWarningsBlock', () => {
 	});
 
 	it('names at most 10 issues for a node', async () => {
-		const items = Array.from({ length: 12 }, (_, index) => ({ [`extra${index}`]: index }));
-		const block = await warningsFor(
-			workflowOf({ schema: { type: 'object', properties: {} } }),
-			items,
+		const properties = Object.fromEntries(
+			Array.from({ length: 12 }, (_, index) => [`field${index}`, { type: 'string' }]),
 		);
+		const block = await warningsFor(workflowOf({ schema: { type: 'object', properties } }), [{}]);
 		expect(block).toContain('(2 more)');
 	});
 
@@ -223,6 +251,45 @@ describe('liveReadNodeNames', () => {
 			),
 		};
 		expect(liveReadNodeNames(send)).toEqual([]);
+	});
+});
+
+describe('sampledReadIssues', () => {
+	const sample = { Fetch: [{ issues: [] }] };
+
+	it('tells a GET with a sample and no schema to declare the schema', () => {
+		expect(sampledReadIssues(workflowOf({}), sample)).toEqual([
+			{
+				code: 'SAMPLE_PINS_READ',
+				nodeName: 'Fetch',
+				severity: 'informational',
+				message:
+					'"Fetch" has a `sample` and no `schema`, so verification pins the sample and does not read the API. Replace the sample with `schema`, the JSON Schema from the API docs: verification then reads it live and checks the response. Keep a sample only to skip the live read.',
+			},
+		]);
+	});
+
+	it('says nothing without a sample, with a schema, or for a GET that follows pages', () => {
+		expect(sampledReadIssues(workflowOf({}))).toEqual([]);
+		expect(sampledReadIssues(declared, sample)).toEqual([]);
+		const paged = workflowOf({ pages: { style: 'link', maxPages: 5 } });
+		expect(sampledReadIssues(paged, sample)).toEqual([]);
+	});
+
+	it('says nothing for a write with a sample', () => {
+		const send: WorkflowJSON = {
+			...declared,
+			nodes: declared.nodes.map((entry) =>
+				entry.name === 'Fetch'
+					? {
+							...entry,
+							type: '@n8n/nodes-base-next.httpRequestSend',
+							parameters: { url: 'https://api.example.com/issues', method: 'POST' },
+						}
+					: entry,
+			),
+		};
+		expect(sampledReadIssues(send, sample)).toEqual([]);
 	});
 });
 

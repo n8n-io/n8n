@@ -23,24 +23,32 @@ const DRIFT_GUIDANCE =
 /**
  * `schema` with each listed property expected. The derived output types each property as present,
  * so an absent one breaks a read. An object that lists `required` keeps the JSON Schema meaning.
+ * With `open`, an object also takes fields that it does not list: a real response has more fields
+ * than the reads need, and the types stay closed.
  */
-const expectingAll = (schema: JsonSchema): JsonSchema => ({
-	...schema,
-	...(schema.properties
-		? {
-				properties: Object.fromEntries(
-					Object.entries(schema.properties).map(([key, child]) => [key, expectingAll(child)]),
-				),
-				required: schema.required ?? Object.keys(schema.properties),
-			}
-		: {}),
-	...(schema.items ? { items: expectingAll(schema.items) } : {}),
-	...(schema.anyOf ? { anyOf: schema.anyOf.map(expectingAll) } : {}),
-	...(schema.oneOf ? { oneOf: schema.oneOf.map(expectingAll) } : {}),
-	...(isRecord(schema.additionalProperties)
-		? { additionalProperties: expectingAll(schema.additionalProperties) }
-		: {}),
-});
+const expectingAll = (schema: JsonSchema, open: boolean): JsonSchema => {
+	const { additionalProperties, ...rest } = schema;
+	const expecting = (child: JsonSchema) => expectingAll(child, open);
+	return {
+		...rest,
+		...(schema.properties
+			? {
+					properties: Object.fromEntries(
+						Object.entries(schema.properties).map(([key, child]) => [key, expecting(child)]),
+					),
+					required: schema.required ?? Object.keys(schema.properties),
+				}
+			: {}),
+		...(schema.items ? { items: expecting(schema.items) } : {}),
+		...(schema.anyOf ? { anyOf: schema.anyOf.map(expecting) } : {}),
+		...(schema.oneOf ? { oneOf: schema.oneOf.map(expecting) } : {}),
+		...(isRecord(additionalProperties)
+			? { additionalProperties: expecting(additionalProperties) }
+			: additionalProperties === undefined || open
+				? {}
+				: { additionalProperties }),
+	};
+};
 
 /** The items of the first output that a check can read: no truncated item and no error item. */
 function checkedItemsOf(output: NodeOutputResult): Array<Record<string, unknown>> {
@@ -55,17 +63,31 @@ function checkedItemsOf(output: NodeOutputResult): Array<Record<string, unknown>
 }
 
 /** Each issue once, with list indexes left out, e.g. `$json.issues[].title: missing`. */
-function driftIssues(items: ReadonlyArray<Record<string, unknown>>, schema: JsonSchema) {
-	const expected = expectingAll(schema);
-	return [
-		...new Set(
-			items.flatMap((item) =>
-				validate(item, expected, { path: '$json' }).map((issue) =>
-					issue.replace(/\[\d+\]/g, '[]').replace(/: is required$/, ': missing'),
-				),
+const issuesOf = (items: ReadonlyArray<Record<string, unknown>>, schema: JsonSchema) => [
+	...new Set(
+		items.flatMap((item) =>
+			validate(item, schema, { path: '$json' }).map((issue) =>
+				issue.replace(/\[\d+\]/g, '[]').replace(/: is required$/, ': missing'),
 			),
 		),
-	];
+	),
+];
+
+/**
+ * The missing fields, wrong types and nulls. A field that the schema does not list is no issue,
+ * but an object that misses a field also names its unlisted fields: one of them is often the
+ * field under another name.
+ */
+function driftIssues(items: ReadonlyArray<Record<string, unknown>>, schema: JsonSchema) {
+	const issues = issuesOf(items, expectingAll(schema, true));
+	const missingIn = new Set(
+		issues.flatMap((issue) => /^(.+)\.[^.]+: missing$/.exec(issue)?.[1] ?? []),
+	);
+	const unlisted = issuesOf(items, expectingAll(schema, false)).filter((issue) => {
+		const at = /^(.+): unknown field\(s\) /.exec(issue)?.[1];
+		return at !== undefined && missingIn.has(at);
+	});
+	return [...issues, ...unlisted];
 }
 
 const driftLine = (nodeName: string, issues: readonly string[]) => {

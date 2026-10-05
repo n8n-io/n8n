@@ -503,6 +503,15 @@ export function fixtureOriginsOf(
 	);
 }
 
+/** A read that build verification can do with one request: idempotent, and no input follows pages. */
+function readsOnce(action: (typeof actions)[number], parameters: Record<string, unknown>): boolean {
+	const followsPages = Object.entries(action.inputSchema.properties ?? {}).some(
+		([key, field]) =>
+			parameters[key] !== undefined && field['x-n8n-page'] === undefined && hasPageValue(field),
+	);
+	return action.flow.effect === 'read' && action.flow.idempotent === true && !followsPages;
+}
+
 /**
  * The nodes that build verification reads live, so a drift check sees the real response: a read
  * action that is idempotent (`flow`), with a declared output and no `sample`. The contract flow is
@@ -514,13 +523,38 @@ export function liveReadNodeNames(workflow: WorkflowJSON, declared: Fixtures = {
 	return workflow.nodes.flatMap((node) => {
 		const action = actionOfNode(node);
 		if (!action || !node.name || node.disabled || declared[node.name]?.length) return [];
+		return readsOnce(action, node.parameters ?? {}) && declaredOutputOf(node) !== undefined
+			? [node.name]
+			: [];
+	});
+}
+
+/**
+ * A note for each read with a `sample` and no declared shape, which {@link liveReadNodeNames}
+ * would read live with one: the sample pins the step, so no run checks the real response.
+ */
+export function sampledReadIssues(
+	workflow: WorkflowJSON,
+	declared: Fixtures = {},
+): ValidationWarning[] {
+	return workflow.nodes.flatMap((node): ValidationWarning[] => {
+		const action = actionOfNode(node);
+		if (!action || !node.name || node.disabled || !declared[node.name]?.length) return [];
 		const parameters = node.parameters ?? {};
-		const followsPages = Object.entries(action.inputSchema.properties ?? {}).some(
-			([key, field]) =>
-				parameters[key] !== undefined && field['x-n8n-page'] === undefined && hasPageValue(field),
-		);
-		const reads = action.flow.effect === 'read' && action.flow.idempotent === true;
-		return reads && !followsPages && declaredOutputOf(node) !== undefined ? [node.name] : [];
+		const key = Object.entries(action.inputSchema.properties ?? {}).find(
+			([, field]) => field['x-n8n-declared'] === true,
+		)?.[0];
+		if (key === undefined || parameters[key] !== undefined || !readsOnce(action, parameters)) {
+			return [];
+		}
+		return [
+			{
+				code: 'SAMPLE_PINS_READ',
+				nodeName: node.name,
+				severity: 'informational',
+				message: `"${node.name}" has a \`sample\` and no \`${key}\`, so verification pins the sample and does not read the API. Replace the sample with \`${key}\`, the JSON Schema from the API docs: verification then reads it live and checks the response. Keep a sample only to skip the live read.`,
+			},
+		];
 	});
 }
 
@@ -816,7 +850,7 @@ const parseTypecheckErrors = (stdout: string): string[] | undefined => {
 const STDERR_TAIL = 1_000;
 
 const UNTYPED_HINT =
-	'This value has no type. Fix the first error before it first. Else type the node before it: `sample` items, a webhook or HTTP `schema`, or `returns` on a code step.';
+	'This value has no type. Fix the first error before it first. Else type the node before it: a webhook or HTTP `schema`, `sample` items, or `returns` on a code step.';
 
 /** The macros of `@n8n/workflow-sdk/next`, for the hint on a step method. */
 export const FLOW_MACROS = [
@@ -1007,7 +1041,7 @@ const TSC_HINTS: ReadonlyArray<{
 		codes: [2339],
 		message: /on type '\{\}'/,
 		hint: () =>
-			"This field has no declared type, so `x ?? []` or a check such as `x ? x.f : …` leaves `{}`, which has no fields. Give the node that outputs it `sample` items, a webhook or HTTP `schema`, or `returns` on a code step. Else narrow each level: `typeof x === 'object' && x !== null && 'f' in x`.",
+			"This field has no declared type, so `x ?? []` or a check such as `x ? x.f : …` leaves `{}`, which has no fields. Give the node that outputs it a webhook or HTTP `schema`, `sample` items, or `returns` on a code step. Else narrow each level: `typeof x === 'object' && x !== null && 'f' in x`.",
 	},
 	{
 		// A failed item lists the output fields, so the field is in no shape.
@@ -1054,7 +1088,7 @@ const TSC_HINTS: ReadonlyArray<{
 		codes: [7006],
 		message: /implicitly has an 'any' type/,
 		hint: () =>
-			'This lambda gets no parameter types: the field it fills or the value it maps has the type `any`. Give the step that outputs the value `sample` items. For a field, use a typed step, e.g. the flow `set({ name, fields })`. Do not annotate the parameters.',
+			'This lambda gets no parameter types: the field it fills or the value it maps has the type `any`. Give the step that outputs the value a webhook or HTTP `schema`, or `sample` items. For a field, use a typed step, e.g. the flow `set({ name, fields })`. Do not annotate the parameters.',
 	},
 	{
 		codes: [2322],

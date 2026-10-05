@@ -543,6 +543,9 @@ describe('httpRequest.get', () => {
 		expect(validate({ url, schema: body }, getRequest.inputSchema)).toEqual([]);
 		for (const action of [getRequest, sendRequest]) {
 			expect(action.inputSchema.properties?.schema?.['x-n8n-declared']).toBe(true);
+			expect(action.inputSchema.properties?.schema?.['x-n8n-hint']).toBe(
+				'Body JSON Schema from the API docs, not a sample. Types items; objects closed',
+			);
 		}
 		expect(
 			validate({ url, schema: '={{ {} }}' }, getRequest.inputSchema, { allowExpressions: true }),

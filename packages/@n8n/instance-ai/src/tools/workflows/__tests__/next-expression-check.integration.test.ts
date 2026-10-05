@@ -122,6 +122,13 @@ const pathWarnings = (result: Awaited<ReturnType<typeof compileWorkflowSource>>)
 				.map((warning) => warning.message)
 		: result.errors;
 
+const sampledReads = (result: Awaited<ReturnType<typeof compileWorkflowSource>>) =>
+	result.success
+		? result.warnings
+				.filter((warning) => warning.code === 'SAMPLE_PINS_READ')
+				.map((warning) => warning.nodeName)
+		: result.errors;
+
 describe('n8n expressions in the node contracts build', () => {
 	let root: string;
 	let context: InstanceAiContext;
@@ -758,11 +765,13 @@ export default workflow(
 			),
 		);
 		expect(pathWarnings(right)).toEqual([]);
+		expect(sampledReads(right)).toEqual([]);
 		// A sample types the fields it gives; the other keys of an open body still read as `any`.
 		const sampled = await build(
 			source("sample: [{ issues: [{ title: 'Login 500' }] }]", reads[0] ?? ''),
 		);
 		expect(pathWarnings(sampled)).toEqual([]);
+		expect(sampledReads(sampled)).toEqual(['Fetch']);
 	}, 120_000);
 
 	it('types a declared nullable body field of a full response, so a read must check it', async () => {

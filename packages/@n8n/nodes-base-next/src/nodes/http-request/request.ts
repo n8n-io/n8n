@@ -47,7 +47,7 @@ const fullResponse = t.obj({
 export const bodySchema = t
 	.json()
 	.with({ 'x-n8n-literal': true, 'x-n8n-declared': true })
-	.hint('JSON Schema of the body from the API docs. Types the items; objects are closed')
+	.hint('Body JSON Schema from the API docs, not a sample. Types items; objects closed')
 	.optional();
 
 // The input takes any JSON object as the schema; the build reads only the keywords it knows.

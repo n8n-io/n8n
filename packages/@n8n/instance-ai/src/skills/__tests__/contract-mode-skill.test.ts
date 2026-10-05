@@ -128,8 +128,9 @@ describe('contract-mode skill', () => {
 	it('builds a flat list and names the macros in the skill', () => {
 		expect(skill).toContain('A workflow is a flat list: a trigger, then parts.');
 		expect(skill).toContain(
-			"Give an HTTP step `schema`, the body's JSON Schema from its API docs:",
+			"- Give HTTP steps `schema`, not `sample`: the body's JSON Schema from\n  its API docs. A wrong key fails the build; a GET is read live.",
 		);
+		expect(skill).not.toContain('feed verification');
 		expect(skill).not.toMatch(/\.andThen|\.orElse|\.branch\(/);
 		expect(skill).not.toContain('WorkflowJSON');
 	});

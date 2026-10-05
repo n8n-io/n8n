@@ -1019,15 +1019,15 @@ describe('tsc hints', () => {
 		],
 		[
 			"TS18046: 'item' is of type 'unknown'.",
-			'This value has no type. Fix the first error before it first. Else type the node before it: `sample` items, a webhook or HTTP `schema`, or `returns` on a code step.',
+			'This value has no type. Fix the first error before it first. Else type the node before it: a webhook or HTTP `schema`, `sample` items, or `returns` on a code step.',
 		],
 		[
 			"TS2571: Object is of type 'unknown'.",
-			'This value has no type. Fix the first error before it first. Else type the node before it: `sample` items, a webhook or HTTP `schema`, or `returns` on a code step.',
+			'This value has no type. Fix the first error before it first. Else type the node before it: a webhook or HTTP `schema`, `sample` items, or `returns` on a code step.',
 		],
 		[
 			"TS2322: The expression result does not fit the field: Type 'unknown' is not assignable to type 'string'.",
-			'This value has no type. Fix the first error before it first. Else type the node before it: `sample` items, a webhook or HTTP `schema`, or `returns` on a code step.',
+			'This value has no type. Fix the first error before it first. Else type the node before it: a webhook or HTTP `schema`, `sample` items, or `returns` on a code step.',
 		],
 		[
 			"TS18046: 'item.client_numbers' is of type 'unknown'.",
@@ -1035,7 +1035,7 @@ describe('tsc hints', () => {
 		],
 		[
 			"TS7006: Parameter 'failed' implicitly has an 'any' type.",
-			'This lambda gets no parameter types: the field it fills or the value it maps has the type `any`. Give the step that outputs the value `sample` items. For a field, use a typed step, e.g. the flow `set({ name, fields })`. Do not annotate the parameters.',
+			'This lambda gets no parameter types: the field it fills or the value it maps has the type `any`. Give the step that outputs the value a webhook or HTTP `schema`, or `sample` items. For a field, use a typed step, e.g. the flow `set({ name, fields })`. Do not annotate the parameters.',
 		],
 		[
 			"TS2322: Type '(item: { body: { severity?: string; }; }) => string | undefined' is not assignable to type 'string | ((item: { body: { severity?: string; }; }) => string)'.",
@@ -1121,7 +1121,7 @@ describe('tsc hints', () => {
 		],
 		[
 			"TS2339: Property 'employees' does not exist on type '{}'.",
-			"This field has no declared type, so `x ?? []` or a check such as `x ? x.f : \u2026` leaves `{}`, which has no fields. Give the node that outputs it `sample` items, a webhook or HTTP `schema`, or `returns` on a code step. Else narrow each level: `typeof x === 'object' && x !== null && 'f' in x`.",
+			"This field has no declared type, so `x ?? []` or a check such as `x ? x.f : \u2026` leaves `{}`, which has no fields. Give the node that outputs it a webhook or HTTP `schema`, `sample` items, or `returns` on a code step. Else narrow each level: `typeof x === 'object' && x !== null && 'f' in x`.",
 		],
 		[
 			"TS2551: Property 'statusCod' does not exist on type '(FailedItem & { readonly body?: undefined; readonly statusCode?: undefined; }) | ({ body: any; statusCode: number; } & { ...; })'. Did you mean 'statusCode'?\n      Property 'statusCod' does not exist on type 'FailedItem & { readonly body?: undefined; readonly statusCode?: undefined; }'.",

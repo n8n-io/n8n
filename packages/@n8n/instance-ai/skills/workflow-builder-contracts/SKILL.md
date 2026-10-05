@@ -41,7 +41,7 @@ make the smallest change and build with its `filePath`. Keep its
 
 ## References
 
-Load each one that applies with `load_skill` and `filePath`, in the
+Load each that applies with `load_skill` and `filePath`, in the
 `nodes(action="search")` step:
 
 - `references/flow-control.md`: `when`, `route`, `switchOn`, `merge`,
@@ -79,10 +79,9 @@ export default workflow(
   `recover(part)` joins it back.
 - `set({ name, fields })` makes fields; a key `'a.b'` nests. `keep: 'all'`,
   `{ selected }` or `{ except }` keeps input fields.
-- `sample` items type the output and feed verification:
-  `manual({ sample: [{ id: 1 }] })`.
-- Give an HTTP step `schema`, the body's JSON Schema from its API docs:
-  then a wrong key fails the build.
+- `sample` items type the output: `manual({ sample: [{ id: 1 }] })`.
+- Give HTTP steps `schema`, not `sample`: the body's JSON Schema from
+  its API docs. A wrong key fails the build; a GET is read live.
 - Typed steps, `set` and `node()` take `settings: { retryOnFail: true, notes: '…' }`.
 
 ## Lambdas
