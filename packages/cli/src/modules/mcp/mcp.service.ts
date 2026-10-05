@@ -56,6 +56,7 @@ import {
 	INSTALL_COMMUNITY_NODE_TOOL,
 	MCP_CREATE_AGENT_TOOL_NAME,
 	MCP_GET_USER_PREFERENCES_TOOL_NAME,
+	MCP_LIST_SKILLS_TOOL_NAME,
 	MCP_PREVIEW_RENDER_REQUESTED_EVENT,
 	USER_CALLED_MCP_TOOL_EVENT,
 } from './mcp.constants';
@@ -98,6 +99,7 @@ import {
 } from './tools/get-instance-context.tool';
 import { createGetNodeUsageTool } from './tools/get-node-usage.tool';
 import { createGetUserPreferencesTool } from './tools/get-user-preferences.tool';
+import { createListSkillsTool, createLoadSkillTool } from './tools/skills.tool';
 import { createWorkflowDetailsTool } from './tools/get-workflow-details.tool';
 import { createGetWorkflowHistoryTool } from './tools/get-workflow-history.tool';
 import { createGetWorkflowVersionTool } from './tools/get-workflow-version.tool';
@@ -468,6 +470,7 @@ export class McpService {
 		const userPreferencesInstructionsEnabled =
 			featureFlags.aiPreferencesEnabled &&
 			(allowedToolNames?.has(MCP_GET_USER_PREFERENCES_TOOL_NAME) ?? true);
+		const skillsInstructionsEnabled = allowedToolNames?.has(MCP_LIST_SKILLS_TOOL_NAME) ?? true;
 		const server = new McpServer(
 			{
 				name: 'n8n MCP Server',
@@ -483,6 +486,7 @@ export class McpService {
 					isN8nConnectAvailable: n8nConnectAvailable,
 					isAgentsEnabled: agentInstructionsEnabled,
 					isUserPreferencesEnabled: userPreferencesInstructionsEnabled,
+					isSkillsEnabled: skillsInstructionsEnabled,
 					credentialDescriptionsEnabled: featureFlags.credentialDescriptionsEnabled === true,
 				}),
 			},
@@ -794,6 +798,10 @@ export class McpService {
 				createUndoUserPreferenceTool(user, this.aiPreferenceService, this.telemetry, this.logger),
 			);
 		}
+
+		// POC: hardcoded skills, not gated by a feature flag or the builder.
+		registerIfAllowed(createListSkillsTool(user, this.telemetry));
+		registerIfAllowed(createLoadSkillTool(user, this.telemetry));
 
 		// Workflow builder tools (enabled via N8N_MCP_BUILDER_ENABLED)
 		if (builderEnabled) {

@@ -55,6 +55,8 @@ export const MCP_GET_USER_PREFERENCES_TOOL_NAME = 'get_user_preferences';
 export const MCP_SAVE_USER_PREFERENCE_TOOL_NAME = 'save_user_preference';
 export const MCP_UPDATE_USER_PREFERENCE_TOOL_NAME = 'update_user_preference';
 export const MCP_UNDO_USER_PREFERENCE_TOOL_NAME = 'undo_user_preference';
+export const MCP_LIST_SKILLS_TOOL_NAME = 'list_skills';
+export const MCP_LOAD_SKILL_TOOL_NAME = 'load_skill';
 
 /**
  * Installs a vetted community package so its nodes become usable. Not in

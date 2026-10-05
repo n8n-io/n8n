@@ -173,3 +173,30 @@ describe('instance context', () => {
 		expect(end).toBeLessThan(2048);
 	});
 });
+
+describe('skills', () => {
+	const HINT_START = 'The user has added skills to this server';
+
+	it('places the pointer right after the preferences sentence', () => {
+		const instructions = getMcpInstructions({
+			isBuilderEnabled: true,
+			isAgentsEnabled: true,
+			isInstanceContextEnabled: true,
+			isUserPreferencesEnabled: true,
+			isSkillsEnabled: true,
+		});
+
+		const paragraphs = instructions.split('\n\n');
+		const preferences = paragraphs.findIndex((p) => p.includes('get_user_preferences'));
+		expect(paragraphs[preferences + 1]).toContain(HINT_START);
+		expect(paragraphs[preferences + 1]).toContain('list_skills');
+		expect(paragraphs[preferences + 1]).toContain('load_skill');
+
+		const end = instructions.indexOf('\n\n', instructions.indexOf(HINT_START));
+		expect(end).toBeLessThan(2048);
+	});
+
+	it('says nothing about skills when the tools are not available', () => {
+		expect(getMcpInstructions({ isBuilderEnabled: true })).not.toContain(HINT_START);
+	});
+});

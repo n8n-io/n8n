@@ -9,6 +9,8 @@
 import {
 	LIST_N8N_GATEWAY_SERVICES_TOOL_NAME,
 	MCP_GET_USER_PREFERENCES_TOOL_NAME,
+	MCP_LIST_SKILLS_TOOL_NAME,
+	MCP_LOAD_SKILL_TOOL_NAME,
 	MCP_USER_PREFERENCES_TRIGGER_CLAUSE,
 } from '../../mcp.constants';
 import { GET_INSTANCE_CONTEXT_TOOL_NAME } from '../get-instance-context.tool';
@@ -56,6 +58,12 @@ export type McpInstructionsOptions = {
 	 * read the tool's own description before building. Identical for every caller.
 	 */
 	isUserPreferencesEnabled?: boolean;
+
+	/**
+	 * Whether the `list_skills` and `load_skill` tools are registered for this caller. If true,
+	 * one sentence right after the preferences sentence points the client at them.
+	 */
+	isSkillsEnabled?: boolean;
 	credentialDescriptionsEnabled?: boolean;
 };
 export function getMcpInstructions(options: McpInstructionsOptions): string {
@@ -65,6 +73,7 @@ export function getMcpInstructions(options: McpInstructionsOptions): string {
 		isAgentsEnabled = false,
 		isInstanceContextEnabled = false,
 		isUserPreferencesEnabled = false,
+		isSkillsEnabled = false,
 	} = options;
 	const INTRO = 'This is the official MCP server for n8n, a workflow automation platform.';
 
@@ -72,6 +81,12 @@ export function getMcpInstructions(options: McpInstructionsOptions): string {
 	// characters of the instructions, and a test pins the sentence inside that budget.
 	const USER_PREFERENCES_HINT = isUserPreferencesEnabled
 		? `Before ${MCP_USER_PREFERENCES_TRIGGER_CLAUSE} call ${MCP_GET_USER_PREFERENCES_TOOL_NAME} first and apply what it returns for the remainder of the task.`
+		: '';
+
+	// Same budget as the preferences sentence. It names tasks outside n8n on purpose: the POC
+	// measures whether a client loads a skill for a task that is not about workflows.
+	const SKILLS_HINT = isSkillsEnabled
+		? `The user has added skills to this server: reusable instructions for tasks they do often, including tasks that are not about n8n. At the start of each task, call ${MCP_LIST_SKILLS_TOOL_NAME}. When a skill description matches the task, call ${MCP_LOAD_SKILL_TOOL_NAME} and follow the instructions it returns.`
 		: '';
 
 	// Its only job is to get the opening read called. Measured: with this sentence the read
@@ -150,6 +165,7 @@ Agent conversations and runs are not workflow executions: get_workflow_execution
 	return [
 		INTRO,
 		USER_PREFERENCES_HINT,
+		SKILLS_HINT,
 		INSTANCE_CONTEXT_HINT,
 		isBuilderEnabled && isAgentsEnabled ? ARTIFACT_ROUTING_INSTRUCTIONS : '',
 		isAgentsEnabled ? AGENT_INSTRUCTIONS : '',

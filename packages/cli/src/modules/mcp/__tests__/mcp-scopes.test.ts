@@ -110,8 +110,10 @@ describe('getAllowedToolNames', () => {
 		);
 	});
 
-	it('resolves the preferences scope to its one tool', () => {
-		expect(getAllowedToolNames(['aiPreference:read'])).toEqual(new Set(['get_user_preferences']));
+	it('resolves the preferences scope to its read tool and the skills tools', () => {
+		expect(getAllowedToolNames(['aiPreference:read'])).toEqual(
+			new Set(['get_user_preferences', 'list_skills', 'load_skill']),
+		);
 	});
 
 	// The read tool does not ride along on the write grant: the consent screen shows them as
