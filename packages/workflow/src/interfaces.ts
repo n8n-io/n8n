@@ -3790,12 +3790,6 @@ export interface IWorkflowExecutionDataProcess {
 	httpResponse?: express.Response; // Used for streaming responses
 	streamingEnabled?: boolean;
 	/**
-	 * True while the webhook caller still waits for a response that the run
-	 * itself produces (every response mode except `onReceived`). A worker must
-	 * not park such a run at shutdown before that response has gone out.
-	 */
-	webhookResponsePending?: boolean;
-	/**
 	 * Only engine v2 reads this. The data-plane execution id, set by a caller that
 	 * minted it before the run starts: to subscribe to the run's answer, or because
 	 * the trigger node already stored files under it. Without it, the dispatcher

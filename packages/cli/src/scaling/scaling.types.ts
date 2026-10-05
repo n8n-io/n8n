@@ -22,8 +22,6 @@ export type JobData = {
 	loadStaticData: boolean;
 	pushRef?: string;
 	streamingEnabled?: boolean;
-	/** True while the webhook caller still waits for a response the run produces. */
-	webhookResponsePending?: boolean;
 	restartExecutionId?: string;
 	projectId?: string;
 	projectName?: string;
@@ -154,11 +152,8 @@ export type AbortJobMessage = {
 
 export type RunningJob = RunningJobSummary & {
 	run: PCancelable<IRun>;
-	/**
-	 * Present only when the job may be suspended at worker shutdown. Returns
-	 * false while the run still owes its webhook caller a response.
-	 */
-	suspend?: () => boolean;
+	/** Present only when the job may be suspended at worker shutdown. */
+	suspend?: () => void;
 };
 
 export type QueueRecoveryContext = {
