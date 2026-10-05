@@ -324,21 +324,71 @@ see their project's runs.
 
 ## Build order
 
-1. Migration, `PromotionRun` entity and repository (`promotions.ee/database/`).
+1. Migration, `PromotionRun` entity and repository (`promotions.ee/database/`). — Done
 2. `GitLabMergeRequestClient` next to `GitLabHostClient`: `createMergeRequest`,
-   `getMergeRequest`, `createNote`, `approve`, `merge`. `nock` tests.
+   `getMergeRequest`, `listMergeRequests`, `createNote`, `approve`, `merge`.
+   Unit tests mock `HttpRequestClient`. — Done
 3. Hook in `promote()` / `promoteSelectionResolved()` after `commitAndPush`:
    create the MR, write `promotion_run`, extend `promotePackageResultSchema`
-   with `mergeRequest?` and `warnings`.
+   with `mergeRequest?` and `warnings`. — Done
 4. Review read model: `GET /rest/promotions/reviews?state=`,
    `GET /rest/promotions/reviews/:runId`,
-   `GET …/reviews/:runId/workflows/:workflowId/diff`.
-5. `POST /rest/promotions/reviews/:runId/approve`.
+   `GET …/reviews/:runId/workflows/:workflowId/diff`. — Done
+5. `POST /rest/promotions/reviews/:runId/approve`. — Done
 6. FE: `promotionReviews.store.ts` and api, interleave into
-   `WorkflowReviewRequestsView.vue`, row kind, `PromotionReviewDetail` that
-   reuses `WorkflowReviewChangesSection`.
+   `WorkflowReviewRequestsView.vue`, row kind, `PromotionReviewDetail`. — Done
 7. Manual demo against local GitLab (Docker, group access token). Record it.
 8. Stretch: bindings and dependencies tabs; MR notes in the detail.
+
+## Implementation notes
+
+Where the code differs from the plan above:
+
+- `PromotionReviewDetail.vue` renders the diff with `WorkflowDiffView`
+  directly, not with `WorkflowReviewChangesSection`. The review section is
+  bound to a `WorkflowReviewRequest` and its version pair. The diff view only
+  needs two `IWorkflowDb` objects, so it fits the promotion read model
+  without an adapter layer.
+- The baseline is `git merge-base <headSha> origin/<targetBranch>` on the
+  promote checkout, after a `git fetch origin <targetBranch>`
+  (`PromotionsGitService.readReviewTrees`). The service compares blob SHAs of
+  `n8n-export/projects/<project>/workflows/<slug>-<id>/workflow.json` on both
+  trees to classify `added`, `modified` and `deleted`. The frozen
+  `baselineCommitSha` on the row is the fallback when the fetch fails.
+- Approve claims the row first (`PromotionRunRepository.claimApproval`, a
+  conditional update on `approvedById IS NULL`) and releases the claim if the
+  GitLab call fails. This is the E8 guard.
+- Inbox rows carry the route id `promotion:<runId>`; Workflow Review rows keep
+  their plain id. `WorkflowReviewRequestsSidebar.vue` merges both into one
+  list sorted by `createdAt`. The merge happens client side on the loaded
+  pages, not on a shared cursor (follow-up for v1).
+- Open runs are synced from GitLab with one `GET /merge_requests?iids[]=`
+  per project on every inbox load (`PromotionReviewsService.list`). A 404
+  marks the run `unavailable`.
+
+## Manual demo
+
+Prerequisites: a GitLab project reachable from the instance, a token with
+`api` scope and at least Maintainer role, and a license with the
+`workflow-reviews` and `git-connections` features (both modules are
+license-gated; see decision E1).
+
+1. Create a GitLab promotion connection and a promote config for a project.
+2. Change a workflow in that project and run Promote.
+3. Expect: the promote result shows `mergeRequest.webUrl`; GitLab shows an
+   open MR from `n8n-promotion/<timestamp>` to the target branch; the row in
+   `promotion_run` has `state = 'open'`.
+4. Open `/reviews`. Expect a `Promotion` row in "Waiting for review" next to
+   the Workflow Reviews. Select it. Expect the MR link, branch metadata and the
+   list of changed workflows with `Added`, `Modified` or `Deleted` badges.
+5. Select a workflow. Expect the node-level diff between the merge-base and
+   the promoted commit.
+6. Click "Approve and merge". Expect a note and an approval on the MR, the
+   MR merged, the source branch removed, and the row moved to "Closed" with
+   state `Merged`.
+7. Negative path: close an MR in GitLab, reload `/reviews`. Expect the row
+   in "Closed" with state `Closed`. Delete an MR, reload. Expect state
+   `Unavailable`.
 
 ## Follow-ups outside the POC
 
