@@ -1,10 +1,16 @@
+import { OutboundHttp } from '@n8n/backend-network';
 import { mockInstance, testDb } from '@n8n/backend-test-utils';
 import { InstanceSettingsLoaderConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
+import {
+	MessageEventBusDestinationTypeNames,
+	type MessageEventBusDestinationWebhookOptions,
+} from 'n8n-workflow';
 
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
+import { createMessageEventBusDestination } from '@/modules/log-streaming.ee/create-message-event-bus-destination';
 import { LogStreamingDestinationService } from '@/modules/log-streaming.ee/log-streaming-destination.service';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { createOwnerWithApiKey } from '@test-integration/db/users';
@@ -169,6 +175,55 @@ describe('Log streaming in Public API', () => {
 	});
 
 	describe('GET /settings/log-streaming/destinations/{id}', () => {
+		it('omits credentials and backend-only fields of a destination stored outside the Public API', async () => {
+			// The Public API cannot store these fields, so only a read can expose them.
+			const options: MessageEventBusDestinationWebhookOptions = {
+				__type: MessageEventBusDestinationTypeNames.webhook,
+				label: 'Stored with credentials',
+				enabled: false,
+				subscribedEvents: ['n8n.workflow'],
+				url: 'http://localhost:3456',
+				authentication: 'predefinedCredentialType',
+				nodeCredentialType: 'httpHeaderAuth',
+				credentials: { httpHeaderAuth: { id: 'cred-1', name: 'My cred' } },
+				responseCodeMustMatch: true,
+				sendPayload: true,
+			};
+			const stored = await service().addDestination(
+				createMessageEventBusDestination(
+					Container.get(MessageEventBus),
+					Container.get(OutboundHttp),
+					options,
+				),
+				false,
+			);
+
+			const single = await testServer
+				.publicApiAgentFor(owner)
+				.get(`/settings/log-streaming/destinations/${stored.getId()}`);
+			const list = await testServer
+				.publicApiAgentFor(owner)
+				.get('/settings/log-streaming/destinations');
+
+			expect(single.status).toBe(200);
+			expect(list.status).toBe(200);
+			const listed = list.body.data.find((d: { id: string }) => d.id === stored.getId());
+			for (const body of [single.body, listed]) {
+				expect(body.type).toBe('webhook');
+				expect(body.label).toBe('Stored with credentials');
+				for (const field of [
+					'__type',
+					'credentials',
+					'authentication',
+					'nodeCredentialType',
+					'responseCodeMustMatch',
+					'sendPayload',
+				]) {
+					expect(body).not.toHaveProperty(field);
+				}
+			}
+		});
+
 		it('returns a single destination by id', async () => {
 			const created = await createDestination();
 
