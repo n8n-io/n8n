@@ -85,6 +85,12 @@ export type {
 
 const MAX_LOOP_ITERATIONS = 100;
 
+function endsTurn(batch: ToolCallBatchResult, toolMap: Map<string, BuiltTool>): boolean {
+	return batch.results.some(
+		({ toolName, toolEntry }) => toolMap.get(toolName)?.endsTurn?.(toolEntry.output) === true,
+	);
+}
+
 /** Retries for a `stop` turn that produced no output at all (see isEmptyModelTurn). */
 const MAX_EMPTY_TURN_RETRIES = 2;
 const logger = createFilteredLogger();
@@ -1010,6 +1016,10 @@ export class AgentRuntime {
 		);
 		if (settlement.suspended) return settlement;
 		await this.completeToolTurn(ctx, state, turn);
+		if (endsTurn(batch, toolMap)) {
+			state.lastFinishReason = 'stop';
+			state.reachedStopCondition = true;
+		}
 		return settlement;
 	}
 

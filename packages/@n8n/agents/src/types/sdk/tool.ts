@@ -166,6 +166,12 @@ export interface BuiltTool {
 	readonly toModelOutput?: (output: unknown) => unknown;
 	/** Treat every model-facing result and error from this tool as external reference data. */
 	readonly outputTrust?: 'untrusted';
+	/**
+	 * Ends the run after this call's batch settles, without another model call,
+	 * when it returns true for the output. For tools whose result is the last
+	 * thing the turn should do, so the model cannot repeat them.
+	 */
+	readonly endsTurn?: (output: unknown) => boolean;
 	readonly handler?: (
 		input: unknown,
 		ctx: ToolContext | InterruptibleToolContext,

@@ -241,6 +241,8 @@ export class Tool<
 
 	private outputTrustValue?: BuiltTool['outputTrust'];
 
+	private endsTurnFn?: (output: OutputType<TOutput>) => boolean;
+
 	private providerOptionsValue?: Record<string, JSONObject>;
 
 	private handleCancellationValue?: boolean;
@@ -334,6 +336,12 @@ export class Tool<
 		return this;
 	}
 
+	/** End the run, without another model call, when `fn` returns true for an output. */
+	endsTurnWhen(fn: (output: OutputType<TOutput>) => boolean): this {
+		this.endsTurnFn = fn;
+		return this;
+	}
+
 	/** Treat every model-facing result and error from this tool as external reference data. */
 	untrustedOutput(): this {
 		this.outputTrustValue = 'untrusted';
@@ -420,6 +428,7 @@ export class Tool<
 			toMessage: this.toMessageFn as (output: unknown) => AgentMessage | undefined,
 			toModelOutput: this.toModelOutputFn as ((output: unknown) => unknown) | undefined,
 			outputTrust: this.outputTrustValue,
+			endsTurn: this.endsTurnFn as ((output: unknown) => boolean) | undefined,
 			handler: this.handlerFn as (
 				input: unknown,
 				ctx: ToolContext | InterruptibleToolContext,
