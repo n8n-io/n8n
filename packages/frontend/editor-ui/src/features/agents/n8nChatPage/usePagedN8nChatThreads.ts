@@ -7,6 +7,11 @@ import { listN8nChatThreads } from '../composables/useAgentApi';
 export type UsePagedN8nChatThreadsOptions = {
 	/** Narrows every page to one agent's threads. Changing it resets paging. */
 	agentId?: MaybeRefOrGetter<string | undefined>;
+	/** Server-side title search. Changing it resets paging. */
+	search?: MaybeRefOrGetter<string | undefined>;
+	/** Gates `loadNext()`. A disabled pager still resets and clears `items` on a `search`
+	 * change, it just never fetches. Default true. */
+	enabled?: MaybeRefOrGetter<boolean>;
 	pageSize: number;
 };
 
@@ -42,6 +47,7 @@ export function usePagedN8nChatThreads(options: UsePagedN8nChatThreadsOptions) {
 				limit: options.pageSize,
 				cursor: requestCursor,
 				agentId: toValue(options.agentId),
+				search: toValue(options.search),
 			});
 			if (version !== requestVersion) return;
 			const base = replacing ? [] : items.value;
@@ -70,9 +76,9 @@ export function usePagedN8nChatThreads(options: UsePagedN8nChatThreadsOptions) {
 		}
 	}
 
-	/** Loads the next page, or retries the last one after it failed. No-op while a page is already loading or none remain (a failure never counts as "none remain" — it still allows a retry). */
+	/** Loads the next page, or retries the last one after it failed. No-op while disabled, while a page is already loading, or none remain (a failure never counts as "none remain" — it still allows a retry). */
 	function loadNext(): void {
-		if (inFlight || (!hasMore.value && !error.value)) return;
+		if (!toValue(options.enabled ?? true) || inFlight || (!hasMore.value && !error.value)) return;
 		void fetchPage(requestVersion);
 	}
 
@@ -93,6 +99,7 @@ export function usePagedN8nChatThreads(options: UsePagedN8nChatThreadsOptions) {
 		isLoading.value = false;
 	}
 
+	// An agent change only rearms: the caller fetches when the list is next shown.
 	if (options.agentId !== undefined) {
 		watch(
 			() => toValue(options.agentId),
@@ -100,6 +107,18 @@ export function usePagedN8nChatThreads(options: UsePagedN8nChatThreadsOptions) {
 				reset();
 				// Unlike a reopen, another agent's threads must not show while the new page loads.
 				items.value = [];
+			},
+		);
+	}
+	// A search change has no other trigger, so fetch here. Clear the old list at
+	// once, so titles that do not match never show under the new term.
+	if (options.search !== undefined) {
+		watch(
+			() => toValue(options.search),
+			() => {
+				reset();
+				items.value = [];
+				loadNext();
 			},
 		);
 	}

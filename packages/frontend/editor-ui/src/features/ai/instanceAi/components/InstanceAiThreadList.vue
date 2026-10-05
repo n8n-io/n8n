@@ -9,7 +9,6 @@ import { useRoute, useRouter } from 'vue-router';
 import { INSTANCE_AI_VIEW, INSTANCE_AI_THREAD_VIEW, INSTANCE_AI_THREADS_VIEW } from '../constants';
 import { useInstanceAiStore } from '../instanceAi.store';
 import { clearPendingThreadHandoff } from '../composables/useInstanceAiHandoff';
-import { useInstanceAiThreadHistory } from '../composables/useInstanceAiThreadHistory';
 import { useToast } from '@n8n/composables/useToast';
 import ChatHistoryDropdown, {
 	type ChatHistoryItemData,
@@ -17,6 +16,7 @@ import ChatHistoryDropdown, {
 import { useAgentsN8nChatFlag } from '@/features/agents/composables/useAgentsN8nChatFlag';
 import RecentChatIcon from '@/features/agents/n8nChatPage/components/RecentChatIcon.vue';
 import { useAgentN8nChatThreadsStore } from '@/features/agents/n8nChatPage/n8nChatThreads.store';
+import { useMergedChatHistory } from '@/features/agents/n8nChatPage/useMergedChatHistory';
 import {
 	chatItemRoute,
 	chatItemTitle,
@@ -67,13 +67,37 @@ const isAgentsN8nChatFlag = useAgentsN8nChatFlag();
 // thread to land on — show only the Assistant threads it asked for, same as before
 // n8n Chat threads existed.
 const isScoped = computed(() => Boolean(props.filter) || !props.navigate);
-const { history, search, sentinelRef, loadMore } = useInstanceAiThreadHistory();
 const agentThreadsStore = useAgentN8nChatThreadsStore();
 const showChatIcons = computed(() => isAgentsN8nChatFlag.value && !isScoped.value);
+// Falls back to the route param when omitted (the page's own use).
+const activeThreadId = computed(
+	() =>
+		props.activeThreadId ??
+		(typeof route.params.threadId === 'string' ? route.params.threadId : undefined),
+);
 // With n8n Chat on, the dropdown shows the same few recent chats as the sidebar; "View all"
-// leads to the full, paged list. A search pages through every Assistant match instead,
-// since agent threads have no server search.
-const isRecentOnly = computed(() => showChatIcons.value && !history.value.search);
+// leads to the full, paged list. Reads the store directly, rather than the `history` below:
+// `useMergedChatHistory`'s `enabled` option needs this to be built before it hands `history`
+// back.
+const isRecentOnly = computed(() => showChatIcons.value && !store.threadHistory.search);
+// A search merges in agent threads too (`GET /agents/v2/n8n-chat/threads` now takes
+// `search`), but only on the unscoped "new chat" entry page: once an Assistant thread is
+// open, or for an embedding host, search stays Assistant-only, same as `isRecentOnly` /
+// `isScoped` above.
+const searchesAgentThreads = computed(
+	() => showChatIcons.value && !isRecentOnly.value && activeThreadId.value === undefined,
+);
+
+const {
+	history,
+	search,
+	sentinelRef,
+	items: mergedItems,
+	hasMore: mergedHasMore,
+	isLoading: mergedIsLoading,
+	error: mergedError,
+	loadMore,
+} = useMergedChatHistory({ enabled: () => searchesAgentThreads.value });
 
 const menuOpen = ref(false);
 const menuContentId = useId();
@@ -84,11 +108,6 @@ const historyDropdownRef = ref<{
 const editingThreadId = ref<string | null>(null);
 const editingTitle = ref('');
 const renameInput = ref<HTMLInputElement | null>(null);
-const activeThreadId = computed(
-	() =>
-		props.activeThreadId ??
-		(typeof route.params.threadId === 'string' ? route.params.threadId : undefined),
-);
 
 const threadActions: Array<ActionDropdownItem<'rename' | 'delete'>> = [
 	{
@@ -117,6 +136,9 @@ const scopedItems = computed<RecentChatItem[]>(() => {
 			openThreadId: activeThreadId.value,
 		});
 	}
+	// Agent threads merged in by the server search — `useMergedChatHistory` already folds
+	// both sources together, gated by the `enabled` option passed to it above.
+	if (searchesAgentThreads.value) return mergedItems.value;
 	// Scope the server-paged history to the embedding host's subject, such as one agent.
 	return history.value.threads
 		.filter((thread) => (props.filter ? props.filter(thread) : true))
@@ -124,9 +146,17 @@ const scopedItems = computed<RecentChatItem[]>(() => {
 });
 
 // The recent-only list never pages; "View all" opens the full list.
-const hasMore = computed(() => !isRecentOnly.value && history.value.hasMore);
-const isLoading = computed(() => history.value.loading);
-const error = computed(() => history.value.error);
+const hasMore = computed(() => {
+	if (isRecentOnly.value) return false;
+	if (searchesAgentThreads.value) return mergedHasMore.value;
+	return history.value.hasMore;
+});
+const isLoading = computed(() =>
+	searchesAgentThreads.value ? mergedIsLoading.value : history.value.loading,
+);
+const error = computed(() =>
+	searchesAgentThreads.value ? mergedError.value : history.value.error,
+);
 
 const menuItems = computed<Array<DropdownMenuItemProps<string, ChatHistoryItemData>>>(() =>
 	scopedItems.value.map((item) => {
@@ -162,8 +192,9 @@ const lastVisibleItemId = computed(() => {
 });
 let restoreTriggerFocus = false;
 
+// Counts the shown rows, so a search that only matches agent threads also highlights.
 watch(
-	[() => history.value.threads.length, () => history.value.search],
+	[() => scopedItems.value.length, () => history.value.search],
 	([threadCount, searchTerm], [previousThreadCount]) => {
 		if (!searchTerm || previousThreadCount !== 0 || threadCount === 0) return;
 		void nextTick(() => historyDropdownRef.value?.highlightFirstItem());

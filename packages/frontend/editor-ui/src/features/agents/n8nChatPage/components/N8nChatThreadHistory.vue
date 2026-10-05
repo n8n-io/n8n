@@ -1,11 +1,14 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+import { refDebounced } from '@vueuse/core';
 import type { ChatHistoryItem } from '@/features/ai/shared/components/ChatHistoryDropdown.vue';
 import ChatHistoryDropdown from '@/features/ai/shared/components/ChatHistoryDropdown.vue';
 import ChatHistoryDropdownTrigger from '@/features/ai/shared/components/ChatHistoryDropdownTrigger.vue';
-import { N8nButton, N8nText, useDropdownSearch } from '@n8n/design-system';
+import { N8nButton, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
+import { getDebounceTime } from '@n8n/composables/useDebounce';
+import { DEBOUNCE_TIME } from '@/app/constants';
 
 import { usePagedN8nChatThreads } from '../usePagedN8nChatThreads';
 import { AGENT_N8N_CHAT_HISTORY_PAGE_SIZE, AGENT_N8N_CHAT_VIEW } from '../../constants';
@@ -28,8 +31,14 @@ const currentThreadId = computed(() =>
 	typeof route.params.agentThreadId === 'string' ? route.params.agentThreadId : undefined,
 );
 
+// Debounced like the Assistant's own thread-history search, so typing doesn't fire a
+// request per keystroke.
+const search = ref('');
+const debouncedSearch = refDebounced(search, getDebounceTime(DEBOUNCE_TIME.INPUT.SEARCH));
+
 const paged = usePagedN8nChatThreads({
 	agentId: () => props.agentId,
+	search: () => debouncedSearch.value.trim() || undefined,
 	pageSize: AGENT_N8N_CHAT_HISTORY_PAGE_SIZE,
 });
 
@@ -76,7 +85,10 @@ const items = computed<ChatHistoryItem[]>(() =>
 	})),
 );
 
-const { filteredItems, handleSearch } = useDropdownSearch(items);
+// Searched server-side (see `paged` above), so `items` is already the matching page.
+function handleSearch(query: string): void {
+	search.value = query;
+}
 
 // Only the first, item-less load has nothing to show while it's in flight —
 // a background refresh (reopen) keeps the previous list visible instead.
@@ -99,7 +111,7 @@ const showLoadMore = computed(
 <template>
 	<ChatHistoryDropdown
 		:model-value="open"
-		:items="filteredItems"
+		:items="items"
 		:leading-item="newChatItem"
 		:loading="showLoadingState"
 		:empty-text="emptyText"

@@ -1,4 +1,5 @@
 import { reactive } from 'vue';
+import userEvent from '@testing-library/user-event';
 import { fireEvent, waitFor } from '@testing-library/vue';
 import { createTestingPinia } from '@pinia/testing';
 import type { AgentN8nChatThreadSummary } from '@n8n/api-types';
@@ -152,6 +153,23 @@ describe('N8nChatThreadHistory', () => {
 		resolveFirst({ data: [thread('stale')], nextCursor: null });
 		await waitFor(() => expect(getAllByTestId('agent-n8n-chat-history-item')).toHaveLength(1));
 		expect(getAllByTestId('agent-n8n-chat-history-item')[0].textContent).toContain('fresh');
+	});
+
+	it('searches threads on the server, scoped to agentId', async () => {
+		listN8nChatThreadsMock.mockResolvedValue({ data: [thread('t1')], nextCursor: null });
+		const { getByPlaceholderText } = await renderAndOpen();
+		await waitFor(() => expect(listN8nChatThreadsMock).toHaveBeenCalledTimes(1));
+		listN8nChatThreadsMock.mockClear();
+		listN8nChatThreadsMock.mockResolvedValueOnce({ data: [thread('t2')], nextCursor: null });
+
+		await userEvent.type(getByPlaceholderText('Search'), 'refund');
+
+		await waitFor(() =>
+			expect(listN8nChatThreadsMock).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.objectContaining({ agentId: 'agent-1', search: 'refund' }),
+			),
+		);
 	});
 
 	it('shows an error with retry', async () => {

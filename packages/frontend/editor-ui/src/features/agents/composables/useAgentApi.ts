@@ -170,6 +170,8 @@ export type ListN8nChatThreadsOptions = {
 	cursor?: string;
 	/** Filters threads to one agent. */
 	agentId?: string;
+	/** Case-insensitive title search. */
+	search?: string;
 };
 
 /** Narrows the raw response body — `request` returns `unknown`, and this avoids an `as` cast. */
@@ -196,7 +198,12 @@ export const listN8nChatThreads = async (
 		baseURL: context.baseUrl,
 		endpoint: '/agents/v2/n8n-chat/threads',
 		headers: { 'push-ref': context.pushRef },
-		data: { limit: options.limit, cursor: options.cursor, agentId: options.agentId },
+		data: {
+			limit: options.limit,
+			cursor: options.cursor,
+			agentId: options.agentId,
+			search: options.search,
+		},
 	});
 	if (!isN8nChatThreadsResponse(response)) {
 		throw new UnexpectedError('Unexpected n8n Chat threads response shape');
