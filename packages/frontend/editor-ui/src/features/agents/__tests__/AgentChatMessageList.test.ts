@@ -82,10 +82,6 @@ vi.mock('@/features/ai/shared/components/AiReasoningBlock.vue', () => ({
 	},
 }));
 
-vi.mock('@/features/ai/chatHub/components/ChatTypingIndicator.vue', () => ({
-	default: { template: '<div data-test-id="typing-indicator" />' },
-}));
-
 vi.mock('@/features/agents/components/AgentChatToolSteps.vue', () => ({
 	default: {
 		name: 'AgentChatToolSteps',
@@ -136,6 +132,72 @@ vi.mock('@n8n/i18n', () => ({
 }));
 
 describe('AgentChatMessageList', () => {
+	it('keeps the budget notice and action when the plan progress call is hidden', async () => {
+		const initial = planView();
+		const previous = { ...planMessage(initial), content: 'Starting research.' };
+		const stopped: ChatMessage = {
+			...planMessage({ ...initial, revision: 2 }, { tool: 'update_plan' }),
+			status: 'success',
+			budgetNotices: [{ id: 'budget-stop', code: 'budget.session' }],
+		};
+		const wrapper = mount(AgentChatMessageList, {
+			props: {
+				messages: [previous, stopped],
+				messagingState: 'idle',
+				canIncreaseBudget: true,
+			},
+		});
+
+		const cards = wrapper.findAll('[data-testid="agent-budget-notice-card"]');
+		expect(cards).toHaveLength(1);
+		expect(cards[0].attributes('data-can-increase')).toBe('true');
+		await cards[0].get('button').trigger('click');
+		expect(wrapper.emitted('increase-budget')).toEqual([
+			[{ field: 'sessionCostCapUsd', amount: 10 }],
+		]);
+		expect(wrapper.find('[data-test-id="agent-typing-indicator"]').exists()).toBe(false);
+		wrapper.unmount();
+	});
+
+	it.each(['success', 'awaitingUser'] as const)(
+		'hides tool-run typing dots when the final message is %s',
+		async (status) => {
+			const initial = planView();
+			const previous = { ...planMessage(initial), content: 'Starting research.' };
+			const progress: ChatMessage = {
+				...planMessage(undefined, {
+					tool: 'update_plan',
+					state: 'running',
+					input: { planId: initial.planId, expectedRevision: 1, document: initial.document },
+				}),
+				status: 'streaming',
+			};
+			const wrapper = mount(AgentChatMessageList, {
+				props: { messages: [previous, progress], messagingState: 'receiving' },
+			});
+			expect(wrapper.findAll('[data-test-id="agent-typing-indicator"]')).toHaveLength(1);
+
+			const finalMessage: ChatMessage = { id: 'final', role: 'assistant', content: '', status };
+			await wrapper.setProps({ messages: [previous, progress, finalMessage] });
+			expect(wrapper.find('[data-test-id="agent-typing-indicator"]').exists()).toBe(false);
+
+			await wrapper.setProps({
+				messages: [previous, progress, { ...finalMessage, status: 'streaming' }],
+			});
+			expect(wrapper.findAll('[data-test-id="agent-typing-indicator"]')).toHaveLength(1);
+
+			await wrapper.setProps({
+				messages: [
+					previous,
+					progress,
+					{ ...finalMessage, status: 'streaming', content: 'Found candidates.' },
+				],
+			});
+			expect(wrapper.find('[data-test-id="agent-typing-indicator"]').exists()).toBe(false);
+			wrapper.unmount();
+		},
+	);
+
 	it('hides plan progress during streaming and completion but keeps errors and chat text', async () => {
 		const initial = planView();
 		const document = { ...initial.document, presentation: { label: 'Research candidates' } };
@@ -361,7 +423,7 @@ describe('AgentChatMessageList', () => {
 		expect(wrapper.find('[data-test-id="shared-reasoning-block"]').text()).toBe(
 			'Inspect the request. Then answer.',
 		);
-		expect(wrapper.find('[data-test-id="typing-indicator"]').exists()).toBe(false);
+		expect(wrapper.find('[data-test-id="agent-typing-indicator"]').exists()).toBe(false);
 	});
 
 	it('renders thinking below standalone assistant output', () => {

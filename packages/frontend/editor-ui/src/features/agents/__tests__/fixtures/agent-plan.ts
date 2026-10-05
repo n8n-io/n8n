@@ -31,13 +31,16 @@ export function planView(overrides: Partial<AgentPlanView> = {}): AgentPlanView 
 	};
 }
 
+let nextMessageId = 0;
+
 export function planMessage(output: unknown, overrides: Partial<ToolCall> = {}): ChatMessage {
+	const id = ++nextMessageId;
 	return {
-		id: 'assistant',
+		id: `assistant-${id}`,
 		role: 'assistant',
 		content: '',
 		toolCalls: [
-			{ tool: 'create_plan', toolCallId: 'plan-call', state: 'done', output, ...overrides },
+			{ tool: 'create_plan', toolCallId: `plan-call-${id}`, state: 'done', output, ...overrides },
 		],
 	};
 }

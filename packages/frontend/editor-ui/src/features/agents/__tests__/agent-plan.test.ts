@@ -5,6 +5,7 @@ import type { ChatMessage, ToolCall } from '@/features/ai/shared/agentsChat/type
 import { planMessage, planTask, planView } from './fixtures/agent-plan';
 
 describe('buildAgentPlanDisplayGroups', () => {
+	const initialCallId = expect.stringMatching(/^plan-call-\d+$/);
 	const initial = {
 		...planView(),
 		document: {
@@ -46,9 +47,23 @@ describe('buildAgentPlanDisplayGroups', () => {
 	it('hides progress without changing the stored messages or current card', () => {
 		const messages = [planMessage(initial), update(progress)];
 		const before = structuredClone(messages);
-		expect(visibleCalls(messages)).toEqual(['plan-call']);
+		expect(visibleCalls(messages)).toEqual([initialCallId]);
 		expect(messages).toEqual(before);
 		expect(selectLatestAgentPlan(messages)?.revision).toBe(2);
+	});
+
+	it('filters each plan call independently across messages', () => {
+		const current = { ...initial, revision: 2, document: progress };
+		const created = planMessage(initial);
+		const updated = planMessage(current, { tool: 'update_plan' });
+		const read = planMessage(current, { tool: 'read_plan' });
+		const messages = [created, updated, read];
+
+		expect(new Set(messages.map((message) => message.id)).size).toBe(3);
+		expect(visibleCalls(messages)).toEqual([
+			created.toolCalls![0].toolCallId,
+			read.toolCalls![0].toolCallId,
+		]);
 	});
 
 	it.each([
@@ -81,7 +96,10 @@ describe('buildAgentPlanDisplayGroups', () => {
 			{ ...progress, items: [{ ...progress.items[0], futureRule: true }, progress.items[1]] },
 		],
 	])('keeps a change to %s visible', (_name, document) => {
-		expect(visibleCalls([planMessage(initial), update(document)])).toEqual(['plan-call', 'update']);
+		expect(visibleCalls([planMessage(initial), update(document)])).toEqual([
+			initialCallId,
+			'update',
+		]);
 	});
 
 	it('ignores group progress but keeps group membership and order changes visible', () => {
@@ -97,14 +115,14 @@ describe('buildAgentPlanDisplayGroups', () => {
 		};
 		expect(
 			visibleCalls([previous, update({ ...document, items: [changedGroup, planTask(3)] })]),
-		).toEqual(['plan-call']);
+		).toEqual([initialCallId]);
 		for (const items of [
 			[planTask(3), changedGroup],
 			[{ ...changedGroup, tasks: progress.items.slice(1) }, progress.items[0], planTask(3)],
 			[{ ...changedGroup, tasks: [...progress.items].reverse() }, planTask(3)],
 		]) {
 			expect(visibleCalls([previous, update({ ...document, items })])).toEqual([
-				'plan-call',
+				initialCallId,
 				'update',
 			]);
 		}
@@ -118,7 +136,7 @@ describe('buildAgentPlanDisplayGroups', () => {
 				output: undefined,
 				input: { planId: initial.planId, expectedRevision: 1, document: progress },
 			});
-			expect(visibleCalls([planMessage(initial), call])).toEqual(['plan-call']);
+			expect(visibleCalls([planMessage(initial), call])).toEqual([initialCallId]);
 		},
 	);
 
@@ -136,7 +154,7 @@ describe('buildAgentPlanDisplayGroups', () => {
 		},
 	])('keeps errors and uncertain calls visible: %j', (overrides) => {
 		expect(visibleCalls([planMessage(initial), update(progress, overrides)])).toEqual([
-			'plan-call',
+			initialCallId,
 			'update',
 		]);
 	});
@@ -144,18 +162,18 @@ describe('buildAgentPlanDisplayGroups', () => {
 	it('requires the preceding revision of the same plan', () => {
 		expect(visibleCalls([update(progress)])).toEqual(['update']);
 		expect(visibleCalls([planMessage({ ...initial, revision: 4 }), update(progress)])).toEqual([
-			'plan-call',
+			initialCallId,
 			'update',
 		]);
 		expect(
 			visibleCalls([planMessage({ ...initial, planId: planTask(99).id }), update(progress)]),
-		).toEqual(['plan-call', 'update']);
+		).toEqual([initialCallId, 'update']);
 	});
 
 	it('keeps create, read, and close calls visible', () => {
 		for (const tool of ['create_plan', 'read_plan', 'close_plan']) {
 			expect(visibleCalls([planMessage(initial), update(progress, { tool })])).toEqual([
-				'plan-call',
+				initialCallId,
 				'update',
 			]);
 		}

@@ -150,6 +150,11 @@ function getMessageRenderItems(message: ChatMessage): MessageRenderItem[] {
 const scrollRef = useTemplateRef<HTMLDivElement>('scrollRef');
 
 const displayGroups = computed(() => buildAgentPlanDisplayGroups(props.messages));
+const streamingGroupId = computed(() =>
+	props.messages.at(-1)?.status === CHAT_MESSAGE_STATUS.STREAMING
+		? displayGroups.value.at(-1)?.id
+		: undefined,
+);
 
 const formatChatDividerTimestamp = useChatDividerTimestamp();
 
@@ -542,7 +547,7 @@ watch(
 					</div>
 					<AgentTypingIndicator
 						v-if="
-							group.active &&
+							group.id === streamingGroupId &&
 							!group.finalMessage?.content &&
 							!group.toolCalls.length &&
 							!group.thinkingSegments.length

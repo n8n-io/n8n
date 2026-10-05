@@ -47,6 +47,7 @@ export function isRecoverablePlanError(call: ToolCall): boolean {
 	) {
 		return false;
 	}
+
 	const result = planErrorSchema.safeParse(call.output);
 	if (!result.success) return false;
 	if (typeof result.data !== 'string' && ['invalid_plan', 'conflict'].includes(result.data.error)) {
@@ -96,16 +97,21 @@ export function buildAgentPlanDisplayGroups(messages: ChatMessage[]): DisplayGro
 	for (const message of messages) {
 		for (const call of message.toolCalls ?? []) {
 			if (!planToolNames.has(call.tool)) continue;
+
 			hiddenCalls.delete(call.toolCallId);
 			if (call.canceled) continue;
+
 			if (call.state === TOOL_CALL_STATE.DONE) {
 				if (call.tool === 'read_plan' && call.output === null) plans.clear();
+
 				const result = comparisonPlanSchema.safeParse(call.output);
 				if (!result.success) continue;
+
 				const current = result.data;
 				const revisions =
 					plans.get(current.planId) ?? new Map<number, z.infer<typeof comparisonPlanSchema>>();
 				const previous = revisions.get(current.revision - 1);
+
 				if (
 					call.tool === 'update_plan' &&
 					previous &&
@@ -115,6 +121,7 @@ export function buildAgentPlanDisplayGroups(messages: ChatMessage[]): DisplayGro
 				) {
 					hiddenCalls.add(call.toolCallId);
 				}
+
 				revisions.set(current.revision, current);
 				plans.set(current.planId, revisions);
 			} else if (
@@ -123,7 +130,9 @@ export function buildAgentPlanDisplayGroups(messages: ChatMessage[]): DisplayGro
 			) {
 				const input = updateInputSchema.safeParse(call.input);
 				if (!input.success) continue;
+
 				const previous = plans.get(input.data.planId)?.get(input.data.expectedRevision);
+
 				if (
 					previous &&
 					!previous.closed &&
@@ -134,6 +143,7 @@ export function buildAgentPlanDisplayGroups(messages: ChatMessage[]): DisplayGro
 			}
 		}
 	}
+
 	return buildDisplayGroups(messages).flatMap((group): DisplayGroup[] => {
 		if (group.kind === 'backgroundJobSignal') return [group];
 		if (group.kind === 'message') {
@@ -147,6 +157,7 @@ export function buildAgentPlanDisplayGroups(messages: ChatMessage[]): DisplayGro
 				},
 			];
 		}
+
 		const toolCalls = group.toolCalls.filter((call) => !hiddenCalls.has(call.toolCallId));
 		if (
 			!toolCalls.length &&
@@ -155,10 +166,12 @@ export function buildAgentPlanDisplayGroups(messages: ChatMessage[]): DisplayGro
 			!group.finalMessage?.attachments?.length &&
 			!group.finalMessage?.renderParts?.length &&
 			!group.thinkingSegments.length &&
+			!group.budgetNotices.length &&
 			!group.interactives.length
 		) {
 			return [];
 		}
+
 		return [{ ...group, toolCalls }];
 	});
 }
@@ -171,11 +184,13 @@ export function selectLatestAgentPlan(messages: ChatMessage[]): AgentPlanView | 
 			if (!planToolNames.has(call.tool) || call.state !== TOOL_CALL_STATE.DONE || call.canceled) {
 				continue;
 			}
+
 			if (call.tool === 'read_plan' && call.output === null) {
 				current = null;
 				plans.clear();
 				continue;
 			}
+
 			const result = planSchema.safeParse(call.output);
 			if (!result.success) continue;
 			const previous = plans.get(result.data.planId);
@@ -183,5 +198,6 @@ export function selectLatestAgentPlan(messages: ChatMessage[]): AgentPlanView | 
 			plans.set(current.planId, current);
 		}
 	}
+
 	return current;
 }
