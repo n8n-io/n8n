@@ -704,11 +704,11 @@ export class E2EController {
 					owner.mfaRecoveryCodes,
 				);
 
-			// oxlint-disable-next-line typescript/no-deprecated
-			await this.userRepository.update(newOwner.user.id, {
-				mfaSecret: encryptedSecret,
-				mfaRecoveryCodes: encryptedRecoveryCodes,
-			});
+			await this.userRepository.setMfaCredentials(
+				newOwner.user.id,
+				encryptedSecret,
+				encryptedRecoveryCodes,
+			);
 		}
 	}
 

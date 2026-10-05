@@ -4,7 +4,7 @@ import type {
 	ChatMessageId,
 	ChatSessionId,
 } from '@n8n/api-types';
-import { BaseRepository, TransactionRunner, User, withTransaction } from '@n8n/db';
+import { BaseRepository, TransactionRunner, User, contextFromEntityManager } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { DataSource, EntityManager } from '@n8n/typeorm';
 import { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
@@ -36,8 +36,7 @@ export class ChatHubMessageRepository extends BaseRepository<ChatHubMessage> {
 			throw new UnexpectedError('Session ID is required and must be a string value');
 		}
 
-		// oxlint-disable-next-line typescript/no-deprecated
-		return await withTransaction(this.manager, trx, async (em) => {
+		return await this.runInTransaction(contextFromEntityManager(trx), async (em) => {
 			await em.insert(ChatHubMessage, message);
 			await this.chatSessionRepository.updateChatSession(
 				sessionId,

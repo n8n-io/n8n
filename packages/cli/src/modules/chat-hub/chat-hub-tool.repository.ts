@@ -1,14 +1,40 @@
+import { BaseRepository, TransactionRunner, contextFromEntityManager } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { DataSource, EntityManager, Repository } from '@n8n/typeorm';
+import { DataSource, EntityManager } from '@n8n/typeorm';
+
+import { NotFoundError } from '@n8n/errors';
 
 import { ChatHubAgent } from './chat-hub-agent.entity';
 import { ChatHubSession } from './chat-hub-session.entity';
 import { ChatHubTool, type IChatHubTool } from './chat-hub-tool.entity';
 
 @Service()
-export class ChatHubToolRepository extends Repository<ChatHubTool> {
-	constructor(dataSource: DataSource) {
-		super(ChatHubTool, dataSource.manager);
+export class ChatHubToolRepository extends BaseRepository<ChatHubTool> {
+	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
+		super(ChatHubTool, dataSource.manager, transactionRunner);
+	}
+
+	async updateOwnedTool(
+		id: string,
+		userId: string,
+		updates: Partial<IChatHubTool>,
+		trx?: EntityManager,
+	) {
+		return await this.runInTransaction(contextFromEntityManager(trx), async (em) => {
+			if (!(await this.getOneById(id, userId, em))) {
+				throw new NotFoundError('Chat hub tool not found');
+			}
+			return await this.updateTool(id, userId, updates, em);
+		});
+	}
+
+	async deleteOwnedTool(id: string, userId: string, trx?: EntityManager): Promise<void> {
+		await this.runInTransaction(contextFromEntityManager(trx), async (em) => {
+			if (!(await this.getOneById(id, userId, em))) {
+				throw new NotFoundError('Chat hub tool not found');
+			}
+			await this.deleteTool(id, userId, em);
+		});
 	}
 
 	async createTool(tool: Partial<IChatHubTool> & Pick<IChatHubTool, 'id'>, trx?: EntityManager) {
@@ -19,17 +45,24 @@ export class ChatHubToolRepository extends Repository<ChatHubTool> {
 		});
 	}
 
-	async updateTool(id: string, updates: Partial<IChatHubTool>, trx?: EntityManager) {
+	async updateTool(
+		id: string,
+		userId: string,
+		updates: Partial<IChatHubTool>,
+		trx?: EntityManager,
+	) {
 		const em = trx ?? this.manager;
-		await em.update(ChatHubTool, { id }, updates);
-		return await em.findOneOrFail(ChatHubTool, {
-			where: { id },
-		});
+		const result = await em.update(ChatHubTool, { id, ownerId: userId }, updates);
+		if (!result.affected) throw new NotFoundError('Chat hub tool not found');
+		const tool = await em.findOne(ChatHubTool, { where: { id, ownerId: userId } });
+		if (!tool) throw new NotFoundError('Chat hub tool not found');
+		return tool;
 	}
 
-	async deleteTool(id: string, trx?: EntityManager) {
+	async deleteTool(id: string, userId: string, trx?: EntityManager) {
 		const em = trx ?? this.manager;
-		return await em.delete(ChatHubTool, { id });
+		const result = await em.delete(ChatHubTool, { id, ownerId: userId });
+		if (!result.affected) throw new NotFoundError('Chat hub tool not found');
 	}
 
 	async getManyByUserId(userId: string) {
