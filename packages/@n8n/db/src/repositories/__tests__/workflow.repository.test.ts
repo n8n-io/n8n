@@ -62,6 +62,26 @@ describe('WorkflowRepository', () => {
 		vi.spyOn(workflowRepository, 'createQueryBuilder').mockReturnValue(queryBuilder);
 	});
 
+	it('keeps list filters, selection, relations, sorting, and pagination', () => {
+		workflowRepository.getManyQuery(['workflow1'], {
+			filter: { name: 'Example' },
+			select: { name: true, tags: true },
+			sortBy: 'createdAt:desc',
+			skip: 2,
+			take: 5,
+		});
+
+		expect(queryBuilder.andWhere).toHaveBeenCalledWith(
+			expect.stringContaining('workflow.name'),
+			expect.anything(),
+		);
+		expect(queryBuilder.select).toHaveBeenCalledWith(['workflow.id', 'workflow.name']);
+		expect(queryBuilder.leftJoin).toHaveBeenCalledWith('workflow.tags', 'tags');
+		expect(queryBuilder.orderBy).toHaveBeenCalledWith('workflow.createdAt', 'DESC');
+		expect(queryBuilder.skip).toHaveBeenCalledWith(2);
+		expect(queryBuilder.take).toHaveBeenCalledWith(5);
+	});
+
 	describe('applyNameFilter', () => {
 		it('should search for workflows containing all words from the query', async () => {
 			const workflowIds = ['workflow1'];
