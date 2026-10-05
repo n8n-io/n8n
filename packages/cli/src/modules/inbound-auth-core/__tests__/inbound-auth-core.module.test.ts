@@ -16,7 +16,9 @@ import { OperationalError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 // Importing the module runs the @BackendModule decorator, registering its metadata.
+import { OAuth2AuthenticationService } from '../authentication.service';
 import { InboundAuthCoreModule } from '../inbound-auth-core.module';
+import { TrustedSourceDiscoveryService } from '../trusted-source-discovery.service';
 import { TrustedSourceDiscoveryTask } from '../trusted-source-discovery.task';
 import { TrustedSourceDbStore } from '../trusted-source.store';
 
@@ -34,6 +36,7 @@ describe('InboundAuthCoreModule', () => {
 
 		beforeAll(async () => {
 			Container.set(TrustedSourceDbStore, dbStore);
+			Container.set(TrustedSourceDiscoveryService, mock<TrustedSourceDiscoveryService>());
 			await new InboundAuthCoreModule().init();
 		});
 
@@ -48,10 +51,8 @@ describe('InboundAuthCoreModule', () => {
 			await expect(server.getJwks()).rejects.toThrow(OperationalError);
 		});
 
-		it('binds an AuthenticationService that fails closed until a driver is registered', async () => {
-			const result = await Container.get(AuthenticationService).authenticate(extracted);
-
-			expect(result).toMatchObject({ ok: false, reason: 'source-unusable' });
+		it('binds the OAuth2 AuthenticationService', () => {
+			expect(Container.get(AuthenticationService)).toBeInstanceOf(OAuth2AuthenticationService);
 		});
 
 		it('binds an IdentityService that fails closed until an implementation is registered', async () => {

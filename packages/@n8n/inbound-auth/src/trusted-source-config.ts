@@ -16,7 +16,6 @@ export const JwtAlgorithmSchema = z.enum([
 	'PS256',
 	'PS384',
 	'PS512',
-	'EdDSA',
 ]);
 export type JwtAlgorithm = z.infer<typeof JwtAlgorithmSchema>;
 
