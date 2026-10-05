@@ -164,6 +164,12 @@ const KNOWLEDGE_BASE_REFERENCE_ENTRIES: Array<
 		fileName: 'workflow-builder-guardrails.md',
 	},
 	{
+		id: 'workflow-sdk-patterns',
+		description:
+			'Workflow SDK wiring examples: Merge inputs, Switch cases, error routes, Split in Batches loops, subnode factories',
+		fileName: 'workflow-sdk-patterns.md',
+	},
+	{
 		id: 'workflow-sdk-language',
 		description:
 			'Allowed/forbidden constructs in workflow SDK builder code: methods, globals, language subset, node groups, native node mappings that replace Code nodes',
