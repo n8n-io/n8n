@@ -180,6 +180,25 @@ describe('AgentMessageQueueConsumer', () => {
 		);
 	});
 
+	it('forwards a budget notice from the preview run to the stream', async () => {
+		const item = claim('session');
+		repository.findThreadIds.mockResolvedValue(['session']);
+		queue.claimNext.mockResolvedValueOnce(item).mockResolvedValue(null);
+		testRuns.executePreparedDraftRun.mockImplementation(async (input) => {
+			input.onBudgetNotice?.();
+			return {
+				status: 'completed',
+				response: '',
+				executionId: input.admittedExecution!.executionId,
+			};
+		});
+		consumer.start();
+		await vi.waitFor(() =>
+			expect(queue.settle).toHaveBeenCalledWith('session', item.admission.executionId),
+		);
+		expect(sender.send).toHaveBeenCalledWith({ type: 'budget-notice', code: 'budget.alert' });
+	});
+
 	it('runs n8n Chat messages against the published agent on the claimed execution', async () => {
 		const item = claim('session');
 		item.payload = { kind: 'n8n_chat', message: 'input', resourceId: 'n8n-chat:user' };

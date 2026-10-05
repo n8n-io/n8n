@@ -872,7 +872,8 @@ describe('RoutingNode', () => {
 					parameters: INodeParameters;
 				};
 			};
-			output: INodeExecutionData[][] | undefined;
+			output?: INodeExecutionData[][];
+			error?: string;
 		}> = [
 			{
 				description: 'single parameter, only send defined, fixed value, using requestDefaults',
@@ -1290,6 +1291,43 @@ describe('RoutingNode', () => {
 						},
 					],
 				],
+			},
+			{
+				description: 'preserves an explicit default proxy port',
+				input: {
+					node: {
+						parameters: {
+							requestOptions: { proxy: 'http://127.0.0.1:80' },
+						},
+					},
+					nodeType: { properties: [] },
+				},
+				output: [
+					[
+						{
+							json: {
+								headers: {},
+								statusCode: 200,
+								requestOptions: {
+									body: {},
+									headers: {},
+									proxy: { host: '127.0.0.1', port: 80, protocol: 'http' },
+									qs: {},
+									returnFullResponse: true,
+									timeout: 300000,
+								},
+							},
+						},
+					],
+				],
+			},
+			{
+				description: 'rejects a malformed proxy URL',
+				input: {
+					node: { parameters: { requestOptions: { proxy: 'http://[invalid' } } },
+					nodeType: { properties: [] },
+				},
+				error: 'The proxy is not valid',
 			},
 			{
 				description: 'multiple parameters, complex example with everything',
@@ -2367,6 +2405,11 @@ describe('RoutingNode', () => {
 				const routingNode = nodeType.description.credentials
 					? new RoutingNode(executeFunctions, nodeType, mockCredentials)
 					: new RoutingNode(executeFunctions, nodeType);
+
+				if (testData.error) {
+					await expect(routingNode.runNode()).rejects.toThrow(testData.error);
+					return;
+				}
 
 				const result = await routingNode.runNode();
 

@@ -13,6 +13,7 @@ import {
 	MAX_AGENT_CHAT_ATTACHMENT_SIZE_MB,
 	ViewableMimeTypes,
 } from '@n8n/api-types';
+import { AgentsConfig } from '@n8n/config';
 import type { AuthenticatedRequest } from '@n8n/db';
 import {
 	Body,
@@ -82,6 +83,7 @@ export class AgentChatController {
 		private readonly chatExecutionService: AgentChatExecutionService,
 		private readonly messageQueue: AgentMessageQueueService,
 		private readonly queuedPreviewStreams: AgentQueuedPreviewStreamService,
+		private readonly agentsConfig: AgentsConfig,
 	) {}
 
 	private createChatExecution(res: FlushableResponse) {
@@ -440,6 +442,7 @@ export class AgentChatController {
 				previewChat: true,
 				errorMode: 'forward',
 				onChunk,
+				onBudgetNotice: () => send({ type: 'budget-notice', code: 'budget.alert' }),
 				onExecutionStarted,
 				abortSignal,
 			});
@@ -779,13 +782,20 @@ export class AgentChatController {
 		const jobs = await this.backgroundJobService.listCurrentGroupForThread(agentId, threadId);
 		return {
 			pendingTaskIds: jobs
-				.filter((job) => job.status !== 'running' && job.status !== 'suspended' && !job.notifiedAt)
+				.filter(
+					(job) =>
+						job.status !== 'running' &&
+						job.status !== 'suspended' &&
+						job.status !== 'paused' &&
+						!job.notifiedAt,
+				)
 				.map((job) => job.id),
 			tasks: jobs.map((job) => ({
 				id: job.id,
 				title: scrubSecretsInText(job.title),
 				kind: job.kind,
 				status: job.status,
+				...(job.pauseRequestId ? { pauseRequested: true } : {}),
 				...(job.approval
 					? {
 							approval: {
@@ -800,6 +810,35 @@ export class AgentChatController {
 				...(job.settledAt ? { settledAt: job.settledAt.toISOString() } : {}),
 			})),
 		};
+	}
+
+	@Post('/:agentId/chat/:threadId/background-tasks/stop')
+	@ProjectScope('agent:execute')
+	async stopBackgroundJobs(
+		req: AuthenticatedRequest<{ projectId: string; agentId: string; threadId: string }>,
+	): Promise<AgentBackgroundJobsResponse> {
+		const { projectId, agentId, threadId } = req.params;
+		const agent = await this.agentsService.findById(agentId, projectId);
+		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
+		if (
+			!(await this.agentExecutionService.canUseDraftThread(
+				threadId,
+				projectId,
+				agentId,
+				req.user.id,
+				{ previewChat: true, sessionMode: 'existing' },
+			))
+		) {
+			throw new NotFoundError(`Thread "${threadId}" not found`);
+		}
+		if (!this.agentsConfig.backgroundTasksEnabled)
+			throw new BadRequestError('Background tasks are not enabled');
+		await this.backgroundJobService.requestPause(
+			agentId,
+			threadId,
+			draftChatMemoryResourceId(req.user.id),
+		);
+		return await this.getBackgroundJobs(req);
 	}
 
 	@Post('/:agentId/chat/:threadId/background-tasks/resume')

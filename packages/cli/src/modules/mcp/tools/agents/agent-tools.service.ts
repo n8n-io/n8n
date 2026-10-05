@@ -59,8 +59,7 @@ import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry
 import { NodeTypes } from '@/node-types';
 import { OauthService } from '@/oauth/oauth.service';
 import { userHasScopes } from '@/permissions.ee/check-access';
-import { ProjectScopeService } from '@/permissions.ee/project-scope.service';
-import { UrlService } from '@n8n/backend-services';
+import { ProjectScopeService, UrlService } from '@n8n/backend-services';
 import { Telemetry } from '@/telemetry';
 import { createAiMcpFetch } from '@/utils/ai-proxy-fetch';
 

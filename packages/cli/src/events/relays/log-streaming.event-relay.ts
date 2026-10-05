@@ -391,6 +391,7 @@ export class LogStreamingEventRelay extends EventRelay {
 		const payload = {
 			...rest,
 			executionId,
+			// oxlint-disable-next-line typescript/no-deprecated
 			success: !!runData?.finished, // despite the `success` name, this reports `finished` state
 			isManual: runData?.mode === 'manual',
 			mode: runData?.mode,

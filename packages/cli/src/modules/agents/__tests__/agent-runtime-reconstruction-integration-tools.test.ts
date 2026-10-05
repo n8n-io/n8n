@@ -1,4 +1,8 @@
-import type { EventService } from '@n8n/backend-services';
+import {
+	type CredentialsFinderService,
+	type EventService,
+	type ProjectScopeService,
+} from '@n8n/backend-services';
 import type { AgentMessageSteeringService } from '../agent-message-steering.service';
 import type { Mocked } from 'vitest';
 import { type AgentJsonConfig } from '@n8n/api-types';
@@ -14,15 +18,14 @@ import type {
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
+import type { AgentsSettingsService } from '../agents-settings.service';
 
 import type { ActiveExecutions } from '@/active-executions';
-import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import type { ExternalHooks } from '@/external-hooks';
 import { CredentialsService } from '@/credentials/credentials.service';
 import type { EphemeralNodeExecutor } from '@/node-execution';
 import type { NodeTypes } from '@/node-types';
 import type { OauthService } from '@/oauth/oauth.service';
-import type { ProjectScopeService } from '@/permissions.ee/project-scope.service';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
 import type { AiGatewayService } from '@/services/ai-gateway.service';
 import type { AiService } from '@/services/ai.service';
@@ -303,6 +306,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			mock<AgentChatExecutionService>(),
 			mock<AgentBackgroundJobRepository>(),
 			mock<AgentBackgroundJobService>(),
+			mock<AgentsSettingsService>(),
 		);
 		agentIntegrationPersistenceService = new AgentIntegrationPersistenceService(
 			agentRepository,
@@ -353,6 +357,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			agentExecutionService,
 			credentialsService,
 			mock<ProjectScopeService>(),
+			mock<AgentsSettingsService>(),
 		);
 		service = agentExecutionOrchestratorService;
 		markSharedTestSetupAsUsed(

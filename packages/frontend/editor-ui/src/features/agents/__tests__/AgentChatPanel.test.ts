@@ -25,6 +25,17 @@ const resumeMock = vi.fn();
 const cancelAndSteerMock = vi.fn();
 const focusInputMock = vi.fn();
 const messagesMock = ref<ChatMessage[]>([]);
+// Mirrors the real composable: clearing drops the codes from the live
+// messages (and, untestable here, the pending-restore bucket).
+const clearBudgetNoticesMock = vi.fn((codes: ReadonlySet<string>) => {
+	messagesMock.value = messagesMock.value.map((message) => {
+		if (!message.budgetNotices?.some((notice) => codes.has(notice.code))) return message;
+		return {
+			...message,
+			budgetNotices: message.budgetNotices.filter((notice) => !codes.has(notice.code)),
+		};
+	});
+});
 const isStreamingMock = ref(false);
 const isSubmittingMock = ref(false);
 const isLoadingHistoryMock = ref(false);
@@ -204,8 +215,8 @@ vi.mock('../components/AgentChatMessageList.vue', () => ({
 	default: {
 		name: 'AgentChatMessageList',
 		template: '<div data-testid="message-list-stub" />',
-		props: ['messages'],
-		emits: ['send-to-assistant'],
+		props: ['messages', 'canIncreaseBudget', 'budgetIncreasePending'],
+		emits: ['send-to-assistant', 'increase-budget'],
 	},
 }));
 
@@ -237,6 +248,7 @@ vi.mock('../composables/useAgentChatStream', () => ({
 			resume: resumeMock,
 			cancelAndSteer: cancelAndSteerMock,
 			dismissFatalError: vi.fn(),
+			clearBudgetNotices: clearBudgetNoticesMock,
 		};
 	},
 }));
@@ -285,6 +297,10 @@ describe('AgentChatPanel', () => {
 			agentConfig: AgentJsonConfig | null;
 			beforeSend: () => Promise<void> | void;
 			backgroundJobsActive: boolean;
+			increaseBudget: (payload: {
+				field: 'monthlyBudgetUsd' | 'sessionCostCapUsd';
+				amount: number;
+			}) => Promise<boolean>;
 		}> = {},
 		attachTo?: HTMLElement,
 	) {
@@ -1544,6 +1560,229 @@ describe('AgentChatPanel', () => {
 			wrapper.unmount();
 		},
 	);
+
+	it('blocks sending while a budget stop card is showing', async () => {
+		messagesMock.value = [
+			{
+				id: 'assistant-1',
+				role: 'assistant',
+				content: '',
+				status: 'success',
+				budgetNotices: [{ id: 'notice-1', code: 'budget.monthly' }],
+			},
+		];
+		const increaseBudget = vi.fn().mockResolvedValue(true);
+		const wrapper = mountPanel({ increaseBudget });
+		const chatInput = wrapper.findComponent({ name: 'ChatInputBase' });
+		chatInput.vm.$emit('update:modelValue', 'keep going');
+		await nextTick();
+
+		expect(chatInput.props('canSubmit')).toBe(false);
+		chatInput.vm.$emit('submit');
+		await flushPromises();
+		expect(sendMessageMock).not.toHaveBeenCalled();
+
+		wrapper.getComponent({ name: 'AgentChatMessageList' }).vm.$emit('increase-budget', {
+			field: 'monthlyBudgetUsd',
+			amount: 50,
+		});
+		await flushPromises();
+		expect(increaseBudget).toHaveBeenCalledWith({ field: 'monthlyBudgetUsd', amount: 50 });
+		expect(messagesMock.value[0]?.budgetNotices).toEqual([]);
+		expect(chatInput.props('canSubmit')).toBe(true);
+	});
+
+	it('keeps the stop card and the block when the budget increase save fails', async () => {
+		messagesMock.value = [
+			{
+				id: 'assistant-1',
+				role: 'assistant',
+				content: '',
+				status: 'success',
+				budgetNotices: [{ id: 'notice-1', code: 'budget.monthly' }],
+			},
+		];
+		const increaseBudget = vi.fn().mockResolvedValue(false);
+		const wrapper = mountPanel({ increaseBudget });
+		const chatInput = wrapper.findComponent({ name: 'ChatInputBase' });
+		chatInput.vm.$emit('update:modelValue', 'keep going');
+		await nextTick();
+
+		wrapper.getComponent({ name: 'AgentChatMessageList' }).vm.$emit('increase-budget', {
+			field: 'monthlyBudgetUsd',
+			amount: 50,
+		});
+		await flushPromises();
+		expect(messagesMock.value[0]?.budgetNotices).toEqual([
+			{ id: 'notice-1', code: 'budget.monthly' },
+		]);
+		expect(chatInput.props('canSubmit')).toBe(false);
+	});
+
+	it('does not clear the stop when the panel session changes during the save', async () => {
+		messagesMock.value = [
+			{
+				id: 'assistant-1',
+				role: 'assistant',
+				content: '',
+				status: 'success',
+				budgetNotices: [{ id: 'notice-1', code: 'budget.monthly' }],
+			},
+		];
+		const save = createDeferredPromise<boolean>();
+		const wrapper = mountPanel({
+			continueSessionId: 'session-a',
+			increaseBudget: () => save.promise,
+		});
+
+		wrapper.getComponent({ name: 'AgentChatMessageList' }).vm.$emit('increase-budget', {
+			field: 'monthlyBudgetUsd',
+			amount: 50,
+		});
+		await flushPromises();
+		await wrapper.setProps({ continueSessionId: 'session-b' });
+		save.resolve(true);
+		await flushPromises();
+
+		expect(clearBudgetNoticesMock).not.toHaveBeenCalled();
+		expect(messagesMock.value[0]?.budgetNotices).toEqual([
+			{ id: 'notice-1', code: 'budget.monthly' },
+		]);
+		wrapper.unmount();
+	});
+
+	it('does not clear the stop when the panel unmounts during the save', async () => {
+		messagesMock.value = [
+			{
+				id: 'assistant-1',
+				role: 'assistant',
+				content: '',
+				status: 'success',
+				budgetNotices: [{ id: 'notice-1', code: 'budget.session' }],
+			},
+		];
+		const save = createDeferredPromise<boolean>();
+		const wrapper = mountPanel({ increaseBudget: () => save.promise });
+
+		wrapper.getComponent({ name: 'AgentChatMessageList' }).vm.$emit('increase-budget', {
+			field: 'sessionCostCapUsd',
+			amount: 10,
+		});
+		await flushPromises();
+		wrapper.unmount();
+		save.resolve(true);
+		await flushPromises();
+
+		expect(clearBudgetNoticesMock).not.toHaveBeenCalled();
+		expect(messagesMock.value[0]?.budgetNotices).toEqual([
+			{ id: 'notice-1', code: 'budget.session' },
+		]);
+	});
+
+	it('clears only the matching stop via the exposed clearBudgetStops', async () => {
+		messagesMock.value = [
+			{
+				id: 'assistant-1',
+				role: 'assistant',
+				content: '',
+				status: 'success',
+				budgetNotices: [
+					{ id: 'notice-1', code: 'budget.session' },
+					{ id: 'notice-2', code: 'budget.monthly' },
+				],
+			},
+		];
+		const wrapper = mountPanel();
+		const chatInput = wrapper.findComponent({ name: 'ChatInputBase' });
+		chatInput.vm.$emit('update:modelValue', 'keep going');
+		await nextTick();
+		expect(chatInput.props('canSubmit')).toBe(false);
+
+		(
+			wrapper.vm as unknown as {
+				clearBudgetStops: (fields: Array<'monthlyBudgetUsd' | 'sessionCostCapUsd'>) => void;
+			}
+		).clearBudgetStops(['sessionCostCapUsd']);
+		await nextTick();
+
+		expect(clearBudgetNoticesMock).toHaveBeenCalledExactlyOnceWith(new Set(['budget.session']));
+		expect(messagesMock.value[0]?.budgetNotices).toEqual([
+			{ id: 'notice-2', code: 'budget.monthly' },
+		]);
+		expect(chatInput.props('canSubmit')).toBe(false);
+	});
+
+	it('clears the monthly stop and its alert via the exposed clearBudgetStops', async () => {
+		messagesMock.value = [
+			{
+				id: 'assistant-1',
+				role: 'assistant',
+				content: '',
+				status: 'success',
+				budgetNotices: [
+					{ id: 'notice-1', code: 'budget.monthly' },
+					{ id: 'notice-2', code: 'budget.alert' },
+				],
+			},
+		];
+		const wrapper = mountPanel();
+		const chatInput = wrapper.findComponent({ name: 'ChatInputBase' });
+		chatInput.vm.$emit('update:modelValue', 'keep going');
+		await nextTick();
+		expect(chatInput.props('canSubmit')).toBe(false);
+
+		(
+			wrapper.vm as unknown as {
+				clearBudgetStops: (fields: Array<'monthlyBudgetUsd' | 'sessionCostCapUsd'>) => void;
+			}
+		).clearBudgetStops(['monthlyBudgetUsd']);
+		await nextTick();
+
+		expect(clearBudgetNoticesMock).toHaveBeenCalledExactlyOnceWith(
+			new Set(['budget.monthly', 'budget.alert']),
+		);
+		expect(messagesMock.value[0]?.budgetNotices).toEqual([]);
+		expect(chatInput.props('canSubmit')).toBe(true);
+	});
+
+	it('offers the increase action only when an increaseBudget handler is provided', async () => {
+		messagesMock.value = [
+			{
+				id: 'assistant-1',
+				role: 'assistant',
+				content: '',
+				status: 'success',
+				budgetNotices: [{ id: 'notice-1', code: 'budget.monthly' }],
+			},
+		];
+		const readOnly = mountPanel();
+		expect(readOnly.getComponent({ name: 'AgentChatMessageList' }).props('canIncreaseBudget')).toBe(
+			false,
+		);
+
+		const editable = mountPanel({ increaseBudget: vi.fn().mockResolvedValue(true) });
+		expect(editable.getComponent({ name: 'AgentChatMessageList' }).props('canIncreaseBudget')).toBe(
+			true,
+		);
+	});
+
+	it('still allows sending when only the budget alert card is showing', async () => {
+		messagesMock.value = [
+			{
+				id: 'assistant-1',
+				role: 'assistant',
+				content: 'still going',
+				status: 'success',
+				budgetNotices: [{ id: 'notice-1', code: 'budget.alert' }],
+			},
+		];
+		const wrapper = mountPanel();
+		const chatInput = wrapper.findComponent({ name: 'ChatInputBase' });
+		chatInput.vm.$emit('update:modelValue', 'continue');
+		await nextTick();
+
+		expect(chatInput.props('canSubmit')).toBe(true);
+	});
 
 	it('enables chat input while an interactive card is unresolved (cancel-and-steer mode)', () => {
 		messagesMock.value = [openInteractiveMessage()];

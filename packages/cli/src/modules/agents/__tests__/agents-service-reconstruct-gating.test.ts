@@ -22,7 +22,7 @@ import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
 
 import type { ActiveExecutions } from '@/active-executions';
-import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
+import type { CredentialsFinderService } from '@n8n/backend-services';
 import type { EphemeralNodeExecutor } from '@/node-execution';
 import type { OauthService } from '@/oauth/oauth.service';
 import type { AiService } from '@/services/ai.service';
@@ -1022,6 +1022,57 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — backg
 		);
 
 		expect(backgroundRunner.spawn.mock.calls[0][1].parentWorkspaceHandle).toBe(handle);
+	});
+
+	it.each([
+		{
+			name: 'a positive cap propagates',
+			budget: { enabled: true, sessionCostCapUsd: 5 },
+			expected: 5,
+		},
+		{
+			name: 'a zero cap is omitted',
+			budget: { enabled: true, sessionCostCapUsd: 0 },
+			expected: undefined,
+		},
+		{
+			name: 'a negative cap is omitted',
+			budget: { enabled: true, sessionCostCapUsd: -3 },
+			expected: undefined,
+		},
+		{
+			name: 'a cap on a turned-off guardrail is omitted',
+			budget: { enabled: false, sessionCostCapUsd: 5 },
+			expected: undefined,
+		},
+	])('forwards the root session cap to a background spawn: $name', async ({ budget, expected }) => {
+		Container.get(AgentsConfig).backgroundTasksEnabled = true;
+		const principalHash = hashAgentSandboxPrincipal({ type: 'n8n-user', userId: 'user-1' });
+		const backgroundRunner = mock<SubAgentBackgroundRunner>();
+		backgroundRunner.spawn.mockResolvedValue({ status: 'started', jobId: 'job-1' });
+		Container.set(SubAgentBackgroundRunner, backgroundRunner);
+		const service = makeReconstructionService();
+
+		await service.reconstructFromAgentEntity(
+			makeAgentEntity({ guardrails: { budget } }),
+			mock<CredentialProvider>(),
+			'production',
+		);
+
+		const spawnTool = getInjectedSpawnBackgroundTool();
+		if (!spawnTool?.handler) throw new Error('Expected spawn_background_subagent handler');
+		await spawnTool.handler(
+			{ subAgentId: 'inline', taskName: 'research', goal: 'find things' },
+			{
+				persistence: {
+					threadId: 'thread-1',
+					resourceId: 'resource-1',
+					hostMetadata: encodeAgentSandboxHostMetadata({ projectId: 'project-1', principalHash }),
+				},
+			},
+		);
+
+		expect(backgroundRunner.spawn.mock.calls[0][1].rootSessionCapUsd).toBe(expected);
 	});
 
 	it('injects no background tools for task runtimes when the flag is on', async () => {

@@ -36,7 +36,7 @@ import { nanoid } from 'nanoid';
 
 import { ActiveExecutions } from '@/active-executions';
 import { N8N_VERSION } from '@/constants';
-import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
+import { CredentialsFinderService } from '@n8n/backend-services';
 import { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks';
 import type { AgentRunTelemetryType } from '@/interfaces';
 import { EphemeralNodeExecutor } from '@/node-execution';
@@ -1055,7 +1055,8 @@ export class AgentRuntimeReconstructionService {
 		if (!backgroundTasksEnabled) return;
 		// Background tools attach only to the root agent, so its cap is the root cap.
 		const budget = config.config?.guardrails?.budget;
-		const rootSessionCapUsd = budget?.enabled ? budget.sessionCostCapUsd : undefined;
+		const sessionCap = budget?.enabled ? budget.sessionCostCapUsd : undefined;
+		const rootSessionCapUsd = sessionCap !== undefined && sessionCap > 0 ? sessionCap : undefined;
 		await this.attachBackgroundJobTools({
 			...delegationParams,
 			...(parentWorkspaceHandle !== undefined ? { parentWorkspaceHandle } : {}),
@@ -1176,6 +1177,7 @@ export class AgentRuntimeReconstructionService {
 			createSpawnBackgroundSubAgentTool,
 			createCheckBackgroundJobsTool,
 			createCancelBackgroundJobTool,
+			createResumeBackgroundJobsTool,
 		} = await import('./background/background-job-tools.js');
 		const { AgentBackgroundJobService } = await import(
 			'./background/agent-background-job.service.js'
@@ -1187,6 +1189,15 @@ export class AgentRuntimeReconstructionService {
 
 		agent.tool(createCheckBackgroundJobsTool(jobService));
 		agent.tool(createCancelBackgroundJobTool(jobService));
+		agent.tool(
+			createResumeBackgroundJobsTool({
+				jobService,
+				backgroundRunner: Container.get(SubAgentBackgroundRunner),
+				projectId,
+				parentAgentId,
+				runContext,
+			}),
+		);
 
 		// Attached even with no configured sub-agents: inline self-delegation is
 		// always available.

@@ -4,6 +4,7 @@ import {
 	type RestrictedInsightsByTime,
 } from '@n8n/api-types';
 import { LicenseState, Logger } from '@n8n/backend-common';
+import { WorkflowSharingService } from '@n8n/backend-services';
 import type { User } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import { DateTime } from 'luxon';
@@ -12,7 +13,6 @@ import { UserError } from 'n8n-workflow';
 
 import { ForbiddenError } from '@n8n/errors';
 import { userHasScopes } from '@/permissions.ee/check-access';
-import { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
 
 import type { PeriodUnit, TypeUnit, ByTimeInsightType } from './database/entities/insights-shared';
 import { NumberToType } from './database/entities/insights-shared';

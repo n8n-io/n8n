@@ -75,6 +75,7 @@ export interface ModelCallContext {
 
 /** Data needed to emit a terminal suspension result. */
 export interface SuspendEmission {
+	finishReason?: 'paused';
 	suspendRunId: string;
 	list: AgentMessageList;
 	usage: TokenUsage | undefined;

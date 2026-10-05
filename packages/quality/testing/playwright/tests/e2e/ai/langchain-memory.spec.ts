@@ -52,7 +52,7 @@ test.use({ capability: 'proxy' });
 test.describe(
 	'Langchain Integration',
 	{
-		annotation: [{ type: 'owner', description: 'AI' }],
+		annotation: [{ type: 'owner', description: 'Agent' }],
 	},
 	() => {
 		test.beforeEach(async ({ n8n, services }) => {

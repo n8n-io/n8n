@@ -8,6 +8,7 @@ import { ConflictError, BadRequestError, NotFoundError } from '@n8n/errors';
 
 import { AgentChatAttachmentService } from './agent-chat-attachment.service';
 import { AgentMessageSteeringService } from './agent-message-steering.service';
+import { AgentsSettingsService } from './agents-settings.service';
 import { AgentExecutionUpdateBroadcaster } from './agent-execution-update-broadcaster';
 import { AgentExecutionService, type StartExecutionParams } from './agent-execution.service';
 import type { AgentExecutionThread } from './entities/agent-execution-thread.entity';
@@ -73,6 +74,7 @@ export class AgentMessageQueueService {
 		private readonly updates: AgentExecutionUpdateBroadcaster,
 		private readonly messages: AgentMessageRepository,
 		private readonly steering: AgentMessageSteeringService,
+		private readonly settingsService: AgentsSettingsService,
 	) {}
 
 	/** Save a pending message. It is durably accepted when the transaction commits. */
@@ -87,6 +89,7 @@ export class AgentMessageQueueService {
 		},
 		onInserted?: (queueId: string) => void,
 	): Promise<{ status: 'accepted'; item: AgentMessageQueue } | { status: 'duplicate' }> {
+		await this.settingsService.assertEnabled();
 		const agent = await this.agentRepository.findByIdAndProjectId(input.agentId, input.projectId);
 		if (!agent) throw new UserError('Agent not found');
 		const { payload } = input;
@@ -94,6 +97,7 @@ export class AgentMessageQueueService {
 		let item: AgentMessageQueue;
 		try {
 			item = await this.txRunner.run({}, async (ctx) => {
+				await this.settingsService.assertEnabled(ctx);
 				await this.executionService.prepareThread(
 					{
 						...input,
@@ -341,6 +345,7 @@ export class AgentMessageQueueService {
 	): Promise<ClaimedAgentMessage | null> {
 		let steeringChanged = false;
 		const claimed = await this.txRunner.run({}, async (ctx) => {
+			if (!(await this.settingsService.getEnabled(ctx))) return null;
 			const thread = await this.threadRepository.lockById(threadId, ctx);
 			if (!thread) return null;
 			steeringChanged = await this.steering.releaseInactive(thread, ctx);

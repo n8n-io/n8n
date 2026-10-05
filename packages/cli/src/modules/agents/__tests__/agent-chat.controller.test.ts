@@ -1,5 +1,6 @@
 import { EventEmitter } from 'node:events';
 import type { SerializableAgentState } from '@n8n/agents';
+import type { AgentsConfig } from '@n8n/config';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
@@ -7,7 +8,7 @@ import { mock } from 'vitest-mock-extended';
 import { FileNotFoundError } from 'n8n-core';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
-import { NotFoundError } from '@n8n/errors';
+import { BadRequestError, NotFoundError } from '@n8n/errors';
 
 import type { AgentChatAttachmentService } from '../agent-chat-attachment.service';
 import { AgentChatController } from '../agent-chat.controller';
@@ -62,6 +63,7 @@ function makeController() {
 	const agentValidationService = mock<AgentValidationService>();
 	const backgroundJobService = mock<AgentBackgroundJobService>();
 	const chatExecutionService = mock<AgentChatExecutionService>();
+	const agentsConfig = mock<AgentsConfig>({ backgroundTasksEnabled: true });
 	agentExecutionService.findThreadById.mockResolvedValue(null);
 	agentExecutionService.canUseDraftThread.mockResolvedValue(true);
 	agentExecutionService.canUseProductionChatThread.mockResolvedValue(true);
@@ -99,10 +101,12 @@ function makeController() {
 		chatExecutionService,
 		messageQueue,
 		previewStreams,
+		agentsConfig,
 	);
 
 	return {
 		controller,
+		agentsConfig,
 		messageQueue,
 		previewStreams,
 		chatExecutionService,
@@ -180,6 +184,7 @@ describe('AgentChatController route access scopes', () => {
 		['reorderQueuedMessage', 'agent:execute'],
 		['steerQueuedMessage', 'agent:execute'],
 		['getBackgroundJobs', 'agent:read'],
+		['stopBackgroundJobs', 'agent:execute'],
 		['getTestChatMessages', 'agent:read'],
 		['clearTestChatMessages', 'agent:update'],
 	])('%s uses %s', (handlerName, scope) => {
@@ -237,6 +242,55 @@ describe('AgentChatController background tasks', () => {
 		user: { id: 'user-1' },
 	};
 
+	it('stops only an owned Preview conversation', async () => {
+		const { controller, agentsConfig, agentsService, agentExecutionService, backgroundJobService } =
+			makeController();
+		agentsService.findById.mockResolvedValue({ id: 'agent-1' } as never);
+		agentExecutionService.findThreadById.mockResolvedValue(thread);
+		backgroundJobService.listCurrentGroupForThread.mockResolvedValue([
+			{
+				id: 'job-1',
+				kind: 'subagent',
+				title: 'Check escalations',
+				status: 'running',
+				pauseRequestId: 'pause-1',
+				createdAt: new Date('2026-09-09T10:00:00Z'),
+			},
+		] as never);
+		agentExecutionService.canUseDraftThread.mockResolvedValueOnce(false);
+		await expect(controller.stopBackgroundJobs(request as never)).rejects.toThrow(NotFoundError);
+		expect(backgroundJobService.requestPause).not.toHaveBeenCalled();
+		agentsConfig.backgroundTasksEnabled = false;
+		await expect(controller.stopBackgroundJobs(request as never)).rejects.toThrow(BadRequestError);
+		expect(backgroundJobService.requestPause).not.toHaveBeenCalled();
+		agentsConfig.backgroundTasksEnabled = true;
+		await expect(controller.stopBackgroundJobs(request as never)).resolves.toEqual({
+			pendingTaskIds: [],
+			tasks: [
+				{
+					id: 'job-1',
+					kind: 'subagent',
+					title: 'Check escalations',
+					status: 'running',
+					pauseRequested: true,
+					startedAt: '2026-09-09T10:00:00.000Z',
+				},
+			],
+		});
+		expect(backgroundJobService.requestPause).toHaveBeenCalledExactlyOnceWith(
+			'agent-1',
+			'thread-1',
+			'draft-chat:user-1',
+		);
+		expect(agentExecutionService.canUseDraftThread).toHaveBeenCalledWith(
+			'thread-1',
+			'project-1',
+			'agent-1',
+			'user-1',
+			{ previewChat: true, sessionMode: 'existing' },
+		);
+	});
+
 	it('scrubs task titles in the response', async () => {
 		const { controller, agentsService, agentExecutionService, backgroundJobService } =
 			makeController();
@@ -266,6 +320,7 @@ describe('AgentChatController background tasks', () => {
 				kind: 'subagent',
 				title: 'Check escalations',
 				status: 'running',
+				pauseRequestId: 'pause-1',
 				createdAt: new Date('2026-09-09T10:00:00Z'),
 			},
 			{
@@ -309,6 +364,7 @@ describe('AgentChatController background tasks', () => {
 					kind: 'subagent',
 					title: 'Check escalations',
 					status: 'running',
+					pauseRequested: true,
 					startedAt: '2026-09-09T10:00:00.000Z',
 				},
 				{
@@ -696,6 +752,29 @@ describe('AgentChatController SSE done payload', () => {
 			expect(writes.join('')).not.toContain('"execution-started"');
 		},
 	);
+});
+
+describe('AgentChatController budget notice', () => {
+	it('emits a budget-notice event when the resumed preview run reports one', async () => {
+		const { controller, agentExecutionOrchestratorService } = makeController();
+		agentExecutionOrchestratorService.resumeForChat.mockImplementation(async function* (config) {
+			config.onBudgetNotice?.();
+			yield { type: 'finish', finishReason: 'stop' };
+		});
+
+		const writes: string[] = [];
+		await controller.chatResume(
+			{ params: { projectId: 'project-1' }, user: { id: 'user-1' } } as never,
+			makeSseResponse(writes),
+			'agent-1',
+			{ runId: 'run-1', toolCallId: 'tc-1', resumeData: { approved: true } } as never,
+		);
+
+		const events = writes
+			.filter((line) => line.startsWith('data: '))
+			.map((line) => JSON.parse(line.slice(6).trim()) as { type: string });
+		expect(events).toContainEqual({ type: 'budget-notice', code: 'budget.alert' });
+	});
 });
 
 describe('AgentChatController HITL cancellation', () => {
