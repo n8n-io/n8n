@@ -2,7 +2,6 @@ import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { ExecutionRepository, WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { In, IsNull, Not } from '@n8n/typeorm';
 import EventEmitter from 'events';
 import uniqby from 'lodash/uniqBy';
 import { InstanceSettings } from 'n8n-core';
@@ -345,10 +344,7 @@ export class MessageEventBus extends EventEmitter {
 	 * Logs the currently active workflows
 	 */
 	private async logActiveWorkflows() {
-		const activeWorkflows = await this.workflowRepository.find({
-			where: { activeVersionId: Not(IsNull()) },
-			select: ['id', 'name'],
-		});
+		const activeWorkflows = await this.workflowRepository.getWorkflowInfo({ activeOnly: true });
 
 		if (activeWorkflows.length > 0) {
 			this.logger.info('Currently active workflows:');
@@ -374,15 +370,8 @@ export class MessageEventBus extends EventEmitter {
 			return unfinishedExecutionIds;
 		}
 
-		const dbUnfinishedExecutions = await this.executionRepository.find({
-			where: {
-				status: In(['running', 'unknown']),
-			},
-			select: ['id'],
-		});
+		const dbUnfinishedExecutionIds = await this.executionRepository.findUnfinishedIds();
 
-		return Array.from(
-			new Set([...unfinishedExecutionIds, ...dbUnfinishedExecutions.map((e) => e.id)]),
-		);
+		return Array.from(new Set([...unfinishedExecutionIds, ...dbUnfinishedExecutionIds]));
 	}
 }

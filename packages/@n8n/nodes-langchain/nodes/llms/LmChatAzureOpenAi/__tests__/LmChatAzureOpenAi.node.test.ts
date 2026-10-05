@@ -9,7 +9,7 @@ import {
 	N8nLlmTracing,
 } from '@n8n/ai-utilities';
 import { createMockExecuteFunction } from 'n8n-nodes-base/test/nodes/Helpers';
-import type { INode, ISupplyDataFunctions } from 'n8n-workflow';
+import { NodeHelpers, type INode, type ISupplyDataFunctions } from 'n8n-workflow';
 
 import { LmChatAzureOpenAi } from '../LmChatAzureOpenAi.node';
 
@@ -439,7 +439,7 @@ describe('LmChatAzureOpenAi', () => {
 					],
 				}),
 			);
-			expect(index).toBeLessThan(properties.findIndex((p) => p?.name === 'project'));
+			expect(properties[index + 1]?.name).toBe('responsesApiEnabled');
 		});
 
 		it.each(['frequencyPenalty', 'presencePenalty', 'responseFormat'])(
@@ -645,6 +645,45 @@ describe('LmChatAzureOpenAi', () => {
 			expect(handler).toBeDefined();
 			expect(() => handler!({ status: 404 } as never)).toThrow('on the Anthropic Messages API');
 			expect(() => handler!({ status: 404 } as never)).toThrow('Set Model Family to OpenAI');
+		});
+	});
+
+	describe('model parameter', () => {
+		const { description } = new LmChatAzureOpenAi();
+		// `@n8n/ai-utilities` is mocked, so the connection-hint property is undefined here.
+		const modelPropertyAt = (typeVersion: number) =>
+			description.properties.filter(
+				(p) =>
+					p?.name === 'model' && NodeHelpers.displayParameter({}, p, { typeVersion }, description),
+			);
+
+		it('keeps the plain text field on version 1', () => {
+			const shown = modelPropertyAt(1);
+			expect(shown).toHaveLength(1);
+			expect(shown[0].type).toBe('string');
+		});
+
+		it('shows a deployment list backed by searchModels on version 1.1', () => {
+			const shown = modelPropertyAt(1.1);
+			expect(shown).toHaveLength(1);
+			expect(shown[0].type).toBe('resourceLocator');
+			expect(shown[0].modes?.map((m) => m.name)).toEqual(['list', 'id']);
+			// The list needs a Foundry credential, and new credentials default to classic.
+			expect(shown[0].default).toEqual({ mode: 'id', value: '' });
+			expect(shown[0].modes?.[0].typeOptions?.searchListMethod).toBe('searchModels');
+			expect(description.defaultVersion).toBe(1.1);
+		});
+
+		it('reads the deployment name with extractValue, so both version shapes resolve', async () => {
+			const ctx = setupMockContext('azureOpenAiApi', apiKeyCredential);
+
+			await new LmChatAzureOpenAi().supplyData.call(ctx, 0);
+
+			expect(ctx.getNodeParameter).toHaveBeenCalledWith('model', 0, '', { extractValue: true });
+			expect(vi.mocked(AzureChatOpenAI).mock.calls[0][0]).toMatchObject({
+				model: 'gpt-4o',
+				azureOpenAIApiDeploymentName: 'gpt-4o',
+			});
 		});
 	});
 });

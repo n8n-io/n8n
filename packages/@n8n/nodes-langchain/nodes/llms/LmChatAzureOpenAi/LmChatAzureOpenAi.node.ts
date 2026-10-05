@@ -43,6 +43,7 @@ export class LmChatAzureOpenAi implements INodeType {
 		icon: 'file:azure.svg',
 		group: ['transform'],
 		version: [1, 1.1],
+		defaultVersion: 1.1,
 		description: 'For advanced usage with an AI chain',
 		defaults: {
 			name: 'Azure AI Foundry Chat Model',
@@ -98,7 +99,10 @@ export class LmChatAzureOpenAi implements INodeType {
 				'authentication',
 				itemIndex,
 			) as AuthenticationType;
-			const modelName = this.getNodeParameter('model', itemIndex) as string;
+			// Version 1 stores a plain string; `extractValue` returns it unchanged.
+			const modelName = this.getNodeParameter('model', itemIndex, '', {
+				extractValue: true,
+			}) as string;
 			const allOptions = this.getNodeParameter('options', itemIndex, {}) as AzureOpenAIOptions;
 			// Held back from the spread below: both clients take it as `modelKwargs`, and spreading the
 			// raw JSON string would put an `extraBody` field on the constructor.

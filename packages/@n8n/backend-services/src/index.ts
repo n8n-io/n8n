@@ -34,3 +34,13 @@ export {
 	serializePublicApiError,
 	type InternalRestErrorBody,
 } from './errors/rest-error-response';
+export {
+	OAuthDiscoveryClient,
+	AuthorizationServerMetadataSchema,
+	JwkSchema,
+	type AuthorizationServerMetadata,
+	type Fetched,
+	type FetchedJwks,
+	type Jwk,
+	type SkippedJwk,
+} from './services/oauth-discovery-client';

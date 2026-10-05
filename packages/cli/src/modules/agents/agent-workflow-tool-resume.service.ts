@@ -98,11 +98,10 @@ export class AgentWorkflowToolResumeService {
 	/**
 	 * Settle the background job tracking this execution, carrying a bounded
 	 * serialization of the result — the run data is in memory here, so the job
-	 * row gets its answer without a later read of the executions table. Job
-	 * results carry the last node's output only: the row does not know the
-	 * tool's `allOutputs` setting, so it keeps the tightest projection and the
-	 * execution keeps the full data. A no-op when the execution was not
-	 * backgrounded. Never throws into the execution's lifecycle.
+	 * row gets its answer without a later read of the executions table.
+	 * The service keeps the last node's output for normal results. It also
+	 * keeps earlier outputs for stop reports. A no-op when the execution was
+	 * not backgrounded. Never throws into the execution's lifecycle.
 	 */
 	private async settleBackgroundJob(ctx: WorkflowExecuteAfterContext): Promise<void> {
 		const { status, data } = ctx.runData;
@@ -115,14 +114,18 @@ export class AgentWorkflowToolResumeService {
 		try {
 			const settlementStatus = settlementStatusForExecution(status);
 			const runData = data.resultData?.runData;
-			await this.backgroundJobService.settleWorkflowJobByExecutionId(ctx.executionId, {
-				status: settlementStatus,
-				result:
-					settlementStatus === 'completed' && runData
-						? serializeWorkflowJobResult(collectResultData(runData, false))
-						: null,
-				error: data.resultData?.error?.message ?? null,
-			});
+			await this.backgroundJobService.settleWorkflowJobByExecutionId(
+				ctx.executionId,
+				{
+					status: settlementStatus,
+					result:
+						settlementStatus === 'completed' && runData
+							? serializeWorkflowJobResult(collectResultData(runData, false))
+							: null,
+					error: data.resultData?.error?.message ?? null,
+				},
+				runData,
+			);
 		} catch (error) {
 			this.logger.error('Failed to settle workflow background job', {
 				executionId: ctx.executionId,
