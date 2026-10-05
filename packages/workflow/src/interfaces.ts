@@ -203,7 +203,8 @@ export type ProjectSharingData = {
 	id: string;
 	name: string | null;
 	icon: { type: 'emoji' | 'icon'; value: string } | null;
-	type: 'personal' | 'team' | 'public';
+	// PROTOTYPE (workspaces): workspace, personalWorkspace and instance hold shared resources
+	type: 'personal' | 'team' | 'public' | 'workspace' | 'personalWorkspace' | 'instance';
 	createdAt: string;
 	updatedAt: string;
 };
@@ -4494,6 +4495,8 @@ export interface IUserSettings {
 	mcpJsonNudge?: {
 		impressions: number;
 	};
+	/** PROTOTYPE (workspaces): workspaces an instance admin has joined, shown in the sidebar. */
+	joinedWorkspaceIds?: string[];
 }
 
 export interface IProcessedDataConfig {

@@ -4,13 +4,16 @@
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
+| cascadeMembers | boolean | false | false |  |  |  |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | creatorId | uuid |  | true |  | [public.user](public.user.md) | ID of the user who created the project |
 | customTelemetryTags | json | '[]'::json | false |  |  |  |
 | description | varchar(512) |  | true |  |  |  |
 | icon | json |  | true |  |  |  |
-| id | varchar(36) |  | false | [public.activity_event](public.activity_event.md) [public.agent_chat_attachments](public.agent_chat_attachments.md) [public.agent_execution_threads](public.agent_execution_threads.md) [public.agents](public.agents.md) [public.ai_preference](public.ai_preference.md) [public.data_table](public.data_table.md) [public.folder](public.folder.md) [public.insights_metadata](public.insights_metadata.md) [public.instance_ai_threads](public.instance_ai_threads.md) [public.project_pool_settings](public.project_pool_settings.md) [public.project_relation](public.project_relation.md) [public.project_secrets_provider_access](public.project_secrets_provider_access.md) [public.promotion_connection_project](public.promotion_connection_project.md) [public.role_mapping_rule_project](public.role_mapping_rule_project.md) [public.shared_credentials](public.shared_credentials.md) [public.shared_workflow](public.shared_workflow.md) [public.type_availability_policy_scope](public.type_availability_policy_scope.md) [public.variables](public.variables.md) [public.workflow_review_request](public.workflow_review_request.md) |  |  |
+| id | varchar(36) |  | false | [public.activity_event](public.activity_event.md) [public.agent_chat_attachments](public.agent_chat_attachments.md) [public.agent_execution_threads](public.agent_execution_threads.md) [public.agents](public.agents.md) [public.ai_preference](public.ai_preference.md) [public.data_table](public.data_table.md) [public.folder](public.folder.md) [public.insights_metadata](public.insights_metadata.md) [public.instance_ai_threads](public.instance_ai_threads.md) [public.project](public.project.md) [public.project_pool_settings](public.project_pool_settings.md) [public.project_relation](public.project_relation.md) [public.project_secrets_provider_access](public.project_secrets_provider_access.md) [public.promotion_connection_project](public.promotion_connection_project.md) [public.role_mapping_rule_project](public.role_mapping_rule_project.md) [public.shared_credentials](public.shared_credentials.md) [public.shared_workflow](public.shared_workflow.md) [public.type_availability_policy_scope](public.type_availability_policy_scope.md) [public.variables](public.variables.md) [public.workflow_review_request](public.workflow_review_request.md) |  |  |
+| isPublic | boolean | true | false |  |  |  |
 | name | varchar(255) |  | false |  |  |  |
+| parentId | varchar(36) |  | true |  | [public.project](public.project.md) | ID of the workspace that contains the project |
 | type | varchar(36) |  | false |  |  |  |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 
@@ -18,10 +21,13 @@
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
+| FK_project_parentId | FOREIGN KEY | FOREIGN KEY ("parentId") REFERENCES project(id) ON DELETE SET NULL |
 | PK_4d68b1358bb5b766d3e78f32f57 | PRIMARY KEY | PRIMARY KEY (id) |
+| project_cascadeMembers_not_null | n | NOT NULL "cascadeMembers" |
 | project_createdAt_not_null | n | NOT NULL "createdAt" |
 | project_customTelemetryTags_not_null | n | NOT NULL "customTelemetryTags" |
 | project_id_not_null | n | NOT NULL id |
+| project_isPublic_not_null | n | NOT NULL "isPublic" |
 | project_name_not_null | n | NOT NULL name |
 | project_type_not_null | n | NOT NULL type |
 | project_updatedAt_not_null | n | NOT NULL "updatedAt" |
@@ -48,6 +54,7 @@ erDiagram
 "public.folder" }o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
 "public.insights_metadata" }o--o| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE SET NULL"
 "public.instance_ai_threads" }o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
+"public.project" }o--o| "public.project" : "FOREIGN KEY (#quot;parentId#quot;) REFERENCES project(id) ON DELETE SET NULL"
 "public.project_pool_settings" |o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
 "public.project_relation" }o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
 "public.project_secrets_provider_access" }o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
@@ -60,13 +67,16 @@ erDiagram
 "public.workflow_review_request" }o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
 
 "public.project" {
+  boolean cascadeMembers
   timestamp_3__with_time_zone createdAt
   uuid creatorId FK
   json customTelemetryTags
   varchar_512_ description
   json icon
   varchar_36_ id
+  boolean isPublic
   varchar_255_ name
+  varchar_36_ parentId FK
   varchar_36_ type
   timestamp_3__with_time_zone updatedAt
 }
@@ -200,6 +210,7 @@ erDiagram
 }
 "public.project_relation" {
   timestamp_3__with_time_zone createdAt
+  varchar_36_ inheritedFromId
   varchar_36_ projectId FK
   varchar role FK
   timestamp_3__with_time_zone updatedAt

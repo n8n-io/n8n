@@ -29,6 +29,7 @@ import { ForbiddenError } from '@n8n/errors';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { InstanceWriteAccessService } from '@/services/instance-write-access.service';
 import { OwnershipService } from '@/services/ownership.service';
+import { ProjectHierarchyService } from '@/services/project-hierarchy.service';
 
 import { DataTableAggregateService } from './data-table-aggregate.service';
 import { DataTableService } from './data-table.service';
@@ -55,6 +56,7 @@ export class DataTableProxyService implements DataTableProxyProvider {
 		private readonly ownershipService: OwnershipService,
 		private readonly logger: Logger,
 		private readonly instanceWriteAccess: InstanceWriteAccessService,
+		private readonly projectHierarchyService: ProjectHierarchyService,
 	) {
 		this.logger = this.logger.scoped('data-table');
 	}
@@ -85,8 +87,23 @@ export class DataTableProxyService implements DataTableProxyProvider {
 	): Promise<IDataTableProjectAggregateService> {
 		this.validateRequest(node);
 		projectId = projectId ?? (await this.getProjectId(workflow));
+		// PROTOTYPE (workspaces): list the tables of the workspace and the instance scope too.
+		const chain = await this.projectHierarchyService.getResourceChain(projectId);
 
-		return this.makeAggregateOperations(projectId);
+		return this.makeAggregateOperations(projectId, chain);
+	}
+
+	/** PROTOTYPE (workspaces): the project in the chain that owns the table. */
+	private async findOwningProjectInChain(dataTableId: string, chain: string[]) {
+		for (const candidateId of chain) {
+			try {
+				await this.dataTableService.validateDataTableExists(dataTableId, candidateId);
+				return candidateId;
+			} catch (error) {
+				if (!(error instanceof DataTableNotFoundError)) throw error;
+			}
+		}
+		throw new DataTableNotFoundError(dataTableId);
 	}
 
 	async getDataTableProxy(
@@ -99,7 +116,9 @@ export class DataTableProxyService implements DataTableProxyProvider {
 		projectId = projectId ?? (await this.getProjectId(workflow));
 
 		try {
-			await this.dataTableService.validateDataTableExists(dataTableId, projectId);
+			// PROTOTYPE (workspaces): the table can belong to the workspace or the instance scope.
+			const chain = await this.projectHierarchyService.getResourceChain(projectId);
+			projectId = await this.findOwningProjectInChain(dataTableId, chain);
 		} catch (error) {
 			if (error instanceof DataTableNotFoundError) {
 				throw new NodeOperationError(
@@ -253,7 +272,10 @@ export class DataTableProxyService implements DataTableProxyProvider {
 		};
 	}
 
-	private makeAggregateOperations(projectId: string): IDataTableProjectAggregateService {
+	private makeAggregateOperations(
+		projectId: string,
+		chain: string[] = [projectId],
+	): IDataTableProjectAggregateService {
 		const dataTableService = this.dataTableService;
 		return {
 			getProjectId() {
@@ -263,7 +285,7 @@ export class DataTableProxyService implements DataTableProxyProvider {
 			async getManyAndCount(options: ListDataTableOptions = {}) {
 				const serviceOptions: DataTableListOptions = {
 					...options,
-					filter: { projectId, ...(options.filter ?? {}) },
+					filter: { projectId: chain, ...(options.filter ?? {}) },
 				};
 				return await dataTableService.getManyAndCount(serviceOptions);
 			},

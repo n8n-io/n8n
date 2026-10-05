@@ -5,6 +5,7 @@
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
+| inheritedFromId | varchar(36) |  | true |  |  |  |
 | projectId | varchar(36) |  | false |  | [public.project](public.project.md) |  |
 | role | varchar |  | false |  | [public.role](public.role.md) |  |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
@@ -45,19 +46,23 @@ erDiagram
 
 "public.project_relation" {
   timestamp_3__with_time_zone createdAt
+  varchar_36_ inheritedFromId
   varchar_36_ projectId FK
   varchar role FK
   timestamp_3__with_time_zone updatedAt
   uuid userId FK
 }
 "public.project" {
+  boolean cascadeMembers
   timestamp_3__with_time_zone createdAt
   uuid creatorId FK
   json customTelemetryTags
   varchar_512_ description
   json icon
   varchar_36_ id
+  boolean isPublic
   varchar_255_ name
+  varchar_36_ parentId FK
   varchar_36_ type
   timestamp_3__with_time_zone updatedAt
 }

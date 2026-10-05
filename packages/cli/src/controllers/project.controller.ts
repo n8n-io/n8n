@@ -145,6 +145,10 @@ export class ProjectController {
 			this.projectsService.getImplicitProjectMembers(project),
 		]);
 		const myRelation = relations.find((r) => r.userId === req.user.id);
+		// PROTOTYPE (workspaces)
+		const parent = project.parentId
+			? await this.projectsService.getProject(project.parentId).catch(() => null)
+			: null;
 
 		return {
 			id,
@@ -154,12 +158,24 @@ export class ProjectController {
 			description,
 			customTelemetryTags,
 			creatorId: project.creatorId ?? null,
+			parentId: project.parentId ?? null,
+			parent: parent
+				? {
+						id: parent.id,
+						name: parent.name,
+						type: parent.type,
+						cascadeMembers: parent.cascadeMembers,
+					}
+				: null,
+			isPublic: project.isPublic,
+			cascadeMembers: project.cascadeMembers,
 			relations: relations.map((r) => ({
 				id: r.user.id,
 				email: r.user.email,
 				firstName: r.user.firstName,
 				lastName: r.user.lastName,
 				role: r.role.slug,
+				inheritedFromWorkspace: r.inheritedFromId !== null,
 			})),
 			implicitMembers: implicitMembers.map((user) => ({
 				id: user.id,
@@ -213,6 +229,7 @@ export class ProjectController {
 				projectId,
 				payload.relations,
 			);
+			await this.projectsService.reapplyWorkspaceCascade(projectId);
 
 			// Response semantics:
 			// - If at least one user was added, return 201. When there are also conflicts, include them in the body.
@@ -243,6 +260,7 @@ export class ProjectController {
 
 		try {
 			await this.projectsService.changeUserRoleInProject(req.user, projectId, userId, body.role);
+			await this.projectsService.reapplyWorkspaceCascade(projectId, userId);
 			return res.status(204).send();
 		} catch (e) {
 			if (e instanceof UnlicensedProjectRoleError) {
@@ -262,6 +280,7 @@ export class ProjectController {
 	) {
 		await this.assertProjectRolesNotManaged();
 		await this.projectsService.deleteUserFromProject(req.user, projectId, userId);
+		await this.projectsService.reapplyWorkspaceCascade(projectId);
 		return res.status(204).send();
 	}
 

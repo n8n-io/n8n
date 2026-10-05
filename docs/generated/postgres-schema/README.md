@@ -104,9 +104,9 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.oauth_user_consents](public.oauth_user_consents.md) | 5 |  | BASE TABLE |
 | [public.poller_state](public.poller_state.md) | 7 |  | BASE TABLE |
 | [public.processed_data](public.processed_data.md) | 5 |  | BASE TABLE |
-| [public.project](public.project.md) | 9 |  | BASE TABLE |
+| [public.project](public.project.md) | 12 |  | BASE TABLE |
 | [public.project_pool_settings](public.project_pool_settings.md) | 4 |  | BASE TABLE |
-| [public.project_relation](public.project_relation.md) | 5 |  | BASE TABLE |
+| [public.project_relation](public.project_relation.md) | 6 |  | BASE TABLE |
 | [public.project_secrets_provider_access](public.project_secrets_provider_access.md) | 5 |  | BASE TABLE |
 | [public.promotion_config](public.promotion_config.md) | 7 |  | BASE TABLE |
 | [public.promotion_connection](public.promotion_connection.md) | 7 |  | BASE TABLE |
@@ -327,6 +327,7 @@ erDiagram
 "public.poller_state" }o--|| "public.workflow_entity" : "FOREIGN KEY (#quot;workflowId#quot;) REFERENCES workflow_entity(id) ON DELETE CASCADE"
 "public.processed_data" }o--|| "public.workflow_entity" : "FOREIGN KEY (#quot;workflowId#quot;) REFERENCES workflow_entity(id) ON DELETE CASCADE"
 "public.project" }o--o| "public.user" : "FOREIGN KEY (#quot;creatorId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
+"public.project" }o--o| "public.project" : "FOREIGN KEY (#quot;parentId#quot;) REFERENCES project(id) ON DELETE SET NULL"
 "public.project_pool_settings" |o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
 "public.project_relation" }o--|| "public.user" : "FOREIGN KEY (#quot;userId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE CASCADE"
 "public.project_relation" }o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
@@ -1379,13 +1380,16 @@ erDiagram
   varchar_36_ workflowId FK
 }
 "public.project" {
+  boolean cascadeMembers
   timestamp_3__with_time_zone createdAt
   uuid creatorId FK
   json customTelemetryTags
   varchar_512_ description
   json icon
   varchar_36_ id
+  boolean isPublic
   varchar_255_ name
+  varchar_36_ parentId FK
   varchar_36_ type
   timestamp_3__with_time_zone updatedAt
 }
@@ -1397,6 +1401,7 @@ erDiagram
 }
 "public.project_relation" {
   timestamp_3__with_time_zone createdAt
+  varchar_36_ inheritedFromId
   varchar_36_ projectId FK
   varchar role FK
   timestamp_3__with_time_zone updatedAt

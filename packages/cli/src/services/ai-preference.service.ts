@@ -11,6 +11,7 @@ import type {
 import { AI_PREFERENCE_MAX_PER_SCOPE, aiPreferenceTargetOf } from '@n8n/api-types';
 import type { AiPreference, Project, ProjectRelation, User } from '@n8n/db';
 import {
+	asLegacyProjectType,
 	AiPreferenceRepository,
 	ProjectRelationRepository,
 	ProjectRepository,
@@ -560,7 +561,7 @@ export class AiPreferenceService {
 				? {
 						id: row.project.id,
 						name: row.project.name,
-						type: row.project.type,
+						type: asLegacyProjectType(row.project.type),
 						icon: toProjectIcon(row.project.icon),
 					}
 				: null,

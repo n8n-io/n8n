@@ -47,6 +47,7 @@ import { DataTableNotFoundError } from './errors/data-table-not-found.error';
 import { DataTableValidationError } from './errors/data-table-validation.error';
 import { normalizeRows } from './utils/sql-utils';
 
+import { ProjectHierarchyService } from '@/services/project-hierarchy.service';
 import { ProjectNotFoundError, ProjectService } from '@/services/project.service.ee';
 import { RoleService } from '@/services/role.service';
 
@@ -64,6 +65,7 @@ export class DataTableService {
 		private readonly eventService: EventService,
 		private readonly projectRepository: ProjectRepository,
 		private readonly projectService: ProjectService,
+		private readonly projectHierarchyService: ProjectHierarchyService,
 	) {
 		this.logger = this.logger.scoped('data-table');
 	}
@@ -128,6 +130,7 @@ export class DataTableService {
 			);
 		}
 
+		await this.projectHierarchyService.assertCanCreateIn(projectId);
 		await this.validateUniqueName(dto.name, projectId);
 
 		const result = await this.dataTableRepository.createDataTable(

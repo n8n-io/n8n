@@ -5,13 +5,25 @@ export const ProjectTypes = {
 	Personal: 'personal',
 	Team: 'team',
 	Public: 'public',
+	// PROTOTYPE (workspaces): containers that hold resources, never workflows
+	Workspace: 'workspace',
+	PersonalWorkspace: 'personalWorkspace',
+	Instance: 'instance',
 } as const;
+
+/** PROTOTYPE (workspaces) */
+export const isContainerProject = (project?: { type: string } | null) =>
+	project?.type === ProjectTypes.Workspace ||
+	project?.type === ProjectTypes.PersonalWorkspace ||
+	project?.type === ProjectTypes.Instance;
 
 type ProjectTypeKeys = typeof ProjectTypes;
 
 export type ProjectType = ProjectTypeKeys[keyof ProjectTypeKeys];
 export type ProjectRelation = Pick<IUserResponse, 'id' | 'email' | 'firstName' | 'lastName'> & {
 	role: string;
+	/** PROTOTYPE (workspaces): the role comes from the workspace member cascade. */
+	inheritedFromWorkspace?: boolean;
 };
 /**
  * A user who reaches the project through a global role rather than a project
@@ -36,6 +48,8 @@ export type ProjectMemberData = {
 	instanceRole?: { slug: string; displayName: string };
 	isPendingUser?: boolean;
 	isCurrentUser?: boolean;
+	/** PROTOTYPE (workspaces) */
+	inheritedFromWorkspace?: boolean;
 };
 export type ProjectSharingData = {
 	id: string;
@@ -45,8 +59,15 @@ export type ProjectSharingData = {
 	description?: string | null;
 	createdAt: string;
 	updatedAt: string;
+	/** PROTOTYPE (workspaces): the workspace that contains the project */
+	parentId?: string | null;
 };
 export type Project = ProjectSharingData & {
+	/** PROTOTYPE (workspaces) */
+	parent?: { id: string; name: string; type: ProjectType; cascadeMembers?: boolean } | null;
+	/** PROTOTYPE (workspaces): only set on workspaces */
+	isPublic?: boolean;
+	cascadeMembers?: boolean;
 	relations: ProjectRelation[];
 	implicitMembers?: ProjectImplicitMember[];
 	scopes: Scope[];
@@ -59,7 +80,7 @@ export type ProjectListItem = ProjectSharingData & {
 	role: Role['slug'];
 	scopes?: Scope[];
 };
-export type ProjectsCount = Record<ProjectType, number>;
+export type ProjectsCount = Record<'personal' | 'team' | 'public', number>;
 
 export type ResourceEditorDestination =
 	| { kind: 'resolved'; project: Project }

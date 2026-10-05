@@ -337,18 +337,22 @@ erDiagram
   uuid userId FK
 }
 "public.project" {
+  boolean cascadeMembers
   timestamp_3__with_time_zone createdAt
   uuid creatorId FK
   json customTelemetryTags
   varchar_512_ description
   json icon
   varchar_36_ id
+  boolean isPublic
   varchar_255_ name
+  varchar_36_ parentId FK
   varchar_36_ type
   timestamp_3__with_time_zone updatedAt
 }
 "public.project_relation" {
   timestamp_3__with_time_zone createdAt
+  varchar_36_ inheritedFromId
   varchar_36_ projectId FK
   varchar role FK
   timestamp_3__with_time_zone updatedAt

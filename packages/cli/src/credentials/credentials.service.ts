@@ -3,6 +3,7 @@ import { Logger } from '@n8n/backend-common';
 import { EventService } from '@n8n/backend-services';
 import { Time } from '@n8n/constants';
 import {
+	asLegacyProjectType,
 	Project,
 	TransactionRunner,
 	CredentialIdConflictError,
@@ -75,6 +76,7 @@ import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import type { CredentialRequest, ListQuery } from '@/requests';
 import { CredentialsTester } from '@/services/credentials-tester.service';
 import { OwnershipService } from '@/services/ownership.service';
+import { ProjectHierarchyService } from '@/services/project-hierarchy.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { RoleService } from '@/services/role.service';
 
@@ -252,6 +254,7 @@ export class CredentialsService {
 		private readonly transactionRunner: TransactionRunner,
 		private readonly policyEnforcementService: PolicyEnforcementService,
 		private readonly credentialDescriptions: CredentialDescriptionsService,
+		private readonly projectHierarchyService: ProjectHierarchyService,
 	) {}
 
 	async countConnectedUsers(credentialId: string): Promise<number> {
@@ -626,12 +629,19 @@ export class CredentialsService {
 			? await this.findPersonalRouteCredentialIds(user, allCredentials, projectRelations, options)
 			: new Set<string>();
 
+		// PROTOTYPE (workspaces): credentials of the workspace and of the instance
+		// scope are usable even when the user cannot read them directly.
+		const inheritedCredentials = await this.findInheritedCredentials(options);
+		for (const c of inheritedCredentials) credentialIdsForWorkflow.add(c.id);
+
 		// the union of all three is every credential the user can use in this
 		// workflow or project
 		const usableCredentials = allCredentials.filter(
 			(c) =>
 				credentialIdsForWorkflow.has(c.id) || personalRouteCredentialIds.has(c.id) || c.isGlobal,
 		);
+		const usableIds = new Set(usableCredentials.map((c) => c.id));
+		usableCredentials.push(...inheritedCredentials.filter((c) => !usableIds.has(c.id)));
 
 		if (usableCredentials.length > 0) {
 			const relations = await this.sharedCredentialsRepository.getAllRelationsForCredentials(
@@ -710,6 +720,29 @@ export class CredentialsService {
 		);
 
 		return userIsMemberOfTargetProject ? ownedCredentialIds : new Set();
+	}
+
+	/** PROTOTYPE (workspaces): credentials owned by the ancestors of the workflow's home project. */
+	private async findInheritedCredentials(
+		options: { workflowId: string } | { projectId: string },
+	): Promise<CredentialsEntity[]> {
+		let homeProjectId: string;
+		if ('workflowId' in options) {
+			try {
+				homeProjectId = (await this.ownershipService.getWorkflowProjectCached(options.workflowId))
+					.id;
+			} catch {
+				return [];
+			}
+		} else {
+			homeProjectId = options.projectId;
+		}
+		const ancestorIds = await this.projectHierarchyService.getAncestorIds(homeProjectId);
+		const result: CredentialsEntity[] = [];
+		for (const ancestorId of ancestorIds) {
+			result.push(...(await this.credentialsRepository.findAllCredentialsForProject(ancestorId)));
+		}
+		return result;
 	}
 
 	async findAllGlobalCredentialIds(includeData: boolean = false): Promise<CredentialsEntity[]> {
@@ -2123,6 +2156,7 @@ export class CredentialsService {
 		}
 
 		const targetProjectId = await this.resolveOwningProjectIdForNewCredential(user, opts.projectId);
+		await this.projectHierarchyService.assertCanCreateIn(targetProjectId);
 
 		if (opts.isResolvable === true) {
 			const targetProject = await this.projectRepository.findOneBy({ id: targetProjectId });
@@ -2361,7 +2395,7 @@ export class CredentialsService {
 				id: owningProject.id,
 				name: owningProject.name,
 				icon: owningProject.icon,
-				type: owningProject.type,
+				type: asLegacyProjectType(owningProject.type),
 				createdAt: owningProject.createdAt.toISOString(),
 				updatedAt: owningProject.updatedAt.toISOString(),
 			};

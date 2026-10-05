@@ -277,6 +277,8 @@ export declare namespace ProjectRequest {
 		firstName: string;
 		lastName: string;
 		role: ProjectRole | AssignableProjectRole;
+		/** PROTOTYPE (workspaces): the role comes from the workspace member cascade. */
+		inheritedFromWorkspace?: boolean;
 	};
 	/**
 	 * A user who reaches a project through a global role instead of a project
@@ -298,6 +300,11 @@ export declare namespace ProjectRequest {
 		description: string | null;
 		customTelemetryTags: Array<{ key: string; value: string }>;
 		creatorId: string | null;
+		/** PROTOTYPE (workspaces) */
+		parentId: string | null;
+		parent: { id: string; name: string; type: ProjectType; cascadeMembers: boolean } | null;
+		isPublic: boolean;
+		cascadeMembers: boolean;
 		relations: ProjectRelationResponse[];
 		implicitMembers: ProjectImplicitMemberResponse[];
 		scopes: Scope[];

@@ -13,6 +13,7 @@ import {
 } from '@/credentials/credentials-finder.service';
 import { NodeTypes } from '@/node-types';
 import { OwnershipService } from '@/services/ownership.service';
+import { ProjectHierarchyService } from '@/services/project-hierarchy.service';
 import { ProjectService } from '@/services/project.service.ee';
 
 class InvalidCredentialError extends UserError {
@@ -84,6 +85,7 @@ export class CredentialsPermissionChecker {
 		private readonly userRepository: UserRepository,
 		private readonly credentialsFinderService: CredentialsFinderService,
 		private readonly logger: Logger,
+		private readonly projectHierarchyService: ProjectHierarchyService,
 	) {}
 
 	/**
@@ -340,7 +342,12 @@ export class CredentialsPermissionChecker {
 			// team credential.
 			return { homeProject, inaccessibleIds: [], unusableForActingUser: [] };
 		}
-		const projectIds = await this.projectService.findProjectsWorkflowIsIn(workflowId);
+		// PROTOTYPE (workspaces): the home project also inherits the credentials of
+		// its workspace and of the instance scope.
+		const projectIds = [
+			...(await this.projectService.findProjectsWorkflowIsIn(workflowId)),
+			...(await this.projectHierarchyService.getAncestorIds(homeProject.id)),
+		];
 
 		const accessible = await this.sharedCredentialsRepository.getFilteredAccessibleCredentials(
 			projectIds,

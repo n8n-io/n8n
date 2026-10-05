@@ -1,6 +1,6 @@
 import { Service } from '@n8n/di';
 import { PROJECT_OWNER_ROLE_SLUG, type ProjectRole } from '@n8n/permissions';
-import { DataSource, In, Repository } from '@n8n/typeorm';
+import { DataSource, In, IsNull, Repository } from '@n8n/typeorm';
 
 import { ProjectRelation, Role } from '../entities';
 import { chunkIds } from '../utils/chunk-ids';
@@ -81,6 +81,77 @@ export class ProjectRelationRepository extends Repository<ProjectRelation> {
 			},
 			{} as Record<ProjectRole, number>,
 		);
+	}
+
+	/** PROTOTYPE (workspaces): number of members of each project. */
+	async countByProjectIds(projectIds: string[]): Promise<Map<string, number>> {
+		const counts = new Map<string, number>();
+		if (projectIds.length === 0) return counts;
+		const rows = await this.find({ select: ['projectId'], where: { projectId: In(projectIds) } });
+		for (const { projectId } of rows) counts.set(projectId, (counts.get(projectId) ?? 0) + 1);
+		return counts;
+	}
+
+	/** PROTOTYPE (workspaces): the display names of the admins of each project. */
+	async findAdminNamesByProjectIds(projectIds: string[]): Promise<Map<string, string[]>> {
+		const names = new Map<string, string[]>();
+		if (projectIds.length === 0) return names;
+		const rows = await this.find({
+			where: {
+				projectId: In(projectIds),
+				role: { slug: 'project:admin' },
+				inheritedFromId: IsNull(),
+			},
+			relations: { user: true },
+			loadEagerRelations: false,
+		});
+		for (const { projectId, user } of rows) {
+			const name = [user.firstName, user.lastName].filter(Boolean).join(' ') || user.email;
+			names.set(projectId, [...(names.get(projectId) ?? []), name]);
+		}
+		return names;
+	}
+
+	/** PROTOTYPE (workspaces): every relation on the projects, with the role slug only. */
+	async findMembershipRows(projectIds: string[]) {
+		if (projectIds.length === 0) return [];
+		const rows = await this.find({
+			where: { projectId: In(projectIds) },
+			relations: { role: true },
+			loadEagerRelations: false,
+		});
+		return rows.map((r) => ({
+			projectId: r.projectId,
+			userId: r.userId,
+			role: r.role.slug,
+			inheritedFromId: r.inheritedFromId,
+		}));
+	}
+
+	/** PROTOTYPE (workspaces): replace the relations that a workspace cascades to its projects. */
+	async replaceInheritedRelations(
+		workspaceId: string,
+		rows: Array<{ projectId: string; userId: string; role: string }>,
+	) {
+		await this.manager.transaction(async (em) => {
+			await em.delete(ProjectRelation, { inheritedFromId: workspaceId });
+			if (rows.length === 0) return;
+			await em.insert(
+				ProjectRelation,
+				rows.map((r) => ({
+					projectId: r.projectId,
+					userId: r.userId,
+					role: { slug: r.role },
+					inheritedFromId: workspaceId,
+				})),
+			);
+		});
+	}
+
+	/** PROTOTYPE (workspaces): mark relations again as cascaded after a member list rewrite. */
+	async markInherited(projectId: string, userIds: string[], inheritedFromId: string | null) {
+		if (userIds.length === 0) return;
+		await this.update({ projectId, userId: In(userIds) }, { inheritedFromId });
 	}
 
 	async findUserIdsByProjectId(projectId: string): Promise<string[]> {

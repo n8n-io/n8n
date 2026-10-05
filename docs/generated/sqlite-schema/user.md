@@ -343,18 +343,22 @@ erDiagram
   varchar userId FK
 }
 "project" {
+  BOOLEAN cascadeMembers
   datetime_3_ createdAt
   varchar creatorId FK
   TEXT customTelemetryTags
   varchar_512_ description
   TEXT icon
   varchar_36_ id PK
+  BOOLEAN isPublic
   varchar_255_ name
+  varchar_36_ parentId FK
   varchar_36_ type
   datetime_3_ updatedAt
 }
 "project_relation" {
   datetime_3_ createdAt
+  VARCHAR_36_ inheritedFromId
   varchar_36_ projectId PK
   varchar role FK
   datetime_3_ updatedAt

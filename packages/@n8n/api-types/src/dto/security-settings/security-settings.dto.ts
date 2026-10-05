@@ -11,6 +11,8 @@ const redactionEnforcementFieldSchema = z.object({
 const workflowReviewsFieldSchema = workflowReviewsPolicySchema;
 
 export class SecuritySettingsDto extends Z.class({
+	/** PROTOTYPE (workspaces): users get a personal workspace. */
+	personalSpacesEnabled: z.boolean(),
 	personalSpacePublishing: z.boolean(),
 	personalSpaceSharing: z.boolean(),
 	publishedPersonalWorkflowsCount: z.number(),
@@ -22,6 +24,7 @@ export class SecuritySettingsDto extends Z.class({
 }) {}
 
 export class UpdateSecuritySettingsDto extends Z.class({
+	personalSpacesEnabled: z.boolean().optional(),
 	personalSpacePublishing: z.boolean().optional(),
 	personalSpaceSharing: z.boolean().optional(),
 	redactionEnforcement: redactionEnforcementFieldSchema.optional(),

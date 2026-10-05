@@ -9,6 +9,7 @@ import { useI18n } from '@n8n/i18n';
 import { sortByProperty } from '@n8n/utils/sort/sort-by-property';
 import { useToast } from '@n8n/composables/useToast';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import { useWorkspacesStore } from '@/features/collaboration/projects/workspaces.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useCloudPlanStore } from '@n8n/stores/cloudPlan.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
@@ -62,6 +63,7 @@ export const useGlobalEntityCreation = () => {
 	const settingsStore = useSettingsStore();
 	const cloudPlanStore = useCloudPlanStore();
 	const projectsStore = useProjectsStore();
+	const workspacesStore = useWorkspacesStore();
 	const sourceControlStore = useSourceControlStore();
 	const usersStore = useUsersStore();
 	const uiStore = useUIStore();
@@ -74,12 +76,38 @@ export const useGlobalEntityCreation = () => {
 
 	const isCreatingProject = ref(false);
 
+	// PROTOTYPE (workspaces): when the security policy turns personal spaces off,
+	// nothing can be created in the personal workspace or its projects.
+	const personalSpacesOff = computed(() => !workspacesStore.personalSpacesEnabled);
+	const personalWorkspaceIds = computed(
+		() =>
+			new Set(
+				projectsStore.myProjects.filter((p) => p.type === 'personalWorkspace').map((p) => p.id),
+			),
+	);
+
 	const displayProjects = computed(() =>
 		sortByProperty(
 			'name',
-			projectsStore.myProjects.filter((p) => p.type === 'team'),
+			projectsStore.myProjects.filter(
+				(p) =>
+					p.type === 'team' &&
+					!(personalSpacesOff.value && p.parentId && personalWorkspaceIds.value.has(p.parentId)),
+			),
 		),
 	);
+
+	const withoutPersonalSpace = (items: Item[]): Item[] =>
+		items.map((item) => {
+			if (item.submenu) {
+				return { ...item, submenu: item.submenu.filter((sub) => !sub.id.endsWith('-personal')) };
+			}
+			const targetsPersonal =
+				[WORKFLOWS_MENU_ID, CREDENTIALS_MENU_ID, DATA_TABLE_MENU_ID, AGENTS_MENU_ID].includes(
+					item.id,
+				) && !item.disabled;
+			return targetsPersonal ? { ...item, disabled: true } : item;
+		});
 
 	const disabledWorkflow = (scopes: Scope[] = []): boolean =>
 		sourceControlStore.preferences.branchReadOnly ||
@@ -196,7 +224,11 @@ export const useGlobalEntityCreation = () => {
 		};
 	});
 
-	const menu = computed<Item[]>(() => {
+	const menu = computed<Item[]>(() =>
+		personalSpacesOff.value ? withoutPersonalSpace(baseMenu.value) : baseMenu.value,
+	);
+
+	const baseMenu = computed<Item[]>(() => {
 		const workflowTitle = i18n.baseText('projects.menu.create.workflow');
 		const credentialTitle = i18n.baseText('projects.menu.create.credential');
 		const agentTitle = i18n.baseText('projects.menu.create.agent');

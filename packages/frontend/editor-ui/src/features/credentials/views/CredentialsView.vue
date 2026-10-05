@@ -6,6 +6,7 @@ import ResourcesListEmptyState from '@/app/components/layouts/ResourcesListEmpty
 import type { BaseFilters, Resource } from '@/Interface';
 import type { ICredentialsResponse, ICredentialTypeMap } from '../credentials.types';
 import ProjectHeader from '@/features/collaboration/projects/components/ProjectHeader.vue';
+import InheritedCredentials from '@/features/collaboration/projects/components/InheritedCredentials.vue';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useProjectPages } from '@/features/collaboration/projects/composables/useProjectPages';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
@@ -323,6 +324,8 @@ onMounted(() => {
 					time-range="week"
 				/>
 			</ProjectHeader>
+			<!-- PROTOTYPE (workspaces) -->
+			<InheritedCredentials v-if="route.params.projectId" />
 		</template>
 		<template #default="{ data }">
 			<CredentialCard

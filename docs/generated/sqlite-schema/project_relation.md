@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "project_relation" ("projectId" varchar(36) NOT NULL, "userId" varchar NOT NULL, "role" varchar NOT NULL, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "FK_5f0643f6717905a05164090dde7" FOREIGN KEY ("userId") REFERENCES "user" ("id") ON DELETE CASCADE ON UPDATE NO ACTION, CONSTRAINT "FK_61448d56d61802b5dfde5cdb002" FOREIGN KEY ("projectId") REFERENCES "project" ("id") ON DELETE CASCADE ON UPDATE NO ACTION, CONSTRAINT "FK_c6b99592dc96b0d836d7a21db91" FOREIGN KEY ("role") REFERENCES "role" ("slug"), PRIMARY KEY ("projectId", "userId"))
+CREATE TABLE "project_relation" ("projectId" varchar(36) NOT NULL, "userId" varchar NOT NULL, "role" varchar NOT NULL, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "inheritedFromId" VARCHAR(36), CONSTRAINT "FK_5f0643f6717905a05164090dde7" FOREIGN KEY ("userId") REFERENCES "user" ("id") ON DELETE CASCADE ON UPDATE NO ACTION, CONSTRAINT "FK_61448d56d61802b5dfde5cdb002" FOREIGN KEY ("projectId") REFERENCES "project" ("id") ON DELETE CASCADE ON UPDATE NO ACTION, CONSTRAINT "FK_c6b99592dc96b0d836d7a21db91" FOREIGN KEY ("role") REFERENCES "role" ("slug"), PRIMARY KEY ("projectId", "userId"))
 ```
 
 </details>
@@ -16,6 +16,7 @@ CREATE TABLE "project_relation" ("projectId" varchar(36) NOT NULL, "userId" varc
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
 | createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
+| inheritedFromId | VARCHAR(36) |  | true |  |  |  |
 | projectId | varchar(36) |  | false |  | [project](project.md) |  |
 | role | varchar |  | false |  | [role](role.md) |  |
 | updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
@@ -53,19 +54,23 @@ erDiagram
 
 "project_relation" {
   datetime_3_ createdAt
+  VARCHAR_36_ inheritedFromId
   varchar_36_ projectId PK
   varchar role FK
   datetime_3_ updatedAt
   varchar userId PK
 }
 "project" {
+  BOOLEAN cascadeMembers
   datetime_3_ createdAt
   varchar creatorId FK
   TEXT customTelemetryTags
   varchar_512_ description
   TEXT icon
   varchar_36_ id PK
+  BOOLEAN isPublic
   varchar_255_ name
+  varchar_36_ parentId FK
   varchar_36_ type
   datetime_3_ updatedAt
 }

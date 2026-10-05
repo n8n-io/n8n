@@ -1,5 +1,12 @@
 <script lang="ts" setup>
-import { N8nDataTableServer, N8nText, N8nUserInfo, type UserAction } from '@n8n/design-system';
+import {
+	N8nBadge,
+	N8nDataTableServer,
+	N8nText,
+	N8nTooltip,
+	N8nUserInfo,
+	type UserAction,
+} from '@n8n/design-system';
 import type { TableHeader, TableOptions } from '@n8n/design-system';
 import type { UsersInfoProps } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
@@ -96,9 +103,21 @@ const filterActions = (member: ProjectMemberData) => {
 			:page-sizes="[10, 25, 50]"
 			@update:options="emit('update:options', $event)"
 		>
-			<template #[`item.name`]="{ value }">
-				<div class="pt-xs pb-xs">
+			<template #[`item.name`]="{ value, item }">
+				<div :class="['pt-xs', 'pb-xs', $style.nameCell]">
 					<N8nUserInfo v-bind="value as UsersInfoProps" />
+					<N8nTooltip
+						v-if="item.inheritedFromWorkspace"
+						:content="i18n.baseText('workspaces.members.inherited.tooltip')"
+					>
+						<N8nBadge
+							variant="subtle"
+							leading-icon="layers"
+							data-test-id="project-member-inherited-badge"
+						>
+							{{ i18n.baseText('workspaces.members.inherited') }}
+						</N8nBadge>
+					</N8nTooltip>
 				</div>
 			</template>
 			<template #[`item.role`]="{ item }">
@@ -128,3 +147,11 @@ const filterActions = (member: ProjectMemberData) => {
 		</N8nDataTableServer>
 	</div>
 </template>
+
+<style lang="scss" module>
+.nameCell {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--xs);
+}
+</style>

@@ -58,6 +58,7 @@ erDiagram
 }
 "project_relation" {
   datetime_3_ createdAt
+  VARCHAR_36_ inheritedFromId
   varchar_36_ projectId PK
   varchar role FK
   datetime_3_ updatedAt

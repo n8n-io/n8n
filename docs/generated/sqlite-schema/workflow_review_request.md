@@ -118,13 +118,16 @@ erDiagram
   varchar_36_ workflowVersionId FK
 }
 "project" {
+  BOOLEAN cascadeMembers
   datetime_3_ createdAt
   varchar creatorId FK
   TEXT customTelemetryTags
   varchar_512_ description
   TEXT icon
   varchar_36_ id PK
+  BOOLEAN isPublic
   varchar_255_ name
+  varchar_36_ parentId FK
   varchar_36_ type
   datetime_3_ updatedAt
 }

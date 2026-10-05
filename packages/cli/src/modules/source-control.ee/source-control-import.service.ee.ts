@@ -9,6 +9,7 @@ import type {
 	WorkflowEntity,
 } from '@n8n/db';
 import {
+	asLegacyProjectType,
 	CredentialsRepository,
 	FolderRepository,
 	ProjectRelationRepository,
@@ -116,7 +117,11 @@ import { VariablesService } from '../../environments.ee/variables/variables.serv
 
 const toStatusOwner = (project: Project | undefined): StatusResourceOwner | undefined => {
 	if (project?.type) {
-		return { type: project.type, projectId: project.id, projectName: project.name };
+		return {
+			type: asLegacyProjectType(project.type),
+			projectId: project.id,
+			projectName: project.name,
+		};
 	}
 	return undefined;
 };

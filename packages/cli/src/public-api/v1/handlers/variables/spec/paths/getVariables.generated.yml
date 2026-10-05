@@ -63,6 +63,9 @@ responses:
                         enum:
                           - personal
                           - team
+                          - workspace
+                          - personalWorkspace
+                          - instance
                         readOnly: true
                         example: team
                       icon:

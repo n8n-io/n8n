@@ -22,8 +22,28 @@ export class Project extends WithTimestampsAndStringId {
 	@Column({ length: 255 })
 	name: string;
 
+	/**
+	 * PROTOTYPE (workspaces): `workspace`, `personalWorkspace` and `instance` rows
+	 * hold resources for their child projects but never hold workflows.
+	 */
 	@Column({ type: 'varchar', length: 36 })
-	type: 'personal' | 'team';
+	type: 'personal' | 'team' | 'workspace' | 'personalWorkspace' | 'instance';
+
+	/** The workspace that contains this project. */
+	@Column({ type: 'varchar', length: 36, nullable: true })
+	parentId: string | null;
+
+	@ManyToOne('Project', { onDelete: 'SET NULL', nullable: true })
+	@JoinColumn({ name: 'parentId' })
+	parent?: Relation<Project> | null;
+
+	/** PROTOTYPE (workspaces): anyone on the instance can join this workspace without approval. */
+	@Column({ default: true })
+	isPublic: boolean;
+
+	/** PROTOTYPE (workspaces): workspace members get the same role on every project in it. */
+	@Column({ default: false })
+	cascadeMembers: boolean;
 
 	@Column({ type: 'json', nullable: true })
 	icon: { type: 'emoji' | 'icon'; value: string } | null;
@@ -58,4 +78,12 @@ export class Project extends WithTimestampsAndStringId {
 	@ManyToOne('User', { onDelete: 'SET NULL' })
 	@JoinColumn({ name: 'creatorId' })
 	creator?: Relation<User>;
+}
+
+/**
+ * PROTOTYPE (workspaces): code that predates workspaces only knows personal
+ * and team projects. Treat every non-personal type as a team project there.
+ */
+export function asLegacyProjectType(type: Project['type']): 'personal' | 'team' {
+	return type === 'personal' ? 'personal' : 'team';
 }

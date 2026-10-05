@@ -1,4 +1,4 @@
-import type { RedactionFloor } from '@n8n/api-types';
+import { isContainerProjectType, type RedactionFloor } from '@n8n/api-types';
 import { LicenseState, Logger } from '@n8n/backend-common';
 import { EventService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
@@ -28,6 +28,7 @@ import { NodeTypes } from '@/node-types';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { FolderService } from '@/services/folder.service';
+import { ProjectHierarchyService } from '@/services/project-hierarchy.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { TagService } from '@/services/tag.service';
 import * as WorkflowHelpers from '@/workflow-helpers';
@@ -75,6 +76,7 @@ export class WorkflowCreationService {
 		private readonly policyEnforcementService: PolicyEnforcementService,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly nodeGroupRulesFlagGate: NodeGroupRulesFlagGate,
+		private readonly projectHierarchyService: ProjectHierarchyService,
 	) {}
 
 	async prepareBatchContext(
@@ -203,6 +205,13 @@ export class WorkflowCreationService {
 			throw new BadRequestError(message);
 		}
 
+		if (isContainerProjectType(project.type)) {
+			throw new BadRequestError(
+				'A workspace cannot hold workflows. Create the workflow in one of its projects.',
+			);
+		}
+		await this.projectHierarchyService.assertCanCreateIn(project.id);
+
 		await WorkflowHelpers.replaceInvalidCredentials(
 			newWorkflow,
 			effectiveProjectId,
@@ -263,10 +272,19 @@ export class WorkflowCreationService {
 							['credential:read'],
 						));
 
+			// PROTOTYPE (workspaces): credentials inherited from the workspace or the
+			// instance scope are usable without direct access.
+			const inheritedCredentialIds =
+				await this.projectHierarchyService.filterInheritedCredentialIds(effectiveProjectId, [
+					...credentialIds,
+				]);
+
 			try {
 				this.enterpriseWorkflowService.validateCredentialPermissionsToUser(
 					newWorkflow,
-					hasUnresolved ? new Set() : accessibleCredentialIds,
+					hasUnresolved
+						? new Set()
+						: new Set([...accessibleCredentialIds, ...inheritedCredentialIds]),
 				);
 			} catch (error) {
 				throw new BadRequestError(

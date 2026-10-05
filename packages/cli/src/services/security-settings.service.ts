@@ -15,6 +15,7 @@ import type { DistributiveOmit } from '@n8n/utils/types';
 
 import type { RelayEventMap, UserLike } from '@/events/maps/relay.event-map';
 import { InstanceRedactionEnforcementService } from '@/modules/redaction/instance-redaction-enforcement.service';
+import { ProjectHierarchyService } from '@/services/project-hierarchy.service';
 import { RoleService } from '@/services/role.service';
 
 /**
@@ -23,6 +24,8 @@ import { RoleService } from '@/services/role.service';
  * they are gated behind a dedicated license + dev flag.
  */
 export interface SecurityPolicyUpdate {
+	/** PROTOTYPE (workspaces) */
+	personalSpacesEnabled?: boolean;
 	personalSpacePublishing?: boolean;
 	personalSpaceSharing?: boolean;
 	redactionEnforcement?: { floor: RedactionFloor };
@@ -33,6 +36,8 @@ export interface SecurityPolicyUpdate {
  * public API, without the layer-specific "managed by" representation.
  */
 export interface SecurityPolicyReadResult {
+	/** PROTOTYPE (workspaces) */
+	personalSpacesEnabled: boolean;
 	personalSpacePublishing: boolean;
 	personalSpaceSharing: boolean;
 	publishedPersonalWorkflowsCount: number;
@@ -59,6 +64,7 @@ export class SecuritySettingsService {
 		private readonly sharedCredentialsRepository: SharedCredentialsRepository,
 		private readonly instanceRedactionEnforcementService: InstanceRedactionEnforcementService,
 		private readonly eventService: EventService,
+		private readonly projectHierarchyService: ProjectHierarchyService,
 	) {}
 
 	/**
@@ -69,12 +75,14 @@ export class SecuritySettingsService {
 	async getSecuritySettings(): Promise<SecurityPolicyReadResult> {
 		const [
 			settings,
+			personalSpacesEnabled,
 			publishedPersonalWorkflowsCount,
 			sharedPersonalWorkflowsCount,
 			sharedPersonalCredentialsCount,
 			floor,
 		] = await Promise.all([
 			this.arePersonalSpaceSettingsEnabled(),
+			this.projectHierarchyService.arePersonalSpacesEnabled(),
 			this.getPublishedPersonalWorkflowsCount(),
 			this.getSharedPersonalWorkflowsCount(),
 			this.getSharedPersonalCredentialsCount(),
@@ -83,6 +91,7 @@ export class SecuritySettingsService {
 
 		return {
 			...settings,
+			personalSpacesEnabled,
 			publishedPersonalWorkflowsCount,
 			sharedPersonalWorkflowsCount,
 			sharedPersonalCredentialsCount,
@@ -102,8 +111,17 @@ export class SecuritySettingsService {
 	): Promise<SecurityPolicyUpdate> {
 		const updatedSettings: SecurityPolicyUpdate = {};
 
-		const { personalSpacePublishing, personalSpaceSharing, redactionEnforcement } =
-			securityPolicyUpdate;
+		const {
+			personalSpacesEnabled,
+			personalSpacePublishing,
+			personalSpaceSharing,
+			redactionEnforcement,
+		} = securityPolicyUpdate;
+		if (personalSpacesEnabled !== undefined) {
+			await this.projectHierarchyService.setPersonalSpacesEnabled(personalSpacesEnabled);
+			updatedSettings.personalSpacesEnabled = personalSpacesEnabled;
+		}
+
 		if (personalSpacePublishing !== undefined) {
 			await this.setPersonalSpaceSetting(
 				PERSONAL_SPACE_PUBLISHING_SETTING,

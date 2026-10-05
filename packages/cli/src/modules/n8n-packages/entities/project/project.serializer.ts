@@ -24,6 +24,10 @@ type ProjectPackageKeyHandling = {
 	roleMappingRules: 'exclude';
 	creatorId: 'exclude';
 	creator: 'exclude';
+	parentId: 'exclude';
+	parent: 'exclude';
+	isPublic: 'exclude';
+	cascadeMembers: 'exclude';
 };
 
 const serializePayload = definePackageSerializationPayload<

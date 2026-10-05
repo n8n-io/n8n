@@ -50,6 +50,7 @@ erDiagram
 }
 "public.project_relation" {
   timestamp_3__with_time_zone createdAt
+  varchar_36_ inheritedFromId
   varchar_36_ projectId FK
   varchar role FK
   timestamp_3__with_time_zone updatedAt

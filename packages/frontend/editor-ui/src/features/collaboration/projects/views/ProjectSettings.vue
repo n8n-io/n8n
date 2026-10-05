@@ -15,6 +15,8 @@ import { DEBOUNCE_TIME, VIEWS } from '@/app/constants';
 import ProjectDeleteDialog from '../components/ProjectDeleteDialog.vue';
 import ProjectRoleUpgradeDialog from '../components/ProjectRoleUpgradeDialog.vue';
 import ProjectMembersTable from '../components/ProjectMembersTable.vue';
+import WorkspaceAccessSettings from '../components/WorkspaceAccessSettings.vue';
+import { ProjectTypes } from '../projects.types';
 import { useRolesStore } from '@n8n/stores/roles.store';
 import { useCloudPlanStore } from '@n8n/stores/cloudPlan.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
@@ -758,6 +760,10 @@ onMounted(async () => {
 						@validate="isDescriptionValid = $event"
 					/>
 				</fieldset>
+				<!-- PROTOTYPE (workspaces) -->
+				<WorkspaceAccessSettings
+					v-if="projectsStore.currentProject?.type === ProjectTypes.Workspace"
+				/>
 			</template>
 
 			<ProjectExternalSecrets :class="$style.externalSecrets" />
@@ -801,6 +807,20 @@ onMounted(async () => {
 								<N8nIcon icon="search" />
 							</template>
 						</N8nInput>
+					</div>
+					<div
+						v-if="projectsStore.currentProject?.parent?.cascadeMembers"
+						class="mb-m"
+						data-test-id="project-members-cascade-notice"
+					>
+						<N8nAlert
+							type="info"
+							:title="
+								i18n.baseText('workspaces.members.cascadeNotice', {
+									interpolate: { name: projectsStore.currentProject.parent.name },
+								})
+							"
+						/>
 					</div>
 					<div v-if="rolesManaged" class="mb-m" data-test-id="project-roles-managed-notice">
 						<N8nAlert

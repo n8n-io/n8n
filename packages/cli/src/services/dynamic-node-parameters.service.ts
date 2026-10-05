@@ -28,6 +28,7 @@ import {
 	findDisplayedProperty,
 } from 'n8n-workflow';
 
+import { ProjectHierarchyService } from '@/services/project-hierarchy.service';
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { BadRequestError, ForbiddenError } from '@n8n/errors';
 import { NodeTypes } from '@/node-types';
@@ -67,6 +68,7 @@ export class DynamicNodeParametersService {
 		private sharedWorkflowRepository: SharedWorkflowRepository,
 		private credentialsFinderService: CredentialsFinderService,
 		private credentialsRepository: CredentialsRepository,
+		private projectHierarchyService: ProjectHierarchyService,
 	) {}
 
 	async refineResourceIds(
@@ -119,7 +121,17 @@ export class DynamicNodeParametersService {
 					['credential:read'],
 				);
 
-				const forbiddenId = credentialIds.find((id) => !accessibleIds.has(id));
+				// PROTOTYPE (workspaces): inherited credentials work for load options too.
+				const inheritedIds = payload.projectId
+					? await this.projectHierarchyService.filterInheritedCredentialIds(
+							payload.projectId,
+							credentialIds,
+						)
+					: new Set<string>();
+
+				const forbiddenId = credentialIds.find(
+					(id) => !accessibleIds.has(id) && !inheritedIds.has(id),
+				);
 				if (forbiddenId !== undefined) {
 					throw new ForbiddenError();
 				}

@@ -1,4 +1,4 @@
-import type { CreateProjectDto, ProjectType, UpdateProjectDto } from '@n8n/api-types';
+import type { CreateProjectDto, UpdateProjectDto } from '@n8n/api-types';
 import { LicenseState, Logger, ModuleRegistry } from '@n8n/backend-common';
 import { EventService } from '@n8n/backend-services';
 import {
@@ -114,6 +114,12 @@ export class ProjectService {
 		);
 	}
 
+	private get projectHierarchyService() {
+		return import('./project-hierarchy.service.js').then(({ ProjectHierarchyService }) =>
+			Container.get(ProjectHierarchyService),
+		);
+	}
+
 	private get dataTableService() {
 		return import('@/modules/data-table/data-table.service.js').then(({ DataTableService }) =>
 			Container.get(DataTableService),
@@ -189,10 +195,17 @@ export class ProjectService {
 		}
 
 		// 0. check if this is a team project
-		if (project.type !== 'team') {
+		// PROTOTYPE (workspaces): or an empty workspace
+		if (project.type !== 'team' && project.type !== 'workspace') {
 			throw new ForbiddenError(
 				`Can't delete project. Project with ID "${projectId}" is not a team project.`,
 			);
+		}
+		if (
+			project.type === 'workspace' &&
+			(await this.projectRepository.countChildProjects(project.id)) > 0
+		) {
+			throw new BadRequestError('Delete or move the projects in this workspace first.');
 		}
 
 		const ownedCredentials = await this.sharedCredentialsRepository.find({
@@ -534,7 +547,8 @@ export class ProjectService {
 					.filter(({ key }) => key !== '');
 
 		const result = await this.projectRepository.update(
-			{ id: projectId, type: 'team' },
+			// PROTOTYPE (workspaces): workspaces are editable like team projects
+			{ id: projectId, type: In(['team', 'workspace']) },
 			{ name, icon, description, customTelemetryTags: tags },
 		);
 		if (!result.affected) {
@@ -611,11 +625,40 @@ export class ProjectService {
 			}
 		});
 
+		// PROTOTYPE (workspaces): the rewrite above drops the cascade tags. Keep them on
+		// the cascaded members whose role did not change, then apply the cascade again.
+		const stillInherited = new Map<string, string[]>();
+		for (const r of project.projectRelations) {
+			if (!r.inheritedFromId || incomingByUserId.get(r.userId) !== r.role.slug) continue;
+			stillInherited.set(r.inheritedFromId, [
+				...(stillInherited.get(r.inheritedFromId) ?? []),
+				r.userId,
+			]);
+		}
+		for (const [workspaceId, userIds] of stillInherited) {
+			await this.projectRelationRepository.markInherited(projectId, userIds, workspaceId);
+		}
+		await this.reapplyWorkspaceCascade(projectId);
+
 		const newRelations = relations.filter(
 			(relation) => !project.projectRelations.some((r) => r.userId === relation.userId),
 		);
 
 		return { project, newRelations };
+	}
+
+	/**
+	 * PROTOTYPE (workspaces): apply the workspace member cascade again after a member
+	 * change. A role set directly on a project replaces the cascaded role.
+	 */
+	async reapplyWorkspaceCascade(projectId: string, directUserId?: string) {
+		const project = await this.projectRepository.findOneBy({ id: projectId });
+		if (!project) return;
+		if (directUserId && project.type !== 'workspace') {
+			await this.projectRelationRepository.markInherited(projectId, [directUserId], null);
+		}
+		const cascadeFrom = project.type === 'workspace' ? project.id : project.parentId;
+		if (cascadeFrom) await (await this.projectHierarchyService).syncCascadedMembers(cascadeFrom);
 	}
 
 	private async notifyNewSharees(
@@ -755,7 +798,8 @@ export class ProjectService {
 
 	private async getTeamProjectWithRelations(projectId: string) {
 		const project = await this.projectRepository.findOne({
-			where: { id: projectId, type: 'team' },
+			// PROTOTYPE (workspaces): workspaces have members like team projects
+			where: { id: projectId, type: In(['team', 'workspace']) },
 			relations: { projectRelations: { role: true } },
 		});
 		ProjectNotFoundError.isDefinedAndNotNull(project, projectId);
@@ -939,8 +983,9 @@ export class ProjectService {
 		if (!hasGlobalScope(user, scopes, { mode: 'allOf' })) {
 			const projectRoles = await this.roleService.rolesWithScope('project', scopes);
 			// if we're not checking specific projects, restrict to team projects
+			// PROTOTYPE (workspaces): and to workspaces
 			if (!projectIds) {
-				where.type = 'team';
+				where.type = In(['team', 'workspace']);
 			}
 			where.projectRelations = {
 				role: In(projectRoles),
@@ -1036,7 +1081,7 @@ export class ProjectService {
 	 * this way, so they return an empty list.
 	 */
 	async getImplicitProjectMembers(project: Pick<Project, 'id' | 'type'>): Promise<User[]> {
-		if (project.type !== 'team') return [];
+		if (project.type !== 'team' && project.type !== 'workspace') return [];
 
 		return await this.userRepository.findEligibleByProjectOrGlobalRoles({
 			projectId: project.id,
@@ -1094,7 +1139,7 @@ export class ProjectService {
 		});
 	}
 
-	async getProjectCounts(): Promise<Record<ProjectType, number>> {
+	async getProjectCounts(): Promise<Record<'personal' | 'team', number>> {
 		return await this.projectRepository.getProjectCounts();
 	}
 }

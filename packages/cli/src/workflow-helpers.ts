@@ -38,6 +38,7 @@ import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { NodeTypes } from '@/node-types';
 
 import { OwnershipService } from './services/ownership.service';
+import { ProjectHierarchyService } from './services/project-hierarchy.service';
 
 export { dropInvalidWorkflowGroups, makeGetNodeTypeForGrouping };
 export { getLastExecutedNodeData, getLastExecutedNodeRuns } from 'n8n-workflow';
@@ -407,7 +408,12 @@ export async function getVariables(workflowId?: string, projectId?: string): Pro
 	// Either projectId passed or use project from workflow
 	const projectIdToUse = projectId ?? project?.id;
 
-	return Object.freeze(resolveVariables(variables, projectIdToUse));
+	// PROTOTYPE (workspaces): the workspace's and the instance's variables apply too.
+	const chain = projectIdToUse
+		? await Container.get(ProjectHierarchyService).getResourceChain(projectIdToUse)
+		: undefined;
+
+	return Object.freeze(resolveVariables(variables, chain));
 }
 
 /**

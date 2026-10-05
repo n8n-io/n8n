@@ -191,11 +191,33 @@ export class UserRepository extends Repository<User> {
 				relations: ['role'],
 			});
 			if (!userWithRole) throw new Error('Failed to create user!');
+			const personalRoleSlug =
+				userWithRole.role.slug !== 'global:chatUser'
+					? PROJECT_OWNER_ROLE_SLUG
+					: PROJECT_VIEWER_ROLE_SLUG;
+
+			// PROTOTYPE (workspaces): the personal project lives in a personal workspace.
+			const savedWorkspace = await entityManager.save<Project>(
+				entityManager.create(Project, {
+					type: 'personalWorkspace',
+					name: userWithRole.createPersonalProjectName(),
+					creatorId: savedUser.id,
+				}),
+			);
+			await entityManager.save<ProjectRelation>(
+				entityManager.create(ProjectRelation, {
+					projectId: savedWorkspace.id,
+					userId: savedUser.id,
+					role: { slug: personalRoleSlug },
+				}),
+			);
+
 			const savedProject = await entityManager.save<Project>(
 				entityManager.create(Project, {
 					type: 'personal',
 					name: userWithRole.createPersonalProjectName(),
 					creatorId: savedUser.id,
+					parentId: savedWorkspace.id,
 				}),
 			);
 
@@ -203,12 +225,7 @@ export class UserRepository extends Repository<User> {
 				entityManager.create(ProjectRelation, {
 					projectId: savedProject.id,
 					userId: savedUser.id,
-					role: {
-						slug:
-							userWithRole.role.slug !== 'global:chatUser'
-								? PROJECT_OWNER_ROLE_SLUG
-								: PROJECT_VIEWER_ROLE_SLUG,
-					},
+					role: { slug: personalRoleSlug },
 				}),
 			);
 

@@ -55,6 +55,7 @@ export class SecuritySettingsController {
 		const updatedSettings: Partial<UpdateSecuritySettingsDto> =
 			await this.securitySettingsService.updateSecuritySettings(
 				{
+					personalSpacesEnabled: dto.personalSpacesEnabled,
 					personalSpacePublishing: dto.personalSpacePublishing,
 					personalSpaceSharing: dto.personalSpaceSharing,
 					redactionEnforcement: dto.redactionEnforcement,

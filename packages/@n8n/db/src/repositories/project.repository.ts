@@ -1,7 +1,7 @@
 import { UNLIMITED_LICENSE_QUOTA } from '@n8n/constants';
 import { Service } from '@n8n/di';
 import type { EntityManager, SelectQueryBuilder } from '@n8n/typeorm';
-import { Brackets, DataSource, In, Not } from '@n8n/typeorm';
+import { Brackets, DataSource, In, IsNull, Not } from '@n8n/typeorm';
 import { UserError } from 'n8n-workflow';
 
 import { BaseRepository } from './base-repository';
@@ -122,7 +122,11 @@ export class ProjectRepository extends BaseRepository<Project> {
 	}
 
 	async findTeamProjectsExcluding(excludedProjectIds: string[]): Promise<Project[]> {
-		return await this.findBy({ type: 'team', id: Not(In(excludedProjectIds)) });
+		// PROTOTYPE (workspaces): instance admins also reach every workspace and the instance scope.
+		return await this.findBy({
+			type: In(['team', 'workspace', 'instance']),
+			id: Not(In(excludedProjectIds)),
+		});
 	}
 
 	async getAccessibleProjectsByExactName(
@@ -287,6 +291,57 @@ export class ProjectRepository extends BaseRepository<Project> {
 			query.take(options.take);
 		}
 	}
+
+	// PROTOTYPE (workspaces) ------------------------------------------------
+
+	async findInstanceProject(): Promise<Project | null> {
+		return await this.findOneBy({ type: 'instance' });
+	}
+
+	async findPersonalWorkspaceForUser(userId: string): Promise<Project | null> {
+		return await this.findOneBy({ type: 'personalWorkspace', creatorId: userId });
+	}
+
+	async findAllWorkspaces(): Promise<Project[]> {
+		return await this.find({ where: { type: 'workspace' }, order: { name: 'ASC' } });
+	}
+
+	async findManyByIds(ids: string[]): Promise<Project[]> {
+		if (ids.length === 0) return [];
+		return await this.findBy({ id: In(ids) });
+	}
+
+	async findChildProjects(parentIds: string[]): Promise<Project[]> {
+		if (parentIds.length === 0) return [];
+		return await this.find({ where: { parentId: In(parentIds) }, order: { name: 'ASC' } });
+	}
+
+	async countChildProjects(parentId: string): Promise<number> {
+		return await this.countBy({ parentId });
+	}
+
+	async findPersonalProjectsWithoutParent(): Promise<Project[]> {
+		return await this.findBy({ type: 'personal', parentId: IsNull() });
+	}
+
+	async findTeamProjectsWithoutParent(): Promise<Project[]> {
+		return await this.findBy({ type: 'team', parentId: IsNull() });
+	}
+
+	async setParent(projectIds: string[], parentId: string): Promise<void> {
+		if (projectIds.length === 0) return;
+		await this.update({ id: In(projectIds) }, { parentId });
+	}
+
+	async setWorkspaceAccess(
+		workspaceId: string,
+		access: { isPublic?: boolean; cascadeMembers?: boolean },
+	): Promise<void> {
+		if (access.isPublic === undefined && access.cascadeMembers === undefined) return;
+		await this.update({ id: workspaceId, type: 'workspace' }, access);
+	}
+
+	// ------------------------------------------------------------------------
 
 	async getProjectCounts() {
 		return {

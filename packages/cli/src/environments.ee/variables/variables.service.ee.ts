@@ -15,6 +15,7 @@ import { ForbiddenError, NotFoundError } from '@n8n/errors';
 import { VariableCountLimitReachedError } from '@/errors/variable-count-limit-reached.error';
 import { VariableValidationError } from '@/errors/variable-validation.error';
 import { CacheService, EventService } from '@n8n/backend-services';
+import { ProjectHierarchyService } from '@/services/project-hierarchy.service';
 import { ProjectService } from '@/services/project.service.ee';
 
 const projectVariableScopes: Partial<Record<Scope, Scope>> = {
@@ -33,6 +34,7 @@ export class VariablesService {
 		private readonly eventService: EventService,
 		private readonly licenseState: LicenseState,
 		private readonly projectService: ProjectService,
+		private readonly projectHierarchyService: ProjectHierarchyService,
 	) {}
 
 	private async findAll() {
@@ -101,9 +103,11 @@ export class VariablesService {
 	): Promise<Variables[]> {
 		const allCachedVariables = await this.getAllCached();
 		const canListGlobalVariables = hasGlobalScope(user, 'variable:list');
-		const projectIds = await this.projectService.getProjectIdsWithScope(user, [
-			'projectVariable:list',
-		]);
+		// PROTOTYPE (workspaces): a project member also sees the variables the
+		// project inherits, so the editor can autocomplete them.
+		const projectIds = await this.projectHierarchyService.expandWithAncestors(
+			await this.projectService.getProjectIdsWithScope(user, ['projectVariable:list']),
+		);
 
 		const userHasAccess = (variable: Variables) =>
 			(!variable.project && canListGlobalVariables) ||

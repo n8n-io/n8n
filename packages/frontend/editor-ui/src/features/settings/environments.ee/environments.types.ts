@@ -3,7 +3,8 @@ export interface EnvironmentVariable {
 	id: string;
 	key: string;
 	value: string;
-	project?: { id: string; name: string } | null;
+	/** PROTOTYPE (workspaces): `type` tells the instance scope apart */
+	project?: { id: string; name: string; type?: string } | null;
 }
 
 export interface CreateEnvironmentVariable {

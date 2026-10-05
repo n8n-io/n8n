@@ -3,8 +3,25 @@ import { z } from 'zod';
 
 export const projectNameSchema = z.string().min(1).max(255);
 
-export const projectTypeSchema = z.enum(['personal', 'team']);
+export const projectTypeSchema = z.enum([
+	'personal',
+	'team',
+	'workspace',
+	'personalWorkspace',
+	'instance',
+]);
 export type ProjectType = z.infer<typeof projectTypeSchema>;
+
+/**
+ * PROTOTYPE (workspaces): project types that hold resources (credentials, data
+ * tables, variables) for their child projects, but never hold workflows.
+ */
+export const CONTAINER_PROJECT_TYPES = ['workspace', 'personalWorkspace', 'instance'] as const;
+export type ContainerProjectType = (typeof CONTAINER_PROJECT_TYPES)[number];
+
+export function isContainerProjectType(type: string | undefined | null): boolean {
+	return (CONTAINER_PROJECT_TYPES as readonly string[]).includes(type ?? '');
+}
 
 export const projectIconSchema = z.object({
 	type: z.enum(['emoji', 'icon']),

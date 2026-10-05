@@ -11,7 +11,9 @@ import { processDynamicTabs } from '@/app/utils/modules/tabUtils';
 
 import { N8nTabs } from '@n8n/design-system';
 import { useProjectsStore } from '../projects.store';
-import { ProjectTypes } from '../projects.types';
+import { isContainerProject, ProjectTypes } from '../projects.types';
+import { WORKSPACE_PROJECTS_VIEW } from '../projects.constants';
+import { PROJECT_DATA_TABLES } from '@/features/core/dataTable/constants';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 type Props = {
 	showSettings?: boolean;
@@ -43,6 +45,13 @@ const projectId = computed(() => {
 });
 
 const isPublicProject = computed(() => projectStore.currentProject?.type === ProjectTypes.Public);
+
+// PROTOTYPE (workspaces): read the type from the list first so the tabs do not jump while the project loads
+const isContainer = computed(() =>
+	isContainerProject(
+		projectStore.myProjects.find((p) => p.id === projectId.value) ?? projectStore.currentProject,
+	),
+);
 
 const getRouteConfigs = () => {
 	// For project pages
@@ -106,6 +115,32 @@ const options = computed<Array<TabOptions<string>>>(() => {
 		createTab('mainSidebar.workflows', 'workflows', routes),
 		createTab('mainSidebar.credentials', 'credentials', routes),
 	];
+
+	// PROTOTYPE (workspaces): a workspace lists projects instead of workflows and executions
+	if (isContainer.value && projectId.value) {
+		const containerTabs: Array<TabOptions<string>> = [];
+		if (projectStore.currentProject?.type !== ProjectTypes.Instance) {
+			containerTabs.push({
+				label: locale.baseText('workspaces.projects.tab'),
+				value: WORKSPACE_PROJECTS_VIEW,
+				to: { name: WORKSPACE_PROJECTS_VIEW, params: { projectId: projectId.value } },
+			});
+		}
+		containerTabs.push(createTab('mainSidebar.credentials', 'credentials', routes));
+		for (const tab of processDynamicTabs(props.additionalTabs ?? [], projectId.value)) {
+			const { insertAfter: _insertAfter, ...rest } = tab;
+			if (rest.value === PROJECT_DATA_TABLES) containerTabs.push(rest);
+		}
+		containerTabs.push(createTab('mainSidebar.variables', 'variables', routes));
+		if (props.showSettings) {
+			containerTabs.push({
+				label: locale.baseText('workspaces.settings'),
+				value: VIEWS.PROJECT_SETTINGS as string,
+				to: { name: VIEWS.PROJECT_SETTINGS, params: { projectId: projectId.value } },
+			});
+		}
+		return containerTabs;
+	}
 
 	if (props.showExecutions) {
 		tabs.push(createTab('mainSidebar.executions', 'executions', routes));

@@ -104,9 +104,9 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [oauth_user_consents](oauth_user_consents.md) | 5 |  | table |
 | [poller_state](poller_state.md) | 7 |  | table |
 | [processed_data](processed_data.md) | 5 |  | table |
-| [project](project.md) | 9 |  | table |
+| [project](project.md) | 12 |  | table |
 | [project_pool_settings](project_pool_settings.md) | 4 |  | table |
-| [project_relation](project_relation.md) | 5 |  | table |
+| [project_relation](project_relation.md) | 6 |  | table |
 | [project_secrets_provider_access](project_secrets_provider_access.md) | 5 |  | table |
 | [promotion_config](promotion_config.md) | 7 |  | table |
 | [promotion_connection](promotion_connection.md) | 7 |  | table |
@@ -308,6 +308,7 @@ erDiagram
 "oauth_user_consents" }o--|| "oauth_clients" : "FOREIGN KEY (clientId) REFERENCES oauth_clients (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "poller_state" |o--|| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "processed_data" |o--|| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"project" }o--o| "project" : "FOREIGN KEY (parentId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "project" }o--o| "user" : "FOREIGN KEY (creatorId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "project_pool_settings" |o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "project_relation" }o--|| "role" : "FOREIGN KEY (role) REFERENCES role (slug) ON UPDATE NO ACTION ON DELETE NO ACTION MATCH NONE"
@@ -1365,13 +1366,16 @@ erDiagram
   varchar_36_ workflowId PK
 }
 "project" {
+  BOOLEAN cascadeMembers
   datetime_3_ createdAt
   varchar creatorId FK
   TEXT customTelemetryTags
   varchar_512_ description
   TEXT icon
   varchar_36_ id PK
+  BOOLEAN isPublic
   varchar_255_ name
+  varchar_36_ parentId FK
   varchar_36_ type
   datetime_3_ updatedAt
 }
@@ -1383,6 +1387,7 @@ erDiagram
 }
 "project_relation" {
   datetime_3_ createdAt
+  VARCHAR_36_ inheritedFromId
   varchar_36_ projectId PK
   varchar role FK
   datetime_3_ updatedAt

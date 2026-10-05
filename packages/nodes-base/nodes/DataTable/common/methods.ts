@@ -26,11 +26,13 @@ export async function tableSearch(
 		...filter,
 	});
 
+	// PROTOTYPE (workspaces): tables can come from the workspace or the instance scope.
 	const results = result.data.map((row) => {
+		const isInherited = row.projectId !== proxy.getProjectId();
 		return {
-			name: row.name,
+			name: isInherited ? `${row.name} (inherited)` : row.name,
 			value: row.id,
-			url: `/projects/${proxy.getProjectId()}/datatables/${row.id}`,
+			url: `/projects/${row.projectId}/datatables/${row.id}`,
 		};
 	});
 

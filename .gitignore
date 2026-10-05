@@ -97,3 +97,5 @@ stryker.log
 # Generated migration indexes (scripts/generate-migration-index.mjs)
 packages/@n8n/db/src/migrations/sqlite/index.ts
 packages/@n8n/db/src/migrations/postgresdb/index.ts
+# PROTOTYPE (workspaces)
+.prototype-workspaces-WIPE-ME/

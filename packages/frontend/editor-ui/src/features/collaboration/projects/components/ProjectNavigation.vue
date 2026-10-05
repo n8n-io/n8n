@@ -1,5 +1,4 @@
 <script lang="ts" setup>
-import { useGlobalEntityCreation } from '@/app/composables/useGlobalEntityCreation';
 import { VIEWS } from '@/app/constants';
 import { sourceControlEventBus } from '@/features/integrations/sourceControl.ee/sourceControl.eventBus';
 import { promotionEventBus } from '@/features/integrations/promotions.ee/promotions.eventBus';
@@ -12,8 +11,8 @@ import { useI18n } from '@n8n/i18n';
 import { computed, onBeforeMount, onBeforeUnmount, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { useProjectsStore } from '../projects.store';
-import { DEFAULT_PROJECT_ICON } from '../projects.constants';
-import type { ProjectListItem } from '../projects.types';
+import WorkspaceNavigation from './WorkspaceNavigation.vue';
+import { useWorkspacesStore } from '../workspaces.store';
 import { CHAT_VIEW } from '@/features/ai/chatHub/constants';
 import { useFavoritesStore } from '@/app/stores/favorites.store';
 import { useFavoriteNavItems } from '../composables/useFavoriteNavItems';
@@ -29,7 +28,6 @@ import { useWorkflowReviewsFeature } from '@/features/workflow-reviews/composabl
 
 import { hasPermission } from '@/app/utils/rbac/permissions';
 
-const PROJECTS_COLLAPSED_KEY = 'n8n:sidebar:projects-collapsed';
 const INSTANCE_AI_CHATS_COLLAPSED_KEY = 'n8n:sidebar:instance-ai-chats-collapsed';
 
 type Props = {
@@ -41,13 +39,13 @@ const props = defineProps<Props>();
 
 const locale = useI18n();
 const route = useRoute();
-const globalEntityCreation = useGlobalEntityCreation();
 
 const projectsStore = useProjectsStore();
 const settingsStore = useSettingsStore();
 const usersStore = useUsersStore();
 const favoritesStore = useFavoritesStore();
 const instanceAiStore = useInstanceAiStore();
+const workspacesStore = useWorkspacesStore();
 
 const {
 	favoriteGroups,
@@ -57,7 +55,6 @@ const {
 	onUnpinFavorite,
 } = useFavoriteNavItems();
 
-const displayProjects = computed(() => globalEntityCreation.displayProjects.value);
 const isFoldersFeatureEnabled = computed(() => settingsStore.isFoldersFeatureEnabled);
 const isChatLinkAvailable = computed(
 	() =>
@@ -74,7 +71,6 @@ const FAVORITES_COLLAPSED_KEY = computed(
 );
 
 const favoritesCollapsed = ref(localStorage.getItem(FAVORITES_COLLAPSED_KEY.value) === 'true');
-const projectsCollapsed = ref(localStorage.getItem(PROJECTS_COLLAPSED_KEY) === 'true');
 const instanceAiChatsCollapsed = ref(
 	localStorage.getItem(INSTANCE_AI_CHATS_COLLAPSED_KEY) === 'true',
 );
@@ -91,7 +87,6 @@ watch(
 watch(favoritesCollapsed, (val) =>
 	localStorage.setItem(FAVORITES_COLLAPSED_KEY.value, String(val)),
 );
-watch(projectsCollapsed, (val) => localStorage.setItem(PROJECTS_COLLAPSED_KEY, String(val)));
 watch(instanceAiChatsCollapsed, (val) =>
 	localStorage.setItem(INSTANCE_AI_CHATS_COLLAPSED_KEY, String(val)),
 );
@@ -114,29 +109,17 @@ const shared = computed<IMenuItem>(() => ({
 	},
 }));
 
-const getProjectMenuItem = (project: ProjectListItem): IMenuItem => ({
-	id: project.id,
-	label: project.name ?? '',
-	icon: (project.icon ?? DEFAULT_PROJECT_ICON) as IMenuItem['icon'],
-	route: {
-		to: {
-			name: VIEWS.PROJECTS_WORKFLOWS,
-			params: { projectId: project.id },
-		},
-	},
+// PROTOTYPE (workspaces): only users who can see the instance project get this entry.
+const instanceResources = computed<IMenuItem | undefined>(() => {
+	const instance = workspacesStore.instanceProject;
+	if (!instance) return undefined;
+	return {
+		id: instance.id,
+		label: locale.baseText('workspaces.menu.instance'),
+		icon: 'earth',
+		route: { to: { name: VIEWS.PROJECTS_CREDENTIALS, params: { projectId: instance.id } } },
+	};
 });
-
-const personalProject = computed<IMenuItem>(() => ({
-	id: projectsStore.personalProject?.id ?? '',
-	label: locale.baseText('projects.menu.personal'),
-	icon: 'user',
-	route: {
-		to: {
-			name: VIEWS.PROJECTS_WORKFLOWS,
-			params: { projectId: projectsStore.personalProject?.id },
-		},
-	},
-}));
 
 const hasFavorites = computed(() => favoritesStore.favorites.length > 0);
 
@@ -225,16 +208,6 @@ onBeforeUnmount(() => {
 			/>
 			<N8nMenuItem
 				v-if="
-					projectsStore.personalProject?.id &&
-					(projectsStore.isTeamProjectFeatureEnabled || isFoldersFeatureEnabled)
-				"
-				:item="personalProject"
-				:compact="props.collapsed"
-				:active="sidebarActiveTabId === personalProject.id"
-				data-test-id="project-personal-menu-item"
-			/>
-			<N8nMenuItem
-				v-if="
 					(projectsStore.isTeamProjectFeatureEnabled || isFoldersFeatureEnabled) &&
 					hasMultipleVerifiedUsers
 				"
@@ -256,6 +229,13 @@ onBeforeUnmount(() => {
 				:compact="props.collapsed"
 				:active="sidebarActiveTabId === 'chat'"
 				data-test-id="project-chat-menu-item"
+			/>
+			<N8nMenuItem
+				v-if="instanceResources"
+				:item="instanceResources"
+				:compact="props.collapsed"
+				:active="sidebarActiveTabId === instanceResources.id"
+				data-test-id="instance-resources-menu-item"
 			/>
 		</div>
 		<template v-if="hasFavorites">
@@ -342,41 +322,8 @@ onBeforeUnmount(() => {
 				</div>
 			</template>
 		</div>
-		<template v-if="projectsStore.isTeamProjectFeatureEnabled && displayProjects.length > 0">
-			<button
-				v-if="!props.collapsed"
-				:class="$style.sectionHeader"
-				@click="projectsCollapsed = !projectsCollapsed"
-			>
-				<N8nText size="small" bold color="text-light">
-					{{ locale.baseText('projects.menu.title') }}
-				</N8nText>
-				<N8nIcon
-					icon="chevron-down"
-					size="medium"
-					:class="[$style.chevron, projectsCollapsed ? $style.chevronCollapsed : '']"
-				/>
-			</button>
-		</template>
-		<div
-			v-if="
-				(projectsStore.isTeamProjectFeatureEnabled || isFoldersFeatureEnabled) &&
-				(!projectsStore.isTeamProjectFeatureEnabled || !projectsCollapsed || props.collapsed)
-			"
-			:class="$style.projectItems"
-		>
-			<N8nMenuItem
-				v-for="project in displayProjects"
-				:key="project.id"
-				:class="{
-					[$style.collapsed]: props.collapsed,
-				}"
-				:item="getProjectMenuItem(project)"
-				:compact="props.collapsed"
-				:active="sidebarActiveTabId === project.id"
-				data-test-id="project-menu-item"
-			/>
-		</div>
+		<!-- PROTOTYPE (workspaces): workspaces replace the flat list of projects -->
+		<WorkspaceNavigation :collapsed="props.collapsed" :active-id="sidebarActiveTabId" />
 	</div>
 </template>
 

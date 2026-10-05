@@ -28,6 +28,7 @@ import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHe
 import DataRedactionSection from './DataRedactionSection.vue';
 import WorkflowReviewsSection from './WorkflowReviewsSection.vue';
 import { useWorkflowReviewsFeature } from '@/features/workflow-reviews/composables/useWorkflowReviewsFeature';
+import { useWorkspacesStore } from '@/features/collaboration/projects/workspaces.store';
 
 const rootStore = useRootStore();
 const settingsStore = useSettingsStore();
@@ -35,12 +36,14 @@ const usersStore = useUsersStore();
 const i18n = useI18n();
 const { showToast, showError } = useToast();
 const pageRedirectionHelper = usePageRedirectionHelper();
+const workspacesStore = useWorkspacesStore();
 const { isWorkflowReviewsAvailable } = useWorkflowReviewsFeature();
 
 const mfaTooltipKey = 'settings.personal.mfa.enforce.unlicensed_tooltip';
 const personalSpaceTooltipKey = 'settings.security.personalSpace.unlicensed_tooltip';
 const showPublishingDialog = ref(false);
 const showSharingDialog = ref(false);
+const showPersonalSpacesDialog = ref(false);
 
 const isEnforceMFAEnabled = computed(
 	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.EnforceMFA],
@@ -75,6 +78,7 @@ function goToUpgrade() {
 const { state, isReady, error } = useAsyncState(async () => {
 	const settings = await securitySettingsApi.getSecuritySettings(rootStore.restApiContext);
 	return {
+		personalSpacesEnabled: settings.personalSpacesEnabled,
 		personalSpacePublishing: settings.personalSpacePublishing,
 		personalSpaceSharing: settings.personalSpaceSharing,
 		publishedPersonalWorkflowsCount: settings.publishedPersonalWorkflowsCount,
@@ -96,7 +100,7 @@ const isManagedByEnv = computed(() => state.value?.managedByEnv ?? false);
 const isSecuritySettingsSettled = computed(() => isReady.value || error.value !== undefined);
 
 async function updatePersonalSpaceSetting(
-	key: 'personalSpacePublishing' | 'personalSpaceSharing',
+	key: 'personalSpacesEnabled' | 'personalSpacePublishing' | 'personalSpaceSharing',
 	value: boolean,
 	toastNamespace: string,
 ) {
@@ -115,6 +119,8 @@ async function updatePersonalSpaceSetting(
 					),
 			message: '',
 		});
+		// PROTOTYPE (workspaces): the sidebar hides the personal workspace at once.
+		if (key === 'personalSpacesEnabled') await workspacesStore.fetchWorkspaces();
 	} catch (error) {
 		if (state.value) {
 			state.value = { ...state.value, [key]: !value };
@@ -124,6 +130,29 @@ async function updatePersonalSpaceSetting(
 			i18n.baseText(`settings.security.personalSpace.${toastNamespace}.error` as BaseTextKey),
 		);
 	}
+}
+
+// PROTOTYPE (workspaces)
+const personalSpacesEnabled = computed({
+	get: () => state.value?.personalSpacesEnabled ?? true,
+	set: (value: boolean) => {
+		if (!value) {
+			showPersonalSpacesDialog.value = true;
+			return;
+		}
+		if (state.value) {
+			state.value = { ...state.value, personalSpacesEnabled: value };
+		}
+		void updatePersonalSpaceSetting('personalSpacesEnabled', value, 'enabled');
+	},
+});
+
+function confirmDisablePersonalSpaces() {
+	showPersonalSpacesDialog.value = false;
+	if (state.value) {
+		state.value = { ...state.value, personalSpacesEnabled: false };
+	}
+	void updatePersonalSpaceSetting('personalSpacesEnabled', false, 'enabled');
 }
 
 const personalSpacePublishing = computed({
@@ -259,6 +288,37 @@ const sharingCountText = computed(() => {
 			:title="i18n.baseText('settings.security.personalSpace.title')"
 			data-test-id="security-personal-space-section"
 		>
+			<!-- PROTOTYPE (workspaces) -->
+			<N8nSettingsRowGroup>
+				<N8nSettingsRow>
+					<template #info>
+						<N8nText :bold="true">
+							{{ i18n.baseText('settings.security.personalSpace.enabled.title') }}
+							<N8nBadge v-if="!isPersonalSpacePolicyLicensed" class="ml-4xs">
+								{{ i18n.baseText('generic.upgrade') }}
+							</N8nBadge>
+						</N8nText>
+						<N8nText size="small" color="text-light">
+							{{ i18n.baseText('settings.security.personalSpace.enabled.description') }}
+						</N8nText>
+					</template>
+					<template #action>
+						<EnterpriseEdition :features="[EnterpriseEditionFeature.PersonalSpacePolicy]">
+							<ElSwitch
+								v-if="state !== undefined"
+								v-model="personalSpacesEnabled"
+								size="large"
+								:disabled="isManagedByEnv"
+								data-test-id="security-personal-spaces-toggle"
+							/>
+							<template #fallback>
+								<ElSwitch :model-value="true" size="large" :disabled="true" />
+							</template>
+						</EnterpriseEdition>
+					</template>
+				</N8nSettingsRow>
+			</N8nSettingsRowGroup>
+
 			<N8nSettingsRowGroup>
 				<N8nSettingsRow>
 					<template #info>
@@ -278,7 +338,7 @@ const sharingCountText = computed(() => {
 								v-if="state !== undefined"
 								v-model="personalSpaceSharing"
 								size="large"
-								:disabled="isManagedByEnv"
+								:disabled="isManagedByEnv || !personalSpacesEnabled"
 								data-test-id="security-personal-space-sharing-toggle"
 							/>
 							<template #fallback>
@@ -337,7 +397,7 @@ const sharingCountText = computed(() => {
 								v-if="state !== undefined"
 								v-model="personalSpacePublishing"
 								size="large"
-								:disabled="isManagedByEnv"
+								:disabled="isManagedByEnv || !personalSpacesEnabled"
 								data-test-id="security-personal-space-publishing-toggle"
 							/>
 							<template #fallback>
@@ -408,6 +468,19 @@ const sharingCountText = computed(() => {
 			@action="confirmDisablePublishing"
 			@cancel="showPublishingDialog = false"
 			@update:open="showPublishingDialog = $event"
+		/>
+
+		<N8nAlertDialog
+			:open="showPersonalSpacesDialog"
+			:title="
+				i18n.baseText('settings.security.personalSpace.enabled.confirmMessage.disable.headline')
+			"
+			:description="
+				i18n.baseText('settings.security.personalSpace.enabled.confirmMessage.disable.message')
+			"
+			@action="confirmDisablePersonalSpaces"
+			@cancel="showPersonalSpacesDialog = false"
+			@update:open="showPersonalSpacesDialog = $event"
 		/>
 
 		<N8nAlertDialog

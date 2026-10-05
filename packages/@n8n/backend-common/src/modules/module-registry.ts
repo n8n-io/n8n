@@ -77,6 +77,8 @@ export class ModuleRegistry {
 		'instance-ai',
 		'agents',
 		'inbound-auth-core',
+		// PROTOTYPE (workspaces)
+		'workspaces',
 	];
 
 	private readonly activeModules: string[] = [];

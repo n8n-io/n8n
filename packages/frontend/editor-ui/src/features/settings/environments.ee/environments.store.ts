@@ -24,11 +24,24 @@ export const useEnvironmentsStore = defineStore('environments', () => {
 		),
 	);
 
+	// PROTOTYPE (workspaces): the current project, its workspace and the instance
+	// scope, nearest first
+	const resourceChain = computed(() => {
+		if (!projectId.value) return [];
+		const instanceId = allVariables.value.find((v) => v.project?.type === 'instance')?.project?.id;
+		return [projectId.value, projectStore.currentProject?.parentId, instanceId].filter(
+			(id): id is string => !!id,
+		);
+	});
+
 	// Scoped variables: global variables plus variables for the current project only.
 	// If no project is selected, only global variables are included
 	const scopedVariables = computed(() =>
 		allVariables.value.filter(
-			(v) => !v.project || (!projectId.value && !v.project) || v.project.id === projectId.value,
+			(v) =>
+				!v.project ||
+				(!projectId.value && !v.project) ||
+				resourceChain.value.includes(v.project.id),
 		),
 	);
 
@@ -84,7 +97,7 @@ export const useEnvironmentsStore = defineStore('environments', () => {
 	}
 
 	const variablesAsObject = computed(() => {
-		const asObject = resolveVariables(scopedVariables.value, projectId.value);
+		const asObject = resolveVariables(scopedVariables.value, resourceChain.value);
 
 		return new Proxy(asObject, {
 			set() {

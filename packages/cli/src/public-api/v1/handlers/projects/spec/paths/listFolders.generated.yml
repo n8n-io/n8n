@@ -105,6 +105,9 @@ responses:
                         enum:
                           - personal
                           - team
+                          - workspace
+                          - personalWorkspace
+                          - instance
                       icon:
                         type: object
                         description: Icon of the project, or null when the project has none

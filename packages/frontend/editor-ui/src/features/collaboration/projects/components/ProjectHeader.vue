@@ -4,7 +4,12 @@ import { useRoute, useRouter } from 'vue-router';
 import { useElementSize, useResizeObserver } from '@vueuse/core';
 import type { TabOptions, UserAction } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { ProjectTypes } from '../projects.types';
+import { isContainerProject, ProjectTypes } from '../projects.types';
+import { useWorkspacesStore } from '../workspaces.store';
+import { DEFAULT_WORKSPACE_ICON, WORKSPACE_PROJECTS_VIEW } from '../projects.constants';
+import { MODAL_CONFIRM } from '@/app/constants';
+import { useMessage } from '@n8n/design-system';
+import { useToast } from '@n8n/composables/useToast';
 import { useProjectsStore } from '../projects.store';
 import ProjectTabs from './ProjectTabs.vue';
 import ProjectIcon from './ProjectIcon.vue';
@@ -67,8 +72,39 @@ const emit = defineEmits<{
 	createFolder: [];
 }>();
 
+// PROTOTYPE (workspaces)
+const workspacesStore = useWorkspacesStore();
+const message = useMessage();
+const toast = useToast();
+const isContainer = computed(() => isContainerProject(projectsStore.currentProject));
+const parentWorkspace = computed(() => {
+	const parent = projectsStore.currentProject?.parent;
+	if (!parent || !isContainerProject(parent)) return null;
+	return {
+		...parent,
+		label:
+			parent.type === ProjectTypes.PersonalWorkspace
+				? i18n.baseText('workspaces.header.personal')
+				: parent.name,
+		canOpen: projectsStore.myProjects.some((p) => p.id === parent.id),
+	};
+});
+const canCreateProjectHere = computed(() => {
+	const project = projectsStore.currentProject;
+	if (!project || project.type === ProjectTypes.Instance) return false;
+	return workspacesStore.getById(project.id)?.canCreateProject ?? false;
+});
+
 const headerIcon = computed((): IconOrEmoji => {
-	if (projectsStore.currentProject?.type === ProjectTypes.Personal) {
+	if (projectsStore.currentProject?.type === ProjectTypes.PersonalWorkspace) {
+		return { type: 'icon', value: 'user' };
+	} else if (projectsStore.currentProject?.type === ProjectTypes.Instance) {
+		return { type: 'icon', value: 'earth' };
+	} else if (projectsStore.currentProject?.type === ProjectTypes.Workspace) {
+		return isIconOrEmoji(projectsStore.currentProject.icon)
+			? projectsStore.currentProject.icon
+			: DEFAULT_WORKSPACE_ICON;
+	} else if (projectsStore.currentProject?.type === ProjectTypes.Personal) {
 		return { type: 'icon', value: 'user' };
 	} else if (projectsStore.currentProject?.name) {
 		return isIconOrEmoji(projectsStore.currentProject.icon)
@@ -98,7 +134,11 @@ const projectName = computed(() => {
 		}
 		return null;
 	} else if (projectsStore.currentProject.type === ProjectTypes.Personal) {
-		return i18n.baseText('projects.menu.personal');
+		return i18n.baseText('workspaces.menu.personalProject');
+	} else if (projectsStore.currentProject.type === ProjectTypes.PersonalWorkspace) {
+		return i18n.baseText('workspaces.header.personal');
+	} else if (projectsStore.currentProject.type === ProjectTypes.Instance) {
+		return i18n.baseText('workspaces.header.instance');
 	} else {
 		return projectsStore.currentProject.name;
 	}
@@ -126,7 +166,8 @@ const showSettings = computed(
 		(!!projectPermissions.value.update ||
 			!!projectPermissions.value.manageMembers ||
 			!!externalSecretsProviderPermissions.value.read) &&
-		projectsStore.currentProject?.type === ProjectTypes.Team,
+		(projectsStore.currentProject?.type === ProjectTypes.Team ||
+			projectsStore.currentProject?.type === ProjectTypes.Workspace),
 );
 
 const showFolders = computed(() => {
@@ -160,6 +201,7 @@ const ACTION_TYPES = {
 	DATA_TABLE: 'dataTable',
 	VARIABLE: 'variable',
 	AGENT: 'agent',
+	PROJECT: 'project',
 } as const;
 type ActionTypes = (typeof ACTION_TYPES)[keyof typeof ACTION_TYPES];
 
@@ -211,7 +253,20 @@ const createAgentButton = computed(() => ({
 	disabled: !canCreateAgent.value,
 }));
 
+const createProjectButton = computed(() => ({
+	value: ACTION_TYPES.PROJECT,
+	label: i18n.baseText('workspaces.projects.create'),
+	size: 'mini' as const,
+	disabled: !canCreateProjectHere.value,
+}));
+
 const selectedMainButtonType = computed(() => {
+	// PROTOTYPE (workspaces): a workspace holds no workflows
+	if (isContainer.value && (!props.mainButton || props.mainButton === ACTION_TYPES.WORKFLOW)) {
+		return projectsStore.currentProject?.type === ProjectTypes.Instance
+			? ACTION_TYPES.CREDENTIAL
+			: ACTION_TYPES.PROJECT;
+	}
 	if (props.mainButton === ACTION_TYPES.AGENT && !settingsStore.isModuleActive('agents')) {
 		return ACTION_TYPES.WORKFLOW;
 	}
@@ -228,6 +283,8 @@ const mainButtonConfig = computed(() => {
 			return createVariableButton.value;
 		case ACTION_TYPES.AGENT:
 			return createAgentButton.value;
+		case ACTION_TYPES.PROJECT:
+			return createProjectButton.value;
 		case ACTION_TYPES.WORKFLOW:
 		default:
 			return createWorkflowButton.value;
@@ -237,8 +294,21 @@ const mainButtonConfig = computed(() => {
 const menu = computed(() => {
 	const items: Array<UserAction<IUser>> = [];
 
+	// PROTOTYPE (workspaces)
+	if (
+		isContainer.value &&
+		selectedMainButtonType.value !== ACTION_TYPES.PROJECT &&
+		projectsStore.currentProject?.type !== ProjectTypes.Instance
+	) {
+		items.push({
+			value: ACTION_TYPES.PROJECT,
+			label: i18n.baseText('workspaces.projects.create'),
+			disabled: !canCreateProjectHere.value,
+		});
+	}
+
 	// Add workflow to menu if it's not the main button
-	if (selectedMainButtonType.value !== ACTION_TYPES.WORKFLOW) {
+	if (!isContainer.value && selectedMainButtonType.value !== ACTION_TYPES.WORKFLOW) {
 		items.push({
 			value: ACTION_TYPES.WORKFLOW,
 			label: i18n.baseText('projects.header.create.workflow'),
@@ -272,7 +342,7 @@ const menu = computed(() => {
 		});
 	}
 
-	if (showFolders.value) {
+	if (showFolders.value && !isContainer.value) {
 		items.push({
 			value: ACTION_TYPES.FOLDER,
 			label: i18n.baseText('projects.header.create.folder'),
@@ -298,7 +368,8 @@ const menu = computed(() => {
 
 	if (
 		settingsStore.isModuleActive('agents') &&
-		selectedMainButtonType.value !== ACTION_TYPES.AGENT
+		selectedMainButtonType.value !== ACTION_TYPES.AGENT &&
+		!isContainer.value
 	) {
 		items.push({
 			value: ACTION_TYPES.AGENT,
@@ -388,7 +459,34 @@ const actions: Record<ActionTypes, (projectId: string, source: CreateSource) => 
 	[ACTION_TYPES.AGENT]: (projectId, source) => {
 		createAgent(source, projectId);
 	},
+	[ACTION_TYPES.PROJECT]: (workspaceId: string) => {
+		void createProjectInWorkspace(workspaceId);
+	},
 } as const;
+
+async function createProjectInWorkspace(workspaceId: string) {
+	const response = await message.prompt(
+		i18n.baseText('workspaces.projects.createMessage'),
+		i18n.baseText('workspaces.projects.createTitle', {
+			interpolate: { name: projectName.value ?? '' },
+		}),
+		{
+			confirmButtonText: i18n.baseText('generic.create'),
+			cancelButtonText: i18n.baseText('generic.cancel'),
+			inputValidator: (value: string) =>
+				value?.trim() ? true : i18n.baseText('workspaces.projects.nameRequired'),
+		},
+	);
+	if (response.action !== MODAL_CONFIRM) return;
+	try {
+		const project = await workspacesStore.createProject(workspaceId, {
+			name: response.value.trim(),
+		});
+		await router.push({ name: VIEWS.PROJECTS_WORKFLOWS, params: { projectId: project.id } });
+	} catch (error) {
+		toast.showError(error, i18n.baseText('projects.error.title'));
+	}
+}
 
 const sectionDescription = computed(() => {
 	if (projectPages.isSharedSubPage) {
@@ -398,6 +496,16 @@ const sectionDescription = computed(() => {
 			settingsStore.isDataTableFeatureEnabled
 				? 'projects.header.overview.subtitleWithDataTables'
 				: 'projects.header.overview.subtitle',
+		);
+	} else if (isContainer.value && projectsStore.currentProject) {
+		// PROTOTYPE (workspaces)
+		const type = projectsStore.currentProject.type;
+		return i18n.baseText(
+			type === ProjectTypes.Instance
+				? 'workspaces.header.subtitle.instance'
+				: type === ProjectTypes.PersonalWorkspace
+					? 'workspaces.header.subtitle.personalWorkspace'
+					: 'workspaces.header.subtitle.workspace',
 		);
 	} else if (isPersonalProject.value) {
 		return i18n.baseText(
@@ -469,6 +577,32 @@ const onSelect = (action: string, source: CreateSource) => {
 			<div :class="$style.projectDetails">
 				<ProjectIcon v-if="showProjectIcon" :icon="headerIcon" :border-less="true" size="medium" />
 				<div :class="$style.headerActions">
+					<!-- PROTOTYPE (workspaces) -->
+					<N8nText
+						v-if="parentWorkspace"
+						size="small"
+						color="text-light"
+						data-test-id="project-parent-workspace"
+					>
+						<RouterLink
+							v-if="parentWorkspace.canOpen"
+							:to="{ name: WORKSPACE_PROJECTS_VIEW, params: { projectId: parentWorkspace.id } }"
+							:class="$style.parentLink"
+						>
+							{{
+								i18n.baseText('workspaces.header.inWorkspace', {
+									interpolate: { name: parentWorkspace.label },
+								})
+							}}
+						</RouterLink>
+						<template v-else>
+							{{
+								i18n.baseText('workspaces.header.inWorkspace', {
+									interpolate: { name: parentWorkspace.label },
+								})
+							}}
+						</template>
+					</N8nText>
 					<N8nHeading v-if="projectName" bold tag="h2" size="xlarge" data-test-id="project-name">{{
 						projectName
 					}}</N8nHeading>
@@ -551,6 +685,14 @@ const onSelect = (action: string, source: CreateSource) => {
 .projectDetails {
 	display: flex;
 	align-items: center;
+}
+
+.parentLink {
+	color: var(--color--text--tint-1);
+
+	&:hover {
+		color: var(--color--primary);
+	}
 }
 
 .actions {

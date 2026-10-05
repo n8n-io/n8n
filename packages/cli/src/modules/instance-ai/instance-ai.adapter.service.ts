@@ -31,6 +31,7 @@ import { GlobalConfig } from '@n8n/config';
 import { Time, TOOL_EXECUTOR_NODE_NAME } from '@n8n/constants';
 import type { User, ExecutionSummaries, EvaluationConfig } from '@n8n/db';
 import {
+	asLegacyProjectType,
 	AiBuilderTemporaryWorkflowRepository,
 	ExecutionRepository,
 	FolderRepository,
@@ -4055,7 +4056,7 @@ export class InstanceAiAdapterService {
 			async getProject(projectId: string): Promise<ProjectSummary | null> {
 				const project = await projectService.getProjectWithScope(user, projectId, ['project:read']);
 				if (!project) return null;
-				return { id: project.id, name: project.name, type: project.type };
+				return { id: project.id, name: project.name, type: asLegacyProjectType(project.type) };
 			},
 
 			async listProjects(): Promise<ProjectSummary[]> {
@@ -4063,7 +4064,7 @@ export class InstanceAiAdapterService {
 				const summaries = projects.map((p) => ({
 					id: p.id,
 					name: p.name,
-					type: p.type,
+					type: asLegacyProjectType(p.type),
 				}));
 				if (teamProjectsLicensed) return summaries;
 				// An instance that loses its team-project license keeps its projects, and

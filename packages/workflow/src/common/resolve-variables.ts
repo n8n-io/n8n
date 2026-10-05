@@ -22,7 +22,7 @@ export interface ScopedVariable {
  */
 export function resolveVariables(
 	variables: ScopedVariable[],
-	projectId?: string,
+	projectId?: string | string[],
 ): Record<string, string | boolean | number> {
 	const resolved: Record<string, string | boolean | number> = {};
 
@@ -32,9 +32,15 @@ export function resolveVariables(
 		}
 	}
 
-	for (const variable of variables) {
-		if (projectId && variable.project?.id === projectId) {
-			resolved[variable.key] = variable.value;
+	// PROTOTYPE (workspaces): a list of project ids is a resource chain, nearest
+	// first (project, workspace, instance scope). Apply the farthest first so
+	// the nearest scope wins.
+	const chain = projectId === undefined ? [] : Array.isArray(projectId) ? projectId : [projectId];
+	for (const scopeId of [...chain].reverse()) {
+		for (const variable of variables) {
+			if (variable.project?.id === scopeId) {
+				resolved[variable.key] = variable.value;
+			}
 		}
 	}
 

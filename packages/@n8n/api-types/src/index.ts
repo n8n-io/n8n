@@ -218,7 +218,9 @@ export type {
 	ProjectType,
 	ProjectIcon,
 	ProjectRelation,
+	ContainerProjectType,
 } from './schemas/project.schema';
+export { CONTAINER_PROJECT_TYPES, isContainerProjectType } from './schemas/project.schema';
 
 export {
 	isSourceControlledFileStatus,

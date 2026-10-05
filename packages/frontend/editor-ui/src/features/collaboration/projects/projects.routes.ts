@@ -5,6 +5,8 @@ import { getResourcePermissions } from '@n8n/permissions';
 import { CHAT_VIEW } from '@/features/ai/chatHub/constants';
 import { hasRole } from '@/app/utils/rbac/checks';
 import { useSettingsStore } from '@n8n/stores/settings.store';
+import { WORKSPACE_PROJECTS_VIEW, WORKSPACES_VIEW } from './projects.constants';
+import { isContainerProject } from './projects.types';
 
 const WorkflowsView = async () => await import('@/app/views/WorkflowsView.vue');
 const CredentialsView = async () =>
@@ -13,6 +15,9 @@ const ProjectSettings = async () => await import('./views/ProjectSettings.vue');
 const ExecutionsView = async () =>
 	await import('@/features/execution/executions/views/ExecutionsView.vue');
 const ProjectVariables = async () => await import('./views/ProjectVariables.vue');
+// PROTOTYPE (workspaces)
+const WorkspacesView = async () => await import('./views/WorkspacesView.vue');
+const WorkspaceProjectsView = async () => await import('./views/WorkspaceProjectsView.vue');
 
 function refreshInsightsSummary() {
 	void import('@n8n/frontend-module-insights')
@@ -139,13 +144,33 @@ export const projectsRoutes: RouteRecordRaw[] = [
 				meta: {
 					middleware: ['authenticated'],
 				},
-				redirect: { name: VIEWS.PROJECTS_WORKFLOWS },
+				// PROTOTYPE (workspaces): a workspace opens on its projects, not on workflows
+				redirect: (to) => {
+					const project = useProjectsStore().myProjects.find((p) => p.id === to.params.projectId);
+					return {
+						name: isContainerProject(project) ? WORKSPACE_PROJECTS_VIEW : VIEWS.PROJECTS_WORKFLOWS,
+						params: to.params,
+					};
+				},
 				children: commonChildRoutes
-					.map((route, idx) => ({
-						...route,
-						name: commonChildRouteExtensions.projects[idx].name,
-					}))
+					.map(
+						(route, idx): RouteRecordRaw => ({
+							...route,
+							name: commonChildRouteExtensions.projects[idx].name,
+						}),
+					)
 					.concat([
+						{
+							path: 'projects',
+							name: WORKSPACE_PROJECTS_VIEW,
+							component: WorkspaceProjectsView,
+							meta: {
+								middleware: ['authenticated', 'custom'],
+								middlewareOptions: {
+									custom: (options) => checkProjectAvailability(options?.to),
+								},
+							},
+						},
 						{
 							path: 'settings',
 							name: VIEWS.PROJECT_SETTINGS,
@@ -172,6 +197,14 @@ export const projectsRoutes: RouteRecordRaw[] = [
 					]),
 			},
 		],
+	},
+	{
+		path: '/workspaces',
+		name: WORKSPACES_VIEW,
+		component: WorkspacesView,
+		meta: {
+			middleware: ['authenticated'],
+		},
 	},
 	{
 		path: '/home',

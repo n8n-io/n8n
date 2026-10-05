@@ -37,7 +37,7 @@ import { InstanceCredentialAssignment } from './instance-credential-assignment';
 import { InvalidAuthToken } from './invalid-auth-token';
 import { PollerState } from './poller-state';
 import { ProcessedData } from './processed-data';
-import { Project } from './project';
+import { Project, asLegacyProjectType } from './project';
 import { ProjectPoolSettings } from './project-pool-settings.ee';
 import { ProjectRelation } from './project-relation';
 import { ProjectSecretsProviderAccess } from './project-secrets-provider-access';
@@ -107,6 +107,7 @@ import { WorkflowStatistics } from './workflow-statistics';
 import { WorkflowTagMapping } from './workflow-tag-mapping';
 
 export {
+	asLegacyProjectType,
 	ActivityEvent,
 	activityEventCategories,
 	activityResourceTypes,
