@@ -58,6 +58,7 @@ const props = withDefaults(defineProps<SelectProps<M>>(), {
 	sideOffset: 4,
 	align: 'start',
 	clearable: false,
+	teleported: true,
 });
 const emit = defineEmits<SelectEmits<M>>();
 defineSlots<SelectSlots<M>>();
@@ -406,7 +407,7 @@ function resolveDisplayValue(value: unknown): string | undefined {
 			/>
 		</SelectTrigger>
 
-		<SelectPortal>
+		<SelectPortal :disabled="!teleported">
 			<SelectContent
 				data-test-id="select-content"
 				:class="[$style.selectContent, size, contentClass]"

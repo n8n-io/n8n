@@ -79,6 +79,14 @@ export type SelectProps<M extends boolean = false> = Omit<
 
 	/** Additional CSS class(es) applied to the dropdown content container (portaled). */
 	contentClass?: string;
+
+	/**
+	 * Render the menu in a portal on `document.body`.
+	 * Set `false` inside a dialog so the menu stays in the dialog.
+	 * A portaled menu sits outside a focus trap, and a dialog can treat a click on it as an outside click.
+	 * @defaultValue true
+	 */
+	teleported?: boolean;
 };
 
 export type SelectEmits<M extends boolean = false> = Omit<SelectRootEmits, 'update:modelValue'> & {

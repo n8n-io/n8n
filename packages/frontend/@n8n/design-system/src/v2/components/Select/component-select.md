@@ -89,6 +89,7 @@ Primitives, object values, and `valueKey` / `labelKey` mapping are intentionally
 - `sideOffset?: number` Distance in pixels from the trigger. Default: `4`. The dropdown always opens below the trigger (`side` is not exposed).
 - `align?: 'start' | 'center' | 'end'` Alignment of the dropdown against the trigger. Default: `start`. Use `end` to line the menu up with the trigger's end edge (the right edge in LTR).
 - `contentClass?: string` Additional CSS class(es) applied to the dropdown content container (portaled).
+- `teleported?: boolean` Render the menu in a portal on `document.body`. Default: `true`. Set `false` inside a dialog so the menu stays in the dialog. A portaled menu sits outside a focus trap, and a dialog can treat a click on it as an outside click.
 
 
 **UI Props**

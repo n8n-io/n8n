@@ -847,4 +847,23 @@ describe('v2/components/Select', () => {
 			});
 		});
 	});
+
+	describe('portal', () => {
+		it('should keep the menu in place when teleported is false', async () => {
+			const wrapper = render(Select, {
+				props: {
+					items: [
+						{ value: 'Option 1', label: 'Option 1' },
+						{ value: 'Option 2', label: 'Option 2' },
+					],
+					defaultOpen: true,
+					teleported: false,
+				},
+			});
+
+			const { popover } = await getPopoverContainer(wrapper.getByTestId('select-trigger'));
+			expect(wrapper.container.contains(popover)).toBe(true);
+			expect(popover.parentElement).not.toBe(document.body);
+		});
+	});
 });
