@@ -2,17 +2,17 @@
   "name": "@n8n/backend-module-insights",
   "version": "0.1.0",
   "main": "dist/index.js",
-  "module": "src/index.ts",
+  "module": "dist/index.js",
   "types": "dist/index.d.ts",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "import": "./src/index.ts",
+      "import": "./dist/index.js",
       "require": "./dist/index.js"
     },
     "./testing": {
       "types": "./dist/testing.d.ts",
-      "import": "./src/testing.ts",
+      "import": "./dist/testing.js",
       "require": "./dist/testing.js"
     }
   },

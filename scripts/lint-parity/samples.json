@@ -349,12 +349,6 @@
 		"src/components/InsightsDashboard.test.ts",
 		"src/components/InsightsDashboard.vue"
 	],
-	"packages/modules/insights/backend": [
-		"src/database/entities/insights-metadata.ts",
-		"src/database/repositories/insights-by-period.repository.ts",
-		"src/insights-collection.service.ts",
-		"src/insights.controller.ts"
-	],
 	"packages/modules/instance-registry/frontend": [
 		"src/__tests__/setup.ts",
 		"src/index.ts",
