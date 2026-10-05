@@ -140,11 +140,11 @@ export class EngineV2ExecutionReader {
 	/** Read identity without steps. The caller must check workflow access. */
 	async findReference(
 		executionId: ExecutionIdV2,
+		abortSignal?: AbortSignal,
 	): Promise<{ id: string; workflowId: string } | undefined> {
 		const snapshot = await this.dataPlane.getExecution(executionId, {
 			includeSteps: false,
-			// Optional evidence must not delay access to a saved report.
-			abortSignal: AbortSignal.timeout(2000),
+			abortSignal,
 		});
 		if (!snapshot) return undefined;
 		if (snapshot.id !== executionId) {

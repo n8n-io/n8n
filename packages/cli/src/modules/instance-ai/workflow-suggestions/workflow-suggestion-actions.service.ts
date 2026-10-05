@@ -41,7 +41,8 @@ export class WorkflowSuggestionActionsService {
 		clientId?: string,
 	): Promise<WorkflowSuggestionActionResult> {
 		if (action === 'discard') {
-			await this.discard(actor, projectId, workflowId, suggestionId);
+			const outcome = await this.discard(actor, projectId, workflowId, suggestionId);
+			if (outcome === 'unavailable') throw new NotFoundError('Suggestion not found.');
 			return await this.service.getProposal(actor, projectId, workflowId, suggestionId);
 		}
 
@@ -216,22 +217,20 @@ export class WorkflowSuggestionActionsService {
 		workflowId: string,
 		suggestionId: string,
 		ctx: OperationContext = {},
-	) {
-		const closed = await this.txRunner.run(ctx, async (ctx) => {
+	): Promise<'discarded' | 'already_closed' | 'unavailable'> {
+		return await this.txRunner.run(ctx, async (ctx) => {
 			await this.service.requireEditor(user.id, workflowId, ctx);
 			const { suggestion, target } = await this.service.reconcilePending(
 				suggestionId,
 				{ workflowId, projectId },
 				ctx,
 			);
-			if (!target.workflow || target.projectId !== projectId) return undefined;
+			if (!target.workflow || target.projectId !== projectId) return 'unavailable';
 			if (suggestion.state === 'pending') {
-				return await this.suggestions.closePending(suggestion, 'discarded', user.id, ctx);
+				const closed = await this.suggestions.closePending(suggestion, 'discarded', user.id, ctx);
+				return closed ? 'discarded' : 'already_closed';
 			}
-			return false;
+			return 'already_closed';
 		});
-		// Keep the outdated closure when this call owns the transaction.
-		if (closed === undefined) throw new NotFoundError('Suggestion not found.');
-		return closed;
 	}
 }

@@ -356,10 +356,11 @@ it.each(['before', 'after'] as const)(
 
 it('keeps the winner when informational dismissal races another discard', async () => {
 	const { user, project, original, result, getDetail } = await fixture('needs_you', true);
-	const [, directlyDiscarded] = await Promise.all([
+	const [, discardOutcome] = await Promise.all([
 		service.dismiss(user, project.id, original.id, result.id),
 		actions.discard(user, project.id, original.id, result.suggestionId!),
 	]);
+	const directlyDiscarded = discardOutcome === 'discarded';
 	const detail = await getDetail();
 	expect(detail.reviewState).toBe(directlyDiscarded ? 'discarded' : 'dismissed');
 	expect(detail.dismissedAt === null).toBe(directlyDiscarded);

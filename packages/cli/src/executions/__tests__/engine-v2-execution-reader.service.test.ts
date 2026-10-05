@@ -179,13 +179,12 @@ describe('EngineV2ExecutionReader', () => {
 			});
 			expect(dataPlane.getExecution).toHaveBeenCalledWith(EXECUTION_ID, {
 				includeSteps: false,
-				abortSignal: expect.any(AbortSignal),
+				abortSignal: undefined,
 			});
 		});
 
-		it('cancels an optional identity read at its deadline', async () => {
+		it('cancels an identity read when the caller aborts', async () => {
 			const controller = new AbortController();
-			const deadline = vi.spyOn(AbortSignal, 'timeout').mockReturnValue(controller.signal);
 			const error = new Error('Reference lookup timed out.');
 			dataPlane.getExecution.mockImplementationOnce(
 				async (_id, options) =>
@@ -193,15 +192,10 @@ describe('EngineV2ExecutionReader', () => {
 						options?.abortSignal?.addEventListener('abort', () => reject(error), { once: true });
 					}),
 			);
-			try {
-				const read = reader.findReference(EXECUTION_ID);
-				const rejection = expect(read).rejects.toBe(error);
-				expect(deadline).toHaveBeenCalledWith(2000);
-				controller.abort();
-				await rejection;
-			} finally {
-				deadline.mockRestore();
-			}
+			const read = reader.findReference(EXECUTION_ID, controller.signal);
+			const rejection = expect(read).rejects.toBe(error);
+			controller.abort();
+			await rejection;
 		});
 
 		it('returns the identity even when the workflow snapshot is unavailable', async () => {

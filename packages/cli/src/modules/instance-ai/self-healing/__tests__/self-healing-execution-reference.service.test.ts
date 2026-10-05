@@ -54,13 +54,20 @@ describe('SelfHealingExecutionReferenceService', () => {
 			expect(engineV2.findReference).not.toHaveBeenCalled();
 		});
 
-		it('returns a v2 reference through the engine reader', async () => {
-			await expect(service.getReference(user, WORKFLOW_ID, V2_EXECUTION_ID)).resolves.toEqual({
-				status: 'available',
-				id: V2_EXECUTION_ID,
-			});
-			expect(engineV2.findReference).toHaveBeenCalledWith(V2_EXECUTION_ID);
-			expect(executions.findSingleExecution).not.toHaveBeenCalled();
+		it('reads a v2 reference with a two-second display deadline', async () => {
+			const signal = new AbortController().signal;
+			const deadline = vi.spyOn(AbortSignal, 'timeout').mockReturnValue(signal);
+			try {
+				await expect(service.getReference(user, WORKFLOW_ID, V2_EXECUTION_ID)).resolves.toEqual({
+					status: 'available',
+					id: V2_EXECUTION_ID,
+				});
+				expect(deadline).toHaveBeenCalledWith(2000);
+				expect(engineV2.findReference).toHaveBeenCalledWith(V2_EXECUTION_ID, signal);
+				expect(executions.findSingleExecution).not.toHaveBeenCalled();
+			} finally {
+				deadline.mockRestore();
+			}
 		});
 
 		it('does not read execution identity after workflow access is lost', async () => {
@@ -150,6 +157,9 @@ describe('SelfHealingExecutionReferenceService', () => {
 				await expect(
 					service.validateReference(user, WORKFLOW_ID, executionId),
 				).resolves.toBeUndefined();
+				if (executionId === V2_EXECUTION_ID) {
+					expect(engineV2.findReference).toHaveBeenCalledWith(executionId, undefined);
+				}
 			},
 		);
 

@@ -1,5 +1,6 @@
 import {
 	selfHealingResultContentSchema,
+	type SelfHealingExecutionReference,
 	type SelfHealingResultContent,
 	type SelfHealingResultDetail,
 	type SelfHealingResultActionResponse,
@@ -166,10 +167,18 @@ export class SelfHealingResultService {
 			workflowId,
 			result.executionId,
 		);
+		return this.toDetail(result, suggestion, execution);
+	}
+
+	private toDetail(
+		result: SelfHealingResult,
+		suggestion: WorkflowSuggestionProposalDetail | null,
+		execution: SelfHealingExecutionReference,
+	): SelfHealingResultDetail {
 		return {
 			resultId: result.id,
-			workflowId,
-			projectId,
+			workflowId: result.workflowId,
+			projectId: result.projectId,
 			backgroundUserId: result.backgroundUserId,
 			outcome: result.outcome,
 			summary: result.summary,
@@ -204,7 +213,7 @@ export class SelfHealingResultService {
 		if (result.outcome !== 'fix_ready' || !result.suggestionId) {
 			throw new ConflictError('Only a Fix ready result permits this action.');
 		}
-		const response = await this.actions.act(
+		const { publicationError, ...suggestion } = await this.actions.act(
 			reviewer,
 			projectId,
 			workflowId,
@@ -212,11 +221,14 @@ export class SelfHealingResultService {
 			action,
 			clientId,
 		);
+		const execution = await this.executionReferences.getReference(
+			reviewer,
+			workflowId,
+			result.executionId,
+		);
 		return {
-			...(await this.getDetail(user, projectId, workflowId, resultId)),
-			...(response.publicationError !== undefined
-				? { publicationError: response.publicationError }
-				: {}),
+			...this.toDetail(result, suggestion, execution),
+			...(publicationError !== undefined ? { publicationError } : {}),
 		};
 	}
 
@@ -234,27 +246,22 @@ export class SelfHealingResultService {
 			}
 			if (result.dismissedAt) return true;
 			if (result.suggestionId) {
-				let closed: boolean;
-				try {
-					closed = await this.actions.discard(
-						reviewer,
-						projectId,
-						workflowId,
-						result.suggestionId,
-						ctx,
-					);
-				} catch (error) {
-					// Commit any outdated reconciliation before rejecting a stale project route.
-					if (error instanceof NotFoundError) return false;
-					throw error;
-				}
-				if (!closed) return true;
+				const outcome = await this.actions.discard(
+					reviewer,
+					projectId,
+					workflowId,
+					result.suggestionId,
+					ctx,
+				);
+				if (outcome === 'unavailable') return false;
+				if (outcome === 'already_closed') return true;
 			} else {
 				await this.requireCurrentProject(workflowId, projectId, ctx);
 			}
 			await this.results.dismissResult(result.id, user.id, ctx);
 			return true;
 		});
+		// Commit outdated reconciliation before rejecting a stale project route.
 		if (!found) throw new NotFoundError('Result not found.');
 		return await this.getDetail(user, projectId, workflowId, resultId);
 	}
