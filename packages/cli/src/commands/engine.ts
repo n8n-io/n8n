@@ -1,3 +1,4 @@
+import { AzureBlobConfig, ObjectStoreConfig } from '@n8n/blob-storage';
 import { EngineConfig } from '@n8n/config';
 import { Command } from '@n8n/decorators';
 import { Container } from '@n8n/di';
@@ -61,8 +62,11 @@ export class Engine extends BaseCommand {
 	 * Both planes share one binary data store, so this host registers the same
 	 * blob managers as the control plane. `database` mode stores the bytes in the
 	 * control plane database, which this process does not have, so it is refused
-	 * here: otherwise the error shows only when a run handles its first file.
-	 * No license check yet: the certificate lives in the control plane database too.
+	 * here: otherwise the error shows only when a run handles its first file. The
+	 * same goes for an `s3` or `azure` mode with no store configured: the manager
+	 * setup skips a store that is not configured, and the service would then keep
+	 * every file inline. No license check yet: the certificate lives in the control
+	 * plane database too.
 	 */
 	private async initBinaryDataStore() {
 		const { mode } = Container.get(BinaryDataConfig);
@@ -70,6 +74,18 @@ export class Engine extends BaseCommand {
 		if (mode === 'database') {
 			throw new UserError(
 				'The engine process has no control plane database, so it cannot store binary data in `database` mode. Set N8N_DEFAULT_BINARY_DATA_MODE to filesystem, s3 or azure.',
+			);
+		}
+
+		if (mode === 's3' && Container.get(ObjectStoreConfig).bucket.name === '') {
+			throw new UserError(
+				'S3 binary data storage requires `N8N_EXTERNAL_STORAGE_S3_BUCKET_NAME` to be set.',
+			);
+		}
+
+		if (mode === 'azure' && Container.get(AzureBlobConfig).containerName === '') {
+			throw new UserError(
+				'Azure Blob binary data storage requires `N8N_EXTERNAL_STORAGE_AZURE_CONTAINER_NAME` to be set.',
 			);
 		}
 

@@ -1,4 +1,5 @@
 import { mockInstance } from '@n8n/backend-test-utils';
+import { AzureBlobConfig, ObjectStoreConfig } from '@n8n/blob-storage';
 import { ObjectStoreService } from '@n8n/blob-storage/object-store';
 import { EngineConfig } from '@n8n/config';
 import { DbConnection } from '@n8n/db';
@@ -36,6 +37,9 @@ const taskRunnerModule = mockInstance(TaskRunnerModule);
 const binaryDataConfig = mockInstance(BinaryDataConfig, { mode: 'filesystem' });
 const binaryDataService = mockInstance(BinaryDataService);
 const objectStoreService = mockInstance(ObjectStoreService);
+// Mocked so the tests do not depend on the storage env of the machine.
+const objectStoreConfig = mockInstance(ObjectStoreConfig, { bucket: { name: '', region: '' } });
+const azureBlobConfig = mockInstance(AzureBlobConfig, { containerName: '' });
 const publisher = mock<RedisResponsePublisher>();
 const redisClientService = mockInstance(RedisClientService, {
 	toValidPrefix: (prefix: string) => prefix,
@@ -60,6 +64,8 @@ describe('Engine', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		binaryDataConfig.mode = 'filesystem';
+		objectStoreConfig.bucket.name = '';
+		azureBlobConfig.containerName = '';
 		// The package test script sets `DB_TYPE`, which the command refuses. Start
 		// from an env with no control plane database and no encryption key.
 		process.env = Object.fromEntries(
@@ -207,6 +213,24 @@ describe('Engine', () => {
 				binaryDataConfig.mode = 'database';
 
 				await expect(createEngine().init()).rejects.toThrow('N8N_DEFAULT_BINARY_DATA_MODE');
+				expect(binaryDataService.init).not.toHaveBeenCalled();
+				expect(runtime.init).not.toHaveBeenCalled();
+			});
+
+			it('refuses s3 mode without a bucket name', async () => {
+				binaryDataConfig.mode = 's3';
+
+				await expect(createEngine().init()).rejects.toThrow('N8N_EXTERNAL_STORAGE_S3_BUCKET_NAME');
+				expect(binaryDataService.init).not.toHaveBeenCalled();
+				expect(runtime.init).not.toHaveBeenCalled();
+			});
+
+			it('refuses azure mode without a container name', async () => {
+				binaryDataConfig.mode = 'azure';
+
+				await expect(createEngine().init()).rejects.toThrow(
+					'N8N_EXTERNAL_STORAGE_AZURE_CONTAINER_NAME',
+				);
 				expect(binaryDataService.init).not.toHaveBeenCalled();
 				expect(runtime.init).not.toHaveBeenCalled();
 			});
