@@ -1813,6 +1813,7 @@ export class TelemetryEventRelay extends EventRelay {
 					this.globalConfig.workflowHistoryCompaction.trimmingTimeWindowDays,
 			},
 			n8n_deployment_type: this.globalConfig.deployment.type,
+			n8n_install_method: this.globalConfig.deployment.installMethod || undefined,
 			n8n_binary_data_mode: this.binaryDataConfig.mode,
 			smtp_set_up: this.globalConfig.userManagement.emails.mode === 'smtp',
 			ldap_allowed: authenticationMethod === 'ldap',
@@ -1889,6 +1890,7 @@ export class TelemetryEventRelay extends EventRelay {
 			release_channel: this.globalConfig.generic.releaseChannel,
 			executions_mode: this.globalConfig.executions.mode,
 			n8n_deployment_type: this.globalConfig.deployment.type,
+			n8n_install_method: this.globalConfig.deployment.installMethod || undefined,
 			db_type: this.globalConfig.database.type,
 			db_version: dbVersion,
 

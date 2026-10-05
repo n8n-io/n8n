@@ -64,6 +64,7 @@ describe('TelemetryEventRelay', () => {
 	const globalConfig = mock<GlobalConfig>({
 		deployment: {
 			type: 'default',
+			installMethod: 'helm-chart/1.14.0',
 		},
 		userManagement: {
 			emails: {
@@ -3528,6 +3529,7 @@ describe('TelemetryEventRelay', () => {
 				n8n_host: expect.any(String),
 				version_cli: N8N_VERSION,
 				n8n_deployment_type: 'default',
+				n8n_install_method: 'helm-chart/1.14.0',
 			});
 			expect(telemetry.groupIdentify).toHaveBeenCalledWith({
 				traits: instanceGroupFacts,
@@ -3550,6 +3552,7 @@ describe('TelemetryEventRelay', () => {
 					},
 					n8n_binary_data_mode: 'default',
 					n8n_deployment_type: 'default',
+					n8n_install_method: 'helm-chart/1.14.0',
 					saml_enabled: false,
 					smtp_set_up: true,
 					system_info: {
@@ -3607,6 +3610,21 @@ describe('TelemetryEventRelay', () => {
 					},
 				}),
 			);
+		});
+
+		it('should leave out the install method on `server-started` when it is unset', async () => {
+			globalConfig.deployment.installMethod = '';
+			try {
+				eventService.emit('server-started');
+				await flushPromises();
+			} finally {
+				globalConfig.deployment.installMethod = 'helm-chart/1.14.0';
+			}
+
+			const [{ traits }] = telemetry.groupIdentify.mock.calls[0];
+			const [info] = telemetry.identify.mock.calls[0];
+			expect(traits?.n8n_install_method).toBeUndefined();
+			expect(info?.n8n_install_method).toBeUndefined();
 		});
 
 		it('should skip the PostHog group update on `server-started` before owner setup', async () => {
