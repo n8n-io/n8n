@@ -2,7 +2,7 @@ import { EngineConfig } from '@n8n/config';
 import { Command } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import type { ExecutionResponseSender } from '@n8n/engine';
-import { ErrorReporter } from 'n8n-core';
+import { BinaryDataConfig, BinaryDataService, ErrorReporter } from 'n8n-core';
 import { Expression, UserError } from 'n8n-workflow';
 
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
@@ -42,6 +42,8 @@ export class Engine extends BaseCommand {
 
 		await super.init();
 
+		await this.initBinaryDataStore();
+
 		// The control plane runs in another process, so responses travel over Redis.
 		const { createRedisExecutionResponseSender } = await import(
 			'@/modules/engine-v2/response-channel/redis-execution-response-channel.js'
@@ -53,6 +55,26 @@ export class Engine extends BaseCommand {
 		await this.runtime.init(this.responseSender);
 
 		await Container.get(LoadNodesAndCredentials).postProcessLoaders();
+	}
+
+	/**
+	 * Both planes share one binary data store, so this host registers the same
+	 * blob managers as the control plane. `database` mode stores the bytes in the
+	 * control plane database, which this process does not have, so it is refused
+	 * here: otherwise the error shows only when a run handles its first file.
+	 * No license check yet: the certificate lives in the control plane database too.
+	 */
+	private async initBinaryDataStore() {
+		const { mode } = Container.get(BinaryDataConfig);
+
+		if (mode === 'database') {
+			throw new UserError(
+				'The engine process has no control plane database, so it cannot store binary data in `database` mode. Set N8N_DEFAULT_BINARY_DATA_MODE to filesystem, s3 or azure.',
+			);
+		}
+
+		await this.initBinaryDataBlobManagers({ s3: mode === 's3', azure: mode === 'azure' });
+		await Container.get(BinaryDataService).init();
 	}
 
 	async run() {
