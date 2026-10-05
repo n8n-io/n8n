@@ -125,11 +125,7 @@ export class DataTableImporter {
 		if (plan.creations.length > 0) {
 			// Defense in depth: the plan phase already reports a missing scope as a
 			// blocking issue, but apply re-checks before writing anything.
-			if (
-				!(await userHasScopes(context.user, ['dataTable:create'], false, {
-					projectId: context.projectId,
-				}))
-			) {
+			if (!(await hasProjectScope(context, 'dataTable:create'))) {
 				throw new ForbiddenError('User is missing a scope required to create a data table');
 			}
 
@@ -143,11 +139,7 @@ export class DataTableImporter {
 		}
 
 		if (plan.updates.length > 0) {
-			if (
-				!(await userHasScopes(context.user, ['dataTable:update'], false, {
-					projectId: context.projectId,
-				}))
-			) {
+			if (!(await hasProjectScope(context, 'dataTable:update'))) {
 				throw new ForbiddenError('User is missing a scope required to update a data table');
 			}
 
@@ -168,12 +160,7 @@ export class DataTableImporter {
 	): Promise<DataTableResolutionFailure[]> {
 		const failures: DataTableResolutionFailure[] = [];
 
-		if (
-			creations.length > 0 &&
-			!(await userHasScopes(context.user, ['dataTable:create'], false, {
-				projectId: context.projectId,
-			}))
-		) {
+		if (creations.length > 0 && !(await hasProjectScope(context, 'dataTable:create'))) {
 			failures.push({
 				kind: 'permission-denied',
 				missingScope: 'dataTable:create',
@@ -181,12 +168,7 @@ export class DataTableImporter {
 			});
 		}
 
-		if (
-			updates.length > 0 &&
-			!(await userHasScopes(context.user, ['dataTable:update'], false, {
-				projectId: context.projectId,
-			}))
-		) {
+		if (updates.length > 0 && !(await hasProjectScope(context, 'dataTable:update'))) {
 			failures.push({
 				kind: 'permission-denied',
 				missingScope: 'dataTable:update',
@@ -291,6 +273,13 @@ function normalizeColumnIndexes(table: SerializedDataTable): SerializedDataTable
 		.sort((a, b) => a.index - b.index || (a.name < b.name ? -1 : 1))
 		.map((column, index) => ({ ...column, index }));
 	return { ...table, columns };
+}
+
+async function hasProjectScope(
+	context: ImportContext,
+	scope: 'dataTable:create' | 'dataTable:update',
+): Promise<boolean> {
+	return await userHasScopes(context.user, [scope], false, { projectId: context.projectId });
 }
 
 /** Sorted unique workflow ids referencing the given requirements. */

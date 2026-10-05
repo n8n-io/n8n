@@ -60,7 +60,6 @@ export function createFailure(
 			| 'missingColumns'
 			| 'typeMismatches'
 			| 'extraColumns'
-			| 'missingScope'
 			| 'conflictingTableId'
 			| 'currentName'
 		>

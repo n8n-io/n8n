@@ -40,7 +40,10 @@ export function assertVariableWritesAllowed(options: {
 	if (hasOverwrites) assertPackageImportApiKeyScopes(apiKeyScopes, ['variable:update']);
 }
 
-/** Plan-derived: a scope is needed only when the plan creates or changes a table, also for project packages, which have no pre-plan create gate. */
+/**
+ * Plan-derived: requires a scope only when a plan creates or changes a table. Project packages
+ * have no pre-plan create gate, so this gate also covers them.
+ */
 export function assertDataTableWritesAllowed(
 	apiKeyScopes: string[] | undefined,
 	dataTablePlans: DataTableImportPlan[],
@@ -54,10 +57,9 @@ export function assertDataTableWritesAllowed(
 }
 
 /**
- * Plan-derived, unlike the pre-plan data-table create gate: a tag must
- * never block an import that would not write it (skipped consumers, disabled
- * tags, dropped conflicts), so the assert looks at what the plans actually
- * create, rename, or reconcile.
+ * Plan-derived: a tag must never block an import that would not write it
+ * (skipped consumers, disabled tags, dropped conflicts), so the assert looks
+ * at what the plans actually create, rename, or reconcile.
  */
 export function assertTagWritesAllowed(
 	apiKeyScopes: string[] | undefined,

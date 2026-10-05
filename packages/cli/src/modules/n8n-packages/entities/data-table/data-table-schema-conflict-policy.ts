@@ -10,8 +10,7 @@ type TargetColumns = Array<{ name: string; type: string }>;
  * accepts a target that satisfies the package schema, even when the target has
  * additional columns of its own; `fail` is the strict drift-detection choice
  * and rejects any difference, including a harmless superset. Neither alters
- * the matched target table.
- * `overwrite` never blocks on schema. Its write behavior is in `resolveRequirement` and `diffDataTableSchema`.
+ * the matched target table. `overwrite` never blocks on schema.
  */
 /* eslint-disable @typescript-eslint/naming-convention -- API data table schema conflict policy keys */
 const SCHEMA_CONFLICTS: Record<
