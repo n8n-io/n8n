@@ -83,6 +83,21 @@ const groupLabels = {
 };
 
 const groupedItems = computed<ChatHistoryItem[]>(() => {
+	// With a leading item, `loading` is never forwarded to `N8nDropdownMenu` (see the
+	// template below) — its own loading state would otherwise replace every row, including
+	// the pinned one, with skeletons. Show a non-interactive row here instead, before doing
+	// any grouping work.
+	if (props.leadingItem && props.loading) {
+		return [
+			props.leadingItem,
+			{
+				id: '__chat-history-loading__',
+				label: i18n.baseText('generic.loadingEllipsis'),
+				header: true,
+			},
+		];
+	}
+
 	const groups = new Map<(typeof groupOrder)[number], ChatHistoryItem[]>();
 	const undated: ChatHistoryItem[] = [];
 	const now = new Date();
@@ -193,7 +208,7 @@ defineExpose({ highlightFirstItem, focusTrigger });
 		:id="contentId"
 		:model-value="props.modelValue"
 		:items="groupedItems"
-		:loading="props.loading"
+		:loading="!props.leadingItem && props.loading"
 		:max-height="props.maxHeight"
 		:data-test-id="props.dataTestId"
 		:content-test-id="props.contentTestId"

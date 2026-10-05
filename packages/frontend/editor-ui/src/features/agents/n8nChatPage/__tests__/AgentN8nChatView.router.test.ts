@@ -105,6 +105,8 @@ describe('AgentN8nChatView with a real router', () => {
 		await panel.vm.$emit('session-created', mintedId);
 		await flushPromises();
 		expect(wrapper.findComponent(AgentChatPanelStub).props('continueSessionId')).toBe(mintedId);
+		// `newSession` derives from `!props.agentThreadId` — the route now carries one.
+		expect(wrapper.findComponent(AgentChatPanelStub).props('newSession')).toBe(false);
 
 		const updatedPanel = wrapper.findComponent(AgentChatPanelStub);
 		await updatedPanel.vm.$emit('update:streaming', true);

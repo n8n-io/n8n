@@ -210,18 +210,29 @@ describe('useMergedChatHistory', () => {
 		expect(ids).toEqual(['g1', 'g2']);
 	});
 
-	it('drops stale agent paging state on unmount so a resumed view starts clean', async () => {
-		const wrapper = mountComposable();
-		await vi.waitFor(() => expect(listN8nChatThreadsMock).toHaveBeenCalledTimes(1));
-		wrapper.unmount();
-
-		listN8nChatThreadsMock.mockClear();
-		const fresh = mountComposable();
-		await vi.waitFor(() => expect(listN8nChatThreadsMock).toHaveBeenCalledTimes(1));
-		expect(listN8nChatThreadsMock).toHaveBeenCalledWith(expect.anything(), {
-			limit: 30,
-			cursor: undefined,
+	it('hides already-loaded agent threads once an assistant search is active', async () => {
+		listN8nChatThreadsMock.mockResolvedValueOnce({
+			data: [agentThread('g1', '2026-01-02T00:00:00.000Z')],
+			nextCursor: null,
 		});
-		expect(fresh.vm.items).toEqual([]);
+		const wrapper = mountComposable();
+		await vi.waitFor(() =>
+			expect(wrapper.vm.items.map((item: { thread: { id: string } }) => item.thread.id)).toEqual([
+				'g1',
+			]),
+		);
+
+		assistantHistory.value = {
+			...assistantHistory.value,
+			search: 'x',
+			threads: [
+				{ id: 'a1', title: 'Assistant chat', createdAt: '2026-01-01', updatedAt: '2026-01-01' },
+			],
+		};
+		await wrapper.vm.$nextTick();
+
+		expect(wrapper.vm.items.map((item: { thread: { id: string } }) => item.thread.id)).toEqual([
+			'a1',
+		]);
 	});
 });

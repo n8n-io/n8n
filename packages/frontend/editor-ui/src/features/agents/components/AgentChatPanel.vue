@@ -239,7 +239,8 @@ function isQueueItemBusy(item: AgentChatQueueItem) {
 	);
 }
 function canMoveQueueItem(items: AgentChatQueueItem[], from: number, to: number) {
-	if (queueEdit.value || from === to || !items[from] || !items[to]) return false;
+	if (!capabilities.value.reorder || queueEdit.value || from === to || !items[from] || !items[to])
+		return false;
 	return !items.slice(Math.min(from, to), Math.max(from, to) + 1).some(isQueueItemBusy);
 }
 function canDragQueueItem(index: number) {

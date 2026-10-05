@@ -116,7 +116,7 @@ export const AgentsModule = defineFrontendModule({
 			component: N8nChatAgentLibraryView,
 			meta: {
 				layout: 'instanceAi',
-				middleware: ['authenticated'],
+				middleware: ['authenticated', 'custom'],
 			},
 			beforeEnter: n8nChatRouteGuard,
 		},
@@ -130,7 +130,7 @@ export const AgentsModule = defineFrontendModule({
 			props: true,
 			meta: {
 				layout: 'instanceAi',
-				middleware: ['authenticated'],
+				middleware: ['authenticated', 'custom'],
 			},
 			beforeEnter: n8nChatRouteGuard,
 		},

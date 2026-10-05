@@ -1,7 +1,8 @@
 /* eslint-disable import-x/no-extraneous-dependencies -- test-only pattern: @vue/test-utils is a transitive devDep */
-import { ref } from 'vue';
+import { effectScope, ref } from 'vue';
 import { flushPromises } from '@vue/test-utils';
 import type { AgentChatListResponse } from '@n8n/api-types';
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 
 import { useN8nChatAgents } from './useN8nChatAgents';
 
@@ -18,16 +19,6 @@ const showErrorMock = vi.fn();
 vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({ showError: showErrorMock }),
 }));
-
-function deferred<T>() {
-	let resolve!: (value: T) => void;
-	let reject!: (error: unknown) => void;
-	const promise = new Promise<T>((res, rej) => {
-		resolve = res;
-		reject = rej;
-	});
-	return { promise, resolve, reject };
-}
 
 describe('useN8nChatAgents', () => {
 	beforeEach(() => {
@@ -112,8 +103,8 @@ describe('useN8nChatAgents', () => {
 	});
 
 	it('drops a stale response that resolves after a newer request', async () => {
-		const first = deferred<AgentChatListResponse>();
-		const second = deferred<AgentChatListResponse>();
+		const first = createDeferredPromise<AgentChatListResponse>();
+		const second = createDeferredPromise<AgentChatListResponse>();
 		listN8nChatAgentsMock.mockReturnValueOnce(first.promise).mockReturnValueOnce(second.promise);
 		const query = ref('');
 		const page = ref(1);
@@ -138,6 +129,34 @@ describe('useN8nChatAgents', () => {
 		expect(count.value).toBe(1);
 	});
 
+	it('drops a stale rejection that arrives after a newer request already resolved', async () => {
+		const first = createDeferredPromise<AgentChatListResponse>();
+		const second = createDeferredPromise<AgentChatListResponse>();
+		listN8nChatAgentsMock.mockReturnValueOnce(first.promise).mockReturnValueOnce(second.promise);
+		const query = ref('');
+		const page = ref(1);
+		const pageSize = 50;
+
+		const { agents, loadFailed } = useN8nChatAgents({ query, page, pageSize });
+		await flushPromises();
+
+		page.value = 2;
+		await flushPromises();
+
+		// Newer request (page 2) resolves first; older (page 1) fails after.
+		second.resolve({
+			count: 1,
+			data: [{ id: 'a2', name: 'Two', project: { id: 'p', name: 'P' } }],
+		});
+		await flushPromises();
+		first.reject(new Error('network down'));
+		await flushPromises();
+
+		expect(showErrorMock).not.toHaveBeenCalled();
+		expect(loadFailed.value).toBe(false);
+		expect(agents.value).toEqual([{ id: 'a2', name: 'Two', project: { id: 'p', name: 'P' } }]);
+	});
+
 	it('toasts a translated error, clears results, flags loadFailed, and stops loading on failure', async () => {
 		listN8nChatAgentsMock
 			.mockResolvedValueOnce({
@@ -157,12 +176,35 @@ describe('useN8nChatAgents', () => {
 		page.value = 2;
 		await flushPromises();
 
-		expect(showErrorMock).toHaveBeenCalledWith(expect.any(Error), expect.any(String));
+		expect(showErrorMock).toHaveBeenCalledWith(
+			expect.any(Error),
+			"Couldn't load agents. Try again.",
+		);
 		expect(isLoading.value).toBe(false);
 		expect(loadFailed.value).toBe(true);
 		// Stale results/count must not linger once the fetch has failed.
 		expect(agents.value).toEqual([]);
 		expect(count.value).toBe(0);
+	});
+
+	it('drops a response that settles after the owning scope is stopped — no toast, no state mutation', async () => {
+		const pending = createDeferredPromise<AgentChatListResponse>();
+		listN8nChatAgentsMock.mockReturnValueOnce(pending.promise);
+		const query = ref('');
+		const page = ref(1);
+		const pageSize = 50;
+
+		const scope = effectScope();
+		const { agents, loadFailed } = scope.run(() => useN8nChatAgents({ query, page, pageSize }))!;
+		await flushPromises();
+
+		scope.stop();
+		pending.reject(new Error('network down'));
+		await flushPromises();
+
+		expect(showErrorMock).not.toHaveBeenCalled();
+		expect(agents.value).toEqual([]);
+		expect(loadFailed.value).toBe(false);
 	});
 
 	it('retry() re-fetches and clears loadFailed on success', async () => {

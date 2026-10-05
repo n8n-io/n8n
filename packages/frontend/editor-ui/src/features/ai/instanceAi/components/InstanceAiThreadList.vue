@@ -112,8 +112,9 @@ function itemRowId(item: RecentChatItem): string {
 const scopedItems = computed<RecentChatItem[]>(() => {
 	// Same merge as the sidebar.
 	if (isRecentOnly.value) {
-		return mergeRecentChats(history.value.threads, agentThreadsStore.recentThreads, {
+		return mergeRecentChats(history.value.threads, agentThreadsStore.knownThreads, {
 			limit: RECENT_CHATS_LIMIT,
+			openThreadId: activeThreadId.value,
 		});
 	}
 	// Scope the server-paged history to the embedding host's subject, such as one agent.

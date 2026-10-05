@@ -80,6 +80,21 @@ describe('useAgentN8nChatThreadsStore', () => {
 		});
 	});
 
+	describe('knownThreads', () => {
+		it('sorts every known thread newest updatedAt first', async () => {
+			mockListN8nChatThreads.mockResolvedValueOnce({
+				data: [makeThread('old', '2025-01-01T00:00:00.000Z')],
+				nextCursor: null,
+			});
+			mockGetN8nChatThread.mockResolvedValueOnce(makeThread('opened', '2025-01-03T00:00:00.000Z'));
+			const store = useAgentN8nChatThreadsStore();
+			await store.fetchRecent(10);
+			await store.loadThread('opened');
+
+			expect(store.knownThreads.map((thread) => thread.id)).toEqual(['opened', 'old']);
+		});
+	});
+
 	describe('loadThread', () => {
 		it('fetches a thread missing from recentThreads and adds it', async () => {
 			const thread = makeThread('1', '2025-01-02T00:00:00.000Z');
@@ -124,12 +139,16 @@ describe('useAgentN8nChatThreadsStore', () => {
 
 		it('swallows errors, keeping recentThreads unchanged — a missing title must not break the page', async () => {
 			vi.spyOn(console, 'error').mockImplementation(() => {});
+			const thread1 = makeThread('1', '2025-01-02T00:00:00.000Z');
+			mockListN8nChatThreads.mockResolvedValueOnce({ data: [thread1], nextCursor: null });
 			mockGetN8nChatThread.mockRejectedValueOnce(new Error('not found'));
 			const store = useAgentN8nChatThreadsStore();
+			await store.fetchRecent(10);
 
-			await expect(store.loadThread('1')).resolves.toBeUndefined();
+			await expect(store.loadThread('2')).resolves.toBeUndefined();
 
-			expect(store.recentThreads).toEqual([]);
+			expect(store.recentThreads).toEqual([thread1]);
+			expect(store.threadsById.has('2')).toBe(false);
 		});
 	});
 });

@@ -1,9 +1,9 @@
-import { N8nInput } from '@n8n/design-system';
+import { N8nIcon, N8nInput } from '@n8n/design-system';
 import userEvent from '@testing-library/user-event';
 import { shallowMount } from '@vue/test-utils';
 import RecentChatIcon from '@/features/agents/n8nChatPage/components/RecentChatIcon.vue';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { nextTick, reactive } from 'vue';
+import { nextTick, reactive, ref } from 'vue';
 import InstanceAiThreadsView from '../InstanceAiThreadsView.vue';
 
 type Row = { id: string; title: string; createdAt: string; updatedAt: string };
@@ -27,7 +27,7 @@ vi.mock('vue-router', () => ({ useRouter: () => ({ push: vi.fn() }) }));
 
 // Flag off by default, matching production until the 125_agents_n8n_chat experiment
 // is on — the agent side of `useMergedChatHistory` is covered separately.
-const n8nChatFlag = { value: false };
+const n8nChatFlag = ref(false);
 vi.mock('@/features/agents/composables/useAgentsN8nChatFlag', () => ({
 	useAgentsN8nChatFlag: () => n8nChatFlag,
 }));
@@ -91,6 +91,18 @@ describe('InstanceAiThreadsView', () => {
 			expect.stringContaining('Alpha'),
 			expect.stringContaining('Beta'),
 		]);
+	});
+
+	it('shows the generic message icon, not the agent icon, with the flag off', async () => {
+		store.threadHistory.threads = [
+			{ id: 'a', title: 'Alpha', createdAt: '2026-01-01', updatedAt: '2026-01-02' },
+		];
+		store.threadHistory.hasMore = false;
+		const wrapper = mountView();
+		await nextTick();
+
+		expect(wrapper.findComponent(RecentChatIcon).exists()).toBe(false);
+		expect(wrapper.findComponent(N8nIcon).props('icon')).toBe('message-circle');
 	});
 
 	it('offers a retry after a failed page', async () => {
@@ -207,6 +219,22 @@ describe('InstanceAiThreadsView', () => {
 			]);
 			// Only the assistant row gets a rename/delete menu.
 			expect(wrapper.findAllComponents({ name: 'ActionDropdown' })).toHaveLength(1);
+		});
+
+		it('shows the error and a retry when only the agent fetch fails', async () => {
+			store.threadHistory.threads = [
+				{ id: 'a', title: 'Assistant chat', createdAt: '2026-01-01', updatedAt: '2026-01-02' },
+			];
+			store.threadHistory.hasMore = false;
+			listN8nChatThreadsMock.mockRejectedValueOnce(new Error('network down'));
+			const wrapper = mountView();
+			await vi.advanceTimersByTimeAsync(0);
+
+			expect(wrapper.text()).toContain("Couldn't load chats");
+			await wrapper.find('[data-test-id="instance-ai-threads-retry"]').trigger('click');
+			// Retry re-fetches both sources.
+			expect(store.loadThreadHistoryPage).toHaveBeenCalledTimes(2);
+			expect(listN8nChatThreadsMock).toHaveBeenCalledTimes(2);
 		});
 
 		it('shows a fallback title and the agent icon for an untitled agent thread', async () => {

@@ -67,7 +67,9 @@ export function useMergedChatHistory() {
 	const hasMore = computed(
 		() => assistant.history.value.hasMore || (agentThreadsActive.value && agent.hasMore.value),
 	);
-	const isLoading = computed(() => assistant.history.value.loading);
+	const isLoading = computed(
+		() => assistant.history.value.loading || (agentThreadsActive.value && agent.isLoading.value),
+	);
 	const error = computed(
 		() => assistant.history.value.error || (agentThreadsActive.value && agent.error.value),
 	);

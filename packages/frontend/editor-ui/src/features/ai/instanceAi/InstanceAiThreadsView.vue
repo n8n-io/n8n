@@ -41,6 +41,8 @@ const {
 	items: mergedThreads,
 	hasMore,
 	history,
+	isLoading,
+	error,
 	search,
 	listRef,
 	sentinelRef,
@@ -183,10 +185,10 @@ async function handleThreadAction(action: string, thread: InstanceAiThreadSummar
 					</template>
 				</div>
 
-				<div v-if="history.loading" :class="$style.status" role="status">
+				<div v-if="isLoading" :class="$style.status" role="status">
 					<N8nText color="text-light">{{ i18n.baseText('instanceAi.threads.loading') }}</N8nText>
 				</div>
-				<div v-else-if="history.error" :class="$style.status" role="alert">
+				<div v-else-if="error" :class="$style.status" role="alert">
 					<N8nText>{{ i18n.baseText('instanceAi.threads.loadError') }}</N8nText>
 					<N8nButton
 						variant="outline"

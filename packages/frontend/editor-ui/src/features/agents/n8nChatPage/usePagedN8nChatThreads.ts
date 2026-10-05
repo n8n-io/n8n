@@ -88,6 +88,9 @@ export function usePagedN8nChatThreads(options: UsePagedN8nChatThreadsOptions) {
 		error.value = false;
 		replaceOnNextPage = true;
 		inFlight = false;
+		// A pending request's own `finally` is version-guarded and skips clearing this,
+		// so clear it here or a reset during a fetch leaves `isLoading` stuck true.
+		isLoading.value = false;
 	}
 
 	if (options.agentId !== undefined) {

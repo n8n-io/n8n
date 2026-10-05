@@ -31,8 +31,11 @@ export function useRecentChats() {
 	const recentChats = computed<RecentChatItem[]>(() =>
 		mergeRecentChats(
 			instanceAiStore.threads,
-			isAgentsN8nChatFlag.value ? agentThreadsStore.recentThreads : [],
-			{ limit: RECENT_CHATS_LIMIT, openThreadId: openThreadId.value },
+			isAgentsN8nChatFlag.value ? agentThreadsStore.knownThreads : [],
+			{
+				limit: RECENT_CHATS_LIMIT,
+				openThreadId: openThreadId.value,
+			},
 		),
 	);
 

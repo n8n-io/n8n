@@ -4765,7 +4765,7 @@ describe('useAgentChatStream — n8n Chat channel', () => {
 		);
 	});
 
-	it('loads history, queue, and cancellation routes with the n8n-chat channel', async () => {
+	it('loads history and queue, and routes queue removal, through the n8n-chat channel', async () => {
 		const hook = buildN8nChatHook('thread-1');
 		await hook.loadHistory();
 
@@ -4785,14 +4785,6 @@ describe('useAgentChatStream — n8n Chat channel', () => {
 		);
 
 		await hook.removeQueuedMessage('q1');
-		// removeQueuedMessage no-ops without a matching pending row, but the
-		// route it would have called still must carry the channel.
-		getAgentChatQueueMock.mockResolvedValue({
-			items: [{ id: 'q1', message: 'queued', createdAt: new Date().toISOString() }],
-		});
-		hook.refresh();
-		await flushPromises();
-		await hook.removeQueuedMessage('q1');
 		expect(removeAgentQueuedMessageMock).toHaveBeenCalledWith(
 			{ baseUrl: 'http://localhost:5678' },
 			'p1',
@@ -4801,6 +4793,22 @@ describe('useAgentChatStream — n8n Chat channel', () => {
 			'q1',
 			'n8n-chat',
 		);
+	});
+
+	it('never reorders and never calls the reorder route on the n8n-chat channel', async () => {
+		getAgentChatQueueMock.mockResolvedValue({
+			items: [
+				{ id: 'q1', message: 'one', createdAt: new Date().toISOString() },
+				{ id: 'q2', message: 'two', createdAt: new Date().toISOString() },
+			],
+		});
+		const hook = buildN8nChatHook('thread-1');
+		await hook.loadHistory();
+
+		expect(hook.capabilities.value.reorder).toBe(false);
+
+		await hook.reorderQueuedMessage('q1', 'q2', ['q1', 'q2']);
+		expect(reorderAgentQueuedMessageMock).not.toHaveBeenCalled();
 	});
 
 	it('skips the history fetch entirely for a fresh n8n Chat with no thread', async () => {

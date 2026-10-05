@@ -339,6 +339,23 @@ describe('InstanceAiThreadList', () => {
 			expect(getByText('View all')).toBeInTheDocument();
 		});
 
+		it('keeps an older active assistant thread visible past the top-5 cutoff', async () => {
+			const store = mockedStore(useInstanceAiStore);
+			const threads = ['a', 'b', 'c', 'd', 'e', 'f'].map((id, index) => ({
+				...thread(id),
+				updatedAt: `2026-01-0${index + 1}T00:00:00.000Z`,
+			}));
+			store.threadHistory.threads = threads;
+			store.threadHistory.hasMore = true;
+
+			const { findAllByTestId } = await renderList({ props: { activeThreadId: 'a' } });
+
+			const rows = await findAllByTestId('instance-ai-thread-item');
+			expect(rows.map((row) => row.textContent)).toContainEqual(
+				expect.stringContaining('Thread a'),
+			);
+		});
+
 		it('pages through every Assistant match while searching, without the recent-chats limit', async () => {
 			const store = mockedStore(useInstanceAiStore);
 			store.threadHistory.search = 'invoice';

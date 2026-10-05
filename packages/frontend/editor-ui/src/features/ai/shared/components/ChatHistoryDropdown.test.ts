@@ -170,6 +170,24 @@ describe('ChatHistoryDropdown', () => {
 		expect(emptyItems[1]).toMatchObject({ label: 'No chats yet', header: true });
 	});
 
+	it('keeps the leading item clickable while loading, instead of hiding it behind skeletons', async () => {
+		const leadingItem: TestItem = { id: 'new-chat', label: 'New chat', testId: 'new-chat' };
+
+		const wrapper = mountHistory([], false, { leadingItem, loading: true });
+
+		const dropdown = wrapper.getComponent({ name: 'N8nDropdownMenu' });
+		expect(dropdown.props('loading')).toBe(false);
+		const items = dropdown.props('items');
+		expect(items.map((menuItem: TestItem) => menuItem.id)).toEqual([
+			'new-chat',
+			'__chat-history-loading__',
+		]);
+		expect(items[1]).toMatchObject({ header: true });
+
+		await wrapper.getComponent({ name: 'N8nText' }).trigger('click');
+		expect(wrapper.emitted('select')).toEqual([['new-chat']]);
+	});
+
 	it('delays selection only while waiting for a possible double-click', async () => {
 		vi.useFakeTimers();
 		try {

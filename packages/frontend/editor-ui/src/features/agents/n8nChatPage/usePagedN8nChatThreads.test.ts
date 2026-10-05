@@ -1,5 +1,7 @@
 import { defineComponent, ref } from 'vue';
 import { mount } from '@vue/test-utils';
+import type { AgentN8nChatThreadSummary } from '@n8n/api-types';
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 
 import { usePagedN8nChatThreads } from './usePagedN8nChatThreads';
 
@@ -135,6 +137,25 @@ describe('usePagedN8nChatThreads', () => {
 
 		resolveFirst?.({ data: [thread('stale')], nextCursor: null });
 		await vi.waitFor(() => expect(wrapper.vm.items).toEqual([thread('fresh')]));
+	});
+
+	it('clears isLoading immediately when reset during a pending request', async () => {
+		const response = createDeferredPromise<{
+			data: AgentN8nChatThreadSummary[];
+			nextCursor: string | null;
+		}>();
+		listN8nChatThreadsMock.mockReturnValueOnce(response.promise);
+		const wrapper = mountComposable();
+		wrapper.vm.loadNext();
+		await vi.waitFor(() => expect(wrapper.vm.isLoading).toBe(true));
+
+		wrapper.vm.reset();
+		expect(wrapper.vm.isLoading).toBe(false);
+
+		// The stale request's own completion must not flip it back on.
+		response.resolve({ data: [], nextCursor: null });
+		await Promise.resolve();
+		expect(wrapper.vm.isLoading).toBe(false);
 	});
 
 	it('reset keeps the previous items until the fresh first page replaces them', async () => {

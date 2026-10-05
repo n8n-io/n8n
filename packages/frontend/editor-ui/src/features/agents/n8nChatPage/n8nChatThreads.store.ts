@@ -25,6 +25,11 @@ export const useAgentN8nChatThreadsStore = defineStore(STORES.AGENT_N8N_CHAT_THR
 				[...openedThreads.value, ...recentThreads.value].map((thread) => [thread.id, thread]),
 			),
 	);
+	/** Every known thread, newest `updatedAt` first — the single source for callers that
+	 * merge this store's threads into a recency-ordered list (the sidebar, the dropdown). */
+	const knownThreads = computed(() =>
+		[...threadsById.value.values()].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)),
+	);
 
 	// Dropped responses from an older call never clobber a newer one.
 	let requestVersion = 0;
@@ -63,6 +68,7 @@ export const useAgentN8nChatThreadsStore = defineStore(STORES.AGENT_N8N_CHAT_THR
 		recentThreads,
 		openedThreads,
 		threadsById,
+		knownThreads,
 		fetchRecent,
 		loadThread,
 	};

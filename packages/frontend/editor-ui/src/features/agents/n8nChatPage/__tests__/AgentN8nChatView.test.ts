@@ -4,6 +4,7 @@ import { mount, flushPromises } from '@vue/test-utils';
 import { createTestingPinia } from '@pinia/testing';
 import { i18nInstance } from '@n8n/i18n';
 import type { AgentChatListItem } from '@n8n/api-types';
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 
 import { mockedStore, type MockedStore } from '@/__tests__/utils';
 import {
@@ -285,6 +286,34 @@ describe('AgentN8nChatView', () => {
 		expect(wrapper.find('[data-testid="agent-n8n-chat-unavailable"]').exists()).toBe(true);
 		expect(wrapper.text()).toContain('This agent is not available');
 		expect(wrapper.find('[data-testid="chat-panel-stub"]').exists()).toBe(false);
+	});
+
+	it('drops a load failure that settles after unmount — no toast', async () => {
+		const response = createDeferredPromise<AgentChatListItem>();
+		getN8nChatAgentMock.mockReturnValueOnce(response.promise);
+		const wrapper = renderView();
+		await flushPromises();
+
+		wrapper.unmount();
+		response.reject(new Error('network down'));
+		await flushPromises();
+
+		expect(showErrorMock).not.toHaveBeenCalled();
+	});
+
+	it('fetches the new agent and clears the unavailable state when agentId changes after a 404', async () => {
+		getN8nChatAgentMock.mockRejectedValueOnce({ httpStatusCode: 404 });
+		const wrapper = renderView();
+		await flushPromises();
+		expect(wrapper.find('[data-testid="agent-n8n-chat-unavailable"]').exists()).toBe(true);
+
+		getN8nChatAgentMock.mockResolvedValueOnce({ ...agentItem, id: 'agent-2', name: 'Other Agent' });
+		await wrapper.setProps({ agentId: 'agent-2' });
+		await flushPromises();
+
+		expect(getN8nChatAgentMock).toHaveBeenLastCalledWith(expect.anything(), 'agent-2');
+		expect(wrapper.find('[data-testid="agent-n8n-chat-unavailable"]').exists()).toBe(false);
+		expect(wrapper.text()).toContain('Other Agent');
 	});
 
 	it('toasts on a non-404 load failure instead of showing the unavailable state', async () => {

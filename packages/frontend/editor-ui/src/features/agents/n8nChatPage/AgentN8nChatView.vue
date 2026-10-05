@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, useTemplateRef, watch } from 'vue';
+import { computed, onScopeDispose, ref, useTemplateRef, watch } from 'vue';
 import { RouterLink, useRouter } from 'vue-router';
 import type { AgentChatListItem } from '@n8n/api-types';
 import { N8nEmptyState, N8nIcon, N8nSpinner, N8nText } from '@n8n/design-system';
@@ -41,6 +41,9 @@ const notFound = ref(false);
 const loadFailed = ref(false);
 
 let loadVersion = 0;
+// Makes a response that settles after unmount stale, so it cannot toast on the next page.
+onScopeDispose(() => loadVersion++);
+
 async function loadAgent(id: string): Promise<void> {
 	const version = ++loadVersion;
 	isLoading.value = true;
@@ -73,7 +76,8 @@ function retryLoad(): void {
 // server adopts this id as the thread instead of minting its own — letting
 // `onSessionCreated` move it into the URL without remounting the panel.
 const mintedSessionId = ref<string>();
-const continueSessionId = computed(() => props.agentThreadId ?? mintedSessionId.value);
+// `||`, not `??`: an absent optional route param resolves to `''`.
+const continueSessionId = computed(() => props.agentThreadId || mintedSessionId.value);
 const isNewSession = computed(() => !props.agentThreadId);
 
 const panel = useTemplateRef<InstanceType<typeof AgentChatPanel>>('panel');

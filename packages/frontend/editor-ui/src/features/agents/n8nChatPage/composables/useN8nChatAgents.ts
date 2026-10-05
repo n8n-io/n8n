@@ -1,4 +1,4 @@
-import { ref, toValue, watch, type MaybeRefOrGetter } from 'vue';
+import { getCurrentScope, onScopeDispose, ref, toValue, watch, type MaybeRefOrGetter } from 'vue';
 import type { AgentChatListItem } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';
@@ -28,6 +28,10 @@ export function useN8nChatAgents(options: UseN8nChatAgentsOptions) {
 	const loadFailed = ref(false);
 
 	let requestVersion = 0;
+	// Bump the version on unmount, so a response that settles after it is dropped by the
+	// existing version guards below instead of mutating state or toasting on the next page.
+	if (getCurrentScope()) onScopeDispose(() => requestVersion++);
+
 	async function fetchAgents(): Promise<void> {
 		const version = ++requestVersion;
 		isLoading.value = true;

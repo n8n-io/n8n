@@ -273,6 +273,27 @@ describe('ProjectsNavigation', () => {
 		expect(instanceAiStore.loadThreads).toHaveBeenCalledTimes(2);
 	});
 
+	it('should also reload agent threads on tab visibility when the n8n Chat flag is on', () => {
+		projectsStore.teamProjectsLimit = -1;
+		configureInstanceAiScopes({ canManage: false });
+		configureInstanceAi(true);
+		enableFlag();
+		const agentThreadsStore = mockedStore(useAgentN8nChatThreadsStore);
+
+		renderComponent({ props: { collapsed: false } });
+		expect(agentThreadsStore.fetchRecent).toHaveBeenCalledTimes(1);
+
+		const hidden = vi.spyOn(document, 'hidden', 'get').mockReturnValue(true);
+		document.dispatchEvent(new Event('visibilitychange'));
+		expect(agentThreadsStore.fetchRecent).toHaveBeenCalledTimes(1);
+
+		hidden.mockReturnValue(false);
+		document.dispatchEvent(new Event('visibilitychange'));
+		hidden.mockRestore();
+
+		expect(agentThreadsStore.fetchRecent).toHaveBeenCalledTimes(2);
+	});
+
 	it('should not load chats on tab visibility when Instance AI is hidden', () => {
 		projectsStore.teamProjectsLimit = -1;
 		configureInstanceAiScopes({ canManage: false });
@@ -474,7 +495,9 @@ describe('ProjectsNavigation', () => {
 
 		const { getByTestId, queryByText } = renderComponent({ props: { collapsed: false } });
 		await nextTick();
-		await getByTestId('project-instance-ai-menu-item').click();
+		getByTestId('project-instance-ai-menu-item')
+			.querySelector<HTMLElement>('[role="menuitem"]')
+			?.click();
 
 		expect(queryByText('Agent chat')).toBeNull();
 		expect(trackMock).not.toHaveBeenCalled();

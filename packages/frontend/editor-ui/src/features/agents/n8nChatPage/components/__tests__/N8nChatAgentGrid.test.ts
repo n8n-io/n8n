@@ -5,6 +5,7 @@ import { i18nInstance } from '@n8n/i18n';
 import type { AgentChatListItem } from '@n8n/api-types';
 
 import { AGENT_N8N_CHAT_VIEW } from '../../../constants';
+import SkeletonAgentCard from '@/features/ai/chatHub/components/SkeletonAgentCard.vue';
 import N8nChatAgentCard from '../N8nChatAgentCard.vue';
 import N8nChatAgentGrid from '../N8nChatAgentGrid.vue';
 
@@ -47,6 +48,6 @@ describe('N8nChatAgentGrid', () => {
 		const wrapper = renderGrid({ loading: true });
 
 		expect(wrapper.findAllComponents(N8nChatAgentCard)).toHaveLength(0);
-		expect(wrapper.findAll('[data-test-id="n8n-chat-agent-grid"] > div').length).toBeGreaterThan(0);
+		expect(wrapper.findAllComponents(SkeletonAgentCard).length).toBeGreaterThan(0);
 	});
 });

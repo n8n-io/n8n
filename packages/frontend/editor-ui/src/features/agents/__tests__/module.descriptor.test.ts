@@ -74,22 +74,38 @@ describe('AgentsModule n8n Chat route', () => {
 		expect(router.resolve('/assistant/agents').name).toBe(AGENT_N8N_CHAT_LIBRARY_VIEW);
 	});
 
-	it('redirects home when n8n Assistant is unavailable', async () => {
-		instanceAiAvailable = false;
-		const router = createTestRouter();
+	it.each(['/assistant/agents', '/assistant/agents/agent-1'])(
+		'redirects home when n8n Assistant is unavailable (%s)',
+		async (path) => {
+			instanceAiAvailable = false;
+			const router = createTestRouter();
 
-		await router.push('/assistant/agents/agent-1');
+			await router.push(path);
 
-		expect(router.currentRoute.value.name).toBe(VIEWS.HOMEPAGE);
-	});
+			expect(router.currentRoute.value.name).toBe(VIEWS.HOMEPAGE);
+		},
+	);
 
-	it('redirects to the Assistant view when the flag is off', async () => {
-		flagEnabled = false;
-		const router = createTestRouter();
+	it.each(['/assistant/agents', '/assistant/agents/agent-1'])(
+		'redirects to the Assistant view when the flag is off (%s)',
+		async (path) => {
+			flagEnabled = false;
+			const router = createTestRouter();
 
-		await router.push('/assistant/agents/agent-1');
+			await router.push(path);
 
-		expect(router.currentRoute.value.name).toBe(INSTANCE_AI_VIEW);
+			expect(router.currentRoute.value.name).toBe(INSTANCE_AI_VIEW);
+		},
+	);
+
+	it('requires the custom middleware (module availability check) on both routes', () => {
+		const agentN8nChatRoutes = (AgentsModule.routes ?? []).filter(
+			(route) => route.name === AGENT_N8N_CHAT_VIEW || route.name === AGENT_N8N_CHAT_LIBRARY_VIEW,
+		);
+		expect(agentN8nChatRoutes).toHaveLength(2);
+		for (const route of agentN8nChatRoutes) {
+			expect(route.meta?.middleware).toContain('custom');
+		}
 	});
 
 	it('resolves agentId and agentThreadId as route params once available and flagged on', async () => {

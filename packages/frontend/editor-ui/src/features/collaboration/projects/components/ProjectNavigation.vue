@@ -115,7 +115,10 @@ watch(
 // Another tab can start a chat; refresh the list when the user comes back to this one.
 const { onDocumentVisible } = useDocumentVisibility();
 onDocumentVisible(() => {
-	if (isInstanceAiNavVisible.value) void instanceAiStore.loadThreads();
+	if (!isInstanceAiNavVisible.value) return;
+	void instanceAiStore.loadThreads();
+	if (isAgentsN8nChatFlag.value)
+		void agentThreadsStore.fetchRecent(AGENT_N8N_CHAT_RECENT_THREADS_LIMIT);
 });
 
 watch(favoritesCollapsed, (val) =>

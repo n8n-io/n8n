@@ -293,9 +293,13 @@ describe('useAgentApi', () => {
 
 			const result = await listN8nChatThreads(restApiContext, { limit: 20, cursor: 'cursor-1' });
 
-			expect(request).toHaveBeenCalledWith(
-				expect.objectContaining({ endpoint: '/agents/v2/n8n-chat/threads' }),
-			);
+			expect(request).toHaveBeenCalledWith({
+				method: 'GET',
+				baseURL: restApiContext.baseUrl,
+				endpoint: '/agents/v2/n8n-chat/threads',
+				headers: { 'push-ref': restApiContext.pushRef },
+				data: { limit: 20, cursor: 'cursor-1', agentId: undefined },
+			});
 			expect(result).toBe(response);
 		});
 

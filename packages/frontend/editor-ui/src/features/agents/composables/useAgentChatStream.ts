@@ -124,6 +124,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		steer: channel.value !== 'n8n-chat',
 		backgroundTasks: channel.value !== 'n8n-chat',
 		previewHistory: channel.value !== 'n8n-chat',
+		reorder: channel.value !== 'n8n-chat',
 	}));
 
 	const messages = ref<ChatMessage[]>([]);
@@ -413,6 +414,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		targetQueueId: string,
 		expectedQueueIds: string[],
 	): Promise<void> {
+		if (!capabilities.value.reorder) return;
 		const threadId = params.continueSessionId?.value ?? acceptedSessionId.value;
 		if (!threadId || disposed || isReorderingQueue.value) return;
 		const target = targetKey();
