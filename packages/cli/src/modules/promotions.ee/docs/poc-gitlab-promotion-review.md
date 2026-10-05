@@ -373,7 +373,11 @@ Prerequisites: a GitLab project reachable from the instance, a token with
 `api` scope and at least Maintainer role, and a license with the
 `workflow-reviews` and `git-connections` features (both modules are
 license-gated; see decision E1). The `promotions` module is not a default
-module: start the instance with `N8N_ENABLED_MODULES=promotions`.
+module: start the instance with `N8N_ENABLED_MODULES=promotions` and the
+rollout flag `N8N_ENV_FEAT_PROMOTIONS=true`. The inbox shows Promotion
+Reviews only when both are set and the viewer has `gitConnection:read`
+(the same gate as the Promotions settings page). Otherwise it makes no
+promotion request, and a `promotion:` deep link lands on "Review not found".
 
 ### Local setup used for the POC
 
@@ -389,7 +393,7 @@ admin account, set in the copy only).
 ```bash
 cd packages/cli
 N8N_USER_FOLDER=$HOME/.n8n-promotion-demo \
-N8N_ENABLED_MODULES=promotions \
+N8N_ENABLED_MODULES=promotions N8N_ENV_FEAT_PROMOTIONS=true \
 N8N_RUNNERS_ENABLED=true N8N_RUNNERS_BROKER_PORT=5699 \
 ./bin/n8n start
 ```

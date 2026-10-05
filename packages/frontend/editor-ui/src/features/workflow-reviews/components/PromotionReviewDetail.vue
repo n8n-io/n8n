@@ -208,6 +208,31 @@ function changeBadgeVariant(
 		</N8nCallout>
 
 		<div :class="$style.body">
+			<div :class="$style.diffColumn">
+				<N8nLoading v-if="!detail || diffLoading" :loading="true" :rows="3" />
+				<N8nCallout v-else-if="diffError" theme="danger" :class="$style.callout">
+					{{ diffError }}
+				</N8nCallout>
+				<N8nCallout v-else-if="!selectedWorkflow" theme="info" :class="$style.callout">
+					{{ i18n.baseText('promotionReviews.detail.noWorkflowChanges') }}
+				</N8nCallout>
+				<div v-else-if="diff" :class="$style.diff" data-test-id="promotion-review-diff">
+					<WorkflowDiffView
+						:source-workflow="sourceWorkflow"
+						:target-workflow="targetWorkflow"
+						:source-label="sourceLabel"
+						:target-label="targetLabel"
+						show-fullscreen-button
+					>
+						<template #sourceEmptyText>
+							<N8nText size="small" color="text-base">
+								{{ i18n.baseText('promotionReviews.diff.sourceEmpty') }}
+							</N8nText>
+						</template>
+					</WorkflowDiffView>
+				</div>
+			</div>
+
 			<aside :class="$style.metadata">
 				<N8nCard :class="$style.card">
 					<template #header>
@@ -296,31 +321,6 @@ function changeBadgeVariant(
 					</div>
 				</N8nCard>
 			</aside>
-
-			<div :class="$style.diffColumn">
-				<N8nLoading v-if="!detail || diffLoading" :loading="true" :rows="3" />
-				<N8nCallout v-else-if="diffError" theme="danger" :class="$style.callout">
-					{{ diffError }}
-				</N8nCallout>
-				<N8nCallout v-else-if="!selectedWorkflow" theme="info" :class="$style.callout">
-					{{ i18n.baseText('promotionReviews.detail.noWorkflowChanges') }}
-				</N8nCallout>
-				<div v-else-if="diff" :class="$style.diff" data-test-id="promotion-review-diff">
-					<WorkflowDiffView
-						:source-workflow="sourceWorkflow"
-						:target-workflow="targetWorkflow"
-						:source-label="sourceLabel"
-						:target-label="targetLabel"
-						show-fullscreen-button
-					>
-						<template #sourceEmptyText>
-							<N8nText size="small" color="text-base">
-								{{ i18n.baseText('promotionReviews.diff.sourceEmpty') }}
-							</N8nText>
-						</template>
-					</WorkflowDiffView>
-				</div>
-			</div>
 		</div>
 	</div>
 </template>

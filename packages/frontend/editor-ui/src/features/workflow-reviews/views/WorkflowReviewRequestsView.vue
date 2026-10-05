@@ -17,6 +17,8 @@ import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useResizablePanel } from '@n8n/design-system';
 import { LOCAL_STORAGE_WORKFLOW_REVIEW_SIDEBAR_WIDTH } from '@/app/constants/localStorage';
 import { useToast } from '@n8n/composables/useToast';
+import { hasPermission } from '@/app/utils/rbac/permissions';
+import { usePromotionsEnabled } from '@/features/shared/promotions/usePromotionsEnabled';
 
 import WorkflowReviewDetailTabs from '../components/WorkflowReviewDetailTabs.vue';
 import type { WorkflowReviewDetailTab } from '../components/WorkflowReviewDetailTabs.vue';
@@ -39,6 +41,16 @@ const store = useReviewInboxStore();
 // Promotion Reviews share the inbox. They are one more task for the reviewer,
 // so they sit in the same lists, sorted by creation time.
 const promotionStore = usePromotionReviewsStore();
+// Same gate as the Promotions settings page: module active, rollout flag on, and
+// the viewer may read connections. Otherwise the inbox never asks for runs and a
+// `promotion:` deep link falls through to the not-found state.
+const { isEnabled: isPromotionsEnabled } = usePromotionsEnabled();
+const promotionReviewsEnabled = computed(
+	() =>
+		isPromotionsEnabled.value && hasPermission(['rbac'], { rbac: { scope: 'gitConnection:read' } }),
+);
+const isPromotionRoute = (id: string | null): id is string =>
+	promotionReviewsEnabled.value && isPromotionReviewId(id);
 // The tab round trip destroys the feed subtree, so its lifecycle lives here; the
 // feed and the composer read the store themselves.
 const activityStore = useReviewActivityStore();
@@ -60,8 +72,9 @@ const {
 function toSidebarSection(key: ReviewInboxSectionKey): ReviewInboxSidebarSection {
 	const slice = store.sections[key];
 	// Admins see every Promotion Review under "Waiting for review" and "Closed".
-	const promotionItems =
-		key === 'waiting'
+	const promotionItems = !promotionReviewsEnabled.value
+		? undefined
+		: key === 'waiting'
 			? promotionStore.items.open
 			: key === 'closed'
 				? promotionStore.items.closed
@@ -109,7 +122,7 @@ function firstParam(value: string | string[] | undefined): string | null {
 
 const selectedReviewId = computed(() => firstParam(route.params.reviewRequestId));
 const selectedPromotionRunId = computed(() =>
-	isPromotionReviewId(selectedReviewId.value)
+	isPromotionRoute(selectedReviewId.value)
 		? fromPromotionReviewRouteId(selectedReviewId.value)
 		: null,
 );
@@ -149,7 +162,7 @@ const selectedItem = computed(() => detail.value ?? selectedListItem.value);
 
 // The empty and no-selection states must count Promotion Reviews too.
 const hasPromotionRowsInActiveTab = computed(
-	() => promotionStore.items[activeTab.value].length > 0,
+	() => promotionReviewsEnabled.value && promotionStore.items[activeTab.value].length > 0,
 );
 const inboxIsEmpty = computed(() => isEmpty.value && !hasPromotionRowsInActiveTab.value);
 const inboxHasItems = computed(
@@ -196,7 +209,7 @@ watch(
 	selectedReviewId,
 	(id) => {
 		if (!isOnInbox()) return;
-		if (isPromotionReviewId(id)) {
+		if (isPromotionRoute(id)) {
 			store.clearDetail();
 			activityStore.reset();
 			void promotionStore.fetchDetail(fromPromotionReviewRouteId(id)).catch(handleLoadError);
@@ -220,7 +233,7 @@ watch(
 	(next) => {
 		if (!isOnInbox()) return;
 		void store.setActiveTab(stateFromQuery(next));
-		void promotionStore.fetchTab(stateFromQuery(next));
+		if (promotionReviewsEnabled.value) void promotionStore.fetchTab(stateFromQuery(next));
 	},
 );
 
@@ -392,7 +405,7 @@ onMounted(() => {
 	isMounted = true;
 	void store.fetchSummary();
 	void store.fetchActiveTab();
-	void promotionStore.fetchTab(activeTab.value);
+	if (promotionReviewsEnabled.value) void promotionStore.fetchTab(activeTab.value);
 });
 
 onUnmounted(() => {
