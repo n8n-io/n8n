@@ -8147,6 +8147,7 @@
 	"agents.backToWorkflow": "Back to workflow",
 	"agents.heading": "Agents",
 	"agents.list.published": "Published",
+	"agents.list.changesToPublish": "Changes to publish",
 	"agents.list.noDescription": "No description",
 	"agents.list.updatedAt": "Updated {date}",
 	"agents.list.updated": "Last updated",
