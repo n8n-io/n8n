@@ -1,0 +1,24 @@
+packages/@n8n/scheduler/README.md
+  s_ced44f37203d9d::t_de22fa41494907 556-557
+  s_ced44f37203d9d::t_cba152d707def9 412-413
+packages/cli/test/integration/scheduling/scheduler-lease-renewal.test.ts
+  s_ced44f37203d9d::t_cba152d707def9 18-20,74,88
+packages/@n8n/scheduler/src/core/executor/executor.ts
+  s_ced44f37203d9d::t_cba152d707def9 405
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "992bfd76a320850b5c3414d1b02e8825ee9d0202",
+  "prompts": {},
+  "sessions": {
+    "s_ced44f37203d9d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "616a9e73-fe4f-42c6-a5fe-8cd5af74b516",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}
