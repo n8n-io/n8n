@@ -27,6 +27,18 @@ const TEAMS_API_URL = 'https://smba.trafficmanager.net/teams';
 
 const GLOBAL_GRAPH_API_BASE_URL = 'https://graph.microsoft.com';
 
+/**
+ * The model input carries no sign of whether the bot was addressed, so a
+ * message read only through read-all looks like a direct question.
+ */
+const OPTIONAL_REPLY_NOTE = [
+	'<reply_guidance>',
+	'This message does not mention you. You read it because you can read every message in this conversation.',
+	'Reply only if the message is meant for you or you can add something useful within your role.',
+	'Otherwise call do_not_respond and write no text.',
+	'</reply_guidance>',
+].join('\n');
+
 /** Interval picked to match Discord's; Teams does not document the expiry. */
 const TEAMS_TYPING_REFRESH_MS = 8000;
 
@@ -250,6 +262,7 @@ export class TeamsIntegration extends AgentChatIntegration {
 		const streamable = params.thread.isDM;
 		return {
 			platformAgentContext: {},
+			...(params.replyExpectation === 'optional' ? { historyContext: OPTIONAL_REPLY_NOTE } : {}),
 			forceBuffered: !streamable,
 			// A queued message is only captured here; the turn that would clear the
 			// indicator runs later, so starting one now leaves it refreshing alone.

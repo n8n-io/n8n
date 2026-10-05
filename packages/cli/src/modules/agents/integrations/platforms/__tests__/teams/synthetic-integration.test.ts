@@ -735,6 +735,22 @@ describe('Microsoft Teams messages without a mention', () => {
 		}
 	});
 
+	it('tells the model that a message without a mention may go unanswered', async () => {
+		const ctx = await createTeamsReplayContext({ settings: READ_ALL });
+		try {
+			await ctx.sendWebhook(channelRootPost);
+
+			expect(ctx.agentExecutor.executeForChatPublished).toHaveBeenCalledWith(
+				expect.objectContaining({
+					message: 'anyone seen the build fail?',
+					modelMessage: expect.stringContaining('do_not_respond'),
+				}),
+			);
+		} finally {
+			await ctx.shutdown();
+		}
+	});
+
 	it('keeps a reply required for a mention when reading all messages', async () => {
 		const ctx = await createTeamsReplayContext({ settings: READ_ALL });
 		try {
@@ -742,6 +758,9 @@ describe('Microsoft Teams messages without a mention', () => {
 
 			expect(ctx.agentExecutor.executeForChatPublished).toHaveBeenCalledTimes(1);
 			expect(ctx.latestContext()?.replyExpectation).toBe('required');
+			expect(ctx.agentExecutor.executeForChatPublished).toHaveBeenCalledWith(
+				expect.objectContaining({ modelMessage: expect.not.stringContaining('do_not_respond') }),
+			);
 		} finally {
 			await ctx.shutdown();
 		}

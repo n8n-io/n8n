@@ -136,9 +136,9 @@ export interface BridgeExecutionContext {
 	forceBuffered?: boolean;
 	statusHandle?: BridgeStatusHandle;
 	/**
-	 * Platform-fetched conversation context (e.g. prior Slack thread messages)
-	 * that the bridge prepends to the agent input message. Undefined when the
-	 * platform did not surface any context for this message.
+	 * Platform context that the bridge prepends to the agent input message,
+	 * such as prior Slack thread messages or a Teams note that the reply is
+	 * optional. Undefined when the platform has none for this message.
 	 */
 	historyContext?: string;
 }
