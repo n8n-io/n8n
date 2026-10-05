@@ -64,6 +64,7 @@ export class AgentsListController {
 				limit,
 				cursor: query.cursor,
 				agentId: query.agentId,
+				search: query.search,
 			}),
 		);
 	}

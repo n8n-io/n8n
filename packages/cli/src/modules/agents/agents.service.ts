@@ -385,18 +385,15 @@ export class AgentsService {
 	 */
 	async findN8nChatThreadsForUser(
 		user: User,
-		options: { limit: number; cursor?: string; agentId?: string },
+		options: { limit: number; cursor?: string; agentId?: string; search?: string },
 	): Promise<AgentN8nChatThreadsResponse> {
 		const projectIds = await this.projectScopeService.getProjectIds(user, ['agent:execute']);
 		const agentIds = options.agentId
 			? await this.reachableAgentIds(options.agentId, projectIds)
 			: await this.agentRepository.findChatReachableIds(projectIds);
-		return await this.agentExecutionService.findN8nChatThreadsForAgents(
-			user.id,
-			agentIds,
-			options.limit,
-			options.cursor,
-		);
+		// `options` also carries `agentId`, already consumed above; the callee only reads
+		// `limit`/`cursor`/`search` off it.
+		return await this.agentExecutionService.findN8nChatThreadsForAgents(user.id, agentIds, options);
 	}
 
 	/**

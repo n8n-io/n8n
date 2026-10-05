@@ -81,8 +81,13 @@ describe('AgentExecutionThreadRepository n8n Chat queries', () => {
 	}
 
 	describe('findN8nChatThreadsForOwner', () => {
-		async function listFor(userId: string, agentIds: string[] = [agentId], limit = 20) {
-			return await threadRepo.findN8nChatThreadsForOwner(userId, agentIds, limit);
+		async function listFor(
+			userId: string,
+			agentIds: string[] = [agentId],
+			limit = 20,
+			search?: string,
+		) {
+			return await threadRepo.findN8nChatThreadsForOwner(userId, agentIds, { limit, search });
 		}
 
 		it("returns only the owner's n8n Chat thread", async () => {
@@ -194,16 +199,16 @@ describe('AgentExecutionThreadRepository n8n Chat queries', () => {
 			await createExecution(newer.id, N8N_CHAT_PRODUCTION_SOURCE);
 			await threadRepo.update({ id: newer.id }, { updatedAt: new Date('2024-02-01T00:00:00Z') });
 
-			const firstPage = await threadRepo.findN8nChatThreadsForOwner(owner.id, [agentId], 1);
+			const firstPage = await threadRepo.findN8nChatThreadsForOwner(owner.id, [agentId], {
+				limit: 1,
+			});
 			expect(firstPage.threads.map((thread) => thread.id)).toEqual([newer.id]);
 			expect(firstPage.nextCursor).not.toBeNull();
 
-			const secondPage = await threadRepo.findN8nChatThreadsForOwner(
-				owner.id,
-				[agentId],
-				1,
-				firstPage.nextCursor!,
-			);
+			const secondPage = await threadRepo.findN8nChatThreadsForOwner(owner.id, [agentId], {
+				limit: 1,
+				cursor: firstPage.nextCursor!,
+			});
 			expect(secondPage.threads.map((thread) => thread.id)).toEqual([older.id]);
 			expect(secondPage.nextCursor).toBeNull();
 		});
@@ -211,6 +216,40 @@ describe('AgentExecutionThreadRepository n8n Chat queries', () => {
 		it('returns an empty page without a query when no agent ids are given', async () => {
 			const owner = await createMember();
 			await expect(listFor(owner.id, [])).resolves.toEqual({ threads: [], nextCursor: null });
+		});
+
+		it('matches the title case-insensitively', async () => {
+			const owner = await createMember();
+			const thread = await createThread({ ownerId: owner.id, title: 'Refund Status' });
+			await createExecution(thread.id, N8N_CHAT_PRODUCTION_SOURCE);
+
+			const { threads } = await listFor(owner.id, [agentId], 20, 'refund');
+
+			expect(threads.map((t) => t.id)).toEqual([thread.id]);
+		});
+
+		it('matches "%" and "_" literally, not as SQL LIKE wildcards', async () => {
+			const owner = await createMember();
+			const literal = await createThread({ ownerId: owner.id, title: '50%_off' });
+			await createExecution(literal.id, N8N_CHAT_PRODUCTION_SOURCE);
+			const other = await createThread({ ownerId: owner.id, title: 'Xoff' });
+			await createExecution(other.id, N8N_CHAT_PRODUCTION_SOURCE);
+
+			const { threads } = await listFor(owner.id, [agentId], 20, '%_');
+
+			expect(threads.map((t) => t.id)).toEqual([literal.id]);
+		});
+
+		it('excludes a thread with no title', async () => {
+			const owner = await createMember();
+			const titled = await createThread({ ownerId: owner.id, title: 'Refund status' });
+			await createExecution(titled.id, N8N_CHAT_PRODUCTION_SOURCE);
+			const untitled = await createThread({ ownerId: owner.id, title: null });
+			await createExecution(untitled.id, N8N_CHAT_PRODUCTION_SOURCE);
+
+			const { threads } = await listFor(owner.id, [agentId], 20, 'refund');
+
+			expect(threads.map((t) => t.id)).toEqual([titled.id]);
 		});
 	});
 

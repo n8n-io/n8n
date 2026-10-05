@@ -53,7 +53,12 @@ describe('n8n Chat page HTTP routes', () => {
 		return agent;
 	}
 
-	async function createN8nChatThread(agentId: string, projectId: string, ownerId: string) {
+	async function createN8nChatThread(
+		agentId: string,
+		projectId: string,
+		ownerId: string,
+		title: string | null = 'My chat',
+	) {
 		const threadRepository = Container.get(AgentExecutionThreadRepository);
 		const thread = await threadRepository.save(
 			threadRepository.create({
@@ -63,7 +68,7 @@ describe('n8n Chat page HTTP routes', () => {
 				projectId,
 				accessScope: 'user',
 				ownerId,
-				title: 'My chat',
+				title,
 				sessionNumber: 1,
 			}),
 		);
@@ -163,6 +168,20 @@ describe('n8n Chat page HTTP routes', () => {
 			data: [{ id: thread.id, agent: { id: agent.id } }],
 			nextCursor: null,
 		});
+	});
+
+	it('finds a thread by a case-insensitive, partial title search', async () => {
+		const { chatUser, project, agent } = await setup();
+		const thread = await createN8nChatThread(agent.id, project.id, chatUser.id, 'Refund status');
+		await createN8nChatThread(agent.id, project.id, chatUser.id, 'Unrelated topic');
+
+		const response = await server
+			.authAgentFor(chatUser)
+			.get('/agents/v2/n8n-chat/threads')
+			.query({ search: 'REFUND' })
+			.expect(200);
+
+		expect(response.body).toMatchObject({ data: [{ id: thread.id }], nextCursor: null });
 	});
 
 	it('returns one of the own n8n Chat threads by id', async () => {
