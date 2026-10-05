@@ -366,6 +366,76 @@ export class SystemAgentExecutionService {
 		return { runId, toolCallId: pending.toolCallId, done };
 	}
 
+	/**
+	 * Build the queue input for a message sent through the generic Agents chat
+	 * endpoint. Creates the session when the client starts a new one.
+	 */
+	async prepareChatMessage(params: {
+		agentId: string;
+		user: User;
+		projectId: string;
+		sessionId?: string;
+		message: string;
+		messageId?: string;
+	}): Promise<Parameters<AgentMessageQueueService['enqueue']>[0]> {
+		const provider = await this.assertCanUse(params.agentId, params.user, params.projectId);
+		const existing = params.sessionId
+			? await this.threadRepository.findOwnedById(params.agentId, params.user.id, params.sessionId)
+			: null;
+		const thread =
+			existing ??
+			(await this.createThread({
+				agentId: params.agentId,
+				user: params.user,
+				projectId: params.projectId,
+				...(params.sessionId ? { threadId: params.sessionId } : {}),
+			}));
+		if (thread.projectId !== params.projectId) throw new NotFoundError('Session not found');
+		const options = (await provider.chatTurnOptions?.(params.user, thread)) ?? {};
+		return {
+			agentId: params.agentId,
+			projectId: thread.projectId,
+			threadId: thread.id,
+			sessionMode: 'existing',
+			source: SYSTEM_AGENT_SOURCE,
+			payload: {
+				kind: 'preview',
+				userId: params.user.id,
+				message: params.message,
+				resourceId: this.resourceIdFor(params.user),
+				...(params.messageId ? { messageId: params.messageId } : {}),
+				options,
+			},
+		};
+	}
+
+	/** Resume by run id, for the generic Agents chat resume endpoint. Streams to `send`. */
+	async resumeRun(params: {
+		agentId: string;
+		user: User;
+		runId: string;
+		toolCallId: string;
+		resumeData: unknown;
+		send: (event: AgentSseEvent) => void;
+	}): Promise<void> {
+		const provider = this.getProvider(params.agentId);
+		const state = await this.checkpointStorage.load(params.runId, params.agentId);
+		const threadId = state?.persistence?.threadId;
+		if (!threadId) throw new UserError('This action is no longer waiting for input');
+		const { done } = await this.resume({
+			agentId: params.agentId,
+			user: params.user,
+			threadId,
+			runId: params.runId,
+			toolCallId: params.toolCallId,
+			resumeData: provider.normalizeResumeData
+				? provider.normalizeResumeData(params.resumeData)
+				: params.resumeData,
+			send: params.send,
+		});
+		await done;
+	}
+
 	/** Stop the running turn, or cancel the suspended one. */
 	async cancel(agentId: string, user: User, threadId: string): Promise<boolean> {
 		const thread = await this.getThread(agentId, user, threadId);

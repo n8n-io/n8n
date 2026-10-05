@@ -67,6 +67,9 @@ import {
 } from './utils/agent-memory-scope';
 import { resolveInboundMimeType } from './utils/inbound-attachments';
 import { withOpenSuspensions } from './utils/messages-envelope';
+import { SystemAgentRegistry } from './system-agents/system-agent-registry';
+import { SystemAgentExecutionService } from './system-agents/system-agent-execution.service';
+import { Container } from '@n8n/di';
 
 @RestController('/projects/:projectId/agents/v2')
 export class AgentChatController {
@@ -84,7 +87,14 @@ export class AgentChatController {
 		private readonly messageQueue: AgentMessageQueueService,
 		private readonly queuedPreviewStreams: AgentQueuedPreviewStreamService,
 		private readonly agentsConfig: AgentsConfig,
+		private readonly systemAgents: SystemAgentRegistry,
 	) {}
+
+	/** Project agent lookup that also accepts code-defined instance agents (the n8n Assistant). */
+	private async findChatAgent(agentId: string, projectId: string): Promise<{ id: string } | null> {
+		if (this.systemAgents.has(agentId)) return { id: agentId };
+		return await this.agentsService.findById(agentId, projectId);
+	}
 
 	private createChatExecution(res: FlushableResponse) {
 		const delivery = initSseStream(res);
@@ -361,6 +371,24 @@ export class AgentChatController {
 		// The text-or-attachment invariant is enforced by the DTO schema.
 		const { message, sessionId, messageId, newSession, attachments } = payload;
 
+		if (this.systemAgents.has(agentId)) {
+			// Code-defined instance agents (the n8n Assistant) build their own runtime.
+			const systemAgents = Container.get(SystemAgentExecutionService);
+			await this.relayQueuedMessage(
+				res,
+				async () =>
+					await systemAgents.prepareChatMessage({
+						agentId,
+						user: req.user,
+						projectId,
+						sessionId: newSession ? undefined : sessionId,
+						message,
+						messageId,
+					}),
+			);
+			return;
+		}
+
 		const credentialProvider = new AgentsCredentialProvider(
 			this.credentialsService,
 			projectId,
@@ -432,6 +460,17 @@ export class AgentChatController {
 		const { send, onChunk, abortSignal, onExecutionStarted } = execution;
 		try {
 			abortSignal.throwIfAborted();
+			if (this.systemAgents.has(agentId)) {
+				await Container.get(SystemAgentExecutionService).resumeRun({
+					agentId,
+					user: req.user,
+					runId,
+					toolCallId,
+					resumeData,
+					send,
+				});
+				return;
+			}
 			const result = await this.agentTestRunService.resumePreparedDraftRun({
 				agentId,
 				projectId,
@@ -494,7 +533,7 @@ export class AgentChatController {
 		@Param('runId') runId: string,
 	) {
 		const { projectId } = req.params;
-		const agent = await this.agentsService.findById(agentId, projectId);
+		const agent = await this.findChatAgent(agentId, projectId);
 		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
 
 		const cancelled = await this.agentExecutionOrchestratorService.cancelChatRun({
@@ -657,7 +696,7 @@ export class AgentChatController {
 	async getQueuedMessages(
 		req: AuthenticatedRequest<{ projectId: string; agentId: string; threadId: string }>,
 	): Promise<AgentChatQueueResponse> {
-		const agent = await this.agentsService.findById(req.params.agentId, req.params.projectId);
+		const agent = await this.findChatAgent(req.params.agentId, req.params.projectId);
 		if (!agent) throw new NotFoundError('Agent not found');
 		return await this.messageQueue.listPending({
 			...req.params,
@@ -679,7 +718,7 @@ export class AgentChatController {
 		@Body payload: AgentChatQueueUpdateDto,
 	): Promise<void> {
 		this.assertQueueId(req.params.queueId);
-		const agent = await this.agentsService.findById(req.params.agentId, req.params.projectId);
+		const agent = await this.findChatAgent(req.params.agentId, req.params.projectId);
 		if (!agent) throw new NotFoundError('Agent not found');
 		await this.messageQueue.updatePending({
 			...req.params,
@@ -702,7 +741,7 @@ export class AgentChatController {
 		@Body payload: AgentChatQueueReorderDto,
 	): Promise<void> {
 		this.assertQueueId(req.params.queueId);
-		const agent = await this.agentsService.findById(req.params.agentId, req.params.projectId);
+		const agent = await this.findChatAgent(req.params.agentId, req.params.projectId);
 		if (!agent) throw new NotFoundError('Agent not found');
 		await this.messageQueue.reorderPending({
 			...req.params,
@@ -723,7 +762,7 @@ export class AgentChatController {
 		}>,
 	) {
 		this.assertQueueId(req.params.queueId);
-		const agent = await this.agentsService.findById(req.params.agentId, req.params.projectId);
+		const agent = await this.findChatAgent(req.params.agentId, req.params.projectId);
 		if (!agent) throw new NotFoundError('Agent not found');
 		await this.messageQueue.removePending({ ...req.params, userId: req.user.id, kind: 'preview' });
 		return { removed: true };
@@ -742,7 +781,7 @@ export class AgentChatController {
 		@Body payload: AgentChatQueueSteerDto,
 	): Promise<void> {
 		this.assertQueueId(req.params.queueId);
-		const agent = await this.agentsService.findById(req.params.agentId, req.params.projectId);
+		const agent = await this.findChatAgent(req.params.agentId, req.params.projectId);
 		if (!agent) throw new NotFoundError('Agent not found');
 		await this.messageQueue.steer({
 			...req.params,
@@ -757,7 +796,7 @@ export class AgentChatController {
 		req: AuthenticatedRequest<{ projectId: string; agentId: string; threadId: string }>,
 	): Promise<AgentBackgroundJobsResponse> {
 		const { projectId, agentId, threadId } = req.params;
-		const agent = await this.agentsService.findById(agentId, projectId);
+		const agent = await this.findChatAgent(agentId, projectId);
 		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
 		const thread = await this.agentExecutionService.findThreadById(threadId);
 
@@ -818,7 +857,7 @@ export class AgentChatController {
 		req: AuthenticatedRequest<{ projectId: string; agentId: string; threadId: string }>,
 	): Promise<AgentBackgroundJobsResponse> {
 		const { projectId, agentId, threadId } = req.params;
-		const agent = await this.agentsService.findById(agentId, projectId);
+		const agent = await this.findChatAgent(agentId, projectId);
 		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
 		if (
 			!(await this.agentExecutionService.canUseDraftThread(
@@ -869,7 +908,7 @@ export class AgentChatController {
 		req: AuthenticatedRequest<{ projectId: string; agentId: string; threadId: string }>,
 	): Promise<AgentChatMessagesResponse> {
 		const { projectId, agentId, threadId } = req.params;
-		const agent = await this.agentsService.findById(agentId, projectId);
+		const agent = await this.findChatAgent(agentId, projectId);
 		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
 		const thread = await this.agentExecutionService.findThreadById(threadId);
 		if (thread && !threadBelongsTo(thread, projectId, agentId, req.user.id)) {
@@ -930,7 +969,7 @@ export class AgentChatController {
 		req: AuthenticatedRequest<{ projectId: string; agentId: string }>,
 	): Promise<AgentChatMessagesResponse> {
 		const { projectId, agentId } = req.params;
-		const agent = await this.agentsService.findById(agentId, projectId);
+		const agent = await this.findChatAgent(agentId, projectId);
 		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
 		if (
 			!(await this.agentExecutionService.canUseDraftThread(
@@ -962,7 +1001,7 @@ export class AgentChatController {
 		res: Response,
 	) {
 		const { projectId, agentId, attachmentId } = req.params;
-		const agent = await this.agentsService.findById(agentId, projectId);
+		const agent = await this.findChatAgent(agentId, projectId);
 		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
 
 		const attachment = await this.agentChatAttachmentService.getForAgent(attachmentId, {
@@ -1027,7 +1066,7 @@ export class AgentChatController {
 	@ProjectScope('agent:update')
 	async clearTestChatMessages(req: AuthenticatedRequest<{ projectId: string; agentId: string }>) {
 		const { projectId, agentId } = req.params;
-		const agent = await this.agentsService.findById(agentId, projectId);
+		const agent = await this.findChatAgent(agentId, projectId);
 		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
 		if (
 			!(await this.agentExecutionService.canUseDraftThread(
