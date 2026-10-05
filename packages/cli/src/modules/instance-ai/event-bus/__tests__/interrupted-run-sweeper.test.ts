@@ -1,8 +1,12 @@
 import type { InstanceAiEvent } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import type { EventService } from '@n8n/backend-services';
-import type { InstanceSettings } from 'n8n-core';
+import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
+
+import { N8NCheckpointStorage } from '../../../agents/integrations/n8n-checkpoint-storage';
+import { AgentExecutionRepository } from '../../../agents/repositories/agent-execution.repository';
+import { AgentExecutionThreadRepository } from '../../../agents/repositories/agent-execution-thread.repository';
 
 import { DurableLogMetrics } from '../durable-log-metrics';
 import {
@@ -11,8 +15,6 @@ import {
 	TOOL_INTERRUPTED_MESSAGE,
 	type InterruptedRunResumeHost,
 } from '../interrupted-run-sweeper';
-import type { InstanceAiCheckpoint } from '../../entities/instance-ai-checkpoint.entity';
-import type { InstanceAiCheckpointRepository } from '../../repositories/instance-ai-checkpoint.repository';
 import type { InstanceAiEventLogRepository } from '../../repositories/instance-ai-event-log.repository';
 
 const THREAD = 'thread-1';
@@ -60,31 +62,12 @@ function agentCompleted(agentId: string, role = 'agent-builder'): InstanceAiEven
 	};
 }
 
-function runningCheckpoint(overrides: Partial<InstanceAiCheckpoint> = {}): InstanceAiCheckpoint {
-	return {
-		key: 'agent:run-sdk-1',
-		runId: 'run-sdk-1',
-		hostRunId: RUN,
-		threadId: THREAD,
-		resourceId: 'user-1',
-		state: {
-			persistence: { threadId: THREAD, resourceId: 'user-1', hostRunId: RUN },
-			status: 'running',
-			messageList: { messages: [] },
-			pendingToolCalls: {},
-		},
-		expiredAt: null,
-		createdAt: new Date('2026-07-07T10:00:00Z'),
-		updatedAt: new Date('2026-07-07T10:00:00Z'),
-		...overrides,
-	} as InstanceAiCheckpoint;
-}
-
 interface Setup {
 	events?: InstanceAiEvent[];
-	checkpoints?: InstanceAiCheckpoint[];
-	isMultiMain?: boolean;
-	lastFactAt?: Date | null;
+	/** Run id stored in the thread's suspended Agents checkpoint. */
+	suspendedRunId?: string;
+	/** Whether the Agents runtime has a running execution on the thread. */
+	running?: boolean;
 	host?: Partial<InterruptedRunResumeHost>;
 }
 
@@ -115,10 +98,19 @@ function buildSweeper(setup: Setup) {
 	eventLogRepo.getForRuns.mockImplementation(async (_threadId, runIds) =>
 		log.filter((e) => runIds.includes(e.runId)),
 	);
-	eventLogRepo.lastFactAt.mockResolvedValue(setup.lastFactAt ?? null);
 
-	const checkpointRepo = mock<InstanceAiCheckpointRepository>();
-	checkpointRepo.findActiveByThreadId.mockResolvedValue(setup.checkpoints ?? []);
+	Container.set(AgentExecutionThreadRepository, {
+		findOneBy: async () => ({ id: THREAD, agentId: 'n8n-assistant' }),
+	} as never);
+	Container.set(AgentExecutionRepository, {
+		existsRunningByThread: async () => setup.running ?? false,
+	} as never);
+	Container.set(N8NCheckpointStorage, {
+		findSuspendedForThread: async () =>
+			setup.suspendedRunId
+				? { persistence: { hostMetadata: { instanceAiTurn: { runId: setup.suspendedRunId } } } }
+				: null,
+	} as never);
 
 	const published: InstanceAiEvent[] = [];
 	const eventBus = {
@@ -133,14 +125,7 @@ function buildSweeper(setup: Setup) {
 		isRunLive: setup.host?.isRunLive ?? (() => false),
 	};
 
-	const sweeper = new InterruptedRunSweeper(
-		logger,
-		eventLogRepo,
-		checkpointRepo,
-		eventBus as never,
-		metrics,
-		{ isMultiMain: setup.isMultiMain ?? false } as InstanceSettings,
-	);
+	const sweeper = new InterruptedRunSweeper(logger, eventLogRepo, eventBus as never, metrics);
 	sweeper.setResumeHost(host);
 	return { sweeper, published, metrics, eventLogRepo };
 }
@@ -226,20 +211,8 @@ describe('InterruptedRunSweeper', () => {
 		expect(published.at(-1)?.type).toBe('run-finish');
 	});
 
-	it('skips HITL-suspended runs entirely (the confirmation orphan path owns them)', async () => {
-		const { sweeper, published } = buildSweeper({
-			events: [runStart()],
-			checkpoints: [
-				runningCheckpoint({
-					state: {
-						persistence: { threadId: THREAD, resourceId: 'user-1' },
-						status: 'suspended',
-						messageList: { messages: [] },
-						pendingToolCalls: { 'tc-p': { suspended: true } },
-					} as never,
-				}),
-			],
-		});
+	it('skips the run of the suspended Agents checkpoint (the resume path owns it)', async () => {
+		const { sweeper, published } = buildSweeper({ events: [runStart()], suspendedRunId: RUN });
 
 		await sweeper.sweep();
 
@@ -249,18 +222,7 @@ describe('InterruptedRunSweeper', () => {
 	it('sweeps a crashed run even when a different run in the thread is HITL-suspended', async () => {
 		const { sweeper, published } = buildSweeper({
 			events: [runStart()],
-			checkpoints: [
-				runningCheckpoint({
-					key: 'agent:other',
-					hostRunId: 'run-other',
-					state: {
-						persistence: { threadId: THREAD, resourceId: 'user-1', hostRunId: 'run-other' },
-						status: 'suspended',
-						messageList: { messages: [] },
-						pendingToolCalls: { 'tc-p': { suspended: true } },
-					} as never,
-				}),
-			],
+			suspendedRunId: 'run-other',
 		});
 
 		await sweeper.sweep();
@@ -268,52 +230,12 @@ describe('InterruptedRunSweeper', () => {
 		expect(published.at(-1)?.type).toBe('run-finish');
 	});
 
-	it('marks a run with a running step checkpoint interrupted (crash-resume is a later phase)', async () => {
-		const { sweeper, published, metrics } = buildSweeper({
-			events: [runStart()],
-			checkpoints: [runningCheckpoint()],
-		});
-
-		await sweeper.sweep();
-
-		expect(published.at(-1)?.type).toBe('run-finish');
-		expect(metrics.sweep.runsMarkedInterrupted).toBe(1);
-	});
-
-	it('multi-main: recent durable activity is a liveness heartbeat and skips the run', async () => {
-		const { sweeper, published } = buildSweeper({
-			events: [runStart()],
-			isMultiMain: true,
-			lastFactAt: new Date(), // written seconds ago: a sibling is driving it
-		});
+	it('skips a run while the Agents runtime has a running execution on the thread', async () => {
+		const { sweeper, published } = buildSweeper({ events: [runStart()], running: true });
 
 		await sweeper.sweep();
 
 		expect(published).toHaveLength(0);
-	});
-
-	it('multi-main: stale activity past the grace window is swept', async () => {
-		const { sweeper, published } = buildSweeper({
-			events: [runStart()],
-			isMultiMain: true,
-			lastFactAt: new Date(Date.now() - InterruptedRunSweeper.LIVENESS_GRACE_MS - 1000),
-		});
-
-		await sweeper.sweep();
-
-		expect(published.at(-1)?.type).toBe('run-finish');
-	});
-
-	it('single-main ignores the grace window (immediate post-crash sweeps work)', async () => {
-		const { sweeper, published } = buildSweeper({
-			events: [runStart()],
-			isMultiMain: false,
-			lastFactAt: new Date(), // fresh facts, but no siblings exist
-		});
-
-		await sweeper.sweep();
-
-		expect(published.at(-1)?.type).toBe('run-finish');
 	});
 });
 
@@ -364,34 +286,18 @@ describe('InterruptedRunSweeper.cancelUnfinishedRuns', () => {
 		expect(eventLogRepo.findUnfinishedRuns).toHaveBeenCalledWith(THREAD);
 	});
 
-	it('leaves live, suspended, and recently-active runs alone', async () => {
+	it('leaves live, suspended, and running runs alone', async () => {
 		const live = buildSweeper({ events: [runStart()], host: { isRunLive: () => true } });
 		expect(await live.sweeper.cancelUnfinishedRuns(THREAD)).toBe(0);
 		expect(live.published).toHaveLength(0);
 
-		const suspended = buildSweeper({
-			events: [runStart()],
-			checkpoints: [
-				runningCheckpoint({
-					state: {
-						persistence: { threadId: THREAD, resourceId: 'user-1', hostRunId: RUN },
-						status: 'suspended',
-						messageList: { messages: [] },
-						pendingToolCalls: { 'tc-p': { suspended: true } },
-					} as never,
-				}),
-			],
-		});
+		const suspended = buildSweeper({ events: [runStart()], suspendedRunId: RUN });
 		expect(await suspended.sweeper.cancelUnfinishedRuns(THREAD)).toBe(0);
 		expect(suspended.published).toHaveLength(0);
 
-		const activeSibling = buildSweeper({
-			events: [runStart()],
-			isMultiMain: true,
-			lastFactAt: new Date(),
-		});
-		expect(await activeSibling.sweeper.cancelUnfinishedRuns(THREAD)).toBe(0);
-		expect(activeSibling.published).toHaveLength(0);
+		const running = buildSweeper({ events: [runStart()], running: true });
+		expect(await running.sweeper.cancelUnfinishedRuns(THREAD)).toBe(0);
+		expect(running.published).toHaveLength(0);
 	});
 
 	it('never appends a second terminal fact when one landed mid-race', async () => {

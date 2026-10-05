@@ -34,7 +34,8 @@ const TOOL_CALL_ID = 'tc-1';
 const testServer = utils.setupTestServer({
 	// `ai-preferences` is the settings page. A card edit must not undo a move made there.
 	endpointGroups: ['instance-ai', 'ai-preferences'],
-	modules: ['instance-ai'],
+	// The Assistant runs on the Agents runtime, so its module needs the agents module.
+	modules: ['agents', 'instance-ai'],
 });
 
 const preferenceRepository = () => Container.get(AiPreferenceRepository);

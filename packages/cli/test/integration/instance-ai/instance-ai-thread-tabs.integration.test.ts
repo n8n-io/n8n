@@ -4,8 +4,9 @@ import { UserRepository, type Project, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { randomUUID } from 'node:crypto';
 
+import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
+import { AgentExecutionThreadRepository } from '@/modules/agents/repositories/agent-execution-thread.repository';
 import { InstanceAiThreadTabsRepository } from '@/modules/instance-ai/repositories/instance-ai-thread-tabs.repository';
-import { InstanceAiThreadRepository } from '@/modules/instance-ai/repositories/instance-ai-thread.repository';
 
 import { createMember } from '../shared/db/users';
 
@@ -30,20 +31,33 @@ const secondState: InstanceAiThreadTabsState = {
 
 describe('Instance AI thread tabs', () => {
 	let tabsRepository: InstanceAiThreadTabsRepository;
-	let threadRepository: InstanceAiThreadRepository;
+	let threadRepository: AgentExecutionThreadRepository;
+	let agentId: string;
 	let project: Project;
 	let user: User;
 	let otherUser: User;
 	let threadId: string;
 
 	beforeAll(async () => {
-		await testModules.loadModules(['instance-ai']);
+		await testModules.loadModules(['agents', 'instance-ai']);
 		await testDb.init();
 		tabsRepository = Container.get(InstanceAiThreadTabsRepository);
-		threadRepository = Container.get(InstanceAiThreadRepository);
+		threadRepository = Container.get(AgentExecutionThreadRepository);
 		project = await createTeamProject();
 		user = await createMember();
 		otherUser = await createMember();
+		const agents = Container.get(AgentRepository);
+		const agent = await agents.save(
+			agents.create({
+				id: randomUUID(),
+				name: 'Agent',
+				projectId: project.id,
+				integrations: [],
+				tools: {},
+				skills: {},
+			}),
+		);
+		agentId = agent.id;
 	});
 
 	beforeEach(async () => {
@@ -51,10 +65,11 @@ describe('Instance AI thread tabs', () => {
 		await threadRepository.save(
 			threadRepository.create({
 				id: threadId,
-				resourceId: user.id,
+				agentId,
+				agentName: 'Agent',
 				projectId: project.id,
-				title: '',
-				metadata: null,
+				accessScope: 'user',
+				ownerId: user.id,
 			}),
 		);
 	});

@@ -73,7 +73,7 @@ import type { Request, Response } from 'express';
 import { UserError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import { BadRequestError, ConflictError, ForbiddenError, NotFoundError } from '@n8n/errors';
+import { BadRequestError, ForbiddenError, NotFoundError } from '@n8n/errors';
 import type { CredentialsService } from '@/credentials/credentials.service';
 import type { Push } from '@/push';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
@@ -188,6 +188,7 @@ describe('InstanceAiController', () => {
 		eventLog.getOpenSegments.mockReturnValue([]);
 		settingsService.isInstanceAiEnabled.mockReturnValue(true);
 		settingsService.isModelConfigured.mockResolvedValue(true);
+		instanceAiService.getLiveRun.mockResolvedValue({ status: 'idle', runIds: [] });
 	});
 
 	describe('chat', () => {
@@ -204,8 +205,7 @@ describe('InstanceAiController', () => {
 
 		it('should start a run and return runId', async () => {
 			memoryService.checkThreadOwnership.mockResolvedValue('owned');
-			instanceAiService.hasActiveRun.mockReturnValue(false);
-			instanceAiService.startRun.mockReturnValue('run-1');
+			instanceAiService.startRun.mockResolvedValue('run-1');
 
 			const result = await controller.chat(req, res, THREAD_ID, payload);
 
@@ -238,8 +238,7 @@ describe('InstanceAiController', () => {
 				},
 			});
 			memoryService.checkThreadOwnership.mockResolvedValue('owned');
-			instanceAiService.hasActiveRun.mockReturnValue(false);
-			instanceAiService.startRun.mockReturnValue('run-6');
+			instanceAiService.startRun.mockResolvedValue('run-6');
 
 			await controller.chat(req, res, THREAD_ID, payloadWithArtifacts);
 
@@ -269,8 +268,7 @@ describe('InstanceAiController', () => {
 				user: { id: USER_ID, role: { scopes: [{ slug: 'instanceAi:eval' }] } },
 			});
 			memoryService.checkThreadOwnership.mockResolvedValue('owned');
-			instanceAiService.hasActiveRun.mockReturnValue(false);
-			instanceAiService.startRun.mockReturnValue('run-7');
+			instanceAiService.startRun.mockResolvedValue('run-7');
 
 			await controller.chat(evalReq, res, THREAD_ID, evalPayload);
 
@@ -289,7 +287,6 @@ describe('InstanceAiController', () => {
 				user: { id: USER_ID, role: { scopes: [{ slug: 'instanceAi:message' }] } },
 			});
 			memoryService.checkThreadOwnership.mockResolvedValue('owned');
-			instanceAiService.hasActiveRun.mockReturnValue(false);
 
 			await expect(controller.chat(chatReq, res, THREAD_ID, chatPayload)).rejects.toThrow(
 				ForbiddenError,
@@ -299,8 +296,7 @@ describe('InstanceAiController', () => {
 
 		it('should allow new threads', async () => {
 			memoryService.checkThreadOwnership.mockResolvedValue('not_found');
-			instanceAiService.hasActiveRun.mockReturnValue(false);
-			instanceAiService.startRun.mockReturnValue('run-1');
+			instanceAiService.startRun.mockResolvedValue('run-1');
 
 			await expect(controller.chat(req, res, THREAD_ID, payload)).resolves.toEqual({
 				runId: 'run-1',
@@ -316,8 +312,7 @@ describe('InstanceAiController', () => {
 				attachments: undefined,
 			});
 			memoryService.checkThreadOwnership.mockResolvedValue('owned');
-			instanceAiService.hasActiveRun.mockReturnValue(false);
-			instanceAiService.startRun.mockReturnValue('run-2');
+			instanceAiService.startRun.mockResolvedValue('run-2');
 
 			await controller.chat(req, res, THREAD_ID, payloadWithPushRef);
 
@@ -347,8 +342,7 @@ describe('InstanceAiController', () => {
 				promptVersion: 'progressive@1',
 			});
 			memoryService.checkThreadOwnership.mockResolvedValue('owned');
-			instanceAiService.hasActiveRun.mockReturnValue(false);
-			instanceAiService.startRun.mockReturnValue('run-5');
+			instanceAiService.startRun.mockResolvedValue('run-5');
 
 			await controller.chat(req, res, THREAD_ID, payloadWithMode);
 
@@ -385,8 +379,7 @@ describe('InstanceAiController', () => {
 				attachments: undefined,
 			});
 			memoryService.checkThreadOwnership.mockResolvedValue('owned');
-			instanceAiService.hasActiveRun.mockReturnValue(false);
-			instanceAiService.startRun.mockReturnValue('run-3');
+			instanceAiService.startRun.mockResolvedValue('run-3');
 
 			await controller.chat(req, res, THREAD_ID, payloadWithContext);
 
@@ -406,13 +399,6 @@ describe('InstanceAiController', () => {
 			);
 		});
 
-		it('should throw ConflictError when a run is already active', async () => {
-			memoryService.checkThreadOwnership.mockResolvedValue('owned');
-			instanceAiService.hasActiveRun.mockReturnValue(true);
-
-			await expect(controller.chat(req, res, THREAD_ID, payload)).rejects.toThrow(ConflictError);
-		});
-
 		it('should throw ForbiddenError when thread belongs to another user', async () => {
 			memoryService.checkThreadOwnership.mockResolvedValue('other_user');
 
@@ -422,7 +408,6 @@ describe('InstanceAiController', () => {
 		it('should refuse the run when no model is configured', async () => {
 			settingsService.isModelConfigured.mockResolvedValue(false);
 			memoryService.checkThreadOwnership.mockResolvedValue('owned');
-			instanceAiService.hasActiveRun.mockReturnValue(false);
 
 			await expect(controller.chat(req, res, THREAD_ID, payload)).rejects.toMatchObject({
 				message: expect.stringContaining('no model configured'),
@@ -432,7 +417,6 @@ describe('InstanceAiController', () => {
 
 		it('should reject unsupported attachment types before starting a run', async () => {
 			memoryService.checkThreadOwnership.mockResolvedValue('owned');
-			instanceAiService.hasActiveRun.mockReturnValue(false);
 			const badPayload = mock<InstanceAiSendMessageRequest>({
 				observerThresholdTokens: undefined,
 				message: 'see attached',
@@ -450,8 +434,7 @@ describe('InstanceAiController', () => {
 
 		it('should accept supported attachment types and start the run', async () => {
 			memoryService.checkThreadOwnership.mockResolvedValue('owned');
-			instanceAiService.hasActiveRun.mockReturnValue(false);
-			instanceAiService.startRun.mockReturnValue('run-3');
+			instanceAiService.startRun.mockResolvedValue('run-3');
 			const goodPayload = mock<InstanceAiSendMessageRequest>({
 				observerThresholdTokens: undefined,
 				message: 'see attached',
@@ -470,8 +453,7 @@ describe('InstanceAiController', () => {
 
 		it('should accept a nodes attachment with multiple sets and forward it intact', async () => {
 			memoryService.checkThreadOwnership.mockResolvedValue('owned');
-			instanceAiService.hasActiveRun.mockReturnValue(false);
-			instanceAiService.startRun.mockReturnValue('run-4');
+			instanceAiService.startRun.mockResolvedValue('run-4');
 			const sets = [
 				{ nodes: [{ id: 'n1', name: 'HTTP Request' }] },
 				{
@@ -514,7 +496,6 @@ describe('InstanceAiController', () => {
 
 		it('should reject an oversized attachment before starting a run', async () => {
 			memoryService.checkThreadOwnership.mockResolvedValue('owned');
-			instanceAiService.hasActiveRun.mockReturnValue(false);
 			const oversizedPayload = mock<InstanceAiSendMessageRequest>({
 				observerThresholdTokens: undefined,
 				message: 'see screenshot',
@@ -537,7 +518,6 @@ describe('InstanceAiController', () => {
 
 		it('should reject a combined payload over the total budget before starting a run', async () => {
 			memoryService.checkThreadOwnership.mockResolvedValue('owned');
-			instanceAiService.hasActiveRun.mockReturnValue(false);
 			const halfBudget = Math.floor(MAX_TOTAL_ATTACHMENT_BASE64_BYTES / 2) + 1;
 			const payloadOverBudget = mock<InstanceAiSendMessageRequest>({
 				observerThresholdTokens: undefined,
@@ -577,13 +557,12 @@ describe('InstanceAiController', () => {
 		};
 		function stubLiveRun(runEvents: unknown[] = []): void {
 			memoryService.checkThreadOwnership.mockResolvedValue('owned');
-			instanceAiService.getThreadStatus.mockReturnValue({
-				hasActiveRun: true,
-				isSuspended: false,
-				backgroundTasks: [],
-			} as never);
-			instanceAiService.getMessageGroupId.mockReturnValue('mg-1');
-			instanceAiService.getRunIdsForMessageGroup.mockReturnValue(['run-1']);
+			instanceAiService.getLiveRun.mockResolvedValue({
+				status: 'running',
+				runId: 'run-1',
+				messageGroupId: 'mg-1',
+				runIds: ['run-1'],
+			});
 			eventLog.getEventsForRuns.mockResolvedValue(runEvents as never);
 		}
 		function sseIo(once: Mock = vi.fn()) {
@@ -609,13 +588,12 @@ describe('InstanceAiController', () => {
 
 		it('should replay events that arrive while bootstrap log reads are in flight', async () => {
 			memoryService.checkThreadOwnership.mockResolvedValue('owned');
-			instanceAiService.getThreadStatus.mockReturnValue({
-				hasActiveRun: true,
-				isSuspended: false,
-				backgroundTasks: [],
-			} as never);
-			instanceAiService.getMessageGroupId.mockReturnValue('mg-1');
-			instanceAiService.getRunIdsForMessageGroup.mockReturnValue(['run-1']);
+			instanceAiService.getLiveRun.mockResolvedValue({
+				status: 'running',
+				runId: 'run-1',
+				messageGroupId: 'mg-1',
+				runIds: ['run-1'],
+			});
 			eventLog.getEventsAfter.mockResolvedValue([]);
 
 			let subscribeHandler: ((stored: { id: number; event: unknown }) => void) | undefined;
@@ -720,7 +698,7 @@ describe('InstanceAiController', () => {
 				children: [],
 				timeline: [],
 			} as never);
-			memoryService.flagExpiredConfirmations.mockImplementationOnce(async (messages) => {
+			memoryService.flagExpiredConfirmations.mockImplementationOnce(async (_threadId, messages) => {
 				for (const message of messages) {
 					for (const tc of message.agentTree?.toolCalls ?? []) {
 						if (tc.confirmation) tc.confirmation.expired = true;
@@ -745,13 +723,12 @@ describe('InstanceAiController', () => {
 
 		it('should clean up the subscription when the client disconnects during bootstrap', async () => {
 			memoryService.checkThreadOwnership.mockResolvedValue('owned');
-			instanceAiService.getThreadStatus.mockReturnValue({
-				hasActiveRun: true,
-				isSuspended: false,
-				backgroundTasks: [],
-			} as never);
-			instanceAiService.getMessageGroupId.mockReturnValue('mg-1');
-			instanceAiService.getRunIdsForMessageGroup.mockReturnValue(['run-1']);
+			instanceAiService.getLiveRun.mockResolvedValue({
+				status: 'running',
+				runId: 'run-1',
+				messageGroupId: 'mg-1',
+				runIds: ['run-1'],
+			});
 			eventLog.getEventsForRuns.mockResolvedValue([]);
 
 			const unsubscribers: Array<ReturnType<typeof vi.fn>> = [];
@@ -845,11 +822,6 @@ describe('InstanceAiController', () => {
 				return vi.fn();
 			});
 			eventLog.getEventsAfter.mockResolvedValue([]);
-			instanceAiService.getThreadStatus.mockReturnValue({
-				hasActiveRun: false,
-				isSuspended: false,
-				backgroundTasks: [],
-			} as never);
 
 			const sseReq = mock<AuthenticatedRequest>({
 				user: { id: USER_ID },
@@ -894,11 +866,6 @@ describe('InstanceAiController', () => {
 				return vi.fn();
 			});
 			eventLog.getEventsAfter.mockResolvedValue([]);
-			instanceAiService.getThreadStatus.mockReturnValue({
-				hasActiveRun: false,
-				isSuspended: false,
-				backgroundTasks: [],
-			} as never);
 
 			const sseReq = mock<AuthenticatedRequest>({
 				user: { id: USER_ID },
@@ -933,7 +900,7 @@ describe('InstanceAiController', () => {
 			const result = await controller.cancel(req, res, THREAD_ID);
 
 			expect(result).toEqual({ ok: true });
-			expect(instanceAiService.routeCancelRun).toHaveBeenCalledWith(THREAD_ID);
+			expect(instanceAiService.routeCancelRun).toHaveBeenCalledWith(req.user, THREAD_ID);
 		});
 
 		it('should throw ForbiddenError for other user thread', async () => {
@@ -1661,7 +1628,7 @@ describe('InstanceAiController', () => {
 				runId: 'run-1',
 			});
 			const body: InstanceAiConfirmRequest = { kind: 'approval', approved: true };
-			const reqWithBody = { ...req, body } as AuthenticatedRequest;
+			const reqWithBody = { ...req, body, query: { threadId: THREAD_ID } } as AuthenticatedRequest;
 
 			const result = await controller.confirm(reqWithBody, res, 'req-1');
 
@@ -1669,7 +1636,12 @@ describe('InstanceAiController', () => {
 				ok: true,
 				runId: 'run-1',
 			});
-			expect(instanceAiService.resolveConfirmation).toHaveBeenCalledWith(USER_ID, 'req-1', body);
+			expect(instanceAiService.resolveConfirmation).toHaveBeenCalledWith(
+				USER_ID,
+				'req-1',
+				body,
+				THREAD_ID,
+			);
 		});
 
 		it('should pass resourceDecision through to resolveConfirmation', async () => {
@@ -1678,17 +1650,22 @@ describe('InstanceAiController', () => {
 				kind: 'resourceDecision',
 				resourceDecision: 'allowOnce',
 			};
-			const reqWithBody = { ...req, body } as AuthenticatedRequest;
+			const reqWithBody = { ...req, body, query: { threadId: THREAD_ID } } as AuthenticatedRequest;
 
 			await controller.confirm(reqWithBody, res, 'req-1');
 
-			expect(instanceAiService.resolveConfirmation).toHaveBeenCalledWith(USER_ID, 'req-1', body);
+			expect(instanceAiService.resolveConfirmation).toHaveBeenCalledWith(
+				USER_ID,
+				'req-1',
+				body,
+				THREAD_ID,
+			);
 		});
 
 		it('should throw NotFoundError when confirmation not found', async () => {
 			instanceAiService.resolveConfirmation.mockResolvedValue(null);
 			const body: InstanceAiConfirmRequest = { kind: 'approval', approved: false };
-			const reqWithBody = { ...req, body } as AuthenticatedRequest;
+			const reqWithBody = { ...req, body, query: { threadId: THREAD_ID } } as AuthenticatedRequest;
 
 			await expect(controller.confirm(reqWithBody, res, 'req-1')).rejects.toThrow(NotFoundError);
 		});
@@ -1699,7 +1676,7 @@ describe('InstanceAiController', () => {
 				kind: 'questions',
 				answers: [{ questionId: 'apps', selectedOptions: [], customText: 'import a csv' }],
 			};
-			const reqWithBody = { ...req, body } as AuthenticatedRequest;
+			const reqWithBody = { ...req, body, query: { threadId: THREAD_ID } } as AuthenticatedRequest;
 
 			await expect(controller.confirm(reqWithBody, res, 'onboarding-card')).rejects.toMatchObject({
 				message: expect.stringContaining('no model configured'),
@@ -1709,12 +1686,12 @@ describe('InstanceAiController', () => {
 
 		it('should start the first turn with the answers when the onboarding card holds free text', async () => {
 			onboarding.answerCard.mockResolvedValue({ threadId: 'thread-1', firstMessage: 'answers' });
-			instanceAiService.startRun.mockReturnValue('run-2');
+			instanceAiService.startRun.mockResolvedValue('run-2');
 			const body: InstanceAiConfirmRequest = {
 				kind: 'questions',
 				answers: [{ questionId: 'apps', selectedOptions: [], customText: 'import a csv' }],
 			};
-			const reqWithBody = { ...req, body } as AuthenticatedRequest;
+			const reqWithBody = { ...req, body, query: { threadId: THREAD_ID } } as AuthenticatedRequest;
 
 			const result = await controller.confirm(reqWithBody, res, 'onboarding-card');
 
@@ -1734,7 +1711,7 @@ describe('InstanceAiController', () => {
 				kind: 'questions',
 				answers: [{ questionId: 'apps', selectedOptions: ['Gmail'] }],
 			};
-			const reqWithBody = { ...req, body } as AuthenticatedRequest;
+			const reqWithBody = { ...req, body, query: { threadId: THREAD_ID } } as AuthenticatedRequest;
 
 			const result = await controller.confirm(reqWithBody, res, 'onboarding-card');
 
@@ -2791,15 +2768,11 @@ describe('InstanceAiController — durable-log SSE replay', () => {
 		vi.clearAllMocks();
 		settingsService.isInstanceAiEnabled.mockReturnValue(true);
 		eventLog.getOpenSegments.mockReturnValue([]);
+		instanceAiService.getLiveRun.mockResolvedValue({ status: 'idle', runIds: [] });
 	});
 
 	it('replays from the durable log and dedups events that land during the async read', async () => {
 		memoryService.checkThreadOwnership.mockResolvedValue('owned');
-		instanceAiService.getThreadStatus.mockReturnValue({
-			hasActiveRun: false,
-			isSuspended: false,
-			backgroundTasks: [],
-		} as never);
 
 		const handlers: Array<(stored: unknown) => void> = [];
 		eventBus.subscribe.mockImplementation((_threadId, handler) => {
@@ -2867,13 +2840,12 @@ describe('InstanceAiController — durable-log SSE replay', () => {
 
 	it('delivers events that land during the run-sync tree reads', async () => {
 		memoryService.checkThreadOwnership.mockResolvedValue('owned');
-		instanceAiService.getThreadStatus.mockReturnValue({
-			hasActiveRun: true,
-			isSuspended: false,
-			backgroundTasks: [],
-		} as never);
-		instanceAiService.getMessageGroupId.mockReturnValue('group-1');
-		instanceAiService.getRunIdsForMessageGroup.mockReturnValue(['run-1']);
+		instanceAiService.getLiveRun.mockResolvedValue({
+			status: 'running',
+			runId: 'run-1',
+			messageGroupId: 'group-1',
+			runIds: ['run-1'],
+		});
 
 		const handlers: Array<(stored: unknown) => void> = [];
 		eventBus.subscribe.mockImplementation((_threadId, handler) => {
@@ -2932,13 +2904,12 @@ describe('InstanceAiController — durable-log SSE replay', () => {
 
 	it('serves the open streamed segment as one ephemeral delta frame and skips its buffered deltas', async () => {
 		memoryService.checkThreadOwnership.mockResolvedValue('owned');
-		instanceAiService.getThreadStatus.mockReturnValue({
-			hasActiveRun: true,
-			isSuspended: false,
-			backgroundTasks: [],
-		} as never);
-		instanceAiService.getMessageGroupId.mockReturnValue('group-1');
-		instanceAiService.getRunIdsForMessageGroup.mockReturnValue(['run-1']);
+		instanceAiService.getLiveRun.mockResolvedValue({
+			status: 'running',
+			runId: 'run-1',
+			messageGroupId: 'group-1',
+			runIds: ['run-1'],
+		});
 
 		const handlers: Array<(stored: unknown) => void> = [];
 		eventBus.subscribe.mockImplementation((_threadId, handler) => {
@@ -3027,11 +2998,6 @@ describe('InstanceAiController — durable-log SSE replay', () => {
 
 	it('delivers a block persisted mid-bootstrap before the buffered fact that follows it', async () => {
 		memoryService.checkThreadOwnership.mockResolvedValue('owned');
-		instanceAiService.getThreadStatus.mockReturnValue({
-			hasActiveRun: false,
-			isSuspended: false,
-			backgroundTasks: [],
-		} as never);
 
 		const handlers: Array<(stored: unknown) => void> = [];
 		eventBus.subscribe.mockImplementation((_threadId, handler) => {
@@ -3113,11 +3079,6 @@ describe('InstanceAiController — durable-log SSE replay', () => {
 
 	it('strips the id line from a buffered fact that would jump the cursor over an unseen row', async () => {
 		memoryService.checkThreadOwnership.mockResolvedValue('owned');
-		instanceAiService.getThreadStatus.mockReturnValue({
-			hasActiveRun: false,
-			isSuspended: false,
-			backgroundTasks: [],
-		} as never);
 
 		const handlers: Array<(stored: unknown) => void> = [];
 		eventBus.subscribe.mockImplementation((_threadId, handler) => {
@@ -3166,13 +3127,12 @@ describe('InstanceAiController — durable-log SSE replay', () => {
 
 	it('does not re-apply a gap block already folded into a delivered run-sync tree', async () => {
 		memoryService.checkThreadOwnership.mockResolvedValue('owned');
-		instanceAiService.getThreadStatus.mockReturnValue({
-			hasActiveRun: true,
-			isSuspended: false,
-			backgroundTasks: [],
-		} as never);
-		instanceAiService.getMessageGroupId.mockReturnValue('group-1');
-		instanceAiService.getRunIdsForMessageGroup.mockReturnValue(['run-1']);
+		instanceAiService.getLiveRun.mockResolvedValue({
+			status: 'running',
+			runId: 'run-1',
+			messageGroupId: 'group-1',
+			runIds: ['run-1'],
+		});
 
 		const handlers: Array<(stored: unknown) => void> = [];
 		eventBus.subscribe.mockImplementation((_threadId, handler) => {
@@ -3234,11 +3194,6 @@ describe('InstanceAiController — durable-log SSE replay', () => {
 
 	it('removes the buffering subscription when a durable read throws', async () => {
 		memoryService.checkThreadOwnership.mockResolvedValue('owned');
-		instanceAiService.getThreadStatus.mockReturnValue({
-			hasActiveRun: false,
-			isSuspended: false,
-			backgroundTasks: [],
-		} as never);
 
 		const unsubscribers: Array<ReturnType<typeof vi.fn>> = [];
 		eventBus.subscribe.mockImplementation(() => {
@@ -3274,13 +3229,12 @@ describe('InstanceAiController — durable-log SSE replay', () => {
 
 	it('stops the bootstrap when the client disconnects during a durable read', async () => {
 		memoryService.checkThreadOwnership.mockResolvedValue('owned');
-		instanceAiService.getThreadStatus.mockReturnValue({
-			hasActiveRun: true,
-			isSuspended: false,
-			backgroundTasks: [],
-		} as never);
-		instanceAiService.getMessageGroupId.mockReturnValue('group-1');
-		instanceAiService.getRunIdsForMessageGroup.mockReturnValue(['run-1']);
+		instanceAiService.getLiveRun.mockResolvedValue({
+			status: 'running',
+			runId: 'run-1',
+			messageGroupId: 'group-1',
+			runIds: ['run-1'],
+		});
 
 		eventBus.subscribe.mockReturnValue(vi.fn());
 

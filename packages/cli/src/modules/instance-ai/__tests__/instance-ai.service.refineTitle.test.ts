@@ -70,10 +70,13 @@ describe('InstanceAiService — refineTitleIfNeeded input cleaning', () => {
 
 	function createService(storedMessages: StoredMessage[]): Internals {
 		const service = Object.create(InstanceAiService.prototype) as unknown as Internals;
-		service.agentMemory = {
-			getThread: vi.fn(async () => ({ id: 'thread-1', title: 'hey', metadata: {} })),
-			getMessages: vi.fn(async () => storedMessages),
-		};
+		// The service reads the Assistant memory through a getter; shadow it with the double.
+		Object.defineProperty(service, 'agentMemory', {
+			value: {
+				getThread: vi.fn(async () => ({ id: 'thread-1', title: 'hey', metadata: {} })),
+				getMessages: vi.fn(async () => storedMessages),
+			},
+		});
 		service.tracing = { getTraceContextForContinuation: vi.fn(() => undefined) };
 		service.eventBus = { publish: vi.fn() };
 		service.logger = { warn: vi.fn() };

@@ -51,7 +51,8 @@ const saveProposal = async () =>
 	});
 
 beforeAll(async () => {
-	await testModules.loadModules(['instance-ai']);
+	// The instance-ai entities reference Agents tables, so load the agents module too.
+	await testModules.loadModules(['agents', 'instance-ai']);
 	await testDb.init();
 	suggestions = Container.get(WorkflowSuggestionRepository);
 	tx = Container.get(TransactionRunner);

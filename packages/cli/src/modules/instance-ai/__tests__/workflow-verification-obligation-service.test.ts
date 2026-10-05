@@ -2,7 +2,7 @@ import type { PlannedTaskGraph, PlannedTaskRecord, WorkflowBuildOutcome } from '
 import type { WorkflowLoopWorkItemRecord } from '@n8n/instance-ai';
 import { mock } from 'vitest-mock-extended';
 
-import type { TypeORMAgentMemory } from '../storage/typeorm-agent-memory';
+import type { N8nMemoryImpl } from '../../agents/integrations/n8n-memory';
 import { WorkflowVerificationObligationService } from '../workflow-verification-obligation-service';
 
 // Memory with no stored thread: the service falls back to deriving the
@@ -11,7 +11,7 @@ import { WorkflowVerificationObligationService } from '../workflow-verification-
 const emptyMemory = {
 	getThread: async () => null,
 	saveThread: async () => undefined,
-} as unknown as TypeORMAgentMemory;
+} as unknown as N8nMemoryImpl;
 
 function makeOutcome(overrides: Partial<WorkflowBuildOutcome> = {}): WorkflowBuildOutcome {
 	return {
@@ -93,8 +93,8 @@ describe('WorkflowVerificationObligationService setup panel policy', () => {
 	it.each([true, false])(
 		'applies the panel flag to direct and planned reads: %s',
 		async (enabled) => {
-			const getThread = vi.fn<TypeORMAgentMemory['getThread']>();
-			const memory = mock<TypeORMAgentMemory>({ getThread });
+			const getThread = vi.fn<N8nMemoryImpl['getThread']>();
+			const memory = mock<N8nMemoryImpl>({ getThread });
 			const service = new WorkflowVerificationObligationService(
 				memory,
 				(threadId) => threadId === 'thread-1' && enabled,

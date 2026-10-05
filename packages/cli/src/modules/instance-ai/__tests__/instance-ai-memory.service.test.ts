@@ -1,32 +1,47 @@
+import { UserRepository } from '@n8n/db';
+import { Container } from '@n8n/di';
+
+import { N8NCheckpointStorage } from '../../agents/integrations/n8n-checkpoint-storage';
+import { N8nMemory } from '../../agents/integrations/n8n-memory';
+import { AgentExecutionThreadRepository } from '../../agents/repositories/agent-execution-thread.repository';
+import { SystemAgentExecutionService } from '../../agents/system-agents/system-agent-execution.service';
 import { InstanceAiMemoryService } from '../instance-ai-memory.service';
 
+/** Page source for the message double. Tests set `{ messages }`; the service
+ *  reads the whole thread through `getMessages` and pages it itself. */
 const mockListMessages = vi.fn();
 const mockGetThread = vi.fn();
 const mockSaveThread = vi.fn();
+const mockPatchThread = vi.fn();
 const mockDeleteThread = vi.fn();
-const mockDeleteThreadsByResourceIdPrefix = vi.fn();
-const mockDeleteThreadsByResourceId = vi.fn();
-const mockListThreads = vi.fn();
-const mockListThreadHistory = vi.fn();
-const mockSaveThreadWithProject = vi.fn();
-const mockGetThreadProjectId = vi.fn();
 const mockSaveMessages = vi.fn();
 const mockAgentMemory = {
-	listMessages: mockListMessages,
+	getMessages: async () =>
+		((await mockListMessages()) as { messages?: unknown[] } | undefined)?.messages ?? [],
 	getThread: mockGetThread,
 	saveThread: mockSaveThread,
+	patchThread: mockPatchThread,
 	deleteThread: mockDeleteThread,
-	deleteThreadsByResourceIdPrefix: mockDeleteThreadsByResourceIdPrefix,
-	deleteThreadsByResourceId: mockDeleteThreadsByResourceId,
-	listThreads: mockListThreads,
-	listThreadHistory: mockListThreadHistory,
-	saveThreadWithProject: mockSaveThreadWithProject,
-	getThreadProjectId: mockGetThreadProjectId,
 	saveMessages: mockSaveMessages,
 };
 
-// Mock GlobalConfig
-const mockCheckpointRepository = { findActiveByThreadId: vi.fn().mockResolvedValue([]) };
+const mockThreads = {
+	findOneBy: vi.fn(),
+	findOwnedHistoryPage: vi.fn(),
+	findOwnedByAgent: vi.fn(),
+	findByAgentUpdatedBefore: vi.fn(),
+	delete: vi.fn(),
+	updateOwned: vi.fn(),
+};
+const mockCheckpoints = { findSuspendedForThread: vi.fn() };
+const mockSystemAgentExecution = { createThread: vi.fn() };
+const mockUserRepository = { findByIdWithRole: vi.fn() };
+
+Container.set(N8nMemory, { getImplementation: () => mockAgentMemory } as never);
+Container.set(AgentExecutionThreadRepository, mockThreads as never);
+Container.set(N8NCheckpointStorage, mockCheckpoints as never);
+Container.set(SystemAgentExecutionService, mockSystemAgentExecution as never);
+Container.set(UserRepository, mockUserRepository as never);
 
 interface LogRow {
 	runId: string;
@@ -83,43 +98,24 @@ function installLogDouble(rows: LogRow[] = []): void {
 const mockDurableLogMetrics = { recordFoldRead: vi.fn() };
 
 function createService(options: { threadTtlDays?: number } = {}): InstanceAiMemoryService {
-	const mockConfig = {
-		instanceAi: {
-			threadTtlDays: options.threadTtlDays ?? 0,
-		},
-		database: {
-			type: 'postgresdb',
-			postgresdb: {
-				user: 'test',
-				password: 'test',
-				host: 'localhost',
-				port: 5432,
-				database: 'test',
-			},
-		},
-	};
+	const mockConfig = { instanceAi: { threadTtlDays: options.threadTtlDays ?? 0 } };
 	const mockLogger = { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() };
 	return new InstanceAiMemoryService(
 		mockLogger as never,
 		mockConfig as never,
-		mockAgentMemory as never,
-		mockCheckpointRepository as never,
-		mockPendingConfirmationRepository as never,
 		mockEventLogRepository as never,
 		mockDurableLogMetrics as never,
 	);
 }
 
-const mockPendingConfirmationRepository = {
-	findLiveRequestIds: vi.fn(async () => new Set<string>()),
-};
-
-function makeThread(id: string, updatedAt: string) {
+/** An Assistant session row as `AgentExecutionThreadRepository` returns it. */
+function makeSession(id: string, updatedAt: string, ownerId = 'user-1') {
 	return {
 		id,
+		agentId: 'n8n-assistant',
 		title: id,
-		resourceId: 'user-1',
-		metadata: {},
+		ownerId,
+		projectId: 'project-1',
 		createdAt: new Date('2026-01-01T00:00:00.000Z'),
 		updatedAt: new Date(updatedAt),
 	};
@@ -127,12 +123,14 @@ function makeThread(id: string, updatedAt: string) {
 
 describe('InstanceAiMemoryService.listThreadHistory', () => {
 	beforeEach(() => {
-		mockListThreadHistory.mockReset();
+		vi.clearAllMocks();
+		mockThreads.findOwnedHistoryPage.mockReset();
+		mockGetThread.mockResolvedValue(null);
 	});
 
 	it('encodes the last returned row as the cursor and stops on the final page', async () => {
-		const rows = ['c', 'b', 'a'].map((id) => makeThread(id, '2026-02-01T00:00:00.000Z'));
-		mockListThreadHistory.mockResolvedValueOnce(rows).mockResolvedValueOnce([rows[2]]);
+		const rows = ['c', 'b', 'a'].map((id) => makeSession(id, '2026-02-01T00:00:00.000Z'));
+		mockThreads.findOwnedHistoryPage.mockResolvedValueOnce(rows).mockResolvedValueOnce([rows[2]]);
 		const service = createService();
 		const first = await service.listThreadHistory('user-1', { limit: 2, search: 'invoice' });
 		expect(first.threads.map((thread) => thread.id)).toEqual(['c', 'b']);
@@ -143,17 +141,31 @@ describe('InstanceAiMemoryService.listThreadHistory', () => {
 			search: 'invoice',
 			cursor: first.nextCursor!,
 		});
-		expect(mockListThreadHistory).toHaveBeenNthCalledWith(1, 'user-1', 2, 'invoice', undefined);
-		expect(mockListThreadHistory).toHaveBeenNthCalledWith(2, 'user-1', 2, 'invoice', {
-			id: 'b',
-			updatedAt: rows[1].updatedAt,
-		});
+		expect(mockThreads.findOwnedHistoryPage).toHaveBeenNthCalledWith(
+			1,
+			'n8n-assistant',
+			'user-1',
+			2,
+			'invoice',
+			undefined,
+		);
+		expect(mockThreads.findOwnedHistoryPage).toHaveBeenNthCalledWith(
+			2,
+			'n8n-assistant',
+			'user-1',
+			2,
+			'invoice',
+			{
+				id: 'b',
+				updatedAt: rows[1].updatedAt,
+			},
+		);
 		expect(second).toMatchObject({ hasMore: false, nextCursor: null });
 		expect(second.threads.map((thread) => thread.id)).toEqual(['a']);
 	});
 
 	it('returns an empty final page for a search with no matches', async () => {
-		mockListThreadHistory.mockResolvedValueOnce([]);
+		mockThreads.findOwnedHistoryPage.mockResolvedValueOnce([]);
 		expect(
 			await createService().listThreadHistory('user-1', { limit: 30, search: 'missing' }),
 		).toEqual({ threads: [], hasMore: false, nextCursor: null });
@@ -163,7 +175,7 @@ describe('InstanceAiMemoryService.listThreadHistory', () => {
 		await expect(
 			createService().listThreadHistory('user-1', { limit: 30, cursor: 'invalid' }),
 		).rejects.toThrow('Invalid thread history cursor');
-		expect(mockListThreadHistory).not.toHaveBeenCalled();
+		expect(mockThreads.findOwnedHistoryPage).not.toHaveBeenCalled();
 	});
 });
 
@@ -199,7 +211,7 @@ describe('InstanceAiMemoryService.getRichMessages', () => {
 				},
 			],
 		});
-		mockCheckpointRepository.findActiveByThreadId.mockRejectedValueOnce(new Error('db down'));
+		mockCheckpoints.findSuspendedForThread.mockRejectedValueOnce(new Error('db down'));
 
 		const service = createService();
 		const result = await service.getRichMessages('user-1', 'thread-1');
@@ -538,21 +550,13 @@ describe('InstanceAiMemoryService.getRichMessages — durable-log fold-on-read',
 		// must keep rendering: with no assistant rows committed yet, the folded
 		// entry surfaces as a standalone assistant message carrying the
 		// confirmation card. The suspension is recognized by the run's own
-		// checkpoint — the same predicate that spares it from the interrupted-run
-		// sweep.
+		// suspended Agents checkpoint, whose host metadata names the run.
 		mockListMessages.mockResolvedValue({ messages: [userMessage] });
-		mockCheckpointRepository.findActiveByThreadId.mockResolvedValueOnce([
-			{
-				key: 'cp-1',
-				runId: 'sdk-run-1',
-				hostRunId: 'run_susp',
-				threadId: 'thread-1',
-				expiredAt: null,
-				state: { status: 'suspended' },
-				createdAt: new Date('2026-01-01T00:00:01.000Z'),
-				updatedAt: new Date('2026-01-01T00:00:01.000Z'),
-			},
-		]);
+		mockCheckpoints.findSuspendedForThread.mockResolvedValueOnce({
+			runId: 'sdk-run-1',
+			pendingToolCalls: {},
+			persistence: { hostMetadata: { instanceAiTurn: { runId: 'run_susp' } } },
+		});
 		setLogRows([
 			eventRow(
 				{
@@ -910,6 +914,19 @@ describe('InstanceAiMemoryService.getRichMessages — durable-log fold-on-read',
 	describe('hydration is scoped to the requested page', () => {
 		const oldAt = new Date('2025-06-01T00:00:00.000Z');
 
+		/** The newer page (page 0 at limit 2) that bounds page 1 from above. */
+		function nextPage(startsAt: Date) {
+			return [
+				{ id: 'msg-u2', role: 'user', content: 'Next', createdAt: startsAt },
+				{
+					id: 'msg-a2',
+					role: 'assistant',
+					content: [{ type: 'text', text: 'Next reply' }],
+					createdAt: new Date(startsAt.getTime() + 1000),
+				},
+			];
+		}
+
 		/** A complete, renderable run: start, one tool call, finish. */
 		function runRows(runId: string, when: Date, messageGroupId?: string) {
 			return [
@@ -999,17 +1016,13 @@ describe('InstanceAiMemoryService.getRichMessages — durable-log fold-on-read',
 			// it either.
 			const nextPageAt = new Date('2026-01-01T00:00:05.000Z');
 			mockListMessages.mockResolvedValue({
-				messages: [userMessage, assistantMessage],
-				newerBoundaryAt: nextPageAt,
+				messages: [userMessage, assistantMessage, ...nextPage(nextPageAt)],
 			});
 			setLogRows([...runRows('run_recent', at)]);
 
 			const service = createService();
-			await service.getRichMessages('user-1', 'thread-1', { page: 1 });
+			await service.getRichMessages('user-1', 'thread-1', { page: 1, limit: 2 });
 
-			expect(mockListMessages).toHaveBeenCalledWith(
-				expect.objectContaining({ page: 1, withNewerBoundary: true }),
-			);
 			expect(mockEventLogRepository.findRunIdsInWindow).toHaveBeenCalledWith('thread-1', {
 				since: userMessage.createdAt,
 				before: nextPageAt,
@@ -1036,13 +1049,16 @@ describe('InstanceAiMemoryService.getRichMessages — durable-log fold-on-read',
 			// turn's tree, so the window has to pull the sibling back in.
 			const afterPage = new Date('2026-01-01T00:00:30.000Z');
 			mockListMessages.mockResolvedValue({
-				messages: [userMessage, assistantMessage],
-				newerBoundaryAt: new Date('2026-01-01T00:00:05.000Z'),
+				messages: [
+					userMessage,
+					assistantMessage,
+					...nextPage(new Date('2026-01-01T00:00:05.000Z')),
+				],
 			});
 			setLogRows([...runRows('run_parent', at, 'mg-1'), ...runRows('run_bg', afterPage, 'mg-1')]);
 
 			const service = createService();
-			const result = await service.getRichMessages('user-1', 'thread-1', { page: 1 });
+			const result = await service.getRichMessages('user-1', 'thread-1', { page: 1, limit: 2 });
 
 			// `run_bg` is outside the page bounds; it rides in on its group.
 			expect(mockEventLogRepository.getForThreadRuns).toHaveBeenCalledWith('thread-1', [
@@ -1086,61 +1102,94 @@ describe('InstanceAiMemoryService.getRichMessages — durable-log fold-on-read',
 describe('InstanceAiMemoryService.ensureThread', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		mockThreads.findOneBy.mockReset();
+		mockGetThread.mockReset();
 	});
 
-	it('creates a thread bound to the project in a single atomic call', async () => {
-		mockGetThread.mockResolvedValueOnce(null);
-		mockSaveThreadWithProject.mockResolvedValueOnce({
+	it('creates the Assistant session and the memory thread with launch metadata', async () => {
+		const user = { id: 'user-1' };
+		mockUserRepository.findByIdWithRole.mockResolvedValueOnce(user);
+		mockThreads.findOneBy
+			.mockResolvedValueOnce(null)
+			.mockResolvedValueOnce(makeSession('thread-new', '2026-01-01T00:00:00.000Z'));
+		mockGetThread.mockResolvedValue({
 			id: 'thread-new',
-			title: '',
-			resourceId: 'user-1',
-			metadata: { source: 'assistant_page', origin: 'internal' },
-			createdAt: new Date('2026-01-01T00:00:00.000Z'),
-			updatedAt: new Date('2026-01-01T00:00:00.000Z'),
+			metadata: { source: 'template-view', origin: 'internal' },
 		});
 
-		const service = createService();
-		const result = await service.ensureThread('user-1', 'thread-new', 'project-1', {
-			source: 'assistant_page',
+		const result = await createService().ensureThread('user-1', 'thread-new', 'project-1', {
+			source: 'template-view',
 			origin: 'internal',
+			sourceContext: { templateId: '42' },
 		});
 
-		// Thread + project binding are written together, so a partial failure can
-		// never persist a project-less thread.
-		expect(mockSaveThreadWithProject).toHaveBeenCalledWith(
-			{
-				id: 'thread-new',
-				resourceId: 'user-1',
-				title: '',
-				metadata: { source: 'assistant_page', origin: 'internal' },
+		expect(mockSystemAgentExecution.createThread).toHaveBeenCalledWith({
+			agentId: 'n8n-assistant',
+			user,
+			projectId: 'project-1',
+			threadId: 'thread-new',
+		});
+		expect(mockSaveThread).toHaveBeenCalledWith({
+			id: 'thread-new',
+			resourceId: 'draft-chat:user-1',
+			title: '',
+			metadata: {
+				source: 'template-view',
+				origin: 'internal',
+				sourceContext: { templateId: '42' },
 			},
-			'project-1',
-		);
-		expect(mockSaveThread).not.toHaveBeenCalled();
+		});
 		expect(result.created).toBe(true);
-		expect(result.thread.id).toBe('thread-new');
-		expect(result.thread.resourceId).toBe('user-1');
+		expect(result.thread).toMatchObject({ id: 'thread-new', resourceId: 'user-1' });
+	});
+
+	it('omits sourceContext from metadata when not provided', async () => {
+		mockUserRepository.findByIdWithRole.mockResolvedValueOnce({ id: 'user-1' });
+		mockThreads.findOneBy
+			.mockResolvedValueOnce(null)
+			.mockResolvedValueOnce(makeSession('thread-2', '2026-01-01T00:00:00.000Z'));
+
+		await createService().ensureThread('user-1', 'thread-2', 'project-1', {
+			source: 'website-template',
+			origin: 'external',
+		});
+
+		expect(mockSaveThread).toHaveBeenCalledWith(
+			expect.objectContaining({
+				metadata: { source: 'website-template', origin: 'external' },
+			}),
+		);
 	});
 
 	it('returns the existing thread without rewriting it', async () => {
-		mockGetThread.mockResolvedValueOnce({
-			id: 'thread-existing',
+		mockThreads.findOneBy.mockResolvedValueOnce({
+			...makeSession('thread-existing', '2026-01-02T00:00:00.000Z'),
 			title: 'Existing',
-			resourceId: 'user-1',
-			metadata: { foo: 'bar' },
-			createdAt: new Date('2026-01-01T00:00:00.000Z'),
-			updatedAt: new Date('2026-01-02T00:00:00.000Z'),
 		});
 
-		const service = createService();
-		const result = await service.ensureThread('user-1', 'thread-existing', 'project-1', {
+		const result = await createService().ensureThread('user-1', 'thread-existing', 'project-1', {
 			source: 'assistant_page',
 			origin: 'internal',
 		});
 
+		expect(mockSystemAgentExecution.createThread).not.toHaveBeenCalled();
 		expect(mockSaveThread).not.toHaveBeenCalled();
 		expect(result.created).toBe(false);
 		expect(result.thread.title).toBe('Existing');
+	});
+
+	it('refuses a thread owned by another user', async () => {
+		mockThreads.findOneBy.mockResolvedValueOnce(
+			makeSession('thread-other', '2026-01-02T00:00:00.000Z', 'user-2'),
+		);
+
+		await expect(
+			createService().ensureThread('user-1', 'thread-other', 'project-1', {
+				source: 'assistant_page',
+				origin: 'internal',
+			}),
+		).rejects.toThrow('is not owned by user user-1');
+		expect(mockSaveThread).not.toHaveBeenCalled();
 	});
 });
 
@@ -1182,7 +1231,7 @@ describe('InstanceAiMemoryService.restoreThreadMessages', () => {
 		expect(mockSaveMessages).toHaveBeenCalledTimes(1);
 		const args = mockSaveMessages.mock.calls[0][0];
 		expect(args.threadId).toBe('thread-1');
-		expect(args.resourceId).toBe('user-1');
+		expect(args.resourceId).toBe('draft-chat:user-1');
 		expect(args.messages).toHaveLength(2);
 		// Verbatim restore: same ids and content blocks, createdAt as ascending Dates.
 		expect(args.messages[0].id).toBe('msg-user');
@@ -1230,114 +1279,11 @@ describe('InstanceAiMemoryService.deleteThread', () => {
 		vi.clearAllMocks();
 	});
 
-	it('deletes hidden sub-agent threads before deleting the parent thread', async () => {
-		const service = createService();
+	it('deletes the memory thread and the Assistant session', async () => {
+		await createService().deleteThread('thread-1');
 
-		await service.deleteThread('00000000-0000-4000-8000-000000000001');
-
-		expect(mockDeleteThreadsByResourceIdPrefix).toHaveBeenCalledWith(
-			'instance-ai-subagent:00000000-0000-4000-8000-000000000001:',
-		);
-		expect(mockDeleteThread).toHaveBeenCalledWith('00000000-0000-4000-8000-000000000001');
-		expect(mockDeleteThreadsByResourceIdPrefix.mock.invocationCallOrder[0]).toBeLessThan(
-			mockDeleteThread.mock.invocationCallOrder[0],
-		);
-	});
-});
-
-describe('InstanceAiMemoryService.ensureThread launch metadata', () => {
-	beforeEach(() => {
-		vi.clearAllMocks();
-	});
-
-	it('writes source/origin/sourceContext into metadata when creating', async () => {
-		mockGetThread.mockResolvedValueOnce(null);
-		mockSaveThreadWithProject.mockResolvedValueOnce({
-			id: 'thread-1',
-			title: '',
-			resourceId: 'user-1',
-			metadata: {
-				source: 'template-view',
-				origin: 'internal',
-				sourceContext: { templateId: '42' },
-			},
-			createdAt: new Date('2026-01-01T00:00:00.000Z'),
-			updatedAt: new Date('2026-01-01T00:00:00.000Z'),
-		});
-
-		const service = createService();
-		const result = await service.ensureThread('user-1', 'thread-1', 'project-1', {
-			source: 'template-view',
-			origin: 'internal',
-			sourceContext: { templateId: '42' },
-		});
-
-		expect(mockSaveThreadWithProject).toHaveBeenCalledWith(
-			{
-				id: 'thread-1',
-				resourceId: 'user-1',
-				title: '',
-				metadata: {
-					source: 'template-view',
-					origin: 'internal',
-					sourceContext: { templateId: '42' },
-				},
-			},
-			'project-1',
-		);
-		expect(result.created).toBe(true);
-	});
-
-	it('omits sourceContext from metadata when not provided', async () => {
-		mockGetThread.mockResolvedValueOnce(null);
-		mockSaveThreadWithProject.mockResolvedValueOnce({
-			id: 'thread-2',
-			title: '',
-			resourceId: 'user-1',
-			metadata: { source: 'website-template', origin: 'external' },
-			createdAt: new Date('2026-01-01T00:00:00.000Z'),
-			updatedAt: new Date('2026-01-01T00:00:00.000Z'),
-		});
-
-		const service = createService();
-		await service.ensureThread('user-1', 'thread-2', 'project-1', {
-			source: 'website-template',
-			origin: 'external',
-		});
-
-		expect(mockSaveThreadWithProject).toHaveBeenCalledWith(
-			{
-				id: 'thread-2',
-				resourceId: 'user-1',
-				title: '',
-				metadata: {
-					source: 'website-template',
-					origin: 'external',
-				},
-			},
-			'project-1',
-		);
-	});
-
-	it('does not pass metadata when the thread already exists', async () => {
-		mockGetThread.mockResolvedValueOnce({
-			id: 'thread-existing',
-			title: 'Existing',
-			resourceId: 'user-1',
-			metadata: { foo: 'bar' },
-			createdAt: new Date('2026-01-01T00:00:00.000Z'),
-			updatedAt: new Date('2026-01-02T00:00:00.000Z'),
-		});
-
-		const service = createService();
-		const result = await service.ensureThread('user-1', 'thread-existing', 'project-1', {
-			source: 'template-view',
-			origin: 'internal',
-			sourceContext: { templateId: '42' },
-		});
-
-		expect(result.created).toBe(false);
-		expect(mockSaveThreadWithProject).not.toHaveBeenCalled();
+		expect(mockDeleteThread).toHaveBeenCalledWith('thread-1');
+		expect(mockThreads.delete).toHaveBeenCalledWith({ id: 'thread-1', agentId: 'n8n-assistant' });
 	});
 });
 
@@ -1346,61 +1292,73 @@ describe('InstanceAiMemoryService.deleteThreadsForUser', () => {
 		vi.clearAllMocks();
 	});
 
-	it('delegates to the agent memory and returns the number of deleted threads', async () => {
-		mockDeleteThreadsByResourceId.mockResolvedValueOnce(3);
-		const service = createService();
+	it('deletes every Assistant session the user owns and returns the count', async () => {
+		mockThreads.findOwnedByAgent.mockResolvedValueOnce([
+			makeSession('a', '2026-01-01T00:00:00.000Z'),
+			makeSession('b', '2026-01-01T00:00:00.000Z'),
+		]);
 
-		const deleted = await service.deleteThreadsForUser('user-1');
+		const deleted = await createService().deleteThreadsForUser('user-1');
 
-		expect(deleted).toBe(3);
-		expect(mockDeleteThreadsByResourceId).toHaveBeenCalledWith('user-1');
+		expect(deleted).toBe(2);
+		expect(mockThreads.findOwnedByAgent).toHaveBeenCalledWith('n8n-assistant', 'user-1');
+		expect(mockDeleteThread).toHaveBeenCalledWith('a');
+		expect(mockDeleteThread).toHaveBeenCalledWith('b');
+	});
+});
+
+describe('InstanceAiMemoryService.checkThreadOwnership', () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+	});
+
+	it.each([
+		['owned', makeSession('t', '2026-01-01T00:00:00.000Z'), 'owned'],
+		['missing', null, 'not_found'],
+		['another owner', makeSession('t', '2026-01-01T00:00:00.000Z', 'user-2'), 'other_user'],
+		[
+			'another agent',
+			{ ...makeSession('t', '2026-01-01T00:00:00.000Z'), agentId: 'other-agent' },
+			'other_user',
+		],
+	])('reports a thread with %s', async (_label, session, expected) => {
+		mockThreads.findOneBy.mockResolvedValueOnce(session);
+
+		expect(await createService().checkThreadOwnership('user-1', 't')).toBe(expected);
 	});
 });
 
 describe('InstanceAiMemoryService.cleanupExpiredThreads', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		mockThreads.findByAgentUpdatedBefore.mockReset();
 	});
 
-	it('queries oldest threads first so fresh threads do not hide expired ones', async () => {
+	it('is a no-op when the thread TTL is disabled', async () => {
+		expect(await createService({ threadTtlDays: 0 }).cleanupExpiredThreads()).toBe(0);
+		expect(mockThreads.findByAgentUpdatedBefore).not.toHaveBeenCalled();
+	});
+
+	it('deletes threads older than the cutoff', async () => {
 		const dateNow = vi
 			.spyOn(Date, 'now')
 			.mockReturnValue(new Date('2026-05-15T00:00:00.000Z').getTime());
-		const expiredThread = makeThread('expired-thread', '2026-05-01T00:00:00.000Z');
-		const freshThread = makeThread('fresh-thread', '2026-05-14T00:00:00.000Z');
-		let expiredDeleted = false;
+		const expired = makeSession('expired-thread', '2026-05-01T00:00:00.000Z');
+		mockThreads.findByAgentUpdatedBefore.mockResolvedValueOnce([expired]);
+		const onThreadDeleted = vi.fn();
 
-		mockListThreads.mockImplementation(
-			async (args: { orderBy?: { direction?: 'ASC' | 'DESC' } }) => {
-				if (args.orderBy?.direction === 'ASC') {
-					return expiredDeleted
-						? { threads: [freshThread], total: 1, page: 0, hasMore: false }
-						: { threads: [expiredThread], total: 2, page: 0, hasMore: true };
-				}
-
-				return {
-					threads: [freshThread],
-					total: 2,
-					page: 0,
-					hasMore: true,
-				};
-			},
+		const deletedCount = await createService({ threadTtlDays: 7 }).cleanupExpiredThreads(
+			onThreadDeleted,
 		);
-		mockDeleteThread.mockImplementation(async (threadId: string) => {
-			if (threadId === expiredThread.id) expiredDeleted = true;
-		});
-
-		const service = createService({ threadTtlDays: 7 });
-		const deletedCount = await service.cleanupExpiredThreads();
 
 		expect(deletedCount).toBe(1);
-		expect(mockListThreads).toHaveBeenCalledWith({
-			perPage: 100,
-			page: 0,
-			orderBy: { field: 'updatedAt', direction: 'ASC' },
-		});
-		expect(mockDeleteThread).toHaveBeenCalledWith(expiredThread.id);
-		expect(mockDeleteThread).not.toHaveBeenCalledWith(freshThread.id);
+		expect(mockThreads.findByAgentUpdatedBefore).toHaveBeenCalledWith(
+			'n8n-assistant',
+			new Date('2026-05-08T00:00:00.000Z'),
+			100,
+		);
+		expect(onThreadDeleted).toHaveBeenCalledWith('expired-thread');
+		expect(mockDeleteThread).toHaveBeenCalledWith('expired-thread');
 
 		dateNow.mockRestore();
 	});
@@ -1409,48 +1367,65 @@ describe('InstanceAiMemoryService.cleanupExpiredThreads', () => {
 		const dateNow = vi
 			.spyOn(Date, 'now')
 			.mockReturnValue(new Date('2026-05-15T00:00:00.000Z').getTime());
-		const first = makeThread('expired-1', '2026-05-01T00:00:00.000Z');
-		const second = makeThread('expired-2', '2026-05-02T00:00:00.000Z');
+		const first = makeSession('expired-1', '2026-05-01T00:00:00.000Z');
+		const second = makeSession('expired-2', '2026-05-02T00:00:00.000Z');
 		const controller = new AbortController();
-
-		mockListThreads.mockResolvedValue({
-			threads: [first, second],
-			total: 2,
-			page: 0,
-			hasMore: false,
-		});
+		mockThreads.findByAgentUpdatedBefore.mockResolvedValue([first, second]);
 		mockDeleteThread.mockImplementation(async () => controller.abort());
 
-		const service = createService({ threadTtlDays: 7 });
-		const deletedCount = await service.cleanupExpiredThreads(undefined, controller.signal);
+		const deletedCount = await createService({ threadTtlDays: 7 }).cleanupExpiredThreads(
+			undefined,
+			controller.signal,
+		);
 
 		expect(deletedCount).toBe(1);
 		expect(mockDeleteThread).toHaveBeenCalledTimes(1);
 		expect(mockDeleteThread).toHaveBeenCalledWith(first.id);
-		expect(mockListThreads).toHaveBeenCalledTimes(1);
+		expect(mockThreads.findByAgentUpdatedBefore).toHaveBeenCalledTimes(1);
 
 		dateNow.mockRestore();
+		mockDeleteThread.mockReset();
 	});
 });
 
 describe('bindAgentBuilderTarget', () => {
 	const target = { agentId: 'aBcDeFgHiJkLmNoP', projectId: 'project-1', name: 'Support Triage' };
 
-	function seedThread(metadata: Record<string, unknown>, resourceId = 'user-1') {
-		mockGetThread.mockResolvedValue({
+	function seedThread(metadata: Record<string, unknown>, resourceId = 'draft-chat:user-1') {
+		let stored: unknown = {
 			id: 'thread-1',
 			title: 'Chat',
 			resourceId,
 			metadata,
 			createdAt: new Date('2026-08-20T00:00:00.000Z'),
 			updatedAt: new Date('2026-08-20T00:00:00.000Z'),
+		};
+		mockGetThread.mockImplementation(async () => stored);
+		mockSaveThread.mockImplementation(async (thread: unknown) => {
+			stored = thread;
+			return thread;
 		});
-		mockSaveThread.mockImplementation(async (thread: unknown) => thread);
+		mockThreads.findOneBy.mockResolvedValue(makeSession('thread-1', '2026-08-20T00:00:00.000Z'));
 	}
 
 	beforeEach(() => {
 		mockGetThread.mockReset();
 		mockSaveThread.mockReset();
+		// Same contract as `N8nMemoryImpl.patchThread`: read, update, replace.
+		mockPatchThread.mockImplementation(
+			async (args: {
+				threadId: string;
+				update: (thread: Record<string, unknown>) => Record<string, unknown> | null;
+			}) => {
+				const thread = (await mockGetThread(args.threadId)) as Record<string, unknown> | null;
+				if (!thread) return null;
+				const patch = args.update({ ...thread });
+				if (!patch) return thread;
+				const updated = { ...thread, ...patch };
+				await mockSaveThread(updated);
+				return updated;
+			},
+		);
 	});
 
 	// A merge-style update cannot delete a key, and a thread carrying both makes a
@@ -1470,7 +1445,7 @@ describe('bindAgentBuilderTarget', () => {
 	});
 
 	it('refuses a thread owned by someone else instead of reporting success', async () => {
-		seedThread({}, 'someone-else');
+		seedThread({}, 'draft-chat:someone-else');
 
 		await expect(
 			createService().bindAgentBuilderTarget('user-1', 'thread-1', target),

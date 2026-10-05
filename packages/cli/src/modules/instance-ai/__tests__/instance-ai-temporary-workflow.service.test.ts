@@ -8,8 +8,8 @@ import type {
 import type { InstanceAiContext } from '@n8n/instance-ai';
 import { mock } from 'vitest-mock-extended';
 
-import type { InstanceAiThread } from '../entities/instance-ai-thread.entity';
-import type { InstanceAiThreadRepository } from '../repositories/instance-ai-thread.repository';
+import type { AgentExecutionThread } from '../../agents/entities/agent-execution-thread.entity';
+import type { AgentExecutionThreadRepository } from '../../agents/repositories/agent-execution-thread.repository';
 
 // The adapter service (a value dependency of the service under test) pulls in
 // the heavy AI runtime at module-load time; stub it out.
@@ -33,7 +33,7 @@ function createService() {
 	logger.scoped.mockReturnValue(logger);
 
 	const adapterService = mock<InstanceAiAdapterService>();
-	const threadRepo = mock<InstanceAiThreadRepository>();
+	const threadRepo = mock<AgentExecutionThreadRepository>();
 	const userRepository = mock<UserRepository>();
 	const aiBuilderTemporaryWorkflowRepository = mock<AiBuilderTemporaryWorkflowRepository>();
 
@@ -183,7 +183,7 @@ describe('InstanceAiTemporaryWorkflowService', () => {
 				archiveIfAiTemporary,
 			} = createService();
 			aiBuilderTemporaryWorkflowRepository.findByThread.mockResolvedValue(marked('wf-a', 'wf-b'));
-			threadRepo.findOneBy.mockResolvedValue(mock<InstanceAiThread>({ resourceId: 'user-1' }));
+			threadRepo.findOneBy.mockResolvedValue(mock<AgentExecutionThread>({ ownerId: 'user-1' }));
 			userRepository.findOneBy.mockResolvedValue(fakeUser);
 
 			await service.reapForThreadCleanup('thread-a');
@@ -212,7 +212,7 @@ describe('InstanceAiTemporaryWorkflowService', () => {
 			const { service, logger, aiBuilderTemporaryWorkflowRepository, threadRepo, userRepository } =
 				createService();
 			aiBuilderTemporaryWorkflowRepository.findByThread.mockResolvedValue(marked('wf-a'));
-			threadRepo.findOneBy.mockResolvedValue(mock<InstanceAiThread>({ resourceId: '' }));
+			threadRepo.findOneBy.mockResolvedValue(mock<AgentExecutionThread>({ ownerId: null }));
 
 			await service.reapForThreadCleanup('thread-a');
 
@@ -233,7 +233,7 @@ describe('InstanceAiTemporaryWorkflowService', () => {
 				adapterService,
 			} = createService();
 			aiBuilderTemporaryWorkflowRepository.findByThread.mockResolvedValue(marked('wf-a'));
-			threadRepo.findOneBy.mockResolvedValue(mock<InstanceAiThread>({ resourceId: 'user-1' }));
+			threadRepo.findOneBy.mockResolvedValue(mock<AgentExecutionThread>({ ownerId: 'user-1' }));
 			userRepository.findOneBy.mockResolvedValue(null);
 
 			await service.reapForThreadCleanup('thread-a');

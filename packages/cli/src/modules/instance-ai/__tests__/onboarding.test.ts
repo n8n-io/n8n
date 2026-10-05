@@ -7,13 +7,11 @@ import { mock } from 'vitest-mock-extended';
 import { BadRequestError } from '@n8n/errors';
 import type { Telemetry } from '@/telemetry';
 
-import type { InstanceAiPendingConfirmation } from '../entities/instance-ai-pending-confirmation.entity';
 import type { DurableEventLog } from '../event-bus/durable-event-log';
 import type { InProcessEventBus } from '../event-bus/in-process-event-bus';
 import type { InstanceAiMemoryService } from '../instance-ai-memory.service';
 import { InstanceAiOnboardingService, startsOnboardingFirstTurn } from '../onboarding';
 import { ONBOARDING_OPENING } from '../onboarding-opening';
-import type { InstanceAiPendingConfirmationRepository } from '../repositories/instance-ai-pending-confirmation.repository';
 
 const user = mock<User>({ id: 'user-1', firstName: 'Ada' });
 const THREAD_ID = 'thread-1';
@@ -22,7 +20,6 @@ const urlSurvey = { survey: { what_team_are_you_on: 'Marketing' }, surveySource:
 
 function setup(sourceContext?: Record<string, unknown>) {
 	const memoryService = mock<InstanceAiMemoryService>();
-	const pendingConfirmationRepo = mock<InstanceAiPendingConfirmationRepository>();
 	const telemetry = mock<Telemetry>();
 	const eventBus = mock<InProcessEventBus>();
 	memoryService.ensureThread.mockResolvedValue({
@@ -35,22 +32,18 @@ function setup(sourceContext?: Record<string, unknown>) {
 		created: true,
 	});
 	memoryService.seedOpeningMessages.mockResolvedValue({ userMessageId: 'msg-1' });
-	memoryService.getThreadMetadata.mockResolvedValue({ source: 'onboarding', sourceContext });
-	pendingConfirmationRepo.claim.mockResolvedValue(
-		mock<InstanceAiPendingConfirmation>({
-			threadId: THREAD_ID,
-			runId: 'run-1',
-			toolCallId: 'tc-1',
-		}),
-	);
+	memoryService.getThreadMetadata.mockResolvedValue({
+		source: 'onboarding',
+		sourceContext,
+		onboardingCard: { requestId: CARD_REQUEST_ID, runId: 'run-1', toolCallId: 'tc-1' },
+	});
 	const service = new InstanceAiOnboardingService(
 		memoryService,
 		eventBus,
 		mock<DurableEventLog>(),
-		pendingConfirmationRepo,
 		telemetry,
 	);
-	return { service, telemetry, memoryService, pendingConfirmationRepo, eventBus };
+	return { service, telemetry, memoryService, eventBus };
 }
 
 describe('InstanceAiOnboardingService telemetry', () => {
@@ -72,13 +65,18 @@ describe('InstanceAiOnboardingService telemetry', () => {
 	it('tracks the card answers with the card as the team source', async () => {
 		const { service, telemetry } = setup();
 
-		await service.answerCard(user.id, CARD_REQUEST_ID, {
-			kind: 'questions',
-			answers: [
-				{ questionId: 'team', selectedOptions: ['Sales'] },
-				{ questionId: 'apps', selectedOptions: ['Gmail', 'Slack'] },
-			],
-		});
+		await service.answerCard(
+			user.id,
+			CARD_REQUEST_ID,
+			{
+				kind: 'questions',
+				answers: [
+					{ questionId: 'team', selectedOptions: ['Sales'] },
+					{ questionId: 'apps', selectedOptions: ['Gmail', 'Slack'] },
+				],
+			},
+			THREAD_ID,
+		);
 
 		expect(telemetry.track).toHaveBeenCalledWith(
 			TELEMETRY_EVENT.INSTANCE_AI.USER_ANSWERED_AI_ASSISTANT_ONBOARDING_CARD,
@@ -96,10 +94,15 @@ describe('InstanceAiOnboardingService telemetry', () => {
 	it('keeps the survey as the team source when the survey answered the team step', async () => {
 		const { service, telemetry } = setup(urlSurvey);
 
-		await service.answerCard(user.id, CARD_REQUEST_ID, {
-			kind: 'questions',
-			answers: [{ questionId: 'apps', selectedOptions: ['Gmail'] }],
-		});
+		await service.answerCard(
+			user.id,
+			CARD_REQUEST_ID,
+			{
+				kind: 'questions',
+				answers: [{ questionId: 'apps', selectedOptions: ['Gmail'] }],
+			},
+			THREAD_ID,
+		);
 
 		expect(telemetry.track).toHaveBeenCalledWith(
 			TELEMETRY_EVENT.INSTANCE_AI.USER_ANSWERED_AI_ASSISTANT_ONBOARDING_CARD,
@@ -116,19 +119,19 @@ const approval: InstanceAiConfirmRequest = { kind: 'approval', approved: true };
 
 describe('InstanceAiOnboardingService answerCard', () => {
 	it('refuses an answer of another kind before the card is claimed', async () => {
-		const { service, pendingConfirmationRepo, eventBus } = setup();
+		const { service, memoryService, eventBus } = setup();
 
-		await expect(service.answerCard(user.id, CARD_REQUEST_ID, approval)).rejects.toThrow(
+		await expect(service.answerCard(user.id, CARD_REQUEST_ID, approval, THREAD_ID)).rejects.toThrow(
 			BadRequestError,
 		);
-		expect(pendingConfirmationRepo.claim).not.toHaveBeenCalled();
+		expect(memoryService.updateThread).not.toHaveBeenCalled();
 		expect(eventBus.publish).not.toHaveBeenCalled();
 	});
 
 	it('hands free text back as the first message and posts no follow-up', async () => {
 		const { service, memoryService } = setup();
 
-		const card = await service.answerCard(user.id, CARD_REQUEST_ID, freeTextAnswer);
+		const card = await service.answerCard(user.id, CARD_REQUEST_ID, freeTextAnswer, THREAD_ID);
 
 		expect(card).toEqual({
 			threadId: THREAD_ID,
@@ -140,10 +143,15 @@ describe('InstanceAiOnboardingService answerCard', () => {
 	it('posts the follow-up as a finished run when the card holds no free text', async () => {
 		const { service, memoryService } = setup();
 
-		const card = await service.answerCard(user.id, CARD_REQUEST_ID, {
-			kind: 'questions',
-			answers: [{ questionId: 'apps', selectedOptions: ['Gmail', 'Slack'] }],
-		});
+		const card = await service.answerCard(
+			user.id,
+			CARD_REQUEST_ID,
+			{
+				kind: 'questions',
+				answers: [{ questionId: 'apps', selectedOptions: ['Gmail', 'Slack'] }],
+			},
+			THREAD_ID,
+		);
 
 		expect(card).toEqual({ threadId: THREAD_ID, runId: expect.any(String) });
 		expect(memoryService.seedOpeningMessages).toHaveBeenCalledWith(

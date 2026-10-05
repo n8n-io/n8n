@@ -1,6 +1,7 @@
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { AgentIntegrationConfig } from '@n8n/api-types';
 import type { User, UserRepository } from '@n8n/db';
+import { Container } from '@n8n/di';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { mock } from 'vitest-mock-extended';
 
@@ -21,7 +22,9 @@ import type { AgentChatBridge } from '../integrations/agent-chat-bridge';
 import type { ChatIntegrationService } from '../integrations/chat-integration.service';
 import type { AgentMessageQueueRepository } from '../repositories/agent-message-queue.repository';
 import type { AgentQueueDispatch, QueuedIntegrationMessage } from '../types/agent-queued-message';
+import { SystemAgentExecutionService } from '../system-agents/system-agent-execution.service';
 import { SystemAgentRegistry } from '../system-agents/system-agent-registry';
+import type { SystemAgentProvider } from '../system-agents/system-agent.types';
 
 vi.mock('@/permissions.ee/check-access', () => ({ userHasScopes: vi.fn() }));
 
@@ -36,6 +39,9 @@ describe('AgentMessageQueueConsumer', () => {
 	const integrations = mock<ChatIntegrationService>();
 	const orchestrator = mock<AgentExecutionOrchestratorService>();
 	const sender = { send: vi.fn(), close: vi.fn(async () => {}) };
+	const systemAgentExecution = mock<SystemAgentExecutionService>();
+	Container.set(SystemAgentExecutionService, systemAgentExecution);
+	let systemAgents: SystemAgentRegistry;
 	let consumer: AgentMessageQueueConsumer;
 
 	function claim(threadId: string, integration = false): ClaimedAgentMessage {
@@ -105,6 +111,7 @@ describe('AgentMessageQueueConsumer', () => {
 			response: '',
 			executionId: 'execution-session',
 		});
+		systemAgents = new SystemAgentRegistry();
 		consumer = new AgentMessageQueueConsumer(
 			queue,
 			repository,
@@ -117,7 +124,7 @@ describe('AgentMessageQueueConsumer', () => {
 			integrations,
 			orchestrator,
 			mockLogger(),
-			new SystemAgentRegistry(),
+			systemAgents,
 		);
 	});
 
@@ -417,5 +424,72 @@ describe('AgentMessageQueueConsumer', () => {
 			expect.objectContaining({ message: 'The message integration is no longer configured' }),
 			expect.any(AbortSignal),
 		);
+	});
+	describe('instance agents', () => {
+		function registerSystemAgent(authorized = true) {
+			const provider = {
+				agentId: 'agent',
+				name: 'Instance Agent',
+				authorize: vi.fn(async () => authorized),
+				prepareTurn: vi.fn(),
+			} satisfies SystemAgentProvider;
+			systemAgents.register(provider);
+			return provider;
+		}
+
+		it('routes a claimed message for a registered instance agent to the system agent runtime', async () => {
+			const provider = registerSystemAgent();
+			const item = claim('session');
+			repository.findThreadIds.mockResolvedValue(['session']);
+			queue.claimNext.mockResolvedValueOnce(item).mockResolvedValue(null);
+			systemAgentExecution.consume.mockImplementation(async (_claim, _user, _signal, send) => {
+				send({ type: 'done', sessionId: 'session', executionId: item.admission.executionId });
+			});
+
+			consumer.start();
+			await vi.waitFor(() =>
+				expect(queue.settle).toHaveBeenCalledWith('session', item.admission.executionId),
+			);
+
+			expect(systemAgentExecution.consume).toHaveBeenCalledWith(
+				item,
+				expect.objectContaining({ id: 'user' }),
+				expect.any(AbortSignal),
+				sender.send,
+			);
+			// The provider decides access instead of the project `agent:execute` scope.
+			expect(provider.authorize).toHaveBeenCalledWith(
+				expect.objectContaining({ id: 'user' }),
+				'project',
+			);
+			expect(userHasScopes).not.toHaveBeenCalled();
+			expect(testRuns.prepareDraftRun).not.toHaveBeenCalled();
+			expect(chatExecutions.register).toHaveBeenCalledWith(
+				expect.objectContaining({ userId: 'user', threadId: 'session' }),
+				expect.any(AbortController),
+			);
+			expect(sender.send).toHaveBeenCalledWith(expect.objectContaining({ type: 'done' }));
+			expect(queue.recordFailure).not.toHaveBeenCalled();
+		});
+
+		it('records a failure when the provider no longer authorizes the owner', async () => {
+			registerSystemAgent(false);
+			const item = claim('session');
+			repository.findThreadIds.mockResolvedValue(['session']);
+			queue.claimNext.mockResolvedValueOnce(item).mockResolvedValue(null);
+
+			consumer.start();
+			await vi.waitFor(() =>
+				expect(queue.settle).toHaveBeenCalledWith('session', item.admission.executionId),
+			);
+
+			expect(queue.recordFailure).toHaveBeenCalledWith(
+				item,
+				expect.objectContaining({ message: 'You can no longer execute this agent' }),
+				expect.any(AbortSignal),
+			);
+			expect(systemAgentExecution.consume).not.toHaveBeenCalled();
+			expect(userHasScopes).not.toHaveBeenCalled();
+		});
 	});
 });
