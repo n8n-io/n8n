@@ -265,6 +265,7 @@ describe('POST /n8n-packages/import', () => {
 			dataTables: {
 				matched: 0,
 				created: 0,
+				updated: 0,
 			},
 			variables: {
 				matched: [],

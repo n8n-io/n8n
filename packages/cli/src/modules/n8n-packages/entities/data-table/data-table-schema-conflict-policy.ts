@@ -9,8 +9,9 @@ type TargetColumns = Array<{ name: string; type: string }>;
  * Decides whether a matched table's schema blocks the import. `keep-existing`
  * accepts a target that satisfies the package schema, even when the target has
  * additional columns of its own; `fail` is the strict drift-detection choice
- * and rejects any difference, including a harmless superset. Both are
- * non-destructive — the matched target table is never altered either way.
+ * and rejects any difference, including a harmless superset. Neither alters
+ * the matched target table.
+ * `overwrite` never blocks on schema. Its write behavior is in `resolveRequirement` and `diffDataTableSchema`.
  */
 /* eslint-disable @typescript-eslint/naming-convention -- API data table schema conflict policy keys */
 const SCHEMA_CONFLICTS: Record<
@@ -32,6 +33,7 @@ const SCHEMA_CONFLICTS: Record<
 
 		return { missingColumns: [], typeMismatches: [], ...incompatibility, extraColumns };
 	},
+	overwrite: () => null,
 };
 /* eslint-enable @typescript-eslint/naming-convention */
 

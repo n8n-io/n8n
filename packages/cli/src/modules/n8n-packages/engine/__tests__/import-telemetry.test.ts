@@ -95,7 +95,12 @@ const scope = (input: {
 		folderSummaries: [],
 		bindings: { workflows: new Map(), credentials: new Map() },
 		credentialResult: input.credentialResult,
-		dataTablePlan: { creations: new Array(dt.created), failures: [], matchedCount: dt.matched },
+		dataTablePlan: {
+			creations: new Array(dt.created),
+			updates: [],
+			failures: [],
+			matchedCount: dt.matched,
+		},
 		variablePlan: {
 			matched: [
 				...Array.from({ length: vars.matched }, (_, i) => `matched-var-${i}`),

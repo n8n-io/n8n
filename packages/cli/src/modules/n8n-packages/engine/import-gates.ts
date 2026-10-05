@@ -2,6 +2,7 @@ import type { LicenseState } from '@n8n/backend-common';
 
 import { ForbiddenError } from '@n8n/errors';
 
+import type { DataTableImportPlan } from '../entities/data-table/data-table.types';
 import type { TagImportPlan } from '../entities/tag/tag.types';
 import type { WorkflowImportPlan } from '../entities/workflow/workflow-import.types';
 
@@ -39,8 +40,18 @@ export function assertVariableWritesAllowed(options: {
 	if (hasOverwrites) assertPackageImportApiKeyScopes(apiKeyScopes, ['variable:update']);
 }
 
+/** Changing a matched table needs `dataTable:update`; a create-only or unchanged import does not. */
+export function assertDataTableWritesAllowed(
+	apiKeyScopes: string[] | undefined,
+	dataTablePlans: DataTableImportPlan[],
+): void {
+	if (dataTablePlans.some((plan) => plan.updates.length > 0)) {
+		assertPackageImportApiKeyScopes(apiKeyScopes, ['dataTable:update']);
+	}
+}
+
 /**
- * Plan-derived, unlike the pre-plan data-table gate: a tag must
+ * Plan-derived, unlike the pre-plan data-table create gate: a tag must
  * never block an import that would not write it (skipped consumers, disabled
  * tags, dropped conflicts), so the assert looks at what the plans actually
  * create, rename, or reconcile.

@@ -139,6 +139,8 @@ export const DataTableSchemaConflictPolicy = {
 	KeepExisting: 'keep-existing',
 	/** Strict drift detection: fails the import on any schema difference, including target-only columns. */
 	Fail: 'fail',
+	/** Changes a matched target table to match the package schema: renames the table, adds, removes, and retypes columns, and sets the column order. Data in removed or retyped columns is lost. */
+	Overwrite: 'overwrite',
 } as const;
 
 export const VariableMissingMode = {
@@ -679,6 +681,7 @@ export interface ImportVariableSummary {
 export interface ImportDataTableSummary {
 	matched: number;
 	created: number;
+	updated: number;
 }
 
 /** Tag names (not ids), grouped by how the import resolved them. */
