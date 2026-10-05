@@ -11357,3 +11357,16 @@ describe('AgentRuntime — tools that end the turn', () => {
 		expect(result.finishReason).toBe('stop');
 	});
 });
+
+describe('Tool builder — ending the turn', () => {
+	it('rejects a tool that ends the turn and transforms its model output', () => {
+		const tool = new Tool('silence')
+			.description('Stay silent')
+			.input(z.object({}))
+			.handler(async () => ({ silent: true }))
+			.endsTurnWhen(() => true)
+			.toModelOutput((output) => output);
+
+		expect(() => tool.build()).toThrow('cannot combine .endsTurnWhen() with .toModelOutput()');
+	});
+});

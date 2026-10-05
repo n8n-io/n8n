@@ -170,6 +170,10 @@ export interface BuiltTool {
 	 * Ends the run after this call's batch settles, without another model call,
 	 * when it returns true for the output. For tools whose result is the last
 	 * thing the turn should do, so the model cannot repeat them.
+	 *
+	 * After a resume, the calls that settled before the suspension are checked
+	 * against the output stored in history. Keep the output small and do not
+	 * combine this with `toModelOutput`, so both checks see the same value.
 	 */
 	readonly endsTurn?: (output: unknown) => boolean;
 	readonly handler?: (

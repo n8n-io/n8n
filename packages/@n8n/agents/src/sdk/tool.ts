@@ -409,6 +409,9 @@ export class Tool<
 		if (hasResume && !hasSuspend) {
 			throw new Error(`Tool "${this.name}" has .resume() but missing .suspend()`);
 		}
+		if (this.endsTurnFn && this.toModelOutputFn) {
+			throw new Error(`Tool "${this.name}" cannot combine .endsTurnWhen() with .toModelOutput()`);
+		}
 
 		const hasApproval =
 			(this.requireApprovalValue ?? false) || this.needsApprovalFnValue !== undefined;

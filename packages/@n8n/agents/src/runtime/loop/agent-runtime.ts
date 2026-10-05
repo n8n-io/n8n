@@ -1043,8 +1043,9 @@ export class AgentRuntime {
 			state.iterationCount + 1,
 		);
 		if (settlement.suspended) return settlement;
-		await this.completeToolTurn(ctx, state, turn);
-		if (endsTurn(batch, toolMap)) {
+		const stop = endsTurn(batch, toolMap);
+		await this.completeToolTurn(ctx, state, turn, { stepCheckpoint: !stop });
+		if (stop) {
 			state.lastFinishReason = 'stop';
 			state.reachedStopCondition = true;
 		}
@@ -1206,11 +1207,14 @@ export class AgentRuntime {
 		ctx: PreparedLoopContext,
 		state: LoopState,
 		turn: ModelTurnResult,
+		// A step checkpoint resumes at the next model call, which a run that
+		// ends here must not make.
+		{ stepCheckpoint }: { stepCheckpoint: boolean },
 	): Promise<void> {
 		this.emitTurnEnd(turn.newMessages, extractSettledToolCalls(ctx.list.responseDelta()));
 		// All tools have settled. Observe before the next call and its checkpoint.
 		await this.memory.maybeObserveMidRun(ctx.list, ctx.options);
-		if (ctx.options?.stepCheckpoints) {
+		if (stepCheckpoint && ctx.options?.stepCheckpoints) {
 			await this.persistStepCheckpoint(
 				ctx.list,
 				state.totalUsage,
