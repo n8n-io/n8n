@@ -178,7 +178,6 @@ export type PublicCreateDestination = z.infer<typeof PublicCreateDestinationDto>
 
 export type PublicDestinationType = PublicCreateDestination['type'];
 
-// Response shape adds the server-generated `id`; parsing through it strips non-public fields.
 const idSchema = z.string().openapi(commonDocs.id);
 
 export const logStreamingDestinationPublicSchema = z
