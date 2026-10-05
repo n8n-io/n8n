@@ -22,7 +22,7 @@ import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
 
 import type { ActiveExecutions } from '@/active-executions';
-import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
+import type { CredentialsFinderService } from '@n8n/backend-services';
 import type { EphemeralNodeExecutor } from '@/node-execution';
 import type { OauthService } from '@/oauth/oauth.service';
 import type { AiService } from '@/services/ai.service';
@@ -916,6 +916,47 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — backg
 		expect(getInjectedToolNames()).toEqual(expect.arrayContaining(BACKGROUND_TOOL_NAMES));
 	});
 
+	it('excludes disabled sub-agents from foreground and background delegation', async () => {
+		Container.get(AgentsConfig).backgroundTasksEnabled = true;
+		const agentRepository = mock<AgentRepository>();
+		agentRepository.findByIdAndProjectId.mockResolvedValue(mock<Agent>({ id: 'disabled-agent' }));
+		const service = makeReconstructionService({ agentRepository });
+		await service.reconstructFromAgentEntity(
+			makeAgentEntity(undefined, {
+				subAgents: { agents: [{ agentId: 'disabled-agent', enabled: false }] },
+			}),
+			mock<CredentialProvider>(),
+			'production',
+		);
+
+		const tools = builtAgent.tool.mock.calls.flatMap(([tool]) =>
+			Array.isArray(tool) ? tool : [tool],
+		) as BuiltTool[];
+		const delegate = tools.find((tool) => tool.name === DELEGATE_SUB_AGENT_TOOL_NAME);
+		const background = tools.find((tool) => tool.name === 'spawn_background_subagent');
+		if (!delegate?.handler || !background?.handler) throw new Error('Expected delegation tools');
+		expect(getInlineDelegateSubAgentToolOptions(delegate)?.availableSubAgents).toEqual([]);
+		expect(agentRepository.findByIdAndProjectId).not.toHaveBeenCalled();
+		const request = { subAgentId: 'disabled-agent', taskName: 'Review', goal: 'Review notes' };
+		const context = {
+			runId: 'parent-run',
+			persistence: {
+				threadId: 'thread-1',
+				resourceId: 'resource-1',
+				hostMetadata: encodeAgentSandboxHostMetadata({
+					projectId: 'project-1',
+					principalHash: hashAgentSandboxPrincipal({ type: 'n8n-user', userId: 'user-1' }),
+				}),
+			},
+		};
+		await expect(delegate.handler(request, context)).resolves.toMatchObject({ status: 'failed' });
+		await expect(background.handler(request, context)).resolves.toMatchObject({
+			status: 'rejected',
+		});
+		expect(Container.get(SubAgentRunner).run).not.toHaveBeenCalled();
+		expect(Container.get(SubAgentBackgroundRunner).spawn).not.toHaveBeenCalled();
+	});
+
 	it('injects all three tools when the flag is on without configured sub-agents — inline self-delegation is always available', async () => {
 		Container.get(AgentsConfig).backgroundTasksEnabled = true;
 		const service = makeReconstructionService();
@@ -981,6 +1022,57 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — backg
 		);
 
 		expect(backgroundRunner.spawn.mock.calls[0][1].parentWorkspaceHandle).toBe(handle);
+	});
+
+	it.each([
+		{
+			name: 'a positive cap propagates',
+			budget: { enabled: true, sessionCostCapUsd: 5 },
+			expected: 5,
+		},
+		{
+			name: 'a zero cap is omitted',
+			budget: { enabled: true, sessionCostCapUsd: 0 },
+			expected: undefined,
+		},
+		{
+			name: 'a negative cap is omitted',
+			budget: { enabled: true, sessionCostCapUsd: -3 },
+			expected: undefined,
+		},
+		{
+			name: 'a cap on a turned-off guardrail is omitted',
+			budget: { enabled: false, sessionCostCapUsd: 5 },
+			expected: undefined,
+		},
+	])('forwards the root session cap to a background spawn: $name', async ({ budget, expected }) => {
+		Container.get(AgentsConfig).backgroundTasksEnabled = true;
+		const principalHash = hashAgentSandboxPrincipal({ type: 'n8n-user', userId: 'user-1' });
+		const backgroundRunner = mock<SubAgentBackgroundRunner>();
+		backgroundRunner.spawn.mockResolvedValue({ status: 'started', jobId: 'job-1' });
+		Container.set(SubAgentBackgroundRunner, backgroundRunner);
+		const service = makeReconstructionService();
+
+		await service.reconstructFromAgentEntity(
+			makeAgentEntity({ guardrails: { budget } }),
+			mock<CredentialProvider>(),
+			'production',
+		);
+
+		const spawnTool = getInjectedSpawnBackgroundTool();
+		if (!spawnTool?.handler) throw new Error('Expected spawn_background_subagent handler');
+		await spawnTool.handler(
+			{ subAgentId: 'inline', taskName: 'research', goal: 'find things' },
+			{
+				persistence: {
+					threadId: 'thread-1',
+					resourceId: 'resource-1',
+					hostMetadata: encodeAgentSandboxHostMetadata({ projectId: 'project-1', principalHash }),
+				},
+			},
+		);
+
+		expect(backgroundRunner.spawn.mock.calls[0][1].rootSessionCapUsd).toBe(expected);
 	});
 
 	it('injects no background tools for task runtimes when the flag is on', async () => {

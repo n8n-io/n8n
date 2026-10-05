@@ -276,6 +276,7 @@ export class WorkflowsPublicController {
 			data: workflows.map((workflow) => ({
 				id: workflow.id,
 				name: workflow.name,
+				// oxlint-disable-next-line typescript/no-deprecated
 				active: workflow.active,
 				activeVersionId: workflow.activeVersionId,
 				createdAt: workflow.createdAt.toISOString(),
@@ -537,6 +538,7 @@ export class WorkflowsPublicController {
 			id: workflow.id,
 			name: workflow.name,
 			description: workflow.description,
+			// oxlint-disable-next-line typescript/no-deprecated
 			active: workflow.active,
 			activeVersionId: workflow.activeVersionId,
 			createdAt: workflow.createdAt.toISOString(),

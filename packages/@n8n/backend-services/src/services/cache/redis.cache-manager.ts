@@ -1,5 +1,5 @@
 /**
- * Based on https://github.com/node-cache-manager/node-cache-manager-ioredis-yet
+ * Based on https://github.com/jaredwray/cache-manager-stores/tree/main/packages/cache-manager-ioredis-yet
  */
 
 import type { Cache, Store, Config } from 'cache-manager';

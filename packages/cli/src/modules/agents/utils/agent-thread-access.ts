@@ -33,6 +33,18 @@ export function canContinueThreadInPreview(
 	);
 }
 
+export function canContinueThreadInN8nChat(
+	thread: AgentExecutionThread,
+	userId: string,
+	source?: string | null,
+): boolean {
+	return (
+		canUseTopLevelDraftThread(thread, userId) &&
+		thread.taskId === null &&
+		source === N8N_CHAT_PRODUCTION_SOURCE
+	);
+}
+
 export function canUseTopLevelDraftThread(thread: AgentExecutionThread, userId: string): boolean {
 	return (
 		thread.accessScope === 'user' && thread.ownerId === userId && thread.parentThreadId === null

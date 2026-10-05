@@ -37,6 +37,7 @@
   "dependencies": {
     "@n8n/errors": "workspace:*",
     "@n8n/tournament": "workspace:*",
+    "@n8n/utils": "workspace:*",
     "isolated-vm": "catalog:",
     "jmespath": "0.16.0",
     "js-base64": "catalog:",

@@ -298,6 +298,73 @@ describe('OAuthServerService', () => {
 				});
 			});
 
+			const buildServiceWithQueryIgnoringResolver = () => {
+				const registry = new ProtectedResourceRegistry(mock<Logger>());
+				// A static resource would not reproduce the bug. Needs Resolver
+				registry.registerResolver({
+					id: 'form-path-only',
+					scopes: [],
+					resolveByUrl: async (url) =>
+						new URL(url).pathname.replace(/\/$/, '') === '/form/abc'
+							? {
+									id: 'form-abc',
+									isFirstParty: true,
+									getResourceUrl: () => FIRST_PARTY_URL,
+									getAudiences: () => [FIRST_PARTY_URL],
+									scopes: [],
+									authorize: async () => true,
+								}
+							: undefined,
+					resolveByPath: async () => undefined,
+				});
+
+				return new OAuthServerService(
+					logger,
+					mockInstance(GlobalConfig),
+					oauthSessionService,
+					oauthClientRepository,
+					tokenService,
+					authorizationCodeService,
+					userConsentRepository,
+					registry,
+					mailer,
+					urlServiceMock,
+					mock<EventService>(),
+					mock<AuthService>(),
+					mock<OAuthConsentService>(),
+				);
+			};
+
+			it.each([
+				['a query string', `${FIRST_PARTY_URL}?x=1`],
+				['a trailing slash', `${FIRST_PARTY_URL}/`],
+				['an oversized query string', `${FIRST_PARTY_URL}?z=${'a'.repeat(2048)}`],
+			])(
+				'returns undefined and does not upsert when the client_id is the resource URL with %s',
+				async (_, clientId) => {
+					oauthClientRepository.findOneBy.mockResolvedValue(null);
+
+					const result =
+						await buildServiceWithQueryIgnoringResolver().clientsStore.getClient(clientId);
+
+					expect(result).toBeUndefined();
+					expect(oauthClientRepository.upsert).not.toHaveBeenCalled();
+				},
+			);
+
+			it('upserts the virtual client when the client_id is the canonical resource URL', async () => {
+				oauthClientRepository.findOneBy.mockResolvedValue(null);
+
+				const result =
+					await buildServiceWithQueryIgnoringResolver().clientsStore.getClient(FIRST_PARTY_URL);
+
+				expect(result).toMatchObject({ client_id: FIRST_PARTY_URL });
+				expect(oauthClientRepository.upsert).toHaveBeenCalledWith(
+					expect.objectContaining({ id: FIRST_PARTY_URL, redirectUris: [FIRST_PARTY_URL] }),
+					['id'],
+				);
+			});
+
 			it('returns undefined and does not upsert when the resolved resource is not first-party', async () => {
 				oauthClientRepository.findOneBy.mockResolvedValue(null);
 

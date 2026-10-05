@@ -79,8 +79,8 @@
     "build:unchecked": "rimraf dist && tsc -p tsconfig.build.json --noCheck",
     "format": "biome format --write src examples",
     "format:check": "biome ci src examples",
-    "lint": "eslint . --quiet",
-    "lint:fix": "eslint . --fix",
+    "lint": "oxlint --quiet",
+    "lint:fix": "oxlint --fix",
     "watch": "tsc -p tsconfig.build.json --watch",
     "test": "vitest run",
     "test:unit": "vitest run",
@@ -159,6 +159,7 @@
     }
   },
   "devDependencies": {
+    "@n8n/oxlint-config": "workspace:*",
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
     "@opentelemetry/api": "catalog:",
@@ -172,6 +173,8 @@
     "dotenv": "catalog:",
     "cross-env": "catalog:",
     "nock": "catalog:",
+    "oxlint": "catalog:",
+    "oxlint-tsgolint": "catalog:",
     "pg": "catalog:",
     "tsx": "catalog:",
     "typescript": "catalog:typescript",

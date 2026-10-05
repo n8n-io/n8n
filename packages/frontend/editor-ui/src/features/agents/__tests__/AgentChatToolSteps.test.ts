@@ -100,7 +100,11 @@ vi.mock('../composables/useSubAgentNames', () => ({
 
 function mountSteps(
 	toolCalls: ToolCall[],
-	extra: { canFixWithAssistant?: boolean; executionId?: string } = {},
+	extra: {
+		canFixWithAssistant?: boolean;
+		executionId?: string;
+		dismissedToolCallIds?: string[];
+	} = {},
 ) {
 	return mount(AgentChatToolSteps, {
 		props: { toolCalls, projectId: 'project-1', ...extra },
@@ -302,6 +306,68 @@ describe('AgentChatToolSteps', () => {
 				],
 			],
 		]);
+	});
+
+	it('hides dismissed tool errors and emits only the ones still shown', async () => {
+		const stillShown = mountSteps(
+			[
+				{
+					tool: 'search_nodes',
+					toolCallId: 'tc-gone',
+					state: TOOL_CALL_STATE.ERROR,
+					output: 'Old failure',
+				},
+				{
+					tool: 'http_request',
+					toolCallId: 'tc-stay',
+					state: TOOL_CALL_STATE.ERROR,
+					output: 'Still broken',
+				},
+			],
+			{
+				canFixWithAssistant: true,
+				executionId: 'exec-1',
+				dismissedToolCallIds: ['tc-gone'],
+			},
+		);
+
+		const callout = stillShown.find('[data-test-id="agent-chat-tool-fix-with-assistant-callout"]');
+		expect(callout.exists()).toBe(true);
+		expect(callout.text()).toContain('Still broken');
+		expect(callout.text()).not.toContain('Old failure');
+
+		await stillShown.find('[data-test-id="agent-chat-tool-fix-with-assistant"]').trigger('click');
+		expect(stillShown.emitted('fixWithAssistant')).toEqual([
+			[
+				[
+					{
+						toolCallId: 'tc-stay',
+						toolName: 'http_request',
+						toolDisplayName: 'Http request',
+						error: 'Still broken',
+					},
+				],
+			],
+		]);
+
+		const allDismissed = mountSteps(
+			[
+				{
+					tool: 'search_nodes',
+					toolCallId: 'tc-gone',
+					state: TOOL_CALL_STATE.ERROR,
+					output: 'Old failure',
+				},
+			],
+			{
+				canFixWithAssistant: true,
+				executionId: 'exec-1',
+				dismissedToolCallIds: ['tc-gone'],
+			},
+		);
+		expect(
+			allDismissed.find('[data-test-id="agent-chat-tool-fix-with-assistant-callout"]').exists(),
+		).toBe(false);
 	});
 
 	it('shows a generic error when the failed tool output is empty', () => {

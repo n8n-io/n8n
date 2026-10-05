@@ -1,5 +1,7 @@
+import { Logger } from '@n8n/backend-common';
 import { mockInstance, testDb } from '@n8n/backend-test-utils';
-import { DeploymentKey } from '@n8n/db';
+import { GlobalConfig } from '@n8n/config';
+import { DeploymentKey, DeploymentKeyRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { DataSource, type Repository } from '@n8n/typeorm';
 import type { CryptoKey } from 'jose';
@@ -145,5 +147,101 @@ describe('OAuthJweKeyService (integration)', () => {
 
 		const { plaintext } = await compactDecrypt(token, privateKey);
 		expect(new TextDecoder().decode(plaintext)).toBe('hello-jwe');
+	});
+
+	describe('multi-main', () => {
+		const MAIN_COUNT = 3;
+
+		/** Resolves every caller at once, after `count` callers have arrived. */
+		const createBarrier = (count: number) => {
+			let arrived = 0;
+			let releaseAll: () => void = () => {};
+			const released = new Promise<void>((resolve) => {
+				releaseAll = resolve;
+			});
+			return async () => {
+				arrived++;
+				if (arrived === count) releaseAll();
+				await released;
+			};
+		};
+
+		/**
+		 * Each main gets its own memory cache, so each main must end up with the
+		 * database row itself. A shared Redis cache only holds a copy of that row.
+		 */
+		const createMains = () =>
+			Array.from(
+				{ length: MAIN_COUNT },
+				() =>
+					new OAuthJweKeyService(
+						Container.get(DeploymentKeyRepository),
+						Container.get(Cipher),
+						new CacheService(Container.get(GlobalConfig)),
+						Container.get(Logger),
+					),
+			);
+
+		let insertSpy: ReturnType<typeof vi.spyOn>;
+
+		beforeEach(() => {
+			// Hold every insert until all mains reach it. This makes all mains read
+			// "no key" and try to insert together, so the unique index must resolve
+			// the race.
+			const repository = Container.get(DeploymentKeyRepository);
+			const insert = repository.insertActiveOAuthJweKey.bind(repository);
+			const barriers = new Map<string, () => Promise<void>>(
+				JWE_KEY_ALGORITHMS.map((algorithm) => [algorithm, createBarrier(MAIN_COUNT)]),
+			);
+			insertSpy = vi
+				.spyOn(repository, 'insertActiveOAuthJweKey')
+				.mockImplementation(async (id, value, algorithm) => {
+					await barriers.get(algorithm)?.();
+					await insert(id, value, algorithm);
+				});
+		});
+
+		afterEach(() => {
+			insertSpy.mockRestore();
+		});
+
+		it('keeps one active key per algorithm when several mains start at the same time', async () => {
+			const mains = createMains();
+
+			await Promise.all(mains.map(async (main) => await main.initialize()));
+
+			expect(insertSpy).toHaveBeenCalledTimes(MAIN_COUNT * JWE_KEY_ALGORITHMS.length);
+			const rows = await keyStore.find({
+				where: { type: JWE_PRIVATE_KEY_TYPE, status: 'active' },
+			});
+			expect(rows).toHaveLength(JWE_KEY_ALGORITHMS.length);
+		});
+
+		it('serves the same key on every main after they start at the same time', async () => {
+			const mains = createMains();
+			await Promise.all(mains.map(async (main) => await main.initialize()));
+
+			const rows = await keyStore.find({
+				where: { type: JWE_PRIVATE_KEY_TYPE, status: 'active' },
+			});
+			const jwksPerMain = await Promise.all(mains.map(async (main) => await main.getPublicJwks()));
+			for (const jwks of jwksPerMain) {
+				expect(jwks).toEqual(jwksPerMain[0]);
+				expect(jwks.map((jwk) => jwk.kid).sort()).toEqual(rows.map((row) => row.id).sort());
+			}
+
+			// The IdP encrypts with the key it fetched from one main. Another main
+			// decrypts the token.
+			const [firstMain, , lastMain] = mains;
+			const { publicJwk, algorithm } = await firstMain.getKeyPair();
+			const publicKey = (await importJWK(publicJwk, algorithm)) as CryptoKey;
+			const token = await new CompactEncrypt(new TextEncoder().encode('hello-multi-main'))
+				.setProtectedHeader({ alg: algorithm, enc: 'A256GCM' })
+				.encrypt(publicKey);
+
+			const { privateKey } = await lastMain.getKeyPair();
+			const { plaintext } = await compactDecrypt(token, privateKey);
+			expect(new TextDecoder().decode(plaintext)).toBe('hello-multi-main');
+		});
 	});
 });

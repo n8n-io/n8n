@@ -216,6 +216,38 @@ describe('ProjectsNavigation', () => {
 		expect(chats.match(/Chat \d/g)).toEqual(['Chat 0', 'Chat 1', 'Chat 2', 'Chat 3', 'Chat 6']);
 	});
 
+	it('should reload the recent chats when the tab becomes visible again', () => {
+		projectsStore.teamProjectsLimit = -1;
+		configureInstanceAiScopes({ canManage: false });
+		configureInstanceAi(true);
+		const instanceAiStore = mockedStore(useInstanceAiStore);
+
+		renderComponent({ props: { collapsed: false } });
+		expect(instanceAiStore.loadThreads).toHaveBeenCalledTimes(1);
+
+		const hidden = vi.spyOn(document, 'hidden', 'get').mockReturnValue(true);
+		document.dispatchEvent(new Event('visibilitychange'));
+		expect(instanceAiStore.loadThreads).toHaveBeenCalledTimes(1);
+
+		hidden.mockReturnValue(false);
+		document.dispatchEvent(new Event('visibilitychange'));
+		hidden.mockRestore();
+
+		expect(instanceAiStore.loadThreads).toHaveBeenCalledTimes(2);
+	});
+
+	it('should not load chats on tab visibility when Instance AI is hidden', () => {
+		projectsStore.teamProjectsLimit = -1;
+		configureInstanceAiScopes({ canManage: false });
+		configureInstanceAi(false);
+		const instanceAiStore = mockedStore(useInstanceAiStore);
+
+		renderComponent({ props: { collapsed: false } });
+		document.dispatchEvent(new Event('visibilitychange'));
+
+		expect(instanceAiStore.loadThreads).not.toHaveBeenCalled();
+	});
+
 	it('should hide Instance AI from a member until setup is complete', () => {
 		projectsStore.teamProjectsLimit = -1;
 		configureInstanceAiScopes({ canManage: false });

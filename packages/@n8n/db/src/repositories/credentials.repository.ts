@@ -53,6 +53,7 @@ export type CredentialSharingRelation =
 // every shared project would multiply the joined rows by the project sizes.
 const DEFAULT_CREDENTIAL_RELATIONS: CredentialSharingRelation[] = ['shared', 'shared.project'];
 
+// oxlint-disable-next-line typescript/no-deprecated
 type CredentialsListQueryOptions = ListQuery.Options & {
 	includeData?: boolean;
 	/** Also match global credentials, so they page, count and filter like every other row. */
@@ -577,6 +578,11 @@ export class CredentialsRepository extends BaseRepository<CredentialsEntity> {
 		projectId: string,
 	): Promise<CredentialsEntity[]> {
 		return await this.findBy({ name, type, usageScope: 'project', shared: { projectId } });
+	}
+
+	/** Find credentials of any of the given types, scoped to a specific project. */
+	async findByTypesInProject(types: string[], projectId: string): Promise<CredentialsEntity[]> {
+		return await this.findBy({ type: In(types), usageScope: 'project', shared: { projectId } });
 	}
 
 	/**

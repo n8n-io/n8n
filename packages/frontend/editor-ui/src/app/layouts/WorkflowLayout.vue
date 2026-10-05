@@ -6,6 +6,7 @@ import { InstanceAiEditorCapabilityKey } from '@/app/composables/useInstanceAiEd
 import { useWorkflowInitialization } from '@/app/composables/useWorkflowInitialization';
 import { usePostMessageHandler } from '@/app/composables/usePostMessageHandler';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
+import { useLogsStore } from '@/app/stores/logs.store';
 import AskAssistantFloatingButton from '@/features/ai/assistant/components/Chat/AskAssistantFloatingButton.vue';
 import CanvasChatOverlay from '@/features/ai/chatHub/components/CanvasChatOverlay.vue';
 import { useAssistantStore } from '@/features/ai/assistant/assistant.store';
@@ -16,6 +17,8 @@ import AppSidebar from '@/app/components/app/AppSidebar.vue';
 import LogsPanel from '@/features/execution/logs/components/LogsPanel.vue';
 import LoadingView from '@/app/views/LoadingView.vue';
 import { useSettingsStore } from '@n8n/stores/settings.store';
+import { useLocalStorage } from '@vueuse/core';
+import { LOCAL_STORAGE_LOGS_PANEL_OPEN } from '@/app/constants';
 
 const { layoutProps } = useLayoutProps();
 const assistantStore = useAssistantStore();
@@ -23,6 +26,18 @@ const chatHubPanelStore = useChatHubPanelStore();
 const pushConnectionStore = usePushConnectionStore();
 const settingsStore = useSettingsStore();
 const isCanvasOnly = settingsStore.isCanvasOnly;
+
+// The editor remembers the logs panel across reloads. The store holds session
+// state only, so the AI Assistant artifact never inherits this value (INS-1192).
+const logsStore = useLogsStore();
+const isLogsPanelOpenInEditor = useLocalStorage(LOCAL_STORAGE_LOGS_PANEL_OPEN, false);
+watch(isLogsPanelOpenInEditor, (isOpen) => logsStore.toggleOpen(isOpen), { immediate: true });
+watch(
+	() => logsStore.isOpen,
+	(isOpen) => {
+		isLogsPanelOpenInEditor.value = isOpen;
+	},
+);
 
 const {
 	isLoading,

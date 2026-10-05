@@ -44,9 +44,14 @@ vi.mock('@/mfa/helpers', () => ({
 const MOUNTS = ['without a frontend service', 'with a frontend service'] as const;
 type Mount = (typeof MOUNTS)[number];
 
+const ICON_MARKER = 'node-icon-marker';
+const SCHEMA_MARKER = 'node-schema-marker';
+const BROWSER_ID = 'test-browser-id';
+
 describe('Server static assets', () => {
 	const httpServers: http.Server[] = [];
 	const ports = {} as Record<Mount, number>;
+	const loadNodesAndCredentials = mock<LoadNodesAndCredentials>();
 	let authCookie: string;
 
 	// Raw `http.request` rather than `supertest`: superagent normalises a path
@@ -94,6 +99,15 @@ describe('Server static assets', () => {
 		writeFileSync(path.join(staticCacheDir, 'public-asset.txt'), 'public');
 		writeFileSync(path.join(staticCacheDir, 'types-extra.txt'), 'extra');
 
+		const resolvedDir = path.join(staticCacheDir, 'resolved');
+		mkdirSync(resolvedDir);
+		const iconFilePath = path.join(resolvedDir, 'example.svg');
+		const schemaFilePath = path.join(resolvedDir, 'example.json');
+		writeFileSync(iconFilePath, `<svg id="${ICON_MARKER}"></svg>`);
+		writeFileSync(schemaFilePath, `{"marker":"${SCHEMA_MARKER}"}`);
+		loadNodesAndCredentials.resolveIcon.mockReturnValue(iconFilePath);
+		loadNodesAndCredentials.resolveSchema.mockReturnValue(schemaFilePath);
+
 		Container.set(Logger, mockLogger());
 		mockInstance(PostHogClient);
 		mockInstance(Push);
@@ -107,7 +121,7 @@ describe('Server static assets', () => {
 
 		await testDb.init();
 		const owner = await createOwner();
-		const jwt = Container.get(AuthService).issueJWT(owner, false, 'test-browser-id');
+		const jwt = Container.get(AuthService).issueJWT(owner, false, BROWSER_ID);
 		authCookie = `${AUTH_COOKIE_NAME}=${jwt}`;
 
 		const globalConfig = Container.get(GlobalConfig);
@@ -124,7 +138,7 @@ describe('Server static assets', () => {
 
 		for (const mount of MOUNTS) {
 			const server = new Server(
-				mock<LoadNodesAndCredentials>(),
+				loadNodesAndCredentials,
 				Container.get(PostHogClient),
 				mock<EventService>(),
 				instanceSettings,
@@ -237,6 +251,156 @@ describe('Server static assets', () => {
 				expect(statusCode).toBe(401);
 				expect(headers['set-cookie']).toBeUndefined();
 			});
+		});
+
+		describe('node icons', () => {
+			const iconPaths = [
+				'/icons/n8n-nodes-base/dist/nodes/Example/example.svg',
+				'/icons/n8n-nodes-base/dist/nodes/Example/example.png',
+			];
+
+			const assertProtected = async (requestPath: string) => {
+				const { statusCode, body, headers } = await get(requestPath, ports[mount]);
+
+				expect(statusCode).toBe(404);
+				expect(body).not.toContain(ICON_MARKER);
+				expect(headers['cache-control']).toBeUndefined();
+			};
+
+			test.each(iconPaths)(
+				'requires authentication for %s',
+				async (requestPath) => await assertProtected(requestPath),
+			);
+
+			test('requires authentication for a scoped package path', async () => {
+				await assertProtected('/icons/@a-scope/n8n-nodes-example/dist/nodes/Example/example.svg');
+			});
+
+			test.each(['HEAD', 'POST'])(
+				'requires authentication for %s on an icon path',
+				async (method) => {
+					const { statusCode, body } = await request(method, iconPaths[0], ports[mount]);
+
+					expect(statusCode).toBe(404);
+					expect(body).not.toContain(ICON_MARKER);
+				},
+			);
+
+			test.runIf(mount === 'with a frontend service')(
+				'serves the icon without a session while preview mode is on',
+				async () => {
+					const unauthenticated = await get(iconPaths[0], ports[mount]);
+
+					expect(unauthenticated.statusCode).toBe(404);
+					expect(unauthenticated.body).not.toContain(ICON_MARKER);
+
+					process.env.N8N_PREVIEW_MODE = 'true';
+
+					try {
+						const { statusCode, body } = await get(iconPaths[0], ports[mount]);
+
+						expect(statusCode).toBe(200);
+						expect(body).toContain(ICON_MARKER);
+					} finally {
+						delete process.env.N8N_PREVIEW_MODE;
+					}
+				},
+			);
+
+			test.runIf(mount === 'with a frontend service').each(iconPaths)(
+				'serves %s to an authenticated request and marks it private',
+				async (requestPath) => {
+					const { statusCode, body, headers } = await get(requestPath, ports[mount], {
+						cookie: authCookie,
+					});
+
+					expect(statusCode).toBe(200);
+					expect(body).toContain(ICON_MARKER);
+					expect(headers['cache-control']).toBe('private, max-age=86400');
+				},
+			);
+
+			test.runIf(mount === 'with a frontend service')(
+				'sends no cache header when the icon resolves to nothing',
+				async () => {
+					loadNodesAndCredentials.resolveIcon.mockReturnValueOnce(undefined);
+
+					const { statusCode, headers } = await get(iconPaths[0], ports[mount], {
+						cookie: authCookie,
+					});
+
+					expect(statusCode).toBe(404);
+					expect(headers['cache-control']).toBeUndefined();
+				},
+			);
+		});
+
+		describe('node schemas', () => {
+			const schemaPaths = [
+				'/schemas/exampleNode/1.json',
+				'/schemas/exampleNode/1/exampleResource/exampleOperation.json',
+			];
+
+			const assertProtected = async (requestPath: string) => {
+				const { statusCode, body, headers } = await get(requestPath, ports[mount]);
+
+				expect(statusCode).toBe(404);
+				expect(body).not.toContain(SCHEMA_MARKER);
+				expect(headers['cache-control']).toBeUndefined();
+			};
+
+			test.each(schemaPaths)(
+				'requires authentication for %s',
+				async (requestPath) => await assertProtected(requestPath),
+			);
+
+			test.runIf(mount === 'with a frontend service').each(schemaPaths)(
+				'serves %s to an authenticated request and marks it private',
+				async (requestPath) => {
+					const { statusCode, body, headers } = await get(requestPath, ports[mount], {
+						cookie: authCookie,
+					});
+
+					expect(statusCode).toBe(200);
+					expect(body).toContain(SCHEMA_MARKER);
+					expect(headers['cache-control']).toBe('private, max-age=86400');
+				},
+			);
+
+			test.runIf(mount === 'with a frontend service')(
+				'serves the schema without a session while preview mode is on',
+				async () => {
+					const unauthenticated = await get(schemaPaths[0], ports[mount]);
+
+					expect(unauthenticated.statusCode).toBe(404);
+					expect(unauthenticated.body).not.toContain(SCHEMA_MARKER);
+
+					process.env.N8N_PREVIEW_MODE = 'true';
+
+					try {
+						const { statusCode, body } = await get(schemaPaths[0], ports[mount]);
+
+						expect(statusCode).toBe(200);
+						expect(body).toContain(SCHEMA_MARKER);
+					} finally {
+						delete process.env.N8N_PREVIEW_MODE;
+					}
+				},
+			);
+
+			test.runIf(mount === 'with a frontend service')(
+				'sends no cache header when the schema resolves to nothing',
+				async () => {
+					loadNodesAndCredentials.resolveSchema.mockReturnValueOnce(undefined);
+
+					const { statusCode, headers } = await get(schemaPaths[0], ports[mount], {
+						cookie: authCookie,
+					});
+
+					expect(statusCode).toBe(404);
+					expect(headers['cache-control']).toBeUndefined();
+				},
+			);
 		});
 
 		test.each([

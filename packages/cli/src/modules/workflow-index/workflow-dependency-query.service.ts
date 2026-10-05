@@ -5,6 +5,7 @@ import type {
 	ResolvedDependency,
 } from '@n8n/api-types';
 import {
+	chunkIds,
 	CredentialsRepository,
 	ProjectRelationRepository,
 	WorkflowDependencyRepository,
@@ -15,10 +16,9 @@ import { Service } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
 import { In, type FindManyOptions } from '@n8n/typeorm';
 
-import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
+import { CredentialsFinderService, RoleService } from '@n8n/backend-services';
 import { isCredSharingEnabled } from '@/constants/credential-sharing';
 import { DataTableRepository } from '@/modules/data-table/data-table.repository';
-import { RoleService } from '@/services/role.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { AgentUsageProviderProxy } from './agent-usage-provider-proxy.service';
@@ -265,6 +265,36 @@ export class WorkflowDependencyQueryService {
 			},
 			{ existingAgentIds, existingWfIds, existingCredIds, existingDtIds },
 		);
+	}
+
+	/**
+	 * Resolved dependencies for every workflow in a folder, deduplicated. The folder filter is
+	 * recursive, so a subfolder's workflows count as the folder's own.
+	 */
+	async getFolderDependencies(
+		projectId: string,
+		folderId: string,
+		user: User,
+	): Promise<ResolvedDependency[]> {
+		const workflowIds = await this.workflowFinderService.findAllWorkflowIdsForUser(
+			user,
+			['workflow:read'],
+			folderId,
+			projectId,
+		);
+
+		const dependencies = new Map<string, ResolvedDependency>();
+		// A folder hierarchy has no size limit, so keep each query under the driver's bind ceiling.
+		for (const chunk of chunkIds(workflowIds)) {
+			const byWorkflow = await this.getResourceDependencies(chunk, 'workflow', user);
+			for (const result of Object.values(byWorkflow)) {
+				for (const dependency of result.dependencies) {
+					dependencies.set(`${dependency.type}:${dependency.id}`, dependency);
+				}
+			}
+		}
+
+		return [...dependencies.values()];
 	}
 
 	private async loadDepsForResources(

@@ -8,6 +8,7 @@ export {
 } from './execution-response.schema';
 export { noopResponseEmitter } from './execution-response.types';
 export type {
+	ChunkMessage,
 	EndedMessage,
 	ExecutionResponse,
 	ResponseEmitter,

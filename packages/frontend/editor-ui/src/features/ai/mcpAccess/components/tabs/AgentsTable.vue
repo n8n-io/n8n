@@ -1,9 +1,8 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 import { useI18n } from '@n8n/i18n';
-import type { UserAction } from '@/Interface';
 import type { McpAgent } from '@/features/ai/mcpAccess/mcp.types';
-import type { TableHeader, TableOptions } from '@n8n/design-system';
+import type { TableHeader, TableOptions, UserAction } from '@n8n/design-system';
 import {
 	N8nActionToggle,
 	N8nButton,
@@ -13,8 +12,8 @@ import {
 	N8nSelectedItemsInfo,
 	N8nText,
 } from '@n8n/design-system';
-import { AGENT_VIEW, PROJECT_AGENTS } from '@/features/agents/constants';
-import router from '@/app/router';
+import { AGENT_VIEW, PROJECT_AGENTS } from '@n8n/frontend-constants/agents';
+import { useRouter } from 'vue-router';
 
 type Props = {
 	agents: McpAgent[];
@@ -61,6 +60,7 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
+const router = useRouter();
 
 const itemsLength = computed(() => props.totalCount ?? props.agents.length);
 
