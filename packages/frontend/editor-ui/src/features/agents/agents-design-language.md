@@ -34,6 +34,16 @@ not show “New session” before the Preview session starts. Truncate long titl
 inside the shared button. Keep the header actions visible.
 Use the `x` icon for the Preview close action, as the Assistant does.
 
+## Fix with Assistant
+
+In the standalone Agents UI, open or reuse the Assistant in the left panel.
+Keep the current Agent configuration available. Pass the relevant credential,
+error, or session context and the fix prompt to that panel. Close configuration
+dialogs only after the panel accepts the request. Preserve a refused request.
+Show these actions only after Assistant setup is complete.
+
+Agent artifacts inside an Assistant chat keep the handoff in that chat.
+
 ## Item context menus
 
 Use `AgentItemContextMenu` for removable configuration chips. It wraps the
