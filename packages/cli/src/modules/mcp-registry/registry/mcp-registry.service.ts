@@ -62,7 +62,8 @@ export class McpRegistryService {
 	private async seedGatewayServers(): Promise<void> {
 		const hosted = await this.aiGatewayService.getHostedMcpServers();
 		if (hosted.length === 0) return;
-		await this.saveServers(hosted);
+		const fetchedAt = await this.repository.readDbNow();
+		await this.saveServers(hosted, fetchedAt);
 	}
 
 	async getAll({
