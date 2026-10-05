@@ -4,6 +4,12 @@ import { createTestingPinia } from '@pinia/testing';
 import { render, screen } from '@testing-library/vue';
 import type { INodeUi } from '@/Interface';
 import { createEmptyCanvasRenderData } from '@/features/workflows/canvas/canvas.utils';
+import { CanvasNodeRenderType } from '@/features/workflows/canvas/canvas.types';
+import {
+	createCanvasNodeProps,
+	createCanvasProvide,
+} from '@/features/workflows/canvas/__tests__/utils';
+import { CanvasRenderDataKey } from '@/app/constants/injectionKeys';
 
 interface CapturedCanvasProps {
 	id: string;
@@ -14,19 +20,25 @@ interface CapturedCanvasProps {
 
 // Track what props are passed to child components
 let capturedSyncedCanvasProps: { top?: CapturedCanvasProps; bottom?: CapturedCanvasProps } = {};
+// When set, the canvas mock renders the node slot with these props, like Vue Flow does.
+let mockNodeSlotProps: Record<string, unknown> | undefined;
 
 // Mock SyncedWorkflowCanvas
 vi.mock('@/features/workflows/workflowDiff/SyncedWorkflowCanvas.vue', () => ({
 	default: defineComponent({
 		name: 'SyncedWorkflowCanvas',
 		props: ['id', 'nodes', 'connections', 'applyLayout'],
-		setup(props) {
+		setup(props, { slots }) {
 			if (props.id === 'top') {
 				capturedSyncedCanvasProps.top = { ...props };
 			} else if (props.id === 'bottom') {
 				capturedSyncedCanvasProps.bottom = { ...props };
 			}
-			return () => h('div', { 'data-test-id': `synced-canvas-${props.id}` }, props.id);
+			return () =>
+				h('div', { 'data-test-id': `synced-canvas-${props.id}` }, [
+					props.id,
+					mockNodeSlotProps ? slots.node?.({ nodeProps: mockNodeSlotProps }) : null,
+				]);
 		},
 	}),
 }));
@@ -87,6 +99,7 @@ describe('WorkflowDiffContent', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		capturedSyncedCanvasProps = {};
+		mockNodeSlotProps = undefined;
 		createTestingPinia();
 	});
 
@@ -203,6 +216,46 @@ describe('WorkflowDiffContent', () => {
 
 			expect(capturedSyncedCanvasProps.top?.applyLayout).toBeFalsy();
 			expect(capturedSyncedCanvasProps.bottom?.applyLayout).toBeFalsy();
+		});
+	});
+
+	describe('nodes', () => {
+		it('should render a selected Webpage node as read-only', () => {
+			mockNodeSlotProps = createCanvasNodeProps({
+				id: 'webpage',
+				selected: true,
+				data: {
+					name: 'Landing page',
+					type: 'n8n-nodes-base.webpage',
+					render: {
+						type: CanvasNodeRenderType.Webpage,
+						options: { html: '<h1>Hello</h1>', width: 480, height: 320 },
+					},
+				},
+			});
+
+			render(WorkflowDiffContent, {
+				props: { ...defaultProps, targetExists: false },
+				global: {
+					provide: {
+						...createCanvasProvide(),
+						[CanvasRenderDataKey as symbol]: ref(createEmptyCanvasRenderData()),
+					},
+					stubs: {
+						CanvasNodeStatusIcons: true,
+						ResizeControl: {
+							template: '<div data-test-id="webpage-resize-control" />',
+						},
+					},
+				},
+			});
+
+			expect(screen.getByTestId('canvas-node-webpage')).toBeInTheDocument();
+			expect(screen.queryByTestId('webpage-resize-control')).not.toBeInTheDocument();
+			const body = screen.getByTestId('canvas-node-webpage-body');
+			expect(body).not.toHaveClass('interactive');
+			expect(body).not.toHaveClass('nodrag');
+			expect(body).not.toHaveClass('nowheel');
 		});
 	});
 

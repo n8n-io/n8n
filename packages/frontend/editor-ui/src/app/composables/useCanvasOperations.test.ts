@@ -10,7 +10,13 @@ import type {
 	Workflow,
 	IWorkflowGroup,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, NodeHelpers, UserError, TelemetryHelpers } from 'n8n-workflow';
+import {
+	NodeConnectionTypes,
+	NodeHelpers,
+	UserError,
+	TelemetryHelpers,
+	WEBPAGE_NODE_TYPE,
+} from 'n8n-workflow';
 import type { CanvasConnection, CanvasNode } from '@/features/workflows/canvas/canvas.types';
 import { CanvasConnectionMode } from '@/features/workflows/canvas/canvas.types';
 import type {
@@ -724,6 +730,36 @@ describe('useCanvasOperations', () => {
 				lastInteracted.position[0] +
 					HORIZONTAL_NODE_STEP +
 					(AGENT_NODE_SIZE[0] - DEFAULT_NODE_SIZE[0]),
+				lastInteracted.position[1],
+			]);
+		});
+
+		it('should place the node clear of the webpage card when added after a Webpage node', () => {
+			const uiStore = mockedStore(useUIStore);
+			const nodeTypesStore = mockedStore(useNodeTypesStore);
+
+			const node = createTestNode({ id: '0' });
+			const nodeTypeDescription = mockNodeTypeDescription();
+
+			const lastInteracted = createTestNode({
+				position: [112, 112],
+				type: WEBPAGE_NODE_TYPE,
+				parameters: { width: 640, height: 400 },
+			});
+			uiStore.lastInteractedWithNodeId = lastInteracted.id;
+			vi.spyOn(workflowDocumentStoreInstance, 'getNodeById').mockReturnValue(
+				lastInteracted as INodeUi,
+			);
+			nodeTypesStore.getNodeType = vi.fn().mockReturnValue(nodeTypeDescription);
+			vi.spyOn(workflowDocumentStoreInstance, 'getNodeByName').mockReturnValue(
+				lastInteracted as INodeUi,
+			);
+
+			const { resolveNodePosition } = useCanvasOperations();
+			const position = resolveNodePosition({ ...node, position: undefined }, nodeTypeDescription);
+
+			expect(position).toEqual([
+				lastInteracted.position[0] + HORIZONTAL_NODE_STEP + (640 - DEFAULT_NODE_SIZE[0]),
 				lastInteracted.position[1],
 			]);
 		});

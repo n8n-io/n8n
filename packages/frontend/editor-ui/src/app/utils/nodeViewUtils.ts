@@ -42,6 +42,10 @@ export const CONFIGURATION_NODE_SIZE: [number, number] = [
 	CONFIGURATION_NODE_RADIUS * 2,
 ]; // the node has circle shape
 export const CONFIGURABLE_NODE_SIZE: [number, number] = [GRID_SIZE * 16, GRID_SIZE * 6];
+// The Webpage node keeps its canvas size in its width and height parameters.
+// The default must match the parameter defaults of the node.
+export const WEBPAGE_NODE_SIZE: [number, number] = [GRID_SIZE * 30, GRID_SIZE * 20];
+export const WEBPAGE_NODE_MIN_SIZE: [number, number] = [GRID_SIZE * 15, GRID_SIZE * 10];
 export const DEFAULT_START_POSITION_X = GRID_SIZE * 11;
 export const DEFAULT_START_POSITION_Y = GRID_SIZE * 15;
 export const HEADER_HEIGHT = 65;
@@ -637,6 +641,20 @@ export function updateViewportToContainNodes(
 		x: viewport.x + dx * zoom,
 		y: viewport.y + dy * zoom,
 		zoom,
+	};
+}
+
+/**
+ * Canvas size of a Webpage node from its parameters or render options.
+ * Saved workflows can omit parameters that are equal to their defaults.
+ */
+export function getWebpageNodeSize(size: { width?: unknown; height?: unknown }): {
+	width: number;
+	height: number;
+} {
+	return {
+		width: typeof size.width === 'number' ? size.width : WEBPAGE_NODE_SIZE[0],
+		height: typeof size.height === 'number' ? size.height : WEBPAGE_NODE_SIZE[1],
 	};
 }
 

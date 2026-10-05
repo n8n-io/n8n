@@ -912,5 +912,27 @@ describe('usePostMessageHandler', () => {
 
 			cleanup();
 		});
+
+		it('should ignore commands from the opaque origin of a sandboxed frame', async () => {
+			const { setup, cleanup } = usePostMessageHandler({
+				currentWorkflowDocumentStore: shallowRef(null),
+			});
+			setup();
+
+			window.dispatchEvent(
+				new MessageEvent('message', {
+					data: JSON.stringify({
+						command: 'openWorkflow',
+						workflow: { nodes: [], connections: {} },
+					}),
+					origin: 'null',
+				}),
+			);
+
+			await new Promise((r) => setTimeout(r, 10));
+			expect(mockImportWorkflowExact).not.toHaveBeenCalled();
+
+			cleanup();
+		});
 	});
 });

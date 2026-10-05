@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { IWorkflowGroup } from 'n8n-workflow';
+import { WEBPAGE_NODE_TYPE, type IWorkflowGroup } from 'n8n-workflow';
 import type { INodeUi } from '@/Interface';
 import type { CanvasConnection, NodeExecutionSnapshot } from '../canvas.types';
 import { CANVAS_NODE_GROUP_INPUT_HANDLE, CANVAS_NODE_GROUP_OUTPUT_HANDLE } from '../canvas.types';
@@ -22,7 +22,7 @@ import {
 	GROUP_PADDING_Y_BOTTOM,
 	GROUP_PADDING_Y_TOP,
 } from '../stores/canvasNodeGroups.constants';
-import { GRID_SIZE } from '@/app/utils/nodeViewUtils';
+import { GRID_SIZE, WEBPAGE_NODE_SIZE } from '@/app/utils/nodeViewUtils';
 import { NO_OP_NODE_TYPE, STICKY_NODE_TYPE } from '@/app/constants/nodeTypes';
 import { createNodeExecutionSnapshot } from '../__tests__/utils';
 
@@ -143,8 +143,19 @@ describe('computeNodesRectFromStore', () => {
 		expect(rect.height).toBe(300);
 	});
 
+	it('uses Webpage width/height from parameters with the default size as fallback', () => {
+		const sized = { ...makeNode('sized', 0, 0), type: WEBPAGE_NODE_TYPE };
+		sized.parameters = { width: 640, height: 400 };
+		const unsized = { ...makeNode('unsized', 1000, 0), type: WEBPAGE_NODE_TYPE };
+
+		const rect = computeNodesRectFromStore(['sized', 'unsized'], nodeStore(sized, unsized));
+
+		expect(rect.width).toBe(1000 + WEBPAGE_NODE_SIZE[0]);
+		expect(rect.height).toBe(400);
+	});
+
 	it('ignores parameters.width/height on non-sticky nodes', () => {
-		// Sticky is the only node type whose dimensions live in parameters.
+		// Only Sticky and Webpage nodes keep their dimensions in parameters.
 		// A future node that happens to set parameters.width must not bend the
 		// group's bounding rect — it should fall back to DEFAULT_NODE_SIZE.
 		const bogus = {

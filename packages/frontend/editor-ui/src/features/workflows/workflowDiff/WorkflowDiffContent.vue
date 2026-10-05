@@ -68,7 +68,11 @@ function getEdgeStatusClass(id: string) {
 						:apply-layout="applyLayout"
 					>
 						<template #node="{ nodeProps }">
-							<Node v-bind="nodeProps" :class="{ [getNodeStatusClass(nodeProps.id)]: true }">
+							<Node
+								v-bind="nodeProps"
+								:read-only="true"
+								:class="{ [getNodeStatusClass(nodeProps.id)]: true }"
+							>
 								<template #toolbar />
 							</Node>
 						</template>
@@ -111,7 +115,11 @@ function getEdgeStatusClass(id: string) {
 						:apply-layout="applyLayout"
 					>
 						<template #node="{ nodeProps }">
-							<Node v-bind="nodeProps" :class="{ [getNodeStatusClass(nodeProps.id)]: true }">
+							<Node
+								v-bind="nodeProps"
+								:read-only="true"
+								:class="{ [getNodeStatusClass(nodeProps.id)]: true }"
+							>
 								<template #toolbar />
 							</Node>
 						</template>

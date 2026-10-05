@@ -1,4 +1,9 @@
-import { getEmptyGroupAnchor, type ExecutionStatus, type IWorkflowGroup } from 'n8n-workflow';
+import {
+	getEmptyGroupAnchor,
+	WEBPAGE_NODE_TYPE,
+	type ExecutionStatus,
+	type IWorkflowGroup,
+} from 'n8n-workflow';
 import type { INodeUi } from '@/Interface';
 import type {
 	BoundingBox,
@@ -25,7 +30,7 @@ import {
 	GROUP_PADDING_Y_TOP,
 } from '../stores/canvasNodeGroups.constants';
 import { applyOffset, createCanvasConnectionId } from '../canvas.utils';
-import { DEFAULT_NODE_SIZE, GRID_SIZE } from '@/app/utils/nodeViewUtils';
+import { DEFAULT_NODE_SIZE, getWebpageNodeSize, GRID_SIZE } from '@/app/utils/nodeViewUtils';
 import { STICKY_NODE_TYPE } from '@/app/constants/nodeTypes';
 
 export interface NodesRect {
@@ -41,25 +46,26 @@ export interface NodesRect {
  */
 export type GetNodeDisplaySize = (id: string) => { width: number; height: number } | undefined;
 
-// Sticky is the only node type whose dimensions live in parameters today.
+// Sticky and Webpage nodes keep their dimensions in parameters.
 // typeof-narrow keeps the read type-safe
-function readStickyDimensions(node: INodeUi): { width: number; height: number } | undefined {
+function readParameterDimensions(node: INodeUi): { width: number; height: number } | undefined {
+	if (node.type === WEBPAGE_NODE_TYPE) return getWebpageNodeSize(node.parameters ?? {});
 	if (node.type !== STICKY_NODE_TYPE) return undefined;
 	const { width, height } = node.parameters ?? {};
 	if (typeof width !== 'number' || typeof height !== 'number') return undefined;
 	return { width, height };
 }
 
-// Precedence: caller-supplied → sticky parameters → DEFAULT_NODE_SIZE.
+// Precedence: caller-supplied → size parameters → DEFAULT_NODE_SIZE.
 function resolveNodeDimensions(
 	node: INodeUi,
 	getNodeDisplaySize?: GetNodeDisplaySize,
 ): { width: number; height: number } {
 	const supplied = getNodeDisplaySize?.(node.id);
-	const sticky = readStickyDimensions(node);
+	const fromParameters = readParameterDimensions(node);
 	return {
-		width: supplied?.width ?? sticky?.width ?? DEFAULT_NODE_SIZE[0],
-		height: supplied?.height ?? sticky?.height ?? DEFAULT_NODE_SIZE[1],
+		width: supplied?.width ?? fromParameters?.width ?? DEFAULT_NODE_SIZE[0],
+		height: supplied?.height ?? fromParameters?.height ?? DEFAULT_NODE_SIZE[1],
 	};
 }
 

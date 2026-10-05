@@ -62,6 +62,7 @@ export const enum CanvasNodeRenderType {
 	AddNodes = 'n8n-nodes-internal.addNodes',
 	ChoicePrompt = 'n8n-nodes-internal.choicePrompt',
 	Agent = 'n8n-nodes-base.messageAnAgent',
+	Webpage = 'n8n-nodes-base.webpage',
 }
 
 export type CanvasNodeDefaultRenderLabelSize = 'small' | 'medium' | 'large';
@@ -127,6 +128,16 @@ export type CanvasNodeAgentRender = {
 	}>;
 };
 
+export type CanvasNodeWebpageRender = {
+	type: CanvasNodeRenderType.Webpage;
+	options: Partial<{
+		html: string;
+		width: number;
+		height: number;
+		icon: NodeIconSource;
+	}>;
+};
+
 export interface CanvasNodeData {
 	id: INodeUi['id'];
 	name: INodeUi['name'];
@@ -158,7 +169,8 @@ export interface CanvasNodeData {
 		| CanvasNodeStickyNoteRender
 		| CanvasNodeAddNodesRender
 		| CanvasNodeChoicePromptRender
-		| CanvasNodeAgentRender;
+		| CanvasNodeAgentRender
+		| CanvasNodeWebpageRender;
 }
 
 export type CanvasNode = Node<CanvasNodeData>;

@@ -115,8 +115,8 @@ export function useCanvasMapping({
 	});
 
 	// Display size by node id. WorkflowCanvas uses this for group bounds so
-	// they wrap each node's actual rendered size. Sticky notes are omitted —
-	// their own width/height parameters are read by the group mapper directly.
+	// they wrap each node's actual rendered size. Sticky notes and Webpage
+	// nodes are omitted — the group mapper reads their width/height parameters.
 	const nodeDisplaySizeById = computed(() => {
 		const rd = renderData.value;
 		const dimensionsById: Record<string, { width: number; height: number }> = {};
