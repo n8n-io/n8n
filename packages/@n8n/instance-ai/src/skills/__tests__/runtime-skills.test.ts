@@ -428,7 +428,7 @@ describe('Instance AI runtime skills', () => {
 			'research',
 			'ask-user',
 		]);
-		expect(skill?.description).toContain('Load create-tasks via load_tool before calling it');
+		expect(skill?.description).toContain('If create-tasks is not visible, load it via load_tool');
 		expect(skill?.description).toContain('Do NOT use for new one-off workflows');
 
 		const loaded = await source.loadSkill('planning');
@@ -436,7 +436,7 @@ describe('Instance AI runtime skills', () => {
 		expect(loaded?.instructions).toContain('Consult the knowledge base before planning');
 		expect(loaded?.instructions).toContain('never load `templates/index.json` wholesale');
 		expect(loaded?.instructions).toContain(
-			'Before calling `create-tasks`, load it via `load_tool`',
+			'If `create-tasks` is not visible, load it via `load_tool`',
 		);
 		expect(loaded?.instructions).toContain('Do not call `create-tasks` just to get approval');
 		expect(loaded?.instructions).toContain('planningContext.source: "planning-skill"');

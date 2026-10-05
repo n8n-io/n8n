@@ -1,3 +1,4 @@
+import type { ProviderOptions } from '@ai-sdk/provider-utils';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { sleep } from '@n8n/utils/sleep';
 import * as aiModule from 'ai';
@@ -8480,12 +8481,14 @@ describe('AgentRuntime — mid-run observation', () => {
 			deferredTools?: BuiltTool[];
 			checkpointStorage?: CheckpointStore;
 			model?: ModelConfig;
+			instructionProviderOptions?: ProviderOptions;
 		},
 	): AgentRuntime {
 		return new AgentRuntime({
 			name: 'mid-run-agent',
 			model: extra?.model ?? 'openai/gpt-4o-mini',
 			instructions: 'You are a test assistant.',
+			instructionProviderOptions: extra?.instructionProviderOptions,
 			memory,
 			tools: extra?.tools ?? [makeStepTool()],
 			deferredTools: extra?.deferredTools,
@@ -8603,8 +8606,46 @@ describe('AgentRuntime — mid-run observation', () => {
 		expect(JSON.stringify(capturedCall(2).messages)).not.toContain('Wait for a real execution');
 	});
 
+	it('keeps the base instructions unchanged when compaction moves a skill into the system prompt', async () => {
+		const source = createRuntimeSkillSource([
+			{
+				id: 'builder',
+				name: 'builder',
+				description: 'Build workflows.',
+				instructions: 'Wait for a real execution before extending the workflow.',
+			},
+		]);
+		const cacheOptions = { anthropic: { cacheControl: { type: 'ephemeral' } } };
+		const runtime = buildMidRunRuntime(new InMemoryMemory(), {
+			skillSource: source,
+			tools: createRuntimeSkillTools(source),
+			model: 'anthropic/claude-sonnet-4-5',
+			instructionProviderOptions: cacheOptions,
+		});
+		generateText
+			.mockResolvedValueOnce(
+				makeGenerateWithToolCall('load-builder', 'load_skill', { skillId: 'builder' }),
+			)
+			.mockResolvedValueOnce(makeGenerateSuccess('Please test the first workflow.'));
+
+		await runtime.generate('Build it', { persistence: PERSISTENCE });
+		await runtime.dispose();
+
+		const before = capturedCall(0).instructions;
+		const after = capturedCall(1).instructions;
+		if (Array.isArray(before) || !Array.isArray(after)) throw new Error('Unexpected system shape');
+		expect(after[0]).toEqual(before);
+		expect(after[1]).toEqual({
+			role: 'system',
+			content: expect.stringContaining('Wait for a real execution'),
+			providerOptions: cacheOptions,
+		});
+		expect(after[2].content).toContain('Mid-run observation captured.');
+		expect(after[2]).not.toHaveProperty('providerOptions');
+	});
+
 	it.each(['load_skill', 'inspect_node'])(
-		'activates skill tool dependencies after %s and restores them on the next turn',
+		'keeps skill tool dependencies in the tool list before and after %s',
 		async (activationTool) => {
 			const source = createRuntimeSkillSource([
 				{
@@ -8642,8 +8683,9 @@ describe('AgentRuntime — mid-run observation', () => {
 			await runtime.generate('Build it', { persistence: PERSISTENCE });
 			await runtime.dispose();
 
-			expect(capturedCall(0).tools).not.toHaveProperty('catalog');
-			expect(capturedCall(1).tools).toHaveProperty('catalog');
+			// The tool list must not change when the skill activates, or the cached prompt is rewritten.
+			expect(Object.keys(capturedCall(1).tools)).toEqual(Object.keys(capturedCall(0).tools));
+			expect(capturedCall(0).tools).toHaveProperty('catalog');
 			expect(capturedCall(1).tools).not.toHaveProperty('optional_tool');
 			expect(flattenInstructions(capturedCall(1).instructions)).toContain(
 				'Choose a model from the catalog.',
