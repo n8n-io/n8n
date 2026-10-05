@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { saveAs } from 'file-saver';
-import { N8nButton, N8nCopyInput, N8nIcon, N8nStepper, N8nText } from '@n8n/design-system';
+import { N8nButton, N8nCopyInput, N8nIcon, N8nLink, N8nStepper, N8nText } from '@n8n/design-system';
 import type {
 	AgentJsonConfig,
 	AgentTeamsIntegrationSettings,
@@ -70,6 +70,8 @@ const rootStore = useRootStore();
 const toast = useToast();
 const agentTelemetry = useAgentTelemetry();
 
+// The bot's subscription and resource group are picked in Azure, so this lists every Azure Bot.
+const AZURE_BOTS_URL = 'https://portal.azure.com/#browse/Microsoft.BotService%2FbotServices';
 const ENTRA_APP_REGISTRATION_URL =
 	'https://entra.microsoft.com/#view/Microsoft_AAD_RegisteredApps/CreateApplicationBlade';
 
@@ -304,9 +306,6 @@ function uploadInstruction(scopes?: { teamChannels?: boolean; groupChats?: boole
 	const addTo = addToText(scopes);
 	return addTo ? `${upload} ${addTo}` : upload;
 }
-
-// The card downloads the saved app, so the instruction follows the saved scopes.
-const savedUploadInstruction = computed(() => uploadInstruction(props.savedSettings));
 
 // The modal clears the error when the credential changes. A conflict is about
 // the credential itself, so it stays in step 2.
@@ -753,13 +752,7 @@ defineExpose({
 					:class="manifestChanged ? undefined : $style.hint"
 					data-testid="teams-update-notice"
 				>
-					{{
-						i18n.baseText(
-							manifestChanged
-								? 'agents.channels.teams.settings.updateNoticeChanged'
-								: 'agents.channels.teams.settings.updateNotice',
-						)
-					}}
+					{{ i18n.baseText('agents.channels.teams.settings.updateNotice') }}
 				</N8nText>
 			</div>
 
@@ -781,8 +774,7 @@ defineExpose({
 					@download="downloadSaved"
 				/>
 				<N8nText :class="$style.hint" size="small" data-testid="teams-upload-instructions">
-					{{ savedUploadInstruction }}
-					{{ i18n.baseText('agents.channels.teams.setup.install.hint') }}
+					{{ i18n.baseText('agents.channels.teams.settings.uploadHint') }}
 				</N8nText>
 				<N8nText
 					v-if="downloadError"
@@ -793,6 +785,19 @@ defineExpose({
 					{{ downloadError }}
 				</N8nText>
 			</div>
+			<N8nLink
+				:href="AZURE_BOTS_URL"
+				target="_blank"
+				rel="noopener noreferrer"
+				size="small"
+				:class="$style.azureLink"
+				data-testid="teams-azure-bot-link"
+			>
+				<span :class="$style.linkContent">
+					{{ i18n.baseText('agents.channels.teams.settings.openBotSettings') }}
+					<N8nIcon icon="external-link" size="xsmall" />
+				</span>
+			</N8nLink>
 		</div>
 	</div>
 </template>
@@ -854,6 +859,16 @@ defineExpose({
 .locked {
 	opacity: 0.45;
 	pointer-events: none;
+}
+
+.azureLink {
+	align-self: flex-start;
+}
+
+.linkContent {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
 }
 
 .urlInput {

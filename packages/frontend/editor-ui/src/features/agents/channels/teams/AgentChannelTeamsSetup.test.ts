@@ -655,19 +655,35 @@ describe('AgentChannelTeamsSetup', () => {
 			await waitFor(() => expect(getByTestId('teams-update-notice')).toBeVisible());
 		});
 
-		it('says where to upload the package, for the saved places, and what to do without the option', async () => {
-			const { getByTestId } = renderComponent({
-				props: settingsProps({ savedSettings: { teamChannels: true } }),
-			});
+		it('says where to upload a new package in Teams', async () => {
+			const { getByTestId } = renderComponent({ props: settingsProps() });
 
 			await waitFor(() =>
 				expect(getByTestId('teams-upload-instructions')).toHaveTextContent(
-					'agents.channels.teams.setup.install.description agents.channels.teams.setup.install.addTo.teams',
+					'agents.channels.teams.settings.uploadHint',
 				),
 			);
-			expect(getByTestId('teams-upload-instructions')).toHaveTextContent(
-				'agents.channels.teams.setup.install.hint',
+		});
+
+		it('links to the Azure Bot resources for changes made there', async () => {
+			const { getByTestId } = renderComponent({ props: settingsProps() });
+
+			await waitFor(() =>
+				expect(getByTestId('teams-azure-bot-link')).toHaveAttribute(
+					'href',
+					'https://portal.azure.com/#browse/Microsoft.BotService%2FbotServices',
+				),
 			);
+			expect(getByTestId('teams-azure-bot-link')).toHaveAttribute('target', '_blank');
+		});
+
+		it('keeps the Azure link out of the setup', async () => {
+			const { queryByTestId, getByText } = renderComponent({ props: props() });
+
+			await waitFor(() =>
+				expect(getByText('agents.channels.teams.setup.install.title')).toBeVisible(),
+			);
+			expect(queryByTestId('teams-azure-bot-link')).toBeNull();
 		});
 
 		it('adds the admin hint to the toast after a download from the card', async () => {
@@ -773,7 +789,7 @@ describe('AgentChannelTeamsSetup', () => {
 			);
 		});
 
-		it('says a changed availability is saved with a new package', async () => {
+		it('stresses the upload notice once the availability changes', async () => {
 			const { getByTestId } = renderComponent({ props: settingsProps() });
 
 			await waitFor(() =>
@@ -781,12 +797,14 @@ describe('AgentChannelTeamsSetup', () => {
 					'agents.channels.teams.settings.updateNotice',
 				),
 			);
+			const quiet = getByTestId('teams-update-notice').className;
 			await openAvailability(getByTestId);
 			await fireEvent.click(getByTestId('teams-scope-groups'));
 
 			expect(getByTestId('teams-update-notice')).toHaveTextContent(
-				'agents.channels.teams.settings.updateNoticeChanged',
+				'agents.channels.teams.settings.updateNotice',
 			);
+			expect(getByTestId('teams-update-notice').className).not.toBe(quiet);
 		});
 
 		it('downloads the saved app from the card, not unsaved changes', async () => {
