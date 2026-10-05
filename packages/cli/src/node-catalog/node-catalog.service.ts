@@ -4,7 +4,7 @@ import type {
 	NodeTypeParser,
 } from '@n8n/ai-utilities/node-catalog';
 import { Logger, ModuleRegistry } from '@n8n/backend-common';
-import { BUILTIN_NODES_PACKAGES, MODULE_GATED_NODE_TYPES } from '@n8n/constants';
+import { BUILTIN_NODES_PACKAGES } from '@n8n/constants';
 import { Container, Service } from '@n8n/di';
 import * as fs from 'fs/promises';
 import { LRUCache } from 'lru-cache';
@@ -14,6 +14,7 @@ import * as path from 'path';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { synthesizeNodeTypeDef } from '@/modules/mcp-registry/synthesize-type-def';
 
+import { getModuleDisabledNodeTypes } from './module-gated-node-types';
 import { findRegistryMatches, type RegistryCandidate } from './registry-lookup';
 
 export type NodeFilter = (nodeId: string) => boolean;
@@ -276,7 +277,7 @@ export class NodeCatalogService {
 		}
 
 		// Agents can be turned on and off at runtime, so the gated-off set is part of the key.
-		const disabledNodeTypes = this.getModuleDisabledNodeTypes();
+		const disabledNodeTypes = getModuleDisabledNodeTypes(this.moduleRegistry);
 		const cacheKey = JSON.stringify([disabledNodeTypes, [...queries].sort()]);
 		const cached = state.cache.get(cacheKey);
 		if (cached) return cached;
@@ -712,19 +713,6 @@ export class NodeCatalogService {
 		this.logger.debug('NodeCatalogService refreshed node types', {
 			nodeTypeCount: nodeTypeDescriptions.length,
 		});
-	}
-
-	/** Module-gated node types whose module is off. Search does not offer them. */
-	private getModuleDisabledNodeTypes(): string[] {
-		return Object.entries(MODULE_GATED_NODE_TYPES)
-			.filter(([, moduleName]) => !this.isModuleEnabled(moduleName))
-			.map(([nodeType]) => nodeType);
-	}
-
-	private isModuleEnabled(moduleName: string): boolean {
-		if (!this.moduleRegistry.getActiveModules().includes(moduleName)) return false;
-		// An admin can turn agents off in Settings > Agents. The module then reports `enabled: false`.
-		return this.moduleRegistry.settings.get(moduleName)?.enabled !== false;
 	}
 
 	private indexDescriptions(descriptions: INodeTypeDescription[]): void {

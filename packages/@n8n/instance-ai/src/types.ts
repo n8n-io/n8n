@@ -408,6 +408,8 @@ export interface NodeDescription extends NodeSummary {
 	polling?: boolean;
 	triggerPanel?: unknown;
 	aiGateway?: AiGatewayNodeMeta;
+	/** Set when the node cannot run on this instance, because the feature it needs is off. */
+	unavailable?: string;
 }
 
 // ── Service interfaces ───────────────────────────────────────────────────────
@@ -960,6 +962,8 @@ export interface InstanceAiNodeService {
 		builderHint?: string;
 		/** The node type is retired. It still works, but it shouldn't be used anymore at anything new. */
 		deprecated?: boolean;
+		/** Set when the node cannot run on this instance, because the feature it needs is off. */
+		unavailable?: string;
 	} | null>;
 	/** List available resource/operation discriminators for a node. Null for flat nodes. */
 	listDiscriminators?(
