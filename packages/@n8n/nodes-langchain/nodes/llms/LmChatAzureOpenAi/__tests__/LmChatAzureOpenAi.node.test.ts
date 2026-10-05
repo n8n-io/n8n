@@ -474,6 +474,8 @@ describe('LmChatAzureOpenAi', () => {
 			const params = vi.mocked(ChatAnthropic).mock.calls[0][0];
 			expect(params).toMatchObject({ anthropicApiKey: 'test-key' });
 			expect(params?.clientOptions?.fetch).toBe(aiClientFetch);
+			// Null keeps the SDK from reading ANTHROPIC_AUTH_TOKEN off the host.
+			expect(params?.clientOptions?.authToken).toBeNull();
 		});
 
 		// The classic endpoint type serves only the Azure OpenAI route, so fail before any request.

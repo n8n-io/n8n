@@ -105,8 +105,7 @@ export class LmChatAzureOpenAi implements INodeType {
 			const { extraBody, ...options } = allOptions;
 			const extraBodyKwargs = extraBody ? parseExtraBody(this, extraBody, itemIndex) : {};
 
-			// Azure does not report which API a deployment answers on. Absent on nodes saved before
-			// the field existed, which keep the OpenAI route.
+			// Absent on nodes saved before the field existed, which keep the OpenAI route.
 			const modelFamily = this.getNodeParameter('modelFamily', itemIndex, 'openai') as
 				| 'openai'
 				| 'anthropic';
@@ -152,23 +151,23 @@ export class LmChatAzureOpenAi implements INodeType {
 					throw new NodeOperationError(this.getNode(), 'Invalid authentication method');
 			}
 
-			// The classic endpoint type addresses /openai/deployments/<name>, which has no Anthropic
-			// route. Say so before any request goes out.
-			if (modelFamily === 'anthropic' && !modelConfig.azureFoundryBaseURL) {
-				throw new NodeOperationError(
-					this.getNode(),
-					'Claude deployments need a credential using the Azure AI Foundry endpoint type',
-					{
-						itemIndex,
-						description:
-							'This credential uses the classic endpoint type, which serves only the Azure OpenAI route. Switch the credential to Azure AI Foundry, or set Model Family to OpenAI.',
-					},
-				);
-			}
-
 			const timeout = options.timeout;
 
-			if (modelFamily === 'anthropic' && modelConfig.azureFoundryBaseURL) {
+			if (modelFamily === 'anthropic') {
+				// The classic endpoint type addresses /openai/deployments/<name>, which has no Anthropic
+				// route. Say so before any request goes out.
+				if (!modelConfig.azureFoundryBaseURL) {
+					throw new NodeOperationError(
+						this.getNode(),
+						'Claude deployments need a credential using the Azure AI Foundry endpoint type',
+						{
+							itemIndex,
+							description:
+								'This credential uses the classic endpoint type, which serves only the Azure OpenAI route. Switch the credential to Azure AI Foundry, or set Model Family to OpenAI.',
+						},
+					);
+				}
+
 				// Claude in Foundry answers on <resource>/anthropic; the SDK appends /v1/messages.
 				const anthropicURL = new URL(modelConfig.azureFoundryBaseURL).origin + '/anthropic';
 				const clientOptions: NonNullable<ChatAnthropicInput['clientOptions']> = {
@@ -206,9 +205,10 @@ export class LmChatAzureOpenAi implements INodeType {
 					anthropicApiUrl: anthropicURL,
 					clientOptions,
 					// LangChain only sends temperature and top_p when they are set, and Claude 4.x
-					// rejects both together. -1 is the OpenAI "use default" sentinel, invalid here.
+					// rejects both together.
 					temperature: options.temperature,
 					topP: options.topP,
+					// -1 is the OpenAI "use default" sentinel, invalid here.
 					maxTokens: options.maxTokens && options.maxTokens > 0 ? options.maxTokens : undefined,
 					maxRetries: options.maxRetries ?? 2,
 					invocationKwargs: extraBodyKwargs,
@@ -224,7 +224,6 @@ export class LmChatAzureOpenAi implements INodeType {
 			}
 
 			if (modelConfig.azureFoundryBaseURL) {
-				this.logger.info(`Instantiating AzureChatOpenAI model with deployment: ${modelName}`);
 				const foundryURL = modelConfig.azureFoundryBaseURL;
 				const configuration: ClientOptions = {
 					baseURL: foundryURL,
@@ -287,8 +286,6 @@ export class LmChatAzureOpenAi implements INodeType {
 					},
 				);
 			}
-
-			this.logger.info(`Instantiating AzureChatOpenAI model with deployment: ${modelName}`);
 
 			// One resolved host for both the client and the proxy. Passing it explicitly also stops
 			// LangChain falling back to AZURE_OPENAI_ENDPOINT, which the proxy would not know about.
