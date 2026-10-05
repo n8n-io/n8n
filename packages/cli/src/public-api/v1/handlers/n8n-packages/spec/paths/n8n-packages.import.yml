@@ -258,6 +258,8 @@ post:
                 target table does not change. `overwrite` changes the
                 matched target table to match the package: it renames the table,
                 adds, removes, and retypes columns, and sets the column order.
+                A rename to a name that another table in the project has rejects
+                the import. This includes two tables that swap names.
                 Data in removed or retyped columns is lost. The changes apply to
                 the table for all workflows that use it, not only for the imported
                 workflows. Requires the `dataTable:update` scope only when at
