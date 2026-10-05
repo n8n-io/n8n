@@ -45,6 +45,18 @@ export const properties: INodeProperties[] = [
 		default: '',
 	},
 	{
+		displayName: 'Model Family',
+		name: 'modelFamily',
+		type: 'options',
+		default: 'openai',
+		description:
+			'The API family the deployment answers on. Azure does not report this, so set it to match the deployment: OpenAI for GPT and other OpenAI-compatible models, Anthropic for Claude. Anthropic needs a credential using the Azure AI Foundry endpoint type.',
+		options: [
+			{ name: 'OpenAI', value: 'openai' },
+			{ name: 'Anthropic', value: 'anthropic' },
+		],
+	},
+	{
 		displayName: 'Project',
 		name: 'project',
 		type: 'string',
@@ -62,6 +74,7 @@ export const properties: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				'@version': [{ _cnd: { gte: 1.1 } }],
+				modelFamily: ['openai'],
 			},
 		},
 	},
@@ -81,6 +94,7 @@ export const properties: INodeProperties[] = [
 				description:
 					"Positive values penalize new tokens based on their existing frequency in the text so far, decreasing the model's likelihood to repeat the same line verbatim",
 				type: 'number',
+				displayOptions: { show: { '/modelFamily': ['openai'] } },
 			},
 			{
 				displayName: 'Maximum Number of Tokens',
@@ -111,6 +125,7 @@ export const properties: INodeProperties[] = [
 							'Enables JSON mode, which should guarantee the message the model generates is valid JSON',
 					},
 				],
+				displayOptions: { show: { '/modelFamily': ['openai'] } },
 			},
 			{
 				displayName: 'Presence Penalty',
@@ -120,6 +135,7 @@ export const properties: INodeProperties[] = [
 				description:
 					"Positive values penalize new tokens based on whether they appear in the text so far, increasing the model's likelihood to talk about new topics",
 				type: 'number',
+				displayOptions: { show: { '/modelFamily': ['openai'] } },
 			},
 			{
 				displayName: 'Sampling Temperature',
