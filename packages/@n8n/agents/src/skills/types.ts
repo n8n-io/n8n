@@ -162,6 +162,11 @@ export type RuntimeSkillFileLoader = (
 
 export interface RuntimeSkillSource {
 	registry: RuntimeSkillRegistry;
+	/**
+	 * Lazy setup that runs before a skill is loaded, not when the agent is built.
+	 * It must not change catalog fields (id, name, description, category,
+	 * recommendedTools), because the catalog is rendered before it runs.
+	 */
 	prepare?: () => Promise<void>;
 	loadSkill: RuntimeSkillLoader;
 	loadFile?: RuntimeSkillFileLoader;

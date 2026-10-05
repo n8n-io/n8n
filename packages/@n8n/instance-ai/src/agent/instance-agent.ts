@@ -14,7 +14,7 @@ import {
 import { attachRuntimeWorkspaceCapabilities } from './runtime-workspace';
 import { listConnectedMcpServices } from '../mcp/connected-mcp-services';
 import { getVersionedSystemPrompt, resolvePromptProfile } from '../prompts/prompt-profiles';
-import { hasRuntimeSkills } from '../skills/runtime-skills';
+import { hasRuntimeSkills, warmRuntimeSkills } from '../skills/runtime-skills';
 import { createToolRegistry, mergeToolRegistries, toolRegistryValues } from '../tool-registry';
 import {
 	createOrchestratorDomainTools,
@@ -254,6 +254,7 @@ export async function createInstanceAgent(
 	const runtimeSkills = orchestrationContext?.runtimeSkills;
 	if (hasRuntimeSkills(runtimeSkills)) {
 		agent.skills(runtimeSkills);
+		warmRuntimeSkills(runtimeSkills, orchestrationContext?.logger);
 	}
 	if (telemetry) {
 		agent.telemetry(telemetry);

@@ -1,11 +1,13 @@
 import { loadRuntimeSkillSourceFromDirectory, type RuntimeSkillSource } from '@n8n/agents';
 import type { InstanceAiBuildMode } from '@n8n/api-types';
+import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 import { GROUPING_GUIDANCE } from '@n8n/workflow-sdk/prompts/sdk-reference';
 import { TOP_LEVEL_ITEM_CEILING } from 'n8n-workflow';
 import { resolve } from 'node:path';
 
 import { isAgentFeatureEnabled } from '@/utils/agent-feature-enabled';
 
+import type { Logger } from '../logger';
 import {
 	PROMPT_FRAGMENT_SKILLS,
 	resolvePromptProfile,
@@ -62,4 +64,18 @@ export function hasRuntimeSkills(
 	source: RuntimeSkillSource | undefined,
 ): source is RuntimeSkillSource {
 	return (source?.registry.skills.length ?? 0) > 0;
+}
+
+/**
+ * Start preparing the skill source (sandbox + skill files) without waiting for it,
+ * so it overlaps with the first model call instead of delaying the first token.
+ * load_skill awaits the same in-flight preparation, and retries it if this one fails.
+ */
+export function warmRuntimeSkills(source: RuntimeSkillSource, logger?: Logger): void {
+	if (!source.prepare) return;
+	source.prepare().catch((error: unknown) => {
+		logger?.warn('Failed to warm runtime skills in the background', {
+			error: getErrorMessage(error),
+		});
+	});
 }
