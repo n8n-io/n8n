@@ -10,6 +10,7 @@
 
 import type { DiscoveryMcpState } from './stub-mcp-registry';
 import type { ComputerUseState } from '../../src/types';
+import type { CaseSeed } from '../harness/schema';
 
 /**
  * Pass condition for tool invocations.
@@ -94,12 +95,30 @@ export interface DiscoveryTestCase {
 	timeoutMs?: number;
 }
 
+/** The inline seed a routing case restores into the stub instance before its turn. */
+export type RoutingSeed = Extract<CaseSeed, { mode: 'inline' }>;
+
+/** The seeded workflow or Agent the user had open when they sent the message. */
+export type RoutingAttachment = { workflow: string } | { agent: string };
+
+/** What the runner needs from a case. Routing cases have no tool expectations:
+ *  the routing grader reads the recorded calls afterwards. */
+export type DiscoveryScenario = Omit<DiscoveryTestCase, 'expectedToolInvocations'> &
+	Partial<Pick<DiscoveryTestCase, 'expectedToolInvocations'>> & {
+		/** Routing cases only: state the stub instance holds before the turn. */
+		seed?: RoutingSeed;
+		/** Routing cases only: sent with the message the way the editor hands it off. */
+		attach?: RoutingAttachment;
+	};
+
 export type DiscoveryStreamStatus =
 	| 'completed'
 	| 'errored'
 	| 'timed-out'
 	| 'suspended'
-	| 'step-exhausted';
+	| 'step-exhausted'
+	/** `--stop-on-route` ended the run at its first committing call. */
+	| 'stopped-on-route';
 
 export interface DiscoveryTrialFacts {
 	streamStatus: DiscoveryStreamStatus;
@@ -116,4 +135,79 @@ export interface DiscoveryCheckResult {
 	invokedTools: string[];
 	/** `spawn_sub_agent:<role>` markers for every spawned sub-agent. */
 	spawnedAgents: string[];
+}
+
+// ---------------------------------------------------------------------------
+// Routing results (`--json-out`), read by `evaluations/routing/grade.ts`.
+// ---------------------------------------------------------------------------
+
+export type RoutingToolCallStatus = 'completed' | 'errored' | 'pending';
+
+export interface RoutingToolCall {
+	toolName: string;
+	args: Record<string, unknown>;
+	status: RoutingToolCallStatus;
+	error?: string;
+}
+
+export interface RoutingSubAgentToolCall extends RoutingToolCall {
+	agentRole: string;
+}
+
+export interface RoutingAskUserQuestion {
+	question: string;
+	options: string[];
+	introMessage?: string;
+}
+
+export interface RoutingTrialUsage {
+	inputTokens: number;
+	outputTokens: number;
+	costUsd: number;
+}
+
+export interface RoutingTrialRecord {
+	trial: number;
+	durationMs: number;
+	streamStatus: DiscoveryStreamStatus;
+	/** Orchestrator calls in call order, up to and including the stop call. */
+	toolCalls: RoutingToolCall[];
+	/** Calls made by sub-agents. The route is read from `toolCalls` only. */
+	subAgentToolCalls: RoutingSubAgentToolCall[];
+	/** The committing call that ended the trial under `--stop-on-route`. */
+	stoppedOn?: { toolName: string; args: Record<string, unknown> };
+	spawnedAgents: string[];
+	skillsLoaded: string[];
+	askUserQuestions: RoutingAskUserQuestion[];
+	/** Orchestrator text after its last tool call, else its last non-empty text segment. */
+	finalText: string;
+	/** Every orchestrator text segment, in order, joined by blank lines. */
+	fullText: string;
+	/** Orchestrator tokens only; sub-agent usage is not included. */
+	usage?: RoutingTrialUsage;
+	runError?: string;
+}
+
+export interface RoutingCaseResult {
+	id: string;
+	bucket?: string;
+	accepts?: string[];
+	policyDependent?: boolean;
+	userMessage: string;
+	trials: RoutingTrialRecord[];
+}
+
+export interface RoutingResultsFile {
+	runId: string;
+	variant: string;
+	model: string;
+	/** `--skill-file` replacements by skill id; absent when the run used the bundled skills. */
+	skillOverrides?: Record<string, { path: string; sha256: string }>;
+	trialsPerCase: number;
+	stopOnRoute: boolean;
+	startedAt: string;
+	finishedAt: string;
+	/** False while the run is still going; the file is rewritten after each case. */
+	complete: boolean;
+	cases: RoutingCaseResult[];
 }

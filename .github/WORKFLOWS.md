@@ -420,6 +420,7 @@ Run-workflow dropdown, which only a user with write access can pick.
 | `util-codespace-preview.yml`| Wake, re-serve or delete a PR preview instance by hand   |
 | `util-data-tooling.yml`     | SQLite/PostgreSQL export/import validation (manual)     |
 | `util-probe-registry.yml`   | Diagnose slow npm metadata fetches (temporary)          |
+| `test-evals-routing.yml`    | Instance AI routing evals on a LangTracer suite (`eval:discovery --stop-on-route`) |
 
 ---
 

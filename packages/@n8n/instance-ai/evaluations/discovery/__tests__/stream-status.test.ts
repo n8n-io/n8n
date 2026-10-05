@@ -68,4 +68,14 @@ describe('resolveStreamStatus', () => {
 	it('never reads a cancelled run as a clean finish', () => {
 		expect(resolveStreamStatus(streamResult({ status: 'cancelled' }), false)).toBe('timed-out');
 	});
+
+	it('reports a run ended at its committing call as stopped-on-route', () => {
+		expect(resolveStreamStatus(streamResult({ status: 'cancelled' }), true, true)).toBe(
+			'stopped-on-route',
+		);
+	});
+
+	it('prefers stopped-on-route over a budget that expired during the stop', () => {
+		expect(resolveStreamStatus('timed-out', true, true)).toBe('stopped-on-route');
+	});
 });

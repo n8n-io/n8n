@@ -5,7 +5,12 @@ import { tmpdir } from 'os';
 import { join } from 'path';
 
 import type { CheckOutcome } from '../binaryChecks/types';
+import { RoutingEvalOutput } from '../discovery/routing-eval-results';
+import type { RoutingTrialRecord } from '../discovery/types';
 import { AGENT_ARTIFACT_CASE_CAP_BYTES } from '../harness/artifacts/agent-artifact';
+import { routingExpectationText } from '../routing/expectation';
+import type { JudgeInput, JudgeResult } from '../routing/judge';
+import { parseRoutingCase } from '../routing/loader';
 import { aggregateResults } from '../run/aggregator';
 import { writeEvalResults } from '../run/persist';
 import type {
@@ -139,15 +144,19 @@ interface DispatcherView {
 		agentArtifactPerRun: Array<Record<string, unknown> | null>;
 		totalRuns: number;
 		workflowChecksPerRun: Array<Record<string, string> | null>;
+		status?: string;
 		buildExpectations: Array<{
 			expectation: string;
 			passCount: number;
 			evaluatedCount: number;
+			passAtK?: number;
+			passHatK?: number;
 		}>;
 		buildExpectationResultsPerRun: Array<Array<{
 			expectation: string;
 			pass: boolean;
 			reason: string;
+			incomplete?: boolean;
 			attribution?: string;
 		}> | null>;
 		buildCostUsdPerRun?: Array<number | null>;
@@ -413,5 +422,136 @@ describe('eval-results.json — dispatcher contract', () => {
 		const tc = report.testCases[0];
 		expect(tc.buildCostUsdPerRun).toEqual([0.31, null]);
 		expect(tc.buildTurnsPerRun).toEqual([5, null]);
+	});
+});
+
+// The discovery CLI's routing mode (`--output-dir`) writes the same file for a
+// LangTracer routing case. The dispatcher matches each expectation to the
+// case's stored process expectation by trimmed text, and passes it on a strict
+// majority of the evaluated (not `incomplete`) runs.
+describe('eval-results.json — dispatcher contract (routing)', () => {
+	const parsed = parseRoutingCase({
+		id: 'route-agent-support',
+		bucket: 'agent',
+		userMessage: 'Set up AI support in our group.',
+		accepts: ['agent', 'clarify:agent'],
+		source: 'synthetic',
+	});
+	if (!parsed.success) throw new Error(parsed.issues.join('; '));
+	const routingCase = parsed.data;
+
+	function trial(n: number, overrides: Partial<RoutingTrialRecord>): RoutingTrialRecord {
+		return {
+			trial: n,
+			durationMs: 1000,
+			streamStatus: 'stopped-on-route',
+			toolCalls: [],
+			subAgentToolCalls: [],
+			spawnedAgents: [],
+			skillsLoaded: [],
+			askUserQuestions: [],
+			finalText: '',
+			fullText: '',
+			...overrides,
+		};
+	}
+
+	const judge = {
+		judge: async (input: JudgeInput): Promise<JudgeResult> =>
+			await Promise.resolve({
+				verdict: {
+					kind: input.mode === 'ask-user' ? 'clarify' : 'answer',
+					steer: 'workflow',
+					reason: 'Asks which trigger starts the workflow.',
+				},
+				cached: false,
+			}),
+	};
+
+	async function writeAndReadRouting(): Promise<DispatcherView> {
+		const dir = mkdtempSync(join(tmpdir(), 'eval-results-routing-contract-'));
+		const output = new RoutingEvalOutput(
+			dir,
+			judge,
+			{
+				runId: 'run-1',
+				variant: 'baseline',
+				model: 'anthropic/claude-opus-5-5',
+				trialsPerCase: 3,
+				stopOnRoute: true,
+				startedAt: '2026-10-01T10:00:00.000Z',
+			},
+			1,
+		);
+		await output.record(0, {
+			routingCase,
+			fileName: 'lt-route-agent-support-1a2b3c4d',
+			result: {
+				id: routingCase.id,
+				userMessage: routingCase.userMessage,
+				trials: [
+					trial(1, { toolCalls: [{ toolName: 'build-agent', args: {}, status: 'pending' }] }),
+					trial(2, {
+						toolCalls: [
+							{
+								toolName: 'ask-user',
+								args: { questions: [{ question: 'Which trigger?', options: ['Schedule'] }] },
+								status: 'pending',
+							},
+						],
+					}),
+					trial(3, { streamStatus: 'timed-out' }),
+				],
+			},
+			threadIds: ['discovery-thread-a', 'discovery-thread-b', 'discovery-thread-c'],
+			transcripts: [[], [], []],
+		});
+		await output.finish();
+		return jsonParse<DispatcherView>(readFileSync(output.evalResultsPath, 'utf8'));
+	}
+
+	it('serializes the fields the dispatcher reads for a routing case', async () => {
+		const report = await writeAndReadRouting();
+
+		// The dispatcher ingests `testCases[0]` of a single-case run.
+		expect(report.testCases).toHaveLength(1);
+		const tc = report.testCases[0];
+		expect(tc.totalRuns).toBe(3);
+		expect(tc.status).toBe('verified');
+		expect(tc.threadIds).toEqual([
+			'discovery-thread-a',
+			'discovery-thread-b',
+			'discovery-thread-c',
+		]);
+
+		// The same text the LangTracer push stores as the case's process expectation.
+		const expectation = routingExpectationText(routingCase.accepts);
+		expect(tc.buildExpectations).toEqual([
+			{ expectation, passCount: 1, evaluatedCount: 2, passAtK: 1, passHatK: 0.25 },
+		]);
+		expect(tc.buildExpectationResultsPerRun).toEqual([
+			[{ expectation, pass: true, reason: expect.stringContaining('Route agent') }],
+			[
+				{
+					expectation,
+					pass: false,
+					reason: expect.stringContaining('Route clarify:workflow'),
+					attribution: 'builder_issue',
+				},
+			],
+			[
+				{
+					expectation,
+					pass: false,
+					reason: expect.stringContaining('timed out'),
+					incomplete: true,
+					attribution: 'timeout',
+				},
+			],
+		]);
+
+		// Dispatcher rule: a strict majority of the evaluated runs. 1 of 2 fails.
+		const [unit] = tc.buildExpectations;
+		expect(unit.passCount * 2 > unit.evaluatedCount).toBe(false);
 	});
 });
