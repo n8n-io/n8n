@@ -84,7 +84,7 @@ function setup(options: { worker?: boolean; enabled?: boolean } = {}) {
 	logger.scoped.mockReturnValue(logger);
 
 	jobRepository.findWakeableUnconsumed.mockResolvedValue([makeJob()]);
-	jobRepository.findRequestedPauses.mockResolvedValue([]);
+	jobRepository.hasRequestedStop.mockResolvedValue(false);
 	executionRepository.existsRunningByThread.mockResolvedValue(false);
 	checkpointStorage.findSuspendedForThread.mockResolvedValue(null);
 	agentRepository.findById.mockResolvedValue({ id: 'agent-1', projectId: 'project-1' } as never);
@@ -147,6 +147,15 @@ describe('AgentWakeService', () => {
 				result: JSON.stringify(handoff),
 			}),
 		);
+		jobs.push(
+			makeJob({
+				id: 'workflow',
+				kind: 'workflow',
+				status: 'cancelled',
+				pauseRequestId: 'stop-1',
+				result: null,
+			}),
+		);
 		jobRepository.findWakeableUnconsumed
 			.mockResolvedValueOnce([...jobs, makeJob({ id: 'later' })])
 			.mockResolvedValue([]);
@@ -169,18 +178,24 @@ describe('AgentWakeService', () => {
 				message.indexOf('</background-jobs-settled>'),
 			),
 		) as Array<{ jobId: string; result: string; truncated?: boolean }>;
-		expect(payload).toHaveLength(5);
-		for (const [index, job] of payload.entries()) {
+		expect(payload).toHaveLength(6);
+		for (const [index, job] of payload.slice(0, 5).entries()) {
 			expect(job.jobId).toBe(`job-${index + 1}`);
 			expect(job.truncated).toBeUndefined();
 			expect(JSON.parse(job.result)).toEqual(handoffs[index]);
 		}
+		expect(payload[5]).toMatchObject({
+			jobId: 'workflow',
+			kind: 'workflow',
+			status: 'cancelled',
+			progressUnavailable: true,
+		});
 		expect(jobRepository.markMailConsumed).not.toHaveBeenCalled();
 		report.resolve();
 		await wake;
 		expect(jobRepository.markMailConsumed).toHaveBeenCalledWith(
 			'thread-1',
-			['job-1', 'job-2', 'job-3', 'job-4', 'job-5'],
+			['job-1', 'job-2', 'job-3', 'job-4', 'job-5', 'workflow'],
 			true,
 		);
 		await service.attemptWake('thread-1');
@@ -309,15 +324,20 @@ describe('AgentWakeService', () => {
 
 	describe('getBackgroundUpdates', () => {
 		it.each([
-			{ state: 'empty', jobs: [] },
-			{ state: 'suspended', jobs: [makeJob({ status: 'suspended', settledAt: null })] },
-		])('returns no hint when the thread has no pending results ($state)', async ({ jobs }) => {
+			{ state: 'empty', jobs: [], stoppedHere: false },
+			{
+				state: 'suspended',
+				jobs: [makeJob({ status: 'suspended', settledAt: null })],
+				stoppedHere: false,
+			},
+			{ state: 'requested stop', jobs: [], stoppedHere: true },
+		])('returns a stop hint only for a requested stop ($state)', async ({ jobs, stoppedHere }) => {
 			const { service, jobRepository } = setup();
 			jobRepository.findWakeableUnconsumed.mockResolvedValue(jobs);
+			jobRepository.hasRequestedStop.mockResolvedValue(stoppedHere);
 
-			await expect(
-				service.getBackgroundUpdates('thread-1', `draft-chat:${user.id}`),
-			).resolves.toBeUndefined();
+			const hint = await service.getBackgroundUpdates('thread-1', `draft-chat:${user.id}`);
+			expect(hint !== undefined).toBe(stoppedHere);
 		});
 
 		it('quotes job titles in the hint to check settled jobs', async () => {
