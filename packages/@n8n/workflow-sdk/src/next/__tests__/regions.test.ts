@@ -559,7 +559,7 @@ describe('regions compile to node contracts', () => {
 		const json = forEachBranchesWorkflow().toJSON();
 		const nameOf = new Map(json.nodes.map((n) => [n.id, n.name]));
 		const start = json.nodes.find((n) => n.name === 'Each start');
-		expect(start?.type).toBe('@n8n/nodes-base-next.noOpPass');
+		expect(start?.type).toBe('@n8n/nodes-core.noOpPass');
 		expect(connections(json, 'Customers')).toEqual([['Each start#0']]);
 		expect(connections(json, 'Each start')).toEqual([['Names#0', 'Counts#0', 'Tags#0']]);
 		const [group] = json.nodeGroups ?? [];

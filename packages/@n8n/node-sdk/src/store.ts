@@ -23,6 +23,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { UnexpectedError, UserError } from 'n8n-workflow';
 
+import type { Action, Trigger } from './define';
 import {
 	parseCredentialManifest,
 	storeRecordSchema,
@@ -666,3 +667,25 @@ export function verifyStoreSignature(
 			verify(null, Buffer.from(manifestText), publicKey, Buffer.from(signature.sig, 'base64')),
 	);
 }
+
+/**
+ * The contracts of one source package, as `freezePackage` and `publishPackage` read them. The
+ * package folder holds one file for each action or trigger in `src/nodes/<node>/actions/`, and
+ * the fixtures of each action in `fixtures/<id>.json`.
+ */
+export interface SourcePackage {
+	/** The package name, e.g. `@n8n/nodes-core`. It is the node type prefix of its contracts. */
+	readonly name: string;
+	/** The package folder. */
+	readonly dir: string;
+	/** The actions with a bundle, one n8n node type each. */
+	readonly actions: readonly Action[];
+	/** The triggers with a bundle, one n8n node type each. */
+	readonly triggers: readonly Trigger[];
+	/** The contracts that a legacy node runs. They have a manifest and no bundle. */
+	readonly natives: ReadonlyArray<Action | Trigger>;
+}
+
+/** The embedded store of a source package: the HEAD of each contract, so that it runs without a registry. */
+export const embeddedStoreDirOf = ({ dir }: Pick<SourcePackage, 'dir'>) =>
+	path.join(dir, 'dist', 'store');

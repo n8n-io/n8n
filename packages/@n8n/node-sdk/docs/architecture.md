@@ -47,7 +47,8 @@ flowchart BT
 | Package | Has | Read first |
 |---|---|---|
 | `@n8n/node-sdk` | `defineNode` and `t` for authors; the spec (`spec/`); the host side that makes n8n node types from frozen versions (`toVersionedNodeType`); freeze, publish and the store format; the guest runtimes and the sandbox | `src/runtime.ts`, `src/sandbox.ts`, `src/runtime-policy.ts` |
-| `@n8n/nodes-base-next` | The first-party nodes (`src/nodes/<service>/actions/*.ts`); the embedded store that `pnpm freeze` writes to `dist/store`; `pnpm publish:contracts`; the instance logic that has no n8n dependency: origin, admission, lock resolution, sync, import and export | `src/index.ts`, `src/contract-registry.ts`, `src/migrated.ts` |
+| `@n8n/nodes-base-next` | First-party nodes (`src/nodes/<service>/actions/*.ts`); the list of first-party packages (`FIRST_PARTY_PACKAGES`); the instance logic that has no n8n dependency: origin, admission, lock resolution, sync, import and export | `src/index.ts`, `src/registry.ts`, `src/contract-registry.ts`, `src/migrated.ts` |
+| `@n8n/nodes-core` | Core nodes (`noOp` only, as the proof that n8n loads more than one first-party package) | `src/index.ts` |
 | `@n8n/node-contract-compat` | Derives manifests and typed modules from legacy node descriptions; composes a legacy node version where contract actions run some operations | `src/derive/`, `src/migrate/` |
 | `@n8n/workflow-sdk` (`/next`) | The typed workflow code that the AI builder writes. `@n8n/node-sdk/codegen` makes the module text of each node for it | `src/next/flow.ts` |
 | `@n8n/instance-ai` | Offers the typed node modules to the agent, builds the workflow, and locks each contract node to a version | `src/tools/next-modules.ts`, `src/tools/workflows/next-workflow-build.ts` |
@@ -107,8 +108,9 @@ An author writes `defineNode` and one `node.action(...)` per operation, then run
 
 ### 2. Freeze
 
-`pnpm freeze` in `@n8n/nodes-base-next` (part of `build`) bundles each action and writes its
-manifest, bundle and fixtures into `dist/store`. Freeze sets the patch number and the lowest
+`pnpm freeze` in each first-party package (part of `build`) calls `freezePackage`. It bundles
+each action and writes its manifest, bundle and fixtures into `dist/store`.
+`pnpm publish:contracts` calls `publishPackage`. Freeze sets the patch number and the lowest
 Node Contract version that the bundle needs. The same source gives the same bytes. The release
 ships this store, so its versions are first-party with no key check. Details:
 [node-contract.md, Versions](node-contract.md#versions) and

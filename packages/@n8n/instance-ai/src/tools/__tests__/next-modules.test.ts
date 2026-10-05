@@ -1,5 +1,10 @@
 import { validate } from '@n8n/node-sdk';
-import { flowNatives, migratedTargetOf, nodeTypeOf } from '@n8n/nodes-base-next';
+import {
+	FIRST_PARTY_PACKAGES,
+	flowNatives,
+	migratedTargetOf,
+	nodeTypeOf,
+} from '@n8n/nodes-base-next';
 import * as flowSdk from '@n8n/workflow-sdk/next';
 import { forEach, manual, set, workflow } from '@n8n/workflow-sdk/next';
 
@@ -399,5 +404,25 @@ describe('next-modules', () => {
 			expect.objectContaining({ name: 'Each', repeat: expect.objectContaining({ batchSize: 1 }) }),
 		]);
 		expect(flowNatives.map(({ node }) => nodeModuleText(node.id))).toEqual([undefined, undefined]);
+	});
+});
+
+describe('next-modules of @n8n/nodes-core', () => {
+	it('offers the noOp module by search, by its node type and for the legacy node', () => {
+		expect(searchNextActions('no operation').nodes).toEqual(['noOp']);
+		expect(nextNodeIdOfNodeType('@n8n/nodes-core.noOpPass')).toBe('noOp');
+		expect(nodeModuleText('noOp')).toContain('"@n8n/nodes-core.noOpPass"');
+		expect(contractReplacementOf({ type: 'n8n-nodes-base.noOp' })).toMatchObject({
+			nodeId: 'noOp',
+			actions: [{ id: 'noOp.pass' }],
+		});
+	});
+
+	it('pins the sample of a contract step of each first-party package in the flow SDK', () => {
+		expect(
+			FIRST_PARTY_PACKAGES.map(
+				({ name }) => flowSdk.contractStep(`${name}.anyAction`, { name: 'Step' }).spec.pinsSample,
+			),
+		).toEqual(FIRST_PARTY_PACKAGES.map(() => true));
 	});
 });

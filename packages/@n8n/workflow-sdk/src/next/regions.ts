@@ -9,7 +9,7 @@ export const FILTER_NODE = { type: '@n8n/nodes-base-next.conditionFilter', versi
 export const WAIT_NODE = { type: '@n8n/nodes-base-next.waitInterval', version: 1 };
 export const STOP_NODE = { type: '@n8n/nodes-base-next.stopAndErrorStop', version: 1 };
 export const SPLIT_OUT_NODE = { type: '@n8n/nodes-base-next.itemsSplitOut', version: 1 };
-export const NO_OP_NODE = { type: '@n8n/nodes-base-next.noOpPass', version: 1 };
+export const NO_OP_NODE = { type: '@n8n/nodes-core.noOpPass', version: 1 };
 /** The item of a loop pass is a whole object, which the Edit Fields contract cannot emit. */
 export const LOOP_STATE_NODE = {
 	/** The type of a loop head and of its `<head> next` node. */

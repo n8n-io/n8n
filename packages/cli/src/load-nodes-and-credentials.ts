@@ -47,9 +47,6 @@ import picocolors from 'picocolors';
 import { CUSTOM_API_CALL_KEY, CUSTOM_API_CALL_NAME, CLI_DIR, inE2ETests } from '@/constants';
 import { createAiTools, createHitlTools } from '@/tool-generation';
 
-/** The loader of node contracts keeps this package name as the prefix of its type names. */
-const NODE_CONTRACTS_PACKAGE = '@n8n/nodes-base-next';
-
 @Service()
 export class LoadNodesAndCredentials {
 	private known: KnownNodesAndCredentials = { nodes: {}, credentials: {} };
@@ -71,6 +68,9 @@ export class LoadNodesAndCredentials {
 
 	/** Legacy nodes with composed contract versions, e.g. Notion v4. */
 	private composedNodes: ReadonlyMap<string, LoadedClass<IVersionedNodeType>> = new Map();
+
+	/** The package names of the contract loaders, one for each first-party package. */
+	private contractPackages: ReadonlySet<string> = new Set();
 
 	constructor(
 		private readonly logger: Logger,
@@ -124,7 +124,7 @@ export class LoadNodesAndCredentials {
 
 		// Node contracts exist only while the node contracts spike is enabled.
 		const contractLoaders = this.globalConfig.instanceAi.nodeContractsEnabled
-			? [await this.contractNodeLoader()]
+			? await this.contractNodeLoaders()
 			: [];
 
 		for (const loader of [...contractLoaders, ...this.moduleRegistry.nodeLoaders]) {
@@ -147,19 +147,25 @@ export class LoadNodesAndCredentials {
 		await this.postProcessLoaders();
 	}
 
-	/** Sets the runtime of the node contracts before their loader projects node types. */
-	private async contractNodeLoader() {
-		const { ContractNodeLoader, useNodeContractsRegistry } = await import(
-			'@/node-contracts-registry.js'
-		);
+	/**
+	 * One contract loader for each first-party package. It sets the runtime of the node contracts
+	 * before the loaders project node types.
+	 */
+	private async contractNodeLoaders() {
+		const [{ ContractNodeLoader, useNodeContractsRegistry }, { FIRST_PARTY_PACKAGES }] =
+			await Promise.all([import('@/node-contracts-registry.js'), import('@n8n/nodes-base-next')]);
 		await useNodeContractsRegistry();
-		return new ContractNodeLoader(
-			this.excludeNodes,
-			this.includeNodes,
-			undefined,
-			this.globalConfig.nodes.permissionsDeny,
-			undefined,
-			() => this.loaders,
+		return FIRST_PARTY_PACKAGES.map(
+			(source) =>
+				new ContractNodeLoader(
+					this.excludeNodes,
+					this.includeNodes,
+					undefined,
+					this.globalConfig.nodes.permissionsDeny,
+					undefined,
+					() => this.loaders,
+					source,
+				),
 		);
 	}
 
@@ -602,6 +608,15 @@ export class LoadNodesAndCredentials {
 		const loaded: LoadedNodesAndCredentials = { nodes: {}, credentials: {} };
 		const types: Types = { nodes: [], credentials: [] };
 
+		const registry = this.globalConfig.instanceAi.nodeContractsEnabled
+			? await import('@/node-contracts-registry.js')
+			: undefined;
+		this.contractPackages = new Set(
+			Object.values(this.loaders).flatMap((loader) =>
+				registry && loader instanceof registry.ContractNodeLoader ? [loader.packageName] : [],
+			),
+		);
+
 		for (const loader of this.loadersByPrecedence()) {
 			// Reload types if they were released from memory
 			await loader.ensureTypesLoaded();
@@ -617,7 +632,7 @@ export class LoadNodesAndCredentials {
 
 			// The loaders that list the supported nodes of a credential by node name.
 			const listsSupportedNodes =
-				loader instanceof PackageDirectoryLoader || packageName === NODE_CONTRACTS_PACKAGE;
+				loader instanceof PackageDirectoryLoader || this.contractPackages.has(packageName);
 			const processedCredentials = loaderTypes.credentials.map((credential) => ({
 				...credential,
 				properties: injectDomainRestrictionFields(credential),
@@ -660,10 +675,7 @@ export class LoadNodesAndCredentials {
 			}
 		}
 
-		const contracts =
-			this.globalConfig.instanceAi.nodeContractsEnabled && NODE_CONTRACTS_PACKAGE in this.loaders
-				? await import('@/node-contracts-registry.js')
-				: undefined;
+		const contracts = this.contractPackages.size > 0 ? registry : undefined;
 		if (contracts) {
 			// Before the AI tools, so the tool variants of legacy nodes keep their credentials.
 			const preferred = contracts.preferContractCredentials(
@@ -757,13 +769,13 @@ export class LoadNodesAndCredentials {
 
 	/**
 	 * The loaders in the order in which a later credential type replaces an earlier one of the
-	 * same name. With node contracts on, the contract package goes last, so its credential types
+	 * same name. With node contracts on, the contract packages go last, so their credential types
 	 * replace the legacy classes, also for legacy nodes.
 	 */
 	private loadersByPrecedence(): NodeLoader[] {
 		const loaders = Object.values(this.loaders);
 		if (!this.globalConfig.instanceAi.nodeContractsEnabled) return loaders;
-		const isContracts = (loader: NodeLoader) => loader.packageName === NODE_CONTRACTS_PACKAGE;
+		const isContracts = (loader: NodeLoader) => this.contractPackages.has(loader.packageName);
 		return [...loaders.filter((loader) => !isContracts(loader)), ...loaders.filter(isContracts)];
 	}
 
@@ -824,7 +836,9 @@ export class LoadNodesAndCredentials {
 		const run = this.reloadQueue.then(async () => {
 			if (!isNeeded()) return;
 			const released = this.types.nodes.length === 0 && this.types.credentials.length === 0;
-			await this.loaders[NODE_CONTRACTS_PACKAGE]?.loadAll();
+			await Promise.all(
+				[...this.contractPackages].map(async (name) => await this.loaders[name]?.loadAll()),
+			);
 			await this.postProcessLoaders();
 			if (released) this.releaseTypes();
 			if (this.instanceSettings.instanceType !== 'main') return;

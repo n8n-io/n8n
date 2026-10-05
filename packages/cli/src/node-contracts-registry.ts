@@ -19,12 +19,14 @@ import {
 	bundledIdsOf,
 	credentialTypeOfManifest,
 	deniedPermissionClassOf,
-	EMBEDDED_STORE_DIR,
+	embeddedStoreDirOf,
+	FIRST_PARTY_PACKAGES,
+	isContractNodeType,
 	isStoreStatusRecord,
 	MIGRATED_NODES,
-	NODE_PACKAGE,
 	nodeNameOf,
 	nodeTypeOf,
+	packageOf,
 	permissionsOf,
 	runsNodeContract,
 	storeIndexFileOf,
@@ -42,6 +44,7 @@ import {
 	type CredentialManifest,
 	type FrozenVersion,
 	type InstanceStore,
+	type SourcePackage,
 	type StoreStatusRecord,
 	type GuestRuntime,
 	type RuntimeAvailability,
@@ -249,7 +252,7 @@ const openContractStore = async (): Promise<StoredContracts> =>
 /** Whether a package other than the node contracts has a credential type of this name. */
 const hasOtherCredentialTypeInN8n = (name: string) =>
 	Object.values(Container.get(LoadNodesAndCredentials).loaders).some(
-		(loader) => loader.packageName !== NODE_PACKAGE && name in loader.known.credentials,
+		(loader) => !(loader instanceof ContractNodeLoader) && name in loader.known.credentials,
 	);
 
 const majorOf = ({ manifest }: FrozenVersion) => manifest.contract.version;
@@ -369,13 +372,17 @@ const credentialNamesOf = ({ nodeVersions }: VersionedNodeType) =>
 	);
 
 /**
- * The node and credential types of node contracts, from manifests only: one versioned node type
- * for each id with the bundled HEAD and the stored versions of its other majors, and the bundled
- * credential manifests with the stored ones of other names. The type names keep the package name
- * as prefix. A node type shows the icon and codex of the legacy node it stands for.
+ * The node and credential types of the node contracts of one first-party package, from manifests
+ * only: one versioned node type for each id of the package with the bundled HEAD and the stored
+ * versions of its other majors, and the bundled credential manifests with the stored ones of
+ * other names. The type names keep the package name as prefix. A node type shows the icon and
+ * codex of the legacy node it stands for. The first package also loads the stored ids and
+ * credential types that no package ships.
  */
 export class ContractNodeLoader implements NodeLoader {
-	readonly packageName = NODE_PACKAGE;
+	readonly packageName: string;
+
+	private readonly storeDir: string;
 
 	known: KnownNodesAndCredentials = { nodes: {}, credentials: {} };
 
@@ -390,7 +397,8 @@ export class ContractNodeLoader implements NodeLoader {
 	/**
 	 * `excludeNodes` and `includeNodes` hold full node type names, as `N8N_NODES_EXCLUDE` does.
 	 * `deny` holds the permission classes of `N8N_NODE_PERMISSIONS_DENY`. `legacyLoaders` gives the
-	 * loaders of the legacy nodes, whose icons and codex the contract nodes show.
+	 * loaders of the legacy nodes, whose icons and codex the contract nodes show. `source` is the
+	 * first-party package of the node types.
 	 */
 	constructor(
 		private readonly excludeNodes: readonly string[] = [],
@@ -399,7 +407,11 @@ export class ContractNodeLoader implements NodeLoader {
 		private readonly deny: readonly NodePermissionClass[] = [],
 		private readonly hasOtherCredentialType = hasOtherCredentialTypeInN8n,
 		private readonly legacyLoaders: () => Readonly<Record<string, NodeLoader>> = () => ({}),
-	) {}
+		source: SourcePackage = FIRST_PARTY_PACKAGES[0],
+	) {
+		this.packageName = source.name;
+		this.storeDir = embeddedStoreDirOf(source);
+	}
 
 	async loadAll() {
 		const [stored, storedCredentials, legacy] = await Promise.all([
@@ -407,10 +419,11 @@ export class ContractNodeLoader implements NodeLoader {
 			this.fromStore(async (store) => await store.credentials(), new Map()),
 			legacyDescriptionsOf(this.legacyLoaders()),
 		]);
-		const bundled = new Set(bundledIdsOf());
+		const bundled = new Set(bundledIdsOf(this.storeDir));
+		const ownStored = [...stored.keys()].filter((id) => packageOf(id).name === this.packageName);
 		this.nodes = new Map(
-			[...new Set([...bundled, ...stored.keys()])].filter(this.loads).flatMap((id) => {
-				const head = bundled.has(id) ? versionsOf(id) : [];
+			[...new Set([...bundled, ...ownStored])].filter(this.loads).flatMap((id) => {
+				const head = bundled.has(id) ? versionsOf(id, this.storeDir) : [];
 				const majors = new Set(head.map(majorOf));
 				const versions = [
 					...head,
@@ -421,7 +434,7 @@ export class ContractNodeLoader implements NodeLoader {
 				].filter(this.permits);
 				if (versions.length === 0) return [];
 				const sourcePath = bundled.has(id)
-					? path.join(EMBEDDED_STORE_DIR, storeIndexFileOf(id))
+					? path.join(this.storeDir, storeIndexFileOf(id))
 					: Container.get(NodeContractsStore).dir;
 				const node: ContractNode = {
 					type: contractNodeTypeOf(versions, legacy),
@@ -516,13 +529,15 @@ export class ContractNodeLoader implements NodeLoader {
 	}
 
 	/**
-	 * The bundled credential manifests, and the stored ones of names that n8n does not bundle,
-	 * e.g. a type that a stored version pins. A stored type never replaces the type of another
-	 * package, e.g. a legacy class. A stored type that n8n cannot project is skipped.
+	 * The bundled credential manifests of the package, and for the first package the stored ones
+	 * of names that n8n does not bundle, e.g. a type that a stored version pins. A stored type
+	 * never replaces the type of another package, e.g. a legacy class. A stored type that n8n
+	 * cannot project is skipped.
 	 */
 	private credentialManifestsOf(stored: ReadonlyMap<string, CredentialManifest>) {
-		const bundled = bundledCredentialsOf();
-		const names = new Set(bundled.map(({ manifest }) => manifest.name));
+		const bundled = bundledCredentialsOf(this.storeDir);
+		if (this.packageName !== FIRST_PARTY_PACKAGES[0].name) return bundled;
+		const names = new Set(bundledCredentialsOf().map(({ manifest }) => manifest.name));
 		const others = [...stored.values()].filter((manifest) => {
 			if (names.has(manifest.name) || this.hasOtherCredentialType(manifest.name)) return false;
 			if (manifest.scheme.kind !== 'custom') return true;
@@ -553,7 +568,7 @@ export class ContractNodeLoader implements NodeLoader {
 
 	/** Whether the settings load the node type of an id. An include list without it loads nothing. */
 	private readonly loads = (id: string) => {
-		const nodeType = `${NODE_PACKAGE}.${nodeNameOf(id)}`;
+		const nodeType = `${this.packageName}.${nodeNameOf(id)}`;
 		return (
 			!this.excludeNodes.includes(nodeType) &&
 			(this.includeNodes.length === 0 || this.includeNodes.includes(nodeType))
@@ -791,12 +806,11 @@ export function contractPermissionsOf(
 	loaders: Readonly<Record<string, NodeLoader>>,
 	{ type, typeVersion }: Pick<INode, 'type' | 'typeVersion'>,
 ) {
-	const contracts = loaders[NODE_PACKAGE];
-	if (!(contracts instanceof ContractNodeLoader) || !type.startsWith(`${NODE_PACKAGE}.`)) {
-		return undefined;
-	}
+	const separator = type.lastIndexOf('.');
+	const contracts = loaders[type.slice(0, separator)];
+	if (!(contracts instanceof ContractNodeLoader)) return undefined;
 	const tool = toolActionOfNode({ type });
-	const name = tool ? nodeNameOf(tool.id) : type.slice(NODE_PACKAGE.length + 1);
+	const name = tool ? nodeNameOf(tool.id) : type.slice(separator + 1);
 	const version = contracts
 		.frozenVersionsOf(name)
 		.find(({ manifest }) => manifest.contract.version === typeVersion);
@@ -811,6 +825,12 @@ export const contractImportsOf = (
 	loaders: Readonly<Record<string, NodeLoader>>,
 	node: Pick<INode, 'type' | 'typeVersion'>,
 ): readonly string[] => contractPermissionsOf(loaders, node)?.imports ?? [];
+
+/** The contract loader of the package of an id, when n8n loads it. */
+function contractLoaderOf(loaders: Readonly<Record<string, NodeLoader>>, id: string) {
+	const loader = loaders[packageOf(id).name];
+	return loader instanceof ContractNodeLoader ? loader : undefined;
+}
 
 /** The legacy node of a full node type, when its loader has it and it has versions. */
 function versionedNodeOf(loaders: Readonly<Record<string, NodeLoader>>, nodeType: string) {
@@ -828,11 +848,10 @@ function versionedNodeOf(loaders: Readonly<Record<string, NodeLoader>>, nodeType
  * A tool supplies the action itself, so the tool schema is the action input schema.
  */
 function toolNodesOf(loaders: Readonly<Record<string, NodeLoader>>) {
-	const contracts = loaders[NODE_PACKAGE];
-	if (!(contracts instanceof ContractNodeLoader)) return [];
 	return toolActions.flatMap((action) => {
 		const base = versionedNodeOf(loaders, nodeTypeOf(action));
-		const versions = contracts.frozenVersionsOf(nodeNameOf(action.id));
+		const versions =
+			contractLoaderOf(loaders, action.id)?.frozenVersionsOf(nodeNameOf(action.id)) ?? [];
 		if (!base || versions.length === 0) return [];
 		const nodeType = toolTypeOf(action);
 		const presentation = presentationOf(base.type.getNodeType().description);
@@ -856,10 +875,9 @@ export function composeContractNodes(
 	loaders: Readonly<Record<string, NodeLoader>>,
 	types: readonly INodeTypeDescription[],
 ) {
-	const contracts = loaders[NODE_PACKAGE];
 	// The slots run the versions that the contract loader loads, so its settings apply to them too.
 	const loadedVersionsOf = (actionId: string) =>
-		contracts instanceof ContractNodeLoader ? contracts.frozenVersionsOf(nodeNameOf(actionId)) : [];
+		contractLoaderOf(loaders, actionId)?.frozenVersionsOf(nodeNameOf(actionId)) ?? [];
 	const nodes = new Map<string, LoadedClass<IVersionedNodeType>>([
 		...toolNodesOf(loaders),
 		...Object.keys(MIGRATED_NODES).flatMap((nodeType) => {
@@ -889,9 +907,7 @@ export function composeContractNodes(
 				? nodes.get(description.name)?.type.description.defaultVersion
 				: undefined;
 		if (defaultVersion !== undefined) return { ...description, defaultVersion };
-		return description.name.startsWith(`${NODE_PACKAGE}.`)
-			? { ...description, hidden: true }
-			: description;
+		return isContractNodeType(description.name) ? { ...description, hidden: true } : description;
 	});
 	return { nodes, types: [...patched, ...added] };
 }
@@ -900,17 +916,20 @@ export function composeContractNodes(
 const PRESENTATION = ['icon', 'iconColor', 'iconUrl', 'httpRequestNode'] as const;
 
 /**
- * A credential type of this package replaces the type of the same name from another package, for
- * example `notionApi` of n8n-nodes-base, so legacy nodes sign with the contract type too. The
- * caller lists the types of this package last. The replacement keeps the supported nodes of
- * both, and the icon and HTTP Request settings of the replaced type when it has none.
+ * A credential type of a contract package replaces the type of the same name from another
+ * package, for example `notionApi` of n8n-nodes-base, so legacy nodes sign with the contract type
+ * too. The caller lists the types of the contract packages last. The replacement keeps the
+ * supported nodes of both, and the icon and HTTP Request settings of the replaced type when it
+ * has none.
  */
 export function preferContractCredentials(
 	loaders: Readonly<Record<string, NodeLoader>>,
 	known: KnownNodesAndCredentials['credentials'],
 	types: readonly ICredentialType[],
 ) {
-	const own = Object.keys(loaders[NODE_PACKAGE]?.known.credentials ?? {});
+	const own = Object.values(loaders).flatMap((loader) =>
+		loader instanceof ContractNodeLoader ? Object.keys(loader.known.credentials) : [],
+	);
 	const replaced = new Map(
 		own.flatMap((name) => {
 			const entries = types.filter((type) => type.name === name);

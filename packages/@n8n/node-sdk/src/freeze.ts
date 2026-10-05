@@ -1,4 +1,5 @@
-import { readFileSync } from 'node:fs';
+import { isRecord } from '@n8n/utils/is-record';
+import { readdirSync, readFileSync, rmSync } from 'node:fs';
 import path from 'node:path';
 import { UnexpectedError, UserError } from 'n8n-workflow';
 
@@ -11,7 +12,16 @@ import {
 	type NativeManifest,
 } from './manifest';
 import { evaluateBundle, isHostModule, VALIDATOR_MODULE } from './runtime';
-import { manifestTextOf, type StoreRecord } from './store';
+import {
+	addToStore,
+	embeddedStoreDirOf,
+	manifestTextOf,
+	storeFilesOfUrl,
+	storeReader,
+	type SourcePackage,
+	type StoreReader,
+	type StoreRecord,
+} from './store';
 import { matches } from './validate';
 import {
 	compareSemver,
@@ -357,4 +367,158 @@ export async function freezeNative(
 			: {}),
 	});
 	return await bundleLessSemverOf(manifestAt, source.version, source.minor ?? 0, lastOf);
+}
+
+/** The index line of the newest version of an id in one major and minor in a store. It reads the index only. */
+export const lastPublishedIn =
+	(store: StoreReader): LastVersionOf =>
+	async (id, major, minor) =>
+		(await store.records(id))
+			.filter(({ version }) => {
+				const semver = parseSemver(version);
+				return semver.major === major && semver.minor === minor;
+			})
+			.sort((a, b) => compareSemver(a.version, b.version))
+			.at(-1);
+
+/** The credential types of the contracts of a package that are not compat types. Each one has a credential manifest. */
+export const credentialTypesOf = ({
+	actions,
+	triggers,
+	natives,
+}: Pick<SourcePackage, 'actions' | 'triggers' | 'natives'>): AnyCredentialType[] =>
+	[
+		...new Set(
+			[...actions, ...triggers, ...natives].flatMap(({ node }) => node.credential?.types ?? []),
+		),
+	].filter(({ scheme }) => scheme.kind !== 'compat');
+
+/** The source file and the export name of an action or a trigger with a bundle. */
+export interface ActionEntry {
+	/** The source file, e.g. `src/nodes/no-op/actions/pass.ts`. */
+	readonly entryFile: string;
+	/** The export name of the action in `entryFile`, e.g. `passItems`. */
+	readonly exportName: string;
+	/** The action or trigger. */
+	readonly action: Action | Trigger;
+}
+
+const looksLikeAction = (value: unknown) =>
+	isRecord(value) && typeof value.id === 'string' && isRecord(value.inputSchema);
+
+/**
+ * The listed contract that an export is. It compares the id and the major, because tsx loads the
+ * file again, outside the module system of the caller.
+ */
+const listedAs = <C extends Action | Trigger>(listed: readonly C[], value: unknown) =>
+	isRecord(value)
+		? listed.find(({ id, version }) => id === value.id && version === value.version)
+		: undefined;
+
+/**
+ * The entry of each action and trigger of a package. A file without a listed export, or an
+ * action export that the package does not list, is an error, because freeze would drop it
+ * without a sign. Two exports of one listed id and major are an error, because freeze would
+ * write two bundles for one version.
+ */
+export async function actionEntries(pkg: SourcePackage): Promise<ActionEntry[]> {
+	const nodesDir = path.join(pkg.dir, 'src', 'nodes');
+	const contracts: ReadonlyArray<Action | Trigger> = [...pkg.actions, ...pkg.triggers];
+	const isListed = (value: unknown) =>
+		listedAs([...contracts, ...pkg.natives], value) !== undefined;
+	const files = readdirSync(nodesDir, { recursive: true, encoding: 'utf8' }).filter(
+		(file) => path.basename(path.dirname(file)) === 'actions' && file.endsWith('.ts'),
+	);
+	// tsx loads TypeScript in any caller: a tsx script, vitest or plain Node.
+	const { require: tsxRequire } = await import('tsx/cjs/api');
+	const modules = files.map((file) => {
+		const entryFile = path.join(nodesDir, file);
+		const module: unknown = tsxRequire(entryFile, __filename);
+		return { file, entryFile, exported: isRecord(module) ? Object.entries(module) : [] };
+	});
+	const unlisted = modules.flatMap(({ file, exported }) =>
+		exported.some(([, value]) => isListed(value))
+			? exported
+					.filter(([, value]) => looksLikeAction(value) && !isListed(value))
+					.map(([exportName]) => `${file}#${exportName}`)
+			: [file],
+	);
+	if (unlisted.length > 0) {
+		throw new UserError(
+			`These action files or exports are not actions of ${pkg.name}: ${unlisted.join(', ')}. Add the action to its actions or triggers.`,
+		);
+	}
+	const entries = modules.flatMap(({ file, entryFile, exported }) =>
+		exported.flatMap(([exportName, value]) => {
+			const action = listedAs(contracts, value);
+			return action ? [{ file, entryFile, exportName, action }] : [];
+		}),
+	);
+	const repeated = contracts.flatMap((contract) => {
+		const exports = entries.filter(({ action }) => action === contract);
+		return exports.length > 1
+			? [
+					`${contract.id}@${contract.version} (${exports.map(({ file, exportName }) => `${file}#${exportName}`).join(', ')})`,
+				]
+			: [];
+	});
+	if (repeated.length > 0) {
+		throw new UserError(
+			`These contracts of ${pkg.name} have more than one export: ${repeated.join('; ')}. Export each action once.`,
+		);
+	}
+	return entries.map(({ entryFile, exportName, action }) => ({ entryFile, exportName, action }));
+}
+
+/** The manifests that `freezePackage` writes. */
+export interface FrozenPackage {
+	/** The manifest of the HEAD of each action and trigger with a bundle. */
+	readonly manifests: readonly VersionManifest[];
+	/** The manifest of each credential type that is not a compat type. */
+	readonly credentials: readonly CredentialManifest[];
+	/** The manifest of each native contract. */
+	readonly natives: readonly NativeManifest[];
+}
+
+/**
+ * Freezes the HEAD of each action, trigger, credential type and native contract of a package
+ * into the store in `outDir`, by default the embedded store of the package. It replaces the
+ * store in `outDir`: n8n loads every version there, so a removed contract must not stay from an
+ * older build. The registry is the one record of published patches: with
+ * `N8N_NODE_CONTRACTS_REGISTRY_URL`, each patch follows the newest published one, and without
+ * it, each HEAD is patch 0.
+ */
+export async function freezePackage(
+	pkg: SourcePackage,
+	outDir = embeddedStoreDirOf(pkg),
+): Promise<FrozenPackage> {
+	const registryUrl = process.env.N8N_NODE_CONTRACTS_REGISTRY_URL;
+	const lastOf = registryUrl
+		? lastPublishedIn(storeReader(storeFilesOfUrl(registryUrl, async (url) => await fetch(url))))
+		: undefined;
+	const [frozen, credentials, natives] = await Promise.all([
+		actionEntries(pkg).then(
+			async (entries) =>
+				await Promise.all(
+					entries.map(
+						async ({ entryFile, exportName }) => await freezeAction(entryFile, exportName, lastOf),
+					),
+				),
+		),
+		Promise.all(credentialTypesOf(pkg).map(async (type) => await freezeCredential(type, lastOf))),
+		Promise.all(pkg.natives.map(async (native) => await freezeNative(native, lastOf))),
+	]);
+	const credentialManifests = credentials.flatMap((manifest) => manifest ?? []);
+	rmSync(outDir, { recursive: true, force: true });
+	await addToStore(outDir, [
+		...frozen.map(({ manifest, bundle }) => ({ manifestText: manifestTextOf(manifest), bundle })),
+		...[...credentialManifests, ...natives].map((manifest) => ({
+			manifestText: manifestTextOf(manifest),
+		})),
+	]);
+	return {
+		manifests: frozen.map(({ manifest }) => manifest),
+		credentials: credentialManifests,
+		natives,
+	};
 }

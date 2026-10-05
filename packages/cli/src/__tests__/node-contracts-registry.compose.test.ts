@@ -204,6 +204,11 @@ describe('composeContractNodes', () => {
 		expect(
 			instance.types.nodes.some(({ hidden, name }) => hidden && name.startsWith('@n8n/')),
 		).toBe(false);
+		expect(
+			instance.types.nodes
+				.filter(({ name }) => name === 'n8n-nodes-base.noOp')
+				.map(({ hidden }) => hidden ?? false),
+		).toEqual([false]);
 		const loaded = instance.getNode(NOTION).type as IVersionedNodeType;
 		expect(Object.keys(loaded.nodeVersions)).not.toContain('4');
 	});

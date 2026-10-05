@@ -1532,16 +1532,18 @@ describe('native triggers', () => {
 			2.3,
 			{ resource: 'message', operation: 'post' },
 		);
+		const pass = contractStep('@n8n/nodes-core.noOpPass', { name: 'Pass', sample: [{ id: 'm1' }] });
 		const legacy = node({
 			name: 'Format',
 			type: 'n8n-nodes-base.dateTime',
 			version: 2,
 			sample: [{ formatted: 'x' }],
 		});
-		const wf = workflow('Steps', manual({ sample: [{ a: 1 }] }), fetch, derived, legacy);
+		const wf = workflow('Steps', manual({ sample: [{ a: 1 }] }), fetch, derived, pass, legacy);
 		expect(wf.generatePinData().toJSON().pinData).toEqual({
 			Start: [{ a: 1 }],
 			Get: [{ id: 'm1' }],
+			Pass: [{ id: 'm1' }],
 		});
 	});
 

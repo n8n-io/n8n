@@ -1,4 +1,8 @@
+import { existsSync } from 'node:fs';
+import { readFile } from 'node:fs/promises';
+import path from 'node:path';
 import { Readable } from 'node:stream';
+import { fileURLToPath } from 'node:url';
 import { UnexpectedError, UserError, type INode, type INodeExecutionData } from 'n8n-workflow';
 
 import { isSecretField, type AnyCredentialType } from './credentials';
@@ -11,11 +15,13 @@ import {
 	type Trigger,
 } from './define';
 import {
+	actionEntries,
+	credentialTypesOf,
 	freezeAction,
 	freezeCredential,
 	freezeNative,
+	lastPublishedIn,
 	type FrozenAction,
-	type LastVersionOf,
 } from './freeze';
 import {
 	isDataTableColumns,
@@ -45,8 +51,8 @@ import {
 	signStoreStatus,
 	storeFilesOfDir,
 	storeReader,
+	type SourcePackage,
 	type StoreManifest,
-	type StoreReader,
 	type StoreRecord,
 	type StoreStatusRecord,
 } from './store';
@@ -58,6 +64,7 @@ import {
 	diffContracts,
 	isFixtureBinary,
 	normativeSchema,
+	parseFixtures,
 	parseSemver,
 	sha256,
 	type ChangeKind,
@@ -67,6 +74,8 @@ import {
 	type FixtureBinary,
 	type VersionManifest,
 } from './version';
+
+export { lastPublishedIn };
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
 	typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -473,18 +482,6 @@ export function checkCredentialPublish(
 	checkBump(at, previous.semver, bump, credentialChangeOf(previous, manifest));
 }
 
-/** The index line of the newest version of an id in one major and minor in a store. It reads the index only. */
-export const lastPublishedIn =
-	(store: StoreReader): LastVersionOf =>
-	async (id, major, minor) =>
-		(await store.records(id))
-			.filter(({ version }) => {
-				const semver = parseSemver(version);
-				return semver.major === major && semver.minor === minor;
-			})
-			.sort((a, b) => compareSemver(a.version, b.version))
-			.at(-1);
-
 /** Where publish adds a version, and the key that signs it. */
 export interface PublishTarget {
 	/** The store directory of the registry: the static files that the registry serves. */
@@ -634,4 +631,77 @@ export async function publishStatus(
 	};
 	const [added] = await addStatusToStore(registryDir, [signed]);
 	return added ?? signed;
+}
+
+/** The fixtures of a contract of a package. A trigger replays only migration pairs, so it may have no file. */
+async function fixturesOf(pkg: SourcePackage, action: Action | Trigger) {
+	const file = path.join(pkg.dir, 'fixtures', `${action.id}.json`);
+	if ('kind' in action && !existsSync(file)) return undefined;
+	return parseFixtures(await readFile(file, 'utf8'));
+}
+
+/** The registry folder and the signing key, from the environment. */
+async function publishTargetOfEnv(): Promise<PublishTarget> {
+	const url = process.env.N8N_NODE_CONTRACTS_REGISTRY_URL;
+	const keyFile = process.env.N8N_NODE_CONTRACTS_SIGNING_KEY_FILE;
+	if (!url?.startsWith('file:') || !keyFile) {
+		throw new UserError(
+			'Set N8N_NODE_CONTRACTS_REGISTRY_URL to a file:// folder and N8N_NODE_CONTRACTS_SIGNING_KEY_FILE',
+		);
+	}
+	return { registryDir: fileURLToPath(url), privateKey: await readFile(keyFile, 'utf8') };
+}
+
+const STATUS_USAGE = [
+	'yank <id>@<version> <reason>',
+	'revoke <id>@<version> <reason>',
+	'deprecate <id>@<major[.minor[.patch]]> <message> [<use>]',
+].join('\n');
+
+/** The status line of the arguments `<yank|revoke|deprecate> <id>@<version> <text> [<use>]`. */
+function statusOfArgs(args: readonly string[], at: string): StoreStatusRecord {
+	const [command, target = '', text, use] = args;
+	const separator = target.lastIndexOf('@');
+	const id = target.slice(0, separator);
+	const version = target.slice(separator + 1);
+	if (separator <= 0 || !version || !text) throw new UserError(`Usage:\n${STATUS_USAGE}`);
+	if (command === 'yank') return { id, yank: version, reason: text, at };
+	if (command === 'revoke') return { id, revoke: version, reason: text, at };
+	if (command === 'deprecate') {
+		return { id, deprecate: version, message: text, ...(use ? { use } : {}), at };
+	}
+	throw new UserError(`Usage:\n${STATUS_USAGE}`);
+}
+
+/**
+ * Without `args`, publishes the HEAD of each action and trigger, each credential type that is
+ * not a compat type, and each native contract of a package into the registry store, one at a
+ * time, and gives each `id@semver` to `log`. The gate of each kind refuses a wrong bump, and a
+ * version already published with the same content is a no-op. With the arguments
+ * `<yank|revoke|deprecate> <id>@<version> <text> [<use>]`, it signs and appends one status line.
+ * The registry serves the store files as they are, so `N8N_NODE_CONTRACTS_REGISTRY_URL` is a
+ * `file://` folder that a static upload copies. `N8N_NODE_CONTRACTS_SIGNING_KEY_FILE` holds the
+ * signing key.
+ */
+export async function publishPackage(
+	pkg: SourcePackage,
+	args: readonly string[] = [],
+	log: (line: string) => void = () => {},
+): Promise<void> {
+	const target = await publishTargetOfEnv();
+	if (args.length > 0) {
+		const status = statusOfArgs(args, new Date().toISOString());
+		log(JSON.stringify(await publishStatus(target, status)));
+		return;
+	}
+	const logVersion = ({ id, semver }: { readonly id: string; readonly semver: string }) =>
+		log(`${id}@${semver}`);
+	// One at a time: each version appends to the registry index, and the log stays readable.
+	for (const type of credentialTypesOf(pkg))
+		logVersion(await publishCredential({ ...target, type }));
+	for (const { entryFile, exportName, action } of await actionEntries(pkg)) {
+		const fixtures = await fixturesOf(pkg, action);
+		logVersion(await publishAction({ ...target, entryFile, exportName, fixtures }));
+	}
+	for (const native of pkg.natives) logVersion(await publishNative({ ...target, native }));
 }

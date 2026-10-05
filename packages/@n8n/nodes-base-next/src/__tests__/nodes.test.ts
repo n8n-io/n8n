@@ -1,12 +1,22 @@
 import { validate, type Action } from '@n8n/node-sdk';
 import { toNodeType } from '@n8n/node-sdk/host';
+import { credentialTypesOf } from '@n8n/node-sdk/freeze';
 import { checkAction, checkCredentialType } from '@n8n/node-sdk/registry';
 import { mockHttp, runAction } from '@n8n/node-sdk/testing';
 import type { IExecuteFunctions } from 'n8n-workflow';
 
+import { passItems } from '@n8n/nodes-core';
 import { simplifyObjects } from 'n8n-nodes-base/dist/nodes/Notion/shared/GenericFunctions';
 
-import { actions, credentialTypes, nodeTypeOf, triggers } from '../index';
+import {
+	actions,
+	FIRST_PARTY_PACKAGES,
+	isContractNodeType,
+	nodeTypeOf,
+	packageOf,
+	triggers,
+	versionsOf,
+} from '../index';
 import { dateTime } from '../nodes/items/actions/date-time';
 import { getRequest } from '../nodes/http-request/actions/get';
 import { sendRequest } from '../nodes/http-request/actions/send';
@@ -76,8 +86,35 @@ function run(
 describe('contracts', () => {
 	it('pass the checks of n8n-node-next check and map to node types', () => {
 		expect([...actions, ...triggers].flatMap(checkAction)).toEqual([]);
-		expect(credentialTypes.flatMap(checkCredentialType)).toEqual([]);
+		expect(FIRST_PARTY_PACKAGES.flatMap(credentialTypesOf).flatMap(checkCredentialType)).toEqual(
+			[],
+		);
 		expect(nodeTypeOf(getManyDatabasePages)).toBe('@n8n/nodes-base-next.notionDatabasePageGetAll');
+	});
+});
+
+describe('first-party packages', () => {
+	it('ship each id once, and name the node types of their contracts', () => {
+		const ids = FIRST_PARTY_PACKAGES.flatMap((pkg) =>
+			[...pkg.actions, ...pkg.triggers, ...pkg.natives].map(({ id }) => id),
+		);
+		expect(ids.filter((id, index) => ids.indexOf(id) !== index)).toEqual([]);
+		expect(actions).toContain(passItems);
+		expect(nodeTypeOf(passItems)).toBe('@n8n/nodes-core.noOpPass');
+		expect(isContractNodeType('@n8n/nodes-core.noOpPass')).toBe(true);
+		expect(isContractNodeType('@n8n/nodes-base-next.httpRequestGet')).toBe(true);
+		expect(isContractNodeType('n8n-nodes-base.noOp')).toBe(false);
+	});
+
+	it('bundle the versions of each package as first-party', () => {
+		expect(versionsOf('noOp.pass').map(({ manifest, origin }) => [manifest.id, origin])).toEqual([
+			['noOp.pass', 'first-party'],
+		]);
+	});
+
+	it('give a stored id that no package ships to the first package', () => {
+		expect(packageOf('community.thing.do').name).toBe('@n8n/nodes-base-next');
+		expect(nodeTypeOf({ id: 'community.thing.do' })).toBe('@n8n/nodes-base-next.communityThingDo');
 	});
 });
 

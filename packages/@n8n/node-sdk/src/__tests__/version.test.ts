@@ -1,10 +1,10 @@
 import { generateKeyPairSync } from 'node:crypto';
-import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import type { IExecuteFunctions, INodeExecutionData, ITaskMetadata } from 'n8n-workflow';
 
-import { freezeAction, type FrozenAction } from '../freeze';
+import { freezeAction, freezePackage, type FrozenAction } from '../freeze';
 import { generateNodeModule } from '../entry/codegen';
 import {
 	setContractVersionLoader,
@@ -26,8 +26,20 @@ import {
 	type VersionManifest,
 } from '../entry/registry';
 import { defineNode, provider, t, type ActionFlow, type Shape } from '../index';
-import { checkPublish, lastPublishedIn, publishAction, replayFixtures } from '../publish';
-import { isVersionManifest, storeFilesOfDir, storeReader } from '../store';
+import {
+	checkPublish,
+	lastPublishedIn,
+	publishAction,
+	publishPackage,
+	replayFixtures,
+} from '../publish';
+import {
+	isVersionManifest,
+	parseStoreIndex,
+	storeFilesOfDir,
+	storeReader,
+	type SourcePackage,
+} from '../store';
 import { evaluateBundle } from '../runtime';
 import type { AnySchema } from '../schema';
 import type { MockRoute } from '../testing';
@@ -1027,5 +1039,101 @@ describe('semverRange', () => {
 		expect(() => semverRange('^2.0.0')).toThrow('is not a semver range');
 		expect(() => semverRange('')).toThrow('is not a semver range');
 		expect(() => setNodeContractRange('>=2')).toThrow('is not a semver range');
+	});
+});
+
+describe('freezePackage and publishPackage', () => {
+	const pass = `
+import { defineNode, t } from '@n8n/node-sdk';
+
+const demo = defineNode({ id: 'demo', displayName: 'Demo' });
+
+export const pass = demo.action('pass', {
+	action: 'Pass',
+	summary: 'Pass the item on.',
+	flow: { effect: 'transform', cardinality: 'batch' },
+	input: {},
+	output: t.passedItem(),
+	run: ({ items }) => items.map((item) => ({ item })),
+});
+`;
+	const fixtures: ContractFixtures = {
+		executions: [{ name: 'pass', params: {}, items: [{ a: 1 }], output: [{ a: 1 }] }],
+	};
+
+	afterEach(() => vi.unstubAllEnvs());
+
+	it('freeze and publish each action of a package, and sign a status line', async () => {
+		// Inside this package, so the action file resolves @n8n/node-sdk.
+		const dir = await mkdtemp(path.join(__dirname, '..', '..', '.package-test-'));
+		try {
+			const entryFile = path.join(dir, 'src', 'nodes', 'demo', 'actions', 'pass.ts');
+			const registryDir = path.join(dir, 'registry');
+			const keyFile = path.join(dir, 'key.pem');
+			await mkdir(path.dirname(entryFile), { recursive: true });
+			await mkdir(path.join(dir, 'fixtures'));
+			await writeFile(entryFile, pass);
+			await writeFile(path.join(dir, 'fixtures', 'demo.pass.json'), JSON.stringify(fixtures));
+			await writeFile(keyFile, privateKey);
+			const action = ((await import(entryFile)) as { pass: SourcePackage['actions'][number] }).pass;
+			const pkg: SourcePackage = {
+				name: '@acme/nodes',
+				dir,
+				actions: [action],
+				triggers: [],
+				natives: [],
+			};
+			vi.stubEnv('N8N_NODE_CONTRACTS_REGISTRY_URL', `file://${registryDir}`);
+			vi.stubEnv('N8N_NODE_CONTRACTS_SIGNING_KEY_FILE', keyFile);
+			const log: string[] = [];
+
+			await publishPackage(pkg, [], (line) => log.push(line));
+			await publishPackage(pkg, [], (line) => log.push(line));
+			const { manifests } = await freezePackage(pkg);
+			await publishPackage(pkg, ['yank', 'demo.pass@1.0.0', 'broken'], (line) => log.push(line));
+
+			expect(log.slice(0, 2)).toEqual(['demo.pass@1.0.0', 'demo.pass@1.0.0']);
+			expect(JSON.parse(log[2] ?? '')).toMatchObject({ id: 'demo.pass', yank: '1.0.0' });
+			expect(manifests.map(({ id, semver }) => `${id}@${semver}`)).toEqual(['demo.pass@1.0.0']);
+			const embedded = storeReader(storeFilesOfDir(path.join(dir, 'dist', 'store')));
+			expect((await embedded.records('demo.pass')).map(({ version }) => version)).toEqual([
+				'1.0.0',
+			]);
+			const index = await readFile(path.join(registryDir, 'index', 'demo.pass.ndjson'), 'utf8');
+			expect(parseStoreIndex(index, 'demo.pass').map(({ version }) => version)).toEqual(['1.0.0']);
+			await expect(
+				publishPackage(pkg, ['yank', 'demo.pass'], (line) => log.push(line)),
+			).rejects.toThrow('Usage:');
+		} finally {
+			await rm(dir, { recursive: true, force: true });
+		}
+	});
+
+	it('refuses two exports of one listed action', async () => {
+		const dir = await mkdtemp(path.join(__dirname, '..', '..', '.package-test-'));
+		try {
+			const actionsDir = path.join(dir, 'src', 'nodes', 'demo', 'actions');
+			await mkdir(actionsDir, { recursive: true });
+			await writeFile(path.join(actionsDir, 'pass.ts'), pass);
+			await writeFile(path.join(actionsDir, 'copy.ts'), pass);
+			const action = (
+				(await import(path.join(actionsDir, 'pass.ts'))) as {
+					pass: SourcePackage['actions'][number];
+				}
+			).pass;
+			const pkg: SourcePackage = {
+				name: '@acme/nodes',
+				dir,
+				actions: [action],
+				triggers: [],
+				natives: [],
+			};
+
+			await expect(freezePackage(pkg)).rejects.toThrow(
+				'These contracts of @acme/nodes have more than one export: demo.pass@1 (demo/actions/copy.ts#pass, demo/actions/pass.ts#pass)',
+			);
+		} finally {
+			await rm(dir, { recursive: true, force: true });
+		}
 	});
 });

@@ -763,13 +763,6 @@
 			"properties": ["model", "temperature", "maxTokens", "topP"]
 		},
 		{
-			"name": "@n8n/nodes-base-next.noOpPass",
-			"version": 1,
-			"hidden": true,
-			"credentials": [],
-			"properties": []
-		},
-		{
 			"name": "@n8n/nodes-base-next.notionDatabasePageGetAll",
 			"version": 1,
 			"hidden": true,
@@ -1744,7 +1737,6 @@
 		"@n8n/nodes-base-next.mergeAppend",
 		"@n8n/nodes-base-next.mergeCombine",
 		"@n8n/nodes-base-next.minimaxChatModel",
-		"@n8n/nodes-base-next.noOpPass",
 		"@n8n/nodes-base-next.notionDataSourcePageAdded",
 		"@n8n/nodes-base-next.notionDatabasePageGetAll",
 		"@n8n/nodes-base-next.notionDatabasePageGetAllTool",

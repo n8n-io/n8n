@@ -2,6 +2,7 @@ import { isRecord, validate, type JsonSchema } from '@n8n/node-sdk';
 import * as host from '@n8n/node-sdk/host';
 import {
 	actionFileOf,
+	embeddedStoreDirOf,
 	isVersionManifest,
 	parseFixtures,
 	parseStoreCatalog,
@@ -13,10 +14,13 @@ import {
 	toContract,
 	unresolvedCredentialPinsOf,
 	verifyStoreSignature,
-	type CredentialManifest,
-	type NativeManifest,
-	type VersionManifest,
 } from '@n8n/node-sdk/registry';
+import {
+	actionEntries,
+	credentialTypesOf,
+	freezePackage,
+	type FrozenPackage,
+} from '@n8n/node-sdk/freeze';
 import { replayFixtures } from '@n8n/node-sdk/publish';
 import { sandboxedVersionOf } from '@n8n/node-sdk/sandbox';
 import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync } from 'node:fs';
@@ -24,19 +28,15 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import type { ICredentialType, IExecuteFunctions } from 'n8n-workflow';
 
-import {
-	actionEntries,
-	freezeAll,
-	freezeCredentials,
-	freezeNatives,
-	natives,
-	NODES_DIR,
-} from '../../scripts/freeze';
-import { FIXTURES_DIR } from '../../scripts/publish';
-import { actions, credentialTypes, nativeTriggers, triggers } from '../index';
-import { bundledCredentialsOf, bundledIdsOf, EMBEDDED_STORE_DIR, versionsOf } from '../registry';
+import { nodesBaseNext } from '../nodes';
+import { bundledCredentialsOf, bundledIdsOf, versionsOf } from '../registry';
 
+const { actions, triggers, natives } = nodesBaseNext;
 const contracts = [...actions, ...triggers];
+const credentialTypes = credentialTypesOf(nodesBaseNext);
+const EMBEDDED_STORE_DIR = embeddedStoreDirOf(nodesBaseNext);
+const NODES_DIR = path.join(nodesBaseNext.dir, 'src', 'nodes');
+const FIXTURES_DIR = path.join(nodesBaseNext.dir, 'fixtures');
 
 /** The node type that n8n projects from the frozen versions of an action or a trigger. */
 const nodeTypeOf = (id: string, dir: string) => {
@@ -54,7 +54,7 @@ const fixturesOf = (actionId: string) =>
 describe('action files', () => {
 	it('hold one action each, named after its id', async () => {
 		const kebab = (name: string) => name.replace(/[A-Z]/g, (char) => `-${char.toLowerCase()}`);
-		const files = (await actionEntries()).map(({ entryFile, action }) => [
+		const files = (await actionEntries(nodesBaseNext)).map(({ entryFile, action }) => [
 			action.id,
 			path.relative(NODES_DIR, entryFile),
 		]);
@@ -71,18 +71,14 @@ describe('action files', () => {
 
 describe('bundled versions', () => {
 	const copy = mkdtempSync(path.join(tmpdir(), 'nodes-base-next-versions-'));
-	const frozen = {
-		manifests: Array.of<VersionManifest>(),
-		credentials: Array.of<CredentialManifest>(),
-		natives: Array.of<NativeManifest>(),
+	const frozen: FrozenPackage = {
+		manifests: [],
+		credentials: [],
+		natives: [],
 	};
 
 	beforeAll(async () => {
-		[frozen.manifests, frozen.credentials, frozen.natives] = await Promise.all([
-			freezeAll(copy),
-			freezeCredentials(copy),
-			freezeNatives(copy),
-		]);
+		Object.assign(frozen, await freezePackage(nodesBaseNext, copy));
 	});
 
 	afterAll(() => rmSync(copy, { recursive: true, force: true }));
@@ -129,6 +125,7 @@ describe('bundled versions', () => {
 		);
 		expect(isRecord(manifest) && 'n8n' in manifest).toBe(false);
 		expect(bundledIdsOf(copy).sort()).toEqual(contracts.map(({ id }) => id).sort());
+		expect(bundledIdsOf().sort()).toEqual([...contracts.map(({ id }) => id), 'noOp.pass'].sort());
 	});
 
 	it('project the node description of each version from its contract fields only', () => {
@@ -421,7 +418,7 @@ describe.skipIf(!sandboxBuilt)('bundled versions in the sandbox', () => {
 describe('credential manifests', () => {
 	const ownTypes = [
 		...new Map(
-			[...contracts, ...nativeTriggers]
+			[...contracts, ...natives]
 				.flatMap(({ node }) => node.credential?.types ?? [])
 				.filter(({ scheme }) => scheme.kind !== 'compat')
 				.map((type) => [type.name, type]),

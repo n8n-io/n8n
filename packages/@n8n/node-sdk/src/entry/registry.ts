@@ -44,6 +44,7 @@ export {
 export {
 	addStatusToStore,
 	addToStore,
+	embeddedStoreDirOf,
 	isStoreStatusRecord,
 	isVersionManifest,
 	manifestTextOf,
@@ -62,6 +63,7 @@ export {
 	unresolvedCredentialPinsOf,
 	verifyStoreSignature,
 	withdrawalOf,
+	type SourcePackage,
 	type StoreDeprecation,
 	type StoreFiles,
 	type StoreIndex,

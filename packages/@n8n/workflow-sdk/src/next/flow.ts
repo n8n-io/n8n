@@ -469,7 +469,7 @@ export interface NodeSpec {
 	/** Sample output items, for verification. */
 	readonly sample?: readonly unknown[];
 	/**
-	 * A step of a node contract of `@n8n/nodes-base-next`. Verification pins its sample: the host
+	 * A step of a node contract of a first-party package. Verification pins its sample: the host
 	 * fills it from the output example for a service step, and runs a local step on its real input.
 	 * Other steps, e.g. `node()` or a derived legacy node, run in verification as before.
 	 */
@@ -818,8 +818,12 @@ export const MANUAL_NODE = { type: 'n8n-nodes-base.manualTrigger', version: 1 };
 /** The IF and Edit Fields contracts of `@n8n/nodes-base-next` (`condition.if`, `items.set`). */
 export const BRANCH_NODE = { type: '@n8n/nodes-base-next.conditionIf', version: 1 };
 export const SET_NODE = { type: '@n8n/nodes-base-next.itemsSet', version: 1 };
-/** The node type prefix of the node contracts in `@n8n/nodes-base-next`. */
-const CONTRACT_NODE_PREFIX = '@n8n/nodes-base-next.';
+/**
+ * The first-party contract packages. Their names are the node type prefixes of their contracts.
+ * This SDK cannot import `FIRST_PARTY_PACKAGES` of `@n8n/nodes-base-next`, so a test in
+ * `@n8n/instance-ai` (`next-modules.test.ts`) checks that this list holds each of them.
+ */
+const CONTRACT_PACKAGES = ['@n8n/nodes-base-next', '@n8n/nodes-core'];
 
 /** The IF contract parameters of `when` for the compiled JavaScript of its condition. */
 export const branchParameters = (condition: string) => ({
@@ -2005,7 +2009,7 @@ export function contractStep<In, Ctx, Out, N extends string>(
 			type: id,
 			version,
 			sample,
-			...(id.startsWith(CONTRACT_NODE_PREFIX) ? { pinsSample: true } : {}),
+			...(CONTRACT_PACKAGES.some((name) => id.startsWith(`${name}.`)) ? { pinsSample: true } : {}),
 			...(settings ? { settings } : {}),
 			...(requires ? { requires } : {}),
 			...(Object.keys(providers).length > 0 ? { providers } : {}),

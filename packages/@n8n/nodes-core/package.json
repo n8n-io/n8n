@@ -1,8 +1,8 @@
 {
-  "name": "@n8n/nodes-base-next",
+  "name": "@n8n/nodes-core",
   "version": "0.1.0",
   "private": true,
-  "description": "n8n nodes defined as action contracts",
+  "description": "n8n core nodes defined as node contracts",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "exports": {
@@ -32,16 +32,12 @@
     "test:unit": "vitest run"
   },
   "dependencies": {
-    "@n8n/node-contract-compat": "workspace:*",
-    "@n8n/node-sdk": "workspace:*",
-    "@n8n/nodes-core": "workspace:*",
-    "n8n-workflow": "workspace:*"
+    "@n8n/node-sdk": "workspace:*"
   },
   "devDependencies": {
     "@n8n/eslint-config": "workspace:*",
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
-    "n8n-nodes-base": "workspace:*",
     "tsx": "catalog:",
     "typescript": "catalog:typescript",
     "vitest": "catalog:"

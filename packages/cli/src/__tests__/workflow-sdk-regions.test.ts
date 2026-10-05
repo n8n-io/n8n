@@ -34,6 +34,7 @@ import type {
 	IWorkflowExecuteAdditionalData,
 	IWorkflowSettings,
 } from 'n8n-workflow';
+import { FIRST_PARTY_PACKAGES } from '@n8n/nodes-base-next';
 import { createRunExecutionData, NodeHelpers, Workflow } from 'n8n-workflow';
 import path from 'node:path';
 import { mock } from 'vitest-mock-extended';
@@ -41,17 +42,28 @@ import { mock } from 'vitest-mock-extended';
 import { ContractNodeLoader } from '../node-contracts-registry';
 
 const nodesBase = new LazyPackageDirectoryLoader(path.resolve(__dirname, '../../../nodes-base'));
-const nodesBaseNext = new ContractNodeLoader([], [], async () => ({
-	versions: async () => new Map(),
-	credentials: async () => new Map(),
-}));
+const contractLoaders = FIRST_PARTY_PACKAGES.map(
+	(source) =>
+		new ContractNodeLoader(
+			[],
+			[],
+			async () => ({ versions: async () => new Map(), credentials: async () => new Map() }),
+			[],
+			undefined,
+			undefined,
+			source,
+		),
+);
 
-const NEXT_PREFIX = '@n8n/nodes-base-next.';
-
-const typeOf = (type: string) =>
-	type.startsWith(NEXT_PREFIX)
-		? nodesBaseNext.getNode(type.slice(NEXT_PREFIX.length)).type
+const typeOf = (type: string) => {
+	const separator = type.lastIndexOf('.');
+	const contracts = contractLoaders.find(
+		({ packageName }) => packageName === type.slice(0, separator),
+	);
+	return contracts
+		? contracts.getNode(type.slice(separator + 1)).type
 		: nodesBase.getNode(type.replace(/^n8n-nodes-base\./, '')).type;
+};
 
 const nodeTypes: INodeTypes = {
 	getByName: typeOf,
@@ -59,7 +71,13 @@ const nodeTypes: INodeTypes = {
 	getKnownTypes: () => ({}),
 };
 
-beforeAll(async () => await Promise.all([nodesBase.loadAll(), nodesBaseNext.loadAll()]), 30_000);
+beforeAll(
+	async () =>
+		await Promise.all(
+			[nodesBase, ...contractLoaders].map(async (loader) => await loader.loadAll()),
+		),
+	30_000,
+);
 
 type Built = ReturnType<ReturnType<typeof workflow>['toJSON']>;
 

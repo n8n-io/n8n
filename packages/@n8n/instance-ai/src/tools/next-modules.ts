@@ -1,5 +1,5 @@
 /**
- * Discovery over the typed node modules of `@n8n/nodes-base-next`. The agent imports a
+ * Discovery over the typed node modules of the first-party contract packages. The agent imports a
  * module as `@n8n/nodes/<nodeId>`, and `tsc` checks the workflow against the same text.
  */
 import {
@@ -26,9 +26,9 @@ import {
 import { toContract } from '@n8n/node-sdk/registry';
 import {
 	actions,
+	isContractNodeType,
 	migratedTargetOf,
 	nativeTriggers,
-	NODE_PACKAGE,
 	nodeTypeOf,
 	toolActions,
 	toolTypeOf,
@@ -110,7 +110,7 @@ const nativeTypesOf = (trigger: (typeof allTriggers)[number]) =>
 		: [];
 
 /**
- * The node id for a node id, an action id, an executable node type of this package, or a
+ * The node id for a node id, an action id, an executable node type of a contract package, or a
  * legacy node type that a native trigger types.
  */
 function nextNodeIdOf(ref: string): string | undefined {
@@ -126,8 +126,8 @@ function nextNodeIdOf(ref: string): string | undefined {
 }
 
 /**
- * The module that discovery offers for a node id (`notion`), an action id, or a node type of
- * this package. A ref to an action that a flow step replaces has none.
+ * The module that discovery offers for a node id (`notion`), an action id, or a node type of a
+ * contract package. A ref to an action that a flow step replaces has none.
  */
 export function nextNodeModule(ref: string): NextNodeModule | undefined {
 	const nodeId = nextNodeIdOf(ref);
@@ -201,7 +201,7 @@ const nativeNodeIdOf = (nodeType: string) =>
  * shares the node id, e.g. `n8n-nodes-base.notion` and `notion`.
  */
 export function nextNodeIdOfNodeType(nodeType: string): string | undefined {
-	if (nodeType.startsWith(`${NODE_PACKAGE}.`)) return nextNodeIdOf(nodeType);
+	if (isContractNodeType(nodeType)) return nextNodeIdOf(nodeType);
 	// The tool variant of a legacy node goes with its node, e.g. `slackTool` with `slack`.
 	const toolOf = nodeType.endsWith('Tool') ? nodeType.slice(0, -'Tool'.length) : undefined;
 	const toolNodeId = toolOf && nextNodeIdOfNodeType(toolOf);
@@ -611,7 +611,7 @@ function derivedNodeOf(
 /** The node type is on the instance. Without the node types of the instance, every type is. */
 export function isInstalledNodeType(nodeType: string, source: DeriveSource): boolean {
 	const nodeTypes = source.nodeTypesProvider;
-	if (!nodeTypes || nodeType.startsWith(`${NODE_PACKAGE}.`)) return true;
+	if (!nodeTypes || isContractNodeType(nodeType)) return true;
 	try {
 		nodeTypes.getByNameAndVersion(nodeType);
 		return true;

@@ -3,8 +3,8 @@ import { WorkflowRepository } from '@n8n/db';
 import { OnLeaderTakeover } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import {
+	isContractNodeType,
 	locksOf,
-	NODE_PACKAGE,
 	nodeTypeOf,
 	runsNodeContract,
 	syncContractStore,
@@ -171,8 +171,7 @@ export class NodeContractsSync {
 	 */
 	async prepareRun({ id, nodes }: Pick<IWorkflowBase, 'id' | 'nodes'>) {
 		const missing = nodes.filter(
-			({ type, typeVersion }) =>
-				type.startsWith(`${NODE_PACKAGE}.`) && !this.listsVersion(type, typeVersion),
+			({ type, typeVersion }) => isContractNodeType(type) && !this.listsVersion(type, typeVersion),
 		);
 		if (missing.length === 0 || !id) return;
 		const [workflow] = await this.workflowRepository.findByIds([id], { fields: ['meta'] });

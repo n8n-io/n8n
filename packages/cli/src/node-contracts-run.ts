@@ -10,8 +10,8 @@ import { UserError } from 'n8n-workflow';
  */
 export async function prepareNodeContractsRun(workflow: Pick<IWorkflowBase, 'id' | 'nodes'>) {
 	if (!Container.get(GlobalConfig).instanceAi.nodeContractsEnabled) return;
-	const { NODE_PACKAGE } = await import('@n8n/nodes-base-next');
-	if (!workflow.nodes.some(({ type }) => type.startsWith(`${NODE_PACKAGE}.`))) return;
+	const { isContractNodeType } = await import('@n8n/nodes-base-next');
+	if (!workflow.nodes.some(({ type }) => isContractNodeType(type))) return;
 	const { NodeContractsSync } = await import('@/node-contracts-sync.js');
 	await Container.get(NodeContractsSync).prepareRun(workflow);
 }

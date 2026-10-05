@@ -2,7 +2,7 @@ import { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
-import { NODE_PACKAGE, nodeNameOf, versionsOf } from '@n8n/nodes-base-next';
+import { nodeNameOf, versionsOf } from '@n8n/nodes-base-next';
 import type { INode, IWorkflowBase } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
@@ -12,6 +12,8 @@ import { NODES_REPORT } from '@/security-audit/constants';
 import { NodesRiskReporter } from '@/security-audit/risk-reporters/nodes-risk-reporter';
 import type { PackagesRepository } from '@/security-audit/security-audit.repository';
 import type { Risk } from '@/security-audit/types';
+
+const NODE_PACKAGE = '@n8n/nodes-base-next';
 
 const nodeOf = (name: string, id: string, type = `${NODE_PACKAGE}.${nodeNameOf(id)}`): INode => ({
 	id: name,

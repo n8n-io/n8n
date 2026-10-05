@@ -5,7 +5,8 @@ import type { GlobalConfig, NodePermissionClass } from '@n8n/config';
 import {
 	bundledCredentialsOf,
 	bundledIdsOf,
-	NODE_PACKAGE as NEXT,
+	embeddedStoreDirOf,
+	FIRST_PARTY_PACKAGES,
 	nodeDescriptionOf,
 	versionsOf,
 	type ContractPermissionClass,
@@ -16,6 +17,7 @@ import { LazyPackageDirectoryLoader } from 'n8n-core';
 import {
 	deepCopy,
 	type ICredentialType,
+	type IExecuteFunctions,
 	type INodeTypeDescription,
 	type KnownNodesAndCredentials,
 } from 'n8n-workflow';
@@ -28,6 +30,8 @@ import { LoadNodesAndCredentials } from '../load-nodes-and-credentials';
 import { ContractNodeLoader, NodeContractsStore } from '../node-contracts-registry';
 
 const PACKAGES = path.resolve(__dirname, '../../..');
+const [nodesBaseNext, nodesCore] = FIRST_PARTY_PACKAGES;
+const NEXT = nodesBaseNext.name;
 const storeOf =
 	(
 		versions: ReadonlyMap<string, readonly FrozenVersion[]> = new Map(),
@@ -129,7 +133,7 @@ describe('ContractNodeLoader', () => {
 	it('projects one node type for each bundled manifest, with Poll Times for a polling trigger', async () => {
 		const loader = new ContractNodeLoader([], [], noStore);
 		await loader.loadAll();
-		const ids = bundledIdsOf();
+		const ids = bundledIdsOf(embeddedStoreDirOf(nodesBaseNext));
 
 		expect(Object.keys(loader.known.nodes)).toHaveLength(ids.length);
 		expect(Object.keys(loader.known.credentials)).toHaveLength(bundledCredentialsOf().length);
@@ -251,6 +255,71 @@ describe('ContractNodeLoader', () => {
 			permission: 'egress-input',
 			message: expect.stringContaining('does not load'),
 		});
+	});
+
+	it('loads the node types of each first-party package with its name as prefix, and runs them in-process', async () => {
+		const id = 'noOp.pass';
+		const [head] = versionsOf(id);
+		if (!head) throw new Error(`${id} has no bundled HEAD`);
+		const { manifest } = head;
+		const stored: FrozenVersion = {
+			...head,
+			manifest: { ...manifest, contract: { ...manifest.contract, version: 2 } },
+		};
+		const store = storeOf(new Map([[id, [stored]]]));
+		const next = new ContractNodeLoader([], [], store);
+		const core = new ContractNodeLoader([], [], store, [], undefined, undefined, nodesCore);
+		const instance = new LoadNodesAndCredentials(
+			mock(),
+			mock(),
+			mock(),
+			mock<GlobalConfig>({
+				instanceAi: { nodeContractsEnabled: true },
+				nodes: { exclude: [], include: [] },
+			}),
+			mock(),
+			mock(),
+		);
+		await Promise.all([next.loadAll(), core.loadAll()]);
+		instance.loaders = { [NEXT]: next, [nodesCore.name]: core };
+		await instance.postProcessLoaders();
+
+		expect(core.packageName).toBe('@n8n/nodes-core');
+		expect(Object.keys(core.known.nodes)).toEqual(['noOpPass']);
+		expect(core.known.credentials).toEqual({});
+		expect(next.known.nodes).not.toHaveProperty('noOpPass');
+		expect(
+			core
+				.frozenVersionsOf('noOpPass')
+				.map((version) => [version.manifest.contract.version, version.origin]),
+		).toEqual([
+			[1, 'first-party'],
+			[2, head.origin],
+		]);
+		expect(instance.knownNodes['@n8n/nodes-core.noOpPass']).toEqual({
+			className: 'noOp.pass',
+			sourcePath: path.join(embeddedStoreDirOf(nodesCore), 'index/noOp.pass.ndjson'),
+		});
+		expect(
+			instance.types.nodes
+				.filter(({ name }) => name === '@n8n/nodes-core.noOpPass')
+				.map(({ version, hidden }) => [version, hidden]),
+		).toEqual([
+			[2, true],
+			[1, true],
+		]);
+		const context = {
+			getInputData: () => [{ json: { a: 1 } }],
+			getNode: () => ({ name: 'No Operation', credentials: {} }),
+			getNodeParameter: () => undefined,
+			continueOnFail: () => false,
+			setMetadata: () => {},
+		} as unknown as IExecuteFunctions;
+		const result = await instance
+			.getNode('@n8n/nodes-core.noOpPass')
+			.type.getNodeType(1)
+			.execute?.call(context);
+		expect(result).toEqual([[{ json: { a: 1 }, pairedItem: { item: 0 } }]]);
 	});
 
 	it('maps each config permission class that a contract version can have', () => {
