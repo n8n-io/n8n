@@ -1,0 +1,668 @@
+packages/cli/src/modules/agents/agent-runtime-reconstruction.service.ts
+  s_13d2093edecceb::t_8a3e57d7b1370e 387,805,813,874,900,949,964
+  s_13d2093edecceb::t_418cfbc70eca7a 506,514,739,804
+packages/cli/src/modules/agents/agent-integration-management.service.ts
+  s_13d2093edecceb::t_7cc446b24887fe 25
+  s_13d2093edecceb::t_3633c634166b16 252,253
+packages/cli/src/modules/agents/agent-test-run.service.ts
+  s_13d2093edecceb::t_9c37ce041c3c5d 346,363,364
+packages/cli/src/modules/agents/agent-workflow-execution.service.ts
+  s_13d2093edecceb::t_091f934176babd 271,302,335,397,398,403,416,560
+  s_13d2093edecceb::t_418cfbc70eca7a 276,280-282,284,285,287-288
+packages/cli/src/modules/agents/agent-config.service.ts
+  s_13d2093edecceb::t_9b325bed92fdf7 151-180,182,183-194
+packages/cli/src/modules/agents/agent-execution-orchestrator.service.ts
+  s_13d2093edecceb::t_d3f2c7ab8c0912 339-340,711,712,733-734,757,761,763,764,779-780,783-788,789-790,884-885,923-924,939-940
+  s_13d2093edecceb::t_418cfbc70eca7a 707-708,709,717,728,739-740,742-744,745-748,751,753,755-756,911,917
+  s_13d2093edecceb::t_6b30d8d32a10e4 855-856
+  s_ffa0492de4d6b4::t_34bf7c3585b483 852
+packages/cli/src/modules/agents/agent-model-catalog.service.ts
+  s_13d2093edecceb::t_a01e361ed74b42 94
+packages/cli/src/modules/agents/builder/agents-builder-tools.service.ts
+  s_13d2093edecceb::t_11331039f11e6a 961
+  s_13d2093edecceb::t_f3c892d3535bf0 1319
+  s_13d2093edecceb::t_9b325bed92fdf7 474,476,599-609,610,612,646,648
+  s_13d2093edecceb::t_14de2e6791ae8b 679
+  s_13d2093edecceb::t_3876457ed1b7cb 680
+  s_13d2093edecceb::t_df380f59ebbeb5 708
+  s_13d2093edecceb::t_bf4300f9b4d843 941,958
+  s_13d2093edecceb::t_b1efaa60e92f1b 962,1010-1011
+  s_13d2093edecceb::t_298efc8f780729 1065
+  s_13d2093edecceb::t_fb0eecf9f49a12 1066
+  s_13d2093edecceb::t_dc89ca93184710 682,686-688,742,887,896,970,979-981,983,985-986,1068,1073,1076
+packages/cli/src/modules/agents/integrations/agent-channel-reconciler.service.ts
+  s_13d2093edecceb::t_adeb6bc26b1bf4 431
+packages/@n8n/agents/src/runtime/__tests__/delegate-sub-agent-tool.test.ts
+  s_c5954c3047b5ed::t_fb1d9dfdf164ed 1078,1083
+packages/cli/src/modules/engine-v2/in-memory-execution-response-sender.ts
+  s_ac769901b0c47e::t_3241c0bdfe3ec8 1-2,4-5,9-10,14,19
+  s_ac769901b0c47e::t_c4f3903832c881 15-16,18
+  s_ac769901b0c47e::t_83494f792ecfac 6-7,11-12,17
+  s_ac769901b0c47e::t_e6c09cd4ee466d 3,8,13
+packages/@n8n/engine/src/execution/__tests__/step-execution.integration.test.ts
+  s_ac769901b0c47e::t_bdedf598ddbe5e 73
+packages/cli/src/modules/engine-v2/in-memory-execution-response-receiver.ts
+  s_ac769901b0c47e::t_e6c09cd4ee466d 8,16,26,41
+  s_ac769901b0c47e::t_83494f792ecfac 11-13,24-25,40,42-46,50-51
+  s_ac769901b0c47e::t_3241c0bdfe3ec8 1-7,9-10,17,20-23,33,58,66
+packages/cli/src/modules/engine-v2/in-memory-execution-response-channel.ts
+  s_ac769901b0c47e::t_e6c09cd4ee466d 3,5-7,9-11,13-16
+packages/cli/src/modules/engine-v2/execution-response-receiver.ts
+  s_ac769901b0c47e::t_3241c0bdfe3ec8 1,3,5-10
+packages/cli/src/modules/engine-v2/engine-v2.module.ts
+  s_ac769901b0c47e::t_c4f3903832c881 34-35
+  s_ac769901b0c47e::t_e6c09cd4ee466d 31-33
+  s_ac769901b0c47e::t_62b81e25fbb29f 18
+  s_ac769901b0c47e::t_b854d5391adcaa 32,35
+packages/@n8n/engine/src/server/__tests__/workflow-executions.integration.test.ts
+  s_ac769901b0c47e::t_bdedf598ddbe5e 284
+packages/@n8n/cli/README.md
+  s_dd6e2d00011911::t_a029a4bc20635a 64
+packages/cli/test/integration/engine-v2-webhooks.test.ts
+  s_9a2a7a8eef9b2d::t_e1065e26610b01 20,23,75
+  s_9aca2e09ff6b67::t_7d4e6f88b774bf 14
+  ai_agent 124-126,126-132,142
+  s_e092ff55a47017::t_82e52d356fb5ce 132,138
+  s_9aca2e09ff6b67::t_ee284d9fea9248 73-74
+  s_29ea1cc2a1dbf5::t_c608ed2520cff0 184,234
+  s_929428e752b585::t_1d86420b62238e 184-202,204-207,209-233
+  s_929428e752b585::t_aeb3225191ce9c 203,208
+packages/cli/src/webhooks/__tests__/webhook-helpers.test.ts
+  s_794845deccc20b::t_9bbbf1f363a95f 5,1545,1546,1547,1548,1623,1626,1629,1632,1635-1642,1636,1639-1646,1644,1647,1648,1651,1673,1676-1677,1677,1680,1680-1681,1684,1688-1689,1691,1692-1693,1694,1695,1698,1705-1706,1708,1709-1710,1711-1712,1712,1715-1716,1718-1720,1719-1720,1722-1724,1723-1724,1727-1728,1730-1731,1734-1735,1738,1738-1739,1741-1742,1742,1745-1746,1802,1806,1810-1811
+  s_9aca2e09ff6b67::t_d7d5d02f4025f1 6,1624,1627-1629,1627,1631-1633
+  s_a3125dfe40640a::t_2e14f226a4206d 56-57,57-58
+  s_4c46dcfe1ba789::t_7dd7b48c8328c2 58,59,1621,1624,1625,1628,1630,1633-1634,1634,1637-1638
+  s_a3125dfe40640a::t_c1428fe219b94f 1059-1060,1060-1061
+  s_9aca2e09ff6b67::t_3dcdb251f0e175 1546,1547
+  s_a3125dfe40640a::t_cf1a46269dd29f 1619,1622,1625
+  s_a3125dfe40640a::t_98f95192499fa6 1643,1645-1646,1647,1648,1649-1650,1652,1683,1686-1687,1687,1690,1690-1691,1692-1693,1694,1696-1697,1700-1701,1703-1704,1707,1707-1708,1709-1710,1711,1713-1714,1717-1718,1721-1722,1725-1729,1725-1726,1729-1733,1732-1733,1736-1737,1739,1740-1741,1743,1745,1747,1749,1750,1754,1755-1756,1759-1760,1763-1765,1767-1769,1768,1772,1774-1775,1778-1779,1780-1781,1783,1784-1785,1787,1798-1800,1802-1811,1804,1809,1812-1813,1814-1817,1818
+  s_4c46dcfe1ba789::t_e3cd4f920bebf0 1671,1674-1675,1675,1678-1679,1681-1682,1682-1683,1685-1686
+  s_719e037cee4d57::t_0f7522dcd91215 1684-1685,1688-1689
+  s_4c46dcfe1ba789::t_1eddd524b8cecb 1695,1698-1702,1699,1702-1706,1717,1721,1740,1744
+  s_6df29c531634b9::t_5260d4751675a4 1744,1746-1749,1748,1750-1753,1751-1754,1755-1758,1757-1762,1761-1766,1766-1767,1769-1773,1770-1771,1773-1777,1776-1779,1780-1783,1782,1786,1791,1807-1808
+  ai_agent 1812-1813
+packages/@n8n/engine/src/execution/__tests__/step-ready-handler.test.ts
+  s_9a2a7a8eef9b2d::t_db25c8d811d6d2 50,139-140,142
+packages/cli/src/webhooks/engine-v2-webhooks.ts
+  s_794845deccc20b::t_9bbbf1f363a95f 18,45,49,53,68,70-81,90,94,98
+  s_71c6da2ee47cd3::t_19b26356a490b4 31-36,83,87
+  s_9a2a7a8eef9b2d::t_db25c8d811d6d2 37
+packages/cli/src/webhooks/webhook-helpers.ts
+  s_4c46dcfe1ba789::t_eeeb14c5513318 34-35,361-362,1094-1116,1118-1130,1120-1132,1133,1135
+  s_4c46dcfe1ba789::t_b486633a6977bd 66,86-87
+  s_4c46dcfe1ba789::t_db4bafbbb46980 78
+  s_4c46dcfe1ba789::t_d973a62943d7dd 346-354,356-360,406,408-413
+  s_794845deccc20b::t_9bbbf1f363a95f 414-415,636,978,1029-1030,1186-1191,1188-1193,1194-1196,1196-1198
+  s_4c46dcfe1ba789::t_36c3453a753a08 1131-1132,1133-1134,1134-1135,1136
+  s_929428e752b585::t_1d86420b62238e 973,1117-1119
+packages/@n8n/engine/src/response-channel/execution-response.schema.ts
+  s_71c6da2ee47cd3::t_d67313882bd806 3
+  s_4c46dcfe1ba789::t_c619cb6a6da3d5 1-2,4
+packages/@n8n/engine/src/response-channel/execution-response.types.ts
+  s_9a2a7a8eef9b2d::t_db25c8d811d6d2 1,2-4
+packages/cli/src/services/engine-v2-webhook-responder.service.ts
+  s_71c6da2ee47cd3::t_11151294bf63cb 25-26,29-30,34-35,38-39
+  s_4c46dcfe1ba789::t_08563fce175542 28,37
+packages/cli/src/workflow-runner.ts
+  s_929428e752b585::t_1d86420b62238e 56,297,324,327,334-338
+packages/cli/src/services/streaming-webhook-response-delivery.ts
+  s_929428e752b585::t_1d86420b62238e 1-86
+packages/cli/src/services/engine-v2-webhook-response-delivery.ts
+  s_929428e752b585::t_1d86420b62238e 1-36
+packages/cli/src/services/non-streaming-webhook-response-delivery.ts
+  s_929428e752b585::t_1d86420b62238e 1-44
+packages/@n8n/node-engine-compatibility/src/v1-step-executor.ts
+  s_9a2a7a8eef9b2d::t_db25c8d811d6d2 13
+  s_929428e752b585::t_1d86420b62238e 103-112
+packages/@n8n/node-engine-compatibility/src/__tests__/v1-step-executor.test.ts
+  s_929428e752b585::t_1d86420b62238e 134-137,139-159,178-180,182,184-186
+packages/cli/src/__tests__/workflow-runner.test.ts
+  s_929428e752b585::t_1d86420b62238e 992-998,1000,1008,1041,1042-1048
+packages/cli/src/services/__tests__/engine-v2-webhook-responder.service.test.ts
+  s_71c6da2ee47cd3::t_d405134f94920e 1,4,10,25,28-29,36,39,45-47,50,57-58,74,76,80,86-88,91,95-96,99,102,108-110,112,118-119,122,128,131,133-134,142,148,151,161-162,163,172-174,176-177,179,183-184
+  s_4c46dcfe1ba789::t_533d342b8bac27 97,111,164,166
+  ai_agent 48,56,89,155,160,180-182
+  s_29ea1cc2a1dbf5::t_c87e077050280b 123,143
+  s_9aca2e09ff6b67::t_d2e6bc1a9a6aa4 37,78,100
+  s_794845deccc20b::t_9bbbf1f363a95f 38,40-43,79,81-84,101,103-106,113
+  s_4c46dcfe1ba789::t_6941e602868b24 3,13,35,44,64,85,107,114-117,127,132,141,147,152,170-171
+  s_9a2a7a8eef9b2d::t_df6b21aba09276 120,124-126,129-130,144-146,149-150
+packages/cli/src/services/streaming-webhook-response-heartbeat.ts
+  s_929428e752b585::t_1d86420b62238e 1-32
+packages/cli/src/modules/agents/repositories/agent-execution-thread.repository.ts
+  s_c5954c3047b5ed::t_a9321c49724831 24-25
+packages/cli/src/modules/agents/agent-execution.service.ts
+  s_c5954c3047b5ed::t_1198981a9c9daf 60,138
+  s_ffa0492de4d6b4::t_34bf7c3585b483 119,138
+packages/cli/src/modules/agents/__tests__/agent-chat.controller.test.ts
+  s_c5954c3047b5ed::t_cddf6b756e7875 33,42-43,43,194,387,390-392,394,397
+  s_c5954c3047b5ed::t_d8f8e48c151740 394
+packages/cli/src/modules/agents/integrations/__tests__/agent-chat-bridge.test.ts
+  s_c5954c3047b5ed::t_cddf6b756e7875 2,2849
+packages/cli/src/modules/agents/agent-chat.controller.ts
+  s_c5954c3047b5ed::t_cddf6b756e7875 157-158,165,169
+packages/cli/src/modules/agents/integrations/agent-chat-bridge.ts
+  s_c5954c3047b5ed::t_cddf6b756e7875 665,668,677-679
+packages/frontend/editor-ui/src/features/agents/composables/useAgentChatStream.ts
+  s_c5954c3047b5ed::t_211805aca4f75e 958
+  s_c5954c3047b5ed::t_83d90254d57bd4 769
+packages/frontend/editor-ui/src/features/agents/components/AgentChatPanel.vue
+  s_c5954c3047b5ed::t_a21c021299556e 460
+  s_c5954c3047b5ed::t_9e7ad1ce3f4b06 272
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentChatStream.test.ts
+  s_c5954c3047b5ed::t_3607efd3d41db1 2507
+packages/frontend/editor-ui/src/features/agents/composables/useAgentApi.ts
+  s_c5954c3047b5ed::t_211805aca4f75e 483-484
+  s_c5954c3047b5ed::t_a4c2928cd61424 485
+packages/@n8n/agents/src/runtime/tools/delegate-sub-agent-tool.ts
+  s_c5954c3047b5ed::t_4d39735c4835d3 497,505-506
+  s_c5954c3047b5ed::t_6b8da8b55105f4 6
+packages/@n8n/agents/src/runtime/tools/tool-call-executor.ts
+  s_c5954c3047b5ed::t_70b32f491bef9f 118,120-121,190,659,661-662,741,766,772,787
+  s_c5954c3047b5ed::t_f29f427d80a56f 18
+packages/@n8n/agents/src/runtime/tools/tool-result-guard.ts
+  s_c5954c3047b5ed::t_56226ca3b4a728 234
+  s_c5954c3047b5ed::t_3ae7a063cf9b9f 233
+  s_c5954c3047b5ed::t_4348f83b03b6fc 235
+  s_c5954c3047b5ed::t_a08041e409bf95 171-174
+packages/@n8n/agents/src/runtime/loop/agent-runtime.ts
+  s_c5954c3047b5ed::t_55f97b2b38be4e 775,789,839,929
+  s_c5954c3047b5ed::t_32a9078c56e2bc 1096-1102,1105-1110
+  s_c5954c3047b5ed::t_1ecea064879e28 1139-1142
+packages/@n8n/agents/src/runtime/loop/stream-sink.ts
+  s_c5954c3047b5ed::t_15707b0f9a2684 1-7
+packages/@n8n/agents/src/runtime/loop/generate-sink.ts
+  s_c5954c3047b5ed::t_15707b0f9a2684 1-7
+packages/cli/src/modules/agents/repositories/agent-execution.repository.ts
+  s_ffa0492de4d6b4::t_34bf7c3585b483 93
+packages/@n8n/agents/src/runtime/loop/run-output-sink.ts
+  s_c5954c3047b5ed::t_a08041e409bf95 141
+packages/frontend/editor-ui/src/features/shared/toolsConnection/__tests__/DefaultDetailBody.test.ts
+  s_9b9696034972ce::t_62960cd769a340 1,3-65
+packages/frontend/editor-ui/src/features/shared/toolsConnection/__tests__/ToolRow.test.ts
+  s_9b9696034972ce::t_62960cd769a340 1-3,5-109,111-304
+packages/frontend/editor-ui/src/features/shared/toolsConnection/toolItemIcon.ts
+  s_9b9696034972ce::t_b960cc009eadc4 1-5
+packages/frontend/editor-ui/src/features/shared/toolsConnection/__tests__/ToolCredentialPicker.test.ts
+  s_9b9696034972ce::t_62960cd769a340 1-2,4-193
+packages/frontend/editor-ui/src/features/shared/toolsConnection/ToolsConnectionModal.vue
+  s_9b9696034972ce::t_b960cc009eadc4 1-2,12-14,16-28,29-39,44-48,52-66,68-71,72-76,77-82,84-126,128-129,132-261,262,264,265,267-268,270,271-289,296,297-337,350-363,365,371,373,375,377-378,380,382,385-391,393-403,405-409,410-427,429-431,432-435,440,444-451,452-453,455-482,484-492,494-505,507-513,514-530
+  s_69e862a8712a35::t_07661ab862e91c 197
+  s_69e862a8712a35::t_75e32f1b344086 377
+packages/frontend/editor-ui/src/features/shared/toolsConnection/ToolRow.vue
+  s_9b9696034972ce::t_b960cc009eadc4 1-2,11-23,24-87,97-110,112-175,177,180-182,184-233,235-264,265-299,301-313,315-443
+  s_fd2212291acb0e::t_453a654ac8db5a 307,310
+packages/frontend/editor-ui/src/features/shared/toolsConnection/ToolDetailView.vue
+  s_9b9696034972ce::t_b960cc009eadc4 1-2,4-54,56-88,90-96,101-107,109-115,116-154
+packages/frontend/editor-ui/src/features/shared/toolsConnection/McpToolSettingsContent.vue
+  s_9b9696034972ce::t_b960cc009eadc4 1-2,4-248
+packages/frontend/editor-ui/src/features/shared/toolsConnection/ToolSettingsView.vue
+  s_9b9696034972ce::t_b960cc009eadc4 1-2,4-32,33-52,54-87,89-95,118-136,138-140,142-144,145-149,150-190,193,224-231,232-233
+packages/frontend/editor-ui/src/features/shared/toolsConnection/types.ts
+  s_9b9696034972ce::t_b960cc009eadc4 1-129,133-202
+packages/frontend/editor-ui/src/features/shared/toolsConnection/ToolCredentialPicker.vue
+  s_9b9696034972ce::t_b960cc009eadc4 1-2,4-207,212-262,264-333,335-404
+packages/frontend/editor-ui/src/features/shared/toolsConnection/__tests__/ToolsConnectionModal.test.ts
+  s_9b9696034972ce::t_62960cd769a340 1,4-10,17-25,28-29,32-47,54-68,72-93,95-103,105-135,137-260,262-269,271-505,506-515
+packages/frontend/editor-ui/src/features/shared/toolsConnection/ToolsConnectionModal.stories.ts
+  s_9b9696034972ce::t_b960cc009eadc4 1-2,5-52,54-100,102-149,155-378
+packages/frontend/editor-ui/src/features/shared/toolsConnection/McpDetailBody.vue
+  s_1e32c055a21f7b::t_fbe5627e856b7c 162-163
+  s_9b9696034972ce::t_b960cc009eadc4 1-2,4-31,33,35-41,43-53,55-56,58-59,61-62,64-80,82-99,101-118,120-144,152-159,161,168-170,172,174-196,203-231
+packages/frontend/editor-ui/src/features/shared/toolsConnection/fixtures.ts
+  s_9b9696034972ce::t_7396804c44fdea 1-380
+packages/frontend/editor-ui/src/features/shared/toolsConnection/ToolIcon.vue
+  s_9b9696034972ce::t_b960cc009eadc4 1,4-47
+packages/frontend/editor-ui/src/features/shared/toolsConnection/DefaultDetailBody.vue
+  s_9b9696034972ce::t_b960cc009eadc4 1-2,4-17,19,21,23-34,42-49
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentSubAgentsModal.spec.ts
+  s_7396ec8a4dae48::t_51e6b3bb0df83f 48
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "093732f83511a28fc6d414e95676a3c1975fe3a6",
+  "prompts": {},
+  "humans": {
+    "h_8fb27e0cdf6d1e": {
+      "author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    },
+    "h_9b272a633435fb": {
+      "author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_081a931f85efb0": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0c98b-a59d-723d-8d08-315178c379bf",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_0ed5271cdd014d": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0d3f3-6fd7-7481-922e-2a901b1c46ca",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_10764d60e8c92b": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0aa9b-43e8-738d-a0b9-ae897a87386e",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_13d2093edecceb": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0ca37-ecdf-7873-bb4a-4b31a09f7aab",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_1c454f33116688": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0ab01-29a2-775a-944f-5e73dea2f7d0",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_1e32c055a21f7b": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0aa84-c35c-738d-a0b9-ae845184cb2c",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_2157abf0156ebc": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0cdb5-8c5d-7647-8a5f-e1d02cfb6a39",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_22319c2de3343a": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0ae94-7f49-7169-8639-af4e8517f4bd",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_270aabb0735a56": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0b36c-6205-7aa2-8107-76a9f9bb4d0a",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    },
+    "s_29ea1cc2a1dbf5": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0b5ba-8e93-70b1-adff-401cf2df2ddf",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    },
+    "s_35af7ca4af73ea": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0aaa6-37ef-738d-a0b9-ae8b38dffa97",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_38e13a72a40e85": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0ab25-a648-775a-944f-5e7d172319de",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_4ab1f7a942a8c3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0fb80efc-2e5d-4c0b-bd76-2078658ef9dd",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_4c46dcfe1ba789": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c1251ab8-7233-47da-89f9-16babffdf579",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    },
+    "s_4e2ee7d47fe6b4": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0aecf-d437-75f5-ad41-07955fdf504d",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_69e862a8712a35": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0aebb-32e6-723a-817d-2447b18c6f59",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_6df29c531634b9": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0b10b-86db-7ea1-a7e9-8ee96d396f23",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    },
+    "s_7000cd54115292": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0c992-ff25-740b-bb65-8292b2f2ed80",
+        "model": "glm-5.3-flash"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_719e037cee4d57": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "27f603bd-170c-453c-b9f6-0405967390f4",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    },
+    "s_71ada40c158fee": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0aab2-06c9-738d-a0b9-ae8dddac0e18",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_71c6da2ee47cd3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "34058f20-f9c0-4c61-a303-3490fd47e9b8",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    },
+    "s_7396ec8a4dae48": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0ec4a-a5a2-7699-9a7d-9e91eb66f4ad",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_75f6b6ded4db2e": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0d6e2-d74d-7a02-b6c5-3229117b3326",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_794845deccc20b": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0b43d-9fd7-7372-ae87-3043b41ce227",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    },
+    "s_7cdfcf2fda096d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6c82e4f0-2d7b-49bf-94d3-c15d9a865b61",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_7d92849ff15ae6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b926ff1f-b15f-4ce1-85be-a0fb73556029",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_7e8b46e4e5851d": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0aaf3-a40f-738d-a0b9-ae9519b02342",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_824c588980053c": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0aa70-b572-738d-a0b9-ae83ac9aea56",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_929428e752b585": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0c5ce-a2c2-7932-bafe-b88624377c99",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": null
+    },
+    "s_92d10ec3c1bd93": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "5e37c32b-1c8f-45f6-b79b-eb7625ad32b1",
+        "model": "grok-4.7"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_9a2a7a8eef9b2d": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0b0a9-aea8-7a51-a10e-19a41029ada1",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    },
+    "s_9aca2e09ff6b67": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0c54e-dd44-7bb0-975c-7f43d2ff8e1f",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    },
+    "s_9b9696034972ce": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0aa43-4d41-738d-a0b9-ae80b1621714",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_a0365df61f0da7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1652a565-6ec5-45a6-8314-fa08732ffc4b",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_a1db2f12a72076": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0ab13-9249-775a-944f-5e77a5a1e81e",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_a3125dfe40640a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "075b8cbd-4b8b-47a1-8eab-be2d73d8c62b",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    },
+    "s_ac769901b0c47e": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0c884-abdf-7210-b478-ed802e59b049",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    },
+    "s_af512eb7b46141": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0e88e-bb31-7051-b944-98f8227e2e34",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_b5dc714bfc66f4": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0ab2a-8c43-7169-8639-af4b602231ec",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_ba71b7cb49bb4f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fad57780-9be2-4b45-b05e-76db87f3e95e",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_bd2476b2677534": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0b3a1-17ea-78e0-94e2-443c3571931f",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    },
+    "s_bfdc3c9bc21b40": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e768b0c7-e08a-400c-bc83-3cc0967415bb",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    },
+    "s_c5954c3047b5ed": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0cf61-9581-7951-a01f-21637c8a6267",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_ccaea62974a0e4": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0aada-d9aa-738d-a0b9-ae8f2357154c",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_ceea518ec91e06": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0d6c8-dc68-7ef2-9d12-e19ee76a253d",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_d9e246703828a2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ef6bf45b-5856-493d-aa56-19350759501f",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_dd6e2d00011911": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "478872db-05f3-4102-934c-6972f168d379",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_df3c52c3c4eb9c": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0aaf5-c12a-738d-a0b9-ae9711610ce8",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_e092ff55a47017": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0b382-8a71-72a3-95d5-32e5b9112548",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    },
+    "s_e5a64625bc5cd1": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0d4bf-db56-7bb1-9663-032c49d21015",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_eb18f8dee46988": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1d4dc1fe-2f8e-499e-a92b-dc069931aff9",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_ebb6ed091294d6": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0aade-2c13-738d-a0b9-ae90cb2b7090",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_fd2212291acb0e": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0aa95-19dc-738d-a0b9-ae86bf82e54d",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_ffa0492de4d6b4": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0e727-f897-7aa3-9669-92beda795bb5",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}
