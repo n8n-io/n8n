@@ -755,7 +755,7 @@ const parseTypecheckErrors = (stdout: string): string[] | undefined => {
 const STDERR_TAIL = 1_000;
 
 const UNTYPED_HINT =
-	'This value has no type. Fix the first error before it first. Else type the node before it: `sample` items, a webhook `schema`, or `returns` on a code step.';
+	'This value has no type. Fix the first error before it first. Else type the node before it: `sample` items, a webhook or HTTP `schema`, or `returns` on a code step.';
 
 /** The macros of `@n8n/workflow-sdk/next`, for the hint on a step method. */
 export const FLOW_MACROS = [
@@ -946,7 +946,7 @@ const TSC_HINTS: ReadonlyArray<{
 		codes: [2339],
 		message: /on type '\{\}'/,
 		hint: () =>
-			"This field has no declared type, so `x ?? []` or a check such as `x ? x.f : …` leaves `{}`, which has no fields. Give the node that outputs it `sample` items, a webhook `schema`, or `returns` on a code step. Else narrow each level: `typeof x === 'object' && x !== null && 'f' in x`.",
+			"This field has no declared type, so `x ?? []` or a check such as `x ? x.f : …` leaves `{}`, which has no fields. Give the node that outputs it `sample` items, a webhook or HTTP `schema`, or `returns` on a code step. Else narrow each level: `typeof x === 'object' && x !== null && 'f' in x`.",
 	},
 	{
 		// A failed item lists the output fields, so the field is in no shape.
@@ -986,7 +986,7 @@ const TSC_HINTS: ReadonlyArray<{
 		codes: [18046],
 		message: /is of type 'unknown'/,
 		hint: () =>
-			'This field has no declared type. Declare it where the data enters (a webhook `schema`, `sample` items, or `returns` on a code step), or narrow it first, e.g. `Array.isArray(item.list)`.',
+			'This field has no declared type. Declare it where the data enters (a webhook or HTTP `schema`, `sample` items, or `returns` on a code step), or narrow it first, e.g. `Array.isArray(item.list)`.',
 	},
 	{ codes: [2571], message: /is of type 'unknown'/, hint: () => UNTYPED_HINT },
 	{

@@ -77,12 +77,12 @@ export default workflow(
   items of the part before.
 - `onError(part)` takes the errors of the part before; its branch ends.
   `recover(part)` joins it back.
-- `when`, `route`, `switchOn`, `merge`, `forEach` and `loop` branch, join
-  and repeat parts.
 - `set({ name, fields })` makes fields; a key `'a.b'` nests. `keep: 'all'`,
   `{ selected }` or `{ except }` keeps input fields.
 - `sample` items type the output and feed verification:
   `manual({ sample: [{ id: 1 }] })`.
+- Give an HTTP step `schema`, the body's JSON Schema from its API docs:
+  then a wrong key fails the build.
 - Typed steps, `set` and `node()` take `settings: { retryOnFail: true, notes: '…' }`.
 
 ## Lambdas

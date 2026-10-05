@@ -40,11 +40,80 @@ const fullResponse = t.obj({
 	statusCode: t.int(),
 });
 
-/** The output of `fullResponse: true`, else `output`. */
+/** The build reads the schema to type the items, so it is a literal. */
+export const bodySchema = t
+	.json()
+	.with({ 'x-n8n-literal': true })
+	.hint('JSON Schema of the body from the API docs. Types the items; objects are closed')
+	.optional();
+
+// The input takes any JSON object as the schema; the build reads only the keywords it knows.
+const isJsonSchema = (value: unknown): value is JsonSchema => isRecord(value);
+
+/** `schema` with each object that lists properties closed, unless it allows more. */
+const closed = (schema: JsonSchema): JsonSchema => ({
+	...schema,
+	...(schema.properties
+		? {
+				properties: Object.fromEntries(
+					Object.entries(schema.properties).map(([key, child]) => [key, closed(child)]),
+				),
+				additionalProperties: schema.additionalProperties ?? false,
+			}
+		: {}),
+	...(schema.items ? { items: closed(schema.items) } : {}),
+	...(schema.anyOf ? { anyOf: schema.anyOf.map(closed) } : {}),
+	...(schema.oneOf ? { oneOf: schema.oneOf.map(closed) } : {}),
+});
+
+/** The item of one list entry, as `toItems` makes it: an entry that is no object goes in `data`. */
+const entryItemOf = (entry: JsonSchema): JsonSchema =>
+	entry.type === 'object' || entry.properties
+		? entry
+		: {
+				type: 'object',
+				properties: { data: entry },
+				required: ['data'],
+				additionalProperties: false,
+			};
+
+/** `items` as a plain read of the body, e.g. `={{ $response.body.data.list }}`. */
+const ITEMS_PATH = /^=\{\{\s*\$response\.body((?:\.[A-Za-z_$][\w$]*)*)\s*\}\}$/;
+
+/** The schema at a dot path of `schema`, or `undefined` when the path leaves it. */
+const schemaAt = (schema: JsonSchema, path: readonly string[]): JsonSchema | undefined =>
+	path.reduce<JsonSchema | undefined>((at, key) => at?.properties?.[key], schema);
+
+/** The schema of each item for the declared `body`: an array body gives one item per entry. */
+function itemOfBody(body: JsonSchema, items: unknown): JsonSchema | undefined {
+	if (items === undefined) {
+		return body.type === 'array' && body.items ? entryItemOf(body.items) : body;
+	}
+	const path = typeof items === 'string' ? ITEMS_PATH.exec(items)?.[1] : undefined;
+	const list = path === undefined ? undefined : schemaAt(body, path.split('.').slice(1));
+	return list?.type === 'array' && list.items ? entryItemOf(list.items) : undefined;
+}
+
+/**
+ * The output for the response options and a declared body `schema`: `fullResponse: true` gives
+ * one `{ body, headers, statusCode }` item, else each item comes from the body as `toItems`
+ * makes it. Without a schema, or for an `items` value that is no plain read, it is `output`.
+ */
 export const responseOutputOf =
 	(output: JsonSchema) =>
-	({ fullResponse: full }: { readonly fullResponse?: boolean }) =>
-		full === true ? fullResponse.json : output;
+	(input: {
+		readonly fullResponse?: boolean;
+		readonly schema?: unknown;
+		readonly items?: unknown;
+	}): JsonSchema => {
+		const body = isJsonSchema(input.schema) ? closed(input.schema) : undefined;
+		if (input.fullResponse === true) {
+			return body
+				? { ...fullResponse.json, properties: { ...fullResponse.json.properties, body } }
+				: fullResponse.json;
+		}
+		return (body && itemOfBody(body, input.items)) ?? output;
+	};
 
 /** The page of a full response. A header with more values joins them, as `fetch` does. */
 export const responsePageOf = (response: unknown): ResponsePage => {

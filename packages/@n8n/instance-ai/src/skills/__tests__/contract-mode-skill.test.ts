@@ -128,7 +128,7 @@ describe('contract-mode skill', () => {
 	it('builds a flat list and names the macros in the skill', () => {
 		expect(skill).toContain('A workflow is a flat list: a trigger, then parts.');
 		expect(skill).toContain(
-			'`when`, `route`, `switchOn`, `merge`, `forEach` and `loop` branch, join\n  and repeat parts.',
+			"Give an HTTP step `schema`, the body's JSON Schema from its API docs:",
 		);
 		expect(skill).not.toMatch(/\.andThen|\.orElse|\.branch\(/);
 		expect(skill).not.toContain('WorkflowJSON');

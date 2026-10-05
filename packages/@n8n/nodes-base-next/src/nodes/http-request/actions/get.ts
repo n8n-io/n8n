@@ -12,6 +12,7 @@ import {
 
 import { httpRequest } from '../http-request.node';
 import {
+	bodySchema,
 	common,
 	responseOf,
 	responseOptions,
@@ -103,7 +104,8 @@ export const getRequest = httpRequest.action('get', {
 	// Major 3: cursor, link and offset pages, with page values read from each response.
 	version: 3,
 	// Minor 1: fullResponse and neverError, as the legacy node has them.
-	minor: 1,
+	// Minor 2: schema, the declared body that types the items.
+	minor: 2,
 	action: 'GET a URL',
 	summary: 'Read from any HTTP API. Use a dedicated action when one exists for the service.',
 	flow: { effect: 'read', cardinality: '1:N', idempotent: true },
@@ -116,6 +118,7 @@ export const getRequest = httpRequest.action('get', {
 			.optional(),
 		pages: pagesInput.optional(),
 		...responseOptions,
+		schema: bodySchema,
 	},
 	output,
 	deriveOutput: responseOutputOf(output.json),

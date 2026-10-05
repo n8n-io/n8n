@@ -1,7 +1,14 @@
 import { t } from '@n8n/node-sdk';
 
 import { httpRequest } from '../http-request.node';
-import { common, responseOf, responseOptions, responseOutputOf, toItems } from '../request';
+import {
+	bodySchema,
+	common,
+	responseOf,
+	responseOptions,
+	responseOutputOf,
+	toItems,
+} from '../request';
 
 const output = t.json().hint('The parsed response body; an array body emits one item per element');
 
@@ -10,7 +17,8 @@ export const sendRequest = httpRequest.action('send', {
 	// Major 3: the action declares that it reaches the host of `url`.
 	version: 3,
 	// Minor 1: fullResponse and neverError, as the legacy node has them.
-	minor: 1,
+	// Minor 2: schema, the declared body that types the items.
+	minor: 2,
 	action: 'Send a request',
 	summary: 'POST, PUT, PATCH, or DELETE to any HTTP API.',
 	flow: { effect: 'write', cardinality: '1:N', idempotent: false },
@@ -31,6 +39,7 @@ export const sendRequest = httpRequest.action('send', {
 			})
 			.optional(),
 		...responseOptions,
+		schema: bodySchema,
 	},
 	output,
 	deriveOutput: responseOutputOf(output.json),

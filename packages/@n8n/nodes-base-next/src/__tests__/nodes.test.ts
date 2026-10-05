@@ -503,6 +503,49 @@ describe('httpRequest.get', () => {
 		});
 	});
 
+	it('types each item by the declared schema of the body, closed unless it allows more', () => {
+		const issue = { type: 'object', properties: { title: { type: 'string' } } };
+		const closedIssue = { ...issue, additionalProperties: false };
+		const body = { type: 'object', properties: { issues: { type: 'array', items: issue } } };
+		expect(getRequest.deriveOutput?.({ url, schema: body })).toEqual({
+			type: 'object',
+			properties: { issues: { type: 'array', items: closedIssue } },
+			additionalProperties: false,
+		});
+		expect(getRequest.deriveOutput?.({ url, schema: { type: 'array', items: issue } })).toEqual(
+			closedIssue,
+		);
+		expect(
+			getRequest.deriveOutput?.({ url, schema: { type: 'array', items: { type: 'string' } } }),
+		).toEqual({
+			type: 'object',
+			properties: { data: { type: 'string' } },
+			required: ['data'],
+			additionalProperties: false,
+		});
+		expect(
+			getRequest.deriveOutput?.({ url, schema: body, items: '={{ $response.body.issues }}' }),
+		).toEqual(closedIssue);
+		expect(
+			getRequest.deriveOutput?.({ url, schema: body, items: '={{ $response.body.issues[0] }}' }),
+		).toEqual(getRequest.output.json);
+		expect(getRequest.deriveOutput?.({ url, schema: body, fullResponse: true })).toMatchObject({
+			properties: { body: { properties: { issues: { items: closedIssue } } } },
+			required: ['body', 'headers', 'statusCode'],
+		});
+		const open = {
+			type: 'object',
+			properties: { id: { type: 'number' } },
+			additionalProperties: true,
+		};
+		expect(getRequest.deriveOutput?.({ url, schema: open })).toEqual(open);
+		expect(sendRequest.deriveOutput?.({ method: 'POST', url, schema: issue })).toEqual(closedIssue);
+		expect(validate({ url, schema: body }, getRequest.inputSchema)).toEqual([]);
+		expect(
+			validate({ url, schema: '={{ {} }}' }, getRequest.inputSchema, { allowExpressions: true }),
+		).toEqual(['input.schema: must be a plain value, not an expression']);
+	});
+
 	it('migrates v2 cursor pagination to a cursor page style', () => {
 		const v2 = {
 			url,

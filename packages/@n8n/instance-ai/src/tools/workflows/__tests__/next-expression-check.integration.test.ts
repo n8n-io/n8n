@@ -699,6 +699,98 @@ export default workflow(
 		}
 	}, 120_000);
 
+	it('types the next steps by the declared body schema of httpRequest.get, on each surface', async () => {
+		const source = (declared: string, read: string) => `import { workflow, manual, set, expr } from '@n8n/workflow-sdk/next';
+import { code } from '@n8n/nodes/code';
+import { httpRequest } from '@n8n/nodes/httpRequest';
+
+export default workflow(
+	'Declared body',
+	manual(),
+	httpRequest.get({
+		name: 'Fetch',
+		url: 'https://api.example.com/issues',
+		${declared},
+	}),
+	${read},
+);
+`;
+		const schema =
+			"schema: { type: 'object', properties: { issues: { type: 'array', items: { type: 'object', properties: { title: { type: 'string' } }, required: ['title'] } } }, required: ['issues'] }";
+		const reads = [
+			"set({ name: 'Read', fields: { a: (item) => item.users } })",
+			"set({ name: 'Read', fields: { a: expr('{{ $json.users }}') } })",
+			"httpRequest.get({ name: 'Read', url: '={{ $json.users }}' })",
+			"set({ name: 'Read', fields: { a: (_item, $) => $('Fetch').users } })",
+			"code.javaScript({ name: 'Read', code: 'return $input.all().map((i) => ({ a: i.json.users }));' })",
+		];
+		for (const read of reads) {
+			const declared = await build(source(schema, read));
+			expect(declared.success ? [] : declared.errors, read).toEqual([
+				expect.stringContaining(
+					"Property 'users' does not exist on type '{ issues: { title: string; }[]; }'",
+				),
+			]);
+		}
+		const nested = await build(
+			source(
+				schema,
+				"code.javaScript({ name: 'Read', code: 'return $input.first().json.issues.map((issue) => ({ t: issue.titel }));' })",
+			),
+		);
+		expect(nested.success ? [] : nested.errors).toEqual([
+			expect.stringContaining("Property 'titel' does not exist on type '{ title: string; }'"),
+		]);
+		const right = await build(
+			source(
+				schema,
+				"set({ name: 'Read', fields: { titles: (item) => item.issues.map((issue) => issue.title).join(', ') } })",
+			),
+		);
+		expect(pathWarnings(right)).toEqual([]);
+		// A sample types the fields it gives; the other keys of an open body still read as `any`.
+		const sampled = await build(
+			source("sample: [{ issues: [{ title: 'Login 500' }] }]", reads[0] ?? ''),
+		);
+		expect(pathWarnings(sampled)).toEqual([]);
+	}, 120_000);
+
+	it('types a declared nullable body field of a full response, so a read must check it', async () => {
+		const source = (read: string) => `import { workflow, manual, set } from '@n8n/workflow-sdk/next';
+import { httpRequest } from '@n8n/nodes/httpRequest';
+
+export default workflow(
+	'Nullable body field',
+	manual(),
+	httpRequest.get({
+		name: 'Apollo',
+		url: 'https://api.apollo.io/v1/organizations/enrich',
+		fullResponse: true,
+		neverError: true,
+		schema: {
+			type: 'object',
+			properties: {
+				organization: {
+					anyOf: [
+						{ type: 'object', properties: { estimated_num_employees: { type: 'number' } } },
+						{ type: 'null' },
+					],
+				},
+			},
+			required: ['organization'],
+		},
+	}),
+	set({ name: 'Employees', fields: { employees: (res) => ${read} } }),
+);
+`;
+		const wrong = await build(source('res.body.organization.estimated_num_employees'));
+		expect(wrong.success ? [] : wrong.errors).toEqual([
+			expect.stringContaining("'res.body.organization' is possibly 'null'"),
+		]);
+		const right = await build(source('res.body.organization?.estimated_num_employees ?? null'));
+		expect(pathWarnings(right)).toEqual([]);
+	}, 120_000);
+
 	it('types the items of a step that continues on error as its output or { error }', async () => {
 		const source = (status: string) => `import { workflow, manual, set } from '@n8n/workflow-sdk/next';
 import { code } from '@n8n/nodes/code';
