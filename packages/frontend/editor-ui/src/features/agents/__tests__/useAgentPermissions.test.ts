@@ -45,10 +45,12 @@ describe('useAgentPermissions', () => {
 				'agent:delete',
 				'agent:publish',
 				'agent:unpublish',
+				'agent:import',
+				'agent:export',
 			]),
 		];
 
-		const { canCreate, canUpdate, canDelete, canPublish, canUnpublish } =
+		const { canCreate, canUpdate, canDelete, canPublish, canUnpublish, canImport, canExport } =
 			useAgentPermissions(PROJECT_ID);
 
 		expect(canCreate.value).toBe(true);
@@ -56,6 +58,8 @@ describe('useAgentPermissions', () => {
 		expect(canDelete.value).toBe(true);
 		expect(canPublish.value).toBe(true);
 		expect(canUnpublish.value).toBe(true);
+		expect(canImport.value).toBe(true);
+		expect(canExport.value).toBe(true);
 	});
 
 	it('grants permissions from global scopes when no project is found', () => {
@@ -66,10 +70,12 @@ describe('useAgentPermissions', () => {
 				'agent:delete',
 				'agent:publish',
 				'agent:unpublish',
+				'agent:import',
+				'agent:export',
 			],
 		} as never;
 
-		const { canCreate, canUpdate, canDelete, canPublish, canUnpublish } =
+		const { canCreate, canUpdate, canDelete, canPublish, canUnpublish, canImport, canExport } =
 			useAgentPermissions(PROJECT_ID);
 
 		expect(canCreate.value).toBe(true);
@@ -77,6 +83,8 @@ describe('useAgentPermissions', () => {
 		expect(canDelete.value).toBe(true);
 		expect(canPublish.value).toBe(true);
 		expect(canUnpublish.value).toBe(true);
+		expect(canImport.value).toBe(true);
+		expect(canExport.value).toBe(true);
 	});
 
 	it('grants permissions when either scope source allows the action', () => {
@@ -97,7 +105,7 @@ describe('useAgentPermissions', () => {
 		projectsStore.myProjects = [makeProject([])];
 		usersStore.currentUser = { globalScopes: [] } as never;
 
-		const { canCreate, canUpdate, canDelete, canPublish, canUnpublish } =
+		const { canCreate, canUpdate, canDelete, canPublish, canUnpublish, canImport, canExport } =
 			useAgentPermissions(PROJECT_ID);
 
 		expect(canCreate.value).toBe(false);
@@ -105,6 +113,8 @@ describe('useAgentPermissions', () => {
 		expect(canDelete.value).toBe(false);
 		expect(canPublish.value).toBe(false);
 		expect(canUnpublish.value).toBe(false);
+		expect(canImport.value).toBe(false);
+		expect(canExport.value).toBe(false);
 	});
 
 	// A project viewer holds execute and nothing else — the role that exists to look
@@ -145,6 +155,8 @@ describe('useAgentPermissions', () => {
 				'agent:delete',
 				'agent:publish',
 				'agent:unpublish',
+				'agent:import',
+				'agent:export',
 			]),
 		];
 		usersStore.currentUser = {
@@ -154,11 +166,13 @@ describe('useAgentPermissions', () => {
 				'agent:delete',
 				'agent:publish',
 				'agent:unpublish',
+				'agent:import',
+				'agent:export',
 			],
 		} as never;
 		sourceControlStore.preferences = { branchReadOnly: true } as never;
 
-		const { canCreate, canUpdate, canDelete, canPublish, canUnpublish } =
+		const { canCreate, canUpdate, canDelete, canPublish, canUnpublish, canImport, canExport } =
 			useAgentPermissions(PROJECT_ID);
 
 		expect(canCreate.value).toBe(false);
@@ -166,5 +180,7 @@ describe('useAgentPermissions', () => {
 		expect(canDelete.value).toBe(false);
 		expect(canPublish.value).toBe(false);
 		expect(canUnpublish.value).toBe(false);
+		expect(canImport.value).toBe(false);
+		expect(canExport.value).toBe(true);
 	});
 });

@@ -4,8 +4,8 @@ import { useProjectsStore } from '@/features/collaboration/projects/projects.sto
 import { useUsersStore } from '@n8n/stores/users.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 
-type AgentMutationKey = 'create' | 'update' | 'delete' | 'publish' | 'unpublish';
-type AgentPermissionKey = AgentMutationKey | 'execute';
+type AgentMutationKey = 'create' | 'update' | 'delete' | 'publish' | 'unpublish' | 'import';
+type AgentPermissionKey = AgentMutationKey | 'execute' | 'export';
 
 export type AgentPermissions = Record<`can${Capitalize<AgentPermissionKey>}`, ComputedRef<boolean>>;
 
@@ -15,9 +15,8 @@ export type AgentPermissions = Record<`can${Capitalize<AgentPermissionKey>}`, Co
 // matching how other resource views (workflows, credentials, data tables) combine
 // scopes with this flag.
 //
-// `canExecute` is deliberately outside that: running an agent writes no config, so
-// a read-only branch is no reason to stop it — the same reasoning that puts the
-// eval run route on `agent:execute` while the rest sit on `agent:update`.
+// Execution and export do not change the configuration. They remain available
+// on a read-only branch.
 export function useAgentPermissions(
 	projectId: MaybeRefOrGetter<string | undefined>,
 ): AgentPermissions {
@@ -48,6 +47,8 @@ export function useAgentPermissions(
 		canDelete: pick('delete'),
 		canPublish: pick('publish'),
 		canUnpublish: pick('unpublish'),
+		canImport: pick('import'),
+		canExport: computed(() => hasScope('export')),
 		canExecute: computed(() => hasScope('execute')),
 	};
 }

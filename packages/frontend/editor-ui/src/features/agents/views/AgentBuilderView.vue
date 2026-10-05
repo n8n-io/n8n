@@ -28,12 +28,15 @@ import {
 	addMissingAgentPersonalisation,
 	type AgentFileDto,
 	type InstanceAiHandoffContext,
+	type ImportResult,
 	type PushMessage,
 	type PushPayload,
 } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { ResponseError } from '@n8n/rest-api-client';
+import { sanitizeFilename } from '@n8n/utils/files/sanitize-filename';
+import { saveAs } from 'file-saver';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useAgentProjectBreadcrumb } from '@/features/agents/composables/useAgentProjectBreadcrumb';
 import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
@@ -62,6 +65,7 @@ import {
 	updateAgentSkill,
 } from '../composables/useAgentApi';
 import { useAgentIntegrationsCatalog } from '../composables/useAgentIntegrationsCatalog';
+import { exportAgentPackage, importAgentPackage } from '../agentPackages.api';
 import { useN8nChatChannel } from '../channels/n8nChat/useN8nChatChannel';
 import type {
 	AgentResource,
@@ -90,13 +94,14 @@ import { useAgentCapabilitiesActions } from '../composables/useAgentCapabilities
 import {
 	removeProjectAgentFromListCache,
 	upsertProjectAgentsListCache,
+	useProjectAgentsList,
 } from '../composables/useProjectAgentsList';
 import type { AgentPreviewHandoffParams } from '@/features/ai/instanceAi/composables/useInstanceAiAgentPreviewHandoff';
 import {
 	AGENT_BUILDER_VIEW,
 	AGENT_PREVIEW_VIEW,
 	AGENT_SESSION_DETAIL_VIEW,
-	AGENT_JSON_IMPORT_MODAL_KEY,
+	AGENT_PACKAGE_IMPORT_MODAL_KEY,
 	AGENT_DESCRIPTION_MODAL_KEY,
 	AGENT_VECTOR_STORES_MODAL_KEY,
 	ASSISTANT_THREAD_PARAM,
@@ -470,7 +475,10 @@ const {
 	canUpdate: canEditAgent,
 	canDelete: canDeleteAgent,
 	canExecute: canExecuteAgent,
+	canExport: canExportAgent,
+	canImport: canImportAgent,
 } = useAgentPermissions(projectId);
+const { refresh: refreshProjectAgents } = useProjectAgentsList(projectId);
 // True while writes from this tab must not reach the backend: the AI is
 // mutating this agent (artifact build lock or the embedded assistant), or
 // another client holds the collaboration write lock (multi-tab / multi-user).
@@ -2129,6 +2137,7 @@ watch(
 	{ immediate: true },
 );
 
+const exportingPackage = ref(false);
 const headerActions = computed(() => {
 	const actions: Array<ActionDropdownItem<string>> = [];
 
@@ -2152,17 +2161,20 @@ const headerActions = computed(() => {
 		});
 	}
 
-	actions.push({
-		id: 'export-json',
-		label: locale.baseText('agents.builder.exportJson' as BaseTextKey),
-		icon: 'download',
-		divided: actions.length > 0,
-	});
-
-	if (effectiveCanEditAgent.value) {
+	if (canExportAgent.value) {
 		actions.push({
-			id: 'import-json',
-			label: locale.baseText('agents.builder.importJson' as BaseTextKey),
+			id: 'export-package',
+			label: locale.baseText('agents.builder.exportPackage'),
+			icon: 'download',
+			divided: actions.length > 0,
+			disabled: exportingPackage.value || isUnsaved.value,
+		});
+	}
+
+	if (canImportAgent.value && !isEditingLocked.value) {
+		actions.push({
+			id: 'import-package',
+			label: locale.baseText('agents.builder.importPackage'),
 			icon: 'upload',
 		});
 	}
@@ -2188,38 +2200,75 @@ const headerActions = computed(() => {
 	return actions;
 });
 
-async function exportAgentJson() {
-	if (!localConfig.value) return;
-
+async function downloadAgentPackage() {
+	if (!canExportAgent.value || isUnsaved.value || exportingPackage.value) return;
+	const targetProjectId = projectId.value;
+	const targetAgentId = agentId.value;
+	exportingPackage.value = true;
 	try {
 		await flushAutosave();
-	} catch {
-		return;
+		if (!canExportAgent.value || isStaleAgentTarget(targetProjectId, targetAgentId)) return;
+		const name = sanitizeFilename(agentName.value);
+		const blob = await exportAgentPackage(
+			rootStore.restApiContext,
+			targetProjectId,
+			targetAgentId,
+			{
+				missingAgentDependencyPolicy: 'include-in-package',
+				missingWorkflowDependencyPolicy: 'include-in-package',
+			},
+		);
+		saveAs(blob, `${name}.n8np`);
+	} catch (error) {
+		showError(error, locale.baseText('agents.builder.exportPackageError'));
+	} finally {
+		exportingPackage.value = false;
 	}
-	if (!localConfig.value) return;
-
-	const blob = new Blob([`${JSON.stringify(localConfig.value, null, 2)}\n`], {
-		type: 'application/json',
-	});
-	const url = URL.createObjectURL(blob);
-	const name = localConfig.value.name.trim().replace(/[\\/:*?"<>|]+/g, '-') || 'agent';
-	const link = Object.assign(document.createElement('a'), {
-		href: url,
-		download: `${name}.json`,
-	});
-	document.body.appendChild(link);
-	link.click();
-	link.remove();
-	URL.revokeObjectURL(url);
 }
 
-function openImportJsonModal() {
-	if (!effectiveCanEditAgent.value) return;
+async function refreshAfterPackageImport(result: ImportResult) {
+	for (const imported of result.agents) {
+		agentsEventBus.emit('agentUpdated', { agentId: imported.localId, source: 'agent-builder' });
+	}
+	await refreshProjectAgents();
+	const selected =
+		result.agents.find(({ localId }) => localId === agentId.value) ?? result.agents[0];
+	if (!selected) return;
+	if (!isStaleAgentTarget(selected.projectId, selected.localId)) {
+		cancelQueuedAutosaves();
+		await onConfigUpdated(selected.projectId, selected.localId);
+	} else {
+		const failure = await router.push({
+			name: AGENT_BUILDER_VIEW,
+			params: { projectId: selected.projectId, agentId: selected.localId },
+		});
+		if (failure) throw failure;
+	}
+}
+
+function openImportPackageModal() {
+	if (!canImportAgent.value || isEditingLocked.value) return;
+	const targetProjectId = projectId.value;
+	const targetAgentId = agentId.value;
 
 	uiStore.openModalWithData({
-		name: AGENT_JSON_IMPORT_MODAL_KEY,
+		name: AGENT_PACKAGE_IMPORT_MODAL_KEY,
 		data: {
-			onConfirm: replaceConfigAndScheduleSave,
+			onConfirm: async (file: File) => {
+				if (
+					!canImportAgent.value ||
+					isEditingLocked.value ||
+					isStaleAgentTarget(targetProjectId, targetAgentId)
+				) {
+					throw new Error(locale.baseText('agents.builder.importPackageModal.editorChanged'));
+				}
+				await flushAutosave();
+				if (isEditingLocked.value || isStaleAgentTarget(targetProjectId, targetAgentId)) {
+					throw new Error(locale.baseText('agents.builder.importPackageModal.editorChanged'));
+				}
+				return await importAgentPackage(rootStore.restApiContext, targetProjectId, file);
+			},
+			onImported: refreshAfterPackageImport,
 		},
 	});
 }
@@ -2276,12 +2325,12 @@ async function onHeaderAction(action: string) {
 		onToggleVersionHistory();
 		return;
 	}
-	if (action === 'export-json') {
-		await exportAgentJson();
+	if (action === 'export-package') {
+		await downloadAgentPackage();
 		return;
 	}
-	if (action === 'import-json') {
-		openImportJsonModal();
+	if (action === 'import-package') {
+		openImportPackageModal();
 		return;
 	}
 	if (action === 'toggleFavorite') {

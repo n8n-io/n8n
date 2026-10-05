@@ -3,7 +3,11 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { mount, flushPromises } from '@vue/test-utils';
 import { nextTick, ref, computed, reactive } from 'vue';
 import { createPinia, setActivePinia } from 'pinia';
-import { MAX_AGENT_KNOWLEDGE_BASE_SIZE_BYTES, type PushMessage } from '@n8n/api-types';
+import {
+	MAX_AGENT_KNOWLEDGE_BASE_SIZE_BYTES,
+	type PushMessage,
+	type ImportResult,
+} from '@n8n/api-types';
 import { ResponseError } from '@n8n/rest-api-client';
 import type {
 	AgentJsonConfig,
@@ -14,6 +18,7 @@ import type {
 } from '../types';
 import { getRandomAgentPersonalisationGradient } from '@n8n/api-types';
 import { agentsEventBus } from '../agents.eventBus';
+import { makePackageImportResult } from './utils/packageFixtures';
 import { AGENT_TEMPLATES, AGENT_TEMPLATE_SUGGESTIONS_VERSION } from '../agentTemplates';
 import {
 	AGENT_BUILDER_VIEW,
@@ -49,9 +54,15 @@ const setPrefillMock = vi.fn();
 const submitSuggestionMock = vi.fn();
 const clearBudgetStopsMock = vi.fn();
 const trackMock = vi.fn();
-let createObjectURLSpy: ReturnType<typeof vi.spyOn> | undefined;
-let revokeObjectURLSpy: ReturnType<typeof vi.spyOn> | undefined;
-let anchorClickSpy: ReturnType<typeof vi.spyOn> | undefined;
+const exportAgentPackageMock = vi.fn();
+const importAgentPackageMock = vi.fn();
+const saveAsMock = vi.fn();
+const refreshProjectAgentsMock = vi.fn();
+vi.mock('../agentPackages.api', () => ({
+	exportAgentPackage: exportAgentPackageMock,
+	importAgentPackage: importAgentPackageMock,
+}));
+vi.mock('file-saver', () => ({ saveAs: saveAsMock }));
 const {
 	fetchUsableCredentialsMock,
 	fetchAllCredentialsMock,
@@ -69,6 +80,8 @@ const {
 		canDelete: { value: false },
 		canPublish: { value: true },
 		canUnpublish: { value: true },
+		canExport: { value: true },
+		canImport: { value: true },
 	},
 }));
 vi.mock('vue-router', () => ({
@@ -402,7 +415,7 @@ vi.mock('../composables/useProjectAgentsList', () => ({
 	useProjectAgentsList: () => ({
 		list: { value: [] },
 		ensureLoaded: vi.fn().mockResolvedValue([]),
-		refresh: vi.fn(),
+		refresh: refreshProjectAgentsMock,
 	}),
 	upsertProjectAgentsListCache: vi.fn(),
 	removeProjectAgentFromListCache: vi.fn(),
@@ -545,15 +558,6 @@ async function startArtifactPreviewSend(
 		.findComponent({ name: 'AgentPreviewDock' })
 		.props('beforeSend') as () => Promise<void>;
 	return { pending: beforeSend() };
-}
-
-async function readBlobText(blob: Blob): Promise<string> {
-	return await new Promise<string>((resolve, reject) => {
-		const reader = new FileReader();
-		reader.onload = () => resolve(typeof reader.result === 'string' ? reader.result : '');
-		reader.onerror = () => reject(reader.error);
-		reader.readAsText(blob);
-	});
 }
 
 const commonStubs = {
@@ -787,6 +791,14 @@ function mockPendingAgentRow(...pendingIds: string[]) {
 
 function resetViewMocks() {
 	vi.clearAllMocks();
+	exportAgentPackageMock.mockReset();
+	exportAgentPackageMock.mockResolvedValue(new Blob());
+	importAgentPackageMock.mockReset();
+	importAgentPackageMock.mockResolvedValue(makePackageImportResult());
+	refreshProjectAgentsMock.mockReset();
+	refreshProjectAgentsMock.mockResolvedValue([]);
+	agentPermissionsMock.canExport.value = true;
+	agentPermissionsMock.canImport.value = true;
 	for (let index = localStorage.length - 1; index >= 0; index--) {
 		const key = localStorage.key(index);
 		if (
@@ -881,12 +893,6 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 	beforeEach(() => {
 		resetViewMocks();
 		vi.restoreAllMocks();
-		createObjectURLSpy?.mockRestore();
-		revokeObjectURLSpy?.mockRestore();
-		anchorClickSpy?.mockRestore();
-		createObjectURLSpy = undefined;
-		revokeObjectURLSpy = undefined;
-		anchorClickSpy = undefined;
 		agentPermissionsMock.canCreate.value = true;
 		agentPermissionsMock.canUpdate.value = true;
 		agentPermissionsMock.canDelete.value = false;
@@ -2631,12 +2637,6 @@ describe('AgentBuilderView — configuration validation', () => {
 	beforeEach(() => {
 		resetViewMocks();
 		vi.restoreAllMocks();
-		createObjectURLSpy?.mockRestore();
-		revokeObjectURLSpy?.mockRestore();
-		anchorClickSpy?.mockRestore();
-		createObjectURLSpy = undefined;
-		revokeObjectURLSpy = undefined;
-		anchorClickSpy = undefined;
 		agentPermissionsMock.canCreate.value = true;
 		agentPermissionsMock.canUpdate.value = true;
 		agentPermissionsMock.canDelete.value = false;
@@ -4363,16 +4363,34 @@ describe('AgentBuilderView — three-column shell', () => {
 		wrapper.unmount();
 	});
 
-	it('adds JSON import and export actions to the header menu', async () => {
+	it('adds package import and export actions to the header menu', async () => {
 		const wrapper = await renderView();
 		const header = wrapper.findComponent({ name: 'AgentBuilderHeader' });
 
 		expect(header.props('headerActions')).toEqual(
 			expect.arrayContaining([
-				expect.objectContaining({ id: 'export-json', label: 'agents.builder.exportJson' }),
-				expect.objectContaining({ id: 'import-json', label: 'agents.builder.importJson' }),
+				expect.objectContaining({ id: 'export-package', label: 'agents.builder.exportPackage' }),
+				expect.objectContaining({ id: 'import-package', label: 'agents.builder.importPackage' }),
 			]),
 		);
+	});
+
+	it('requires package scopes for header actions even when the agent can be edited', async () => {
+		agentPermissionsMock.canExport.value = false;
+		agentPermissionsMock.canImport.value = false;
+		const wrapper = await renderView();
+		const header = wrapper.findComponent({ name: 'AgentBuilderHeader' });
+		expect(header.props('headerActions')).not.toEqual(
+			expect.arrayContaining([expect.objectContaining({ id: 'export-package' })]),
+		);
+		expect(header.props('headerActions')).not.toEqual(
+			expect.arrayContaining([expect.objectContaining({ id: 'import-package' })]),
+		);
+		header.vm.$emit('header-action', 'export-package');
+		header.vm.$emit('header-action', 'import-package');
+		await flushPromises();
+		expect(exportAgentPackageMock).not.toHaveBeenCalled();
+		expect(openModalWithDataMock).not.toHaveBeenCalled();
 	});
 
 	it('toggles the favorite from the header menu', async () => {
@@ -4720,42 +4738,43 @@ describe('AgentBuilderView — three-column shell', () => {
 		expect(favoritesStoreMock.renameFavorite).toHaveBeenCalledWith('a1', 'agent', 'Renamed Agent');
 	});
 
-	it('exports the current agent config as a JSON file from the header menu', async () => {
-		Object.defineProperty(URL, 'createObjectURL', {
-			configurable: true,
-			value: vi.fn(),
-		});
-		Object.defineProperty(URL, 'revokeObjectURL', {
-			configurable: true,
-			value: vi.fn(),
-		});
-		createObjectURLSpy = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:agent-json');
-		revokeObjectURLSpy = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
-		anchorClickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
-		const createdAnchors: HTMLAnchorElement[] = [];
-		const originalCreateElement = document.createElement.bind(document);
-		const createElementSpy = vi.spyOn(document, 'createElement').mockImplementation((tagName) => {
-			const element = originalCreateElement(tagName);
-			if (tagName === 'a') {
-				createdAnchors.push(element as HTMLAnchorElement);
-			}
-			return element;
-		});
-
+	it('waits for autosave and downloads the server package with its dependencies', async () => {
+		const blob = new Blob(['package bytes'], { type: 'application/gzip' });
+		exportAgentPackageMock.mockResolvedValueOnce(blob);
 		const wrapper = await renderView();
-		wrapper.findComponent({ name: 'AgentBuilderHeader' }).vm.$emit('header-action', 'export-json');
-		await flushPromises();
-
-		expect(createObjectURLSpy).toHaveBeenCalledWith(expect.any(Blob));
-		const blob = createObjectURLSpy.mock.calls[0][0] as Blob;
-		await expect(readBlobText(blob)).resolves.toBe(
-			`${JSON.stringify(withDefaultLlm(intendedConfig), null, 2)}\n`,
+		let finishSave!: () => void;
+		updateConfigMock.mockImplementationOnce(
+			(_projectId, _agentId, config: TestAgentConfig) =>
+				new Promise((resolve) => {
+					finishSave = () => resolve({ config, versionId: 'saved-version', stale: false });
+				}),
 		);
-		expect(createdAnchors[0]?.download).toBe('Agent One.json');
-		expect(anchorClickSpy).toHaveBeenCalled();
-		expect(revokeObjectURLSpy).toHaveBeenCalledWith('blob:agent-json');
+		wrapper.findComponent({ name: 'AgentBuilderEditorColumn' }).vm.$emit('update:config', {
+			instructions: 'Save these edits before export.',
+		});
+		wrapper
+			.findComponent({ name: 'AgentBuilderHeader' })
+			.vm.$emit('header-action', 'export-package');
+		await vi.waitFor(() => expect(updateConfigMock).toHaveBeenCalled());
+		expect(exportAgentPackageMock).not.toHaveBeenCalled();
+		finishSave();
+		await vi.waitFor(() => expect(saveAsMock).toHaveBeenCalledWith(blob, 'Agent One.n8np'));
+		expect(exportAgentPackageMock).toHaveBeenCalledWith(rootStoreMock.restApiContext, 'p1', 'a1', {
+			missingAgentDependencyPolicy: 'include-in-package',
+			missingWorkflowDependencyPolicy: 'include-in-package',
+		});
+	});
 
-		createElementSpy.mockRestore();
+	it('shows an export failure without downloading a file', async () => {
+		const error = new Error('A required skill body is missing');
+		exportAgentPackageMock.mockRejectedValueOnce(error);
+		const wrapper = await renderView();
+		wrapper
+			.findComponent({ name: 'AgentBuilderHeader' })
+			.vm.$emit('header-action', 'export-package');
+		await flushPromises();
+		expect(showErrorMock).toHaveBeenCalledWith(error, 'agents.builder.exportPackageError');
+		expect(saveAsMock).not.toHaveBeenCalled();
 	});
 
 	it('saves the description from the header menu through the write-locked config path', async () => {
@@ -4863,52 +4882,45 @@ describe('AgentBuilderView — three-column shell', () => {
 		);
 	});
 
-	it('opens the JSON import modal and saves imported config from the header menu', async () => {
+	it.each([
+		{ localId: 'a1', projectId: 'p1' },
+		{ localId: 'imported-agent', projectId: 'p2' },
+	])('refreshes or opens the returned package agent $projectId/$localId', async (target) => {
 		const wrapper = await renderView();
-		wrapper.findComponent({ name: 'AgentBuilderHeader' }).vm.$emit('header-action', 'import-json');
+		wrapper
+			.findComponent({ name: 'AgentBuilderHeader' })
+			.vm.$emit('header-action', 'import-package');
 		await nextTick();
-
 		expect(openModalWithDataMock).toHaveBeenCalledWith(
 			expect.objectContaining({
-				name: 'agentJsonImportModal',
-				data: expect.objectContaining({
-					onConfirm: expect.any(Function),
-				}),
+				name: 'agentPackageImportModal',
 			}),
 		);
-
-		const importedConfig = {
-			name: 'Imported agent',
-			model: 'openai/gpt-4o-mini',
-			credential: 'cred-openai',
-			instructions: 'Use the imported settings.',
+		const { onConfirm, onImported } = openModalWithDataMock.mock.calls[0][0].data as {
+			onConfirm: (file: File) => Promise<ImportResult>;
+			onImported: (result: ImportResult) => Promise<void>;
 		};
-		openModalWithDataMock.mock.calls[0][0].data.onConfirm(importedConfig);
-		await nextTick();
-
-		expect((wrapper.vm as unknown as { localConfig: unknown }).localConfig).toMatchObject(
-			importedConfig,
-		);
-		expect((wrapper.vm as unknown as { agent: { name: string } }).agent.name).toBe(
-			'Imported agent',
-		);
-		expect(favoritesStoreMock.renameFavorite).toHaveBeenLastCalledWith(
-			'a1',
-			'agent',
-			'Imported agent',
-		);
-
-		await (wrapper.vm as unknown as { flushAutosave: () => Promise<void> }).flushAutosave();
-
-		expect(updateConfigMock).toHaveBeenCalledWith(
-			'p1',
-			'a1',
-			expect.objectContaining({
-				...importedConfig,
-				memory: { enabled: true, storage: 'n8n' },
-			}),
-			'hash-1',
-		);
+		const result = makePackageImportResult();
+		Object.assign(result.agents[0], target);
+		importAgentPackageMock.mockResolvedValueOnce(result);
+		const file = new File(['package bytes'], 'agent.n8np');
+		await expect(onConfirm(file)).resolves.toEqual(result);
+		expect(importAgentPackageMock).toHaveBeenCalledWith(rootStoreMock.restApiContext, 'p1', file);
+		getAgentMock.mockClear();
+		fetchConfigMock.mockClear();
+		await onImported(result);
+		expect(refreshProjectAgentsMock).toHaveBeenCalled();
+		if (target.localId === 'a1') {
+			expect(fetchConfigMock).toHaveBeenCalledWith('p1', 'a1');
+			expect(getAgentMock).toHaveBeenCalledWith(rootStoreMock.restApiContext, 'p1', 'a1');
+			expect(routerPush).not.toHaveBeenCalled();
+		} else {
+			expect(routerPush).toHaveBeenCalledWith({
+				name: AGENT_BUILDER_VIEW,
+				params: { projectId: 'p2', agentId: 'imported-agent' },
+			});
+		}
+		expect(updateConfigMock).not.toHaveBeenCalled();
 	});
 
 	it('no longer renders the old editor-column action dropdown', async () => {

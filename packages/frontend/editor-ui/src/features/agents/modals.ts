@@ -3,7 +3,7 @@ import type { ModalDefinition } from '@n8n/frontend-module-sdk';
 import {
 	AGENT_CONFIRMATION_MODAL_KEY,
 	AGENT_DESCRIPTION_MODAL_KEY,
-	AGENT_JSON_IMPORT_MODAL_KEY,
+	AGENT_PACKAGE_IMPORT_MODAL_KEY,
 	AGENT_SKILL_MODAL_KEY,
 	AGENT_SUB_AGENTS_MODAL_KEY,
 	AGENT_TASK_MODAL_KEY,
@@ -88,12 +88,13 @@ export const AGENTS_MODALS: ModalDefinition[] = [
 		},
 	},
 	{
-		key: AGENT_JSON_IMPORT_MODAL_KEY,
-		component: async () => await import('./components/AgentJsonImportModal.vue'),
+		key: AGENT_PACKAGE_IMPORT_MODAL_KEY,
+		component: async () => await import('./components/AgentPackageImportModal.vue'),
 		initialState: {
 			open: false,
 			data: {
 				onConfirm: () => {},
+				onImported: () => {},
 			},
 		},
 	},

@@ -7,7 +7,6 @@ import { EventService } from '@n8n/backend-services';
 import type { AuthenticatedRequest } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { ApiKeyScope } from '@n8n/permissions';
-import type { Response } from 'express';
 import { UserError } from 'n8n-workflow';
 
 import { BadRequestError, ForbiddenError } from '@n8n/errors';
@@ -16,7 +15,7 @@ import {
 	PackageEntityNotFoundError,
 } from '@/modules/n8n-packages/entities/package-export.errors';
 import { N8nPackagesService } from '@/modules/n8n-packages/n8n-packages.service';
-import type { ExportPackageResult } from '@/modules/n8n-packages/n8n-packages.types';
+import { streamPackageExport } from '@/modules/n8n-packages/utils/stream-package-export';
 import { classifyPackageFailure } from '@/modules/n8n-packages/package-failure-classifier';
 import {
 	IMPORT_PACKAGE_SELECTION_BODY_FIELD_SET,
@@ -28,9 +27,6 @@ import type { PublicAPIEndpoint } from '../../shared/handler.types';
 import { publicApiCompositeScope } from '../../shared/middlewares/global.middleware';
 
 const PACKAGE_EXPORT_SCOPES = 'project:export,workflow:export,agent:export';
-
-/** Header carrying the JSON-serialized true per-entity counts of the exported package. */
-const EXPORT_COUNTS_HEADER = 'X-N8n-Export-Counts';
 
 type ExportPackageRequest = AuthenticatedRequest<
 	{},
@@ -108,27 +104,6 @@ function assertPackageImportApiKeyScopes(req: AuthenticatedRequest, allowAgents 
 	) {
 		throw new ForbiddenError('Forbidden');
 	}
-}
-
-async function streamPackageExport(
-	res: Response,
-	{ stream, counts }: ExportPackageResult,
-): Promise<Response> {
-	res.setHeader('Content-Type', 'application/gzip');
-	res.setHeader('Content-Disposition', 'attachment; filename="export.n8np"');
-	res.setHeader(EXPORT_COUNTS_HEADER, JSON.stringify(counts));
-	// Cross-origin browser clients can only read the counts header if it's exposed.
-	res.setHeader('Access-Control-Expose-Headers', EXPORT_COUNTS_HEADER);
-
-	return await new Promise<Response>((resolve, reject) => {
-		stream.on('error', reject);
-		res.on('finish', () => resolve(res));
-		res.on('close', () => {
-			if (!res.writableFinished) stream.destroy();
-			resolve(res);
-		});
-		stream.pipe(res);
-	});
 }
 
 const n8nPackagesHandlers: N8nPackagesHandlers = {

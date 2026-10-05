@@ -20,6 +20,7 @@ export class AgentsModule implements ModuleInterface {
 		await import('./agents-catalog.controller.js');
 		await import('./agent-threads.controller.js');
 		await import('./agents.controller.js');
+		await import('./agent-packages.controller.js');
 		await import('./agents-settings.controller.js');
 		await import('./agents-config.controller.js');
 		await import('./agents-skills.controller.js');

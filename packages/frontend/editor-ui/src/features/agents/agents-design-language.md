@@ -183,7 +183,7 @@ a direct pill edit. Save, Cancel, and Close exit the complete flow.
 | Skills                    | Use `fit` with a 52rem content width. Keep it narrower than `full`. Use the flush Agent body so the file workspace does not get double padding. Keep the file navigation and editor inside the scrolling body. |
 | Dangerous confirmation    | Keep its explicit Cancel and primary actions. Examples are Agent, file, and session deletion; unpublish; revert; eval regeneration; LangSmith export; and managed Slack app removal. |
 | Managed Slack app removal | Keep the stacked confirmation because it can delete an external resource.                                                                                                            |
-| Small utility dialog      | Keep an appropriate small size. Use Cancel and one bottom-right primary action. JSON import and Agent duplication use this rule.                                                     |
+| Small utility dialog      | Keep an appropriate small size. Use Cancel and one bottom-right primary action. Package import and Agent duplication use this rule.                                                     |
 | Channel platform setup    | A platform-owned setup action can stay in the inline modal content. The Agent shell still owns navigation and dismissal.                                                             |
 | Memory                    | Do not migrate Memory into this pattern in this change.                                                                                                                              |
 
