@@ -1,0 +1,39 @@
+{
+  "name": "@n8n/eval-viewer",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Local viewer for AI builder eval runs. Never published.",
+  "type": "module",
+  "scripts": {
+    "view": "tsx src/cli/view.ts",
+    "extract": "tsx src/cli/view.ts --extract-only",
+    "build:app": "vite build",
+    "typecheck": "vue-tsc --noEmit",
+    "test": "vitest run",
+    "test:dev": "vitest",
+    "lint": "eslint . --quiet",
+    "lint:fix": "eslint . --fix",
+    "format": "biome format --write .",
+    "format:check": "biome ci ."
+  },
+  "dependencies": {
+    "@n8n/design-system": "workspace:*",
+    "chart.js": "^4.4.0",
+    "vue": "catalog:frontend",
+    "vue-chartjs": "^5.2.0",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@n8n/eslint-config": "workspace:*",
+    "@n8n/typescript-config": "workspace:*",
+    "@types/node": "catalog:",
+    "@vitejs/plugin-vue": "catalog:frontend",
+    "eslint": "catalog:",
+    "tsx": "catalog:",
+    "typescript": "catalog:",
+    "vite": "catalog:",
+    "vitest": "catalog:",
+    "vue-tsc": "catalog:frontend"
+  },
+  "license": "LicenseRef-n8n-sustainable-use"
+}

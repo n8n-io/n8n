@@ -1,0 +1,16 @@
+{
+	"extends": "@n8n/typescript-config/tsconfig.frontend-module.json",
+	"compilerOptions": {
+		// `paths` in the base resolves `@n8n/design-system` to its source for types: its
+		// `dist` ships no declarations. The build bundles the `dist` JavaScript.
+		"rootDirs": [".", "../design-system/src"],
+		// Ambient declarations the design-system source needs and never imports.
+		"types": [
+			"node",
+			"vite/client",
+			"../design-system/node_modules/unplugin-icons/types/vue",
+			"../design-system/src/shims-modules.d.ts"
+		]
+	},
+	"include": ["src/**/*.ts", "src/**/*.vue", "vite.config.ts", "vitest.config.ts"]
+}
