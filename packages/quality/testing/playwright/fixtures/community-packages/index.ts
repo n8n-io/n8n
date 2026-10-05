@@ -43,7 +43,7 @@ export const test = base.extend<
 		{ scope: 'worker', auto: true },
 	],
 
-	supportedNodesApiVersion: async (_fixtures, use) => {
+	supportedNodesApiVersion: async ({ api: _api }, use) => {
 		await use(N8N_NODES_API_VERSION);
 	},
 
