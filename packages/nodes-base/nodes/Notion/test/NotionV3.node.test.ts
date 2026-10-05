@@ -1167,57 +1167,64 @@ describe('NotionV3', () => {
 		}
 
 		it('sends the other conditions to Notion and evaluates the formula ones on the results', async () => {
-			mockNotionApiRequestAllItems
-				.mockRejectedValueOnce(formulaError)
-				.mockResolvedValueOnce([birthdayPage, otherPage]);
+			mockNotionApiRequestAllItems.mockRejectedValueOnce(formulaError);
+			mockNotionApiRequest
+				.mockResolvedValueOnce({ results: [birthdayPage], has_more: true, next_cursor: 'cursor' })
+				.mockResolvedValueOnce({ results: [otherPage], has_more: false, next_cursor: null });
 
 			const result = await node.execute.call(getAllContext('allFilters'));
 
-			expect(mockNotionApiRequestAllItems).toHaveBeenLastCalledWith(
-				'results',
+			const filter = { and: [{ property: 'Décès', date: { is_empty: true } }] };
+			expect(mockNotionApiRequest).toHaveBeenNthCalledWith(
+				1,
 				'POST',
 				'/data_sources/data-source-id/query',
-				{ filter: { and: [{ property: 'Décès', date: { is_empty: true } }] } },
+				{ filter },
+			);
+			expect(mockNotionApiRequest).toHaveBeenNthCalledWith(
+				2,
+				'POST',
+				'/data_sources/data-source-id/query',
+				{ filter, start_cursor: 'cursor' },
 			);
 			expect(result[0].map((item) => item.json.id)).toEqual(['birthday']);
 		});
 
-		it('applies the limit after evaluating the formula conditions', async () => {
-			mockNotionApiRequestAllItems
-				.mockRejectedValueOnce(formulaError)
-				.mockResolvedValueOnce([otherPage, birthdayPage, { ...birthdayPage, id: 'birthday-2' }]);
+		it('stops paging once the limit is reached', async () => {
+			mockNotionApiRequestAllItems.mockRejectedValueOnce(formulaError);
+			mockNotionApiRequest.mockResolvedValueOnce({
+				results: [otherPage, birthdayPage, { ...birthdayPage, id: 'birthday-2' }],
+				has_more: true,
+				next_cursor: 'cursor',
+			});
 
 			const result = await node.execute.call(
 				getAllContext('allFilters', { returnAll: false, limit: 1 }),
 			);
 
-			expect(mockNotionApiRequestAllItems).toHaveBeenLastCalledWith(
-				'results',
-				'POST',
-				'/data_sources/data-source-id/query',
-				{ filter: { and: [{ property: 'Décès', date: { is_empty: true } }] } },
-			);
+			expect(mockNotionApiRequest).toHaveBeenCalledTimes(1);
 			expect(result[0].map((item) => item.json.id)).toEqual(['birthday']);
 		});
 
 		it('keeps pages matching either a formula or another condition with any filter', async () => {
 			mockNotionApiRequestAllItems
 				.mockRejectedValueOnce(formulaError)
-				.mockResolvedValueOnce([otherPage])
-				.mockResolvedValueOnce([birthdayPage, otherPage, deceasedPage]);
+				.mockResolvedValueOnce([otherPage]);
+			mockNotionApiRequest.mockResolvedValueOnce({
+				results: [birthdayPage, otherPage, deceasedPage],
+				has_more: false,
+				next_cursor: null,
+			});
 
 			const result = await node.execute.call(getAllContext('anyFilter'));
 
-			expect(mockNotionApiRequestAllItems).toHaveBeenNthCalledWith(
-				2,
+			expect(mockNotionApiRequestAllItems).toHaveBeenLastCalledWith(
 				'results',
 				'POST',
 				'/data_sources/data-source-id/query',
 				{ filter: { or: [{ property: 'Décès', date: { is_empty: true } }] } },
 			);
-			expect(mockNotionApiRequestAllItems).toHaveBeenNthCalledWith(
-				3,
-				'results',
+			expect(mockNotionApiRequest).toHaveBeenCalledWith(
 				'POST',
 				'/data_sources/data-source-id/query',
 				{},
@@ -1234,6 +1241,7 @@ describe('NotionV3', () => {
 
 			await expect(node.execute.call(getAllContext('allFilters'))).rejects.toThrow(otherError);
 			expect(mockNotionApiRequestAllItems).toHaveBeenCalledTimes(1);
+			expect(mockNotionApiRequest).not.toHaveBeenCalled();
 		});
 	});
 

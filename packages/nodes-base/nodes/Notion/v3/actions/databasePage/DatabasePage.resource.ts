@@ -28,6 +28,7 @@ import {
 } from '../../helpers/utils';
 import {
 	getDataSourceProperties,
+	isDataObject,
 	notionApiRequestAllItemsV3,
 	notionApiRequestV3,
 } from '../../transport';
@@ -605,8 +606,36 @@ export async function get(this: IExecuteFunctions, items: INodeExecutionData[]) 
 	return returnData;
 }
 
-async function queryAllPages(this: IExecuteFunctions, endpoint: string, body: IDataObject) {
-	return await notionApiRequestAllItemsV3.call(this, 'results', 'POST', endpoint, body);
+/**
+ * Pages through a query and keeps the pages that match, stopping as soon as
+ * `limit` matches are collected so a small limit does not scan the whole data source.
+ */
+async function queryMatchingPages(
+	this: IExecuteFunctions,
+	endpoint: string,
+	body: IDataObject,
+	matches: (page: IDataObject) => boolean,
+	limit?: number,
+) {
+	const pages: IDataObject[] = [];
+	let cursor: unknown;
+	do {
+		const response = await notionApiRequestV3.call(
+			this,
+			'POST',
+			endpoint,
+			typeof cursor === 'string' ? { ...body, start_cursor: cursor } : body,
+		);
+		const results = Array.isArray(response.results) ? response.results.filter(isDataObject) : [];
+		for (const page of results) {
+			if (!matches(page)) continue;
+			pages.push(page);
+			if (limit && pages.length >= limit) return pages;
+		}
+		cursor = response.has_more === true ? response.next_cursor : undefined;
+	} while (typeof cursor === 'string');
+
+	return pages;
 }
 
 /**
@@ -630,30 +659,35 @@ async function queryWithLocalFormulaFilters(
 	const otherFilter = mapDataSourceFilters(otherConditions, matchType, timezone);
 	const sortBody: IDataObject = sorts ? { sorts } : {};
 
-	let pages: IDataObject[];
 	if (matchType === 'allFilters') {
-		pages = await queryAllPages.call(this, endpoint, {
-			...sortBody,
-			...(otherFilter ? { filter: otherFilter } : {}),
-		});
-		pages = pages.filter((page) =>
-			formulaConditions.every((condition) => matchesFormulaFilter(page, condition, timezone)),
-		);
-	} else {
-		const matchedIds = new Set<unknown>();
-		if (otherFilter) {
-			const matchedPages = await queryAllPages.call(this, endpoint, { filter: otherFilter });
-			for (const page of matchedPages) matchedIds.add(page.id);
-		}
-		pages = await queryAllPages.call(this, endpoint, { ...sortBody });
-		pages = pages.filter(
+		return await queryMatchingPages.call(
+			this,
+			endpoint,
+			{ ...sortBody, ...(otherFilter ? { filter: otherFilter } : {}) },
 			(page) =>
-				matchedIds.has(page.id) ||
-				formulaConditions.some((condition) => matchesFormulaFilter(page, condition, timezone)),
+				formulaConditions.every((condition) => matchesFormulaFilter(page, condition, timezone)),
+			limit,
 		);
 	}
 
-	return limit ? pages.slice(0, limit) : pages;
+	// Pages matching the other conditions are found by Notion, so only that
+	// filtered set is fetched in full; the unfiltered scan stops at the limit
+	const matchedIds = new Set<unknown>();
+	if (otherFilter) {
+		const matchedPages = await notionApiRequestAllItemsV3.call(this, 'results', 'POST', endpoint, {
+			filter: otherFilter,
+		});
+		for (const page of matchedPages) matchedIds.add(page.id);
+	}
+	return await queryMatchingPages.call(
+		this,
+		endpoint,
+		sortBody,
+		(page) =>
+			matchedIds.has(page.id) ||
+			formulaConditions.some((condition) => matchesFormulaFilter(page, condition, timezone)),
+		limit,
+	);
 }
 
 export async function getAll(this: IExecuteFunctions, items: INodeExecutionData[]) {
