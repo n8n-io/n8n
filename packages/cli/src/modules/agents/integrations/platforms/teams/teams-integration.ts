@@ -129,7 +129,8 @@ export class TeamsIntegration extends AgentChatIntegration {
 	readonly actionToolGuidance = [
 		'For edit_message, pass the messageId returned by a previous Teams action or get_current_message_context. The current Teams conversation is selected automatically.',
 		'For add_reaction, use one of thumbs_up, eyes, check, x, rocket, thinking or pin, or a Teams reaction type such as like, heart or laugh.',
-		'A channel or group chat message that does not mention you needs no reply. Use do_not_respond unless you have something useful to add, or add_reaction to acknowledge it.',
+		'A channel or group chat message that does not mention you needs no reply. Use do_not_respond unless you have something useful to add.',
+		'To acknowledge a message with only a reaction, call add_reaction and then do_not_respond. Any text you write after add_reaction is posted as a reply.',
 	];
 
 	/**
