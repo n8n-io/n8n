@@ -59,6 +59,57 @@ split them out of the old `runner.ts` monolith):
 - `harness/cleanup.ts` — `cleanupBuild`, per-case timeout policy, bounded
   concurrency, binary workflow checks and shared failure summaries.
 
+## Expectation judging: context blocks and preconditions
+
+`build-expectations/verifier.ts` assembles one prompt per build. Everything the
+judge may treat as fact goes in under a **"Ground truth — do not recount"**
+heading, so a block is never something the judge re-derives from prose:
+
+- The transcript (`utils/conversation-text.ts`), with per-turn token usage
+  inlined in each turn header — step count, input tokens, cached share, output
+  tokens — joined to the turn by its `runIds` (one turn spans many runs, because
+  every resume emits its own `run-start`).
+- A build-wide token **Total**, a cache read/write split, and a **Fixed
+  overhead** line (the opening step's input — instructions and tool schemas
+  plus one user message, before the thread had any history).
+- The **observation rows** for the thread (markers + text), read from
+  `instance_ai_observations` — so an expectation can grade the compacted summary
+  itself, not just whether the reply happened to be right.
+- The built workflow, tool traces, and rendered artifacts.
+
+The **token** numbers come from `RunDebugBuffer` snapshots, so they need
+`N8N_INSTANCE_AI_RUN_DEBUG_ENABLED=true` on the instance under test; without it
+those blocks render `(no run debug captured)`. The **memory** block does not —
+it is a separate REST read, so a compaction case runs with the flag off.
+
+The buffer keys records by `runId` and hooks only the orchestrator's own stream
+(`buildOrchestratorAgentStreamOptions` and its resume twin are the sole call
+sites of `createRunDebugStepHooks`). A workflow build runs in that loop, so a
+workflow case's totals are its whole cost. A delegated **Agent** build reuses
+the same `runId` on a stream with no hooks, and a step carries no `agentId`, so
+its tokens are absent and could not be attributed even if the hooks existed.
+Per-agent cost attribution needs hooks on the builder stream plus an `agentId`
+on `RunDebugStep` / `InstanceAiRunDebugStep`.
+
+`DEBUG_JUDGE_CONTEXT=<file>` dumps the assembled prompt, which is the only
+practical way to check a new block renders as intended.
+
+**Preconditions belong in the harness, not the prompt.** When a case's premise
+can fail to materialise (`requiresMemoryCompaction` — no compaction cursor, or a
+cursor with no observations), `run/build-orchestrator.ts` replaces the judge call
+with `allFailVerdicts(…)`, producing `incomplete` verdicts that scoring
+**excludes**. The judge never learns the premise was checked: it grades the
+conversation, and a misconfigured lane must not read as a quality regression.
+Same mechanism as `priorRunFailed`.
+
+**Read state from its own store, not from a rendering.** The premise check used
+to regex an `<observations>` tag out of the debug snapshot's system prompt,
+through a *display* helper. That is the same surface that silently emptied when
+the AI SDK renamed `system` to `instructions` (#38887) — and it fails quietly, so
+a rename would report every compaction case "not judged" forever while looking
+fine. `GET /rest/instance-ai/eval/threads/:threadId/memory` serves the rows and
+the cursor instead.
+
 ## Where to add things
 
 | You want to… | Touch exactly |
@@ -74,6 +125,15 @@ split them out of the old `runner.ts` monolith):
 - **`eval-results.json`** is ingested by the LangTracer dispatcher, which runs
   this CLI keyless per case. The exact field set is pinned by
   `__tests__/eval-results-dispatcher-contract.test.ts`.
+
+  **The CLI is per case; the n8n instance is not.** The dispatcher never starts
+  n8n — it targets a long-lived container per slot, `restart: unless-stopped`,
+  booted once for the whole sweep and never reset between cases. The nightly
+  runs ~12 of them (runners x slots), so one n8n process serves dozens of cases
+  back to back. Isolation is per-case *user* (`run/lane-users.ts`
+  `provisionCaseBuildUser`), not per-case instance. Assume anything the backend
+  holds in memory outlives the case that created it, and size it for a
+  multi-hour process rather than one run.
 - **`eval-pr-comment.md`** is posted verbatim by CI. The comment uses an
   `### Instance AI Workflow Eval` or `### Instance AI Agent Eval` prefix.
 - **LangSmith feedback keys** (`scenario_pass`, `failure_category`,

@@ -1,17 +1,18 @@
 import type { Mock } from 'vitest';
 import type { Logger } from '@n8n/backend-common';
-import type { ExecutionsConfig } from '@n8n/config';
-import type { User } from '@n8n/db';
+import type { ExecutionsConfig, InstanceAiConfig } from '@n8n/config';
+import type { ProcessedDataRepository, User } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 import type { BinaryDataService } from 'n8n-core';
 import type {
+	IConnections,
 	INode,
 	IRunExecutionData,
 	IRun,
 	IWorkflowBase,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { TimeoutExecutionCancelledError, UserError } from 'n8n-workflow';
+import { NodeConnectionTypes, TimeoutExecutionCancelledError, UserError } from 'n8n-workflow';
 
 import type { ActiveExecutions } from '@/active-executions';
 import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
@@ -71,7 +72,8 @@ const mockRestoreNoProxy = vi.fn();
 vi.mock('@n8n/backend-network/proxy', () => ({
 	ensureHostsBypassProxy: vi.fn(() => mockRestoreNoProxy),
 }));
-vi.mock('@n8n/workflow-sdk', () => ({
+vi.mock('@n8n/workflow-sdk', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@n8n/workflow-sdk')>()),
 	normalizePinData: vi.fn((pd: unknown) => pd),
 }));
 
@@ -81,11 +83,16 @@ vi.mock('n8n-workflow', async () => {
 	const actual = await vi.importActual<typeof import('n8n-workflow')>('n8n-workflow');
 	class MockWorkflow {
 		nodes: Record<string, unknown>;
+		connections: IConnections;
 		getStartNode = mockGetStartNode;
-		constructor(options: { nodes?: Array<{ name: string }> }) {
+		constructor(options: { nodes?: Array<{ name: string }>; connections?: IConnections }) {
 			// Key the entity's node objects by name (same references, so the SUT's
 			// in-place parameter patching propagates to the executed workflow).
 			this.nodes = Object.fromEntries((options?.nodes ?? []).map((node) => [node.name, node]));
+			this.connections = options?.connections ?? {};
+		}
+		getChildNodes(nodeName: string) {
+			return actual.getChildNodes(this.connections, nodeName);
 		}
 	}
 	return {
@@ -107,6 +114,7 @@ import {
 	generateMockHints,
 	identifyNodesForHints,
 	identifyNodesForPinData,
+	isDataTableRead,
 	partitionAiRoots,
 } from '../workflow-analysis';
 import type { MockHints } from '../workflow-analysis';
@@ -217,6 +225,8 @@ describe('EvalExecutionService', () => {
 	const loadNodesAndCredentials = mock<LoadNodesAndCredentials>();
 	const ownershipService = mock<OwnershipService>();
 	const dataTableService = mock<DataTableService>();
+	const processedDataRepository = mock<ProcessedDataRepository>();
+	const instanceAiConfig = { evalInstance: true } as InstanceAiConfig;
 
 	// Captured configureAdditionalData closure so tests can re-invoke it on a
 	// stub additionalData without booting the real runner.
@@ -253,6 +263,8 @@ describe('EvalExecutionService', () => {
 			loadNodesAndCredentials,
 			ownershipService,
 			dataTableService,
+			processedDataRepository,
+			instanceAiConfig,
 		);
 		// Reset to safe default — tests that flip queue mode reassign in-test.
 		Object.assign(executionsConfig, { mode: 'regular' });
@@ -423,6 +435,179 @@ describe('EvalExecutionService', () => {
 			expect(runArg.pinData?.Webhook).toEqual([]);
 		});
 
+		describe('trigger content', () => {
+			function triggerCapableStart() {
+				nodeTypes.getByNameAndVersion.mockReturnValue({
+					description: { properties: [] } as unknown as INodeTypeDescription,
+					webhook: vi.fn(),
+				} as never);
+			}
+
+			it('returns a framework error and does not run when Phase 1 leaves a trigger start node without content', async () => {
+				triggerCapableStart();
+				const empty = makeEmptyHints();
+				empty.triggerContent = {};
+				empty.warnings = ['Phase 1 attempt 2/2: empty triggerContent'];
+				generateMockHintsMock.mockResolvedValue(empty);
+
+				const result = await service.executeWithLlmMock('wf-1', makeUser());
+
+				expect(result.success).toBe(false);
+				expect(result.errors[0]).toMatch(
+					/^FRAMEWORK ISSUE: .*no trigger content for start node "Webhook" \(Phase 1 attempt 2\/2: empty triggerContent\)/,
+				);
+				expect(workflowRunner.run).not.toHaveBeenCalled();
+			});
+
+			it('keeps the zero-item pin when the scenario says the trigger emits nothing', async () => {
+				triggerCapableStart();
+				const hints = makeEmptyHints();
+				hints.triggerContent = {};
+				hints.triggerEmitsNoItems = true;
+				generateMockHintsMock.mockResolvedValue(hints);
+
+				await service.executeWithLlmMock('wf-1', makeUser());
+
+				const runArg = workflowRunner.run.mock.calls[0][0] as unknown as {
+					pinData?: Record<string, unknown[]>;
+				};
+				expect(runArg.pinData?.Webhook).toEqual([]);
+			});
+
+			it('runs as usual when the trigger content is present', async () => {
+				triggerCapableStart();
+
+				await service.executeWithLlmMock('wf-1', makeUser());
+
+				expect(workflowRunner.run).toHaveBeenCalledTimes(1);
+			});
+		});
+
+		describe('engine readiness', () => {
+			// The patcher leaves an invalid id-mode locator alone, so the readiness check rejects it.
+			const idLocatorNode = (): INode =>
+				({
+					id: 'node-2',
+					name: 'HTTP Request',
+					type: 'n8n-nodes-base.httpRequest',
+					typeVersion: 1,
+					position: [200, 0],
+					parameters: { project: { __rl: true, mode: 'id', value: 'IT' } },
+				}) as INode;
+			const startToLocator: IConnections = {
+				Webhook: { main: [[{ node: 'HTTP Request', type: NodeConnectionTypes.Main, index: 0 }]] },
+			};
+
+			function mockIdLocatorNodeType() {
+				nodeTypes.getByNameAndVersion.mockImplementation((nodeType) => {
+					if (nodeType !== 'n8n-nodes-base.httpRequest') {
+						return { description: { properties: [] } as unknown as INodeTypeDescription } as never;
+					}
+					return {
+						description: {
+							properties: [
+								{
+									displayName: 'Project',
+									name: 'project',
+									type: 'resourceLocator',
+									default: { mode: 'list', value: '' },
+									required: true,
+									modes: [
+										{
+											displayName: 'ID',
+											name: 'id',
+											type: 'string',
+											validation: [
+												{
+													type: 'regex',
+													properties: {
+														regex: '^[0-9]+$',
+														errorMessage: 'Not a valid Jira Project ID',
+													},
+												},
+											],
+										},
+									],
+								},
+							],
+						} as unknown as INodeTypeDescription,
+					} as never;
+				});
+			}
+
+			it('refuses to start when a node downstream of the start node still has a parameter issue', async () => {
+				workflowFinderService.findWorkflowForUser.mockResolvedValue(
+					makeWorkflowEntity({
+						nodes: [makeStartNode(), idLocatorNode()],
+						connections: startToLocator,
+					}) as never,
+				);
+				mockIdLocatorNodeType();
+
+				const result = await service.executeWithLlmMock('wf-1', makeUser());
+
+				expect(workflowRunner.run).not.toHaveBeenCalled();
+				expect(result.success).toBe(false);
+				expect(result.errors[0]).toMatch(
+					/^Execution failed: n8n refused to start the workflow: .*'HTTP Request' node has issues:\n- Not a valid Jira Project ID/,
+				);
+				expect(result.nodeResults['HTTP Request']?.configIssues).toBeDefined();
+				expect(result.nodeResults.Webhook?.executionMode).not.toBe('pinned');
+			});
+
+			it('runs when the node with the parameter issue is not downstream of the start node', async () => {
+				workflowFinderService.findWorkflowForUser.mockResolvedValue(
+					makeWorkflowEntity({
+						nodes: [makeStartNode(), idLocatorNode()],
+						connections: {},
+					}) as never,
+				);
+				mockIdLocatorNodeType();
+
+				await service.executeWithLlmMock('wf-1', makeUser());
+
+				expect(workflowRunner.run).toHaveBeenCalledTimes(1);
+			});
+		});
+
+		it("applies a pinned Data Table read's literal conditions and limit to the generated rows", async () => {
+			const readNode = {
+				id: 'node-3',
+				name: 'Read Pending Tasks',
+				type: 'n8n-nodes-base.dataTable',
+				typeVersion: 1.1,
+				position: [400, 0],
+				parameters: {
+					operation: 'get',
+					matchType: 'allConditions',
+					filters: { conditions: [{ keyName: 'status', condition: 'eq', keyValue: 'pending' }] },
+					returnAll: false,
+					limit: 1,
+				},
+			} as INode;
+			workflowFinderService.findWorkflowForUser.mockResolvedValue(
+				makeWorkflowEntity({ nodes: [makeStartNode(), readNode] }) as never,
+			);
+			identifyNodesForPinDataMock.mockReturnValue([readNode]);
+			emitsDataTableRowsMock.mockReturnValue(true);
+			generatePinDataMock.mockResolvedValue({
+				'Read Pending Tasks': [
+					{ json: { task: 'T-1', status: 'done' } },
+					{ json: { task: 'T-2', status: 'pending' } },
+					{ json: { task: 'T-3', status: 'pending' } },
+				],
+			});
+
+			await service.executeWithLlmMock('wf-1', makeUser());
+
+			const runArg = workflowRunner.run.mock.calls[0][0] as unknown as {
+				pinData?: Record<string, unknown[]>;
+			};
+			expect(runArg.pinData?.['Read Pending Tasks']).toEqual([
+				{ json: { task: 'T-2', status: 'pending' } },
+			]);
+		});
+
 		it('routes through WorkflowRunner with evaluation mode + pin data + user', async () => {
 			const hints = makeEmptyHints();
 			hints.triggerContent = { body: { email: 'jane@example.com' } };
@@ -484,6 +669,41 @@ describe('EvalExecutionService', () => {
 
 			expect(result.success).toBe(false);
 			expect(workflowStaticDataService.saveStaticDataById).toHaveBeenCalledWith('wf-1', {});
+		});
+
+		it('aborts the mock handler when the run ends, so a request loop left running stops', async () => {
+			workflowFinderService.findWorkflowForUser.mockResolvedValue(makeWorkflowEntity() as never);
+			activeExecutions.getPostExecutePromise.mockRejectedValue(new Error('execution crashed'));
+
+			await service.executeWithLlmMock('wf-1', makeUser());
+
+			const options = createLlmMockHandlerMock.mock.calls[0][0] as { signal?: AbortSignal };
+			expect(options.signal?.aborted).toBe(true);
+		});
+
+		it('clears the workflow deduplication state before and after each run', async () => {
+			workflowFinderService.findWorkflowForUser.mockResolvedValue(makeWorkflowEntity() as never);
+
+			await service.executeWithLlmMock('wf-1', makeUser());
+			await service.executeWithLlmMock('wf-1', makeUser());
+
+			const clears = processedDataRepository.deleteForWorkflow.mock;
+			expect(clears.calls).toEqual([['wf-1'], ['wf-1'], ['wf-1'], ['wf-1']]);
+			// Keys that builder-verify runs recorded must be gone before the first scenario reads them.
+			const runs = workflowRunner.run.mock.invocationCallOrder;
+			expect(clears.invocationCallOrder[0]).toBeLessThan(runs[0]);
+			expect(clears.invocationCallOrder[1]).toBeGreaterThan(runs[0]);
+		});
+
+		it('leaves the deduplication state alone on an instance that is not an eval instance', async () => {
+			instanceAiConfig.evalInstance = false;
+			try {
+				workflowFinderService.findWorkflowForUser.mockResolvedValue(makeWorkflowEntity() as never);
+				await service.executeWithLlmMock('wf-1', makeUser());
+				expect(processedDataRepository.deleteForWorkflow).not.toHaveBeenCalled();
+			} finally {
+				instanceAiConfig.evalInstance = true;
+			}
 		});
 
 		it('preserves an intentional zero-item bypass pin instead of injecting a phantom item', async () => {
@@ -674,6 +894,7 @@ describe('EvalExecutionService', () => {
 			expect(identifyNodesForPinDataMock).toHaveBeenCalledWith(
 				expect.objectContaining({ id: 'wf-1' }),
 				undefined,
+				new Set(),
 			);
 		});
 
@@ -757,6 +978,7 @@ describe('EvalExecutionService', () => {
 				expect(identifyNodesForPinDataMock).toHaveBeenCalledWith(
 					expect.objectContaining({ id: 'wf-1' }),
 					new Set(['Agent']),
+					new Set(),
 				);
 			});
 
@@ -1742,6 +1964,67 @@ describe('EvalExecutionService', () => {
 
 			expect(dataTableService.getColumns).not.toHaveBeenCalled();
 			expect(generatePinDataMock.mock.calls[0][0].dataTableColumns).toBeUndefined();
+		});
+	});
+
+	describe('seeded Data Table reads (via execution)', () => {
+		function readNode(name: string, dataTableId: unknown): INode {
+			return {
+				id: name,
+				name,
+				type: 'n8n-nodes-base.dataTable',
+				typeVersion: 1,
+				position: [200, 0],
+				parameters: { resource: 'row', operation: 'get', dataTableId },
+			} as INode;
+		}
+
+		beforeEach(() => {
+			vi.mocked(isDataTableRead).mockImplementation(
+				(node: INode) => node.type === 'n8n-nodes-base.dataTable',
+			);
+			ownershipService.getWorkflowProjectCached.mockResolvedValue({ id: 'proj-1' } as never);
+		});
+
+		it('leaves the reads of a seeded table out of the pinned nodes', async () => {
+			workflowFinderService.findWorkflowForUser.mockResolvedValue(
+				makeWorkflowEntity({
+					nodes: [
+						makeStartNode(),
+						readNode('Read Seeded', { __rl: true, mode: 'list', value: 'dt-seeded' }),
+						// Spelt in another case: the node resolves names case-insensitively.
+						readNode('Read Named', { __rl: true, mode: 'name', value: 'stock [SEED 1a2b3c4d]' }),
+						readNode('Read Other', { __rl: true, mode: 'id', value: 'dt-other' }),
+						// A name the seed did not create stays pinned.
+						readNode('Read Unseeded', { __rl: true, mode: 'name', value: 'Orders' }),
+					],
+				}) as never,
+			);
+			dataTableService.findDataTablesByIds.mockResolvedValue([
+				{ id: 'dt-seeded', name: 'Customers' },
+				{ id: 'dt-named', name: 'Stock [seed 1a2b3c4d]' },
+			] as never);
+
+			await service.executeWithLlmMock('wf-1', makeUser(), {
+				seededDataTableIds: ['dt-seeded', 'dt-named'],
+			});
+
+			expect(dataTableService.findDataTablesByIds).toHaveBeenCalledWith(['dt-seeded', 'dt-named']);
+			const liveReads = identifyNodesForPinDataMock.mock.calls[0][2];
+			expect([...(liveReads ?? [])]).toEqual(['Read Seeded', 'Read Named']);
+		});
+
+		it('pins every read when the caller seeded no table', async () => {
+			workflowFinderService.findWorkflowForUser.mockResolvedValue(
+				makeWorkflowEntity({
+					nodes: [makeStartNode(), readNode('Read', { __rl: true, mode: 'id', value: 'dt-1' })],
+				}) as never,
+			);
+
+			await service.executeWithLlmMock('wf-1', makeUser());
+
+			expect([...(identifyNodesForPinDataMock.mock.calls[0][2] ?? [])]).toEqual([]);
+			expect(ownershipService.getWorkflowProjectCached).not.toHaveBeenCalled();
 		});
 	});
 

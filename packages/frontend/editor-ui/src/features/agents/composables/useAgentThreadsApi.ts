@@ -1,5 +1,7 @@
 import type {
 	AgentMessageAuthor,
+	AgentPersistedMessageDto,
+	AgentSessionPreviewAccess,
 	AgentSessionLangSmithExportResponse,
 	AgentSessionOrigin,
 	AgentSessionStatus,
@@ -7,7 +9,7 @@ import type {
 import { makeRestApiRequest } from '@n8n/rest-api-client';
 import type { IRestApiContext } from '@n8n/rest-api-client';
 
-export interface AgentExecutionThread {
+export interface AgentExecutionThread extends AgentSessionPreviewAccess {
 	id: string;
 	agentId: string;
 	agentName: string;
@@ -90,6 +92,7 @@ export interface AgentExecution {
 	stoppedAt: string | null;
 	duration: number;
 	userMessage: string | null;
+	inputMessages?: AgentPersistedMessageDto[];
 	/** Chat platform user who wrote the turn; null outside chat integrations. */
 	author: AgentMessageAuthor | null;
 	attachments: AgentExecutionAttachment[] | null;
@@ -123,10 +126,11 @@ export const listThreads = async (
 	context: IRestApiContext,
 	projectId: string,
 	agentId: string,
-	options: { limit: number; cursor?: string; filters?: AgentSessionFilters },
+	options: { limit: number; cursor?: string; filters?: AgentSessionFilters; previewOnly?: boolean },
 ): Promise<ThreadsPage> => {
 	const params = new URLSearchParams({ limit: String(options.limit) });
 	if (options.cursor) params.set('cursor', options.cursor);
+	if (options.previewOnly) params.set('previewOnly', 'true');
 	const { filters } = options;
 	if (filters?.status && filters.status !== 'all') params.set('status', filters.status);
 	if (filters?.origin && filters.origin !== 'all') params.set('origin', filters.origin);

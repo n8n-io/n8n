@@ -2,7 +2,6 @@
 import { computed, onMounted, onUnmounted, provide, ref, useTemplateRef, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import {
-	N8nHeading,
 	N8nIconButton,
 	N8nResizeWrapper,
 	N8nText,
@@ -10,7 +9,6 @@ import {
 	TOOLTIP_DELAY_MS,
 } from '@n8n/design-system';
 import {
-	StorageSerializers,
 	onClickOutside,
 	useDebounceFn,
 	useElementSize,
@@ -20,11 +18,7 @@ import {
 import { useI18n } from '@n8n/i18n';
 import type { InstanceAiAgentAttachment } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import {
-	DEBOUNCE_TIME,
-	LOCAL_STORAGE_INSTANCE_AI_ARTIFACT_PREVIEW_OPEN,
-	LOCAL_STORAGE_INSTANCE_AI_CHAT_PANEL_WIDTH_RATIO,
-} from '@/app/constants';
+import { DEBOUNCE_TIME, LOCAL_STORAGE_INSTANCE_AI_CHAT_PANEL_WIDTH_RATIO } from '@/app/constants';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { COLLAPSED_MAIN_SIDEBAR_WIDTH, useSidebarLayout } from '@/app/composables/useSidebarLayout';
 import { getDebounceTime } from '@n8n/composables/useDebounce';
@@ -38,6 +32,7 @@ import {
 } from './instanceAi.threadRuntime';
 import { useInstanceAiSettingsStore } from './instanceAiSettings.store';
 import { useCanvasPreview } from './useCanvasPreview';
+import { fetchThreadTabs, saveThreadTabs } from './instanceAi.memory.api';
 import { buildInstanceAiAgentPreviewHandoffContext } from './composables/useInstanceAiHandoff';
 import type { AgentPreviewHandoffParams } from './composables/useInstanceAiAgentPreviewHandoff';
 import { useTransitionGate } from './useTransitionGate';
@@ -66,10 +61,10 @@ import { useAgentCapabilitySummary } from '@/features/agents/composables/useAgen
 import { useAgentEvalsStore } from '@/features/agents/agentEvals.store';
 import { useIsAgentWorking } from './composables/useIsAgentWorking';
 import { useAgentReturnContextStore } from '@/features/agents/agentReturnContext.store';
+import { useRecentWorkflowsStore } from '@/app/stores/recentWorkflows.store';
+import { useIsAssistantAtMentionsEnabled } from '@/features/ai/assistant-at-mentions/composables/useIsAssistantAtMentionsEnabled';
 
-const props = defineProps<{
-	threadId: string;
-}>();
+const props = defineProps<{ threadId: string }>();
 
 const store = useInstanceAiStore();
 const settingsStore = useInstanceAiSettingsStore();
@@ -80,6 +75,8 @@ const router = useRouter();
 const { width: windowWidth } = useWindowSize();
 const { isCollapsed: isMainSidebarCollapsed, sidebarWidth: mainSidebarWidth } = useSidebarLayout();
 const toast = useToast();
+const recentWorkflowsStore = useRecentWorkflowsStore();
+const mentionsEnabled = useIsAssistantAtMentionsEnabled();
 
 const conversationRef = useTemplateRef<InstanceType<typeof InstanceAiConversation>>('conversation');
 
@@ -185,6 +182,10 @@ const currentThreadTitle = computed<string | undefined>(() =>
 	),
 );
 
+// An onboarding thread hides the header and the artifacts panel until the user leaves the
+// onboarding. The header keeps its space, so the chat does not move to the top edge.
+const isOnboardingChromeHidden = computed(() => store.isOnboardingChromeHidden(props.threadId));
+
 // The tab names the conversation, not the workflow previewed inside it — the
 // parent view claims the title so the embedded canvas can't overwrite this.
 const documentTitle = useDocumentTitle();
@@ -195,21 +196,16 @@ watch(
 );
 
 // --- Canvas / data table preview ---
-// null = no preference yet, so the first artifact still opens the preview.
-// Sync flush keeps a thread switch from exposing the old thread's value for a tick.
-const persistedArtifactPreviewOpen = useLocalStorage<boolean | null>(
-	() => LOCAL_STORAGE_INSTANCE_AI_ARTIFACT_PREVIEW_OPEN(props.threadId),
-	null,
-	{ serializer: StorageSerializers.boolean, writeDefaults: false, flush: 'sync' },
-);
 const preview = useCanvasPreview({
 	thread,
 	threadId: () => props.threadId,
 	initialAgentId: () =>
 		getAgentBuilderTargetFromThreadMetadata(store.getThreadMetadata(props.threadId))?.agentId,
-	previewOpenState: () => persistedArtifactPreviewOpen.value ?? undefined,
-	onPreviewOpenChange: (open) => {
-		persistedArtifactPreviewOpen.value = open;
+	tabsStorage: {
+		load: async () => (await fetchThreadTabs(rootStore.restApiContext, props.threadId)).state,
+		save: async (state) => {
+			await saveThreadTabs(rootStore.restApiContext, props.threadId, state);
+		},
 	},
 });
 watch(
@@ -217,6 +213,13 @@ watch(
 	([tabId, previewVisible]) => {
 		thread.setActiveArtifactId(previewVisible ? tabId : undefined);
 	},
+	{ immediate: true },
+);
+// The agent sees the open tabs, not every artifact the thread produced. Until the
+// stored tabs load, the default tabs can still hold closed ones, so send none.
+watch(
+	[() => preview.openTabs.value, () => preview.tabsLoaded.value],
+	([tabs, loaded]) => thread.setOpenTabs(loaded ? tabs : null),
 	{ immediate: true },
 );
 // --- Setup panel (checklist docked above the composer) ---
@@ -237,6 +240,13 @@ const setupPanelProjectId = computed(() =>
 		: undefined,
 );
 const setupOverlapHeight = ref(0);
+const setupPanelRef = useTemplateRef<InstanceType<typeof InstanceAiSetupPanel>>('setupPanel');
+onUnmounted(
+	thread.registerSetupChatTelemetryContext(() => {
+		const context = setupPanelRef.value?.getChatTelemetryContext();
+		return context?.workflow_id === setupPanelWorkflowId.value ? context : undefined;
+	}),
+);
 
 const agentReturnContext = useAgentReturnContextStore().consumePendingArtifactReturn();
 const agentReturnWorkflowId = agentReturnContext?.workflowId;
@@ -255,6 +265,20 @@ function openAgentChatPreview(agentId: string, projectId: string): boolean {
 	return true;
 }
 
+function openWorkflowPreview(workflowId: string): boolean {
+	const artifact = thread.producedArtifacts.get(workflowId);
+	recentWorkflowsStore.registerWorkflowOpen(workflowId, artifact?.projectId ?? thread.projectId);
+	return preview.openWorkflowPreview(workflowId);
+}
+
+function selectArtifactTab(tabId: string): void {
+	const artifact = thread.producedArtifacts.get(tabId);
+	if (artifact?.type === 'workflow') {
+		recentWorkflowsStore.registerWorkflowOpen(tabId, artifact.projectId ?? thread.projectId);
+	}
+	preview.selectTab(tabId);
+}
+
 const activeAgentPreviewSessionId = computed(() => {
 	const context = handoffContext.value;
 	if (context?.source === 'agent-preview' && context.agentId === preview.activeAgentId.value) {
@@ -268,7 +292,7 @@ const activeAgentPreviewSessionId = computed(() => {
 	return persisted?.agentId === preview.activeAgentId.value ? persisted.threadId : undefined;
 });
 
-provide('openWorkflowPreview', preview.openWorkflowPreview);
+provide('openWorkflowPreview', openWorkflowPreview);
 provide('openDataTablePreview', preview.openDataTablePreview);
 provide('openAgentPreview', preview.openAgentPreview);
 provide('openAgentChatPreview', openAgentChatPreview);
@@ -281,7 +305,7 @@ provide(
 // --- Side panels ---
 const showDebugPanel = ref(false);
 const isDebugEnabled = computed(() => localStorage.getItem('instanceAi.debugMode') === 'true');
-const hasPreviewTabs = computed(() => preview.allArtifactTabs.value.length > 0);
+const hasPreviewTabs = computed(() => preview.openTabs.value.length > 0);
 const isArtifactsPanelRevealed = ref(false);
 const isArtifactsPanelDismissedInLayout = ref(false);
 const MIN_AVAILABLE_WIDTH_FOR_PINNED_ARTIFACTS_PANEL = 900;
@@ -318,12 +342,10 @@ function toggleArtifactsPreview() {
 		return;
 	}
 
-	const selectedTab = preview.allArtifactTabs.value.find(
-		(tab) => tab.id === preview.activeTabId.value,
-	);
-	const tabToOpen = selectedTab ?? preview.allArtifactTabs.value[0];
+	const selectedTab = preview.openTabs.value.find((tab) => tab.id === preview.activeTabId.value);
+	const tabToOpen = selectedTab ?? preview.openTabs.value[0];
 	if (tabToOpen) {
-		preview.selectTab(tabToOpen.id);
+		selectArtifactTab(tabToOpen.id);
 	}
 }
 
@@ -375,12 +397,13 @@ const isArtifactsPanelInLayout = computed(
 const canShowArtifactsPanel = computed(
 	() =>
 		thread.hasMessages ||
-		preview.allArtifactTabs.value.length > 0 ||
+		preview.openTabs.value.length > 0 ||
 		(Boolean(props.threadId) && thread.isHydratingThread),
 );
 const showArtifactsPanel = computed(
 	() =>
 		canShowArtifactsPanel.value &&
+		!isOnboardingChromeHidden.value &&
 		!preview.isPreviewVisible.value &&
 		(isArtifactsPanelInLayout.value
 			? !isArtifactsPanelDismissedInLayout.value
@@ -661,10 +684,12 @@ function handleAgentPreviewAssistantHandoff(params: AgentPreviewHandoffParams) {
 	// preview chat open reads as two places to ask the same thing.
 	isAgentPreviewDockOpen.value = false;
 
-	conversationRef.value?.applyHandoff(
+	if (!conversationRef.value) return;
+	conversationRef.value.applyHandoff(
 		buildInstanceAiAgentPreviewHandoffContext(params),
 		params.initialDraft,
 	);
+	params.onAccepted?.();
 }
 
 /**
@@ -727,18 +752,12 @@ function handleNewThreadClick() {
 			:data-layout-animated="shouldAnimatePreviewLayout"
 			data-test-id="instance-ai-builder-chat"
 		>
-			<div :class="$style.builderChatHeader" data-test-id="instance-ai-builder-chat-header">
-				<InstanceAiViewHeader :show-thread-history-label="!currentThreadTitle">
-					<template #title>
-						<N8nHeading
-							v-if="currentThreadTitle"
-							tag="h2"
-							bold
-							size="small"
-							:class="$style.headerTitle"
-						>
-							{{ currentThreadTitle }}
-						</N8nHeading>
+			<div
+				:class="[$style.builderChatHeader, { [$style.chromeHidden]: isOnboardingChromeHidden }]"
+				data-test-id="instance-ai-builder-chat-header"
+			>
+				<InstanceAiViewHeader :title="currentThreadTitle">
+					<template #status>
 						<N8nText
 							v-if="thread.sseState === 'reconnecting'"
 							size="small"
@@ -835,12 +854,14 @@ function handleNewThreadClick() {
 				<InstanceAiConversation
 					ref="conversation"
 					:above-input-overlap-height="setupPanelWorkflowId ? setupOverlapHeight : undefined"
+					:mentions-enabled="mentionsEnabled"
 					@thread-missing="onThreadMissing"
 					@agent-attachment-restored="onAgentAttachmentRestored"
 				>
 					<template #above-input>
 						<InstanceAiSetupPanel
 							v-if="setupPanelWorkflowId"
+							ref="setupPanel"
 							:workflow-id="setupPanelWorkflowId"
 							:project-id="setupPanelProjectId"
 							@update:overlap-height="setupOverlapHeight = $event"
@@ -928,15 +949,19 @@ function handleNewThreadClick() {
 						:model-value="preview.activeTabId.value"
 						orientation="horizontal"
 						:class="$style.previewPanel"
-						@update:model-value="preview.selectTab"
+						@update:model-value="selectArtifactTab"
 					>
 						<InstanceAiPreviewTabBar
-							:tabs="preview.allArtifactTabs.value"
+							:tabs="preview.openTabs.value"
 							:active-tab-id="preview.activeTabId.value"
 							:is-expanded="isPreviewExpanded"
 							:preview-toggle-label="artifactsPreviewToggleLabel"
 							@toggle-preview="toggleArtifactsPreview"
 							@toggle-expanded="togglePreviewExpanded"
+							:project-id="thread.projectId"
+							@close-tab="preview.closeTab"
+							@open-tab="preview.openTab"
+							@reorder-tab="preview.reorderTab"
 						/>
 						<div :class="$style.previewContent">
 							<InstanceAiWorkflowPreview
@@ -1015,6 +1040,10 @@ function handleNewThreadClick() {
 	flex-shrink: 0;
 }
 
+.chromeHidden {
+	visibility: hidden;
+}
+
 .chatArea {
 	flex: 1;
 	display: flex;
@@ -1037,14 +1066,6 @@ function handleNewThreadClick() {
 	z-index: 4;
 	border-left: none;
 	background-color: var(--color--background--light-2);
-}
-
-.headerTitle {
-	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
-	min-width: 0;
-	color: var(--color--text);
 }
 
 .activeButton {

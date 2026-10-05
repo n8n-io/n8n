@@ -16,7 +16,7 @@ import { CommunityPackagesConfig } from '@/modules/community-packages/community-
 import type { PushConfig } from '@/push/push.config';
 import type { AiUsageService } from '@/services/ai-usage.service';
 import { FrontendService, type PublicFrontendSettings } from '@/services/frontend.service';
-import type { UrlService } from '@/services/url.service';
+import type { UrlService } from '@n8n/backend-services';
 import type { WorkflowReviewPolicyService } from '@/services/workflow-review-policy.service';
 import type { UserManagementMailer } from '@/user-management/email';
 import type { OwnershipService } from '../ownership.service';
@@ -80,6 +80,7 @@ describe('FrontendService', () => {
 		userManagement: {
 			password: { minLength: 8 },
 		},
+		ai: { allowSendingParameterValues: true },
 		aiAssistant: { baseUrl: '' },
 		aiGateway: { enabled: false },
 		queue: { workerPool: { enabled: false } },
@@ -187,7 +188,7 @@ describe('FrontendService', () => {
 	});
 
 	const aiUsageService = mock<AiUsageService>({
-		getAiUsageSettings: vi.fn().mockResolvedValue(true),
+		isParameterValueSharingAllowed: vi.fn().mockResolvedValue(true),
 	});
 
 	const workflowRepository = mock<WorkflowRepository>({
@@ -319,6 +320,28 @@ describe('FrontendService', () => {
 			const settings = await service.getSettings();
 
 			expect(settings.aiGateway).toMatchObject({ enabled: true, cloudUbbEnabled: true });
+		});
+
+		it('should surface the assistant Cloud UBB entitlement when the AI Assistant is enabled and entitled', async () => {
+			globalConfig.aiAssistant.baseUrl = 'https://ai-assistant.n8n.io';
+			licenseState.isAiAssistantCloudUbbEntitlementLicensed.mockReturnValue(true);
+			const { service, license } = createMockService();
+			license.isAiAssistantEnabled.mockReturnValue(true);
+
+			const settings = await service.getSettings();
+
+			expect(settings.aiAssistant).toMatchObject({ enabled: true, cloudUbbEnabled: true });
+		});
+
+		it('should keep the assistant Cloud UBB entitlement off when the AI Assistant is disabled', async () => {
+			globalConfig.aiAssistant.baseUrl = '';
+			licenseState.isAiAssistantCloudUbbEntitlementLicensed.mockReturnValue(true);
+			const { service, license } = createMockService();
+			license.isAiAssistantEnabled.mockReturnValue(false);
+
+			const settings = await service.getSettings();
+
+			expect(settings.aiAssistant).toMatchObject({ enabled: false, cloudUbbEnabled: false });
 		});
 
 		it('should normalize configured postMessage origins', async () => {
@@ -668,6 +691,22 @@ describe('FrontendService', () => {
 			(globalConfig as any).userManagement = { password: { minLength: 8 } };
 		});
 
+		it('reports granular credential sharing off unless the env flag is set', async () => {
+			delete process.env.N8N_ENV_FEAT_CRED_SHARING;
+
+			const { service } = createMockService();
+
+			expect((await service.getSettings()).granularCredentialSharing).toBe(false);
+		});
+
+		it('reports granular credential sharing on when the env flag is set', async () => {
+			process.env.N8N_ENV_FEAT_CRED_SHARING = 'true';
+
+			const { service } = createMockService();
+
+			expect((await service.getSettings()).granularCredentialSharing).toBe(true);
+		});
+
 		it('should set showSetupOnFirstLoad to false in preview mode', async () => {
 			process.env.N8N_PREVIEW_MODE = 'true';
 
@@ -832,6 +871,31 @@ describe('FrontendService', () => {
 			const settings = await service.getSettings();
 
 			expect(settings.aiBuilder.enabled).toBe(false);
+		});
+	});
+
+	describe('ai.allowSendingParameterValues setting', () => {
+		afterEach(() => {
+			globalConfig.ai.allowSendingParameterValues = true;
+		});
+
+		it('should use the effective value from AiUsageService', async () => {
+			const { service } = createMockService();
+			aiUsageService.isParameterValueSharingAllowed.mockResolvedValueOnce(false);
+
+			const settings = await service.getSettings();
+
+			expect(settings.ai.allowSendingParameterValues).toBe(false);
+		});
+
+		it('should fall back to the env value when the stored value cannot be read', async () => {
+			const { service } = createMockService();
+			globalConfig.ai.allowSendingParameterValues = false;
+			aiUsageService.isParameterValueSharingAllowed.mockRejectedValueOnce(new Error('DB error'));
+
+			const settings = await service.getSettings();
+
+			expect(settings.ai.allowSendingParameterValues).toBe(false);
 		});
 	});
 

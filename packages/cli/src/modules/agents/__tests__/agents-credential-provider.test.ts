@@ -58,6 +58,7 @@ describe('AgentsCredentialProvider', () => {
 				currentUserHasAccess: true,
 				homeProject: null,
 				sharedWithProjects: [],
+				sharedRoute: 'project',
 			},
 		]);
 
@@ -218,6 +219,7 @@ describe('AgentsCredentialProvider', () => {
 				currentUserHasAccess: true,
 				homeProject: null,
 				sharedWithProjects: [],
+				sharedRoute: 'project',
 			},
 		]);
 		credentialsService.findAllCredentialIdsForProject.mockResolvedValue([projectCred]);

@@ -1,7 +1,7 @@
 import { z, type ZodError } from 'zod';
 
 import { isDraftAgentConfig } from './agent-config-lifecycle';
-import { AgentIntegrationConfigSchema } from './agent-integration.schema';
+import { AgentApprovalSchema, AgentIntegrationConfigSchema } from './agent-integration.schema';
 import { AGENT_MODEL_STRING_REGEX } from './model-providers';
 import { AGENT_REASONING_LEVELS } from './reasoning';
 /**
@@ -133,6 +133,7 @@ const SubAgentConfigSchema = z
 	.object({
 		agentId: z.string().trim().min(1),
 		useWhen: z.string().trim().max(SUB_AGENT_USE_WHEN_MAX_LENGTH).optional(),
+		enabled: z.boolean().optional(),
 	})
 	.strict();
 
@@ -188,6 +189,7 @@ export const NodeConfigSchema = z.object({
 
 const AgentJsonSkillConfigSchema = z.object({
 	type: z.literal('skill'),
+	enabled: z.boolean().optional(),
 	id: z
 		.string()
 		.min(1)
@@ -280,18 +282,9 @@ export const McpServerConfigSchema = z
 			])
 			.optional()
 			.describe('Restricts which tools are surfaced. Tools matched by original un-prefixed name'),
-		approval: z
-			.discriminatedUnion('mode', [
-				z.object({ mode: z.literal('global') }).strict(),
-				z
-					.object({
-						mode: z.literal('selected'),
-						tools: z.array(z.string().min(1)).min(1),
-					})
-					.strict(),
-			])
-			.optional()
-			.describe('Human-in-the-loop approval. Absent = no approval required'),
+		approval: AgentApprovalSchema.optional().describe(
+			'Human-in-the-loop approval. Absent = no approval required',
+		),
 		connectionTimeoutMs: z
 			.number()
 			.int()
@@ -372,6 +365,7 @@ export const AgentVectorStoreConfigSchema = z.discriminatedUnion('provider', [
 
 const CustomToolJsonConfigSchema = z.object({
 	type: z.literal('custom'),
+	enabled: z.boolean().optional(),
 	id: z
 		.string()
 		.min(1)
@@ -401,6 +395,7 @@ export const WorkflowToolInputFieldSchema = z.discriminatedUnion('mode', [
 export const WorkflowToolJsonConfigSchema = z
 	.object({
 		type: z.literal('workflow'),
+		enabled: z.boolean().optional(),
 		workflowId: z.string().min(1).optional().describe("The workflow's stable ID."),
 		workflow: z.string().min(1).describe("The workflow's display name and legacy lookup key."),
 		name: z.string().optional(),
@@ -422,6 +417,7 @@ export const WorkflowToolJsonConfigSchema = z
 export const NodeToolJsonConfigSchema = z
 	.object({
 		type: z.literal('node'),
+		enabled: z.boolean().optional(),
 		name: z.string().min(1),
 		description: z.string().optional(),
 		inputSchema: z.never().optional(),
@@ -436,13 +432,37 @@ const AgentJsonToolConfigSchema = z.discriminatedUnion('type', [
 	NodeToolJsonConfigSchema,
 ]);
 
+const PositiveUsdSchema = z.number().positive();
+
+/** Opt-in session cap and monthly budget. Amounts are greater than 0. `enabled: false` keeps the saved amounts. */
+export const BudgetGuardrailConfigSchema = z
+	.object({
+		enabled: z.boolean(),
+		monthlyBudgetUsd: PositiveUsdSchema.optional(),
+		alertThresholdPercent: z.number().int().min(1).max(100).optional(),
+		sessionCostCapUsd: PositiveUsdSchema.optional(),
+	})
+	.superRefine((budget, ctx) => {
+		if (budget.alertThresholdPercent !== undefined && budget.monthlyBudgetUsd === undefined) {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				path: ['alertThresholdPercent'],
+				message: 'Set a monthly budget to use an alert threshold',
+			});
+		}
+	});
+
 /**
  * Unrefined agent config object shape. Use for schema derivation only
  * (`.extend`, `.pick`, `.partial`, `.shape`) — validate with
  * {@link AgentJsonConfigSchema} instead.
  */
+export const AGENT_DESCRIPTION_MAX_LENGTH = 512;
+
 export const AgentJsonConfigBaseSchema = z.object({
 	name: z.string().min(1).max(128),
+	/** An empty string is a deliberate clear of a previously stored value. */
+	description: z.string().trim().max(AGENT_DESCRIPTION_MAX_LENGTH).optional(),
 	model: DraftAgentModelSchema,
 	credential: z.string().optional(),
 	/**
@@ -491,7 +511,15 @@ export const AgentJsonConfigBaseSchema = z.object({
 		.optional(),
 	tasks: z.array(AgentJsonTaskConfigSchema).optional(),
 	providerTools: z.record(z.record(z.unknown())).optional(),
-	integrations: z.array(AgentIntegrationConfigSchema).optional(),
+	integrations: z
+		.array(AgentIntegrationConfigSchema)
+		.refine(
+			(integrations) => integrations.filter((entry) => entry.type === 'n8n_chat').length <= 1,
+			{
+				message: 'Only one n8n Chat channel is allowed',
+			},
+		)
+		.optional(),
 	mcpServers: z
 		.array(McpServerConfigSchema)
 		.max(20)
@@ -524,6 +552,11 @@ export const AgentJsonConfigBaseSchema = z.object({
 				.describe(
 					'Maximum number of agent loop iterations per run. Do not set unless the user explicitly asks.',
 				),
+			guardrails: z
+				.object({
+					budget: BudgetGuardrailConfigSchema.optional(),
+				})
+				.optional(),
 		})
 		.optional(),
 });
@@ -546,6 +579,13 @@ export const RunnableAgentJsonConfigSchema = AgentJsonConfigBaseSchema.extend({
 });
 
 export type AgentJsonConfig = z.infer<typeof AgentJsonConfigSchema>;
+export type BudgetGuardrailConfig = z.infer<typeof BudgetGuardrailConfigSchema>;
+
+/** In-memory monthly spend for one agent. This process only. */
+export interface AgentBudgetSpend {
+	spentUsd: number;
+}
+export type AgentModelCredentialConfig = Required<Pick<AgentJsonConfig, 'model' | 'credential'>>;
 export type RunnableAgentJsonConfig = z.infer<typeof RunnableAgentJsonConfigSchema>;
 export type AgentJsonToolConfig = z.infer<typeof AgentJsonToolConfigSchema>;
 export type AgentJsonWorkflowToolConfig = Extract<AgentJsonToolConfig, { type: 'workflow' }>;
@@ -597,16 +637,18 @@ export function findVectorStoreToolNameCollisions(
 	if (!config.vectorStores?.length) return [];
 
 	const toolNames = new Set(
-		(config.tools ?? []).map((tool) => {
-			switch (tool.type) {
-				case 'custom':
-					return tool.id;
-				case 'workflow':
-					return tool.name ?? tool.workflow;
-				case 'node':
-					return tool.name;
-			}
-		}),
+		(config.tools ?? [])
+			.filter((tool) => tool.enabled !== false)
+			.map((tool) => {
+				switch (tool.type) {
+					case 'custom':
+						return tool.id;
+					case 'workflow':
+						return tool.name ?? tool.workflow;
+					case 'node':
+						return tool.name;
+				}
+			}),
 	);
 
 	return config.vectorStores

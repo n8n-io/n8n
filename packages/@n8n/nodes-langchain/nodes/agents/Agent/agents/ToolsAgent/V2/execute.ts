@@ -354,10 +354,11 @@ export async function toolsAgentExecute(
 				if (Object.keys(additionalMetadata).length > 0) {
 					this.logger.debug('Tracing metadata', { additionalMetadata });
 				}
-				const tracingConfig = isExecuteFunctions(this)
-					? getTracingConfig(this, { additionalMetadata })
-					: undefined;
-				const executorWithTracing = tracingConfig ? executor.withConfig(tracingConfig) : executor;
+				// `getTracingConfig` supports both context types, so sub-agents keep their
+				// LangSmith run name and execution id.
+				const executorWithTracing = executor.withConfig(
+					getTracingConfig(this, { additionalMetadata }),
+				);
 				// Invoke with fallback logic
 				const invokeParams = {
 					input,

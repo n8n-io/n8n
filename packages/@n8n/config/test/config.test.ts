@@ -249,6 +249,8 @@ describe('GlobalConfig', () => {
 			publicationOutboxCleanupBatchSize: 1000,
 			publicationReconcileIntervalSeconds: 10,
 			autosaveDisabled: false,
+			groupsWithTriggersEnabled: false,
+			groupsWithManyBoundariesEnabled: false,
 		},
 		endpoints: {
 			metrics: {
@@ -339,6 +341,7 @@ describe('GlobalConfig', () => {
 			streamStateTtl: 300,
 		},
 		instanceAi: {
+			workflowSuggestionsEnabled: false,
 			model: 'anthropic/claude-opus-4-8',
 			modelUrl: '',
 			modelApiKey: '',
@@ -362,6 +365,7 @@ describe('GlobalConfig', () => {
 			sandboxTimeout: 300000,
 			sandboxNamePrefix: '',
 			sandboxEphemeral: false,
+			evalInstance: false,
 			sandboxAutoStopMinutes: 15,
 			sandboxAutoArchiveMinutes: 60,
 			sandboxAutoDeleteMinutes: 10_080,
@@ -377,9 +381,8 @@ describe('GlobalConfig', () => {
 			confirmationTimeout: 86_400_000,
 			runDebugEnabled: false,
 			thinkingEnabled: true,
-			mcpConnectionsEnabled: false,
 			canvasNodeContextEnabled: false,
-			instanceAiSetupPanelEnabled: false,
+			promptVersion: '',
 			nodeUsageEnabled: false,
 			folderExplorationEnabled: false,
 			activationCapped: false,
@@ -688,6 +691,7 @@ describe('GlobalConfig', () => {
 			allowWebhookIsolateSkip: true,
 			lazyAcquire: false,
 			compileCache: false,
+			nativeEvaluation: false,
 		},
 		instanceSettingsLoader: {
 			ownerManagedByEnv: false,
@@ -788,6 +792,15 @@ describe('GlobalConfig', () => {
 		const config = Container.get(GlobalConfig);
 
 		expect(config.agents.sandboxSnapshot).toBe('n8n/agent-knowledge:1.2.3');
+	});
+
+	it.each([
+		['true', true],
+		['false', false],
+	])('should parse workflow suggestions enabled=%s', (value, expected) => {
+		process.env = { N8N_INSTANCE_AI_WORKFLOW_SUGGESTIONS_ENABLED: value };
+
+		expect(Container.get(GlobalConfig).instanceAi.workflowSuggestionsEnabled).toBe(expected);
 	});
 
 	it('should parse N8N_MANAGED_OAUTH_SHOW_SCOPES from env variables', () => {

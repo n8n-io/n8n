@@ -1,6 +1,7 @@
 import type { Tool } from '@langchain/core/tools';
 import type { RunningJobSummary } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { EventService } from '@n8n/backend-services';
 import { ExecutionsConfig } from '@n8n/config';
 import { MAX_INTEGER_32BITS_SIGNED } from '@n8n/constants';
 import { ExecutionRepository, WorkflowRepository } from '@n8n/db';
@@ -40,7 +41,6 @@ import type {
 } from 'n8n-workflow';
 import type PCancelable from 'p-cancelable';
 
-import { EventService } from '@/events/event.service';
 import { getLifecycleHooksForScalingWorker } from '@/execution-lifecycle/execution-lifecycle-hooks';
 import { prepareExecutionDataForDbUpdate } from '@/execution-lifecycle/shared/shared-hook-functions';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
@@ -321,6 +321,7 @@ export class JobProcessor {
 				dirtyNodeNames: manualData?.dirtyNodeNames,
 				triggerToStartFrom: manualData?.triggerToStartFrom,
 				userId: manualData?.userId,
+				agentRequest: manualData?.agentRequest,
 			};
 
 			try {
@@ -697,6 +698,7 @@ export class JobProcessor {
 			}
 
 			if (nodeType.execute && nodeType.description.outputs.includes(NodeConnectionTypes.AiTool)) {
+				// oxlint-disable-next-line typescript/no-deprecated
 				context.addInputData(NodeConnectionTypes.AiTool, [
 					[{ json: validatedToolArgs as INodeExecutionData['json'] }],
 				]);
@@ -707,6 +709,7 @@ export class JobProcessor {
 				} catch (error) {
 					// Record the failure so the tool node shows as errored, not stuck
 					// "running"; rethrow so the caller returns an error to the client.
+					// oxlint-disable-next-line typescript/no-deprecated
 					context.addOutputData(
 						NodeConnectionTypes.AiTool,
 						0,
@@ -722,6 +725,7 @@ export class JobProcessor {
 					response = result?.[0]?.flatMap((item: INodeExecutionData) => item.json);
 				}
 
+				// oxlint-disable-next-line typescript/no-deprecated
 				context.addOutputData(NodeConnectionTypes.AiTool, 0, [[{ json: { response } }]]);
 
 				return response;

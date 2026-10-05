@@ -1,17 +1,20 @@
 import { describe, it, expect, vi } from 'vitest';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
-import { ref, shallowRef } from 'vue';
+import { defineComponent, h, ref, shallowRef } from 'vue';
 import { fireEvent, waitFor } from '@testing-library/vue';
 import { createRunExecutionData, type INodeTypeDescription, type IRunData } from 'n8n-workflow';
+import type { NodeTypeAvailabilityScope } from '@n8n/api-types';
 
 import { createTestNode, createTestWorkflow } from '@/__tests__/mocks';
+import { mockRestrictedNodeTypes } from '@n8n/frontend-module-type-availability-policies/__tests__/mocks';
 import { createComponentRenderer } from '@/__tests__/render';
 
 import NodeSettings from './NodeSettings.vue';
 import { MESSAGE_AN_AGENT_NODE_TYPE } from '@/app/constants/nodeTypes';
 import { NdvAgentConfigKey } from '@/features/ndv/agents/composables/useNdvAgentConfig';
 import type { UseNdvAgentConfigReturn } from '@/features/ndv/agents/composables/useNdvAgentConfig';
+import { ndvEventBus } from '@/features/ndv/shared/ndv.eventBus';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
@@ -22,6 +25,7 @@ import {
 	useWorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
 import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
+import { useUIStore } from '@/app/stores/ui.store';
 
 vi.mock('@/app/stores/workflowDocument.store', async () => {
 	const actual = await vi.importActual('@/app/stores/workflowDocument.store');
@@ -112,6 +116,8 @@ interface RenderOptions {
 	provide?: Record<symbol, unknown>;
 	stubs?: Record<string, unknown>;
 	canvasOnly?: boolean;
+	props?: Record<string, unknown>;
+	restrictedNodeTypes?: Record<string, NodeTypeAvailabilityScope>;
 }
 
 const renderNodeSettings = (options: RenderOptions = {}) => {
@@ -122,6 +128,8 @@ const renderNodeSettings = (options: RenderOptions = {}) => {
 		provide = {},
 		stubs = {},
 		canvasOnly = false,
+		props = {},
+		restrictedNodeTypes = {},
 	} = options;
 	const pinia = createTestingPinia({ stubActions: false });
 	setActivePinia(pinia);
@@ -138,6 +146,7 @@ const renderNodeSettings = (options: RenderOptions = {}) => {
 	workflowDocumentStore.hydrate(workflow);
 	nodeTypesStore.setNodeTypes([nodeType]);
 	ndvStore.activeNodeName = node.name;
+	mockRestrictedNodeTypes(restrictedNodeTypes);
 
 	if (runData) {
 		useWorkflowExecutionStateStore(createWorkflowDocumentId(workflow.id)).setWorkflowExecutionData({
@@ -194,13 +203,117 @@ const renderNodeSettings = (options: RenderOptions = {}) => {
 			foreignCredentials: [],
 			blockUI: false,
 			executable: false,
+			...props,
 		},
 	});
 
 	return { ...renderResult, workflowDocumentStore };
 };
 
+/** Renders the test id the shared `NodeExecuteButton: true` stub drops, so its absence can be asserted. */
+const nodeExecuteButtonStub = {
+	NodeExecuteButton: { template: '<button data-test-id="node-execute-button" />' },
+};
+
+const urlUpdate = { node: httpNode.name, name: 'parameters.url', value: 'https://example.com' };
+/** The store writes into the node object, so a test that writes must not share the fixture. */
+const freshHttpNode = () => ({ ...httpNode, parameters: {} });
+
 describe('NodeSettings', () => {
+	it('shows the execute button for an executable node', async () => {
+		const { findByTestId } = renderNodeSettings({
+			props: { readOnly: false, executable: true },
+			stubs: nodeExecuteButtonStub,
+		});
+
+		expect(await findByTestId('node-execute-button')).toBeInTheDocument();
+	});
+
+	it('applies a parameter update from the event bus', async () => {
+		const { findByTestId, workflowDocumentStore } = renderNodeSettings({
+			node: freshHttpNode(),
+			props: { readOnly: false },
+		});
+		await findByTestId('tab-params');
+
+		ndvEventBus.emit('updateParameterValue', urlUpdate);
+
+		expect(workflowDocumentStore.getNodeByName(httpNode.name)?.parameters.url).toBe(
+			'https://example.com',
+		);
+	});
+
+	it('marks the workflow dirty after each nested custom span attribute edit', async () => {
+		const { findByTestId, findAllByTestId, workflowDocumentStore } = renderNodeSettings({
+			node: freshHttpNode(),
+			props: { readOnly: false },
+			stubs: {
+				ParameterInputList: defineComponent({
+					props: ['nodeValues'],
+					emits: ['valueChanged'],
+					setup(props, { emit }) {
+						return () =>
+							h('button', {
+								'data-test-id': 'add-attribute',
+								onClick: () => {
+									const tags = (
+										props.nodeValues as {
+											customTelemetryTags: { tag: Array<{ key: string; value: string }> };
+										}
+									).customTelemetryTags.tag;
+									tags.push({ key: '', value: '' });
+									emit('valueChanged', { name: 'customTelemetryTags.tag', value: tags });
+								},
+							});
+					},
+				}),
+			},
+		});
+		await findByTestId('tab-params');
+		const markStateDirty = vi.mocked(useUIStore().markStateDirty);
+		markStateDirty.mockClear();
+
+		ndvEventBus.emit('updateParameterValue', {
+			name: 'customTelemetryTags.tag',
+			value: [{ key: '', value: '' }],
+		});
+		expect(markStateDirty).toHaveBeenCalledTimes(1);
+
+		ndvEventBus.emit('updateParameterValue', {
+			name: 'customTelemetryTags.tag[0].key',
+			value: 'userIdentifier',
+		});
+		expect(markStateDirty).toHaveBeenCalledTimes(2);
+
+		ndvEventBus.emit('updateParameterValue', {
+			name: 'customTelemetryTags.tag[0].value',
+			value: '={{ $json.foo }}',
+		});
+		expect(markStateDirty).toHaveBeenCalledTimes(3);
+
+		const addButtons = await findAllByTestId('add-attribute');
+		await fireEvent.click(addButtons[addButtons.length - 1]);
+		expect(markStateDirty).toHaveBeenCalledTimes(4);
+
+		ndvEventBus.emit('updateParameterValue', {
+			name: 'customTelemetryTags.tag[1].key',
+			value: 'region',
+		});
+		expect(markStateDirty).toHaveBeenCalledTimes(5);
+
+		ndvEventBus.emit('updateParameterValue', {
+			name: 'customTelemetryTags.tag[1].value',
+			value: 'eu',
+		});
+		expect(markStateDirty).toHaveBeenCalledTimes(6);
+		expect(workflowDocumentStore.getNodeByName(httpNode.name)?.customTelemetryTags).toEqual({
+			tag: [
+				{ key: 'userIdentifier', value: '={{ $json.foo }}' },
+				{ key: 'region', value: 'eu' },
+			],
+		});
+	});
+
 	it('defaults to the Parameters tab when read-only and the active node has execution data', async () => {
 		const runData: IRunData = {
 			[httpNode.name]: [
@@ -307,6 +420,77 @@ describe('NodeSettings', () => {
 
 			await findByTestId('tab-params');
 			expect(container.querySelector('agent-ndv-referenced-summary-stub')).toBeNull();
+		});
+	});
+
+	describe('restricted node type', () => {
+		const restricted = {
+			restrictedNodeTypes: { [httpNode.type]: 'instance' as const },
+			props: { readOnly: false },
+		};
+
+		it('replaces the header and the parameters with the restricted panel', async () => {
+			const { findByTestId, queryByTestId } = renderNodeSettings({
+				...restricted,
+				props: { readOnly: false, executable: true },
+				stubs: nodeExecuteButtonStub,
+			});
+
+			expect(await findByTestId('node-restricted-panel')).toHaveTextContent(
+				"An administrator blocked 'HTTP Request' on this instance.",
+			);
+			expect(queryByTestId('node-parameters')).not.toBeInTheDocument();
+			expect(queryByTestId('tab-params')).not.toBeInTheDocument();
+			expect(queryByTestId('node-execute-button')).not.toBeInTheDocument();
+		});
+
+		it('ignores a parameter update from the event bus', async () => {
+			const { findByTestId, workflowDocumentStore } = renderNodeSettings({
+				...restricted,
+				node: freshHttpNode(),
+			});
+			await findByTestId('node-restricted-panel');
+
+			ndvEventBus.emit('updateParameterValue', urlUpdate);
+
+			expect(workflowDocumentStore.getNodeByName(httpNode.name)?.parameters.url).toBeUndefined();
+		});
+
+		it('re-emits the replace action with the node id', async () => {
+			const { findByTestId, emitted } = renderNodeSettings(restricted);
+
+			await fireEvent.click(await findByTestId('node-restricted-replace'));
+
+			expect(emitted('replaceNode')).toEqual([[httpNode.id]]);
+		});
+
+		it('offers no replace action while the canvas is read-only', async () => {
+			const { findByTestId, queryByTestId } = renderNodeSettings({
+				...restricted,
+				props: { readOnly: true },
+			});
+
+			expect(await findByTestId('node-restricted-panel')).toBeInTheDocument();
+			expect(queryByTestId('node-restricted-replace')).not.toBeInTheDocument();
+		});
+
+		it('locks the embedded header and offers no replace action', async () => {
+			const { findByTestId, getByTestId, queryByTestId } = renderNodeSettings({
+				...restricted,
+				props: { readOnly: false, isEmbeddedInCanvas: true },
+				stubs: {
+					ExperimentalEmbeddedNdvHeader: {
+						props: ['readOnly', 'hideTabs'],
+						template:
+							'<div data-test-id="embedded-ndv-header" :data-read-only="readOnly" :data-hide-tabs="hideTabs" />',
+					},
+				},
+			});
+
+			expect(await findByTestId('node-restricted-panel')).toBeInTheDocument();
+			expect(queryByTestId('node-restricted-replace')).not.toBeInTheDocument();
+			expect(getByTestId('embedded-ndv-header')).toHaveAttribute('data-read-only', 'true');
+			expect(getByTestId('embedded-ndv-header')).toHaveAttribute('data-hide-tabs', 'true');
 		});
 	});
 });

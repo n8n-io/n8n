@@ -104,11 +104,6 @@ const onSelect = (operatorId: string): void => {
 .wrapper {
 	width: 100%;
 	height: 100%;
-
-	/* TODO DS-580: Remove when child consumers of DropdownMenu trigger aren't wrapped in containing span */
-	> [aria-haspopup='menu'] {
-		width: 100%;
-	}
 }
 
 .trigger {

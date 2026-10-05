@@ -5,9 +5,8 @@ import { useI18n } from '@n8n/i18n';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { computed, ref, watch } from 'vue';
 
-const props = defineProps<{
-	description: string;
-	mailSubject?: string;
+const { nodeTypeName } = defineProps<{
+	nodeTypeName: string;
 }>();
 
 const open = defineModel<boolean>('open', { default: false });
@@ -17,6 +16,17 @@ const usersStore = useUsersStore();
 
 const isLoading = ref(false);
 let lookupId = 0;
+
+const description = computed(() =>
+	i18n.baseText('typeAvailabilityPolicies.contactAdmin.description', {
+		interpolate: { nodeType: nodeTypeName },
+	}),
+);
+const mailSubject = computed(() =>
+	i18n.baseText('typeAvailabilityPolicies.contactAdmin.mailSubject', {
+		interpolate: { nodeType: nodeTypeName },
+	}),
+);
 
 const owners = computed(() =>
 	usersStore.allUsers.filter(
@@ -39,8 +49,7 @@ watch(
 );
 
 function mailtoHref(email: string): string {
-	const subject = props.mailSubject ? `?subject=${encodeURIComponent(props.mailSubject)}` : '';
-	return `mailto:${email}${subject}`;
+	return `mailto:${email}?subject=${encodeURIComponent(mailSubject.value)}`;
 }
 </script>
 

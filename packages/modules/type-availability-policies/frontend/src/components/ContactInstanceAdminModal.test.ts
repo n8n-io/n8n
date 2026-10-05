@@ -33,7 +33,7 @@ const owner = {
 const member = { ...owner, id: 'member-1', fullName: 'Bob Builder', role: ROLE.Member } as IUser;
 
 const renderComponent = createComponentRenderer(ContactInstanceAdminModal, {
-	props: { open: true, description: 'Ask for the Slack node.', mailSubject: 'Access request' },
+	props: { open: true, nodeTypeName: 'Slack' },
 });
 
 function setup(allUsers: IUser[], fetchUsers = vi.fn().mockResolvedValue(undefined)) {
@@ -45,7 +45,7 @@ function setup(allUsers: IUser[], fetchUsers = vi.fn().mockResolvedValue(undefin
 }
 
 describe('ContactInstanceAdminModal', () => {
-	it('lists the owners with a mailto link and shows the description', async () => {
+	it('lists the owners with a mailto link and builds the copy from the node type name', async () => {
 		const usersStore = setup([owner, member]);
 		const { findByTestId, getByText } = renderComponent();
 
@@ -56,9 +56,9 @@ describe('ContactInstanceAdminModal', () => {
 		expect(list).not.toHaveTextContent('Bob Builder');
 		expect(getByText('ada@example.com').closest('a')).toHaveAttribute(
 			'href',
-			'mailto:ada@example.com?subject=Access%20request',
+			'mailto:ada@example.com?subject=Access%20request%20for%20the%20Slack%20node',
 		);
-		expect(getByText('Ask for the Slack node.')).toBeInTheDocument();
+		expect(getByText(/request access to 'Slack'/)).toBeInTheDocument();
 	});
 
 	it('keeps loading until the latest owner lookup resolves after a reopen', async () => {

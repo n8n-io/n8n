@@ -82,6 +82,7 @@ erDiagram
   varchar_128_ taskType
 }
 "public.scheduled_job" {
+  integer concurrencyLimit
   timestamp_3__with_time_zone createdAt
   varchar_255_ cronExpression
   boolean enabled

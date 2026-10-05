@@ -4,7 +4,7 @@ import {
 	N8nIcon,
 	N8nLink,
 	N8nOption,
-	N8nPreviewTag,
+	N8nPreviewBadge,
 	N8nSelect,
 	N8nText,
 	N8nTooltip,
@@ -69,7 +69,7 @@ function onSelect(value: string): void {
 			<N8nText size="medium" :bold="true">
 				{{ i18n.baseText('credentialEdit.credentialConfig.credentialType.title') }}
 			</N8nText>
-			<N8nPreviewTag size="small" />
+			<N8nPreviewBadge size="small" />
 			<N8nTooltip v-if="infoTip" placement="top">
 				<template #content>
 					<div>

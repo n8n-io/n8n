@@ -5,39 +5,49 @@ import {
 	N8nDropdownMenu,
 	N8nIcon,
 	N8nIconButton,
+	N8nToggle,
 	N8nTooltip,
 	TOOLTIP_DELAY_MS,
 	type DropdownMenuItemProps,
 	type IconName,
+	type IconOrEmoji,
 	type PathItem,
 } from '@n8n/design-system';
 
 import { useI18n } from '@n8n/i18n';
+import ProjectIcon from '@/features/collaboration/projects/components/ProjectIcon.vue';
 
 interface SessionDropdownData {
 	date: string;
 	active: boolean;
 }
 
-const props = defineProps<{
-	breadcrumbItems: PathItem[];
-	sessionTitle: string;
-	sessionOptions: Array<DropdownMenuItemProps<string, SessionDropdownData>>;
-	showMetrics: boolean;
-	triggerSource: string | null;
-	triggerIcon: IconName;
-	triggerLabel: string;
-	totalTokens: number;
-	totalCost: number;
-	durationLabel: string;
-	showLangsmithExport: boolean;
-	langsmithExportLoading: boolean;
-}>();
+const props = withDefaults(
+	defineProps<{
+		breadcrumbItems: PathItem[];
+		projectIcon: IconOrEmoji;
+		sessionTitle: string;
+		sessionOptions: Array<DropdownMenuItemProps<string, SessionDropdownData>>;
+		showMetrics: boolean;
+		triggerSource: string | null;
+		triggerIcon: IconName;
+		triggerLabel: string;
+		totalTokens: number;
+		totalCost: number;
+		durationLabel: string;
+		showLangsmithExport: boolean;
+		langsmithExportLoading: boolean;
+		isPreviewOpen?: boolean;
+		showPreview?: boolean;
+	}>(),
+	{ isPreviewOpen: false, showPreview: false },
+);
 
 const emit = defineEmits<{
 	'breadcrumb-select': [item: PathItem];
 	'session-select': [sessionId: string];
 	'langsmith-export': [];
+	'toggle-preview': [];
 	close: [];
 }>();
 
@@ -52,6 +62,9 @@ const i18n = useI18n();
 				theme="medium"
 				@item-selected="emit('breadcrumb-select', $event)"
 			>
+				<template #prepend>
+					<ProjectIcon :icon="projectIcon" border-less size="mini" aria-hidden="true" />
+				</template>
 				<template #append>
 					<span :class="$style.crumbSeparator" aria-hidden="true">/</span>
 					<N8nDropdownMenu
@@ -86,9 +99,9 @@ const i18n = useI18n();
 				</template>
 			</N8nBreadcrumbs>
 		</div>
-		<div v-if="props.showMetrics" :class="$style.topBarRight">
+		<div v-if="props.showMetrics || props.showPreview" :class="$style.topBarRight">
 			<N8nTooltip
-				v-if="props.showLangsmithExport"
+				v-if="props.showMetrics && props.showLangsmithExport"
 				:content="i18n.baseText('agentSessions.langsmithExport.button')"
 				placement="bottom"
 				:show-after="TOOLTIP_DELAY_MS"
@@ -104,20 +117,30 @@ const i18n = useI18n();
 					@click="emit('langsmith-export')"
 				/>
 			</N8nTooltip>
-			<span v-if="props.triggerSource" :class="$style.metricItem">
+			<span v-if="props.showMetrics && props.triggerSource" :class="$style.metricItem">
 				<N8nIcon :icon="props.triggerIcon" :size="12" />
 				<span>{{ props.triggerLabel }}</span>
 			</span>
-			<span :class="$style.sep">·</span>
-			<span :class="$style.metricItem">
+			<span v-if="props.showMetrics" :class="$style.sep">·</span>
+			<span v-if="props.showMetrics" :class="$style.metricItem">
 				<N8nIcon icon="circle-dollar-sign" :size="12" />
 				<span>{{ props.totalTokens.toLocaleString() }}t (${{ props.totalCost.toFixed(4) }})</span>
 			</span>
-			<span :class="$style.sep">·</span>
-			<span :class="$style.metricItem">
+			<span v-if="props.showMetrics" :class="$style.sep">·</span>
+			<span v-if="props.showMetrics" :class="$style.metricItem">
 				<N8nIcon icon="clock" :size="12" />
 				<span>{{ props.durationLabel }}</span>
 			</span>
+			<N8nToggle
+				v-if="props.showPreview"
+				:model-value="props.isPreviewOpen"
+				variant="ghost"
+				size="medium"
+				icon="play"
+				:label="i18n.baseText('agents.builder.preview.button')"
+				data-testid="agent-session-timeline-preview-btn"
+				@click="emit('toggle-preview')"
+			/>
 			<N8nTooltip :content="i18n.baseText('generic.close')">
 				<N8nButton
 					variant="ghost"
@@ -155,6 +178,10 @@ const i18n = useI18n();
 
 .topBarLeft :global(.n8n-breadcrumbs) {
 	min-width: 0;
+}
+
+.topBarLeft :global(.n8n-breadcrumbs > ul > li:first-child) {
+	display: none;
 }
 
 .topBarLeft :global(.n8n-breadcrumbs [data-test-id='breadcrumbs-item']) {

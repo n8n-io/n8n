@@ -39,7 +39,6 @@ beforeEach(() => {
 	vi.clearAllMocks();
 	mockContext.getNode.mockReturnValue(mockNode);
 	mockNode.typeVersion = 3;
-	mockContext.getExecuteData = vi.fn() as any;
 	(tracing.getTracingConfig as Mock).mockReturnValue({
 		runName: '[Test Workflow] Test Node',
 		metadata: { execution_id: 'test-123', workflow: {}, node: 'Test Node' },
@@ -416,8 +415,6 @@ describe('runAgent - tracing configuration', () => {
 			isStreaming: vi.fn().mockReturnValue(true),
 			getExecutionCancelSignal: vi.fn().mockReturnValue(new AbortController().signal),
 		});
-		streamingContext.getExecuteData = vi.fn() as any;
-
 		vi.spyOn(agentExecution, 'loadMemory').mockResolvedValue([]);
 		vi.spyOn(agentExecution, 'processEventStream').mockResolvedValue({
 			output: 'Streamed answer',
@@ -568,8 +565,6 @@ describe('runAgent - intermediate steps', () => {
 			isStreaming: vi.fn().mockReturnValue(true),
 			getExecutionCancelSignal: vi.fn().mockReturnValue(new AbortController().signal),
 		});
-		streamingContext.getExecuteData = vi.fn() as any;
-
 		vi.spyOn(agentExecution, 'loadMemory').mockResolvedValue([]);
 		vi.spyOn(agentExecution, 'saveToMemory').mockResolvedValue();
 		vi.spyOn(agentExecution, 'processEventStream').mockResolvedValue({

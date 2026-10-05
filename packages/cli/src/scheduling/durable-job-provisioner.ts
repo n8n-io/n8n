@@ -1,6 +1,6 @@
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
-import { type ScheduledJobMisfirePolicy, Time } from '@n8n/constants';
+import { MAX_INTEGER_32BITS_SIGNED, type ScheduledJobMisfirePolicy, Time } from '@n8n/constants';
 import type {
 	EntityManager,
 	NewScheduledJob,
@@ -9,23 +9,18 @@ import type {
 } from '@n8n/db';
 import { DataSource, ScheduledJobRepository, ScheduledTaskRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
-import {
-	createJobProvisioner,
-	DEFAULT_MATERIALIZER_OPTIONS,
-	materialize,
-	withOwnerKeys,
-} from '@n8n/scheduler';
+import { createJobProvisioner, withOwnerKeys } from '@n8n/scheduler';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 import type {
 	DesiredJob,
 	ExistingJob,
 	JobProvisioner,
-	MaterializerOptions,
 	ProvisionSummary,
 	RunInDeprovisionTransaction,
 	RunInProvisionTransaction,
-	RunInTransaction,
 } from '@n8n/scheduler';
 import { Tracing } from 'n8n-core';
+import { UserError } from 'n8n-workflow';
 import { isDeepStrictEqual } from 'node:util';
 
 import { AgentScheduledJobOwner } from './agent-scheduled-job-owner';
@@ -40,6 +35,13 @@ import { WorkflowScheduledJobOwner } from './workflow-scheduled-job-owner';
  * inside the column's `int` range.
  */
 const MAX_MISFIRE_GRACE_SECONDS = 30 * Time.days.toSeconds;
+
+/**
+ * Ceiling for a concurrency limit: what the column's `int` holds. Postgres rejects
+ * anything above it outright, so it is checked here for both dialects to behave the
+ * same.
+ */
+const MAX_CONCURRENCY_LIMIT = MAX_INTEGER_32BITS_SIGNED;
 
 /** One provisioning call: whose jobs to reconcile, and what to stamp on new rows. */
 export interface ProvisionRequest {
@@ -59,6 +61,11 @@ export interface ProvisionRequest {
 	misfireGraceSeconds?: number;
 	/** Retry ceiling stamped on each occurrence; omit to inherit the instance setting. */
 	maxAttempts?: number;
+	/**
+	 * How many of the job's occurrences may run at the same time. Omit or pass
+	 * `null` for no limit.
+	 */
+	concurrencyLimit?: number | null;
 }
 
 /** What provisioning stamps on the rows it writes, plus the owner it diffs against. */
@@ -121,13 +128,6 @@ type DeprovisionScope =
 export class DurableJobProvisioner {
 	private readonly provisioner: JobProvisioner<ProvisionScope, DeprovisionScope>;
 
-	/**
-	 * Options for the provision-time seed materialization. Mirrors what the running
-	 * materializer uses, so an eagerly-seeded job records the same occurrences it
-	 * would on its first poll (see {@link seedInitialOccurrences}).
-	 */
-	private readonly materializerOptions: MaterializerOptions;
-
 	constructor(
 		private readonly logger: Logger,
 		private readonly dataSource: DataSource,
@@ -145,12 +145,25 @@ export class DurableJobProvisioner {
 			deprovisionTransaction: (scope) => this.deprovisionTransaction(scope),
 			owners: createScheduledJobOwnerRegistry(workflowOwner, agentOwner, systemTaskOwner),
 			tracer: createSchedulerTracer(tracing),
+			materializer: {
+				windowSeconds: globalConfig.scheduler.materializationWindowSeconds,
+				defaultTimezone: globalConfig.generic.timezone,
+			},
+			seedHooks: {
+				// A just-registered job was already validated, so a seed-time plan failure is
+				// unexpected; log it (the pass defers the job, as a poll would) instead of
+				// letting it pass silently, matching the run side's reporting.
+				onPlanError: (job, error) =>
+					this.logger.error('Failed to plan a scheduled job while seeding its first run', {
+						jobId: job.id,
+						error: ensureError(error).message,
+					}),
+				onSkippedDuplicates: (context) =>
+					this.logger.debug('Seeding skipped occurrences already recorded for a scheduled job', {
+						...context,
+					}),
+			},
 		});
-		this.materializerOptions = {
-			...DEFAULT_MATERIALIZER_OPTIONS,
-			windowSeconds: globalConfig.scheduler.materializationWindowSeconds,
-			defaultTimezone: globalConfig.generic.timezone,
-		};
 	}
 
 	/**
@@ -161,6 +174,7 @@ export class DurableJobProvisioner {
 	 * liveness resolver (see {@link createJobProvisioner}).
 	 * @throws {InvalidOwnerIdError} when the owner id is empty or too long to store.
 	 * @throws {InvalidOwnerMemberIdError} when the owner member id is empty or too long to store.
+	 * @throws {UserError} when the concurrency limit is not a whole number of at least 1.
 	 * @returns what the call inserted, redefined, left unchanged and removed.
 	 */
 	async provision({ desired, ...scope }: ProvisionRequest): Promise<ProvisionSummary> {
@@ -237,12 +251,14 @@ export class DurableJobProvisioner {
 		misfirePolicy,
 		misfireGraceSeconds: requestedMisfireGraceSeconds,
 		maxAttempts: requestedMaxAttempts,
+		concurrencyLimit: requestedConcurrencyLimit,
 	}: ProvisionScope): RunInProvisionTransaction {
 		const misfireGraceSeconds = this.resolveMisfireGraceSeconds(
 			requestedMisfireGraceSeconds,
 			owner,
 		);
 		const maxAttempts = requestedMaxAttempts ?? this.globalConfig.scheduler.maxAttempts;
+		const concurrencyLimit = resolveConcurrencyLimit(requestedConcurrencyLimit);
 		return async (work) =>
 			await this.dataSource.transaction(async (manager) => {
 				// Provisioning is evidence the owner is back, so lift any quarantine now
@@ -255,40 +271,55 @@ export class DurableJobProvisioner {
 						jobs: revived,
 					});
 				}
-				// Jobs freshly inserted or redefined this pass; their first window is
-				// seeded before the transaction commits (see `seedInitialOccurrences`).
-				const seededJobIds = new Set<number>();
+				const existingRows = await this.jobs.findManyByOwner(manager, owner);
 				const outdatedRunOptionJobIds: number[] = [];
 				const outdatedGraceJobIds: number[] = [];
 				const outdatedPayloadJobIds: number[] = [];
-				const result = await work({
-					findExisting: async () => {
-						const rows = await this.jobs.findManyByOwner(manager, owner);
-						for (const row of rows) {
-							const graceChanged = row.misfireGraceSeconds !== misfireGraceSeconds;
-							if (graceChanged) {
-								outdatedGraceJobIds.push(row.id);
-							}
-							if (
-								graceChanged ||
-								row.misfirePolicy !== misfirePolicy ||
-								row.maxAttempts !== maxAttempts
-							) {
-								outdatedRunOptionJobIds.push(row.id);
-							}
-							if (!isDeepStrictEqual(row.payload, payload)) {
-								outdatedPayloadJobIds.push(row.id);
-							}
-						}
-						return rows.map(
+				for (const row of existingRows) {
+					const graceChanged = row.misfireGraceSeconds !== misfireGraceSeconds;
+					if (graceChanged) {
+						outdatedGraceJobIds.push(row.id);
+					}
+					if (
+						graceChanged ||
+						row.misfirePolicy !== misfirePolicy ||
+						row.maxAttempts !== maxAttempts ||
+						row.concurrencyLimit !== concurrencyLimit
+					) {
+						outdatedRunOptionJobIds.push(row.id);
+					}
+					if (!isDeepStrictEqual(row.payload, payload)) {
+						outdatedPayloadJobIds.push(row.id);
+					}
+				}
+				// Before the provision, whose seed reads these rows back and must see the
+				// current run options and payload.
+				// Only `redefine` touches a job's run options, so an unchanged schedule
+				// needs this to pick up a change to them on its own.
+				await this.jobs.updateRunOptions(manager, outdatedRunOptionJobIds, {
+					maxAttempts,
+					misfirePolicy,
+					misfireGraceSeconds,
+					concurrencyLimit,
+				});
+				// Only `insert` writes the payload, so an existing row picks up a change to it here.
+				await this.jobs.updatePayload(manager, outdatedPayloadJobIds, payload);
+				// Queued tasks were stamped with the previous grace; recompute their deadline.
+				await this.tasks.updateMissedAfterForJobs(
+					manager,
+					outdatedGraceJobIds,
+					misfireGraceSeconds,
+				);
+				return await work({
+					findExisting: async () =>
+						existingRows.map(
 							(row): ExistingJob => ({
 								id: row.id,
 								name: row.name,
 								schedule: rowSchedule(row),
 								hasClock: row.nextRunAt !== null,
 							}),
-						);
-					},
+						),
 					insert: async (desired) => {
 						const rows = desired.map(
 							(job): NewScheduledJob => ({
@@ -301,11 +332,10 @@ export class DurableJobProvisioner {
 								maxAttempts,
 								misfirePolicy,
 								misfireGraceSeconds,
+								concurrencyLimit,
 							}),
 						);
-						const ids = await this.jobs.insertMany(manager, rows);
-						for (const id of ids) seededJobIds.add(id);
-						return ids;
+						return await this.jobs.insertMany(manager, rows);
 					},
 					redefine: async (jobId, schedule, nextRunAt) => {
 						await this.jobs.updateDefinition(manager, jobId, {
@@ -314,32 +344,33 @@ export class DurableJobProvisioner {
 							maxAttempts,
 							misfirePolicy,
 							misfireGraceSeconds,
+							concurrencyLimit,
 						});
-						seededJobIds.add(jobId);
 					},
 					withdrawPendingTasks: async (jobIds) =>
 						await this.tasks.deletePendingByJobIds(manager, jobIds),
 					deleteJobs: async (jobIds) => await this.jobs.deleteManyByIds(manager, jobIds),
+					// DB time, not this instance's clock, so the seed sizes its window the way a
+					// poll would and every instance agrees on it (see `DueJobs.now`).
+					readJobs: async (jobIds) => {
+						const now = await this.tasks.readDbTime(manager);
+						const jobs = await this.jobs.findManyByIds(manager, jobIds);
+						return withOwnerKeys({ now, jobs });
+					},
+					recordOccurrences: async (occurrences) =>
+						await this.tasks.insertIgnoringDuplicates(manager, occurrences),
+					retireSuperseded: async (superseded) =>
+						await this.tasks.updateToMissed(manager, superseded),
+					advanceJobs: async (planned) =>
+						await this.jobs.advanceMany(
+							manager,
+							planned.map(({ job, plan }) => ({
+								id: job.id,
+								nextRunAt: plan.nextRunAt,
+								lastFiredAt: plan.lastFiredAt,
+							})),
+						),
 				});
-				// Only `redefine` touches a job's run options, so an unchanged schedule
-				// needs this to pick up a change to them on its own.
-				await this.jobs.updateRunOptions(manager, outdatedRunOptionJobIds, {
-					maxAttempts,
-					misfirePolicy,
-					misfireGraceSeconds,
-				});
-				// Only `insert` writes the payload, so an existing row picks up a change to it here.
-				await this.jobs.updatePayload(manager, outdatedPayloadJobIds, payload);
-				// Queued tasks were stamped with the previous grace; recompute their deadline.
-				await this.tasks.updateMissedAfterForJobs(
-					manager,
-					outdatedGraceJobIds,
-					misfireGraceSeconds,
-				);
-				// After all of provisioning's own writes (including withdrawing a
-				// redefined job's stale tasks) so the seeded occurrences are the last word.
-				await this.seedInitialOccurrences(manager, seededJobIds);
-				return result;
 			});
 	}
 
@@ -384,71 +415,6 @@ export class DurableJobProvisioner {
 		return effective;
 	}
 
-	/**
-	 * Record the first window of occurrences for jobs whose clock was just seeded,
-	 * and advance their `nextRunAt`. Without this, a fresh job's first fire is only
-	 * recorded once a materializer poll tick runs; when the first interval is
-	 * shorter than the gap to that tick, the fire is recorded after it is already
-	 * due and dispatched late. Seeding here queues it ahead of time, leaving the
-	 * executor its usual slack to fire on schedule.
-	 *
-	 * Reuses the run-side {@link materialize} pass so activation and every later
-	 * poll share one code path: only the claim differs, returning these specific
-	 * jobs (regardless of due-ness) instead of the poll's due-jobs query. Runs on
-	 * the provision transaction's manager, so the seed commits atomically with the
-	 * job rows; a job with no live clock plans nothing.
-	 */
-	private async seedInitialOccurrences(manager: EntityManager, jobIds: Set<number>): Promise<void> {
-		if (jobIds.size === 0) return;
-
-		// DB time, not this instance's clock, so the seed sizes its window the way a
-		// poll would and every instance agrees on it (see `DueJobs.now`).
-		const now = await this.tasks.readDbTime(manager);
-
-		const seedTransaction: RunInTransaction = async (work) =>
-			await work({
-				// The just-written rows, read back so planning uses the persisted clock
-				// and (for a redefined job) its new definition. Enabled with a live clock
-				// only, mirroring the poll's claim predicate.
-				claimDueJobs: async () => {
-					const claimed = (await this.jobs.findManyByIds(manager, [...jobIds])).filter(
-						(job) => job.enabled && job.nextRunAt !== null,
-					);
-					// Grouping never triggers here: every seeded job starts from a freshly
-					// computed `nextRunAt`, so none of them has missed anything yet.
-					return claimed.length > 0 ? withOwnerKeys({ now, jobs: claimed }) : undefined;
-				},
-				recordOccurrences: async (occurrences) =>
-					await this.tasks.insertIgnoringDuplicates(manager, occurrences),
-				retireSuperseded: async (superseded) =>
-					await this.tasks.updateToMissed(manager, superseded),
-				advanceJobs: async (planned) =>
-					await this.jobs.advanceMany(
-						manager,
-						planned.map(({ job, plan }) => ({
-							id: job.id,
-							nextRunAt: plan.nextRunAt,
-							lastFiredAt: plan.lastFiredAt,
-						})),
-					),
-			});
-
-		await materialize(seedTransaction, this.materializerOptions, {
-			// A just-registered job was already validated, so a seed-time plan failure is
-			// unexpected; log it (the pass defers the job, as a poll would) instead of
-			// letting it pass silently, matching the run side's reporting.
-			onPlanError: (job, error) =>
-				this.logger.error('Failed to plan a scheduled job while seeding its first run', {
-					jobId: job.id,
-					error: error instanceof Error ? error.message : String(error),
-				}),
-			onSkippedDuplicates: (context) =>
-				this.logger.debug('Seeding skipped occurrences already recorded for a scheduled job', {
-					...context,
-				}),
-		});
-	}
-
 	private deprovisionTransaction(scope: DeprovisionScope): RunInDeprovisionTransaction {
 		return async (work) =>
 			await this.dataSource.transaction(
@@ -471,4 +437,24 @@ export class DurableJobProvisioner {
 				return await this.jobs.deleteIfPayloadUnchanged(manager, target.job.id, target.job.payload);
 		}
 	}
+}
+
+/**
+ * Normalize a requested concurrency ceiling to what the column stores: a whole
+ * number from 1 to {@link MAX_CONCURRENCY_LIMIT}, or `null` for no limit.
+ *
+ * @throws {UserError} when the limit is set but falls outside that range. A ceiling
+ * below one would hold every occurrence back until its misfire deadline passed, so
+ * the job would never run.
+ */
+function resolveConcurrencyLimit(requested: number | null | undefined): number | null {
+	if (requested === undefined || requested === null) {
+		return null;
+	}
+	if (!Number.isInteger(requested) || requested < 1 || requested > MAX_CONCURRENCY_LIMIT) {
+		throw new UserError('Scheduled job concurrency limit is outside the range the column holds', {
+			extra: { concurrencyLimit: requested, maxConcurrencyLimit: MAX_CONCURRENCY_LIMIT },
+		});
+	}
+	return requested;
 }

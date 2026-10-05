@@ -114,6 +114,7 @@ erDiagram
   varchar_64_ parentPrincipalHash
   varchar_255_ parentResourceId
   varchar_128_ parentThreadId
+  varchar pauseRequestId
   TEXT result
   datetime_3_ settledAt
   varchar_16_ status
@@ -185,11 +186,13 @@ erDiagram
   datetime_3_ updatedAt
 }
 "agent_execution_threads" {
+  varchar_16_ accessScope
   varchar_36_ agentId FK
   varchar_255_ agentName
   datetime_3_ createdAt
   varchar_8_ emoji
   varchar_128_ id PK
+  varchar ownerId FK
   varchar_36_ parentAgentId
   varchar_128_ parentThreadId
   varchar_255_ projectId FK

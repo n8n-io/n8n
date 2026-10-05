@@ -37,9 +37,12 @@ vi.mock('../eval/execution.service', () => ({
 }));
 
 import type {
+	AiPreferenceDto,
+	InstanceAiPreferenceCardEvent,
 	InstanceAiAdminSettingsUpdateRequest,
 	InstanceAiEvalCredentialAllowlistRequest,
 	InstanceAiEvalRestoreThreadRequest,
+	InstanceAiEvalThreadMemoryResponse,
 	InstanceAiSendMessageRequest,
 	InstanceAiCorrectTaskRequest,
 	InstanceAiConfirmRequest,
@@ -52,12 +55,14 @@ import type {
 	InstanceAiThreadInfo,
 	InstanceAiRichMessagesResponse,
 	InstanceAiThreadMessagesResponse,
+	InstanceAiThreadTabsState,
 } from '@n8n/api-types';
 import type { ModuleRegistry } from '@n8n/backend-common';
 import type { GlobalConfig } from '@n8n/config';
 import { buildAgentTreeFromEvents, seedAgentBuilderTargetMetadata } from '@n8n/instance-ai';
 import {
 	InstanceAiPersistPendingAgentRequest,
+	InstanceAiThreadTabsRequestDto,
 	MAX_ATTACHMENT_BASE64_BYTES,
 	MAX_TOTAL_ATTACHMENT_BASE64_BYTES,
 } from '@n8n/api-types';
@@ -69,15 +74,12 @@ import type { Request, Response } from 'express';
 import { UserError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { BadRequestError, ConflictError, ForbiddenError, NotFoundError } from '@n8n/errors';
 import type { CredentialsService } from '@/credentials/credentials.service';
 import type { Push } from '@/push';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
 import type { ProjectService } from '@/services/project.service.ee';
-import type { UrlService } from '@/services/url.service';
+import type { UrlService } from '@n8n/backend-services';
 
 import type { InstanceAiBrowserSessionService } from '../browser/instance-ai-browser-session.service';
 import type { EvalAgentExecutionService } from '../eval/agent-execution.service';
@@ -90,7 +92,10 @@ import type { InProcessEventBus } from '../event-bus/in-process-event-bus';
 import type { LocalGateway } from '../filesystem/local-gateway';
 import type { InstanceAiGatewayService } from '../instance-ai-gateway.service';
 import type { InstanceAiMemoryService } from '../instance-ai-memory.service';
+import type { InstanceAiOnboardingService } from '../onboarding';
 import type { InstanceAiPendingAgentService } from '../instance-ai-pending-agent.service';
+import type { InstanceAiPreferenceCardService } from '../instance-ai-preference-card.service';
+import type { InstanceAiThreadTabsService } from '../instance-ai-thread-tabs.service';
 import type { InstanceAiModelCatalogService } from '../instance-ai-model-catalog.service';
 import type { InstanceAiSettingsService } from '../instance-ai-settings.service';
 import { InstanceAiController } from '../instance-ai.controller';
@@ -139,12 +144,16 @@ describe('InstanceAiController', () => {
 
 	const evalCredentialAllowlists = new EvalThreadCredentialAllowlistService();
 	const evalThreadRestore = mock<EvalThreadRestoreService>();
+	const preferenceCardService = mock<InstanceAiPreferenceCardService>();
+	const onboarding = mock<InstanceAiOnboardingService>();
+	const threadTabsService = mock<InstanceAiThreadTabsService>();
 
 	const controller = new InstanceAiController(
 		instanceAiService,
 		gatewayService,
 		browserSessionService,
 		memoryService,
+		onboarding,
 		pendingAgentService,
 		settingsService,
 		modelCatalogService,
@@ -163,7 +172,9 @@ describe('InstanceAiController', () => {
 		projectService,
 		instanceAiErrorReporter,
 		publisher,
+		preferenceCardService,
 		globalConfig,
+		threadTabsService,
 	);
 
 	const req = mock<AuthenticatedRequest>({ user: { id: USER_ID } });
@@ -182,6 +193,7 @@ describe('InstanceAiController', () => {
 
 	describe('chat', () => {
 		const payload = mock<InstanceAiSendMessageRequest>({
+			observerThresholdTokens: undefined,
 			message: 'hello',
 			timeZone: 'Europe/Helsinki',
 			attachments: undefined,
@@ -211,11 +223,13 @@ describe('InstanceAiController', () => {
 				payload.promptVersion,
 				payload.computerUseChannels,
 				payload.threadArtifacts,
+				payload.observerThresholdTokens,
 			);
 		});
 
 		it('should forward thread artifacts to startRun', async () => {
 			const payloadWithArtifacts = mock<InstanceAiSendMessageRequest>({
+				observerThresholdTokens: undefined,
 				message: 'Change this',
 				timeZone: 'UTC',
 				attachments: undefined,
@@ -242,7 +256,46 @@ describe('InstanceAiController', () => {
 				payloadWithArtifacts.promptVersion,
 				payloadWithArtifacts.computerUseChannels,
 				payloadWithArtifacts.threadArtifacts,
+				payloadWithArtifacts.observerThresholdTokens,
 			);
+		});
+
+		it('forwards the observer threshold override for a caller with the eval scope', async () => {
+			const evalPayload = mock<InstanceAiSendMessageRequest>({
+				message: 'build',
+				attachments: undefined,
+				observerThresholdTokens: 1000,
+			});
+			const evalReq = mock<AuthenticatedRequest>({
+				user: { id: USER_ID, role: { scopes: [{ slug: 'instanceAi:eval' }] } },
+			});
+			memoryService.checkThreadOwnership.mockResolvedValue('owned');
+			instanceAiService.hasActiveRun.mockReturnValue(false);
+			instanceAiService.startRun.mockReturnValue('run-7');
+
+			await controller.chat(evalReq, res, THREAD_ID, evalPayload);
+
+			const args = instanceAiService.startRun.mock.calls[0];
+			expect(args[args.length - 1]).toBe(1000);
+		});
+
+		it('rejects the observer threshold override from a caller without the eval scope', async () => {
+			// The override changes how often the observer runs, so it stays an eval-only knob.
+			const chatPayload = mock<InstanceAiSendMessageRequest>({
+				message: 'build',
+				attachments: undefined,
+				observerThresholdTokens: 1000,
+			});
+			const chatReq = mock<AuthenticatedRequest>({
+				user: { id: USER_ID, role: { scopes: [{ slug: 'instanceAi:message' }] } },
+			});
+			memoryService.checkThreadOwnership.mockResolvedValue('owned');
+			instanceAiService.hasActiveRun.mockReturnValue(false);
+
+			await expect(controller.chat(chatReq, res, THREAD_ID, chatPayload)).rejects.toThrow(
+				ForbiddenError,
+			);
+			expect(instanceAiService.startRun).not.toHaveBeenCalled();
 		});
 
 		it('should allow new threads', async () => {
@@ -257,6 +310,7 @@ describe('InstanceAiController', () => {
 
 		it('should forward pushRef to startRun', async () => {
 			const payloadWithPushRef = mock<InstanceAiSendMessageRequest>({
+				observerThresholdTokens: undefined,
 				message: 'build me a workflow',
 				pushRef: 'iframe-push-ref-123',
 				timeZone: 'UTC',
@@ -280,11 +334,13 @@ describe('InstanceAiController', () => {
 				payloadWithPushRef.promptVersion,
 				payloadWithPushRef.computerUseChannels,
 				payloadWithPushRef.threadArtifacts,
+				payloadWithPushRef.observerThresholdTokens,
 			);
 		});
 
 		it('should forward the build mode and prompt version to startRun', async () => {
 			const payloadWithMode = mock<InstanceAiSendMessageRequest>({
+				observerThresholdTokens: undefined,
 				message: 'build me a workflow',
 				timeZone: 'UTC',
 				attachments: undefined,
@@ -309,11 +365,13 @@ describe('InstanceAiController', () => {
 				'progressive@1',
 				payloadWithMode.computerUseChannels,
 				payloadWithMode.threadArtifacts,
+				payloadWithMode.observerThresholdTokens,
 			);
 		});
 
 		it('should forward handoff context to startRun', async () => {
 			const payloadWithContext = mock<InstanceAiSendMessageRequest>({
+				observerThresholdTokens: undefined,
 				message: 'How do I set up Gmail OAuth?',
 				context: {
 					source: 'credential-modal',
@@ -345,6 +403,7 @@ describe('InstanceAiController', () => {
 				payloadWithContext.promptVersion,
 				payloadWithContext.computerUseChannels,
 				payloadWithContext.threadArtifacts,
+				payloadWithContext.observerThresholdTokens,
 			);
 		});
 
@@ -376,6 +435,7 @@ describe('InstanceAiController', () => {
 			memoryService.checkThreadOwnership.mockResolvedValue('owned');
 			instanceAiService.hasActiveRun.mockReturnValue(false);
 			const badPayload = mock<InstanceAiSendMessageRequest>({
+				observerThresholdTokens: undefined,
 				message: 'see attached',
 				attachments: [
 					{ type: 'file', data: '', mimeType: 'application/zip', fileName: 'archive.zip' },
@@ -394,6 +454,7 @@ describe('InstanceAiController', () => {
 			instanceAiService.hasActiveRun.mockReturnValue(false);
 			instanceAiService.startRun.mockReturnValue('run-3');
 			const goodPayload = mock<InstanceAiSendMessageRequest>({
+				observerThresholdTokens: undefined,
 				message: 'see attached',
 				attachments: [
 					{ type: 'file', data: '', mimeType: 'application/pdf', fileName: 'doc.pdf' },
@@ -424,6 +485,7 @@ describe('InstanceAiController', () => {
 				},
 			];
 			const nodesPayload = mock<InstanceAiSendMessageRequest>({
+				observerThresholdTokens: undefined,
 				message: 'what do these nodes do?',
 				timeZone: 'UTC',
 			});
@@ -447,6 +509,7 @@ describe('InstanceAiController', () => {
 				nodesPayload.promptVersion,
 				nodesPayload.computerUseChannels,
 				nodesPayload.threadArtifacts,
+				nodesPayload.observerThresholdTokens,
 			);
 		});
 
@@ -454,6 +517,7 @@ describe('InstanceAiController', () => {
 			memoryService.checkThreadOwnership.mockResolvedValue('owned');
 			instanceAiService.hasActiveRun.mockReturnValue(false);
 			const oversizedPayload = mock<InstanceAiSendMessageRequest>({
+				observerThresholdTokens: undefined,
 				message: 'see screenshot',
 				attachments: [
 					{
@@ -477,6 +541,7 @@ describe('InstanceAiController', () => {
 			instanceAiService.hasActiveRun.mockReturnValue(false);
 			const halfBudget = Math.floor(MAX_TOTAL_ATTACHMENT_BASE64_BYTES / 2) + 1;
 			const payloadOverBudget = mock<InstanceAiSendMessageRequest>({
+				observerThresholdTokens: undefined,
 				message: 'two screenshots',
 				attachments: [
 					{
@@ -983,6 +1048,47 @@ describe('InstanceAiController', () => {
 		});
 	});
 
+	describe('getEvalThreadMemory', () => {
+		const memory: InstanceAiEvalThreadMemoryResponse = {
+			observations: [{ marker: 'critical', text: 'Posting via HTTP Request', tokenCount: 7 }],
+			cursor: { lastObservedMessageId: 'm137', lastObservedAt: '2020-01-01T00:00:00.000Z' },
+		};
+
+		it('should require instanceAi:eval scope', () => {
+			expect(scopeOf('getEvalThreadMemory')).toEqual({
+				scope: 'instanceAi:eval',
+				globalOnly: true,
+			});
+		});
+
+		it('should return the memory of an owned thread', async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('owned');
+			instanceAiService.getThreadMemory.mockResolvedValue(memory);
+
+			const result = await controller.getEvalThreadMemory(req, res, THREAD_ID);
+
+			expect(result).toEqual(memory);
+			expect(instanceAiService.getThreadMemory).toHaveBeenCalledWith(USER_ID, THREAD_ID);
+		});
+
+		it("should reject another user's thread", async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('other_user');
+
+			await expect(controller.getEvalThreadMemory(req, res, THREAD_ID)).rejects.toThrow(
+				ForbiddenError,
+			);
+			expect(instanceAiService.getThreadMemory).not.toHaveBeenCalled();
+		});
+
+		it('should reject a thread that does not exist', async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('not_found');
+
+			await expect(controller.getEvalThreadMemory(req, res, THREAD_ID)).rejects.toThrow(
+				NotFoundError,
+			);
+		});
+	});
+
 	describe('restoreEvalThread', () => {
 		const seedMessages = [
 			{ id: 'm1', type: 'llm', role: 'user', content: [], createdAt: '2026-01-01T00:00:00.000Z' },
@@ -1017,6 +1123,7 @@ describe('InstanceAiController', () => {
 			expect(evalThreadRestore.restoreWorkflows).toHaveBeenCalledWith(
 				[seedWorkflow],
 				'project-1',
+				expect.objectContaining({ id: USER_ID }),
 				expect.any(Map),
 				undefined,
 				expect.any(Map),
@@ -1060,6 +1167,7 @@ describe('InstanceAiController', () => {
 			expect(evalThreadRestore.restoreWorkflows).toHaveBeenCalledWith(
 				[seedWorkflow],
 				'project-1',
+				expect.objectContaining({ id: USER_ID }),
 				idMap,
 				undefined,
 				expect.any(Map),
@@ -1079,6 +1187,7 @@ describe('InstanceAiController', () => {
 			expect(evalThreadRestore.restoreWorkflows).toHaveBeenCalledWith(
 				[seedWorkflow],
 				'project-1',
+				expect.objectContaining({ id: USER_ID }),
 				expect.any(Map),
 				new Set(['cred-1', 'cred-2']),
 				expect.any(Map),
@@ -1189,6 +1298,7 @@ describe('InstanceAiController', () => {
 				expect(evalThreadRestore.restoreWorkflows).toHaveBeenCalledWith(
 					[placedWorkflow],
 					'project-1',
+					expect.objectContaining({ id: USER_ID }),
 					expect.any(Map),
 					undefined,
 					folderIdMap,
@@ -1290,6 +1400,19 @@ describe('InstanceAiController', () => {
 				evalThreadRestore.restoreAgents.mockResolvedValue(['agent-seed-1']);
 			});
 
+			it('should hand the pinned credential allowlist to the agent restore', async () => {
+				evalCredentialAllowlists.set(THREAD_ID, ['cred-openai']);
+
+				await controller.restoreEvalThread(req, res, agentPayload);
+
+				expect(evalThreadRestore.restoreAgents).toHaveBeenCalledWith(
+					[seedAgent],
+					'project-1',
+					expect.any(Map),
+					new Set(['cred-openai']),
+				);
+			});
+
 			it('should recreate the agent and bind the thread to it', async () => {
 				const result = await controller.restoreEvalThread(req, res, agentPayload);
 
@@ -1299,6 +1422,7 @@ describe('InstanceAiController', () => {
 					[seedAgent],
 					'project-1',
 					expect.any(Map),
+					undefined,
 				);
 				// Refs and ordering are reconstructed from the seeded history, so the
 				// messages are handed in alongside the agents.
@@ -1437,6 +1561,131 @@ describe('InstanceAiController', () => {
 		});
 	});
 
+	describe('preference card routes', () => {
+		it('should require instanceAi:message scope', () => {
+			expect(scopeOf('undoPreference')).toEqual({
+				scope: 'instanceAi:message',
+				globalOnly: true,
+			});
+			expect(scopeOf('editPreference')).toEqual({
+				scope: 'instanceAi:message',
+				globalOnly: true,
+			});
+		});
+
+		const undoneEvent: InstanceAiPreferenceCardEvent = {
+			type: 'preference-card',
+			runId: 'run-1',
+			agentId: 'orchestrator-run-1',
+			payload: { toolCallId: 'tc-1', preferenceId: 'pref-1', state: 'undone' },
+		};
+
+		it('undo checks thread access, then returns the published fact', async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('owned');
+			preferenceCardService.undo.mockResolvedValue(undoneEvent);
+			const payload = { runId: 'run-1', toolCallId: 'tc-1' };
+
+			const result = await controller.undoPreference(req, res, THREAD_ID, 'pref-1', payload);
+
+			expect(result).toEqual({ ok: true, event: undoneEvent });
+			expect(memoryService.checkThreadOwnership).toHaveBeenCalledWith(USER_ID, THREAD_ID);
+			expect(preferenceCardService.undo).toHaveBeenCalledWith(
+				req.user,
+				THREAD_ID,
+				'pref-1',
+				payload,
+			);
+		});
+
+		it('undo refuses a thread that belongs to another user before touching the row', async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('other_user');
+
+			await expect(
+				controller.undoPreference(req, res, THREAD_ID, 'pref-1', {
+					runId: 'run-1',
+					toolCallId: 'tc-1',
+				}),
+			).rejects.toThrow(ForbiddenError);
+			expect(preferenceCardService.undo).not.toHaveBeenCalled();
+		});
+
+		it('undo reports a missing thread before touching the row', async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('not_found');
+
+			await expect(
+				controller.undoPreference(req, res, THREAD_ID, 'pref-1', {
+					runId: 'run-1',
+					toolCallId: 'tc-1',
+				}),
+			).rejects.toThrow(NotFoundError);
+			expect(preferenceCardService.undo).not.toHaveBeenCalled();
+		});
+
+		it('edit refuses a thread that belongs to another user before touching the row', async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('other_user');
+
+			await expect(
+				controller.editPreference(req, res, THREAD_ID, 'pref-1', {
+					runId: 'run-1',
+					toolCallId: 'tc-1',
+					content: 'Keep replies brief.',
+					scope: 'user' as const,
+					userId: USER_ID,
+					projectId: null,
+				}),
+			).rejects.toThrow(ForbiddenError);
+			expect(preferenceCardService.edit).not.toHaveBeenCalled();
+		});
+
+		it('edit reports a missing thread before touching the row', async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('not_found');
+
+			await expect(
+				controller.editPreference(req, res, THREAD_ID, 'pref-1', {
+					runId: 'run-1',
+					toolCallId: 'tc-1',
+					content: 'Keep replies brief.',
+					scope: 'user' as const,
+					userId: USER_ID,
+					projectId: null,
+				}),
+			).rejects.toThrow(NotFoundError);
+			expect(preferenceCardService.edit).not.toHaveBeenCalled();
+		});
+
+		it('edit checks thread access, then returns the preference with the published fact', async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('owned');
+			const payload = {
+				runId: 'run-1',
+				toolCallId: 'tc-1',
+				content: 'Keep replies brief.',
+				scope: 'user' as const,
+				userId: USER_ID,
+				projectId: null,
+			};
+			const editedEvent: InstanceAiPreferenceCardEvent = {
+				...undoneEvent,
+				payload: { ...undoneEvent.payload, state: 'edited', content: 'Keep replies brief.' },
+			};
+			preferenceCardService.edit.mockResolvedValue({
+				preference: mock<AiPreferenceDto>({ id: 'pref-1', content: 'Keep replies brief.' }),
+				event: editedEvent,
+			});
+
+			const result = await controller.editPreference(req, res, THREAD_ID, 'pref-1', payload);
+
+			expect(memoryService.checkThreadOwnership).toHaveBeenCalledWith(USER_ID, THREAD_ID);
+			expect(preferenceCardService.edit).toHaveBeenCalledWith(
+				req.user,
+				THREAD_ID,
+				'pref-1',
+				payload,
+			);
+			expect(result.preference).toMatchObject({ id: 'pref-1' });
+			expect(result.event).toEqual(editedEvent);
+		});
+	});
+
 	describe('confirm', () => {
 		it('should require instanceAi:message scope', () => {
 			expect(scopeOf('confirm')).toEqual({ scope: 'instanceAi:message', globalOnly: true });
@@ -1478,6 +1727,55 @@ describe('InstanceAiController', () => {
 			const reqWithBody = { ...req, body } as AuthenticatedRequest;
 
 			await expect(controller.confirm(reqWithBody, res, 'req-1')).rejects.toThrow(NotFoundError);
+		});
+
+		it('should check the model before a free-text answer consumes the onboarding card', async () => {
+			settingsService.isModelConfigured.mockResolvedValue(false);
+			const body: InstanceAiConfirmRequest = {
+				kind: 'questions',
+				answers: [{ questionId: 'apps', selectedOptions: [], customText: 'import a csv' }],
+			};
+			const reqWithBody = { ...req, body } as AuthenticatedRequest;
+
+			await expect(controller.confirm(reqWithBody, res, 'onboarding-card')).rejects.toMatchObject({
+				message: expect.stringContaining('no model configured'),
+			});
+			expect(onboarding.answerCard).not.toHaveBeenCalled();
+		});
+
+		it('should start the first turn with the answers when the onboarding card holds free text', async () => {
+			onboarding.answerCard.mockResolvedValue({ threadId: 'thread-1', firstMessage: 'answers' });
+			instanceAiService.startRun.mockReturnValue('run-2');
+			const body: InstanceAiConfirmRequest = {
+				kind: 'questions',
+				answers: [{ questionId: 'apps', selectedOptions: [], customText: 'import a csv' }],
+			};
+			const reqWithBody = { ...req, body } as AuthenticatedRequest;
+
+			const result = await controller.confirm(reqWithBody, res, 'onboarding-card');
+
+			expect(result).toEqual({ ok: true, runId: 'run-2' });
+			expect(instanceAiService.startRun).toHaveBeenCalledWith(
+				reqWithBody.user,
+				'thread-1',
+				'answers',
+			);
+			expect(instanceAiService.resolveConfirmation).not.toHaveBeenCalled();
+		});
+
+		it('should skip the model check and return the follow-up run when the onboarding card holds no free text', async () => {
+			settingsService.isModelConfigured.mockResolvedValue(false);
+			onboarding.answerCard.mockResolvedValue({ threadId: 'thread-1', runId: 'run-3' });
+			const body: InstanceAiConfirmRequest = {
+				kind: 'questions',
+				answers: [{ questionId: 'apps', selectedOptions: ['Gmail'] }],
+			};
+			const reqWithBody = { ...req, body } as AuthenticatedRequest;
+
+			const result = await controller.confirm(reqWithBody, res, 'onboarding-card');
+
+			expect(result).toEqual({ ok: true, runId: 'run-3' });
+			expect(instanceAiService.startRun).not.toHaveBeenCalled();
 		});
 	});
 
@@ -1897,6 +2195,80 @@ describe('InstanceAiController', () => {
 		});
 	});
 
+	describe('thread tabs', () => {
+		const tabsState: InstanceAiThreadTabsState = {
+			tabs: [{ type: 'workflow', id: 'wf-1', name: 'My Workflow', projectId: 'project-1' }],
+			closedTabs: [{ type: 'data-table', id: 'dt-1' }],
+			activeTab: { type: 'workflow', id: 'wf-1' },
+		};
+
+		// Later tests read the ownership mock without setting it, so leave it as found.
+		afterEach(() => {
+			memoryService.checkThreadOwnership.mockResolvedValue('owned');
+		});
+
+		it('should require instanceAi:message scope to read and save tabs', () => {
+			expect(scopeOf('getThreadTabs')).toEqual({ scope: 'instanceAi:message', globalOnly: true });
+			expect(scopeOf('saveThreadTabs')).toEqual({ scope: 'instanceAi:message', globalOnly: true });
+		});
+
+		it('should return the stored tabs of the user', async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('owned');
+			threadTabsService.getState.mockResolvedValue(tabsState);
+
+			const result = await controller.getThreadTabs(req, res, THREAD_ID);
+
+			expect(result).toEqual({ state: tabsState });
+			expect(threadTabsService.getState).toHaveBeenCalledWith(THREAD_ID, USER_ID);
+		});
+
+		it('should save the tabs of the user', async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('owned');
+			const payload = new InstanceAiThreadTabsRequestDto(tabsState);
+
+			const result = await controller.saveThreadTabs(req, res, THREAD_ID, payload);
+
+			expect(result).toEqual({ state: tabsState });
+			expect(threadTabsService.saveState).toHaveBeenCalledWith(THREAD_ID, USER_ID, tabsState);
+		});
+
+		it('should save whether the preview is open', async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('owned');
+			const payload = new InstanceAiThreadTabsRequestDto({ ...tabsState, previewOpen: false });
+
+			const result = await controller.saveThreadTabs(req, res, THREAD_ID, payload);
+
+			expect(result).toEqual({ state: { ...tabsState, previewOpen: false } });
+			expect(threadTabsService.saveState).toHaveBeenCalledWith(THREAD_ID, USER_ID, {
+				...tabsState,
+				previewOpen: false,
+			});
+		});
+
+		it('should reject tabs of a thread that belongs to another user', async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('other_user');
+
+			await expect(controller.getThreadTabs(req, res, THREAD_ID)).rejects.toThrow(ForbiddenError);
+			await expect(
+				controller.saveThreadTabs(
+					req,
+					res,
+					THREAD_ID,
+					new InstanceAiThreadTabsRequestDto(tabsState),
+				),
+			).rejects.toThrow(ForbiddenError);
+			expect(threadTabsService.getState).not.toHaveBeenCalled();
+			expect(threadTabsService.saveState).not.toHaveBeenCalled();
+		});
+
+		it('should reject tabs of a thread that does not exist', async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('not_found');
+
+			await expect(controller.getThreadTabs(req, res, THREAD_ID)).rejects.toThrow(NotFoundError);
+			expect(threadTabsService.getState).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('getThreadMessages', () => {
 		it('should require instanceAi:message scope', () => {
 			expect(scopeOf('getThreadMessages')).toEqual({
@@ -1923,6 +2295,38 @@ describe('InstanceAiController', () => {
 				limit: 50,
 				page: 0,
 			});
+		});
+
+		it('should carry the latest applied-preferences payload when a turn reported one', async () => {
+			memoryService.getRichMessages.mockResolvedValue(
+				mock<Omit<InstanceAiRichMessagesResponse, 'nextEventId'>>(),
+			);
+			eventLog.getNextEventId.mockResolvedValue(42);
+			const appliedPreferences = {
+				preferences: [{ id: 'pref-1', scope: 'user' as const }],
+				renderedLength: 80,
+				injectedThisTurn: true as const,
+			};
+			eventLog.getLastAppliedPreferences.mockResolvedValue(appliedPreferences);
+			const query = mock<InstanceAiThreadMessagesQuery>({ limit: 50, page: 0, raw: undefined });
+
+			const result = await controller.getThreadMessages(req, res, THREAD_ID, query);
+
+			expect(result).toMatchObject({ nextEventId: 42, appliedPreferences });
+			expect(eventLog.getLastAppliedPreferences).toHaveBeenCalledWith(THREAD_ID);
+		});
+
+		it('should omit appliedPreferences when no turn has reported any', async () => {
+			memoryService.getRichMessages.mockResolvedValue(
+				mock<Omit<InstanceAiRichMessagesResponse, 'nextEventId'>>(),
+			);
+			eventLog.getNextEventId.mockResolvedValue(42);
+			eventLog.getLastAppliedPreferences.mockResolvedValue(undefined);
+			const query = mock<InstanceAiThreadMessagesQuery>({ limit: 50, page: 0, raw: undefined });
+
+			const result = await controller.getThreadMessages(req, res, THREAD_ID, query);
+
+			expect(result).not.toHaveProperty('appliedPreferences');
 		});
 
 		it('should return raw messages when raw=true', async () => {
@@ -2396,6 +2800,7 @@ describe('InstanceAiController — durable-log SSE replay', () => {
 		mock<InstanceAiGatewayService>(),
 		mock<InstanceAiBrowserSessionService>(),
 		memoryService,
+		mock<InstanceAiOnboardingService>(),
 		mock<InstanceAiPendingAgentService>(),
 		settingsService,
 		mock<InstanceAiModelCatalogService>(),
@@ -2414,7 +2819,9 @@ describe('InstanceAiController — durable-log SSE replay', () => {
 		mock<ProjectService>(),
 		mock<InstanceAiErrorReporterService>(),
 		mock<Publisher>(),
+		mock<InstanceAiPreferenceCardService>(),
 		globalConfig,
+		mock<InstanceAiThreadTabsService>(),
 	);
 
 	beforeEach(() => {

@@ -10,8 +10,7 @@ import type {
 	TracesAPI,
 } from '@n8n/expression-runtime';
 import { EXPRESSION_METRICS, NoOpProvider } from '@n8n/expression-runtime';
-import { SpanStatusCode, trace } from '@opentelemetry/api';
-import type { Tracer } from '@opentelemetry/api';
+import { SpanStatusCode } from '@opentelemetry/api';
 import { UnexpectedError } from 'n8n-workflow';
 import promClient, { type Counter, type Gauge, type Histogram } from 'prom-client';
 
@@ -25,6 +24,8 @@ import {
 	normalizeAttributeValue,
 	toPromName,
 } from './expression-observability.formatters';
+
+import { OtelService } from '@/modules/otel/otel.service';
 
 type TailSampleDecision = 'drop' | 'keep';
 
@@ -40,8 +41,6 @@ export class ExpressionObservabilityProvider implements ObservabilityProvider {
 
 	private readonly prefix!: string;
 
-	private tracer?: Tracer;
-
 	private readonly metricDefs = new Map<string, MetricDef>(
 		(Object.values(EXPRESSION_METRICS) as MetricDef[]).map((def) => [def.name, def]),
 	);
@@ -50,6 +49,7 @@ export class ExpressionObservabilityProvider implements ObservabilityProvider {
 		private readonly config: ExpressionEngineConfig,
 		private readonly logger: Logger,
 		globalConfig: GlobalConfig,
+		private readonly otelService: OtelService,
 	) {
 		this.scopedLogger = this.logger.scoped('expression-engine');
 
@@ -167,7 +167,7 @@ export class ExpressionObservabilityProvider implements ObservabilityProvider {
 					? 'slow'
 					: 'healthy';
 
-		const tracer = this.getTracer();
+		const tracer = this.otelService.getTracer(TRACER_NAME);
 		const errorType = tags?.type && tags.type !== 'none' ? tags.type : undefined;
 		const span = tracer.startSpan('expression.evaluate', {
 			attributes: {
@@ -194,7 +194,7 @@ export class ExpressionObservabilityProvider implements ObservabilityProvider {
 	private startSpan(name: string, attributes?: Record<string, unknown>): Span {
 		if (!this.config.tracesEnabled) return NoOpProvider.traces.startSpan(name, attributes);
 
-		const tracer = this.getTracer();
+		const tracer = this.otelService.getTracer(TRACER_NAME);
 		const otelSpan = tracer.startSpan(name, {
 			attributes: normalizeAttributes(attributes),
 		});
@@ -211,10 +211,5 @@ export class ExpressionObservabilityProvider implements ObservabilityProvider {
 			recordException: (error) => otelSpan.recordException(error),
 			end: () => otelSpan.end(),
 		};
-	}
-
-	private getTracer(): Tracer {
-		this.tracer ??= trace.getTracer(TRACER_NAME);
-		return this.tracer;
 	}
 }

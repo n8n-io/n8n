@@ -577,7 +577,12 @@ describe('agent-directed episodic capture', () => {
 				scope: { resourceId: 'user-1', threadId: 'thread-1' },
 				now: new Date('2026-05-12T11:00:00.000Z'),
 			}),
-		).resolves.toEqual({ status: 'ran', entriesWritten: 1, candidatesProcessed: 1 });
+		).resolves.toEqual({
+			status: 'ran',
+			entriesWritten: 1,
+			candidatesProcessed: 1,
+			usageReports: expect.any(Array),
+		});
 
 		// Reflection only runs for corrections; a plain preference must not pay for it.
 		expect(reflect).not.toHaveBeenCalled();
@@ -766,5 +771,102 @@ describe('agent-directed episodic capture', () => {
 				'concise reports',
 			),
 		).resolves.toHaveLength(1);
+	});
+
+	it('never fails candidate processing when the embed onUsage throws or rejects', async () => {
+		// Pricing is best-effort: a misbehaving onUsage callback (sync throw or
+		// rejected promise) at the embed forwarding site must not abort
+		// candidate processing or surface an unhandled rejection. Entries are
+		// still saved.
+		const syncThrow = vi.fn(() => {
+			throw new Error('pricing sync boom');
+		});
+		const rejecting = vi.fn(async () => {
+			throw new Error('pricing async boom');
+		});
+
+		for (const onUsage of [syncThrow, rejecting]) {
+			const memory = new InMemoryMemory();
+			await enqueueCandidate(memory);
+			mockedEmbedMany.mockResolvedValue({
+				embeddings: [[1, 0]],
+				usage: { tokens: 6 },
+			} as never);
+
+			const result = await runEpisodicMemoryCandidateProcessor({
+				memory,
+				config: { embedder: fakeEmbedder },
+				scope: { resourceId: 'user-1', threadId: 'thread-1' },
+				onUsage,
+			});
+
+			expect(result).toMatchObject({ status: 'ran' });
+			expect(onUsage).toHaveBeenCalledTimes(1);
+			await expect(
+				memory.episodic.searchEntries(
+					{ resourceId: 'user-1', threadId: 'thread-1' },
+					'concise reports',
+				),
+			).resolves.toHaveLength(1);
+		}
+	});
+
+	it('never fails reflection when the reflect onUsage throws or rejects', async () => {
+		// The reflect forwarding site must not abort reflection when onUsage
+		// throws or rejects. The reflection's merge still applies.
+		const syncThrow = vi.fn(() => {
+			throw new Error('pricing sync boom');
+		});
+		const rejecting = vi.fn(async () => {
+			throw new Error('pricing async boom');
+		});
+
+		for (const onUsage of [syncThrow, rejecting]) {
+			const memory = new InMemoryMemory();
+			const legacy = await saveEpisodicEntry(memory, {
+				resourceId: 'user-1',
+				content: 'User planned SQLite for local-first memory storage.',
+				embedding: [0, 1],
+				embeddingModel: 'openai/text-embedding-3-small',
+			});
+			await enqueueCandidate(memory, 'call-1', 'run-1', {
+				content: 'User switched memory storage from SQLite to Postgres.',
+				kind: 'correction',
+			});
+			mockedEmbedMany.mockResolvedValue({
+				embeddings: [
+					[1, 0],
+					[1, 1],
+				],
+				usage: { tokens: 6 },
+			} as never);
+
+			const result = await runEpisodicMemoryCandidateProcessor({
+				memory,
+				config: {
+					embedder: fakeEmbedder,
+					reflect: async ({ seedEntryIds }) =>
+						await Promise.resolve({
+							reflection: {
+								drop: [],
+								merge: [
+									{
+										supersedes: [legacy.id, seedEntryIds[0]],
+										content: 'User replaced the SQLite plan with Postgres.',
+									},
+								],
+							},
+							usage: { promptTokens: 20, completionTokens: 5, totalTokens: 25 },
+							model: 'openai/gpt-4o-mini',
+						}),
+				},
+				scope: { resourceId: 'user-1', threadId: 'thread-1' },
+				onUsage,
+			});
+
+			expect(result).toMatchObject({ status: 'ran' });
+			// Embed + reflect + merge-embed = three forwarding calls per run.
+			expect(onUsage).toHaveBeenCalledTimes(3);
+		}
 	});
 });

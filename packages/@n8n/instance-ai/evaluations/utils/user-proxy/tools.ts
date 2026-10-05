@@ -373,18 +373,66 @@ export async function encodeConfirmationDecision(
 			};
 		}
 
-		case 'choose_credential_setup_option':
+		case 'choose_credential_setup_option': {
+			const wizardFill = wizardFillForStandaloneDecision(
+				decision,
+				credentialSetupContext,
+				setupContext,
+			);
+			if (wizardFill) {
+				return await encodeConfirmationDecision(
+					{
+						action: 'apply_setup_wizard',
+						nodeParametersJson: '{}',
+						nodeCredentialsJson: JSON.stringify(wizardFill.nodeCredentials),
+						workingCredentialTypes: [wizardFill.credentialType],
+					},
+					onParseFailure,
+					setupContext,
+					credentialSetupContext,
+					createCredential,
+				);
+			}
 			return await encodeCredentialSetupDecision(
 				decision,
 				onParseFailure,
 				credentialSetupContext,
 				createCredential,
 			);
+		}
 
 		case 'send_follow_up_message':
 		case 'declare_done':
 			return null;
 	}
+}
+
+/**
+ * The model answered a setup-wizard card with the standalone-card action. A
+ * `manual` pick still names the credential the direction wants filled, so route
+ * it to the wizard slot(s) of that type instead of dismissing the card. Generic
+ * auth types such as httpTemplatedCustomAuth only ever arrive as wizard slots.
+ */
+function wizardFillForStandaloneDecision(
+	decision: Extract<Decision, { action: 'choose_credential_setup_option' }>,
+	credentialSetupContext: CredentialSetupParseContext | undefined,
+	setupContext: SetupWizardParseContext | undefined,
+): { credentialType: string; nodeCredentials: Record<string, Record<string, string>> } | undefined {
+	if (decision.option !== 'manual' || credentialSetupContext || !setupContext) return undefined;
+	const slots = setupContext.nodes.flatMap((node) =>
+		node.credentialRequests
+			.filter((r) => !decision.credentialType || r.credentialType === decision.credentialType)
+			.map((r) => ({ nodeName: node.nodeName, credentialType: r.credentialType })),
+	);
+	const types = new Set(slots.map((slot) => slot.credentialType));
+	if (types.size !== 1) return undefined;
+	const [credentialType] = types;
+	const nodeCredentials: Record<string, Record<string, string>> = {};
+	for (const slot of slots) {
+		(nodeCredentials[slot.nodeName] ??= {})[credentialType] =
+			decision.existingCredentialId ?? 'new';
+	}
+	return { credentialType, nodeCredentials };
 }
 
 async function encodeCredentialSetupDecision(

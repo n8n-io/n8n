@@ -2,15 +2,13 @@ import { DeleteExecutionsDto } from '@n8n/api-types';
 import type { AuthenticatedRequest, ExecutionSummaries, User } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { NotImplementedError } from '@/errors/response-errors/not-implemented.error';
+import { BadRequestError, NotFoundError, NotImplementedError } from '@n8n/errors';
 import type { ExecutionCursor } from '@/executions/execution-cursor';
 import type { ExecutionListService } from '@/executions/execution-list.service';
 import type { ExecutionService } from '@/executions/execution.service';
 import type { ExecutionRequest } from '@/executions/execution.types';
 import { ExecutionsController } from '@/executions/executions.controller';
-import type { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
+import type { WorkflowSharingService } from '@n8n/backend-services';
 
 const V2_EXECUTION_ID = '01a038ae-c4a8-7799-8a3e-e3c2ca055cfa';
 
@@ -38,7 +36,7 @@ describe('ExecutionsController', () => {
 			await expect(executionsController.getOne(req)).rejects.toThrow(BadRequestError);
 		});
 
-		it('should pass an engine 2.0 id through to the service', async () => {
+		it('should pass an engine v2 id through to the service', async () => {
 			workflowSharingService.getSharedWorkflowIds.mockResolvedValue(['wf-1']);
 			const req = mock<ExecutionRequest.GetOne>({ params: { id: V2_EXECUTION_ID } });
 
@@ -55,7 +53,7 @@ describe('ExecutionsController', () => {
 			await expect(executionsController.update(req)).rejects.toThrow(BadRequestError);
 		});
 
-		it('should 501 for an engine 2.0 id, which has no annotation store', async () => {
+		it('should 501 for an engine v2 id, which has no annotation store', async () => {
 			workflowSharingService.getSharedWorkflowIds.mockResolvedValue(['wf-1']);
 			const req = mock<ExecutionRequest.Update>({ params: { id: V2_EXECUTION_ID } });
 
@@ -63,7 +61,7 @@ describe('ExecutionsController', () => {
 			expect(executionService.annotate).not.toHaveBeenCalled();
 		});
 
-		it('should 404 for an engine 2.0 id when no workflows are accessible', async () => {
+		it('should 404 for an engine v2 id when no workflows are accessible', async () => {
 			workflowSharingService.getSharedWorkflowIds.mockResolvedValue([]);
 			const req = mock<ExecutionRequest.Update>({ params: { id: V2_EXECUTION_ID } });
 

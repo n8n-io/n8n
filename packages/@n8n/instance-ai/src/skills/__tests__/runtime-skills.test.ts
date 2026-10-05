@@ -268,6 +268,18 @@ describe('Instance AI runtime skills', () => {
 		}
 	});
 
+	it('loads the bundled agent-builder skill', async () => {
+		const source = await loadRuntimeSkillSourceWithEnabledModules('instance-ai, agents');
+		const skill = source.registry.skills.find((entry) => entry.name === 'agent-builder');
+
+		expect(skill).toBeDefined();
+
+		const loaded = await source.loadSkill('agent-builder');
+		expect(loaded?.instructions).toContain('## Agent UI labels');
+		expect(loaded?.instructions).toContain('Sessions tab');
+		expect(loaded?.instructions).toContain('Never say Runs tab');
+	});
+
 	it('loads the bundled Computer Use credential setup skill', async () => {
 		const source = loadInstanceAiRuntimeSkillSource();
 		const skill = source.registry.skills.find(

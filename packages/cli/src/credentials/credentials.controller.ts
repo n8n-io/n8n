@@ -6,6 +6,7 @@ import {
 	TestCredentialRequestDto,
 } from '@n8n/api-types';
 import { LicenseState, Logger } from '@n8n/backend-common';
+import { EventService, CredentialsFinderService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import {
 	SharedCredentials,
@@ -25,24 +26,23 @@ import {
 	Body,
 	Param,
 	Query,
+	Middleware,
 } from '@n8n/decorators';
 import { hasGlobalScope, PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
 import { In } from '@n8n/typeorm';
+import type { NextFunction, Response } from 'express';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 import { z } from 'zod';
 
 import { CredentialConnectionStatusProxy } from './credential-connection-status-proxy';
-import { CredentialsFinderService } from './credentials-finder.service';
+import { CredentialDescriptionsService } from './credential-descriptions.service';
 import { CredentialsService } from './credentials.service';
 import { EnterpriseCredentialsService } from './credentials.service.ee';
 import { getExternalSecretExpressionPaths } from './external-secrets.utils';
 
 import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { CredentialNotFoundError } from '@/errors/credential-not-found.error';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { EventService } from '@/events/event.service';
+import { BadRequestError, ForbiddenError, NotFoundError } from '@n8n/errors';
 import { listQueryMiddleware } from '@/middlewares';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { CredentialRequest } from '@/requests';
@@ -66,8 +66,25 @@ export class CredentialsController {
 		private readonly credentialsFinderService: CredentialsFinderService,
 		private readonly connectionStatusProxy: CredentialConnectionStatusProxy,
 		private readonly credentialsOverwrites: CredentialsOverwrites,
+		private readonly credentialDescriptions: CredentialDescriptionsService,
 	) {}
 
+	@Middleware()
+	async stripDisabledDescription(
+		req: CredentialRequest.Update,
+		_res: Response,
+		next: NextFunction,
+	) {
+		try {
+			// Strip before DTO validation so disabled descriptions cannot reject a request.
+			if (req.body) await this.credentialDescriptions.stripIfDisabled(req.body);
+			next();
+		} catch (error) {
+			next(error);
+		}
+	}
+
+	// oxlint-disable-next-line typescript/no-deprecated
 	@Get('/', { middlewares: listQueryMiddleware })
 	async getMany(
 		req: CredentialRequest.GetMany,
@@ -140,6 +157,7 @@ export class CredentialsController {
 			req.params.credentialId,
 		);
 
+		await this.credentialDescriptions.stripIfDisabled(credential);
 		return { ...credential, scopes };
 	}
 
@@ -216,7 +234,9 @@ export class CredentialsController {
 			credentialType: newCredential.type,
 			credentialId: newCredential.id,
 			credentialName: newCredential.name,
-			credentialDescriptionLength: newCredential.description?.length ?? 0,
+			...((await this.credentialDescriptions.isEnabled()) && {
+				credentialDescriptionLength: newCredential.description?.length ?? 0,
+			}),
 			publicApi: false,
 			projectId: project?.id,
 			projectType: project?.type,
@@ -321,7 +341,7 @@ export class CredentialsController {
 			data: preparedCredentialData.data as unknown as ICredentialDataDecryptedObject,
 		});
 
-		if (body.description !== undefined) {
+		if (preparedCredentialData.description !== undefined) {
 			newCredentialData.description = preparedCredentialData.description;
 		}
 
@@ -358,6 +378,7 @@ export class CredentialsController {
 		const responseData = await this.credentialsService.update(
 			credentialId,
 			newCredentialData,
+			{ kind: 'user', user: req.user },
 			body.data
 				? (preparedCredentialData.data as unknown as ICredentialDataDecryptedObject)
 				: undefined,
@@ -384,7 +405,9 @@ export class CredentialsController {
 			credentialId: credential.id,
 			// The updated entity, so a rename records the new name rather than the one it replaced.
 			credentialName: responseData.name,
-			credentialDescriptionLength: responseData.description?.length ?? 0,
+			...((await this.credentialDescriptions.isEnabled()) && {
+				credentialDescriptionLength: responseData.description?.length ?? 0,
+			}),
 			isDynamic: newCredentialData.isResolvable ?? false,
 			usesExternalSecrets: getExternalSecretExpressionPaths(preparedCredentialData.data).length > 0,
 			jweEnabled: updatedData.jweEnabled === true,
@@ -446,7 +469,7 @@ export class CredentialsController {
 			throw new BadRequestError('Only OAuth credentials can be disconnected');
 		}
 
-		await this.credentialsService.clearOauthTokenData(credential);
+		await this.credentialsService.clearOauthTokenData(credential, { kind: 'user', user: req.user });
 
 		this.logger.debug('Credential OAuth token cleared', { credentialId });
 
@@ -495,10 +518,13 @@ export class CredentialsController {
 			throw new BadRequestError('Bad request');
 		}
 
+		// Read to compute the share diff; `credential:share` below is the real gate, so
+		// visibility is enough here.
 		const credential = await this.credentialsFinderService.findCredentialForUser(
 			credentialId,
 			req.user,
 			['credential:read'],
+			{ visibilityOnly: true },
 		);
 
 		if (!credential) {

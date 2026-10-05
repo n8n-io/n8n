@@ -62,33 +62,25 @@ vi.mock('@/app/utils/rbac/permissions', () => ({
 	hasPermission: vi.fn().mockReturnValue(true),
 }));
 
-const {
-	mcpConnectionsExperimentMock,
-	computerUseExperimentMock,
-	browserUseExperimentMock,
-	routerPushMock,
-} = vi.hoisted(() => ({
-	mcpConnectionsExperimentMock: vi.fn(),
-	browserUseExperimentMock: vi.fn(),
-	computerUseExperimentMock: vi.fn(),
-	routerPushMock: vi.fn(),
-}));
+const { computerUseExperimentMock, contextPreferencesEnabledMock, routerPushMock } = vi.hoisted(
+	() => ({
+		computerUseExperimentMock: vi.fn(),
+		contextPreferencesEnabledMock: vi.fn(() => true),
+		routerPushMock: vi.fn(),
+	}),
+);
 
 vi.mock('vue-router', async (importOriginal) => ({
 	...(await importOriginal()),
 	useRouter: () => ({ push: routerPushMock }),
 }));
 
-vi.mock('@/experiments/instanceAiMcpConnections', () => ({
-	useInstanceAiMcpConnectionsExperiment: mcpConnectionsExperimentMock,
-}));
-
-vi.mock('@/experiments/instanceAiBrowserUse', () => ({
-	useInstanceAiBrowserUseExperiment: browserUseExperimentMock,
-}));
-
 vi.mock('@/experiments/instanceAiComputerUse', () => ({
 	useInstanceAiComputerUseExperiment: computerUseExperimentMock,
+}));
+
+vi.mock('@/features/settings/context/context.utils', () => ({
+	isContextPreferencesEnabled: () => contextPreferencesEnabledMock(),
 }));
 
 const renderComponent = createComponentRenderer(SettingsInstanceAiView);
@@ -97,6 +89,16 @@ const renderModelDialog = ({ props }: { props: Record<string, unknown> }) =>
 	renderConnectionDialog({ props: { kind: 'model', ...props } });
 const renderSearchDialog = ({ props }: { props: Record<string, unknown> }) =>
 	renderConnectionDialog({ props: { kind: 'search', ...props } });
+
+async function selectOption(select: HTMLElement, label: string) {
+	const listboxId = select.querySelector('input')?.getAttribute('aria-controls');
+	expect(listboxId).toBeTruthy();
+	const option = Array.from(
+		document.getElementById(listboxId!)?.querySelectorAll('[role="option"]') ?? [],
+	).find((element) => element.textContent === label);
+	expect(option).toBeDefined();
+	await fireEvent.click(option!);
+}
 
 function setModuleSettings(
 	settingsStore: ReturnType<typeof useSettingsStore>,
@@ -114,8 +116,6 @@ describe('SettingsInstanceAiView', () => {
 		vi.clearAllMocks();
 		vi.mocked(fetchSettings).mockResolvedValue(null as never);
 		vi.mocked(hasPermission).mockReturnValue(true);
-		mcpConnectionsExperimentMock.mockReturnValue({ isFeatureEnabled: ref(true) });
-		browserUseExperimentMock.mockReturnValue({ isFeatureEnabled: ref(true) });
 		computerUseExperimentMock.mockReturnValue({ isFeatureEnabled: ref(true) });
 		const pinia = createTestingPinia({ stubActions: false });
 		setActivePinia(pinia);
@@ -248,7 +248,7 @@ describe('SettingsInstanceAiView', () => {
 		});
 
 		it('chains missing setup steps while keeping settings-style actions', async () => {
-			vi.mocked(store.fetch).mockResolvedValue(undefined);
+			vi.mocked(store.fetch).mockResolvedValue(true);
 			vi.mocked(store.verifyModel).mockResolvedValue({ ok: true });
 			vi.mocked(store.verifySandbox).mockResolvedValue({ ok: true });
 			vi.mocked(store.save).mockImplementation(async () => {
@@ -470,6 +470,9 @@ describe('SettingsInstanceAiView', () => {
 			await waitFor(() => expect(store.isLoading).toBe(false));
 			expect(getByTestId('n8n-agent-model-env-value')).toBeVisible();
 			expect(getByTestId('n8n-agent-sandbox-env-value')).toBeVisible();
+			expect(getByTestId('n8n-agent-sandbox-env-value')).toHaveTextContent(
+				'instanceAi.onboarding.foundOnServer',
+			);
 
 			await fireEvent.click(getByTestId('n8n-agent-model-row'));
 			await fireEvent.click(getByTestId('n8n-agent-sandbox-row'));
@@ -555,17 +558,9 @@ describe('SettingsInstanceAiView', () => {
 	});
 
 	describe('Browser use settings', () => {
-		it('shows the browser use toggle when the experiment is enabled', () => {
+		it('shows the browser use toggle', () => {
 			const { getByTestId } = renderComponent();
 			expect(getByTestId('n8n-agent-browser-use-toggle')).toBeVisible();
-		});
-
-		it('hides the browser use toggle when the experiment is disabled', () => {
-			browserUseExperimentMock.mockReturnValue({ isFeatureEnabled: ref(false) });
-
-			const { queryByTestId } = renderComponent();
-
-			expect(queryByTestId('n8n-agent-browser-use-toggle')).toBeNull();
 		});
 	});
 
@@ -601,31 +596,97 @@ describe('SettingsInstanceAiView', () => {
 			expect(save).toHaveBeenCalled();
 		});
 
-		it('shows the Execute MCP tools permission when the group is expanded', async () => {
-			const { getByTestId, getByLabelText } = renderComponent();
+		it('shows the MCP tool category permissions when the group is expanded', async () => {
+			const { getByTestId, getByLabelText, queryByTestId } = renderComponent();
 
 			await fireEvent.click(getByLabelText('Toggle settings.n8nAgent.permissions.group.mcp'));
 
-			await waitFor(() => expect(getByTestId('n8n-agent-permission-executeMcpTool')).toBeVisible());
+			await waitFor(() => {
+				expect(getByTestId('n8n-agent-permission-mcpRead')).toBeVisible();
+				expect(getByTestId('n8n-agent-permission-mcpWrite')).toBeVisible();
+			});
+			expect(queryByTestId('n8n-agent-permission-executeMcpTool')).toBeNull();
+		});
+
+		it.each([
+			{
+				permissions: { mcpRead: 'always_allow' as const, mcpWrite: 'require_approval' as const },
+				summary: 'settings.n8nAgent.permissions.group.default',
+			},
+			{
+				permissions: { mcpRead: 'blocked' as const, mcpWrite: 'require_approval' as const },
+				summary: 'settings.n8nAgent.permissions.group.exception',
+			},
+			{
+				permissions: { mcpRead: 'blocked' as const, mcpWrite: 'always_allow' as const },
+				summary: 'settings.n8nAgent.permissions.group.exceptions',
+			},
+		])('shows $summary for MCP tool category permissions', ({ permissions, summary }) => {
+			store.$patch({
+				settings: {
+					...store.settings!,
+					permissions,
+				},
+			});
+
+			const { getByTestId } = renderComponent();
+
+			expect(getByTestId('n8n-agent-permission-group-mcp').textContent).toContain(summary);
 		});
 
 		it('locks the MCP permission group when MCP access is disabled', () => {
 			store.$patch({ settings: { ...store.settings!, mcpAccessEnabled: false } });
 
-			const { getByText, queryByTestId, queryByLabelText } = renderComponent();
+			const { queryByTestId, queryByLabelText } = renderComponent();
 
-			expect(getByText('settings.n8nAgent.permissions.group.mcpDisabled')).toBeVisible();
 			expect(queryByLabelText('Toggle settings.n8nAgent.permissions.group.mcp')).toBeNull();
-			expect(queryByTestId('n8n-agent-permission-executeMcpTool')).toBeNull();
+			expect(queryByTestId('n8n-agent-permission-mcpRead')).toBeNull();
+			expect(queryByTestId('n8n-agent-permission-mcpWrite')).toBeNull();
 		});
 
-		it('hides the MCP settings card when the connections experiment is disabled', () => {
-			mcpConnectionsExperimentMock.mockReturnValue({ isFeatureEnabled: ref(false) });
+		it('persists an MCP tool category permission change', async () => {
+			const setPermission = vi.spyOn(store, 'setPermission');
+			const save = vi.spyOn(store, 'save').mockResolvedValue(true);
+			const { getByTestId, getByLabelText } = renderComponent();
 
-			const { queryByTestId } = renderComponent();
+			await fireEvent.click(getByLabelText('Toggle settings.n8nAgent.permissions.group.mcp'));
+			await waitFor(() => expect(getByTestId('n8n-agent-permission-mcpWrite')).toBeVisible());
 
-			expect(queryByTestId('n8n-agent-mcp-access-toggle')).toBeNull();
-			expect(queryByTestId('n8n-agent-permission-group-mcp')).toBeNull();
+			await selectOption(
+				getByTestId('n8n-agent-permission-mcpWrite'),
+				'settings.n8nAgent.permissions.blocked',
+			);
+
+			expect(setPermission).toHaveBeenCalledWith('mcpWrite', 'blocked');
+			expect(save).toHaveBeenCalled();
+		});
+
+		it('offers only always_allow and blocked for createPreference', async () => {
+			// N8nSelect (element-plus) teleports its option list to the document
+			// body and only mounts it once open, so the options never show up in
+			// `select.textContent`. Open the select and read the teleported list
+			// instead of the select's own DOM subtree.
+			const { getByTestId, getByLabelText } = renderComponent();
+			await fireEvent.click(
+				getByLabelText('Toggle settings.n8nAgent.permissions.group.preferences'),
+			);
+			const select = await waitFor(() => getByTestId('n8n-agent-permission-createPreference'));
+			expect(select).toBeVisible();
+
+			const input = select.querySelector('input')!;
+			await fireEvent.click(input);
+			const listboxId = input.getAttribute('aria-controls');
+			const options = await waitFor(() => {
+				const listbox = document.getElementById(listboxId!);
+				expect(listbox).not.toBeNull();
+				return Array.from(listbox!.querySelectorAll('[role="option"]')).map(
+					(option) => option.textContent,
+				);
+			});
+			expect(options).toEqual([
+				'settings.n8nAgent.permissions.alwaysAllow',
+				'settings.n8nAgent.permissions.blocked',
+			]);
 		});
 	});
 
@@ -666,6 +727,25 @@ describe('SettingsInstanceAiView', () => {
 				'settings.n8nAgent.permissions.group.exceptions',
 			);
 			expect(getByTestId('n8n-agent-permission-group-folders').textContent).toContain(
+				'settings.n8nAgent.permissions.group.default',
+			);
+		});
+
+		it('hides the Preferences group while the 111_context_preferences flag is off', () => {
+			contextPreferencesEnabledMock.mockReturnValueOnce(false);
+
+			const { queryByTestId, getByTestId } = renderComponent();
+
+			expect(queryByTestId('n8n-agent-permission-group-preferences')).toBeNull();
+			expect(getByTestId('n8n-agent-permission-group-workflows')).toBeVisible();
+		});
+
+		it('summarises the untouched Preferences group as the default', () => {
+			// createPreference defaults to always_allow. A summary that compares
+			// against require_approval would read the untouched group as an
+			// exception.
+			const { getByTestId } = renderComponent();
+			expect(getByTestId('n8n-agent-permission-group-preferences').textContent).toContain(
 				'settings.n8nAgent.permissions.group.default',
 			);
 		});

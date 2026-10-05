@@ -24,8 +24,9 @@
 		"src/dns/__tests__/dns-resolver.test.ts",
 		"src/dns/dns-resolver.ts"
 	],
+	"packages/@n8n/backend-services": ["src/index.ts", "test/setup-test-folder.ts"],
 	"packages/@n8n/backend-test-utils": ["src/db/projects.ts"],
-	"packages/@n8n/benchmark": ["src/commands/list.ts"],
+	"packages/quality/efficiency/scale/benchmark": ["src/commands/list.ts"],
 	"packages/@n8n/blob-storage": [
 		"src/__tests__/azure-byte-store.test.ts",
 		"src/azure-blob/azure-blob.config.ts"
@@ -53,11 +54,6 @@
 		"src/configs/activity-log.config.ts"
 	],
 	"packages/@n8n/constants": ["src/api.ts"],
-	"packages/@n8n/crdt": [
-		"src/__tests__/helpers.ts",
-		"src/awareness/awareness.test.ts",
-		"src/awareness/index.ts"
-	],
 	"packages/@n8n/db": [
 		"src/connection/__tests__/backoff.test.ts",
 		"src/connection/backoff.ts",
@@ -67,17 +63,19 @@
 		"src/__tests__/memoized.test.ts",
 		"src/auth-handler/auth-handler-metadata.ts"
 	],
-	"packages/@n8n/di": ["src/__tests__/circular-depedency.test.ts", "src/di.ts"],
 	"packages/@n8n/engine": [
 		"src/admittance/__tests__/allow-all-admittance.test.ts",
 		"src/admittance/admittance-rejected.error.ts"
 	],
-	"packages/@n8n/errors": ["src/application.error.ts"],
 	"packages/@n8n/eslint-plugin-community-nodes": [
 		"src/plugin.ts",
 		"src/rules/ai-node-package-json.test.ts"
 	],
 	"packages/@n8n/extension-sdk": ["src/backend/define.ts"],
+	"packages/@n8n/inbound-auth": [
+		"src/__tests__/trusted-source-config.test.ts",
+		"src/trusted-source-config.ts"
+	],
 	"packages/@n8n/imap": ["src/connection-options.test.ts", "src/connection-options.ts"],
 	"packages/@n8n/instance-ai": [
 		"evaluations/__tests__/agent-report-rendering.test.ts",
@@ -232,26 +230,15 @@
 		"src/policy/policy-enforcement.service.ts",
 		"src/public-api/v1/controllers/__tests__/workflows.public.controller.test.ts",
 		"src/public-api/v1/handlers/audit/audit.handler.ts",
-		"src/public-api/v1/handlers/community-packages/community-packages.handler.ts",
-		"src/public-api/v1/handlers/credentials/credentials.handler.ts",
 		"src/public-api/v1/handlers/data-tables/data-tables.columns.handler.ts",
 		"src/public-api/v1/handlers/data-tables/data-tables.handler.ts",
 		"src/public-api/v1/handlers/data-tables/data-tables.rows.handler.ts",
-		"src/public-api/v1/handlers/discover/discover.handler.ts",
 		"src/public-api/v1/handlers/evaluations/evaluations.handler.ts",
-		"src/public-api/v1/handlers/folders/folders.handler.ts",
-		"src/public-api/v1/handlers/insights/insights.handler.ts",
 		"src/public-api/v1/handlers/ldap/ldap.handler.ts",
 		"src/public-api/v1/handlers/log-streaming/log-streaming.handler.ts",
 		"src/public-api/v1/handlers/n8n-packages/n8n-packages.handler.ts",
 		"src/public-api/v1/handlers/otel/otel.handler.ts",
-		"src/public-api/v1/handlers/projects/projects.handler.ts",
-		"src/public-api/v1/handlers/security-policy/security-policy.handler.ts",
 		"src/public-api/v1/handlers/sso-oidc/sso-oidc.handler.ts",
-		"src/public-api/v1/handlers/sso-saml/sso-saml.handler.ts",
-		"src/public-api/v1/handlers/tags/tags.handler.ts",
-		"src/public-api/v1/handlers/users/users.handler.ee.ts",
-		"src/public-api/v1/handlers/variables/variables.handler.ts",
 		"src/public-api/v1/handlers/workflows/workflows.handler.ts",
 		"src/scaling/scaling.service.ts",
 		"src/scheduling/durable-job-provisioner.ts",
@@ -386,11 +373,12 @@
 		"nodes/ActionNetwork/ActionNetwork.node.ts",
 		"nodes/Aws/__tests__/AwsLambda.node.test.ts"
 	],
-	"packages/testing/code-health": ["src/cli.ts", "src/cli/arg-parser.test.ts"],
-	"packages/testing/janitor": ["src/cli.test.ts", "src/cli.ts"],
-	"packages/testing/playwright": ["coverage-options.test.ts"],
-	"packages/testing/rules-engine": ["src/ast/ast-rule.ts", "src/ast/imports.test.ts"],
-	"packages/testing/test-impact": ["src/changes.test.ts", "src/changes.ts"],
+	"packages/quality/policy/code-health": ["src/cli.ts", "src/cli/arg-parser.test.ts"],
+	"packages/quality/environments/containers": ["services/keycloak.ts", "tests/resource-tracker.test.ts"],
+	"packages/quality/testing/janitor": ["src/cli.test.ts", "src/cli.ts"],
+	"packages/quality/testing/playwright": ["coverage-options.test.ts", "fixtures/base.ts"],
+	"packages/quality/policy/rules-engine": ["src/ast/ast-rule.ts", "src/ast/imports.test.ts"],
+	"packages/quality/testing/test-impact": ["src/changes.test.ts", "src/changes.ts"],
 	"packages/workflow": [
 		"src/augment-object.ts",
 		"test/ExpressionExtensions/array-extensions.test.ts"

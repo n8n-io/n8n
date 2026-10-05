@@ -30,7 +30,7 @@ function escapeAgentPreviewContextDelimiters(value: string): string {
  * The block is a reference only — it does NOT embed the transcript. The
  * orchestrator reads the transcript on demand via the `get-session` tool, and
  * only calls `build-agent` when the user explicitly asks to edit the agent.
- * Ownership is enforced by `getThreadDetail` (project + agent scoped).
+ * Ownership is enforced by `getThreadDetail`.
  * On success, callers must bind `target` before streaming so `build-agent`
  * edits the shared agent. On throw, do not bind.
  */
@@ -38,6 +38,7 @@ export async function resolveAgentPreviewHandoff(
 	context: InstanceAiAgentPreviewHandoffContext,
 	options: {
 		projectId: string;
+		userId: string;
 		getThreadDetail: AgentExecutionService['getThreadDetail'];
 	},
 ): Promise<AgentPreviewHandoffResult> {
@@ -45,6 +46,7 @@ export async function resolveAgentPreviewHandoff(
 		context.threadId,
 		options.projectId,
 		context.agentId,
+		options.userId,
 	);
 	if (!detail) {
 		throw new UserError('Preview session not found');

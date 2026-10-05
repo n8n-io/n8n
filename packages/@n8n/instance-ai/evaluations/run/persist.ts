@@ -292,6 +292,54 @@ export async function runEvalAndPersist(
 ): Promise<PersistedEval> {
 	const partialResults: WorkflowTestCaseResult[][] = [];
 	let persisted = false;
+	const writePartial = (why: string): void => {
+		try {
+			// Prefer sink recovery — row-granular and fed by BOTH drivers; fall
+			// back to the direct driver's per-iteration channel.
+			const sinkRows = config.rowSink?.readRows() ?? [];
+			const recovered =
+				sinkRows.length > 0 && config.testCasesWithFiles
+					? recoverCompleteIterations(sinkRows, config.testCasesWithFiles)
+					: [];
+			const runResults = recovered.length > 0 ? recovered : partialResults;
+			const evaluation: MultiRunEvaluation =
+				runResults.length > 0
+					? aggregateResults(runResults, runResults.length)
+					: { totalRuns: config.iterations, testCases: [] };
+			const recoverySlugByTestCase = config.testCasesWithFiles
+				? new Map(config.testCasesWithFiles.map(({ testCase, fileSlug }) => [testCase, fileSlug]))
+				: undefined;
+			const { jsonPath } = writeEvalResults(
+				evaluation,
+				Date.now() - config.startTime,
+				config.outputDir,
+				undefined,
+				undefined,
+				config.commitSha,
+				recoverySlugByTestCase,
+				config.rerun,
+				undefined,
+				config.mcpBuildSpend,
+				undefined,
+				config.tier === 'agents' ? 'agent' : 'workflow',
+			);
+			config.logger.error(
+				`${why} — wrote partial results (${String(runResults.length)} iteration(s)) to ${jsonPath}`,
+			);
+		} catch (writeError: unknown) {
+			config.logger.error(
+				`Failed to write partial eval results: ${extractErrorMessage(writeError)}`,
+			);
+		}
+	};
+	// A dispatcher that gives up on the run sends SIGTERM. Node would exit before
+	// the `finally` below runs, and the rows the run had already graded would be
+	// lost with it; the write is synchronous, so it fits in the handler.
+	const onSigterm = (): void => {
+		if (!persisted) writePartial('Received SIGTERM');
+		process.exit(143);
+	};
+	process.once('SIGTERM', onSigterm);
 	try {
 		const out = await runEval(partialResults);
 		// Gated tiers report an absolute green verdict in place of the baseline comparison.
@@ -315,46 +363,8 @@ export async function runEvalAndPersist(
 		persisted = true;
 		return { ...out, gate, jsonPath, prCommentPath };
 	} finally {
-		if (!persisted) {
-			try {
-				// Prefer sink recovery — row-granular and fed by BOTH drivers; fall
-				// back to the direct driver's per-iteration channel.
-				const sinkRows = config.rowSink?.readRows() ?? [];
-				const recovered =
-					sinkRows.length > 0 && config.testCasesWithFiles
-						? recoverCompleteIterations(sinkRows, config.testCasesWithFiles)
-						: [];
-				const runResults = recovered.length > 0 ? recovered : partialResults;
-				const evaluation: MultiRunEvaluation =
-					runResults.length > 0
-						? aggregateResults(runResults, runResults.length)
-						: { totalRuns: config.iterations, testCases: [] };
-				const recoverySlugByTestCase = config.testCasesWithFiles
-					? new Map(config.testCasesWithFiles.map(({ testCase, fileSlug }) => [testCase, fileSlug]))
-					: undefined;
-				const { jsonPath } = writeEvalResults(
-					evaluation,
-					Date.now() - config.startTime,
-					config.outputDir,
-					undefined,
-					undefined,
-					config.commitSha,
-					recoverySlugByTestCase,
-					config.rerun,
-					undefined,
-					config.mcpBuildSpend,
-					undefined,
-					config.tier === 'agents' ? 'agent' : 'workflow',
-				);
-				config.logger.error(
-					`Eval run did not finish cleanly — wrote partial results (${String(runResults.length)} iteration(s)) to ${jsonPath}`,
-				);
-			} catch (writeError: unknown) {
-				config.logger.error(
-					`Failed to write partial eval results: ${extractErrorMessage(writeError)}`,
-				);
-			}
-		}
+		process.off('SIGTERM', onSigterm);
+		if (!persisted) writePartial('Eval run did not finish cleanly');
 	}
 }
 
@@ -501,6 +511,10 @@ export function writeEvalResults(
 			// Transcript content is redacted at capture (transcript-from-events).
 			transcriptPerRun: tc.runs.map((run) => run.transcript ?? null),
 			buildErrorPerRun: tc.runs.map((run) => run.buildError ?? null),
+			// The budget that ended each iteration's conversation, when one did
+			// (harness/timeouts.ts). Its rows arrive `incomplete` with attribution
+			// `timeout`; this says which clock fired and on which user turn.
+			buildTimeoutPerRun: tc.runs.map((run) => run.buildTimeout ?? null),
 			// `claude` build spend per iteration (--build-via-mcp only) — the
 			// dedupe-safe source for per-case cost (LangSmith feedback repeats the
 			// value on every row of a case's build).

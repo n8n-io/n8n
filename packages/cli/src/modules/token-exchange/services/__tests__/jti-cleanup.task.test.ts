@@ -26,7 +26,7 @@ describe('JtiCleanupTask', () => {
 		expect(task.name).toBe('jti-cleanup');
 		expect(task.schedule).toEqual({ kind: 'interval', intervalSeconds: 30 });
 		expect(task.effects).toBe('idempotent');
-		expect(task.durable).toBe(true);
+		expect(task.placement).toEqual({ scope: 'cluster', durable: true });
 	});
 
 	describe('run', () => {

@@ -101,6 +101,31 @@ describe('usePromotionChanges', () => {
 		expect(isLoading.value).toBe(false);
 	});
 
+	it('should stamp the last refresh on success only', async () => {
+		vi.useFakeTimers();
+		try {
+			const { fetchChanges, lastRefreshedAt } = usePromotionChanges('project-1');
+			expect(lastRefreshedAt.value).toBeNull();
+
+			await fetchChanges();
+			const firstRefresh = lastRefreshedAt.value;
+			expect(firstRefresh).not.toBeNull();
+
+			vi.mocked(promotionsApi.getPromotableChanges).mockRejectedValueOnce(
+				new Error('Network error'),
+			);
+			await fetchChanges();
+			expect(lastRefreshedAt.value).toBe(firstRefresh);
+
+			// Two stamps in the same millisecond would compare equal, so move the clock first.
+			vi.advanceTimersByTime(60_000);
+			await fetchChanges();
+			expect(lastRefreshedAt.value).not.toBe(firstRefresh);
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
 	it('should select only the visible rows when a search filter is active', async () => {
 		const {
 			fetchChanges,

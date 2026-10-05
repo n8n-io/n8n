@@ -1,10 +1,12 @@
-import type { AiPreferenceScope, AiPreferenceUserDto } from '@n8n/api-types';
+import type { AiPreferenceScope, AiPreferenceSource, AiPreferenceUserDto } from '@n8n/api-types';
 import {
 	aiPreferenceScopeOf,
 	CONTEXT_PREFERENCES_ENABLED_VARIANT,
 	CONTEXT_PREFERENCES_FLAG,
 } from '@n8n/api-types';
+import type { BaseTextKey } from '@n8n/i18n';
 import { getResourcePermissions } from '@n8n/permissions';
+import { ResponseError } from '@n8n/rest-api-client';
 
 import { usePostHog } from '@/app/stores/posthog.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
@@ -76,6 +78,14 @@ export function preferenceAudience(
 	}
 }
 
+/** The surface that wrote the row, as the settings list names it. */
+export function preferenceSourceLabel(
+	i18n: { baseText: (key: BaseTextKey) => string },
+	source: AiPreferenceSource,
+): string {
+	return i18n.baseText(`settings.context.preferences.source.${source}`);
+}
+
 export function preferenceUserName(user: AiPreferenceUserDto | null): string {
 	if (!user) return '';
 	const fullName = [user.firstName, user.lastName].filter(Boolean).join(' ');
@@ -102,4 +112,26 @@ export function canWriteProjectScope(projectId: string | null | undefined): bool
 export function canWriteInstanceScope(): boolean {
 	const { currentUser } = useUsersStore();
 	return getResourcePermissions(currentUser?.globalScopes).aiPreference?.create === true;
+}
+
+/** The service builds the cap message from the scope and the number, so match the fixed part. */
+const SCOPE_FULL_MESSAGE = 'cannot hold more than';
+
+/**
+ * Why a save from the settings page did not land, in the same words the assistant surfaces use.
+ * The status is what the service throws: 409 for the duplicate check, 403 for a scope the user
+ * may not write. A 400 covers the per-scope cap and several malformed requests alike, so only
+ * the cap message counts as `scope_full`. Anything else is `failed`, which keeps a form bug out
+ * of the number that reviews the cap.
+ */
+export function preferenceWriteRejectionReason(
+	error: unknown,
+): 'duplicate' | 'scope_full' | 'not_permitted' | 'failed' {
+	if (!(error instanceof ResponseError)) return 'failed';
+	if (error.httpStatusCode === 409) return 'duplicate';
+	if (error.httpStatusCode === 403) return 'not_permitted';
+	if (error.httpStatusCode === 400 && error.message.includes(SCOPE_FULL_MESSAGE)) {
+		return 'scope_full';
+	}
+	return 'failed';
 }

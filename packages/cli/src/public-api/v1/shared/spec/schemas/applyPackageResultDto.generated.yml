@@ -290,6 +290,47 @@ oneOf:
       preflight:
         type: object
         properties:
+          missingProjects:
+            type: array
+            items:
+              type: object
+              properties:
+                id:
+                  type: string
+                  minLength: 1
+                name:
+                  type: string
+                icon:
+                  type: object
+                  properties:
+                    type:
+                      type: string
+                      enum:
+                        - emoji
+                        - icon
+                    value:
+                      type: string
+                  required:
+                    - type
+                    - value
+                description:
+                  type: string
+                customTelemetryTags:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      key:
+                        type: string
+                      value:
+                        type: string
+                    required:
+                      - key
+                      - value
+              required:
+                - id
+                - name
+            description: Projects in the package that do not exist on this instance. Preflight preserves their metadata without checking project creation rules. The project creation API can reject invalid values.
           missingBindings:
             type: array
             items:
@@ -1109,6 +1150,7 @@ oneOf:
                 - scope
                 - consumers
         required:
+          - missingProjects
           - missingBindings
           - accessRequirements
           - conflicts

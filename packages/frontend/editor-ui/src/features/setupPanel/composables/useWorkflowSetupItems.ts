@@ -1,6 +1,15 @@
-import { computed, onScopeDispose, ref, toValue, watch, type MaybeRefOrGetter } from 'vue';
+import {
+	computed,
+	onScopeDispose,
+	ref,
+	shallowReactive,
+	toValue,
+	watch,
+	type MaybeRefOrGetter,
+} from 'vue';
 
 import { GENERIC_AUTH_CREDENTIAL_TYPES, type InstanceAiSetupItem } from '@n8n/api-types';
+import { getResourcePermissions } from '@n8n/permissions';
 import { findPlaceholderDetails } from '@n8n/utils/placeholder';
 import type { INodeCredentialsDetails } from 'n8n-workflow';
 import type { INodeUi, IWorkflowDb } from '@/Interface';
@@ -11,6 +20,8 @@ import {
 	listenForCredentialChanges,
 	useCredentialsStore,
 } from '@/features/credentials/credentials.store';
+import { useCredentialOAuth } from '@/features/credentials/composables/useCredentialOAuth';
+import { hasOAuthTokenData } from '@/features/credentials/composables/oauthCallback';
 import {
 	createWorkflowDocumentId,
 	deriveHomeProject,
@@ -20,6 +31,8 @@ import {
 	getNodeCredentialTypes,
 	getNodeParametersIssues,
 } from '@/features/setupPanel/setupPanel.utils';
+
+type OAuthConnectionStatus = 'loading' | 'connected' | 'disconnected' | 'unknown' | 'error';
 
 /**
  * A legacy credential name must be replaced with a stored credential reference.
@@ -49,6 +62,15 @@ export function useWorkflowSetupItems(
 ) {
 	const nodeTypesStore = useNodeTypesStore();
 	const credentialsStore = useCredentialsStore();
+	const oauth = useCredentialOAuth();
+	const oauthConnections = shallowReactive(
+		new Map<string, { key: string; status: OAuthConnectionStatus }>(),
+	);
+	const checkedCredentialIds = shallowReactive(new Set<string>());
+	watch(
+		() => toValue(workflowId),
+		() => checkedCredentialIds.clear(),
+	);
 	const workflowsListStore = useWorkflowsListStore();
 	const workflowsStore = useWorkflowsStore();
 	const credentialsLoadedForWorkflow = ref<string>();
@@ -79,7 +101,10 @@ export function useWorkflowSetupItems(
 	const fetchedWorkflow = ref<IWorkflowDb>();
 	const isRefreshingWorkflow = ref(false);
 	let workflowFetchVersion = 0;
-	onScopeDispose(() => workflowFetchVersion++);
+	onScopeDispose(() => {
+		workflowFetchVersion++;
+		oauthConnections.clear();
+	});
 
 	async function refreshWorkflow({ force = false } = {}) {
 		const id = toValue(workflowId);
@@ -177,6 +202,85 @@ export function useWorkflowSetupItems(
 		if (docStore?.hydrated) return docStore.allNodes;
 		return id && fetchedWorkflow.value?.id === id ? fetchedWorkflow.value.nodes : undefined;
 	});
+
+	const boundCredentialIds = computed(
+		() =>
+			new Set(
+				(workflowNodes.value ?? []).flatMap((node) =>
+					Object.values(node.credentials ?? {}).map((credential) => credential.id),
+				),
+			),
+	);
+	// Workflow bindings take over tracking once an early selection is saved.
+	watch(boundCredentialIds, (ids) => {
+		for (const id of checkedCredentialIds) {
+			if (ids.has(id)) checkedCredentialIds.delete(id);
+		}
+	});
+	const boundOAuthCredentials = computed(() => {
+		const ids = new Set([...boundCredentialIds.value, ...checkedCredentialIds]);
+		return [...ids].flatMap((id) => {
+			const credential = getBoundCredential(id);
+			return credential && !credential.isResolvable && oauth.isOAuthCredentialType(credential.type)
+				? [
+						{
+							id: credential.id,
+							key: JSON.stringify([
+								toValue(workflowId),
+								credential.type,
+								credential.updatedAt,
+								[...(credential.scopes ?? [])].sort(),
+							]),
+						},
+					]
+				: [];
+		});
+	});
+	const isCheckingOAuthCredentials = computed(() =>
+		boundOAuthCredentials.value.some(({ id, key }) => {
+			const connection = oauthConnections.get(id);
+			return connection?.key !== key || connection.status === 'loading';
+		}),
+	);
+	watch(
+		boundOAuthCredentials,
+		async (credentials) => {
+			const ids = new Set(credentials.map(({ id }) => id));
+			for (const id of oauthConnections.keys()) {
+				if (!ids.has(id)) oauthConnections.delete(id);
+			}
+			await Promise.all(
+				credentials.map(async ({ id, key }) => {
+					const cached = oauthConnections.get(id);
+					// Equivalent workflow/store updates must preserve results and in-flight reads.
+					if (cached?.key === key && cached.status !== 'error') return;
+					const connection = { key, status: 'loading' as const };
+					oauthConnections.set(id, connection);
+					const permissions = getResourcePermissions(getBoundCredential(id)?.scopes).credential;
+					let status: OAuthConnectionStatus =
+						permissions.read && !permissions.update ? 'unknown' : 'error';
+					try {
+						const loaded = await credentialsStore.getCredentialData({ id });
+						const data = loaded?.data;
+						if (data && typeof data === 'object') {
+							// Other grants obtain tokens without a user sign-in.
+							status =
+								Boolean(
+									data.grantType && !['authorizationCode', 'pkce'].includes(String(data.grantType)),
+								) || hasOAuthTokenData(loaded)
+									? 'connected'
+									: 'disconnected';
+						}
+					} catch {
+						// Read-only credentials can remain usable without access to their data.
+					}
+					// A removed or changed credential must not accept an older response.
+					if (oauthConnections.get(id) === connection) oauthConnections.set(id, { key, status });
+				}),
+			);
+		},
+		{ immediate: true },
+	);
 
 	/**
 	 * Node state is available from a hydrated canvas store or the fetched
@@ -313,15 +417,24 @@ export function useWorkflowSetupItems(
 		return items;
 	});
 
+	function getBoundCredential(credentialId: string | null | undefined) {
+		const id = toValue(workflowId);
+		return credentialId
+			? ((id && credentialsStore.hasUsableCredentialsForScope({ workflowId: id })
+					? credentialsStore.getUsableCredentialById(credentialId)
+					: undefined) ?? credentialsStore.getCredentialById(credentialId))
+			: undefined;
+	}
+
 	function isCredentialConfigured(assigned: INodeCredentialsDetails | string | undefined): boolean {
 		if (!isBoundCredential(assigned)) return false;
-		const id = toValue(workflowId);
-		const credential =
-			typeof assigned !== 'string' && assigned?.id
-				? ((id && credentialsStore.hasUsableCredentialsForScope({ workflowId: id })
-						? credentialsStore.getUsableCredentialById(assigned.id)
-						: undefined) ?? credentialsStore.getCredentialById(assigned.id))
-				: undefined;
+		const credential = getBoundCredential(typeof assigned !== 'string' ? assigned?.id : undefined);
+		if (credential && !credential.isResolvable && oauth.isOAuthCredentialType(credential.type)) {
+			if (!boundCredentialIds.value.has(credential.id)) checkedCredentialIds.add(credential.id);
+			// Wait for the redacted token flag. Missing data remains unknown for shared credentials.
+			const status = oauthConnections.get(credential.id)?.status;
+			return status === 'connected' || status === 'unknown';
+		}
 		return !credential?.isResolvable || credential.connectedByMe !== false;
 	}
 
@@ -356,7 +469,11 @@ export function useWorkflowSetupItems(
 
 	return {
 		credentialsAvailable,
+		workflowNodes,
+		savedWorkflowChecksum: computed(() => fetchedWorkflow.value?.checksum),
+		isCheckingOAuthCredentials,
 		isWorkflowAvailable,
+		hasWorkflowNodes: computed(() => (workflowNodes.value?.length ?? 0) > 0),
 		workflowProjectId,
 		derivedItems,
 		derivedCredentialItems,

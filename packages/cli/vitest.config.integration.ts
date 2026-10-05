@@ -10,5 +10,7 @@ export default mergeConfig(baseConfig, {
 		// runs past Vitest's 10s hook default, which reads as broken coverage
 		// (whole suite skipped) rather than a slow setup.
 		hookTimeout: 30_000,
+		// Appended to the base globalSetup. It does nothing unless CI is true and DB_TYPE is sqlite.
+		globalSetup: ['./test/setup-sqlite-template.ts'],
 	},
 });

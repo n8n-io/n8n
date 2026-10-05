@@ -40,8 +40,7 @@ import {
 import { Container } from '@n8n/di';
 import type { Response } from 'express';
 
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { ServiceUnavailableError } from '@/errors/response-errors/service-unavailable.error';
+import { NotFoundError, ServiceUnavailableError } from '@n8n/errors';
 import { NODE_TYPES_KIND } from '@/modules/type-availability-policies/constants';
 import type { TypeAvailabilityPolicy } from '@/modules/type-availability-policies/database/entities/type-availability-policy.entity';
 import {
@@ -84,7 +83,7 @@ export class NodeTypePoliciesPublicController {
 	}
 
 	@Get('/instance')
-	@Licensed(LICENSE_FEATURES.NODE_TYPE_POLICIES)
+	@Licensed(LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES)
 	@ApiKeyScope('nodeTypePolicy:manage')
 	@GlobalScope('nodeTypePolicy:manage')
 	@ApiSummary('Retrieve the instance node type policy')
@@ -94,7 +93,7 @@ export class NodeTypePoliciesPublicController {
 	@ApiTags(tags)
 	@ApiResponse(200, PolicyEffectivePublicDto)
 	@ApiErrorResponse(503)
-	async getInstancePolicy(): Promise<PolicyEffectivePublicDto> {
+	async getNodeTypeInstancePolicy(): Promise<PolicyEffectivePublicDto> {
 		const effective = await (await this.service()).getEffectivePolicy(NODE_TYPES_KIND, null);
 
 		return {
@@ -106,7 +105,7 @@ export class NodeTypePoliciesPublicController {
 	}
 
 	@Put('/instance')
-	@Licensed(LICENSE_FEATURES.NODE_TYPE_POLICIES)
+	@Licensed(LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES)
 	@ApiKeyScope('nodeTypePolicy:manage')
 	@GlobalScope('nodeTypePolicy:manage')
 	@ApiSummary('Replace the instance node type policy')
@@ -117,7 +116,7 @@ export class NodeTypePoliciesPublicController {
 	@ApiResponse(200, PolicyEffectiveWriteResultPublicDto)
 	@ApiErrorResponse(409)
 	@ApiErrorResponse(503)
-	async putInstancePolicy(
+	async putNodeTypeInstancePolicy(
 		req: AuthenticatedRequest,
 		_res: Response,
 		@Body dto: PutInstancePolicyDto,
@@ -140,7 +139,7 @@ export class NodeTypePoliciesPublicController {
 	}
 
 	@Get('/projects/:projectId')
-	@Licensed(LICENSE_FEATURES.NODE_TYPE_POLICIES)
+	@Licensed(LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES)
 	@ApiKeyScope('nodeTypePolicy:manage')
 	@ProjectScope('nodeTypePolicy:manage')
 	@ApiSummary("Retrieve a project's node type policy")
@@ -150,7 +149,7 @@ export class NodeTypePoliciesPublicController {
 	@ApiTags(tags)
 	@ApiResponse(200, PolicyEffectivePublicDto)
 	@ApiErrorResponse(503)
-	async getProjectPolicy(
+	async getNodeTypeProjectPolicy(
 		_req: AuthenticatedRequest,
 		_res: Response,
 		@Param('projectId', projectIdParamSchema) projectId: string,
@@ -166,7 +165,7 @@ export class NodeTypePoliciesPublicController {
 	}
 
 	@Put('/projects/:projectId')
-	@Licensed(LICENSE_FEATURES.NODE_TYPE_POLICIES)
+	@Licensed(LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES)
 	@ApiKeyScope('nodeTypePolicy:manage')
 	@ProjectScope('nodeTypePolicy:manage')
 	@ApiSummary("Replace a project's node type policy")
@@ -177,7 +176,7 @@ export class NodeTypePoliciesPublicController {
 	@ApiResponse(200, PolicyEffectiveWriteResultPublicDto)
 	@ApiErrorResponse(409)
 	@ApiErrorResponse(503)
-	async putProjectPolicy(
+	async putNodeTypeProjectPolicy(
 		req: AuthenticatedRequest,
 		_res: Response,
 		@Param('projectId', projectIdParamSchema) projectId: string,
@@ -201,7 +200,7 @@ export class NodeTypePoliciesPublicController {
 	}
 
 	@Get('/policies')
-	@Licensed(LICENSE_FEATURES.NODE_TYPE_POLICIES)
+	@Licensed(LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES)
 	@ApiKeyScope('nodeTypePolicy:manage')
 	@GlobalScope('nodeTypePolicy:manage')
 	@ApiSummary('List node type policy documents')
@@ -209,7 +208,7 @@ export class NodeTypePoliciesPublicController {
 	@ApiTags(tags)
 	@ApiResponse(200, PolicyDocumentListPublicDto)
 	@ApiErrorResponse(503)
-	async listPolicyDocuments(
+	async listNodeTypePolicyDocuments(
 		_req: AuthenticatedRequest,
 		_res: Response,
 		@Query query: ListNodeTypePolicyDocumentsQueryDto,
@@ -229,7 +228,7 @@ export class NodeTypePoliciesPublicController {
 	}
 
 	@Post('/policies')
-	@Licensed(LICENSE_FEATURES.NODE_TYPE_POLICIES)
+	@Licensed(LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES)
 	@ApiKeyScope('nodeTypePolicy:manage')
 	@GlobalScope('nodeTypePolicy:manage')
 	@ApiSummary('Create a node type policy document')
@@ -239,7 +238,7 @@ export class NodeTypePoliciesPublicController {
 	@ApiTags(tags)
 	@ApiResponse(201, PolicyDocumentWriteResultPublicDto)
 	@ApiErrorResponse(503)
-	async createPolicyDocument(
+	async createNodeTypePolicyDocument(
 		req: AuthenticatedRequest,
 		_res: Response,
 		@Body dto: CreatePolicyDocumentDto,
@@ -254,7 +253,7 @@ export class NodeTypePoliciesPublicController {
 	}
 
 	@Get('/policies/:policyId')
-	@Licensed(LICENSE_FEATURES.NODE_TYPE_POLICIES)
+	@Licensed(LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES)
 	@ApiKeyScope('nodeTypePolicy:manage')
 	@GlobalScope('nodeTypePolicy:manage')
 	@ApiSummary('Retrieve a node type policy document')
@@ -262,7 +261,7 @@ export class NodeTypePoliciesPublicController {
 	@ApiResponse(200, PolicyDocumentPublicDto)
 	@ApiErrorResponse(404)
 	@ApiErrorResponse(503)
-	async getPolicyDocument(
+	async getNodeTypePolicyDocument(
 		_req: AuthenticatedRequest,
 		_res: Response,
 		@Param('policyId', nodeTypePolicyIdParamSchema) policyId: string,
@@ -276,7 +275,7 @@ export class NodeTypePoliciesPublicController {
 	}
 
 	@Put('/policies/:policyId')
-	@Licensed(LICENSE_FEATURES.NODE_TYPE_POLICIES)
+	@Licensed(LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES)
 	@ApiKeyScope('nodeTypePolicy:manage')
 	@GlobalScope('nodeTypePolicy:manage')
 	@ApiSummary('Replace the rules of a node type policy document')
@@ -288,7 +287,7 @@ export class NodeTypePoliciesPublicController {
 	@ApiErrorResponse(404)
 	@ApiErrorResponse(409)
 	@ApiErrorResponse(503)
-	async updatePolicyDocument(
+	async updateNodeTypePolicyDocument(
 		req: AuthenticatedRequest,
 		_res: Response,
 		@Param('policyId', nodeTypePolicyIdParamSchema) policyId: string,
@@ -306,7 +305,7 @@ export class NodeTypePoliciesPublicController {
 	}
 
 	@Delete('/policies/:policyId')
-	@Licensed(LICENSE_FEATURES.NODE_TYPE_POLICIES)
+	@Licensed(LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES)
 	@ApiKeyScope('nodeTypePolicy:manage')
 	@GlobalScope('nodeTypePolicy:manage')
 	@ApiSummary('Delete a node type policy document')
@@ -318,7 +317,7 @@ export class NodeTypePoliciesPublicController {
 	@ApiErrorResponse(404)
 	@ApiErrorResponse(409)
 	@ApiErrorResponse(503)
-	async deletePolicyDocument(
+	async deleteNodeTypePolicyDocument(
 		req: AuthenticatedRequest,
 		_res: Response,
 		@Param('policyId', nodeTypePolicyIdParamSchema) policyId: string,
@@ -327,7 +326,7 @@ export class NodeTypePoliciesPublicController {
 	}
 
 	@Put('/scopes/:scopeId/attachments')
-	@Licensed(LICENSE_FEATURES.NODE_TYPE_POLICIES)
+	@Licensed(LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES)
 	@ApiKeyScope('nodeTypePolicy:manage')
 	@GlobalScope('nodeTypePolicy:manage')
 	@ApiSummary("Replace a scope's attached policy documents")
@@ -338,13 +337,14 @@ export class NodeTypePoliciesPublicController {
 	@ApiResponse(200, PolicyAttachmentsPublicDto)
 	@ApiErrorResponse(404)
 	@ApiErrorResponse(503)
-	async replaceAttachments(
+	async replaceNodeTypePolicyAttachments(
 		req: AuthenticatedRequest,
 		_res: Response,
 		@Param('scopeId', nodeTypePolicyScopeIdParamSchema) scopeId: string,
 		@Body dto: ReplaceAttachmentsDto,
 	): Promise<PolicyAttachmentsPublicDto> {
 		const result = await (await this.service()).replaceAttachments(
+			NODE_TYPES_KIND,
 			scopeId,
 			dto.attachments,
 			req.user.id,

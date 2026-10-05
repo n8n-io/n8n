@@ -37,6 +37,7 @@ CREATE TABLE "agent_checkpoints" ("runId" varchar(255) PRIMARY KEY NOT NULL, "ag
 | ---- | ---------- |
 | IDX_5e31c210f896d539964bf99fe3 | CREATE INDEX "IDX_5e31c210f896d539964bf99fe3" ON "agent_checkpoints" ("agentId")  |
 | IDX_agent_checkpoints_thread | CREATE INDEX "IDX_agent_checkpoints_thread" ON "agent_checkpoints" ("agentId", "threadId", "expired", "updatedAt")  |
+| IDX_agent_checkpoints_threadId | CREATE INDEX "IDX_agent_checkpoints_threadId" ON "agent_checkpoints" ("threadId")  |
 | sqlite_autoindex_agent_checkpoints_1 | PRIMARY KEY (runId) |
 
 ## Relations

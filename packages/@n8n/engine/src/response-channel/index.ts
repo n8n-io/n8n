@@ -1,6 +1,19 @@
-export { ExecutionResponseChannel } from './execution-response-channel';
-export { executionResponseSchema } from './execution-response.schema';
-export type { EndedMessage, ExecutionResponse } from './execution-response.types';
-export { InMemoryResponseTransport } from './in-memory-transport';
-export { noopResponseTransport } from './response-transport';
-export type { ResponseTransport, Unsubscribe } from './response-transport';
+export { createResponseEmitter } from './create-response-emitter';
+export { noopExecutionResponseSender } from './execution-response-sender';
+export type { ExecutionResponseSender } from './execution-response-sender';
+export {
+	executionResponseSchema,
+	RESPONSE_EXPECTATION_KINDS,
+	responseExpectationSchema,
+} from './execution-response.schema';
+export { noopResponseEmitter } from './execution-response.types';
+export type {
+	ChunkMessage,
+	EndedMessage,
+	ExecutionResponse,
+	ResponseEmitter,
+	ResponseExpectation,
+	ResponseExpectationKind,
+	ResponseMessage,
+	UndeliverableMessage,
+} from './execution-response.types';

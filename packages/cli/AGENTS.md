@@ -62,3 +62,11 @@ only the third:
 
 See the root AGENTS.md "Transactions" bullet for the full API and a worked
 example.
+
+## Tests
+
+- Mock external HTTP services with `nock`.
+- Reuse immutable hoisted `mock<T>(...)` fixtures. Do not replace typed entity
+  mocks with `as unknown as T`.
+- When a mock changes `existsSync()` or another filesystem state check, inspect
+  the branch it activates. Mock reachable writes unless the test checks them.

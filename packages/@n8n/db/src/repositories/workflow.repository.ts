@@ -2,7 +2,7 @@ import { GlobalConfig } from '@n8n/config';
 import { assertClearedFor, workflowContentSubject, workflowSubject } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
-import { DataSource, In, Like, Not, IsNull } from '@n8n/typeorm';
+import { DataSource, In, Like, MoreThan, Not, IsNull } from '@n8n/typeorm';
 import type {
 	SelectQueryBuilder,
 	UpdateResult,
@@ -19,6 +19,7 @@ import type { ActivityProjectScope } from './activity-event.repository';
 import { BaseRepository } from './base-repository';
 import { FolderRepository } from './folder.repository';
 import { SharedWorkflowRepository } from './shared-workflow.repository';
+import { runWorkflowContentWrite } from './workflow-content-write-context';
 import { WorkflowHistoryRepository } from './workflow-history.repository';
 import {
 	WebhookEntity,
@@ -42,6 +43,9 @@ import { escapeLike, LIKE_ESCAPE_CLAUSE } from '../utils/escape-like';
 import { isStringArray } from '../utils/is-string-array';
 import { parseListQuerySortBy } from '../utils/list-query-sort';
 import { TimedQuery } from '../utils/timed-query';
+
+// oxlint-disable-next-line typescript/no-deprecated - Waiting for debt to be payed
+type WorkflowListQueryOptions = ListQuery.Options;
 
 type ResourceType = 'folder' | 'workflow';
 
@@ -305,7 +309,9 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 		ctx: OperationContext,
 	) {
 		assertClearedFor(ctx.policyCleared, 'workflowSave', { type: 'workflow', id });
-		await this.managerFor(ctx).update(WorkflowEntity, id, content);
+		await runWorkflowContentWrite(
+			async () => await this.managerFor(ctx).update(WorkflowEntity, id, content),
+		);
 	}
 
 	/**
@@ -321,13 +327,20 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 		projectId: string,
 		ctx: OperationContext = {},
 	): Promise<WorkflowEntity> {
-		return await this.runInTransaction(ctx, async (em) => {
-			const saved = await em.save(workflow);
-			await em.save(
-				em.create(SharedWorkflow, { role: 'workflow:owner', projectId, workflowId: saved.id }),
-			);
-			return saved;
-		});
+		return await runWorkflowContentWrite(
+			async () =>
+				await this.runInTransaction(ctx, async (em) => {
+					const saved = await em.save(workflow);
+					await em.save(
+						em.create(SharedWorkflow, {
+							role: 'workflow:owner',
+							projectId,
+							workflowId: saved.id,
+						}),
+					);
+					return saved;
+				}),
+		);
 	}
 
 	/**
@@ -342,7 +355,7 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 	 */
 	async createContent(workflow: WorkflowEntity, ctx: OperationContext): Promise<WorkflowEntity> {
 		assertClearedFor(ctx.policyCleared, 'workflowSave', workflowContentSubject(workflow));
-		return await this.managerFor(ctx).save(workflow);
+		return await runWorkflowContentWrite(async () => await this.managerFor(ctx).save(workflow));
 	}
 
 	/**
@@ -363,7 +376,9 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 			workflowSubject({ id: content.id ?? null, nodes: content.nodes }),
 		);
 
-		const result = await this.managerFor(ctx).upsert(WorkflowEntity, content, ['id']);
+		const result = await runWorkflowContentWrite(
+			async () => await this.managerFor(ctx).upsert(WorkflowEntity, content, ['id']),
+		);
 		const id = result.identifiers.at(0)?.id;
 
 		if (typeof id !== 'string') {
@@ -441,6 +456,12 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 		});
 	}
 
+	async findByIdInContext(workflowId: string, ctx: OperationContext) {
+		return await this.managerFor(ctx).findOne(WorkflowEntity, {
+			where: { id: workflowId },
+		});
+	}
+
 	async findByIds(workflowIds: string[], { fields }: { fields?: string[] } = {}) {
 		if (workflowIds.length === 0) {
 			return [];
@@ -497,6 +518,33 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 		});
 	}
 
+	/**
+	 * Up to `take` workflow ids greater than `afterId`, in ascending order. Keyset paging:
+	 * a workflow deleted between two pages does not shift the next page, so no id is skipped.
+	 */
+	async getIdsAfter(afterId: string | undefined, take: number): Promise<string[]> {
+		const workflows = await this.find({
+			select: { id: true },
+			where: afterId === undefined ? {} : { id: MoreThan(afterId) },
+			take,
+			order: { id: 'ASC' },
+		});
+
+		return workflows.map(({ id }) => id);
+	}
+
+	/** The subset of `workflowIds` that still exists, in no particular order. */
+	async findExistingIds(workflowIds: string[], ctx: OperationContext = {}): Promise<string[]> {
+		if (workflowIds.length === 0) return [];
+
+		const workflows = await this.managerFor(ctx).find(WorkflowEntity, {
+			select: { id: true },
+			where: { id: In(workflowIds) },
+		});
+
+		return workflows.map(({ id }) => id);
+	}
+
 	async findPreExistingWorkflows(workflowIds: string[]): Promise<WorkflowEntity[]> {
 		if (workflowIds.length === 0) {
 			return [];
@@ -550,7 +598,7 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 
 	private buildBaseUnionQuery(
 		workflowIds: string[],
-		options: ListQuery.Options = {},
+		options: WorkflowListQueryOptions = {},
 		accessibleProjectIds?: string[],
 	) {
 		// Common fields for both folders and workflows
@@ -567,12 +615,12 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 			folderFilter.name = folderFilter.query;
 		}
 
-		const folderQueryParameters: ListQuery.Options = {
+		const folderQueryParameters: WorkflowListQueryOptions = {
 			select: commonFields,
 			filter: folderFilter,
 		};
 
-		const workflowQueryParameters: ListQuery.Options = {
+		const workflowQueryParameters: WorkflowListQueryOptions = {
 			select: {
 				...commonFields,
 				description: true,
@@ -639,7 +687,7 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 
 	async getWorkflowsAndFoldersUnion(
 		workflowIds: string[],
-		options: ListQuery.Options = {},
+		options: WorkflowListQueryOptions = {},
 		accessibleProjectIds?: string[],
 	) {
 		const { baseQuery, sortByColumn, sortByDirection } = this.buildBaseUnionQuery(
@@ -726,7 +774,7 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 
 	async getWorkflowsAndFoldersCount(
 		workflowIds: string[],
-		options: ListQuery.Options = {},
+		options: WorkflowListQueryOptions = {},
 		accessibleProjectIds?: string[],
 	) {
 		const { skip, take, ...baseQueryParameters } = options;
@@ -748,7 +796,7 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 
 	async getWorkflowsAndFoldersWithCount(
 		workflowIds: string[],
-		options: ListQuery.Options = {},
+		options: WorkflowListQueryOptions = {},
 		accessibleProjectIds?: string[],
 	) {
 		if (
@@ -800,7 +848,7 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 			personalProjectOwnerId?: string;
 			onlySharedWithMe?: boolean;
 		},
-		options: ListQuery.Options = {},
+		options: WorkflowListQueryOptions = {},
 		callableForParentWorkflowId?: string,
 	) {
 		if (
@@ -858,7 +906,7 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 			personalProjectOwnerId?: string;
 			onlySharedWithMe?: boolean;
 		},
-		options: ListQuery.Options = {},
+		options: WorkflowListQueryOptions = {},
 		callableForParentWorkflowId?: string,
 	) {
 		const { baseQuery, sortByColumn, sortByDirection } =
@@ -892,7 +940,7 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 			personalProjectOwnerId?: string;
 			onlySharedWithMe?: boolean;
 		},
-		options: ListQuery.Options = {},
+		options: WorkflowListQueryOptions = {},
 		callableForParentWorkflowId?: string,
 	) {
 		const { skip, take, ...baseQueryParameters } = options;
@@ -922,7 +970,7 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 			personalProjectOwnerId?: string;
 			onlySharedWithMe?: boolean;
 		},
-		options: ListQuery.Options = {},
+		options: WorkflowListQueryOptions = {},
 		callableForParentWorkflowId?: string,
 	) {
 		// Common fields for both folders and workflows
@@ -939,12 +987,12 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 			folderFilter.name = folderFilter.query;
 		}
 
-		const folderQueryParameters: ListQuery.Options = {
+		const folderQueryParameters: WorkflowListQueryOptions = {
 			select: commonFields,
 			filter: folderFilter,
 		};
 
-		const workflowQueryParameters: ListQuery.Options = {
+		const workflowQueryParameters: WorkflowListQueryOptions = {
 			select: {
 				...commonFields,
 				description: true,
@@ -1053,7 +1101,7 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 	@TimedQuery()
 	async getMany(
 		workflowIds: string[],
-		options: ListQuery.Options = {},
+		options: WorkflowListQueryOptions = {},
 	): Promise<WorkflowListResult['workflows']> {
 		if (workflowIds.length === 0) {
 			return [];
@@ -1065,7 +1113,7 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 
 	async getManyAndCount(
 		sharedWorkflowIds: string[],
-		options: ListQuery.Options = {},
+		options: WorkflowListQueryOptions = {},
 	): Promise<WorkflowListResult> {
 		if (sharedWorkflowIds.length === 0) {
 			return { workflows: [], count: 0 };
@@ -1090,7 +1138,7 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 			personalProjectOwnerId?: string;
 			onlySharedWithMe?: boolean;
 		},
-		options: ListQuery.Options = {},
+		options: WorkflowListQueryOptions = {},
 		callableForParentWorkflowId?: string,
 	): Promise<WorkflowListResult> {
 		const query = this.getManyQueryWithSharingSubquery(
@@ -1117,7 +1165,7 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 			personalProjectOwnerId?: string;
 			onlySharedWithMe?: boolean;
 		},
-		options: ListQuery.Options = {},
+		options: WorkflowListQueryOptions = {},
 		callableForParentWorkflowId?: string,
 	): SelectQueryBuilder<WorkflowEntity> {
 		const qb = this.createQueryBuilder('workflow');
@@ -1265,7 +1313,7 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 		return this.sharedWorkflowRepository.buildSharedWorkflowIdsSubquery(user, sharingOptions);
 	}
 
-	getManyQuery(workflowIds: string[], options: ListQuery.Options = {}) {
+	getManyQuery(workflowIds: string[], options: WorkflowListQueryOptions = {}) {
 		const qb = this.createBaseQuery(workflowIds);
 
 		this.applyFilters(qb, options.filter);
@@ -1290,8 +1338,9 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 
 	private applyFilters(
 		qb: SelectQueryBuilder<WorkflowEntity>,
-		filter?: ListQuery.Options['filter'],
+		filter?: WorkflowListQueryOptions['filter'],
 	): void {
+		this.applyIdsFilter(qb, filter);
 		this.applyNameFilter(qb, filter);
 		this.applyActiveFilter(qb, filter);
 		this.applyIsArchivedFilter(qb, filter);
@@ -1302,9 +1351,22 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 		this.applyAvailableInMCPFilter(qb, filter);
 	}
 
+	private applyIdsFilter(
+		qb: SelectQueryBuilder<WorkflowEntity>,
+		filter: WorkflowListQueryOptions['filter'],
+	): void {
+		if (filter?.ids === undefined) return;
+
+		const ids = isStringArray(filter.ids) ? filter.ids : [];
+
+		qb.andWhere('workflow.id IN (:...filteredWorkflowIds)', {
+			filteredWorkflowIds: ids.length > 0 ? ids : [''],
+		});
+	}
+
 	private applyAvailableInMCPFilter(
 		qb: SelectQueryBuilder<WorkflowEntity>,
-		filter: ListQuery.Options['filter'],
+		filter: WorkflowListQueryOptions['filter'],
 	): void {
 		if (typeof filter?.availableInMCP === 'boolean') {
 			applyWorkflowBooleanSettingFilter(
@@ -1411,7 +1473,7 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 	 */
 	private applyNameFilter(
 		qb: SelectQueryBuilder<WorkflowEntity>,
-		filter: ListQuery.Options['filter'],
+		filter: WorkflowListQueryOptions['filter'],
 	): void {
 		if (typeof filter?.name === 'string' && filter.name.trim() !== '') {
 			qb.andWhere('workflow.name LIKE :name', { name: `%${filter.name.trim()}%` });
@@ -1427,7 +1489,7 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 
 	private applyParentFolderFilter(
 		qb: SelectQueryBuilder<WorkflowEntity>,
-		filter: ListQuery.Options['filter'],
+		filter: WorkflowListQueryOptions['filter'],
 	): void {
 		if (filter?.parentFolderId === PROJECT_ROOT) {
 			qb.andWhere('workflow.parentFolderId IS NULL');
@@ -1448,7 +1510,7 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 
 	private applyActiveFilter(
 		qb: SelectQueryBuilder<WorkflowEntity>,
-		filter: ListQuery.Options['filter'],
+		filter: WorkflowListQueryOptions['filter'],
 	): void {
 		if (typeof filter?.active === 'boolean') {
 			if (filter.active) {
@@ -1461,7 +1523,7 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 
 	private applyIsArchivedFilter(
 		qb: SelectQueryBuilder<WorkflowEntity>,
-		filter: ListQuery.Options['filter'],
+		filter: WorkflowListQueryOptions['filter'],
 	): void {
 		if (typeof filter?.isArchived === 'boolean') {
 			qb.andWhere('workflow.isArchived = :isArchived', { isArchived: filter.isArchived });
@@ -1470,7 +1532,7 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 
 	private applyTagsFilter(
 		qb: SelectQueryBuilder<WorkflowEntity>,
-		filter: ListQuery.Options['filter'],
+		filter: WorkflowListQueryOptions['filter'],
 	): void {
 		if (isStringArray(filter?.tags) && filter.tags.length > 0) {
 			const subQuery = qb
@@ -1491,7 +1553,7 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 
 	private applyProjectFilter(
 		qb: SelectQueryBuilder<WorkflowEntity>,
-		filter: ListQuery.Options['filter'],
+		filter: WorkflowListQueryOptions['filter'],
 	): void {
 		if (typeof filter?.projectId === 'string' && filter.projectId !== '') {
 			qb.innerJoin('workflow.shared', 'shared').andWhere('shared.projectId = :projectId', {
@@ -1502,7 +1564,7 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 
 	private applyNodeTypesFilter(
 		qb: SelectQueryBuilder<WorkflowEntity>,
-		filter: ListQuery.Options['filter'],
+		filter: WorkflowListQueryOptions['filter'],
 	): void {
 		const nodeTypes = isStringArray(filter?.nodeTypes) ? filter.nodeTypes : [];
 
@@ -1679,7 +1741,7 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 
 	private applyPagination(
 		qb: SelectQueryBuilder<WorkflowEntity>,
-		options: ListQuery.Options,
+		options: WorkflowListQueryOptions,
 	): void {
 		if (options?.take) {
 			qb.skip(options.skip ?? 0).take(options.take);

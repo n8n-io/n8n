@@ -220,7 +220,11 @@ describe('SettingsPreferencesView', () => {
 		await new Promise(process.nextTick);
 
 		expect(contextStore.deletePreference).not.toHaveBeenCalled();
-		expect(trackMock).not.toHaveBeenCalled();
+		// The visit still reports; the delete does not.
+		expect(trackMock).not.toHaveBeenCalledWith(
+			TELEMETRY_EVENT.CONTEXT.USER_DELETED_PREFERENCES,
+			expect.anything(),
+		);
 	});
 
 	it('reloads the page it is showing after a write', async () => {
@@ -235,6 +239,41 @@ describe('SettingsPreferencesView', () => {
 		await new Promise(process.nextTick);
 
 		expect(contextStore.fetchPreferences).toHaveBeenCalledTimes(2);
+	});
+
+	it('reports the visit once, with what the list held', async () => {
+		contextStore.preferences = [
+			preference(),
+			preference({ id: 'p2', userId: null, projectId: 'p-1' }),
+		];
+		contextStore.count = 2;
+
+		renderView();
+		await new Promise(process.nextTick);
+
+		expect(trackMock).toHaveBeenCalledWith(TELEMETRY_EVENT.CONTEXT.USER_VIEWED_PREFERENCES, {
+			count: 2,
+			scope_types: ['user', 'project'],
+		});
+		expect(
+			trackMock.mock.calls.filter(
+				([event]) => event === TELEMETRY_EVENT.CONTEXT.USER_VIEWED_PREFERENCES,
+			),
+		).toHaveLength(1);
+	});
+
+	it('reports no visit when the load failed, so a zero never means a broken page', async () => {
+		contextStore.preferences = [];
+		contextStore.count = 0;
+		contextStore.fetchPreferences.mockRejectedValueOnce(new Error('offline'));
+
+		renderView();
+		await new Promise(process.nextTick);
+
+		expect(trackMock).not.toHaveBeenCalledWith(
+			TELEMETRY_EVENT.CONTEXT.USER_VIEWED_PREFERENCES,
+			expect.anything(),
+		);
 	});
 
 	it('hides the empty state when the load failed', async () => {

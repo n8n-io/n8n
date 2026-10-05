@@ -1,11 +1,10 @@
+import type { CacheService, EventService } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { PrometheusMetricsConfig } from '@n8n/config';
-import type { InstanceSettings } from 'n8n-core';
+import type { ScheduledJob, ScheduledJobRepository } from '@n8n/db';
 import promClient from 'prom-client';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
-
-import type { EventService } from '@/events/event.service';
 
 import { LAG_BUCKETS_SECONDS } from '../constant';
 import { PrometheusSystemTaskMetricsService } from '../system-task-metrics.service';
@@ -19,8 +18,9 @@ describe('PrometheusSystemTaskMetricsService', () => {
 		prefix: 'n8n_',
 		includeSystemTaskMetrics: true,
 	});
-	const instanceSettings = mock<InstanceSettings>({ instanceType: 'main' });
 	const eventService = mock<EventService>();
+	const cacheService = mock<CacheService>();
+	const scheduledJobRepository = mock<ScheduledJobRepository>();
 
 	let service: PrometheusSystemTaskMetricsService;
 	const ctorByType = { Counter: vi.fn(), Gauge: vi.fn(), Histogram: vi.fn() };
@@ -39,7 +39,10 @@ describe('PrometheusSystemTaskMetricsService', () => {
 			this.valuesByLabels.set(JSON.stringify(labels), value),
 		);
 		observe = vi.fn();
+		zero = vi.fn((labels: object) => this.valuesByLabels.set(JSON.stringify(labels), 0));
 		remove = vi.fn((labels: object) => this.valuesByLabels.delete(JSON.stringify(labels)));
+
+		collect?: () => Promise<void>;
 
 		value(labels: object) {
 			return this.valuesByLabels.get(JSON.stringify(labels));
@@ -53,8 +56,9 @@ describe('PrometheusSystemTaskMetricsService', () => {
 
 	function fake(type: keyof typeof ctorByType) {
 		return class extends FakeMetric {
-			constructor(opts: { name: string }) {
+			constructor(opts: { name: string; collect?: () => Promise<void> }) {
 				super();
+				this.collect = opts.collect;
 				ctorByType[type](opts);
 				instancesByName.set(opts.name, this);
 			}
@@ -65,7 +69,6 @@ describe('PrometheusSystemTaskMetricsService', () => {
 		vi.useFakeTimers();
 		vi.setSystemTime(NOW);
 		Object.assign(config, { prefix: 'n8n_', includeSystemTaskMetrics: true });
-		Object.assign(instanceSettings, { instanceType: 'main' });
 		instancesByName.clear();
 		// Replace the auto-mocked classes (whose instances share one prototype method)
 		// with fake classes, so each construction yields its own methods and a test
@@ -76,7 +79,13 @@ describe('PrometheusSystemTaskMetricsService', () => {
 			Histogram: fake('Histogram'),
 		});
 
-		service = new PrometheusSystemTaskMetricsService(config, instanceSettings, eventService);
+		cacheService.get.mockResolvedValue(undefined);
+		service = new PrometheusSystemTaskMetricsService(
+			config,
+			eventService,
+			cacheService,
+			scheduledJobRepository,
+		);
 	});
 
 	afterEach(() => {
@@ -94,17 +103,12 @@ describe('PrometheusSystemTaskMetricsService', () => {
 	}
 
 	describe('enabled', () => {
-		it('is true when opted in and the instance is main', () => {
+		it('is true when opted in', () => {
 			expect(service.enabled).toBe(true);
 		});
 
 		it('is false when not opted in', () => {
 			config.includeSystemTaskMetrics = false;
-			expect(service.enabled).toBe(false);
-		});
-
-		it('is false on a non-main instance', () => {
-			Object.assign(instanceSettings, { instanceType: 'worker' });
 			expect(service.enabled).toBe(false);
 		});
 	});
@@ -133,6 +137,34 @@ describe('PrometheusSystemTaskMetricsService', () => {
 				'myapp_system_task_next_run_timestamp_seconds',
 				'myapp_system_task_scheduled',
 			]);
+		});
+
+		it('keeps the label names of every series', () => {
+			service.init();
+
+			const labelsByName = Object.fromEntries(
+				[
+					...ctorByType.Histogram.mock.calls,
+					...ctorByType.Counter.mock.calls,
+					...ctorByType.Gauge.mock.calls,
+				].map(([opts]) => {
+					const { name, labelNames } = opts as { name: string; labelNames: string[] };
+					return [name, labelNames];
+				}),
+			);
+			expect(labelsByName).toEqual({
+				n8n_system_task_run_duration_seconds: ['task', 'mode', 'result'],
+				n8n_system_task_fire_lag_seconds: ['task'],
+				n8n_system_task_runs_skipped_total: ['task', 'reason'],
+				n8n_system_task_provision_check_failures_total: ['task'],
+				n8n_system_task_retries_total: ['task'],
+				n8n_system_task_last_success_timestamp_seconds: ['task', 'mode'],
+				n8n_system_task_runs_in_flight: ['task', 'mode'],
+				n8n_system_task_info: ['task', 'mode'],
+				n8n_system_task_interval_seconds: ['task'],
+				n8n_system_task_next_run_timestamp_seconds: ['task'],
+				n8n_system_task_scheduled: ['task', 'mode'],
+			});
 		});
 
 		it('gives the fire lag histogram buckets that reach a day', () => {
@@ -168,8 +200,9 @@ describe('PrometheusSystemTaskMetricsService', () => {
 	});
 
 	describe('system-task-routed and the timers', () => {
-		const inMemory = { task: 'prune', mode: 'in_memory' };
+		const leaderTimer = { task: 'prune', mode: 'leader_timer' };
 		const durable = { task: 'prune', mode: 'durable' };
+		const instanceTimer = { task: 'sweep', mode: 'instance_timer' };
 
 		it('seeds the info, scheduled and in-flight series of a durable task when routed', () => {
 			service.init();
@@ -185,7 +218,7 @@ describe('PrometheusSystemTaskMetricsService', () => {
 		it('sets the interval of an in-memory task when routed, but seeds nothing else on a follower', () => {
 			service.init();
 
-			handler('system-task-routed')({ name: 'prune', mode: 'in_memory', intervalSeconds: 60 });
+			handler('system-task-routed')({ name: 'prune', mode: 'leader_timer', intervalSeconds: 60 });
 
 			expect(metric('system_task_interval_seconds').set).toHaveBeenCalledWith(
 				{ task: 'prune' },
@@ -193,54 +226,54 @@ describe('PrometheusSystemTaskMetricsService', () => {
 			);
 			expect(metric('system_task_info').set).not.toHaveBeenCalled();
 			expect(metric('system_task_scheduled').set).not.toHaveBeenCalled();
-			expect(metric('system_task_runs_in_flight').value(inMemory)).toBeUndefined();
+			expect(metric('system_task_runs_in_flight').value(leaderTimer)).toBeUndefined();
 		});
 
 		it('seeds the in-memory series of the routed tasks when the timers start', () => {
 			service.init();
-			handler('system-task-routed')({ name: 'prune', mode: 'in_memory', intervalSeconds: 60 });
+			handler('system-task-routed')({ name: 'prune', mode: 'leader_timer', intervalSeconds: 60 });
 
 			handler('system-task-timers-started')({});
 
-			expect(metric('system_task_info').set).toHaveBeenCalledWith(inMemory, 1);
-			expect(metric('system_task_scheduled').set).toHaveBeenCalledWith(inMemory, 1);
-			expect(metric('system_task_runs_in_flight').value(inMemory)).toBe(0);
+			expect(metric('system_task_info').set).toHaveBeenCalledWith(leaderTimer, 1);
+			expect(metric('system_task_scheduled').set).toHaveBeenCalledWith(leaderTimer, 1);
+			expect(metric('system_task_runs_in_flight').value(leaderTimer)).toBe(0);
 		});
 
 		it('seeds an in-memory task routed while the timers run at once', () => {
 			service.init();
 			handler('system-task-timers-started')({});
 
-			handler('system-task-routed')({ name: 'prune', mode: 'in_memory' });
+			handler('system-task-routed')({ name: 'prune', mode: 'leader_timer' });
 
-			expect(metric('system_task_info').set).toHaveBeenCalledWith(inMemory, 1);
+			expect(metric('system_task_info').set).toHaveBeenCalledWith(leaderTimer, 1);
 		});
 
 		it('leaves the in-flight count of a run that outlived a stepdown alone when the timers start again', () => {
 			service.init();
 			handler('system-task-timers-started')({});
-			handler('system-task-routed')({ name: 'prune', mode: 'in_memory' });
-			handler('system-task-run-started')({ name: 'prune', mode: 'in_memory' });
+			handler('system-task-routed')({ name: 'prune', mode: 'leader_timer' });
+			handler('system-task-run-started')({ name: 'prune', mode: 'leader_timer' });
 
 			// A stepdown whose run has not settled emits no stop, so the takeover that
 			// outran it seeds the series again while that run is still going.
 			handler('system-task-timers-started')({});
-			expect(metric('system_task_runs_in_flight').value(inMemory)).toBe(1);
+			expect(metric('system_task_runs_in_flight').value(leaderTimer)).toBe(1);
 
 			handler('system-task-run-settled')({
 				name: 'prune',
-				mode: 'in_memory',
+				mode: 'leader_timer',
 				result: 'aborted',
 				durationMs: 3000,
 			});
 
-			expect(metric('system_task_runs_in_flight').value(inMemory)).toBe(0);
+			expect(metric('system_task_runs_in_flight').value(leaderTimer)).toBe(0);
 		});
 
 		it('removes the in-memory series, and only those, when the timers stop', () => {
 			service.init();
 			handler('system-task-timers-started')({});
-			handler('system-task-routed')({ name: 'prune', mode: 'in_memory' });
+			handler('system-task-routed')({ name: 'prune', mode: 'leader_timer' });
 			handler('system-task-routed')({ name: 'compact', mode: 'durable' });
 
 			handler('system-task-timers-stopped')({});
@@ -251,11 +284,207 @@ describe('PrometheusSystemTaskMetricsService', () => {
 				'system_task_runs_in_flight',
 				'system_task_last_success_timestamp_seconds',
 			]) {
-				expect(metric(name).remove).toHaveBeenCalledExactlyOnceWith(inMemory);
+				expect(metric(name).remove).toHaveBeenCalledExactlyOnceWith(leaderTimer);
 			}
 			expect(
 				metric('system_task_next_run_timestamp_seconds').remove,
 			).toHaveBeenCalledExactlyOnceWith({ task: 'prune' });
+		});
+
+		it('seeds the series of an instance-scoped task when routed, without waiting for the timers', () => {
+			service.init();
+
+			handler('system-task-routed')({ name: 'sweep', mode: 'instance_timer', intervalSeconds: 30 });
+
+			expect(metric('system_task_info').set).toHaveBeenCalledWith(instanceTimer, 1);
+			expect(metric('system_task_scheduled').set).toHaveBeenCalledWith(instanceTimer, 1);
+			expect(metric('system_task_runs_in_flight').value(instanceTimer)).toBe(0);
+			expect(metric('system_task_interval_seconds').set).toHaveBeenCalledWith(
+				{ task: 'sweep' },
+				30,
+			);
+		});
+
+		it('keeps the instance-scoped series when the leader timers stop', () => {
+			service.init();
+			handler('system-task-timers-started')({});
+			handler('system-task-routed')({ name: 'prune', mode: 'leader_timer' });
+			handler('system-task-routed')({ name: 'sweep', mode: 'instance_timer' });
+
+			handler('system-task-timers-stopped')({});
+
+			for (const name of [
+				'system_task_info',
+				'system_task_scheduled',
+				'system_task_runs_in_flight',
+				'system_task_last_success_timestamp_seconds',
+			]) {
+				expect(metric(name).remove).not.toHaveBeenCalledWith(instanceTimer);
+			}
+			expect(metric('system_task_next_run_timestamp_seconds').remove).not.toHaveBeenCalledWith({
+				task: 'sweep',
+			});
+			expect(metric('system_task_info').value(instanceTimer)).toBe(1);
+		});
+	});
+
+	describe('zeroed counts', () => {
+		it('starts the success and failure series of a routed task at zero', () => {
+			service.init();
+
+			handler('system-task-routed')({ name: 'prune', mode: 'durable' });
+
+			const runDuration = metric('system_task_run_duration_seconds');
+			expect(runDuration.value({ task: 'prune', mode: 'durable', result: 'success' })).toBe(0);
+			expect(runDuration.value({ task: 'prune', mode: 'durable', result: 'failure' })).toBe(0);
+		});
+
+		it('starts the retry and skip counters of a timer task at zero', () => {
+			service.init();
+
+			handler('system-task-routed')({ name: 'sweep', mode: 'instance_timer' });
+
+			expect(metric('system_task_retries_total').value({ task: 'sweep' })).toBe(0);
+			for (const reason of ['overlap', 'provisioned_elsewhere', 'aborted', 'coalesced']) {
+				expect(metric('system_task_runs_skipped_total').value({ task: 'sweep', reason })).toBe(0);
+			}
+		});
+
+		it('does not start the retry and skip counters of a durable task', () => {
+			service.init();
+
+			handler('system-task-routed')({ name: 'prune', mode: 'durable' });
+
+			expect(metric('system_task_retries_total').inc).not.toHaveBeenCalled();
+			expect(metric('system_task_runs_skipped_total').inc).not.toHaveBeenCalled();
+		});
+
+		it('zeroes the run series of a leader timer task only on the first takeover', () => {
+			service.init();
+			handler('system-task-routed')({ name: 'prune', mode: 'leader_timer' });
+
+			handler('system-task-timers-started')({});
+			handler('system-task-timers-stopped')({});
+			handler('system-task-timers-started')({});
+
+			expect(metric('system_task_run_duration_seconds').zero).toHaveBeenCalledTimes(2);
+		});
+	});
+
+	describe('durable job state', () => {
+		const job = (
+			overrides: Partial<Pick<ScheduledJob, 'ownerId' | 'nextRunAt'> & { runnable: boolean }>,
+		) => ({
+			ownerId: 'prune',
+			runnable: true,
+			nextRunAt: new Date(NOW.getTime() + 60_000),
+			...overrides,
+		});
+
+		async function scrape() {
+			await metric('system_task_scheduled').collect!();
+			await metric('system_task_next_run_timestamp_seconds').collect!();
+		}
+
+		it('reads nothing while no task runs durably', async () => {
+			service.init();
+			handler('system-task-routed')({ name: 'prune', mode: 'leader_timer' });
+
+			await scrape();
+
+			expect(scheduledJobRepository.findScheduleStatesByOwnerType).not.toHaveBeenCalled();
+		});
+
+		it('exports the stored next run of a durable task and marks it scheduled', async () => {
+			scheduledJobRepository.findScheduleStatesByOwnerType.mockResolvedValue([job({})]);
+			service.init();
+			handler('system-task-routed')({ name: 'prune', mode: 'durable' });
+
+			await scrape();
+
+			expect(scheduledJobRepository.findScheduleStatesByOwnerType).toHaveBeenCalledWith(
+				'system-task',
+			);
+			expect(metric('system_task_scheduled').value({ task: 'prune', mode: 'durable' })).toBe(1);
+			expect(metric('system_task_next_run_timestamp_seconds').value({ task: 'prune' })).toBe(
+				NOW.getTime() / 1000 + 60,
+			);
+		});
+
+		it.each([
+			['is missing', []],
+			['is not runnable', [job({ runnable: false })]],
+		])('marks a durable task unscheduled when its job %s', async (_, jobs) => {
+			scheduledJobRepository.findScheduleStatesByOwnerType.mockResolvedValue(jobs);
+			service.init();
+			handler('system-task-routed')({ name: 'prune', mode: 'durable' });
+
+			await scrape();
+
+			expect(metric('system_task_scheduled').value({ task: 'prune', mode: 'durable' })).toBe(0);
+			expect(metric('system_task_next_run_timestamp_seconds').remove).toHaveBeenCalledWith({
+				task: 'prune',
+			});
+		});
+
+		it('ignores the jobs of tasks this instance does not run durably', async () => {
+			scheduledJobRepository.findScheduleStatesByOwnerType.mockResolvedValue([
+				job({}),
+				job({ ownerId: 'other' }),
+			]);
+			service.init();
+			handler('system-task-routed')({ name: 'prune', mode: 'durable' });
+
+			await scrape();
+
+			expect(metric('system_task_scheduled').value({ task: 'other', mode: 'durable' })).toBe(
+				undefined,
+			);
+		});
+
+		it('reads the jobs once for both gauges and caches them for the metrics interval', async () => {
+			const cache = new Map<string, unknown>();
+			cacheService.get.mockImplementation(async (key: string) => cache.get(key));
+			cacheService.set.mockImplementation(async (key: string, value: unknown) => {
+				cache.set(key, value);
+			});
+			scheduledJobRepository.findScheduleStatesByOwnerType.mockResolvedValue([job({})]);
+			config.schedulerMetricsInterval = 20;
+			service.init();
+			handler('system-task-routed')({ name: 'prune', mode: 'durable' });
+
+			await scrape();
+
+			expect(scheduledJobRepository.findScheduleStatesByOwnerType).toHaveBeenCalledTimes(1);
+			expect(cacheService.set).toHaveBeenCalledExactlyOnceWith(
+				'metrics:system-tasks:durable-jobs:v1',
+				[{ task: 'prune', runnable: true, nextRunAtSeconds: NOW.getTime() / 1000 + 60 }],
+				20_000,
+			);
+		});
+
+		it('serves both gauges from the cache without reading the jobs', async () => {
+			cacheService.get.mockResolvedValue([
+				{ task: 'prune', runnable: true, nextRunAtSeconds: 1234 },
+			]);
+			service.init();
+			handler('system-task-routed')({ name: 'prune', mode: 'durable' });
+
+			await scrape();
+
+			expect(scheduledJobRepository.findScheduleStatesByOwnerType).not.toHaveBeenCalled();
+			expect(metric('system_task_scheduled').value({ task: 'prune', mode: 'durable' })).toBe(1);
+			expect(metric('system_task_next_run_timestamp_seconds').value({ task: 'prune' })).toBe(1234);
+		});
+
+		it('keeps the last values when the job read fails', async () => {
+			scheduledJobRepository.findScheduleStatesByOwnerType.mockRejectedValue(new Error('db down'));
+			service.init();
+			handler('system-task-routed')({ name: 'prune', mode: 'durable' });
+
+			await expect(scrape()).resolves.toBeUndefined();
+
+			expect(metric('system_task_scheduled').value({ task: 'prune', mode: 'durable' })).toBe(1);
 		});
 	});
 
@@ -263,21 +492,21 @@ describe('PrometheusSystemTaskMetricsService', () => {
 		it('raises the in-flight gauge on start and lowers it on settle', () => {
 			service.init();
 
-			handler('system-task-run-started')({ name: 'prune', mode: 'in_memory' });
+			handler('system-task-run-started')({ name: 'prune', mode: 'leader_timer' });
 			expect(metric('system_task_runs_in_flight').inc).toHaveBeenCalledWith({
 				task: 'prune',
-				mode: 'in_memory',
+				mode: 'leader_timer',
 			});
 
 			handler('system-task-run-settled')({
 				name: 'prune',
-				mode: 'in_memory',
+				mode: 'leader_timer',
 				result: 'success',
 				durationMs: 250,
 			});
 			expect(metric('system_task_runs_in_flight').dec).toHaveBeenCalledWith({
 				task: 'prune',
-				mode: 'in_memory',
+				mode: 'leader_timer',
 			});
 		});
 
@@ -306,13 +535,13 @@ describe('PrometheusSystemTaskMetricsService', () => {
 
 			handler('system-task-run-settled')({
 				name: 'prune',
-				mode: 'in_memory',
+				mode: 'leader_timer',
 				result,
 				durationMs: 40,
 			});
 
 			expect(metric('system_task_run_duration_seconds').observe).toHaveBeenCalledWith(
-				{ task: 'prune', mode: 'in_memory', result },
+				{ task: 'prune', mode: 'leader_timer', result },
 				0.04,
 			);
 			expect(metric('system_task_last_success_timestamp_seconds').set).not.toHaveBeenCalled();
@@ -364,7 +593,7 @@ describe('PrometheusSystemTaskMetricsService', () => {
 				nextRunAtMs: NOW.getTime(),
 			});
 
-			handler('system-task-scheduling-failed')({ name: 'prune', mode: 'in_memory' });
+			handler('system-task-scheduling-failed')({ name: 'prune', mode: 'leader_timer' });
 
 			expect(metric('system_task_next_run_timestamp_seconds').remove).not.toHaveBeenCalled();
 			expect(metric('system_task_next_run_timestamp_seconds').value({ task: 'prune' })).toBe(

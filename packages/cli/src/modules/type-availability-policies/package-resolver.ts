@@ -1,7 +1,12 @@
 import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import type { NodeTypes } from '@/node-types';
 
-import { CREDENTIAL_TYPES_KIND } from './constants';
-import { nodeTypePackageResolver, type PackageResolver } from './policy-evaluator';
+import { CREDENTIAL_TYPES_KIND, NODE_TYPES_KIND } from './constants';
+import {
+	nodeTypePackageResolver,
+	type PackageResolver,
+	type PolicedType,
+} from './policy-evaluator';
 
 /**
  * A credential type name (e.g. `slackApi`) carries no package prefix, unlike a node type
@@ -44,6 +49,12 @@ export function packageResolverFor(
 	return kind === CREDENTIAL_TYPES_KIND
 		? credentialTypePackageResolver(loadNodesAndCredentials)
 		: nodeTypePackageResolver;
+}
+
+export function policedTypeFor(kind: string, nodeTypes: NodeTypes): (name: string) => PolicedType {
+	return kind === NODE_TYPES_KIND
+		? (name) => ({ name, baseName: nodeTypes.resolveBaseName(name).baseName })
+		: (name) => ({ name, baseName: name });
 }
 
 /**

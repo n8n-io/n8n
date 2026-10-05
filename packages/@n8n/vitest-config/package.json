@@ -1,6 +1,6 @@
 {
   "name": "@n8n/vitest-config",
-  "version": "1.22.0",
+  "version": "1.23.0",
   "type": "module",
   "peerDependencies": {
     "@testing-library/jest-dom": "catalog:frontend",
@@ -16,12 +16,14 @@
       "optional": true
     }
   },
-  "dependencies": {},
+  "dependencies": {
+    "typescript": "catalog:typescript-tooling"
+  },
   "devDependencies": {
     "@n8n/typescript-config": "workspace:*",
     "@testing-library/jest-dom": "catalog:frontend",
     "@testing-library/vue": "catalog:frontend",
-    "typescript": "catalog:typescript",
+    "@typescript/native": "catalog:typescript-tooling",
     "vite": "catalog:",
     "vitest": "catalog:"
   },
@@ -48,6 +50,16 @@
       "import": "./dist/node-decorators.js",
       "require": "./dist/node-decorators.js",
       "types": "./dist/node-decorators.d.ts"
+    },
+    "./tsc-decorator-transform": {
+      "import": "./dist/tsc-decorator-transform.js",
+      "require": "./dist/tsc-decorator-transform.js",
+      "types": "./dist/tsc-decorator-transform.d.ts"
+    },
+    "./changed-file-coverage": {
+      "import": "./dist/changed-file-coverage.js",
+      "require": "./dist/changed-file-coverage.js",
+      "types": "./dist/changed-file-coverage.d.ts"
     }
   },
   "scripts": {
@@ -58,7 +70,9 @@
     "build:unchecked": "tsc -p tsconfig.build.json --noCheck",
     "format": "biome format --write .",
     "format:check": "biome ci .",
-    "watch": "tsc -p tsconfig.build.json --watch"
+    "watch": "tsc -p tsconfig.build.json --watch",
+    "test": "vitest run",
+    "test:unit": "vitest run"
   },
   "license": "LicenseRef-n8n-sustainable-use"
 }

@@ -3,7 +3,14 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { getFullApiResponse, makeRestApiRequest } from '@n8n/rest-api-client';
 
 import {
+	cancelAgentChatExecution,
 	getAgentBackgroundJobs,
+	getAgentBudgetSpend,
+	getAgentChatQueue,
+	removeAgentQueuedMessage,
+	steerAgentQueuedMessage,
+	stopAgentBackgroundJobs,
+	updateAgentQueuedMessage,
 	getChatMessages,
 	listAgents,
 	listAgentsPage,
@@ -81,14 +88,47 @@ describe('useAgentApi', () => {
 		});
 	});
 
-	it('encodes the background task route identifiers', async () => {
+	it.each([
+		{ request: getAgentBackgroundJobs, method: 'GET', suffix: '' },
+		{ request: stopAgentBackgroundJobs, method: 'POST', suffix: '/stop' },
+	])('encodes background task identifiers for $method', async ({ request, method, suffix }) => {
 		vi.mocked(makeRestApiRequest).mockResolvedValueOnce({ tasks: [] });
-		await getAgentBackgroundJobs(restApiContext, 'project/1', 'agent/1', 'agent:chat#1');
+		await request(restApiContext, 'project/1', 'agent/1', 'agent:chat#1');
+		expect(makeRestApiRequest).toHaveBeenCalledWith(
+			restApiContext,
+			method,
+			`/projects/project%2F1/agents/v2/agent%2F1/chat/agent%3Achat%231/background-tasks${suffix}`,
+		);
+	});
+
+	it('requests the monthly budget spend for the agent', async () => {
+		const spend = { spentUsd: 42.5 };
+		vi.mocked(makeRestApiRequest).mockResolvedValueOnce(spend);
+
+		const result = await getAgentBudgetSpend(restApiContext, 'project-1', 'agent-1');
+
 		expect(makeRestApiRequest).toHaveBeenCalledWith(
 			restApiContext,
 			'GET',
-			'/projects/project%2F1/agents/v2/agent%2F1/chat/agent%3Achat%231/background-tasks',
+			'/projects/project-1/agents/v2/agent-1/budget',
 		);
+		expect(result).toBe(spend);
+	});
+
+	it('encodes the queue route identifiers for listing, editing, removal, and steering', async () => {
+		const args = [restApiContext, 'project/1', 'agent/1', 'agent:chat#1'] as const;
+		await getAgentChatQueue(...args);
+		await updateAgentQueuedMessage(...args, 'queue/1', { message: 'edited' });
+		await removeAgentQueuedMessage(...args, 'queue/1');
+		await steerAgentQueuedMessage(...args, 'queue/1', { executionId: 'A' });
+
+		const path = '/projects/project%2F1/agents/v2/agent%2F1/chat/agent%3Achat%231/queue';
+		expect(vi.mocked(makeRestApiRequest).mock.calls).toEqual([
+			[restApiContext, 'GET', path],
+			[restApiContext, 'PATCH', `${path}/queue%2F1`, { message: 'edited' }],
+			[restApiContext, 'DELETE', `${path}/queue%2F1`],
+			[restApiContext, 'POST', `${path}/queue%2F1/steer`, { executionId: 'A' }],
+		]);
 	});
 
 	describe('getChatMessages', () => {
@@ -103,6 +143,24 @@ describe('useAgentApi', () => {
 				'/projects/project-1/agents/v2/agent-1/chat/agent-1%3Achat%3Abot-1-2%231/messages',
 			);
 		});
+	});
+
+	it('encodes the Stop route identifiers', async () => {
+		vi.mocked(makeRestApiRequest).mockResolvedValueOnce({ cancelRequested: true });
+
+		await cancelAgentChatExecution(
+			restApiContext,
+			'project/1',
+			'agent/1',
+			'agent:chat#1',
+			'execution/1',
+		);
+
+		expect(makeRestApiRequest).toHaveBeenCalledWith(
+			restApiContext,
+			'DELETE',
+			'/projects/project%2F1/agents/v2/agent%2F1/chat/agent%3Achat%231/executions/execution%2F1',
+		);
 	});
 
 	describe('duplicateAgent', () => {
@@ -179,6 +237,7 @@ describe('useAgentApi', () => {
 				integrations: [
 					{ type: 'telegram', credentialId: 'cred-telegram-1' },
 					{ type: 'slack', credentialId: 'cred-slack-1', settings: { channel: 'C1' } },
+					{ type: 'n8n_chat', credentialId: '' },
 				],
 			} as unknown as AgentJsonConfig;
 			const cloned = { id: 'agent-2', name: 'Support Agent (copy)' } as unknown as AgentResource;
@@ -200,6 +259,7 @@ describe('useAgentApi', () => {
 			expect(postBody.schema.integrations).toEqual([
 				{ type: 'telegram', credentialId: '' },
 				{ type: 'slack', credentialId: '', settings: { channel: 'C1' } },
+				{ type: 'n8n_chat', credentialId: '' },
 			]);
 		});
 	});

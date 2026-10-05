@@ -2,9 +2,10 @@
 import type { NodeTypeAvailabilityScope } from '@n8n/api-types';
 import { N8nButton, N8nIcon, N8nPopover, N8nText } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
-import { unrefElement, useElementHover, type MaybeElement } from '@vueuse/core';
+import { unrefElement, useElementHover, useFocusWithin, type MaybeElement } from '@vueuse/core';
 import { computed, ref } from 'vue';
 
+import { SCOPE_LABEL_KEY } from '../type-availability-policies.constants';
 import ContactInstanceAdminModal from './ContactInstanceAdminModal.vue';
 
 const props = defineProps<{
@@ -12,17 +13,12 @@ const props = defineProps<{
 	scope?: NodeTypeAvailabilityScope;
 	/** The list row the popover explains. It opens beside this element, not beside the lock. */
 	anchor?: MaybeElement;
-	/** The row is the keyboard-active item, which opens the popover like a hover does. */
+	/** Keyboard-active without DOM focus, such as a virtual list selection. */
 	active?: boolean;
 }>();
 
 /** Leaving waits this long before closing, so the pointer can cross the gap to the popover. */
 const HOVER_GRACE_MS = 200;
-
-const SCOPE_TITLE_KEY: Record<NodeTypeAvailabilityScope, BaseTextKey> = {
-	instance: 'typeAvailabilityPolicies.restrictedNode.scope.instance',
-	project: 'typeAvailabilityPolicies.restrictedNode.scope.project',
-};
 
 const i18n = useI18n();
 
@@ -30,21 +26,31 @@ const anchorElement = computed(() => unrefElement(props.anchor) ?? undefined);
 const contentRef = ref<HTMLElement | null>(null);
 const anchorHovered = useElementHover(anchorElement, { delayLeave: HOVER_GRACE_MS });
 const contentHovered = useElementHover(contentRef, { delayLeave: HOVER_GRACE_MS });
-const open = computed(() => anchorHovered.value || contentHovered.value || props.active);
-
 const isContactAdminOpen = ref(false);
+// Content is teleported, so focus in it is outside the anchor.
+// Close for the contact-admin dialog, which this would otherwise cover.
+const { focused: anchorFocused } = useFocusWithin(anchorElement);
+const { focused: contentFocused } = useFocusWithin(contentRef);
+const open = computed(
+	() =>
+		!isContactAdminOpen.value &&
+		(anchorHovered.value ||
+			contentHovered.value ||
+			anchorFocused.value ||
+			contentFocused.value ||
+			props.active),
+);
 
 const scopeKey = computed<BaseTextKey>(
 	() =>
-		(props.scope && SCOPE_TITLE_KEY[props.scope]) ??
+		(props.scope && SCOPE_LABEL_KEY[props.scope]) ??
 		'typeAvailabilityPolicies.restrictedNode.title',
 );
-
-const interpolate = computed(() => ({ nodeType: props.nodeTypeName }));
 </script>
 
 <template>
 	<span :class="$style.root">
+		<!-- The tool pickers render this inside a modal. -->
 		<N8nPopover
 			:open="open"
 			side="left"
@@ -54,14 +60,17 @@ const interpolate = computed(() => ({ nodeType: props.nodeTypeName }));
 			:suppress-auto-focus="true"
 			:content-class="$style.card"
 			width="254px"
+			z-index="var(--floating-ui--z)"
 		>
 			<template #trigger>
-				<N8nIcon
-					icon="lock"
-					size="small"
-					:title="i18n.baseText('typeAvailabilityPolicies.restrictedNode.title')"
-					data-test-id="node-restricted-icon"
-				/>
+				<span
+					:class="$style.marker"
+					tabindex="0"
+					role="img"
+					:aria-label="i18n.baseText('typeAvailabilityPolicies.restrictedNode.title')"
+				>
+					<N8nIcon icon="lock" size="small" data-test-id="node-restricted-icon" />
+				</span>
 			</template>
 			<template #content>
 				<div ref="contentRef" :class="$style.popover" data-test-id="node-restricted-popover">
@@ -83,19 +92,8 @@ const interpolate = computed(() => ({ nodeType: props.nodeTypeName }));
 				</div>
 			</template>
 		</N8nPopover>
-		<ContactInstanceAdminModal
-			v-model:open="isContactAdminOpen"
-			:description="
-				i18n.baseText('typeAvailabilityPolicies.restrictedNode.contactAdmin.description', {
-					interpolate,
-				})
-			"
-			:mail-subject="
-				i18n.baseText('typeAvailabilityPolicies.restrictedNode.contactAdmin.mailSubject', {
-					interpolate,
-				})
-			"
-		/>
+		<!-- A sibling of the popover: its content unmounts on close and must not take the dialog with it. -->
+		<ContactInstanceAdminModal v-model:open="isContactAdminOpen" :node-type-name="nodeTypeName" />
 	</span>
 </template>
 
@@ -103,6 +101,19 @@ const interpolate = computed(() => ({ nodeType: props.nodeTypeName }));
 // Two teleported children and one visible trigger: the wrapper must not affect the slot's layout.
 .root {
 	display: contents;
+}
+
+.marker {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	padding: var(--spacing--3xs);
+	color: var(--color--text--tint-1);
+
+	&:focus-visible {
+		outline: var(--focus--border-width) solid var(--focus--border-color);
+		outline-offset: 2px;
+	}
 }
 
 // The design system defaults popovers to --radius--xs (8px); the design uses the editor's 4px.

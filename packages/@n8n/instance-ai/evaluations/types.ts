@@ -42,6 +42,24 @@ export interface ChecklistResult {
 }
 
 // ---------------------------------------------------------------------------
+// Build conversation timeouts
+// ---------------------------------------------------------------------------
+
+/** Which budget ended a build conversation. `turn`: one user turn overran its
+ *  budget. `conversation`: the whole conversation overran its budget.
+ *  `inactivity`: a run in flight emitted no event for the inactivity bound (a
+ *  stalled model stream). */
+export type RunTimeoutKind = 'turn' | 'conversation' | 'inactivity';
+
+export interface BuildTimeout {
+	kind: RunTimeoutKind;
+	/** User turn (1-based) in flight, or about to start, when the budget fired. */
+	turn: number;
+	/** Time measured by the budget that fired. */
+	elapsedMs: number;
+}
+
+// ---------------------------------------------------------------------------
 // SSE event capture
 // ---------------------------------------------------------------------------
 
@@ -233,6 +251,8 @@ export interface WorkflowTestCase {
 	promptVersion?: string;
 	/** Enable the user-run action for credential-free execution cases. */
 	allowUserExecution?: boolean;
+	/** Harness drives compaction, and reports the case not judged if it never ran. */
+	requiresMemoryCompaction?: boolean;
 	/** Optional NL assertions about the build CONVERSATION (process: clarifications, push-back,
 	 *  ordering). LLM-judged from the transcript; requires a transcript, so skipped in
 	 *  prebuilt/MCP runs. Counted toward the per-case + headline pass rate alongside scenarios. */
@@ -341,6 +361,9 @@ export interface WorkflowTestCaseResult {
 	agentArtifact?: AgentArtifact;
 	workflowBuildSuccess: boolean;
 	buildError?: string;
+	/** Set when a budget ended the conversation. The build fields describe what
+	 *  was saved before it fired; the scenarios ran against that. */
+	buildTimeout?: BuildTimeout;
 	executionScenarioResults: ExecutionScenarioResult[];
 	/** The built workflow JSON — saved for debugging and cross-run comparison */
 	workflowJson?: WorkflowResponse;
@@ -375,6 +398,8 @@ export interface TranscriptTurn {
 	/** True for turns restored from a conversation seed — context that predates
 	 *  the evaluated run, as opposed to behaviour captured live. */
 	seeded?: boolean;
+	/** Main run plus any resumes — the join key for this turn's token usage. */
+	runIds?: string[];
 }
 
 /** One ordered step within a turn: a slice of agent narration or a tool interaction. */

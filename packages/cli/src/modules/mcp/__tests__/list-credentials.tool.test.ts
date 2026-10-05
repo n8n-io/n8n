@@ -75,7 +75,13 @@ describe('list-credentials MCP tool', () => {
 			const { credentialsService, telemetry } = createMocks();
 			const { aiGatewayService } = makeAiGatewayMocks();
 
-			const tool = createListCredentialsTool(user, credentialsService, telemetry, aiGatewayService);
+			const tool = createListCredentialsTool(
+				user,
+				credentialsService,
+				telemetry,
+				aiGatewayService,
+				true,
+			);
 
 			expect(tool.name).toBe('list_credentials');
 			expect(tool.config.description).toEqual(expect.any(String));
@@ -92,6 +98,37 @@ describe('list-credentials MCP tool', () => {
 	});
 
 	describe('handler', () => {
+		test.each([false, undefined])(
+			'omits descriptions from responses, schemas, and guidance when the flag is %s',
+			async (enabled) => {
+				const { credentialsService, telemetry } = createMocks([
+					buildCredential({ description: 'Read-only reporting account' }),
+				]);
+				const { aiGatewayService } = makeAiGatewayMocks({ available: false });
+				const tool = createListCredentialsTool(
+					user,
+					credentialsService,
+					telemetry,
+					aiGatewayService,
+					enabled,
+				);
+
+				const result = await tool.handler(
+					{ limit: 200, query: '', type: '', projectId: '', onlySharedWithMe: false },
+					{} as never,
+				);
+
+				expect(result.structuredContent).toMatchObject({ data: [{ id: 'cred-1' }] });
+				expect(JSON.stringify(result.structuredContent)).not.toContain('description');
+				const dataSchema = tool.config.outputSchema!.data as z.ZodArray<z.ZodObject<z.ZodRawShape>>;
+				expect(dataSchema.element.shape).not.toHaveProperty('description');
+				expect(tool.config.description).not.toContain('read their descriptions');
+				expect(result.content).toEqual([
+					{ type: 'text', text: JSON.stringify(result.structuredContent) },
+				]);
+			},
+		);
+
 		test('formats credentials and never includes data', async () => {
 			const { credentialsService } = createMocks([
 				buildCredential({
@@ -112,7 +149,7 @@ describe('list-credentials MCP tool', () => {
 				}),
 			]);
 
-			const result = await listCredentials(user, credentialsService, {});
+			const result = await listCredentials(user, credentialsService, {}, true);
 
 			expect(result).toEqual({
 				count: 2,
@@ -179,6 +216,7 @@ describe('list-credentials MCP tool', () => {
 					credentialsService,
 					telemetry,
 					aiGatewayService,
+					true,
 				);
 
 				const result = await tool.handler(
@@ -229,7 +267,7 @@ describe('list-credentials MCP tool', () => {
 				}),
 			]);
 
-			const result = await listCredentials(user, credentialsService, {});
+			const result = await listCredentials(user, credentialsService, {}, true);
 
 			expect(result.data[0].homeProject).toEqual({
 				id: 'proj-1',
@@ -262,7 +300,7 @@ describe('list-credentials MCP tool', () => {
 		test('omits filter when no filter args provided', async () => {
 			const { credentialsService } = createMocks();
 
-			await listCredentials(user, credentialsService, {});
+			await listCredentials(user, credentialsService, {}, true);
 
 			const [, optionsArg] = (credentialsService.getMany as Mock).mock.calls[0];
 			expect(optionsArg.listQueryOptions.filter).toBeUndefined();
@@ -272,7 +310,13 @@ describe('list-credentials MCP tool', () => {
 			const { credentialsService, telemetry } = createMocks([buildCredential()]);
 
 			const { aiGatewayService } = makeAiGatewayMocks({ available: false });
-			const tool = createListCredentialsTool(user, credentialsService, telemetry, aiGatewayService);
+			const tool = createListCredentialsTool(
+				user,
+				credentialsService,
+				telemetry,
+				aiGatewayService,
+				true,
+			);
 			await tool.handler(
 				{
 					limit: undefined as unknown as number,
@@ -298,7 +342,13 @@ describe('list-credentials MCP tool', () => {
 			const { credentialsService, telemetry } = createMocks(new Error('DB exploded'));
 
 			const { aiGatewayService } = makeAiGatewayMocks({ available: false });
-			const tool = createListCredentialsTool(user, credentialsService, telemetry, aiGatewayService);
+			const tool = createListCredentialsTool(
+				user,
+				credentialsService,
+				telemetry,
+				aiGatewayService,
+				true,
+			);
 			const result = await tool.handler(
 				{
 					limit: undefined as unknown as number,
@@ -334,6 +384,7 @@ describe('list-credentials MCP tool', () => {
 					credentialsService,
 					telemetry,
 					aiGatewayService,
+					true,
 				);
 				const result = await tool.handler(
 					{

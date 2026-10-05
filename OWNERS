@@ -8,8 +8,8 @@
 #
 # Last-match-wins: specific rules MUST come AFTER general rules.
 #
-# The `required` option makes team approval mandatory: a member of the team
-# must approve the PR before merge. This is enforced by the
+# The `required` option makes team approval mandatory for non-test files: a
+# member of the team must approve the PR before merge. This is enforced by the
 # "Required Reviews" commit status (ci-owners-required-reviews.yml).
 # All other entries are advisory (reviewer recommendations and opt-in
 # reviewer auto-assignment).
@@ -28,6 +28,8 @@ packages/@n8n/config/                                   @n8n-io/catalysts
 packages/@n8n/backend-common/                           @n8n-io/catalysts
 packages/@n8n/backend-network/                          @n8n-io/catalysts
 packages/@n8n/backend-services/                         @n8n-io/catalysts
+packages/@n8n/backend-services/src/services/role.service.ts       @n8n-io/iam
+packages/@n8n/backend-services/src/services/role-cache.service.ts @n8n-io/iam
 packages/@n8n/backend-test-utils/                       @n8n-io/catalysts
 packages/@n8n/di/                                       @n8n-io/catalysts
 packages/@n8n/errors/                                   @n8n-io/catalysts
@@ -155,8 +157,6 @@ packages/cli/src/controllers/e2e.controller.ts          						@n8n-io/qa-dx
 # CLI services
 packages/cli/src/services/jwt.service.ts                @n8n-io/iam
 packages/cli/src/services/user.service.ts               @n8n-io/iam
-packages/cli/src/services/role.service.ts               @n8n-io/iam
-packages/cli/src/services/role-cache.service.ts         @n8n-io/iam
 packages/cli/src/services/password.utility.ts           @n8n-io/iam
 packages/cli/src/services/public-api-key.service.ts     @n8n-io/iam
 packages/cli/src/services/security-settings.service.ts  @n8n-io/iam
@@ -217,20 +217,25 @@ packages/nodes-base/                                    @n8n-io/nodes
 packages/@n8n/decorators/                               @n8n-io/catalysts
 packages/node-dev/                                      @n8n-io/nodes
 packages/@n8n/create-node/                              @n8n-io/nodes
-packages/@n8n/node-cli/                                 @n8n-io/nodes
+packages/@n8n/node-cli/                                 @n8n-io/community-engineering
 packages/@n8n/imap/                                     @n8n-io/iam
 packages/@n8n/syslog-client/                            @n8n-io/iam
-packages/@n8n/scan-community-package/                   @n8n-io/nodes
-packages/@n8n/eslint-plugin-community-nodes/            @n8n-io/nodes
+packages/@n8n/scan-community-package/                   @n8n-io/community-engineering
+packages/@n8n/eslint-plugin-community-nodes/            @n8n-io/community-engineering
 packages/@n8n/computer-use/                             @n8n-io/nodes
 packages/@n8n/local-gateway/                            @n8n-io/nodes
 packages/@n8n/mcp-browser/                              @n8n-io/nodes
 packages/@n8n/mcp-browser-extension/                    @n8n-io/nodes
 
+# Community engineering
+.agents/skills/create-community-node-lint-rule/         @n8n-io/community-engineering
+.agents/skills/community-pr-readiness-check/            @n8n-io/community-engineering
+
 # IAM
 
 packages/@n8n/permissions/                              @n8n-io/iam
 packages/@n8n/client-oauth2/                            @n8n-io/iam
+packages/@n8n/inbound-auth/                             @n8n-io/iam
 
 # LiGo
 
@@ -245,6 +250,7 @@ packages/cli/src/modules/type-availability-policies/    @n8n-io/governance-and-o
 
 .github/                                       					@n8n-io/qa-dx
 .github/workflows/                                      @n8n-io/qa-dx required
+.github/workflows/community-pr-close-stale.yml          @n8n-io/community-engineering
 .github/scripts/                                        @n8n-io/qa-dx required
 .github/actions/                                        @n8n-io/qa-dx required
 .github/poutine-rules/                                  @n8n-io/qa-dx required
@@ -253,8 +259,7 @@ docker/get-n8n.sh                                       @n8n-io/qa-dx required
 
 # QA
 
-packages/testing/                                       @n8n-io/qa-dx
-packages/@n8n/benchmark/                                @n8n-io/qa-dx
+packages/quality/                                       @n8n-io/qa-dx
 packages/@n8n/vitest-config/                            @n8n-io/qa-dx
 
 # Encryption boundary (IAM) — the encryption area and its guardrail rules.
@@ -266,5 +271,4 @@ packages/cli/src/modules/encryption-key-manager/        @n8n-io/iam required
 packages/@n8n/db/src/entities/deployment-key.ts         @n8n-io/iam required
 packages/@n8n/db/src/repositories/deployment-key.repository.ts @n8n-io/iam required
 packages/@n8n/eslint-config/src/configs/encryption-boundary.ts @n8n-io/iam required
-packages/@n8n/eslint-config/src/rules/no-deployment-key-delete.ts @n8n-io/iam required
 packages/@n8n/eslint-config/src/rules/no-encryption-guardrail-disable.ts @n8n-io/iam required

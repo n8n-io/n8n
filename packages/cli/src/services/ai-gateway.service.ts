@@ -18,12 +18,12 @@ import { isMcpGatewayAuthentication, OperationalError, UserError } from 'n8n-wor
 
 import { N8N_VERSION, AI_ASSISTANT_SDK_VERSION } from '@/constants';
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { BadRequestError } from '@n8n/errors';
 import { License } from '@/license';
 import type { McpRegistryServer } from '@/modules/mcp-registry/registry/mcp-registry.types';
 import { checkAiGatewayEligibility } from '@/services/ai-gateway-eligibility';
 import { OwnershipService } from '@/services/ownership.service';
-import { UrlService } from '@/services/url.service';
+import { UrlService } from '@n8n/backend-services';
 
 interface GatewayTokenResponse {
 	token: string;

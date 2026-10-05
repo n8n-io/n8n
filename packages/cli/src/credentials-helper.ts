@@ -1,13 +1,13 @@
-/* eslint-disable @typescript-eslint/no-unsafe-argument */
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
-
 import { SYSTEM_RESOLVER_ID } from '@n8n/api-types';
 import { LicenseState } from '@n8n/backend-common';
 import type { CredentialsEntity, ICredentialsDb } from '@n8n/db';
-import { CredentialsRepository, SecretsProviderConnectionRepository } from '@n8n/db';
+import {
+	CredentialsRepository,
+	isEntityNotFoundError,
+	SecretsProviderConnectionRepository,
+} from '@n8n/db';
 import { Service } from '@n8n/di';
-import { EntityNotFoundError } from '@n8n/typeorm';
-import { Credentials, getAdditionalKeys } from 'n8n-core';
+import { Credentials, FULL_ACCESS_NODE_TYPES, getAdditionalKeys } from 'n8n-core';
 import type {
 	CredentialInformation,
 	ICredentialDataDecryptedObject,
@@ -30,6 +30,7 @@ import type {
 import {
 	ICredentialsHelper,
 	NodeHelpers,
+	OPEN_AI_API_CREDENTIAL_TYPE,
 	Workflow,
 	UnexpectedError,
 	UserError,
@@ -43,6 +44,7 @@ import { CredentialTypes } from '@/credential-types';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { DCR_MANAGED_CREDENTIAL_FIELDS, OAUTH_PINNED_FIELDS } from '@/oauth/dcr-managed-fields';
 import { ExternalSecretsConfig } from '@/modules/external-secrets.ee/external-secrets.config';
+import type { PolicyActor } from '@/policy/policy-enforcement-backend';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { AiGatewayService } from '@/services/ai-gateway.service';
 
@@ -99,6 +101,13 @@ const mockNode = {
 const { nodeTypes: mockNodeTypes } = createMockNodeTypes();
 
 const INVALID_JSON_VALUE = Symbol('invalidJsonValue');
+
+/** A run names no user: the starter is not known reliably on every path, so a run never guesses. */
+function decryptActor({ executionId, userId }: IWorkflowExecuteAdditionalData): PolicyActor {
+	if (executionId) return { kind: 'system', reason: 'execution', executionId };
+	if (userId) return { kind: 'user', user: { id: userId } };
+	return { kind: 'system', reason: 'execution' };
+}
 
 @Service()
 export class CredentialsHelper extends ICredentialsHelper {
@@ -343,7 +352,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 				type,
 			});
 		} catch (error) {
-			if (error instanceof EntityNotFoundError) {
+			if (isEntityNotFoundError(error)) {
 				throw new CredentialNotFoundError(nodeCredential.id, type);
 			}
 
@@ -556,7 +565,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 		executeData?: IExecuteData,
 		raw?: boolean,
 		expressionResolveValues?: ICredentialsExpressionResolveValues,
-		options?: IGetDecryptedCredentialsOptions,
+		options?: IGetDecryptedCredentialsOptions & { actor?: PolicyActor },
 	): Promise<ICredentialDataDecryptedObject> {
 		// Sub-nodes, such as a chat model connected to a chain or agent, inherit executeData.node
 		// from their parent. Prefer expressionResolveValues.node when present: it is always
@@ -577,13 +586,26 @@ export class CredentialsHelper extends ICredentialsHelper {
 
 		const credentialsEntity = await this.getCredentialsEntity(nodeCredentials, type);
 
+		// Managed OpenAI credentials are unavailable to nodes that can request undeclared types.
+		if (
+			credentialsEntity.isManaged &&
+			type === OPEN_AI_API_CREDENTIAL_TYPE &&
+			consumerNode &&
+			FULL_ACCESS_NODE_TYPES.has(consumerNode.type)
+		) {
+			throw new UserError('Managed credentials are not supported by this node');
+		}
+
 		// Validate against the executing project's policy before any decryption happens.
-		await this.policyEnforcementService.enforceCredentialDecrypt({
-			credentialType: type,
-			credentialId: credentialsEntity.id,
-			consumer: consumerNode ? { nodeType: consumerNode.type } : null,
-			projectId: additionalData.projectId ?? null,
-		});
+		await this.policyEnforcementService.enforceCredentialDecrypt(
+			{
+				credentialType: type,
+				credentialId: credentialsEntity.id,
+				consumer: consumerNode ? { nodeType: consumerNode.type } : null,
+				projectId: additionalData.projectId ?? null,
+			},
+			options?.actor ?? decryptActor(additionalData),
+		);
 
 		const credentials = new Credentials(
 			{ id: credentialsEntity.id, name: credentialsEntity.name },
@@ -808,10 +830,12 @@ export class CredentialsHelper extends ICredentialsHelper {
 		const credentials = await this.getCredentials(nodeCredentials, type);
 
 		await credentials.setData(data);
-		const newCredentialsData = credentials.getDataToSave() as ICredentialsDb;
-
-		// Add special database related data
-		newCredentialsData.updatedAt = new Date();
+		// Ciphertext only. `name` and `type` would be written back unchanged, and a payload
+		// that cannot carry `type` keeps this off the sealed `credentialSave` path.
+		const newCredentialsData: Pick<ICredentialsDb, 'data' | 'updatedAt'> = {
+			data: credentials.getDataToSave().data,
+			updatedAt: new Date(),
+		};
 
 		// Save the credentials in DB
 		const findQuery = {
@@ -865,10 +889,12 @@ export class CredentialsHelper extends ICredentialsHelper {
 		const credentials = await this.getCredentials(nodeCredentials, type);
 
 		await credentials.updateData({ oauthTokenData: data.oauthTokenData });
-		const newCredentialsData = credentials.getDataToSave() as ICredentialsDb;
-
-		// Add special database related data
-		newCredentialsData.updatedAt = new Date();
+		// Ciphertext only. `name` and `type` would be written back unchanged, and a payload
+		// that cannot carry `type` keeps this off the sealed `credentialSave` path.
+		const newCredentialsData: Pick<ICredentialsDb, 'data' | 'updatedAt'> = {
+			data: credentials.getDataToSave().data,
+			updatedAt: new Date(),
+		};
 
 		// Save the credentials in DB
 		const findQuery = {

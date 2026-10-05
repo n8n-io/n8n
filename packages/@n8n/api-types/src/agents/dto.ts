@@ -8,11 +8,18 @@ import {
 	MAX_AGENT_CHAT_ATTACHMENT_MIMETYPE_LENGTH,
 	MAX_AGENT_CHAT_ATTACHMENTS_PER_MESSAGE,
 } from './agent-chat-attachments.constants';
+import { AgentApprovalSchema, AgentTeamsSettingsSchema } from './agent-integration.schema';
 import { AgentVectorStoreConfigSchema, AgentJsonConfigSchema } from './agent-json-config.schema';
 import { agentSkillSchema, agentSkillShape } from './agent-skill.schema';
 import { agentTaskSchema } from './agent-task.schema';
+import { N8N_CHAT_INTEGRATION_TYPE } from './types';
 import { paginationSchema } from '../dto/pagination/pagination.dto';
+import { booleanFromString } from '../schemas/boolean-from-string';
 import { Z } from '../zod-class';
+
+export class AgentsSettingsDto extends Z.class({
+	enabled: z.boolean(),
+}) {}
 
 export const AGENTS_LIST_SORT_OPTIONS = [
 	'name:asc',
@@ -38,10 +45,12 @@ export const AGENT_SESSION_ORIGINS = [
 	'sub-agent',
 	'schedule',
 	'workflow',
+	'n8n_chat_production',
 	'slack',
 	'telegram',
 	'linear',
 	'discord',
+	'teams',
 ] as const;
 
 export type AgentSessionStatus = (typeof AGENT_SESSION_STATUSES)[number];
@@ -51,6 +60,7 @@ const agentListFilterSchema = z
 	.object({
 		query: z.string().trim().min(1).max(128).optional(),
 		availableInMCP: z.boolean().optional(),
+		availableInChat: z.boolean().optional(),
 	})
 	.strict();
 
@@ -90,15 +100,18 @@ export class ListAgentsQueryDto extends Z.class({
 export class ListAgentSessionsQueryDto extends Z.class({
 	cursor: z.string().optional(),
 	limit: z.string().optional(),
+	previewOnly: booleanFromString.optional(),
 	status: z.enum(AGENT_SESSION_STATUSES).optional(),
 	origin: z.enum(AGENT_SESSION_ORIGINS).optional(),
+	/** `mine` keeps only the sessions the requesting user owns. */
+	scope: z.enum(['all', 'mine']).optional(),
 	updatedAfter: z.coerce.date().optional(),
 	updatedBefore: z.coerce.date().optional(),
 }) {}
 
 export type AgentSessionQueryFilters = Pick<
 	ListAgentSessionsQueryDto,
-	'status' | 'origin' | 'updatedAfter' | 'updatedBefore'
+	'status' | 'origin' | 'scope' | 'updatedAfter' | 'updatedBefore' | 'previewOnly'
 >;
 
 export class AgentProviderModelsQueryDto extends Z.class({
@@ -222,6 +235,8 @@ const agentChatMessageShape = {
 	// (attachment-only sends) — see the schema-level refinement below.
 	message: z.string(),
 	sessionId: z.string().min(1).optional(),
+	messageId: z.string().uuid().optional(),
+	newSession: z.literal(true).optional(),
 	attachments: z
 		.array(agentChatAttachmentSchema)
 		.max(MAX_AGENT_CHAT_ATTACHMENTS_PER_MESSAGE)
@@ -233,6 +248,10 @@ const agentChatMessageSchema = z
 	.refine((value) => value.message.trim().length > 0 || (value.attachments?.length ?? 0) > 0, {
 		message: 'Message text or at least one attachment is required',
 		path: ['message'],
+	})
+	.refine((value) => !value.messageId || !!value.sessionId, {
+		message: 'A session ID is required with a message ID',
+		path: ['sessionId'],
 	});
 
 /**
@@ -255,6 +274,19 @@ export class AgentChatMessageDto extends Z.class(agentChatMessageShape) {
 	}
 }
 
+export class AgentChatQueueUpdateDto extends Z.class({
+	message: z.string(),
+}) {}
+
+export class AgentChatQueueSteerDto extends Z.class({
+	executionId: z.string().min(1).max(36),
+}) {}
+
+export class AgentChatQueueReorderDto extends Z.class({
+	targetQueueId: z.string().regex(/^[1-9]\d*$/),
+	expectedQueueIds: z.array(z.string().regex(/^[1-9]\d*$/)).min(2),
+}) {}
+
 export class AgentChatResumeDto extends Z.class({
 	runId: z.string().min(1),
 	toolCallId: z.string().min(1),
@@ -267,18 +299,55 @@ export class AgentChatResumeDto extends Z.class({
 	resumeData: z.unknown(),
 }) {}
 
-/**
- * Envelope check for the connect body. The channel itself is validated against
- * the per-platform integration schema, which is where `settings` is checked.
- */
-export class AgentConnectIntegrationDto extends Z.class({
+const agentConnectIntegrationShape = {
 	type: z.string().min(1),
-	credentialId: z.string().min(1),
+	credentialId: z.string(),
 	/**
 	 * Credential of the same type this channel takes over from. Swapping in one
 	 * request keeps the agent from ever holding two live channels or none.
 	 */
 	replaces: z.object({ credentialId: z.string().min(1) }).optional(),
+	/** Channel actions that need approval before they run. */
+	approval: AgentApprovalSchema.optional(),
+};
+
+/**
+ * Envelope check for the connect body. The channel itself is validated against
+ * the per-platform integration schema, which is where `settings` is checked.
+ * n8n Chat is the one channel without a credential, so it takes an empty `credentialId`.
+ */
+const agentConnectIntegrationSchema = z
+	.object(agentConnectIntegrationShape)
+	.refine(
+		(value) =>
+			value.type === N8N_CHAT_INTEGRATION_TYPE
+				? value.credentialId === ''
+				: value.credentialId.length > 0,
+		{ message: 'credentialId is required, except for n8n Chat', path: ['credentialId'] },
+	);
+
+export class AgentConnectIntegrationDto extends Z.class(agentConnectIntegrationShape) {
+	constructor(data: z.infer<typeof agentConnectIntegrationSchema>) {
+		super(agentConnectIntegrationSchema.parse(data));
+	}
+
+	static override safeParse(data: unknown) {
+		return agentConnectIntegrationSchema.safeParse(data);
+	}
+
+	static override parse(data: unknown) {
+		return agentConnectIntegrationSchema.parse(data);
+	}
+}
+
+/**
+ * The package is downloaded in the setup before the channel is connected, so
+ * the settings it must reflect exist only in the open form. Without them the
+ * first zip would ship the defaults whatever the user chose.
+ */
+export class AgentTeamsPackageDto extends Z.class({
+	credentialId: z.string().min(1).optional(),
+	settings: AgentTeamsSettingsSchema.optional(),
 }) {}
 
 export class AgentDisconnectIntegrationDto extends Z.class({

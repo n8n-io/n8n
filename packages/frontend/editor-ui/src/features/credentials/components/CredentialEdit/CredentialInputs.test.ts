@@ -10,7 +10,7 @@ const renderComponent = createComponentRenderer(CredentialInputs);
 describe('compact CredentialInputs', () => {
 	beforeEach(() => setActivePinia(createTestingPinia()));
 
-	it('preserves multiline private keys and validates required fields only after blur', async () => {
+	it('preserves multiline private keys and validates required fields only after submission', async () => {
 		const rendered = renderComponent({
 			props: {
 				compact: true,
@@ -33,6 +33,8 @@ describe('compact CredentialInputs', () => {
 		expect(input).toHaveAttribute('rows', '4');
 		expect(rendered.queryByRole('alert')).toBeNull();
 		await fireEvent.blur(input);
+		expect(rendered.queryByRole('alert')).toBeNull();
+		await rendered.rerender({ showValidationWarnings: true });
 		expect(rendered.getByRole('alert')).toHaveTextContent('This field is required');
 		const key = '-----BEGIN PRIVATE KEY-----\nexample\n-----END PRIVATE KEY-----';
 		await fireEvent.update(input, key);

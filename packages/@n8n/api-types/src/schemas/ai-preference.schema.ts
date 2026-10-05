@@ -61,10 +61,9 @@ export const aiPreferenceContentSchema = z
 		AI_PREFERENCE_CONTENT_MAX_LENGTH,
 		`content cannot be longer than ${AI_PREFERENCE_CONTENT_MAX_LENGTH} characters`,
 	)
-	// Written for a model to read: the write tool of CONTEXT-138 builds its content field from
-	// this schema, so the limits travel with it and a model reads them before it writes instead
-	// of discovering them through a rejection. No tool input schema reads it yet, because no
-	// tool writes a preference yet.
+	// Written for a model to read: the `save_user_preference` tool validates its content
+	// against this schema, so the limits travel with it and a model reads them before it
+	// writes instead of discovering them through a rejection.
 	.describe(
 		`One instruction, written as the user would say it. At most ${AI_PREFERENCE_CONTENT_MAX_LENGTH} characters. A scope that already holds ${AI_PREFERENCE_MAX_PER_SCOPE} preferences refuses a new one, so edit or delete one first.`,
 	);

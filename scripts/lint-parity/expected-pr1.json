@@ -121,13 +121,6 @@
 		"reason": "package moved from base to the backend layer, which carries the network boundary"
 	},
 	{
-		"rule": "n8n-local-rules/no-deployment-key-delete",
-		"pkg": "packages/",
-		"before": "off",
-		"after": "error",
-		"reason": "package moved from base to the backend layer, which carries the encryption boundary"
-	},
-	{
 		"rule": "n8n-local-rules/no-encryption-guardrail-disable",
 		"pkg": "packages/",
 		"before": "off",
@@ -150,13 +143,6 @@
 		"reason": "runtime-agnostic library moved to base: no Node runtime, no HTTP imports"
 	},
 	{
-		"rule": "n8n-local-rules/no-deployment-key-delete",
-		"pkg": "packages/@n8n/utils",
-		"before": "error",
-		"after": "off",
-		"reason": "runtime-agnostic library moved to base"
-	},
-	{
 		"rule": "n8n-local-rules/no-encryption-guardrail-disable",
 		"pkg": "packages/@n8n/utils",
 		"before": "error",
@@ -171,13 +157,6 @@
 		"reason": "pure library moved to base: no Node APIs"
 	},
 	{
-		"rule": "n8n-local-rules/no-deployment-key-delete",
-		"pkg": "packages/@n8n/json-schema-to-zod",
-		"before": "error",
-		"after": "off",
-		"reason": "pure library moved to base"
-	},
-	{
 		"rule": "n8n-local-rules/no-encryption-guardrail-disable",
 		"pkg": "packages/@n8n/json-schema-to-zod",
 		"before": "error",
@@ -190,13 +169,6 @@
 		"before": "error",
 		"after": "off",
 		"reason": "yjs-only library moved to base: no Node APIs"
-	},
-	{
-		"rule": "n8n-local-rules/no-deployment-key-delete",
-		"pkg": "packages/@n8n/crdt",
-		"before": "error",
-		"after": "off",
-		"reason": "yjs-only library moved to base"
 	},
 	{
 		"rule": "n8n-local-rules/no-encryption-guardrail-disable",

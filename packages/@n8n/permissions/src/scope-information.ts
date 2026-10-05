@@ -134,6 +134,11 @@ export const scopeInformation: Partial<Record<Scope, ScopeInformation>> = {
 		description:
 			"Allows creating, deleting, and changing the type of end-user credentials, which resolve to each user's own connection.",
 	},
+	'credential:use': {
+		displayName: 'Use Credential',
+		description:
+			'Allows using any credential on the instance in a workflow, without being a member of its project. Without it, a role that can read credentials sees them but cannot select, test, or run them.',
+	},
 	'credential:manageInstance': {
 		displayName: 'Manage provider connections',
 		description:

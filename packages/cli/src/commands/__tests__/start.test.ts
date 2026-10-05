@@ -28,11 +28,12 @@ import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { CommunityPackagesConfig } from '@/modules/community-packages/community-packages.config';
 import { CommunityPackagesService } from '@/modules/community-packages/community-packages.service';
+import { OtelService } from '@/modules/otel/otel.service';
 import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';
 import { PollJobProvider } from '@/scheduling/poll-trigger-node/poll-job-provider';
 import { JwtService } from '@/services/jwt.service';
-import { RoleCacheService } from '@/services/role-cache.service';
+import { RoleCacheService } from '@n8n/backend-services';
 import { ShutdownService } from '@/shutdown/shutdown.service';
 import { TaskRunnerModule } from '@/task-runners/task-runner-module';
 
@@ -43,8 +44,8 @@ const roleCacheService = mockInstance(RoleCacheService);
 roleCacheService.refreshCache.mockResolvedValue(undefined);
 
 const deploymentKeyRepository = mockInstance(DeploymentKeyRepository);
-deploymentKeyRepository.findActiveByType.mockResolvedValue(null);
-deploymentKeyRepository.insertOrIgnore.mockResolvedValue(undefined);
+deploymentKeyRepository.findActiveIdentifier.mockResolvedValue(null);
+deploymentKeyRepository.seedActiveIdentifier.mockResolvedValue(undefined);
 
 const loadNodesAndCredentials = mockInstance(LoadNodesAndCredentials);
 loadNodesAndCredentials.init.mockResolvedValue(undefined);
@@ -72,6 +73,7 @@ mockInstance(NodeTypes);
 const shutdownService = mockInstance(ShutdownService);
 shutdownService.validate.mockReturnValue(undefined);
 mockInstance(PostHogClient);
+mockInstance(OtelService);
 mockInstance(TelemetryEventRelay);
 mockInstance(ActivityEventRelay);
 mockInstance(WorkflowFailureNotificationEventRelay);
@@ -126,6 +128,7 @@ describe('Start - AuthRolesService initialization', () => {
 		Container.set(MultiMainSetup, multiMainSetup);
 		Container.set(AuthHandlerRegistry, authHandlerRegistry);
 		Container.set(PostHogClient, mockInstance(PostHogClient));
+		Container.set(OtelService, mockInstance(OtelService));
 		Container.set(TelemetryEventRelay, mockInstance(TelemetryEventRelay));
 		Container.set(ActivityEventRelay, mockInstance(ActivityEventRelay));
 		Container.set(
@@ -176,7 +179,6 @@ describe('Start - AuthRolesService initialization', () => {
 		// @ts-expect-error - Accessing protected method for testing
 		start.initDataDeduplicationService = vi.fn().mockResolvedValue(undefined);
 		start.initExternalHooks = vi.fn().mockResolvedValue(undefined);
-		start.initWorkflowHistory = vi.fn();
 		// @ts-expect-error - Accessing private method for testing
 		start.initInstanceSettingsLoader = vi.fn().mockResolvedValue(undefined);
 		start.cleanupTestRunner = vi.fn().mockResolvedValue(undefined);

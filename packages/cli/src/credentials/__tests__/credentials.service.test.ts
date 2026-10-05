@@ -1,5 +1,12 @@
+import { CredentialDescriptionsService } from '@/credentials/credential-descriptions.service';
+import type { PostHogClient } from '@/posthog';
 import { CREDENTIAL_DESCRIPTION_MAX_LENGTH } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
+import {
+	type EventService,
+	type RoleService,
+	type CredentialsFinderService,
+} from '@n8n/backend-services';
 import type {
 	CredentialsRepository,
 	ICredentialsDb,
@@ -13,6 +20,7 @@ import type {
 	ListQueryDb,
 	DbLockService,
 	TransactionRunner,
+	ProjectRelation,
 } from '@n8n/db';
 import {
 	CredentialIdConflictError,
@@ -20,9 +28,10 @@ import {
 	DbLock,
 	GLOBAL_OWNER_ROLE,
 	GLOBAL_MEMBER_ROLE,
+	type Role,
 } from '@n8n/db';
 import type { PolicyCleared } from '@n8n/decorators';
-import type { EntityManager } from '@n8n/typeorm';
+import type { EntityManager, FindOptionsWhere } from '@n8n/typeorm';
 import { CREDENTIAL_ERRORS, CredentialDataError, Credentials, type ErrorReporter } from 'n8n-core';
 import { OAuth2Api } from 'n8n-nodes-base/credentials/OAuth2Api.credentials';
 import {
@@ -33,22 +42,21 @@ import {
 	type ICredentialType,
 	type INodeProperties,
 } from 'n8n-workflow';
+import type { MockInstance } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import type { CredentialTypes } from '@/credential-types';
 import type { CredentialConnectionStatusProxy } from '@/credentials/credential-connection-status-proxy';
 import type { CredentialDependencyService } from '@/credentials/credential-dependency.service';
-import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { CredentialsService } from '@/credentials/credentials.service';
 import type { InstanceCredentialUseRegistry } from '@/credentials/instance-credential-use.registry';
 import * as validation from '@/credentials/validation';
 import type { CredentialsHelper } from '@/credentials-helper';
+import type { PolicyActor } from '@/policy/policy-enforcement-backend';
 import type { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { PolicyViolationError } from '@/policy/policy-violation.error';
 import { CredentialNotFoundError } from '@/errors/credential-not-found.error';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import type { EventService } from '@/events/event.service';
+import { BadRequestError, ForbiddenError } from '@n8n/errors';
 import type { ExternalHooks } from '@/external-hooks';
 import type { ExternalSecretsConfig } from '@/modules/external-secrets.ee/external-secrets.config';
 import type { SecretsProviderAccessCheckService } from '@/modules/external-secrets.ee/secret-provider-access-check.service.ee';
@@ -60,12 +68,33 @@ import * as checkAccess from '@/permissions.ee/check-access';
 import type { CredentialsTester } from '@/services/credentials-tester.service';
 import type { OwnershipService } from '@/services/ownership.service';
 import type { ProjectService } from '@/services/project.service.ee';
-import type { RoleService } from '@/services/role.service';
 
 import { mockExistingCredential } from './credentials.test-data';
 
 const ownerUser = mock<User>({ id: 'owner-id', role: GLOBAL_OWNER_ROLE });
+const ownerActor: PolicyActor = { kind: 'user', user: ownerUser };
 const memberUser = mock<User>({ id: 'member-id', role: GLOBAL_MEMBER_ROLE });
+/** A custom instance role that can see every credential but not use one. */
+const viewOnlyUser = mock<User>({
+	id: 'view-only-id',
+	role: {
+		slug: 'global:cred-viewer',
+		displayName: 'Credential viewer',
+		description: null,
+		systemRole: false,
+		roleType: 'global',
+		scopes: ['credential:list', 'credential:read'].map((scope) => ({
+			slug: scope,
+			displayName: scope,
+			description: null,
+		})),
+	} as Role,
+});
+
+const flags = { credSharingEnabled: false };
+vi.mock('@/constants/credential-sharing', () => ({
+	isCredSharingEnabled: () => flags.credSharingEnabled,
+}));
 
 describe('CredentialsService', () => {
 	const credType = mock<ICredentialType>({
@@ -89,6 +118,8 @@ describe('CredentialsService', () => {
 	const errorReporter = mock<ErrorReporter>();
 	const credentialTypes = mock<CredentialTypes>();
 	const credentialsRepository = mock<CredentialsRepository>();
+	const postHogClient = mock<PostHogClient>();
+	const credentialDescriptions = new CredentialDescriptionsService(postHogClient);
 	const credentialDependencyService = mock<CredentialDependencyService>();
 	const sharedCredentialsRepository = mock<SharedCredentialsRepository>();
 	const ownershipService = mock<OwnershipService>();
@@ -137,10 +168,13 @@ describe('CredentialsService', () => {
 		eventService,
 		transactionRunner,
 		policyEnforcementService,
+		credentialDescriptions,
 	);
 
 	beforeEach(() => {
 		vi.resetAllMocks();
+		flags.credSharingEnabled = false;
+		postHogClient.getFeatureFlagForInstance.mockResolvedValue(true);
 		policyEnforcementService.enforceCredentialSave.mockResolvedValue(cleared);
 		credentialDependencyService.resolveExternalSecretsStoreDependencyFilter.mockResolvedValue(
 			undefined,
@@ -209,13 +243,18 @@ describe('CredentialsService', () => {
 				.mockResolvedValue(mock<ICredentialsDb>());
 			const updateSpy = vi.spyOn(service, 'update').mockResolvedValue(mock<CredentialsEntity>());
 
-			await service.clearOauthTokenData(credential);
+			await service.clearOauthTokenData(credential, ownerActor);
 
 			const passedData = createEncryptedDataSpy.mock.calls[0][0].data;
 			expect(passedData).not.toHaveProperty('oauthTokenData');
 			expect(passedData).not.toHaveProperty('accountIdentifier');
 			expect(passedData).toHaveProperty('clientId', 'abc');
-			expect(updateSpy).toHaveBeenCalledWith(credential.id, expect.anything(), passedData);
+			expect(updateSpy).toHaveBeenCalledWith(
+				credential.id,
+				expect.anything(),
+				ownerActor,
+				passedData,
+			);
 		});
 
 		it('aborts without persisting when the credential cannot be decrypted', async () => {
@@ -226,7 +265,9 @@ describe('CredentialsService', () => {
 			const updateSpy = vi.spyOn(service, 'update');
 
 			// Must propagate the failure rather than overwrite the credential with empty data.
-			await expect(service.clearOauthTokenData(credential)).rejects.toThrow(decryptionError);
+			await expect(service.clearOauthTokenData(credential, ownerActor)).rejects.toThrow(
+				decryptionError,
+			);
 			expect(updateSpy).not.toHaveBeenCalled();
 		});
 	});
@@ -365,6 +406,17 @@ describe('CredentialsService', () => {
 
 			expect(prepared.description).toBe('Read-only key for reporting.');
 		});
+
+		it.each([false, undefined])(
+			'ignores description updates when the flag is %s',
+			async (enabled) => {
+				postHogClient.getFeatureFlagForInstance.mockResolvedValue(enabled);
+				for (const description of [null, 'x'.repeat(CREDENTIAL_DESCRIPTION_MAX_LENGTH + 1)]) {
+					const prepared = await prepare(description);
+					expect(prepared.description).toBeUndefined();
+				}
+			},
+		);
 
 		it.each([
 			['an empty string', ''],
@@ -1094,24 +1146,24 @@ describe('CredentialsService', () => {
 	});
 
 	describe('testById', () => {
-		it('throws CredentialNotFoundError when credential does not exist', async () => {
-			credentialsFinderService.findById.mockResolvedValue(null);
+		it('throws CredentialNotFoundError when the user cannot use the credential', async () => {
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(null);
 
-			await expect(service.testById(ownerUser.id, 'missing-credential')).rejects.toThrow(
+			await expect(service.testById(ownerUser, 'missing-credential')).rejects.toThrow(
 				CredentialNotFoundError,
 			);
 			expect(credentialsTester.testCredentials).not.toHaveBeenCalled();
 		});
 
 		it('does not expose instance credentials through public API testing', async () => {
-			credentialsFinderService.findById.mockResolvedValue(
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(
 				mock<CredentialsEntity>({
 					id: 'instance-credential',
 					usageScope: 'instance',
 				}),
 			);
 
-			await expect(service.testById(ownerUser.id, 'instance-credential')).rejects.toThrow(
+			await expect(service.testById(ownerUser, 'instance-credential')).rejects.toThrow(
 				CredentialNotFoundError,
 			);
 			expect(credentialsTester.testCredentials).not.toHaveBeenCalled();
@@ -1127,13 +1179,18 @@ describe('CredentialsService', () => {
 			const decryptedData = { accessToken: 'secret-token' } as ICredentialDataDecryptedObject;
 			const testResult = { status: 'OK', message: 'Credential tested successfully' } as const;
 
-			credentialsFinderService.findById.mockResolvedValue(storedCredential);
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(storedCredential);
 			credentialsTester.testCredentials.mockResolvedValue(testResult);
 			vi.spyOn(service, 'decrypt').mockResolvedValue(decryptedData);
 
-			const result = await service.testById(ownerUser.id, storedCredential.id);
+			const result = await service.testById(ownerUser, storedCredential.id);
 
-			expect(credentialsFinderService.findById).toHaveBeenCalledWith(storedCredential.id);
+			// Routed through the finder, so a caller without `credential:use` is refused.
+			expect(credentialsFinderService.findCredentialForUser).toHaveBeenCalledWith(
+				storedCredential.id,
+				ownerUser,
+				['credential:read'],
+			);
 			expect(service.decrypt).toHaveBeenCalledWith(storedCredential, true);
 			expect(credentialsTester.testCredentials).toHaveBeenCalledWith(
 				ownerUser.id,
@@ -1184,6 +1241,78 @@ describe('CredentialsService', () => {
 			expect(credentialsRepository.findOneBy).toHaveBeenCalledWith({
 				id: instanceCredential.id,
 				usageScope: 'instance',
+			});
+		});
+
+		describe('decryption gate', () => {
+			// `getOne` is the non-enterprise path, taken when sharing is unlicensed. It
+			// decrypts only when `getSharing` matches on both `credential:read` and
+			// `credential:update`, exactly as the enterprise path does. A see-only
+			// instance role holds read but not update, so it gets metadata only.
+			const credentialOwner = mock<User>({ id: 'cred-owner-id', role: GLOBAL_MEMBER_ROLE });
+			const credential = mock<CredentialsEntity>({
+				id: 'shared-credential',
+				data: 'encrypted-data',
+				isResolvable: false,
+			});
+			const sharing = mock<SharedCredentials>({ credentials: credential });
+			const decryptedData = { clientSecret: 'plaintext-secret' };
+
+			let decryptSpy: MockInstance<CredentialsService['decrypt']>;
+
+			beforeEach(() => {
+				decryptSpy = vi.spyOn(service, 'decrypt').mockResolvedValue(decryptedData);
+
+				// Stand in for the database: `getSharing` drops the ownership filter when
+				// the caller holds every global scope it asked for, so an unfiltered
+				// lookup matches, and a filtered one matches only for the owner.
+				sharedCredentialsRepository.findOne.mockImplementation(async (options) => {
+					const where = options.where as FindOptionsWhere<SharedCredentials>;
+					if (where.role !== 'credential:owner') return sharing;
+					const { projectRelations } = where.project as {
+						projectRelations: { userId: string };
+					};
+					return projectRelations.userId === credentialOwner.id ? sharing : null;
+				});
+			});
+
+			afterEach(() => {
+				decryptSpy.mockRestore();
+			});
+
+			it('withholds the secret from a role with global read but not update', async () => {
+				const result = await service.getOne(viewOnlyUser, credential.id, true);
+
+				expect(result).not.toHaveProperty('data');
+				expect(decryptSpy).not.toHaveBeenCalled();
+				// The decrypt lookup asked for update as well, which this role lacks, so
+				// it fell back to the ownership filter and matched nothing.
+				expect(sharedCredentialsRepository.findOne).toHaveBeenNthCalledWith(
+					1,
+					expect.objectContaining({
+						where: expect.objectContaining({ role: 'credential:owner' }),
+					}),
+				);
+			});
+
+			it('returns the secret to a role with both global scopes', async () => {
+				const result = await service.getOne(ownerUser, credential.id, true);
+
+				expect(result).toMatchObject({ data: decryptedData });
+				expect(decryptSpy).toHaveBeenCalledWith(credential);
+				expect(sharedCredentialsRepository.findOne).toHaveBeenNthCalledWith(
+					1,
+					expect.objectContaining({
+						where: expect.not.objectContaining({ role: 'credential:owner' }),
+					}),
+				);
+			});
+
+			it('returns the secret to the credential owner without any global scope', async () => {
+				const result = await service.getOne(credentialOwner, credential.id, true);
+
+				expect(result).toMatchObject({ data: decryptedData });
+				expect(decryptSpy).toHaveBeenCalledWith(credential);
 			});
 		});
 	});
@@ -1422,7 +1551,7 @@ describe('CredentialsService', () => {
 				return [];
 			});
 
-			const update = service.update(credential.id, encrypted, undefined, {
+			const update = service.update(credential.id, encrypted, ownerActor, undefined, {
 				instanceCredential: credential,
 			});
 			await vi.waitFor(() => expect(dbLockService.withLock).toHaveBeenCalledOnce());
@@ -1451,7 +1580,7 @@ describe('CredentialsService', () => {
 				data: 'encrypted',
 			});
 
-			await expect(service.update(credential.id, encrypted)).resolves.toBe(credential);
+			await expect(service.update(credential.id, encrypted, ownerActor)).resolves.toBe(credential);
 
 			expect(repositoryTransaction).toHaveBeenCalledExactlyOnceWith(
 				{ policyCleared: cleared },
@@ -1476,20 +1605,23 @@ describe('CredentialsService', () => {
 			setRepositoryTransaction(transactionManager);
 			const encrypted = mock<ICredentialsDb>({ id: credential.id, type: 'slackApi' });
 
-			await service.update(credential.id, encrypted);
+			await service.update(credential.id, encrypted, ownerActor);
 
-			expect(policyEnforcementService.enforceCredentialSave).toHaveBeenCalledExactlyOnceWith({
-				credential: { id: credential.id, type: 'slackApi' },
-				storedCredential: { id: credential.id, type: 'githubApi' },
-				projectId: 'project-1',
-			});
+			expect(policyEnforcementService.enforceCredentialSave).toHaveBeenCalledExactlyOnceWith(
+				{
+					credential: { id: credential.id, type: 'slackApi' },
+					storedCredential: { id: credential.id, type: 'githubApi' },
+					projectId: 'project-1',
+				},
+				ownerActor,
+			);
 		});
 
 		it('returns null without checking policy when the credential does not exist', async () => {
 			credentialsRepository.findOneBy.mockResolvedValue(null);
 
 			await expect(
-				service.update('missing', mock<ICredentialsDb>({ id: 'missing' })),
+				service.update('missing', mock<ICredentialsDb>({ id: 'missing' }), ownerActor),
 			).resolves.toBeNull();
 
 			expect(policyEnforcementService.enforceCredentialSave).not.toHaveBeenCalled();
@@ -1505,7 +1637,11 @@ describe('CredentialsService', () => {
 			);
 
 			await expect(
-				service.update('project-credential', mock<ICredentialsDb>({ id: 'project-credential' })),
+				service.update(
+					'project-credential',
+					mock<ICredentialsDb>({ id: 'project-credential' }),
+					ownerActor,
+				),
 			).rejects.toThrow(PolicyViolationError);
 
 			expect(credentialsRepository.runInTransaction).not.toHaveBeenCalled();
@@ -1526,7 +1662,7 @@ describe('CredentialsService', () => {
 				new Map([[credential.id, { accountIdentifier: 'me@gmail.com' }]]),
 			);
 
-			const result = await service.update(credential.id, encrypted, undefined, {
+			const result = await service.update(credential.id, encrypted, ownerActor, undefined, {
 				user: ownerUser,
 			});
 
@@ -1550,7 +1686,7 @@ describe('CredentialsService', () => {
 			setRepositoryTransaction(transactionManager);
 			const encrypted = mock<ICredentialsDb>({ id: credential.id });
 
-			await service.update(credential.id, encrypted);
+			await service.update(credential.id, encrypted, ownerActor);
 
 			expect(connectionStatusProxy.findMyConnections).not.toHaveBeenCalled();
 		});
@@ -1607,11 +1743,14 @@ describe('CredentialsService', () => {
 
 			await service.updateInstanceCredential(ownerUser, 'instance-credential', payload, ctx);
 
-			expect(policyEnforcementService.enforceCredentialSave).toHaveBeenCalledExactlyOnceWith({
-				credential: { id: 'instance-credential', type: 'openAiApi' },
-				storedCredential: { id: 'instance-credential', type: 'openAiApi' },
-				projectId: null,
-			});
+			expect(policyEnforcementService.enforceCredentialSave).toHaveBeenCalledExactlyOnceWith(
+				{
+					credential: { id: 'instance-credential', type: 'openAiApi' },
+					storedCredential: { id: 'instance-credential', type: 'openAiApi' },
+					projectId: null,
+				},
+				{ kind: 'user', user: ownerUser },
+			);
 		});
 
 		it('writes nothing when policy refuses the update', async () => {
@@ -1755,11 +1894,14 @@ describe('CredentialsService', () => {
 		it('gates the create on a policy clearance for its type, with no project', async () => {
 			await service.createInstanceCredential(dto, ownerUser, {});
 
-			expect(policyEnforcementService.enforceCredentialSave).toHaveBeenCalledExactlyOnceWith({
-				credential: { id: null, type: 'apiKey' },
-				storedCredential: null,
-				projectId: null,
-			});
+			expect(policyEnforcementService.enforceCredentialSave).toHaveBeenCalledExactlyOnceWith(
+				{
+					credential: { id: null, type: 'apiKey' },
+					storedCredential: null,
+					projectId: null,
+				},
+				{ kind: 'user', user: ownerUser },
+			);
 			expect(credentialsRepository.saveInstanceCredential).toHaveBeenCalledWith(
 				expect.objectContaining({ type: 'apiKey', usageScope: 'instance' }),
 				{ policyCleared: cleared },
@@ -1895,6 +2037,7 @@ describe('CredentialsService', () => {
 				id: 'credential-id',
 				name: 'Stored Credential',
 				type: 'githubApi',
+				isManaged: false,
 			});
 			const decryptedData = { accessToken: 'stored-token' } as ICredentialDataDecryptedObject;
 			const unredactedData = { accessToken: 'live-token' } as ICredentialDataDecryptedObject;
@@ -1931,11 +2074,50 @@ describe('CredentialsService', () => {
 			expect(result).toEqual(testResult);
 		});
 
+		it('uses stored values when testing a managed credential', async () => {
+			const storedCredential = mock<CredentialsEntity>({
+				id: 'credential-id',
+				name: 'Stored Credential',
+				type: 'openAiApi',
+				isManaged: true,
+			});
+			const decryptedData = {
+				apiKey: 'stored-key',
+				url: 'https://saved.example/v1',
+			} as ICredentialDataDecryptedObject;
+			const testResult = { status: 'OK', message: 'Credential tested successfully' } as const;
+
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(storedCredential);
+			sharedCredentialsRepository.findCredentialOwningProject.mockResolvedValue(undefined);
+			vi.spyOn(service, 'decrypt').mockResolvedValue(decryptedData);
+			credentialsTester.testCredentials.mockResolvedValue(testResult);
+
+			const result = await service.testWithCredentials(ownerUser, {
+				id: storedCredential.id,
+				name: 'Draft Credential',
+				type: 'githubApi',
+				data: {
+					apiKey: CREDENTIAL_BLANKING_VALUE,
+					url: 'https://draft.example/v1',
+				},
+			});
+
+			expect(credentialsTester.testCredentials).toHaveBeenCalledWith(ownerUser.id, 'openAiApi', {
+				id: storedCredential.id,
+				name: storedCredential.name,
+				type: storedCredential.type,
+				data: decryptedData,
+				homeProject: undefined,
+			});
+			expect(result).toEqual(testResult);
+		});
+
 		it('discards a caller-supplied homeProject and resolves the owning project from storage', async () => {
 			const storedCredential = mock<CredentialsEntity>({
 				id: 'credential-id',
 				name: 'Stored Credential',
 				type: 'githubApi',
+				isManaged: false,
 			});
 			const decryptedData = { accessToken: 'stored-token' } as ICredentialDataDecryptedObject;
 			const testResult = { status: 'OK', message: 'Credential tested successfully' } as const;
@@ -1991,6 +2173,7 @@ describe('CredentialsService', () => {
 				id: 'credential-id',
 				name: 'Stored Credential',
 				type: 'githubApi',
+				isManaged: false,
 			});
 			const decryptedData = { accessToken: 'stored-token' } as ICredentialDataDecryptedObject;
 			const testResult = { status: 'OK', message: 'Credential tested successfully' } as const;
@@ -2825,6 +3008,26 @@ describe('CredentialsService', () => {
 			},
 		);
 
+		it.each([false, undefined])(
+			'omits descriptions from workflow-scoped lists when the flag is %s',
+			async (enabled) => {
+				postHogClient.getFeatureFlagForInstance.mockResolvedValue(enabled);
+				const credential = Object.assign(new CredentialsEntity(), regularCredential, {
+					description: 'Read-only reporting account',
+				});
+				credentialsFinderService.findCredentialsForUser.mockResolvedValue([credential]);
+				credentialsRepository.findAllCredentialsForWorkflow.mockResolvedValue([credential]);
+
+				const result = await service.getCredentialsAUserCanUseInAWorkflow(user, {
+					workflowId: 'workflow-1',
+				});
+
+				expect(result).toHaveLength(1);
+				expect(result[0]).not.toHaveProperty('description');
+				expect(credential.description).toBe('Read-only reporting account');
+			},
+		);
+
 		it('should return a payload matching the ICredentialsResponse shape', async () => {
 			credentialsFinderService.findCredentialsForUser.mockResolvedValue([regularCredential]);
 			credentialsRepository.findAllCredentialsForWorkflow.mockResolvedValue([regularCredential]);
@@ -2854,6 +3057,7 @@ describe('CredentialsService', () => {
 					sharedWithProjects: [
 						{ id: 'proj-shared', type: 'team', name: 'Shared Project', icon: null },
 					],
+					sharedRoute: 'project',
 				},
 			]);
 		});
@@ -2959,12 +3163,134 @@ describe('CredentialsService', () => {
 			// Verify no duplicates
 			expect(new Set(credIds).size).toBe(2);
 		});
+
+		describe('personal route (isCredSharingEnabled)', () => {
+			const personalProject = mock<Project>({ id: 'user-personal-project', type: 'personal' });
+			// A fresh object per call: getCredentialsAUserCanUseInAWorkflow mutates
+			// `.shared` in place on every credential it returns, so reusing one
+			// instance across tests would leak state between them.
+			const makePersonalCredential = () =>
+				({
+					id: 'cred-personal',
+					name: 'Personal Credential',
+					type: 'apiKey',
+					description: null,
+					isGlobal: false,
+					isManaged: false,
+					isResolvable: false,
+					createdAt: credentialCreatedAt,
+					updatedAt: credentialUpdatedAt,
+					shared: [
+						{
+							credentialsId: 'cred-personal',
+							role: 'credential:owner',
+							projectId: personalProject.id,
+						},
+					],
+				}) as Partial<CredentialsEntity> as CredentialsEntity;
+
+			beforeEach(() => {
+				projectService.getPersonalProject.mockResolvedValue(personalProject);
+				credentialsRepository.findAllCredentialsForWorkflow.mockResolvedValue([]);
+			});
+
+			it('excludes the credential when the flag is off, even if the user works in the project', async () => {
+				credentialsFinderService.findCredentialsForUser.mockResolvedValue([
+					makePersonalCredential(),
+				]);
+				projectService.findProjectsWorkflowIsIn.mockResolvedValue([personalProject.id]);
+				projectService.getProjectRelationsForUser.mockResolvedValue([
+					mock<ProjectRelation>({ projectId: personalProject.id }),
+				]);
+
+				const result = await service.getCredentialsAUserCanUseInAWorkflow(user, {
+					workflowId: 'workflow-1',
+				});
+
+				expect(result).toEqual([]);
+			});
+
+			it('includes the credential via the personal route when the flag is on and the user works in the project', async () => {
+				flags.credSharingEnabled = true;
+				credentialsFinderService.findCredentialsForUser.mockResolvedValue([
+					makePersonalCredential(),
+				]);
+				projectService.findProjectsWorkflowIsIn.mockResolvedValue(['project-in-workflow']);
+				projectService.getProjectRelationsForUser.mockResolvedValue([
+					mock<ProjectRelation>({ projectId: 'project-in-workflow' }),
+				]);
+
+				const result = await service.getCredentialsAUserCanUseInAWorkflow(user, {
+					workflowId: 'workflow-1',
+				});
+
+				expect(result).toHaveLength(1);
+				expect(result[0]).toMatchObject({ id: 'cred-personal', sharedRoute: 'personal' });
+			});
+
+			it('excludes the credential when the flag is on but the user does not work in the project', async () => {
+				flags.credSharingEnabled = true;
+				credentialsFinderService.findCredentialsForUser.mockResolvedValue([
+					makePersonalCredential(),
+				]);
+				projectService.findProjectsWorkflowIsIn.mockResolvedValue(['some-other-project']);
+				projectService.getProjectRelationsForUser.mockResolvedValue([
+					mock<ProjectRelation>({ projectId: personalProject.id }),
+				]);
+
+				const result = await service.getCredentialsAUserCanUseInAWorkflow(user, {
+					workflowId: 'workflow-1',
+				});
+
+				expect(result).toEqual([]);
+			});
+
+			it('includes the credential via the personal route for an unsaved workflow (projectId option)', async () => {
+				flags.credSharingEnabled = true;
+				credentialsFinderService.findCredentialsForUser.mockResolvedValue([
+					makePersonalCredential(),
+				]);
+				credentialsRepository.findAllCredentialsForProject.mockResolvedValue([]);
+				projectService.getProjectRelationsForUser.mockResolvedValue([
+					mock<ProjectRelation>({ projectId: 'target-project' }),
+				]);
+
+				const result = await service.getCredentialsAUserCanUseInAWorkflow(user, {
+					projectId: 'target-project',
+				});
+
+				expect(projectService.findProjectsWorkflowIsIn).not.toHaveBeenCalled();
+				expect(result).toHaveLength(1);
+				expect(result[0]).toMatchObject({ id: 'cred-personal', sharedRoute: 'personal' });
+			});
+
+			it('reads as the project route when the credential is both project-shared and personal-route eligible', async () => {
+				flags.credSharingEnabled = true;
+				credentialsFinderService.findCredentialsForUser.mockResolvedValue([
+					makePersonalCredential(),
+				]);
+				credentialsRepository.findAllCredentialsForWorkflow.mockResolvedValue([
+					makePersonalCredential(),
+				]);
+				projectService.findProjectsWorkflowIsIn.mockResolvedValue([personalProject.id]);
+				projectService.getProjectRelationsForUser.mockResolvedValue([
+					mock<ProjectRelation>({ projectId: personalProject.id }),
+				]);
+
+				const result = await service.getCredentialsAUserCanUseInAWorkflow(user, {
+					workflowId: 'workflow-1',
+				});
+
+				expect(result).toHaveLength(1);
+				expect(result[0]).toMatchObject({ id: 'cred-personal', sharedRoute: 'project' });
+			});
+		});
 	});
 
 	describe('findAllCredentialIdsForWorkflow', () => {
 		const workflowId = 'workflow-1';
 
-		it('should return all personal credentials when owner has global read permissions', async () => {
+		it('should return all personal credentials when the owner may use any credential', async () => {
 			// ARRANGE
 			const personalCred1 = mock<CredentialsEntity>({ id: 'cred-1' });
 			const personalCred2 = mock<CredentialsEntity>({ id: 'cred-2' });
@@ -2984,7 +3310,7 @@ describe('CredentialsService', () => {
 			expect(credentials).toEqual([personalCred1, personalCred2]);
 		});
 
-		it('should return workflow credentials when owner lacks global read permissions', async () => {
+		it('should return workflow credentials when the owner may not use any credential', async () => {
 			// ARRANGE
 			const workflowCred1 = mock<CredentialsEntity>({ id: 'cred-1' });
 			const workflowCred2 = mock<CredentialsEntity>({ id: 'cred-2' });
@@ -3002,6 +3328,21 @@ describe('CredentialsService', () => {
 			expect(credentialsRepository.findAllCredentialsForWorkflow).toHaveBeenCalledWith(workflowId);
 			expect(credentials).toHaveLength(2);
 			expect(credentials).toEqual([workflowCred1, workflowCred2]);
+		});
+
+		it('should return workflow credentials for an owner who may see but not use credentials', async () => {
+			// The widening step is keyed on `credential:use`, not `credential:read`: a
+			// view-only instance role sees every credential in Overview, but a workflow
+			// in its personal space may still only use the project's own credentials.
+			const workflowCred = mock<CredentialsEntity>({ id: 'cred-1' });
+			userRepository.findPersonalOwnerForWorkflow.mockResolvedValue(viewOnlyUser);
+			credentialsRepository.findAllCredentialsForWorkflow.mockResolvedValue([workflowCred]);
+
+			const credentials = await service.findAllCredentialIdsForWorkflow(workflowId);
+
+			expect(credentialsRepository.findAllPersonalCredentials).not.toHaveBeenCalled();
+			expect(credentialsRepository.findAllCredentialsForWorkflow).toHaveBeenCalledWith(workflowId);
+			expect(credentials).toEqual([workflowCred]);
 		});
 
 		it('should return workflow credentials when user is not found', async () => {
@@ -3022,7 +3363,19 @@ describe('CredentialsService', () => {
 	describe('findAllCredentialIdsForProject', () => {
 		const projectId = 'project-1';
 
-		it('should return all personal credentials when project owner has global read permissions', async () => {
+		it('should return project credentials for an owner who may see but not use credentials', async () => {
+			const projectCred = mock<CredentialsEntity>({ id: 'cred-1' });
+			userRepository.findPersonalOwnerForProject.mockResolvedValue(viewOnlyUser);
+			credentialsRepository.findAllCredentialsForProject.mockResolvedValue([projectCred]);
+
+			const credentials = await service.findAllCredentialIdsForProject(projectId);
+
+			expect(credentialsRepository.findAllPersonalCredentials).not.toHaveBeenCalled();
+			expect(credentialsRepository.findAllCredentialsForProject).toHaveBeenCalledWith(projectId);
+			expect(credentials).toEqual([projectCred]);
+		});
+
+		it('should return all personal credentials when the project owner may use any credential', async () => {
 			// ARRANGE
 			const personalCred1 = mock<CredentialsEntity>({ id: 'cred-1' });
 			const personalCred2 = mock<CredentialsEntity>({ id: 'cred-2' });
@@ -3042,7 +3395,7 @@ describe('CredentialsService', () => {
 			expect(credentials).toEqual([personalCred1, personalCred2]);
 		});
 
-		it('should return project credentials when owner lacks global read permissions', async () => {
+		it('should return project credentials when the project owner may not use any credential', async () => {
 			// ARRANGE
 			const projectCred1 = mock<CredentialsEntity>({ id: 'cred-1' });
 			const projectCred2 = mock<CredentialsEntity>({ id: 'cred-2' });
@@ -3191,11 +3544,14 @@ describe('CredentialsService', () => {
 				ownerUser,
 			);
 
-			expect(policyEnforcementService.enforceCredentialSave).toHaveBeenCalledExactlyOnceWith({
-				credential: { id: null, type: credentialData.type },
-				storedCredential: null,
-				projectId: 'project-1',
-			});
+			expect(policyEnforcementService.enforceCredentialSave).toHaveBeenCalledExactlyOnceWith(
+				{
+					credential: { id: null, type: credentialData.type },
+					storedCredential: null,
+					projectId: 'project-1',
+				},
+				{ kind: 'user', user: ownerUser },
+			);
 			expect(credentialsRepository.runInTransaction).toHaveBeenCalledWith(
 				{ policyCleared: cleared },
 				expect.any(Function),
@@ -3485,11 +3841,14 @@ describe('CredentialsService', () => {
 				[],
 				{ policyCleared: cleared },
 			);
-			expect(policyEnforcementService.enforceCredentialSave).toHaveBeenCalledExactlyOnceWith({
-				credential: { id: null, type: 'githubApi' },
-				storedCredential: null,
-				projectId: 'project-1',
-			});
+			expect(policyEnforcementService.enforceCredentialSave).toHaveBeenCalledExactlyOnceWith(
+				{
+					credential: { id: null, type: 'githubApi' },
+					storedCredential: null,
+					projectId: 'project-1',
+				},
+				{ kind: 'user', user: ownerUser },
+			);
 			expect(projectService.getProjectWithScope).toHaveBeenCalledWith(ownerUser, 'project-1', [
 				'credential:create',
 			]);

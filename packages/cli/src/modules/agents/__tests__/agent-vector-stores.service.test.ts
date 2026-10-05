@@ -74,6 +74,7 @@ function makeService(
 			currentUserHasAccess: true,
 			homeProject: null,
 			sharedWithProjects: [],
+			sharedRoute: 'project',
 		},
 	]);
 	credentialsHelper.getDecrypted.mockResolvedValue(rawCredential);

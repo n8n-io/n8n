@@ -125,7 +125,7 @@ export class TestRunRepository extends Repository<TestRun> {
 			const finalResult =
 				testRun.status === 'completed' ? getTestRunFinalResult(testCaseExecutions) : null;
 			// `testCaseExecutions` is already loaded above, so the count is free —
-			// no extra query. Consumed by the public API's `TestRunSummaryDto`.
+			// no extra query. Consumed by the public API's `TestRunSummaryPublicDto`.
 			return { ...testRun, finalResult, testCaseCount: testCaseExecutions.length };
 		});
 	}

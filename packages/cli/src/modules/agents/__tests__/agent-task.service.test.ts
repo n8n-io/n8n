@@ -5,14 +5,15 @@ import type { User } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 import type { InstanceSettings, ScheduledTaskManager } from 'n8n-core';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { BadRequestError, NotFoundError } from '@n8n/errors';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
 
+import { AgentChangePublisher } from '../agent-change-publisher.service';
 import type { AgentExecutionOrchestratorService } from '../agent-execution-orchestrator.service';
 import type { AgentModificationTelemetryService } from '../agent-modification-telemetry.service';
 import { AgentTaskService } from '../agent-task.service';
 import type { AgentUpdateBroadcaster } from '../agent-update-broadcaster';
+import type { AgentsSettingsService } from '../agents-settings.service';
 import type { AgentTaskSnapshot } from '../entities/agent-task-snapshot.entity';
 import type { AgentTask } from '../entities/agent-task.entity';
 import type { Agent } from '../entities/agent.entity';
@@ -132,6 +133,7 @@ describe('AgentTaskService', () => {
 	let publisher: ReturnType<typeof mock<Publisher>>;
 	let modificationTelemetry: ReturnType<typeof mock<AgentModificationTelemetryService>>;
 	let durableJobRegistrar: ReturnType<typeof mock<AgentTaskJobRegistrar>>;
+	let settingsService: ReturnType<typeof mock<AgentsSettingsService>>;
 	let txManager: { save: Mock; remove: Mock };
 	let service: AgentTaskService;
 
@@ -151,15 +153,18 @@ describe('AgentTaskService', () => {
 			agentExecutionOrchestratorService,
 			mock<InstanceSettings>({ isLeader }),
 			agentTaskScheduler,
-			publisher,
+			new AgentChangePublisher(publisher, globalConfig, logger),
 			modificationTelemetry,
 			durableJobRegistrar,
 			mock<AgentUpdateBroadcaster>(),
+			settingsService,
 		);
 	}
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		settingsService = mock<AgentsSettingsService>();
+		settingsService.getEnabled.mockResolvedValue(true);
 		setMultiMain(false);
 		taskRepository = mock<AgentTaskRepository>();
 		taskSnapshotRepository = mock<AgentTaskSnapshotRepository>();
@@ -463,6 +468,28 @@ describe('AgentTaskService', () => {
 			expect(task.timezone).toBe('Asia/Tokyo');
 			expect(txManager.save).toHaveBeenCalled();
 			expect(agentTaskScheduler.register).not.toHaveBeenCalled();
+		});
+
+		it('reports whether a task body changed', async () => {
+			arrangeUpdate();
+
+			const first = await service.updateWithChange(
+				AGENT_ID,
+				PROJECT_ID,
+				'task-1',
+				{ name: 'Renamed task' },
+				telemetryContext,
+			);
+			const second = await service.updateWithChange(
+				AGENT_ID,
+				PROJECT_ID,
+				'task-1',
+				{ name: 'Renamed task' },
+				telemetryContext,
+			);
+
+			expect(first).toMatchObject({ task: { name: 'Renamed task' }, changed: true });
+			expect(second).toMatchObject({ task: { name: 'Renamed task' }, changed: false });
 		});
 
 		it('moves the schedule to another timezone', async () => {
@@ -899,11 +926,21 @@ describe('AgentTaskService', () => {
 			(taskSnapshotRepository.findByVersionAndTaskId as Mock).mockResolvedValue(snapshot);
 		};
 
-		it('runs the published agent with the objective', async () => {
+		it('skips disabled ticks and runs the next enabled tick with the published objective', async () => {
 			arrangePublishedTask();
 			(agentExecutionOrchestratorService.executeForTaskPublished as Mock).mockReturnValue(
 				emptyStream(),
 			);
+			settingsService.getEnabled.mockResolvedValue(false);
+
+			await expect(service.startScheduledRun(AGENT_ID, 'task-1')).resolves.toBe('skipped-disabled');
+			expect(taskRunLockRepository.acquire).not.toHaveBeenCalled();
+			expect(agentExecutionOrchestratorService.executeForTaskPublished).not.toHaveBeenCalled();
+			expect(agentTaskScheduler.deregisterTarget).not.toHaveBeenCalled();
+			expect(logger.warn).not.toHaveBeenCalled();
+			expect(logger.error).not.toHaveBeenCalled();
+
+			settingsService.getEnabled.mockResolvedValue(true);
 
 			await expect(service.startScheduledRun(AGENT_ID, 'task-1')).resolves.toBe('started');
 			await flushAsyncWork();

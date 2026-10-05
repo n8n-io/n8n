@@ -11,6 +11,7 @@ export {
 	listPipelineEvents,
 	PIPELINE_EVENT_LEVELS,
 	PIPELINE_EVENTS_MAX_PAGE_SIZE,
+	UUID_PATTERN,
 	type ListPipelineEventsParams,
 	type PipelineEvent,
 	type PipelineEventLevel,

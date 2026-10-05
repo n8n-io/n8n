@@ -18,12 +18,15 @@ import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { getNewWorkflow } from '@/app/api/workflows';
+import { useEmptyCanvasGroupsFlag } from '@/features/workflows/canvas/composables/useEmptyCanvasGroupsFlag';
+import { removeEmptyCanvasGroupsFromWorkflowData } from '@/features/workflows/canvas/emptyGroup.utils';
 
 export const useWorkflowHistoryStore = defineStore('workflowHistory', () => {
 	const rootStore = useRootStore();
 	const settingsStore = useSettingsStore();
 	const workflowsStore = useWorkflowsStore();
 	const workflowsListStore = useWorkflowsListStore();
+	const emptyCanvasGroupsEnabled = useEmptyCanvasGroupsFlag();
 
 	const licensePruneTime = computed(() => settingsStore.settings.workflowHistory?.licensePruneTime);
 	// pruneTime is already evaluated by backend (getWorkflowHistoryPruneTime)
@@ -57,10 +60,18 @@ export const useWorkflowHistoryStore = defineStore('workflowHistory', () => {
 			getWorkflowVersion(workflowId, workflowVersionId),
 		]);
 		const { connections, nodes, nodeGroups } = workflowVersion;
-		const blob = new Blob(
-			[JSON.stringify({ ...workflow, nodes, connections, nodeGroups: nodeGroups ?? [] }, null, 2)],
-			{ type: 'application/json;charset=utf-8' },
-		);
+		const workflowData: WorkflowDataUpdate = {
+			...workflow,
+			nodes,
+			connections,
+			nodeGroups: nodeGroups ?? [],
+		};
+		if (!emptyCanvasGroupsEnabled.value) {
+			removeEmptyCanvasGroupsFromWorkflowData(workflowData);
+		}
+		const blob = new Blob([JSON.stringify(workflowData, null, 2)], {
+			type: 'application/json;charset=utf-8',
+		});
 		saveAs(blob, `${workflow.name}(${data.formattedCreatedAt}).json`);
 	};
 
@@ -84,6 +95,9 @@ export const useWorkflowHistoryStore = defineStore('workflowHistory', () => {
 			nodeGroups: nodeGroups ?? [],
 			name: newWorkflow.name,
 		};
+		if (!emptyCanvasGroupsEnabled.value) {
+			removeEmptyCanvasGroupsFromWorkflowData(newWorkflowData);
+		}
 		return await workflowsStore.createNewWorkflow(newWorkflowData);
 	};
 

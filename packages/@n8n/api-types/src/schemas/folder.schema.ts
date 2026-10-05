@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 const illegalCharacterRegex = /[[\]^\\/:*?"<>|]/;
 const dotsOnlyRegex = /^\.+$/;
-const FOLDER_NAME_MAX_LENGTH = 128;
+export const FOLDER_NAME_MAX_LENGTH = 128;
 
 export const folderNameSchema = z
 	.string()

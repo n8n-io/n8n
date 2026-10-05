@@ -55,6 +55,7 @@ describe('diskCaseToLangTracerCreate', () => {
 				datasets: ['pr', 'full'],
 				messageBudget: 4,
 				credentials: [{ type: 'slackApi', name: 'Slack' }],
+				requiresMemoryCompaction: true,
 			}),
 			'c',
 			{ suiteId: 1, setKind: 'regression', synthetic: true },
@@ -67,6 +68,7 @@ describe('diskCaseToLangTracerCreate', () => {
 		expect(body.datasets).toEqual(['pr', 'full']);
 		expect(body.messageBudget).toBe(4);
 		expect(body.credentials).toEqual([{ type: 'slackApi', name: 'Slack' }]);
+		expect(body.requiresMemoryCompaction).toBe(true);
 	});
 
 	it('omits optional keys that are absent on the disk case', () => {
@@ -83,6 +85,37 @@ describe('diskCaseToLangTracerCreate', () => {
 		expect('credentials' in body).toBe(false);
 		expect('evalTriggerType' in body).toBe(false);
 		expect('description' in body).toBe(false);
+		expect('requiresMemoryCompaction' in body).toBe(false);
+	});
+
+	it('forwards typed scenario seed tables so lang-tracer stores their rows', () => {
+		const seedDataTables = [
+			{
+				id: 'seed-table-1',
+				name: 'Customers',
+				columns: [{ name: 'email', type: 'string' as const }],
+				rows: [{ email: 'ada@example.com' }],
+			},
+		];
+		const body = diskCaseToLangTracerCreate(
+			diskCase({
+				executionScenarios: [
+					{
+						name: 'seeded',
+						description: 'd',
+						dataSetup: 's',
+						successCriteria: 'ok',
+						seedDataTables,
+					},
+					{ name: 'plain', description: 'd', dataSetup: 's', successCriteria: 'ok' },
+				],
+			}),
+			'c',
+			{ suiteId: 1, setKind: 'regression', synthetic: true },
+		);
+
+		expect(body.scenarios?.[0].seedDataTables).toEqual(seedDataTables);
+		expect('seedDataTables' in (body.scenarios?.[1] ?? {})).toBe(false);
 	});
 
 	it('preserves a scenario `requires` field when present', () => {

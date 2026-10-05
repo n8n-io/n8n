@@ -58,6 +58,13 @@ vi.mock('@n8n/design-system', () => ({
 			'<nav data-testid="agent-header-tabs"><button v-for="option in options" :key="option.value">{{ option.label }}</button></nav>',
 		props: ['modelValue', 'options'],
 	},
+	N8nToggle: {
+		name: 'N8nToggle',
+		template:
+			'<button :disabled="disabled" :aria-label="label" :aria-pressed="modelValue" @click="$emit(\'click\', $event)" />',
+		props: ['modelValue', 'variant', 'size', 'icon', 'label', 'disabled'],
+		emits: ['click'],
+	},
 	N8nTooltip: { template: '<div><slot /><slot name="content" /></div>' },
 }));
 
@@ -103,6 +110,15 @@ vi.mock('../components/AgentPanelHeader.vue', () => ({
 	default: {
 		name: 'AgentPanelHeader',
 		template: '<header data-testid="agent-panel-header"><slot name="actions" /></header>',
+	},
+}));
+
+vi.mock('../components/AgentBudgetPanel.vue', () => ({
+	default: {
+		name: 'AgentBudgetPanel',
+		template: '<div data-testid="agent-budget-panel-stub" />',
+		props: ['config', 'disabled', 'projectId', 'agentId'],
+		emits: ['update:config'],
 	},
 }));
 
@@ -302,6 +318,14 @@ describe('AgentBuilderEditorColumn', () => {
 		expect(wrapper.emitted('update:config')?.[0]).toEqual([{ instructions: 'x' }, undefined]);
 	});
 
+	it('forwards draft input before the config update', async () => {
+		const wrapper = await mountColumn();
+
+		wrapper.getComponent({ name: 'AgentInfoPanel' }).vm.$emit('draft:config');
+
+		expect(wrapper.emitted('draft:config')).toHaveLength(1);
+	});
+
 	it('disables the evals CTA for a read-only agent', async () => {
 		const wrapper = await mountColumn({ activeMainTab: 'evals', canEditAgent: false });
 
@@ -407,6 +431,15 @@ describe('AgentBuilderEditorColumn', () => {
 		const wrapper = await mountColumn({ activeMainTab: 'settings' });
 		await flushPromises();
 
+		const budgetPanel = wrapper.findComponent({ name: 'AgentBudgetPanel' });
+		expect(budgetPanel.exists()).toBe(true);
+		expect(budgetPanel.props('config')).toMatchObject({
+			name: 'Agent',
+			model: 'anthropic/claude-sonnet-4-5',
+		});
+		expect(budgetPanel.props('disabled')).toBe(false);
+		expect(budgetPanel.props('projectId')).toBe('project-1');
+		expect(budgetPanel.props('agentId')).toBe('agent-1');
 		const subAgentsPanel = wrapper.findComponent({ name: 'AgentSubAgentsPanel' });
 		expect(subAgentsPanel.exists()).toBe(true);
 		expect(subAgentsPanel.props('config')).toMatchObject({
@@ -416,10 +449,26 @@ describe('AgentBuilderEditorColumn', () => {
 		expect(subAgentsPanel.props('disabled')).toBe(false);
 		expect(subAgentsPanel.props('projectId')).toBe('project-1');
 		expect(subAgentsPanel.props('agentId')).toBe('agent-1');
+		// Usage and limits sits above sub-agents.
+		expect(
+			budgetPanel.element.compareDocumentPosition(subAgentsPanel.element) &
+				Node.DOCUMENT_POSITION_FOLLOWING,
+		).toBeTruthy();
 		expect(wrapper.findComponent({ name: 'AgentMemoryPanel' }).exists()).toBe(false);
 		const advancedPanel = wrapper.findComponent({ name: 'AgentAdvancedPanel' });
 		expect(advancedPanel.exists()).toBe(true);
 		expect(advancedPanel.props('projectId')).toBe('project-1');
+	});
+
+	it('forwards a budget panel config update to the host as a budget save', async () => {
+		const wrapper = await mountColumn({ activeMainTab: 'settings' });
+		await flushPromises();
+
+		const changes = { config: { guardrails: { budget: { enabled: true, sessionCostCapUsd: 5 } } } };
+		wrapper.findComponent({ name: 'AgentBudgetPanel' }).vm.$emit('update:config', changes);
+
+		expect(wrapper.emitted('update:budget-config')?.[0]).toEqual([changes]);
+		expect(wrapper.emitted('update:config')).toBeUndefined();
 	});
 
 	it('keeps core setup and attached capabilities on the Agent tab', async () => {

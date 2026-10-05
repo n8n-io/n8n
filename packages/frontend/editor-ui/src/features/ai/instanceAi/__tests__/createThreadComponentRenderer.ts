@@ -29,12 +29,14 @@ export function makeThread(): ThreadRuntime {
 		contextualSuggestion: null,
 		currentTasks: null,
 		producedArtifacts: new Map(),
+		producedArtifactOrigins: new Map(),
 		setupItemsByWorkflowId: {},
 		projectId: 'thread-project',
 		resourceNameIndex: new Map(),
 		linkableResourceNameIndex: new Map(),
 		activeArtifactId: undefined,
 		setActiveArtifactId: vi.fn(),
+		setOpenTabs: vi.fn(),
 		feedbackByResponseId: {},
 		rateableResponseId: null,
 		pendingConfirmations: [],
@@ -48,10 +50,15 @@ export function makeThread(): ThreadRuntime {
 		} | null,
 		setPendingWorkflowAttachment: vi.fn(),
 		clearPendingWorkflowAttachment: vi.fn(),
+		applyEvent: vi.fn(),
+		transientWorkflowReferences: new Map(),
+		upsertTransientWorkflowReference: vi.fn(),
+		removeTransientWorkflowReference: vi.fn(),
 		loadHistoricalMessages: vi.fn().mockResolvedValue('applied'),
 		loadThreadStatus: vi.fn().mockResolvedValue(undefined),
 		connectSSE: vi.fn(),
 		closeSSE: vi.fn(),
+		registerSetupChatTelemetryContext: vi.fn(() => vi.fn()),
 		sendMessage: vi.fn().mockResolvedValue(true),
 		cancelRun: vi.fn().mockResolvedValue(undefined),
 		resolveConfirmation: vi.fn(),
@@ -69,11 +76,18 @@ export function makeThread(): ThreadRuntime {
 	thread.clearPendingWorkflowAttachment = vi.fn(() => {
 		thread.pendingWorkflowAttachment = null;
 	});
+	thread.upsertTransientWorkflowReference = vi.fn((reference) => {
+		thread.transientWorkflowReferences.set(reference.referenceId, reference);
+	});
+	thread.removeTransientWorkflowReference = vi.fn((referenceId) => {
+		thread.transientWorkflowReferences.delete(referenceId);
+	});
 	return thread as unknown as ThreadRuntime;
 }
 
 export const defaultModuleSettings: NonNullable<FrontendModuleSettings['instance-ai']> = {
 	enabled: true,
+	mcpConnectionsAvailable: true,
 	localGatewayDisabled: false,
 	browserUseEnabled: true,
 	proxyEnabled: false,
@@ -101,8 +115,20 @@ export const InstanceAiInputStub = defineComponent({
 		isSubmitting: { type: Boolean, required: false },
 		isWorkflowBuilderAvailable: { type: Boolean, required: false },
 		contextChip: { type: Object, required: false },
+		placeholderKey: { type: String, required: false },
+		mentionsEnabled: { type: Boolean, required: false },
+		mentionProjectId: { type: String, required: false },
+		mentionArtifacts: { type: Array, required: false },
+		mentionActiveWorkflowId: { type: String, required: false },
+		reservedAttachmentCount: { type: Number, required: false },
 	},
-	emits: ['submit', 'dismiss-context-chip'],
+	emits: [
+		'submit',
+		'dismiss-context-chip',
+		'mention-reference-added',
+		'mention-reference-removed',
+		'mention-workflow-open',
+	],
 	setup(props, { emit, expose }) {
 		const inputDraft = ref(inputState.initialDraft);
 		const hasAttachments = ref(inputState.hasAttachments);
@@ -161,6 +187,11 @@ export const InstanceAiInputStub = defineComponent({
 					'span',
 					{ 'data-test-id': 'instance-ai-input-context-chip-icon' },
 					props.contextChip?.icon ?? '',
+				),
+				h(
+					'span',
+					{ 'data-test-id': 'instance-ai-input-placeholder-key' },
+					props.placeholderKey ?? 'unset',
 				),
 				h('span', { 'data-test-id': 'instance-ai-input-draft' }, inputDraft.value),
 				h(

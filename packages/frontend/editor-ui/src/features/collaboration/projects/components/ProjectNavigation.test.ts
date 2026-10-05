@@ -1,5 +1,8 @@
+import { nextTick } from 'vue';
 import { createRouter, createMemoryHistory } from 'vue-router';
 import { createTestingPinia } from '@pinia/testing';
+import { waitFor } from '@testing-library/vue';
+import { promotionEventBus } from '@/features/integrations/promotions.ee/promotions.eventBus';
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
 import { createProjectListItem, createTestProject } from '../__tests__/utils';
@@ -103,6 +106,7 @@ describe('ProjectsNavigation', () => {
 		settingsStore.moduleSettings = {
 			'instance-ai': {
 				enabled: true,
+				mcpConnectionsAvailable: true,
 				localGatewayDisabled: false,
 				browserUseEnabled: true,
 				proxyEnabled: false,
@@ -133,6 +137,29 @@ describe('ProjectsNavigation', () => {
 				},
 			});
 		}).not.toThrow();
+	});
+
+	it('should reload the projects after a package was applied', async () => {
+		projectsStore.teamProjectsLimit = -1;
+		renderComponent({ props: { collapsed: false } });
+		// The listener registers once the users are fetched.
+		await waitFor(() => expect(usersStore.fetchUsers).toHaveBeenCalled());
+		await nextTick();
+
+		promotionEventBus.emit('applied', { projectId: 'project-1' });
+
+		await waitFor(() => expect(projectsStore.getMyProjects).toHaveBeenCalled());
+	});
+
+	it('should reload the projects after a package removed one', async () => {
+		projectsStore.teamProjectsLimit = -1;
+		renderComponent({ props: { collapsed: false } });
+		await waitFor(() => expect(usersStore.fetchUsers).toHaveBeenCalled());
+		await nextTick();
+
+		promotionEventBus.emit('projectRemoved', { projectId: 'project-1' });
+
+		await waitFor(() => expect(projectsStore.getMyProjects).toHaveBeenCalled());
 	});
 
 	it('should show "Projects" title and Personal project when the feature is enabled', async () => {
@@ -187,6 +214,38 @@ describe('ProjectsNavigation', () => {
 
 		const chats = getByTestId('instance-ai-sidebar-chats').textContent ?? '';
 		expect(chats.match(/Chat \d/g)).toEqual(['Chat 0', 'Chat 1', 'Chat 2', 'Chat 3', 'Chat 6']);
+	});
+
+	it('should reload the recent chats when the tab becomes visible again', () => {
+		projectsStore.teamProjectsLimit = -1;
+		configureInstanceAiScopes({ canManage: false });
+		configureInstanceAi(true);
+		const instanceAiStore = mockedStore(useInstanceAiStore);
+
+		renderComponent({ props: { collapsed: false } });
+		expect(instanceAiStore.loadThreads).toHaveBeenCalledTimes(1);
+
+		const hidden = vi.spyOn(document, 'hidden', 'get').mockReturnValue(true);
+		document.dispatchEvent(new Event('visibilitychange'));
+		expect(instanceAiStore.loadThreads).toHaveBeenCalledTimes(1);
+
+		hidden.mockReturnValue(false);
+		document.dispatchEvent(new Event('visibilitychange'));
+		hidden.mockRestore();
+
+		expect(instanceAiStore.loadThreads).toHaveBeenCalledTimes(2);
+	});
+
+	it('should not load chats on tab visibility when Instance AI is hidden', () => {
+		projectsStore.teamProjectsLimit = -1;
+		configureInstanceAiScopes({ canManage: false });
+		configureInstanceAi(false);
+		const instanceAiStore = mockedStore(useInstanceAiStore);
+
+		renderComponent({ props: { collapsed: false } });
+		document.dispatchEvent(new Event('visibilitychange'));
+
+		expect(instanceAiStore.loadThreads).not.toHaveBeenCalled();
 	});
 
 	it('should hide Instance AI from a member until setup is complete', () => {

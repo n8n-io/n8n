@@ -6,6 +6,7 @@ import { defineComponent, h, ref, type Component, type PropType } from 'vue';
 import type { BaseTextKey } from '@n8n/i18n';
 import type { ITelemetryTrackProperties } from 'n8n-workflow';
 import { createComponentRenderer } from '@/__tests__/render';
+import { EMPTY_ASSISTANT_MENTION_COUNTS } from '@/features/ai/assistant-at-mentions/assistantAtMentions.types';
 import InstanceAiInput from '../components/InstanceAiInput.vue';
 import type { ContextChip } from '../instanceAi.contextChip';
 import {
@@ -241,6 +242,7 @@ const DirectSubmitHarness = defineComponent({
 								suggestionId: 'score-my-leads',
 								suggestionKind: 'quick_example',
 								position: 1,
+								suggestionCatalogVersion: 'agent-templates-v1',
 								prefillType: 'suggestion_catalog',
 							}),
 					},
@@ -312,16 +314,10 @@ describe('InstanceAiInput', () => {
 		);
 	});
 
-	it('uses the new agent placeholder for a pending agent artifact', () => {
+	it('uses the new agent placeholder when the caller passes its key', () => {
 		const { getByRole } = renderComponent({
 			props: {
-				contextChip: {
-					type: 'agent-artifact',
-					agentId: 'agent-1',
-					projectId: 'project-1',
-					isNewAgent: true,
-					label: 'New Agent',
-				},
+				placeholderKey: 'instanceAi.input.newAgentPlaceholder',
 			},
 		});
 
@@ -338,7 +334,6 @@ describe('InstanceAiInput', () => {
 					type: 'agent-artifact',
 					agentId: 'agent-1',
 					projectId: 'project-1',
-					isNewAgent: false,
 					label: 'Support Agent',
 				},
 			},
@@ -523,6 +518,9 @@ describe('InstanceAiInput', () => {
 				promptModified: false,
 			},
 			expect.any(Number),
+			expect.any(Function),
+			EMPTY_ASSISTANT_MENTION_COUNTS,
+			[],
 		]);
 		expect(textbox).toHaveValue('');
 	});
@@ -767,6 +765,22 @@ describe('InstanceAiInput', () => {
 	// composer was already empty and `resetDraftComposer` does not change it --
 	// the watcher never fires. Anything the user types next must not inherit the
 	// pre-fill that was just sent.
+	it('attributes a direct suggestion submit to the payload catalog, not the home-screen catalog', async () => {
+		telemetryTrack.mockClear();
+		const { getByTestId } = renderDirectSubmitHarness();
+
+		await userEvent.click(getByTestId('harness-direct-submit'));
+
+		expect(telemetryTrack).toHaveBeenCalledWith(
+			'Instance AI prompt suggestion submitted',
+			expect.objectContaining({
+				suggestion_catalog_version: 'agent-templates-v1',
+				suggestion_id: 'score-my-leads',
+				position: 1,
+			}),
+		);
+	});
+
 	it('does not attribute a later typed message to a directly submitted suggestion', async () => {
 		const { emitted, getByRole, getByTestId } = renderDirectSubmitHarness();
 
@@ -819,6 +833,9 @@ describe('InstanceAiInput', () => {
 				expect.any(Function),
 				{ kind: 'user_typed' },
 				expect.any(Number),
+				expect.any(Function),
+				EMPTY_ASSISTANT_MENTION_COUNTS,
+				[],
 			],
 		]);
 		expect(textbox).toHaveValue('');
@@ -1015,6 +1032,9 @@ describe('InstanceAiInput', () => {
 				expect.any(Function),
 				{ kind: 'user_typed' },
 				expect.any(Number),
+				expect.any(Function),
+				EMPTY_ASSISTANT_MENTION_COUNTS,
+				[],
 			],
 		]);
 	});
@@ -1057,6 +1077,9 @@ describe('InstanceAiInput', () => {
 				expect.any(Function),
 				{ kind: 'user_typed' },
 				expect.any(Number),
+				expect.any(Function),
+				EMPTY_ASSISTANT_MENTION_COUNTS,
+				[],
 			],
 		]);
 	});
@@ -1113,11 +1136,12 @@ describe('InstanceAiInput', () => {
 		const chip = getByTestId('instance-ai-handoff-context-chip');
 
 		expect(chip).toHaveTextContent('SEO Auditor session');
-		expect(chip.querySelector('.n8n-tag')?.className).toContain('lg');
 		expect(chip.querySelector('[data-icon="robot"]')).toBeInTheDocument();
 		expect(chip.closest('[class*="inputWrapper"]')).toContainElement(textbox);
 
-		await userEvent.click(getByTestId('instance-ai-handoff-context-chip-dismiss'));
+		const dismiss = getByTestId('instance-ai-handoff-context-chip-dismiss');
+		expect(dismiss).toHaveAccessibleName('Close');
+		await userEvent.click(dismiss);
 
 		expect(emitted()['dismiss-context-chip']).toEqual([[]]);
 	});

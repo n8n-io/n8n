@@ -1,12 +1,15 @@
-export const AGENTS_LIST_VIEW = 'AgentsListView';
-export const AGENT_BUILDER_VIEW = 'AgentBuilderView';
-export const AGENT_PREVIEW_VIEW = 'AgentPreviewView';
-export const AGENT_VIEW = 'AgentView';
-export const AGENT_SESSIONS_LIST_VIEW = 'AgentSessionsListView';
-export const AGENT_SESSION_DETAIL_VIEW = 'AgentSessionDetailView';
-export const PROJECT_AGENTS = 'ProjectAgents';
+export {
+	AGENTS_LIST_VIEW,
+	AGENT_BUILDER_VIEW,
+	AGENT_PREVIEW_VIEW,
+	AGENT_VIEW,
+	AGENT_SESSIONS_LIST_VIEW,
+	AGENT_SESSION_DETAIL_VIEW,
+	PROJECT_AGENTS,
+} from '@n8n/frontend-constants/agents';
 
 export const AGENTS_MODULE_NAME = 'agents';
+export const AGENTS_SETTINGS_VIEW = 'AgentsSettings';
 
 export const AGENT_TOOLS_MODAL_KEY = 'agentToolsModal';
 export const AGENT_TOOL_CONFIG_MODAL_KEY = 'agentToolConfigModal';
@@ -17,6 +20,7 @@ export const AGENT_VECTOR_STORES_MODAL_KEY = 'agentVectorStoresModal';
 export const AGENT_JSON_IMPORT_MODAL_KEY = 'agentJsonImportModal';
 export const AGENT_CONFIRMATION_MODAL_KEY = 'agentConfirmation';
 export const AGENT_DUPLICATE_MODAL_KEY = 'agentDuplicateModal';
+export const AGENT_DESCRIPTION_MODAL_KEY = 'agentDescriptionModal';
 export const AGENT_EPISODIC_MEMORY_CREDENTIAL_TYPE = 'openAiApi';
 
 /** Synthetic tree key for the combined "Agent" panel (name/model/credential/instructions). */

@@ -1,5 +1,4 @@
 <script lang="ts" setup>
-import SelectedItemsInfo from '@/app/components/common/SelectedItemsInfo.vue';
 import { useMessage } from '@/app/composables/useMessage';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
@@ -22,7 +21,7 @@ import ExecutionsFilter from '../ExecutionsFilter.vue';
 import ExecutionStopAllText from '../ExecutionStopAllText.vue';
 import GlobalExecutionsListItem from './GlobalExecutionsListItem.vue';
 
-import { N8nButton, N8nCheckbox, N8nTableBase } from '@n8n/design-system';
+import { N8nButton, N8nCheckbox, N8nSelectedItemsInfo, N8nTableBase } from '@n8n/design-system';
 import { ElSkeletonItem } from 'element-plus';
 
 const props = withDefaults(
@@ -371,6 +370,7 @@ const goToUpgrade = () => {
 			<div :class="$style.execHeaderRight">
 				<ExecutionStopAllText :executions="props.executions" />
 				<ExecutionsFilter
+					:initial-filters="props.filters"
 					:workflows="workflows"
 					class="execFilter"
 					@filter-changed="onFilterChanged"
@@ -479,7 +479,7 @@ const goToUpgrade = () => {
 					</tbody>
 				</N8nTableBase>
 			</div>
-			<SelectedItemsInfo
+			<N8nSelectedItemsInfo
 				:selected-count="selectedCount"
 				@delete-selected="handleDeleteSelected"
 				@clear-selection="handleClearSelection"

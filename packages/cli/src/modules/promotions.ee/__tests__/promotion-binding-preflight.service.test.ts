@@ -123,7 +123,13 @@ function useInventory(inventory: Partial<PackageDirectoryInventory>) {
 
 const workflowRef = (id: string) => ({ id, name: `Workflow ${id}` });
 
-const emptyResult = { missingBindings: [], accessRequirements: [], conflicts: [], warnings: [] };
+const emptyResult = {
+	missingProjects: [],
+	missingBindings: [],
+	accessRequirements: [],
+	conflicts: [],
+	warnings: [],
+};
 const check = async () => {
 	const result = await service.checkDirectory({ sourceDir: '/checkout' });
 	expect(promotionBindingPreflightResultSchema.parse(result)).toStrictEqual(result);
@@ -154,7 +160,33 @@ describe('PromotionBindingPreflightService', () => {
 		credentialTypes.recognizes.mockReturnValue(true);
 		credentialsRepository.findPromotionBindingAccess.mockResolvedValue([]);
 		variablesRepository.findKeysInProjectsOrGlobal.mockResolvedValue([]);
-		projectRepository.findTypesByIds.mockResolvedValue([]);
+		projectRepository.findTypesByIds.mockResolvedValue(
+			[PROJECT_A, PROJECT_B, PROJECT_C].map(({ id }) => ({ id, type: 'team' })),
+		);
+	});
+
+	it('returns all missing projects in ID order with their package fields', async () => {
+		const metadata = {
+			icon: { type: 'icon' as const, value: '' },
+			description: 'a'.repeat(513),
+			customTelemetryTags: [
+				{ key: ' team ', value: '' },
+				{ key: 'team', value: 'Sales' },
+			],
+		};
+		useInventory({
+			projects: [
+				{ path: 'projects/c', ...PROJECT_C },
+				{ path: 'projects/b', ...PROJECT_B },
+				{ path: 'projects/a', ...PROJECT_A, ...metadata },
+			],
+		});
+		projectRepository.findTypesByIds.mockResolvedValue([{ id: PROJECT_B.id, type: 'team' }]);
+
+		expect(await check()).toEqual({
+			...emptyResult,
+			missingProjects: [{ ...PROJECT_A, ...metadata }, PROJECT_C],
+		});
 	});
 
 	it('returns a missing credential and variable with owner context, consumers and expression data', async () => {
@@ -207,6 +239,33 @@ describe('PromotionBindingPreflightService', () => {
 		);
 	});
 
+	it('checks an inventory the caller already read without reading the package again', async () => {
+		const inventory: PackageDirectoryInventory = {
+			projects: [{ path: 'projects/proj-a', ...PROJECT_A }],
+			workflows: [
+				inventoryWorkflow('wf-1', PROJECT_A.id, [credentialNode('GitHub', 'githubApi', 'cred-1')]),
+				inventoryWorkflow('wf-2', PROJECT_A.id, [credentialNode('GitHub', 'githubApi', 'cred-2')]),
+			],
+			credentials: [
+				inventoryCredential('cred-1', PROJECT_A.id),
+				inventoryCredential('cred-2', PROJECT_A.id),
+			],
+			variables: [],
+		};
+		const selection = { selectedProjectId: PROJECT_A.id, selectedWorkflowIds: ['wf-1'] };
+		inventoryReader.read.mockResolvedValue(inventory);
+		const fromDirectory = await service.checkDirectory({ sourceDir: '/checkout', selection });
+		inventoryReader.read.mockClear();
+
+		const fromInventory = await service.checkInventory({ inventory, selection });
+
+		expect(inventoryReader.read).not.toHaveBeenCalled();
+		expect(fromInventory).toEqual(fromDirectory);
+		expect(fromInventory.missingBindings).toEqual([
+			expect.objectContaining({ kind: 'credential', sourceId: 'cred-1' }),
+		]);
+	});
+
 	it('returns nothing when every credential is usable and every variable exists in its source project', async () => {
 		useInventory({
 			projects: [{ path: 'projects/proj-a', ...PROJECT_A }],
@@ -248,6 +307,7 @@ describe('PromotionBindingPreflightService', () => {
 		projectRepository.findTypesByIds.mockResolvedValue([
 			{ id: PROJECT_A.id, type: 'team' },
 			{ id: PROJECT_B.id, type: 'team' },
+			{ id: PROJECT_C.id, type: 'team' },
 		]);
 		expect(await check()).toEqual({
 			...emptyResult,
@@ -478,6 +538,7 @@ describe('PromotionBindingPreflightService', () => {
 			targetCredential('cred-existing'),
 		]);
 		expect(await check()).toEqual({
+			missingProjects: [PROJECT_A, PROJECT_C],
 			missingBindings: [
 				expect.objectContaining({
 					kind: 'variable',
@@ -774,6 +835,7 @@ describe('PromotionBindingPreflightService', () => {
 		});
 		expect(await check()).toEqual({
 			...emptyResult,
+			missingProjects: [project],
 			missingBindings: [
 				expect.objectContaining({
 					name: 'REGION',

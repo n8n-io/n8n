@@ -8,6 +8,12 @@ const rule = (overrides: RuleOverrides): PolicyRule => ({
 	...overrides,
 });
 
+/** Stands in for `NodeTypes.resolveBaseName`: `gmailTool` is a synthetic variant of `gmail`. */
+const policedType = (name: string) => ({
+	name,
+	baseName: name === 'n8n-nodes-base.gmailTool' ? 'n8n-nodes-base.gmail' : name,
+});
+
 describe('lintRulesForShadowing', () => {
 	it('flags a later name rule shadowed by an earlier package rule for the same package', () => {
 		const rules = [
@@ -47,6 +53,35 @@ describe('lintRulesForShadowing', () => {
 		];
 
 		expect(lintRulesForShadowing(rules)).toEqual([]);
+	});
+
+	it('flags a name rule for a synthetic tool variant placed after the rule for its base node', () => {
+		const rules = [
+			rule({ id: 'allow-gmail', selector: { kind: 'name', value: 'n8n-nodes-base.gmail' } }),
+			rule({
+				id: 'deny-gmail-tool',
+				action: 'deny',
+				selector: { kind: 'name', value: 'n8n-nodes-base.gmailTool' },
+			}),
+		];
+
+		expect(lintRulesForShadowing(rules, undefined, policedType)).toEqual([
+			{ ruleId: 'deny-gmail-tool', shadowedByRuleId: 'allow-gmail' },
+		]);
+	});
+
+	it('does not flag a base node rule placed after the rule for its synthetic tool variant', () => {
+		// The base rule still matches the base node itself, which the variant rule never does.
+		const rules = [
+			rule({
+				id: 'deny-gmail-tool',
+				action: 'deny',
+				selector: { kind: 'name', value: 'n8n-nodes-base.gmailTool' },
+			}),
+			rule({ id: 'allow-gmail', selector: { kind: 'name', value: 'n8n-nodes-base.gmail' } }),
+		];
+
+		expect(lintRulesForShadowing(rules, undefined, policedType)).toEqual([]);
 	});
 
 	it('does not flag a name rule followed by a package rule for its own package', () => {

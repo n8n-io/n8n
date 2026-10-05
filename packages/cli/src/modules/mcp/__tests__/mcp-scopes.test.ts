@@ -1,5 +1,6 @@
 import { INSTANCE_ACTIVITY_CONTEXT_FLAG } from '@n8n/api-types';
 import { LicenseState, ModuleRegistry } from '@n8n/backend-common';
+import { EventService, UrlService, RoleService, FolderFinderService } from '@n8n/backend-services';
 import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
 import { EndpointsConfig, ExecutionsConfig, GlobalConfig, WorkflowsConfig } from '@n8n/config';
 import {
@@ -28,10 +29,9 @@ import type { McpFeatureFlags } from '../mcp.service';
 import { ActiveExecutions } from '@/active-executions';
 import { CollaborationService } from '@/collaboration/collaboration.service';
 import { CredentialsService } from '@/credentials/credentials.service';
-import { EventService } from '@/events/event.service';
 import { ExecutionListService } from '@/executions/execution-list.service';
+import { ExecutionRedactionServiceProxy } from '@/executions/execution-redaction-proxy.service';
 import { ExecutionService } from '@/executions/execution.service';
-import { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks/subworkflow-policy-checker';
 import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.service';
 import { InstanceContextService } from '@/modules/instance-ai/instance-context.service';
 import {
@@ -45,18 +45,17 @@ import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';
 import { AiGatewayService } from '@/services/ai-gateway.service';
 import { AiPreferenceService } from '@/services/ai-preference.service';
-import { FolderFinderService } from '@/services/folder-finder.service';
 import { FolderService } from '@/services/folder.service';
 import { NodeResourceExplorerService } from '@/services/node-resource-explorer.service';
 import { ProjectService } from '@/services/project.service.ee';
-import { RoleService } from '@/services/role.service';
+
 import { TagService } from '@/services/tag.service';
-import { UrlService } from '@/services/url.service';
 import { Telemetry } from '@/telemetry';
 import { WorkflowRunner } from '@/workflow-runner';
 import { WorkflowCreationService } from '@/workflows/workflow-creation.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
+import { ErrorWorkflowValidationService } from '@/workflows/error-workflow-validation.service';
 import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 
@@ -113,6 +112,14 @@ describe('getAllowedToolNames', () => {
 
 	it('resolves the preferences scope to its one tool', () => {
 		expect(getAllowedToolNames(['aiPreference:read'])).toEqual(new Set(['get_user_preferences']));
+	});
+
+	// The read tool does not ride along on the write grant: the consent screen shows them as
+	// two scopes, and a client that may write is expected to hold both.
+	it('resolves the preferences write scope to the save, update and undo tools only', () => {
+		expect(getAllowedToolNames(['aiPreference:write'])).toEqual(
+			new Set(['save_user_preference', 'update_user_preference', 'undo_user_preference']),
+		);
 	});
 
 	it('ignores unknown scopes', () => {
@@ -196,7 +203,7 @@ describe('McpService scope enforcement', () => {
 			mockInstance(WorkflowHistoryService),
 			mockInstance(WorkflowsConfig),
 			mockInstance(WorkflowPublishedDataService),
-			mockInstance(SubworkflowPolicyChecker),
+			mockInstance(ErrorWorkflowValidationService),
 			mockInstance(AiGatewayService, {
 				isAvailable: vi.fn().mockResolvedValue({ available: false }),
 			}),
@@ -210,6 +217,7 @@ describe('McpService scope enforcement', () => {
 			mockInstance(FolderService),
 			mockInstance(AiPreferenceService),
 			mockInstance(McpConfig),
+			mockInstance(ExecutionRedactionServiceProxy),
 		);
 
 	beforeEach(() => {
@@ -341,6 +349,9 @@ describe('McpService scope enforcement', () => {
 		);
 
 		instanceContext.buildBlock.mockResolvedValue({
+			state: 'injected',
+			isUpdate: false,
+			legs: { inventory: 2, events: 0, runs: 0 },
 			block: 'Workflows that already exist here: 2',
 			cursor: {
 				activityMark: 1,
@@ -355,7 +366,7 @@ describe('McpService scope enforcement', () => {
 		);
 
 		// Empty read plus an estate that exists: the client must not be told the instance is empty.
-		instanceContext.buildBlock.mockResolvedValue(null);
+		instanceContext.buildBlock.mockResolvedValue({ state: 'absent', reason: 'empty' });
 		instanceContext.hasWithheldWorkflows.mockResolvedValue(true);
 		expect(await readResourceText(server, INSTANCE_CONTEXT_RESOURCE_URI)).toBe(
 			NOTHING_EXPOSED_TEXT,
@@ -477,6 +488,59 @@ describe('McpService scope enforcement', () => {
 			});
 
 			expect(getRegisteredToolNames(server)).not.toContain('get_user_preferences');
+		});
+	});
+
+	describe('preference write tools registration', () => {
+		const WRITE_TOOLS = ['save_user_preference', 'update_user_preference', 'undo_user_preference'];
+
+		it('registers the three write tools when the preferences flag is on', async () => {
+			const server = await buildService().getServer(
+				user,
+				mcpFeatureFlags({ aiPreferencesEnabled: true }),
+			);
+
+			for (const name of WRITE_TOOLS) expect(getRegisteredToolNames(server)).toContain(name);
+		});
+
+		it('registers none of them when the preferences flag is off', async () => {
+			const server = await buildService().getServer(
+				user,
+				mcpFeatureFlags({ aiPreferencesEnabled: false }),
+			);
+
+			for (const name of WRITE_TOOLS) expect(getRegisteredToolNames(server)).not.toContain(name);
+		});
+
+		it('registers them with the builder disabled, like the read tool', async () => {
+			const server = await buildService({ builderEnabled: false }).getServer(
+				user,
+				mcpFeatureFlags({ aiPreferencesEnabled: true }),
+			);
+
+			for (const name of WRITE_TOOLS) expect(getRegisteredToolNames(server)).toContain(name);
+		});
+
+		// A granted scope set is fixed at authorization, so a client that consented before the
+		// write scope existed cannot write until the user consents again.
+		it('keeps them out of reach of a grant that holds only the read scope', async () => {
+			const server = await buildService().getServer(user, mcpFeatureFlags(), undefined, {
+				grantedScopes: ['aiPreference:read'],
+			});
+
+			const registered = getRegisteredToolNames(server);
+			expect(registered).toContain('get_user_preferences');
+			for (const name of WRITE_TOOLS) expect(registered).not.toContain(name);
+		});
+
+		it('registers them, and not the read tool, for a write-only grant', async () => {
+			const server = await buildService().getServer(user, mcpFeatureFlags(), undefined, {
+				grantedScopes: ['aiPreference:write'],
+			});
+
+			const registered = getRegisteredToolNames(server);
+			expect(registered).not.toContain('get_user_preferences');
+			for (const name of WRITE_TOOLS) expect(registered).toContain(name);
 		});
 	});
 

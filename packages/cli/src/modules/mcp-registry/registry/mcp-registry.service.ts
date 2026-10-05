@@ -133,12 +133,14 @@ export class McpRegistryService {
 	/**
 	 * Refreshes the registry from the remote API and reloads the generated node
 	 * types. Skips the write and the reload when nothing changed.
-	 * Callers must serialize runs.
+	 * Overlapping runs are safe: each row keeps the newest fetch, whichever run
+	 * writes last, and the loader rebuild is republished as a whole.
 	 * @throws when the remote API or the database write fails, or when the
 	 * signal aborts before the write starts. The signal cancels the API requests.
 	 */
 	async refreshFromApi(signal?: AbortSignal): Promise<void> {
 		const existingServers = await this.getStoredServers(true);
+		const fetchedAt = await this.repository.readDbNow();
 		let updatedServers: McpRegistryServer[];
 		if (existingServers.length === 0) {
 			updatedServers = await this.apiClient.fetchAllServers(signal);
@@ -153,7 +155,7 @@ export class McpRegistryService {
 		}
 
 		signal?.throwIfAborted();
-		await this.saveServers(updatedServers);
+		await this.saveServers(updatedServers, fetchedAt);
 		await this.refreshRegistryNodeTypes(true);
 		this.notifyNodeDescriptionsUpdated();
 		await this.publishReloadCommand();
@@ -213,7 +215,7 @@ export class McpRegistryService {
 		);
 	}
 
-	private async saveServers(servers: McpRegistryServer[]): Promise<void> {
+	private async saveServers(servers: McpRegistryServer[], fetchedAt: Date): Promise<void> {
 		const entities = servers.map(toEntity);
 		// We don't delete any servers since they are used to
 		// generate node types. If some node types are removed,
@@ -222,7 +224,7 @@ export class McpRegistryService {
 		// we will set its status to 'deprecated' instead.
 		// If a server is removed from the remote API,
 		// it will be marked as deprecated as well.
-		await this.repository.upsert(entities, ['slug']);
+		await this.repository.upsertFetchedServers(entities, fetchedAt);
 	}
 
 	private async refreshRegistryNodeTypes(releaseTypes: boolean): Promise<void> {

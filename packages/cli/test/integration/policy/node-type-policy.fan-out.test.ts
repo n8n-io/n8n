@@ -1,16 +1,17 @@
 import { Logger } from '@n8n/backend-common';
+import { EventService } from '@n8n/backend-services';
 import { createTeamProject, testDb, testModules } from '@n8n/backend-test-utils';
 import { TransactionRunner, type OperationContext } from '@n8n/db';
 import { Container } from '@n8n/di';
 
-import { EventService } from '@/events/event.service';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { NodeTypes } from '@/node-types';
 import { TypeAvailabilityPolicyAttachmentRepository } from '@/modules/type-availability-policies/database/repositories/type-availability-policy-attachment.repository';
 import { TypeAvailabilityPolicyScopeRepository } from '@/modules/type-availability-policies/database/repositories/type-availability-policy-scope.repository';
 import { TypeAvailabilityPolicyRepository } from '@/modules/type-availability-policies/database/repositories/type-availability-policy.repository';
 import type { PolicyRule } from '@/modules/type-availability-policies/policy-rule.types';
 import { TypeAvailabilityPolicyService } from '@/modules/type-availability-policies/type-availability-policy.service';
-import { CacheService } from '@/services/cache/cache.service';
+import { CacheService } from '@n8n/backend-services';
 
 import { clearPolicyCache } from './shared/policy-cache';
 
@@ -78,6 +79,7 @@ describe('node type policy document fan-out', () => {
 				ROOT,
 			);
 			await service.replaceAttachments(
+				KIND,
 				scope.id,
 				[{ policyId: policy.id, priority: 0, isFloor: false }],
 				'user-1',
@@ -151,6 +153,7 @@ describe('node type policy document fan-out', () => {
 			Container.get(EventService),
 			Container.get(CacheService),
 			Container.get(LoadNodesAndCredentials),
+			Container.get(NodeTypes),
 			Container.get(Logger),
 		);
 
