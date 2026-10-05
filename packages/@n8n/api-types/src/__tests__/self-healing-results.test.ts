@@ -7,11 +7,13 @@ const content = {
 };
 
 describe('selfHealingResultContentSchema', () => {
-	it('keeps missing measurements unknown', () => {
-		expect(selfHealingResultContentSchema.parse(content)).toEqual({
-			...content,
-			usage: null,
-		});
+	it.each([undefined, null])('rejects an absent usage object (%s)', (usage) => {
+		expect(() => selfHealingResultContentSchema.parse({ ...content, usage })).toThrow();
+	});
+
+	it('keeps explicitly unknown measurements', () => {
+		const usage = { credits: null, turns: null, durationSeconds: null };
+		expect(selfHealingResultContentSchema.parse({ ...content, usage }).usage).toEqual(usage);
 	});
 
 	it('keeps measured zero separate from unknown measurements', () => {

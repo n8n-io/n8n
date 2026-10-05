@@ -105,6 +105,7 @@ async function prepareFixture(outcome: Outcome = 'needs_you', withSuggestion = f
 		},
 	]);
 	const original = await workflows.findOneByOrFail({ id: workflow.id });
+	const execution = await createExecution({ status: 'error' }, original);
 	const graph = {
 		nodes: original.nodes.map((node) => ({ ...node, position: [100, 100] as [number, number] })),
 		connections: original.connections,
@@ -123,6 +124,8 @@ async function prepareFixture(outcome: Outcome = 'needs_you', withSuggestion = f
 		workflowId: workflow.id,
 		projectId: project.id,
 		backgroundUserId: user.id,
+		executionId: execution.id,
+		usage: { credits: 1, turns: 2, durationSeconds: 30 },
 		outcome,
 		summary: 'Review the execution result.',
 		report: 'The saved report explains the investigation and the next step.',
@@ -154,8 +157,8 @@ it.each([
 		outcome,
 		report: input.report,
 		reviewState: 'open',
-		usage: null,
-		execution: null,
+		usage: input.usage,
+		execution: { status: 'available', id: input.executionId },
 	});
 	if (withSuggestion) {
 		expect(response.body.data.suggestion).toMatchObject({
@@ -167,6 +170,14 @@ it.each([
 		expect(response.body.data.suggestion).toBeNull();
 	}
 	expect(await workflows.findOneByOrFail({ id: original.id })).toEqual(original);
+});
+
+it.each([undefined, null])('rejects an absent execution ID (%s)', async (executionId) => {
+	const { input } = await prepareFixture();
+	await expect(
+		service.prepare({ ...input, executionId } as unknown as typeof input),
+	).rejects.toThrow();
+	expect(await results.count()).toBe(0);
 });
 
 it.each([
@@ -201,10 +212,13 @@ it('does not require a published workflow for an informational result', async ()
 	const user = await createUser();
 	const workflow = await createWorkflowWithHistory({}, user);
 	const project = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(user.id);
+	const execution = await createExecution({ status: 'error' }, workflow);
 	const prepared = await service.prepare({
 		workflowId: workflow.id,
 		projectId: project.id,
 		backgroundUserId: user.id,
+		executionId: execution.id,
+		usage: { credits: 1, turns: 2, durationSeconds: 30 },
 		outcome: 'could_not_fix',
 		summary: 'The investigation could not produce a fix.',
 		report: 'The workflow needs human input.',
@@ -273,6 +287,7 @@ it('keeps the report and unknown usage after the execution is removed', async ()
 	});
 	const result = await service.create(prepared);
 	await Container.get(ExecutionRepository).delete(execution.id);
+	expect((await results.findOneByOrFail({ id: result.id })).executionId).toBe(execution.id);
 	const detail = await service.getDetail(user, project.id, original.id, result.id);
 	expect(detail).toMatchObject({
 		report: input.report,
@@ -603,7 +618,10 @@ it('returns report details without changing the result or workflow', async () =>
 	const { user, original, result, input, url } = await fixture('could_not_fix');
 	const response = await testServer.authAgentFor(user).get(url);
 	expect(response.status).toBe(200);
-	expect(response.body.data).toMatchObject({ report: input.report, execution: null });
+	expect(response.body.data).toMatchObject({
+		report: input.report,
+		execution: { status: 'available', id: input.executionId },
+	});
 	expect(await results.findOneByOrFail({ id: result.id })).toEqual(result);
 	expect(await workflows.findOneByOrFail({ id: original.id })).toEqual(original);
 });

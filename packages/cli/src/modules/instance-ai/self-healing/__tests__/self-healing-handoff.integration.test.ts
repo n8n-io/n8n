@@ -71,6 +71,7 @@ async function savedResult() {
 			projectId: ownerProject.id,
 			backgroundUserId: backgroundUser.id,
 			executionId: execution.id,
+			usage: { credits: 1, turns: 2, durationSeconds: 30 },
 			outcome: 'needs_you',
 			summary: 'Review the failed request.',
 			report: 'The request failed. Check the connection settings, then retry the workflow.',
@@ -119,7 +120,7 @@ it('continues a saved report in a new private chat owned by the current editor',
 	const attachment: InstanceAiWorkflowAttachment = {
 		type: 'workflow',
 		id: detail.workflowId,
-		...(detail.execution?.status === 'available' ? { executionId: detail.execution.id } : {}),
+		...(detail.execution.status === 'available' ? { executionId: detail.execution.id } : {}),
 	};
 	expect(assistant.startRun).not.toHaveBeenCalled();
 

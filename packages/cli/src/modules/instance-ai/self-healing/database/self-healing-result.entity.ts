@@ -51,8 +51,8 @@ export class SelfHealingResult extends WithTimestampsAndStringId {
 	completedAt: Date;
 
 	// Execution references can outlive v1 pruning and can point to the v2 data plane.
-	@Column({ type: 'varchar', length: 255, nullable: true })
-	executionId: string | null;
+	@Column({ type: 'varchar', length: 255 })
+	executionId: string;
 
 	@Column({ type: 'varchar', length: 36, nullable: true })
 	suggestionId: string | null;
@@ -61,8 +61,8 @@ export class SelfHealingResult extends WithTimestampsAndStringId {
 	@JoinColumn({ name: 'suggestionId' })
 	suggestion: Relation<WorkflowSuggestion> | null;
 
-	@JsonColumn({ nullable: true })
-	usage: SelfHealingResultUsage | null;
+	@JsonColumn()
+	usage: SelfHealingResultUsage;
 
 	@DateTimeColumn({ nullable: true })
 	dismissedAt: Date | null;

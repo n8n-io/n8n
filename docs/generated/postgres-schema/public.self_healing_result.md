@@ -9,7 +9,7 @@
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | dismissedAt | timestamp(3) with time zone |  | true |  |  |  |
 | dismissedById | uuid |  | true |  | [public.user](public.user.md) | Reviewer who dismissed the result |
-| executionId | varchar(255) |  | true |  |  | Execution reference retained after pruning; also supports the external v2 data plane |
+| executionId | varchar(255) |  | false |  |  | Execution reference retained after pruning; also supports the external v2 data plane |
 | id | varchar(36) |  | false |  |  |  |
 | outcome | varchar(16) |  | false |  |  | Accepted investigation outcome, separate from review closure |
 | projectId | varchar(36) |  | false |  | [public.project](public.project.md) | Original workflow owner project |
@@ -17,7 +17,7 @@
 | suggestionId | varchar(36) |  | true |  | [public.workflow_suggestion](public.workflow_suggestion.md) | Optional isolated workflow suggestion |
 | summary | varchar(2000) |  | false |  |  |  |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
-| usage | json |  | true |  |  | Recorded credits, turns, and durationSeconds; null means unknown |
+| usage | json |  | false |  |  | Recorded credits, turns, and durationSeconds; null measurements mean unknown |
 | workflowId | varchar(36) |  | false |  | [public.workflow_entity](public.workflow_entity.md) | Investigated workflow |
 
 ## Constraints
@@ -34,12 +34,14 @@
 | self_healing_result_backgroundUserId_not_null | n | NOT NULL "backgroundUserId" |
 | self_healing_result_completedAt_not_null | n | NOT NULL "completedAt" |
 | self_healing_result_createdAt_not_null | n | NOT NULL "createdAt" |
+| self_healing_result_executionId_not_null | n | NOT NULL "executionId" |
 | self_healing_result_id_not_null | n | NOT NULL id |
 | self_healing_result_outcome_not_null | n | NOT NULL outcome |
 | self_healing_result_projectId_not_null | n | NOT NULL "projectId" |
 | self_healing_result_report_not_null | n | NOT NULL report |
 | self_healing_result_summary_not_null | n | NOT NULL summary |
 | self_healing_result_updatedAt_not_null | n | NOT NULL "updatedAt" |
+| self_healing_result_usage_not_null | n | NOT NULL usage |
 | self_healing_result_workflowId_not_null | n | NOT NULL "workflowId" |
 
 ## Indexes

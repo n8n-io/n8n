@@ -72,9 +72,9 @@ describe('CreateSelfHealingResultTable migration', () => {
 		await withContext(async ({ escape: { tableName: t, columnName: c }, runQuery }) => {
 			await runQuery(
 				`INSERT INTO ${t('self_healing_result')}
-				 (${c('id')}, ${c('workflowId')}, ${c('projectId')}, ${c('backgroundUserId')}, ${c('outcome')}, ${c('summary')}, ${c('report')}, ${c('completedAt')}, ${c('suggestionId')}, ${c('executionId')})
-				 VALUES ('result', 'result-workflow', 'result-project', :userId, 'fix_ready', 'Prepared a fix.', 'Review the fix.', :now, 'result-suggestion', 'pruned-execution')`,
-				{ userId, now },
+				 (${c('id')}, ${c('workflowId')}, ${c('projectId')}, ${c('backgroundUserId')}, ${c('outcome')}, ${c('summary')}, ${c('report')}, ${c('completedAt')}, ${c('suggestionId')}, ${c('executionId')}, ${c('usage')})
+				 VALUES ('result', 'result-workflow', 'result-project', :userId, 'fix_ready', 'Prepared a fix.', 'Review the fix.', :now, 'result-suggestion', 'pruned-execution', :usage)`,
+				{ userId, now, usage: JSON.stringify({ credits: 1, turns: 2, durationSeconds: 30 }) },
 			);
 		});
 

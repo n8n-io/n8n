@@ -19,15 +19,14 @@ export const selfHealingResultContentSchema = z
 		outcome: selfHealingResultOutcomeSchema,
 		summary: z.string().trim().min(1).max(2000),
 		report: z.string().trim().min(1).max(50_000),
-		usage: selfHealingResultUsageSchema.nullable().default(null),
+		usage: selfHealingResultUsageSchema,
 	})
 	.strict();
 export type SelfHealingResultContent = z.infer<typeof selfHealingResultContentSchema>;
 
 export type SelfHealingExecutionReference =
 	| { status: 'available'; id: string }
-	| { status: 'unavailable' }
-	| null;
+	| { status: 'unavailable' };
 
 export type SelfHealingReviewState = 'open' | 'applied' | 'discarded' | 'outdated' | 'dismissed';
 

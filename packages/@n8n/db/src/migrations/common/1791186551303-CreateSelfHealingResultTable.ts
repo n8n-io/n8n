@@ -19,12 +19,12 @@ export class CreateSelfHealingResultTable1791186551303 implements ReversibleMigr
 				column('completedAt').timestampTimezone().notNull,
 				column('executionId')
 					.varchar(255)
-					.comment(
+					.notNull.comment(
 						'Execution reference retained after pruning; also supports the external v2 data plane',
 					),
 				column('suggestionId').varchar(36).comment('Optional isolated workflow suggestion'),
-				column('usage').json.comment(
-					'Recorded credits, turns, and durationSeconds; null means unknown',
+				column('usage').json.notNull.comment(
+					'Recorded credits, turns, and durationSeconds; null measurements mean unknown',
 				),
 				column('dismissedAt').timestampTimezone(),
 				column('dismissedById').uuid.comment('Reviewer who dismissed the result'),

@@ -31,27 +31,21 @@ const referenceSchema = z.object({
 	workflowId: z.string().min(1).max(36),
 	projectId: z.string().min(1).max(36),
 	backgroundUserId: z.string().uuid(),
-	executionId: z
-		.string()
-		.min(1)
-		.max(64)
-		.nullish()
-		.transform((id) => id ?? null),
+	executionId: z.string().min(1).max(64),
 	completedAt: z
 		.date()
 		.optional()
 		.default(() => new Date()),
 });
 
-export type CreateSelfHealingResult = Omit<SelfHealingResultContent, 'usage'> &
-	Partial<Pick<SelfHealingResultContent, 'usage'>> & {
-		workflowId: string;
-		projectId: string;
-		backgroundUserId: string;
-		executionId?: string | null;
-		completedAt?: Date;
-		suggestion?: PreparedWorkflowSuggestion;
-	};
+export type CreateSelfHealingResult = SelfHealingResultContent & {
+	workflowId: string;
+	projectId: string;
+	backgroundUserId: string;
+	executionId: string;
+	completedAt?: Date;
+	suggestion?: PreparedWorkflowSuggestion;
+};
 
 export type PreparedSelfHealingResult = {
 	references: z.infer<typeof referenceSchema>;
@@ -83,7 +77,7 @@ export class SelfHealingResultService {
 			outcome: input.outcome,
 			summary: input.summary,
 			report: input.report,
-			usage: input.usage ?? null,
+			usage: input.usage,
 		});
 		const prepared = input.suggestion;
 		if (

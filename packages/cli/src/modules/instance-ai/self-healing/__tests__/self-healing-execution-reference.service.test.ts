@@ -31,13 +31,6 @@ describe('SelfHealingExecutionReferenceService', () => {
 	});
 
 	describe('getReference', () => {
-		it('returns null without looking up an absent reference', async () => {
-			await expect(service.getReference(user, WORKFLOW_ID, null)).resolves.toBeNull();
-			expect(workflows.findWorkflowHeadForUser).not.toHaveBeenCalled();
-			expect(executions.findSingleExecution).not.toHaveBeenCalled();
-			expect(engineV2.findReference).not.toHaveBeenCalled();
-		});
-
 		it('returns a v1 reference without loading workflow or execution data', async () => {
 			await expect(service.getReference(user, WORKFLOW_ID, V1_EXECUTION_ID)).resolves.toEqual({
 				status: 'available',
@@ -146,11 +139,6 @@ describe('SelfHealingExecutionReferenceService', () => {
 	});
 
 	describe('validateReference', () => {
-		it('accepts a null reference without a lookup', async () => {
-			await expect(service.validateReference(user, WORKFLOW_ID, null)).resolves.toBeUndefined();
-			expect(workflows.findWorkflowHeadForUser).not.toHaveBeenCalled();
-		});
-
 		it.each([V1_EXECUTION_ID, V2_EXECUTION_ID])(
 			'accepts execution %s in the authorized workflow',
 			async (executionId) => {

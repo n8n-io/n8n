@@ -20,9 +20,8 @@ export class SelfHealingExecutionReferenceService {
 	async getReference(
 		user: User,
 		workflowId: string,
-		executionId: string | null,
+		executionId: string,
 	): Promise<SelfHealingExecutionReference> {
-		if (executionId === null) return null;
 		try {
 			if (!(await this.canReadExecution(user, workflowId))) return { status: 'unavailable' };
 			// Optional evidence must not delay access to a saved report.
@@ -41,12 +40,7 @@ export class SelfHealingExecutionReferenceService {
 	}
 
 	/** Check producer input before storage. Pruned executions can retain a historical reference. */
-	async validateReference(
-		user: User,
-		workflowId: string,
-		executionId: string | null,
-	): Promise<void> {
-		if (executionId === null) return;
+	async validateReference(user: User, workflowId: string, executionId: string): Promise<void> {
 		if (!(await this.canReadExecution(user, workflowId))) {
 			throw new ForbiddenError('Workflow and execution read access is required.');
 		}
