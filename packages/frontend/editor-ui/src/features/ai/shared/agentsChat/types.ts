@@ -6,6 +6,10 @@ import {
 	type WAIT_TOOL_NAME,
 } from '@n8n/api-types';
 
+import type {
+	ASSISTANT_CONFIRMATION_TOOL_NAME,
+	AssistantConfirmationInput,
+} from './assistantConfirmation';
 import type { N8nChatInteractionInput, N8nChatResumeValue } from './n8nChatInteraction';
 
 import type { ChatMessageStatus, ToolCallState } from './constants';
@@ -107,6 +111,16 @@ export type InteractivePayload =
 			toolName: typeof WAIT_TOOL_NAME;
 			input: N8nChatInteractionInput;
 			resolvedValue?: N8nChatResumeValue;
+	  })
+	/**
+	 * An n8n Assistant confirmation (questions, plan review, domain access, ...).
+	 * The card resumes with the Assistant confirm body, for example
+	 * `{ kind: 'approval', approved: true }`.
+	 */
+	| (InteractivePayloadBase & {
+			toolName: typeof ASSISTANT_CONFIRMATION_TOOL_NAME;
+			input: AssistantConfirmationInput;
+			resolvedValue?: unknown;
 	  });
 
 export type AgentsChatInteraction = InteractivePayload;

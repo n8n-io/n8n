@@ -7,6 +7,10 @@ import {
 } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
 import {
+	ASSISTANT_CONFIRMATION_TOOL_NAME,
+	parseAssistantConfirmationInput,
+} from './assistantConfirmation';
+import {
 	isAwaitingCard,
 	n8nChatResumeValueSchema,
 	parseN8nChatActionInput,
@@ -174,6 +178,21 @@ export function rebuildInteractiveFromHistory(tc: ToolCall): InteractivePayload 
 				!isDelegateSubAgentTool(tc.tool) && {
 					resolvedValue: { approved: !isDeclinedToolOutput(tc.output) },
 				}),
+		};
+	}
+
+	// An n8n Assistant confirmation: many Assistant tools suspend with the same
+	// confirmation payload, so the payload shape is the discriminator.
+	const assistantInput = parseAssistantConfirmationInput(tc.suspendPayload);
+	if (assistantInput) {
+		const resolved = tc.output !== undefined;
+		return {
+			toolCallId: tc.toolCallId,
+			...(resolved && { resolvedAt: 1 }),
+			...(tc.canceled === true && { cancelled: true }),
+			toolName: ASSISTANT_CONFIRMATION_TOOL_NAME,
+			input: assistantInput,
+			...(resolved && tc.canceled !== true && { resolvedValue: tc.output }),
 		};
 	}
 

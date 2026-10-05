@@ -139,7 +139,8 @@ vi.mock('vue-router', async (importOriginal) => ({
 		path: '/instance-ai/thread-1',
 		matched: [],
 		fullPath: '/instance-ai/thread-1',
-		query: {},
+		// These tests cover the legacy conversation.
+		query: { chat: 'legacy' },
 		hash: '',
 		meta: {},
 	}),

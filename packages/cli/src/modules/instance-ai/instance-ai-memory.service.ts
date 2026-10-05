@@ -298,7 +298,7 @@ export class InstanceAiMemoryService {
 		const memoryThread = await this.agentMemory.getThread(threadId);
 		return {
 			id: session.id,
-			title: session.title ?? memoryThread?.title ?? undefined,
+			title: memoryThread?.title || session.title || undefined,
 			resourceId: session.ownerId ?? '',
 			projectId: session.projectId,
 			metadata: memoryThread?.metadata,
@@ -313,7 +313,7 @@ export class InstanceAiMemoryService {
 				const memoryThread = await this.agentMemory.getThread(session.id);
 				return this.toThreadInfo({
 					id: session.id,
-					title: session.title ?? memoryThread?.title ?? undefined,
+					title: memoryThread?.title || session.title || undefined,
 					resourceId: session.ownerId ?? '',
 					metadata: memoryThread?.metadata,
 					createdAt: session.createdAt,

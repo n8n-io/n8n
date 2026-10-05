@@ -436,6 +436,8 @@ describe('InstanceAiEmptyView', () => {
 
 	beforeEach(() => {
 		for (const key of Object.keys(routeQuery)) delete routeQuery[key];
+		// These tests cover the legacy send path (Assistant endpoint).
+		routeQuery.chat = 'legacy';
 		vi.stubGlobal('localStorage', {
 			getItem: vi.fn(),
 			setItem: vi.fn(),
@@ -874,6 +876,7 @@ describe('InstanceAiEmptyView', () => {
 		expect(replaceMock).toHaveBeenCalledWith({
 			name: INSTANCE_AI_THREAD_VIEW,
 			params: { threadId: 'thread-placeholder' },
+			query: { chat: 'legacy' },
 		});
 		expect(showErrorMock).not.toHaveBeenCalled();
 	});
@@ -1071,6 +1074,25 @@ describe('InstanceAiEmptyView', () => {
 		expect(store.getOrCreateRuntime).not.toHaveBeenCalled();
 	});
 
+	it('stashes the opener for the Agents chat instead of sending it in Agents chat mode', async () => {
+		delete routeQuery.chat;
+		store.syncThread.mockResolvedValue(undefined);
+		const { getByTestId } = renderView();
+
+		await fireEvent.click(getByTestId('instance-ai-input-stub-submit'));
+		await flushPromises();
+
+		expect(thread.sendMessage).not.toHaveBeenCalled();
+		expect(localStorage.setItem).toHaveBeenCalledWith(
+			expect.stringContaining('thread-placeholder'),
+			expect.stringContaining('"message":"hello"'),
+		);
+		expect(replaceMock).toHaveBeenCalledWith({
+			name: INSTANCE_AI_THREAD_VIEW,
+			params: { threadId: 'thread-placeholder' },
+		});
+	});
+
 	it('navigates to the thread view and dispatches sendMessage when syncThread succeeds', async () => {
 		store.syncThread.mockResolvedValue(undefined);
 		const { getByTestId } = renderView();
@@ -1094,6 +1116,7 @@ describe('InstanceAiEmptyView', () => {
 		expect(replaceMock).toHaveBeenCalledWith({
 			name: INSTANCE_AI_THREAD_VIEW,
 			params: { threadId: 'thread-placeholder' },
+			query: { chat: 'legacy' },
 		});
 		expect(showErrorMock).not.toHaveBeenCalled();
 	});

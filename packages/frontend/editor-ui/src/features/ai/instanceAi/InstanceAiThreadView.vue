@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { computed, onMounted, onUnmounted, provide, ref, useTemplateRef, watch } from 'vue';
-import { useRouter } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import {
 	N8nIconButton,
 	N8nResizeWrapper,
@@ -46,6 +46,8 @@ import InstanceAiTestAgentPanel from './components/InstanceAiTestAgentPanel.vue'
 import InstanceAiPreviewTabBar from './components/InstanceAiPreviewTabBar.vue';
 import InstanceAiViewHeader from './components/InstanceAiViewHeader.vue';
 import InstanceAiConversation from './components/InstanceAiConversation.vue';
+import InstanceAiAgentsConversation from './components/InstanceAiAgentsConversation.vue';
+import { isLegacyAssistantChat } from './agentsChatMode';
 // Experiment cleanup: remove with openWorkflowInAssistant.
 import OpenWorkflowInAssistantNotification from '@/experiments/openWorkflowInAssistant/components/OpenWorkflowInAssistantNotification.vue';
 import InstanceAiWorkflowPreview, {
@@ -72,6 +74,9 @@ const thread = provideThread(props.threadId);
 const rootStore = useRootStore();
 const i18n = useI18n();
 const router = useRouter();
+const route = useRoute();
+// PoC: the Agents chat core renders the thread unless `?chat=legacy` is set.
+const useLegacyChat = computed(() => isLegacyAssistantChat(route.query));
 const { width: windowWidth } = useWindowSize();
 const { isCollapsed: isMainSidebarCollapsed, sidebarWidth: mainSidebarWidth } = useSidebarLayout();
 const toast = useToast();
@@ -851,7 +856,13 @@ function handleNewThreadClick() {
 				:data-layout-transitions-enabled="isPreviewPanelTransitionEnabled"
 				data-test-id="instance-ai-content-area"
 			>
+				<InstanceAiAgentsConversation
+					v-if="!useLegacyChat"
+					:key="threadId"
+					@thread-missing="onThreadMissing"
+				/>
 				<InstanceAiConversation
+					v-else
 					ref="conversation"
 					:above-input-overlap-height="setupPanelWorkflowId ? setupOverlapHeight : undefined"
 					:mentions-enabled="mentionsEnabled"

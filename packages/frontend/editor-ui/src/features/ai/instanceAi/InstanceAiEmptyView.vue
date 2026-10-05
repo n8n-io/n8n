@@ -30,6 +30,8 @@ import {
 	INSTANCE_AI_SOURCE_QUERY,
 	isInstanceAiThreadSource,
 } from './constants';
+import { isLegacyAssistantChat, LEGACY_ASSISTANT_CHAT_QUERY } from './agentsChatMode';
+import { stashPendingFirstMessage } from './composables/useInstanceAiHandoff';
 import { useCreditWarningBanner } from './composables/useCreditWarningBanner';
 import {
 	InstanceAiProactiveStarterMessage,
@@ -593,19 +595,32 @@ async function handleSubmit(
 	}
 
 	const thread = store.getOrCreateRuntime(threadId, selectedProject.value);
+	// Agents chat mode: the thread view sends the opener through the Agents chat,
+	// so it streams there. Attachments still need the legacy endpoint.
+	const legacyChat = isLegacyAssistantChat(route.query);
+	const sendViaAgentsChat = !legacyChat && !attachments?.length;
+	if (sendViaAgentsChat) {
+		stashPendingFirstMessage(threadId, {
+			message,
+			authorship,
+			...(responseStartedAtEpochMs !== undefined ? { responseStartedAtEpochMs } : {}),
+		});
+	}
 	// Await admission before navigating. A refused send (e.g. a concurrency cap) must not
 	// drop the user into a blank thread, and handing the draft to the destination view is
 	// not an option: it reads its composer draft from localStorage once, synchronously, on
 	// mount, which always precedes this response. `sendMessage` has already surfaced the
 	// reason, so restore what was typed and stay put.
-	const sent = await thread.sendMessage(message, {
-		authorship,
-		attachments,
-		pushRef: rootStore.pushRef,
-		...(responseStartedAtEpochMs !== undefined ? { responseStartedAtEpochMs } : {}),
-		...(mentionCounts.total > 0 ? { mentionCounts } : {}),
-		...(mentionedWorkflowIds.length > 0 ? { mentionedWorkflowIds } : {}),
-	});
+	const sent = sendViaAgentsChat
+		? true
+		: await thread.sendMessage(message, {
+				authorship,
+				attachments,
+				pushRef: rootStore.pushRef,
+				...(responseStartedAtEpochMs !== undefined ? { responseStartedAtEpochMs } : {}),
+				...(mentionCounts.total > 0 ? { mentionCounts } : {}),
+				...(mentionedWorkflowIds.length > 0 ? { mentionedWorkflowIds } : {}),
+			});
 	if (!sent) {
 		isStartingThread.value = false;
 		restoreDraftAfterFailedSubmit(restoreDraft);
@@ -642,6 +657,7 @@ async function handleSubmit(
 		await router.replace({
 			name: INSTANCE_AI_THREAD_VIEW,
 			params: { threadId },
+			...(legacyChat ? { query: LEGACY_ASSISTANT_CHAT_QUERY } : {}),
 		});
 	} catch (error) {
 		toast.showError(error, i18n.baseText('generic.error'));

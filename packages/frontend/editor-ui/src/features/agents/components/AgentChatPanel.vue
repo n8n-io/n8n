@@ -40,6 +40,7 @@ import { useToast } from '@n8n/composables/useToast';
 import ChatInputBase from '@/features/ai/shared/components/ChatInputBase.vue';
 import AttachmentPreview from '@/features/ai/instanceAi/components/AttachmentPreview.vue';
 import { useAgentChatStream } from '../composables/useAgentChatStream';
+import type { InteractivePayload } from '@/features/ai/shared/agentsChat/types';
 import {
 	findTailOpenInteractive,
 	getMessageInteractives,
@@ -90,6 +91,12 @@ const props = withDefaults(
 		 * increase action. Resolves true once the new cap is saved.
 		 */
 		increaseBudget?: (payload: { field: BudgetAmountField; amount: number }) => Promise<boolean>;
+		/**
+		 * Lets the host answer an open card with the composer text (for example an
+		 * n8n Assistant plan review: typed text requests changes). Return the
+		 * resume data, or `undefined` to keep the default cancel-and-steer.
+		 */
+		composerResumeData?: (payload: InteractivePayload, text: string) => unknown;
 	}>(),
 	{
 		visible: true,
@@ -103,6 +110,7 @@ const props = withDefaults(
 		backgroundJobsActive: false,
 		budgetCards: false,
 		increaseBudget: undefined,
+		composerResumeData: undefined,
 	},
 );
 
@@ -795,6 +803,27 @@ async function onSubmit(): Promise<SubmitResult> {
 		props.projectId === target.projectId &&
 		props.agentId === target.agentId &&
 		props.continueSessionId === target.continueSessionId;
+
+	const tailInteractive = openInteractive.value;
+	const composerResume =
+		text && tailInteractive?.runId && props.composerResumeData
+			? props.composerResumeData(tailInteractive, text)
+			: undefined;
+	if (tailInteractive?.runId && composerResume !== undefined) {
+		const result = await resume(
+			{
+				runId: tailInteractive.runId,
+				toolCallId: tailInteractive.toolCallId,
+				resumeData: composerResume,
+			},
+			() => {
+				if (!isCurrentTarget()) return;
+				if (inputText.value.trim() === text) inputText.value = '';
+				consumeQueuedExternalMessage(text);
+			},
+		);
+		return result === 'busy' ? 'busy' : 'sent';
+	}
 
 	if (hasOpenInteractiveQuestion.value) {
 		if (!text) return 'rejected';

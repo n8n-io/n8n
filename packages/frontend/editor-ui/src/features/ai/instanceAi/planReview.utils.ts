@@ -29,9 +29,17 @@ function firstNonEmpty(...sources: Array<PlannedTaskArg[] | undefined>): Planned
  * sources in one place — a count taken from `planItems` alone reports zero.
  */
 export function resolvePlanTasks(tc: InstanceAiToolCallState): PlannedTaskArg[] {
+	return resolvePlanTasksFromConfirmation(tc.confirmation, tc.args);
+}
+
+/** Same as `resolvePlanTasks`, for a bare confirmation payload (Agents chat cards). */
+export function resolvePlanTasksFromConfirmation(
+	confirmation: { planItems?: PlannedTaskArg[]; tasks?: TaskList } | undefined,
+	args: Record<string, unknown> | undefined,
+): PlannedTaskArg[] {
 	return firstNonEmpty(
-		tc.confirmation?.planItems,
-		tc.args?.tasks as PlannedTaskArg[] | undefined,
-		mapTaskItemsToPlannedTasks(tc.confirmation?.tasks),
+		confirmation?.planItems,
+		args?.tasks as PlannedTaskArg[] | undefined,
+		mapTaskItemsToPlannedTasks(confirmation?.tasks),
 	);
 }
