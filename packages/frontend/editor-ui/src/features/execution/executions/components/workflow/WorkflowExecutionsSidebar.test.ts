@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { createTestingPinia } from '@pinia/testing';
 import { createComponentRenderer } from '@/__tests__/render';
 import type { MockedStore } from '@/__tests__/utils';
@@ -106,6 +107,41 @@ describe('WorkflowExecutionsSidebar', () => {
 		});
 
 		expect(getByTestId('concurrent-executions-header')).toBeVisible();
+	});
+
+	it('aligns the empty execution status with the heading and uses secondary text color (LIGO-1224)', () => {
+		// jsdom does not lay out text. Apply the sidebar rule to check its flex alignment.
+		const source = readFileSync(
+			'src/features/execution/executions/components/workflow/WorkflowExecutionsSidebar.vue',
+			'utf8',
+		);
+		const headingRule = source.match(/\.heading\s*\{[^}]*\}/)?.[0];
+		if (!headingRule) throw new Error('Sidebar heading style not found');
+
+		const style = document.createElement('style');
+		style.textContent = headingRule;
+		document.head.append(style);
+
+		try {
+			settingsStore.concurrency = 5;
+			const { getByTestId, getByText } = renderComponent({
+				props: {
+					loading: false,
+					loadingMore: false,
+					hasMore: false,
+					executions: [],
+				},
+			});
+			const heading = getByTestId('executions-sidebar').querySelector<HTMLElement>('.heading');
+			const status = getByText('No active executions');
+
+			expect(heading).not.toBeNull();
+			expect(getByTestId('concurrent-executions-header')).toContainElement(status);
+			expect.soft(getComputedStyle(heading!).alignItems).toBe('baseline');
+			expect.soft(status).toHaveClass('text-light');
+		} finally {
+			style.remove();
+		}
 	});
 
 	describe('infinite scroll sentinel', () => {
