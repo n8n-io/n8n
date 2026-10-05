@@ -92,7 +92,7 @@ function setup(options: { backgroundTasksEnabled?: boolean } = {}) {
 	jobRepository.findSettledSubAgentsWithCheckpoints.mockResolvedValue([]);
 	jobRepository.findRequestedPauses.mockResolvedValue([]);
 	jobRepository.findPausedWithoutCheckpoint.mockResolvedValue([]);
-	jobRepository.retainLatestPausedGroup.mockResolvedValue([]);
+	jobRepository.retainLatestStopGroup.mockResolvedValue([]);
 	jobRepository.reservePausedGroup.mockResolvedValue('reserved');
 	executionRepository.findRunningByThread.mockResolvedValue([]);
 	executionRepository.findLatestStatusesByThreadIds.mockResolvedValue(new Map());
@@ -441,11 +441,11 @@ describe('user pause', () => {
 		},
 	);
 
-	it('returns only the latest cancelled workflows without replacing the retained sub-agent group', async () => {
+	it.each(['stop-1', 'stop-2'])('continues the latest stop group (%s)', async (pausedGroup) => {
 		const { service, jobRepository, executionRepository, messageRepository } = setup();
 		const paused = makeJob({
 			status: 'paused',
-			pauseRequestId: 'stop-1',
+			pauseRequestId: pausedGroup,
 			notifiedAt: new Date(2000),
 		});
 		const workflow = makeWorkflowJob({
@@ -504,7 +504,7 @@ describe('user pause', () => {
 
 		expect(result).toMatchObject({
 			status: 'ready',
-			jobs: [paused],
+			jobs: pausedGroup === 'stop-2' ? [paused] : [],
 			workflowsToRestart: [
 				{
 					jobId: workflow.id,
@@ -514,13 +514,17 @@ describe('user pause', () => {
 				},
 			],
 		});
-		expect(jobRepository.reservePausedGroup).toHaveBeenCalledWith(
-			'thread-1',
-			'stop-1',
-			[paused.id],
-			expect.any(Date),
-			MAX_RUNNING_JOBS_PER_THREAD,
-		);
+		if (pausedGroup === 'stop-2') {
+			expect(jobRepository.reservePausedGroup).toHaveBeenCalledWith(
+				'thread-1',
+				'stop-2',
+				[paused.id],
+				expect.any(Date),
+				MAX_RUNNING_JOBS_PER_THREAD,
+			);
+		} else {
+			expect(jobRepository.reservePausedGroup).not.toHaveBeenCalled();
+		}
 	});
 
 	it('keeps stopped children visible until their stop group settles and retains other tasks', async () => {
