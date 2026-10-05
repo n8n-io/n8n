@@ -118,13 +118,7 @@ export const INSTANCE_AI_SPLIT_EMPTY_STATE_EXPERIMENT = createExperiment(
 	'089_instance_ai_split_empty_state',
 );
 
-export const INSTANCE_AI_BROWSER_USE_EXPERIMENT = createExperiment('090_instance_ai_browser_use');
-
 export const INSTANCE_AI_COMPUTER_USE_EXPERIMENT = createExperiment('091_instance_ai_computer_use');
-
-export const INSTANCE_AI_BROWSER_CREDENTIAL_SETUP_EXPERIMENT = createExperiment(
-	'094_instance_ai_browser_credential_setup',
-);
 
 export const EXPOSE_ALL_WORKFLOWS_TO_MCP_EXPERIMENT = createExperiment(
 	'095_expose_all_workflows_to_mcp',
@@ -196,9 +190,7 @@ export const EXPERIMENTS_TO_TRACK = [
 	EVALUATIONS_WIZARD_SIDEPANEL_EXPERIMENT.name,
 	INSTANCE_AI_PERSONALIZED_PROMPT_SUGGESTIONS_EXPERIMENT.name,
 	INSTANCE_AI_SPLIT_EMPTY_STATE_EXPERIMENT.name,
-	INSTANCE_AI_BROWSER_USE_EXPERIMENT.name,
 	INSTANCE_AI_COMPUTER_USE_EXPERIMENT.name,
-	INSTANCE_AI_BROWSER_CREDENTIAL_SETUP_EXPERIMENT.name,
 	EXPOSE_ALL_WORKFLOWS_TO_MCP_EXPERIMENT.name,
 	TRIAL_INTRO_MODAL_EXPERIMENT.name,
 	INLINE_AGENTS_EXPERIMENT.name,

@@ -89,6 +89,17 @@ describe('WaitTracker', () => {
 		vi.clearAllMocks();
 	});
 
+	it('reports waiting executions until their timers are stopped', async () => {
+		expect(waitTracker.getDiagnosticCounts()).toEqual({ waitingExecutions: 0 });
+		executionRepository.getWaitingExecutions.mockResolvedValue([execution]);
+
+		await waitTracker.getWaitingExecutions();
+		expect(waitTracker.getDiagnosticCounts()).toEqual({ waitingExecutions: 1 });
+
+		waitTracker.stopExecution(execution.id);
+		expect(waitTracker.getDiagnosticCounts()).toEqual({ waitingExecutions: 0 });
+	});
+
 	describe('init()', () => {
 		it('should query DB for waiting executions if leader', () => {
 			executionRepository.getWaitingExecutions.mockResolvedValue([execution]);

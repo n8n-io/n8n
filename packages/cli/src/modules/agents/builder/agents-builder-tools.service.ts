@@ -1243,10 +1243,12 @@ export class AgentsBuilderToolsService {
 		user: User,
 		config: AgentJsonConfig,
 		baseConfigHash: string | null,
+		clearOmittedOptionalFields = false,
 	): Promise<{ ok: true } | BuilderConfigFailure> {
 		try {
 			await this.agentConfigService.updateConfig(agentId, projectId, config, user, {
 				baseConfigHash,
+				clearOmittedOptionalFields,
 				modifiedBy: 'builder',
 			});
 			return { ok: true };
@@ -1307,12 +1309,14 @@ export class AgentsBuilderToolsService {
 		if (!patched.ok) return patched;
 		const validated = this.validateBuilderConfig(patched.config, fresh.snapshot.config);
 		if (!validated.ok) return { ...validated, stage: 'schema' };
+		// The patch starts from the full stored config, so a missing field was removed by an op.
 		return await this.saveBuilderConfig(
 			agentId,
 			projectId,
 			user,
 			validated.config,
 			fresh.snapshot.configHash,
+			true,
 		);
 	}
 
@@ -1354,6 +1358,22 @@ export class AgentsBuilderToolsService {
 				code: 'agent_misconfigured',
 				message: "This agent isn't ready to run yet. Finish configuring it and try again.",
 				missing: result.missing,
+			};
+		}
+		// A run that stopped on the iteration cap did not finish its work. Without
+		// this the builder reads `completed` plus apologetic prose and retries.
+		if (result.status === 'completed' && result.maxIterations) {
+			return {
+				status: 'error',
+				code: 'max_iterations',
+				message:
+					'The agent stopped on its iteration cap before it answered. It did not complete the task. ' +
+					'A repeat of the same test gives the same result. Common causes: a tool that returns too much data, ' +
+					'so the agent re-queries it; instructions that loop; or a task that needs more steps than the cap allows. ' +
+					'Report this to the user and ask before you change the agent.',
+				sessionId: result.sessionId,
+				response: result.response,
+				...(result.executionId ? { executionId: result.executionId } : {}),
 			};
 		}
 		if (result.status === 'completed') return result;

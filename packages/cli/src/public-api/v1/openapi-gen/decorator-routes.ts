@@ -20,6 +20,8 @@ import {
 	toOpenApiPathTemplate,
 } from '@/public-api/public-api-route-resolver';
 
+import { stripUntypedNullable } from './untyped-nullable';
+
 const REQUEST_BODY_COMPONENT = 'RequestBody';
 
 // Query fields backed by shared hand-written parameter files instead of being generated
@@ -187,6 +189,10 @@ export function buildRequestBodyJsonSchema(
 
 	const { components } = new OpenApiGeneratorV3(registry.definitions).generateComponents();
 	const schema = components?.schemas?.[REQUEST_BODY_COMPONENT];
+
+	// Keep in sync with `buildArtifactsFromRegistry`, both convert the same DTOs to OpenAPI
+	// and `/discover` serves this schema straight from a route at runtime.
+	stripUntypedNullable(schema);
 
 	return isRecord(schema) ? schema : undefined;
 }

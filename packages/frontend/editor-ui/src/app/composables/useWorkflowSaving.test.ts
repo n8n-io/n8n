@@ -2046,9 +2046,8 @@ describe('useWorkflowSaving', () => {
 
 	describe('autosave on a read-only preview canvas', () => {
 		// Preview hosts (template, workflow history, execution) mount the real
-		// NodeView and supersede the editor context with `readOnly: true`. Opening a
-		// node there auto-selects a credential, which marks the document dirty and
-		// reaches this composable — so the read-only signal has to stop the write.
+		// NodeView and supersede the editor context with `readOnly: true`. The
+		// read-only signal must stop writes if another path marks the document dirty.
 		// Regression cover for ADO-5764.
 		const PREVIEW_FEATURES: EditorEnabledFeatures = {
 			readOnly: true,

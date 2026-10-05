@@ -19,6 +19,16 @@ import { Push } from '@/push';
 
 import { InstanceRegistryService } from '../instance-registry.service';
 
+type CheckRun = {
+	currentState: Map<string, InstanceRegistration>;
+	results: Array<{
+		checkName: string;
+		checkDisplayName?: string;
+		result?: ClusterCheckResult;
+		failed?: true;
+	}>;
+};
+
 /**
  * Reconciles cluster state and runs health checks. Discovers checks via
  * `ClusterCheckMetadata`, fans them out with error isolation, and forwards
@@ -68,31 +78,26 @@ export class CheckService {
 	 * Evaluates all registered cluster checks against the current cluster state
 	 * and returns their aggregated results. Side-effect free: does not dispatch
 	 * warnings/audit events/push notifications and does not persist state.
-	 *
-	 * Safe to call from any instance (leader or follower), e.g. from the REST
-	 * controller serving the cluster overview UI. The leader's scheduled
-	 * reconciliation loop is the single writer of `lastKnownState`; this method
-	 * only reads it to build the diff context for checks.
+	 * A failed registry read evaluates against an empty state, so the caller
+	 * always gets a result.
 	 */
-	async runChecks(): Promise<{
-		currentState: Map<string, InstanceRegistration>;
-		results: Array<{
-			checkName: string;
-			checkDisplayName?: string;
-			result?: ClusterCheckResult;
-			failed?: true;
-		}>;
-	}> {
+	async runChecks(): Promise<CheckRun> {
 		if (this.checks.length === 0) {
 			return { currentState: new Map(), results: [] };
 		}
 
 		const instances = await this.instanceRegistryService.getAllInstances();
+		const previousState = await this.instanceRegistryService.getLastKnownState();
+		return await this.evaluate(instances, previousState);
+	}
+
+	private async evaluate(
+		instances: InstanceRegistration[],
+		previousState: Map<string, InstanceRegistration>,
+	): Promise<CheckRun> {
 		const currentState = new Map<string, InstanceRegistration>(
 			instances.map((i) => [i.instanceKey, i]),
 		);
-
-		const previousState = await this.instanceRegistryService.getLastKnownState();
 		const diff = computeDiff(previousState, currentState);
 
 		const context: ClusterCheckContext = { currentState, previousState, diff };
@@ -101,21 +106,11 @@ export class CheckService {
 			this.checks.map(async (check) => await check.run(context)),
 		);
 
-		const results: Array<{
-			checkName: string;
-			checkDisplayName?: string;
-			result?: ClusterCheckResult;
-			failed?: true;
-		}> = [];
+		const results: CheckRun['results'] = [];
 		for (let i = 0; i < settled.length; i++) {
 			const outcome = settled[i];
 			const check = this.checks[i];
-			const checkResult: {
-				checkName: string;
-				checkDisplayName?: string;
-				result?: ClusterCheckResult;
-				failed?: true;
-			} = {
+			const checkResult: CheckRun['results'][number] = {
 				checkName: check.checkDescription.name,
 				checkDisplayName: check.checkDescription.displayName,
 			};
@@ -137,15 +132,16 @@ export class CheckService {
 	/**
 	 * One reconciliation cycle: run every check, dispatch the results, and
 	 * persist the observed cluster state as the baseline for the next diff.
-	 * Runs on the leader only, which keeps `lastKnownState` single-writer.
-	 * Stops between phases once `signal` aborts.
+	 * Rejects when the registry read or the baseline save fails, so the runner
+	 * retries the cycle. Stops between phases once `signal` aborts.
 	 */
 	async reconcile(signal: AbortSignal) {
 		if (this.checks.length === 0) return;
 
 		if (signal.aborted) return;
 
-		const { currentState, results } = await this.runChecks();
+		const { instances, lastKnownState } = await this.instanceRegistryService.readClusterState();
+		const { currentState, results } = await this.evaluate(instances, lastKnownState);
 
 		if (signal.aborted) return;
 
@@ -153,12 +149,8 @@ export class CheckService {
 			this.processResult(checkName, result);
 		}
 
-		try {
-			if (signal.aborted) return;
-			await this.instanceRegistryService.saveLastKnownState(currentState);
-		} catch (error) {
-			this.logger.warn('Failed to persist last known cluster state', { error });
-		}
+		if (signal.aborted) return;
+		await this.instanceRegistryService.saveLastKnownState(currentState);
 	}
 
 	private processResult(checkName: string, result?: ClusterCheckResult) {

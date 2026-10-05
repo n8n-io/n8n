@@ -109,6 +109,7 @@ export class AgentWorkflowToolResumeService {
 		if (!isTerminalExecutionStatus(status)) return;
 		// A success callback for a run that has not actually finished must not
 		// seal the job with partial output; reconciliation settles it later.
+		// oxlint-disable-next-line typescript/no-deprecated
 		if (status === 'success' && !ctx.runData.finished) return;
 
 		try {
@@ -253,7 +254,7 @@ export class AgentWorkflowToolResumeService {
 		// The draft version gates node and workflow tools by the user's access, so
 		// without the user those tools drop and the pending tool call fails to resume.
 		const user = agentRun.userId
-			? await this.userRepository.findOneBy({ id: agentRun.userId })
+			? await this.userRepository.findByIdWithRole(agentRun.userId)
 			: null;
 		if (!user) {
 			this.logger.warn('Cannot resume preview chat run without its user', {

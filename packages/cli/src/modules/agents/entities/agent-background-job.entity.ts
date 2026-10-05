@@ -17,14 +17,17 @@ export type AgentBackgroundJobStatus = AgentBackgroundJobDto['status'];
 @Index(['parentAgentId'])
 @Index(['settledAt'])
 @Index(['childExecutionId'], { unique: true, where: '"childExecutionId" IS NOT NULL' })
-@Index(['timeoutAt'], { where: '"status" = \'running\'' })
-@Index(['parentThreadId'], { where: '"settledAt" IS NOT NULL AND "notifiedAt" IS NULL' })
+@Index(['timeoutAt'], { where: "\"status\" IN ('running', 'suspended')" })
+@Index(['parentThreadId'], { where: '"status" <> \'running\' AND "notifiedAt" IS NULL' })
 export class AgentBackgroundJob extends WithTimestampsAndStringId {
 	@Column({ type: 'varchar', length: 16 })
 	kind: AgentBackgroundJobKind;
 
 	@Column({ type: 'varchar', length: 16 })
 	status: AgentBackgroundJobStatus;
+
+	@Column({ type: 'uuid', nullable: true, comment: 'Groups jobs stopped by one user request' })
+	pauseRequestId: string | null;
 
 	@Column({ type: 'varchar', length: 36 })
 	parentAgentId: string;
@@ -77,7 +80,7 @@ export class AgentBackgroundJob extends WithTimestampsAndStringId {
 	@DateTimeColumn({ precision: 3, nullable: true })
 	settledAt: Date | null;
 
-	/** When the parent agent consumed this settled job. */
+	/** When the parent received the latest result or approval request. */
 	@DateTimeColumn({ precision: 3, nullable: true })
 	notifiedAt: Date | null;
 }

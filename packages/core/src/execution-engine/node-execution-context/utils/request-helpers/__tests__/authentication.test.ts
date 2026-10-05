@@ -125,6 +125,36 @@ describe('httpRequestWithAuthentication', () => {
 		);
 	});
 
+	// An explicit preAuthenticationRetryStatusCode replaces the default, so a caller can leave 401 out.
+	test('does NOT refresh on 401 when preAuthenticationRetryStatusCode excludes it', async () => {
+		mockAdditionalData.credentialsHelper.getParentTypes.mockReturnValue([]);
+		mockThis.getCredentials.mockResolvedValue({ sessionToken: 'stale' });
+		const requestOptions: IHttpRequestOptions = { method: 'GET', url: `${baseUrl}/items` };
+		mockAdditionalData.credentialsHelper.authenticate.mockResolvedValue(requestOptions);
+
+		const error401 = Object.assign(new Error('401 - session expired'), {
+			response: { status: 401 },
+		});
+		request.mockRejectedValueOnce(error401);
+
+		await expect(
+			httpRequestWithAuthentication.call(
+				mockThis,
+				'testSessionAuth',
+				requestOptions,
+				mockWorkflow,
+				mockNode,
+				mockAdditionalData,
+				{ preAuthenticationRetryStatusCode: [403, 404] },
+			),
+		).rejects.toSatisfy(
+			(thrown: unknown) => thrown instanceof NodeApiError && thrown.cause === error401,
+		);
+
+		expect(request).toHaveBeenCalledTimes(1);
+		expect(mockAdditionalData.credentialsHelper.preAuthentication).toHaveBeenCalledTimes(1);
+	});
+
 	// By default this path's generic preAuthentication retry only fires on exactly
 	// 401 (unlike the legacy requestWithAuthentication, which retries on any error —
 	// see the "requestWithAuthentication (legacy)" suite below) — a 404/403 here
@@ -194,6 +224,84 @@ describe('httpRequestWithAuthentication', () => {
 
 		expect(result).toEqual({ ok: true });
 		expect(request).toHaveBeenCalledTimes(2);
+	});
+
+	// `skipPreAuthenticationRetryWhileTokenIsFresh`: a 403/404 also means "does not exist", so
+	// gate those on the expiry the credential stored, or a batch of missing resources costs one
+	// token exchange plus one credential write each.
+	describe('skipPreAuthenticationRetryWhileTokenIsFresh', () => {
+		const options = {
+			preAuthenticationRetryStatusCode: [401, 403, 404],
+			skipPreAuthenticationRetryWhileTokenIsFresh: true,
+		};
+
+		const runWith = async (
+			credentials: ICredentialDataDecryptedObject,
+			status: number,
+			requestOptions: IHttpRequestOptions = { method: 'GET', url: `${baseUrl}/items` },
+		) => {
+			mockAdditionalData.credentialsHelper.getParentTypes.mockReturnValue([]);
+			mockThis.getCredentials.mockResolvedValue(credentials);
+			mockAdditionalData.credentialsHelper.preAuthentication
+				.mockResolvedValueOnce(undefined)
+				.mockResolvedValueOnce({ accessToken: 'fresh' });
+			mockAdditionalData.credentialsHelper.authenticate.mockResolvedValue(requestOptions);
+			request
+				.mockRejectedValueOnce(
+					Object.assign(new Error(`${status} - failed`), { response: { status } }),
+				)
+				.mockResolvedValueOnce({ ok: true });
+
+			return await httpRequestWithAuthentication.call(
+				mockThis,
+				'testServiceAccount',
+				requestOptions,
+				mockWorkflow,
+				mockNode,
+				mockAdditionalData,
+				options,
+			);
+		};
+
+		test('does not retry a 404 while the stored token is still live', async () => {
+			await expect(
+				runWith({ accessToken: 'live', n8n_expires_at: String(Date.now() + 3_600_000) }, 404),
+			).rejects.toThrow(NodeApiError);
+
+			expect(request).toHaveBeenCalledTimes(1);
+			// only the unforced call that runs before the request
+			expect(mockAdditionalData.credentialsHelper.preAuthentication).toHaveBeenCalledTimes(1);
+		});
+
+		test('retries a 404 once the stored token is at its expiry', async () => {
+			const result = await runWith(
+				{ accessToken: 'stale', n8n_expires_at: String(Date.now() - 1_000) },
+				404,
+			);
+
+			expect(result).toEqual({ ok: true });
+			expect(request).toHaveBeenCalledTimes(2);
+		});
+
+		test.each([
+			['unknown', {}],
+			['unparsable', { n8n_expires_at: 'tomorrow' }],
+		])('retries a 404 when the stored expiry is %s', async (_label, stored) => {
+			const result = await runWith({ accessToken: 'stale', ...stored }, 404);
+
+			expect(result).toEqual({ ok: true });
+			expect(request).toHaveBeenCalledTimes(2);
+		});
+
+		test('still retries a 401 while the stored token reads as live, since the server rejected it', async () => {
+			const result = await runWith(
+				{ accessToken: 'revoked', n8n_expires_at: String(Date.now() + 3_600_000) },
+				401,
+			);
+
+			expect(result).toEqual({ ok: true });
+			expect(request).toHaveBeenCalledTimes(2);
+		});
 	});
 
 	test('refreshes but does NOT resend a drained form-data body on 401; the original error surfaces', async () => {

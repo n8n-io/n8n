@@ -27,6 +27,7 @@ import { TagService } from '@/services/tag.service';
 import { UrlService } from '@n8n/backend-services';
 import { Telemetry } from '@/telemetry';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import { ErrorWorkflowValidationService } from '@/workflows/error-workflow-validation.service';
 import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 
@@ -201,6 +202,20 @@ describe('update-workflow MCP tool', () => {
 		incrementPostSaveFailure: vi.fn(),
 	});
 
+	/**
+	 * Built per tool, not once in `beforeEach`: a test may swap `globalConfig`
+	 * (custom error-trigger type) before building its tool, and the service reads
+	 * the config it was constructed with.
+	 */
+	const buildErrorWorkflowValidationService = () =>
+		new ErrorWorkflowValidationService(
+			globalConfig,
+			nodeTypes,
+			workflowFinderService,
+			workflowPublishedDataService,
+			subworkflowPolicyChecker,
+		);
+
 	const createTool = () =>
 		createUpdateWorkflowTool(
 			user,
@@ -215,8 +230,7 @@ describe('update-workflow MCP tool', () => {
 			dataTableOps as never,
 			tagService,
 			globalConfig,
-			subworkflowPolicyChecker,
-			workflowPublishedDataService,
+			buildErrorWorkflowValidationService(),
 			aiGatewayService,
 			{},
 			logger,
@@ -2075,6 +2089,42 @@ describe('update-workflow MCP tool', () => {
 				);
 			});
 
+			// Ref: ADO-5928. Error workflow references must respect MCP availability.
+			test('rejects an error workflow that is not available in MCP', async () => {
+				findWorkflowMock.mockImplementation(async (id: string) =>
+					id === 'err-wf'
+						? Object.assign(errorHandlerWorkflow(), { settings: { availableInMCP: false } })
+						: buildExistingWorkflow(),
+				);
+
+				const result = await callHandler({
+					workflowId: 'wf-1',
+					operations: [{ type: 'setWorkflowSettings', settings: { errorWorkflow: 'err-wf' } }],
+				});
+
+				expect(result.isError).toBe(true);
+				expect(parseResult(result).error).toContain('not available in MCP');
+				expect(parseResult(result).error).toContain('/workflow/err-wf?settings=true');
+				expect(workflowService.update).not.toHaveBeenCalled();
+			});
+
+			test('rejects an archived error workflow', async () => {
+				findWorkflowMock.mockImplementation(async (id: string) =>
+					id === 'err-wf'
+						? Object.assign(errorHandlerWorkflow(), { isArchived: true })
+						: buildExistingWorkflow(),
+				);
+
+				const result = await callHandler({
+					workflowId: 'wf-1',
+					operations: [{ type: 'setWorkflowSettings', settings: { errorWorkflow: 'err-wf' } }],
+				});
+
+				expect(result.isError).toBe(true);
+				expect(parseResult(result).error).toContain("Workflow 'err-wf' is archived");
+				expect(workflowService.update).not.toHaveBeenCalled();
+			});
+
 			test('rejects when the error workflow is not found or inaccessible', async () => {
 				findWorkflowMock.mockImplementation(async (id: string) =>
 					id === 'wf-1' ? buildExistingWorkflow() : null,
@@ -2100,6 +2150,7 @@ describe('update-workflow MCP tool', () => {
 						return Object.assign(new WorkflowEntity(), {
 							id: 'draft-only-wf',
 							name: 'Draft Only Handler',
+							settings: { availableInMCP: true },
 							nodes: [makeNode({ id: 'et', name: 'Error Trigger', type: ERROR_TRIGGER_NODE_TYPE })],
 							connections: {},
 							activeVersionId: null,
@@ -2166,6 +2217,7 @@ describe('update-workflow MCP tool', () => {
 						return Object.assign(new WorkflowEntity(), {
 							id: 'no-trigger-wf',
 							name: 'Not An Error Handler',
+							settings: { availableInMCP: true },
 							nodes: [makeNode({ id: 'et', name: 'Error Trigger', type: ERROR_TRIGGER_NODE_TYPE })],
 							connections: {},
 							activeVersionId: 'no-trigger-wf-v1',
@@ -2307,6 +2359,26 @@ describe('update-workflow MCP tool', () => {
 				expect(findWorkflowMock).toHaveBeenCalledTimes(1);
 				const saved = updateMock.mock.calls[0][1] as WorkflowEntity;
 				expect(saved.settings).toEqual(expect.objectContaining({ errorWorkflow: 'DEFAULT' }));
+			});
+
+			// Nothing evaluates `settings.errorWorkflow`; `executeErrorWorkflow` uses it
+			// as a literal workflow id. Saving an expression would look like it worked
+			// and then silently never run a handler.
+			test('rejects an expression instead of saving a reference that never resolves', async () => {
+				const result = await callHandler({
+					workflowId: 'wf-1',
+					operations: [
+						{
+							type: 'setWorkflowSettings',
+							settings: { errorWorkflow: '={{ $json.handlerId }}' },
+						},
+					],
+				});
+
+				const response = parseResult(result);
+				expect(result.isError).toBe(true);
+				expect(response.error).toContain('does not accept expressions');
+				expect(workflowService.update).not.toHaveBeenCalled();
 			});
 
 			test('does not attach settings for node-only edits', async () => {
@@ -2487,8 +2559,7 @@ describe('update-workflow MCP tool', () => {
 					dataTableOps as never,
 					tagService,
 					globalConfig,
-					subworkflowPolicyChecker,
-					workflowPublishedDataService,
+					buildErrorWorkflowValidationService(),
 					aiGatewayService,
 					{},
 					logger,
@@ -3849,8 +3920,7 @@ describe('update-workflow MCP tool', () => {
 					dataTableOps as never,
 					tagService,
 					globalConfig,
-					subworkflowPolicyChecker,
-					workflowPublishedDataService,
+					buildErrorWorkflowValidationService(),
 					aiGatewayService,
 					{},
 					logger,
@@ -3889,8 +3959,7 @@ describe('update-workflow MCP tool', () => {
 					dataTableOps as never,
 					tagService,
 					globalConfig,
-					subworkflowPolicyChecker,
-					workflowPublishedDataService,
+					buildErrorWorkflowValidationService(),
 					aiGatewayService,
 					{},
 					logger,
@@ -3929,8 +3998,7 @@ describe('update-workflow MCP tool', () => {
 					dataTableOps as never,
 					tagService,
 					globalConfig,
-					subworkflowPolicyChecker,
-					workflowPublishedDataService,
+					buildErrorWorkflowValidationService(),
 					aiGatewayService,
 					{},
 					logger,

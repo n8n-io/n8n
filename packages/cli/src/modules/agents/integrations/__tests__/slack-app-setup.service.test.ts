@@ -6,12 +6,14 @@ import { mock } from 'vitest-mock-extended';
 import type { Cipher } from 'n8n-core';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
-import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
+import {
+	type CredentialsFinderService,
+	type CacheService,
+	type UrlService,
+} from '@n8n/backend-services';
 import type { CredentialsOverwrites } from '@/credentials-overwrites';
 import { BadRequestError } from '@n8n/errors';
-import type { CacheService } from '@n8n/backend-services';
 import type { ProjectService } from '@/services/project.service.ee';
-import type { UrlService } from '@n8n/backend-services';
 
 import type { AgentIntegrationManagementService } from '../../agent-integration-management.service';
 import type { AgentRepository } from '../../repositories/agent.repository';
@@ -677,6 +679,7 @@ describe('Slack setup services', () => {
 					type: 'slackManagerOAuth2Api',
 					data: 're-encrypted',
 				},
+				{ kind: 'user', user },
 				rawData,
 			);
 		} else {
@@ -854,6 +857,7 @@ describe('Slack setup services', () => {
 		expect(credentialsService.update).toHaveBeenCalledWith(
 			'manager',
 			{ data: 'encrypted' },
+			{ kind: 'system', reason: 'integration' },
 			expect.objectContaining({
 				oauthTokenData: expect.objectContaining({
 					authed_user: expect.objectContaining({

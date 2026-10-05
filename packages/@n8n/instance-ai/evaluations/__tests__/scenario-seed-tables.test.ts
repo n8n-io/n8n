@@ -1,9 +1,11 @@
+import type { InstanceAiEvalExecutionResult } from '@n8n/api-types';
 import { vi } from 'vitest';
 import type { Mock } from 'vitest';
 
 import type { N8nClient } from '../clients/n8n-client';
 import { SEED_NAME_RE } from '../harness/conversation-seed';
 import type { EvalLogger } from '../harness/logger';
+import { executeScenario } from '../harness/scenario-execution';
 import {
 	buildSeededTablesNote,
 	dedupeScenarioSeedTables,
@@ -365,5 +367,38 @@ describe('evictLeftoverSeedTables', () => {
 		await expect(
 			evictLeftoverSeedTables(broken, [jobApplications], new Set(['left-1']), silentLogger),
 		).resolves.toBeUndefined();
+	});
+});
+
+describe('executeScenario with seeded tables', () => {
+	it('asks the server to read the reseeded tables live', async () => {
+		// A budget stop ends the scenario before verification, so only the execute call runs.
+		const executeWithLlmMock = vi.fn<N8nClient['executeWithLlmMock']>().mockResolvedValue({
+			executionId: 'exec-1',
+			success: false,
+			nodeResults: {},
+			errors: ['Execution exceeded its 895s eval budget and was stopped'],
+		} as unknown as InstanceAiEvalExecutionResult);
+		const client = {
+			seedDataTableRows: vi.fn().mockResolvedValue(undefined),
+			executeWithLlmMock,
+		} as unknown as N8nClient;
+
+		await expect(
+			executeScenario(
+				client,
+				'wf-1',
+				scenario({ seedDataTables: [jobApplications] }),
+				[],
+				silentLogger,
+				undefined,
+				undefined,
+				undefined,
+				undefined,
+				{ threadId: 'thread-1', tableIdsByName: { 'Job Applications': 'dt-real-1' } },
+			),
+		).rejects.toThrow();
+
+		expect(executeWithLlmMock.mock.calls[0][4]).toEqual(['dt-real-1']);
 	});
 });

@@ -17,11 +17,10 @@ import { randomBytes } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
-import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
+import { CredentialsFinderService, CacheService } from '@n8n/backend-services';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { BadRequestError, NotFoundError } from '@n8n/errors';
-import { CacheService } from '@n8n/backend-services';
 
 import { SlackMethodsService } from './slack-methods.service';
 import {
@@ -251,7 +250,12 @@ export class SlackManagedSetupService {
 			type: manager.credential.type,
 			data: manager.rawData,
 		});
-		await this.credentialsService.update(options.credentialId, encrypted, manager.rawData);
+		await this.credentialsService.update(
+			options.credentialId,
+			encrypted,
+			{ kind: 'user', user: options.user },
+			manager.rawData,
+		);
 	}
 
 	async installApp(
@@ -980,7 +984,12 @@ export class SlackManagedSetupService {
 			type: manager.credential.type,
 			data: updatedData,
 		});
-		await this.credentialsService.update(manager.credential.id, encrypted, updatedData);
+		await this.credentialsService.update(
+			manager.credential.id,
+			encrypted,
+			{ kind: 'system', reason: 'integration' },
+			updatedData,
+		);
 		manager.oauthTokenData = oauthTokenData;
 		manager.accessToken = refreshedAccessToken;
 	}

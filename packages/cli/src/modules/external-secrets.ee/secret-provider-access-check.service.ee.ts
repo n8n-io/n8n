@@ -9,7 +9,7 @@ import { combineScopes, getAuthPrincipalScopes, hasGlobalScope } from '@n8n/perm
 
 import { ForbiddenError, NotFoundError } from '@n8n/errors';
 import { ProjectService } from '@/services/project.service.ee';
-import { RoleService } from '@/services/role.service';
+import { RoleService } from '@n8n/backend-services';
 
 @Service()
 export class SecretsProviderAccessCheckService {

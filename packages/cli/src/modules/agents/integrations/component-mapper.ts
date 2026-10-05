@@ -327,7 +327,7 @@ export class ComponentMapper {
 	 * tool's resume schema.
 	 *
 	 * Inspects the JSON Schema top-level properties to determine the shape:
-	 * - Schema has `approved` (boolean) → `{ approved: value === 'true' }`
+	 * - Schema has `approved` → an approval decision, including an optional session scope
 	 * - Schema has `values` (object) → `{ values: { action: value } }`
 	 * - No schema / unknown → try JSON.parse, fall back to `{ value }`
 	 */
@@ -349,6 +349,7 @@ export class ComponentMapper {
 		const props = schema.properties ?? {};
 
 		if ('approved' in props) {
+			if (rawValue === 'session') return { approved: true, scope: 'session' };
 			return { approved: rawValue === 'true' };
 		}
 

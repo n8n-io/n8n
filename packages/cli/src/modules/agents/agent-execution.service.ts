@@ -44,11 +44,14 @@ import {
 } from './execution-log/agent-execution-log-store';
 import { N8nMemory } from './integrations/n8n-memory';
 import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
-import { draftChatMemoryResourceId } from './utils/agent-memory-scope';
 import {
+	draftChatMemoryResourceId,
+	productionChatMemoryResourceId,
+} from './utils/agent-memory-scope';
+import {
+	canContinueThreadInN8nChat,
 	canContinueThreadInPreview,
 	canUseTopLevelDraftThread,
-	N8N_CHAT_PRODUCTION_SOURCE,
 	threadBelongsTo,
 	type AgentSessionMode,
 } from './utils/agent-thread-access';
@@ -62,6 +65,7 @@ import {
 	computeExecutionFailureSummary,
 	type ThreadFailureSummary,
 } from './utils/execution-failure-summary';
+import { applyFatalSessionOutcome } from './utils/fatal-session-outcome';
 
 export interface RecordMessageParams {
 	threadId: string;
@@ -97,6 +101,7 @@ export interface StartExecutionParams extends Omit<RecordMessageParams, 'record'
 	messageOrigin?: Omit<AgentMessageOrigin, 'source' | 'hidden'>;
 	hideUserMessageFromTranscript?: boolean;
 	access: AgentThreadAccess;
+	previewChat?: boolean;
 	sessionMode?: AgentSessionMode;
 	initialTimeline?: TimelineEvent[];
 	/** Internal admission data. These fields are not stored on the execution. */
@@ -218,6 +223,7 @@ export class AgentExecutionService {
 		const execution = this.agentExecutionRepository.create({
 			threadId: params.threadId,
 			status: 'running',
+			acceptsSteering: params.previewChat === true,
 			startedAt,
 			stoppedAt: null,
 			duration: 0,
@@ -386,7 +392,8 @@ export class AgentExecutionService {
 	async finalizeExecution(executionId: string, params: RecordMessageParams): Promise<string> {
 		this.stopHeartbeat(executionId);
 		this.pendingTimelineSnapshots.delete(executionId);
-		const { record } = params;
+		const record = applyFatalSessionOutcome(params.record);
+		const settled = record === params.record ? params : { ...params, record };
 		const status = executionStatus(record);
 		const stoppedAt = new Date(record.startTime + record.duration);
 		const failureSummary = computeExecutionFailureSummary({
@@ -399,10 +406,10 @@ export class AgentExecutionService {
 			record.timeline.length > 0 ? this.storageConfig.modeTag : 'db';
 
 		try {
-			await this.writeTerminalExecution(executionId, params, status, stoppedAt, failureSummary);
+			await this.writeTerminalExecution(executionId, settled, status, stoppedAt, failureSummary);
 
 			// Save the terminal row first. A rejected finalization must not replace a stored blob.
-			await this.moveFinalTimelineToBlob(executionId, params, storedAt);
+			await this.moveFinalTimelineToBlob(executionId, settled, storedAt);
 
 			this.executionUpdateBroadcaster.notify({
 				projectId: params.projectId,
@@ -410,7 +417,7 @@ export class AgentExecutionService {
 				threadId: params.threadId,
 				executionId,
 			});
-			await this.completeRecordedExecution(params, executionId, status);
+			await this.completeRecordedExecution(settled, executionId, status);
 			return executionId;
 		} catch (error) {
 			this.errorReporter.error(error);
@@ -749,7 +756,7 @@ export class AgentExecutionService {
 				firstMessage: cleanUserMessage(messageMap.get(t.id) ?? null, t.agentName),
 				source,
 				failureSummary: failureSummaryMap.get(t.id) ?? null,
-				status: toSessionStatus(latestStatusMap.get(t.id), failureSummaryMap.has(t.id)),
+				status: toSessionStatus(latestStatusMap.get(t.id)),
 			};
 		});
 	}
@@ -897,7 +904,7 @@ export class AgentExecutionService {
 			return canContinueThreadInPreview(thread, userId, sources.get(threadId));
 		}
 		if (options.sessionMode === 'existing') return false;
-		return await this.canUseUnrecordedDraftThread(threadId, agentId, userId);
+		return await this.canUseUnrecordedThread(threadId, agentId, draftChatMemoryResourceId(userId));
 	}
 
 	async canUseProductionChatThread(
@@ -908,24 +915,31 @@ export class AgentExecutionService {
 		sessionMode: AgentSessionMode,
 	): Promise<boolean> {
 		const thread = await this.findThreadById(threadId);
-		if (!thread) return sessionMode === 'new';
+		if (!thread)
+			return (
+				sessionMode === 'new' &&
+				(await this.canUseUnrecordedThread(
+					threadId,
+					agentId,
+					productionChatMemoryResourceId(userId),
+				))
+			);
 		if (
 			thread.projectId !== projectId ||
 			thread.agentId !== agentId ||
-			!canUseTopLevelDraftThread(thread, userId) ||
-			thread.taskId !== null
+			!canUseTopLevelDraftThread(thread, userId)
 		)
 			return false;
 		const sources = await this.agentExecutionRepository.findFirstSourceByThreadIds([threadId]);
-		return sources.get(threadId) === N8N_CHAT_PRODUCTION_SOURCE;
+		return canContinueThreadInN8nChat(thread, userId, sources.get(threadId));
 	}
 
-	private async canUseUnrecordedDraftThread(
+	/** A session ID without a thread is free only when no other memory scope uses it. */
+	private async canUseUnrecordedThread(
 		threadId: string,
 		agentId: string,
-		userId: string,
+		resourceId: string,
 	): Promise<boolean> {
-		const resourceId = draftChatMemoryResourceId(userId);
 		const memory = await this.n8nMemory.getImplementation(agentId).getThread(threadId);
 		if (memory && memory.resourceId !== resourceId) return false;
 		return await this.checkpointStorage.hasNoConflictingThreadResource(
@@ -993,13 +1007,17 @@ export class AgentExecutionService {
 		let lastError: unknown;
 		for (let attempt = 1; attempt <= maxAttempts; attempt++) {
 			try {
-				const finalized = await this.agentExecutionRepository.updateIfRunning(
-					executionId,
-					terminalValues,
-					undefined,
-					{},
-					record.totalCost ?? undefined,
-				);
+				const finalized = await this.txRunner.run({}, async (ctx) => {
+					if (!(await this.agentExecutionThreadRepository.lockById(params.threadId, ctx)))
+						return false;
+					return await this.agentExecutionRepository.updateIfRunning(
+						executionId,
+						terminalValues,
+						undefined,
+						ctx,
+						record.totalCost ?? undefined,
+					);
+				});
 				if (!finalized) {
 					throw new OperationalError('Agent execution is no longer running', {
 						extra: { executionId },
@@ -1211,10 +1229,9 @@ export class AgentExecutionService {
 
 export function toSessionStatus(
 	latestStatus: AgentExecutionStatus | undefined,
-	hasFailureSummary: boolean,
 ): AgentSessionStatus | null {
 	if (!latestStatus) return null;
-	if (latestStatus === 'success') return hasFailureSummary ? 'error' : 'succeeded';
+	if (latestStatus === 'success') return 'succeeded';
 	return latestStatus;
 }
 

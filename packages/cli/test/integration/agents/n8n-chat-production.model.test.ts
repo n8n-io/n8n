@@ -132,6 +132,7 @@ function formatCassette(definitions: nock.Definition[]): string {
 ${definitions
 	.map((definition) => {
 		const fields = Object.entries(definition)
+			.filter(([, value]) => value !== undefined)
 			.map(([key, value]) => `\t\t${JSON.stringify(key)}: ${JSON.stringify(value)}`)
 			.join(',\n');
 		return `\t{\n${fields}\n\t}`;

@@ -1,6 +1,7 @@
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { EngineConfig } from '@n8n/config';
 import type { ExecutionResponseSender } from '@n8n/engine';
+import type { BinaryDataService } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
 import type { CredentialTypes } from '@/credential-types';
@@ -101,6 +102,7 @@ describe('EngineV2Runtime', () => {
 	const credentialsHelper = mock<CredentialsHelper>();
 	const credentialTypes = mock<CredentialTypes>();
 	const additionalDataBuilder = mock<EngineAdditionalDataBuilder>();
+	const binaryDataService = mock<BinaryDataService>();
 
 	// `@n8n/engine` is mocked below, so the sender is a stand-in too.
 	const responseSender = () => mock<ExecutionResponseSender>();
@@ -115,6 +117,7 @@ describe('EngineV2Runtime', () => {
 			credentialsHelper,
 			credentialTypes,
 			additionalDataBuilder,
+			binaryDataService,
 		);
 
 	const stepContext = {
@@ -201,6 +204,23 @@ describe('EngineV2Runtime', () => {
 				events,
 				signal,
 			);
+		});
+
+		it('injects a deleter that removes the binary files of one execution', async () => {
+			await newRuntime().init(responseSender());
+
+			const deleteExecutionFiles = externalDependencies({ executionStore: {}, stepStore: {} })
+				.deleteExecutionFiles as (execution: {
+				workflowId: string;
+				executionId: string;
+			}) => Promise<void>;
+
+			await deleteExecutionFiles({ workflowId: 'wf-1', executionId: 'exec-1' });
+
+			// One location per run, so the store removes the whole directory of the execution.
+			expect(binaryDataService.deleteMany).toHaveBeenCalledExactlyOnceWith([
+				{ type: 'execution', workflowId: 'wf-1', executionId: 'exec-1' },
+			]);
 		});
 
 		it('injects the v1 step executor so v1-node steps can run', async () => {
