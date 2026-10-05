@@ -1,7 +1,13 @@
+import { toEngineConnections, type WorkflowJSON } from '@n8n/workflow-sdk';
+import { NodeConnectionTypes } from 'n8n-workflow';
+
 import { prepareVerificationRun, type PreparedVerificationRun } from './prepare-run';
 import type { ExecutionRunResult, VerifyToolInput, WorkflowTaskService } from './types';
 import type { Logger } from '../../../logger';
+import type { InstanceAiExecutionService } from '../../../types';
 import type { WorkflowBuildOutcome } from '../../../workflow-loop/workflow-loop-state';
+import { firstPageOmissions } from '../../workflows/next-workflow-build';
+import { contractLoopsOf } from '../../workflows/workflow-validation-warnings';
 
 /**
  * Node contracts: verification reads a node with a declared output live, so the drift check sees
@@ -52,6 +58,49 @@ export function failedLiveReads(
 	return liveReadNodeNames
 		.filter((nodeName) => !finished.has(nodeName))
 		.map((nodeName) => ({ nodeName, reason: stopped }));
+}
+
+/** The output of a loop check that ends the loop: `CHECK_DONE` in `@n8n/workflow-sdk/next`. */
+const LOOP_DONE_OUTPUT = 0;
+
+type RunOptions = NonNullable<Parameters<InstanceAiExecutionService['run']>[2]>;
+
+/**
+ * The run options for the live reads of a verification run. Each read sends one request: the
+ * engine runs it once and gives that output to its later runs, and a paged read runs without its
+ * page inputs. The same response on each pass can keep a loop from meeting its exit condition, so
+ * each loop that holds a live read ends at its pass limit, as with `onLimit: 'continue'`.
+ */
+export async function liveReadRunOptions(
+	workflow: WorkflowJSON | undefined,
+	liveReadNodeNames: readonly string[],
+): Promise<Pick<RunOptions, 'readOnceNodeNames' | 'omitParameters' | 'redirectOutputs'>> {
+	if (liveReadNodeNames.length === 0) return {};
+	if (!workflow) return { readOnceNodeNames: [...liveReadNodeNames] };
+	const { loopNodeNames } = await import('@n8n/workflow-sdk/next');
+	const readIds = new Set(
+		workflow.nodes.flatMap((node) =>
+			node.name && node.id && liveReadNodeNames.includes(node.name) ? [node.id] : [],
+		),
+	);
+	const connections = toEngineConnections(workflow.connections);
+	const redirectOutputs = (await contractLoopsOf(workflow)).flatMap(({ headId, nodeIds }) => {
+		const head = workflow.nodes.find((node) => node.id === headId)?.name;
+		if (!head || !nodeIds.some((id) => readIds.has(id))) return [];
+		const { check, limit } = loopNodeNames(head);
+		const output = (connections[check]?.[NodeConnectionTypes.Main] ?? []).findIndex((targets) =>
+			targets?.some(({ node }) => node === limit),
+		);
+		return output > LOOP_DONE_OUTPUT
+			? [{ nodeName: check, output, asOutput: LOOP_DONE_OUTPUT }]
+			: [];
+	});
+	const omitParameters = firstPageOmissions(workflow, liveReadNodeNames);
+	return {
+		readOnceNodeNames: [...liveReadNodeNames],
+		...(omitParameters.length > 0 ? { omitParameters } : {}),
+		...(redirectOutputs.length > 0 ? { redirectOutputs } : {}),
+	};
 }
 
 /** The outcome patch that pins the declared fixture of each failed live read. */

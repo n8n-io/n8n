@@ -1073,6 +1073,78 @@ describe('processRunExecutionData', () => {
 		});
 	});
 
+	describe('reuseFirstRunNodeNames', () => {
+		const runLoop = async (nodeContractsEnabled: boolean) => {
+			const read = vi.fn(async function (this: IExecuteFunctions) {
+				return [[{ json: { request: read.mock.calls.length } }]];
+			});
+			let passes = 0;
+			const loopCheck: INodeType = {
+				description: { ...passThroughNode.description, outputs: ['main', 'main'] },
+				async execute(this: IExecuteFunctions) {
+					passes++;
+					const items = this.getInputData();
+					return passes < 5 ? [items, []] : [[], items];
+				},
+			};
+			const start = createNodeData({ name: 'Start', type: types.passThrough });
+			const fetchNode = createNodeData({ name: 'Fetch', type: 'fetch' });
+			const check = createNodeData({ name: 'Check', type: 'loopCheck' });
+			const workflow = new DirectedGraph()
+				.addNodes(start, fetchNode, check)
+				.addConnections(
+					{ from: start, to: fetchNode },
+					{ from: fetchNode, to: check },
+					{ from: check, to: fetchNode, outputIndex: 0 },
+				)
+				.toWorkflow({
+					name: '',
+					active: false,
+					nodeTypes: NodeTypes({
+						...nodeTypeArguments,
+						fetch: { type: { ...passThroughNode, execute: read }, sourcePath: '' },
+						loopCheck: { type: loopCheck, sourcePath: '' },
+					}),
+					settings: { executionOrder: 'v1', reuseFirstRunNodeNames: ['Fetch'] },
+				});
+			const executionData = createRunExecutionData({
+				startData: { startNodes: [{ name: start.name, sourceData: null }] },
+				executionData: {
+					nodeExecutionStack: [{ data: { main: [[{ json: {} }]] }, node: start, source: null }],
+				},
+			});
+			const workflowExecute = new WorkflowExecute(
+				mock<IWorkflowExecuteAdditionalData>({
+					hooks: { runHook },
+					restartExecutionId: undefined,
+					encryptedRunnerIdentity: undefined,
+					otel: { injectTraceHeaders: vi.fn(), traceId: vi.fn(), nodeContractsEnabled },
+				}),
+				executionMode,
+				executionData,
+			);
+			const result = await workflowExecute.processRunExecutionData(workflow);
+			const outputs = result.data.resultData.runData.Fetch.map(
+				(run) => run.data?.main[0]?.[0]?.json,
+			);
+			return { requests: read.mock.calls.length, outputs };
+		};
+
+		test('runs a listed node once in a loop and gives its first output on each later pass', async () => {
+			const { requests, outputs } = await runLoop(true);
+
+			expect(requests).toBe(1);
+			expect(outputs).toEqual(Array.from({ length: 5 }, () => ({ request: 1 })));
+		});
+
+		test('runs the node on each pass when node contracts are off', async () => {
+			const { requests, outputs } = await runLoop(false);
+
+			expect(requests).toBe(5);
+			expect(outputs).toEqual([1, 2, 3, 4, 5].map((request) => ({ request })));
+		});
+	});
+
 	describe('lastNodeExecuted tracking', () => {
 		test('sets lastNodeExecuted when node returns successful data', async () => {
 			// ARRANGE

@@ -79,8 +79,10 @@ make a run pass.
 - `skippedParameterChecks`: say that these dynamic fields are not checked.
 - `shapeWarnings`: an output does not match its declared `schema`. Fix the
   schema or the reads that it names, then build again.
-- Verification reads a GET step with a `schema` live, one request. A `sample`
-  or `pages` keeps it pinned, so give a GET that changes data a `sample`.
+- Verification reads a GET step with a `schema` live, once: one request, the
+  first page of `pages`. Later runs of the step, e.g. loop passes, reuse that
+  response; a loop that waits for new data ends at `maxIterations`. A `sample`
+  keeps it pinned, so give a GET that changes data a `sample`.
 - `liveReadNote`: the live read failed and its declared fixture stood in. This
   is not a workflow error. Do not edit the workflow for it.
 - `resolvedValues` shows the source field of each mapped field. A

@@ -4076,6 +4076,12 @@ export interface IWorkflowSettings {
 	credentialResolverId?: string;
 	redactionPolicy?: WorkflowSettings.RedactionPolicy;
 	customTelemetryTags?: ICustomTelemetryTag[];
+	/**
+	 * Node contracts: nodes that run at most once in an execution. A later run gives the output of
+	 * the first run. Build verification sets it on its ephemeral run copy, so a live read sends one
+	 * request. The engine reads it only when `otel.nodeContractsEnabled` is on.
+	 */
+	reuseFirstRunNodeNames?: string[];
 }
 
 export interface WorkflowFEMeta {

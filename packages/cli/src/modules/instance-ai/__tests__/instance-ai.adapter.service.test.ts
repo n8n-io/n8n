@@ -5313,7 +5313,7 @@ describe('createExecutionAdapter run()', () => {
 			name: 'Fetch',
 			type: '@n8n/nodes-base-next.httpRequestGet',
 			typeVersion: 3,
-			parameters: {},
+			parameters: { url: 'https://api.example.com/items', pages: { style: 'link' } },
 			position: [0, 0] as [number, number],
 			retryOnFail: true,
 		};
@@ -5321,17 +5321,59 @@ describe('createExecutionAdapter run()', () => {
 		const workflow = { id: 'wf-1', nodes: [fetch, post] };
 		const { adapter, mockWorkflowRunner } = createRunAdapterForTests(workflow);
 
-		await adapter.run('wf-1', undefined, { readOnceNodeNames: ['Fetch'] });
+		await adapter.run('wf-1', undefined, {
+			readOnceNodeNames: ['Fetch'],
+			omitParameters: [{ nodeName: 'Fetch', parameter: 'pages' }],
+		});
 		await adapter.run('wf-1');
 
 		const [readOnce, plain] = mockWorkflowRunner.run.mock.calls.map((call) => call[0]);
 		expect(readOnce.workflowData.nodes).toEqual([
-			{ ...fetch, executeOnce: true, retryOnFail: false },
+			{
+				...fetch,
+				parameters: { url: 'https://api.example.com/items' },
+				executeOnce: true,
+				retryOnFail: false,
+			},
 			post,
 		]);
+		expect(readOnce.workflowData.settings?.reuseFirstRunNodeNames).toEqual(['Fetch']);
 		expect(plain.workflowData.nodes).toBe(workflow.nodes);
+		expect(plain.workflowData.settings).not.toHaveProperty('reuseFirstRunNodeNames');
 		expect(workflow.nodes[0]).toBe(fetch);
 		expect(fetch.retryOnFail).toBe(true);
+		expect(fetch.parameters).toHaveProperty('pages');
+	});
+
+	it('sends a redirected output where another output of the node sends it, on the run copy only', async () => {
+		const workflow = {
+			id: 'wf-1',
+			nodes: [],
+			connections: {
+				'Walk until': {
+					main: [
+						[{ node: 'Report', type: 'main', index: 0 }],
+						[{ node: 'Walk limit', type: 'main', index: 0 }],
+						[{ node: 'Walk next', type: 'main', index: 0 }],
+					],
+				},
+			},
+		};
+		const { adapter, mockWorkflowRunner } = createRunAdapterForTests(workflow);
+
+		await adapter.run('wf-1', undefined, {
+			redirectOutputs: [{ nodeName: 'Walk until', output: 1, asOutput: 0 }],
+		});
+
+		const runData = mockWorkflowRunner.run.mock.calls[0][0];
+		expect(runData.workflowData.connections['Walk until'].main).toEqual([
+			[{ node: 'Report', type: 'main', index: 0 }],
+			[{ node: 'Report', type: 'main', index: 0 }],
+			[{ node: 'Walk next', type: 'main', index: 0 }],
+		]);
+		expect(workflow.connections['Walk until'].main[1]).toEqual([
+			{ node: 'Walk limit', type: 'main', index: 0 },
+		]);
 	});
 
 	it('attaches Instance AI execution telemetry metadata to workflow runs', async () => {

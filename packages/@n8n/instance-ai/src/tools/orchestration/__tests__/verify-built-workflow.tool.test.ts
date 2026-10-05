@@ -2565,6 +2565,40 @@ describe('verify-built-workflow tool — live reads', () => {
 		);
 	});
 
+	it('runs a paged live read without its page inputs, so it reads the first page', async () => {
+		const { ctx } = makeContext(liveReadOutcome(), {
+			executionId: 'exec-live',
+			status: 'success',
+			executedNodeNames: ['Start', 'Fetch'],
+			data: { Fetch: declared },
+		});
+		vi.mocked(ctx.domainContext.workflowService!.getAsWorkflowJSON).mockResolvedValue({
+			name: 'Issues',
+			connections: {},
+			nodes: [
+				{
+					id: 'fetch',
+					name: 'Fetch',
+					type: '@n8n/nodes-base-next.httpRequestGet',
+					typeVersion: 3,
+					position: [0, 0],
+					parameters: {
+						url: 'https://api.example.com/issues',
+						schema: { type: 'array', items: { type: 'object' } },
+						pages: { style: 'link' },
+					},
+				},
+			],
+		});
+
+		await runTool(ctx, { workItemId: 'wi-1', workflowId: 'wf-1' });
+
+		expect(vi.mocked(ctx.domainContext.executionService.run).mock.calls[0][2]).toMatchObject({
+			readOnceNodeNames: ['Fetch'],
+			omitParameters: [{ nodeName: 'Fetch', parameter: 'pages' }],
+		});
+	});
+
 	it('blames no live read when the run stopped after another node', async () => {
 		const { ctx } = makeContext(liveReadOutcome(), {
 			executionId: 'exec-stopped',

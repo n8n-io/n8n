@@ -2148,16 +2148,35 @@ export class InstanceAiAdapterService {
 
 				// Sever the listed edges on this run's ephemeral copy only — used by
 				// scripted wait-gate verification to keep each pass acyclic.
-				const connections = options?.omitConnections?.length
+				const severed = options?.omitConnections?.length
 					? omitWorkflowConnections(workflow.connections, options.omitConnections)
 					: workflow.connections;
-				// A live read in verification sends one request: the node runs on its first item, once.
+				const connections = options?.redirectOutputs?.length
+					? redirectWorkflowOutputs(severed, options.redirectOutputs)
+					: severed;
+				// A live read in verification sends one request: the node runs on its first item, once,
+				// and its later runs in this execution reuse that output.
 				const readOnce = new Set(options?.readOnceNodeNames ?? []);
+				const omitted = options?.omitParameters ?? [];
 				const runNodes =
-					readOnce.size > 0
-						? nodes.map((node) =>
-								readOnce.has(node.name) ? { ...node, executeOnce: true, retryOnFail: false } : node,
-							)
+					readOnce.size > 0 || omitted.length > 0
+						? nodes.map((node) => {
+								const drop = new Set(
+									omitted.flatMap(({ nodeName, parameter }) =>
+										nodeName === node.name ? [parameter] : [],
+									),
+								);
+								const parameters =
+									drop.size > 0
+										? Object.fromEntries(
+												Object.entries(node.parameters).filter(([key]) => !drop.has(key)),
+											)
+										: node.parameters;
+								if (readOnce.has(node.name)) {
+									return { ...node, parameters, executeOnce: true, retryOnFail: false };
+								}
+								return drop.size > 0 ? { ...node, parameters } : node;
+							})
 						: workflow.nodes;
 
 				// Force-save AI-initiated executions so that follow-up
@@ -2179,6 +2198,7 @@ export class InstanceAiAdapterService {
 							// Engine-side bound: checked between node executions, so it fires
 							// even when a fast pinned loop starves the timer-based cancel below.
 							executionTimeout: Math.ceil(timeoutMs / 1000),
+							...(readOnce.size > 0 ? { reuseFirstRunNodeNames: [...readOnce] } : {}),
 						},
 					},
 					userId: user.id,
@@ -5277,6 +5297,21 @@ function omitWorkflowConnections(
 		result[source] = nextByType;
 	}
 	return result;
+}
+
+/** Sends the items of each listed node output where another output of that node sends them. */
+function redirectWorkflowOutputs(
+	connections: IConnections,
+	redirects: Array<{ nodeName: string; output: number; asOutput: number }>,
+): IConnections {
+	return redirects.reduce<IConnections>((result, { nodeName, output, asOutput }) => {
+		const main = result[nodeName]?.[NodeConnectionTypes.Main];
+		if (!main) return result;
+		const outputs = Array.from({ length: Math.max(main.length, output + 1) }, (_, index) =>
+			index === output ? (main[asOutput] ?? []) : (main[index] ?? null),
+		);
+		return { ...result, [nodeName]: { ...result[nodeName], [NodeConnectionTypes.Main]: outputs } };
+	}, connections);
 }
 
 /** Get the execution mode based on the trigger node type. */

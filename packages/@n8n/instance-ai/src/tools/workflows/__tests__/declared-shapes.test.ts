@@ -1,10 +1,13 @@
 import { wrapUntrustedData } from '@n8n/agents';
+import { mockHttp, runAction } from '@n8n/node-sdk/testing';
+import { actionOfNode } from '@n8n/nodes-base-next';
 import type { IDataObject, WorkflowJSON } from '@n8n/workflow-sdk';
 
 import type { NodeOutputResult } from '../../../types';
 import type { WorkflowBuildOutcome } from '../../../workflow-loop/workflow-loop-state';
 import { declaredShapeNote, shapeWarningsBlock } from '../declared-shapes';
 import {
+	firstPageOmissions,
 	fixtureOriginsOf,
 	liveReadNodeNames,
 	sampledReadIssues,
@@ -216,13 +219,21 @@ describe('liveReadNodeNames', () => {
 		expect(liveReadNodeNames(declared, { Fetch: [{ issues: [] }] })).toEqual([]);
 	});
 
-	it('pins a GET that follows pages or declares no schema', () => {
+	it('pins a GET that declares no schema', () => {
+		expect(liveReadNodeNames(workflowOf({}))).toEqual([]);
+	});
+
+	it('reads the first page of a GET that follows pages: it runs without pages', () => {
 		const paged = workflowOf({
 			schema: issuesSchema,
+			items: '={{ $response.body.issues }}',
 			pages: { style: 'link', maxPages: 5 },
 		});
-		expect(liveReadNodeNames(paged)).toEqual([]);
-		expect(liveReadNodeNames(workflowOf({}))).toEqual([]);
+		expect(liveReadNodeNames(paged)).toEqual(['Fetch']);
+		expect(firstPageOmissions(paged, ['Fetch'])).toEqual([
+			{ nodeName: 'Fetch', parameter: 'pages' },
+		]);
+		expect(firstPageOmissions(paged, [])).toEqual([]);
 	});
 
 	it('reads a GET with items and no pages live: one request', () => {
@@ -231,6 +242,7 @@ describe('liveReadNodeNames', () => {
 			items: '={{ $response.body.issues }}',
 		});
 		expect(liveReadNodeNames(listed)).toEqual(['Fetch']);
+		expect(firstPageOmissions(listed, ['Fetch'])).toEqual([]);
 	});
 
 	it('pins a write with a declared schema', () => {
@@ -254,6 +266,44 @@ describe('liveReadNodeNames', () => {
 	});
 });
 
+describe('first page of a paged live read', () => {
+	it('reads one page of a link-paged GET without its page inputs, and checks its items', async () => {
+		const paged = workflowOf({
+			schema: {
+				type: 'array',
+				items: { type: 'object', properties: { title: { type: 'string' } } },
+			},
+			pages: { style: 'link' },
+		});
+		const fetch = mockHttp([
+			{ path: '/issues', query: { page: '2' }, reply: { json: [{ title: 'Second page' }] } },
+			{
+				path: '/issues',
+				reply: {
+					json: [{ id: 1, name: 'Bug' }],
+					headers: { link: '</issues?page=2>; rel="next"' },
+				},
+			},
+		]);
+		const live = liveReadNodeNames(paged);
+		const omitted = new Set(firstPageOmissions(paged, live).map(({ parameter }) => parameter));
+		const fetchNode = paged.nodes.find(({ name }) => name === 'Fetch');
+		const action = fetchNode && actionOfNode(fetchNode);
+		if (!fetchNode || !action) throw new Error('no Fetch action');
+		const input = Object.fromEntries(
+			Object.entries(fetchNode.parameters ?? {}).filter(([key]) => !omitted.has(key)),
+		);
+
+		const result = await runAction(action, { input, fetch });
+
+		expect(live).toEqual(['Fetch']);
+		expect(fetch.calls).toHaveLength(1);
+		const items = result.ok ? result.items : [];
+		expect(items).toEqual([{ id: 1, name: 'Bug' }]);
+		expect(await warningsFor(paged, items)).toContain('$json.title: missing');
+	});
+});
+
 describe('sampledReadIssues', () => {
 	const sample = { Fetch: [{ issues: [] }] };
 
@@ -269,11 +319,14 @@ describe('sampledReadIssues', () => {
 		]);
 	});
 
-	it('says nothing without a sample, with a schema, or for a GET that follows pages', () => {
+	it('says nothing without a sample or with a schema', () => {
 		expect(sampledReadIssues(workflowOf({}))).toEqual([]);
 		expect(sampledReadIssues(declared, sample)).toEqual([]);
+	});
+
+	it('tells a GET that follows pages too, as verification reads its first page', () => {
 		const paged = workflowOf({ pages: { style: 'link', maxPages: 5 } });
-		expect(sampledReadIssues(paged, sample)).toEqual([]);
+		expect(sampledReadIssues(paged, sample).map(({ nodeName }) => nodeName)).toEqual(['Fetch']);
 	});
 
 	it('says nothing for a write with a sample', () => {

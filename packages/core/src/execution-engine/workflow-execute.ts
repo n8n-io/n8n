@@ -1820,6 +1820,19 @@ export class WorkflowExecute {
 	}
 
 	/**
+	 * Node contracts: for a later run of a node in `reuseFirstRunNodeNames`, the output of its first
+	 * run, so a live read in build verification sends one request. Undefined before the first run.
+	 */
+	private getFirstRunOutput(workflow: Workflow, node: INode): INodeExecutionData[][] | undefined {
+		if (!this.additionalData.otel?.nodeContractsEnabled) return undefined;
+		if (!workflow.settings.reuseFirstRunNodeNames?.includes(node.name)) return undefined;
+		const first = this.runExecutionData.resultData.runData[node.name]?.[0];
+		if (!first) return undefined;
+		// Copies, because the engine sets the paired items of each run on its output items.
+		return (first.data?.main ?? [[]]).map((items) => (items ?? []).map((item) => ({ ...item })));
+	}
+
+	/**
 	 * Collect the results of the sub-nodes an AI agent asked for, so the agent can
 	 * resume with them. Does nothing if the node is not resuming from a tool call.
 	 */
@@ -2356,7 +2369,9 @@ export class WorkflowExecute {
 								}
 							}
 
-							const pinnedOutput = this.getPinnedOutput(executionNode);
+							const pinnedOutput =
+								this.getPinnedOutput(executionNode) ??
+								this.getFirstRunOutput(workflow, executionNode);
 
 							if (pinnedOutput) {
 								nodeSuccessData = pinnedOutput;

@@ -22,7 +22,11 @@ import {
 	handleBlockedVerification,
 	persistVerificationOutcome,
 } from './verification/finalize-result';
-import { liveReadNote, runWithLiveReadFallback } from './verification/live-read';
+import {
+	liveReadNote,
+	liveReadRunOptions,
+	runWithLiveReadFallback,
+} from './verification/live-read';
 import { prepareVerificationRun } from './verification/prepare-run';
 import { resolvePublishState } from './verification/publish-state';
 import { reconcileStaleCredentialPlan } from './verification/reconcile-plan';
@@ -374,9 +378,7 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 											triggerNodeName: resolvedInput.triggerNodeName,
 											verificationPinData,
 											isVerificationRun: true,
-											...(liveReadNodeNames.length > 0
-												? { readOnceNodeNames: liveReadNodeNames }
-												: {}),
+											...(await liveReadRunOptions(workflow, liveReadNodeNames)),
 											abortSignal: context.abortSignal,
 										},
 									),

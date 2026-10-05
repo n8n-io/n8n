@@ -644,9 +644,21 @@ export interface InstanceAiExecutionService {
 			omitConnections?: Array<{ source: string; target: string }>;
 			/**
 			 * Nodes that run once, on their first input item and without `retryOnFail`, in this run's
-			 * ephemeral workflow copy. Verification reads these nodes live, so each sends one request.
+			 * ephemeral workflow copy. A later run of such a node, e.g. a loop pass, gives the output of
+			 * its first run. Verification reads these nodes live, so each sends one request.
 			 */
 			readOnceNodeNames?: string[];
+			/**
+			 * Parameters removed from nodes in this run's ephemeral workflow copy. Verification removes
+			 * the inputs of a live read that follow pages, so the read gets the first page only.
+			 */
+			omitParameters?: Array<{ nodeName: string; parameter: string }>;
+			/**
+			 * In this run's ephemeral workflow copy, the items of `output` of the node go where its
+			 * `asOutput` sends them. Verification ends a loop that holds a live read at its pass limit,
+			 * because the read gives the same response on each pass.
+			 */
+			redirectOutputs?: Array<{ nodeName: string; output: number; asOutput: number }>;
 			abortSignal?: AbortSignal;
 		},
 	): Promise<ExecutionResult>;

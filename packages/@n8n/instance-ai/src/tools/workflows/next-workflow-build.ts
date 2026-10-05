@@ -503,28 +503,46 @@ export function fixtureOriginsOf(
 	);
 }
 
-/** A read that build verification can do with one request: idempotent, and no input follows pages. */
-function readsOnce(action: (typeof actions)[number], parameters: Record<string, unknown>): boolean {
-	const followsPages = Object.entries(action.inputSchema.properties ?? {}).some(
-		([key, field]) =>
-			parameters[key] !== undefined && field['x-n8n-page'] === undefined && hasPageValue(field),
+/** A read that build verification can do once: idempotent. */
+const readsOnce = (action: (typeof actions)[number]) =>
+	action.flow.effect === 'read' && action.flow.idempotent === true;
+
+/** The set inputs that follow pages, e.g. HTTP `pages`: a page value below their top level. */
+const pageInputsOf = (action: (typeof actions)[number], parameters: Record<string, unknown>) =>
+	Object.entries(action.inputSchema.properties ?? {}).flatMap(([key, field]) =>
+		parameters[key] !== undefined && field['x-n8n-page'] === undefined && hasPageValue(field)
+			? [key]
+			: [],
 	);
-	return action.flow.effect === 'read' && action.flow.idempotent === true && !followsPages;
-}
 
 /**
  * The nodes that build verification reads live, so a drift check sees the real response: a read
  * action that is idempotent (`flow`), with a declared output and no `sample`. The contract flow is
  * the allow rule; for HTTP it is a GET, as RFC 9110 makes GET safe. A `sample` pins the step, so a
- * GET endpoint that changes state takes one. An input that follows pages, e.g. HTTP `pages`, can
- * send many requests, so such a node stays pinned too.
+ * GET endpoint that changes state takes one. A paged read reads its first page, see
+ * {@link firstPageOmissions}.
  */
 export function liveReadNodeNames(workflow: WorkflowJSON, declared: Fixtures = {}): string[] {
 	return workflow.nodes.flatMap((node) => {
 		const action = actionOfNode(node);
 		if (!action || !node.name || node.disabled || declared[node.name]?.length) return [];
-		return readsOnce(action, node.parameters ?? {}) && declaredOutputOf(node) !== undefined
-			? [node.name]
+		return readsOnce(action) && declaredOutputOf(node) !== undefined ? [node.name] : [];
+	});
+}
+
+/**
+ * The inputs of each live read that follow pages. Verification runs the read without them, so one
+ * request gives the first page, and the drift check reads its items.
+ */
+export function firstPageOmissions(
+	workflow: WorkflowJSON,
+	liveReads: readonly string[],
+): Array<{ nodeName: string; parameter: string }> {
+	return workflow.nodes.flatMap((node) => {
+		const nodeName = node.name;
+		const action = nodeName && liveReads.includes(nodeName) ? actionOfNode(node) : undefined;
+		return action && nodeName
+			? pageInputsOf(action, node.parameters ?? {}).map((parameter) => ({ nodeName, parameter }))
 			: [];
 	});
 }
@@ -544,7 +562,7 @@ export function sampledReadIssues(
 		const key = Object.entries(action.inputSchema.properties ?? {}).find(
 			([, field]) => field['x-n8n-declared'] === true,
 		)?.[0];
-		if (key === undefined || parameters[key] !== undefined || !readsOnce(action, parameters)) {
+		if (key === undefined || parameters[key] !== undefined || !readsOnce(action)) {
 			return [];
 		}
 		return [
