@@ -206,9 +206,9 @@ function openAgent() {
 // firing once in onMounted, which would skip the load on a cold canvas and leave
 // the model name on its raw-id fallback.
 watch(
-	projectId,
-	(id) => {
-		if (!id || agentsDisabled.value) return;
+	[projectId, agentsDisabled] as const,
+	([id, disabled]) => {
+		if (!id || disabled) return;
 		void ensureModelsLoaded(id).catch(() => {});
 	},
 	{ immediate: true },

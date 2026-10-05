@@ -43,6 +43,8 @@ import {
 import { ExternalHooks } from '@/external-hooks';
 import { hashAgentSandboxPrincipal } from '@/modules/agents/agent-sandbox-principal';
 import { AgentWorkflowExecutionService } from '@/modules/agents/agent-workflow-execution.service';
+import { AgentsService } from '@/modules/agents/agents.service';
+import { AgentsSettingsService } from '@/modules/agents/agents-settings.service';
 import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.service';
 import { NodeTypes } from '@/node-types';
 import { OwnershipService } from '@/services/ownership.service';
@@ -1552,6 +1554,52 @@ describe('WorkflowExecuteAdditionalData', () => {
 			const additionalData = await getBase({ userId });
 
 			expect(additionalData.userId).toBe(userId);
+		});
+
+		describe('listAgents', () => {
+			const agentsService = mockInstance(AgentsService);
+			const agentsSettingsService = mockInstance(AgentsSettingsService);
+
+			beforeEach(() => {
+				Container.set(AgentsService, agentsService);
+				Container.set(AgentsSettingsService, agentsSettingsService);
+				vi.spyOn(Container.get(ModuleRegistry), 'isActive').mockImplementation(
+					(moduleName) => moduleName === 'agents',
+				);
+				agentsSettingsService.assertEnabled.mockResolvedValue(undefined);
+				agentsService.findByUser.mockResolvedValue([
+					mock<Awaited<ReturnType<AgentsService['findByUser']>>[number]>({
+						id: 'agent-1',
+						name: 'Weather Agent',
+					}),
+				]);
+			});
+
+			it('lists the agents of the user', async () => {
+				const additionalData = await getBase();
+
+				await expect(additionalData.listAgents?.('user-1')).resolves.toEqual([
+					{ id: 'agent-1', name: 'Weather Agent' },
+				]);
+			});
+
+			it('rejects while an admin has turned agents off in Settings > Agents', async () => {
+				agentsSettingsService.assertEnabled.mockRejectedValue(new Error('Agents are disabled.'));
+				const additionalData = await getBase();
+
+				await expect(additionalData.listAgents?.('user-1')).rejects.toThrow('Agents are disabled.');
+				expect(agentsService.findByUser).not.toHaveBeenCalled();
+			});
+
+			it('rejects while the agents module is inactive', async () => {
+				vi.spyOn(Container.get(ModuleRegistry), 'isActive').mockReturnValue(false);
+				const additionalData = await getBase();
+
+				await expect(additionalData.listAgents?.('user-1')).rejects.toThrow(
+					'Agents are disabled on this instance. Ask an instance admin to enable the agents module.',
+				);
+				expect(agentsService.findByUser).not.toHaveBeenCalled();
+			});
 		});
 
 		it('should include currentNodeParameters when provided', async () => {

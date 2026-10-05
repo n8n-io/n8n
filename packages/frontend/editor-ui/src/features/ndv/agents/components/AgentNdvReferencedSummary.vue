@@ -97,9 +97,9 @@ const chips = computed(() => {
 
 // The friendly model name needs the catalog; projectId often resolves async.
 watch(
-	projectId,
-	(id) => {
-		if (!id || agentsDisabled.value) return;
+	[projectId, agentsDisabled] as const,
+	([id, disabled]) => {
+		if (!id || disabled) return;
 		void ensureModelsLoaded(id).catch(() => {});
 	},
 	{ immediate: true },

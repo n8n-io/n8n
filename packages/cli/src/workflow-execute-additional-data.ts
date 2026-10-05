@@ -507,6 +507,10 @@ export async function executeAgent(
 async function listAgents(userId: string): Promise<Array<{ id: string; name: string }>> {
 	assertAgentsModuleActive();
 
+	// Executions check the Settings > Agents switch in the agents services. The listing must too.
+	const { AgentsSettingsService } = await import('@/modules/agents/agents-settings.service.js');
+	await Container.get(AgentsSettingsService).assertEnabled();
+
 	const { AgentsService } = await import('@/modules/agents/agents.service.js');
 	const agentsService = Container.get(AgentsService);
 	// Only published agents are runnable from a published workflow.
