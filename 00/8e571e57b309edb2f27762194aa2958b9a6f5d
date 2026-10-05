@@ -1,0 +1,35 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderHeader.test.ts
+  s_e5b385381d30d4::t_bd8a402d387b35 159
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_e5b385381d30d4::t_714cf87e305fb0 1336-1338
+  s_e5b385381d30d4::t_594f213c3b578b 1333-1335
+packages/frontend/editor-ui/src/features/agents/composables/useAgentConfigAutosave.ts
+  s_e5b385381d30d4::t_714cf87e305fb0 5-6,19-21,128,148
+packages/frontend/editor-ui/src/features/agents/components/AgentBuilderHeader.vue
+  s_e5b385381d30d4::t_714cf87e305fb0 39,218
+  s_e5b385381d30d4::t_5801513341aead 224
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderView.test.ts
+  s_e5b385381d30d4::t_cbb0c51adbc598 2699-2703
+  s_e5b385381d30d4::t_594f213c3b578b 2744,2760
+  s_e5b385381d30d4::t_9c5a1962ac1639 2804-2805,2810-2811
+  s_e5b385381d30d4::t_dac8180fc04ab5 2536-2537,2542-2543
+  s_e5b385381d30d4::t_5801513341aead 2696-2698,2715,2733
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentConfigAutosave.test.ts
+  s_e5b385381d30d4::t_5801513341aead 69
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "008e571e57b309edb2f27762194aa2958b9a6f5d",
+  "prompts": {},
+  "sessions": {
+    "s_e5b385381d30d4": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0e8f1-de77-7d51-93dd-f68c034ac2d8",
+        "model": "gpt-6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

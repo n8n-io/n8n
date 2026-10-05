@@ -1,0 +1,21 @@
+packages/@n8n/instance-ai/src/agent/communication-style.prompt.ts
+  s_be8a76e757671c::t_e36dcfe58285e6 74-75
+  s_be8a76e757671c::t_0d075aedbe92f2 56-57
+  s_be8a76e757671c::t_31cd98082390a0 50
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "ee09d90568b998d230db5a28a1b9cdb78db03405",
+  "prompts": {},
+  "sessions": {
+    "s_be8a76e757671c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b25bc5b6-69af-4e2a-98c8-d908780a9106",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

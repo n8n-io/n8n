@@ -1,0 +1,46 @@
+packages/@n8n/backend-network/src/http/axios/redirect.ts
+  s_a36b6506ef9d6f::t_5090242a92471a 9
+  s_a36b6506ef9d6f::t_d09a378190f8ef 105
+  s_7c90f337629fca::t_c4c93e36bf3373 14
+  s_7c90f337629fca::t_1690a8fd348280 162-164
+packages/@n8n/backend-network/src/http/axios/__tests__/request.test.ts
+  s_a36b6506ef9d6f::t_e8f49bdda5afb3 486,513-538
+  s_a36b6506ef9d6f::t_cc3b79246f1887 540,543-547,551-569,596-597
+  s_a36b6506ef9d6f::t_1111fca6b20f03 548-550
+  s_7c90f337629fca::t_753c7b64f1f65c 541-542,573-595,598
+packages/@n8n/backend-network/src/http/__tests__/legacy-request.test.ts
+  s_a36b6506ef9d6f::t_e8f49bdda5afb3 113,137-144,146-152,154-159
+  s_a36b6506ef9d6f::t_cc3b79246f1887 161,164-168,172-190,217-218
+  s_a36b6506ef9d6f::t_1111fca6b20f03 169-171
+  s_7c90f337629fca::t_d1f15fa172045f 162-163,194-216,219
+packages/@n8n/backend-network/src/http/axios/__tests__/utils.test.ts
+  s_7c90f337629fca::t_18c7302a60d481 22,723-734
+packages/@n8n/backend-network/src/http/axios/utils.ts
+  s_a36b6506ef9d6f::t_d09a378190f8ef 123-125,142-151,202-204,140-141
+  s_7c90f337629fca::t_4d71ec907224cb 126-139
+  s_7c90f337629fca::t_68adf4e6b06840 191-195
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "9e7aa88ece6799a6417628fe506c9f474edfcf80",
+  "prompts": {},
+  "sessions": {
+    "s_7c90f337629fca": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5ef482dc-9764-4740-b935-e8132765bbd3",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    },
+    "s_a36b6506ef9d6f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "af1674d6-3fef-4867-8036-8894a94f602f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

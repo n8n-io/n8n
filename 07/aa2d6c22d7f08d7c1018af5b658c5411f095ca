@@ -1,0 +1,19 @@
+packages/cli/src/modules/agents/integrations/platforms/teams/__tests__/teams-setup.service.test.ts
+  s_fb30b1b6ca962d::t_4eb82946f72e17 30
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "07aa2d6c22d7f08d7c1018af5b658c5411f095ca",
+  "prompts": {},
+  "sessions": {
+    "s_fb30b1b6ca962d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ab82555b-e176-4374-88ff-89b386ef524e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}

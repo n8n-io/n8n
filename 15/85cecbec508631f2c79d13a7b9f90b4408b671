@@ -1,0 +1,194 @@
+packages/cli/src/modules/inbound-auth-core/trusted-source.store.ts
+  s_c6e9e8119f0e51::t_0dc5edd1f22813 2,4,10,14,15,17-20,29-47,54-61,69-70,85-86,93-94,102-103,121-123,127,149-150,210-211
+  s_c6e9e8119f0e51::t_c4c081a01dcaf9 12
+  s_c6e9e8119f0e51::t_0e8ced084636ba 1,3,21,24,78,101,138,148,155-209
+  s_c6e9e8119f0e51::t_26174ff818d87d 11,13
+  h_435b1d7d3e52c0 5-7,9,16,22-23,25,26,27,28,62-64,67,68,71-76,77,79-81,82,83-84,87-88,89,90-92,95-97,98,99-100,104,108-119,124-126,128-132,136-137,139,141,145-147,151-154
+  s_c1d15edfc515bc::t_323e9eec51d3c3 140,142-144
+  s_ce505727311d94::t_4729b092916923 65-66
+  s_f8cb8d8b517ca9::t_2b557b8fe38d29 120
+  s_f8cb8d8b517ca9::t_91be328cad2fc5 48-53
+  s_f8cb8d8b517ca9::t_25aef87e2dd7d2 8
+  s_f8cb8d8b517ca9::t_7dfe6144c79605 105-107
+  s_f8cb8d8b517ca9::t_d5c1e99442a209 133-135
+packages/cli/test/integration/inbound-auth-core/trusted-source.store.integration.test.ts
+  s_c6e9e8119f0e51::t_1760e301fc74bd 13,22-23,29
+  s_c6e9e8119f0e51::t_45f3088c5c32ab 64-69,238-241,340-350
+  s_c6e9e8119f0e51::t_8d80bfc95fab2a 80,86
+  s_c6e9e8119f0e51::t_4f238328bcb6bc 278-301
+  s_c6e9e8119f0e51::t_2e5305d020545b 1-4,10-12,14-19,21,24-28,30-32,34-63,70-79,81-85,87-96,100-132,134-235,242-277,302-339,351-352
+  h_435b1d7d3e52c0 20
+  s_f8cb8d8b517ca9::t_d8b9a71947136d 133
+  s_f8cb8d8b517ca9::t_9644fc5648350e 5-9,33
+  s_f8cb8d8b517ca9::t_4a4ad0a0050f1a 97-99
+  s_f8cb8d8b517ca9::t_e024c6a54d9480 236-237
+packages/@n8n/inbound-auth/src/__tests__/trusted-source-config.test.ts
+  s_c6e9e8119f0e51::t_5eaddee919079d 129,131,136-140
+packages/@n8n/inbound-auth/src/trusted-source-config.ts
+  h_435b1d7d3e52c0 83
+  s_f8cb8d8b517ca9::t_a99815d9e07ef4 153
+packages/cli/src/modules/inbound-auth-core/database/repositories/trusted-source-identity.repository.ts
+  s_c6e9e8119f0e51::t_888c5688d9fe85 19
+  h_435b1d7d3e52c0 1,11-14,24-28
+  s_c6e9e8119f0e51::t_5755f9e107de45 29
+packages/cli/src/modules/inbound-auth-core/database/repositories/trusted-source.repository.ts
+  h_435b1d7d3e52c0 1,7,11-14,17-33,39-43,45-64
+  s_c6e9e8119f0e51::t_d3246afd4c7483 36
+  s_c6e9e8119f0e51::t_5a543a32052637 44
+packages/@n8n/backend-test-utils/src/test-db.ts
+  s_c6e9e8119f0e51::t_55d73f8d9db0e6 237
+  s_c6e9e8119f0e51::t_c05eeb7980aafe 236
+packages/@n8n/backend-services/src/services/cache/cache.service.ts
+  h_435b1d7d3e52c0 184,187-188,209
+  h_435b1d7d3e52c0 185-186,189
+packages/@n8n/backend-services/src/services/cache/__tests__/cache.service.test.ts
+  s_f8cb8d8b517ca9::t_10091f51bffd33 165-173
+packages/@n8n/inbound-auth/src/__tests__/trusted-source.test.ts
+  s_5b85161403cb3c::t_b6e4af90349d30 132,230
+  s_5b85161403cb3c::t_ab5c1f7e8040ab 1-14,16,20,22,31,44-45,47-50,53,55-58,60,62-71,88-91,96-103,110-112,118-121,127-128,227-229,231-232
+  s_5b85161403cb3c::t_ce859d40cc15e7 35,37,73,76,92,94-95,129-131,133,141,143-159,161-165,167-185,187-189,191,193-194
+  s_5b85161403cb3c::t_5d0b8d7559c3d7 122-127,196-198,200-204,216-223
+  s_5b85161403cb3c::t_e7ff0a4906065f 225-226
+  s_5b85161403cb3c::t_a40b9b43f05b23 15,17-19,21,23-30,32-34,36,38-43,46,51-52,54,59,61,72,74-75,77-87,93,104-109,113-117,134,136-142,160,166,186,190,192,195,199,205-215,224
+packages/cli/src/services/__tests__/protected-resource.registry.test.ts
+  s_5b85161403cb3c::t_f6b5e04a757f72 9,19,45
+packages/cli/src/modules/oauth-server/protected-resource-resolvers/chat-trigger-resource.base.ts
+  s_5b85161403cb3c::t_848c30858a2c6a 104
+packages/cli/src/workflows/workflow-finder.service.ts
+  s_5b85161403cb3c::t_271473ade266ba 127
+  s_5b85161403cb3c::t_112ed0b23455d9 10
+  s_5b85161403cb3c::t_1d5d8f84467527 128-130
+  s_5b85161403cb3c::t_1c56ac0383b443 131-132,180
+packages/cli/src/modules/oauth-server/protected-resource-resolvers/form-trigger-test-resource.resolver.ts
+  s_5b85161403cb3c::t_848c30858a2c6a 88
+packages/@n8n/inbound-auth/src/pipeline.ts
+  s_5b85161403cb3c::t_f8918178b84f03 1-25,32-57
+  s_5b85161403cb3c::t_ce8eb2bd819d9c 26-31
+packages/@n8n/inbound-auth/src/inbound.ts
+  s_5b85161403cb3c::t_8ac4aadabb12a0 1-4,14-15,19,31
+  s_5b85161403cb3c::t_014cdfd4e41b5a 5-13,16-18,20-30
+packages/@n8n/inbound-auth/package.json
+  s_5b85161403cb3c::t_8365422805ef75 26
+packages/cli/src/modules/inbound-auth-core/__tests__/inbound-auth-core.module.test.ts
+  s_5b85161403cb3c::t_48a419059a9c9c 3-5,8-9,11-12,18-37,63-64,66,68-69,71-86
+  s_5b85161403cb3c::t_5d0b8d7559c3d7 6-7,10,38-62,65,67,70
+packages/@n8n/inbound-auth/src/index.ts
+  s_5b85161403cb3c::t_ce859d40cc15e7 3
+  s_5b85161403cb3c::t_997a3ab6486ec2 1-2,4
+packages/cli/src/modules/oauth-server/protected-resource-resolvers/workflow-webhook-test-trigger-resource.resolver.ts
+  s_5b85161403cb3c::t_848c30858a2c6a 149
+packages/cli/src/modules/mcp/mcp-protected-resource.ts
+  s_5b85161403cb3c::t_a0ef99c059153d 57-58
+  s_5b85161403cb3c::t_9ed68630dc65ee 11,173,193,206
+packages/cli/src/modules/oauth-server/resource-gate.ts
+  s_5b85161403cb3c::t_112ed0b23455d9 1
+  s_5b85161403cb3c::t_271473ade266ba 15,42
+packages/cli/src/services/protected-resource.registry.ts
+  s_5b85161403cb3c::t_9ed68630dc65ee 4,6
+packages/cli/src/webhooks/__tests__/webhook-helpers.test.ts
+  s_5b85161403cb3c::t_f6b5e04a757f72 1793
+packages/@n8n/inbound-auth/src/__tests__/inbound.test.ts
+  s_5b85161403cb3c::t_485188f2bf5ca5 1-106,108-111,113-115,117-118
+  s_5b85161403cb3c::t_ce8eb2bd819d9c 107,112,116
+packages/cli/src/modules/mcp/__tests__/mcp-protected-resource.test.ts
+  s_5b85161403cb3c::t_1577e2769db5b8 482-485
+packages/@n8n/inbound-auth/src/trusted-source.ts
+  s_5b85161403cb3c::t_19ff214e442701 1-10,43,48,63,76-99,102,127
+  s_5b85161403cb3c::t_014cdfd4e41b5a 11-26,32-38,42,49-50,59,61-62,64-65,73-75,100-101,103-106,107,115,121-126
+  s_5b85161403cb3c::t_ce8eb2bd819d9c 67-70
+  s_5b85161403cb3c::t_d72ac32ee580d6 72
+  s_5b85161403cb3c::t_9b8610804b9ca9 27-31,39-41,44-47,51-58,60,66,71,108-114,116-120
+packages/@n8n/inbound-auth/src/contracts.ts
+  s_5b85161403cb3c::t_f32783e238b59c 1-29,31-76,78-82,84-124
+  s_5b85161403cb3c::t_f05fbf4740e639 77,83
+packages/cli/src/modules/mcp/mcp-tool-availability.ts
+  s_5b85161403cb3c::t_9ed68630dc65ee 4,62
+packages/cli/src/modules/inbound-auth-core/inbound-auth-core.module.ts
+  s_5b85161403cb3c::t_a0ef99c059153d 3-36,39-41,45,56-57
+  s_5b85161403cb3c::t_5d0b8d7559c3d7 46-55
+packages/cli/src/modules/oauth-server/protected-resource-resolvers/workflow-webhook-trigger-resource.resolver.ts
+  s_5b85161403cb3c::t_848c30858a2c6a 170
+packages/cli/src/modules/oauth-server/protected-resource-resolvers/form-trigger-resource.resolver.ts
+  s_5b85161403cb3c::t_848c30858a2c6a 86
+packages/cli/src/modules/oauth-server/protected-resource-resolvers/workflow-mcp-test-trigger-resource.resolver.ts
+  s_5b85161403cb3c::t_848c30858a2c6a 85
+packages/@n8n/inbound-auth/tsconfig.json
+  s_5b85161403cb3c::t_5e41258e2faba2 11
+packages/cli/src/modules/oauth-server/protected-resource-resolvers/workflow-mcp-trigger-resource.resolver.ts
+  s_5b85161403cb3c::t_848c30858a2c6a 105
+pnpm-lock.yaml
+  s_5b85161403cb3c::t_fc4f1a4f9ed35a 3093-3095
+packages/cli/src/modules/oauth-server/__tests__/oauth-consent.controller.api.test.ts
+  s_5b85161403cb3c::t_43714391bb256c 105
+packages/cli/src/modules/oauth-server/__tests__/oauth-server.service.test.ts
+  s_5b85161403cb3c::t_f3cfaff4a70d71 71,1222,1359,1368,1901
+  s_5b85161403cb3c::t_5d0b8d7559c3d7 177,190,202,1231,1911
+  s_5b85161403cb3c::t_a1b3e67b6ce902 314
+packages/cli/src/modules/oauth-server/__tests__/oauth-token.service.test.ts
+  s_5b85161403cb3c::t_40d62c4cc8a9a4 45,338,347,356,768,857
+  s_5b85161403cb3c::t_5d0b8d7559c3d7 777
+packages/cli/src/modules/oauth-server/__tests__/oauth.controller.test.ts
+  s_5b85161403cb3c::t_702789e1e8ede5 45
+packages/@n8n/backend-common/src/modules/__tests__/modules.config.test.ts
+  s_5b85161403cb3c::t_ce8eb2bd819d9c 4
+packages/@n8n/backend-common/src/modules/modules.config.ts
+  s_5b85161403cb3c::t_ce8eb2bd819d9c 43
+packages/@n8n/backend-common/src/modules/__tests__/module-registry.test.ts
+  s_5b85161403cb3c::t_5d0b8d7559c3d7 44-54
+  s_5b85161403cb3c::t_fb5e32945a34cf 76,114
+packages/@n8n/backend-common/src/modules/module-registry.ts
+  s_5b85161403cb3c::t_5d0b8d7559c3d7 49-52
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1585cecbec508631f2c79d13a7b9f90b4408b671",
+  "prompts": {},
+  "humans": {
+    "h_435b1d7d3e52c0": {
+      "author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_5b85161403cb3c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "10dcb3c0-c4f9-4155-9b96-4af4ab2eb20d",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    },
+    "s_c1d15edfc515bc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "38efac4b-39f8-40a8-b56f-93fd96992492",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    },
+    "s_c6e9e8119f0e51": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d779ba28-a639-4965-bd57-87a0acd88bc2",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    },
+    "s_ce505727311d94": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9b284dce-3657-4e4f-b93d-08c5a5dd1a48",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    },
+    "s_f8cb8d8b517ca9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "17c2e625-bf80-47f8-a09b-3dd8e07f5a0b",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

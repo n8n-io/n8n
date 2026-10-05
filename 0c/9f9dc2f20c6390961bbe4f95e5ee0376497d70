@@ -1,0 +1,19 @@
+packages/cli/test/integration/agents/agents-create-collision.test.ts
+  s_2d2f21e7be4f01::t_d37af5217057ee 10
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0c9f9dc2f20c6390961bbe4f95e5ee0376497d70",
+  "prompts": {},
+  "sessions": {
+    "s_2d2f21e7be4f01": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f0f985aefffemN7IpwiixCl5D7",
+        "model": "openai/gpt-5.6-sol"
+      },
+      "human_author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}

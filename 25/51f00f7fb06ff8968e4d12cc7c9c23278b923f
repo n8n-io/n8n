@@ -1,0 +1,22 @@
+packages/cli/src/workflows/workflow.service.ts
+  s_1e53f02419fb26::t_f8a5dce35cdf96 2
+  s_1e53f02419fb26::t_fcbcf94e5ddff6 301-305
+packages/@n8n/db/src/repositories/workflow.repository.ts
+  s_1e53f02419fb26::t_4ec36ea8308af3 23-24,1569
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "2551f00f7fb06ff8968e4d12cc7c9c23278b923f",
+  "prompts": {},
+  "sessions": {
+    "s_1e53f02419fb26": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "92fb29b2-b8e9-4928-bace-41455cdae846",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "sim <olivier.dejong@n8n.io>"
+    }
+  }
+}

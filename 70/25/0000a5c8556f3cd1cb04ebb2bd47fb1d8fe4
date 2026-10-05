@@ -11,6 +11,10 @@ packages/frontend/editor-ui/src/features/agents/components/AgentChatPanel.vue
 packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatPanel.test.ts
   s_0ed5271cdd014d::t_0b80df295ee96e 54,283,306-308,315-316,332-370,551
   s_0ed5271cdd014d::t_2c9977c4603a1c 309-311
+packages/@n8n/db/src/migrations/common/1790241069212-CreateAgentMessageQueue.ts
+  s_c5954c3047b5ed::t_b974208cf43ef2 1-47
+packages/cli/test/migration/1790241069212-create-agent-message-queue.test.ts
+  s_c5954c3047b5ed::t_b974208cf43ef2 1-48
 ---
 {
   "schema_version": "authorship/3.0.0",
@@ -22,6 +26,14 @@ packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatPanel.test.ts
       "agent_id": {
         "tool": "codex",
         "id": "01a0d3f3-6fd7-7481-922e-2a901b1c46ca",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_c5954c3047b5ed": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0cf61-9581-7951-a01f-21637c8a6267",
         "model": "gpt-6-astra"
       },
       "human_author": "Robin Braumann <robin.braumann@n8n.io>"

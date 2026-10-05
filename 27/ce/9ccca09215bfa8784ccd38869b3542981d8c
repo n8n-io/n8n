@@ -1,0 +1,40 @@
+packages/cli/src/services/workflow-statistics-rollup.task.ts
+  s_d10cd72e22c498::t_9e283f609c5274 4-7,17
+  s_d10cd72e22c498::t_f142d223360bc8 21-26
+  s_d10cd72e22c498::t_aa40cd859715bc 1-3,8-16,18-20,27-33
+packages/cli/src/services/__tests__/workflow-statistics-rollup.task.test.ts
+  s_d10cd72e22c498::t_f142d223360bc8 19
+  s_d10cd72e22c498::t_3822ab78c783a3 1-18,20-29
+packages/cli/src/scheduling/system-tasks/main-system-tasks.ts
+  s_d10cd72e22c498::t_228a30adb21306 49-55
+packages/cli/src/services/__tests__/workflow-statistics-rollup.service.test.ts
+  s_d10cd72e22c498::t_99800982c269d9 123-135
+  s_d10cd72e22c498::t_c04fed7861bab8 136-151,154-161
+  s_d10cd72e22c498::t_722960ff029f7e 181,185,219,254
+  s_d10cd72e22c498::t_df3845cc95de83 2,5,14,35,41,54,57,72,81-92,95-99,101-103,105-108,110-121,162-174,182,191,199,231
+  s_d10cd72e22c498::t_29fe7eb510bd31 30-33
+  s_d10cd72e22c498::t_3822ab78c783a3 190,198,230
+packages/cli/src/scheduling/system-tasks/__tests__/main-system-tasks.test.ts
+  s_d10cd72e22c498::t_3822ab78c783a3 10,20,26,41,64-68
+packages/cli/src/services/workflow-statistics-rollup.service.ts
+  s_d10cd72e22c498::t_c04fed7861bab8 46-49,52-57,59,135-139
+  s_d10cd72e22c498::t_99800982c269d9 51
+  s_d10cd72e22c498::t_aa40cd859715bc 3,5-6,15-16,50,58,60,64,73-78
+  s_d10cd72e22c498::t_9e283f609c5274 18-21
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "27ce9ccca09215bfa8784ccd38869b3542981d8c",
+  "prompts": {},
+  "sessions": {
+    "s_d10cd72e22c498": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f99edf5b-bf43-4ba1-a1f3-ae199a87c000",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

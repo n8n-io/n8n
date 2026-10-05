@@ -1,0 +1,41 @@
+packages/@n8n/workflow-sdk/src/generate-types/generate-types.test.ts
+  s_7517291a368d48::t_1e8f8a3a3ad38b 14,21-22,24,57-58,83-84
+  s_7517291a368d48::t_dcf6ae920d56b0 15-20,23,25-56,59-82
+  ai_agent 2650-2652,3040-3042
+  s_7517291a368d48::t_4837be89c68fcb 3038-3039,3043-3134
+  s_7517291a368d48::t_72f3257ffd9a75 118-121
+  s_7517291a368d48::t_011c1aa3ba39b3 718-726,735-737,740-743,746,774-872
+  s_7517291a368d48::t_c81bd43a30b44c 2566-2649,2653-2691
+  s_7517291a368d48::t_30c7763eb220ca 727-734,738-739,744-745,747-773
+packages/@n8n/workflow-sdk/src/generate-types/generate-types.ts
+  s_7517291a368d48::t_5cfaa729d6ed69 2305-2339,2348-2350
+  s_7517291a368d48::t_3f732ad69943a1 1322-1326,1347-1418,1459-1518
+  s_7517291a368d48::t_e818a735760df0 1275
+  s_7517291a368d48::t_699e753a57a337 2620
+  s_7517291a368d48::t_be6868c52bb800 2270-2273
+  ai_agent 1452
+  s_7517291a368d48::t_8affecca7b579d 1881-1889
+  s_7517291a368d48::t_549747dc111bd7 2496-2503
+  s_7517291a368d48::t_bc4c9cb55697ed 2594-2599,2609
+  s_7517291a368d48::t_2aba2b1bad4de3 1543-1547
+  s_7517291a368d48::t_39498e5808ff6a 1443-1446
+  s_7517291a368d48::t_4b901420de201f 2452
+  s_7517291a368d48::t_533a8f6b2202c4 383-390
+  s_7517291a368d48::t_f511f89ab80888 1419-1442,1447-1451,1453-1458
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "739c105e7b92e46067cbf3d6b310f93892b953d8",
+  "prompts": {},
+  "sessions": {
+    "s_7517291a368d48": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b4a86c13-39ea-4e2f-85a0-e5c5c58461dd",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

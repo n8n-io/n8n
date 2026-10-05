@@ -1,0 +1,25 @@
+packages/@n8n/api-types/src/dto/saml/__tests__/saml-configuration-public.dto.test.ts
+  s_aaa596f5a4b613::t_7e444d19164437 19
+  s_aaa596f5a4b613::t_eadd472ba95dec 32
+packages/@n8n/api-types/src/dto/saml/saml-configuration-public.dto.ts
+  s_aaa596f5a4b613::t_08c9b54d958ab2 149-152
+  s_aaa596f5a4b613::t_c5592367b53326 23-26
+  s_aaa596f5a4b613::t_bb0467b3f4c163 104-108
+  s_aaa596f5a4b613::t_8944da85fa5115 221-225
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "9c0afeaf62206da76ee2f5f60bf4e225d546cbb7",
+  "prompts": {},
+  "sessions": {
+    "s_aaa596f5a4b613": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "1a15da90-db1a-41b9-8206-a0a9b69b4891",
+        "model": "grok-4.7"
+      },
+      "human_author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,75 @@
+packages/cli/src/credentials/credentials-finder.service.ts
+  s_6e5e6dade5599e::t_d877ebf598c304 37
+  s_6e5e6dade5599e::t_3b59229fd59069 32-33,376-384
+  s_6e5e6dade5599e::t_c76b9910110e6f 1,22-31,34-36
+  s_6e5e6dade5599e::t_d1b59ab3b7a0c0 335-375,385-386
+packages/cli/src/modules/engine-v2/__tests__/engine-credentials.service.test.ts
+  s_6e5e6dade5599e::t_11cc54c5de57b0 49,101
+  s_6e5e6dade5599e::t_f153edcdb574b1 88-94
+packages/cli/src/services/__tests__/engine-v2-dispatcher.service.test.ts
+  s_6e5e6dade5599e::t_8035685fd784ce 296-297
+  s_6e5e6dade5599e::t_f153edcdb574b1 298-300
+packages/cli/src/workflow-runner.ts
+  s_6e5e6dade5599e::t_72f75288e86af4 427
+packages/cli/src/executions/pre-execution-checks/credentials-permission-checker.ts
+  s_6e5e6dade5599e::t_8179f1ad625799 306
+  s_6e5e6dade5599e::t_c4f01aee5df9d4 135,138
+  s_6e5e6dade5599e::t_baf0229056733a 140,143,147-149,151-155
+  s_6e5e6dade5599e::t_1577101f14a13d 35,88-93,95-113,118,131-134,136-137,139,141-142,144-146,169-174,176-177,179-180,183-188,190-192,196-202,204,211,214,217-223,227-236,241-247,250-253,274,280,284-285,288-290,293-305,310,318
+  s_6e5e6dade5599e::t_8053cf21e8d7c9 34
+  s_6e5e6dade5599e::t_f11f67ea9f8a43 36-38
+  s_6e5e6dade5599e::t_2b875bae4d9174 9-12
+  s_6e5e6dade5599e::t_3d83caf162d524 309
+  s_6e5e6dade5599e::t_755a9e47a5838b 39-41
+  s_6e5e6dade5599e::t_053f8dd4c5da39 307-308
+  s_6e5e6dade5599e::t_72048fbd493de9 311
+  s_6e5e6dade5599e::t_7f580e573e0eb2 317
+packages/cli/src/services/__tests__/credentials-finder.service.test.ts
+  s_6e5e6dade5599e::t_f02475b9ede331 1038,1057,1087
+  s_6e5e6dade5599e::t_3b23c2a17d2536 9,1009-1037,1039-1056,1058-1086,1088-1097
+packages/cli/src/services/engine-v2-dispatcher.service.ts
+  s_6e5e6dade5599e::t_72f75288e86af4 99
+packages/cli/src/__tests__/workflow-execute-additional-data.test.ts
+  s_6e5e6dade5599e::t_a3fdbbc6db74f9 456,466-470,472
+  s_6e5e6dade5599e::t_37eae382ab2ee3 451-455
+packages/cli/src/executions/pre-execution-checks/__tests__/credentials-permission-checker.test.ts
+  s_6e5e6dade5599e::t_7f26be6d062a0f 823-825
+  s_6e5e6dade5599e::t_e682b16f732bfc 877-879,885-888,891,895-897
+  s_6e5e6dade5599e::t_1a9972dd422e5f 794
+  s_6e5e6dade5599e::t_cd05d5b2226d4e 293-349,783,815,826,844,870,918,943
+  s_6e5e6dade5599e::t_837c8e1415d345 150-154
+  s_6e5e6dade5599e::t_5b6cd59b852db7 795-800,803,805-806,828
+  s_6e5e6dade5599e::t_baf0229056733a 827,832,919,929-934
+  s_6e5e6dade5599e::t_999467b84b9d8f 175-176,179-182,185-189,191-195,197-199,202,204,206-210,213-216,219,221-228,231-239,242-243,245-246,249,251,253-256,259-261,263-267,269-272,275,277-279,281-285,288
+  s_6e5e6dade5599e::t_0a491ef62e30ba 876
+  s_6e5e6dade5599e::t_ddff382af69f12 949
+  s_6e5e6dade5599e::t_2f0f30f4371551 950
+  s_6e5e6dade5599e::t_ccd2f94c7f008a 820-822
+  s_6e5e6dade5599e::t_241cb013f358c4 830-831
+packages/cli/src/modules/engine-v2/engine-credentials.service.ts
+  s_6e5e6dade5599e::t_72f75288e86af4 65
+packages/cli/src/workflow-execute-additional-data.ts
+  s_6e5e6dade5599e::t_89c48a39873b84 600-604,622
+  s_6e5e6dade5599e::t_5cd810ede5f78b 596-599,617-621
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "402dd9e1161d0255222d1162a5c57a079fd4e89d",
+  "prompts": {},
+  "humans": {
+    "h_21437a83314767": {
+      "author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_6e5e6dade5599e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "877ad200-a326-4a16-a593-edd12c995d4b",
+        "model": "claude-opus-5"
+      },
+      "human_author": null
+    }
+  }
+}
