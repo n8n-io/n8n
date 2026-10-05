@@ -2,6 +2,7 @@ import { Logger } from '@n8n/backend-common';
 import type { ModuleInterface } from '@n8n/decorators';
 import { BackendModule, OnShutdown } from '@n8n/decorators';
 import { Container } from '@n8n/di';
+import { UnexpectedError } from 'n8n-workflow';
 
 @BackendModule({ name: 'instance-ai', instanceTypes: ['main'] })
 export class InstanceAiModule implements ModuleInterface {
@@ -104,6 +105,14 @@ export class InstanceAiModule implements ModuleInterface {
 	}
 
 	async entities() {
+		// The Assistant runs on the Agents runtime and its tables reference Agents
+		// sessions. Fail fast instead of a TypeORM metadata hang without them.
+		const { ModuleMetadata } = await import('@n8n/decorators');
+		if (!Container.get(ModuleMetadata).get('agents')) {
+			throw new UnexpectedError(
+				'The instance-ai module requires the agents module. Enable both, or disable instance-ai.',
+			);
+		}
 		const { InstanceAiIterationLog } = await import(
 			'./entities/instance-ai-iteration-log.entity.js'
 		);
