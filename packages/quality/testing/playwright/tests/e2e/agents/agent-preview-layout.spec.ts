@@ -34,11 +34,15 @@ test.describe(
 			await n8n.agentBuilder.getFullWidthMenuItem().click();
 			await expect(dock).toHaveAttribute('data-preview-layout', 'fullpage');
 
-			await expect.poll(async () => await n8n.agentBuilder.getPreviewWidthDifference()).toBeLessThan(2);
+			await expect
+				.poll(async () => await n8n.agentBuilder.getPreviewWidthDifference())
+				.toBeLessThan(2);
 
 			await n8n.page.setViewportSize({ width: 375, height: 667 });
 			await n8n.page.emulateMedia({ colorScheme: 'dark' });
-			await expect.poll(async () => await n8n.agentBuilder.getPreviewWidthDifference()).toBeLessThan(2);
+			await expect
+				.poll(async () => await n8n.agentBuilder.getPreviewWidthDifference())
+				.toBeLessThan(2);
 		});
 	},
 );
