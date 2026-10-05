@@ -14,7 +14,7 @@ import { useTagsStore } from '@/features/shared/tags/tags.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { createTestNode, createTestWorkflow, mockNodeTypeDescription } from '@/__tests__/mocks';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { CHAT_TRIGGER_NODE_TYPE, WEBHOOK_NODE_TYPE } from 'n8n-workflow';
+import { CHAT_TRIGGER_NODE_TYPE, WEBHOOK_NODE_TYPE, WEBPAGE_NODE_TYPE } from 'n8n-workflow';
 import type {
 	AssignmentCollectionValue,
 	IConnections,
@@ -704,6 +704,47 @@ describe('useWorkflowHelpers', () => {
 			expect(spy).toHaveBeenCalledWith(expect.anything(), {
 				method: 'GET',
 				path: 'test-path',
+			});
+		});
+
+		it('should return conflicting webhook data for a Webpage node at its GET path', async () => {
+			const workflowHelpers = useWorkflowHelpers();
+			uiStore.markStateClean();
+			const trigger = {
+				type: WEBPAGE_NODE_TYPE,
+				webhookId: '1',
+				parameters: { path: 'my-page' },
+			};
+			vi.spyOn(workflowsListStore, 'fetchWorkflow').mockResolvedValue({
+				nodes: [trigger],
+			} as unknown as IWorkflowDb);
+			const conflict = {
+				method: 'GET' as const,
+				webhookPath: 'my-page',
+				node: 'Webpage',
+				workflowId: '456',
+			};
+			const spy = vi.spyOn(apiWebhooks, 'findWebhook').mockResolvedValue(conflict);
+
+			expect(await workflowHelpers.checkConflictingWebhooks('123')).toEqual({ trigger, conflict });
+			expect(spy).toHaveBeenCalledTimes(1);
+			expect(spy).toHaveBeenCalledWith(expect.anything(), { method: 'GET', path: 'my-page' });
+		});
+
+		it('should use the webhookId as the path of a Webpage node with an empty path', async () => {
+			const workflowHelpers = useWorkflowHelpers();
+			uiStore.markStateClean();
+			vi.spyOn(workflowsListStore, 'fetchWorkflow').mockResolvedValue({
+				nodes: [
+					{ type: WEBPAGE_NODE_TYPE, webhookId: 'page-webhook-id', parameters: { path: '' } },
+				],
+			} as unknown as IWorkflowDb);
+			const spy = vi.spyOn(apiWebhooks, 'findWebhook').mockResolvedValue(null);
+
+			expect(await workflowHelpers.checkConflictingWebhooks('123')).toEqual(null);
+			expect(spy).toHaveBeenCalledWith(expect.anything(), {
+				method: 'GET',
+				path: 'page-webhook-id',
 			});
 		});
 	});

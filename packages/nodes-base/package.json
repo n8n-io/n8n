@@ -865,6 +865,7 @@
       "dist/nodes/Webflow/Webflow.node.js",
       "dist/nodes/Webflow/WebflowTrigger.node.js",
       "dist/nodes/Webhook/Webhook.node.js",
+      "dist/nodes/Webpage/Webpage.node.js",
       "dist/nodes/Wekan/Wekan.node.js",
       "dist/nodes/WhatsApp/WhatsAppTrigger.node.js",
       "dist/nodes/WhatsApp/WhatsApp.node.js",

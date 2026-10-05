@@ -9,7 +9,7 @@ import type { User } from '@n8n/db';
 import { WebhookRepository, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { IHttpRequestMethods, INode } from 'n8n-workflow';
-import { WEBHOOK_NODE_TYPE } from 'n8n-workflow';
+import { WEBHOOK_NODE_TYPE, WEBPAGE_NODE_TYPE } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
 
 import { createOwner, createMember } from '@test-integration/db/users';
@@ -63,6 +63,28 @@ const webhookNode = ({
 		authentication,
 		...(requireExecuteAccess === undefined ? {} : { requireExecuteAccess }),
 		...(options === undefined ? {} : { options }),
+	},
+});
+
+const webpageNode = ({
+	authentication = 'n8nOAuth2',
+	disabled = false,
+	requireExecuteAccess,
+}: {
+	authentication?: string;
+	disabled?: boolean;
+	requireExecuteAccess?: boolean;
+} = {}): INode => ({
+	id: randomUUID(),
+	name: 'Webpage',
+	type: WEBPAGE_NODE_TYPE,
+	typeVersion: 1,
+	position: [0, 0],
+	disabled,
+	parameters: {
+		path: 'unused',
+		authentication,
+		...(requireExecuteAccess === undefined ? {} : { requireExecuteAccess }),
 	},
 });
 
@@ -702,5 +724,73 @@ describe('token audience', () => {
 		await expect(tokenService.verifyAccessToken(accessToken, getResource)).resolves.toMatchObject({
 			clientId,
 		});
+	});
+});
+
+describe('Webpage nodes', () => {
+	test('should resolve an n8nOAuth2 page as a first-party GET resource with page consent hints', async () => {
+		const webhookPath = randomUUID();
+		const workflow = await createPublishedWebhookWorkflow(webhookPath, webpageNode(), {
+			methods: ['GET'],
+		});
+
+		const resource = await resolveResource(webhookPath, 'GET');
+
+		expect(resource?.getResourceUrl()).toBe(resourceUrlFor(webhookPath, 'GET'));
+		expect(resource?.getAudiences()).toEqual([resourceUrlFor(webhookPath, 'GET')]);
+		expect(resource?.isFirstParty).toBe(true);
+		expect(resource?.displayName).toBe(workflow.name);
+		expect(resource?.uiHints).toEqual({ icon: 'globe', consentType: 'webpage' });
+	});
+
+	test('should serve the metadata document for a page', async () => {
+		const webhookPath = randomUUID();
+		await createPublishedWebhookWorkflow(webhookPath, webpageNode(), { methods: ['GET'] });
+
+		const response = await testServer.restlessAgent.get(prmPathFor(webhookPath, 'GET'));
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.resource).toBe(resourceUrlFor(webhookPath, 'GET'));
+	});
+
+	test.each([
+		['authentication is none', webpageNode({ authentication: 'none' })],
+		['the node is disabled', webpageNode({ disabled: true })],
+	])('should not resolve a page when %s', async (_, node) => {
+		const webhookPath = randomUUID();
+		await createPublishedWebhookWorkflow(webhookPath, node, { methods: ['GET'] });
+
+		expect(await resolveResource(webhookPath, 'GET')).toBeUndefined();
+	});
+
+	test('should make a page first-party only for GET', async () => {
+		// A page registers GET only. Any other method must never act as a virtual client.
+		const webhookPath = randomUUID();
+		await createPublishedWebhookWorkflow(webhookPath, webpageNode(), {
+			methods: ['GET', 'POST'],
+		});
+
+		expect((await resolveResource(webhookPath, 'GET'))?.isFirstParty).toBe(true);
+		expect((await resolveResource(webhookPath, 'POST'))?.isFirstParty).toBeUndefined();
+	});
+
+	test('should always require execute access, whatever the parameter says', async () => {
+		const webhookPath = randomUUID();
+		const workflow = await createPublishedWebhookWorkflow(
+			webhookPath,
+			webpageNode({ requireExecuteAccess: false }),
+			{ methods: ['GET'] },
+		);
+
+		const resource = await resolveResource(webhookPath, 'GET');
+
+		expect(resource?.getGrant?.()).toEqual(
+			expect.objectContaining({ executeAccessWorkflowId: workflow.id }),
+		);
+		await expect(resource?.authorize(owner)).resolves.toBe(true);
+		await expect(resource?.authorize(member)).resolves.toBe(false);
+
+		await shareWorkflowWithUsers(workflow, [member]);
+		await expect(resource?.authorize(member)).resolves.toBe(true);
 	});
 });

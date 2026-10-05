@@ -346,6 +346,28 @@ describe('OAuthConsentView', () => {
 				),
 			).toBeVisible();
 		});
+
+		it('should render page-specific copy for a webpage resource', async () => {
+			const webpageDetails = {
+				...firstPartyDetails,
+				uiHints: { icon: 'globe', consentType: 'webpage' },
+			};
+			consentStore.consentDetails = webpageDetails;
+			consentStore.fetchConsentDetails.mockImplementation(async () => {
+				consentStore.consentDetails = webpageDetails;
+				return webpageDetails;
+			});
+
+			const { getByText } = renderComponent();
+			await waitAllPromises();
+
+			expect(getByText('"Feedback workflow" wants to check your n8n login')).toBeVisible();
+			expect(
+				getByText(
+					'This page uses your n8n account to confirm that you can open it. Opening the page does not run its workflow. Only continue if you trust the creator of this page.',
+				),
+			).toBeVisible();
+		});
 	});
 
 	describe('scope selection', () => {

@@ -1,0 +1,13 @@
+{
+	"node": "n8n-nodes-base.webpage",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"categories": ["Core Nodes"],
+	"resources": {
+		"primaryDocumentation": []
+	},
+	"alias": ["HTML", "Page", "Website", "Web page", "Landing page", "Web app", "Site"],
+	"subcategories": {
+		"Core Nodes": ["Other Trigger Nodes"]
+	}
+}

@@ -100,6 +100,7 @@ import {
 	NodeConnectionTypes,
 	NodeHelpers,
 	WEBHOOK_NODE_TYPE,
+	WEBPAGE_NODE_TYPE,
 	WORKFLOW_TOOL_LANGCHAIN_NODE_TYPE,
 } from 'n8n-workflow';
 
@@ -1016,6 +1017,35 @@ describe('useContextMenu', () => {
 			expect(targetNodeIds.value).toEqual([chatTriggerNode.id]);
 			const copyTestUrlAction = actions.value.find((action) => action.id === 'copy_test_url');
 			expect(copyTestUrlAction).toBeUndefined();
+			const copyProductionUrlAction = actions.value.find(
+				(action) => action.id === 'copy_production_url',
+			);
+			expect(copyProductionUrlAction).toBeDefined();
+			expect(copyProductionUrlAction?.disabled).toBe(false);
+			expect(copyProductionUrlAction?.divided).toBe(true);
+		});
+
+		it('should not show any webhook URL actions for webpage node when workflow is inactive', () => {
+			const { open, actions } = useContextMenu();
+			const webpageNode = nodeFactory({ type: WEBPAGE_NODE_TYPE, webhookId: 'webpage-webhook' });
+			vi.spyOn(workflowDocumentStore, 'getNodeById').mockReturnValue(webpageNode);
+			workflowDocumentStore.setActiveState({ activeVersionId: null, activeVersion: null });
+
+			open(mockEvent, { source: 'node-right-click', nodeId: webpageNode.id });
+
+			expect(actions.value.find((action) => action.id === 'copy_test_url')).toBeUndefined();
+			expect(actions.value.find((action) => action.id === 'copy_production_url')).toBeUndefined();
+		});
+
+		it('should show only production URL for webpage node when workflow is active', () => {
+			const { open, actions } = useContextMenu();
+			const webpageNode = nodeFactory({ type: WEBPAGE_NODE_TYPE, webhookId: 'webpage-webhook' });
+			vi.spyOn(workflowDocumentStore, 'getNodeById').mockReturnValue(webpageNode);
+			workflowDocumentStore.setActiveState({ activeVersionId: 'v1', activeVersion: null });
+
+			open(mockEvent, { source: 'node-right-click', nodeId: webpageNode.id });
+
+			expect(actions.value.find((action) => action.id === 'copy_test_url')).toBeUndefined();
 			const copyProductionUrlAction = actions.value.find(
 				(action) => action.id === 'copy_production_url',
 			);

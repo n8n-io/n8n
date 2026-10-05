@@ -1,7 +1,12 @@
 import type { ConsentUiHints } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import type { INode, N8nOAuth2BrowserFlowMode } from 'n8n-workflow';
-import { CHAT_TRIGGER_NODE_TYPE, resolveOAuthClientMode } from 'n8n-workflow';
+import {
+	CHAT_TRIGGER_NODE_TYPE,
+	resolveOAuthClientMode,
+	WEBHOOK_NODE_TYPE,
+	WEBPAGE_NODE_TYPE,
+} from 'n8n-workflow';
 
 /**
  * Scopes advertised for per-workflow MCP trigger resources. Empty on purpose:
@@ -21,6 +26,12 @@ export const FORM_TRIGGER_CONSENT_HINTS: ConsentUiHints = {
 
 /** Scopes advertised for per-workflow Webhook trigger resources. */
 export const WEBHOOK_TRIGGER_SCOPES: string[] = [];
+
+/** Consent-screen presentation hints for Webpage resources, served by the webhook resolvers. */
+export const WEBPAGE_CONSENT_HINTS: ConsentUiHints = {
+	icon: 'globe',
+	consentType: 'webpage',
+};
 
 /** Scopes advertised for per-workflow Chat trigger resources. Empty, like the other triggers. */
 export const CHAT_TRIGGER_SCOPES: string[] = [];
@@ -155,9 +166,30 @@ export function parseMethodParam(value: string | null | undefined): string | und
  * each other or from the node's runtime decision (`resolveOAuthClientMode`).
  */
 export function webhookAllowsBrowserFlow(node: INode, requestedMethod: string): boolean {
+	if (requestedMethod !== 'GET') return false;
+	// A page view is always a browser navigation, so a Webpage node has no bearer-only mode.
+	if (node.type === WEBPAGE_NODE_TYPE) return true;
 	const options = node.parameters.options as { oauthClient?: N8nOAuth2BrowserFlowMode } | undefined;
+	return resolveOAuthClientMode(options?.oauthClient, node.typeVersion) !== 'bearer';
+}
+
+/**
+ * Whether a node behind a `/webhook/*` path is an OAuth-protected resource: an enabled
+ * Webhook or Webpage node in the `n8nOAuth2` mode. Shared by the production and test
+ * resolvers so they cannot diverge.
+ */
+export function isOAuthProtectedWebhookNode(node: INode): boolean {
 	return (
-		requestedMethod === 'GET' &&
-		resolveOAuthClientMode(options?.oauthClient, node.typeVersion) !== 'bearer'
+		(node.type === WEBHOOK_NODE_TYPE || node.type === WEBPAGE_NODE_TYPE) &&
+		!node.disabled &&
+		node.parameters.authentication === 'n8nOAuth2'
 	);
+}
+
+/**
+ * Whether the resource also requires `workflow:execute`. Webhook nodes default to it
+ * but let the user opt out. Webpage nodes have no such option and always require it.
+ */
+export function webhookRequiresExecuteAccess(node: INode): boolean {
+	return node.type === WEBPAGE_NODE_TYPE || node.parameters.requireExecuteAccess !== false;
 }

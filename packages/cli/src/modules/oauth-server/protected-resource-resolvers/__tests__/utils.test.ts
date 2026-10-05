@@ -1,15 +1,30 @@
 import type { Logger } from '@n8n/backend-common';
+import type { INode } from 'n8n-workflow';
+import { WEBHOOK_NODE_TYPE, WEBPAGE_NODE_TYPE } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import {
+	isOAuthProtectedWebhookNode,
 	methodQueryString,
 	parseMethodParam,
 	resourceUrlToWebhookPath,
 	trimSlashes,
 	trimTrailingSlash,
+	webhookAllowsBrowserFlow,
 	webhookPathFromResourceUrl,
+	webhookRequiresExecuteAccess,
 	webhookResourcePath,
 } from '../utils';
+
+const node = (overrides: Partial<INode> = {}): INode => ({
+	id: 'node-1',
+	name: 'Node',
+	type: WEBPAGE_NODE_TYPE,
+	typeVersion: 1,
+	position: [0, 0],
+	parameters: { authentication: 'n8nOAuth2' },
+	...overrides,
+});
 
 describe('webhookResourcePath', () => {
 	test('should return the path itself for a static webhook', () => {
@@ -148,5 +163,70 @@ describe('trimSlashes / trimTrailingSlash', () => {
 	test('trimSlashes removes a leading and a trailing slash', () => {
 		expect(trimSlashes('/abc/')).toBe('abc');
 		expect(trimSlashes('abc')).toBe('abc');
+	});
+});
+
+describe('isOAuthProtectedWebhookNode', () => {
+	test.each([WEBHOOK_NODE_TYPE, WEBPAGE_NODE_TYPE])(
+		'should accept an enabled %s node in the n8nOAuth2 mode',
+		(type) => {
+			expect(isOAuthProtectedWebhookNode(node({ type }))).toBe(true);
+		},
+	);
+
+	test.each([
+		['the authentication is none', node({ parameters: { authentication: 'none' } })],
+		['the node is disabled', node({ disabled: true })],
+		['the node is another type', node({ type: 'n8n-nodes-base.formTrigger' })],
+	])('should reject a node when %s', (_label, candidate) => {
+		expect(isOAuthProtectedWebhookNode(candidate)).toBe(false);
+	});
+});
+
+describe('webhookAllowsBrowserFlow', () => {
+	test('should allow the browser flow for a Webpage node only on GET', () => {
+		expect(webhookAllowsBrowserFlow(node(), 'GET')).toBe(true);
+		expect(webhookAllowsBrowserFlow(node(), 'HEAD')).toBe(false);
+		expect(webhookAllowsBrowserFlow(node(), 'POST')).toBe(false);
+	});
+
+	test('should ignore the Webhook oauthClient option on a Webpage node', () => {
+		const webpage = node({
+			parameters: { authentication: 'n8nOAuth2', options: { oauthClient: 'bearer' } },
+		});
+
+		expect(webhookAllowsBrowserFlow(webpage, 'GET')).toBe(true);
+	});
+
+	test('should keep the version-gated default for a Webhook node', () => {
+		expect(
+			webhookAllowsBrowserFlow(node({ type: WEBHOOK_NODE_TYPE, typeVersion: 2.1 }), 'GET'),
+		).toBe(false);
+		expect(
+			webhookAllowsBrowserFlow(node({ type: WEBHOOK_NODE_TYPE, typeVersion: 2.2 }), 'GET'),
+		).toBe(true);
+	});
+});
+
+describe('webhookRequiresExecuteAccess', () => {
+	test('should always require execute access for a Webpage node', () => {
+		expect(webhookRequiresExecuteAccess(node())).toBe(true);
+		expect(
+			webhookRequiresExecuteAccess(
+				node({ parameters: { authentication: 'n8nOAuth2', requireExecuteAccess: false } }),
+			),
+		).toBe(true);
+	});
+
+	test('should let a Webhook node opt out', () => {
+		expect(webhookRequiresExecuteAccess(node({ type: WEBHOOK_NODE_TYPE }))).toBe(true);
+		expect(
+			webhookRequiresExecuteAccess(
+				node({
+					type: WEBHOOK_NODE_TYPE,
+					parameters: { authentication: 'n8nOAuth2', requireExecuteAccess: false },
+				}),
+			),
+		).toBe(false);
 	});
 });
