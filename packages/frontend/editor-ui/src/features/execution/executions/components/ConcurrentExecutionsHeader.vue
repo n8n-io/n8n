@@ -60,7 +60,7 @@ const headerText = computed(() => {
 		data-test-id="concurrent-executions-header"
 		:class="$style.concurrentExecutionHeader"
 	>
-		<N8nText>{{ headerText }}</N8nText>
+		<N8nText color="text-light">{{ headerText }}</N8nText>
 		<N8nTooltip>
 			<template #content>
 				<div :class="$style.tooltip">
