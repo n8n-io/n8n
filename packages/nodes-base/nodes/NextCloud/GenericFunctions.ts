@@ -31,8 +31,10 @@ export async function nextCloudApiRequest(
 		credentials = await this.getCredentials<{ webDavUrl: string }>('nextCloudOAuth2Api');
 	}
 
-	// Validate webDavUrl to catch credential corruption (empty, malformed, or no hostname etc.)
-	const webDavUrl = credentials.webDavUrl ?? '';
+	// Tolerate a webDavUrl missing one slash after the scheme; stricter axios validation now rejects it outright.
+	let webDavUrl = credentials.webDavUrl ?? '';
+	webDavUrl = webDavUrl.replace(/^(https?:)\/(?!\/)/, '$1//');
+
 	if (!URL.canParse(webDavUrl) || !/^https?:\/\//.test(webDavUrl)) {
 		throw new NodeOperationError(
 			this.getNode(),

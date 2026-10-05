@@ -275,15 +275,16 @@ describe('NextCloud GenericFunctions', () => {
 			);
 		});
 
-		it('throws NodeOperationError when webDavUrl is missing double slash', async () => {
+		it('normalizes a webDavUrl missing one slash after the protocol', async () => {
 			const { functions, getCredentials, requestWithAuthentication } = buildFunctions();
 			getCredentials.mockResolvedValue({ webDavUrl: 'http:/localhost:8080/remote.php/webdav' });
 			requestWithAuthentication.mockResolvedValue({ status: 'ok' });
 
-			const promise = nextCloudApiRequest.call(functions, 'GET', '/test.txt', '');
-			await expect(promise).rejects.toThrow(NodeOperationError);
-			await expect(promise).rejects.toThrow(
-				'Invalid WebDAV URL in credentials: "http:/localhost:8080/remote.php/webdav". The URL must start with https:// or http://.',
+			await expect(nextCloudApiRequest.call(functions, 'GET', '/test.txt', '')).resolves.toEqual({
+				status: 'ok',
+			});
+			expect(requestOptions(requestWithAuthentication).uri).toEqual(
+				'http://localhost:8080/remote.php/webdav//test.txt',
 			);
 		});
 
