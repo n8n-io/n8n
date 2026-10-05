@@ -1,0 +1,112 @@
+[
+	{
+		"id": "credentials-page-create-button",
+		"task": {
+			"goal": "Create OAuth 2.0 credentials in the cloud console so n8n can connect to the provider",
+			"page": {
+				"url": "https://console.example-cloud.com/apis/credentials",
+				"title": "Credentials"
+			}
+		},
+		"snapshot": "- banner:\n  - link \"Example Cloud\" [ref=e2]\n  - button \"Search\" [ref=e3]\n  - button \"Account\" [ref=e4]\n- navigation:\n  - link \"Overview\" [ref=e6]\n  - link \"Library\" [ref=e7]\n  - link \"Credentials\" [ref=e8]\n  - link \"OAuth consent screen\" [ref=e9]\n- main:\n  - heading \"Credentials\" [level=1] [ref=e12]\n  - button \"Create credentials\" [ref=e13]\n  - paragraph [ref=e14]\n  - table:\n    - row \"Name Creation date Type\"\n  - link \"Learn more about credentials\" [ref=e18]",
+		"expected": {
+			"tool": "browser_click",
+			"ref": "e13"
+		}
+	},
+	{
+		"id": "create-credentials-menu-open",
+		"task": {
+			"goal": "Create OAuth 2.0 credentials in the cloud console so n8n can connect to the provider",
+			"recentActions": [
+				{
+					"action": "browser_click",
+					"target": "button \"Create credentials\"",
+					"changedPage": true
+				}
+			],
+			"page": {
+				"url": "https://console.example-cloud.com/apis/credentials",
+				"title": "Credentials"
+			}
+		},
+		"snapshot": "- main:\n  - heading \"Credentials\" [level=1] [ref=e12]\n  - button \"Create credentials\" [expanded] [ref=e13]\n  - menu \"Create credentials\" [ref=e20]:\n    - menuitem \"API key\" [ref=e21]\n    - menuitem \"OAuth client ID\" [ref=e22]\n    - menuitem \"Service account\" [ref=e23]\n    - menuitem \"Help me choose\" [ref=e24]",
+		"expected": {
+			"tool": "browser_click",
+			"ref": "e22"
+		}
+	},
+	{
+		"id": "application-type-select",
+		"task": {
+			"goal": "Create OAuth 2.0 credentials in the cloud console so n8n can connect to the provider",
+			"knownValues": {
+				"applicationType": "Web application"
+			},
+			"page": {
+				"url": "https://console.example-cloud.com/apis/credentials/oauthclient",
+				"title": "Create OAuth client ID"
+			}
+		},
+		"snapshot": "- main:\n  - heading \"Create OAuth client ID\" [level=1] [ref=e30]\n  - paragraph [ref=e31]\n  - combobox \"Application type\" [ref=e32]:\n    - option \"Select an application type\" [selected]\n    - option \"Web application\"\n    - option \"Android\"\n    - option \"Desktop app\"\n  - textbox \"Name\" [ref=e35]\n  - button \"Create\" [disabled] [ref=e36]\n  - button \"Cancel\" [ref=e37]",
+		"expected": {
+			"tool": "browser_select",
+			"ref": "e32"
+		}
+	},
+	{
+		"id": "client-name-textbox",
+		"task": {
+			"goal": "Create OAuth 2.0 credentials in the cloud console so n8n can connect to the provider",
+			"knownValues": {
+				"clientName": "n8n integration"
+			},
+			"recentActions": [
+				{
+					"action": "browser_select",
+					"target": "combobox \"Application type\"",
+					"text": "Web application",
+					"changedPage": true
+				}
+			],
+			"page": {
+				"url": "https://console.example-cloud.com/apis/credentials/oauthclient",
+				"title": "Create OAuth client ID"
+			}
+		},
+		"snapshot": "- main:\n  - heading \"Create OAuth client ID\" [level=1] [ref=e30]\n  - combobox \"Application type\" [ref=e32]: Web application\n  - textbox \"Name\" [ref=e35]\n  - heading \"Authorized redirect URIs\" [level=2] [ref=e40]\n  - button \"Add URI\" [ref=e41]\n  - button \"Create\" [disabled] [ref=e36]\n  - button \"Cancel\" [ref=e37]",
+		"expected": {
+			"tool": "browser_type",
+			"ref": "e35"
+		}
+	},
+	{
+		"id": "sign-in-wall",
+		"task": {
+			"goal": "Create OAuth 2.0 credentials in the cloud console so n8n can connect to the provider",
+			"page": {
+				"url": "https://accounts.example-cloud.com/signin",
+				"title": "Sign in"
+			}
+		},
+		"snapshot": "- main:\n  - heading \"Sign in\" [level=1] [ref=e50]\n  - paragraph [ref=e51]\n  - textbox \"Email or phone\" [ref=e52]\n  - button \"Next\" [ref=e53]\n  - link \"Forgot email?\" [ref=e54]\n  - link \"Create account\" [ref=e55]",
+		"expected": {
+			"tool": "escalate"
+		}
+	},
+	{
+		"id": "reveal-client-secret",
+		"task": {
+			"goal": "Create OAuth 2.0 credentials in the cloud console so n8n can connect to the provider",
+			"page": {
+				"url": "https://console.example-cloud.com/apis/credentials/oauthclient/12345",
+				"title": "Web client 1"
+			}
+		},
+		"snapshot": "- main:\n  - heading \"Web client 1\" [level=1] [ref=e60]\n  - heading \"Additional information\" [level=2] [ref=e61]\n  - paragraph [ref=e62]\n  - heading \"Authorized redirect URIs\" [level=2] [ref=e63]\n  - button \"Add URI\" [ref=e64]\n  - region \"Client secrets\" [ref=e70]:\n    - button \"Show client secret\" [ref=e71]",
+		"expected": {
+			"tool": "browser_click",
+			"ref": "e71"
+		}
+	}
+]
