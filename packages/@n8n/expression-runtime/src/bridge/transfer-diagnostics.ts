@@ -11,7 +11,7 @@ import { ExpressionError } from '../types';
 
 export type TransferProbe = (value: unknown) => boolean;
 
-export const MAX_DIAGNOSTIC_MS = 250;
+const MAX_DIAGNOSTIC_MS = 250;
 
 interface TransferRejection {
 	path: string;
@@ -34,7 +34,7 @@ interface WalkState {
 const ARRAY_INDEX = /^(?:0|[1-9]\d*)$/;
 const IDENTIFIER_KEY = /^[A-Za-z_$][A-Za-z0-9_$]*$/;
 
-export function diagnosticBudgetMs(msLeft: number): number {
+function diagnosticBudgetMs(msLeft: number): number {
 	if (!Number.isFinite(msLeft)) return MAX_DIAGNOSTIC_MS;
 	return Math.max(0, Math.min(MAX_DIAGNOSTIC_MS, msLeft / 2));
 }
@@ -302,14 +302,14 @@ function nodeNameForCall(rawMsg: unknown, data: WorkflowData): string | undefine
 
 /**
  * Build the error for a value the engine refuses, naming the node and the key path of the
- * member it refused. Asks the engine itself through `transferProbe`, within `budgetMs`.
+ * member it refused. Asks the engine itself through `transferProbe`, until `deadline`.
  */
-export function untransferableItemError(
+function untransferableItemError(
 	value: unknown,
 	transferProbe: TransferProbe,
 	rawMsg: unknown,
 	data: WorkflowData,
-	budgetMs: number,
+	deadline: number,
 ): ExpressionError {
 	let subject: CallSubject = { text: 'item from an upstream node' };
 	try {
@@ -319,7 +319,7 @@ export function untransferableItemError(
 		const state: WalkState = {
 			probe: transferProbe,
 			seen: new Set<object>(),
-			deadline: Date.now() + budgetMs,
+			deadline,
 			exhausted: false,
 		};
 		const found = walk(value, '', 0, state);
@@ -385,12 +385,12 @@ function sanitiseValue(state: SanitiseState, value: unknown, path: string, depth
  * turns into a throwing read, so a sibling key still crosses. Returns undefined when the
  * rebuilt value is itself refused.
  */
-export function sanitiseForTransfer(
+function sanitiseForTransfer(
 	value: unknown,
 	transferProbe: TransferProbe,
 	rawMsg: unknown,
 	data: WorkflowData,
-	budgetMs: number,
+	deadline: number,
 ): object | undefined {
 	let subject: CallSubject = { text: 'item from an upstream node' };
 	try {
@@ -399,7 +399,7 @@ export function sanitiseForTransfer(
 	try {
 		const state: SanitiseState = {
 			probe: transferProbe,
-			deadline: Date.now() + budgetMs,
+			deadline,
 			subject,
 		};
 		const sanitised = sanitiseValue(state, value, '', 0);
@@ -408,4 +408,24 @@ export function sanitiseForTransfer(
 	} catch {
 		return undefined;
 	}
+}
+
+export type TransferOutcome = { envelope: object } | { error: ExpressionError };
+
+/**
+ * Take `value` across as an envelope the engine accepts, or explain why it cannot.
+ * Both passes share one deadline, taken from what is left of the expression's own
+ * budget, so diagnosing a refusal cannot turn an expression into a timeout.
+ */
+export function transferOrExplain(
+	value: unknown,
+	transferProbe: TransferProbe,
+	rawMsg: unknown,
+	data: WorkflowData,
+	msLeft: number,
+): TransferOutcome {
+	const deadline = Date.now() + diagnosticBudgetMs(msLeft);
+	const envelope = sanitiseForTransfer(value, transferProbe, rawMsg, data, deadline);
+	if (envelope !== undefined) return { envelope };
+	return { error: untransferableItemError(value, transferProbe, rawMsg, data, deadline) };
 }

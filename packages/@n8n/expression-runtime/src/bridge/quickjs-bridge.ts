@@ -3,7 +3,6 @@ import * as path from 'node:path';
 
 import type { RuntimeBridge, BridgeConfig, ExecuteOptions, WorkflowData } from '../types';
 import { DEFAULT_BRIDGE_CONFIG, TimeoutError, MemoryLimitError } from '../types';
-import type { ErrorSentinel } from '../runtime/lazy-proxy';
 import { isLuxonSentinel, rebuildLuxonValue } from '../runtime/luxon-transfer';
 import type { EscapedTransferValue } from '../runtime/transfer';
 import {
@@ -23,11 +22,7 @@ import {
 	serializeError,
 } from './host-functions';
 import type { TransferProbe } from './transfer-diagnostics';
-import {
-	diagnosticBudgetMs,
-	sanitiseForTransfer,
-	untransferableItemError,
-} from './transfer-diagnostics';
+import { transferOrExplain } from './transfer-diagnostics';
 
 // Lazy-loaded quickjs-emscripten — avoids loading WASM when the barrel
 // file is statically imported (e.g. for error classes). The module is
@@ -1124,23 +1119,14 @@ export class QuickJsBridge implements RuntimeBridge {
 			try {
 				const result = dispatchHostCall(rawMsg, data);
 				return this.hostValueToQuickJSHandle(result, (rejected) => {
-					const sanitised = sanitiseForTransfer(
+					const outcome = transferOrExplain(
 						rejected,
 						quickjsTransferProbe,
 						rawMsg,
 						data,
-						this.diagnosticBudget(),
+						this.earliestDeadline() - Date.now(),
 					);
-					if (sanitised !== undefined) return sanitised;
-					return serializeError(
-						untransferableItemError(
-							rejected,
-							quickjsTransferProbe,
-							rawMsg,
-							data,
-							this.diagnosticBudget(),
-						),
-					);
+					return 'envelope' in outcome ? outcome.envelope : serializeError(outcome.error);
 				});
 			} catch (err) {
 				return this.hostValueToQuickJSHandle(serializeError(err));
@@ -1194,12 +1180,6 @@ export class QuickJsBridge implements RuntimeBridge {
 			return this.transferFailureHandle(value, onTransferFailure);
 		}
 		return result.value;
-	}
-
-	// The interrupt handler reads the wall clock, so time spent here counts against the
-	// expression's own deadline. Take half of what is left, at most.
-	private diagnosticBudget(): number {
-		return diagnosticBudgetMs(this.earliestDeadline() - Date.now());
 	}
 
 	/** Infinity with no expression in flight, so an idle runtime never interrupts. */

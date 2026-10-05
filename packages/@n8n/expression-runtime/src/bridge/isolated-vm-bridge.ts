@@ -14,11 +14,7 @@ import {
 	serializeError,
 } from './host-functions';
 import type { TransferProbe } from './transfer-diagnostics';
-import {
-	MAX_DIAGNOSTIC_MS,
-	sanitiseForTransfer,
-	untransferableItemError,
-} from './transfer-diagnostics';
+import { transferOrExplain } from './transfer-diagnostics';
 
 // Lazy-loaded isolated-vm — avoids loading the native binary when the barrel
 // file is statically imported (e.g. for error classes). The native module is
@@ -391,9 +387,10 @@ export class IsolatedVmBridge implements RuntimeBridge {
 	 * node and the key path of the refused value.
 	 *
 	 * @param data - Current workflow data
+	 * @param deadline - When the isolate's own timeout expires, Infinity when it has none
 	 * @private
 	 */
-	private createCallHostRef(data: WorkflowData): ivm.Callback {
+	private createCallHostRef(data: WorkflowData, deadline: number): ivm.Callback {
 		return new (getIvm().Callback)((rawMsg: unknown) => {
 			let result: unknown;
 			try {
@@ -404,23 +401,15 @@ export class IsolatedVmBridge implements RuntimeBridge {
 			try {
 				return new (getIvm().ExternalCopy)(result);
 			} catch {}
-			const sanitised = sanitiseForTransfer(
+			const outcome = transferOrExplain(
 				result,
 				vmTransferProbe,
 				rawMsg,
 				data,
-				MAX_DIAGNOSTIC_MS,
+				deadline - Date.now(),
 			);
-			if (sanitised !== undefined) {
-				try {
-					return new (getIvm().ExternalCopy)(sanitised);
-				} catch {}
-			}
-			return copySentinel(
-				serializeError(
-					untransferableItemError(result, vmTransferProbe, rawMsg, data, MAX_DIAGNOSTIC_MS),
-				),
-			);
+			if ('envelope' in outcome) return new (getIvm().ExternalCopy)(outcome.envelope);
+			return copySentinel(serializeError(outcome.error));
 		});
 	}
 
@@ -472,7 +461,10 @@ export class IsolatedVmBridge implements RuntimeBridge {
 		// release() to call in `finally`.
 		const getValueAtPath = this.createGetValueAtPathRef(data);
 		const getArrayElement = this.createGetArrayElementRef(data);
-		const callHost = this.createCallHostRef(data);
+		const callHost = this.createCallHostRef(
+			data,
+			timeout > 0 ? Date.now() + timeout : Number.POSITIVE_INFINITY,
+		);
 
 		try {
 			const timezone = options?.timezone ? safeStringify(options.timezone) : 'undefined';
