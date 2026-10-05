@@ -3421,6 +3421,60 @@ describe('createBuildWorkflowTool', () => {
 		expect(outcome?.verificationPinData).toBeUndefined();
 	});
 
+	it('keeps the declared fixture of a live read out of the plan, as its fallback', async () => {
+		const onBuildOutcome = vi.fn<(outcome: WorkflowBuildOutcome) => void>();
+		const reportBuildOutcome = vi.fn(async () => await Promise.resolve(null));
+		const declared = [{ ids: ['example ids'] }];
+		vi.mocked(compileWorkflowSource).mockResolvedValueOnce({
+			success: true,
+			workflow: {
+				...structuredClone(generatedWorkflow),
+				nodes: [
+					...structuredClone(generatedWorkflow.nodes),
+					{
+						id: 'fetch-1',
+						name: 'Fetch',
+						type: '@n8n/nodes-base-next.httpRequestGet',
+						typeVersion: 3,
+						position: [240, 0],
+						parameters: {
+							url: 'https://api.example.com/users',
+							schema: { type: 'object', properties: { ids: { type: 'array' } } },
+						},
+					},
+				],
+			},
+			declaredOutputFixtures: { Fetch: declared },
+			fixtureOrigins: { Fetch: 'declared' },
+			liveReadNodeNames: ['Fetch'],
+			warnings: [],
+			compiler: 'sandbox-tsx',
+		});
+		const { context, filePath } = makeContext({
+			overrides: {
+				workflowBuildContext: {
+					threadId: 'thread-1',
+					runId: 'run-1',
+					taskId: 'task-1',
+					workItemId: 'wi-1',
+					workflowTaskService: { reportBuildOutcome } as unknown as NonNullable<
+						InstanceAiContext['workflowBuildContext']
+					>['workflowTaskService'],
+					onBuildOutcome,
+				},
+			},
+		});
+
+		await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), { filePath });
+
+		const outcome = onBuildOutcome.mock.calls[0]?.[0] as WorkflowBuildOutcome | undefined;
+		expect(outcome?.liveReadFallbacks).toEqual({ Fetch: declared });
+		expect(outcome?.simulationFixtures?.Fetch).toBeUndefined();
+		expect(outcome?.nodeSimulationPlan).not.toContainEqual(
+			expect.objectContaining({ nodeName: 'Fetch', verdict: 'simulate' }),
+		);
+	});
+
 	it('warns when a chat-model node uses a provider without a stored credential while another LLM credential exists', async () => {
 		const { context, filePath } = makeContext({ source: 'workflow source' });
 		vi.mocked(compileWorkflowSource).mockResolvedValueOnce({

@@ -82,7 +82,11 @@ import {
 	preserveExistingNodeGroupIds,
 	preserveExistingSetupValues,
 } from './workflow-json-utils';
-import { contractEgressWarnings, legacyNodeIssues } from './next-workflow-build';
+import {
+	contractEgressWarnings,
+	legacyNodeIssues,
+	splitLiveReadFixtures,
+} from './next-workflow-build';
 import { computeChangedNodeNames, downgradeUnchangedNodeBlockers } from './workflow-node-diff';
 import {
 	compileWorkflowSource,
@@ -1668,11 +1672,16 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 					// something they declined, and has its own reporting on the setup path.
 					const onlySkippedSetupRemains =
 						!workflowNeedsSetup && skippedSetupRequests.some(needsSetupInScope);
+					const { pinned, liveReadFallbacks } = splitLiveReadFixtures(
+						compiled.declaredOutputFixtures ?? {},
+						compiled.liveReadNodeNames ?? [],
+						mockResult.mockedNodeNames,
+					);
 					const { nodeSimulationPlan, simulationFixtures, waitGateScripts } =
 						await planVerificationSimulation({
 							workflow: json,
 							mockedNodeNames: mockResult.mockedNodeNames,
-							declaredOutputFixtures: compiled.declaredOutputFixtures,
+							declaredOutputFixtures: compiled.declaredOutputFixtures && pinned,
 							workflowId: saved.id,
 							outputSchemaLookup: context.outputSchemaLookup,
 							fallbackModelConfig: context.modelId,
@@ -1764,6 +1773,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 						simulationFixtures,
 						...(compiled.fixtureOrigins ? { fixtureOrigins: compiled.fixtureOrigins } : {}),
 						...(compiled.sampledKeys ? { sampledKeys: compiled.sampledKeys } : {}),
+						...(Object.keys(liveReadFallbacks).length > 0 ? { liveReadFallbacks } : {}),
 						waitGateScripts,
 						verificationProgress:
 							triggerNodes.length > 1 && executionIntent !== 'one-off' ? {} : undefined,

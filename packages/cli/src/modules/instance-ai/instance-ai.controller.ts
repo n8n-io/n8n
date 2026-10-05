@@ -1196,6 +1196,9 @@ export class InstanceAiController {
 			payload.credentialIds,
 			payload.bypassCredentialTest,
 		);
+		if (payload.mockScenarios) {
+			this.instanceAiService.setEvalMockScenarios(payload.threadId, payload.mockScenarios);
+		}
 		return { ok: true };
 	}
 

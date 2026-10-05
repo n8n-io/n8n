@@ -443,6 +443,12 @@ export const workflowBuildOutcomeSchema = z.object({
 	 * example fills the other keys of its fixture.
 	 */
 	sampledKeys: z.record(z.array(z.string())).optional(),
+	/**
+	 * Node contracts: the declared fixture of each node that verification reads live, by node name.
+	 * When the live read fails, verification pins this fixture and moves the node to
+	 * `simulationFixtures`.
+	 */
+	liveReadFallbacks: z.record(z.array(z.record(z.unknown()))).optional(),
 	/** Draft sub-workflows created by the builder that must publish before the main workflow. */
 	supportingWorkflowIds: z.array(z.string()).optional(),
 	/** Whether any node parameters contain unresolved placeholder values. */

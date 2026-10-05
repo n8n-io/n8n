@@ -113,6 +113,7 @@ export {
 } from './reply';
 export {
 	defineResource,
+	hasPageValue,
 	pageValueOf,
 	ref,
 	Schema,

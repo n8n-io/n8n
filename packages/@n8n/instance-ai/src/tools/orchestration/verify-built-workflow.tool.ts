@@ -22,6 +22,7 @@ import {
 	handleBlockedVerification,
 	persistVerificationOutcome,
 } from './verification/finalize-result';
+import { liveReadNote, runWithLiveReadFallback } from './verification/live-read';
 import { prepareVerificationRun } from './verification/prepare-run';
 import { resolvePublishState } from './verification/publish-state';
 import { reconcileStaleCredentialPlan } from './verification/reconcile-plan';
@@ -203,6 +204,8 @@ const verifyBuiltWorkflowOutputSchema = z.object({
 	 * sentence to relay, because a passing run reads as "production works".
 	 */
 	liveStateNote: z.string().optional(),
+	/** A live read failed, so its declared fixture stood in. Not a workflow error. */
+	liveReadNote: z.string().optional(),
 	claim: verificationClaimSchema.optional(),
 	data: z.record(z.unknown()).optional(),
 	error: z.string().optional(),
@@ -335,58 +338,78 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 
 			// A scripted gate replaces the halt with one loop-safe pass per decision;
 			// otherwise run the single standard pass (halted gates pin zero items).
-			const { result, analysis, parameterCheckRuns } = prepared.gateScript
-				? await runScriptedGateVerification({
-						script: prepared.gateScript,
-						prepared,
-						executionService: target.domainContext.executionService,
-						workflowId,
-						inputData: resolvedInput.inputData,
-						triggerNodeName: resolvedInput.triggerNodeName,
-						timeout: resolvedInput.timeout,
-						abortSignal: context.abortSignal,
-						buildOutcome,
-						stateBefore: target.stateBefore,
-						runId: context.runId,
-						chatModelRelatedNodeNames,
-						chatModelRecovery,
-						verificationScope,
-					})
-				: await (async () => {
-						const runResult = await target.domainContext.executionService.run(
-							workflowId,
-							resolvedInput.inputData,
-							{
-								timeout: resolvedInput.timeout,
+			const { result, analysis, parameterCheckRuns, verifiedOutcome, liveReadFailures } =
+				prepared.gateScript
+					? {
+							...(await runScriptedGateVerification({
+								script: prepared.gateScript,
+								prepared,
+								executionService: target.domainContext.executionService,
+								workflowId,
+								inputData: resolvedInput.inputData,
 								triggerNodeName: resolvedInput.triggerNodeName,
-								verificationPinData: prepared.verificationPinData,
-								isVerificationRun: true,
+								timeout: resolvedInput.timeout,
 								abortSignal: context.abortSignal,
-							},
-						);
-						const analysis = analyzeVerificationResult({
-							result: runResult,
-							buildOutcome,
-							simulatedNodes: prepared.simulatedNodes,
-							haltedGateNames: prepared.haltedGateNames,
-							triggerNodeName: resolvedInput.triggerNodeName,
-							stateBefore: target.stateBefore,
-							runId: context.runId,
-							chatModelRelatedNodeNames,
-							chatModelRecovery,
-							verificationScope,
-						});
-						return {
-							result: runResult,
-							analysis,
-							parameterCheckRuns: [
-								{
-									executionId: runResult.executionId,
-									nodeNames: analysis.reachedSimulatedNodes.map((node) => node.nodeName),
-								},
-							],
-						};
-					})();
+								buildOutcome,
+								stateBefore: target.stateBefore,
+								runId: context.runId,
+								chatModelRelatedNodeNames,
+								chatModelRecovery,
+								verificationScope,
+							})),
+							verifiedOutcome: buildOutcome,
+							liveReadFailures: [],
+						}
+					: await (async () => {
+							const pass = await runWithLiveReadFallback({
+								buildOutcome,
+								prepared,
+								input: resolvedInput,
+								run: async ({ verificationPinData, liveReadNodeNames }) =>
+									await target.domainContext.executionService.run(
+										workflowId,
+										resolvedInput.inputData,
+										{
+											timeout: resolvedInput.timeout,
+											triggerNodeName: resolvedInput.triggerNodeName,
+											verificationPinData,
+											isVerificationRun: true,
+											...(liveReadNodeNames.length > 0
+												? { readOnceNodeNames: liveReadNodeNames }
+												: {}),
+											abortSignal: context.abortSignal,
+										},
+									),
+								workflowTaskService,
+								abortSignal: context.abortSignal,
+								logger: context.logger,
+							});
+							const runResult = pass.result;
+							const analysis = analyzeVerificationResult({
+								result: runResult,
+								buildOutcome: pass.buildOutcome,
+								simulatedNodes: pass.prepared.simulatedNodes,
+								haltedGateNames: pass.prepared.haltedGateNames,
+								triggerNodeName: resolvedInput.triggerNodeName,
+								stateBefore: target.stateBefore,
+								runId: context.runId,
+								chatModelRelatedNodeNames,
+								chatModelRecovery,
+								verificationScope,
+							});
+							return {
+								result: runResult,
+								analysis,
+								parameterCheckRuns: [
+									{
+										executionId: runResult.executionId,
+										nodeNames: analysis.reachedSimulatedNodes.map((node) => node.nodeName),
+									},
+								],
+								verifiedOutcome: pass.buildOutcome,
+								liveReadFailures: pass.failures,
+							};
+						})();
 
 			// The repair target from an earlier verdict counts even when the model
 			// omits it here — that is exactly the turn where it stops mentioning it.
@@ -413,11 +436,11 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 			const runClaim = deriveVerificationClaim({
 				analysis: {
 					...analysis,
-					nodesNotReached: buildOutcome.nodeSimulationPlan
+					nodesNotReached: (verifiedOutcome.nodeSimulationPlan ?? [])
 						.map((node) => node.nodeName)
 						.filter((name) => !analysis.reachedNames.has(name)),
 				},
-				plannedNodeCount: buildOutcome.nodeSimulationPlan?.length ?? 0,
+				plannedNodeCount: verifiedOutcome.nodeSimulationPlan?.length ?? 0,
 				fixTargetNodeNames,
 				publishState,
 			});
@@ -487,6 +510,7 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 					result.binaryOutputNodeNames,
 				),
 				liveStateNote: formatLiveStateNote(claim),
+				liveReadNote: liveReadFailures.length > 0 ? liveReadNote(liveReadFailures) : undefined,
 				...(resolvedInput.includeData ? { data: result.data } : {}),
 				error: analysis.errorMessage,
 				remediation: analysis.remediation,

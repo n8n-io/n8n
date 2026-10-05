@@ -19,6 +19,31 @@ export function designTimeMockContext(userRequests: string): string {
 		: '';
 }
 
+/** An execution scenario of an eval case, as the harness sends it. */
+export interface DesignTimeMockScenario {
+	readonly name: string;
+	readonly dataSetup: string;
+}
+
+const MAX_SCENARIO_HINT_CHARS = 8_000;
+
+/**
+ * The scenarios of the case, for the mock of the build. The responses that the agent sees at
+ * build time then have the shape that the scenario runs give, so a wrong declared shape drifts.
+ * The scenarios can hold different values, so one rule picks them.
+ */
+export function designTimeScenarioHints(scenarios: readonly DesignTimeMockScenario[]): string {
+	if (scenarios.length === 0) return '';
+	const text =
+		'The test scenarios of this case describe the data that the services hold:\n' +
+		scenarios.map(({ name, dataSetup }) => `- ${name}: ${dataSetup}`).join('\n') +
+		'\nGive each response the shape that these scenarios give it. When they hold different data, ' +
+		'use the data of the first scenario that describes a successful response.';
+	return text.length > MAX_SCENARIO_HINT_CHARS
+		? `${text.slice(0, MAX_SCENARIO_HINT_CHARS)}... [truncated]`
+		: text;
+}
+
 /**
  * How long a build waits for a mocked resource lookup. One LLM mock call takes 10-30 s and a
  * lookup can make two. The default budget of a real API cuts the lookup off every time.
@@ -50,6 +75,8 @@ export function configureEvalMockRun(
 export class EvalDesignTimeMockService {
 	private readonly byThread = new Map<string, Promise<EvalLlmMockHandler>>();
 
+	private readonly scenariosByThread = new Map<string, readonly DesignTimeMockScenario[]>();
+
 	constructor(private readonly credentialAllowlists: EvalThreadCredentialAllowlistService) {}
 
 	/**
@@ -63,14 +90,27 @@ export class EvalDesignTimeMockService {
 		if (this.credentialAllowlists.get(threadId) === undefined) return undefined;
 		const known = this.byThread.get(threadId);
 		if (known) return await known;
+		const scenarioHints = designTimeScenarioHints(this.scenariosByThread.get(threadId) ?? []);
 		const created = userRequests()
 			.catch(() => '')
-			.then((requests) => createLlmMockHandler({ globalContext: designTimeMockContext(requests) }));
+			.then((requests) =>
+				createLlmMockHandler({
+					globalContext: designTimeMockContext(requests),
+					...(scenarioHints ? { scenarioHints } : {}),
+				}),
+			);
 		this.byThread.set(threadId, created);
 		return await created;
 	}
 
+	/** The scenarios of the case that the thread builds for. The next mock of the thread reads them. */
+	setScenarios(threadId: string, scenarios: readonly DesignTimeMockScenario[]): void {
+		this.scenariosByThread.set(threadId, scenarios);
+		this.byThread.delete(threadId);
+	}
+
 	clearThread(threadId: string): void {
 		this.byThread.delete(threadId);
+		this.scenariosByThread.delete(threadId);
 	}
 }

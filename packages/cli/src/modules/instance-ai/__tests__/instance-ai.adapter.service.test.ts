@@ -5298,6 +5298,33 @@ describe('createExecutionAdapter run()', () => {
 		]);
 	});
 
+	it('runs each read-once node on its first item without retries, on the run copy only', async () => {
+		const fetch = {
+			id: 'node-1',
+			name: 'Fetch',
+			type: '@n8n/nodes-base-next.httpRequestGet',
+			typeVersion: 3,
+			parameters: {},
+			position: [0, 0] as [number, number],
+			retryOnFail: true,
+		};
+		const post = { ...fetch, id: 'node-2', name: 'Post' };
+		const workflow = { id: 'wf-1', nodes: [fetch, post] };
+		const { adapter, mockWorkflowRunner } = createRunAdapterForTests(workflow);
+
+		await adapter.run('wf-1', undefined, { readOnceNodeNames: ['Fetch'] });
+		await adapter.run('wf-1');
+
+		const [readOnce, plain] = mockWorkflowRunner.run.mock.calls.map((call) => call[0]);
+		expect(readOnce.workflowData.nodes).toEqual([
+			{ ...fetch, executeOnce: true, retryOnFail: false },
+			post,
+		]);
+		expect(plain.workflowData.nodes).toBe(workflow.nodes);
+		expect(workflow.nodes[0]).toBe(fetch);
+		expect(fetch.retryOnFail).toBe(true);
+	});
+
 	it('attaches Instance AI execution telemetry metadata to workflow runs', async () => {
 		const { adapter, mockWorkflowRunner } = createRunAdapterForTests({
 			id: 'wf-1',

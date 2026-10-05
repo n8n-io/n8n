@@ -29,6 +29,14 @@ answer. Its context is the user's request, so a looked-up resource has the
 fields the case names. Other threads get no mock. The same layer serves both
 build arms, so the change is arm-neutral.
 
+The harness also sends the data setup of every scenario of the case with the
+pin (`mockScenarios`). The mock gets them as its scenario context: each
+response has the shape that the scenarios give it, and when they hold
+different data, the mock uses the first scenario that describes a successful
+response. A read at build time (a live read of a node-contract `schema`, or a
+legacy read that verification runs) then sees the shape that the scenario runs
+see. The agent never sees the scenario texts, only the mocked responses.
+
 ## Node-output level — pin data / simulation fixtures
 
 Mocks the **items a node emits** after its own post-processing. The node never

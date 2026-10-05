@@ -31,6 +31,7 @@ function check(
 			verificationPinData: options.pins ?? { Write: [{}] },
 			simulatedNodes: [],
 			haltedGateNames: [],
+			liveReadNodeNames: [],
 		},
 		triggerNodeName: options.triggerNodeName,
 	});

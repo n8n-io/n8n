@@ -342,6 +342,141 @@ describe('declared shapes in verification', () => {
 	});
 });
 
+describe('live reads in build verification', () => {
+	const json: WorkflowJSON = {
+		name: 'W',
+		nodes: [
+			{
+				id: 'Start',
+				name: 'Start',
+				type: 'n8n-nodes-base.scheduleTrigger',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: {},
+			},
+			{
+				id: 'Fetch',
+				name: 'Fetch',
+				type: '@n8n/nodes-base-next.httpRequestGet',
+				typeVersion: 3,
+				position: [0, 0],
+				parameters: {
+					url: 'https://api.example.com/users',
+					schema: {
+						type: 'object',
+						properties: { ids: { type: 'array', items: { type: 'string' } } },
+					},
+				},
+			},
+			{
+				id: 'Keep',
+				name: 'Keep',
+				type: 'n8n-nodes-base.filter',
+				typeVersion: 2.2,
+				position: [0, 0],
+				parameters: { conditions: { conditions: [{ leftValue: '={{ $json.ids }}' }] } },
+			},
+		],
+		connections: {
+			Start: { main: [[{ node: 'Fetch', type: 'main', index: 0 }]] },
+			Fetch: { main: [[{ node: 'Keep', type: 'main', index: 0 }]] },
+		},
+	};
+	// The live read ran: its verdict is `execute`, and its declared fixture waits as a fallback.
+	const outcome = {
+		nodeSimulationPlan: [
+			{
+				nodeName: 'Fetch',
+				verdict: 'execute',
+				reason: 'GET a URL reads from HTTP Request',
+				confidence: 'high',
+				source: 'deterministic',
+			},
+		],
+		liveReadFallbacks: { Fetch: [{ ids: ['example ids'] }] },
+		fixtureOrigins: { Fetch: 'declared' },
+	} as unknown as WorkflowBuildOutcome;
+	const build = tool(
+		'build-workflow',
+		async () =>
+			await Promise.resolve({
+				...ready,
+				triggerNodes: [{ nodeName: 'Start', nodeType: 'n8n-nodes-base.scheduleTrigger' }],
+			}),
+	);
+	const verify = tool(
+		'verify-built-workflow',
+		async () =>
+			await Promise.resolve({
+				success: true,
+				executionId: 'e1',
+				nodesExecuted: ['Start', 'Fetch', 'Keep'],
+			}),
+	);
+	const sourcesFor = (response: string): BuildVerificationSources => ({
+		getWorkflow: async () => await Promise.resolve(json),
+		getBuildOutcome: async () => await Promise.resolve(outcome),
+		getNodeOutput: async (_executionId, nodeName) =>
+			await Promise.resolve({
+				nodeName,
+				outputs: [
+					{
+						index: 0,
+						totalItems: 1,
+						items: [wrapUntrustedData(response, 'execution-output')],
+					},
+				],
+				totalItems: 1,
+				returned: { from: 0, to: 1 },
+			}),
+		getResolvedNodeParameters: async (_executionId, nodeName) =>
+			await Promise.resolve({
+				nodeName,
+				runIndex: 0,
+				itemIndex: 0,
+				parameters: json.nodes[2].parameters ?? {},
+				resolved: wrapUntrustedData(
+					JSON.stringify({ conditions: { conditions: [{ leftValue: null }] } }),
+					'execution-output',
+				),
+				failedExpressions: [],
+				emptyResolutions: [],
+			}),
+	});
+
+	it('labels the live values observed and warns where the response differs from the schema', async () => {
+		const result = await withBuildVerification(
+			build,
+			verify,
+			sourcesFor('{"userIds": ["u1"], "total": 1}'),
+		).handler?.({}, {} as never);
+
+		expect(result).toMatchObject({
+			verification: {
+				resolvedValues: expect.stringContaining('[Fetch.ids; observed]'),
+				shapeWarnings: expect.stringContaining(
+					'Fetch: the output does not match its declared schema: $json.ids: missing; $json: unknown field(s) userIds, total. Allowed: ids',
+				),
+			},
+		});
+		expect(result).not.toHaveProperty('verification.declaredShapeNote');
+	});
+
+	it('gives no warning when the live response matches the schema', async () => {
+		const result = await withBuildVerification(
+			build,
+			verify,
+			sourcesFor('{"ids": ["u1", "u2"]}'),
+		).handler?.({}, {} as never);
+
+		expect(result).toMatchObject({
+			verification: { resolvedValues: expect.stringContaining('[Fetch.ids; observed]') },
+		});
+		expect(result).not.toHaveProperty('verification.shapeWarnings');
+		expect(result).not.toHaveProperty('verification.declaredShapeNote');
+	});
+});
+
 const wrap = (label: string, body: string) =>
 	`<untrusted_data source="execution-output" label="node:${label}">\n${body}\n</untrusted_data>`;
 

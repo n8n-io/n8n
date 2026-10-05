@@ -2466,3 +2466,174 @@ describe('verify-built-workflow tool — publish state', () => {
 		expect(result.liveStateNote).toBeUndefined();
 	});
 });
+
+describe('verify-built-workflow tool — live reads', () => {
+	const readVerdict = {
+		nodeName: 'Fetch',
+		verdict: 'execute' as const,
+		reason: 'GET a URL reads from HTTP Request',
+		confidence: 'high' as const,
+		source: 'deterministic' as const,
+	};
+	const declared = [{ ids: ['example ids'] }];
+	const liveReadOutcome = () =>
+		makeBuildOutcome({
+			nodeSimulationPlan: [readVerdict],
+			liveReadFallbacks: { Fetch: declared },
+			fixtureOrigins: { Fetch: 'declared' },
+		});
+	const pinnedRun: ExecutionRunResult = {
+		executionId: 'exec-pinned',
+		status: 'success',
+		executedNodeNames: ['Start', 'Fetch'],
+		data: { Fetch: declared },
+	};
+
+	it('pins the declared fixture when the host of a live read does not resolve, and says why in one line', async () => {
+		const { ctx, updateBuildOutcome } = makeContext(liveReadOutcome(), pinnedRun);
+		const run = vi.mocked(ctx.domainContext.executionService.run);
+		run.mockResolvedValueOnce({
+			executionId: 'exec-live',
+			status: 'error',
+			error: 'getaddrinfo ENOTFOUND api.example.com',
+			nodeErrors: [{ nodeName: 'Fetch', message: 'getaddrinfo ENOTFOUND api.example.com' }],
+			executedNodeNames: ['Start', 'Fetch'],
+			lastNodeExecuted: 'Fetch',
+		});
+
+		const result = await runTool(ctx, { workItemId: 'wi-1', workflowId: 'wf-1' });
+
+		expect(run).toHaveBeenCalledTimes(2);
+		expect(run.mock.calls[0][2]).toMatchObject({ readOnceNodeNames: ['Fetch'] });
+		expect(run.mock.calls[0][2].verificationPinData).toBeUndefined();
+		expect(run.mock.calls[1][2]).toMatchObject({ verificationPinData: { Fetch: declared } });
+		expect(run.mock.calls[1][2]).not.toHaveProperty('readOnceNodeNames');
+		expect(result).toMatchObject({ success: true, executionId: 'exec-pinned' });
+		expect(result.remediation).toBeUndefined();
+		expect(result.simulatedNodes).toEqual([
+			{ nodeName: 'Fetch', reason: 'Live read failed: getaddrinfo ENOTFOUND api.example.com' },
+		]);
+		expect((result as { liveReadNote?: string }).liveReadNote).toBe(
+			'The live read of "Fetch" failed (getaddrinfo ENOTFOUND api.example.com), so verification pinned the declared fixture instead. This is not a workflow error: do not edit the workflow for it.',
+		);
+		expect(updateBuildOutcome).toHaveBeenCalledWith('wi-1', {
+			nodeSimulationPlan: [
+				{
+					...readVerdict,
+					verdict: 'simulate',
+					reason: 'Live read failed: getaddrinfo ENOTFOUND api.example.com',
+				},
+			],
+			simulationFixtures: { Fetch: declared },
+			liveReadFallbacks: undefined,
+		});
+	});
+
+	it('pins the declared fixture when the run stops at the time-out before the live read finishes', async () => {
+		const { ctx } = makeContext(liveReadOutcome(), pinnedRun);
+		const run = vi.mocked(ctx.domainContext.executionService.run);
+		run.mockResolvedValueOnce({
+			executionId: 'exec-live',
+			status: 'error',
+			error: 'Execution timed out after 300 seconds',
+		});
+
+		const result = await runTool(ctx, { workItemId: 'wi-1', workflowId: 'wf-1' });
+
+		expect(run).toHaveBeenCalledTimes(2);
+		expect(result.success).toBe(true);
+		expect((result as { liveReadNote?: string }).liveReadNote).toContain(
+			'"Fetch" failed (Execution timed out after 300 seconds)',
+		);
+	});
+
+	it('blames no live read when the run stops the same way with the reads pinned', async () => {
+		const stopped: ExecutionRunResult = {
+			executionId: 'exec-stopped',
+			status: 'error',
+			error: 'Execution timed out after 300000ms and was cancelled',
+		};
+		const { ctx, updateBuildOutcome } = makeContext(liveReadOutcome(), stopped);
+
+		const result = await runTool(ctx, { workItemId: 'wi-1', workflowId: 'wf-1' });
+
+		expect(vi.mocked(ctx.domainContext.executionService.run)).toHaveBeenCalledTimes(2);
+		expect(result).toMatchObject({ success: false, executionId: 'exec-stopped' });
+		expect((result as { liveReadNote?: string }).liveReadNote).toBeUndefined();
+		expect(updateBuildOutcome.mock.calls.map(([, update]) => update)).not.toContainEqual(
+			expect.objectContaining({ liveReadFallbacks: undefined }),
+		);
+	});
+
+	it('blames no live read when the run stopped after another node', async () => {
+		const { ctx } = makeContext(liveReadOutcome(), {
+			executionId: 'exec-stopped',
+			status: 'error',
+			error: 'Execution stopped',
+			lastNodeExecuted: 'Wait',
+		});
+
+		await runTool(ctx, { workItemId: 'wi-1', workflowId: 'wf-1' });
+
+		expect(vi.mocked(ctx.domainContext.executionService.run)).toHaveBeenCalledTimes(1);
+	});
+
+	it('runs a live read once and keeps its real response', async () => {
+		const { ctx, updateBuildOutcome } = makeContext(liveReadOutcome(), {
+			executionId: 'exec-live',
+			status: 'success',
+			executedNodeNames: ['Start', 'Fetch'],
+			data: { Fetch: [{ userIds: ['u1'] }] },
+		});
+
+		const result = await runTool(ctx, { workItemId: 'wi-1', workflowId: 'wf-1' });
+
+		const run = vi.mocked(ctx.domainContext.executionService.run);
+		expect(run).toHaveBeenCalledTimes(1);
+		expect(run.mock.calls[0][2]).toMatchObject({ readOnceNodeNames: ['Fetch'] });
+		expect(result).toMatchObject({ success: true, executionId: 'exec-live' });
+		expect(result.simulatedNodes).toBeUndefined();
+		expect((result as { liveReadNote?: string }).liveReadNote).toBeUndefined();
+		expect(updateBuildOutcome.mock.calls.map(([, update]) => update)).not.toContainEqual(
+			expect.objectContaining({ liveReadFallbacks: undefined }),
+		);
+	});
+
+	it('lets a fixture override pin a live read', async () => {
+		const { ctx } = makeContext(liveReadOutcome(), pinnedRun);
+		const override = [{ ids: [] }];
+
+		const result = await runTool(ctx, {
+			workItemId: 'wi-1',
+			workflowId: 'wf-1',
+			fixtureOverrides: { Fetch: override },
+		});
+
+		const run = vi.mocked(ctx.domainContext.executionService.run);
+		expect(run).toHaveBeenCalledTimes(1);
+		expect(run.mock.calls[0][2]).toMatchObject({ verificationPinData: { Fetch: override } });
+		expect(run.mock.calls[0][2]).not.toHaveProperty('readOnceNodeNames');
+		expect(result.simulatedNodes).toEqual([
+			{ nodeName: 'Fetch', reason: 'A fixture override pins this live read' },
+		]);
+	});
+
+	it('keeps a build without live reads as before: one run, and a node error is a workflow error', async () => {
+		const { ctx } = makeContext(makeBuildOutcome({ nodeSimulationPlan: [readVerdict] }), {
+			executionId: 'exec-1',
+			status: 'error',
+			error: 'getaddrinfo ENOTFOUND api.example.com',
+			nodeErrors: [{ nodeName: 'Fetch', message: 'getaddrinfo ENOTFOUND api.example.com' }],
+			lastNodeExecuted: 'Fetch',
+		});
+
+		const result = await runTool(ctx, { workItemId: 'wi-1', workflowId: 'wf-1' });
+
+		const run = vi.mocked(ctx.domainContext.executionService.run);
+		expect(run).toHaveBeenCalledTimes(1);
+		expect(run.mock.calls[0][2]).not.toHaveProperty('readOnceNodeNames');
+		expect(result.success).toBe(false);
+		expect((result as { liveReadNote?: string }).liveReadNote).toBeUndefined();
+		expect(result.remediation).toMatchObject({ category: 'code_fixable' });
+	});
+});

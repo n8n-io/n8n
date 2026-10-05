@@ -1035,6 +1035,30 @@ describe('InstanceAiController', () => {
 			expect(evalCredentialAllowlists.get(THREAD_ID)).toEqual(['cred-1', 'cred-2']);
 		});
 
+		it('should give the scenarios of the case to the design-time mock', async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('owned');
+			const mockScenarios = [{ name: 'found', dataSetup: 'GET /users returns one user' }];
+
+			await controller.setThreadCredentialAllowlist(req, res, {
+				...payload,
+				mockScenarios,
+			} as InstanceAiEvalCredentialAllowlistRequest);
+
+			expect(instanceAiService.setEvalMockScenarios).toHaveBeenCalledWith(THREAD_ID, mockScenarios);
+		});
+
+		it('should keep the scenarios of the thread when the pin omits them', async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('owned');
+
+			await controller.setThreadCredentialAllowlist(
+				req,
+				res,
+				payload as InstanceAiEvalCredentialAllowlistRequest,
+			);
+
+			expect(instanceAiService.setEvalMockScenarios).not.toHaveBeenCalled();
+		});
+
 		it('should reject a thread that does not exist', async () => {
 			memoryService.checkThreadOwnership.mockResolvedValue('not_found');
 

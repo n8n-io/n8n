@@ -18,6 +18,7 @@ import { getBase } from '@/workflow-execute-additional-data';
 import {
 	configureEvalMockRun,
 	designTimeMockContext,
+	designTimeScenarioHints,
 	EvalDesignTimeMockService,
 } from '../design-time-mock.service';
 import { EvalMockedCredentialsHelper } from '../eval-mocked-credentials-helper';
@@ -62,6 +63,40 @@ describe('EvalDesignTimeMockService', () => {
 
 		service.clearThread('thread-1');
 		expect(await service.handlerFor('thread-1', userRequests)).not.toBe(first);
+	});
+
+	it('gives the mock the data setups of the case scenarios', async () => {
+		allowlists.set('thread-1', []);
+		const scenarios = [
+			{ name: 'found', dataSetup: 'GET https://api.example.com/users returns {"ids":[1,2]}' },
+			{ name: 'down', dataSetup: 'GET https://api.example.com/users returns 503' },
+		];
+		service.setScenarios('thread-1', scenarios);
+
+		await service.handlerFor('thread-1', async () => request);
+
+		const scenarioHints = designTimeScenarioHints(scenarios);
+		expect(createLlmMockHandler).toHaveBeenCalledWith({
+			globalContext: designTimeMockContext(request),
+			scenarioHints,
+		});
+		expect(scenarioHints).toContain(
+			'- found: GET https://api.example.com/users returns {"ids":[1,2]}',
+		);
+		expect(scenarioHints).toContain('- down: GET https://api.example.com/users returns 503');
+		expect(scenarioHints).toContain('first scenario that describes a successful response');
+	});
+
+	it('builds the next mock of a thread from scenarios that arrive later', async () => {
+		allowlists.set('thread-1', []);
+		const first = await service.handlerFor('thread-1', async () => request);
+
+		service.setScenarios('thread-1', [{ name: 'found', dataSetup: 'one user' }]);
+
+		expect(await service.handlerFor('thread-1', async () => request)).not.toBe(first);
+		expect(createLlmMockHandler).toHaveBeenLastCalledWith(
+			expect.objectContaining({ scenarioHints: expect.stringContaining('one user') }),
+		);
 	});
 
 	it('mocks without context when the request cannot be read', async () => {

@@ -2151,6 +2151,14 @@ export class InstanceAiAdapterService {
 				const connections = options?.omitConnections?.length
 					? omitWorkflowConnections(workflow.connections, options.omitConnections)
 					: workflow.connections;
+				// A live read in verification sends one request: the node runs on its first item, once.
+				const readOnce = new Set(options?.readOnceNodeNames ?? []);
+				const runNodes =
+					readOnce.size > 0
+						? nodes.map((node) =>
+								readOnce.has(node.name) ? { ...node, executeOnce: true, retryOnFail: false } : node,
+							)
+						: workflow.nodes;
 
 				// Force-save AI-initiated executions so that follow-up
 				// `executions(list/get/debug)` calls can read the result, regardless of
@@ -2161,6 +2169,7 @@ export class InstanceAiAdapterService {
 					executionMode: triggerNode ? getExecutionModeForTrigger(triggerNode) : 'manual',
 					workflowData: {
 						...workflow,
+						nodes: runNodes,
 						connections,
 						settings: {
 							...workflow.settings,

@@ -187,7 +187,10 @@ import { composeLocalMcpServers } from './browser/composite-local-mcp-server';
 import { InstanceAiBrowserSessionService } from './browser/instance-ai-browser-session.service';
 import { enabledToolCategories, resolveComputerUseState } from './computer-use-availability';
 import { dropRejectedAttachmentsFromHistory } from './drop-rejected-attachments';
-import { EvalDesignTimeMockService } from './eval/design-time-mock.service';
+import {
+	EvalDesignTimeMockService,
+	type DesignTimeMockScenario,
+} from './eval/design-time-mock.service';
 import { EvalThreadCredentialAllowlistService } from './eval/thread-credential-allowlist.service';
 import { DurableEventLog } from './event-bus/durable-event-log';
 import { InProcessEventBus } from './event-bus/in-process-event-bus';
@@ -1346,6 +1349,11 @@ export class InstanceAiService {
 				? createRunDebugStepHooks(this.runDebugBuffer, { runId, threadId })
 				: {}),
 		};
+	}
+
+	/** The eval case's scenarios, for the design-time mock of the thread. */
+	setEvalMockScenarios(threadId: string, scenarios: readonly DesignTimeMockScenario[]): void {
+		this.evalDesignTimeMocks.setScenarios(threadId, scenarios);
 	}
 
 	/** What observational memory holds for a thread: the live observations and the

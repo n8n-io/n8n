@@ -28,6 +28,7 @@ import {
 	EXPRESSIONS_PATH,
 	fetchResourceFields,
 	fixtureOriginsOf,
+	liveReadNodeNames,
 	sampledKeysOf,
 	lockNodeContracts,
 	missingNodeTypeErrors,
@@ -61,6 +62,8 @@ export type WorkflowSourceCompileResult =
 			declaredOutputFixtures?: NonNullable<WorkflowJSON['pinData']>;
 			fixtureOrigins?: Record<string, FixtureOrigin>;
 			sampledKeys?: Record<string, string[]>;
+			/** Node contracts: the nodes that verification reads live, see `liveReadNodeNames`. */
+			liveReadNodeNames?: string[];
 			warnings: ValidationWarning[];
 			compiler: WorkflowSourceCompiler;
 	  }
@@ -555,6 +558,7 @@ async function compileNextWorkflowSource(
 			resourceFields,
 		),
 		sampledKeys: sampledKeysOf(built.workflow, built.declaredOutputFixtures),
+		liveReadNodeNames: liveReadNodeNames(built.workflow, built.declaredOutputFixtures),
 	};
 }
 

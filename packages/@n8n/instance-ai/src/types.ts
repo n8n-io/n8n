@@ -642,6 +642,11 @@ export interface InstanceAiExecutionService {
 			 * verification passes are acyclic.
 			 */
 			omitConnections?: Array<{ source: string; target: string }>;
+			/**
+			 * Nodes that run once, on their first input item and without `retryOnFail`, in this run's
+			 * ephemeral workflow copy. Verification reads these nodes live, so each sends one request.
+			 */
+			readOnceNodeNames?: string[];
 			abortSignal?: AbortSignal;
 		},
 	): Promise<ExecutionResult>;

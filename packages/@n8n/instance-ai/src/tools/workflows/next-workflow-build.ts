@@ -1,5 +1,5 @@
 import { getWorkspaceRoot } from '@n8n/agents/sandbox';
-import { validate, type JsonSchema, type ResourceField } from '@n8n/node-sdk';
+import { hasPageValue, validate, type JsonSchema, type ResourceField } from '@n8n/node-sdk';
 import { modelCatalogDeclaration, outputItemSchema, toTs } from '@n8n/node-sdk/codegen';
 import {
 	credentialHostsOf,
@@ -501,6 +501,46 @@ export function fixtureOriginsOf(
 						: 'synthesized',
 		]),
 	);
+}
+
+/**
+ * The nodes that build verification reads live, so a drift check sees the real response: a read
+ * action that is idempotent (`flow`), with a declared output and no `sample`. The contract flow is
+ * the allow rule; for HTTP it is a GET, as RFC 9110 makes GET safe. A `sample` pins the step, so a
+ * GET endpoint that changes state takes one. An input that follows pages, e.g. HTTP `pages`, can
+ * send many requests, so such a node stays pinned too.
+ */
+export function liveReadNodeNames(workflow: WorkflowJSON, declared: Fixtures = {}): string[] {
+	return workflow.nodes.flatMap((node) => {
+		const action = actionOfNode(node);
+		if (!action || !node.name || node.disabled || declared[node.name]?.length) return [];
+		const parameters = node.parameters ?? {};
+		const followsPages = Object.entries(action.inputSchema.properties ?? {}).some(
+			([key, field]) =>
+				parameters[key] !== undefined && field['x-n8n-page'] === undefined && hasPageValue(field),
+		);
+		const reads = action.flow.effect === 'read' && action.flow.idempotent === true;
+		return reads && !followsPages && declaredOutputOf(node) !== undefined ? [node.name] : [];
+	});
+}
+
+/**
+ * Splits the fixtures of the live reads out: verification runs a live read, and pins its fixture
+ * only when the read fails. A node with a mocked credential cannot read, so its fixture stays.
+ */
+export function splitLiveReadFixtures(
+	fixtures: Fixtures,
+	liveReads: readonly string[],
+	mockedNodeNames: readonly string[] = [],
+): { pinned: Fixtures; liveReadFallbacks: Fixtures } {
+	const live = new Set(
+		liveReads.filter((name) => !mockedNodeNames.includes(name) && fixtures[name]?.length),
+	);
+	const entries = Object.entries(fixtures);
+	return {
+		pinned: Object.fromEntries(entries.filter(([name]) => !live.has(name))),
+		liveReadFallbacks: Object.fromEntries(entries.filter(([name]) => live.has(name))),
+	};
 }
 
 /** The top-level keys that the sample of a service node gives, in any item, by node name. */

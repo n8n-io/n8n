@@ -210,6 +210,42 @@ describe('buildWorkflow scenario-seed data table lifecycle', () => {
 	});
 });
 
+describe('buildWorkflow design-time mock scenarios', () => {
+	it('sends the data setup of every scenario of the case with the credential pin', async () => {
+		const setThreadCredentialAllowlist = vi.fn().mockResolvedValue(undefined);
+		const client = makeClient({ setThreadCredentialAllowlist });
+
+		await buildWorkflow({
+			client,
+			...baseConfig,
+			executionScenarios: [
+				{
+					name: 'found',
+					description: 'd',
+					dataSetup: 'GET /users returns {ids: [1]}',
+					successCriteria: 'ok',
+				},
+				{
+					name: 'empty',
+					description: 'd',
+					dataSetup: 'GET /users returns {ids: []}',
+					successCriteria: 'ok',
+				},
+			],
+		});
+
+		expect(setThreadCredentialAllowlist).toHaveBeenCalledWith(
+			expect.any(String),
+			[],
+			[],
+			[
+				{ name: 'found', dataSetup: 'GET /users returns {ids: [1]}' },
+				{ name: 'empty', dataSetup: 'GET /users returns {ids: []}' },
+			],
+		);
+	});
+});
+
 describe('buildWorkflow declared credentials', () => {
 	it('registers the seeded credentials as passing their connection test', async () => {
 		const setThreadCredentialAllowlist = vi.fn().mockResolvedValue(undefined);
@@ -231,6 +267,7 @@ describe('buildWorkflow declared credentials', () => {
 			expect.any(String),
 			['cred-seeded'],
 			['cred-seeded'],
+			[{ name: 'scenario', dataSetup: 'setup' }],
 		);
 	});
 
@@ -258,6 +295,7 @@ describe('buildWorkflow declared credentials', () => {
 			expect.any(String),
 			['cred-blank'],
 			[],
+			[{ name: 'scenario', dataSetup: 'setup' }],
 		);
 	});
 
@@ -282,6 +320,7 @@ describe('buildWorkflow declared credentials', () => {
 			expect.any(String),
 			['cred-working', 'cred-broken'],
 			['cred-working'],
+			[{ name: 'scenario', dataSetup: 'setup' }],
 		);
 	});
 });

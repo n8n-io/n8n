@@ -777,6 +777,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 				threadId,
 				seededCredentialIds,
 				bypassCredentialTestIds,
+				(config.executionScenarios ?? []).map(({ name, dataSetup }) => ({ name, dataSetup })),
 			);
 		} catch (error: unknown) {
 			// Only a missing endpoint (older backend) may degrade to the legacy

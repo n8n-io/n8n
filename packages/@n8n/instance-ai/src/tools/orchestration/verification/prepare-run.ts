@@ -13,7 +13,14 @@ export interface PreparedVerificationRun {
 	haltedGateNames: string[];
 	/** When set, verify runs one scripted pass per decision instead of halting. */
 	gateScript?: WaitGateScript;
+	/** Node contracts: the nodes that this run reads live, see `liveReadFallbacks`. */
+	liveReadNodeNames: string[];
 }
+
+export const LIVE_READ_OVERRIDE_REASON = 'A fixture override pins this live read';
+
+export const LIVE_READ_GATE_REASON =
+	'A scripted wait-gate run pins this live read with its declared fixture';
 
 function getInvalidFixtureOverrideNodeNames(
 	buildOutcome: WorkflowBuildOutcome,
@@ -21,11 +28,13 @@ function getInvalidFixtureOverrideNodeNames(
 ): string[] {
 	if (!fixtureOverrides) return [];
 
-	const simulatedNodeNames = new Set(
-		(buildOutcome.nodeSimulationPlan ?? [])
+	// A live read has a declared fixture, so an override can pin it as a simulated node.
+	const simulatedNodeNames = new Set([
+		...(buildOutcome.nodeSimulationPlan ?? [])
 			.filter((verdict) => verdict.verdict === 'simulate')
 			.map((verdict) => verdict.nodeName),
-	);
+		...Object.keys(buildOutcome.liveReadFallbacks ?? {}),
+	]);
 
 	return Object.keys(fixtureOverrides).filter((nodeName) => !simulatedNodeNames.has(nodeName));
 }
@@ -77,11 +86,26 @@ function buildVerificationPinData(
 		haltedGateNames.includes(script.nodeName),
 	);
 
+	// A scripted gate run has no fallback pass, so its live reads stay pinned.
+	const liveReadNodeNames = Object.entries(buildOutcome.liveReadFallbacks ?? {}).flatMap(
+		([nodeName, items]) => {
+			if (fixtureOverrides?.[nodeName]) {
+				simulatedNodes.push({ nodeName, reason: LIVE_READ_OVERRIDE_REASON });
+				return [];
+			}
+			if (!gateScript) return [nodeName];
+			simulatedNodes.push({ nodeName, reason: LIVE_READ_GATE_REASON });
+			merged.set(nodeName, items);
+			return [];
+		},
+	);
+
 	return {
 		verificationPinData: merged.size > 0 ? Object.fromEntries(merged) : undefined,
 		simulatedNodes,
 		haltedGateNames,
 		...(gateScript ? { gateScript } : {}),
+		liveReadNodeNames,
 	};
 }
 

@@ -4,7 +4,12 @@ import type { IDataObject, WorkflowJSON } from '@n8n/workflow-sdk';
 import type { NodeOutputResult } from '../../../types';
 import type { WorkflowBuildOutcome } from '../../../workflow-loop/workflow-loop-state';
 import { declaredShapeNote, shapeWarningsBlock } from '../declared-shapes';
-import { fixtureOriginsOf, synthesizedFixtures } from '../next-workflow-build';
+import {
+	fixtureOriginsOf,
+	liveReadNodeNames,
+	splitLiveReadFixtures,
+	synthesizedFixtures,
+} from '../next-workflow-build';
 
 const GET = '@n8n/nodes-base-next.httpRequestGet';
 
@@ -171,5 +176,70 @@ describe('declaredShapeNote', () => {
 		const plain = workflowOf({});
 		expect(fixtureOriginsOf(plain, synthesizedFixtures(plain))).toEqual({ Fetch: 'synthesized' });
 		expect(declaredShapeNote(plain, outcomeOf(plain))).toBeUndefined();
+	});
+});
+
+describe('liveReadNodeNames', () => {
+	it('reads a GET with a declared schema live', () => {
+		expect(liveReadNodeNames(declared)).toEqual(['Fetch']);
+	});
+
+	it('pins a GET with a sample, the opt-out for a GET that changes state', () => {
+		expect(liveReadNodeNames(declared, { Fetch: [{ issues: [] }] })).toEqual([]);
+	});
+
+	it('pins a GET that follows pages or declares no schema', () => {
+		const paged = workflowOf({
+			schema: issuesSchema,
+			pages: { style: 'link', maxPages: 5 },
+		});
+		expect(liveReadNodeNames(paged)).toEqual([]);
+		expect(liveReadNodeNames(workflowOf({}))).toEqual([]);
+	});
+
+	it('reads a GET with items and no pages live: one request', () => {
+		const listed = workflowOf({
+			schema: issuesSchema,
+			items: '={{ $response.body.issues }}',
+		});
+		expect(liveReadNodeNames(listed)).toEqual(['Fetch']);
+	});
+
+	it('pins a write with a declared schema', () => {
+		const send: WorkflowJSON = {
+			...declared,
+			nodes: declared.nodes.map((entry) =>
+				entry.name === 'Fetch'
+					? {
+							...entry,
+							type: '@n8n/nodes-base-next.httpRequestSend',
+							parameters: {
+								url: 'https://api.example.com/issues',
+								method: 'POST',
+								schema: issuesSchema,
+							},
+						}
+					: entry,
+			),
+		};
+		expect(liveReadNodeNames(send)).toEqual([]);
+	});
+});
+
+describe('splitLiveReadFixtures', () => {
+	const fixtures = synthesizedFixtures(declared);
+
+	it('moves the fixture of a live read to the fallbacks', () => {
+		expect(splitLiveReadFixtures(fixtures, ['Fetch'])).toEqual({
+			pinned: {},
+			liveReadFallbacks: { Fetch: fixtures.Fetch },
+		});
+	});
+
+	it('keeps the fixture pinned when the credential of the node is mocked', () => {
+		expect(splitLiveReadFixtures(fixtures, ['Fetch'], ['Fetch'])).toEqual({
+			pinned: fixtures,
+			liveReadFallbacks: {},
+		});
 	});
 });

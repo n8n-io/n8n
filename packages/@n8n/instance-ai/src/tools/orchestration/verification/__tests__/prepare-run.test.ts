@@ -106,6 +106,32 @@ describe('prepareVerificationRun — gate scripts', () => {
 		expect(result.prepared.gateScript).toEqual(script);
 	});
 
+	it('pins the live reads of a scripted gate run with their declared fixtures', () => {
+		const script = {
+			nodeName: 'Email Approval',
+			cutEdge: { source: 'Revise', target: 'Format' },
+			decisions: [{ label: 'approve', items: [{ data: { approved: true } }] }],
+		};
+		const declared = [{ ids: ['example ids'] }];
+		const result = prepareVerificationRun(
+			makeBuildOutcome({
+				nodeSimulationPlan: [gateVerdict],
+				waitGateScripts: [script],
+				liveReadFallbacks: { Fetch: declared },
+			}),
+			{},
+		);
+
+		expect(result.kind).toBe('ready');
+		if (result.kind !== 'ready') return;
+		expect(result.prepared.liveReadNodeNames).toEqual([]);
+		expect(result.prepared.verificationPinData?.Fetch).toEqual(declared);
+		expect(result.prepared.simulatedNodes).toContainEqual({
+			nodeName: 'Fetch',
+			reason: 'A scripted wait-gate run pins this live read with its declared fixture',
+		});
+	});
+
 	it('ignores scripts that do not match a halted gate', () => {
 		const result = prepareVerificationRun(
 			makeBuildOutcome({

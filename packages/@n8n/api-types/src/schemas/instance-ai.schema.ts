@@ -3027,6 +3027,16 @@ export class InstanceAiEvalCredentialAllowlistRequest extends Z.class({
 	 * behaviour, so every existing case is unaffected.
 	 */
 	bypassCredentialTest: z.array(z.string().min(1)).max(50).optional(),
+	/**
+	 * The execution scenarios of the case. The design-time mock of the thread answers the build's
+	 * HTTP (lookups, verification reads) with data that agrees with them, so a read at build time
+	 * sees the response shape that the scenario runs see. The agent never sees these texts.
+	 * Omitted keeps the scenarios that the thread has.
+	 */
+	mockScenarios: z
+		.array(z.object({ name: z.string().max(200), dataSetup: z.string().max(20_000) }))
+		.max(20)
+		.optional(),
 }) {}
 
 /** The id an authored seed gives a data table, agent or folder. ≥8 chars: the

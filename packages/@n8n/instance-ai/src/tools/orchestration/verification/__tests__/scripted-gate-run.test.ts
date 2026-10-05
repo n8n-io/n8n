@@ -35,6 +35,7 @@ const prepared: PreparedVerificationRun = {
 	],
 	haltedGateNames: ['Gate'],
 	gateScript: script,
+	liveReadNodeNames: [],
 };
 
 const approvePassResult = {
