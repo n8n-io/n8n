@@ -3,7 +3,7 @@ import { BinaryDataRepository, ExecutionRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { parseExecutionFileId, TEMP_EXECUTION_ID } from 'n8n-core';
 
-import { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
+import { WorkflowSharingService } from '@n8n/backend-services';
 
 /**
  * Workflow that a binary derives its access from. Normally the workflow of the

@@ -84,13 +84,31 @@ describe('ChatInputBase', () => {
 		expect(queryByTestId('instance-ai-stop-button')).not.toBeInTheDocument();
 	});
 
-	it('should show stop button when streaming', () => {
-		const { getByTestId, queryByTestId } = renderComponent({
-			props: makeProps({ isStreaming: true }),
+	it('switches Stop independently of composer tools when requested', async () => {
+		const { getByTestId, queryByTestId, rerender, emitted } = renderComponent({
+			props: makeProps({
+				isStreaming: true,
+				canSubmit: false,
+				showAttach: true,
+				showVoice: true,
+			}),
 		});
 
 		expect(getByTestId('instance-ai-stop-button')).toBeInTheDocument();
 		expect(queryByTestId('instance-ai-send-button')).not.toBeInTheDocument();
+		expect(getByTestId('chat-input-attach-button')).toBeDisabled();
+		expect(getByTestId('chat-input-voice-button')).toBeDisabled();
+
+		await rerender({ isStreaming: false, showStopButton: true });
+		expect(getByTestId('instance-ai-stop-button')).toBeEnabled();
+		expect(queryByTestId('instance-ai-send-button')).not.toBeInTheDocument();
+		expect(getByTestId('chat-input-attach-button')).toBeEnabled();
+		expect(getByTestId('chat-input-voice-button')).toBeEnabled();
+
+		await rerender({ showStopButton: false, canSubmit: true, modelValue: 'Follow-up' });
+		expect(queryByTestId('instance-ai-stop-button')).not.toBeInTheDocument();
+		getByTestId('instance-ai-send-button').click();
+		expect(emitted().submit).toEqual([[]]);
 	});
 
 	it('should emit submit on Enter keydown', () => {

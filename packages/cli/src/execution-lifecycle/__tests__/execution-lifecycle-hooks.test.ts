@@ -1,5 +1,6 @@
 import type { PushMessage } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { EventService } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { Project, User } from '@n8n/db';
 import { ExecutionRepository, UserRepository } from '@n8n/db';
@@ -22,6 +23,7 @@ import type {
 	IRun,
 	INode,
 	IWorkflowBase,
+	IWorkflowExecutionDataProcess,
 	WorkflowExecuteMode,
 	ITaskStartedData,
 } from 'n8n-workflow';
@@ -34,7 +36,6 @@ import {
 	getLifecycleHooksForScalingMain,
 } from '../execution-lifecycle-hooks';
 
-import { EventService } from '@/events/event.service';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { ExecutionRedactionServiceProxy } from '@/executions/execution-redaction-proxy.service';
 import { ExternalHooks } from '@/external-hooks';
@@ -1927,6 +1928,78 @@ describe('Execution Lifecycle Hooks', () => {
 					mainOutputData,
 				);
 			});
+
+			it.each(
+				[false, true, undefined].flatMap((lastRunOnly) =>
+					['subexecution', 'regular', 'worker'].map((hookType) => ({ lastRunOnly, hookType })),
+				),
+			)(
+				'copies returned binaries for $hookType hooks when lastRunOnly is $lastRunOnly',
+				async ({ lastRunOnly, hookType }) => {
+					const childBinaryId = (index: number) =>
+						`filesystem:workflows/${workflowId}/executions/${executionId}/binary_data/${index}`;
+					const parentBinaryId = (index: number) =>
+						`filesystem:workflows/${parentWorkflowId}/executions/${parentExecutionId}/binary_data/${index}`;
+					const runs = [0, 1].map((executionIndex) => ({
+						startTime: 0,
+						executionTime: 0,
+						executionIndex,
+						source: [],
+						data: {
+							main: [
+								[],
+								[
+									{
+										json: { index: executionIndex },
+										binary: {
+											file: { id: childBinaryId(executionIndex), data: '', mimeType: 'text/plain' },
+										},
+									},
+								],
+							],
+						},
+					}));
+					successfulRun.data.resultData.runData = { [nodeName]: runs };
+					successfulRun.data.resultData.lastNodeExecuted = nodeName;
+					successfulRun.data.parentExecution = parentExecution;
+					if (lastRunOnly !== undefined) successfulRun.data.subWorkflowOutput = { lastRunOnly };
+					if (hookType !== 'subexecution') {
+						workflowData.settings = { saveDataSuccessExecution: 'all' };
+						const createHooks =
+							hookType === 'worker'
+								? getLifecycleHooksForScalingWorker
+								: getLifecycleHooksForRegularMain;
+						lifecycleHooks = createHooks(
+							mock<IWorkflowExecutionDataProcess>({ executionMode: 'integrated', workflowData }),
+							executionId,
+						);
+					}
+					binaryDataService.duplicateBinaryData.mockImplementation(async (_location, outputs) =>
+						outputs.map(
+							(branch) =>
+								branch?.map((item) => ({
+									...item,
+									binary: {
+										file: { ...item.binary!.file, id: parentBinaryId(Number(item.json.index)) },
+									},
+								})) ?? [],
+						),
+					);
+
+					await lifecycleHooks.runHook('workflowExecuteAfter', [successfulRun, {}]);
+
+					expect(runs.map((run) => run.data.main[1][0].binary.file.id)).toEqual([
+						lastRunOnly === false ? parentBinaryId(0) : childBinaryId(0),
+						parentBinaryId(1),
+					]);
+					expect(binaryDataService.duplicateBinaryData).toHaveBeenCalledTimes(
+						lastRunOnly === false ? 2 : 1,
+					);
+					expect(
+						binaryDataService.duplicateBinaryData.mock.invocationCallOrder.at(-1),
+					).toBeLessThan(executionPersistence.updateExistingExecution.mock.invocationCallOrder[0]);
+				},
+			);
 
 			it('should not duplicate binary data when there is no output data', async () => {
 				successfulRun.data.resultData.runData = {};

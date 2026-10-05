@@ -16,6 +16,7 @@ import type {
 	StartNodeData,
 } from '..';
 import type { IRunExecutionDataV0 } from './run-execution-data.v0';
+import type { SubWorkflowOutputPolicy } from '../sub-workflow-output';
 
 export interface RedactionInfo {
 	isRedacted: boolean;
@@ -62,6 +63,8 @@ export interface IRunExecutionDataV1 {
 		waitingExecutionSource: IWaitingForExecutionSource | null;
 	};
 	parentExecution?: RelatedExecution;
+	/** Keep the caller's output policy when a child execution resumes. */
+	subWorkflowOutput?: SubWorkflowOutputPolicy;
 	/** Suspended agent tool call to resume once this execution finishes. */
 	parentAgentRun?: RelatedAgentRun;
 	/**

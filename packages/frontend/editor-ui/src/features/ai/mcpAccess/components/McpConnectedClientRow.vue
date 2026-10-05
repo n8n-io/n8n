@@ -2,11 +2,11 @@
 import { computed } from 'vue';
 import { I18nT } from 'vue-i18n';
 import type { OAuthClientResponseDto } from '@n8n/api-types';
-import { N8nButton, N8nIcon, N8nSettingsRow, N8nText } from '@n8n/design-system';
+import { N8nButton, N8nIcon, N8nSettingsRow, N8nText, N8nTimeAgo } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { BaseTextKey } from '@n8n/i18n';
+import { useRootStore } from '@n8n/stores/useRootStore';
 
-import TimeAgo from '@/app/components/TimeAgo.vue';
 import { getAccessSummary, getClientBrand } from '@/features/ai/mcpAccess/clients.utils';
 
 /**
@@ -26,6 +26,7 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
+const rootStore = useRootStore();
 
 const brand = computed(() => getClientBrand(props.client.name));
 
@@ -88,7 +89,9 @@ const revokeLabel = computed(() =>
 				<N8nText size="small" color="text-light" :class="$style.line">
 					<I18nT :keypath="metaKeypath" scope="global" tag="span">
 						<template v-if="typeLabel" #type>{{ typeLabel }}</template>
-						<template #timeAgo><TimeAgo :date="grantedAt" /></template>
+						<template #timeAgo
+							><N8nTimeAgo :date="grantedAt" :locale="rootStore.defaultLocale"
+						/></template>
 					</I18nT>
 				</N8nText>
 				<N8nText

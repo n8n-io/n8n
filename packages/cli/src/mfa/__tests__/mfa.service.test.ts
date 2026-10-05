@@ -5,7 +5,7 @@ import type { Cipher } from 'n8n-core';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import type { CacheService } from '@/services/cache/cache.service';
+import type { CacheService } from '@n8n/backend-services';
 
 import { MFA_ENFORCE_SETTING } from '../constants';
 import { MFA_CACHE_KEY, MfaService } from '../mfa.service';

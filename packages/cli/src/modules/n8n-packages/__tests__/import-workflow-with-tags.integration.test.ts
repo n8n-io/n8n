@@ -9,8 +9,7 @@ import {
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { ConflictError, ForbiddenError } from '@n8n/errors';
 import { createFolder } from '@test-integration/db/folders';
 import { assignTagToWorkflow, createTag, updateTag } from '@test-integration/db/tags';
 import { createOwner } from '@test-integration/db/users';

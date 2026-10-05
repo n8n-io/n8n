@@ -4,8 +4,7 @@ import type { ICredentialDataDecryptedObject, IExecuteData } from 'n8n-workflow'
 
 import { CredentialsHelper } from '@/credentials-helper';
 import { CredentialNotFoundError } from '@/errors/credential-not-found.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { ForbiddenError, NotFoundError } from '@n8n/errors';
 import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 
@@ -27,7 +26,7 @@ function toExecuteData(nodeType: string): IExecuteData {
 }
 
 /**
- * Resolves a credential for the engine 2.0 data plane. The data plane has no
+ * Resolves a credential for the engine v2 data plane. The data plane has no
  * credential store and no encryption key, so this is the only place where a
  * step's credential is decrypted.
  */
@@ -62,6 +61,7 @@ export class EngineCredentialsService {
 		const { inaccessibleIds } = await this.permissionChecker.findInaccessible(
 			execution.workflowId,
 			[credential.id],
+			context.userId,
 		);
 		if (inaccessibleIds.length > 0) {
 			this.logger.warn(

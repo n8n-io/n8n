@@ -1,5 +1,5 @@
 import { Time } from '@n8n/constants';
-import { SystemTask } from '@n8n/decorators';
+import { intervalFromSeconds, SystemTask } from '@n8n/decorators';
 import type { SystemTaskEffects, SystemTaskPlacement, SystemTaskSchedule } from '@n8n/decorators';
 
 import { WorkflowHistoryCompactionService } from './workflow-history-compaction.service';
@@ -14,10 +14,7 @@ export class WorkflowHistoryCompactionTrimTask implements SystemTask {
 
 	// Hourly tick with a 3am gate in run() mirrors the legacy timer, which had
 	// to survive leader changes. CAT-4173 replaces this with a cron schedule.
-	readonly schedule: SystemTaskSchedule = {
-		kind: 'interval',
-		intervalSeconds: Time.hours.toSeconds,
-	};
+	readonly schedule: SystemTaskSchedule = intervalFromSeconds(Time.hours.toSeconds);
 
 	readonly effects: SystemTaskEffects = 'idempotent';
 

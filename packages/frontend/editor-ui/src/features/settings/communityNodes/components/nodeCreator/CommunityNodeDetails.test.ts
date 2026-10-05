@@ -49,6 +49,7 @@ vi.mock('@/features/credentials/credentials.store', () => ({
 vi.mock('@/features/shared/nodeCreator/nodeCreator.store', () => ({
 	useNodeCreatorStore: vi.fn(() => ({
 		actions: [],
+		mergedNodes: [],
 		removeNodeFromMergedNodes,
 	})),
 }));
@@ -162,7 +163,7 @@ describe('CommunityNodeDetails', () => {
 		await waitFor(() => expect(removeNodeFromMergedNodes).toHaveBeenCalled());
 
 		expect(getCommunityNodeAttributes).toHaveBeenCalledWith('n8n-nodes-preview-test.OtherNode');
-		expect(installPackage).toHaveBeenCalledWith('n8n-nodes-test', true, '1.0.0');
+		expect(installPackage).toHaveBeenCalledWith('n8n-nodes-test', '1.0.0');
 		expect(fetchCredentialTypes).toHaveBeenCalledWith(true);
 		expect(getAllNodeCreateElements).toHaveBeenCalled();
 		expect(popViewStack).toHaveBeenCalled();

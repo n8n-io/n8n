@@ -13,10 +13,8 @@ import type { PolicyCleared } from '@n8n/decorators';
 import type { MockProxy } from 'vitest-mock-extended';
 import { mock } from 'vitest-mock-extended';
 
-import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import type { CredentialsFinderService } from '@n8n/backend-services';
+import { BadRequestError, ForbiddenError, NotFoundError } from '@n8n/errors';
 import type { ExternalHooks, WorkflowLifecycleHookActor } from '@/external-hooks';
 import type { McpSettingsService } from '@/modules/mcp/mcp.settings.service';
 import type { InstanceRedactionEnforcementService } from '@/modules/redaction/instance-redaction-enforcement.service';
@@ -527,11 +525,14 @@ describe('WorkflowCreationService', () => {
 				projectId: 'project-1',
 			});
 
-			expect(policyEnforcementServiceMock.enforceWorkflowSave).toHaveBeenCalledExactlyOnceWith({
-				workflow: { id: null, name: 'My workflow', nodes: [] },
-				storedWorkflow: null,
-				projectId: 'project-1',
-			});
+			expect(policyEnforcementServiceMock.enforceWorkflowSave).toHaveBeenCalledExactlyOnceWith(
+				{
+					workflow: { id: null, name: 'My workflow', nodes: [] },
+					storedWorkflow: null,
+					projectId: 'project-1',
+				},
+				expect.anything(),
+			);
 		});
 
 		it("falls back to the user's personal project when no project is given", async () => {
@@ -544,6 +545,7 @@ describe('WorkflowCreationService', () => {
 
 			expect(policyEnforcementServiceMock.enforceWorkflowSave).toHaveBeenCalledWith(
 				expect.objectContaining({ projectId: 'personal-project' }),
+				expect.anything(),
 			);
 		});
 

@@ -5,9 +5,10 @@ import {
 	type SubAgentSource,
 } from '@n8n/api-types';
 import { Service } from '@n8n/di';
-import { UserError } from 'n8n-workflow';
+import { isRecord } from '@n8n/utils/is-record';
+import { jsonParse, UnexpectedError, UserError } from 'n8n-workflow';
 
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { NotFoundError } from '@n8n/errors';
 
 import { getAgentOrThrow } from '../utils/get-agent-or-throw';
 import { AgentHistoryRepository } from '../repositories/agent-history.repository';
@@ -22,6 +23,8 @@ export interface ResolveSubAgentSourceContext {
 	 * resolve referenced entities.
 	 */
 	usePublishedVersion?: boolean;
+	/** Saved background configuration, including draft tool and skill bodies. */
+	runtimeSnapshot?: string;
 }
 
 export interface ResolvedSubAgentRuntimeSource extends AgentRuntimeAssets {
@@ -45,6 +48,31 @@ export class SubAgentSourceResolver {
 		context: ResolveSubAgentSourceContext,
 	): Promise<ResolvedSubAgentRuntimeSource> {
 		const agent = await getAgentOrThrow(this.agentRepository, source.agentId, context.projectId);
+		if (context.runtimeSnapshot !== undefined) {
+			const saved = jsonParse<ResolvedSubAgentRuntimeSource | null>(context.runtimeSnapshot, {
+				fallbackValue: null,
+			});
+			if (
+				!isRecord(saved) ||
+				!isRecord(saved.source) ||
+				typeof saved.source.sourceId !== 'string'
+			) {
+				throw new UnexpectedError('Invalid saved background task configuration');
+			}
+			if (saved.source.sourceId !== source.agentId) {
+				throw new UserError('Saved background task configuration does not match this agent');
+			}
+			const result = RunnableAgentJsonConfigSchema.safeParse(saved.source.config);
+			if (!result.success) {
+				throw new UnexpectedError('Invalid saved background task configuration', {
+					cause: result.error,
+				});
+			}
+			return {
+				...saved,
+				source: { ...saved.source, config: result.data },
+			};
+		}
 
 		if (source.versionId) {
 			const version = await this.agentHistoryRepository.findByVersionAndAgentId(

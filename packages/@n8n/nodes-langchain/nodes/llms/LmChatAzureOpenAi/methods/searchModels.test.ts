@@ -119,10 +119,12 @@ describe('LmChatAzureOpenAi -> searchModels', () => {
 				headers: { Authorization: 'Bearer entra-token' },
 			}),
 		);
+		// The egress filter reaches the token mint, not just the model-list fetch.
 		expect(n8nOAuth2TokenCredentialSpy).toHaveBeenCalledWith(
 			mockNode,
 			expect.anything(),
 			AZURE_AI_FOUNDRY_AUDIENCE,
+			ctx.helpers.getSecureEgressFilter(),
 		);
 	});
 

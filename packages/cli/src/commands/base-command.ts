@@ -47,11 +47,11 @@ import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { CommunityPackagesConfig } from '@/modules/community-packages/community-packages.config';
 import { NodeTypes } from '@/node-types';
+import { POLICY_MODULES } from '@/policy/policy-modules';
 import { PostHogClient } from '@/posthog';
 import { instanceSystemTasks } from '@/scheduling/system-tasks/instance-system-tasks';
 import { ShutdownService } from '@/shutdown/shutdown.service';
 import { resolveBackendHealthEndpointPath } from '@/utils/health-endpoint.util';
-import { WorkflowHistoryManager } from '@/workflows/workflow-history/workflow-history-manager';
 
 export abstract class BaseCommand<F = never> {
 	readonly flags: F;
@@ -268,6 +268,7 @@ export abstract class BaseCommand<F = never> {
 				idleTimeout,
 				lazyAcquire,
 				compileCache,
+				nativeEvaluation,
 			} = this.globalConfig.expressionEngine;
 			const observability = Container.get(ExpressionObservabilityProvider);
 			try {
@@ -280,6 +281,7 @@ export abstract class BaseCommand<F = never> {
 					idleTimeoutMs: idleTimeout === undefined ? undefined : idleTimeout * 1000,
 					lazyAcquire,
 					compileCache,
+					nativeEvaluation,
 					observability,
 				});
 			} catch (error) {
@@ -558,8 +560,12 @@ export abstract class BaseCommand<F = never> {
 		}
 	}
 
-	initWorkflowHistory() {
-		Container.get(WorkflowHistoryManager).init();
+	/**
+	 * Registers the policy checks, so a one-off command that writes or runs content is refused
+	 * what the server refuses. Call after `initLicense()`: the feature module is license-gated.
+	 */
+	async initPolicyEnforcement() {
+		await this.moduleRegistry.initModules(this.instanceSettings.instanceType, POLICY_MODULES);
 	}
 
 	async cleanupTestRunner() {

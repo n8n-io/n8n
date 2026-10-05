@@ -1,5 +1,10 @@
 import { AzureChatOpenAI, ChatOpenAI, type ClientOptions } from '@langchain/openai';
-import { getProxyAgent, makeN8nLlmFailedAttemptHandler, N8nLlmTracing } from '@n8n/ai-utilities';
+import {
+	getProxyAgent,
+	aiClientFetch,
+	makeN8nLlmFailedAttemptHandler,
+	N8nLlmTracing,
+} from '@n8n/ai-utilities';
 import {
 	NodeOperationError,
 	NodeConnectionTypes,
@@ -28,7 +33,7 @@ export class LmChatAzureOpenAi implements INodeType {
 	};
 
 	description: INodeTypeDescription = {
-		displayName: 'Azure OpenAI Chat Model',
+		displayName: 'Azure AI Foundry Chat Model',
 
 		name: 'lmChatAzureOpenAi',
 		icon: 'file:azure.svg',
@@ -36,7 +41,7 @@ export class LmChatAzureOpenAi implements INodeType {
 		version: 1,
 		description: 'For advanced usage with an AI chain',
 		defaults: {
-			name: 'Azure OpenAI Chat Model',
+			name: 'Azure AI Foundry Chat Model',
 		},
 		codex: {
 			categories: ['AI'],
@@ -51,6 +56,9 @@ export class LmChatAzureOpenAi implements INodeType {
 					},
 				],
 			},
+			// The old label, in full and in part. Fuzzy search matches a pattern into a target, so
+			// the full former name finds nothing unless it is here verbatim.
+			alias: ['Azure OpenAI Chat Model', 'Azure OpenAI', 'Azure AI Foundry', 'Foundry'],
 		},
 
 		inputs: [],
@@ -113,6 +121,7 @@ export class LmChatAzureOpenAi implements INodeType {
 				const foundryURL = modelConfig.azureFoundryBaseURL;
 				const configuration: ClientOptions = {
 					baseURL: foundryURL,
+					fetch: aiClientFetch,
 					fetchOptions: {
 						dispatcher: getProxyAgent(
 							foundryURL,
@@ -147,6 +156,13 @@ export class LmChatAzureOpenAi implements INodeType {
 				return { response: model };
 			}
 
+			// One resolved host for both the client and the proxy. Passing it explicitly also stops
+			// LangChain falling back to AZURE_OPENAI_ENDPOINT, which the proxy would not know about.
+			// `||` not `??`: a cleared Endpoint field stores '' rather than undefined.
+			const azureOpenAIEndpoint =
+				modelConfig.azureOpenAIEndpoint ||
+				`https://${modelConfig.azureOpenAIApiInstanceName}.openai.azure.com`;
+
 			const model = new AzureChatOpenAI({
 				// Force completions API — Azure's SDK doesn't rewrite the /responses path,
 				// so the Responses API hits an invalid endpoint and causes a connection error.
@@ -158,16 +174,16 @@ export class LmChatAzureOpenAi implements INodeType {
 				azureOpenAIApiDeploymentName: modelName,
 				...modelConfig,
 				...options,
+				azureOpenAIEndpoint,
 				timeout,
 				maxRetries: options.maxRetries ?? 2,
 				callbacks: [new N8nLlmTracing(this)],
 				configuration: {
+					fetch: aiClientFetch,
 					fetchOptions: {
-						// Resolve the proxy against the host LangChain dials so NO_PROXY applies to it.
-						// `||` rather than `??`: the Entra handler yields '' for a missing endpoint.
+						// Same host the client dials, so NO_PROXY and the egress filter apply to it.
 						dispatcher: getProxyAgent(
-							modelConfig.azureOpenAIEndpoint ||
-								`https://${modelConfig.azureOpenAIApiInstanceName}.openai.azure.com`,
+							azureOpenAIEndpoint,
 							{
 								headersTimeout: timeout,
 								bodyTimeout: timeout,

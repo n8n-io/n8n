@@ -25,6 +25,7 @@ const props = withDefaults(defineProps<ActionDropdownProps<T>>(), {
 	disabled: false,
 	maxHeight: '',
 	modal: true,
+	suppressCloseAutoFocus: false,
 });
 
 const $style = useCssModule();
@@ -110,6 +111,7 @@ const getItemClasses = (item: ActionDropdownItem<T>): Record<string, boolean> =>
 			:disabled="disabled"
 			:teleported="teleported"
 			:modal="modal"
+			:suppress-close-auto-focus="suppressCloseAutoFocus"
 			:extra-popper-class="`${extraPopperClass ?? ''}`"
 			:max-height="maxHeight"
 			:width="width"

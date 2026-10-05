@@ -2,7 +2,7 @@
 import { truncate } from '@n8n/utils/string/truncate';
 import { VIEWS } from '@/app/constants';
 import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
-import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import { useAgentProjectBreadcrumb } from '@/features/agents/composables/useAgentProjectBreadcrumb';
 import { useAgentSessionsStore } from '@/features/agents/agentSessions.store';
 import {
 	AGENT_BUILDER_VIEW,
@@ -38,7 +38,6 @@ const threadTitleOf = useThreadTitle();
 const route = useRoute();
 const router = useRouter();
 const sessionsStore = useAgentSessionsStore();
-const projectsStore = useProjectsStore();
 const {
 	isEnabled: isLangSmithExportEnabled,
 	isExporting,
@@ -125,15 +124,7 @@ const sessionTitle = computed(() => {
 	return truncate(threadTitleOf(thread.value), 64);
 });
 
-const projectName = computed<string | null>(() => {
-	if (projectsStore.personalProject?.id === projectId.value) {
-		return i18n.baseText('projects.menu.personal');
-	}
-	const current = projectsStore.currentProject;
-	if (current && current.id === projectId.value) return current.name ?? null;
-	const match = projectsStore.myProjects.find((p) => p.id === projectId.value);
-	return match?.name ?? null;
-});
+const { projectName, projectIcon } = useAgentProjectBreadcrumb(projectId);
 
 const projectRoute = computed<RouteLocationRaw>(() => ({
 	name: VIEWS.PROJECTS_WORKFLOWS,
@@ -368,6 +359,7 @@ function viewPreviewTrace() {
 	<div :class="$style.view">
 		<AgentSessionTimelineHeader
 			:breadcrumb-items="breadcrumbItems"
+			:project-icon="projectIcon"
 			:session-title="sessionTitle"
 			:session-options="sessionOptions"
 			:show-metrics="Boolean(thread)"

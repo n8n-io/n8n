@@ -108,5 +108,5 @@ export type AzureEntraCognitiveServicesOAuth2ApiCredential = OAuth2CredentialDat
 	endpointType?: 'classic' | 'foundry';
 	foundryEndpoint?: string;
 	tenantId: string;
-	oauthTokenData: TokenData;
+	oauthTokenData?: TokenData;
 };

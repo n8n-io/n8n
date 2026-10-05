@@ -96,6 +96,7 @@ const keyMap = computed<KeyMap>(() => ({
 	j: selectNext,
 	k: selectPrev,
 	Escape: () => select(undefined),
+	// Keep the existing container-wide shortcuts as a fallback.
 	ArrowDown: selectNext,
 	ArrowUp: selectPrev,
 	Space: () => selected.value && toggleExpanded(selected.value),
@@ -109,6 +110,20 @@ const keyMap = computed<KeyMap>(() => ({
 			}
 		: {}),
 }));
+
+function handleArrowNavigation(event: KeyboardEvent) {
+	// Handle overview navigation before the event reaches the canvas's document-level shortcuts.
+	if (event.key === 'ArrowDown') {
+		selectNext();
+	} else if (event.key === 'ArrowUp') {
+		selectPrev();
+	} else {
+		return;
+	}
+
+	event.preventDefault();
+	event.stopPropagation();
+}
 
 function handleResizeOverviewPanelEnd() {
 	if (isOverviewPanelFullWidth.value) {
@@ -211,6 +226,7 @@ function handleChangeOutputTableColumnCollapsing(columnName: string | null) {
 								:latest-node-info="latestNodeNameById"
 								:flat-log-entries="flatLogEntries"
 								:is-header-clickable="!isPoppedOut"
+								@keydown="handleArrowNavigation"
 								@click-header="onToggleOpen"
 								@select="select"
 								@clear-execution-data="resetExecutionData"

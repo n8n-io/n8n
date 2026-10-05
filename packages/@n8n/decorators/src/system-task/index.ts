@@ -1,5 +1,8 @@
 export {
+	DEFAULT_SYSTEM_TASK_CONCURRENCY_LIMIT,
 	SystemTask,
+	intervalFromMilliseconds,
+	intervalFromSeconds,
 	resolveSystemTaskRunOptions,
 	resolveSystemTaskSchedule,
 	validateSystemTask,

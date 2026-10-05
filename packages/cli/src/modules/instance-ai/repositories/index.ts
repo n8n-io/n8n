@@ -9,4 +9,5 @@ export { InstanceAiObservationCursorRepository } from './instance-ai-observation
 export { InstanceAiObservationLockRepository } from './instance-ai-observation-lock.repository';
 export { InstanceAiMcpRegistryConnectionRepository } from './instance-ai-mcp-registry-connection.repository';
 export { InstanceAiThreadGrantRepository } from './instance-ai-thread-grant.repository';
+export { InstanceAiThreadTabsRepository } from './instance-ai-thread-tabs.repository';
 export { InstanceAiEventLogRepository } from './instance-ai-event-log.repository';

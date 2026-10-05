@@ -109,6 +109,7 @@ interface RunWorkflowOptions {
 }
 
 function normalizeUnhandledAxiosError(error: unknown, node: INode): ExecutionBaseError {
+	// oxlint-disable-next-line typescript/no-deprecated
 	if (isAxiosError(error)) {
 		return new NodeApiError(node, error as JsonObject);
 	}
@@ -1904,6 +1905,7 @@ export class WorkflowExecute {
 			return error;
 		}
 
+		// oxlint-disable-next-line typescript/no-deprecated
 		if (!(error instanceof Error) || isAxiosError(error)) {
 			// Axios errors are suppressed in ErrorReporter's beforeSend via the
 			// `isAxiosError` brand, which sanitizing below would strip - so skip them here
@@ -2950,6 +2952,7 @@ export class WorkflowExecute {
 		} else if (this.runExecutionData.waitTill) {
 			fullRunData.waitTill = this.runExecutionData.waitTill;
 		} else {
+			// oxlint-disable-next-line typescript/no-deprecated
 			fullRunData.finished = true;
 		}
 

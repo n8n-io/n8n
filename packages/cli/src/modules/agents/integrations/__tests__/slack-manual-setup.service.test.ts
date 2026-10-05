@@ -2,8 +2,8 @@
 import type { UserRepository } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
-import type { CacheService } from '@/services/cache/cache.service';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import type { CacheService } from '@n8n/backend-services';
+import { BadRequestError } from '@n8n/errors';
 import type { ProjectService } from '@/services/project.service.ee';
 
 import { SlackManualSetupService } from '../platforms/slack/slack-manual-setup.service';

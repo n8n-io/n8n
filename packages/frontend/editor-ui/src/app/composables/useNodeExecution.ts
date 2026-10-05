@@ -19,6 +19,7 @@ import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useToast } from '@n8n/composables/useToast';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import { useUnusableWorkflowCredentials } from '@/features/credentials/composables/useUnusableWorkflowCredentials';
 
 import { needsAgentInput } from '@/app/utils/nodes/nodeTransforms';
 
@@ -90,6 +91,10 @@ export function useNodeExecution(
 	const uiStore = useUIStore();
 
 	const workflowDocumentStore = injectWorkflowDocumentStore();
+	const { reason: unusableCredentialReason } = useUnusableWorkflowCredentials(
+		() => workflowDocumentStore.value.usedCredentials,
+		() => workflowDocumentStore.value.allNodes,
+	);
 	const ndvStore = computed(() => useNDVStore(workflowDocumentStore.value.documentId));
 	const workflowExecutionStateStore = injectWorkflowExecutionStateStore();
 
@@ -174,6 +179,18 @@ export function useNodeExecution(
 			return '';
 		}
 
+<<<<<<< HEAD
+=======
+		if (codeGenerationInProgress.value) {
+			return i18n.baseText('ndv.execute.generatingCode');
+		}
+
+		// An unusable credential blocks the whole run, so it outranks per-node reasons.
+		if (unusableCredentialReason.value) {
+			return unusableCredentialReason.value;
+		}
+
+>>>>>>> 388b4036d4e351363bfa5c3db0274a02721999f3
 		if (nodeRef.value?.disabled) {
 			return i18n.baseText('ndv.execute.nodeIsDisabled');
 		}

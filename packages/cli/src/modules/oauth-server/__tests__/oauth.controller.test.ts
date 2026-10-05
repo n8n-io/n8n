@@ -7,7 +7,7 @@ import type {
 	ProtectedResource,
 	ProtectedResourceRegistry,
 } from '@/services/protected-resource.registry';
-import type { UrlService } from '@/services/url.service';
+import type { UrlService } from '@n8n/backend-services';
 
 import { OAuthServerService } from '../oauth-server.service';
 import type { OAuthController as OAuthControllerClass } from '../oauth.controller';

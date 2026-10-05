@@ -12,6 +12,7 @@ import type { Telemetry } from '@/telemetry';
 import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.types';
 import { createLimitSchema, dataTableProjectIdSchema, dataTableRowSchema } from '../schemas';
+import { trackAndReturnToolError } from '../tool-error.utils';
 
 const GET_ROWS_MAX = 100;
 
@@ -148,19 +149,11 @@ export const createGetDataTableRowsTool = (
 				structuredContent: output,
 			};
 		} catch (error) {
-			const errorMessage = error instanceof Error ? error.message : String(error);
-			telemetryPayload.results = {
-				success: false,
-				error: errorMessage,
-			};
-			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
-
-			const output = { rows: [], count: 0, error: errorMessage };
-			return {
-				content: [{ type: 'text', text: JSON.stringify(output) }],
-				structuredContent: output,
-				isError: true,
-			};
+			return trackAndReturnToolError(telemetry, telemetryPayload, error, (message) => ({
+				rows: [],
+				count: 0,
+				error: message,
+			}));
 		}
 	},
 });
