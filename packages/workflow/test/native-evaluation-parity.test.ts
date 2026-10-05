@@ -252,10 +252,11 @@ describe('Expression - fast native evaluation parity', () => {
 		});
 	});
 
-	// Holes are not JSON. The isolates copy the data in and fill them (vm with
-	// undefined, quickjs with null); legacy and native iterate the live array,
-	// where the iterators skip them (find visits them). Pinned so a change on
-	// either side is visible.
+	// Holes are not JSON. The isolates copy the data in and fill them with
+	// undefined (quickjs then hands an array result back with null in place of
+	// undefined); legacy and native iterate the live array, where the
+	// iterators skip them (find visits them). Pinned so a change on either
+	// side is visible.
 	describe('sparse receivers follow the live array, as under legacy', () => {
 		test.each([
 			['={{ $json.item.sparse.filter(n => true) }}', [1, 3]],

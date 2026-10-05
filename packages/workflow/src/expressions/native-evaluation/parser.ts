@@ -8,6 +8,7 @@ import {
 	ITERATOR_METHODS,
 	LEGACY_NODE_REF_MEMBERS,
 	MAX_DEPTH,
+	MAX_RESULT_LENGTH,
 	NODE_REF_MEMBERS,
 	NODE_REF_METHODS,
 	RESERVED_NAMES,
@@ -70,8 +71,10 @@ function parseIdentifier(node: namedTypes.Identifier, param: string | null): Sim
 }
 
 // `['a', 'b']`: every element is a literal. Holes, spread and anything
-// computed decline.
+// computed decline, as does a literal longer than any result may be.
 function parseArray(node: namedTypes.ArrayExpression): SimpleNode | null {
+	if (node.elements.length > MAX_RESULT_LENGTH) return null;
+
 	const elements: Literal[] = [];
 	for (const element of node.elements) {
 		if (element?.type !== 'Literal') return null;
