@@ -1,7 +1,9 @@
+import type { Logger } from '@n8n/backend-common';
 import type { GlobalConfig } from '@n8n/config';
 import { promises as fs } from 'fs';
 import path from 'path';
 import type { Mock } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import { DataTableFileCleanupService } from '../data-table-file-cleanup.service';
 
@@ -24,7 +26,10 @@ describe('DataTableFileCleanupService', () => {
 		},
 	} as GlobalConfig;
 
-	const service = new DataTableFileCleanupService(globalConfig);
+	const logger = mock<Logger>();
+	logger.scoped.mockReturnValue(logger);
+
+	const service = new DataTableFileCleanupService(globalConfig, logger);
 
 	beforeEach(() => {
 		vi.resetAllMocks();
@@ -140,18 +145,19 @@ describe('DataTableFileCleanupService', () => {
 		});
 
 		it.each(['stat', 'unlink'] as const)(
-			'should delete the other files and then reject with the first %s error',
+			'should delete the other files and log a warning when %s fails',
 			async (operation) => {
 				const error = errnoError('EACCES');
 				(fs.readdir as Mock).mockResolvedValue(['a', 'b', 'c']);
 				(fs.stat as Mock).mockResolvedValue({ mtimeMs: oldMtimeMs });
 				(fs[operation] as Mock).mockRejectedValueOnce(error);
 
-				await expect(cleanup()).rejects.toBe(error);
+				await expect(cleanup()).resolves.toBeUndefined();
 				expect((fs.unlink as Mock).mock.calls.slice(-2)).toEqual([
 					[path.join(uploadDir, 'b')],
 					[path.join(uploadDir, 'c')],
 				]);
+				expect(logger.warn).toHaveBeenCalledWith(expect.any(String), { file: 'a', error });
 			},
 		);
 

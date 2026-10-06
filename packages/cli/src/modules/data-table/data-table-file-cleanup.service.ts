@@ -1,4 +1,4 @@
-import { safeJoinPath } from '@n8n/backend-common';
+import { Logger, safeJoinPath } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { promises as fs } from 'fs';
@@ -7,8 +7,12 @@ import { promises as fs } from 'fs';
 export class DataTableFileCleanupService {
 	private readonly uploadDir: string;
 
-	constructor(private readonly globalConfig: GlobalConfig) {
+	constructor(
+		private readonly globalConfig: GlobalConfig,
+		private readonly logger: Logger,
+	) {
 		this.uploadDir = this.globalConfig.dataTable.uploadDir;
+		this.logger = this.logger.scoped('data-table');
 	}
 
 	private isErrnoException(error: unknown): error is NodeJS.ErrnoException {
@@ -39,7 +43,6 @@ export class DataTableFileCleanupService {
 
 		const now = Date.now();
 		const maxAge = this.globalConfig.dataTable.fileMaxAgeMs;
-		let firstError: unknown;
 
 		for (const file of files) {
 			if (signal.aborted) break;
@@ -54,11 +57,10 @@ export class DataTableFileCleanupService {
 				}
 			} catch (error) {
 				// Another main or the import that used the file can delete it first.
-				if (!this.isNotFound(error)) firstError ??= error;
+				if (this.isNotFound(error)) continue;
+				this.logger.warn('Could not delete an orphaned data table upload file', { file, error });
 			}
 		}
-
-		if (firstError !== undefined) throw firstError;
 	}
 
 	/**

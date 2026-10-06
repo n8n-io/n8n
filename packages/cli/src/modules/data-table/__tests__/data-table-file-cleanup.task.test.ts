@@ -1,3 +1,4 @@
+import { mockLogger } from '@n8n/backend-test-utils';
 import type { GlobalConfig } from '@n8n/config';
 import { promises as fs } from 'fs';
 import path from 'path';
@@ -27,7 +28,7 @@ describe('DataTableFileCleanupTask', () => {
 
 	const task = new DataTableFileCleanupTask(
 		globalConfig,
-		new DataTableFileCleanupService(globalConfig),
+		new DataTableFileCleanupService(globalConfig, mockLogger()),
 	);
 
 	it('should run on every main at the configured interval', () => {
