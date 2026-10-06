@@ -52,7 +52,7 @@ export interface DialogProps {
 	 */
 	disableOutsidePointerEvents?: boolean;
 	/**
-	 * Shows/hides close button in top right
+	 * Show the close button on the title row. The button is the last stop in the tab order.
 	 * @default true
 	 */
 	showCloseButton?: boolean;
@@ -103,6 +103,8 @@ withDefaults(defineProps<DialogProps>(), {
 });
 const emit = defineEmits<DialogEmits>();
 
+defineOptions({ inheritAttrs: false });
+
 const handleOpenChange = (value: boolean) => {
 	emit('update:open', value);
 };
@@ -118,6 +120,7 @@ const handleOpenChange = (value: boolean) => {
 		<DialogPortal>
 			<N8nDialogOverlay :stacked="stacked" />
 			<N8nDialogContent
+				v-bind="$attrs"
 				:size="size"
 				:force-mount="forceMount"
 				:trap-focus="trapFocus"

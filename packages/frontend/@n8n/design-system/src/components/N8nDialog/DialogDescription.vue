@@ -12,7 +12,7 @@ defineProps<DialogDescriptionProps>();
 </script>
 
 <template>
-	<DialogDescription :as-child="asChild" :class="$style.description">
+	<DialogDescription :as-child="asChild" :class="$style.description" data-slot="dialog-description">
 		<slot />
 	</DialogDescription>
 </template>

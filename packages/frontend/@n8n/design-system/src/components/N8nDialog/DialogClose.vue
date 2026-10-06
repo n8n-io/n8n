@@ -33,10 +33,8 @@ defineProps<DialogCloseProps>();
 @use '@n8n/design-system/css/mixins/focus';
 
 .close-button {
-	position: absolute;
-	top: var(--spacing--sm);
-	right: var(--spacing--sm);
 	display: inline-flex;
+	flex-shrink: 0;
 	align-items: center;
 	justify-content: center;
 	width: var(--spacing--lg);

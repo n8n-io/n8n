@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { DialogContent, DialogTitle, DialogDescription, VisuallyHidden } from 'reka-ui';
-import { computed, useCssModule } from 'vue';
+import { computed, provide, useCssModule } from 'vue';
 
 import N8nDialogClose from './DialogClose.vue';
+import { dialogCloseButtonKey } from './dialogContext';
 
 export type DialogContentSize =
 	| 'small'
@@ -35,7 +36,7 @@ export interface DialogContentProps {
 	 */
 	disableOutsidePointerEvents?: boolean;
 	/**
-	 * Shows/hides close button in top right
+	 * Show the close button on the title row. The button is the last stop in the tab order.
 	 * @default true
 	 */
 	showCloseButton?: boolean;
@@ -84,6 +85,10 @@ const sizeClasses: Record<DialogContentSize, string> = {
 
 const sizeClass = computed(() => sizeClasses[props.size]);
 
+provide(dialogCloseButtonKey, {
+	show: computed(() => props.showCloseButton),
+});
+
 /** ARIA Fallbacks: These are visually hidden but accessible to screen readers **/
 const needsFallbackTitle = computed(() => !!props.ariaLabel);
 const needsFallbackDescription = computed(() => !!props.ariaDescription);
@@ -128,7 +133,8 @@ function handleInteractOutside(e: Event) {
 
 		<slot />
 
-		<N8nDialogClose v-if="showCloseButton" />
+		<!-- Last in the DOM so Tab reaches it after the fields and actions. -->
+		<N8nDialogClose v-if="showCloseButton" :class="$style.dismiss" />
 	</DialogContent>
 </template>
 
@@ -158,12 +164,28 @@ function handleInteractOutside(e: Event) {
 }
 
 .content {
+	--n8n-dialog-region--padding: var(--n8n-dialog-content--padding, var(--spacing--md));
+	--n8n-dialog-close--inset-block-start: var(--n8n-dialog-region--padding);
+	--n8n-dialog-close--inset-inline-end: var(--n8n-dialog-region--padding);
+
+	&:not(:has([data-slot='dialog-header'])) .dismiss {
+		top: var(--spacing--sm);
+		inset-inline-end: var(--spacing--sm);
+	}
+
+	&:has([data-slot='dialog-header']) .dismiss {
+		top: var(--n8n-dialog-close--inset-block-start);
+		inset-inline-end: var(--n8n-dialog-close--inset-inline-end);
+	}
+
 	position: fixed;
 	top: 50%;
 	left: 50%;
 	transform: translate(-50%, -50%);
 	width: 100%;
-	padding: var(--n8n-dialog-content--padding, var(--spacing--lg));
+	display: flex;
+	flex-direction: column;
+
 	border-radius: var(--radius--lg);
 	background-color: light-dark(var(--color--neutral-white), var(--color--neutral-800));
 	box-shadow:
@@ -178,6 +200,11 @@ function handleInteractOutside(e: Event) {
 	&:focus {
 		outline: none;
 	}
+}
+
+.dismiss {
+	position: absolute;
+	z-index: 1;
 }
 
 .stacked {
@@ -250,6 +277,11 @@ function handleInteractOutside(e: Event) {
 	height: 100%;
 	max-width: calc(100dvw - var(--spacing--lg));
 	max-height: calc(100dvh - var(--spacing--lg));
+
+	:global([data-slot='dialog-body']) {
+		flex: 1 1 auto;
+		overflow: auto;
+	}
 }
 </style>
 
