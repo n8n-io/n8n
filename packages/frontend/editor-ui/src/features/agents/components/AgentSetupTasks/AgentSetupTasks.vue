@@ -195,6 +195,7 @@ function handleTaskKeydown(event: KeyboardEvent): void {
 					<li
 						v-if="completedTasksAreGrouped"
 						:key="'completed-tasks'"
+						role="presentation"
 						:class="[$style.listItem, $style.isComplete]"
 					>
 						<div :class="[$style.taskIcon, $style.isComplete]">
