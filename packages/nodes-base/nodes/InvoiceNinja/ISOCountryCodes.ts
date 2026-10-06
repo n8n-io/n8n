@@ -827,7 +827,7 @@ export const countryCodes = [
 		'shortName': 'Macau',
 	},
 	{
-		'name': 'Macedonia (the former Yugoslav Republic of)',
+		'name': 'North Macedonia',
 		'alpha2': 'MK',
 		'alpha3': 'MKD',
 		'numeric': '807',

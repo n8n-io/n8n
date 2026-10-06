@@ -526,7 +526,7 @@ export const isoCountryCodes = [
 		alpha2: 'MO',
 	},
 	{
-		name: 'Macedonia (the former Yugoslav Republic of)',
+		name: 'North Macedonia',
 		alpha2: 'MK',
 	},
 	{
