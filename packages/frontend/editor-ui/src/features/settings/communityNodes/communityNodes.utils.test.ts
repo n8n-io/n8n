@@ -1,98 +1,53 @@
-import { describe, it, expect, vi } from 'vitest';
-import { fetchInstalledPackageInfo, isNodesApiVersionError } from './communityNodes.utils';
-import { useCommunityNodesStore } from './communityNodes.store';
-import { type NodeTypesStore, useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import type { PublicInstalledPackage } from 'n8n-workflow';
-import type { CommunityNodeType } from '@n8n/api-types';
-import { createTestingPinia } from '@pinia/testing';
+import { describe, it, expect } from 'vitest';
+import { isCommunityPackageUpdateAvailable, isNodesApiVersionError } from './communityNodes.utils';
 
-vi.mock('./communityNodes.store', () => ({
-	useCommunityNodesStore: vi.fn(() => ({
-		getInstalledPackage: vi.fn(),
-	})),
-}));
+describe('isCommunityPackageUpdateAvailable', () => {
+	const defaults = {
+		installedVersion: '1.0.0',
+		latestVerifiedVersion: '1.0.0',
+		isCommunityNodesFeatureEnabled: true,
+		isUnverifiedPackagesEnabled: false,
+		isManagedByEnv: false,
+	};
 
-vi.mock('@/app/stores/nodeTypes.store', () => ({
-	useNodeTypesStore: vi.fn(() => ({
-		communityNodeType: vi.fn(),
-	})),
-}));
-
-type CommunityNodesStore = ReturnType<typeof useCommunityNodesStore>;
-
-const mockCommunityNodesStore = (mock: Partial<CommunityNodesStore>) => {
-	vi.mocked(useCommunityNodesStore).mockImplementation(
-		() =>
-			({
-				getInstalledPackage: vi.fn(),
-				...mock,
-			}) as unknown as CommunityNodesStore,
-	);
-};
-
-const mockNodeTypesStore = (mock: Partial<NodeTypesStore>) => {
-	vi.mocked(useNodeTypesStore).mockImplementation(
-		() =>
-			({
-				communityNodeType: vi.fn(),
-				...mock,
-			}) as unknown as NodeTypesStore,
-	);
-};
-
-describe('fetchInstalledPackageInfo', () => {
-	beforeEach(() => {
-		createTestingPinia({ stubActions: false });
+	it('returns true when a newer verified version is available', () => {
+		expect(
+			isCommunityPackageUpdateAvailable({
+				...defaults,
+				latestVerifiedVersion: '1.1.0',
+			}),
+		).toBe(true);
 	});
 
-	afterEach(() => {
-		vi.clearAllMocks();
+	it('ignores a newer npm version when unverified packages are disabled', () => {
+		expect(
+			isCommunityPackageUpdateAvailable({
+				...defaults,
+				updateAvailable: '1.1.0',
+			}),
+		).toBe(false);
 	});
 
-	it('should return undefined if no installed package is found', async () => {
-		const packageName = 'test-package';
-		mockCommunityNodesStore({
-			getInstalledPackage: vi.fn().mockResolvedValue(undefined),
-		});
-
-		const result = await fetchInstalledPackageInfo(packageName);
-		expect(result).toBeUndefined();
+	it('returns true for a newer npm version when unverified packages are enabled', () => {
+		expect(
+			isCommunityPackageUpdateAvailable({
+				...defaults,
+				updateAvailable: '1.1.0',
+				isUnverifiedPackagesEnabled: true,
+			}),
+		).toBe(true);
 	});
 
-	it('should return package info with unverifiedUpdate as false if no update is available', async () => {
-		const packageName = 'test-package';
-		const installedPackage = { packageName, updateAvailable: null };
-		mockCommunityNodesStore({
-			getInstalledPackage: vi
-				.fn()
-				.mockResolvedValue(installedPackage as unknown as PublicInstalledPackage),
-		});
-		mockNodeTypesStore({
-			communityNodeType: vi
-				.fn()
-				.mockReturnValue({ npmVersion: '1.0.0' } as unknown as CommunityNodeType),
-		});
-
-		const result = await fetchInstalledPackageInfo(packageName);
-		expect(result).toEqual({ ...installedPackage, unverifiedUpdate: false });
-	});
-
-	it('should return package info with unverifiedUpdate as true if an update is available', async () => {
-		const packageName = 'test-package';
-		const installedPackage = { packageName, updateAvailable: '1.1.0' };
-		mockCommunityNodesStore({
-			getInstalledPackage: vi
-				.fn()
-				.mockResolvedValue(installedPackage as unknown as PublicInstalledPackage),
-		});
-		mockNodeTypesStore({
-			communityNodeType: vi
-				.fn()
-				.mockReturnValue({ npmVersion: '1.0.0' } as unknown as CommunityNodeType),
-		});
-
-		const result = await fetchInstalledPackageInfo(packageName);
-		expect(result).toEqual({ ...installedPackage, unverifiedUpdate: true });
+	it('returns false when community packages are managed by the environment', () => {
+		expect(
+			isCommunityPackageUpdateAvailable({
+				...defaults,
+				latestVerifiedVersion: '1.1.0',
+				updateAvailable: '1.2.0',
+				isUnverifiedPackagesEnabled: true,
+				isManagedByEnv: true,
+			}),
+		).toBe(false);
 	});
 });
 

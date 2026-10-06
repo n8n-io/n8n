@@ -9,7 +9,7 @@ import type {
 } from '@/services/protected-resource.registry';
 
 import { triggerResourceGate } from '../resource-gate';
-import { UrlService } from '@/services/url.service';
+import { UrlService } from '@n8n/backend-services';
 import { TestWebhooks } from '@/webhooks/test-webhooks';
 import type { TestWebhookRegistration } from '@/webhooks/test-webhook-registrations.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
@@ -20,6 +20,7 @@ import {
 	parseMethodParam,
 	trimSlashes,
 	trimTrailingSlash,
+	webhookAllowsBrowserFlow,
 	webhookPathFromResourceUrl,
 	webhookResourcePath,
 } from './utils';
@@ -145,10 +146,12 @@ export class WorkflowWebhookTestTriggerResourceResolver implements ProtectedReso
 			const audiences = methods.map(urlFor);
 			return {
 				id: `workflow-webhook-test:${workflowEntity.id}:${resourcePath}`,
+				surface: 'trigger' as const,
 				getResourceUrl: () => urlFor(requestedMethod),
 				getAudiences: () => audiences,
 				scopes: WEBHOOK_TRIGGER_SCOPES,
 				displayName: workflowEntity.name,
+				...(webhookAllowsBrowserFlow(node, requestedMethod) && { isFirstParty: true }),
 				...triggerResourceGate(this.workflowFinderService, {
 					audiences,
 					executeAccessWorkflowId: requireExecute ? workflowEntity.id : undefined,

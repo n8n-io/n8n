@@ -125,7 +125,7 @@ async function findUsersByMail(this: IExecuteFunctions, address: string): Promis
  * spend a call to learn nothing. A number or a boolean still stringifies, because only an object
  * is guaranteed useless as an ID.
  */
-const rlcValue = (value: unknown): string => {
+export const rlcValue = (value: unknown): string => {
 	const raw = isResourceLocatorValue(value) ? value.value : value;
 	if (typeof raw === 'string') return raw.trim();
 	return typeof raw === 'number' || typeof raw === 'boolean' ? String(raw) : '';
@@ -226,16 +226,17 @@ export async function resolveUserTarget(
 	raw: unknown,
 	itemIndex: number,
 	label: string,
-): Promise<IDataObject> {
+): Promise<IDataObject & { id: string }> {
 	const node = this.getNode();
 	// Validate the shape before encoding (`encodeURIComponent` leaves `..` intact) and encode
 	// the same trimmed string, since the validator is anchored and callers trim.
 	const value = String(raw ?? '').trim();
 
+	let user: IDataObject;
 	try {
 		validateUserTargetId(value, node, userTargetMessages(label));
 
-		return (await microsoftApiRequest.call(
+		user = (await microsoftApiRequest.call(
 			this,
 			'GET',
 			`/v1.0/users/${encodeURIComponent(value)}`,
@@ -268,9 +269,28 @@ export async function resolveUserTarget(
 					'Pick the user from the list, or check that the user ID or email address is correct and that the user exists in this Microsoft 365 tenant.',
 			});
 		}
-		return matches[0];
+		user = matches[0];
 	}
+
+	const { id } = user;
+	if (typeof id !== 'string' || !id) {
+		throw new NodeOperationError(node, `Could not find the user for ${label}`, {
+			itemIndex,
+			description: 'Microsoft Graph returned a user without an ID.',
+		});
+	}
+	return { ...user, id };
 }
+
+/**
+ * Builds one `aadUserConversationMember` entry. `userRef` is the full `user@odata.bind` URL:
+ * the two endpoints document different key forms, so each call site composes its own.
+ */
+export const aadUserConversationMember = (userRef: string, role: string) => ({
+	'@odata.type': '#microsoft.graph.aadUserConversationMember',
+	roles: [role],
+	'user@odata.bind': userRef,
+});
 
 /**
  * Resolves every mention row to a Graph user or team tag. Graph stores `mentions[].mentioned`
@@ -368,13 +388,12 @@ export async function resolveMentions(
 
 		// Directory objects with no display name exist (some guests, some service accounts);
 		// without a fallback the mention renders as a blank chip. `||`, so `''` falls through.
-		const label =
-			(user.displayName as string) || (user.userPrincipalName as string) || (user.id as string);
+		const label = String(user.displayName ?? '') || String(user.userPrincipalName ?? '') || user.id;
 
 		const mention: Mention = {
 			mentionText: label,
 			mentioned: {
-				user: { id: user.id as string, displayName: label, userIdentityType: 'aadUser' },
+				user: { id: user.id, displayName: label, userIdentityType: 'aadUser' },
 			},
 		};
 		cache.set(userKey, mention);

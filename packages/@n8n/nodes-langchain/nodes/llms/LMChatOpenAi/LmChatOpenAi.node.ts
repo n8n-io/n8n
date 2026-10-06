@@ -1,10 +1,7 @@
 import { ChatOpenAI, type ChatOpenAIFields, type ClientOptions } from '@langchain/openai';
-import isPlainObject from 'lodash/isPlainObject';
 import pick from 'lodash/pick';
 import {
-	jsonParse,
 	NodeConnectionTypes,
-	NodeOperationError,
 	type INodeProperties,
 	type IDataObject,
 	type INodeType,
@@ -21,13 +18,16 @@ import {
 
 import { wrapChatModelMessageInput } from '@utils/chatModelMessageWrapper';
 import { getCustomCredentialHeader, mergeCustomHeaders } from '@utils/helpers';
+import { MODEL_SELECTION_HINT } from '@utils/model-builder-hints';
 
+import { parseExtraBody } from '../shared/extra-body';
 import { assertOpenAiCredentialAllowsUrl } from '../../vendors/OpenAi/helpers/credentials';
 import { openAiFailedAttemptHandler } from '../../vendors/OpenAi/helpers/error-handling';
 import {
 	makeN8nLlmFailedAttemptHandler,
 	N8nLlmTracing,
 	getProxyAgent,
+	aiClientFetch,
 	getConnectionHintNoticeField,
 } from '@n8n/ai-utilities';
 import { formatBuiltInTools, prepareAdditionalResponsesParams } from './common';
@@ -49,8 +49,7 @@ const INCLUDE_JSON_WARNING: INodeProperties = {
 };
 
 const OPENAI_MODEL_BUILDER_HINT = {
-	propertyHint:
-		'Prefer the GPT-5.4 family: the flagship variant (e.g. `gpt-5.4`) for general use, a `-mini` / `-nano` variant when the task explicitly calls for cost-efficiency, or `-pro` only when the user asks for maximum capability. Never use gpt-4o, gpt-4-turbo, gpt-4, gpt-3.5, or earlier — those are superseded by the GPT-5 family and are not valid choices.',
+	propertyHint: MODEL_SELECTION_HINT,
 };
 
 function isOpenAiAccountReasoningEffort(value: unknown): value is 'low' | 'medium' | 'high' {
@@ -240,7 +239,7 @@ export class LmChatOpenAi implements INodeType {
 				name: 'model',
 				type: 'options',
 				description:
-					'The model which will generate the completion. <a href="https://beta.openai.com/docs/models/overview">Learn more</a>.',
+					'The model which will generate the completion. <a href="https://developers.openai.com/api/docs/models">Learn more</a>.',
 				typeOptions: {
 					loadOptions: {
 						routing: {
@@ -896,6 +895,7 @@ export class LmChatOpenAi implements INodeType {
 		const { openAiDefaultHeaders: defaultHeaders } = Container.get(AiConfig);
 
 		const configuration: ClientOptions = {
+			fetch: aiClientFetch,
 			defaultHeaders,
 		};
 		const timeout = options.timeout;
@@ -962,24 +962,7 @@ export class LmChatOpenAi implements INodeType {
 		}
 
 		if (options.extraBody) {
-			let extraBody: Record<string, unknown>;
-			try {
-				extraBody = jsonParse<Record<string, unknown>>(options.extraBody);
-			} catch (error) {
-				throw new NodeOperationError(
-					this.getNode(),
-					'The value in the "Extra Body" field is not valid JSON',
-					{ itemIndex, description: error instanceof Error ? error.message : String(error) },
-				);
-			}
-			if (!isPlainObject(extraBody)) {
-				throw new NodeOperationError(
-					this.getNode(),
-					'The value in the "Extra Body" field must be a JSON object',
-					{ itemIndex },
-				);
-			}
-			Object.assign(modelKwargs, extraBody);
+			Object.assign(modelKwargs, parseExtraBody(this, options.extraBody, itemIndex));
 		}
 
 		const includedOptions = pick(options, [

@@ -14,6 +14,7 @@ import type {
 } from '@n8n/typeorm';
 
 import { BaseRepository } from './base-repository';
+import { WorkflowPublishHistoryRepository } from './workflow-publish-history.repository';
 import type { User } from '../entities';
 import { Project, ProjectRelation, SharedWorkflow } from '../entities';
 import { type OperationContext, TransactionRunner } from '../services/transaction';
@@ -21,8 +22,105 @@ import { chunkIds } from '../utils/chunk-ids';
 
 @Service()
 export class SharedWorkflowRepository extends BaseRepository<SharedWorkflow> {
-	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
+	constructor(
+		dataSource: DataSource,
+		transactionRunner: TransactionRunner,
+		private readonly workflowPublishHistoryRepository: WorkflowPublishHistoryRepository,
+	) {
 		super(SharedWorkflow, dataSource.manager, transactionRunner);
+	}
+
+	async findWorkflowIdsForGlobalAccess(projectId?: string): Promise<string[]> {
+		const rows = await this.find({
+			select: ['workflowId'],
+			...(projectId ? { where: { projectId } } : {}),
+		});
+		return rows.map(({ workflowId }) => workflowId);
+	}
+
+	async findWorkflowIdsAccessibleToUser(
+		userId: string,
+		workflowRoleSlugs: string[],
+		projectRoleSlugs: string[],
+	): Promise<string[]> {
+		const rows = await this.find({
+			where: {
+				role: In(workflowRoleSlugs),
+				project: {
+					projectRelations: {
+						userId,
+						role: { slug: In(projectRoleSlugs) },
+					},
+				},
+			},
+			select: ['workflowId'],
+		});
+		return rows.map(({ workflowId }) => workflowId);
+	}
+
+	async findWorkflowIdsSharedWithUser(userId: string): Promise<string[]> {
+		const rows = await this.find({
+			select: ['workflowId'],
+			where: {
+				role: 'workflow:editor',
+				project: {
+					projectRelations: {
+						userId,
+						role: { slug: PROJECT_OWNER_ROLE_SLUG },
+					},
+				},
+			},
+		});
+		return rows.map(({ workflowId }) => workflowId);
+	}
+
+	async findOwnedWorkflowIdsInPersonalProject(userId: string): Promise<string[]> {
+		const rows = await this.find({
+			select: ['workflowId'],
+			where: {
+				role: 'workflow:owner',
+				project: {
+					projectRelations: {
+						userId,
+						role: { slug: PROJECT_OWNER_ROLE_SLUG },
+					},
+				},
+			},
+		});
+		return rows.map(({ workflowId }) => workflowId);
+	}
+
+	async findOwnedWorkflowRemovalCandidates(
+		projectId: string,
+		workflowIds: string[],
+		options: { includeArchived?: boolean } = {},
+	): Promise<Array<{ id: string; name: string; parentFolderId: string | null }>> {
+		const candidates: Array<{ id: string; name: string; parentFolderId: string | null }> = [];
+
+		for (const chunk of chunkIds([...new Set(workflowIds)])) {
+			const rows = await this.find({
+				where: {
+					projectId,
+					workflowId: In(chunk),
+					role: 'workflow:owner',
+					...(options.includeArchived ? {} : { workflow: { isArchived: false } }),
+				},
+				relations: { workflow: { parentFolder: true } },
+				select: {
+					workflowId: true,
+					workflow: { id: true, name: true, parentFolder: { id: true } },
+				},
+			});
+			for (const { workflow } of rows) {
+				candidates.push({
+					id: workflow.id,
+					name: workflow.name,
+					parentFolderId: workflow.parentFolder?.id ?? null,
+				});
+			}
+		}
+
+		return candidates;
 	}
 
 	/**
@@ -51,6 +149,18 @@ export class SharedWorkflowRepository extends BaseRepository<SharedWorkflow> {
 		}
 
 		return found;
+	}
+
+	/** IDs of the workflows owned by any of the given projects. */
+	async findOwnedWorkflowIdsByProjects(projectIds: string[]): Promise<string[]> {
+		if (projectIds.length === 0) return [];
+
+		const rows = await this.find({
+			select: { workflowId: true },
+			where: { projectId: In(projectIds), role: 'workflow:owner' },
+		});
+
+		return rows.map(({ workflowId }) => workflowId);
 	}
 
 	/** Owner project of each workflow, keyed by workflow id. */
@@ -239,7 +349,7 @@ export class SharedWorkflowRepository extends BaseRepository<SharedWorkflow> {
 			em = this.manager,
 		} = options;
 
-		return await em.findOne(SharedWorkflow, {
+		const sharedWorkflow = await em.findOne(SharedWorkflow, {
 			where: {
 				workflowId,
 				...where,
@@ -249,10 +359,22 @@ export class SharedWorkflowRepository extends BaseRepository<SharedWorkflow> {
 					shared: { project: true },
 					tags: includeTags,
 					parentFolder: includeParentFolder,
-					activeVersion: includeActiveVersion ? { workflowPublishHistory: true } : false,
+					activeVersion: includeActiveVersion,
 				},
 			},
 		});
+
+		const activeVersion = sharedWorkflow?.workflow.activeVersion;
+		if (activeVersion) {
+			activeVersion.workflowPublishHistory =
+				await this.workflowPublishHistoryRepository.findByVersion(
+					workflowId,
+					activeVersion.versionId,
+					em,
+				);
+		}
+
+		return sharedWorkflow;
 	}
 
 	/**

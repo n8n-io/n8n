@@ -1,4 +1,5 @@
 import { CronTime } from 'cron';
+import cronstrue from 'cronstrue';
 
 /**
  * Structured task schedule <-> cron conversion. Lets the Tasks UI offer a
@@ -103,6 +104,18 @@ export function getNextScheduleOccurrence(cronExpression: string, timezone: stri
 
 	try {
 		return new CronTime(cronExpression, timezone).sendAt().toJSDate();
+	} catch {
+		return null;
+	}
+}
+
+/** Human-readable description of a cron expression, or null when it cannot be described. */
+export function describeSchedule(cronExpression: string): string | null {
+	try {
+		return cronstrue.toString(cronExpression, {
+			throwExceptionOnParseError: true,
+			use24HourTimeFormat: true,
+		});
 	} catch {
 		return null;
 	}

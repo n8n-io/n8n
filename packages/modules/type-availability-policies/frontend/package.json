@@ -1,10 +1,11 @@
 {
   "name": "@n8n/frontend-module-type-availability-policies",
-  "version": "0.1.0",
+  "version": "0.4.0",
   "type": "module",
   "main": "src/index.ts",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./__tests__/mocks": "./src/__tests__/mocks.ts"
   },
   "scripts": {
     "clean": "rimraf .turbo",
@@ -24,6 +25,8 @@
     "@n8n/i18n": "workspace:*",
     "@n8n/rest-api-client": "workspace:*",
     "@n8n/stores": "workspace:*",
+    "@n8n/utils": "workspace:*",
+    "@vueuse/core": "catalog:frontend",
     "pinia": "catalog:frontend",
     "vue": "catalog:frontend"
   },
@@ -37,6 +40,7 @@
     "@n8n/vitest-config": "workspace:*",
     "@pinia/testing": "^0.1.6",
     "@testing-library/jest-dom": "catalog:frontend",
+    "@testing-library/user-event": "catalog:frontend",
     "@testing-library/vue": "catalog:frontend",
     "@vitejs/plugin-vue": "catalog:frontend",
     "eslint": "catalog:",

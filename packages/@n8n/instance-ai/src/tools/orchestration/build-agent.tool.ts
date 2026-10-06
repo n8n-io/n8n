@@ -26,12 +26,15 @@ import { APPROVAL_SUSPEND_SCHEMA, createAbortError, Tool } from '@n8n/agents';
 import {
 	BUILDER_CHECKPOINT_UNAVAILABLE_CODE,
 	BUILDER_NOT_CONFIGURED_CODE,
-	CONFIG_MUTATION_TOOL_NAMES,
+	agentActivitySchema,
+	agentChangeSchema,
 	channelSuspendPayloadSchema,
 	credentialSuspendPayloadSchema,
 	questionAnswerSchema,
 	questionsResumeSchema,
 	questionsSuspendPayloadSchema,
+	type InstanceAiAgentActivity,
+	type InstanceAiAgentChange,
 } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
 import { nanoid } from 'nanoid';
@@ -105,11 +108,19 @@ function isFriendlyMappableBuilderError(error: unknown): boolean {
 }
 
 function didUpdateConfig(workSummary: WorkSummary): boolean {
-	const mutationToolNames = new Set<string>(CONFIG_MUTATION_TOOL_NAMES);
-	return workSummary.toolCalls.some(
-		(call) =>
-			call.succeeded && (call.configMutated === true || mutationToolNames.has(call.toolName)),
-	);
+	return workSummary.toolCalls.some((call) => call.succeeded && call.configMutated === true);
+}
+
+const buildAgentOperationSchema = z
+	.enum(['editing', 'exploring', 'testing', 'publishing'])
+	.optional();
+
+function agentChangeFor(
+	activity: InstanceAiAgentActivity,
+	configUpdated: boolean,
+): InstanceAiAgentChange {
+	if (activity === 'creating') return 'created';
+	return configUpdated ? 'updated' : 'none';
 }
 
 function formatWorkflowContextEnvelope(workflowContext: SessionWorkflowRef[]): string {
@@ -182,6 +193,10 @@ function builderAgentIdFor(agentId: string): string {
 }
 
 const buildAgentInputSchema = z.object({
+	operation: buildAgentOperationSchema.describe(
+		'What the builder will do with an existing Agent. Use exploring for read-only investigation. ' +
+			'Omit only when the activity is not known.',
+	),
 	message: z
 		.string()
 		.min(1)
@@ -237,6 +252,7 @@ const buildAgentOutputSchema = z.object({
 	ok: z.boolean(),
 	builderReply: z.string().optional(),
 	configUpdated: z.boolean().optional(),
+	agentChange: agentChangeSchema.optional(),
 	error: z.string().optional(),
 	agentId: z
 		.string()
@@ -272,6 +288,7 @@ const builderCheckpointRefSchema = z.object({
 	toolCallId: z.string(),
 	/** Whether any builder pass before this suspension already mutated the agent config. */
 	configUpdated: z.boolean(),
+	activity: agentActivitySchema.optional().default('working'),
 	/** Host-owned artifacts reported before this suspension. */
 	requiredArtifacts: builderRequiredArtifactsSchema.optional(),
 	/** Target the suspended build belongs to; optional for checkpoints persisted before this field existed. */
@@ -333,6 +350,7 @@ function publishAgentSpawned(
 	context: OrchestrationContext,
 	builderAgentId: string,
 	target: AgentBuilderTarget,
+	activity: InstanceAiAgentActivity,
 ): void {
 	context.eventBus.publish(context.threadId, {
 		type: 'agent-spawned',
@@ -343,7 +361,7 @@ function publishAgentSpawned(
 			role: BUILDER_SUB_AGENT_ROLE,
 			tools: [],
 			kind: BUILDER_SUB_AGENT_KIND,
-			title: 'Building agent',
+			activity,
 			// name/projectId make the FE render the agent as a conversation artifact
 			// (artifact list + preview both require projectId).
 			targetResource: {
@@ -424,16 +442,18 @@ async function finishTurn(
 	builderAgentId: string,
 	result: Extract<ConsumeStreamCascadingResult, { status: 'completed' | 'cancelled' | 'errored' }>,
 	carriedConfigUpdated: boolean,
+	activity: InstanceAiAgentActivity,
 	requiredArtifacts: BuilderRequiredArtifact[],
 ): Promise<BuildAgentOutput> {
+	const configUpdated = carriedConfigUpdated || didUpdateConfig(result.workSummary);
+	const agentChange = agentChangeFor(activity, configUpdated);
 	if (result.status === 'completed') {
 		const text = await result.text;
-		const configUpdated = carriedConfigUpdated || didUpdateConfig(result.workSummary);
 		context.eventBus.publish(context.threadId, {
 			type: 'agent-completed',
 			runId: context.runId,
 			agentId: builderAgentId,
-			payload: { role: BUILDER_SUB_AGENT_ROLE, result: text.slice(0, 200) },
+			payload: { role: BUILDER_SUB_AGENT_ROLE, result: text.slice(0, 200), agentChange },
 		});
 		return {
 			ok: true,
@@ -444,12 +464,11 @@ async function finishTurn(
 	}
 
 	const error = `The agent builder run ${result.status}.`;
-	const configUpdated = carriedConfigUpdated || didUpdateConfig(result.workSummary);
 	context.eventBus.publish(context.threadId, {
 		type: 'agent-completed',
 		runId: context.runId,
 		agentId: builderAgentId,
-		payload: { role: BUILDER_SUB_AGENT_ROLE, result: '', error },
+		payload: { role: BUILDER_SUB_AGENT_ROLE, result: '', error, agentChange },
 	});
 	return {
 		ok: false,
@@ -485,6 +504,7 @@ async function runBuilderConsumeLoop(params: {
 	target: AgentBuilderTarget;
 	builderAgentId: string;
 	turn: BuilderTurnStream;
+	activity: InstanceAiAgentActivity;
 	/** configUpdated already accumulated by passes before this one (false on the first leg; carried from the suspend payload on resume). */
 	carriedConfigUpdated: boolean;
 	/** Host-owned artifacts accumulated by passes before this one. */
@@ -503,6 +523,7 @@ async function runBuilderConsumeLoop(params: {
 		target,
 		builderAgentId,
 		turn,
+		activity,
 		carriedConfigUpdated,
 		carriedRequiredArtifacts,
 		onSettled,
@@ -516,7 +537,10 @@ async function runBuilderConsumeLoop(params: {
 	// grades. A suspend resumes and settles through here; a cancel throws past it.
 	const settle = async (output: BuildAgentOutput): Promise<BuildAgentOutput> => {
 		if (output.configUpdated) await snapshotAgent(context, delegate, target, 'config-updated');
-		return output;
+		return {
+			...output,
+			agentChange: agentChangeFor(activity, output.configUpdated === true),
+		};
 	};
 
 	const traceRun = await startSubAgentTrace(context, {
@@ -589,7 +613,7 @@ async function runBuilderConsumeLoop(params: {
 		const freshName = await delegate.resolveAgentName(target.agentId);
 		if (freshName && freshName !== target.name) {
 			target.name = freshName;
-			publishAgentSpawned(context, builderAgentId, target);
+			publishAgentSpawned(context, builderAgentId, target, activity);
 			if (context.domainContext) {
 				await saveAgentBuilderTarget(context.domainContext, target);
 			}
@@ -607,6 +631,7 @@ async function runBuilderConsumeLoop(params: {
 			builderAgentId,
 			result,
 			carriedConfigUpdated,
+			activity,
 			requiredArtifacts,
 		);
 		if (output.ok) {
@@ -668,6 +693,7 @@ async function runBuilderConsumeLoop(params: {
 			runId: builderRunId,
 			toolCallId: result.suspension.toolCallId,
 			configUpdated: configUpdatedSoFar,
+			activity,
 			...(requiredArtifacts.length > 0 ? { requiredArtifacts } : {}),
 			target: {
 				agentId: target.agentId,
@@ -773,7 +799,7 @@ async function handleResume(
 		throw error;
 	}
 
-	publishAgentSpawned(context, builderAgentId, target);
+	publishAgentSpawned(context, builderAgentId, target, ref.activity);
 
 	return await runBuilderConsumeLoop({
 		context,
@@ -782,6 +808,7 @@ async function handleResume(
 		target,
 		builderAgentId,
 		turn,
+		activity: ref.activity,
 		carriedConfigUpdated: ref.configUpdated,
 		carriedRequiredArtifacts: ref.requiredArtifacts ?? [],
 		traceInputs: { resumed: true },
@@ -1102,8 +1129,10 @@ export function createBuildAgentTool(context: OrchestrationContext) {
 			}));
 			const outboundMessage = buildOutboundMessage(input.message, input.workflowContext, context);
 			const builderAgentId = builderAgentIdFor(boundTarget.agentId);
+			const activity: InstanceAiAgentActivity =
+				resolution.mode === 'create' ? 'creating' : (input.operation ?? 'working');
 
-			publishAgentSpawned(context, builderAgentId, boundTarget);
+			publishAgentSpawned(context, builderAgentId, boundTarget, activity);
 
 			// Before the builder touches it: a repair-shaped eval case seeds from the
 			// state the turn opened on. A new agent has no prior state.
@@ -1130,6 +1159,7 @@ export function createBuildAgentTool(context: OrchestrationContext) {
 				target: boundTarget,
 				builderAgentId,
 				turn,
+				activity,
 				carriedConfigUpdated: false,
 				carriedRequiredArtifacts: [],
 				traceInputs: { message: outboundMessage },

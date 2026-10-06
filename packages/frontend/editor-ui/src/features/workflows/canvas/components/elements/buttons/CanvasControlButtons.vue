@@ -59,13 +59,13 @@ function handleClickCollapseAll() {
 </script>
 <template>
 	<Controls :show-zoom="false" :show-fit-view="false">
-		<N8nButtonList>
+		<N8nButtonList variant="toolbar">
 			<KeyboardShortcutTooltip
 				:label="i18n.baseText('nodeView.zoomToFit')"
 				:shortcut="{ keys: ['1'] }"
 			>
 				<N8nIconButton
-					variant="subtle"
+					variant="ghost"
 					size="large"
 					icon="maximize"
 					:aria-label="i18n.baseText('nodeView.zoomToFit')"
@@ -78,7 +78,7 @@ function handleClickCollapseAll() {
 				:shortcut="{ keys: ['+'] }"
 			>
 				<N8nIconButton
-					variant="subtle"
+					variant="ghost"
 					size="large"
 					icon="zoom-in"
 					:aria-label="i18n.baseText('nodeView.zoomIn')"
@@ -91,7 +91,7 @@ function handleClickCollapseAll() {
 				:shortcut="{ keys: ['-'] }"
 			>
 				<N8nIconButton
-					variant="subtle"
+					variant="ghost"
 					size="large"
 					icon="zoom-out"
 					:aria-label="i18n.baseText('nodeView.zoomOut')"
@@ -109,7 +109,7 @@ function handleClickCollapseAll() {
 				:shortcut="{ keys: ['Z'] }"
 			>
 				<N8nIconButton
-					variant="subtle"
+					variant="ghost"
 					iconOnly
 					size="large"
 					:class="$style.iconButton"
@@ -128,7 +128,7 @@ function handleClickCollapseAll() {
 				:shortcut="{ shiftKey: true, altKey: true, keys: ['T'] }"
 			>
 				<N8nButton
-					variant="subtle"
+					variant="ghost"
 					iconOnly
 					size="large"
 					:aria-label="i18n.baseText('nodeView.tidyUp')"
@@ -145,7 +145,7 @@ function handleClickCollapseAll() {
 				:content="i18n.baseText('nodeView.expandAllNodes')"
 			>
 				<N8nIconButton
-					variant="subtle"
+					variant="ghost"
 					size="large"
 					icon="maximize-2"
 					:aria-label="i18n.baseText('nodeView.expandAllNodes')"
@@ -158,7 +158,7 @@ function handleClickCollapseAll() {
 				:content="i18n.baseText('nodeView.collapseAllNodes')"
 			>
 				<N8nIconButton
-					variant="subtle"
+					variant="ghost"
 					size="large"
 					icon="minimize-2"
 					:aria-label="i18n.baseText('nodeView.collapseAllNodes')"

@@ -13,11 +13,11 @@ the same commands from the repo via `pnpm nathan`.
 ## Prerequisites
 
 - **No tunnel setup needed.** Nathan replies asynchronously through a short-lived
-  public tunnel that the script opens for you (`npx localtunnel`). A `deploy` to a
-  **new** `test-<name>` also polls that instance URL directly, so it still reports
-  success even if the tunnel drops. (Redeploying a name that's *already up* skips
-  the poll — it can't tell the old instance from the new — so it falls back to the
-  tunnel; prefer a fresh name when you need the reliable report.)
+  Cloudflare Quick Tunnel that the script opens for you (`npx cloudflared`). A
+  `deploy` to a **new** `test-<name>` also polls that instance URL directly, so it
+  still reports success even if the tunnel drops. (Redeploying a name that's
+  *already up* skips the poll — it can't tell the old instance from the new — so
+  it falls back to the tunnel; prefer a fresh name when you need the reliable report.)
 - **A token in `~/.n8n/dev/nathan-token`.** If a command reports no token, **ask the
   user for one** — point them at the form
   (`https://internal.users.n8n.cloud/form/d6d34a2f-4899-4ee8-afc8-f8c41a8a243d`),

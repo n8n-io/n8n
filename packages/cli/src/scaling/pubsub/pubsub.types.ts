@@ -60,6 +60,9 @@ export namespace PubSub {
 		export type WorkflowPublishWakeUp = ToCommand<'workflow-publish-wake-up'>;
 		export type RelayExecutionLifecycleEvent = ToCommand<'relay-execution-lifecycle-event'>;
 		export type RelayAgentExecutionUpdate = ToCommand<'relay-agent-execution-update'>;
+		export type RelayAgentQueuedChat = ToCommand<'relay-agent-queued-chat'>;
+		export type CancelAgentChatExecution = ToCommand<'cancel-agent-chat-execution'>;
+		export type RelayAgentMessageQueueUpdate = ToCommand<'relay-agent-message-queue-update'>;
 		export type RelayAgentBackgroundJobsUpdate = ToCommand<'relay-agent-background-tasks-update'>;
 		export type RelayAgentUpdate = ToCommand<'relay-agent-update'>;
 		export type ResumeAgentWorkflowTool = ToCommand<'resume-agent-workflow-tool'>;
@@ -77,6 +80,7 @@ export namespace PubSub {
 		export type ReloadMcpRegistry = ToCommand<'reload-mcp-registry'>;
 		export type ReloadOtelConfig = ToCommand<'reload-otel-config'>;
 		export type ReloadInstanceAiSettings = ToCommand<'reload-instance-ai-settings'>;
+		export type ReloadAgentsSettings = ToCommand<'reload-agents-settings'>;
 		export type CancelTestRun = ToCommand<'cancel-test-run'>;
 		export type CancelCollection = ToCommand<'cancel-collection'>;
 		export type AgentChatIntegrationChanged = ToCommand<'agent-chat-integration-changed'>;
@@ -108,6 +112,9 @@ export namespace PubSub {
 		| Commands.WorkflowPublishWakeUp
 		| Commands.RelayExecutionLifecycleEvent
 		| Commands.RelayAgentExecutionUpdate
+		| Commands.RelayAgentQueuedChat
+		| Commands.CancelAgentChatExecution
+		| Commands.RelayAgentMessageQueueUpdate
 		| Commands.RelayAgentBackgroundJobsUpdate
 		| Commands.RelayAgentUpdate
 		| Commands.ResumeAgentWorkflowTool
@@ -127,6 +134,7 @@ export namespace PubSub {
 		| Commands.ReloadMcpRegistry
 		| Commands.ReloadOtelConfig
 		| Commands.ReloadInstanceAiSettings
+		| Commands.ReloadAgentsSettings
 		| Commands.CancelTestRun
 		| Commands.CancelCollection
 		| Commands.AgentChatIntegrationChanged

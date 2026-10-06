@@ -2,7 +2,7 @@
  * Consolidated nodes tool — list, search, describe, type-definition, suggested,
  * explore-resources, execute.
  */
-import { Tool } from '@n8n/agents';
+import { Tool, type ToolContext } from '@n8n/agents';
 import {
 	AI_CONNECTION_TYPES,
 	NodeSearchEngine,
@@ -23,6 +23,7 @@ import { z } from 'zod';
 
 import { sanitizeInputSchema } from '../agent/sanitize-mcp-schemas';
 import type { InstanceAiContext, NodeDescription } from '../types';
+import { needsModelSelection } from './nodes/model-selection';
 import { pickPreferredChatModelNode } from './nodes/preferred-chat-model';
 import { addSetupPreference, type NodeWithSetupPreference } from './nodes/setup-preference';
 import { buildCredentialMap } from './workflows/resolve-credentials';
@@ -40,7 +41,13 @@ const NODE_TYPES_ARRAY_DESCRIPTION =
 	'Node type IDs for node-level lookups (max 5). For split nodes (e.g. Slack, Gmail, Google Sheets), pass the object form WITH resource/operation (or mode) discriminators when you know them — a bare string errors with the resource→operations index for resource/operation nodes, and returns all mode variants for mode-split nodes.';
 
 const listAction = z.object({
-	action: z.literal('list').describe('List available node types'),
+	action: z
+		.literal('list')
+		.describe(
+			'List available node types. When picking a service node for a task (web search, scraping, ' +
+				'document parsing), also consider services covered by n8n Connect (they run on Gateway ' +
+				'credits, no API key needed) — pass `gatewayCreditsOnly=true` to see the covered set.',
+		),
 	query: z
 		.string()
 		.optional()
@@ -57,7 +64,8 @@ const searchAction = z.object({
 	action: z
 		.literal('search')
 		.describe(
-			'Search node types by name or AI connection type. Use for service-specific discovery — short service names like "Gmail" or "Slack", not full task phrases.',
+			'Search node types by name or AI connection type. Use for service-specific discovery — short service names like "Gmail" or "Slack", not full task phrases. ' +
+				'When the task fits a service covered by n8n Connect (web search, scraping, document parsing — no API key needed), surface that option too; list the covered set with `nodes(action="list", gatewayCreditsOnly=true)`.',
 		),
 	query: z
 		.string()
@@ -107,7 +115,10 @@ const suggestedAction = z.object({
 	action: z
 		.literal('suggested')
 		.describe(
-			'Get curated node recommendations by category. Call first when the workflow fits a known category.',
+			'Get curated node recommendations by category. Call first when the workflow fits a known category. ' +
+				'The curated list is a starting point, not the full set: also add any n8n Connect covered services ' +
+				'relevant to the category (they run on Gateway credits, no API key needed). Check coverage with ' +
+				'`nodes(action="list", gatewayCreditsOnly=true)` or `credentials(action="search-types", gatewayCreditsOnly=true)`.',
 		),
 	categories: z
 		.array(z.string())
@@ -390,6 +401,7 @@ async function resolveNodeTypeDefinitions(
 async function handleTypeDefinition(
 	context: InstanceAiContext,
 	input: Extract<FullInput, { action: 'type-definition' }>,
+	loadSkill: ToolContext['loadSkill'],
 ) {
 	// Native tool validation uses the flattened top-level schema (required for
 	// Anthropic's `type: "object"` constraint), which makes every variant field
@@ -406,7 +418,11 @@ async function handleTypeDefinition(
 		};
 	}
 
-	return await resolveNodeTypeDefinitions(context, parsed.data.nodeTypes);
+	const result = await resolveNodeTypeDefinitions(context, parsed.data.nodeTypes);
+	if (loadSkill && (await needsModelSelection(context.nodeService, result.definitions))) {
+		await loadSkill('model-selection');
+	}
+	return result;
 }
 
 async function handleSuggested(
@@ -663,10 +679,10 @@ export function createNodesTool(
 					'`explore-resources` with the real method name and a credential.',
 			)
 			.input(orchestratorInputSchema)
-			.handler(async (input: OrchestratorInput) => {
+			.handler(async (input: OrchestratorInput, ctx) => {
 				switch (input.action) {
 					case 'type-definition':
-						return await handleTypeDefinition(context, input);
+						return await handleTypeDefinition(context, input, ctx.loadSkill);
 					case 'explore-resources':
 						return await handleExploreResources(context, input);
 				}
@@ -690,7 +706,7 @@ export function createNodesTool(
 				case 'describe':
 					return await handleDescribe(context, input);
 				case 'type-definition':
-					return await handleTypeDefinition(context, input);
+					return await handleTypeDefinition(context, input, ctx.loadSkill);
 				case 'suggested':
 					return await handleSuggested(context, input);
 				case 'explore-resources':

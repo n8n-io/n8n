@@ -50,6 +50,25 @@ describe('useAgentIntegrationStatus', () => {
 		expect(status.hasRuntimeError('slack')).toBe(serverStatus === 'error');
 	});
 
+	it.each([
+		{ draftEnabled: true, configured: true },
+		{ draftEnabled: false, configured: false },
+	])(
+		'follows the draft for n8n Chat while the published version still has it (draftEnabled $draftEnabled)',
+		async ({ draftEnabled, configured }) => {
+			apiMocks.getIntegrationStatus.mockResolvedValue({
+				status: 'connected',
+				integrations: [{ type: 'n8n_chat', status: 'connected' }],
+				n8nChat: { draftEnabled, publishedEnabled: true },
+			});
+			const status = useAgentIntegrationStatus(projectId, agentId);
+
+			await status.fetchStatus(['n8n_chat']);
+
+			expect(status.isConfigured('n8n_chat')).toBe(configured);
+		},
+	);
+
 	it('takes each channel from its own status, not the rollup', async () => {
 		apiMocks.getIntegrationStatus.mockResolvedValue({
 			status: 'partial',
@@ -184,6 +203,23 @@ describe('useAgentIntegrationStatus', () => {
 		await status.fetchStatus(['slack']);
 
 		expect(status.statuses.value.slack).toBe('disconnected');
+	});
+
+	it('clears the cached approval on disconnect so a reconnect defaults off', async () => {
+		apiMocks.connectIntegration.mockResolvedValue({ status: 'connected' });
+		const status = useAgentIntegrationStatus(projectId, agentId);
+		await status.connect('slack', 'cred-slack', undefined, {
+			approval: { mode: 'selected', tools: ['send_dm'] },
+		});
+		expect(status.integrationApproval.value.slack).toEqual({
+			mode: 'selected',
+			tools: ['send_dm'],
+		});
+
+		apiMocks.disconnectIntegration.mockResolvedValue({ status: 'disconnected' });
+		await status.disconnect('slack', 'cred-slack');
+
+		expect(status.integrationApproval.value.slack).toBeUndefined();
 	});
 
 	it('does not let a builder re-seed downgrade a channel the server confirmed', async () => {

@@ -1,7 +1,9 @@
 import {
 	ApplyPackageDto,
 	ApplyPackageResultDto,
+	ApplySelectionDto,
 	ContinueApplyPackageDto,
+	ContinueApplySelectionDto,
 	PromotePackageDto,
 	applyPackageResultSchema,
 } from '../promotion-operations.dto';
@@ -85,13 +87,82 @@ describe('ApplyPackageDto', () => {
 	});
 });
 
+describe.each([
+	{ name: 'ApplySelectionDto', dto: ApplySelectionDto },
+	{ name: 'ContinueApplySelectionDto', dto: ContinueApplySelectionDto },
+])('$name', ({ dto }) => {
+	const workflowIds = ['workflow1', 'workflow2'];
+	const expectedSource = { configId: 'config1', branchName: 'main', commitSha: 'a'.repeat(40) };
+
+	it('rejects an empty workflow list', () => {
+		expect(dto.safeParse({ workflowIds: [], expectedSource }).success).toBe(false);
+	});
+
+	it('rejects a workflow list with duplicate ids', () => {
+		expect(dto.safeParse({ workflowIds: ['workflow1', 'workflow1'], expectedSource }).success).toBe(
+			false,
+		);
+	});
+
+	it('accepts a non-empty workflow list', () => {
+		expect(dto.parse({ workflowIds, expectedSource })).toEqual({ workflowIds, expectedSource });
+	});
+
+	it('rejects unknown fields', () => {
+		expect(dto.safeParse({ workflowIds, expectedSource, force: true }).success).toBe(false);
+	});
+
+	it.each(['a'.repeat(40), 'b'.repeat(64)])('accepts commit identity %s', (commitSha) => {
+		const source = { ...expectedSource, commitSha };
+		expect(dto.parse({ workflowIds, expectedSource: source })).toEqual({
+			workflowIds,
+			expectedSource: source,
+		});
+	});
+
+	it.each([
+		'HEAD',
+		'main~1',
+		'a'.repeat(7),
+		'a'.repeat(39),
+		'a'.repeat(41),
+		'a'.repeat(63),
+		'a'.repeat(65),
+		'A'.repeat(40),
+		'g'.repeat(40),
+	])('rejects commit identity %s', (commitSha) => {
+		expect(
+			dto.safeParse({ workflowIds, expectedSource: { ...expectedSource, commitSha } }).success,
+		).toBe(false);
+	});
+});
+
+describe('ApplySelectionDto', () => {
+	it('accepts a request without a source', () => {
+		const workflowIds = ['workflow1'];
+		expect(ApplySelectionDto.parse({ workflowIds })).toEqual({ workflowIds });
+	});
+});
+
+describe('ContinueApplySelectionDto', () => {
+	it('requires the reviewed source', () => {
+		expect(ContinueApplySelectionDto.safeParse({ workflowIds: ['workflow1'] }).success).toBe(false);
+	});
+});
+
 describe('ApplyPackageResultDto', () => {
 	const identity = {
 		connectionId: 'connection1',
 		configId: 'config1',
 		git: { branchName: 'main', commitSha: 'a'.repeat(40) },
 	};
-	const preflight = { missingBindings: [], accessRequirements: [], conflicts: [], warnings: [] };
+	const preflight = {
+		missingProjects: [],
+		missingBindings: [],
+		accessRequirements: [],
+		conflicts: [],
+		warnings: [],
+	};
 
 	it('retains the named response schema and parses each stopped outcome', () => {
 		expect(ApplyPackageResultDto.name).toBe('ApplyPackageResultDto');
@@ -108,6 +179,7 @@ describe('ApplyPackageResultDto', () => {
 		{ ...identity },
 		{ ...identity, status: 'unknown' },
 		{ ...identity, status: 'blocked' },
+		{ ...identity, status: 'blocked', preflight: { ...preflight, missingProjects: undefined } },
 		{ ...identity, status: 'applied', warnings: [] },
 		{ ...identity, status: 'applied', counts: {} },
 	])('requires the fields for each outcome: %j', (value) => {

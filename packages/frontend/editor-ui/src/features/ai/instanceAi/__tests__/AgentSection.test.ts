@@ -33,7 +33,10 @@ const SubagentStepTimelineStub = defineComponent({
 	},
 });
 
-function makeAgentNode(targetResource?: InstanceAiTargetResource): InstanceAiAgentNode {
+function makeAgentNode(
+	targetResource?: InstanceAiTargetResource,
+	overrides: Partial<InstanceAiAgentNode> = {},
+): InstanceAiAgentNode {
 	return {
 		agentId: 'builder-1',
 		role: 'builder',
@@ -44,12 +47,16 @@ function makeAgentNode(targetResource?: InstanceAiTargetResource): InstanceAiAge
 		children: [],
 		timeline: [{ type: 'text', content: 'Building the agent' }],
 		targetResource,
+		...overrides,
 	};
 }
 
-function mountSection(targetResource?: InstanceAiTargetResource) {
+function mountSection(
+	targetResource?: InstanceAiTargetResource,
+	overrides: Partial<InstanceAiAgentNode> = {},
+) {
 	return mount(AgentSection, {
-		props: { agentNode: makeAgentNode(targetResource) },
+		props: { agentNode: makeAgentNode(targetResource, overrides) },
 		global: {
 			stubs: {
 				AnimatedCollapsibleContent: SlotStub,
@@ -107,5 +114,17 @@ describe('AgentSection', () => {
 		for (const timeline of timelines) {
 			expect(timeline.props('agentPreviewTarget')).toEqual(expected);
 		}
+	});
+
+	it('renders the localized activity title', () => {
+		const wrapper = mountSection(undefined, { activity: 'exploring' });
+
+		expect(wrapper.text()).toContain('Exploring agent');
+	});
+
+	it('renders the working fallback when the node has no title', () => {
+		const wrapper = mountSection(undefined, { role: '' });
+
+		expect(wrapper.text()).toContain('Working with agent');
 	});
 });

@@ -19,6 +19,8 @@ const props = withDefaults(
 		modelValue: string;
 		placeholder?: string;
 		isStreaming: boolean;
+		/** Override the action button separately from the composer busy state. */
+		showStopButton?: boolean;
 		canSubmit: boolean;
 		disabled?: boolean;
 		showVoice?: boolean;
@@ -43,6 +45,7 @@ const props = withDefaults(
 	}>(),
 	{
 		placeholder: undefined,
+		showStopButton: undefined,
 		acceptedMimeTypes: undefined,
 		attachedEncodedBytes: 0,
 		autosize: () => ({ minRows: 2, maxRows: 6 }),
@@ -122,6 +125,11 @@ function handleAttach() {
 
 function focusInput(options?: FocusOptions) {
 	inputRef.value?.focusInput(options);
+}
+
+/** Returns the native textarea while the component is mounted. */
+function getInputElement(): HTMLTextAreaElement | undefined {
+	return inputRef.value?.getInputElement();
 }
 
 /**
@@ -217,6 +225,7 @@ function handleSubmit() {
 
 defineExpose({
 	focus: focusInput,
+	getInputElement,
 	openFilePicker: handleAttach,
 });
 </script>
@@ -256,7 +265,7 @@ defineExpose({
 			ref="inputRef"
 			:model-value="modelValue"
 			:placeholder="placeholder"
-			:streaming="isStreaming"
+			:streaming="showStopButton ?? isStreaming"
 			:disabled="disabled"
 			:submit-disabled="!canSubmit"
 			:button-label="props.buttonLabel"
@@ -279,6 +288,7 @@ defineExpose({
 				<slot name="footer-start" />
 			</template>
 			<template #right-actions>
+				<slot name="right-actions" />
 				<N8nTooltip
 					v-if="showAttach && showAttachButton"
 					:content="i18n.baseText('chatInputBase.button.attach')"
@@ -289,6 +299,7 @@ defineExpose({
 						:disabled="disabled || isStreaming"
 						icon="paperclip"
 						icon-size="large"
+						:aria-label="i18n.baseText('chatInputBase.button.attach')"
 						data-test-id="chat-input-attach-button"
 						@click.stop="handleAttach"
 					/>
@@ -304,6 +315,7 @@ defineExpose({
 						:icon="speechInput.isListening.value ? 'square' : 'mic'"
 						:class="{ [$style.recording]: speechInput.isListening.value }"
 						icon-size="large"
+						:aria-label="i18n.baseText('chatInputBase.button.dictate')"
 						data-test-id="chat-input-voice-button"
 						@click.stop="handleMic"
 					/>

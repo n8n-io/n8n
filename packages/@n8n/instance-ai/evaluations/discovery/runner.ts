@@ -302,17 +302,6 @@ function createStubBuilderDelegate(): InstanceAiBuilderDelegate {
 		resumeBuild: async () => await Promise.resolve(completedBuilderTurn()),
 		findOpenSuspensions: async () => await Promise.resolve([]),
 		cancelOpenSuspension: async () => await Promise.resolve(),
-		listAgents: async () => await Promise.resolve([]),
-		listAgentCapabilities: async () =>
-			await Promise.resolve({
-				channels: [],
-				agentCapabilities: [
-					'Use tools',
-					'Run scheduled tasks',
-					'Keep memory across sessions and runs',
-				],
-				limitations: [],
-			}),
 		resolveAgentName: async () => await Promise.resolve(undefined),
 	};
 }

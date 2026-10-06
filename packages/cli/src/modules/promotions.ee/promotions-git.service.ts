@@ -14,8 +14,7 @@ import {
 	type SimpleGitOptions,
 } from 'simple-git';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ServiceUnavailableError } from '@/errors/response-errors/service-unavailable.error';
+import { BadRequestError, ServiceUnavailableError } from '@n8n/errors';
 
 import {
 	GIT_COMMAND_STALL_TIMEOUT_MS,

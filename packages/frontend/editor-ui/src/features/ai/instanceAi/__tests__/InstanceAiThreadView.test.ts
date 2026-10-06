@@ -2,22 +2,22 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ResponseError } from '@n8n/rest-api-client';
 import { defineComponent, h, inject, type PropType, type Ref, nextTick } from 'vue';
 import userEvent from '@testing-library/user-event';
-import { fireEvent } from '@testing-library/vue';
+import { fireEvent, within } from '@testing-library/vue';
 import { flushPromises } from '@vue/test-utils';
 import { createTestingPinia } from '@pinia/testing';
 import { USER_TYPED_MESSAGE } from '../prefills';
 import { setActivePinia } from 'pinia';
 import { createComponentRenderer } from '@/__tests__/render';
+import { moveResize, startResize } from '@/__tests__/resize';
 import { mockedStore } from '@/__tests__/utils';
 import InstanceAiThreadView from '../InstanceAiThreadView.vue';
 import { useInstanceAiStore, type ThreadRuntime } from '../instanceAi.store';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
+import { usePostHog } from '@/app/stores/posthog.store';
+import { INSTANCE_AI_SETUP_PANEL_EXPERIMENT } from '@/app/constants/experiments';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { INSTANCE_AI_VIEW, NEW_CONVERSATION_TITLE } from '../constants';
-import {
-	LOCAL_STORAGE_INSTANCE_AI_ARTIFACT_PREVIEW_OPEN,
-	LOCAL_STORAGE_INSTANCE_AI_CHAT_PANEL_WIDTH_RATIO,
-} from '@/app/constants';
+import { LOCAL_STORAGE_INSTANCE_AI_CHAT_PANEL_WIDTH_RATIO } from '@/app/constants';
 import type { WorkflowFailuresReport } from '../components/InstanceAiWorkflowPreview.vue';
 import type {
 	InstanceAiAgentNode,
@@ -32,6 +32,7 @@ import {
 import { useAgentEvalsStore } from '@/features/agents/agentEvals.store';
 import { handoffContextKey } from '../instanceAi.handoffContext';
 import { useAgentReturnContextStore } from '@/features/agents/agentReturnContext.store';
+import { useRecentWorkflowsStore } from '@/app/stores/recentWorkflows.store';
 import {
 	defaultModuleSettings,
 	InstanceAiInputStub,
@@ -50,6 +51,8 @@ const mockThreadAreaSizeState = vi.hoisted(() => ({
 	width: { value: 1600 } as Ref<number>,
 }));
 
+// The stored tabs of each thread, kept across renders like the backend keeps them.
+const storedThreadTabs = vi.hoisted(() => new Map<string, unknown>());
 const telemetryTrackSpy = vi.hoisted(() => vi.fn());
 const routerPushSpy = vi.hoisted(() => vi.fn());
 const routerReplaceSpy = vi.hoisted(() => vi.fn());
@@ -75,6 +78,17 @@ Object.defineProperty(globalThis, 'localStorage', {
 		}),
 	},
 });
+
+vi.mock('../instanceAi.memory.api', async (importOriginal) => ({
+	...(await importOriginal<typeof import('../instanceAi.memory.api')>()),
+	fetchThreadTabs: vi.fn(async (_context: unknown, threadId: string) => ({
+		state: storedThreadTabs.get(threadId) ?? null,
+	})),
+	saveThreadTabs: vi.fn(async (_context: unknown, threadId: string, state: unknown) => {
+		storedThreadTabs.set(threadId, state);
+		return { state };
+	}),
+}));
 
 vi.mock('@n8n/composables/useTelemetry', () => ({
 	useTelemetry: () => ({ track: telemetryTrackSpy }),
@@ -169,13 +183,30 @@ const InstanceAiWorkflowPreviewStub = defineComponent({
 	emits: ['initial-node-id-consumed', 'workflow-failures'],
 	setup(props, { emit, expose }) {
 		workflowPreviewEmit = emit as typeof workflowPreviewEmit;
+		const openWorkflowPreview = inject<((id: string) => boolean) | undefined>(
+			'openWorkflowPreview',
+			undefined,
+		);
 		expose({ requestFitView: vi.fn() });
 		return () =>
-			h('div', {
-				'data-test-id': 'instance-ai-workflow-preview-stub',
-				'data-workflow-id': props.workflowId,
-				'data-initial-node-id': props.initialNodeId,
-			});
+			h(
+				'div',
+				{
+					'data-test-id': 'instance-ai-workflow-preview-stub',
+					'data-workflow-id': props.workflowId,
+					'data-initial-node-id': props.initialNodeId,
+				},
+				[
+					h(
+						'button',
+						{
+							'data-test-id': 'instance-ai-workflow-preview-open-workflow',
+							onClick: () => openWorkflowPreview?.(props.workflowId),
+						},
+						'Open workflow',
+					),
+				],
+			);
 	},
 });
 
@@ -388,9 +419,11 @@ function makePlanReviewMessage(): InstanceAiMessage {
 
 describe('InstanceAiThreadView', () => {
 	let store: ReturnType<typeof mockedStore<typeof useInstanceAiStore>>;
+	let recentWorkflowsStore: ReturnType<typeof mockedStore<typeof useRecentWorkflowsStore>>;
 	let thread: ThreadRuntime;
 
 	beforeEach(() => {
+		storedThreadTabs.clear();
 		// Default `stubActions: true` — every store action becomes a no-op spy.
 		const pinia = createTestingPinia();
 		setActivePinia(pinia);
@@ -404,6 +437,7 @@ describe('InstanceAiThreadView', () => {
 		thread.requestPlanChanges = vi.fn().mockResolvedValue(true);
 
 		store = mockedStore(useInstanceAiStore);
+		recentWorkflowsStore = mockedStore(useRecentWorkflowsStore);
 		store.getOrCreateRuntime.mockReturnValue(thread);
 		store.getRuntime.mockReturnValue(thread);
 		store.threads = [
@@ -485,6 +519,126 @@ describe('InstanceAiThreadView', () => {
 		return { ...rendered, user };
 	}
 
+	function seedWorkflowArtifact() {
+		thread.producedArtifacts = new Map([
+			['workflow-1', { type: 'workflow', id: 'workflow-1', name: 'Orders workflow' }],
+		]) as typeof thread.producedArtifacts;
+		thread.messages = [
+			{
+				id: 'msg-workflow',
+				role: 'user',
+				content: 'Open the workflow',
+				isStreaming: false,
+				createdAt: '2026-04-01T00:00:00.000Z',
+				attachments: [{ type: 'workflow', id: 'workflow-1', name: 'Orders workflow' }],
+			},
+		] as typeof thread.messages;
+	}
+
+	it('registers a workflow opened through the injected preview handler', async () => {
+		seedWorkflowArtifact();
+		const workflowArtifact = thread.producedArtifacts.get('workflow-1');
+		if (workflowArtifact) workflowArtifact.projectId = 'artifact-project';
+		const user = userEvent.setup();
+		const { findByTestId } = renderView({ props: { threadId: 'thread-1' } });
+
+		await user.click(await findByTestId('instance-ai-workflow-preview-open-workflow'));
+
+		expect(recentWorkflowsStore.registerWorkflowOpen).toHaveBeenCalledExactlyOnceWith(
+			'workflow-1',
+			'artifact-project',
+		);
+	});
+
+	it('registers an explicit workflow open without a project as unscoped', async () => {
+		seedWorkflowArtifact();
+		thread.projectId = undefined;
+		const user = userEvent.setup();
+		const { findByTestId } = renderView({ props: { threadId: 'thread-1' } });
+
+		await user.click(await findByTestId('instance-ai-workflow-preview-open-workflow'));
+
+		expect(recentWorkflowsStore.registerWorkflowOpen).toHaveBeenCalledExactlyOnceWith(
+			'workflow-1',
+			undefined,
+		);
+	});
+
+	it('tracks manual preview reopening but not automatic artifact opening', async () => {
+		seedWorkflowArtifact();
+		const user = userEvent.setup();
+		const { findByTestId, getAllByTestId } = renderView({ props: { threadId: 'thread-1' } });
+
+		await findByTestId('instance-ai-workflow-preview-stub');
+		expect(recentWorkflowsStore.registerWorkflowOpen).not.toHaveBeenCalled();
+
+		const closeToggle = getAllByTestId('instance-ai-artifacts-preview-toggle').find(
+			(toggle) => toggle.getAttribute('aria-pressed') === 'true',
+		);
+		expect(closeToggle).toBeDefined();
+		await user.click(closeToggle!);
+		const reopenToggle = getAllByTestId('instance-ai-artifacts-preview-toggle').find(
+			(toggle) => toggle.getAttribute('aria-pressed') === 'false',
+		);
+		expect(reopenToggle).toBeDefined();
+		await user.click(reopenToggle!);
+
+		expect(recentWorkflowsStore.registerWorkflowOpen).toHaveBeenCalledExactlyOnceWith(
+			'workflow-1',
+			'thread-project',
+		);
+	});
+
+	it('uses the message-circle-plus icon for the new chat button', function () {
+		const { getByRole } = renderView({ props: { threadId: 'thread-1' } });
+		const button = getByRole('button', { name: 'New chat' });
+
+		expect(button.querySelector('[data-icon="message-circle-plus"]')).toBeInTheDocument();
+	});
+
+	it('opens a new chat when the new chat button is clicked', async function () {
+		const user = userEvent.setup();
+		const { getByRole } = renderView({ props: { threadId: 'thread-1' } });
+
+		await user.click(getByRole('button', { name: 'New chat' }));
+
+		expect(routerPushSpy).toHaveBeenCalledExactlyOnceWith({ name: INSTANCE_AI_VIEW });
+	});
+
+	it('shows the session title in the history button', function () {
+		const { getByRole } = renderView({ props: { threadId: 'thread-1' } });
+		const button = getByRole('button', { name: 'Test thread' });
+
+		expect(within(button).getByText('Test thread')).toBeVisible();
+		expect(within(button).queryByText('Chat history')).not.toBeInTheDocument();
+		expect(button).toHaveAttribute('aria-haspopup', 'menu');
+	});
+
+	it('shows the Chat history label when the session has no visible title', function () {
+		store.threads = [{ ...store.threads[0], title: NEW_CONVERSATION_TITLE }];
+		const { getByRole, queryByRole } = renderView({ props: { threadId: 'thread-1' } });
+		const button = getByRole('button', { name: 'Chat history' });
+
+		expect(queryByRole('heading', { level: 2 })).not.toBeInTheDocument();
+		expect(within(button).getByText('Chat history')).toBeVisible();
+		expect(within(button).getByText('Chat history')).not.toHaveAttribute('aria-hidden', 'true');
+		expect(button).not.toHaveAttribute('data-icon-only', 'true');
+	});
+
+	it('replaces Chat history with the title when the session title loads', async function () {
+		store.threads = [{ ...store.threads[0], title: NEW_CONVERSATION_TITLE }];
+		const { getByRole } = renderView({ props: { threadId: 'thread-1' } });
+		const button = getByRole('button', { name: 'Chat history' });
+		expect(within(button).getByText('Chat history')).toBeVisible();
+
+		store.threads = [{ ...store.threads[0], title: 'Loaded session title' }];
+		await nextTick();
+
+		expect(within(button).getByText('Loaded session title')).toBeVisible();
+		expect(within(button).queryByText('Chat history')).not.toBeInTheDocument();
+		expect(button).toHaveAccessibleName('Loaded session title');
+	});
+
 	it('does not pass suggestions to its composer', () => {
 		const { getByTestId } = renderView({ props: { threadId: 'thread-1' } });
 		expect(getByTestId('instance-ai-input-stub')).toHaveTextContent('unset');
@@ -492,9 +646,10 @@ describe('InstanceAiThreadView', () => {
 
 	describe('setup panel', () => {
 		function seedSetupArtifacts(enabled = true) {
-			useSettingsStore().moduleSettings = {
-				'instance-ai': { ...defaultModuleSettings, instanceAiSetupPanelEnabled: enabled },
-			};
+			const variant = enabled ? 'variant' : 'control';
+			mockedStore(usePostHog).getVariant.mockImplementation((name) =>
+				name === INSTANCE_AI_SETUP_PANEL_EXPERIMENT.name ? variant : undefined,
+			);
 			thread.hasMessages = true;
 			thread.messages = [
 				{
@@ -569,6 +724,8 @@ describe('InstanceAiThreadView', () => {
 			seedSetupArtifacts();
 			thread.messages[0].attachments = [{ type: 'workflow', id: 'wf-1', name: 'First workflow' }];
 			const { getByTestId, container } = renderView({ props: { threadId: 'thread-1' } });
+			// The handed-off workflow opens once the stored tabs load.
+			await flushPromises();
 			expect(getByTestId('setup-panel')).toHaveAttribute('data-workflow-id', 'wf-1');
 			expect(getByTestId('setup-panel')).toHaveAttribute('data-project-id', 'project-1');
 
@@ -1237,7 +1394,7 @@ describe('InstanceAiThreadView', () => {
 		});
 	});
 
-	it('shows the new-agent context until the first successful message submission', async () => {
+	it('attaches the new-agent context until the first successful message submission', async () => {
 		thread.sseState = 'disconnected';
 		vi.mocked(thread.loadHistoricalMessages).mockResolvedValue('skipped');
 		store.threads = [
@@ -1278,7 +1435,8 @@ describe('InstanceAiThreadView', () => {
 		expect(preview).toHaveAttribute('data-agent-id', 'agent-1');
 		expect(preview).toHaveAttribute('data-project-id', 'project-1');
 		expect(thread.sendMessage).not.toHaveBeenCalled();
-		expect(getByTestId('instance-ai-input-context-chip')).toHaveTextContent('New Agent');
+		// A brand-new agent shows no composer chip — the attachment still rides.
+		expect(getByTestId('instance-ai-input-context-chip')).toHaveTextContent('');
 
 		await userEvent.click(getByTestId('instance-ai-input-submit'));
 
@@ -1297,7 +1455,7 @@ describe('InstanceAiThreadView', () => {
 			handoffContext: undefined,
 		});
 		expect(getPendingAgentAttachment('thread-1')).not.toBeNull();
-		expect(getByTestId('instance-ai-input-context-chip')).toHaveTextContent('New Agent');
+		expect(getByTestId('instance-ai-input-context-chip')).toHaveTextContent('');
 
 		await userEvent.click(getByTestId('instance-ai-input-submit'));
 
@@ -1353,11 +1511,12 @@ describe('InstanceAiThreadView', () => {
 			pending: true,
 		});
 
-		const { getByTestId } = renderView({ props: { threadId: 'thread-1' } });
+		const { findByTestId, getByTestId } = renderView({ props: { threadId: 'thread-1' } });
 
-		await vi.waitFor(() => {
-			expect(getByTestId('instance-ai-input-context-chip')).toHaveTextContent('Support Agent');
-		});
+		// The stash is still the pending new-agent one, so no chip — but the
+		// attachment follows the bound target's persisted name.
+		await findByTestId('instance-ai-agent-preview-stub');
+		expect(getByTestId('instance-ai-input-context-chip')).toHaveTextContent('');
 		await userEvent.click(getByTestId('instance-ai-input-submit'));
 
 		expect(thread.sendMessage).toHaveBeenCalledWith('Normal message', {
@@ -1683,7 +1842,12 @@ describe('InstanceAiThreadView', () => {
 		thread.producedArtifacts = new Map([
 			['workflow-1', { type: 'workflow', id: 'workflow-1', name: 'Lead enrichment workflow' }],
 		]) as typeof thread.producedArtifacts;
-		localStorage.setItem(LOCAL_STORAGE_INSTANCE_AI_ARTIFACT_PREVIEW_OPEN('thread-1'), 'true');
+		storedThreadTabs.set('thread-1', {
+			tabs: [{ type: 'workflow', id: 'workflow-1', name: 'Lead enrichment workflow' }],
+			closedTabs: [],
+			activeTab: { type: 'workflow', id: 'workflow-1' },
+			previewOpen: true,
+		});
 
 		const { findByTestId } = renderView({ props: { threadId: 'thread-1' } });
 
@@ -1778,10 +1942,10 @@ describe('InstanceAiThreadView', () => {
 		expect(previewPanel.style.width).toBe('400px');
 		expect(queryByTestId('resize-handle')).toBeInTheDocument();
 
-		await fireEvent.mouseDown(getByTestId('resize-handle'), { clientX: 0 });
+		await startResize(getByTestId('resize-handle'), { width: 400 }, { clientX: 800 });
 
 		expect(previewPanel).not.toHaveClass('agentPreviewLayoutTransition');
-		await fireEvent.mouseMove(window, { clientX: -80 });
+		await moveResize({ clientX: 720 });
 		expect(previewPanel.style.width).toBe('480px');
 		expect(previewPanel.style.getPropertyValue('--agent-preview-chat-column-width')).toBe('240px');
 
@@ -1845,8 +2009,8 @@ describe('InstanceAiThreadView', () => {
 		mockThreadAreaSizeState.width.value = 1200;
 		await vi.waitFor(() => expect(previewPanel.style.width).toBe('400px'));
 
-		await fireEvent.mouseDown(getByTestId('resize-handle'), { clientX: 0 });
-		await fireEvent.mouseMove(window, { clientX: -80 });
+		await startResize(getByTestId('resize-handle'), { width: 400 }, { clientX: 800 });
+		await moveResize({ clientX: 720 });
 		await fireEvent.mouseUp(window);
 		expect(previewPanel.style.width).toBe('480px');
 
@@ -1863,8 +2027,8 @@ describe('InstanceAiThreadView', () => {
 
 		expect(previewPanel.style.width).toBe('400px');
 
-		await fireEvent.mouseDown(getByTestId('resize-handle'), { clientX: 0 });
-		await fireEvent.mouseMove(window, { clientX: 120 });
+		await startResize(getByTestId('resize-handle'), { width: 400 }, { clientX: 800 });
+		await moveResize({ clientX: 920 });
 		await fireEvent.mouseUp(window);
 
 		mockThreadAreaSizeState.width.value = 1600;
@@ -2105,9 +2269,6 @@ describe('InstanceAiThreadView', () => {
 		expect(firstRender.queryByTestId('instance-ai-agent-preview-stub')).not.toBeInTheDocument();
 		expect(firstRender.getByTestId('instance-ai-artifacts-sidebar-slot')).toBeInTheDocument();
 		expect(firstRender.getByTestId('instance-ai-artifacts-panel-toggle')).toBeInTheDocument();
-		expect(localStorage.getItem(LOCAL_STORAGE_INSTANCE_AI_ARTIFACT_PREVIEW_OPEN('thread-1'))).toBe(
-			'false',
-		);
 
 		store.threads = [
 			{
@@ -2133,7 +2294,9 @@ describe('InstanceAiThreadView', () => {
 			],
 		]) as typeof thread.producedArtifacts;
 
+		// Unmounting saves the pending tab change, so the refresh loads the closed preview.
 		firstRender.unmount();
+		expect(storedThreadTabs.get('thread-1')).toMatchObject({ previewOpen: false });
 		const refreshedRender = renderView({ props: { threadId: 'thread-1' } });
 
 		expect(refreshedRender.queryByTestId('instance-ai-agent-preview-stub')).not.toBeInTheDocument();

@@ -21,6 +21,10 @@ export { AuthProviderSyncHistoryRepository } from './auth-provider-sync-history.
 export { BaseRepository } from './base-repository';
 export { BinaryDataRepository } from './binary-data.repository';
 export {
+	CredentialAccessRepository,
+	type CredentialAccessRoles,
+} from './credential-access.repository';
+export {
 	CredentialsRepository,
 	CredentialIdConflictError,
 	type CredentialSharingRelation,
@@ -48,6 +52,7 @@ export {
 	type UpdateExecutionConditions,
 } from './execution.repository';
 export { FolderRepository } from './folder.repository';
+export { FolderAccessRepository } from './folder-access.repository';
 export { FolderTagMappingRepository } from './folder-tag-mapping.repository';
 export { ScopeRepository } from './scope.repository';
 export { InvalidAuthTokenRepository } from './invalid-auth-token.repository';
@@ -55,7 +60,11 @@ export { InstanceCredentialAssignmentRepository } from './instance-credential-as
 export { LicenseMetricsRepository } from './license-metrics.repository';
 export { ProjectPoolSettingsRepository } from './project-pool-settings.repository.ee';
 export { ProjectRelationRepository } from './project-relation.repository';
-export { ProjectRepository, type ProjectListOptions } from './project.repository';
+export {
+	ProjectRepository,
+	ProjectIdConflictError,
+	type ProjectListOptions,
+} from './project.repository';
 export { RoleRepository } from './role.repository';
 export { RoleMappingRuleRepository } from './role-mapping-rule.repository';
 export { ScheduledJobRepository } from './scheduled-job.repository';
@@ -69,6 +78,8 @@ export type {
 	ClaimedRef,
 	HostedClaimedRef,
 	DeleteFinishedTasksOptions,
+	RetireMissedResult,
+	RetiredTask,
 	ScheduledTaskMetricSnapshot,
 } from './scheduled-task.repository';
 export {
@@ -91,6 +102,7 @@ export { SharedWorkflowRepository } from './shared-workflow.repository';
 export { SharedCredentialsRepository } from './shared-credentials.repository';
 export { WorkflowRepository, agentToolReferenceWhere } from './workflow.repository';
 export { WorkflowPublicationOutboxRepository } from './workflow-publication-outbox.repository';
+export { WorkflowPublicationRetryStateRepository } from './workflow-publication-retry-state.repository';
 export {
 	WorkflowPublicationTriggerStatusRepository,
 	type TriggerStatusRow,

@@ -294,6 +294,7 @@ describe('router', () => {
 		// Drive the `/` route's beforeEnter directly with a captured `next` instead.
 		const instanceAiModuleSettings = {
 			enabled: true,
+			mcpConnectionsAvailable: true,
 			setupCompleted: true,
 			localGatewayDisabled: false,
 			browserUseEnabled: true,

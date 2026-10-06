@@ -11,7 +11,7 @@
  *
  * The repo's default lint bans raw enums in favor of `const enum` for runtime
  * overhead; that guidance is inverted here because `const enum` is precisely what
- * breaks dist consumption. The `no-restricted-syntax` rule (and the camelCase
+ * breaks dist consumption. The `no-raw-enum` rule (and the camelCase
  * naming-convention rule, since view identifiers are UPPER_CASE by convention)
  * are relaxed for this file in `eslint.config.mjs`.
  *

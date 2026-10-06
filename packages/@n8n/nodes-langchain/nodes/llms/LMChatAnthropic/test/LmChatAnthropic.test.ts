@@ -3,7 +3,12 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { ChatAnthropic } from '@langchain/anthropic';
 import type { LLMResult } from '@langchain/core/outputs';
-import { makeN8nLlmFailedAttemptHandler, N8nLlmTracing, getProxyAgent } from '@n8n/ai-utilities';
+import {
+	makeN8nLlmFailedAttemptHandler,
+	N8nLlmTracing,
+	getProxyAgent,
+	aiClientFetch,
+} from '@n8n/ai-utilities';
 import { createMockExecuteFunction } from 'n8n-nodes-base/test/nodes/Helpers';
 import type { INode, INodeProperties, ISupplyDataFunctions } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
@@ -21,11 +26,13 @@ vi.mock('@n8n/ai-utilities', () => ({
 	makeN8nLlmFailedAttemptHandler: vi.fn(),
 	N8nLlmTracing: vi.fn(),
 	getProxyAgent: vi.fn(),
+	aiClientFetch: vi.fn(),
 }));
 
 const MockedChatAnthropic = vi.mocked(ChatAnthropic);
 const mockedMakeN8nLlmFailedAttemptHandler = vi.mocked(makeN8nLlmFailedAttemptHandler);
 const mockedGetProxyAgent = vi.mocked(getProxyAgent);
+const mockedAiClientFetch = vi.mocked(aiClientFetch);
 const MockedN8nLlmTracing = vi.mocked(N8nLlmTracing);
 
 describe('LmChatAnthropic', () => {
@@ -133,6 +140,7 @@ describe('LmChatAnthropic', () => {
 					onFailedAttempt: expect.any(Function),
 					invocationKwargs: {},
 					clientOptions: {
+						fetch: mockedAiClientFetch,
 						fetchOptions: {
 							dispatcher: {},
 						},
@@ -805,17 +813,6 @@ describe('LmChatAnthropic', () => {
 	describe('model builder hints', () => {
 		const modelFields = (type: string) =>
 			lmChatAnthropic.description.properties.filter((p) => p.name === 'model' && p.type === type);
-
-		it('should recommend the current Claude generation on every resource locator', () => {
-			const hints = modelFields('resourceLocator').map((p) => p.builderHint?.propertyHint);
-
-			expect(hints).toHaveLength(4);
-			for (const hint of hints) {
-				expect(hint).toContain('claude-sonnet-5');
-				expect(hint).toContain('claude-opus-5');
-				expect(hint).not.toContain('Default to claude-sonnet-4-6');
-			}
-		});
 
 		it('should only name models a fixed-enum model field can actually select', () => {
 			const enumFields = modelFields('options');

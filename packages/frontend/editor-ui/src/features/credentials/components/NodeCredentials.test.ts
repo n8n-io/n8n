@@ -27,7 +27,11 @@ import { useUsersStore } from '@n8n/stores/users.store';
 import type { IUser } from '@n8n/rest-api-client/api/users';
 import { useAiGateway } from '@/app/composables/useAiGateway';
 import { AI_GATEWAY_TOP_UP_MODAL_KEY } from '@/app/constants';
-import { ChatHubToolContextKey, WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
+import {
+	ChatHubToolContextKey,
+	EditorEnabledFeaturesKey,
+	WorkflowDocumentStoreKey,
+} from '@/app/constants/injectionKeys';
 import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
@@ -153,6 +157,8 @@ function createCredential(
 		isManaged: boolean;
 		isResolvable: boolean;
 		scopes: Scope[];
+		sharedRoute: 'project' | 'personal';
+		isGlobal: boolean;
 	}> = {},
 ) {
 	return {
@@ -1636,6 +1642,7 @@ describe('NodeCredentials', () => {
 				hideAskAssistant: true,
 				appendToBody: true,
 				workflowId: '1',
+				contextNode: httpNode,
 			});
 		});
 	});
@@ -1715,6 +1722,53 @@ describe('NodeCredentials', () => {
 	});
 
 	describe('credential auto-select', () => {
+		// ADO-5791: Preview canvases open the NDV in read-only mode.
+		it.each([
+			{ source: 'the readonly prop', readonly: true, editorReadOnly: false },
+			{ source: 'the editor context', readonly: false, editorReadOnly: true },
+		])(
+			'does not assign a credential on a read-only canvas set by $source',
+			({ readonly, editorReadOnly }) => {
+				const nodeWithoutCredentials: INodeUi = { ...openAiNodeNoCreds, credentials: {} };
+				mockedStore(useNodeTypesStore).setNodeTypes([
+					{
+						name: nodeWithoutCredentials.type,
+						displayName: 'OpenAI',
+						version: nodeWithoutCredentials.typeVersion,
+						group: ['transform'],
+						description: '',
+						defaults: { name: 'OpenAI' },
+						inputs: [NodeConnectionTypes.Main],
+						outputs: [NodeConnectionTypes.Main],
+						credentials: [{ name: 'openAiApi', required: true }],
+						properties: [],
+					},
+				]);
+				ndvStore.activeNode = nodeWithoutCredentials;
+				credentialsStore.state.credentials = {
+					c8vqdPpPClh4TgIO: createCredential(),
+				};
+
+				const { emitted } = renderComponent({
+					props: {
+						node: nodeWithoutCredentials,
+						overrideCredType: '',
+						readonly,
+						showAll: true,
+						hideIssues: false,
+					},
+					global: {
+						provide: {
+							[WorkflowDocumentStoreKey as symbol]: workflowDocumentStoreRef,
+							[EditorEnabledFeaturesKey as symbol]: ref({ readOnly: editorReadOnly }),
+						},
+					},
+				});
+
+				expect(emitted('credentialSelected')).toBeFalsy();
+			},
+		);
+
 		it('should auto-select a credential of the overridden type on mount', () => {
 			const httpNodeNoCreds: INodeUi = { ...httpNode, credentials: {} };
 			ndvStore.activeNode = httpNodeNoCreds;
@@ -3343,6 +3397,321 @@ describe('NodeCredentials', () => {
 			renderComponent({ props: { node: notionNode, overrideCredType: 'openAiApi' } });
 
 			expect(screen.queryByTestId('node-credential-private-row')).not.toBeInTheDocument();
+		});
+	});
+
+	describe('granular credential sharing groups', () => {
+		const YOURS_HEADER = 'node-credentials-select-group-__credential-group-yours';
+		const SHARED_HEADER = 'node-credentials-select-group-__credential-group-shared';
+
+		/** `toBeVisible` cannot be used on the teleported popper, so assert order instead. */
+		function isBefore(first: HTMLElement, second: HTMLElement) {
+			return Boolean(first.compareDocumentPosition(second) & Node.DOCUMENT_POSITION_FOLLOWING);
+		}
+
+		function inTeamProject(name = 'Sales Ops') {
+			projectsStore.currentProject = {
+				id: 'team-project',
+				name,
+				type: 'team',
+				scopes: ['credential:create'],
+			} as Project;
+		}
+
+		function inPersonalSpace() {
+			projectsStore.currentProject = {
+				id: 'personal-project',
+				name: 'Alice Chen <alice@acme.io>',
+				type: 'personal',
+				scopes: ['credential:create'],
+			} as Project;
+		}
+
+		function seedBothRoutes() {
+			ndvStore.activeNode = httpNode;
+			credentialsStore.state.credentials = {
+				'project-cred': createCredential({
+					id: 'project-cred',
+					name: 'Team OpenAi',
+					sharedRoute: 'project',
+				}),
+				'personal-cred': createCredential({
+					id: 'personal-cred',
+					name: 'My OpenAi',
+					sharedRoute: 'personal',
+				}),
+			};
+		}
+
+		beforeEach(() => {
+			settingsStore.settings = {
+				...settingsStore.settings,
+				granularCredentialSharing: true,
+			} as unknown as FrontendSettings;
+		});
+
+		it('names the project the credentials are shared with, and puts yours first', async () => {
+			inTeamProject('Sales Ops');
+			seedBothRoutes();
+			renderComponent();
+
+			await userEvent.click(screen.getByTestId('node-credentials-select'));
+
+			const yoursHeader = await screen.findByTestId(YOURS_HEADER);
+			const sharedHeader = screen.getByTestId(SHARED_HEADER);
+
+			expect(yoursHeader).toHaveTextContent('Available to you');
+			expect(sharedHeader).toHaveTextContent('Available in Sales Ops');
+			expect(isBefore(yoursHeader, sharedHeader)).toBe(true);
+			// Each credential sits under its own heading.
+			const yourCred = screen.getByTestId('node-credentials-select-item-personal-cred');
+			const sharedCred = screen.getByTestId('node-credentials-select-item-project-cred');
+			expect(isBefore(yoursHeader, yourCred)).toBe(true);
+			expect(isBefore(yourCred, sharedHeader)).toBe(true);
+			expect(isBefore(sharedHeader, sharedCred)).toBe(true);
+		});
+
+		it('says "Available to everyone" for a global credential in a personal workflow', async () => {
+			inPersonalSpace();
+			ndvStore.activeNode = httpNode;
+			credentialsStore.state.credentials = {
+				'own-cred': createCredential({
+					id: 'own-cred',
+					name: 'My OpenAi',
+					sharedRoute: 'project',
+				}),
+				'global-cred': createCredential({
+					id: 'global-cred',
+					name: 'Acme OpenAi',
+					sharedRoute: 'project',
+					isGlobal: true,
+				}),
+			};
+			renderComponent();
+
+			await userEvent.click(screen.getByTestId('node-credentials-select'));
+
+			// In your own space the project route carries both your credentials and the
+			// instance-wide ones, and only the latter are available to everyone.
+			expect(await screen.findByTestId(YOURS_HEADER)).toHaveTextContent('Available to you');
+			expect(screen.getByTestId(SHARED_HEADER)).toHaveTextContent('Available to everyone');
+			expect(
+				isBefore(
+					screen.getByTestId('node-credentials-select-item-own-cred'),
+					screen.getByTestId(SHARED_HEADER),
+				),
+			).toBe(true);
+		});
+
+		it('omits the "Available to you" heading when nothing is only yours', async () => {
+			inTeamProject();
+			ndvStore.activeNode = httpNode;
+			credentialsStore.state.credentials = {
+				'project-cred': createCredential({
+					id: 'project-cred',
+					name: 'Team OpenAi',
+					sharedRoute: 'project',
+				}),
+			};
+			renderComponent();
+
+			await userEvent.click(screen.getByTestId('node-credentials-select'));
+
+			expect(await screen.findByTestId(SHARED_HEADER)).toBeInTheDocument();
+			expect(screen.queryByTestId(YOURS_HEADER)).not.toBeInTheDocument();
+		});
+
+		it('drops a heading once the filter removes its last option', async () => {
+			inTeamProject();
+			seedBothRoutes();
+			renderComponent();
+
+			const select = screen.getByTestId('node-credentials-select');
+			await userEvent.click(select);
+			expect(await screen.findByTestId(YOURS_HEADER)).toBeInTheDocument();
+
+			// "Team" matches the project credential only.
+			await userEvent.type(within(select).getByRole('combobox'), 'Team');
+
+			await waitFor(() => {
+				expect(screen.queryByTestId(YOURS_HEADER)).not.toBeInTheDocument();
+			});
+			expect(screen.getByTestId(SHARED_HEADER)).toBeInTheDocument();
+			expect(screen.getByTestId('node-credentials-select-item-project-cred')).toBeInTheDocument();
+			expect(
+				screen.queryByTestId('node-credentials-select-item-personal-cred'),
+			).not.toBeInTheDocument();
+		});
+
+		it('falls back to a nameless heading rather than claiming everyone can use them', async () => {
+			projectsStore.currentProject = null;
+			projectsStore.personalProject = null;
+			seedBothRoutes();
+			renderComponent();
+
+			await userEvent.click(screen.getByTestId('node-credentials-select'));
+
+			expect(await screen.findByTestId(SHARED_HEADER)).toHaveTextContent(
+				'Available in this project',
+			);
+		});
+
+		it('renders no headings at all while the feature flag is off', async () => {
+			settingsStore.settings = {
+				...settingsStore.settings,
+				granularCredentialSharing: false,
+			} as unknown as FrontendSettings;
+			inTeamProject();
+			seedBothRoutes();
+			renderComponent();
+
+			await userEvent.click(screen.getByTestId('node-credentials-select'));
+
+			expect(
+				await screen.findByTestId('node-credentials-select-item-personal-cred'),
+			).toBeInTheDocument();
+			expect(screen.getByTestId('node-credentials-select-item-project-cred')).toBeInTheDocument();
+			expect(screen.queryByTestId(YOURS_HEADER)).not.toBeInTheDocument();
+			expect(screen.queryByTestId(SHARED_HEADER)).not.toBeInTheDocument();
+		});
+	});
+
+	describe('a current credential the user cannot use', () => {
+		const UNUSABLE_HEADER = 'node-credentials-select-group-__credential-group-unusable';
+
+		// Fresh per test: the component writes back into the node it is given.
+		const nodeOnAlicesCredential = (): INodeUi => ({
+			...httpNode,
+			parameters: { ...httpNode.parameters },
+			credentials: { openAiApi: { id: 'alice-cred', name: "Alice's OpenAi" } },
+			issues: undefined,
+		});
+
+		const unusable = (id: string, name: string) => ({
+			id,
+			name,
+			credentialType: 'openAiApi',
+			currentUserCanUse: false,
+			homeProject: {
+				id: 'alice-personal',
+				name: 'Alice Chen <alice@acme.io>',
+				type: 'personal' as const,
+				icon: null,
+				createdAt: '',
+				updatedAt: '',
+			},
+		});
+
+		function setUp({ flag = true, usable = true } = {}) {
+			settingsStore.settings = {
+				...settingsStore.settings,
+				granularCredentialSharing: flag,
+			} as unknown as FrontendSettings;
+			projectsStore.currentProject = {
+				id: 'marketing',
+				name: 'Marketing',
+				type: 'team',
+				scopes: ['credential:create'],
+			} as Project;
+			const node = nodeOnAlicesCredential();
+			ndvStore.activeNode = node;
+			credentialsStore.state.credentials = usable
+				? {
+						'team-cred': createCredential({
+							id: 'team-cred',
+							name: 'Marketing OpenAi',
+							sharedRoute: 'project',
+						}),
+					}
+				: {};
+			// A second credential the user cannot use, which no node here references.
+			workflowDocumentStore.setUsedCredentials([
+				unusable('alice-cred', "Alice's OpenAi"),
+				unusable('bob-cred', "Bob's OpenAi"),
+			]);
+
+			return renderComponent({ props: { node } }, { merge: true });
+		}
+
+		it('shows it as the current value, not selectable, with its owner named', async () => {
+			setUp();
+
+			const select = screen.getByTestId('node-credentials-select');
+			await waitFor(() =>
+				expect(within(select).getByRole('combobox')).toHaveValue("Alice's OpenAi"),
+			);
+
+			await userEvent.click(select);
+
+			expect(await screen.findByTestId(UNUSABLE_HEADER)).toHaveTextContent('Not available to you');
+			const option = screen.getByTestId('node-credentials-select-item-alice-cred');
+			expect(option).toHaveClass('is-disabled');
+			expect(option).toHaveTextContent("Alice Chen's · not shared with Marketing");
+			// Only the current credential stays; others the user cannot use are not offered.
+			expect(screen.queryByTestId('node-credentials-select-item-bob-cred')).not.toBeInTheDocument();
+		});
+
+		it('explains who can use it next to the field', async () => {
+			setUp();
+
+			const warning = screen.getByTestId('node-credentials-unusable-warning');
+			await userEvent.hover(warning.querySelector('svg') ?? warning);
+
+			expect(
+				await screen.findByText("Only Alice Chen can run or publish with Alice's OpenAi."),
+			).toBeInTheDocument();
+			expect(
+				screen.getByText(
+					'Switch to a credential you can use to run or publish, or ask Alice to share this one with Marketing.',
+				),
+			).toBeInTheDocument();
+		});
+
+		it('keeps the field when the user has no credential of the type to switch to', async () => {
+			setUp({ usable: false });
+
+			expect(screen.queryByTestId('node-credentials-empty-state')).not.toBeInTheDocument();
+			expect(screen.queryByTestId('quick-connect-empty-state')).not.toBeInTheDocument();
+			await waitFor(() =>
+				expect(
+					within(screen.getByTestId('node-credentials-select')).getByRole('combobox'),
+				).toHaveValue("Alice's OpenAi"),
+			);
+		});
+
+		it('switches this node only to a credential the user can use', async () => {
+			const replaceInvalid = vi.spyOn(workflowDocumentStore, 'replaceInvalidWorkflowCredentials');
+			const { emitted } = setUp();
+
+			await userEvent.click(screen.getByTestId('node-credentials-select'));
+			await userEvent.click(await screen.findByTestId('node-credentials-select-item-team-cred'));
+
+			const events = emitted('credentialSelected');
+			const payload = (events[events.length - 1] as unknown[])[0] as {
+				properties: { credentials: Record<string, unknown> };
+			};
+			expect(payload.properties.credentials.openAiApi).toEqual({
+				id: 'team-cred',
+				name: 'Marketing OpenAi',
+			});
+			// The old credential is valid, just not this user's, so other nodes keep it.
+			expect(replaceInvalid).not.toHaveBeenCalled();
+		});
+
+		it('changes nothing while the feature flag is off', async () => {
+			setUp({ flag: false });
+
+			expect(screen.queryByTestId('node-credentials-unusable-warning')).not.toBeInTheDocument();
+
+			await userEvent.click(screen.getByTestId('node-credentials-select'));
+
+			expect(
+				await screen.findByTestId('node-credentials-select-item-team-cred'),
+			).toBeInTheDocument();
+			expect(screen.queryByTestId(UNUSABLE_HEADER)).not.toBeInTheDocument();
+			expect(
+				screen.queryByTestId('node-credentials-select-item-alice-cred'),
+			).not.toBeInTheDocument();
 		});
 	});
 });

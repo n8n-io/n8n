@@ -57,6 +57,13 @@ export const PROJECT_CONTEXT_OPEN_TAG = '<project-context>';
 export const PROJECT_CONTEXT_CLOSE_TAG = '</project-context>';
 export const PAST_CONVERSATIONS_OPEN_TAG = '<past-conversations>';
 export const PAST_CONVERSATIONS_CLOSE_TAG = '</past-conversations>';
+/**
+ * The instance's webhook and form base URLs. On the turn because they differ per instance:
+ * in the system prompt they would give every instance its own prompt-cache prefix instead of
+ * one shared across all instances.
+ */
+export const INSTANCE_URLS_OPEN_TAG = '<instance-urls>';
+export const INSTANCE_URLS_CLOSE_TAG = '</instance-urls>';
 /** Setup panel v2: per-turn recomputed setup state of the workflows the thread built. */
 export const WORKFLOW_SETUP_STATE_OPEN_TAG = '<workflow-setup-state>';
 export const WORKFLOW_SETUP_STATE_CLOSE_TAG = '</workflow-setup-state>';
@@ -127,6 +134,7 @@ const TRAILING_CONTEXT_BLOCKS = [
 	'project-context',
 	'past-conversations',
 	'ai-preferences',
+	'onboarding-answer',
 ].map(trailingBlockRegex);
 
 /** Strip each trailing block once, in whatever order they were composed. */
@@ -149,7 +157,7 @@ function stripTrailingContextBlocks(message: string): string {
 }
 
 export function buildCurrentDateTimeBlock(dateTimeSection: string): string {
-	return `<current-date-time>${dateTimeSection}\n</current-date-time>`;
+	return `<current-date-time>\n${dateTimeSection.trim()}\n</current-date-time>`;
 }
 
 export function buildProjectContextBlock(projectSection: string): string {
@@ -160,6 +168,27 @@ export function buildPastConversationsBlock(section: string): string {
 	return `${PAST_CONVERSATIONS_OPEN_TAG}\n${section}\n${PAST_CONVERSATIONS_CLOSE_TAG}`;
 }
 
+export function buildInstanceUrlsBlock(urls: {
+	webhookBaseUrl: string;
+	formBaseUrl: string;
+}): string {
+	return [
+		INSTANCE_URLS_OPEN_TAG,
+		`Webhook base URL: ${urls.webhookBaseUrl}`,
+		`Form base URL: ${urls.formBaseUrl}`,
+		INSTANCE_URLS_CLOSE_TAG,
+	].join('\n');
+}
+
+/**
+ * How one section reads once `buildThreadContextBlock` stores it. A freshly rendered
+ * section must pass through this before it is compared against a copy extracted from a
+ * persisted message, or a section containing the close tag never compares equal.
+ */
+export function asStoredThreadContextSection(section: string): string {
+	return section.trim().replaceAll(THREAD_CONTEXT_CLOSE_TAG, '&lt;/thread-context&gt;');
+}
+
 /**
  * Wrap per-turn ambient context into one leading block. The user text stays last.
  * On the turn rather than in the system prompt for prompt-caching reasons.
@@ -168,7 +197,7 @@ export function buildThreadContextBlock(sections: Array<string | undefined>): st
 	const parts = sections
 		.map((section) => section?.trim())
 		.filter((section): section is string => Boolean(section))
-		.map((section) => section.replaceAll(THREAD_CONTEXT_CLOSE_TAG, '&lt;/thread-context&gt;'));
+		.map(asStoredThreadContextSection);
 	if (parts.length === 0) return '';
 	return `${THREAD_CONTEXT_OPEN_TAG}\n${parts.join('\n\n')}\n${THREAD_CONTEXT_CLOSE_TAG}`;
 }
@@ -200,13 +229,50 @@ export function withPastConversations(message: string, section: string): string 
 }
 
 /**
- * Carry the user's saved AI preferences. First turn of a thread only, so the text
- * is paid for once per conversation. The block arrives already tagged and escaped
- * from `AiPreferenceService`, so the same block serves every AI surface.
- * On the turn rather than in the system prompt for prompt-caching reasons.
+ * Carry the user's saved AI preferences as a trailing block. New turns place the block
+ * inside the leading `<thread-context>` instead. Kept for older stored messages and tests
+ * that rebuild that shape.
  */
 export function withAiPreferences(message: string, block: string): string {
 	return `${message}\n\n${block}`;
+}
+
+/**
+ * Matches the service-written preferences block inside one `<thread-context>` block. The
+ * renderer escapes the tags out of user text, so the first close tag is always the real one.
+ */
+const AI_PREFERENCES_BLOCK = /<ai-preferences>\n[\s\S]*?\n<\/ai-preferences>/;
+
+/**
+ * The ai-preferences block a stored user message carries, exactly as stored, or `undefined`.
+ * Read from the leading internal blocks only, so a tag lookalike in the user's own text is
+ * never read as a block the service wrote. The per-turn injection compares this against a
+ * fresh render to decide whether a turn re-sends the block (CONTEXT-139); compare against
+ * `asStoredThreadContextSection(freshBlock)`, never the raw render.
+ */
+export function extractAiPreferencesBlock(stored: string): string | undefined {
+	const threadContext = leadingInternalBlocks(stored).find((block) =>
+		block.startsWith(THREAD_CONTEXT_OPEN_TAG),
+	);
+	return threadContext ? AI_PREFERENCES_BLOCK.exec(threadContext)?.[0] : undefined;
+}
+
+const PREVIEW_TABS_HEADER =
+	'Tabs the user has open in this conversation’s preview, as of this message:';
+
+/** Matches the service-written thread artifacts block inside one `<thread-context>` block. */
+const THREAD_ARTIFACTS_BLOCK = /<thread-artifacts>\n[\s\S]*?\n<\/thread-artifacts>/;
+
+/**
+ * The thread artifacts block a stored user message carries, exactly as stored, or
+ * `undefined`. Read from the leading internal blocks only, like the preferences block.
+ * Compare against `asStoredThreadContextSection(freshBlock)`, never the raw render.
+ */
+export function extractThreadArtifactsBlock(stored: string): string | undefined {
+	const threadContext = leadingInternalBlocks(stored).find((block) =>
+		block.startsWith(THREAD_CONTEXT_OPEN_TAG),
+	);
+	return threadContext ? THREAD_ARTIFACTS_BLOCK.exec(threadContext)?.[0] : undefined;
 }
 
 /** Longest a user-supplied value may be inside a block. Matches the instance-context bound. */
@@ -219,7 +285,7 @@ const PROMPT_TEXT_MAX_LENGTH = 128;
  * or start a new line. Angle brackets are escaped rather than dropped, so a
  * name that legitimately contains one still reads as itself.
  */
-export function sanitisePromptText(value: string): string {
+export function sanitisePromptText(value: string, maxLength = PROMPT_TEXT_MAX_LENGTH): string {
 	const printable = Array.from(value)
 		.map((character) => {
 			const code = character.codePointAt(0) ?? 0;
@@ -232,15 +298,74 @@ export function sanitisePromptText(value: string): string {
 		.replace(/>/g, '&gt;')
 		.replace(/\s+/g, ' ')
 		.trim()
-		.slice(0, PROMPT_TEXT_MAX_LENGTH);
+		.slice(0, maxLength);
+}
+
+/**
+ * The onboarding skill's SKILL.md body, one section of the opening turn's thread-context block, so
+ * the flow runs without a `load_skill` call.
+ */
+export function buildOnboardingSkillBlock(instructions: string): string {
+	return `<onboarding-skill>\nThis skill is loaded for this thread: follow it and do not call load_skill for it.\n${instructions}\n</onboarding-skill>`;
+}
+
+/** One opening-card answer as the agent gets it: the question text plus what the user chose or typed. */
+export interface OnboardingAnswer {
+	question: string;
+	selectedOptions: string[];
+	customText?: string;
+}
+
+/**
+ * The answers to an onboarding thread's opening card, one line per question, so a question added
+ * to the opening file reaches the agent without a code change. The card is not in the LLM
+ * history (it lives in the event log), so the answers ride a hidden user turn; the parser drops
+ * that turn from the UI.
+ */
+export function buildOnboardingAnswerMessage(answers: OnboardingAnswer[]): string {
+	// Free text skips the host follow-up: only the agent can tell a tool name from a task or a
+	// wish to stop, so it gets the answers as the first turn and hears that no question is open.
+	const freeText = answers.some((answer) => answer.customText?.trim());
+	return [
+		AUTO_FOLLOW_UP_MESSAGE,
+		'',
+		'<onboarding-answer>',
+		'The user answered the opening questions:',
+		...answers.map((answer) => `- ${answer.question} ${formatOnboardingAnswer(answer)}`),
+		'These answers are final: use them as they are and do not ask these questions again.',
+		...(freeText
+			? [
+					'The typed answer is free text the user wrote into the card in place of a pick. Nobody has asked them about a task yet.',
+				]
+			: []),
+		'</onboarding-answer>',
+	].join('\n');
+}
+
+/**
+ * The selected options, then the free text as `typed "…"`; `(not answered)` when the card had
+ * neither. Both come from the client, so they are escaped like every other value the host puts in
+ * a prompt block; the free text is the user's whole first message, so it keeps its length.
+ */
+function formatOnboardingAnswer({ selectedOptions, customText }: OnboardingAnswer): string {
+	const text = customText && sanitisePromptText(customText, Infinity);
+	const values = [
+		...selectedOptions.map((option) => sanitisePromptText(option)),
+		...(text ? [`typed "${text}"`] : []),
+	];
+	return values.length > 0 ? values.join(', ') : '(not answered)';
 }
 
 /** The fact, and only the fact. The rule that follows from it ("writes are locked to
  *  this project", "check it before you build") lives in the system prompt, which is
  *  CACHED — restating it here would pay for the same sentence in uncached tokens on
  *  every turn of every conversation. Measured: the fact alone is enough. */
-export function getProjectContextSection(project: { name: string; type: string }): string {
-	return `This conversation is scoped to the project "${sanitisePromptText(project.name)}" (${project.type}).`;
+export function getProjectContextSection(project: {
+	id: string;
+	name: string;
+	type: string;
+}): string {
+	return `This conversation is scoped to the project "${sanitisePromptText(project.name)}" (${project.type}, id: \`${sanitisePromptText(project.id)}\`).`;
 }
 
 /**
@@ -416,8 +541,17 @@ export function buildThreadArtifactsBlock(
 	context: InstanceAiThreadArtifactsContext | undefined,
 	resourceAttachments: InstanceAiResourceAttachment[] = [],
 ): string {
-	const previewArtifacts = context?.artifacts ?? [];
-	if (previewArtifacts.length === 0 && resourceAttachments.length === 0) return '';
+	// A fixed order, so reordering tabs does not change the block and re-send it.
+	const previewArtifacts = [...(context?.artifacts ?? [])].sort((a, b) =>
+		`${a.type}:${a.id}`.localeCompare(`${b.type}:${b.id}`),
+	);
+	if (previewArtifacts.length === 0 && resourceAttachments.length === 0) {
+		// An empty list that the client sent means no tabs are open. The wording holds
+		// whether the user closed tabs or never had any.
+		return context
+			? `${THREAD_ARTIFACTS_OPEN_TAG}\nThe user has no tabs open in this conversation’s preview.\n${THREAD_ARTIFACTS_CLOSE_TAG}`
+			: '';
+	}
 
 	const executionByWorkflowId = new Map<string, string>();
 	for (const attachment of resourceAttachments) {
@@ -475,9 +609,7 @@ export function buildThreadArtifactsBlock(
 		'Use these ids when you act on the user’s request. Do not inspect, run, or describe their contents beyond what that request needs.';
 
 	const prose = [
-		...(previewLines.length > 0
-			? ['Artifacts the user can see in this conversation’s preview:', ...previewLines]
-			: []),
+		...(previewLines.length > 0 ? [PREVIEW_TABS_HEADER, ...previewLines] : []),
 		...(handoffLines.length > 0
 			? [
 					'The user opened this conversation from the editor, where they are looking at:',

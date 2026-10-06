@@ -7,6 +7,7 @@ import type {
 	IRun,
 	IWorkflowBase,
 	IWorkflowExecutionDataProcess,
+	IWorkflowSettings,
 	JsonValue,
 	WorkflowExecuteMode,
 	WorkflowSettings,
@@ -25,11 +26,17 @@ import type {
 import type { TokenExchangeFailureReason } from '@/modules/token-exchange/token-exchange.types';
 import type { AdminCredentialSelection as InstanceAiCredentialSelection } from '@/modules/instance-ai/instance-ai-settings.service';
 import type {
+	AuditedActor,
+	PolicyDecisionAudit,
+} from '@/modules/policy-infrastructure/policy-decision-audit';
+import type {
 	PolicyAction,
 	PolicyAttachment,
 	PolicyRule,
 } from '@/modules/type-availability-policies/policy-rule.types';
+import type { TracingContext } from '@/modules/otel/tracing-context';
 import type { McpCallerAuth } from '@/services/oauth-token-verifier-proxy.service';
+import type { UserLike } from '@/types/user-like.types';
 
 import type { AiEventMap } from './ai.event-map';
 
@@ -41,15 +48,7 @@ export type WorkflowActionSource =
 	| 'import'
 	| 'review-approval';
 
-export type UserLike = {
-	id: string;
-	email?: string;
-	firstName?: string;
-	lastName?: string;
-	role?: {
-		slug: string;
-	};
-};
+export type { UserLike };
 
 /**
  * Which write path produced a policy document event. A composed save emits a document event
@@ -57,6 +56,13 @@ export type UserLike = {
  * instead of counting one save twice.
  */
 export type PolicyWriteOrigin = 'composed-save' | 'document-api';
+
+export type CrashDetector =
+	| 'stall'
+	| 'queue-recovery'
+	| 'startup-recovery'
+	| 'start-failure'
+	| 'workflow-deactivation';
 
 export type ProjectSummary = {
 	id: string;
@@ -261,6 +267,11 @@ export type RelayEventMap = {
 		versionId: string;
 		versionName?: string | null;
 		versionDescription?: string | null;
+	};
+
+	/** A source-control pull wrote a workflow, which happens outside the save path. */
+	'workflow-imported': {
+		workflowId: string;
 	};
 
 	// #endregion
@@ -480,6 +491,7 @@ export type RelayEventMap = {
 		credentialType: string;
 		credentialId: string;
 		credentialName: string;
+		credentialDescriptionLength?: number;
 		publicApi: boolean;
 		projectId?: string;
 		projectType?: string;
@@ -505,6 +517,7 @@ export type RelayEventMap = {
 		credentialType: string;
 		credentialId: string;
 		credentialName: string;
+		credentialDescriptionLength?: number;
 		isDynamic?: boolean;
 		usesExternalSecrets?: boolean;
 		jweEnabled?: boolean;
@@ -637,6 +650,22 @@ export type RelayEventMap = {
 		workflowId?: string;
 		workflowName?: string;
 		reason: CancellationReason;
+	};
+
+	'execution-crashed': {
+		executionId: string;
+		workflowId: string;
+		workflowName?: string;
+		mode: WorkflowExecuteMode;
+		startedAt?: Date;
+		stoppedAt: Date;
+		detector: CrashDetector;
+		hostId: string;
+		tracingContext?: TracingContext;
+		workflowVersionId?: string;
+		retryOf?: string;
+		workflowCustomTelemetryTags?: IWorkflowSettings['customTelemetryTags'];
+		project?: { id: string; customTelemetryTags: Array<{ key: string; value: string }> };
 	};
 
 	'execution-deleted': {
@@ -1373,6 +1402,12 @@ export type RelayEventMap = {
 		before: { attachments: readonly PolicyAttachment[]; version: number };
 		after: { attachments: readonly PolicyAttachment[]; version: number };
 	};
+
+	// #endregion
+
+	// #region Policy enforcement
+
+	'policy-decision-blocked': PolicyDecisionAudit & AuditedActor;
 
 	// #endregion
 } & AiEventMap;

@@ -4,6 +4,7 @@ import { Time } from '@n8n/constants';
 import type { AuthenticatedRequest, User } from '@n8n/db';
 import { GLOBAL_OWNER_ROLE, InvalidAuthTokenRepository, UserRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { isRecord } from '@n8n/utils/is-record';
 import { createHash } from 'crypto';
 import type { NextFunction, Request, Response } from 'express';
 import { JsonWebTokenError, TokenExpiredError } from 'jsonwebtoken';
@@ -11,12 +12,11 @@ import escapeRegExp from 'lodash/escapeRegExp';
 import type { StringValue as TimeUnitValue } from 'ms';
 
 import { AUTH_COOKIE_NAME, RESPONSE_ERROR_MESSAGES } from '@/constants';
-import { AuthError } from '@/errors/response-errors/auth.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { AuthError, ForbiddenError } from '@n8n/errors';
 import { License } from '@/license';
 import { MfaService } from '@/mfa/mfa.service';
 import { JwtService } from '@/services/jwt.service';
-import { UrlService } from '@/services/url.service';
+import { UrlService } from '@n8n/backend-services';
 
 interface AuthJwtPayload {
 	/** User Id */
@@ -33,6 +33,29 @@ interface AuthJwtPayload {
 
 interface IssuedJWT extends AuthJwtPayload {
 	exp: number;
+}
+
+/**
+ * A valid signature proves only that this instance signed the token, not that
+ * it signed it as a session token. Narrowing to `IssuedJWT` promises the type
+ * of every field, and the callers act on those types rather than re-check them:
+ * `exp` bounds the session (`jwt.verify` treats a token without one as
+ * unbounded), `usedMfa` decides the MFA gate, `isEmbed` relaxes the cookie to
+ * `SameSite=None`, and `browserId` binds the session to one browser. So check
+ * each one, and require a present optional claim to hold its declared type.
+ */
+function isIssuedJWT(payload: unknown): payload is IssuedJWT {
+	if (!isRecord(payload)) return false;
+	const { id, hash, exp, browserId, usedMfa, isEmbed } = payload;
+	return (
+		typeof id === 'string' &&
+		id.length > 0 &&
+		typeof hash === 'string' &&
+		Number.isFinite(exp) &&
+		(browserId === undefined || typeof browserId === 'string') &&
+		(usedMfa === undefined || typeof usedMfa === 'boolean') &&
+		(isEmbed === undefined || typeof isEmbed === 'boolean')
+	);
 }
 
 interface PasswordResetToken {
@@ -186,6 +209,43 @@ export class AuthService {
 		};
 	}
 
+	/**
+	 * Gates a route on the auth cookie's signature and expiry, without the revocation
+	 * or user lookups, so a request costs no database query.
+	 */
+	createAssetAuthMiddleware() {
+		return (req: Request, res: Response, next: NextFunction) => {
+			const token = this.getCookieToken(req);
+
+			if (token) {
+				try {
+					const payload = this.jwtService.verify<unknown>('session', token, {
+						algorithms: ['HS256'],
+					});
+					if (this.isAuthJwtPayload(payload)) {
+						next();
+						return;
+					}
+				} catch {}
+			}
+
+			if (process.env.N8N_PREVIEW_MODE === 'true') {
+				next();
+				return;
+			}
+
+			res.sendStatus(404);
+		};
+	}
+
+	/**
+	 * Every JWT this instance signs shares one secret, so a valid signature alone does
+	 * not make a token an auth cookie. Only that cookie carries both `id` and `hash`.
+	 */
+	private isAuthJwtPayload(payload: unknown): payload is AuthJwtPayload {
+		return isRecord(payload) && typeof payload.id === 'string' && typeof payload.hash === 'string';
+	}
+
 	getCookieToken(req: Request) {
 		// This models the behavior of an AuthenticatedRequest type having an optional cookies property of type Record<string, string>
 		if (typeof req.cookies === 'object' && req.cookies !== null) {
@@ -224,7 +284,7 @@ export class AuthService {
 		const token = req.cookies[AUTH_COOKIE_NAME];
 		if (!token) return;
 		try {
-			const { exp } = this.jwtService.decode(token);
+			const { exp } = this.jwtService.decodeUnverified(token);
 			if (exp) {
 				await this.invalidAuthTokenRepository.insert({
 					token,
@@ -246,6 +306,7 @@ export class AuthService {
 	) {
 		// TODO: move this check to the login endpoint in AuthController
 		// If the instance has exceeded its user quota, prevent non-owners from logging in
+		// oxlint-disable-next-line typescript/no-deprecated
 		const isWithinUsersLimit = this.license.isWithinUsersLimit();
 		if (user.role.slug !== GLOBAL_OWNER_ROLE.slug && !isWithinUsersLimit) {
 			throw new ForbiddenError(RESPONSE_ERROR_MESSAGES.USERS_QUOTA_REACHED);
@@ -269,7 +330,7 @@ export class AuthService {
 			usedMfa,
 			...(isEmbed && { isEmbed }),
 		};
-		return this.jwtService.sign(payload, {
+		return this.jwtService.sign('session', payload, {
 			expiresIn: this.jwtExpiration,
 		});
 	}
@@ -368,9 +429,11 @@ export class AuthService {
 		user: User;
 		jwtPayload: IssuedJWT;
 	}> {
-		const jwtPayload: IssuedJWT = this.jwtService.verify(token, {
+		const jwtPayload = this.jwtService.verify<unknown>('session', token, {
 			algorithms: ['HS256'],
 		});
+
+		if (!isIssuedJWT(jwtPayload)) throw new AuthError('Unauthorized');
 
 		// TODO: Use an in-memory ttl-cache to cache the User object for upto a minute
 		const user = await this.userRepository.findOne({
@@ -431,7 +494,7 @@ export class AuthService {
 			newEmail,
 			hash: this.createJWTHash(user),
 		};
-		const token = this.jwtService.sign(payload, { expiresIn: '20m', audience: 'n8n-email-change' });
+		const token = this.jwtService.sign('emailChange', payload, { expiresIn: '20m' });
 		const url = new URL(`${this.urlService.getInstanceBaseUrl()}/confirm-email-change`);
 		url.searchParams.append('token', token);
 		return url.toString();
@@ -442,9 +505,7 @@ export class AuthService {
 	): Promise<{ user: User; newEmail: string } | undefined> {
 		let decoded: EmailChangeToken;
 		try {
-			decoded = this.jwtService.verify(token, {
-				audience: 'n8n-email-change',
-			});
+			decoded = this.jwtService.verify('emailChange', token);
 		} catch {
 			return;
 		}
@@ -459,7 +520,7 @@ export class AuthService {
 
 	generatePasswordResetToken(user: User, expiresIn: TimeUnitValue = '20m') {
 		const payload: PasswordResetToken = { sub: user.id, hash: this.createJWTHash(user) };
-		return this.jwtService.sign(payload, { expiresIn, audience: 'n8n-password-reset' });
+		return this.jwtService.sign('passwordReset', payload, { expiresIn });
 	}
 
 	generatePasswordResetUrl(user: User) {
@@ -475,9 +536,7 @@ export class AuthService {
 	async resolvePasswordResetToken(token: string): Promise<User | undefined> {
 		let decodedToken: PasswordResetToken;
 		try {
-			decodedToken = this.jwtService.verify(token, {
-				audience: 'n8n-password-reset',
-			});
+			decodedToken = this.jwtService.verify('passwordReset', token);
 		} catch (e) {
 			if (e instanceof TokenExpiredError) {
 				this.logger.debug('Reset password token expired');

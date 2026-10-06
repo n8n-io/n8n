@@ -1,9 +1,18 @@
 import { onScopeDispose, ref, shallowReactive, toValue, watch, type MaybeRefOrGetter } from 'vue';
 import { TELEMETRY_EVENT, type InferTelemetryProps } from '@n8n/telemetry';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
+import { useRootStore } from '@n8n/stores/useRootStore';
+import { useInstanceAiSetupPanelExperiment } from '@/experiments/instanceAiSetupPanel/useInstanceAiSetupPanelExperiment';
+import type { InstanceAiSetupItem } from '@n8n/api-types';
+import type { INodeUi, IWorkflowDb } from '@/Interface';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import type { SetupPanelGroup } from '../setupPanelGroups';
-import type { SetupPanelRow } from './useSetupPanelState';
-import type { SetupCredentialItem, SetupPanelApplyResult } from './useSetupPanelActions';
+import type { SetupPanelRow, SetupPanelThreadSource } from './useSetupPanelState';
+import {
+	resolveSetupCredentialItem,
+	type SetupCredentialItem,
+	type SetupPanelApplyResult,
+} from './useSetupPanelActions';
 
 export type SetupPanelConnectionMethod = InferTelemetryProps<
 	typeof TELEMETRY_EVENT.CREDENTIALS.USER_STARTED_CREDENTIAL_CONNECTION
@@ -11,6 +20,9 @@ export type SetupPanelConnectionMethod = InferTelemetryProps<
 type DismissReason = InferTelemetryProps<
 	typeof TELEMETRY_EVENT.INSTANCE_AI.SETUP_PANEL_DISMISSED
 >['reason'];
+type SavedSetupItem = InferTelemetryProps<
+	typeof TELEMETRY_EVENT.WORKFLOW.SETUP_SAVED
+>['items'][number];
 
 function createTelemetryState() {
 	return {
@@ -30,13 +42,22 @@ const states = new WeakMap<object, ReturnType<typeof createTelemetryState>>();
 
 export function useSetupPanelTelemetry(options: {
 	workflowId: MaybeRefOrGetter<string>;
-	thread: { id: string };
+	thread: { id: string } & Pick<SetupPanelThreadSource, 'setupItemsByWorkflowId'>;
 	rows: MaybeRefOrGetter<SetupPanelRow[]>;
 	groups: MaybeRefOrGetter<SetupPanelGroup[]>;
 	shownItemIds: MaybeRefOrGetter<string[]>;
 	ready: MaybeRefOrGetter<boolean>;
+	getNodeByName: (name: string) => INodeUi | undefined;
+	isItemDone: (
+		item: InstanceAiSetupItem,
+		readNode: (name: string) => INodeUi | undefined,
+	) => boolean;
+	isAgentBuilding: MaybeRefOrGetter<boolean>;
 }) {
 	const telemetry = useTelemetry();
+	const rootStore = useRootStore();
+	const nodeTypesStore = useNodeTypesStore();
+	const { getTelemetryPayload } = useInstanceAiSetupPanelExperiment();
 	const state = states.get(options.thread) ?? createTelemetryState();
 	states.set(options.thread, state);
 	const owner = Symbol();
@@ -44,15 +65,99 @@ export function useSetupPanelTelemetry(options: {
 	const isOwner = () => [...state.owners].at(-1) === owner;
 	const { shownRows, snapshots, connectionAttempts } = state;
 	const context = () => ({
+		...getTelemetryPayload(),
+		session_id: rootStore.pushRef,
 		workflow_id: toValue(options.workflowId),
 		thread_id: options.thread.id,
 	});
 
+	function getItems(
+		setupItems: InstanceAiSetupItem[],
+		readNode = options.getNodeByName,
+	): SavedSetupItem[] {
+		return setupItems.flatMap<SavedSetupItem>((item) => {
+			if (item.kind === 'credential') {
+				return (item.nodeBindings ?? []).flatMap((binding) => {
+					const node = readNode(binding.nodeName);
+					return node
+						? [
+								{
+									node_id: node.id,
+									node_type: node.type,
+									kind: 'credential' as const,
+									credential_type: item.credentialType,
+									completed: options.isItemDone({ ...item, nodeBindings: [binding] }, readNode),
+								},
+							]
+						: [];
+				});
+			}
+			const node = readNode(item.nodeName);
+			return node
+				? item.parameterNames.map((name) => ({
+						node_id: node.id,
+						node_type: node.type,
+						kind: 'parameter' as const,
+						parameter_name: name,
+						completed: options.isItemDone({ ...item, parameterNames: [name] }, readNode),
+					}))
+				: [];
+		});
+	}
+
+	function trackSaved(workflow: IWorkflowDb) {
+		if (!state.owners.has(owner) || workflow.id !== toValue(options.workflowId)) return;
+		const nodes = new Map(workflow.nodes.map((node) => [node.name, node]));
+		// The preview can still contain the pre-build graph when the save completes.
+		const announced = Object.hasOwn(options.thread.setupItemsByWorkflowId, workflow.id)
+			? options.thread.setupItemsByWorkflowId[workflow.id]
+			: [];
+		const requirements = new Map([
+			...announced.map((item) => [item.id, item] as const),
+			...toValue(options.rows).map(({ item }) => [item.id, item] as const),
+		]);
+		const savedRequirements = [...requirements.values()].map((item) =>
+			item.kind === 'credential'
+				? resolveSetupCredentialItem(item, workflow.nodes, nodeTypesStore)
+				: item,
+		);
+		const readNode = (name: string) => nodes.get(name);
+		const items = getItems(savedRequirements, readNode);
+		if (items.length === 0) return;
+		telemetry.track(TELEMETRY_EVENT.WORKFLOW.SETUP_SAVED, {
+			...context(),
+			instance_id: rootStore.instanceId,
+			source: 'instance_ai_setup_panel',
+			items,
+			setup_complete: !toValue(options.isAgentBuilding) && items.every((item) => item.completed),
+		});
+	}
+
+	function getChatTelemetryContext() {
+		const groups = toValue(options.groups);
+		if (!isOwner() || !toValue(options.ready) || groups.length === 0) return undefined;
+		return {
+			...context(),
+			pending_credential_count: groups.filter(
+				(group) => group.credential && !group.credential.isDone,
+			).length,
+			pending_parameter_count: groups.reduce(
+				(count, group) =>
+					count +
+					group.parameters.reduce(
+						(total, row) => total + (row.isDone ? 0 : row.item.parameterNames.length),
+						0,
+					),
+				0,
+			),
+		};
+	}
+
 	function trackDismissed(reason: DismissReason) {
 		if (!state.visibleWorkflowId.value) return;
 		telemetry.track(TELEMETRY_EVENT.INSTANCE_AI.SETUP_PANEL_DISMISSED, {
+			...context(),
 			workflow_id: state.visibleWorkflowId.value,
-			thread_id: options.thread.id,
 			reason,
 		});
 		state.visibleWorkflowId.value = undefined;
@@ -116,6 +221,10 @@ export function useSetupPanelTelemetry(options: {
 						(count, row) => count + row.item.parameterNames.length,
 						0,
 					),
+					items: getItems([
+						...(group.credential ? [group.credential.item] : []),
+						...group.parameters.map(({ item }) => item),
+					]).map(({ completed, ...item }) => item),
 				});
 			}
 		},
@@ -142,8 +251,8 @@ export function useSetupPanelTelemetry(options: {
 		if (!attempt || (result !== 'applied' && result !== 'noop' && result !== 'queued')) return;
 		connectionAttempts.delete(item.id);
 		telemetry.track(TELEMETRY_EVENT.CREDENTIALS.USER_COMPLETED_CREDENTIAL_CONNECTION, {
+			...context(),
 			workflow_id: attempt.workflowId,
-			thread_id: options.thread.id,
 			source: 'instance_ai_setup_panel',
 			credential_type: item.credentialType,
 			credential_id: credentialId,
@@ -159,5 +268,11 @@ export function useSetupPanelTelemetry(options: {
 			states.delete(options.thread);
 		}
 	});
-	return { trackConnectionStarted, trackConnectionCompleted, trackDismissed };
+	return {
+		trackConnectionStarted,
+		trackConnectionCompleted,
+		trackDismissed,
+		trackSaved,
+		getChatTelemetryContext,
+	};
 }

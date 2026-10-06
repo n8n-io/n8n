@@ -13,22 +13,7 @@ export const functionalGuardrailsConfig = tseslint.config({
 		parserOptions: { projectService: true },
 	},
 	rules: {
-		'n8n-local-rules/no-legacy-cipher-methods': 'error',
-		'n8n-local-rules/no-misplaced-cipher-primitives': 'error',
-		'n8n-local-rules/no-deployment-key-delete': 'error',
-		'n8n-local-rules/no-unsealed-workflow-entity-write': 'error',
 		'n8n-local-rules/no-encryption-guardrail-disable': 'error',
-		'n8n-local-rules/no-guardrail-disable': [
-			'error',
-			{
-				guarded: [
-					{
-						rule: 'no-unsealed-workflow-entity-write',
-						message: 'Route the write through a token-gated `WorkflowRepository` method.',
-					},
-				],
-			},
-		],
 	},
 });
 

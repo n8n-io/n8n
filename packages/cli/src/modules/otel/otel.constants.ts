@@ -42,6 +42,8 @@ export const ATTR = {
 	EXECUTION_IS_RETRY: 'n8n.execution.is_retry',
 	EXECUTION_RETRY_OF: 'n8n.execution.retry_of',
 	EXECUTION_ERROR_TYPE: 'n8n.execution.error_type',
+	EXECUTION_CRASH_DETECTOR: 'n8n.execution.crash.detector',
+	EXECUTION_RECONSTRUCTED: 'n8n.execution.reconstructed',
 
 	NODE_ID: 'n8n.node.id',
 	NODE_NAME: 'n8n.node.name',

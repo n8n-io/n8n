@@ -201,9 +201,7 @@ watch(
 
 	border-radius: var(--radius--xs);
 	background-color: var(--background--surface);
-	box-shadow:
-		var(--shadow--md),
-		inset var(--shadow--outline);
+	box-shadow: var(--shadow--md), var(--shadow--outline);
 	will-change: transform, opacity;
 	transform-origin: var(--popover--offset--origin-x) var(--popover--offset--origin-y);
 
@@ -264,7 +262,7 @@ watch(
 
 .popoverArrow {
 	fill: var(--background--surface);
-	stroke: var(--border-color);
+	stroke: var(--shadow-color--outline);
 	stroke-width: 1px;
 	// Overlap the card by 1px so its outline shadow doesn't cut the arrow off.
 	transform: translateY(-1px);

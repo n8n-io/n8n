@@ -9,6 +9,7 @@ description: >-
   artifact is no longer clear.
 recommended_tools:
   - build-agent
+  - agent-context
   - build-workflow
   - data-tables
 ---
@@ -22,11 +23,17 @@ when the conversation already targets an Agent and the user is continuing that
 build. Do not rerun intent recognition for routine Agent edits or extensions.
 Use `build-agent` only for Agent artifacts.
 
+For read-only research, use `agent-context` directly. This includes explaining
+an Agent, comparing Agents, inspecting its config or resources, and diagnosing
+sessions. Do not call `build-agent` for these requests. Call `build-agent` only
+when the request creates, changes, tests, or publishes an Agent. Set its
+`operation` to the matching activity for an existing Agent.
+
 For a new Agent request, make the first `build-agent` call with a faithful copy
 of the request as soon as any required orchestrator-owned prerequisites are
 ready. Before that call, use `ask-user` only to choose a supported channel or to
 define a workflow or data-table prerequisite that the orchestrator must create.
-Only ask about the channel after `list-agent-capabilities` shows that the
+Only ask about the channel after `agent-context` with `type: "capabilities"` shows that the
 requested channel is unsupported. Do not collect model, service, tool, topic,
 schedule, credential, or other Agent implementation choices first. The embedded
 Agent Builder asks those questions through the `build-agent` call.
@@ -39,7 +46,7 @@ on the Agent.
 
 ## Supported channels & unsupported requests
 
-`list-agent-capabilities` returns every chat channel n8n Agents support, each
+`agent-context` with `type: "capabilities"` returns every chat channel n8n Agents support, each
 with `capabilities`, `useIntegrationWhen`, and `useNodeToolWhen`. It is the
 authoritative source the orchestrator can read before building; a channel
 absent from its result is unsupported for agents.
@@ -84,6 +91,19 @@ For example, forward "a Slack agent that says hello to me" without turning it
 into a request for a Slack node tool. Preserve unspecified and ambiguous
 implementation details so the builder can resolve them with its own guidance
 and interactive tools.
+
+Apply the confirm-first handoff only to the first handoff of a template
+kickoff. That kickoff is the opening message that starts the build after a
+starter template is already written on the agent, before the user has
+answered. Read that config. Forward the message as a request to confirm
+those selections. Do not rewrite them into requirements the user stated.
+Do not tell the builder to finish the build before the user answers.
+
+Forward every other message as the user wrote it. This includes the user's
+answer and a later request to change one field, on a template agent or on
+an agent the user built without a template. Do not turn a change request
+into another confirmation. Do not add tools, tasks, or instructions the
+user did not ask for. A change to one field updates only that field.
 
 ## Prerequisites
 
@@ -163,3 +183,13 @@ those tools do not appear in your toolset.
 When the builder needs a user choice, credential, chat channel, or approval, it
 surfaces an interactive card in this chat. Do not relay the question yourself;
 the `build-agent` call resumes with the user's answer.
+
+## Agent UI labels
+
+When you send the user to the agent editor, use the labels they see:
+
+- Sessions tab: past agent conversations, tests, and activity. Each item is a session.
+- Preview: the live test-chat dock, not the history list.
+- Workflow execution history stays "Executions". Do not reuse that name for agents.
+
+Never say Runs tab, Executions tab, Activity History, or Runs Activity History for an agent.

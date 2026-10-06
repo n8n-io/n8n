@@ -44,6 +44,8 @@ const props = defineProps<{
 	credentialData: ICredentialDataDecryptedObject;
 	/** Show only the guided inputs inside the setup panel. */
 	compact?: boolean;
+	/** Show missing values after the user submits the simplified form. */
+	showValidationWarnings?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -236,6 +238,7 @@ const typeOptions = [
 				compact
 				:credential-properties="placeholderProperties"
 				:credential-data="parameterValues"
+				:show-validation-warnings="showValidationWarnings"
 				documentation-url=""
 				@update="onParameterUpdate"
 			/>

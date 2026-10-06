@@ -9,8 +9,9 @@ import { TypeAvailabilityPolicyService } from './type-availability-policy.servic
 
 /**
  * Project-scope REST surface for a project's own node type availability policy row. Every
- * route requires `LICENSE_FEATURES.NODE_TYPE_POLICIES` and `nodeTypePolicy:manage`, granted to
- * project admins so they self-govern their own project's row (per IAM-1142's RFC decision).
+ * route requires `LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES` and `nodeTypePolicy:manage`,
+ * granted to project admins so they self-govern their own project's row (per IAM-1142's RFC
+ * decision).
  *
  * Deliberately narrower than the instance controller: only the composed read/write, mirroring
  * `GET`/`PUT /instance`. Policy-document CRUD and multi-attachment management stay
@@ -21,7 +22,7 @@ export class TypeAvailabilityPolicyProjectController {
 	constructor(private readonly service: TypeAvailabilityPolicyService) {}
 
 	@Get('/project')
-	@Licensed(LICENSE_FEATURES.NODE_TYPE_POLICIES)
+	@Licensed(LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES)
 	@ProjectScope('nodeTypePolicy:manage')
 	async getProjectPolicy(req: AuthenticatedRequest<{ projectId: string }>) {
 		const effective = await this.service.getEffectivePolicy(NODE_TYPES_KIND, req.params.projectId);
@@ -35,7 +36,7 @@ export class TypeAvailabilityPolicyProjectController {
 	}
 
 	@Put('/project')
-	@Licensed(LICENSE_FEATURES.NODE_TYPE_POLICIES)
+	@Licensed(LICENSE_FEATURES.TYPE_AVAILABILITY_POLICIES)
 	@ProjectScope('nodeTypePolicy:manage')
 	async putProjectPolicy(
 		req: AuthenticatedRequest<{ projectId: string }>,

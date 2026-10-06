@@ -29,7 +29,11 @@ function setup(options: { backgroundTasksEnabled?: boolean } = {}) {
 }
 
 describe('AgentInterruptedExecutionSweeper', () => {
+	afterEach(() => vi.useRealTimers());
+
 	it('terminalizes an abandoned running execution', async () => {
+		vi.useFakeTimers();
+		vi.setSystemTime(new Date('2026-01-01T00:02:00.000Z'));
 		const { sweeper, repository, executionService } = setup();
 		const execution = {
 			id: 'execution-1',
@@ -43,7 +47,10 @@ describe('AgentInterruptedExecutionSweeper', () => {
 
 		await sweeper.sweep();
 
-		expect(executionService.finalizeInterruptedExecution).toHaveBeenCalledWith(execution);
+		expect(executionService.finalizeInterruptedExecution).toHaveBeenCalledWith(
+			execution,
+			new Date('2026-01-01T00:00:00.000Z'),
+		);
 	});
 
 	it('leaves a recently active execution running in another process', async () => {

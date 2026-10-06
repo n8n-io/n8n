@@ -4,6 +4,7 @@ import { LoggerProxy } from 'n8n-workflow';
 import { EventEmitter } from 'node:events';
 
 import { emitChunkEvents, initSseStream, type FlushableResponse } from '../agent-sse-stream';
+import type { SteeredMessageEvent } from '../types/agent-steering';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -117,6 +118,50 @@ describe('agent-sse-stream — connection setup', () => {
 		expect(res.end).toHaveBeenCalledOnce();
 		expect(res.write).not.toHaveBeenCalled();
 	});
+
+	it('sends a steered message and keeps delivery open for the next chunk', () => {
+		const { res } = createResponse();
+		const { onChunk, abortSignal, close } = initSseStream(res);
+		const event: SteeredMessageEvent = {
+			type: 'message-steered',
+			queueId: '2',
+			executionId: 'execution-1',
+			message: {
+				id: 'message-2',
+				role: 'user',
+				content: [{ type: 'text', text: 'Use the second option.' }],
+				createdAt: '2026-09-29T11:00:00.000Z',
+			},
+		};
+
+		onChunk(event);
+		onChunk({ type: 'text-delta', id: 't-1', delta: 'hello' });
+
+		expect(abortSignal.aborted).toBe(false);
+		expect(res.end).not.toHaveBeenCalled();
+		expect(res.write).toHaveBeenCalledWith(`data: ${JSON.stringify(event)}\n\n`);
+		expect(res.write).toHaveBeenCalledWith(
+			'data: {"type":"text-delta","id":"t-1","delta":"hello"}\n\n',
+		);
+		close();
+	});
+
+	it('closes delivery when an event cannot be serialized', () => {
+		const { res } = createResponse();
+		const { onChunk, abortSignal } = initSseStream(res);
+		const circular: Record<string, unknown> = {};
+		circular.self = circular;
+
+		onChunk({
+			type: 'tool-result',
+			toolCallId: 'tc-1',
+			toolName: 'lookup',
+			output: circular,
+		});
+
+		expect(abortSignal.aborted).toBe(true);
+		expect(res.end).toHaveBeenCalledOnce();
+	});
 });
 
 // ---------------------------------------------------------------------------
@@ -219,16 +264,31 @@ describe('agent-sse-stream — stream completion', () => {
 		]);
 	});
 
-	it('leaves completion delivery to the caller when it receives a finish chunk', async () => {
+	it('forwards the finish reason and leaves completion delivery to the caller', async () => {
 		const events = await collectEvents([
 			{ type: 'text-delta', id: 't-1', delta: 'hello' },
 			{ type: 'text-end', id: 't-1' },
-			{ type: 'finish', finishReason: 'stop' },
+			{
+				type: 'finish',
+				finishReason: 'stop',
+				usage: { promptTokens: 1, completionTokens: 1, totalTokens: 2 },
+			},
 		]);
 
 		expect(events).toEqual([
 			{ type: 'text-delta', id: 't-1', delta: 'hello' },
 			{ type: 'text-end', id: 't-1' },
+			{ type: 'finish', finishReason: 'stop' },
+		]);
+	});
+
+	it('forwards the guardrail code when a hook stopped the run', async () => {
+		const events = await collectEvents([
+			{ type: 'finish', finishReason: 'guardrail', guardrail: { code: 'budget.session' } },
+		]);
+
+		expect(events).toEqual([
+			{ type: 'finish', finishReason: 'guardrail', guardrail: { code: 'budget.session' } },
 		]);
 	});
 
@@ -271,6 +331,7 @@ describe('agent-sse-stream — stream completion', () => {
 					input: { question: 'Second question' },
 				},
 			},
+			{ type: 'finish', finishReason: 'other' },
 		]);
 	});
 });

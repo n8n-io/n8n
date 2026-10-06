@@ -47,7 +47,7 @@ describe('SecretsProviderConnectionRepository', () => {
 
 	async function createConnection(providerKey: string, type: string, projectIds: string[] = []) {
 		const cipher = Container.get(Cipher);
-		const encryptedSettings = cipher.encrypt({});
+		const encryptedSettings = cipher.encryptWithInstanceKey({});
 
 		const connection = await connectionRepository.save(
 			connectionRepository.create({
@@ -81,7 +81,7 @@ describe('SecretsProviderConnectionRepository', () => {
 			credentialsRepository.create({
 				name: 'Test Credential',
 				type: 'githubApi',
-				data: cipher.encrypt({}),
+				data: cipher.encryptWithInstanceKey({}),
 			}),
 		);
 

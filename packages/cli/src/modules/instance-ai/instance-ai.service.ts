@@ -1,5 +1,6 @@
 import { AgentEvent, createScopedWorkspace, filterRuntimeSkillSource } from '@n8n/agents';
 import type {
+	AgentDbMessage,
 	Message,
 	Workspace,
 	ScopedMemoryTaskEvent,
@@ -24,15 +25,21 @@ import {
 	type InstanceAiNodesAttachment,
 	type InstanceAiResourceAttachment,
 	type InstanceAiWorkflowAttachment,
+	type AiPreferencesAppliedPayload,
 	type InstanceAiConfirmRequest,
 	type InstanceAiCredits,
 	type InstanceAiConfirmResponse,
 	type InstanceAiEvent,
 	type InstanceAiThreadStatusResponse,
+	type InstanceContextInjection,
+	type InstanceContextReach,
+	INSTANCE_CONTEXT_SURFACE_DEPTH,
+	type InstanceAiEvalThreadMemoryResponse,
 	type InstanceAiThreadArtifactsContext,
 } from '@n8n/api-types';
 import { Logger, ModuleRegistry } from '@n8n/backend-common';
 import { SsrfProtectionService } from '@n8n/backend-network';
+import { EventService, InstanceWriteAccessService, UrlService } from '@n8n/backend-services';
 import {
 	GlobalConfig,
 	SsrfProtectionConfig,
@@ -43,7 +50,9 @@ import { UserRepository, type User } from '@n8n/db';
 import { OnPubSubEvent } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import {
+	CONCISE_PROMPT_VERSION,
 	MAX_STEPS,
+	assertInstanceAiPromptVersion,
 	createInstanceAgent,
 	createLazyRuntimeWorkspace,
 	createLazyWorkspaceRuntimeSkillSource,
@@ -77,6 +86,7 @@ import {
 	releaseTraceClient,
 	resumeAgentRun,
 	RunStateRegistry,
+	suspendedInstanceContextSchema,
 	shutdownProductTelemetryProviders,
 	tokenUsageToBuilderUsageItems,
 	RunDebugBuffer,
@@ -98,6 +108,7 @@ import {
 	type ConfirmationData,
 	type DomainAccessTracker,
 	type InstanceAiContext,
+	type InstanceAiEventBus,
 	type ManagedBackgroundTask,
 	type McpServerConfig,
 	type ModelConfig,
@@ -111,6 +122,7 @@ import {
 	type OrchestratorRunHandoffState,
 	type OrchestratorRunStopSignal,
 	type ServiceProxyConfig,
+	type StreamRunResult,
 	type SuspendedRunState,
 	type SuspensionInfo,
 	type WorkflowBuildOutcome,
@@ -120,6 +132,9 @@ import {
 	type WorkflowTaskService,
 	type WorkflowVerificationObligation,
 	type WorkSummary,
+	WorkSummaryAccumulator,
+	deriveInstanceContextReach,
+	mergeInstanceContextReach,
 	type RunTokenUsage,
 	type RunDebugRecord,
 	WorkflowTaskCoordinator,
@@ -130,6 +145,7 @@ import { buildResumeData, toConfirmationData } from '@n8n/instance-ai/confirmati
 import type { Scope } from '@n8n/permissions';
 import { redactTelemetryProperties, redactTelemetryText, TELEMETRY_EVENT } from '@n8n/telemetry';
 import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
+import { isRecord } from '@n8n/utils/is-record';
 import { lazyImport } from '@n8n/utils/lazy-import';
 import { setSchemaBaseDirs } from '@n8n/workflow-sdk';
 import { ErrorReporter, InstanceSettings } from 'n8n-core';
@@ -137,20 +153,23 @@ import { OperationalError, UnexpectedError, UserError } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 
 import { N8N_VERSION, WORKFLOW_SDK_VERSION } from '@/constants';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { EventService } from '@/events/event.service';
+import { BadRequestError, ForbiddenError } from '@n8n/errors';
 import { InstanceAiBuilderDelegateAdapterService } from '@/modules/agents/instance-ai-builder-delegate.adapter';
+import { InstanceAiAgentContextAdapterService } from '@/modules/agents/instance-ai-agent-context.adapter';
 import { modelStreamStallOptions } from '@/modules/agents/model-stream-stall-options';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { Push } from '@/push';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import type { PubSubCommandMap } from '@/scaling/pubsub/pubsub.event-map';
-import { AiPreferenceService, renderAiPreferencesBlock } from '@/services/ai-preference.service';
+import {
+	AI_PREFERENCES_CLEARED_BLOCK,
+	AiPreferenceService,
+	buildAppliedPreferencesPayload,
+	renderAiPreferencesBlock,
+} from '@/services/ai-preference.service';
+import { AiUsageService } from '@/services/ai-usage.service';
 import { AiService } from '@/services/ai.service';
-import { InstanceWriteAccessService } from '@/services/instance-write-access.service';
 import { ProxyTokenManager } from '@/services/proxy-token-manager';
-import { UrlService } from '@/services/url.service';
 import { Telemetry } from '@/telemetry';
 import { assertNever } from '@/utils';
 
@@ -159,10 +178,11 @@ import {
 	INSTANCE_CONTEXT_CURSOR,
 	InstanceContextService,
 	readInstanceContextCursor,
+	toContextInjection,
+	shouldTraceContextInjection,
 } from './instance-context.service';
 import { composeLocalMcpServers } from './browser/composite-local-mcp-server';
 import { InstanceAiBrowserSessionService } from './browser/instance-ai-browser-session.service';
-import { CanvasNodeContextFlagGate } from './canvas-node-context-flag-gate';
 import { enabledToolCategories, resolveComputerUseState } from './computer-use-availability';
 import { dropRejectedAttachmentsFromHistory } from './drop-rejected-attachments';
 import { EvalThreadCredentialAllowlistService } from './eval/thread-credential-allowlist.service';
@@ -189,17 +209,24 @@ import {
 	AUTO_FOLLOW_UP_MESSAGE,
 	CREDENTIAL_CONTEXT_OPEN_TAG,
 	CREDENTIAL_CONTEXT_CLOSE_TAG,
+	asStoredThreadContextSection,
 	cleanStoredUserMessage,
 	buildCurrentDateTimeBlock,
+	buildInstanceUrlsBlock,
+	buildOnboardingSkillBlock,
 	buildPastConversationsBlock,
 	buildProjectContextBlock,
 	buildThreadArtifactsBlock,
 	buildThreadContextBlock,
 	buildWorkflowTestRequestBlock,
+	extractAiPreferencesBlock,
+	extractThreadArtifactsBlock,
 	getProjectContextSection,
 	WORKFLOW_SETUP_STATE_CLOSE_TAG,
 	WORKFLOW_SETUP_STATE_OPEN_TAG,
 } from './internal-messages';
+import { loadOnboardingSkill } from './onboarding';
+import { ONBOARDING_OPENING } from './onboarding-opening';
 import { INSTANCE_AI_RUN_TIMEOUT_REASON, InstanceAiLivenessService } from './liveness';
 import { InstanceAiMcpRegistryService } from './mcp';
 import {
@@ -219,6 +246,8 @@ import {
 	type PlannedWorkflowVerificationTracker,
 } from './planned-task-action-runner';
 import { InstanceAiEventLogRepository } from './repositories/instance-ai-event-log.repository';
+import { InstanceAiObservationCursorRepository } from './repositories/instance-ai-observation-cursor.repository';
+import { InstanceAiObservationRepository } from './repositories/instance-ai-observation.repository';
 import { InstanceAiPendingConfirmationRepository } from './repositories/instance-ai-pending-confirmation.repository';
 import { InstanceAiThreadGrantRepository } from './repositories/instance-ai-thread-grant.repository';
 import { InstanceAiSandboxService, type RuntimeSandboxEntry } from './sandbox';
@@ -555,6 +584,8 @@ type RunFinishErrorInfo = {
 type RunFinishMetadata = RunFinishErrorInfo & {
 	promptVersion?: string;
 	modelId?: ModelConfig;
+	/** How far the turn went for instance context, for the trace to complete its entry. */
+	contextReach?: InstanceContextReach;
 };
 
 type UnclaimedResumeContext = {
@@ -610,8 +641,42 @@ const MAX_CONSECUTIVE_FAILED_INTERNAL_FOLLOW_UPS = 3;
 
 const TITLE_REFINE_HISTORY_LIMIT = 50;
 
+/** Bind identity, gate results, and injection once for all segments of a turn. */
+type InstanceContextTurnBinding = {
+	userId: string;
+	threadId: string;
+	runId: string;
+	injection: InstanceContextInjection;
+	instanceContextEnabled: boolean;
+	nodeUsageEnabled: boolean;
+};
+
+type InstanceContextGates = Pick<
+	InstanceContextTurnBinding,
+	'instanceContextEnabled' | 'nodeUsageEnabled'
+>;
+
 /** The built orchestrator agent type returned by `createInstanceAgent`. */
 type InstanceAgent = Awaited<ReturnType<typeof createInstanceAgent>>['agent'];
+
+/**
+ * Normalises `N8N_INSTANCE_AI_PROMPT_VERSION`. Blank and absent both mean "no
+ * pin" and must become `undefined`: passing `''` on to `resolvePromptProfile`
+ * would report a fallback from an empty version instead of a clean default
+ * selection.
+ *
+ * An unknown version throws, so a typo fails the run loudly rather than
+ * silently serving the default profile. Resolved at the point of use, not
+ * cached at construction: a module `init()` that throws takes the whole n8n
+ * process down with it, and an optional Instance AI pin must not cost the
+ * instance its webhooks and executions.
+ */
+export function resolveOperatorPromptVersion(configured: string | undefined): string | undefined {
+	const version = configured?.trim();
+	if (!version) return undefined;
+	assertInstanceAiPromptVersion(version);
+	return version;
+}
 
 @Service()
 export class InstanceAiService {
@@ -746,6 +811,8 @@ export class InstanceAiService {
 		private readonly aiService: AiService,
 		private readonly threadGrantRepo: InstanceAiThreadGrantRepository,
 		private readonly pendingConfirmationRepo: InstanceAiPendingConfirmationRepository,
+		private readonly observationRepo: InstanceAiObservationRepository,
+		private readonly observationCursorRepo: InstanceAiObservationCursorRepository,
 		private readonly urlService: UrlService,
 		private readonly eventLogRepository: InstanceAiEventLogRepository,
 		private readonly dbIterationLogStorage: DbIterationLogStorage,
@@ -764,16 +831,17 @@ export class InstanceAiService {
 		private readonly creditService: InstanceAiCreditService,
 		private readonly publisher: Publisher,
 		private readonly instanceAiErrorReporter: InstanceAiErrorReporterService,
-		private readonly canvasNodeContextFlagGate: CanvasNodeContextFlagGate,
 		private readonly push: Push,
 		private readonly conversationHistoryService: InstanceAiConversationHistoryService,
 		private readonly instanceContext: InstanceContextService,
 		private readonly aiPreferenceService: AiPreferenceService,
+		private readonly aiUsageService: AiUsageService,
 	) {
 		this.logger = logger.scoped('instance-ai');
 		runProbe.registerActiveRunCountProvider(() => this.runState.activeRunCount());
-		this.workflowObligations = new WorkflowVerificationObligationService(this.agentMemory, () =>
-			this.settingsService.isInstanceAiSetupPanelEnabled(),
+		this.workflowObligations = new WorkflowVerificationObligationService(
+			this.agentMemory,
+			(threadId) => this.runState.isSetupPanelEnabled(threadId),
 		);
 		this.taskProjector = new WorkflowVerificationTaskProjector(
 			this.agentMemory,
@@ -888,7 +956,6 @@ export class InstanceAiService {
 				});
 			});
 		});
-
 		this.liveness.start();
 	}
 
@@ -1277,6 +1344,35 @@ export class InstanceAiService {
 		};
 	}
 
+	/** What observational memory holds for a thread: the live observations and the
+	 *  compaction cursor. An eval asserts on these rows instead of parsing the
+	 *  rendered system prompt. Refuses a thread the caller does not own, so the
+	 *  check does not depend on the route. */
+	async getThreadMemory(
+		userId: string,
+		threadId: string,
+	): Promise<InstanceAiEvalThreadMemoryResponse> {
+		const thread = await this.agentMemory.getThread(threadId);
+		if (!thread || thread.resourceId !== userId) {
+			throw new ForbiddenError('Not authorized for this thread');
+		}
+		const [observations, cursor] = await Promise.all([
+			this.observationRepo.findActiveForThread(threadId),
+			this.observationCursorRepo.findForThread(threadId),
+		]);
+		return {
+			observations: observations.map(({ marker, text, tokenCount }) => ({
+				marker,
+				text,
+				tokenCount,
+			})),
+			cursor: cursor && {
+				lastObservedMessageId: cursor.lastObservedMessageId,
+				lastObservedAt: cursor.lastObservedAt.toISOString(),
+			},
+		};
+	}
+
 	getRunDebug(runId: string) {
 		return this.runDebugBuffer.get(runId);
 	}
@@ -1377,6 +1473,7 @@ export class InstanceAiService {
 		promptVersion?: string,
 		computerUseChannels?: ComputerUseChannel[],
 		threadArtifacts?: InstanceAiThreadArtifactsContext,
+		observerThresholdTokens?: number,
 	): string {
 		if (
 			promptVersion !== undefined &&
@@ -1406,6 +1503,7 @@ export class InstanceAiService {
 		// otherwise environment creation selects and stores the backend assignment.
 		this.runState.setBuildMode(threadId, mode);
 		this.runState.setPromptVersion(threadId, promptVersion);
+		this.runState.setObserverThresholdTokens(threadId, observerThresholdTokens);
 
 		if (pushRef !== undefined) {
 			this.threadPushRef.set(threadId, pushRef);
@@ -2124,7 +2222,9 @@ export class InstanceAiService {
 	private createAgentMemoryOptions(user: User, threadId: string, runId: string) {
 		return {
 			observationalMemory: {
-				observerThresholdTokens: this.instanceAiConfig.observerMessageTokens,
+				observerThresholdTokens:
+					this.runState.getObserverThresholdTokens(threadId) ??
+					this.instanceAiConfig.observerMessageTokens,
 				reflectorThresholdTokens: this.instanceAiConfig.reflectorObservationTokens,
 				midRunObservation: this.instanceAiConfig.midRunObservation,
 				// Observer/reflector calls run in the background outside the run's
@@ -2375,6 +2475,13 @@ export class InstanceAiService {
 		}
 	}
 
+	areMcpConnectionsAvailable(): boolean {
+		return (
+			Container.get(ModuleRegistry).isActive('mcp-registry') &&
+			this.settingsService.isMcpAccessEnabled()
+		);
+	}
+
 	private async createExecutionEnvironment(
 		user: User,
 		threadId: string,
@@ -2383,6 +2490,9 @@ export class InstanceAiService {
 		messageGroupId?: string,
 		pushRef?: string,
 		proxyRunConfig?: Awaited<ReturnType<InstanceAiService['createProxyRunConfig']>>,
+		instanceContextGates?: InstanceContextGates,
+		experimentGates?: Awaited<ReturnType<InstanceAiAdapterService['resolveExperimentGates']>>,
+		resumeAgentBuild = false,
 	) {
 		const memory = this.agentMemory;
 		const boundProjectId = await memory.getThreadProjectId(threadId);
@@ -2395,6 +2505,7 @@ export class InstanceAiService {
 		const adminSettings = await this.settingsService.getAdminSettings();
 		const localGatewayDisabledGlobally = adminSettings.localGatewayDisabled;
 		const browserUseEnabledGlobally = adminSettings.browserUseEnabled;
+		const mcpConnectionsAvailable = this.areMcpConnectionsAvailable();
 		const localGatewayDisabledForUser = await this.settingsService.isLocalGatewayDisabledForUser(
 			user.id,
 		);
@@ -2412,42 +2523,70 @@ export class InstanceAiService {
 				? await this.modelService.resolveProxyModel(user, proxyBaseUrl, tokenManager, proxyContext)
 				: await this.modelService.resolveAgentModelConfig(user, proxyContext);
 
+		const gates = experimentGates ?? (await this.adapterService.resolveExperimentGates(user));
 		const {
 			configEvalsEnabled,
-			mcpConnectionsEnabled,
 			conversationHistoryEnabled,
 			progressiveBuildingEnabled,
-			nodeUsageEnabled,
+			conciseStyleEnabled,
+			setupPanelEnabled,
+			setupPanelVariant,
 			folderExplorationEnabled,
+			credentialDescriptionsEnabled,
 			aiPreferencesEnabled,
-		} = await this.adapterService.resolveExperimentGates(user);
+		} = gates;
+		this.runState.setSetupPanelEnabled(threadId, setupPanelEnabled);
+		// Resumed segments use the gates bound to the original turn.
+		const { instanceContextEnabled, nodeUsageEnabled } = instanceContextGates ?? gates;
 		// One scoped reader backs both the tool and the first-turn hint.
 		const conversationHistory = conversationHistoryEnabled
 			? this.conversationHistoryService.forContext(user.id, boundProjectId, threadId)
 			: undefined;
 		// Follow-ups and resumed runs retain the selected mode if flags change.
+		const mode =
+			this.runState.getBuildMode(threadId) ??
+			(progressiveBuildingEnabled ? 'progressive' : 'default');
+		// The operator pin sits below the request pin and the thread's own selection,
+		// so evals and in-flight conversations keep the profile they started on.
+		// The concise experiment applies only in default mode, so a progressive
+		// thread or assignment keeps its own profile.
 		const selectedPrompt = resolvePromptProfile({
-			version: this.runState.getPromptVersion(threadId),
-			mode:
-				this.runState.getBuildMode(threadId) ??
-				(progressiveBuildingEnabled ? 'progressive' : 'default'),
+			version:
+				this.runState.getPromptVersion(threadId) ??
+				resolveOperatorPromptVersion(this.instanceAiConfig.promptVersion) ??
+				(conciseStyleEnabled && mode === 'default' ? CONCISE_PROMPT_VERSION : undefined),
+			mode,
 		});
 		const buildMode = selectedPrompt.profile.mode;
 		this.runState.setBuildMode(threadId, buildMode);
+		// Read per run so a settings change applies to the next message.
+		const allowSendingParameterValues = await this.aiUsageService.isParameterValueSharingAllowed();
+		// The frontend writes the exit to thread metadata when the agent calls `leave-onboarding` or
+		// starts a build, so a thread that left gets the tool no more.
+		const thread = await memory.getThread(threadId);
+		const onboardingThread =
+			thread?.metadata?.source === 'onboarding' && !thread.metadata.onboardingLeft;
 		const context = this.adapterService.createContext(user, {
 			searchProxyConfig,
 			pushRef,
 			threadId,
 			projectId: boundProjectId,
-			credentialIdAllowlist: this.evalCredentialAllowlists.get(threadId),
+			getCredentialIdAllowlist: () => this.evalCredentialAllowlists.get(threadId),
 			shouldBypassCredentialTest: (credentialId: string) =>
 				this.evalCredentialAllowlists.shouldBypassTest(threadId, credentialId),
 			configEvalsEnabled,
-			mcpConnectionsEnabled,
+			setupPanelVariant,
+			mcpConnectionsAvailable,
 			nodeUsageEnabled,
+			instanceContextEnabled,
 			conversationHistory,
 			folderExplorationEnabled,
+			onboardingThread,
+			credentialDescriptionsEnabled,
+			aiPreferencesEnabled,
 			modelId,
+			allowSendingParameterValues,
+			resumeAgentBuild,
 		});
 
 		// Merge both local gateway and direct browser-use into a single
@@ -2480,7 +2619,7 @@ export class InstanceAiService {
 		// Setup panel v2: wire the durable `setup-items` sink only while the flag
 		// is on — its presence is the package-side gate. Seeded with the thread's
 		// persisted snapshots so a recomputed, unchanged list publishes nothing.
-		if (this.settingsService.isInstanceAiSetupPanelEnabled()) {
+		if (setupPanelEnabled) {
 			context.setupItemsEmitter = createSetupItemsEmitter({
 				eventBus: this.eventBus,
 				threadId,
@@ -2578,11 +2717,10 @@ export class InstanceAiService {
 			setSchemaBaseDirs(nodeDefDirs);
 		}
 
-		// Per-user skill gate: hide flag-gated skills (filtered copy, cache
-		// preserved) so every derived skill source inherits the exclusion.
+		// Hide disabled skills in each derived source. Keep the cached source unchanged.
 		const flagDisabledSkillIds = disabledInstanceAiSkillIds({
 			configEvalsEnabled,
-			instanceContextEnabled: this.instanceAiConfig.instanceContextEnabled,
+			instanceContextEnabled,
 		});
 		const selectedSkills = await loadInstanceAiPromptSkills(selectedPrompt.profile);
 		const selectedRuntimeSkills = selectedSkills.source;
@@ -2718,8 +2856,6 @@ export class InstanceAiService {
 			runtimeSkills,
 			runtimeSkillCatalog: allRuntimeSkills,
 			oauth2CallbackUrl: this.oauth2CallbackUrl,
-			webhookBaseUrl: this.webhookBaseUrl,
-			formBaseUrl: this.formBaseUrl,
 			cancelBackgroundTask: async (taskId) => this.cancelBackgroundTask(threadId, taskId),
 			touchRun: () => this.runState.touchActiveRun(threadId),
 			touchBackgroundTask: (taskId) => this.backgroundTasks.touchTask(threadId, taskId),
@@ -2746,6 +2882,9 @@ export class InstanceAiService {
 			orchestrationContext,
 			conversationHistory,
 			aiPreferencesEnabled,
+			// Reuse the gate results so a rollout change cannot split this turn.
+			instanceContextEnabled,
+			nodeUsageEnabled,
 		};
 	}
 
@@ -2761,6 +2900,22 @@ export class InstanceAiService {
 		} catch {
 			return null;
 		}
+	}
+
+	/** Wire project-scoped, read-only Agent context for the current user. */
+	private async bindAgentContextReader(
+		context: Awaited<ReturnType<InstanceAiService['createExecutionEnvironment']>>['context'],
+		user: User,
+	): Promise<void> {
+		const projectId = context.projectId;
+		if (!projectId) return;
+		if (!(await userHasScopes(user, ['agent:read'], false, { projectId }))) return;
+
+		if (!Container.get(ModuleRegistry).isActive('agents')) return;
+		context.agentContextService = Container.get(InstanceAiAgentContextAdapterService).createReader(
+			user,
+			projectId,
+		);
 	}
 
 	/**
@@ -2783,7 +2938,7 @@ export class InstanceAiService {
 		context.resolvePreviewSession = async (ref) => {
 			const service = this.getAgentExecutionService();
 			if (!service) return null;
-			const detail = await service.getThreadDetail(ref.threadId, projectId, ref.agentId);
+			const detail = await service.getThreadDetail(ref.threadId, projectId, ref.agentId, user.id);
 			if (!detail) return null;
 			const transcript = formatPreviewSessionContext(
 				detail.thread,
@@ -3561,14 +3716,13 @@ export class InstanceAiService {
 
 	/**
 	 * Splits a message's attachments into the resource references that feed the
-	 * context block, gating canvas node-selection attachments behind
-	 * CANVAS_NODE_CONTEXT_FLAG per user. Workflow and agent references always pass
-	 * through — only `nodes` attachments are conditional.
+	 * context block. The canvas node-context and Assistant mentions flags both
+	 * accept `nodes` attachments. Workflow and agent references always pass.
 	 */
-	private async resolveContextAttachments(
+	private resolveContextAttachments(
 		attachments: InstanceAiAttachment[] | undefined,
-		user: User,
-	): Promise<InstanceAiResourceAttachment[]> {
+		nodeContextEnabled: boolean,
+	): InstanceAiResourceAttachment[] {
 		const attachmentsOrEmpty = attachments ?? [];
 
 		const workflowAttachments = attachmentsOrEmpty.filter(
@@ -3583,13 +3737,10 @@ export class InstanceAiService {
 			(attachment): attachment is InstanceAiNodesAttachment => attachment.type === 'nodes',
 		);
 
-		const canvasNodeContextEnabled =
-			nodeAttachments.length > 0 && (await this.canvasNodeContextFlagGate.isEnabled(user));
-
 		return [
 			...workflowAttachments,
 			...agentAttachments,
-			...(canvasNodeContextEnabled ? nodeAttachments : []),
+			...(nodeContextEnabled ? nodeAttachments : []),
 		];
 	}
 
@@ -3641,7 +3792,11 @@ export class InstanceAiService {
 			(attachment): attachment is InstanceAiFileAttachment => attachment.type === 'file',
 		);
 
-		const contextAttachments = await this.resolveContextAttachments(attachments, user);
+		const experimentGates = await this.adapterService.resolveExperimentGates(user);
+		const contextAttachments = this.resolveContextAttachments(
+			attachments,
+			experimentGates.nodeContextEnabled,
+		);
 
 		const signal = abortController.signal;
 		let tracing: InstanceAiTraceContext | undefined;
@@ -3655,6 +3810,11 @@ export class InstanceAiService {
 		let turnHadFileAttachments = false;
 		const turnStartedAt = new Date();
 		let errorReporterExecutionToken: symbol | undefined;
+		let contextTurn: InstanceContextTurnBinding | undefined;
+		let contextResult: StreamRunResult | undefined;
+		let contextSegmentReported = false;
+		const observedContextWork = new WorkSummaryAccumulator();
+		const contextEventBus = this.observeInstanceContextEvents(observedContextWork);
 
 		try {
 			errorReporterExecutionToken = this.instanceAiErrorReporter.beginRun(runId);
@@ -3799,6 +3959,8 @@ export class InstanceAiService {
 				messageGroupId,
 				executionPushRef,
 				proxyRunConfig,
+				undefined,
+				experimentGates,
 			);
 			const {
 				context,
@@ -3810,6 +3972,8 @@ export class InstanceAiService {
 				orchestrationContext,
 				conversationHistory,
 				aiPreferencesEnabled,
+				instanceContextEnabled,
+				nodeUsageEnabled,
 			} = environment;
 			modelId = resolvedModelId;
 			promptVersion = orchestrationContext.promptConfiguration?.version;
@@ -3915,6 +4079,7 @@ export class InstanceAiService {
 				}
 				const resolved = await resolveAgentPreviewHandoff(handoffContext, {
 					projectId,
+					userId: user.id,
 					getThreadDetail: agentExecutionService.getThreadDetail.bind(agentExecutionService),
 				});
 				handoffContextBlock = resolved.block;
@@ -3946,11 +4111,17 @@ export class InstanceAiService {
 			// the LLM title pass doesn't summarize the internal context block.
 			const thread = await memory.getThread(threadId);
 			// The heuristic title lands on the opening turn, so "no title yet" marks it.
-			const isOpeningTurn = Boolean(thread && !thread.title);
+			// An onboarding thread is titled at creation and opens with a seeded greeting. Its first
+			// user turn answers it, and is the turn that marks the title final below.
+			const unopenedOnboarding =
+				thread?.metadata?.source === 'onboarding' && !thread.metadata.titleRefined;
+			const isOpeningTurn = Boolean(thread && (!thread.title || unopenedOnboarding));
+			const onboardingSkill = unopenedOnboarding ? await loadOnboardingSkill() : undefined;
 
 			if (isOpeningTurn) {
-				const handoffTitle =
-					contextAttachments.find(isNamedResourceAttachment)?.name ?? agentPreviewTitleFallback;
+				const handoffTitle = unopenedOnboarding
+					? ONBOARDING_OPENING.title
+					: (contextAttachments.find(isNamedResourceAttachment)?.name ?? agentPreviewTitleFallback);
 
 				await patchThread(memory, {
 					threadId,
@@ -3968,12 +4139,15 @@ export class InstanceAiService {
 				});
 			}
 
+			// A checkpoint or a planned-build turn is the agent continuing its own task, where
+			// nobody is reading the user's intent, so ambient context would be paid for unread.
+			const isMachineFollowUp =
+				checkpoint?.isCheckpointFollowUp === true || plannedBuild?.isPlannedBuildFollowUp === true;
+
 			// Sent in full on a thread's first turn and as additions after that: the earlier block
 			// stays in the conversation, so re-sending it pays for the same context twice.
 			//
-			// Skipped entirely on a machine follow-up. A checkpoint or a planned-build turn is the
-			// agent continuing its own task, where nobody is reading the user's intent, so the whole
-			// block would be paid for unread.
+			// Skipped entirely on a machine follow-up.
 			const instanceContext = await this.instanceContext.buildBlock({
 				user,
 				scope: {
@@ -3981,10 +4155,30 @@ export class InstanceAiService {
 					...(context.projectId !== undefined ? { projectId: context.projectId } : {}),
 				},
 				cursor: readInstanceContextCursor(thread?.metadata),
-				isMachineFollowUp:
-					checkpoint?.isCheckpointFollowUp === true ||
-					plannedBuild?.isPlannedBuildFollowUp === true,
+				isMachineFollowUp,
+				enabled: instanceContextEnabled,
 			});
+
+			// Share the same injection summary with trace and telemetry.
+			const contextInjection = toContextInjection(instanceContext);
+			contextTurn = {
+				userId: user.id,
+				threadId,
+				runId,
+				injection: contextInjection,
+				instanceContextEnabled,
+				nodeUsageEnabled,
+			};
+
+			// Publish the summary before the agent starts. Keep the raw block on the server.
+			if (shouldTraceContextInjection(contextInjection)) {
+				this.eventBus.publish(threadId, {
+					type: 'instance-context',
+					runId,
+					agentId: orchestratorAgentId(runId),
+					payload: { injection: contextInjection },
+				});
+			}
 			const existingTasks = await taskStorage.get(threadId);
 			if (existingTasks) {
 				this.eventBus.publish(threadId, {
@@ -4018,30 +4212,56 @@ export class InstanceAiService {
 						? `${enrichedMessage}\n\n${attachmentManifest}`
 						: enrichedMessage;
 
-			// Setup / credential handoff blocks lead. Ambient context (instance,
-			// preview tabs + editor resource hand-off, project, clock) is one
-			// `<thread-context>` wrapper. The user's own words stay last.
+			// Keep setup handoffs first and the user's message last.
+			// Group ambient context in the thread-context wrapper.
+			// One read of the replayed history serves every section sent only when it changed.
+			let replayedHistory: Promise<AgentDbMessage[]> | undefined;
+			const loadReplayedHistory = async () =>
+				await (replayedHistory ??= this.getReplayedMessages(threadId));
 			const threadArtifactsBlock =
 				resumeReason === undefined
-					? buildThreadArtifactsBlock(threadArtifacts, contextAttachments)
+					? await this.resolveThreadArtifactsTurn(
+							threadId,
+							threadArtifacts,
+							contextAttachments,
+							loadReplayedHistory,
+						)
 					: '';
 			const [boundProject, pastConversationsSection] = await Promise.all([
 				this.resolveBoundProject(context),
 				isOpeningTurn ? conversationHistory?.getPastConversationsSection() : undefined,
 			]);
 			const projectSection = boundProject ? getProjectContextSection(boundProject) : undefined;
-			const aiPreferencesBlock =
-				isOpeningTurn && aiPreferencesEnabled
-					? await this.resolveAiPreferencesBlock(user.id, boundProject)
+			// Every user turn, not only the opening one, so a preference saved in another
+			// session reaches this thread on its next turn. Internal follow-ups skip it the
+			// same way they skip the other ambient context: the block from the user turn is
+			// already in the history the follow-up replays.
+			const aiPreferencesTurn =
+				aiPreferencesEnabled && resumeReason === undefined && !isMachineFollowUp
+					? await this.resolveAiPreferencesTurn(
+							user.id,
+							boundProject,
+							threadId,
+							loadReplayedHistory,
+						)
 					: undefined;
 			const threadContextBlock = buildThreadContextBlock([
-				instanceContext?.block ?? '',
+				instanceContext.state === 'injected' ? instanceContext.block : '',
+				// The onboarding skill rides the opening turn, so it fires without a `load_skill` call
+				// and stays in the history for the later turns.
+				onboardingSkill ? buildOnboardingSkillBlock(onboardingSkill) : undefined,
 				threadArtifactsBlock,
 				projectSection ? buildProjectContextBlock(projectSection) : undefined,
+				resumeReason === undefined
+					? buildInstanceUrlsBlock({
+							webhookBaseUrl: this.webhookBaseUrl,
+							formBaseUrl: this.formBaseUrl,
+						})
+					: undefined,
 				pastConversationsSection
 					? buildPastConversationsBlock(pastConversationsSection)
 					: undefined,
-				aiPreferencesBlock,
+				aiPreferencesTurn?.block,
 				buildCurrentDateTimeBlock(getDateTimeSection(timeZone ?? this.defaultTimeZone)),
 			]);
 			const fullMessage = [handoffContextBlock, setupStateBlock, threadContextBlock, messageBody]
@@ -4146,17 +4366,32 @@ export class InstanceAiService {
 			//
 			// Best-effort on purpose. The cursor is an optimisation — losing it re-sends a window,
 			// which is recoverable — so a metadata write must not fail the user's turn.
-			if (instanceContext) {
+			if (instanceContext.state === 'injected') {
+				const injectedCursor = instanceContext.cursor;
 				try {
 					await patchThread(memory, {
 						threadId,
 						update: ({ metadata }) => ({
-							metadata: { ...metadata, [INSTANCE_CONTEXT_CURSOR]: instanceContext.cursor },
+							metadata: { ...metadata, [INSTANCE_CONTEXT_CURSOR]: injectedCursor },
 						}),
 					});
 				} catch (error) {
 					this.logger.warn('Failed to store the instance-context cursor', { error });
 				}
+			}
+
+			// Published here for the same reason the cursor is stored here: only from this point
+			// is an injected block actually in the conversation. One frame for each turn that ran
+			// the preferences path — an empty payload says the turn applied none, which is a
+			// different fact from no frame at all.
+			if (aiPreferencesTurn) {
+				this.eventBus.publish(threadId, {
+					type: 'preferences-applied',
+					runId,
+					agentId: orchestratorAgentId(runId),
+					userId: user.id,
+					payload: aiPreferencesTurn.payload,
+				});
 			}
 
 			const result = tracing
@@ -4166,7 +4401,7 @@ export class InstanceAiService {
 							runId,
 							agentId: orchestratorAgentId(runId),
 							signal,
-							eventBus: this.eventBus,
+							eventBus: contextEventBus,
 							logger: this.logger,
 							onActivity: () => this.runState.touchActiveRun(threadId),
 							stopSignal,
@@ -4177,11 +4412,29 @@ export class InstanceAiService {
 						runId,
 						agentId: orchestratorAgentId(runId),
 						signal,
-						eventBus: this.eventBus,
+						eventBus: contextEventBus,
 						logger: this.logger,
 						onActivity: () => this.runState.touchActiveRun(threadId),
 						stopSignal,
 					});
+			contextResult = result;
+
+			// After the stream settles, so the do-not-harm pair (latency, input tokens) rides the
+			// same event. Covers suspended and terminal outcomes alike, once per turn: a resume is
+			// a follow-up segment that skips the preferences path.
+			if (aiPreferencesTurn) {
+				this.telemetry.track(TELEMETRY_EVENT.CONTEXT.PREFERENCES_APPLIED_TO_TURN, {
+					user_id: user.id,
+					count: aiPreferencesTurn.payload.preferences.length,
+					scope_types: [...new Set(aiPreferencesTurn.payload.preferences.map((p) => p.scope))],
+					rendered_length: aiPreferencesTurn.payload.renderedLength,
+					surface: 'aia',
+					injected_this_turn: aiPreferencesTurn.payload.injectedThisTurn,
+					turn_latency_ms: Date.now() - turnStartedAt.getTime(),
+					...(result.usage ? { turn_token_count: result.usage.promptTokens } : {}),
+				});
+			}
+
 			if (result.status === 'suspended') {
 				// finalizeRun only fires on terminal outcomes; record suspended-segment usage here.
 				this.emitRunMetrics(threadId, 'suspended', {
@@ -4189,7 +4442,23 @@ export class InstanceAiService {
 					workSummary: result.workSummary,
 					usage: result.usage,
 				});
+				// Record the question even if the user never resumes the turn.
+				const suspendedReach = deriveInstanceContextReach(result.workSummary?.toolCalls ?? []);
+				contextSegmentReported = true;
+				this.emitInstanceContextTurn(contextTurn, {
+					segment: 'suspended',
+					status: 'suspended',
+					reach: suspendedReach,
+					workSummary: result.workSummary,
+					usage: result.usage,
+				});
 				if (result.suspension) {
+					const suspendedContext = {
+						injection: contextInjection,
+						instanceContextEnabled,
+						nodeUsageEnabled,
+						reachSoFar: suspendedReach,
+					};
 					this.runState.suspendRun(threadId, {
 						runId,
 						agentRunId: result.agentRunId,
@@ -4211,7 +4480,10 @@ export class InstanceAiService {
 						checkpoint,
 						plannedBuild,
 						runHandoff: runControl.state,
+						// Resumed segments reuse this block and add their reads to the trace.
+						instanceContext: suspendedContext,
 					});
+					await this.persistSuspendedInstanceContext(result.agentRunId, suspendedContext);
 					// Awaited: the card event is published below, and a client that reconnects
 					// settles any card whose row is missing (run-sync frame + history read).
 					await this.suspendedThreads.persistPendingConfirmation({
@@ -4394,6 +4666,15 @@ export class InstanceAiService {
 				aiCreatedWorkflowIds,
 				this.backgroundTasks.getRunningTasks(threadId).length,
 			);
+			const contextReach = deriveInstanceContextReach(result.workSummary?.toolCalls ?? []);
+			contextSegmentReported = true;
+			this.emitInstanceContextTurn(contextTurn, {
+				segment: 'whole',
+				status: result.status,
+				reach: contextReach,
+				workSummary: result.workSummary,
+				usage: result.usage,
+			});
 			await this.finalizeRun(threadId, runId, result.status, {
 				promptVersion,
 				userId: user.id,
@@ -4401,6 +4682,7 @@ export class InstanceAiService {
 				archivedWorkflowIds,
 				workSummary: result.workSummary,
 				usage: result.usage,
+				contextReach,
 				errorReason: userFacingErrorMessage,
 				...(result.status === 'errored'
 					? {
@@ -4436,16 +4718,26 @@ export class InstanceAiService {
 				});
 			}
 		} catch (error) {
+			// Shutdown keeps the pending card. Do not finalize its segment here.
+			if (signal.aborted && this.shouldPreserveHitlOnShutdown(runId)) return;
+
+			const contextWork = contextResult
+				? contextResult.workSummary
+				: observedContextWork.toSummary();
+			const contextReach = contextTurn
+				? deriveInstanceContextReach(contextWork?.toolCalls ?? [])
+				: undefined;
+			if (contextTurn && contextReach && !contextSegmentReported) {
+				contextSegmentReported = true;
+				this.emitInstanceContextTurn(contextTurn, {
+					segment: 'whole',
+					status: signal.aborted ? 'cancelled' : 'errored',
+					reach: contextReach,
+					workSummary: contextWork,
+					usage: contextResult?.usage,
+				});
+			}
 			if (signal.aborted) {
-				// Shutdown asked us to preserve the HITL card on disk: the
-				// service has already finalised tracing and the per-run DB
-				// rows (pending_confirmation, snapshot) are the durable
-				// signal. Emitting the terminal-fallback text + run-finish
-				// here would clobber the plan/ask snapshot the user expects
-				// to see on reload, so just bail out.
-				if (this.shouldPreserveHitlOnShutdown(runId)) {
-					return;
-				}
 				if (!streamReached) {
 					await this.persistInterruptedUserMessage(threadId, user.id, message, turnStartedAt);
 				}
@@ -4486,7 +4778,7 @@ export class InstanceAiService {
 					cancellationReason,
 					archivedWorkflowIds,
 					user.id,
-					{ promptVersion, ...(modelId !== undefined ? { modelId } : {}) },
+					{ promptVersion, contextReach, ...(modelId !== undefined ? { modelId } : {}) },
 				);
 				return;
 			}
@@ -4563,6 +4855,7 @@ export class InstanceAiService {
 					errorMessage,
 					errorSource: 'exception',
 					promptVersion,
+					contextReach,
 					...(modelId !== undefined ? { modelId } : {}),
 				},
 			);
@@ -4842,6 +5135,7 @@ export class InstanceAiService {
 		if (tracing) {
 			environment.orchestrationContext.tracing = tracing;
 		}
+		await this.bindAgentContextReader(environment.context, user);
 		await this.bindAgentPreviewSession(environment.context, user);
 		const mcpServers = await this.buildMcpServers(
 			user,
@@ -4903,6 +5197,8 @@ export class InstanceAiService {
 		tracing: InstanceAiTraceContext | undefined,
 		messageGroupId?: string,
 		pushRef?: string,
+		instanceContextGates?: InstanceContextGates,
+		resumeAgentBuild = false,
 	): Promise<{
 		agent: InstanceAgent;
 		modelId: ModelConfig;
@@ -4915,6 +5211,10 @@ export class InstanceAiService {
 			abortSignal,
 			messageGroupId,
 			pushRef,
+			undefined,
+			instanceContextGates,
+			undefined,
+			resumeAgentBuild,
 		);
 		const agent = await this.createAgentFromEnvironment(
 			environment,
@@ -4928,6 +5228,19 @@ export class InstanceAiService {
 			modelId: environment.modelId,
 			orchestrationContext: environment.orchestrationContext,
 		};
+	}
+
+	private isAgentBuilderSuspension(
+		toolName: string | undefined,
+		suspendPayload: Record<string, unknown> | undefined,
+	): boolean {
+		if (toolName !== 'build-agent') return false;
+		const builderCheckpoint = suspendPayload?.builderCheckpoint;
+		return (
+			isRecord(builderCheckpoint) &&
+			typeof builderCheckpoint.runId === 'string' &&
+			typeof builderCheckpoint.toolCallId === 'string'
+		);
 	}
 
 	/**
@@ -4947,6 +5260,9 @@ export class InstanceAiService {
 	): Promise<RebuildSuspendedRunOutcome> {
 		const user = await this.revalidateActiveUser(orphan.userId);
 		if (!user) return { kind: 'no-user' };
+		let instanceContext: SuspendedRunState<User>['instanceContext'];
+		let toolName: string | undefined;
+		let suspendPayload: Record<string, unknown> | undefined;
 
 		// Bail early if the checkpoint store doesn't have a usable snapshot —
 		// `load()` throws UserError for expired tombstones and returns
@@ -4955,6 +5271,17 @@ export class InstanceAiService {
 		try {
 			const state = await this.checkpointStore.load(orphan.checkpointKey);
 			if (!state) return { kind: 'no-checkpoint' };
+			const pendingToolCall = state.pendingToolCalls?.[orphan.toolCallId];
+			if (pendingToolCall?.suspended) {
+				toolName = pendingToolCall.toolName;
+				suspendPayload = isRecord(pendingToolCall.suspendPayload)
+					? pendingToolCall.suspendPayload
+					: undefined;
+			}
+			const storedContext = suspendedInstanceContextSchema.safeParse(
+				state.persistence?.hostMetadata?.instanceContext,
+			);
+			if (storedContext.success) instanceContext = storedContext.data;
 			// Restore before rebuilding the prompt and tools. Older checkpoints use control.
 			const mode = instanceAiBuildModeSchema.safeParse(state.persistence?.hostMetadata?.buildMode);
 			this.runState.setBuildMode(orphan.threadId, mode.success ? mode.data : 'default');
@@ -4977,6 +5304,10 @@ export class InstanceAiService {
 				abortController.signal,
 				orphan.messageGroupId ?? undefined,
 				this.threadPushRef.get(orphan.threadId),
+				undefined,
+				instanceContext,
+				undefined,
+				this.isAgentBuilderSuspension(toolName, suspendPayload),
 			);
 		} catch (error: unknown) {
 			return { kind: 'env-failure', error };
@@ -5001,11 +5332,14 @@ export class InstanceAiService {
 			state: {
 				runId: orphan.runId,
 				agentRunId: orphan.checkpointKey,
+				instanceContext,
 				agent,
 				orchestrationContext: environment.orchestrationContext,
 				threadId: orphan.threadId,
 				user,
 				toolCallId: orphan.toolCallId,
+				toolName,
+				suspendPayload,
 				requestId: orphan.requestId,
 				abortController,
 				messageGroupId: orphan.messageGroupId ?? undefined,
@@ -5081,19 +5415,195 @@ export class InstanceAiService {
 		}
 	}
 
-	/** Best-effort like the project block: a failed read costs the preferences, not the turn. */
-	private async resolveAiPreferencesBlock(
+	/**
+	 * The saved AI preferences as this turn applies them: the block to inject, when the
+	 * rendered text differs from the last block the conversation carries, and the payload
+	 * the turn publishes either way. Reading the previous copy from the persisted messages
+	 * instead of per-thread state means a block a failed turn never persisted is correctly
+	 * absent, and an unchanged conversation carries exactly one copy.
+	 *
+	 * Best-effort like the project block: a failed read costs the preferences, not the
+	 * turn — and reports an empty payload, which is an answer, not a missing one.
+	 */
+	private async resolveAiPreferencesTurn(
 		userId: string,
 		project: ProjectSummary | undefined,
-	): Promise<string | undefined> {
-		return await this.bestEffort(
+		threadId: string,
+		loadHistory: () => Promise<AgentDbMessage[]> = async () =>
+			await this.getReplayedMessages(threadId),
+	): Promise<{ block: string | undefined; payload: AiPreferencesAppliedPayload }> {
+		const resolved = await this.bestEffort(
 			'Instance AI failed to read the AI preferences for this turn',
 			{ userId },
-			async () =>
-				renderAiPreferencesBlock(
-					await this.aiPreferenceService.getApplicable(userId, project ? [project] : []),
-				),
+			async () => {
+				const preferences = await this.aiPreferenceService.getApplicable(
+					userId,
+					project ? [project] : [],
+				);
+				return { preferences, rendered: renderAiPreferencesBlock(preferences) };
+			},
 		);
+		if (!resolved) {
+			return {
+				block: undefined,
+				payload: { preferences: [], renderedLength: 0, injectedThisTurn: false },
+			};
+		}
+
+		const history = await this.bestEffort(
+			'Instance AI failed to read the last AI preferences block of this thread',
+			{ threadId },
+			async () => await this.findAiPreferencesHistory(loadHistory),
+		);
+		const lastBlock = history?.block;
+		const savedSinceLastBlock = history?.savedSinceLastBlock === true;
+
+		// A save can be removed before any block carries it. Correct the saved tool result too.
+		const { preferences, rendered } = resolved;
+		const freshBlock =
+			rendered ??
+			(lastBlock !== undefined || savedSinceLastBlock ? AI_PREFERENCES_CLEARED_BLOCK : undefined);
+		if (freshBlock === undefined) {
+			return {
+				block: undefined,
+				payload: buildAppliedPreferencesPayload({
+					preferences,
+					renderedLength: 0,
+					injectedThisTurn: false,
+				}),
+			};
+		}
+
+		if (
+			!savedSinceLastBlock &&
+			lastBlock !== undefined &&
+			asStoredThreadContextSection(freshBlock) === lastBlock
+		) {
+			// A lookup failure only costs the run attribution, never the skip itself.
+			const carriedFromRunId = await this.bestEffort(
+				'Instance AI failed to resolve which run sent the AI preferences block',
+				{ threadId },
+				async () => await this.eventLog.getLastPreferencesInjectionRunId(threadId),
+			);
+			return {
+				block: undefined,
+				payload: buildAppliedPreferencesPayload({
+					preferences,
+					renderedLength: freshBlock.length,
+					injectedThisTurn: false,
+					...(carriedFromRunId ? { carriedFromRunId } : {}),
+				}),
+			};
+		}
+
+		return {
+			block: freshBlock,
+			payload: buildAppliedPreferencesPayload({
+				preferences,
+				renderedLength: freshBlock.length,
+				injectedThisTurn: true,
+			}),
+		};
+	}
+
+	/**
+	 * Find the latest visible block and successful saves after it.
+	 * Scan the runtime's replay window. A compacted block is no longer visible, so
+	 * current preferences must be injected again when the window has no block.
+	 */
+	private async findAiPreferencesHistory(
+		loadHistory: () => Promise<AgentDbMessage[]>,
+	): Promise<{ block?: string; savedSinceLastBlock: boolean }> {
+		const history = await loadHistory();
+		let savedSinceLastBlock = false;
+		for (let i = history.length - 1; i >= 0; i--) {
+			const m = history[i];
+			if (!('role' in m)) continue;
+			if (m.role === 'assistant' && Array.isArray(m.content)) {
+				savedSinceLastBlock ||= m.content.some(
+					(part) =>
+						part.type === 'tool-call' &&
+						part.toolName === 'save_user_preference' &&
+						part.state === 'resolved' &&
+						isRecord(part.output) &&
+						part.output.ok === true,
+				);
+			}
+			if (m.role !== 'user') continue;
+			const block = extractAiPreferencesBlock(this.extractStoredMessageText(m.content));
+			if (block !== undefined) return { block, savedSinceLastBlock };
+		}
+		return { savedSinceLastBlock };
+	}
+
+	/**
+	 * The open tabs block for this turn, or `''` when the agent already has the same
+	 * block in its replayed history. The agent reads the latest block as the current
+	 * tabs, so an unchanged block is not sent again.
+	 */
+	private async resolveThreadArtifactsTurn(
+		threadId: string,
+		context: InstanceAiThreadArtifactsContext | undefined,
+		attachments: InstanceAiResourceAttachment[],
+		loadHistory: () => Promise<AgentDbMessage[]>,
+	): Promise<string> {
+		const freshBlock = buildThreadArtifactsBlock(context, attachments);
+		if (!freshBlock) return '';
+		// A hand-off always rides its own turn: the parser rebuilds the attachments from it.
+		if (attachments.length > 0) return freshBlock;
+
+		const history = await this.bestEffort(
+			'Instance AI failed to read the last thread artifacts block of this thread',
+			{ threadId },
+			async () => ({ block: await this.findLastThreadArtifactsBlock(loadHistory) }),
+		);
+		// Send the block when the history cannot be read, so the agent never has stale tabs.
+		if (!history) return freshBlock;
+		// A "no tabs" block is sent like any other: after compaction, an observation can
+		// still say that tabs are open.
+		return asStoredThreadContextSection(freshBlock) === history.block ? '' : freshBlock;
+	}
+
+	/** The latest thread artifacts block in the replay window, or `undefined`. */
+	private async findLastThreadArtifactsBlock(
+		loadHistory: () => Promise<AgentDbMessage[]>,
+	): Promise<string | undefined> {
+		const history = await loadHistory();
+		for (let i = history.length - 1; i >= 0; i--) {
+			const m = history[i];
+			if (!('role' in m) || m.role !== 'user') continue;
+			const block = extractThreadArtifactsBlock(this.extractStoredMessageText(m.content));
+			if (block !== undefined) return block;
+		}
+		return undefined;
+	}
+
+	/**
+	 * The persisted messages the runtime replays to the model on the next turn. Mirrors
+	 * `MemoryOrchestrator.loadHistoryMessages`, including its desync guard: the post-cursor
+	 * window applies only when the cursor AND at least one active observation exist,
+	 * otherwise the runtime falls back to the full history. Diverging in the other
+	 * direction is safe — a needless re-injection costs one duplicate block, while
+	 * trusting a compacted copy silently drops the preferences.
+	 */
+	private async getReplayedMessages(threadId: string): Promise<AgentDbMessage[]> {
+		const cursor = await this.agentMemory.getCursor(threadId);
+		if (cursor) {
+			const observations = await this.agentMemory.getActiveObservationLog({
+				observationScopeId: threadId,
+				limit: 1,
+				order: 'desc',
+			});
+			if (observations.length > 0) {
+				return await this.agentMemory.getMessagesForObservationScope(threadId, {
+					since: {
+						sinceCreatedAt: cursor.lastObservedAt,
+						sinceMessageId: cursor.lastObservedMessageId,
+					},
+				});
+			}
+		}
+		return await this.agentMemory.getMessages(threadId);
 	}
 
 	private async canAccessAgentPreviewHandoff(user: User, projectId: string): Promise<boolean> {
@@ -5117,6 +5627,8 @@ export class InstanceAiService {
 		tracing: InstanceAiTraceContext | undefined,
 		runHandoff: OrchestratorRunHandoffState | undefined,
 		messageGroupId?: string,
+		instanceContextGates?: InstanceContextGates,
+		resumeAgentBuild = false,
 	): Promise<
 		| {
 				agent: InstanceAgent;
@@ -5134,6 +5646,8 @@ export class InstanceAiService {
 				tracing,
 				messageGroupId,
 				this.threadPushRef.get(threadId),
+				instanceContextGates,
+				resumeAgentBuild,
 			);
 			createOrchestratorRunControl(rebuilt.orchestrationContext, runHandoff ?? {});
 			return {
@@ -5182,6 +5696,7 @@ export class InstanceAiService {
 			plannedBuild,
 			runHandoff,
 			orchestrationContext,
+			instanceContext,
 		} = suspended;
 		if (user.id !== requestingUserId) return null;
 
@@ -5271,6 +5786,8 @@ export class InstanceAiService {
 				effectiveTracing,
 				runHandoff,
 				messageGroupId,
+				instanceContext,
+				this.isAgentBuilderSuspension(toolName, suspendPayload),
 			);
 			if (!rebuilt) {
 				const rebuildFailure = 'Agent rebuild failed';
@@ -5326,6 +5843,7 @@ export class InstanceAiService {
 			messageGroupId,
 			resumeTracing,
 			unregisteredResumeTracing,
+			instanceContext,
 		});
 		return { ok: true, runId };
 	}
@@ -5359,6 +5877,8 @@ export class InstanceAiService {
 			messageGroupId?: string;
 			resumeTracing?: InstanceAiTraceContext;
 			unregisteredResumeTracing?: InstanceAiTraceContext;
+			/** This turn's instance context, carried across the suspension. */
+			instanceContext?: NonNullable<SuspendedRunState<User>['instanceContext']>;
 		},
 	): Promise<void> {
 		let messageTraceFinalization: MessageTraceFinalization | undefined;
@@ -5372,6 +5892,11 @@ export class InstanceAiService {
 		let resumeClaimed = false;
 		let resumeTraceRegistered = false;
 		let errorReporterExecutionToken: symbol | undefined;
+		const contextTurn = this.instanceContextTurnBinding(opts);
+		let contextResult: StreamRunResult | undefined;
+		let contextSegmentReported = false;
+		const observedContextWork = new WorkSummaryAccumulator();
+		const contextEventBus = this.observeInstanceContextEvents(observedContextWork);
 		/**
 		 * Set once the model run has yielded output. The catch below also wraps
 		 * post-result finalization, so without this a finalization failure after a
@@ -5446,7 +5971,7 @@ export class InstanceAiService {
 							runId: opts.runId,
 							agentId: orchestratorAgentId(opts.runId),
 							signal: opts.signal,
-							eventBus: this.eventBus,
+							eventBus: contextEventBus,
 							logger: this.logger,
 							agentRunId: opts.agentRunId,
 							onActivity: () => this.runState.touchActiveRun(opts.threadId),
@@ -5458,12 +5983,13 @@ export class InstanceAiService {
 						runId: opts.runId,
 						agentId: orchestratorAgentId(opts.runId),
 						signal: opts.signal,
-						eventBus: this.eventBus,
+						eventBus: contextEventBus,
 						logger: this.logger,
 						agentRunId: opts.agentRunId,
 						onActivity: () => this.runState.touchActiveRun(opts.threadId),
 						stopSignal,
 					});
+			contextResult = result;
 			if (!resumeClaimed) {
 				skipPostRunCleanup = true;
 				const claimError = result.error ?? new Error('Resume checkpoint claim did not complete');
@@ -5477,8 +6003,27 @@ export class InstanceAiService {
 					workSummary: result.workSummary,
 					usage: result.usage,
 				});
+				// Telemetry reports this segment only. The trace retains reads across all suspensions.
+				const resumedSegmentReach = deriveInstanceContextReach(result.workSummary?.toolCalls ?? []);
+				const resumedSuspendedReach = mergeInstanceContextReach(
+					opts.instanceContext?.reachSoFar,
+					resumedSegmentReach,
+				);
+				if (contextTurn) {
+					contextSegmentReported = true;
+					this.emitInstanceContextTurn(contextTurn, {
+						segment: 'suspended',
+						status: 'suspended',
+						reach: resumedSegmentReach,
+						workSummary: result.workSummary,
+						usage: result.usage,
+					});
+				}
 				if (result.suspension) {
 					const resumeMessageGroupId = this.tracing.getMessageGroupId(opts.runId);
+					const suspendedContext = opts.instanceContext
+						? { ...opts.instanceContext, reachSoFar: resumedSuspendedReach }
+						: undefined;
 					this.runState.suspendRun(opts.threadId, {
 						runId: opts.runId,
 						agentRunId: result.agentRunId,
@@ -5500,7 +6045,9 @@ export class InstanceAiService {
 						checkpoint: opts.checkpoint,
 						plannedBuild: opts.plannedBuild,
 						runHandoff: runControl.state,
+						instanceContext: suspendedContext,
 					});
+					await this.persistSuspendedInstanceContext(result.agentRunId, suspendedContext);
 					// Awaited: the card event is published below, and a client that reconnects
 					// settles any card whose row is missing (run-sync frame + history read).
 					await this.suspendedThreads.persistPendingConfirmation({
@@ -5686,6 +6233,22 @@ export class InstanceAiService {
 				undefined,
 				this.backgroundTasks.getRunningTasks(opts.threadId).length,
 			);
+			// Telemetry reports this segment only. The trace combines reads from all segments.
+			const resumedSegmentReach = deriveInstanceContextReach(result.workSummary?.toolCalls ?? []);
+			const resumedContextReach = mergeInstanceContextReach(
+				opts.instanceContext?.reachSoFar,
+				resumedSegmentReach,
+			);
+			if (contextTurn) {
+				contextSegmentReported = true;
+				this.emitInstanceContextTurn(contextTurn, {
+					segment: 'resumed',
+					status: result.status,
+					reach: resumedSegmentReach,
+					workSummary: result.workSummary,
+					usage: result.usage,
+				});
+			}
 			await this.finalizeRun(opts.threadId, opts.runId, result.status, {
 				promptVersion,
 				userId: opts.user.id,
@@ -5695,6 +6258,7 @@ export class InstanceAiService {
 				archivedWorkflowIds,
 				workSummary: result.workSummary,
 				usage: result.usage,
+				contextReach: resumedContextReach,
 				errorReason: userFacingErrorMessage,
 				...(result.status === 'errored'
 					? {
@@ -5739,10 +6303,26 @@ export class InstanceAiService {
 				return;
 			}
 
+			if (opts.signal.aborted && this.shouldPreserveHitlOnShutdown(opts.runId)) return;
+
+			const contextWork = contextResult
+				? contextResult.workSummary
+				: observedContextWork.toSummary();
+			const segmentReach = deriveInstanceContextReach(contextWork?.toolCalls ?? []);
+			const contextReach = contextTurn
+				? mergeInstanceContextReach(opts.instanceContext?.reachSoFar, segmentReach)
+				: undefined;
+			if (contextTurn && !contextSegmentReported) {
+				contextSegmentReported = true;
+				this.emitInstanceContextTurn(contextTurn, {
+					segment: 'resumed',
+					status: opts.signal.aborted ? 'cancelled' : 'errored',
+					reach: segmentReach,
+					workSummary: contextWork,
+					usage: contextResult?.usage,
+				});
+			}
 			if (opts.signal.aborted) {
-				if (this.shouldPreserveHitlOnShutdown(opts.runId)) {
-					return;
-				}
 				const messageGroupId = this.tracing.getMessageGroupId(opts.runId);
 				const runTimeout = this.liveness.consumeRunTimeout(opts.runId);
 				const cancellationReason = runTimeout.timedOut
@@ -5785,7 +6365,11 @@ export class InstanceAiService {
 					cancellationReason,
 					archivedWorkflowIds,
 					opts.user.id,
-					{ promptVersion, ...(opts.modelId !== undefined ? { modelId: opts.modelId } : {}) },
+					{
+						promptVersion,
+						contextReach,
+						...(opts.modelId !== undefined ? { modelId: opts.modelId } : {}),
+					},
 				);
 				return;
 			}
@@ -5865,6 +6449,7 @@ export class InstanceAiService {
 					errorMessage,
 					errorSource: 'exception',
 					promptVersion,
+					contextReach,
 					...(opts.modelId !== undefined ? { modelId: opts.modelId } : {}),
 				},
 			);
@@ -6255,6 +6840,7 @@ export class InstanceAiService {
 			suspended.user.id,
 			{
 				promptVersion: suspended.orchestrationContext?.promptConfiguration?.version,
+				contextReach: suspended.instanceContext?.reachSoFar,
 				...(suspended.modelId !== undefined ? { modelId: suspended.modelId } : {}),
 			},
 		);
@@ -6295,6 +6881,7 @@ export class InstanceAiService {
 						? { reason }
 						: {}),
 				...(hasArchived ? { archivedWorkflowIds } : {}),
+				...(metadata?.contextReach ? { contextReach: metadata.contextReach } : {}),
 			},
 		});
 		// success-drop heartbeat; user_id required or PostHog drops instance-only events
@@ -6445,6 +7032,8 @@ export class InstanceAiService {
 			archivedWorkflowIds?: string[];
 			workSummary?: WorkSummary;
 			usage?: RunTokenUsage;
+			/** How far the turn went for instance context, for the trace to fold onto its entry. */
+			contextReach?: InstanceContextReach;
 			errorReason?: string;
 			errorInfo?: RunFinishErrorInfo;
 		},
@@ -6460,12 +7049,127 @@ export class InstanceAiService {
 				...options?.errorInfo,
 				promptVersion: options?.promptVersion,
 				...(options?.modelId !== undefined ? { modelId: options.modelId } : {}),
+				contextReach: options?.contextReach,
 			},
 		);
 		this.emitRunMetrics(threadId, status, options);
 		if (status === 'completed' && options?.userId && options?.modelId) {
 			void this.refineTitleIfNeeded(threadId, options.userId, options.modelId);
 		}
+	}
+
+	/** Use a fixed estimate to avoid loading a tokenizer on every turn. */
+	private static readonly BLOCK_CHARS_PER_TOKEN = 4;
+
+	/** Save the summary before the confirmation card is visible. */
+	private async persistSuspendedInstanceContext(
+		checkpointKey: string,
+		instanceContext: SuspendedRunState<User>['instanceContext'],
+	): Promise<void> {
+		if (!instanceContext) return;
+		try {
+			const state = await this.checkpointStore.load(checkpointKey);
+			if (!state?.persistence) return;
+			await this.checkpointStore.save(checkpointKey, {
+				...state,
+				persistence: {
+					...state.persistence,
+					hostMetadata: { ...state.persistence.hostMetadata, instanceContext },
+				},
+			});
+		} catch (error) {
+			this.logger.warn('Failed to store context for the suspended run', {
+				checkpointKey,
+				error: getErrorMessage(error),
+			});
+		}
+	}
+
+	/** Restore the original turn binding for resumed segments. */
+	private instanceContextTurnBinding(opts: {
+		user: User;
+		threadId: string;
+		runId: string;
+		instanceContext?: NonNullable<SuspendedRunState<User>['instanceContext']>;
+	}): InstanceContextTurnBinding | undefined {
+		if (!opts.instanceContext) return undefined;
+
+		return {
+			userId: opts.user.id,
+			threadId: opts.threadId,
+			runId: opts.runId,
+			injection: opts.instanceContext.injection,
+			instanceContextEnabled: opts.instanceContext.instanceContextEnabled,
+			nodeUsageEnabled: opts.instanceContext.nodeUsageEnabled,
+		};
+	}
+
+	private observeInstanceContextEvents(workSummary: WorkSummaryAccumulator): InstanceAiEventBus {
+		return {
+			publish: (threadId, event) => {
+				workSummary.observe(event);
+				this.eventBus.publish(threadId, event);
+			},
+			subscribe: (threadId, handler) => this.eventBus.subscribe(threadId, handler),
+		};
+	}
+
+	private emitInstanceContextTurn(
+		turn: InstanceContextTurnBinding,
+		input: {
+			/** A turn can suspend more than once. Aggregate segments by run ID. */
+			segment: 'whole' | 'suspended' | 'resumed';
+			status: 'completed' | 'cancelled' | 'errored' | 'suspended';
+			reach: InstanceContextReach;
+			workSummary?: WorkSummary;
+			/** Measured usage for this segment, not the estimated block size. */
+			usage?: RunTokenUsage;
+		},
+	): void {
+		const { injection } = turn;
+		this.telemetry.track(TELEMETRY_EVENT.INSTANCE_AI.INSTANCE_CONTEXT_TURN, {
+			user_id: turn.userId,
+			thread_id: turn.threadId,
+			run_id: turn.runId,
+			surface: 'aia',
+			segment: input.segment,
+			instance_context_enabled: turn.instanceContextEnabled,
+			node_usage_enabled: turn.nodeUsageEnabled,
+			...(injection.state === 'absent'
+				? { block_state: injection.state, absence_reason: injection.reason }
+				: {
+						block_state: injection.state,
+						block_is_update: injection.isUpdate,
+						block_inventory_rows: injection.legs.inventory,
+						block_event_rows: injection.legs.events,
+						block_run_rows: injection.legs.runs,
+						block_chars: injection.chars,
+						// The block is not tokenized separately. Report an estimate beside its exact length.
+						block_tokens_estimated: Math.ceil(
+							injection.chars / InstanceAiService.BLOCK_CHARS_PER_TOKEN,
+						),
+					}),
+			// Derived here rather than shipped: the depth is a function of the surfaces, and
+			// the map that defines it is in scope at the only place that needs a number.
+			context_depth: input.reach.surfaces.reduce(
+				(deepest, surface) => Math.max(deepest, INSTANCE_CONTEXT_SURFACE_DEPTH[surface]),
+				0,
+			),
+			context_surfaces: input.reach.surfaces,
+			asked_clarifying_question: input.workSummary?.askedClarifyingQuestion ?? false,
+			tool_calls: input.workSummary?.totalToolCalls ?? 0,
+			// A suspended turn spends tokens in each segment, so these are per segment and
+			// sum over the shared `run_id`. Absent when the segment reported no usage.
+			...(input.usage
+				? {
+						turn_prompt_tokens: input.usage.promptTokens,
+						turn_completion_tokens: input.usage.completionTokens,
+						turn_total_tokens: input.usage.totalTokens,
+						turn_cost_usd: input.usage.costUsd,
+					}
+				: {}),
+			status: input.status,
+		});
 	}
 
 	/** Emit a typed event consumed by the Prometheus Instance AI metrics collector. */

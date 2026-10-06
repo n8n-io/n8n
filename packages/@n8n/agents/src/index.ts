@@ -6,6 +6,13 @@ export type {
 	BuiltEpisodicMemoryCaptureStore,
 	BuiltEpisodicMemoryStore,
 	BuiltGuardrail,
+	GuardrailDecision,
+	GuardrailModelCallContext,
+	GuardrailModelCallSource,
+	GuardrailStop,
+	GuardrailToolCallContext,
+	GuardrailsOptions,
+	ModelGuardrail,
 	PiiDetectionType,
 	BuiltEval,
 	RunOptions,
@@ -19,6 +26,7 @@ export type {
 	ToolContext,
 	ToolCancellationContext,
 	ToolExecutionContext,
+	ToolApprovalContext,
 	InterruptibleToolContext,
 	ToolSuspendOptions,
 	CheckpointStore,
@@ -52,6 +60,7 @@ export type {
 	EpisodicMemoryMethods,
 	EpisodicMemoryPrompts,
 	EpisodicMemoryReflectFn,
+	EpisodicMemoryReflectResult,
 	EpisodicMemoryReflection,
 	EpisodicMemoryReflectionApply,
 	EpisodicMemoryReflectionApplyMerge,
@@ -75,9 +84,12 @@ export type {
 	McpVerifyResult,
 	ModelConfig,
 	ExecutionOptions,
+	AgentInputBoundary,
 	SmoothStreamOptions,
 	TokenUsage,
 	AgentExecutionCounter,
+	SideCallTask,
+	SideCallUsageReport,
 	PersistedExecutionOptions,
 	AnthropicPromptCachingConfig,
 	OpenAIPromptCachingConfig,
@@ -93,8 +105,10 @@ export type {
 	ObservationLogEntry,
 	ObservationLogMarker,
 	ObservationLogMerge,
+	ObservationLogObserveResult,
 	ObservationLogReadOptions,
 	ObservationLogReflection,
+	ObservationLogReflectResult,
 	ObservationLogReflectionResult,
 	ObservationLogScope,
 	ObservationLogStatus,
@@ -151,6 +165,13 @@ export {
 } from './sdk/vector-store-filter';
 export type { VectorFilterInput } from './sdk/vector-store-filter';
 export { Guardrail } from './sdk/guardrail';
+export { budgetMonthKey, createBudgetGuardrail } from './runtime/guardrails/budget-guardrail';
+export type {
+	BudgetGuardrailOptions,
+	SpendEntry,
+	SpendLedger,
+	SpendTotal,
+} from './runtime/guardrails/budget-guardrail';
 export {
 	redactText,
 	redactDeep,
@@ -336,6 +357,7 @@ export { WRITE_TODOS_TOOL_NAME, createWriteTodosTool } from './runtime/tools/wri
 export { createPlannerTodosTool } from './runtime/tools/planner-todos-tool';
 export type { CreatePlannerTodosToolOptions } from './runtime/tools/planner-todos-tool';
 export type { CreateWriteTodosToolOptions } from './runtime/tools/write-todos-tool';
+export { isAttachmentValidationError } from './runtime/model/attachment-validation-error';
 export { createEmbeddingModel } from './runtime/model/model-factory';
 export { generateTitleFromMessage } from './runtime/memory/title-generation';
 export {
@@ -368,6 +390,7 @@ export {
 export type {
 	RunEpisodicMemoryCandidateProcessorOpts,
 	RunEpisodicMemoryCandidateProcessorResult,
+	EpisodicMemoryUsageReport,
 } from './runtime/memory/episodic-memory-capture';
 export {
 	DEFAULT_EPISODIC_MEMORY_CAPTURE_TOOL_INSTRUCTION,

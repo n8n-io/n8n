@@ -408,6 +408,7 @@ export class CommunityPackagesService {
 						fields: ['packageName', 'npmVersion', 'checksum', 'nodeVersions'],
 					},
 					this.config.aiNodeSdkVersion,
+					this.config.nodesApiVersion,
 				);
 			} catch (error) {
 				this.logger.error(
@@ -491,6 +492,7 @@ export class CommunityPackagesService {
 
 	private getNpmRegistry() {
 		const { registry } = this.config;
+		// oxlint-disable-next-line typescript/no-deprecated
 		if (registry !== DEFAULT_REGISTRY && !this.license.isCustomNpmRegistryEnabled()) {
 			throw new FeatureNotLicensedError(LICENSE_FEATURES.COMMUNITY_NODES_CUSTOM_REGISTRY);
 		}

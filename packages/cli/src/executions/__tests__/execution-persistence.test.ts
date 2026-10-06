@@ -1,6 +1,7 @@
 /* eslint-disable id-denylist */
 /* eslint-disable @typescript-eslint/unbound-method */
 
+import type { EventService } from '@n8n/backend-services';
 import type { DatabaseConfig, ExecutionsConfig } from '@n8n/config';
 import {
 	ExecutionEntity,
@@ -17,7 +18,6 @@ import { createEmptyRunExecutionData, UnexpectedError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import { DuplicateExecutionError } from '@/errors/duplicate-execution.error';
-import type { EventService } from '@/events/event.service';
 import { CorruptedExecutionDataError } from '@/executions/execution-data/corrupted-execution-data.error';
 import type { DbStore } from '@/executions/execution-data/db-store';
 import type { ExecutionDataJsonStore } from '@/executions/execution-data/execution-data-json-store';

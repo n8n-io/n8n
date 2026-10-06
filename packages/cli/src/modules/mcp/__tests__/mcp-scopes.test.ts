@@ -1,6 +1,8 @@
+import { INSTANCE_ACTIVITY_CONTEXT_FLAG } from '@n8n/api-types';
 import { LicenseState, ModuleRegistry } from '@n8n/backend-common';
+import { EventService, UrlService, RoleService, FolderFinderService } from '@n8n/backend-services';
 import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
-import { ExecutionsConfig, GlobalConfig, WorkflowsConfig } from '@n8n/config';
+import { EndpointsConfig, ExecutionsConfig, GlobalConfig, WorkflowsConfig } from '@n8n/config';
 import {
 	ExecutionRepository,
 	GLOBAL_MEMBER_ROLE,
@@ -15,20 +17,21 @@ import { McpPostSaveMetricsService } from '../mcp-post-save-metrics.service';
 import {
 	AGENT_TOOLS,
 	BUILDER_TOOLS,
+	COMMUNITY_PACKAGE_TOOLS,
 	getAllowedToolNames,
 	INSTANCE_CONTEXT_TOOLS,
 	TOOLS_BY_SCOPE,
 } from '../mcp-scopes';
+import { McpConfig } from '../mcp.config';
 import { McpService } from '../mcp.service';
 import type { McpFeatureFlags } from '../mcp.service';
 
 import { ActiveExecutions } from '@/active-executions';
 import { CollaborationService } from '@/collaboration/collaboration.service';
 import { CredentialsService } from '@/credentials/credentials.service';
-import { EventService } from '@/events/event.service';
 import { ExecutionListService } from '@/executions/execution-list.service';
+import { ExecutionRedactionServiceProxy } from '@/executions/execution-redaction-proxy.service';
 import { ExecutionService } from '@/executions/execution.service';
-import { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks/subworkflow-policy-checker';
 import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.service';
 import { InstanceContextService } from '@/modules/instance-ai/instance-context.service';
 import {
@@ -42,18 +45,17 @@ import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';
 import { AiGatewayService } from '@/services/ai-gateway.service';
 import { AiPreferenceService } from '@/services/ai-preference.service';
-import { FolderFinderService } from '@/services/folder-finder.service';
 import { FolderService } from '@/services/folder.service';
 import { NodeResourceExplorerService } from '@/services/node-resource-explorer.service';
 import { ProjectService } from '@/services/project.service.ee';
-import { RoleService } from '@/services/role.service';
+
 import { TagService } from '@/services/tag.service';
-import { UrlService } from '@/services/url.service';
 import { Telemetry } from '@/telemetry';
 import { WorkflowRunner } from '@/workflow-runner';
 import { WorkflowCreationService } from '@/workflows/workflow-creation.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
+import { ErrorWorkflowValidationService } from '@/workflows/error-workflow-validation.service';
 import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 
@@ -112,6 +114,14 @@ describe('getAllowedToolNames', () => {
 		expect(getAllowedToolNames(['aiPreference:read'])).toEqual(new Set(['get_user_preferences']));
 	});
 
+	// The read tool does not ride along on the write grant: the consent screen shows them as
+	// two scopes, and a client that may write is expected to hold both.
+	it('resolves the preferences write scope to the save, update and undo tools only', () => {
+		expect(getAllowedToolNames(['aiPreference:write'])).toEqual(
+			new Set(['save_user_preference', 'update_user_preference', 'undo_user_preference']),
+		);
+	});
+
 	it('ignores unknown scopes', () => {
 		expect(getAllowedToolNames(['tool:listWorkflows', 'openid'])).toEqual(new Set());
 	});
@@ -142,7 +152,12 @@ describe('McpService scope enforcement', () => {
 		builderEnabled = true,
 		foldersLicensed = true,
 		instanceAiActive = false,
-		activityLogEnabled = true,
+		postHogClient = mockInstance(PostHogClient),
+	}: {
+		builderEnabled?: boolean;
+		foldersLicensed?: boolean;
+		instanceAiActive?: boolean;
+		postHogClient?: PostHogClient;
 	} = {}) =>
 		new McpService(
 			mockLogger(),
@@ -155,13 +170,13 @@ describe('McpService scope enforcement', () => {
 			mockInstance(ActiveExecutions),
 			mockInstance(GlobalConfig, {
 				endpoints: {
+					...new EndpointsConfig(),
 					webhook: '/webhook',
 					webhookTest: '/webhook-test',
 					rest: 'rest',
 					mcpBuilderEnabled: builderEnabled,
 				},
 				tags: { disabled: false },
-				activityLog: { enabled: activityLogEnabled },
 				diagnostics: { enabled: false, frontendConfig: '' },
 			}),
 			mockInstance(Telemetry),
@@ -184,11 +199,11 @@ describe('McpService scope enforcement', () => {
 			mockInstance(LicenseState, {
 				isFoldersLicensed: vi.fn().mockReturnValue(foldersLicensed),
 			}),
-			mockInstance(PostHogClient),
+			postHogClient,
 			mockInstance(WorkflowHistoryService),
 			mockInstance(WorkflowsConfig),
 			mockInstance(WorkflowPublishedDataService),
-			mockInstance(SubworkflowPolicyChecker),
+			mockInstance(ErrorWorkflowValidationService),
 			mockInstance(AiGatewayService, {
 				isAvailable: vi.fn().mockResolvedValue({ available: false }),
 			}),
@@ -201,6 +216,8 @@ describe('McpService scope enforcement', () => {
 			mockInstance(EventService),
 			mockInstance(FolderService),
 			mockInstance(AiPreferenceService),
+			mockInstance(McpConfig),
+			mockInstance(ExecutionRedactionServiceProxy),
 		);
 
 	beforeEach(() => {
@@ -220,42 +237,43 @@ describe('McpService scope enforcement', () => {
 		const registered = getRegisteredToolNames(server);
 
 		// Agent tools require the agents module (inactive here); their own
-		// drift guard lives in agent-tools.service.test.ts. Instance-context
-		// tools need the `instance-ai` module, inactive here for the same reason.
+		// drift guard lives in agent-tools.service.test.ts. Community-package
+		// tools need that module, the verified catalog, and a scope-bearing
+		// caller; their registration guard lives in
+		// install-community-node.registration.test.ts. Instance-context tools
+		// need the `instance-ai` module, inactive here for the same reason.
 		const unregistered = [...ALL_MAPPED_TOOLS].filter(
 			(name) =>
-				!registered.has(name) && !AGENT_TOOLS.has(name) && !INSTANCE_CONTEXT_TOOLS.has(name),
+				!registered.has(name) &&
+				!AGENT_TOOLS.has(name) &&
+				!COMMUNITY_PACKAGE_TOOLS.has(name) &&
+				!INSTANCE_CONTEXT_TOOLS.has(name),
 		);
 		expect(unregistered).toEqual([]);
 	});
 
-	/**
-	 * The registration branch itself, which every other test here leaves dark. It resolves the
-	 * reader out of the container behind a dynamic import, so a wrong path or a missing binding
-	 * would otherwise only surface at runtime on a real instance.
-	 */
-	it('registers the instance-context tools when the flag and the module are both on', async () => {
-		mockInstance(InstanceContextService);
-		mockInstance(WorkflowDependencyQueryService);
+	it.each([true, false])(
+		'sets all context tools and the resource from the shared flag override: %s',
+		async (enabled) => {
+			mockInstance(InstanceContextService);
+			mockInstance(WorkflowDependencyQueryService);
+			const config = mockInstance(GlobalConfig, {
+				diagnostics: { enabled: false },
+				featureFlags: { override: { [INSTANCE_ACTIVITY_CONTEXT_FLAG]: enabled } },
+			});
+			const service = buildService({
+				instanceAiActive: true,
+				postHogClient: new PostHogClient(mockInstance(InstanceSettings), config),
+			});
 
-		const server = await buildService({ instanceAiActive: true }).getServer(
-			user,
-			mcpFeatureFlags({ instanceContextEnabled: true }),
-		);
+			const flags = await service.resolveFeatureFlags(user);
+			const server = await service.getServer(user, flags);
 
-		const registered = getRegisteredToolNames(server);
-		for (const name of INSTANCE_CONTEXT_TOOLS) expect(registered).toContain(name);
-	});
-
-	it('registers none of them with the module active but the flag off', async () => {
-		const server = await buildService({ instanceAiActive: true }).getServer(
-			user,
-			mcpFeatureFlags({ instanceContextEnabled: false }),
-		);
-
-		const registered = getRegisteredToolNames(server);
-		for (const name of INSTANCE_CONTEXT_TOOLS) expect(registered).not.toContain(name);
-	});
+			const registered = getRegisteredToolNames(server);
+			for (const name of INSTANCE_CONTEXT_TOOLS) expect(registered.has(name)).toBe(enabled);
+			expect(getRegisteredResourceUris(server).has(INSTANCE_CONTEXT_RESOURCE_URI)).toBe(enabled);
+		},
+	);
 
 	/**
 	 * Node usage reads the dependency index, which belongs to no module, so it does not follow the
@@ -331,15 +349,24 @@ describe('McpService scope enforcement', () => {
 		);
 
 		instanceContext.buildBlock.mockResolvedValue({
+			state: 'injected',
+			isUpdate: false,
+			legs: { inventory: 2, events: 0, runs: 0 },
 			block: 'Workflows that already exist here: 2',
-			cursor: { activityMark: 1, activitySeen: [], runsThrough: '2026-09-16T00:00:00.000Z' },
+			cursor: {
+				activityMark: 1,
+				activityFloor: 0,
+				activityCategories: ['workflow', 'credential'],
+				activitySeen: [],
+				runsThrough: '2026-09-16T00:00:00.000Z',
+			},
 		});
 		expect(await readResourceText(server, INSTANCE_CONTEXT_RESOURCE_URI)).toBe(
 			'Workflows that already exist here: 2',
 		);
 
 		// Empty read plus an estate that exists: the client must not be told the instance is empty.
-		instanceContext.buildBlock.mockResolvedValue(null);
+		instanceContext.buildBlock.mockResolvedValue({ state: 'absent', reason: 'empty' });
 		instanceContext.hasWithheldWorkflows.mockResolvedValue(true);
 		expect(await readResourceText(server, INSTANCE_CONTEXT_RESOURCE_URI)).toBe(
 			NOTHING_EXPOSED_TEXT,
@@ -368,26 +395,6 @@ describe('McpService scope enforcement', () => {
 
 		expect(getRegisteredToolNames(server)).not.toContain('get_instance_context');
 		expect(getRegisteredResourceUris(server)).not.toContain(INSTANCE_CONTEXT_RESOURCE_URI);
-	});
-
-	/**
-	 * The log is off by default, and a tool answering from a store nothing writes to reports an
-	 * empty feed — which an agent reads as "nothing has happened here".
-	 */
-	it('withholds the activity tools when the activity log is not being written', async () => {
-		mockInstance(InstanceContextService);
-		mockInstance(WorkflowDependencyQueryService);
-
-		const server = await buildService({
-			instanceAiActive: true,
-			activityLogEnabled: false,
-		}).getServer(user, mcpFeatureFlags({ instanceContextEnabled: true }));
-
-		const registered = getRegisteredToolNames(server);
-		expect(registered).not.toContain('get_instance_activity');
-		expect(registered).not.toContain('expand_instance_activity');
-		// Node usage reads its own index, so the log has no bearing on it.
-		expect(registered).toContain('get_node_usage');
 	});
 
 	/**
@@ -434,7 +441,11 @@ describe('McpService scope enforcement', () => {
 		);
 
 		const gated = [...withBuilder].filter((name) => !withoutBuilder.has(name)).sort();
-		expect(gated).toEqual([...BUILDER_TOOLS].sort());
+		// Community-package tools are builder-gated but register in neither
+		// service here, because this harness has the module inactive. Their
+		// builder gating is asserted in install-community-node.registration.test.ts.
+		const expected = [...BUILDER_TOOLS].filter((name) => !COMMUNITY_PACKAGE_TOOLS.has(name)).sort();
+		expect(gated).toEqual(expected);
 	});
 
 	describe('get_user_preferences registration', () => {
@@ -477,6 +488,59 @@ describe('McpService scope enforcement', () => {
 			});
 
 			expect(getRegisteredToolNames(server)).not.toContain('get_user_preferences');
+		});
+	});
+
+	describe('preference write tools registration', () => {
+		const WRITE_TOOLS = ['save_user_preference', 'update_user_preference', 'undo_user_preference'];
+
+		it('registers the three write tools when the preferences flag is on', async () => {
+			const server = await buildService().getServer(
+				user,
+				mcpFeatureFlags({ aiPreferencesEnabled: true }),
+			);
+
+			for (const name of WRITE_TOOLS) expect(getRegisteredToolNames(server)).toContain(name);
+		});
+
+		it('registers none of them when the preferences flag is off', async () => {
+			const server = await buildService().getServer(
+				user,
+				mcpFeatureFlags({ aiPreferencesEnabled: false }),
+			);
+
+			for (const name of WRITE_TOOLS) expect(getRegisteredToolNames(server)).not.toContain(name);
+		});
+
+		it('registers them with the builder disabled, like the read tool', async () => {
+			const server = await buildService({ builderEnabled: false }).getServer(
+				user,
+				mcpFeatureFlags({ aiPreferencesEnabled: true }),
+			);
+
+			for (const name of WRITE_TOOLS) expect(getRegisteredToolNames(server)).toContain(name);
+		});
+
+		// A granted scope set is fixed at authorization, so a client that consented before the
+		// write scope existed cannot write until the user consents again.
+		it('keeps them out of reach of a grant that holds only the read scope', async () => {
+			const server = await buildService().getServer(user, mcpFeatureFlags(), undefined, {
+				grantedScopes: ['aiPreference:read'],
+			});
+
+			const registered = getRegisteredToolNames(server);
+			expect(registered).toContain('get_user_preferences');
+			for (const name of WRITE_TOOLS) expect(registered).not.toContain(name);
+		});
+
+		it('registers them, and not the read tool, for a write-only grant', async () => {
+			const server = await buildService().getServer(user, mcpFeatureFlags(), undefined, {
+				grantedScopes: ['aiPreference:write'],
+			});
+
+			const registered = getRegisteredToolNames(server);
+			expect(registered).not.toContain('get_user_preferences');
+			for (const name of WRITE_TOOLS) expect(registered).toContain(name);
 		});
 	});
 

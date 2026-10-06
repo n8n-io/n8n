@@ -1,7 +1,7 @@
 import type { BinaryDataRepository, ExecutionRepository, User } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
-import type { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
+import type { WorkflowSharingService } from '@n8n/backend-services';
 
 import { BinaryDataAccessService } from '../binary-data-access.service';
 

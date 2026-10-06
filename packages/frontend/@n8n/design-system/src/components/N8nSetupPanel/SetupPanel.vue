@@ -260,7 +260,7 @@ watch(
 
 .base,
 .overlay {
-	--animation--popover-in--scale: 0.7;
+	--animation--popover-in--scale: 0.95;
 
 	align-self: end;
 }
@@ -294,7 +294,7 @@ watch(
 .enterFrom,
 .leaveTo {
 	opacity: 0;
-	transform: scale(0.7);
+	transform: scale(0.95);
 }
 
 .listSpacing {

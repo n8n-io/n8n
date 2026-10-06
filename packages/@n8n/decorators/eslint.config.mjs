@@ -5,8 +5,13 @@ export default defineConfig(
 	backendConfig,
 	{
 		rules: {
-			'@typescript-eslint/no-base-to-string': 'warn',
 			'import-x/export': 'warn',
+		},
+	},
+	{
+		files: ['src/redactable.ts'],
+		rules: {
+			'@typescript-eslint/no-base-to-string': 'warn',
 		},
 	},
 	{

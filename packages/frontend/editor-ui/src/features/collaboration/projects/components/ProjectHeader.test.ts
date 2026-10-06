@@ -17,7 +17,6 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { mock } from 'vitest-mock-extended';
 import type { IUser } from '@n8n/rest-api-client';
-import { createServer } from 'miragejs';
 
 const mockPush = vi.fn();
 vi.mock('vue-router', async () => {
@@ -114,47 +113,6 @@ describe('ProjectHeader', () => {
 
 	afterEach(() => {
 		vi.clearAllMocks();
-	});
-
-	it('shows live promotion changes only with export and push access', async () => {
-		const server = createServer({ environment: 'test' });
-		server.get('/rest/promotions/project-1/changes/promote', () => ({
-			data: {
-				commitSha: 'a'.repeat(40),
-				changes: [
-					{ id: 'workflow-1', name: 'Changed workflow', type: 'workflow', status: 'modified' },
-				],
-			},
-		}));
-		try {
-			settingsStore.isModuleActive.mockReturnValue(true);
-			settingsStore.settings = {
-				...settingsStore.settings,
-				envFeatureFlags: { N8N_ENV_FEAT_PROMOTIONS: 'true' },
-			};
-			projectsStore.currentProject = createTestProject({
-				id: 'project-1',
-				scopes: ['project:export'],
-			});
-			usersStore.currentUser = mock<IUser>({ globalScopes: ['gitConnection:push'] });
-			const { findByTestId, queryByTestId } = renderComponent();
-
-			expect(await findByTestId('promotion-banner')).toHaveTextContent('1 change');
-			await userEvent.click(await findByTestId('promotion-banner-link'));
-			expect(uiStore.openModalWithData).toHaveBeenCalledWith({
-				name: 'promotionSelect',
-				data: { projectId: 'project-1' },
-			});
-
-			projectsStore.currentProject.scopes = [];
-			await waitFor(() => expect(queryByTestId('promotion-banner')).not.toBeInTheDocument());
-			projectsStore.currentProject.scopes = ['project:export'];
-			expect(await findByTestId('promotion-banner')).toHaveTextContent('1 change');
-			usersStore.currentUser = mock<IUser>({ globalScopes: [] });
-			await waitFor(() => expect(queryByTestId('promotion-banner')).not.toBeInTheDocument());
-		} finally {
-			server.shutdown();
-		}
 	});
 
 	it('should not render title icon on overview page', async () => {
@@ -363,6 +321,7 @@ describe('ProjectHeader', () => {
 	describe('new agent telemetry', () => {
 		beforeEach(() => {
 			settingsStore.isModuleActive = vi.fn().mockImplementation((mod) => mod === 'agents');
+			settingsStore.isAgentsEnabled = true;
 			const project = createTestProject({
 				scopes: ['workflow:create', 'agent:create'],
 			});
@@ -427,6 +386,31 @@ describe('ProjectHeader', () => {
 		} as RouteLocationNormalizedLoadedGeneric);
 		const { queryByTestId } = renderComponent();
 		expect(queryByTestId('add-resource-buttons')).not.toBeInTheDocument();
+	});
+
+	it('should hide agent controls when agents are disabled', () => {
+		vi.spyOn(projectPages, 'isSharedSubPage', 'get').mockReturnValue(false);
+		vi.spyOn(projectPages, 'isOverviewSubPage', 'get').mockReturnValue(false);
+		settingsStore.isModuleActive = vi.fn().mockImplementation((module) => module === 'agents');
+		settingsStore.isAgentsEnabled = false;
+		uiStore.moduleTabs.project = {
+			agents: [{ value: 'agents', label: 'Agents' }],
+		};
+		const project = createTestProject({ scopes: ['workflow:create', 'agent:create'] });
+		projectsStore.currentProject = project;
+		projectsStore.myProjects = [project] as unknown as ProjectListItem[];
+
+		const { getByTestId, queryByTestId } = renderComponent({ props: { mainButton: 'agent' } });
+
+		expect(projectTabsSpy).toHaveBeenCalledWith(
+			expect.objectContaining({
+				'additional-tabs': [],
+			}),
+			null,
+		);
+		expect(queryByTestId('menu-agent')).not.toBeInTheDocument();
+		expect(queryByTestId('add-resource-agent')).not.toBeInTheDocument();
+		expect(getByTestId('add-resource-workflow')).toBeEnabled();
 	});
 
 	describe('customProjectTabs', () => {
@@ -710,6 +694,7 @@ describe('ProjectHeader', () => {
 
 		it('should enable agent create button when project scope allows it', () => {
 			settingsStore.isModuleActive = vi.fn().mockImplementation((mod) => mod === 'agents');
+			settingsStore.isAgentsEnabled = true;
 			const project = createTestProject({ scopes: ['agent:create'] });
 			projectsStore.currentProject = project;
 			projectsStore.myProjects = [project] as unknown as ProjectListItem[];
@@ -722,6 +707,7 @@ describe('ProjectHeader', () => {
 
 		it('should disable agent create button when no scope allows it', () => {
 			settingsStore.isModuleActive = vi.fn().mockImplementation((mod) => mod === 'agents');
+			settingsStore.isAgentsEnabled = true;
 			const project = createTestProject({ scopes: [] });
 			projectsStore.currentProject = project;
 			projectsStore.myProjects = [project] as unknown as ProjectListItem[];

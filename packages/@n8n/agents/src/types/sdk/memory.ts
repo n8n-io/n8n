@@ -1,6 +1,11 @@
 import type { EmbeddingModel } from 'ai';
 
-import type { AgentExecutionCounter, ModelConfig, SerializableAgentState } from './agent';
+import type {
+	AgentExecutionCounter,
+	ModelConfig,
+	SerializableAgentState,
+	TokenUsage,
+} from './agent';
 import type { AgentDbMessage } from './message';
 import type {
 	BuiltObservationLogStore,
@@ -64,6 +69,8 @@ export interface BuiltMemory {
 		threadId: string;
 		resourceId: string;
 		messages: AgentDbMessage[];
+		/** Host context for linking persisted messages to the current run. */
+		hostMetadata?: JSONObject;
 	}): Promise<void>;
 	deleteMessages(messageIds: string[]): Promise<void>;
 	// --- Episodic memory (optional — runtime handles extraction and embeddings) ---
@@ -254,9 +261,23 @@ export interface EpisodicMemoryReflectorInput {
 	executionCounter?: AgentExecutionCounter;
 }
 
+export interface EpisodicMemoryReflectResult {
+	reflection: EpisodicMemoryReflection;
+	/** Normalized token usage from the reflector LLM call, when the provider reports it. */
+	usage?: TokenUsage;
+	/** Stable model id string of the model that produced the reflection. */
+	model: string;
+}
+
+/**
+ * Reflect a cluster of episodic entries. Returns the reflection, or a
+ * `{ reflection, usage, model }` result that also carries token usage for the
+ * host to price. Bare `EpisodicMemoryReflection` returns are accepted for
+ * backward compatibility.
+ */
 export type EpisodicMemoryReflectFn = (
 	input: EpisodicMemoryReflectorInput,
-) => Promise<EpisodicMemoryReflection>;
+) => Promise<EpisodicMemoryReflection | EpisodicMemoryReflectResult>;
 
 export interface EpisodicMemoryReflectionApplyMerge {
 	supersedes: string[];
@@ -381,6 +402,6 @@ export interface CheckpointStore {
 	 * false when another process has already claimed or changed the snapshot.
 	 */
 	claimForResume?(key: string, state: SerializableAgentState): Promise<boolean>;
-	/** Delete a snapshot by key. */
-	delete(key: string): Promise<void>;
+	/** Delete a snapshot. Hosts can use the finishing state to check ownership. */
+	delete(key: string, state?: SerializableAgentState): Promise<void>;
 }

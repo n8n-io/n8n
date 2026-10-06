@@ -1,9 +1,11 @@
 import Anthropic from './custom/anthropic.svg';
+import Azure from './custom/azure.svg';
 import Binary from './custom/binary.svg';
 import BoltFilled from './custom/bolt-filled.svg';
 import Continue from './custom/continue.svg';
 import Discord from './custom/discord.svg';
 import EmptyOutput from './custom/empty-output.svg';
+import Entra from './custom/entra.svg';
 import FilledSquare from './custom/filled-square.svg';
 import Form from './custom/form.svg';
 import GripLinesVertical from './custom/grip-lines-vertical.svg';
@@ -34,6 +36,7 @@ import StatusNew from './custom/status-new.svg';
 import StatusUnknown from './custom/status-unknown.svg';
 import StatusWaiting from './custom/status-waiting.svg';
 import StatusWarning from './custom/status-warning.svg';
+import Teams from './custom/teams.svg';
 import Telegram from './custom/telegram.svg';
 import Text from './custom/text.svg';
 import Toolbox from './custom/toolbox.svg';
@@ -61,6 +64,7 @@ import IconLucideBlocks from '~icons/lucide/blocks';
 import IconLucideBold from '~icons/lucide/bold';
 import IconLucideBook from '~icons/lucide/book';
 import IconLucideBookOpen from '~icons/lucide/book-open';
+import IconLucideBookmark from '~icons/lucide/bookmark';
 import IconLucideBot from '~icons/lucide/bot';
 import IconLucideBox from '~icons/lucide/box';
 import IconLucideBraces from '~icons/lucide/braces';
@@ -314,6 +318,7 @@ export const deprecatedIconSet = {
 	linear: Linear,
 	telegram: Telegram,
 	discord: Discord,
+	teams: Teams,
 	spinner: Spinner,
 	xmark: IconLucideX,
 	mcp: Mcp,
@@ -535,6 +540,9 @@ export const updatedIconSet = {
 	linear: Linear,
 	telegram: Telegram,
 	discord: Discord,
+	teams: Teams,
+	azure: Azure,
+	entra: Entra,
 	spinner: Spinner,
 	'node-dirty': NodeDirty,
 	'node-ellipsis': NodeEllipsis,
@@ -571,6 +579,7 @@ export const updatedIconSet = {
 	bold: IconLucideBold,
 	book: IconLucideBook,
 	'book-open': IconLucideBookOpen,
+	bookmark: IconLucideBookmark,
 	bot: IconLucideBot,
 	box: IconLucideBox,
 	brain: IconLucideBrain,
@@ -755,6 +764,7 @@ export const updatedIconSet = {
 	terminal: IconLucideTerminal,
 	'thumbs-down': IconLucideThumbsDown,
 	'thumbs-up': IconLucideThumbsUp,
+	timer: IconLucideTimer,
 	'trash-2': IconLucideTrash2,
 	'tree-pine': IconLucideTreePine,
 	'trending-down': IconLucideTrendingDown,

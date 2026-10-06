@@ -35,6 +35,7 @@ import {
 	getSlackPlatformAgentContext,
 	getSlackReplyExpectation,
 	prepareSlackInboundText,
+	type SlackThreadContext,
 } from './slack-bridge-behavior';
 import { SlackManagedSetupService } from './slack-managed-setup.service';
 import { executeSlackContextQuery, subscribeSlackThread } from './slack-operations';
@@ -179,6 +180,7 @@ export class SlackIntegration extends AgentChatIntegration {
 		thread: BridgeMessageContextParams['thread'];
 		logger: BridgeMessageContextParams['logger'];
 		agentId: string;
+		slackThreadContext?: SlackThreadContext;
 	}): Promise<BridgeResumeExecutionContext> {
 		return await createSlackResumeExecutionContext(params);
 	}

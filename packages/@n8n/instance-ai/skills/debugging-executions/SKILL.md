@@ -86,6 +86,10 @@ first move whenever the user is debugging a **read** node that already failed a
 real execution: the node ran for real once already, and a mock-only check is
 what sends the user back for a second session.
 
+The action refuses a replay that would re-run a node above the target: an
+unpinned one the execution never reached, one that failed there, or a loop
+that did not finish. Pick another execution, or tell the user which node would run again.
+
 ### Decide whether the node is safe to run first
 
 A step run is a real run. The node uses the user's real credentials and reaches
@@ -141,6 +145,55 @@ list — report the node's behaviour, not the workflow's.
 Mocked input does **not** make a write node safe. The node still runs for real
 against the user's systems; only its input is invented, which makes the effect
 less predictable, not more.
+
+### Running a tool
+
+A tool never runs on its own. n8n runs it through the node that owns it —
+usually the Agent. A step run on a tool therefore behaves like a step run on
+that Agent:
+
+- `mockInput` feeds the **Agent's** input, not the tool's arguments.
+- `reuseExecutionId` replays the nodes above the **Agent**.
+- A chain run (neither option) runs every node above the Agent for real. Give
+  one of the two options when a node up there writes.
+- `ranThroughNodeNames` lists **every** node that can run the tool, not the one
+  that ran it. A tool on several agents lists them all: the engine picks one,
+  and it does not report which. Do not name a single Agent to the user when
+  this field holds more than one.
+- A tool on two Agents where one runs above the other is refused. Run the
+  upper Agent, then read the tool with `executions(action="get-node-output")`.
+
+The tool's own arguments come from `toolArguments` — the values the agent would
+normally decide:
+
+```
+executions(action="run-step", workflowId, nodeName="Search Tickets Tool",
+           reuseExecutionId=<the failed execution>,
+           toolArguments={"query": "login fails", "status": "open"})
+```
+
+The example targets a **read** tool on purpose. The write rule above holds here
+too, and a tool hides the write behind a friendly name: a step run on a "Create
+Ticket" tool creates the ticket again, and `toolArguments` does not change that.
+Only run one when the user has accepted a second write.
+
+Use the argument names from the node's `$fromAI` calls, which
+`workflows(action="get-as-code")` shows. Pass a plain string instead for a tool
+that takes one free-text input (Wikipedia, Code Tool, a vector store used as a
+tool).
+
+A tool that declares `$fromAI` arguments is refused without them: it would
+otherwise fail for a reason that has nothing to do with the user's problem, and
+you would report that as the defect. A node that holds several tools is refused
+outright, because nothing here can name one of its tools the way the agent
+does: the "MCP Client Tool" node, and every node the MCP registry added, whose
+type is `@n8n/mcp-registry.<server slug>`. Run the Agent for those, and read
+the node's output from that execution.
+
+A sub-node that is not a tool — a model, memory, embeddings — cannot be run this
+way at all. Run the Agent, and read the sub-node with
+`executions(action="get-node-output")` on **that** execution: n8n records every
+call a sub-node made while the Agent ran.
 
 ## Successful execution with wrong or empty value
 

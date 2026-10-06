@@ -11,6 +11,38 @@ function toolCallEvent(toolCallId: string, toolName: string): InstanceAiEvent {
 	};
 }
 
+function toolCallWithArgs(
+	toolCallId: string,
+	toolName: string,
+	args: Record<string, unknown>,
+): Extract<InstanceAiEvent, { type: 'tool-call' }> {
+	return {
+		type: 'tool-call',
+		runId: 'run-1',
+		agentId: 'agent-1',
+		payload: { toolCallId, toolName, args },
+	};
+}
+
+function confirmationEvent(
+	inputType?: 'questions' | 'text' | 'approval',
+): Extract<InstanceAiEvent, { type: 'confirmation-request' }> {
+	return {
+		type: 'confirmation-request',
+		runId: 'run-1',
+		agentId: 'agent-1',
+		payload: {
+			requestId: 'req-1',
+			toolCallId: 'tc-1',
+			toolName: 'ask',
+			args: {},
+			severity: 'info',
+			message: 'which one?',
+			...(inputType ? { inputType } : {}),
+		},
+	};
+}
+
 function toolResultEvent(toolCallId: string, result: unknown = 'ok'): InstanceAiEvent {
 	return {
 		type: 'tool-result',
@@ -141,4 +173,57 @@ describe('WorkSummaryAccumulator', () => {
 		expect(summary.totalToolCalls).toBe(1);
 		expect(summary.toolCalls[0].succeeded).toBe(true);
 	});
+
+	/**
+	 * Several tools are one name over a discriminated union, so the name alone cannot say
+	 * what was asked for — the rung derivation reads the action to tell them apart.
+	 */
+	it("records a call's action", () => {
+		const accumulator = new WorkSummaryAccumulator();
+		accumulator.observe(toolCallWithArgs('tc-1', 'activity', { action: 'expand', id: 7 }));
+
+		expect(accumulator.toSummary().toolCalls[0].action).toBe('expand');
+	});
+
+	it('leaves the action unset for a call that has none', () => {
+		const accumulator = new WorkSummaryAccumulator();
+		accumulator.observe(toolCallEvent('tc-1', 'list-workflows'));
+
+		expect(accumulator.toSummary().toolCalls[0].action).toBeUndefined();
+	});
+
+	it('leaves the action unset when it is not a string', () => {
+		const accumulator = new WorkSummaryAccumulator();
+		accumulator.observe(toolCallWithArgs('tc-1', 'activity', { action: 42 }));
+
+		expect(accumulator.toSummary().toolCalls[0].action).toBeUndefined();
+	});
+
+	it('reports no clarifying question by default', () => {
+		expect(new WorkSummaryAccumulator().toSummary().askedClarifyingQuestion).toBe(false);
+	});
+
+	it.each(['questions', 'text'] as const)(
+		'reports a clarifying question for a %s confirmation',
+		(inputType) => {
+			const accumulator = new WorkSummaryAccumulator();
+			accumulator.observe(confirmationEvent(inputType));
+
+			expect(accumulator.toSummary().askedClarifyingQuestion).toBe(true);
+		},
+	);
+
+	/**
+	 * An approval prompt is the agent saying what it is about to do. That is not the same
+	 * act as not knowing, and counting it would inflate the number the rollout is judged on.
+	 */
+	it.each([['approval' as const], [undefined]])(
+		'does not count a %s confirmation as a clarifying question',
+		(inputType) => {
+			const accumulator = new WorkSummaryAccumulator();
+			accumulator.observe(confirmationEvent(inputType));
+
+			expect(accumulator.toSummary().askedClarifyingQuestion).toBe(false);
+		},
+	);
 });

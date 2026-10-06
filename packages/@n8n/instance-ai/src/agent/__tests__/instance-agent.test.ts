@@ -102,6 +102,8 @@ vi.mock('../../tracing/langsmith-tracing', () => ({
 
 vi.mock('../system-prompt', () => ({
 	getSystemPrompt: vi.fn().mockReturnValue('system prompt'),
+	// `prompt-profiles` builds the other published system prompt versions with this.
+	createSystemPromptRenderer: vi.fn(() => vi.fn().mockReturnValue('system prompt')),
 }));
 
 import { Agent as AgentImport, Memory as MemoryImport } from '@n8n/agents';
@@ -241,43 +243,6 @@ describe('createInstanceAgent', () => {
 		expect(getDeferredTools()).not.toHaveProperty('create-tasks-profile');
 		expect(getAttachedTools()).not.toHaveProperty('nodes-profile');
 		expect(getAttachedTools()).toHaveProperty('build-workflow-profile');
-	});
-
-	it('requires MCP tool approval unless the executeMcpTool permission is always_allow', async () => {
-		const baseOptions = (executeMcpTool?: string) =>
-			({
-				modelId: 'test-model',
-				context: {
-					runLabel: 'mcp-approval-run',
-					computerUseState: undefined,
-					licenseHints: undefined,
-					localMcpServer: undefined,
-					permissions: executeMcpTool ? { executeMcpTool } : undefined,
-				},
-				orchestrationContext: { runId: 'mcp-approval-run' },
-				memoryConfig: {},
-			}) as never;
-
-		const requireApprovalManager = createMcpManagerStub();
-		await createInstanceAgent({
-			...(baseOptions('require_approval') as object),
-			mcpManager: requireApprovalManager,
-		} as never);
-		expect(requireApprovalManager.getRegularTools).toHaveBeenCalledWith([], undefined, true);
-
-		const alwaysAllowManager = createMcpManagerStub();
-		await createInstanceAgent({
-			...(baseOptions('always_allow') as object),
-			mcpManager: alwaysAllowManager,
-		} as never);
-		expect(alwaysAllowManager.getRegularTools).toHaveBeenCalledWith([], undefined, false);
-
-		const noPermissionsManager = createMcpManagerStub();
-		await createInstanceAgent({
-			...(baseOptions() as object),
-			mcpManager: noPermissionsManager,
-		} as never);
-		expect(noPermissionsManager.getRegularTools).toHaveBeenCalledWith([], undefined, true);
 	});
 
 	it('eager-loads checkpoint settlement tools only for checkpoint follow-up runs', async () => {

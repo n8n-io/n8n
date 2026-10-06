@@ -1,23 +1,22 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 import { useI18n } from '@n8n/i18n';
-import type { UserAction } from '@/Interface';
-import type { Agent } from '@/features/agents/agent.types';
-import type { TableHeader, TableOptions } from '@n8n/design-system';
+import type { McpAgent } from '@/features/ai/mcpAccess/mcp.types';
+import type { TableHeader, TableOptions, UserAction } from '@n8n/design-system';
 import {
 	N8nActionToggle,
 	N8nButton,
 	N8nDataTableServer,
 	N8nLink,
 	N8nLoading,
+	N8nSelectedItemsInfo,
 	N8nText,
 } from '@n8n/design-system';
-import SelectedItemsInfo from '@/app/components/common/SelectedItemsInfo.vue';
-import { AGENT_VIEW, PROJECT_AGENTS } from '@/features/agents/constants';
-import router from '@/app/router';
+import { AGENT_VIEW, PROJECT_AGENTS } from '@n8n/frontend-constants/agents';
+import { useRouter } from 'vue-router';
 
 type Props = {
-	agents: Agent[];
+	agents: McpAgent[];
 	totalCount?: number;
 	loading: boolean;
 };
@@ -54,13 +53,14 @@ const tableSortBy = computed({
 });
 
 const emit = defineEmits<{
-	removeMcpAccess: [agent: Agent];
+	removeMcpAccess: [agent: McpAgent];
 	bulkRemoveMcpAccess: [agentIds: string[]];
 	connectAgents: [];
 	'update:options': [payload: TableOptions];
 }>();
 
 const i18n = useI18n();
+const router = useRouter();
 
 const itemsLength = computed(() => props.totalCount ?? props.agents.length);
 
@@ -82,7 +82,7 @@ const onBulkRemoveMcpAccess = () => {
 	emit('bulkRemoveMcpAccess', selectedAgentIds.value);
 };
 
-const tableHeaders = ref<Array<TableHeader<Agent>>>([
+const tableHeaders = ref<Array<TableHeader<McpAgent>>>([
 	{
 		title: i18n.baseText('settings.mcp.agents.table.column.name'),
 		key: 'agent',
@@ -113,14 +113,14 @@ const tableHeaders = ref<Array<TableHeader<Agent>>>([
 	},
 ]);
 
-const availableActions: Array<UserAction<Agent>> = [
+const availableActions: Array<UserAction<McpAgent>> = [
 	{
 		label: i18n.baseText('settings.mcp.agents.table.action.removeMCPAccess'),
 		value: 'removeFromMCP',
 	},
 ];
 
-const onAgentAction = (action: string, agent: Agent) => {
+const onAgentAction = (action: string, agent: McpAgent) => {
 	if (action === 'removeFromMCP') {
 		emit('removeMcpAccess', agent);
 	}
@@ -130,18 +130,18 @@ const onConnectClick = () => {
 	emit('connectAgents');
 };
 
-const agentLink = (agent: Agent) =>
+const agentLink = (agent: McpAgent) =>
 	router.resolve({
 		name: AGENT_VIEW,
 		params: { projectId: agent.projectId, agentId: agent.id },
 	}).fullPath;
 
-const projectName = (agent: Agent) =>
+const projectName = (agent: McpAgent) =>
 	agent.project?.type === 'personal'
 		? i18n.baseText('projects.menu.personal')
 		: (agent.project?.name ?? '');
 
-const projectLink = (agent: Agent) =>
+const projectLink = (agent: McpAgent) =>
 	router.resolve({
 		name: PROJECT_AGENTS,
 		params: { projectId: agent.projectId },
@@ -230,7 +230,7 @@ const projectLink = (agent: Agent) =>
 					/>
 				</template>
 			</N8nDataTableServer>
-			<SelectedItemsInfo
+			<N8nSelectedItemsInfo
 				:class="$style['selection-bar']"
 				:selected-count="selectedAgentIds.length"
 				@clear-selection="clearSelection"
@@ -243,7 +243,7 @@ const projectLink = (agent: Agent) =>
 						@click="onBulkRemoveMcpAccess"
 					/>
 				</template>
-			</SelectedItemsInfo>
+			</N8nSelectedItemsInfo>
 		</div>
 	</div>
 </template>

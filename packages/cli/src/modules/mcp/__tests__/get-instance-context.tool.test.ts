@@ -17,7 +17,7 @@ function harness() {
 	const instanceContext = mock<InstanceContextService>();
 	const telemetry = mock<Telemetry>();
 
-	instanceContext.buildBlock.mockResolvedValue(null);
+	instanceContext.buildBlock.mockResolvedValue({ state: 'absent', reason: 'empty' });
 	instanceContext.hasWithheldWorkflows.mockResolvedValue(false);
 
 	return {
@@ -46,6 +46,7 @@ describe('get_instance_context', () => {
 				scope: { surface: 'mcp', credentialGranted: false, executionGranted: true },
 				// Stateless server, no thread to track against, so every read is a full snapshot.
 				cursor: null,
+				enabled: true,
 			}),
 		);
 	});
@@ -70,8 +71,17 @@ describe('get_instance_context', () => {
 	it('returns the block as prose', async () => {
 		const { tool, instanceContext } = harness();
 		instanceContext.buildBlock.mockResolvedValue({
+			state: 'injected',
+			isUpdate: false,
+			legs: { inventory: 3, events: 0, runs: 0 },
 			block: 'Workflows that already exist here: 3',
-			cursor: { activityMark: 9, activitySeen: [], runsThrough: '2026-09-10T00:00:00.000Z' },
+			cursor: {
+				activityMark: 9,
+				activityFloor: 0,
+				activityCategories: ['workflow', 'credential'],
+				activitySeen: [],
+				runsThrough: '2026-09-10T00:00:00.000Z',
+			},
 		});
 
 		const result = await tool.handler({}, mock());
@@ -82,7 +92,7 @@ describe('get_instance_context', () => {
 
 	it('reports a genuinely empty instance as empty', async () => {
 		const { tool, instanceContext } = harness();
-		instanceContext.buildBlock.mockResolvedValue(null);
+		instanceContext.buildBlock.mockResolvedValue({ state: 'absent', reason: 'empty' });
 		instanceContext.hasWithheldWorkflows.mockResolvedValue(false);
 
 		const result = await tool.handler({}, mock());
@@ -98,7 +108,7 @@ describe('get_instance_context', () => {
 	 */
 	it('says nothing is exposed, not that the instance is empty, when the estate is withheld', async () => {
 		const { tool, instanceContext } = harness();
-		instanceContext.buildBlock.mockResolvedValue(null);
+		instanceContext.buildBlock.mockResolvedValue({ state: 'absent', reason: 'empty' });
 		instanceContext.hasWithheldWorkflows.mockResolvedValue(true);
 
 		const result = await tool.handler({}, mock());
@@ -129,8 +139,17 @@ describe('get_instance_context', () => {
 	it('tracks a successful call', async () => {
 		const { tool, telemetry, instanceContext } = harness();
 		instanceContext.buildBlock.mockResolvedValue({
+			state: 'injected',
+			isUpdate: false,
+			legs: { inventory: 3, events: 0, runs: 0 },
 			block: 'Workflows that already exist here: 3',
-			cursor: { activityMark: 9, activitySeen: [], runsThrough: '2026-09-10T00:00:00.000Z' },
+			cursor: {
+				activityMark: 9,
+				activityFloor: 0,
+				activityCategories: ['workflow', 'credential'],
+				activitySeen: [],
+				runsThrough: '2026-09-10T00:00:00.000Z',
+			},
 		});
 
 		await tool.handler({}, mock());

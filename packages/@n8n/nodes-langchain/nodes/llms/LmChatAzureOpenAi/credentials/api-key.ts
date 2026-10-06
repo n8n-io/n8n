@@ -1,5 +1,7 @@
 import { NodeOperationError, OperationalError, type ISupplyDataFunctions } from 'n8n-workflow';
 
+import { normalizeEndpoint } from './normalizeEndpoint';
+import { requireFoundryEndpoint } from './requireFoundryEndpoint';
 import type { AzureOpenAIApiKeyModelConfig } from '../types';
 
 /**
@@ -30,18 +32,16 @@ export async function setupApiKeyAuthentication(
 		this.logger.info('Using API Key authentication for Azure OpenAI.');
 
 		if (configCredentials.endpointType === 'foundry') {
-			if (!configCredentials.foundryEndpoint) {
-				throw new NodeOperationError(
-					this.getNode(),
-					'Foundry endpoint is missing in the selected Azure OpenAI API credential.',
-				);
-			}
+			const foundryEndpoint = requireFoundryEndpoint(
+				this.getNode(),
+				configCredentials.foundryEndpoint,
+			);
 			return {
 				azureOpenAIApiKey: configCredentials.apiKey,
 				azureOpenAIApiInstanceName: '',
 				azureOpenAIApiVersion: '',
-				azureOpenAIEndpoint: configCredentials.foundryEndpoint,
-				azureFoundryBaseURL: configCredentials.foundryEndpoint,
+				azureOpenAIEndpoint: foundryEndpoint,
+				azureFoundryBaseURL: foundryEndpoint,
 			};
 		}
 
@@ -56,7 +56,7 @@ export async function setupApiKeyAuthentication(
 			azureOpenAIApiKey: configCredentials.apiKey,
 			azureOpenAIApiInstanceName: configCredentials.resourceName,
 			azureOpenAIApiVersion: configCredentials.apiVersion,
-			azureOpenAIEndpoint: configCredentials.endpoint,
+			azureOpenAIEndpoint: normalizeEndpoint(configCredentials.endpoint),
 		};
 	} catch (error) {
 		if (error instanceof OperationalError) {

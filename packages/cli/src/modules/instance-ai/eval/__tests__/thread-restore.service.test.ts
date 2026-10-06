@@ -15,7 +15,7 @@ import type { PolicyCleared, PolicyViolation } from '@n8n/decorators';
 import type { EntityManager } from '@n8n/typeorm';
 import { mock } from 'vitest-mock-extended';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { BadRequestError } from '@n8n/errors';
 import { AgentsService } from '@/modules/agents/agents.service';
 import type { DataTable } from '@/modules/data-table/data-table.entity';
 import type { DataTableService } from '@/modules/data-table/data-table.service';
@@ -83,6 +83,7 @@ describe('EvalThreadRestoreService', () => {
 		await service.restoreWorkflows(
 			[{ id: 'wf-original', name: 'Daily digest', nodes: [makeNode()], connections: {} }],
 			'project-1',
+			evalUser,
 		);
 
 		expect(workflowRepo.createContent).toHaveBeenCalledTimes(1);
@@ -104,14 +105,18 @@ describe('EvalThreadRestoreService', () => {
 		await service.restoreWorkflows(
 			[{ id: 'wf-1', name: 'Daily digest', nodes: [makeNode()], connections: {} }],
 			'project-1',
+			evalUser,
 		);
 
 		const saved = workflowRepo.create.mock.calls[0][0];
-		expect(policyEnforcementService.enforceWorkflowSave).toHaveBeenCalledExactlyOnceWith({
-			workflow: { id: null, name: 'Daily digest', nodes: saved.nodes },
-			storedWorkflow: null,
-			projectId: 'project-1',
-		});
+		expect(policyEnforcementService.enforceWorkflowSave).toHaveBeenCalledExactlyOnceWith(
+			{
+				workflow: { id: null, name: 'Daily digest', nodes: saved.nodes },
+				storedWorkflow: null,
+				projectId: 'project-1',
+			},
+			{ kind: 'user', user: evalUser },
+		);
 		expect(workflowRepo.runInTransaction).toHaveBeenCalledExactlyOnceWith(
 			{ policyCleared: cleared },
 			expect.any(Function),
@@ -131,6 +136,7 @@ describe('EvalThreadRestoreService', () => {
 		await service.restoreWorkflows(
 			[{ id: 'wf-1', name: 'wf', nodes: [node], connections: {} }],
 			'project-1',
+			evalUser,
 		);
 
 		expect(credentialsRepo.findByNameAndTypeInProject).toHaveBeenCalledExactlyOnceWith(
@@ -160,6 +166,7 @@ describe('EvalThreadRestoreService', () => {
 		await service.restoreWorkflows(
 			[{ id: 'wf-1', name: 'wf', nodes: [node], connections: {} }],
 			'project-1',
+			evalUser,
 		);
 
 		const saved = workflowRepo.create.mock.calls[0][0];
@@ -178,6 +185,7 @@ describe('EvalThreadRestoreService', () => {
 		await service.restoreWorkflows(
 			[{ id: 'wf-1', name: 'wf', nodes: [node], connections: {} }],
 			'project-1',
+			evalUser,
 			new Map(),
 			new Set(['cred-this-thread']),
 		);
@@ -198,6 +206,7 @@ describe('EvalThreadRestoreService', () => {
 		await service.restoreWorkflows(
 			[{ id: 'wf-1', name: 'wf', nodes: [node], connections: {} }],
 			'project-1',
+			evalUser,
 		);
 
 		expect(workflowRepo.create.mock.calls[0][0].nodes?.[0]).not.toHaveProperty('credentials');
@@ -210,6 +219,7 @@ describe('EvalThreadRestoreService', () => {
 			service.restoreWorkflows(
 				[{ id: 'wf-live', name: 'wf', nodes: [node], connections: {}, published: true }],
 				'project-1',
+				evalUser,
 			),
 		).rejects.toThrow(
 			'Seed workflow wf-live is published, but its slackApi credential "Slak" matched 0 project credentials (need exactly 1)',
@@ -228,6 +238,7 @@ describe('EvalThreadRestoreService', () => {
 			service.restoreWorkflows(
 				[{ id: 'wf-live', name: 'wf', nodes: [node], connections: {}, published: true }],
 				'project-1',
+				evalUser,
 			),
 		).rejects.toThrow(
 			'Seed workflow wf-live is published, but its slackApi credential "Slack" matched 2 project credentials (need exactly 1)',
@@ -243,6 +254,7 @@ describe('EvalThreadRestoreService', () => {
 			service.restoreWorkflows(
 				[{ id: 'wf-live', name: 'wf', nodes: [node], connections: {}, published: true }],
 				'project-1',
+				evalUser,
 			),
 		).rejects.toThrow(
 			'Seed workflow wf-live is published, but its slackApi credential reference has no name',
@@ -339,16 +351,20 @@ describe('EvalThreadRestoreService', () => {
 		const created = await service.restoreWorkflows(
 			[{ id: 'wf-1', name: 'wf', nodes: [makeNode()], connections: {} }],
 			'project-1',
+			evalUser,
 		);
 
 		expect(workflowRepo.findByIds).toHaveBeenCalledWith(['wf-1'], {
 			fields: ['id', 'name', 'nodes'],
 		});
-		expect(policyEnforcementService.enforceWorkflowSave).toHaveBeenCalledExactlyOnceWith({
-			workflow: { id: 'wf-1', name: 'wf', nodes: expect.any(Array) },
-			storedWorkflow: { id: 'wf-1', name: 'Old name', nodes: storedNodes },
-			projectId: 'project-1',
-		});
+		expect(policyEnforcementService.enforceWorkflowSave).toHaveBeenCalledExactlyOnceWith(
+			{
+				workflow: { id: 'wf-1', name: 'wf', nodes: expect.any(Array) },
+				storedWorkflow: { id: 'wf-1', name: 'Old name', nodes: storedNodes },
+				projectId: 'project-1',
+			},
+			{ kind: 'user', user: evalUser },
+		);
 		expect(workflowRepo.updateContent).toHaveBeenCalledExactlyOnceWith(
 			'wf-1',
 			expect.objectContaining({ name: 'wf', active: false, versionId: expect.any(String) }),
@@ -368,6 +384,7 @@ describe('EvalThreadRestoreService', () => {
 			service.restoreWorkflows(
 				[{ id: 'wf-1', name: 'wf', nodes: [makeNode()], connections: {} }],
 				'project-1',
+				evalUser,
 			),
 		).rejects.toThrow(BadRequestError);
 		expect(policyEnforcementService.enforceWorkflowSave).not.toHaveBeenCalled();
@@ -379,6 +396,7 @@ describe('EvalThreadRestoreService', () => {
 			service.restoreWorkflows(
 				[{ id: 'wf-1', name: 'wf', nodes: [{ name: 'no type' }], connections: {} }],
 				'project-1',
+				evalUser,
 			),
 		).rejects.toThrow(BadRequestError);
 		expect(policyEnforcementService.enforceWorkflowSave).not.toHaveBeenCalled();
@@ -405,6 +423,7 @@ describe('EvalThreadRestoreService', () => {
 					{ id: 'wf-blocked', name: 'Blocked', nodes: [makeNode()], connections: {} },
 				],
 				'project-1',
+				evalUser,
 			);
 
 			await expect(restore).rejects.toThrow(PolicyViolationError);
@@ -427,6 +446,7 @@ describe('EvalThreadRestoreService', () => {
 				service.restoreWorkflows(
 					[{ id: 'wf-1', name: 'wf', nodes: [makeNode()], connections: {} }],
 					'project-1',
+					evalUser,
 				),
 			).rejects.toBe(failure);
 			expect(workflowRepo.createContent).not.toHaveBeenCalled();
@@ -574,6 +594,7 @@ describe('EvalThreadRestoreService', () => {
 			await service.restoreWorkflows(
 				[{ id: 'wf-1', name: 'wf', nodes: [node], connections: {} }],
 				'project-1',
+				evalUser,
 				new Map([['dt-old', 'dt-new']]),
 			);
 
@@ -603,6 +624,7 @@ describe('EvalThreadRestoreService', () => {
 
 		beforeEach(() => {
 			moduleRegistry.isActive.calledWith('agents').mockReturnValue(true);
+			credentialsRepo.findByTypesInProject.mockResolvedValue([]);
 		});
 
 		it('creates the agent at its seeded id, carrying its config and skill bodies', async () => {
@@ -732,6 +754,99 @@ describe('EvalThreadRestoreService', () => {
 			});
 		});
 
+		describe('model credential', () => {
+			const credential = (id: string) => mock<CredentialsEntity>({ id, name: `cred ${id}` });
+			const openAiAgent = () => {
+				const agent = seedAgent();
+				return {
+					...agent,
+					config: {
+						...agent.config,
+						model: 'openai/gpt-4.1-mini',
+						credential: 'cred-from-source-instance',
+						subAgents: {
+							modelsByDifficulty: {
+								low: { model: 'openai/gpt-4.1-nano', credential: 'cred-source-low' },
+								high: { model: 'google/gemini-2.5-pro', credential: 'cred-source-high' },
+							},
+						},
+					},
+				};
+			};
+
+			it("binds each model to the project's one allowed credential of its provider's type", async () => {
+				// The workflow counterpart is `resolveNodeCredentials`. Without it the
+				// restored agent has no model credential and no scenario can run it.
+				credentialsRepo.findByTypesInProject.mockImplementation(async (types) => {
+					if (types.includes('openAiApi')) return [credential('cred-openai')];
+					if (types.includes('googlePalmApi')) return [credential('cred-gemini')];
+					return [];
+				});
+
+				await service.restoreAgents(
+					[openAiAgent()],
+					'project-1',
+					new Map(),
+					new Set(['cred-openai', 'cred-gemini']),
+				);
+
+				const [, , options] = agentsService.create.mock.calls[0];
+				expect(options?.schema).toMatchObject({
+					credential: 'cred-openai',
+					subAgents: {
+						modelsByDifficulty: {
+							low: { credential: 'cred-openai' },
+							high: { credential: 'cred-gemini' },
+						},
+					},
+				});
+			});
+
+			it('keeps the blank when the allowlist admits none of the candidates', async () => {
+				credentialsRepo.findByTypesInProject.mockResolvedValue([credential('cred-openai')]);
+
+				await service.restoreAgents([openAiAgent()], 'project-1', new Map(), new Set(['other']));
+
+				const [, , options] = agentsService.create.mock.calls[0];
+				expect(options?.schema).toMatchObject({ credential: '' });
+			});
+
+			it('keeps the blank under an empty allowlist, the pin of a case that declares none', async () => {
+				credentialsRepo.findByTypesInProject.mockResolvedValue([credential('cred-openai')]);
+
+				await service.restoreAgents([openAiAgent()], 'project-1', new Map(), new Set());
+
+				const [, , options] = agentsService.create.mock.calls[0];
+				expect(options?.schema).toMatchObject({ credential: '' });
+			});
+
+			it('keeps the blank when two credentials match, rather than picking one', async () => {
+				credentialsRepo.findByTypesInProject.mockResolvedValue([
+					credential('cred-a'),
+					credential('cred-b'),
+				]);
+
+				await service.restoreAgents([openAiAgent()], 'project-1');
+
+				const [, , options] = agentsService.create.mock.calls[0];
+				expect(options?.schema).toMatchObject({ credential: '' });
+			});
+
+			it('leaves a draft agent with no model unbound', async () => {
+				credentialsRepo.findByTypesInProject.mockResolvedValue([credential('cred-openai')]);
+				const agent = seedAgent();
+
+				await service.restoreAgents(
+					[{ ...agent, config: { ...agent.config, model: '' } }],
+					'project-1',
+				);
+
+				const [, , options] = agentsService.create.mock.calls[0];
+				expect(options?.schema).not.toHaveProperty('credential');
+				expect(credentialsRepo.findByTypesInProject).not.toHaveBeenCalled();
+			});
+		});
+
 		it('rolls back agents already created when a later one fails', async () => {
 			// A partial restore would leak an agent into the shared eval project, and the
 			// build fails anyway — the thread never gets the history that references it.
@@ -847,6 +962,7 @@ describe('EvalThreadRestoreService', () => {
 					{ id: 'wf-1', name: 'Rooted', nodes: [makeNode()], connections: {} },
 				],
 				'project-1',
+				evalUser,
 				new Map(),
 				undefined,
 				new Map([['odwFolder0001', 'real-odw']]),
@@ -981,6 +1097,7 @@ describe('EvalThreadRestoreService', () => {
 					},
 				],
 				'project-1',
+				evalUser,
 				new Map(),
 				undefined,
 				new Map([['odwFolder0001', 'real-odw']]),
@@ -994,6 +1111,7 @@ describe('EvalThreadRestoreService', () => {
 			await service.restoreWorkflows(
 				[{ id: 'wf-1', name: 'Root', nodes: [makeNode()], connections: {} }],
 				'project-1',
+				evalUser,
 				new Map(),
 				undefined,
 				new Map([['odwFolder0001', 'real-odw']]),
@@ -1016,6 +1134,7 @@ describe('EvalThreadRestoreService', () => {
 						},
 					],
 					'project-1',
+					evalUser,
 				),
 			).rejects.toThrow(BadRequestError);
 

@@ -1,12 +1,12 @@
 /* eslint-disable @typescript-eslint/unbound-method -- mock-based tests intentionally reference unbound methods */
 import type { AgentIntegrationConfig, AgentJsonConfig } from '@n8n/api-types';
+import type { EventService } from '@n8n/backend-services';
 import type { User } from '@n8n/db';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { OperationalError, UserError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
-import type { EventService } from '@/events/event.service';
 import type { Telemetry } from '@/telemetry';
 
 import { AgentIntegrationPersistenceService } from '../agent-integration-persistence.service';
@@ -136,6 +136,10 @@ describe('AgentIntegrationPersistenceService', () => {
 				displayIcon: 'slack',
 				credentialTypes: ['slackApi'],
 				builderGuidance: { capabilities: ['respond'] },
+				actionToolDefinitions: [
+					{ name: 'respond' },
+					{ name: 'send_channel_message', sensitive: true },
+				],
 			},
 		] as never);
 
@@ -148,6 +152,12 @@ describe('AgentIntegrationPersistenceService', () => {
 				capabilities: ['respond'],
 				useIntegrationWhen: undefined,
 				useNodeToolWhen: undefined,
+				// The channel approval control offers these, pre-selecting the
+				// sensitive ones, so it never duplicates the action list.
+				approvableActions: [
+					{ name: 'respond', sensitive: false },
+					{ name: 'send_channel_message', sensitive: true },
+				],
 			},
 		]);
 		expect(chatIntegrationRegistry.listPublic).toHaveBeenCalled();
@@ -302,6 +312,33 @@ describe('AgentIntegrationPersistenceService', () => {
 				service.applyIntegrationDelta(agent, { add: { type: 'slack', credentialId: '' } }, byUser),
 			).rejects.toThrow(UserError);
 			expect(agentRepository.updateIntegrations).not.toHaveBeenCalled();
+		});
+
+		it('persists n8n Chat despite its empty credentialId', async () => {
+			const { service, agent, row } = setup();
+
+			const result = await service.applyIntegrationDelta(
+				agent,
+				{ add: { type: 'n8n_chat', credentialId: '' } },
+				byUser,
+			);
+
+			expect(result.changed).toBe(true);
+			expect(row.integrations).toEqual([{ type: 'n8n_chat', credentialId: '' }]);
+		});
+
+		it('keeps a single n8n Chat entry when connected twice', async () => {
+			const { service, agent, row } = setup({
+				integrations: [{ type: 'n8n_chat', credentialId: '' }],
+			});
+
+			await service.applyIntegrationDelta(
+				agent,
+				{ add: { type: 'n8n_chat', credentialId: '' } },
+				byUser,
+			);
+
+			expect(row.integrations).toEqual([{ type: 'n8n_chat', credentialId: '' }]);
 		});
 	});
 

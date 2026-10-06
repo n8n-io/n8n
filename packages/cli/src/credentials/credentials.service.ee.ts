@@ -12,16 +12,15 @@ import { hasGlobalScope } from '@n8n/permissions';
 import { In, type EntityManager } from '@n8n/typeorm';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { NotFoundError } from '@n8n/errors';
 import { TransferCredentialError } from '@/errors/response-errors/transfer-credential.error';
 import { ExternalSecretsConfig } from '@/modules/external-secrets.ee/external-secrets.config';
 import { SecretsProviderAccessCheckService } from '@/modules/external-secrets.ee/secret-provider-access-check.service.ee';
 import { OwnershipService } from '@/services/ownership.service';
 import { ProjectService } from '@/services/project.service.ee';
-import { RoleService } from '@/services/role.service';
+import { RoleService, CredentialsFinderService } from '@n8n/backend-services';
 
 import { CredentialConnectionStatusProxy } from './credential-connection-status-proxy';
-import { CredentialsFinderService } from './credentials-finder.service';
 import { CredentialsService } from './credentials.service';
 import { validateAccessToReferencedSecretProviders } from './validation';
 
@@ -112,6 +111,8 @@ export class EnterpriseCredentialsService {
 					user,
 					// TODO: replace credential:update with credential:decrypt once it lands
 					// see: https://n8nio.slack.com/archives/C062YRE7EG4/p1708531433206069?thread_ts=1708525972.054149&cid=C062YRE7EG4
+					// `credential:update` is its own gate: a see-only instance role never
+					// holds it, so this decrypt branch is unreachable for one.
 					['credential:read', 'credential:update'],
 					{ includeInstanceCredentials: true },
 				)
@@ -128,7 +129,9 @@ export class EnterpriseCredentialsService {
 				credentialId,
 				user,
 				['credential:read'],
-				{ includeInstanceCredentials: true },
+				// Detail-page metadata only — no `data` is returned on this branch, so
+				// seeing a credential you are not a member of is enough.
+				{ includeInstanceCredentials: true, visibilityOnly: true },
 			);
 
 			// Connect-capable users of a private credential need the redacted blueprint

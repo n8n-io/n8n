@@ -51,10 +51,13 @@ const workflowNodeWritePublicSchema = z
 			.object({ tag: z.array(customTelemetryTagPublicSchema).optional() })
 			.strict()
 			.optional(),
+		// Accepted but ignored, this is an internal editor-produced marker for credential-only HTTP Request nodes
+		extendsCredential: z.string().optional(),
 		createdAt: readOnlyPublicSchema(readOnlyTimestampOpenApi),
 		updatedAt: readOnlyPublicSchema(readOnlyTimestampOpenApi),
 	})
-	.strict();
+	.strict()
+	.transform(({ extendsCredential: _extendsCredential, ...node }) => node);
 
 const workflowNodeGroupWritePublicSchema = z
 	.object({
@@ -148,13 +151,7 @@ const staticDataWritePublicSchema = z
 	.nullable()
 	.openapi(workflowCreateFieldDocs.staticData);
 
-/**
- * The public workflow write surface, shared by the create and update request bodies.
- *
- * `CreateWorkflowPublicDto` uses it as-is. `UpdateWorkflowPublicDto` omits `projectId` from its
- * shape, since a project is only chosen when a workflow is created, and adds `description`, which
- * only the update body has ever accepted.
- */
+// Each route adds `description` to its own DTO so their request schemas stay independent.
 export const workflowWritePublicShape = {
 	id: readOnlyPublicSchema(workflowCreateReadOnlyFieldDocs.id),
 	name: z.string().openapi(workflowCreateFieldDocs.name),

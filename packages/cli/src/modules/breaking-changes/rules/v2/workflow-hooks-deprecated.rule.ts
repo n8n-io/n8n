@@ -18,7 +18,7 @@ export class WorkflowHooksDeprecatedRule implements IBreakingChangeInstanceRule 
 			description:
 				'The hooks workflow.activeChange and workflow.activeChangeCurrent are deprecated and replaced by workflow.published',
 			category: BreakingChangeCategory.instance,
-			severity: 'low',
+			impact: 'capabilityRemoved',
 			documentationUrl:
 				'https://docs.n8n.io/2-0-breaking-changes/#deprecated-frontend-workflow-hooks',
 		};

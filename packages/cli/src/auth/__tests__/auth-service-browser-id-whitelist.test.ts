@@ -5,7 +5,7 @@ import { mock } from 'vitest-mock-extended';
 import { AuthService } from '@/auth/auth.service';
 import type { MfaService } from '@/mfa/mfa.service';
 import type { JwtService } from '@/services/jwt.service';
-import type { UrlService } from '@/services/url.service';
+import type { UrlService } from '@n8n/backend-services';
 
 describe('AuthService Browser ID Whitelist', () => {
 	let authService: AuthService;

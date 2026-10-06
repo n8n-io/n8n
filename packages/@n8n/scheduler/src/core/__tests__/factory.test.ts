@@ -49,7 +49,7 @@ const makeTracer = () => {
 function makeScheduler(deps: Partial<SchedulerDeps> = {}) {
 	const taskStore = mock<SchedulerTaskStore>();
 	taskStore.markDispatched.mockResolvedValue(1);
-	taskStore.retireMissedPending.mockResolvedValue(0);
+	taskStore.retireMissedPending.mockResolvedValue({ retired: 0, heldByConcurrencyLimit: [] });
 	const onEvent = vi.fn<(event: SchedulerEvent) => void>();
 	const materializerTransaction: RunInTransaction = vi.fn();
 	const scheduler = createScheduler({
@@ -355,6 +355,7 @@ describe('createScheduler materialize', () => {
 			nextRunAt: new Date('2026-01-01T00:00:00.000Z'),
 			lastFiredAt: null,
 			maxAttempts: 3,
+			concurrencyLimit: null,
 			misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
 			misfireGraceSeconds: 60,
 			ownerKey: 'owner-1',
@@ -401,6 +402,7 @@ describe('createScheduler materialize', () => {
 			nextRunAt: new Date('2026-01-01T00:00:00.000Z'),
 			lastFiredAt: null,
 			maxAttempts: 3,
+			concurrencyLimit: null,
 			misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
 			misfireGraceSeconds: 60,
 			ownerKey: 'owner-1',
@@ -1247,6 +1249,18 @@ describe('createScheduler reap', () => {
 			context: { taskId: '7', attempts: 3, maxAttempts: 3 },
 		});
 	});
+
+	it('hands the host the occurrences a concurrency limit held back', async () => {
+		const onHeldByConcurrencyLimit = vi.fn();
+		const { scheduler, taskStore } = makeScheduler({ onHeldByConcurrencyLimit });
+		const held = [{ id: '7', jobId: 3, taskType: 'system:pruning' }];
+		taskStore.findExpiredLeases.mockResolvedValue([]);
+		taskStore.retireMissedPending.mockResolvedValue({ retired: 1, heldByConcurrencyLimit: held });
+
+		await scheduler.reap();
+
+		expect(onHeldByConcurrencyLimit).toHaveBeenCalledWith(held);
+	});
 });
 
 describe('createScheduler tracing', () => {
@@ -1265,6 +1279,7 @@ describe('createScheduler tracing', () => {
 			nextRunAt: new Date('2026-01-01T00:00:00.000Z'),
 			lastFiredAt: null,
 			maxAttempts: 3,
+			concurrencyLimit: null,
 			misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
 			misfireGraceSeconds: 60,
 			ownerKey: 'owner-1',
@@ -1318,6 +1333,7 @@ describe('createScheduler tracing', () => {
 			nextRunAt: new Date('2026-01-01T00:00:00.000Z'),
 			lastFiredAt: null,
 			maxAttempts: 3,
+			concurrencyLimit: null,
 			misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
 			misfireGraceSeconds: 60,
 			ownerKey: 'owner-1',
@@ -1614,6 +1630,7 @@ describe('createScheduler metrics', () => {
 			nextRunAt: new Date('2026-01-01T00:00:00.000Z'),
 			lastFiredAt: null,
 			maxAttempts: 3,
+			concurrencyLimit: null,
 			misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
 			misfireGraceSeconds: 60,
 			ownerKey: 'owner-1',
