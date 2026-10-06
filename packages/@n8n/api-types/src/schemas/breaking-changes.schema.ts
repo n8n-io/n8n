@@ -84,12 +84,12 @@ export type BreakingChangeWorkflowIssue = z.infer<typeof workflowIssueSchema>;
 export const migrationOwnerSourceSchema = z.enum(['suggested', 'assigned']);
 export type MigrationOwnerSource = z.infer<typeof migrationOwnerSourceSchema>;
 
-/** The user responsible for fixing a workflow's findings. */
+/** The user responsible for fixing a workflow's findings. The name and email columns of a user are nullable. */
 const workflowOwnerSchema = z.object({
 	id: z.string(),
-	firstName: z.string(),
-	lastName: z.string(),
-	email: z.string(),
+	firstName: z.string().nullable(),
+	lastName: z.string().nullable(),
+	email: z.string().nullable(),
 	source: migrationOwnerSourceSchema,
 });
 export type BreakingChangeWorkflowOwner = z.infer<typeof workflowOwnerSchema>;
