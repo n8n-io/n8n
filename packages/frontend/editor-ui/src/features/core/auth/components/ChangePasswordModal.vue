@@ -158,7 +158,9 @@ watch(mfaCode, () => {
 	}
 });
 
+// A request that's already on its way can't be taken back, so the dialog stays until it's answered.
 const close = () => {
+	if (isSubmitting.value) return;
 	uiStore.closeModal(CHANGE_PASSWORD_MODAL_KEY);
 };
 
@@ -194,6 +196,7 @@ const goToVerify = async () => {
 };
 
 const goBack = async () => {
+	if (isSubmitting.value) return;
 	step.value = 'newPassword';
 	await nextTick();
 	newPasswordInput.value?.focus();
@@ -315,7 +318,7 @@ const onSubmit = async () => {
 									<N8nIcon icon="circle-check" size="small" />
 								</span>
 							</Transition>
-							<span :class="$style.checkLabel">{{ requirement.label }}</span>
+							<span>{{ requirement.label }}</span>
 							<N8nVisuallyHidden v-if="requirement.met">
 								{{ i18n.baseText('auth.changePassword.requirements.met') }}
 							</N8nVisuallyHidden>
@@ -472,7 +475,12 @@ const onSubmit = async () => {
 					</N8nButton>
 				</template>
 				<template v-else>
-					<N8nButton variant="outline" data-test-id="change-password-back-button" @click="goBack">
+					<N8nButton
+						variant="outline"
+						:disabled="isSubmitting"
+						data-test-id="change-password-back-button"
+						@click="goBack"
+					>
 						{{ i18n.baseText('generic.back') }}
 					</N8nButton>
 					<N8nButton
@@ -551,8 +559,12 @@ const onSubmit = async () => {
 	color: light-dark(var(--color--green-700), var(--color--green-500));
 }
 
-.checklist .check:not(:last-child) .checkLabel::after {
-	content: ',';
+/* A middle dot divides the requirements in any language. The list itself tells assistive tech where
+   one ends, so the dot is decoration only. */
+.check + .check::before {
+	content: '·' / '';
+	margin-inline-end: var(--spacing--2xs);
+	color: var(--text-color--subtle);
 }
 
 /* The check only appears once a requirement is met. Its slot includes the gap to the label, so the

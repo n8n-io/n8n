@@ -200,6 +200,26 @@ describe('PromptMfaCodeModal', () => {
 
 			expect(onClosed).toHaveBeenCalledWith(undefined);
 		});
+
+		it('should not close while the code is being checked', async () => {
+			let accept!: () => void;
+			const submit = vi
+				.fn<PromptMfaCodeModalData['submit']>()
+				.mockReturnValue(new Promise<void>((resolve) => (accept = resolve)));
+			const { onClosed, uiStore } = await renderOpenModal('disableMfa', submit);
+
+			await userEvent.type(getCodeInput(), '123456{Enter}');
+
+			expect(screen.getByRole('button', { name: 'Cancel' })).toBeDisabled();
+			await userEvent.keyboard('{Escape}');
+			await userEvent.click(screen.getByRole('button', { name: 'Close dialog' }));
+			expect(uiStore.closeModal).not.toHaveBeenCalled();
+			expect(onClosed).not.toHaveBeenCalled();
+
+			accept();
+			await waitFor(() => expect(onClosed).toHaveBeenCalledWith({ mfaCode: '123456' }));
+			expect(uiStore.closeModal).toHaveBeenCalledTimes(1);
+		});
 	});
 
 	describe('when changing the email', () => {
@@ -232,7 +252,7 @@ describe('PromptMfaCodeModal', () => {
 		});
 
 		it('should close with a toast when the change fails for another reason', async () => {
-			await renderOpenModal('changeEmail', rejectWith(400));
+			const { onClosed, uiStore } = await renderOpenModal('changeEmail', rejectWith(400));
 
 			await userEvent.type(getCodeInput(), '123456{Enter}');
 
@@ -240,6 +260,8 @@ describe('PromptMfaCodeModal', () => {
 				expect.any(ResponseError),
 				'Problem updating your details',
 			);
+			expect(uiStore.closeModal).toHaveBeenCalledWith(PROMPT_MFA_CODE_MODAL_KEY);
+			expect(onClosed).toHaveBeenCalledWith({ mfaCode: '123456' });
 		});
 	});
 });

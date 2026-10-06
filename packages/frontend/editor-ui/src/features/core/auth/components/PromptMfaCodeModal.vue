@@ -95,7 +95,9 @@ watch(code, () => {
 	showFormatError.value = false;
 });
 
+// A request that's already on its way can't be taken back, so the dialog stays until it's answered.
 const close = (payload?: MfaModalClosedEventPayload) => {
+	if (isSubmitting.value) return;
 	uiStore.closeModal(PROMPT_MFA_CODE_MODAL_KEY);
 	promptMfaCodeBus.emit('closed', payload);
 };
@@ -182,7 +184,12 @@ const onConfirm = async () => {
 			</N8nInputLabel>
 		</div>
 		<N8nDialogFooter>
-			<N8nButton variant="outline" data-test-id="mfa-code-cancel-button" @click="close()">
+			<N8nButton
+				variant="outline"
+				:disabled="isSubmitting"
+				data-test-id="mfa-code-cancel-button"
+				@click="close()"
+			>
 				{{ i18n.baseText('generic.cancel') }}
 			</N8nButton>
 			<N8nButton

@@ -346,5 +346,27 @@ describe('ChangePasswordModal', () => {
 			expect(getContinueButton()).toBeEnabled();
 			await waitFor(() => expect(getNewPasswordInput()).toHaveFocus());
 		});
+
+		it('should not close or go back while the password is being changed', async () => {
+			const { usersStore, uiStore } = await renderOpenModal();
+			let accept!: () => void;
+			usersStore.updateCurrentUserPassword.mockReturnValue(
+				new Promise<void>((resolve) => (accept = resolve)),
+			);
+			await enterNewPassword();
+
+			await userEvent.type(getCurrentPasswordInput(), `${CURRENT_PASSWORD}{Enter}`);
+
+			expect(screen.getByRole('button', { name: 'Back' })).toBeDisabled();
+			await userEvent.keyboard('{Escape}');
+			await userEvent.click(screen.getByRole('button', { name: 'Close dialog' }));
+			expect(uiStore.closeModal).not.toHaveBeenCalled();
+			expect(screen.getByRole('heading', { name: "Confirm it's you" })).toBeInTheDocument();
+
+			accept();
+			await waitFor(() =>
+				expect(uiStore.closeModal).toHaveBeenCalledWith(CHANGE_PASSWORD_MODAL_KEY),
+			);
+		});
 	});
 });

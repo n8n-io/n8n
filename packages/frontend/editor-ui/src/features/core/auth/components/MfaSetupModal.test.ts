@@ -2,8 +2,11 @@ import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
 import { fireEvent, screen, waitFor } from '@testing-library/vue';
 import { STORES } from '@n8n/stores';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { createComponentRenderer } from '@/__tests__/render';
+import { MFA_AUTHENTICATION_CODE_WINDOW_EXPIRED, VIEWS } from '@/app/constants';
+import router from '@/app/router';
 import { useUIStore } from '@/app/stores/ui.store';
 import { MFA_SETUP_MODAL_KEY } from '../auth.constants';
 import MfaSetupModal from './MfaSetupModal.vue';
@@ -28,7 +31,7 @@ const RECOVERY_CODES = [
 
 const renderModal = createComponentRenderer(MfaSetupModal);
 
-async function renderOpenModal() {
+async function renderOpenModal({ mfaEnforced = false } = {}) {
 	const pinia = createTestingPinia({
 		initialState: {
 			[STORES.UI]: {
@@ -37,6 +40,7 @@ async function renderOpenModal() {
 			},
 		},
 	});
+	useSettingsStore(pinia).isMFAEnforced = mfaEnforced;
 	const usersStore = useUsersStore(pinia);
 	vi.mocked(usersStore.fetchMfaQR).mockResolvedValue({
 		qrCode: `otpauth://totp/n8n:jane@example.com?secret=${SECRET}&issuer=n8n`,
@@ -54,11 +58,18 @@ const getCodeInput = () =>
 const getContinueButton = () => screen.getByRole('button', { name: 'Continue' });
 const getEnableButton = () => screen.getByRole('button', { name: 'Enable 2FA' });
 
-async function renderRecoveryCodesStep() {
-	const result = await renderOpenModal();
+async function renderRecoveryCodesStep(options?: Parameters<typeof renderOpenModal>[0]) {
+	const result = await renderOpenModal(options);
 	vi.mocked(result.usersStore.verifyMfaCode).mockResolvedValue(undefined);
 	await userEvent.type(getCodeInput(), '123456{Enter}');
 	await screen.findByRole('heading', { name: 'Save your recovery codes' });
+	return result;
+}
+
+/** Saves the recovery codes by copying them, which is what unlocks Enable 2FA. */
+async function renderSavedRecoveryCodesStep(options?: Parameters<typeof renderOpenModal>[0]) {
+	const result = await renderRecoveryCodesStep(options);
+	await userEvent.click(screen.getByRole('button', { name: 'Copy' }));
 	return result;
 }
 
@@ -225,6 +236,47 @@ describe('MfaSetupModal', () => {
 		expect(anchorClick).toHaveBeenCalled();
 		expect(getEnableButton()).toBeEnabled();
 		anchorClick.mockRestore();
+	});
+
+	it('should sign out after enabling 2FA when 2FA is enforced', async () => {
+		const { usersStore } = await renderSavedRecoveryCodesStep({ mfaEnforced: true });
+
+		await userEvent.click(getEnableButton());
+
+		expect(usersStore.enableMfa).toHaveBeenCalledWith({ mfaCode: '123456' });
+		await waitFor(() => expect(router.push).toHaveBeenCalledWith({ name: VIEWS.SIGNIN }));
+		expect(usersStore.logout).toHaveBeenCalled();
+	});
+
+	it('should stay open and ask to start over when the code window has expired', async () => {
+		const { usersStore, uiStore } = await renderSavedRecoveryCodesStep();
+		vi.mocked(usersStore.enableMfa).mockRejectedValue(
+			Object.assign(new Error('Expired'), { errorCode: MFA_AUTHENTICATION_CODE_WINDOW_EXPIRED }),
+		);
+
+		await userEvent.click(getEnableButton());
+
+		expect(toast.showMessage).toHaveBeenLastCalledWith({
+			type: 'error',
+			title: 'MFA token expired. Close the modal and enable MFA again',
+		});
+		expect(uiStore.closeModal).not.toHaveBeenCalled();
+		expect(usersStore.logout).not.toHaveBeenCalled();
+		expect(getEnableButton()).toBeEnabled();
+	});
+
+	it('should stay open with a toast when enabling 2FA fails for another reason', async () => {
+		const { usersStore, uiStore } = await renderSavedRecoveryCodesStep();
+		vi.mocked(usersStore.enableMfa).mockRejectedValue(new Error('Request failed'));
+
+		await userEvent.click(getEnableButton());
+
+		expect(toast.showMessage).toHaveBeenLastCalledWith({
+			type: 'error',
+			title: 'Error enabling two-factor authentication',
+		});
+		expect(uiStore.closeModal).not.toHaveBeenCalled();
+		expect(getEnableButton()).toBeEnabled();
 	});
 
 	it('should close the modal with the close button', async () => {

@@ -282,6 +282,7 @@ onBeforeUnmount(() => clearTimeout(copyFeedbackTimer));
 				: i18n.baseText('mfa.setup.step2.title')
 		"
 		size="medium"
+		:container-class="$style.dialog"
 		@update:open="onOpenChange"
 		@open-auto-focus="onOpenAutoFocus"
 	>
@@ -471,6 +472,13 @@ onBeforeUnmount(() => clearTimeout(copyFeedbackTimer));
 
 <style module lang="scss">
 @use '@n8n/design-system/css/mixins/motion';
+
+/* The QR code makes this the tallest of the account dialogs. On a short viewport it scrolls as a
+   whole instead of overflowing the screen, so the code field and the footer stay reachable. */
+.dialog {
+	max-height: calc(100dvh - var(--spacing--lg));
+	overflow-y: auto;
+}
 
 .steps {
 	position: relative;

@@ -55,7 +55,9 @@ watch(password, () => {
 	rejection.value = undefined;
 });
 
+// A request that's already on its way can't be taken back, so the dialog stays until it's answered.
 const close = (payload?: ConfirmPasswordClosedEventPayload) => {
+	if (isSubmitting.value) return;
 	uiStore.closeModal(CONFIRM_PASSWORD_MODAL_KEY);
 	confirmPasswordEventBus.emit('closed', payload);
 };
@@ -150,7 +152,12 @@ const onSubmit = async () => {
 			</div>
 
 			<N8nDialogFooter>
-				<N8nButton variant="outline" data-test-id="confirm-password-cancel-button" @click="close()">
+				<N8nButton
+					variant="outline"
+					:disabled="isSubmitting"
+					data-test-id="confirm-password-cancel-button"
+					@click="close()"
+				>
 					{{ i18n.baseText('generic.cancel') }}
 				</N8nButton>
 				<N8nButton

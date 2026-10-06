@@ -183,4 +183,24 @@ describe('ConfirmPasswordModal', () => {
 
 		expect(onClosed).toHaveBeenCalledWith(undefined);
 	});
+
+	it('should not close while the password is being checked', async () => {
+		let accept!: () => void;
+		const submit = vi
+			.fn<ConfirmPasswordModalData['submit']>()
+			.mockReturnValue(new Promise<void>((resolve) => (accept = resolve)));
+		const { onClosed, uiStore } = await renderOpenModal(submit);
+
+		await userEvent.type(getPasswordInput(), `${PASSWORD}{Enter}`);
+
+		expect(screen.getByRole('button', { name: 'Cancel' })).toBeDisabled();
+		await userEvent.keyboard('{Escape}');
+		await userEvent.click(screen.getByRole('button', { name: 'Close dialog' }));
+		expect(uiStore.closeModal).not.toHaveBeenCalled();
+		expect(onClosed).not.toHaveBeenCalled();
+
+		accept();
+		await waitFor(() => expect(onClosed).toHaveBeenCalledWith({ currentPassword: PASSWORD }));
+		expect(uiStore.closeModal).toHaveBeenCalledTimes(1);
+	});
 });
