@@ -23,6 +23,7 @@ import {
 	logStreamingWebhookFieldDocs,
 	logStreamingWebhookOptionsFieldDocs,
 } from './log-streaming-public.openapi';
+import { readOnlyPublicSchema } from '../../schemas/read-only-public.schema';
 import { Z } from '../../zod-class';
 
 const logStreamingEventTypesPublicSchema = z
@@ -166,15 +167,43 @@ const publicSentrySchema = z.object({
 	dsn: sentryShape.dsn.openapi(sentryDocs.dsn),
 });
 
-export const PublicCreateDestinationDto = z.discriminatedUnion('type', [
-	publicWebhookSchema,
-	publicSyslogSchema,
-	publicSentrySchema,
-]);
+const readOnlyIdSchema = readOnlyPublicSchema({
+	type: 'string',
+	readOnly: true,
+	...commonDocs.id,
+});
 
-export type PublicCreateDestination = z.infer<typeof PublicCreateDestinationDto>;
+const createLogStreamingDestinationPublicSchema = z
+	.discriminatedUnion('type', [
+		publicWebhookSchema.extend({ id: readOnlyIdSchema }),
+		publicSyslogSchema.extend({ id: readOnlyIdSchema }),
+		publicSentrySchema.extend({ id: readOnlyIdSchema }),
+	])
+	.openapi(logStreamingDestinationDocs);
 
-export type PublicDestinationType = PublicCreateDestination['type'];
+export type CreateLogStreamingDestinationPublic = z.infer<
+	typeof createLogStreamingDestinationPublicSchema
+>;
+
+export type LogStreamingDestinationPublicType = CreateLogStreamingDestinationPublic['type'];
+
+/**
+ * A discriminated union has no object shape, so this cannot extend `Z.class`. The type and the
+ * class share one name: `@Body` reads the class from the decorator metadata, and the handler
+ * receives the union.
+ */
+export type CreateLogStreamingDestinationPublicDto = CreateLogStreamingDestinationPublic;
+export const CreateLogStreamingDestinationPublicDto = class {
+	static schema = createLogStreamingDestinationPublicSchema;
+
+	static safeParse(data: unknown) {
+		return createLogStreamingDestinationPublicSchema.safeParse(data);
+	}
+
+	static parse(data: unknown): CreateLogStreamingDestinationPublic {
+		return createLogStreamingDestinationPublicSchema.parse(data);
+	}
+};
 
 const idSchema = z.string().openapi(commonDocs.id);
 
