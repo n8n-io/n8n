@@ -52,19 +52,23 @@ describe('PostHog flag evaluation status', () => {
 		{ flags: {}, quotaLimited: ['feature_flags'] },
 		{ flags: {}, errorsWhileComputingFlags: true },
 	])('retries incomplete evaluations: %j', async (response) => {
-		endpoint().reply(200, response);
+		const request = endpoint().reply(200, response);
 		expect(await evaluate()).toEqual({ status: 'unavailable' });
+		expect(request.isDone()).toBe(true);
 	});
 
 	it('reports an HTTP error as unavailable and recovers on the next request', async () => {
-		endpoint().reply(503);
+		const failedRequest = endpoint().reply(503);
 		expect(await evaluate()).toEqual({ status: 'unavailable' });
-		endpoint().reply(200, { flags: {} });
+		expect(failedRequest.isDone()).toBe(true);
+		const recoveredRequest = endpoint().reply(200, { flags: {} });
 		expect(await evaluate()).toEqual({ status: 'available', value: false });
+		expect(recoveredRequest.isDone()).toBe(true);
 	});
 
 	it('reports a network error as unavailable', async () => {
-		endpoint().replyWithError({ code: 'ETIMEDOUT', message: 'Timeout' });
+		const request = endpoint().replyWithError({ code: 'ETIMEDOUT', message: 'Timeout' });
 		expect(await evaluate()).toEqual({ status: 'unavailable' });
+		expect(request.isDone()).toBe(true);
 	});
 });

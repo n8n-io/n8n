@@ -904,6 +904,30 @@ describe('McpService', () => {
 			return await invokeTool(args, {});
 		};
 
+		it.each(['search_workflows', 'get_workflow_history', 'execute_workflow'])(
+			'skips discovery bookkeeping for %s',
+			async (toolName) => {
+				const server = new McpServer({ name: 'discovery-test', version: '1.0.0' });
+				const result = { content: [], structuredContent: { workflowId: 'wf-42' } };
+				await expect(
+					registerAndInvoke(
+						server,
+						toolName,
+						async () => result,
+						{},
+						{
+							clientInfo: { name: 'Claude' },
+						},
+					),
+				).resolves.toEqual(result);
+				expect(discoveryActivity.recordClaudeToolResult).not.toHaveBeenCalled();
+				expect(eventService.emit).toHaveBeenCalledWith(
+					'mcp-tool-called',
+					expect.objectContaining({ toolName, status: 'success' }),
+				);
+			},
+		);
+
 		it('records successful Claude workflow results through the production registrar', async () => {
 			const user = mcpUser();
 			const server = new McpServer({ name: 'discovery-test', version: '1.0.0' });

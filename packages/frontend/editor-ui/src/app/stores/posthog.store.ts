@@ -198,7 +198,7 @@ export const usePostHog = defineStore('posthog', () => {
 
 	const setMcpDiscoveryAssignment = (variant: 'control' | 'variant' | null) => {
 		mcpDiscoveryAssignment.value = variant;
-		if (variant) trackExperimentsDebounced(featureFlags.value ?? {});
+		if (variant) trackExperiment(featureFlags.value ?? {}, MCP_DISCOVERY_EXPERIMENT_KEY);
 	};
 
 	const trackExperiments = (featFlags: FeatureFlags) => {

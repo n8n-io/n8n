@@ -221,6 +221,47 @@ describe('MCP discovery store', () => {
 		expect(store.ctaStage).toBe('build_in_claude');
 	});
 
+	it('preserves a successful dismissal when an earlier visit response arrives', async () => {
+		const store = useMcpDiscoveryStore();
+		store.state = {
+			status: 'assigned',
+			assignment: { variant: 'variant', assignedAt: 123 },
+			coachmarkDismissed: false,
+		};
+		const visit = Promise.withResolvers<unknown>();
+		mocks.request.mockReturnValueOnce(visit.promise).mockResolvedValueOnce({ success: true });
+		const refresh = store.refresh();
+		await store.dismissCoachmark();
+
+		visit.resolve({
+			status: 'assigned',
+			assignment: { variant: 'variant', assignedAt: 123 },
+			coachmarkDismissed: false,
+			hasConnectedClaude: true,
+		});
+		await refresh;
+
+		expect(store.coachmarkDismissed).toBe(true);
+		expect(store.state.hasConnectedClaude).toBe(true);
+	});
+
+	it('ignores a dismissal response after a reset for the same user', async () => {
+		const store = useMcpDiscoveryStore();
+		store.state = {
+			status: 'assigned',
+			assignment: { variant: 'variant', assignedAt: 123 },
+			coachmarkDismissed: false,
+		};
+		const request = Promise.withResolvers<unknown>();
+		mocks.request.mockReturnValueOnce(request.promise);
+		const dismissal = store.dismissCoachmark();
+		store.reset();
+		request.resolve({ success: true });
+		await dismissal;
+
+		expect(store.state).toEqual({ status: 'inactive', coachmarkDismissed: false });
+	});
+
 	it('hides entries after Claude use while retaining experiment enrollment', async () => {
 		mocks.request.mockResolvedValue({
 			status: 'assigned',

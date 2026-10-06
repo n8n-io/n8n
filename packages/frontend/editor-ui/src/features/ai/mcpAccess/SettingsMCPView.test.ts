@@ -636,6 +636,28 @@ describe('SettingsMCPView', () => {
 		expect(within(document.body).queryByTestId('mcp-connect-hint')).not.toBeInTheDocument();
 	});
 
+	it.each(['pending', 'failed'])(
+		'shows the coachmark when the clients preview is %s',
+		async (status) => {
+			discoveryStore.state = {
+				status: 'assigned',
+				assignment: { variant: 'variant', assignedAt: 1 },
+				coachmarkDismissed: false,
+			};
+			enableMcpSettings();
+			if (status === 'pending') {
+				mcpStore.fetchOAuthClientsPreview.mockReturnValue(new Promise(() => {}));
+			} else {
+				mcpStore.fetchOAuthClientsPreview.mockRejectedValue(new Error('network error'));
+			}
+
+			createComponent({ pinia });
+			await waitFor(() => {
+				expect(within(document.body).getByTestId('mcp-connect-hint')).toBeVisible();
+			});
+		},
+	);
+
 	describe('Toggle MCP on/off', () => {
 		beforeEach(() => {
 			rbacStore.hasScope.mockReturnValue(true);
@@ -693,6 +715,37 @@ describe('SettingsMCPView', () => {
 			await waitFor(() => {
 				expect(within(document.body).queryByTestId('mcp-connect-hint')).not.toBeInTheDocument();
 			});
+		});
+
+		it('keeps the hint dismissed with Escape after re-enabling MCP', async () => {
+			discoveryStore.state = {
+				status: 'assigned',
+				assignment: { variant: 'variant', assignedAt: 1 },
+				coachmarkDismissed: false,
+			};
+			enableMcpSettings();
+			mcpStore.setMcpAccessEnabled.mockImplementation(async (enabled) => {
+				settingsStore.moduleSettings.mcp!.mcpAccessEnabled = enabled;
+				return enabled;
+			});
+			const { getByTestId } = createComponent({ pinia });
+			await waitFor(() => {
+				expect(within(document.body).getByTestId('mcp-connect-hint')).toBeVisible();
+			});
+			await userEvent.keyboard('{Escape}');
+			await waitFor(() => {
+				expect(within(document.body).queryByTestId('mcp-connect-hint')).not.toBeInTheDocument();
+			});
+			await userEvent.click(getByTestId('disable-mcp-button'));
+			await userEvent.click(
+				within(document.body).getByRole('button', { name: 'Disable MCP access' }),
+			);
+			await userEvent.click(getByTestId('enable-mcp-button'));
+			await waitAllPromises();
+
+			expect(mcpStore.setMcpAccessEnabled).toHaveBeenLastCalledWith(true);
+			expect(within(document.body).queryByTestId('mcp-connect-hint')).not.toBeInTheDocument();
+			expect(discoveryStore.dismissCoachmark).not.toHaveBeenCalled();
 		});
 
 		it('should fetch the workflow count and oauth clients after enabling MCP', async () => {

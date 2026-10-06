@@ -75,7 +75,11 @@ export const useMcpDiscoveryStore = defineStore(STORES.EXPERIMENT_MCP_DISCOVERY,
 				{ pickedClaude },
 			);
 			if (requestGeneration !== generation || users.currentUser?.id !== userId) return;
-			state.value = mcpDiscoveryStateSchema.parse(response);
+			const nextState = mcpDiscoveryStateSchema.parse(response);
+			state.value = {
+				...nextState,
+				coachmarkDismissed: state.value.coachmarkDismissed || nextState.coachmarkDismissed,
+			};
 			posthog.setMcpDiscoveryAssignment(state.value.assignment?.variant ?? null);
 			if (isEnabled.value && state.value.assignment && !exposureTracked) {
 				exposureTracked = true;
@@ -123,8 +127,10 @@ export const useMcpDiscoveryStore = defineStore(STORES.EXPERIMENT_MCP_DISCOVERY,
 	async function dismissCoachmark() {
 		if (!isTreatment.value) return;
 		const userId = users.currentUser?.id;
+		const requestGeneration = generation;
 		await makeRestApiRequest(root.restApiContext, 'POST', '/me/mcp-discovery/dismiss');
-		if (users.currentUser?.id === userId) state.value.coachmarkDismissed = true;
+		if (requestGeneration !== generation || users.currentUser?.id !== userId) return;
+		state.value.coachmarkDismissed = true;
 	}
 
 	return {

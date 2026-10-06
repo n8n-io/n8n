@@ -164,7 +164,6 @@ const onToggleMCPAccess = async (enabled: boolean) => {
 	try {
 		mcpStatusLoading.value = true;
 		const updated = await mcpStore.setMcpAccessEnabled(enabled);
-		showConnectHint.value = enabled && updated;
 		if (updated) {
 			await Promise.all([
 				fetchExposedWorkflowsCount(),
@@ -381,8 +380,7 @@ onBeforeUnmount(() => {
 									showConnectHint &&
 									!mcpDiscovery.coachmarkDismissed &&
 									!mcpDiscovery.state.hasConnectedClaude &&
-									!mcpDiscovery.state.hasUsedClaudeMcp &&
-									!isLoadingClients
+									!mcpDiscovery.state.hasUsedClaudeMcp
 								"
 								side="bottom"
 								align="end"

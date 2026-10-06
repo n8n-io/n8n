@@ -3,7 +3,7 @@ import { usePostHog, waitForFeatureFlagsWithTimeout } from '@/app/stores/posthog
 import { useUsersStore } from '@n8n/stores/users.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import type { FrontendSettings } from '@n8n/api-types';
+import { MCP_DISCOVERY_EXPERIMENT_KEY, type FrontendSettings } from '@n8n/api-types';
 import {
 	LOCAL_STORAGE_EXPERIMENT_OVERRIDES,
 	SURFACE_ASSISTANT_ON_WORKFLOW_ERROR_EXPERIMENT, // Experiment cleanup (119_surface_assistant_on_workflow_error)
@@ -476,6 +476,108 @@ describe('Posthog store', () => {
 				posthog.reset();
 				posthog.trackExposure('test');
 
+				expect(window.posthog?.capture).toHaveBeenCalledTimes(2);
+			});
+		});
+
+		describe('MCP discovery assignment', () => {
+			const key = MCP_DISCOVERY_EXPERIMENT_KEY;
+			const participationEvent = TELEMETRY_EVENT.PLATFORM.USER_IS_PART_OF_EXPERIMENT;
+
+			beforeEach(() => {
+				vi.useFakeTimers();
+			});
+
+			afterEach(() => {
+				vi.useRealTimers();
+			});
+
+			it('ignores raw flags until the visit assigns the experiment', () => {
+				const posthog = usePostHog();
+				posthog.init({ [key]: 'variant' });
+				posthog.trackExposure(key);
+
+				expect(posthog.getVariant(key)).toBeUndefined();
+				expect(useTelemetry().track).not.toHaveBeenCalledWith(
+					participationEvent,
+					expect.objectContaining({ name: key }),
+				);
+				expect(window.posthog?.capture).not.toHaveBeenCalled();
+			});
+
+			it.each(['control', 'variant'] as const)(
+				'uses the durable %s assignment instead of the raw flag',
+				(variant) => {
+					const posthog = usePostHog();
+					posthog.init({ [key]: variant === 'control' ? 'variant' : 'control' });
+					posthog.setMcpDiscoveryAssignment(variant);
+
+					expect(posthog.getVariant(key)).toBe(variant);
+					expect(posthog.isVariantEnabled(key, variant)).toBe(true);
+				},
+			);
+
+			it('tracks an assignment immediately after init and only once', () => {
+				const posthog = usePostHog();
+				posthog.init({ [key]: 'variant' });
+				vi.advanceTimersByTime(100);
+
+				posthog.setMcpDiscoveryAssignment('variant');
+
+				expect(useTelemetry().track).toHaveBeenCalledExactlyOnceWith(participationEvent, {
+					name: key,
+					variant: 'variant',
+				});
+
+				posthog.setMcpDiscoveryAssignment('variant');
+				posthog.init({ [key]: 'control' });
+				vi.advanceTimersByTime(2000);
+
+				expect(useTelemetry().track).toHaveBeenCalledTimes(1);
+			});
+
+			it('uses an override for exposure without changing the assigned participation variant', () => {
+				const posthog = usePostHog();
+				posthog.overrides[key] = { value: 'control' };
+				posthog.setMcpDiscoveryAssignment('variant');
+				posthog.trackExposure(key);
+				posthog.trackExposure(key);
+
+				expect(posthog.getVariant(key)).toBe('control');
+				expect(useTelemetry().track).toHaveBeenCalledExactlyOnceWith(participationEvent, {
+					name: key,
+					variant: 'variant',
+				});
+				expect(window.posthog?.capture).toHaveBeenCalledExactlyOnceWith('$feature_flag_called', {
+					$feature_flag: key,
+					$feature_flag_response: 'control',
+				});
+			});
+
+			it('clears the assignment without exposing the raw flag', () => {
+				const posthog = usePostHog();
+				posthog.init({ [key]: 'variant' });
+				posthog.setMcpDiscoveryAssignment('control');
+				posthog.setMcpDiscoveryAssignment(null);
+				posthog.trackExposure(key);
+
+				expect(posthog.getVariant(key)).toBeUndefined();
+				expect(window.posthog?.capture).not.toHaveBeenCalled();
+			});
+
+			it('clears the assignment and tracking deduplication on reset', () => {
+				const posthog = usePostHog();
+				posthog.setMcpDiscoveryAssignment('variant');
+				posthog.trackExposure(key);
+
+				posthog.reset();
+				expect(posthog.getVariant(key)).toBeUndefined();
+				posthog.trackExposure(key);
+				expect(window.posthog?.capture).toHaveBeenCalledTimes(1);
+
+				posthog.setMcpDiscoveryAssignment('variant');
+				posthog.trackExposure(key);
+				expect(useTelemetry().track).toHaveBeenCalledTimes(2);
 				expect(window.posthog?.capture).toHaveBeenCalledTimes(2);
 			});
 		});

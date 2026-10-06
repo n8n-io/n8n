@@ -386,7 +386,9 @@ export class McpService {
 				try {
 					const result = await invoke(...handlerArgs);
 					const { status, errorMessage } = getToolCallOutcome(result);
-					if (result && !isInputRequired(result)) {
+					const isWorkflowMutation =
+						tool.name === 'create_workflow_from_code' || tool.name === 'update_workflow';
+					if (isWorkflowMutation && result && !isInputRequired(result)) {
 						// Experiment bookkeeping must not turn a successful tool write into an error.
 						try {
 							await this.mcpDiscoveryActivity.recordClaudeToolResult(
