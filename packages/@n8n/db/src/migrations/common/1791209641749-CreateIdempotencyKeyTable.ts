@@ -2,10 +2,6 @@ import type { MigrationContext, ReversibleMigration } from '../migration-types';
 
 const tableName = 'idempotency_key';
 
-/**
- * One stored Public API write per user and Idempotency-Key.
- * A retry with the same pair returns this row. The handler does not run again.
- */
 export class CreateIdempotencyKeyTable1791209641749 implements ReversibleMigration {
 	async up({ schemaBuilder: { createTable, column }, escape, tablePrefix }: MigrationContext) {
 		const status = escape.columnName('status');
