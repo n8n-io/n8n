@@ -5,14 +5,6 @@ import { z } from 'zod';
 import { importBlockingIssueSchema } from './import-blocking-issue.schema';
 import { Z } from '../../zod-class';
 
-/**
- * Mirrors `ImportResult` and its nested summary types in
- * `packages/cli/src/modules/n8n-packages/n8n-packages.types.ts` (and the sibling
- * `entities/*` type files it re-exports from). Keep field names, optionality and
- * nullability in lockstep with those TypeScript types — the registry `.parse()`s the
- * real service response against this schema on every successful import.
- */
-
 const importPackageSummarySchema = z.object({
 	sourceN8nVersion: z.string(),
 	sourceId: z.string(),

@@ -27,11 +27,7 @@ import { classifyPackageFailure } from '@/modules/n8n-packages/package-failure-c
 
 const tags = ['N8nPackage'];
 
-/** `package` file part + every documented form field, plus one because busboy rejects the
- * request when the part count *reaches* (not exceeds) the limit. */
 const IMPORT_PACKAGE_MAX_PARTS = IMPORT_PACKAGE_REQUEST_FORM_FIELDS.length + 2;
-
-/** Max length for multipart text fields, including JSON credential bindings. */
 const IMPORT_PACKAGE_FIELD_SIZE_BYTES = 64 * 1024;
 
 function uploadLimits(maxParts: number) {

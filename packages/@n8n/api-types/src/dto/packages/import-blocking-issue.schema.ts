@@ -4,14 +4,6 @@ import { z } from 'zod';
 
 import { policyViolationSchema } from '../../schemas/policy-violation.schema';
 
-/**
- * A reason an import cannot proceed, matching the `BlockingIssue` union in
- * `packages/cli/src/modules/n8n-packages/n8n-packages.types.ts`. Keep this schema in
- * lockstep with that type: every field name, optionality and nullability here must mirror
- * the TypeScript source exactly, since the registry `.parse()`s real service output against
- * it on every blocked import.
- */
-
 const workflowConflictIssueSchema = z
 	.object({
 		type: z.literal('workflow-conflict'),

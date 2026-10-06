@@ -201,9 +201,6 @@ describe('POST /n8n-packages/import', () => {
 			.field('workflowConflictPolicy', 'fail')
 			.attach('package', tarBuffer, 'import.n8np');
 
-		// The `@ApiKeyScope` gate rejects the request before the controller method (and its
-		// `n8n-package-import-failed` telemetry) ever runs — same convention every other
-		// `@PublicApiController` route follows for a missing scope.
 		expect(response.statusCode).toBe(403);
 	});
 
