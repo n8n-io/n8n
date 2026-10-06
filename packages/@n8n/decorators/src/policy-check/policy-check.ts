@@ -77,7 +77,7 @@ export type WorkflowStartContext = {
 export type WorkflowTransferContext = {
 	readonly workflow: PolicedWorkflow;
 	/** The project the workflow is moving *into* — that's whose policy applies. */
-	readonly targetProjectId: string | null;
+	readonly targetProjectId: string;
 };
 
 /**
