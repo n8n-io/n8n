@@ -207,7 +207,7 @@ vi.mock('@/features/ai/shared/components/ChatInputBase.vue', async () => {
 		default: defineComponent({
 			name: 'ChatInputBase',
 			template:
-				'<form data-testid="chat-input-stub" @submit.prevent="$emit(\'submit\')"><slot name="above" /><textarea ref="input" /><slot name="footer-start" /></form>',
+				'<form data-testid="chat-input-stub" @submit.prevent="$emit(\'submit\')"><slot name="header" /><slot name="above" /><textarea ref="input" /><slot name="footer-start" /></form>',
 			props: [
 				'modelValue',
 				'placeholder',
