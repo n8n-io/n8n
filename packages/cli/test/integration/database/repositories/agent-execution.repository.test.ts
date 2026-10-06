@@ -1661,7 +1661,14 @@ describe('AgentExecutionRepository', () => {
 				];
 				const pending = await enqueue(remote, pendingInput);
 				const steered = await enqueue(remote, input(threadId, 'Accepted steering'));
-				const target = { projectId, agentId, threadId, userId: owner.id, kind: 'preview' as const };
+				const target = {
+					projectId,
+					agentId,
+					threadId,
+					userId: owner.id,
+					kind: 'preview' as const,
+					resourceId: `draft-chat:${owner.id}`,
+				};
 				await local.queue.steer({
 					...target,
 					queueId: steered.id,
@@ -1907,7 +1914,14 @@ describe('AgentExecutionRepository', () => {
 			const local = recordingServices();
 			const remote = recordingServices(undefined, peer);
 			const threadId = uuid();
-			const target = { projectId, agentId, threadId, userId: owner.id, kind: 'preview' as const };
+			const target = {
+				projectId,
+				agentId,
+				threadId,
+				userId: owner.id,
+				kind: 'preview' as const,
+				resourceId: `draft-chat:${owner.id}`,
+			};
 			await enqueue(local, input(threadId, 'A', 'new'));
 			const active = await claim(local, threadId);
 			const executionId = active.admission.executionId;
@@ -2042,7 +2056,14 @@ describe('AgentExecutionRepository', () => {
 		it('rolls back messages and timeline markers if consumption fails', async () => {
 			const services = recordingServices();
 			const threadId = uuid();
-			const target = { projectId, agentId, threadId, userId: owner.id, kind: 'preview' as const };
+			const target = {
+				projectId,
+				agentId,
+				threadId,
+				userId: owner.id,
+				kind: 'preview' as const,
+				resourceId: `draft-chat:${owner.id}`,
+			};
 			await enqueue(services, input(threadId, 'A', 'new'));
 			const active = await claim(services, threadId);
 			const executionId = active.admission.executionId;
@@ -2096,7 +2117,14 @@ describe('AgentExecutionRepository', () => {
 				const local = recordingServices();
 				const remote = recordingServices(undefined, peer);
 				const threadId = uuid();
-				const target = { projectId, agentId, threadId, userId: owner.id, kind: 'preview' as const };
+				const target = {
+					projectId,
+					agentId,
+					threadId,
+					userId: owner.id,
+					kind: 'preview' as const,
+					resourceId: `draft-chat:${owner.id}`,
+				};
 				await enqueue(local, input(threadId, 'A', 'new'));
 				const active = await claim(local, threadId);
 				const executionId = active.admission.executionId;
@@ -2194,6 +2222,7 @@ describe('AgentExecutionRepository', () => {
 					threadId,
 					userId: owner.id,
 					kind: 'preview' as const,
+					resourceId: `draft-chat:${owner.id}`,
 					queueId: c.id,
 					executionId,
 				};
@@ -2834,6 +2863,7 @@ describe('AgentExecutionRepository', () => {
 					userId: owner.id,
 					queueId: pending.id,
 					executionId: active.admission.executionId,
+					kind: 'preview',
 				});
 				const runId = uuid();
 				const state: SerializableAgentState = {

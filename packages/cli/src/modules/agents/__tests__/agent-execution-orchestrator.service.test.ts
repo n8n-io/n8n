@@ -1872,7 +1872,9 @@ describe('AgentExecutionOrchestratorService', () => {
 				attributionUserId: user.id,
 			}),
 		);
-		expect(runtime.agent.stream.mock.calls[0][1]?.onInputBoundary).toBeUndefined();
+		// n8n Chat accepts steering, same as Preview, so the turn gets an
+		// `onInputBoundary` hook to consume mid-run steered input.
+		expect(runtime.agent.stream.mock.calls[0][1]?.onInputBoundary).toBeInstanceOf(Function);
 		expect(integrationMessageContextService.setLatest).toHaveBeenCalledWith(
 			'thread-1',
 			'n8n-chat-production:user-1',
@@ -1887,6 +1889,8 @@ describe('AgentExecutionOrchestratorService', () => {
 				access: { accessScope: 'user', ownerId: user.id },
 				source: 'n8n_chat_production',
 				telemetry: expect.objectContaining({ runType: 'production', userId: user.id }),
+				previewChat: undefined,
+				acceptsSteering: true,
 			}),
 			expect.any(Date),
 		);

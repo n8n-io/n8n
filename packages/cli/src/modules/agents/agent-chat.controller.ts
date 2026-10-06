@@ -648,6 +648,51 @@ export class AgentChatController {
 		});
 	}
 
+	@Post('/:agentId/n8n-chat/:threadId/queue/:queueId/reorder')
+	@ProjectScope('agent:execute')
+	async reorderProductionQueuedMessage(
+		req: AuthenticatedRequest<{
+			projectId: string;
+			agentId: string;
+			threadId: string;
+			queueId: string;
+		}>,
+		_res: Response,
+		@Body payload: AgentChatQueueReorderDto,
+	): Promise<void> {
+		this.assertQueueId(req.params.queueId);
+		await this.requireProductionChat(req.params.agentId, req.params.projectId);
+		await this.messageQueue.reorderPending({
+			...req.params,
+			userId: req.user.id,
+			targetQueueId: payload.targetQueueId,
+			expectedQueueIds: payload.expectedQueueIds,
+			kind: 'n8n_chat',
+		});
+	}
+
+	@Post('/:agentId/n8n-chat/:threadId/queue/:queueId/steer')
+	@ProjectScope('agent:execute')
+	async steerProductionQueuedMessage(
+		req: AuthenticatedRequest<{
+			projectId: string;
+			agentId: string;
+			threadId: string;
+			queueId: string;
+		}>,
+		_res: Response,
+		@Body payload: AgentChatQueueSteerDto,
+	): Promise<void> {
+		this.assertQueueId(req.params.queueId);
+		await this.requireProductionChat(req.params.agentId, req.params.projectId);
+		await this.messageQueue.steer({
+			...req.params,
+			userId: req.user.id,
+			executionId: payload.executionId,
+			kind: 'n8n_chat',
+		});
+	}
+
 	@Delete('/:agentId/n8n-chat/:threadId/queue/:queueId')
 	@ProjectScope('agent:execute')
 	async removeProductionQueuedMessage(
@@ -721,6 +766,7 @@ export class AgentChatController {
 			userId: req.user.id,
 			targetQueueId: payload.targetQueueId,
 			expectedQueueIds: payload.expectedQueueIds,
+			kind: 'preview',
 		});
 	}
 
@@ -760,6 +806,7 @@ export class AgentChatController {
 			...req.params,
 			userId: req.user.id,
 			executionId: payload.executionId,
+			kind: 'preview',
 		});
 	}
 
