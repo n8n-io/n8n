@@ -600,7 +600,7 @@ describe('AgentEvalChecksPanel', () => {
 			expect(getByTestId('add-check-panel-stub')).toHaveAttribute('data-dataset', 'ds-1');
 		});
 
-		it('hides the panel when it asks to close', async () => {
+		it('hides the panel when it asks to close, and brings the button back', async () => {
 			const user = userEvent.setup();
 			const { getByTestId, getByText } = renderWithDataset();
 			await user.click(getByTestId('agent-eval-checks-add-check'));
@@ -608,6 +608,21 @@ describe('AgentEvalChecksPanel', () => {
 			await user.click(getByText('close panel'));
 
 			expect(getByTestId('add-check-panel-stub')).not.toBeVisible();
+			expect(getByTestId('agent-eval-checks-add-check')).toBeInTheDocument();
+		});
+
+		// Hidden, not unmounted: reopening must not draft a new batch of prepared cases.
+		it('reopens the same panel after it was closed, and the button gives way again', async () => {
+			const user = userEvent.setup();
+			const { getByTestId, getByText, queryByTestId } = renderWithDataset();
+			await user.click(getByTestId('agent-eval-checks-add-check'));
+			await user.click(getByText('close panel'));
+
+			await user.click(getByTestId('agent-eval-checks-add-check'));
+
+			expect(getByTestId('add-check-panel-stub')).toBeVisible();
+			expect(queryByTestId('agent-eval-checks-add-check')).not.toBeInTheDocument();
+			expect(addCheckPanelMounts.count).toBe(1);
 		});
 
 		it('runs the checks again once a check was added, since a run only holds the cases it started with', async () => {

@@ -459,8 +459,9 @@ onBeforeUnmount(store.stopPollingRun);
 			@added="emit('rerun')"
 		/>
 
+		<!-- Gives way to the panel while it is open, and comes back when it is closed. -->
 		<N8nButton
-			v-else-if="addCheckSource"
+			v-if="addCheckSource && !addCheckOpen"
 			variant="ghost"
 			size="small"
 			:disabled="disabled"
