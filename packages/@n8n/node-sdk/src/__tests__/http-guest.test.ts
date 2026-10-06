@@ -8,6 +8,7 @@ import {
 	type IWorkflowDataProxyData,
 } from 'n8n-workflow';
 
+import { missingTitlesOf } from '../define';
 import { freezeAction, freezeHttpGuest } from '../freeze';
 import { checkPublish } from '../publish';
 import { fixtureRouteOf } from '../testing';
@@ -212,6 +213,21 @@ describe('the HTTP guest', () => {
 		const version: FrozenVersion = versionOf(frozen.manifest, frozen.bundle);
 		const fromJs = await outputsOf('searchPages', await loadExecutor(js, RUNTIME));
 		expect(await outputsOf('searchPages', await loadExecutor(version, RUNTIME))).toEqual(fromJs);
+	});
+
+	it('titles each input field without a title from its name', async () => {
+		const { js } = await versionsOf('getUser');
+		const { input } = js.manifest.contract;
+		const contract = {
+			...js.manifest.contract,
+			input: { ...input, properties: { user: { type: 'string' }, page_size: { type: 'integer' } } },
+		};
+		const { manifest } = await freezeHttpGuest({ contract, ...BINDINGS.getUser });
+		expect(manifest.contract.input.properties).toMatchObject({
+			user: { title: 'User' },
+			page_size: { title: 'Page Size' },
+		});
+		expect(missingTitlesOf(manifest.contract)).toEqual([]);
 	});
 
 	it('passes the publish gate on the routes that a run of it records', async () => {

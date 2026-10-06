@@ -358,7 +358,7 @@ export async function freezeHttpGuest(
 		JSON.parse(
 			canonicalJson(
 				withN8nCredentials(
-					extendedOf(parseHttpGuestConfig(withNodeDisplayName(config)), options),
+					extendedOf(parseHttpGuestConfig(withFieldTitles(withNodeDisplayName(config))), options),
 					options.credentialTypeOf,
 				),
 			),
@@ -401,6 +401,61 @@ function withNodeDisplayName(config: unknown): unknown {
 	const name = typeof node.displayName === 'string' ? node.displayName : config.contract.node;
 	return { ...config, contract: { ...config.contract, nodeDisplayName: name } };
 }
+
+/**
+ * The config with a title on each input field that has none, from the field name: `issueNumber`
+ * gives "Issue Number". The publish gate needs a title on each field, and the HTTP action form,
+ * an OpenAPI document or the AI builder often give none.
+ */
+function withFieldTitles(config: unknown): unknown {
+	if (!isRecord(config) || !isRecord(config.contract) || !isRecord(config.contract.input)) {
+		return config;
+	}
+	return {
+		...config,
+		contract: { ...config.contract, input: titledSchema(config.contract.input) },
+	};
+}
+
+/** The schema with a title on each field, at the depths that `missingTitlesOf` checks. */
+function titledSchema(
+	schema: Record<string, unknown>,
+	tag = isRecord(schema.discriminator) ? schema.discriminator.propertyName : undefined,
+): Record<string, unknown> {
+	const branchesOf = (key: 'oneOf' | 'anyOf') => {
+		const branches = schema[key];
+		return Array.isArray(branches)
+			? { [key]: branches.map((branch) => (isRecord(branch) ? titledSchema(branch, tag) : branch)) }
+			: {};
+	};
+	const { properties, items } = schema;
+	return {
+		...schema,
+		...(isRecord(properties)
+			? {
+					properties: Object.fromEntries(
+						Object.entries(properties).map(([name, field]) => [
+							name,
+							name === tag || !isRecord(field)
+								? field
+								: { ...titledSchema(field), title: field.title ?? titleOf(name) },
+						]),
+					),
+				}
+			: {}),
+		...branchesOf('oneOf'),
+		...branchesOf('anyOf'),
+		...(isRecord(items) ? { items: titledSchema(items) } : {}),
+	};
+}
+
+/** A field name as a title, e.g. `issue_number` or `issueNumber` gives "Issue Number". */
+const titleOf = (name: string) =>
+	name
+		.replace(/[_-]+/g, ' ')
+		.replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+		.trim()
+		.replace(/\b\w/g, (letter) => letter.toUpperCase());
 
 /** The config with the settings of the node it extends copied in. */
 function extendedOf(
