@@ -1234,9 +1234,24 @@ export type CaseItem<Item, F extends keyof Item, K> = Item extends unknown
 
 // ── Parts ───────────────────────────────────────────────────────────────────
 
-/** Any part, as the builders take it. A part keeps its item types for tsc only. */
-type AnyPart = Part<never, never, unknown, unknown>;
+/**
+ * Any part, as the builders take it. A part keeps its item types for tsc only. A body can be
+ * an array that tsc rejects: the build reports it as a problem.
+ */
+type AnyPart = Part<never, never, unknown, unknown> | PartList;
 type AnyRegion = Region<never, never, unknown, unknown>;
+
+declare const partList: unique symbol;
+
+/**
+ * An array where a macro takes one body part. tsc rejects it with one error. The parts in it
+ * read `Loose` items, and the macro gives the body output a default type, so the steps in and
+ * after the array do not fail too. The instance-ai build hints find this error by the name
+ * `PartList`.
+ */
+type PartList = ReadonlyArray<Part<Loose, Loose, unknown, unknown>> & {
+	readonly [partList]: 'Put several parts in steps(a, b), not in an array [a, b]';
+};
 
 const isStep = (part: AnyPart): part is Step<never, unknown, unknown, string> => 'spec' in part;
 const isRegion = (part: AnyPart): part is AnyRegion => 'region' in part;
@@ -1492,14 +1507,14 @@ export function switchOn(
  * Items that the body drops, e.g. with `filter`, do not stop the next batch. Use it only to
  * pace work, for example for a rate limit: every node already runs once for each item.
  */
-export function forEach<In, Ctx, const N extends string, B>(
+export function forEach<In, Ctx, const N extends string, B = Loose>(
 	config: {
 		/** The region name, unique among nodes and regions. */
 		name: N;
 		/** The items of one batch. */
 		batchSize: number;
 	},
-	body: Part<NoInfer<In>, NoInfer<Ctx & Record<N, In>>, B, unknown>,
+	body: Part<NoInfer<In>, NoInfer<Ctx & Record<N, In>>, B, unknown> | PartList,
 ): Region<In, Ctx, B, Ctx & Record<N, B>>;
 export function forEach(config: { name: string; batchSize: number }, body: AnyPart): AnyRegion {
 	const { name, batchSize } = config;
@@ -1556,12 +1571,20 @@ interface LoopConfig<N extends string, B, CB> {
  * ),
  * ```
  */
-export function loop<In, Ctx, const N extends string, B, CB, S extends In = never>(
+// Without a typed body, the body output is the loop item: the next pass reads it.
+export function loop<
+	In,
+	Ctx,
+	const N extends string,
+	B = In,
+	CB = Ctx & Record<N, In>,
+	S extends In = never,
+>(
 	config: LoopConfig<N, B, CB> & {
 		/** The item of the next pass, from the body output. Default: the body output. */
 		next?: (out: B, $: Dollar<CB>) => S;
 	} & NextNeeded<NoInfer<In>, B, CB, S>,
-	body: Part<NoInfer<In>, NoInfer<Ctx & Record<N, In>>, B, CB>,
+	body: Part<NoInfer<In>, NoInfer<Ctx & Record<N, In>>, B, CB> | PartList,
 ): Region<In, Ctx, B, Ctx & Record<N, B>>;
 export function loop(
 	config: {
@@ -1600,7 +1623,14 @@ export function loop(
  * ),
  * ```
  */
-export function paginate<In, Ctx, const N extends string, B, CB, S extends In>(
+export function paginate<
+	In,
+	Ctx,
+	const N extends string,
+	B = Loose,
+	CB = Ctx & Record<N, In>,
+	S extends In = In,
+>(
 	config: {
 		/** The region name, unique among nodes and regions. */
 		name: N;
@@ -1611,7 +1641,7 @@ export function paginate<In, Ctx, const N extends string, B, CB, S extends In>(
 		/** The cursor of the next page, or `null` after the last page. */
 		next: (response: B, $: Dollar<CB>) => S | null;
 	},
-	request: Part<NoInfer<In>, NoInfer<Ctx & Record<N, In>>, B, CB>,
+	request: Part<NoInfer<In>, NoInfer<Ctx & Record<N, In>>, B, CB> | PartList,
 ): Region<In, Ctx, B, Ctx & Record<N, B>>;
 export function paginate(
 	config: { name: string; maxPages: number; emit?: RegionEmit; next: unknown },
@@ -1641,7 +1671,7 @@ export function paginate(
  * ),
  * ```
  */
-export function pollUntil<In, Ctx, const N extends string, B, CB>(
+export function pollUntil<In, Ctx, const N extends string, B = Loose, CB = Ctx & Record<N, In>>(
 	config: {
 		/** The region name, unique among nodes and regions. */
 		name: N;
@@ -1652,7 +1682,7 @@ export function pollUntil<In, Ctx, const N extends string, B, CB>(
 		/** True when the attempt output is the result. */
 		until: (out: B, $: Dollar<CB>) => boolean;
 	},
-	attempt: Part<NoInfer<In>, NoInfer<Ctx & Record<N, In>>, B, CB>,
+	attempt: Part<NoInfer<In>, NoInfer<Ctx & Record<N, In>>, B, CB> | PartList,
 ): Region<In, Ctx, B, Ctx & Record<N, B>>;
 export function pollUntil(
 	config: { name: string; maxAttempts: number; every: Interval; until: unknown },
@@ -1781,7 +1811,7 @@ export function merge(
  * group('Notify', sendMail),
  * ```
  */
-export function group<In, Ctx, B, CB>(
+export function group<In, Ctx, B = Loose, CB = Ctx>(
 	config:
 		| string
 		| {
@@ -1790,7 +1820,7 @@ export function group<In, Ctx, B, CB>(
 				/** The text the canvas shows when the group is collapsed, up to 145 characters. */
 				description?: string;
 		  },
-	body: Part<NoInfer<In>, NoInfer<Ctx>, B, CB>,
+	body: Part<NoInfer<In>, NoInfer<Ctx>, B, CB> | PartList,
 ): Region<In, Ctx, B, CB>;
 export function group(
 	config: string | { name: string; description?: string },

@@ -1298,6 +1298,74 @@ export default workflow(
 		]);
 	}, 120_000);
 
+	it('builds a group named by a string, and types the steps after it', async () => {
+		const result = await build(`import { workflow, manual, group, set, steps } from '@n8n/workflow-sdk/next';
+
+export default workflow(
+	'Grouped',
+	manual({ sample: ${SAMPLE} }),
+	group(
+		'Shape',
+		steps(
+			set({ name: 'Upper', fields: { subject: (item) => item.subject.toUpperCase() } }),
+			set({ name: 'Size', fields: { size: (item) => item.subject.length } }),
+		),
+	),
+	set({ name: 'Report', fields: { line: (item, $) => \`\${$('Upper').subject}: \${item.size}\` } }),
+);
+`);
+		expect(result.success ? [] : result.errors).toEqual([]);
+	}, 120_000);
+
+	it('fails an array loop body with one type error and its hint, not an unknown item at each read', async () => {
+		const source = `import { workflow, set, loop } from '@n8n/workflow-sdk/next';
+import { webhook } from '@n8n/nodes/webhook';
+import { httpRequest } from '@n8n/nodes/httpRequest';
+
+export default workflow(
+	'Org chain',
+	webhook.trigger({
+		name: 'New Employee',
+		httpMethod: 'POST',
+		path: 'new-employee',
+		sample: [{ body: { id: '1', manager_id: '2' } }],
+	}),
+	set({
+		name: 'Init',
+		fields: { current_id: (hook) => hook.body.manager_id, chain: () => new Array<string>() },
+	}),
+	loop(
+		{ name: 'Walk', maxIterations: 10, onLimit: 'continue', until: (state) => !state.current_id },
+		[
+			httpRequest.get({
+				name: 'Fetch Manager',
+				url: (state) => \`https://api.example.com/employees/\${state.current_id}\`,
+				sample: [{ id: '2', name: 'Jane', manager_id: '3' }],
+			}),
+			set({
+				name: 'Append',
+				fields: {
+					current_id: (person) => person.manager_id ?? '',
+					chain: (person, $) => [...$('Walk').chain, person.name],
+				},
+			}),
+		],
+	),
+	set({ name: 'Report', fields: { managers: (state) => state.chain.join(', ') } }),
+);
+`;
+		const result = await build(source);
+		expect(result.success).toBe(false);
+		if (result.success) return;
+		const [problems, arrayBody, ...rest] = result.errors;
+		expect(problems).toContain('A branch or a body takes one part, not an array');
+		expect(arrayBody).toContain(`${at(source, '[\n\t\t\thttpRequest')}: error TS2345:`);
+		expect(arrayBody).toContain(
+			'Hint: A branch or a body takes one part. Put several parts in `steps(a, b)`, not in an array `[a, b]`.',
+		);
+		expect(rest).toEqual([]);
+	}, 120_000);
+
 	it('fails the build of a source that imports both SDKs', async () => {
 		const result = await build(`import { workflow, trigger } from '@n8n/workflow-sdk';
 import { manual } from '@n8n/workflow-sdk/next';

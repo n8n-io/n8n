@@ -819,6 +819,76 @@ describe('regions compile to node contracts', () => {
 		);
 	});
 
+	it('names a group by a string as by { name }, and types the items after it', () => {
+		const grouped = (config: string | { name: string }) =>
+			workflow(
+				'Grouped',
+				manual(),
+				customers('Customers'),
+				group(config, steps(set({ name: 'Id', fields: { id: (c) => c.id } }))),
+				set({ name: 'After', fields: { id: (item, $) => `${item.id} ${$('Customers').name}` } }),
+			).toJSON();
+		expect(withoutIds(grouped('Enrich'))).toEqual(withoutIds(grouped({ name: 'Enrich' })));
+
+		workflow(
+			'Grouped by name',
+			manual(),
+			customers('Customers'),
+			group('Enrich', set({ name: 'Id', fields: { id: (c) => c.id } })),
+			set({ name: 'After', fields: { id: (item, $) => `${item.id} ${$('Id').id}` } }),
+			// @ts-expect-error the group output has no field name
+			set({ name: 'Typo', fields: { name: (item) => item.name } }),
+		);
+	});
+
+	it('rejects an array body with one type error, and the steps in and after it still type', () => {
+		const grouped = workflow(
+			'Grouped',
+			manual(),
+			customers('Customers'),
+			group(
+				'Enrich',
+				// @ts-expect-error a body takes steps(a, b), not an array
+				[
+					set({ name: 'Id', fields: { id: (c) => c.id } }),
+					set({ name: 'Score', fields: { score: (s, $) => s.id.length + $('Id').id.length } }),
+				],
+			),
+			set({ name: 'After', fields: { total: (item, $) => item.score + $('Customers').name } }),
+			// @ts-expect-error the nodes before the group stay typed
+			set({ name: 'Typo', fields: { name: (_item, $) => $('Customers').nam } }),
+		);
+		expect(() => grouped.toJSON()).toThrow(
+			'A branch or a body takes one part, not an array: put several parts in steps(a, b)',
+		);
+
+		const looped = workflow(
+			'Looped',
+			manual(),
+			set({ name: 'Init', fields: { n: 0 } }),
+			loop(
+				{ name: 'L', maxIterations: 3, onLimit: 'continue', until: (out) => out.n > 2 },
+				// @ts-expect-error a body takes steps(a, b), not an array
+				[
+					set({ name: 'Inc', fields: { m: (_s, $) => $('L').n + 1 } }),
+					set({ name: 'Keep', fields: { n: (s) => s.m } }),
+				],
+			),
+			set({ name: 'Out', fields: { n: (out) => out.n + 1 } }),
+			// @ts-expect-error without a typed body, the loop output is the loop item, which has no m
+			set({ name: 'Typo', fields: { m: (out) => out.m } }),
+		);
+		expect(() => looped.toJSON()).toThrow(
+			'A branch or a body takes one part, not an array: put several parts in steps(a, b)',
+		);
+
+		const forOrders: Step<Order, unknown, Order, 'Total'> = contractStep('n8n-nodes-base.noOp', {
+			name: 'Total',
+		});
+		// @ts-expect-error a part that reads another item type is not a body
+		workflow('Wrong body', manual(), customers('Customers'), group('Orders', forOrders));
+	});
+
 	it('types items through regions', () => {
 		workflow(
 			'Each',

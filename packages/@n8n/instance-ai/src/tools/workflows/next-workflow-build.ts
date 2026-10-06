@@ -1575,8 +1575,10 @@ const TSC_HINTS: ReadonlyArray<{
 			"Workflow settings go in the first argument: `workflow({ name, settings: { errorWorkflow: '<id>' } }, trigger, …)`.",
 	},
 	{
-		codes: [2322, 2559],
-		message: /^Type '.*\[\]' has no properties in common with type '(?:Part|Region)</,
+		codes: [2322, 2345, 2559],
+		// A body takes `Part | PartList`, so an array there fails as a `PartList`.
+		message:
+			/^Type '.*\[\]' has no properties in common with type '(?:Part|Region)<|^Argument of type '.*\[\]' is not assignable to parameter of type '.*\| PartList'/,
 		hint: () =>
 			'A branch or a body takes one part. Put several parts in `steps(a, b)`, not in an array `[a, b]`.',
 	},

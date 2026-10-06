@@ -1135,6 +1135,10 @@ describe('tsc hints', () => {
 			arrayHint,
 		],
 		[
+			"TS2345: Argument of type '(Step<Loose, Loose, { id: any; }, \"Id\"> | Step<Loose, Loose, { score: any; }, \"Score\">)[]' is not assignable to parameter of type 'Part<NoInfer<Customer>, NoInfer<Record<...>>, Loose, NoInfer<Record<...>>> | PartList'.\n  Property '[partList]' is missing in type '(Step<Loose, Loose, { id: any; }, \"Id\"> | Step<...>)[]' but required in type '{ readonly [partList]: \"Put several parts in steps(a, b), not in an array [a, b]\"; }'.",
+			'A branch or a body takes one part. Put several parts in `steps(a, b)`, not in an array `[a, b]`.',
+		],
+		[
 			'TS2554: Expected 1 arguments, but got 2.',
 			"A step takes one object with its `name` in it: `node({ name: 'Fetch', type, version, parameters })`, not `node('Fetch', { … })`.",
 		],
@@ -1320,6 +1324,7 @@ describe('tsc hints', () => {
 		"TS2769: No overload matches this call.\n  The last overload gave the following error.\n    Argument of type 'number' is not assignable to parameter of type 'string'.",
 		"TS2322: Type 'string' is not assignable to type 'number'.",
 		'TS2345: Argument of type \'"Strat"\' is not assignable to parameter of type \'"Get" | "Start"\'.',
+		"TS2345: Argument of type 'Step<{ tags: string[]; }, {}, Order, \"Total\">' is not assignable to parameter of type 'Part<NoInfer<Customer>, NoInfer<Record<...>>, Order, Record<...>> | PartList'.\n  Type 'Step<{ tags: string[]; }, {}, Order, \"Total\">' is not assignable to type 'Part<NoInfer<Customer>, NoInfer<Record<...>>, Order, Record<...>>'.",
 		"TS2339: Property 'idd' does not exist on type 'JsonObject'.",
 		"TS2304: Cannot find name '$pageCount'.",
 		"TS2304: Cannot find name 'orderTotal'.",
