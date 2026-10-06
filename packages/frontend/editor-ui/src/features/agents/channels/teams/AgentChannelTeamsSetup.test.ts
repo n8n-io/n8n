@@ -688,7 +688,7 @@ describe('AgentChannelTeamsSetup', () => {
 			);
 		});
 
-		it('links to the Azure Bot resources for changes made there', async () => {
+		it('links to the Azure Bot resources, since the bot itself is not known here', async () => {
 			const { getByTestId } = renderComponent({ props: settingsProps() });
 
 			await waitFor(() =>
@@ -698,6 +698,9 @@ describe('AgentChannelTeamsSetup', () => {
 				),
 			);
 			expect(getByTestId('teams-azure-bot-link')).toHaveAttribute('target', '_blank');
+			expect(getByTestId('teams-azure-bot-link')).toHaveTextContent(
+				'agents.channels.teams.settings.findBot',
+			);
 		});
 
 		it('keeps the Azure link out of the setup', async () => {

@@ -800,7 +800,7 @@ defineExpose({
 				data-testid="teams-azure-bot-link"
 			>
 				<span :class="$style.linkContent">
-					{{ i18n.baseText('agents.channels.teams.settings.openBotSettings') }}
+					{{ i18n.baseText('agents.channels.teams.settings.findBot') }}
 					<N8nIcon icon="external-link" size="xsmall" />
 				</span>
 			</N8nLink>

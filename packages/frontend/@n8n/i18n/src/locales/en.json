@@ -9267,7 +9267,7 @@
 	"agents.channels.teams.setup.availability.whereTitle": "Where can people use the agent?",
 	"agents.channels.teams.settings.updateNotice": "You’ll need to upload the app again to apply changes.",
 	"agents.channels.teams.settings.uploadHint": "To update, upload the new package in Teams under Apps › Manage your apps › Upload an app.",
-	"agents.channels.teams.settings.openBotSettings": "Open bot settings in Azure",
+	"agents.channels.teams.settings.findBot": "Find your Azure Bot",
 	"agents.channels.teams.settings.availabilityLabel": "Where it works",
 	"agents.channels.teams.settings.identityLabel": "Appearance in Teams",
 	"agents.channels.teams.settings.saveAndDownload": "Save and download package",
