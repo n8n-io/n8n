@@ -5,7 +5,7 @@ import {
 	testDb,
 	testModules,
 } from '@n8n/backend-test-utils';
-import { isUniqueConstraintError, TransactionRunner, WorkflowRepository } from '@n8n/db';
+import { TransactionRunner, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 
 import { MigrationFindingSyncRepository } from '../database/repositories/migration-finding-sync.repository';
@@ -107,13 +107,27 @@ describe('MigrationFindingRepository', () => {
 			expect(await findingRepository.count()).toBe(0);
 		});
 
-		test('rejects a second finding for the same workflow, rule and target version', async () => {
+		test('keeps the existing row when the same finding is inserted again', async () => {
 			const workflow = await createWorkflow();
 			await findingRepository.insertMany([finding(workflow.id)], ctx);
+			const [before] = await findingRepository.listForWorkflows('v3', [workflow.id], ctx);
+			await findingRepository.markFixedForIds([before.id], ctx);
 
-			await expect(findingRepository.insertMany([finding(workflow.id)], ctx)).rejects.toSatisfy(
-				isUniqueConstraintError,
-			);
+			await findingRepository.insertMany([finding(workflow.id)], ctx);
+
+			const rows = await findingRepository.listForWorkflows('v3', [workflow.id], ctx);
+			expect(rows).toHaveLength(1);
+			expect(rows[0]).toMatchObject({ id: before.id, status: 'fixed' });
+		});
+
+		test('inserts the new findings of a batch and ignores the ones that exist', async () => {
+			const [first, second] = await Promise.all([createWorkflow(), createWorkflow()]);
+			await findingRepository.insertMany([finding(first.id)], ctx);
+
+			await findingRepository.insertMany([finding(first.id), finding(second.id)], ctx);
+
+			const rows = await findingRepository.listForWorkflows('v3', [first.id, second.id], ctx);
+			expect(rows.map((row) => row.workflowId).sort()).toEqual([first.id, second.id].sort());
 		});
 
 		test('accepts the same rule and workflow for another target version', async () => {
