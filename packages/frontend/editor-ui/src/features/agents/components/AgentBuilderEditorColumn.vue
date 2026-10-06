@@ -54,6 +54,7 @@ const props = defineProps<{
 	tasksReloadKey?: number;
 	artifactMode?: boolean;
 	preventScroll?: boolean;
+	embeddedAiBuilding?: boolean;
 	/** No agent row exists yet, so agent-scoped endpoints would 404. */
 	agentUnsaved?: boolean;
 	ensureAgentPersisted?: () => Promise<void>;
@@ -106,7 +107,7 @@ const i18n = useI18n();
 
 <template>
 	<section
-		:class="$style.editorColumn"
+		:class="[$style.editorColumn, { [$style.embeddedAiBuilding]: props.embeddedAiBuilding }]"
 		:aria-label="i18n.baseText('agents.builder.editorColumn.ariaLabel')"
 		data-testid="agent-builder-editor-column"
 	>
@@ -394,6 +395,11 @@ const i18n = useI18n();
 	display: flex;
 	flex-direction: column;
 	width: 100%;
+}
+
+.embeddedAiBuilding {
+	--agent-panel-header-opacity: 0.5;
+	--agent-row-label-opacity: 0.5;
 }
 
 .editorColumn {

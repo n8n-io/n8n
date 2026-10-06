@@ -8,7 +8,7 @@ const meta = {
 	argTypes: {
 		type: {
 			control: 'select',
-			options: ['dots', 'ring'],
+			options: ['dots', 'ring', 'grid'],
 		},
 		size: {
 			control: 'select',
@@ -42,6 +42,14 @@ export const Default: Story = {
 	},
 };
 
+export const Grid: Story = {
+	...Default,
+	args: {
+		type: 'grid',
+		size: 'xxlarge',
+	},
+};
+
 export const Variants = {
 	render: () => ({
 		components: { N8nSpinner },
@@ -54,6 +62,10 @@ export const Variants = {
 				<div style="display: flex; flex-direction: column; align-items: center; gap: var(--spacing--2xs);">
 					<N8nSpinner type="ring" size="medium" />
 					<span>ring</span>
+				</div>
+				<div style="display: flex; flex-direction: column; align-items: center; gap: var(--spacing--2xs);">
+					<N8nSpinner type="grid" size="medium" />
+					<span>grid</span>
 				</div>
 			</div>
 		`,

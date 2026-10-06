@@ -328,7 +328,8 @@ function onAiThreadIdChange(threadId: string) {
 	void router.replace({ query: { ...route.query, [ASSISTANT_THREAD_PARAM]: threadId } });
 }
 /** True while the embedded assistant is actively mutating this agent. */
-const embeddedAiBuilding = ref(false);
+/** Temporary stub to preview the assistant changing the agent. */
+const embeddedAiBuilding = ref(true);
 const embeddedAiProcessing = ref(false);
 const aiPanelRef = useTemplateRef<InstanceType<typeof InstanceAiChatPanel>>('aiPanelRef');
 // The standalone preview route doesn't render the AI dock (`showAiPanel`
@@ -2967,7 +2968,6 @@ useKeybindings({
 						:before-send="flushAutosaveIgnoringResult"
 						data-testid="agent-ai-chat-panel"
 						@update:thread-id="onAiThreadIdChange"
-						@update:building="embeddedAiBuilding = $event"
 						@update:processing="embeddedAiProcessing = $event"
 						@close="isAiPanelOpen = false"
 					>
@@ -3018,6 +3018,7 @@ useKeybindings({
 					v-else
 					v-model:active-main-tab="activeMainTab"
 					:class="$style.editorColumn"
+					:embedded-ai-building="embeddedAiBuilding"
 					:local-config="localConfig"
 					:agent="agent"
 					:project-id="projectId"
