@@ -16,6 +16,7 @@ import {
 	detectBinaryDependencies,
 	emitsDataTableRows,
 	generateMockHints,
+	TRIGGER_CONTENT_CORRECTION,
 	identifyNodesForHints,
 	identifyNodesForPinData,
 	isDataTableRead,
@@ -234,6 +235,28 @@ describe('identifyNodesForPinData', () => {
 			);
 			expect(result.map((n) => n.name)).toEqual(['Cache']);
 		});
+	});
+
+	it('leaves only the Data Table reads in the live set unpinned', () => {
+		const read = (name: string, operation: string) =>
+			makeNode({
+				name,
+				type: 'n8n-nodes-base.dataTable',
+				parameters: { resource: 'row', operation },
+			});
+		const nodes = [
+			read('Read Seeded', 'get'),
+			read('Read Other', 'rowExists'),
+			makeNode({ name: 'Cache', type: 'n8n-nodes-base.redis' }),
+		];
+
+		const result = identifyNodesForPinData(
+			makeWorkflow(nodes),
+			undefined,
+			new Set(['Read Seeded', 'Cache']),
+		);
+
+		expect(result.map((n) => n.name)).toEqual(['Read Other', 'Cache']);
 	});
 });
 
@@ -1133,6 +1156,40 @@ describe('generateMockHints', () => {
 		expect(result.warnings).toEqual([
 			expect.stringContaining('Phase 1 attempt 1/2: empty triggerContent'),
 		]);
+	});
+
+	it('names the empty trigger content in the retry prompt', async () => {
+		const generate = mockAgentResponses(
+			JSON.stringify({ globalContext: '', triggerContent: {}, nodeHints: { Slack: 'foo' } }),
+			JSON.stringify({
+				globalContext: '',
+				triggerContent: { timestamp: '2024-01-01T00:00:00Z' },
+				nodeHints: { Slack: 'foo' },
+			}),
+		);
+
+		await generateMockHints({ workflow, nodeNames: ['Schedule', 'Slack'] });
+
+		expect(generate.mock.calls[0][0]).not.toContain('## Correction required');
+		expect(generate.mock.calls[1][0]).toContain('## Correction required');
+		expect(generate.mock.calls[1][0]).toContain(TRIGGER_CONTENT_CORRECTION);
+	});
+
+	it('names the failure reason in the retry prompt when the first attempt threw', async () => {
+		const generate = mockAgentResponses(
+			new Error('Unexpected end of JSON input'),
+			JSON.stringify({
+				globalContext: '',
+				triggerContent: { timestamp: '2024-01-01T00:00:00Z' },
+				nodeHints: { Slack: 'foo' },
+			}),
+		);
+
+		await generateMockHints({ workflow, nodeNames: ['Schedule', 'Slack'] });
+
+		expect(generate.mock.calls[1][0]).toContain(
+			'The previous answer was unusable: Unexpected end of JSON input',
+		);
 	});
 
 	it('should return emptyResult with both warnings when every attempt fails', async () => {

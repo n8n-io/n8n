@@ -1,5 +1,4 @@
-import { Time } from '@n8n/constants';
-import { SystemTask } from '@n8n/decorators';
+import { intervalFromMilliseconds, SystemTask } from '@n8n/decorators';
 import type { SystemTaskEffects, SystemTaskPlacement, SystemTaskSchedule } from '@n8n/decorators';
 import { AUTORENEWAL_INTERVAL } from '@n8n_io/license-sdk';
 
@@ -13,10 +12,7 @@ import { License } from '@/license';
 export class LicenseRenewalTask implements SystemTask {
 	readonly name = 'license-renewal';
 
-	readonly schedule: SystemTaskSchedule = {
-		kind: 'interval',
-		intervalSeconds: AUTORENEWAL_INTERVAL / Time.seconds.toMilliseconds,
-	};
+	readonly schedule: SystemTaskSchedule = intervalFromMilliseconds(AUTORENEWAL_INTERVAL);
 
 	/** The SDK logs a failed pass and resolves, so the runner never sees a failure to retry. */
 	readonly effects: SystemTaskEffects = 'non-idempotent';

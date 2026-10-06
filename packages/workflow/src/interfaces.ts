@@ -27,6 +27,7 @@ import type {
 	IDataTableProjectAggregateService,
 	IDataTableProjectService,
 } from './data-table.types';
+import type { TriggerTime } from './cron';
 import type { ExecutionCancelledError } from './errors';
 import type { ExpressionError } from './errors/expression.error';
 import type { NodeApiError } from './errors/node-api.error';
@@ -55,6 +56,14 @@ export interface IAdditionalCredentialOptions {
 	 * override when a gateway signals an expired token with a different status.
 	 */
 	preAuthenticationRetryStatusCode?: number | number[];
+	/**
+	 * Whether a `preAuthenticationRetryStatusCode` other than 401 only forces the
+	 * refresh-and-resend when the token the credential stored in `n8n_expires_at` is at or past
+	 * its expiry. The counterpart of `IOAuth2Options.skipRefreshWhileTokenIsFresh`, for
+	 * credentials that mint their own token in `preAuthentication`. A listed 401 and an unknown
+	 * expiry still retry.
+	 */
+	skipPreAuthenticationRetryWhileTokenIsFresh?: boolean;
 }
 
 export type IAllExecuteFunctions =
@@ -1120,8 +1129,7 @@ type CronRecurrenceRule =
 /**
  * @deprecated Remnant of the legacy in-memory scheduling path. `registerCron`
  * takes {@link Cron}, not this type; the durable scheduler path never uses it.
- * Only `ScheduledTaskManager` and its helper still reference it (and only for
- * `CronContext['recurrence']`). Slated to go away with `ScheduledTaskManager`.
+ * Legacy test helpers still use it. Use {@link Cron} for new scheduling code.
  */
 export type CronContext = {
 	nodeId: string;
@@ -1150,6 +1158,7 @@ export type Cron = {
 	expression: CronExpression;
 	recurrence?: CronRecurrenceRule;
 	source?: CronSource;
+	triggerTime?: TriggerTime;
 };
 
 export interface SchedulingFunctions {
@@ -3209,6 +3218,9 @@ export type WebhookType = 'default' | 'setup';
  * resolvers for its expression-template fields, keyed by field name. Populated
  * by `webhookDescriptionFields()` and read via `resolveWebhookDescriptionField()`.
  * Backend-only: not serialized with the description.
+ *
+ * TODO(native-evaluation rollout, CAT-4699): remove with `NativeParameterResolvers` and the
+ * `[WEBHOOK_RESOLVERS]` index below.
  */
 export const WEBHOOK_RESOLVERS: unique symbol = Symbol.for('n8n.webhookDescriptionResolvers');
 
@@ -3476,6 +3488,8 @@ export interface RelatedAgentRun {
 	 * resume on the runtime they started on.
 	 */
 	previewChat?: boolean;
+	/** The published n8n Chat channel owns this run. */
+	publishedN8nChat?: boolean;
 	/**
 	 * The interactive n8n user, when there is one. The preview chat resumes the draft
 	 * agent version, which gates node and workflow tools by this user's access.
@@ -3775,11 +3789,20 @@ export interface IWorkflowExecutionDataProcess {
 	httpResponse?: express.Response; // Used for streaming responses
 	streamingEnabled?: boolean;
 	/**
-	 * Only engine 2.0 reads this. The caller mints the data-plane execution id
-	 * when it has to wait for the run's answer, so it can subscribe before the
-	 * run starts.
+	 * Only engine v2 reads this. The data-plane execution id, set by a caller that
+	 * minted it before the run starts: to subscribe to the run's answer, or because
+	 * the trigger node already stored files under it. Without it, the dispatcher
+	 * mints one.
 	 */
-	engineExecutionId?: string;
+	engineV2ExecutionId?: string;
+	/**
+	 * Only engine v2 reads this. A caller that waits for the run's answer sets
+	 * it, together with `engineV2ExecutionId`. `responseMode` tells the engine
+	 * which answer the caller waits for. Without this field, nobody waits.
+	 */
+	engineV2Response?: {
+		responseMode: 'lastNode' | 'responseNode' | 'streaming';
+	};
 	startedAt?: Date;
 
 	// MCP-specific fields for queue mode support

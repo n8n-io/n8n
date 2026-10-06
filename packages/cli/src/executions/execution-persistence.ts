@@ -1,4 +1,5 @@
 import { parseFlatted } from '@n8n/backend-common';
+import { EventService } from '@n8n/backend-services';
 import { DatabaseConfig, ExecutionsConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import type {
@@ -40,7 +41,6 @@ import {
 import { UnreadableRunDataError } from './execution-data/unreadable-run-data.error';
 import { sumBinaryDataBytes } from './sum-binary-data-bytes';
 import { DuplicateExecutionError } from '../errors/duplicate-execution.error';
-import { EventService } from '../events/event.service';
 
 type DeletionTarget = ExecutionRef & { storedAt: ExecutionDataStorageLocation };
 
@@ -915,6 +915,7 @@ export class ExecutionPersistence {
 		// TODO(CAT-3214): `ExecutionEntity.finished` is deprecated and we should rely on statuses
 		// only, but for now we still use it to filter out finished executions for parity with
 		// ExecutionRepository.
+		// oxlint-disable-next-line typescript/no-deprecated
 		if (conditions?.requireNotFinished) where.finished = false;
 		if (conditions?.requireNotCanceled) where.status = Not('canceled');
 		return where;

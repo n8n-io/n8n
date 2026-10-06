@@ -14,8 +14,5 @@ export default mergeConfig(baseConfig, {
 		testTimeout: 20_000,
 		hookTimeout: 20_000,
 		fileParallelism: false,
-		poolOptions: {
-			forks: { singleFork: true },
-		},
 	},
 });

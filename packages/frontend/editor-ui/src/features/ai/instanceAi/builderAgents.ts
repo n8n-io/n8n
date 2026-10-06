@@ -1,8 +1,25 @@
 import type {
+	InstanceAiAgentActivity,
 	InstanceAiAgentNode,
 	InstanceAiMessage,
 	InstanceAiTimelineEntry,
 } from '@n8n/api-types';
+import type { BaseTextKey } from '@n8n/i18n';
+
+const AGENT_ACTIVITY_KEYS: Record<InstanceAiAgentActivity, BaseTextKey> = {
+	creating: 'instanceAi.agentActivity.creating',
+	editing: 'instanceAi.agentActivity.editing',
+	exploring: 'instanceAi.agentActivity.exploring',
+	testing: 'instanceAi.agentActivity.testing',
+	publishing: 'instanceAi.agentActivity.publishing',
+	working: 'instanceAi.agentActivity.working',
+};
+
+export function getAgentActivityKey(
+	node: Pick<InstanceAiAgentNode, 'activity'>,
+): BaseTextKey | undefined {
+	return node.activity ? AGENT_ACTIVITY_KEYS[node.activity] : undefined;
+}
 
 const BUILDER_ROLE_LABELS: Record<string, string> = {
 	'agent-builder': 'Building agent',
@@ -36,8 +53,12 @@ export function firstNonBlank(...candidates: Array<string | undefined>): string 
  * title or subtitle — which older threads persisted — would otherwise leave a
  * header with nothing in it but a chevron.
  */
-export function getAgentSectionTitle(node: InstanceAiAgentNode): string | undefined {
+export function getAgentSectionTitle(
+	node: InstanceAiAgentNode,
+	activityTitle?: string,
+): string | undefined {
 	return firstNonBlank(
+		activityTitle,
 		node.title,
 		getBuilderRoleLabel(node),
 		node.targetResource?.name,

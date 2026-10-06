@@ -11,7 +11,7 @@ concurrency:
 jobs:
   install-and-build:
     name: Install & Build
-    runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-4vcpu-ubuntu-2204' }}
+    runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-8vcpu-ubuntu-2204' }}
     env:
       NODE_OPTIONS: '--max-old-space-size=7168'
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
@@ -31,12 +31,16 @@ jobs:
       db_migrations: ${{ fromJSON(steps.ci-filter.outputs.results)['db-migrations'] == true }}
       e2e_performance: ${{ fromJSON(steps.ci-filter.outputs.results)['e2e-performance'] == true }}
       engine_e2e: ${{ fromJSON(steps.ci-filter.outputs.results)['engine-e2e'] == true }}
+      # The main E2E suite runs. Read by e2e-matrix and e2e.
+      run_e2e: >-
+        ${{ github.repository == 'n8n-io/n8n' && github.event_name != 'merge_group' &&
+        (fromJSON(steps.ci-filter.outputs.results).runtime == true
+          || fromJSON(steps.ci-filter.outputs.results).e2e == true
+          || contains(github.event.pull_request.labels.*.name, 'force-e2e')) }}
       instance_ai_workflow_eval: ${{ fromJSON(steps.ci-filter.outputs.results)['instance-ai-workflow-eval'] == true }}
       commit_sha: ${{ steps.commit-sha.outputs.sha }}
       merge_base: ${{ steps.ci-filter.outputs.merge-base }}
-      matrix: ${{ steps.generate-matrix.outputs.matrix }}
       db_test_matrix: ${{ steps.generate-db-test-matrix.outputs.db_test_matrix }}
-      skip_tests: ${{ steps.generate-matrix.outputs.skip-tests }}
       affected_packages: ${{ steps.affected-packages.outputs.list }}
       changed_files: ${{ steps.ci-filter.outputs.changed-files }}
       currents_record_key: ${{ secrets.CURRENTS_RECORD_KEY != '' && 'present' || '' }}
@@ -75,7 +79,7 @@ jobs:
               !**/CHANGELOG.md
               !**/*.test.ts
               !**/*.spec.ts
-              !packages/testing/playwright/**
+              !packages/quality/testing/playwright/**
               !packages/frontend/@n8n/storybook/**
               !.devcontainer/**
               !scripts/agent-setup.mjs
@@ -88,7 +92,7 @@ jobs:
             unit:
               **
               !packages/@n8n/task-runner-python/**
-              !packages/testing/playwright/**
+              !packages/quality/testing/playwright/**
               !.github/**
               .github/workflows/test-unit-reusable.yml
               !**/*.md
@@ -107,8 +111,8 @@ jobs:
               .github/workflows/prepare-docker-reusable.yml
               .github/actions/build-n8n-docker/**
               .github/actions/load-n8n-docker/**
-              packages/testing/playwright/**
-              packages/testing/containers/**
+              packages/quality/testing/playwright/**
+              packages/quality/environments/containers/**
             dev-server-smoke:
               packages/frontend/editor-ui/vite.config.mts
               # If this job becomes too slow, use a smaller glob. Do not delete the assertion.
@@ -116,10 +120,10 @@ jobs:
               pnpm-workspace.yaml
               packages/@n8n/*/package.json
               packages/frontend/@n8n/frontend-vite-config/**
-              packages/testing/playwright/tests/dev-server-smoke/**
-              packages/testing/playwright/playwright.config.ts
-              packages/testing/playwright/playwright-projects.ts
-              packages/testing/playwright/package.json
+              packages/quality/testing/playwright/tests/dev-server-smoke/**
+              packages/quality/testing/playwright/playwright.config.ts
+              packages/quality/testing/playwright/playwright-projects.ts
+              packages/quality/testing/playwright/package.json
               .github/workflows/test-dev-server-smoke-reusable.yml
             frontend-declarations:
               packages/frontend/@n8n/design-system/**
@@ -142,11 +146,11 @@ jobs:
               cubic.yaml
               .agents/review-rules/**
             e2e-performance:
-              packages/testing/playwright/tests/performance/**
-              packages/testing/playwright/utils/performance-helper.ts
-              packages/testing/containers/**
+              packages/quality/testing/playwright/tests/performance/**
+              packages/quality/testing/playwright/utils/performance-helper.ts
+              packages/quality/environments/containers/**
               .github/workflows/test-e2e-performance-reusable.yml
-            # Whole directories, not the `engine-*` files alone. Engine 2.0
+            # Whole directories, not the `engine-*` files alone. Engine v2
             # routing lives in ordinary control plane code: `workflow-runner.ts`
             # and the webhook and trigger paths decide whether a run reaches the
             # data plane, and the executions code merges v1 and v2 rows. A path
@@ -165,8 +169,8 @@ jobs:
               packages/cli/src/webhooks/**
               packages/cli/src/workflows/triggers/**
               packages/cli/src/workflow-runner.ts
-              packages/testing/containers/**
-              packages/testing/playwright/**
+              packages/quality/environments/containers/**
+              packages/quality/testing/playwright/**
             instance-ai-workflow-eval:
               packages/@n8n/instance-ai/src/**
               packages/@n8n/instance-ai/evaluations/**
@@ -189,10 +193,10 @@ jobs:
               packages/cli/src/**/*.integration.test.ts
               packages/cli/src/modules/instance-registry/**
               packages/cli/vitest.*
-              packages/testing/containers/services/postgres.ts
-              packages/testing/containers/services/redis.ts
-              packages/testing/containers/postgres-versions.json
-              packages/testing/containers/test-containers.ts
+              packages/quality/environments/containers/services/postgres.ts
+              packages/quality/environments/containers/services/redis.ts
+              packages/quality/environments/containers/postgres-versions.json
+              packages/quality/environments/containers/test-containers.ts
               .github/workflows/test-db-reusable.yml
               .github/scripts/db-test-matrix.mjs
               docs/generated/**
@@ -210,10 +214,10 @@ jobs:
               packages/cli/vitest.config.base.ts
               packages/cli/vitest.config.migration.ts
               packages/cli/vitest.config.migration.testcontainers.ts
-              packages/testing/containers/services/postgres.ts
-              packages/testing/containers/services/redis.ts
-              packages/testing/containers/postgres-versions.json
-              packages/testing/containers/test-containers.ts
+              packages/quality/environments/containers/services/postgres.ts
+              packages/quality/environments/containers/services/redis.ts
+              packages/quality/environments/containers/postgres-versions.json
+              packages/quality/environments/containers/test-containers.ts
               .github/workflows/test-db-reusable.yml
               .github/scripts/db-test-matrix.mjs
 
@@ -226,20 +230,6 @@ jobs:
       - name: Report build critical path
         if: fromJSON(steps.ci-filter.outputs.results).ci
         run: node scripts/turbo-critical-path.mjs >> "$GITHUB_STEP_SUMMARY"
-
-      - name: Generate shard matrix
-        id: generate-matrix
-        if: github.event_name != 'merge_group' && (fromJSON(steps.ci-filter.outputs.results).ci || fromJSON(steps.ci-filter.outputs.results).e2e)
-        env:
-          CHANGED_FILES: ${{ steps.ci-filter.outputs.changed-files }}
-          MERGE_BASE: ${{ steps.ci-filter.outputs.merge-base }}
-          PLAYWRIGHT_GREP_INVERT: ${{ github.event.pull_request.head.repo.fork == true && '@licensed' || '' }}
-          PLAYWRIGHT_PROJECT: ${{ github.event.pull_request.head.repo.fork == true && 'sqlite:e2e' || 'multi-main:e2e' }}
-        run: |
-          FILES_CSV=$(echo "$CHANGED_FILES" | tr '\n' ',' | sed 's/,$//')
-          MATRIX=$(node packages/testing/playwright/scripts/distribute-tests.mjs --matrix 20 --orchestrate --impact "--project=$PLAYWRIGHT_PROJECT" "--files=$FILES_CSV" "--base=$MERGE_BASE")
-          echo "matrix=$MATRIX" >> "$GITHUB_OUTPUT"
-          echo "skip-tests=$(node -e "process.stdout.write(JSON.parse(process.argv[1])[0]?.skip === true ? 'true' : 'false')" "$MATRIX")" >> "$GITHUB_OUTPUT"
 
       # Generated here because a reusable workflow cannot resolve its own matrix.
       # PRs run SQLite plus the primary Postgres leg. The merge queue runs the
@@ -257,7 +247,7 @@ jobs:
         env:
           CHANGED_FILES: ${{ steps.ci-filter.outputs.changed-files }}
         run: |
-          PACKAGES=$(node packages/testing/janitor/dist/cli.js affected-packages | tr '\n' ' ' | sed 's/ *$//')
+          PACKAGES=$(node packages/quality/testing/janitor/dist/cli.js affected-packages | tr '\n' ' ' | sed 's/ *$//')
           echo "Affected packages: $PACKAGES"
           echo "list=$PACKAGES" >> "$GITHUB_OUTPUT"
 
@@ -347,7 +337,7 @@ jobs:
   # (each of which invokes prepare-docker internally) short-circuit to a
   # cache hit instead of racing to rebuild.
   prepare-docker:
-    name: Prepare Docker
+    name: Prepare E2E
     needs: [install-and-build, format-check]
     if: >-
       github.repository == 'n8n-io/n8n' &&
@@ -364,36 +354,77 @@ jobs:
       branch: ${{ needs.install-and-build.outputs.commit_sha }}
     secrets: inherit
 
+  # Runs next to prepare-docker, so the matrix is off the path of the jobs that
+  # wait for install-and-build. Only the e2e job reads it.
+  e2e-matrix:
+    name: Prepare E2E / Shard matrix
+    needs: install-and-build
+    if: needs.install-and-build.outputs.run_e2e == 'true'
+    runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-2vcpu-ubuntu-2204' }}
+    outputs:
+      matrix: ${{ steps.generate-matrix.outputs.matrix }}
+      skip_tests: ${{ steps.generate-matrix.outputs.skip-tests }}
+    steps:
+      - uses: useblacksmith/checkout@bcec731f1eb1367240608d1c889a75b96db6ec53 # v1.5.0
+        with:
+          ref: ${{ needs.install-and-build.outputs.commit_sha }}
+          fetch-depth: 1
+
+      # Impact selection reads package.json at the merge base.
+      - name: Fetch merge base
+        env:
+          MERGE_BASE: ${{ needs.install-and-build.outputs.merge_base }}
+        run: |
+          if [ -n "$MERGE_BASE" ] && ! git cat-file -e "$MERGE_BASE^{commit}" 2>/dev/null; then
+            git fetch --no-tags --depth=1 origin "$MERGE_BASE"
+          fi
+
+      - name: Setup Node.js
+        uses: ./.github/actions/setup-nodejs
+        with:
+          build-command: pnpm turbo run build --filter=@n8n/playwright-janitor --filter=@n8n/workflow-sdk...
+
+      - name: Generate shard matrix
+        id: generate-matrix
+        env:
+          CHANGED_FILES: ${{ needs.install-and-build.outputs.changed_files }}
+          MERGE_BASE: ${{ needs.install-and-build.outputs.merge_base }}
+          PLAYWRIGHT_GREP_INVERT: ${{ github.event.pull_request.head.repo.fork == true && '@licensed' || '' }}
+          PLAYWRIGHT_PROJECT: ${{ github.event.pull_request.head.repo.fork == true && 'sqlite:e2e' || 'multi-main:e2e' }}
+        run: |
+          FILES_CSV=$(echo "$CHANGED_FILES" | tr '\n' ',' | sed 's/,$//')
+          MATRIX=$(node packages/quality/testing/playwright/scripts/distribute-tests.mjs --matrix 20 --orchestrate --impact "--project=$PLAYWRIGHT_PROJECT" "--files=$FILES_CSV" "--base=$MERGE_BASE")
+          echo "matrix=$MATRIX" >> "$GITHUB_OUTPUT"
+          echo "skip-tests=$(node -e "process.stdout.write(JSON.parse(process.argv[1])[0]?.skip === true ? 'true' : 'false')" "$MATRIX")" >> "$GITHUB_OUTPUT"
+
   # Full e2e run. Internal PRs run multi-main (postgres + redis + caddy + 2 mains + 1 worker).
   # Fork PRs run sqlite-only and skip @licensed tests (no enterprise license secrets on forks).
   e2e:
     name: E2E
-    needs: [install-and-build, prepare-docker]
+    needs: [install-and-build, prepare-docker, e2e-matrix]
     if: >-
       needs.prepare-docker.result == 'success' &&
-      (needs.install-and-build.outputs.runtime == 'true'
-        || needs.install-and-build.outputs.e2e == 'true'
-        || contains(github.event.pull_request.labels.*.name, 'force-e2e')) &&
-      needs.install-and-build.outputs.skip_tests != 'true' &&
-      github.event_name != 'merge_group'
+      needs.e2e-matrix.result == 'success' &&
+      needs.install-and-build.outputs.run_e2e == 'true' &&
+      needs.e2e-matrix.outputs.skip_tests != 'true'
     uses: ./.github/workflows/test-e2e-reusable.yml
     with:
       branch: ${{ needs.install-and-build.outputs.commit_sha }}
       test-mode: docker-artifact
       test-command: ${{ github.event.pull_request.head.repo.fork == true && 'pnpm --filter=n8n-playwright test:container:sqlite:e2e --grep-invert=@licensed' || 'pnpm --filter=n8n-playwright test:container:multi-main:e2e' }}
       workers: '1'
-      pre-generated-matrix: ${{ needs.install-and-build.outputs.matrix }}
+      pre-generated-matrix: ${{ needs.e2e-matrix.outputs.matrix }}
       artifact-prefix: e2e
       currents-record-key: ${{ needs.install-and-build.outputs.currents_record_key }}
     secrets: inherit
 
-  # Engine 2.0 parity: runs the `@engine:*` specs against a main that routes
+  # Engine v2 parity: runs the `@engine:*` specs against a main that routes
   # every workflow to the new engine. Runs, and blocks, when engine code changes
   # or when the PR carries the `force-engine-e2e` label; skipped otherwise. One
   # shard is enough while the tagged set is small. Internal PRs only: this
   # project has no fork variant yet.
   e2e-engine:
-    name: E2E on engine 2.0
+    name: E2E on engine v2
     needs: [install-and-build, prepare-docker]
     if: >-
       needs.prepare-docker.result == 'success' &&
@@ -444,6 +475,7 @@ jobs:
       ref: ${{ needs.install-and-build.outputs.commit_sha }}
       matrix: ${{ needs.install-and-build.outputs.db_test_matrix }}
       run-migrations: ${{ needs.install-and-build.outputs.db_migrations == 'true' }}
+      changed-files: ${{ needs.install-and-build.outputs.changed_files }}
 
   e2e-performance:
     name: E2E Performance
@@ -509,6 +541,7 @@ jobs:
         typecheck,
         lint,
         check-packaging,
+        e2e-matrix,
         e2e,
         e2e-engine,
         dev-server-smoke,
@@ -542,7 +575,7 @@ jobs:
       (github.head_ref == 'bundle/2.x' || github.head_ref == 'bundle/1.x')
     runs-on: ubuntu-slim
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
           sparse-checkout: .github/scripts/slack

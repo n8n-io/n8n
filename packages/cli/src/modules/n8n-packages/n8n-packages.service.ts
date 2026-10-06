@@ -1,11 +1,10 @@
+import { EventService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 
 import { N8N_VERSION } from '@/constants';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { EventService } from '@/events/event.service';
+import { BadRequestError, ForbiddenError } from '@n8n/errors';
 
 import { buildImportResult, toPackageSummary } from './engine/import-result';
 import { emitPackageImportedEvent, type ImportOutcome } from './engine/import-telemetry';
@@ -44,6 +43,9 @@ import { PackageImportConfig } from './n8n-packages.config';
 import {
 	CredentialExportPolicy,
 	MissingWorkflowDependencyPolicy,
+	OverwriteDeletionPolicy,
+	WorkflowConflictPolicy,
+	WorkflowIdPolicy,
 	WorkflowVersionPolicy,
 	type ExportPackageEventCounts,
 	type ExportPackageRequest,
@@ -51,10 +53,14 @@ import {
 	type ExportPackageResult,
 	type ExportPackageSummary,
 	type ImportPackageRequest,
+	type ImportPackageSelectionRequest,
 	type ImportRequest,
 	type ImportResult,
+	type ImportSelection,
+	type ImportSelectionRequest,
 	type PackageImportSource,
 	type ResolvedImportPackageRequest,
+	type ResolvedImportRequest,
 	createBindings,
 } from './n8n-packages.types';
 import { FORMAT_VERSION } from './spec/constants';
@@ -74,6 +80,42 @@ interface WrittenExport {
 	credentialExportPolicy: CredentialExportPolicy;
 	includeArchivedWorkflows: boolean;
 }
+
+type DirectoryProjectPackage =
+	| { status: 'empty'; result: ImportResult }
+	| { status: 'project'; reader: PackageReader; manifest: PackageManifest };
+
+/**
+ * A cherry-pick import acts only on its selection, so most policies are fixed here. Deletion mode is
+ * left to the caller (`overwriteDeletionPolicy`): promotion passes `hard-delete` for diff convergence,
+ * while the public selection import defaults to the safe `archive`.
+ */
+const CHERRY_PICK_IMPORT_POLICY = {
+	projectConflictPolicy: 'merge',
+	folderConflictPolicy: 'merge',
+	workflowPublishingPolicy: 'match-source',
+	missingNodeTypeMode: 'fail',
+	credentialMatchingMode: 'id-only',
+	credentialMissingMode: 'must-preexist',
+	dataTableMatchingMode: 'by-id',
+	dataTableMissingMode: 'create',
+	dataTableSchemaConflictPolicy: 'fail',
+	variableMissingMode: 'must-preexist',
+	variableConflictPolicy: 'keep-existing',
+	tagMissingMode: 'create',
+	tagConflictPolicy: 'skip',
+} as const satisfies Omit<
+	ResolvedImportRequest,
+	| 'user'
+	| 'projectId'
+	| 'folderId'
+	| 'apiKeyScopes'
+	| 'bindings'
+	| 'selection'
+	| 'overwriteDeletionPolicy'
+	| 'workflowConflictPolicy'
+	| 'workflowIdPolicy'
+>;
 
 @Service()
 export class N8nPackagesService {
@@ -401,17 +443,110 @@ export class N8nPackagesService {
 		request: ImportRequest,
 		source: { sourceDir: string },
 	): Promise<ImportResult> {
+		const opened = await this.readDirectoryProjectPackage(source);
+		if (opened.status === 'empty') return opened.result;
+		const { result } = await this.dispatchImport(
+			request,
+			opened.reader,
+			opened.manifest,
+			'git-pull',
+		);
+		return result;
+	}
+
+	async importPackageSelectionFromDirectory(
+		request: ImportSelectionRequest,
+		source: { sourceDir: string },
+		selection: ImportSelection,
+	): Promise<ImportResult> {
+		const opened = await this.readDirectoryProjectPackage(source);
+		if (opened.status === 'empty') return opened.result;
+		const { result } = await this.dispatchSelectionImport(
+			request,
+			opened.reader,
+			opened.manifest,
+			selection,
+			'git-pull',
+		);
+		return result;
+	}
+
+	/** Emit import telemetry for public API requests. Directory imports use the Git pull path. */
+	async importPackageSelection(
+		request: ImportPackageSelectionRequest,
+		selection: ImportSelection,
+	): Promise<ImportResult> {
+		const reader = new TarPackageReader(request.packageBuffer, this.packageImportConfig);
+		const manifest = await this.packageParser.getManifest(reader);
+		if (!isProjectPackage(manifest)) {
+			throw new BadRequestError('A selection import requires a project package.');
+		}
+		const { result, scopes, resolvedRequest } = await this.dispatchSelectionImport(
+			request,
+			reader,
+			manifest,
+			selection,
+			'package-import',
+		);
+
+		emitPackageImportedEvent(this.eventService, {
+			request: { ...resolvedRequest, packageBuffer: request.packageBuffer },
+			manifest,
+			scopes,
+		});
+
+		return result;
+	}
+
+	/** An empty working copy needs no import. Reject content without a project. */
+	private async readDirectoryProjectPackage(source: {
+		sourceDir: string;
+	}): Promise<DirectoryProjectPackage> {
 		const reader = new DirectoryPackageReader(source.sourceDir, this.packageImportConfig);
 		await reader.listEntries();
 		const manifest = await this.packageParser.getManifest(reader);
-		if (!isProjectPackage(manifest)) {
-			if (hasContentWithoutProjects(manifest)) {
-				throw new BadRequestError('Directory packages must contain projects');
-			}
-			return emptyImportResult(manifest);
+		if (isProjectPackage(manifest)) {
+			return { status: 'project', reader, manifest };
 		}
-		const { result } = await this.dispatchImport(request, reader, manifest, 'git-pull');
-		return result;
+		if (hasContentWithoutProjects(manifest)) {
+			throw new BadRequestError('Directory packages must contain projects');
+		}
+		return { status: 'empty', result: emptyImportResult(manifest) };
+	}
+
+	/** The caller must validate that the manifest describes a project package. */
+	private async dispatchSelectionImport(
+		request: ImportSelectionRequest,
+		reader: PackageReader,
+		manifest: PackageManifest,
+		selection: ImportSelection,
+		importSource: PackageImportSource,
+	): Promise<ImportOutcome & { resolvedRequest: ResolvedImportRequest }> {
+		const packageProjectIds = new Set((manifest.projects ?? []).map((project) => project.id));
+		if (!packageProjectIds.has(selection.selectedProjectId)) {
+			throw new BadRequestError(
+				`The selected project "${selection.selectedProjectId}" is not present in the package.`,
+			);
+		}
+
+		const resolvedRequest: ResolvedImportRequest = {
+			user: request.user,
+			...(request.apiKeyScopes !== undefined ? { apiKeyScopes: request.apiKeyScopes } : {}),
+			...(request.bindings !== undefined ? { bindings: request.bindings } : {}),
+			...CHERRY_PICK_IMPORT_POLICY,
+			overwriteDeletionPolicy: request.overwriteDeletionPolicy ?? OverwriteDeletionPolicy.Archive,
+			workflowConflictPolicy: request.workflowConflictPolicy ?? WorkflowConflictPolicy.NewVersion,
+			workflowIdPolicy: request.workflowIdPolicy ?? WorkflowIdPolicy.Source,
+			selection,
+		};
+
+		const outcome = await this.projectPackageImporter.import(
+			resolvedRequest,
+			reader,
+			manifest,
+			importSource,
+		);
+		return { ...outcome, resolvedRequest };
 	}
 
 	private async dispatchImport(

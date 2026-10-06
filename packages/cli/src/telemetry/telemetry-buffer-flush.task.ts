@@ -1,5 +1,5 @@
 import { Time } from '@n8n/constants';
-import { SystemTask } from '@n8n/decorators';
+import { intervalFromSeconds, SystemTask } from '@n8n/decorators';
 import type { SystemTaskEffects, SystemTaskPlacement, SystemTaskSchedule } from '@n8n/decorators';
 
 import { Telemetry } from '@/telemetry';
@@ -11,10 +11,7 @@ import { Telemetry } from '@/telemetry';
 export class TelemetryBufferFlushTask implements SystemTask {
 	readonly name = 'telemetry-buffer-flush';
 
-	readonly schedule: SystemTaskSchedule = {
-		kind: 'interval',
-		intervalSeconds: 6 * Time.hours.toSeconds,
-	};
+	readonly schedule: SystemTaskSchedule = intervalFromSeconds(6 * Time.hours.toSeconds);
 
 	/** A flush sends what it drains, so a repeat can report the same events twice. */
 	readonly effects: SystemTaskEffects = 'non-idempotent';

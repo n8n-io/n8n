@@ -181,6 +181,26 @@ describe('DbConnectionMonitor', () => {
 			expect(poolClient.release).toHaveBeenCalledWith(expect.any(Error));
 		});
 
+		it('should count a ping as successful when the reply is pending I/O as the timeout fires', async () => {
+			// @ts-expect-error readonly property
+			dataSource.isInitialized = true;
+			// @ts-expect-error private property
+			monitor.connected = true;
+			// The reply is delivered on the next I/O turn, as after an event-loop stall.
+			poolClient.query.mockImplementation(
+				async () => await new Promise((resolve) => setImmediate(() => resolve([]))),
+			);
+			mockedSetTimeoutP
+				.mockImplementationOnce(async () => await new Promise(() => {}))
+				.mockResolvedValueOnce(undefined);
+
+			// @ts-expect-error private property
+			await monitor.ping();
+
+			expect(onConnectedChange).not.toHaveBeenCalled();
+			expect(poolClient.release).toHaveBeenCalledWith();
+		});
+
 		it('should destroy the pool client when query creation throws', async () => {
 			// @ts-expect-error readonly property
 			dataSource.isInitialized = true;

@@ -1,0 +1,31 @@
+operationId: getDataTable
+tags:
+  - DataTable
+summary: Get a data table
+description: Retrieve a specific data table by ID.
+x-required-scope: dataTable:read
+x-eov-operation-id: unreachable
+x-eov-operation-handler: v1/handlers/decorator-routed.handler
+x-decorator-routed: true
+parameters:
+  - schema:
+      type: string
+      format: nanoid
+      pattern: ^[A-Za-z0-9]{16}$
+    required: true
+    description: The ID of the data table
+    name: dataTableId
+    in: path
+responses:
+  '200':
+    description: Operation successful.
+    content:
+      application/json:
+        schema:
+          $ref: ../../../../shared/spec/schemas/dataTablePublicDto.generated.yml
+  '401':
+    $ref: ../../../../shared/spec/responses/unauthorized.yml
+  '403':
+    $ref: ../../../../shared/spec/responses/forbidden.yml
+  '404':
+    $ref: ../../../../shared/spec/responses/notFound.yml

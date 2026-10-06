@@ -1,8 +1,8 @@
+import { EventService } from '@n8n/backend-services';
 import { createTeamProject, createWorkflow, testDb, testModules } from '@n8n/backend-test-utils';
 import { Container } from '@n8n/di';
 import { jsonParse } from 'n8n-workflow';
 
-import { EventService } from '@/events/event.service';
 import type { RelayEventMap } from '@/events/maps/relay.event-map';
 import { saveCredential } from '@test-integration/db/credentials';
 import { createFolder } from '@test-integration/db/folders';

@@ -55,6 +55,8 @@ import CredentialTypeSelector from './CredentialTypeSelector.vue';
 import { useQuickConnect } from '../../quickConnect/composables/useQuickConnect';
 import QuickConnectButton from '../../quickConnect/components/QuickConnectButton.vue';
 import QuickConnectBanner from '../../quickConnect/components/QuickConnectBanner.vue';
+import { useGatewayCreditsPromotion } from '../../gatewayCreditsPromotion/useGatewayCreditsPromotion';
+import GatewayCreditsPromotion from '../../gatewayCreditsPromotion/GatewayCreditsPromotion.vue';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { ProjectTypes } from '@/features/collaboration/projects/projects.types';
 import type { ProjectType } from '@/features/collaboration/projects/projects.types';
@@ -129,6 +131,9 @@ const chatPanelStore = useChatPanelStore();
 const i18n = useI18n();
 const telemetry = useTelemetry();
 const { getQuickConnectOption } = useQuickConnect();
+const { promotionText } = useGatewayCreditsPromotion({
+	credentialType: () => props.credentialType.name,
+});
 
 onBeforeMount(async () => {
 	uiStore.activeCredentialType = props.credentialType.name;
@@ -461,6 +466,7 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 					:text="quickConnectBannerText"
 					:disclaimer="quickConnectOption?.disclaimer"
 				/>
+				<GatewayCreditsPromotion v-if="promotionText" :text="promotionText" />
 				<QuickConnectButton
 					:service-name="serviceName"
 					:credential-type-name="credentialType.name"
@@ -470,6 +476,7 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 			</template>
 
 			<template v-else>
+				<GatewayCreditsPromotion v-if="promotionText" :text="promotionText" />
 				<N8nCallout
 					v-if="
 						!isInstanceAiCredentialHelpAvailable &&

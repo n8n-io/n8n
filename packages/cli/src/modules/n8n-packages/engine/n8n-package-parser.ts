@@ -4,7 +4,7 @@ import { Service } from '@n8n/di';
 import { jsonParse, UserError } from 'n8n-workflow';
 import { ZodError } from 'zod';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { BadRequestError } from '@n8n/errors';
 import { NodeTypes } from '@/node-types';
 import * as WorkflowHelpers from '@/workflow-helpers';
 

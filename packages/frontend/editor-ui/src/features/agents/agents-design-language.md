@@ -1,8 +1,7 @@
 # Agent design language
 
-This document is the source of truth for Agent-only interface patterns in this
-module. It starts with modal patterns. Add other reusable Agent patterns as the
-interface develops.
+This document defines reusable Agent interface patterns in this module. Add
+patterns as the interface develops.
 
 ## Scope
 
@@ -11,6 +10,61 @@ interface develops.
 - Do not add or change a global Design System primitive for an Agent-only need.
 - Put all user-facing text in i18n.
 - Test responsive layouts at 375 by 667 pixels and in light and dark themes.
+
+## Breadcrumbs
+
+Show the project icon before the project name in Agent builder and session
+timeline breadcrumbs. Use the same icon as the owning project. Show the user
+icon for a personal project.
+
+## Narrow builder panels
+
+Keep a chip and its adjacent add action inside the available row width. Truncate
+the chip text before the action moves outside the panel.
+
+Show session details on separate lines when the session list is narrow. Keep the
+title, origin, date, token count, and actions visible without overlap.
+
+## Preview history
+
+Use the shared `ChatHistoryDropdownTrigger` in the Preview dock and the Assistant.
+The shared button shows the history icon and the chat title. Click the title or
+the icon to open history. Show only “Chat history” when no chat title exists. Do
+not show “New session” before the Preview session starts. Truncate long titles
+inside the shared button. Keep the header actions visible.
+Use the `x` icon for the Preview close action, as the Assistant does.
+
+## Item context menus
+
+Use `AgentItemContextMenu` for removable configuration chips. It wraps the
+Design System context menu and shows one destructive `Remove` action.
+Keep normal-click editing and existing modal removal controls.
+
+In the standalone Agent Builder, put `Activate` or `Deactivate` before `Remove`
+for tools, workflow references, skills, sub-agents, and schedules. Use `play` for
+`Activate`, `timer` for `Deactivate`, and `trash-2` for `Remove`.
+Put `Remove` in a separate group below a divider.
+Keep these actions out of inline Agent editors and channel,
+MCP, vector store, and memory menus. Schedules use this menu instead of a modal
+switch. Activation edits the draft and takes effect in production after publish.
+
+Keep deactivated items editable and removable. Use the same reduced opacity as
+a disabled Design System button. Apply it to the whole chip in both themes.
+Do not show a status tag on the chip. Keep `Deactivated` in its accessible
+description. Each grouped tool has its own activation action. The group menu
+has no activation action. Mark the group deactivated only when all its tools
+are off.
+
+For grouped tools, put the menu on the group chip and each item in its dropdown.
+Remove on the group removes all its tool references in one configuration update.
+Normal click still opens the dropdown. Remove on an item removes only that
+reference. Keep shared workflows and sub-agents. Schedules and channels use
+their existing removal flows. Keep the managed Slack confirmation and its
+external app choice.
+
+Disable the menu under edit locks and read-only access. Check this state again
+when the user selects an action. Configuration errors must not block removal
+or deactivation.
 
 ## Modal patterns
 
@@ -66,6 +120,11 @@ pencil on hover. Keep the title clickable.
 
 Do not show a second Name field in the body. Show title validation next to the
 title after the user selects Save.
+
+Skills show `Add skill` on the upload screen. Show the editable skill name in
+the title when the editor opens. Give a new manual skill a unique `New skill`
+name. Show an imported skill's name after upload. Keep Name out of the
+`SKILL.md` editor and show name errors beside the title after Save.
 
 Keep the title read-only for external entities. Channels use the integration
 label. Sub-agents use the selected Agent name. Custom tools stay read-only
@@ -128,11 +187,20 @@ a direct pill edit. Save, Cancel, and Close exit the complete flow.
 | Channel platform setup    | A platform-owned setup action can stay in the inline modal content. The Agent shell still owns navigation and dismissal.                                                             |
 | Memory                    | Do not migrate Memory into this pattern in this change.                                                                                                                              |
 
+New skills start with an upload screen. Make `Upload folder` the primary
+action. Support a single `SKILL.md` file and folder drops. Put `Add manually`
+below the drop zone, inline with the prompt. Keep the same font and underline.
+Change only its text color on hover. Do not show a background. Hide the footer
+until the editor opens. Show Back for manual creation. Back discards the draft
+and returns to the upload screen.
+Existing skills open in the editor. Keep the body field order: When to use this
+skill, What the skill does, and Allowed tools. Use `Save skill` to confirm.
+
 ### Review checklist
 
 - Confirm the modal uses `AgentModal` or `AgentModalMultiStep`.
 - Confirm the title has no asset icon.
-- Confirm an editable title replaces a duplicate Name field.
+- Confirm an editable title replaces a duplicate Name field, including Skills.
 - Confirm Back appears only when a previous step exists.
 - Confirm Close is top-right and disabled during a request.
 - Confirm Cancel appears before the primary action.
@@ -145,8 +213,62 @@ a direct pill edit. Save, Cancel, and Close exit the complete flow.
 - Confirm UI text uses i18n.
 - Confirm the layout works at 375 by 667 pixels in light and dark themes.
 
+## Recoverable plan errors
+
+Show rejected plan input and revision conflicts in the normal tool-call row.
+Keep the warning icon and use a short tooltip. Do not show a separate error
+callout or a Fix with Assistant action for these errors. Keep the full input
+and output in the collapsed details and the trace. Keep earlier failed calls
+visible after a successful retry. Unexpected failures keep the existing error
+treatment.
+
 ## Extend this document
 
 Add a section when an Agent-specific pattern applies to two or more Agent
 surfaces. Keep implementation details with the owning pattern. Do not duplicate
 global Design System guidance.
+
+## Tool approvals
+
+Use `N8nApprovalCard` for Preview tool approvals, including background child
+approvals. It owns the shared layout, keyboard controls, and standard choices
+for the Assistant and Agent Preview. Pass the app catalog labels through
+`useApprovalCardLabels`.
+Pass the sanitized display arguments from the backend to the shared card.
+For node tools, include the resolved node parameters and any model input.
+The card formats and shows these values inline for both surfaces. Leave space
+for the card's outline and shadow inside scrollable containers.
+Keep approval policy and response payloads in the caller. Show the session
+option only when the backend supports it. Replace the Preview composer with
+pending tool approvals, including background child approvals. Restore the
+composer and its draft after the approvals are resolved. Show one approval
+at a time, as the Assistant does. Advance to the next pending approval after
+each response. Use the existing child task order for background approvals.
+Focus each approval as it appears. Return focus to the composer after the last
+decision. Keep tool steps, questions, and display cards in the conversation.
+If a surface keeps a resolved card, show the decision without active actions.
+
+## Preview composer queue
+
+Use one action on the right. Show Stop when a turn can be stopped and the
+composer has no text or attachments. Otherwise, show Send. Keep file and voice
+input available during a turn.
+Stack the background task card above the composer. Attach pending messages to
+the top of the composer. Use `--background--subtle` for the queue background.
+Use `--color--neutral-600` for queue text and the Steer label in light mode.
+Use `--text-color--subtler` in dark mode. Use `--color--neutral-400` for all queue
+icons. Use `--border-color--subtle` for the dividers.
+Use `2xs` text and `large` icons. Keep the action targets at least 24 by 24 pixels.
+Keep the first two messages visible.
+Put the third and later messages in a collapsed activity group. Show the number
+of additional pending messages in its header. Keep messages in queue order when
+expanded.
+Keep pending messages out of the conversation until processing starts. Give each
+message a Remove action. Hide an empty queue section. Removal discards the
+message. It does not restore the composer draft.
+
+Edit queued text in place. Use compact Save and Cancel icon actions. Enter saves, Shift+Enter adds a line, and Escape cancels. Keep attachments unchanged. Do not pause the queue during editing. If the message starts, disable Save and retain the draft until the user dismisses it.
+
+Put a six-dot drag handle on the left of each pending message. Drag the handle to move the message. Support the Up and Down arrow keys on the handle. Expand the queue when a drag starts or a message moves. Keep keyboard focus on the moved message. Show the new order during saving. Disable queue actions while the order saves. Messages reserved for steering cannot move. If the move no longer applies, refresh the queue and show an error.
+
+Put the action to send a message to the current execution immediately before Edit. Use the existing corner-down-right icon with the Steer label on its right. Use the existing button and tooltip. Enable it only when the server reports an eligible execution. Keep an accepted steering request in the panel with a waiting status. Disable its actions until the runtime consumes it or returns it to ordinary queue processing. Preserve an open edit draft if another client reserves the message, and disable Save. When the runtime consumes the message, show it between the surrounding assistant output. Keep Stop bound to the same execution.

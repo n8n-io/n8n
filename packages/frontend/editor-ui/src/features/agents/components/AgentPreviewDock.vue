@@ -1,17 +1,12 @@
 <script setup lang="ts">
-import {
-	N8nButton,
-	N8nIcon,
-	N8nIconButton,
-	N8nTooltip,
-	TOOLTIP_DELAY_MS,
-} from '@n8n/design-system';
+import { N8nIconButton, N8nTooltip, TOOLTIP_DELAY_MS } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { computed, nextTick, useTemplateRef, watch } from 'vue';
 import { useStorage } from '@vueuse/core';
 
 import KeyboardShortcutTooltip from '@/app/components/KeyboardShortcutTooltip.vue';
 import { useKeybindings } from '@/app/composables/useKeybindings';
+import ChatHistoryDropdownTrigger from '@/features/ai/shared/components/ChatHistoryDropdownTrigger.vue';
 
 import { useAgentSessionLangSmithExport } from '../composables/useAgentSessionLangSmithExport';
 
@@ -21,7 +16,7 @@ import type {
 	AgentJsonConfig,
 	AgentResource,
 } from '../types';
-import AgentPersonalisationIcon from './AgentPersonalisationIcon.vue';
+import type { BudgetAmountField } from '../utils/budget-config';
 import AgentPreviewChatPage from './AgentPreviewChatPage.vue';
 import AgentPreviewMoreMenu from './AgentPreviewMoreMenu.vue';
 import AgentSessionHistoryDropdown from './AgentSessionHistoryDropdown.vue';
@@ -55,11 +50,22 @@ const props = withDefaults(
 		newSession?: boolean;
 		initialPrompt?: string;
 		canSendToAssistant?: boolean;
+		dismissedFixToolCallIds?: string[];
 		canDeleteSession?: boolean;
 		beforeSend?: () => Promise<void> | void;
 		isDeletingSession?: boolean;
+		budgetCards?: boolean;
+		/** Persists a raised budget cap. Omitted when the agent is read-only. */
+		increaseBudget?: (payload: { field: BudgetAmountField; amount: number }) => Promise<boolean>;
 	}>(),
-	{ newSession: false, canDeleteSession: false, isDeletingSession: false },
+	{
+		newSession: false,
+		canDeleteSession: false,
+		isDeletingSession: false,
+		dismissedFixToolCallIds: () => [],
+		budgetCards: false,
+		increaseBudget: undefined,
+	},
 );
 
 const emit = defineEmits<{
@@ -128,6 +134,10 @@ function getConversationMarkdown() {
 	return previewChatPage.value?.getConversationMarkdown() ?? '';
 }
 
+function clearBudgetStops(fields: BudgetAmountField[]) {
+	previewChatPage.value?.clearBudgetStops(fields);
+}
+
 function toggleFullWidth() {
 	storedLayout.value =
 		layout.value === PreviewLayout.Fullpage ? PreviewLayout.Docked : PreviewLayout.Fullpage;
@@ -145,17 +155,34 @@ watch(
 	{ flush: 'post' },
 );
 
-function isEscapeDisabled() {
-	return !props.isOpen || dock.value?.contains(document.activeElement) !== true;
+/** Handle the escape shortcut locally instead of useKeybindings so it also works while inputs have focus. */
+function handleEscapeKey(event: KeyboardEvent) {
+	if (event.defaultPrevented || event.isComposing || event.key !== 'Escape') {
+		return;
+	}
+
+	if (event.shiftKey || event.altKey || event.ctrlKey || event.metaKey) {
+		return;
+	}
+
+	if (
+		!props.isOpen ||
+		dock.value?.contains(event.target as Node) !== true ||
+		(event.target instanceof Element && event.target.closest('[role="dialog"]') !== null)
+	) {
+		return;
+	}
+
+	event.preventDefault();
+	event.stopPropagation();
+	close();
 }
 
 useKeybindings({
 	'ctrl+shift+;': createNewSession,
-	Escape: {
-		disabled: isEscapeDisabled,
-		run: close,
-	},
 });
+
+defineExpose({ clearBudgetStops });
 </script>
 
 <template>
@@ -165,38 +192,28 @@ useKeybindings({
 		:aria-label="i18n.baseText('agents.builder.preview.button')"
 		:aria-hidden="!props.isOpen"
 		:inert="!props.isOpen"
+		@keydown="handleEscapeKey"
 		:data-preview-layout="layout"
 		data-testid="agent-preview-dock"
 	>
 		<div :class="[$style.dockInner, { [$style.fullpage]: layout === PreviewLayout.Fullpage }]">
 			<header :class="$style.header" data-testid="agent-preview-dock-header">
-				<AgentSessionHistoryDropdown
-					:session-options="props.sessionOptions"
-					:can-delete-session="props.canDeleteSession"
-					:is-deleting-session="props.isDeletingSession"
-					@select="emit('session-select', $event)"
-					@delete="emit('delete-session', $event)"
-				>
-					<template #trigger>
-						<N8nButton
-							variant="ghost"
-							size="small"
-							:class="$style.sessionTitle"
-							:aria-label="i18n.baseText('agentSessions.sessionName')"
-							data-testid="agent-preview-session-title"
-						>
-							<AgentPersonalisationIcon
-								:personalisation="
-									props.localConfig?.personalisation ?? props.agent?.schema?.personalisation
-								"
-								:size="20"
+				<div :class="$style.sessionHistory">
+					<AgentSessionHistoryDropdown
+						:session-options="props.sessionOptions"
+						:can-delete-session="props.canDeleteSession"
+						:is-deleting-session="props.isDeletingSession"
+						@select="emit('session-select', $event)"
+						@delete="emit('delete-session', $event)"
+					>
+						<template #trigger>
+							<ChatHistoryDropdownTrigger
+								:title="props.hasSession ? props.sessionTitle : undefined"
+								data-testid="agent-preview-history-trigger"
 							/>
-							<span :class="$style.sessionTitleLabel">{{ props.sessionTitle }}</span>
-							<N8nIcon icon="chevron-down" color="text-light" :size="12" />
-						</N8nButton>
-					</template>
-				</AgentSessionHistoryDropdown>
-
+						</template>
+					</AgentSessionHistoryDropdown>
+				</div>
 				<div :class="$style.actions">
 					<N8nTooltip
 						v-if="props.hasSession && props.effectiveSessionId"
@@ -253,7 +270,7 @@ useKeybindings({
 						:shortcut="{ metaKey: false, shiftKey: false, keys: ['esc'] }"
 					>
 						<N8nIconButton
-							icon="chevrons-right"
+							icon="x"
 							variant="ghost"
 							size="small"
 							icon-size="large"
@@ -278,7 +295,10 @@ useKeybindings({
 				:new-session="props.newSession"
 				:initial-prompt="props.initialPrompt"
 				:can-send-to-assistant="props.canSendToAssistant"
+				:dismissed-fix-tool-call-ids="props.dismissedFixToolCallIds"
 				:before-send="props.beforeSend"
+				:budget-cards="props.budgetCards"
+				:increase-budget="props.increaseBudget"
 				@continue-loaded="emit('continue-loaded', $event)"
 				@session-created="emit('session-created', $event)"
 				@open-build="emit('open-build')"
@@ -343,27 +363,7 @@ useKeybindings({
 	gap: var(--spacing--2xs);
 }
 
-.sessionTitle {
-	width: 100%;
-	min-width: 0;
-	max-width: 100%;
-	flex: 1 1 auto;
-	margin-left: calc(var(--spacing--3xs) * -1);
-	padding-inline: var(--spacing--2xs);
-}
-
-.sessionTitleLabel {
-	display: block;
-	min-width: 0;
-	flex: 1 1 auto;
-	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
-	font-size: var(--font-size--xs);
-}
-
-/** Let the button's inner container shrink so the session title can truncate. */
-.sessionTitle > div {
+.sessionHistory {
 	min-width: 0;
 }
 

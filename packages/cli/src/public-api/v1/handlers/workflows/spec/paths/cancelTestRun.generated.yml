@@ -1,0 +1,48 @@
+operationId: cancelTestRun
+tags:
+  - Evaluation
+summary: Cancel a test run
+description: Cancel a running evaluation test run of a workflow. Requires the `workflow:execute` project scope in addition to the `testRun:cancel` API key scope.
+x-required-scope: testRun:cancel
+x-eov-operation-id: unreachable
+x-eov-operation-handler: v1/handlers/decorator-routed.handler
+x-decorator-routed: true
+parameters:
+  - schema:
+      type: string
+    required: true
+    description: The ID of the workflow.
+    name: workflowId
+    in: path
+  - schema:
+      type: string
+    required: true
+    description: The ID of the test run.
+    name: runId
+    in: path
+responses:
+  '202':
+    description: Operation successful.
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            id:
+              type: string
+              example: 9f8e7d6c5b4a3210
+            status:
+              type: string
+              enum:
+                - cancelled
+          required:
+            - id
+            - status
+  '401':
+    $ref: ../../../../shared/spec/responses/unauthorized.yml
+  '403':
+    $ref: ../../../../shared/spec/responses/forbidden.yml
+  '404':
+    $ref: ../../../../shared/spec/responses/notFound.yml
+  '409':
+    $ref: ../../../../shared/spec/responses/conflict.yml

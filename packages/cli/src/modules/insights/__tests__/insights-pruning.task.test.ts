@@ -1,3 +1,4 @@
+import { resolveSystemTaskSchedule } from '@n8n/decorators';
 import { mock } from 'vitest-mock-extended';
 
 import type { InsightsPruningService } from '../insights-pruning.service';
@@ -18,6 +19,15 @@ describe('InsightsPruningTask', () => {
 		expect(task.effects).toBe('idempotent');
 		expect(task.placement).toEqual({ scope: 'cluster', durable: true });
 		expect(task.retryDelaySeconds).toBe(1);
+	});
+
+	it('should keep the whole-second rounding of a half-second prune-check cadence', () => {
+		const config = new InsightsConfig();
+		config.pruneCheckIntervalHours = 0.03625;
+
+		const schedule = resolveSystemTaskSchedule(new InsightsPruningTask(config, pruningService));
+
+		expect(schedule).toEqual({ kind: 'interval', intervalSeconds: 131 });
 	});
 
 	it('should prune insights on run', async () => {

@@ -1,11 +1,11 @@
 import type { Logger } from '@n8n/backend-common';
+import type { EventService } from '@n8n/backend-services';
 import type { WorkflowsConfig } from '@n8n/config';
 import type { WorkflowPublicationOutbox, WorkflowPublicationOutboxRepository } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 import type { ErrorReporter, InstanceSettings, Span, Tracing } from 'n8n-core';
 import { UserError } from 'n8n-workflow';
 
-import type { EventService } from '@/events/event.service';
 import type { PublicationResult } from '@/workflows/publication/publication-result';
 import type { PublicationStatusReporter } from '@/workflows/publication/publication-status-reporter';
 import { WorkflowPublicationLifecycleLock } from '@/workflows/publication/workflow-publication-lifecycle-lock';

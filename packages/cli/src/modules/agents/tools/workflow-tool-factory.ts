@@ -167,6 +167,7 @@ export interface WorkflowToolContext {
 	integrationType?: string;
 	/** The in-app preview chat started this run — see `RelatedAgentRun.previewChat`. */
 	previewChat?: boolean;
+	publishedN8nChat?: boolean;
 	userId?: string;
 	/** Whether a suspension can be resumed at all. Defaults to true. */
 	supportsHitl?: boolean;
@@ -643,6 +644,7 @@ function agentRunOf(
 		...(context.integrationType ? { integrationType: context.integrationType } : {}),
 		...(context.userId ? { userId: context.userId } : {}),
 		...(context.previewChat ? { previewChat: true } : {}),
+		...(context.publishedN8nChat ? { publishedN8nChat: true } : {}),
 	};
 }
 

@@ -31,6 +31,7 @@ export interface AzureOpenAIOptions {
 	temperature?: number;
 	topP?: number;
 	responseFormat?: 'text' | 'json_object';
+	extraBody?: string;
 }
 
 /**
@@ -108,5 +109,5 @@ export type AzureEntraCognitiveServicesOAuth2ApiCredential = OAuth2CredentialDat
 	endpointType?: 'classic' | 'foundry';
 	foundryEndpoint?: string;
 	tenantId: string;
-	oauthTokenData: TokenData;
+	oauthTokenData?: TokenData;
 };

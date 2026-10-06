@@ -20,11 +20,12 @@ import type {
 } from '@/services/oauth-token-verifier-proxy.service';
 import type { ProtectedResource } from '@/services/protected-resource.registry';
 import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
-import { UrlService } from '@/services/url.service';
+import { UrlService } from '@n8n/backend-services';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { AccessTokenRepository } from './database/repositories/oauth-access-token.repository';
 import { RefreshTokenRepository } from './database/repositories/oauth-refresh-token.repository';
+import { OAUTH_ACCESS_TOKEN_TTL_SECONDS } from './oauth-signing-key.constants';
 import { AccessTokenNotFoundError, JWTVerificationError } from './oauth.errors';
 import { authorizeAgainstGrant } from './resource-gate';
 import { isSameProtectedResource } from './resource-identity';
@@ -39,7 +40,7 @@ import { isSameProtectedResource } from './resource-identity';
  */
 @Service()
 export class OAuthTokenService implements OAuthTokenVerifier {
-	private readonly ACCESS_TOKEN_EXPIRY_SECONDS = 1 * Time.hours.toSeconds;
+	private readonly ACCESS_TOKEN_EXPIRY_SECONDS = OAUTH_ACCESS_TOKEN_TTL_SECONDS;
 	private readonly REFRESH_TOKEN_EXPIRY_MS = 30 * Time.days.toMilliseconds;
 
 	constructor(
@@ -78,11 +79,10 @@ export class OAuthTokenService implements OAuthTokenVerifier {
 			);
 		}
 
-		const accessToken = this.jwtService.sign(
+		const accessToken = this.jwtService.signForResource(
 			{
 				iss: this.urlService.getInstanceBaseUrl(),
 				sub: userId,
-				aud: audience,
 				client_id: clientId,
 				jti: randomUUID(),
 				iat: Math.floor(Date.now() / 1000),
@@ -95,6 +95,7 @@ export class OAuthTokenService implements OAuthTokenVerifier {
 					isOAuth: true,
 				},
 			},
+			audience,
 			{
 				header: {
 					typ: 'at+jwt',
@@ -478,14 +479,12 @@ export class OAuthTokenService implements OAuthTokenVerifier {
 	// tokens minted before n8n v2.19 have aged out (refresh-token lifespan).
 	private verifyJwtWithAllowedAudiences(token: string, audiences: string[]): unknown {
 		try {
-			return this.jwtService.verify(token, {
-				audience: audiences as [string, ...string[]],
-			});
+			return this.jwtService.verifyForResource(token, audiences as [string, ...string[]]);
 		} catch (error) {
 			// Some jsonwebtoken builds reject the array form for tokens signed with a single-string aud.
 			for (const audience of audiences) {
 				try {
-					return this.jwtService.verify(token, { audience });
+					return this.jwtService.verifyForResource(token, audience);
 				} catch {
 					continue;
 				}

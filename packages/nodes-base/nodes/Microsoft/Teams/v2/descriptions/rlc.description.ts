@@ -11,7 +11,7 @@ export const teamRLC: INodeProperties = {
 	description:
 		'Select the team from the list, by URL, or by ID (the ID is the "groupId" parameter in the URL you get from "Get a link to the team")',
 	modes: [
-		listMode('getTeams', 'e.g. My Team'),
+		listMode('getTeams', 'Select a Team...'),
 		{
 			displayName: 'From URL',
 			name: 'url',
@@ -78,6 +78,8 @@ export const groupRLC: INodeProperties = {
 	type: 'resourceLocator',
 	default: { mode: 'list', value: '' },
 	required: true,
+	description:
+		'Select the team from the list or by ID (the ID is the "groupId" parameter in the URL you get from "Get a link to the team")',
 	typeOptions: {
 		loadOptionsDependsOn: ['groupSource'],
 	},
@@ -134,7 +136,7 @@ export const memberRLC: INodeProperties = {
 	},
 	modes: [
 		listMode('getMembers', 'Select a Member...'),
-		guidIdMode('7e2f1174-e8ee-4859-b8b1-a8d1cc63d276', 'Not a valid Microsoft Teams Team ID'),
+		guidIdMode('7e2f1174-e8ee-4859-b8b1-a8d1cc63d276', 'Not a valid Microsoft Teams member ID'),
 	],
 };
 
@@ -224,7 +226,7 @@ export const teamworkTagRLC: INodeProperties = {
 		loadOptionsDependsOn: ['teamId.value'],
 	},
 	modes: [
-		listMode('getTags', 'e.g. Engineering'),
+		listMode('getTags', 'Select a Team Tag...'),
 		idMode({
 			hint: 'The base64 tag ID from the Microsoft Graph tags endpoint',
 			validation: [

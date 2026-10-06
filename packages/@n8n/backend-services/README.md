@@ -27,9 +27,34 @@ and infrastructure services that need the persistence layer or that only
 
 ## What lives here
 
-Nothing yet. The next PRs move the response errors, `UrlService`, `CacheService`,
-`RedisClientService`, `ProtectedResourceRegistry`, `EventService`, `RoleService`,
-the finder services and the scope checks here, one area at a time.
+- `EventService`: the shared, typed event bus.
+- `UrlService`: instance and webhook URLs.
+- `CacheService`: application cache access.
+- `RedisClientService`: shared Redis connections and support code.
+
+The next PRs move `ProtectedResourceRegistry`, `RoleService`, the finder services
+and the scope checks here, one area at a time.
+
+### Register event payloads
+
+`EventMap` is an open interface. Each event owner augments it with its payload
+types. This keeps domain dependencies out of the shared event bus.
+
+```typescript
+import type {} from '@n8n/backend-services';
+
+declare module '@n8n/backend-services' {
+	interface EventMap {
+		'example-completed': { id: string };
+	}
+}
+```
+
+Include the augmentation file in the owner's TypeScript project. If another
+package uses these events, include the augmentation in the owner's exported
+types. The CLI registers its existing maps in `src/events/event-map.ts`.
+Augmentation needs no runtime registration. All consumers import `EventService`
+from `@n8n/backend-services` and use the same DI token.
 
 ## Compatibility with cli
 

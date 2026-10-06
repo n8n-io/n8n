@@ -10,7 +10,7 @@ export class OrbitApi implements ICredentialType {
 	properties: INodeProperties[] = [
 		{
 			displayName:
-				'Orbit has been shutdown and will no longer function from July 11th, You can read more <a target="_blank" href="https://orbit.love/blog/orbit-is-joining-postman">here</a>.',
+				'Orbit has been shutdown and will no longer function from July 11th, You can read more <a target="_blank" href="https://blog.postman.com/announcing-postman-has-acquired-orbit/">here</a>.',
 			name: 'deprecated',
 			type: 'notice',
 			default: '',

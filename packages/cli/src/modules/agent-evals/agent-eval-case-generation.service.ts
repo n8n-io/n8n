@@ -14,8 +14,8 @@ import { Service } from '@n8n/di';
 import { OperationalError, UserError } from 'n8n-workflow';
 
 import { CredentialsService } from '@/credentials/credentials.service';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { InstanceWriteAccessService } from '@/services/instance-write-access.service';
+import { ForbiddenError } from '@n8n/errors';
+import { InstanceWriteAccessService } from '@n8n/backend-services';
 
 import { AgentEvalsFlagGate } from './agent-evals-flag-gate';
 import { AgentConfigService } from '../agents/agent-config.service';

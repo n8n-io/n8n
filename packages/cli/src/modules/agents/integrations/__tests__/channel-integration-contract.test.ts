@@ -148,8 +148,10 @@ runSharedChannelIntegrationContract({
 		},
 		resourceId: TEAMS_USER_ID,
 		firstPost: {
+			// A direct message reply is rendered by editing this post, so the first
+			// post is the placeholder and the text arrives in a later edit.
 			type: 'message',
-			text: 'Got it',
+			text: '…',
 			conversation: { id: TEAMS_DM_CONVERSATION_ID },
 		},
 		respondPost: {

@@ -12,7 +12,7 @@ import {
 } from '@n8n/decorators';
 import type { Response } from 'express';
 
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { NotFoundError } from '@n8n/errors';
 import { CollaborationService } from '@/collaboration/collaboration.service';
 
 import { AgentRunnableStateService } from './agent-runnable-state.service';

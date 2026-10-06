@@ -7,7 +7,7 @@ import { Container } from '@n8n/di';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { NotFoundError } from '@n8n/errors';
 import type { PostHogClient } from '@/posthog';
 
 import { EvalInsightsController } from '../eval-insights.controller.ee';

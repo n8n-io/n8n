@@ -1,6 +1,0 @@
-name: id
-in: path
-description: The ID of the workflow.
-required: true
-schema:
-  type: string

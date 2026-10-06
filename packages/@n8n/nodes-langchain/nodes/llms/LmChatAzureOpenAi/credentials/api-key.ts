@@ -1,5 +1,6 @@
 import { NodeOperationError, OperationalError, type ISupplyDataFunctions } from 'n8n-workflow';
 
+import { normalizeEndpoint } from './normalizeEndpoint';
 import { requireFoundryEndpoint } from './requireFoundryEndpoint';
 import type { AzureOpenAIApiKeyModelConfig } from '../types';
 
@@ -55,7 +56,7 @@ export async function setupApiKeyAuthentication(
 			azureOpenAIApiKey: configCredentials.apiKey,
 			azureOpenAIApiInstanceName: configCredentials.resourceName,
 			azureOpenAIApiVersion: configCredentials.apiVersion,
-			azureOpenAIEndpoint: configCredentials.endpoint,
+			azureOpenAIEndpoint: normalizeEndpoint(configCredentials.endpoint),
 		};
 	} catch (error) {
 		if (error instanceof OperationalError) {

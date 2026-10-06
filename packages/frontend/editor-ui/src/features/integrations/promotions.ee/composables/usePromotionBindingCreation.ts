@@ -167,6 +167,7 @@ export function usePromotionBindingCreation(
 					const credential = await createPublicCredential(rootStore.publicApiContext, {
 						id: binding.sourceId,
 						name: details.name,
+						description: details.description,
 						type: binding.credentialType,
 						data: details.data ?? {},
 						projectId,
