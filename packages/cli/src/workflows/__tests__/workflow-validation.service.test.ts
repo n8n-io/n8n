@@ -2362,11 +2362,7 @@ describe('WorkflowValidationService', () => {
 				} as unknown as INodeTypeDescription,
 			} as INodeType;
 
-			/**
-			 * Same shape, but the expression hits a runtime error. Mirrors the
-			 * LangChain Code node, which maps over its `Inputs` collection — empty
-			 * by default, so the map throws on `undefined`.
-			 */
+			/** Same shape, but the expression hits a runtime error. */
 			const brokenParserType = {
 				description: {
 					...gatedParserType.description,
@@ -2422,8 +2418,6 @@ describe('WorkflowValidationService', () => {
 			it('reads a runtime error in the expression the way the engine does', async () => {
 				// The engine swallows it and runs the node with no inputs, so refusing
 				// to publish here would block a workflow the runtime is happy with.
-				// The real case is the LangChain Code node, which maps over its
-				// `Inputs` collection — empty by default.
 				const result = await service.validateRequiredInputsConnected(
 					[node('Trigger', 'trigger'), node('Parser', 'brokenParser'), node('Agent', 'agent')],
 					{
