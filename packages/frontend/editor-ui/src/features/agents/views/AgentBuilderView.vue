@@ -106,7 +106,12 @@ import {
 	PENDING_AGENT_ID_STATE,
 } from '../constants';
 import { getDebounceTime } from '@n8n/composables/useDebounce';
-import { agentsEventBus, type AgentUpdatedEvent } from '../agents.eventBus';
+import {
+	agentsEventBus,
+	type AgentUpdatedEvent,
+	type AgentCredentialHelpRequest,
+} from '../agents.eventBus';
+import { AGENTS_MODALS } from '../modals';
 import {
 	AGENT_TEMPLATES,
 	AGENT_TEMPLATE_SUGGESTIONS_VERSION,
@@ -124,6 +129,8 @@ import AgentPreviewDock from '../components/AgentPreviewDock.vue';
 import AgentVersionHistoryPanel from '../components/VersionHistory/AgentVersionHistoryPanel.vue';
 import {
 	buildInstanceAiAgentPreviewHandoffContext,
+	buildInstanceAiCredentialHandoffContext,
+	buildInstanceAiCredentialQuestion,
 	type InstanceAiThreadLaunch,
 	type PendingComposerDraft,
 } from '@/features/ai/instanceAi/composables/useInstanceAiHandoff';
@@ -339,14 +346,73 @@ const queuedAiHandoff = ref<{
 	context: InstanceAiHandoffContext;
 	initialDraft?: PendingComposerDraft;
 	onAccepted?: () => void;
+	resolve: (accepted: boolean) => void;
 } | null>(null);
+function cancelQueuedAiHandoff() {
+	const queued = queuedAiHandoff.value;
+	queuedAiHandoff.value = null;
+	queued?.resolve(false);
+}
+watch([projectId, agentId], cancelQueuedAiHandoff);
 watch(aiPanelRef, (panel) => {
 	if (!panel || !queuedAiHandoff.value) return;
-	const { context, initialDraft, onAccepted } = queuedAiHandoff.value;
+	const { context, initialDraft, onAccepted, resolve } = queuedAiHandoff.value;
 	queuedAiHandoff.value = null;
 	const handed = panel.handoff(context, initialDraft);
 	if (handed) onAccepted?.();
+	resolve(handed);
 });
+
+async function handoffToAssistantPanel(
+	context: InstanceAiHandoffContext,
+	initialDraft?: PendingComposerDraft,
+	onAccepted?: () => void,
+): Promise<boolean> {
+	if (isArtifactMode.value || !instanceAiReady.value) return false;
+	const targetAgentId = agentId.value;
+	const targetProjectId = projectId.value;
+	isAiPanelOpen.value = true;
+	await nextTick();
+	if (disposed || agentId.value !== targetAgentId || projectId.value !== targetProjectId)
+		return false;
+	if (aiPanelRef.value) {
+		if (!aiPanelRef.value.handoff(context, initialDraft)) return false;
+		onAccepted?.();
+		if (isPreviewActive.value) closePreviewDock();
+	} else {
+		cancelQueuedAiHandoff();
+		return await new Promise<boolean>((resolve) => {
+			queuedAiHandoff.value = { context, initialDraft, onAccepted, resolve };
+			closePreviewDock();
+		});
+	}
+	return true;
+}
+
+function onCredentialHelpRequested(request: AgentCredentialHelpRequest) {
+	if (
+		isArtifactMode.value ||
+		request.projectId !== projectId.value ||
+		request.agentId !== agentId.value
+	) {
+		return;
+	}
+	request.handle = async () => {
+		return await handoffToAssistantPanel(
+			buildInstanceAiCredentialHandoffContext(request.credential),
+			{
+				text: buildInstanceAiCredentialQuestion(request.credential),
+				prefillType: 'handoff_credential_setup',
+			},
+			() => {
+				for (const { key } of AGENTS_MODALS) {
+					if (uiStore.modalsById[key]?.open) uiStore.closeModal(key);
+				}
+			},
+		);
+	};
+}
+agentsEventBus.on('credentialHelpRequested', onCredentialHelpRequested);
 const aiPanelWidth = useStorage('N8N_AGENT_AI_PANEL_WIDTH', 400);
 type SidePanel = 'assistant' | 'preview';
 const preferredSidePanel = ref<SidePanel>('assistant');
@@ -586,37 +652,8 @@ async function onSendPreviewToAssistant(event?: AgentSendToAssistantEvent) {
 		return;
 	}
 
-	// Setup isn't finished — send the user to the assistant, where onboarding
-	// takes over, instead of opening a panel no model can answer in.
-	if (!instanceAiReady.value) {
-		void router.push({ name: INSTANCE_AI_VIEW });
-		return;
-	}
-
-	// Open the dock (it's `v-if`) and wait a tick so `aiPanelRef` resolves
-	// before the hand-off is attempted.
-	isAiPanelOpen.value = true;
-	await nextTick();
-
 	const context = buildInstanceAiAgentPreviewHandoffContext(params);
-	if (aiPanelRef.value) {
-		const handed = aiPanelRef.value.handoff(context, params.initialDraft);
-		if (!handed) return;
-		acceptFixHandoff();
-		// Close the preview once the assistant has the request: coming back to an
-		// open preview chat beside the assistant reads as two places to ask.
-		closePreviewDock();
-	} else {
-		// Standalone preview route: the panel isn't mounted here. Queue the
-		// hand-off and close the dock — on this route that navigates back to
-		// the builder, which mounts the panel and applies the queue.
-		queuedAiHandoff.value = {
-			context,
-			initialDraft: params.initialDraft,
-			onAccepted: acceptFixHandoff,
-		};
-		closePreviewDock();
-	}
+	if (!(await handoffToAssistantPanel(context, params.initialDraft, acceptFixHandoff))) return;
 
 	telemetry.track(TELEMETRY_EVENT.AGENTS.INSTANCE_AI_OPENED_FROM_AGENT_PREVIEW, {
 		agent_id: params.agentId,
@@ -2637,8 +2674,10 @@ useEventListener(window, 'beforeunload', () => {
 
 onBeforeUnmount(async () => {
 	disposed = true;
+	cancelQueuedAiHandoff();
 	latestSessionsFetchRequestId++;
 	agentsEventBus.off('agentUpdated', onExternalAgentUpdated);
+	agentsEventBus.off('credentialHelpRequested', onCredentialHelpRequested);
 	removeAgentUpdateListener();
 	pushConnectionStore.pushDisconnect();
 	clearTimeout(externalRefreshTimer);
@@ -3003,7 +3042,7 @@ useKeybindings({
 					:connected-triggers="connectedTriggers"
 					:effective-session-id="effectiveSessionId"
 					:new-session="currentSessionIsEphemeral"
-					:can-send-to-assistant="instanceAiAvailable"
+					:can-send-to-assistant="isArtifactMode ? instanceAiAvailable : instanceAiReady"
 					:dismissed-fix-tool-call-ids="dismissedFixToolCallIds"
 					:before-send="beforePreviewSend"
 					budget-cards
@@ -3113,7 +3152,7 @@ useKeybindings({
 						:initial-prompt="taskPreviewPrompt"
 						:can-delete-session="canDeletePreviewSession"
 						:is-deleting-session="isDeletingSession"
-						:can-send-to-assistant="instanceAiAvailable"
+						:can-send-to-assistant="isArtifactMode ? instanceAiAvailable : instanceAiReady"
 						:dismissed-fix-tool-call-ids="dismissedFixToolCallIds"
 						:before-send="beforePreviewSend"
 						budget-cards

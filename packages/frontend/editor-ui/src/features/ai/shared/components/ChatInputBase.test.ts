@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { defineComponent, nextTick, ref } from 'vue';
 import { createComponentRenderer } from '@/__tests__/render';
+import { fireEvent, waitFor } from '@testing-library/vue';
 import { createTestingPinia } from '@pinia/testing';
 import ChatInputBase from './ChatInputBase.vue';
 import {
@@ -228,6 +229,22 @@ describe('ChatInputBase', () => {
 		});
 
 		expect(getByTestId('chat-input-voice-button')).toBeInTheDocument();
+	});
+
+	it('explains why dictation is disabled while streaming', async () => {
+		const { getByTestId, getByText, rerender } = renderComponent({
+			props: makeProps({ showVoice: true, isStreaming: true }),
+		});
+		const voiceButton = getByTestId('chat-input-voice-button');
+		expect(voiceButton).toBeDisabled();
+		await fireEvent.pointerMove(voiceButton.parentElement!, { pointerType: 'mouse' });
+		await waitFor(() => expect(getByText('Stop the response to dictate')).toBeVisible());
+
+		await fireEvent.pointerLeave(voiceButton.parentElement!);
+		await rerender({ isStreaming: false });
+		expect(voiceButton).toBeEnabled();
+		await fireEvent.pointerMove(voiceButton.parentElement!, { pointerType: 'mouse' });
+		await waitFor(() => expect(getByText('Dictate')).toBeVisible());
 	});
 
 	it('should expose the native textarea', () => {
