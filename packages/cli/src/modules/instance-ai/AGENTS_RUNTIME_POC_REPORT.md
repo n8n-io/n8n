@@ -90,9 +90,10 @@ flowchart LR
   as the session). Streaming, the message queue with steer, stop, history and
   the push-plus-refetch recovery are the Agents implementations.
 - Assistant HITL cards render through a new `assistant_confirmation`
-  interactive in the shared Agents chat code: questions, plain approval, plan
-  review, domain access and web search, text, continue. Other card types use
-  an approve/deny fallback card.
+  interactive in the shared Agents chat code. All card types are ported:
+  questions, plain approval, plan review, domain access and web search, text,
+  continue, credential setup, workflow setup, MCP connect, gateway resource
+  decision, credential destination, channel setup, test listener.
 - The artifacts panel, preview tabs, canvas preview, to-do list, title and
   working state read the Agents chat messages through a small adapter
   (`agentsChatThreadAdapter.ts`). In this mode the UI never opens
@@ -162,9 +163,11 @@ Runtime:
 
 UI (Agents-chat mode):
 
-- Not ported, fallback card only: credential setup, workflow setup, gateway
-  resource decision, MCP connect, channel setup, test listener, credential
-  destination options.
+- Card differences: a resolved card hides at once, so the workflow setup
+  card does not show the apply result in the card (the agent reports it).
+  No "always allow for this session" option on plain approvals yet. Live
+  checked: questions, approval, plan review, workflow setup (skip). Unit
+  tested only: the other cards.
 - Dropped: setup panel above the input, fix-with-AI and test-agent offers,
   agent-preview hand-off into the composer, attachments, the agent-builder
   sub-agent progress tree, preference cards, archived-artifact dimming.
