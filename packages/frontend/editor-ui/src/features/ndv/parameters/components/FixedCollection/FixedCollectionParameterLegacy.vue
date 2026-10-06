@@ -25,9 +25,9 @@ import {
 	N8nIcon,
 	N8nIconButton,
 	N8nInputLabel,
-	N8nOption,
-	N8nSelect,
+	N8nSelect2,
 	N8nText,
+	type SelectValue,
 } from '@n8n/design-system';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
@@ -67,6 +67,7 @@ const activeNode = computed(() => ndvStore.value.activeNode);
 
 const mutableValues = ref({} as Record<string, INodeParameters[] | INodeParameters>);
 const selectedOption = ref<string | null | undefined>(null);
+const optionalFieldPickerValue = ref<string | undefined>(undefined);
 
 const getOptionProperties = (optionName: string): INodePropertyCollection | undefined => {
 	if (!isINodePropertyCollectionList(props.parameter.options)) return undefined;
@@ -386,6 +387,39 @@ const onAddButtonClick = async (optionName: string) => {
 	}
 };
 
+const addOptionItems = computed(() =>
+	parameterOptions.value.flatMap((item) => {
+		const label = locale
+			.nodeText(activeNode.value?.type)
+			.collectionOptionDisplayName(props.parameter, item, props.path);
+		if (!item.name || !label) return [];
+		return [{ value: item.name, label }];
+	}),
+);
+
+function pickerSelectItems(property: INodePropertyCollection, index?: number) {
+	return getPickerPropertyValues(property, index).flatMap((value) => {
+		const label = value.displayName || value.name;
+		if (!value.name || !label) return [];
+		return [{ value: value.name, label }];
+	});
+}
+
+function onSelectV2Option(value: SelectValue | undefined) {
+	if (typeof value !== 'string') return;
+	void optionSelected(value);
+}
+
+function onOptionalFieldSelect(
+	property: INodePropertyCollection,
+	value: SelectValue | undefined,
+	index?: number,
+) {
+	if (typeof value !== 'string') return;
+	toggleOptionalValue(property, value, index);
+	optionalFieldPickerValue.value = undefined;
+}
+
 const valueChanged = (parameterData: IUpdateInformation) => {
 	emit('valueChanged', parameterData);
 	if (props.parameter.name === 'workflowInputs') {
@@ -520,34 +554,29 @@ function getItemKey(_item: INodeParameters, index: number) {
 								</Suspense>
 								<div
 									v-if="getPickerPropertyValues(property, index).length > 0 && !isReadOnly"
-									:class="$style.addOption"
 									data-test-id="fixed-collection-add-property"
 								>
-									<N8nSelect
+									<N8nSelect2
+										:model-value="optionalFieldPickerValue"
 										:placeholder="addOptionalFieldButtonText"
 										size="small"
-										filterable
-										:model-value="null"
+										:items="pickerSelectItems(property, index)"
 										@update:model-value="
-											(valueName: string) => toggleOptionalValue(property, valueName, index)
+											(valueName) => onOptionalFieldSelect(property, valueName, index)
 										"
 									>
-										<N8nOption
-											v-for="value in getPickerPropertyValues(property, index)"
-											:key="value.name"
-											:label="value.displayName || value.name"
-											:value="value.name"
-										>
-											<div class="optional-value-item">
-												<span>{{ value.displayName || value.name }}</span>
-												<N8nIcon
-													v-if="isOptionalValueAdded(property.name, value.name, index)"
-													icon="check"
-													size="medium"
-												/>
-											</div>
-										</N8nOption>
-									</N8nSelect>
+										<template #item-trailing="{ item, ui }">
+											<N8nIcon
+												v-if="
+													typeof item.value === 'string' &&
+													isOptionalValueAdded(property.name, item.value, index)
+												"
+												icon="check"
+												size="medium"
+												v-bind="ui"
+											/>
+										</template>
+									</N8nSelect2>
 								</div>
 							</div>
 						</div>
@@ -594,32 +623,27 @@ function getItemKey(_item: INodeParameters, index: number) {
 					/>
 					<div
 						v-if="getPickerPropertyValues(property).length > 0 && !isReadOnly"
-						:class="$style.addOption"
 						data-test-id="fixed-collection-add-property"
 					>
-						<N8nSelect
+						<N8nSelect2
+							:model-value="optionalFieldPickerValue"
 							:placeholder="addOptionalFieldButtonText"
 							size="small"
-							filterable
-							:model-value="null"
-							@update:model-value="(valueName: string) => toggleOptionalValue(property, valueName)"
+							:items="pickerSelectItems(property)"
+							@update:model-value="(valueName) => onOptionalFieldSelect(property, valueName)"
 						>
-							<N8nOption
-								v-for="value in getPickerPropertyValues(property)"
-								:key="value.name"
-								:label="value.displayName || value.name"
-								:value="value.name"
-							>
-								<div class="optional-value-item">
-									<span>{{ value.displayName || value.name }}</span>
-									<N8nIcon
-										v-if="isOptionalValueAdded(property.name, value.name)"
-										icon="check"
-										size="medium"
-									/>
-								</div>
-							</N8nOption>
-						</N8nSelect>
+							<template #item-trailing="{ item, ui }">
+								<N8nIcon
+									v-if="
+										typeof item.value === 'string' &&
+										isOptionalValueAdded(property.name, item.value)
+									"
+									icon="check"
+									size="medium"
+									v-bind="ui"
+								/>
+							</template>
+						</N8nSelect2>
 					</div>
 				</div>
 			</div>
@@ -635,24 +659,14 @@ function getItemKey(_item: INodeParameters, index: number) {
 				:label="getPlaceholderText"
 				@click="onAddButtonClick(parameter.options[0].name)"
 			/>
-			<div v-else :class="$style.addOption">
-				<N8nSelect
-					v-model="selectedOption"
-					:placeholder="getPlaceholderText"
-					size="small"
-					filterable
-					@update:model-value="optionSelected"
-				>
-					<N8nOption
-						v-for="item in parameterOptions"
-						:key="item.name"
-						:label="
-							locale.nodeText(activeNode?.type).collectionOptionDisplayName(parameter, item, path)
-						"
-						:value="item.name"
-					></N8nOption>
-				</N8nSelect>
-			</div>
+			<N8nSelect2
+				v-else
+				:model-value="selectedOption ?? undefined"
+				:items="addOptionItems"
+				:placeholder="getPlaceholderText"
+				size="small"
+				@update:model-value="onSelectV2Option"
+			/>
 		</div>
 	</div>
 </template>
@@ -781,54 +795,5 @@ function getItemKey(_item: INodeParameters, index: number) {
 
 .noItemsExist {
 	margin: var(--spacing--xs) 0;
-}
-
-.addOption {
-	> * {
-		border: none;
-	}
-
-	:global(.el-select .el-input.is-disabled) {
-		:global(.el-input__icon) {
-			opacity: 1 !important;
-			cursor: not-allowed;
-			color: var(--color--foreground--shade-1);
-		}
-		:global(.el-input__inner),
-		:global(.el-input__inner::placeholder) {
-			opacity: 1;
-			color: var(--color--foreground--shade-1);
-		}
-	}
-	:global(.el-select .el-input:not(.is-disabled) .el-input__icon) {
-		color: var(--color--text--shade-1);
-	}
-	:global(.el-input .el-input__inner) {
-		text-align: center;
-	}
-	:global(.el-input:not(.is-disabled) .el-input__inner) {
-		&,
-		&:hover,
-		&:focus {
-			padding-left: 35px;
-			border-radius: var(--radius);
-			color: var(--color--text--shade-1);
-			background-color: var(--color--background);
-			border-color: var(--color--foreground);
-			text-align: center;
-		}
-
-		&::placeholder {
-			color: var(--color--text--shade-1);
-			opacity: 1;
-		}
-	}
-}
-
-:global(.optional-value-item) {
-	display: flex;
-	justify-content: space-between;
-	align-items: center;
-	width: 100%;
 }
 </style>

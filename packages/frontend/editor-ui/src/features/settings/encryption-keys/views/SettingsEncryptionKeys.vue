@@ -11,8 +11,7 @@ import {
 	N8nIcon,
 	N8nIconButton,
 	N8nLink,
-	N8nOption,
-	N8nSelect,
+	N8nSelect2,
 	N8nText,
 	type DateRange,
 	type DateValue,
@@ -281,19 +280,13 @@ onMounted(async () => {
 				<N8nText tag="label" color="text-light" :class="$style.sortLabel">
 					{{ i18n.baseText('settings.encryptionKeys.sortBy.label') }}
 				</N8nText>
-				<N8nSelect
+				<N8nSelect2
 					v-model="sortByModel"
+					:items="sortOptions"
 					data-testid="encryption-keys-sort-select"
 					size="medium"
 					:class="$style.sortSelect"
-				>
-					<N8nOption
-						v-for="option in sortOptions"
-						:key="option.value"
-						:value="option.value"
-						:label="option.label"
-					/>
-				</N8nSelect>
+				/>
 			</div>
 
 			<N8nDateRangePicker v-model="draftRange" v-model:open="isFilterOpen" :locale="browserLocale">

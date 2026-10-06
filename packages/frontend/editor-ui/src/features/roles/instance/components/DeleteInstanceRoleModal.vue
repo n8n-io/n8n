@@ -1,7 +1,8 @@
 <script lang="ts" setup>
 import { computed, ref, watch } from 'vue';
 import { ElDialog } from 'element-plus';
-import { N8nButton, N8nHeading, N8nOption, N8nSelect, N8nText } from '@n8n/design-system';
+import { N8nButton, N8nHeading, N8nSelect2, N8nText } from '@n8n/design-system';
+import type { SelectOptionBase, SelectValue } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { Role } from '@n8n/permissions';
 import { APP_MODALS_ELEMENT_ID } from '@/app/constants';
@@ -23,7 +24,14 @@ const visible = defineModel<boolean>();
 const i18n = useI18n();
 
 // Intentionally starts empty so the admin has to make an active choice.
-const selectedRoleSlug = ref<string | undefined>(undefined);
+const selectedRoleSlug = ref<SelectValue | undefined>(undefined);
+
+const roleItems = computed<SelectOptionBase[]>(() =>
+	props.availableRoles.map((option) => ({
+		value: option.slug,
+		label: option.displayName,
+	})),
+);
 
 // Reset the selection every time the modal is (re)opened.
 watch(visible, (isOpen) => {
@@ -54,8 +62,8 @@ function onCancel() {
 }
 
 function onConfirm() {
-	if (!selectedRoleSlug.value) return;
-	emit('confirm', selectedRoleSlug.value);
+	const slug = selectedRoleSlug.value;
+	emit('confirm', slug);
 }
 </script>
 
@@ -87,19 +95,13 @@ function onConfirm() {
 				<N8nText tag="label" size="medium" color="text-dark">
 					{{ i18n.baseText('roles.instance.action.delete.reassign.label') }}
 				</N8nText>
-				<N8nSelect
+				<N8nSelect2
 					v-model="selectedRoleSlug"
+					:items="roleItems"
 					:placeholder="i18n.baseText('roles.instance.action.delete.reassign.placeholder')"
 					size="large"
 					data-test-id="reassign-role-select"
-				>
-					<N8nOption
-						v-for="option in availableRoles"
-						:key="option.slug"
-						:label="option.displayName"
-						:value="option.slug"
-					/>
-				</N8nSelect>
+				/>
 			</div>
 		</div>
 

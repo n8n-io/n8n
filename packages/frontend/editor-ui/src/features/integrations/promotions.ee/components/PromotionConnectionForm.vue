@@ -6,8 +6,8 @@ import {
 	N8nInput,
 	N8nInputLabel,
 	N8nNotice,
-	N8nOption,
-	N8nSelect,
+	N8nSelect2,
+	type SelectValue,
 	N8nSettingsRow,
 	N8nSettingsRowGroup,
 	N8nSettingsSaveBar,
@@ -239,8 +239,16 @@ async function disconnect(direction: PromotionDirection) {
 	}
 }
 
+const providerItems = computed(() =>
+	props.providers.map((provider) => ({ value: provider.id, label: provider.name })),
+);
+
 function selectProvider(id: string) {
 	form.providerId = id;
+}
+
+function onProviderSelect(value: SelectValue | undefined) {
+	selectProvider(value);
 }
 
 defineExpose({ selectProvider });
@@ -254,20 +262,16 @@ defineExpose({ selectProvider });
 			required
 		>
 			<div :class="$style.providerRow">
-				<N8nSelect
+				<N8nSelect2
 					id="promotion-connection-provider"
-					v-model="form.providerId"
+					:model-value="form.providerId"
+					:items="providerItems"
 					:disabled="isSaving"
+					size="medium"
 					:placeholder="i18n.baseText('settings.promotions.connection.form.provider.placeholder')"
 					data-test-id="promotion-connection-provider-select"
-				>
-					<N8nOption
-						v-for="provider in providers"
-						:key="provider.id"
-						:value="provider.id"
-						:label="provider.name"
-					/>
-				</N8nSelect>
+					@update:model-value="onProviderSelect"
+				/>
 				<N8nButton
 					type="button"
 					variant="outline"

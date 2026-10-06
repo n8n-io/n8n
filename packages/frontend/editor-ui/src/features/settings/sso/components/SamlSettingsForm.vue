@@ -4,7 +4,13 @@ import { SupportedProtocols, useSSOStore } from '../sso.store';
 import { useI18n } from '@n8n/i18n';
 import { captureMessage } from '@sentry/vue';
 
-import { N8nButton, N8nInput, N8nOption, N8nSegmentControl, N8nSelect } from '@n8n/design-system';
+import {
+	N8nButton,
+	N8nInput,
+	N8nSegmentControl,
+	N8nSelect2,
+	N8nStatusDot,
+} from '@n8n/design-system';
 import { useClipboard } from '@n8n/composables/useClipboard';
 import { useToast } from '@n8n/composables/useToast';
 import { useMessage } from '@/app/composables/useMessage';
@@ -46,6 +52,20 @@ const roleMappingRuleEditorRef = ref<InstanceType<typeof RoleMappingRuleEditor> 
 
 const redirectUrl = ref();
 const samlLoginEnabled = ref<boolean>(false);
+
+const ssoToggleItems = [
+	{ value: 'enabled', label: i18n.baseText('settings.sso.settings.ssoToggle.enabled') },
+	{ value: 'disabled', label: i18n.baseText('settings.sso.settings.ssoToggle.disabled') },
+] as const;
+
+type SsoToggleValue = (typeof ssoToggleItems)[number]['value'];
+
+const ssoToggleValue = computed<SsoToggleValue>({
+	get: () => (samlLoginEnabled.value ? 'enabled' : 'disabled'),
+	set: (value) => {
+		samlLoginEnabled.value = value === 'enabled';
+	},
+});
 
 const IdentityProviderSettingsType = {
 	URL: 'url',
@@ -468,25 +488,20 @@ onMounted(async () => {
 					<small>{{ i18n.baseText('settings.sso.settings.ssoToggle.description') }}</small>
 				</div>
 				<div :class="$style.settingsItemControl">
-					<N8nSelect
-						:model-value="samlLoginEnabled ? 'enabled' : 'disabled'"
+					<N8nSelect2
+						v-model="ssoToggleValue"
+						:items="ssoToggleItems"
 						size="medium"
 						:disabled="isSsoManagedByEnv"
 						data-test-id="sso-toggle"
-						@update:model-value="samlLoginEnabled = $event === 'enabled'"
 					>
-						<template #prefix>
-							<span v-if="samlLoginEnabled" :class="$style.greenDot" />
+						<template #item-leading="{ item }">
+							<N8nStatusDot
+								:class="$style.statusDot"
+								:variant="item.value === 'enabled' ? 'success' : 'danger'"
+							/>
 						</template>
-						<N8nOption
-							value="enabled"
-							:label="i18n.baseText('settings.sso.settings.ssoToggle.enabled')"
-						/>
-						<N8nOption
-							value="disabled"
-							:label="i18n.baseText('settings.sso.settings.ssoToggle.disabled')"
-						/>
-					</N8nSelect>
+					</N8nSelect2>
 				</div>
 			</div>
 		</div>

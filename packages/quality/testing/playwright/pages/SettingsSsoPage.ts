@@ -12,8 +12,8 @@ export class SettingsSsoPage extends BasePage {
 	}
 
 	async selectOidcProtocol(): Promise<void> {
-		await this.getProtocolSelect().locator('.el-select').click();
-		await this.page.locator('.el-select-dropdown__item').filter({ hasText: 'OIDC' }).click();
+		await this.getProtocolSelect().getByRole('combobox').click();
+		await this.getVisiblePopoverOption('OIDC').click();
 	}
 
 	getOidcDiscoveryEndpointInput(): Locator {

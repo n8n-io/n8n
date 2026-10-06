@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { computed } from 'vue';
 import { ROLE } from '@n8n/api-types';
-import { N8nCallout, N8nOption, N8nSelect } from '@n8n/design-system';
+import { N8nCallout, N8nSelect2, type SelectValue } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { type SupportedProtocolType } from '../../sso.store';
 import { useRBACStore } from '@n8n/stores/rbac.store';
@@ -59,6 +59,30 @@ const mappingMethodOptions = [
 ];
 
 const ssoKey = (key: string) => i18n.baseText(`settings.sso.settings.${key}` as BaseTextKey);
+
+const roleAssignmentItems = computed(() =>
+	roleAssignmentOptions.map((option) => ({
+		value: option.value,
+		label: ssoKey(option.label),
+	})),
+);
+
+const mappingMethodItems = computed(() =>
+	mappingMethodOptions.map((option) => ({
+		value: option.value,
+		label: ssoKey(option.label),
+	})),
+);
+
+function roleAssignmentDescription(value: SelectValue | undefined) {
+	const option = roleAssignmentOptions.find((entry) => entry.value === value);
+	return option ? ssoKey(option.desc) : '';
+}
+
+function mappingMethodDescription(value: SelectValue | undefined) {
+	const option = mappingMethodOptions.find((entry) => entry.value === value);
+	return option ? ssoKey(option.desc) : '';
+}
 </script>
 <template>
 	<div>
@@ -68,24 +92,22 @@ const ssoKey = (key: string) => i18n.baseText(`settings.sso.settings.${key}` as 
 				<small>{{ ssoKey('roleAssignment.description') }}</small>
 			</div>
 			<div :class="shared.settingsItemControl">
-				<N8nSelect
+				<N8nSelect2
 					v-model="roleAssignment"
+					:items="roleAssignmentItems"
 					size="medium"
 					:disabled="disabled || !canManage"
 					data-test-id="role-assignment-select"
 				>
-					<N8nOption
-						v-for="opt in roleAssignmentOptions"
-						:key="opt.value"
-						:label="ssoKey(opt.label)"
-						:value="opt.value"
-					>
+					<template #item-label="{ item }">
 						<div :class="$style.optionContent">
-							<span :class="$style.optionTitle">{{ ssoKey(opt.label) }}</span>
-							<span :class="$style.optionDescription">{{ ssoKey(opt.desc) }}</span>
+							<span :class="$style.optionTitle">{{ item.label }}</span>
+							<span v-if="roleAssignmentDescription(item.value)" :class="$style.optionDescription">
+								{{ roleAssignmentDescription(item.value) }}
+							</span>
 						</div>
-					</N8nOption>
-				</N8nSelect>
+					</template>
+				</N8nSelect2>
 			</div>
 		</div>
 
@@ -95,24 +117,22 @@ const ssoKey = (key: string) => i18n.baseText(`settings.sso.settings.${key}` as 
 				<small>{{ ssoKey('roleMappingMethod.description') }}</small>
 			</div>
 			<div :class="shared.settingsItemControl">
-				<N8nSelect
+				<N8nSelect2
 					v-model="mappingMethod"
+					:items="mappingMethodItems"
 					size="medium"
 					:disabled="disabled || !canManage"
 					data-test-id="role-mapping-method-select"
 				>
-					<N8nOption
-						v-for="opt in mappingMethodOptions"
-						:key="opt.value"
-						:label="ssoKey(opt.label)"
-						:value="opt.value"
-					>
+					<template #item-label="{ item }">
 						<div :class="$style.optionContent">
-							<span :class="$style.optionTitle">{{ ssoKey(opt.label) }}</span>
-							<span :class="$style.optionDescription">{{ ssoKey(opt.desc) }}</span>
+							<span :class="$style.optionTitle">{{ item.label }}</span>
+							<span v-if="mappingMethodDescription(item.value)" :class="$style.optionDescription">
+								{{ mappingMethodDescription(item.value) }}
+							</span>
 						</div>
-					</N8nOption>
-				</N8nSelect>
+					</template>
+				</N8nSelect2>
 			</div>
 		</div>
 

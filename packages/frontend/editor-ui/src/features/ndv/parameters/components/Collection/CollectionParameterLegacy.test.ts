@@ -183,36 +183,33 @@ describe('CollectionParameterLegacy.vue', () => {
 			expect(select).toBeInTheDocument();
 		});
 
-		it('shows all available options in dropdown', () => {
-			const { getAllByTestId } = renderComponent();
+		it('shows all available options in dropdown', async () => {
+			const { getByTestId, getAllByRole } = renderComponent();
+			await userEvent.click(getByTestId('collection-parameter-add'));
 
-			const options = getAllByTestId('collection-parameter-option');
-			expect(options.length).toBe(2);
+			const options = getAllByRole('option');
+			expect(options).toHaveLength(2);
 			expect(options[0]).toHaveTextContent('Currency');
 			expect(options[1]).toHaveTextContent('Value');
 		});
 
 		it('emits valueChanged event when selecting an option', async () => {
-			const { getByRole } = renderComponent();
+			const { getByRole, getByTestId, emitted } = renderComponent();
 
-			const select = getByRole('combobox');
-			await userEvent.click(select);
+			await userEvent.click(getByTestId('collection-parameter-add'));
+			await userEvent.click(getByRole('option', { name: 'Currency' }));
+			await flushPromises();
 
-			// Simulate selecting the first option
-			const firstOption = select.querySelector('option[value="currency"]') as HTMLOptionElement;
-			if (firstOption) {
-				await userEvent.selectOptions(select, firstOption);
-			}
-
-			await nextTick();
-
-			// The component should emit the event (exact behavior depends on N8nSelect implementation)
-			// This test verifies the structure is correct
-			expect(select).toBeInTheDocument();
+			expect(emitted('valueChanged')).toContainEqual([
+				expect.objectContaining({
+					name: 'parameters.additionalFields.currency',
+					value: 'USD',
+				}),
+			]);
 		});
 
 		it('filters out already added options from dropdown', async () => {
-			const { getAllByTestId } = renderComponent({
+			const { getByTestId, getAllByRole } = renderComponent({
 				props: {
 					...baseProps,
 					values: {
@@ -229,8 +226,9 @@ describe('CollectionParameterLegacy.vue', () => {
 			});
 			await flushPromises();
 
-			// With 2 total options and 1 added, the select dropdown should show only the remaining option
-			const options = getAllByTestId('collection-parameter-option');
+			await userEvent.click(getByTestId('collection-parameter-add'));
+
+			const options = getAllByRole('option');
 			expect(options).toHaveLength(1);
 			expect(options[0]).toHaveTextContent('Value');
 		});
@@ -537,10 +535,11 @@ describe('CollectionParameterLegacy.vue', () => {
 		it('removes properties the store reports as hidden', async () => {
 			mockIsNodePropertyHidden.mockImplementation((_node, param) => param === 'value');
 
-			const { getAllByTestId } = renderComponent();
+			const { getByTestId, getAllByRole } = renderComponent();
 			await flushPromises();
+			await userEvent.click(getByTestId('collection-parameter-add'));
 
-			const options = getAllByTestId('collection-parameter-option');
+			const options = getAllByRole('option');
 			expect(options).toHaveLength(1);
 			expect(options[0]).toHaveTextContent('Currency');
 		});
@@ -548,16 +547,17 @@ describe('CollectionParameterLegacy.vue', () => {
 		it('keeps properties the store does not hide', async () => {
 			mockIsNodePropertyHidden.mockReturnValue(false);
 
-			const { getAllByTestId } = renderComponent();
+			const { getByTestId, getAllByRole } = renderComponent();
 			await flushPromises();
+			await userEvent.click(getByTestId('collection-parameter-add'));
 
-			expect(getAllByTestId('collection-parameter-option')).toHaveLength(2);
+			expect(getAllByRole('option')).toHaveLength(2);
 		});
 
 		it('removes hidden collection-type options', async () => {
 			mockIsNodePropertyHidden.mockImplementation((_node, param) => param === 'nestedCollection');
 
-			const { getAllByTestId } = renderComponent({
+			const { getByTestId, getAllByRole } = renderComponent({
 				props: {
 					...baseProps,
 					parameter: {
@@ -587,7 +587,9 @@ describe('CollectionParameterLegacy.vue', () => {
 			});
 			await flushPromises();
 
-			const options = getAllByTestId('collection-parameter-option');
+			await userEvent.click(getByTestId('collection-parameter-add'));
+
+			const options = getAllByRole('option');
 			expect(options).toHaveLength(1);
 			expect(options[0]).toHaveTextContent('Currency');
 		});

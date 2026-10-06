@@ -10,7 +10,7 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 
 // Expose the grouped instance-role dropdown's items as buttons. The project
-// select is a plain N8nSelect (element-plus) and is unaffected by this mock.
+// select also uses N8nSelect2 and is covered by the same stub.
 vi.mock('@n8n/design-system', async (importOriginal) => {
 	const original = await importOriginal<object>();
 	return {
@@ -19,7 +19,8 @@ vi.mock('@n8n/design-system', async (importOriginal) => {
 			name: 'N8nSelect2',
 			props: {
 				items: { type: Array, default: () => [] },
-				modelValue: { type: [String, Number], default: undefined },
+				modelValue: { type: [String, Number, Array], default: undefined },
+				multiple: { type: Boolean, default: false },
 			},
 			emits: ['update:modelValue', 'update:open'],
 			template: `

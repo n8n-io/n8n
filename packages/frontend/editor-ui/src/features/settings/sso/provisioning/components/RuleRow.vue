@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 import { computed } from 'vue';
-import { N8nIcon, N8nOption, N8nSelect, N8nTooltip } from '@n8n/design-system';
+import { N8nIcon, N8nSelect2, N8nTooltip } from '@n8n/design-system';
+import type { SelectOptionBase, SelectValue } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type {
 	RoleMappingRuleResponse,
@@ -42,6 +43,23 @@ const selectedProjectNames = computed(() => {
 		.map((p) => p.name)
 		.join(', ');
 });
+
+const projectItems = computed<SelectOptionBase[]>(() =>
+	props.projects.map((project) => ({
+		value: project.id,
+		label: project.name,
+	})),
+);
+
+function onProjectIdsChange(value: SelectValue[]) {
+	if (!Array.isArray(value)) {
+		emit('update', props.rule.id, { projectIds: [] });
+		return;
+	}
+	emit('update', props.rule.id, {
+		projectIds: value,
+	});
+}
 </script>
 <template>
 	<div :class="[$style.row, { [$style.disabled]: props.disabled }]" data-test-id="rule-row">
@@ -80,28 +98,15 @@ const selectedProjectNames = computed(() => {
 		<div v-if="props.type === 'project'" :class="$style.cellProject">
 			<span :class="$style.label">in</span>
 			<N8nTooltip :content="selectedProjectNames" :disabled="!selectedProjectNames" placement="top">
-				<N8nSelect
+				<N8nSelect2
+					:items="projectItems"
 					:model-value="props.rule.projectIds"
-					size="small"
 					multiple
-					collapse-tags
-					:collapse-tags-tooltip="false"
 					:disabled="props.disabled"
 					placeholder="Select proj..."
 					data-test-id="rule-project-select"
-					@update:model-value="
-						emit('update', props.rule.id, {
-							projectIds: ($event as string[]) ?? [],
-						})
-					"
-				>
-					<N8nOption
-						v-for="project in props.projects"
-						:key="project.id"
-						:label="project.name"
-						:value="project.id"
-					/>
-				</N8nSelect>
+					@update:model-value="onProjectIdsChange"
+				/>
 			</N8nTooltip>
 		</div>
 		<div :class="$style.cellAction">

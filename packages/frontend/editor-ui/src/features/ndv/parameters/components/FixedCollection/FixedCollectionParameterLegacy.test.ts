@@ -279,44 +279,33 @@ describe('FixedCollectionParameterLegacy.vue', () => {
 		});
 
 		it('shows optional values in the picker dropdown', async () => {
-			const { getByTestId, getByRole } = renderRequiredOnly();
+			const { getByTestId, getAllByRole } = renderRequiredOnly();
 			await flushPromises();
 			const picker = getByTestId('fixed-collection-add-property');
 			expect(picker).toBeInTheDocument();
 
-			const selectInput = getByRole('textbox');
-			expect(selectInput).toBeInTheDocument();
-
-			await userEvent.click(selectInput);
+			await userEvent.click(picker.querySelector('[data-test-id="select-trigger"]') as HTMLElement);
 
 			await waitFor(() => {
-				const options = document.querySelectorAll('.optional-value-item');
-				expect(options.length).toBe(2);
+				const options = getAllByRole('option');
+				expect(options).toHaveLength(2);
 
-				const optionTexts = Array.from(options).map((opt) => opt.textContent?.trim());
+				const optionTexts = options.map((opt) => opt.textContent?.trim());
 				expect(optionTexts).toContain('Placeholder');
 				expect(optionTexts).toContain('Required Field');
 			});
 		});
 
 		it('emits valueChanged when toggling an optional value on', async () => {
-			const { getByRole, emitted } = renderRequiredOnly();
+			const { getByTestId, getByRole, emitted } = renderRequiredOnly();
 			await flushPromises();
-			const selectInput = getByRole('textbox');
 
-			await userEvent.click(selectInput);
-
-			await waitFor(async () => {
-				const options = document.querySelectorAll('.optional-value-item');
-				const placeholderOption = Array.from(options).find(
-					(opt) => opt.textContent?.trim() === 'Placeholder',
-				);
-				expect(placeholderOption).toBeDefined();
-
-				if (placeholderOption) {
-					await userEvent.click(placeholderOption);
-				}
-			});
+			await userEvent.click(
+				getByTestId('fixed-collection-add-property').querySelector(
+					'[data-test-id="select-trigger"]',
+				) as HTMLElement,
+			);
+			await userEvent.click(getByRole('option', { name: 'Placeholder' }));
 			await flushPromises();
 
 			await waitFor(() => {

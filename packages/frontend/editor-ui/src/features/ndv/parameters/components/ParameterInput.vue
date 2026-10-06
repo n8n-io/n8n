@@ -4,7 +4,7 @@ import { computedAsync, useDebounceFn, useElementSize } from '@vueuse/core';
 
 import get from 'lodash/get';
 import truncate from 'lodash/truncate';
-import { CompactParameterHintsKey } from '@/app/constants/injectionKeys';
+import { CompactParameterHintsKey, ParameterSelectV2Key } from '@/app/constants/injectionKeys';
 
 import type { INodeUpdatePropertiesInformation, IUpdateInformation, InputSize } from '@/Interface';
 import type {
@@ -111,7 +111,9 @@ import {
 	N8nInputNumber,
 	N8nOption,
 	N8nSelect,
+	N8nSelect2,
 	N8nSwitch,
+	type SelectValue,
 } from '@n8n/design-system';
 import { useCollectionOverhaul } from '@/app/composables/useCollectionOverhaul';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
@@ -892,6 +894,100 @@ function getOptionsOptionDescription(option: INodePropertyOptions): string {
 		: i18n
 				.nodeText(ndvStore.value?.activeNode?.type)
 				.optionsOptionDescription(props.parameter, option, props.path);
+}
+
+const parameterSelectV2 = inject(ParameterSelectV2Key, false);
+
+function isSelect2Scalar(value: INodePropertyOptions['value']): value is string | number {
+	return (typeof value === 'string' && value !== '') || typeof value === 'number';
+}
+
+function optionValuesMatch(optionValue: string | number, current: unknown): boolean {
+	if (optionValue === current) return true;
+	if (typeof optionValue === 'number' && current === String(optionValue)) return true;
+	if (
+		typeof optionValue === 'string' &&
+		typeof current === 'number' &&
+		optionValue === String(current)
+	) {
+		return true;
+	}
+	return false;
+}
+
+const parameterSelect2Ready = computed(
+	() =>
+		parameterSelectV2 &&
+		(props.parameter.type === 'options' || props.parameter.type === 'multiOptions') &&
+		parameterOptions.value.length > 0 &&
+		parameterOptions.value.every((option) => isSelect2Scalar(option.value)),
+);
+
+const parameterSelect2Items = computed(() =>
+	parameterOptions.value.flatMap((option) => {
+		if (!isSelect2Scalar(option.value)) return [];
+		return [
+			{
+				value: option.value,
+				label: getOptionsOptionDisplayName(option),
+				disabled: isOptionDisabled(option),
+			},
+		];
+	}),
+);
+
+function select2OptionFor(value: SelectValue) {
+	return parameterOptions.value.find(
+		(option) => isSelect2Scalar(option.value) && optionValuesMatch(option.value, value),
+	);
+}
+
+function select2ScalarFor(current: unknown): string | number | undefined {
+	const match = parameterOptions.value.find(
+		(option) => isSelect2Scalar(option.value) && optionValuesMatch(option.value, current),
+	);
+	if (match && isSelect2Scalar(match.value)) return match.value;
+	if (typeof current === 'string' && current !== '') return current;
+	if (typeof current === 'number') return current;
+	return undefined;
+}
+
+const parameterSelect2Model = computed(() => {
+	if (remoteParameterOptionsLoading.value || remoteParameterOptionsLoadingIssues.value) {
+		return props.parameter.type === 'multiOptions' ? [] : undefined;
+	}
+
+	const value = displayValue.value;
+	if (props.parameter.type === 'multiOptions') {
+		if (!Array.isArray(value)) return [];
+		return value.flatMap((entry) => {
+			const matched = select2ScalarFor(entry);
+			return matched === undefined ? [] : [matched];
+		});
+	}
+
+	return select2ScalarFor(value);
+});
+
+const parameterSelect2SingleModel = computed(() => {
+	const value = parameterSelect2Model.value;
+	return Array.isArray(value) ? undefined : value;
+});
+
+const parameterSelect2MultipleModel = computed(() => {
+	const value = parameterSelect2Model.value;
+	return Array.isArray(value) ? value : [];
+});
+
+function isRemoteSelect2Option(value: SelectValue): boolean {
+	const option = select2OptionFor(value);
+	return option ? isRemoteParameterOption(option) : false;
+}
+
+function select2OptionDescription(value: SelectValue): string | undefined {
+	const option = select2OptionFor(value);
+	if (!option?.description) return undefined;
+	return getOptionsOptionDescription(option);
 }
 
 async function loadRemoteParameterOptions() {
@@ -2058,6 +2154,36 @@ onUpdated(async () => {
 				</template>
 			</CredentialsSelect>
 
+			<N8nSelect2
+				v-else-if="parameter.type === 'options' && parameterSelect2Ready"
+				:size="inputSize"
+				:model-value="parameterSelect2SingleModel"
+				:items="parameterSelect2Items"
+				:placeholder="
+					parameter.placeholder ? getPlaceholder() : i18n.baseText('parameterInput.select')
+				"
+				:disabled="isReadOnly || remoteParameterOptionsLoading"
+				:title="displayTitle"
+				@update:model-value="valueChanged"
+				@keydown.stop
+			>
+				<template #item-label="{ item }">
+					<div class="list-option">
+						<div
+							class="option-headline"
+							:class="{ 'remote-parameter-option': isRemoteSelect2Option(item.value) }"
+						>
+							{{ item.label }}
+						</div>
+						<div
+							v-if="select2OptionDescription(item.value)"
+							v-n8n-html="select2OptionDescription(item.value)"
+							class="option-description option-description--clamped"
+						></div>
+					</div>
+				</template>
+			</N8nSelect2>
+
 			<N8nSelect
 				v-else-if="parameter.type === 'options'"
 				ref="inputField"
@@ -2098,6 +2224,30 @@ onUpdated(async () => {
 					</div>
 				</N8nOption>
 			</N8nSelect>
+
+			<N8nSelect2
+				v-else-if="parameter.type === 'multiOptions' && parameterSelect2Ready"
+				multiple
+				:size="inputSize"
+				:model-value="parameterSelect2MultipleModel"
+				:items="parameterSelect2Items"
+				:disabled="isReadOnly || remoteParameterOptionsLoading"
+				:title="displayTitle"
+				:placeholder="i18n.baseText('parameterInput.select')"
+				@update:model-value="valueChanged"
+				@keydown.stop
+			>
+				<template #item-label="{ item }">
+					<div class="list-option">
+						<div class="option-headline">{{ item.label }}</div>
+						<div
+							v-if="select2OptionDescription(item.value)"
+							v-n8n-html="select2OptionDescription(item.value)"
+							class="option-description option-description--clamped"
+						></div>
+					</div>
+				</template>
+			</N8nSelect2>
 
 			<N8nSelect
 				v-else-if="parameter.type === 'multiOptions'"

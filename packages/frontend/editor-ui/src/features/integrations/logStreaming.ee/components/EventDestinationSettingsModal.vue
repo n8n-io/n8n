@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, useTemplateRef, watch } from 'vue';
+import { computed, onMounted, provide, ref, useTemplateRef, watch } from 'vue';
 import get from 'lodash/get';
 import set from 'lodash/set';
 import unset from 'lodash/unset';
@@ -30,6 +30,7 @@ import { provideWorkflowDocumentStore } from '@/app/stores/workflowDocument.stor
 import ParameterInputList from '@/features/ndv/parameters/components/ParameterInputList.vue';
 import type { IMenuItem, IUpdateInformation, ModalKey } from '@/Interface';
 import { LOG_STREAM_MODAL_KEY, MODAL_CONFIRM } from '@/app/constants';
+import { ParameterSelectV2Key } from '@/app/constants/injectionKeys';
 import Modal from '@/app/components/Modal.vue';
 import { useI18n } from '@n8n/i18n';
 import { useMessage } from '@/app/composables/useMessage';
@@ -55,9 +56,9 @@ import {
 	N8nInlineTextEdit,
 	N8nInputLabel,
 	N8nMenuItem,
-	N8nOption,
-	N8nSelect,
+	N8nSelect2,
 	N8nText,
+	type SelectValue,
 } from '@n8n/design-system';
 
 defineOptions({ name: 'EventDestinationSettingsModal' });
@@ -75,6 +76,10 @@ const props = withDefaults(
 	},
 );
 const { modalName, destination, isNew, eventBus } = props;
+
+// The settings form reuses node parameter inputs. Opt those selects into
+// N8nSelect2 here so the node editor keeps the legacy select.
+provide(ParameterSelectV2Key, true);
 
 const i18n = useI18n();
 const { confirm } = useMessage();
@@ -118,6 +123,13 @@ const typeSelectOptions = computed(() => {
 	}
 	return options;
 });
+
+const typeSelectItems = computed(() =>
+	typeSelectOptions.value.map((option) => ({
+		value: option.value,
+		label: i18n.baseText(option.label),
+	})),
+);
 
 const isTypeAbstract = computed(
 	() => nodeParameters.value.__type === MessageEventBusDestinationTypeNames.abstract,
@@ -229,8 +241,10 @@ function setupNode(options: MessageEventBusDestinationOptions) {
 	logStreamingStore.items[destination.id!].destination = options;
 }
 
-function onTypeSelectInput(destinationType: MessageEventBusDestinationTypeNames) {
-	typeSelectValue.value = destinationType;
+function onTypeSelectInput(value: SelectValue | undefined) {
+	const match = messageEventBusDestinationTypeNames.find((name) => name === value);
+	if (!match || match === MessageEventBusDestinationTypeNames.abstract) return;
+	typeSelectValue.value = match;
 }
 
 async function onContinueAddClicked() {
@@ -462,21 +476,15 @@ const { width } = useElementSize(defNameRef);
 						size="medium"
 						:underline="false"
 					>
-						<N8nSelect
-							ref="typeSelectRef"
+						<N8nSelect2
 							:model-value="typeSelectValue"
+							:items="typeSelectItems"
 							:placeholder="typeSelectPlaceholder"
+							size="medium"
 							data-test-id="select-destination-type"
 							name="name"
 							@update:model-value="onTypeSelectInput"
-						>
-							<N8nOption
-								v-for="option in typeSelectOptions || []"
-								:key="option.value"
-								:value="option.value"
-								:label="i18n.baseText(option.label)"
-							/>
-						</N8nSelect>
+						/>
 						<div class="mt-m text-right">
 							<N8nButton
 								size="large"

@@ -120,6 +120,10 @@
 	}
 }
 
+.statusDot {
+	align-self: center;
+}
+
 .copyInputGroup {
 	display: flex;
 	align-items: stretch;
@@ -195,15 +199,6 @@
 .optional {
 	font-weight: var(--font-weight--regular);
 	color: var(--color--text--tint-1);
-}
-
-.greenDot {
-	display: inline-block;
-	width: 8px;
-	height: 8px;
-	border-radius: 50%;
-	background-color: var(--color--success);
-	margin-left: 4px;
 }
 
 .footer {

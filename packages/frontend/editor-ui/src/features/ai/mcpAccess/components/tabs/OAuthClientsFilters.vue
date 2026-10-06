@@ -8,10 +8,10 @@ import {
 	N8nButton,
 	N8nInputLabel,
 	N8nLink,
-	N8nOption,
 	N8nPopover,
-	N8nSelect,
+	N8nSelect2,
 	N8nUserSelect,
+	type SelectValue,
 } from '@n8n/design-system';
 
 import type { McpClientConnectedPeriod, McpClientTypeFilter } from '@n8n/api-types';
@@ -54,9 +54,37 @@ const filtersLength = computed(() => {
 
 const hasFilters = computed(() => filtersLength.value > 0);
 
-// Selects can't carry null values, so '' stands in for "no filter".
+// Select items need a non-empty value, so `all` stands in for "no filter".
+const ALL_FILTER = 'all';
+
+const clientTypeItems = computed(() => [
+	{
+		value: ALL_FILTER,
+		label: i18n.baseText('settings.mcp.oAuthClients.filters.clientType.all'),
+	},
+	...CLIENT_TYPE_OPTIONS.map((type) => ({
+		value: type,
+		label: i18n.baseText(`settings.mcp.oAuthClients.filters.clientType.${type}` as BaseTextKey),
+	})),
+]);
+
+const connectedItems = computed(() => [
+	{
+		value: ALL_FILTER,
+		label: i18n.baseText('settings.mcp.oAuthClients.filters.connected.allTime'),
+	},
+	...CONNECTED_OPTIONS.map((period) => ({
+		value: period,
+		label: connectedOptionLabels[period],
+	})),
+]);
+
 function setKeyValue(key: keyof OAuthClientFilters, value: string) {
 	emit('update:modelValue', { ...props.modelValue, [key]: value === '' ? null : value });
+}
+
+function onFilterChange(key: keyof OAuthClientFilters, value: SelectValue | undefined) {
+	setKeyValue(key, typeof value === 'string' && value !== ALL_FILTER ? value : '');
 }
 
 function resetFilters() {
@@ -100,25 +128,13 @@ function resetFilters() {
 					color="text-base"
 					class="mb-3xs"
 				/>
-				<N8nSelect
-					:model-value="modelValue.type ?? ''"
+				<N8nSelect2
+					:model-value="modelValue.type ?? ALL_FILTER"
+					:items="clientTypeItems"
 					size="medium"
 					data-test-id="mcp-clients-filter-type"
-					@update:model-value="setKeyValue('type', $event)"
-				>
-					<N8nOption
-						value=""
-						:label="i18n.baseText('settings.mcp.oAuthClients.filters.clientType.all')"
-					/>
-					<N8nOption
-						v-for="type in CLIENT_TYPE_OPTIONS"
-						:key="type"
-						:value="type"
-						:label="
-							i18n.baseText(`settings.mcp.oAuthClients.filters.clientType.${type}` as BaseTextKey)
-						"
-					/>
-				</N8nSelect>
+					@update:model-value="onFilterChange('type', $event)"
+				/>
 
 				<template v-if="showOwnerFilter">
 					<N8nInputLabel
@@ -147,23 +163,13 @@ function resetFilters() {
 					color="text-base"
 					class="mt-s mb-3xs"
 				/>
-				<N8nSelect
-					:model-value="modelValue.connected ?? ''"
+				<N8nSelect2
+					:model-value="modelValue.connected ?? ALL_FILTER"
+					:items="connectedItems"
 					size="medium"
 					data-test-id="mcp-clients-filter-connected"
-					@update:model-value="setKeyValue('connected', $event)"
-				>
-					<N8nOption
-						value=""
-						:label="i18n.baseText('settings.mcp.oAuthClients.filters.connected.allTime')"
-					/>
-					<N8nOption
-						v-for="period in CONNECTED_OPTIONS"
-						:key="period"
-						:value="period"
-						:label="connectedOptionLabels[period]"
-					/>
-				</N8nSelect>
+					@update:model-value="onFilterChange('connected', $event)"
+				/>
 
 				<div v-if="hasFilters" :class="[$style['filters-dropdown-footer'], 'mt-s']">
 					<N8nLink data-test-id="mcp-clients-filters-reset" @click="resetFilters">

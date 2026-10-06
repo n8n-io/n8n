@@ -35,6 +35,13 @@ export const CanvasRenderDataKey: InjectionKey<Ref<CanvasRenderData>> = Symbol('
 /** Keep setup hints compact while retaining their full text on the field. */
 export const CompactParameterHintsKey: InjectionKey<boolean> = Symbol('CompactParameterHints');
 /**
+ * Hosts that reuse the node parameter form outside the node editor provide
+ * `true` so `options` controls render `N8nSelect2`. The node editor does not
+ * provide this and keeps the legacy select. Collection and fixed-collection
+ * "add" controls, and credential-type controls, always render `N8nSelect2`.
+ */
+export const ParameterSelectV2Key: InjectionKey<boolean> = Symbol('ParameterSelectV2');
+/**
  * Opts resource-locator dropdowns into teleporting to `<body>`. Defaults to
  * `false` (stay in the local stacking context, e.g. inside the NDV dialog).
  * Hosts that render parameters inside a scroll container overlaid by sticky

@@ -9,11 +9,10 @@ import {
 	N8nButton,
 	N8nDialog,
 	N8nDialogFooter,
+	N8nCombobox2,
 	N8nFormInput,
 	N8nIcon,
 	N8nInputLabel,
-	N8nOption,
-	N8nSelect,
 	N8nText,
 } from '@n8n/design-system';
 import type { IconOrEmoji } from '@n8n/design-system';
@@ -196,10 +195,17 @@ const scopeOptions = computed<ScopeOption[]>(() => {
 	);
 });
 
-const selectedIcon = computed<IconOrEmoji>(
-	() =>
-		scopeOptions.value.find((option) => option.value === form.scope)?.icon ?? DEFAULT_PROJECT_ICON,
+const scopeItems = computed(() =>
+	scopeOptions.value.map((option) => ({ value: option.value, label: option.label })),
 );
+
+function scopeIcon(value: string | undefined) {
+	return scopeOptions.value.find((option) => option.value === value)?.icon;
+}
+
+function onScopeSelect(value: string | string[] | undefined) {
+	if (typeof value === 'string') form.scope = value;
+}
 
 const modalTitle = computed(() =>
 	mode.value === 'new'
@@ -339,34 +345,28 @@ watch(
 				:label="i18n.baseText('settings.context.preferences.modal.scope.label')"
 				color="text-dark"
 			>
-				<N8nSelect
-					v-model="form.scope"
+				<N8nCombobox2
+					:model-value="form.scope"
+					:items="scopeItems"
 					size="large"
-					filterable
 					:teleported="false"
 					data-test-id="preference-modal-scope-select"
+					@update:model-value="onScopeSelect"
 				>
-					<template #prefix>
-						<N8nText v-if="selectedIcon.type === 'emoji'" :class="$style.emoji">{{
-							selectedIcon.value
-						}}</N8nText>
-						<N8nIcon v-else :icon="selectedIcon.value" />
+					<template #item-leading="{ item, ui }">
+						<N8nText
+							v-if="scopeIcon(item.value)?.type === 'emoji'"
+							:class="[$style.emoji, ui.class]"
+						>
+							{{ scopeIcon(item.value)?.value }}
+						</N8nText>
+						<N8nIcon
+							v-else-if="scopeIcon(item.value)?.type === 'icon'"
+							:class="ui.class"
+							:icon="scopeIcon(item.value)!.value"
+						/>
 					</template>
-					<N8nOption
-						v-for="option in scopeOptions"
-						:key="option.value"
-						:value="option.value"
-						:label="option.label"
-					>
-						<div :class="$style.optionContent">
-							<N8nText v-if="option.icon.type === 'emoji'" :class="$style.emoji">{{
-								option.icon.value
-							}}</N8nText>
-							<N8nIcon v-else :icon="option.icon.value" />
-							<span>{{ option.label }}</span>
-						</div>
-					</N8nOption>
-				</N8nSelect>
+				</N8nCombobox2>
 			</N8nInputLabel>
 		</div>
 		<N8nDialogFooter>
@@ -398,12 +398,6 @@ watch(
 .counter {
 	align-self: flex-end;
 	margin-top: calc(-1 * var(--spacing--xs));
-}
-
-.optionContent {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--2xs);
 }
 
 .emoji {

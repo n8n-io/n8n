@@ -563,12 +563,8 @@ describe('MigrationRuleDetail', () => {
 				expect(screen.getByTestId('resources-list-filters-dropdown')).toBeInTheDocument();
 			});
 
-			// Select "Active" status
-			// Find the select combobox input and click it to open the dropdown
-			const statusSelectWrapper = screen.getByTestId('migration-rule-status-filter');
-			const statusSelectInput = statusSelectWrapper.querySelector('input[role="combobox"]');
-			if (!statusSelectInput) throw new Error('Select input not found');
-			await user.click(statusSelectInput);
+			const statusSelect = screen.getByTestId('migration-rule-status-filter');
+			await user.click(statusSelect);
 
 			// Wait for options to appear and click Active
 			await waitFor(() => {

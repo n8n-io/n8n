@@ -2,8 +2,8 @@
 import { ref, computed, onMounted } from 'vue';
 import {
 	N8nIconButton,
-	N8nSelect,
-	N8nOption,
+	N8nSelect2,
+	type SelectValue,
 	N8nMenuItem,
 	N8nText,
 	N8nInlineTextEdit,
@@ -54,7 +54,9 @@ const isSaving = ref(false);
 const resolverName = ref('');
 const resolverType = ref('');
 const resolverConfig = ref<Record<string, unknown>>({});
-const clearCredentials = ref<boolean | null>(null);
+type ClearCredentialsChoice = 'yes' | 'no';
+
+const clearCredentials = ref<ClearCredentialsChoice>();
 const hasUnsavedChanges = ref(false);
 const errorMessage = ref<string>('');
 const mainContentRef = ref<HTMLElement>();
@@ -196,10 +198,34 @@ const hasNonNameChanges = computed(() => {
 	return hasEverMadeNonNameChange.value;
 });
 
+const clearCredentialsItems = computed(() => [
+	{
+		value: 'yes' as const,
+		label: i18n.baseText('credentialResolverEdit.clearCredentials.yes'),
+	},
+	{
+		value: 'no' as const,
+		label: i18n.baseText('credentialResolverEdit.clearCredentials.no'),
+	},
+]);
+
+const typeItems = computed(() =>
+	availableTypes.value.map((type) => ({
+		value: type.name,
+		label: type.displayName,
+	})),
+);
+
+function clearCredentialsFlag(): boolean | undefined {
+	if (clearCredentials.value === 'yes') return true;
+	if (clearCredentials.value === 'no') return false;
+	return undefined;
+}
+
 const canSave = computed(() => {
 	const baseCheck = resolverName.value.trim() !== '' && resolverType.value !== '';
 	if (isEditMode.value && hasNonNameChanges.value) {
-		return baseCheck && clearCredentials.value !== null;
+		return baseCheck && clearCredentials.value !== undefined;
 	}
 	return baseCheck;
 });
@@ -233,7 +259,7 @@ const loadResolver = async () => {
 
 		// Reset the flag when loading a resolver
 		hasEverMadeNonNameChange.value = false;
-		clearCredentials.value = null;
+		clearCredentials.value = undefined;
 	} catch (error) {
 		toast.showError(error, i18n.baseText('credentialResolverEdit.error.save'));
 	}
@@ -258,7 +284,7 @@ const save = async () => {
 		return;
 	}
 
-	if (isEditMode.value && hasNonNameChanges.value && clearCredentials.value === null) {
+	if (isEditMode.value && hasNonNameChanges.value && clearCredentials.value === undefined) {
 		errorMessage.value = i18n.baseText('credentialResolverEdit.clearCredentials.error.required');
 		isSaving.value = false;
 		return;
@@ -278,8 +304,9 @@ const save = async () => {
 
 		// Include clearCredentials if non-name fields changed, otherwise default to false
 		if (isEditMode.value) {
-			if (hasNonNameChanges.value && clearCredentials.value !== null) {
-				payload.clearCredentials = clearCredentials.value;
+			const shouldClearCredentials = clearCredentialsFlag();
+			if (hasNonNameChanges.value && shouldClearCredentials !== undefined) {
+				payload.clearCredentials = shouldClearCredentials;
 			} else if (!hasNonNameChanges.value) {
 				// Only name changed, default to false
 				payload.clearCredentials = false;
@@ -328,9 +355,22 @@ const onConfigUpdate = (updateData: IUpdateInformation) => {
 	errorMessage.value = '';
 	// Reset clearCredentials when config changes to force user to make a choice
 	if (isEditMode.value) {
-		clearCredentials.value = null;
+		clearCredentials.value = undefined;
 	}
 };
+
+function onClearCredentialsChange(value: SelectValue | undefined) {
+	clearCredentials.value = value === 'yes' || value === 'no' ? value : undefined;
+	hasUnsavedChanges.value = true;
+	errorMessage.value = '';
+}
+
+function onResolverTypeChange(value: SelectValue | undefined) {
+	resolverType.value = typeof value === 'string' ? value : '';
+	hasUnsavedChanges.value = true;
+	errorMessage.value = '';
+	clearCredentials.value = undefined;
+}
 
 const onNameEdit = (newName: string) => {
 	resolverName.value = newName;
@@ -374,7 +414,7 @@ onMounted(async () => {
 	} else {
 		// Set default name for new resolvers
 		resolverName.value = i18n.baseText('credentialResolverEdit.defaultName');
-		clearCredentials.value = null;
+		clearCredentials.value = undefined;
 	}
 	isLoading.value = false;
 });
@@ -460,28 +500,14 @@ onMounted(async () => {
 						<label :class="$style.label">
 							{{ i18n.baseText('credentialResolverEdit.clearCredentials.label') }}
 						</label>
-						<N8nSelect
-							v-model="clearCredentials"
+						<N8nSelect2
+							:model-value="clearCredentials"
+							:items="clearCredentialsItems"
 							:placeholder="i18n.baseText('credentialResolverEdit.clearCredentials.placeholder')"
+							size="large"
 							data-test-id="credential-resolver-clear-credentials-select"
-							@update:model-value="
-								() => {
-									hasUnsavedChanges = true;
-									errorMessage = '';
-								}
-							"
-						>
-							<N8nOption
-								:label="i18n.baseText('credentialResolverEdit.clearCredentials.yes')"
-								:value="true"
-							>
-							</N8nOption>
-							<N8nOption
-								:label="i18n.baseText('credentialResolverEdit.clearCredentials.no')"
-								:value="false"
-							>
-							</N8nOption>
-						</N8nSelect>
+							@update:model-value="onClearCredentialsChange"
+						/>
 					</div>
 
 					<N8nCallout
@@ -497,26 +523,14 @@ onMounted(async () => {
 						<label :class="$style.label">
 							{{ i18n.baseText('credentialResolverEdit.type.label') }}
 						</label>
-						<N8nSelect
-							v-model="resolverType"
+						<N8nSelect2
+							:model-value="resolverType"
+							:items="typeItems"
 							:placeholder="i18n.baseText('credentialResolverEdit.type.placeholder')"
+							size="large"
 							data-test-id="credential-resolver-type-select"
-							@update:model-value="
-								() => {
-									hasUnsavedChanges = true;
-									errorMessage = '';
-									clearCredentials = null;
-								}
-							"
-						>
-							<N8nOption
-								v-for="type in availableTypes"
-								:key="type.name"
-								:label="type.displayName"
-								:value="type.name"
-							>
-							</N8nOption>
-						</N8nSelect>
+							@update:model-value="onResolverTypeChange"
+						/>
 					</div>
 
 					<div v-if="resolverProperties.length > 0" :class="$style.configSection">

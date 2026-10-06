@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ref } from 'vue';
 import { fireEvent, waitFor } from '@testing-library/vue';
+import userEvent from '@testing-library/user-event';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { createComponentRenderer } from '@/__tests__/render';
@@ -91,13 +92,16 @@ const renderSearchDialog = ({ props }: { props: Record<string, unknown> }) =>
 	renderConnectionDialog({ props: { kind: 'search', ...props } });
 
 async function selectOption(select: HTMLElement, label: string) {
-	const listboxId = select.querySelector('input')?.getAttribute('aria-controls');
-	expect(listboxId).toBeTruthy();
-	const option = Array.from(
-		document.getElementById(listboxId!)?.querySelectorAll('[role="option"]') ?? [],
-	).find((element) => element.textContent === label);
-	expect(option).toBeDefined();
-	await fireEvent.click(option!);
+	// N8nSelect2 portals the menu and mounts it when the trigger opens.
+	await userEvent.click(select);
+	const option = await waitFor(() => {
+		const match = Array.from(document.querySelectorAll('[data-test-id="select-item"]')).find(
+			(element) => element.textContent?.includes(label),
+		);
+		expect(match).toBeTruthy();
+		return match as HTMLElement;
+	});
+	await userEvent.click(option);
 }
 
 function setModuleSettings(
@@ -662,31 +666,22 @@ describe('SettingsInstanceAiView', () => {
 		});
 
 		it('offers only always_allow and blocked for createPreference', async () => {
-			// N8nSelect (element-plus) teleports its option list to the document
-			// body and only mounts it once open, so the options never show up in
-			// `select.textContent`. Open the select and read the teleported list
-			// instead of the select's own DOM subtree.
-			const { getByTestId, getByLabelText } = renderComponent();
+			// The menu is portaled and mounts when the trigger opens.
+			const { getByTestId, getByLabelText, queryAllByText } = renderComponent();
 			await fireEvent.click(
 				getByLabelText('Toggle settings.n8nAgent.permissions.group.preferences'),
 			);
 			const select = await waitFor(() => getByTestId('n8n-agent-permission-createPreference'));
 			expect(select).toBeVisible();
 
-			const input = select.querySelector('input')!;
-			await fireEvent.click(input);
-			const listboxId = input.getAttribute('aria-controls');
-			const options = await waitFor(() => {
-				const listbox = document.getElementById(listboxId!);
-				expect(listbox).not.toBeNull();
-				return Array.from(listbox!.querySelectorAll('[role="option"]')).map(
-					(option) => option.textContent,
-				);
-			});
-			expect(options).toEqual([
-				'settings.n8nAgent.permissions.alwaysAllow',
-				'settings.n8nAgent.permissions.blocked',
-			]);
+			await userEvent.click(select);
+			await waitFor(() =>
+				expect(queryAllByText('settings.n8nAgent.permissions.alwaysAllow').length).toBeGreaterThan(
+					0,
+				),
+			);
+			expect(queryAllByText('settings.n8nAgent.permissions.blocked').length).toBeGreaterThan(0);
+			expect(queryAllByText('settings.n8nAgent.permissions.needsApproval')).toHaveLength(0);
 		});
 	});
 
@@ -759,8 +754,8 @@ describe('SettingsInstanceAiView', () => {
 			await waitFor(() => expect(getByTestId('n8n-agent-permission-createFolder')).toBeVisible());
 
 			const select = getByTestId('n8n-agent-permission-createFolder');
-			await fireEvent.click(select.querySelector('input')!);
-			await fireEvent.click(getAllByText('settings.n8nAgent.permissions.alwaysAllow')[0]);
+			await userEvent.click(select);
+			await userEvent.click(getAllByText('settings.n8nAgent.permissions.alwaysAllow')[0]);
 
 			expect(setPermission).toHaveBeenCalledWith('createFolder', 'always_allow');
 			expect(save).toHaveBeenCalled();

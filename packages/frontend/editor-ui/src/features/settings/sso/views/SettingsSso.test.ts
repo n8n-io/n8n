@@ -659,22 +659,14 @@ describe('SettingsSso View', () => {
 			ssoStore.isEnterpriseSamlEnabled = true;
 			ssoStore.isEnterpriseOidcEnabled = true;
 			ssoStore.ssoManagedByEnv = true;
+			ssoStore.selectedAuthProtocol = SupportedProtocols.OIDC;
 			mockProvisioningStore.provisioningConfig = { scopesUseExpressionMapping: true };
 			mockProvisioningStore.getProvisioningConfig.mockResolvedValue({
 				scopesUseExpressionMapping: true,
 			});
 			ssoStore.getOidcConfig.mockResolvedValue(oidcConfig);
 
-			const { getAllByRole, getByTestId } = renderView();
-
-			// Switch to OIDC
-			const protocolSelect = getAllByRole('combobox')[0];
-			await userEvent.click(protocolSelect);
-			const dropdown = await waitFor(() => document.querySelector('.el-select-dropdown__list'));
-			const oidcItem = Array.from(dropdown!.querySelectorAll('.el-select-dropdown__item')).find(
-				(item) => item.textContent?.includes('OIDC'),
-			);
-			await userEvent.click(oidcItem!);
+			const { getByTestId } = renderView();
 
 			const saveButton = await waitFor(() => getByTestId('sso-oidc-save'));
 			await userEvent.click(saveButton);
@@ -744,10 +736,7 @@ describe('SettingsSso View', () => {
 			await userEvent.click(protocolSelect);
 
 			const dropdown = await waitFor(() => getByRole('listbox'));
-			const items = dropdown.querySelectorAll('.el-select-dropdown__item');
-			const oidcItem = Array.from(items).find((item) => item.textContent?.includes('OIDC'));
-
-			await userEvent.click(oidcItem!);
+			await userEvent.click(within(dropdown).getByRole('option', { name: /OIDC/ }));
 
 			// Verify store selectedAuthProtocol is still SAML (not updated)
 			expect(ssoStore.selectedAuthProtocol).toBe(SupportedProtocols.SAML);
@@ -794,10 +783,7 @@ describe('SettingsSso View', () => {
 			await userEvent.click(protocolSelect);
 
 			const dropdown = await waitFor(() => getByRole('listbox'));
-			const items = dropdown.querySelectorAll('.el-select-dropdown__item');
-			const oidcItem = Array.from(items).find((item) => item.textContent?.includes('OIDC'));
-
-			await userEvent.click(oidcItem!);
+			await userEvent.click(within(dropdown).getByRole('option', { name: /OIDC/ }));
 
 			// Verify store selectedAuthProtocol is still SAML (not updated yet)
 			expect(ssoStore.selectedAuthProtocol).toBe(SupportedProtocols.SAML);
@@ -860,10 +846,7 @@ describe('SettingsSso View', () => {
 			await userEvent.click(protocolSelect);
 
 			const dropdown = await waitFor(() => getByRole('listbox'));
-			const items = dropdown.querySelectorAll('.el-select-dropdown__item');
-			const oidcItem = Array.from(items).find((item) => item.textContent?.includes('OIDC'));
-
-			await userEvent.click(oidcItem!);
+			await userEvent.click(within(dropdown).getByRole('option', { name: /OIDC/ }));
 
 			// Now should show OIDC content (based on local state, not store)
 			await waitFor(() => {
