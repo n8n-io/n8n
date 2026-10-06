@@ -46,7 +46,7 @@ export const nextActions = (): readonly Action[] => [...contractActions(), ...pu
  * step in `CORE_NODE_STEPS`. Discovery does not offer them. The sandbox module keeps them, so a
  * source that get-as-code reads back still builds.
  */
-const FLOW_STEP_OF_ACTION: ReadonlyMap<string, string> = new Map([
+export const FLOW_STEP_OF_ACTION: ReadonlyMap<string, string> = new Map([
 	['items.set', 'n8n-nodes-base.set'],
 	['merge.append', 'n8n-nodes-base.merge'],
 	['merge.chooseBranch', 'n8n-nodes-base.merge'],

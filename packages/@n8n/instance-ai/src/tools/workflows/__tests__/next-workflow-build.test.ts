@@ -1719,6 +1719,19 @@ describe('untypedOutputIssues', () => {
 		]);
 	});
 
+	it('names no read of a set or merge step, whose flow step types the output', async () => {
+		const set = chain(
+			step('Lead', '@n8n/nodes-core.itemsSet', { fields: { email: 'a@b.c' } }),
+			read('={{ $json.email }}'),
+		);
+		const merge = chain(
+			step('Both', '@n8n/nodes-core.mergeCombine', {}),
+			read('={{ $json.email }}'),
+		);
+		expect(await untypedOutputIssues("set({ name: 'Lead' })", set)).toEqual([]);
+		expect(await untypedOutputIssues('', merge)).toEqual([]);
+	});
+
 	it('says why a resource lookup left the output keys open', async () => {
 		const json = chain(
 			step('Tasks', '@n8n/nodes-integrations.notionDatabasePageGetAll', {

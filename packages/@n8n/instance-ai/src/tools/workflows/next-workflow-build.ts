@@ -56,6 +56,7 @@ import {
 	contractReplacementOf,
 	derivedNodeModuleText,
 	factoryPathOf,
+	FLOW_STEP_OF_ACTION,
 	isInstalledNodeType,
 	missingNodeTypeIssue,
 	nextNodeIds,
@@ -1180,7 +1181,8 @@ export async function untypedOutputIssues(
 				? issue(reads, 'node() and trigger() have no output type', 'Give it `sample` items.')
 				: [];
 		}
-		if (action.output.json['x-n8n-passed'] === true) return [];
+		if (action.output.json['x-n8n-passed'] === true || FLOW_STEP_OF_ACTION.has(action.id))
+			return [];
 		const output = outputOf(action, nodeInputOf(node, action), lookups.fields.get(name));
 		const miss = lookups.misses.get(name);
 		const resource = fieldRefOfNode(node, action)?.resource;
