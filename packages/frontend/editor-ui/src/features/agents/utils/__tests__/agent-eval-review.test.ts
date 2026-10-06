@@ -1,6 +1,10 @@
 import type { IDataObject, JsonObject } from 'n8n-workflow';
 
-import type { AgentEvalRatingRecord } from '../../agentEvals.types';
+import type {
+	AgentEvalVerdict,
+	AgentEvalRatingRecord,
+	AgentEvalResultStatus,
+} from '../../agentEvals.types';
 import type { ReviewDraft } from '../agent-eval-review';
 import {
 	canSaveDraft,
@@ -8,7 +12,9 @@ import {
 	readCaseRequest,
 	readCorrectionText,
 	readErrorMessage,
+	readVerdictReasoning,
 	resolveReviewRowView,
+	toAvatarKind,
 } from '../agent-eval-review';
 
 const draft = (overrides: Partial<ReviewDraft> = {}): ReviewDraft => ({
@@ -201,6 +207,93 @@ describe('resolveReviewRowView', () => {
 			const view = resolveReviewRowView({ draft: draft({ vote: 'down', panel: 'answer' }) });
 
 			expect(view).toMatchObject({ showReason: false, showAnswerEditor: true });
+		});
+	});
+});
+
+const verdict = (overrides: Partial<AgentEvalVerdict> = {}): AgentEvalVerdict => ({
+	status: 'completed',
+	outcome: 'pass',
+	reasoning: 'Matches the expected answer.',
+	...overrides,
+});
+
+describe('readVerdictReasoning', () => {
+	it('reads the reasoning from a completed verdict', () => {
+		expect(readVerdictReasoning(verdict({ reasoning: 'Correctly refuses.' }))).toBe(
+			'Correctly refuses.',
+		);
+	});
+
+	it('reads the error message from an errored verdict', () => {
+		expect(
+			readVerdictReasoning(verdict({ status: 'error', outcome: null, reasoning: 'boom' })),
+		).toBe('boom');
+	});
+
+	it('returns null for a skipped verdict', () => {
+		expect(
+			readVerdictReasoning(verdict({ status: 'skipped', outcome: null, reasoning: null })),
+		).toBeNull();
+	});
+
+	test.each([
+		['null', null],
+		['undefined', undefined],
+	])('returns null for %s', (_label, input) => {
+		expect(readVerdictReasoning(input)).toBeNull();
+	});
+});
+
+describe('toAvatarKind', () => {
+	const EXECUTION_ONLY_CASES: Array<[AgentEvalResultStatus, ReturnType<typeof toAvatarKind>]> = [
+		['new', 'idle'],
+		['running', 'waiting'],
+		['error', 'fail'],
+		['cancelled', 'work'],
+	];
+
+	// A verdict on a non-`success` row never applies — there's nothing to grade
+	// until the case actually finishes.
+	describe.each(EXECUTION_ONLY_CASES)('status "%s"', (status, expectedKind) => {
+		test.each([
+			['no verdict', null],
+			['a completed pass verdict', verdict({ status: 'completed', outcome: 'pass' })],
+			['a completed fail verdict', verdict({ status: 'completed', outcome: 'fail' })],
+		])('reads as "%s" regardless of %s', (_label, givenVerdict) => {
+			expect(toAvatarKind(status, givenVerdict)).toBe(expectedKind);
+		});
+	});
+
+	describe('status "success"', () => {
+		it('reads as "pass" with no verdict (ungraded — old behavior)', () => {
+			expect(toAvatarKind('success', null)).toBe('pass');
+		});
+
+		it('reads as "pass" with an undefined verdict', () => {
+			expect(toAvatarKind('success', undefined)).toBe('pass');
+		});
+
+		it('reads as "pass" when judging was skipped (no rule or gold answer)', () => {
+			expect(toAvatarKind('success', verdict({ status: 'skipped', outcome: null }))).toBe('pass');
+		});
+
+		it('reads as "pass" when the judge call itself errored (ungraded, not a fail)', () => {
+			expect(toAvatarKind('success', verdict({ status: 'error', outcome: null }))).toBe('pass');
+		});
+
+		it('reads as "pass" when the judge completed with a pass outcome', () => {
+			expect(toAvatarKind('success', verdict({ status: 'completed', outcome: 'pass' }))).toBe(
+				'pass',
+			);
+		});
+
+		// The deliberate choice this util encodes: a graded failure is "needs
+		// work", not "couldn't finish" — those are different problems.
+		it('reads as "work", not "fail", when the judge completed with a fail outcome', () => {
+			expect(toAvatarKind('success', verdict({ status: 'completed', outcome: 'fail' }))).toBe(
+				'work',
+			);
 		});
 	});
 });

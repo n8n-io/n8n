@@ -199,21 +199,26 @@ defineExpose({ sliderValue, focusOwnInput });
 		</div>
 
 		<div :class="$style.addOwnForm">
-			<AgentAvatar kind="idle" size="sm" />
-			<N8nText color="text-light" size="small">
-				{{ i18n.baseText('instanceAi.testAgentPreview.customExampleLabel') }}
-			</N8nText>
-			<input
-				ref="ownInputRef"
-				v-model="ownInput"
-				:class="$style.addOwnInput"
-				:placeholder="i18n.baseText('instanceAi.testAgentPreview.addYourOwnExample')"
-				:disabled="disabled"
-				data-test-id="instance-ai-test-agent-examples-add-own-input"
-				@keydown.meta.enter="submitOwnExample"
-				@keydown.enter.exact="submitOwnExample"
-				@keydown.esc="cancelAddOwn"
-			/>
+			<AgentAvatar kind="idle" size="xs" />
+			<div :class="$style.addOwnFormHeader">
+				<label for="ownInput">
+					<N8nText color="text-light" size="small">
+						{{ i18n.baseText('instanceAi.testAgentPreview.customExampleLabel') }}
+					</N8nText>
+				</label>
+				<input
+					ref="ownInputRef"
+					v-model="ownInput"
+					name="ownInput"
+					:class="$style.addOwnInput"
+					:placeholder="i18n.baseText('instanceAi.testAgentPreview.addYourOwnExample')"
+					:disabled="disabled"
+					data-test-id="instance-ai-test-agent-examples-add-own-input"
+					@keydown.meta.enter="submitOwnExample"
+					@keydown.enter.exact="submitOwnExample"
+					@keydown.esc="cancelAddOwn"
+				/>
+			</div>
 		</div>
 	</div>
 </template>
@@ -326,17 +331,21 @@ defineExpose({ sliderValue, focusOwnInput });
 	color: var(--text-color--dark);
 }
 
-// Matches the generated-examples rows: same border, radius and padding, so
-// the empty "add your own" row reads as one more row in that same list.
 .addOwnForm {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing--2xs);
+	gap: var(--spacing--xs);
 	// 10px (right) has no matching token between 8px and 12px — kept as a
 	// literal for the extra breathing room next to the row's chevron/icon.
 	padding: var(--spacing--3xs) 10px var(--spacing--3xs) var(--spacing--2xs);
 	border: var(--border);
 	border-radius: var(--radius--lg);
+}
+
+.addOwnFormHeader {
+	display: flex;
+	flex-direction: column;
+	width: 100%;
 }
 
 .addOwnInput {

@@ -159,10 +159,21 @@ export const useAgentEvalsStore = defineStore(STORES.AGENT_EVALS, () => {
 	 * has to reveal the agent artifact first). A watcher can consume a request
 	 * that predates it; a fire-and-forget event would be dropped.
 	 */
-	const pendingEvalsFocus = ref<{ agentId: string; generate: boolean } | null>(null);
+	const pendingEvalsFocus = ref<{
+		agentId: string;
+		generate: boolean;
+		/** A check to expand and scroll to once the eval view shows. */
+		resultId?: string;
+	} | null>(null);
 
-	const requestEvalsFocus = (agentId: string, generate = false) => {
-		pendingEvalsFocus.value = { agentId, generate };
+	/**
+	 * The check the eval view should expand — handed on from a consumed request,
+	 * because the checks panel mounts after the builder claims the request.
+	 */
+	const focusedEvalResult = ref<{ agentId: string; resultId: string } | null>(null);
+
+	const requestEvalsFocus = (agentId: string, generate = false, resultId?: string) => {
+		pendingEvalsFocus.value = { agentId, generate, resultId };
 	};
 
 	/** Claims the request when it names this agent, so only one builder acts on it. */
@@ -170,7 +181,16 @@ export const useAgentEvalsStore = defineStore(STORES.AGENT_EVALS, () => {
 		const request = pendingEvalsFocus.value;
 		if (request?.agentId !== agentId) return null;
 		pendingEvalsFocus.value = null;
+		if (request.resultId) focusedEvalResult.value = { agentId, resultId: request.resultId };
 		return request;
+	};
+
+	/** Claims the focused check when it belongs to this agent, so it expands only once. */
+	const consumeFocusedEvalResult = (agentId: string) => {
+		const focused = focusedEvalResult.value;
+		if (focused?.agentId !== agentId) return null;
+		focusedEvalResult.value = null;
+		return focused.resultId;
 	};
 
 	/**
@@ -1063,6 +1083,31 @@ export const useAgentEvalsStore = defineStore(STORES.AGENT_EVALS, () => {
 		}
 	};
 
+	// Marks a finished case as passing. Patches the cached verdict first so the
+	// row flips instantly, and reverts it if the request fails.
+	const acceptResult = async (projectId: string, agentId: string, resultId: string) => {
+		const cached = findCachedResult(resultId);
+		if (cached) {
+			replaceCachedResult(cached.runId, resultId, {
+				...cached.result,
+				verdict: { status: 'completed', outcome: 'pass', reasoning: null },
+			});
+		}
+		try {
+			const updated = await agentEvalsApi.acceptResult(
+				rootStore.restApiContext,
+				projectId,
+				agentId,
+				resultId,
+			);
+			replaceCachedResult(updated.runId, resultId, updated);
+			return updated;
+		} catch (error) {
+			if (cached) replaceCachedResult(cached.runId, resultId, cached.result);
+			throw error;
+		}
+	};
+
 	// Persists the removal server-side, then drops it from the cached page.
 	// `deleteCase` alone only removes the Data Table row it came from — this
 	// result is a separate persisted snapshot that would otherwise survive and
@@ -1124,6 +1169,7 @@ export const useAgentEvalsStore = defineStore(STORES.AGENT_EVALS, () => {
 		hasLostTrackOfRun,
 		startRun,
 		rerunResult,
+		acceptResult,
 		cancelRun,
 		isCancellingRun,
 		getCases,
@@ -1138,6 +1184,8 @@ export const useAgentEvalsStore = defineStore(STORES.AGENT_EVALS, () => {
 		pendingEvalsFocus,
 		requestEvalsFocus,
 		consumeEvalsFocus,
+		focusedEvalResult,
+		consumeFocusedEvalResult,
 		clearEvalsFocus,
 	};
 });

@@ -4,7 +4,7 @@
  * slider-controlled batch of additional generated examples the user can trim,
  * extend with their own, and hand off to a real check via "Check your agent".
  */
-import { computed, ref, watch } from 'vue';
+import { computed, ref } from 'vue';
 import type { AgentEvalDraftCase } from '@n8n/api-types';
 import { N8nButton, N8nIcon, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
@@ -25,6 +25,8 @@ export type SuiteCaseRun = {
 	output: string | null;
 	toolCalls: ToolCall[];
 	whatToCheck: string | null;
+	/** Why the case errored, or the judge's reasoning on a graded fail. */
+	errorMessage: string | null;
 };
 
 const props = defineProps<{
@@ -45,24 +47,17 @@ const props = defineProps<{
 	startingRun?: boolean;
 	/** True from the "Stop" click until the cancel request resolves. */
 	stoppingRun?: boolean;
-	/** The row currently mid "Save check" — regenerating and rerunning. Null otherwise. */
-	revisingRowId?: number | null;
 }>();
 
 const emit = defineEmits<{
 	'add-example': [input: string];
 	'check-agent': [count: number];
 	'stop-run': [];
-	/** "Save check" on a case: regenerate it from the user's note and rerun. */
-	'revise-case': [payload: { rowId: number; suggestion: string }];
-	/** "Run check" on a case that needs no correction: rerun just that result.
-	 *  The store patches the result to `running` itself, so the row reads as
-	 *  "waiting" through the ordinary status mapping — nothing here tracks it. */
-	'rerun-case': [resultId: string];
-	/** The rule's edited text, from the pencil icon's inline editor. */
-	'update-what-to-check': [payload: { rowId: number; resultId: string; whatToCheck: string }];
-	/** The trash icon's confirmed delete — this case and its example. */
-	'delete-case': [rowId: number];
+	/** "Try agent yourself": open the agent's own chat once every check passed. */
+	'try-agent': [];
+	/** A row's chevron: open the eval view on that case. Null for the confirmed
+	 *  try, which has no result yet — the view just opens. */
+	'open-case': [resultId: string | null];
 }>();
 
 const i18n = useI18n();
@@ -71,68 +66,19 @@ const i18n = useI18n();
 // is the user's own request, not something a partial success should force.
 const summaryExpanded = ref(false);
 
-// "Actually fine" is a local judgment call, not a data mutation — no request
-// backs it, so it only overrides how a row's own status renders. Cleared the
-// moment that row goes back to "waiting": a fresh run's real status should
-// always win over a stale override from a previous one.
-const manualStatusOverrides = ref<Record<number, AgentAvatarKind>>({});
-
-watch(
-	() => props.caseRuns,
-	(runs) => {
-		if (!runs) return;
-		for (const run of runs) {
-			if (run.status === 'waiting' && run.rowId in manualStatusOverrides.value) {
-				const { [run.rowId]: _removed, ...rest } = manualStatusOverrides.value;
-				manualStatusOverrides.value = rest;
-			}
-		}
-	},
-	{ deep: true },
-);
-
-function onActuallyFine(rowId: number) {
-	manualStatusOverrides.value = { ...manualStatusOverrides.value, [rowId]: 'pass' };
-}
-
-function onSaveCheck(rowId: number, suggestion: string) {
-	emit('revise-case', { rowId, suggestion });
-}
-
-function onRunCheck(resultId: string | null) {
-	if (!resultId) return;
-	emit('rerun-case', resultId);
-}
-
-function onDeleteCheck(rowId: number) {
-	emit('delete-case', rowId);
-}
-
-function onUpdateWhatToCheck(rowId: number, resultId: string | null, whatToCheck: string) {
-	if (!resultId) return;
-	emit('update-what-to-check', { rowId, resultId, whatToCheck });
-}
-
-// The list the template renders from — `caseRuns` with any "Actually fine"
-// overrides applied, so the summary counts and each row agree on what's shown.
-const effectiveCaseRuns = computed<SuiteCaseRun[] | null>(() => {
-	if (!props.caseRuns) return null;
-	return props.caseRuns.map((run) => {
-		const override = manualStatusOverrides.value[run.rowId];
-		return override ? { ...run, status: override } : run;
-	});
-});
-
 const waitingCount = computed(
-	() => effectiveCaseRuns.value?.filter((run) => run.status === 'waiting').length ?? 0,
+	() => props.caseRuns?.filter((run) => run.status === 'waiting').length ?? 0,
 );
 const passedCount = computed(
-	() => effectiveCaseRuns.value?.filter((run) => run.status === 'pass').length ?? 0,
+	() => props.caseRuns?.filter((run) => run.status === 'pass').length ?? 0,
 );
 const needsWorkCount = computed(
-	() => (effectiveCaseRuns.value?.length ?? 0) - passedCount.value - waitingCount.value,
+	() => (props.caseRuns?.length ?? 0) - passedCount.value - waitingCount.value,
 );
-const runSettled = computed(() => effectiveCaseRuns.value !== null && waitingCount.value === 0);
+const runSettled = computed(() => props.caseRuns !== null && waitingCount.value === 0);
+const allPassed = computed(
+	() => runSettled.value && needsWorkCount.value === 0 && passedCount.value > 0,
+);
 
 function toggleSummaryExpanded() {
 	summaryExpanded.value = !summaryExpanded.value;
@@ -159,6 +105,7 @@ function onCheckYourAgent() {
 				:label="previewScenario ?? i18n.baseText('instanceAi.testAgentPreview.yourTry')"
 				hide-revise
 				test-id="instance-ai-test-agent-examples-try"
+				@open="emit('open-case', null)"
 			/>
 
 			<N8nText color="text-light" size="small">
@@ -205,7 +152,7 @@ function onCheckYourAgent() {
 					i18n.baseText('instanceAi.testAgentPreview.wentWellNeedWork', {
 						interpolate: {
 							passed: String(passedCount),
-							total: String(effectiveCaseRuns?.length ?? 0),
+							total: String(caseRuns?.length ?? 0),
 							needsWork: String(needsWorkCount),
 						},
 					})
@@ -221,7 +168,7 @@ function onCheckYourAgent() {
 			>
 				<div :class="$style.summaryAvatars">
 					<AgentAvatar
-						v-for="run in effectiveCaseRuns"
+						v-for="run in caseRuns"
 						:key="run.rowId"
 						:kind="run.status"
 						:label="run.label"
@@ -232,8 +179,8 @@ function onCheckYourAgent() {
 				<N8nText size="small" color="text-dark">
 					{{
 						i18n.baseText('instanceAi.testAgentPreview.savedChecks', {
-							adjustToNumber: effectiveCaseRuns?.length ?? 0,
-							interpolate: { count: String(effectiveCaseRuns?.length ?? 0) },
+							adjustToNumber: caseRuns?.length ?? 0,
+							interpolate: { count: String(caseRuns?.length ?? 0) },
 						})
 					}}
 				</N8nText>
@@ -246,23 +193,17 @@ function onCheckYourAgent() {
 
 			<div v-if="!runSettled || summaryExpanded" :class="$style.exampleList">
 				<AgentEvalTryRow
-					v-for="run in effectiveCaseRuns"
+					v-for="run in caseRuns"
 					:key="run.rowId"
 					:status="run.status"
 					:input="run.input"
 					:output="run.output"
 					:label="run.label"
+					:error-message="run.errorMessage"
 					:tool-calls="run.toolCalls"
 					:project-id="projectId"
-					:what-to-check="run.whatToCheck"
 					:test-id="`instance-ai-test-agent-examples-case-${run.rowId}`"
-					:saving-check="revisingRowId === run.rowId"
-					:running-check="run.status === 'waiting'"
-					@save-check="onSaveCheck(run.rowId, $event)"
-					@actually-fine="onActuallyFine(run.rowId)"
-					@rerun-check="onRunCheck(run.resultId)"
-					@save-what-to-check="onUpdateWhatToCheck(run.rowId, run.resultId, $event)"
-					@delete-check="onDeleteCheck(run.rowId)"
+					@open="emit('open-case', run.resultId)"
 				/>
 			</div>
 
@@ -275,6 +216,16 @@ function onCheckYourAgent() {
 				@click="onStopRun"
 			>
 				{{ i18n.baseText('agents.builder.agentEvals.run.cancel') }}
+			</N8nButton>
+
+			<N8nButton
+				v-if="allPassed"
+				variant="solid"
+				size="small"
+				data-test-id="instance-ai-test-agent-examples-try-agent"
+				@click="emit('try-agent')"
+			>
+				{{ i18n.baseText('instanceAi.testAgentPreview.tryAgentYourself') }}
 			</N8nButton>
 		</template>
 	</div>
@@ -338,15 +289,17 @@ function onCheckYourAgent() {
 .exampleList {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--2xs);
 	width: 100%;
+	border: var(--border);
+	border-radius: var(--radius--lg);
 }
 
 .exampleList > * {
-	border: var(--border);
-	// 10px (right) has no matching token between 8px and 12px — kept as a
-	// literal for the extra breathing room next to the row's chevron/icon.
-	padding: var(--spacing--3xs) 10px var(--spacing--3xs) var(--spacing--2xs);
-	border-radius: var(--radius--lg);
+	padding: var(--spacing--3xs) var(--spacing--xs);
+	border-bottom: var(--border);
+}
+
+.exampleList > *:last-of-type {
+	border-bottom: none;
 }
 </style>

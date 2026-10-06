@@ -97,6 +97,7 @@ describe('AgentEvalsController', () => {
 			updateDataset: 'agent:update',
 			deleteDataset: 'agent:update',
 			deleteResult: 'agent:update',
+			acceptResult: 'agent:update',
 			generateDraftCases: 'agent:update',
 			previewRun: 'agent:update',
 			rateResult: 'agent:update',
@@ -306,6 +307,12 @@ describe('AgentEvalsController', () => {
 				'res-1',
 				payload,
 			);
+		});
+
+		it('accepts a result scoped to the path agent', async () => {
+			await controller.acceptResult(resultReq());
+
+			expect(service.acceptResult).toHaveBeenCalledWith(AGENT_ID, PROJECT_ID, 'res-1');
 		});
 
 		it('deletes a result scoped to the path agent and reports a success envelope', async () => {

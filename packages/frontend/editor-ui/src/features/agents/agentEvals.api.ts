@@ -236,6 +236,21 @@ export const rerunResult = async (
 	);
 };
 
+// "Actually fine": records a passing verdict on a finished case, overriding
+// the judge. The response is the refreshed result.
+export const acceptResult = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	resultId: string,
+) => {
+	return await makeRestApiRequest<AgentEvalResultRecord>(
+		context,
+		'POST',
+		`${evalsPath(projectId, agentId)}/results/${resultId}/accept`,
+	);
+};
+
 // Asks the runner to stop; the cases already in flight settle on their own, so the
 // caller keeps polling the summary until nothing is pending. Gated on `agent:update`
 // server-side rather than `agent:execute` — cancelling stops work someone else may

@@ -89,6 +89,33 @@ describe('AgentEvalResultRepository', () => {
 		});
 	});
 
+	describe('updateVerdict', () => {
+		it('stores the judge verdict without touching status', async () => {
+			entityManager.update.mockResolvedValueOnce({ affected: 1, generatedMaps: [], raw: [] });
+
+			await repo.updateVerdict('res-1', {
+				status: 'completed',
+				outcome: 'fail',
+				reasoning: 'Off-task.',
+			});
+
+			const callArgs = entityManager.update.mock.calls[0];
+			expect(callArgs?.[1]).toBe('res-1');
+			expect(callArgs?.[2]).toEqual({
+				verdict: { status: 'completed', outcome: 'fail', reasoning: 'Off-task.' },
+			});
+		});
+
+		it('accepts null to record that judging never ran', async () => {
+			entityManager.update.mockResolvedValueOnce({ affected: 1, generatedMaps: [], raw: [] });
+
+			await repo.updateVerdict('res-1', null);
+
+			const callArgs = entityManager.update.mock.calls[0];
+			expect(callArgs?.[2]).toEqual({ verdict: null });
+		});
+	});
+
 	describe('markAsRunning', () => {
 		it('marks the case running and stamps runAt', async () => {
 			entityManager.update.mockResolvedValueOnce({ affected: 1, generatedMaps: [], raw: [] });

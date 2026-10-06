@@ -22,6 +22,7 @@ const {
 	rateResult,
 	startRun,
 	rerunResult,
+	acceptResult,
 } = vi.hoisted(() => ({
 	getDatasets: vi.fn(),
 	generateDraftCases: vi.fn(),
@@ -35,6 +36,7 @@ const {
 	rateResult: vi.fn(),
 	startRun: vi.fn(),
 	rerunResult: vi.fn(),
+	acceptResult: vi.fn(),
 }));
 
 vi.mock('../agentEvals.api', () => ({
@@ -50,6 +52,7 @@ vi.mock('../agentEvals.api', () => ({
 	rateResult,
 	startRun,
 	rerunResult,
+	acceptResult,
 }));
 
 vi.mock('@n8n/stores/useRootStore', () => ({
@@ -103,6 +106,7 @@ const result = (id: string): AgentEvalResultRecord => ({
 	output: { finalText: `answer ${id}` },
 	toolCalls: null,
 	metrics: null,
+	verdict: null,
 	runAt: '2026-01-01T00:00:00.000Z',
 	completedAt: '2026-01-01T00:00:30.000Z',
 	errorCode: null,
@@ -1172,6 +1176,48 @@ describe('useAgentEvalsStore', () => {
 		});
 	});
 
+	describe('acceptResult', () => {
+		const passVerdict = { status: 'completed', outcome: 'pass', reasoning: null } as const;
+		const failVerdict = { status: 'completed', outcome: 'fail', reasoning: 'Too vague.' } as const;
+
+		it('flips the cached verdict to pass before the request lands, then keeps the real response', async () => {
+			mockRun({ results: [{ ...result('c1'), verdict: failVerdict }], count: 1, ratings: [] });
+			const store = useAgentEvalsStore();
+			await store.openRun(PROJECT_ID, AGENT_ID, RUN_ID);
+
+			let resolveAccept!: (value: AgentEvalResultRecord) => void;
+			acceptResult.mockImplementation(
+				async () =>
+					await new Promise<AgentEvalResultRecord>((resolve) => (resolveAccept = resolve)),
+			);
+
+			const pending = store.acceptResult(PROJECT_ID, AGENT_ID, 'c1');
+			expect(store.getReview(RUN_ID).results[0].verdict).toEqual(passVerdict);
+
+			resolveAccept({ ...result('c1'), verdict: passVerdict });
+			await pending;
+
+			expect(acceptResult).toHaveBeenCalledWith(
+				{ instanceId: 'test-instance-id' },
+				PROJECT_ID,
+				AGENT_ID,
+				'c1',
+			);
+			expect(store.getReview(RUN_ID).results[0].verdict).toEqual(passVerdict);
+		});
+
+		it('reverts the cached verdict when the request fails', async () => {
+			mockRun({ results: [{ ...result('c1'), verdict: failVerdict }], count: 1, ratings: [] });
+			const store = useAgentEvalsStore();
+			await store.openRun(PROJECT_ID, AGENT_ID, RUN_ID);
+			acceptResult.mockRejectedValue(new Error('boom'));
+
+			await expect(store.acceptResult(PROJECT_ID, AGENT_ID, 'c1')).rejects.toThrow('boom');
+
+			expect(store.getReview(RUN_ID).results[0].verdict).toEqual(failVerdict);
+		});
+	});
+
 	describe('rerunResult', () => {
 		it('patches the cached result to running before the request lands, then to the real response', async () => {
 			mockRun({ results: [{ ...result('c1'), status: 'error' }], count: 1, ratings: [] });
@@ -1301,6 +1347,30 @@ describe('useAgentEvalsStore', () => {
 
 			expect(store.pendingEvalsFocus).toEqual({ agentId: AGENT_ID, generate: true });
 			expect(store.consumeEvalsFocus(AGENT_ID)).toEqual({ agentId: AGENT_ID, generate: true });
+		});
+
+		it('hands a requested result on to the checks panel once the builder claims the request', () => {
+			const store = useAgentEvalsStore();
+
+			store.requestEvalsFocus(AGENT_ID, false, 'result-1');
+
+			expect(store.consumeEvalsFocus(AGENT_ID)).toEqual({
+				agentId: AGENT_ID,
+				generate: false,
+				resultId: 'result-1',
+			});
+			expect(store.consumeFocusedEvalResult('other-agent')).toBeNull();
+			expect(store.consumeFocusedEvalResult(AGENT_ID)).toBe('result-1');
+			expect(store.consumeFocusedEvalResult(AGENT_ID)).toBeNull();
+		});
+
+		it('hands on no result when the request named none', () => {
+			const store = useAgentEvalsStore();
+
+			store.requestEvalsFocus(AGENT_ID);
+			store.consumeEvalsFocus(AGENT_ID);
+
+			expect(store.consumeFocusedEvalResult(AGENT_ID)).toBeNull();
 		});
 
 		it('is claimed once, so a second builder cannot re-run generation', () => {

@@ -16,12 +16,13 @@ import { useI18n, type BaseTextKey } from '@n8n/i18n';
 
 import type { ToolCall } from '@/features/ai/shared/agentsChat/types';
 import { useAgentEvalsStore } from '../agentEvals.store';
-import type { AgentEvalResultStatus } from '../agentEvals.types';
 import {
 	readAgentAnswer,
 	readCaseRequest,
 	readCaseWhatToCheck,
 	readErrorMessage,
+	readVerdictReasoning,
+	toAvatarKind,
 } from '../utils/agent-eval-review';
 import { toDisplayToolCalls } from '../utils/agent-eval-tool-calls';
 import { isDataTableDataset, toCaseSource } from '../utils/agentEvalCases.utils';
@@ -44,29 +45,14 @@ const i18n = useI18n();
 const toast = useToast();
 const store = useAgentEvalsStore();
 
-/** How a settled result's status reads as a row's avatar state. */
-function resultStatusToKind(status: AgentEvalResultStatus): AgentAvatarKind {
-	switch (status) {
-		case 'success':
-			return 'pass';
-		case 'error':
-			return 'fail';
-		case 'cancelled':
-			return 'work';
-		case 'new':
-		case 'running':
-			return 'waiting';
-	}
-}
-
 const review = computed(() => store.getReview(props.runId));
 const results = computed(() => review.value.results);
 const hasMore = computed(() => results.value.length < review.value.resultsCount);
 const inFlight = computed(() => store.isRunInFlight(props.runId));
 
-// "Actually fine" is a local judgment call, not a data mutation — no request
-// backs it, so it only overrides how a row's own status renders. Same pattern
-// as `InstanceAiTestAgentExamplesPanel`.
+// Only covers cases that didn't finish successfully (errored or cancelled):
+// the backend records "Actually fine" as a verdict, which only exists for a
+// case that ran to completion.
 const manualStatusOverrides = ref<Record<string, AgentAvatarKind>>({});
 
 type CheckRow = {
@@ -90,11 +76,14 @@ const rows = computed<CheckRow[]>(() =>
 		return {
 			id: result.id,
 			sourceRowId: result.sourceRowId,
-			status: override ?? resultStatusToKind(result.status),
+			status: override ?? toAvatarKind(result.status, result.verdict),
 			input: readCaseRequest(result.input),
 			output: readAgentAnswer(result.output),
 			runAt: result.runAt,
-			errorMessage: readErrorMessage(result.errorDetails),
+			// Execution failures and a graded verdict never both exist for the
+			// same row (a case that errored is never judged), so either reader
+			// filling this in is unambiguous.
+			errorMessage: readErrorMessage(result.errorDetails) ?? readVerdictReasoning(result.verdict),
 			toolCalls: toDisplayToolCalls(result.toolCalls),
 			whatToCheck: readCaseWhatToCheck(result.input),
 		};
@@ -184,8 +173,33 @@ function setStatusFilter(filter: StatusFilter) {
 	statusFilter.value = filter;
 }
 
-function onActuallyFine(resultId: string) {
-	manualStatusOverrides.value = { ...manualStatusOverrides.value, [resultId]: 'pass' };
+// Set when another surface (the chat's small rows) opened this view on one
+// check. Claimed straight from the store, since the request was consumed
+// before this panel mounted. The "all" filter keeps the row from being hidden.
+const focusedResultId = ref<string | null>(null);
+
+watch(
+	() => store.focusedEvalResult,
+	() => {
+		const resultId = store.consumeFocusedEvalResult(props.agentId);
+		if (!resultId) return;
+		statusFilter.value = 'all';
+		focusedResultId.value = resultId;
+	},
+	{ immediate: true },
+);
+
+async function onActuallyFine(resultId: string) {
+	const result = results.value.find((r) => r.id === resultId);
+	if (result?.status !== 'success') {
+		manualStatusOverrides.value = { ...manualStatusOverrides.value, [resultId]: 'pass' };
+		return;
+	}
+	try {
+		await store.acceptResult(props.projectId, props.agentId, resultId);
+	} catch (error) {
+		toast.showError(error, i18n.baseText('agents.builder.agentEvals.review.acceptCaseError'));
+	}
 }
 
 async function onRerunCheck(resultId: string) {
@@ -400,6 +414,7 @@ onBeforeUnmount(store.stopPollingRun);
 				:disabled="disabled"
 				:running-check="row.status === 'waiting'"
 				view="complete"
+				:focused="row.id === focusedResultId"
 				:test-id="`agent-eval-check-${row.id}`"
 				@actually-fine="onActuallyFine(row.id)"
 				@rerun-check="onRerunCheck(row.id)"

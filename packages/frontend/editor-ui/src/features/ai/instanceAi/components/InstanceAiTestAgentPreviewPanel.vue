@@ -9,41 +9,26 @@
  * `InstanceAiTestAgentPanel`.
  */
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
-import type { AgentEvalDraftCase, AgentEvalResultStatus } from '@n8n/api-types';
+import type { AgentEvalDraftCase } from '@n8n/api-types';
 import { N8nButton, N8nCard, N8nInput, N8nSpinner, N8nText, N8nIcon } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';
 
 import { useAgentEvalsStore } from '@/features/agents/agentEvals.store';
 import type { AgentEvalCase } from '@/features/agents/agentEvals.types';
-import { readAgentAnswer } from '@/features/agents/utils/agent-eval-review';
-import { toDisplayToolCalls } from '@/features/agents/utils/agent-eval-tool-calls';
 import {
-	isDataTableDataset,
-	resolveCaseColumns,
-	toCaseSource,
-} from '@/features/agents/utils/agentEvalCases.utils';
-import type { AgentAvatarKind } from '@/features/agents/components/AgentAvatar.vue';
+	readAgentAnswer,
+	readErrorMessage,
+	readVerdictReasoning,
+	toAvatarKind,
+} from '@/features/agents/utils/agent-eval-review';
+import { toDisplayToolCalls } from '@/features/agents/utils/agent-eval-tool-calls';
+import { resolveCaseColumns } from '@/features/agents/utils/agentEvalCases.utils';
 import EvalInitialSample from '@/features/agents/components/EvalInitialSample.vue';
 import InstanceAiTestAgentExamplesPanel, {
 	type SuiteCaseRun,
 } from './InstanceAiTestAgentExamplesPanel.vue';
 import CapabilityChip from '@/features/agents/components/CapabilityChip.vue';
-
-/** How a settled result's status reads as a row's avatar state. */
-function resultStatusToKind(status: AgentEvalResultStatus): AgentAvatarKind {
-	switch (status) {
-		case 'success':
-			return 'pass';
-		case 'error':
-			return 'fail';
-		case 'cancelled':
-			return 'work';
-		case 'new':
-		case 'running':
-			return 'waiting';
-	}
-}
 
 const props = defineProps<{
 	target: { agentId: string; projectId: string };
@@ -58,7 +43,9 @@ const props = defineProps<{
 const emit = defineEmits<{
 	confirm: [];
 	dismiss: [];
-	'open-evals': [];
+	/** The eval view should open, on the given result when there is one. */
+	'open-evals': [resultId: string | null];
+	'try-agent': [];
 }>();
 
 const i18n = useI18n();
@@ -139,6 +126,7 @@ const suiteCaseRuns = computed<SuiteCaseRun[] | null>(() => {
 				output: result ? readAgentAnswer(result.output) : null,
 				toolCalls: result ? toDisplayToolCalls(result.toolCalls) : [],
 				whatToCheck: row.whatToCheck || null,
+				errorMessage: null,
 			};
 		}
 		return {
@@ -146,10 +134,14 @@ const suiteCaseRuns = computed<SuiteCaseRun[] | null>(() => {
 			resultId: result.id,
 			input: row.input,
 			label,
-			status: resultStatusToKind(result.status),
+			status: toAvatarKind(result.status, result.verdict),
 			output: readAgentAnswer(result.output),
 			toolCalls: toDisplayToolCalls(result.toolCalls),
 			whatToCheck: row.whatToCheck || null,
+			// Execution failures and a graded verdict never both exist for the
+			// same row (a case that errored is never judged), so either reader
+			// filling this in is unambiguous.
+			errorMessage: readErrorMessage(result.errorDetails) ?? readVerdictReasoning(result.verdict),
 		};
 	});
 });
@@ -230,15 +222,6 @@ async function onConfirm() {
 	} catch (error) {
 		failAndDismiss(error);
 	}
-}
-
-/** Resolves the suite dataset's case source, once it has one. */
-function resolveSuiteSource() {
-	if (!suiteDatasetId.value) return null;
-	const dataset = store
-		.getDatasets(props.target.agentId)
-		.find((d) => d.id === suiteDatasetId.value);
-	return dataset && isDataTableDataset(dataset) ? toCaseSource(dataset) : null;
 }
 
 /** Kept in memory only — nothing is persisted until "Check your agent" commits. */
@@ -332,159 +315,6 @@ async function onStopSuiteRun() {
 		toast.showError(error, i18n.baseText('agents.builder.agentEvals.run.cancelError'));
 	} finally {
 		if (isMounted) stoppingSuiteRun.value = false;
-	}
-}
-
-// "Save check" ends by rerunning the whole suite dataset — there is no run
-// primitive scoped to one row's *revision*, so every row briefly goes back to
-// "waiting", not just the one being revised.
-const revisingRowId = ref<number | null>(null);
-
-/** Starts a fresh run over the current suite dataset and begins following it. */
-async function runSuiteDataset() {
-	if (!suiteDatasetId.value) return;
-	const { projectId, agentId } = props.target;
-	const run = await store.startRun(projectId, agentId, suiteDatasetId.value);
-	if (!isMounted) return;
-	suiteRunId.value = run.id;
-	await store.openRun(projectId, agentId, run.id);
-	if (!isMounted) return;
-	if (store.isRunInFlight(run.id)) {
-		store.startPollingRun(projectId, agentId, run.id);
-	}
-}
-
-// "Run check" on a case that doesn't need correction: reruns just that one
-// result in place, never touching the rest of the suite. The store patches
-// the result to `running` itself (and reverts it on failure), so `suiteCaseRuns`
-// picks up the "waiting" status through the ordinary mapping — nothing here
-// tracks which row is in flight.
-async function onRerunCase(resultId: string) {
-	const { projectId, agentId } = props.target;
-	try {
-		await store.rerunResult(projectId, agentId, resultId);
-	} catch (error) {
-		if (!isMounted) return;
-		toast.showError(error, i18n.baseText('agents.builder.agentEvals.review.rerunCaseError'));
-	}
-}
-
-// Editing the rule writes the case row itself (so a later whole-suite rerun
-// keeps using it too), then reruns just this one result — same action as
-// "Run check", with the write folded in ahead of it.
-async function onUpdateWhatToCheck({
-	rowId,
-	resultId,
-	whatToCheck,
-}: {
-	rowId: number;
-	resultId: string;
-	whatToCheck: string;
-}) {
-	const source = resolveSuiteSource();
-	const row = suiteCaseRows.value?.find((c) => c.rowId === rowId);
-	if (!source || !row) return;
-	const { projectId, agentId } = props.target;
-
-	try {
-		const updated = await store.updateCase(projectId, source, rowId, {
-			input: row.input,
-			whatToCheck,
-		});
-		if (!isMounted) return;
-		if (!updated) {
-			toast.showError(
-				new Error('Failed to save the rule'),
-				i18n.baseText('agents.builder.agentEvals.generateError'),
-			);
-			return;
-		}
-		suiteCaseRows.value =
-			suiteCaseRows.value?.map((c) => (c.rowId === rowId ? { ...c, whatToCheck } : c)) ?? null;
-
-		await store.rerunResult(projectId, agentId, resultId);
-	} catch (error) {
-		if (!isMounted) return;
-		toast.showError(error, i18n.baseText('agents.builder.agentEvals.review.rerunCaseError'));
-	}
-}
-
-async function onDeleteCase(rowId: number) {
-	const source = resolveSuiteSource();
-	if (!source) return;
-	const { projectId, agentId } = props.target;
-	// Null only before the run starts seeding results — "delete check" isn't
-	// reachable from the UI that early, but a missing result is no reason to
-	// block removing the row itself.
-	const resultId = suiteCaseRuns.value?.find((run) => run.rowId === rowId)?.resultId ?? null;
-
-	try {
-		const deleted = await store.deleteCase(projectId, source, rowId);
-		if (!isMounted) return;
-		if (!deleted) {
-			toast.showError(
-				new Error('Failed to remove the test case'),
-				i18n.baseText('agents.builder.agentEvals.case.removeError'),
-			);
-			return;
-		}
-		if (resultId) await store.deleteResult(projectId, agentId, resultId);
-		if (!isMounted) return;
-		suiteCaseRows.value = suiteCaseRows.value?.filter((c) => c.rowId !== rowId) ?? null;
-	} catch (error) {
-		if (!isMounted) return;
-		toast.showError(error, i18n.baseText('agents.builder.agentEvals.case.removeError'));
-	}
-}
-
-async function onReviseCase({ rowId, suggestion }: { rowId: number; suggestion: string }) {
-	// One rerun covers every row, so a second revision while the first is still
-	// in flight would race it for the same dataset and run — the singleton
-	// poller would then settle on whichever one started last.
-	if (revisingRowId.value !== null) return;
-	const source = resolveSuiteSource();
-	const row = suiteCaseRows.value?.find((c) => c.rowId === rowId);
-	if (!source || !suiteDatasetId.value || !row) return;
-	const { projectId, agentId } = props.target;
-	const previousOutput = suiteCaseRuns.value?.find((r) => r.rowId === rowId)?.output ?? '';
-
-	revisingRowId.value = rowId;
-	try {
-		const result = await store.generateDraftCases(projectId, agentId, {
-			count: 1,
-			suggestion,
-			previousInput: row.input,
-			previousOutput,
-		});
-		if (!isMounted) return;
-		const revised = result.cases[0];
-		if (!revised) return;
-
-		const updated = await store.updateCase(projectId, source, rowId, {
-			input: revised.input,
-			whatToCheck: revised.whatToCheck,
-		});
-		if (!isMounted) return;
-		// The dataset still has the old content — showing the replacement or
-		// rerunning on top of it would be a lie about what was actually saved.
-		if (!updated) {
-			toast.showError(
-				new Error('Failed to save the revised case'),
-				i18n.baseText('agents.builder.agentEvals.generateError'),
-			);
-			return;
-		}
-		suiteCaseRows.value =
-			suiteCaseRows.value?.map((c) =>
-				c.rowId === rowId ? { ...c, input: revised.input, whatToCheck: revised.whatToCheck } : c,
-			) ?? null;
-
-		await runSuiteDataset();
-	} catch (error) {
-		if (!isMounted) return;
-		toast.showError(error, i18n.baseText('agents.builder.agentEvals.generateError'));
-	} finally {
-		if (isMounted) revisingRowId.value = null;
 	}
 }
 
@@ -631,14 +461,11 @@ function onDontCreateEvals() {
 				:case-runs="suiteCaseRuns"
 				:starting-run="startingSuiteRun"
 				:stopping-run="stoppingSuiteRun"
-				:revising-row-id="revisingRowId"
 				@add-example="onAddExample"
 				@check-agent="onCheckAgent"
 				@stop-run="onStopSuiteRun"
-				@revise-case="onReviseCase"
-				@rerun-case="onRerunCase"
-				@update-what-to-check="onUpdateWhatToCheck"
-				@delete-case="onDeleteCase"
+				@try-agent="emit('try-agent')"
+				@open-case="emit('open-evals', $event)"
 			/>
 		</template>
 	</div>

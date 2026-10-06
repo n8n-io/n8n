@@ -103,6 +103,13 @@ export class AgentEvalResultRepository extends Repository<AgentEvalResult> {
 		});
 	}
 
+	/** Records the judge's verdict on an already-completed case. Never touches
+	 *  `status` — grading is extra information layered on a case that already
+	 *  succeeded, not a re-grading of whether it ran. */
+	async updateVerdict(id: string, verdict: JsonObject | null) {
+		return await this.update(id, { verdict });
+	}
+
 	/** Overwrites the persisted case snapshot — used to carry an edited rule
 	 *  into a result that already ran, ahead of rerunning it. */
 	async updateInput(id: string, input: JsonObject) {

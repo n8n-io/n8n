@@ -2928,7 +2928,7 @@ describe('InstanceAiThreadView', () => {
 
 			await user.click(await findByTestId('instance-ai-test-agent-preview-open-evals-stub'));
 
-			expect(evalsStore.requestEvalsFocus).toHaveBeenCalledWith('agent-1', false);
+			expect(evalsStore.requestEvalsFocus).toHaveBeenCalledWith('agent-1', false, undefined);
 			// The stub only renders once `preview.activeAgentId`/`activeAgentProjectId`
 			// resolve to this agent — its presence with the right id is proof
 			// `preview.openAgentPreview` switched the canvas to it.
@@ -2941,6 +2941,42 @@ describe('InstanceAiThreadView', () => {
 					queryByTestId('instance-ai-test-agent-preview-open-evals-stub'),
 				).not.toBeInTheDocument();
 			});
+		});
+		it('opens the evals surface on one case without clearing the latch', async () => {
+			seedReadyAgent();
+			const evalsStore = seedPreviewVariant();
+			const user = userEvent.setup();
+			const { findByTestId, queryByTestId } = renderView({
+				props: { threadId: 'thread-1' },
+				global: {
+					stubs: {
+						...defaultViewStubs,
+						InstanceAiTestAgentPreviewPanel: defineComponent({
+							name: 'InstanceAiTestAgentPreviewPanelStub',
+							emits: ['confirm', 'dismiss', 'open-evals'],
+							setup(_, { emit }) {
+								return () =>
+									h(
+										'button',
+										{
+											'data-test-id': 'instance-ai-test-agent-preview-open-evals-stub',
+											onClick: () => emit('open-evals', 'result-1'),
+										},
+										'Open case',
+									);
+							},
+						}),
+					},
+				},
+			});
+
+			await user.click(await findByTestId('instance-ai-test-agent-preview-open-evals-stub'));
+
+			expect(evalsStore.requestEvalsFocus).toHaveBeenCalledWith('agent-1', false, 'result-1');
+			const agentPreview = await findByTestId('instance-ai-agent-preview-stub');
+			expect(agentPreview).toHaveAttribute('data-agent-id', 'agent-1');
+			// Opening one case is a peek, so the chat panel stays.
+			expect(queryByTestId('instance-ai-test-agent-preview-open-evals-stub')).toBeInTheDocument();
 		});
 	});
 

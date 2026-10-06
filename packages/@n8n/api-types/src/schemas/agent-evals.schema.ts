@@ -55,6 +55,32 @@ export const agentEvalResultStatusSchema = z.enum([
 ]);
 export type AgentEvalResultStatus = z.infer<typeof agentEvalResultStatusSchema>;
 
+/**
+ * LLM-as-judge verdict on a case's output against its rule (`criteria`) or
+ * gold answer (`expectedOutput`). Set only after a successful execution —
+ * `status: 'skipped'` means the case had neither to judge against, not that
+ * judging failed. `'error'` means the judge call itself failed (timeout, bad
+ * provider response); the case's own `status: 'success'` is unaffected, since
+ * grading is best-effort on top of an already-successful run.
+ */
+export const agentEvalVerdictStatusSchema = z.enum(['skipped', 'completed', 'error']);
+export type AgentEvalVerdictStatus = z.infer<typeof agentEvalVerdictStatusSchema>;
+
+// The judge's pass/fail call — named `outcome` (not `verdict`) on the object
+// below to avoid `AgentEvalVerdict.verdict`, a field self-referencing its own
+// container's name.
+export const agentEvalVerdictOutcomeSchema = z.enum(['pass', 'fail']);
+export type AgentEvalVerdictOutcome = z.infer<typeof agentEvalVerdictOutcomeSchema>;
+
+export const agentEvalVerdictSchema = z.object({
+	status: agentEvalVerdictStatusSchema,
+	/** Only set when `status` is `'completed'`. */
+	outcome: agentEvalVerdictOutcomeSchema.nullable(),
+	/** The judge's explanation, or the error message when `status` is `'error'`. */
+	reasoning: z.string().nullable(),
+});
+export type AgentEvalVerdict = z.infer<typeof agentEvalVerdictSchema>;
+
 export const agentEvalVoteSchema = z.enum(['up', 'down']);
 export type AgentEvalVote = z.infer<typeof agentEvalVoteSchema>;
 
@@ -187,6 +213,7 @@ export type AgentEvalResultRecord = {
 	output: JsonObject | null;
 	toolCalls: JsonObject | null;
 	metrics: IDataObject | null;
+	verdict: AgentEvalVerdict | null;
 	runAt: string | null;
 	completedAt: string | null;
 	errorCode: string | null;

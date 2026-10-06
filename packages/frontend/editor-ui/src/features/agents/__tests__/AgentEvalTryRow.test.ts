@@ -81,6 +81,82 @@ describe('AgentEvalTryRow', () => {
 		});
 	});
 
+	describe('view="small"', () => {
+		it('shows a right chevron and emits open on click, without expanding in place', async () => {
+			const user = userEvent.setup();
+			const { getByTestId, queryByTestId, emitted } = renderComponent({
+				props: { view: 'small', testId: 'row' },
+			});
+
+			await user.click(getByTestId('row-toggle'));
+
+			expect(emitted('open')).toHaveLength(1);
+			expect(queryByTestId('row-placeholder')).not.toBeInTheDocument();
+		});
+
+		it('emits open when the row itself is clicked', async () => {
+			const user = userEvent.setup();
+			const { getByText, emitted } = renderComponent({ props: { view: 'small' } });
+
+			await user.click(getByText('Where is my order?'));
+
+			expect(emitted('open')).toHaveLength(1);
+		});
+
+		it('hides the chevron and emits nothing for a case with nothing to open', async () => {
+			const user = userEvent.setup();
+			const { queryByTestId, getByText, emitted } = renderComponent({
+				props: { view: 'small', status: 'idle', output: null, testId: 'row' },
+			});
+
+			await user.click(getByText('Where is my order?'));
+
+			expect(queryByTestId('row-toggle')).not.toBeInTheDocument();
+			expect(emitted('open')).toBeUndefined();
+		});
+
+		it('still opens a failed case that has no output, to reach the correction form', async () => {
+			const user = userEvent.setup();
+			const { getByTestId, emitted } = renderComponent({
+				props: { view: 'small', status: 'fail', output: null, testId: 'row' },
+			});
+
+			await user.click(getByTestId('row-toggle'));
+
+			expect(emitted('open')).toHaveLength(1);
+		});
+	});
+
+	describe('focused', () => {
+		it('starts expanded and scrolls into view when focused', async () => {
+			const scrollIntoView = vi.fn();
+			Element.prototype.scrollIntoView = scrollIntoView;
+			const { findByTestId } = renderComponent({ props: { focused: true, testId: 'row' } });
+
+			expect(await findByTestId('row-placeholder')).toBeInTheDocument();
+			await vi.waitFor(() => expect(scrollIntoView).toHaveBeenCalled());
+		});
+
+		it('expands when focus arrives after mount', async () => {
+			const { queryByTestId, findByTestId, rerender } = renderComponent({
+				props: { testId: 'row' },
+			});
+			expect(queryByTestId('row-placeholder')).not.toBeInTheDocument();
+
+			await rerender({ focused: true });
+
+			expect(await findByTestId('row-placeholder')).toBeInTheDocument();
+		});
+
+		it('does not expand a row with nothing to expand', () => {
+			const { queryByTestId } = renderComponent({
+				props: { focused: true, status: 'idle', output: null, testId: 'row' },
+			});
+
+			expect(queryByTestId('row-placeholder')).not.toBeInTheDocument();
+		});
+	});
+
 	describe('correction controls', () => {
 		const renderNeedsWork = (overrides: Record<string, unknown> = {}) =>
 			renderComponent({

@@ -14,7 +14,9 @@ import type { InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
 import type { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
+import { CredentialsService } from '@/credentials/credentials.service';
 import { License } from '@/license';
+import { AgentConfigService } from '@/modules/agents/agent-config.service';
 import { Agent } from '@/modules/agents/entities/agent.entity';
 import type { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import { DataTableService } from '@/modules/data-table/data-table.service';
@@ -64,6 +66,12 @@ const buildRunner = () =>
 		// the env overrides — exercising the operator force-enable path the
 		// `agentEvalsEnabled` assignment in `beforeEach` relies on.
 		Container.get(AgentEvalsFlagGate),
+		// Real services: every agent here has no JSON config, so judging
+		// resolves to a `status: 'error'` verdict (covered by the runner's own
+		// unit tests) rather than throwing — this suite is about execution and
+		// persistence, not the judge call itself.
+		Container.get(AgentConfigService),
+		Container.get(CredentialsService),
 	);
 
 /** Insert a minimal real agent row so `agent_eval_dataset.agentId`'s FK holds. */

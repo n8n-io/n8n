@@ -789,12 +789,19 @@ async function handleConfirmTestAgentPreview() {
  * generation on arrival. This is the end of the preview flow, so the latch
  * clears here.
  */
-function handleOpenEvalsFromPreview() {
+function handleOpenEvalsFromPreview(resultId: string | null) {
 	const target = latchedTestAgentOffer.value;
 	if (!target) return;
-	agentEvalsStore.requestEvalsFocus(target.agentId, false);
+	agentEvalsStore.requestEvalsFocus(target.agentId, false, resultId ?? undefined);
 	preview.openAgentPreview(target.agentId, target.projectId);
-	latchedTestAgentOffer.value = null;
+	// Opening a single case is a peek: the chat panel stays so the user can come back.
+	if (!resultId) latchedTestAgentOffer.value = null;
+}
+
+function handleTryAgentFromPreview() {
+	const target = latchedTestAgentOffer.value;
+	if (!target) return;
+	openAgentChatPreview(target.agentId, target.projectId);
 }
 
 // Persisted for the CTA as well as "Maybe later": once the user has acted on the
@@ -983,7 +990,8 @@ function handleNewThreadClick() {
 								:initial-case="latestCallAgentResult"
 								@confirm="handleConfirmTestAgentPreview"
 								@dismiss="dismissTestAgentOffer"
-								@open-evals="handleOpenEvalsFromPreview"
+								@open-evals="handleOpenEvalsFromPreview($event)"
+								@try-agent="handleTryAgentFromPreview"
 							/>
 						</Transition>
 					</template>

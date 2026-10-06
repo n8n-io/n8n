@@ -1,4 +1,4 @@
-import type { AgentEvalRunSummary } from '@n8n/api-types';
+import type { AgentEvalVerdict, AgentEvalRunSummary } from '@n8n/api-types';
 import { Logger, ModuleRegistry } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import type { AgentEvalDataset, AgentEvalResult, User } from '@n8n/db';
@@ -20,10 +20,14 @@ import { jsonParse, jsonStringify } from 'n8n-workflow';
 import pLimit from 'p-limit';
 
 import { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
+import { CredentialsService } from '@/credentials/credentials.service';
 import { BadRequestError, ForbiddenError, NotFoundError } from '@n8n/errors';
 import { resolveEvaluationConcurrencyLimit } from '@/evaluation.ee/evaluation-concurrency.helper';
 import { License } from '@/license';
+import { AgentConfigService } from '@/modules/agents/agent-config.service';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
+import { createAgentCredentialProvider } from '@/modules/agents/utils/agent-credential-provider';
+import { resolveCredentialAwareModelConfig } from '@/modules/agents/json-config/model-config';
 import { DataTableService } from '@/modules/data-table/data-table.service';
 import { EvalAgentExecutionService } from '@/modules/instance-ai/eval/agent-execution.service';
 import { userHasScopes } from '@/permissions.ee/check-access';
@@ -88,6 +92,8 @@ export class AgentEvalRunnerService {
 		private readonly concurrencyControl: ConcurrencyControlService,
 		private readonly license: License,
 		private readonly flagGate: AgentEvalsFlagGate,
+		private readonly agentConfigService: AgentConfigService,
+		private readonly credentialsService: CredentialsService,
 	) {}
 
 	/**
@@ -565,6 +571,11 @@ export class AgentEvalRunnerService {
 	 * per-case error so one case can never abort the batch or leave its result
 	 * stuck `running`. Assumes a non-empty input — the caller screens those out
 	 * before taking a queue slot.
+	 *
+	 * On a successful execution, also grades the output via {@link judgeCase}
+	 * and persists the verdict — this is the one place both `executeRun`'s pool
+	 * and `rerunResult` (which calls this same method) run a case, so neither
+	 * duplicates the judging step.
 	 */
 	private async runCase(
 		resultRow: AgentEvalResult,
@@ -602,6 +613,26 @@ export class AgentEvalRunnerService {
 				metrics: usage ? { usage: { ...usage } } : null,
 			});
 
+			// Isolated from the catch below on purpose: the case already succeeded
+			// (`markAsCompleted` above already landed), so neither a judge-LLM
+			// failure nor a failure to persist its verdict may fall through to the
+			// outer catch and flip this case back to `error` — grading is
+			// best-effort on top of a run that already succeeded. `runCase` is the
+			// one place both `executeRun`'s pool and `rerunResult` funnel through
+			// (`rerunResult` calls this same method), so this single step covers
+			// both without a separate call site.
+			try {
+				const verdict = await this.judgeCase(resolvedCase, execResult.finalText, ctx);
+				await this.resultRepository.updateVerdict(resultRow.id, toJsonObject(verdict));
+			} catch (error) {
+				this.logger.error(
+					`[AgentEvalRunner] Could not record the verdict for case ${resultRow.id}`,
+					{
+						error: error instanceof Error ? error.message : String(error),
+					},
+				);
+			}
+
 			return usage;
 		} catch (error) {
 			const message = error instanceof Error ? error.message : String(error);
@@ -614,6 +645,74 @@ export class AgentEvalRunnerService {
 				});
 			}
 			return undefined;
+		}
+	}
+
+	/**
+	 * Grades a case's output against its rule (`criteria`) or gold answer
+	 * (`expectedOutput`, `criteria` wins if both are mapped), when the case's
+	 * snapshot has either — `status: 'skipped'` otherwise, so a case whose
+	 * dataset maps neither never gets a judge call.
+	 *
+	 * Resolves the judge's model the same way the agent's own execution and
+	 * case generation do: the agent's real (project-scoped, BYOK) credential via
+	 * {@link resolveCredentialAwareModelConfig}, not a bare credential name
+	 * threaded into the SDK's `.credential()`. That builder method never
+	 * actually resolves a credential into an API key for the judge's
+	 * `AgentRuntime` (it only records a display name) — `Eval.model()` was
+	 * widened to accept a pre-resolved `ModelConfig` object for exactly this, so
+	 * the already-resolved config is handed to `.model()` directly, the same
+	 * pattern {@link AgentEvalCaseGenerationService} already uses for its own
+	 * (non-judge) model call.
+	 *
+	 * Wrapped end-to-end: a resolution or judge-LLM failure is recorded as
+	 * `status: 'error'`, never thrown — grading is best-effort on top of a case
+	 * that already succeeded.
+	 */
+	private async judgeCase(
+		resolvedCase: ResolvedCase,
+		output: string,
+		ctx: { agentId: string; projectId: string; user: User },
+	): Promise<AgentEvalVerdict> {
+		const expected =
+			readSnapshotText(resolvedCase.snapshot, 'criteria') ??
+			readSnapshotText(resolvedCase.snapshot, 'expectedOutput');
+		if (!expected) return { status: 'skipped', outcome: null, reasoning: null };
+
+		try {
+			const config = await this.agentConfigService.getConfig(ctx.agentId, ctx.projectId);
+			if (!config.model || !config.credential) {
+				throw new BadRequestError(
+					'This agent has no configured model and credential to judge with.',
+				);
+			}
+
+			const credentialProvider = createAgentCredentialProvider(
+				this.credentialsService,
+				ctx.projectId,
+				ctx.user,
+			);
+			const modelConfig = await resolveCredentialAwareModelConfig(
+				config.model,
+				config.credential,
+				credentialProvider,
+			);
+
+			// Lazy-loaded: judging only runs for the subset of cases that map a
+			// rule or gold answer, not every request, and `@n8n/agents` is heavy.
+			const { evals } = await import('@n8n/agents');
+			const judge = evals.correctness().model(modelConfig);
+			const score = await judge.run({ input: resolvedCase.input, output, expected });
+
+			return {
+				status: 'completed',
+				outcome: score.pass ? 'pass' : 'fail',
+				reasoning: score.reasoning,
+			};
+		} catch (error) {
+			const message = error instanceof Error ? error.message : String(error);
+			this.logger.error('[AgentEvalRunner] Judging failed', { error: message });
+			return { status: 'error', outcome: null, reasoning: message };
 		}
 	}
 
@@ -717,6 +816,18 @@ function normalizeUsage(usage?: { inputTokens?: number; outputTokens?: number })
 	| undefined {
 	if (!usage) return undefined;
 	return { inputTokens: usage.inputTokens ?? 0, outputTokens: usage.outputTokens ?? 0 };
+}
+
+/**
+ * Reads `criteria`/`expectedOutput` back out of a case snapshot as judge-ready
+ * text. Mirrors {@link cellToJson}'s scalar coercion — the snapshot stores
+ * whatever the mapped Data Table cell held.
+ */
+function readSnapshotText(snapshot: JsonObject, key: 'criteria' | 'expectedOutput'): string | null {
+	const value = snapshot[key];
+	if (typeof value === 'string' && value.length > 0) return value;
+	if (typeof value === 'number' || typeof value === 'boolean') return String(value);
+	return null;
 }
 
 /** Coerce a Data Table cell into the agent's opening message. */

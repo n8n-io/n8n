@@ -43,18 +43,16 @@ describe('InstanceAiTestAgentExamplesPanel', () => {
 		expect(getAllByTestId('instance-ai-test-agent-examples-example')).toHaveLength(2);
 	});
 
-	it('expands the try row to show the full input/output', async () => {
+	it('shows a right chevron on the try row that emits open-case instead of expanding it', async () => {
 		const user = userEvent.setup();
-		const { getByTestId, queryByTestId, findByText } = renderComponent();
-
-		expect(
-			queryByTestId('instance-ai-test-agent-examples-try-placeholder'),
-		).not.toBeInTheDocument();
+		const { getByTestId, queryByTestId, emitted } = renderComponent();
 
 		await user.click(getByTestId('instance-ai-test-agent-examples-try-toggle'));
 
-		expect(getByTestId('instance-ai-test-agent-examples-try-placeholder')).toBeInTheDocument();
-		expect(await findByText('Ticket #48219 is a P1 SSO outage.')).toBeInTheDocument();
+		expect(emitted('open-case')).toEqual([[null]]);
+		expect(
+			queryByTestId('instance-ai-test-agent-examples-try-placeholder'),
+		).not.toBeInTheDocument();
 	});
 
 	it('emits add-example with the typed text and clears the input', async () => {
@@ -142,6 +140,7 @@ describe('InstanceAiTestAgentExamplesPanel', () => {
 				toolCalls: [],
 				resultId: null,
 				whatToCheck: null,
+				errorMessage: null,
 			},
 			{
 				rowId: 2,
@@ -152,6 +151,7 @@ describe('InstanceAiTestAgentExamplesPanel', () => {
 				toolCalls: [],
 				resultId: null,
 				whatToCheck: null,
+				errorMessage: null,
 			},
 		];
 
@@ -195,6 +195,7 @@ describe('InstanceAiTestAgentExamplesPanel', () => {
 				toolCalls: [],
 				resultId: null,
 				whatToCheck: null,
+				errorMessage: null,
 			},
 			{
 				rowId: 2,
@@ -205,6 +206,7 @@ describe('InstanceAiTestAgentExamplesPanel', () => {
 				toolCalls: [],
 				resultId: null,
 				whatToCheck: null,
+				errorMessage: null,
 			},
 			{
 				rowId: 3,
@@ -215,6 +217,7 @@ describe('InstanceAiTestAgentExamplesPanel', () => {
 				toolCalls: [],
 				resultId: null,
 				whatToCheck: null,
+				errorMessage: null,
 			},
 		];
 
@@ -248,95 +251,31 @@ describe('InstanceAiTestAgentExamplesPanel', () => {
 			expect(getByTestId('instance-ai-test-agent-examples-case-1')).toBeInTheDocument();
 		});
 
-		it('"Actually fine" marks that row as passed and updates the tally, without touching other rows', async () => {
-			const user = userEvent.setup();
-			const { getByText, getByTestId } = renderComponent({ props: { caseRuns } });
-			await user.click(getByTestId('instance-ai-test-agent-examples-summary-toggle'));
-			await user.click(getByTestId('instance-ai-test-agent-examples-case-2-toggle'));
+		it('hides "Try agent yourself" while some checks still need work', () => {
+			const { queryByTestId } = renderComponent({ props: { caseRuns } });
 
-			await user.click(getByTestId('instance-ai-test-agent-examples-case-2-actually-fine'));
-
-			expect(getByText('2 of 3 went well, 1 need work')).toBeInTheDocument();
+			expect(queryByTestId('instance-ai-test-agent-examples-try-agent')).not.toBeInTheDocument();
 		});
 
-		it('emits revise-case with the row id and typed suggestion on "Save check"', async () => {
+		it('shows "Try agent yourself" once every check passed and emits try-agent on click', async () => {
 			const user = userEvent.setup();
-			const { getByTestId, emitted } = renderComponent({ props: { caseRuns } });
-			await user.click(getByTestId('instance-ai-test-agent-examples-summary-toggle'));
-			await user.click(getByTestId('instance-ai-test-agent-examples-case-2-toggle'));
+			const allPassed = caseRuns.map((run) => ({ ...run, status: 'pass' as const }));
+			const { getByTestId, emitted } = renderComponent({ props: { caseRuns: allPassed } });
 
-			await user.type(
-				getByTestId('instance-ai-test-agent-examples-case-2-suggestion'),
-				'Apologise and link the open ticket.',
-			);
-			await user.click(getByTestId('instance-ai-test-agent-examples-case-2-save-check'));
+			await user.click(getByTestId('instance-ai-test-agent-examples-try-agent'));
 
-			expect(emitted()['revise-case']).toEqual([
-				[{ rowId: 2, suggestion: 'Apologise and link the open ticket.' }],
-			]);
+			expect(emitted('try-agent')).toHaveLength(1);
 		});
 
-		it('clears an "Actually fine" override once that row goes back to waiting (a rerun)', async () => {
+		it("emits open-case with the case's result id when its row is clicked", async () => {
 			const user = userEvent.setup();
-			const { getByTestId, getByText, rerender } = renderComponent({ props: { caseRuns } });
-			await user.click(getByTestId('instance-ai-test-agent-examples-summary-toggle'));
-			await user.click(getByTestId('instance-ai-test-agent-examples-case-2-toggle'));
-			await user.click(getByTestId('instance-ai-test-agent-examples-case-2-actually-fine'));
+			const withResultIds = caseRuns.map((run) => ({ ...run, resultId: `result-${run.rowId}` }));
+			const { getByTestId, emitted } = renderComponent({ props: { caseRuns: withResultIds } });
 
-			expect(getByText('2 of 3 went well, 1 need work')).toBeInTheDocument();
-
-			// A fresh run puts the row back to "waiting" — the override must not
-			// keep it looking passed once its real status is live again.
-			await rerender({
-				caseRuns: [
-					{
-						rowId: 1,
-						input: 'a',
-						label: 'Vague',
-						status: 'pass' as const,
-						output: 'answer a',
-						toolCalls: [],
-						resultId: null,
-						whatToCheck: null,
-					},
-					{
-						rowId: 2,
-						input: 'b',
-						label: 'Sensitive data',
-						status: 'waiting' as const,
-						output: null,
-						toolCalls: [],
-						resultId: null,
-						whatToCheck: null,
-					},
-					{
-						rowId: 3,
-						input: 'c',
-						label: 'Custom',
-						status: 'fail' as const,
-						output: null,
-						toolCalls: [],
-						resultId: null,
-						whatToCheck: null,
-					},
-				],
-			});
-
-			expect(getByText('Checking, 1 left')).toBeInTheDocument();
-		});
-
-		it('disables "Save check" for the row currently revising, even once a suggestion is typed', async () => {
-			const user = userEvent.setup();
-			const { getByTestId } = renderComponent({ props: { caseRuns, revisingRowId: 2 } });
 			await user.click(getByTestId('instance-ai-test-agent-examples-summary-toggle'));
 			await user.click(getByTestId('instance-ai-test-agent-examples-case-2-toggle'));
 
-			await user.type(
-				getByTestId('instance-ai-test-agent-examples-case-2-suggestion'),
-				'Apologise and link the open ticket.',
-			);
-
-			expect(getByTestId('instance-ai-test-agent-examples-case-2-save-check')).toBeDisabled();
+			expect(emitted('open-case')).toEqual([['result-2']]);
 		});
 
 		it('does not crash when a rerun clears `caseRuns` back to null', async () => {

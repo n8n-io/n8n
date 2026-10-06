@@ -1,13 +1,15 @@
 <script setup lang="ts">
 /**
  * One eval case as a single row: a status avatar, the request text, and —
- * once it has run, or it needs correction — a chevron that expands to the
- * full input/output sample. A case with no output and nothing to correct has
- * nothing to expand, so the chevron is hidden; an idle (never-run) case says
- * so in its place. A "needs work" or "couldn't finish" case still expands
- * with no output, to reach the correction form.
+ * once it has run, or it needs correction — a chevron. In the complete view
+ * the chevron expands the full input/output sample in place. In the small view
+ * it is a right chevron that emits `open` instead, so the parent can open the
+ * complete view on this case. A case with no output and nothing to correct has
+ * nothing to open, so the chevron is hidden; an idle (never-run) case says so
+ * in its place. A "needs work" or "couldn't finish" case still opens with no
+ * output, to reach the correction form.
  */
-import { computed, ref, watch } from 'vue';
+import { computed, nextTick, ref, watch } from 'vue';
 import {
 	N8nButton,
 	N8nIcon,
@@ -38,7 +40,9 @@ const props = defineProps<{
 	/** True from "Run check" until the rerun request resolves. */
 	runningCheck?: boolean;
 	view?: 'small' | 'complete';
-	/** Why this case errored, read from the result's `errorDetails`. */
+	/** Why this case errored (from `errorDetails`), or the judge's reasoning on
+	 *  a graded fail (from `verdict.reasoning`) — the two never coexist on the
+	 *  same row, since an errored case is never judged. */
 	errorMessage?: string | null;
 	/** Shown between the input and the answer in the expanded sample. */
 	toolCalls?: ToolCall[];
@@ -52,6 +56,8 @@ const props = defineProps<{
 	 *  flow but keeps "Actually fine" available, since that's a local override
 	 *  with nothing to persist. */
 	hideRevise?: boolean;
+	/** The complete view was opened on this case: expand it and scroll it into view. */
+	focused?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -64,6 +70,8 @@ const emit = defineEmits<{
 	'save-what-to-check': [text: string];
 	/** The trash icon's confirmed delete — this case and its example. */
 	'delete-check': [];
+	/** Small view only: the chevron or row was clicked. */
+	open: [];
 }>();
 
 const i18n = useI18n();
@@ -73,6 +81,7 @@ const { openAgentConfirmationModal } = useAgentConfirmationModal();
 
 const expanded = ref(false);
 const suggestion = ref('');
+const root = ref<HTMLElement | null>(null);
 
 // A case the judge marked as needing work or unable to finish gets a chance to
 // say what should have happened instead — a passed or not-yet-run case has
@@ -81,7 +90,6 @@ const needsCorrection = computed(() => props.status === 'work' || props.status =
 // A "couldn't finish" case often has no output at all — it must still expand
 // to reach the correction form, so this isn't gated on output alone.
 const canExpand = computed(() => props.output !== null || needsCorrection.value);
-const showNotRun = computed(() => props.status === 'idle' && props.output === null);
 
 type StatusText = { labelKey: BaseTextKey; color: TextColor };
 
@@ -104,6 +112,22 @@ function toggleExpanded() {
 	if (!canExpand.value) return;
 	expanded.value = !expanded.value;
 }
+
+function onOpen() {
+	if (!canExpand.value) return;
+	emit('open');
+}
+
+watch(
+	() => [props.focused, canExpand.value],
+	async ([focused, expandable]) => {
+		if (!focused || !expandable) return;
+		expanded.value = true;
+		await nextTick();
+		root.value?.scrollIntoView?.({ block: 'center', behavior: 'smooth' });
+	},
+	{ immediate: true },
+);
 
 function onSaveCheck() {
 	const value = suggestion.value.trim();
@@ -166,11 +190,13 @@ watch(
 </script>
 
 <template>
-	<div :class="$style.root" :data-test-id="testId">
+	<div ref="root" :class="$style.root" :data-test-id="testId">
 		<div v-if="view === 'complete'" :class="$style.header" @click="toggleExpanded">
 			<AgentAvatar :kind="status" size="md" />
 			<div :class="$style.headerTitle">
-				<N8nText color="text-dark" size="medium" bold>{{ input }}</N8nText>
+				<N8nText color="text-dark" size="medium" bold :class="$style.headerTitleText">{{
+					input
+				}}</N8nText>
 				<N8nText :color="statusColor" size="small">{{ statusText }}</N8nText>
 			</div>
 
@@ -194,20 +220,19 @@ watch(
 			</button>
 		</div>
 
-		<div v-else :class="$style.header" @click="toggleExpanded">
-			<AgentAvatar :kind="status" size="sm" />
-			<N8nText v-if="label" color="text-light" size="small">{{ label }}</N8nText>
-			<N8nText color="text-dark" :class="$style.inputText" size="small">{{ input }}</N8nText>
-			<N8nText v-if="showNotRun" color="text-light" size="small">
-				{{ i18n.baseText('instanceAi.testAgentPreview.avatar.notRun') }}
-			</N8nText>
+		<div v-else :class="$style.header" @click="onOpen">
+			<AgentAvatar :kind="status" size="xs" />
+			<div :class="$style.headerTitle">
+				<N8nText v-if="label" color="text-light" size="small">{{ label }}</N8nText>
+				<N8nText color="text-dark" :class="$style.inputText" size="small">{{ input }}</N8nText>
+			</div>
 			<button
-				v-else-if="canExpand"
+				v-if="canExpand"
 				type="button"
 				:class="$style.expandToggle"
 				:data-test-id="testId && `${testId}-toggle`"
 			>
-				<N8nIcon :icon="expanded ? 'chevron-up' : 'chevron-down'" size="small" />
+				<N8nIcon icon="chevron-right" size="small" />
 			</button>
 		</div>
 		<div
@@ -370,7 +395,7 @@ watch(
 .header {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing--sm);
+	gap: var(--spacing--xs);
 	cursor: pointer;
 }
 
@@ -379,6 +404,14 @@ watch(
 	flex-direction: column;
 	gap: var(--spacing--5xs);
 	flex: 1;
+	min-width: 0;
+}
+
+.headerTitleText {
+	display: block;
+	overflow: hidden;
+	white-space: nowrap;
+	text-overflow: ellipsis;
 }
 
 .inputText {

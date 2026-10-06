@@ -295,6 +295,42 @@ describe('AgentEvalService', () => {
 		});
 	});
 
+	describe('acceptResult', () => {
+		it('records a passing verdict on a successful result and returns the refreshed record', async () => {
+			const verdict = { status: 'completed', outcome: 'pass', reasoning: null };
+			resultRepository.findById
+				.mockResolvedValueOnce(makeResult({ status: 'success' }))
+				.mockResolvedValueOnce(makeResult({ status: 'success', verdict }));
+
+			const record = await service.acceptResult(AGENT_ID, PROJECT_ID, 'result-1');
+
+			expect(resultRepository.updateVerdict).toHaveBeenCalledWith('result-1', verdict);
+			expect(record.verdict).toEqual(verdict);
+		});
+
+		it.each(['new', 'running', 'error', 'cancelled'] as const)(
+			'rejects a result that is %s',
+			async (status) => {
+				resultRepository.findById.mockResolvedValue(makeResult({ status }));
+
+				await expect(service.acceptResult(AGENT_ID, PROJECT_ID, 'result-1')).rejects.toThrow(
+					BadRequestError,
+				);
+				expect(resultRepository.updateVerdict).not.toHaveBeenCalled();
+			},
+		);
+
+		it('404s when the result belongs to another agent', async () => {
+			resultRepository.findById.mockResolvedValue(makeResult());
+			runRepository.findByIdAndAgentId.mockResolvedValue(null);
+
+			await expect(service.acceptResult(AGENT_ID, PROJECT_ID, 'result-1')).rejects.toThrow(
+				NotFoundError,
+			);
+			expect(resultRepository.updateVerdict).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('deleteResult', () => {
 		it('deletes the result scoped to its own run', async () => {
 			const toDelete = makeResult({ runId: 'run-1' });

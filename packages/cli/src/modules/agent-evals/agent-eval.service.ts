@@ -5,6 +5,7 @@ import type {
 	AgentEvalRunList,
 	AgentEvalRunRecord,
 	AgentEvalRunSummary,
+	AgentEvalVerdict,
 	CreateAgentEvalDatasetDto,
 	CreateAgentEvalRunPayload,
 	CreateDraftDatasetResult,
@@ -251,6 +252,29 @@ export class AgentEvalService {
 
 		const updated = await this.runner.rerunResult(result, agentId, projectId, user, options);
 		return toResultRecord(updated);
+	}
+
+	// "Actually fine": the user overrides the judge's call on a finished case.
+	// Recorded as a passing verdict so every reader of the result (the checks
+	// view, reopened runs) sees the same status without a second source of truth.
+	async acceptResult(
+		agentId: string,
+		projectId: string,
+		resultId: string,
+	): Promise<AgentEvalResultRecord> {
+		await this.assertAgentInProject(agentId, projectId);
+		const result = await this.resolveResult(agentId, resultId);
+
+		if (result.status !== 'success') {
+			throw new BadRequestError(`Agent eval result ${resultId} has not finished successfully.`);
+		}
+
+		const verdict: AgentEvalVerdict = { status: 'completed', outcome: 'pass', reasoning: null };
+		await this.resultRepository.updateVerdict(resultId, verdict);
+
+		const refreshed = await this.resultRepository.findById(resultId);
+		if (!refreshed) throw new NotFoundError(`Agent eval result ${resultId} not found.`);
+		return toResultRecord(refreshed);
 	}
 
 	// Drops one case's result from its run. The run's own recorded counts and

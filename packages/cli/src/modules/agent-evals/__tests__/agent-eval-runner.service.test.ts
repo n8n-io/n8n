@@ -12,9 +12,11 @@ import type { InstanceSettings } from 'n8n-core';
 import { mock, type MockProxy } from 'vitest-mock-extended';
 
 import type { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
+import type { CredentialsService } from '@/credentials/credentials.service';
 import { NotFoundError } from '@n8n/errors';
 import { resolveEvaluationConcurrencyLimit } from '@/evaluation.ee/evaluation-concurrency.helper';
 import type { License } from '@/license';
+import type { AgentConfigService } from '@/modules/agents/agent-config.service';
 import type { Agent } from '@/modules/agents/entities/agent.entity';
 import type { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import type { DataTableService } from '@/modules/data-table/data-table.service';
@@ -45,6 +47,26 @@ vi.mock('@/modules/instance-ai/eval/agent-execution.service', () => ({
 }));
 vi.mock('@/permissions.ee/check-access', () => ({
 	userHasScopes: vi.fn().mockResolvedValue(true),
+}));
+// The judging step's own collaborators — stubbed the same way
+// `agent-eval-case-generation.service.test.ts` stubs them for its (non-judge)
+// model call: model+credential resolution touches credentials/DB, and the SDK
+// is heavy. `correctnessRunMock` drives the judge's verdict per test.
+const { correctnessRunMock } = vi.hoisted(() => ({ correctnessRunMock: vi.fn() }));
+vi.mock('@n8n/agents', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@n8n/agents')>()),
+	evals: {
+		correctness: () => ({
+			model: () => ({ run: (...args: unknown[]) => correctnessRunMock(...args) }),
+		}),
+	},
+}));
+const { resolveModelMock } = vi.hoisted(() => ({ resolveModelMock: vi.fn() }));
+vi.mock('@/modules/agents/json-config/model-config', () => ({
+	resolveCredentialAwareModelConfig: (...args: unknown[]) => resolveModelMock(...args),
+}));
+vi.mock('@/modules/agents/utils/agent-credential-provider', () => ({
+	createAgentCredentialProvider: vi.fn(() => ({})),
 }));
 
 type StatusCounts = {
@@ -105,6 +127,8 @@ describe('AgentEvalRunnerService', () => {
 	let concurrencyControl: MockProxy<ConcurrencyControlService>;
 	let license: MockProxy<License>;
 	let flagGate: MockProxy<AgentEvalsFlagGate>;
+	let agentConfigService: MockProxy<AgentConfigService>;
+	let credentialsService: MockProxy<CredentialsService>;
 	let service: AgentEvalRunnerService;
 
 	const dataset = mock<AgentEvalDataset>({
@@ -136,6 +160,19 @@ describe('AgentEvalRunnerService', () => {
 		concurrencyControl = mock<ConcurrencyControlService>();
 		license = mock<License>();
 		flagGate = mock<AgentEvalsFlagGate>();
+		agentConfigService = mock<AgentConfigService>();
+		credentialsService = mock<CredentialsService>();
+
+		correctnessRunMock.mockReset();
+		correctnessRunMock.mockResolvedValue({ pass: true, reasoning: 'Matches the expected answer.' });
+		resolveModelMock.mockReset();
+		resolveModelMock.mockResolvedValue({ id: 'anthropic/claude-sonnet-4-5' });
+		// Most tests have no reason to grade — only the dedicated "judging" suite
+		// sets a `criteria`/`expectedOutput` column mapping that reaches this.
+		agentConfigService.getConfig.mockResolvedValue({
+			model: 'anthropic/claude-sonnet-4-5',
+			credential: 'cred-1',
+		} as never);
 
 		datasetRepository.findById.mockResolvedValue(dataset);
 		agentRepository.findByIdAndProjectId.mockResolvedValue(
@@ -166,6 +203,8 @@ describe('AgentEvalRunnerService', () => {
 			concurrencyControl,
 			license,
 			flagGate,
+			agentConfigService,
+			credentialsService,
 		);
 	});
 
@@ -432,6 +471,119 @@ describe('AgentEvalRunnerService', () => {
 			expect(resultRepository.seedResults).toHaveBeenCalledTimes(1);
 			expect(resultRepository.seedResults.mock.calls[0]?.[0]).toHaveLength(120);
 			expect(evalAgentExecutionService.executeWithLlmMock).toHaveBeenCalledTimes(120);
+		});
+	});
+
+	describe('judging', () => {
+		it('judges a successful case and records a pass verdict', async () => {
+			seedFor([{ id: 'row-1', question: 'What is 2+2?', answer: '4', check: 'is 4' }], {
+				success: 1,
+			});
+			evalAgentExecutionService.executeWithLlmMock.mockResolvedValue(successExec() as never);
+			correctnessRunMock.mockResolvedValue({ pass: true, reasoning: 'Correctly answers 4.' });
+
+			const { finished } = await service.startRun('ds-1', 'proj-1', user);
+			await finished;
+
+			// `criteria` ("check" column) wins over `expectedOutput` ("answer" column).
+			expect(correctnessRunMock).toHaveBeenCalledWith({
+				input: 'What is 2+2?',
+				output: 'the answer',
+				expected: 'is 4',
+			});
+			expect(resultRepository.updateVerdict).toHaveBeenCalledWith('res-0', {
+				status: 'completed',
+				outcome: 'pass',
+				reasoning: 'Correctly answers 4.',
+			});
+		});
+
+		it('records a fail verdict from the judge', async () => {
+			seedFor([{ id: 'row-1', question: 'Q', answer: 'A', check: 'C' }], { success: 1 });
+			evalAgentExecutionService.executeWithLlmMock.mockResolvedValue(successExec() as never);
+			correctnessRunMock.mockResolvedValue({ pass: false, reasoning: 'Never mentions C.' });
+
+			const { finished } = await service.startRun('ds-1', 'proj-1', user);
+			await finished;
+
+			expect(resultRepository.updateVerdict).toHaveBeenCalledWith('res-0', {
+				status: 'completed',
+				outcome: 'fail',
+				reasoning: 'Never mentions C.',
+			});
+		});
+
+		it('skips judging when the dataset maps neither criteria nor expectedOutput', async () => {
+			// A plain object, not `mock<AgentEvalDataset>()`: wrapping a nested
+			// `columnMapping` literal through the deep-mock proxy again would
+			// auto-mock its unset optional keys (`criteria`/`expectedOutput`) as
+			// mock functions instead of leaving them `undefined`.
+			datasetRepository.findById.mockResolvedValue({
+				...dataset,
+				columnMapping: { input: 'question' },
+			} as AgentEvalDataset);
+			dataTableService.getColumns.mockResolvedValue([{ name: 'question' }] as never);
+			seedFor([{ id: 'row-1', question: 'Q' }], { success: 1 });
+			evalAgentExecutionService.executeWithLlmMock.mockResolvedValue(successExec() as never);
+
+			const { finished } = await service.startRun('ds-1', 'proj-1', user);
+			await finished;
+
+			expect(correctnessRunMock).not.toHaveBeenCalled();
+			expect(resultRepository.updateVerdict).toHaveBeenCalledWith('res-0', {
+				status: 'skipped',
+				outcome: null,
+				reasoning: null,
+			});
+		});
+
+		it('never judges a case whose execution itself failed', async () => {
+			seedFor([{ id: 'row-1', question: 'Q', answer: 'A', check: 'C' }], { error: 1 });
+			evalAgentExecutionService.executeWithLlmMock.mockResolvedValue(failExec() as never);
+
+			const { finished } = await service.startRun('ds-1', 'proj-1', user);
+			await finished;
+
+			expect(correctnessRunMock).not.toHaveBeenCalled();
+			expect(resultRepository.updateVerdict).not.toHaveBeenCalled();
+		});
+
+		it('records a verdict error, but still reports the case successful, when the judge throws', async () => {
+			seedFor([{ id: 'row-1', question: 'Q', answer: 'A', check: 'C' }], { success: 1 });
+			evalAgentExecutionService.executeWithLlmMock.mockResolvedValue(successExec() as never);
+			correctnessRunMock.mockRejectedValue(new Error('judge model timed out'));
+
+			const { finished } = await service.startRun('ds-1', 'proj-1', user);
+			await finished;
+
+			expect(resultRepository.updateVerdict).toHaveBeenCalledWith('res-0', {
+				status: 'error',
+				outcome: null,
+				reasoning: 'judge model timed out',
+			});
+			// A grading failure never flips an already-succeeded case to `error`.
+			expect(resultRepository.markAsCompleted).toHaveBeenCalled();
+			expect(resultRepository.markAsError).not.toHaveBeenCalled();
+			expect(runRepository.markAsCompleted).toHaveBeenCalledWith(
+				'run-1',
+				expect.objectContaining({ success: 1 }),
+			);
+		});
+
+		it('records a verdict error without failing the case when the agent has no judge credential', async () => {
+			seedFor([{ id: 'row-1', question: 'Q', answer: 'A', check: 'C' }], { success: 1 });
+			evalAgentExecutionService.executeWithLlmMock.mockResolvedValue(successExec() as never);
+			agentConfigService.getConfig.mockResolvedValue({ model: '', credential: '' } as never);
+
+			const { finished } = await service.startRun('ds-1', 'proj-1', user);
+			await finished;
+
+			expect(correctnessRunMock).not.toHaveBeenCalled();
+			expect(resultRepository.updateVerdict).toHaveBeenCalledWith(
+				'res-0',
+				expect.objectContaining({ status: 'error' }),
+			);
+			expect(resultRepository.markAsError).not.toHaveBeenCalled();
 		});
 	});
 
@@ -960,6 +1112,27 @@ describe('AgentEvalRunnerService', () => {
 			await service.rerunResult(result, 'agent-1', 'proj-1', user);
 
 			expect(resultRepository.updateInput).not.toHaveBeenCalled();
+		});
+
+		// The payoff of persisting the edited rule ahead of the rerun: the judge
+		// reads the NEW text, not whatever criteria this case last ran with.
+		it('judges against the edited rule, not the text the case last ran with', async () => {
+			evalAgentExecutionService.executeWithLlmMock.mockResolvedValue(successExec() as never);
+			resultRepository.findById.mockResolvedValue(
+				mock<AgentEvalResult>({ ...result, status: 'success' }),
+			);
+
+			await service.rerunResult(result, 'agent-1', 'proj-1', user, {
+				whatToCheck: 'Mentions the refund window.',
+			});
+
+			expect(correctnessRunMock).toHaveBeenCalledWith(
+				expect.objectContaining({ expected: 'Mentions the refund window.' }),
+			);
+			expect(resultRepository.updateVerdict).toHaveBeenCalledWith(
+				'res-1',
+				expect.objectContaining({ status: 'completed' }),
+			);
 		});
 	});
 

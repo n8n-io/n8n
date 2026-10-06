@@ -245,6 +245,16 @@ export class AgentEvalsController {
 		return await this.service.rerunResult(req.user, agentId, projectId, resultId, payload);
 	}
 
+	// Marks a finished case as passing, overriding the judge. `agent:update`: it
+	// edits the eval outcome, which a chat-only `agent:execute` member must not.
+	@Post('/:agentId/evals/results/:resultId/accept')
+	@ProjectScope('agent:update')
+	async acceptResult(req: AuthenticatedRequest<ResultParam>): Promise<AgentEvalResultRecord> {
+		await this.flagGate.assertEnabled(req.user);
+		const { agentId, projectId, resultId } = req.params;
+		return await this.service.acceptResult(agentId, projectId, resultId);
+	}
+
 	// Drops one case's result from its run — paired on the frontend with deleting
 	// the Data Table row it came from. `agent:update`: removing a check edits the
 	// eval suite, not something a chat-only `agent:execute` member should do.

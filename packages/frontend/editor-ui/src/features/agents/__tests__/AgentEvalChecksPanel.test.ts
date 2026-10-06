@@ -25,6 +25,7 @@ vi.mock('../components/AgentEvalTryRow.vue', () => ({
 			testId: {},
 			disabled: { type: Boolean },
 			hideRevise: { type: Boolean },
+			focused: { type: Boolean },
 		},
 		emits: ['save-check', 'actually-fine', 'rerun-check', 'save-what-to-check', 'delete-check'],
 		// A plain, testId-free button: a testid built from the row's own (which
@@ -36,6 +37,7 @@ vi.mock('../components/AgentEvalTryRow.vue', () => ({
 			:data-status="status"
 			:data-disabled="disabled"
 			:data-hide-revise="hideRevise"
+			:data-focused="focused"
 		>
 			{{ input }}
 			<button @click="$emit('actually-fine')">actually fine</button>
@@ -56,6 +58,7 @@ const result = (id: string, status: AgentEvalResultStatus): AgentEvalResultRecor
 	output: status === 'new' ? null : { finalText: `answer ${id}` },
 	toolCalls: null,
 	metrics: null,
+	verdict: null,
 	runAt: '2026-01-01T00:00:00.000Z',
 	completedAt: '2026-01-01T00:00:30.000Z',
 	errorCode: null,
@@ -74,6 +77,7 @@ const render = (
 		resultsCount?: number;
 		loadingMore?: boolean;
 		disabled?: boolean;
+		focusedResultId?: string;
 	} = {},
 	inFlight = false,
 ) => {
@@ -93,6 +97,7 @@ const render = (
 	});
 	vi.mocked(store.isRunInFlight).mockReturnValue(inFlight);
 	vi.mocked(store.isStartingRun).mockReturnValue(false);
+	vi.mocked(store.consumeFocusedEvalResult).mockReturnValue(review.focusedResultId ?? null);
 
 	return { ...renderComponent({ pinia, props: { disabled: review.disabled } }), store };
 };
@@ -140,12 +145,48 @@ describe('AgentEvalChecksPanel', () => {
 		expect(store.openRun).toHaveBeenCalledWith('project-1', 'agent-1', 'run-1');
 	});
 
+	it('focuses the row the eval view was opened on, and claims the request once', () => {
+		const { getByTestId, store } = render({
+			results: [result('c1', 'success'), result('c2', 'success')],
+			focusedResultId: 'c2',
+		});
+
+		expect(getByTestId('agent-eval-check-c2')).toHaveAttribute('data-focused', 'true');
+		expect(getByTestId('agent-eval-check-c1')).toHaveAttribute('data-focused', 'false');
+		expect(store.consumeFocusedEvalResult).toHaveBeenCalledWith('agent-1');
+	});
+
+	it('focuses no row when the eval view was opened without a target', () => {
+		const { getByTestId } = render({ results: [result('c1', 'success')] });
+
+		expect(getByTestId('agent-eval-check-c1')).toHaveAttribute('data-focused', 'false');
+	});
+
 	it('renders one row per result', () => {
 		const { getAllByTestId } = render({
 			results: [result('c1', 'success'), result('c2', 'error')],
 		});
 
 		expect(getAllByTestId(/agent-eval-check-/)).toHaveLength(2);
+	});
+
+	it('renders a successful case with a graded fail verdict as "work", counted as needs-work', () => {
+		const gradedFail = {
+			...result('judged-1', 'success'),
+			verdict: { status: 'completed' as const, outcome: 'fail' as const, reasoning: 'Off-task.' },
+		};
+		const { getByTestId } = render({ results: [gradedFail] });
+
+		expect(getByTestId('agent-eval-check-judged-1')).toHaveAttribute('data-status', 'work');
+		expect(getByTestId('agent-eval-checks-filter-needs-work')).toHaveTextContent('1');
+	});
+
+	it('renders a successful case with no verdict (ungraded) as "pass", same as before judging shipped', () => {
+		const ungraded = result('ungraded-1', 'success');
+		const { getByTestId, queryByTestId } = render({ results: [ungraded] });
+
+		expect(getByTestId('agent-eval-check-ungraded-1')).toHaveAttribute('data-status', 'pass');
+		expect(queryByTestId('agent-eval-checks-filter-needs-work')).not.toBeInTheDocument();
 	});
 
 	it('sorts needs-work rows before passing ones', () => {
@@ -283,6 +324,27 @@ describe('AgentEvalChecksPanel', () => {
 
 		expect(store.rerunResult).toHaveBeenCalledWith('project-1', 'agent-1', 'c1', {
 			whatToCheck: 'Mentions the refund window.',
+		});
+	});
+
+	describe('"Actually fine"', () => {
+		it('persists a passing verdict through the store for a finished case', async () => {
+			const user = userEvent.setup();
+			const { getByTestId, store } = render({ results: [result('c1', 'success')] });
+
+			await user.click(within(getByTestId('agent-eval-check-c1')).getByText('actually fine'));
+
+			expect(store.acceptResult).toHaveBeenCalledWith('project-1', 'agent-1', 'c1');
+		});
+
+		it('keeps the override local for a case that errored, which has no verdict to record', async () => {
+			const user = userEvent.setup();
+			const { getByTestId, store } = render({ results: [result('c1', 'error')] });
+
+			await user.click(within(getByTestId('agent-eval-check-c1')).getByText('actually fine'));
+
+			expect(store.acceptResult).not.toHaveBeenCalled();
+			expect(getByTestId('agent-eval-check-c1')).toHaveAttribute('data-status', 'pass');
 		});
 	});
 

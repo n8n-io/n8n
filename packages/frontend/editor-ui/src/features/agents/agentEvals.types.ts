@@ -8,6 +8,7 @@ export type {
 	AgentEvalCorrection,
 	AgentEvalDatasetRecord,
 	AgentEvalDraftCase,
+	AgentEvalVerdict,
 	AgentEvalPage,
 	AgentEvalRatingRecord,
 	AgentEvalResultRecord,

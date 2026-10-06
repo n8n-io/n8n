@@ -11,6 +11,7 @@ import { type AgentAvatarKind } from './AgentAvatar.vue';
 const props = defineProps<{
 	previewInput: string;
 	previewOutput: string;
+	/** Why this case errored, or the judge's reasoning on a graded pass/fail. */
 	errorMessage?: string;
 	status?: AgentAvatarKind;
 	/** Rendered between the input and the answer, same as the live review row's disclosure. */
@@ -52,7 +53,7 @@ const isFailing = computed(() => props.status === 'work' || props.status === 'fa
 							: 'agents.builder.agentEvals.checks.status.followsRule',
 					)
 				}}</strong>
-				{{ errorMessage }}
+				{{ isFailing ? errorMessage : '' }}
 			</N8nCallout>
 		</div>
 	</div>
@@ -74,7 +75,8 @@ const isFailing = computed(() => props.status === 'work' || props.status === 'fa
 	);
 
 	&UserMessage {
-		width: 300px;
+		max-width: 300px;
+		width: 100%;
 		align-self: flex-end;
 	}
 }

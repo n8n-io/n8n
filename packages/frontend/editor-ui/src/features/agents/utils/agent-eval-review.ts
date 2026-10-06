@@ -1,7 +1,13 @@
 import { isRecord } from '@n8n/utils/is-record';
 import type { IDataObject, JsonObject } from 'n8n-workflow';
 
-import type { AgentEvalRatingRecord, AgentEvalVote } from '../agentEvals.types';
+import type {
+	AgentEvalVerdict,
+	AgentEvalRatingRecord,
+	AgentEvalResultStatus,
+	AgentEvalVote,
+} from '../agentEvals.types';
+import type { AgentAvatarKind } from '../components/AgentAvatar.vue';
 
 /**
  * Readers for an eval result's JSON columns, and the state machine deciding what
@@ -109,6 +115,42 @@ export function readErrorMessage(errorDetails: IDataObject | null | undefined): 
 /** The reviewer's edited answer, stored on the rating — never on the dataset. */
 export function readCorrectionText(correction: JsonObject | null | undefined): string | null {
 	return readText(correction, 'finalText');
+}
+
+/**
+ * The judge's explanation, whichever way it ruled — or its error message when
+ * the judge call itself failed. Null when judging never ran (`null`,
+ * `'skipped'`), so a row with nothing graded shows nothing here.
+ */
+export function readVerdictReasoning(verdict: AgentEvalVerdict | null | undefined): string | null {
+	if (!verdict || verdict.status === 'skipped') return null;
+	return verdict.reasoning;
+}
+
+/**
+ * Maps a result's execution status plus its (optional) judge verdict onto the
+ * avatar vocabulary shared across every agent-eval view. Execution statuses
+ * other than `success` are unaffected by judging — there is nothing to grade
+ * until a case actually finishes.
+ *
+ * A graded fail reads as `work` ("needs a look"), not `fail` — `fail` already
+ * means "couldn't finish" (an execution error) elsewhere in this vocabulary,
+ * and conflating "ran fine but broke the rule" with that would cost a reviewer
+ * the at-a-glance distinction between the two. `work` already carries this
+ * "ran, but needs a look" meaning for a cancelled case; this extends its
+ * population, not its meaning.
+ */
+export function toAvatarKind(
+	status: AgentEvalResultStatus,
+	verdict: AgentEvalVerdict | null | undefined,
+): AgentAvatarKind {
+	if (status === 'new') return 'idle';
+	if (status === 'running') return 'waiting';
+	if (status === 'error') return 'fail';
+	if (status === 'cancelled') return 'work';
+	// status === 'success':
+	if (!verdict || verdict.status !== 'completed') return 'pass'; // ungraded — old behavior
+	return verdict.outcome === 'pass' ? 'pass' : 'work';
 }
 
 /**
