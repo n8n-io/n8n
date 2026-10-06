@@ -279,6 +279,22 @@ describe('Log streaming in Public API', () => {
 			expect(response.status).toBe(400);
 		});
 
+		it('drops fields that do not belong to the destination type', async () => {
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.post('/settings/log-streaming/destinations')
+				.send({
+					...webhookPayload,
+					dsn: 'https://examplePublicKey@o0.ingest.sentry.io/0',
+					unknownField: 'value',
+				});
+
+			expect(response.status).toBe(200);
+			expect(response.body.type).toBe('webhook');
+			expect(response.body).not.toHaveProperty('dsn');
+			expect(response.body).not.toHaveProperty('unknownField');
+		});
+
 		it('creates a fully-populated webhook destination', async () => {
 			const payload = {
 				type: 'webhook',
