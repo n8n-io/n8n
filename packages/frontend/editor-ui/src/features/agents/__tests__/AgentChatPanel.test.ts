@@ -497,7 +497,9 @@ describe('AgentChatPanel', () => {
 				await flushPromises();
 
 				// The hidden item would be missing from the reorder's expected ids.
-				for (const handle of wrapper.findAll('[data-testid="chat-queue-drag-handle"]')) {
+				const handles = wrapper.findAll('[data-testid="chat-queue-drag-handle"]');
+				expect(handles).toHaveLength(2);
+				for (const handle of handles) {
 					expect(handle.attributes('disabled')).toBeDefined();
 				}
 				wrapper.unmount();
