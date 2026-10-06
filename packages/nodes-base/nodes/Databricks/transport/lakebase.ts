@@ -1,8 +1,8 @@
 import { retryabilityFromError } from '@n8n/backend-network';
 import { isRecord } from '@n8n/utils/is-record';
 import { sleep } from '@n8n/utils/sleep';
-import type { IExecuteFunctions, IHttpRequestOptions } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import type { IExecuteFunctions, IHttpRequestOptions, JsonObject } from 'n8n-workflow';
+import { NodeApiError, NodeError, NodeOperationError } from 'n8n-workflow';
 
 import {
 	databricksApiRequest,
@@ -10,7 +10,8 @@ import {
 	type DatabricksContext,
 } from '../actions/helpers';
 
-// ponytail: single fixed delay; lengthen it if a real schema reload is observed to take more than 1 s.
+// ponytail: single fixed delay; lengthen it if a real schema reload is observed
+// to take more than 1 s.
 const SCHEMA_CACHE_RETRY_DELAY_MS = 1_000;
 
 function errorBody(error: unknown): Record<string, unknown> | undefined {
@@ -33,7 +34,10 @@ function isExpiredToken(error: unknown, body: Record<string, unknown> | undefine
 	return /expired/i.test(text) && /jwt|token/i.test(text);
 }
 
-/** JSON bodies only: the helper resends the request after a refresh or schema-cache retry, so a stream or FormData body must not be passed. */
+/**
+ * Pass JSON bodies only. The helper resends the request after a token refresh or a
+ * schema-cache retry, so do not pass a stream or FormData body.
+ */
 export async function lakebaseApiRequest(
 	context: DatabricksContext,
 	options: IHttpRequestOptions,
@@ -51,13 +55,24 @@ export async function lakebaseApiRequest(
 	let retriedSchemaCache = false;
 	for (;;) {
 		try {
-			return await databricksApiRequest(context, 'databricksOAuth2Api', options);
+			// Lakebase answers permission denied with 403, the credential's expiry status, so core
+			// only refreshes on 403 when the stored token is at or past its expiry.
+			return await databricksApiRequest(context, 'databricksOAuth2Api', options, {
+				oauth2: { skipRefreshWhileTokenIsFresh: true },
+			});
 		} catch (error) {
 			const body = errorBody(error);
-			// Core refreshes only on the credential's tokenExpiredStatusCode (403); Lakebase signals expiry with 400 or 401.
+			// Core refreshes only on the credential's tokenExpiredStatusCode (403);
+			// Lakebase signals expiry with 400 or 401.
 			if (!refreshed && isExpiredToken(error, body)) {
 				refreshed = true;
-				await context.helpers.refreshOAuth2Token.call(context, 'databricksOAuth2Api');
+				try {
+					await context.helpers.refreshOAuth2Token.call(context, 'databricksOAuth2Api');
+				} catch (refreshError) {
+					throw refreshError instanceof NodeError
+						? refreshError
+						: new NodeApiError(context.getNode(), refreshError as JsonObject);
+				}
 				continue;
 			}
 			if (!retriedSchemaCache && body?.code === 'PGRST205') {

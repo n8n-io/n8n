@@ -47,7 +47,7 @@ const apiError = (status: number, data: unknown, headers?: Record<string, string
 
 const expiredJwt = () => apiError(400, { message: 'JWT token has expired' });
 const pgrst205 = () =>
-	apiError(400, {
+	apiError(404, {
 		code: 'PGRST205',
 		message: "Could not find the table 'public.orders' in the schema cache",
 		hint: null,
@@ -89,10 +89,14 @@ describe('lakebaseApiRequest', () => {
 
 		expect(httpRequestWithAuthentication.mock.calls[0][0]).toBe('databricksOAuth2Api');
 		expect(capturedOptions().headers).toEqual({ 'User-Agent': DATABRICKS_PARTNER_USER_AGENT });
+		expect(httpRequestWithAuthentication.mock.calls[0][2]).toEqual({
+			oauth2: { skipRefreshWhileTokenIsFresh: true },
+		});
 	});
 
 	it.each([
 		[400, { message: 'JWT token has expired' }],
+		[400, { error: { message: 'JWT token has expired' } }],
 		[401, { code: 'PGRST301', message: 'JWT expired' }],
 	])('refreshes the token once on an expired-JWT %s and resends', async (status, body) => {
 		httpRequestWithAuthentication
@@ -133,6 +137,17 @@ describe('lakebaseApiRequest', () => {
 		expect(httpRequestWithAuthentication).toHaveBeenCalledTimes(1);
 	});
 
+	it('wraps a plain refresh error in NodeApiError', async () => {
+		httpRequestWithAuthentication.mockRejectedValueOnce(expiredJwt());
+		refreshOAuth2Token.mockRejectedValueOnce(new Error('invalid_client'));
+
+		const thrown = await lakebaseApiRequest(context, request).catch((error: unknown) => error);
+
+		expect(thrown).toBeInstanceOf(NodeApiError);
+		expect(thrown).toMatchObject({ message: 'invalid_client' });
+		expect(httpRequestWithAuthentication).toHaveBeenCalledTimes(1);
+	});
+
 	it('retries once after PGRST205 and returns the second response', async () => {
 		httpRequestWithAuthentication
 			.mockRejectedValueOnce(pgrst205())
@@ -160,6 +175,7 @@ describe('lakebaseApiRequest', () => {
 		['a bad filter 400', 400, { code: 'PGRST100', message: 'unexpected "x" expecting ...' }],
 		['a permissions 401', 401, { code: 'PGRST301', message: 'invalid token permissions' }],
 		['an expired-token 403', 403, { message: 'JWT token has expired' }],
+		['an unrelated expiry 400', 400, { message: 'session expired' }],
 		['a transport error', undefined, undefined],
 	])('throws %s without refreshing', async (_label, status, body) => {
 		const error = status === undefined ? new Error('socket hang up') : apiError(status, body);
@@ -222,11 +238,10 @@ describe('lakebaseApiRequest', () => {
 	it('refuses personal access token auth before any request', async () => {
 		context.getNodeParameter.mockReturnValue('accessToken');
 
-		await expect(lakebaseApiRequest(context, request)).rejects.toThrow(NodeOperationError);
-		await expect(lakebaseApiRequest(context, request)).rejects.toThrow(
-			'Lakebase requires OAuth2 authentication',
-		);
+		const thrown = await lakebaseApiRequest(context, request).catch((error: unknown) => error);
 
+		expect(thrown).toBeInstanceOf(NodeOperationError);
+		expect(thrown).toMatchObject({ message: 'Lakebase requires OAuth2 authentication' });
 		expect(httpRequestWithAuthentication).not.toHaveBeenCalled();
 		expect(refreshOAuth2Token).not.toHaveBeenCalled();
 	});
@@ -251,5 +266,7 @@ describe('lakebaseApiRequest', () => {
 		expect(refreshOAuth2Token).toHaveBeenCalledTimes(1);
 		expect(httpRequestWithAuthentication).toHaveBeenCalledTimes(3);
 		expect(sleep).toHaveBeenCalledWith(1000, undefined);
+		// The mock creates a key on first read, so a read of the cancel signal would show up here
+		expect('getExecutionCancelSignal' in loadOptionsContext).toBe(false);
 	});
 });
