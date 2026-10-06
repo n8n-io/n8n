@@ -2,9 +2,9 @@ import type { IDataObject, IExecuteFunctions, INodeProperties } from 'n8n-workfl
 import { NodeOperationError } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '../../../../../../utils/utilities';
-import { LIST_SIMPLIFY_SELECT } from '../../helpers/utils';
-import { listRLC, untilSiteSelected } from '../../list';
-import { resolveSiteId, siteRLC } from '../../site';
+import { LIST_SIMPLIFY_SELECT } from '../../../helpers/utils';
+import { listRLC, untilSiteSelected } from '../../../list';
+import { resolveSiteId, siteRLC } from '../../../site';
 import { microsoftApiRequest } from '../../../transport';
 
 const properties: INodeProperties[] = [
