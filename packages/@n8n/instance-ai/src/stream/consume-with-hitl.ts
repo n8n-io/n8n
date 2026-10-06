@@ -3,7 +3,6 @@ import type { InstanceAiEvent } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
 import { randomUUID } from 'node:crypto';
 
-import type { InstanceAiEventBus } from '../event-bus/event-bus.interface';
 import type { Logger } from '../logger';
 import { isQuotaExhaustedError, mapAgentChunkToEvent } from './map-chunk';
 import { UsageAccumulator, type RunTokenUsage } from './usage-accumulator';
@@ -18,7 +17,6 @@ export interface ConsumeStreamCascadingOptions {
 	stream: unknown;
 	runId: string;
 	agentId: string;
-	eventBus: InstanceAiEventBus;
 	logger: Logger;
 	threadId: string;
 	abortSignal: AbortSignal;
@@ -254,7 +252,6 @@ export async function consumeStreamCascading(
 			if (isPrimary && !confirmationEvent) confirmationEvent = event;
 			continue;
 		}
-		options.eventBus.publish(options.threadId, event);
 	}
 
 	if (options.abortSignal.aborted) {

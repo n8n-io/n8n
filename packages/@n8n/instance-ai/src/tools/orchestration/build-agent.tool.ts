@@ -339,72 +339,18 @@ type BuildAgentToolContext = InterruptibleToolContext<
 	BuildAgentResumeData
 >;
 
-/**
- * Publish the `agent-spawned` event announcing the builder sub-agent to the FE.
- * Published on the first call that constructs the builder session, and
- * republished (idempotently) on resume — the FE may have lost the builder
- * node across a page reload or process restart, so the resume leg re-sends it
- * defensively.
- */
-function publishAgentSpawned(
-	context: OrchestrationContext,
-	builderAgentId: string,
-	target: AgentBuilderTarget,
-	activity: InstanceAiAgentActivity,
-): void {
-	context.eventBus.publish(context.threadId, {
-		type: 'agent-spawned',
-		runId: context.runId,
-		agentId: builderAgentId,
-		payload: {
-			parentId: context.orchestratorAgentId,
-			role: BUILDER_SUB_AGENT_ROLE,
-			tools: [],
-			kind: BUILDER_SUB_AGENT_KIND,
-			activity,
-			// name/projectId make the FE render the agent as a conversation artifact
-			// (artifact list + preview both require projectId).
-			targetResource: {
-				type: 'agent',
-				id: target.agentId,
-				projectId: target.projectId,
-				...(target.name ? { name: target.name } : {}),
-			},
-		},
-	});
-}
-
-/** Publish the standard failure `agent-completed` event; returns the resolved message. */
-function publishAgentBuilderFailure(
-	context: OrchestrationContext,
-	builderAgentId: string,
-	error: unknown,
-): string {
+/** The user-facing message for a failed builder run. */
+function builderFailureMessage(error: unknown): string {
 	const message = isBuilderNotConfiguredError(error)
 		? 'The agent builder model is not configured. Set it up in the agents module settings.'
 		: error instanceof Error
 			? error.message
 			: 'The agent builder run failed unexpectedly.';
-	context.eventBus.publish(context.threadId, {
-		type: 'agent-completed',
-		runId: context.runId,
-		agentId: builderAgentId,
-		payload: { role: BUILDER_SUB_AGENT_ROLE, result: '', error: message },
-	});
 	return message;
 }
 
 /** Publish the terminal `agent-completed` event for a stopped builder turn: no
  *  `error`, so the tree stays quiet and the run-level stopped indicator speaks. */
-function publishAgentBuilderCancelled(context: OrchestrationContext, builderAgentId: string): void {
-	context.eventBus.publish(context.threadId, {
-		type: 'agent-completed',
-		runId: context.runId,
-		agentId: builderAgentId,
-		payload: { role: BUILDER_SUB_AGENT_ROLE, result: '', status: 'cancelled' },
-	});
-}
-
 /** Emit an `agent-snapshot` for the builder's target. Best-effort at both ends. */
 async function snapshotAgent(
 	context: OrchestrationContext,
@@ -435,26 +381,16 @@ async function snapshotAgent(
 	});
 }
 
-/** Publish the terminal `agent-completed` event and map the result to the tool output.
+/** Map the builder result to the tool output.
  *  A cancelled turn is intercepted by the caller, so that status never arrives here. */
 async function finishTurn(
-	context: OrchestrationContext,
-	builderAgentId: string,
 	result: Extract<ConsumeStreamCascadingResult, { status: 'completed' | 'cancelled' | 'errored' }>,
 	carriedConfigUpdated: boolean,
-	activity: InstanceAiAgentActivity,
 	requiredArtifacts: BuilderRequiredArtifact[],
 ): Promise<BuildAgentOutput> {
 	const configUpdated = carriedConfigUpdated || didUpdateConfig(result.workSummary);
-	const agentChange = agentChangeFor(activity, configUpdated);
 	if (result.status === 'completed') {
 		const text = await result.text;
-		context.eventBus.publish(context.threadId, {
-			type: 'agent-completed',
-			runId: context.runId,
-			agentId: builderAgentId,
-			payload: { role: BUILDER_SUB_AGENT_ROLE, result: text.slice(0, 200), agentChange },
-		});
 		return {
 			ok: true,
 			builderReply: text,
@@ -464,12 +400,6 @@ async function finishTurn(
 	}
 
 	const error = `The agent builder run ${result.status}.`;
-	context.eventBus.publish(context.threadId, {
-		type: 'agent-completed',
-		runId: context.runId,
-		agentId: builderAgentId,
-		payload: { role: BUILDER_SUB_AGENT_ROLE, result: '', error, agentChange },
-	});
 	return {
 		ok: false,
 		error,
@@ -593,7 +523,6 @@ async function runBuilderConsumeLoop(params: {
 					stream: turn,
 					runId: context.runId,
 					agentId: builderAgentId,
-					eventBus: context.eventBus,
 					logger: context.logger,
 					threadId: context.threadId,
 					abortSignal: context.abortSignal,
@@ -606,7 +535,7 @@ async function runBuilderConsumeLoop(params: {
 		// them never throws, so errors from their bodies (builder-not-configured,
 		// an expired/missing checkpoint) only surface here, during consumption —
 		// not from the `delegate.streamBuild`/`resumeBuild` call sites.
-		const message = publishAgentBuilderFailure(context, builderAgentId, error);
+		const message = builderFailureMessage(error);
 		if (isFriendlyMappableBuilderError(error)) {
 			const requiredArtifacts = await collectRequiredArtifacts(turn, carriedRequiredArtifacts);
 			return await settle({
@@ -628,7 +557,6 @@ async function runBuilderConsumeLoop(params: {
 
 	if (result.status === 'cancelled') {
 		const cancelled = createAbortError(BUILDER_RUN_CANCELLED_MESSAGE);
-		publishAgentBuilderCancelled(context, builderAgentId);
 		await failTraceRun(context, traceRun, cancelled);
 		await context.claimSubAgentUsage?.(dedupeBase, result.usage?.usage ?? [], result.status);
 		throw cancelled;
@@ -645,7 +573,6 @@ async function runBuilderConsumeLoop(params: {
 		const freshName = await delegate.resolveAgentName(target.agentId);
 		if (freshName && freshName !== target.name) {
 			target.name = freshName;
-			publishAgentSpawned(context, builderAgentId, target, activity);
 			if (context.domainContext) {
 				await saveAgentBuilderTarget(context.domainContext, target);
 			}
@@ -658,14 +585,7 @@ async function runBuilderConsumeLoop(params: {
 	}
 
 	if (result.status !== 'suspended') {
-		const output = await finishTurn(
-			context,
-			builderAgentId,
-			result,
-			carriedConfigUpdated,
-			activity,
-			requiredArtifacts,
-		);
+		const output = await finishTurn(result, carriedConfigUpdated, requiredArtifacts);
 		if (output.ok) {
 			await finishTraceRun(context, traceRun, { outputs: output });
 		} else {
@@ -695,7 +615,7 @@ async function runBuilderConsumeLoop(params: {
 		const message =
 			"The agent builder's confirmation request could not be shown in this chat; the build turn was cancelled.";
 		await failTraceRun(context, traceRun, new Error(message));
-		publishAgentBuilderFailure(context, builderAgentId, new Error(message));
+		builderFailureMessage(new Error(message));
 		await context.claimSubAgentUsage?.(
 			`${dedupeBase}:s:invalid`,
 			result.usage?.usage ?? [],
@@ -827,11 +747,10 @@ async function handleResume(
 		// check in the delegate adapter) — see the comment in
 		// `runBuilderConsumeLoop`'s catch for why builder-not-configured/expired-
 		// checkpoint errors can't surface at this call site.
-		publishAgentBuilderFailure(context, builderAgentId, error);
+		builderFailureMessage(error);
 		throw error;
 	}
 
-	publishAgentSpawned(context, builderAgentId, target, ref.activity);
 
 	return await runBuilderConsumeLoop({
 		context,
@@ -1164,7 +1083,6 @@ export function createBuildAgentTool(context: OrchestrationContext) {
 			const activity: InstanceAiAgentActivity =
 				resolution.mode === 'create' ? 'creating' : (input.operation ?? 'working');
 
-			publishAgentSpawned(context, builderAgentId, boundTarget, activity);
 
 			// Before the builder touches it: a repair-shaped eval case seeds from the
 			// state the turn opened on. A new agent has no prior state.
@@ -1180,7 +1098,7 @@ export function createBuildAgentTool(context: OrchestrationContext) {
 				// check in the delegate adapter) — see the comment in
 				// `runBuilderConsumeLoop`'s catch for why builder-not-configured/expired-
 				// checkpoint errors can't surface at this call site.
-				publishAgentBuilderFailure(context, builderAgentId, error);
+				builderFailureMessage(error);
 				throw error;
 			}
 

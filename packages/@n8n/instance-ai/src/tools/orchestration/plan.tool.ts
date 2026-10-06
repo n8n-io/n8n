@@ -249,18 +249,13 @@ export function createPlanTool(context: OrchestrationContext) {
 					};
 				}
 
-				// Emit tasks-update so the checklist appears in the chat immediately
+				// Save the checklist so it appears in the side panel immediately.
 				const taskItems = input.tasks.map((t: z.infer<typeof plannedTaskSchema>) => ({
 					id: t.id,
 					description: t.title,
 					status: 'todo' as const,
 				}));
-				context.eventBus.publish(context.threadId, {
-					type: 'tasks-update',
-					runId: context.runId,
-					agentId: context.orchestratorAgentId,
-					payload: { tasks: { tasks: taskItems } },
-				});
+				await context.taskStorage.save(context.threadId, { tasks: taskItems });
 
 				// Suspend — frontend renders plan review UI
 				return await ctx.suspend({
@@ -297,12 +292,6 @@ export function createPlanTool(context: OrchestrationContext) {
 			} catch (error) {
 				context.logger.warn('Failed to clear rejected plan checklist', { error });
 			}
-			context.eventBus.publish(context.threadId, {
-				type: 'tasks-update',
-				runId: context.runId,
-				agentId: context.orchestratorAgentId,
-				payload: { tasks: { tasks: [] }, planItems: [] },
-			});
 
 			// User denied the plan outright. Cancel the graph so the next
 			// `create-tasks` call goes through the fresh-plan path instead of

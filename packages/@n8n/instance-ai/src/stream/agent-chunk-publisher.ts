@@ -4,7 +4,6 @@ import type { InstanceAiEvent } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
 import { randomUUID } from 'node:crypto';
 
-import type { InstanceAiEventBus } from '../event-bus';
 import { isQuotaExhaustedError, mapAgentChunkToEvent } from './map-chunk';
 import { UsageAccumulator, type RunTokenUsage } from './usage-accumulator';
 import { WorkSummaryAccumulator, type WorkSummary } from './work-summary-accumulator';
@@ -16,7 +15,6 @@ export interface AgentChunkPublisherOptions {
 	threadId: string;
 	runId: string;
 	agentId: string;
-	eventBus: InstanceAiEventBus;
 	/** Called after each chunk is published. Return true to stop the turn early. */
 	shouldStop?: () => boolean;
 	onStop?: () => void;
@@ -115,9 +113,7 @@ export class AgentChunkPublisher {
 
 		if (event) {
 			this.work.observe(event);
-			if (event.type !== 'confirmation-request') {
-				this.options.eventBus.publish(this.options.threadId, event);
-			} else if (this.isPrimaryConfirmation(event)) {
+			if (event.type === 'confirmation-request' && this.isPrimaryConfirmation(event)) {
 				// Later distinct suspensions wait until this one is answered.
 				this.confirmationEvent = event;
 			}
@@ -129,11 +125,9 @@ export class AgentChunkPublisher {
 		}
 	}
 
-	/** Publish the held-back confirmation card. */
+	/** The primary confirmation card of the turn, for telemetry. */
 	flushConfirmation(): ConfirmationRequestEvent | undefined {
-		const event = this.confirmationEvent;
-		if (event) this.options.eventBus.publish(this.options.threadId, event);
-		return event;
+		return this.confirmationEvent;
 	}
 
 	result(): AgentChunkPublisherResult {

@@ -45,12 +45,6 @@ async function handleUpdateChecklist(
 ) {
 	const taskList = { tasks: input.tasks };
 	await context.taskStorage.save(context.threadId, taskList);
-	context.eventBus.publish(context.threadId, {
-		type: 'tasks-update',
-		runId: context.runId,
-		agentId: context.orchestratorAgentId,
-		payload: { tasks: taskList },
-	});
 	return { saved: true };
 }
 
