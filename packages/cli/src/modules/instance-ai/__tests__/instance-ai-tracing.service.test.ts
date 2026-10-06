@@ -1,7 +1,6 @@
 import type { Mock } from 'vitest';
 import type { InstanceAiEvent } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
-import type { User } from '@n8n/db';
 import type { InstanceAiTraceContext } from '@n8n/instance-ai';
 import { mock } from 'vitest-mock-extended';
 
@@ -18,8 +17,6 @@ vi.mock('@n8n/instance-ai', () => ({
 
 import {
 	InstanceAiTracingService,
-	type InstanceAiTracingAiService,
-	type InstanceAiTracingEventLog,
 	type InstanceAiTracingEventReader,
 } from '../tracing';
 
@@ -52,8 +49,6 @@ function createService(
 	overrides: {
 		logger?: Partial<Logger>;
 		eventReader?: Partial<InstanceAiTracingEventReader>;
-		eventLog?: Partial<InstanceAiTracingEventLog>;
-		aiService?: Partial<InstanceAiTracingAiService>;
 	} = {},
 ) {
 	const logger = mock<Logger>(overrides.logger);
@@ -61,24 +56,13 @@ function createService(
 		getEventsForRun: vi.fn(async () => []),
 		...overrides.eventReader,
 	};
-	const eventLog: InstanceAiTracingEventLog = {
-		findLangsmithAnchor: vi.fn(async () => undefined),
-		...overrides.eventLog,
-	};
-	const aiService: InstanceAiTracingAiService = {
-		isProxyEnabled: vi.fn(() => false),
-		getClient: vi.fn(),
-		...overrides.aiService,
-	};
 
 	const service = new InstanceAiTracingService({
 		logger,
 		eventReader,
-		eventLog,
-		aiService,
 	});
 
-	return { service, logger, eventReader, eventLog, aiService };
+	return { service, logger, eventReader };
 }
 
 describe('InstanceAiTracingService', () => {
@@ -300,49 +284,4 @@ describe('InstanceAiTracingService', () => {
 		});
 	});
 
-	describe('submitLangsmithFeedback', () => {
-		it('skips submission when no LangSmith anchor exists', async () => {
-			const findLangsmithAnchor = vi.fn(async () => undefined);
-			const { service } = createService({ eventLog: { findLangsmithAnchor } });
-
-			await service.submitLangsmithFeedback(
-				{ id: 'user-1' } as unknown as User,
-				'thread-a',
-				'response-1',
-				{ rating: 'up' },
-			);
-
-			expect(findLangsmithAnchor).toHaveBeenCalledWith('thread-a', 'response-1');
-			expect(submitLangsmithUserFeedback).not.toHaveBeenCalled();
-		});
-
-		it('submits feedback when an anchor exists and the proxy is disabled', async () => {
-			const findLangsmithAnchor = vi.fn(async () => ({
-				langsmithRunId: 'ls-run',
-				langsmithTraceId: 'ls-trace',
-			}));
-			const { service } = createService({
-				eventLog: { findLangsmithAnchor },
-				aiService: { isProxyEnabled: vi.fn(() => false) },
-			});
-
-			await service.submitLangsmithFeedback(
-				{ id: 'user-1' } as unknown as User,
-				'thread-a',
-				'response-1',
-				{ rating: 'down', comment: 'nope' },
-			);
-
-			expect(submitLangsmithUserFeedback).toHaveBeenCalledTimes(1);
-			expect(submitLangsmithUserFeedback).toHaveBeenCalledWith(
-				expect.objectContaining({
-					langsmithRunId: 'ls-run',
-					langsmithTraceId: 'ls-trace',
-					score: 0,
-					value: 'down',
-					comment: 'nope',
-				}),
-			);
-		});
-	});
 });

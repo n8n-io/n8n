@@ -704,8 +704,6 @@ export class InstanceAiService {
 			logger: this.logger,
 			// Turn events stream through the Agents runtime; there is no event log to read.
 			eventReader: { getEventsForRun: async () => [] },
-			eventLog: { findLangsmithAnchor: async () => undefined },
-			aiService: this.aiService,
 		});
 		this.sandboxService = new InstanceAiSandboxService({
 			config: this.instanceAiConfig,
@@ -1087,15 +1085,6 @@ export class InstanceAiService {
 
 	clearTraceContextsForTest(): void {
 		this.tracing.clearTraceContextsForTest();
-	}
-
-	async submitLangsmithFeedback(
-		user: User,
-		threadId: string,
-		responseId: string,
-		payload: { rating: 'up' | 'down'; comment?: string },
-	): Promise<void> {
-		await this.tracing.submitLangsmithFeedback(user, threadId, responseId, payload);
 	}
 
 	/** Clean up planned work that a stopped thread leaves behind. */

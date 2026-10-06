@@ -202,7 +202,8 @@ export class AgentMessageQueueService {
 		return {
 			steerableExecutionId: steerable?.id ?? null,
 			items: items
-				.filter((item) => item.payload.kind === kind)
+				// Hidden machine turns (an instance agent's follow-ups) are not user messages.
+				.filter((item) => item.payload.kind === kind && item.message.origin?.hidden !== true)
 				// Show accepted steers first. Keep future turns in their saved queue order.
 				.sort(
 					(a, b) =>

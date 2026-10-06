@@ -23,8 +23,6 @@ vi.mock('../eval/execution.service', () => ({
 }));
 
 import type {
-	AiPreferenceDto,
-	InstanceAiPreferenceCardEvent,
 	InstanceAiAdminSettingsUpdateRequest,
 	InstanceAiEvalCredentialAllowlistRequest,
 	InstanceAiEvalRestoreThreadRequest,
@@ -69,7 +67,6 @@ import type { InstanceAiGatewayService } from '../instance-ai-gateway.service';
 import type { InstanceAiMemoryService } from '../instance-ai-memory.service';
 import type { InstanceAiOnboardingService } from '../onboarding';
 import type { InstanceAiPendingAgentService } from '../instance-ai-pending-agent.service';
-import type { InstanceAiPreferenceCardService } from '../instance-ai-preference-card.service';
 import type { InstanceAiThreadTabsService } from '../instance-ai-thread-tabs.service';
 import type { InstanceAiModelCatalogService } from '../instance-ai-model-catalog.service';
 import type { InstanceAiSettingsService } from '../instance-ai-settings.service';
@@ -116,7 +113,6 @@ describe('InstanceAiController', () => {
 
 	const evalCredentialAllowlists = new EvalThreadCredentialAllowlistService();
 	const evalThreadRestore = mock<EvalThreadRestoreService>();
-	const preferenceCardService = mock<InstanceAiPreferenceCardService>();
 	const onboarding = mock<InstanceAiOnboardingService>();
 	const threadTabsService = mock<InstanceAiThreadTabsService>();
 
@@ -141,7 +137,6 @@ describe('InstanceAiController', () => {
 		projectService,
 		instanceAiErrorReporter,
 		publisher,
-		preferenceCardService,
 		globalConfig,
 		threadTabsService,
 	);
@@ -154,62 +149,6 @@ describe('InstanceAiController', () => {
 		settingsService.isInstanceAiEnabled.mockReturnValue(true);
 		settingsService.isModelConfigured.mockResolvedValue(true);
 		instanceAiService.getLiveRun.mockResolvedValue({ status: 'idle', runIds: [] });
-	});
-
-	describe('feedback', () => {
-		const RESPONSE_ID = 'mg-1';
-
-		it('should require instanceAi:message scope', () => {
-			expect(scopeOf('feedback')).toEqual({ scope: 'instanceAi:message', globalOnly: true });
-		});
-
-		it('should forward the payload to the service and return { ok: true }', async () => {
-			memoryService.checkThreadOwnership.mockResolvedValue('owned');
-			instanceAiService.submitLangsmithFeedback.mockResolvedValue(undefined);
-
-			const payload = { rating: 'up' as const, comment: 'great' };
-			const result = await controller.feedback(req, res, THREAD_ID, RESPONSE_ID, payload);
-
-			expect(result).toEqual({ ok: true });
-			expect(instanceAiService.submitLangsmithFeedback).toHaveBeenCalledWith(
-				req.user,
-				THREAD_ID,
-				RESPONSE_ID,
-				payload,
-			);
-		});
-
-		it('should not await the service call so LangSmith latency never blocks the response', async () => {
-			memoryService.checkThreadOwnership.mockResolvedValue('owned');
-			let resolveService: () => void = () => {};
-			instanceAiService.submitLangsmithFeedback.mockReturnValue(
-				new Promise<void>((resolve) => {
-					resolveService = resolve;
-				}),
-			);
-
-			const start = Date.now();
-			await controller.feedback(req, res, THREAD_ID, RESPONSE_ID, { rating: 'down' });
-			expect(Date.now() - start).toBeLessThan(50);
-			resolveService();
-		});
-
-		it('should throw ForbiddenError for other user thread', async () => {
-			memoryService.checkThreadOwnership.mockResolvedValue('other_user');
-
-			await expect(
-				controller.feedback(req, res, THREAD_ID, RESPONSE_ID, { rating: 'up' }),
-			).rejects.toThrow(ForbiddenError);
-			expect(instanceAiService.submitLangsmithFeedback).not.toHaveBeenCalled();
-		});
-
-		it('should throw NotFoundError for missing thread', async () => {
-			memoryService.checkThreadOwnership.mockResolvedValue('not_found');
-
-			await expect(
-				controller.feedback(req, res, THREAD_ID, RESPONSE_ID, { rating: 'up' }),
-			).rejects.toThrow(NotFoundError);
-		});
 	});
 
 	describe('executeWithLlmMock', () => {
@@ -729,131 +668,6 @@ describe('InstanceAiController', () => {
 				BadRequestError,
 			);
 			expect(evalThreadRestore.restoreWorkflows).not.toHaveBeenCalled();
-		});
-	});
-
-	describe('preference card routes', () => {
-		it('should require instanceAi:message scope', () => {
-			expect(scopeOf('undoPreference')).toEqual({
-				scope: 'instanceAi:message',
-				globalOnly: true,
-			});
-			expect(scopeOf('editPreference')).toEqual({
-				scope: 'instanceAi:message',
-				globalOnly: true,
-			});
-		});
-
-		const undoneEvent: InstanceAiPreferenceCardEvent = {
-			type: 'preference-card',
-			runId: 'run-1',
-			agentId: 'orchestrator-run-1',
-			payload: { toolCallId: 'tc-1', preferenceId: 'pref-1', state: 'undone' },
-		};
-
-		it('undo checks thread access, then returns the published fact', async () => {
-			memoryService.checkThreadOwnership.mockResolvedValue('owned');
-			preferenceCardService.undo.mockResolvedValue(undoneEvent);
-			const payload = { runId: 'run-1', toolCallId: 'tc-1' };
-
-			const result = await controller.undoPreference(req, res, THREAD_ID, 'pref-1', payload);
-
-			expect(result).toEqual({ ok: true, event: undoneEvent });
-			expect(memoryService.checkThreadOwnership).toHaveBeenCalledWith(USER_ID, THREAD_ID);
-			expect(preferenceCardService.undo).toHaveBeenCalledWith(
-				req.user,
-				THREAD_ID,
-				'pref-1',
-				payload,
-			);
-		});
-
-		it('undo refuses a thread that belongs to another user before touching the row', async () => {
-			memoryService.checkThreadOwnership.mockResolvedValue('other_user');
-
-			await expect(
-				controller.undoPreference(req, res, THREAD_ID, 'pref-1', {
-					runId: 'run-1',
-					toolCallId: 'tc-1',
-				}),
-			).rejects.toThrow(ForbiddenError);
-			expect(preferenceCardService.undo).not.toHaveBeenCalled();
-		});
-
-		it('undo reports a missing thread before touching the row', async () => {
-			memoryService.checkThreadOwnership.mockResolvedValue('not_found');
-
-			await expect(
-				controller.undoPreference(req, res, THREAD_ID, 'pref-1', {
-					runId: 'run-1',
-					toolCallId: 'tc-1',
-				}),
-			).rejects.toThrow(NotFoundError);
-			expect(preferenceCardService.undo).not.toHaveBeenCalled();
-		});
-
-		it('edit refuses a thread that belongs to another user before touching the row', async () => {
-			memoryService.checkThreadOwnership.mockResolvedValue('other_user');
-
-			await expect(
-				controller.editPreference(req, res, THREAD_ID, 'pref-1', {
-					runId: 'run-1',
-					toolCallId: 'tc-1',
-					content: 'Keep replies brief.',
-					scope: 'user' as const,
-					userId: USER_ID,
-					projectId: null,
-				}),
-			).rejects.toThrow(ForbiddenError);
-			expect(preferenceCardService.edit).not.toHaveBeenCalled();
-		});
-
-		it('edit reports a missing thread before touching the row', async () => {
-			memoryService.checkThreadOwnership.mockResolvedValue('not_found');
-
-			await expect(
-				controller.editPreference(req, res, THREAD_ID, 'pref-1', {
-					runId: 'run-1',
-					toolCallId: 'tc-1',
-					content: 'Keep replies brief.',
-					scope: 'user' as const,
-					userId: USER_ID,
-					projectId: null,
-				}),
-			).rejects.toThrow(NotFoundError);
-			expect(preferenceCardService.edit).not.toHaveBeenCalled();
-		});
-
-		it('edit checks thread access, then returns the preference with the published fact', async () => {
-			memoryService.checkThreadOwnership.mockResolvedValue('owned');
-			const payload = {
-				runId: 'run-1',
-				toolCallId: 'tc-1',
-				content: 'Keep replies brief.',
-				scope: 'user' as const,
-				userId: USER_ID,
-				projectId: null,
-			};
-			const editedEvent: InstanceAiPreferenceCardEvent = {
-				...undoneEvent,
-				payload: { ...undoneEvent.payload, state: 'edited', content: 'Keep replies brief.' },
-			};
-			preferenceCardService.edit.mockResolvedValue({
-				preference: mock<AiPreferenceDto>({ id: 'pref-1', content: 'Keep replies brief.' }),
-				event: editedEvent,
-			});
-
-			const result = await controller.editPreference(req, res, THREAD_ID, 'pref-1', payload);
-
-			expect(memoryService.checkThreadOwnership).toHaveBeenCalledWith(USER_ID, THREAD_ID);
-			expect(preferenceCardService.edit).toHaveBeenCalledWith(
-				req.user,
-				THREAD_ID,
-				'pref-1',
-				payload,
-			);
-			expect(result.preference).toMatchObject({ id: 'pref-1' });
-			expect(result.event).toEqual(editedEvent);
 		});
 	});
 

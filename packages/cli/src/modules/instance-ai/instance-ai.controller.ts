@@ -1,12 +1,9 @@
 import {
-	InstanceAiFeedbackRequestDto,
 	InstanceAiGatewayCapabilitiesDto,
 	InstanceAiGatewayCreateCredentialDto,
 	InstanceAiFilesystemResponseDto,
 	InstanceAiRenameThreadRequestDto,
 	InstanceAiThreadTabsRequestDto,
-	InstanceAiPreferenceCardEditRequestDto,
-	InstanceAiPreferenceCardUndoRequestDto,
 	instanceAiGatewayKeySchema,
 	InstanceAiEnsureThreadRequest,
 	InstanceAiPersistPendingAgentRequest,
@@ -63,7 +60,6 @@ import { InstanceAiGatewayService } from './instance-ai-gateway.service';
 import { InstanceAiMemoryService } from './instance-ai-memory.service';
 import { InstanceAiModelCatalogService } from './instance-ai-model-catalog.service';
 import { InstanceAiPendingAgentService } from './instance-ai-pending-agent.service';
-import { InstanceAiPreferenceCardService } from './instance-ai-preference-card.service';
 import { InstanceAiSettingsService } from './instance-ai-settings.service';
 import { InstanceAiThreadTabsService } from './instance-ai-thread-tabs.service';
 import { InstanceAiVerificationService } from './instance-ai-verification.service';
@@ -106,7 +102,6 @@ export class InstanceAiController {
 		private readonly projectService: ProjectService,
 		private readonly instanceAiErrorReporter: InstanceAiErrorReporterService,
 		private readonly publisher: Publisher,
-		private readonly preferenceCardService: InstanceAiPreferenceCardService,
 		globalConfig: GlobalConfig,
 		private readonly threadTabsService: InstanceAiThreadTabsService,
 	) {
@@ -132,26 +127,6 @@ export class InstanceAiController {
 		next();
 	}
 
-	@Post('/feedback/:threadId/:responseId')
-	@GlobalScope('instanceAi:message')
-	async feedback(
-		req: AuthenticatedRequest,
-		_res: Response,
-		@Param('threadId') threadId: string,
-		@Param('responseId') responseId: string,
-		@Body payload: InstanceAiFeedbackRequestDto,
-	) {
-		this.requireInstanceAiEnabled();
-		await this.assertThreadAccess(req.user.id, threadId);
-		// Fire-and-forget: never surface LangSmith errors to the UI. The service
-		// logs its own failures; the .catch here guards against unhandled
-		// rejections from paths not wrapped internally (e.g. DB lookups).
-		void this.instanceAiService
-			.submitLangsmithFeedback(req.user, threadId, responseId, payload)
-			.catch(() => {});
-		return { ok: true };
-	}
-
 	// ── Preference card (the save_user_preference result in the chat) ────────
 	//
 	// The thread check is the ownership boundary. The row check is inside
@@ -159,36 +134,6 @@ export class InstanceAiController {
 	// the log on purpose, and the check would cost a log read on every click.
 	// The fold ignores preference-card facts when it anchors a turn, so a wrong
 	// pair can only mis-render that one card's state in the caller's own thread.
-
-	@Post('/threads/:threadId/preferences/:preferenceId/undo')
-	@GlobalScope('instanceAi:message')
-	async undoPreference(
-		req: AuthenticatedRequest,
-		_res: Response,
-		@Param('threadId') threadId: string,
-		@Param('preferenceId') preferenceId: string,
-		@Body payload: InstanceAiPreferenceCardUndoRequestDto,
-	) {
-		this.requireInstanceAiEnabled();
-		await this.assertThreadAccess(req.user.id, threadId);
-		const event = await this.preferenceCardService.undo(req.user, threadId, preferenceId, payload);
-		// The card applies the fact at once; the stream delivers the same one later.
-		return { ok: true, event };
-	}
-
-	@Post('/threads/:threadId/preferences/:preferenceId/edit')
-	@GlobalScope('instanceAi:message')
-	async editPreference(
-		req: AuthenticatedRequest,
-		_res: Response,
-		@Param('threadId') threadId: string,
-		@Param('preferenceId') preferenceId: string,
-		@Body payload: InstanceAiPreferenceCardEditRequestDto,
-	) {
-		this.requireInstanceAiEnabled();
-		await this.assertThreadAccess(req.user.id, threadId);
-		return await this.preferenceCardService.edit(req.user, threadId, preferenceId, payload);
-	}
 
 	// ── Credits ──────────────────────────────────────────────────────────────
 
