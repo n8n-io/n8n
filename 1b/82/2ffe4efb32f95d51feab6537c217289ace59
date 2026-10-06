@@ -1,0 +1,21 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiEmptyView.test.ts
+  s_71e25d45a5ee90::t_3c2f196bf4365d 267
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatPanel.test.ts
+  s_71e25d45a5ee90::t_3c2f196bf4365d 239-244
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "1b822ffe4efb32f95d51feab6537c217289ace59",
+  "prompts": {},
+  "sessions": {
+    "s_71e25d45a5ee90": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2ca6b762-f376-4a31-af78-4066f186c7bb",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

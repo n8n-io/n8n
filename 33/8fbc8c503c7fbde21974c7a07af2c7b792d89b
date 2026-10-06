@@ -1,0 +1,24 @@
+.agents/skills/public-api/reference.md
+  s_8631ec10eb1199::t_0c62bdc2f7a3d3 128
+packages/cli/src/public-api/media-types/request-body/multipart.request-body.ts
+  s_8631ec10eb1199::t_81a1dc5f0887bb 54-56
+packages/cli/src/public-api/v1/openapi-gen/__tests__/decorator-routes.test.ts
+  s_8631ec10eb1199::t_16ba6cb9d7810b 263,288-291
+  s_8631ec10eb1199::t_4d537a433b4132 292
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "338fbc8c503c7fbde21974c7a07af2c7b792d89b",
+  "prompts": {},
+  "sessions": {
+    "s_8631ec10eb1199": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "77132272-9e69-4c36-85e9-f1136efb4942",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

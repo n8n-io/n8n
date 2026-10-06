@@ -1,0 +1,18 @@
+packages/frontend/@n8n/design-system/src/components/N8nButton/Button.vue
+  h_f8b427917eda26 250,254
+packages/frontend/@n8n/design-system/src/css/_primitives.scss
+  h_f8b427917eda26 327,329-334,344
+packages/frontend/@n8n/design-system/src/css/message-box.scss
+  h_f8b427917eda26 189,219-232
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "879beb6e915e07fb75cf525afd6ed5a1e8a95b7d",
+  "prompts": {},
+  "humans": {
+    "h_f8b427917eda26": {
+      "author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

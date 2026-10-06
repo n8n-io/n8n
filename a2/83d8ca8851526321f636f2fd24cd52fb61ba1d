@@ -1,0 +1,21 @@
+packages/cli/src/auth/auth.service.ts
+  s_f3d2ec4529fb2a::t_a6e07bbf47edca 139-140,143
+packages/cli/src/auth/__tests__/auth.service.test.ts
+  s_f3d2ec4529fb2a::t_1f66f3d9a4f172 931-942,944-948
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "a283d8ca8851526321f636f2fd24cd52fb61ba1d",
+  "prompts": {},
+  "sessions": {
+    "s_f3d2ec4529fb2a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c28c4414-1c5b-4167-98ad-d5188b3d2601",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

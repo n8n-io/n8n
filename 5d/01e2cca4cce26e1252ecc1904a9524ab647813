@@ -1,0 +1,23 @@
+packages/cli/test/integration/workflow-statistics-rollup.task.test.ts
+  s_553eb6c3bf6445::t_aa3403696a6091 1-136
+packages/cli/src/services/__tests__/workflow-statistics.service.integration.test.ts
+  s_553eb6c3bf6445::t_dc714b84a22d01 768-779
+packages/@n8n/db/src/repositories/settings.repository.ts
+  s_553eb6c3bf6445::t_46707bc03c0359 58-66
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "5d01e2cca4cce26e1252ecc1904a9524ab647813",
+  "prompts": {},
+  "sessions": {
+    "s_553eb6c3bf6445": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f25efdfd-8fe3-4c84-aee7-5df2aee6a351",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

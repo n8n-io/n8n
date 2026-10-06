@@ -1,0 +1,11 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiEmptyView.test.ts
+  ai_agent 1411
+packages/frontend/editor-ui/src/features/ai/instanceAi/InstanceAiEmptyView.vue
+  ai_agent 513
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "42422174288fd1d56e65b762b4e243d7228e1feb",
+  "prompts": {}
+}
