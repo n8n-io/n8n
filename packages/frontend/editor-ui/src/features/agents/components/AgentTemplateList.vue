@@ -17,32 +17,28 @@ const i18n = useI18n();
 			:class="$style.example"
 			:style="{ '--intro-index': index + 1 }"
 			:data-test-id="`agent-template-${template.id}`"
-			role="button"
-			tabindex="0"
-			@click="emit('select', template)"
-			@keydown.enter.prevent="emit('select', template)"
-			@keydown.space.prevent
-			@keyup.space.prevent="emit('select', template)"
 		>
-			<span :class="$style.exampleIcon" :data-test-id="`agent-template-icon-${template.id}`">
-				<AgentPersonalisationIcon
-					:personalisation="{ icon: template.icon, gradient: template.gradient }"
-					:size="40"
-				/>
-			</span>
-			<span :class="$style.exampleText">
-				<N8nText :class="$style.exampleLabel">
-					{{ i18n.baseText(template.labelKey) }}
-				</N8nText>
-				<N8nText
-					color="text-light"
-					:class="$style.exampleDescription"
-					:title="i18n.baseText(template.descriptionKey)"
-				>
-					{{ i18n.baseText(template.descriptionKey) }}
-				</N8nText>
-			</span>
-			<N8nIcon icon="arrow-right" color="text-light" size="medium" :class="$style.exampleArrow" />
+			<button type="button" :class="$style.exampleButton" @click="emit('select', template)">
+				<span :class="$style.exampleIcon" :data-test-id="`agent-template-icon-${template.id}`">
+					<AgentPersonalisationIcon
+						:personalisation="{ icon: template.icon, gradient: template.gradient }"
+						:size="40"
+					/>
+				</span>
+				<span :class="$style.exampleText">
+					<N8nText :class="$style.exampleLabel">
+						{{ i18n.baseText(template.labelKey) }}
+					</N8nText>
+					<N8nText
+						color="text-light"
+						:class="$style.exampleDescription"
+						:title="i18n.baseText(template.descriptionKey)"
+					>
+						{{ i18n.baseText(template.descriptionKey) }}
+					</N8nText>
+				</span>
+				<N8nIcon icon="arrow-right" color="text-light" size="medium" :class="$style.exampleArrow" />
+			</button>
 		</li>
 	</ul>
 </template>
@@ -61,8 +57,12 @@ const i18n = useI18n();
 	@include motion.fade-in-up;
 	animation-delay: calc(var(--intro-index, 0) * var(--duration--snappy) / 4);
 	animation-fill-mode: backwards;
+}
+
+.exampleButton {
 	display: flex;
 	align-items: center;
+	width: 100%;
 	gap: var(--spacing--sm);
 	color: var(--color--text);
 	text-align: left;
@@ -72,9 +72,15 @@ const i18n = useI18n();
 	margin-inline: calc(var(--spacing--xs) * -1);
 	border-radius: var(--radius--md);
 	border: 1px solid transparent;
+	background: transparent;
+	font: inherit;
 
 	&:hover {
 		background-color: var(--background--hover);
+
+		.exampleArrow {
+			opacity: 1;
+		}
 	}
 
 	&:focus-visible {
@@ -110,8 +116,5 @@ const i18n = useI18n();
 	flex-shrink: 0;
 	margin-inline-end: var(--spacing--4xs);
 	opacity: 0;
-}
-.example:hover .exampleArrow {
-	opacity: 1;
 }
 </style>

@@ -67,7 +67,7 @@ function onSelectTemplate(template: AgentTemplate) {
 				:autofocus="true"
 				:disabled="disabled"
 				:placeholder="i18n.baseText('agents.list.intro.placeholder')"
-				data-test-id="agents-list-intro-input"
+				input-test-id="agents-list-intro-input"
 				@submit="onSubmit"
 			/>
 		</div>
@@ -100,7 +100,11 @@ function onSelectTemplate(template: AgentTemplate) {
 .createBlank {
 	display: flex;
 	justify-content: flex-end;
-	color: var(--color-text-subtle);
+
+	/* The button sets its own text color, so the parent color property does not reach it. */
+	:deep(button) {
+		--button--color: var(--text-color--subtle);
+	}
 }
 
 .templatesLabel {

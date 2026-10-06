@@ -14,6 +14,7 @@ describe('AgentsListIntro', () => {
 		const i18n = useI18n();
 
 		expect(getByTestId('agents-list-intro')).toBeInTheDocument();
+		expect(getByTestId('agents-list-intro-input').tagName).toBe('TEXTAREA');
 		expect(getByRole('heading', { name: 'What should your agent do?' })).toBeInTheDocument();
 		expect(getByRole('button', { name: 'Create blank' })).toBeInTheDocument();
 		expect(
