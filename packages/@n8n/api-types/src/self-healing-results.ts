@@ -10,6 +10,9 @@ export const selfHealingResultUsageSchema = z
 		credits: z.number().finite().nonnegative().nullable(),
 		turns: z.number().int().nonnegative().nullable(),
 		durationSeconds: z.number().finite().nonnegative().nullable(),
+		promptTokens: z.number().int().nonnegative().nullable(),
+		completionTokens: z.number().int().nonnegative().nullable(),
+		totalTokens: z.number().int().nonnegative().nullable(),
 	})
 	.strict();
 export type SelfHealingResultUsage = z.infer<typeof selfHealingResultUsageSchema>;

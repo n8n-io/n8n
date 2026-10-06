@@ -23,8 +23,12 @@ suggestion explanations and error context. Persistence does not scrub these fiel
 | `needs_you` | Optional | Continue in chat, Dismiss |
 | `could_not_fix` | None | Continue in chat, Dismiss |
 
-The report is one string. Usage contains measured credits, turns, and duration in seconds.
-Individual measurements can be null when unknown; the usage object is required.
+The report is one string. Usage contains `credits`, `turns`, `durationSeconds`, `promptTokens`,
+`completionTokens`, and `totalTokens`. The usage object and all measurement fields are required;
+individual measurements can be null when unknown. Token counts use the existing runtime usage
+summaries, including when credit usage is unavailable. If an investigation spans multiple runtime
+invocations, the producer combines their summaries once before saving the result. Persistence
+stores this snapshot without calculating tokens or charging usage.
 
 Workflow, original-project, background-user, and suggestion deletion cascade to the result.
 Execution pruning and private-thread deletion do not remove reports or the stored execution ID.

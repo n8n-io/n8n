@@ -73,7 +73,18 @@ describe('CreateSelfHealingResultTable migration', () => {
 				`INSERT INTO ${t('self_healing_result')}
 				 (${c('id')}, ${c('workflowId')}, ${c('projectId')}, ${c('backgroundUserId')}, ${c('outcome')}, ${c('summary')}, ${c('report')}, ${c('completedAt')}, ${c('suggestionId')}, ${c('executionId')}, ${c('usage')})
 				 VALUES ('result', 'result-workflow', 'result-project', :userId, 'fix_ready', 'Prepared a fix.', 'Review the fix.', :now, 'result-suggestion', 'pruned-execution', :usage)`,
-				{ userId, now, usage: JSON.stringify({ credits: 1, turns: 2, durationSeconds: 30 }) },
+				{
+					userId,
+					now,
+					usage: JSON.stringify({
+						credits: 1,
+						turns: 2,
+						durationSeconds: 30,
+						promptTokens: 1000,
+						completionTokens: 200,
+						totalTokens: 1200,
+					}),
+				},
 			);
 		});
 

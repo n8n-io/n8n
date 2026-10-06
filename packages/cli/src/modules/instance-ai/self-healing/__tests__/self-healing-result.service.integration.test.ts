@@ -125,7 +125,14 @@ async function prepareFixture(outcome: Outcome = 'needs_you', withSuggestion = f
 		projectId: project.id,
 		backgroundUserId: user.id,
 		executionId: execution.id,
-		usage: { credits: 1, turns: 2, durationSeconds: 30 },
+		usage: {
+			credits: 1,
+			turns: 2,
+			durationSeconds: 30,
+			promptTokens: 1000,
+			completionTokens: 200,
+			totalTokens: 1200,
+		},
 		outcome,
 		summary: 'Review the execution result.',
 		report: 'The saved report explains the investigation and the next step.',
@@ -218,7 +225,14 @@ it('does not require a published workflow for an informational result', async ()
 		projectId: project.id,
 		backgroundUserId: user.id,
 		executionId: execution.id,
-		usage: { credits: 1, turns: 2, durationSeconds: 30 },
+		usage: {
+			credits: 1,
+			turns: 2,
+			durationSeconds: 30,
+			promptTokens: 1000,
+			completionTokens: 200,
+			totalTokens: 1200,
+		},
 		outcome: 'could_not_fix',
 		summary: 'The investigation could not produce a fix.',
 		report: 'The workflow needs human input.',
@@ -240,18 +254,26 @@ it('rechecks the background user when prepared content is committed', async () =
 	expect(await suggestions.count()).toBe(0);
 });
 
-it('preserves report text and measured usage', async () => {
+it.each([0, null])('preserves report text and measured usage with credits=%s', async (credits) => {
 	const { input, user, project, original } = await prepareFixture();
 	const report = 'Configure the password parameter before retrying: password=example-value.';
+	const usage = {
+		credits,
+		turns: 1,
+		durationSeconds: null,
+		promptTokens: 1200,
+		completionTokens: 0,
+		totalTokens: 1200,
+	};
 	const prepared = await service.prepare({
 		...input,
 		report,
-		usage: { credits: 0, turns: 1, durationSeconds: null },
+		usage,
 	});
 	const result = await service.create(prepared);
 	const detail = await service.getDetail(user, project.id, original.id, result.id);
 	expect(detail.report).toBe(report);
-	expect(detail.usage).toEqual({ credits: 0, turns: 1, durationSeconds: null });
+	expect(detail.usage).toEqual(usage);
 });
 
 it('rolls back the result, suggestion, and activity with the caller transaction', async () => {
@@ -281,10 +303,18 @@ it('rolls back suggestion storage when result insertion fails', async () => {
 it('keeps the report and unknown usage after the execution is removed', async () => {
 	const { user, project, original, input } = await prepareFixture();
 	const execution = await createExecution({ status: 'error' }, original);
+	const usage = {
+		credits: null,
+		turns: 2,
+		durationSeconds: null,
+		promptTokens: null,
+		completionTokens: null,
+		totalTokens: null,
+	};
 	const prepared = await service.prepare({
 		...input,
 		executionId: execution.id,
-		usage: { credits: null, turns: 2, durationSeconds: null },
+		usage,
 	});
 	const result = await service.create(prepared);
 	await Container.get(ExecutionRepository).delete(execution.id);
@@ -293,7 +323,7 @@ it('keeps the report and unknown usage after the execution is removed', async ()
 	expect(detail).toMatchObject({
 		report: input.report,
 		execution: { status: 'unavailable' },
-		usage: { credits: null, turns: 2, durationSeconds: null },
+		usage,
 	});
 });
 

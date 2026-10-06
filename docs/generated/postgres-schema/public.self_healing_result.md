@@ -17,7 +17,7 @@
 | suggestionId | varchar(36) |  | true |  | [public.workflow_suggestion](public.workflow_suggestion.md) | Optional isolated workflow suggestion |
 | summary | varchar(2000) |  | false |  |  |  |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
-| usage | json |  | false |  |  | Recorded credits, turns, and durationSeconds; null measurements mean unknown |
+| usage | json |  | false |  |  | Recorded runtime and accounting usage; null measurements mean unknown |
 | workflowId | varchar(36) |  | false |  | [public.workflow_entity](public.workflow_entity.md) | Investigated workflow |
 
 ## Constraints

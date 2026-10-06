@@ -24,7 +24,7 @@ export class CreateSelfHealingResultTable1791305991901 implements ReversibleMigr
 					),
 				column('suggestionId').varchar(36).comment('Optional isolated workflow suggestion'),
 				column('usage').json.notNull.comment(
-					'Recorded credits, turns, and durationSeconds; null measurements mean unknown',
+					'Recorded runtime and accounting usage; null measurements mean unknown',
 				),
 				column('dismissedAt').timestampTimezone(),
 				column('dismissedById').uuid.comment('Reviewer who dismissed the result'),
