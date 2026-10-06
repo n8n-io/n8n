@@ -59,7 +59,7 @@
 		},
 		{
 			"name": "trigger.poll",
-			"description": "One poll. `state` is none at the first poll. `limit` is the most items the host uses,\nfor example 1 in a manual run. The host does not store the state of a manual run. `at`\nis the time of the poll in milliseconds since the Unix epoch, because a guest has no\nclock.",
+			"description": "One poll. `state` is none at the first poll. `limit` is the most items the host uses,\nfor example 1 in a manual run. The host does not store the state of a manual run. `at`\nis the time of the poll in milliseconds since the Unix epoch, from the host clock.",
 			"paramStructure": "by-name",
 			"params": [
 				{

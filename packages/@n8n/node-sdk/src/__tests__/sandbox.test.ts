@@ -77,6 +77,7 @@ const PROBE_NAMES = [
 	'baseUrlProbe',
 	'pollutionProbe',
 	'randomProbe',
+	'clockProbe',
 	'echoProbe',
 	'failureProbe',
 	'canaryProbe',
@@ -385,6 +386,26 @@ describe.skipIf(!existsSync(SIDECAR) || !existsSync(GUEST))('the sandbox', () =>
 	it('gives each run its own random values', async () => {
 		const [first, second] = [await run('randomProbe'), await run('randomProbe')];
 		expect(first).not.toBe(second);
+	});
+
+	it('gives the bundle the real time, which moves during a host call, in whole milliseconds', async () => {
+		const answeredAt: number[] = [];
+		const host: ExecutorHost = {
+			...hostOf(),
+			request: async () => {
+				await new Promise((resolve) => setTimeout(resolve, 50));
+				answeredAt.push(Date.now());
+				return { body: {}, headers: {}, statusCode: 200 };
+			},
+		};
+		const { before, after } = JSON.parse((await run('clockProbe', host)) as string) as Record<
+			'before' | 'after',
+			[number, number]
+		>;
+		expect(Math.abs(after[0] - answeredAt[0])).toBeLessThan(1_000);
+		expect(after[0] - before[0]).toBeGreaterThanOrEqual(49);
+		expect(after[1] - before[1]).toBeGreaterThanOrEqual(49);
+		for (const value of [...before, ...after]) expect(Number.isInteger(value)).toBe(true);
 	});
 
 	it('sends a request through the host and gives the full response in its key order', async () => {

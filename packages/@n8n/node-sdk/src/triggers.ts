@@ -241,7 +241,7 @@ export interface PollConfig<I, T, Out, P = unknown> {
 
 /**
  * One call of the trigger interface, as the host gives it to the trigger run: the WIT function
- * and its parameters. `at` is the time of a poll in ms, because the sandbox engine has no clock.
+ * and its parameters. `at` is the time of a poll in ms, from the host clock.
  * The state of a webhook is the remote webhook ID.
  */
 export type TriggerCall =

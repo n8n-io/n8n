@@ -19,8 +19,9 @@ container.
 
 - The bundle has no ambient authority. It reaches only the imports of its world
   (`spec/wit/action.wit`, `world action-bundle`; `spec/wit/provider.wit`, `world
-  provider-bundle`). There is no network, file system, clock, process or environment, except
-  through an import.
+  provider-bundle`). There is no network, file system, timer, process or environment, except
+  through an import. The guest reads the real time (`Date.now()`, `performance.now()`) in
+  steps of 1 ms.
 - Every bundle gets `http`, `log`, `limits` and `run-credential`. The manifest of an action
   grants the optional imports: `imports` (data tables, code, wait, the input of an item),
   `t.binary()` fields (`binary`), `provider.input()` fields (`supplied` and `capabilities`). A provider
@@ -63,6 +64,11 @@ flowchart LR
   each import of the world with a dynamic host function, so one sidecar serves every world and
   version. The command line holds the component, the world, the grants and the limits; the
   JSON-RPC stream holds only the protocol. `wasi:random` is linked to the OS random source.
+  `wasi:clocks/wall-clock` and `wasi:clocks/monotonic-clock` are linked to the host clocks,
+  coarsened to 1 ms, so a guest cannot measure host work more precisely. The clocks give no
+  timer: `subscribe-instant` and `subscribe-duration` stop the run. The other WASI functions that
+  the JS guest imports (`wasi:io`, `wasi:cli/stderr`) also stop the run. These WASI imports are
+  not in the Node Contract WIT, so they do not change the Node Contract version.
 - `sandbox/action.ts`, `sandbox/provider.ts` and `sandbox/trigger.ts`, on the core
   `sandbox/guest.ts`: one generic guest component for each kind interface, `action.wasm`,
   `provider.wasm` and `trigger.wasm`, for every JS bundle of that kind. A WIT world cannot import and export `capabilities`, so one component cannot serve
@@ -134,7 +140,7 @@ flowchart LR
   the static data of the node, generates the webhook secret, and checks the webhook signature
   of the manifest (`contract.verify`) before the guest gets the request. The trigger world has
   no `run-credential` import: the host applies the credential to each request.
-- `poll` gets the poll time `at`, because the guest has no clock.
+- `poll` gets the poll time `at` from the host clock.
 - The host refuses a webhook bundle whose signature is not the signature of its manifest, in this
   process and in the sandbox (from `describe()`).
 
@@ -255,7 +261,6 @@ absolute numbers are noisy. Source: `.scratch/runtime-poc/RESULTS.md` of the run
 
 ### Known issues
 
-- The WASM guest clock does not move during a run: each `Date.now()` difference is 0.
 - Two freeze gaps. A package without `exports` freezes only with `mainFields`, which
   `platform: 'neutral'` does not set. The `typeof` guard check counts one guard for the whole
   bundle, so luxon freezes and then fails in WASM with `Intl is not defined`.
@@ -301,6 +306,7 @@ A trap stops the component: every later call of the execution gets the same erro
 | a node `baseUrl` outside the manifest `egress` | the host refuses the bundle at load |
 | `Object.prototype` pollution | stays in the guest realm |
 | `Math.random`, `crypto` | different values in each run |
+| `Date.now()` and `performance.now()` before and after a host call | the real time in whole milliseconds; it moves during the call |
 | reading `credential` | the plain fields only; the secret field is absent |
 | reading `credential` when the stored data does not match its fields | a fixed error text; no stored value |
 | a reader and a writer left open | the host ends both at the end of the run |

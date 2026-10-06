@@ -95,6 +95,12 @@ export const pollutionProbe = spec(async () => {
 export const randomProbe = spec(async () => ({
 	value: [Math.random(), crypto.getRandomValues(new Uint32Array(2)).join('-'), crypto.randomUUID()].join(' '),
 }));
+export const clockProbe = spec(async ({ http }) => {
+	const before = [Date.now(), performance.now()];
+	await http.request({ url: 'https://api.example.com/clock' });
+	const after = [Date.now(), performance.now()];
+	return { value: JSON.stringify({ before, after }) };
+}, { egress: { hosts: ['api.example.com'] } });
 export const echoProbe = spec(async ({ http }) => ({
 	value: JSON.stringify(await http.request({ url: 'https://api.example.com/echo', fullResponse: true })),
 }), { egress: { hosts: ['api.example.com'] } });

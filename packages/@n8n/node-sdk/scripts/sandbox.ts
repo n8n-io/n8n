@@ -91,12 +91,13 @@ export async function componentize({ kind, guest, wit, out, componentizeJs }: Co
 	Object.defineProperty(promises, 'writeFile', { value: patchedWriteFile });
 	syncBuiltinESMExports();
 	try {
-		// `random` stays on: the sidecar links `wasi:random` to the OS random source.
+		// `random` and `clocks` stay on: the sidecar links `wasi:random` to the OS random source
+		// and `wasi:clocks` to the host clocks, coarsened to 1 ms.
 		const { component } = await api.componentize({
 			sourcePath: guest,
 			witPath: wit,
 			worldName: GUESTS[kind],
-			disableFeatures: ['stdio', 'clocks', 'http', 'fetch-event'],
+			disableFeatures: ['stdio', 'http', 'fetch-event'],
 		});
 		if (!patched) throw new Error('ComponentizeJS wrote no initializer.js, so update FAST_UTF8');
 		await writeFile(out, component);

@@ -85,6 +85,11 @@ the first item. `[take]` gives one `item-outcome` per item: `output` or `failed`
   constructor has no error result, so an error in it stops a component (a trap). The JS guest
   of the SDK starts `run()` at the first `next`.
 - A guest writes logs only through `log.log`.
+- A WASM guest reads the time only through `now` of `wasi:clocks/wall-clock` and
+  `wasi:clocks/monotonic-clock`. The sidecar gives the host time in steps of 1 ms. The monotonic
+  clock starts at `[initialize]`, so a guest cannot see the runs before it. A guest gets
+  no timer: `subscribe-instant` and `subscribe-duration` stop the run. These WASI imports are not
+  in `wit/`, so they do not change the Node Contract version.
 
 ## Start of a connection
 

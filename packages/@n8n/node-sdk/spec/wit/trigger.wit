@@ -22,8 +22,7 @@ interface trigger {
 
     /// One poll. `state` is none at the first poll. `limit` is the most items the host uses,
     /// for example 1 in a manual run. The host does not store the state of a manual run. `at`
-    /// is the time of the poll in milliseconds since the Unix epoch, because a guest has no
-    /// clock.
+    /// is the time of the poll in milliseconds since the Unix epoch, from the host clock.
     poll: func(input: json, state: option<json>, limit: option<u32>, at: u64) -> result<poll-result, run-error>;
 
     /// The HTTP request that a webhook trigger gets.

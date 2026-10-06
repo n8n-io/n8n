@@ -5,8 +5,10 @@
 //!
 //! The command line holds what the protocol does not: the component, the world, the granted
 //! imports and the limits. A call to an import that is not granted stops the run. The
-//! component gets no other import, except `wasi:random` (the OS random source) and, for the
-//! JS guest, the code of its bundle.
+//! component gets no other import, except `wasi:random` (the OS random source), the
+//! `now` functions of `wasi:clocks` (the host clocks in whole milliseconds) and, for the JS
+//! guest, the code of its bundle. The other WASI functions that the JS guest imports stop the
+//! run: they give timers, polls and streams.
 
 use base64::Engine as _;
 use serde_json::{json, Map, Value};
@@ -15,10 +17,11 @@ use std::collections::HashMap;
 use std::io::{BufRead, BufReader, Stdin, Stdout, Write};
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
-use std::time::{Duration, Instant};
+use std::time::{Duration, Instant, SystemTime};
 use wasmtime::component::types::ComponentItem;
 use wasmtime::component::{
-    Component, Func, Instance, InstancePre, Linker, ResourceAny, ResourceDynamic, ResourceType, Val,
+    Component, Func, Instance, InstancePre, Linker, LinkerInstance, ResourceAny, ResourceDynamic,
+    ResourceType, Val,
 };
 use wasmtime::{
     bail, format_err, AsContextMut, Config, Engine, ResourceLimiter, Result, Store,
@@ -31,6 +34,11 @@ use wit_parser::{
 
 const BUNDLE_IMPORT: &str = "n8n:js-guest/bundle@";
 const RANDOM_IMPORT: &str = "wasi:random/";
+const WALL_CLOCK_IMPORT: &str = "wasi:clocks/wall-clock@";
+const MONOTONIC_CLOCK_IMPORT: &str = "wasi:clocks/monotonic-clock@";
+const UNAVAILABLE_WASI_IMPORTS: [&str; 2] = ["wasi:io/", "wasi:cli/stderr@"];
+/// The step of both guest clocks. A coarse clock makes it harder for the guest to time host work.
+const CLOCK_STEP: Duration = Duration::from_millis(1);
 const MAX_SAFE_INTEGER: u64 = (1 << 53) - 1;
 const TICK: Duration = Duration::from_millis(2);
 const MAX_TABLE_ELEMENTS: usize = 1 << 20;
@@ -290,6 +298,9 @@ struct State {
     guest_handles: HashMap<u64, ResourceAny>,
     next_handle: u64,
     bundle: Arc<String>,
+    /// The zero of the guest monotonic clock. Each instance has its own, so a guest in a reused
+    /// sidecar cannot see the runs before it.
+    clock_origin: Instant,
 }
 
 impl State {
@@ -930,6 +941,94 @@ fn link_random(
     Ok(())
 }
 
+fn nanos(time: Duration) -> u64 {
+    u64::try_from(time.as_nanos()).unwrap_or(u64::MAX)
+}
+
+fn coarse(time: Duration) -> Duration {
+    let step = nanos(CLOCK_STEP);
+    Duration::from_nanos(nanos(time) / step * step)
+}
+
+fn datetime(time: Duration) -> Val {
+    Val::Record(vec![
+        ("seconds".into(), Val::U64(time.as_secs())),
+        ("nanoseconds".into(), Val::U32(time.subsec_nanos())),
+    ])
+}
+
+/// The resources of the WASI functions that stop the run. The guest never gets one.
+struct UnavailableWasiResource;
+
+/// Links an item of a WASI interface that the guest may not use, so the component instantiates.
+/// A call to the function stops the run.
+fn link_unavailable_item(
+    instance: &mut LinkerInstance<State>,
+    name: &str,
+    item_name: &str,
+    item: ComponentItem,
+) -> Result<()> {
+    if let ComponentItem::Resource(_) = item {
+        return instance.resource(
+            item_name,
+            ResourceType::host::<UnavailableWasiResource>(),
+            |_, _| Ok(()),
+        );
+    }
+    let function = format!("{name}#{item_name}");
+    instance.func_new(item_name, move |_, _, _, _| {
+        bail!("The bundle called {function}, which the sandbox does not give")
+    })
+}
+
+fn link_unavailable(
+    linker: &mut Linker<State>,
+    name: &str,
+    items: Vec<(String, ComponentItem)>,
+) -> Result<()> {
+    let mut instance = linker.instance(name)?;
+    for (item_name, item) in items {
+        link_unavailable_item(&mut instance, name, &item_name, item)?;
+    }
+    Ok(())
+}
+
+/// The guest clocks: real time in whole milliseconds. The clocks give no timer, so the
+/// `subscribe-*` functions stop the run.
+fn link_clocks(
+    linker: &mut Linker<State>,
+    name: &str,
+    items: Vec<(String, ComponentItem)>,
+) -> Result<()> {
+    let wall = name.starts_with(WALL_CLOCK_IMPORT);
+    let mut instance = linker.instance(name)?;
+    for (item_name, item) in items {
+        match (item_name.as_str(), wall) {
+            ("resolution", true) => instance.func_new(&item_name, |_, _, _, results| {
+                results[0] = datetime(CLOCK_STEP);
+                Ok(())
+            })?,
+            ("resolution", false) => instance.func_new(&item_name, |_, _, _, results| {
+                results[0] = Val::U64(nanos(CLOCK_STEP));
+                Ok(())
+            })?,
+            ("now", true) => instance.func_new(&item_name, |_, _, _, results| {
+                let since_epoch = SystemTime::now()
+                    .duration_since(SystemTime::UNIX_EPOCH)
+                    .map_err(|e| format_err!("{e}"))?;
+                results[0] = datetime(coarse(since_epoch));
+                Ok(())
+            })?,
+            ("now", false) => instance.func_new(&item_name, |store, _, _, results| {
+                results[0] = Val::U64(nanos(coarse(store.data().clock_origin.elapsed())));
+                Ok(())
+            })?,
+            _ => link_unavailable_item(&mut instance, name, &item_name, item)?,
+        }
+    }
+    Ok(())
+}
+
 struct Live {
     store: Store<State>,
     instance: Instance,
@@ -1049,6 +1148,15 @@ impl Host {
                 })?;
             } else if name.starts_with(RANDOM_IMPORT) {
                 link_random(&mut linker, name, items)?;
+            } else if name.starts_with(WALL_CLOCK_IMPORT)
+                || name.starts_with(MONOTONIC_CLOCK_IMPORT)
+            {
+                link_clocks(&mut linker, name, items)?;
+            } else if UNAVAILABLE_WASI_IMPORTS
+                .iter()
+                .any(|prefix| name.starts_with(prefix))
+            {
+                link_unavailable(&mut linker, name, items)?;
             } else if let Some(&interface) = self.spec.imports.get(name) {
                 let granted = self
                     .args
@@ -1097,6 +1205,7 @@ impl Host {
             guest_handles: HashMap::new(),
             next_handle: 1,
             bundle: Arc::new(self.bundle()?),
+            clock_origin: Instant::now(),
         };
         let mut store = Store::new(&self.engine, state);
         store.limiter(|state| &mut state.limiter);
@@ -1424,6 +1533,7 @@ mod tests {
             guest_handles: HashMap::new(),
             next_handle: 1,
             bundle: Arc::new(String::new()),
+            clock_origin: Instant::now(),
         };
         Store::new(&Engine::default(), state)
     }
@@ -1618,6 +1728,14 @@ mod tests {
 
         host.dispatch("[reset]", &Value::Null).unwrap();
         assert_eq!(host.dispatch("[stats]", &Value::Null).unwrap(), zero);
+    }
+
+    #[test]
+    fn the_guest_clocks_drop_the_part_below_one_millisecond() {
+        assert_eq!(
+            coarse(Duration::new(1_791_248_308, 879_999_999)),
+            Duration::new(1_791_248_308, 879_000_000)
+        );
     }
 
     #[test]
