@@ -203,20 +203,29 @@ describe('Log streaming in Public API', () => {
 			expect(single.status).toBe(200);
 			expect(list.status).toBe(200);
 			const listed = list.body.data.find((d: { id: string }) => d.id === stored.getId());
-			for (const body of [single.body, listed]) {
-				expect(body.type).toBe('webhook');
-				expect(body.label).toBe('Stored with credentials');
-				for (const field of [
-					'__type',
-					'credentials',
-					'authentication',
-					'nodeCredentialType',
-					'responseCodeMustMatch',
-					'sendPayload',
-				]) {
-					expect(body).not.toHaveProperty(field);
-				}
-			}
+			// Strict match: `__type`, `credentials`, `authentication`, `nodeCredentialType`,
+			// `responseCodeMustMatch` and `sendPayload` must not appear.
+			const expected = {
+				id: stored.getId(),
+				type: 'webhook',
+				label: 'Stored with credentials',
+				enabled: false,
+				subscribedEvents: ['n8n.workflow'],
+				anonymizeAuditMessages: false,
+				url: 'http://localhost:3456',
+				method: 'POST',
+				sendHeaders: false,
+				specifyHeaders: '',
+				headerParameters: { parameters: [] },
+				jsonHeaders: '',
+				sendQuery: false,
+				specifyQuery: '',
+				queryParameters: { parameters: [] },
+				jsonQuery: '',
+				options: {},
+			};
+			expect(single.body).toStrictEqual(expected);
+			expect(listed).toStrictEqual(expected);
 		});
 
 		it('returns a single destination by id', async () => {
