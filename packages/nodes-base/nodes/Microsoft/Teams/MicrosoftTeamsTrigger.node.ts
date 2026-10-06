@@ -94,7 +94,7 @@ export class MicrosoftTeamsTrigger implements INodeType {
 						name: 'Microsoft OAuth2 (Graph)',
 						value: 'microsoftOAuth2Api',
 						description:
-							'Generic Microsoft Graph credential. Add the Teams change-notification scopes (e.g. ChannelMessage.Read.All, Chat.Read, Subscription.Read.All) and grant admin consent on the credential. See the docs for the full scope string.',
+							'Generic Microsoft Graph credential. Add the Teams change-notification scopes (ChannelMessage.Read.All, Chat.ReadWrite, Group.ReadWrite.All, User.Read.All, TeamMember.Read.All) and grant admin consent on the credential. See the docs for the full scope string.',
 					},
 					{
 						name: 'Service Principal (App-Only)',

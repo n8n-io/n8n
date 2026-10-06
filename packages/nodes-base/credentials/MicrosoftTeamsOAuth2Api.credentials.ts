@@ -68,12 +68,13 @@ export class MicrosoftTeamsOAuth2Api implements ICredentialType {
 		},
 		{
 			displayName: `
-      Microsoft Teams Trigger requires the following permissions:
-      <br><code>ChannelMessage.Read.All</code>
-      <br><code>Chat.Read.All</code>
-      <br><code>Team.ReadBasic.All</code>
-      <br><code>Subscription.Read.All</code>
-      <br>Configure these permissions in <a href="https://portal.azure.com">Microsoft Entra</a>
+      Microsoft Teams Trigger uses these permissions, all included in the default scopes:
+      <br>New Channel Message: <code>ChannelMessage.Read.All</code>
+      <br>New Chat, New Chat Message: <code>Chat.ReadWrite</code>
+      <br>New Channel: <code>Group.ReadWrite.All</code>
+      <br>New Team Member: <code>TeamMember.Read.All</code>
+      <br>Team and channel lists: <code>User.Read.All</code>, <code>Group.ReadWrite.All</code>
+      <br>All except <code>Chat.ReadWrite</code> need tenant admin consent.
     `,
 			name: 'notice',
 			type: 'notice',
