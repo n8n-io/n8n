@@ -89,6 +89,10 @@ describe('channel-rate-limit', () => {
 			expect(channelRateLimitMessage('slack')).toContain('Slack');
 			expect(channelRateLimitMessage('discord')).toContain('Discord');
 		});
+
+		it('uses the WhatsApp override instead of capitalize-first-letter', () => {
+			expect(channelRateLimitMessage('whatsapp')).toContain('WhatsApp');
+		});
 	});
 
 	describe('rateLimitMessageFromError', () => {
