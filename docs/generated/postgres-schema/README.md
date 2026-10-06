@@ -24,7 +24,9 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.agent_execution_threads](public.agent_execution_threads.md) | 19 |  | BASE TABLE |
 | [public.agent_files](public.agent_files.md) | 10 |  | BASE TABLE |
 | [public.agent_history](public.agent_history.md) | 9 |  | BASE TABLE |
+| [public.agent_history_skill](public.agent_history_skill.md) | 4 |  | BASE TABLE |
 | [public.agent_message_queue](public.agent_message_queue.md) | 10 |  | BASE TABLE |
+| [public.agent_skill_dependency](public.agent_skill_dependency.md) | 4 |  | BASE TABLE |
 | [public.agent_task_definition](public.agent_task_definition.md) | 8 |  | BASE TABLE |
 | [public.agent_task_run_lock](public.agent_task_run_lock.md) | 6 |  | BASE TABLE |
 | [public.agent_task_snapshot](public.agent_task_snapshot.md) | 9 |  | BASE TABLE |
@@ -124,6 +126,9 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.settings](public.settings.md) | 3 |  | BASE TABLE |
 | [public.shared_credentials](public.shared_credentials.md) | 5 |  | BASE TABLE |
 | [public.shared_workflow](public.shared_workflow.md) | 5 |  | BASE TABLE |
+| [public.skill](public.skill.md) | 7 |  | BASE TABLE |
+| [public.skill_file](public.skill_file.md) | 7 |  | BASE TABLE |
+| [public.skill_version](public.skill_version.md) | 11 |  | BASE TABLE |
 | [public.tag_entity](public.tag_entity.md) | 4 |  | BASE TABLE |
 | [public.test_case_execution](public.test_case_execution.md) | 14 |  | BASE TABLE |
 | [public.test_run](public.test_run.md) | 16 |  | BASE TABLE |
@@ -210,10 +215,15 @@ erDiagram
 "public.agent_files" }o--|| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
 "public.agent_history" }o--o| "public.user" : "FOREIGN KEY (#quot;publishedById#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
 "public.agent_history" }o--|| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
+"public.agent_history_skill" }o--|| "public.agent_history" : "FOREIGN KEY (#quot;agentVersionId#quot;) REFERENCES agent_history(#quot;versionId#quot;) ON DELETE CASCADE"
+"public.agent_history_skill" }o--|| "public.skill_version" : "FOREIGN KEY (#quot;skillVersionId#quot;) REFERENCES skill_version(id)"
 "public.agent_message_queue" }o--|| "public.agents_messages" : "FOREIGN KEY (#quot;messageId#quot;) REFERENCES agents_messages(id) ON DELETE CASCADE"
 "public.agent_message_queue" }o--o| "public.agent_execution" : "FOREIGN KEY (#quot;executionId#quot;) REFERENCES agent_execution(id)"
 "public.agent_message_queue" }o--o| "public.agent_execution" : "FOREIGN KEY (#quot;steeringExecutionId#quot;) REFERENCES agent_execution(id)"
 "public.agent_message_queue" }o--|| "public.agent_execution_threads" : "FOREIGN KEY (#quot;threadId#quot;) REFERENCES agent_execution_threads(id) ON DELETE CASCADE"
+"public.agent_skill_dependency" }o--|| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
+"public.agent_skill_dependency" }o--|| "public.skill" : "FOREIGN KEY (#quot;skillId#quot;) REFERENCES skill(id) ON DELETE CASCADE"
+"public.agent_skill_dependency" }o--o| "public.skill_version" : "FOREIGN KEY (#quot;skillVersionId#quot;) REFERENCES skill_version(id)"
 "public.agent_task_definition" }o--|| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
 "public.agent_task_run_lock" }o--|| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
 "public.agent_task_snapshot" }o--|| "public.agent_history" : "FOREIGN KEY (#quot;versionId#quot;) REFERENCES agent_history(#quot;versionId#quot;) ON DELETE CASCADE"
@@ -351,6 +361,12 @@ erDiagram
 "public.shared_credentials" }o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
 "public.shared_workflow" }o--|| "public.workflow_entity" : "FOREIGN KEY (#quot;workflowId#quot;) REFERENCES workflow_entity(id) ON DELETE CASCADE"
 "public.shared_workflow" }o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
+"public.skill" }o--o| "public.user" : "FOREIGN KEY (#quot;createdById#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
+"public.skill" }o--o| "public.user" : "FOREIGN KEY (#quot;userId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE CASCADE"
+"public.skill" }o--o| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
+"public.skill_file" }o--|| "public.skill_version" : "FOREIGN KEY (#quot;skillVersionId#quot;) REFERENCES skill_version(id) ON DELETE CASCADE"
+"public.skill_version" }o--o| "public.user" : "FOREIGN KEY (#quot;createdById#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
+"public.skill_version" }o--|| "public.skill" : "FOREIGN KEY (#quot;skillId#quot;) REFERENCES skill(id) ON DELETE CASCADE"
 "public.test_case_execution" }o--o| "public.execution_entity" : "FOREIGN KEY (#quot;executionId#quot;) REFERENCES execution_entity(id) ON DELETE SET NULL"
 "public.test_case_execution" }o--|| "public.test_run" : "FOREIGN KEY (#quot;testRunId#quot;) REFERENCES test_run(id) ON DELETE CASCADE"
 "public.test_run" }o--|| "public.workflow_entity" : "FOREIGN KEY (#quot;workflowId#quot;) REFERENCES workflow_entity(id) ON DELETE CASCADE"
@@ -619,6 +635,12 @@ erDiagram
   timestamp_3__with_time_zone updatedAt
   varchar_36_ versionId
 }
+"public.agent_history_skill" {
+  varchar_36_ agentVersionId FK
+  timestamp_3__with_time_zone createdAt
+  varchar_36_ skillRefId
+  uuid skillVersionId FK
+}
 "public.agent_message_queue" {
   timestamp_3__with_time_zone createdAt
   varchar_36_ executionId FK
@@ -630,6 +652,12 @@ erDiagram
   integer steeringOrder
   varchar_128_ threadId FK
   timestamp_3__with_time_zone updatedAt
+}
+"public.agent_skill_dependency" {
+  varchar_36_ agentId FK
+  timestamp_3__with_time_zone createdAt
+  varchar_36_ skillId FK
+  uuid skillVersionId FK
 }
 "public.agent_task_definition" {
   varchar_36_ agentId FK
@@ -1563,6 +1591,37 @@ erDiagram
   text role
   timestamp_3__with_time_zone updatedAt
   varchar_36_ workflowId FK
+}
+"public.skill" {
+  timestamp_3__with_time_zone createdAt
+  uuid createdById FK
+  varchar_36_ id
+  varchar_36_ projectId FK
+  varchar_16_ source
+  timestamp_3__with_time_zone updatedAt
+  uuid userId FK
+}
+"public.skill_file" {
+  text content
+  timestamp_3__with_time_zone createdAt
+  varchar_512_ path
+  integer position
+  integer sizeBytes
+  uuid skillVersionId FK
+  timestamp_3__with_time_zone updatedAt
+}
+"public.skill_version" {
+  varchar_64_ contentHash
+  timestamp_3__with_time_zone createdAt
+  uuid createdById FK
+  varchar_1024_ description
+  json frontmatter
+  uuid id
+  text instructions
+  varchar_128_ name
+  varchar_36_ skillId FK
+  timestamp_3__with_time_zone updatedAt
+  integer version
 }
 "public.tag_entity" {
   timestamp_3__with_time_zone createdAt

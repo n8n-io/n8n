@@ -24,7 +24,9 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [agent_execution_threads](agent_execution_threads.md) | 19 |  | table |
 | [agent_files](agent_files.md) | 10 |  | table |
 | [agent_history](agent_history.md) | 9 |  | table |
+| [agent_history_skill](agent_history_skill.md) | 4 |  | table |
 | [agent_message_queue](agent_message_queue.md) | 10 |  | table |
+| [agent_skill_dependency](agent_skill_dependency.md) | 4 |  | table |
 | [agent_task_definition](agent_task_definition.md) | 8 |  | table |
 | [agent_task_run_lock](agent_task_run_lock.md) | 6 |  | table |
 | [agent_task_snapshot](agent_task_snapshot.md) | 9 |  | table |
@@ -124,6 +126,9 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [settings](settings.md) | 3 |  | table |
 | [shared_credentials](shared_credentials.md) | 5 |  | table |
 | [shared_workflow](shared_workflow.md) | 5 |  | table |
+| [skill](skill.md) | 7 |  | table |
+| [skill_file](skill_file.md) | 7 |  | table |
+| [skill_version](skill_version.md) | 11 |  | table |
 | [tag_entity](tag_entity.md) | 4 |  | table |
 | [test_case_execution](test_case_execution.md) | 16 |  | table |
 | [test_run](test_run.md) | 16 |  | table |
@@ -192,10 +197,15 @@ erDiagram
 "agent_files" }o--|| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agent_history" }o--o| "user" : "FOREIGN KEY (publishedById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "agent_history" }o--|| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"agent_history_skill" }o--|| "skill_version" : "FOREIGN KEY (skillVersionId) REFERENCES skill_version (id) ON UPDATE NO ACTION ON DELETE NO ACTION MATCH NONE"
+"agent_history_skill" |o--|| "agent_history" : "FOREIGN KEY (agentVersionId) REFERENCES agent_history (versionId) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agent_message_queue" }o--o| "agent_execution" : "FOREIGN KEY (executionId) REFERENCES agent_execution (id) ON UPDATE NO ACTION ON DELETE NO ACTION MATCH NONE"
 "agent_message_queue" }o--|| "agent_execution_threads" : "FOREIGN KEY (threadId) REFERENCES agent_execution_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agent_message_queue" }o--|| "agents_messages" : "FOREIGN KEY (messageId) REFERENCES agents_messages (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agent_message_queue" }o--o| "agent_execution" : "FOREIGN KEY (steeringExecutionId) REFERENCES agent_execution (id) ON UPDATE NO ACTION ON DELETE NO ACTION MATCH NONE"
+"agent_skill_dependency" }o--o| "skill_version" : "FOREIGN KEY (skillVersionId) REFERENCES skill_version (id) ON UPDATE NO ACTION ON DELETE NO ACTION MATCH NONE"
+"agent_skill_dependency" |o--|| "skill" : "FOREIGN KEY (skillId) REFERENCES skill (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"agent_skill_dependency" |o--|| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agent_task_definition" }o--|| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agent_task_run_lock" |o--|| "agents" : "FOREIGN KEY (agentId) REFERENCES agents (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agent_task_snapshot" |o--|| "agent_history" : "FOREIGN KEY (versionId) REFERENCES agent_history (versionId) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
@@ -333,6 +343,12 @@ erDiagram
 "shared_credentials" |o--|| "credentials_entity" : "FOREIGN KEY (credentialsId) REFERENCES credentials_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "shared_workflow" |o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "shared_workflow" |o--|| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"skill" }o--o| "user" : "FOREIGN KEY (createdById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
+"skill" }o--o| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"skill" }o--o| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"skill_file" |o--|| "skill_version" : "FOREIGN KEY (skillVersionId) REFERENCES skill_version (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"skill_version" }o--o| "user" : "FOREIGN KEY (createdById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
+"skill_version" }o--|| "skill" : "FOREIGN KEY (skillId) REFERENCES skill (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "test_case_execution" }o--|| "test_run" : "FOREIGN KEY (testRunId) REFERENCES test_run (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "test_case_execution" }o--o| "execution_entity" : "FOREIGN KEY (pastExecutionId) REFERENCES execution_entity (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "test_case_execution" }o--o| "execution_entity" : "FOREIGN KEY (executionId) REFERENCES execution_entity (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
@@ -605,6 +621,12 @@ erDiagram
   datetime_3_ updatedAt
   varchar_36_ versionId PK
 }
+"agent_history_skill" {
+  varchar_36_ agentVersionId PK
+  datetime_3_ createdAt
+  varchar_36_ skillRefId PK
+  varchar skillVersionId FK
+}
 "agent_message_queue" {
   datetime_3_ createdAt
   varchar_36_ executionId FK
@@ -616,6 +638,12 @@ erDiagram
   INTEGER steeringOrder
   varchar_128_ threadId FK
   datetime_3_ updatedAt
+}
+"agent_skill_dependency" {
+  varchar_36_ agentId PK
+  datetime_3_ createdAt
+  varchar_36_ skillId PK
+  varchar skillVersionId FK
 }
 "agent_task_definition" {
   varchar_36_ agentId FK
@@ -1549,6 +1577,37 @@ erDiagram
   TEXT role
   datetime_3_ updatedAt
   varchar_36_ workflowId PK
+}
+"skill" {
+  datetime_3_ createdAt
+  varchar createdById FK
+  varchar_36_ id PK
+  varchar_36_ projectId FK
+  varchar_16_ source
+  datetime_3_ updatedAt
+  varchar userId FK
+}
+"skill_file" {
+  TEXT content
+  datetime_3_ createdAt
+  varchar_512_ path PK
+  INTEGER position
+  INTEGER sizeBytes
+  varchar skillVersionId PK
+  datetime_3_ updatedAt
+}
+"skill_version" {
+  varchar_64_ contentHash
+  datetime_3_ createdAt
+  varchar createdById FK
+  varchar_1024_ description
+  TEXT frontmatter
+  varchar id PK
+  TEXT instructions
+  varchar_128_ name
+  varchar_36_ skillId FK
+  datetime_3_ updatedAt
+  INTEGER version
 }
 "tag_entity" {
   datetime_3_ createdAt

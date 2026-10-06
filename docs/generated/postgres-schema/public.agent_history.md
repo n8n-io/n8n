@@ -12,7 +12,7 @@
 | skills | json |  | true |  |  | Frozen map of `skillId → AgentSkill` at publish time |
 | tools | json |  | true |  |  | Frozen map of `toolId → { code, descriptor }` at publish time |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
-| versionId | varchar(36) |  | false | [public.agent_execution_threads](public.agent_execution_threads.md) [public.agent_task_snapshot](public.agent_task_snapshot.md) [public.agents](public.agents.md) |  |  |
+| versionId | varchar(36) |  | false | [public.agent_execution_threads](public.agent_execution_threads.md) [public.agent_history_skill](public.agent_history_skill.md) [public.agent_task_snapshot](public.agent_task_snapshot.md) [public.agents](public.agents.md) |  |  |
 
 ## Constraints
 
@@ -42,6 +42,7 @@ erDiagram
 "public.agent_history" }o--|| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
 "public.agent_history" }o--o| "public.user" : "FOREIGN KEY (#quot;publishedById#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
 "public.agent_execution_threads" }o--o| "public.agent_history" : "FOREIGN KEY (#quot;taskVersionId#quot;) REFERENCES agent_history(#quot;versionId#quot;) ON DELETE SET NULL"
+"public.agent_history_skill" }o--|| "public.agent_history" : "FOREIGN KEY (#quot;agentVersionId#quot;) REFERENCES agent_history(#quot;versionId#quot;) ON DELETE CASCADE"
 "public.agent_task_snapshot" }o--|| "public.agent_history" : "FOREIGN KEY (#quot;versionId#quot;) REFERENCES agent_history(#quot;versionId#quot;) ON DELETE CASCADE"
 "public.agents" }o--o| "public.agent_history" : "FOREIGN KEY (#quot;activeVersionId#quot;) REFERENCES agent_history(#quot;versionId#quot;) ON DELETE SET NULL"
 
@@ -109,6 +110,12 @@ erDiagram
   integer totalDuration
   integer totalPromptTokens
   timestamp_3__with_time_zone updatedAt
+}
+"public.agent_history_skill" {
+  varchar_36_ agentVersionId FK
+  timestamp_3__with_time_zone createdAt
+  varchar_36_ skillRefId
+  uuid skillVersionId FK
 }
 "public.agent_task_snapshot" {
   timestamp_3__with_time_zone createdAt
