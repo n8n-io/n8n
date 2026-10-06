@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { computed, nextTick, ref, useTemplateRef, watch } from 'vue';
-import type { TransitionGroup } from 'vue';
+import { computed, nextTick, ref, useId, useTemplateRef, watch } from 'vue';
+import type { ComponentPublicInstance } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import type { AgentJsonConfig } from '@n8n/api-types';
 import { N8nIcon, N8nPopover, N8nText } from '@n8n/design-system';
@@ -17,13 +17,14 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
+const taskIdPrefix = useId();
 const isTriggerShimmering = ref(false);
-const activeTaskIndex = ref(0);
+const activeTaskIndex = ref(-1);
 const isPopoverOpen = ref(false);
 
 const areTasksResolved = computed(() => props.tasks.every((task) => task.state !== 'unknown'));
 
-const listRef = useTemplateRef<InstanceType<typeof TransitionGroup>>('list');
+const listRef = useTemplateRef<ComponentPublicInstance>('list');
 
 watch([isPopoverOpen, areTasksResolved, activeTaskIndex], async ([isOpen, resolved]) => {
 	if (!isOpen || !resolved) return;
@@ -64,8 +65,14 @@ const triggerLabel = computed(() =>
 	),
 );
 
+function getActiveTaskItem() {
+	const task = incompleteTasks.value[activeTaskIndex.value];
+	return task ? `${taskIdPrefix}-${task.id}` : undefined;
+}
+
 function resetActiveTask() {
-	activeTaskIndex.value = 0;
+	/** Reset this to -1 so active state doesnt appear until keydown */
+	activeTaskIndex.value = -1;
 }
 
 function setActiveTask(task: SetupTask<SetupTaskId>) {
@@ -73,19 +80,18 @@ function setActiveTask(task: SetupTask<SetupTaskId>) {
 	if (index >= 0) activeTaskIndex.value = index;
 }
 
-function handleTaskKeydown(event: KeyboardEvent) {
+function handleTaskKeydown(event: KeyboardEvent): void {
 	if (!isPopoverOpen.value) return;
 	if (!['ArrowUp', 'ArrowDown', 'Enter', ' '].includes(event.key)) return;
 	event.preventDefault();
 
 	switch (event.key) {
 		case 'ArrowUp':
-			return activeTaskIndex.value > 0 && (activeTaskIndex.value = activeTaskIndex.value - 1);
+			if (activeTaskIndex.value > 0) activeTaskIndex.value -= 1;
+			return;
 		case 'ArrowDown':
-			return (
-				activeTaskIndex.value < incompleteTasks.value.length - 1 &&
-				(activeTaskIndex.value = activeTaskIndex.value + 1)
-			);
+			if (activeTaskIndex.value < incompleteTasks.value.length - 1) activeTaskIndex.value += 1;
+			return;
 		case 'Enter':
 		case ' ': {
 			const task = incompleteTasks.value[activeTaskIndex.value];
@@ -152,27 +158,23 @@ function handleTaskKeydown(event: KeyboardEvent) {
 		</template>
 		<template #content>
 			<div :class="$style.container" data-testid="agent-setup-tasks">
-				<div :class="$style.header" data-testid="agent-setup-tasks-header">
-					<div :class="$style.headerContent">
-						<N8nText tag="h3" color="text-light" bold>
-							{{ i18n.baseText('agents.builder.setupTasks.title') }}
-						</N8nText>
-					</div>
-				</div>
 				<TransitionGroup
 					v-if="areTasksResolved"
 					ref="list"
 					tag="ul"
+					role="menu"
+					:aria-label="i18n.baseText('agents.builder.setupTasks.title')"
 					tabindex="-1"
+					:aria-activedescendant="getActiveTaskItem()"
 					:class="$style.list"
 					:move-class="$style.listMove"
 					@keydown="handleTaskKeydown"
 				>
 					<li
 						v-for="(task, index) in completedTasksAreGrouped ? incompleteTasks : sortedList"
+						:id="`${taskIdPrefix}-${task.id}`"
 						:key="task.id"
-						:role="task.state !== 'complete' ? 'button' : undefined"
-						:tabindex="task.state !== 'complete' ? (activeTaskIndex === index ? 0 : -1) : undefined"
+						:role="task.state !== 'complete' ? 'menuitem' : undefined"
 						:data-selected="task.state !== 'complete' && activeTaskIndex === index"
 						:class="[$style.listItem, { [$style.isComplete]: task.state === 'complete' }]"
 						@focus="setActiveTask(task)"
@@ -241,7 +243,7 @@ function handleTaskKeydown(event: KeyboardEvent) {
 
 	@include motion.fade-in;
 	animation-delay: calc(var(--duration--slow) / 2);
-	animation-fill-mode: backwards;
+	animation-fill-mode: both;
 
 	&:hover,
 	&[data-state='open'] {

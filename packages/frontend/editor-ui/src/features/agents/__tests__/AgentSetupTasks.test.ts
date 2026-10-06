@@ -71,35 +71,78 @@ const tasks: Array<SetupTask<SetupTaskId>> = [
 ];
 
 describe('AgentSetupTasks', () => {
-	it('moves focus with the arrow keys and activates the selected task', async () => {
+	it('changes selection with the arrow keys without moving focus and activates the selected task', async () => {
 		const localTasks: Array<SetupTask<SetupTaskId>> = [{ ...tasks[0], state: 'todo' }, tasks[2]];
 		const wrapper = mount(AgentSetupTasks, {
 			props: { tasks: localTasks },
+			global: { stubs: { TransitionGroup: false } },
 			attachTo: document.body,
 		});
 		try {
 			await wrapper.get('button').trigger('click');
 			await nextTick();
 
-			const taskItems = wrapper.findAll('[role="button"]');
-			expect(taskItems[0].attributes('tabindex')).toBe('0');
-			expect(document.activeElement).toBe(taskItems[0].element);
+			const list = wrapper.get('ul');
+			const taskItems = wrapper.findAll('[role="menuitem"]');
+			(list.element as HTMLElement).focus();
+			expect(document.activeElement).toBe(list.element);
+			for (const taskItem of taskItems) {
+				expect(taskItem.attributes('tabindex')).toBeUndefined();
+				expect(taskItem.attributes('data-selected')).toBe('false');
+			}
 
-			await taskItems[0].trigger('keydown', { key: 'ArrowDown' });
-			await nextTick();
+			await list.trigger('keydown', { key: 'ArrowDown' });
+			expect(taskItems[0].attributes('data-selected')).toBe('true');
+			expect(document.activeElement).toBe(list.element);
+
+			await list.trigger('keydown', { key: 'ArrowDown' });
 			expect(taskItems[0].attributes('data-selected')).toBe('false');
-			expect(taskItems[0].attributes('tabindex')).toBe('-1');
 			expect(taskItems[1].attributes('data-selected')).toBe('true');
-			expect(document.activeElement).toBe(taskItems[1].element);
+			expect(document.activeElement).toBe(list.element);
 
-			await taskItems[1].trigger('keydown', { key: 'Enter' });
+			await list.trigger('keydown', { key: 'Enter' });
 			expect(wrapper.emitted('action')?.[0]).toEqual([localTasks[1]]);
 
-			await taskItems[1].trigger('keydown', { key: 'ArrowUp' });
-			await nextTick();
-			expect(document.activeElement).toBe(taskItems[0].element);
-			await taskItems[0].trigger('keydown', { key: ' ' });
+			await list.trigger('keydown', { key: 'ArrowUp' });
+			expect(taskItems[0].attributes('data-selected')).toBe('true');
+			expect(taskItems[1].attributes('data-selected')).toBe('false');
+			expect(document.activeElement).toBe(list.element);
+			await list.trigger('keydown', { key: ' ' });
 			expect(wrapper.emitted('action')?.[1]).toEqual([localTasks[0]]);
+		} finally {
+			wrapper.unmount();
+		}
+	});
+
+	it('exposes the active task through the named menu without selection attributes', async () => {
+		const localTasks: Array<SetupTask<SetupTaskId>> = [{ ...tasks[0], state: 'todo' }, tasks[2]];
+		const wrapper = mount(AgentSetupTasks, { props: { tasks: localTasks } });
+		try {
+			await wrapper.get('button').trigger('click');
+			const menu = wrapper.get('[role="menu"]');
+			const items = wrapper.findAll('[role="menuitem"]');
+			expect(menu.attributes('aria-label')).toBe('agents.builder.setupTasks.title');
+			expect(menu.attributes('tabindex')).toBe('-1');
+			expect(menu.attributes('aria-activedescendant')).toBeUndefined();
+			const ids = items.map((item) => item.attributes('id'));
+			expect(ids.every((id) => Boolean(id))).toBe(true);
+			expect(new Set(ids).size).toBe(items.length);
+			for (const item of items) {
+				expect(item.attributes('aria-selected')).toBeUndefined();
+				expect(item.attributes('aria-current')).toBeUndefined();
+			}
+
+			await menu.trigger('keydown', { key: 'ArrowDown' });
+			expect(menu.attributes('aria-activedescendant')).toBe(ids[0]);
+			await menu.trigger('keydown', { key: 'ArrowDown' });
+			expect(menu.attributes('aria-activedescendant')).toBe(ids[1]);
+			await menu.trigger('keydown', { key: 'ArrowUp' });
+			expect(menu.attributes('aria-activedescendant')).toBe(ids[0]);
+			await items[1].trigger('mouseenter');
+			expect(menu.attributes('aria-activedescendant')).toBe(ids[1]);
+
+			await wrapper.setProps({ tasks: [{ ...localTasks[0], state: 'complete' }] });
+			expect(menu.attributes('aria-activedescendant')).toBeUndefined();
 		} finally {
 			wrapper.unmount();
 		}
@@ -109,7 +152,7 @@ describe('AgentSetupTasks', () => {
 		const wrapper = mount(AgentSetupTasks, { props: { tasks } });
 		await wrapper.get('button').trigger('click');
 		const event = new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true });
-		wrapper.get('[role="button"]').element.dispatchEvent(event);
+		wrapper.get('[role="menuitem"]').element.dispatchEvent(event);
 		expect(event.defaultPrevented).toBe(false);
 	});
 
