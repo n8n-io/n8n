@@ -43,6 +43,13 @@ import type { NodeTypes } from '@/node-types';
 import type { PostHogClient } from '@/posthog';
 import type { OwnershipService } from '@/services/ownership.service';
 import type { Telemetry } from '@/telemetry';
+import { getCpuLimit, getMemoryLimit } from '@/utils/container-limits';
+
+// The runner may itself run in a container with limits.
+vi.mock('@/utils/container-limits', () => ({
+	getMemoryLimit: vi.fn(() => null),
+	getCpuLimit: vi.fn(() => null),
+}));
 
 const flushPromises = async () => await new Promise((resolve) => setImmediate(resolve));
 
@@ -3540,6 +3547,20 @@ describe('TelemetryEventRelay', () => {
 			);
 		});
 
+		it('should report the memory and CPU limits in KiB and CPUs on `server-started`', async () => {
+			vi.mocked(getMemoryLimit).mockReturnValueOnce(1024 ** 3);
+			vi.mocked(getCpuLimit).mockReturnValueOnce(0.5);
+
+			eventService.emit('server-started');
+			await flushPromises();
+
+			expect(telemetry.identify).toHaveBeenCalledWith(
+				expect.objectContaining({
+					system_info: expect.objectContaining({ memory_limit: 1024 ** 2, cpu_limit: 0.5 }),
+				}),
+			);
+		});
+
 		it('should leave out the Kubernetes kind outside Kubernetes', async () => {
 			vi.stubEnv('ECS_CONTAINER_METADATA_URI_V4', 'http://169.254.170.2/v4/abc');
 
@@ -3602,6 +3623,8 @@ describe('TelemetryEventRelay', () => {
 					system_info: {
 						is_docker: false,
 						runtime: 'other',
+						memory_limit: null,
+						cpu_limit: null,
 						cpus: expect.objectContaining({
 							count: expect.any(Number),
 							model: expect.any(String),
