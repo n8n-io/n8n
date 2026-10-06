@@ -164,7 +164,10 @@ async function openEditModal(item: HubSkillListItem) {
 			skillId: detail.id,
 			existingSkillNames: [],
 			onConfirm: ({ skill }) => void onSave(detail.id, skill, detail.skillHash),
-			...(detail.canDelete ? { onRemove: (id: string) => void onDelete(id, detail.name) } : {}),
+			// Remove is offered only when the backend would accept it: a used skill cannot go.
+			...(detail.canDelete && detail.usedByAgents === 0
+				? { onRemove: (id: string) => void onDelete(id, detail.name) }
+				: {}),
 		});
 	} catch (error) {
 		showError(error, i18n.baseText('settings.context.skills.error.load'));

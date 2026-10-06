@@ -32,6 +32,19 @@ function onRowClick(_event: MouseEvent, payload: { item: HubSkillListItem }) {
 	emit('open', payload.item);
 }
 
+/** The backend refuses to delete a used skill, so the button is off before the user tries. */
+function canDeleteNow(skill: HubSkillListItem) {
+	return skill.canDelete && skill.usedByAgents === 0;
+}
+
+function deleteHint(skill: HubSkillListItem) {
+	if (!skill.canDelete) return readOnlyHint.value;
+	return i18n.baseText('settings.context.skills.delete.inUse.tooltip', {
+		interpolate: { count: skill.usedByAgents },
+		adjustToNumber: skill.usedByAgents,
+	});
+}
+
 function usedByLabel(skill: HubSkillListItem) {
 	if (skill.usedByAgents === 0) return i18n.baseText('settings.context.skills.usedBy.none');
 	return i18n.baseText('settings.context.skills.usedBy.agents', {
@@ -129,12 +142,12 @@ const headers = computed<Array<TableHeader<HubSkillListItem>>>(() => [
 							/>
 						</span>
 					</N8nTooltip>
-					<N8nTooltip :disabled="item.canDelete" :content="readOnlyHint">
+					<N8nTooltip :disabled="canDeleteNow(item)" :content="deleteHint(item)">
 						<span>
 							<N8nButton
 								variant="outline"
 								size="small"
-								:disabled="!item.canDelete"
+								:disabled="!canDeleteNow(item)"
 								:label="i18n.baseText('settings.context.skills.actions.delete')"
 								data-test-id="skill-delete-button"
 								@click="emit('delete', item)"
