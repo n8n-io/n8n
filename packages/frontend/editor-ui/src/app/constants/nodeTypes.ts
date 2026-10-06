@@ -1,5 +1,3 @@
-import { AGENTS_MODULE_NAME } from '@/features/agents/constants';
-import { DATA_TABLE_MODULE_NAME } from '@/features/core/dataTable/constants';
 import { MICROSOFT_AGENT365_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 
 export const BAMBOO_HR_NODE_TYPE = 'n8n-nodes-base.bambooHr';
@@ -141,11 +139,6 @@ export const NODES_USING_CODE_NODE_EDITOR = [
 	AI_CODE_NODE_TYPE,
 	AI_TRANSFORM_NODE_TYPE,
 ];
-export const MODULE_ENABLED_NODES = [
-	...DATA_TABLE_NODES.map((nodeType) => ({ nodeType, module: DATA_TABLE_MODULE_NAME })),
-	{ nodeType: MESSAGE_AN_AGENT_NODE_TYPE, module: AGENTS_MODULE_NAME },
-];
-
 export const NODE_POSITION_CONFLICT_ALLOWLIST = [STICKY_NODE_TYPE];
 
 export const PIN_DATA_NODE_TYPES_DENYLIST = [SPLIT_IN_BATCHES_NODE_TYPE, STICKY_NODE_TYPE];

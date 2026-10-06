@@ -4,7 +4,7 @@ import '@/zod-alias-support';
 import { Logger } from '@n8n/backend-common';
 import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
-import { DbConnection, SettingsRepository } from '@n8n/db';
+import { DbConnection, ScheduledJobRepository, SettingsRepository } from '@n8n/db';
 import { SystemTaskMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import type { NextFunction, Request, Response } from 'express';
@@ -35,7 +35,6 @@ import { ApiKeyAuthStrategy } from '@/services/api-key-auth.strategy';
 import { ExecutionsPruningService } from '@/services/pruning/executions-pruning.service';
 import { WorkflowHistoryCompactionService } from '@/services/pruning/workflow-history-compaction.service';
 import { SessionCookieAuthStrategy } from '@/services/session-cookie-auth.strategy';
-import { WorkflowStatisticsRollupService } from '@/services/workflow-statistics-rollup.service';
 import { TestWebhooks } from '@/webhooks/test-webhooks';
 
 import { Start } from '../start';
@@ -85,12 +84,12 @@ describe('Start system task metrics', () => {
 		mockInstance(TestWebhooks);
 		mockInstance(ExecutionsPruningService);
 		mockInstance(WorkflowHistoryCompactionService);
-		mockInstance(WorkflowStatisticsRollupService);
 		mockInstance(EnqueuedExecutionRecoveryService);
 		mockInstance(DurableScheduler);
 		mockInstance(SystemTaskJobRegistrar);
 		mockInstance(SystemTaskScheduledJobOwner);
 		mockInstance(SettingsRepository, { findBy: async () => [] });
+		mockInstance(ScheduledJobRepository);
 		activeWorkflowManager = mockInstance(ActiveWorkflowManager);
 
 		// Keep the real system task collector. Other collectors are outside this test.

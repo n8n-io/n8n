@@ -1,3 +1,7 @@
+import {
+	OwnershipTransferHandlerRegistry,
+	type ProjectOwnershipTransferHandler,
+} from '@n8n/backend-services';
 import type { UserRepository } from '@n8n/db';
 import type { EntityManager } from '@n8n/typeorm';
 import { mock } from 'vitest-mock-extended';
@@ -7,8 +11,6 @@ import type { FolderService } from '@/services/folder.service';
 import type { OwnershipService } from '@/services/ownership.service';
 import type { WorkflowService } from '@/workflows/workflow.service';
 
-import { OwnershipTransferHandlerRegistry } from '../ownership-transfer-handler.registry';
-import type { ProjectOwnershipTransferHandler } from '../ownership-transfer-handler.registry';
 import { OwnershipTransferService } from '../ownership-transfer.service';
 
 describe('OwnershipTransferService', () => {
@@ -19,7 +21,7 @@ describe('OwnershipTransferService', () => {
 	const credentialsService = mock<CredentialsService>();
 	const folderService = mock<FolderService>();
 	const ownershipService = mock<OwnershipService>();
-	const handler = mock<ProjectOwnershipTransferHandler>();
+	const handler = mock<ProjectOwnershipTransferHandler<EntityManager>>();
 
 	let service: OwnershipTransferService;
 
@@ -31,7 +33,7 @@ describe('OwnershipTransferService', () => {
 		);
 		workflowService.transferAll.mockResolvedValue([]);
 
-		const transferHandlers = new OwnershipTransferHandlerRegistry();
+		const transferHandlers = new OwnershipTransferHandlerRegistry<EntityManager>();
 		transferHandlers.register(handler);
 
 		service = new OwnershipTransferService(

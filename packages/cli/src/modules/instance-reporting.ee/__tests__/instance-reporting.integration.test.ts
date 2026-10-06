@@ -12,20 +12,19 @@ import { LicenseMetricsRepository, SettingsRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { DateTime } from 'luxon';
 import { InstanceSettings } from 'n8n-core';
-import type { MockInstance } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import type { License } from '@/license';
-import { createCompactedInsightsEvent } from '@/modules/insights/database/entities/__tests__/db-utils';
-import { InsightsConfig } from '@/modules/insights/insights.config';
-import { InsightsService } from '@/modules/insights/insights.service';
+import { createCompactedInsightsEvent } from '@n8n/backend-module-insights/testing';
+import { InsightsConfig, InsightsService } from '@n8n/backend-module-insights';
+import { packagedModules } from '@/modules/modules.manifest';
 
 import type {
 	InstanceMonitoringReport,
 	InstanceReportDataPoint,
 } from '../database/entities/instance-monitoring-report';
 import { InstanceMonitoringReportRepository } from '../database/repositories/instance-monitoring-report.repository';
-import { InstanceReportingScheduler } from '../instance-reporting-scheduler.service';
+import { InstanceReportingTask } from '../instance-reporting.task';
 import { InstanceReportingSettingsService } from '../instance-reporting-settings.service';
 import { InstanceReportingConfig } from '../instance-reporting.config';
 import {
@@ -48,9 +47,6 @@ const NEXT_SLOT = '2026-03-27T07:42:00.000Z';
 const MAX_ATTEMPTS = 3;
 const RETRY_DELAY_MS = 5 * Time.minutes.toMilliseconds;
 
-/** Room for the fake clock's drift while `vi.waitFor` polls. */
-const CLOCK_TOLERANCE_MS = 10 * Time.seconds.toMilliseconds;
-
 interface ReportPayload {
 	batchId: string;
 	dataPoints: InstanceReportDataPoint[];
@@ -66,27 +62,16 @@ const accepted = (): Route => ({ method: 'POST', pathname: INSTANCE_REPORTS_PATH
 
 const tooLarge = (): Route => ({ method: 'POST', pathname: INSTANCE_REPORTS_PATH, status: 413 });
 
-/** The private arming hook, spied on so a test can tell when a pass has finished. */
-type SchedulerInternals = { scheduleNext(delayMs: number): void };
-
 interface Harness {
-	scheduler: InstanceReportingScheduler;
-	/** Every resolved request the fake receiver saw. */
+	task: InstanceReportingTask;
 	httpRequest: ReturnType<typeof createFakeOutboundHttp>['httpRequest'];
-	/**
-	 * Called once a pass has finished its last database write, so its call count
-	 * marks "pass over, next timer armed". Pending fake timers cannot serve as
-	 * that signal: the SQLite pool arms a transient timeout for every query.
-	 */
-	scheduleNext: MockInstance<SchedulerInternals['scheduleNext']>;
 }
 
 describe('instance reporting retries', () => {
 	let repository: InstanceMonitoringReportRepository;
-	let schedulers: InstanceReportingScheduler[] = [];
 
 	beforeAll(async () => {
-		await testModules.loadModules(['insights', 'instance-reporting']);
+		await testModules.loadModules(['insights', 'instance-reporting'], packagedModules);
 		await testDb.init();
 
 		repository = Container.get(InstanceMonitoringReportRepository);
@@ -113,15 +98,12 @@ describe('instance reporting retries', () => {
 			{},
 		);
 
-		// Only what the scheduler uses. `setImmediate` and `nextTick` stay real so
-		// the database driver's I/O still completes under the fake clock.
-		vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
+		vi.useFakeTimers({ toFake: ['Date'] });
 		vi.setSystemTime(new Date(AFTER_SLOT));
+		vi.spyOn(repository, 'readDbNow').mockImplementation(async () => new Date());
 	});
 
 	afterEach(() => {
-		for (const scheduler of schedulers) scheduler.shutdown();
-		schedulers = [];
 		vi.useRealTimers();
 		vi.restoreAllMocks();
 	});
@@ -141,6 +123,7 @@ describe('instance reporting retries', () => {
 		const service = new InstanceReportingService(
 			Container.get(InstanceReportingConfig),
 			repository,
+			Container.get(InstanceReportingSettingsService),
 			Container.get(InsightsService),
 			Container.get(InsightsConfig),
 			instanceSettings,
@@ -150,34 +133,9 @@ describe('instance reporting retries', () => {
 			eventService,
 			outboundHttp,
 		);
-		const scheduler = new InstanceReportingScheduler(
-			service,
-			repository,
-			Container.get(InstanceReportingSettingsService),
-			instanceSettings,
-			eventService,
-			mockLogger(),
-		);
-		schedulers.push(scheduler);
+		const task = new InstanceReportingTask(service);
 
-		const scheduleNext = vi.spyOn(scheduler as unknown as SchedulerInternals, 'scheduleNext');
-
-		return { scheduler, httpRequest, scheduleNext };
-	}
-
-	/** Wait until the scheduler has completed `passes` passes and armed the next one. */
-	async function armed({ scheduleNext }: Harness, passes: number) {
-		await vi.waitFor(() => expect(scheduleNext).toHaveBeenCalledTimes(passes), {
-			timeout: 5_000,
-		});
-	}
-
-	/** Assert the delay the scheduler last armed lands on `slot`. */
-	function expectArmedFor({ scheduleNext }: Harness, slot: string) {
-		const delay = scheduleNext.mock.lastCall?.[0] ?? Number.NaN;
-		const target = new Date(slot).getTime();
-		expect(Date.now() + delay).toBeGreaterThanOrEqual(target - CLOCK_TOLERANCE_MS);
-		expect(Date.now() + delay).toBeLessThanOrEqual(target + CLOCK_TOLERANCE_MS);
+		return { task, httpRequest };
 	}
 
 	function sentPayload({ httpRequest }: Harness, index: number): ReportPayload {
@@ -208,6 +166,8 @@ describe('instance reporting retries', () => {
 				{ kind: 'daily', name: 'billableExecutions', value: 3, date: day },
 			],
 		);
+		const claimedAt = await repository.claimForSend(report.id);
+		if (!claimedAt) throw new Error('Could not claim the report');
 		await repository.markDelivered(report.id, new Date());
 		return report;
 	}
@@ -270,8 +230,7 @@ describe('instance reporting retries', () => {
 	test('delivers on the third attempt once the receiver is reachable again', async () => {
 		const harness = makeHarness([unreachable(), unreachable(), accepted()]);
 
-		harness.scheduler.start();
-		await armed(harness, 1);
+		await expect(harness.task.run()).rejects.toThrow();
 
 		expect(harness.httpRequest).toHaveBeenCalledTimes(1);
 		await expect(repository.count()).resolves.toBe(1);
@@ -279,20 +238,18 @@ describe('instance reporting retries', () => {
 		expect(report).toMatchObject({ status: 'pending', attempts: 1 });
 		expect(report.lastError).toEqual(expect.any(String));
 		expect(report.lastAttemptAt).toEqual(expect.any(Date));
-		expect(harness.scheduleNext).toHaveBeenLastCalledWith(RETRY_DELAY_MS);
 
-		await vi.advanceTimersByTimeAsync(RETRY_DELAY_MS);
-		await armed(harness, 2);
+		vi.setSystemTime(Date.now() + RETRY_DELAY_MS);
+		await expect(harness.task.run()).rejects.toThrow();
 
 		expect(harness.httpRequest).toHaveBeenCalledTimes(2);
 		await expect(repository.findOneByOrFail({ id: report.id })).resolves.toMatchObject({
 			status: 'pending',
 			attempts: 2,
 		});
-		expect(harness.scheduleNext).toHaveBeenLastCalledWith(RETRY_DELAY_MS);
 
-		await vi.advanceTimersByTimeAsync(RETRY_DELAY_MS);
-		await armed(harness, 3);
+		vi.setSystemTime(Date.now() + RETRY_DELAY_MS);
+		await harness.task.run();
 
 		expect(harness.httpRequest).toHaveBeenCalledTimes(3);
 		await expect(repository.findOneByOrFail({ id: report.id })).resolves.toMatchObject({
@@ -310,10 +267,9 @@ describe('instance reporting retries', () => {
 		}
 
 		// The day is settled, so the scheduler now waits for tomorrow's slot.
-		expectArmedFor(harness, NEXT_SLOT);
-		await vi.advanceTimersByTimeAsync(Time.hours.toMilliseconds);
+		vi.setSystemTime(Date.now() + Time.hours.toMilliseconds);
+		await harness.task.run();
 		expect(harness.httpRequest).toHaveBeenCalledTimes(3);
-		expect(harness.scheduleNext).toHaveBeenCalledTimes(3);
 		await expect(repository.count()).resolves.toBe(1);
 	});
 
@@ -324,12 +280,11 @@ describe('instance reporting retries', () => {
 
 		const harness = makeHarness([unreachable(), unreachable(), unreachable(), accepted()]);
 
-		harness.scheduler.start();
-		await armed(harness, 1);
-		await vi.advanceTimersByTimeAsync(RETRY_DELAY_MS);
-		await armed(harness, 2);
-		await vi.advanceTimersByTimeAsync(RETRY_DELAY_MS);
-		await armed(harness, 3);
+		await expect(harness.task.run()).rejects.toThrow();
+		vi.setSystemTime(Date.now() + RETRY_DELAY_MS);
+		await expect(harness.task.run()).rejects.toThrow();
+		vi.setSystemTime(Date.now() + RETRY_DELAY_MS);
+		await expect(harness.task.run()).rejects.toThrow();
 
 		expect(harness.httpRequest).toHaveBeenCalledTimes(MAX_ATTEMPTS);
 		const [abandoned] = await repository.find({ where: { status: 'skipped_after_max_retries' } });
@@ -337,13 +292,12 @@ describe('instance reporting retries', () => {
 		expect(dailyPoints(sentPayload(harness, 0))).toEqual([{ date: '2026-03-25', value: 5 }]);
 
 		// The next pass finds the day settled and moves on to tomorrow's slot.
-		await vi.advanceTimersByTimeAsync(RETRY_DELAY_MS);
-		await armed(harness, 4);
+		vi.setSystemTime(Date.now() + RETRY_DELAY_MS);
+		await harness.task.run();
 		expect(harness.httpRequest).toHaveBeenCalledTimes(MAX_ATTEMPTS);
-		expectArmedFor(harness, NEXT_SLOT);
 
-		await vi.advanceTimersByTimeAsync(new Date(NEXT_SLOT).getTime() - Date.now());
-		await armed(harness, 5);
+		vi.setSystemTime(new Date(NEXT_SLOT));
+		await harness.task.run();
 
 		expect(harness.httpRequest).toHaveBeenCalledTimes(MAX_ATTEMPTS + 1);
 		const backfill = sentPayload(harness, MAX_ATTEMPTS);
@@ -367,19 +321,18 @@ describe('instance reporting retries', () => {
 
 		const harness = makeHarness([tooLarge(), accepted()]);
 
-		harness.scheduler.start();
-		await armed(harness, 1);
+		await harness.task.run();
 
 		expect(harness.httpRequest).toHaveBeenCalledTimes(1);
 		const [rejected] = await repository.find({ where: { status: 'skipped_after_max_retries' } });
 		expect(rejected).toMatchObject({ attempts: 1 });
-		expectArmedFor(harness, NEXT_SLOT);
 
-		await vi.advanceTimersByTimeAsync(RETRY_DELAY_MS);
+		vi.setSystemTime(Date.now() + RETRY_DELAY_MS);
+		await harness.task.run();
 		expect(harness.httpRequest).toHaveBeenCalledTimes(1);
 
-		await vi.advanceTimersByTimeAsync(new Date(NEXT_SLOT).getTime() - Date.now());
-		await armed(harness, 2);
+		vi.setSystemTime(new Date(NEXT_SLOT));
+		await harness.task.run();
 
 		expect(harness.httpRequest).toHaveBeenCalledTimes(2);
 		const backfill = sentPayload(harness, 1);
@@ -397,8 +350,7 @@ describe('instance reporting retries', () => {
 		await seedDailyExecutions({ '2026-03-23': 4, '2026-03-25': 9 });
 
 		const harness = makeHarness([accepted()]);
-		harness.scheduler.start();
-		await armed(harness, 1);
+		await harness.task.run();
 
 		expect(harness.httpRequest).toHaveBeenCalledTimes(1);
 		const payload = sentPayload(harness, 0);
@@ -421,8 +373,7 @@ describe('instance reporting retries', () => {
 		await seedDailyExecutions({ '2026-01-10': 4, '2026-02-24': 6, '2026-03-25': 8 });
 
 		const harness = makeHarness([accepted()]);
-		harness.scheduler.start();
-		await armed(harness, 1);
+		await harness.task.run();
 
 		expect(harness.httpRequest).toHaveBeenCalledTimes(1);
 		const points = dailyPoints(sentPayload(harness, 0));
@@ -460,8 +411,7 @@ describe('instance reporting retries', () => {
 		});
 
 		const harness = makeHarness([accepted()]);
-		harness.scheduler.start();
-		await armed(harness, 1);
+		await harness.task.run();
 
 		const points = dailyPoints(sentPayload(harness, 0));
 		// From 29 days back to yesterday. 02-24 falls in the one day of margin.
@@ -492,18 +442,16 @@ describe('instance reporting retries', () => {
 			...Array.from({ length: 3 * MAX_ATTEMPTS }, unreachable),
 			accepted(),
 		]);
-		harness.scheduler.start();
 
-		let passes = 0;
 		for (const nextSlot of [
 			'2026-03-27T07:42:00.000Z',
 			'2026-03-28T07:42:00.000Z',
 			'2026-03-29T07:42:00.000Z',
 		]) {
-			await armed(harness, ++passes);
+			await expect(harness.task.run()).rejects.toThrow();
 			for (let attempt = 1; attempt < MAX_ATTEMPTS; attempt++) {
-				await vi.advanceTimersByTimeAsync(RETRY_DELAY_MS);
-				await armed(harness, ++passes);
+				vi.setSystemTime(Date.now() + RETRY_DELAY_MS);
+				await expect(harness.task.run()).rejects.toThrow();
 			}
 
 			const [skipped] = await repository.find({
@@ -513,12 +461,11 @@ describe('instance reporting retries', () => {
 			});
 			expect(skipped.attempts).toBe(MAX_ATTEMPTS);
 
-			await vi.advanceTimersByTimeAsync(RETRY_DELAY_MS);
-			await armed(harness, ++passes);
-			expectArmedFor(harness, nextSlot);
-			await vi.advanceTimersByTimeAsync(new Date(nextSlot).getTime() - Date.now());
+			vi.setSystemTime(Date.now() + RETRY_DELAY_MS);
+			await harness.task.run();
+			vi.setSystemTime(new Date(nextSlot));
 		}
-		await armed(harness, ++passes);
+		await harness.task.run();
 
 		expect(harness.httpRequest).toHaveBeenCalledTimes(3 * MAX_ATTEMPTS + 1);
 		// Every report started at the first day with data, not at its own yesterday.
@@ -547,8 +494,7 @@ describe('instance reporting retries', () => {
 	test('resumes the retry budget and the remaining wait after a restart', async () => {
 		const before = makeHarness([unreachable()]);
 
-		before.scheduler.start();
-		await armed(before, 1);
+		await expect(before.task.run()).rejects.toThrow();
 
 		expect(before.httpRequest).toHaveBeenCalledTimes(1);
 		await expect(repository.count()).resolves.toBe(1);
@@ -556,23 +502,15 @@ describe('instance reporting retries', () => {
 		expect(report).toMatchObject({ status: 'pending', attempts: 1 });
 
 		// The process dies two minutes into the five-minute wait.
-		before.scheduler.shutdown();
-		await vi.advanceTimersByTimeAsync(2 * Time.minutes.toMilliseconds);
+		vi.setSystemTime(Date.now() + 2 * Time.minutes.toMilliseconds);
 
 		const after = makeHarness([accepted()]);
-		after.scheduler.start();
-		await armed(after, 1);
+		await after.task.run();
 
 		// Held back by the row's `lastAttemptAt` rather than attempting at once.
 		expect(after.httpRequest).not.toHaveBeenCalled();
-		// Three of the five minutes remain, less the fake clock's drift.
-		const [remainingWait] = after.scheduleNext.mock.calls[0];
-		const expectedWait = RETRY_DELAY_MS - 2 * Time.minutes.toMilliseconds;
-		expect(remainingWait).toBeGreaterThanOrEqual(expectedWait - CLOCK_TOLERANCE_MS);
-		expect(remainingWait).toBeLessThanOrEqual(expectedWait);
-
-		await vi.advanceTimersByTimeAsync(remainingWait);
-		await armed(after, 2);
+		vi.setSystemTime(Date.now() + 3 * Time.minutes.toMilliseconds);
+		await after.task.run();
 
 		expect(after.httpRequest).toHaveBeenCalledTimes(1);
 		expect(sentPayload(after, 0).batchId).toBe(report.id);
@@ -594,8 +532,7 @@ describe('instance reporting retries', () => {
 		});
 
 		const harness = makeHarness([accepted()]);
-		harness.scheduler.start();
-		await armed(harness, 1);
+		await harness.task.run();
 
 		// The retry after midnight resends the same row. It does not make a new row.
 		expect(harness.httpRequest).toHaveBeenCalledTimes(1);
@@ -608,7 +545,6 @@ describe('instance reporting retries', () => {
 			attempts: 2,
 		});
 		await expect(repository.count()).resolves.toBe(1);
-		expectArmedFor(harness, '2026-03-27T23:56:00.000Z');
 	});
 
 	test('keeps retrying across the boundary, then backfills the day after it is skipped', async () => {
@@ -624,10 +560,9 @@ describe('instance reporting retries', () => {
 		});
 
 		const harness = makeHarness([unreachable(), unreachable(), accepted()]);
-		harness.scheduler.start();
-		await armed(harness, 1);
-		await vi.advanceTimersByTimeAsync(RETRY_DELAY_MS);
-		await armed(harness, 2);
+		await expect(harness.task.run()).rejects.toThrow();
+		vi.setSystemTime(Date.now() + RETRY_DELAY_MS);
+		await expect(harness.task.run()).rejects.toThrow();
 
 		// Two more attempts run after midnight. Then the row stops.
 		expect(harness.httpRequest).toHaveBeenCalledTimes(2);
@@ -637,12 +572,11 @@ describe('instance reporting retries', () => {
 		});
 
 		// The next pass finds the day settled. It waits for the next slot.
-		await vi.advanceTimersByTimeAsync(RETRY_DELAY_MS);
-		await armed(harness, 3);
-		expectArmedFor(harness, '2026-03-27T23:56:00.000Z');
+		vi.setSystemTime(Date.now() + RETRY_DELAY_MS);
+		await harness.task.run();
 
-		await vi.advanceTimersByTimeAsync(new Date('2026-03-27T23:56:00.000Z').getTime() - Date.now());
-		await armed(harness, 4);
+		vi.setSystemTime(new Date('2026-03-27T23:56:00.000Z'));
+		await harness.task.run();
 
 		expect(harness.httpRequest).toHaveBeenCalledTimes(3);
 		const backfill = sentPayload(harness, 2);
@@ -668,8 +602,7 @@ describe('instance reporting retries', () => {
 		});
 
 		const harness = makeHarness([accepted()]);
-		harness.scheduler.start();
-		await armed(harness, 1);
+		await harness.task.run();
 
 		// The latest row is delivered. So the code sends nothing and leaves the orphan.
 		expect(harness.httpRequest).not.toHaveBeenCalled();
@@ -704,8 +637,7 @@ describe('instance reporting retries', () => {
 		vi.setSystemTime(new Date('2026-03-29T20:59:00.000Z'));
 
 		const harness = makeHarness([accepted()]);
-		harness.scheduler.start();
-		await armed(harness, 1);
+		await harness.task.run();
 
 		// Four days is past its own next slot, so it is given up, not resent — even
 		// though the time of day is still before tonight's slot.
@@ -713,11 +645,10 @@ describe('instance reporting retries', () => {
 		await expect(repository.findOneByOrFail({ id: stale.id })).resolves.toMatchObject({
 			status: 'skipped_after_max_retries',
 		});
-		expectArmedFor(harness, '2026-03-29T23:58:00.000Z');
 
 		// Tonight's slot creates one fresh report for the whole gap.
-		await vi.advanceTimersByTimeAsync(new Date('2026-03-29T23:58:00.000Z').getTime() - Date.now());
-		await armed(harness, 2);
+		vi.setSystemTime(new Date('2026-03-29T23:58:00.000Z'));
+		await harness.task.run();
 
 		const backfill = sentPayload(harness, 0);
 		expect(backfill.batchId).not.toBe(stale.id);
@@ -734,7 +665,7 @@ describe('instance reporting retries', () => {
 		expect(new Set(dates).size).toBe(dates.length);
 	});
 
-	test('caps the retry to the slot, so a failure at the end of the day backfills the same night', async () => {
+	test('expires the pending row at its next slot, even during the retry delay', async () => {
 		await setReportTime('23:58');
 
 		await seedDeliveredReport('2026-03-23');
@@ -752,18 +683,16 @@ describe('instance reporting retries', () => {
 		vi.setSystemTime(new Date('2026-03-26T23:56:00.000Z'));
 
 		const harness = makeHarness([unreachable(), accepted()]);
-		harness.scheduler.start();
-		await armed(harness, 1);
+		await expect(harness.task.run()).rejects.toThrow();
 
-		// The resume fails; the next attempt is capped to the slot, two minutes away,
-		// rather than a full five minutes that would cross midnight.
+		// The resume fails two minutes before the next slot.
 		expect(harness.httpRequest).toHaveBeenCalledTimes(1);
 		expect(sentPayload(harness, 0).batchId).toBe(stale.id);
 
 		// Two minutes later, at the slot, the row is given up and a fresh report goes
 		// out the same night — not deferred to the next day's slot.
-		await vi.advanceTimersByTimeAsync(2 * Time.minutes.toMilliseconds);
-		await armed(harness, 2);
+		vi.setSystemTime(Date.now() + 2 * Time.minutes.toMilliseconds);
+		await harness.task.run();
 
 		expect(harness.httpRequest).toHaveBeenCalledTimes(2);
 		await expect(repository.findOneByOrFail({ id: stale.id })).resolves.toMatchObject({
@@ -775,7 +704,6 @@ describe('instance reporting retries', () => {
 			{ date: '2026-03-24', value: 4 },
 			{ date: '2026-03-25', value: 6 },
 		]);
-		expectArmedFor(harness, '2026-03-27T23:58:00.000Z');
 	});
 
 	test('skips a stale row and sends a fresh report in the same pass, after the slot', async () => {
@@ -795,8 +723,7 @@ describe('instance reporting retries', () => {
 		vi.setSystemTime(new Date('2026-03-27T23:59:00.000Z'));
 
 		const harness = makeHarness([accepted()]);
-		harness.scheduler.start();
-		await armed(harness, 1);
+		await harness.task.run();
 
 		// The first pass gives up the stale row and creates the new report at once.
 		expect(harness.httpRequest).toHaveBeenCalledTimes(1);
@@ -815,7 +742,7 @@ describe('instance reporting retries', () => {
 		expect(new Set(dates).size).toBe(dates.length);
 	});
 
-	test('retries after the delay and sends the report of a process that created it first and stopped', async () => {
+	test('resumes the report of a process that created it first and stopped', async () => {
 		const otherPoints: InstanceReportDataPoint[] = [
 			{ kind: 'cumulative', name: 'billableExecutions', value: 999 },
 		];
@@ -830,14 +757,12 @@ describe('instance reporting retries', () => {
 		});
 
 		const harness = makeHarness([accepted()]);
-		harness.scheduler.start();
-		await armed(harness, 1);
+		await harness.task.run();
 
 		expect(harness.httpRequest).not.toHaveBeenCalled();
-		expect(harness.scheduleNext).toHaveBeenLastCalledWith(RETRY_DELAY_MS);
 
-		await vi.advanceTimersByTimeAsync(RETRY_DELAY_MS);
-		await armed(harness, 2);
+		vi.setSystemTime(Date.now() + RETRY_DELAY_MS);
+		await harness.task.run();
 
 		expect(harness.httpRequest).toHaveBeenCalledTimes(1);
 		expect(sentPayload(harness, 0)).toMatchObject({ batchId: other?.id, dataPoints: otherPoints });

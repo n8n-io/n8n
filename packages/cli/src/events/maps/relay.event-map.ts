@@ -269,6 +269,11 @@ export type RelayEventMap = {
 		versionDescription?: string | null;
 	};
 
+	/** A source-control pull wrote a workflow, which happens outside the save path. */
+	'workflow-imported': {
+		workflowId: string;
+	};
+
 	// #endregion
 
 	// #region Node

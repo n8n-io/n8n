@@ -32,16 +32,13 @@ import {
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { isCredSharingEnabled } from '@/constants/credential-sharing';
-import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
+import { CredentialsFinderService } from '@n8n/backend-services';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { EnterpriseCredentialsService } from '@/credentials/credentials.service.ee';
 import { FolderNotFoundError } from '@/errors/folder-not-found.error';
 import { BadRequestError, NotFoundError } from '@n8n/errors';
 import { TransferWorkflowError } from '@/errors/response-errors/transfer-workflow.error';
-import {
-	AGENT_CONFIG_ID_KEYS,
-	extractAgentCredentialIds,
-} from '@/modules/agents/utils/extract-agent-credential-ids';
+import { extractAgentCredentialIds } from '@/modules/agents/utils/extract-agent-credential-ids';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { ProjectService } from '@/services/project.service.ee';
@@ -386,8 +383,8 @@ export class EnterpriseWorkflowService {
 			}
 
 			const inlineAgent = this.parseInlineAgent(current.parameters?.inlineAgent);
-			if (inlineAgent) {
-				ids.push(...extractAgentCredentialIds(inlineAgent, AGENT_CONFIG_ID_KEYS));
+			if (isRecord(inlineAgent)) {
+				ids.push(...extractAgentCredentialIds(inlineAgent.config));
 				stack.push(...this.getAgentToolNodes(inlineAgent));
 			}
 		}
@@ -821,7 +818,7 @@ export class EnterpriseWorkflowService {
 		credentialIds: string[],
 		projectId: string,
 	) {
-		await this.workflowRepository.manager.transaction(async (trx) => {
+		await this.workflowRepository.runInTransaction({}, async (trx, ctx) => {
 			let credentialIdsToShare: string[];
 
 			if (hasGlobalScope(user, ['credential:share'], { mode: 'allOf' })) {
@@ -831,7 +828,7 @@ export class EnterpriseWorkflowService {
 					await this.credentialsFinderService.getCredentialIdsByUserAndRole(
 						[user.id],
 						{ scopes: ['credential:share'] },
-						trx,
+						ctx,
 					),
 				);
 				credentialIdsToShare = credentialIds.filter((id) => accessibleIds.has(id));

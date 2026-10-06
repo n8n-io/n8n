@@ -15,7 +15,7 @@ import { WorkflowActivationError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import type { ActiveWorkflowManager } from '@/active-workflow-manager';
-import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
+import type { CredentialsFinderService } from '@n8n/backend-services';
 import type { CredentialsService } from '@/credentials/credentials.service';
 import type { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import type { OwnershipService } from '@/services/ownership.service';
@@ -480,6 +480,24 @@ describe('EnterpriseWorkflowService', () => {
 			);
 
 			expect(result.nodes[0]).toEqual(previous);
+		});
+
+		it('saves a read-only node switched to a credential the user can use, with its other edits', () => {
+			const previous = httpNode({ httpHeaderAuth: { id: 'foreign-cred', name: 'Theirs' } });
+			const previousVersion = { nodes: [previous] } as unknown as IWorkflowBase;
+			const switched = httpNode(
+				{ httpHeaderAuth: { id: 'team-cred', name: 'Team' } },
+				{ url: 'https://changed.test' },
+			);
+			const newVersion = { nodes: [switched] } as unknown as IWorkflowBase;
+
+			const result = service.validateWorkflowCredentialUsage(
+				newVersion,
+				previousVersion,
+				accessible,
+			);
+
+			expect(result.nodes[0]).toEqual(switched);
 		});
 
 		it('restores a read-only node whose unresolved credential is replaced', () => {

@@ -9,6 +9,7 @@ import { OperationalError, UserError } from 'n8n-workflow';
 import type { ExecuteAgentWorkflowContext, IRunExecutionData } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
+import type { AgentsSettingsService } from '../agents-settings.service';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
 import type { ExecutionLevelTracer } from '@/modules/otel/execution-level-tracer';
@@ -20,6 +21,7 @@ import type { AgentChatExecutionService } from '../agent-chat-execution.service'
 import type { AgentRunTracingService } from '../agent-run-tracing.service';
 import type { AgentRuntimeReconstructionService } from '../agent-runtime-reconstruction.service';
 import { AgentTurnExecutionService } from '../agent-turn-execution.service';
+import type { AgentToolApprovalService } from '../agent-tool-approval.service';
 import {
 	encodeAgentSandboxHostMetadata,
 	hashAgentSandboxPrincipal,
@@ -121,6 +123,7 @@ function makeRuntime(chunks: StreamChunk[] = [{ type: 'finish', finishReason: 's
 }
 
 function makeService() {
+	const settingsService = mock<AgentsSettingsService>();
 	const agentRepository = mock<AgentRepository>();
 	const executionService = mock<AgentExecutionService>();
 	executionService.getAbortSignal.mockReturnValue(new AbortController().signal);
@@ -155,6 +158,7 @@ function makeService() {
 			mock<AgentChatExecutionService>(),
 			mock<AgentMessageQueueService>(),
 			mock<AgentMessageSteeringService>(),
+			mock<AgentToolApprovalService>(),
 		),
 		telemetry,
 		credentialsService,
@@ -164,10 +168,12 @@ function makeService() {
 		nodeToolAiGatewayService,
 		aiConfigMock,
 		integrationMessageContextService,
+		settingsService,
 	);
 
 	return {
 		service,
+		settingsService,
 		agentRepository,
 		executionService,
 		telemetry,
@@ -183,6 +189,38 @@ describe('AgentWorkflowExecutionService', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 	});
+
+	it.each(['stored', 'inline'] as const)(
+		'rejects disabled %s workflow runs before reconstruction',
+		async (source) => {
+			const { service, settingsService, agentRepository, reconstructionService, executionService } =
+				makeService();
+			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+			reconstructionService.reconstructFromAgentEntity.mockRejectedValue(
+				new Error('runtime setup failed'),
+			);
+			reconstructionService.reconstructFromResolvedSource.mockRejectedValue(
+				new Error('runtime setup failed'),
+			);
+			settingsService.assertEnabled.mockRejectedValue(new UserError('Agents are disabled'));
+
+			const run =
+				source === 'stored'
+					? service.executeForWorkflow(agentId, 'hello', 'execution-1', 'thread-1', projectId)
+					: service.executeInlineForWorkflow(
+							{ config: { ...schema, credential: 'cred-1' } },
+							'hello',
+							'execution-1',
+							'thread-1',
+							projectId,
+						);
+
+			await expect(run).rejects.toThrow('Agents are disabled');
+			expect(reconstructionService.reconstructFromAgentEntity).not.toHaveBeenCalled();
+			expect(reconstructionService.reconstructFromResolvedSource).not.toHaveBeenCalled();
+			expect(executionService.startExecutionRecording).not.toHaveBeenCalled();
+		},
+	);
 
 	it('executes workflow runs with thread-scoped persistence and tool-call output', async () => {
 		const {
@@ -226,6 +264,10 @@ describe('AgentWorkflowExecutionService', () => {
 			userId,
 		);
 
+		expect(reconstructionService.reconstructFromAgentEntity.mock.calls[0][8]).toEqual({
+			supportsHitl: false,
+			allowPlanTools: false,
+		});
 		expect(runtime.agent.stream).toHaveBeenCalledWith(
 			[{ id: 'message-1', role: 'user', content: [{ type: 'text', text: 'hello' }] }],
 			expect.objectContaining({

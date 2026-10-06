@@ -49,7 +49,7 @@ import { useKeybindings } from '@/app/composables/useKeybindings';
 import KeyboardShortcutTooltip from '@/app/components/KeyboardShortcutTooltip.vue';
 import { MODAL_CONFIRM } from '@/app/constants';
 import { AGENT_EXTERNAL_UPDATE_NOTICE_DURATION, TIME } from '@/app/constants/durations';
-import { deepCopy } from 'n8n-workflow';
+import { copyAgentConfig } from '../utils/agentSectionEditor.utils';
 import {
 	getAgent,
 	createAgent,
@@ -62,6 +62,7 @@ import {
 	updateAgentSkill,
 } from '../composables/useAgentApi';
 import { useAgentIntegrationsCatalog } from '../composables/useAgentIntegrationsCatalog';
+import { useN8nChatChannel } from '../channels/n8nChat/useN8nChatChannel';
 import type {
 	AgentResource,
 	AgentContinueLoadedEvent,
@@ -79,7 +80,11 @@ import { useAgentSessionsStore } from '../agentSessions.store';
 import { useAgentEvalsStore } from '../agentEvals.store';
 import { useAgentBuilderSession } from '../composables/useAgentBuilderSession';
 import type { AgentExecutionThread } from '../composables/useAgentThreadsApi';
-import { useAgentConfigAutosave, type AutosaveResult } from '../composables/useAgentConfigAutosave';
+import {
+	useAgentConfigAutosave,
+	isPersistedSave,
+	type AutosaveResult,
+} from '../composables/useAgentConfigAutosave';
 import { useAgentBuilderMainTabs } from '../composables/useAgentBuilderMainTabs';
 import { useAgentCapabilitiesActions } from '../composables/useAgentCapabilitiesActions';
 import {
@@ -92,6 +97,7 @@ import {
 	AGENT_PREVIEW_VIEW,
 	AGENT_SESSION_DETAIL_VIEW,
 	AGENT_JSON_IMPORT_MODAL_KEY,
+	AGENT_DESCRIPTION_MODAL_KEY,
 	AGENT_VECTOR_STORES_MODAL_KEY,
 	ASSISTANT_THREAD_PARAM,
 	CONTINUE_SESSION_ID_PARAM,
@@ -137,7 +143,13 @@ import { useActivityDetection } from '@/app/composables/useActivityDetection';
 import { buildAgentChangeRequestPrompt } from '../utils/agent-change-request';
 import { buildAgentFixWithAssistantPrompt } from '../utils/fix-with-assistant';
 import { useFixWithAssistantCalloutDismissal } from '../composables/useFixWithAssistantCalloutDismissal';
+import {
+	increasedBudgetConfig,
+	raisedBudgetCaps,
+	type BudgetAmountField,
+} from '../utils/budget-config';
 import { hasBlockingIssues } from '../utils/validationIssues';
+import { isNotFoundError } from '../utils/errors';
 
 const props = withDefaults(
 	defineProps<{
@@ -710,6 +722,9 @@ const connectedTriggers = ref<string[]>([]);
 /** Bumped when the config changes outside the local editor (modal flows, version revert) so the Tasks panel reloads. */
 const tasksReloadKey = ref(0);
 const versionHistoryPanel = useTemplateRef<{ refresh: () => Promise<void> }>('versionHistoryPanel');
+const previewChatPage =
+	useTemplateRef<InstanceType<typeof AgentPreviewChatPage>>('previewChatPage');
+const previewDock = useTemplateRef<InstanceType<typeof AgentPreviewDock>>('previewDock');
 const executionsCount = computed(() => sessionsStore.threads.length);
 const { activeMainTab, mainTabOptions, executionsDescription } = useAgentBuilderMainTabs({
 	executionsCount,
@@ -726,6 +741,8 @@ const visibleMainTabOptions = computed(() =>
 );
 
 const { ensureLoaded: ensureIntegrationsCatalog } = useAgentIntegrationsCatalog();
+// Without n8n Chat in the known trigger types, the baseline drops its chip.
+const { withN8nChat } = useN8nChatChannel();
 
 const builderTelemetry = useAgentBuilderTelemetry({
 	agentId,
@@ -747,7 +764,7 @@ watch(
 	config,
 	(c) => {
 		if (c) {
-			localConfig.value = deepCopy(c);
+			localConfig.value = copyAgentConfig(c);
 			syncAgentIdentityFromConfig(c);
 		}
 	},
@@ -1514,21 +1531,56 @@ async function beforeRevertToPublished() {
 	await settleAutosave();
 }
 
-async function flushAutosave() {
+function cancelQueuedAutosaves() {
+	configAutosave.cancelPendingAutosave();
+	skillAutosave.cancelPendingAutosave();
+	mcpAutosave.cancelPendingAutosave();
+}
+
+/**
+ * Flushes every autosave loop. The result is the config save.
+ * Set `isolateSideSaveErrors` so a skill or MCP failure does not change it.
+ * Leave it unset when a failure must reject, so a route change can retry the edit.
+ */
+async function flushAutosaveLoops(isolateSideSaveErrors = false): Promise<AutosaveResult> {
 	// Locked means the AI or another client is mutating this agent right now —
 	// flushing a pending edit here would persist a stale full config over
 	// their writes.
 	if (isEditingLocked.value) {
-		configAutosave.cancelPendingAutosave();
-		skillAutosave.cancelPendingAutosave();
-		mcpAutosave.cancelPendingAutosave();
-		return;
+		cancelQueuedAutosaves();
+		return 'skipped';
 	}
-	await Promise.all([
+	const sideFlush = (flush: Promise<AutosaveResult>) =>
+		isolateSideSaveErrors
+			? flush.then(
+					() => undefined,
+					() => undefined,
+				)
+			: flush;
+	const [configResult] = await Promise.all([
 		configAutosave.flushAutosave(),
-		skillAutosave.flushAutosave(),
-		mcpAutosave.flushAutosave(),
+		sideFlush(skillAutosave.flushAutosave()),
+		sideFlush(mcpAutosave.flushAutosave()),
 	]);
+	return configResult;
+}
+
+async function flushAutosave(): Promise<AutosaveResult> {
+	return await flushAutosaveLoops();
+}
+
+/**
+ * Config outcome only. Skill and MCP saves still run. Their failures do not
+ * change the result: a persisted cap must clear its budget stop. A later save
+ * of that same cap would not try again.
+ */
+async function flushConfigAutosave(): Promise<AutosaveResult> {
+	return await flushAutosaveLoops(true);
+}
+
+/** Flush variant for callers that await completion but not the save outcome. */
+async function flushAutosaveIgnoringResult(): Promise<void> {
+	await flushAutosave();
 }
 
 useEventListener(document, 'keydown', (event) => {
@@ -1569,13 +1621,73 @@ async function beforePreviewSend() {
 	}
 }
 
+/**
+ * Raises a budget cap from a preview notice card. The card stays up (and
+ * keeps blocking Send) until the new cap is persisted: a failed save must
+ * not unblock the next run against the old cap. Offered only while the user
+ * can edit the agent.
+ */
+async function onPreviewIncreaseBudget(payload: {
+	field: BudgetAmountField;
+	amount: number;
+}): Promise<boolean> {
+	if (!localConfig.value || !effectiveCanEditAgent.value) return false;
+	const update = increasedBudgetConfig(localConfig.value, payload.field, payload.amount);
+	if (!update) return false;
+	onConfigFieldUpdate(update);
+	try {
+		// Only a persisted cap lifts the stop: a stale, skipped, or outdated
+		// save means the next run would still stop against the old cap.
+		return isPersistedSave(await flushConfigAutosave());
+	} catch {
+		return false;
+	}
+}
+
+/**
+ * Budget settings modal save. When the save persists a raised or removed cap,
+ * clear the matching stop cards in the preview chat so Send unblocks — the
+ * card's own increase flow is not the only way out of a stop.
+ */
+async function onBudgetSettingsSave(updates: Partial<AgentJsonConfig>) {
+	const before = localConfig.value?.config?.guardrails?.budget;
+	onConfigFieldUpdate(updates);
+	const after = localConfig.value?.config?.guardrails?.budget;
+	const clearedFields = raisedBudgetCaps(before, after);
+	if (clearedFields.length === 0) return;
+	// The flush awaits the network. The preview may show another agent or
+	// session by the time it returns; that chat keeps its own stop.
+	const target = {
+		projectId: projectId.value,
+		agentId: agentId.value,
+		sessionId: effectiveSessionId.value,
+	};
+	try {
+		if (!isPersistedSave(await flushConfigAutosave())) return;
+	} catch {
+		// The autosave onError toast already surfaced the failure.
+		return;
+	}
+	if (
+		target.projectId !== projectId.value ||
+		target.agentId !== agentId.value ||
+		target.sessionId !== effectiveSessionId.value
+	) {
+		return;
+	}
+	clearPreviewBudgetStops(clearedFields);
+}
+
+function clearPreviewBudgetStops(fields: BudgetAmountField[]) {
+	previewChatPage.value?.clearBudgetStops(fields);
+	previewDock.value?.clearBudgetStops(fields);
+}
+
 // Makes the lock a write boundary rather than only a disabled UI state: drop
 // any autosave queued before the AI or another client took over this agent.
 watch(isEditingLocked, (locked) => {
 	if (!locked) return;
-	configAutosave.cancelPendingAutosave();
-	skillAutosave.cancelPendingAutosave();
-	mcpAutosave.cancelPendingAutosave();
+	cancelQueuedAutosaves();
 	mcpAvailabilityOverride.value = null;
 });
 
@@ -1641,7 +1753,7 @@ function onConfigFieldUpdate(updates: Partial<AgentJsonConfig>, meta?: { source:
 		// session memory disabled. Normalize on save so legacy configs are
 		// corrected the next time the user makes a real edit, without mutating
 		// config during component mount.
-		config: normalizeAgentMemoryConfig(deepCopy(localConfig.value)),
+		config: normalizeAgentMemoryConfig(copyAgentConfig(localConfig.value)),
 		revision: configEditRevision,
 		baseConfigHash: configHash.value,
 	});
@@ -1656,7 +1768,7 @@ const caps = useAgentCapabilitiesActions({
 	agentId,
 	connectedTriggers,
 	ensureAgentPersisted,
-	beforeAgentMutation: flushAutosave,
+	beforeAgentMutation: flushAutosaveIgnoringResult,
 	refreshAgentAfterMutation: onConfigUpdated,
 	validationIssues: computed(() => configValidation.value?.issues ?? []),
 	scheduleConfigUpdate: onConfigFieldUpdate,
@@ -1689,13 +1801,13 @@ const appliedSkills = caps.appliedSkills;
 function replaceConfigAndScheduleSave(nextConfig: AgentJsonConfig) {
 	markConfigDraftEdited();
 	invalidateConfigValidation();
-	localConfig.value = deepCopy(nextConfig);
+	localConfig.value = copyAgentConfig(nextConfig);
 	syncAgentIdentityFromConfig(localConfig.value);
 	configAutosave.scheduleAutosave({
 		projectId: projectId.value,
 		agentId: agentId.value,
 		type: 'config',
-		config: normalizeAgentMemoryConfig(deepCopy(localConfig.value)),
+		config: normalizeAgentMemoryConfig(copyAgentConfig(localConfig.value)),
 		revision: configEditRevision,
 		baseConfigHash: configHash.value,
 	});
@@ -1841,7 +1953,7 @@ async function onConfigUpdated(
 	// without waiting for a tab switch. Mirrors the initial baseline fetch.
 	const integrations = await ensureIntegrationsCatalog(targetProjectId).catch(() => []);
 	if (isStaleAgentTarget(targetProjectId, targetAgentId)) return false;
-	const triggerTypes = integrations.map((i) => i.type);
+	const triggerTypes = withN8nChat(integrations).map((i) => i.type);
 	const connected = await builderTelemetry.fetchInitialTriggersBaseline(triggerTypes);
 	if (isStaleAgentTarget(targetProjectId, targetAgentId)) return false;
 	if (connected) connectedTriggers.value = connected;
@@ -2019,19 +2131,14 @@ watch(
 );
 
 const headerActions = computed(() => {
-	const actions: Array<ActionDropdownItem<string>> = [
-		{
-			id: 'export-json',
-			label: locale.baseText('agents.builder.exportJson' as BaseTextKey),
-			icon: 'download',
-		},
-	];
+	const actions: Array<ActionDropdownItem<string>> = [];
 
+	// Same order as the workflow menu: description and favorite first, then import/export.
 	if (effectiveCanEditAgent.value) {
 		actions.push({
-			id: 'import-json',
-			label: locale.baseText('agents.builder.importJson' as BaseTextKey),
-			icon: 'upload',
+			id: 'edit-description',
+			label: locale.baseText('agents.builder.editDescription'),
+			icon: 'tags',
 		});
 	}
 
@@ -2043,6 +2150,21 @@ const headerActions = computed(() => {
 					? locale.baseText('favorites.remove')
 					: locale.baseText('favorites.add'),
 			icon: isFavorite.value === true ? 'star-filled' : 'star',
+		});
+	}
+
+	actions.push({
+		id: 'export-json',
+		label: locale.baseText('agents.builder.exportJson' as BaseTextKey),
+		icon: 'download',
+		divided: actions.length > 0,
+	});
+
+	if (effectiveCanEditAgent.value) {
+		actions.push({
+			id: 'import-json',
+			label: locale.baseText('agents.builder.importJson' as BaseTextKey),
+			icon: 'upload',
 		});
 	}
 
@@ -2103,7 +2225,54 @@ function openImportJsonModal() {
 	});
 }
 
+function openDescriptionModal() {
+	if (!localConfig.value) return;
+	const targetAgentId = agentId.value;
+
+	uiStore.openModalWithData({
+		name: AGENT_DESCRIPTION_MODAL_KEY,
+		data: {
+			agentName: localConfig.value.name,
+			description: localConfig.value.description ?? '',
+			onConfirm: (description: string) => {
+				// The modal outlives navigation: drop the edit if another agent is open now.
+				if (agentId.value !== targetAgentId) return;
+				// Send '' to clear: the backend keeps the stored value for omitted fields.
+				onConfigFieldUpdate({ description });
+			},
+		},
+	});
+}
+
+/**
+ * Saves through the same path as `openDescriptionModal`. The channel modal
+ * connects n8n Chat once this resolves, so the save must land first: a config
+ * save that lands later would carry `integrations` without n8n Chat.
+ */
+async function saveN8nChatDescription(description: string): Promise<void> {
+	const targetAgentId = agentId.value;
+	if (description !== (localConfig.value?.description ?? '')) {
+		onConfigFieldUpdate({ description });
+	}
+	// Flush even with nothing queued: it retries a snapshot that a failed save
+	// put back, and rethrows the error of a failed debounced save.
+	if (!isEditingLocked.value) await configAutosave.flushAutosave();
+	// A locked editor, a conflict reload or an agent switch ends the flush
+	// without this description.
+	if (
+		agentId.value !== targetAgentId ||
+		isEditingLocked.value ||
+		(localConfig.value?.description ?? '') !== description
+	) {
+		throw new Error(locale.baseText('agents.channels.n8nChat.description.saveError'));
+	}
+}
+
 async function onHeaderAction(action: string) {
+	if (action === 'edit-description') {
+		openDescriptionModal();
+		return;
+	}
 	if (action === 'version-history') {
 		onToggleVersionHistory();
 		return;
@@ -2373,7 +2542,7 @@ async function initialize({ preserveState = false }: { preserveState?: boolean }
 			// Non-fatal — on failure, leave connectedTriggers unchanged.
 			const integrations = await ensureIntegrationsCatalog(targetProjectId).catch(() => []);
 			if (!isCurrentInitialization()) return;
-			const triggerTypes = integrations.map((i) => i.type);
+			const triggerTypes = withN8nChat(integrations).map((i) => i.type);
 			const connected = await builderTelemetry.fetchInitialTriggersBaseline(triggerTypes);
 			if (
 				isCurrentInitialization() &&
@@ -2512,15 +2681,6 @@ watch(
 	},
 	{ immediate: true },
 );
-
-function isNotFoundError(error: unknown): boolean {
-	return (
-		typeof error === 'object' &&
-		error !== null &&
-		'httpStatusCode' in error &&
-		error.httpStatusCode === 404
-	);
-}
 
 const pendingPreviewValidations = new Set<string>();
 async function ensurePreviewSessionAvailable(sessionId: string) {
@@ -2804,8 +2964,8 @@ useKeybindings({
 						:subject="instanceAiEmbedSubject"
 						:launch="instanceAiEmbedLaunch"
 						:thread-id="aiThreadId"
-						:before-new-thread="flushAutosave"
-						:before-send="flushAutosave"
+						:before-new-thread="flushAutosaveIgnoringResult"
+						:before-send="flushAutosaveIgnoringResult"
 						data-testid="agent-ai-chat-panel"
 						@update:thread-id="onAiThreadIdChange"
 						@update:building="embeddedAiBuilding = $event"
@@ -2834,6 +2994,7 @@ useKeybindings({
 			<template v-else>
 				<AgentPreviewChatPage
 					v-if="isStandalonePreview"
+					ref="previewChatPage"
 					layout="page"
 					:initialized="initialized && previewSessionReady"
 					:project-id="projectId"
@@ -2846,6 +3007,8 @@ useKeybindings({
 					:can-send-to-assistant="instanceAiAvailable"
 					:dismissed-fix-tool-call-ids="dismissedFixToolCallIds"
 					:before-send="beforePreviewSend"
+					budget-cards
+					:increase-budget="effectiveCanEditAgent ? onPreviewIncreaseBudget : undefined"
 					@continue-loaded="onContinueLoaded"
 					@session-created="markSessionCreated"
 					@open-build="returnToBuilderFromPreview"
@@ -2874,12 +3037,15 @@ useKeybindings({
 					:main-tab-options="visibleMainTabOptions"
 					:agent-unsaved="isUnsaved"
 					:ensure-agent-persisted="ensureAgentPersisted"
+					:saved-description="localConfig?.description ?? ''"
+					:save-description="saveN8nChatDescription"
 					:executions-description="executionsDescription"
 					:generating-eval-cases="agentEvalsStore.isGeneratingCases(agentId)"
 					:artifact-mode="isArtifactMode"
 					:prevent-scroll="isPreviewDockResizing"
 					:config-validation-issues="configValidation?.issues ?? []"
 					@update:config="onConfigFieldUpdate"
+					@update:budget-config="onBudgetSettingsSave"
 					@draft:config="markConfigDraftEdited"
 					@open-tool="caps.onOpenToolFromList"
 					@open-skill="caps.onOpenSkillFromList"
@@ -2892,6 +3058,7 @@ useKeybindings({
 					@remove-vector-store="onRemoveVectorStore"
 					@remove-tool="caps.onRemoveTool"
 					@remove-skill="caps.onRemoveSkill"
+					@toggle-skill="caps.onToggleSkill"
 					@update:connected-triggers="caps.onConnectedTriggersUpdate"
 					@trigger-added="caps.onTriggerAdded"
 					@toggle-task="caps.onToggleTask"
@@ -2931,6 +3098,7 @@ useKeybindings({
 					@resizeend="isPreviewDockResizing = false"
 				>
 					<AgentPreviewDock
+						ref="previewDock"
 						:is-open="isPreviewDockOpen"
 						:session-title="currentSessionTitle"
 						:session-options="sessionMenu"
@@ -2949,6 +3117,8 @@ useKeybindings({
 						:can-send-to-assistant="instanceAiAvailable"
 						:dismissed-fix-tool-call-ids="dismissedFixToolCallIds"
 						:before-send="beforePreviewSend"
+						budget-cards
+						:increase-budget="effectiveCanEditAgent ? onPreviewIncreaseBudget : undefined"
 						@view-trace="viewPreviewTrace"
 						@new-session="startNewPreviewSession"
 						@delete-session="onDeletePreviewSession"
@@ -3015,6 +3185,14 @@ useKeybindings({
 	max-width: 100%;
 	z-index: 1;
 	pointer-events: none;
+
+	&:has([data-preview-layout='fullpage']) {
+		width: 100%;
+
+		[data-dir='left'] {
+			display: none;
+		}
+	}
 }
 
 .previewResizeOpen {

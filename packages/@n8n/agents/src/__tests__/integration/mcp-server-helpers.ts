@@ -20,7 +20,9 @@ export interface TestServer {
 }
 
 /** Create an in-process MCP Server with three test tools: echo, add, and image. */
+// oxlint-disable-next-line typescript/no-deprecated
 export function createTestMcpServer(): McpServer {
+	// oxlint-disable-next-line typescript/no-deprecated
 	const server = new McpServer(
 		{ name: 'test-mcp-server', version: '1.0.0' },
 		{ capabilities: { tools: {} } },
@@ -95,6 +97,7 @@ export function createTestMcpServer(): McpServer {
 
 /** Start an SSE MCP server on a random port. Returns the SSE endpoint URL and a close function. */
 export async function startSseServer(): Promise<TestServer> {
+	// oxlint-disable-next-line typescript/no-deprecated
 	const transports = new Map<string, SSEServerTransport>();
 
 	const httpServer = http.createServer(async (req, res) => {
@@ -104,6 +107,7 @@ export async function startSseServer(): Promise<TestServer> {
 				// a single active transport reference and rejects a second connect() call
 				// if the first transport hasn't been fully torn down yet.
 				const mcpServer = createTestMcpServer();
+				// oxlint-disable-next-line typescript/no-deprecated
 				const transport = new SSEServerTransport('/message', res);
 				transports.set(transport.sessionId, transport);
 				await mcpServer.connect(transport);

@@ -1,6 +1,6 @@
 {
   "name": "n8n",
-  "version": "2.42.0",
+  "version": "2.43.0",
   "description": "n8n Workflow Automation Tool",
   "main": "dist/index",
   "types": "dist/index.d.ts",
@@ -158,6 +158,7 @@
     "@n8n/ai-workflow-builder": "workspace:*",
     "@n8n/api-types": "workspace:*",
     "@n8n/backend-common": "workspace:*",
+    "@n8n/backend-module-insights": "workspace:*",
     "@n8n/backend-network": "workspace:*",
     "@n8n/backend-services": "workspace:*",
     "@n8n/blob-storage": "workspace:*",
@@ -188,6 +189,7 @@
     "@n8n_io/ai-assistant-sdk": "catalog:",
     "@n8n_io/license-sdk": "3.1.0",
     "@opentelemetry/api": "catalog:",
+    "@opentelemetry/context-async-hooks": "^2.7.1",
     "@opentelemetry/core": "2.10.0",
     "@opentelemetry/exporter-trace-otlp-grpc": "^0.221.0",
     "@opentelemetry/exporter-trace-otlp-proto": "^0.221.0",

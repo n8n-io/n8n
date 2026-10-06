@@ -1,10 +1,11 @@
 import { zodToJsonSchema } from '@n8n/ai-utilities/json-schema';
 import { APPROVAL_RESUME_SCHEMA } from '@n8n/agents/tool';
 import type { AgentJsonConfig } from '@n8n/api-types';
-import { type EventService, UrlService } from '@n8n/backend-services';
+import { type EventService, ProjectScopeService, UrlService } from '@n8n/backend-services';
 import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
 import { OutboundHttp } from '@n8n/backend-network';
-import { User, type WorkflowRepository } from '@n8n/db';
+import { User, type WorkflowRepository, type TransactionRunner } from '@n8n/db';
+import { Container } from '@n8n/di';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
@@ -28,6 +29,7 @@ vi.mock('@/modules/agents/json-config/mcp-client-factory', () => ({
 
 import { CredentialsService } from '@/credentials/credentials.service';
 import { ConflictError } from '@n8n/errors';
+import { AgentConfigPreparationService } from '@/modules/agents/agent-config-preparation.service';
 import { AgentConfigService } from '@/modules/agents/agent-config.service';
 import { AgentCustomToolsService } from '@/modules/agents/agent-custom-tools.service';
 import { AgentIntegrationManagementService } from '@/modules/agents/agent-integration-management.service';
@@ -35,7 +37,8 @@ import { AgentIntegrationPersistenceService } from '@/modules/agents/agent-integ
 import { AgentModelCatalogService } from '@/modules/agents/agent-model-catalog.service';
 import { AgentModificationTelemetryService } from '@/modules/agents/agent-modification-telemetry.service';
 import { AgentPublishService } from '@/modules/agents/agent-publish.service';
-import type { AgentRuntimeCacheService } from '@/modules/agents/agent-runtime-cache.service';
+import { AgentSaveCompletionService } from '@/modules/agents/agent-save-completion.service';
+import { AgentRuntimeCacheService } from '@/modules/agents/agent-runtime-cache.service';
 import type { AgentSetupCompletionService } from '@/modules/agents/agent-setup-completion.service';
 import { AgentSkillsService } from '@/modules/agents/agent-skills.service';
 import type { AgentUpdateBroadcaster } from '@/modules/agents/agent-update-broadcaster';
@@ -60,7 +63,6 @@ import type { RegisterToolFn } from '@/modules/mcp/mcp.types';
 import { NodeTypes } from '@/node-types';
 import { OauthService } from '@/oauth/oauth.service';
 import { userHasScopes } from '@/permissions.ee/check-access';
-import { ProjectScopeService } from '@/permissions.ee/project-scope.service';
 import { Telemetry } from '@/telemetry';
 
 import { AGENT_TOOLS, TOOLS_BY_SCOPE } from '../mcp-scopes';
@@ -137,6 +139,7 @@ describe('McpAgentToolsService', () => {
 	const agentSecureRuntime = mockInstance(AgentSecureRuntime);
 	const integrationPersistenceService = mockInstance(AgentIntegrationPersistenceService);
 	const integrationManagementService = mockInstance(AgentIntegrationManagementService);
+	const agentModelCatalogService = mockInstance(AgentModelCatalogService);
 	const mcpRegistryService = mockInstance(McpRegistryService);
 	const outboundHttp = mockInstance(OutboundHttp);
 	const urlService = mockInstance(UrlService);
@@ -165,7 +168,7 @@ describe('McpAgentToolsService', () => {
 		agentSecureRuntime,
 		integrationPersistenceService,
 		integrationManagementService,
-		mockInstance(AgentModelCatalogService),
+		agentModelCatalogService,
 		mockInstance(AttachableWorkflowsService),
 		mcpRegistryService,
 		mockInstance(NodeTypes),
@@ -229,26 +232,32 @@ describe('McpAgentToolsService', () => {
 		agentsService.findByIdForUser.mockResolvedValue(agent);
 
 		const agentUpdateBroadcaster = mock<AgentUpdateBroadcaster>();
+		const saveCompletion = new AgentSaveCompletionService(
+			mock<EventService>(),
+			agentUpdateBroadcaster,
+			modificationTelemetry,
+		);
+		const transactionRunner = mock<TransactionRunner>();
+		transactionRunner.run.mockImplementation(async (ctx, fn) => await fn(ctx));
+		Container.set(AgentRuntimeCacheService, runtimeCacheService);
 		const customToolsService = new AgentCustomToolsService(
 			mockLogger(),
 			agentRepository,
-			runtimeCacheService,
-			modificationTelemetry,
-			agentUpdateBroadcaster,
+			saveCompletion,
 		);
 		const configService = new AgentConfigService(
 			mockLogger(),
 			agentRepository,
 			agentTaskRepository,
 			mock<AgentSkillsService>(),
-			runtimeCacheService,
-			localCredentialsService,
-			workflowRepository,
-			mock<NodeToolAiGatewayService>(),
-			mock<EventService>(),
+			new AgentConfigPreparationService(
+				localCredentialsService,
+				workflowRepository,
+				mock<NodeToolAiGatewayService>(),
+			),
 			mock<AgentSetupCompletionService>(),
-			modificationTelemetry,
-			agentUpdateBroadcaster,
+			transactionRunner,
+			saveCompletion,
 		);
 		agentCustomToolsService.buildCustomTool.mockImplementation(
 			async (agentId, projectId, code, descriptor, context, options) =>
@@ -1616,6 +1625,74 @@ describe('McpAgentToolsService', () => {
 			});
 		});
 
+		it('limits a provider model list and suggests a query when truncated', async () => {
+			agentModelCatalogService.getProviderModels.mockResolvedValue({
+				provider: 'openrouter',
+				verified: true,
+				models: Array.from({ length: 385 }, (_, index) => ({
+					id: `model-${index}`,
+					name: `Model ${index}`,
+					toolCall: true,
+					reasoning: false,
+					limits: { context: 100_000 },
+					cost: { input: 1, output: 2 },
+				})),
+			});
+
+			const result = await callTool('discover_agent_assets', {
+				projectId: 'project-1',
+				kind: 'models',
+				provider: 'openrouter',
+				credentialId: 'credential-1',
+			});
+
+			expect(agentModelCatalogService.getProviderModels).toHaveBeenCalledWith(
+				user,
+				'project-1',
+				'openrouter',
+				'credential-1',
+			);
+			expect(result.structuredContent.data).toMatchObject({
+				provider: 'openrouter',
+				verified: true,
+				truncated: true,
+				hint: expect.stringContaining('query'),
+			});
+			const data = result.structuredContent.data as { models: Array<{ id: string }> };
+			expect(data.models).toHaveLength(50);
+			expect(data.models[0].id).toBe('model-0');
+			expect(JSON.stringify(result.structuredContent).length).toBeLessThan(20_000);
+		});
+
+		it('filters provider models by ID before applying the limit', async () => {
+			agentModelCatalogService.getProviderModels.mockResolvedValue({
+				provider: 'aws-bedrock',
+				verified: false,
+				models: [
+					...Array.from({ length: 55 }, (_, index) => ({
+						id: `other-${index}`,
+						name: 'Claude Other',
+						toolCall: true,
+					})),
+					{ id: 'anthropic/claude', name: 'Claude', toolCall: true },
+				],
+			});
+
+			const result = await callTool('discover_agent_assets', {
+				projectId: 'project-1',
+				kind: 'models',
+				provider: 'aws-bedrock',
+				query: ' CLAUDE ',
+			});
+
+			expect(result.structuredContent.data).toMatchObject({
+				provider: 'aws-bedrock',
+				verified: false,
+				models: [{ id: 'anthropic/claude', name: 'Claude', toolCall: true }],
+				truncated: false,
+			});
+		});
+
 		it('returns published and draft agents for kind=subagents', async () => {
 			agentsService.findSummariesInProjects.mockResolvedValue([
 				agentEntity({ id: 'agent-published', name: 'Published helper', activeVersionId: 'v1' }),
@@ -1848,22 +1925,26 @@ describe('McpAgentToolsService', () => {
 					agentId: 'agent-1',
 					author: 'Ada Lovelace',
 					createdAt: new Date('2026-01-01T00:00:00.000Z'),
+				},
+				definition: {
 					schema: {
 						...baseConfig,
+						tasks: [{ type: 'task', id: 'task-1', enabled: true }],
 						integrations: [{ type: 'slack', credentialId: 'cred-1' }],
 					},
 					tools: { my_tool: { code: 'code', descriptor: { name: 'my_tool' } } },
 					skills: { 'skill-1': { name: 'Skill' } },
+					tasks: new Map([
+						[
+							'task-1',
+							{
+								name: 'Daily',
+								objective: 'Summarize',
+								cronExpression: '0 9 * * *',
+							},
+						],
+					]),
 				},
-				tasks: [
-					{
-						taskId: 'task-1',
-						name: 'Daily',
-						objective: 'Summarize',
-						cronExpression: '0 9 * * *',
-						enabled: true,
-					},
-				],
 			} as never);
 
 			const result = await callTool('get_agent', { agentId: 'agent-1', versionId: 'v0' });

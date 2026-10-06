@@ -3,6 +3,7 @@ export type * from './datetime';
 export * from './dto';
 export type * from './push';
 export type * from './scaling';
+export type * from './process-internals';
 export * from './frontend-settings';
 export type * from './user';
 export type * from './consent';
@@ -164,6 +165,7 @@ export {
 	nodeTypePolicyIdParamSchema,
 	nodeTypePolicyScopeIdParamSchema,
 	folderIdParamSchema,
+	logStreamingDestinationIdParamSchema,
 	projectIdParamSchema,
 	promotionConnectionIdParamSchema,
 	promotionDirectionParamSchema,
@@ -230,6 +232,7 @@ export {
 } from './schemas/source-controlled-file.schema';
 
 export { policyViolationSchema, type PolicyViolation } from './schemas/policy-violation.schema';
+export { publicApiUploadedFileSchema } from './schemas/public-api-uploaded-file.schema';
 
 export {
 	policyCheckFailureSchema,
@@ -409,6 +412,7 @@ export {
 	channelConfigSchema,
 	mcpConnectServerSchema,
 	mcpConnectRequestSchema,
+	testListenerCardSchema,
 	mcpConnectResumeSchema,
 	credentialPlaceholderDefSchema,
 	credentialRequestSchema,
@@ -921,3 +925,5 @@ export type {
 	SerializedCursor,
 } from './dto/executions/execution-list-pagination';
 export { compareExecutionListItems } from './dto/executions/compare-execution-list-items';
+
+export type * from './workflow-suggestions';
