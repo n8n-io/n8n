@@ -13,10 +13,11 @@ import { mock, type MockProxy } from 'vitest-mock-extended';
 
 import type { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
 import type { CredentialsService } from '@/credentials/credentials.service';
-import { NotFoundError } from '@n8n/errors';
+import { ForbiddenError, NotFoundError } from '@n8n/errors';
 import { resolveEvaluationConcurrencyLimit } from '@/evaluation.ee/evaluation-concurrency.helper';
 import type { License } from '@/license';
 import type { AgentConfigService } from '@/modules/agents/agent-config.service';
+import type { AgentsSettingsService } from '@/modules/agents/agents-settings.service';
 import type { Agent } from '@/modules/agents/entities/agent.entity';
 import type { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import type { DataTableService } from '@/modules/data-table/data-table.service';
@@ -127,6 +128,7 @@ describe('AgentEvalRunnerService', () => {
 	let concurrencyControl: MockProxy<ConcurrencyControlService>;
 	let license: MockProxy<License>;
 	let flagGate: MockProxy<AgentEvalsFlagGate>;
+	let agentsSettingsService: MockProxy<AgentsSettingsService>;
 	let agentConfigService: MockProxy<AgentConfigService>;
 	let credentialsService: MockProxy<CredentialsService>;
 	let service: AgentEvalRunnerService;
@@ -160,6 +162,7 @@ describe('AgentEvalRunnerService', () => {
 		concurrencyControl = mock<ConcurrencyControlService>();
 		license = mock<License>();
 		flagGate = mock<AgentEvalsFlagGate>();
+		agentsSettingsService = mock<AgentsSettingsService>();
 		agentConfigService = mock<AgentConfigService>();
 		credentialsService = mock<CredentialsService>();
 
@@ -203,6 +206,7 @@ describe('AgentEvalRunnerService', () => {
 			concurrencyControl,
 			license,
 			flagGate,
+			agentsSettingsService,
 			agentConfigService,
 			credentialsService,
 		);
@@ -258,6 +262,17 @@ describe('AgentEvalRunnerService', () => {
 				'permission to run agents',
 			);
 			expect(runRepository.createRun).not.toHaveBeenCalled();
+		});
+
+		it('rejects a disabled Agents setting before creating an eval run', async () => {
+			agentsSettingsService.assertEnabled.mockRejectedValue(
+				new ForbiddenError('Agents are disabled'),
+			);
+
+			await expect(service.startRun('ds-1', 'proj-1', user)).rejects.toThrow('Agents are disabled');
+
+			expect(runRepository.createRun).not.toHaveBeenCalled();
+			expect(evalAgentExecutionService.executeWithLlmMock).not.toHaveBeenCalled();
 		});
 
 		it('404s when the dataset is missing', async () => {

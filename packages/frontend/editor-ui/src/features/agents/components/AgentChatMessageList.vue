@@ -6,11 +6,7 @@ import { isAwaitingCard } from '@/features/ai/shared/agentsChat/n8nChatInteracti
 import { useI18n } from '@n8n/i18n';
 import { useSessionStorage } from '@vueuse/core';
 import { TIME } from '@/app/constants/durations';
-import {
-	buildDisplayGroups,
-	isAssistantGroup,
-	type DisplayGroup,
-} from '@/features/ai/shared/agentsChat/displayGroups';
+import { isAssistantGroup, type DisplayGroup } from '@/features/ai/shared/agentsChat/displayGroups';
 import { getMessageInteractives, isRecord } from '@/features/ai/shared/agentsChat/messageMappers';
 import {
 	getMessageThinkingSegments,
@@ -30,9 +26,11 @@ import AgentChatMessageAttachments from './AgentChatMessageAttachments.vue';
 import AgentChatToolSteps from './AgentChatToolSteps.vue';
 import AgentMarkdownChunk from './AgentMarkdownChunk.vue';
 import AgentTypingIndicator from './AgentTypingIndicator.vue';
+import AgentBudgetNoticeCard from './AgentBudgetNoticeCard.vue';
 import InteractiveCard from './interactive/InteractiveCard.vue';
 import type { AgentFixWithAssistantFailure, AgentSendToAssistantEvent } from '../types';
 import { looksLikeAgentChangeRequest } from '../utils/agent-change-request';
+import { buildAgentPlanDisplayGroups } from '../utils/agent-plan';
 import { isSameLocalDay, useChatDividerTimestamp } from '../utils/relative-time';
 import { CHAT_MESSAGE_STATUS, TOOL_CALL_STATE } from '../constants';
 
@@ -44,11 +42,14 @@ const props = defineProps<{
 	sessionId?: string;
 	canSendToAssistant?: boolean;
 	dismissedFixToolCallIds?: string[];
+	canIncreaseBudget?: boolean;
+	budgetIncreasePending?: boolean;
 }>();
 
 const emit = defineEmits<{
 	resume: [payload: { runId: string; toolCallId: string; resumeData: unknown }];
 	sendToAssistant: [event?: AgentSendToAssistantEvent];
+	'increase-budget': [payload: { field: 'monthlyBudgetUsd' | 'sessionCostCapUsd'; amount: number }];
 }>();
 
 const i18n = useI18n();
@@ -148,7 +149,12 @@ function getMessageRenderItems(message: ChatMessage): MessageRenderItem[] {
 
 const scrollRef = useTemplateRef<HTMLDivElement>('scrollRef');
 
-const displayGroups = computed(() => buildDisplayGroups(props.messages));
+const displayGroups = computed(() => buildAgentPlanDisplayGroups(props.messages));
+const streamingGroupId = computed(() =>
+	props.messages.at(-1)?.status === CHAT_MESSAGE_STATUS.STREAMING
+		? displayGroups.value.at(-1)?.id
+		: undefined,
+);
 
 const formatChatDividerTimestamp = useChatDividerTimestamp();
 
@@ -498,6 +504,14 @@ watch(
 							<AgentMarkdownChunk :source="group.finalMessage.content" />
 						</div>
 					</div>
+					<AgentBudgetNoticeCard
+						v-for="notice in group.budgetNotices"
+						:key="notice.id"
+						:code="notice.code"
+						:can-increase="canIncreaseBudget"
+						:pending="budgetIncreasePending"
+						@increase="emit('increase-budget', $event)"
+					/>
 					<AiThinkingBlock
 						v-if="group.thinkingSegments.length"
 						:segments="group.thinkingSegments"
@@ -533,8 +547,8 @@ watch(
 					</div>
 					<AgentTypingIndicator
 						v-if="
-							group.finalMessage?.status === CHAT_MESSAGE_STATUS.STREAMING &&
-							!group.finalMessage.content &&
+							group.id === streamingGroupId &&
+							!group.finalMessage?.content &&
 							!group.toolCalls.length &&
 							!group.thinkingSegments.length
 						"
@@ -612,6 +626,14 @@ watch(
 								/>
 							</div>
 						</template>
+						<AgentBudgetNoticeCard
+							v-for="notice in group.message.budgetNotices ?? []"
+							:key="notice.id"
+							:code="notice.code"
+							:can-increase="canIncreaseBudget"
+							:pending="budgetIncreasePending"
+							@increase="emit('increase-budget', $event)"
+						/>
 					</template>
 					<N8nCallout
 						v-if="group.id === changeRequestGroupId"

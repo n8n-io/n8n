@@ -27,6 +27,7 @@ export type McpCallToolResult = CallToolResult;
 async function importMcpSdk() {
 	const [
 		{ Client },
+		// oxlint-disable-next-line typescript/no-deprecated
 		{ SSEClientTransport },
 		{ StdioClientTransport },
 		{ StreamableHTTPClientTransport },

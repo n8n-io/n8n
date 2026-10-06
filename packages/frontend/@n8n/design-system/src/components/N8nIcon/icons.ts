@@ -1,4 +1,5 @@
 import Anthropic from './custom/anthropic.svg';
+import Azure from './custom/azure.svg';
 import Binary from './custom/binary.svg';
 import BoltFilled from './custom/bolt-filled.svg';
 import BotFail from './custom/bot-fail.svg';
@@ -9,6 +10,7 @@ import BotWarning from './custom/bot-warning.svg';
 import Continue from './custom/continue.svg';
 import Discord from './custom/discord.svg';
 import EmptyOutput from './custom/empty-output.svg';
+import Entra from './custom/entra.svg';
 import FilledSquare from './custom/filled-square.svg';
 import Form from './custom/form.svg';
 import GripLinesVertical from './custom/grip-lines-vertical.svg';
@@ -549,6 +551,8 @@ export const updatedIconSet = {
 	telegram: Telegram,
 	discord: Discord,
 	teams: Teams,
+	azure: Azure,
+	entra: Entra,
 	spinner: Spinner,
 	'node-dirty': NodeDirty,
 	'node-ellipsis': NodeEllipsis,
@@ -770,6 +774,7 @@ export const updatedIconSet = {
 	terminal: IconLucideTerminal,
 	'thumbs-down': IconLucideThumbsDown,
 	'thumbs-up': IconLucideThumbsUp,
+	timer: IconLucideTimer,
 	'trash-2': IconLucideTrash2,
 	'tree-pine': IconLucideTreePine,
 	'trending-down': IconLucideTrendingDown,

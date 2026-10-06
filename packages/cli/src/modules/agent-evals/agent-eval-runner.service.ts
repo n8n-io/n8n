@@ -25,6 +25,7 @@ import { BadRequestError, ForbiddenError, NotFoundError } from '@n8n/errors';
 import { resolveEvaluationConcurrencyLimit } from '@/evaluation.ee/evaluation-concurrency.helper';
 import { License } from '@/license';
 import { AgentConfigService } from '@/modules/agents/agent-config.service';
+import { AgentsSettingsService } from '@/modules/agents/agents-settings.service';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import { createAgentCredentialProvider } from '@/modules/agents/utils/agent-credential-provider';
 import { resolveCredentialAwareModelConfig } from '@/modules/agents/json-config/model-config';
@@ -92,6 +93,7 @@ export class AgentEvalRunnerService {
 		private readonly concurrencyControl: ConcurrencyControlService,
 		private readonly license: License,
 		private readonly flagGate: AgentEvalsFlagGate,
+		private readonly agentsSettingsService: AgentsSettingsService,
 		private readonly agentConfigService: AgentConfigService,
 		private readonly credentialsService: CredentialsService,
 	) {}
@@ -117,6 +119,7 @@ export class AgentEvalRunnerService {
 
 		// Backstop for direct callers; the REST path asserts before its own lookups.
 		assertRequiredModulesActive(this.moduleRegistry);
+		await this.agentsSettingsService.assertEnabled();
 
 		// Authorize up front. `executeWithLlmMock` also checks `agent:execute`, but
 		// it returns an error result rather than throwing — without this a caller

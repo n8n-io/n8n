@@ -7,7 +7,7 @@ import {
 	chunkIds,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { hasGlobalScope, type Scope } from '@n8n/permissions';
+import { hasGlobalScope, type AuthPrincipal, type Scope } from '@n8n/permissions';
 import type { EntityManager, FindOptionsWhere } from '@n8n/typeorm';
 import { In, IsNull } from '@n8n/typeorm';
 
@@ -124,7 +124,12 @@ export class WorkflowFinderService {
 		};
 	}
 
-	private async findAllWhere(user: User, scopes: Scope[], folderId?: string, projectId?: string) {
+	private async findAllWhere(
+		user: AuthPrincipal & Pick<User, 'id'>,
+		scopes: Scope[],
+		folderId?: string,
+		projectId?: string,
+	) {
 		let where: FindOptionsWhere<SharedWorkflow> = {};
 
 		if (folderId) {
@@ -172,7 +177,7 @@ export class WorkflowFinderService {
 
 	async findWorkflowIdsWithScopeForUser(
 		workflowIds: string[],
-		user: User,
+		user: AuthPrincipal & Pick<User, 'id'>,
 		scopes: Scope[],
 	): Promise<Set<string>> {
 		if (workflowIds.length === 0) return new Set();
@@ -272,10 +277,15 @@ export class WorkflowFinderService {
 		return byFolder;
 	}
 
-	async findOwnedWorkflowRemovalCandidates(projectId: string, workflowIds: string[]) {
+	async findOwnedWorkflowRemovalCandidates(
+		projectId: string,
+		workflowIds: string[],
+		options: { includeArchived?: boolean } = {},
+	) {
 		return await this.sharedWorkflowRepository.findOwnedWorkflowRemovalCandidates(
 			projectId,
 			workflowIds,
+			options,
 		);
 	}
 
@@ -450,6 +460,7 @@ export class WorkflowFinderService {
 			? [folderId, ...(await this.folderRepository.getAllFolderIdsInHierarchy(folderId, projectId))]
 			: undefined;
 
+		// oxlint-disable-next-line typescript/no-deprecated
 		const select: NonNullable<ListQuery.Options['select']> = {
 			id: true,
 			name: true,

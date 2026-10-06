@@ -6,7 +6,7 @@ import { mock } from 'vitest-mock-extended';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
 import { ForbiddenError, NotFoundError } from '@n8n/errors';
-import type { InstanceWriteAccessService } from '@/services/instance-write-access.service';
+import type { InstanceWriteAccessService } from '@n8n/backend-services';
 
 import type { AgentConfigService } from '../../agents/agent-config.service';
 import type { AgentTestRunService } from '../../agents/agent-test-run.service';

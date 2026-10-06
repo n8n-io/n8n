@@ -1,7 +1,9 @@
 import type {
+	AgentBackgroundJobsResponse,
 	AgentChatMessageDto,
 	AgentChatMessagesResponse,
 	AgentChatQueueResponse,
+	AgentConfigResponse,
 	AgentJsonConfig,
 	AgentSseEvent,
 } from '@n8n/api-types';
@@ -24,6 +26,46 @@ export class AgentApiHelper {
 		});
 		if (!response.ok()) throw new TestError(`Failed to create agent: ${await response.text()}`);
 		return (await response.json()).data;
+	}
+
+	async getConfig(projectId: string, agentId: string): Promise<AgentConfigResponse> {
+		const response = await this.api.request.get(
+			`/rest/projects/${projectId}/agents/v2/${agentId}/config`,
+		);
+		if (!response.ok())
+			throw new TestError(`Failed to read agent config: ${await response.text()}`);
+		return (await response.json()).data;
+	}
+
+	async updateConfig(
+		projectId: string,
+		agentId: string,
+		config: AgentJsonConfig,
+		baseConfigHash: string,
+	): Promise<void> {
+		const response = await this.api.request.put(
+			`/rest/projects/${projectId}/agents/v2/${agentId}/config`,
+			{ data: { config, baseConfigHash } },
+		);
+		if (!response.ok())
+			throw new TestError(`Failed to save agent config: ${await response.text()}`);
+	}
+
+	async publish(projectId: string, agentId: string): Promise<void> {
+		const response = await this.api.request.post(
+			`/rest/projects/${projectId}/agents/v2/${agentId}/publish`,
+			{ data: {} },
+		);
+		if (!response.ok()) throw new TestError(`Failed to publish agent: ${await response.text()}`);
+	}
+
+	async n8nChat(projectId: string, agentId: string, message: string): Promise<string> {
+		const response = await this.api.request.post(
+			`/rest/projects/${projectId}/agents/v2/${agentId}/n8n-chat`,
+			{ data: { message } },
+		);
+		if (!response.ok()) throw new TestError(`Failed to run n8n chat: ${await response.text()}`);
+		return await response.text();
 	}
 
 	/**
@@ -65,6 +107,32 @@ export class AgentApiHelper {
 		return (await response.json()).data;
 	}
 
+	async backgroundTasks(
+		projectId: string,
+		agentId: string,
+		threadId: string,
+	): Promise<AgentBackgroundJobsResponse> {
+		const response = await this.api.request.get(
+			`/rest/projects/${projectId}/agents/v2/${agentId}/chat/${threadId}/background-tasks`,
+		);
+		if (!response.ok())
+			throw new TestError(`Failed to read background tasks: ${await response.text()}`);
+		return (await response.json()).data;
+	}
+
+	async stopBackgroundTasks(
+		projectId: string,
+		agentId: string,
+		threadId: string,
+	): Promise<AgentBackgroundJobsResponse> {
+		const response = await this.api.request.post(
+			`/rest/projects/${projectId}/agents/v2/${agentId}/chat/${threadId}/background-tasks/stop`,
+		);
+		if (!response.ok())
+			throw new TestError(`Failed to stop background tasks: ${await response.text()}`);
+		return (await response.json()).data;
+	}
+
 	async queuedMessages(
 		projectId: string,
 		agentId: string,
@@ -89,6 +157,20 @@ export class AgentApiHelper {
 		);
 		if (!response.ok())
 			throw new TestError(`Failed to remove queued message: ${await response.text()}`);
+	}
+
+	async reorderQueuedMessage(
+		projectId: string,
+		agentId: string,
+		threadId: string,
+		queueId: string,
+		targetQueueId: string,
+		expectedQueueIds: string[],
+	) {
+		return await this.api.request.post(
+			`/rest/projects/${projectId}/agents/v2/${agentId}/chat/${threadId}/queue/${queueId}/reorder`,
+			{ data: { targetQueueId, expectedQueueIds } },
+		);
 	}
 
 	async steerQueuedMessage(

@@ -4,7 +4,7 @@
  * `calculateNodePositionsDagre` in layout-utils.ts positions every node as if it
  * were visible, and json-serializer.ts appends `nodeGroups` afterwards without
  * reserving space for them. The canvas draws a group collapsed by default: a
- * fixed 400x96 chip that sits GROUP_PADDING_Y_TOP + GROUP_HEADER_HEIGHT above
+ * fixed 400x96 chip that sits GROUP_PADDING_Y_TOP + CANVAS_GROUP_HEADER_HEIGHT above
  * its members. So the chip lands off-row and at the wrong width.
  */
 import type { WorkflowJSON } from '../types/base';
@@ -17,15 +17,17 @@ import {
 	GROUP_PADDING_X as SDK_GROUP_PADDING_X,
 	GROUP_PADDING_Y_TOP as SDK_GROUP_PADDING_Y_TOP,
 } from './constants';
-import { node, trigger } from './node-builders/node-builder';
-import { languageModel } from './node-builders/subnode-builders';
+import { node, sticky, trigger } from './node-builders/node-builder';
+import { languageModel, tool } from './node-builders/subnode-builders';
 
 // Written out rather than imported on purpose: these are the canvas's numbers, from
 // packages/frontend/editor-ui/src/features/workflows/canvas/stores/canvasNodeGroups.constants.ts.
 // Reading the SDK's own copy here would let both sides drift from the canvas together.
 const GROUP_PADDING_X = 56;
 const GROUP_PADDING_Y_TOP = 40;
-const GROUP_HEADER_HEIGHT = 96;
+// Keep the canvas expectation independent from the SDK constant so this test can
+// detect drift between the two packages.
+const CANVAS_GROUP_HEADER_HEIGHT = 96;
 const GROUP_HEADER_WIDTH_COLLAPSED = 400;
 
 const [NODE_W, NODE_H] = DEFAULT_NODE_SIZE;
@@ -42,6 +44,30 @@ function positionOf(json: WorkflowJSON, name: string): [number, number] {
 	const found = json.nodes.find((n) => n.name === name);
 	if (!found) throw new Error(`Node "${name}" not found in workflow JSON`);
 	return found.position;
+}
+
+function serializedBox(json: WorkflowJSON, name: string): Box {
+	const found = json.nodes.find((n) => n.name === name);
+	if (!found) throw new Error(`Node "${name}" not found in workflow JSON`);
+	return {
+		x: found.position[0],
+		y: found.position[1],
+		width: typeof found.parameters?.width === 'number' ? found.parameters.width : NODE_W,
+		height: typeof found.parameters?.height === 'number' ? found.parameters.height : NODE_H,
+	};
+}
+
+function contains(outer: Box, inner: Box): boolean {
+	return (
+		inner.x >= outer.x &&
+		inner.y >= outer.y &&
+		inner.x + inner.width <= outer.x + outer.width &&
+		inner.y + inner.height <= outer.y + outer.height
+	);
+}
+
+function overlaps(a: Box, b: Box): boolean {
+	return a.x < b.x + b.width && a.x + a.width > b.x && a.y < b.y + b.height && a.y + a.height > b.y;
 }
 
 /** What the canvas draws for a node the user can see. */
@@ -63,9 +89,9 @@ function visibleBoxes(json: WorkflowJSON): Map<string, Box> {
 		const minY = Math.min(...members.map((m) => m.position[1]));
 		boxes.set(g.name, {
 			x: snap(minX - GROUP_PADDING_X),
-			y: snap(minY - GROUP_PADDING_Y_TOP - GROUP_HEADER_HEIGHT),
+			y: snap(minY - GROUP_PADDING_Y_TOP - CANVAS_GROUP_HEADER_HEIGHT),
 			width: GROUP_HEADER_WIDTH_COLLAPSED,
-			height: GROUP_HEADER_HEIGHT,
+			height: CANVAS_GROUP_HEADER_HEIGHT,
 		});
 	}
 
@@ -208,16 +234,154 @@ describe('collapsed node group layout after tidyUp', () => {
 		expect(visible.get('Bridge')!.x).toBeGreaterThan(right(visible.get('Nightly')!));
 		expect(visible.get('Finish')!.x).toBeGreaterThan(right(visible.get('Bridge')!));
 	});
-	it('leaves a group holding an AI sub-node alone, so its own sub-layout still runs', () => {
+
+	it('includes an auto-sized anchored sticky in an eligible group', () => {
+		const start = trigger({
+			type: 'n8n-nodes-base.scheduleTrigger',
+			version: 1.2,
+			config: { name: 'Nightly' },
+		});
+		const fetch = node({
+			type: 'n8n-nodes-base.postgres',
+			version: 2.5,
+			config: { name: 'Fetch' },
+		});
+		const transform = node({
+			type: 'n8n-nodes-base.code',
+			version: 2,
+			config: { name: 'Transform' },
+		});
+		const save = node({
+			type: 'n8n-nodes-base.postgres',
+			version: 2.5,
+			config: { name: 'Save' },
+		});
+		const note = sticky('## Processing', [fetch, transform], { name: 'Processing note' });
+
+		const json = workflow('wf', 'Group with sticky')
+			.add(start.to(fetch).to(transform).to(save))
+			.add(note)
+			.group('Processing', [fetch, transform, note])
+			.toJSON({ tidyUp: true });
+
+		const group = json.nodeGroups?.find((candidate) => candidate.name === 'Processing');
+		expect(group?.nodeIds).toContain(note.id);
+		expect(contains(serializedBox(json, 'Processing note'), serializedBox(json, 'Fetch'))).toBe(
+			true,
+		);
+		expect(contains(serializedBox(json, 'Processing note'), serializedBox(json, 'Transform'))).toBe(
+			true,
+		);
+		const visible = visibleBoxes(json);
+		expect(right(visible.get('Processing')!)).toBeLessThan(visible.get('Save')!.x);
+	});
+
+	it('keeps an editor-created sticky on the normal path when it has persisted geometry', () => {
+		const build = (withGroup: boolean) => {
+			const start = trigger({
+				type: 'n8n-nodes-base.scheduleTrigger',
+				version: 1.2,
+				config: { name: 'Nightly' },
+			});
+			const fetch = node({
+				type: 'n8n-nodes-base.postgres',
+				version: 2.5,
+				config: { name: 'Fetch' },
+			});
+			const note = sticky('## Existing', [fetch], {
+				name: 'Existing note',
+				position: [640, 320],
+				width: 400,
+				height: 300,
+			});
+
+			const builder = workflow('wf', 'Persisted sticky').add(start.to(fetch)).add(note);
+			if (withGroup) builder.group('Stage', [fetch, note]);
+			return builder.toJSON({ tidyUp: true });
+		};
+
+		const withoutGroup = build(false);
+		const withGroup = build(true);
+		expect(serializedBox(withGroup, 'Existing note')).toEqual({
+			x: 640,
+			y: 320,
+			width: 400,
+			height: 300,
+		});
+		expect(positionOf(withGroup, 'Fetch')).toEqual(positionOf(withoutGroup, 'Fetch'));
+	});
+
+	it('keeps a group with an explicitly positioned node on the normal path', () => {
+		const start = trigger({
+			type: 'n8n-nodes-base.scheduleTrigger',
+			version: 1.2,
+			config: { name: 'Nightly' },
+		});
+		const fixed = node({
+			type: 'n8n-nodes-base.code',
+			version: 2,
+			config: { name: 'Fixed', position: [640, 320] },
+		});
+		const next = node({
+			type: 'n8n-nodes-base.code',
+			version: 2,
+			config: { name: 'Next' },
+		});
+
+		const builder = workflow('wf', 'Explicitly positioned group').add(start.to(fixed).to(next));
+		const withoutGroup = builder.toJSON({ tidyUp: true });
+		const withGroup = builder.group('Stage', [fixed, next]).toJSON({ tidyUp: true });
+
+		expect(positionOf(withGroup, 'Fixed')).toEqual([640, 320]);
+		expect(positionOf(withGroup, 'Next')).toEqual(positionOf(withoutGroup, 'Next'));
+	});
+
+	it('does not let group input order choose a winner for overlapping groups', () => {
+		const build = (reverse: boolean) => {
+			const start = trigger({
+				type: 'n8n-nodes-base.scheduleTrigger',
+				version: 1.2,
+				config: { name: 'Nightly' },
+			});
+			const first = node({ type: 'n8n-nodes-base.code', version: 2, config: { name: 'First' } });
+			const second = node({
+				type: 'n8n-nodes-base.code',
+				version: 2,
+				config: { name: 'Second' },
+			});
+			const third = node({ type: 'n8n-nodes-base.code', version: 2, config: { name: 'Third' } });
+			const builder = workflow('wf', 'Overlapping groups').add(
+				start.to(first).to(second).to(third),
+			);
+			if (reverse) {
+				builder.group('Second stage', [second, third]).group('First stage', [first, second]);
+			} else {
+				builder.group('First stage', [first, second]).group('Second stage', [second, third]);
+			}
+			return builder.toJSON({ tidyUp: true });
+		};
+
+		const forward = build(false);
+		const reverse = build(true);
+		for (const name of ['First', 'Second', 'Third']) {
+			expect(positionOf(forward, name)).toEqual(positionOf(reverse, name));
+		}
+	});
+	it('lays out a complete AI subtree inside the collapsed group chip', () => {
 		const model = languageModel({
 			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
 			version: 1,
 			config: { name: 'Model' },
 		});
+		const calculator = tool({
+			type: '@n8n/n8n-nodes-langchain.toolCalculator',
+			version: 1,
+			config: { name: 'Calculator' },
+		});
 		const agent = node({
 			type: '@n8n/n8n-nodes-langchain.agent',
 			version: 2,
-			config: { name: 'Answer', subnodes: { model } },
+			config: { name: 'Answer', subnodes: { model, tools: [calculator] } },
 		});
 		const chat = trigger({
 			type: '@n8n/n8n-nodes-langchain.chatTrigger',
@@ -227,13 +391,101 @@ describe('collapsed node group layout after tidyUp', () => {
 
 		const json = workflow('wf', 'Agent in a group')
 			.add(chat.to(agent))
-			.group('Brain', [agent, model])
+			.group('Brain', [agent, model, calculator])
 			.toJSON({ tidyUp: true });
 
-		// The AI sub-layout stacks the model under its parent. Folding the group
-		// would have flattened that into a left-to-right row.
+		const visible = visibleBoxes(json);
+		const chip = visible.get('Brain')!;
+		const chatBox = visible.get('On Chat')!;
+		expect(centerY(chip)).toBe(centerY(chatBox));
+
+		// The AI sub-layout still stacks the model under its parent when the group
+		// is expanded.
 		expect(positionOf(json, 'Model')[1]).toBeGreaterThan(positionOf(json, 'Answer')[1]);
+		expect(positionOf(json, 'Calculator')[1]).toBeGreaterThan(positionOf(json, 'Answer')[1]);
 		expect(json.nodeGroups?.map((g) => g.name)).toEqual(['Brain']);
+	});
+
+	it('keeps disconnected members clear of a complete AI subtree when expanded', () => {
+		const model = languageModel({
+			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+			version: 1,
+			config: { name: 'Model' },
+		});
+		const calculator = tool({
+			type: '@n8n/n8n-nodes-langchain.toolCalculator',
+			version: 1,
+			config: { name: 'Calculator' },
+		});
+		const agent = node({
+			type: '@n8n/n8n-nodes-langchain.agent',
+			version: 2,
+			config: { name: 'Answer', subnodes: { model, tools: [calculator] } },
+		});
+		const chat = trigger({
+			type: '@n8n/n8n-nodes-langchain.chatTrigger',
+			version: 1.1,
+			config: { name: 'On Chat' },
+		});
+		const unrelated = node({
+			type: 'n8n-nodes-base.noOp',
+			version: 1,
+			config: { name: 'Unrelated' },
+		});
+
+		const json = workflow('wf', 'Disconnected AI group')
+			.add(chat.to(agent))
+			.add(unrelated)
+			.group('Brain', [agent, model, calculator, unrelated])
+			.toJSON({ tidyUp: true });
+
+		const boxes = ['Answer', 'Model', 'Calculator', 'Unrelated'].map((name) =>
+			serializedBox(json, name),
+		);
+		for (let i = 0; i < boxes.length; i++) {
+			for (let j = i + 1; j < boxes.length; j++) {
+				expect(overlaps(boxes[i], boxes[j])).toBe(false);
+			}
+		}
+	});
+
+	it('falls back when a group contains only part of an AI subtree', () => {
+		const model = languageModel({
+			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+			version: 1,
+			config: { name: 'Model' },
+		});
+		const calculator = tool({
+			type: '@n8n/n8n-nodes-langchain.toolCalculator',
+			version: 1,
+			config: { name: 'Calculator' },
+		});
+		const agent = node({
+			type: '@n8n/n8n-nodes-langchain.agent',
+			version: 2,
+			config: { name: 'Answer', subnodes: { model, tools: [calculator] } },
+		});
+		const chat = trigger({
+			type: '@n8n/n8n-nodes-langchain.chatTrigger',
+			version: 1.1,
+			config: { name: 'On Chat' },
+		});
+
+		const builder = workflow('wf', 'Partial agent group').add(chat.to(agent));
+		const withoutGroup = builder.toJSON({ tidyUp: true });
+		const json = builder.group('Brain', [agent, model]).toJSON({ tidyUp: true });
+
+		const agentPosition = positionOf(json, 'Answer');
+		const modelPosition = positionOf(json, 'Model');
+		const calculatorPosition = positionOf(json, 'Calculator');
+
+		// No chip is allowed to replace only part of the AI subtree. The AI nodes
+		// therefore keep the same layout as they do without the group.
+		expect(agentPosition).toEqual(positionOf(withoutGroup, 'Answer'));
+		expect(modelPosition).toEqual(positionOf(withoutGroup, 'Model'));
+		expect(calculatorPosition).toEqual(positionOf(withoutGroup, 'Calculator'));
+		expect(modelPosition[1]).toBeGreaterThan(agentPosition[1]);
+		expect(calculatorPosition[1]).toBeGreaterThan(agentPosition[1]);
 	});
 
 	it('keeps drawn boxes clear of each other when a group holds more nodes than the chip covers', () => {
@@ -291,7 +543,7 @@ describe('collapsed node group layout after tidyUp', () => {
 		// assertion below is measuring the wrong frame.
 		expect(SDK_GROUP_PADDING_X).toBe(GROUP_PADDING_X);
 		expect(SDK_GROUP_PADDING_Y_TOP).toBe(GROUP_PADDING_Y_TOP);
-		expect(SDK_GROUP_HEADER_HEIGHT).toBe(GROUP_HEADER_HEIGHT);
+		expect(SDK_GROUP_HEADER_HEIGHT).toBe(CANVAS_GROUP_HEADER_HEIGHT);
 		expect(SDK_GROUP_HEADER_WIDTH_COLLAPSED).toBe(GROUP_HEADER_WIDTH_COLLAPSED);
 	});
 

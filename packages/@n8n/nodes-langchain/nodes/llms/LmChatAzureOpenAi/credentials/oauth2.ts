@@ -2,6 +2,8 @@ import { getBearerTokenProvider } from '@azure/identity';
 import { NodeOperationError, type ISupplyDataFunctions } from 'n8n-workflow';
 
 import { N8nOAuth2TokenCredential } from './N8nOAuth2TokenCredential';
+import { normalizeEndpoint } from './normalizeEndpoint';
+import { requireFoundryEndpoint } from './requireFoundryEndpoint';
 import type {
 	AzureEntraCognitiveServicesOAuth2ApiCredential,
 	AzureOpenAIOAuth2ModelConfig,
@@ -38,9 +40,14 @@ export async function setupOAuth2Authentication(
 			azureADTokenProvider,
 			azureOpenAIApiInstanceName: deploymentDetails.resourceName,
 			azureOpenAIApiVersion: deploymentDetails.apiVersion,
-			azureOpenAIEndpoint: deploymentDetails.endpoint,
+			azureOpenAIEndpoint: normalizeEndpoint(deploymentDetails.endpoint),
 			...(deploymentDetails.endpointType === 'foundry' && deploymentDetails.foundryEndpoint
-				? { azureFoundryBaseURL: deploymentDetails.foundryEndpoint }
+				? {
+						azureFoundryBaseURL: requireFoundryEndpoint(
+							this.getNode(),
+							deploymentDetails.foundryEndpoint,
+						),
+					}
 				: {}),
 		};
 	} catch (error) {

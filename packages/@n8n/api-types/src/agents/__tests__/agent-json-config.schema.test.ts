@@ -11,6 +11,42 @@ const minimalConfig = {
 	instructions: 'Help the user.',
 };
 
+describe('AgentJsonConfigSchema — capability activation', () => {
+	it.each([undefined, true, false])('preserves enabled=%s on capability references', (enabled) => {
+		const activation = enabled === undefined ? {} : { enabled };
+		const config = {
+			...minimalConfig,
+			skills: [{ type: 'skill', id: 'notes', ...activation }],
+			tools: [
+				{ type: 'custom', id: 'search', requireApproval: true, ...activation },
+				{ type: 'workflow', workflow: 'My Workflow', workflowId: 'wf-1', ...activation },
+				{
+					type: 'node',
+					name: 'read_file',
+					...activation,
+					node: {
+						nodeType: 'n8n-nodes-base.readBinaryFile',
+						nodeTypeVersion: 1,
+						nodeParameters: {},
+					},
+				},
+			],
+			subAgents: { agents: [{ agentId: 'agent-2', useWhen: 'Review notes', ...activation }] },
+		};
+
+		expect(AgentJsonConfigSchema.parse(config)).toMatchObject(config);
+	});
+
+	it('rejects a non-boolean activation flag', () => {
+		expect(
+			AgentJsonConfigSchema.safeParse({
+				...minimalConfig,
+				skills: [{ type: 'skill', id: 'notes', enabled: 'false' }],
+			}).success,
+		).toBe(false);
+	});
+});
+
 describe('AgentJsonConfigSchema — model', () => {
 	it('accepts AWS Bedrock model names containing a version colon', () => {
 		const result = AgentJsonConfigSchema.safeParse({
@@ -501,13 +537,16 @@ describe('AgentJsonConfigSchema — vectorStores', () => {
 			collectionName: 'product-docs',
 		};
 
-		it('flags a collision with a custom tool id', () => {
-			const collisions = findVectorStoreToolNameCollisions({
-				tools: [{ type: 'custom', id: 'search_product_docs' }],
-				vectorStores: [vectorStore],
-			});
-			expect(collisions).toEqual(['search_product_docs']);
-		});
+		it.each([undefined, true, false])(
+			'checks active custom tool collisions with enabled=%s',
+			(enabled) => {
+				const collisions = findVectorStoreToolNameCollisions({
+					tools: [{ type: 'custom', id: 'search_product_docs', enabled }],
+					vectorStores: [vectorStore],
+				});
+				expect(collisions).toEqual(enabled === false ? [] : ['search_product_docs']);
+			},
+		);
 
 		it('flags a collision with an explicit workflow tool name', () => {
 			const collisions = findVectorStoreToolNameCollisions({
@@ -741,6 +780,15 @@ describe('AgentJsonConfigSchema — config.guardrails.budget', () => {
 			alertThresholdPercent: 80,
 			sessionCostCapUsd: 2,
 		});
+	});
+
+	it.each(['sessionCostCapUsd', 'monthlyBudgetUsd'] as const)('rejects a %s of 0', (field) => {
+		const result = AgentJsonConfigSchema.safeParse({
+			...minimalConfig,
+			config: { guardrails: { budget: { enabled: true, [field]: 0 } } },
+		});
+
+		expect(result.success).toBe(false);
 	});
 
 	it('rejects a negative amount', () => {

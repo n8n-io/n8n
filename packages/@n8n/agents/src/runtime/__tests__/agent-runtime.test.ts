@@ -1,3 +1,4 @@
+import type { ProviderOptions } from '@ai-sdk/provider-utils';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { sleep } from '@n8n/utils/sleep';
 import * as aiModule from 'ai';
@@ -32,7 +33,8 @@ import type {
 } from '../../types/sdk/tool';
 import type { BuiltTelemetry } from '../../types/telemetry';
 import { Workspace, getToolResultRunDirectory } from '../../workspace';
-import { createBudgetGuardrail, InMemorySpendLedger } from '../guardrails/budget-guardrail';
+import { createBudgetGuardrail } from '../guardrails/budget-guardrail';
+import { spendLedger } from '../guardrails/__tests__/spend-ledger';
 import { AgentRuntime } from '../loop/agent-runtime';
 import { InMemoryMemory } from '../memory/memory-store';
 import { OBSERVATION_CONTINUATION_REMINDER } from '../model/message-list';
@@ -1070,6 +1072,39 @@ describe('AgentRuntime — execution counters', () => {
 		);
 	});
 
+	it.each(['generate', 'stream'] as const)(
+		'omits local and provider tools for one %s execution when disabled',
+		async (mode) => {
+			generateText.mockResolvedValue(makeGenerateSuccess());
+			streamText.mockImplementation(() => makeStreamSuccess());
+			const runtime = new AgentRuntime({
+				name: 'test',
+				model: 'openai/gpt-4o-mini',
+				instructions: 'Report the saved progress.',
+				tools: [makeMockTool('work', vi.fn())],
+				providerTools: [{ name: 'openai.web_search', args: {} }],
+			});
+
+			for (const toolsEnabled of [false, undefined]) {
+				if (mode === 'generate') await runtime.generate('Report', { toolsEnabled });
+				else {
+					const result = await runtime.stream('Report', { toolsEnabled });
+					await collectChunks(result.stream);
+				}
+				const model = mode === 'generate' ? generateText : streamText;
+				const request = model.mock.lastCall?.[0];
+				if (toolsEnabled === false) expect(request.tools).toBeUndefined();
+				else {
+					expect(request.tools.work).toBeDefined();
+					expect(request.tools['openai.web_search']).toMatchObject({
+						type: 'provider',
+						isProviderExecuted: true,
+					});
+				}
+			}
+		},
+	);
+
 	it('counts provider-executed tool calls when surfaced by the model', async () => {
 		generateText
 			.mockResolvedValueOnce({
@@ -1596,7 +1631,7 @@ describe('AgentRuntime — guardrails', () => {
 		});
 		const runtime = createRuntimeWithEchoTool(async () => ({ ok: true }));
 		const hook = createBudgetGuardrail({
-			ledger: new InMemorySpendLedger(),
+			ledger: spendLedger(),
 			sessionId: 'session-1',
 			sessionCostCapUsd: 1,
 		});
@@ -3416,6 +3451,236 @@ function makeStreamWithToolCalls(
 		),
 	};
 }
+
+describe('AgentRuntime — user pause', () => {
+	beforeEach(() => {
+		generateText.mockReset();
+		streamText.mockReset();
+	});
+
+	it.each(['generate', 'stream'] as const)(
+		'finishes the current %s tool batch and resumes once without replay',
+		async (mode) => {
+			const store = makeClaimingCheckpointStore();
+			const entered = createDeferredPromise();
+			const release = createDeferredPromise();
+			const handler = vi.fn(async () => {
+				entered.resolve();
+				await release.promise;
+				return 'Saved partial result';
+			});
+			const tool = makeMockTool('work', handler);
+			const calls = ['first', 'second'].map((toolCallId) => ({
+				toolCallId,
+				toolName: 'work',
+				args: {},
+			}));
+			generateText.mockResolvedValueOnce(makeGenerateWithToolCalls(calls));
+			streamText.mockReturnValueOnce(makeStreamWithToolCalls(calls));
+			const runtime = createRuntimeWithCheckpointStore([tool], store);
+			let requested = false;
+			let finished = false;
+			let runId = '';
+			const options = {
+				shouldPause: async () => requested,
+				persistence: { threadId: 'child', resourceId: 'user' },
+			};
+			const completion = (async () => {
+				if (mode === 'generate') {
+					const result = await runtime.generate('Do two steps', options);
+					runId = result.runId;
+					return result;
+				}
+				const result = await runtime.stream('Do two steps', options);
+				runId = result.runId;
+				return await collectChunks(result.stream);
+			})().finally(() => {
+				finished = true;
+			});
+			await entered.promise;
+			requested = true;
+			expect(finished).toBe(false);
+			expect(store.save).not.toHaveBeenCalled();
+			release.resolve();
+			const result = await completion;
+			expect(Array.isArray(result) ? result.at(-1) : result).toMatchObject({
+				finishReason: 'paused',
+			});
+			expect(handler).toHaveBeenCalledTimes(2);
+			const state = runtime.getState();
+			expect(state.status).toBe('suspended');
+			const checkpoint = await store.load(runId);
+			expect(checkpoint).toMatchObject({
+				finishReason: 'paused',
+				pendingToolCalls: {},
+				iterationCount: 1,
+				persistence: options.persistence,
+			});
+
+			streamText.mockReset().mockReturnValue(makeStreamSuccess('Finished from the saved results'));
+			const resumes = await Promise.allSettled(
+				[runtime, createRuntimeWithCheckpointStore([tool], store)].map(
+					async (resumeRuntime) => await resumeRuntime.resumePaused({ runId }),
+				),
+			);
+			expect(resumes.filter((resume) => resume.status === 'fulfilled')).toHaveLength(1);
+			for (const resume of resumes) {
+				if (resume.status === 'rejected') expect(resume.reason).toBeInstanceOf(StaleResumeError);
+				else
+					expect((await collectChunks(resume.value.stream)).at(-1)).toMatchObject({
+						finishReason: 'stop',
+					});
+			}
+			expect(runtime.getState()).toMatchObject({ status: 'success', finishReason: undefined });
+			expect(handler).toHaveBeenCalledTimes(2);
+			expect(JSON.stringify(streamText.mock.calls[0][0].messages)).toContain(
+				'Saved partial result',
+			);
+			expect(await store.load(runId)).toBeUndefined();
+		},
+	);
+
+	it.each([
+		['admission', 'Admission failed'],
+		['options', 'Cannot decrease maxIterations'],
+		['metadata', 'Cannot update host metadata without persistence'],
+	] as const)(
+		'pauses before the first model call and permits a retry after %s fails',
+		async (failure, message) => {
+			const store = makeClaimingCheckpointStore();
+			const runtime = createRuntimeWithCheckpointStore([], store);
+			const result = await runtime.generate('Start later', {
+				shouldPause: async () => true,
+				maxIterations: 10,
+				persistence:
+					failure === 'metadata'
+						? undefined
+						: {
+								threadId: 'child',
+								resourceId: 'user',
+								hostMetadata: { actor: 'saved', source: 'checkpoint' },
+							},
+			});
+			expect(result.finishReason).toBe('paused');
+			expect(generateText).not.toHaveBeenCalled();
+			const original = await store.load(result.runId);
+			const resumeRuntime = createRuntimeWithCheckpointStore([], store);
+			await expect(
+				resumeRuntime.resumePaused({
+					runId: result.runId,
+					maxIterations: failure === 'options' ? 1 : 10,
+					hostMetadata: { actor: 'selected' },
+					onResumeClaimed: async () => {
+						throw new Error('Admission failed');
+					},
+				}),
+			).rejects.toThrow(message);
+			const expectedCheckpoint =
+				failure === 'admission'
+					? {
+							...original,
+							persistence: {
+								threadId: 'child',
+								resourceId: 'user',
+								hostMetadata: { actor: 'selected', source: 'checkpoint' },
+							},
+						}
+					: original;
+			expect(await store.load(result.runId)).toEqual(expectedCheckpoint);
+			if (failure === 'admission') expect(resumeRuntime.getState()).toEqual(expectedCheckpoint);
+			expect(streamText).not.toHaveBeenCalled();
+
+			streamText.mockReturnValue(makeStreamSuccess());
+			const restarted = createRuntimeWithCheckpointStore([], store);
+			const resumed = await restarted.resumePaused({ runId: result.runId, maxIterations: 10 });
+			expect((await collectChunks(resumed.stream)).at(-1)).toMatchObject({
+				finishReason: 'stop',
+			});
+			expect(await store.load(result.runId)).toBeUndefined();
+		},
+	);
+
+	it.each(['pause polling', 'checkpoint persistence'] as const)(
+		'cancels and removes the checkpoint when abort arrives during %s',
+		async (phase) => {
+			const bus = new AgentEventBus();
+			const store = makeClaimingCheckpointStore();
+			const entered = createDeferredPromise();
+			const release = createDeferredPromise();
+			const save = store.save;
+			store.save = async (...args) => {
+				await save(...args);
+				if (phase !== 'checkpoint persistence') return;
+				entered.resolve();
+				await release.promise;
+			};
+			const runtime = createRuntimeWithCheckpointStore([], store, bus);
+			const completion = runtime.generate('Start later', {
+				shouldPause: async () => {
+					if (phase === 'pause polling') {
+						entered.resolve();
+						await release.promise;
+					}
+					return true;
+				},
+			});
+			await entered.promise;
+			bus.abort();
+			release.resolve();
+			const result = await completion;
+
+			expect(result.finishReason).toBe('error');
+			expect(runtime.getState().status).toBe('cancelled');
+			expect(await store.load(result.runId)).toBeUndefined();
+		},
+	);
+
+	it.each([
+		['stop', 'success'],
+		['error', 'failed'],
+	] as const)(
+		'keeps the terminal %s result when pause is requested during the model call',
+		async (finishReason, status) => {
+			const store = makeClaimingCheckpointStore();
+			const runtime = createRuntimeWithCheckpointStore([], store);
+			let requested = false;
+			generateText.mockImplementationOnce(async () => {
+				requested = true;
+				if (finishReason === 'error') throw new Error('Model failed');
+				return makeGenerateSuccess();
+			});
+			const result = await runtime.generate('Start', {
+				shouldPause: async () => requested,
+				onInputBoundary: async () => [],
+			});
+
+			expect(result.finishReason).toBe(finishReason);
+			expect(runtime.getState().status).toBe(status);
+			expect(await store.load(result.runId)).toBeUndefined();
+		},
+	);
+
+	it('preserves an approval reached by the current step', async () => {
+		const handler = vi.fn();
+		const tool = wrapToolForApproval(makeMockTool('approve_work', handler), {
+			requireApproval: true,
+		});
+		const store = makeClaimingCheckpointStore();
+		const runtime = createRuntimeWithCheckpointStore([tool], store);
+		let requested = false;
+		generateText.mockImplementationOnce(async () => {
+			requested = true;
+			return makeGenerateWithToolCall('approval', tool.name, {});
+		});
+		const result = await runtime.generate('Start', { shouldPause: async () => requested });
+		expect(handler).not.toHaveBeenCalled();
+		expect(result.pendingSuspend).toHaveLength(1);
+		await expect(runtime.resumePaused({ runId: result.runId })).rejects.toBeInstanceOf(
+			StaleResumeError,
+		);
+		expect((await store.load(result.runId))?.pendingToolCalls.approval.suspended).toBe(true);
+	});
+});
 
 describe('AgentRuntime — deferred tool loading', () => {
 	beforeEach(() => {
@@ -6946,31 +7211,58 @@ describe('AgentRuntime.resume() — checkpoint lifecycle', () => {
 		expect((await checkpointStore.load(runId))?.status).toBe('suspended');
 	});
 
-	it('claims the checkpoint after resume validation passes', async () => {
+	it('restores a rejected resume with current metadata and permits a retry', async () => {
 		const checkpointStore = makeClaimingCheckpointStore();
-		const runtime = createRuntimeWithCheckpointStore([makeApprovalTool()], checkpointStore);
-		const onResumeClaimed = vi.fn();
+		const tool = makeApprovalTool();
+		const handler = vi.spyOn(tool, 'handler');
+		const runtime = createRuntimeWithCheckpointStore([tool], checkpointStore);
+		const persistence = {
+			threadId: 'thread-1',
+			resourceId: 'resource-1',
+			hostMetadata: { owner: 'previous', scope: 'retained' },
+		};
 
 		generateText.mockResolvedValueOnce(
 			makeGenerateWithToolCalls([{ toolCallId: 'tc-1', toolName: 'suspend_tool', args: {} }]),
 		);
-		const first = await runtime.generate('run tool');
+		const first = await runtime.generate('run tool', { persistence });
 		const { runId, toolCallId } = first.pendingSuspend![0];
+		const checkpoint = await checkpointStore.load(runId);
+		handler.mockClear();
+		const rejectedRuntime = createRuntimeWithCheckpointStore([tool], checkpointStore);
+		const error = new Error('Resume admission rejected');
+		await expect(
+			rejectedRuntime.resume(
+				'stream',
+				{ approved: true },
+				{
+					runId,
+					toolCallId,
+					hostMetadata: { owner: 'current' },
+					onResumeClaimed: async () => {
+						expect((await checkpointStore.load(runId))?.status).toBe('running');
+						throw error;
+					},
+				},
+			),
+		).rejects.toBe(error);
+		expect(await checkpointStore.load(runId)).toEqual({
+			...checkpoint,
+			persistence: {
+				...persistence,
+				hostMetadata: { owner: 'current', scope: 'retained' },
+			},
+		});
+		expect(rejectedRuntime.getState().status).toBe('suspended');
+		expect(handler).not.toHaveBeenCalled();
+		expect(streamText).not.toHaveBeenCalled();
 
 		generateText.mockResolvedValueOnce(makeGenerateSuccess('done'));
-		const resumed = await runtime.resume(
-			'generate',
-			{ approved: true },
-			{ runId, toolCallId, onResumeClaimed },
-		);
+		const resumed = await runtime.resume('generate', { approved: true }, { runId, toolCallId });
 
 		expect(resumed.finishReason).toBe('stop');
-		expect(checkpointStore.claimForResume).toHaveBeenCalledTimes(1);
-		expect(checkpointStore.claimForResume).toHaveBeenCalledWith(
-			runId,
-			expect.objectContaining({ status: 'suspended' }),
-		);
-		expect(onResumeClaimed).toHaveBeenCalledTimes(1);
+		expect(handler).toHaveBeenCalledOnce();
+		expect(await checkpointStore.load(runId)).toBeUndefined();
 	});
 
 	it('does not emit a runtime error when another resume wins the checkpoint claim', async () => {
@@ -8190,12 +8482,14 @@ describe('AgentRuntime — mid-run observation', () => {
 			deferredTools?: BuiltTool[];
 			checkpointStorage?: CheckpointStore;
 			model?: ModelConfig;
+			instructionProviderOptions?: ProviderOptions;
 		},
 	): AgentRuntime {
 		return new AgentRuntime({
 			name: 'mid-run-agent',
 			model: extra?.model ?? 'openai/gpt-4o-mini',
 			instructions: 'You are a test assistant.',
+			instructionProviderOptions: extra?.instructionProviderOptions,
 			memory,
 			tools: extra?.tools ?? [makeStepTool()],
 			deferredTools: extra?.deferredTools,
@@ -8313,8 +8607,46 @@ describe('AgentRuntime — mid-run observation', () => {
 		expect(JSON.stringify(capturedCall(2).messages)).not.toContain('Wait for a real execution');
 	});
 
+	it('keeps the base instructions unchanged when compaction moves a skill into the system prompt', async () => {
+		const source = createRuntimeSkillSource([
+			{
+				id: 'builder',
+				name: 'builder',
+				description: 'Build workflows.',
+				instructions: 'Wait for a real execution before extending the workflow.',
+			},
+		]);
+		const cacheOptions = { anthropic: { cacheControl: { type: 'ephemeral' } } };
+		const runtime = buildMidRunRuntime(new InMemoryMemory(), {
+			skillSource: source,
+			tools: createRuntimeSkillTools(source),
+			model: 'anthropic/claude-sonnet-4-5',
+			instructionProviderOptions: cacheOptions,
+		});
+		generateText
+			.mockResolvedValueOnce(
+				makeGenerateWithToolCall('load-builder', 'load_skill', { skillId: 'builder' }),
+			)
+			.mockResolvedValueOnce(makeGenerateSuccess('Please test the first workflow.'));
+
+		await runtime.generate('Build it', { persistence: PERSISTENCE });
+		await runtime.dispose();
+
+		const before = capturedCall(0).instructions;
+		const after = capturedCall(1).instructions;
+		if (Array.isArray(before) || !Array.isArray(after)) throw new Error('Unexpected system shape');
+		expect(after[0]).toEqual(before);
+		expect(after[1]).toEqual({
+			role: 'system',
+			content: expect.stringContaining('Wait for a real execution'),
+			providerOptions: cacheOptions,
+		});
+		expect(after[2].content).toContain('Mid-run observation captured.');
+		expect(after[2]).not.toHaveProperty('providerOptions');
+	});
+
 	it.each(['load_skill', 'inspect_node'])(
-		'activates skill tool dependencies after %s and restores them on the next turn',
+		'keeps skill tool dependencies in the tool list before and after %s',
 		async (activationTool) => {
 			const source = createRuntimeSkillSource([
 				{
@@ -8352,8 +8684,9 @@ describe('AgentRuntime — mid-run observation', () => {
 			await runtime.generate('Build it', { persistence: PERSISTENCE });
 			await runtime.dispose();
 
-			expect(capturedCall(0).tools).not.toHaveProperty('catalog');
-			expect(capturedCall(1).tools).toHaveProperty('catalog');
+			// The tool list must not change when the skill activates, or the cached prompt is rewritten.
+			expect(Object.keys(capturedCall(1).tools)).toEqual(Object.keys(capturedCall(0).tools));
+			expect(capturedCall(0).tools).toHaveProperty('catalog');
 			expect(capturedCall(1).tools).not.toHaveProperty('optional_tool');
 			expect(flattenInstructions(capturedCall(1).instructions)).toContain(
 				'Choose a model from the catalog.',

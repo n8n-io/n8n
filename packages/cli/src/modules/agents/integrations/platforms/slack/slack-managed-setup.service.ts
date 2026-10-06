@@ -17,11 +17,10 @@ import { randomBytes } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
-import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
+import { CredentialsFinderService, CacheService } from '@n8n/backend-services';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { BadRequestError, NotFoundError } from '@n8n/errors';
-import { CacheService } from '@n8n/backend-services';
 
 import { SlackMethodsService } from './slack-methods.service';
 import {

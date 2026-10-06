@@ -54,11 +54,6 @@
 		"src/configs/activity-log.config.ts"
 	],
 	"packages/@n8n/constants": ["src/api.ts"],
-	"packages/@n8n/crdt": [
-		"src/__tests__/helpers.ts",
-		"src/awareness/awareness.test.ts",
-		"src/awareness/index.ts"
-	],
 	"packages/@n8n/db": [
 		"src/connection/__tests__/backoff.test.ts",
 		"src/connection/backoff.ts",
@@ -68,17 +63,19 @@
 		"src/__tests__/memoized.test.ts",
 		"src/auth-handler/auth-handler-metadata.ts"
 	],
-	"packages/@n8n/di": ["src/__tests__/circular-depedency.test.ts", "src/di.ts"],
 	"packages/@n8n/engine": [
 		"src/admittance/__tests__/allow-all-admittance.test.ts",
 		"src/admittance/admittance-rejected.error.ts"
 	],
-	"packages/@n8n/errors": ["src/application.error.ts"],
 	"packages/@n8n/eslint-plugin-community-nodes": [
 		"src/plugin.ts",
 		"src/rules/ai-node-package-json.test.ts"
 	],
 	"packages/@n8n/extension-sdk": ["src/backend/define.ts"],
+	"packages/@n8n/inbound-auth": [
+		"src/__tests__/trusted-source-config.test.ts",
+		"src/trusted-source-config.ts"
+	],
 	"packages/@n8n/imap": ["src/connection-options.test.ts", "src/connection-options.ts"],
 	"packages/@n8n/instance-ai": [
 		"evaluations/__tests__/agent-report-rendering.test.ts",

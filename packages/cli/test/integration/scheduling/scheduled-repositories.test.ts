@@ -1130,6 +1130,21 @@ describe('scheduled repositories', () => {
 			expect(snapshot.oldestPendingAgeMs).toBeNull();
 		});
 
+		it('counts a task held back by its concurrencyLimit as due', async () => {
+			const job = await createJob({ concurrencyLimit: 1 });
+			await createTask(job.id, {
+				status: 'running',
+				claimedBy: 'main-1',
+				leaseExpiresAt: secondsFromNow(60),
+			});
+			await createTask(job.id, { status: 'pending', runAt: secondsFromNow(-30) });
+
+			const snapshot = await taskRepository.getMetricSnapshot();
+
+			expect(snapshot.due).toBe(1);
+			expect(snapshot.oldestPendingAgeMs).not.toBeNull();
+		});
+
 		it('reports all-zero counts and a null age on an empty queue', async () => {
 			const snapshot = await taskRepository.getMetricSnapshot();
 

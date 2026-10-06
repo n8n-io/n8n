@@ -1,6 +1,6 @@
 import type { CreateCredentialDto, CredentialConnectionStatus } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { EventService, RoleService } from '@n8n/backend-services';
+import { EventService, RoleService, CredentialsFinderService } from '@n8n/backend-services';
 import { Time } from '@n8n/constants';
 import {
 	Project,
@@ -83,7 +83,6 @@ import {
 	CredentialDependencyService,
 	type CredentialDependencyFilter,
 } from './credential-dependency.service';
-import { CredentialsFinderService } from './credentials-finder.service';
 import { getExternalSecretExpressionPaths } from './external-secrets.utils';
 import { InstanceCredentialUseRegistry } from './instance-credential-use.registry';
 import {
@@ -94,6 +93,34 @@ import {
 
 /** Sentinel placed at every leaf of a redacted httpCustomAuth JSON shape */
 const CUSTOM_AUTH_JSON_REDACTED_VALUE = '***';
+
+const CLIENT_CREDENTIALS_GRANT_TYPE = 'clientCredentials';
+
+/**
+ * Fields the authorization server reads to mint a client-credentials token. A
+ * change to any of them makes the stored token the previous client's.
+ */
+const CLIENT_CREDENTIALS_TOKEN_FIELDS = [
+	'grantType',
+	'clientId',
+	'clientCredentialType',
+	'clientSecret',
+	'privateKey',
+	'certificate',
+	'accessTokenUrl',
+	'scope',
+	'additionalBodyProperties',
+] as const;
+
+/**
+ * Normalizes a credential field for comparison. The editor omits a displayed
+ * field holding its default, so an absent, null and empty value all read as
+ * "the user left it empty".
+ */
+function comparableCredentialField(value: unknown): string {
+	if (value === undefined || value === null) return '';
+	return typeof value === 'object' ? JSON.stringify(value) : String(value);
+}
 
 function parseHttpUrl(value: unknown): URL | undefined {
 	if (typeof value !== 'string') return undefined;
@@ -860,15 +887,23 @@ export class CredentialsService {
 		// Keep oauth / DCR fields unless the caller replaces the blob or clears the token
 		// (e.g. Static→Private toggle).
 		if (dataMerge !== 'replace' && !options?.clearOauthTokenData) {
-			if (decryptedData.oauthTokenData) {
-				// @ts-expect-error data is typed as encrypted string
-				updateData.data.oauthTokenData = decryptedData.oauthTokenData;
-			}
+			// Runs before the token decision, so a DCR-owned field the UI never showed
+			// counts as unchanged rather than as the user re-pointing the credential.
 			this.restoreHiddenDcrFields(
 				existingCredential.type,
 				updateData.data as unknown as ICredentialDataDecryptedObject,
 				decryptedData,
 			);
+			if (
+				decryptedData.oauthTokenData &&
+				!this.reissuesClientCredentialsToken(
+					updateData.data as unknown as ICredentialDataDecryptedObject,
+					decryptedData,
+				)
+			) {
+				// @ts-expect-error data is typed as encrypted string
+				updateData.data.oauthTokenData = decryptedData.oauthTokenData;
+			}
 		}
 
 		if (updateData.data) {
@@ -878,6 +913,34 @@ export class CredentialsService {
 			);
 		}
 		return updateData;
+	}
+
+	/**
+	 * Whether the update points a client-credentials grant at a different OAuth
+	 * client, which makes the stored token belong to the previous one. Carrying it
+	 * forward would keep every later request on the old client, because the grant
+	 * only fetches a token when none is stored. Dropping it is free for this grant:
+	 * the next execution mints a fresh token without any user action.
+	 *
+	 * A grant type that moves in or out of `clientCredentials` counts as a change
+	 * too, since a token from one grant never applies to the other.
+	 */
+	private reissuesClientCredentialsToken(
+		dataToSave: ICredentialDataDecryptedObject,
+		storedData: ICredentialDataDecryptedObject,
+	): boolean {
+		if (
+			dataToSave.grantType !== CLIENT_CREDENTIALS_GRANT_TYPE &&
+			storedData.grantType !== CLIENT_CREDENTIALS_GRANT_TYPE
+		) {
+			return false;
+		}
+
+		return CLIENT_CREDENTIALS_TOKEN_FIELDS.some(
+			(field) =>
+				comparableCredentialField(dataToSave[field]) !==
+				comparableCredentialField(storedData[field]),
+		);
 	}
 
 	/**

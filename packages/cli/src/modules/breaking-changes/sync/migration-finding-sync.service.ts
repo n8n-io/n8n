@@ -1,4 +1,8 @@
-import type { BreakingChangeVersion, BreakingChangeWorkflowRuleResult } from '@n8n/api-types';
+import {
+	MIGRATION_REPORT_TARGET_VERSION,
+	type BreakingChangeVersion,
+	type BreakingChangeWorkflowRuleResult,
+} from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { TransactionRunner, WorkflowRepository, type OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -19,8 +23,9 @@ export function computeRuleSetFingerprint(ruleIds: string[]): string {
 }
 
 /**
- * Brings the `migration_finding` table in step with a fresh detection scan.
- * Nothing calls it yet; a later change schedules it and serves the report from the table.
+ * Brings the `migration_finding` table in step with detection results: a full
+ * scan over every workflow, or a re-check of one workflow after it was saved.
+ * The report routes read from the table, so they run the full sync first.
  */
 @Service()
 export class MigrationFindingSyncService {
@@ -28,6 +33,9 @@ export class MigrationFindingSyncService {
 
 	/** In-flight runs per target version, so concurrent callers share one scan. */
 	private readonly ongoingSyncs = new Map<BreakingChangeVersion, Promise<void>>();
+
+	/** The latest re-check per workflow, so re-checks of one workflow run in save order. */
+	private readonly ongoingWorkflowSyncs = new Map<string, Promise<void>>();
 
 	constructor(
 		private readonly breakingChangeService: BreakingChangeService,
@@ -41,6 +49,31 @@ export class MigrationFindingSyncService {
 		private readonly errorReporter: ErrorReporter,
 	) {
 		this.logger = logger.scoped('breaking-changes');
+	}
+
+	/**
+	 * Syncs when the table has never been filled for the version, or when the
+	 * registered rule set changed since the last sync (for example after an upgrade).
+	 * A follower never writes, so on a follower this is a no-op and the table
+	 * shows the last leader sync.
+	 */
+	async syncIfStale(targetVersion: BreakingChangeVersion): Promise<void> {
+		// A read during a sync waits for it, so the table is never read mid-sync.
+		const ongoing = this.ongoingSyncs.get(targetVersion);
+		if (ongoing) {
+			await ongoing;
+			return;
+		}
+
+		const record = await this.syncRepository.getForVersion(targetVersion, {});
+		const ruleIds = this.ruleRegistry.getRules(targetVersion).map((rule) => rule.id);
+		if (record?.ruleSetFingerprint === computeRuleSetFingerprint(ruleIds)) return;
+
+		this.logger.debug('Migration finding table is stale, syncing', {
+			targetVersion,
+			reason: record ? 'rule set changed' : 'never synced',
+		});
+		await this.sync(targetVersion);
 	}
 
 	async sync(targetVersion: BreakingChangeVersion): Promise<void> {
@@ -70,6 +103,10 @@ export class MigrationFindingSyncService {
 	private async runSync(targetVersion: BreakingChangeVersion): Promise<void> {
 		this.logger.debug('Starting migration finding sync', { targetVersion });
 
+		// The record is written again only after every batch succeeded. A sync that stops
+		// early (failed batch, lost leadership, error) leaves none, so the next read syncs again.
+		await this.syncRepository.deleteForVersion(targetVersion, {});
+
 		// One full, uncached scan. Batch rules need every workflow to produce a result,
 		// so the scan runs first and the table is updated from its output afterwards.
 		const { report, failedChecks } = await this.breakingChangeService.detect(targetVersion);
@@ -96,7 +133,7 @@ export class MigrationFindingSyncService {
 			workflowIds = await this.workflowRepository.getIdsAfter(afterId, take);
 
 			// The scan can take long. A follower must not write, so leadership is
-			// checked again before every batch; the sync record stays unwritten.
+			// checked again before every batch; the sync record stays cleared.
 			if (!this.instanceSettings.isLeader) {
 				this.logger.info('Stopping migration finding sync, this instance is no longer the leader', {
 					targetVersion,
@@ -107,8 +144,8 @@ export class MigrationFindingSyncService {
 			try {
 				await this.syncBatch(targetVersion, workflowIds, hitsByWorkflow, unknownByWorkflow);
 			} catch (error) {
-				// One bad batch must not lose the rest. The sync record is withheld
-				// below, so the next sync visits this batch again.
+				// One bad batch must not lose the rest. The sync record stays cleared
+				// below, so the next read syncs and visits this batch again.
 				failedBatches++;
 				this.logger.warn('Migration finding sync batch failed, continuing with the next batch', {
 					targetVersion,
@@ -140,6 +177,58 @@ export class MigrationFindingSyncService {
 		);
 
 		this.logger.debug('Migration finding sync completed', { targetVersion });
+	}
+
+	/**
+	 * Re-checks one workflow and updates its findings in one transaction.
+	 * It runs on whichever main handled the save, so it is not leader-gated: the
+	 * write is small and scoped to one workflow, and a later full sync corrects
+	 * any drift. The sync record marks a full scan, so this path never writes it.
+	 * Errors are reported, not thrown, so the save that triggered it is unaffected.
+	 */
+	async syncWorkflow(workflowId: string): Promise<void> {
+		// Saves of one workflow can overlap. Running their re-checks one after the
+		// other keeps the table on the result of the latest save.
+		const previous = this.ongoingWorkflowSyncs.get(workflowId) ?? Promise.resolve();
+		const run = previous.then(async () => await this.runWorkflowSync(workflowId));
+		this.ongoingWorkflowSyncs.set(workflowId, run);
+		try {
+			await run;
+		} finally {
+			if (this.ongoingWorkflowSyncs.get(workflowId) === run) {
+				this.ongoingWorkflowSyncs.delete(workflowId);
+			}
+		}
+	}
+
+	private async runWorkflowSync(workflowId: string): Promise<void> {
+		const targetVersion = MIGRATION_REPORT_TARGET_VERSION;
+		if (!targetVersion) return;
+
+		try {
+			const { hits, failedChecks } = await this.breakingChangeService.detectWorkflowHits(
+				targetVersion,
+				workflowId,
+			);
+			// A batch rule decides from all workflows at once, so only a full sync
+			// may change its rows. Here they are out of scope and stay as they are.
+			const batchRulePairs = this.ruleRegistry
+				.getRules(targetVersion)
+				.filter((rule) => 'collectWorkflowData' in rule)
+				.map((rule) => ({ ruleId: rule.id, workflowId }));
+			await this.syncBatch(
+				targetVersion,
+				[workflowId],
+				groupByWorkflow(hits),
+				groupByWorkflow([...failedChecks, ...batchRulePairs]),
+			);
+		} catch (error) {
+			this.logger.warn('Migration finding sync for one workflow failed', {
+				targetVersion,
+				workflowId,
+			});
+			this.errorReporter.error(error, { extra: { targetVersion, workflowId } });
+		}
 	}
 
 	/** Reads, diffs, and writes one batch inside a single transaction. */

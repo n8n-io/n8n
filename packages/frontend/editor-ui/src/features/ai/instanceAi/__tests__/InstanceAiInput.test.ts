@@ -314,16 +314,10 @@ describe('InstanceAiInput', () => {
 		);
 	});
 
-	it('uses the new agent placeholder for a pending agent artifact', () => {
+	it('uses the new agent placeholder when the caller passes its key', () => {
 		const { getByRole } = renderComponent({
 			props: {
-				contextChip: {
-					type: 'agent-artifact',
-					agentId: 'agent-1',
-					projectId: 'project-1',
-					isNewAgent: true,
-					label: 'New Agent',
-				},
+				placeholderKey: 'instanceAi.input.newAgentPlaceholder',
 			},
 		});
 
@@ -340,7 +334,6 @@ describe('InstanceAiInput', () => {
 					type: 'agent-artifact',
 					agentId: 'agent-1',
 					projectId: 'project-1',
-					isNewAgent: false,
 					label: 'Support Agent',
 				},
 			},
