@@ -899,7 +899,7 @@ describe('ScalingService', () => {
 					jobProcessor.getRunningJobIds.mockReturnValue([]);
 				});
 
-				it('should hand back only active jobs locked with the queue token that never reached the handler', async () => {
+				it('should return only active jobs locked with the queue token that never reached the handler', async () => {
 					await startWorker();
 					const unstarted = activeJob('7');
 					lockWith(unstarted, LOCK_TOKEN);
@@ -933,7 +933,7 @@ describe('ScalingService', () => {
 					expect(unstarted.moveToFailed).toHaveBeenCalledTimes(1);
 				});
 
-				it('should ignore a null entry from Redis and still hand back the owned job', async () => {
+				it('should ignore a null entry from Redis and still return the owned job', async () => {
 					await startWorker();
 					const ownedJob = activeJob('7');
 					lockWith(ownedJob, LOCK_TOKEN);
@@ -942,14 +942,14 @@ describe('ScalingService', () => {
 
 					await scalingService.stop();
 
-					expect(ownedJob.moveToFailed).toHaveBeenCalledWith(expect.any(JobHandedBackError));
+					expect(ownedJob.moveToFailed).toHaveBeenCalledWith(expect.any(JobReturnedToQueueError));
 					expect(scopedLogger.warn).not.toHaveBeenCalledWith(
-						'Failed to hand back jobs fetched before the pause',
+						'Failed to return jobs fetched before the pause',
 						expect.anything(),
 					);
 				});
 
-				it('should raise the attempts limit before failing the job with a hand-back error', async () => {
+				it('should raise the attempts limit before failing the job with a return-to-queue error', async () => {
 					await startWorker();
 					const unstarted = activeJob('7', { attemptsMade: 2 });
 					lockWith(unstarted, LOCK_TOKEN);
@@ -966,7 +966,7 @@ describe('ScalingService', () => {
 					expect(unstarted.moveToFailed).toHaveBeenCalledWith(expect.any(JobReturnedToQueueError));
 				});
 
-				it('should hand back after the queues are paused and before the drain starts', async () => {
+				it('should return the jobs after the queues are paused and before the drain starts', async () => {
 					await startWorker();
 					const order: string[] = [];
 					queue.pause.mockImplementation(async () => {
@@ -1034,7 +1034,7 @@ describe('ScalingService', () => {
 					{ shutdownTimeout: 30, expectedStopMs: 5_000, case: 'the 5s ceiling' },
 					{ shutdownTimeout: 2, expectedStopMs: 1_000, case: 'half of a short window' },
 				])(
-					'should stop waiting for a hand-back that never settles at $case',
+					'should stop waiting for a return that never settles at $case',
 					async ({ shutdownTimeout, expectedStopMs }) => {
 						vi.useFakeTimers();
 						globalConfig.generic.gracefulShutdownTimeout = shutdownTimeout;
@@ -1056,7 +1056,7 @@ describe('ScalingService', () => {
 					},
 				);
 
-				it('should warn and skip the hand-back when the queue has no lock token', async () => {
+				it('should warn and skip the return when the queue has no lock token', async () => {
 					await startWorker();
 					Reflect.deleteProperty(queue, 'token');
 

@@ -19,9 +19,9 @@ import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { assertNever } from '@/utils';
 
 import { JOB_TYPE_NAME } from './constants';
-import { getLockToken, returnJobToQueue, returnUnstartedJobsToQueue } from './job-return';
 import { JobOutcomeTracker } from './job-outcome-tracker';
 import { JobProcessor } from './job-processor';
+import { getLockToken, returnJobToQueue, returnUnstartedJobsToQueue } from './job-return';
 import { DEFAULT_QUEUE_NAME, resolveQueueName, resolveWorkerPoolName } from './queue-name';
 import type {
 	JobQueue,
@@ -187,7 +187,7 @@ export class ScalingService {
 					{ executionId, jobId },
 				);
 				// A job started this late may not finish before the force exit, so another worker runs it.
-				returnJobToQueue(job);
+				await returnJobToQueue(job);
 			}
 
 			try {
@@ -280,12 +280,8 @@ export class ScalingService {
 			this.globalConfig.generic.gracefulShutdownTimeout * Time.seconds.toMilliseconds;
 		const getRemainingWindowMs = () => Math.max(0, shutdownWindowMs - (Date.now() - start));
 
-<<<<<<< HEAD
-		await this.returnJobsFetchedBeforePause(getRemainingWindowMs());
-=======
 		// Before the drain, so the lock of a fetched job cannot expire and let the stall check fail it.
 		await this.returnJobsFetchedBeforePause(getRemainingWindowMs());
->>>>>>> bf1e6e9ffeb (chore(core): Explain the shutdown sweep of jobs fetched before the pause)
 
 		// The budget bounds only the in-process wait. The queued-job wait stays
 		// unbounded, so a long queued execution still runs to completion.
@@ -343,7 +339,7 @@ export class ScalingService {
 		}
 	}
 
-	// Waits for jobs Bull fetched before the pause, so their hand-back reaches Redis before exit.
+	// Waits for fetches in flight at the pause, so a job that reaches the handler is returned to the queue before exit.
 	private async waitForCurrentQueueJobs(remainingWindowMs: number) {
 		const settled = Promise.all(
 			[...this.queueByName.values()].map(async (queue) => await queue.whenCurrentJobsFinished()),
@@ -365,12 +361,12 @@ export class ScalingService {
 			return;
 		}
 
-		const handedBack = returnUnstartedJobsToQueue(
+		const returned = returnUnstartedJobsToQueue(
 			this.defaultQueue,
 			token,
 			(jobId) => this.handlerSeen.has(jobId),
 			(jobId, error) => {
-				this.logger.warn(`Failed to hand back job ${jobId} fetched before the pause`, {
+				this.logger.warn(`Failed to return job ${jobId} fetched before the pause`, {
 					jobId,
 					error,
 				});
@@ -379,16 +375,16 @@ export class ScalingService {
 			.then((jobIds) => {
 				if (jobIds.length > 0) {
 					this.logger.info(
-						`Handed back ${jobIds.length} jobs fetched before the pause (job IDs: ${jobIds.join(', ')})`,
+						`Returned ${jobIds.length} jobs fetched before the pause (job IDs: ${jobIds.join(', ')})`,
 						{ jobIds },
 					);
 				}
 			})
 			.catch((error) => {
-				this.logger.warn('Failed to hand back jobs fetched before the pause', { error });
+				this.logger.warn('Failed to return jobs fetched before the pause', { error });
 			});
 
-		await this.raceSettleTimeout(handedBack, remainingWindowMs);
+		await this.raceSettleTimeout(returned, remainingWindowMs);
 	}
 
 	private async raceSettleTimeout(work: Promise<unknown>, remainingWindowMs: number) {
@@ -557,6 +553,25 @@ export class ScalingService {
 
 	getRunningJobsCount() {
 		return this.jobProcessor.getRunningJobIds().length;
+	}
+
+	/**
+	 * Sizes of the in-memory collections, for diagnostics and tests.
+	 * `queueListeners` counts Bull event listeners across this process's queues.
+	 */
+	getDiagnosticCounts() {
+		let queueListeners = 0;
+		for (const queue of this.queueByName.values()) {
+			for (const eventName of queue.eventNames()) {
+				queueListeners += queue.listenerCount(eventName);
+			}
+		}
+
+		return {
+			...this.jobOutcomeTracker.getDiagnosticCounts(),
+			queueListeners,
+			runningJobs: this.getRunningJobsCount(),
+		};
 	}
 
 	// #endregion
@@ -764,6 +779,7 @@ export class ScalingService {
 
 				// Convert to IRun format
 				const runData: IRun = {
+					// oxlint-disable-next-line typescript/no-deprecated
 					finished: executionData.finished,
 					mode: executionData.mode,
 					startedAt: executionData.startedAt,
