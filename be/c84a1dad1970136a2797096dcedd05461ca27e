@@ -1,0 +1,14 @@
+.code-health-baseline.json
+  h_52a137d26d774c 2291,2293-2294,2298-2300,2304-2306,2313-2314,2318-2320,2324-2326,2333-2334,2338-2340,2344-2345,2347-2349,2352
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "bec84a1dad1970136a2797096dcedd05461ca27e",
+  "prompts": {},
+  "humans": {
+    "h_52a137d26d774c": {
+      "author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}
