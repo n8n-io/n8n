@@ -678,7 +678,8 @@ export class AgentEvalRunnerService {
 	 * Grades a case's output against its rule (`criteria`) or gold answer
 	 * (`expectedOutput`, `criteria` wins if both are mapped), when the case's
 	 * snapshot has either — `status: 'skipped'` otherwise, so a case whose
-	 * dataset maps neither never gets a judge call.
+	 * dataset maps neither never gets a judge call. A rule is judged as something
+	 * the response must satisfy; a gold answer as something it must match.
 	 *
 	 * Resolves the judge's model the same way the agent's own execution and
 	 * case generation do: the agent's real (project-scoped, BYOK) credential via
@@ -700,10 +701,9 @@ export class AgentEvalRunnerService {
 		output: string,
 		ctx: { agentId: string; projectId: string; user: User },
 	): Promise<AgentEvalVerdict> {
-		const expected =
-			readSnapshotText(resolvedCase.snapshot, 'criteria') ??
-			readSnapshotText(resolvedCase.snapshot, 'expectedOutput');
-		if (!expected) return { status: 'skipped', outcome: null, reasoning: null };
+		const criteria = readSnapshotText(resolvedCase.snapshot, 'criteria');
+		const expectedOutput = readSnapshotText(resolvedCase.snapshot, 'expectedOutput');
+		if (!criteria && !expectedOutput) return { status: 'skipped', outcome: null, reasoning: null };
 
 		try {
 			const config = await this.agentConfigService.getConfig(ctx.agentId, ctx.projectId);
@@ -727,8 +727,15 @@ export class AgentEvalRunnerService {
 			// Lazy-loaded: judging only runs for the subset of cases that map a
 			// rule or gold answer, not every request, and `@n8n/agents` is heavy.
 			const { evals } = await import('@n8n/agents');
-			const judge = evals.correctness().model(modelConfig);
-			const score = await judge.run({ input: resolvedCase.input, output, expected });
+			const score = criteria
+				? await evals
+						.criteria()
+						.model(modelConfig)
+						.run({ input: resolvedCase.input, output, criteria })
+				: await evals
+						.correctness()
+						.model(modelConfig)
+						.run({ input: resolvedCase.input, output, expected: expectedOutput ?? undefined });
 
 			return {
 				status: 'completed',
