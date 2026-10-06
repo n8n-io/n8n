@@ -49,20 +49,24 @@ describe('safeUserRegex', () => {
 	});
 
 	const engine = {
-		exec: vi.fn(() => Object.assign(['match'], { 0: 'match' })),
+		exec: vi.fn(() => Object.assign(['match'], { 0: 'match', index: 0, input: 'input' })),
 		test: vi.fn(() => true),
 		replace: vi.fn(() => 'replaced'),
-		matchAll: vi.fn(() => [Object.assign(['match'], { 0: 'match' })]),
+		matchAll: vi.fn(() => [Object.assign(['match'], { 0: 'match', index: 0, input: 'input' })]),
 		split: vi.fn(() => ['a', 'b']),
 	};
 
 	it('delegates operations to the configured user engine', () => {
 		setUserRegexEngine(engine);
 
-		expect(safeUserRegex.exec('source', 'input')).toEqual(['match']);
+		expect(safeUserRegex.exec('source', 'input')).toEqual(
+			Object.assign(['match'], { index: 0, input: 'input' }),
+		);
 		expect(safeUserRegex.test('source', 'input')).toBe(true);
 		expect(safeUserRegex.replace('source', 'input', 'g', 'replacement')).toBe('replaced');
-		expect(safeUserRegex.matchAll('source', 'input')).toEqual([['match']]);
+		expect(safeUserRegex.matchAll('source', 'input')).toEqual([
+			Object.assign(['match'], { index: 0, input: 'input' }),
+		]);
 		expect(safeUserRegex.split('source', 'input')).toEqual(['a', 'b']);
 	});
 

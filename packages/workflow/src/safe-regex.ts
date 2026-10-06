@@ -3,28 +3,22 @@ import * as LoggerProxy from './logger-proxy';
 const REGEX_TIMEOUT_MS = 250;
 const REGEX_TIMEOUT_ERROR_MESSAGE = 'Regular expression execution timed out';
 
-/**
- * A match result. A non-participating capture group is `undefined`, which the built-in
- * engine also produces at runtime but `RegExpExecArray` claims cannot happen.
- */
-export type RegexExecArray = Array<string | undefined> & {
-	// A successful match always sets group 0; only capture groups can be unset.
-	0: string;
-	index?: number;
-	input?: string;
-	groups?: Record<string, string | undefined>;
-};
-
+// `RegExpExecArray`/`RegExpMatchArray` type every capture group as `string`, but a
+// non-participating group is `undefined` at runtime. Kept here regardless, matching the
+// native types on purpose: these interfaces are public (re-exported from n8n-workflow),
+// and the accurate `string | undefined` element type is a breaking change for any
+// external consumer pinned to the native shapes. Code that dereferences a capture group
+// must still guard against `undefined` itself; the type won't catch a missing guard.
 export interface RegexEngine {
-	exec(pattern: string, input: string, flags?: string): RegexExecArray | null;
+	exec(pattern: string, input: string, flags?: string): RegExpExecArray | null;
 	test(pattern: string, input: string, flags?: string): boolean;
 	replace(pattern: string, input: string, flags: string | undefined, replacement: string): string;
-	matchAll(pattern: string, input: string, flags?: string): RegexExecArray[];
-	split(pattern: string, input: string, flags?: string): Array<string | undefined>;
+	matchAll(pattern: string, input: string, flags?: string): RegExpMatchArray[];
+	split(pattern: string, input: string, flags?: string): string[];
 }
 
 export interface RegexEngineAsync {
-	exec(pattern: string, input: string, flags?: string): Promise<RegexExecArray | null>;
+	exec(pattern: string, input: string, flags?: string): Promise<RegExpExecArray | null>;
 	test(pattern: string, input: string, flags?: string): Promise<boolean>;
 	replace(
 		pattern: string,
@@ -32,8 +26,8 @@ export interface RegexEngineAsync {
 		flags: string | undefined,
 		replacement: string,
 	): Promise<string>;
-	matchAll(pattern: string, input: string, flags?: string): Promise<RegexExecArray[]>;
-	split(pattern: string, input: string, flags?: string): Promise<Array<string | undefined>>;
+	matchAll(pattern: string, input: string, flags?: string): Promise<RegExpMatchArray[]>;
+	split(pattern: string, input: string, flags?: string): Promise<string[]>;
 }
 
 export type RegexLiteral = {
@@ -154,7 +148,7 @@ function nodeVmEngine(vm: VmModule): RegexEngine {
 			context.flags = flags ?? '';
 			context.input = input;
 			context.result = undefined;
-			return run<RegexExecArray | null>(scripts.exec);
+			return run<RegExpExecArray | null>(scripts.exec);
 		},
 		test(pattern, input, flags) {
 			context.pattern = pattern;
@@ -176,14 +170,14 @@ function nodeVmEngine(vm: VmModule): RegexEngine {
 			context.flags = globalFlag(flags);
 			context.input = input;
 			context.result = undefined;
-			return run<RegexExecArray[]>(scripts.matchAll);
+			return run<RegExpMatchArray[]>(scripts.matchAll);
 		},
 		split(pattern, input, flags) {
 			context.pattern = pattern;
 			context.flags = flags ?? '';
 			context.input = input;
 			context.result = undefined;
-			return run<Array<string | undefined>>(scripts.split);
+			return run<string[]>(scripts.split);
 		},
 	};
 }
