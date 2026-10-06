@@ -21,6 +21,23 @@ import type { ToolRegistry } from '../tool-registry';
 const agentId = 'agent-1';
 const projectId = 'project-1';
 
+function reconstructionOptions(
+	overrides: {
+		previewChat?: boolean;
+		allowBackgroundTasks?: boolean;
+		attributionUserId?: string;
+		sessionId?: string;
+	} = {},
+) {
+	return {
+		previewChat: undefined,
+		allowBackgroundTasks: undefined,
+		attributionUserId: undefined,
+		sessionId: undefined,
+		...overrides,
+	};
+}
+
 function makeAgent(overrides: Partial<Agent> = {}): Agent {
 	return {
 		id: agentId,
@@ -105,7 +122,7 @@ describe('AgentRuntimeCacheService', () => {
 			undefined,
 			'manual',
 			undefined,
-			{},
+			reconstructionOptions(),
 		);
 	});
 
@@ -135,7 +152,7 @@ describe('AgentRuntimeCacheService', () => {
 			undefined,
 			'manual',
 			undefined,
-			{ allowBackgroundTasks: false },
+			reconstructionOptions({ allowBackgroundTasks: false }),
 		);
 	});
 
@@ -364,7 +381,55 @@ describe('AgentRuntimeCacheService', () => {
 			undefined,
 			'manual',
 			undefined,
-			{ previewChat: true },
+			reconstructionOptions({ previewChat: true }),
+		);
+	});
+
+	it('keeps preview runtimes separate by session so output wraps do not leak', async () => {
+		const { service, agentRepository, reconstructionService } = makeService();
+		const agent = makeAgent();
+		const firstRuntime = makeRuntime();
+		const secondRuntime = makeRuntime();
+
+		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+		reconstructionService.reconstructFromAgentEntity
+			.mockResolvedValueOnce(firstRuntime)
+			.mockResolvedValueOnce(secondRuntime);
+
+		const first = await service.getRuntime({
+			agentId,
+			projectId,
+			previewChat: true,
+			sessionId: 'session-a',
+		});
+		const firstAgain = await service.getRuntime({
+			agentId,
+			projectId,
+			previewChat: true,
+			sessionId: 'session-a',
+		});
+		const second = await service.getRuntime({
+			agentId,
+			projectId,
+			previewChat: true,
+			sessionId: 'session-b',
+		});
+
+		expect(first.agent).toBe(firstRuntime.agent);
+		expect(firstAgain.agent).toBe(firstRuntime.agent);
+		expect(second.agent).toBe(secondRuntime.agent);
+		expect(reconstructionService.reconstructFromAgentEntity).toHaveBeenCalledTimes(2);
+		expect(reconstructionService.reconstructFromAgentEntity).toHaveBeenNthCalledWith(
+			2,
+			agent,
+			expect.anything(),
+			'test',
+			undefined,
+			undefined,
+			undefined,
+			'manual',
+			undefined,
+			reconstructionOptions({ previewChat: true, sessionId: 'session-b' }),
 		);
 	});
 
@@ -399,7 +464,7 @@ describe('AgentRuntimeCacheService', () => {
 			undefined,
 			'manual',
 			undefined,
-			{},
+			reconstructionOptions(),
 		);
 	});
 
@@ -434,7 +499,7 @@ describe('AgentRuntimeCacheService', () => {
 			undefined,
 			'manual',
 			undefined,
-			{},
+			reconstructionOptions(),
 		);
 		expect(reconstructionService.reconstructFromAgentEntity).toHaveBeenNthCalledWith(
 			2,
@@ -446,7 +511,7 @@ describe('AgentRuntimeCacheService', () => {
 			undefined,
 			'manual',
 			undefined,
-			{},
+			reconstructionOptions(),
 		);
 	});
 
@@ -620,7 +685,7 @@ describe('AgentRuntimeCacheService', () => {
 			undefined,
 			'integrated',
 			undefined,
-			{},
+			reconstructionOptions(),
 		);
 	});
 
@@ -665,7 +730,7 @@ describe('AgentRuntimeCacheService', () => {
 			undefined,
 			'integrated',
 			undefined,
-			{ previewChat: undefined, allowBackgroundTasks: false, attributionUserId: 'user-1' },
+			reconstructionOptions({ allowBackgroundTasks: false, attributionUserId: 'user-1' }),
 		);
 	});
 

@@ -23,6 +23,8 @@ interface SystemPromptOptions {
 	projectId?: string;
 	/** Absolute or host-relative sandbox workspace root for `<workspace_root>` paths in prompts. */
 	workspaceRoot?: string;
+	/** Session id used to name the retrievable Output Files directory. */
+	sessionId?: string;
 	conversationHistoryEnabled?: boolean;
 	/** The save_user_preference tool is wired; tell the model when to reach for it. */
 	preferenceSavingEnabled?: boolean;
@@ -252,6 +254,7 @@ export function createSystemPromptRenderer(communicationStyleSection: string) {
 			parameterValuesHidden,
 			projectId,
 			workspaceRoot,
+			sessionId,
 			conversationHistoryEnabled,
 			preferenceSavingEnabled,
 			setupPanelEnabled,
@@ -259,7 +262,7 @@ export function createSystemPromptRenderer(communicationStyleSection: string) {
 
 		return `You are the n8n Instance Agent — a helpful AI assistant embedded in an n8n instance. Your job is to understand the user's request and load one or more skills to help them achieve their goal. Once a skill is loaded, learn it in depth before continuing. You are also encouraged to call skills at any point in the conversation if it will help you achieve the user's goal. Match the user's request against skill descriptions in the catalog. Call \`load_skill\` before acting on a matched skill's guidance. A single turn may need more than one skill when routing requires it. Tool descriptions carry any load-before-call gates (\`load_skill\` / \`load_tool\`).
 
-${workspaceRoot ? `${getSandboxWorkspaceSection(workspaceRoot)}` : ''}
+${workspaceRoot ? `${getSandboxWorkspaceSection(workspaceRoot, sessionId)}` : ''}
 ${getProjectScopeSection(projectId)}
 ${getExistingResourcesSection()}
 ${getPreviewTabsSection()}

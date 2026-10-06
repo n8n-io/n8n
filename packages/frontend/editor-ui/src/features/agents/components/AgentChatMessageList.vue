@@ -32,6 +32,8 @@ import AgentMarkdownChunk from './AgentMarkdownChunk.vue';
 import AgentTypingIndicator from './AgentTypingIndicator.vue';
 import AgentBudgetNoticeCard from './AgentBudgetNoticeCard.vue';
 import InteractiveCard from './interactive/InteractiveCard.vue';
+import SessionOutputFileChips from '@/features/ai/shared/components/SessionOutputFileChips.vue';
+import type { SessionFileDto } from '@n8n/api-types';
 import type { AgentFixWithAssistantFailure, AgentSendToAssistantEvent } from '../types';
 import { looksLikeAgentChangeRequest } from '../utils/agent-change-request';
 import { isSameLocalDay, useChatDividerTimestamp } from '../utils/relative-time';
@@ -47,6 +49,8 @@ const props = defineProps<{
 	dismissedFixToolCallIds?: string[];
 	canIncreaseBudget?: boolean;
 	budgetIncreasePending?: boolean;
+	outputFiles?: SessionFileDto[];
+	outputFileHref?: (id: string) => string;
 }>();
 
 const emit = defineEmits<{
@@ -72,6 +76,13 @@ function onInteractiveSubmit(payload: InteractivePayload, resumeData: unknown) {
 	// This guard is a defensive belt-and-braces for the type narrowing.
 	if (!payload.runId) return;
 	emit('resume', { runId: payload.runId, toolCallId: payload.toolCallId, resumeData });
+}
+
+function outputFilesForRun(executionId?: string): SessionFileDto[] {
+	if (!executionId || !props.outputFileHref) return [];
+	return (props.outputFiles ?? []).filter(
+		(file) => file.kind === 'output' && file.runId === executionId,
+	);
 }
 
 function isIntegrationActionSuspend(value: unknown): value is { type: 'integration_action' } {
@@ -588,6 +599,15 @@ watch(
 						:attachments="group.message.attachments"
 						:project-id="projectId"
 						:agent-id="agentId"
+					/>
+					<SessionOutputFileChips
+						v-if="
+							group.message.role === 'assistant' &&
+							outputFileHref &&
+							outputFilesForRun(group.message.executionId).length > 0
+						"
+						:files="outputFilesForRun(group.message.executionId)"
+						:content-href="outputFileHref"
 					/>
 					<N8nText
 						v-if="group.message.role === 'user' && group.message.author"

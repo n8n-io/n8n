@@ -126,6 +126,8 @@ const toast = useToast();
 const settingsStore = useSettingsStore();
 const rootStore = useRootStore();
 
+const sessionFiles = ref<SessionFileDto[]>([]);
+
 const {
 	messages,
 	queuedMessages,
@@ -165,6 +167,9 @@ const {
 		}
 	},
 	onSessionCreated: (sessionId) => emit('session-created', sessionId),
+	onSessionFilesUpdated: (files) => {
+		sessionFiles.value = files;
+	},
 	budgetCards: props.budgetCards,
 });
 
@@ -926,8 +931,10 @@ const sessionFilesEnabled = computed(
 const showSessionFiles = computed(() =>
 	Boolean(sessionFilesEnabled.value && props.continueSessionId),
 );
+const showOutputs = computed(() =>
+	Boolean(sessionFilesEnabled.value && settingsStore.moduleSettings.agents?.knowledgeBaseEnabled),
+);
 const sessionFilesOpen = ref(false);
-const sessionFiles = ref<SessionFileDto[]>([]);
 const sessionFilesLoading = ref(false);
 
 function sessionFileContentHref(fileId: string): string {
@@ -1052,6 +1059,8 @@ onBeforeUnmount(() => {
 			:dismissed-fix-tool-call-ids="dismissedFixToolCallIds"
 			:can-increase-budget="canIncreaseBudget"
 			:budget-increase-pending="budgetIncreasePending"
+			:output-files="showOutputs ? sessionFiles : []"
+			:output-file-href="sessionFileContentHref"
 			@resume="resume"
 			@send-to-assistant="emit('send-to-assistant', $event)"
 			@increase-budget="onIncreaseBudget"
@@ -1063,6 +1072,7 @@ onBeforeUnmount(() => {
 				:files="sessionFiles"
 				:content-href="sessionFileContentHref"
 				:loading="sessionFilesLoading"
+				:show-outputs="showOutputs"
 			/>
 			<div
 				v-if="showBackgroundJobs"

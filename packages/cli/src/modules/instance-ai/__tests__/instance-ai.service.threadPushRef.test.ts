@@ -140,3 +140,21 @@ describe('InstanceAiService — threadPushRef lifetime', () => {
 		expect(source).toContain('threadPushRef.set');
 	});
 });
+
+describe('InstanceAiService — session output reconcile', () => {
+	function getMethodSource(name: keyof InstanceAiService): string {
+		const fn = InstanceAiService.prototype[name] as unknown;
+		if (typeof fn !== 'function') throw new Error(`Method ${name} not a function`);
+		return (fn as (...args: unknown[]) => unknown).toString();
+	}
+
+	it('executeRun reconciles session outputs in its run-finally', () => {
+		const source = getMethodSource('executeRun' as keyof InstanceAiService);
+		expect(source).toContain('unbindSessionOutputs');
+	});
+
+	it('processResumedStream reconciles session outputs in its run-finally', () => {
+		const source = getMethodSource('processResumedStream' as keyof InstanceAiService);
+		expect(source).toContain('unbindSessionOutputs');
+	});
+});

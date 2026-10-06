@@ -27,6 +27,7 @@ import type { InstanceSettings } from 'n8n-core';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 import type { AgentsSettingsService } from '../agents-settings.service';
+import type { AgentSessionOutputFilesService } from '../agent-session-output-files.service';
 
 import type { ExternalHooks } from '@/external-hooks';
 import type { Telemetry } from '@/telemetry';
@@ -279,6 +280,7 @@ function makeService(sandboxEnabled = false) {
 		backgroundJobRepository,
 		backgroundJobs,
 		settingsService,
+		mock<AgentSessionOutputFilesService>(),
 	);
 
 	return {

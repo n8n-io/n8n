@@ -41,6 +41,7 @@ import { InstanceAiEventLogRepository } from './repositories/instance-ai-event-l
 import { InstanceAiPendingConfirmationRepository } from './repositories/instance-ai-pending-confirmation.repository';
 import { TypeORMAgentMemory } from './storage/typeorm-agent-memory';
 import { InstanceAiChatAttachmentService } from './instance-ai-chat-attachment.service';
+import { InstanceAiSessionOutputFilesService } from './instance-ai-session-output-files.service';
 
 /** Write-path launch attribution. `unknown` is reserved for legacy rows on read. */
 export interface InstanceAiThreadLaunchMetadata {
@@ -284,6 +285,7 @@ export class InstanceAiMemoryService {
 		private readonly eventLogRepository: InstanceAiEventLogRepository,
 		private readonly durableLogMetrics: DurableLogMetrics,
 		private readonly chatAttachmentService: InstanceAiChatAttachmentService,
+		private readonly sessionOutputFiles: InstanceAiSessionOutputFilesService,
 	) {
 		this.instanceAiConfig = globalConfig.instanceAi;
 	}
@@ -649,6 +651,7 @@ export class InstanceAiMemoryService {
 
 	async deleteThread(threadId: string): Promise<void> {
 		await this.chatAttachmentService.deleteByThread(threadId);
+		await this.sessionOutputFiles.deleteByThread(threadId);
 		await this.agentMemory.deleteThreadsByResourceIdPrefix(
 			createSubAgentResourceIdPrefix(threadId),
 		);
@@ -664,6 +667,7 @@ export class InstanceAiMemoryService {
 	async deleteThreadsForUser(userId: string): Promise<number> {
 		const threadIds = await this.agentMemory.listThreadIdsByResourceId(userId);
 		await this.chatAttachmentService.deleteByThreadIds(threadIds);
+		await this.sessionOutputFiles.deleteByThreadIds(threadIds);
 		return await this.agentMemory.deleteThreadsByResourceId(userId);
 	}
 

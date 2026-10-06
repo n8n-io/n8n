@@ -307,6 +307,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			mock<AgentBackgroundJobRepository>(),
 			mock<AgentBackgroundJobService>(),
 			mock<AgentsSettingsService>(),
+			mock(),
 		);
 		agentIntegrationPersistenceService = new AgentIntegrationPersistenceService(
 			agentRepository,

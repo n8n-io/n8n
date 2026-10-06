@@ -247,6 +247,7 @@ export class AgentMessageQueueConsumer {
 			errorMode: 'forward',
 			onChunk: (chunk) => emitChunkEvents(chunk, send),
 			onBudgetNotice: () => send({ type: 'budget-notice', code: 'budget.alert' }),
+			onSessionFilesUpdated: (files) => send({ type: 'session-files-updated', files }),
 		});
 		if (result.status === 'completed')
 			send({ type: 'done', sessionId: thread.id, executionId: admission.executionId });
@@ -269,6 +270,7 @@ export class AgentMessageQueueConsumer {
 			sessionMode: 'existing',
 			admittedExecution: admission,
 			abortSignal: signal,
+			onSessionFilesUpdated: (files) => send({ type: 'session-files-updated', files }),
 		});
 		let completed = true;
 		for await (const chunk of stream) {

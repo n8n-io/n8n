@@ -117,7 +117,11 @@ describe('AgentRuntimeReconstructionService — sub-agent workspace', () => {
 
 		await reconstructSubAgent(service, { handle, delegationThreadId: 'thread-1' });
 
-		expect(workspaceService.getDelegatedAgentWorkspace).toHaveBeenCalledWith(handle, 'thread-1');
+		expect(workspaceService.getDelegatedAgentWorkspace).toHaveBeenCalledWith(
+			handle,
+			'thread-1',
+			undefined,
+		);
 		expect(workspaceService.getAgentWorkspace).not.toHaveBeenCalled();
 		expect(builtAgent.workspace).toHaveBeenCalledWith(delegatedWorkspace);
 	});

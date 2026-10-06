@@ -18,6 +18,7 @@ import type { AgentRunTelemetryType, IAgentConfigurationTelemetryProperties } fr
 import { Telemetry } from '@/telemetry';
 
 import { AgentChatAttachmentService } from './agent-chat-attachment.service';
+import { AgentSessionOutputFilesService } from './agent-session-output-files.service';
 import type { StoredAttachmentRef } from './types/agent-chat-attachment';
 import { AgentExecutionUpdateBroadcaster } from './agent-execution-update-broadcaster';
 import { AgentTurnAlreadyRunningError } from './agent-turn-already-running.error';
@@ -183,6 +184,7 @@ export class AgentExecutionService {
 		private readonly n8nMemory: N8nMemory,
 		private readonly telemetry: Telemetry,
 		private readonly agentChatAttachmentService: AgentChatAttachmentService,
+		private readonly sessionOutputFiles: AgentSessionOutputFilesService,
 		private readonly agentExecutionLogStore: AgentExecutionLogStore,
 		private readonly storageConfig: StorageConfig,
 		private readonly errorReporter: ErrorReporter,
@@ -677,6 +679,7 @@ export class AgentExecutionService {
 
 		await Promise.all([
 			this.agentChatAttachmentService.deleteStoredData(refs.attachmentBinaryDataIds, { threadId }),
+			this.sessionOutputFiles.deleteStoredData(refs.outputBinaryDataIds, { threadId }),
 			this.agentExecutionLogStore.delete(
 				this.toBlobRefs(refs.executionLogs).map((ref) => ({
 					agentId,

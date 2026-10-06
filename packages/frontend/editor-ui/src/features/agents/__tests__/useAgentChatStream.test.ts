@@ -8,6 +8,7 @@ import {
 	WAIT_TOOL_NAME,
 	type AgentChatMessagesResponse,
 	type AgentSseEvent,
+	type SessionFileDto,
 } from '@n8n/api-types';
 
 vi.mock('@n8n/stores/useRootStore', () => ({
@@ -219,6 +220,7 @@ function buildHook(
 	options: {
 		newSession?: Ref<boolean>;
 		onSessionCreated?: (sessionId: string) => void;
+		onSessionFilesUpdated?: (files: SessionFileDto[]) => void;
 		budgetCards?: boolean;
 	} = {},
 ) {
@@ -344,6 +346,31 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 		expect(assistantMessages).toHaveLength(1);
 		expect(assistantMessages[0].status).toBe('awaitingUser');
 		expect(assistantMessages[0].toolCalls?.[0].state).toBe('suspended');
+	});
+
+	it('forwards session-files-updated events to the callback', async () => {
+		const files: SessionFileDto[] = [
+			{
+				id: 'out-1',
+				kind: 'output',
+				fileName: 'hello.md',
+				mimeType: 'text/markdown',
+				sizeBytes: 4,
+				runId: 'run-1',
+				createdAt: '2026-01-02T00:00:00.000Z',
+				previewable: true,
+			},
+		];
+		globalThis.fetch = vi.fn(async () =>
+			makeSseResponse([{ type: 'session-files-updated', files }, { type: 'done' }]),
+		) as typeof fetch;
+		const onSessionFilesUpdated = vi.fn();
+		const hook = buildHook('thread-1', { onSessionFilesUpdated });
+		await hook.sendMessage('write hello.md');
+		await flushPromises();
+		await nextTick();
+
+		expect(onSessionFilesUpdated).toHaveBeenCalledWith(files);
 	});
 
 	it('posts approval resumes to the chat resume endpoint in preview chat mode', async () => {

@@ -1087,4 +1087,48 @@ describe('AgentChatMessageList', () => {
 			expect(wrapper.findAll('[data-testid="agent-chat-timestamp-divider"]')).toHaveLength(0);
 		});
 	});
+
+	it('shows output file chips for the matching run', () => {
+		const wrapper = mount(AgentChatMessageList, {
+			props: {
+				messages: [
+					{
+						id: 'assistant-1',
+						role: 'assistant',
+						content: 'Done',
+						status: 'success',
+						executionId: 'run-1',
+					},
+				] satisfies ChatMessage[],
+				messagingState: 'idle',
+				outputFiles: [
+					{
+						id: 'out-1',
+						kind: 'output',
+						fileName: 'hello.md',
+						mimeType: 'text/markdown',
+						sizeBytes: 4,
+						runId: 'run-1',
+						createdAt: '2026-01-02T00:00:00.000Z',
+						previewable: true,
+					},
+					{
+						id: 'out-2',
+						kind: 'output',
+						fileName: 'other.md',
+						mimeType: 'text/markdown',
+						sizeBytes: 4,
+						runId: 'run-2',
+						createdAt: '2026-01-02T00:00:00.000Z',
+						previewable: true,
+					},
+				],
+				outputFileHref: (id: string) => `/files/${id}`,
+			},
+		});
+
+		const chips = wrapper.findAll('[data-testid="session-output-file-chip"]');
+		expect(chips).toHaveLength(1);
+		expect(chips[0].text()).toContain('hello.md');
+	});
 });

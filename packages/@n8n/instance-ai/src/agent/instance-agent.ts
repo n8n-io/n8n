@@ -219,6 +219,7 @@ export async function createInstanceAgent(
 				orchestrationContext?.workspace && orchestrationContext.workspaceRoot
 					? orchestrationContext.workspaceRoot
 					: undefined,
+			sessionId: orchestrationContext?.threadId,
 		},
 	);
 

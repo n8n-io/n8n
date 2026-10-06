@@ -12,6 +12,8 @@ import {
 	MAX_AGENT_CHAT_ATTACHMENT_SIZE_BYTES,
 	MAX_AGENT_CHAT_ATTACHMENT_SIZE_MB,
 	ViewableMimeTypes,
+	mergeSessionFiles,
+	type SessionFileDto,
 } from '@n8n/api-types';
 import { AgentsConfig } from '@n8n/config';
 import type { AuthenticatedRequest } from '@n8n/db';
@@ -38,7 +40,9 @@ import { BadRequestError, NotFoundError } from '@n8n/errors';
 
 import { AgentsCredentialProvider } from './adapters/agents-credential-provider';
 import { AgentChatAttachmentService } from './agent-chat-attachment.service';
+import { AgentSessionOutputFilesService } from './agent-session-output-files.service';
 import type { AgentChatAttachment } from './entities/agent-chat-attachment.entity';
+import type { AgentSessionOutputFile } from './entities/agent-session-output-file.entity';
 import type { StoredAttachmentRef } from './types/agent-chat-attachment';
 import { AgentExecutionOrchestratorService } from './agent-execution-orchestrator.service';
 import { AgentMessageQueueService } from './agent-message-queue.service';
@@ -78,6 +82,7 @@ export class AgentChatController {
 		private readonly credentialsService: CredentialsService,
 		private readonly agentsService: AgentsService,
 		private readonly agentChatAttachmentService: AgentChatAttachmentService,
+		private readonly sessionOutputFiles: AgentSessionOutputFilesService,
 		private readonly agentExecutionService: AgentExecutionService,
 		private readonly backgroundJobService: AgentBackgroundJobService,
 		private readonly chatExecutionService: AgentChatExecutionService,
@@ -98,6 +103,9 @@ export class AgentChatController {
 			onExecutionStarted: (id: string, sessionId: string, inputMessageIds: string[]) => {
 				delivery.abortSignal.removeEventListener('abort', abandon);
 				delivery.send({ type: 'execution-started', executionId: id, sessionId, inputMessageIds });
+			},
+			onSessionFilesUpdated: (files: SessionFileDto[]) => {
+				delivery.send({ type: 'session-files-updated', files });
 			},
 			onChunk: delivery.onChunk,
 			close: () => {
@@ -965,10 +973,16 @@ export class AgentChatController {
 		const agent = await this.agentsService.findById(agentId, projectId);
 		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
 		return {
-			files: await this.agentChatAttachmentService.listSessionFiles(sessionId, {
-				projectId,
-				agentId,
-			}),
+			files: mergeSessionFiles(
+				await this.agentChatAttachmentService.listSessionFiles(sessionId, {
+					projectId,
+					agentId,
+				}),
+				await this.sessionOutputFiles.listSessionFiles(sessionId, {
+					projectId,
+					agentId,
+				}),
+			),
 		};
 	}
 
@@ -992,11 +1006,20 @@ export class AgentChatController {
 			projectId,
 			threadId: sessionId,
 		});
-		if (!attachment || attachment.agentId !== agentId) {
+		if (attachment && attachment.agentId === agentId) {
+			await this.streamAttachment(attachment, res);
+			return;
+		}
+
+		const output = await this.sessionOutputFiles.findByIdInThread(fileId, {
+			projectId,
+			threadId: sessionId,
+		});
+		if (!output || output.agentId !== agentId) {
 			throw new NotFoundError(`Attachment "${fileId}" not found`);
 		}
 
-		await this.streamAttachment(attachment, res);
+		await this.streamOutput(output, res);
 	}
 
 	@Get('/:agentId/chat/attachments/:attachmentId')
@@ -1018,7 +1041,11 @@ export class AgentChatController {
 		if (attachment.source === N8N_CHAT_PRODUCTION_SOURCE) {
 			throw new NotFoundError(`Attachment "${attachmentId}" not found`);
 		}
-		await this.streamAttachment(attachment, res);
+		await this.streamFile(
+			attachment,
+			async () => await this.agentChatAttachmentService.getStream(attachment),
+			res,
+		);
 	}
 
 	private assertSessionFilesEnabled() {
@@ -1028,37 +1055,44 @@ export class AgentChatController {
 	}
 
 	private async streamAttachment(attachment: AgentChatAttachment, res: Response) {
-		const attachmentId = attachment.id;
-		// Open the stream before writing headers: bytes can be gone while the row
-		// remains (out-of-band storage cleanup), and that must surface as a clean
-		// 404 rather than a half-written response.
-		let stream: Awaited<ReturnType<AgentChatAttachmentService['getStream']>>;
+		await this.streamFile(
+			attachment,
+			async () => await this.agentChatAttachmentService.getStream(attachment),
+			res,
+		);
+	}
+
+	private async streamOutput(file: AgentSessionOutputFile, res: Response) {
+		await this.streamFile(file, async () => await this.sessionOutputFiles.getStream(file), res);
+	}
+
+	private async streamFile(
+		file: { id: string; mimeType: string; fileSizeBytes: number; fileName: string },
+		openStream: () => Promise<NodeJS.ReadableStream>,
+		res: Response,
+	) {
+		const fileId = file.id;
+		let stream: NodeJS.ReadableStream;
 		try {
-			stream = await this.agentChatAttachmentService.getStream(attachment);
+			stream = await openStream();
 		} catch (error) {
 			if (error instanceof FileNotFoundError) {
-				throw new NotFoundError(`Attachment "${attachmentId}" is no longer available`);
+				throw new NotFoundError(`Attachment "${fileId}" is no longer available`);
 			}
 			throw error;
 		}
 
-		res.setHeader('Content-Type', attachment.mimeType);
-		res.setHeader('Content-Length', attachment.fileSizeBytes);
+		res.setHeader('Content-Type', file.mimeType);
+		res.setHeader('Content-Length', file.fileSizeBytes);
 		res.setHeader('X-Content-Type-Options', 'nosniff');
-		// Sandbox anything rendered inline: attachments are user-supplied content
-		// served same-origin, so active content in them must never script against
-		// the n8n session (same posture as the binary-data controller).
 		res.setHeader('Content-Security-Policy', getHtmlSandboxCSP());
-		// Non-viewable types must not render inline in the browser.
-		if (!ViewableMimeTypes.includes(attachment.mimeType.toLowerCase())) {
+		if (!ViewableMimeTypes.includes(file.mimeType.toLowerCase())) {
 			res.setHeader(
 				'Content-Disposition',
-				`attachment; filename="${sanitizeFilename(attachment.fileName)}"`,
+				`attachment; filename="${sanitizeFilename(file.fileName)}"`,
 			);
 		}
 
-		// pipeline destroys the source when the client disconnects mid-transfer,
-		// so aborted downloads don't leak file descriptors or object-store sockets.
 		try {
 			await pipeline(stream, res);
 		} catch (error) {

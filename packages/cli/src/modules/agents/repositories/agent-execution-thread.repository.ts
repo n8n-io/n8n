@@ -7,6 +7,7 @@ import chunk from 'lodash/chunk';
 import { jsonParse, UserError } from 'n8n-workflow';
 
 import { AgentChatAttachment } from '../entities/agent-chat-attachment.entity';
+import { AgentSessionOutputFile } from '../entities/agent-session-output-file.entity';
 import { AgentCheckpoint } from '../entities/agent-checkpoint.entity';
 import { AgentExecution } from '../entities/agent-execution.entity';
 import {
@@ -33,6 +34,7 @@ export interface AgentExecutionThreadPage {
 
 interface AgentSessionDeletionRefs {
 	attachmentBinaryDataIds: string[];
+	outputBinaryDataIds: string[];
 	executionLogs: Array<Pick<AgentExecution, 'id' | 'storedAt'>>;
 }
 
@@ -346,7 +348,7 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 		});
 		if (hasRunningWork) return { status: 'busy' };
 
-		const { attachments, executionLogs } = await this.findExternalRefs(
+		const { attachments, outputs, executionLogs } = await this.findExternalRefs(
 			manager,
 			projectId,
 			threadId,
@@ -361,12 +363,19 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 				attachments.map(({ id }) => id),
 			);
 		}
+		if (outputs.length > 0) {
+			await manager.delete(
+				AgentSessionOutputFile,
+				outputs.map(({ id }) => id),
+			);
+		}
 		await manager.delete(AgentExecutionThread, { id: threadId });
 		return {
 			status: 'deleted',
 			refs: {
 				executionLogs,
 				attachmentBinaryDataIds: attachments.map(({ binaryDataId }) => binaryDataId),
+				outputBinaryDataIds: outputs.map(({ binaryDataId }) => binaryDataId),
 			},
 		};
 	}
@@ -420,6 +429,7 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 	): Promise<{
 		executionLogs: AgentSessionDeletionRefs['executionLogs'];
 		attachments: Array<Pick<AgentChatAttachment, 'id' | 'binaryDataId'>>;
+		outputs: Array<Pick<AgentSessionOutputFile, 'id' | 'binaryDataId'>>;
 	}> {
 		const executionLogs = await manager.find(AgentExecution, {
 			select: ['id', 'storedAt'],
@@ -429,7 +439,11 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 			select: ['id', 'binaryDataId'],
 			where: { projectId, threadId },
 		});
-		return { executionLogs, attachments };
+		const outputs = await manager.find(AgentSessionOutputFile, {
+			select: ['id', 'binaryDataId'],
+			where: { projectId, threadId },
+		});
+		return { executionLogs, attachments, outputs };
 	}
 }
 

@@ -17,10 +17,12 @@ import {
 	sanitizeSandboxErrorDetail,
 	type AgentSandboxRuntime,
 } from './agent-sandbox-runtime.service';
+import { AgentSessionOutputFilesService } from './agent-session-output-files.service';
 import {
 	CHECKPOINT_RECONCILIATION_OVERFLOW,
 	N8NCheckpointStorage,
 } from './integrations/n8n-checkpoint-storage';
+import { wrapWorkspaceForSessionOutputs } from './session-output-directory';
 
 export interface AgentWorkspaceAcquisition {
 	workspace: Workspace;
@@ -37,12 +39,14 @@ export class AgentWorkspaceService {
 		private readonly agentSandboxRuntimeService: AgentSandboxRuntimeService,
 		private readonly checkpointStorage: N8NCheckpointStorage,
 		private readonly agentsConfig: AgentsConfig,
+		private readonly sessionOutputs: AgentSessionOutputFilesService,
 	) {}
 
 	async getAgentWorkspace(
 		projectId: string,
 		agentId: string,
 		principalHash: AgentSandboxPrincipalHash,
+		sessionId?: string,
 	): Promise<AgentWorkspaceAcquisition> {
 		this.agentSandboxRuntimeService.assertSandboxConfiguration(projectId, agentId);
 		// The sandbox boots lazily on first filesystem/command use: the scope below
@@ -74,7 +78,20 @@ export class AgentWorkspaceService {
 			undefined,
 			{ ensureRootExists: true },
 		);
-		return { workspace: this.withCoreToolsOnly(workspace), handle: runtime };
+		return {
+			workspace: this.withCoreToolsOnly(
+				this.maybeWrapOutputs(workspace, {
+					sessionId,
+					workspaceRoot: runtime.workspaceRoot,
+					scopedRoot: runtime.workspaceRoot,
+					parentFilesystem: runtime.filesystem,
+					writerId: 'parent',
+					agentId,
+					projectId,
+				}),
+			),
+			handle: runtime,
+		};
 	}
 
 	/**
@@ -82,7 +99,11 @@ export class AgentWorkspaceService {
 	 * per-delegation subdirectory. No acquisition happens here — the shared sandbox
 	 * boots on first use, and the subdirectory is created on the scope's first I/O.
 	 */
-	getDelegatedAgentWorkspace(handle: AgentSandboxRuntime, delegationThreadId: string): Workspace {
+	getDelegatedAgentWorkspace(
+		handle: AgentSandboxRuntime,
+		delegationThreadId: string,
+		output?: { sessionId: string; agentId: string; projectId: string },
+	): Workspace {
 		const root = posixJoin(handle.workspaceRoot, 'subagents', delegationThreadId);
 		const workspace = createScopedWorkspace(
 			new Workspace({ filesystem: handle.filesystem, sandbox: handle.sandbox }),
@@ -90,7 +111,48 @@ export class AgentWorkspaceService {
 			undefined,
 			{ ensureRootExists: true },
 		);
-		return this.withCoreToolsOnly(workspace);
+		return this.withCoreToolsOnly(
+			this.maybeWrapOutputs(workspace, {
+				sessionId: output?.sessionId,
+				workspaceRoot: handle.workspaceRoot,
+				scopedRoot: root,
+				parentFilesystem: handle.filesystem,
+				writerId: delegationThreadId,
+				agentId: output?.agentId ?? null,
+				projectId: output?.projectId ?? '',
+			}),
+		);
+	}
+
+	private maybeWrapOutputs(
+		workspace: Workspace,
+		params: {
+			sessionId?: string;
+			workspaceRoot: string;
+			scopedRoot: string;
+			parentFilesystem: AgentSandboxRuntime['filesystem'];
+			writerId: string;
+			agentId: string | null;
+			projectId: string;
+		},
+	): Workspace {
+		if (!this.agentsConfig.sessionFilesEnabled || !params.sessionId || !params.projectId) {
+			return workspace;
+		}
+		this.sessionOutputs.registerWorkspace(params.sessionId, {
+			filesystem: params.parentFilesystem,
+			workspaceRoot: params.workspaceRoot,
+			agentId: params.agentId,
+			projectId: params.projectId,
+		});
+		return wrapWorkspaceForSessionOutputs(workspace, {
+			sessionId: params.sessionId,
+			workspaceRoot: params.workspaceRoot,
+			scopedRoot: params.scopedRoot,
+			parentFilesystem: params.parentFilesystem,
+			writerId: params.writerId,
+			host: this.sessionOutputs,
+		});
 	}
 
 	private withCoreToolsOnly(workspace: Workspace): Workspace {

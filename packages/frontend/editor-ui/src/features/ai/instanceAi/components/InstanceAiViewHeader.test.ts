@@ -3,10 +3,13 @@ import { flushPromises, mount } from '@vue/test-utils';
 import { createMemoryHistory, createRouter } from 'vue-router';
 import InstanceAiViewHeader from './InstanceAiViewHeader.vue';
 
-const { sessionFilesEnabledMock, getSessionFilesMock } = vi.hoisted(() => ({
-	sessionFilesEnabledMock: { value: false },
-	getSessionFilesMock: vi.fn().mockResolvedValue({ files: [] }),
-}));
+const { sessionFilesEnabledMock, getSessionFilesMock, sessionFilesForMock, setSessionFilesMock } =
+	vi.hoisted(() => ({
+		sessionFilesEnabledMock: { value: false },
+		getSessionFilesMock: vi.fn().mockResolvedValue({ files: [] }),
+		sessionFilesForMock: vi.fn().mockReturnValue([]),
+		setSessionFilesMock: vi.fn(),
+	}));
 
 vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({
@@ -20,6 +23,8 @@ vi.mock('../instanceAi.store', () => ({
 		creditsQuota: undefined,
 		isLowCredits: false,
 		threadCreditsUsed: () => undefined,
+		sessionFilesFor: sessionFilesForMock,
+		setSessionFiles: setSessionFilesMock,
 	}),
 }));
 
@@ -38,7 +43,12 @@ vi.mock('@/app/composables/usePageRedirectionHelper', () => ({
 vi.mock('@n8n/stores/settings.store', () => ({
 	useSettingsStore: () => ({
 		get moduleSettings() {
-			return { 'instance-ai': { sessionFilesEnabled: sessionFilesEnabledMock.value } };
+			return {
+				'instance-ai': {
+					sessionFilesEnabled: sessionFilesEnabledMock.value,
+					sandboxEnabled: true,
+				},
+			};
 		},
 	}),
 }));
@@ -94,6 +104,12 @@ describe('InstanceAiViewHeader session files', () => {
 		sessionFilesEnabledMock.value = false;
 		getSessionFilesMock.mockReset();
 		getSessionFilesMock.mockResolvedValue({ files: [] });
+		sessionFilesForMock.mockReset();
+		sessionFilesForMock.mockReturnValue([]);
+		setSessionFilesMock.mockReset();
+		setSessionFilesMock.mockImplementation((_threadId: string, files: unknown[]) => {
+			sessionFilesForMock.mockReturnValue(files);
+		});
 	});
 
 	it('hides the files button when the flag is off', async () => {
@@ -130,6 +146,10 @@ describe('InstanceAiViewHeader session files', () => {
 		await flushPromises();
 
 		expect(getSessionFilesMock).toHaveBeenCalledWith({ baseUrl: '/rest' }, 'thread-1');
+		expect(setSessionFilesMock).toHaveBeenCalledWith(
+			'thread-1',
+			expect.arrayContaining([expect.objectContaining({ id: 'att-1', fileName: 'notes.txt' })]),
+		);
 		expect(wrapper.get('[data-testid="session-files-list"]').text()).toContain('notes.txt');
 		wrapper.unmount();
 	});

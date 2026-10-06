@@ -30,6 +30,7 @@ import {
 	findUnbackedSeedWorkflowTools,
 	MAX_SESSION_ATTACHMENT_PERSIST_BYTES,
 	ViewableMimeTypes,
+	mergeSessionFiles,
 	type InstanceAiFileAttachment,
 } from '@n8n/api-types';
 import type {
@@ -91,6 +92,7 @@ import { InstanceAiPreferenceCardService } from './instance-ai-preference-card.s
 import { InstanceAiSettingsService } from './instance-ai-settings.service';
 import { InstanceAiThreadTabsService } from './instance-ai-thread-tabs.service';
 import { InstanceAiChatAttachmentService } from './instance-ai-chat-attachment.service';
+import { InstanceAiSessionOutputFilesService } from './instance-ai-session-output-files.service';
 import { InstanceAiVerificationService } from './instance-ai-verification.service';
 import { InstanceAiService } from './instance-ai.service';
 import { InstanceAiOnboardingService, startsOnboardingFirstTurn } from './onboarding';
@@ -138,6 +140,7 @@ export class InstanceAiController {
 		private readonly globalConfig: GlobalConfig,
 		private readonly threadTabsService: InstanceAiThreadTabsService,
 		private readonly chatAttachmentService: InstanceAiChatAttachmentService,
+		private readonly sessionOutputFiles: InstanceAiSessionOutputFilesService,
 	) {
 		this.gatewayApiKey = globalConfig.instanceAi.gatewayApiKey;
 	}
@@ -1005,7 +1008,12 @@ export class InstanceAiController {
 		this.requireInstanceAiEnabled();
 		this.assertSessionFilesEnabled();
 		await this.assertThreadAccess(req.user.id, sessionId);
-		return { files: await this.chatAttachmentService.listSessionFiles(sessionId) };
+		return {
+			files: mergeSessionFiles(
+				await this.chatAttachmentService.listSessionFiles(sessionId),
+				await this.sessionOutputFiles.listSessionFiles(sessionId),
+			),
+		};
 	}
 
 	@Get('/sessions/:sessionId/files/:fileId/content')
@@ -1021,11 +1029,21 @@ export class InstanceAiController {
 		await this.assertThreadAccess(req.user.id, sessionId);
 
 		const attachment = await this.chatAttachmentService.findByIdInThread(fileId, sessionId);
-		if (!attachment) throw new NotFoundError(`Attachment "${fileId}" not found`);
+		const output = attachment
+			? null
+			: await this.sessionOutputFiles.findByIdInThread(fileId, sessionId);
+		const file = attachment ?? output;
+		if (!file) throw new NotFoundError(`Attachment "${fileId}" not found`);
 
 		let stream: Awaited<ReturnType<InstanceAiChatAttachmentService['getStream']>>;
 		try {
-			stream = await this.chatAttachmentService.getStream(attachment);
+			if (attachment) {
+				stream = await this.chatAttachmentService.getStream(attachment);
+			} else if (output) {
+				stream = await this.sessionOutputFiles.getStream(output);
+			} else {
+				throw new NotFoundError(`Attachment "${fileId}" not found`);
+			}
 		} catch (error) {
 			if (error instanceof FileNotFoundError) {
 				throw new NotFoundError(`Attachment "${fileId}" is no longer available`);
@@ -1033,14 +1051,14 @@ export class InstanceAiController {
 			throw error;
 		}
 
-		res.setHeader('Content-Type', attachment.mimeType);
-		res.setHeader('Content-Length', attachment.fileSizeBytes);
+		res.setHeader('Content-Type', file.mimeType);
+		res.setHeader('Content-Length', file.fileSizeBytes);
 		res.setHeader('X-Content-Type-Options', 'nosniff');
 		res.setHeader('Content-Security-Policy', getHtmlSandboxCSP());
-		if (!ViewableMimeTypes.includes(attachment.mimeType.toLowerCase())) {
+		if (!ViewableMimeTypes.includes(file.mimeType.toLowerCase())) {
 			res.setHeader(
 				'Content-Disposition',
-				`attachment; filename="${sanitizeFilename(attachment.fileName)}"`,
+				`attachment; filename="${sanitizeFilename(file.fileName)}"`,
 			);
 		}
 

@@ -199,6 +199,8 @@ import {
 import { InstanceAiGatewayService } from './instance-ai-gateway.service';
 import { InstanceAiMemoryService } from './instance-ai-memory.service';
 import { InstanceAiChatAttachmentService } from './instance-ai-chat-attachment.service';
+import { InstanceAiSessionOutputFilesService } from './instance-ai-session-output-files.service';
+import { wrapWorkspaceForSessionOutputs } from './session-output-directory';
 import { InstanceAiModelService } from './instance-ai-model.service';
 import { InstanceAiRunLimitError } from './instance-ai-run-limit.error';
 import { InstanceAiRunProbe } from './instance-ai-run-probe';
@@ -838,6 +840,7 @@ export class InstanceAiService {
 		private readonly aiPreferenceService: AiPreferenceService,
 		private readonly aiUsageService: AiUsageService,
 		private readonly chatAttachmentService: InstanceAiChatAttachmentService,
+		private readonly sessionOutputFiles: InstanceAiSessionOutputFilesService,
 	) {
 		this.logger = logger.scoped('instance-ai');
 		runProbe.registerActiveRunCountProvider(() => this.runState.activeRunCount());
@@ -2767,7 +2770,22 @@ export class InstanceAiService {
 				): Promise<Workspace | undefined> => {
 					if (!workspace) return undefined;
 					const root = await getWorkspaceRoot(workspace);
-					return createScopedWorkspace(workspace, root);
+					const scoped = createScopedWorkspace(workspace, root);
+					if (!this.instanceAiConfig.sessionFilesEnabled || !workspace.filesystem) {
+						return scoped;
+					}
+					this.sessionOutputFiles.registerWorkspace(threadId, {
+						filesystem: workspace.filesystem,
+						workspaceRoot: root,
+					});
+					return wrapWorkspaceForSessionOutputs(scoped, {
+						sessionId: threadId,
+						workspaceRoot: root,
+						scopedRoot: root,
+						parentFilesystem: workspace.filesystem,
+						writerId: 'parent',
+						host: this.sessionOutputFiles,
+					});
 				};
 
 				runtimeWorkspace = createLazyRuntimeWorkspace({
@@ -3686,6 +3704,31 @@ export class InstanceAiService {
 		}
 	}
 
+	private bindSessionOutputs(threadId: string, runId: string): void {
+		if (!this.instanceAiConfig.sessionFilesEnabled) return;
+		this.sessionOutputFiles.bindRun({
+			sessionId: threadId,
+			runId,
+			emit: (files) => {
+				this.eventBus.publish(threadId, {
+					type: 'session-files-updated',
+					runId,
+					agentId: orchestratorAgentId(runId),
+					payload: { files },
+				});
+			},
+		});
+	}
+
+	private async unbindSessionOutputs(threadId: string): Promise<void> {
+		try {
+			await this.sessionOutputFiles.reconcile(threadId);
+		} catch (error) {
+			this.logger.warn('Failed to reconcile session output files', { threadId, error });
+		}
+		this.sessionOutputFiles.unbindRun(threadId);
+	}
+
 	private async persistSessionFileAttachments(
 		threadId: string,
 		messageId: string,
@@ -3836,6 +3879,7 @@ export class InstanceAiService {
 
 		try {
 			errorReporterExecutionToken = this.instanceAiErrorReporter.beginRun(runId);
+			this.bindSessionOutputs(threadId, runId);
 
 			messageId = nanoid();
 			if (this.instanceAiConfig.sessionFilesEnabled && fileAttachments.length > 0) {
@@ -4881,6 +4925,7 @@ export class InstanceAiService {
 				},
 			);
 		} finally {
+			await this.unbindSessionOutputs(threadId);
 			this.runState.clearActiveRun(threadId);
 			const segmentSuspended = messageTraceFinalization?.status === 'suspended';
 			// Note: don't delete threadPushRef here. Planned tasks (build agent,
@@ -5754,6 +5799,7 @@ export class InstanceAiService {
 		// `waitForConfirmation` and fires whether the resolution came from the
 		// user, from `cancelThread`, or from a liveness timeout.
 		void this.suspendedThreads.dropPendingConfirmation(requestId);
+		this.bindSessionOutputs(threadId, runId);
 
 		const resumeData = buildResumeData(data);
 
@@ -6475,6 +6521,7 @@ export class InstanceAiService {
 				},
 			);
 		} finally {
+			await this.unbindSessionOutputs(opts.threadId);
 			this.runState.clearActiveRun(opts.threadId, opts.resumeExecutionToken);
 			const segmentSuspended = messageTraceFinalization?.status === 'suspended';
 			// See note in executeRun's finally — keep threadPushRef alive for

@@ -19,14 +19,19 @@ export const UNTRUSTED_CONTENT_DOCTRINE =
 export const ASK_USER_FALLBACK =
 	'If you are stuck, need clarification, or need information only a human can provide, use the `ask-user` tool instead of asking in plain text. Use `agent-context` directly for read-only Agent research, explanation, comparison, session diagnosis, and capability checks. When the user asks to create, edit, test, or publish an Agent, load `agent-builder` and hand off the request as soon as any required orchestrator-owned prerequisites are ready. Agent Builder owns Agent implementation and setup questions. Before the first `build-agent` call, use `ask-user` only to define a workflow or data-table prerequisite that the orchestrator must create, or after `agent-context` with `type: "capabilities"` shows that the requested chat channel is unsupported and the user must choose a supported channel or an agent-entrypoint workflow. Before the first `build-workflow` call, use `ask-user` only for choices that change the workflow intent or topology, such as the missing destination service for "send my team a summary". But when the open choice is which service to use for a capability the user did not name (e.g. web search, scraping, a cloud browser), do not ask yet — first discover coverage with `nodes(action="search")` / `nodes(action="list", gatewayCreditsOnly=true)`. If a node covered by Gateway credits satisfies the capability and the user has no credential for a comparable tool, use it and do not ask. Only ask when discovery surfaces no covered option and the choice genuinely changes the workflow. Do not use `ask-user` before the first build for missing setup values after the service is already known, such as notification recipients, account labels or IDs, channel IDs, resource IDs, credential choices, or credential fields; use placeholders or unresolved `newCredential()` calls and leave them for post-build workflow setup. Do not retry the same failing approach more than twice — use `ask-user` instead. Never solicit API keys, tokens, or other secrets through `ask-user` — route credential collection through credential setup or Computer Use browser credential capture instead.';
 
-export function getSandboxWorkspaceSection(workspaceRoot?: string): string {
+export function getSandboxWorkspaceSection(workspaceRoot?: string, sessionId?: string): string {
 	const isolation = workspaceRoot
 		? `Cloud sandbox with isolated execution (TypeScript runtime). Filesystem access is scoped to \`${workspaceRoot}\`. Paths are relative to the workspace root unless you pass an absolute path under that root.`
 		: 'Cloud sandbox with isolated execution (TypeScript runtime).';
 
+	const outputGuidance =
+		workspaceRoot && sessionId
+			? `\n\nWrite files the user should retrieve only under \`${workspaceRoot}/outputs/${sessionId}\`. Files anywhere else are Scratch Files and are not retrievable.`
+			: '';
+
 	return `## Sandbox workspace
 
-${isolation}
+${isolation}${outputGuidance}
 
 You are given a sandbox workspace to use for your work that is scoped to the current thread. Use the workspace_* tools to read, write, update and execute commands in the workspace.`;
 }

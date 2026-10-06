@@ -128,6 +128,9 @@ export class InstanceAiModule implements ModuleInterface {
 		const { InstanceAiChatAttachment } = await import(
 			'./entities/instance-ai-chat-attachment.entity.js'
 		);
+		const { InstanceAiSessionOutputFile } = await import(
+			'./entities/instance-ai-session-output-file.entity.js'
+		);
 
 		return [
 			InstanceAiThread,
@@ -146,6 +149,7 @@ export class InstanceAiModule implements ModuleInterface {
 			WorkflowSuggestion,
 			WorkflowSuggestionActivity,
 			InstanceAiChatAttachment,
+			InstanceAiSessionOutputFile,
 		];
 	}
 

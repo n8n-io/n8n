@@ -25,7 +25,11 @@
  *
  */
 
-import type { AgentPersistedMessageContentPart, AgentPersistedMessageDto } from './agents';
+import type {
+	AgentPersistedMessageContentPart,
+	AgentPersistedMessageDto,
+	SessionFileDto,
+} from './agents';
 
 export interface ToolSuspendedPayload {
 	toolCallId: string;
@@ -180,4 +184,5 @@ export type AgentSseEvent =
 			/** Backend-emitted ids of the missing config slots; only set when `errorCode` is `agent_misconfigured`. */
 			missing?: string[];
 	  }
-	| { type: 'done'; sessionId?: string; executionId?: string };
+	| { type: 'done'; sessionId?: string; executionId?: string }
+	| { type: 'session-files-updated'; files: SessionFileDto[] };

@@ -88,6 +88,10 @@ const mockChatAttachmentService = {
 	deleteByThread: vi.fn(),
 	deleteByThreadIds: vi.fn(),
 };
+const mockSessionOutputFiles = {
+	deleteByThread: vi.fn(),
+	deleteByThreadIds: vi.fn(),
+};
 
 function createService(options: { threadTtlDays?: number } = {}): InstanceAiMemoryService {
 	const mockConfig = {
@@ -115,6 +119,7 @@ function createService(options: { threadTtlDays?: number } = {}): InstanceAiMemo
 		mockEventLogRepository as never,
 		mockDurableLogMetrics as never,
 		mockChatAttachmentService as never,
+		mockSessionOutputFiles as never,
 	);
 }
 
@@ -1246,6 +1251,9 @@ describe('InstanceAiMemoryService.deleteThread', () => {
 		expect(mockChatAttachmentService.deleteByThread).toHaveBeenCalledWith(
 			'00000000-0000-4000-8000-000000000001',
 		);
+		expect(mockSessionOutputFiles.deleteByThread).toHaveBeenCalledWith(
+			'00000000-0000-4000-8000-000000000001',
+		);
 		expect(mockDeleteThreadsByResourceIdPrefix).toHaveBeenCalledWith(
 			'instance-ai-subagent:00000000-0000-4000-8000-000000000001:',
 		);
@@ -1369,6 +1377,7 @@ describe('InstanceAiMemoryService.deleteThreadsForUser', () => {
 			'thread-a',
 			'thread-b',
 		]);
+		expect(mockSessionOutputFiles.deleteByThreadIds).toHaveBeenCalledWith(['thread-a', 'thread-b']);
 		expect(mockDeleteThreadsByResourceId).toHaveBeenCalledWith('user-1');
 	});
 });

@@ -157,6 +157,11 @@ export interface ReconstructAgentRuntimeParams extends AgentRuntimeAssets {
 	 */
 	parentWorkspace?: { handle: AgentSandboxRuntime; delegationThreadId: string };
 	/**
+	 * Conversation session id. When set and session files are on, workspace
+	 * writes under outputs/<sessionId>/ are copied out as Output Files.
+	 */
+	sessionId?: string;
+	/**
 	 * Root session bucket for a delegated run. Descendants keep this id and cap
 	 * instead of the child thread id.
 	 */
@@ -304,6 +309,7 @@ export class AgentRuntimeReconstructionService {
 			allowBackgroundTasks = true,
 			allowPlanTools = true,
 			attributionUserId,
+			sessionId,
 		}: {
 			/** Pass false when the caller cannot resume a suspended run (workflow executions). */
 			supportsHitl?: boolean;
@@ -313,6 +319,7 @@ export class AgentRuntimeReconstructionService {
 			allowBackgroundTasks?: boolean;
 			allowPlanTools?: boolean;
 			attributionUserId?: string;
+			sessionId?: string;
 		} = {},
 	): Promise<ReconstructedAgentRuntime & { userToolAccessSnapshot?: UserToolAccessSnapshot }> {
 		let config = agentEntity.schema;
@@ -364,6 +371,7 @@ export class AgentRuntimeReconstructionService {
 			allowBackgroundTasks,
 			allowPlanTools,
 			previewChat,
+			sessionId,
 		});
 		return {
 			...runtime,
@@ -911,8 +919,15 @@ export class AgentRuntimeReconstructionService {
 	private async attachWorkspace(
 		params: RuntimeDependencies,
 	): Promise<AgentSandboxRuntime | undefined> {
-		const { agent, agentId, projectId, runtimeProfile, parentWorkspace, sandboxPrincipalHash } =
-			params;
+		const {
+			agent,
+			agentId,
+			projectId,
+			runtimeProfile,
+			parentWorkspace,
+			sandboxPrincipalHash,
+			sessionId,
+		} = params;
 		if (runtimeProfile === 'sub-agent') {
 			// Delegated runs use the parent's sandbox only.
 			if (parentWorkspace) {
@@ -920,6 +935,13 @@ export class AgentRuntimeReconstructionService {
 					this.agentWorkspaceService.getDelegatedAgentWorkspace(
 						parentWorkspace.handle,
 						parentWorkspace.delegationThreadId,
+						sessionId
+							? {
+									sessionId,
+									agentId: params.parentAgentIdForDelegation,
+									projectId,
+								}
+							: undefined,
 					),
 				);
 			}
@@ -935,6 +957,7 @@ export class AgentRuntimeReconstructionService {
 				projectId,
 				agentId,
 				sandboxPrincipalHash,
+				sessionId,
 			);
 			agent.workspace(workspace);
 			return handle;

@@ -43,6 +43,7 @@ function makeService() {
 			runtimeService,
 			checkpointStorage,
 			agentsConfig,
+			mock(),
 		),
 		filesystem,
 		sandbox,

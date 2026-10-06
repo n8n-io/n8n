@@ -52,6 +52,7 @@ export interface GetRuntimeParams {
 	 * every other surface, so it is part of the cache key.
 	 */
 	previewChat?: boolean;
+	sessionId?: string;
 }
 
 /**
@@ -142,6 +143,7 @@ export class AgentRuntimeCacheService {
 		} else if (!params.usePublishedVersion && params.user) {
 			parts.push(`user:${hashAgentSandboxPrincipal({ type: 'n8n-user', userId: params.user.id })}`);
 		}
+		if (params.sessionId) parts.push(`session:${params.sessionId}`);
 		return parts.join(':');
 	}
 
@@ -312,6 +314,7 @@ export class AgentRuntimeCacheService {
 			allowBackgroundTasks,
 			previewChat,
 			attributionUserId,
+			sessionId,
 		} = params;
 
 		const agentEntity = await getAgentOrThrow(
@@ -346,7 +349,7 @@ export class AgentRuntimeCacheService {
 			undefined,
 			usePublishedVersion ? 'integrated' : 'manual',
 			sandboxPrincipalHash,
-			{ previewChat, allowBackgroundTasks, attributionUserId },
+			{ previewChat, allowBackgroundTasks, attributionUserId, sessionId },
 		);
 		const {
 			agent: agentInstance,

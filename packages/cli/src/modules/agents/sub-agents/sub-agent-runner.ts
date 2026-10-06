@@ -330,6 +330,7 @@ export class SubAgentRunner {
 				rootSessionId: context.rootSessionId,
 				rootSessionCapUsd: context.rootSessionCapUsd,
 				budgetForwarded: context.budgetForwarded,
+				sessionId: context.rootSessionId ?? operation.request.parentThreadId,
 				user: context.user,
 				instrumentation: context.instrumentation,
 				...(sandboxPrincipalHash !== undefined ? { sandboxPrincipalHash } : {}),

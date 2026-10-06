@@ -31,6 +31,7 @@ import {
 	type AgentRunState,
 	type InstanceAiRunLimitReason,
 	type AiPreferencesAppliedPayload,
+	type SessionFileDto,
 } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -174,6 +175,8 @@ export interface ThreadRuntimeHooks {
 	onTitleUpdated: (threadId: string, title: string) => void;
 	/** A run finished — refresh the thread list to pick up server-generated titles. */
 	onRunFinish: () => void;
+	/** Live session file list for the Session Files panel and assistant chips. */
+	onSessionFilesUpdated?: (threadId: string, files: SessionFileDto[]) => void;
 	/** SSE delivered a tool call that ends the onboarding flow (`leave-onboarding` or `build-workflow`), or a failed run. */
 	onOnboardingLeft?: (
 		threadId: string,
@@ -1143,6 +1146,9 @@ export function createThreadRuntime(
 			},
 			event,
 		);
+		if (event.type === 'session-files-updated') {
+			hooks.onSessionFilesUpdated?.(threadId, event.payload.files);
+		}
 	}
 
 	function onSSEMessage(sseEvent: MessageEvent): void {

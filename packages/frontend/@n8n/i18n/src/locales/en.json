@@ -8111,6 +8111,8 @@
 	"sessionFiles.title": "Session files",
 	"sessionFiles.empty": "No files in this session yet",
 	"sessionFiles.download": "Download",
+	"sessionFiles.attachments": "Attachments",
+	"sessionFiles.outputs": "Output files",
 	"agents.chat.attachments.tooLarge": "{fileName} exceeds the {limit} MB attachment limit",
 	"agents.chat.attachments.tooMany": "You can attach up to {limit} files per message",
 	"agents.chat.attachments.unavailable": "No longer available",

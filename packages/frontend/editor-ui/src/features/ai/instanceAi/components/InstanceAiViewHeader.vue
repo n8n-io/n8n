@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { computed, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
-import type { InstanceAiThreadSummary, SessionFileDto } from '@n8n/api-types';
+import type { InstanceAiThreadSummary } from '@n8n/api-types';
 import { N8nCallout, N8nIconButton, N8nTooltip, TOOLTIP_DELAY_MS } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useSettingsStore } from '@n8n/stores/settings.store';
@@ -70,9 +70,14 @@ function handleThreadSelect(threadId: string) {
 const showSessionFiles = computed(() =>
 	Boolean(settingsStore.moduleSettings['instance-ai']?.sessionFilesEnabled && activeThreadId.value),
 );
+const showOutputs = computed(() =>
+	Boolean(settingsStore.moduleSettings['instance-ai']?.sandboxEnabled),
+);
 const sessionFilesOpen = ref(false);
-const sessionFiles = ref<SessionFileDto[]>([]);
 const sessionFilesLoading = ref(false);
+const sessionFiles = computed(() =>
+	activeThreadId.value ? (store.sessionFilesFor(activeThreadId.value) ?? []) : [],
+);
 
 function sessionFileContentHref(fileId: string): string {
 	const sessionId = activeThreadId.value ?? '';
@@ -84,9 +89,9 @@ async function loadSessionFiles() {
 	sessionFilesLoading.value = true;
 	try {
 		const response = await getSessionFiles(rootStore.restApiContext, activeThreadId.value);
-		sessionFiles.value = response.files;
+		store.setSessionFiles(activeThreadId.value, response.files);
 	} catch {
-		sessionFiles.value = [];
+		store.setSessionFiles(activeThreadId.value, []);
 	} finally {
 		sessionFilesLoading.value = false;
 	}
@@ -101,7 +106,6 @@ async function toggleSessionFiles() {
 
 watch(activeThreadId, () => {
 	sessionFilesOpen.value = false;
-	sessionFiles.value = [];
 });
 </script>
 
@@ -157,6 +161,7 @@ watch(activeThreadId, () => {
 						:files="sessionFiles"
 						:content-href="sessionFileContentHref"
 						:loading="sessionFilesLoading"
+						:show-outputs="showOutputs"
 					/>
 				</div>
 			</div>

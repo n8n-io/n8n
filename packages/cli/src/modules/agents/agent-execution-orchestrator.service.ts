@@ -73,6 +73,7 @@ import type { ToolRegistry } from './tool-registry';
 import type { StoredAttachmentRef } from './types/agent-chat-attachment';
 import type { AgentExecutionAdmission } from './types/agent-queued-message';
 import type { AgentExecutionStreamChunk } from './types/agent-steering';
+import { AgentSessionOutputFilesService } from './agent-session-output-files.service';
 import { createAgentExecutionCounter } from './utils/agent-execution-counter';
 import { getPublishedAgentSnapshot } from './utils/agent-published-snapshot';
 import { buildInboundUserMessage } from './utils/inbound-attachments';
@@ -104,6 +105,7 @@ interface ChatExecutionCallbacks {
 	onExecutionStarted?: (executionId: string, sessionId: string, inputMessageIds: string[]) => void;
 	/** Runs after the turn is stored. Adds the execution ID to the SSE done event. */
 	onExecutionRecorded?: (executionId: string) => void;
+	onSessionFilesUpdated?: (files: import('@n8n/api-types').SessionFileDto[]) => void;
 }
 
 export interface ExecuteForChatConfig extends ChatExecutionInput, ChatExecutionCallbacks {
@@ -297,6 +299,7 @@ export class AgentExecutionOrchestratorService {
 		private readonly backgroundJobRepository: AgentBackgroundJobRepository,
 		private readonly backgroundJobService: AgentBackgroundJobService,
 		private readonly settingsService: AgentsSettingsService,
+		private readonly sessionOutputs: AgentSessionOutputFilesService,
 	) {}
 
 	async getSessionMode(threadId: string): Promise<AgentSessionMode> {
@@ -622,6 +625,7 @@ export class AgentExecutionOrchestratorService {
 						integrationType,
 						usePublishedVersion: true,
 						sandboxPrincipalHash,
+						sessionId: memory.threadId,
 					},
 					{
 						threadId: memory.threadId,
@@ -727,6 +731,7 @@ export class AgentExecutionOrchestratorService {
 						sandboxPrincipalHash,
 						allowBackgroundTasks: false,
 						attributionUserId: user.id,
+						sessionId: memory.threadId,
 					},
 					{
 						threadId: memory.threadId,
@@ -1013,27 +1018,52 @@ export class AgentExecutionOrchestratorService {
 		if (!config.admittedExecution && !config.isWakeRun) {
 			await this.settingsService.assertEnabled();
 		}
-		yield* this.turnExecutionService.execute({
-			admittedExecution: config.admittedExecution,
-			onAdmitted: config.onAdmitted,
-			agentInstance: config.agentInstance,
-			toolRegistry: config.toolRegistry,
-			mcpServerAttributions: config.mcpServerAttributions,
-			context: {
-				projectId: config.projectId,
-				agentId: config.agentId,
-				threadId: config.memory.threadId,
-			},
-			backgroundJobSignal: config.backgroundJobSignal,
-			onExecutionRecorded: config.onExecutionRecorded,
-			previewChat: config.previewChat,
-			productionN8nChat: config.source === N8N_CHAT_PRODUCTION_SOURCE,
-			onExecutionStarted: config.onExecutionStarted,
-			onSettled: config.isWakeRun
-				? undefined
-				: async () => await this.requestPendingBackgroundWake(config.memory.threadId),
-			prepare: async () => await this.prepareChatTurn(config),
-		});
+		const sessionId = config.memory.threadId;
+		const runId = config.admittedExecution?.executionId;
+		if (runId) {
+			this.sessionOutputs.bindRun({
+				sessionId,
+				runId,
+				emit: config.onSessionFilesUpdated,
+			});
+		}
+		try {
+			yield* this.turnExecutionService.execute({
+				admittedExecution: config.admittedExecution,
+				onAdmitted: config.onAdmitted,
+				agentInstance: config.agentInstance,
+				toolRegistry: config.toolRegistry,
+				mcpServerAttributions: config.mcpServerAttributions,
+				context: {
+					projectId: config.projectId,
+					agentId: config.agentId,
+					threadId: config.memory.threadId,
+				},
+				backgroundJobSignal: config.backgroundJobSignal,
+				onExecutionRecorded: config.onExecutionRecorded,
+				previewChat: config.previewChat,
+				productionN8nChat: config.source === N8N_CHAT_PRODUCTION_SOURCE,
+				onExecutionStarted: (executionId, startedSessionId, inputMessageIds) => {
+					this.sessionOutputs.bindRun({
+						sessionId: startedSessionId,
+						runId: executionId,
+						emit: config.onSessionFilesUpdated,
+					});
+					config.onExecutionStarted?.(executionId, startedSessionId, inputMessageIds);
+				},
+				onSettled: config.isWakeRun
+					? undefined
+					: async () => await this.requestPendingBackgroundWake(config.memory.threadId),
+				prepare: async () => await this.prepareChatTurn(config),
+			});
+		} finally {
+			try {
+				await this.sessionOutputs.reconcile(sessionId);
+			} catch (error) {
+				this.logger.warn('Failed to reconcile session output files', { sessionId, error });
+			}
+			this.sessionOutputs.unbindRun(sessionId);
+		}
 	}
 
 	private async *withRuntimeLease(
@@ -1165,6 +1195,7 @@ export class AgentExecutionOrchestratorService {
 				allowBackgroundTasks: source === N8N_CHAT_PRODUCTION_SOURCE ? false : undefined,
 				...(sandboxPrincipalHash ? { sandboxPrincipalHash } : {}),
 				previewChat,
+				sessionId: memoryScope.threadId,
 			},
 			{
 				threadId: memoryScope.threadId,
@@ -1386,6 +1417,7 @@ export class AgentExecutionOrchestratorService {
 				user,
 				sandboxPrincipalHash,
 				previewChat,
+				sessionId: memory.threadId,
 			},
 			{
 				threadId: memory.threadId,
@@ -1613,6 +1645,7 @@ export class AgentExecutionOrchestratorService {
 					: {}),
 				...(isDraft ? { user: identity.user } : {}),
 				sandboxPrincipalHash: identity.principalHash,
+				sessionId: memory.threadId,
 			},
 			{
 				threadId: memory.threadId,

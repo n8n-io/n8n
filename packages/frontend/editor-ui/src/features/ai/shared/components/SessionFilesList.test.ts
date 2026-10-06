@@ -39,6 +39,17 @@ const pdfFile: SessionFileDto = {
 	previewable: false,
 };
 
+const outputFile: SessionFileDto = {
+	id: 'out-1',
+	kind: 'output',
+	fileName: 'hello.md',
+	mimeType: 'text/markdown',
+	sizeBytes: 4,
+	runId: 'run-1',
+	createdAt: '2026-01-02T00:00:00.000Z',
+	previewable: true,
+};
+
 function href(id: string) {
 	return `/files/${id}`;
 }
@@ -74,5 +85,26 @@ describe('SessionFilesList', () => {
 		expect(links[1].attributes('href')).toBe('/files/pdf-1');
 		expect(links[1].attributes('download')).toBe('doc.pdf');
 		expect(links[1].text()).toContain('sessionFiles.download');
+	});
+
+	it('hides the outputs group when showOutputs is false', () => {
+		const wrapper = mount(SessionFilesList, {
+			props: { files: [textFile, outputFile], contentHref: href, showOutputs: false },
+		});
+
+		expect(wrapper.find('[data-testid="session-files-outputs"]').exists()).toBe(false);
+		expect(wrapper.text()).toContain('notes.txt');
+		expect(wrapper.text()).not.toContain('hello.md');
+	});
+
+	it('shows output files under the outputs heading', () => {
+		const wrapper = mount(SessionFilesList, {
+			props: { files: [textFile, outputFile], contentHref: href },
+		});
+
+		expect(wrapper.get('[data-testid="session-files-outputs"]').text()).toContain('hello.md');
+		expect(wrapper.get('[data-testid="session-files-outputs"]').text()).toContain(
+			'sessionFiles.outputs',
+		);
 	});
 });

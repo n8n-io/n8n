@@ -11,6 +11,7 @@ import type {
 	AgentPersistedMessageDto,
 	AgentSseEvent,
 	CancellationResumeData,
+	SessionFileDto,
 } from '@n8n/api-types';
 import { applyForwardedChildChunk, APPROVAL_TOOL_NAME, emptyChildTrace } from '@n8n/api-types';
 import { useToast } from '@n8n/composables/useToast';
@@ -72,6 +73,7 @@ export interface UseAgentChatStreamParams {
 	newSession?: Ref<boolean>;
 	onHistoryLoaded?: (count: number) => void;
 	onSessionCreated?: (sessionId: string) => void;
+	onSessionFilesUpdated?: (files: SessionFileDto[]) => void;
 	/** Builder preview shows the budget stop and alert cards. Other chats ignore them. */
 	budgetCards?: boolean;
 }
@@ -1212,6 +1214,9 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				session.terminalEventReceived = true;
 				break;
 			}
+			case 'session-files-updated':
+				params.onSessionFilesUpdated?.(event.files);
+				break;
 			case 'done':
 				if (event.executionId === activeExecutionId.value) activeExecutionId.value = null;
 				settleOpenReasoning(session);

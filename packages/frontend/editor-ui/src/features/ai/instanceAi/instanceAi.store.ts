@@ -22,6 +22,7 @@ import {
 	type InstanceAiAttachment,
 	type InstanceAiNodesAttachment,
 	type PushMessage,
+	type SessionFileDto,
 } from '@n8n/api-types';
 import {
 	ensureThread,
@@ -78,6 +79,15 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 	const creditsClaimed = ref<number | undefined>(undefined);
 	/** Whether the pool has been locked by the activation cap. */
 	const quotaLocked = ref(false);
+	const sessionFilesByThreadId = ref<Record<string, SessionFileDto[]>>({});
+
+	function setSessionFiles(threadId: string, files: SessionFileDto[]): void {
+		sessionFilesByThreadId.value = { ...sessionFilesByThreadId.value, [threadId]: files };
+	}
+
+	function sessionFilesFor(threadId: string): SessionFileDto[] {
+		return sessionFilesByThreadId.value[threadId] ?? [];
+	}
 
 	// --- Thread runtimes ---
 	const runtimes = shallowReactive(new Map<string, ThreadRuntime>());
@@ -96,6 +106,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		},
 		getThreadMetadata: (threadId) => threads.value.find((t) => t.id === threadId)?.metadata,
 		onOnboardingLeft: leaveOnboarding,
+		onSessionFilesUpdated: setSessionFiles,
 	} satisfies Parameters<typeof createThreadRuntime>[1];
 
 	function getOrCreateRuntime(threadId: string, projectId?: string): ThreadRuntime {
@@ -122,6 +133,9 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		runtimeScopes.get(threadId)?.stop();
 		runtimeScopes.delete(threadId);
 		runtimes.delete(threadId);
+		const next = { ...sessionFilesByThreadId.value };
+		delete next[threadId];
+		sessionFilesByThreadId.value = next;
 	}
 
 	// --- Settings delegation ---
@@ -514,6 +528,8 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		isOnboardingChromeHidden,
 		leaveOnboarding,
 		requestClearCanvasSelection,
+		setSessionFiles,
+		sessionFilesFor,
 	};
 });
 

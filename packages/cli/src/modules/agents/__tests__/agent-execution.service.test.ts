@@ -8,6 +8,7 @@ import type { ErrorReporter, StorageConfig } from 'n8n-core';
 import type { Telemetry } from '@/telemetry';
 
 import type { AgentChatAttachmentService } from '../agent-chat-attachment.service';
+import type { AgentSessionOutputFilesService } from '../agent-session-output-files.service';
 import { AgentExecutionService, type RecordMessageParams } from '../agent-execution.service';
 import type { AgentExecutionUpdateBroadcaster } from '../agent-execution-update-broadcaster';
 import type {
@@ -120,6 +121,7 @@ describe('AgentExecutionService', () => {
 			n8nMemory,
 			telemetry,
 			agentChatAttachmentService,
+			mock<AgentSessionOutputFilesService>(),
 			agentExecutionLogStore,
 			storageConfig,
 			errorReporter,
@@ -726,6 +728,7 @@ describe('AgentExecutionService', () => {
 				n8nMemory,
 				telemetry,
 				mock<AgentChatAttachmentService>(),
+				mock<AgentSessionOutputFilesService>(),
 				agentExecutionLogStore,
 				storageConfig,
 				errorReporter,
@@ -823,6 +826,7 @@ describe('AgentExecutionService', () => {
 					n8nMemory,
 					telemetry,
 					mock<AgentChatAttachmentService>(),
+					mock<AgentSessionOutputFilesService>(),
 					agentExecutionLogStore,
 					storageConfig,
 					errorReporter,
@@ -1435,6 +1439,7 @@ describe('AgentExecutionService', () => {
 				n8nMemory,
 				telemetry,
 				agentChatAttachmentService,
+				mock<AgentSessionOutputFilesService>(),
 				agentExecutionLogStore,
 				storageConfig,
 				errorReporter,

@@ -1,5 +1,6 @@
 import type { AgentsConfig } from '@n8n/config';
 import { EventEmitter } from 'node:events';
+import { PassThrough, Readable } from 'node:stream';
 import type { SerializableAgentState } from '@n8n/agents';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type { Mocked } from 'vitest';
@@ -11,6 +12,7 @@ import type { CredentialsService } from '@/credentials/credentials.service';
 import { BadRequestError, NotFoundError } from '@n8n/errors';
 
 import type { AgentChatAttachmentService } from '../agent-chat-attachment.service';
+import type { AgentSessionOutputFilesService } from '../agent-session-output-files.service';
 import { AgentChatController } from '../agent-chat.controller';
 import type { AgentExecutionOrchestratorService } from '../agent-execution-orchestrator.service';
 import { mockLogger } from '@n8n/backend-test-utils';
@@ -50,6 +52,9 @@ function makeController() {
 	const agentExecutionOrchestratorService = mock<AgentExecutionOrchestratorService>();
 	const agentsBuilderService = mock<AgentsBuilderService>();
 	const agentChatAttachmentService = mock<AgentChatAttachmentService>();
+	const sessionOutputFiles = mock<AgentSessionOutputFilesService>();
+	sessionOutputFiles.listSessionFiles.mockResolvedValue([]);
+	sessionOutputFiles.findByIdInThread.mockResolvedValue(null);
 	agentChatAttachmentService.deleteByIds.mockResolvedValue(undefined);
 	agentChatAttachmentService.storeInbound.mockResolvedValue(
 		mock<AgentChatAttachment>({
@@ -99,6 +104,7 @@ function makeController() {
 		mock<CredentialsService>(),
 		agentsService as unknown as AgentsService,
 		agentChatAttachmentService,
+		sessionOutputFiles,
 		agentExecutionService,
 		backgroundJobService,
 		chatExecutionService,
@@ -119,6 +125,7 @@ function makeController() {
 		agentExecutionOrchestratorService,
 		agentTestRunService,
 		agentChatAttachmentService,
+		sessionOutputFiles,
 		agentsService: {
 			findById: agentsService.findById,
 			isN8nChatPublished: agentsService.isN8nChatPublished,
@@ -1302,6 +1309,75 @@ describe('AgentChatController session files', () => {
 			projectId: 'project-1',
 			agentId: 'agent-1',
 		});
+	});
+
+	it('lists attachment and output files together', async () => {
+		const { controller, agentsService, agentChatAttachmentService, sessionOutputFiles } =
+			makeController();
+		agentsService.findById.mockResolvedValue({ id: 'agent-1' } as never);
+		agentChatAttachmentService.listSessionFiles.mockResolvedValue([
+			{
+				id: 'att-1',
+				kind: 'attachment',
+				fileName: 'notes.txt',
+				mimeType: 'text/plain',
+				sizeBytes: 5,
+				createdAt: '2026-01-01T00:00:00.000Z',
+				previewable: true,
+			},
+		]);
+		sessionOutputFiles.listSessionFiles.mockResolvedValue([
+			{
+				id: 'out-1',
+				kind: 'output',
+				fileName: 'hello.md',
+				mimeType: 'text/markdown',
+				sizeBytes: 4,
+				runId: 'run-1',
+				createdAt: '2026-01-02T00:00:00.000Z',
+				previewable: true,
+			},
+		]);
+
+		await expect(controller.listSessionFiles(sessionReq)).resolves.toEqual({
+			files: [
+				expect.objectContaining({ id: 'out-1', kind: 'output', fileName: 'hello.md' }),
+				expect.objectContaining({ id: 'att-1', kind: 'attachment' }),
+			],
+		});
+	});
+
+	it('streams output file content when the id is not an attachment', async () => {
+		const { controller, agentsService, agentChatAttachmentService, sessionOutputFiles } =
+			makeController();
+		agentsService.findById.mockResolvedValue({ id: 'agent-1' } as never);
+		agentChatAttachmentService.findByIdInThread.mockResolvedValue(null);
+		sessionOutputFiles.findByIdInThread.mockResolvedValue({
+			id: 'out-1',
+			agentId: 'agent-1',
+			fileName: 'hello.md',
+			mimeType: 'text/markdown',
+			fileSizeBytes: 4,
+		} as never);
+		sessionOutputFiles.getStream.mockResolvedValue(Readable.from(['hi']));
+		const res = Object.assign(new PassThrough(), { setHeader: vi.fn() });
+
+		await expect(
+			controller.getSessionFileContent(
+				{
+					params: {
+						projectId: 'project-1',
+						agentId: 'agent-1',
+						sessionId: 'thread-1',
+						fileId: 'out-1',
+					},
+				} as never,
+				res as never,
+			),
+		).resolves.toBeUndefined();
+
+		expect(sessionOutputFiles.getStream).toHaveBeenCalled();
+		expect(res.setHeader).toHaveBeenCalledWith('Content-Type', 'text/markdown');
 	});
 
 	it('returns 404 when the file belongs to another session', async () => {

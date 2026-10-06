@@ -9,6 +9,7 @@ import { TimeZoneSchema } from './timezone.schema';
 import { AgentJsonConfigSchema } from '../agents/agent-json-config.schema';
 import { agentSkillSchema } from '../agents/agent-skill.schema';
 import { clientMintedAgentIdSchema } from '../agents/dto';
+import { sessionFileDtoSchema } from '../agents/session-file.dto';
 import type { McpToolPermissions } from './mcp-tool-permissions.schema';
 import { Z } from '../zod-class';
 
@@ -244,6 +245,7 @@ export const instanceAiEventTypeSchema = z.enum([
 	'preference-card',
 	'filesystem-request',
 	'thread-title-updated',
+	'session-files-updated',
 	'status',
 	'error',
 ]);
@@ -262,6 +264,7 @@ export const INSTANCE_AI_EPHEMERAL_EVENT_TYPES: ReadonlySet<InstanceAiEventType>
 	'reasoning-delta',
 	'status',
 	'filesystem-request',
+	'session-files-updated',
 ]);
 
 // ---------------------------------------------------------------------------
@@ -1386,6 +1389,11 @@ export const instanceAiEventSchema = z.discriminatedUnion('type', [
 		type: z.literal('thread-title-updated'),
 		...eventBase,
 		payload: threadTitleUpdatedPayloadSchema,
+	}),
+	z.object({
+		type: z.literal('session-files-updated'),
+		...eventBase,
+		payload: z.object({ files: z.array(sessionFileDtoSchema) }),
 	}),
 ]);
 

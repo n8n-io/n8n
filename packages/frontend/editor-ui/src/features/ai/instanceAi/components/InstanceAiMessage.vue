@@ -14,6 +14,7 @@ import {
 import { useI18n } from '@n8n/i18n';
 import { computed, ref } from 'vue';
 import { useSettingsStore } from '@n8n/stores/settings.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import { useAssistantTopUpEligibility } from '@n8n/stores/composables/useAssistantTopUpEligibility';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { useInstanceAiStore, useThread } from '../instanceAi.store';
@@ -21,6 +22,7 @@ import AgentActivityTree from './AgentActivityTree.vue';
 import AnsweredQuestions from './AnsweredQuestions.vue';
 import AttachmentPreview from './AttachmentPreview.vue';
 import InstanceAiMarkdown from './InstanceAiMarkdown.vue';
+import SessionOutputFileChips from '@/features/ai/shared/components/SessionOutputFileChips.vue';
 
 const props = defineProps<{
 	message: InstanceAiMessage;
@@ -29,6 +31,7 @@ const props = defineProps<{
 const i18n = useI18n();
 const store = useInstanceAiStore();
 const settingsStore = useSettingsStore();
+const rootStore = useRootStore();
 const thread = useThread();
 const showDebugInfo = ref(false);
 
@@ -181,6 +184,25 @@ function formatJson(value: unknown): string {
 		return String(value);
 	}
 }
+
+const showOutputChips = computed(
+	() =>
+		Boolean(settingsStore.moduleSettings['instance-ai']?.sessionFilesEnabled) &&
+		Boolean(settingsStore.moduleSettings['instance-ai']?.sandboxEnabled),
+);
+
+const outputFilesForRun = computed(() => {
+	if (!showOutputChips.value || !props.message.runId) return [];
+	return (
+		store
+			.sessionFilesFor(thread.id)
+			?.filter((file) => file.kind === 'output' && file.runId === props.message.runId) ?? []
+	);
+});
+
+function sessionFileContentHref(fileId: string): string {
+	return `${rootStore.restApiContext.baseUrl}/instance-ai/sessions/${encodeURIComponent(thread.id)}/files/${encodeURIComponent(fileId)}/content`;
+}
 </script>
 
 <template>
@@ -209,6 +231,11 @@ function formatJson(value: unknown): string {
 				:agent-node="activityTree"
 				:message-id="props.message.id"
 				:run-id="props.message.runId"
+			/>
+			<SessionOutputFileChips
+				v-if="outputFilesForRun.length > 0"
+				:files="outputFilesForRun"
+				:content-href="sessionFileContentHref"
 			/>
 
 			<!-- Out-of-credits (quota exhausted): tailored state, hides raw provider/status noise -->
