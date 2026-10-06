@@ -85,6 +85,21 @@ requestBody:
                 typeVersion:
                   type: number
                   example: 1
+                contract:
+                  type: object
+                  properties:
+                    version:
+                      type: string
+                    digest:
+                      type: string
+                  required:
+                    - version
+                    - digest
+                  additionalProperties: false
+                  description: The exact contract version that a contract node runs. n8n writes it at save when node contracts are enabled.
+                  example:
+                    version: 1.0.0
+                    digest: sha256:<64 hex characters>
                 executeOnce:
                   type: boolean
                   example: false
