@@ -884,7 +884,7 @@ describe('workflow package import — with data tables', () => {
 			expect(await workflowRepository.count()).toBe(0);
 		});
 
-		it('imports an identical table without the dataTable:update scope', async () => {
+		it('does not require dataTable:update when the table already matches the package', async () => {
 			const member = await memberWithoutDataTableUpdate();
 			const table = await dataTableService.createDataTable(project.id, {
 				name: 'Customers',
