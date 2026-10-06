@@ -80,7 +80,7 @@ n8n-cli package import --file=export.n8np --workflow-conflict-policy=fail --bind
 | `--credential-missing-mode` | What to do when a referenced credential cannot be resolved. `create-stub` (instance default) creates empty placeholder credentials in the target project; `must-preexist` requires every referenced credential to already exist. |
 | `--data-table-matching-mode` | How data tables referenced by the package's workflows are matched on the target instance: `by-id` (default and only mode) matches the target-project table with the same id — imported tables keep their source id — and never falls back to name matching. |
 | `--data-table-missing-mode` | What to do when a referenced data table is absent in the target project. `create` (instance default) creates it from the package schema — keeping the source id, with no rows; `must-preexist` requires it to already exist; `do-nothing` skips creation. Under the `keep-existing` and `fail` schema conflict policies, matched tables are schema-validated (all package columns present with the same name and type), even under `do-nothing`. The import never imports table rows. Matched tables change only under `--data-table-schema-conflict-policy=overwrite`, which keeps their rows. |
-| `--data-table-schema-conflict-policy` | How strictly a matched data table's schema is compared. Under `keep-existing` and `fail`, every package column must exist on the matched target table with the same name and type. A missing column or a type mismatch rejects the import. `keep-existing` (instance default) ignores additional columns the target table has of its own; `fail` is the strict drift-detection choice and rejects those too. `keep-existing` and `fail` never alter the matched target table. `overwrite` changes the matched target table to match the package. Removed, retyped, and renamed columns lose their data. See [Overwrite a data table schema](#overwrite-a-data-table-schema). |
+| `--data-table-schema-conflict-policy` | How strictly a matched data table's schema is compared. Under `keep-existing` and `fail`, every package column must exist on the matched target table with the same name and type. A missing column or a type mismatch rejects the import. `keep-existing` (instance default) ignores additional columns the target table has of its own; `fail` is the strict drift-detection choice and rejects those too. `keep-existing` and `fail` never alter the matched target table. `overwrite` changes the matched target table to match the package and can delete data in specific columns while preserving rows. Removing, retyping, or renaming a column deletes the data in that column. The changes apply to all workflows that use the table. |
 | `--variable-missing-mode` | What to do when a referenced variable is absent from both the target project and global scope: `create-with-value` (instance default) creates it with the package value and reports it under `variables.created`, falling back to an empty stub under `variables.stubbed` when the package carries no value for it; `create-stub` always creates an empty value; `do-nothing` reports unresolved names without creating anything; `must-preexist` rejects the import. What happens to a variable that *does* resolve is `--variable-conflict-policy`'s job. Requires a variables-enabled license only when the import creates a variable. |
 | `--variable-conflict-policy` | What to do when a referenced variable resolves in the target project or global scope but the package bundles a different value for it. `keep-existing` (instance default) leaves the target value alone and reports the name under `variables.matched`; `overwrite` silently replaces the value of the existing variable at whichever scope it was found — including a global variable other projects also read — and reports the name under `variables.updated`; `fail` rejects the import. No policy touches a resolved variable when there is nothing to change: either the package bundles no value for it (values excluded at export, or an exported value that was itself empty), or the value it bundles already matches the target's. Under `overwrite`, a project package whose projects hold *different* values for a name they all resolve to one row — a global none of them shadows — is rejected: one row cannot carry both values. Requires a variables-enabled license only when the import overwrites. |
 | `--variable-parent-policy` | Where `create-with-value` and `create-stub` place missing variables for workflow/folder packages (`project`, the behaviour when omitted, uses the target project; `global` uses global scope). Must be omitted for project packages, which reject it with a 400 — their placement follows the package layout, so a variable bundled under a project is created in that project and one bundled at the top level is created globally. |
@@ -120,30 +120,6 @@ issues. Examples:
 
 Under the default `--credential-missing-mode=create-stub`, missing credentials
 are stubbed instead of blocking the import.
-
-### Overwrite a data table schema
-
-`--data-table-schema-conflict-policy=overwrite` changes the matched target table
-to match the package. It keeps all rows. It keeps the data in each column that
-has the same name and type in the package.
-
-These changes delete data:
-
-- A target column that is not in the package is removed with its data.
-- A column whose type is different in the package is removed and added again
-  with the package type. Its data is lost.
-- A column that was renamed in the source is removed and added with the new
-  name, because packages do not contain column ids. Its data is lost.
-
-These changes keep data: missing columns are added (empty for existing rows),
-the column order is set, and the table gets the package name. A rename to a
-name that another table in the project has rejects the import, also when two
-tables swap names.
-
-The import never deletes tables or rows. The changes apply to the table for all
-workflows that use it, not only the imported workflows. To see the changes
-before you apply them, import with `keep-existing` or `fail`: a blocked import
-lists the changes that `overwrite` would make.
 
 ## `package import-selection`
 
