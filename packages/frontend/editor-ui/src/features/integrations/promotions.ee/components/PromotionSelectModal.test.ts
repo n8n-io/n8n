@@ -465,9 +465,18 @@ describe('PromotionSelectModal', () => {
 			expect(applyButton).toBeDisabled();
 			await selectAll(findByTestId);
 			expect(applyButton).toBeEnabled();
-			expect(applyButton).toHaveTextContent('Apply 2 selected');
+			expect(applyButton).toHaveTextContent('Apply 2 changes');
 			expect(queryByTestId('promotion-submit')).not.toBeInTheDocument();
 			expect(applyChanges).toHaveBeenCalledTimes(1);
+		});
+
+		it('should use the singular apply label when one change is selected', async () => {
+			const { findAllByTestId, findByTestId } = renderComponent({ pinia, props: applyProps });
+
+			const rows = await findAllByTestId('promotion-change-row');
+			await userEvent.click(rows[0]);
+
+			expect(await findByTestId('promotion-apply-selected')).toHaveTextContent('Apply 1 change');
 		});
 
 		it('should not apply when the user cancels the confirmation', async () => {

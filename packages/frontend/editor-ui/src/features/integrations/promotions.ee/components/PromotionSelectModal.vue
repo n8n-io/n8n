@@ -121,6 +121,15 @@ function getPromoteButtonLabel(): string {
 	});
 }
 
+function getApplySelectedButtonLabel(): string {
+	if (selectedCount.value === 1) {
+		return i18n.baseText('promotions.modal.incoming.applySelectedSingle');
+	}
+	return i18n.baseText('promotions.modal.incoming.applySelected', {
+		interpolate: { count: String(selectedCount.value) },
+	});
+}
+
 function isSelected(id: string): boolean {
 	return selectedIds.value.has(id);
 }
@@ -486,11 +495,7 @@ onMounted(async () => {
 						data-test-id="promotion-apply-selected"
 						@click="onApplySelected"
 					>
-						{{
-							i18n.baseText('promotions.modal.incoming.applySelected', {
-								interpolate: { count: String(selectedCount) },
-							})
-						}}
+						{{ getApplySelectedButtonLabel() }}
 					</N8nButton>
 					<N8nButton
 						v-else
