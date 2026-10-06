@@ -70,7 +70,9 @@ describe('contract-mode skill', () => {
 	it('lists the typed modules, names the derived module path, and keeps node() for a type without one', () => {
 		const text = substituteSkillPlaceholders(skill);
 		expect(text).toContain(
-			`The typed modules are\n${nextNodeIds.map((id) => `\`${id}\``).join(', ')}:`,
+			`The typed modules are\n${nextNodeIds()
+				.map((id) => `\`${id}\``)
+				.join(', ')}:`,
 		);
 		expect(text).toContain('derived module at\n`@n8n/nodes/<package>/<name>`');
 		expect(text).toContain('Use `node()` only for a type without one.');

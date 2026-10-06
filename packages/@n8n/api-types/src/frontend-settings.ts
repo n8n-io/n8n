@@ -403,6 +403,14 @@ export type FrontendModuleSettings = {
 	};
 
 	/**
+	 * Client settings for the next-nodes-instance module: actions that this instance publishes.
+	 */
+	'next-nodes-instance'?: {
+		/** Whether node contracts are on (`N8N_INSTANCE_AI_NODE_CONTRACTS_ENABLED`). */
+		enabled: boolean;
+	};
+
+	/**
 	 * Quick connect settings
 	 */
 	'quick-connect'?: {

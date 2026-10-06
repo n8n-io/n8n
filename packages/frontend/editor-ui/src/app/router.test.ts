@@ -20,6 +20,7 @@ import type { RouteRecordName } from 'vue-router';
 import type { MockInstance } from 'vitest';
 import * as init from '@/app/init';
 import { middleware } from '@/app/utils/rbac/middleware';
+import { NODES_SETTINGS_VIEW } from '@n8n/frontend-module-next-nodes-instance';
 
 const App = {
 	template: '<div />',
@@ -223,6 +224,45 @@ describe('router', () => {
 		await router.push('/settings/n8n-connect');
 
 		expect(router.currentRoute.value.name).toBe(VIEWS.AI_GATEWAY_SETTINGS);
+	});
+
+	describe('community nodes with next nodes on', () => {
+		let removeNodesRoute: () => void;
+
+		beforeEach(() => {
+			// The module adds the Nodes route at boot, which this test does not run.
+			removeNodesRoute = router.addRoute({
+				path: '/settings/nodes',
+				name: NODES_SETTINGS_VIEW,
+				component: App,
+			});
+			settingsStore.settings.communityNodesEnabled = true;
+			settingsStore.settings.activeModules = ['next-nodes-instance'];
+			settingsStore.moduleSettings = { 'next-nodes-instance': { enabled: true } };
+		});
+
+		afterEach(() => {
+			removeNodesRoute();
+			settingsStore.settings.activeModules = [];
+			settingsStore.moduleSettings = {};
+		});
+
+		test('redirects /settings/community-nodes to the Installed tab of Nodes', async () => {
+			useRBACStore().setGlobalScopes(['communityPackage:list', 'nodeDefinition:list']);
+
+			await router.push('/settings/community-nodes');
+
+			expect(router.currentRoute.value.name).toBe(NODES_SETTINGS_VIEW);
+			expect(router.currentRoute.value.query.tab).toBe('installed');
+		});
+
+		test('keeps /settings/community-nodes for a user who cannot open Nodes', async () => {
+			useRBACStore().setGlobalScopes(['communityPackage:list']);
+
+			await router.push('/settings/community-nodes');
+
+			expect(router.currentRoute.value.name).toBe(VIEWS.COMMUNITY_NODES);
+		});
 	});
 
 	describe('resource center route guard', () => {

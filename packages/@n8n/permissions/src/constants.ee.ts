@@ -35,6 +35,9 @@ export const RESOURCES = {
 	license: ['manage'] as const,
 	logStreaming: ['manage'] as const,
 	nodeTypePolicy: ['manage'] as const,
+	// Node definitions that the instance makes or uploads: `create` makes drafts from forms,
+	// `publish` makes a form-made version available, `upload` adds a code bundle.
+	nodeDefinition: ['list', 'create', 'publish', 'upload', 'hide'] as const,
 	orchestration: ['read', 'list', 'manage'] as const,
 	// `manageMembers` gates changes to a project's membership list: adding a member
 	// with a role, changing a member's role, and removing a member. Kept separate

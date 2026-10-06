@@ -28,6 +28,7 @@ const constant = <const V extends string | number | boolean>(value: V) =>
 const SINCE_2_5 = { 'x-n8n-since': '2.5.0' } as const satisfies JsonSchema;
 const SINCE_2_6 = { 'x-n8n-since': '2.6.0' } as const satisfies JsonSchema;
 const SINCE_2_7 = { 'x-n8n-since': '2.7.0' } as const satisfies JsonSchema;
+const SINCE_2_10 = { 'x-n8n-since': '2.10.0' } as const satisfies JsonSchema;
 
 /**
  * A reader ignores a top-level field it does not know, so a newer SDK can add an annotation.
@@ -190,6 +191,9 @@ const versionFields = {
 	contract,
 };
 
+/** The contract document, e.g. of an HTTP guest config. */
+export const contractDocumentSchema = contract;
+
 /** The manifest of one version of an action, trigger or provider. */
 export const versionManifestSchema = typed<VersionManifest>()(
 	t
@@ -198,6 +202,14 @@ export const versionManifestSchema = typed<VersionManifest>()(
 			nodeContract: nodeContractVersion().with(SINCE_2_5),
 			sdk: t.str().with(SINCE_2_5).optional(),
 			credentials: credentialPins().with(SINCE_2_5).optional(),
+			errorOf: new Schema<`=${string}`>({ type: 'string', pattern: '^=' }, false)
+				.describe('The n8n expression that finds an error in a successful response.')
+				.with(SINCE_2_10)
+				.optional(),
+			guest: constant('http')
+				.describe('The generic guest of the bundle. Absent: the JS guest runs JS code.')
+				.with(SINCE_2_10)
+				.optional(),
 			...versionFields,
 			ui: actionUiSchema.optional(),
 		})

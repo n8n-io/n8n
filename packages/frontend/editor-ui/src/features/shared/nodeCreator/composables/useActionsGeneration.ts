@@ -103,6 +103,21 @@ function getNodeTypeBase(nodeTypeDescription: INodeTypeDescription, label?: stri
 }
 
 // Actions represent adding a new node, which uses the default (latest) version.
+const customTag = () => ({ text: cachedBaseText('nodeCreator.nodeItem.custom'), pill: true });
+
+/** One entry in the action list of an app: choosing it adds the node type of the action. */
+function appActionOf(node: INodeTypeDescription): ActionTypeDescription {
+	const label = cachedBaseText('nodeCreator.actionsCategory.published');
+	return {
+		...getNodeTypeBase(node, label),
+		tag: customTag(),
+		actionKey: node.name,
+		displayName: typeof node.defaults.name === 'string' ? node.defaults.name : node.displayName,
+		description: node.description,
+		values: {},
+	};
+}
+
 function getDefaultNodeVersion(nodeTypeDescription: INodeTypeDescription): number {
 	if (typeof nodeTypeDescription.defaultVersion === 'number') {
 		return nodeTypeDescription.defaultVersion;
@@ -457,7 +472,9 @@ export function useActionsGenerator() {
 
 		const actions: ActionsRecord<typeof mergedNodes> = {};
 		const mergedNodes: SimplifiedNodeType[] = [];
-		itemTypes
+		// Custom actions join their app in `addAppActions`.
+		const ownNodeTypes = itemTypes.filter((node) => !node.codex?.app);
+		ownNodeTypes
 			.filter((node) => !node.group.includes('trigger'))
 			.forEach((app) => {
 				if (app.name === HTTP_REQUEST_NODE_TYPE) {
@@ -487,7 +504,7 @@ export function useActionsGenerator() {
 				mergedNodes.push({ ...getSimplifiedNodeType(app), name: key });
 			});
 
-		itemTypes
+		ownNodeTypes
 			.filter((node) => node.group.includes('trigger'))
 			.forEach((trigger) => {
 				const normalizedName = trigger.name.replace('Trigger', '');
@@ -507,10 +524,54 @@ export function useActionsGenerator() {
 				}
 			});
 
+		addAppActions(
+			visibleNodeTypes.filter((node) => node.codex?.app),
+			actions,
+			mergedNodes,
+		);
+
 		return {
 			actions,
 			mergedNodes,
 		};
+	}
+
+	/**
+	 * A node type with `codex.app` is one action of an app, e.g. an action that this instance
+	 * published. The node of the app lists it when the creator has that node. Otherwise the
+	 * actions of one app share one entry, which shows the app name.
+	 */
+	function addAppActions(
+		appActionTypes: INodeTypeDescription[],
+		actions: ActionsRecord<SimplifiedNodeType[]>,
+		mergedNodes: SimplifiedNodeType[],
+	) {
+		const byApp = groupBy(appActionTypes, (node) => node.codex?.app?.id ?? node.name);
+		for (const members of Object.values(byApp)) {
+			const [first] = members;
+			const app = first?.codex?.app;
+			if (!first || !app) continue;
+			const entries = members.map(appActionOf);
+			const target = mergedNodes.find((node) => node.name === app.nodeType);
+			if (target) {
+				actions[target.name] = [...(actions[target.name] ?? []), ...entries];
+			} else if (members.length === 1) {
+				mergedNodes.push({ ...getSimplifiedNodeType(first), tag: customTag() });
+			} else {
+				// The entry needs a real node type, so it takes the type of the first action.
+				const names = entries.map(({ displayName }) => displayName);
+				const simplified = getSimplifiedNodeType(first);
+				mergedNodes.push({
+					...simplified,
+					tag: customTag(),
+					displayName: app.displayName,
+					description: names.join(', '),
+					// Search reads the aliases, so an action name finds the entry of its app.
+					codex: { ...simplified.codex, alias: [...(simplified.codex?.alias ?? []), ...names] },
+				});
+				actions[first.name] = entries;
+			}
+		}
 	}
 
 	return {

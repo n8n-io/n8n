@@ -572,6 +572,8 @@ export { VersionSinceDateQueryDto } from './instance-version-history/version-sin
 export { VersionQueryDto } from './instance-version-history/version-query.dto';
 
 export { CreateEncryptionKeyDto } from './encryption/create-encryption-key.dto';
+export { PublishNextNodeVersionDto } from './next-nodes/publish-next-node-version.dto';
+export { TestNextNodeDraftDto } from './next-nodes/test-next-node-draft.dto';
 export {
 	ListEncryptionKeysQueryDto,
 	ENCRYPTION_KEYS_SORT_OPTIONS,

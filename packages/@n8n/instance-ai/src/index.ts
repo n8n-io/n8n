@@ -28,6 +28,7 @@ import type * as MapChunkMod from './stream/map-chunk';
 import type * as UsageAccumulatorMod from './stream/usage-accumulator';
 import type * as WorkSummaryAccumulatorMod from './stream/work-summary-accumulator';
 import type * as AgentPersistenceMod from './tools/orchestration/agent-persistence';
+import type * as ContractCatalogMod from './tools/contract-catalog';
 import type * as AgentContextToolMod from './tools/agent-context.tool';
 import type * as SanitizeWebContentMod from './tools/web-research/sanitize-web-content';
 import type * as WorkflowSourceAfterWriteMod from './tools/workflows/workflow-source-after-write';
@@ -247,6 +248,15 @@ export {
 	saveAgentPreviewSession,
 } from './tools/orchestration/agent-preview-session-binding';
 
+const loadContractCatalog = lazyModule(
+	() => require('./tools/contract-catalog') as typeof ContractCatalogMod,
+);
+export const setPublishedActions: typeof ContractCatalogMod.setPublishedActions = lazyFunction(
+	() => loadContractCatalog().setPublishedActions,
+);
+export const publishedActions: typeof ContractCatalogMod.publishedActions = lazyFunction(
+	() => loadContractCatalog().publishedActions,
+);
 export const wrapUntrustedData: typeof SanitizeWebContentMod.wrapUntrustedData = lazyFunction(
 	() => loadSanitizeWebContent().wrapUntrustedData,
 );

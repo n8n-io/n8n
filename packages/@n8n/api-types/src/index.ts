@@ -8,6 +8,7 @@ export * from './frontend-settings';
 export type * from './user';
 export type * from './consent';
 export type * from './api-keys';
+export type * from './next-nodes-instance';
 export type * from './community-node-types';
 export type * from './quick-connect';
 export * from './agents/index';

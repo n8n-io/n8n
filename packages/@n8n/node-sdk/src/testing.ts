@@ -3,12 +3,14 @@ import { isRecord } from '@n8n/utils/is-record';
 import { scrubSecretsInText } from '@n8n/utils/scrub-secrets';
 import { Readable } from 'node:stream';
 import { buffer } from 'node:stream/consumers';
-import type {
-	ICredentialDataDecryptedObject,
-	ICredentialType,
-	IDataObject,
-	IHttpRequestOptions,
-	INode,
+import {
+	Expression,
+	type IWorkflowDataProxyData,
+	type ICredentialDataDecryptedObject,
+	type ICredentialType,
+	type IDataObject,
+	type IHttpRequestOptions,
+	type INode,
 } from 'n8n-workflow';
 
 import { toCredentialType } from './credentials';
@@ -314,6 +316,7 @@ export async function runAction(
 	const inputs = options.inputs?.map(itemsOf);
 	const items = inputs?.[0] ?? itemsOf(options.items ?? [{}]);
 	const host: ExecutorHost = {
+		evaluate: evaluateAlone,
 		items,
 		inputItems: (index) => inputs?.[index] ?? [],
 		dataTables: options.dataTables,
@@ -445,6 +448,45 @@ const queryOf = (params: URLSearchParams): Record<string, string | string[]> =>
 const routeName = (route: MockRoute) =>
 	`${route.method ?? 'GET'} ${route.path}${route.query ? ` ${JSON.stringify(route.query)}` : ''}`;
 
+const isQueryValue = (value: unknown): value is MockQueryValue =>
+	typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean';
+
+/**
+ * One recorded request and its response as a route of an execution fixture, e.g. of a test run in
+ * the form. The route answers once, so pages replay in order. A full response gives its status
+ * and headers too, e.g. the `Link` header of a page.
+ */
+export function fixtureRouteOf(request: IHttpRequestOptions, response: unknown): MockRoute {
+	const url = new URL(request.url, request.baseURL ?? 'http://localhost');
+	const query = Object.fromEntries([
+		...[...url.searchParams].map(([key, value]): [string, MockQueryValue] => [key, value]),
+		...Object.entries(isRecord(request.qs) ? request.qs : {}).flatMap(
+			([key, value]): Array<[string, MockQueryValue | MockQueryValue[]]> => {
+				if (isQueryValue(value)) return [[key, value]];
+				const list: unknown[] = Array.isArray(value) ? value : [];
+				return list.length > 0 && list.every(isQueryValue)
+					? [[key, list.filter(isQueryValue)]]
+					: [];
+			},
+		),
+	]);
+	const full =
+		request.returnFullResponse === true && isRecord(response) && 'statusCode' in response;
+	const headers = full && isRecord(response.headers) ? response.headers : {};
+	const link = typeof headers.link === 'string' ? { link: headers.link } : undefined;
+	return {
+		method: request.method ?? 'GET',
+		path: url.pathname,
+		...(Object.keys(query).length > 0 ? { query } : {}),
+		times: 1,
+		reply: {
+			...(full && typeof response.statusCode === 'number' ? { status: response.statusCode } : {}),
+			json: full ? response.body : response,
+			...(link ? { headers: link } : {}),
+		},
+	};
+}
+
 /**
  * A `fetch` stub that answers from `routes` and records each call. An unmatched call throws.
  *
@@ -525,4 +567,41 @@ export function mockHttp(routes: readonly MockRoute[]): MockFetch {
 		});
 	};
 	return Object.assign(mock, { calls });
+}
+
+/**
+ * Evaluates an n8n expression with only `variables` in scope, as `errorOf` reads `$response`.
+ * There is no workflow, so the workflow variables are empty.
+ */
+function evaluateAlone(expression: string, variables: IDataObject): unknown {
+	const data: IWorkflowDataProxyData = {
+		...variables,
+		$binary: undefined,
+		$data: undefined,
+		$env: {},
+		$evaluateExpression: () => undefined,
+		$item: () => data,
+		$items: () => [],
+		$json: {},
+		$node: {},
+		$parameter: {},
+		$position: 0,
+		$workflow: {},
+		$: () => undefined,
+		$input: {
+			all: () => [],
+			context: {},
+			first: () => undefined,
+			item: undefined,
+			last: () => undefined,
+		},
+		$thisItem: undefined,
+		$thisRunIndex: 0,
+		$thisItemIndex: 0,
+		$now: undefined,
+		$today: undefined,
+		$getPairedItem: () => null,
+		constructor: undefined,
+	};
+	return new Expression('UTC').resolveSimpleParameterValue(expression, data);
 }

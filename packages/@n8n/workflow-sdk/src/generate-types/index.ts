@@ -79,7 +79,7 @@ export {
 } from './generate-zod-schemas';
 
 // JSON Schema inference from data
-export { generateJsonSchemaFromData } from './json-schema-from-data';
+export { generateJsonSchemaFromData, sampleSchemaOf } from './json-schema-from-data';
 
 // Zod helpers (for use in generated files)
 export * from './zod-helpers';

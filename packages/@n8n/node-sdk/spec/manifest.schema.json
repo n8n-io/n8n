@@ -1,6 +1,6 @@
 {
 	"$schema": "https://json-schema.org/draft/2020-12/schema",
-	"$id": "urn:n8n:node-contract:manifest@2.9.0",
+	"$id": "urn:n8n:node-contract:manifest@2.10.0",
 	"title": "n8n Node Contract manifest",
 	"description": "Generated from src/manifest.ts by scripts/spec.ts. Do not edit. `x-n8n-since` is the Node Contract version that added a field. The `contract.input` and `contract.output` schemas follow the contract format of the SDK.",
 	"oneOf": [
@@ -32,6 +32,17 @@
 					},
 					"description": "`<id>@<major>` of each credential type with a credential manifest.",
 					"x-n8n-since": "2.5.0"
+				},
+				"errorOf": {
+					"type": "string",
+					"pattern": "^=",
+					"description": "The n8n expression that finds an error in a successful response.",
+					"x-n8n-since": "2.10.0"
+				},
+				"guest": {
+					"const": "http",
+					"description": "The generic guest of the bundle. Absent: the JS guest runs JS code.",
+					"x-n8n-since": "2.10.0"
 				},
 				"id": {
 					"type": "string"

@@ -5,6 +5,7 @@ import path from 'node:path';
 import { firstPartyVersionsOf as versionsOf } from './first-party';
 import {
 	resolveRuntime,
+	runtimeNameOf,
 	type RuntimeAvailability,
 	type RuntimeLists,
 	type RuntimePolicy,
@@ -56,6 +57,7 @@ describe('resolveRuntime', () => {
 			'worker',
 		],
 		['community trigger', { kind: 'trigger' }, 'wasm'],
+		['first-party HTTP guest', { trust: 'first-party', needs: 'http-guest' }, 'in-process'],
 		[
 			'community trigger with the in-process override',
 			{ kind: 'trigger', lists: { ...LISTS, community: ['in-process', 'wasm'] } },
@@ -132,6 +134,14 @@ describe('policyExecutorLoader', () => {
 	it('runs community web in wasm and private web in a container, by the origin', async () => {
 		await expect(load(policy(), 'community')).rejects.toThrow('started wasm');
 		await expect(load(policy(), 'private')).rejects.toThrow('started container');
+	});
+
+	it('runs a private HTTP guest version in this process', () => {
+		const manifest = { ...head!.manifest, guest: 'http' as const };
+		expect(runtimeNameOf(policy(), { manifest, origin: 'private' })).toBe('in-process');
+		expect(runtimeNameOf(policy(), { manifest: head!.manifest, origin: 'private' })).toBe(
+			'container',
+		);
 	});
 
 	it('names what is missing when no allowed runtime is available', async () => {

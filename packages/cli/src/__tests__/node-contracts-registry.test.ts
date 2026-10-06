@@ -483,6 +483,7 @@ describe('NodeContractsStore', () => {
 		signatures: [{ key: `sha256:${'b'.repeat(64)}`, sig: 'c2ln' }],
 		published: new Date('2026-10-02T12:00:00.000Z'),
 		origin: 'community',
+		createdById: null,
 		createdAt: new Date(),
 	};
 	const version = {
@@ -543,6 +544,7 @@ describe('NodeContractsStore', () => {
 			signatures: row.signatures,
 			published: row.published,
 			origin: 'community',
+			createdById: null,
 		};
 		expect(repository.insertNew).toHaveBeenCalledWith([
 			inserted,

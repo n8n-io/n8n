@@ -3,7 +3,7 @@
 import { createHash } from 'node:crypto';
 import { readFileSync, readSync, writeSync } from 'node:fs';
 import { StringDecoder } from 'node:string_decoder';
-import type * as wit from 'n8n:node-contract/capabilities@2.9.0';
+import type * as wit from 'n8n:node-contract/capabilities@2.10.0';
 
 import { action } from '../action';
 import { capabilities, provider } from '../provider';

@@ -79,6 +79,26 @@ export const scopeInformation: Partial<Record<Scope, ScopeInformation>> = {
 		displayName: 'Manage Node Type Policies',
 		description: 'Allows managing which node types are available, on the instance or in a project.',
 	},
+	'nodeDefinition:list': {
+		displayName: 'List Instance Nodes',
+		description: 'Allows listing the nodes and actions that the instance made or uploaded.',
+	},
+	'nodeDefinition:create': {
+		displayName: 'Make Instance Nodes',
+		description: 'Allows making draft nodes and actions from forms and API descriptions.',
+	},
+	'nodeDefinition:publish': {
+		displayName: 'Publish Instance Nodes',
+		description: 'Allows publishing form-made nodes and actions to the whole instance.',
+	},
+	'nodeDefinition:upload': {
+		displayName: 'Upload Node Bundles',
+		description: 'Allows uploading nodes and actions that run code.',
+	},
+	'nodeDefinition:hide': {
+		displayName: 'Hide Instance Nodes',
+		description: 'Allows hiding published nodes and actions from the node creator.',
+	},
 	'credentialTypePolicy:manage': {
 		displayName: 'Manage Credential Type Policies',
 		description:

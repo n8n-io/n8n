@@ -255,7 +255,10 @@ export function wasmSnapshotRuntime(
 	return {
 		name: 'wasm-snapshot',
 		async start(session) {
-			if (session.kind !== 'action') return await generic.start(session);
+			// A snapshot evaluates JS code at build time; an HTTP guest config is no code.
+			if (session.kind !== 'action' || session.manifest.guest === 'http') {
+				return await generic.start(session);
+			}
 			return await (await runtimeOf(session)).start(session);
 		},
 		close() {

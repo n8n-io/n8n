@@ -785,3 +785,84 @@ describe('useActionsGenerator', () => {
 		});
 	});
 });
+
+describe('useActionsGenerator with the actions of an app', () => {
+	const { generateMergedNodesAndActions } = useActionsGenerator();
+
+	const node = (
+		name: string,
+		action: string,
+		app?: { id: string; displayName: string; nodeType?: string },
+	): INodeTypeDescription => ({
+		name,
+		displayName: app ? `${app.displayName}: ${action}` : action,
+		description: `${action}.`,
+		version: 1,
+		group: ['transform'],
+		defaults: { name: action },
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main],
+		properties: [],
+		...(app ? { codex: { app } } : {}),
+	});
+
+	const github = { id: 'github', displayName: 'GitHub', nodeType: 'n8n-nodes-base.github' };
+	const acme = { id: 'acme', displayName: 'Acme' };
+
+	beforeEach(() => {
+		setActivePinia(createTestingPinia({ stubActions: false }));
+		const settings = mockedStore(useSettingsStore);
+		settings.isQueueModeEnabled = false;
+		settings.isMultiMain = false;
+	});
+
+	it('lists an action in the node of its app, and the action adds its own node type', () => {
+		const { actions, mergedNodes } = generateMergedNodesAndActions(
+			[
+				node('n8n-nodes-base.github', 'GitHub'),
+				node('@n8n/nodes-instance.githubIssueLock', 'Lock an issue', github),
+			],
+			[],
+		);
+
+		expect(mergedNodes.map(({ name }) => name)).toEqual(['n8n-nodes-base.github']);
+		expect(actions['n8n-nodes-base.github']).toEqual([
+			expect.objectContaining({
+				name: '@n8n/nodes-instance.githubIssueLock',
+				displayName: 'Lock an issue',
+				tag: { text: 'Custom', pill: true },
+				codex: expect.objectContaining({ label: 'Custom actions' }),
+			}),
+		]);
+	});
+
+	it('gives the actions of a new app one entry with the app name', () => {
+		const { actions, mergedNodes } = generateMergedNodesAndActions(
+			[
+				node('@n8n/nodes-instance.acmeGreet', 'Greet', acme),
+				node('@n8n/nodes-instance.acmeWave', 'Wave', acme),
+			],
+			[],
+		);
+
+		expect(
+			mergedNodes.map(({ name, displayName, description }) => [name, displayName, description]),
+		).toEqual([['@n8n/nodes-instance.acmeGreet', 'Acme', 'Greet, Wave']]);
+		expect(mergedNodes[0]?.codex?.alias).toEqual(['Greet', 'Wave']);
+		expect(actions['@n8n/nodes-instance.acmeGreet']?.map(({ name }) => name)).toEqual([
+			'@n8n/nodes-instance.acmeGreet',
+			'@n8n/nodes-instance.acmeWave',
+		]);
+	});
+
+	it('keeps the one action of an app as its own entry', () => {
+		const { mergedNodes } = generateMergedNodesAndActions(
+			[node('@n8n/nodes-instance.acmeGreet', 'Greet', acme)],
+			[],
+		);
+
+		expect(mergedNodes.map(({ displayName, tag }) => [displayName, tag?.text])).toEqual([
+			['Acme: Greet', 'Custom'],
+		]);
+	});
+});

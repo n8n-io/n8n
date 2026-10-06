@@ -56,6 +56,10 @@ export class NodeContractVersion extends WithCreatedAt {
 	/** The origin that the store took from the signing key when it added the version. */
 	@Column({ type: 'varchar', length: 16 })
 	origin: NodeContractOrigin;
+
+	/** The user who published the version on this instance, e.g. a custom action. Else none. */
+	@Column({ type: 'uuid', nullable: true })
+	createdById: string | null;
 }
 
 /**

@@ -9,6 +9,22 @@ import {
 
 import NoResults from './NoResults.vue';
 
+const customActions = vi.hoisted(() => ({
+	allowed: false,
+	startHttpActionDraft: vi.fn(),
+}));
+
+vi.mock('@n8n/frontend-module-next-nodes-instance', () => ({
+	canMakeHttpActions: () => customActions.allowed,
+	HTTP_ACTION_VIEW: 'http-action',
+	startHttpActionDraft: customActions.startHttpActionDraft,
+}));
+
+vi.mock('vue-router', async (importOriginal) => ({
+	...(await importOriginal<typeof import('vue-router')>()),
+	useRouter: () => ({ resolve: () => ({ href: '/settings/nodes/new' }) }),
+}));
+
 const renderComponent = createComponentRenderer(NoResults, {
 	global: {
 		stubs: {
@@ -30,6 +46,28 @@ const renderComponent = createComponentRenderer(NoResults, {
 describe('NoResults', () => {
 	afterEach(() => {
 		cleanup();
+		customActions.allowed = false;
+	});
+
+	it('offers a custom action for the search, to a user who can make one', async () => {
+		customActions.allowed = true;
+		const open = vi.spyOn(window, 'open').mockReturnValue(null);
+		renderComponent({ props: { query: ' Acme ', rootView: REGULAR_NODE_CREATOR_VIEW } });
+
+		await fireEvent.click(screen.getByTestId('node-creator-make-custom-action'));
+
+		expect(customActions.startHttpActionDraft).toHaveBeenCalledWith('Acme');
+		expect(open).toHaveBeenCalledWith('/settings/nodes/new', '_blank');
+	});
+
+	it('offers no custom action in the trigger view, or without the right', () => {
+		customActions.allowed = true;
+		renderComponent({ props: { query: 'Acme', rootView: TRIGGER_NODE_CREATOR_VIEW } });
+		expect(screen.queryByTestId('node-creator-make-custom-action')).not.toBeInTheDocument();
+		cleanup();
+		customActions.allowed = false;
+		renderComponent({ props: { query: 'Acme', rootView: REGULAR_NODE_CREATOR_VIEW } });
+		expect(screen.queryByTestId('node-creator-make-custom-action')).not.toBeInTheDocument();
 	});
 
 	it('renders the search query and HTTP Request guidance', () => {

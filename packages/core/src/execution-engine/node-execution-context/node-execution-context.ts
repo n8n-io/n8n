@@ -16,6 +16,7 @@ import type {
 	INodeInputConfiguration,
 	INodeOutputConfiguration,
 	IRunExecutionData,
+	IWorkflowDataProxyAdditionalKeys,
 	IWorkflowExecuteAdditionalData,
 	IWorkflowExecutionCustomData,
 	NodeConnectionType,
@@ -625,7 +626,12 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 		return returnData;
 	}
 
-	evaluateExpression(expression: string, itemIndex: number = 0) {
+	/** `additionalKeys` adds variables to the expression, e.g. `$response`. */
+	evaluateExpression(
+		expression: string,
+		itemIndex: number = 0,
+		additionalKeys: IWorkflowDataProxyAdditionalKeys = {},
+	) {
 		return this.workflow.expression.resolveSimpleParameterValue(
 			`=${expression}`,
 			{},
@@ -635,7 +641,7 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 			this.node.name,
 			this.connectionInputData,
 			this.mode,
-			this.additionalKeys,
+			{ ...this.additionalKeys, ...additionalKeys },
 			this.executeData,
 		);
 	}

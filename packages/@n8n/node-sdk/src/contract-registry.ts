@@ -261,6 +261,12 @@ export interface ContractStore {
 		version: Pick<FrozenVersion, 'manifest' | 'origin'>,
 	): Promise<StoreYank | StoreRevoke | undefined>;
 	/**
+	 * Adds status lines that this instance writes, e.g. a yank of a version that a user of the
+	 * instance published. No key signs them, so they apply to `private` versions only. The next
+	 * read sees them.
+	 */
+	addOwnStatuses(statuses: readonly StoreStatusRecord[]): Promise<void>;
+	/**
 	 * Puts the trusted status lines of the registry index of each id into the store. It reads an
 	 * index again only when it read it before `since` (ms since the epoch).
 	 */
@@ -944,6 +950,11 @@ export function contractStore(options: ContractStoreOptions): ContractStore {
 		},
 
 		withdrawal,
+
+		async addOwnStatuses(statuses) {
+			await store.insertStatuses(statuses);
+			statuses.forEach(({ id }) => statusesById.delete(id));
+		},
 
 		async syncStatuses(ids, since) {
 			if (!registryReader || !mayFetch()) return;

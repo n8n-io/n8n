@@ -36,6 +36,7 @@ import {
 	type ISupplyDataFunctions,
 	type IWebhookDescription,
 	type SupplyData,
+	type GenericValue,
 } from 'n8n-workflow';
 
 import {
@@ -45,6 +46,7 @@ import {
 	plainFieldsOf,
 	redactedValue,
 	secretRedactorOf,
+	type AnyCredentialType,
 } from './credentials';
 import {
 	codeRunnerOf,
@@ -147,6 +149,7 @@ import {
 	type Binary,
 	type JsonSchema,
 	type Shape,
+	canonicalJson,
 } from './schema';
 import {
 	fromLangChainTool,
@@ -162,8 +165,11 @@ import {
 import { applyDefaults, list, matches, outputBinaryKeys, readAs } from './validate';
 import { validate } from './validator';
 import type { WebhookEndpoint } from './triggers';
+import { liftHttpGuest, parseHttpGuestConfig } from './lift/http';
 import {
 	assertNodeContract,
+	compareSemver,
+	HTTP_GUEST_NODE_CONTRACT,
 	implementsNodeContract,
 	IMPLEMENTED_NODE_CONTRACTS,
 	NODE_CONTRACT_VERSION,
@@ -338,13 +344,34 @@ export function checkedResponse(
 	node: Pick<NodeDefinition, 'errorOf'>,
 	request: HttpRequest,
 	response: unknown,
+	evaluate?: ExecutorHost['evaluate'],
 ): unknown {
-	if (!node.errorOf || request.response === 'binary') return response;
-	const message = node.errorOf(
-		request.fullResponse && isRecord(response) ? response.body : response,
-	);
+	const { errorOf } = node;
+	if (!errorOf || request.response === 'binary') return response;
+	const body = request.fullResponse && isRecord(response) ? response.body : response;
+	// An expression runs on the host only. A guest has no expression engine; its host checks.
+	const message =
+		typeof errorOf === 'function'
+			? errorOf(body)
+			: evaluate && messageOf(evaluate(errorOf, { $response: { body: genericOf(body) } }));
 	if (message !== undefined) throw new UserError(message);
 	return response;
+}
+
+/** A JSON value as n8n expression data. */
+function genericOf(value: unknown): GenericValue {
+	if (value === null || value === undefined) return value;
+	if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+		return value;
+	}
+	// A parsed body holds no functions, symbols or bigints.
+	return typeof value === 'object' ? value : undefined;
+}
+
+/** The error message that an `errorOf` expression gives. An empty value is no error. */
+function messageOf(value: unknown): string | undefined {
+	if (value === undefined || value === null || value === '' || value === false) return undefined;
+	return typeof value === 'string' ? value : JSON.stringify(value);
 }
 
 /** The HTTP response on a failed request: on the transport error, or on its `cause` in a NodeApiError. */
@@ -610,6 +637,11 @@ export interface ExecutorHost {
 	/** Sends a request with the credential of `credentialType` applied, as n8n does. */
 	request(options: IHttpRequestOptions, credentialType: string | undefined): Promise<unknown>;
 	/**
+	 * Evaluates an n8n expression with these variables, e.g. `$response` for `errorOf`. Without
+	 * it, an `errorOf` expression checks nothing.
+	 */
+	evaluate?(expression: string, variables: IDataObject): unknown;
+	/**
 	 * The stored data of a credential: the fields `baseUrl` reads and the user's "Allowed HTTP
 	 * Request Domains" setting. Without it, only the declared credential hosts limit a request.
 	 */
@@ -708,6 +740,8 @@ export const hostLimitsOf = (
 const hostBaseOf = (context: NodeContext, runtime: HostRuntime) => ({
 	node: context.getNode(),
 	...hostLimitsOf(runtime),
+	evaluate: (expression: string, variables: IDataObject) =>
+		context.evaluateExpression(expression.replace(/^=/, ''), 0, variables),
 	request: async (options: IHttpRequestOptions, credentialType: string | undefined) => {
 		const response: unknown = credentialType
 			? await context.helpers.httpRequestWithAuthentication.call(context, credentialType, options)
@@ -1478,7 +1512,7 @@ export function executorOf<S extends Shape, O extends AnySchema>(
 					options.response === 'binary' || entries.has(options.body)
 						? await sendBinary(options, requestOptions, retryable, label)
 						: await send(async () => requestOptions, retryable, 0, label);
-				return checkedResponse(action.node, options, response);
+				return checkedResponse(action.node, options, response, host.evaluate?.bind(host));
 			}
 			return { request };
 		};
@@ -2720,9 +2754,37 @@ export async function verifiedCodeOf(
 	return code;
 }
 
+/**
+ * The action of an HTTP guest config. The config carries its contract, which must be the
+ * contract of the signed manifest.
+ */
+export function evaluateHttpGuestConfig(code: string, manifest: VersionManifest): Action {
+	if (compareSemver(manifest.nodeContract, HTTP_GUEST_NODE_CONTRACT) < 0) {
+		throw new UserError(
+			`${manifest.id}@${manifest.semver} runs in the HTTP guest, so it needs Node Contract ${HTTP_GUEST_NODE_CONTRACT} or newer, not ${manifest.nodeContract}`,
+		);
+	}
+	const config = parseHttpGuestConfig(JSON.parse(code));
+	if (canonicalJson(config.contract) !== canonicalJson(manifest.contract)) {
+		throw new UserError(
+			`The HTTP guest config of ${manifest.id}@${manifest.semver} has another contract than its manifest`,
+		);
+	}
+	return liftHttpGuest(config);
+}
+
+/** The contract of a bundle: JS code, or the config of the guest that its manifest names. */
+export function evaluateVersion(code: string, manifest: VersionManifest): Action | Trigger {
+	if (manifest.guest === 'http') return evaluateHttpGuestConfig(code, manifest);
+	return evaluateBundle(code, manifest.nodeContract);
+}
+
 /** The bundle of a frozen version, after its Node Contract version and its hash are checked. */
-export async function verifiedBundleOf(frozen: FrozenVersion, range: NodeContractRange) {
-	return evaluateBundle(await verifiedCodeOf(frozen, range), frozen.manifest.nodeContract);
+export async function verifiedBundleOf(
+	frozen: FrozenVersion,
+	range: NodeContractRange,
+): Promise<Action | Trigger> {
+	return evaluateVersion(await verifiedCodeOf(frozen, range), frozen.manifest);
 }
 
 /** The executor of the action interface for one node execution. */
@@ -2787,7 +2849,17 @@ export async function loadExecutor(frozen: FrozenVersion, runtime: HostRuntime):
 	const exported = await verifiedBundleOf(frozen, runtime.nodeContractRange);
 	if ('kind' in exported) throw new UnexpectedError(`${exported.id} is a trigger, not an action`);
 	assertManifestPermissions(frozen.manifest, exported, runtime.reportRefusal);
-	const action: Action = { ...exported, egress: frozen.manifest.contract.egress ?? { hosts: [] } };
+	const { errorOf } = frozen.manifest;
+	const checked: Action = {
+		...exported,
+		// The manifest is what a reviewer reads, so its error expression replaces the bundle's.
+		...(errorOf ? { node: { ...exported.node, errorOf } } : {}),
+		egress: frozen.manifest.contract.egress ?? { hosts: [] },
+	};
+	const action =
+		frozen.manifest.guest === 'http'
+			? withN8nCredentialTypes(frozen.manifest, checked, runtime.credentialTypeOf)
+			: checked;
 	const executor = executorOf(await withCredentialHostsOf(action, runtime.credentialManifestOf));
 	return async (host) => {
 		host.recorder?.path('in_process');
@@ -2800,6 +2872,62 @@ export async function loadExecutor(frozen: FrozenVersion, runtime: HostRuntime):
  * a sandbox. The default is `loadExecutor`, and `loadTriggerExecutor` for a trigger.
  */
 export type ExecutorLoader = (frozen: FrozenVersion, runtime: HostRuntime) => Promise<Executor>;
+
+/**
+ * The node type of a version that no store holds, e.g. a draft in the test panel. It runs in
+ * this process under `runtime`, no pin picks its version, and `onExchange` gets each request with
+ * its response, in order: the `routes` of an execution fixture (`fixtureRouteOf`).
+ */
+export function draftNodeTypeOf(
+	frozen: FrozenVersion,
+	runtime: HostRuntime,
+	onExchange: (request: IHttpRequestOptions, response: unknown) => void,
+): INodeType {
+	return {
+		description: nodeDescriptionOf(frozen.manifest),
+		async execute(this: IExecuteFunctions) {
+			const executor = await loadExecutor(frozen, runtime);
+			const host = hostOf(this, runtime, headFieldOf(frozen));
+			return await executor({
+				...host,
+				request: async (options, credentialType) => {
+					const response = await host.request(options, credentialType);
+					// A stream is read once, by the action, so a fixture cannot keep it.
+					if (options.encoding !== 'stream') onExchange(options, response);
+					return response;
+				},
+			});
+		},
+	};
+}
+
+/** n8n's credential type of a name, or `undefined` when n8n does not have the name. */
+export type CredentialTypeOf = (name: string) => AnyCredentialType | undefined;
+
+/**
+ * The action with n8n's credential type of each name. A config is data that anyone who may
+ * publish writes, so its base URL and hosts must not decide where a credential goes. n8n applies
+ * the type of the name, so the scheme here is `compat`, as in the sandbox. Without `typeOf`, e.g.
+ * in tests, the types of the config stay.
+ */
+function withN8nCredentialTypes(
+	{ id, semver }: VersionManifest,
+	action: Action,
+	typeOf: CredentialTypeOf | undefined,
+): Action {
+	const credential = action.node.credential;
+	if (!typeOf || !credential) return action;
+	const types = credential.types.map(({ name }): AnyCredentialType => {
+		const type = typeOf(name);
+		if (!type) {
+			throw new UserError(
+				`${id}@${semver} uses the credential type ${name}, which n8n does not have`,
+			);
+		}
+		return { ...type, scheme: { kind: 'compat' } };
+	});
+	return { ...action, node: { ...action.node, credential: { ...credential, types } } };
+}
 
 /**
  * Picks the version a node runs. `head` is the bundled version of the node's major. The
@@ -2827,6 +2955,11 @@ export interface HostRuntime {
 	 * bundle keeps the hosts of its own credential types.
 	 */
 	readonly credentialManifestOf: CredentialManifestOf;
+	/**
+	 * n8n's credential type of a name, for an HTTP guest version: its config is data, so n8n and
+	 * not the config gives the base URL and the hosts. Without it, the types of the config stay.
+	 */
+	readonly credentialTypeOf?: CredentialTypeOf;
 	/** Makes the executor of a version, e.g. in the sandbox. Without it, the bundle runs in this process. */
 	readonly executorLoader?: ExecutorLoader;
 	/** Gets the profile of each node run. Without it, the runtime records nothing. */
@@ -2861,6 +2994,8 @@ export interface HostRuntimeOptions {
 	readonly versionLoader?: ContractVersionLoader;
 	/** The credential manifest of a name. Default: none. */
 	readonly credentialManifestOf?: CredentialManifestOf;
+	/** n8n's credential type of a name, for HTTP guest versions. Default: the config's types. */
+	readonly credentialTypeOf?: CredentialTypeOf;
 	/** Makes the executor of a version, e.g. by the runtime policy. */
 	readonly executorLoader?: ExecutorLoader;
 	/** Gets the profile of each node run. */
@@ -2889,6 +3024,7 @@ export function hostRuntime(options: HostRuntimeOptions = {}): HostRuntime {
 		...(options.versionLoader ? { versionLoader: options.versionLoader } : {}),
 		credentialManifestOf:
 			options.credentialManifestOf ?? (async () => await Promise.resolve(undefined)),
+		...(options.credentialTypeOf ? { credentialTypeOf: options.credentialTypeOf } : {}),
 		...(options.executorLoader ? { executorLoader: options.executorLoader } : {}),
 		...(options.onRunProfile
 			? { runProfile: { listener: options.onRunProfile, payloads: options.tracePayloads } }

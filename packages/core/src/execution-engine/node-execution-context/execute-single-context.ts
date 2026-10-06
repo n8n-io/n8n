@@ -12,6 +12,7 @@ import type {
 	ITaskDataConnections,
 	IExecuteData,
 	IDataObject,
+	IWorkflowDataProxyAdditionalKeys,
 } from 'n8n-workflow';
 import { UnexpectedError, NodeConnectionTypes } from 'n8n-workflow';
 
@@ -91,8 +92,12 @@ export class ExecuteSingleContext extends BaseExecuteContext implements IExecute
 		return await this.additionalData.getRuntimeCredential(this.runExecutionData, alias);
 	}
 
-	evaluateExpression(expression: string, itemIndex: number = this.itemIndex) {
-		return super.evaluateExpression(expression, itemIndex);
+	evaluateExpression(
+		expression: string,
+		itemIndex: number = this.itemIndex,
+		additionalKeys?: IWorkflowDataProxyAdditionalKeys,
+	) {
+		return super.evaluateExpression(expression, itemIndex, additionalKeys);
 	}
 
 	getInputData(inputIndex = 0, connectionType = NodeConnectionTypes.Main) {

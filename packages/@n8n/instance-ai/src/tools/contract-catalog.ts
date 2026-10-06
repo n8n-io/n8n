@@ -73,6 +73,20 @@ export const contractActions = once((): readonly Action[] =>
 	}),
 );
 
+// One slot: the host sets it after each load of the node types.
+const published = new Map<'actions', readonly Action[]>();
+
+/**
+ * Sets the custom actions that users of this instance published, e.g. after a publish. Their
+ * node type comes from `nodeTypeOf`, because no package ships their id.
+ */
+export const setPublishedActions = (actions: readonly Action[]) => {
+	published.set('actions', actions);
+};
+
+/** The custom actions that users of this instance published. */
+export const publishedActions = (): readonly Action[] => published.get('actions') ?? [];
+
 /** Whether a node type is a node type of a contract package, e.g. `@n8n/nodes-core.noOpPass`. */
 export const isContractNodeType = (nodeType: string) =>
 	FIRST_PARTY_PACKAGES.some((name) => nodeType.startsWith(`${name}.`));

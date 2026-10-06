@@ -103,6 +103,7 @@ const { draggableDataTransfer, dragging } = toRefs(state);
 		draggable
 		:class="$style.action"
 		:title="action.displayName"
+		:tag="action.tag"
 		:is-trigger="isTriggerAction(action)"
 		data-keyboard-nav="true"
 		@dragstart="onDragStart"

@@ -33,12 +33,13 @@ import {
 	isContractNodeType,
 	migratedTargetOf,
 	nodeTypeOf,
+	publishedActions,
 	toolActions,
 	toolTypeOf,
 } from './contract-catalog';
 
-/** Every action, as the sandbox modules and get-as-code read them. */
-export const nextActions = (): readonly Action[] => contractActions();
+/** Every action, as the sandbox modules and get-as-code read them, with the custom actions. */
+export const nextActions = (): readonly Action[] => [...contractActions(), ...publishedActions()];
 
 /**
  * Module actions that a flow step emits with better types, with the catalog node type of that
@@ -54,7 +55,8 @@ const FLOW_STEP_OF_ACTION: ReadonlyMap<string, string> = new Map([
 ]);
 
 /** The actions that discovery offers. */
-const offeredActions = once(() => nextActions().filter(({ id }) => !FLOW_STEP_OF_ACTION.has(id)));
+// Not cached: a user can publish a custom action while n8n runs.
+const offeredActions = () => nextActions().filter(({ id }) => !FLOW_STEP_OF_ACTION.has(id));
 
 /**
  * The native contracts that a construct of the typed flow emits, so no module has a factory for
@@ -104,8 +106,8 @@ const allTriggers: readonly ModuleTrigger[] = firstPartyCatalog().entries.flatMa
 	];
 });
 
-/** The ids of the typed node modules that discovery offers: `@n8n/nodes/<id>`. */
-export const nextNodeIds: readonly string[] = [
+/** The ids of the typed node modules that n8n ships: `@n8n/nodes/<id>`. */
+const shippedNodeIds = once((): readonly string[] => [
 	...new Set([
 		...firstPartyCatalog().entries.flatMap(({ manifest }) => {
 			const offered =
@@ -116,6 +118,11 @@ export const nextNodeIds: readonly string[] = [
 		}),
 		...allTriggers.map(({ node }) => node.id),
 	]),
+]);
+
+/** The ids of the typed node modules that discovery offers, with those of custom actions. */
+export const nextNodeIds = (): readonly string[] => [
+	...new Set([...shippedNodeIds(), ...publishedActions().map(({ node }) => node.id)]),
 ];
 
 const actionsOfNode = (nodeId: string) =>
@@ -465,7 +472,7 @@ export function searchNextActions(
 	const terms = termsOf(query);
 	const matches = findNextActions(query);
 	// Nodes with only triggers have no actions to match, so every node is a candidate.
-	const named = [...new Set([...matches.map((action) => action.node.id), ...nextNodeIds])]
+	const named = [...new Set([...matches.map((action) => action.node.id), ...nextNodeIds()])]
 		.map((nodeId) => ({
 			nodeId,
 			terms: terms.filter((term) => stepsOfNode(nodeId).some((s) => hits(term, nodeWords(s)))),

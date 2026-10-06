@@ -16,4 +16,18 @@ export const registerComponentSlots = () => {
 			async () => await import('@/features/collaboration/projects/components/ProjectFilter.vue'),
 		),
 	);
+	componentRegistry.register(
+		'credential-picker',
+		defineAsyncComponent(
+			async () =>
+				await import('@/features/credentials/components/CredentialPicker/CredentialPicker.vue'),
+		),
+	);
+	componentRegistry.register(
+		'community-nodes',
+		defineAsyncComponent(
+			async () =>
+				await import('@/features/settings/communityNodes/views/SettingsCommunityNodesView.vue'),
+		),
+	);
 };

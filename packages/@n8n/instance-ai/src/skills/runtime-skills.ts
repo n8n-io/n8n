@@ -21,14 +21,17 @@ const AGENTS_MODULE_RUNTIME_SKILLS = new Set(['agent-builder', 'intent-recogniti
 let cachedRuntimeSkillSource: RuntimeSkillSource | undefined;
 const cachedProfiles = new Map<string, ReturnType<typeof composeSkillVariants>>();
 
-const SKILL_PLACEHOLDER_TEXT: Record<string, string> = {
+// A function: the instance can publish a node after start, and the list must include it.
+const skillPlaceholderText = (): Record<string, string> => ({
 	GROUPING_GUIDANCE_PLACEHOLDER: GROUPING_GUIDANCE,
 	TOP_LEVEL_ITEM_CEILING_PLACEHOLDER: String(TOP_LEVEL_ITEM_CEILING),
-	NODE_CONTRACT_MODULES_PLACEHOLDER: nextNodeIds.map((id) => `\`${id}\``).join(', '),
-};
+	NODE_CONTRACT_MODULES_PLACEHOLDER: nextNodeIds()
+		.map((id) => `\`${id}\``)
+		.join(', '),
+});
 
 export function substituteSkillPlaceholders(instructions: string): string {
-	return Object.entries(SKILL_PLACEHOLDER_TEXT).reduce(
+	return Object.entries(skillPlaceholderText()).reduce(
 		(content, [placeholder, text]) => content.replaceAll(`{{${placeholder}}}`, text),
 		instructions,
 	);

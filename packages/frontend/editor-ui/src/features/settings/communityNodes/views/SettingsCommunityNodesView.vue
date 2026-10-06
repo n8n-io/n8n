@@ -33,6 +33,9 @@ const telemetry = useTelemetry();
 const toast = useToast();
 const documentTitle = useDocumentTitle();
 
+/** Shown inside another settings page, e.g. a tab of Nodes, which owns the heading and the title. */
+const props = defineProps<{ embedded?: boolean }>();
+
 const communityNodesStore = useCommunityNodesStore();
 const uiStore = useUIStore();
 const settingsStore = useSettingsStore();
@@ -108,7 +111,7 @@ onBeforeMount(() => {
 });
 
 onMounted(async () => {
-	documentTitle.set(i18n.baseText('settings.communityNodes'));
+	if (!props.embedded) documentTitle.set(i18n.baseText('settings.communityNodes'));
 	try {
 		loading.value = true;
 		await communityNodesStore.fetchInstalledPackages();
@@ -158,8 +161,10 @@ onBeforeUnmount(() => {
 
 <template>
 	<div :class="$style.container">
-		<div :class="$style.headingContainer">
-			<N8nHeading size="2xlarge">{{ i18n.baseText('settings.communityNodes') }}</N8nHeading>
+		<div :class="[$style.headingContainer, { [$style.embedded]: props.embedded }]">
+			<N8nHeading v-if="!props.embedded" size="2xlarge">{{
+				i18n.baseText('settings.communityNodes')
+			}}</N8nHeading>
 			<N8nButton
 				v-if="canInstall && communityNodesStore.getInstalledPackages.length > 0 && !loading"
 				:label="i18n.baseText('settings.communityNodes.installModal.installButton.label')"
@@ -216,6 +221,11 @@ onBeforeUnmount(() => {
 .headingContainer {
 	display: flex;
 	justify-content: space-between;
+}
+
+// The install button stays at the right without the heading beside it.
+.embedded {
+	justify-content: flex-end;
 }
 
 .loadingContainer {

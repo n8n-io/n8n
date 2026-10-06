@@ -452,3 +452,51 @@ describe('next-modules of the first-party packages', () => {
 		}
 	});
 });
+
+describe('next-modules with actions that this instance published', () => {
+	const lockIssue = async () => {
+		const { manifest, bundle } = await freezeHttpGuest(
+			{
+				extends: 'github',
+				contract: {
+					id: 'github.issue.lock',
+					version: 1,
+					node: 'github',
+					action: 'Lock an issue',
+					summary: 'Lock the conversation of an issue.',
+					flow: {
+						effect: 'write',
+						cardinality: 'per-item',
+						idempotent: true,
+						passthrough: 'replace',
+					},
+					credentials: [],
+					input: {
+						type: 'object',
+						properties: { issueNumber: { type: 'integer' } },
+						required: ['issueNumber'],
+					},
+					output: { type: 'object' },
+				},
+				request: { method: 'PUT', path: '/repos/{owner}/{repository}/issues/{issueNumber}/lock' },
+			},
+			{ parentOf: parentNode },
+		);
+		const action = evaluateVersion(bundle, manifest);
+		if ('kind' in action) throw new Error('a trigger');
+		return action;
+	};
+
+	afterEach(() => setPublishedActions([]));
+
+	it('adds a published action to the module of the node it extends, with its node type', async () => {
+		const action = await lockIssue();
+		setPublishedActions([{ action, nodeType: '@n8n/nodes-instance.githubIssueLock' }]);
+
+		expect(nextActions().map(({ id }) => id)).toContain('github.issue.lock');
+		expect(nodeModuleText('github')).toContain(
+			'contractStep("@n8n/nodes-instance.githubIssueLock", config)',
+		);
+		expect(nextNodeModule('@n8n/nodes-instance.githubIssueLock')?.node).toBe('github');
+	});
+});

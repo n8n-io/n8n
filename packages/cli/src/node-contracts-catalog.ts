@@ -6,7 +6,9 @@ import {
 	contractCatalogOf,
 	contractNodeTypeOf,
 	embeddedCompatTypeOf,
+	parentNodeOf,
 	type ContractCatalog,
+	type ParentNode,
 	type SourcePackage,
 } from '@n8n/node-sdk/registry';
 import { MIGRATED_NODES } from '@n8n/nodes-integrations/catalog';
@@ -180,3 +182,34 @@ export function actionOfNode(node: WorkflowNodeRef): Action | undefined {
 	const bundle = entry && bundleOf(entry.manifest.id);
 	return bundle && !('kind' in bundle) ? bundle : undefined;
 }
+
+/** The actions that the first-party packages ship, as their bundles export them. */
+const firstPartyActions = once((): readonly Action[] =>
+	firstPartyCatalog().entries.flatMap(({ manifest }) => {
+		if (!('bundleHash' in manifest) || manifest.kind === 'trigger') return [];
+		const bundle = firstPartyCatalog().bundleOf(manifest.id);
+		return bundle && !('kind' in bundle) ? [bundle] : [];
+	}),
+);
+
+/** A shipped node as a custom action that extends it copies it, or why it cannot be extended. */
+export const parentNode = (nodeId: string): ParentNode | undefined =>
+	parentNodeOf(firstPartyActions(), nodeId);
+
+/** Each shipped node with actions, as `parentNode` gives it. */
+export const parentNodes = (): ParentNode[] =>
+	[...new Set(firstPartyActions().map(({ node }) => node.id))].flatMap(
+		(id) => parentNode(id) ?? [],
+	);
+
+/**
+ * The credential type of a name for a custom action: the type of a shipped node, else a compat
+ * type when n8n has the name (`known`). Its config is data, so it never gives the base URL or
+ * the hosts.
+ */
+export const customActionCredentialTypeOf =
+	(known: (name: string) => boolean) =>
+	(name: string): AnyCredentialType | undefined =>
+		firstPartyActions()
+			.flatMap(({ node }) => node.credential?.types ?? [])
+			.find((type) => type.name === name) ?? (known(name) ? compat(name) : undefined);

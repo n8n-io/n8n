@@ -1318,7 +1318,11 @@ export type OauthJweProxyProvider = {
 type BaseExecutionFunctions = FunctionsBaseWithRequiredKeys<'getMode'> & {
 	continueOnFail(): boolean;
 	setMetadata(metadata: ITaskMetadata): void;
-	evaluateExpression(expression: string, itemIndex: number): NodeParameterValueType;
+	evaluateExpression(
+		expression: string,
+		itemIndex: number,
+		additionalKeys?: IWorkflowDataProxyAdditionalKeys,
+	): NodeParameterValueType;
 	getContext(type: ContextType): IContextObject;
 	getExecuteData(): IExecuteData;
 	getWorkflowDataProxy(itemIndex: number): IWorkflowDataProxyData;
@@ -1470,7 +1474,11 @@ export type ISupplyDataFunctions = ExecuteFunctions.GetNodeParameterFn &
 	> & {
 		getNextRunIndex(): number;
 		continueOnFail(): boolean;
-		evaluateExpression(expression: string, itemIndex: number): NodeParameterValueType;
+		evaluateExpression(
+			expression: string,
+			itemIndex: number,
+			additionalKeys?: IWorkflowDataProxyAdditionalKeys,
+		): NodeParameterValueType;
 		getWorkflowDataProxy(itemIndex: number): IWorkflowDataProxyData;
 		getExecutionCancelSignal(): AbortSignal | undefined;
 		onExecutionCancellation(handler: () => unknown): void;
@@ -4178,6 +4186,12 @@ export type CodexData = {
 		primaryDocumentation?: DocumentationLink[];
 	};
 	alias?: string[];
+	/**
+	 * The app that lists this node type as one of its actions in the node creator, e.g. an
+	 * action that an instance published. `nodeType` names an existing node type whose action
+	 * list takes the action.
+	 */
+	app?: { id: string; displayName: string; nodeType?: string };
 };
 
 export type JsonValue = string | number | boolean | null | JsonObject | JsonValue[];

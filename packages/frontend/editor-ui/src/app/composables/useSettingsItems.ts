@@ -13,6 +13,7 @@ import { hasPermission } from '../utils/rbac/permissions';
 import { MIGRATION_REPORT_TARGET_VERSION } from '@n8n/api-types';
 import { PROMOTIONS_SETTINGS_VIEW } from '@/features/integrations/promotions.ee/promotions.constants';
 import { usePromotionsEnabled } from '@/features/shared/promotions/usePromotionsEnabled';
+import { canOpenNodesSettings } from '@n8n/frontend-module-next-nodes-instance';
 
 export function useSettingsItems() {
 	const router = useRouter();
@@ -190,7 +191,8 @@ export function useSettingsItems() {
 			icon: 'box',
 			label: i18n.baseText('settings.communityNodes'),
 			position: 'top',
-			available: canUserAccessRouteByName(VIEWS.COMMUNITY_NODES),
+			// The Nodes page shows community nodes as a tab, and this route redirects there.
+			available: !canOpenNodesSettings() && canUserAccessRouteByName(VIEWS.COMMUNITY_NODES),
 			route: { to: { name: VIEWS.COMMUNITY_NODES } },
 		});
 

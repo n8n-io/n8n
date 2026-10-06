@@ -7,6 +7,7 @@ import {
 	useExistingWorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
+import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useExposeAllWorkflowsToMcpStore } from '@/experiments/exposeAllWorkflowsToMcp/stores/exposeAllWorkflowsToMcp.store';
 
 /**
@@ -54,7 +55,24 @@ const mcpExposeAllOffer = {
 	},
 };
 
+const credentialCatalog = {
+	load: async () => {
+		const credentialsStore = useCredentialsStore();
+		await Promise.all([
+			credentialsStore.fetchCredentialTypes(false),
+			credentialsStore.fetchAllCredentials(),
+		]);
+	},
+	types: () =>
+		useCredentialsStore().allCredentialTypes.map(({ name, displayName, httpRequestNode }) => ({
+			name,
+			displayName,
+			httpRequestNode: httpRequestNode !== undefined && !httpRequestNode.hidden,
+		})),
+};
+
 export const registerShellCapabilities = () => {
+	capabilityRegistry.provide(capabilities.credentialCatalog, credentialCatalog);
 	capabilityRegistry.provide(capabilities.modalOpeners, modalOpeners);
 	capabilityRegistry.provide(capabilities.workflowMcpAccessSync, syncWorkflowMcpAccess);
 	capabilityRegistry.provide(capabilities.mcpExposeAllOffer, mcpExposeAllOffer);

@@ -1,10 +1,20 @@
 import { isRecord } from '@n8n/utils/is-record';
 import { readdirSync, readFileSync, rmSync } from 'node:fs';
 import path from 'node:path';
-import { UnexpectedError, UserError } from 'n8n-workflow';
+import { toHostname, UnexpectedError, UserError } from 'n8n-workflow';
 
 import type { AnyCredentialType } from './credentials';
 import { replyContractOf, toContract, type Action, type Trigger } from './define';
+import { allowsHost } from './egress';
+import {
+	credentialDataOf,
+	extendedConfig,
+	httpGuestActionOf,
+	liftHttpGuest,
+	parseHttpGuestConfig,
+	type HttpGuestConfig,
+	type ParentNode,
+} from './lift/http';
 import {
 	actionUiSchema,
 	credentialManifestOf,
@@ -26,6 +36,7 @@ import { matches } from './validate';
 import {
 	compareSemver,
 	contractHash,
+	HTTP_GUEST_NODE_CONTRACT,
 	manifestKindOf,
 	NODE_CONTRACT_VERSION,
 	parseSemver,
@@ -33,6 +44,7 @@ import {
 	sha256,
 	type VersionManifest,
 } from './version';
+import { canonicalJson } from './schema';
 
 /** The SDK source inlines into each bundle, so a version keeps the SDK helpers it was frozen with. */
 const SDK_SOURCE = path.resolve(__dirname, '..', 'src');
@@ -296,7 +308,12 @@ export async function freezeAction(
 		lastOf,
 		(last) => last.bundle === `sha256:${bundleHash}`,
 	);
-	const required = requiredNodeContractOf(contract, 'list' in action && action.list !== undefined);
+	const errorOf = typeof action.node.errorOf === 'string' ? action.node.errorOf : undefined;
+	const required = requiredNodeContractOf(
+		contract,
+		'list' in action && action.list !== undefined,
+		errorOf !== undefined,
+	);
 	const manifest: VersionManifest = {
 		kind: manifestKindOf(contract),
 		id: action.id,
@@ -310,10 +327,144 @@ export async function freezeAction(
 		...(credentials.length ? { credentials } : {}),
 		contractHash: contractHash(contract),
 		bundleHash,
+		...(errorOf ? { errorOf } : {}),
 		contract,
 		...(ui ? { ui } : {}),
 	};
 	return { manifest, bundle, action };
+}
+
+/**
+ * Freezes the config of a declarative HTTP action for the HTTP guest. The bundle is the config
+ * with the contract that its binding gives, e.g. the `egress` of its base URL and the `paging`
+ * input of a paged list, as canonical JSON: the same config gives the same bytes.
+ */
+export async function freezeHttpGuest(
+	config: unknown,
+	options: {
+		/** The newest version of the same major and minor, for the patch. Absent: patch 0. */
+		readonly lastOf?: LastVersionOf;
+		/** The node that a config `extends`, as a copy takes it. Absent: no config may extend. */
+		readonly parentOf?: (nodeId: string) => ParentNode | undefined;
+		/** The icon of the node that a config extends, e.g. `node:n8n-nodes-base.github`. */
+		readonly iconOf?: (nodeId: string) => string | undefined;
+		/** n8n's credential type of a name. Absent: the config's credentials stay. */
+		readonly credentialTypeOf?: (name: string) => AnyCredentialType | undefined;
+	} = {},
+): Promise<FrozenAction> {
+	// The bundle is canonical JSON, which sorts keys, and the binding takes the order of `required`
+	// from the properties. So the contract comes from the sorted config, as the lift reads it.
+	const parsed = parseHttpGuestConfig(
+		JSON.parse(
+			canonicalJson(
+				withN8nCredentials(
+					extendedOf(parseHttpGuestConfig(withNodeDisplayName(config)), options),
+					options.credentialTypeOf,
+				),
+			),
+		),
+	);
+	const contract = toContract(httpGuestActionOf(parsed));
+	const bundle = canonicalJson({ ...parsed, contract });
+	const action = liftHttpGuest(parseHttpGuestConfig(JSON.parse(bundle)));
+	const bundleHash = sha256(bundle);
+	const credentials = credentialPinsOf(action);
+	const errorOf = typeof action.node.errorOf === 'string' ? action.node.errorOf : undefined;
+	const manifest: VersionManifest = {
+		kind: manifestKindOf(contract),
+		id: action.id,
+		semver: await semverOf(
+			{ id: action.id, major: action.version, minor: action.minor ?? 0 },
+			options.lastOf,
+			(last) => last.bundle === `sha256:${bundleHash}`,
+		),
+		nodeContract: HTTP_GUEST_NODE_CONTRACT,
+		sdk: sdkVersion(),
+		...(credentials.length ? { credentials } : {}),
+		contractHash: contractHash(contract),
+		bundleHash,
+		guest: 'http',
+		...(errorOf ? { errorOf } : {}),
+		contract,
+	};
+	return { manifest, bundle, action };
+}
+
+/**
+ * The config with `contract.nodeDisplayName` from its node, e.g. of a form that names the app
+ * once. A node that the config extends replaces it.
+ */
+function withNodeDisplayName(config: unknown): unknown {
+	if (!isRecord(config) || !isRecord(config.contract)) return config;
+	if (config.contract.nodeDisplayName !== undefined) return config;
+	const node = isRecord(config.node) ? config.node : {};
+	const name = typeof node.displayName === 'string' ? node.displayName : config.contract.node;
+	return { ...config, contract: { ...config.contract, nodeDisplayName: name } };
+}
+
+/** The config with the settings of the node it extends copied in. */
+function extendedOf(
+	config: HttpGuestConfig,
+	{
+		parentOf,
+		iconOf,
+	}: {
+		parentOf?: (id: string) => ParentNode | undefined;
+		iconOf?: (id: string) => string | undefined;
+	},
+): HttpGuestConfig {
+	if (config.extends === undefined) return config;
+	const parent = parentOf?.(config.extends);
+	if (!parent) throw new UserError(`There is no node ${config.extends} to extend`);
+	if (!parent.extendable) throw new UserError(`${parent.id} cannot be extended: ${parent.reason}`);
+	return extendedConfig(config, parent, iconOf?.(parent.id));
+}
+
+/**
+ * The config with n8n's base URL template and fields of each credential type. The runtime also
+ * takes n8n's types, so this makes a config that would send a credential elsewhere fail here.
+ */
+function withN8nCredentials(
+	config: HttpGuestConfig,
+	typeOf: ((name: string) => AnyCredentialType | undefined) | undefined,
+): HttpGuestConfig {
+	if (!typeOf) return config;
+	const credentials = config.contract.credentials.map((name) => {
+		const type = typeOf(name);
+		if (!type) throw new UserError(`n8n has no credential type ${name}`);
+		const data = credentialDataOf(type);
+		if (typeof data === 'string') throw new UserError(`An action cannot use ${name}: ${data}`);
+		assertCredentialHost(config.baseUrl, type);
+		return data;
+	});
+	return { ...config, credentials };
+}
+
+/**
+ * Refuses a base URL that a credential type with known hosts does not allow, so the user learns
+ * that the request would go elsewhere. A base URL template of the type (an account server)
+ * replaces the config's base URL, and a type without hosts follows the credential's "Allowed
+ * HTTP Request Domains" when it runs.
+ */
+function assertCredentialHost(baseUrl: string | undefined, type: AnyCredentialType) {
+	const own = type.baseUrl;
+	if (
+		baseUrl === undefined ||
+		(own !== undefined && (typeof own !== 'string' || own.includes('{')))
+	) {
+		return;
+	}
+	const known = [
+		...new Set(
+			[...(type.hosts ?? []), ...(own ? [toHostname(own)] : [])].flatMap((host) =>
+				host ? [host] : [],
+			),
+		),
+	];
+	const host = toHostname(baseUrl);
+	if (known.length > 0 && host && !allowsHost(known, host)) {
+		throw new UserError(`${type.name} goes only to ${known.join(', ')}, not to ${host}`);
+	}
 }
 
 /**

@@ -575,6 +575,8 @@ describe('spec/manifest.schema.json', () => {
 					'credentials',
 					'contractHash',
 					'bundleHash',
+					'guest',
+					'errorOf',
 					'contract',
 					'ui',
 				]),

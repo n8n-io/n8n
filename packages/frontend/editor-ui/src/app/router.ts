@@ -31,6 +31,11 @@ import {
 	canManageInstanceAi,
 	canMessageInstanceAi,
 } from '@/features/ai/instanceAi/instanceAiPermissions';
+import {
+	canOpenNodesSettings,
+	NODES_SETTINGS_INSTALLED_TAB,
+	NODES_SETTINGS_VIEW,
+} from '@n8n/frontend-module-next-nodes-instance';
 
 const ChangePasswordView = async () =>
 	await import('@/features/core/auth/views/ChangePasswordView.vue');
@@ -1105,6 +1110,12 @@ export const routes: RouteRecordRaw[] = [
 				path: 'community-nodes',
 				name: VIEWS.COMMUNITY_NODES,
 				component: SettingsCommunityNodesView,
+				// With next nodes on, the page is a tab of Nodes. A user who can't open Nodes keeps this page.
+				beforeEnter: () =>
+					!canOpenNodesSettings() || {
+						name: NODES_SETTINGS_VIEW,
+						query: { tab: NODES_SETTINGS_INSTALLED_TAB },
+					},
 				meta: {
 					middleware: ['authenticated', 'rbac', 'custom'],
 					middlewareOptions: {

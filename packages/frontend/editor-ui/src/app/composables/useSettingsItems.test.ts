@@ -15,6 +15,7 @@ const promotionsFlag = ref('false');
 const canUserAccessRouteByName = vi.hoisted(() => vi.fn<(name: string) => boolean>(() => true));
 const contextPreferencesEnabled = vi.hoisted(() => ({ value: true }));
 const openTopUpMock = vi.hoisted(() => vi.fn());
+const scopes = vi.hoisted(() => new Set<string>());
 
 vi.mock('vue-router', () => ({ useRouter: vi.fn(() => ({})) }));
 vi.mock('./useUserHelpers', () => ({
@@ -58,6 +59,9 @@ vi.mock('@n8n/stores/settings.store', () => ({
 	})),
 }));
 vi.mock('../utils/rbac/permissions', () => ({ hasPermission: vi.fn(() => false) }));
+vi.mock('@n8n/stores/rbac.store', () => ({
+	useRBACStore: vi.fn(() => ({ hasScope: (scope: string) => scopes.has(scope) })),
+}));
 
 describe('useSettingsItems', () => {
 	beforeEach(() => {
@@ -71,6 +75,34 @@ describe('useSettingsItems', () => {
 		promotionsFlag.value = 'false';
 		canUserAccessRouteByName.mockReturnValue(true);
 		contextPreferencesEnabled.value = true;
+		scopes.clear();
+	});
+
+	describe('the Community nodes item', () => {
+		const isListed = () =>
+			useSettingsItems().settingsItems.value.some(({ id }) => id === 'settings-community-nodes');
+
+		beforeEach(() => {
+			activeModules.value = ['next-nodes-instance'];
+			moduleSettings.value = { 'next-nodes-instance': { enabled: true } };
+		});
+
+		it('is hidden when the Nodes page shows community nodes as a tab', () => {
+			scopes.add('nodeDefinition:list');
+
+			expect(isListed()).toBe(false);
+		});
+
+		it('stays for a user who cannot open the Nodes page', () => {
+			expect(isListed()).toBe(true);
+		});
+
+		it('stays when next nodes are off', () => {
+			scopes.add('nodeDefinition:list');
+			moduleSettings.value = { 'next-nodes-instance': { enabled: false } };
+
+			expect(isListed()).toBe(true);
+		});
 	});
 
 	describe('the Context item', () => {

@@ -1,4 +1,4 @@
-import { generateJsonSchemaFromData } from './json-schema-from-data';
+import { generateJsonSchemaFromData, sampleSchemaOf } from './json-schema-from-data';
 
 describe('generateJsonSchemaFromData', () => {
 	it('infers string type', () => {
@@ -77,5 +77,27 @@ describe('generateJsonSchemaFromData', () => {
 		expect(json).not.toContain('my-api-key');
 		expect(json).not.toContain('user@private.com');
 		expect(json).not.toContain('999');
+	});
+});
+
+describe('sampleSchemaOf', () => {
+	it('merges the relaxed schema of each item', () => {
+		expect(
+			sampleSchemaOf([
+				{ id: 1, note: null },
+				{ id: 2, tags: ['a'] },
+			]),
+		).toEqual({
+			type: 'object',
+			properties: {
+				id: { type: 'number' },
+				note: {},
+				tags: { type: 'array', items: { type: 'string' } },
+			},
+		});
+	});
+
+	it('gives an empty schema for no items', () => {
+		expect(sampleSchemaOf([])).toEqual({});
 	});
 });

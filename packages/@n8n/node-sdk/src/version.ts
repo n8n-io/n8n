@@ -38,11 +38,16 @@ import { matches } from './validate';
  * 2.8.0 adds the `parsers` host import, which reads the content of a file with the parsers of n8n.
  * 2.9.0 adds the host module `@n8n/node-sdk/validator` and the `schema` host import: the host
  * validates values against JSON Schema 2020-12, so no bundle and no guest carries a validator.
+ * 2.10.0 adds the `guest` of a version: `http` for the JSON config of the generic HTTP guest,
+ * and `errorOf`: the error expression that the host checks each response with.
  */
 export type NodeContractVersion = `${number}.${number}.${number}`;
 
 /** The newest version this host implements. */
-export const NODE_CONTRACT_VERSION: NodeContractVersion = '2.9.0';
+export const NODE_CONTRACT_VERSION: NodeContractVersion = '2.10.0';
+
+/** The Node Contract version that added the HTTP guest. An older host reads its config as JS. */
+export const HTTP_GUEST_NODE_CONTRACT: NodeContractVersion = '2.10.0';
 
 /** The newest version of each major that this host runs. */
 export const IMPLEMENTED_NODE_CONTRACTS: readonly NodeContractVersion[] = [NODE_CONTRACT_VERSION];
@@ -64,26 +69,30 @@ export const manifestKindOf = (
  * The version `freezeAction` writes: the lowest minor that has what the action declares, so an
  * older host still runs every bundle that does not need the newer features. The 2.1.0 features
  * (the current item) are used in code, so the contract cannot show a lower minimum. The contract
- * does not record the binding, so `list` tells it. A trigger runs in JS as an action does, so it
- * needs no newer minor.
+ * does not record the binding, so `list` tells it, and `errorExpression` tells that the node
+ * has an `errorOf` expression, which the host reads from the manifest. A trigger runs in JS as
+ * an action does, so it needs no newer minor.
  */
 export const requiredNodeContractOf = (
 	contract: Pick<ContractDocument, 'input' | 'output' | 'imports' | 'inputs' | 'runtime'>,
 	list = false,
+	errorExpression = false,
 ): NodeContractVersion =>
-	usesParsers(contract)
-		? '2.8.0'
-		: contract.runtime
-			? '2.7.0'
-			: inputCountOf(contract) !== undefined || usesBinaryKeyPattern(contract)
-				? '2.6.0'
-				: list || hasPageValue(contract.input)
-					? '2.4.0'
-					: usesHostImports(contract) || usesProviders(contract)
-						? '2.3.0'
-						: usesBinary(contract)
-							? '2.2.0'
-							: '2.1.0';
+	errorExpression
+		? '2.10.0'
+		: usesParsers(contract)
+			? '2.8.0'
+			: contract.runtime
+				? '2.7.0'
+				: inputCountOf(contract) !== undefined || usesBinaryKeyPattern(contract)
+					? '2.6.0'
+					: list || hasPageValue(contract.input)
+						? '2.4.0'
+						: usesHostImports(contract) || usesProviders(contract)
+							? '2.3.0'
+							: usesBinary(contract)
+								? '2.2.0'
+								: '2.1.0';
 
 /** A newer minor than the host has uses imports or fields that the host lacks. */
 export const implementsNodeContract = (version: NodeContractVersion) => {
@@ -144,6 +153,17 @@ export interface VersionManifest {
 	readonly contractHash: string;
 	/** The hex SHA-256 of the bundle bytes. */
 	readonly bundleHash: string;
+	/**
+	 * The generic guest that runs the bundle. `http`: the bundle is the JSON config of the HTTP
+	 * guest (`lift/http.ts`). Absent: the bundle is the JS code of the JS guest.
+	 */
+	readonly guest?: 'http';
+	/**
+	 * The n8n expression of the node that finds an error in a successful response, e.g.
+	 * `={{ $response.body.ok === false ? $response.body.error : undefined }}`. The host checks
+	 * each response with it. Outside the contract hash.
+	 */
+	readonly errorOf?: `=${string}`;
 	/** The contract document of the version. The host projects the node description from it. */
 	readonly contract: ContractDocument;
 	/**
@@ -297,7 +317,19 @@ export function parseManifest(text: string): VersionManifest {
 	) {
 		throw new UnexpectedError('The version manifest is not valid or its contract changed');
 	}
-	const { kind, id, semver, nodeContract, sdk, credentials, bundleHash, contract, ui } = value;
+	const {
+		kind,
+		id,
+		semver,
+		nodeContract,
+		sdk,
+		credentials,
+		bundleHash,
+		guest,
+		errorOf,
+		contract,
+		ui,
+	} = value;
 	// Fields that this host does not know stay out.
 	return {
 		kind,
@@ -308,6 +340,8 @@ export function parseManifest(text: string): VersionManifest {
 		...(credentials ? { credentials } : {}),
 		contractHash: value.contractHash,
 		bundleHash,
+		...(guest === undefined ? {} : { guest }),
+		...(errorOf === undefined ? {} : { errorOf }),
 		contract,
 		...(ui ? { ui } : {}),
 	};

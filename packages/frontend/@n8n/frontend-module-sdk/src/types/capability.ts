@@ -30,3 +30,18 @@ export interface McpExposeAllOffer {
 	 */
 	offer(onExposed: () => Promise<void> | void): Promise<boolean>;
 }
+
+/** A credential type, as a module reads it from the shell. */
+export interface CatalogCredentialType {
+	readonly name: string;
+	readonly displayName: string;
+	/** The HTTP Request node offers the type as a predefined credential type. */
+	readonly httpRequestNode: boolean;
+}
+
+export interface CredentialCatalog {
+	/** Loads the credential types and the credentials that the user can use. */
+	load(): Promise<void>;
+	/** Every credential type. Reads reactive state, so call it in a `computed`. */
+	types(): readonly CatalogCredentialType[];
+}

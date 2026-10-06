@@ -36,7 +36,7 @@ import {
 	isDataTableRows,
 } from './host-imports';
 import {
-	evaluateBundle,
+	evaluateVersion,
 	executorOf,
 	nodeDescriptionOf,
 	type BinaryStore,
@@ -235,7 +235,7 @@ export async function replayFixtures(
 		) => Promise<Record<string, unknown>>;
 	},
 ): Promise<string[]> {
-	const contract = loaded?.contract ?? evaluateBundle(bundle, manifest.nodeContract);
+	const contract = loaded?.contract ?? evaluateVersion(bundle, manifest);
 	const migrate =
 		loaded?.migrate ??
 		(async (fromMajor: number, params: Readonly<Record<string, unknown>>) => {

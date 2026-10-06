@@ -55,6 +55,11 @@ export const GLOBAL_OWNER_SCOPES: Scope[] = [
 	'license:manage',
 	'logStreaming:manage',
 	'nodeTypePolicy:manage',
+	'nodeDefinition:list',
+	'nodeDefinition:create',
+	'nodeDefinition:publish',
+	'nodeDefinition:upload',
+	'nodeDefinition:hide',
 	'orchestration:read',
 	'orchestration:manage',
 	'saml:manage',
@@ -224,6 +229,9 @@ export const GLOBAL_MEMBER_SCOPES: Scope[] = [
 	'credentialResolver:list',
 	'instanceAi:message',
 	'instanceAi:gateway',
+	'nodeDefinition:list',
+	'nodeDefinition:create',
+	'nodeDefinition:publish',
 ];
 
 export const GLOBAL_CHAT_USER_SCOPES: Scope[] = [

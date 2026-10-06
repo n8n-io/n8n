@@ -148,7 +148,7 @@ export function nextWorkspaceFiles(
 			ok: false,
 			errors: unknown.map(
 				(id) =>
-					`No node module "@n8n/nodes/${id}". Typed modules: ${nextNodeIds.join(', ')}. Another node <package>.<name> has a derived module "@n8n/nodes/<package>/<name>" when type-definition returns one. Use node({ type, version, parameters }) from '@n8n/workflow-sdk/next' for other nodes.`,
+					`No node module "@n8n/nodes/${id}". Typed modules: ${nextNodeIds().join(', ')}. Another node <package>.<name> has a derived module "@n8n/nodes/<package>/<name>" when type-definition returns one. Use node({ type, version, parameters }) from '@n8n/workflow-sdk/next' for other nodes.`,
 			),
 		};
 	}
@@ -1456,7 +1456,7 @@ const unionTypeMessage = {
 /** A typed module that the source imports from the flow API, e.g. `noOp`. */
 function moduleImportHint(error: string): string | undefined {
 	const name = /has no exported member '(\w+)'/.exec(error)?.[1];
-	if (name === undefined || !nextNodeIds.includes(name)) return undefined;
+	if (name === undefined || !nextNodeIds().includes(name)) return undefined;
 	const step = contractActions().find((action) => action.node.id === name && !action.inputs);
 	const call = step ? ` Call its steps as members, e.g. \`${step.id}({ name })\`.` : '';
 	return `\`${name}\` is a typed module, not part of the flow API: \`import { ${name} } from '@n8n/nodes/${name}'\`.${call}`;
@@ -1465,7 +1465,7 @@ function moduleImportHint(error: string): string | undefined {
 /** A name of a typed module, alone or joined to a step, e.g. `items_removeDuplicates`. */
 function moduleNameHint(error: string): string | undefined {
 	const name = /Cannot find name '(\w+)'/.exec(error)?.[1];
-	const id = nextNodeIds.find((nodeId) => name === nodeId || name?.startsWith(`${nodeId}_`));
+	const id = nextNodeIds().find((nodeId) => name === nodeId || name?.startsWith(`${nodeId}_`));
 	if (name === undefined || id === undefined) return undefined;
 	const path = name.split('_').join('.');
 	const step = contractActions().some((action) => action.id === path) ? path : `${id}.<step>`;

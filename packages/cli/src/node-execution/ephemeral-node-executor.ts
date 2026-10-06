@@ -11,6 +11,7 @@ import type {
 	INodeCredentialsDetails,
 	INodeExecutionData,
 	INodeParameters,
+	INodeTypes,
 	ITaskDataConnections,
 	IWorkflowExecuteAdditionalData,
 	NodeOutput,
@@ -46,6 +47,8 @@ export type EphemeralWorkflowToolLike = {
 	nodeName?: string;
 	/** Eval-only additionalData decoration (e.g. HTTP mock handler) — never set on production paths. */
 	configureAdditionalData?: (additionalData: IWorkflowExecuteAdditionalData) => void;
+	/** Resolves a node type that no loader holds, e.g. a draft. The default is the loaded types. */
+	nodeTypes?: INodeTypes;
 };
 
 export interface InlineNodeExecutionRequest {
@@ -306,7 +309,7 @@ export class EphemeralNodeExecutor {
 			nodes: [node],
 			connections: {},
 			active: false,
-			nodeTypes: this.nodeTypes,
+			nodeTypes: tool.nodeTypes ?? this.nodeTypes,
 		});
 		const additionalData = await getBase({ projectId: tool.projectId });
 		if (tool.nodeType === DATA_TABLE_TOOL_NODE_TYPE) {
@@ -352,7 +355,10 @@ export class EphemeralNodeExecutor {
 			[],
 		);
 
-		const nodeType = this.nodeTypes.getByNameAndVersion(tool.nodeType, tool.nodeTypeVersion);
+		const nodeType = (tool.nodeTypes ?? this.nodeTypes).getByNameAndVersion(
+			tool.nodeType,
+			tool.nodeTypeVersion,
+		);
 
 		let output: NodeOutput | undefined;
 		try {
@@ -382,6 +388,17 @@ export class EphemeralNodeExecutor {
 			this.logger.debug('Node execution failed', { nodeType: tool.nodeType, error: message });
 			return { status: 'error', data: [], error: message };
 		}
+	}
+
+	/**
+	 * Runs a node type that `tool.nodeTypes` resolves, e.g. a draft next node in the test panel.
+	 * The caller checks the node type and that the user can use the credentials.
+	 */
+	async executeUnloaded(
+		tool: EphemeralWorkflowToolLike & { readonly nodeTypes: INodeTypes },
+		inputItems: INodeExecutionData[],
+	): Promise<NodeExecutionResult> {
+		return await this.executeNodeDirectly(tool, inputItems);
 	}
 
 	async executeInline(request: InlineNodeExecutionRequest): Promise<NodeExecutionResult> {

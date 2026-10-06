@@ -13,11 +13,14 @@ export type RuntimeName = (typeof RUNTIME_NAMES)[number];
 /** The trust class of a version is its origin, which the host records when it takes the version. */
 export type TrustClass = ContractOrigin;
 
-/** `web`: web APIs and host imports only. `image`: the container image of the contract. */
-export type Needs = 'web' | 'image';
+/**
+ * `web`: web APIs and host imports only. `image`: the container image of the contract.
+ * `http-guest`: a JSON config for the HTTP guest, which only this process runs.
+ */
+export type Needs = 'web' | 'image' | 'http-guest';
 
-export const needsOf = ({ contract }: Pick<VersionManifest, 'contract'>): Needs =>
-	contract.runtime ? 'image' : 'web';
+export const needsOf = ({ contract, guest }: Pick<VersionManifest, 'contract' | 'guest'>): Needs =>
+	guest === 'http' ? 'http-guest' : contract.runtime ? 'image' : 'web';
 
 /** The allowed runtimes of each trust class, the preferred one first. */
 export type RuntimeLists = Readonly<Record<TrustClass, readonly RuntimeName[]>>;
@@ -43,13 +46,16 @@ export interface RuntimeRequest {
 	readonly available: RuntimeAvailability;
 }
 
-// The Node guest of worker and container has no trigger world, and only a container has an image.
+// The Node guest of worker and container has no trigger world, only a container has an image,
+// and only this process runs the HTTP guest.
 const serves = (name: RuntimeName, needs: Needs, kind: VersionManifest['kind']) =>
 	kind === 'trigger'
 		? name === 'in-process' || name === 'wasm'
 		: needs === 'image'
 			? name === 'container'
-			: true;
+			: needs === 'http-guest'
+				? name === 'in-process'
+				: true;
 
 const missingOf = (
 	name: RuntimeName,
@@ -77,7 +83,14 @@ export function resolveRuntime({
 	const candidates = lists[trust].filter((name) => servers.includes(name));
 	const runtime = candidates.find((name) => !missingOf(name, trust, available));
 	if (runtime) return { runtime };
-	const need = kind === 'trigger' ? ' trigger' : needs === 'image' ? ', image' : '';
+	const need =
+		kind === 'trigger'
+			? ' trigger'
+			: needs === 'image'
+				? ', image'
+				: needs === 'http-guest'
+					? ', HTTP guest'
+					: '';
 	const why =
 		candidates.length > 0
 			? candidates.map((name) => missingOf(name, trust, available)).join('; ')
@@ -106,6 +119,14 @@ export interface RuntimePolicy {
 }
 
 /**
+ * The trust class of the code that runs. An HTTP guest version runs n8n's guest on a config that
+ * cannot execute, so it runs as first-party whoever wrote the config. The host still checks its
+ * egress, credentials and output, as for every version.
+ */
+export const codeTrustOf = (origin: ContractOrigin, manifest: VersionManifest): ContractOrigin =>
+	manifest.guest === 'http' ? 'first-party' : origin;
+
+/**
  * The runtime of a version under the policy, by its origin. Throws when no allowed runtime can
  * run it.
  */
@@ -115,7 +136,7 @@ export function runtimeNameOf(
 ): RuntimeName {
 	const resolved = resolveRuntime({
 		version: `${manifest.id}@${manifest.semver}`,
-		trust: origin,
+		trust: codeTrustOf(origin, manifest),
 		needs: needsOf(manifest),
 		kind: manifest.kind,
 		lists,

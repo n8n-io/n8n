@@ -112,3 +112,9 @@ export {
 	type StoredManifest,
 	type StoredVersion,
 } from '../contract-registry';
+export {
+	extendedConfig,
+	parentNodeOf,
+	type HttpGuestConfig,
+	type ParentNode,
+} from '../lift/http';

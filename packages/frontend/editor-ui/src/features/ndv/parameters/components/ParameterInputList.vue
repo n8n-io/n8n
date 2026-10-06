@@ -795,6 +795,7 @@ watch(
 			<ImportCurlParameter
 				v-else-if="item.parameter.type === 'curlImport'"
 				:is-read-only="isReadOnly"
+				:node-values="node?.parameters"
 				@value-changed="valueChanged"
 			/>
 

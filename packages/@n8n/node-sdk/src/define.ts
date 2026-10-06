@@ -69,17 +69,22 @@ export interface NodeDefinition {
 	 */
 	readonly replaces?: readonly string[];
 	/**
-	 * The error message in the JSON body of a successful response, or `undefined` when the body
+	 * The error message in the JSON body of a successful response, or no message when the body
 	 * has no error. It runs for every request of the node's actions and triggers, so a service
 	 * that answers an error with status 200 fails the item. The request throws a `UserError`
 	 * with the message, which `run()` may catch.
 	 *
+	 * Prefer an n8n expression over `$response.body`: freeze writes it into the manifest and the
+	 * host checks each response with it, in every runtime, and an action that extends the node
+	 * copies it. A function runs in the bundle and stays with it.
+	 *
 	 * @example
 	 * ```ts
+	 * errorOf: '={{ $response.body.ok === false ? $response.body.error : undefined }}',
 	 * errorOf: (body) => (isRecord(body) && body.ok === false ? String(body.error) : undefined),
 	 * ```
 	 */
-	readonly errorOf?: (body: unknown) => string | undefined;
+	readonly errorOf?: ((body: unknown) => string | undefined) | `=${string}`;
 }
 
 /** The scopes an action of node `N` may list. */
@@ -1925,6 +1930,8 @@ interface Built {
 	readonly id: string;
 	/** The resource name, when a resource built the contract. */
 	readonly resource?: string;
+	/** The input fields that the resource gives, when a resource built the contract. */
+	readonly resourceFields?: readonly string[];
 	/** The operation, or the trigger event. */
 	readonly operation: string;
 	/** The major: `version` of the spec, or 1. */
@@ -2110,6 +2117,8 @@ export interface ActionPath {
 	readonly resource?: string;
 	/** The operation, or the trigger event, e.g. `getAll`. */
 	readonly operation: string;
+	/** The input fields that the resource gives every action of it, e.g. `['database']`. */
+	readonly resourceFields?: readonly string[];
 }
 
 /** Where a contract of a resource sits: the resource and the operation or event. */
@@ -2375,7 +2384,8 @@ export function defineNode<const N extends NodeDefinition>(
 	return {
 		...node,
 		resource: <RS extends Shape>(name: string, options?: { readonly input: RS }) => {
-			const pathOf = (operation: string) => ({ resource: name, operation });
+			const resourceFields = Object.keys(options?.input ?? {});
+			const pathOf = (operation: string) => ({ resource: name, operation, resourceFields });
 			return {
 				name,
 				...(options ? buildersOf(node, options.input, pathOf) : buildersOf(node, {}, pathOf)),

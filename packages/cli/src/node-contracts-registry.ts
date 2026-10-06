@@ -23,6 +23,7 @@ import {
 	toVersionedNodeType,
 	toVersionedToolType,
 	toVersionedTriggerType,
+	verifiedBundleOf,
 	type FrozenVersion,
 	type HostRuntime,
 	type PermissionRefusal,
@@ -64,6 +65,7 @@ import {
 	type ICredentialType,
 	type ICredentialTypeData,
 	type INode,
+	type INodeProperties,
 	type INodeTypeDescription,
 	type KnownNodesAndCredentials,
 	type IVersionedNodeType,
@@ -84,6 +86,7 @@ import {
 	MIGRATED_NODES,
 	migratedSlotOf,
 	packageNameOf,
+	customActionCredentialTypeOf,
 	sandboxCredentialTypeOf,
 	toolEntries,
 	toolIdOf,
@@ -153,6 +156,8 @@ export class NodeContractsStore {
 					signatures: [...(version.signatures ?? [])],
 					published: publishedDateOf(version.published),
 					origin: version.origin,
+					// A version from a registry or a store folder has no author on this instance.
+					createdById: null,
 				})),
 			);
 		},
@@ -258,7 +263,8 @@ function publishedDateOf(published: string | undefined) {
 }
 
 /** What the loader reads of the instance store. */
-type StoredContracts = Pick<ContractStore, 'versions' | 'credentials'>;
+type StoredContracts = Pick<ContractStore, 'versions' | 'credentials'> &
+	Partial<Pick<ContractStore, 'withdrawal'>>;
 
 const openContractStore = async (): Promise<StoredContracts> =>
 	await Container.get(NodeContractsStore).open();
@@ -356,6 +362,47 @@ function legacyNodeTypeOf(
 }
 
 /**
+ * A custom action: a version that someone on this instance made in the form. No trusted key signs
+ * it, and it runs n8n's HTTP guest on its config.
+ */
+export const isCustomAction = ({ manifest, origin }: Pick<FrozenVersion, 'manifest' | 'origin'>) =>
+	origin === 'private' && manifest.guest === 'http';
+
+/**
+ * The description of a custom action: its app for the nodes panel (with the legacy node of the
+ * same id, e.g. GitHub), and a notice of where its requests go, because no reviewer read it.
+ */
+function customDescriptionOf(
+	description: INodeTypeDescription,
+	{ manifest }: FrozenVersion,
+	legacyNodeType: string | undefined,
+	hidden: boolean,
+): INodeTypeDescription {
+	const { node, nodeDisplayName, egress } = manifest.contract;
+	const hosts = egress?.hosts ?? [];
+	const notice: INodeProperties = {
+		displayName:
+			hosts.length > 0
+				? `Custom action. It sends requests to ${hosts.join(', ')}.`
+				: 'Custom action. It sends requests to the server in the credential.',
+		name: 'customActionHosts',
+		type: 'notice',
+		default: '',
+	};
+	const app = {
+		id: node,
+		displayName: nodeDisplayName,
+		...(legacyNodeType ? { nodeType: legacyNodeType } : {}),
+	};
+	return {
+		...description,
+		codex: { ...description.codex, app },
+		properties: [notice, ...description.properties],
+		...(hidden && { hidden: true }),
+	};
+}
+
+/**
  * The node type of the frozen versions of one id, with the presentation of its legacy node, else
  * the icon of its node, and the parameters n8n adds to every node. The nodes panel lists an action
  * or a trigger as an action of its legacy node item. A provider is a sub-node, so the panel does
@@ -365,6 +412,7 @@ function contractNodeTypeOf(
 	versions: readonly FrozenVersion[],
 	legacy: ReadonlyMap<string, INodeTypeDescription>,
 	runtime: HostRuntime,
+	hidden = false,
 ) {
 	const [head] = versions;
 	const typeOf = head?.manifest.kind === 'trigger' ? toVersionedTriggerType : toVersionedNodeType;
@@ -373,10 +421,15 @@ function contractNodeTypeOf(
 	const twin = legacyNodeType && legacy.get(legacyNodeType);
 	const icon = head && !twin ? nodeIconOf(head.manifest.id) : undefined;
 	const presentation = twin ? presentationOf(twin) : icon && { icon };
-	const nodeCreatorItem = head?.manifest.kind === 'provider' ? undefined : legacyNodeType;
+	const custom = versions.length > 0 && versions.every(isCustomAction);
+	// The nodes panel groups a custom action under its app (`codex.app`), so it has no item.
+	const nodeCreatorItem = head?.manifest.kind === 'provider' || custom ? undefined : legacyNodeType;
 	for (const version of Object.values(type.nodeVersions)) {
 		if (presentation) version.description = presented(version.description, presentation);
 		if (nodeCreatorItem) version.description = { ...version.description, nodeCreatorItem };
+		if (head && custom) {
+			version.description = customDescriptionOf(version.description, head, legacyNodeType, hidden);
+		}
 		DirectoryLoader.applySpecialNodeParameters(version);
 		validateNodeDescription(version.description);
 	}
@@ -438,6 +491,22 @@ export class ContractNodeLoader implements NodeLoader {
 			this.fromStore(async (store) => await store.credentials(), new Map()),
 			legacyDescriptionsOf(this.legacyLoaders()),
 		]);
+		// A yanked custom action leaves the nodes panel. Its pinned nodes keep running.
+		const yanked = new Set(
+			await this.fromStore(
+				async (store) =>
+					(
+						await Promise.all(
+							[...stored.values()]
+								.flatMap((versions) => versions.filter(isCustomAction))
+								.map(async (version) =>
+									(await store.withdrawal?.(version)) ? [version.manifest.id] : [],
+								),
+						)
+					).flat(),
+				[],
+			),
+		);
 		const bundled = new Set(bundledIdsOf(this.storeDir));
 		const ownStored = [...stored.keys()].filter((id) => packageNameOf(id) === this.packageName);
 		this.nodes = new Map(
@@ -457,7 +526,7 @@ export class ContractNodeLoader implements NodeLoader {
 					? path.join(this.storeDir, storeIndexFileOf(id))
 					: Container.get(NodeContractsStore).dir;
 				const node: ContractNode = {
-					type: contractNodeTypeOf(versions, legacy, this.runtime),
+					type: contractNodeTypeOf(versions, legacy, this.runtime, yanked.has(id)),
 					sourcePath,
 					versions,
 				};
@@ -494,6 +563,32 @@ export class ContractNodeLoader implements NodeLoader {
 		};
 		this.types = this.typesOf();
 		this.typesReleased = false;
+		if (this.packageName === FALLBACK_PACKAGE) await this.publishCustomActions(stored, yanked);
+	}
+
+	/** Gives the Instance AI builder the newest major of each listed custom action. */
+	private async publishCustomActions(
+		stored: ReadonlyMap<string, readonly FrozenVersion[]>,
+		yanked: ReadonlySet<string>,
+	) {
+		const newest = [...stored.values()].flatMap((versions) => {
+			const custom = versions.filter(isCustomAction);
+			const latest = custom.reduce<FrozenVersion | undefined>(
+				(best, version) =>
+					best && best.manifest.contract.version > version.manifest.contract.version
+						? best
+						: version,
+				undefined,
+			);
+			return latest && !yanked.has(latest.manifest.id) ? [latest] : [];
+		});
+		const exported = await Promise.all(
+			newest.map(
+				async (version) => await verifiedBundleOf(version, this.runtime.nodeContractRange),
+			),
+		);
+		const { setPublishedActions } = await import('@n8n/instance-ai');
+		setPublishedActions(exported.flatMap((action) => ('kind' in action ? [] : [action])));
 	}
 
 	/** The frozen versions that the node type of a node name projects. */
@@ -806,6 +901,10 @@ export async function nodeContractsRuntime(): Promise<HostRuntime> {
 		nodeContractRange: instanceAi.nodeContractRange,
 		versionLoader,
 		credentialManifestOf: credentialManifestsOf(store, hasOtherCredentialTypeInN8n),
+		// A custom action's config is data, so n8n gives its credential types, as in the sandbox.
+		credentialTypeOf: customActionCredentialTypeOf((name) =>
+			Container.get(CredentialTypes).recognizes(name),
+		),
 		executorLoader,
 		onRunProfile: ({ executionId, nodeName }, profile) =>
 			Container.get(EventService).emit('node-contract-run-profiled', {
@@ -1038,9 +1137,9 @@ export function composeContractNodes(
 		if (!isContractNodeType(description.name)) return description;
 		// The AI tools copy the item of the action to its tool variant, which the panel lists apart.
 		const { nodeCreatorItem, ...unlisted } = description;
-		return nodeCreatorItem !== undefined && !isToolType(description.name)
-			? description
-			: { ...unlisted, hidden: true };
+		// A custom action has its app instead of an item, see `customDescriptionOf`.
+		const listed = nodeCreatorItem !== undefined || description.codex?.app !== undefined;
+		return listed && !isToolType(description.name) ? description : { ...unlisted, hidden: true };
 	});
 	return { nodes, types: [...patched, ...added] };
 }

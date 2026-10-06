@@ -1,5 +1,6 @@
 import { capabilities, capabilityRegistry } from '@n8n/frontend-module-sdk';
 import { createTestingPinia } from '@pinia/testing';
+import type { ICredentialType } from 'n8n-workflow';
 import { setActivePinia } from 'pinia';
 
 import { registerShellCapabilities } from './capabilities.manifest';
@@ -8,6 +9,7 @@ import { ABOUT_MODAL_KEY } from '@/app/constants/modals';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useExistingWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
+import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { mockedStore } from '@/__tests__/utils';
 import { useExposeAllWorkflowsToMcpStore } from '@/experiments/exposeAllWorkflowsToMcp/stores/exposeAllWorkflowsToMcp.store';
 
@@ -48,6 +50,32 @@ describe('registerShellCapabilities', () => {
 		registerShellCapabilities();
 
 		expect(capabilityRegistry.has(capabilities.modalOpeners)).toBe(true);
+	});
+
+	it('lists the credential types with whether the HTTP Request node offers them', () => {
+		registerShellCapabilities();
+		const credentialsStore = mockedStore(useCredentialsStore);
+		credentialsStore.allCredentialTypes = [
+			{
+				name: 'slackApi',
+				displayName: 'Slack API',
+				properties: [],
+				httpRequestNode: { name: 'Slack', docsUrl: '', apiBaseUrl: '' },
+			},
+			{
+				name: 'oldApi',
+				displayName: 'Old API',
+				properties: [],
+				httpRequestNode: { name: 'Old', docsUrl: '', apiBaseUrl: '', hidden: true },
+			},
+			{ name: 'postgres', displayName: 'Postgres', properties: [] },
+		] as ICredentialType[];
+
+		expect(capabilityRegistry.use(capabilities.credentialCatalog).types()).toEqual([
+			{ name: 'slackApi', displayName: 'Slack API', httpRequestNode: true },
+			{ name: 'oldApi', displayName: 'Old API', httpRequestNode: false },
+			{ name: 'postgres', displayName: 'Postgres', httpRequestNode: false },
+		]);
 	});
 
 	it('forwards openModal to the UI store', () => {
