@@ -243,6 +243,7 @@ defineExpose({
 		@paste="fileDrop.handlePaste"
 		@keydown.capture="handleKeydown"
 	>
+		<slot name="above" />
 		<div
 			v-if="fileDrop.isDragging.value"
 			:class="$style.dropOverlay"

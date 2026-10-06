@@ -504,6 +504,31 @@ describe('CredentialTypePolicyCheck', () => {
 		});
 	});
 
+	describe('onCredentialTransfer', () => {
+		it('judges the credential type against the target project', async () => {
+			const result = await check.onCredentialTransfer({
+				credential: { id: 'cred-1', type: SLACK_API },
+				targetProjectId: 'target-project',
+			});
+
+			expect(result.violations.map((violation) => violation.subject)).toEqual([SLACK_API]);
+			expect(service.evaluateComposedTypesFor).toHaveBeenCalledWith(
+				'credential-types',
+				'target-project',
+				[SLACK_API],
+			);
+		});
+
+		it('allows an available type', async () => {
+			const result = await check.onCredentialTransfer({
+				credential: { id: 'cred-1', type: HTTP_BASIC },
+				targetProjectId: 'target-project',
+			});
+
+			expect(result.violations).toEqual([]);
+		});
+	});
+
 	describe('onCredentialDecrypt', () => {
 		it('vetoes the decryption when the credential type is denied', async () => {
 			const result = await check.onCredentialDecrypt(decryptOf(SLACK_API));
