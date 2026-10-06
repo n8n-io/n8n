@@ -1,5 +1,6 @@
 import type { Logger } from '@n8n/backend-common';
 import type {
+	CredentialsRepository,
 	OperationContext,
 	ProjectRelationRepository,
 	RoleRepository,
@@ -32,6 +33,7 @@ const makeEntry = (credentialId: string, userId: string, data = ''): DynamicCred
 
 describe('CredentialConnectionStatusService', () => {
 	const repository = mock<DynamicCredentialUserEntryRepository>();
+	const credentialsRepository = mock<CredentialsRepository>();
 	const userRepository = mock<UserRepository>();
 	const sharedCredentialsRepository = mock<SharedCredentialsRepository>();
 	const roleService = mock<RoleService>();
@@ -43,6 +45,7 @@ describe('CredentialConnectionStatusService', () => {
 
 	const service = new CredentialConnectionStatusService(
 		repository,
+		credentialsRepository,
 		userRepository,
 		sharedCredentialsRepository,
 		roleService,

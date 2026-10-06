@@ -8,6 +8,33 @@ import type { CredentialsEntity, User } from '../entities';
 import { Project, ProjectRelation, SharedCredentials } from '../entities';
 import { chunkIds } from '../utils/chunk-ids';
 
+export async function findCredentialUserPairsWithAccess(
+	manager: EntityManager,
+	pairs: Array<{ credentialId: string; userId: string }>,
+	scope: Scope,
+	credentialRoles: string[],
+): Promise<Array<{ credentialId: string; userId: string }>> {
+	if (pairs.length === 0 || credentialRoles.length === 0) return [];
+
+	const credentialIds = [...new Set(pairs.map(({ credentialId }) => credentialId))];
+	const userIds = [...new Set(pairs.map(({ userId }) => userId))];
+	const rows = await manager
+		.createQueryBuilder(SharedCredentials, 'sc')
+		.select(['sc.credentialsId AS "credentialId"', 'pr.userId AS "userId"'])
+		.distinct(true)
+		.innerJoin(ProjectRelation, 'pr', 'pr.projectId = sc.projectId')
+		.innerJoin('pr.role', 'pr_role')
+		.innerJoin('pr_role.scopes', 'pr_scope')
+		.where('sc.credentialsId IN (:...credentialIds)', { credentialIds })
+		.andWhere('pr.userId IN (:...userIds)', { userIds })
+		.andWhere('pr_scope.slug = :scope', { scope })
+		.andWhere('sc.role IN (:...credentialRoles)', { credentialRoles })
+		.getRawMany<{ credentialId: string; userId: string }>();
+
+	const requested = new Set(pairs.map(({ credentialId, userId }) => `${credentialId}|${userId}`));
+	return rows.filter(({ credentialId, userId }) => requested.has(`${credentialId}|${userId}`));
+}
+
 @Service()
 export class SharedCredentialsRepository extends Repository<SharedCredentials> {
 	constructor(dataSource: DataSource) {
@@ -184,27 +211,12 @@ export class SharedCredentialsRepository extends Repository<SharedCredentials> {
 		credentialRoles: string[],
 		trx?: EntityManager,
 	): Promise<Array<{ credentialId: string; userId: string }>> {
-		if (pairs.length === 0 || credentialRoles.length === 0) return [];
-
-		const manager = trx ?? this.manager;
-		const credentialIds = [...new Set(pairs.map((p) => p.credentialId))];
-		const userIds = [...new Set(pairs.map((p) => p.userId))];
-
-		const rows = await manager
-			.createQueryBuilder(SharedCredentials, 'sc')
-			.select(['sc.credentialsId AS "credentialId"', 'pr.userId AS "userId"'])
-			.distinct(true)
-			.innerJoin(ProjectRelation, 'pr', 'pr.projectId = sc.projectId')
-			.innerJoin('pr.role', 'pr_role')
-			.innerJoin('pr_role.scopes', 'pr_scope')
-			.where('sc.credentialsId IN (:...credentialIds)', { credentialIds })
-			.andWhere('pr.userId IN (:...userIds)', { userIds })
-			.andWhere('pr_scope.slug = :scope', { scope })
-			.andWhere('sc.role IN (:...credentialRoles)', { credentialRoles })
-			.getRawMany<{ credentialId: string; userId: string }>();
-
-		const requested = new Set(pairs.map((p) => `${p.credentialId}|${p.userId}`));
-		return rows.filter((r) => requested.has(`${r.credentialId}|${r.userId}`));
+		return await findCredentialUserPairsWithAccess(
+			trx ?? this.manager,
+			pairs,
+			scope,
+			credentialRoles,
+		);
 	}
 
 	/**

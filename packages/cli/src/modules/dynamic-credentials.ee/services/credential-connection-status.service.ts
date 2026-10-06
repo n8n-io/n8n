@@ -1,6 +1,7 @@
 import { Logger } from '@n8n/backend-common';
 import {
-	CredentialsEntity,
+	CredentialsRepository,
+	findGloballyConnectableCredentialIds,
 	In,
 	type OperationContext,
 	ProjectRelationRepository,
@@ -53,6 +54,7 @@ const isEntityManager = (value: OperationContext | EntityManager): value is Enti
 export class CredentialConnectionStatusService implements ICredentialConnectionStatusProvider {
 	constructor(
 		private readonly repository: DynamicCredentialUserEntryRepository,
+		private readonly credentialsRepository: CredentialsRepository,
 		private readonly userRepository: UserRepository,
 		private readonly sharedCredentialsRepository: SharedCredentialsRepository,
 		private readonly roleService: RoleService,
@@ -221,13 +223,13 @@ export class CredentialConnectionStatusService implements ICredentialConnectionS
 				async () => await this.repository.findRolesWithScopes(ctx),
 			);
 			const [projectRetained, globalCredentialIds] = await Promise.all([
-				this.repository.findPairsWithCredentialAccess(
+				this.credentialsRepository.findPairsWithCredentialAccess(
 					pairsToCheck,
 					CREDENTIAL_RETAIN_SCOPE,
 					validCredRoles,
 					ctx,
 				),
-				this.repository.findGloballyConnectableCredentialIds(credentialIds, ctx),
+				this.credentialsRepository.findGloballyConnectableIds(credentialIds, ctx),
 			]);
 			projectRetainedKeys = new Set(projectRetained.map(keyOf));
 			globallyConnectableCredentialIds = new Set(globalCredentialIds);
@@ -284,18 +286,10 @@ export class CredentialConnectionStatusService implements ICredentialConnectionS
 				})(),
 				// End-user credentials shared globally grant every user connect
 				// access regardless of project membership (see role.service.ts).
-				em.find(CredentialsEntity, {
-					where: {
-						id: In(credentialIds),
-						isGlobal: true,
-						usageScope: 'project',
-						isResolvable: true,
-					},
-					select: ['id'],
-				}),
+				findGloballyConnectableCredentialIds(em, credentialIds),
 			]);
 			projectRetainedKeys = new Set(projectRetained.map(keyOf));
-			globallyConnectableCredentialIds = new Set(globallyConnectableCredentials.map((c) => c.id));
+			globallyConnectableCredentialIds = new Set(globallyConnectableCredentials);
 		}
 
 		const toDelete = this.selectOrphanedPairs(

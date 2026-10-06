@@ -1,5 +1,5 @@
-import { testDb, testModules } from '@n8n/backend-test-utils';
-import { CredentialsRepository, UserRepository } from '@n8n/db';
+import { createTeamProject, testDb, testModules } from '@n8n/backend-test-utils';
+import { CredentialsRepository, TransactionRunner, UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 
 import { DynamicCredentialUserEntry } from '@/modules/dynamic-credentials.ee/database/entities/dynamic-credential-user-entry';
@@ -8,7 +8,7 @@ import { DynamicCredentialUserEntryRepository } from '@/modules/dynamic-credenti
 
 import { createDynamicCredentialResolver } from './shared/db-helpers';
 import { createCredentials } from '../shared/db/credentials';
-import { createUser } from '../shared/db/users';
+import { createOwner, createUser } from '../shared/db/users';
 
 describe('DynamicCredentialUserEntryRepository', () => {
 	let repository: DynamicCredentialUserEntryRepository;
@@ -222,6 +222,92 @@ describe('DynamicCredentialUserEntryRepository', () => {
 			// ASSERT
 			expect(entries).toHaveLength(2);
 			expect(entries.map((e) => e.userId).sort()).toEqual([user1.id, user2.id].sort());
+		});
+	});
+
+	describe('transaction-aware cleanup queries', () => {
+		it('filters credential access by project role', async () => {
+			const owner = await createOwner();
+			const project = await createTeamProject('Team project', owner);
+			const credential = await createCredentials(
+				{ name: 'Project credential', type: 'testType', data: 'test-data' },
+				project,
+			);
+			const outsider = await createUser({ email: 'outsider@example.com' });
+			const pairs = [
+				{ credentialId: credential.id, userId: owner.id },
+				{ credentialId: credential.id, userId: outsider.id },
+			];
+
+			const accessible = await Container.get(CredentialsRepository).findPairsWithCredentialAccess(
+				pairs,
+				'credential:connect',
+				['credential:owner'],
+				{},
+			);
+
+			expect(accessible).toEqual([{ credentialId: credential.id, userId: owner.id }]);
+		});
+
+		it('excludes pending credentials from global connectivity', async () => {
+			const active = await createCredentials({
+				name: 'Active global credential',
+				type: 'testType',
+				data: 'test-data',
+				isGlobal: true,
+				usageScope: 'project',
+				isResolvable: true,
+				pendingAuthorizationExpiresAt: null,
+			});
+			const pending = await createCredentials({
+				name: 'Pending global credential',
+				type: 'testType',
+				data: 'test-data',
+				isGlobal: true,
+				usageScope: 'project',
+				isResolvable: true,
+				pendingAuthorizationExpiresAt: new Date(Date.now() + 60_000),
+			});
+
+			const ids = await Container.get(CredentialsRepository).findGloballyConnectableIds(
+				[active.id, pending.id],
+				{},
+			);
+
+			expect(ids).toEqual([active.id]);
+		});
+
+		it('rolls back context-scoped entry deletion', async () => {
+			const credential = await createCredentials({
+				name: 'Test credential',
+				type: 'testType',
+				data: 'test-data',
+			});
+			const user = await createUser({ email: 'rollback@example.com' });
+			const resolver = await createDynamicCredentialResolver({
+				name: 'rollback-resolver',
+				type: 'test',
+				config: 'test-data',
+			});
+			await repository.save({
+				credentialId: credential.id,
+				userId: user.id,
+				resolverId: resolver.id,
+				data: 'test-data',
+			});
+
+			await expect(
+				Container.get(TransactionRunner).run({}, async (ctx) => {
+					await repository.deletePairsInContext(
+						[{ credentialId: credential.id, userId: user.id }],
+						ctx,
+					);
+					expect(await repository.findPairsForUsers([user.id], credential.id, ctx)).toEqual([]);
+					throw new Error('Roll back');
+				}),
+			).rejects.toThrow('Roll back');
+
+			expect(await repository.countBy({ credentialId: credential.id, userId: user.id })).toBe(1);
 		});
 	});
 
