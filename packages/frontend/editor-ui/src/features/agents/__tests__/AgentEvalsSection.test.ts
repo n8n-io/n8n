@@ -17,6 +17,11 @@ import AgentEvalsSection from '../components/AgentEvalsSection.vue';
 // Components use `data-testid`; the global setup configures `data-test-id`.
 configure({ testIdAttribute: 'data-testid' });
 
+const { showError } = vi.hoisted(() => ({ showError: vi.fn() }));
+vi.mock('@n8n/composables/useToast', () => ({
+	useToast: () => ({ showError }),
+}));
+
 vi.mock('@n8n/i18n', async (importOriginal) => ({
 	...(await importOriginal()),
 	useI18n: () => ({ baseText: (key: string) => `mocked-${key}` }),
@@ -446,6 +451,81 @@ describe('AgentEvalsSection', () => {
 				{ input: 'own example', whatToCheck: '' },
 			);
 			expect(store.startRun).toHaveBeenCalledWith(PROJECT_ID, AGENT_ID, 'committed-1');
+		});
+
+		// The section is reused when the agent switches. The commit must keep using the
+		// agent and cases it started with, not whatever the live props and preview hold
+		// once the draft dataset request returns.
+		it('commits the agent and cases it started with when the agent switches mid-commit', async () => {
+			let resolveCreate!: (value: {
+				datasetId: string;
+				dataTableId: string;
+				columnMapping: { input: string; criteria: string };
+			}) => void;
+			const { getByTestId, rerender, store } = await renderPreview(
+				[{ input: 'case of A', whatToCheck: 'check of A', scenario: 'A' }],
+				(store) => {
+					vi.mocked(store.createDraftDataset).mockImplementation(
+						async () =>
+							await new Promise((resolve) => {
+								resolveCreate = resolve;
+							}),
+					);
+					vi.mocked(store.createCase).mockResolvedValue(null);
+				},
+			);
+
+			await userEvent.click(getByTestId('stub-add-checks'));
+			// Switching agents reloads the section, which clears the preview it held.
+			vi.mocked(store.generateDraftCases).mockResolvedValue({
+				cases: [{ input: 'case of B', whatToCheck: 'check of B', scenario: 'B' }],
+			});
+			await rerender({ agentId: 'agent-b' });
+			await flushPromises();
+			resolveCreate({
+				datasetId: 'committed-a',
+				dataTableId: 'dt-a',
+				columnMapping: { input: 'input', criteria: 'criteria' },
+			});
+			await flushPromises();
+
+			expect(store.createCase).toHaveBeenCalledWith(
+				PROJECT_ID,
+				expect.objectContaining({ datasetId: 'committed-a' }),
+				{ input: 'case of A', whatToCheck: 'check of A' },
+			);
+			expect(store.createCase).not.toHaveBeenCalledWith(
+				PROJECT_ID,
+				expect.anything(),
+				expect.objectContaining({ input: 'case of B' }),
+			);
+			expect(store.startRun).toHaveBeenCalledWith(PROJECT_ID, AGENT_ID, 'committed-a');
+			expect(store.startRun).not.toHaveBeenCalledWith(PROJECT_ID, 'agent-b', expect.anything());
+		});
+
+		it('does not toast the old agent’s failed commit over the agent now on screen', async () => {
+			let rejectCreate!: (error: Error) => void;
+			const { getByTestId, rerender, store } = await renderPreview(
+				[{ input: 'case of A', whatToCheck: 'check of A', scenario: 'A' }],
+				(store) => {
+					vi.mocked(store.createDraftDataset).mockImplementation(
+						async () =>
+							await new Promise((_, reject) => {
+								rejectCreate = reject;
+							}),
+					);
+				},
+			);
+
+			await userEvent.click(getByTestId('stub-add-checks'));
+			await rerender({ agentId: 'agent-b' });
+			await flushPromises();
+			showError.mockClear();
+			rejectCreate(new Error('create failed'));
+			await flushPromises();
+
+			expect(showError).not.toHaveBeenCalled();
+			expect(store.startRun).not.toHaveBeenCalled();
 		});
 
 		it('rolls back the draft dataset when a case fails to save, before the run is ever started', async () => {

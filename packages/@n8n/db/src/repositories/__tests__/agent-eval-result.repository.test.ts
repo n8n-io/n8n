@@ -74,6 +74,30 @@ describe('AgentEvalResultRepository', () => {
 		});
 	});
 
+	describe('markAsCompleted with a verdict', () => {
+		// Completion and verdict land in one write, so a finished case never reads as
+		// a pass while its verdict is still on the way.
+		it('writes the verdict together with the completion', async () => {
+			entityManager.update.mockResolvedValueOnce({ affected: 1, generatedMaps: [], raw: [] });
+			const verdict = { status: 'completed', outcome: 'fail', reasoning: 'Broke the rule.' };
+
+			await repo.markAsCompleted('res-1', { output: { answer: '42' }, verdict });
+
+			expect(entityManager.update.mock.calls[0]?.[2]).toMatchObject({
+				status: 'success',
+				verdict,
+			});
+		});
+
+		it('defaults the verdict to null when none was graded', async () => {
+			entityManager.update.mockResolvedValueOnce({ affected: 1, generatedMaps: [], raw: [] });
+
+			await repo.markAsCompleted('res-1', { output: { answer: '42' } });
+
+			expect(entityManager.update.mock.calls[0]?.[2]).toMatchObject({ verdict: null });
+		});
+	});
+
 	describe('markAsError', () => {
 		it('stores the error code and details', async () => {
 			entityManager.update.mockResolvedValueOnce({ affected: 1, generatedMaps: [], raw: [] });

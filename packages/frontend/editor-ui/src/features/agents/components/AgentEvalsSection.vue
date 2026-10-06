@@ -162,6 +162,18 @@ const onAddPreviewExample = (input: string) => {
  */
 const onAddChecks = async (count: number) => {
 	addingChecks.value = true;
+	// Everything the commit needs is captured before the first await. This section is
+	// reused when the agent switches, so by the time a request returns, the live props
+	// and the preview state may belong to another agent. Writing from them would put
+	// that agent's examples into this agent's table, and start a run for the wrong one.
+	const { projectId, agentId } = props;
+	const toCreate = [
+		...previewCases.value
+			.slice(0, count)
+			.map((c) => ({ input: c.input, whatToCheck: c.whatToCheck })),
+		...previewOwnExamples.value.map((input) => ({ input, whatToCheck: '' })),
+	];
+	const isStale = () => props.projectId !== projectId || props.agentId !== agentId;
 	// Tracked outside the try so the catch block can tell "nothing was created
 	// yet" apart from "created, but the commit failed partway through" — only
 	// the latter has anything to roll back.
@@ -173,7 +185,7 @@ const onAddChecks = async (count: number) => {
 	// failures strictly before submission, where nothing has been seeded yet.
 	let runSubmitted = false;
 	try {
-		const created = await store.createDraftDataset(props.projectId, props.agentId);
+		const created = await store.createDraftDataset(projectId, agentId);
 		createdDatasetId = created.datasetId;
 		// Resolved straight from the create response — not a `getDatasets` refetch,
 		// which could itself fail transiently after the dataset already exists and
@@ -182,26 +194,21 @@ const onAddChecks = async (count: number) => {
 		if (!columns) throw new Error('The draft dataset has no writable case columns');
 		const source = { datasetId: created.datasetId, dataTableId: created.dataTableId, columns };
 
-		const toCreate = [
-			...previewCases.value
-				.slice(0, count)
-				.map((c) => ({ input: c.input, whatToCheck: c.whatToCheck })),
-			...previewOwnExamples.value.map((input) => ({ input, whatToCheck: '' })),
-		];
-		await Promise.all(toCreate.map((value) => store.createCase(props.projectId, source, value)));
+		await Promise.all(toCreate.map((value) => store.createCase(projectId, source, value)));
 
 		runSubmitted = true;
-		await store.startRun(props.projectId, props.agentId, created.datasetId);
-		await load();
+		await store.startRun(projectId, agentId, created.datasetId);
+		// Only the agent on screen is reloaded; another agent's section loads itself.
+		if (!isStale()) await load();
 	} catch (error) {
 		if (createdDatasetId && !runSubmitted) {
 			// A partial insert leaves a persisted-but-incomplete dataset behind —
 			// delete it rather than let a retry pile up another one alongside it.
-			await store
-				.deleteDraftDataset(props.projectId, props.agentId, createdDatasetId)
-				.catch(() => null);
+			await store.deleteDraftDataset(projectId, agentId, createdDatasetId).catch(() => null);
 		}
-		toast.showError(error, i18n.baseText('agents.builder.agentEvals.run.startError'));
+		if (!isStale()) {
+			toast.showError(error, i18n.baseText('agents.builder.agentEvals.run.startError'));
+		}
 	} finally {
 		addingChecks.value = false;
 	}

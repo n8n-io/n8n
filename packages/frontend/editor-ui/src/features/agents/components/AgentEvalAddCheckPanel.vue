@@ -94,7 +94,7 @@ async function writeCase(value: { input: string; whatToCheck: string }): Promise
 		// A null row means the Data Table write failed without throwing.
 		if (!created) throw new Error('The test case was not saved');
 	} catch (error) {
-		toast.showError(error, i18n.baseText('agents.builder.agentEvals.case.addError'));
+		if (isMounted) toast.showError(error, i18n.baseText('agents.builder.agentEvals.case.addError'));
 		return false;
 	}
 	emit('added');
@@ -118,7 +118,8 @@ async function onAddRule() {
 			if (!draft) throw new Error('No test message was generated');
 			input = draft.input;
 		} catch (error) {
-			toast.showError(error, i18n.baseText('agents.builder.agentEvals.generateError'));
+			if (isMounted)
+				toast.showError(error, i18n.baseText('agents.builder.agentEvals.generateError'));
 			return;
 		}
 		if (!isMounted) return;

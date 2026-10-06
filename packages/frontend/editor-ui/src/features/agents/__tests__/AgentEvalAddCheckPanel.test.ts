@@ -198,6 +198,53 @@ describe('AgentEvalAddCheckPanel', () => {
 			expect(await findAllByTestId('agent-eval-add-check-prepared-row')).toHaveLength(3);
 		});
 
+		// The panel is only unmounted when the checks view goes away, e.g. on an agent
+		// switch. A failure that lands after that must not toast over the new screen.
+		it('does not toast a failed write once the panel is gone', async () => {
+			const user = userEvent.setup();
+			const { findAllByTestId, store, unmount } = renderPanel({}, { batchSize: 3 });
+			let rejectWrite!: (error: Error) => void;
+			vi.mocked(store.createCase).mockImplementation(
+				async () =>
+					await new Promise((_, reject) => {
+						rejectWrite = reject;
+					}),
+			);
+			const rows = await findAllByTestId('agent-eval-add-check-prepared-row');
+			await user.click(within(rows[0]).getByTestId('agent-eval-add-check-prepared-add'));
+			await waitFor(() => expect(rejectWrite).toBeDefined());
+			showError.mockClear();
+
+			unmount();
+			rejectWrite(new Error('table is full'));
+			await new Promise((resolve) => setTimeout(resolve, 0));
+
+			expect(showError).not.toHaveBeenCalled();
+		});
+
+		it('does not toast a failed rule draft once the panel is gone', async () => {
+			const user = userEvent.setup();
+			const { findAllByTestId, store, getByTestId, unmount } = renderPanel({}, { batchSize: 3 });
+			await findAllByTestId('agent-eval-add-check-prepared-row');
+			let rejectDraft!: (error: Error) => void;
+			vi.mocked(store.generateDraftCases).mockImplementation(
+				async () =>
+					await new Promise((_, reject) => {
+						rejectDraft = reject;
+					}),
+			);
+			await user.type(getByTestId('agent-eval-add-check-rule-input'), 'never share a phone number');
+			await user.click(getByTestId('agent-eval-add-check-rule-submit'));
+			await waitFor(() => expect(rejectDraft).toBeDefined());
+			showError.mockClear();
+
+			unmount();
+			rejectDraft(new Error('model unavailable'));
+			await new Promise((resolve) => setTimeout(resolve, 0));
+
+			expect(showError).not.toHaveBeenCalled();
+		});
+
 		it('treats a write that returns no row as a failure', async () => {
 			const user = userEvent.setup();
 			const { findAllByTestId, store, emitted } = renderPanel({}, { batchSize: 3 });

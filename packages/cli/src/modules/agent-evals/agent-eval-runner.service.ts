@@ -627,6 +627,26 @@ export class AgentEvalRunnerService {
 				return usage;
 			}
 
+			// Judged before the case is marked complete, and written in the same update.
+			// The result stays `running` — which a rerun cannot claim — until the whole
+			// attempt is finished. Completing first would let a second rerun start while
+			// this judge is pending, and this judge's verdict would then overwrite the
+			// newer attempt's. It also keeps a finished case from reading as a pass while
+			// its verdict is still missing.
+			//
+			// Grading is best-effort on top of a run that already succeeded: a failure
+			// to judge must not flip the case to `error`. `runCase` is the one place both
+			// `executeRun`'s pool and `rerunResult` funnel through, so this single step
+			// covers both.
+			let verdict: JsonObject | null = null;
+			try {
+				verdict = toJsonObject(await this.judgeCase(resolvedCase, execResult.finalText, ctx));
+			} catch (error) {
+				this.logger.error(`[AgentEvalRunner] Could not judge case ${resultRow.id}`, {
+					error: error instanceof Error ? error.message : String(error),
+				});
+			}
+
 			await this.resultRepository.markAsCompleted(resultRow.id, {
 				output: toJsonObject({
 					finalText: execResult.finalText,
@@ -636,27 +656,8 @@ export class AgentEvalRunnerService {
 				}),
 				toolCalls: toJsonObject({ calls: execResult.toolCalls }),
 				metrics: usage ? { usage: { ...usage } } : null,
+				verdict,
 			});
-
-			// Isolated from the catch below on purpose: the case already succeeded
-			// (`markAsCompleted` above already landed), so neither a judge-LLM
-			// failure nor a failure to persist its verdict may fall through to the
-			// outer catch and flip this case back to `error` — grading is
-			// best-effort on top of a run that already succeeded. `runCase` is the
-			// one place both `executeRun`'s pool and `rerunResult` funnel through
-			// (`rerunResult` calls this same method), so this single step covers
-			// both without a separate call site.
-			try {
-				const verdict = await this.judgeCase(resolvedCase, execResult.finalText, ctx);
-				await this.resultRepository.updateVerdict(resultRow.id, toJsonObject(verdict));
-			} catch (error) {
-				this.logger.error(
-					`[AgentEvalRunner] Could not record the verdict for case ${resultRow.id}`,
-					{
-						error: error instanceof Error ? error.message : String(error),
-					},
-				);
-			}
 
 			return usage;
 		} catch (error) {

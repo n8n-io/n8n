@@ -7676,6 +7676,7 @@
 	"instanceAi.testAgentPreview.exampleMessage": "Example message",
 	"instanceAi.testAgentPreview.whatWeFound": "What we found",
 	"instanceAi.testAgentPreview.noFindings": "We couldn’t check this answer against its rule.",
+	"instanceAi.testAgentPreview.noRuleFindings": "This example has no rule to check against, so nothing failed.",
 	"instanceAi.testAgentPreview.showConversation": "Show the conversation",
 	"instanceAi.testAgentPreview.hideConversation": "Hide the conversation",
 	"instanceAi.testAgentPreview.firstCheckPassedHint": "We tried one everyday message. Harder ones are ready when you are.",

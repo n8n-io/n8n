@@ -56,9 +56,19 @@ const hasMore = computed(() => results.value.length < review.value.resultsCount)
 // and everything below jumps. So the previous review stays on screen until the new
 // one has something to show. Pagination keeps reading the live review above.
 const shownReview = ref(review.value);
+// The run the shown rows belong to.
+const shownRunId = ref(props.runId);
 watch(review, (next) => {
-	if (next.run !== null || next.results.length > 0) shownReview.value = next;
+	if (next.run !== null || next.results.length > 0) {
+		shownReview.value = next;
+		shownRunId.value = props.runId;
+	}
 });
+// The rows still belong to an earlier run, so acting on them would change a result the
+// current run no longer holds (a delete would remove its dataset row and leave the
+// new run's copy on screen). They stay visible but cannot be changed until the new
+// run's review has loaded.
+const showingPreviousRun = computed(() => shownRunId.value !== props.runId);
 const inFlight = computed(() => store.isRunInFlight(props.runId));
 
 type CheckRow = {
@@ -210,10 +220,23 @@ async function onRerunCheck(resultId: string) {
 	}
 }
 
-// There is no editable case row to write the rule to here — only this
-// result's own snapshot — so the backend persists it directly as part of the
-// same request that reruns the case with it.
+// The rule is saved to the check's own dataset row first, so "Run all checks" — which
+// reads the rows, not the snapshots — keeps the edit. The rerun then also saves it onto
+// this result's snapshot. A result with no row to write to (an older run, or a dataset
+// with no rule column) keeps the snapshot-only edit.
 async function onSaveWhatToCheck(resultId: string, whatToCheck: string) {
+	const rowId = Number(rows.value.find((row) => row.id === resultId)?.sourceRowId);
+	const source = addCheckSource.value;
+	if (source && Number.isInteger(rowId)) {
+		try {
+			const saved = await store.updateCaseRule(props.projectId, source, rowId, whatToCheck);
+			// Rerunning without the row saved would show the new rule now and lose it on the next full run.
+			if (!saved) throw new Error('The check was not saved');
+		} catch (error) {
+			toast.showError(error, i18n.baseText('agents.builder.agentEvals.case.saveError'));
+			return;
+		}
+	}
 	try {
 		await store.rerunResult(props.projectId, props.agentId, resultId, { whatToCheck });
 	} catch (error) {
@@ -301,6 +324,10 @@ const load = async () => {
 		}
 	} catch (error) {
 		if (generation !== loadGeneration) return;
+		// The new run could not be read, so the earlier run's rows would stay on
+		// screen for good. Show what the current run actually holds instead.
+		shownReview.value = review.value;
+		shownRunId.value = props.runId;
 		toast.showError(error, i18n.baseText('agents.builder.agentEvals.review.loadError'));
 	}
 };
@@ -431,7 +458,7 @@ onBeforeUnmount(store.stopPollingRun);
 				:tool-calls="row.toolCalls"
 				:project-id="projectId"
 				:what-to-check="row.whatToCheck"
-				:disabled="disabled"
+				:disabled="disabled || showingPreviousRun"
 				:running-check="row.status === 'waiting'"
 				hide-revise
 				view="complete"
@@ -453,7 +480,7 @@ onBeforeUnmount(store.stopPollingRun);
 			:project-id="projectId"
 			:agent-id="agentId"
 			:case-source="addCheckSource"
-			:disabled="disabled"
+			:disabled="disabled || showingPreviousRun"
 			:busy="rerunning || inFlight"
 			@close="addCheckOpen = false"
 			@added="emit('rerun')"

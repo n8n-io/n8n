@@ -517,11 +517,16 @@ describe('AgentEvalRunnerService', () => {
 				criteria: 'is 4',
 			});
 			expect(correctnessRunMock).not.toHaveBeenCalled();
-			expect(resultRepository.updateVerdict).toHaveBeenCalledWith('res-0', {
-				status: 'completed',
-				outcome: 'pass',
-				reasoning: 'Correctly answers 4.',
-			});
+			expect(resultRepository.markAsCompleted).toHaveBeenCalledWith(
+				'res-0',
+				expect.objectContaining({
+					verdict: {
+						status: 'completed',
+						outcome: 'pass',
+						reasoning: 'Correctly answers 4.',
+					},
+				}),
+			);
 		});
 
 		// No rule, only a gold answer: the answer-matching judge stays in use.
@@ -539,11 +544,48 @@ describe('AgentEvalRunnerService', () => {
 				expected: '4',
 			});
 			expect(criteriaRunMock).not.toHaveBeenCalled();
-			expect(resultRepository.updateVerdict).toHaveBeenCalledWith('res-0', {
-				status: 'completed',
-				outcome: 'pass',
-				reasoning: 'Matches 4.',
-			});
+			expect(resultRepository.markAsCompleted).toHaveBeenCalledWith(
+				'res-0',
+				expect.objectContaining({
+					verdict: {
+						status: 'completed',
+						outcome: 'pass',
+						reasoning: 'Matches 4.',
+					},
+				}),
+			);
+		});
+
+		// The row stays `running` (which a rerun cannot claim) until judging settles,
+		// and completion and verdict land in one write — a second rerun can't start
+		// mid-judge, and a stale judge can't overwrite a newer attempt's verdict.
+		it('keeps the case unfinished while the judge is pending, then writes completion and verdict together', async () => {
+			seedFor([{ id: 'row-1', question: 'Q', answer: 'A', check: 'C' }], { success: 1 });
+			evalAgentExecutionService.executeWithLlmMock.mockResolvedValue(successExec() as never);
+			let resolveJudge!: (value: { pass: boolean; reasoning: string }) => void;
+			criteriaRunMock.mockImplementation(
+				async () =>
+					await new Promise<{ pass: boolean; reasoning: string }>((resolve) => {
+						resolveJudge = resolve;
+					}),
+			);
+
+			const { finished } = await service.startRun('ds-1', 'proj-1', user);
+			await vi.waitFor(() => expect(criteriaRunMock).toHaveBeenCalled());
+
+			expect(resultRepository.markAsCompleted).not.toHaveBeenCalled();
+
+			resolveJudge({ pass: true, reasoning: 'ok' });
+			await finished;
+
+			expect(resultRepository.markAsCompleted).toHaveBeenCalledTimes(1);
+			expect(resultRepository.markAsCompleted).toHaveBeenCalledWith(
+				'res-0',
+				expect.objectContaining({
+					verdict: { status: 'completed', outcome: 'pass', reasoning: 'ok' },
+				}),
+			);
+			expect(resultRepository.updateVerdict).not.toHaveBeenCalled();
 		});
 
 		it('records a fail verdict from the judge', async () => {
@@ -554,11 +596,16 @@ describe('AgentEvalRunnerService', () => {
 			const { finished } = await service.startRun('ds-1', 'proj-1', user);
 			await finished;
 
-			expect(resultRepository.updateVerdict).toHaveBeenCalledWith('res-0', {
-				status: 'completed',
-				outcome: 'fail',
-				reasoning: 'Never mentions C.',
-			});
+			expect(resultRepository.markAsCompleted).toHaveBeenCalledWith(
+				'res-0',
+				expect.objectContaining({
+					verdict: {
+						status: 'completed',
+						outcome: 'fail',
+						reasoning: 'Never mentions C.',
+					},
+				}),
+			);
 		});
 
 		it('skips judging when the dataset maps neither criteria nor expectedOutput', async () => {
@@ -579,11 +626,16 @@ describe('AgentEvalRunnerService', () => {
 
 			expect(correctnessRunMock).not.toHaveBeenCalled();
 			expect(criteriaRunMock).not.toHaveBeenCalled();
-			expect(resultRepository.updateVerdict).toHaveBeenCalledWith('res-0', {
-				status: 'skipped',
-				outcome: null,
-				reasoning: null,
-			});
+			expect(resultRepository.markAsCompleted).toHaveBeenCalledWith(
+				'res-0',
+				expect.objectContaining({
+					verdict: {
+						status: 'skipped',
+						outcome: null,
+						reasoning: null,
+					},
+				}),
+			);
 		});
 
 		it('never judges a case whose execution itself failed', async () => {
@@ -595,7 +647,7 @@ describe('AgentEvalRunnerService', () => {
 
 			expect(correctnessRunMock).not.toHaveBeenCalled();
 			expect(criteriaRunMock).not.toHaveBeenCalled();
-			expect(resultRepository.updateVerdict).not.toHaveBeenCalled();
+			expect(resultRepository.markAsCompleted).not.toHaveBeenCalled();
 		});
 
 		it('records a verdict error, but still reports the case successful, when the judge throws', async () => {
@@ -606,11 +658,16 @@ describe('AgentEvalRunnerService', () => {
 			const { finished } = await service.startRun('ds-1', 'proj-1', user);
 			await finished;
 
-			expect(resultRepository.updateVerdict).toHaveBeenCalledWith('res-0', {
-				status: 'error',
-				outcome: null,
-				reasoning: 'judge model timed out',
-			});
+			expect(resultRepository.markAsCompleted).toHaveBeenCalledWith(
+				'res-0',
+				expect.objectContaining({
+					verdict: {
+						status: 'error',
+						outcome: null,
+						reasoning: 'judge model timed out',
+					},
+				}),
+			);
 			// A grading failure never flips an already-succeeded case to `error`.
 			expect(resultRepository.markAsCompleted).toHaveBeenCalled();
 			expect(resultRepository.markAsError).not.toHaveBeenCalled();
@@ -630,9 +687,9 @@ describe('AgentEvalRunnerService', () => {
 
 			expect(correctnessRunMock).not.toHaveBeenCalled();
 			expect(criteriaRunMock).not.toHaveBeenCalled();
-			expect(resultRepository.updateVerdict).toHaveBeenCalledWith(
+			expect(resultRepository.markAsCompleted).toHaveBeenCalledWith(
 				'res-0',
-				expect.objectContaining({ status: 'error' }),
+				expect.objectContaining({ verdict: expect.objectContaining({ status: 'error' }) }),
 			);
 			expect(resultRepository.markAsError).not.toHaveBeenCalled();
 		});
@@ -1250,9 +1307,9 @@ describe('AgentEvalRunnerService', () => {
 			expect(criteriaRunMock).toHaveBeenCalledWith(
 				expect.objectContaining({ criteria: 'Mentions the refund window.' }),
 			);
-			expect(resultRepository.updateVerdict).toHaveBeenCalledWith(
+			expect(resultRepository.markAsCompleted).toHaveBeenCalledWith(
 				'res-1',
-				expect.objectContaining({ status: 'completed' }),
+				expect.objectContaining({ verdict: expect.objectContaining({ status: 'completed' }) }),
 			);
 		});
 	});

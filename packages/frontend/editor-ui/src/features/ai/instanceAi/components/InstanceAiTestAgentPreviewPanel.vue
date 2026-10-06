@@ -129,10 +129,13 @@ const previewOutput = computed(() =>
 	useInitialCase.value ? (reusedCase?.response ?? '') : (previewAnswer.value ?? ''),
 );
 
-// A pass needs a completed verdict that says so. A fail, a judge error, a case
-// with no rule to grade, or no verdict at all never reads as "passed".
+// Nothing failed when the judge passed the answer, or when the case had no rule to
+// grade it against (`skipped`) — the card still shows, as a pass. A judge error is
+// different: the answer was never graded, so it must not read as "passed".
 const firstCheckPassed = computed(
-	() => previewVerdict.value?.status === 'completed' && previewVerdict.value.outcome === 'pass',
+	() =>
+		previewVerdict.value?.status === 'skipped' ||
+		(previewVerdict.value?.status === 'completed' && previewVerdict.value.outcome === 'pass'),
 );
 // A judge that ran and failed the answer is a real "needs work". Anything else
 // means the answer was never graded, so the user can still go on to harder cases.
@@ -142,6 +145,8 @@ const firstCheckFailed = computed(
 const findings = computed(() => {
 	const verdict = previewVerdict.value;
 	if (verdict?.status === 'completed' && verdict.reasoning) return verdict.reasoning;
+	if (verdict?.status === 'skipped')
+		return i18n.baseText('instanceAi.testAgentPreview.noRuleFindings');
 	return i18n.baseText('instanceAi.testAgentPreview.noFindings');
 });
 
@@ -292,8 +297,17 @@ async function onCheckAgent(count: number) {
 	// and its results along with the dataset — so rollback is only for
 	// failures strictly before submission, where nothing has been seeded yet.
 	let runSubmitted = false;
+	// The panel can go away while a request is pending. A continuation that finds it
+	// gone before the run was submitted has nobody left to follow the draft, so it
+	// discards what it created. A submitted run is left alone.
+	const discardIfAbandoned = async (datasetId: string) => {
+		if (isMounted) return false;
+		await store.deleteDraftDataset(projectId, agentId, datasetId).catch(() => null);
+		return true;
+	};
 	try {
 		const created = await store.createDraftDataset(projectId, agentId);
+		if (await discardIfAbandoned(created.datasetId)) return;
 		suiteDatasetId.value = created.datasetId;
 		// Resolved straight from the create response — not a `getDatasets` refetch,
 		// which could itself fail transiently after the dataset already exists and
@@ -313,10 +327,10 @@ async function onCheckAgent(count: number) {
 		// depend on each other.
 		await store.createCase(projectId, source, confirmedTry);
 		await Promise.all(toCreate.map((value) => store.createCase(projectId, source, value)));
-		if (!isMounted) return;
+		if (await discardIfAbandoned(created.datasetId)) return;
 
 		const cases = await store.fetchCases(projectId, source);
-		if (!isMounted) return;
+		if (await discardIfAbandoned(created.datasetId)) return;
 		// The Data Table has no column for the scenario tag — carry it over here,
 		// matched by the input text each row was created from, before `cases`
 		// (keyed by row id, stable across later revisions) replaces that lookup.

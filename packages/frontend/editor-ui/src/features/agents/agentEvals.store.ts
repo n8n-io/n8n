@@ -500,6 +500,36 @@ export const useAgentEvalsStore = defineStore(STORES.AGENT_EVALS, () => {
 		}
 	};
 
+	// Writes only the rule column. `updateCase` always writes the input as well, and a
+	// caller that only holds a result's snapshot would overwrite a newer input with
+	// the one the case last ran with.
+	const updateCaseRule = async (
+		projectId: string,
+		source: AgentEvalCaseSource,
+		rowId: number,
+		whatToCheck: string,
+	) => {
+		const column = source.columns.whatToCheck;
+		if (column === null) return false;
+
+		setMutatingCase(source.datasetId, rowId, true);
+		try {
+			const tableProjectId = await resolveTableProjectId(projectId, source.dataTableId);
+			const updated = await dataTableStore.updateRow(source.dataTableId, tableProjectId, rowId, {
+				[column]: whatToCheck,
+			});
+			if (!updated) return false;
+
+			setCases(
+				source.datasetId,
+				getCases(source.datasetId).map((c) => (c.rowId === rowId ? { ...c, whatToCheck } : c)),
+			);
+			return true;
+		} finally {
+			setMutatingCase(source.datasetId, rowId, false);
+		}
+	};
+
 	const deleteCase = async (projectId: string, source: AgentEvalCaseSource, rowId: number) => {
 		setMutatingCase(source.datasetId, rowId, true);
 		try {
@@ -1248,6 +1278,7 @@ export const useAgentEvalsStore = defineStore(STORES.AGENT_EVALS, () => {
 		fetchCases,
 		createCase,
 		updateCase,
+		updateCaseRule,
 		deleteCase,
 		pendingEvalsFocus,
 		requestEvalsFocus,

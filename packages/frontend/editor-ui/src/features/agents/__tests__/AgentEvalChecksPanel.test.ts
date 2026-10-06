@@ -230,26 +230,62 @@ describe('AgentEvalChecksPanel', () => {
 			expect(queryByTestId('agent-eval-checks-filter-all')).toBeInTheDocument();
 		});
 
-		it('switches to the new run’s rows as soon as they arrive', async () => {
+		// The store state is reactive in the app, so a run's review fills in under the
+		// same run id. A ref stands in for it here.
+		it('switches to the new run’s rows once its review fills in, without another run change', async () => {
 			const first = loadedReview([result('c1', 'success'), result('c2', 'error')]);
-			const { getAllByTestId, queryByTestId, rerender, store } = render({
+			const live = ref(loadedReview([], null));
+			const { getAllByTestId, queryByTestId, rerender, store } = render({ results: first.results });
+			vi.mocked(store.getReview).mockImplementation((runId: string) =>
+				runId === 'run-1' ? first : live.value,
+			);
+			await rerender({ runId: 'run-2' });
+			expect(getAllByTestId(/agent-eval-check-/)).toHaveLength(2);
+
+			live.value = loadedReview([result('n1', 'new'), result('n2', 'new'), result('n3', 'new')]);
+
+			await vi.waitFor(() => expect(getAllByTestId(/agent-eval-check-/)).toHaveLength(3));
+			expect(queryByTestId('agent-eval-check-c1')).not.toBeInTheDocument();
+		});
+
+		// Acting on a result the current run no longer holds would change the dataset
+		// but leave the new run's copy on screen.
+		it('locks the retained rows and the add panel until the new run has loaded', async () => {
+			const first = loadedReview([result('c1', 'success'), result('c2', 'error')]);
+			const live = ref(loadedReview([], null));
+			const { getByTestId, getAllByTestId, rerender, store } = render({ results: first.results });
+			expect(getByTestId('agent-eval-check-c1')).toHaveAttribute('data-disabled', 'false');
+			vi.mocked(store.getReview).mockImplementation((runId: string) =>
+				runId === 'run-1' ? first : live.value,
+			);
+			await rerender({ runId: 'run-2' });
+
+			for (const row of getAllByTestId(/agent-eval-check-/)) {
+				expect(row).toHaveAttribute('data-disabled', 'true');
+			}
+
+			live.value = loadedReview([result('n1', 'new')]);
+
+			await vi.waitFor(() =>
+				expect(getByTestId('agent-eval-check-n1')).toHaveAttribute('data-disabled', 'false'),
+			);
+		});
+
+		it('drops the retained rows, and says so, when the new run cannot be loaded', async () => {
+			const first = loadedReview([result('c1', 'success'), result('c2', 'error')]);
+			const { getAllByTestId, queryAllByTestId, rerender, store } = render({
 				results: first.results,
 			});
 			vi.mocked(store.getReview).mockImplementation((runId: string) =>
 				runId === 'run-1' ? first : loadedReview([], null),
 			);
+			vi.mocked(store.openRun).mockRejectedValueOnce(new Error('offline'));
+			expect(getAllByTestId(/agent-eval-check-/)).toHaveLength(2);
+
 			await rerender({ runId: 'run-2' });
 
-			const second = loadedReview([result('n1', 'new'), result('n2', 'new'), result('n3', 'new')]);
-			// The store state is reactive in the app; with a plain mock, a changed run id is
-			// what makes the review re-read.
-			vi.mocked(store.getReview).mockImplementation((runId: string) =>
-				runId === 'run-1' ? first : second,
-			);
-			await rerender({ runId: 'run-3' });
-
-			await vi.waitFor(() => expect(getAllByTestId(/agent-eval-check-/)).toHaveLength(3));
-			expect(queryByTestId('agent-eval-check-c1')).not.toBeInTheDocument();
+			await vi.waitFor(() => expect(showError).toHaveBeenCalled());
+			expect(queryAllByTestId(/agent-eval-check-/)).toHaveLength(0);
 		});
 	});
 
@@ -492,6 +528,7 @@ describe('AgentEvalChecksPanel', () => {
 				disabled?: boolean;
 				rerunning?: boolean;
 				inFlight?: boolean;
+				sourceRowId?: string | null;
 			} = {},
 		) => {
 			const pinia = createTestingPinia({ stubActions: true });
@@ -511,7 +548,7 @@ describe('AgentEvalChecksPanel', () => {
 					createdAt: '2026-01-01T00:00:00.000Z',
 					updatedAt: '2026-01-01T00:00:30.000Z',
 				},
-				results: [result('c1', 'success')],
+				results: [{ ...result('c1', 'success'), sourceRowId: options.sourceRowId ?? 'row-c1' }],
 				resultsCount: 1,
 				ratingsByResultId: {},
 				pendingByResultId: {},
@@ -633,6 +670,67 @@ describe('AgentEvalChecksPanel', () => {
 			await user.click(getByText('added a check'));
 
 			expect(emitted('rerun')).toHaveLength(1);
+		});
+
+		// "Run all checks" reads the dataset rows, not the results' snapshots, so an
+		// edited rule that only reached the snapshot would be lost on the next full run.
+		describe('saving an edited rule', () => {
+			it('writes the rule to the check’s own row first, then reruns it', async () => {
+				const user = userEvent.setup();
+				const { getByTestId, store } = renderWithDataset({ sourceRowId: '7' });
+				vi.mocked(store.updateCaseRule).mockResolvedValue(true);
+
+				await user.click(within(getByTestId('agent-eval-check-c1')).getByText('save rule'));
+
+				expect(store.updateCaseRule).toHaveBeenCalledWith(
+					'project-1',
+					expect.objectContaining({ datasetId: 'ds-1' }),
+					7,
+					'Mentions the refund window.',
+				);
+				expect(store.rerunResult).toHaveBeenCalledWith('project-1', 'agent-1', 'c1', {
+					whatToCheck: 'Mentions the refund window.',
+				});
+				expect(vi.mocked(store.updateCaseRule).mock.invocationCallOrder[0]).toBeLessThan(
+					vi.mocked(store.rerunResult).mock.invocationCallOrder[0],
+				);
+			});
+
+			it('does not rerun with a rule it could not save, so the next full run cannot undo it', async () => {
+				const user = userEvent.setup();
+				const { getByTestId, store } = renderWithDataset({ sourceRowId: '7' });
+				vi.mocked(store.updateCaseRule).mockResolvedValue(false);
+
+				await user.click(within(getByTestId('agent-eval-check-c1')).getByText('save rule'));
+
+				await vi.waitFor(() => expect(showError).toHaveBeenCalled());
+				expect(store.rerunResult).not.toHaveBeenCalled();
+			});
+
+			it('keeps the snapshot-only edit for a result with no row to write to', async () => {
+				const user = userEvent.setup();
+				const { getByTestId, store } = renderWithDataset({ sourceRowId: null });
+
+				await user.click(within(getByTestId('agent-eval-check-c1')).getByText('save rule'));
+
+				expect(store.updateCaseRule).not.toHaveBeenCalled();
+				expect(store.rerunResult).toHaveBeenCalledWith('project-1', 'agent-1', 'c1', {
+					whatToCheck: 'Mentions the refund window.',
+				});
+			});
+
+			it('keeps the snapshot-only edit when the dataset has no column to store a rule in', async () => {
+				const user = userEvent.setup();
+				const { getByTestId, store } = renderWithDataset({
+					sourceRowId: '7',
+					columnMapping: { input: 'input' },
+				});
+
+				await user.click(within(getByTestId('agent-eval-check-c1')).getByText('save rule'));
+
+				expect(store.updateCaseRule).not.toHaveBeenCalled();
+				expect(store.rerunResult).toHaveBeenCalled();
+			});
 		});
 
 		it.each([

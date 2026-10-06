@@ -110,6 +110,8 @@ export class AgentEvalResultRepository extends Repository<AgentEvalResult> {
 			output: JsonObject | null;
 			toolCalls?: JsonObject | null;
 			metrics?: IDataObject | null;
+			/** Written with completion so a finished case never exists without it. */
+			verdict?: JsonObject | null;
 		},
 	) {
 		return await this.update(id, {
@@ -118,6 +120,7 @@ export class AgentEvalResultRepository extends Repository<AgentEvalResult> {
 			output: attrs.output,
 			toolCalls: attrs.toolCalls ?? null,
 			metrics: attrs.metrics ?? null,
+			verdict: attrs.verdict ?? null,
 		});
 	}
 

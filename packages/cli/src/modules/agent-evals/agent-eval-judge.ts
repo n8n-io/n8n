@@ -53,10 +53,13 @@ export async function judgeAgentAnswer(
 			throw new BadRequestError('This agent has no configured model and credential to judge with.');
 		}
 
+		// The agent id attributes gateway-credential usage to this agent, as it is on a
+		// normal agent execution.
 		const credentialProvider = createAgentCredentialProvider(
 			credentialsService,
 			ctx.projectId,
 			ctx.user,
+			ctx.agentId,
 		);
 		const modelConfig = await resolveCredentialAwareModelConfig(
 			config.model,

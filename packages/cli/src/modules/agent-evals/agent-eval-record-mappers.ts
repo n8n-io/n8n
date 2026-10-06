@@ -82,8 +82,8 @@ export function toRunRecord(run: AgentEvalRun): AgentEvalRunRecord {
 
 /**
  * Narrows the entity's generic `JsonObject` column to the typed verdict shape.
- * Only this module ever writes the column (via `updateVerdict`), so a row
- * that fails this parse means a future schema change left stale data behind —
+ * Only this module ever writes the column (with the completed result, or through
+ * `updateVerdict` for a user's acceptance), so a row that fails this parse means a future schema change left stale data behind —
  * reads as ungraded rather than throwing.
  */
 function toVerdictRecord(verdict: JsonObject | null): AgentEvalVerdict | null {

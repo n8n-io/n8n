@@ -910,6 +910,9 @@ describe('InstanceAiTestAgentPreviewPanel', () => {
 		);
 		const startRun = vi.spyOn(store, 'startRun').mockResolvedValue({ id: 'suite-run' } as never);
 		vi.spyOn(store, 'openRun').mockImplementation(async () => {});
+		const deleteDraftDataset = vi
+			.spyOn(store, 'deleteDraftDataset')
+			.mockResolvedValue(undefined as never);
 
 		const user = userEvent.setup();
 		const { getByTestId, findByTestId, unmount } = renderComponent();
@@ -928,6 +931,71 @@ describe('InstanceAiTestAgentPreviewPanel', () => {
 		await Promise.resolve();
 
 		expect(startRun).not.toHaveBeenCalled();
+		// Nobody is left to follow the draft, so it must not be left behind.
+		await waitFor(() =>
+			expect(deleteDraftDataset).toHaveBeenCalledWith('project-1', 'agent-1', 'dataset-2'),
+		);
+	});
+
+	// A continuation that finds the panel gone before the run was submitted would
+	// otherwise leave a dataset and a table behind and never start anything.
+	describe.each([
+		['creating the draft dataset', 'create'],
+		['inserting the rows', 'insert'],
+	] as const)('when the panel unmounts while %s', (_label, holdAt) => {
+		it('discards the draft once the pending request returns, and never starts the run', async () => {
+			const store = useAgentEvalsStore();
+			mockPreviewRun(store);
+			vi.spyOn(store, 'generateDraftCases').mockResolvedValue({
+				cases: [{ input: 'a', whatToCheck: 'b', scenario: 'Vague' }],
+			});
+			const created = {
+				datasetId: 'dataset-2',
+				dataTableId: 'table-2',
+				columnMapping: { input: 'input', criteria: 'criteria' },
+			};
+			let release!: () => void;
+			let held = false;
+			// Holds only the first call at the chosen point; later calls go straight through.
+			const hold = async () => {
+				if (held) return;
+				held = true;
+				await new Promise<void>((resolve) => {
+					release = resolve;
+				});
+			};
+			vi.spyOn(store, 'createDraftDataset').mockImplementation(async () => {
+				if (holdAt === 'create') await hold();
+				return created;
+			});
+			vi.spyOn(store, 'createCase').mockImplementation(async () => {
+				if (holdAt === 'insert') await hold();
+				return null;
+			});
+			vi.spyOn(store, 'fetchCases').mockResolvedValue([{ rowId: 1, input: 'a', whatToCheck: 'b' }]);
+			const startRun = vi.spyOn(store, 'startRun').mockResolvedValue({ id: 'suite-run' } as never);
+			const deleteDraftDataset = vi
+				.spyOn(store, 'deleteDraftDataset')
+				.mockResolvedValue(undefined as never);
+
+			const user = userEvent.setup();
+			const { getByTestId, findByTestId, unmount } = renderComponent();
+			await waitFor(() =>
+				expect(getByTestId('instance-ai-test-agent-preview-check-harder')).toBeEnabled(),
+			);
+			await user.click(getByTestId('instance-ai-test-agent-preview-check-harder'));
+			await findByTestId('instance-ai-test-agent-examples-check-agent');
+			await user.click(getByTestId('instance-ai-test-agent-examples-check-agent'));
+			await waitFor(() => expect(release).toBeDefined());
+
+			unmount();
+			release();
+
+			await waitFor(() =>
+				expect(deleteDraftDataset).toHaveBeenCalledWith('project-1', 'agent-1', 'dataset-2'),
+			);
+			expect(startRun).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('adding your own example', () => {
@@ -1271,14 +1339,49 @@ describe('InstanceAiTestAgentPreviewPanel', () => {
 			});
 		});
 
-		// Without a completed pass nothing can be called "passed" — including when
-		// the judge simply could not grade the answer.
-		describe.each([
-			['the judge errored', UNGRADED_VERDICT],
-			['there was no rule to grade against', SKIPPED_VERDICT],
-		])('when %s', (_label, verdict) => {
+		// No rule means nothing failed, so the card still shows, as a pass.
+		describe('when there was no rule to grade against', () => {
+			it('shows the passed card, with a note that nothing was checked in place of findings', async () => {
+				const { getByTestId } = await renderCard({ verdict: SKIPPED_VERDICT });
+
+				expect(getByTestId('instance-ai-test-agent-preview-first-check-title')).toHaveTextContent(
+					'First check passed',
+				);
+				expect(getByTestId('instance-ai-test-agent-preview-findings')).toHaveTextContent(
+					'This example has no rule to check against, so nothing failed.',
+				);
+			});
+
+			it('goes on to harder cases with the plain button, and offers no correction flow', async () => {
+				const { user, store, getByTestId, queryByTestId, emitted, findByTestId } = await renderCard(
+					{
+						verdict: SKIPPED_VERDICT,
+					},
+				);
+				vi.spyOn(store, 'generateDraftCases').mockResolvedValue({
+					cases: [{ input: 'a', whatToCheck: 'b', scenario: 'Vague' }],
+				});
+
+				expect(getByTestId('instance-ai-test-agent-preview-check-harder')).toHaveTextContent(
+					'Check harder cases',
+				);
+				expect(getByTestId('instance-ai-test-agent-preview-check-harder')).not.toHaveTextContent(
+					'anyway',
+				);
+				expect(queryByTestId('instance-ai-test-agent-preview-needs-work')).not.toBeInTheDocument();
+				await user.click(getByTestId('instance-ai-test-agent-preview-check-harder'));
+
+				expect(emitted().confirm).toEqual([[]]);
+				expect(
+					await findByTestId('instance-ai-test-agent-examples-check-agent'),
+				).toBeInTheDocument();
+			});
+		});
+
+		// A judge error means the answer was never graded: it must not read as "passed".
+		describe('when the judge errored', () => {
 			it('never says "passed", and shows a neutral note in place of findings', async () => {
-				const { getByTestId } = await renderCard({ verdict });
+				const { getByTestId } = await renderCard({ verdict: UNGRADED_VERDICT });
 
 				expect(getByTestId('instance-ai-test-agent-preview-first-check-title')).toHaveTextContent(
 					'First check needs work',
@@ -1289,7 +1392,9 @@ describe('InstanceAiTestAgentPreviewPanel', () => {
 			});
 
 			it('still lets the user go on to harder cases, since nothing actually failed', async () => {
-				const { user, store, getByTestId, emitted, findByTestId } = await renderCard({ verdict });
+				const { user, store, getByTestId, emitted, findByTestId } = await renderCard({
+					verdict: UNGRADED_VERDICT,
+				});
 				vi.spyOn(store, 'generateDraftCases').mockResolvedValue({
 					cases: [{ input: 'a', whatToCheck: 'b', scenario: 'Vague' }],
 				});

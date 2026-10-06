@@ -6,6 +6,7 @@ import { mock } from 'vitest-mock-extended';
 import type { CredentialsService } from '@/credentials/credentials.service';
 import type { AgentConfigService } from '@/modules/agents/agent-config.service';
 
+import { createAgentCredentialProvider } from '@/modules/agents/utils/agent-credential-provider';
 import { judgeAgentAnswer } from '../agent-eval-judge';
 
 // The SDK is heavy and its judges call a real model: stub both, and let each
@@ -77,6 +78,23 @@ describe('judgeAgentAnswer', () => {
 			outcome: 'pass',
 			reasoning: 'Satisfies the rule.',
 		});
+	});
+
+	// Without the agent id, gateway-credential usage is not attributed to the agent
+	// the way it is on a normal execution.
+	it('creates the credential provider for this agent, not just this project and user', async () => {
+		await judgeAgentAnswer(
+			deps,
+			{ input: 'q', output: 'a', criteria: 'rule', expectedOutput: null },
+			ctx,
+		);
+
+		expect(createAgentCredentialProvider).toHaveBeenCalledWith(
+			deps.credentialsService,
+			'project-1',
+			user,
+			'agent-1',
+		);
 	});
 
 	it('lets the rule win when a gold answer is set too', async () => {
