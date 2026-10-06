@@ -210,6 +210,14 @@ const usedInAccessText = computed(() =>
 			}),
 );
 
+function usedInShareLabel(project: ProjectListItem) {
+	return project.name
+		? i18n.baseText('credentialEdit.credentialSharing.shareWith', {
+				interpolate: { project: project.name },
+			})
+		: i18n.baseText('credentialEdit.credentialSharing.share');
+}
+
 function shareUsedInProject(projectId: string) {
 	const project = projectsStore.myProjects.find((p) => p.id === projectId);
 	if (!project) return;
@@ -317,7 +325,7 @@ function goToUpgrade() {
 								data-test-id="credential-used-in-project-share"
 								@click="shareUsedInProject(entry.project.id)"
 							>
-								{{ i18n.baseText('credentialEdit.credentialSharing.share') }}
+								{{ usedInShareLabel(entry.project) }}
 							</N8nButton>
 						</div>
 					</ProjectSharingInfo>
