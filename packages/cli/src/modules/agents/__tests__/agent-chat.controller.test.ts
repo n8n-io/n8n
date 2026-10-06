@@ -1329,6 +1329,35 @@ describe('AgentChatController production n8n Chat', () => {
 			);
 		});
 
+		it('rejects stopping when the agent is unpublished, the flag is off or the thread is not owned', async () => {
+			const {
+				controller,
+				agentsConfig,
+				agentsService,
+				agentExecutionService,
+				backgroundJobService,
+			} = makeController();
+
+			agentsService.isN8nChatPublished.mockResolvedValueOnce(false);
+			await expect(controller.stopProductionBackgroundJobs(req as never)).rejects.toThrow(
+				NotFoundError,
+			);
+
+			agentsService.isN8nChatPublished.mockResolvedValue(true);
+			agentExecutionService.canUseProductionChatThread.mockResolvedValueOnce(false);
+			await expect(controller.stopProductionBackgroundJobs(req as never)).rejects.toThrow(
+				NotFoundError,
+			);
+
+			agentsConfig.backgroundTasksEnabled = false;
+			await expect(controller.stopProductionBackgroundJobs(req as never)).rejects.toThrow(
+				BadRequestError,
+			);
+			agentsConfig.backgroundTasksEnabled = true;
+
+			expect(backgroundJobService.requestPause).not.toHaveBeenCalled();
+		});
+
 		it('resumes with the published production memory scope and source', async () => {
 			const { controller, agentsService, agentExecutionOrchestratorService } = makeController();
 			agentsService.isN8nChatPublished.mockResolvedValue(true);
