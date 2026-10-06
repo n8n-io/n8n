@@ -6,7 +6,7 @@ import {
 	discoveryUserKey,
 	isClaudeMcpClient,
 	McpDiscoveryActivityService,
-} from './activity.service';
+} from '../activity.service';
 
 vi.mock('@n8n/db', () => ({ SettingsRepository: class {} }));
 vi.mock('@n8n/config', () => ({ GlobalConfig: class {} }));

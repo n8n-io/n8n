@@ -4,7 +4,7 @@ import {
 	evaluateMcpDiscoveryEligibility,
 	MCP_DISCOVERY_DELAY_MS,
 	type McpDiscoveryEligibilityInput,
-} from './eligibility';
+} from '../eligibility';
 
 const firstVisit = Date.UTC(2026, 9, 2, 12);
 const eligible: McpDiscoveryEligibilityInput = {

@@ -7,8 +7,8 @@ import type { UserConsentRepository } from '@/modules/oauth-server/database/repo
 import type { UserConsent } from '@/modules/oauth-server/database/entities/oauth-user-consent.entity';
 import type { PostHogClient } from '@/posthog';
 
-import { discoveryUserKey } from './activity.service';
-import { McpDiscoveryEnrollmentService } from './enrollment.service';
+import { discoveryUserKey } from '../activity.service';
+import { McpDiscoveryEnrollmentService } from '../enrollment.service';
 
 vi.mock('@n8n/db', () => ({ SettingsRepository: class {}, ApiKeyRepository: class {} }));
 vi.mock('@n8n/config', () => ({ GlobalConfig: class {} }));
