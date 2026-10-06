@@ -282,7 +282,7 @@ function toggleExpanded() {
 	min-width: 0;
 	padding: 0;
 	border: none;
-	outline: none;
+		outline: auto;
 	background: transparent;
 	font-size: var(--font-size--sm);
 	color: var(--text-color--dark);
