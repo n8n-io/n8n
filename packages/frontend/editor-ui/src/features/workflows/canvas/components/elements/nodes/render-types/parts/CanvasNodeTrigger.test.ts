@@ -9,7 +9,7 @@ import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import CanvasNodeTrigger from './CanvasNodeTrigger.vue';
 
-const runEntireWorkflow = vi.fn();
+const runEntireWorkflow = vi.hoisted(() => vi.fn());
 
 vi.mock('@/app/composables/useRunWorkflow', () => ({
 	useRunWorkflow: () => ({ runEntireWorkflow }),
