@@ -211,9 +211,12 @@ const usedInAccessText = computed(() =>
 );
 
 function usedInShareLabel(project: ProjectListItem) {
-	return project.name
+	// A personal project is named "Name <email>"; the project row hides the email, so the label does too.
+	const { name } = splitName(project.name ?? '');
+
+	return name
 		? i18n.baseText('credentialEdit.credentialSharing.shareWith', {
-				interpolate: { project: project.name },
+				interpolate: { project: name },
 			})
 		: i18n.baseText('credentialEdit.credentialSharing.share');
 }

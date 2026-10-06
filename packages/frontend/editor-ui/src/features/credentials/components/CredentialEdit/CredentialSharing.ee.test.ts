@@ -586,6 +586,47 @@ describe('CredentialSharing.ee', () => {
 			);
 		});
 
+		it.each([
+			['Priya Nair <priya@example.com>', 'Share with Priya Nair'],
+			['<priya@example.com>', 'Share'],
+		])(
+			'hides the email of a personal project in the Share button (%s)',
+			(projectName, expectedLabel) => {
+				projectsStore.myProjects = [
+					{ ...marketingProject, name: projectName, type: 'personal' as const },
+				];
+				getDependenciesMock.mockReturnValue({
+					dependencies: [
+						{
+							id: 'wf-1',
+							name: 'Email summary',
+							type: 'workflowParent',
+							projectId: 'marketing-project',
+						},
+					],
+					inaccessibleCount: 0,
+				});
+
+				const credential = createCredential({
+					homeProject: ownerPersonalProject,
+					sharedWithProjects: [],
+				});
+				const { getByTestId } = renderComponent({
+					props: {
+						credentialId: credential.id,
+						credentialData: {},
+						credentialPermissions: { share: true },
+						credential,
+						modalBus: createEventBus(),
+					},
+				});
+
+				const label = getByTestId('credential-used-in-project-share').textContent?.trim();
+				expect(label).toBe(expectedLabel);
+				expect(label).not.toContain('@');
+			},
+		);
+
 		it('falls back to a plain "Share" button when the project has no name', () => {
 			projectsStore.myProjects = [{ ...marketingProject, name: null }];
 			getDependenciesMock.mockReturnValue({
