@@ -252,12 +252,16 @@ vi.mock('../composables/useAgentChatStream', () => ({
 	}) => {
 		onHistoryLoaded = options.onHistoryLoaded;
 		return {
-			capabilities: computed(() => ({
-				steer: true,
-				reorder: true,
-				previewHistory: true,
-				traceLinks: options.channel?.value !== 'n8n-chat',
-			})),
+			capabilities: computed(() => {
+				// Mirrors the composable: every capability is off on the n8n Chat channel.
+				const isPreview = options.channel?.value !== 'n8n-chat';
+				return {
+					steer: isPreview,
+					reorder: isPreview,
+					previewHistory: isPreview,
+					traceLinks: isPreview,
+				};
+			}),
 			messages: messagesMock,
 			isStreaming: isStreamingMock,
 			isSubmitting: isSubmittingMock,
