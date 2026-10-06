@@ -176,7 +176,7 @@ export class ScalingService {
 		this.assertQueue();
 
 		void this.defaultQueue.process(JOB_TYPE_NAME, concurrency, async (job: Job) => {
-			// Marked before any check, so the shutdown sweep never hands back a job already handled.
+			// Marked before any check, so the shutdown sweep never returns a job already handled.
 			this.handlerSeen.add(String(job.id));
 
 			if (this.stopping) {

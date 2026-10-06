@@ -238,7 +238,7 @@ describe.skipIf(!REDIS_HOST || !REDIS_PORT)('returnJobToQueue (real Redis)', () 
 			await first?.moveToCompleted('x');
 		};
 
-		it('leaves a job fetched by a completion to fail as stalled when nothing hands it back', async () => {
+		it('leaves a job fetched by a completion to fail as stalled when nothing returns it', async () => {
 			const producer = createQueue();
 			const job1 = await addJob(producer, 'exec-c1');
 			const job2 = await addJob(producer, 'exec-c2');
@@ -297,7 +297,7 @@ describe.skipIf(!REDIS_HOST || !REDIS_PORT)('returnJobToQueue (real Redis)', () 
 			expect(globallyFailed).not.toContain(job2.id);
 		});
 
-		it('returns several jobs fetched by completions to the front of their priority band in fetch order', async () => {
+		it('returns several jobs fetched by completions to the front of their priority in fetch order', async () => {
 			const producer = createQueue();
 			const completed1 = await addJob(producer, 'exec-done-1', 100);
 			const held1 = await addJob(producer, 'exec-held-1', 100);
@@ -352,6 +352,23 @@ describe.skipIf(!REDIS_HOST || !REDIS_PORT)('returnJobToQueue (real Redis)', () 
 			expect(returned).toEqual([]);
 			expect(await stateOf(producer, job.id)).toBe('active');
 			expect(await attemptsMadeOf(job.id)).toBe(attemptsBefore);
+		});
+
+		it('does not recreate the hash of a job that is deleted after its lock expires', async () => {
+			const producer = createQueue();
+			const job = await addJob(producer, 'exec-expired');
+
+			const worker = createQueue();
+			const taken = await worker.getNextJob();
+			expect(taken?.id).toBe(job.id);
+
+			const returned = await returnUnstartedJobsToQueue(worker, lockTokenOf(worker), () => {
+				void worker.client.del(job.lockKey(), `${PREFIX}:${QUEUE_NAME}:${job.id}`);
+				return false;
+			});
+
+			expect(returned).toEqual([]);
+			expect(await control.exists(`${PREFIX}:${QUEUE_NAME}:${job.id}`)).toBe(0);
 		});
 
 		it('leaves a locked job that reached the handler untouched', async () => {

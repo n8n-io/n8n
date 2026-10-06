@@ -7,13 +7,31 @@ function grantRetryAttempt(job: Job) {
 	job.opts.attempts = job.attemptsMade + 2;
 }
 
+const SET_PRIORITY_IF_LOCKED = `
+if redis.call('GET', KEYS[2]) == ARGV[1] then
+	redis.call('HSET', KEYS[1], 'priority', ARGV[2])
+end`;
+
 /** Makes Bull's retry put the job ahead of the other jobs with the same priority. */
-async function moveToFrontOfPriority(job: Job) {
+async function moveToFrontOfPriority(job: Job, token?: string) {
 	try {
 		const { priority } = job.opts;
 		if (typeof priority !== 'number' || !(priority > 0)) return;
+		const jobKey = job.queue.toKey(String(job.id));
 		// Bull's retry reads the stored priority and inserts behind equal scores, so 0.5 less puts the job first.
-		await job.queue.client.hset(job.queue.toKey(String(job.id)), 'priority', priority - 0.5);
+		if (token === undefined) {
+			await job.queue.client.hset(jobKey, 'priority', priority - 0.5);
+			return;
+		}
+		// A job whose lock expired may already be failed and deleted, and a plain write would recreate its hash.
+		await job.queue.client.eval(
+			SET_PRIORITY_IF_LOCKED,
+			2,
+			jobKey,
+			job.lockKey(),
+			token,
+			priority - 0.5,
+		);
 	} catch {
 		// Without the write, Bull still retries the job, only behind the jobs with the same priority.
 	}
@@ -32,7 +50,7 @@ export function getLockToken(queue: JobQueue): string | undefined {
 	return typeof token === 'string' ? token : undefined;
 }
 
-/** Hands back the active jobs that this token locked but whose handler never ran. */
+/** Returns to the queue the active jobs that this token locked but whose handler never ran. */
 export async function returnUnstartedJobsToQueue(
 	queue: JobQueue,
 	token: string,
@@ -59,7 +77,7 @@ export async function returnUnstartedJobsToQueue(
 	for (const job of unstartedJobs) {
 		const jobId = String(job.id);
 		grantRetryAttempt(job);
-		await moveToFrontOfPriority(job);
+		await moveToFrontOfPriority(job, token);
 		try {
 			await job.moveToFailed(new JobReturnedToQueueError(jobId));
 			returned.push(jobId);
