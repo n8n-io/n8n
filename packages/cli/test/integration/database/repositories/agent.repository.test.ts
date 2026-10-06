@@ -265,6 +265,36 @@ describe('AgentRepository', () => {
 			expect(completion.taskSaved).not.toHaveBeenCalled();
 		});
 
+		it('rejects a stale definition replacement after an integration change', async () => {
+			const agent = await createAgent();
+			const originalSchema = agent.schema;
+			await taskRepo.insert({ id: 'task-1', agentId: agent.id, ...taskBody });
+			await expect(
+				agentRepo.updateIntegrations(
+					agent.id,
+					[{ type: 'slack', credentialId: 'slack-1' }],
+					agent,
+					'version-2',
+				),
+			).resolves.toBe(true);
+
+			await expect(
+				definitionService.replaceDraft(agent, {
+					schema: { name: 'Restored agent', model: '', instructions: 'Restored instructions' },
+					tools: {},
+					skills: {},
+					tasks: new Map(),
+				}),
+			).rejects.toThrow(ConflictError);
+			expect(await agentRepo.findById(agent.id)).toMatchObject({
+				schema: originalSchema,
+				integrations: [{ type: 'slack', credentialId: 'slack-1' }],
+				versionId: 'version-2',
+				revision: 1,
+			});
+			expect(await taskRepo.findByIdAndAgentId('task-1', agent.id)).toMatchObject(taskBody);
+		});
+
 		it('rolls back draft and task changes when a restored task ID belongs to another agent', async () => {
 			const agent = await createAgent();
 			const other = await createAgent();
@@ -493,7 +523,7 @@ describe('AgentRepository', () => {
 	});
 
 	describe('updateIntegrations', () => {
-		it('writes the integration columns and leaves everything else alone', async () => {
+		it('writes channel state and revision without changing the definition', async () => {
 			const agent = await createAgent({
 				name: 'Original name',
 				schema: { name: 'Original name', model: 'anthropic/claude-sonnet-4-5', instructions: 'Hi' },
@@ -503,7 +533,7 @@ describe('AgentRepository', () => {
 			const written = await agentRepo.updateIntegrations(
 				agent.id,
 				[{ type: 'slack', credentialId: 'slack-1' }],
-				{ versionId: 'version-1', activeVersionId: null },
+				{ revision: 0, versionId: 'version-1', activeVersionId: null },
 				'version-2',
 			);
 
@@ -511,6 +541,7 @@ describe('AgentRepository', () => {
 			const reloaded = await agentRepo.findById(agent.id);
 			expect(reloaded?.integrations).toEqual([{ type: 'slack', credentialId: 'slack-1' }]);
 			expect(reloaded?.versionId).toBe('version-2');
+			expect(reloaded?.revision).toBe(1);
 			expect(reloaded?.name).toBe('Original name');
 			expect(reloaded?.schema).toEqual(agent.schema);
 		});
@@ -531,7 +562,7 @@ describe('AgentRepository', () => {
 			const written = await agentRepo.updateIntegrations(
 				agent.id,
 				[{ type: 'slack', credentialId: 'slack-1' }],
-				{ versionId: 'version-1', activeVersionId: null },
+				{ revision: 0, versionId: 'version-1', activeVersionId: null },
 				'version-2',
 			);
 
@@ -547,7 +578,7 @@ describe('AgentRepository', () => {
 				agentRepo.updateIntegrations(
 					agent.id,
 					[{ type: 'slack', credentialId: 'slack-1' }],
-					{ versionId: 'version-1', activeVersionId: 'version-1' },
+					{ revision: 0, versionId: 'version-1', activeVersionId: 'version-1' },
 					'version-2',
 				),
 			).resolves.toBe(true);
@@ -561,7 +592,7 @@ describe('AgentRepository', () => {
 			const written = await agentRepo.updateIntegrations(
 				agent.id,
 				[{ type: 'slack', credentialId: 'slack-1' }],
-				{ versionId: 'version-1', activeVersionId: null },
+				{ revision: 0, versionId: 'version-1', activeVersionId: null },
 				'version-2',
 			);
 
@@ -571,13 +602,34 @@ describe('AgentRepository', () => {
 			expect(reloaded?.versionId).toBe('version-9');
 		});
 
+		it('rejects an integration delta after a draft save with the same version ID', async () => {
+			const agent = await createAgent({ versionId: 'draft-1' });
+			const observed = { ...agent };
+			agent.integrations = [{ type: 'linear', credentialId: 'linear-1' }];
+			await expect(agentRepo.saveDraftFenced(agent)).resolves.toBe(true);
+
+			await expect(
+				agentRepo.updateIntegrations(
+					agent.id,
+					[{ type: 'slack', credentialId: 'slack-1' }],
+					observed,
+					'draft-2',
+				),
+			).resolves.toBe(false);
+			expect(await agentRepo.findById(agent.id)).toMatchObject({
+				integrations: [{ type: 'linear', credentialId: 'linear-1' }],
+				versionId: 'draft-1',
+				revision: 1,
+			});
+		});
+
 		it('matches a null version, so a never-published draft can still be updated', async () => {
 			const agent = await createAgent({ versionId: null });
 
 			const written = await agentRepo.updateIntegrations(
 				agent.id,
 				[{ type: 'slack', credentialId: 'slack-1' }],
-				{ versionId: null, activeVersionId: null },
+				{ revision: 0, versionId: null, activeVersionId: null },
 				null,
 			);
 
@@ -593,7 +645,7 @@ describe('AgentRepository', () => {
 			const written = await agentRepo.updateIntegrations(
 				agent.id,
 				[{ type: 'slack', credentialId: 'slack-1' }],
-				{ versionId: null, activeVersionId: null },
+				{ revision: 0, versionId: null, activeVersionId: null },
 				null,
 			);
 
@@ -610,13 +662,13 @@ describe('AgentRepository', () => {
 			const first = await agentRepo.updateIntegrations(
 				agent.id,
 				[{ type: 'slack', credentialId: 'slack-1' }],
-				{ versionId: 'version-1', activeVersionId: null },
+				{ revision: 0, versionId: 'version-1', activeVersionId: null },
 				'version-2',
 			);
 			const second = await agentRepo.updateIntegrations(
 				agent.id,
 				[{ type: 'linear', credentialId: 'linear-1' }],
-				{ versionId: 'version-1', activeVersionId: null },
+				{ revision: 0, versionId: 'version-1', activeVersionId: null },
 				'version-3',
 			);
 
@@ -632,7 +684,7 @@ describe('AgentRepository', () => {
 				agentRepo.updateIntegrations(
 					uuid(),
 					[],
-					{ versionId: 'version-1', activeVersionId: null },
+					{ revision: 0, versionId: 'version-1', activeVersionId: null },
 					'version-2',
 				),
 			).resolves.toBe(false);
