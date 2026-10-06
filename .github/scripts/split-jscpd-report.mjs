@@ -38,7 +38,10 @@ function main() {
 	}
 	try {
 		const report = JSON.parse(readFileSync(reportPath, 'utf8'));
-		const buckets = splitDuplicates(report.duplicates ?? [], bucketCount);
+		if (!Array.isArray(report.duplicates)) {
+			throw new Error('report.duplicates must be an array');
+		}
+		const buckets = splitDuplicates(report.duplicates, bucketCount);
 		writeBuckets(buckets, outputDir);
 	} catch (err) {
 		process.stderr.write(`split-jscpd-report: ${err.message}\n`);

@@ -13,6 +13,9 @@ name: 🐱 jscpd
 on:
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 env:
   # Number of small sample files the report is split into (split-jscpd-report.mjs).
   # Fixed, not an input: changing it means adding/removing the matching
@@ -23,8 +26,6 @@ jobs:
   jscpd:
     runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-4vcpu-ubuntu-2204' }}
     timeout-minutes: 30
-    permissions:
-      contents: read
 
     steps:
       - name: Checkout
