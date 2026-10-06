@@ -46,8 +46,9 @@ export class DataTableImporter {
 	/**
 	 * Resolves the package's data table references against the target project.
 	 * Read-only: matched tables are compat-checked, then planned as updates under
-	 * `overwrite` or used as-is otherwise; absent tables become planned creations,
-	 * failures, or skips per missing mode. Mirrors the credential side's `plan`.
+	 * `overwrite` or `overwrite-non-destructive` or used as-is otherwise; absent
+	 * tables become planned creations, failures, or skips per missing mode.
+	 * Mirrors the credential side's `plan`.
 	 */
 	async plan(
 		context: ImportContext,
@@ -139,11 +140,17 @@ export class DataTableImporter {
 			);
 		}
 
-		for (const { table } of plan.updates) {
-			await this.dataTableService.replaceSchema(table.id, context.projectId, {
-				name: table.name,
-				columns: table.columns,
-			});
+		for (const { table, operations } of plan.updates) {
+			await this.dataTableService.replaceSchema(
+				table.id,
+				context.projectId,
+				{ name: table.name, columns: table.columns },
+				{
+					droppableColumns: operations.flatMap((operation) =>
+						operation.destructive ? [operation.column] : [],
+					),
+				},
+			);
 		}
 	}
 
@@ -214,8 +221,9 @@ export class DataTableImporter {
 /**
  * Decides the fate of one package table reference, independent of how the
  * target was matched: matched tables are compat-checked, then diffed against
- * the package under `overwrite` or used as-is otherwise; absent tables follow
- * the missing mode, with globally unique ids guarding planned creations.
+ * the package under `overwrite` or `overwrite-non-destructive` or used as-is
+ * otherwise; absent tables follow the missing mode, with globally unique ids
+ * guarding planned creations.
  * `existingWithSameId` is the instance-wide (any project) occupant of the
  * requirement's id, only consulted for creations.
  */
@@ -242,7 +250,10 @@ function resolveRequirement(
 				}),
 			};
 		}
-		if (schemaConflictPolicy === DataTableSchemaConflictPolicy.Overwrite) {
+		if (
+			schemaConflictPolicy === DataTableSchemaConflictPolicy.Overwrite ||
+			schemaConflictPolicy === DataTableSchemaConflictPolicy.OverwriteNonDestructive
+		) {
 			const operations = diffDataTableSchema(packageTable, matchedTargetTable);
 			if (operations.length > 0) return { action: 'update', operations };
 		}

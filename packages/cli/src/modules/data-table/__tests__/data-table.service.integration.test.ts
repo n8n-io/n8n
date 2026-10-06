@@ -708,6 +708,45 @@ describe('dataTable', () => {
 		});
 	});
 
+	describe('replaceSchema', () => {
+		it('keeps every column and its data when the new schema would delete a column that may not be dropped', async () => {
+			const { id: dataTableId } = await dataTableService.createDataTable(project1.id, {
+				name: 'Customers',
+				columns: [
+					{ name: 'email', type: 'string' },
+					{ name: 'note', type: 'string' },
+				],
+			});
+			await dataTableService.insertRows(dataTableId, project1.id, [
+				{ email: 'a@example.com', note: 'keep me' },
+			]);
+
+			await expect(
+				dataTableService.replaceSchema(
+					dataTableId,
+					project1.id,
+					{
+						name: 'Clients',
+						columns: [
+							{ name: 'email', type: 'string' },
+							{ name: 'added', type: 'boolean' },
+						],
+					},
+					{ droppableColumns: [] },
+				),
+			).rejects.toThrow(DataTableValidationError);
+
+			const columns = await dataTableService.getColumns(dataTableId, project1.id);
+			expect(columns.map(({ name, type }) => ({ name, type }))).toEqual([
+				{ name: 'email', type: 'string' },
+				{ name: 'note', type: 'string' },
+			]);
+			const { data } = await dataTableService.getManyRowsAndCount(dataTableId, project1.id, {});
+			expect(data).toEqual([expect.objectContaining({ email: 'a@example.com', note: 'keep me' })]);
+			expect((await dataTableService.getOne(dataTableId, project1.id)).name).toBe('Customers');
+		});
+	});
+
 	describe('getManyAndCount', () => {
 		it('correctly joins columns', async () => {
 			// ARRANGE

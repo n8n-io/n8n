@@ -237,17 +237,19 @@ post:
                 schema, keeping the source id, with no rows; requires the
                 `dataTable:create` scope. `must-preexist` rejects the import.
                 `do-nothing` skips creation of missing tables. Under the
-                `keep-existing` and `fail` schema conflict policies, matched tables
-                are still validated for schema compatibility and can still block
-                the import. The import never imports table rows. Matched tables
-                change only under `dataTableSchemaConflictPolicy=overwrite`, which
-                keeps their rows.
+                `keep-existing`, `fail`, and `overwrite-non-destructive` schema
+                conflict policies, matched tables are still validated for schema
+                compatibility and can still block the import. The import never
+                imports table rows. Matched tables change only under
+                `dataTableSchemaConflictPolicy=overwrite` or
+                `overwrite-non-destructive`, which keep their rows.
             dataTableSchemaConflictPolicy:
               type: string
               enum:
                 - keep-existing
                 - fail
                 - overwrite
+                - overwrite-non-destructive
               default: keep-existing
               description: |
                 How strictly a matched data table's schema is compared.
@@ -262,10 +264,19 @@ post:
                 and can delete data in specific columns while preserving rows.
                 Removing, retyping, or renaming a column deletes the data in that
                 column. The changes apply to all workflows that use the table. A
-                blocked `keep-existing` or `fail` import lists them in
-                `overwriteChanges`.
-                Requires the `dataTable:update` scope only when a matched table
-                changes.
+                blocked `keep-existing`, `fail`, or `overwrite-non-destructive`
+                import lists them in `overwriteChanges`.
+
+                `overwrite-non-destructive` makes the same changes as `overwrite`
+                when no change deletes data. A change deletes data when it removes
+                or retypes a column. A target-only column and a renamed column
+                count as removed columns. When a change deletes data in any matched
+                table, the import writes nothing. The error lists the planned
+                changes in `overwriteChanges`, and each change that deletes data
+                has `destructive: true`.
+
+                `overwrite` and `overwrite-non-destructive` require the
+                `dataTable:update` scope only when a matched table changes.
             variableMissingMode:
               type: string
               enum:
