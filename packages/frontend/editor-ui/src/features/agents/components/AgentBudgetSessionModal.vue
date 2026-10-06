@@ -62,7 +62,9 @@ function save() {
 					:class="$style.amountInput"
 					data-testid="agent-budget-session-amount"
 					@update:model-value="onAmount"
-				/>
+				>
+					<template #prefix>{{ i18n.baseText('agents.builder.budget.currencyPrefix') }}</template>
+				</N8nInputNumber>
 				<N8nText size="small" :class="$style.suffix">{{
 					i18n.baseText('agents.builder.budget.session.suffix')
 				}}</N8nText>

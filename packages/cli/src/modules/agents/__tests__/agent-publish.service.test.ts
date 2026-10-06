@@ -682,7 +682,17 @@ describe('AgentPublishService', () => {
 			versionId: 'published-v1',
 			schema: {
 				...schema,
-				tools: [{ type: 'custom', id: 'tool', enabled: false, requireApproval: true }],
+				tools: [
+					{ type: 'custom', id: 'tool', enabled: false, requireApproval: true },
+					{
+						type: 'workflow',
+						workflow: 'Test workflow',
+						inputs: {
+							constructor: { mode: 'ai' as const, description: 'Use the label.' },
+							hasOwnProperty: { mode: 'fixed' as const, value: '=literal' },
+						},
+					},
+				],
 				skills: [{ type: 'skill', id: 'skill', enabled: false }],
 				subAgents: { agents: [{ agentId: 'agent-2', enabled: false, useWhen: 'Review notes' }] },
 				tasks: [{ type: 'task', id: 'task-1', enabled: false }],

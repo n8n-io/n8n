@@ -3,14 +3,14 @@ import type { Mock } from 'vitest';
 import type { DeepMockProxy } from 'vitest-mock-extended';
 import { mock, mockDeep } from 'vitest-mock-extended';
 
-import { versionDescription } from '../../../v2/actions/versionDescription';
-import { getDrives } from '../../../v2/drive';
-import { MicrosoftSharePointV2 } from '../../../v2/MicrosoftSharePointV2.node';
-import * as transport from '../../../transport';
-import type * as _importType0 from '../../../transport';
+import { versionDescription } from '../../v2/actions/versionDescription';
+import { getDrives } from '../../drive';
+import { MicrosoftSharePointV2 } from '../../v2/MicrosoftSharePointV2.node';
+import * as transport from '../../transport';
+import type * as _importType0 from '../../transport';
 
-vi.mock('../../../transport', async () => {
-	const originalModule = await vi.importActual<typeof _importType0>('../../../transport');
+vi.mock('../../transport', async () => {
+	const originalModule = await vi.importActual<typeof _importType0>('../../transport');
 	return {
 		...originalModule,
 		microsoftApiRequest: vi.fn(),
