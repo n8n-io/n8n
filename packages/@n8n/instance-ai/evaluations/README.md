@@ -587,6 +587,7 @@ before the turn:
 
 ```json
 {
+	"complexity": "simple",
 	"tags": ["routing", "bucket:debug", "accepts:debug"],
 	"seed": {
 		"mode": "inline",
@@ -594,7 +595,8 @@ before the turn:
 		"priorRuns": [{ "workflow": "wf-1", "hints": "The HTTP Request node returned 401." }]
 	},
 	"credentials": [{ "type": "slackApi" }],
-	"conversation": [{ "role": "user", "text": "It failed again.", "attach": { "workflow": "wf-1" } }]
+	"conversation": [{ "role": "user", "text": "It failed again.", "attach": { "workflow": "wf-1" } }],
+	"processExpectations": ["Routes to debug"]
 }
 ```
 
