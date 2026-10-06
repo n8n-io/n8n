@@ -4,6 +4,7 @@ import {
 	applyEngineEnv,
 	assertEngineSupported,
 	ENGINE_DATABASE,
+	ENGINE_SHARED_BINARY_DATA_PATH,
 	engineContainerEnv,
 } from '../services/engine';
 import { redis } from '../services/redis';
@@ -125,6 +126,17 @@ describe('applyEngineEnv', () => {
 		test('gives the main no data plane database, even when a service provided one', () => {
 			expect(containerEnv().N8N_ENGINE_DATABASE_URL).toBeUndefined();
 		});
+
+		test('points the main at the binary data store it shares with the engine container', () => {
+			expect(containerEnv().N8N_BINARY_DATA_STORAGE_PATH).toBe(ENGINE_SHARED_BINARY_DATA_PATH);
+		});
+	});
+
+	test('leaves the binary data store alone in in-process mode, since one process holds both planes', () => {
+		const env = { ...postgresEnv };
+		applyEngineEnv(env, { engine: 'in-process', mains: 1, isQueueMode: false, projectName });
+
+		expect(env.N8N_BINARY_DATA_STORAGE_PATH).toBeUndefined();
 	});
 
 	test('rejects a stack without Postgres', () => {
@@ -204,6 +216,20 @@ describe('engineContainerEnv', () => {
 	test('shares the secret both planes verify against', () => {
 		expect(engineContainerEnv(dedicatedEngineEnv, engineOptions).N8N_ENGINE_AUTH_SECRET).toBe(
 			authSecret,
+		);
+	});
+
+	test('stores binary data where the main stores it', () => {
+		const mainEnv: Record<string, string> = { ...dedicatedEngineEnv };
+		applyEngineEnv(mainEnv, {
+			engine: 'container',
+			mains: 1,
+			isQueueMode: false,
+			...engineOptions,
+		});
+
+		expect(engineContainerEnv(dedicatedEngineEnv, engineOptions).N8N_BINARY_DATA_STORAGE_PATH).toBe(
+			mainEnv.N8N_BINARY_DATA_STORAGE_PATH,
 		);
 	});
 

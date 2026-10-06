@@ -24,6 +24,14 @@ export const ENGINE_PORT = 3000;
 /** Port the main's control plane server listens on. The engine dials it. */
 export const ENGINE_CONTROL_PLANE_PORT = 3001;
 
+/**
+ * Where both planes keep binary data in `container` mode. The two containers
+ * share one store: the main stores a webhook upload that the engine reads, and
+ * the engine stores a file that the main streams in a response. The stack
+ * mounts one host dir here in both containers.
+ */
+export const ENGINE_SHARED_BINARY_DATA_PATH = '/data/binary-data';
+
 /** Every value the URL interpolates, so a missing one is named, not printed. */
 const CONNECTION_KEYS = [
 	'DB_POSTGRESDB_USER',
@@ -131,6 +139,7 @@ export function applyEngineEnv(
 		env.N8N_ENGINE_CONTROL_PLANE_HOST = '0.0.0.0';
 		env.N8N_ENGINE_CONTROL_PLANE_PORT = String(ENGINE_CONTROL_PLANE_PORT);
 		env.N8N_ENGINE_AUTH_SECRET = authSecret;
+		env.N8N_BINARY_DATA_STORAGE_PATH = ENGINE_SHARED_BINARY_DATA_PATH;
 		// The main never touches the data plane database in this mode.
 		delete env.N8N_ENGINE_DATABASE_URL;
 		return;
@@ -168,6 +177,7 @@ export function engineContainerEnv(
 		N8N_ENGINE_DATABASE_URL: databaseUrl,
 		N8N_ENGINE_AUTH_SECRET: authSecret,
 		N8N_ENGINE_CONTROL_PLANE_BASE_URL: `http://${mainHostname(projectName)}:${ENGINE_CONTROL_PLANE_PORT}`,
+		N8N_BINARY_DATA_STORAGE_PATH: ENGINE_SHARED_BINARY_DATA_PATH,
 		// The main dials this address and the stack probes it, so a caller's `env`
 		// must not move it or bind it to loopback.
 		N8N_ENGINE_HOST: '0.0.0.0',
