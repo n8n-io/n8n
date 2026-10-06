@@ -168,7 +168,9 @@ export function serializeMockToHttpResponse(
  * LLM). `simple: false` becomes `ignoreHttpStatusErrors`.
  */
 export function normalizeLegacyRequest(
+	// oxlint-disable-next-line typescript/no-deprecated
 	uriOrObject: string | IRequestOptions,
+	// oxlint-disable-next-line typescript/no-deprecated
 	options?: IRequestOptions,
 ): IHttpRequestOptions {
 	if (typeof uriOrObject === 'string') {

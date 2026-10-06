@@ -156,6 +156,7 @@ function mountHeader(
 		sessionOptions: Array<{ id: string; label: string }>;
 		configValidationStatus: 'valid' | 'invalid' | null;
 		beforePublish: () => Promise<boolean>;
+		saveStatus: 'idle' | 'saving' | 'saved';
 	}> = {},
 ) {
 	return mount(AgentBuilderHeader, {
@@ -173,6 +174,7 @@ function mountHeader(
 			sessionOptions: overrides.sessionOptions,
 			configValidationStatus: overrides.configValidationStatus,
 			beforePublish: overrides.beforePublish,
+			saveStatus: overrides.saveStatus,
 		},
 		global: { stubs: globalStubs },
 	});

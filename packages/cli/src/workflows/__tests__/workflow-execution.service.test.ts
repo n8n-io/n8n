@@ -1,4 +1,5 @@
 import type { Logger } from '@n8n/backend-common';
+import type { EventService, InstanceWriteAccessService } from '@n8n/backend-services';
 import type { GlobalConfig, WorkflowsConfig } from '@n8n/config';
 import type {
 	CreateExecutionPayload,
@@ -32,11 +33,9 @@ import { DuplicateExecutionError } from '@/errors/duplicate-execution.error';
 import { ExecutionAlreadyResumingError } from '@/errors/execution-already-resuming.error';
 import { PreExecuteBlockedError } from '@/errors/pre-execute-blocked.error';
 import { ForbiddenError } from '@n8n/errors';
-import type { EventService } from '@/events/event.service';
 import type { ExecutionCrashService } from '@/executions/execution-crash.service';
 import type { IWorkflowErrorData } from '@/interfaces';
 import type { NodeTypes } from '@/node-types';
-import type { InstanceWriteAccessService } from '@/services/instance-write-access.service';
 import type { OwnershipService } from '@/services/ownership.service';
 import type { TestWebhooks } from '@/webhooks/test-webhooks';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';

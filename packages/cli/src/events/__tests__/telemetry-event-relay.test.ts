@@ -1,4 +1,5 @@
 import type { LicenseState } from '@n8n/backend-common';
+import { EventService } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { EMPTY_CANVAS_GROUPS_FLAG } from '@n8n/api-types';
 import type { GlobalConfig } from '@n8n/config';
@@ -32,7 +33,6 @@ import { mock } from 'vitest-mock-extended';
 
 import { N8N_VERSION } from '@/constants';
 import type { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy';
-import { EventService } from '@/events/event.service';
 import type { RelayEventMap } from '@/events/maps/relay.event-map';
 import { TelemetryEventRelay, getSemanticVersioning } from '@/events/relays/telemetry.event-relay';
 import type { License } from '@/license';
@@ -41,6 +41,7 @@ import { OtelConfig } from '@/modules/otel/otel.config';
 import type { PolicyRule } from '@/modules/type-availability-policies/policy-rule.types';
 import type { NodeTypes } from '@/node-types';
 import type { PostHogClient } from '@/posthog';
+import type { OwnershipService } from '@/services/ownership.service';
 import type { Telemetry } from '@/telemetry';
 
 const flushPromises = async () => await new Promise((resolve) => setImmediate(resolve));
@@ -167,6 +168,7 @@ describe('TelemetryEventRelay', () => {
 	const loadNodesAndCredentials = mock<LoadNodesAndCredentials>();
 	// Experiment cleanup: remove with emptyCanvasGroups (121_empty_canvas_groups).
 	const postHogClient = mock<PostHogClient>();
+	const ownershipService = mock<OwnershipService>();
 	const eventService = new EventService();
 
 	let telemetryEventRelay: TelemetryEventRelay;
@@ -189,6 +191,7 @@ describe('TelemetryEventRelay', () => {
 			dbConnection,
 			loadNodesAndCredentials,
 			postHogClient,
+			ownershipService,
 		);
 
 		await telemetryEventRelay.init();
@@ -198,6 +201,8 @@ describe('TelemetryEventRelay', () => {
 		vi.clearAllMocks();
 		// Experiment cleanup: remove with emptyCanvasGroups (121_empty_canvas_groups).
 		postHogClient.getFeatureFlags.mockResolvedValue({ [EMPTY_CANVAS_GROUPS_FLAG]: true });
+		ownershipService.hasInstanceOwner.mockResolvedValue(true);
+		ownershipService.getInstanceOwner.mockResolvedValue(mock<User>({ id: 'owner123' }));
 		globalConfig.diagnostics.enabled = true;
 		Object.assign(globalConfig.instanceSettingsLoader, getDefaultInstanceSettingsLoaderConfig());
 		const otelConfig = Container.get(OtelConfig);
@@ -225,6 +230,7 @@ describe('TelemetryEventRelay', () => {
 				dbConnection,
 				loadNodesAndCredentials,
 				postHogClient,
+				ownershipService,
 			);
 			const setupListenersSpy = vi.spyOn(telemetryEventRelay, 'setupListeners');
 
@@ -253,6 +259,7 @@ describe('TelemetryEventRelay', () => {
 				dbConnection,
 				loadNodesAndCredentials,
 				postHogClient,
+				ownershipService,
 			);
 			const setupListenersSpy = vi.spyOn(telemetryEventRelay, 'setupListeners');
 
@@ -3517,15 +3524,15 @@ describe('TelemetryEventRelay', () => {
 
 			await flushPromises();
 
-			expect(telemetry.groupIdentify).toHaveBeenCalledWith(
-				expect.objectContaining({
-					traits: expect.objectContaining({
-						n8n_host: expect.any(String),
-						version_cli: N8N_VERSION,
-						n8n_deployment_type: 'default',
-					}),
-				}),
-			);
+			const instanceGroupFacts = expect.objectContaining({
+				n8n_host: expect.any(String),
+				version_cli: N8N_VERSION,
+				n8n_deployment_type: 'default',
+			});
+			expect(telemetry.groupIdentify).toHaveBeenCalledWith({
+				traits: instanceGroupFacts,
+				postHog: { userId: 'owner123', traits: instanceGroupFacts },
+			});
 			expect(telemetry.identify).toHaveBeenCalledWith(
 				expect.objectContaining({
 					version_cli: N8N_VERSION,
@@ -3600,6 +3607,24 @@ describe('TelemetryEventRelay', () => {
 					},
 				}),
 			);
+		});
+
+		it('should skip the PostHog group update on `server-started` before owner setup', async () => {
+			workflowRepository.findOne.mockResolvedValue(null);
+			ownershipService.hasInstanceOwner.mockResolvedValue(false);
+
+			eventService.emit('server-started');
+
+			await flushPromises();
+
+			expect(ownershipService.getInstanceOwner).not.toHaveBeenCalled();
+			expect(telemetry.groupIdentify).toHaveBeenCalledWith({
+				traits: expect.objectContaining({ version_cli: N8N_VERSION }),
+				postHog: {
+					userId: undefined,
+					traits: expect.objectContaining({ version_cli: N8N_VERSION }),
+				},
+			});
 		});
 
 		it('should report the database version on `server-started` event', async () => {
@@ -3824,15 +3849,24 @@ describe('TelemetryEventRelay', () => {
 			expect(telemetry.track).toHaveBeenCalledWith('User instance stopped');
 		});
 
-		it('should track on `instance-owner-setup` event', () => {
+		it('should track on `instance-owner-setup` event', async () => {
 			const event: RelayEventMap['instance-owner-setup'] = {
 				userId: 'user123',
 			};
 
 			eventService.emit('instance-owner-setup', event);
 
+			await flushPromises();
+
 			expect(telemetry.groupIdentify).toHaveBeenCalledWith({
 				userId: 'user123',
+				postHog: {
+					userId: 'user123',
+					traits: expect.objectContaining({
+						version_cli: N8N_VERSION,
+						n8n_deployment_type: 'default',
+					}),
+				},
 			});
 			expect(telemetry.track).toHaveBeenCalledWith('Owner finished instance setup', {
 				user_id: 'user123',

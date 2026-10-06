@@ -1,4 +1,5 @@
 import { Logger } from '@n8n/backend-common';
+import { EventService, InstanceWriteAccessService } from '@n8n/backend-services';
 import { GlobalConfig, WorkflowsConfig } from '@n8n/config';
 import type {
 	Project,
@@ -42,14 +43,12 @@ import {
 import { ExecutionAlreadyResumingError } from '@/errors/execution-already-resuming.error';
 import { PreExecuteBlockedError } from '@/errors/pre-execute-blocked.error';
 import { ForbiddenError } from '@n8n/errors';
-import { EventService } from '@/events/event.service';
 import { ExecutionCrashService } from '@/executions/execution-crash.service';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { FailedRunFactory } from '@/executions/failed-run-factory';
 import { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks';
 import type { IWorkflowErrorData } from '@/interfaces';
 import { NodeTypes } from '@/node-types';
-import { InstanceWriteAccessService } from '@/services/instance-write-access.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { TestWebhooks } from '@/webhooks/test-webhooks';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';

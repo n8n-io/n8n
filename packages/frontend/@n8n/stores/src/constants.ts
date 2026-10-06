@@ -28,6 +28,7 @@ export const STORES = {
 	PUSH: 'push',
 	COLLABORATION: 'collaboration',
 	AGENT_COLLABORATION: 'agentCollaboration',
+	AGENT_N8N_CHAT_THREADS: 'agentN8nChatThreads',
 	ASSISTANT: 'assistant',
 	BUILDER: 'builder',
 	CHAT_PANEL: 'chatPanel',

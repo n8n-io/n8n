@@ -1,5 +1,6 @@
 import type { CreateProjectDto, ProjectType, UpdateProjectDto } from '@n8n/api-types';
 import { LicenseState, Logger, ModuleRegistry } from '@n8n/backend-common';
+import { EventService, RoleService } from '@n8n/backend-services';
 import {
 	type User,
 	FolderRepository,
@@ -7,6 +8,7 @@ import {
 	ProjectRelation,
 	ProjectRelationRepository,
 	ProjectRepository,
+	RoleRepository,
 	ProjectIdConflictError,
 	SharedCredentialsRepository,
 	SharedWorkflowRepository,
@@ -33,11 +35,9 @@ import { In } from '@n8n/typeorm';
 import { UserError } from 'n8n-workflow';
 
 import { BadRequestError, ConflictError, ForbiddenError, NotFoundError } from '@n8n/errors';
-import { EventService } from '@/events/event.service';
 import { UserManagementMailer } from '@/user-management/email';
 
 import { OwnershipService } from './ownership.service';
-import { RoleService } from './role.service';
 
 const INSTANCE_ACCESS_ROLE_ERROR =
 	"This user has access through their instance role. Project roles can't change their access in this project.";
@@ -100,6 +100,7 @@ export class ProjectService {
 		private readonly eventService: EventService,
 		private readonly userManagementMailer: UserManagementMailer,
 		private readonly userRepository: UserRepository,
+		private readonly roleRepository: RoleRepository,
 	) {}
 
 	private get workflowService() {
@@ -911,10 +912,11 @@ export class ProjectService {
 		};
 
 		if (!hasGlobalScope(user, scopes, { mode: 'allOf' })) {
-			// Use the same EntityManager as the project lookup (including when callers pass a
-			// transaction manager). Otherwise role resolution can open a second pooled connection
-			// while a transaction already holds a connection
-			const projectRoles = await this.roleService.rolesWithScope('project', scopes, em);
+			const projectRoles = await this.roleService.rolesWithScope(
+				'project',
+				scopes,
+				async () => await this.roleRepository.findAll(em),
+			);
 
 			where = {
 				...where,

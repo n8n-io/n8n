@@ -3,6 +3,7 @@ import { isRecord } from '@n8n/utils/is-record';
 import type { Thread } from 'chat';
 import { OperationalError, type Logger } from 'n8n-workflow';
 
+import type { AgentExecutionStreamChunk } from '../types/agent-steering';
 import type { BridgeStatusHandle } from './agent-chat-integration';
 import { isIntegrationActionSuspendPayload } from './agent-chat-suspension-cards';
 import { type TextEndFn, type TextYieldFn } from './types';
@@ -92,7 +93,7 @@ export class AgentChatStreamConsumer {
 	constructor(private readonly options: AgentChatStreamConsumerOptions) {}
 
 	async consume(
-		stream: AsyncGenerator<StreamChunk>,
+		stream: AsyncGenerator<AgentExecutionStreamChunk>,
 		thread: Thread<unknown, unknown>,
 		options: ConsumeStreamOptions = {},
 	): Promise<void> {
@@ -378,7 +379,7 @@ export class AgentChatStreamConsumer {
 	}
 
 	private async consumeBuffered(
-		stream: AsyncGenerator<StreamChunk>,
+		stream: AsyncGenerator<AgentExecutionStreamChunk>,
 		thread: Thread<unknown, unknown>,
 		options: ConsumeStreamOptions = {},
 	): Promise<void> {

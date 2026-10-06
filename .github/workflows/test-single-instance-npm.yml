@@ -90,13 +90,13 @@ jobs:
         env:
           BASE_BRANCH: ${{ inputs.base-branch }}
         run: |
-          if [ -f packages/testing/code-health/package.json ]; then
+          if [ -f packages/quality/policy/code-health/package.json ]; then
             echo 'present=true' >> "$GITHUB_OUTPUT"
           elif [ -n "$BASE_BRANCH" ]; then
             echo 'present=false' >> "$GITHUB_OUTPUT"
-            echo "::notice::packages/testing/code-health is absent on \"$BASE_BRANCH\"; nothing to verify."
+            echo "::notice::packages/quality/policy/code-health is absent on \"$BASE_BRANCH\"; nothing to verify."
           else
-            echo '::error::packages/testing/code-health is missing (moved or renamed?).'
+            echo '::error::packages/quality/policy/code-health is missing (moved or renamed?).'
             exit 1
           fi
 
@@ -119,10 +119,10 @@ jobs:
           # REPORT_ONLY is a single flag or empty. Quoting it would pass an empty argument, which
           # the CLI reads as an (unknown) package name and rejects.
           # shellcheck disable=SC2086
-          pnpm --dir packages/testing/code-health exec tsx src/cli.ts verify-npm-install --changed="$BASE_REF" $REPORT_ONLY
+          pnpm --dir packages/quality/policy/code-health exec tsx src/cli.ts verify-npm-install --changed="$BASE_REF" $REPORT_ONLY
 
       - name: Verify npm-install closure (all packages)
         if: steps.verifier.outputs.present == 'true' && inputs.scope == 'all'
         run: |
           # shellcheck disable=SC2086 # see the scoped step above
-          pnpm --dir packages/testing/code-health exec tsx src/cli.ts verify-npm-install --all $REPORT_ONLY
+          pnpm --dir packages/quality/policy/code-health exec tsx src/cli.ts verify-npm-install --all $REPORT_ONLY

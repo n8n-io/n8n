@@ -339,6 +339,57 @@ n8n-cli promotion-connection apply conn-1 \
 #    Then run the apply-continue command that step 3 printed.
 ```
 
+## `promotion-connection apply-selection`
+
+Apply a chosen set of a project's workflow changes from its Apply branch. This is
+the apply counterpart of `promote-selection`: build the selection from the `id`
+values that `list-changes proj-abc apply` returns.
+
+```bash
+n8n-cli promotion-connection apply-selection proj-abc -w wf-1 -w wf-2
+n8n-cli promotion-connection apply-selection proj-abc -w wf-1 \
+  --expected-config-id=cfg-2 --expected-branch=main --expected-commit-sha=<full sha>
+```
+
+| Flag | Description |
+|------|-------------|
+| `-w, --workflow` | Workflow ID to apply. Repeat the flag for more than one. Required. |
+| `--expected-config-id` | ID of the apply configuration that you reviewed (`configs.apply.id`). |
+| `--expected-branch` | Branch that you reviewed. |
+| `--expected-commit-sha` | Full commit SHA that you reviewed (40 or 64 lowercase hex characters). |
+
+Selected IDs on the branch are imported. Instance workflows this project owns
+whose IDs are absent from the branch are removed. Unselected content stays
+unchanged. Without the `--expected-*` flags, the command applies the branch tip;
+with them, it applies only the source that you reviewed. Pass all three flags or
+none.
+
+The results and exit codes are the same as for `apply`: `applied` (`0`),
+`source-changed` (`3`), and `blocked` (`4`). When it exits `4`, the output shows
+the `apply-selection-continue` command to run after you resolve the bindings; it
+resends the same workflow ids. With `--json`, the output is the full result for
+each status.
+
+Clone the `apply` direction first. The API key needs `gitConnection:pull`. The
+connection is the project's own connection when it has one, otherwise the
+instance connection.
+
+## `promotion-connection apply-selection-continue`
+
+Continue a selection Apply that was `blocked`, after you resolve the missing
+bindings, access requirements, or conflicts.
+
+```bash
+n8n-cli promotion-connection apply-selection-continue proj-abc -w wf-1 -w wf-2 \
+  --expected-config-id=cfg-2 --expected-branch=main --expected-commit-sha=<full sha>
+```
+
+Resend the same workflow ids. The three `--expected-*` flags are required: use
+the `configId`, `git.branchName`, and `git.commitSha` that the blocked Apply
+reported. The command runs the preflight again. The results and exit codes are
+the same as for `apply-selection`. The server keeps no session, so run the
+command again when it exits `4`.
+
 ## `promotion-connection list-projects` / `add-project` / `remove-project`
 
 Link team projects to a `projects`-scoped connection.

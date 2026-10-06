@@ -29,6 +29,12 @@ vi.mock('@n8n/ai-utilities', () => ({
 import type { Logger } from '@n8n/backend-common';
 import { INSTANCE_AI_NODE_USAGE_FLAG } from '@n8n/api-types';
 import type { OutboundHttp } from '@n8n/backend-network';
+import {
+	type EventService,
+	type RoleService,
+	type CredentialsFinderService,
+	type InstanceWriteAccessService,
+} from '@n8n/backend-services';
 import type { GlobalConfig } from '@n8n/config';
 import type {
 	AiBuilderTemporaryWorkflowRepository,
@@ -46,9 +52,7 @@ import { mock } from 'vitest-mock-extended';
 import type { McpDiscoveryActivityService } from '@/experiments/mcp-discovery/activity.service';
 import type { ActiveExecutions } from '@/active-executions';
 import type { CollaborationService } from '@/collaboration/collaboration.service';
-import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import type { CredentialsService } from '@/credentials/credentials.service';
-import type { EventService } from '@/events/event.service';
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
 import type { License } from '@/license';
 import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
@@ -61,10 +65,9 @@ import { PostHogClient } from '@/posthog';
 import type { AiGatewayService } from '@/services/ai-gateway.service';
 import type { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
 import type { FolderService } from '@/services/folder.service';
-import type { InstanceWriteAccessService } from '@/services/instance-write-access.service';
 import { NodeResourceExplorerService } from '@/services/node-resource-explorer.service';
 import type { ProjectService } from '@/services/project.service.ee';
-import type { RoleService } from '@/services/role.service';
+
 import type { TagService } from '@/services/tag.service';
 import type { Telemetry } from '@/telemetry';
 import type { WorkflowRunner } from '@/workflow-runner';

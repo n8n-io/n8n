@@ -35,6 +35,8 @@ describe('attributionFromVerifierCategory', () => {
 		expect(attributionFromVerifierCategory(undefined)).toBe('builder_issue');
 		expect(attributionFromVerifierCategory('verification_failure')).toBe('builder_issue');
 		expect(attributionFromVerifierCategory('brand_new_category')).toBe('builder_issue');
+		// `timeout` is the harness's own bucket, never a verifier verdict.
+		expect(attributionFromVerifierCategory('timeout')).toBe('builder_issue');
 	});
 
 	it('stays in step with the enum the verifier prompt actually defines', () => {

@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { computed, inject } from 'vue';
+import { computed, inject, ref } from 'vue';
 import { N8nBadge, N8nButton, N8nIcon, N8nSpinner, N8nText, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
+import { RestrictedNodePopover } from '@n8n/frontend-module-type-availability-policies';
 import ToolCredentialPicker from './ToolCredentialPicker.vue';
 import ToolIcon from './ToolIcon.vue';
 import {
@@ -82,6 +83,12 @@ const placeholderIcon = computed(() => {
 
 const resolvedIcon = computed(() => resolveToolItemIcon(props.item));
 
+const serviceActionLabel = computed(() =>
+	i18n.baseText(
+		props.item.status === 'connected' ? 'generic.settings' : 'tools.connection.action.setup',
+	),
+);
+
 const actionLabel = computed(() => {
 	if (props.item.communityPreview) return i18n.baseText('communityNodeDetails.install');
 	if (props.item.status === 'disconnected') {
@@ -95,6 +102,13 @@ const installBlocked = computed(
 );
 
 const isDisabled = computed(() => Boolean(props.item.disabled));
+const isRowNavigable = computed(() => props.item.kind !== 'service');
+
+const restriction = computed(() =>
+	props.item.kind === 'node' ? props.item.restriction : undefined,
+);
+
+const rowRef = ref<HTMLElement | null>(null);
 
 /**
  * For most rows the button only repeated what clicking the row already does.
@@ -111,6 +125,7 @@ const hasDirectAction = computed(
 
 function handleRowClick() {
 	if (props.item.disabled) return;
+	if (restriction.value) return;
 	if (props.item.status === 'connecting') return;
 	emit('open-detail', props.item);
 }
@@ -125,16 +140,23 @@ function handleConnect() {
 
 <template>
 	<div
-		:class="[$style.row, $style[`row--${item.kind}`], { [$style.rowDisabled]: isDisabled }]"
+		ref="rowRef"
+		:class="[
+			$style.row,
+			$style[`row--${item.kind}`],
+			{ [$style.rowDisabled]: isDisabled, [$style.rowRestricted]: !!restriction },
+		]"
 		:data-test-id="`tools-connection-row`"
 		:data-row-kind="item.kind"
 	>
-		<button
-			type="button"
-			:class="$style.mainAction"
-			:disabled="isDisabled || item.status === 'connecting'"
+		<component
+			:is="isRowNavigable ? 'button' : 'div'"
+			:type="isRowNavigable ? 'button' : undefined"
+			:class="[$style.mainAction, { [$style.mainActionStatic]: !isRowNavigable }]"
+			:disabled="isRowNavigable ? isDisabled || item.status === 'connecting' : undefined"
+			:aria-disabled="!!restriction || undefined"
 			data-test-id="tools-connection-row-main"
-			@click="handleRowClick"
+			@click="isRowNavigable && handleRowClick()"
 		>
 			<template v-if="item.kind === 'workflow'">
 				<span :class="$style.workflowIcon" aria-hidden="true">
@@ -191,11 +213,17 @@ function handleConnect() {
 					</N8nText>
 				</span>
 			</template>
-		</button>
+		</component>
 
 		<div :class="$style.action">
+			<RestrictedNodePopover
+				v-if="restriction"
+				:node-type-name="item.title"
+				:scope="restriction.scope"
+				:anchor="rowRef"
+			/>
 			<N8nTooltip
-				v-if="isDisabled"
+				v-else-if="isDisabled"
 				:content="item.disabledReason ?? ''"
 				:disabled="!item.disabledReason"
 				placement="top"
@@ -210,6 +238,14 @@ function handleConnect() {
 					<N8nIcon icon="info" :size="14" color="text-light" />
 				</span>
 			</N8nTooltip>
+			<N8nButton
+				v-else-if="item.kind === 'service'"
+				variant="outline"
+				size="small"
+				:label="serviceActionLabel"
+				data-test-id="tools-connection-row-service-action"
+				@click="handleRowClick"
+			/>
 			<ToolCredentialPicker
 				v-else-if="shouldShowCredentialPicker"
 				:item="item"
@@ -319,6 +355,20 @@ function handleConnect() {
 	}
 }
 
+.rowRestricted {
+	.mainAction {
+		cursor: not-allowed;
+
+		> * {
+			opacity: 0.45;
+		}
+	}
+
+	&:hover {
+		background: transparent;
+	}
+}
+
 .mainAction {
 	display: flex;
 	align-items: center;
@@ -341,6 +391,10 @@ function handleConnect() {
 		outline: var(--focus--border-width) solid var(--focus--border-color);
 		outline-offset: 2px;
 	}
+}
+
+.mainActionStatic {
+	cursor: default;
 }
 
 .row--workflow {

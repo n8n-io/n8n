@@ -1,10 +1,16 @@
 import { stripHydratedFileData, type AgentDbMessage, type AgentMessage } from '@n8n/agents';
 import type { AgentMessageAuthor } from '@n8n/api-types';
-import { BaseRepository, chunkIds, TransactionRunner, type OperationContext } from '@n8n/db';
+import {
+	BaseRepository,
+	chunkIds,
+	isUniqueConstraintError,
+	TransactionRunner,
+	type OperationContext,
+} from '@n8n/db';
 import { Service } from '@n8n/di';
 import { DataSource, In } from '@n8n/typeorm';
 import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
-import { OperationalError, UnexpectedError } from 'n8n-workflow';
+import { OperationalError, UnexpectedError, UserError } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
 import { isDeepStrictEqual } from 'node:util';
 
@@ -19,6 +25,12 @@ interface RuntimeMessageScope {
 	resourceId?: string;
 }
 
+export class AgentMessageIdConflictError extends UserError {
+	constructor(readonly messageId: string) {
+		super('A message with this ID already exists');
+	}
+}
+
 @Service()
 export class AgentMessageRepository extends BaseRepository<AgentMessageEntity> {
 	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
@@ -27,6 +39,7 @@ export class AgentMessageRepository extends BaseRepository<AgentMessageEntity> {
 
 	async createInput(
 		params: {
+			id?: string;
 			threadId: string;
 			resourceId: string;
 			content: AgentMessage;
@@ -52,7 +65,7 @@ export class AgentMessageRepository extends BaseRepository<AgentMessageEntity> {
 			.orIgnore()
 			.execute();
 		const message = manager.create(AgentMessageEntity, {
-			id: randomUUID(),
+			id: params.id ?? randomUUID(),
 			threadId: params.threadId,
 			resourceId: params.resourceId,
 			role: 'user',
@@ -66,9 +79,20 @@ export class AgentMessageRepository extends BaseRepository<AgentMessageEntity> {
 					: null,
 			modelContextAt: null,
 		});
-		return await manager.save(message);
+		try {
+			// TypeORM's partial type cannot represent unknown values in JSON message content.
+			await manager.insert(
+				AgentMessageEntity,
+				message as QueryDeepPartialEntity<AgentMessageEntity>,
+			);
+		} catch (error) {
+			if (isUniqueConstraintError(error)) throw new AgentMessageIdConflictError(message.id);
+			throw error;
+		}
+		return await manager.findOneByOrFail(AgentMessageEntity, { id: message.id });
 	}
 
+	/** The caller holds the session lock so concurrent input cannot take the same position. */
 	async linkExecutionInput(
 		executionId: string,
 		messageId: string,
@@ -85,11 +109,17 @@ export class AgentMessageRepository extends BaseRepository<AgentMessageEntity> {
 		) {
 			throw new UnexpectedError('The input message does not belong to this session and resource');
 		}
+		const inputs = await manager.find(AgentExecutionMessageLink, {
+			select: ['messageId', 'position'],
+			where: { executionId, direction: 'input' },
+			order: { position: 'DESC' },
+		});
+		if (inputs.some((input) => input.messageId === messageId)) return;
 		await manager.insert(AgentExecutionMessageLink, {
 			executionId,
 			messageId,
 			direction: 'input',
-			position: 0,
+			position: (inputs[0]?.position ?? -1) + 1,
 		});
 	}
 
@@ -160,9 +190,10 @@ export class AgentMessageRepository extends BaseRepository<AgentMessageEntity> {
 			messages: AgentDbMessage[];
 			executionId?: string;
 		},
+		ctx: OperationContext = {},
 	): Promise<void> {
 		if (params.messages.length === 0) return;
-		await this.runInTransaction({}, async (manager) => {
+		await this.runInTransaction(ctx, async (manager) => {
 			const now = new Date();
 			if (params.executionId) {
 				const ownership = await manager.update(

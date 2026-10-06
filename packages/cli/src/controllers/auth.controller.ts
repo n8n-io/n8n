@@ -4,6 +4,7 @@ import {
 	SSO_LOGIN_REQUIRED_ERROR_CODE,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { EventService } from '@n8n/backend-services';
 import { Time } from '@n8n/constants';
 import type { User, PublicUser, AuthProviderType } from '@n8n/db';
 import { UserRepository, AuthenticatedRequest, GLOBAL_OWNER_ROLE } from '@n8n/db';
@@ -22,7 +23,6 @@ import { AuthHandlerRegistry } from '@/auth/auth-handler.registry';
 import { AuthService } from '@/auth/auth.service';
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { AuthError, BadRequestError, ForbiddenError, InternalServerError } from '@n8n/errors';
-import { EventService } from '@/events/event.service';
 import { License } from '@/license';
 import { MfaService } from '@/mfa/mfa.service';
 import { PostHogClient } from '@/posthog';
@@ -226,6 +226,7 @@ export class AuthController {
 			payload.token,
 		);
 
+		// oxlint-disable-next-line typescript/no-deprecated
 		const isWithinUsersLimit = this.license.isWithinUsersLimit();
 
 		if (!isWithinUsersLimit) {

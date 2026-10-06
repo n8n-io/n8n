@@ -1,5 +1,6 @@
 import type { RoleChangeRequestDto } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { EventService, UrlService, RoleService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import type { PublicUser } from '@n8n/db';
 import {
@@ -33,17 +34,14 @@ import { JwtService } from './jwt.service';
 import { OwnershipService } from './ownership.service';
 import { ProjectService } from './project.service.ee';
 import { PublicApiKeyService } from './public-api-key.service';
-import { RoleService } from './role.service';
 
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { BadRequestError, ForbiddenError, InternalServerError, NotFoundError } from '@n8n/errors';
-import { EventService } from '@/events/event.service';
 import { ExternalHooks } from '@/external-hooks';
 import type { Invitation } from '@/interfaces';
 import { License } from '@/license';
 import { PostHogClient } from '@/posthog';
 import type { UserRequest } from '@/requests';
-import { UrlService } from '@n8n/backend-services';
 import { isSsoCurrentAuthenticationMethod } from '@/sso.ee/sso-helpers';
 import { UserManagementMailer } from '@/user-management/email';
 
@@ -212,6 +210,7 @@ export class UserService {
 			Object.entries(toInviteUsers).map(async ([email, id]) => {
 				// Always use JWT-based tamper-proof invite links
 				const token = this.jwtService.sign(
+					'invite',
 					{
 						inviterId: owner.id,
 						inviteeId: id,
@@ -454,7 +453,10 @@ export class UserService {
 		token: string,
 	): Promise<{ inviterId: string; inviteeId: string }> {
 		try {
-			const decoded = this.jwtService.verify<{ inviterId: string; inviteeId: string }>(token);
+			const decoded = this.jwtService.verify<{ inviterId: string; inviteeId: string }>(
+				'invite',
+				token,
+			);
 			if (!decoded.inviterId || !decoded.inviteeId) {
 				this.logger.debug('Invalid JWT token payload - missing inviterId or inviteeId');
 				throw new BadRequestError('Invalid invite URL');
@@ -523,6 +525,7 @@ export class UserService {
 			);
 		}
 
+		// oxlint-disable-next-line typescript/no-deprecated
 		if (!this.license.isWithinUsersLimit()) {
 			this.logger.debug(
 				'Request to send email invite(s) to user(s) failed because the user limit quota has been reached',
@@ -538,6 +541,7 @@ export class UserService {
 		}
 
 		const attributes = invitations.map(({ email, role }) => {
+			// oxlint-disable-next-line typescript/no-deprecated
 			if (role === 'global:admin' && !this.license.isAdvancedPermissionsLicensed()) {
 				throw new ForbiddenError(
 					'Cannot invite admin user without advanced permissions. Please upgrade to a license that includes this feature.',

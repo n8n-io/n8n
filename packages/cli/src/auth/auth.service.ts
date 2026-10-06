@@ -140,9 +140,10 @@ export class AuthService {
 
 			// Agent chat attachments render via <img> tags, which can't send the
 			// browser-id header. The controller prefix carries a resolved
-			// :projectId in req.baseUrl, so this one needs a pattern.
+			// :projectId in req.baseUrl, so this one needs a pattern. It covers
+			// both the agent preview chat and n8n Chat routes.
 			new RegExp(
-				`^/${escapeRegExp(restEndpoint)}/projects/[^/]+/agents/v2/:agentId/chat/attachments/:attachmentId$`,
+				`^/${escapeRegExp(restEndpoint)}/projects/[^/]+/agents/v2/:agentId/(?:n8n-)?chat/attachments/:attachmentId$`,
 			),
 		];
 	}
@@ -210,6 +211,43 @@ export class AuthService {
 		};
 	}
 
+	/**
+	 * Gates a route on the auth cookie's signature and expiry, without the revocation
+	 * or user lookups, so a request costs no database query.
+	 */
+	createAssetAuthMiddleware() {
+		return (req: Request, res: Response, next: NextFunction) => {
+			const token = this.getCookieToken(req);
+
+			if (token) {
+				try {
+					const payload = this.jwtService.verify<unknown>('session', token, {
+						algorithms: ['HS256'],
+					});
+					if (this.isAuthJwtPayload(payload)) {
+						next();
+						return;
+					}
+				} catch {}
+			}
+
+			if (process.env.N8N_PREVIEW_MODE === 'true') {
+				next();
+				return;
+			}
+
+			res.sendStatus(404);
+		};
+	}
+
+	/**
+	 * Every JWT this instance signs shares one secret, so a valid signature alone does
+	 * not make a token an auth cookie. Only that cookie carries both `id` and `hash`.
+	 */
+	private isAuthJwtPayload(payload: unknown): payload is AuthJwtPayload {
+		return isRecord(payload) && typeof payload.id === 'string' && typeof payload.hash === 'string';
+	}
+
 	getCookieToken(req: Request) {
 		// This models the behavior of an AuthenticatedRequest type having an optional cookies property of type Record<string, string>
 		if (typeof req.cookies === 'object' && req.cookies !== null) {
@@ -248,7 +286,7 @@ export class AuthService {
 		const token = req.cookies[AUTH_COOKIE_NAME];
 		if (!token) return;
 		try {
-			const { exp } = this.jwtService.decode(token);
+			const { exp } = this.jwtService.decodeUnverified(token);
 			if (exp) {
 				await this.invalidAuthTokenRepository.insert({
 					token,
@@ -285,6 +323,7 @@ export class AuthService {
 	) {
 		// TODO: move this check to the login endpoint in AuthController
 		// If the instance has exceeded its user quota, prevent non-owners from logging in
+		// oxlint-disable-next-line typescript/no-deprecated
 		const isWithinUsersLimit = this.license.isWithinUsersLimit();
 		if (user.role.slug !== GLOBAL_OWNER_ROLE.slug && !isWithinUsersLimit) {
 			throw new ForbiddenError(RESPONSE_ERROR_MESSAGES.USERS_QUOTA_REACHED);
@@ -308,7 +347,7 @@ export class AuthService {
 			usedMfa,
 			...(isEmbed && { isEmbed }),
 		};
-		return this.jwtService.sign(payload, {
+		return this.jwtService.sign('session', payload, {
 			expiresIn: this.jwtExpiration,
 		});
 	}
@@ -407,7 +446,7 @@ export class AuthService {
 		user: User;
 		jwtPayload: IssuedJWT;
 	}> {
-		const jwtPayload = this.jwtService.verify<unknown>(token, {
+		const jwtPayload = this.jwtService.verify<unknown>('session', token, {
 			algorithms: ['HS256'],
 		});
 
@@ -472,7 +511,7 @@ export class AuthService {
 			newEmail,
 			hash: this.createJWTHash(user),
 		};
-		const token = this.jwtService.sign(payload, { expiresIn: '20m', audience: 'n8n-email-change' });
+		const token = this.jwtService.sign('emailChange', payload, { expiresIn: '20m' });
 		const url = new URL(`${this.urlService.getInstanceBaseUrl()}/confirm-email-change`);
 		url.searchParams.append('token', token);
 		return url.toString();
@@ -483,9 +522,7 @@ export class AuthService {
 	): Promise<{ user: User; newEmail: string } | undefined> {
 		let decoded: EmailChangeToken;
 		try {
-			decoded = this.jwtService.verify(token, {
-				audience: 'n8n-email-change',
-			});
+			decoded = this.jwtService.verify('emailChange', token);
 		} catch {
 			return;
 		}
@@ -500,7 +537,7 @@ export class AuthService {
 
 	generatePasswordResetToken(user: User, expiresIn: TimeUnitValue = '20m') {
 		const payload: PasswordResetToken = { sub: user.id, hash: this.createJWTHash(user) };
-		return this.jwtService.sign(payload, { expiresIn, audience: 'n8n-password-reset' });
+		return this.jwtService.sign('passwordReset', payload, { expiresIn });
 	}
 
 	generatePasswordResetUrl(user: User) {
@@ -516,9 +553,7 @@ export class AuthService {
 	async resolvePasswordResetToken(token: string): Promise<User | undefined> {
 		let decodedToken: PasswordResetToken;
 		try {
-			decodedToken = this.jwtService.verify(token, {
-				audience: 'n8n-password-reset',
-			});
+			decodedToken = this.jwtService.verify('passwordReset', token);
 		} catch (e) {
 			if (e instanceof TokenExpiredError) {
 				this.logger.debug('Reset password token expired');

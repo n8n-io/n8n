@@ -17,9 +17,6 @@ export type McpRegistryServerIconResponse = {
 export type McpRegistryServerToolResponse = {
 	name: string;
 	title?: string;
-	annotations?: {
-		readOnlyHint?: boolean;
-	};
 };
 
 export interface McpRegistryCredentialOption {

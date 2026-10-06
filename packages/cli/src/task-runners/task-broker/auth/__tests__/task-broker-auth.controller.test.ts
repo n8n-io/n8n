@@ -1,7 +1,7 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 
-import { CacheService } from '@/services/cache/cache.service';
+import { CacheService } from '@n8n/backend-services';
 
 import { BadRequestError, ForbiddenError } from '@n8n/errors';
 import type { AuthlessRequest } from '../../../../requests';

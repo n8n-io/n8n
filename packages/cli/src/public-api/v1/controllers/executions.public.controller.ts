@@ -15,6 +15,7 @@ import {
 	StoppedExecutionsPublicDto,
 	TagIdsPublicDto,
 } from '@n8n/api-types';
+import { EventService, WorkflowSharingService } from '@n8n/backend-services';
 import { ExecutionsConfig } from '@n8n/config';
 import type { AuthenticatedRequest, IExecutionBase, IExecutionResponse } from '@n8n/db';
 import {
@@ -41,14 +42,12 @@ import { AbortedExecutionRetryError } from '@/errors/aborted-execution-retry.err
 import { MissingExecutionStopError } from '@/errors/missing-execution-stop.error';
 import { QueuedExecutionRetryError } from '@/errors/queued-execution-retry.error';
 import { BadRequestError, ConflictError, NotFoundError } from '@n8n/errors';
-import { EventService } from '@/events/event.service';
 import { isRedactableExecution } from '@/executions/execution-redaction';
 import { ExecutionRedactionServiceProxy } from '@/executions/execution-redaction-proxy.service';
 import { ExecutionService } from '@/executions/execution.service';
 import type { StopResult } from '@/executions/execution.types';
 import type { TracingContext } from '@/modules/otel/tracing-context';
 import { decodeCursor, encodeNextCursor } from '@/public-api/v1/shared/services/pagination.service';
-import { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
 
 type PublicExecution = IExecutionBase & Partial<IExecutionResponse>;
 
@@ -445,6 +444,7 @@ function toPublicTracingContext(tracingContext: unknown): TracingContext | null 
 
 function toBaseFields(execution: PublicExecution) {
 	return {
+		// oxlint-disable-next-line typescript/no-deprecated
 		finished: execution.finished,
 		mode: execution.mode,
 		retryOf: execution.retryOf ?? null,
@@ -469,6 +469,7 @@ function toBaseFields(execution: PublicExecution) {
 function toExecutionListItem(execution: PublicExecution) {
 	return {
 		id: execution.id,
+		// oxlint-disable-next-line typescript/no-deprecated
 		finished: execution.finished,
 		mode: execution.mode,
 		retryOf: execution.retryOf ?? null,
@@ -554,6 +555,7 @@ function toRetriedExecutionPublicDto(
 		mode: retried.mode,
 		startedAt: retried.startedAt.toISOString(),
 		workflowId: retried.workflowId,
+		// oxlint-disable-next-line typescript/no-deprecated
 		finished: retried.finished,
 		retryOf: retried.retryOf ?? null,
 		status: retried.status,

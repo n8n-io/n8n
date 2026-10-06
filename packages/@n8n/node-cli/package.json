@@ -1,6 +1,6 @@
 {
   "name": "@n8n/node-cli",
-  "version": "0.51.0",
+  "version": "0.52.0",
   "description": "Official CLI for developing community nodes for n8n",
   "bin": {
     "n8n-node": "bin/n8n-node.mjs"
@@ -22,8 +22,8 @@
     "dev": "tsc-watch -p tsconfig.build.json -w --onCompilationComplete \"pnpm copy-templates\"",
     "format": "biome format --write src",
     "format:check": "biome ci src",
-    "lint": "eslint src --quiet",
-    "lintfix": "eslint src --fix",
+    "lint": "oxlint src --quiet",
+    "lintfix": "oxlint src --fix",
     "build": "tsc -p tsconfig.build.json && pnpm copy-templates",
     "build:unchecked": "tsc -p tsconfig.build.json --noCheck && pnpm copy-templates",
     "publish:dry": "pnpm run build && pnpm pub --dry-run",
@@ -65,9 +65,12 @@
     "typescript-eslint": "catalog:"
   },
   "devDependencies": {
+    "@n8n/oxlint-config": "workspace:*",
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
     "@typescript/native": "catalog:typescript-tooling",
+    "oxlint": "catalog:",
+    "oxlint-tsgolint": "catalog:",
     "typescript": "catalog:typescript-tooling",
     "vite": "catalog:",
     "vitest": "catalog:",

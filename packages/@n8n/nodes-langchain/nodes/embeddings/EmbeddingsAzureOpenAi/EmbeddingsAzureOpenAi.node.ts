@@ -1,5 +1,10 @@
 import { AzureOpenAIEmbeddings, OpenAIEmbeddings } from '@langchain/openai';
-import { getProxyAgent, logWrapper, getConnectionHintNoticeField } from '@n8n/ai-utilities';
+import {
+	getProxyAgent,
+	aiClientFetch,
+	logWrapper,
+	getConnectionHintNoticeField,
+} from '@n8n/ai-utilities';
 import {
 	NodeConnectionTypes,
 	NodeOperationError,
@@ -11,7 +16,7 @@ import {
 
 export class EmbeddingsAzureOpenAi implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Embeddings Azure OpenAI',
+		displayName: 'Microsoft Foundry Embeddings',
 		name: 'embeddingsAzureOpenAi',
 		icon: 'file:azure.svg',
 		credentials: [
@@ -22,9 +27,9 @@ export class EmbeddingsAzureOpenAi implements INodeType {
 		],
 		group: ['transform'],
 		version: 1,
-		description: 'Use Embeddings Azure OpenAI',
+		description: 'Use Microsoft Foundry Embeddings',
 		defaults: {
-			name: 'Embeddings Azure OpenAI',
+			name: 'Microsoft Foundry Embeddings',
 		},
 
 		codex: {
@@ -39,6 +44,15 @@ export class EmbeddingsAzureOpenAi implements INodeType {
 					},
 				],
 			},
+			// The old labels. Fuzzy search needs them verbatim to find the renamed node.
+			alias: [
+				'Azure',
+				'Azure OpenAI',
+				'Embeddings Azure OpenAI',
+				'Azure AI Foundry',
+				'Foundry',
+				'AOAI',
+			],
 		},
 
 		inputs: [],
@@ -148,7 +162,7 @@ export class EmbeddingsAzureOpenAi implements INodeType {
 			if (!foundryURL) {
 				throw new NodeOperationError(
 					this.getNode(),
-					'Foundry endpoint is missing in the selected Azure OpenAI API credential.',
+					'Foundry endpoint is missing in the selected Microsoft Foundry (API Key) credential.',
 				);
 			}
 			const embeddings = new OpenAIEmbeddings({
@@ -156,6 +170,7 @@ export class EmbeddingsAzureOpenAi implements INodeType {
 				model: modelName,
 				configuration: {
 					baseURL: foundryURL,
+					fetch: aiClientFetch,
 					fetchOptions: {
 						dispatcher: getProxyAgent(foundryURL, {}, this.helpers.getSecureEgressFilter()),
 					},
@@ -180,6 +195,7 @@ export class EmbeddingsAzureOpenAi implements INodeType {
 				? `${credentials.endpoint}/openai/deployments`
 				: undefined,
 			configuration: {
+				fetch: aiClientFetch,
 				fetchOptions: {
 					dispatcher: getProxyAgent(
 						credentials.endpoint ?? `https://${credentials.resourceName}.openai.azure.com`,

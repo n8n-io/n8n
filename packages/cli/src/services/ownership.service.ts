@@ -1,5 +1,6 @@
 import { OwnerSetupRequestDto } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { CacheService, EventService } from '@n8n/backend-services';
 import type { ListQueryDb } from '@n8n/db';
 import {
 	GLOBAL_OWNER_ROLE,
@@ -14,13 +15,9 @@ import {
 	Scope,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { IsNull } from '@n8n/typeorm/find-options/operator/IsNull';
-import { Not } from '@n8n/typeorm/find-options/operator/Not';
 
 import config from '@/config';
 import { BadRequestError } from '@n8n/errors';
-import { EventService } from '@/events/event.service';
-import { CacheService } from '@/services/cache/cache.service';
 
 import { PasswordUtility } from './password.utility';
 
@@ -257,23 +254,7 @@ export class OwnershipService {
 	}
 
 	async hasInstanceOwner() {
-		return await this.userRepository.exists({
-			where: [
-				{
-					role: { slug: GLOBAL_OWNER_ROLE.slug },
-					// We use this to avoid selecting the "shell" user
-					lastActiveAt: Not(IsNull()),
-				},
-				// OR
-				// This condition only exists because of PAY-4247
-				{
-					role: { slug: GLOBAL_OWNER_ROLE.slug },
-					// We use this to avoid selecting the "shell" user
-					password: Not(IsNull()),
-				},
-			],
-			relations: ['role'],
-		});
+		return await this.userRepository.hasClaimedInstanceOwner();
 	}
 
 	async setupOwner(

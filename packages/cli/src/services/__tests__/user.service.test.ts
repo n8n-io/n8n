@@ -1,4 +1,5 @@
 import { InviteUsersRequestDto } from '@n8n/api-types';
+import { type EventService, UrlService, type RoleService } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import {
@@ -20,11 +21,9 @@ import { mock } from 'vitest-mock-extended';
 
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { BadRequestError, ForbiddenError, NotFoundError } from '@n8n/errors';
-import type { EventService } from '@/events/event.service';
 import type { ExternalHooks } from '@/external-hooks';
 import type { License } from '@/license';
 import type { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
-import { UrlService } from '@n8n/backend-services';
 import { UserService } from '@/services/user.service';
 import * as ssoHelpers from '@/sso.ee/sso-helpers';
 import type { UserManagementMailer } from '@/user-management/email';
@@ -33,7 +32,6 @@ import { JwtService } from '../jwt.service';
 import type { OwnershipService } from '../ownership.service';
 import type { ProjectService } from '../project.service.ee';
 import type { PublicApiKeyService } from '../public-api-key.service';
-import type { RoleService } from '../role.service';
 
 describe('UserService', () => {
 	const globalConfig = mockInstance(GlobalConfig, {
@@ -571,7 +569,7 @@ describe('UserService', () => {
 			const result = await userService.getInvitationIdsFromPayload(token);
 
 			expect(result).toEqual({ inviterId, inviteeId });
-			expect(jwtService.verify).toHaveBeenCalledWith(token);
+			expect(jwtService.verify).toHaveBeenCalledWith('invite', token);
 			expect(userRepository.findOne).toHaveBeenCalledWith({
 				where: { role: { slug: GLOBAL_OWNER_ROLE.slug } },
 			});

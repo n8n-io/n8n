@@ -1,10 +1,10 @@
+import { EventService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 
 import { N8N_VERSION } from '@/constants';
 import { BadRequestError, ForbiddenError } from '@n8n/errors';
-import { EventService } from '@/events/event.service';
 
 import { buildImportResult, toPackageSummary } from './engine/import-result';
 import { emitPackageImportedEvent, type ImportOutcome } from './engine/import-telemetry';
@@ -43,6 +43,7 @@ import { PackageImportConfig } from './n8n-packages.config';
 import {
 	CredentialExportPolicy,
 	MissingWorkflowDependencyPolicy,
+	OverwriteDeletionPolicy,
 	WorkflowConflictPolicy,
 	WorkflowIdPolicy,
 	WorkflowVersionPolicy,
@@ -84,11 +85,14 @@ type DirectoryProjectPackage =
 	| { status: 'empty'; result: ImportResult }
 	| { status: 'project'; reader: PackageReader; manifest: PackageManifest };
 
-/** Merge preserves workflows omitted from the selection. Skip preserves existing shared tags. */
+/**
+ * A cherry-pick import acts only on its selection, so most policies are fixed here. Deletion mode is
+ * left to the caller (`overwriteDeletionPolicy`): promotion passes `hard-delete` for diff convergence,
+ * while the public selection import defaults to the safe `archive`.
+ */
 const CHERRY_PICK_IMPORT_POLICY = {
 	projectConflictPolicy: 'merge',
 	folderConflictPolicy: 'merge',
-	overwriteDeletionPolicy: 'archive',
 	workflowPublishingPolicy: 'match-source',
 	missingNodeTypeMode: 'fail',
 	credentialMatchingMode: 'id-only',
@@ -108,6 +112,7 @@ const CHERRY_PICK_IMPORT_POLICY = {
 	| 'apiKeyScopes'
 	| 'bindings'
 	| 'selection'
+	| 'overwriteDeletionPolicy'
 	| 'workflowConflictPolicy'
 	| 'workflowIdPolicy'
 >;
@@ -529,6 +534,7 @@ export class N8nPackagesService {
 			...(request.apiKeyScopes !== undefined ? { apiKeyScopes: request.apiKeyScopes } : {}),
 			...(request.bindings !== undefined ? { bindings: request.bindings } : {}),
 			...CHERRY_PICK_IMPORT_POLICY,
+			overwriteDeletionPolicy: request.overwriteDeletionPolicy ?? OverwriteDeletionPolicy.Archive,
 			workflowConflictPolicy: request.workflowConflictPolicy ?? WorkflowConflictPolicy.NewVersion,
 			workflowIdPolicy: request.workflowIdPolicy ?? WorkflowIdPolicy.Source,
 			selection,

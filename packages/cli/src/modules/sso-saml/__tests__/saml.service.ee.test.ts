@@ -1,27 +1,29 @@
-import type { Mock, Mocked } from 'vitest';
+import type { Mock, MockInstance, Mocked } from 'vitest';
 import type { SamlPreferences } from '@n8n/api-types';
 import type { HttpRequestClient, OutboundHttp } from '@n8n/backend-network';
 import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
 import type { GlobalConfig } from '@n8n/config';
 import { SettingsRepository } from '@n8n/db';
-import type { UserRepository, Settings, User } from '@n8n/db';
+import type { AuthIdentityRepository, UserRepository, Settings, User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type express from 'express';
-import { mock } from 'vitest-mock-extended';
+import { mock, type MockProxy } from 'vitest-mock-extended';
 import type { Cipher, InstanceSettings } from 'n8n-core';
 import { CREDENTIAL_BLANKING_VALUE } from 'n8n-workflow';
 import type { IdentityProviderInstance, ServiceProviderInstance } from 'samlify';
+import type { BindingContext } from 'samlify/types/src/entity';
 
 import { BadRequestError, ForbiddenError } from '@n8n/errors';
 import type { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
-import type { CacheService } from '@/services/cache/cache.service';
+import type { CacheService } from '@n8n/backend-services';
 import type { UrlService } from '@n8n/backend-services';
 import * as ssoHelpers from '@/sso.ee/sso-helpers';
 
 import { SAML_PREFERENCES_DB_KEY } from '../constants';
 import { InvalidSamlMetadataUrlError } from '../errors/invalid-saml-metadata-url.error';
 import { InvalidSamlMetadataError } from '../errors/invalid-saml-metadata.error';
+import { SamlEmailNotVerifiedError } from '../errors/saml-email-not-verified.error';
 import * as samlHelpers from '../saml-helpers';
 import { SamlValidator } from '../saml-validator';
 import { SamlService } from '../saml.service.ee';
@@ -161,10 +163,12 @@ describe('SamlService', () => {
 	let instanceSettings: InstanceSettings;
 	let globalConfig: GlobalConfig;
 	let userRepository: UserRepository;
+	let authIdentityRepository: MockProxy<AuthIdentityRepository>;
 	let provisioningService: ProvisioningService;
 	let cipher: Cipher;
 	let cacheService: Mocked<CacheService>;
 	let outboundHttp: Mocked<OutboundHttp>;
+	let urlService: MockProxy<UrlService>;
 	let httpRequest: Mock;
 	const validator = new SamlValidator(mock());
 	const logger = mockLogger();
@@ -209,6 +213,8 @@ describe('SamlService', () => {
 		});
 		provisioningService = mock<ProvisioningService>();
 		userRepository = mock<UserRepository>();
+		authIdentityRepository = mock<AuthIdentityRepository>();
+		authIdentityRepository.findByProviderIdWithUser.mockResolvedValue(null);
 		globalConfig = mock<GlobalConfig>({
 			sso: { saml: { loginEnabled: false } },
 		});
@@ -222,6 +228,7 @@ describe('SamlService', () => {
 		httpRequest = vi.fn();
 		outboundHttp = mock<OutboundHttp>();
 		outboundHttp.requests.mockReturnValue(mock<HttpRequestClient>({ request: httpRequest }));
+		urlService = mock<UrlService>({ getInstanceBaseUrl: () => 'http://localhost:5678' });
 
 		vi.spyOn(ssoHelpers, 'reloadAuthenticationMethod').mockImplementation(
 			async () => await Promise.resolve(),
@@ -230,7 +237,7 @@ describe('SamlService', () => {
 
 		samlService = new SamlService(
 			logger,
-			mock<UrlService>(),
+			urlService,
 			validator,
 			userRepository,
 			settingsRepository,
@@ -239,6 +246,7 @@ describe('SamlService', () => {
 			cipher,
 			cacheService,
 			outboundHttp,
+			authIdentityRepository,
 		);
 		// Mock GlobalConfig container access
 		Container.set(require('@n8n/config').GlobalConfig, globalConfig);
@@ -274,6 +282,26 @@ describe('SamlService', () => {
 			process.env.N8N_ENV_FEAT_SIGNED_SAML_REQUESTS = 'true';
 
 			expect(samlService.isSignedSamlRequestsEnabled()).toBe(true);
+		});
+	});
+
+	describe('getLoginRequestUrl', () => {
+		it('passes each relay state with its request and uses the instance URL by default', async () => {
+			const idp = mock<IdentityProviderInstance>();
+			const sp = mock<ServiceProviderInstance>();
+			sp.createLoginRequest.mockReturnValue(mock<BindingContext>());
+			vi.spyOn(samlService, 'getIdentityProviderInstance').mockReturnValue(idp);
+			vi.spyOn(samlService, 'getServiceProviderInstance').mockReturnValue(sp);
+
+			await samlService.getLoginRequestUrl('http://localhost:5678/first', 'redirect');
+			await samlService.getLoginRequestUrl(undefined, 'post');
+
+			expect(sp.createLoginRequest).toHaveBeenNthCalledWith(1, idp, 'redirect', {
+				relayState: 'http://localhost:5678/first',
+			});
+			expect(sp.createLoginRequest).toHaveBeenNthCalledWith(2, idp, 'post', {
+				relayState: 'http://localhost:5678',
+			});
 		});
 	});
 
@@ -483,15 +511,149 @@ describe('SamlService', () => {
 				mapped: samlAttributes,
 				raw: {},
 			});
-			vi.mocked(userRepository.findOne).mockResolvedValue(mockUser);
+			authIdentityRepository.findByProviderIdWithUser.mockResolvedValue({
+				user: mockUser,
+			} as any);
 
 			const loginResult = await samlService.handleSamlLogin(mock<express.Request>(), 'post');
 
+			expect(authIdentityRepository.findByProviderIdWithUser).toHaveBeenCalledWith(
+				samlAttributes.userPrincipalName,
+				'saml',
+			);
+			expect(userRepository.findOne).not.toHaveBeenCalled();
 			expect(loginResult).toEqual({
 				authenticatedUser: mockUser,
 				attributes: samlAttributes,
 				rawAttributes: {},
 				onboardingRequired: false,
+			});
+		});
+
+		it('resolves the user by SAML identity even when the response carries another email', async () => {
+			const samlAttributes = {
+				email: 'other@bar.com',
+				firstName: 'Foo',
+				lastName: 'Bar',
+				userPrincipalName: 'foo-upn',
+			};
+			const identityUser = { id: '123', email: 'foo@bar.com', authIdentities: [] } as any;
+			vi.spyOn(samlService, 'getAttributesFromLoginResponse').mockResolvedValue({
+				mapped: samlAttributes,
+				raw: {},
+			});
+			authIdentityRepository.findByProviderIdWithUser.mockResolvedValue({
+				user: identityUser,
+			} as any);
+			const updateUserSpy = vi.spyOn(samlHelpers, 'updateUserFromSamlAttributes');
+
+			const loginResult = await samlService.handleSamlLogin(mock<express.Request>(), 'post');
+
+			expect(loginResult.authenticatedUser).toBe(identityUser);
+			expect(userRepository.findOne).not.toHaveBeenCalled();
+			expect(updateUserSpy).not.toHaveBeenCalled();
+		});
+
+		describe('linking an existing user by email', () => {
+			const samlAttributes = {
+				email: 'foo@bar.com',
+				firstName: 'Foo',
+				lastName: 'Bar',
+				userPrincipalName: 'foo-upn',
+			};
+			const existingUser = { id: '123', email: 'foo@bar.com', authIdentities: [] } as any;
+			let updateUserSpy: MockInstance<typeof samlHelpers.updateUserFromSamlAttributes>;
+			let createUserSpy: MockInstance<typeof samlHelpers.createUserFromSamlAttributes>;
+
+			const setEmailVerifiedRequired = () => {
+				type PrivatePrefs = { _samlPreferences: SamlPreferences };
+				(samlService as unknown as PrivatePrefs)._samlPreferences.emailVerifiedRequired = true;
+			};
+
+			const loginWith = async (emailVerified?: string) => {
+				vi.spyOn(samlService, 'getAttributesFromLoginResponse').mockResolvedValue({
+					mapped: { ...samlAttributes, emailVerified },
+					raw: {},
+				});
+				return await samlService.handleSamlLogin(mock<express.Request>(), 'post');
+			};
+
+			beforeEach(() => {
+				vi.mocked(userRepository.findOne).mockResolvedValue(existingUser);
+				updateUserSpy = vi
+					.spyOn(samlHelpers, 'updateUserFromSamlAttributes')
+					.mockResolvedValue(existingUser);
+				createUserSpy = vi.spyOn(samlHelpers, 'createUserFromSamlAttributes');
+			});
+
+			it('links the user when the response carries no verification attribute', async () => {
+				const loginResult = await loginWith(undefined);
+
+				expect(loginResult.authenticatedUser).toBe(existingUser);
+				expect(updateUserSpy).toHaveBeenCalledWith(
+					existingUser,
+					expect.objectContaining(samlAttributes),
+				);
+			});
+
+			it('does not link the user when the identity provider marks the email as not verified', async () => {
+				await expect(loginWith('false')).rejects.toThrow(SamlEmailNotVerifiedError);
+
+				expect(updateUserSpy).not.toHaveBeenCalled();
+				expect(createUserSpy).not.toHaveBeenCalled();
+				expect(provisioningService.provisionInstanceRoleForUser).not.toHaveBeenCalled();
+			});
+
+			it('does not link the user when verification is required and the attribute is absent', async () => {
+				setEmailVerifiedRequired();
+
+				await expect(loginWith(undefined)).rejects.toThrow(
+					'Email address is not verified by the identity provider',
+				);
+
+				expect(updateUserSpy).not.toHaveBeenCalled();
+			});
+
+			it('does not link the user when verification is required and the value is unknown', async () => {
+				setEmailVerifiedRequired();
+
+				await expect(loginWith('maybe')).rejects.toThrow(SamlEmailNotVerifiedError);
+
+				expect(updateUserSpy).not.toHaveBeenCalled();
+			});
+
+			it('links the user when verification is required and the identity provider verified the email', async () => {
+				setEmailVerifiedRequired();
+
+				const loginResult = await loginWith(' True ');
+
+				expect(loginResult.authenticatedUser).toBe(existingUser);
+				expect(updateUserSpy).toHaveBeenCalled();
+			});
+
+			it('does not link a user that already has another SAML identity when verification is required', async () => {
+				setEmailVerifiedRequired();
+				vi.mocked(userRepository.findOne).mockResolvedValue({
+					...existingUser,
+					authIdentities: [{ providerType: 'saml', providerId: 'another-upn' }],
+				} as any);
+
+				await expect(loginWith(undefined)).rejects.toThrow(SamlEmailNotVerifiedError);
+
+				expect(updateUserSpy).not.toHaveBeenCalled();
+			});
+
+			it('still creates a new user when verification is required and no user has the email', async () => {
+				setEmailVerifiedRequired();
+				vi.mocked(userRepository.findOne).mockResolvedValue(null);
+				vi.spyOn(ssoHelpers, 'isSsoJustInTimeProvisioningEnabled').mockReturnValue(true);
+				const newUser = { id: '456', firstName: 'Foo', lastName: 'Bar' } as any;
+				createUserSpy.mockResolvedValue(newUser);
+
+				const loginResult = await loginWith(undefined);
+
+				expect(loginResult.authenticatedUser).toBe(newUser);
+				expect(updateUserSpy).not.toHaveBeenCalled();
 			});
 		});
 
@@ -627,7 +789,7 @@ describe('SamlService', () => {
 				mapped: samlAttributes,
 				raw: {},
 			});
-			vi.mocked(userRepository.findOne).mockResolvedValue(mockUser);
+			authIdentityRepository.findByProviderIdWithUser.mockResolvedValue({ user: mockUser } as any);
 
 			await samlService.handleSamlLogin(mock<express.Request>(), 'post');
 
@@ -665,7 +827,7 @@ describe('SamlService', () => {
 				mapped: samlAttributes,
 				raw: rawAttributes,
 			});
-			vi.mocked(userRepository.findOne).mockResolvedValue(mockUser);
+			authIdentityRepository.findByProviderIdWithUser.mockResolvedValue({ user: mockUser } as any);
 
 			await samlService.handleSamlLogin(mock<express.Request>(), 'post');
 
@@ -698,7 +860,7 @@ describe('SamlService', () => {
 				mapped: samlAttributes,
 				raw: {},
 			});
-			vi.mocked(userRepository.findOne).mockResolvedValue(mockUser);
+			authIdentityRepository.findByProviderIdWithUser.mockResolvedValue({ user: mockUser } as any);
 
 			await samlService.handleSamlLogin(mock<express.Request>(), 'post');
 

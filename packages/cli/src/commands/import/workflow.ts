@@ -1,3 +1,4 @@
+import { EventService } from '@n8n/backend-services';
 import {
 	generateNanoId,
 	ProjectRepository,
@@ -16,7 +17,6 @@ import { jsonParse, UserError } from 'n8n-workflow';
 import { z } from 'zod';
 
 import { UM_FIX_INSTRUCTION } from '@/constants';
-import { EventService } from '@/events/event.service';
 import type { IWorkflowToImport, IWorkflowWithVersionMetadata } from '@/interfaces';
 import { ImportService, type WorkflowImportViolations } from '@/services/import.service';
 
@@ -38,6 +38,7 @@ function assertHasWorkflowsToImport(
 
 /**
  * Creates workflow entities from plain objects while preserving versionMetadata metadata.
+ * Generates an ID for each workflow that has none.
  */
 function createWorkflowsWithVersionMetadata(
 	workflowRepository: WorkflowRepository,
@@ -46,6 +47,9 @@ function createWorkflowsWithVersionMetadata(
 	const createdWorkflows = workflowRepository.create(workflows);
 	return createdWorkflows.map((created, index) => ({
 		...created,
+		// A plain object does not run the entity insert hook that generates missing IDs.
+		// The ownership check also needs the ID before the insert.
+		id: created.id || generateNanoId(),
 		versionMetadata: workflows[index].versionMetadata,
 	}));
 }
@@ -296,9 +300,6 @@ export class ImportWorkflowsCommand extends BaseCommand<z.infer<typeof flagsSche
 
 		for (const file of files) {
 			const workflow = jsonParse<IWorkflowToImport>(fs.readFileSync(file, { encoding: 'utf8' }));
-			if (!workflow.id) {
-				workflow.id = generateNanoId();
-			}
 
 			try {
 				assertHasWorkflowsToImport([workflow]);

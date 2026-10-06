@@ -1843,12 +1843,10 @@ describe('WorkflowSettingsVue', () => {
 				// implies production (IAM-697), so the genuine, intended save is "all".
 				const manualSelect = getByTestId('workflow-settings-redact-manual-select');
 				await userEvent.click(within(manualSelect).getByRole('combobox'));
-				await waitFor(async () => {
-					const options = within(document.body as HTMLElement).getAllByRole('option');
-					const redactOption = options.find((o) => o.textContent?.trim() === 'Redact');
-					expect(redactOption).toBeTruthy();
-					await userEvent.click(redactOption!);
+				const redactOption = await within(document.body as HTMLElement).findByRole('option', {
+					name: 'Redact',
 				});
+				await userEvent.click(redactOption);
 				await flushPromises();
 
 				toast.showError.mockClear();

@@ -7,7 +7,7 @@ import type { INodeType, INodeTypeDescription, IRunExecutionData } from 'n8n-wor
 import { mock } from 'vitest-mock-extended';
 
 import { ActiveExecutions } from '@/active-executions';
-import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
+import { CredentialsFinderService } from '@n8n/backend-services';
 import { BadRequestError, ForbiddenError } from '@n8n/errors';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { NodeTypes } from '@/node-types';

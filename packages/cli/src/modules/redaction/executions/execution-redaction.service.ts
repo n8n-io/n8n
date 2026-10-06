@@ -1,4 +1,5 @@
 import { LicenseState, Logger } from '@n8n/backend-common';
+import { EventService } from '@n8n/backend-services';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import {
@@ -10,7 +11,6 @@ import {
 
 import { isCredSharingEnabled } from '@/constants/credential-sharing';
 import { ForbiddenError, ScopeForbiddenError } from '@n8n/errors';
-import { EventService } from '@/events/event.service';
 import type {
 	ExecutionRedaction,
 	ExecutionRedactionOptions,

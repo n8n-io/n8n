@@ -1,8 +1,7 @@
 import { createTestingPinia } from '@pinia/testing';
 import { within, waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
-import { createComponentRenderer } from '@/__tests__/render';
-import { mockedStore, type MockedStore } from '@/__tests__/utils';
+import { createComponentRenderer, mockedStore, type MockedStore } from '@n8n/frontend-test-utils';
 import McpConnectClientDialog from '@/features/ai/mcpAccess/components/McpConnectClientDialog.vue';
 import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -70,7 +69,7 @@ describe('McpConnectClientDialog', () => {
 		expect(body().queryByText('Authenticate')).not.toBeInTheDocument();
 	});
 
-	it('should show the one-click connector, server URL, and no token setup for web clients', async () => {
+	it('should show only the server URL (no one-click) for web clients without a connector URL', async () => {
 		renderComponent({ pinia });
 
 		await waitFor(() => {
@@ -82,15 +81,11 @@ describe('McpConnectClientDialog', () => {
 		});
 		await userEvent.click(body().getByText('ChatGPT'));
 
+		// ChatGPT has no one-click connector, so only the mandatory server URL shows.
 		await waitFor(() => {
-			expect(body().getByTestId('mcp-connect-one-click')).toBeInTheDocument();
+			expect(body().getByText('Server URL')).toBeInTheDocument();
 		});
-		expect(body().getByTestId('mcp-connect-one-click')).toHaveAttribute(
-			'href',
-			'https://chatgpt.com/plugins#settings/Connectors?create-connector=true&redirectAfter=%2Fplugins',
-		);
-		// Server URL is mandatory for web clients.
-		expect(body().getByText('Server URL')).toBeInTheDocument();
+		expect(body().queryByTestId('mcp-connect-one-click')).not.toBeInTheDocument();
 	});
 
 	it('should show the OAuth client setup by default and switch to the API key tab', async () => {

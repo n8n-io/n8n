@@ -1300,6 +1300,7 @@ export class InstanceAiController {
 			createdWorkflowIds = await this.evalThreadRestore.restoreWorkflows(
 				workflows,
 				projectId,
+				req.user,
 				idMap,
 				allowedCredentialIds ? new Set(allowedCredentialIds) : undefined,
 				folderIdMap,
@@ -1308,7 +1309,12 @@ export class InstanceAiController {
 			// (no trigger, webhook conflict, unresolved credential) must fail while the
 			// restore is still fully rollback-able. The rollback unpublishes.
 			publishedWorkflowIds = await this.evalThreadRestore.publishSeedWorkflows(workflows, req.user);
-			createdAgentIds = await this.evalThreadRestore.restoreAgents(agents, projectId, idMap);
+			createdAgentIds = await this.evalThreadRestore.restoreAgents(
+				agents,
+				projectId,
+				idMap,
+				allowedCredentialIds ? new Set(allowedCredentialIds) : undefined,
+			);
 			// Built (and validated) BEFORE the message write: a rejected binding — two
 			// agents whose refs collide — must fail while the restore is still fully
 			// rollback-able, not after the messages have committed.

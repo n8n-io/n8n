@@ -1,5 +1,6 @@
 import type { RedactionFloor } from '@n8n/api-types';
 import { LicenseState, Logger } from '@n8n/backend-common';
+import { EventService, CredentialsFinderService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import type { EntityManager, User, Project, Folder } from '@n8n/db';
 import {
@@ -14,10 +15,8 @@ import { Service } from '@n8n/di';
 import { PROJECT_ROOT } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
-import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { BadRequestError, ForbiddenError, InternalServerError, NotFoundError } from '@n8n/errors';
 import { WorkflowValidationError } from '@/errors/response-errors/workflow-validation.error';
-import { EventService } from '@/events/event.service';
 import type { WorkflowActionSource } from '@/events/maps/relay.event-map';
 import { ExternalHooks, toWorkflowLifecycleHookActor } from '@/external-hooks';
 import { validateEntity } from '@/generic-helpers';
@@ -169,6 +168,7 @@ export class WorkflowCreationService {
 		} = options;
 
 		// Ensure workflow is created as inactive
+		// oxlint-disable-next-line typescript/no-deprecated
 		newWorkflow.active = false;
 		newWorkflow.versionId = uuid();
 		newWorkflow.parentFolder = null;
@@ -296,11 +296,14 @@ export class WorkflowCreationService {
 		// while editing rather than at runtime. No stored workflow: this one is new.
 		// The clearance binds to the node hash while the row has no id, so nothing below
 		// may touch `newWorkflow.nodes` — the sealed write would reject it.
-		const cleared = await this.policyEnforcementService.enforceWorkflowSave({
-			workflow: { id: newWorkflow.id ?? null, name: newWorkflow.name, nodes: newWorkflow.nodes },
-			storedWorkflow: null,
-			projectId: effectiveProjectId,
-		});
+		const cleared = await this.policyEnforcementService.enforceWorkflowSave(
+			{
+				workflow: { id: newWorkflow.id ?? null, name: newWorkflow.name, nodes: newWorkflow.nodes },
+				storedWorkflow: null,
+				projectId: effectiveProjectId,
+			},
+			{ kind: 'user', user },
+		);
 
 		const floor = batchContext?.redactionFloor ?? (await this.readActiveRedactionFloor());
 

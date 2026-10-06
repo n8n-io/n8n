@@ -7,7 +7,7 @@ import type { Response } from 'express';
 import { BadRequestError, NotFoundError, NotImplementedError } from '@n8n/errors';
 import { License } from '@/license';
 import { isPositiveInteger } from '@/utils';
-import { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
+import { WorkflowSharingService } from '@n8n/backend-services';
 
 import { isExecutionIdV2 } from './execution-id';
 import { ExecutionListService } from './execution-list.service';
@@ -38,6 +38,7 @@ export class ExecutionsController {
 		query.user = req.user;
 		query.sharingOptions = await this.executionListService.buildSharingOptions('execution:read');
 
+		// oxlint-disable-next-line typescript/no-deprecated
 		if (!this.license.isAdvancedExecutionFiltersEnabled()) {
 			delete query.metadata;
 			delete query.annotationTags;
@@ -76,6 +77,7 @@ export class ExecutionsController {
 
 		if (workflowIds.length === 0) throw new NotFoundError('Execution not found');
 
+		// oxlint-disable-next-line typescript/no-deprecated
 		return this.license.isSharingEnabled()
 			? await this.enterpriseExecutionService.findOne(req, workflowIds)
 			: await this.executionService.findOne(req, workflowIds);

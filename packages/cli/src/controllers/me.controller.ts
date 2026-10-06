@@ -7,6 +7,7 @@ import {
 	McpDiscoveryVisitRequestDto,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { EventService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import type { User, PublicUser, AuthIdentity } from '@n8n/db';
 import { UserRepository, AuthenticatedRequest } from '@n8n/db';
@@ -17,7 +18,6 @@ import { Response } from 'express';
 import { AuthService } from '@/auth/auth.service';
 import { BadRequestError, ForbiddenError } from '@n8n/errors';
 import { InvalidMfaCodeError } from '@/errors/response-errors/invalid-mfa-code.error';
-import { EventService } from '@/events/event.service';
 import { ExternalHooks } from '@/external-hooks';
 import { validateEntity } from '@/generic-helpers';
 import { MfaService } from '@/mfa/mfa.service';

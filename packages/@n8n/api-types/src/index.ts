@@ -4,6 +4,7 @@ export type * from './datetime';
 export * from './dto';
 export type * from './push';
 export type * from './scaling';
+export type * from './process-internals';
 export * from './frontend-settings';
 export type * from './user';
 export type * from './consent';
@@ -11,6 +12,7 @@ export type * from './api-keys';
 export type * from './community-node-types';
 export type * from './quick-connect';
 export * from './agents/index';
+export * from './schemas/mcp-tool-permissions.schema';
 export * from './instance-registry-types';
 export type * from './instance-reporting';
 export type * from './worker-pools';
@@ -153,6 +155,7 @@ export { ViewableMimeTypes } from './schemas/binary-data.schema';
 export { passwordSchema, createPasswordSchema } from './schemas/password.schema';
 export { n8nIdSchema } from './schemas/id.schema';
 export {
+	columnIdParamSchema,
 	communityPackageNameParamSchema,
 	credentialIdParamSchema,
 	credentialTypeNameParamSchema,
@@ -229,6 +232,7 @@ export {
 } from './schemas/source-controlled-file.schema';
 
 export { policyViolationSchema, type PolicyViolation } from './schemas/policy-violation.schema';
+export { publicApiUploadedFileSchema } from './schemas/public-api-uploaded-file.schema';
 
 export {
 	policyCheckFailureSchema,
@@ -408,6 +412,7 @@ export {
 	channelConfigSchema,
 	mcpConnectServerSchema,
 	mcpConnectRequestSchema,
+	testListenerCardSchema,
 	mcpConnectResumeSchema,
 	credentialPlaceholderDefSchema,
 	credentialRequestSchema,
@@ -502,6 +507,8 @@ export {
 	MAX_ATTACHMENT_DECODED_BYTES,
 	MAX_TOTAL_ATTACHMENT_DECODED_BYTES,
 	MAX_ATTACHMENT_BASE64_BYTES,
+	MAX_INSTANCE_AI_THREAD_OPEN_TABS,
+	MAX_INSTANCE_AI_THREAD_CLOSED_TABS,
 	MAX_TOTAL_ATTACHMENT_BASE64_BYTES,
 	MAX_INSTANCE_AI_ATTACHMENTS_PER_MESSAGE,
 	MAX_INSTANCE_AI_NODES_PER_SET,
@@ -657,7 +664,6 @@ export type {
 	InstanceAiConnectionUpdate,
 	InstanceAiMcpConnectionResponse,
 	InstanceAiMcpConnectionFailureReason,
-	InstanceAiMcpConnectionToolFilterResponse,
 	InstanceAiMcpConnectionToolResponse,
 	InstanceAiMcpConnectionToolsResponse,
 	InstanceAiPermissionMode,
@@ -919,3 +925,5 @@ export type {
 	SerializedCursor,
 } from './dto/executions/execution-list-pagination';
 export { compareExecutionListItems } from './dto/executions/compare-execution-list-items';
+
+export type * from './workflow-suggestions';

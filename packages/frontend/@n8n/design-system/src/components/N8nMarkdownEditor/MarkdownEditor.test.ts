@@ -255,14 +255,20 @@ describe('components/N8nMarkdownEditor', () => {
 
 		await waitFor(function waitForExpandedView() {
 			expect(wrapper.getByRole('dialog', { name: 'Markdown editor' })).toBeInTheDocument();
-			expect(wrapper.getByRole('button', { name: 'Collapse editor' })).toBeInTheDocument();
+			expect(wrapper.getByRole('button', { name: 'Close editor' })).toBeInTheDocument();
 			expect(wrapper.getByTestId('n8n-markdown-editor-content')).toHaveTextContent(
 				'Inline content',
 			);
 		});
 
+		const closeButton = wrapper.getByRole('button', { name: 'Close editor' });
+		closeButton.dispatchEvent(
+			new PointerEvent('pointermove', { bubbles: true, pointerType: 'mouse' }),
+		);
+		expect(await wrapper.findByTestId('tooltip-content')).toHaveTextContent('Close editor');
+
 		editor?.commands.insertContent(' expanded content');
-		await fireEvent.click(wrapper.getByRole('button', { name: 'Collapse editor' }));
+		await fireEvent.click(closeButton);
 
 		await waitFor(function waitForInlineView() {
 			expect(wrapper.queryByRole('dialog', { name: 'Markdown editor' })).not.toBeInTheDocument();
@@ -311,7 +317,7 @@ describe('components/N8nMarkdownEditor', () => {
 		await waitFor(function waitForExpandedRawEditor() {
 			expect(wrapper.getByTestId('n8n-markdown-editor-raw-content')).toHaveValue('# Raw content');
 		});
-		await user.click(wrapper.getByRole('button', { name: 'Collapse editor' }));
+		await user.click(wrapper.getByRole('button', { name: 'Close editor' }));
 
 		await waitFor(function waitForInlineRawEditor() {
 			expect(wrapper.getByTestId('n8n-markdown-editor-raw-content')).toHaveValue('# Raw content');
@@ -331,7 +337,7 @@ describe('components/N8nMarkdownEditor', () => {
 
 		await waitFor(function waitForExpandedView() {
 			expect(wrapper.getByRole('dialog', { name: 'Markdown editor' })).toBeInTheDocument();
-			expect(wrapper.getByRole('button', { name: 'Collapse editor' })).toBeInTheDocument();
+			expect(wrapper.getByRole('button', { name: 'Close editor' })).toBeInTheDocument();
 		});
 	});
 

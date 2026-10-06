@@ -1,6 +1,6 @@
 import { mock } from 'vitest-mock-extended';
 
-import type { CacheService } from '@/services/cache/cache.service';
+import type { CacheService } from '@n8n/backend-services';
 
 import { CachedMetricQuery } from '../cached-metric-query';
 

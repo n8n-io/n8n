@@ -6,12 +6,17 @@ import userEvent from '@testing-library/user-event';
 import { capabilities, capabilityRegistry } from '@n8n/frontend-module-sdk';
 import type { McpExposeAllOffer } from '@n8n/frontend-module-sdk';
 import type { Mock } from 'vitest';
-import { createComponentRenderer } from '@/__tests__/render';
-import { mockedStore, type MockedStore, waitAllPromises } from '@/__tests__/utils';
+import {
+	createComponentRenderer,
+	mockedStore,
+	type MockedStore,
+	waitAllPromises,
+} from '@n8n/frontend-test-utils';
 import SettingsMCPView from '@/features/ai/mcpAccess/SettingsMCPView.vue';
 import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useUsersStore } from '@n8n/stores/users.store';
+import { useRBACStore } from '@n8n/stores/rbac.store';
 import type { FrontendSettings, OAuthClientResponseDto } from '@n8n/api-types';
 import { MCP_CLIENTS_VIEW, MCP_WORKFLOWS_VIEW } from '@/features/ai/mcpAccess/mcp.constants';
 import type { McpAgent, McpWorkflow } from '@/features/ai/mcpAccess/mcp.types';
@@ -20,18 +25,7 @@ import { UNKNOWN_COUNT_VALUE } from '@/features/ai/mcpAccess/mcp.constants';
 import { createOAuthClient } from '@/features/ai/mcpAccess/mcp.test.utils';
 import { useToast } from '@n8n/composables/useToast';
 
-vi.mock('@/app/components/TimeAgo.vue', () => ({
-	default: {
-		name: 'TimeAgo',
-		props: ['date'],
-		template: '<span>{{ date }}</span>',
-	},
-}));
-
 const { routerPush } = vi.hoisted(() => ({ routerPush: vi.fn() }));
-const { hasPermissionMock } = vi.hoisted(() => ({
-	hasPermissionMock: vi.fn().mockReturnValue(true),
-}));
 const {
 	trackSpy,
 	trackAutoExposeToggledSpy,
@@ -42,10 +36,6 @@ const {
 	trackAutoExposeToggledSpy: vi.fn(),
 	trackConnectClientClickedSpy: vi.fn(),
 	trackClientAccessRevokedSpy: vi.fn(),
-}));
-
-vi.mock('@/app/utils/rbac/permissions', () => ({
-	hasPermission: hasPermissionMock,
 }));
 
 vi.mock('@n8n/composables/useTelemetry', () => ({
@@ -71,7 +61,7 @@ vi.mock('vue-router', async (importOriginal) => ({
 	},
 }));
 
-vi.mock('@/app/composables/useDocumentTitle', () => ({
+vi.mock('@n8n/composables/useDocumentTitle', () => ({
 	useDocumentTitle: () => ({
 		set: vi.fn(),
 	}),
@@ -90,6 +80,7 @@ let pinia: ReturnType<typeof createTestingPinia>;
 let mcpStore: MockedStore<typeof useMCPStore>;
 let settingsStore: MockedStore<typeof useSettingsStore>;
 let discoveryStore: MockedStore<typeof useMcpDiscoveryStore>;
+let rbacStore: MockedStore<typeof useRBACStore>;
 let exposeAllOffer: {
 	isEnabled: Mock<McpExposeAllOffer['isEnabled']>;
 	offer: Mock<McpExposeAllOffer['offer']>;
@@ -98,6 +89,10 @@ let exposeAllOffer: {
 const createComponent = createComponentRenderer(SettingsMCPView, {
 	global: {
 		stubs: {
+			N8nTimeAgo: {
+				props: ['date'],
+				template: '<span>{{ date }}</span>',
+			},
 			MCPEmptyState: {
 				props: ['disabled', 'loading'],
 				template:
@@ -134,8 +129,9 @@ const enableMcpSettings = () => {
 
 describe('SettingsMCPView', () => {
 	beforeEach(() => {
-		hasPermissionMock.mockReturnValue(true);
 		pinia = createTestingPinia();
+		rbacStore = mockedStore(useRBACStore);
+		rbacStore.hasScope.mockReturnValue(true);
 		mcpStore = mockedStore(useMCPStore);
 		settingsStore = mockedStore(useSettingsStore);
 		mockedStore(useUsersStore).isInstanceOwner = true;
@@ -450,6 +446,7 @@ describe('SettingsMCPView', () => {
 		beforeEach(() => {
 			enableMcpSettings();
 			settingsStore.isModuleActive = vi.fn().mockReturnValue(true);
+			settingsStore.isAgentsEnabled = true;
 			mcpStore.fetchAgentsAvailableForMCP.mockResolvedValue({ data: [], count: 0 });
 		});
 
@@ -531,20 +528,20 @@ describe('SettingsMCPView', () => {
 		});
 
 		it('should show the callback URLs row for admins only', async () => {
-			hasPermissionMock.mockReturnValue(true);
+			rbacStore.hasScope.mockReturnValue(true);
 			const admin = createComponent({ pinia });
 			await nextTick();
 			expect(admin.getByTestId('mcp-callback-urls-row')).toBeVisible();
 			admin.unmount();
 
-			hasPermissionMock.mockReturnValue(false);
+			rbacStore.hasScope.mockReturnValue(false);
 			const member = createComponent({ pinia });
 			await nextTick();
 			expect(member.queryByTestId('mcp-callback-urls-row')).not.toBeInTheDocument();
 		});
 
 		it('should show "All" when no URLs are configured and the count otherwise', async () => {
-			hasPermissionMock.mockReturnValue(true);
+			rbacStore.hasScope.mockReturnValue(true);
 			mcpStore.allowedRedirectUris = [];
 			const all = createComponent({ pinia });
 			await nextTick();
@@ -558,7 +555,7 @@ describe('SettingsMCPView', () => {
 		});
 
 		it('should open the dialog from the row and persist on save', async () => {
-			hasPermissionMock.mockReturnValue(true);
+			rbacStore.hasScope.mockReturnValue(true);
 			mcpStore.setAllowedRedirectUris.mockResolvedValue(undefined);
 
 			const { getByTestId, queryByTestId } = createComponent({ pinia });
@@ -578,7 +575,7 @@ describe('SettingsMCPView', () => {
 		});
 
 		it('should load the redirect URIs on mount for admins', async () => {
-			hasPermissionMock.mockReturnValue(true);
+			rbacStore.hasScope.mockReturnValue(true);
 			createComponent({ pinia });
 			await nextTick();
 
@@ -641,7 +638,7 @@ describe('SettingsMCPView', () => {
 
 	describe('Toggle MCP on/off', () => {
 		beforeEach(() => {
-			hasPermissionMock.mockReturnValue(true);
+			rbacStore.hasScope.mockReturnValue(true);
 		});
 
 		it('should call setMcpAccessEnabled when turning on MCP', async () => {
@@ -751,7 +748,7 @@ describe('SettingsMCPView', () => {
 		});
 
 		it('should disable the enable button for non-owner/non-admin users', async () => {
-			hasPermissionMock.mockReturnValue(false);
+			rbacStore.hasScope.mockReturnValue(false);
 
 			const { getByTestId } = createComponent({ pinia });
 			await nextTick();
@@ -760,7 +757,7 @@ describe('SettingsMCPView', () => {
 		});
 
 		it('should disable the enable button when MCP is managed by env', async () => {
-			hasPermissionMock.mockReturnValue(true);
+			rbacStore.hasScope.mockReturnValue(true);
 			settingsStore.moduleSettings = {
 				mcp: {
 					mcpAccessEnabled: false,
@@ -778,7 +775,7 @@ describe('SettingsMCPView', () => {
 
 	describe('Expose all workflows experiment', () => {
 		beforeEach(() => {
-			hasPermissionMock.mockReturnValue(true);
+			rbacStore.hasScope.mockReturnValue(true);
 			mcpStore.setMcpAccessEnabled.mockResolvedValue(true);
 		});
 
@@ -819,7 +816,7 @@ describe('SettingsMCPView', () => {
 		});
 
 		it('should render the notice for an instance owner when atCapacity is true', async () => {
-			hasPermissionMock.mockReturnValue(true);
+			rbacStore.hasScope.mockReturnValue(true);
 			mcpStore.instanceClientStats = { count: 2, limit: 2, atCapacity: true };
 
 			const { findByTestId } = createComponent({ pinia });
@@ -830,7 +827,7 @@ describe('SettingsMCPView', () => {
 		});
 
 		it('should NOT render the notice for a non-admin member', async () => {
-			hasPermissionMock.mockReturnValue(false);
+			rbacStore.hasScope.mockReturnValue(false);
 			mcpStore.instanceClientStats = { count: 2, limit: 2, atCapacity: true };
 
 			const { queryByTestId } = createComponent({ pinia });
@@ -840,7 +837,7 @@ describe('SettingsMCPView', () => {
 		});
 
 		it('should NOT render the notice when atCapacity is false', async () => {
-			hasPermissionMock.mockReturnValue(true);
+			rbacStore.hasScope.mockReturnValue(true);
 			mcpStore.instanceClientStats = { count: 1, limit: 5, atCapacity: false };
 
 			const { queryByTestId } = createComponent({ pinia });
@@ -850,7 +847,7 @@ describe('SettingsMCPView', () => {
 		});
 
 		it('should fetch instance stats on mount for an admin/owner', async () => {
-			hasPermissionMock.mockReturnValue(true);
+			rbacStore.hasScope.mockReturnValue(true);
 
 			createComponent({ pinia });
 			await nextTick();
@@ -859,7 +856,7 @@ describe('SettingsMCPView', () => {
 		});
 
 		it('should not fetch instance stats on mount for a regular member', async () => {
-			hasPermissionMock.mockReturnValue(false);
+			rbacStore.hasScope.mockReturnValue(false);
 
 			createComponent({ pinia });
 			await nextTick();
@@ -874,7 +871,7 @@ describe('SettingsMCPView', () => {
 		});
 
 		it('renders for a user with mcp:manage when the experiment is on', async () => {
-			hasPermissionMock.mockReturnValue(true);
+			rbacStore.hasScope.mockReturnValue(true);
 			exposeAllOffer.isEnabled.mockReturnValue(true);
 
 			const { getByTestId } = createComponent({ pinia });
@@ -884,7 +881,7 @@ describe('SettingsMCPView', () => {
 		});
 
 		it('is hidden without the experiment flag', async () => {
-			hasPermissionMock.mockReturnValue(true);
+			rbacStore.hasScope.mockReturnValue(true);
 			exposeAllOffer.isEnabled.mockReturnValue(false);
 
 			const { queryByTestId } = createComponent({ pinia });
@@ -894,7 +891,7 @@ describe('SettingsMCPView', () => {
 		});
 
 		it('is hidden for a user without mcp:manage', async () => {
-			hasPermissionMock.mockReturnValue(false);
+			rbacStore.hasScope.mockReturnValue(false);
 			exposeAllOffer.isEnabled.mockReturnValue(true);
 
 			const { queryByTestId } = createComponent({ pinia });
@@ -904,7 +901,7 @@ describe('SettingsMCPView', () => {
 		});
 
 		it('persists the new state and tracks the resulting value', async () => {
-			hasPermissionMock.mockReturnValue(true);
+			rbacStore.hasScope.mockReturnValue(true);
 			exposeAllOffer.isEnabled.mockReturnValue(true);
 			mcpStore.setAutoExposeNewWorkflows.mockResolvedValue(true);
 
@@ -918,7 +915,7 @@ describe('SettingsMCPView', () => {
 		});
 
 		it('shows a toast error and does not track when persisting fails', async () => {
-			hasPermissionMock.mockReturnValue(true);
+			rbacStore.hasScope.mockReturnValue(true);
 			exposeAllOffer.isEnabled.mockReturnValue(true);
 			mcpStore.setAutoExposeNewWorkflows.mockRejectedValueOnce(new Error('nope'));
 
