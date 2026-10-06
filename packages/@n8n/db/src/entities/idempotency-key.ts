@@ -9,7 +9,8 @@ export type IdempotencyKeyStatus = (typeof idempotencyKeyStatuses)[number];
 
 /**
  * One stored Public API write per user and Idempotency-Key.
- * A retry with the same pair returns this row. The handler does not run again.
+ * A retry with the same user, key, and fingerprint returns this row.
+ * The handler does not run again.
  */
 @Entity({ name: 'idempotency_key' })
 @Index(['userId', 'idempotencyKey'], { unique: true })
