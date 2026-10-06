@@ -90,6 +90,7 @@ const hasOperation = (properties: readonly INodeProperties[], { resource, operat
  * One version of a legacy node where contract actions run some resource/operation slots.
  * The legacy fields of an owned slot go, and the action's fields show for that slot only.
  * The legacy credential selector stays; the action runs with the credential that the node has.
+ * The node keeps the legacy methods and adds the lookup methods of the actions.
  *
  * Field names: an action field may reuse the name of a legacy field of another slot, because
  * n8n reads the one field that shows. It must not reuse the name of a legacy field that shows
@@ -147,6 +148,22 @@ export function migrateVersion({ legacy, version, slots }: MigrateVersionOptions
 
 	const run = legacy.execute;
 	if (!run) throw new UnexpectedError(`${legacy.description.name} has no execute method`);
+	// The resource locators and field lookups of an action call its own methods, by resource id.
+	const listSearch = slots.reduce(
+		(all, { action }) => ({ ...action.methods?.listSearch, ...all }),
+		legacy.methods?.listSearch ?? {},
+	);
+	const loadOptions = slots.reduce(
+		(all, { action }) => ({ ...action.methods?.loadOptions, ...all }),
+		legacy.methods?.loadOptions ?? {},
+	);
+	const methods = slots.some(({ action }) => action.methods)
+		? {
+				...legacy.methods,
+				...(Object.keys(listSearch).length > 0 ? { listSearch } : {}),
+				...(Object.keys(loadOptions).length > 0 ? { loadOptions } : {}),
+			}
+		: legacy.methods;
 	return {
 		description: {
 			...legacy.description,
@@ -154,7 +171,7 @@ export function migrateVersion({ legacy, version, slots }: MigrateVersionOptions
 			credentials,
 			properties: [...kept, ...actionProperties],
 		},
-		methods: legacy.methods,
+		methods,
 		async execute(this: IExecuteFunctions) {
 			// The legacy router also reads the slot of item 0.
 			const resource = this.getNodeParameter('resource', 0);

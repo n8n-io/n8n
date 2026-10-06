@@ -8,7 +8,14 @@ export {
 	type PermissionRefusalListener,
 	type RefusedPermission,
 } from '../egress';
-export { isToolContract, lookupsOf, resourceLookupsOf, type ResourceLookupCall } from '../define';
+export {
+	fieldLookupsOf,
+	fieldRefOf,
+	isToolContract,
+	lookupsOf,
+	resourceIdOf,
+	type FieldRef,
+} from '../define';
 export { credentialTypeOfManifest, toCredentialType } from '../credentials';
 export type { FileExtractor } from '../host-imports';
 export {

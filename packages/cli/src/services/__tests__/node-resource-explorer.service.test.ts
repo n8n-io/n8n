@@ -842,19 +842,20 @@ describe('NodeResourceExplorerService', () => {
 });
 
 describe('NodeResourceExplorerService with a contract node', () => {
-	it('lists the channels of a contract resource by its resource id, with the eval mock', async () => {
-		const nodeType = new (toVersionedNodeType(
-			versionsOf('slack.message.delete'),
-			hostRuntime(),
-		))().getNodeType(1);
+	const serviceOf = (actionId: string, credentialType: string, credentialData: object) => {
+		const nodeType = new (toVersionedNodeType(versionsOf(actionId), hostRuntime()))().getNodeType(
+			1,
+		);
 		const nodeTypes = mock<NodeTypes>();
 		nodeTypes.getByNameAndVersion.mockReturnValue(nodeType);
 		vi.spyOn(Expression.prototype, 'acquireIsolate').mockResolvedValue(true);
 		vi.spyOn(Expression.prototype, 'releaseIsolate').mockResolvedValue(undefined);
-		vi.mocked(getBase).mockResolvedValueOnce(
+		// As `getBase` does, the additional data has the parameters of the call.
+		vi.mocked(getBase).mockImplementationOnce(async ({ currentNodeParameters } = {}) =>
 			mock<IWorkflowExecuteAdditionalData>({
+				currentNodeParameters,
 				credentialsHelper: mock<ICredentialsHelper>({
-					getDecrypted: async () => ({ accessToken: 'xoxb-test' }),
+					getDecrypted: async () => ({ ...credentialData }),
 					isCredentialUsableByNode: () => true,
 				}),
 			}),
@@ -862,8 +863,8 @@ describe('NodeResourceExplorerService with a contract node', () => {
 		const credentialsFinderService = mock<CredentialsFinderService>();
 		credentialsFinderService.findCredentialForUser.mockResolvedValue({
 			id: 'cred-1',
-			type: 'slackApi',
-			name: 'My Slack',
+			type: credentialType,
+			name: 'My credential',
 		} as never);
 		const projectRepository = mock<ProjectRepository>();
 		projectRepository.getPersonalProjectForUserOrFail.mockResolvedValue({ id: 'proj-1' } as never);
@@ -875,13 +876,17 @@ describe('NodeResourceExplorerService with a contract node', () => {
 			credentialsFinderService,
 			mock<CredentialsRepository>(),
 		);
-		const service = new NodeResourceExplorerService(
+		return new NodeResourceExplorerService(
 			mock<Logger>(),
 			dynamicNodeParametersService,
 			credentialsFinderService,
 			projectRepository,
 			nodeTypes,
 		);
+	};
+
+	it('lists the channels of a contract resource by its resource id, with the eval mock', async () => {
+		const service = serviceOf('slack.message.delete', 'slackApi', { accessToken: 'xoxb-test' });
 		const requests: IHttpRequestOptions[] = [];
 		const evalMock: EvalLlmMockHandler = async (options) => {
 			requests.push(options);
@@ -914,5 +919,41 @@ describe('NodeResourceExplorerService with a contract node', () => {
 
 		expect(result.results).toEqual([{ name: '#general', value: 'C01', url: undefined }]);
 		expect(requests.map(({ url }) => url)).toEqual(['https://slack.com/api/conversations.list']);
+	});
+
+	it('lists the fields of a contract resource by its resource id, with the eval mock', async () => {
+		const id = '0123456789abcdef0123456789abcdef';
+		const parameters = { database: `https://www.notion.so/Tasks-${id}` };
+		const service = serviceOf('notion.databasePage.getAll', 'notionApi', { apiKey: 'secret_x' });
+		const requests: IHttpRequestOptions[] = [];
+		const evalMock: EvalLlmMockHandler = async (options) => {
+			requests.push(options);
+			return {
+				statusCode: 200,
+				headers: {},
+				body: { properties: { Status: { id: 's', name: 'Status', type: 'status' } } },
+			};
+		};
+
+		const result = await service.exploreResources(
+			mock<User>({ id: 'user-1' }),
+			{
+				nodeType: '@n8n/nodes-integrations.notionDatabasePageGetAll',
+				version: 1,
+				methodName: 'notion.database',
+				methodType: 'loadOptions',
+				credentialType: 'notionApi',
+				credentialId: 'cred-1',
+				currentNodeParameters: parameters,
+			},
+			evalMock,
+		);
+
+		expect(result.results).toEqual([
+			{ name: 'Status', value: 'Status|status', description: undefined },
+		]);
+		expect(requests.map(({ url }) => url)).toEqual([
+			`https://api.notion.com/v1/data_sources/${id}`,
+		]);
 	});
 });

@@ -5,7 +5,9 @@ import {
 	appendRow,
 	cellFormat,
 	deriveWritten,
+	headerKeysOf,
 	headerOf,
+	headerValuesOf,
 	readValues,
 	rowCells,
 	rowValues,
@@ -15,7 +17,7 @@ import {
 
 export const appendSheetRow = sheet.action('append', {
 	// Minor 1: an ID of any length, and the ID after /d/ in a URL.
-	minor: 2,
+	minor: 3,
 	action: 'Append row',
 	summary: 'Append one row per item. Never updates existing rows; use appendOrUpdate to upsert.',
 	flow: { effect: 'write', cardinality: 'per-item', idempotent: false },
@@ -26,6 +28,13 @@ export const appendSheetRow = sheet.action('append', {
 	},
 	output: writtenRow,
 	deriveOutput: deriveWritten,
+	resourceInput: {
+		input: 'sheet',
+		toInput(fields, { headerRow }) {
+			const keys = headerKeysOf(fields, headerRow);
+			return keys.length > 0 ? { values: headerValuesOf(keys) } : {};
+		},
+	},
 	async run({ input, http }) {
 		const spreadsheetId = spreadsheetIdOf(input.spreadsheet);
 		const tab = await sheetOf(http, spreadsheetId, input.sheet);

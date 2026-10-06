@@ -168,6 +168,26 @@ describe('migrateVersion', () => {
 		expect(type.methods).toBe(legacy.methods);
 	});
 
+	it('adds the lookup methods of the actions, and keeps a legacy method of the same name', () => {
+		const legacy = legacyOf();
+		const listChannels = async () => ({ results: [] });
+		const listFields = async () => [];
+		const getProjects = async () => [{ name: 'action', value: 'action' }];
+		const action: INodeType = {
+			...contract,
+			methods: {
+				listSearch: { 'tasks.channel': listChannels },
+				loadOptions: { 'tasks.project': listFields, getProjects },
+			},
+		};
+		const type = migrateVersion({ legacy, version: 4, slots: [{ ...slot, action }] });
+		expect(type.methods?.listSearch).toEqual({ 'tasks.channel': listChannels });
+		expect(type.methods?.loadOptions).toEqual({
+			'tasks.project': listFields,
+			getProjects: legacy.methods?.loadOptions?.getProjects,
+		});
+	});
+
 	it('rejects an action credential that the legacy node does not have', () => {
 		const credentials = [{ name: 'tasksApi', required: true }];
 		expect(() => composed(legacyOf({ credentials }))).toThrow(

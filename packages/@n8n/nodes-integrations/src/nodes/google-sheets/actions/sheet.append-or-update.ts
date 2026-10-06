@@ -7,7 +7,9 @@ import {
 	cellText,
 	columnKey,
 	deriveWritten,
+	headerKeysOf,
 	headerOf,
+	headerValuesOf,
 	readValues,
 	rowCells,
 	rowValues,
@@ -19,7 +21,7 @@ import {
 
 export const appendOrUpdateSheetRow = sheet.action('appendOrUpdate', {
 	// Minor 1: an ID of any length, and the ID after /d/ in a URL.
-	minor: 2,
+	minor: 3,
 	action: 'Append or update row',
 	summary: 'Upsert: update the row whose matchOn column equals the value in values, else append.',
 	flow: { effect: 'write', cardinality: 'per-item', idempotent: true },
@@ -40,6 +42,15 @@ export const appendOrUpdateSheetRow = sheet.action('appendOrUpdate', {
 	},
 	output: writtenRow,
 	deriveOutput: deriveWritten,
+	resourceInput: {
+		input: 'sheet',
+		toInput(fields, { header }) {
+			const keys = headerKeysOf(fields, header?.headerRow);
+			return keys.length > 0
+				? { values: headerValuesOf(keys), matchOn: { type: 'string', enum: keys } }
+				: {};
+		},
+	},
 	async run({ input, http }) {
 		const { matchOn } = input;
 		const key = input.values[matchOn];

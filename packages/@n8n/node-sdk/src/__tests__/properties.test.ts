@@ -333,6 +333,35 @@ describe('nodeDescriptionOf', () => {
 		});
 	});
 
+	it('adds a URL mode for a resource with an extract pattern', () => {
+		const document = defineResource({
+			id: 'sheets.document',
+			label: 'Document',
+			shape: { pattern: '^(?:[a-z0-9]+|https://docs\\.test/d/[a-z0-9]+)$' },
+			extract: '/d/([a-z0-9]+)',
+		});
+		const readDocument = sheets.resource('document').action('read', {
+			action: 'Read a document',
+			summary: 'Read one document.',
+			flow: { effect: 'read', cardinality: 'per-item' },
+			input: { document: ref(document) },
+			output: t.json(),
+			async run({ input }) {
+				return await Promise.resolve({ ...input });
+			},
+		});
+		const [field] = descriptionOf(readDocument).properties;
+		expect(field?.modes).toEqual([
+			{ displayName: 'By ID', name: 'id', type: 'string' },
+			{
+				displayName: 'By URL',
+				name: 'url',
+				type: 'string',
+				extractValue: { type: 'regex', regex: '/d/([a-z0-9]+)' },
+			},
+		]);
+	});
+
 	it('shows option labels, number limits, and a variant as a tag dropdown with fields per tag', () => {
 		expect(rowsOf(descriptionOf(sendRequest).properties)).toEqual([
 			'body | Body | collection | placeholder=Add field',

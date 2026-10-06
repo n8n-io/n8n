@@ -9,7 +9,7 @@ import {
 
 import { generatedTriggersOf, generateNodeModule } from '../entry/codegen';
 import { compat, credential } from '../entry/credentials';
-import { exampleOf, nodeDescriptionOf, resourceLookupsOf, toNodeType } from '../entry/host';
+import { exampleOf, fieldRefOf, nodeDescriptionOf, resourceIdOf, toNodeType } from '../entry/host';
 import {
 	actionFileOf,
 	contractHash,
@@ -404,120 +404,177 @@ function fakeContext(
 }
 
 describe('resourceOutput', () => {
-	const sheet = todo.resource('sheet', {
-		input: { sheet: t.str().with({ pattern: '[0-9a-f]{8}' }).hint('Sheet ID or URL') },
+	const columns = defineResource({
+		id: 'todo.sheet',
+		label: 'Sheet',
+		shape: { pattern: '[0-9a-f]{8}' },
+		fields: {
+			requests: [{ path: '/sheets/{id}/columns' }, { path: '/v1/sheets/{id}' }],
+			response: t.obj({ columns: t.record(t.obj({ title: t.str(), kind: t.str() })) }),
+			items: 'columns',
+			item: { name: '{title}', value: '{title}|{kind}' },
+		},
 	});
-	const legacy = {
-		nodeType: 'n8n-nodes-base.todo',
-		methodName: 'getColumns',
-		parameters: { resource: 'sheet' },
-	};
+	const sheet = todo.resource('sheet', { input: { sheet: ref(columns).hint('Sheet ID or URL') } });
 	const readRows = sheet.action('read', {
 		action: 'Read rows',
 		summary: 'Read the rows of a sheet.',
 		flow: { effect: 'read', cardinality: '1:N' },
-		input: {},
+		input: { values: t.json().optional() },
 		output: t.obj({ id: t.str() }),
 		resourceOutput: {
-			method: 'todo.sheetColumns',
 			input: 'sheet',
-			loadOptions: [
-				{ ...legacy, version: 2, idParameter: 'sheetId' },
-				{ ...legacy, version: 1, idParameter: 'sheet' },
-			],
 			toOutput: (fields) => t.obj({ id: t.str(), [fields[0]?.name ?? 'x']: t.str() }).json,
 		},
+		resourceInput: { input: 'sheet', toInput: () => ({ values: { type: 'object' } }) },
 		async *run() {},
 	});
 	const contract = toContract(readRows);
 
-	it('puts the pointer without its hatch into the output of the contract document', () => {
-		expect(contract.output['x-n8n-resource']).toEqual({
-			method: 'todo.sheetColumns',
-			input: 'sheet',
-			loadOptions: [
-				{ ...legacy, version: 2, idParameter: 'sheetId' },
-				{ ...legacy, version: 1, idParameter: 'sheet' },
-			],
+	it('puts the pointers without their hatches into the contract document', () => {
+		expect(contract.output['x-n8n-resource']).toEqual({ input: 'sheet' });
+		expect(contract.resourceInput).toEqual({ input: 'sheet' });
+		expect(contract.input.properties?.sheet?.['x-n8n-fields']).toEqual({
+			requests: [{ path: '/sheets/{id}/columns' }, { path: '/v1/sheets/{id}' }],
+			response: t.obj({ columns: t.record(t.obj({ title: t.str(), kind: t.str() })) }).json,
+			items: 'columns',
+			item: { name: '{title}', value: '{title}|{kind}' },
 		});
+		expect(contract.baseUrl).toBe('https://todo.test');
 		expect(toContract(listTasks).output['x-n8n-resource']).toBeUndefined();
+		expect(toContract(listTasks).resourceInput).toBeUndefined();
 		expect(lintContract(contract)).toEqual([]);
 	});
 
-	it('types the input field of the pointer', () => {
+	it('keeps the field lookup and the input pointer out of the contract hash', () => {
+		const { resourceInput: _pointer, ...withoutPointer } = contract;
+		const sheetField = contract.input.properties?.sheet ?? {};
+		const { 'x-n8n-fields': _fields, ...withoutFields } = sheetField;
+		const input = {
+			...contract.input,
+			properties: { ...contract.input.properties, sheet: withoutFields },
+		};
+		expect(contractHash(withoutPointer)).toBe(contractHash(contract));
+		expect(contractHash({ ...contract, input })).toBe(contractHash(contract));
+	});
+
+	it('types the input field of the pointer and the field templates', () => {
 		sheet.action('read', {
 			action: 'Read rows',
 			summary: 'Read the rows of a sheet.',
 			flow: { effect: 'read', cardinality: '1:N' },
 			input: {},
 			output: t.obj({ id: t.str() }),
-			resourceOutput: {
-				method: 'todo.sheetColumns',
-				// @ts-expect-error `table` is no input field
-				input: 'table',
-				loadOptions: [],
-				toOutput: () => ({}),
-			},
+			// @ts-expect-error `table` is no input field
+			resourceOutput: { input: 'table', toOutput: () => ({}) },
 			async *run() {},
 		});
-	});
-
-	it('gives the lookup calls in order, with the ID that the input pattern finds', () => {
-		const calls = resourceLookupsOf(contract, { sheet: 'https://todo.test/s/0badcafe/rows' });
-		expect(calls).toEqual([
-			{
-				nodeType: 'n8n-nodes-base.todo',
-				version: 2,
-				methodName: 'getColumns',
-				currentNodeParameters: {
-					resource: 'sheet',
-					sheetId: { __rl: true, mode: 'id', value: '0badcafe' },
-				},
+		defineResource({
+			id: 'todo.list',
+			label: 'List',
+			shape: {},
+			fields: {
+				requests: [{ path: '/lists/{id}' }],
+				response: t.obj({ columns: t.arr(t.obj({ title: t.str() })) }),
+				items: 'columns',
+				// @ts-expect-error a column has no `kind`
+				item: { name: '{title}', value: '{kind}' },
 			},
-			{
-				nodeType: 'n8n-nodes-base.todo',
-				version: 1,
-				methodName: 'getColumns',
-				currentNodeParameters: {
-					resource: 'sheet',
-					sheet: { __rl: true, mode: 'id', value: '0badcafe' },
-				},
-			},
-		]);
-	});
-
-	it('gives no call for an expression, a value without an ID, or a contract without a pointer', () => {
-		expect(resourceLookupsOf(contract, { sheet: '={{ $json.sheet }}' })).toEqual([]);
-		expect(resourceLookupsOf(contract, { sheet: 'no id here' })).toEqual([]);
-		expect(resourceLookupsOf(contract, {})).toEqual([]);
-		expect(resourceLookupsOf(toContract(listTasks), { project: '0badcafe' })).toEqual([]);
-	});
-
-	it('takes the whole value as the ID when the input field has no pattern, and none for a bad one', () => {
-		const withSheet = (sheetField: JsonSchema) => ({
-			...contract,
-			input: { ...contract.input, properties: { sheet: sheetField } },
 		});
-		const open = withSheet({ type: 'string' });
-		expect(resourceLookupsOf(withSheet({ pattern: '(' }), { sheet: 'Sheet 1' })).toEqual([]);
-		expect(resourceLookupsOf(open, { sheet: 'Sheet 1' })[0]?.currentNodeParameters).toMatchObject({
-			sheetId: { value: 'Sheet 1' },
+		defineResource({
+			id: 'todo.list',
+			label: 'List',
+			shape: {},
+			fields: {
+				requests: [
+					{ path: '/lists/{id}' },
+					// @ts-expect-error `owner` is not in the lookup input
+					{ path: '/owners/{owner}/lists/{id}' },
+				],
+				response: t.arr(t.obj({ title: t.str() })),
+				item: { name: '{title}', value: '{title}' },
+			},
 		});
 	});
 
-	it('refuses a pointer to no input field, a pointer without calls, and a required typical field', () => {
-		const pointer = contract.output['x-n8n-resource'];
-		if (!pointer) throw new Error('no pointer');
+	it('finds the resource ID in a value: the extract group, the pattern match, or the value', () => {
+		const field = contract.input.properties?.sheet ?? {};
+		expect(fieldRefOf(field, 'https://todo.test/s/0badcafe/rows')).toMatchObject({
+			resource: 'todo.sheet',
+			id: '0badcafe',
+		});
+		expect(fieldRefOf(contract.input, { sheet: '0badcafe' })?.id).toBe('0badcafe');
+		expect(fieldRefOf(field, '={{ $json.sheet }}')).toBeUndefined();
+		expect(fieldRefOf(field, 'no id here')).toBeUndefined();
+		expect(fieldRefOf(contract.input, { sheet: '0badcafe' }, 'todo.other')).toBeUndefined();
+		expect(resourceIdOf({ 'x-n8n-extract': '/d/([\\w-]+)' }, 'https://x.test/d/a-1/edit')).toBe(
+			'a-1',
+		);
+		expect(resourceIdOf({ 'x-n8n-extract': '/d/([\\w-]+)' }, 'a-1')).toBe('a-1');
+		expect(resourceIdOf({ type: 'string' }, 'Sheet 1')).toBe('Sheet 1');
+		expect(resourceIdOf({ pattern: '(' }, 'Sheet 1')).toBeUndefined();
+	});
+
+	it('finds a ref in a variant branch', () => {
+		const tab = t.variant('mode', {
+			name: { name: ref(columns) },
+			index: { index: t.int() },
+		});
+		expect(fieldRefOf(tab.json, { mode: 'name', name: 'abcdef01' })?.id).toBe('abcdef01');
+		expect(fieldRefOf(tab.json, { mode: 'index', index: 2 })).toBeUndefined();
+	});
+
+	it('refuses a pointer to no field, to a field without a field lookup, and two pointer inputs', () => {
 		const output = {
 			...contract.output,
-			'x-n8n-resource': { ...pointer, input: 'table', loadOptions: [] },
+			'x-n8n-resource': { input: 'table' },
 			properties: { id: { type: 'string' as const, 'x-n8n-claim': 'typical' as const } },
 			required: ['id'],
 		};
-		expect(lintContract({ ...contract, output })).toEqual([
+		expect(lintContract({ ...contract, output, resourceInput: { input: 'values' } })).toEqual([
 			'todo.sheet.read: resourceOutput.input names no input field: table',
-			'todo.sheet.read: resourceOutput lists no loadOptions call',
+			'todo.sheet.read: resourceInput.input values has no ref to a resource with fields',
+			'todo.sheet.read: resourceInput and resourceOutput name different input fields',
 			'todo.sheet.read: output.id is typical, so it must not be required',
+		]);
+	});
+
+	it('types the config of a step with resourceInput by node name, with InputOf', () => {
+		const text = generateNodeModule('todo', [
+			{
+				contract,
+				nodeType: '@n8n/nodes-integrations.todoSheetRead',
+				resource: 'sheet',
+				operation: 'read',
+			},
+		]);
+		expect(text).toContain('type InputOf,');
+		expect(text).toContain('& InputOf<N, In, Ctx, TodoSheetReadInput<In, Ctx>>,');
+		expect(
+			generateNodeModule('todo', [
+				{ contract: toContract(listTasks), nodeType: 'x', operation: 'getAll' },
+			]),
+		).not.toContain('InputOf');
+	});
+
+	it('refuses a field lookup that reads a field outside its input, or has no path', () => {
+		const lookup = {
+			requests: [{ path: '/sheets/{id}/{owner}' }, {}],
+			response: {},
+			item: { name: '{title}', value: '{title}' },
+		};
+		const sheetField = {
+			type: 'string' as const,
+			'x-n8n-ref': 'todo.sheet',
+			'x-n8n-fields': lookup,
+		};
+		const input = {
+			...contract.input,
+			properties: { ...contract.input.properties, sheet: sheetField },
+		};
+		expect(lintContract({ ...contract, input })).toEqual([
+			'todo.sheet.read: field lookup todo.sheet reads owner, which is not in its input',
+			'todo.sheet.read: field lookup todo.sheet needs a path or a url',
 		]);
 	});
 });

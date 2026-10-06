@@ -585,6 +585,57 @@ export default workflow(
 		]);
 	}, 120_000);
 
+	it('types the values keys and matchOn of a sheet row by the header cells of the tab', async () => {
+		const exploreResources = vi.fn(async () => ({
+			results: [
+				{ name: 'Name', value: 'Name' },
+				{ name: 'Email', value: 'Email' },
+			],
+		}));
+		const withHeader = {
+			...context,
+			nodeService: { exploreResources },
+			credentialService: {
+				list: async () => [{ id: 'g1', name: 'Google', type: 'googleSheetsOAuth2Api' }],
+			},
+		} as unknown as InstanceAiContext;
+		const source = (values: string, matchOn: string) => `import { workflow, manual } from '@n8n/workflow-sdk/next';
+import { googleSheets } from '@n8n/nodes/googleSheets';
+
+export default workflow(
+	'Leads',
+	manual({ sample: [{ name: 'Ada', email: 'ada@example.com' }] }),
+	googleSheets.sheet.appendOrUpdate({
+		name: 'Upsert',
+		spreadsheet: '1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms',
+		sheet: { mode: 'name', name: 'Leads' },
+		values: { ${values} },
+		matchOn: '${matchOn}',
+	}),
+);
+`;
+		const buildWith = async (text: string) => {
+			await writeFile(join(root, 'src/workflow.ts'), text);
+			return await compileWorkflowSource(withHeader, 'src/workflow.ts', text);
+		};
+		const right = await buildWith(
+			source('Name: (item) => item.name, Email: (item) => item.email', 'Email'),
+		);
+		expect(right.success ? [] : right.errors).toEqual([]);
+		expect(exploreResources).toHaveBeenCalledWith(
+			expect.objectContaining({ methodName: 'googleSheets.sheetName' }),
+		);
+		const typo = await buildWith(
+			source('Name: (item) => item.name, Emial: (item) => item.email', 'Emial'),
+		);
+		expect(typo.success ? [] : typo.errors).toEqual([
+			expect.stringContaining("'Emial' does not exist in type"),
+			expect.stringContaining(
+				'error TS2820: Type \'"Emial"\' is not assignable to type \'"Email" | "Name"\'',
+			),
+		]);
+	}, 120_000);
+
 	it('splits out a list at a dot path of an open webhook body', async () => {
 		const result = await build(`import { workflow, splitOut, set } from '@n8n/workflow-sdk/next';
 import { webhook } from '@n8n/nodes/webhook';

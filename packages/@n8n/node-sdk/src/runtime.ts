@@ -29,6 +29,7 @@ import {
 	type INodeInputConfiguration,
 	type INodeListSearchResult,
 	type INodeProperties,
+	type INodePropertyOptions,
 	type IPairedItemData,
 	type INodeType,
 	type INodeTypeDescription,
@@ -65,6 +66,7 @@ import {
 } from './egress';
 import { actionUiSchema, type CredentialManifest } from './manifest';
 import {
+	contractInputOf,
 	formPropertiesOf,
 	inputReaderOf,
 	locatorValueOf,
@@ -108,9 +110,15 @@ import {
 	limitOf,
 	type ListBinding,
 	type LogLevel,
+	type FieldLookupDocument,
+	fieldLookupsOf,
+	fieldRefOf,
 	type LookupDocument,
 	type LookupEntry,
+	type LookupPages,
 	lookupsOf,
+	resourceIdOf,
+	type ResourceField,
 	type NodeDefinition,
 	nextLinkOf,
 	nextOffsetOf,
@@ -127,7 +135,7 @@ import {
 	credentialOptionsOf,
 	type Trigger,
 } from './define';
-import { firstMatchOf, testPattern } from './pattern';
+import { testPattern } from './pattern';
 import {
 	binaryKeyIssue,
 	hasBinary,
@@ -2214,15 +2222,20 @@ const filledTemplate = (template: string, entry: unknown) =>
 		return ['string', 'number', 'boolean'].includes(typeof value) ? String(value) : '';
 	});
 
+/** The entries at `items` of a page: a list, or the values of a record. */
+const entriesAt = (page: unknown, items: string | undefined): unknown[] => {
+	const value = valueAtPath(page, items);
+	return Array.isArray(value) ? value : isRecord(value) ? Object.values(value) : [];
+};
+
 /** The entries of one lookup page. A `label` search keeps the entries whose label has the text. */
 export function lookupEntriesOf(
 	lookup: LookupDocument,
 	page: unknown,
 	search: string | undefined,
 ): LookupEntry[] {
-	const list = valueAtPath(page, lookup.items);
 	const text = lookup.search === 'label' ? search?.trim().toLowerCase() : undefined;
-	return (Array.isArray(list) ? list : []).flatMap((entry: unknown) => {
+	return entriesAt(page, lookup.items).flatMap((entry: unknown) => {
 		const id = filledTemplate(lookup.item.id, entry);
 		const label = filledTemplate(lookup.item.label, entry) || id;
 		const url = lookup.item.url === undefined ? '' : filledTemplate(lookup.item.url, entry);
@@ -2235,24 +2248,48 @@ export function lookupEntriesOf(
 /** What a lookup needs of the action whose field refers to the resource. */
 export type LookupOwner = Pick<Action, 'id' | 'node' | 'version' | 'credentialTypes' | 'egress'>;
 
+/** One request of a lookup, as an action of the owner. */
+interface LookupRun {
+	readonly owner: LookupOwner;
+	readonly resourceId: string;
+	readonly request: LookupDocument['request'];
+	readonly response: JsonSchema;
+	readonly pages?: LookupPages;
+	/** The input fields of the request, without `paging`. */
+	readonly input: Shape;
+	readonly output: AnySchema;
+	readonly entries: (page: unknown, input: { readonly search?: string }) => unknown[];
+	/** The path of the error text in a page, see `LookupDocument`. */
+	readonly error?: string;
+}
+
 /**
- * The action that runs one lookup. It has the node, the credential types and the egress of the
- * action whose field refers to the resource, so the host sends the lookup as it sends a step:
- * with the credential, the egress check, the retries and the limits.
+ * The entries of a page that can hold an error text: the text fails the page before the
+ * response check, which would fail with the page shape instead.
  */
-export function lookupActionOf(
-	owner: LookupOwner,
-	resourceId: string,
-	lookup: LookupDocument,
-): Action {
-	const { pages: style, request } = lookup;
+const errorCheckedEntries =
+	({ resourceId, response, entries, error }: LookupRun) =>
+	(page: unknown, input: { readonly search?: string }) => {
+		const text = valueAtPath(page, error);
+		if (typeof text === 'string' && text !== '') {
+			throw new UserError(`The ${resourceId} lookup failed: ${text}`);
+		}
+		const schema = new Schema<unknown>(response, false);
+		return entries(
+			readAs(schema, page, { path: 'page', read: (value) => entries(value, input) }).value,
+			input,
+		);
+	};
+
+function lookupRunActionOf(run: LookupRun): Action {
+	const { pages: style, request, owner, resourceId } = run;
 	const { url, path: at, ...options } = request;
 	const binding = {
 		...options,
 		...(url === undefined ? { path: at ?? '/' } : { url }),
-		response: new Schema<unknown>(lookup.response, false),
-		items: (page: unknown, input: { readonly search?: string }) =>
-			lookupEntriesOf(lookup, page, input.search),
+		// With an error path, the entries check the page after the error text.
+		response: new Schema<unknown>(run.error === undefined ? run.response : {}, false),
+		items: run.error === undefined ? run.entries : errorCheckedEntries(run),
 		...(style === undefined
 			? {}
 			: {
@@ -2270,11 +2307,7 @@ export function lookupActionOf(
 							: style,
 				}),
 	};
-	const input: Shape = {
-		search: t.str().optional(),
-		...Object.fromEntries((lookup.input ?? []).map((name) => [name, t.str()])),
-		...(style === undefined ? {} : { paging }),
-	};
+	const input: Shape = { ...run.input, ...(style === undefined ? {} : { paging }) };
 	const { id, node, version, credentialTypes, egress } = owner;
 	return {
 		node,
@@ -2288,11 +2321,89 @@ export function lookupActionOf(
 		flow: { effect: 'read', cardinality: '1:N', idempotent: true },
 		input,
 		inputSchema: t.obj(input).json,
-		output: lookupEntry,
+		output: run.output,
 		scopes: [],
 		// `response` lists only the fields the lookup reads, so other fields are no drift.
 		run: ({ http, input: values }) => listItems(http, binding, values, () => undefined),
 	};
+}
+
+const parentInputOf = (names: readonly string[] | undefined): Shape =>
+	Object.fromEntries((names ?? []).map((name) => [name, t.str()]));
+
+/**
+ * The action that runs one lookup. It has the node, the credential types and the egress of the
+ * action whose field refers to the resource, so the host sends the lookup as it sends a step:
+ * with the credential, the egress check, the retries and the limits.
+ */
+export const lookupActionOf = (
+	owner: LookupOwner,
+	resourceId: string,
+	lookup: LookupDocument,
+): Action =>
+	lookupRunActionOf({
+		owner,
+		resourceId,
+		request: lookup.request,
+		response: lookup.response,
+		...(lookup.pages ? { pages: lookup.pages } : {}),
+		...(lookup.error === undefined ? {} : { error: lookup.error }),
+		input: { search: t.str().optional(), ...parentInputOf(lookup.input) },
+		output: lookupEntry,
+		entries: (page, input) => lookupEntriesOf(lookup, page, input.search),
+	});
+
+const fieldEntry = t.obj({ name: t.str(), value: t.str() });
+
+/** The fields of one field lookup response. An entry with an empty name is no field. */
+export const fieldEntriesOf = (lookup: FieldLookupDocument, page: unknown): ResourceField[] =>
+	entriesAt(page, lookup.items).flatMap((entry) => {
+		const name = filledTemplate(lookup.item.name, entry);
+		return name === '' ? [] : [{ name, value: filledTemplate(lookup.item.value, entry) }];
+	});
+
+/** The service does not know the ID at this request, so the next request can know it. */
+const unknownIdError = (error: unknown) =>
+	isHttpError(error) && (error.status === 400 || error.status === 404);
+
+/**
+ * Runs a field lookup as the action of `owner`: the requests in order, until one gives no 400 or
+ * 404 response. Another error, e.g. of the credential or the egress check, fails the lookup at
+ * once. The host input has `id` and the parent fields of the lookup.
+ */
+export async function runFieldLookup(
+	owner: LookupOwner,
+	resourceId: string,
+	lookup: FieldLookupDocument,
+	host: ExecutorHost,
+): Promise<ResourceField[]> {
+	const attempt = async (
+		[request, ...rest]: ReadonlyArray<LookupDocument['request']>,
+		failure: unknown,
+	): Promise<ResourceField[]> => {
+		if (!request) throw failure;
+		const action = lookupRunActionOf({
+			owner,
+			resourceId,
+			request,
+			response: lookup.response,
+			...(lookup.error === undefined ? {} : { error: lookup.error }),
+			input: { id: t.str(), ...parentInputOf(lookup.input) },
+			output: fieldEntry,
+			entries: (page) => fieldEntriesOf(lookup, page),
+		});
+		try {
+			const [entries = []] = await executorOf(action)(host);
+			return entries.flatMap(({ json }) => (matches(fieldEntry, json) ? [json] : []));
+		} catch (error) {
+			if (!unknownIdError(error)) throw error;
+			return await attempt(rest, error);
+		}
+	};
+	return await attempt(
+		lookup.requests,
+		new UserError(`The field lookup of ${resourceId} has no request`),
+	);
 }
 
 /** Runs one lookup and gives its entries as n8n list search results. */
@@ -2338,36 +2449,32 @@ function lookupHostOf(
 
 /**
  * The value of an input field that a dependent lookup reads, e.g. the spreadsheet of a sheet:
- * the ID of a resource locator, the first match of the field pattern, e.g. in a URL.
+ * the resource ID in the value (`resourceIdOf`), else the value.
  */
-function lookupInputValueOf(
-	context: ILoadOptionsFunctions,
-	parameter: string,
-	schema: JsonSchema | undefined,
-): unknown {
-	const value = locatorValueOf(context.getCurrentNodeParameter(parameter));
-	if (typeof value !== 'string' || schema?.pattern === undefined) return value;
-	return firstMatchOf(schema.pattern, value) ?? value;
-}
+const parentValueOf = (value: unknown, schema: JsonSchema | undefined): unknown =>
+	typeof value === 'string' ? (resourceIdOf(schema ?? {}, value) ?? value) : value;
 
 /**
- * The n8n `listSearch` method of each resource that an input field refers to, by resource id.
- * `ownerOf` gives the action that the lookups run as. Absent when the input has no lookup.
+ * The n8n methods of the resources that the input fields refer to, by resource id: a
+ * `listSearch` method per resource with a lookup, and a `loadOptions` method per resource with
+ * a field lookup. `ownerOf` gives the action that the lookups run as. Absent without lookups.
  */
-export function listSearchMethodsOf(
+export function lookupMethodsOf(
 	contract: Pick<ContractDocument, 'input'>,
 	ui: ActionUiDocument | undefined,
 	ownerOf: () => Promise<LookupOwner>,
 	runtime: HostRuntime,
 ): INodeType['methods'] | undefined {
 	const lookups = lookupsOf(contract.input);
-	if (lookups.size === 0) return undefined;
+	const fieldLookups = fieldLookupsOf(contract.input);
+	if (lookups.size === 0 && fieldLookups.size === 0) return undefined;
 	const pathOf = parameterPathOf(contract.input, ui);
+	const fieldOf = (name: string) => contract.input.properties?.[name];
 	const methods = [...lookups].map(([resourceId, lookup]) => {
 		async function listSearch(this: ILoadOptionsFunctions, filter?: string) {
 			const parents = (lookup.input ?? []).map((name) => [
 				name,
-				lookupInputValueOf(this, pathOf(name), contract.input.properties?.[name]),
+				parentValueOf(locatorValueOf(this.getCurrentNodeParameter(pathOf(name))), fieldOf(name)),
 			]);
 			// The list stays empty until the user sets each parent field.
 			if (parents.some(([, value]) => value === undefined || value === '')) return { results: [] };
@@ -2383,7 +2490,27 @@ export function listSearchMethodsOf(
 		}
 		return [resourceId, listSearch] as const;
 	});
-	return { listSearch: Object.fromEntries(methods) };
+	const fieldMethods = [...fieldLookups].map(([resourceId, lookup]) => {
+		/** The fields of the resource that the node parameters name, as n8n options. */
+		async function fields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+			const input = contractInputOf(this.getCurrentNodeParameters() ?? {}, contract.input, ui);
+			const ref = fieldRefOf(contract.input, input, resourceId);
+			const parents = (lookup.input ?? []).map((name) => [
+				name,
+				parentValueOf(input[name], fieldOf(name)),
+			]);
+			if (!ref || parents.some(([, value]) => typeof value !== 'string' || value === '')) {
+				return [];
+			}
+			const host = lookupHostOf(this, { ...Object.fromEntries(parents), id: ref.id }, runtime);
+			return await runFieldLookup(await ownerOf(), resourceId, lookup, host);
+		}
+		return [resourceId, fields] as const;
+	});
+	return {
+		...(methods.length > 0 ? { listSearch: Object.fromEntries(methods) } : {}),
+		...(fieldMethods.length > 0 ? { loadOptions: Object.fromEntries(fieldMethods) } : {}),
+	};
 }
 
 /**
@@ -2487,12 +2614,7 @@ export function toNodeType<S extends Shape, O extends AnySchema>(
 	const run = executorOf(action);
 	const fieldOf = storedFieldOf(action.inputSchema, ui);
 	const kind = providedKindOf(action.output.json);
-	const methods = listSearchMethodsOf(
-		{ input: action.inputSchema },
-		ui,
-		async () => action,
-		runtime,
-	);
+	const methods = lookupMethodsOf({ input: action.inputSchema }, ui, async () => action, runtime);
 	if (kind) {
 		return class implements INodeType {
 			description = description;
@@ -2927,7 +3049,7 @@ export const toVersionedNodeType = (versions: readonly FrozenVersion[], runtime:
 			const { contract, ui } = frozen.manifest;
 			const description = nodeDescriptionOf(frozen.manifest);
 			const kind = providedKindOf(contract.output);
-			const methods = listSearchMethodsOf(
+			const methods = lookupMethodsOf(
 				contract,
 				ui,
 				async () => await manifestLookupOwnerOf(frozen.manifest, runtime.credentialManifestOf),

@@ -147,7 +147,13 @@ const contract = typed<ContractDocument>()(
 		baseUrl: t
 			.str()
 			.describe(
-				'The node base URL, for the lookups (`x-n8n-lookup`) that the host sends. Not in contractHash.',
+				'The node base URL, for the lookups (`x-n8n-lookup`, `x-n8n-fields`) that the host sends. Not in contractHash.',
+			)
+			.optional(),
+		resourceInput: t
+			.obj({ input: t.str() })
+			.describe(
+				'The input field whose resource fields type input fields at build time. Not in contractHash.',
 			)
 			.optional(),
 	}),

@@ -310,7 +310,20 @@
 						},
 						"baseUrl": {
 							"type": "string",
-							"description": "The node base URL, for the lookups (`x-n8n-lookup`) that the host sends. Not in contractHash."
+							"description": "The node base URL, for the lookups (`x-n8n-lookup`, `x-n8n-fields`) that the host sends. Not in contractHash."
+						},
+						"resourceInput": {
+							"type": "object",
+							"properties": {
+								"input": {
+									"type": "string"
+								}
+							},
+							"required": [
+								"input"
+							],
+							"additionalProperties": false,
+							"description": "The input field whose resource fields type input fields at build time. Not in contractHash."
 						}
 					},
 					"required": [
@@ -1366,7 +1379,20 @@
 						},
 						"baseUrl": {
 							"type": "string",
-							"description": "The node base URL, for the lookups (`x-n8n-lookup`) that the host sends. Not in contractHash."
+							"description": "The node base URL, for the lookups (`x-n8n-lookup`, `x-n8n-fields`) that the host sends. Not in contractHash."
+						},
+						"resourceInput": {
+							"type": "object",
+							"properties": {
+								"input": {
+									"type": "string"
+								}
+							},
+							"required": [
+								"input"
+							],
+							"additionalProperties": false,
+							"description": "The input field whose resource fields type input fields at build time. Not in contractHash."
 						}
 					},
 					"required": [
@@ -1664,7 +1690,20 @@
 								},
 								"baseUrl": {
 									"type": "string",
-									"description": "The node base URL, for the lookups (`x-n8n-lookup`) that the host sends. Not in contractHash."
+									"description": "The node base URL, for the lookups (`x-n8n-lookup`, `x-n8n-fields`) that the host sends. Not in contractHash."
+								},
+								"resourceInput": {
+									"type": "object",
+									"properties": {
+										"input": {
+											"type": "string"
+										}
+									},
+									"required": [
+										"input"
+									],
+									"additionalProperties": false,
+									"description": "The input field whose resource fields type input fields at build time. Not in contractHash."
 								}
 							},
 							"required": [

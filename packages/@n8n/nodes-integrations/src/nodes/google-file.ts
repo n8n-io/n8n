@@ -8,9 +8,12 @@ const FILE_ID = '[-_a-zA-Z0-9]+';
  */
 export const GOOGLE_FILE_ID = `^(?:${FILE_ID}|(?:https?://)?(?:docs|drive)\\.google\\.com(?:/[^?#]*)?/d/${FILE_ID}(?:[/?#].*)?)$`;
 
+/** The ID after `/d/` in a Google file URL, as the first group. */
+export const GOOGLE_FILE_URL_ID = `/d/(${FILE_ID})`;
+
 /** The ID in a Google file URL, else the value itself. It goes into a path, so it is checked. */
 export function googleFileIdOf(value: string, service: string) {
-	const id = new RegExp(`/d/(${FILE_ID})`).exec(value)?.[1] ?? value;
+	const id = new RegExp(GOOGLE_FILE_URL_ID).exec(value)?.[1] ?? value;
 	if (!new RegExp(`^${FILE_ID}$`).test(id)) {
 		throw new UserError(`Not a ${service} ID or URL: ${value}`);
 	}

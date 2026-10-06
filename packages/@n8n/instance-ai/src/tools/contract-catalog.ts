@@ -62,8 +62,8 @@ export const entryOf = (id: string): CatalogEntry | undefined => entriesById().g
 
 /**
  * Every action and provider with a bundle, as its embedded bundle exports it. The catalog lists
- * them from the manifests. The bundle gives what no manifest has: the output hatches
- * (`deriveOutput`, `resourceOutput`), the input field schemas and the node `replaces` list.
+ * them from the manifests. The bundle gives what no manifest has: the hatches (`deriveOutput`,
+ * `resourceOutput`, `resourceInput`), the input field schemas and the node `replaces` list.
  */
 export const contractActions = once((): readonly Action[] =>
 	firstPartyCatalog().entries.flatMap(({ manifest }) => {

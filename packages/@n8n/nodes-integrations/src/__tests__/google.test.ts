@@ -882,4 +882,93 @@ describe('googleSheets.sheet lookup', () => {
 			[BASE, { fields: 'sheets.properties(sheetId,title)' }],
 		]);
 	});
+
+	const contextOf = (parameters: Record<string, unknown>, reply: (options: Options) => unknown) => {
+		const calls: Options[] = [];
+		const context = {
+			getNode: () => ({
+				name: 'Sheets',
+				credentials: { googleSheetsOAuth2Api: { id: '1', name: 'G' } },
+			}),
+			getCurrentNodeParameters: () => parameters,
+			getCurrentNodeParameter: (name: string) => parameters[name],
+			getCredentials: async () => ({}),
+			helpers: {
+				httpRequestWithAuthentication: async (_type: string, options: Options) => {
+					calls.push(options);
+					return reply(options);
+				},
+			},
+			logger: { debug: () => undefined },
+		};
+		// The lookup reads only these members.
+		return { context: context as unknown as ILoadOptionsFunctions, calls };
+	};
+
+	it('lists the tab names of a spreadsheet that a URL names', async () => {
+		const { context, calls } = contextOf(
+			{ spreadsheet: `https://docs.google.com/spreadsheets/d/${SPREADSHEET}/edit#gid=0` },
+			() => ({ sheets: [{ properties: { sheetId: 7, title: 'Archive' } }] }),
+		);
+		const listNames = new (toNodeType(appendSheetRow))().methods?.listSearch?.[
+			'googleSheets.sheetName'
+		];
+		expect(await listNames?.call(context)).toEqual({
+			results: [{ name: 'Archive', value: 'Archive' }],
+		});
+		expect(calls.map(({ url }) => url)).toEqual([BASE]);
+	});
+
+	it('reads the header cells of row 1 of the tab, and the build types values and matchOn', async () => {
+		const { context, calls } = contextOf(
+			{
+				spreadsheet: {
+					__rl: true,
+					mode: 'url',
+					value: `https://docs.google.com/spreadsheets/d/${SPREADSHEET}`,
+				},
+				sheet: { mode: 'name', name: { __rl: true, mode: 'list', value: 'Q1 Leads' } },
+			},
+			() => ({ majorDimension: 'COLUMNS', values: [['Name'], [], ['row_number'], ['Name']] }),
+		);
+		const header = new (toNodeType(appendOrUpdateSheetRow))().methods?.loadOptions?.[
+			'googleSheets.sheetName'
+		];
+		const fields = (await header?.call(context)) ?? [];
+		expect(fields).toEqual([
+			{ name: 'Name', value: 'Name' },
+			{ name: 'row_number', value: 'row_number' },
+			{ name: 'Name', value: 'Name' },
+		]);
+		expect(calls.map(({ url, qs }) => [url, qs])).toEqual([
+			[`${BASE}/values/'Q1%20Leads'!1:1`, { majorDimension: 'COLUMNS' }],
+		]);
+		const typed = (headerRow?: number) =>
+			appendOrUpdateSheetRow.resourceInput?.toInput(
+				fields.map(({ name, value }) => ({ name, value: String(value) })),
+				{
+					spreadsheet: SPREADSHEET,
+					sheet: { mode: 'name', name: 'Leads' },
+					values: {},
+					matchOn: 'Name',
+					...(headerRow ? { header: { headerRow } } : {}),
+				},
+			);
+		expect(typed()).toEqual({
+			values: {
+				type: 'object',
+				properties: { row_number: {}, Name: {}, row_number_1: {} },
+				additionalProperties: false,
+			},
+			matchOn: { type: 'string', enum: ['Name', 'row_number_1'] },
+		});
+		expect(typed(2)).toEqual({});
+		expect(
+			appendSheetRow.resourceInput?.toInput([], {
+				spreadsheet: SPREADSHEET,
+				sheet: { mode: 'name', name: 'Leads' },
+				values: {},
+			}),
+		).toEqual({});
+	});
 });

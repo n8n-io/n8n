@@ -1,7 +1,8 @@
-import { lookupActionOf, lookupsOf, resourceLookupsOf } from '@n8n/node-sdk/host';
+import { fieldRefOf, lookupActionOf, lookupsOf, toNodeType } from '@n8n/node-sdk/host';
 import { toContract } from '@n8n/node-sdk/registry';
-import { mockHttp, runAction } from '@n8n/node-sdk/testing';
+import { mockHttp, runAction, sendRequest } from '@n8n/node-sdk/testing';
 import { NotionApi } from 'n8n-nodes-base/dist/credentials/NotionApi.credentials';
+import type { IHttpRequestOptions, ILoadOptionsFunctions } from 'n8n-workflow';
 
 import { getManyDatabasePages } from '../nodes/notion/actions/database-page.get-all';
 
@@ -51,21 +52,64 @@ describe('notion.databasePage.getAll resourceOutput', () => {
 		expect(output?.required?.filter((key) => key === 'property_story_points')).toHaveLength(1);
 	});
 
-	it('lists the properties with the legacy Notion node, data source first, then database', () => {
+	it('lists the properties of the data source, then of the database, with the node credential', async () => {
 		const id = '0123456789abcdef0123456789abcdef';
-		const calls = resourceLookupsOf(toContract(getManyDatabasePages), {
-			database: `https://www.notion.so/Tasks-${id}`,
+		const url = `https://www.notion.so/Tasks-${id}`;
+		const contract = toContract(getManyDatabasePages);
+		expect(contract.output['x-n8n-resource']).toEqual({ input: 'database' });
+		expect(fieldRefOf(contract.input, { database: url })).toMatchObject({
+			resource: 'notion.database',
+			id,
 		});
-		const legacy = {
-			nodeType: 'n8n-nodes-base.notion',
-			methodName: 'getFilterProperties',
-		};
-		const parameters = { resource: 'databasePage', operation: 'getAll' };
-		const locator = { __rl: true, mode: 'id', value: id };
-		expect(calls).toEqual([
-			{ ...legacy, version: 3, currentNodeParameters: { ...parameters, dataSourceId: locator } },
-			{ ...legacy, version: 2.2, currentNodeParameters: { ...parameters, databaseId: locator } },
+		const fetch = mockHttp([
+			{ path: `/v1/data_sources/${id}`, reply: { status: 404, json: { object: 'error' } } },
+			{
+				path: `/v1/databases/${id}`,
+				reply: {
+					json: {
+						properties: {
+							Name: { id: 'title', name: 'Name', type: 'title' },
+							Done: { id: 'a%3Db', name: 'Done', type: 'checkbox' },
+						},
+					},
+				},
+			},
 		]);
+		const sent: string[] = [];
+		const context = {
+			getNode: () => ({
+				id: '1',
+				name: 'Notion',
+				type: 'notion',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: {},
+				credentials: { notionApi: { id: '1', name: 'Notion' } },
+			}),
+			getCurrentNodeParameters: () => ({ database: { __rl: true, mode: 'url', value: url } }),
+			getCurrentNodeParameter: () => undefined,
+			getCredentials: async () => ({}),
+			helpers: {
+				httpRequestWithAuthentication: async (type: string, options: IHttpRequestOptions) => {
+					sent.push(type);
+					return await sendRequest(fetch, options);
+				},
+			},
+			logger: { debug: () => undefined },
+		};
+		const fields = new (toNodeType(getManyDatabasePages))().methods?.loadOptions?.[
+			'notion.database'
+		];
+		// The lookup reads only these members.
+		expect(await fields?.call(context as unknown as ILoadOptionsFunctions)).toEqual([
+			{ name: 'Name', value: 'Name|title' },
+			{ name: 'Done', value: 'Done|checkbox' },
+		]);
+		expect(fetch.calls.map(({ path, headers }) => [path, headers['notion-version']])).toEqual([
+			[`/v1/data_sources/${id}`, '2026-03-11'],
+			[`/v1/databases/${id}`, '2022-06-28'],
+		]);
+		expect(new Set(sent)).toEqual(new Set(['notionApi']));
 	});
 });
 

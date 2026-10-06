@@ -1733,6 +1733,33 @@ describe('resource lookups', () => {
 		});
 	});
 
+	it('fails with the error text of a page that answers an error with status 200', async () => {
+		const slack = defineResource({
+			id: 'directory.team',
+			label: 'Team',
+			shape: {},
+			list: {
+				request: { path: '/teams' },
+				response: t.obj({ teams: t.arr(t.obj({ id: t.str() })), error: t.str().optional() }),
+				items: 'teams',
+				item: { id: '{id}', label: '{id}' },
+				error: 'error',
+			},
+		});
+		const lookup = slack.lookup;
+		if (!lookup) throw new Error('directory.team has no lookup');
+		const action = lookupActionOf(readRow, 'directory.team', lookup);
+		await expect(
+			runLookup(action, hostOf([{ ok: false, error: 'invalid_auth' }]).host),
+		).rejects.toThrow('The directory.team lookup failed: invalid_auth');
+		await expect(runLookup(action, hostOf([{ ok: true, teams: 'none' }]).host)).rejects.toThrow(
+			'page.teams: must be array',
+		);
+		expect(await runLookup(action, hostOf([{ ok: true, teams: [{ id: 'T1' }] }]).host)).toEqual({
+			results: [{ name: 'T1', value: 'T1' }],
+		});
+	});
+
 	it('reaches only the egress hosts of the action', async () => {
 		const outside = { ...lookupOf('table'), request: { url: 'https://elsewhere.test/tables' } };
 		const action = lookupActionOf(readRow, 'directory.table', outside);
@@ -1792,6 +1819,119 @@ describe('resource lookups', () => {
 			).toEqual({ results: [] });
 		}
 		expect(sent).toEqual([]);
+	});
+
+	describe('field lookups', () => {
+		const sheet = defineResource({
+			id: 'directory.sheet',
+			label: 'Sheet',
+			shape: {},
+			extract: '/s/([0-9]+)',
+			input: { database: ref(database) },
+			fields: {
+				requests: [
+					{ path: '/databases/{database}/sheets/{id}/columns' },
+					{ path: '/v1/sheets/{id}', headers: { 'Api-Version': '1' } },
+				],
+				response: t.obj({ columns: t.record(t.obj({ title: t.str(), kind: t.str() })) }),
+				items: 'columns',
+				item: { name: '{title}', value: '{title}|{kind}' },
+			},
+		});
+		const readCells = directory.resource('cell').action('read', {
+			action: 'Read cells',
+			summary: 'Read the cells of a sheet.',
+			flow: { effect: 'read', cardinality: 'per-item' },
+			input: { database: ref(database), sheet: ref(sheet) },
+			output: t.json(),
+			request: { path: '/databases/{database}/sheets/{sheet}' },
+		});
+		const contextOf = (parameters: Record<string, unknown>, replies: unknown[]) => {
+			const sent: Array<[string, IHttpRequestOptions]> = [];
+			const context = {
+				getNode: () => credentialed,
+				getCurrentNodeParameters: () => parameters,
+				getCurrentNodeParameter: (name: string) => parameters[name],
+				getCredentials: async () => ({}),
+				helpers: {
+					httpRequestWithAuthentication: async (type: string, options: IHttpRequestOptions) => {
+						sent.push([type, options]);
+						const reply = replies[sent.length - 1];
+						if (reply instanceof Error) throw reply;
+						return reply;
+					},
+				},
+				logger: { debug: () => undefined },
+			};
+			// The lookup reads only these members.
+			return { context: context as unknown as ILoadOptionsFunctions, sent };
+		};
+
+		it('gives a loadOptions method that sends the next request when the service does not find the ID', async () => {
+			const fields = new (toNodeType(readCells))().methods?.loadOptions?.['directory.sheet'];
+			const { context, sent } = contextOf(
+				{
+					database: { __rl: true, mode: 'list', value: 'abcdef12' },
+					sheet: 'https://directory.test/s/77/edit',
+				},
+				[
+					httpError(404),
+					{ columns: { a: { title: 'Name', kind: 'text' }, b: { title: '', kind: 'text' } } },
+				],
+			);
+			expect(await fields?.call(context)).toEqual([{ name: 'Name', value: 'Name|text' }]);
+			expect(sent.map(([type, { url, headers }]) => [type, url, headers])).toEqual([
+				['directoryApi', 'https://directory.test/api/databases/abcdef12/sheets/77/columns', {}],
+				['directoryApi', 'https://directory.test/api/v1/sheets/77', { 'Api-Version': '1' }],
+			]);
+		});
+
+		it('fails with the last error, and sends nothing without the resource or a parent', async () => {
+			const fields = new (toNodeType(readCells))().methods?.loadOptions?.['directory.sheet'];
+			const failing = contextOf({ database: 'abcdef12', sheet: '77' }, [
+				httpError(400),
+				new Error('Gone'),
+			]);
+			await expect(fields?.call(failing.context)).rejects.toThrow('Gone');
+			for (const error of [httpError(401), new Error('Egress blocked')]) {
+				const { context, sent } = contextOf({ database: 'abcdef12', sheet: '77' }, [error]);
+				await expect(fields?.call(context)).rejects.toThrow(error.message);
+				expect(sent).toHaveLength(1);
+			}
+			for (const parameters of [
+				{ database: 'abcdef12' },
+				{ sheet: '77' },
+				{ database: 'abcdef12', sheet: '={{ 1 }}' },
+			]) {
+				const { context, sent } = contextOf(parameters, []);
+				expect(await fields?.call(context)).toEqual([]);
+				expect(sent).toEqual([]);
+			}
+		});
+
+		it('runs the field lookup of a frozen version from its manifest', async () => {
+			const contract = toContract(readCells);
+			const frozen = {
+				manifest: {
+					kind: 'action' as const,
+					id: readCells.id,
+					semver: '1.0.0',
+					nodeContract: NODE_CONTRACT_VERSION,
+					contractHash: contractHash(contract),
+					bundleHash: '0'.repeat(64),
+					contract,
+				},
+				origin: 'community' as const,
+				readBundle: async () => await Promise.reject(new Error('the lookup read the bundle')),
+			};
+			const nodeType = new (toVersionedNodeType([frozen], hostRuntime()))().getNodeType(1);
+			const { context } = contextOf({ database: 'abcdef12', sheet: '77' }, [
+				{ columns: { a: { title: 'Due', kind: 'date' } } },
+			]);
+			expect(await nodeType.methods?.loadOptions?.['directory.sheet']?.call(context)).toEqual([
+				{ name: 'Due', value: 'Due|date' },
+			]);
+		});
 	});
 
 	it('runs the lookup of a frozen version from its manifest, without its bundle', async () => {

@@ -1930,6 +1930,25 @@ export type OutputOf<N extends string, Default> = N extends keyof NodeOutputs
 	? NodeOutputs[N]
 	: Default;
 
+declare const nodeInputTypes: unique symbol;
+
+/**
+ * Per-node input fields: the build types them from live resource fields (the header cells of a
+ * sheet) and adds them by declaration merging. `I` and `C` are the item and the context of the
+ * step, as in `Value<I, C, V>`.
+ */
+export interface NodeInputs<I, C> {
+	/** Holds `I` and `C` for the merged members. No node has this key. */
+	readonly [nodeInputTypes]?: (item: I, $: C) => void;
+}
+
+/** The input of node `N`: `Default` with the input fields that the build derives for it. */
+export type InputOf<N extends string, I, C, Default> = N extends keyof NodeInputs<I, C>
+	? Default extends unknown
+		? Omit<Default, keyof NodeInputs<I, C>[N]> & NodeInputs<I, C>[N]
+		: never
+	: Default;
+
 /** The keys of `O` with an open type (`Json`, `unknown`, `any`), also an index signature. */
 type OpenKeys<O> = { [K in keyof O]-?: [Json] extends [O[K]] ? K : never }[keyof O];
 

@@ -239,6 +239,15 @@ export function testPattern(pattern: string, input: string, flags?: string): boo
 		: safeRegex.test(pattern, input, flags);
 }
 
+/** The first group of the first match of `pattern` in `input`, as `firstMatchOf` reads it. */
+export function firstGroupOf(pattern: string, input: string): string | undefined {
+	try {
+		return safeRegex.exec(pattern, input)?.[1];
+	} catch {
+		return undefined;
+	}
+}
+
 /** The first match of `pattern` in `input`, with the timeout of `safeRegex`. None for a bad pattern. */
 export function firstMatchOf(pattern: string, input: string): string | undefined {
 	try {

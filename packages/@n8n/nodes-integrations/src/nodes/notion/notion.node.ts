@@ -52,6 +52,16 @@ export const notionDatabase = defineResource({
 	label: 'Database',
 	shape: { pattern: ID, 'x-n8n-hint': 'Notion database ID or URL; 32 hex digits' },
 	list: dataSourceList,
+	fields: {
+		requests: [
+			{ path: '/data_sources/{id}', headers: NOTION_VERSION },
+			// A database ID, e.g. from a URL: before data sources, the database had the properties.
+			{ path: '/databases/{id}', headers: { 'Notion-Version': '2022-06-28' } },
+		],
+		response: t.obj({ properties: t.record(t.obj({ name: t.str(), type: t.str() })) }),
+		items: 'properties',
+		item: { name: '{name}', value: '{name}|{type}' },
+	},
 });
 
 export const notionIdOf = (value: string) => new RegExp(ID).exec(value)?.[0] ?? value;

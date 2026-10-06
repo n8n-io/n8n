@@ -235,18 +235,18 @@ The publish gate (`checkPublish`) refuses a smaller bump. A patch must keep the 
 
 | Change | Kind |
 |---|---|
-| Prose only (`title`, `description`, `x-n8n-hint`, `examples`, `x-n8n-options`, summary, `nodeDisplayName`), the `ui` block (`order`, placeholders, a widget that keeps the stored form), or a resource lookup (`x-n8n-lookup`, `baseUrl`) | patch |
+| Prose only (`title`, `description`, `x-n8n-hint`, `examples`, `x-n8n-options`, summary, `nodeDisplayName`), the `ui` block (`order`, placeholders, a widget that keeps the stored form), or a resource lookup (`x-n8n-lookup`, `x-n8n-fields`, `x-n8n-extract`, `baseUrl`, `resourceInput`) | patch |
 | An added `x-n8n-ref`: the field takes the same values | minor |
 | An optional input, or a required input with a default | minor |
 | A required output field becomes typical (`x-n8n-claim: 'typical'`, not in `required`) | minor |
 | An optional or typical output field becomes typical or required | minor |
 | A removed scope, egress host, host import, provider call or binary data access; a first scope declaration | minor |
-| Other `loadOptions` calls in `x-n8n-resource`, with the same `method` and `input` | minor |
 | An added key pattern (`patternProperties`, e.g. `t.indexedBinaries()`); its first binary is binary data access, a major | minor |
 | A new required input, or a narrower input | major |
 | A `ui` change that moves a stored parameter: a field into or out of `advanced`, a variant to or from the `json` widget, a field to or from the `list` widget | major |
 | A removed output field, a removed key pattern, or an output field that becomes optional (from required or typical) | major |
-| An added or removed `x-n8n-resource`, or another `method` or `input` in it | major |
+| Another way to list the fields of `x-n8n-resource` with the same `input` | minor |
+| An added or removed `x-n8n-resource`, or another `input` in it | major |
 | A removed or other `x-n8n-ref`: the runtime reads a stored resource locator only for a ref field | major |
 | A credential that becomes optional (`credentialOptional`) | minor |
 | A changed flow, output list, input list, trigger kind, webhook `endpoint` or webhook signature (`verify`); a new scope, egress host, host import, provider call, binary data access or credential type; a removed credential type; a credential that becomes required | major |
@@ -264,16 +264,31 @@ Output claims:
 - **optional**: absence is normal.
 
 Resource pointer: `resourceOutput` writes `output['x-n8n-resource']`. It names the input field
-that holds the resource ID, and the legacy load-options calls that list the fields of the
-resource. A builder runs the calls with `resourceLookupsOf` and the node's credential, and
-gives the fields to the `toOutput` hatch. When the input field has a `pattern`, the ID is the
-first match in the value, for example in a URL.
+that holds the resource ID. That field, or a field in it, is a `ref` to a resource with a field
+lookup (`defineResource({ fields })`). A build runs the field lookup with the node's credential
+and gives the fields to the `toOutput` hatch. `resourceInput` writes the same pointer as the
+contract key `resourceInput`, outside the contract hash. A build gives the fields to its
+`toInput` hatch, and the workflow types of the step take the input schemas that it gives, e.g.
+the keys of a sheet row from the header cells. The ID in a value is the first group of the
+resource `extract` pattern (`x-n8n-extract`), else the first match of the field `pattern`, for
+example in a URL.
+
+Field lookups: `fields` is data as a `list` lookup: `requests` in order (the host sends the next
+one when a request gets a 400 or 404 response), `{id}` for the resource ID, the `response`
+fields it reads, the path of the field list or record (`items`), and templates for each field
+(`item: { name, value }`).
+`ref()` writes it into the field as `x-n8n-fields`, outside the contract hash. The host gives
+each field lookup as a `loadOptions` method named by the resource id, and a migrated node
+version keeps the methods of its slot actions. A resource with `extract` also gets a URL mode in
+the resource locator; the field stores the URL, so the ID `shape` must take it.
 
 Resource lookups: `defineResource({ list })` declares a lookup as data: a request (`path` or
 an absolute `url`, `query`, `headers`, a JSON `body`), the `response` fields it reads, the path
 of the entry list (`items`), templates for each entry (`item: { id: '{id}', label: '#{name}' }`),
-optional `pages` (the `list` styles, with the cursor as a path) and `search` (`service`: the
-request sends the `search` input; `label`: the host filters the labels). A dependent resource
+optional `pages` (the `list` styles, with the cursor as a path), `search` (`service`: the
+request sends the `search` input; `label`: the host filters the labels) and `error` (the path of
+an error text in a page, for a service that answers an error with status 200, e.g. Slack
+`ok: false`; the lookup fails with that text). A dependent resource
 names the action input fields that its request reads in `input`, e.g. the spreadsheet of a
 sheet. `ref()` writes the lookup into the field as `x-n8n-lookup`, and freeze writes the node
 `baseUrl` into the contract. The host runs a lookup from the manifest without the bundle, as an

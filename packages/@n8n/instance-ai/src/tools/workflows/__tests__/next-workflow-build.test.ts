@@ -38,6 +38,7 @@ import {
 	FLOW_MACROS,
 	tscHintOf,
 	typecheckWorkflowSource,
+	untypedInputIssues,
 	untypedNodeIssues,
 	untypedOutputIssues,
 	usedNodeIds,
@@ -533,11 +534,8 @@ import { googleGemini } from '@n8n/nodes/googleGemini';`;
 				([message]) => message === 'Resource lookup for a node contract',
 			)?.[1];
 
-		it('lists properties with the sole accepted credential, data source first, then database', async () => {
-			const exploreResources = vi
-				.fn()
-				.mockRejectedValueOnce(new Error('Could not find data source'))
-				.mockResolvedValueOnce({ results: fields });
+		it('runs the field lookup of the database as a node type method, with the sole accepted credential', async () => {
+			const exploreResources = vi.fn().mockResolvedValueOnce({ results: fields });
 			const logger = { debug: vi.fn() };
 			const result = await fetchResourceFields(
 				makeContext(exploreResources, undefined, logger),
@@ -546,27 +544,23 @@ import { googleGemini } from '@n8n/nodes/googleGemini';`;
 			expect(result.fields.get('Tasks')).toEqual(fields);
 			expect(outcomeLogged(logger)).toMatchObject({
 				nodeName: 'Tasks',
-				method: 'notion.dataSourceProperties',
+				resource: 'notion.database',
 				outcome: 'ok',
 				fields: 2,
 			});
-			expect(exploreResources).toHaveBeenNthCalledWith(1, {
-				nodeType: 'n8n-nodes-base.notion',
-				version: 3,
-				methodName: 'getFilterProperties',
-				methodType: 'loadOptions',
-				credentialType: 'notionApi',
-				credentialId: 'c1',
-				currentNodeParameters: {
-					resource: 'databasePage',
-					operation: 'getAll',
-					dataSourceId: { __rl: true, mode: 'id', value: databaseId },
-				},
-			});
-			expect(exploreResources.mock.calls[1]?.[0]).toMatchObject({
-				version: 2.2,
-				currentNodeParameters: { databaseId: { __rl: true, mode: 'id', value: databaseId } },
-			});
+			expect(exploreResources.mock.calls).toEqual([
+				[
+					{
+						nodeType: '@n8n/nodes-integrations.notionDatabasePageGetAll',
+						version: 1,
+						methodName: 'notion.database',
+						methodType: 'loadOptions',
+						credentialType: 'notionApi',
+						credentialId: 'c1',
+						currentNodeParameters: { database: `https://www.notion.so/Tasks-${databaseId}` },
+					},
+				],
+			]);
 		});
 
 		it('skips the lookup when the database is an expression or holds no ID', async () => {
@@ -612,7 +606,7 @@ import { googleGemini } from '@n8n/nodes/googleGemini';`;
 			expect(outcomeLogged(logger)).toMatchObject({ outcome: 'mocked' });
 		});
 
-		it('logs a lookup that every call failed as failed', async () => {
+		it('logs a lookup that failed as failed', async () => {
 			const logger = { debug: vi.fn() };
 			const exploreResources = vi.fn().mockRejectedValue(new Error('Authorization failed'));
 			const result = await fetchResourceFields(
@@ -688,6 +682,117 @@ import { googleGemini } from '@n8n/nodes/googleGemini';`;
 				property_status: 'example',
 				property_story_points: 1,
 			});
+		});
+
+		const sheets = (sheet: IDataObject, header?: IDataObject): WorkflowJSON => ({
+			name: 'Leads',
+			connections: {},
+			nodes: [
+				{
+					id: '1',
+					name: 'Upsert',
+					type: '@n8n/nodes-integrations.googleSheetsSheetAppendOrUpdate',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {
+						spreadsheet:
+							'https://docs.google.com/spreadsheets/d/1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms',
+						sheet,
+						values: { Name: '={{ $json.name }}' },
+						matchOn: 'Name',
+						...(header ? { header } : {}),
+					},
+				},
+			],
+		});
+		const header = [
+			{ name: 'Name', value: 'Name' },
+			{ name: 'Email', value: 'Email' },
+		];
+
+		it('reads the header cells of a sheet tab, and types values and matchOn of the step with them', async () => {
+			const exploreResources = vi.fn().mockResolvedValue({ results: header });
+			const context = makeContext(exploreResources, [
+				{ id: 'g1', name: 'Google', type: 'googleSheetsOAuth2Api' },
+			]);
+			const leads = sheets({ mode: 'name', name: 'Leads' });
+			const lookups = await fetchResourceFields(context, leads);
+			expect(lookups.fields.get('Upsert')).toEqual(header);
+			expect(exploreResources).toHaveBeenCalledWith(
+				expect.objectContaining({
+					nodeType: '@n8n/nodes-integrations.googleSheetsSheetAppendOrUpdate',
+					methodName: 'googleSheets.sheetName',
+					methodType: 'loadOptions',
+					credentialId: 'g1',
+				}),
+			);
+			const text = nodeOutputsDeclaration(leads, lookups.fields);
+			expect(text).toContain(
+				"import type { Json, OpenValue, Value } from '@n8n/workflow-sdk/next';",
+			);
+			expect(text).toContain(
+				[
+					'\tinterface NodeInputs<I, C> {',
+					'\t\t"Upsert": {',
+					'\t\t\tvalues: {',
+					'\t\t\t\trow_number?: Value<I, C, OpenValue>;',
+					'\t\t\t\tName?: Value<I, C, OpenValue>;',
+					'\t\t\t\tEmail?: Value<I, C, OpenValue>;',
+					'\t\t\t};',
+					'\t\t\tmatchOn: "Name" | "Email";',
+					'\t\t};',
+					'\t}',
+				].join('\n'),
+			);
+			expect(untypedInputIssues(leads, lookups)).toEqual([]);
+		});
+
+		it('reads a sheet without header cells as a lookup that gave no fields, not as a failed one', async () => {
+			const context = makeContext(vi.fn().mockResolvedValue({ results: [] }), [
+				{ id: 'g1', name: 'Google', type: 'googleSheetsOAuth2Api' },
+			]);
+			const leads = sheets({ mode: 'name', name: 'Leads' });
+			const lookups = await fetchResourceFields(context, leads);
+			expect(lookups.misses.size).toBe(0);
+			expect(untypedInputIssues(leads, lookups).map(({ message }) => message)).toEqual([
+				'"Upsert": the input fields that the sheet fields type are open (the googleSheets.sheetName field lookup types no input for these parameters), so tsc does not check their key names.',
+			]);
+		});
+
+		it('names a step whose input the header cannot type, and why', async () => {
+			const byId = sheets({ mode: 'id', id: '0' });
+			const otherRow = sheets({ mode: 'name', name: 'Leads' }, { headerRow: 3 });
+			const withHeader = { fields: new Map([['Upsert', header]]), misses: new Map() };
+			expect(nodeOutputsDeclaration(otherRow, withHeader.fields)).not.toContain('NodeInputs');
+			expect(
+				[
+					untypedInputIssues(byId),
+					untypedInputIssues(otherRow, withHeader),
+					untypedInputIssues(sheets({ mode: 'name', name: 'Leads' }), {
+						fields: new Map(),
+						misses: new Map([['Upsert', 'no-credential' as const]]),
+					}),
+				].map((issues) => issues.map(({ code, message }) => [code, message])),
+			).toEqual([
+				[
+					[
+						'UNTYPED_INPUT',
+						'"Upsert": the input fields that the sheet fields type are open (sheet names no resource with a field lookup, e.g. it is an expression), so tsc does not check their key names.',
+					],
+				],
+				[
+					[
+						'UNTYPED_INPUT',
+						'"Upsert": the input fields that the sheet fields type are open (the googleSheets.sheetName field lookup types no input for these parameters), so tsc does not check their key names.',
+					],
+				],
+				[
+					[
+						'UNTYPED_INPUT',
+						'"Upsert": the input fields that the sheet fields type are open (the googleSheets.sheetName field lookup had no credential: bind one, or store exactly one that the step accepts), so tsc does not check their key names.',
+					],
+				],
+			]);
 		});
 	});
 
@@ -1533,7 +1638,7 @@ describe('untypedOutputIssues', () => {
 		);
 		const lookups = { fields: new Map(), misses: new Map([['Tasks', 'no-credential' as const]]) };
 		expect(messages(await untypedOutputIssues('', json, {}, lookups))).toEqual([
-			'"Tasks": reads of property_status are untyped (the notion.dataSourceProperties field lookup had no credential: bind one, or store exactly one that the step accepts), so tsc does not check the key names. Give the step `sample` items.',
+			'"Tasks": reads of property_status are untyped (the notion.database field lookup had no credential: bind one, or store exactly one that the step accepts), so tsc does not check the key names. Give the step `sample` items.',
 		]);
 		const fields = new Map([['Tasks', [{ name: 'Status', value: 'Status|status' }]]]);
 		expect(await untypedOutputIssues('', json, {}, { fields, misses: new Map() })).toEqual([]);

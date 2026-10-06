@@ -6,7 +6,7 @@
 
 import { isRecord } from '@n8n/utils/is-record';
 
-import type { LookupDocument } from './define';
+import type { FieldLookupDocument, LookupDocument } from './define';
 
 const sortKeys = (value: unknown): unknown =>
 	Array.isArray(value)
@@ -88,6 +88,13 @@ export interface JsonSchema {
 	'x-n8n-ref'?: string;
 	/** The lookup of the resource of an `x-n8n-ref` field. Not in the contract hash. */
 	'x-n8n-lookup'?: LookupDocument;
+	/** The field lookup of the resource of an `x-n8n-ref` field. Not in the contract hash. */
+	'x-n8n-fields'?: FieldLookupDocument;
+	/**
+	 * On an `x-n8n-ref` field: a pattern whose first group is the resource ID in a value, e.g. in
+	 * a URL. Lookups send that ID. Not in the contract hash: the run reads the value as it is.
+	 */
+	'x-n8n-extract'?: string;
 	/** Each output item is an input item, passed on unchanged, so it keeps the input item type. */
 	'x-n8n-passed'?: boolean;
 	/** Value types by source type (Notion property type), for open `patternProperties`. */
@@ -165,34 +172,14 @@ export interface EntryFields {
 	readonly required?: string;
 }
 
-/**
- * A load-options call of a legacy n8n node that lists the fields of a resource. Each listed
- * option is one field: its name and its value.
- */
-export interface LegacyFieldList {
-	/** The legacy node type, e.g. `n8n-nodes-base.notion`. */
-	readonly nodeType: string;
-	/** The legacy node version, e.g. `2.2`. */
-	readonly version: number;
-	/** The load-options method, e.g. `getFilterProperties`. */
-	readonly methodName: string;
-	/** The other node parameters of the call, e.g. `{ resource: 'databasePage' }`. */
-	readonly parameters: Readonly<Record<string, string | number | boolean>>;
-	/** The node parameter that gets the resource ID, as a resource locator in ID mode. */
-	readonly idParameter: string;
-}
-
-/** Where the output fields of an action come from: the resource that an input field names. */
+/** Where fields of an action come from: the resource that an input field names. */
 export interface ResourcePointer<K extends string = string> {
-	/** The name of the field list, e.g. `notion.dataSourceProperties`. */
-	readonly method: string;
 	/**
-	 * The input field that names the resource, e.g. `database`. When the field has a `pattern`,
-	 * the ID is the first match in the value, e.g. in a URL. An expression names no resource.
+	 * The input field that names the resource, e.g. `database`. The field, or a field in it, is a
+	 * `ref` to a resource with a field lookup (`defineResource` `fields`). An expression names no
+	 * resource.
 	 */
 	readonly input: K;
-	/** The calls that list the fields, in order. The first that lists fields wins. */
-	readonly loadOptions: readonly LegacyFieldList[];
 }
 
 declare const phantom: unique symbol;

@@ -1,8 +1,11 @@
-import { lookupActionOf, lookupsOf } from '@n8n/node-sdk/host';
+import { hostRuntime, lookupActionOf, lookupsOf, toVersionedNodeType } from '@n8n/node-sdk/host';
 import { toContract } from '@n8n/node-sdk/registry';
 import { mockHttp, runAction } from '@n8n/node-sdk/testing';
 import { SlackApi } from 'n8n-nodes-base/dist/credentials/SlackApi.credentials';
 import { WhatsAppApi } from 'n8n-nodes-base/dist/credentials/WhatsAppApi.credentials';
+import type { ILoadOptionsFunctions } from 'n8n-workflow';
+
+import { versionsOf } from './first-party';
 
 import { getSlackChannelHistory } from '../nodes/slack/actions/channel.history';
 import { deleteSlackMessage } from '../nodes/slack/actions/message.delete';
@@ -223,5 +226,23 @@ describe('slack.channel lookup', () => {
 				cursor: 'c2',
 			},
 		]);
+	});
+
+	it('fails with the Slack error code of an ok: false answer, from the manifest without the bundle', async () => {
+		const nodeType = new (toVersionedNodeType(versionsOf('slack.message.delete'), hostRuntime()))();
+		const listChannels = nodeType.getNodeType(1).methods?.listSearch?.['slack.channel'];
+		const context = {
+			getNode: () => ({ name: 'Slack', credentials: { slackApi: { id: '1', name: 'Slack' } } }),
+			getCurrentNodeParameter: () => undefined,
+			getCredentials: async () => ({ accessToken: 'xoxb-test' }),
+			helpers: {
+				httpRequestWithAuthentication: async () => ({ ok: false, error: 'missing_scope' }),
+			},
+			logger: { debug: () => undefined },
+		};
+		// The lookup reads only these members.
+		await expect(listChannels?.call(context as unknown as ILoadOptionsFunctions)).rejects.toThrow(
+			'The slack.channel lookup failed: missing_scope',
+		);
 	});
 });

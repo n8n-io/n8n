@@ -159,7 +159,7 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 
 export const sha256 = (text: string) => createHash('sha256').update(text).digest('hex');
 
-/** Prose, and the lookup of a `ref` field: a workflow depends on neither, and a run reads neither. */
+/** Prose, and the lookups of a `ref` field: a workflow depends on neither, and a run reads neither. */
 const NON_NORMATIVE_KEYWORDS = new Set([
 	'title',
 	'description',
@@ -167,6 +167,8 @@ const NON_NORMATIVE_KEYWORDS = new Set([
 	'examples',
 	'x-n8n-options',
 	'x-n8n-lookup',
+	'x-n8n-fields',
+	'x-n8n-extract',
 ]);
 const SCHEMA_MAPS = new Set(['properties', 'patternProperties', 'x-n8n-value-types']);
 
@@ -498,14 +500,15 @@ function variantChanges(side: Side, at: string, prev: JsonSchema, next: JsonSche
 
 /**
  * With a pointer, the fields come from the user's resource. So static to dynamic, and back,
- * is a major, as is another resource or field list. Other calls for the same fields are a minor.
+ * is a major, as is another input field. Another way to list the same fields is a minor, e.g.
+ * a field lookup on the `ref` field instead of legacy load-options calls.
  */
 function resourceChanges(at: string, prev: JsonSchema, next: JsonSchema): ContractChange[] {
 	const [old, now] = [prev['x-n8n-resource'], next['x-n8n-resource']];
 	if (canonicalJson(old) === canonicalJson(now)) return [];
 	if (!old || !now) return [major(`${at} ${now ? 'adds' : 'drops'} x-n8n-resource`)];
-	return old.method === now.method && old.input === now.input
-		? [{ kind: 'minor', text: `${at} changes the x-n8n-resource loadOptions` }]
+	return old.input === now.input
+		? [minor(`${at} lists the x-n8n-resource fields in another way`)]
 		: [major(`${at} changes x-n8n-resource`)];
 }
 

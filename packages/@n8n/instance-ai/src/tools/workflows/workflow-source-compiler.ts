@@ -43,6 +43,7 @@ import {
 	storedWorkflowOf,
 	synthesizedFixtures,
 	typecheckWorkflowSource,
+	untypedInputIssues,
 	untypedNodeIssues,
 	untypedOutputIssues,
 	workflowExpressions,
@@ -546,6 +547,7 @@ async function compileNextWorkflowSource(
 	}
 	if (!built.success) return built;
 	const untyped = await untypedNodeIssues(source, built.workflow, context);
+	const untypedInputs = untypedInputIssues(built.workflow, lookups);
 	const untypedOutputs = await untypedOutputIssues(
 		source,
 		built.workflow,
@@ -571,6 +573,7 @@ async function compileNextWorkflowSource(
 		warnings: [
 			...built.warnings,
 			...untyped,
+			...untypedInputs,
 			...untypedOutputs,
 			...sampleSchemaIssues(built.workflow, built.declaredOutputFixtures, resourceFields),
 			...sampledReadIssues(built.workflow, built.declaredOutputFixtures),

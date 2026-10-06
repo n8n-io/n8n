@@ -34,7 +34,7 @@ import type {
 	WebhookRequest,
 } from './triggers';
 import type { ActionUi } from './properties';
-import { firstMatchOf } from './pattern';
+import { firstGroupOf, firstMatchOf } from './pattern';
 import { exampleOf, outputBinaryKeys, readAs } from './validate';
 import { validate } from './validator';
 
@@ -1432,19 +1432,22 @@ export type ValueAtPath<T, P extends string> = P extends `${infer Head}.${infer 
 	? ValueAtPath<StepOf<T, Head>, Rest>
 	: StepOf<T, P>;
 
-/** The paths of `T` that hold a list. */
+/** A list, or a record whose values are the entries, e.g. the Notion properties by name. */
+type EntriesOf<V> = V extends ReadonlyArray<infer E>
+	? E
+	: string extends keyof V
+		? V[keyof V & string]
+		: never;
+
+/** The paths of `T` that hold a list or a record (`t.record`). */
 type ListPathOf<T> = {
-	[P in PathOf<T>]: ValueAtPath<T, P> extends readonly unknown[] ? P : never;
+	[P in PathOf<T>]: [EntriesOf<ValueAtPath<T, P>>] extends [never] ? never : P;
 }[PathOf<T>];
 
-/** One entry of the list at `items`; the page itself without `items`. */
-type EntryOf<Page, Items extends string> = (
-	[Items] extends ['']
-		? Page
-		: ValueAtPath<Page, Items>
-) extends ReadonlyArray<infer E>
-	? NonNullable<E>
-	: never;
+/** One entry of the list or record at `items`; the page itself without `items`. */
+type EntryOf<Page, Items extends string> = NonNullable<
+	EntriesOf<[Items] extends [''] ? Page : ValueAtPath<Page, Items>>
+>;
 
 /** Text with one `{path}` or more into a list entry, e.g. `#{name}` or `{title.0.plain_text}`. */
 export type EntryTemplate<Entry> = `${string}{${PathOf<Entry>}}${string}`;
@@ -1528,7 +1531,10 @@ export interface ResourceList<
 	readonly request: LookupRequest<LookupInput<In>, P>;
 	/** The fields of one page that the lookup reads. The host checks each page against it. */
 	readonly response: R;
-	/** The path of the entry list in the page, e.g. `channels`. Absent: the page is the list. */
+	/**
+	 * The path of the entry list in the page, e.g. `channels`. A record gives its values. Absent:
+	 * the page is the list.
+	 */
 	readonly items?: Items & ListPathOf<Infer<R>>;
 	/** What the n8n form shows for one entry, e.g. `{ id: '{id}', label: '#{name}' }`. */
 	readonly item: {
@@ -1543,6 +1549,11 @@ export interface ResourceList<
 	readonly pages?: LookupPages<PathOf<Infer<R>>>;
 	/** Absent: the list has no search box. */
 	readonly search?: LookupSearch;
+	/**
+	 * The path of the error text in a page, for a service that answers an error with status 200,
+	 * e.g. `error` for Slack (`ok: false`). A page with text there fails with that text.
+	 */
+	readonly error?: PathOf<Infer<R>>;
 }
 
 /**
@@ -1582,10 +1593,74 @@ export interface LookupDocument {
 	readonly pages?: LookupPages;
 	/** How the list narrows to a search text. Absent: no search box. */
 	readonly search?: LookupSearch;
+	/** The path of the error text in a page. A page with text there fails with that text. */
+	readonly error?: string;
 	/**
 	 * The input fields of the action that the request reads, e.g. `spreadsheet` for the sheets of
 	 * a spreadsheet. The n8n form reloads the list when one of them changes.
 	 */
+	readonly input?: readonly string[];
+}
+
+/** The input of a field lookup: the resource ID, and the input fields that the request reads. */
+export type FieldLookupInput<In extends Shape> = RunInput<In> & {
+	/** The ID of the resource whose fields the lookup lists, e.g. a Notion data source ID. */
+	readonly id: string;
+};
+
+/**
+ * The declarative lookup of the fields of one resource, e.g. the properties of a Notion data
+ * source or the header cells of a sheet. The host sends it with the credential and the egress
+ * of the action, as a `list` lookup. A build types an input or an output with the fields, see
+ * `resourceInput` and `resourceOutput`.
+ */
+export interface ResourceFieldList<
+	In extends Shape,
+	Ps extends readonly [string, ...string[]],
+	R extends AnySchema,
+	Items extends string,
+> {
+	/**
+	 * The requests, in order. The host sends the next one when a request gets a 400 or 404
+	 * response, e.g. for another kind of ID. `{id}` is the resource ID.
+	 */
+	readonly requests: { readonly [K in keyof Ps]: LookupRequest<FieldLookupInput<In>, Ps[K]> };
+	/** The fields of the response that the lookup reads. The host checks the response against it. */
+	readonly response: R;
+	/** The path of the field list or record, e.g. `properties`. Absent: the response is the list. */
+	readonly items?: Items & ListPathOf<Infer<R>>;
+	/** One field, as templates over one entry. An entry with an empty name is no field. */
+	readonly item: {
+		/** The field name, e.g. `{name}`. */
+		readonly name: EntryTemplate<EntryOf<Infer<R>, Items>>;
+		/** What the action reads of the field, e.g. `{name}|{type}`. */
+		readonly value: EntryTemplate<EntryOf<Infer<R>, Items>>;
+	};
+	/** The path of the error text in a response, as in `ResourceList`. */
+	readonly error?: PathOf<Infer<R>>;
+}
+
+/**
+ * A field lookup in a contract document (`x-n8n-fields` on each `ref` field). It is not in the
+ * contract hash: a run never sends it.
+ */
+export interface FieldLookupDocument {
+	/** The requests, in order. `{ input }` values name `id` or fields of the lookup input. */
+	readonly requests: ReadonlyArray<LookupDocument['request']>;
+	/** The JSON Schema of the response. */
+	readonly response: JsonSchema;
+	/** The path of the field list or record. Absent: the response is the list. */
+	readonly items?: string;
+	/** The templates of one field over one entry. */
+	readonly item: {
+		/** The field name. */
+		readonly name: string;
+		/** What the action reads of the field. */
+		readonly value: string;
+	};
+	/** The path of the error text in a response. */
+	readonly error?: string;
+	/** The input fields of the action that the requests read, as in `LookupDocument`. */
 	readonly input?: readonly string[];
 }
 
@@ -1599,6 +1674,10 @@ export interface Resource {
 	readonly shape: JsonSchema;
 	/** The lookup that lists the resources. Absent: the user types the ID. */
 	readonly lookup?: LookupDocument;
+	/** The lookup that lists the fields of one resource. */
+	readonly fields?: FieldLookupDocument;
+	/** A pattern whose first group is the ID in a value, e.g. in a URL. */
+	readonly extract?: string;
 }
 
 /**
@@ -1606,7 +1685,7 @@ export interface Resource {
  * form shows a searchable list for each `ref` field, and agents list the resources by the
  * resource id (`nodes explore-resources`). A dependent resource names the input fields that its
  * request reads in `input`, e.g. the spreadsheet of a sheet; each action that refers to it must
- * have them.
+ * have them. With `fields`, a build lists the fields of one resource, e.g. the columns of a sheet.
  *
  * @example
  * ```ts
@@ -1629,6 +1708,9 @@ export function defineResource<
 	const P extends string = string,
 	R extends AnySchema = AnySchema,
 	const Items extends string = '',
+	const FPs extends readonly [string, ...string[]] = [string],
+	FR extends AnySchema = AnySchema,
+	const FItems extends string = '',
 >(spec: {
 	/** `service.resource`, e.g. `slack.channel`. */
 	readonly id: string;
@@ -1639,18 +1721,27 @@ export function defineResource<
 	/** The input fields of the action that the lookup reads, e.g. `{ spreadsheet: ref(spreadsheet) }`. */
 	readonly input?: In;
 	/** The lookup that lists the resources. */
-	readonly list?: ResourceList<In, P, R, Items>;
+	// Only `input` names the input fields, so a request value does not change them.
+	readonly list?: ResourceList<NoInfer<In>, P, R, Items>;
+	/** The lookup that lists the fields of one resource, e.g. the header cells of a sheet. */
+	readonly fields?: ResourceFieldList<NoInfer<In>, FPs, FR, FItems>;
+	/**
+	 * A pattern whose first group is the ID in a value, e.g. `/d/([\\w-]+)` in a Google URL.
+	 * Lookups send that ID; without a match, the value. The n8n form adds a URL mode. The run
+	 * reads the value as it is, so the ID `shape` must take such a URL too.
+	 */
+	readonly extract?: string;
 }): Resource {
-	const { input, list, ...resource } = spec;
-	if (!list) return resource;
-	const { response, ...lookup } = list;
+	const { input, list, fields, ...resource } = spec;
+	const documentOf = <L extends { readonly response: AnySchema }>({ response, ...rest }: L) => ({
+		...rest,
+		response: response.json,
+		...(input ? { input: Object.keys(input) } : {}),
+	});
 	return {
 		...resource,
-		lookup: {
-			...lookup,
-			response: response.json,
-			...(input ? { input: Object.keys(input) } : {}),
-		},
+		...(list ? { lookup: documentOf(list) } : {}),
+		...(fields ? { fields: documentOf(fields) } : {}),
 	};
 }
 
@@ -1663,9 +1754,16 @@ export function defineResource<
  * input: { channel: ref(slackChannel) },
  * ```
  */
-export const ref = ({ id, shape, lookup }: Resource) =>
+export const ref = ({ id, shape, lookup, fields, extract }: Resource) =>
 	new Schema<string>(
-		{ type: 'string', ...shape, 'x-n8n-ref': id, ...(lookup ? { 'x-n8n-lookup': lookup } : {}) },
+		{
+			type: 'string',
+			...shape,
+			'x-n8n-ref': id,
+			...(lookup ? { 'x-n8n-lookup': lookup } : {}),
+			...(fields ? { 'x-n8n-fields': fields } : {}),
+			...(extract === undefined ? {} : { 'x-n8n-extract': extract }),
+		},
 		false,
 	);
 
@@ -1760,24 +1858,45 @@ interface ActionSpecBase<
 	 */
 	deriveOutput?(input: ObjectOf<Full>): JsonSchema;
 	/**
-	 * The output from the fields of the resource that an input field names. The contract
-	 * document holds the pointer as `output['x-n8n-resource']`, so a builder can list the fields
-	 * with the node's credential. Without fields, the builder keeps `deriveOutput`.
+	 * The output from the fields of the resource that an input field names. The input field is a
+	 * `ref` to a resource with a field lookup (`defineResource` `fields`). The contract document
+	 * holds the pointer as `output['x-n8n-resource']`, so a build can list the fields with the
+	 * node's credential. Without fields, the build keeps `deriveOutput`.
 	 *
 	 * @example
 	 * ```ts
-	 * resourceOutput: {
-	 *   method: 'notion.dataSourceProperties',
-	 *   input: 'database',
-	 *   loadOptions: [{ nodeType: 'n8n-nodes-base.notion', version: 3, methodName: 'getFilterProperties',
-	 *     parameters: { resource: 'databasePage', operation: 'getAll' }, idParameter: 'dataSourceId' }],
-	 *   toOutput: outputFromProperties,
-	 * },
+	 * resourceOutput: { input: 'database', toOutput: outputFromProperties },
 	 * ```
 	 */
 	readonly resourceOutput?: ResourcePointer<keyof Full & string> & {
 		/** Pure hatch: the output schema from the fields and the parameters. No I/O. */
 		toOutput(fields: readonly ResourceField[], input: ObjectOf<Full>): JsonSchema;
+	};
+	/**
+	 * The input fields that the fields of a resource type at build time, e.g. the keys of the
+	 * `values` of a sheet row from the header cells. The input field that `input` names is a `ref`
+	 * to a resource with a field lookup. The contract document holds the pointer as
+	 * `resourceInput`, outside the contract hash: the run takes each value of the input schema.
+	 * Use the same `input` as `resourceOutput`.
+	 *
+	 * @example
+	 * ```ts
+	 * resourceInput: {
+	 *   input: 'sheet',
+	 *   toInput: (fields) => ({ values: { type: 'object', properties: … , additionalProperties: false } }),
+	 * },
+	 * ```
+	 */
+	readonly resourceInput?: ResourcePointer<keyof Full & string> & {
+		/**
+		 * Pure hatch: the schema of each input field that the fields type, by field name. The
+		 * workflow types of the step take each schema instead of the field schema. An empty
+		 * result keeps the input types. No I/O.
+		 */
+		toInput(
+			fields: readonly ResourceField[],
+			input: ObjectOf<Full>,
+		): Readonly<Partial<Record<keyof Full & string, JsonSchema>>>;
 	};
 }
 
@@ -2331,6 +2450,11 @@ export interface ContractDocument {
 	 * bundle. Absent when the input has no lookup or the node has no base URL.
 	 */
 	readonly baseUrl?: string;
+	/**
+	 * The input field whose resource fields type input fields at build time, see the action
+	 * `resourceInput`. Not in the contract hash: the run takes each value of the input schema.
+	 */
+	readonly resourceInput?: ResourcePointer;
 }
 
 /**
@@ -2382,6 +2506,7 @@ type ContractSource = Pick<
 				| 'imports'
 				| 'inputs'
 				| 'resourceOutput'
+				| 'resourceInput'
 				| 'runtime'
 		  >
 		| (Pick<Trigger, 'trigger'> &
@@ -2448,6 +2573,7 @@ export const toContract = (source: ContractSource): ContractDocument => {
 	const imports = 'kind' in source ? [] : [...new Set(source.imports ?? [])].sort();
 	const inputs = 'kind' in source ? undefined : source.inputs;
 	const resource = 'kind' in source ? undefined : source.resourceOutput;
+	const resourceInput = 'kind' in source ? undefined : source.resourceInput;
 	const endpoint = customEndpointOf(
 		'kind' in source && source.kind !== 'native' ? source.webhook?.endpoint : undefined,
 	);
@@ -2474,11 +2600,7 @@ export const toContract = (source: ContractSource): ContractDocument => {
 		output: resource
 			? {
 					...source.output.json,
-					'x-n8n-resource': {
-						method: resource.method,
-						input: resource.input,
-						loadOptions: resource.loadOptions,
-					},
+					'x-n8n-resource': { input: resource.input },
 				}
 			: source.output.json,
 		...(!('kind' in source) && source.outputs ? { outputs: source.outputs } : {}),
@@ -2486,9 +2608,11 @@ export const toContract = (source: ContractSource): ContractDocument => {
 		...(imports.length ? { imports } : {}),
 		...(inputs ? { inputs } : {}),
 		...(runtime ? { runtime } : {}),
-		...(source.node.baseUrl && lookupsOf(source.inputSchema).size > 0
+		...(source.node.baseUrl &&
+		(lookupsOf(source.inputSchema).size > 0 || fieldLookupsOf(source.inputSchema).size > 0)
 			? { baseUrl: source.node.baseUrl }
 			: {}),
+		...(resourceInput ? { resourceInput: { input: resourceInput.input } } : {}),
 	};
 };
 
@@ -2720,6 +2844,7 @@ export function lintContract(contract: ContractDocument): string[] {
 		...egressIssues(contract),
 		...resourceIssues(contract),
 		...lookupIssues(contract),
+		...fieldLookupIssues(contract),
 		...typicalIssues(contract.id, 'output', contract.output),
 		...inputIssues(contract),
 		...providerIssues(contract.id, contract.input, contract.output, contract.flow),
@@ -2836,28 +2961,41 @@ function inputIssues(contract: ContractDocument): string[] {
 	];
 }
 
-function resourceIssues({ id, input, output }: ContractDocument): string[] {
-	const pointer = output['x-n8n-resource'];
-	if (!pointer) return [];
+/** A pointer names an input field with a `ref` to a resource that has a field lookup. */
+function resourceIssues({ id, input, output, resourceInput }: ContractDocument): string[] {
+	const outputPointer = output['x-n8n-resource'];
+	const pointers = [
+		...(outputPointer ? [['resourceOutput', outputPointer] as const] : []),
+		...(resourceInput ? [['resourceInput', resourceInput] as const] : []),
+	];
 	return [
-		...(input.properties?.[pointer.input]
-			? []
-			: [`${id}: resourceOutput.input names no input field: ${pointer.input}`]),
-		...(pointer.loadOptions.length ? [] : [`${id}: resourceOutput lists no loadOptions call`]),
+		...pointers.flatMap(([name, pointer]) => {
+			const field = input.properties?.[pointer.input];
+			if (!field) return [`${id}: ${name}.input names no input field: ${pointer.input}`];
+			return fieldLookupsOf(field).size > 0
+				? []
+				: [`${id}: ${name}.input ${pointer.input} has no ref to a resource with fields`];
+		}),
+		...(outputPointer && resourceInput && outputPointer.input !== resourceInput.input
+			? [`${id}: resourceInput and resourceOutput name different input fields`]
+			: []),
 	];
 }
+
+/** The children of a schema: properties, list items and union branches. */
+const childSchemasOf = (schema: JsonSchema): JsonSchema[] => [
+	...Object.values(schema.properties ?? {}),
+	...(schema.items ? [schema.items] : []),
+	...(schema.oneOf ?? []),
+	...(schema.anyOf ?? []),
+];
 
 /** The resource id and the lookup of each `ref` field with a lookup, at any depth. */
 const refLookupsOf = (schema: JsonSchema): Array<[string, LookupDocument]> => [
 	...(schema['x-n8n-ref'] !== undefined && schema['x-n8n-lookup'] !== undefined
 		? [[schema['x-n8n-ref'], schema['x-n8n-lookup']] satisfies [string, LookupDocument]]
 		: []),
-	...[
-		...Object.values(schema.properties ?? {}),
-		...(schema.items ? [schema.items] : []),
-		...(schema.oneOf ?? []),
-		...(schema.anyOf ?? []),
-	].flatMap(refLookupsOf),
+	...childSchemasOf(schema).flatMap(refLookupsOf),
 ];
 
 /**
@@ -2868,8 +3006,77 @@ export function lookupsOf(input: JsonSchema): ReadonlyMap<string, LookupDocument
 	return new Map(refLookupsOf(input));
 }
 
+/** The resource id and the field lookup of each `ref` field with one, at any depth. */
+const refFieldLookupsOf = (schema: JsonSchema): Array<[string, FieldLookupDocument]> => [
+	...(schema['x-n8n-ref'] !== undefined && schema['x-n8n-fields'] !== undefined
+		? [[schema['x-n8n-ref'], schema['x-n8n-fields']] satisfies [string, FieldLookupDocument]]
+		: []),
+	...childSchemasOf(schema).flatMap(refFieldLookupsOf),
+];
+
+/** The field lookup of each resource that an input field refers to (`x-n8n-fields`), by resource id. */
+export function fieldLookupsOf(input: JsonSchema): ReadonlyMap<string, FieldLookupDocument> {
+	return new Map(refFieldLookupsOf(input));
+}
+
+/**
+ * The resource ID in a value of a `ref` field: the first group of `x-n8n-extract`, else the
+ * value. A field with a `pattern` and no `x-n8n-extract` gives the first match of its pattern,
+ * e.g. an ID in a URL. None for an expression, or when the pattern does not match.
+ */
+export function resourceIdOf(field: JsonSchema, value: string): string | undefined {
+	if (value.startsWith('=')) return undefined;
+	const extract = field['x-n8n-extract'];
+	if (extract !== undefined) return firstGroupOf(extract, value) ?? value;
+	return field.pattern === undefined ? value : firstMatchOf(field.pattern, value);
+}
+
+/** A resource that a value names, and the field lookup of its resource. */
+export interface FieldRef {
+	/** The resource id, e.g. `notion.database`. */
+	readonly resource: string;
+	/** The resource ID, see `resourceIdOf`. */
+	readonly id: string;
+	/** The field lookup of the resource. */
+	readonly lookup: FieldLookupDocument;
+}
+
+/**
+ * The first `ref` value in `value` whose resource has a field lookup, at any depth, e.g. the
+ * tab name in the `name` branch of a sheet variant. `resource` keeps refs of that resource only.
+ */
+export function fieldRefOf(
+	schema: JsonSchema,
+	value: unknown,
+	resource?: string,
+): FieldRef | undefined {
+	const ref = schema['x-n8n-ref'];
+	const lookup = schema['x-n8n-fields'];
+	if (ref !== undefined && lookup !== undefined && (resource === undefined || ref === resource)) {
+		const id = typeof value === 'string' ? resourceIdOf(schema, value) : undefined;
+		if (id) return { resource: ref, id, lookup };
+	}
+	const properties = Object.entries(schema.properties ?? {});
+	const children: Array<[JsonSchema, unknown]> = [
+		...(isRecord(value)
+			? properties.map(([key, child]): [JsonSchema, unknown] => [child, value[key]])
+			: []),
+		...(schema.items && Array.isArray(value)
+			? value.map((entry: unknown): [JsonSchema, unknown] => [schema.items ?? {}, entry])
+			: []),
+		...[...(schema.oneOf ?? []), ...(schema.anyOf ?? [])].map((branch): [JsonSchema, unknown] => [
+			branch,
+			value,
+		]),
+	];
+	return children.reduce<FieldRef | undefined>(
+		(found, [child, entry]) => found ?? fieldRefOf(child, entry, resource),
+		undefined,
+	);
+}
+
 /** The fields that a request description names: `{field}` in the path and `{ input }` values. */
-function lookupFieldsOf({ request }: LookupDocument): string[] {
+function requestFieldsOf(request: LookupDocument['request']): string[] {
 	const named = (value: unknown): string[] =>
 		Array.isArray(value)
 			? value.flatMap(named)
@@ -2881,6 +3088,8 @@ function lookupFieldsOf({ request }: LookupDocument): string[] {
 	const inPath = [...(request.path ?? '').matchAll(/\{([^}]+)\}/g)].map(([, field]) => field);
 	return [...inPath, ...named(request.query), ...named(request.body)];
 }
+
+const lookupFieldsOf = ({ request }: LookupDocument) => requestFieldsOf(request);
 
 /**
  * A resource id has one lookup, as n8n has one `listSearch` method per resource id. A lookup reads
@@ -2915,6 +3124,37 @@ function lookupIssues({ id, input }: ContractDocument): string[] {
 	});
 }
 
+/**
+ * A resource id has one field lookup, as n8n has one `loadOptions` method per resource id. Its
+ * requests read only `id` and its own input fields, which the action has.
+ */
+function fieldLookupIssues({ id, input }: ContractDocument): string[] {
+	const all = refFieldLookupsOf(input);
+	return [...fieldLookupsOf(input)].flatMap(([resource, lookup]) => {
+		const own = lookup.input ?? [];
+		const at = `${id}: field lookup ${resource}`;
+		return [
+			...(all.some(
+				([other, found]) => other === resource && canonicalJson(found) !== canonicalJson(lookup),
+			)
+				? [`${id}: resource ${resource} has two different field lookups`]
+				: []),
+			...(lookup.requests.length === 0 ? [`${at} has no request`] : []),
+			...lookup.requests.flatMap((request) => [
+				...requestFieldsOf(request)
+					.filter((field) => field !== 'id' && !own.includes(field))
+					.map((field) => `${at} reads ${field}, which is not in its input`),
+				...((request.path === undefined) === (request.url === undefined)
+					? [`${at} needs a path or a url`]
+					: []),
+			]),
+			...own
+				.filter((field) => input.properties?.[field] === undefined)
+				.map((field) => `${at} reads ${field}, which is not an input field of the action`),
+		];
+	});
+}
+
 /** A typical field may be absent, so it cannot be required. */
 function typicalIssues(id: string, at: string, schema: JsonSchema): string[] {
 	const required = schema.required ?? [];
@@ -2930,42 +3170,6 @@ function typicalIssues(id: string, at: string, schema: JsonSchema): string[] {
 			typicalIssues(id, at, branch),
 		),
 	];
-}
-
-/** A lookup call of the builder: a load-options call on a legacy node. */
-export interface ResourceLookupCall {
-	/** The legacy node type, e.g. `n8n-nodes-base.notion`. */
-	readonly nodeType: string;
-	/** The legacy node version. */
-	readonly version: number;
-	/** The load-options method. */
-	readonly methodName: string;
-	/** The node parameters of the call, the resource ID included. */
-	readonly currentNodeParameters: Record<string, unknown>;
-}
-
-/**
- * The calls that list the fields of the resource the parameters name, in the order to try them.
- * None when the contract has no `x-n8n-resource`, or the input field holds no ID.
- */
-export function resourceLookupsOf(
-	contract: Pick<ContractDocument, 'input' | 'output'>,
-	parameters: Readonly<Record<string, unknown>>,
-): ResourceLookupCall[] {
-	const pointer = contract.output['x-n8n-resource'];
-	const value = pointer ? parameters[pointer.input] : undefined;
-	if (!pointer || typeof value !== 'string' || value.startsWith('=')) return [];
-	const pattern = contract.input.properties?.[pointer.input]?.pattern;
-	const id = pattern === undefined ? value : firstMatchOf(pattern, value);
-	if (!id) return [];
-	return pointer.loadOptions.map(
-		({ nodeType, version, methodName, parameters: fixed, idParameter }) => ({
-			nodeType,
-			version,
-			methodName,
-			currentNodeParameters: { ...fixed, [idParameter]: { __rl: true, mode: 'id', value: id } },
-		}),
-	);
 }
 
 /** A template field stands for one host label, so the pattern check reads it as one. */

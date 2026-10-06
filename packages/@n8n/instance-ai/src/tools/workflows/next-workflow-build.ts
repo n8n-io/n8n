@@ -20,13 +20,12 @@ import {
 	credentialHostsOf,
 	egressIssuesOf,
 	exampleOf,
+	fieldRefOf,
 	parameterPathOf,
-	resourceLookupsOf,
 	storedParametersOf,
 	toolUiOf,
-	type ResourceLookupCall,
+	type FieldRef,
 } from '@n8n/node-sdk/host';
-import { toContract } from '@n8n/node-sdk/registry';
 import { isRecord } from '@n8n/utils/is-record';
 import { hasPlaceholderDeep } from '@n8n/utils/placeholder';
 import { sublimeSearch } from '@n8n/utils/search/sublime-search';
@@ -299,27 +298,28 @@ interface Lookup {
 	outcome: LookupOutcome;
 }
 
-async function firstFields(
-	explore: NonNullable<InstanceAiContext['nodeService']['exploreResources']>,
-	[call, ...rest]: readonly ResourceLookupCall[],
-	credential: { credentialType: string; credentialId: string },
-): Promise<Lookup> {
-	if (!call) return { fields: [], outcome: 'failed' };
-	const result = await explore({ ...call, ...credential, methodType: 'loadOptions' }).catch(
-		() => undefined,
-	);
-	return result?.results.length
-		? {
-				fields: result.results.map(({ name, value }) => ({ name, value })),
-				outcome: result.mocked ? 'mocked' : 'ok',
-			}
-		: await firstFields(explore, rest, credential);
+/** The input field of the resource whose fields type the step: `resourceOutput` or `resourceInput`. */
+const resourcePointerOf = (action: Action) => action.resourceOutput ?? action.resourceInput;
+
+/**
+ * The resource that a node names in the input field of its resource pointer, with its field
+ * lookup. None for an expression, or a value without a resource with a field lookup.
+ */
+export function fieldRefOfNode(
+	node: Pick<WorkflowNode, 'type' | 'parameters'>,
+	action: Action,
+): FieldRef | undefined {
+	const pointer = resourcePointerOf(action);
+	const field = pointer && action.inputSchema.properties?.[pointer.input];
+	return field && fieldRefOf(field, nodeInputOf(node, action)[pointer.input]);
 }
 
 /**
- * The fields of the resource each node reads, for contracts with an `x-n8n-resource` pointer.
- * The source binds no credential, so the lookup uses the node's credential or else the sole
- * stored credential the action accepts. Best effort: a failed or slow lookup leaves the node out.
+ * The fields of the resource each node reads, for actions with a resource pointer. The node
+ * type gives the field lookup of the resource as a `loadOptions` method named by the resource
+ * id, so the host runs it as a step: with the egress check and the eval mocks. The source binds
+ * no credential, so the lookup uses the node's credential or else the sole stored credential
+ * the action accepts. Best effort: a failed or slow lookup leaves the node out.
  */
 export async function fetchResourceFields(
 	context: InstanceAiContext,
@@ -330,12 +330,8 @@ export async function fetchResourceFields(
 	if (!explore) return none;
 	const targets = workflow.nodes.flatMap((node) => {
 		const action = actionOfNode(node);
-		const contract = action && toContract(action);
-		const method = contract?.output['x-n8n-resource']?.method;
-		const calls = contract ? resourceLookupsOf(contract, nodeInputOf(node, action)) : [];
-		return action && node.name && calls.length > 0
-			? [{ name: node.name, node, action, method, calls }]
-			: [];
+		const ref = action && fieldRefOfNode(node, action);
+		return action && node.name && ref ? [{ name: node.name, node, action, ref }] : [];
 	});
 	if (targets.length === 0) return none;
 	const stored = await context.credentialService.list().catch(() => []);
@@ -343,7 +339,7 @@ export async function fetchResourceFields(
 		(await context.nodeService.resourceLookupTimeoutMs?.().catch(() => undefined)) ??
 		RESOURCE_LOOKUP_TIMEOUT_MS;
 	const fetched = await Promise.all(
-		targets.map(async ({ name, node, action, method, calls }) => {
+		targets.map(async ({ name, node, action, ref }) => {
 			const bound = Object.entries(node.credentials ?? {}).flatMap(([type, value]) =>
 				action.credentialTypes.includes(type) && typeof value?.id === 'string'
 					? [{ credentialType: type, credentialId: value.id }]
@@ -356,16 +352,32 @@ export async function fetchResourceFields(
 					: accepted.length === 1
 						? accepted.map(({ id, type }) => ({ credentialType: type, credentialId: id }))
 						: [];
-			const { fields, outcome }: Lookup = credential
-				? await withTimeout(
-						firstFields(explore, calls, credential),
-						{ fields: [], outcome: 'timeout' },
-						timeoutMs,
-					)
-				: { fields: [], outcome: 'no-credential' };
+			const lookup = async (): Promise<Lookup> => {
+				if (!credential) return { fields: [], outcome: 'no-credential' };
+				const result = await explore({
+					nodeType: node.type,
+					version: node.typeVersion,
+					methodName: ref.resource,
+					methodType: 'loadOptions',
+					currentNodeParameters: node.parameters ?? {},
+					...credential,
+				}).catch(() => undefined);
+				// No fields is an answer, e.g. a sheet without header cells. A failure rejects.
+				return result
+					? {
+							fields: result.results.map(({ name: field, value }) => ({ name: field, value })),
+							outcome: result.mocked ? 'mocked' : 'ok',
+						}
+					: { fields: [], outcome: 'failed' };
+			};
+			const { fields, outcome } = await withTimeout(
+				lookup(),
+				{ fields: [], outcome: 'timeout' },
+				timeoutMs,
+			);
 			context.logger.debug('Resource lookup for a node contract', {
 				nodeName: name,
-				method,
+				resource: ref.resource,
 				outcome,
 				fields: fields.length,
 			});
@@ -760,10 +772,43 @@ export function sampledKeysOf(
 }
 
 /**
- * Output types for the nodes of a built workflow, from each action's `deriveOutput` or
- * `resourceOutput` pure hatch. Keyed by node name, they narrow `$('Node')` and the next node's
- * item in `tsc`. The nodes with `onError: 'continueRegularOutput'` go in `ContinuedNodes`, so
- * `tsc` types their items as the output or `{ error }`.
+ * The input fields that the resource fields of a node type, from the action's `resourceInput`
+ * pure hatch, as one object schema. None without fields, or when the hatch types no field.
+ */
+export function resourceInputOf(
+	action: Action,
+	input: Record<string, unknown>,
+	fields: readonly ResourceField[] | undefined,
+): JsonSchema | undefined {
+	if (!fields?.length || !action.resourceInput) return undefined;
+	const properties = action.inputSchema.properties ?? {};
+	try {
+		const typed = Object.entries(action.resourceInput.toInput(fields, input)).flatMap(
+			([key, schema]): Array<[string, JsonSchema]> =>
+				key in properties && schema ? [[key, schema]] : [],
+		);
+		if (typed.length === 0) return undefined;
+		const required = action.inputSchema.required ?? [];
+		return {
+			type: 'object',
+			properties: Object.fromEntries(typed),
+			required: typed.flatMap(([key]) => (required.includes(key) ? [key] : [])),
+			additionalProperties: false,
+		};
+	} catch {
+		return undefined;
+	}
+}
+
+/** The names of the `@n8n/workflow-sdk/next` types that a member text uses. */
+const DECLARED_TYPES = ['Json', 'Maybe', 'OpenValue', 'Value'] as const;
+
+/**
+ * Output and input types for the nodes of a built workflow. The outputs come from each action's
+ * `deriveOutput` or `resourceOutput` pure hatch: keyed by node name, they narrow `$('Node')` and
+ * the next node's item in `tsc`. The inputs come from the `resourceInput` hatch, e.g. the keys of
+ * a sheet row from its header cells. The nodes with `onError: 'continueRegularOutput'` go in
+ * `ContinuedNodes`, so `tsc` types their items as the output or `{ error }`.
  */
 export function nodeOutputsDeclaration(
 	workflow: WorkflowJSON,
@@ -788,13 +833,25 @@ export function nodeOutputsDeclaration(
 			? [`\t\t${JSON.stringify(node.name)}: true;`]
 			: [],
 	);
-	if (members.length + continued.length === 0) return EMPTY_OUTPUTS;
+	const inputs = workflow.nodes.flatMap((node) => {
+		const action = actionOfNode(node);
+		const fields = node.name ? resourceFields.get(node.name) : undefined;
+		const schema = action && resourceInputOf(action, nodeInputOf(node, action), fields);
+		if (!schema || !node.name) return [];
+		const typed = toTs(schema, { input: true, absentUndefined: true, indent: '\t\t' });
+		return [`\t\t${JSON.stringify(node.name)}: ${typed};`];
+	});
+	if (members.length + continued.length + inputs.length === 0) return EMPTY_OUTPUTS;
 	// skipLibCheck hides a name that does not resolve here, and tsc then reads it as `any`.
-	const usesJson = members.some((member) => /\bJson\b/.test(member));
+	const text = [...members, ...inputs].join('\n');
+	const used = DECLARED_TYPES.filter((name) => new RegExp(`\\b${name}\\b`).test(text));
 	return [
-		usesJson ? "import type { Json } from '@n8n/workflow-sdk/next';" : 'export {};',
+		used.length > 0
+			? `import type { ${used.join(', ')} } from '@n8n/workflow-sdk/next';`
+			: 'export {};',
 		"declare module '@n8n/workflow-sdk/next' {",
 		...(members.length > 0 ? ['\tinterface NodeOutputs {', ...members, '\t}'] : []),
+		...(inputs.length > 0 ? ['\tinterface NodeInputs<I, C> {', ...inputs, '\t}'] : []),
 		...(continued.length > 0 ? ['\tinterface ContinuedNodes {', ...continued, '\t}'] : []),
 		'}',
 		'',
@@ -1031,6 +1088,42 @@ function triggerOutputOf(nodeType: string): JsonSchema | undefined {
 const MAX_LISTED_KEYS = 5;
 
 /**
+ * One informational line for each node whose resource fields would type its input, e.g. the
+ * `values` keys of a sheet row, where the build has no such types: the field lookup missed, the
+ * input field names no resource with a field lookup (an expression, a sheet by ID), or the hatch
+ * types nothing for these parameters (another header row).
+ */
+export function untypedInputIssues(
+	workflow: WorkflowJSON,
+	lookups: ResourceLookups = { fields: new Map(), misses: new Map() },
+): ValidationWarning[] {
+	return workflow.nodes.flatMap((node): ValidationWarning[] => {
+		const action = actionOfNode(node);
+		const pointer = action?.resourceInput;
+		const name = node.name;
+		if (!action || !pointer || !name || node.disabled) return [];
+		const input = nodeInputOf(node, action);
+		if (resourceInputOf(action, input, lookups.fields.get(name))) return [];
+		const resource = fieldRefOfNode(node, action)?.resource;
+		const miss = lookups.misses.get(name);
+		const reason =
+			resource === undefined
+				? `${pointer.input} names no resource with a field lookup, e.g. it is an expression`
+				: miss === undefined
+					? `the ${resource} field lookup types no input for these parameters`
+					: `the ${resource} field lookup ${LOOKUP_MISS_TEXT[miss]}`;
+		return [
+			{
+				code: 'UNTYPED_INPUT',
+				nodeName: name,
+				severity: 'informational',
+				message: `"${name}": the input fields that the ${pointer.input} fields type are open (${reason}), so tsc does not check their key names.`,
+			},
+		];
+	});
+}
+
+/**
  * One informational line for each node whose output keys the workflow reads, where `tsc` cannot
  * type them: a `node()` or `trigger()` without `sample` items (its item is `Loose`), a trigger
  * field without a `schema`, and an open output key that a failed resource lookup or the output
@@ -1090,8 +1183,8 @@ export async function untypedOutputIssues(
 		if (action.output.json['x-n8n-passed'] === true) return [];
 		const output = outputOf(action, nodeInputOf(node, action), lookups.fields.get(name));
 		const miss = lookups.misses.get(name);
-		const method = toContract(action).output['x-n8n-resource']?.method;
-		const lookup = method === undefined ? 'the field lookup' : `the ${method} field lookup`;
+		const resource = fieldRefOfNode(node, action)?.resource;
+		const lookup = resource === undefined ? 'the field lookup' : `the ${resource} field lookup`;
 		const declaredInput = Object.entries(action.inputSchema.properties ?? {}).find(
 			([, field]) => field['x-n8n-declared'] === true,
 		)?.[0];

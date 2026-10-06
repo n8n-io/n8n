@@ -947,7 +947,10 @@ export function generateNodeModule(nodeId: string, contracts: readonly Generated
 								advanced,
 							],
 				);
-			const input = `${name}Input<In, Ctx>`;
+			// The build types some input fields of the node from live resource fields.
+			const input = contract.resourceInput
+				? `InputOf<N, In, Ctx, ${name}Input<In, Ctx>>`
+				: `${name}Input<In, Ctx>`;
 			const binaryPaths = binaryPathsOf(contract.input);
 			// The build compiles the lambda of a binary field to the key of a binary of the item.
 			const configArg = binaryPaths.length
@@ -1114,6 +1117,7 @@ export function generateNodeModule(nodeId: string, contracts: readonly Generated
 		...(named.some(({ contract }) => hasBinary(contract.input)) ? ['type Dollar'] : []),
 		...(hasEntries ? ['type EntryFields'] : []),
 		...(hasEntries || derived ? ['type Exact'] : []),
+		...(factories.some(({ text }) => text.includes('InputOf<')) ? ['type InputOf'] : []),
 		...(/\bJson\b/.test(body) ? ['type Json'] : []),
 		...(body.includes(`Value<I, C, ${OPEN_VALUE}>`) ? [`type ${OPEN_VALUE}`] : []),
 		...(body.includes('Maybe<') ? ['type Maybe'] : []),

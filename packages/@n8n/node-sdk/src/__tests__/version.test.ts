@@ -33,6 +33,7 @@ import {
 	ref,
 	t,
 	type ActionFlow,
+	type JsonSchema,
 	type Shape,
 } from '../index';
 import {
@@ -261,16 +262,9 @@ describe('diffContracts', () => {
 		expect(contractHash(typical)).not.toBe(contractHash(optional));
 	});
 
-	it('classifies an added or removed resource pointer, or another resource, as a major', () => {
-		const call = {
-			nodeType: 'n8n-nodes-base.demo',
-			version: 2,
-			methodName: 'getFields',
-			parameters: {},
-			idParameter: 'id',
-		};
-		const pointer = { method: 'demo.fields', input: 'text', loadOptions: [call] };
-		const pointed = (resource: typeof pointer) => ({
+	it('classifies an added or removed resource pointer, or another input in it, as a major', () => {
+		const pointer = { input: 'text' };
+		const pointed = (resource: JsonSchema['x-n8n-resource']) => ({
 			...base,
 			output: { ...base.output, 'x-n8n-resource': resource },
 		});
@@ -278,14 +272,53 @@ describe('diffContracts', () => {
 			{ kind: 'major', text: 'output adds x-n8n-resource' },
 		]);
 		expect(diffContracts(pointed(pointer), base).kind).toBe('major');
-		expect(diffContracts(pointed(pointer), pointed({ ...pointer, input: 'mode' })).kind).toBe(
-			'major',
-		);
-		const fallback = { ...pointer, loadOptions: [call, { ...call, version: 1 }] };
-		expect(diffContracts(pointed(pointer), pointed(fallback)).changes).toEqual([
-			{ kind: 'minor', text: 'output changes the x-n8n-resource loadOptions' },
+		expect(diffContracts(pointed(pointer), pointed({ input: 'mode' })).kind).toBe('major');
+		// A frozen pointer of the legacy shape, with load-options calls.
+		const legacy = {
+			...pointer,
+			method: 'demo.fields',
+			loadOptions: [],
+		} as JsonSchema['x-n8n-resource'];
+		expect(diffContracts(pointed(legacy), pointed(pointer)).changes).toEqual([
+			{ kind: 'minor', text: 'output lists the x-n8n-resource fields in another way' },
 		]);
 		expect(contractHash(pointed(pointer))).not.toBe(contractHash(base));
+	});
+
+	it('keeps a field lookup, an extract pattern and the input pointer out of the hash', () => {
+		const withLookup = {
+			...base,
+			input: {
+				...base.input,
+				properties: {
+					...base.input.properties,
+					text: {
+						type: 'string' as const,
+						'x-n8n-ref': 'demo.doc',
+						'x-n8n-extract': '/d/(\\w+)',
+						'x-n8n-fields': {
+							requests: [{ path: '/docs/{id}' }],
+							response: {},
+							item: { name: '{name}', value: '{name}' },
+						},
+					},
+				},
+			},
+		};
+		const bare = {
+			...withLookup,
+			input: {
+				...withLookup.input,
+				properties: {
+					...withLookup.input.properties,
+					text: { type: 'string' as const, 'x-n8n-ref': 'demo.doc' },
+				},
+			},
+		};
+		expect(contractHash({ ...withLookup, resourceInput: { input: 'text' } })).toBe(
+			contractHash(bare),
+		);
+		expect(diffContracts(bare, withLookup).kind).toBe('patch');
 	});
 
 	it('classifies a changed flow as a major', () => {

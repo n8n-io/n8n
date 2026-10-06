@@ -93,6 +93,9 @@ const PAGE_SIZE = 200;
 /** The cursor fields of a Slack list method. */
 const nextCursor = t.obj({ next_cursor: t.str().optional() }).optional();
 
+/** Slack answers an error with status 200, `ok: false` and the error code. */
+const slackError = t.str().optional();
+
 /** The channels the token can see, as the legacy channel list shows them. */
 const channelList = {
 	request: {
@@ -102,8 +105,10 @@ const channelList = {
 	response: t.obj({
 		channels: t.arr(t.obj({ id: t.str(), name: t.str() })),
 		response_metadata: nextCursor,
+		error: slackError,
 	}),
 	items: 'channels',
+	error: 'error',
 	item: { id: '{id}', label: '#{name}' },
 	pages: {
 		style: 'cursor',
@@ -149,8 +154,10 @@ export const slackUserId = defineResource({
 		response: t.obj({
 			members: t.arr(t.obj({ id: t.str(), name: t.str() })),
 			response_metadata: nextCursor,
+			error: slackError,
 		}),
 		items: 'members',
+		error: 'error',
 		item: { id: '{id}', label: '@{name}' },
 		pages: {
 			style: 'cursor',

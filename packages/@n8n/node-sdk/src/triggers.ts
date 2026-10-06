@@ -39,7 +39,7 @@ import {
 	executorOf,
 	hostLimitsOf,
 	hostRuntime,
-	listSearchMethodsOf,
+	lookupMethodsOf,
 	manifestLookupOwnerOf,
 	nativeRunError,
 	nodeDescriptionOf,
@@ -828,7 +828,7 @@ export function toTriggerNodeType(
 	return class implements INodeType {
 		description = type.description;
 
-		methods = listSearchMethodsOf(contract, ui, async () => await Promise.resolve(owner), runtime);
+		methods = lookupMethodsOf(contract, ui, async () => await Promise.resolve(owner), runtime);
 
 		poll = type.poll;
 
@@ -850,7 +850,7 @@ const frozenTriggerType = (frozen: FrozenVersion, runtime: HostRuntime): INodeTy
 		storedFieldOf(frozen.manifest.contract.input, frozen.manifest.ui),
 		runtime,
 	);
-	const methods = listSearchMethodsOf(
+	const methods = lookupMethodsOf(
 		frozen.manifest.contract,
 		frozen.manifest.ui,
 		async () => await manifestLookupOwnerOf(frozen.manifest, runtime.credentialManifestOf),

@@ -863,6 +863,7 @@ function locatorPropertyOf(
 	resource: string,
 ): INodeProperties {
 	const lookup = json['x-n8n-lookup'];
+	const extract = json['x-n8n-extract'];
 	const { placeholder, ...rest } = base;
 	const parents = lookup?.input ?? [];
 	return {
@@ -892,6 +893,17 @@ function locatorPropertyOf(
 				type: 'string' as const,
 				...(placeholder === undefined ? {} : { placeholder }),
 			},
+			// The field stores the URL, and the lookups read the ID in it with `extract`.
+			...(extract === undefined
+				? []
+				: [
+						{
+							displayName: 'By URL',
+							name: 'url',
+							type: 'string' as const,
+							extractValue: { type: 'regex' as const, regex: extract },
+						},
+					]),
 		],
 		...(parents.length > 0 ? { typeOptions: { loadOptionsDependsOn: [...parents] } } : {}),
 	};
