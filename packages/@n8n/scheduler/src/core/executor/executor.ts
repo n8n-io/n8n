@@ -274,36 +274,29 @@ export class Executor {
 			await handler.execute(task, report);
 		} catch (error) {
 			await dispatchMark;
-			const errorMessage = ensureError(error).message;
-			const nextAttempts = task.attempts + 1;
-			if (nextAttempts >= task.maxAttempts) {
-				// If the handler had already handed off its effect (`dispatched()` ran, so
-				// `dispatchMark` is set) before throwing, the occurrence's work is done.
-				// On this last attempt, recording it failed would blame the scheduler for
-				// work that happened; complete it as succeeded instead, mirroring the
-				// reaper's post-dispatch branch. Only pre-dispatch failures are dead-lettered.
-				if (dispatchMark !== undefined) {
-					const rowsAffected = await this.store.completeTask(claim);
-					if (rowsAffected > 0) {
-						this.hooks.onFire?.(task.taskType, 'success');
-						return { outcome: 'completed' };
-					}
-					this.hooks.onLeaseLost?.(task.taskType);
-					return { outcome: 'skipped-not-owned', errorMessage };
-				}
-				// A terminal write resolves 0 (it does not reject) when the row was
-				// reclaimed by the reaper after a lease overrun. The result is then no
-				// longer ours to record: report the fire as skipped, not as a state
-				// transition we did not make, and count only the lease-lost metric,
-				// not a fire outcome. Same on every terminal write below.
-				const rowsAffected = await this.store.failTaskTerminal(claim, errorMessage);
-				if (rowsAffected > 0) {
-					this.hooks.onFire?.(task.taskType, 'failure');
-					return { outcome: 'dead-lettered', errorMessage };
-				}
-				this.hooks.onLeaseLost?.(task.taskType);
-				return { outcome: 'skipped-not-owned', errorMessage };
-			}
+			return await this.recordHandlerFailure(task, claim, error, dispatchMark !== undefined);
+		}
+
+		markDispatched(); // A handler that returned without throwing is considered as dispatched
+		await dispatchMark;
+		const rowsAffected = await this.store.completeTask(claim);
+		if (rowsAffected > 0) {
+			this.hooks.onFire?.(task.taskType, 'success');
+			return { outcome: 'completed' };
+		}
+		this.hooks.onLeaseLost?.(task.taskType);
+		return { outcome: 'skipped-not-owned' };
+	}
+
+	private async recordHandlerFailure(
+		task: ClaimedTask,
+		claim: ClaimedTaskRef,
+		error: unknown,
+		dispatchWasReported: boolean,
+	): Promise<FireResult> {
+		const errorMessage = ensureError(error).message;
+		const nextAttempts = task.attempts + 1;
+		if (nextAttempts < task.maxAttempts) {
 			const rowsAffected = await this.store.rescheduleTask(
 				claim,
 				backoff(nextAttempts),
@@ -317,15 +310,26 @@ export class Executor {
 			return { outcome: 'skipped-not-owned', errorMessage };
 		}
 
-		markDispatched(); // A handler that returned without throwing is considered as dispatched
-		await dispatchMark;
-		const rowsAffected = await this.store.completeTask(claim);
+		// On the last attempt, complete work whose effect was handed off before the error.
+		// The report counts even if its marker write failed.
+		if (dispatchWasReported) {
+			const rowsAffected = await this.store.completeTask(claim);
+			if (rowsAffected > 0) {
+				this.hooks.onFire?.(task.taskType, 'success');
+				return { outcome: 'completed' };
+			}
+			this.hooks.onLeaseLost?.(task.taskType);
+			return { outcome: 'skipped-not-owned', errorMessage };
+		}
+
+		// Zero rows means the claim is gone. Report no transition that we did not make.
+		const rowsAffected = await this.store.failTaskTerminal(claim, errorMessage);
 		if (rowsAffected > 0) {
-			this.hooks.onFire?.(task.taskType, 'success');
-			return { outcome: 'completed' };
+			this.hooks.onFire?.(task.taskType, 'failure');
+			return { outcome: 'dead-lettered', errorMessage };
 		}
 		this.hooks.onLeaseLost?.(task.taskType);
-		return { outcome: 'skipped-not-owned' };
+		return { outcome: 'skipped-not-owned', errorMessage };
 	}
 
 	/** Release a claim, reporting but swallowing failures: the reaper still recovers the row. */
