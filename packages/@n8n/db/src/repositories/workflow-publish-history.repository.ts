@@ -84,17 +84,6 @@ export class WorkflowPublishHistoryRepository extends Repository<WorkflowPublish
 			.getMany();
 	}
 
-	async getPublishedVersions(
-		workflowId: string,
-	): Promise<Array<Pick<WorkflowPublishHistory, 'versionId'>>> {
-		return await this.manager
-			.createQueryBuilder(WorkflowPublishHistory, 'wph')
-			.select('wph.versionId')
-			.distinct(true)
-			.where('wph.workflowId = :workflowId', { workflowId })
-			.getMany();
-	}
-
 	async findActivatedByUserId(workflowId: string): Promise<string | undefined> {
 		const record = await this.findOne({
 			select: ['userId'],

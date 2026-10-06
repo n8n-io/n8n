@@ -21,13 +21,38 @@ vi.mock('@n8n/ai-utilities', async () => {
 
 const MockedAzureOpenAIEmbeddings = vi.mocked(AzureOpenAIEmbeddings);
 
+describe('EmbeddingsAzureOpenAi node identity', () => {
+	const { description } = new EmbeddingsAzureOpenAi();
+
+	it('should be labelled Microsoft Foundry Embeddings', () => {
+		expect(description.displayName).toBe('Microsoft Foundry Embeddings');
+		expect(description.defaults.name).toBe('Microsoft Foundry Embeddings');
+	});
+
+	// A saved workflow resolves its nodes by type, so the rename is only safe while this is untouched.
+	it('should keep the node type, which saved workflows resolve by', () => {
+		expect(description.name).toBe('embeddingsAzureOpenAi');
+	});
+
+	it.each([
+		'Azure',
+		'Azure OpenAI',
+		'Embeddings Azure OpenAI',
+		'Azure AI Foundry',
+		'Foundry',
+		'AOAI',
+	])('should be findable by %s', (term) => {
+		expect(description.codex?.alias).toContain(term);
+	});
+});
+
 describe('AzureOpenAIEmbeddings', () => {
 	let embeddingsAzureOpenAi: EmbeddingsAzureOpenAi;
 	let mockContext: Mocked<ISupplyDataFunctions>;
 
 	const mockNode: INode = {
 		id: '1',
-		name: 'Embeddings Azure OpenAI',
+		name: 'Microsoft Foundry Embeddings',
 		typeVersion: 1,
 		type: '@n8n/n8n-nodes-langchain.embeddingsAzureOpenAi',
 		position: [0, 0],
@@ -148,7 +173,7 @@ describe('AzureOpenAIEmbeddings', () => {
 			});
 
 			await expect(embeddingsAzureOpenAi.supplyData.call(mockContext, 0)).rejects.toThrow(
-				'Foundry endpoint is missing in the selected Azure OpenAI API credential.',
+				'Foundry endpoint is missing in the selected Microsoft Foundry (API Key) credential.',
 			);
 		});
 	});
