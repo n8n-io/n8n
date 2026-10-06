@@ -7,17 +7,11 @@ for repo-wide conventions.
 
 TypeORM belongs in the **persistence layer**, not in business logic.
 
-**Allowed to import `@n8n/typeorm`** — entity and repository files, including the
-ones co-located inside `src/modules/**`:
-
-- `src/databases/**`
-- a module's `database/entities/**` and `database/repositories/**`
-- files named `*.entity.ts` or `*.repository.ts` (some modules keep these at the
-  module root)
-
-These are exempted in `eslint.config.mjs` **by location**, so a genuine `@Entity`
-or repository class is never flagged — including the few entity files that lack
-the `.entity.ts` suffix (they live in a `database/entities/` folder).
+**Allowed to import `@n8n/typeorm`** — files that declare an `@Entity` class or a
+repository class that extends TypeORM `Repository` or n8n `BaseRepository`.
+Their folder and filename do not affect the rule. Tests and migration tooling use
+explicit patterns in the package lint config. Helper-only persistence adapters
+and legacy files need a narrow, auditable entry there.
 
 **Not allowed** — business logic (services, controllers, public-api handlers,
 commands, factories) must not import `@n8n/typeorm` or `@n8n/typeorm/...`
@@ -31,13 +25,9 @@ without decoupling anything. Existing leaks of both kinds are tracked in two
 and `@n8n/db` relabels) that only ever shrink: never add to them, and never
 suppress the rule inline.
 
-Distinct from that shrink-only ratchet, two files are **permanently** exempted in
-`eslint.config.mjs` for legitimate TypeORM use outside the persistence tree —
-these are sanctioned, not migration targets, so don't try to relocate them or
-suppress the rule:
-
-- `src/commands/db/revert.ts` — `MigrationExecutor` (CLI migration tooling)
-- `src/security-audit/security-audit.repository.ts` — `PackagesRepository`
+Distinct from that shrink-only ratchet, `src/commands/db/revert.ts` is an
+explicit exception for CLI migration tooling. `PackagesRepository` needs no
+exception because the rule recognizes its repository declaration.
 
 Need an operator query (`In`, `IsNull`, `FindOptionsWhere`, …)? Add a
 use-case-named repository method (plain parameters, domain-shaped return) rather

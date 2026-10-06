@@ -67,7 +67,20 @@ export default defineConfig({
 	ignorePatterns: ['scripts/**/*.mjs', 'vitest.*.ts', 'coverage/**'],
 	rules: {
 		'n8n-local-rules/no-dynamic-import-template': 'error',
-		'n8n-local-rules/misplaced-n8n-typeorm-import': 'error',
+		'n8n-local-rules/misplaced-n8n-typeorm-import': [
+			'error',
+			{
+				// Tests and migration tooling can use TypeORM directly. The two repository
+				// entries are composition-based adapters that do not extend a repository base.
+				allowedFilePatterns: [
+					'**/test/**/*.ts',
+					'**/src/**/__tests__/**/*.ts',
+					'**/src/commands/db/revert.ts',
+					'**/src/modules/data-table/data-table-rows.repository.ts',
+					'**/src/modules/instance-ai/repositories/instance-ai-conversation-history.repository.ts',
+				],
+			},
+		],
 		// Ratchets: the allowlists below only shrink, so an inline disable is the one way to add a violation.
 		'n8n-local-rules/no-guardrail-disable': [
 			'error',
@@ -269,31 +282,6 @@ export default defineConfig({
 			files: ['./src/databases/migrations/**/*.ts'],
 			rules: {
 				'unicorn/filename-case': 'off',
-			},
-		},
-		{
-			// @n8n/typeorm belongs in the persistence layer; exempt entities/repositories.
-			// Path-based (not suffix-only) so entity files without the `.entity.ts` suffix are covered.
-			files: [
-				'./src/databases/**/*.ts',
-				'./src/modules/**/database/entities/**/*.ts',
-				'./src/modules/**/database/repositories/**/*.ts',
-				'./src/modules/**/*.entity.ts',
-				'./src/modules/**/*.repository.ts',
-				'./test/**/*.ts',
-				'./src/**/__tests__/**/*.ts',
-			],
-			rules: {
-				'n8n-local-rules/misplaced-n8n-typeorm-import': 'off',
-			},
-		},
-		{
-			// Permanent: legitimate TypeORM use outside the persistence tree. Do not remove.
-			// - db/revert.ts: MigrationExecutor (CLI migration tooling)
-			// - security-audit.repository.ts: PackagesRepository, relocation tracked separately
-			files: ['./src/commands/db/revert.ts', './src/security-audit/security-audit.repository.ts'],
-			rules: {
-				'n8n-local-rules/misplaced-n8n-typeorm-import': 'off',
 			},
 		},
 		{

@@ -2800,6 +2800,9 @@ importers:
       eslint-plugin-n8n-nodes-base:
         specifier: 'catalog:'
         version: 1.16.7(@typescript/typescript6@6.0.2)(eslint@9.29.0(jiti@2.6.1)(supports-color@8.1.1))(supports-color@8.1.1)
+      minimatch:
+        specifier: 10.2.3
+        version: 10.2.3
     devDependencies:
       '@eslint/js':
         specifier: ^9.29.0

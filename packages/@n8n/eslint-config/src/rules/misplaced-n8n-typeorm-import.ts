@@ -1,4 +1,8 @@
-import { ESLintUtils } from '@typescript-eslint/utils';
+import { ESLintUtils, type TSESTree } from '@typescript-eslint/utils';
+import { minimatch } from 'minimatch';
+
+type Options = [{ allowedFilePatterns?: string[] }];
+type MessageIds = 'moveImport' | 'noTypeormViaDb';
 
 /**
  * TypeORM operators and driver types that `@n8n/db` re-exports from `@n8n/typeorm`.
@@ -17,23 +21,78 @@ const GUARDED_DB_REEXPORTS = new Set([
 	'EntityManager',
 ]);
 
-export const MisplacedN8nTypeormImportRule = ESLintUtils.RuleCreator.withoutDocs({
+const getImportedName = (specifier: TSESTree.ImportSpecifier) =>
+	specifier.imported.type === 'Identifier' ? specifier.imported.name : specifier.imported.value;
+
+const isMatchingDecorator = (decorator: TSESTree.Decorator, names: Set<string>) => {
+	const expression = decorator.expression;
+	if (expression.type === 'Identifier') return names.has(expression.name);
+
+	return expression.type === 'CallExpression' && expression.callee.type === 'Identifier'
+		? names.has(expression.callee.name)
+		: false;
+};
+
+export const MisplacedN8nTypeormImportRule = ESLintUtils.RuleCreator.withoutDocs<
+	Options,
+	MessageIds
+>({
 	meta: {
 		type: 'problem',
 		docs: {
-			description: 'Ensure `@n8n/typeorm` is imported only from within the `@n8n/db` package.',
+			description: 'Keep TypeORM imports in persistence adapters.',
 		},
 		messages: {
 			moveImport:
-				'Import `@n8n/typeorm` only in the persistence layer (`@n8n/db` or a module’s `database/` folder). In business logic, add a use-case repository method instead — do not relabel the import to `@n8n/db`.',
+				'Import `@n8n/typeorm` only in a persistence adapter. In business logic, add a use-case repository method instead — do not relabel the import to `@n8n/db`.',
 			noTypeormViaDb:
 				'`{{name}}` is a TypeORM operator/driver type re-exported by `@n8n/db`; importing it here relabels the dependency without decoupling. Add a use-case repository method instead of using TypeORM in business logic.',
 		},
-		schema: [],
+		schema: [
+			{
+				type: 'object',
+				additionalProperties: false,
+				properties: {
+					allowedFilePatterns: {
+						type: 'array',
+						items: { type: 'string', minLength: 1 },
+						uniqueItems: true,
+					},
+				},
+			},
+		],
 	},
-	defaultOptions: [],
-	create(context) {
-		if (context.filename.includes('@n8n/db')) return {};
+	defaultOptions: [{}],
+	create(context, [options]) {
+		const filename = context.filename.replaceAll('\\', '/');
+		if (filename.includes('/packages/@n8n/db/')) return {};
+
+		const isExplicitlyAllowed = options.allowedFilePatterns?.some((pattern) =>
+			minimatch(filename, pattern, { dot: true }),
+		);
+		if (isExplicitlyAllowed) return {};
+
+		const entityDecoratorNames = new Set<string>();
+		const repositoryBaseNames = new Set<string>();
+		const typeormImports: TSESTree.ImportDeclaration[] = [];
+		const guardedDbImports: Array<{ node: TSESTree.ImportSpecifier; name: string }> = [];
+		const classes: Array<TSESTree.ClassDeclaration | TSESTree.ClassExpression> = [];
+		const inspectClass = (node: TSESTree.ClassDeclaration | TSESTree.ClassExpression) => {
+			classes.push(node);
+		};
+		const isPersistenceAdapter = (node: TSESTree.ClassDeclaration | TSESTree.ClassExpression) => {
+			if (
+				node.decorators.some((decorator) => isMatchingDecorator(decorator, entityDecoratorNames))
+			) {
+				return true;
+			}
+
+			if (node.superClass?.type === 'Identifier' && repositoryBaseNames.has(node.superClass.name)) {
+				return true;
+			}
+
+			return false;
+		};
 
 		return {
 			ImportDeclaration(node) {
@@ -41,24 +100,39 @@ export const MisplacedN8nTypeormImportRule = ESLintUtils.RuleCreator.withoutDocs
 				if (typeof source !== 'string') return;
 
 				if (source === '@n8n/typeorm' || source.startsWith('@n8n/typeorm/')) {
-					context.report({ node, messageId: 'moveImport' });
+					typeormImports.push(node);
+					if (source === '@n8n/typeorm') {
+						for (const specifier of node.specifiers) {
+							if (specifier.type !== 'ImportSpecifier') continue;
+
+							const importedName = getImportedName(specifier);
+							if (importedName === 'Entity') entityDecoratorNames.add(specifier.local.name);
+							if (importedName === 'Repository') repositoryBaseNames.add(specifier.local.name);
+						}
+					}
 					return;
 				}
 
 				if (source === '@n8n/db') {
 					for (const specifier of node.specifiers) {
-						if (
-							specifier.type === 'ImportSpecifier' &&
-							specifier.imported.type === 'Identifier' &&
-							GUARDED_DB_REEXPORTS.has(specifier.imported.name)
-						) {
-							context.report({
-								node: specifier,
-								messageId: 'noTypeormViaDb',
-								data: { name: specifier.imported.name },
-							});
+						if (specifier.type !== 'ImportSpecifier') continue;
+
+						const importedName = getImportedName(specifier);
+						if (importedName === 'BaseRepository') repositoryBaseNames.add(specifier.local.name);
+						if (GUARDED_DB_REEXPORTS.has(importedName)) {
+							guardedDbImports.push({ node: specifier, name: importedName });
 						}
 					}
+				}
+			},
+			ClassDeclaration: inspectClass,
+			ClassExpression: inspectClass,
+			'Program:exit'() {
+				if (classes.some(isPersistenceAdapter)) return;
+
+				for (const node of typeormImports) context.report({ node, messageId: 'moveImport' });
+				for (const { node, name } of guardedDbImports) {
+					context.report({ node, messageId: 'noTypeormViaDb', data: { name } });
 				}
 			},
 		};

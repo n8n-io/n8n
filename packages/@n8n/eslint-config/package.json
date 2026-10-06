@@ -73,6 +73,7 @@
   "license": "LicenseRef-n8n-sustainable-use",
   "dependencies": {
     "@n8n/eslint-plugin-design-system": "workspace:*",
-    "eslint-plugin-n8n-nodes-base": "catalog:"
+    "eslint-plugin-n8n-nodes-base": "catalog:",
+    "minimatch": "10.2.3"
   }
 }

@@ -5,7 +5,7 @@ const ruleTester = new RuleTester();
 
 ruleTester.run('misplaced-n8n-typeorm-import', MisplacedN8nTypeormImportRule, {
 	valid: [
-		// Persistence layer (path contains `@n8n/db`) may import TypeORM freely.
+		// The @n8n/db package is the shared persistence layer.
 		{
 			code: "import { In } from '@n8n/typeorm';",
 			filename: '/repo/packages/@n8n/db/src/repositories/foo.repository.ts',
@@ -13,6 +13,48 @@ ruleTester.run('misplaced-n8n-typeorm-import', MisplacedN8nTypeormImportRule, {
 		{
 			code: "import { In } from '@n8n/db';",
 			filename: '/repo/packages/@n8n/db/src/index.ts',
+		},
+		// Entities can use any package-local layout and filename.
+		{
+			code: `
+				import { Entity as OrmEntity, Column } from '@n8n/typeorm';
+				@OrmEntity()
+				export class AuditRecord { @Column() name: string; }
+			`,
+			filename: '/repo/packages/example/src/audit/model.ts',
+			languageOptions: { parserOptions: { ecmaFeatures: { legacyDecorators: true } } },
+		},
+		// TypeORM repositories can be colocated with their domain.
+		{
+			code: `
+				import { Repository as OrmRepository, In } from '@n8n/typeorm';
+				export class AuditStore extends OrmRepository<AuditRecord> {}
+			`,
+			filename: '/repo/packages/example/src/audit/audit-store.ts',
+		},
+		// n8n BaseRepository declarations are persistence adapters too.
+		{
+			code: `
+				import { BaseRepository, In } from '@n8n/db';
+				export class AuditStore extends BaseRepository<AuditRecord> {}
+			`,
+			filename: '/repo/packages/example/src/persistence/audit-store.ts',
+		},
+		// Helper-only adapters, migrations, tests, and legacy names stay explicit and shrinkable.
+		{
+			code: "import { In } from '@n8n/typeorm';",
+			filename: '/repo/packages/example/src/audit/query.helper.ts',
+			options: [{ allowedFilePatterns: ['**/src/audit/query.helper.ts'] }],
+		},
+		{
+			code: "import { QueryRunner } from '@n8n/typeorm';",
+			filename: '/repo/packages/example/src/migrations/1710000000000-add-audit.ts',
+			options: [{ allowedFilePatterns: ['**/src/migrations/*.ts'] }],
+		},
+		{
+			code: "import { DataSource } from '@n8n/typeorm';",
+			filename: '/repo/packages/example/src/audit/__tests__/audit.test.ts',
+			options: [{ allowedFilePatterns: ['**/__tests__/**/*.ts'] }],
 		},
 		// Sanctioned `@n8n/db` exports are not TypeORM re-exports.
 		{
@@ -29,7 +71,23 @@ ruleTester.run('misplaced-n8n-typeorm-import', MisplacedN8nTypeormImportRule, {
 		// Direct `@n8n/typeorm` import in business logic.
 		{
 			code: "import { In } from '@n8n/typeorm';",
-			filename: '/repo/packages/cli/src/services/foo.service.ts',
+			filename: '/repo/packages/cli/src/database/foo.service.ts',
+			errors: [{ messageId: 'moveImport' }],
+		},
+		// A semantic filename alone does not grant persistence access.
+		{
+			code: "import { In } from '@n8n/typeorm';",
+			filename: '/repo/packages/cli/src/services/foo.repository.ts',
+			errors: [{ messageId: 'moveImport' }],
+		},
+		// Importing a persistence class does not make business logic a persistence adapter.
+		{
+			code: `
+				import { In } from '@n8n/typeorm';
+				import { WorkflowRepository } from '@n8n/db';
+				export class WorkflowService {}
+			`,
+			filename: '/repo/packages/cli/src/workflows/workflow.service.ts',
 			errors: [{ messageId: 'moveImport' }],
 		},
 		// Subpath import.
@@ -55,6 +113,12 @@ ruleTester.run('misplaced-n8n-typeorm-import', MisplacedN8nTypeormImportRule, {
 				{ messageId: 'noTypeormViaDb', data: { name: 'FindOptionsWhere' } },
 				{ messageId: 'noTypeormViaDb', data: { name: 'EntityManager' } },
 			],
+		},
+		// Guarded re-exports remain prohibited even in a persistence-looking folder.
+		{
+			code: "import { In } from '@n8n/db';",
+			filename: '/repo/packages/example/src/persistence/workflow.service.ts',
+			errors: [{ messageId: 'noTypeormViaDb', data: { name: 'In' } }],
 		},
 	],
 });
