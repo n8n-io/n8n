@@ -11,6 +11,7 @@ import type {
 import { mock, type MockProxy } from 'vitest-mock-extended';
 
 import { BadRequestError, NotFoundError } from '@n8n/errors';
+import { userHasScopes } from '@/permissions.ee/check-access';
 import type { Agent } from '@/modules/agents/entities/agent.entity';
 import type { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 
@@ -22,6 +23,9 @@ import { AgentEvalService } from '../agent-eval.service';
 // test doesn't pull in the real agents / instance-ai module graph.
 vi.mock('@/modules/agents/repositories/agent.repository', () => ({
 	AgentRepository: class AgentRepository {},
+}));
+vi.mock('@/permissions.ee/check-access', () => ({
+	userHasScopes: vi.fn().mockResolvedValue(true),
 }));
 vi.mock('../agent-eval-runner.service', () => ({
 	AgentEvalRunnerService: class AgentEvalRunnerService {},
@@ -173,7 +177,7 @@ describe('AgentEvalService', () => {
 			['deleteResult', async () => await service.deleteResult(AGENT_ID, PROJECT_ID, 'result-1')],
 			[
 				'deleteDraftDataset',
-				async () => await service.deleteDraftDataset(AGENT_ID, PROJECT_ID, 'ds-1'),
+				async () => await service.deleteDraftDataset(user, AGENT_ID, PROJECT_ID, 'ds-1'),
 			],
 		];
 
@@ -444,34 +448,60 @@ describe('AgentEvalService', () => {
 	describe('deleteDraftDataset', () => {
 		beforeEach(() => {
 			datasetRepository.findByIdAndAgentId.mockResolvedValue(makeDataset());
-			datasetRepository.findByAgentId.mockResolvedValue([makeDataset()]);
+			datasetRepository.isDataTableReadByOtherDataset.mockResolvedValue(false);
 			datasetRepository.deleteDataset.mockResolvedValue(true);
 			runRepository.findByDatasetId.mockResolvedValue([]);
+			vi.mocked(userHasScopes).mockResolvedValue(true);
 		});
 
-		it('removes the dataset and the table that was made for it', async () => {
-			await service.deleteDraftDataset(AGENT_ID, PROJECT_ID, 'ds-1');
+		it('removes the table first, then the dataset, when the caller may delete it and nothing else reads it', async () => {
+			await service.deleteDraftDataset(user, AGENT_ID, PROJECT_ID, 'ds-1');
 
-			expect(datasetRepository.deleteDataset).toHaveBeenCalledWith('ds-1', AGENT_ID);
+			expect(userHasScopes).toHaveBeenCalledWith(user, ['dataTable:delete'], false, {
+				dataTableId: 'dt-1',
+			});
+			expect(datasetRepository.isDataTableReadByOtherDataset).toHaveBeenCalledWith('dt-1', 'ds-1');
 			expect(caseGenerationService.deleteDraftTable).toHaveBeenCalledWith('dt-1', PROJECT_ID);
+			expect(datasetRepository.deleteDataset).toHaveBeenCalledWith('ds-1', AGENT_ID);
+			expect(caseGenerationService.deleteDraftTable.mock.invocationCallOrder[0]).toBeLessThan(
+				datasetRepository.deleteDataset.mock.invocationCallOrder[0],
+			);
 		});
 
-		it('keeps a table another dataset still reads from', async () => {
-			datasetRepository.findByAgentId.mockResolvedValue([
-				makeDataset(),
-				makeDataset({ id: 'ds-2' }),
-			]);
+		// A dataset can point at any table in the project, so being a draft is not
+		// proven by the dataset alone — any other reader, of any agent, protects it.
+		it('keeps a table another dataset still reads from, but removes the dataset', async () => {
+			datasetRepository.isDataTableReadByOtherDataset.mockResolvedValue(true);
 
-			await service.deleteDraftDataset(AGENT_ID, PROJECT_ID, 'ds-1');
+			await service.deleteDraftDataset(user, AGENT_ID, PROJECT_ID, 'ds-1');
 
 			expect(datasetRepository.deleteDataset).toHaveBeenCalledWith('ds-1', AGENT_ID);
 			expect(caseGenerationService.deleteDraftTable).not.toHaveBeenCalled();
 		});
 
+		it('keeps the table, but removes the dataset, when the caller may not delete tables', async () => {
+			vi.mocked(userHasScopes).mockResolvedValue(false);
+
+			await service.deleteDraftDataset(user, AGENT_ID, PROJECT_ID, 'ds-1');
+
+			expect(datasetRepository.deleteDataset).toHaveBeenCalledWith('ds-1', AGENT_ID);
+			expect(caseGenerationService.deleteDraftTable).not.toHaveBeenCalled();
+		});
+
+		it('reports a table that cannot be removed and keeps the dataset, so the cleanup can be retried', async () => {
+			caseGenerationService.deleteDraftTable.mockRejectedValue(new Error('table is locked'));
+
+			await expect(service.deleteDraftDataset(user, AGENT_ID, PROJECT_ID, 'ds-1')).rejects.toThrow(
+				'table is locked',
+			);
+
+			expect(datasetRepository.deleteDataset).not.toHaveBeenCalled();
+		});
+
 		it('refuses a dataset that has runs, since that is history rather than a draft', async () => {
 			runRepository.findByDatasetId.mockResolvedValue([makeRun()]);
 
-			await expect(service.deleteDraftDataset(AGENT_ID, PROJECT_ID, 'ds-1')).rejects.toThrow(
+			await expect(service.deleteDraftDataset(user, AGENT_ID, PROJECT_ID, 'ds-1')).rejects.toThrow(
 				BadRequestError,
 			);
 			expect(datasetRepository.deleteDataset).not.toHaveBeenCalled();
@@ -481,7 +511,7 @@ describe('AgentEvalService', () => {
 		it('404s without touching the table when the dataset belongs to another agent', async () => {
 			datasetRepository.findByIdAndAgentId.mockResolvedValue(null);
 
-			await expect(service.deleteDraftDataset(AGENT_ID, PROJECT_ID, 'ds-1')).rejects.toThrow(
+			await expect(service.deleteDraftDataset(user, AGENT_ID, PROJECT_ID, 'ds-1')).rejects.toThrow(
 				NotFoundError,
 			);
 			expect(caseGenerationService.deleteDraftTable).not.toHaveBeenCalled();
@@ -495,9 +525,10 @@ describe('AgentEvalService', () => {
 				}),
 			);
 
-			await service.deleteDraftDataset(AGENT_ID, PROJECT_ID, 'ds-1');
+			await service.deleteDraftDataset(user, AGENT_ID, PROJECT_ID, 'ds-1');
 
 			expect(datasetRepository.deleteDataset).toHaveBeenCalled();
+			expect(userHasScopes).not.toHaveBeenCalled();
 			expect(caseGenerationService.deleteDraftTable).not.toHaveBeenCalled();
 		});
 	});

@@ -145,7 +145,7 @@ function onCheckYourAgent() {
 				:class="$style.runStatus"
 				data-test-id="instance-ai-test-agent-examples-run-failed"
 			>
-				{{ i18n.baseText('instanceAi.testAgentPreview.runNotStarted') }}
+				{{ i18n.baseText('instanceAi.testAgentPreview.runProgressUnavailable') }}
 			</N8nText>
 			<N8nText v-else-if="!runSettled" color="text-dark" :class="$style.runStatus">
 				{{

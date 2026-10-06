@@ -127,14 +127,15 @@ export class AgentEvalsController {
 		return await this.service.updateDataset(agentId, projectId, datasetId, payload);
 	}
 
-	// Discards a draft dataset and its backing table, which plain deletion leaves
-	// alone. For rolling back a commit that failed before anything ran.
+	// Discards a draft dataset and, when the caller may delete it and nothing else
+	// reads it, its backing table, which plain deletion leaves alone. For rolling
+	// back a commit that failed before anything ran.
 	@Delete('/:agentId/evals/datasets/:datasetId/draft')
 	@ProjectScope('agent:update')
 	async deleteDraftDataset(req: AuthenticatedRequest<DatasetParam>): Promise<{ success: true }> {
 		await this.flagGate.assertEnabled(req.user);
 		const { agentId, projectId, datasetId } = req.params;
-		await this.service.deleteDraftDataset(agentId, projectId, datasetId);
+		await this.service.deleteDraftDataset(req.user, agentId, projectId, datasetId);
 		return { success: true };
 	}
 

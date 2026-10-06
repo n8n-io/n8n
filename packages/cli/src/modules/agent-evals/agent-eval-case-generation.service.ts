@@ -403,9 +403,13 @@ export class AgentEvalCaseGenerationService {
 		}
 	}
 
-	/** Removes the backing table of a draft dataset that is being discarded. */
+	/**
+	 * Removes the backing table of a draft dataset that is being discarded. Unlike
+	 * `rollBackDataTable`, a failure propagates: the caller is the cleanup itself,
+	 * so it has to be able to report that the table is still there.
+	 */
 	async deleteDraftTable(dataTableId: string, projectId: string): Promise<void> {
-		await this.rollBackDataTable(dataTableId, projectId);
+		await this.dataTableService.deleteDataTable(dataTableId, projectId);
 	}
 
 	/** Delete a just-created table after a failed persist; never mask the cause. */

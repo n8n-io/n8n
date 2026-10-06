@@ -82,6 +82,26 @@ export class AgentEvalDatasetRepository extends Repository<AgentEvalDataset> {
 		return await this.findByIdAndAgentId(id, agentId);
 	}
 
+	/**
+	 * Whether any dataset other than this one reads the Data Table — across every
+	 * agent, not just this one, since a table can be shared between them.
+	 */
+	async isDataTableReadByOtherDataset(
+		dataTableId: string,
+		excludeDatasetId: string,
+	): Promise<boolean> {
+		const datasets = await this.find({
+			where: { datasetSource: 'data_table' },
+			select: ['id', 'datasetRef'],
+		});
+		return datasets.some(
+			(dataset) =>
+				dataset.id !== excludeDatasetId &&
+				'dataTableId' in dataset.datasetRef &&
+				dataset.datasetRef.dataTableId === dataTableId,
+		);
+	}
+
 	/** Delete a dataset, scoped to its agent. Returns whether a row was removed. */
 	async deleteDataset(id: string, agentId: string): Promise<boolean> {
 		const result = await this.delete({ id, agentId });

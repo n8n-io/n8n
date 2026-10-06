@@ -26,6 +26,7 @@ import {
 import { Service } from '@n8n/di';
 
 import { BadRequestError, NotFoundError } from '@n8n/errors';
+import { userHasScopes } from '@/permissions.ee/check-access';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 
 import { AgentEvalCaseGenerationService } from './agent-eval-case-generation.service';
@@ -130,9 +131,18 @@ export class AgentEvalService {
 
 	// Discards a draft dataset *and* the Data Table `createDraftDataset` made for it
 	// — what a failed "commit this preview" has to clean up. Only for a draft that
-	// never ran: a dataset with runs is real history, and a table another dataset
-	// also reads from is not this draft's to remove, so that one stays.
-	async deleteDraftDataset(agentId: string, projectId: string, datasetId: string): Promise<void> {
+	// never ran: a dataset with runs is real history.
+	//
+	// Nothing here proves the table was created for this draft (a dataset can point
+	// at any table in the project), so the table is removed only when the caller may
+	// delete it anyway and no other dataset, of any agent, still reads it. Otherwise
+	// just the dataset goes and the table is left alone.
+	async deleteDraftDataset(
+		user: User,
+		agentId: string,
+		projectId: string,
+		datasetId: string,
+	): Promise<void> {
 		await this.assertAgentInProject(agentId, projectId);
 		const dataset = await this.resolveDataset(agentId, datasetId);
 
@@ -141,17 +151,19 @@ export class AgentEvalService {
 		}
 
 		const dataTableId = getDataTableId(dataset);
-		const sharesTable =
+		const mayDeleteTable =
 			dataTableId !== null &&
-			(await this.datasetRepository.findByAgentId(agentId)).some(
-				(other) => other.id !== datasetId && getDataTableId(other) === dataTableId,
-			);
+			(await userHasScopes(user, ['dataTable:delete'], false, { dataTableId })) &&
+			!(await this.datasetRepository.isDataTableReadByOtherDataset(dataTableId, datasetId));
+
+		// Table first: if it cannot be removed the dataset is still there, so the
+		// cleanup can be retried instead of orphaning the table for good.
+		if (mayDeleteTable) {
+			await this.caseGenerationService.deleteDraftTable(dataTableId, projectId);
+		}
 
 		const deleted = await this.datasetRepository.deleteDataset(datasetId, agentId);
 		if (!deleted) throw new NotFoundError(`Agent eval dataset ${datasetId} not found.`);
-		if (dataTableId !== null && !sharesTable) {
-			await this.caseGenerationService.deleteDraftTable(dataTableId, projectId);
-		}
 	}
 
 	// ---- case generation ----

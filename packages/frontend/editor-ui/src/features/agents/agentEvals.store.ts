@@ -1058,15 +1058,17 @@ export const useAgentEvalsStore = defineStore(STORES.AGENT_EVALS, () => {
 	};
 
 	// Re-reads one cached result from the server, using its position in the cached
-	// page (results are paged in a stable order) to fetch just that row.
+	// page (results are paged in a stable order) to fetch just that row. Returns
+	// whether it found and applied the row: a deletion ahead of it shifts the
+	// position, so the row at that offset may be a different result.
 	const refreshCachedResult = async (
 		projectId: string,
 		agentId: string,
 		runId: string,
 		resultId: string,
-	) => {
+	): Promise<boolean> => {
 		const index = getReview(runId).results.findIndex((r) => r.id === resultId);
-		if (index < 0) return;
+		if (index < 0) return false;
 		const detail = await agentEvalsApi.getRunDetail(
 			rootStore.restApiContext,
 			projectId,
@@ -1075,7 +1077,9 @@ export const useAgentEvalsStore = defineStore(STORES.AGENT_EVALS, () => {
 			{ take: 1, skip: index },
 		);
 		const fresh = detail.results.data[0];
-		if (fresh?.id === resultId) replaceCachedResult(runId, resultId, fresh);
+		if (fresh?.id !== resultId) return false;
+		replaceCachedResult(runId, resultId, fresh);
+		return true;
 	};
 
 	// Re-executes one already-settled case in place — no new run. Patches the
@@ -1129,10 +1133,17 @@ export const useAgentEvalsStore = defineStore(STORES.AGENT_EVALS, () => {
 				} else {
 					// The backend saves an edited rule before it executes, so a failure
 					// doesn't say whether the old or new rule is stored — read it back
-					// rather than guess. Falls back to the old row if that read fails too.
-					await refreshCachedResult(projectId, agentId, cached.runId, resultId).catch(() =>
-						replaceCachedResult(cached.runId, resultId, cached.result),
-					);
+					// rather than guess. If that read fails or lands on another row, fall
+					// back to the old one so the row doesn't stay on "running".
+					const refreshed = await refreshCachedResult(
+						projectId,
+						agentId,
+						cached.runId,
+						resultId,
+					).catch(() => false);
+					if (!refreshed && findCachedResult(resultId)?.result.status === 'running') {
+						replaceCachedResult(cached.runId, resultId, cached.result);
+					}
 				}
 			}
 			throw error;

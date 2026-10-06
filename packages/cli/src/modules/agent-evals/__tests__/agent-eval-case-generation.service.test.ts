@@ -536,6 +536,26 @@ describe('AgentEvalCaseGenerationService', () => {
 		});
 	});
 
+	describe('deleteDraftTable', () => {
+		it('deletes the table in its own project', async () => {
+			dataTableService.deleteDataTable.mockResolvedValue(true);
+
+			await service.deleteDraftTable('dt-1', 'project-1');
+
+			expect(dataTableService.deleteDataTable).toHaveBeenCalledWith('dt-1', 'project-1');
+		});
+
+		// Unlike the rollback after a failed persist, this is the cleanup itself:
+		// swallowing the error would report a table that is still there as gone.
+		it('lets a failure propagate instead of logging it', async () => {
+			dataTableService.deleteDataTable.mockRejectedValue(new Error('table is locked'));
+
+			await expect(service.deleteDraftTable('dt-1', 'project-1')).rejects.toThrow(
+				'table is locked',
+			);
+		});
+	});
+
 	describe('previewRun', () => {
 		it('drafts one case and runs it against the agent, persisting nothing', async () => {
 			generateMock.mockResolvedValue({ structuredOutput: { cases: makeCases(1) } });

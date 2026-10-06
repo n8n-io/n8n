@@ -1441,6 +1441,31 @@ describe('useAgentEvalsStore', () => {
 			expect(store.getReview(RUN_ID).results[0].status).toBe('error');
 		});
 
+		// A row deleted ahead of this one shifts the page offset, so the single-row
+		// read lands on a different result and must not be applied.
+		it('falls back to the previous row when the read-back returns a different result', async () => {
+			mockRun({
+				results: [
+					{ ...result('c1'), status: 'error' },
+					{ ...result('c2'), status: 'error' },
+				],
+				count: 2,
+				ratings: [],
+			});
+			const store = useAgentEvalsStore();
+			await store.openRun(PROJECT_ID, AGENT_ID, RUN_ID);
+			rerunResult.mockRejectedValue(new Error('timeout'));
+			getRunDetail.mockResolvedValue(runDetail([{ ...result('c3'), status: 'success' }], 1));
+
+			await expect(
+				store.rerunResult(PROJECT_ID, AGENT_ID, 'c2', { whatToCheck: 'new' }),
+			).rejects.toThrow('timeout');
+
+			const rows = store.getReview(RUN_ID).results;
+			expect(rows.map((r) => r.id)).toEqual(['c1', 'c2']);
+			expect(rows[1].status).toBe('error');
+		});
+
 		it('does not fire a second request for a result already showing as running', async () => {
 			mockRun({ results: [{ ...result('c1'), status: 'running' }], count: 1, ratings: [] });
 			const store = useAgentEvalsStore();

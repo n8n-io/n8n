@@ -274,7 +274,7 @@ describe('AgentEvalsController', () => {
 				success: true,
 			});
 
-			expect(service.deleteDraftDataset).toHaveBeenCalledWith(AGENT_ID, PROJECT_ID, 'ds-1');
+			expect(service.deleteDraftDataset).toHaveBeenCalledWith(user, AGENT_ID, PROJECT_ID, 'ds-1');
 		});
 
 		it('reads a run summary scoped to the path agent', async () => {
