@@ -8961,7 +8961,7 @@
 	"agents.builder.agentEvals.checks.addCheckFewer": "Show fewer",
 	"agents.builder.agentEvals.checks.status.passes": "Passes",
 	"agents.builder.agentEvals.checks.status.running": "Running",
-	"agents.builder.agentEvals.checks.status.neverRan": "Not run",
+	"agents.builder.agentEvals.checks.status.neverRan": "Never ran",
 	"agents.builder.agentEvals.checks.status.needsWork": "Needs work",
 	"agents.builder.agentEvals.checks.status.breaksRule": "Couldn't verify the rule.",
 	"agents.builder.agentEvals.checks.status.followsRule": "Follows the rule.",
