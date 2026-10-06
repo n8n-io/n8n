@@ -1,6 +1,7 @@
 import { Logger, safeJoinPath } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { promises as fs } from 'fs';
 
 @Service()
@@ -58,7 +59,10 @@ export class DataTableFileCleanupService {
 			} catch (error) {
 				// Another main or the import that used the file can delete it first.
 				if (this.isNotFound(error)) continue;
-				this.logger.warn('Could not delete an orphaned data table upload file', { file, error });
+				this.logger.warn('Could not delete an orphaned data table upload file', {
+					file,
+					error: ensureError(error).message,
+				});
 			}
 		}
 	}

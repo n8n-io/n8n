@@ -157,7 +157,10 @@ describe('DataTableFileCleanupService', () => {
 					[path.join(uploadDir, 'b')],
 					[path.join(uploadDir, 'c')],
 				]);
-				expect(logger.warn).toHaveBeenCalledWith(expect.any(String), { file: 'a', error });
+				expect(logger.warn).toHaveBeenCalledWith(expect.any(String), {
+					file: 'a',
+					error: 'EACCES',
+				});
 			},
 		);
 
