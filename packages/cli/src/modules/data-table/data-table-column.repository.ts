@@ -1,5 +1,5 @@
 import { DataTableCreateColumnSchema } from '@n8n/api-types';
-import { BaseRepository, TransactionRunner, withTransaction } from '@n8n/db';
+import { BaseRepository, type OperationContext, TransactionRunner, withTransaction } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { DataSource, EntityManager } from '@n8n/typeorm';
 import {
@@ -145,8 +145,9 @@ export class DataTableColumnRepository extends BaseRepository<DataTableColumn> {
 		dataTableId: string,
 		projectId: string,
 		schema: { name: string; columns: Array<Pick<DataTableColumn, 'name' | 'type'>> },
+		ctx: OperationContext = {},
 	) {
-		await this.runInTransaction({}, async (em) => {
+		await this.runInTransaction(ctx, async (em) => {
 			if (!(await em.existsBy(DataTable, { id: dataTableId, projectId }))) {
 				throw new DataTableNotFoundError(dataTableId);
 			}
