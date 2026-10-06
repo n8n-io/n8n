@@ -5210,7 +5210,7 @@ describe('createExecutionAdapter run()', () => {
 
 		const runData = mockWorkflowRunner.run.mock.calls[0][0];
 		expect(runData.executionMode).toBe('trigger');
-		expect(runData.callerAwaitsOutcome).toBe(true);
+		expect(runData.callerAwaitsOutcome).toBe('completion');
 	});
 
 	it('still applies overrides when the workflow has no settings', async () => {

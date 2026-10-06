@@ -280,6 +280,8 @@ export class ExecutionService {
 			retryOf: executionId,
 			workflowData: execution.workflowData,
 			userId: user.id,
+			// Nothing waits on a retry, so a worker may park it at shutdown.
+			callerAwaitsOutcome: 'none',
 		};
 
 		const { lastNodeExecuted } = data.executionData!.resultData;

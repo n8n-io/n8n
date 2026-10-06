@@ -243,10 +243,9 @@ export class JobProcessor {
 			});
 		}
 
-		// An older main sends no flag, so a webhook run is assumed to owe a response.
-		let callerAwaitsOutcome = job.data.callerAwaitsOutcome ?? execution.mode === 'webhook';
-		// Only a webhook caller is satisfied by a relayed response; a done promise waits for the end.
-		const awaitsWebhookResponse = callerAwaitsOutcome && execution.mode === 'webhook';
+		// An older main sends no value. Assume the strictest, so nothing is parked
+		// until every main is upgraded.
+		let callerAwaitsOutcome = job.data.callerAwaitsOutcome ?? 'completion';
 
 		lifecycleHooks.addHandler('sendResponse', async (response): Promise<void> => {
 			// An MCP Service call takes its result from the execution's stored data, so a
@@ -287,8 +286,9 @@ export class JobProcessor {
 
 			await job.progress(msg);
 
-			if (!awaitsWebhookResponse) return;
-			callerAwaitsOutcome = false;
+			// Only a webhook caller is satisfied by a relayed response; a done promise waits for the end.
+			if (callerAwaitsOutcome !== 'response') return;
+			callerAwaitsOutcome = 'none';
 			if (this.suspensionRequested) this.runningJobs[job.id]?.suspend?.();
 		});
 
@@ -386,7 +386,7 @@ export class JobProcessor {
 		if (workflowExecute && this.isJobSuspendable(job, execution)) {
 			const suspendable = workflowExecute;
 			runningJob.suspend = () => {
-				if (callerAwaitsOutcome) return false;
+				if (callerAwaitsOutcome !== 'none') return false;
 				suspendable.suspend();
 				return true;
 			};

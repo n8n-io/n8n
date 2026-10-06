@@ -219,7 +219,7 @@ export class TriggerExecutionContextFactory {
 							responsePromise,
 							deduplicationKey,
 							// The node acts on the run's end, so a paused segment must not stand in for it.
-							donePromise !== undefined,
+							donePromise ? 'completion' : 'none',
 						);
 					})
 					.catch((error: unknown) => {
@@ -396,7 +396,7 @@ export class TriggerExecutionContextFactory {
 							mode,
 							responsePromise,
 							undefined,
-							donePromise !== undefined,
+							donePromise ? 'completion' : 'none',
 						);
 					}
 

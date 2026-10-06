@@ -89,7 +89,7 @@ export class WorkflowExecutionService {
 		mode: WorkflowExecuteMode,
 		responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
 		deduplicationKey?: string,
-		callerAwaitsOutcome = false,
+		callerAwaitsOutcome: 'none' | 'completion' = 'none',
 	) {
 		const nodeExecutionStack: IExecuteData[] = [
 			{

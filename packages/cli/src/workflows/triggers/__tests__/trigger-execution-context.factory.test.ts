@@ -159,7 +159,7 @@ describe('TriggerExecutionContextFactory', () => {
 					mode,
 					undefined,
 					undefined,
-					false,
+					'none',
 				);
 				expect(eventService.emit).toHaveBeenCalledWith('workflow-executed', {
 					workflowId: workflowData.id,
@@ -223,7 +223,7 @@ describe('TriggerExecutionContextFactory', () => {
 					'trigger',
 					undefined,
 					undefined,
-					false,
+					'none',
 				);
 			});
 
@@ -266,7 +266,7 @@ describe('TriggerExecutionContextFactory', () => {
 					'trigger',
 					undefined,
 					undefined,
-					false,
+					'none',
 				);
 			});
 
@@ -300,7 +300,7 @@ describe('TriggerExecutionContextFactory', () => {
 					mode,
 					undefined,
 					'wf-1:node-1:1700000000000',
-					false,
+					'none',
 				);
 			});
 
@@ -340,7 +340,7 @@ describe('TriggerExecutionContextFactory', () => {
 					mode,
 					undefined,
 					undefined,
-					true,
+					'completion',
 				);
 			});
 
@@ -736,7 +736,7 @@ describe('TriggerExecutionContextFactory', () => {
 					mode,
 					undefined,
 					undefined,
-					false,
+					'none',
 				);
 			});
 
@@ -787,7 +787,7 @@ describe('TriggerExecutionContextFactory', () => {
 					'trigger',
 					undefined,
 					undefined,
-					false,
+					'none',
 				);
 			});
 
@@ -828,7 +828,7 @@ describe('TriggerExecutionContextFactory', () => {
 					'trigger',
 					undefined,
 					undefined,
-					false,
+					'none',
 				);
 			});
 
