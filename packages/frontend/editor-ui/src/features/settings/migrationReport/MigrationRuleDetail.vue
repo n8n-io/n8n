@@ -117,7 +117,12 @@ function ownerOptionsFor(workflow: AffectedWorkflow): IUser[] {
 	return options;
 }
 
+// A focus or a keystroke can start a new search before the last one answered;
+// only the latest answer may fill the list.
+let memberRequestSequence = 0;
+
 async function loadMembers(projectId: string | undefined, query = '') {
+	const sequence = ++memberRequestSequence;
 	isLoadingUsers.value = true;
 	try {
 		const { items } = await getUsers(rootStore.restApiContext, {
@@ -127,6 +132,7 @@ async function loadMembers(projectId: string | undefined, query = '') {
 				...(query.trim() ? { fullText: query.trim() } : {}),
 			},
 		});
+		if (sequence !== memberRequestSequence) return;
 		memberOptions.value = items.map(userOption);
 	} catch (error) {
 		toast.showError(
@@ -134,7 +140,7 @@ async function loadMembers(projectId: string | undefined, query = '') {
 			i18n.baseText('settings.migrationReport.detail.owner.search.error.title'),
 		);
 	} finally {
-		isLoadingUsers.value = false;
+		if (sequence === memberRequestSequence) isLoadingUsers.value = false;
 	}
 }
 

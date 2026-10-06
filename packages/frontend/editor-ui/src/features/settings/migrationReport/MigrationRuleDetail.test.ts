@@ -530,6 +530,40 @@ describe('MigrationRuleDetail', () => {
 			});
 		});
 
+		it('ignores a member search that answers after a newer one', async () => {
+			const slowSearch = Promise.withResolvers<{ count: number; items: Array<typeof grace> }>();
+			vi.mocked(usersApi.getUsers)
+				.mockReturnValueOnce(slowSearch.promise)
+				.mockResolvedValueOnce({ count: 1, items: [grace] });
+			vi.mocked(breakingChangesApi.getReportForRule).mockResolvedValue(
+				createMockRuleResult({
+					affectedWorkflows: [
+						{ ...mockWorkflowWithIssue, owner: undefined, homeProjectId: 'project-1' },
+						{ ...mockWorkflowWithMultipleNodes, homeProjectId: 'project-2' },
+					],
+				}),
+			);
+			const { baseElement } = renderComponent({ props: { migrationRuleId: 'rule-1' } });
+			await waitFor(() => expect(screen.getAllByRole('combobox')).toHaveLength(2));
+
+			// The first row's search hangs; the second row's answers at once.
+			await userEvent.click(screen.getAllByRole('combobox')[0]);
+			await userEvent.click(screen.getAllByRole('combobox')[1]);
+			await waitFor(() => expect(usersApi.getUsers).toHaveBeenCalledTimes(2));
+			await waitFor(() => {
+				expect(baseElement.querySelector('#user-select-option-id-user-2')).not.toBeNull();
+			});
+
+			slowSearch.resolve({
+				count: 1,
+				items: [{ id: 'user-9', firstName: 'Late', lastName: 'Answer', email: 'late@example.com' }],
+			});
+			await new Promise((resolve) => setTimeout(resolve, 0));
+
+			expect(baseElement.querySelector('#user-select-option-id-user-9')).toBeNull();
+			expect(baseElement.querySelector('#user-select-option-id-user-2')).not.toBeNull();
+		});
+
 		it('clears the assignment and shows the suggestion that comes back', async () => {
 			vi.mocked(breakingChangesApi.unassignWorkflowOwner).mockResolvedValue({
 				owner: { ...grace, source: 'suggested' },
