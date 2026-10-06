@@ -358,7 +358,7 @@ export class ExternalSecretsManager implements IExternalSecretsManager {
 	// Public API - Secrets Refresh
 	// ========================================
 
-	async updateSecrets(signal?: AbortSignal): Promise<void> {
+	async updateSecrets(signal: AbortSignal): Promise<void> {
 		await this.secretsCache.refreshAll(signal);
 	}
 

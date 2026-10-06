@@ -29,6 +29,7 @@ const createDeferred = () => {
 
 describe('ExternalSecretsManager', () => {
 	const connectTimeoutMs = Container.get(ExternalSecretsConfig).connectTimeout * 1000;
+	const signal = new AbortController().signal;
 	vi.useFakeTimers();
 
 	let manager: ExternalSecretsManager;
@@ -715,7 +716,7 @@ describe('ExternalSecretsManager', () => {
 
 	describe('updateSecrets', () => {
 		it('should delegate to secrets cache', async () => {
-			await manager.updateSecrets();
+			await manager.updateSecrets(signal);
 
 			expect(mockSecretsCache.refreshAll).toHaveBeenCalled();
 		});
@@ -727,7 +728,7 @@ describe('ExternalSecretsManager', () => {
 
 			expect(manager.initialized).toBe(true);
 
-			await manager.updateSecrets();
+			await manager.updateSecrets(signal);
 
 			expect(mockSecretsCache.refreshAll).toHaveBeenCalled();
 
@@ -1381,7 +1382,7 @@ describe('ExternalSecretsManager', () => {
 					expect(manager.getSecret('my-vault', 'test1')).toBe('old-value');
 					expect(retryManager.isRetrying('my-vault')).toBe(true);
 
-					await manager.updateSecrets();
+					await manager.updateSecrets(signal);
 					expect(manager.getSecret('my-vault', 'test1')).toBe('old-value');
 
 					await vi.advanceTimersToNextTimerAsync();
@@ -1396,7 +1397,7 @@ describe('ExternalSecretsManager', () => {
 					// The healed slot must take part in the refresh loop again, which only holds if
 					// its connected state was restored.
 					healed._updateSecrets = { test1: 'newest-value' };
-					await manager.updateSecrets();
+					await manager.updateSecrets(signal);
 					expect(manager.getSecret('my-vault', 'test1')).toBe('newest-value');
 				} finally {
 					manager.shutdown();

@@ -35,7 +35,7 @@ export class ExternalSecretsSecretsCache {
 	 *
 	 * @throws {OperationalError} when providers are connected and none of them refreshed
 	 */
-	async refreshAll(signal = new AbortController().signal): Promise<void> {
+	async refreshAll(signal: AbortSignal): Promise<void> {
 		const refreshes = Promise.all(
 			Array.from(this.registry.getAll().entries()).map(
 				async ([name, provider]) => [name, await this.refreshProvider(name, provider)] as const,
