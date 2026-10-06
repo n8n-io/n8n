@@ -11,7 +11,7 @@ import {
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { type SelectQueryBuilder } from '@n8n/typeorm';
-import type { IRun } from 'n8n-workflow';
+import { createEmptyRunExecutionData, type INode, type IRun } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import { ActiveExecutions } from '@/active-executions';
@@ -122,3 +122,47 @@ test('should start a task runner and the policy modules', async () => {
 test('execute:batch needs the expression engine', () => {
 	expect(new ExecuteBatch().needsExpressionEngine).toBe(true);
 });
+
+test.each([true, false])(
+	'starts from the selected trigger when pinned data is %s',
+	async (pinned) => {
+		const startingNode = mock<INode>({
+			name: 'Execute Workflow Trigger',
+			type: 'n8n-nodes-base.executeWorkflowTrigger',
+			notes: '',
+		});
+		const workflow = mock<WorkflowEntity>({
+			id: '123',
+			nodes: [
+				mock<INode>({
+					name: 'Manual Trigger',
+					type: 'n8n-nodes-base.manualTrigger',
+					notes: '',
+				}),
+				startingNode,
+			],
+			pinData: pinned ? { [startingNode.name]: [{ json: {} }] } : undefined,
+		});
+		ExecuteBatch.instanceOwner = mock<User>({ id: 'owner-id' });
+		ExecuteBatch.cancelled = false;
+		workflowRunner.run.mockResolvedValue('execution-id');
+		activeExecutions.getPostExecutePromise.mockResolvedValue({
+			...mock<IRun>(),
+			startedAt: new Date('2026-01-01T00:00:00Z'),
+			stoppedAt: new Date('2026-01-01T00:00:01Z'),
+			data: createEmptyRunExecutionData(),
+		});
+		workflowRunner.run.mockClear();
+
+		const result = await new ExecuteBatch().startThread(workflow);
+
+		expect(result.error).toBeUndefined();
+		expect(result.executionStatus).toBe('success');
+		expect(workflowRunner.run).toHaveBeenCalledExactlyOnceWith({
+			executionMode: 'cli',
+			triggerToStartFrom: { name: startingNode.name },
+			workflowData: workflow,
+			userId: 'owner-id',
+		});
+	},
+);
