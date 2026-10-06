@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import N8nIcon from '../N8nIcon';
 import N8nChatActions from './ChatActions.vue';
 
-const { copy, speak, stop, speechStatus, speechSupported, speechIsPlaying } = vi.hoisted(
+const { copy, speak, stop, speechStatus, speechSupported, speechIsPlaying, utterance } = vi.hoisted(
 	function createMocks() {
 		return {
 			copy: vi.fn(),
@@ -13,6 +13,7 @@ const { copy, speak, stop, speechStatus, speechSupported, speechIsPlaying } = vi
 			speechStatus: { value: 'init' as 'init' | 'play' | 'end' },
 			speechSupported: { value: true },
 			speechIsPlaying: { value: false, __v_isRef: true },
+			utterance: { value: { lang: 'en-US', voice: null as SpeechSynthesisVoice | null } },
 		};
 	},
 );
@@ -27,12 +28,15 @@ vi.mock('@vueuse/core', function mockVueUse() {
 				isSupported: speechSupported,
 				isPlaying: speechIsPlaying,
 				status: speechStatus,
+				utterance,
 				speak,
 				stop,
 			};
 		},
 	};
 });
+
+const getVoices = vi.mocked(window.speechSynthesis.getVoices);
 
 const global = {
 	stubs: {
@@ -54,6 +58,8 @@ describe('N8nChatActions', () => {
 		speechStatus.value = 'init';
 		speechSupported.value = true;
 		speechIsPlaying.value = false;
+		utterance.value.voice = null;
+		getVoices.mockReturnValue([]);
 	});
 
 	it('copies the content and reports the result', async () => {
@@ -99,6 +105,155 @@ describe('N8nChatActions', () => {
 
 		expect(speak).toHaveBeenCalledTimes(1);
 		expect(onReadAloud).toHaveBeenCalledWith({ text: 'Message content', status: 'started' });
+	});
+
+	it.each([
+		{ name: 'Samantha', lang: 'en-US' },
+		{ name: 'Microsoft Zira Desktop - English (United States)', lang: 'en-US' },
+		{ name: 'Microsoft Zira - English (United States)', lang: 'en-US' },
+		{ name: 'Microsoft David Desktop - English (United States)', lang: 'en-US' },
+		{ name: 'Slt', lang: 'en' },
+		{ name: 'Alan', lang: 'en' },
+		{ name: 'Slt', lang: 'en_US' },
+	])('selects the local $name voice instead of the system default', async ({ name, lang }) => {
+		const defaultVoice = {
+			name: 'Zarvox',
+			lang: 'en-US',
+			localService: true,
+			default: true,
+			voiceURI: 'Zarvox',
+		};
+		const preferredVoice = {
+			name,
+			lang,
+			localService: true,
+			default: false,
+			voiceURI: name,
+		};
+		getVoices.mockReturnValue([defaultVoice, preferredVoice]);
+		const wrapper = mount(N8nChatActions, {
+			props: { content: 'Message content', showCopy: false },
+			global,
+		});
+		speak.mockImplementationOnce(() => {
+			expect(utterance.value.voice).toBe(preferredVoice);
+		});
+
+		await wrapper.get('button').trigger('click');
+
+		expect(speak).toHaveBeenCalledTimes(1);
+	});
+
+	it.each(['Natural', 'Enhanced', 'Premium'])(
+		'prefers a local voice labelled %s',
+		async (label) => {
+			const standardVoice = {
+				name: 'Microsoft Zira Desktop - English (United States)',
+				lang: 'en-US',
+				localService: true,
+				default: true,
+				voiceURI: 'standard',
+			};
+			const preferredVoice = {
+				...standardVoice,
+				name: `English (${label})`,
+				default: false,
+				voiceURI: 'preferred',
+			};
+			getVoices.mockReturnValue([standardVoice, preferredVoice]);
+			const wrapper = mount(N8nChatActions, {
+				props: { content: 'Message content', showCopy: false },
+				global,
+			});
+
+			await wrapper.get('button').trigger('click');
+
+			expect(utterance.value.voice).toBe(preferredVoice);
+		},
+	);
+
+	it('keeps a local standard voice when a natural voice is remote', async () => {
+		const standardVoice = {
+			name: 'Microsoft Zira Desktop - English (United States)',
+			lang: 'en-US',
+			localService: true,
+			default: true,
+			voiceURI: 'standard',
+		};
+		const remoteVoice = {
+			...standardVoice,
+			name: 'Microsoft Aria Online (Natural) - English (United States)',
+			localService: false,
+			default: false,
+			voiceURI: 'remote',
+		};
+		getVoices.mockReturnValue([remoteVoice, standardVoice]);
+		const wrapper = mount(N8nChatActions, {
+			props: { content: 'Message content', showCopy: false },
+			global,
+		});
+
+		await wrapper.get('button').trigger('click');
+
+		expect(utterance.value.voice).toBe(standardVoice);
+	});
+
+	it.each([
+		{ reason: 'voices have not loaded', voices: [] },
+		{
+			reason: 'the voice is remote',
+			voices: [
+				{
+					name: 'Samantha',
+					lang: 'en-US',
+					localService: false,
+					default: false,
+					voiceURI: 'remote',
+				},
+			],
+		},
+		{
+			reason: 'the language does not match',
+			voices: [
+				{
+					name: 'Samantha',
+					lang: 'fr-FR',
+					localService: true,
+					default: false,
+					voiceURI: 'other-language',
+				},
+			],
+		},
+	])('uses the browser default when $reason', async ({ voices }) => {
+		getVoices.mockReturnValue(voices);
+		const wrapper = mount(N8nChatActions, {
+			props: { content: 'Message content', showCopy: false },
+			global,
+		});
+
+		await wrapper.get('button').trigger('click');
+
+		expect(utterance.value.voice).toBeNull();
+		expect(speak).toHaveBeenCalledTimes(1);
+	});
+
+	it('uses voices that become available after the chat opens', async () => {
+		const wrapper = mount(N8nChatActions, {
+			props: { content: 'Message content', showCopy: false },
+			global,
+		});
+		const preferredVoice = {
+			name: 'Samantha',
+			lang: 'en-US',
+			localService: true,
+			default: false,
+			voiceURI: 'Samantha',
+		};
+		getVoices.mockReturnValue([preferredVoice]);
+
+		await wrapper.get('button').trigger('click');
+
+		expect(utterance.value.voice).toBe(preferredVoice);
 	});
 
 	it('stops reading the content aloud', async () => {

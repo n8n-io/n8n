@@ -58,7 +58,16 @@ The component only shows the read-aloud action when all these conditions are tru
 
 Selecting the action starts speech for `content`. Selecting it again while speech is active stops speech. If `content` changes during speech, the component stops the current speech. It also stops active speech when it unmounts.
 
-The component uses the browser speech defaults with pitch, rate, and volume set to `1`.
+The component checks the available voices when the user selects Read aloud. It selects local voices that match the speech language. A voice with a language-only tag, such as `en`, can match a regional language, such as `en-US`.
+
+The component uses this preference order:
+
+1. Voices with `Natural`, `Enhanced`, or `Premium` in their names.
+2. `Samantha` on macOS.
+3. `Microsoft Zira`, then `Microsoft David` on Windows.
+4. `Slt` or `Alan` from RHVoice on Linux, when installed and exposed by the browser.
+
+These preferences use voice names as hints. They do not guarantee audio quality. If no preferred local voice is available, the component uses the browser default. Pitch, rate, and volume are set to `1`.
 
 ## Presentation
 
