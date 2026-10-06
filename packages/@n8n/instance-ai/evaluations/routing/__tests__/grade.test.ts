@@ -205,19 +205,8 @@ describe('trialPasses', () => {
 		expect(trialPasses(routingCase('clarify', accepts), resolution)).toBe(expected);
 	});
 
-	it.each<[RoutingCase['bucket'], RouteResolution['steer'], boolean]>([
-		['workflow', 'workflow', true],
-		['workflow', 'both', true],
-		['workflow', 'agent', false],
-		['workflow', 'none', false],
-		['agent', 'agent', true],
-		['agent', 'both', true],
-		['agent', 'workflow', false],
-		['one-off', 'both', false],
-	])('in the %s bucket, a clarify with steer %s passes: %s', (bucket, steer, expected) => {
-		expect(
-			trialPasses(routingCase(bucket, [bucket === 'agent' ? 'agent' : 'workflow']), clarify(steer)),
-		).toBe(expected);
+	it('fails a question toward the bucket artifact when the case accepts no question', () => {
+		expect(trialPasses(routingCase('workflow', ['workflow']), clarify('workflow'))).toBe(false);
 	});
 });
 

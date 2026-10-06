@@ -9,7 +9,7 @@
 
 import type { InstanceAiEvent } from '@n8n/api-types';
 
-import type { AcceptToken, RoutingBucket, RoutingCase } from './cases';
+import type { AcceptToken, RoutingCase } from './cases';
 import type { JudgeInput, JudgeVerdict, Route, Steer, TraceStep } from './judge';
 import {
 	ORCHESTRATOR_AGENT_ID,
@@ -146,24 +146,8 @@ function acceptTokenMatches(token: AcceptToken, { route, steer }: RouteResolutio
 	}
 }
 
-/**
- * A question that points toward the bucket's artifact: `clarify:agent` or
- * `clarify:both` in the agent bucket, `clarify:workflow` or `clarify:both` in
- * the workflow bucket. Other buckets have no direction.
- */
-function isSameDirectionClarify(bucket: RoutingBucket, { route, steer }: RouteResolution): boolean {
-	if (route !== 'clarify') return false;
-	if (bucket === 'agent') return steer === 'agent' || steer === 'both';
-	if (bucket === 'workflow') return steer === 'workflow' || steer === 'both';
-	return false;
-}
-
-// ponytail: one score. Add the accept-tokens-only "strict" score when a report needs it (ASS-1599).
 export function trialPasses(routingCase: RoutingCase, resolution: RouteResolution): boolean {
-	return (
-		routingCase.accepts.some((token) => acceptTokenMatches(token, resolution)) ||
-		isSameDirectionClarify(routingCase.bucket, resolution)
-	);
+	return routingCase.accepts.some((token) => acceptTokenMatches(token, resolution));
 }
 
 /** A case passes when at least 2 of 3 trials pass; other trial counts keep the ratio. */
