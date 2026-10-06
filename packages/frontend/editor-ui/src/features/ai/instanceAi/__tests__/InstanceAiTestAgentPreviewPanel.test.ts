@@ -5,6 +5,8 @@ import { defineComponent, h } from 'vue';
 import { fireEvent, waitFor, within } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 
+import type { AgentEvalVerdict } from '@n8n/api-types';
+
 import { createComponentRenderer } from '@/__tests__/render';
 import { useAgentEvalsStore } from '@/features/agents/agentEvals.store';
 import type { AgentEvalDatasetRecord } from '@/features/agents/agentEvals.types';
@@ -26,6 +28,23 @@ vi.mock('@/features/agents/composables/useAgentConfirmationModal', () => ({
 }));
 
 const target = { agentId: 'agent-1', projectId: 'project-1' };
+
+const PASS_VERDICT: AgentEvalVerdict = {
+	status: 'completed',
+	outcome: 'pass',
+	reasoning: 'It named the ticket, the customer and the priority.',
+};
+const FAIL_VERDICT: AgentEvalVerdict = {
+	status: 'completed',
+	outcome: 'fail',
+	reasoning: 'It never named the ticket.',
+};
+// The judge could not grade the answer, so it is neither a pass nor a fail.
+const UNGRADED_VERDICT: AgentEvalVerdict = {
+	status: 'error',
+	outcome: null,
+	reasoning: 'judge model timed out',
+};
 
 const renderComponent = createComponentRenderer(InstanceAiTestAgentPreviewPanel, {
 	props: { target },
@@ -77,6 +96,7 @@ function mockPreviewRun(
 		whatToCheck: string;
 		scenario: string;
 		response: string;
+		verdict: AgentEvalVerdict;
 	}> = {},
 ) {
 	return vi.spyOn(store, 'previewRun').mockResolvedValue({
@@ -85,6 +105,7 @@ function mockPreviewRun(
 		whatToCheck: 'mentions the outage',
 		scenario: 'Vague',
 		response: 'Ticket #48219 is a P1 SSO outage.',
+		verdict: PASS_VERDICT,
 		...overrides,
 	});
 }
@@ -137,43 +158,86 @@ describe('InstanceAiTestAgentPreviewPanel', () => {
 		openAgentConfirmationModal.mockReset();
 	});
 
-	it('runs a single case, then shows its input and output', async () => {
+	it('runs a single case, then shows its message and the judge’s findings', async () => {
 		const store = useAgentEvalsStore();
 		mockPreviewRun(store);
 
-		const { getByTestId, findByText } = renderComponent();
+		const { getByTestId, findByTestId } = renderComponent();
 
 		expect(getByTestId('instance-ai-test-agent-preview-generating')).toBeInTheDocument();
-		expect(await findByText('Summarize the thread')).toBeInTheDocument();
-		expect(await findByText('Ticket #48219 is a P1 SSO outage.')).toBeInTheDocument();
+		expect(await findByTestId('instance-ai-test-agent-preview-example')).toHaveTextContent(
+			'“Summarize the thread”',
+		);
+		expect(getByTestId('instance-ai-test-agent-preview-findings')).toHaveTextContent(
+			'It named the ticket, the customer and the priority.',
+		);
 		expect(store.previewRun).toHaveBeenCalledWith('project-1', 'agent-1', undefined);
 	});
 
-	it("shows the builder's own test result directly, without a preview run", async () => {
-		const store = useAgentEvalsStore();
-		const previewRun = vi.spyOn(store, 'previewRun');
+	describe("the builder's own test result", () => {
+		const builderCase = {
+			message: 'Summarize the thread about the outage',
+			response: 'Ticket #48219 is a P1 SSO outage.',
+		};
 
-		const { getByTestId, findByText } = createComponentRenderer(InstanceAiTestAgentPreviewPanel, {
-			props: {
-				target,
-				initialCase: {
-					message: 'Summarize the thread about the outage',
-					response: 'Ticket #48219 is a P1 SSO outage.',
+		it('is shown directly, without a preview run, when it has both a rule and a verdict', async () => {
+			const store = useAgentEvalsStore();
+			const previewRun = vi.spyOn(store, 'previewRun');
+
+			const { getByTestId, findByTestId } = createComponentRenderer(
+				InstanceAiTestAgentPreviewPanel,
+				{
+					props: {
+						target,
+						initialCase: {
+							...builderCase,
+							whatToCheck: 'names the ticket',
+							verdict: PASS_VERDICT,
+						},
+					},
 				},
-			},
-		})();
+			)();
 
-		expect(await findByText('Summarize the thread about the outage')).toBeInTheDocument();
-		expect(await findByText('Ticket #48219 is a P1 SSO outage.')).toBeInTheDocument();
-		expect(getByTestId('instance-ai-test-agent-preview-looks-good')).toBeEnabled();
-		expect(previewRun).not.toHaveBeenCalled();
+			expect(await findByTestId('instance-ai-test-agent-preview-example')).toHaveTextContent(
+				'“Summarize the thread about the outage”',
+			);
+			expect(getByTestId('instance-ai-test-agent-preview-first-check-title')).toHaveTextContent(
+				'First check passed',
+			);
+			expect(getByTestId('instance-ai-test-agent-preview-check-harder')).toBeEnabled();
+			expect(previewRun).not.toHaveBeenCalled();
+		});
+
+		it.each([
+			['has no rule or verdict', {}],
+			['has a rule but no verdict', { whatToCheck: 'names the ticket' }],
+			['has a verdict but no rule', { verdict: PASS_VERDICT }],
+			['has a blank rule', { whatToCheck: '', verdict: PASS_VERDICT }],
+		])(
+			'is not reused when it %s: a case is drafted, run and judged instead',
+			async (_label, extra) => {
+				const store = useAgentEvalsStore();
+				const previewRun = mockPreviewRun(store);
+
+				const { findByTestId } = createComponentRenderer(InstanceAiTestAgentPreviewPanel, {
+					props: { target, initialCase: { ...builderCase, ...extra } },
+				})();
+
+				expect(await findByTestId('instance-ai-test-agent-preview-example')).toHaveTextContent(
+					'“Summarize the thread”',
+				);
+				expect(previewRun).toHaveBeenCalledTimes(1);
+			},
+		);
 	});
 
 	it('renders the answer as formatted markdown', async () => {
 		const store = useAgentEvalsStore();
 		mockPreviewRun(store, { response: 'A **bold** claim and a [link](https://example.com).' });
 
-		const { container, findByText } = renderComponent();
+		const user = userEvent.setup();
+		const { container, findByText, findByTestId } = renderComponent();
+		await user.click(await findByTestId('instance-ai-test-agent-preview-toggle-conversation'));
 
 		expect(await findByText('bold')).toBeInTheDocument();
 		expect(container.querySelector('strong')).toHaveTextContent('bold');
@@ -186,18 +250,19 @@ describe('InstanceAiTestAgentPreviewPanel', () => {
 			response: 'a very long answer that would otherwise grow the card',
 		});
 
-		const { findByText, getByTestId } = renderComponent();
+		const user = userEvent.setup();
+		const { findByText, getByTestId, findByTestId } = renderComponent();
+		await user.click(await findByTestId('instance-ai-test-agent-preview-toggle-conversation'));
 
 		await findByText(/very long answer/);
-		// Scoped to the answer card specifically — the panel also has an
-		// `N8nCard` earlier in the tree with its own, unrelated `.content` wrapper.
+		// Scoped to the answer card specifically.
 		const answerCard = getByTestId('instance-ai-test-agent-preview-output');
 		expect(answerCard.querySelector('[class*="content"]')).toHaveTextContent(/very long answer/);
 	});
 
 	it('shows the sample-input prompt instead of dismissing when "Needs work" is clicked', async () => {
 		const store = useAgentEvalsStore();
-		mockPreviewRun(store);
+		mockPreviewRun(store, { verdict: FAIL_VERDICT });
 
 		const user = userEvent.setup();
 		const { getByTestId, findByTestId, emitted } = renderComponent();
@@ -213,7 +278,7 @@ describe('InstanceAiTestAgentPreviewPanel', () => {
 
 	it('emits dismiss when "Don\'t create evals" is clicked', async () => {
 		const store = useAgentEvalsStore();
-		mockPreviewRun(store);
+		mockPreviewRun(store, { verdict: FAIL_VERDICT });
 
 		const user = userEvent.setup();
 		const { findByTestId, emitted } = renderComponent();
@@ -233,6 +298,7 @@ describe('InstanceAiTestAgentPreviewPanel', () => {
 				whatToCheck: 'y',
 				scenario: 'Vague',
 				response: 'y',
+				verdict: FAIL_VERDICT,
 			})
 			.mockResolvedValueOnce({
 				status: 'completed',
@@ -240,17 +306,23 @@ describe('InstanceAiTestAgentPreviewPanel', () => {
 				whatToCheck: 'mentions 30 days',
 				scenario: 'Vague',
 				response: 'Yes, within 30 days.',
+				verdict: PASS_VERDICT,
 			});
 
 		const user = userEvent.setup();
-		const { findByTestId, findByText } = renderComponent();
+		const { findByTestId } = renderComponent();
 		await user.click(await findByTestId('instance-ai-test-agent-preview-needs-work'));
 
 		const input = await findByTestId('instance-ai-test-agent-preview-sample-input');
 		await user.type(input, 'Can I get my money back?');
 		await user.click(await findByTestId('instance-ai-test-agent-preview-submit-sample'));
 
-		expect(await findByText('Yes, within 30 days.')).toBeInTheDocument();
+		expect(await findByTestId('instance-ai-test-agent-preview-example')).toHaveTextContent(
+			'“What is the refund policy?”',
+		);
+		expect(
+			await findByTestId('instance-ai-test-agent-preview-first-check-title'),
+		).toHaveTextContent('First check passed');
 		expect(previewRun).toHaveBeenNthCalledWith(2, 'project-1', 'agent-1', {
 			suggestion: 'Can I get my money back?',
 			previousInput: 'x',
@@ -258,7 +330,7 @@ describe('InstanceAiTestAgentPreviewPanel', () => {
 		});
 	});
 
-	it('generates a batch of examples and shows the examples panel on "Looks good"', async () => {
+	it('generates a batch of examples and shows the examples panel on "Check harder cases"', async () => {
 		const store = useAgentEvalsStore();
 		mockPreviewRun(store, { scenario: 'Upset' });
 		const generateDraftCases = vi.spyOn(store, 'generateDraftCases').mockResolvedValue({
@@ -310,10 +382,10 @@ describe('InstanceAiTestAgentPreviewPanel', () => {
 			findByText,
 		} = renderComponent();
 		await waitFor(() =>
-			expect(getByTestId('instance-ai-test-agent-preview-looks-good')).toBeEnabled(),
+			expect(getByTestId('instance-ai-test-agent-preview-check-harder')).toBeEnabled(),
 		);
 
-		await user.click(getByTestId('instance-ai-test-agent-preview-looks-good'));
+		await user.click(getByTestId('instance-ai-test-agent-preview-check-harder'));
 
 		expect(emitted().confirm).toEqual([[]]);
 		expect(await findByTestId('instance-ai-test-agent-examples-check-agent')).toBeInTheDocument();
@@ -405,9 +477,9 @@ describe('InstanceAiTestAgentPreviewPanel', () => {
 		const user = userEvent.setup();
 		const { getByTestId, findByTestId, queryByTestId } = renderComponent();
 		await waitFor(() =>
-			expect(getByTestId('instance-ai-test-agent-preview-looks-good')).toBeEnabled(),
+			expect(getByTestId('instance-ai-test-agent-preview-check-harder')).toBeEnabled(),
 		);
-		await user.click(getByTestId('instance-ai-test-agent-preview-looks-good'));
+		await user.click(getByTestId('instance-ai-test-agent-preview-check-harder'));
 		await findByTestId('instance-ai-test-agent-examples-check-agent');
 
 		await user.click(getByTestId('instance-ai-test-agent-examples-check-agent'));
@@ -455,9 +527,9 @@ describe('InstanceAiTestAgentPreviewPanel', () => {
 		const user = userEvent.setup();
 		const { getByTestId, findByTestId } = renderComponent();
 		await waitFor(() =>
-			expect(getByTestId('instance-ai-test-agent-preview-looks-good')).toBeEnabled(),
+			expect(getByTestId('instance-ai-test-agent-preview-check-harder')).toBeEnabled(),
 		);
-		await user.click(getByTestId('instance-ai-test-agent-preview-looks-good'));
+		await user.click(getByTestId('instance-ai-test-agent-preview-check-harder'));
 		await findByTestId('instance-ai-test-agent-examples-check-agent');
 
 		await user.click(getByTestId('instance-ai-test-agent-examples-check-agent'));
@@ -492,9 +564,9 @@ describe('InstanceAiTestAgentPreviewPanel', () => {
 		const user = userEvent.setup();
 		const { getByTestId, findByTestId } = renderComponent();
 		await waitFor(() =>
-			expect(getByTestId('instance-ai-test-agent-preview-looks-good')).toBeEnabled(),
+			expect(getByTestId('instance-ai-test-agent-preview-check-harder')).toBeEnabled(),
 		);
-		await user.click(getByTestId('instance-ai-test-agent-preview-looks-good'));
+		await user.click(getByTestId('instance-ai-test-agent-preview-check-harder'));
 		await findByTestId('instance-ai-test-agent-examples-check-agent');
 
 		await user.click(getByTestId('instance-ai-test-agent-examples-check-agent'));
@@ -535,9 +607,9 @@ describe('InstanceAiTestAgentPreviewPanel', () => {
 			const user = userEvent.setup();
 			const view = renderComponent();
 			await waitFor(() =>
-				expect(view.getByTestId('instance-ai-test-agent-preview-looks-good')).toBeEnabled(),
+				expect(view.getByTestId('instance-ai-test-agent-preview-check-harder')).toBeEnabled(),
 			);
-			await user.click(view.getByTestId('instance-ai-test-agent-preview-looks-good'));
+			await user.click(view.getByTestId('instance-ai-test-agent-preview-check-harder'));
 			await view.findByTestId('instance-ai-test-agent-examples-check-agent');
 			await user.click(view.getByTestId('instance-ai-test-agent-examples-check-agent'));
 			return { store, ...view };
@@ -621,9 +693,9 @@ describe('InstanceAiTestAgentPreviewPanel', () => {
 		const user = userEvent.setup();
 		const { getByTestId, findByTestId, queryByTestId, findByText } = renderComponent();
 		await waitFor(() =>
-			expect(getByTestId('instance-ai-test-agent-preview-looks-good')).toBeEnabled(),
+			expect(getByTestId('instance-ai-test-agent-preview-check-harder')).toBeEnabled(),
 		);
-		await user.click(getByTestId('instance-ai-test-agent-preview-looks-good'));
+		await user.click(getByTestId('instance-ai-test-agent-preview-check-harder'));
 		await findByTestId('instance-ai-test-agent-examples-check-agent');
 		await user.click(getByTestId('instance-ai-test-agent-examples-check-agent'));
 
@@ -671,9 +743,9 @@ describe('InstanceAiTestAgentPreviewPanel', () => {
 		const user = userEvent.setup();
 		const { getByTestId, findByTestId } = renderComponent();
 		await waitFor(() =>
-			expect(getByTestId('instance-ai-test-agent-preview-looks-good')).toBeEnabled(),
+			expect(getByTestId('instance-ai-test-agent-preview-check-harder')).toBeEnabled(),
 		);
-		await user.click(getByTestId('instance-ai-test-agent-preview-looks-good'));
+		await user.click(getByTestId('instance-ai-test-agent-preview-check-harder'));
 		await findByTestId('instance-ai-test-agent-examples-check-agent');
 		await user.click(getByTestId('instance-ai-test-agent-examples-check-agent'));
 		await findByTestId('instance-ai-test-agent-examples-stop');
@@ -706,7 +778,7 @@ describe('InstanceAiTestAgentPreviewPanel', () => {
 		await waitFor(() => expect(emitted().dismiss).toEqual([[]]));
 	});
 
-	it('does not generate the suite twice on a rapid double click of "Looks good"', async () => {
+	it('does not generate the suite twice on a rapid double click of "Check harder cases"', async () => {
 		const store = useAgentEvalsStore();
 		mockPreviewRun(store);
 		const generateDraftCases = vi
@@ -728,7 +800,7 @@ describe('InstanceAiTestAgentPreviewPanel', () => {
 
 		const { getByTestId } = renderComponent();
 		const button = await waitFor(() => {
-			const el = getByTestId('instance-ai-test-agent-preview-looks-good');
+			const el = getByTestId('instance-ai-test-agent-preview-check-harder');
 			expect(el).toBeEnabled();
 			return el;
 		});
@@ -750,6 +822,7 @@ describe('InstanceAiTestAgentPreviewPanel', () => {
 			whatToCheck: string;
 			scenario: string;
 			response: string;
+			verdict: AgentEvalVerdict;
 		}) => void;
 		vi.spyOn(store, 'previewRun').mockImplementation(
 			async () =>
@@ -768,6 +841,7 @@ describe('InstanceAiTestAgentPreviewPanel', () => {
 			whatToCheck: 'y',
 			scenario: 'Vague',
 			response: 'y',
+			verdict: PASS_VERDICT,
 		});
 		await Promise.resolve();
 		await Promise.resolve();
@@ -800,9 +874,9 @@ describe('InstanceAiTestAgentPreviewPanel', () => {
 		const user = userEvent.setup();
 		const { getByTestId, findByTestId, unmount } = renderComponent();
 		await waitFor(() =>
-			expect(getByTestId('instance-ai-test-agent-preview-looks-good')).toBeEnabled(),
+			expect(getByTestId('instance-ai-test-agent-preview-check-harder')).toBeEnabled(),
 		);
-		await user.click(getByTestId('instance-ai-test-agent-preview-looks-good'));
+		await user.click(getByTestId('instance-ai-test-agent-preview-check-harder'));
 		await findByTestId('instance-ai-test-agent-examples-check-agent');
 		await user.click(getByTestId('instance-ai-test-agent-examples-check-agent'));
 		await waitFor(() => expect(store.startPollingRun).toHaveBeenCalled());
@@ -840,9 +914,9 @@ describe('InstanceAiTestAgentPreviewPanel', () => {
 		const user = userEvent.setup();
 		const { getByTestId, findByTestId, unmount } = renderComponent();
 		await waitFor(() =>
-			expect(getByTestId('instance-ai-test-agent-preview-looks-good')).toBeEnabled(),
+			expect(getByTestId('instance-ai-test-agent-preview-check-harder')).toBeEnabled(),
 		);
-		await user.click(getByTestId('instance-ai-test-agent-preview-looks-good'));
+		await user.click(getByTestId('instance-ai-test-agent-preview-check-harder'));
 		await findByTestId('instance-ai-test-agent-examples-check-agent');
 		await user.click(getByTestId('instance-ai-test-agent-examples-check-agent'));
 		await waitFor(() => expect(store.fetchCases).toHaveBeenCalled());
@@ -869,9 +943,9 @@ describe('InstanceAiTestAgentPreviewPanel', () => {
 		) {
 			const user = userEvent.setup();
 			await waitFor(() =>
-				expect(getByTestId('instance-ai-test-agent-preview-looks-good')).toBeEnabled(),
+				expect(getByTestId('instance-ai-test-agent-preview-check-harder')).toBeEnabled(),
 			);
-			await user.click(getByTestId('instance-ai-test-agent-preview-looks-good'));
+			await user.click(getByTestId('instance-ai-test-agent-preview-check-harder'));
 			return user;
 		}
 
@@ -965,9 +1039,9 @@ describe('InstanceAiTestAgentPreviewPanel', () => {
 			const { getByTestId } = renderWithExamplesPanelStub();
 			const user = userEvent.setup();
 			await waitFor(() =>
-				expect(getByTestId('instance-ai-test-agent-preview-looks-good')).toBeEnabled(),
+				expect(getByTestId('instance-ai-test-agent-preview-check-harder')).toBeEnabled(),
 			);
-			await user.click(getByTestId('instance-ai-test-agent-preview-looks-good'));
+			await user.click(getByTestId('instance-ai-test-agent-preview-check-harder'));
 			await waitFor(() => expect(getByTestId('stub-check-agent')).toBeInTheDocument());
 
 			await user.click(getByTestId('stub-check-agent'));
@@ -1004,9 +1078,9 @@ describe('InstanceAiTestAgentPreviewPanel', () => {
 			const user = userEvent.setup();
 			const { getByTestId, findByTestId, unmount } = renderComponent();
 			await waitFor(() =>
-				expect(getByTestId('instance-ai-test-agent-preview-looks-good')).toBeEnabled(),
+				expect(getByTestId('instance-ai-test-agent-preview-check-harder')).toBeEnabled(),
 			);
-			await user.click(getByTestId('instance-ai-test-agent-preview-looks-good'));
+			await user.click(getByTestId('instance-ai-test-agent-preview-check-harder'));
 			await user.click(await findByTestId('instance-ai-test-agent-examples-check-agent'));
 			await waitFor(() => expect(store.startRun).toHaveBeenCalledTimes(1));
 
@@ -1031,9 +1105,9 @@ describe('InstanceAiTestAgentPreviewPanel', () => {
 			const { getByTestId, findByTestId } = renderWithExamplesPanelStub();
 			const user = userEvent.setup();
 			await waitFor(() =>
-				expect(getByTestId('instance-ai-test-agent-preview-looks-good')).toBeEnabled(),
+				expect(getByTestId('instance-ai-test-agent-preview-check-harder')).toBeEnabled(),
 			);
-			await user.click(getByTestId('instance-ai-test-agent-preview-looks-good'));
+			await user.click(getByTestId('instance-ai-test-agent-preview-check-harder'));
 			await user.click(await findByTestId('stub-stop-run'));
 
 			expect(cancelRun).not.toHaveBeenCalled();
@@ -1070,9 +1144,9 @@ describe('InstanceAiTestAgentPreviewPanel', () => {
 			const user = userEvent.setup();
 			const { getByTestId, findByTestId, unmount } = renderComponent();
 			await waitFor(() =>
-				expect(getByTestId('instance-ai-test-agent-preview-looks-good')).toBeEnabled(),
+				expect(getByTestId('instance-ai-test-agent-preview-check-harder')).toBeEnabled(),
 			);
-			await user.click(getByTestId('instance-ai-test-agent-preview-looks-good'));
+			await user.click(getByTestId('instance-ai-test-agent-preview-check-harder'));
 			await user.click(await findByTestId('instance-ai-test-agent-examples-check-agent'));
 			await user.click(await findByTestId('instance-ai-test-agent-examples-stop'));
 			await waitFor(() => expect(cancelRun).toHaveBeenCalled());
@@ -1086,10 +1160,158 @@ describe('InstanceAiTestAgentPreviewPanel', () => {
 		});
 	});
 
+	describe('the first check card', () => {
+		const SKIPPED_VERDICT: AgentEvalVerdict = { status: 'skipped', outcome: null, reasoning: null };
+
+		const renderCard = async (overrides: Parameters<typeof mockPreviewRun>[1] = {}) => {
+			const store = useAgentEvalsStore();
+			mockPreviewRun(store, overrides);
+			const view = renderComponent();
+			await view.findByTestId('instance-ai-test-agent-preview-first-check');
+			return { store, user: userEvent.setup(), ...view };
+		};
+
+		it('reports a passed check with the example message and what the judge found', async () => {
+			const { getByTestId, getByText, queryByTestId } = await renderCard();
+
+			expect(getByTestId('instance-ai-test-agent-preview-first-check-title')).toHaveTextContent(
+				'First check passed',
+			);
+			expect(getByText('Example message')).toBeInTheDocument();
+			expect(getByTestId('instance-ai-test-agent-preview-example')).toHaveTextContent(
+				'“Summarize the thread”',
+			);
+			expect(getByText('What we found')).toBeInTheDocument();
+			expect(getByTestId('instance-ai-test-agent-preview-findings')).toHaveTextContent(
+				'It named the ticket, the customer and the priority.',
+			);
+			expect(
+				getByText('We tried one everyday message. Harder ones are ready when you are.'),
+			).toBeInTheDocument();
+			expect(getByTestId('instance-ai-test-agent-preview-check-harder')).toHaveTextContent(
+				'Check harder cases',
+			);
+			expect(getByTestId('instance-ai-test-agent-preview-later')).toHaveTextContent('Later');
+			expect(queryByTestId('instance-ai-test-agent-preview-needs-work')).not.toBeInTheDocument();
+		});
+
+		it('shows the full conversation only after the icon button is pressed, and hides it again', async () => {
+			const { user, getByTestId, queryByText, findByText } = await renderCard();
+			const toggle = getByTestId('instance-ai-test-agent-preview-toggle-conversation');
+
+			expect(queryByText('Ticket #48219 is a P1 SSO outage.')).not.toBeInTheDocument();
+			expect(toggle).toHaveAttribute('aria-expanded', 'false');
+			expect(toggle).toHaveAccessibleName('Show the conversation');
+
+			await user.click(toggle);
+
+			expect(await findByText('Ticket #48219 is a P1 SSO outage.')).toBeInTheDocument();
+			expect(toggle).toHaveAttribute('aria-expanded', 'true');
+			expect(toggle).toHaveAccessibleName('Hide the conversation');
+
+			await user.click(toggle);
+
+			expect(queryByText('Ticket #48219 is a P1 SSO outage.')).not.toBeInTheDocument();
+		});
+
+		it('dismisses on "Later" without confirming', async () => {
+			const { user, getByTestId, emitted } = await renderCard();
+
+			await user.click(getByTestId('instance-ai-test-agent-preview-later'));
+
+			expect(emitted().dismiss).toEqual([[]]);
+			expect(emitted().confirm).toBeUndefined();
+		});
+
+		it('confirms on "Check harder cases" and generates the rest of the suite', async () => {
+			const { user, store, getByTestId, emitted, findByTestId } = await renderCard();
+			const generateDraftCases = vi.spyOn(store, 'generateDraftCases').mockResolvedValue({
+				cases: [{ input: 'a', whatToCheck: 'b', scenario: 'Vague' }],
+			});
+
+			await user.click(getByTestId('instance-ai-test-agent-preview-check-harder'));
+
+			expect(emitted().confirm).toEqual([[]]);
+			expect(await findByTestId('instance-ai-test-agent-examples-check-agent')).toBeInTheDocument();
+			expect(generateDraftCases).toHaveBeenCalledWith(
+				'project-1',
+				'agent-1',
+				expect.objectContaining({ count: 10, save: false, exampleInput: 'Summarize the thread' }),
+			);
+		});
+
+		describe('when the judge failed the answer', () => {
+			it('says the check needs work, with the judge’s reasoning, and offers to fix it', async () => {
+				const { getByTestId, queryByTestId } = await renderCard({ verdict: FAIL_VERDICT });
+
+				expect(getByTestId('instance-ai-test-agent-preview-first-check-title')).toHaveTextContent(
+					'First check needs work',
+				);
+				expect(getByTestId('instance-ai-test-agent-preview-findings')).toHaveTextContent(
+					'It never named the ticket.',
+				);
+				expect(getByTestId('instance-ai-test-agent-preview-needs-work')).toHaveTextContent(
+					'Fix this check',
+				);
+				expect(getByTestId('instance-ai-test-agent-preview-later')).toBeInTheDocument();
+				// A real fail is the cue to fix the check first, not to move on.
+				expect(
+					queryByTestId('instance-ai-test-agent-preview-check-harder'),
+				).not.toBeInTheDocument();
+			});
+
+			it('opens the correction flow on "Fix this check"', async () => {
+				const { user, getByTestId, findByTestId } = await renderCard({ verdict: FAIL_VERDICT });
+
+				await user.click(getByTestId('instance-ai-test-agent-preview-needs-work'));
+
+				expect(
+					await findByTestId('instance-ai-test-agent-preview-sample-input'),
+				).toBeInTheDocument();
+			});
+		});
+
+		// Without a completed pass nothing can be called "passed" — including when
+		// the judge simply could not grade the answer.
+		describe.each([
+			['the judge errored', UNGRADED_VERDICT],
+			['there was no rule to grade against', SKIPPED_VERDICT],
+		])('when %s', (_label, verdict) => {
+			it('never says "passed", and shows a neutral note in place of findings', async () => {
+				const { getByTestId } = await renderCard({ verdict });
+
+				expect(getByTestId('instance-ai-test-agent-preview-first-check-title')).toHaveTextContent(
+					'First check needs work',
+				);
+				expect(getByTestId('instance-ai-test-agent-preview-findings')).toHaveTextContent(
+					'We couldn’t check this answer against its rule.',
+				);
+			});
+
+			it('still lets the user go on to harder cases, since nothing actually failed', async () => {
+				const { user, store, getByTestId, emitted, findByTestId } = await renderCard({ verdict });
+				vi.spyOn(store, 'generateDraftCases').mockResolvedValue({
+					cases: [{ input: 'a', whatToCheck: 'b', scenario: 'Vague' }],
+				});
+
+				expect(getByTestId('instance-ai-test-agent-preview-check-harder')).toHaveTextContent(
+					'Check harder cases anyway',
+				);
+				await user.click(getByTestId('instance-ai-test-agent-preview-check-harder'));
+
+				expect(emitted().confirm).toEqual([[]]);
+				expect(
+					await findByTestId('instance-ai-test-agent-examples-check-agent'),
+				).toBeInTheDocument();
+			});
+		});
+	});
+
 	describe('"Needs work" / sample-input guards', () => {
 		it('ignores a stray "Needs work" click from a stale button reference after confirming', async () => {
 			const store = useAgentEvalsStore();
-			mockPreviewRun(store);
+			// Ungraded, so both "Fix this check" and "Check harder cases anyway" show.
+			mockPreviewRun(store, { verdict: UNGRADED_VERDICT });
 			vi.spyOn(store, 'generateDraftCases').mockResolvedValue({
 				cases: [{ input: 'a', whatToCheck: 'b', scenario: 'Vague' }],
 			});
@@ -1109,16 +1331,16 @@ describe('InstanceAiTestAgentPreviewPanel', () => {
 
 			const { getByTestId, queryByTestId, findByTestId } = renderComponent();
 			await waitFor(() =>
-				expect(getByTestId('instance-ai-test-agent-preview-looks-good')).toBeEnabled(),
+				expect(getByTestId('instance-ai-test-agent-preview-check-harder')).toBeEnabled(),
 			);
-			const looksGood = getByTestId('instance-ai-test-agent-preview-looks-good');
+			const checkHarder = getByTestId('instance-ai-test-agent-preview-check-harder');
 			const needsWork = getByTestId('instance-ai-test-agent-preview-needs-work');
 
 			// Both buttons are still the same DOM nodes in this tick — Vue hasn't
 			// patched the phase change in yet. A stray second click on the old
 			// "Needs work" node must not divert the already-confirmed flow to the
 			// sample-input prompt.
-			await fireEvent.click(looksGood);
+			await fireEvent.click(checkHarder);
 			await fireEvent.click(needsWork);
 
 			expect(await findByTestId('instance-ai-test-agent-examples-check-agent')).toBeInTheDocument();
@@ -1127,7 +1349,7 @@ describe('InstanceAiTestAgentPreviewPanel', () => {
 
 		it('does not submit a whitespace-only correction via the keyboard shortcut', async () => {
 			const store = useAgentEvalsStore();
-			const previewRun = mockPreviewRun(store);
+			const previewRun = mockPreviewRun(store, { verdict: FAIL_VERDICT });
 
 			const user = userEvent.setup();
 			const { findByTestId } = renderComponent();
@@ -1190,9 +1412,9 @@ describe('InstanceAiTestAgentPreviewPanel', () => {
 			const user = userEvent.setup();
 			const { getByTestId, findByTestId, findByText } = renderComponent();
 			await waitFor(() =>
-				expect(getByTestId('instance-ai-test-agent-preview-looks-good')).toBeEnabled(),
+				expect(getByTestId('instance-ai-test-agent-preview-check-harder')).toBeEnabled(),
 			);
-			await user.click(getByTestId('instance-ai-test-agent-preview-looks-good'));
+			await user.click(getByTestId('instance-ai-test-agent-preview-check-harder'));
 			await findByTestId('instance-ai-test-agent-examples-check-agent');
 			await user.click(getByTestId('instance-ai-test-agent-examples-check-agent'));
 

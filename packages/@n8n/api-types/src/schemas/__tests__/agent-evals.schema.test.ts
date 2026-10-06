@@ -242,6 +242,15 @@ describe('GenerateDraftCasesOptionsDto', () => {
 		expect(GenerateDraftCasesOptionsDto.safeParse({ count: 0 }).success).toBe(false);
 		expect(GenerateDraftCasesOptionsDto.safeParse({ count: 2.5 }).success).toBe(false);
 	});
+
+	it('trims a rule, and rejects an empty or whitespace-only one', () => {
+		const parsed = GenerateDraftCasesOptionsDto.safeParse({
+			rule: '  Never share a phone number  ',
+		});
+		expect(parsed.success && parsed.data.rule).toBe('Never share a phone number');
+		expect(GenerateDraftCasesOptionsDto.safeParse({ rule: '' }).success).toBe(false);
+		expect(GenerateDraftCasesOptionsDto.safeParse({ rule: '   ' }).success).toBe(false);
+	});
 });
 
 describe('RerunResultOptionsDto', () => {

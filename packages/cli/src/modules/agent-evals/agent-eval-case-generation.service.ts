@@ -20,6 +20,7 @@ import { CredentialsService } from '@/credentials/credentials.service';
 import { ForbiddenError } from '@n8n/errors';
 import { InstanceWriteAccessService } from '@n8n/backend-services';
 
+import { judgeAgentAnswer } from './agent-eval-judge';
 import { AgentEvalsFlagGate } from './agent-evals-flag-gate';
 import { AgentConfigService } from '../agents/agent-config.service';
 import { AgentTestRunService } from '../agents/agent-test-run.service';
@@ -115,10 +116,11 @@ export class AgentEvalCaseGenerationService {
 		const modelConfig = await this.resolveAgentModel(config, projectId, user);
 
 		const revision = toRevisionContext(options);
-		// A revision always asks for exactly one replacement case — ignore any
-		// requested count so the prompt (one case) and the validation/persistence
-		// limit it's checked against never disagree.
-		const count = revision ? 1 : clampCount(options.count);
+		const rule = options.rule?.trim() || undefined;
+		// A revision, or a rule to test, always asks for exactly one case — ignore
+		// any requested count so the prompt (one case) and the validation/
+		// persistence limit it's checked against never disagree.
+		const count = revision || rule ? 1 : clampCount(options.count);
 		const capabilities = deriveCapabilities(config);
 		const tuples = sampleDimensionTuples(capabilities, count);
 		const example = toExampleContext(options);
@@ -126,7 +128,7 @@ export class AgentEvalCaseGenerationService {
 		const summary = buildAgentSummary(config);
 		const generated = await this.invokeModel(
 			modelConfig,
-			buildCaseGenerationUserPrompt(summary, tuples, revision, example),
+			buildCaseGenerationUserPrompt(summary, tuples, revision, example, rule),
 			tuples.length,
 		);
 		// Cap to the requested count and bound each field: the model output is
@@ -234,12 +236,31 @@ export class AgentEvalCaseGenerationService {
 		// than showing an incomplete response as an approved example.
 		if (result.status !== 'completed' || result.maxIterations) return { status: 'failed' };
 
+		// Graded against the rule it was drafted with, so the preview can say whether
+		// the first check passed. A judge failure comes back as an `error` verdict;
+		// it must not turn a real, finished run into a failed preview.
+		const verdict = await judgeAgentAnswer(
+			{
+				agentConfigService: this.agentConfigService,
+				credentialsService: this.credentialsService,
+				logger: this.logger,
+			},
+			{
+				input: draftCase.input,
+				output: result.response,
+				criteria: draftCase.whatToCheck.trim() || null,
+				expectedOutput: null,
+			},
+			{ agentId, projectId, user },
+		);
+
 		return {
 			status: 'completed',
 			input: draftCase.input,
 			whatToCheck: draftCase.whatToCheck,
 			scenario: draftCase.scenario,
 			response: result.response,
+			verdict,
 		};
 	}
 

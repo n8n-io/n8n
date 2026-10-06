@@ -18,10 +18,19 @@ import type { AgentEvalsFlagGate } from '../agent-evals-flag-gate';
 
 // Stub the @n8n/agents SDK: fluent builder is a no-op; `generate` is a
 // controllable mock so tests drive the model's (in)valid structured output.
-const { generateMock } = vi.hoisted(() => ({ generateMock: vi.fn() }));
+const { generateMock, criteriaRunMock } = vi.hoisted(() => ({
+	generateMock: vi.fn(),
+	criteriaRunMock: vi.fn(),
+}));
 vi.mock('@n8n/agents', async (importOriginal) => ({
 	// Channel action tools import APPROVAL_* schemas from the SDK; keep those real.
 	...(await importOriginal<typeof import('@n8n/agents')>()),
+	// The preview judges its run with the rule judge; `criteriaRunMock` drives its verdict.
+	evals: {
+		criteria: () => ({
+			model: () => ({ run: (...args: unknown[]) => criteriaRunMock(...args) }),
+		}),
+	},
 	Agent: class {
 		model() {
 			return this;
@@ -96,6 +105,8 @@ describe('AgentEvalCaseGenerationService', () => {
 		generateMock.mockReset();
 		resolveModelMock.mockReset();
 		resolveModelMock.mockResolvedValue({ id: 'anthropic/claude-sonnet-4-5' });
+		criteriaRunMock.mockReset();
+		criteriaRunMock.mockResolvedValue({ pass: true, reasoning: 'Satisfies the rule.' });
 
 		flagGate.assertEnabled.mockResolvedValue(undefined);
 		agentConfigService.getConfig.mockResolvedValue(makeConfig());
@@ -244,6 +255,37 @@ describe('AgentEvalCaseGenerationService', () => {
 		// and this single-case response would fail and retry, then throw.
 		expect(generateMock).toHaveBeenCalledTimes(1);
 		expect(result.cases).toHaveLength(1);
+	});
+
+	it('asks for one case that tests the rule, whatever count was requested', async () => {
+		generateMock.mockResolvedValue({ structuredOutput: { cases: makeCases(1) } });
+
+		const result = await service.generateDraftCases(user, 'project-1', 'agent-1', {
+			count: 5,
+			rule: '  Never share a customer’s phone number  ',
+			save: false,
+		});
+
+		const [prompt] = generateMock.mock.calls[0];
+		expect(prompt).toContain('Rule: Never share a customer’s phone number');
+		expect(prompt).toContain('Write exactly 1 test case');
+		expect(prompt).not.toContain('Write exactly 5');
+		expect(generateMock).toHaveBeenCalledTimes(1);
+		expect(result.cases).toHaveLength(1);
+	});
+
+	it('ignores a blank rule and generates a fresh batch', async () => {
+		generateMock.mockResolvedValue({ structuredOutput: { cases: makeCases(3) } });
+
+		await service.generateDraftCases(user, 'project-1', 'agent-1', {
+			count: 3,
+			rule: '   ',
+			save: false,
+		});
+
+		const [prompt] = generateMock.mock.calls[0];
+		expect(prompt).toContain('Write exactly 3');
+		expect(prompt).not.toContain('Rule:');
 	});
 
 	it('revises with an empty previous output and still requests exactly one case', async () => {
@@ -583,9 +625,80 @@ describe('AgentEvalCaseGenerationService', () => {
 				whatToCheck: 'check 1',
 				scenario: 'scenario 1',
 				response: 'The answer is 42.',
+				verdict: { status: 'completed', outcome: 'pass', reasoning: 'Satisfies the rule.' },
 			});
 			expect(dataTableService.createDataTable).not.toHaveBeenCalled();
 			expect(datasetRepository.createDataset).not.toHaveBeenCalled();
+		});
+
+		describe('judging the run', () => {
+			beforeEach(() => {
+				generateMock.mockResolvedValue({ structuredOutput: { cases: makeCases(1) } });
+				agentTestRunService.executeDraftRun.mockResolvedValue({
+					status: 'completed',
+					response: 'The answer is 42.',
+					executionId: 'exec-1',
+					sessionId: 'session-1',
+				});
+			});
+
+			it('grades the response against the rule the case was drafted with', async () => {
+				await service.previewRun(user, 'project-1', 'agent-1');
+
+				expect(criteriaRunMock).toHaveBeenCalledWith({
+					input: 'input 1',
+					output: 'The answer is 42.',
+					criteria: 'check 1',
+				});
+			});
+
+			it('returns a fail verdict with the judge’s reasoning', async () => {
+				criteriaRunMock.mockResolvedValue({ pass: false, reasoning: 'Never gives a number.' });
+
+				const result = await service.previewRun(user, 'project-1', 'agent-1');
+
+				expect(result).toMatchObject({
+					status: 'completed',
+					verdict: { status: 'completed', outcome: 'fail', reasoning: 'Never gives a number.' },
+				});
+			});
+
+			// A judge outage must not throw away an agent run that finished.
+			it('still completes the preview, with an error verdict, when the judge throws', async () => {
+				criteriaRunMock.mockRejectedValue(new Error('judge model timed out'));
+
+				const result = await service.previewRun(user, 'project-1', 'agent-1');
+
+				expect(result).toMatchObject({
+					status: 'completed',
+					response: 'The answer is 42.',
+					verdict: { status: 'error', outcome: null, reasoning: 'judge model timed out' },
+				});
+			});
+
+			it('still completes the preview, with an error verdict, when the agent has no judge credential', async () => {
+				// Drafting needs the credential too, so only the judge's own lookup lacks it.
+				agentConfigService.getConfig
+					.mockResolvedValueOnce(makeConfig())
+					.mockResolvedValueOnce(makeConfig({ credential: '' }));
+
+				const result = await service.previewRun(user, 'project-1', 'agent-1');
+
+				expect(result).toMatchObject({ status: 'completed', verdict: { status: 'error' } });
+				expect(criteriaRunMock).not.toHaveBeenCalled();
+			});
+
+			it('does not judge a run that failed', async () => {
+				agentTestRunService.executeDraftRun.mockResolvedValue({
+					status: 'agent_misconfigured',
+					missing: ['model'],
+				});
+
+				await expect(service.previewRun(user, 'project-1', 'agent-1')).resolves.toEqual({
+					status: 'failed',
+				});
+				expect(criteriaRunMock).not.toHaveBeenCalled();
+			});
 		});
 
 		it('passes revision context through to the one-case draft', async () => {

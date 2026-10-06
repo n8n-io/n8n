@@ -284,6 +284,10 @@ export type AgentEvalDraftCase = z.infer<typeof agentEvalDraftCaseSchema>;
 // approved — grounding fresh generations in that same style and scope. The
 // service only uses this when both are set.
 //
+// `rule` is a rule the agent must follow, written by the user. It asks for one
+// case: a user message that tests that rule. The count is ignored, like a
+// revision's.
+//
 // `save` defaults to true (persist a dataset, as this endpoint always has).
 // `save: false` skips persistence entirely — no Data Table, no dataset row —
 // so a caller can preview drafts (e.g. before the user has committed to any
@@ -296,6 +300,7 @@ const generateDraftCasesOptionsShape = {
 	previousOutput: z.string().optional(),
 	exampleInput: z.string().min(1).optional(),
 	exampleOutput: z.string().min(1).optional(),
+	rule: z.string().trim().min(1).optional(),
 	save: z.boolean().optional(),
 };
 export const generateDraftCasesOptionsSchema = z.object(generateDraftCasesOptionsShape);
@@ -350,7 +355,15 @@ export class PreviewRunOptionsDto extends Z.class(previewRunOptionsShape) {}
  * the eval-run version did: a generic "didn't complete" failure.
  */
 export type PreviewRunResult =
-	| { status: 'completed'; input: string; whatToCheck: string; scenario: string; response: string }
+	| {
+			status: 'completed';
+			input: string;
+			whatToCheck: string;
+			scenario: string;
+			response: string;
+			/** The judge's call on the response against `whatToCheck`. A judge failure is an `error` verdict, never a `failed` preview. */
+			verdict: AgentEvalVerdict;
+	  }
 	| { status: 'failed' };
 
 // Request body for rerunning one already-seeded result in place. `whatToCheck`

@@ -5,6 +5,12 @@ import userEvent from '@testing-library/user-event';
 import { fireEvent, within } from '@testing-library/vue';
 import { flushPromises } from '@vue/test-utils';
 import { createTestingPinia } from '@pinia/testing';
+import type {
+	AgentEvalVerdict,
+	InstanceAiAgentNode,
+	InstanceAiHandoffContext,
+	InstanceAiMessage,
+} from '@n8n/api-types';
 import { USER_TYPED_MESSAGE } from '../prefills';
 import { setActivePinia } from 'pinia';
 import { createComponentRenderer } from '@/__tests__/render';
@@ -22,11 +28,6 @@ import { useSettingsStore } from '@n8n/stores/settings.store';
 import { INSTANCE_AI_VIEW, NEW_CONVERSATION_TITLE } from '../constants';
 import { LOCAL_STORAGE_INSTANCE_AI_CHAT_PANEL_WIDTH_RATIO } from '@/app/constants';
 import type { WorkflowFailuresReport } from '../components/InstanceAiWorkflowPreview.vue';
-import type {
-	InstanceAiAgentNode,
-	InstanceAiHandoffContext,
-	InstanceAiMessage,
-} from '@n8n/api-types';
 import {
 	getPendingAgentAttachment,
 	stashPendingAgentAttachment,
@@ -2480,7 +2481,18 @@ describe('InstanceAiThreadView', () => {
 			});
 		}
 
-		function seedPreviewVariant() {
+		const PASS_VERDICT: AgentEvalVerdict = {
+			status: 'completed',
+			outcome: 'pass',
+			reasoning: 'It answered the question.',
+		};
+		const FAIL_VERDICT: AgentEvalVerdict = {
+			status: 'completed',
+			outcome: 'fail',
+			reasoning: 'It did not answer the question.',
+		};
+
+		function seedPreviewVariant(verdict: AgentEvalVerdict = PASS_VERDICT) {
 			mockedStore(usePostHog).getVariant.mockImplementation((flag) =>
 				flag === INSTANCE_AI_TEST_AGENT_PREVIEW_EXPERIMENT.name
 					? INSTANCE_AI_TEST_AGENT_PREVIEW_EXPERIMENT.variant
@@ -2493,6 +2505,7 @@ describe('InstanceAiThreadView', () => {
 				whatToCheck: 'mentions the outage',
 				scenario: 'Vague',
 				response: 'Done.',
+				verdict,
 			});
 			return evalsStore;
 		}
@@ -2507,7 +2520,9 @@ describe('InstanceAiThreadView', () => {
 			expect(queryByTestId('instance-ai-test-agent-panel')).not.toBeInTheDocument();
 		});
 
-		it("reuses the builder's own test call instead of generating and running a case", async () => {
+		// The builder's `call_agent` result has no rule and no judge verdict, so it
+		// cannot be reported as a first check. The panel runs and judges its own.
+		it("does not reuse the builder's own test call, since it has no rule or verdict", async () => {
 			seedReadyAgent();
 			const evalsStore = seedPreviewVariant();
 			thread.messages.push({
@@ -2546,19 +2561,35 @@ describe('InstanceAiThreadView', () => {
 				},
 			});
 
-			const { findByText, findByTestId } = renderView({ props: { threadId: 'thread-1' } });
+			const { findByTestId, queryByText } = renderView({ props: { threadId: 'thread-1' } });
 
-			expect(await findByText('Summarize the thread about the outage')).toBeInTheDocument();
-			expect(await findByText('Ticket #48219 is a P1 SSO outage.')).toBeInTheDocument();
-			expect(await findByTestId('instance-ai-test-agent-preview-looks-good')).toBeEnabled();
-			expect(evalsStore.previewRun).not.toHaveBeenCalled();
+			expect(await findByTestId('instance-ai-test-agent-preview-example')).toHaveTextContent(
+				'“Summarize the thread”',
+			);
+			expect(await findByTestId('instance-ai-test-agent-preview-check-harder')).toBeEnabled();
+			expect(evalsStore.previewRun).toHaveBeenCalledTimes(1);
+			expect(queryByText(/Summarize the thread about the outage/)).not.toBeInTheDocument();
 			expect(evalsStore.generateDraftCases).not.toHaveBeenCalled();
 			expect(evalsStore.startRun).not.toHaveBeenCalled();
 		});
 
-		it('persists the dismissal on "Needs work" without requesting the evals focus', async () => {
+		it('persists the dismissal on "Later" without requesting the evals focus', async () => {
 			seedReadyAgent();
 			const evalsStore = seedPreviewVariant();
+			const user = userEvent.setup();
+			const { findByTestId } = renderView({ props: { threadId: 'thread-1' } });
+
+			await user.click(await findByTestId('instance-ai-test-agent-preview-later'));
+
+			expect(store.updateThreadMetadata).toHaveBeenCalledWith('thread-1', {
+				dismissedContextKeys: ['test-agent:agent-1'],
+			});
+			expect(evalsStore.requestEvalsFocus).not.toHaveBeenCalled();
+		});
+
+		it('persists the dismissal after "Fix this check" and then skipping, without requesting the evals focus', async () => {
+			seedReadyAgent();
+			const evalsStore = seedPreviewVariant(FAIL_VERDICT);
 			const user = userEvent.setup();
 			const { findByTestId } = renderView({ props: { threadId: 'thread-1' } });
 
@@ -2582,7 +2613,7 @@ describe('InstanceAiThreadView', () => {
 			const user = userEvent.setup();
 			const { findByTestId } = renderView({ props: { threadId: 'thread-1' } });
 
-			await user.click(await findByTestId('instance-ai-test-agent-preview-looks-good'));
+			await user.click(await findByTestId('instance-ai-test-agent-preview-check-harder'));
 
 			expect(store.updateThreadMetadata).toHaveBeenCalledWith('thread-1', {
 				dismissedContextKeys: ['test-agent:agent-1'],
@@ -2722,6 +2753,7 @@ describe('InstanceAiThreadView', () => {
 				whatToCheck: 'mentions the outage',
 				scenario: 'Vague',
 				response: 'Done.',
+				verdict: PASS_VERDICT,
 			});
 			useSettingsStore().settings.evaluation = {
 				...useSettingsStore().settings.evaluation,
@@ -2881,9 +2913,10 @@ describe('InstanceAiThreadView', () => {
 				whatToCheck: 'something else',
 				scenario: 'Vague',
 				response: 'A freshly generated answer.',
+				verdict: PASS_VERDICT,
 			});
 
-			const { findByTestId, findByText, queryByText } = renderView({
+			const { findByTestId, queryByText } = renderView({
 				props: { threadId: 'thread-1' },
 			});
 
@@ -2892,8 +2925,10 @@ describe('InstanceAiThreadView', () => {
 			// result as its `initialCase`.
 			expect(await findByTestId('instance-ai-test-agent-preview-panel')).toBeInTheDocument();
 			expect(evalsStore.previewRun).toHaveBeenCalled();
-			expect(await findByText('A freshly generated answer.')).toBeInTheDocument();
-			expect(queryByText('Ticket #48219 is a P1 SSO outage.')).not.toBeInTheDocument();
+			expect(await findByTestId('instance-ai-test-agent-preview-example')).toHaveTextContent(
+				'“A different question”',
+			);
+			expect(queryByText(/Ticket #48219 is a P1 SSO outage\./)).not.toBeInTheDocument();
 		});
 
 		it('clears the latch and opens the evals surface from "Open evals", without requesting generation', async () => {

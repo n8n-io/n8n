@@ -27,12 +27,11 @@ import { License } from '@/license';
 import { AgentConfigService } from '@/modules/agents/agent-config.service';
 import { AgentsSettingsService } from '@/modules/agents/agents-settings.service';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
-import { createAgentCredentialProvider } from '@/modules/agents/utils/agent-credential-provider';
-import { resolveCredentialAwareModelConfig } from '@/modules/agents/json-config/model-config';
 import { DataTableService } from '@/modules/data-table/data-table.service';
 import { EvalAgentExecutionService } from '@/modules/instance-ai/eval/agent-execution.service';
 import { userHasScopes } from '@/permissions.ee/check-access';
 
+import { judgeAgentAnswer } from './agent-eval-judge';
 import { AgentEvalsFlagGate } from './agent-evals-flag-gate';
 import { assertRequiredModulesActive } from './agent-evals-required-modules';
 
@@ -677,76 +676,27 @@ export class AgentEvalRunnerService {
 	/**
 	 * Grades a case's output against its rule (`criteria`) or gold answer
 	 * (`expectedOutput`, `criteria` wins if both are mapped), when the case's
-	 * snapshot has either — `status: 'skipped'` otherwise, so a case whose
-	 * dataset maps neither never gets a judge call. A rule is judged as something
-	 * the response must satisfy; a gold answer as something it must match.
-	 *
-	 * Resolves the judge's model the same way the agent's own execution and
-	 * case generation do: the agent's real (project-scoped, BYOK) credential via
-	 * {@link resolveCredentialAwareModelConfig}, not a bare credential name
-	 * threaded into the SDK's `.credential()`. That builder method never
-	 * actually resolves a credential into an API key for the judge's
-	 * `AgentRuntime` (it only records a display name) — `Eval.model()` was
-	 * widened to accept a pre-resolved `ModelConfig` object for exactly this, so
-	 * the already-resolved config is handed to `.model()` directly, the same
-	 * pattern {@link AgentEvalCaseGenerationService} already uses for its own
-	 * (non-judge) model call.
-	 *
-	 * Wrapped end-to-end: a resolution or judge-LLM failure is recorded as
-	 * `status: 'error'`, never thrown — grading is best-effort on top of a case
-	 * that already succeeded.
+	 * snapshot has either. See {@link judgeAgentAnswer}.
 	 */
 	private async judgeCase(
 		resolvedCase: ResolvedCase,
 		output: string,
 		ctx: { agentId: string; projectId: string; user: User },
 	): Promise<AgentEvalVerdict> {
-		const criteria = readSnapshotText(resolvedCase.snapshot, 'criteria');
-		const expectedOutput = readSnapshotText(resolvedCase.snapshot, 'expectedOutput');
-		if (!criteria && !expectedOutput) return { status: 'skipped', outcome: null, reasoning: null };
-
-		try {
-			const config = await this.agentConfigService.getConfig(ctx.agentId, ctx.projectId);
-			if (!config.model || !config.credential) {
-				throw new BadRequestError(
-					'This agent has no configured model and credential to judge with.',
-				);
-			}
-
-			const credentialProvider = createAgentCredentialProvider(
-				this.credentialsService,
-				ctx.projectId,
-				ctx.user,
-			);
-			const modelConfig = await resolveCredentialAwareModelConfig(
-				config.model,
-				config.credential,
-				credentialProvider,
-			);
-
-			// Lazy-loaded: judging only runs for the subset of cases that map a
-			// rule or gold answer, not every request, and `@n8n/agents` is heavy.
-			const { evals } = await import('@n8n/agents');
-			const score = criteria
-				? await evals
-						.criteria()
-						.model(modelConfig)
-						.run({ input: resolvedCase.input, output, criteria })
-				: await evals
-						.correctness()
-						.model(modelConfig)
-						.run({ input: resolvedCase.input, output, expected: expectedOutput ?? undefined });
-
-			return {
-				status: 'completed',
-				outcome: score.pass ? 'pass' : 'fail',
-				reasoning: score.reasoning,
-			};
-		} catch (error) {
-			const message = error instanceof Error ? error.message : String(error);
-			this.logger.error('[AgentEvalRunner] Judging failed', { error: message });
-			return { status: 'error', outcome: null, reasoning: message };
-		}
+		return await judgeAgentAnswer(
+			{
+				agentConfigService: this.agentConfigService,
+				credentialsService: this.credentialsService,
+				logger: this.logger,
+			},
+			{
+				input: resolvedCase.input,
+				output,
+				criteria: readSnapshotText(resolvedCase.snapshot, 'criteria'),
+				expectedOutput: readSnapshotText(resolvedCase.snapshot, 'expectedOutput'),
+			},
+			ctx,
+		);
 	}
 
 	/**

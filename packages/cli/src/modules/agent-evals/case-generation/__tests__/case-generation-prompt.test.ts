@@ -118,6 +118,37 @@ describe('buildCaseGenerationUserPrompt', () => {
 		expect(prompt).not.toMatch(/^1\. /m);
 	});
 
+	it('asks for one case that tests the rule when given one, instead of the tuple scenarios', () => {
+		const tuples: DimensionTuple[] = [
+			{ capability: 'general', difficulty: 'simple', flavor: 'happy_path' },
+		];
+		const prompt = buildCaseGenerationUserPrompt(
+			buildAgentSummary(config()),
+			tuples,
+			undefined,
+			undefined,
+			'Never share a customer’s phone number',
+		);
+		expect(prompt).toContain('Rule: Never share a customer’s phone number');
+		expect(prompt).toContain('Write exactly 1 test case');
+		expect(prompt).toContain('puts this rule to the test');
+		expect(prompt).not.toMatch(/^1\. /m);
+	});
+
+	it('truncates an overly long rule', () => {
+		const tuples: DimensionTuple[] = [
+			{ capability: 'general', difficulty: 'simple', flavor: 'happy_path' },
+		];
+		const prompt = buildCaseGenerationUserPrompt(
+			buildAgentSummary(config()),
+			tuples,
+			undefined,
+			undefined,
+			'x'.repeat(3000),
+		);
+		expect(prompt).toContain(`${'x'.repeat(2000)}…`);
+	});
+
 	it('says so when a revised case had no output, instead of leaving the line blank', () => {
 		const tuples: DimensionTuple[] = [
 			{ capability: 'general', difficulty: 'simple', flavor: 'happy_path' },

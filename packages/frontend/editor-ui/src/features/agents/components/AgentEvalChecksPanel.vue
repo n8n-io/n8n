@@ -1,7 +1,7 @@
 <script setup lang="ts">
 /**
  * The checks-have-run view behind `useTestAgentPreviewExperiment`: status
- * filter pills plus a "Run all checks" button up top, then each case as an
+ * filter pills plus "Add a check" and "Run all checks" buttons up top, then each case as an
  * `AgentEvalTryRow` — replaces `AgentEvalResultsPanel`'s vote/comment review
  * model with the simpler row the rest of the experiment already uses.
  *
@@ -10,7 +10,7 @@
  * never passes `label` to `AgentEvalTryRow`.
  */
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
-import { N8nButton } from '@n8n/design-system';
+import { N8nButton, N8nIcon } from '@n8n/design-system';
 import { useToast } from '@n8n/composables/useToast';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 
@@ -27,6 +27,7 @@ import {
 import { toDisplayToolCalls } from '../utils/agent-eval-tool-calls';
 import { isDataTableDataset, toCaseSource } from '../utils/agentEvalCases.utils';
 import AgentAvatar, { type AgentAvatarKind } from './AgentAvatar.vue';
+import AgentEvalAddCheckPanel from './AgentEvalAddCheckPanel.vue';
 import AgentEvalTryRow from './AgentEvalTryRow.vue';
 
 const props = defineProps<{
@@ -48,6 +49,16 @@ const store = useAgentEvalsStore();
 const review = computed(() => store.getReview(props.runId));
 const results = computed(() => review.value.results);
 const hasMore = computed(() => results.value.length < review.value.resultsCount);
+
+// What the rows are drawn from. A run that has just started — "Run all checks", or
+// an added check — has an empty review until its first read lands. Drawing from it
+// would blank the whole view for a moment: the list collapses, the filters vanish,
+// and everything below jumps. So the previous review stays on screen until the new
+// one has something to show. Pagination keeps reading the live review above.
+const shownReview = ref(review.value);
+watch(review, (next) => {
+	if (next.run !== null || next.results.length > 0) shownReview.value = next;
+});
 const inFlight = computed(() => store.isRunInFlight(props.runId));
 
 type CheckRow = {
@@ -66,7 +77,7 @@ type CheckRow = {
 };
 
 const rows = computed<CheckRow[]>(() =>
-	results.value.map((result) => {
+	shownReview.value.results.map((result) => {
 		return {
 			id: result.id,
 			sourceRowId: result.sourceRowId,
@@ -214,10 +225,28 @@ async function onSaveWhatToCheck(resultId: string, whatToCheck: string) {
  *  path "delete the check" has to the Data Table row, since this view never
  *  loads a case list of its own. */
 function resolveCaseSource() {
-	const datasetId = review.value.run?.datasetId;
+	const datasetId = shownReview.value.run?.datasetId;
 	if (!datasetId) return null;
 	const dataset = store.getDatasets(props.agentId).find((d) => d.id === datasetId);
 	return dataset && isDataTableDataset(dataset) ? toCaseSource(dataset) : null;
+}
+
+// Where a new check is written. Needs a column to store its rule in, since a
+// check without a rule has nothing for the judge to grade it against.
+const addCheckSource = computed(() => {
+	const source = resolveCaseSource();
+	return source?.columns.whatToCheck ? source : null;
+});
+
+const addCheckOpen = ref(false);
+// Mounted on first open and kept after that, so closing and reopening the panel,
+// or a rerun that briefly empties the review, doesn't draft a new batch of
+// prepared cases.
+const addCheckMounted = ref(false);
+
+function toggleAddCheck() {
+	addCheckMounted.value = true;
+	addCheckOpen.value = !addCheckOpen.value;
 }
 
 async function onDeleteCheck(row: CheckRow) {
@@ -376,16 +405,18 @@ onBeforeUnmount(store.stopPollingRun);
 					}}
 				</N8nButton>
 			</div>
-			<N8nButton
-				variant="subtle"
-				size="small"
-				:disabled="disabled || rerunning"
-				:loading="rerunning || inFlight"
-				data-testid="agent-eval-checks-run-all"
-				@click="emit('rerun')"
-			>
-				{{ i18n.baseText('agents.builder.agentEvals.checks.runAll') }}
-			</N8nButton>
+			<div :class="$style.actions">
+				<N8nButton
+					variant="subtle"
+					size="small"
+					:disabled="disabled || rerunning"
+					:loading="rerunning || inFlight"
+					data-testid="agent-eval-checks-run-all"
+					@click="emit('rerun')"
+				>
+					{{ i18n.baseText('agents.builder.agentEvals.checks.runAll') }}
+				</N8nButton>
+			</div>
 		</header>
 
 		<div :class="$style.list">
@@ -413,6 +444,35 @@ onBeforeUnmount(store.stopPollingRun);
 			/>
 		</div>
 
+		<!-- Not tied to `addCheckSource`: a new run's review is empty until it loads, so the
+		     source is briefly null after an add. Unmounting here would draft the prepared
+		     cases again. The panel disables adding while its source is null. -->
+		<AgentEvalAddCheckPanel
+			v-if="addCheckMounted"
+			v-show="addCheckOpen"
+			:project-id="projectId"
+			:agent-id="agentId"
+			:case-source="addCheckSource"
+			:disabled="disabled"
+			:busy="rerunning || inFlight"
+			@close="addCheckOpen = false"
+			@added="emit('rerun')"
+		/>
+
+		<N8nButton
+			v-else-if="addCheckSource"
+			variant="ghost"
+			size="small"
+			:disabled="disabled"
+			data-testid="agent-eval-checks-add-check"
+			@click="toggleAddCheck"
+		>
+			<template #icon>
+				<N8nIcon icon="plus" size="small" />
+			</template>
+			{{ i18n.baseText('agents.builder.agentEvals.checks.addCheck') }}
+		</N8nButton>
+
 		<div v-if="hasMore" :class="$style.loadMore">
 			<N8nButton variant="subtle" size="small" :loading="review.loadingMore" @click="onLoadMore">
 				{{ i18n.baseText('agents.builder.agentEvals.review.loadMore') }}
@@ -437,6 +497,12 @@ onBeforeUnmount(store.stopPollingRun);
 }
 
 .filters {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+}
+
+.actions {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--2xs);

@@ -849,6 +849,7 @@ describe('AgentEvalService', () => {
 				whatToCheck: 'is polite',
 				scenario: 'Vague',
 				response: 'Hello!',
+				verdict: { status: 'completed', outcome: 'pass', reasoning: 'Polite.' },
 			});
 
 			await service.previewRun(user, AGENT_ID, PROJECT_ID, { suggestion: 'be nicer' });

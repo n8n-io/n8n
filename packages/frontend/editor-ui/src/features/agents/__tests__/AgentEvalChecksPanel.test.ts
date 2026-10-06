@@ -54,6 +54,35 @@ vi.mock('../components/AgentEvalTryRow.vue', () => ({
 	},
 }));
 
+// The add-check panel has its own suite; here only how the checks view wires it.
+// `addCheckPanelMounts` counts instances: a remount would draft the prepared cases again.
+const { addCheckPanelMounts } = vi.hoisted(() => ({ addCheckPanelMounts: { count: 0 } }));
+vi.mock('../components/AgentEvalAddCheckPanel.vue', () => ({
+	default: {
+		name: 'AgentEvalAddCheckPanel',
+		setup() {
+			addCheckPanelMounts.count++;
+		},
+		props: {
+			projectId: {},
+			agentId: {},
+			caseSource: {},
+			disabled: { type: Boolean },
+			busy: { type: Boolean },
+		},
+		emits: ['close', 'added'],
+		template: `<div
+			data-testid="add-check-panel-stub"
+			:data-busy="busy"
+			:data-disabled="disabled"
+			:data-dataset="caseSource && caseSource.datasetId"
+		>
+			<button @click="$emit('close')">close panel</button>
+			<button @click="$emit('added')">added a check</button>
+		</div>`,
+	},
+}));
+
 const result = (id: string, status: AgentEvalResultStatus): AgentEvalResultRecord => ({
 	id,
 	runId: 'run-1',
@@ -142,6 +171,7 @@ const renderWithGrowablePage = (allResults: AgentEvalResultRecord[], pageSize: n
 
 describe('AgentEvalChecksPanel', () => {
 	beforeEach(() => {
+		addCheckPanelMounts.count = 0;
 		vi.clearAllMocks();
 	});
 
@@ -166,6 +196,61 @@ describe('AgentEvalChecksPanel', () => {
 		const { getByTestId } = render({ results: [result('c1', 'success')] });
 
 		expect(getByTestId('agent-eval-check-c1')).toHaveAttribute('data-focused', 'false');
+	});
+
+	// A started run ("Run all checks", an added check) has an empty review until its
+	// first read lands. Drawing from it blanks the view and makes everything below jump.
+	describe('when a new run starts', () => {
+		const loadedReview = (results: AgentEvalResultRecord[], run: object | null = {}) => ({
+			run: run as never,
+			results,
+			resultsCount: results.length,
+			ratingsByResultId: {},
+			pendingByResultId: {},
+			draftsByResultId: {},
+			counts: null,
+			loading: false,
+			loadingMore: false,
+		});
+
+		it('keeps the previous run’s rows on screen until the new run has loaded', async () => {
+			const first = loadedReview([result('c1', 'success'), result('c2', 'error')]);
+			const { getAllByTestId, queryAllByTestId, queryByTestId, rerender, store } = render({
+				results: first.results,
+			});
+			expect(getAllByTestId(/agent-eval-check-/)).toHaveLength(2);
+
+			// Run 2 exists, but its review has not been read yet.
+			vi.mocked(store.getReview).mockImplementation((runId: string) =>
+				runId === 'run-1' ? first : loadedReview([], null),
+			);
+			await rerender({ runId: 'run-2' });
+
+			expect(queryAllByTestId(/agent-eval-check-/)).toHaveLength(2);
+			expect(queryByTestId('agent-eval-checks-filter-all')).toBeInTheDocument();
+		});
+
+		it('switches to the new run’s rows as soon as they arrive', async () => {
+			const first = loadedReview([result('c1', 'success'), result('c2', 'error')]);
+			const { getAllByTestId, queryByTestId, rerender, store } = render({
+				results: first.results,
+			});
+			vi.mocked(store.getReview).mockImplementation((runId: string) =>
+				runId === 'run-1' ? first : loadedReview([], null),
+			);
+			await rerender({ runId: 'run-2' });
+
+			const second = loadedReview([result('n1', 'new'), result('n2', 'new'), result('n3', 'new')]);
+			// The store state is reactive in the app; with a plain mock, a changed run id is
+			// what makes the review re-read.
+			vi.mocked(store.getReview).mockImplementation((runId: string) =>
+				runId === 'run-1' ? first : second,
+			);
+			await rerender({ runId: 'run-3' });
+
+			await vi.waitFor(() => expect(getAllByTestId(/agent-eval-check-/)).toHaveLength(3));
+			expect(queryByTestId('agent-eval-check-c1')).not.toBeInTheDocument();
+		});
 	});
 
 	it('renders one row per result', () => {
@@ -385,6 +470,173 @@ describe('AgentEvalChecksPanel', () => {
 
 		expect(getByTestId('agent-eval-check-c1')).toHaveAttribute('data-hide-revise', 'true');
 		expect(getByTestId('agent-eval-check-c2')).toHaveAttribute('data-hide-revise', 'true');
+	});
+
+	describe('adding a check', () => {
+		const dataset = {
+			id: 'ds-1',
+			name: 'cases',
+			description: null,
+			agentId: 'agent-1',
+			columnMapping: { input: 'input', criteria: 'criteria' },
+			createdById: null,
+			createdAt: '2026-01-01T00:00:00.000Z',
+			updatedAt: '2026-01-01T00:00:00.000Z',
+			datasetSource: 'data_table' as const,
+			datasetRef: { dataTableId: 'table-1' },
+		};
+
+		const renderWithDataset = (
+			options: {
+				columnMapping?: { input: string; criteria?: string };
+				disabled?: boolean;
+				rerunning?: boolean;
+				inFlight?: boolean;
+			} = {},
+		) => {
+			const pinia = createTestingPinia({ stubActions: true });
+			const store = useAgentEvalsStore();
+			vi.mocked(store.getReview).mockReturnValue({
+				run: {
+					id: 'run-1',
+					datasetId: 'ds-1',
+					agentVersionId: null,
+					status: 'completed',
+					runAt: '2026-01-01T00:00:00.000Z',
+					completedAt: '2026-01-01T00:00:30.000Z',
+					metrics: null,
+					errorCode: null,
+					errorDetails: null,
+					createdById: null,
+					createdAt: '2026-01-01T00:00:00.000Z',
+					updatedAt: '2026-01-01T00:00:30.000Z',
+				},
+				results: [result('c1', 'success')],
+				resultsCount: 1,
+				ratingsByResultId: {},
+				pendingByResultId: {},
+				draftsByResultId: {},
+				counts: null,
+				loading: false,
+				loadingMore: false,
+			});
+			vi.mocked(store.isRunInFlight).mockReturnValue(options.inFlight ?? false);
+			vi.mocked(store.isStartingRun).mockReturnValue(false);
+			vi.mocked(store.getDatasets).mockReturnValue([
+				{ ...dataset, columnMapping: options.columnMapping ?? dataset.columnMapping },
+			]);
+			return {
+				...renderComponent({
+					pinia,
+					props: { disabled: options.disabled, rerunning: options.rerunning },
+				}),
+				store,
+			};
+		};
+
+		it('offers no "Add a check" when the run has no dataset to write to', () => {
+			const { queryByTestId } = render({ results: [result('c1', 'success')] });
+
+			expect(queryByTestId('agent-eval-checks-add-check')).not.toBeInTheDocument();
+		});
+
+		it('offers no "Add a check" when the dataset has no column to store a rule in', () => {
+			const { queryByTestId } = renderWithDataset({ columnMapping: { input: 'input' } });
+
+			expect(queryByTestId('agent-eval-checks-add-check')).not.toBeInTheDocument();
+		});
+
+		it('keeps the panel unmounted until the button is first clicked', () => {
+			const { getByTestId, queryByTestId } = renderWithDataset();
+
+			expect(getByTestId('agent-eval-checks-add-check')).toHaveTextContent('Add a check');
+			expect(queryByTestId('add-check-panel-stub')).not.toBeInTheDocument();
+		});
+
+		it('opens the panel with the dataset to write to, and the button gives way to it', async () => {
+			const user = userEvent.setup();
+			const { getByTestId, queryByTestId } = renderWithDataset();
+
+			await user.click(getByTestId('agent-eval-checks-add-check'));
+
+			expect(getByTestId('add-check-panel-stub')).toBeVisible();
+			expect(getByTestId('add-check-panel-stub')).toHaveAttribute('data-dataset', 'ds-1');
+			expect(getByTestId('add-check-panel-stub')).toHaveAttribute('data-busy', 'false');
+			expect(queryByTestId('agent-eval-checks-add-check')).not.toBeInTheDocument();
+		});
+
+		it('renders the panel below the checks, not above them', async () => {
+			const user = userEvent.setup();
+			const { getByTestId } = renderWithDataset();
+			await user.click(getByTestId('agent-eval-checks-add-check'));
+
+			const lastCheck = getByTestId('agent-eval-check-c1');
+			const position = lastCheck.compareDocumentPosition(getByTestId('add-check-panel-stub'));
+
+			expect(position & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+		});
+
+		// "Added a check" starts a new run, whose review is empty until it loads. The
+		// panel must stay mounted through that, or it drafts a fresh batch of prepared cases.
+		it('keeps the same panel instance, and its dataset, while a new run loads', async () => {
+			const user = userEvent.setup();
+			const { getByTestId, rerender, store } = renderWithDataset();
+			await user.click(getByTestId('agent-eval-checks-add-check'));
+			expect(addCheckPanelMounts.count).toBe(1);
+			const loaded = vi.mocked(store.getReview)('run-1');
+
+			vi.mocked(store.getReview).mockImplementation((runId: string) =>
+				runId === 'run-1' ? loaded : { ...loaded, run: null, results: [], resultsCount: 0 },
+			);
+			await rerender({ runId: 'run-2' });
+
+			expect(addCheckPanelMounts.count).toBe(1);
+			expect(getByTestId('add-check-panel-stub')).toHaveAttribute('data-dataset', 'ds-1');
+
+			vi.mocked(store.getReview).mockReturnValue(loaded);
+			await rerender({ runId: 'run-1' });
+
+			expect(addCheckPanelMounts.count).toBe(1);
+			expect(getByTestId('add-check-panel-stub')).toHaveAttribute('data-dataset', 'ds-1');
+		});
+
+		it('hides the panel when it asks to close', async () => {
+			const user = userEvent.setup();
+			const { getByTestId, getByText } = renderWithDataset();
+			await user.click(getByTestId('agent-eval-checks-add-check'));
+
+			await user.click(getByText('close panel'));
+
+			expect(getByTestId('add-check-panel-stub')).not.toBeVisible();
+		});
+
+		it('runs the checks again once a check was added, since a run only holds the cases it started with', async () => {
+			const user = userEvent.setup();
+			const { getByTestId, getByText, emitted } = renderWithDataset();
+			await user.click(getByTestId('agent-eval-checks-add-check'));
+
+			await user.click(getByText('added a check'));
+
+			expect(emitted('rerun')).toHaveLength(1);
+		});
+
+		it.each([
+			['a rerun is starting', { rerunning: true }],
+			['a run is in flight', { inFlight: true }],
+		])('tells the panel it is busy while %s', async (_label, options) => {
+			const user = userEvent.setup();
+			const { getByTestId } = renderWithDataset(options);
+
+			await user.click(getByTestId('agent-eval-checks-add-check'));
+
+			expect(getByTestId('add-check-panel-stub')).toHaveAttribute('data-busy', 'true');
+		});
+
+		it('disables the button and the panel for a read-only viewer', async () => {
+			const { getByTestId } = renderWithDataset({ disabled: true });
+
+			expect(getByTestId('agent-eval-checks-add-check')).toBeDisabled();
+		});
 	});
 
 	describe('deleting a check', () => {

@@ -1,16 +1,17 @@
 <script setup lang="ts">
 /**
  * Post-setup suggestion to test the agent that was just built — the preview
- * variant. Instead of a generic "want to test this?" offer, it shows a real
- * input/output pair before asking whether it looks right — reusing the
- * builder's own test run when one exists (`initialCase`), otherwise
- * generating and running one case of its own. Behind the
+ * variant. Instead of a generic "want to test this?" offer, it runs one real
+ * case and reports whether that first check passed, with the example message
+ * and what the judge found. The case comes from the builder's own test run
+ * only when that run already has a rule and a verdict (`initialCase`);
+ * otherwise the panel drafts, runs and judges one case of its own. Behind the
  * `INSTANCE_AI_TEST_AGENT_PREVIEW_EXPERIMENT` flag, alongside the original
  * `InstanceAiTestAgentPanel`.
  */
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
-import type { AgentEvalDraftCase } from '@n8n/api-types';
-import { N8nButton, N8nCard, N8nInput, N8nSpinner, N8nText, N8nIcon } from '@n8n/design-system';
+import type { AgentEvalDraftCase, AgentEvalVerdict } from '@n8n/api-types';
+import { N8nButton, N8nInput, N8nSpinner, N8nText, N8nIcon } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';
 
@@ -24,6 +25,7 @@ import {
 } from '@/features/agents/utils/agent-eval-review';
 import { toDisplayToolCalls } from '@/features/agents/utils/agent-eval-tool-calls';
 import { resolveCaseColumns } from '@/features/agents/utils/agentEvalCases.utils';
+import AgentAvatar from '@/features/agents/components/AgentAvatar.vue';
 import EvalInitialSample from '@/features/agents/components/EvalInitialSample.vue';
 import InstanceAiTestAgentExamplesPanel, {
 	type SuiteCaseRun,
@@ -34,10 +36,16 @@ const props = defineProps<{
 	target: { agentId: string; projectId: string };
 	/**
 	 * A real input/output pair from the agent builder's own "Testing agent"
-	 * step, when one exists. Shown directly instead of generating and running
-	 * a fresh case, since the builder already ran an equivalent test.
+	 * step, when one exists. Reused only when it also carries the rule it was
+	 * checked against and the judge's verdict: without both there is no first
+	 * check to report, so the panel drafts, runs and judges a case of its own.
 	 */
-	initialCase?: { message: string; response: string } | null;
+	initialCase?: {
+		message: string;
+		response: string;
+		whatToCheck?: string | null;
+		verdict?: AgentEvalVerdict | null;
+	} | null;
 }>();
 
 const emit = defineEmits<{
@@ -58,9 +66,20 @@ type Phase =
 	| 'awaiting-sample-input'
 	| 'generating-suite'
 	| 'suite-ready';
-// Skips straight to the confirmation state when the builder already ran an
-// equivalent test — there is nothing to generate or wait on.
-const phase = ref<Phase>(props.initialCase ? 'awaiting-confirmation' : 'generating-preview');
+// The builder's own test run, when it is a complete first check. Read once: the
+// card must not change under the user if a newer builder run lands later.
+const reusedCase =
+	props.initialCase?.whatToCheck && props.initialCase.verdict
+		? {
+				message: props.initialCase.message,
+				response: props.initialCase.response,
+				whatToCheck: props.initialCase.whatToCheck,
+				verdict: props.initialCase.verdict,
+			}
+		: null;
+// Skips straight to the result when the builder already ran a judged test —
+// there is nothing to generate or wait on.
+const phase = ref<Phase>(reusedCase ? 'awaiting-confirmation' : 'generating-preview');
 // The drafted test message and the agent's real answer to it — set directly
 // from `previewRun`'s response, which already ran the agent and returned the
 // final text. No run id, no polling: unlike the suite below, this never
@@ -93,20 +112,38 @@ const stoppingSuiteRun = ref(false);
 const sampleInput = ref('');
 // Cleared once the user submits their own sample, so the display switches
 // over to that new run instead of sticking with the builder's original test.
-const useInitialCase = ref(Boolean(props.initialCase));
+const useInitialCase = ref(Boolean(reusedCase));
 // The generated preview case's scenario tag. Null when reusing the builder's
 // own test result (`initialCase`), which was never scenario-generated.
 const previewScenario = ref<string | null>(null);
-// The rule the generated preview case was drafted with — empty when reusing the
-// builder's own test result, which came with none.
-const previewWhatToCheck = ref('');
+// The rule the preview case was checked against, and the judge's call on it.
+const previewWhatToCheck = ref(reusedCase?.whatToCheck ?? '');
+const previewVerdict = ref<AgentEvalVerdict | null>(reusedCase?.verdict ?? null);
+// Whether the full example conversation is shown under "What we found".
+const conversationExpanded = ref(false);
 
 const previewInput = computed(() =>
-	useInitialCase.value ? (props.initialCase?.message ?? '') : (previewRequest.value ?? ''),
+	useInitialCase.value ? (reusedCase?.message ?? '') : (previewRequest.value ?? ''),
 );
 const previewOutput = computed(() =>
-	useInitialCase.value ? (props.initialCase?.response ?? '') : (previewAnswer.value ?? ''),
+	useInitialCase.value ? (reusedCase?.response ?? '') : (previewAnswer.value ?? ''),
 );
+
+// A pass needs a completed verdict that says so. A fail, a judge error, a case
+// with no rule to grade, or no verdict at all never reads as "passed".
+const firstCheckPassed = computed(
+	() => previewVerdict.value?.status === 'completed' && previewVerdict.value.outcome === 'pass',
+);
+// A judge that ran and failed the answer is a real "needs work". Anything else
+// means the answer was never graded, so the user can still go on to harder cases.
+const firstCheckFailed = computed(
+	() => previewVerdict.value?.status === 'completed' && previewVerdict.value.outcome === 'fail',
+);
+const findings = computed(() => {
+	const verdict = previewVerdict.value;
+	if (verdict?.status === 'completed' && verdict.reasoning) return verdict.reasoning;
+	return i18n.baseText('instanceAi.testAgentPreview.noFindings');
+});
 
 // Each row's live state: "waiting" until its case has a settled result, then
 // the outcome the result recorded. Kept as one derived list rather than
@@ -178,8 +215,10 @@ async function runGeneratedPreview(revision?: PreviewRevision) {
 		}
 		previewScenario.value = result.scenario || null;
 		previewWhatToCheck.value = result.whatToCheck;
+		previewVerdict.value = result.verdict;
 		previewRequest.value = result.input;
 		previewAnswer.value = result.response;
+		conversationExpanded.value = false;
 		phase.value = 'awaiting-confirmation';
 	} catch (error) {
 		failAndDismiss(error);
@@ -187,7 +226,7 @@ async function runGeneratedPreview(revision?: PreviewRevision) {
 }
 
 function generatePreviewCase() {
-	if (props.initialCase) return;
+	if (reusedCase) return;
 	return runGeneratedPreview();
 }
 
@@ -412,6 +451,7 @@ async function onSubmitSampleInput() {
 	useInitialCase.value = false;
 	previewRequest.value = null;
 	previewAnswer.value = null;
+	previewVerdict.value = null;
 	phase.value = 'generating-preview';
 	await runGeneratedPreview({ suggestion, previousInput, previousOutput });
 }
@@ -433,42 +473,134 @@ function onDontCreateEvals() {
 		</template>
 
 		<template v-else-if="phase === 'awaiting-confirmation'">
-			<N8nCard data-test-id="instance-ai-test-agent-preview-input" :class="$style.inputCard">
-				<template #header>
-					<N8nText step="md" color="text-dark" :class="$style.title">
-						{{ i18n.baseText('instanceAi.testAgentPreview.title') }}
+			<div
+				:class="$style.firstCheck"
+				:data-passed="firstCheckPassed"
+				data-test-id="instance-ai-test-agent-preview-first-check"
+			>
+				<div :class="$style.firstCheckHeader">
+					<AgentAvatar :kind="firstCheckPassed ? 'pass' : 'work'" size="sm" />
+					<N8nText
+						bold
+						size="medium"
+						color="text-dark"
+						data-test-id="instance-ai-test-agent-preview-first-check-title"
+					>
+						{{
+							i18n.baseText(
+								firstCheckPassed
+									? 'instanceAi.testAgentPreview.firstCheckPassed'
+									: 'instanceAi.testAgentPreview.firstCheckNeedsWork',
+							)
+						}}
 					</N8nText>
-				</template>
-				<N8nText color="text-dark" :class="$style.subtitle">{{
-					i18n.baseText('instanceAi.testAgentPreview.subtitle')
-				}}</N8nText>
-			</N8nCard>
-			<EvalInitialSample
-				:preview-input="previewInput"
-				:preview-output="previewOutput ?? ''"
-				hide-banner
-			/>
+				</div>
 
-			<N8nText bold color="text-dark" :class="$style.confirmQuestion">
-				{{ i18n.baseText('instanceAi.testAgentPreview.confirmQuestion') }}
-			</N8nText>
-			<div :class="$style.options">
-				<N8nButton
-					variant="outline"
-					size="small"
-					data-test-id="instance-ai-test-agent-preview-looks-good"
-					@click="onConfirm"
-				>
-					{{ i18n.baseText('instanceAi.testAgentPreview.looksGood') }}
-				</N8nButton>
-				<N8nButton
-					variant="outline"
-					size="small"
-					data-test-id="instance-ai-test-agent-preview-needs-work"
-					@click="onNeedsWork"
-				>
-					{{ i18n.baseText('instanceAi.testAgentPreview.needsWork') }}
-				</N8nButton>
+				<div :class="$style.section">
+					<N8nText bold color="text-dark" size="small">
+						{{ i18n.baseText('instanceAi.testAgentPreview.exampleMessage') }}
+					</N8nText>
+					<N8nText
+						color="text-dark"
+						data-test-id="instance-ai-test-agent-preview-example"
+						size="small"
+					>
+						“{{ previewInput }}”
+					</N8nText>
+				</div>
+
+				<div :class="$style.section">
+					<N8nText bold color="text-dark" size="small">
+						{{ i18n.baseText('instanceAi.testAgentPreview.whatWeFound') }}
+					</N8nText>
+					<div :class="$style.findings">
+						<N8nText
+							color="text-dark"
+							size="small"
+							:class="$style.findingsText"
+							data-test-id="instance-ai-test-agent-preview-findings"
+						>
+							{{ findings }}
+						</N8nText>
+						<N8nButton
+							variant="outline"
+							size="small"
+							icon-only
+							:aria-expanded="conversationExpanded"
+							:aria-label="
+								i18n.baseText(
+									conversationExpanded
+										? 'instanceAi.testAgentPreview.hideConversation'
+										: 'instanceAi.testAgentPreview.showConversation',
+								)
+							"
+							data-test-id="instance-ai-test-agent-preview-toggle-conversation"
+							@click="conversationExpanded = !conversationExpanded"
+						>
+							<template #icon>
+								<N8nIcon icon="message-square" size="small" />
+							</template>
+						</N8nButton>
+					</div>
+					<EvalInitialSample
+						v-if="conversationExpanded"
+						:preview-input="previewInput"
+						:preview-output="previewOutput ?? ''"
+						hide-banner
+					/>
+				</div>
+
+				<N8nText color="text-base" size="small">
+					{{
+						i18n.baseText(
+							firstCheckPassed
+								? 'instanceAi.testAgentPreview.firstCheckPassedHint'
+								: 'instanceAi.testAgentPreview.firstCheckNeedsWorkHint',
+						)
+					}}
+				</N8nText>
+
+				<div :class="$style.options">
+					<template v-if="firstCheckPassed">
+						<N8nButton
+							variant="solid"
+							size="small"
+							data-test-id="instance-ai-test-agent-preview-check-harder"
+							@click="onConfirm"
+						>
+							{{ i18n.baseText('instanceAi.testAgentPreview.checkHarderCases') }}
+						</N8nButton>
+					</template>
+					<template v-else>
+						<N8nButton
+							variant="solid"
+							size="small"
+							data-test-id="instance-ai-test-agent-preview-needs-work"
+							@click="onNeedsWork"
+						>
+							{{ i18n.baseText('instanceAi.testAgentPreview.fixThisCheck') }}
+						</N8nButton>
+						<!-- Only when the answer was never graded (judge error, no rule): a real
+						     fail is the user's cue to fix the check first. -->
+						<N8nButton
+							v-if="!firstCheckFailed"
+							variant="outline"
+							size="small"
+							data-test-id="instance-ai-test-agent-preview-check-harder"
+							@click="onConfirm"
+						>
+							{{ i18n.baseText('instanceAi.testAgentPreview.checkHarderCasesAnyway') }}
+						</N8nButton>
+					</template>
+					<N8nButton
+						variant="ghost"
+						size="small"
+						data-test-id="instance-ai-test-agent-preview-later"
+						@click="onDontCreateEvals"
+					>
+						{{ i18n.baseText('instanceAi.testAgentPreview.later') }}
+					</N8nButton>
+				</div>
 			</div>
 		</template>
 
@@ -564,31 +696,42 @@ function onDontCreateEvals() {
 	border-radius: var(--radius--lg);
 }
 
-.title {
-	font-weight: bold;
-	margin-bottom: var(--spacing--4xs);
-}
-
-.subtitle {
-	color: var(--text-color--subtler);
-	margin-bottom: var(--spacing--4xs);
-}
-
 .loadingRow {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--2xs);
 }
 
-.confirmQuestion {
-	font-weight: bold;
+.firstCheck {
+	display: flex;
+	flex-direction: column;
+	align-items: stretch;
+	gap: var(--spacing--sm);
+	width: 100%;
 }
 
-// The input is a quoted pill rather than a response card — flatter than
-// `N8nCard`'s default so it reads as "what was asked", not "an answer".
-.inputCard {
-	border: none;
-	padding: 0;
+.firstCheckHeader {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+}
+
+.section {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--4xs);
+}
+
+.findings {
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: var(--spacing--sm);
+}
+
+.findingsText {
+	flex: 1;
+	min-width: 0;
 }
 
 .options {

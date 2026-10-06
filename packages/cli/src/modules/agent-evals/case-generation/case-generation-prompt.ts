@@ -152,7 +152,8 @@ export const CASE_GENERATION_SYSTEM_PROMPT = [
  * scenario per sampled tuple, or — when `revision` is given — the prior case
  * and feedback on it, asking for a single replacement. When generating fresh
  * scenarios (no `revision`), an approved `example` pair is included to ground
- * their style and scope. The model is asked to return exactly one case per
+ * their style and scope. When a `rule` is given, the prompt asks for one case
+ * that tests that rule instead. The model is asked to return exactly one case per
  * scenario (or the one replacement), in order, matching {@link generatedCasesSchema}.
  */
 export function buildCaseGenerationUserPrompt(
@@ -160,6 +161,7 @@ export function buildCaseGenerationUserPrompt(
 	tuples: DimensionTuple[],
 	revision?: CaseRevisionContext,
 	example?: CaseExampleContext,
+	rule?: string,
 ): string {
 	const intro = ['Here is the agent to write test cases for:', JSON.stringify(summary), ''];
 
@@ -177,6 +179,17 @@ export function buildCaseGenerationUserPrompt(
 			`What should have happened instead: ${truncate(revision.suggestion, MAX_CONTEXT_FIELD_CHARS)}`,
 			'',
 			'Write exactly 1 replacement test case that addresses this feedback.',
+			'Return a JSON object of the form { "cases": [ { "input": "…", "whatToCheck": "…", "scenario": "…" } ] }.',
+		].join('\n');
+	}
+
+	if (rule) {
+		return [
+			...intro,
+			'The user wants to check that the agent follows this rule:',
+			`Rule: ${truncate(rule, MAX_CONTEXT_FIELD_CHARS)}`,
+			'',
+			'Write exactly 1 test case. Its `input` is a realistic message an end user would send that puts this rule to the test, so a response that breaks the rule is possible. Set `whatToCheck` to the rule in plain language.',
 			'Return a JSON object of the form { "cases": [ { "input": "…", "whatToCheck": "…", "scenario": "…" } ] }.',
 		].join('\n');
 	}
