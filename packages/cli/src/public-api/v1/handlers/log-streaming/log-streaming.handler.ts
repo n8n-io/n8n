@@ -5,13 +5,13 @@ import { Container } from '@n8n/di';
 import type { MessageEventBusDestinationOptions } from 'n8n-workflow';
 
 import { BadRequestError, ConflictError, NotFoundError } from '@n8n/errors';
-import { eventNamesAll } from '@/eventbus/event-message-classes';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { createMessageEventBusDestination } from '@/modules/log-streaming.ee/create-message-event-bus-destination';
 import { assertUserCanUseDestinationCredentials } from '@/modules/log-streaming.ee/destinations/destination-credentials-access';
 import { LogStreamingDestinationService } from '@/modules/log-streaming.ee/log-streaming-destination.service';
 
-import { toInternalDestinationOptions, toPublicDestination } from './log-streaming.mapper';
+import { toInternalDestinationOptions } from './log-streaming.mapper';
+import { toLogStreamingDestinationPublic } from '../../controllers/log-streaming.mapper';
 import type { LogStreamingRequest } from '../../../types';
 import type { PublicAPIEndpoint } from '../../shared/handler.types';
 import {
@@ -41,9 +41,6 @@ const getCredentialsFinderService = async () => {
 };
 
 type LogStreamingHandlers = {
-	getEventTypes: PublicAPIEndpoint<LogStreamingRequest.GetEventTypes>;
-	getDestinations: PublicAPIEndpoint<LogStreamingRequest.GetDestinations>;
-	getDestination: PublicAPIEndpoint<LogStreamingRequest.GetDestination>;
 	createDestination: PublicAPIEndpoint<LogStreamingRequest.CreateDestination>;
 	updateDestination: PublicAPIEndpoint<LogStreamingRequest.UpdateDestination>;
 	testDestination: PublicAPIEndpoint<LogStreamingRequest.TestDestination>;
@@ -51,32 +48,6 @@ type LogStreamingHandlers = {
 };
 
 const logStreamingHandlers: LogStreamingHandlers = {
-	getEventTypes: [
-		isLicensed('feat:logStreaming'),
-		apiKeyHasScopeWithGlobalScopeFallback({ scope: 'eventBusDestination:list' }),
-		async (_req, res) => {
-			return res.json({ data: eventNamesAll });
-		},
-	],
-
-	getDestinations: [
-		isLicensed('feat:logStreaming'),
-		apiKeyHasScopeWithGlobalScopeFallback({ scope: 'eventBusDestination:list' }),
-		async (_req, res) => {
-			const destinations = await Container.get(LogStreamingDestinationService).findDestination();
-			return res.json({ data: destinations.map(toPublicDestination) });
-		},
-	],
-
-	getDestination: [
-		isLicensed('feat:logStreaming'),
-		apiKeyHasScopeWithGlobalScopeFallback({ scope: 'eventBusDestination:read' }),
-		async (req, res) => {
-			const destination = await findDestinationOrFail(req.params.id);
-			return res.json(toPublicDestination(destination));
-		},
-	],
-
 	createDestination: [
 		isLicensed('feat:logStreaming'),
 		apiKeyHasScopeWithGlobalScopeFallback({ scope: 'eventBusDestination:create' }),
@@ -105,7 +76,7 @@ const logStreamingHandlers: LogStreamingHandlers = {
 				destination,
 			);
 
-			return res.json(toPublicDestination(result.serialize()));
+			return res.json(toLogStreamingDestinationPublic(result.serialize()));
 		},
 	],
 
@@ -139,7 +110,7 @@ const logStreamingHandlers: LogStreamingHandlers = {
 				destination,
 			);
 
-			return res.json(toPublicDestination(result.serialize()));
+			return res.json(toLogStreamingDestinationPublic(result.serialize()));
 		},
 	],
 
@@ -173,7 +144,7 @@ const logStreamingHandlers: LogStreamingHandlers = {
 			assertNotManagedByEnv();
 			const destination = await findDestinationOrFail(req.params.id);
 			await Container.get(LogStreamingDestinationService).removeDestination(req.params.id);
-			return res.json(toPublicDestination(destination));
+			return res.json(toLogStreamingDestinationPublic(destination));
 		},
 	],
 };

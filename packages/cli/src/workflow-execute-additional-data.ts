@@ -41,6 +41,7 @@ import type {
 import {
 	OperationalError,
 	UnexpectedError,
+	UserError,
 	Workflow,
 	createRunExecutionData,
 	mergeRunsPerBranch,
@@ -212,6 +213,7 @@ export async function getPublishedWorkflowData(
 		}
 		return {
 			...publishedData.workflow,
+			versionId: publishedData.publishedVersion.versionId,
 			nodes: publishedData.publishedVersion.nodes,
 			connections: publishedData.publishedVersion.connections,
 		};
@@ -232,6 +234,7 @@ export async function getPublishedWorkflowData(
 	if (workflowData && 'activeVersion' in workflowData && workflowData.activeVersion) {
 		return {
 			...workflowData,
+			versionId: workflowData.activeVersion.versionId,
 			nodes: workflowData.activeVersion.nodes,
 			connections: workflowData.activeVersion.connections,
 		};
@@ -380,6 +383,15 @@ export async function executeWorkflow(
 	return await executionPromise;
 }
 
+/** Workflows that already use agent nodes still load, so fail clearly when the module is off. */
+function assertAgentsModuleActive() {
+	if (!Container.get(ModuleRegistry).isActive('agents')) {
+		throw new UserError(
+			'Agents are disabled on this instance. Ask an instance admin to enable the agents module.',
+		);
+	}
+}
+
 /**
  * Executes an agent — a saved one by ID, or an inline definition embedded in
  * the calling node's parameters.
@@ -395,6 +407,8 @@ export async function executeAgent(
 	workflowContext?: ExecuteAgentWorkflowContext,
 	invocationContext?: ExecuteAgentInvocationContext,
 ): Promise<ExecuteAgentData> {
+	assertAgentsModuleActive();
+
 	const telemetryUserId = additionalData.userId;
 	let projectId = additionalData.projectId;
 
@@ -493,6 +507,12 @@ export async function executeAgent(
 }
 
 async function listAgents(userId: string): Promise<Array<{ id: string; name: string }>> {
+	assertAgentsModuleActive();
+
+	// Executions check the Settings > Agents switch in the agents services. The listing must too.
+	const { AgentsSettingsService } = await import('@/modules/agents/agents-settings.service.js');
+	await Container.get(AgentsSettingsService).assertEnabled();
+
 	const { AgentsService } = await import('@/modules/agents/agents.service.js');
 	const agentsService = Container.get(AgentsService);
 	// Only published agents are runnable from a published workflow.

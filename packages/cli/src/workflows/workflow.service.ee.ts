@@ -38,10 +38,7 @@ import { EnterpriseCredentialsService } from '@/credentials/credentials.service.
 import { FolderNotFoundError } from '@/errors/folder-not-found.error';
 import { BadRequestError, NotFoundError } from '@n8n/errors';
 import { TransferWorkflowError } from '@/errors/response-errors/transfer-workflow.error';
-import {
-	AGENT_CONFIG_ID_KEYS,
-	extractAgentCredentialIds,
-} from '@/modules/agents/utils/extract-agent-credential-ids';
+import { extractAgentCredentialIds } from '@/modules/agents/utils/extract-agent-credential-ids';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { ProjectService } from '@/services/project.service.ee';
@@ -386,8 +383,8 @@ export class EnterpriseWorkflowService {
 			}
 
 			const inlineAgent = this.parseInlineAgent(current.parameters?.inlineAgent);
-			if (inlineAgent) {
-				ids.push(...extractAgentCredentialIds(inlineAgent, AGENT_CONFIG_ID_KEYS));
+			if (isRecord(inlineAgent)) {
+				ids.push(...extractAgentCredentialIds(inlineAgent.config));
 				stack.push(...this.getAgentToolNodes(inlineAgent));
 			}
 		}
@@ -651,8 +648,15 @@ export class EnterpriseWorkflowService {
 
 		// 2. Get all workflows in the nested folders
 
+		const checksTransfer = this.policyEnforcementService.hasChecksFor('workflowTransfer');
 		const workflows = await this.workflowRepository.find({
-			select: ['id', 'activeVersionId', 'shared'],
+			select: [
+				'id',
+				'name',
+				'activeVersionId',
+				'shared',
+				...(checksTransfer ? ['nodes' as const] : []),
+			],
 			relations: ['shared', 'shared.project'],
 			where: {
 				parentFolder: { id: In([...childrenFolderIds, sourceFolderId]) },
@@ -693,6 +697,15 @@ export class EnterpriseWorkflowService {
 			if (sourceProject.id === destinationProject.id) {
 				throw new TransferWorkflowError(
 					"You can't transfer a workflow into the project that's already owning it.",
+				);
+			}
+		}
+
+		if (checksTransfer) {
+			for (const workflow of workflows) {
+				await this.policyEnforcementService.enforceWorkflowTransfer(
+					{ workflow, targetProjectId: destinationProject.id },
+					{ kind: 'user', user },
 				);
 			}
 		}

@@ -91,13 +91,30 @@ describe('makeAzureFoundryFailedAttemptHandler', () => {
 	it('should tell a classic credential to switch endpoint type, not to flip the toggle', () => {
 		const handler = makeAzureFoundryFailedAttemptHandler('gpt-4o', false, 'classic');
 
-		expect(() => handler({ status: 404 })).toThrow('Switch the credential to the Azure AI Foundry');
+		expect(() => handler({ status: 404 })).toThrow(
+			'Switch the credential to the Microsoft Foundry',
+		);
 		expect(() => handler({ status: 404 })).not.toThrow("Turn on 'Use Responses API'");
+	});
+
+	// Claude on Foundry answers /anthropic, so a 404 here is still the deployment or the route.
+	it('should name the Anthropic Messages API and point at Model Family', () => {
+		const handler = makeAzureFoundryFailedAttemptHandler('claude-haiku', false, 'anthropic');
+
+		expect(() => handler({ status: 404 })).toThrow(UserError);
+		expect(() => handler({ status: 404 })).toThrow(
+			'Azure did not accept the deployment "claude-haiku" on the Anthropic Messages API',
+		);
+		expect(() => handler({ status: 404 })).toThrow('Set Model Family to OpenAI');
 	});
 
 	// Anything else has to fall through so the shared handler can retry it.
 	it.each([
 		['a rate limit', { status: 429 }],
+		[
+			'both sampling params set',
+			{ status: 400, message: 'temperature and top_p cannot both be specified for this model' },
+		],
 		['a server error', { status: 500 }],
 		['no status', { message: 'socket hang up' }],
 		['an unrelated 400', { status: 400, message: 'Invalid value for temperature' }],

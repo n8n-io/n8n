@@ -11,6 +11,19 @@ export {
 export const AGENTS_MODULE_NAME = 'agents';
 export const AGENTS_SETTINGS_VIEW = 'AgentsSettings';
 
+/** The shared "chat with a published agent over n8n Chat" screen. */
+export const AGENT_N8N_CHAT_VIEW = 'AgentN8nChatView';
+
+/** The "browse agents available over n8n Chat" library screen. */
+export const AGENT_N8N_CHAT_LIBRARY_VIEW = 'AgentN8nChatLibraryView';
+
+/**
+ * n8n Chat agent search cap, shared by the library view and the "Chat with"
+ * picker. Matches the backend filter (`agentListFilterSchema.query` `.max(128)`,
+ * `@n8n/api-types`), so a longer search term never reaches the API.
+ */
+export const AGENT_N8N_CHAT_SEARCH_MAX_LENGTH = 128;
+
 export const AGENT_TOOLS_MODAL_KEY = 'agentToolsModal';
 export const AGENT_TOOL_CONFIG_MODAL_KEY = 'agentToolConfigModal';
 export const AGENT_SKILL_MODAL_KEY = 'agentSkillModal';
@@ -41,6 +54,15 @@ export const EXECUTIONS_SECTION_KEY = '__executions';
  * The card says so explicitly when the server's total exceeds what it loaded.
  */
 export const AGENT_EVAL_CASES_PAGE_SIZE = 250;
+
+/** Agent n8n Chat threads fetched for the sidebar's "recent chats" list. */
+export const AGENT_N8N_CHAT_RECENT_THREADS_LIMIT = 10;
+
+/** Rows in the recent-chats lists: the sidebar and the "Chat history" dropdown. */
+export const RECENT_CHATS_LIMIT = 5;
+
+/** Page size for the agent side of the "All chats" view's infinite scroll. */
+export const AGENT_N8N_CHAT_HISTORY_PAGE_SIZE = 30;
 
 export {
 	CHAT_MESSAGE_STATUS,

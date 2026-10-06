@@ -1,6 +1,6 @@
 import { getConfigMutationPrompt } from './prompts/config-mutation.prompt';
 import { INITIAL_BUILD_SECTION } from './prompts/initial-build.prompt';
-import { getLlmSelectionPrompt } from './prompts/llm-selection.prompt';
+import { LLM_SELECTION_PROMPT } from './prompts/llm-selection.prompt';
 import { MEMORY_PROMPT } from './prompts/memory.prompt';
 import { TOOLS_PROMPT } from './prompts/tools.prompt';
 
@@ -32,13 +32,12 @@ export const SUPPORTED_CHANNELS_SECTION = `\
 \`capabilities\`, \`useIntegrationWhen\`, and \`useNodeToolWhen\`. It is the
 authoritative source: a channel absent from its result is unsupported for agents.
 
-When the user asks for a channel that is not supported (e.g. WhatsApp, Microsoft
-Teams):
+When the user asks for a channel that is not supported (e.g. Microsoft Teams):
 
 - Do not add it to \`integrations\`, do not draft it, and do not call
   \`configure_channel\` or \`finish_setup\` with it. Those tools reject unknown
   types, but you should not reach them — handle the limitation first.
-- Do not improvise a workflow substitute (e.g. a WhatsApp/Twilio node in a
+- Do not improvise a workflow substitute (e.g. a Twilio node in a
   workflow) and do not add unrelated workflow nodes to fake the channel.
 - Do not claim the channel is configured or available.
 - Explain that the channel is not supported for agents, list the supported
@@ -49,8 +48,7 @@ Teams):
 When the user asks to change the target agent's channels, prefer a supported
 one from the list; never invent a type.`;
 
-export function getConversationModeSection(agentPreviewPath: string): string {
-	return `\
+export const CONVERSATION_MODE_SECTION = `\
 ## When To Build vs When To Converse
 
 Not every user message is a build request. Before changing config or creating
@@ -75,17 +73,17 @@ message it from the connected platform to verify the channel.
 
 Standard tool approvals pause \`call_agent\` until the user approves or rejects them in this chat.
 If it returns \`approval_required\` for an unsupported interaction, explain that it cannot be
-completed here and direct the user to [Preview](${agentPreviewPath}) to run it again.
+completed here and direct the user to the Preview link from the Session context
+section to run it again.
 
 After a successful build or config change that leaves the agent ready to try,
-include the same [Preview](${agentPreviewPath}) markdown link in your wrap-up
-(it can be part of a longer reply). Keep Preview links as relative app paths
-and do not invent a different path.
+include that same Preview markdown link in your wrap-up (it can be part of a
+longer reply). Keep Preview links as relative app paths and do not invent a
+different path.
 
 Never write empty or placeholder \`instructions\`. When the user gave a
 concrete goal, write real instructions from it and fill gaps with sensible assumptions
 stated in your summary. Only ask first when the overall goal itself is missing.`;
-}
 
 export const AGENT_UI_LABELS_SECTION = `\
 ## Agent UI labels
@@ -376,23 +374,30 @@ follow-up for the credential.
 4. After a successful publish, confirm the agent is live; do not send the user to the editor
    Publish button.`;
 
-export interface BuilderPromptContext {
+export interface BuilderSessionContext {
 	agentPreviewPath: string;
 	modelRecommendationsSection: string | null;
 }
 
-export function buildBuilderPrompt(ctx: BuilderPromptContext): string {
-	const { agentPreviewPath, modelRecommendationsSection } = ctx;
+const NO_MODEL_RECOMMENDATIONS =
+	'No Recommended LLM models section is available; do not recommend or name current, best, latest, or fallback model IDs from memory. Ask via `ask_questions` when the user needs model guidance or choice.';
 
+/**
+ * The static builder system prompt. It must not contain any per-agent or
+ * per-process value: Anthropic caches the prompt by exact prefix, so a
+ * byte-identical prompt lets every build share one cached copy. Put dynamic
+ * values in `buildBuilderSessionContext` instead.
+ */
+export function buildBuilderPrompt(): string {
 	const sections = [
 		'You are an expert agent builder. You help users create and configure AI agents by writing raw JSON configuration and building custom tools.',
 		TARGET_AGENT_SECTION,
 		PREREQUISITES_SECTION,
 		SUPPORTED_CHANNELS_SECTION,
-		getConversationModeSection(agentPreviewPath),
+		CONVERSATION_MODE_SECTION,
 		AGENT_UI_LABELS_SECTION,
 		getConfigMutationPrompt(),
-		getLlmSelectionPrompt(modelRecommendationsSection),
+		LLM_SELECTION_PROMPT,
 		MEMORY_PROMPT,
 		TOOLS_PROMPT,
 		INTERACTIVE_TOOLS_SECTION,
@@ -404,4 +409,20 @@ export function buildBuilderPrompt(ctx: BuilderPromptContext): string {
 	];
 
 	return sections.join('\n\n');
+}
+
+/**
+ * Per-session values for the builder. The runtime sends this as a separate
+ * system block after the cached static prompt, so a change here does not
+ * invalidate the cached prompt.
+ */
+export function buildBuilderSessionContext(ctx: BuilderSessionContext): string {
+	const { agentPreviewPath, modelRecommendationsSection } = ctx;
+
+	return `\
+## Session context
+
+- Preview link for the target agent: [Preview](${agentPreviewPath})
+
+${modelRecommendationsSection ?? NO_MODEL_RECOMMENDATIONS}`;
 }
