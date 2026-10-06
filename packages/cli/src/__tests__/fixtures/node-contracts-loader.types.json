@@ -430,6 +430,13 @@
 			"properties": ["inputs"]
 		},
 		{
+			"name": "@n8n/nodes-core.mergeChooseBranch",
+			"version": 1,
+			"hidden": true,
+			"credentials": [],
+			"properties": ["inputs", "use"]
+		},
+		{
 			"name": "@n8n/nodes-core.mergeCombine",
 			"version": 1,
 			"hidden": true,
@@ -902,6 +909,60 @@
 				"combine",
 				"allMatches",
 				"header"
+			]
+		},
+		{
+			"name": "@n8n/nodes-integrations.microsoftTeamsChannelMessageCreate",
+			"version": 1,
+			"hidden": true,
+			"usableAsTool": true,
+			"credentials": ["microsoftTeamsOAuth2Api", "microsoftOAuth2Api"],
+			"properties": [
+				"authentication",
+				"teamId",
+				"channelId",
+				"message",
+				"contentType",
+				"appendAttribution",
+				"replyToId"
+			]
+		},
+		{
+			"name": "@n8n/nodes-integrations.microsoftTeamsChannelMessageCreateTool",
+			"version": 1,
+			"hidden": true,
+			"credentials": ["microsoftTeamsOAuth2Api", "microsoftOAuth2Api"],
+			"properties": [
+				"toolDescription",
+				"authentication",
+				"teamId",
+				"channelId",
+				"message",
+				"contentType",
+				"appendAttribution",
+				"replyToId"
+			]
+		},
+		{
+			"name": "@n8n/nodes-integrations.microsoftTeamsChatMessageCreate",
+			"version": 1,
+			"hidden": true,
+			"usableAsTool": true,
+			"credentials": ["microsoftTeamsOAuth2Api", "microsoftOAuth2Api"],
+			"properties": ["authentication", "chatId", "message", "contentType", "appendAttribution"]
+		},
+		{
+			"name": "@n8n/nodes-integrations.microsoftTeamsChatMessageCreateTool",
+			"version": 1,
+			"hidden": true,
+			"credentials": ["microsoftTeamsOAuth2Api", "microsoftOAuth2Api"],
+			"properties": [
+				"toolDescription",
+				"authentication",
+				"chatId",
+				"message",
+				"contentType",
+				"appendAttribution"
 			]
 		},
 		{
@@ -1837,6 +1898,7 @@
 		"@n8n/nodes-core.itemsSplitOut",
 		"@n8n/nodes-core.itemsSummarize",
 		"@n8n/nodes-core.mergeAppend",
+		"@n8n/nodes-core.mergeChooseBranch",
 		"@n8n/nodes-core.mergeCombine",
 		"@n8n/nodes-core.mergeCombineByPosition",
 		"@n8n/nodes-core.noOpPass",
@@ -1883,6 +1945,10 @@
 		"@n8n/nodes-integrations.googleSheetsSheetAppendTool",
 		"@n8n/nodes-integrations.googleSheetsSheetRead",
 		"@n8n/nodes-integrations.googleSheetsSheetReadTool",
+		"@n8n/nodes-integrations.microsoftTeamsChannelMessageCreate",
+		"@n8n/nodes-integrations.microsoftTeamsChannelMessageCreateTool",
+		"@n8n/nodes-integrations.microsoftTeamsChatMessageCreate",
+		"@n8n/nodes-integrations.microsoftTeamsChatMessageCreateTool",
 		"@n8n/nodes-integrations.minimaxChatModel",
 		"@n8n/nodes-integrations.notionDataSourcePageAdded",
 		"@n8n/nodes-integrations.notionDatabasePageGetAll",

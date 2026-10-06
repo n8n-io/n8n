@@ -1,8 +1,18 @@
 import { validate } from '@n8n/node-sdk';
+import { freezeHttpGuest } from '@n8n/node-sdk/freeze';
+import { evaluateVersion } from '@n8n/node-sdk/host';
+import { parentNodeOf } from '@n8n/node-sdk/registry';
 import * as flowSdk from '@n8n/workflow-sdk/next';
 import { FIRST_PARTY_PACKAGES, forEach, manual, set, workflow } from '@n8n/workflow-sdk/next';
 
-import { entryOf, firstPartyCatalog, migratedTargetOf, nodeTypeOf } from '../contract-catalog';
+import {
+	contractActions,
+	entryOf,
+	firstPartyCatalog,
+	migratedTargetOf,
+	nodeTypeOf,
+	setPublishedActions,
+} from '../contract-catalog';
 
 import {
 	CORE_NODE_STEPS,
@@ -103,8 +113,8 @@ describe('next-modules', () => {
 			'merge.combine',
 			'merge.combineByPosition',
 		];
-		expect(nextNodeIds).toContain('items');
-		expect(nextNodeIds).not.toContain('merge');
+		expect(nextNodeIds()).toContain('items');
+		expect(nextNodeIds()).not.toContain('merge');
 		expect(searchNextActions('merge branches').nodes).toEqual([]);
 		expect(searchNextActions('merge branches', [], ['merge']).nodes).toEqual([]);
 		const found = ['edit fields', 'set fields', 'merge'].flatMap((query) =>
@@ -434,7 +444,7 @@ describe('next-modules of the first-party packages', () => {
 			nodeIdsOf(name).filter((nodeId) => !replaced.has(nodeId)),
 		);
 		expect(listed.every((nodeIds) => nodeIds.length > 0)).toBe(true);
-		expect([...nextNodeIds].sort()).toEqual(listed.flat().sort());
+		expect([...nextNodeIds()].sort()).toEqual(listed.flat().sort());
 	});
 
 	it('finds a core node and an integration node, each typed with its package name', () => {
@@ -480,7 +490,7 @@ describe('next-modules with actions that this instance published', () => {
 				},
 				request: { method: 'PUT', path: '/repos/{owner}/{repository}/issues/{issueNumber}/lock' },
 			},
-			{ parentOf: parentNode },
+			{ parentOf: (nodeId) => parentNodeOf(contractActions(), nodeId) },
 		);
 		const action = evaluateVersion(bundle, manifest);
 		if ('kind' in action) throw new Error('a trigger');
@@ -491,12 +501,12 @@ describe('next-modules with actions that this instance published', () => {
 
 	it('adds a published action to the module of the node it extends, with its node type', async () => {
 		const action = await lockIssue();
-		setPublishedActions([{ action, nodeType: '@n8n/nodes-instance.githubIssueLock' }]);
+		setPublishedActions([action]);
 
 		expect(nextActions().map(({ id }) => id)).toContain('github.issue.lock');
 		expect(nodeModuleText('github')).toContain(
-			'contractStep("@n8n/nodes-instance.githubIssueLock", config)',
+			'contractStep("@n8n/nodes-integrations.githubIssueLock", config)',
 		);
-		expect(nextNodeModule('@n8n/nodes-instance.githubIssueLock')?.node).toBe('github');
+		expect(nextNodeModule('@n8n/nodes-integrations.githubIssueLock')?.node).toBe('github');
 	});
 });
