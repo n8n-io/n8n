@@ -10,6 +10,7 @@ import type {
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import {
+	SharedWorkflowRepository,
 	UserRepository,
 	WorkflowRepository,
 	WorkflowStatisticsRepository,
@@ -73,6 +74,7 @@ export class MigrationFindingQueryService {
 		private readonly syncRepository: MigrationFindingSyncRepository,
 		private readonly ownerRepository: MigrationWorkflowOwnerRepository,
 		private readonly userRepository: UserRepository,
+		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly logger: Logger,
 		private readonly errorReporter: ErrorReporter,
 	) {
@@ -167,10 +169,11 @@ export class MigrationFindingQueryService {
 			{},
 		);
 		const workflowIds = findings.map((finding) => finding.workflowId);
-		const [workflows, statistics, ownersByWorkflow] = await Promise.all([
+		const [workflows, statistics, ownersByWorkflow, projectsByWorkflow] = await Promise.all([
 			this.workflowRepository.findByIds(workflowIds, { fields: WORKFLOW_FIELDS }),
 			this.workflowStatisticsRepository.findByWorkflowIds(workflowIds),
 			this.loadOwners(workflowIds),
+			this.sharedWorkflowRepository.findOwnerProjectsByWorkflowIds(workflowIds),
 		]);
 		const statisticsByWorkflow = groupByWorkflowId(statistics);
 		// A batch rule decides from all workflows at once, so its issues come from a scan of that rule.
@@ -191,6 +194,7 @@ export class MigrationFindingQueryService {
 				issues: issuesByWorkflow.get(finding.workflowId) ?? [],
 				status: finding.status,
 				owner: ownersByWorkflow.get(finding.workflowId),
+				homeProjectId: projectsByWorkflow.get(finding.workflowId)?.id,
 			});
 		}
 

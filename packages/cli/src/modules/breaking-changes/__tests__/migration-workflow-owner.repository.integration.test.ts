@@ -190,20 +190,34 @@ describe('MigrationWorkflowOwnerRepository', () => {
 		});
 	});
 
-	describe('removeOwner', () => {
-		test('deletes the row of that workflow only, assigned or suggested', async () => {
+	describe('resetToSuggestion', () => {
+		test('replaces an assignment with the suggested user, for that workflow only', async () => {
 			const [first, second] = await Promise.all([createWorkflow(), createWorkflow()]);
 			await repository.assign(first.id, alice.id, alice.id, ctx);
-			await repository.replaceSuggestions(
-				[second.id],
-				[{ workflowId: second.id, userId: bob.id }],
-				ctx,
-			);
+			await repository.assign(second.id, alice.id, alice.id, ctx);
 
-			await repository.removeOwner(first.id, ctx);
+			await repository.resetToSuggestion(first.id, bob.id, ctx);
 
 			const rows = await repository.findByWorkflowIds([first.id, second.id], ctx);
-			expect(rows.map((row) => row.workflowId)).toEqual([second.id]);
+			expect(rows.find((row) => row.workflowId === first.id)).toMatchObject({
+				userId: bob.id,
+				source: 'suggested',
+				assignedById: null,
+				assignedAt: null,
+			});
+			expect(rows.find((row) => row.workflowId === second.id)).toMatchObject({
+				userId: alice.id,
+				source: 'assigned',
+			});
+		});
+
+		test('leaves the workflow without an owner when there is no suggestion', async () => {
+			const workflow = await createWorkflow();
+			await repository.assign(workflow.id, alice.id, alice.id, ctx);
+
+			await repository.resetToSuggestion(workflow.id, undefined, ctx);
+
+			expect(await repository.findByWorkflowIds([workflow.id], ctx)).toEqual([]);
 		});
 	});
 
