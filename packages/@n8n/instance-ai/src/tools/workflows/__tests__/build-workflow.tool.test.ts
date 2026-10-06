@@ -475,6 +475,40 @@ describe('createBuildWorkflowTool', () => {
 			expect(context.workflowService.updateFromWorkflowJSON).not.toHaveBeenCalled();
 			expect(result.errors?.join(' ')).toContain('move-workflow-to-folder');
 		});
+
+		it.each(['', ' ', '/'])(
+			'creates at the project root when folderPath is %j',
+			async (folderPath) => {
+				const { context, filePath } = makeContext({
+					overrides: { folderExplorationEnabled: true },
+				});
+
+				const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
+					filePath,
+					name: 'Root workflow',
+					folderPath,
+				});
+
+				expect(result.success).toBe(true);
+				expect(context.workflowService.createFromWorkflowJSON).toHaveBeenCalledWith(
+					expect.objectContaining({ name: 'Root workflow' }),
+					{ markAsAiTemporary: true },
+				);
+			},
+		);
+
+		it('updates an existing workflow when folderPath is blank', async () => {
+			const { context, filePath } = makeContext({ overrides: { folderExplorationEnabled: true } });
+
+			const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
+				filePath,
+				workflowId: 'wf-1',
+				folderPath: '',
+			});
+
+			expect(result.success).toBe(true);
+			expect(context.workflowService.updateFromWorkflowJSON).toHaveBeenCalled();
+		});
 	});
 
 	it('builds a new workflow from a workspace source file', async () => {
