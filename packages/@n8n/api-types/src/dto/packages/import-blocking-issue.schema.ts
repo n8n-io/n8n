@@ -4,6 +4,12 @@ import { z } from 'zod';
 
 import { policyViolationSchema } from '../../schemas/policy-violation.schema';
 
+/**
+ * A reason an import cannot proceed, matching the `BlockingIssue` union in
+ * `packages/cli/src/modules/n8n-packages/n8n-packages.types.ts`. A type-level test in
+ * `packages/cli` (`blocking-issue-schema-contract.test.ts`) fails when either side gains, loses, or
+ * reshapes a field the other doesn't mirror.
+ */
 const workflowConflictIssueSchema = z
 	.object({
 		type: z.literal('workflow-conflict'),
