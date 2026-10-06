@@ -18,11 +18,11 @@ in the Assistant run history and do not create a report or suggestion.
 The investigation instructions must keep sensitive values out of reports, summaries, and
 suggestion explanations and error context. Persistence does not scrub these fields.
 
-| Outcome | Suggestion | Actions |
-| --- | --- | --- |
-| `fix_ready` | Required | Approve and publish, Open in editor, Discard |
-| `needs_you` | Optional | Continue in chat, Dismiss |
-| `could_not_fix` | None | Continue in chat, Dismiss |
+| Outcome         | Suggestion | Actions                                      |
+| --------------- | ---------- | -------------------------------------------- |
+| `fix_ready`     | Required   | Approve and publish, Open in editor, Discard |
+| `needs_you`     | Optional   | Continue in chat, Dismiss                    |
+| `could_not_fix` | None       | Continue in chat, Dismiss                    |
 
 The report is one string. Usage contains `credits`, `turns`, `durationSeconds`, `promptTokens`,
 `completionTokens`, and `totalTokens`. The usage object and all measurement fields are required;
@@ -78,5 +78,6 @@ The `instance-ai` module must be loaded. Entities and migrations do not depend o
 The rollout flag is separate from the future switch for new investigations. Saved review services
 do not check investigation enablement or Assistant model availability.
 
-INS-1517 owns the inbox source, pagination, counts, refresh, and seed examples.
-INS-1518 owns review screens and chat/editor navigation. INS-1480 owns the real producer.
+The inbox will provide result listing, pagination, counts, refresh, and seed examples.
+The review UI will provide review screens and chat and editor navigation.
+The investigation producer will run investigations and submit completed results.
