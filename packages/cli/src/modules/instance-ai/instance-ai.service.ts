@@ -646,7 +646,6 @@ export class InstanceAiService {
 	 */
 	private readonly failedInternalFollowUpStreaks = new Map<string, number>();
 
-
 	/** Default IANA timezone for the instance (from GENERIC_TIMEZONE env var). */
 	private readonly defaultTimeZone: string;
 
@@ -1246,8 +1245,7 @@ export class InstanceAiService {
 		return {
 			observationalMemory: {
 				observerThresholdTokens:
-					observerThresholdTokens ??
-					this.instanceAiConfig.observerMessageTokens,
+					observerThresholdTokens ?? this.instanceAiConfig.observerMessageTokens,
 				reflectorThresholdTokens: this.instanceAiConfig.reflectorObservationTokens,
 				midRunObservation: this.instanceAiConfig.midRunObservation,
 				// Observer/reflector calls run in the background outside the run's
@@ -1543,9 +1541,7 @@ export class InstanceAiService {
 			? this.conversationHistoryService.forContext(user.id, boundProjectId, threadId)
 			: undefined;
 		// Follow-ups and resumed runs retain the selected mode if flags change.
-		const mode =
-			turnOptions.buildMode ??
-			(progressiveBuildingEnabled ? 'progressive' : 'default');
+		const mode = turnOptions.buildMode ?? (progressiveBuildingEnabled ? 'progressive' : 'default');
 		// The operator pin sits below the request pin and the thread's own selection,
 		// so evals and in-flight conversations keep the profile they started on.
 		// The concise experiment applies only in default mode, so a progressive
@@ -2890,8 +2886,6 @@ export class InstanceAiService {
 		const {
 			context,
 			memory,
-			workflowTasks,
-			plannedTaskService,
 			modelId,
 			orchestrationContext,
 			conversationHistory,
@@ -2910,47 +2904,14 @@ export class InstanceAiService {
 		orchestrationContext.isReplanFollowUp = isReplanFollowUp;
 		orchestrationContext.timeZone = timeZone ?? this.defaultTimeZone;
 
-		if (checkpoint?.isCheckpointFollowUp) {
-			orchestrationContext.isCheckpointFollowUp = true;
-			orchestrationContext.checkpointTaskId = checkpoint.checkpointTaskId;
-			context.permissions = {
-				...context.permissions,
-				...(PLANNED_TASK_PERMISSION_OVERRIDES.checkpoint ?? {}),
-			} as typeof context.permissions;
-			const runPolicy = await this.getCheckpointRunPolicy(threadId, checkpoint.checkpointTaskId);
-			context.allowedRunWorkflowIds = runPolicy.allowedWorkflowIds;
-			context.allowedRunWorkflowNames = runPolicy.allowedWorkflowNames;
-			context.requireRunWorkflowApproval = runPolicy.requireApproval;
-		}
-
-		if (plannedBuild?.isPlannedBuildFollowUp) {
-			context.permissions = {
-				...context.permissions,
-				...(PLANNED_TASK_PERMISSION_OVERRIDES['build-workflow'] ?? {}),
-			} as typeof context.permissions;
-			context.workflowBuildContext = {
-				threadId,
-				runId,
-				taskId: plannedBuild.buildTaskId,
-				workItemId: plannedBuild.workItemId,
-				allowPostPlanWorkflowCreate: true,
-				isSupportingWorkflowTask: plannedBuild.isSupportingWorkflowTask,
-				plannedTaskService,
-				workflowTaskService: workflowTasks,
-				onBuildOutcome: (outcome) => {
-					plannedBuild.savedOutcome = outcome;
-				},
-			};
-		} else {
-			context.workflowBuildContext = {
-				threadId,
-				runId,
-				taskId: `build-${runId}`,
-				workItemId: `wi_${nanoid(8)}`,
-				allowPostPlanWorkflowCreate: isPostPlanFollowUp,
-				workflowTaskService: workflowTasks,
-			};
-		}
+		await this.applyTurnScope(
+			environment,
+			threadId,
+			runId,
+			checkpoint,
+			plannedBuild,
+			isPostPlanFollowUp,
+		);
 		if (fileAttachments.length > 0) context.currentUserAttachments = fileAttachments;
 
 		if (!tracing && process.env.E2E_TESTS === 'true') {
@@ -3244,33 +3205,7 @@ export class InstanceAiService {
 		const { context, orchestrationContext, modelId } = environment;
 		const promptVersion = orchestrationContext.promptConfiguration?.version;
 		const aiCreatedWorkflowIds = (context.aiCreatedWorkflowIds ??= new Set<string>());
-		if (checkpoint?.isCheckpointFollowUp) {
-			orchestrationContext.isCheckpointFollowUp = true;
-			orchestrationContext.checkpointTaskId = checkpoint.checkpointTaskId;
-			context.permissions = {
-				...context.permissions,
-				...(PLANNED_TASK_PERMISSION_OVERRIDES.checkpoint ?? {}),
-			} as typeof context.permissions;
-		}
-		if (plannedBuild?.isPlannedBuildFollowUp) {
-			context.permissions = {
-				...context.permissions,
-				...(PLANNED_TASK_PERMISSION_OVERRIDES['build-workflow'] ?? {}),
-			} as typeof context.permissions;
-			context.workflowBuildContext = {
-				threadId,
-				runId,
-				taskId: plannedBuild.buildTaskId,
-				workItemId: plannedBuild.workItemId,
-				allowPostPlanWorkflowCreate: true,
-				isSupportingWorkflowTask: plannedBuild.isSupportingWorkflowTask,
-				plannedTaskService: environment.plannedTaskService,
-				workflowTaskService: environment.workflowTasks,
-				onBuildOutcome: (outcome) => {
-					plannedBuild.savedOutcome = outcome;
-				},
-			};
-		}
+		await this.applyTurnScope(environment, threadId, runId, checkpoint, plannedBuild, false);
 		if (tracing) {
 			orchestrationContext.tracing = tracing;
 			this.tracing.storeTraceContext(runId, threadId, tracing, messageGroupId);
@@ -3303,6 +3238,62 @@ export class InstanceAiService {
 			turnHadFileAttachments: false,
 			hideUserMessage: true,
 		});
+	}
+
+	/**
+	 * Scope a turn's tools: a checkpoint follow-up may run the workflows it
+	 * verifies, a planned build may create and save its workflow. Start and
+	 * resume turns rebuild the context, so both apply the same scope.
+	 */
+	private async applyTurnScope(
+		environment: Awaited<ReturnType<InstanceAiService['createExecutionEnvironment']>>,
+		threadId: string,
+		runId: string,
+		checkpoint: AssistantTurnOptions['checkpoint'],
+		plannedBuild: PlannedBuildFollowUp | undefined,
+		allowPostPlanWorkflowCreate: boolean,
+	): Promise<void> {
+		const { context, orchestrationContext } = environment;
+		if (checkpoint?.isCheckpointFollowUp) {
+			orchestrationContext.isCheckpointFollowUp = true;
+			orchestrationContext.checkpointTaskId = checkpoint.checkpointTaskId;
+			context.permissions = {
+				...context.permissions,
+				...(PLANNED_TASK_PERMISSION_OVERRIDES.checkpoint ?? {}),
+			} as typeof context.permissions;
+			const runPolicy = await this.getCheckpointRunPolicy(threadId, checkpoint.checkpointTaskId);
+			context.allowedRunWorkflowIds = runPolicy.allowedWorkflowIds;
+			context.allowedRunWorkflowNames = runPolicy.allowedWorkflowNames;
+			context.requireRunWorkflowApproval = runPolicy.requireApproval;
+		}
+		if (plannedBuild?.isPlannedBuildFollowUp) {
+			context.permissions = {
+				...context.permissions,
+				...(PLANNED_TASK_PERMISSION_OVERRIDES['build-workflow'] ?? {}),
+			} as typeof context.permissions;
+			context.workflowBuildContext = {
+				threadId,
+				runId,
+				taskId: plannedBuild.buildTaskId,
+				workItemId: plannedBuild.workItemId,
+				allowPostPlanWorkflowCreate: true,
+				isSupportingWorkflowTask: plannedBuild.isSupportingWorkflowTask,
+				plannedTaskService: environment.plannedTaskService,
+				workflowTaskService: environment.workflowTasks,
+				onBuildOutcome: (outcome) => {
+					plannedBuild.savedOutcome = outcome;
+				},
+			};
+			return;
+		}
+		context.workflowBuildContext = {
+			threadId,
+			runId,
+			taskId: `build-${runId}`,
+			workItemId: `wi_${nanoid(8)}`,
+			allowPostPlanWorkflowCreate,
+			workflowTaskService: environment.workflowTasks,
+		};
 	}
 
 	private createTurnHandle(params: {
