@@ -36,7 +36,8 @@ export class SystemTaskHandler implements TaskHandler {
 			this.tracing,
 			this.systemTask,
 			'durable',
-			AbortSignal.any([this.shutdownSignal, leaseSignal]),
+			this.shutdownSignal,
+			leaseSignal,
 		);
 		if (outcome.rejected) {
 			// An aborted run is not reported, but its rejection still propagates so
@@ -47,7 +48,7 @@ export class SystemTaskHandler implements TaskHandler {
 			throw outcome.error;
 		}
 
-		if (outcome.result === 'aborted') {
+		if (outcome.result === 'lease_lost') {
 			// A clean stop after lease loss must reject so the executor counts the failed attempt.
 			// A clean stop on shutdown still completes.
 			leaseSignal.throwIfAborted();

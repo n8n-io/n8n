@@ -94,7 +94,7 @@ describe('SystemTaskHandler', () => {
 		expect(onRunError).not.toHaveBeenCalled();
 		expect(eventService.emit).toHaveBeenCalledWith(
 			'system-task-run-settled',
-			expect.objectContaining({ mode: 'durable', result: 'aborted' }),
+			expect.objectContaining({ mode: 'durable', result: 'lease_lost' }),
 		);
 	});
 
@@ -275,6 +275,23 @@ describe('SystemTaskHandler', () => {
 			expect(eventService.emit).toHaveBeenCalledWith(
 				'system-task-run-settled',
 				expect.objectContaining({ mode: 'durable', result: 'aborted' }),
+			);
+		});
+
+		it('settles a run that rejects once its claim was lost as lease_lost', async () => {
+			const { task, report, handler, eventService, leaseController } = setup('idempotent');
+			task.onRun = async (signal) =>
+				await new Promise<void>((_, reject) => {
+					signal.addEventListener('abort', () => reject(new Error('aborted')));
+				});
+
+			const executing = handler.execute(claimed, report, leaseController.signal);
+			leaseController.abort();
+			await expect(executing).rejects.toThrow();
+
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'system-task-run-settled',
+				expect.objectContaining({ mode: 'durable', result: 'lease_lost' }),
 			);
 		});
 	});
