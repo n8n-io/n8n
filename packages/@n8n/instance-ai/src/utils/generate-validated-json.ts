@@ -19,6 +19,8 @@ export type ValidatedJsonResult<T> =
 	| {
 			ok: false;
 			reason: 'generation_failed' | 'invalid_json' | 'schema_mismatch';
+			/** The model or agent error, for `generation_failed`. */
+			message?: string;
 			issues?: z.ZodIssue[];
 	  };
 
@@ -46,8 +48,9 @@ export async function generateValidatedJson<T>(
 			{ role: 'user' as const, content: [{ type: 'text' as const, text: options.userText }] },
 		]);
 		text = extractText(result);
-	} catch {
-		return { ok: false, reason: 'generation_failed' };
+	} catch (error) {
+		const message = error instanceof Error ? error.message : String(error);
+		return { ok: false, reason: 'generation_failed', message };
 	}
 
 	let parsed: unknown;

@@ -2,6 +2,7 @@
 
 import { Agent, Tool, type GenerateResult, type ModelConfig } from '@n8n/agents';
 import { getProviderPrefix, splitModelId } from '@n8n/ai-utilities/agent-config';
+import { isRecord } from '@n8n/utils/is-record';
 
 import { parseModelHeadersJson } from './parse-model-headers';
 import { applyAgentThinking } from '../agent/apply-agent-thinking';
@@ -182,7 +183,34 @@ export function createEvalAgent(
 // Text extraction
 // ---------------------------------------------------------------------------
 
+/**
+ * A failed eval model call. `Agent.generate` returns errors on the result
+ * instead of throwing, so reading such a result as empty text turned a bad key
+ * or an outage into "the model sent bad output".
+ * Keep "model provider" and the HTTP status in the message: external eval
+ * consumers match them to tell a provider outage from a case failure.
+ */
+class EvalModelCallError extends Error {
+	constructor(cause: unknown) {
+		const status =
+			isRecord(cause) && typeof cause.statusCode === 'number' ? cause.statusCode : undefined;
+		const detail = cause instanceof Error ? cause.message : String(cause);
+		super(`Eval model provider call failed${status ? ` (HTTP ${status})` : ''}: ${detail}`, {
+			cause,
+		});
+		this.name = 'EvalModelCallError';
+	}
+}
+
+/** False only for a model error the provider marked as permanent (bad key, bad request). */
+export function isRetryableEvalError(error: unknown): boolean {
+	if (!(error instanceof EvalModelCallError)) return true;
+	return !(isRecord(error.cause) && error.cause.isRetryable === false);
+}
+
+/** Assistant text of an eval call. Throws when the call itself failed. */
 export function extractText(result: GenerateResult): string {
+	if (result.finishReason === 'error') throw new EvalModelCallError(result.error);
 	const texts: string[] = [];
 	for (const msg of result.messages) {
 		if (!('role' in msg) || msg.role !== 'assistant') continue;

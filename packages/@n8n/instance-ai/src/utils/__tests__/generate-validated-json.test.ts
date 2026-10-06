@@ -70,14 +70,30 @@ describe('generateValidatedJson', () => {
 		mockCreateEvalAgent.mockReturnValue({ generate: generateMock } as unknown as ReturnType<
 			typeof createEvalAgent
 		>);
-		expect(await generate()).toEqual({ ok: false, reason: 'generation_failed' });
+		expect(await generate()).toEqual({ ok: false, reason: 'generation_failed', message: 'boom' });
+	});
+
+	it('reports generation_failed with the model error when the call returned an error', async () => {
+		setupAgentMock('');
+		mockExtractText.mockImplementation(() => {
+			throw new Error('Eval model provider call failed (HTTP 401): invalid x-api-key');
+		});
+		expect(await generate()).toEqual({
+			ok: false,
+			reason: 'generation_failed',
+			message: 'Eval model provider call failed (HTTP 401): invalid x-api-key',
+		});
 	});
 
 	it('reports generation_failed when agent creation throws', async () => {
 		mockCreateEvalAgent.mockImplementation(() => {
 			throw new Error('no api key');
 		});
-		expect(await generate()).toEqual({ ok: false, reason: 'generation_failed' });
+		expect(await generate()).toEqual({
+			ok: false,
+			reason: 'generation_failed',
+			message: 'no api key',
+		});
 	});
 
 	it('forwards the fallback model config to agent creation', async () => {

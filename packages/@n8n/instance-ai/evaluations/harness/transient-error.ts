@@ -79,6 +79,15 @@ export function throwIfServerBudgetStop(result: { success: boolean; errors: stri
 	throw new Error(`The operation was aborted due to timeout: ${result.errors.join('; ')}`);
 }
 
+/** The server refused to run the scenario for a harness reason (mock hints, pin
+ *  data or seed generation failed, often on a model call). Nothing ran, so the
+ *  verifier has nothing to judge: throw so the caller records framework_issue. */
+export function throwIfFrameworkIssue(result: { success: boolean; errors: string[] }): void {
+	if (result.success) return;
+	const issue = result.errors.find((e) => e.startsWith('FRAMEWORK ISSUE:'));
+	if (issue) throw new Error(issue);
+}
+
 /** Retry decision for one failed scenario-execution attempt. */
 export function shouldRetryScenarioExecution(message: string, attempt: number): boolean {
 	if (isTransientNetworkError(message)) return attempt < MAX_EXEC_ATTEMPTS;

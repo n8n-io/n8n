@@ -20,6 +20,7 @@ import type { EvalLogger } from './logger';
 import { writeScenarioVerificationSnapshot, type VerificationArtifact } from './scenario-execution';
 import { reseedScenarioTables, type ScenarioSeedContext } from './seed-tables';
 import {
+	throwIfFrameworkIssue,
 	throwIfServerBudgetStop,
 	isTransientExecutionAbort,
 	MAX_EXEC_ATTEMPTS,
@@ -210,6 +211,7 @@ export async function executeAgentScenario(
 	}
 	// Killed for time, not by the builder — throw so the timeout path classifies it.
 	throwIfServerBudgetStop(evalResult);
+	throwIfFrameworkIssue(evalResult);
 
 	const execMs = Date.now() - execStart;
 
