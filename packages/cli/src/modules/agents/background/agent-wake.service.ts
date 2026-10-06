@@ -164,7 +164,13 @@ export class AgentWakeService {
 	}
 
 	private async deliverInsideLease(threadId: string, signal: AbortSignal): Promise<void> {
-		const pending = await this.jobRepository.findWakeableUnconsumed(threadId);
+		let pending = await this.jobRepository.findWakeableUnconsumed(threadId);
+		const stopped = pending.filter((job) => job.pauseRequestId);
+		if (stopped.length > 0) {
+			// A worker can stop after settlement and before it replaces older checkpoints.
+			for (const job of stopped) await this.backgroundJobService.retainLatestStopGroup(job);
+			pending = await this.jobRepository.findWakeableUnconsumed(threadId);
+		}
 		for (const job of pending.filter(
 			(item) => item.status === 'suspended' && !item.pauseRequestId,
 		)) {

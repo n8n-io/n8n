@@ -9,8 +9,8 @@ import { NodeOperationError } from 'n8n-workflow';
 import { updateDisplayOptions } from '../../../../../../utils/utilities';
 import { fileRLC } from '../../file';
 import { untilFolderSelected, folderRLC } from '../../folder';
-import { untilSiteSelected } from '../../list';
-import { resolveSiteId, siteRLC } from '../../site';
+import { untilSiteSelected } from '../../../list';
+import { resolveSiteId, siteRLC } from '../../../site';
 import { microsoftApiRequest } from '../../../transport';
 
 const properties: INodeProperties[] = [

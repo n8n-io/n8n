@@ -37,11 +37,11 @@ export class AgentsConfigController {
 		req: AuthenticatedRequest<{ projectId: string; agentId: string }>,
 	): Promise<AgentBudgetSpend> {
 		const { projectId, agentId } = req.params;
-		const agent = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
-		if (!agent) {
+		const exists = await this.agentRepository.existsByIdAndProjectId(agentId, projectId);
+		if (!exists) {
 			throw new NotFoundError('Agent not found');
 		}
-		const spentUsd = await this.agentSpendLedger.ledger.read(budgetMonthKey(agentId));
+		const spentUsd = await this.agentSpendLedger.read(budgetMonthKey(agentId));
 		return { spentUsd };
 	}
 

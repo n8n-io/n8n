@@ -15,9 +15,12 @@ import { Container } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 import { createRunExecutionData } from 'n8n-workflow';
 
-import { InsightsByPeriodRepository } from '@/modules/insights/database/repositories/insights-by-period.repository';
-import { InsightsCollectionService } from '@/modules/insights/insights-collection.service';
-import { InsightsCompactionService } from '@/modules/insights/insights-compaction.service';
+import {
+	InsightsByPeriodRepository,
+	InsightsCollectionService,
+	InsightsCompactionService,
+} from '@n8n/backend-module-insights';
+import { packagedModules } from '@/modules/modules.manifest';
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
 import { WorkflowRunner } from '@/workflow-runner';
 
@@ -32,7 +35,7 @@ describe('Insights vs Workflow Statistics Integration', () => {
 		process.env.N8N_INSIGHTS_FLUSH_INTERVAL_SECONDS = '1'; // Flush every 1 second
 		process.env.N8N_INSIGHTS_COMPACTION_BATCH_SIZE = '100'; // Process up to 100 items per batch
 
-		await testModules.loadModules(['insights']);
+		await testModules.loadModules(['insights'], packagedModules);
 		await testDb.init();
 
 		// Load required node types from dist folder
