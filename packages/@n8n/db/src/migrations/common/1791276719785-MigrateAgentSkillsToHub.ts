@@ -20,6 +20,8 @@ type SkillBody = {
 
 type Target = { userId: string | null; projectId: string | null };
 
+type ParsedAgent = { schema: { skills?: unknown } | null; bodies: Record<string, unknown> };
+
 type PlacedSkill = {
 	id: string;
 	/** Content hash of the draft row, name included. */
@@ -123,21 +125,33 @@ export class MigrateAgentSkillsToHub1791276719785 implements IrreversibleMigrati
 			async (agents) => {
 				for (const agent of agents) {
 					this.agentProjects.set(agent.id, agent.projectId);
-					try {
-						await this.migrateAgentDraft(context, agent);
-					} catch (error) {
-						this.skipRow(context, `agent ${agent.id}`, error);
-					}
+					// Only unreadable JSON is skipped. A failed write throws, so the
+					// migration aborts instead of being recorded with rows left behind.
+					const parsed = this.parseAgent(context, agent);
+					if (parsed) await this.migrateAgentDraft(context, agent, parsed);
 				}
 			},
 			BATCH_SIZE,
 		);
 	}
 
-	private async migrateAgentDraft(context: MigrationContext, agent: AgentRow) {
-		const { escape, runQuery, parseJson } = context;
-		const schema = agent.schema ? parseJson<{ skills?: unknown }>(agent.schema) : null;
-		const bodies = toRecord(agent.skills ? parseJson<unknown>(agent.skills) : null);
+	private parseAgent(context: MigrationContext, agent: AgentRow): ParsedAgent | null {
+		try {
+			const schema = agent.schema ? context.parseJson<{ skills?: unknown }>(agent.schema) : null;
+			const bodies = toRecord(agent.skills ? context.parseJson<unknown>(agent.skills) : null);
+			return { schema, bodies };
+		} catch (error) {
+			this.skipRow(context, `agent ${agent.id}`, error);
+			return null;
+		}
+	}
+
+	private async migrateAgentDraft(
+		context: MigrationContext,
+		agent: AgentRow,
+		{ schema, bodies }: ParsedAgent,
+	) {
+		const { escape, runQuery } = context;
 		const refs = toSkillRefs(schema?.skills);
 		const target = this.targetFor(agent.projectId);
 		let rewritten = false;
@@ -182,20 +196,33 @@ export class MigrateAgentSkillsToHub1791276719785 implements IrreversibleMigrati
 				for (const row of rows) {
 					const projectId = this.agentProjects.get(row.agentId);
 					if (projectId === undefined || !row.skills) continue;
-					try {
-						await this.migrateHistoryRow(context, row, projectId);
-					} catch (error) {
-						this.skipRow(context, `agent version ${row.versionId}`, error);
-					}
+					const bodies = this.parseHistorySkills(context, row);
+					if (bodies) await this.migrateHistoryRow(context, row, projectId, bodies);
 				}
 			},
 			BATCH_SIZE,
 		);
 	}
 
-	private async migrateHistoryRow(context: MigrationContext, row: HistoryRow, projectId: string) {
-		const { escape, runQuery, parseJson } = context;
-		const bodies = toRecord(parseJson<unknown>(row.skills!));
+	private parseHistorySkills(
+		context: MigrationContext,
+		row: HistoryRow,
+	): Record<string, unknown> | null {
+		try {
+			return toRecord(context.parseJson<unknown>(row.skills!));
+		} catch (error) {
+			this.skipRow(context, `agent version ${row.versionId}`, error);
+			return null;
+		}
+	}
+
+	private async migrateHistoryRow(
+		context: MigrationContext,
+		row: HistoryRow,
+		projectId: string,
+		bodies: Record<string, unknown>,
+	) {
+		const { escape, runQuery } = context;
 		const target = this.targetFor(projectId);
 
 		for (const [refId, raw] of Object.entries(bodies)) {
@@ -389,7 +416,7 @@ export class MigrateAgentSkillsToHub1791276719785 implements IrreversibleMigrati
 		await this.insertFiles(context, draftVersionId, body);
 	}
 
-	/** A row the migration cannot read is logged and left as it is; the rest proceeds. */
+	/** A row whose JSON cannot be read is logged and left as it is; the rest proceeds. */
 	private skipRow({ logger, migrationName }: MigrationContext, what: string, error: unknown) {
 		this.counts.skippedRows++;
 		const message = error instanceof Error ? error.message : String(error);
