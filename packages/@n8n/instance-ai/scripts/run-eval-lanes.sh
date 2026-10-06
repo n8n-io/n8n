@@ -436,7 +436,7 @@ for port in "${PORTS[@]}"; do
 	fi
 
 	# Same bounds as CI (test-evals-instance-ai.yml): capped + restartable
-	# lanes, pruned executions. Diagnostics off: feature flags come only from env.
+	# lanes, pruned executions. An eval instance takes feature flags from env only.
 	docker run -d --name "$name" \
 		"${DOCKER_RUN_ARGS[@]}" \
 		--memory 2.5g --memory-swap 2.5g \
@@ -446,7 +446,7 @@ for port in "${PORTS[@]}"; do
 		-e EXECUTIONS_DATA_PRUNE=true \
 		-e EXECUTIONS_DATA_MAX_AGE=1 \
 		-e E2E_TESTS=true \
-		-e N8N_DIAGNOSTICS_ENABLED=false \
+		-e N8N_INSTANCE_AI_EVAL_INSTANCE=true \
 		-e N8N_USER_FOLDER=/home/node/.n8n \
 		-p "${port}:5678" \
 		"$IMAGE" >/dev/null
