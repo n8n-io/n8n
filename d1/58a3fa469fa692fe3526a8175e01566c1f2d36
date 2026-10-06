@@ -1,0 +1,214 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/__tests__/InstanceAiThreadList.test.ts
+  s_e3560b551eac11::t_adba803c9a1b77 11,334-338,350-351,369-371,374,469-470,479-481,513-515,526-528
+  s_e3560b551eac11::t_7551f72f82bbc7 13,17,42-63
+  s_e3560b551eac11::t_498b424a10006b 104-107
+  s_e3560b551eac11::t_727de5584596f9 321-326,375-381,452-457,459-468,472-478,482,501-512,516
+  s_e3560b551eac11::t_e580a4f56e902b 327-333,339-349,372-373
+  s_71e25d45a5ee90::t_d43a0efbdff14b 352-363,367-368
+  s_71e25d45a5ee90::t_19da5bb8faac83 364-366
+  s_e3560b551eac11::t_d701e336118a97 539-542,491,493,496,499-500
+  s_f3d2ec4529fb2a::t_ef4a893518d929 3
+  s_f3d2ec4529fb2a::t_e9f359e6feb08e 458,471,485,488-490,498
+  s_f3d2ec4529fb2a::t_ad16bba8b99284 486-487,497
+  s_f3d2ec4529fb2a::t_552e8aefca8e9e 492,494-495
+packages/frontend/editor-ui/src/features/ai/instanceAi/InstanceAiThreadsView.vue
+  s_f3d2ec4529fb2a::t_df482139b39158 16,25
+  s_e3560b551eac11::t_7a59dc93969c32 21,169
+  s_f3d2ec4529fb2a::t_3f2a222c540b09 22,35
+  s_71e25d45a5ee90::t_7c786000050c6e 47-48
+  s_f3d2ec4529fb2a::t_2b8599999b593c 63
+  s_f3d2ec4529fb2a::t_498c46a5a053a6 108,111
+  s_f3d2ec4529fb2a::t_6c7583b1b2364b 109-110
+  s_f3d2ec4529fb2a::t_449ef4eecbb977 194-195,197-198,200-208
+  s_f3d2ec4529fb2a::t_311ea1a589b375 196,199
+  s_71e25d45a5ee90::t_b92ac39c741d27 212,215
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentApi.test.ts
+  ai_agent 7,12,142-147,170-211,232,272,292,322
+  s_f3d2ec4529fb2a::t_f68d775e187227 8
+  s_e3560b551eac11::t_1326b3dd0a3ada 13
+  s_9a6001e67297f0::t_5b450e3afedd89 19-20
+  s_9a6001e67297f0::t_cdc206dc0c631f 212-213,223,225,233-234,250-251,254,257,261,263-264,268,270-271,273,275-276,278-281,283,285,287,289,291,293-295,298,300-302,309,311,320,323-324
+  s_e3560b551eac11::t_8a5c3ec44c64d0 214-220,222,224,226-231
+  s_9a6001e67297f0::t_2b2bdc3ffc5b83 221,255,259-260,262,265-267,269,307
+  s_f3d2ec4529fb2a::t_9cd6c0453a8595 235-249
+  s_9a6001e67297f0::t_6cbc4792ddb0d9 252-253,256,258,297
+  s_71e25d45a5ee90::t_63608265d3c569 312-318
+packages/frontend/editor-ui/src/features/agents/n8nChatPage/mergeRecentChats.ts
+  s_f3d2ec4529fb2a::t_0650fb3c35b6da 2
+  s_f3d2ec4529fb2a::t_108d9d09191311 28-31,35-36
+  s_f3d2ec4529fb2a::t_974639745fab7c 32-34
+packages/frontend/editor-ui/src/features/agents/n8nChatPage/usePagedN8nChatThreads.test.ts
+  s_9a6001e67297f0::t_cd1853c0c597ac 2,5,10-19,27-33,38-39,41-49,51-131,135-153,173-196,198
+  s_71e25d45a5ee90::t_3f65c2858a47fe 3-4
+  s_9a6001e67297f0::t_6cb1dc54c9fc8a 132-134
+  s_71e25d45a5ee90::t_be3ba948af8946 154,160-167,169-172
+  s_71e25d45a5ee90::t_557ca7ab634fa9 155-158
+  s_71e25d45a5ee90::t_57375bfebeccd4 159,168
+  s_f3d2ec4529fb2a::t_7a2416199991f6 247,250-253,255,258-260,262-264,267-271
+  s_f3d2ec4529fb2a::t_e0995688290cd9 248-249,26,254,256-257,261,272-273
+  s_f3d2ec4529fb2a::t_3dd695da24a113 1
+  s_f3d2ec4529fb2a::t_452de7bd793b83 20-22
+  s_f3d2ec4529fb2a::t_c4c8b3d49f0ba6 23-25
+  s_f3d2ec4529fb2a::t_0e2a6e4055adab 50
+  s_f3d2ec4529fb2a::t_974639745fab7c 265-266
+packages/frontend/editor-ui/src/features/agents/composables/useAgentApi.ts
+  ai_agent 6,48-85,120-129,132-134,137,140,147,154,166,176,185,193,212-213,216-217,220-221,664,669,680,685,690,694-695,699,706,710-712,715,717,720,725,732,735-736,738,740-743,747,750-763,766,768,771-773,777-790,795,798,803,805,807-816,818,820-831,833,835-846,848-859,861,866,876,881,887,889,891-892,894,896,902,904,907,909,228-231,234-235,237-239
+  s_9a6001e67297f0::t_0722a6be8de6af 7
+  s_f3d2ec4529fb2a::t_2a4e8de173221b 22
+  s_e3560b551eac11::t_b3ab22ad3de048 23
+  s_9a6001e67297f0::t_adc049c2968504 24,33-37
+  s_9a6001e67297f0::t_9d3e74d511ba0a 38-39
+  s_9a6001e67297f0::t_d282cb08dbebef 40
+  s_f3d2ec4529fb2a::t_0c9c936b60439b 130-131
+  s_9a6001e67297f0::t_96b8656302ae21 135,177-184,196,208-211
+  s_9a6001e67297f0::t_30b27a8e2f36f5 136,146,148,152,164-165,167-170,175,186-192,194-195,197-200,207
+  s_9a6001e67297f0::t_f87191dabc388f 138-139,141-145,153,155-157,159,161-163
+  s_9a6001e67297f0::t_fefeb1272a3320 149-151,158,160
+  s_9a6001e67297f0::t_ee927f7b854ebb 171
+  s_9a6001e67297f0::t_db46ce8a519e1f 172
+  s_e3560b551eac11::t_7e49733a8462a9 214-215,218-219,222
+  s_f3d2ec4529fb2a::t_71a9b06f1e07e0 223-225,227,232-233,236
+  s_f3d2ec4529fb2a::t_0529f34d4cdc0c 226
+packages/frontend/editor-ui/src/features/agents/n8nChatPage/components/__tests__/N8nChatThreadHistory.test.ts
+  s_9a6001e67297f0::t_9e78b9f9ce65f4 1,4-7,10-21,30-47,51-53,58-111,114-149,152-158,160-162,164-169,187-194,253,50
+  s_9a6001e67297f0::t_5dab5dfd518134 54-57
+  s_9a6001e67297f0::t_bf11a82e9bbdc3 112-113
+  s_9a6001e67297f0::t_e51c9fa583d9e8 150-151,159,163
+  s_f3d2ec4529fb2a::t_d15a44e24a34ea 195-197,29,198-199,203,211,215,220-221,235,237,239-240,244,252
+  s_f3d2ec4529fb2a::t_eb0feba2cdcfbf 3,8-9,22-28
+  s_f3d2ec4529fb2a::t_90be47ea10ba94 48-49
+  s_f3d2ec4529fb2a::t_1bd3c91772d1a7 200-201,216,222-234,245-251
+  s_f3d2ec4529fb2a::t_2fba973dadf577 202,204,212-214,217-219,236,238,241-243
+  s_f3d2ec4529fb2a::t_cab1a96e8e6e09 205-210
+packages/frontend/editor-ui/src/features/agents/n8nChatPage/usePagedN8nChatThreads.ts
+  s_9a6001e67297f0::t_d0c72d6401b480 2-5,7-10,16-21,23-25,34-56,58-59,61-62,64-70,75,83-85,87,89-103,107-108,110-112,118-119
+  ai_agent 22
+  s_9a6001e67297f0::t_2e61c35d76b8ad 71-74
+  s_9a6001e67297f0::t_08e1802910ddb4 76-82
+  s_71e25d45a5ee90::t_8b0858079007a6 104-106
+  s_f3d2ec4529fb2a::t_e205a249be7e82 1,6
+  s_f3d2ec4529fb2a::t_6024f9cd63eab5 26,28-33
+  s_f3d2ec4529fb2a::t_8a00192aba94c6 60,63
+  s_f3d2ec4529fb2a::t_86b00e8e20dd99 127
+packages/frontend/editor-ui/src/features/agents/n8nChatPage/n8nChatThreads.store.test.ts
+  s_e3560b551eac11::t_a0bbd9b91cae40 8,22
+  s_f3d2ec4529fb2a::t_e6eb5fee1bad3c 9-10,16-19,23
+  s_e3560b551eac11::t_1f818d0decb6ba 85-89,105,113-114,116-117,119-141
+  s_71e25d45a5ee90::t_8fabc7dceb1a15 90-104
+  s_e3560b551eac11::t_d84a2cdda1ad24 106-112,115,118
+  s_71e25d45a5ee90::t_88fbbbb1b4c5fe 149-150,153,155,157-158
+  s_f3d2ec4529fb2a::t_44fb7d49275346 161-162,164-169,171-180,182-190,192-195,221-222,224,233-241,243-248
+  s_f3d2ec4529fb2a::t_0cff903fb1ed13 163
+  s_f3d2ec4529fb2a::t_f1263d07a26a9c 170,181,191,218-220,223,225-232,242
+  s_f3d2ec4529fb2a::t_d549608220347c 196-217
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiThreadsView.test.ts
+  s_71e25d45a5ee90::t_caf2bebf29ec29 1
+  s_e3560b551eac11::t_77b2afc6077721 4
+  s_71e25d45a5ee90::t_322bfbdaae9c06 6
+  s_f3d2ec4529fb2a::t_e5e27dce63945d 25
+  s_f3d2ec4529fb2a::t_dc411384daa032 26,28-30
+  s_71e25d45a5ee90::t_03cbbc6e56987a 35
+  s_f3d2ec4529fb2a::t_01209cf5c94f12 77
+  s_f3d2ec4529fb2a::t_15e7a501c52a1e 78
+  s_71e25d45a5ee90::t_f0bc16b9d753bd 103-111,113-114
+  s_71e25d45a5ee90::t_d018fa5462fe4a 112
+  s_f3d2ec4529fb2a::t_9adab89a194ae4 203,227-231,238-241,248-256,258-264
+  s_f3d2ec4529fb2a::t_e188b8ae61fe37 232-237,242-247,257
+  s_71e25d45a5ee90::t_5f22f11abdd05b 267-282
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiThreadList.vue
+  s_e3560b551eac11::t_c4ecc38a457087 15,17
+  s_e3560b551eac11::t_d7b2d2935e78eb 16,61-64,177,182,321-322
+  s_e3560b551eac11::t_d303d46cbd38d1 18,27-30,71,141,150-151,210
+  s_e3560b551eac11::t_bdea0c5e62bc3b 20,22-23,438
+  s_e3560b551eac11::t_e1fe1dd3a62b73 24,136,140
+  s_e3560b551eac11::t_6455bc5a0b32e2 60,65-70
+  s_e3560b551eac11::t_530da4680d5b27 72,79,135,138,378,127
+  s_e3560b551eac11::t_f0db60ce9f7df8 124-125,128-134,145-148,163-176,178-179,186-189
+  s_71e25d45a5ee90::t_818026912555e8 137
+  s_71e25d45a5ee90::t_095690a14216a4 139
+  s_e3560b551eac11::t_a9b27ee66a99ef 211-212
+  s_e3560b551eac11::t_5207a95ea7deff 297-298
+  s_e3560b551eac11::t_8e974d7da180d1 315-320,323-326
+  s_e3560b551eac11::t_f49ad1d2a60d9f 351,361,345
+  s_e3560b551eac11::t_a063801b23362f 370-371
+  s_e3560b551eac11::t_96f7d0ba136202 385,388,397
+  s_e3560b551eac11::t_3b8ec1f97b8827 430,439,444
+  s_f3d2ec4529fb2a::t_14a3e2877d6f13 21
+  s_f3d2ec4529fb2a::t_9074aa8c694e83 126
+  s_f3d2ec4529fb2a::t_20a9716bcbc476 183
+  s_f3d2ec4529fb2a::t_bab57fadd91a80 336,338,344,347,350
+  s_f3d2ec4529fb2a::t_834abd386152a0 339-341
+  s_f3d2ec4529fb2a::t_3c7570d5b23534 342-343
+packages/frontend/editor-ui/src/features/agents/n8nChatPage/n8nChatThreads.store.ts
+  s_e3560b551eac11::t_d84a2cdda1ad24 2,25-27,33-35,39-40,59,65,68-69,77-78
+  s_f3d2ec4529fb2a::t_efff27fc1be4ac 5-6
+  s_f3d2ec4529fb2a::t_0cff903fb1ed13 9-13
+  s_f3d2ec4529fb2a::t_6747b78855d15e 22
+  s_f3d2ec4529fb2a::t_a5bf508ce40b14 28-32,36-38
+  s_71e25d45a5ee90::t_4914a807fdb56c 41-45
+  s_e3560b551eac11::t_6d01974db328e1 58,60-64,66-67,70-74,103
+  s_f3d2ec4529fb2a::t_aaf5d64db78e4d 80-81,84,86-90,92-96,100-102,111
+  s_f3d2ec4529fb2a::t_7f6c7b00e91c11 82-83,85,91,97-99,108
+  s_71e25d45a5ee90::t_ce781ed4f71f7e 107
+packages/frontend/editor-ui/src/features/agents/n8nChatPage/components/N8nChatThreadHistory.vue
+  s_9a6001e67297f0::t_a262d3b5d71060 1-3,24-27,29-37,45,65-67,74-86,94-98,123,129-132,140,151-168,172-175,177-185,187-191,39,57-58,63-64
+  s_9a6001e67297f0::t_90dabcf9cc2a7b 6-7,46,48-49,68-73,90-93,99-103,105-107,112-122,124-128,133,135-138
+  s_e3560b551eac11::t_9b84580a4a5091 8,19-23
+  s_9a6001e67297f0::t_7ff4165e892f55 10,13-14,17-18
+  s_9a6001e67297f0::t_42491c4427808e 87-88
+  s_9a6001e67297f0::t_8aaa8e8f380f65 89
+  s_9a6001e67297f0::t_1e2a3c026aed43 139
+  s_e3560b551eac11::t_e71511bf6b85be 141-143,145-146,149
+  s_e3560b551eac11::t_55ee8543fb1752 147-148,150
+  s_9a6001e67297f0::t_d794da9ffdf635 169-171
+  s_9a6001e67297f0::t_e856308d560867 176
+  s_9a6001e67297f0::t_20bcaf34a0319a 186
+  s_f3d2ec4529fb2a::t_8fb8c3a22e79d0 5,16
+  s_f3d2ec4529fb2a::t_72e1e871bc3822 15
+  s_f3d2ec4529fb2a::t_bc1126a720c6f3 28,55-56,59
+  s_f3d2ec4529fb2a::t_36dfea435a4131 38
+  s_f3d2ec4529fb2a::t_6c4b682ec5cc65 51-53,60-62
+  s_f3d2ec4529fb2a::t_40f99e799f4a34 54
+  s_f3d2ec4529fb2a::t_1beaf7a0a4c391 104
+  s_f3d2ec4529fb2a::t_0a2af59ce00ad1 144
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d158a3fa469fa692fe3526a8175e01566c1f2d36",
+  "prompts": {},
+  "sessions": {
+    "s_71e25d45a5ee90": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2ca6b762-f376-4a31-af78-4066f186c7bb",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    },
+    "s_9a6001e67297f0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f72ae404-381c-4905-9080-63d9e62dffe6",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": null
+    },
+    "s_e3560b551eac11": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a7b46ea8-2f97-424a-81d9-bb9c3745b1ba",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": null
+    },
+    "s_f3d2ec4529fb2a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c28c4414-1c5b-4167-98ad-d5188b3d2601",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": null
+    }
+  }
+}
