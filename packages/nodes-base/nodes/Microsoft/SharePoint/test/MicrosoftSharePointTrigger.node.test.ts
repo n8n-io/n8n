@@ -1,5 +1,5 @@
 import { readFileSync } from 'fs';
-import type { INode, INodePropertyOptions, IPollFunctions } from 'n8n-workflow';
+import type { IDataObject, INode, INodePropertyOptions, IPollFunctions } from 'n8n-workflow';
 import { join } from 'path';
 import { mock } from 'vitest-mock-extended';
 
@@ -7,6 +7,18 @@ import { MicrosoftSharePointTrigger } from '../MicrosoftSharePointTrigger.node';
 import { getDrives } from '../drive';
 import { getSites } from '../site';
 import { microsoftApiRequest, SERVICE_PRINCIPAL_AUTH } from '../transport';
+import { microsoftApiRequestDelta } from '../transport/delta';
+import type { SharePointEvent } from '../trigger/changes';
+import type { PollState } from '../trigger/state';
+
+// Only the drain is faked. `isTargetMissing` stays real, so the 404 handling
+// is exercised against the same status reading the transport uses.
+vi.mock('../transport/delta', async (importOriginal) => ({
+	...(await importOriginal<typeof import('../transport/delta')>()),
+	microsoftApiRequestDelta: vi.fn(),
+}));
+
+const deltaRequest = vi.mocked(microsoftApiRequestDelta);
 
 describe('Microsoft SharePoint Trigger', () => {
 	const { description } = new MicrosoftSharePointTrigger();
@@ -65,10 +77,6 @@ describe('Microsoft SharePoint Trigger', () => {
 		expect(description.credentials?.map((c) => c.name)).not.toContain(
 			'microsoftSharePointOAuth2Api',
 		);
-	});
-
-	it('emits nothing until the poll is implemented', async () => {
-		expect(await new MicrosoftSharePointTrigger().poll.call(mock<IPollFunctions>())).toBeNull();
 	});
 
 	it('ships a codex whose filename the loader can derive', () => {
@@ -177,6 +185,188 @@ describe('Microsoft SharePoint Trigger', () => {
 			]);
 
 			expect(texts.filter((text) => /\bpath\b/i.test(text))).toEqual([]);
+		});
+	});
+
+	describe('poll', () => {
+		const pollSetup = (
+			overrides: {
+				mode?: 'manual' | 'trigger';
+				state?: PollState;
+				drive?: { mode: string; value: string };
+				events?: SharePointEvent[];
+			} = {},
+		) => {
+			const state: PollState = overrides.state ?? {};
+			const ctx = mock<IPollFunctions>();
+			ctx.getMode.mockReturnValue(overrides.mode ?? 'trigger');
+			ctx.getWorkflowStaticData.mockReturnValue(state as IDataObject);
+			ctx.getNode.mockReturnValue(mock<INode>());
+			ctx.getPollBudgetMs.mockReturnValue(30_000);
+			ctx.logger = mock<IPollFunctions['logger']>();
+			ctx.getNodeParameter.mockImplementation((name: string, fallback?: unknown) => {
+				if (name === 'site') return { mode: 'list', value: 'site-1' } as never;
+				if (name === 'drive')
+					return (overrides.drive ?? { mode: 'list', value: 'drive-1' }) as never;
+				if (name === 'events') return (overrides.events ?? ['changed', 'deleted']) as never;
+				if (name === 'authentication') return 'microsoftOAuth2Api' as never;
+				return fallback as never;
+			});
+			ctx.helpers.returnJsonArray = ((items: IDataObject | IDataObject[]) =>
+				(Array.isArray(items) ? items : [items]).map((json) => ({
+					json,
+				}))) as IPollFunctions['helpers']['returnJsonArray'];
+
+			return {
+				ctx,
+				state,
+				poll: async () => await new MicrosoftSharePointTrigger().poll.call(ctx),
+			};
+		};
+
+		beforeEach(() => {
+			deltaRequest.mockReset();
+		});
+
+		it('emits a changed file and remembers where it got to', async () => {
+			const { state, poll } = pollSetup();
+			const entry = { id: 'a', file: {}, name: 'report.pdf' };
+			deltaRequest.mockResolvedValue({ items: [entry], deltaLink: 'https://next', drained: true });
+
+			expect(await poll()).toEqual([[{ json: entry }]]);
+			expect(state.cursor).toBe('https://next');
+		});
+
+		it('watches the chosen library and asks Graph to leave out ancestors', async () => {
+			const { poll } = pollSetup();
+			deltaRequest.mockResolvedValue({ items: [], deltaLink: 'https://x', drained: true });
+
+			await poll();
+
+			expect(deltaRequest.mock.calls[0][0]).toMatchObject({
+				feed: 'driveItem',
+				driveId: 'drive-1',
+				excludeParents: true,
+			});
+		});
+
+		it('starts from now on the first poll, then resumes from the stored link', async () => {
+			const { poll } = pollSetup();
+			deltaRequest.mockResolvedValue({ items: [], deltaLink: 'https://one', drained: true });
+
+			await poll();
+			await poll();
+
+			expect(deltaRequest.mock.calls[0][0].cursor).toEqual({ kind: 'latest' });
+			expect(deltaRequest.mock.calls[1][0].cursor).toEqual({ kind: 'link', url: 'https://one' });
+		});
+
+		it('resumes mid-enumeration when a drain stops on its budget', async () => {
+			const { state, poll } = pollSetup();
+			deltaRequest.mockResolvedValue({ items: [], nextLink: 'https://more', drained: false });
+
+			await poll();
+
+			expect(state.cursor).toBe('https://more');
+		});
+
+		it('re-arms from now when the stored position has expired', async () => {
+			const { ctx, state, poll } = pollSetup({ state: { scope: 'stale', cursor: 'https://old' } });
+			deltaRequest.mockResolvedValue({
+				items: [],
+				drained: false,
+				resync: { code: 'resyncChangesApplyDifferences' },
+			});
+
+			expect(await poll()).toBeNull();
+			expect(state.cursor).toBeUndefined();
+			expect(ctx.logger.warn).toHaveBeenCalledWith(expect.stringContaining('expired'));
+		});
+
+		it('emits nothing when a drain holds no file events', async () => {
+			const { poll } = pollSetup();
+			deltaRequest.mockResolvedValue({
+				items: [{ id: 'f', folder: {} }],
+				deltaLink: 'https://x',
+				drained: true,
+			});
+
+			expect(await poll()).toBeNull();
+		});
+
+		it('honours the event selection', async () => {
+			const { poll } = pollSetup({ events: ['deleted'] });
+			deltaRequest.mockResolvedValue({
+				items: [
+					{ id: 'a', file: {} },
+					{ id: 'b', deleted: {} },
+				],
+				deltaLink: 'https://x',
+				drained: true,
+			});
+
+			expect(await poll()).toEqual([[{ json: { id: 'b', deleted: {} } }]]);
+		});
+
+		it('a manual run returns samples without moving the saved position', async () => {
+			const stored = { scope: 'kept', cursor: 'https://kept' };
+			const { state, poll } = pollSetup({ mode: 'manual', state: { ...stored } });
+			deltaRequest.mockResolvedValue({
+				items: [{ id: 'a', file: {} }],
+				deltaLink: 'https://new',
+				drained: true,
+			});
+
+			expect(await poll()).toEqual([[{ json: { id: 'a', file: {} } }]]);
+			expect(state).toEqual(stored);
+			expect(deltaRequest.mock.calls[0][0].cursor).toBeUndefined();
+			expect(deltaRequest.mock.calls[0][0].maxPages).toBe(1);
+		});
+
+		it('names the library when Graph reports it gone', async () => {
+			const { poll } = pollSetup({ mode: 'manual' });
+			deltaRequest.mockRejectedValue(Object.assign(new Error('Not Found'), { statusCode: 404 }));
+
+			await expect(poll()).rejects.toThrow('no longer reachable');
+		});
+
+		it('goes quiet while one failure persists, rather than failing every poll', async () => {
+			const { ctx, state, poll } = pollSetup();
+			deltaRequest.mockRejectedValue(new Error('Service Unavailable'));
+
+			await expect(poll()).rejects.toThrow('Service Unavailable');
+
+			expect(await poll()).toBeNull();
+			expect(state.errorKey).toBe('Error:Service Unavailable');
+			expect(ctx.logger.warn).toHaveBeenCalledWith(expect.stringContaining('still failing'));
+		});
+
+		it('reports a different failure straight away', async () => {
+			const { poll } = pollSetup();
+
+			deltaRequest.mockRejectedValueOnce(new Error('first'));
+			await expect(poll()).rejects.toThrow('first');
+
+			deltaRequest.mockRejectedValueOnce(new Error('second'));
+			await expect(poll()).rejects.toThrow('second');
+		});
+
+		it('clears a recorded failure once a poll succeeds', async () => {
+			const { state, poll } = pollSetup({ state: { errorKey: 'Error:old', errorAt: 1 } });
+			deltaRequest.mockResolvedValue({ items: [], deltaLink: 'https://x', drained: true });
+
+			await poll();
+
+			expect(state.errorKey).toBeUndefined();
+		});
+
+		it('rejects a list ID handed to the library field by expression', async () => {
+			const { poll } = pollSetup({
+				mode: 'manual',
+				drive: { mode: 'id', value: '58a279af-1f06-4392-a5ed-2b37fa1d6c1d' },
+			});
+
+			await expect(poll()).rejects.toThrow("The 'Document Library' ID is not valid");
 		});
 	});
 
