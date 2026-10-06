@@ -441,9 +441,6 @@ jobs:
             # Anthropic, LangSmith and licence secrets. `::add-mask::` only redacts
             # log output, never an uploaded artifact, so without this the report
             # would carry them into the run's artifacts verbatim.
-            #
-            # An eval instance takes feature flags from env only, not from a live
-            # PostHog draw per lane, and resets dedupe state between scenarios.
             docker run -d --name "n8n-eval-$((i+1))" \
               "${NETWORK_ARGS[@]}" \
               --memory 2.5g --memory-swap 2.5g \
@@ -453,7 +450,6 @@ jobs:
               -e EXECUTIONS_DATA_PRUNE=true \
               -e EXECUTIONS_DATA_MAX_AGE=1 \
               -e E2E_TESTS=true \
-              -e N8N_INSTANCE_AI_EVAL_INSTANCE=true \
               -e N8N_ENABLED_MODULES=instance-ai,agents \
               -e N8N_AI_ENABLED=true \
               -e INSTANCE_AI_BRAVE_SEARCH_API_KEY="$INSTANCE_AI_BRAVE_SEARCH_API_KEY" \
