@@ -1,0 +1,102 @@
+packages/frontend/editor-ui/src/features/agents/composables/useAgentChatStream.ts
+  s_a52166d0bed94b::t_6ea33b8801e00b 448,450,461,467,471
+packages/frontend/editor-ui/src/features/ai/shared/components/ChatMessageQueue.vue
+  s_a52166d0bed94b::t_6ea33b8801e00b 21,83-84,86-128,130,132-133,135,137-156,197,203-205,214
+  s_509bf2cdeb3e3a::t_c3a9ee657fb8a5 69-71,247,257-259,325
+  s_a52166d0bed94b::t_0c9b1b8711d782 193
+  s_509bf2cdeb3e3a::t_74f9bad113df93 72-74
+  s_a52166d0bed94b::t_2d537bf45c9df1 81-82
+  s_a52166d0bed94b::t_4cc8896a0c6275 157-159
+  s_a52166d0bed94b::t_849e0333babc70 190-192
+  s_509bf2cdeb3e3a::t_9f8e5eeb1729c0 244-246
+  s_509bf2cdeb3e3a::t_71b6a2eb700959 260
+  s_509bf2cdeb3e3a::t_18185fee6f7783 323-324
+  s_509bf2cdeb3e3a::t_01f892fb631cd1 326
+packages/frontend/editor-ui/src/features/ai/shared/components/ChatMessageQueue.test.ts
+  s_99d642bdc3249e::t_ffb31065143336 139-141
+  s_99d642bdc3249e::t_a1414f1bba3fa6 1-138,142,145-155
+  s_99d642bdc3249e::t_ccfaa5c8c7b42a 143-144
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_a52166d0bed94b::t_529ef7c338ee12 8120-8121
+packages/frontend/editor-ui/src/features/agents/components/AgentChatPanel.vue
+  s_a52166d0bed94b::t_c5dd32569d88ea 36,121,792-796
+  s_a52166d0bed94b::t_524eff053c388b 175-176,187-190
+  s_a52166d0bed94b::t_97306c62eb6a34 757-760
+  s_a52166d0bed94b::t_1d1b4151e44ae2 791,797-798
+  s_a52166d0bed94b::t_3283369abc1dc5 834,838,840,847-855
+  s_a52166d0bed94b::t_bdb59fa374c4da 258-279,1219
+  s_bf154ec7b6fdc0::t_49ade81e3f32d8 169-173,178-186
+  s_a52166d0bed94b::t_8b0a3b9948f88d 133,192,197-200,202-203
+  s_a52166d0bed94b::t_3a00b75870a222 195-196,245,1248
+  s_a52166d0bed94b::t_6ea33b8801e00b 205,214,216-221,228-231,244,246-248,250,252-256,290,822,1214
+  s_a52166d0bed94b::t_b10b13956a4b6d 249,251
+  s_a52166d0bed94b::t_0c9b1b8711d782 34,122,206,215,222-227,282,1238
+  s_a52166d0bed94b::t_3f528e3434ddea 174,201,232-243,835-837,839,841-846,861
+  s_a52166d0bed94b::t_af96e588bed6a1 204
+  s_bf154ec7b6fdc0::t_48207b25e51c29 177
+  s_7051ef8aaa5641::t_549403abe5b404 168,761-762,1221,1228,1250
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatPanel.test.ts
+  s_a52166d0bed94b::t_2536ee00fe29d7 644-651,681-689,696-697,701-705,716-723,734-741
+  s_a52166d0bed94b::t_8a23eb8f751670 581-582,585-586,589-592,596-620,624-625,629-630,632-636,638-639
+  s_a52166d0bed94b::t_524eff053c388b 324,510-524,542-549
+  s_a52166d0bed94b::t_3f528e3434ddea 525-531,534-538
+  s_a52166d0bed94b::t_3c050a62fb2b77 21-25,293,553-579
+  s_a52166d0bed94b::t_bbe5b81e4d7552 81-84,294,485,494-497,500-509,550-552,643,652-660,677-678,715,724-733,742-752
+  s_99d642bdc3249e::t_eee6d6502d2514 407,662-676
+  s_99d642bdc3249e::t_37836341a85b8d 397
+  s_a52166d0bed94b::t_baa2fcfc02e935 580
+  s_a52166d0bed94b::t_97306c62eb6a34 680,690-693,695,698-700,706-710,712-714
+  s_a52166d0bed94b::t_c7d58d42b84d9e 679
+  s_99d642bdc3249e::t_6c1f5f1ad57fec 661
+packages/frontend/editor-ui/src/features/agents/agents-design-language.md
+  s_a52166d0bed94b::t_0c9b1b8711d782 274
+  s_a52166d0bed94b::t_8a23eb8f751670 270
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "747f13e18d962110f2c39057e29456c44e3f8350",
+  "prompts": {},
+  "sessions": {
+    "s_509bf2cdeb3e3a": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0fcc1-8753-734c-95cc-243b2835294f",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_7051ef8aaa5641": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a11080-e6ea-7441-adeb-64b99f25d19c",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_99d642bdc3249e": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0fcd5-dbf6-734c-95cc-24406fca3808",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_a52166d0bed94b": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0fca8-9564-734c-95cc-2439f0309cfc",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_bf154ec7b6fdc0": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0fcc5-3301-734c-95cc-243f65cedaca",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}
