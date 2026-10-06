@@ -1,5 +1,12 @@
 import { EventService } from '@n8n/backend-services';
-import { createTeamProject, mockInstance, testDb } from '@n8n/backend-test-utils';
+import {
+	createTeamProject,
+	createWorkflow,
+	linkUserToProject,
+	mockInstance,
+	randomCredentialPayload,
+	testDb,
+} from '@n8n/backend-test-utils';
 import type { Project, User } from '@n8n/db';
 import { ProjectRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -7,14 +14,23 @@ import { InstanceSettings } from 'n8n-core';
 
 import { CredentialTypes } from '@/credential-types';
 import {
+	buildEntityPackageBuffer,
 	buildImportPackageBuffer,
+	dataTableRequirement,
+	serializedDataTable,
+	serializedFolder,
+	serializedProject,
 	serializedWorkflow,
 	serializedWorkflowWithCredential,
+	serializedWorkflowWithDataTable,
 	WIRE_VERSION_ID,
 } from '@/modules/n8n-packages/__tests__/fixtures/package-fixtures';
 import { TarPackageWriter } from '@/modules/n8n-packages/io/tar/tar-package-writer';
 import { Telemetry } from '@/telemetry';
 
+import { affixRoleToSaveCredential } from '../shared/db/credentials';
+import { createFolder } from '../shared/db/folders';
+import { createCustomRoleWithScopeSlugs } from '../shared/db/roles';
 import { createMemberWithApiKey, createOwnerWithApiKey } from '../shared/db/users';
 import { getVariableByKey } from '../shared/db/variables';
 import type { SuperAgentTest } from '../shared/types';
@@ -28,7 +44,29 @@ mockInstance(Telemetry);
 const credentialTypesMock = mockInstance(CredentialTypes);
 credentialTypesMock.recognizes.mockReturnValue(true);
 
-const testServer = utils.setupTestServer({ endpointGroups: ['publicApi'] });
+const testServer = utils.setupTestServer({
+	endpointGroups: ['publicApi'],
+	modules: ['data-table'],
+});
+
+/** Every scope a limited-role project member needs to import, minus the delete scopes under test. */
+const IMPORT_MEMBER_ROLE_SCOPES = [
+	'project:read',
+	'project:list',
+	'project:update',
+	'workflow:create',
+	'workflow:read',
+	'workflow:update',
+	'workflow:import',
+	'workflow:list',
+	'workflow:publish',
+	'folder:create',
+	'folder:read',
+	'folder:update',
+	'folder:list',
+	'credential:read',
+	'credential:list',
+] as const;
 
 let owner: User;
 let ownerPersonalProject: Project;
@@ -525,5 +563,457 @@ describe('POST /n8n-packages/import', () => {
 			'missing-credential': expect.any(String),
 		});
 		expect(response.body.workflows).toHaveLength(1);
+	});
+
+	test('returns 409 with workflow-id-conflict when the source id is already used in a different project', async () => {
+		const p1 = await createTeamProject('P1', owner);
+		const p2 = await createTeamProject('P2', owner);
+		const firstBuffer = await buildImportPackageBuffer(
+			[serializedWorkflow({ id: 'wf', name: 'Workflow' })],
+			{ sourceId: 'id-conflict-1' },
+		);
+		const secondBuffer = await buildImportPackageBuffer(
+			[serializedWorkflow({ id: 'wf', name: 'Workflow Clone' })],
+			{ sourceId: 'id-conflict-2' },
+		);
+
+		const first = await authOwnerAgent
+			.post('/n8n-packages/import')
+			.field('projectId', p1.id)
+			.field('workflowConflictPolicy', 'fail')
+			.field('workflowIdPolicy', 'source')
+			.attach('package', firstBuffer, 'import.n8np');
+		expect(first.statusCode).toBe(200);
+
+		const response = await authOwnerAgent
+			.post('/n8n-packages/import')
+			.field('projectId', p2.id)
+			.field('workflowConflictPolicy', 'fail')
+			.field('workflowIdPolicy', 'source')
+			.attach('package', secondBuffer, 'import.n8np');
+
+		expect(response.statusCode).toBe(409);
+		expect(response.body).toStrictEqual({
+			message: 'Import blocked: 1 issue(s) must be resolved before the package can be imported.',
+			issues: [
+				{
+					type: 'workflow-id-conflict',
+					sourceWorkflowId: 'wf',
+					existingWorkflowId: 'wf',
+					existingProjectId: p1.id,
+					isArchived: false,
+					name: 'Workflow',
+				},
+			],
+		});
+	});
+
+	test('returns 409 with workflow-folder-conflict when a matched workflow would move to a different folder', async () => {
+		testServer.license.enable('feat:folders');
+		const folder = await createFolder(ownerPersonalProject, { name: 'Target Folder' });
+		const firstBuffer = await buildImportPackageBuffer(
+			[serializedWorkflow({ id: 'wf-root', name: 'Root Workflow' })],
+			{ sourceId: 'folder-conflict-1' },
+		);
+		const secondBuffer = await buildImportPackageBuffer(
+			[serializedWorkflow({ id: 'wf-root', name: 'Folder Workflow' })],
+			{ sourceId: 'folder-conflict-2' },
+		);
+
+		const first = await authOwnerAgent
+			.post('/n8n-packages/import')
+			.field('workflowConflictPolicy', 'fail')
+			.field('workflowIdPolicy', 'source')
+			.attach('package', firstBuffer, 'import.n8np');
+		expect(first.statusCode).toBe(200);
+
+		const response = await authOwnerAgent
+			.post('/n8n-packages/import')
+			.field('folderId', folder.id)
+			.field('workflowConflictPolicy', 'new-version')
+			.field('workflowIdPolicy', 'source')
+			.attach('package', secondBuffer, 'import.n8np');
+
+		expect(response.statusCode).toBe(409);
+		expect(response.body).toStrictEqual({
+			message: 'Import blocked: 1 issue(s) must be resolved before the package can be imported.',
+			issues: [
+				{
+					type: 'workflow-folder-conflict',
+					sourceWorkflowId: 'wf-root',
+					existingWorkflowId: 'wf-root',
+					existingParentFolderId: null,
+					targetFolderId: folder.id,
+					name: 'Root Workflow',
+				},
+			],
+		});
+	});
+
+	test('returns 409 with folder-conflict (parent-mismatch) when a matched folder would move to a different parent', async () => {
+		testServer.license.enable('feat:folders');
+		const firstBuffer = await buildEntityPackageBuffer({
+			sourceId: 'folder-parent-mismatch-1',
+			folders: [{ target: 'folders/f', folder: serializedFolder({ id: 'F1', name: 'f' }) }],
+		});
+		const secondBuffer = await buildEntityPackageBuffer({
+			sourceId: 'folder-parent-mismatch-2',
+			folders: [{ target: 'folders/f', folder: serializedFolder({ id: 'F1', name: 'f' }) }],
+		});
+
+		const first = await authOwnerAgent
+			.post('/n8n-packages/import')
+			.field('workflowConflictPolicy', 'fail')
+			.attach('package', firstBuffer, 'import.n8np');
+		expect(first.statusCode).toBe(200);
+
+		const anchor = await createFolder(ownerPersonalProject, { name: 'anchor' });
+
+		const response = await authOwnerAgent
+			.post('/n8n-packages/import')
+			.field('folderId', anchor.id)
+			.field('workflowConflictPolicy', 'fail')
+			.attach('package', secondBuffer, 'import.n8np');
+
+		expect(response.statusCode).toBe(409);
+		expect(response.body).toStrictEqual({
+			message: 'Import blocked: 1 issue(s) must be resolved before the package can be imported.',
+			issues: [
+				{
+					type: 'folder-conflict',
+					kind: 'parent-mismatch',
+					sourceFolderId: 'F1',
+					name: 'f',
+					existingParentFolderId: null,
+					expectedParentFolderId: anchor.id,
+				},
+			],
+		});
+	});
+
+	test('returns 422 with workflow-archive-forbidden when the caller may not change archive state', async () => {
+		testServer.license.enable('feat:projectRole:admin');
+		testServer.license.setQuota('quota:maxTeamProjects', 100);
+		const project = await createTeamProject('Archive Target', owner);
+
+		const limitedRole = await createCustomRoleWithScopeSlugs(
+			IMPORT_MEMBER_ROLE_SCOPES.filter(
+				(scope) => scope !== 'credential:read' && scope !== 'credential:list',
+			),
+			{ roleType: 'project' },
+		);
+		const member = await createMemberWithApiKey({ scopes: ['workflow:import', 'workflow:delete'] });
+		await linkUserToProject(member, project, limitedRole.slug);
+
+		const firstBuffer = await buildImportPackageBuffer(
+			[serializedWorkflow({ id: 'wf-archive', name: 'Archive Me', isArchived: false })],
+			{ sourceId: 'archive-forbidden-1' },
+		);
+		const secondBuffer = await buildImportPackageBuffer(
+			[serializedWorkflow({ id: 'wf-archive', name: 'Archive Me', isArchived: true })],
+			{ sourceId: 'archive-forbidden-2' },
+		);
+
+		const first = await authOwnerAgent
+			.post('/n8n-packages/import')
+			.field('projectId', project.id)
+			.field('workflowConflictPolicy', 'fail')
+			.attach('package', firstBuffer, 'import.n8np');
+		expect(first.statusCode).toBe(200);
+
+		const response = await testServer
+			.publicApiAgentFor(member)
+			.post('/n8n-packages/import')
+			.field('projectId', project.id)
+			.field('workflowConflictPolicy', 'new-version')
+			.attach('package', secondBuffer, 'import.n8np');
+
+		expect(response.statusCode).toBe(422);
+		expect(response.body).toStrictEqual({
+			message: 'Import blocked: 1 issue(s) must be resolved before the package can be imported.',
+			issues: [
+				{
+					type: 'workflow-archive-forbidden',
+					sourceWorkflowId: 'wf-archive',
+					existingWorkflowId: 'wf-archive',
+					name: 'Archive Me',
+					projectId: project.id,
+					transition: 'archive',
+				},
+			],
+		});
+	});
+
+	test('returns 422 with workflow-removal-forbidden when the caller may not delete a reconciled-away workflow', async () => {
+		testServer.license.enable('feat:projectRole:admin');
+		testServer.license.enable('feat:folders');
+		testServer.license.setQuota('quota:maxTeamProjects', 100);
+
+		const packageBuffer = await buildEntityPackageBuffer({
+			sourceId: 'removal-forbidden-source',
+			projects: [
+				{
+					target: 'projects/p1',
+					project: serializedProject({ id: 'RemovalForbiddenP1', name: 'P1' }),
+				},
+			],
+			workflows: [
+				{
+					target: 'projects/p1/workflows/wf',
+					workflow: serializedWorkflow({ id: 'WF', name: 'wf' }),
+				},
+			],
+		});
+
+		const first = await authOwnerAgent
+			.post('/n8n-packages/import')
+			.field('workflowConflictPolicy', 'new-version')
+			.attach('package', packageBuffer, 'import.n8np');
+		expect(first.statusCode).toBe(200);
+		const project = await Container.get(ProjectRepository).findOneOrFail({
+			where: { id: 'RemovalForbiddenP1' },
+		});
+
+		const stale = await createWorkflow({ name: 'Stale' }, project);
+
+		const limitedRole = await createCustomRoleWithScopeSlugs(
+			[...IMPORT_MEMBER_ROLE_SCOPES, 'folder:delete'],
+			{ roleType: 'project' },
+		);
+		const member = await createMemberWithApiKey({
+			scopes: [
+				'workflow:import',
+				'workflow:delete',
+				'folder:delete',
+				'project:create',
+				'project:update',
+			],
+		});
+		await linkUserToProject(member, project, limitedRole.slug);
+
+		const response = await testServer
+			.publicApiAgentFor(member)
+			.post('/n8n-packages/import')
+			.field('workflowConflictPolicy', 'new-version')
+			.field('projectConflictPolicy', 'overwrite')
+			.attach('package', packageBuffer, 'import.n8np');
+
+		expect(response.statusCode).toBe(422);
+		expect(response.body).toStrictEqual({
+			message: 'Import blocked: 1 issue(s) must be resolved before the package can be imported.',
+			issues: [
+				{
+					type: 'workflow-removal-forbidden',
+					workflowId: stale.id,
+					name: 'Stale',
+					projectId: project.id,
+				},
+			],
+		});
+	});
+
+	test('returns 422 with folder-removal-forbidden when the caller may not delete a reconciled-away folder', async () => {
+		testServer.license.enable('feat:projectRole:admin');
+		testServer.license.enable('feat:folders');
+		testServer.license.setQuota('quota:maxTeamProjects', 100);
+
+		const packageBuffer = await buildEntityPackageBuffer({
+			sourceId: 'folder-removal-forbidden-source',
+			projects: [
+				{
+					target: 'projects/p1',
+					project: serializedProject({ id: 'FolderRemovalForbiddenP1', name: 'P1' }),
+				},
+			],
+			folders: [
+				{ target: 'projects/p1/folders/a', folder: serializedFolder({ id: 'FA', name: 'a' }) },
+			],
+			workflows: [
+				{
+					target: 'projects/p1/folders/a/workflows/wf',
+					workflow: serializedWorkflow({ id: 'WF', name: 'wf' }),
+				},
+			],
+		});
+
+		const first = await authOwnerAgent
+			.post('/n8n-packages/import')
+			.field('workflowConflictPolicy', 'new-version')
+			.attach('package', packageBuffer, 'import.n8np');
+		expect(first.statusCode).toBe(200);
+		const project = await Container.get(ProjectRepository).findOneOrFail({
+			where: { id: 'FolderRemovalForbiddenP1' },
+		});
+
+		const empty = await createFolder(project, { name: 'empty' });
+
+		const limitedRole = await createCustomRoleWithScopeSlugs(
+			[...IMPORT_MEMBER_ROLE_SCOPES, 'workflow:delete'],
+			{ roleType: 'project' },
+		);
+		const member = await createMemberWithApiKey({
+			scopes: [
+				'workflow:import',
+				'workflow:delete',
+				'folder:delete',
+				'folder:create',
+				'folder:update',
+				'project:create',
+				'project:update',
+			],
+		});
+		await linkUserToProject(member, project, limitedRole.slug);
+
+		const response = await testServer
+			.publicApiAgentFor(member)
+			.post('/n8n-packages/import')
+			.field('workflowConflictPolicy', 'new-version')
+			.field('projectConflictPolicy', 'overwrite')
+			.attach('package', packageBuffer, 'import.n8np');
+
+		expect(response.statusCode).toBe(422);
+		expect(response.body).toStrictEqual({
+			message: 'Import blocked: 1 issue(s) must be resolved before the package can be imported.',
+			issues: [
+				{
+					type: 'folder-removal-forbidden',
+					folderId: empty.id,
+					name: 'empty',
+					projectId: project.id,
+				},
+			],
+		});
+	});
+
+	test('returns 422 with variable-unresolved when a referenced variable does not preexist', async () => {
+		testServer.license.enable('feat:variables');
+		const tarBuffer = await buildImportPackage({ variable: { name: 'MISSING_VAR', value: 'x' } });
+
+		const response = await authOwnerAgent
+			.post('/n8n-packages/import')
+			.field('workflowConflictPolicy', 'fail')
+			.field('variableMissingMode', 'must-preexist')
+			.attach('package', tarBuffer, 'import.n8np');
+
+		expect(response.statusCode).toBe(422);
+		expect(response.body).toStrictEqual({
+			message: 'Import blocked: 1 issue(s) must be resolved before the package can be imported.',
+			issues: [
+				{ type: 'variable-unresolved', name: 'MISSING_VAR', usedByWorkflows: ['wf-http-source'] },
+			],
+		});
+	});
+
+	test('returns 422 with variable-limit-exceeded when creating a stub would exceed the instance quota', async () => {
+		testServer.license.enable('feat:variables');
+		testServer.license.setQuota('quota:maxVariables', 0);
+		const tarBuffer = await buildImportPackage({
+			variable: { name: 'OVER_QUOTA_VAR', value: 'x' },
+		});
+
+		const response = await authOwnerAgent
+			.post('/n8n-packages/import')
+			.field('workflowConflictPolicy', 'fail')
+			.field('variableMissingMode', 'create-stub')
+			.attach('package', tarBuffer, 'import.n8np');
+
+		expect(response.statusCode).toBe(422);
+		expect(response.body).toStrictEqual({
+			message: 'Import blocked: 1 issue(s) must be resolved before the package can be imported.',
+			issues: [
+				{
+					type: 'variable-limit-exceeded',
+					limit: 0,
+					remaining: 0,
+					requested: 1,
+					names: ['OVER_QUOTA_VAR'],
+					usedByWorkflows: ['wf-http-source'],
+				},
+			],
+		});
+	});
+
+	test('returns 422 with credential-unresolved (type_mismatch) when an explicit binding targets a wrong-type credential', async () => {
+		const teamProject = await createTeamProject('Credential Project', owner);
+		const saveCredential = affixRoleToSaveCredential('credential:owner');
+		const wrongType = await saveCredential(randomCredentialPayload({ type: 'slackApi' }), {
+			project: teamProject,
+		});
+
+		const tarBuffer = await buildImportPackageBuffer(
+			[
+				serializedWorkflowWithCredential({
+					id: 'wf-mismatch',
+					name: 'Mismatch',
+					credentialId: 'source-cred',
+					credentialName: 'Source',
+				}),
+			],
+			{ sourceId: 'credential-type-mismatch' },
+		);
+
+		const response = await authOwnerAgent
+			.post('/n8n-packages/import')
+			.field('projectId', teamProject.id)
+			.field('workflowConflictPolicy', 'fail')
+			.field('credentialMatchingMode', 'type-only')
+			.field('bindings', JSON.stringify({ credentials: { 'source-cred': wrongType.id } }))
+			.attach('package', tarBuffer, 'import.n8np');
+
+		expect(response.statusCode).toBe(422);
+		expect(response.body).toStrictEqual({
+			message: 'Import blocked: 1 issue(s) must be resolved before the package can be imported.',
+			issues: [
+				{
+					type: 'credential-unresolved',
+					kind: 'type_mismatch',
+					sourceId: 'source-cred',
+					targetId: wrongType.id,
+					expectedType: 'githubApi',
+					actualType: 'slackApi',
+					usedByWorkflows: ['wf-mismatch'],
+				},
+			],
+		});
+	});
+
+	test('returns 422 with data-table-unresolved (missing) when a referenced table does not preexist', async () => {
+		const table = serializedDataTable({ id: 'dtmissing', name: 'Missing Table' });
+
+		const tarBuffer = await buildEntityPackageBuffer({
+			sourceId: 'data-table-missing-source',
+			workflows: [
+				{
+					target: 'workflows/wf',
+					workflow: serializedWorkflowWithDataTable({
+						id: 'wf-dt',
+						name: 'DT Workflow',
+						dataTableId: table.id,
+					}),
+				},
+			],
+			dataTables: [{ target: 'data-tables/dt', dataTable: table }],
+			manifestExtras: { requirements: { dataTables: [dataTableRequirement(table, ['wf-dt'])] } },
+		});
+
+		const response = await authOwnerAgent
+			.post('/n8n-packages/import')
+			.field('workflowConflictPolicy', 'fail')
+			.field('dataTableMissingMode', 'must-preexist')
+			.attach('package', tarBuffer, 'import.n8np');
+
+		expect(response.statusCode).toBe(422);
+		expect(response.body).toStrictEqual({
+			message: 'Import blocked: 1 issue(s) must be resolved before the package can be imported.',
+			issues: [
+				{
+					type: 'data-table-unresolved',
+					kind: 'missing',
+					sourceId: 'dtmissing',
+					name: 'Missing Table',
+					usedByWorkflows: ['wf-dt'],
+				},
+			],
+		});
 	});
 });
