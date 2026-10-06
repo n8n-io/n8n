@@ -3,6 +3,7 @@ import { Time } from '@n8n/constants';
 import { Service } from '@n8n/di';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { OperationalError } from 'n8n-workflow';
+import { aborted } from 'node:util';
 
 import { ExternalSecretsConfig } from './external-secrets.config';
 import { ExternalSecretsProviderRegistry } from './provider-registry.service';
@@ -34,13 +35,16 @@ export class ExternalSecretsSecretsCache {
 	 *
 	 * @throws {OperationalError} when providers are connected and none of them refreshed
 	 */
-	async refreshAll(signal?: AbortSignal): Promise<void> {
+	async refreshAll(signal = new AbortController().signal): Promise<void> {
 		const refreshes = Promise.all(
 			Array.from(this.registry.getAll().entries()).map(
 				async ([name, provider]) => [name, await this.refreshProvider(name, provider)] as const,
 			),
 		);
-		const outcomes = await this.unlessAborted(refreshes, signal);
+		const outcomes = await Promise.race([
+			refreshes,
+			aborted(signal, refreshes).then(() => undefined),
+		]);
 		if (!outcomes) return;
 
 		const connected = outcomes.filter(([, outcome]) => outcome !== 'not-connected');
@@ -76,23 +80,6 @@ export class ExternalSecretsSecretsCache {
 				});
 			}
 			return 'failed';
-		}
-	}
-
-	/** Resolves to `undefined` once `signal` aborts. `work` keeps running. */
-	private async unlessAborted<T>(work: Promise<T>, signal?: AbortSignal): Promise<T | undefined> {
-		if (!signal) return await work;
-		if (signal.aborted) return undefined;
-
-		let onAbort!: () => void;
-		const aborted = new Promise<undefined>((resolve) => {
-			onAbort = () => resolve(undefined);
-		});
-		signal.addEventListener('abort', onAbort, { once: true });
-		try {
-			return await Promise.race([work, aborted]);
-		} finally {
-			signal.removeEventListener('abort', onAbort);
 		}
 	}
 
