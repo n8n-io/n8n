@@ -19,16 +19,6 @@ export type PaginatedRequest = AuthenticatedRequest<
 		lastId?: string;
 	}
 >;
-export declare namespace WorkflowRequest {
-	type Activate = AuthenticatedRequest<
-		{ id: string },
-		{},
-		{ versionId?: string; name?: string; description?: string },
-		{}
-	>;
-	type GetVersion = AuthenticatedRequest<{ id: string; versionId: string }, {}, {}, {}>;
-}
-
 export declare namespace PackageRequest {
 	type Import = AuthenticatedRequest<
 		{},
