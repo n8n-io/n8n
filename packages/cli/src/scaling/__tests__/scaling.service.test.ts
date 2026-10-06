@@ -11,7 +11,7 @@ import type { MockInstance } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import type { ActiveExecutions } from '@/active-executions';
-import { JobHandedBackError } from '@/errors/job-handed-back.error';
+import { JobReturnedToQueueError } from '@/errors/job-returned-to-queue.error';
 import { ExecutionCrashService } from '@/executions/execution-crash.service';
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
 
@@ -364,7 +364,7 @@ describe('ScalingService', () => {
 				await scalingService.stop();
 
 				const job = lateJob();
-				await expect(processFn(job)).rejects.toBeInstanceOf(JobHandedBackError);
+				await expect(processFn(job)).rejects.toBeInstanceOf(JobReturnedToQueueError);
 
 				expect(scopedLogger.warn).toHaveBeenCalledTimes(1);
 				expect(scopedLogger.warn).toHaveBeenCalledWith(

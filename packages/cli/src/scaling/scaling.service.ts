@@ -19,7 +19,7 @@ import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { assertNever } from '@/utils';
 
 import { JOB_TYPE_NAME } from './constants';
-import { handBackJob } from './job-handback';
+import { returnJobToQueue } from './job-return';
 import { JobOutcomeTracker } from './job-outcome-tracker';
 import { JobProcessor } from './job-processor';
 import { DEFAULT_QUEUE_NAME, resolveQueueName, resolveWorkerPoolName } from './queue-name';
@@ -182,7 +182,7 @@ export class ScalingService {
 					{ executionId, jobId },
 				);
 				// A job started this late may not finish before the force exit, so another worker runs it.
-				await handBackJob(job);
+				await returnJobToQueue(job);
 			}
 
 			try {
@@ -331,7 +331,7 @@ export class ScalingService {
 		}
 	}
 
-	// Waits for fetches in flight at the pause, so a job that reaches the handler is handed back before exit.
+	// Waits for fetches in flight at the pause, so a job that reaches the handler is returned to the queue before exit.
 	private async waitForCurrentQueueJobs(remainingWindowMs: number) {
 		let timeout: NodeJS.Timeout | undefined;
 
