@@ -4599,6 +4599,8 @@
 	"settings.migrationReport.detail.table.name": "Name",
 	"settings.migrationReport.detail.table.owner": "Owner",
 	"settings.migrationReport.detail.table.unassigned": "Unassigned",
+	"settings.migrationReport.detail.owner.error.title": "Could not change the owner",
+	"settings.migrationReport.detail.owner.search.error.title": "Could not load users",
 	"settings.migrationReport.detail.table.status": "Status",
 	"settings.migrationReport.detail.table.active": "Active",
 	"settings.migrationReport.detail.table.deactivated": "Deactivated",

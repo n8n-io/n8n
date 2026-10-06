@@ -7,6 +7,7 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
 import { useRBACStore } from '@n8n/stores/rbac.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { MIGRATE_WORKFLOW_MODAL_KEY } from '@/app/constants';
 import MigrationRuleDetail from './MigrationRuleDetail.vue';
@@ -17,6 +18,8 @@ vi.mock('@n8n/rest-api-client/api/breaking-changes', () => ({
 	getReportForRule: vi.fn(),
 	migrateWorkflowForRule: vi.fn(),
 	updateFindingStatus: vi.fn(),
+	assignWorkflowOwner: vi.fn(),
+	unassignWorkflowOwner: vi.fn(),
 }));
 
 const { showError, resolveRoute } = vi.hoisted(() => ({
@@ -38,6 +41,7 @@ vi.mock('vue-router', async (importOriginal) => ({
 let rootStore: ReturnType<typeof mockedStore<typeof useRootStore>>;
 let uiStore: ReturnType<typeof mockedStore<typeof useUIStore>>;
 let rbacStore: ReturnType<typeof mockedStore<typeof useRBACStore>>;
+let usersStore: ReturnType<typeof mockedStore<typeof useUsersStore>>;
 let renderComponent: ReturnType<typeof createComponentRenderer>;
 
 const mockWorkflowWithIssue = {
@@ -137,6 +141,8 @@ describe('MigrationRuleDetail', () => {
 		uiStore = mockedStore(useUIStore);
 		rbacStore = mockedStore(useRBACStore);
 		rbacStore.hasScope.mockImplementation((scope) => scope === 'breakingChanges:migrate');
+		usersStore = mockedStore(useUsersStore);
+		usersStore.allUsers = [];
 
 		vi.mocked(breakingChangesApi.getReportForRule).mockResolvedValue(mockRuleResult);
 	});
@@ -445,6 +451,7 @@ describe('MigrationRuleDetail', () => {
 		});
 
 		it('should show the owner name, or Unassigned when the workflow has none', async () => {
+			rbacStore.hasScope.mockReturnValue(false);
 			renderComponent({
 				props: {
 					migrationRuleId: 'rule-1',
@@ -457,7 +464,71 @@ describe('MigrationRuleDetail', () => {
 			});
 		});
 
+		it('should offer an owner picker per row to a user with the migrate scope, loading users once', async () => {
+			renderComponent({ props: { migrationRuleId: 'rule-1' } });
+
+			await waitFor(() => {
+				expect(screen.getAllByTestId('migration-owner-select')).toHaveLength(2);
+			});
+			expect(usersStore.fetchUsers).toHaveBeenCalledTimes(1);
+			// The picker shows the current owner, who is not in the loaded user list.
+			expect(screen.getByDisplayValue('Ada Lovelace (ada@example.com)')).toBeInTheDocument();
+		});
+
+		it('should show a plain label and load no users for a user without the migrate scope', async () => {
+			rbacStore.hasScope.mockReturnValue(false);
+			renderComponent({ props: { migrationRuleId: 'rule-1' } });
+
+			await waitFor(() => expect(screen.getByText('Ada Lovelace')).toBeInTheDocument());
+			expect(screen.queryByTestId('migration-owner-select')).not.toBeInTheDocument();
+			expect(usersStore.fetchUsers).not.toHaveBeenCalled();
+		});
+
+		it('assigns the picked user and shows the returned owner', async () => {
+			usersStore.allUsers = [
+				{
+					id: 'user-2',
+					firstName: 'Grace',
+					lastName: 'Hopper',
+					fullName: 'Grace Hopper',
+					email: 'grace@example.com',
+				},
+			];
+			vi.mocked(breakingChangesApi.assignWorkflowOwner).mockResolvedValue({
+				owner: {
+					id: 'user-2',
+					firstName: 'Grace',
+					lastName: 'Hopper',
+					email: 'grace@example.com',
+					source: 'assigned',
+				},
+			});
+			vi.mocked(breakingChangesApi.getReportForRule).mockResolvedValue(
+				createMockRuleResult({ affectedWorkflows: [mockWorkflowWithMultipleNodes] }),
+			);
+			const { baseElement } = renderComponent({ props: { migrationRuleId: 'rule-1' } });
+			await waitFor(() => expect(screen.getByTestId('migration-owner-select')).toBeInTheDocument());
+
+			await userEvent.click(screen.getByRole('combobox'));
+			await waitFor(() => expect(screen.getByRole('listbox')).toBeInTheDocument());
+			await userEvent.click(
+				baseElement.querySelector('#user-select-option-id-user-2') as HTMLElement,
+			);
+
+			await waitFor(() => {
+				expect(breakingChangesApi.assignWorkflowOwner).toHaveBeenCalledWith(
+					expect.anything(),
+					'workflow-2',
+					'user-2',
+				);
+			});
+			await waitFor(() => {
+				expect(screen.getByDisplayValue('Grace Hopper (grace@example.com)')).toBeInTheDocument();
+			});
+		});
+
 		it('should fall back to the email when the owner has no name', async () => {
+			rbacStore.hasScope.mockReturnValue(false);
 			vi.mocked(breakingChangesApi.getReportForRule).mockResolvedValue(
 				createMockRuleResult({
 					affectedWorkflows: [
@@ -594,6 +665,7 @@ describe('MigrationRuleDetail', () => {
 		});
 
 		it('should sort by the shown owner label in both directions', async () => {
+			rbacStore.hasScope.mockReturnValue(false);
 			vi.mocked(breakingChangesApi.getReportForRule).mockResolvedValue(
 				createMockRuleResult({
 					affectedWorkflows: [

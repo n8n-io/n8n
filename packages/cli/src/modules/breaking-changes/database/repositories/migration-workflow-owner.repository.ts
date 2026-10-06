@@ -26,6 +26,30 @@ export class MigrationWorkflowOwnerRepository extends BaseRepository<MigrationWo
 		});
 	}
 
+	/** Sets the owner a person chose. It replaces a suggestion or an earlier assignment. */
+	async assign(
+		workflowId: string,
+		userId: string,
+		assignedById: string,
+		ctx: OperationContext,
+	): Promise<void> {
+		await this.runInTransaction(ctx, async (manager) => {
+			await manager.delete(MigrationWorkflowOwner, { workflowId });
+			await manager.insert(MigrationWorkflowOwner, {
+				workflowId,
+				userId,
+				source: 'assigned',
+				assignedById,
+				assignedAt: new Date(),
+			});
+		});
+	}
+
+	/** Removes the owner of the workflow, assigned or suggested. */
+	async removeOwner(workflowId: string, ctx: OperationContext): Promise<void> {
+		await this.managerFor(ctx).delete(MigrationWorkflowOwner, { workflowId });
+	}
+
 	/**
 	 * Writes the heuristic's suggestions for a batch of workflows. A workflow in
 	 * `workflowIds` without a suggestion loses any earlier suggestion. A workflow a

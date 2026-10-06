@@ -27,6 +27,7 @@ import { MigrationFindingSyncRepository } from '../database/repositories/migrati
 import { MigrationFindingRepository } from '../database/repositories/migration-finding.repository';
 import { MigrationWorkflowOwnerRepository } from '../database/repositories/migration-workflow-owner.repository';
 import { groupNodesByType } from '../group-nodes-by-type';
+import { toWorkflowOwner } from '../owners/workflow-owner';
 import { summarizeExecutionStatistics } from '../summarize-execution-statistics';
 import {
 	isInstanceRule,
@@ -190,13 +191,7 @@ export class MigrationFindingQueryService {
 		for (const row of rows) {
 			const user = row.userId ? usersById.get(row.userId) : undefined;
 			if (!user) continue;
-			owners.set(row.workflowId, {
-				id: user.id,
-				firstName: user.firstName,
-				lastName: user.lastName,
-				email: user.email,
-				source: row.source,
-			});
+			owners.set(row.workflowId, toWorkflowOwner(user, row.source));
 		}
 		return owners;
 	}

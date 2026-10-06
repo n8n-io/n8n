@@ -7,9 +7,11 @@ import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import type {
 	BreakingChangeRuleDetailResult,
 	BreakingChangeRuleDetailWorkflow,
+	BreakingChangeWorkflowOwner,
 	MigrationFindingTriageStatus,
 } from '@n8n/api-types';
 import { useUIStore } from '@/app/stores/ui.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import {
 	N8nBadge,
 	N8nButton,
@@ -23,8 +25,9 @@ import {
 	N8nSelect,
 	N8nSettingsLayout,
 	N8nText,
+	N8nUserSelect,
 } from '@n8n/design-system';
-import type { TableHeader } from '@n8n/design-system';
+import type { IUser, TableHeader } from '@n8n/design-system';
 import * as breakingChangesApi from '@n8n/rest-api-client/api/breaking-changes';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';
@@ -33,13 +36,14 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { useAsyncState, useDebounceFn } from '@vueuse/core';
 import orderBy from 'lodash/orderBy';
-import { computed, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import FindingStateSelect from './components/FindingStateSelect.vue';
 import ImpactTag from './components/ImpactTag.vue';
 
 const i18n = useI18n();
 const uiStore = useUIStore();
+const usersStore = useUsersStore();
 const rootStore = useRootStore();
 const rbacStore = useRBACStore();
 const toast = useToast();
@@ -49,6 +53,10 @@ useDocumentTitle().set(i18n.baseText('settings.migrationReport'));
 const props = defineProps<{ migrationRuleId: string }>();
 
 const router = useRouter();
+
+// The page needs only `breakingChanges:list`. Choosing an owner or a state needs
+// `breakingChanges:migrate`, like Migrate.
+const canAssignOwner = computed(() => rbacStore.hasScope('breakingChanges:migrate'));
 
 const { state, isLoading } = useAsyncState<BreakingChangeRuleDetailResult>(
 	async () => {
@@ -71,6 +79,68 @@ const { state, isLoading } = useAsyncState<BreakingChangeRuleDetailResult>(
 );
 
 type AffectedWorkflow = BreakingChangeRuleDetailWorkflow;
+
+// The picker lists the users loaded so far plus every owner already shown, so a
+// row never displays a bare id while the user list is still loading.
+const isLoadingUsers = ref(false);
+const ownerOptions = computed<IUser[]>(() => {
+	const byId = new Map<string, IUser>(usersStore.allUsers.map((user) => [user.id, user]));
+	for (const workflow of state.value.affectedWorkflows) {
+		const owner = workflow.owner;
+		if (owner && !byId.has(owner.id)) byId.set(owner.id, ownerAsUser(owner));
+	}
+	return [...byId.values()];
+});
+
+function ownerAsUser(owner: BreakingChangeWorkflowOwner): IUser {
+	const fullName = [owner.firstName, owner.lastName].filter(Boolean).join(' ');
+	return {
+		id: owner.id,
+		firstName: owner.firstName,
+		lastName: owner.lastName,
+		email: owner.email,
+		fullName: fullName || undefined,
+	};
+}
+
+async function loadUsers(query = '') {
+	isLoadingUsers.value = true;
+	try {
+		await usersStore.fetchUsers({
+			take: 50,
+			filter: query.trim() ? { fullText: query.trim() } : undefined,
+		});
+	} catch (error) {
+		toast.showError(
+			error,
+			i18n.baseText('settings.migrationReport.detail.owner.search.error.title'),
+		);
+	} finally {
+		isLoadingUsers.value = false;
+	}
+}
+const searchUsers = useDebounceFn(loadUsers, getDebounceTime(DEBOUNCE_TIME.INPUT.SEARCH));
+
+onMounted(() => {
+	if (canAssignOwner.value) void loadUsers();
+});
+
+async function onOwnerChange(workflow: AffectedWorkflow, userId: string) {
+	try {
+		const { owner } = userId
+			? await breakingChangesApi.assignWorkflowOwner(rootStore.restApiContext, workflow.id, userId)
+			: await breakingChangesApi.unassignWorkflowOwner(rootStore.restApiContext, workflow.id);
+		// The async state is shallow, so the list is replaced rather than mutated.
+		state.value = {
+			...state.value,
+			affectedWorkflows: state.value.affectedWorkflows.map((row) =>
+				row.id === workflow.id ? { ...row, owner: owner ?? undefined } : row,
+			),
+		};
+	} catch (error) {
+		toast.showError(error, i18n.baseText('settings.migrationReport.detail.owner.error.title'));
+	}
+}
 
 function ownerLabel(workflow: AffectedWorkflow): string {
 	const owner = workflow.owner;
@@ -172,9 +242,6 @@ const openCount = computed(
 			(workflow) => workflow.status === 'open' && !migratedWorkflowIds.value.has(workflow.id),
 		).length,
 );
-
-// The page needs only `breakingChanges:list`, but a state change needs `breakingChanges:migrate`.
-const canChangeState = computed(() => rbacStore.hasScope('breakingChanges:migrate'));
 
 // Rows with a state change in flight. One change at a time keeps the revert correct.
 const savingWorkflowIds = ref<Set<string>>(new Set());
@@ -440,6 +507,23 @@ const sortedWorkflows = computed(() => {
 					</template>
 				</div>
 			</template>
+			<template #[`item.owner`]="{ item }">
+				<div v-if="canAssignOwner" @click.stop>
+					<N8nUserSelect
+						size="small"
+						:users="ownerOptions"
+						:model-value="item.owner?.id ?? ''"
+						:placeholder="i18n.baseText('settings.migrationReport.detail.table.unassigned')"
+						remote
+						:remote-method="searchUsers"
+						:loading="isLoadingUsers"
+						clearable
+						data-test-id="migration-owner-select"
+						@update:model-value="(userId: string) => onOwnerChange(item, userId)"
+					/>
+				</div>
+				<span v-else>{{ ownerLabel(item) }}</span>
+			</template>
 			<template #[`item.lastExecutedAt`]="{ item }">
 				<TimeAgo v-if="item.lastExecutedAt" :date="item.lastExecutedAt.toString()" />
 				<span v-else>{{ i18n.baseText('settings.migrationReport.detail.table.never') }}</span>
@@ -451,7 +535,7 @@ const sortedWorkflows = computed(() => {
 				<FindingStateSelect
 					:model-value="item.status"
 					:disabled="
-						!canChangeState || savingWorkflowIds.has(item.id) || migratedWorkflowIds.has(item.id)
+						!canAssignOwner || savingWorkflowIds.has(item.id) || migratedWorkflowIds.has(item.id)
 					"
 					@update:model-value="onFindingStatusChange(item, $event)"
 					@click.stop
