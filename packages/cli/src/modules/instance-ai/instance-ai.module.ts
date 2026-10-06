@@ -106,7 +106,6 @@ export class InstanceAiModule implements ModuleInterface {
 		const { InstanceAiMcpRegistryConnection } = await import(
 			'./entities/instance-ai-mcp-registry-connection.entity.js'
 		);
-		const { InstanceAiThreadTabs } = await import('./entities/instance-ai-thread-tabs.entity.js');
 		const { WorkflowSuggestion } = await import(
 			'./workflow-suggestions/database/workflow-suggestion.entity.js'
 		);
@@ -117,7 +116,6 @@ export class InstanceAiModule implements ModuleInterface {
 		return [
 			InstanceAiIterationLog,
 			InstanceAiMcpRegistryConnection,
-			InstanceAiThreadTabs,
 			WorkflowSuggestion,
 			WorkflowSuggestionActivity,
 		];
