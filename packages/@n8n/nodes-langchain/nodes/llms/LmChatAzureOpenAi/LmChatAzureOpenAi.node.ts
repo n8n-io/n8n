@@ -170,11 +170,11 @@ export class LmChatAzureOpenAi implements INodeType {
 				if (!modelConfig.azureFoundryBaseURL) {
 					throw new NodeOperationError(
 						this.getNode(),
-						'Claude deployments need a credential using the Azure AI Foundry endpoint type',
+						'Claude deployments need a credential using the Microsoft Foundry endpoint type',
 						{
 							itemIndex,
 							description:
-								'This credential uses the classic endpoint type, which serves only the Azure OpenAI route. Switch the credential to Azure AI Foundry, or set Model Family to OpenAI.',
+								'This credential uses the classic endpoint type, which serves only the Azure OpenAI route. Switch the credential to Microsoft Foundry, or set Model Family to OpenAI.',
 						},
 					);
 				}
@@ -230,7 +230,9 @@ export class LmChatAzureOpenAi implements INodeType {
 					),
 				});
 
-				this.logger.info(`Azure AI Foundry (Anthropic) client initialized for model: ${modelName}`);
+				this.logger.info(
+					`Microsoft Foundry (Anthropic) client initialized for model: ${modelName}`,
+				);
 				return { response: model };
 			}
 

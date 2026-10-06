@@ -173,7 +173,7 @@ describe('AzureOpenAIEmbeddings', () => {
 			});
 
 			await expect(embeddingsAzureOpenAi.supplyData.call(mockContext, 0)).rejects.toThrow(
-				'Foundry endpoint is missing in the selected Azure OpenAI API credential.',
+				'Foundry endpoint is missing in the selected Microsoft Foundry (API Key) credential.',
 			);
 		});
 	});

@@ -500,7 +500,7 @@ describe('LmChatAzureOpenAi', () => {
 			const ctx = setupMockContext('azureOpenAiApi', apiKeyCredential, {}, false, 'anthropic');
 
 			await expect(new LmChatAzureOpenAi().supplyData.call(ctx, 0)).rejects.toThrow(
-				'Claude deployments need a credential using the Azure AI Foundry endpoint type',
+				'Claude deployments need a credential using the Microsoft Foundry endpoint type',
 			);
 			expect(vi.mocked(ChatAnthropic)).not.toHaveBeenCalled();
 			expect(vi.mocked(AzureChatOpenAI)).not.toHaveBeenCalled();

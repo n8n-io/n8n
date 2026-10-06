@@ -162,7 +162,7 @@ export class EmbeddingsAzureOpenAi implements INodeType {
 			if (!foundryURL) {
 				throw new NodeOperationError(
 					this.getNode(),
-					'Foundry endpoint is missing in the selected Azure OpenAI API credential.',
+					'Foundry endpoint is missing in the selected Microsoft Foundry (API Key) credential.',
 				);
 			}
 			const embeddings = new OpenAIEmbeddings({

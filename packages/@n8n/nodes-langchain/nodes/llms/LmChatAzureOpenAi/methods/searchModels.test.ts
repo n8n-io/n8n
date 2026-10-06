@@ -60,7 +60,7 @@ describe('LmChatAzureOpenAi -> searchModels', () => {
 		});
 
 		await expect(searchModels.call(ctx)).rejects.toThrow(
-			'Only an Microsoft Foundry credential can list deployments',
+			'Only a Microsoft Foundry credential can list deployments',
 		);
 
 		expect(listAzureOpenAiModelsSpy).not.toHaveBeenCalled();
@@ -74,7 +74,7 @@ describe('LmChatAzureOpenAi -> searchModels', () => {
 		ctx.getCredentials = vi.fn().mockResolvedValue({ resourceName: 'my-resource' });
 
 		await expect(searchModels.call(ctx)).rejects.toThrow(
-			'Only an Microsoft Foundry credential can list deployments',
+			'Only a Microsoft Foundry credential can list deployments',
 		);
 
 		expect(listAzureOpenAiModelsSpy).not.toHaveBeenCalled();

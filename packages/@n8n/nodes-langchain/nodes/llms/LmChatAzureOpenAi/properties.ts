@@ -54,7 +54,7 @@ export const properties: INodeProperties[] = [
 		name: 'project',
 		type: 'string',
 		description:
-			'The Microsoft Foundry project that owns the deployment. Required for an Microsoft Foundry resource; leave empty for a classic Azure OpenAI resource.',
+			'The Microsoft Foundry project that owns the deployment. Required for a Microsoft Foundry resource; leave empty for a classic Azure OpenAI resource.',
 		default: '',
 	},
 	{
@@ -65,7 +65,7 @@ export const properties: INodeProperties[] = [
 		required: true,
 		builderHint: {
 			propertyHint:
-				'Set the project parameter before you list deployments. The list needs an Microsoft Foundry credential. With a classic credential, use the id mode and enter the deployment name.',
+				'Set the project parameter before you list deployments. The list needs a Microsoft Foundry credential. With a classic credential, use the id mode and enter the deployment name.',
 		},
 		modes: [
 			{
