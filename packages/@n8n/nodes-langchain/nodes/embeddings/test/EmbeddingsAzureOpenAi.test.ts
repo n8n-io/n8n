@@ -190,6 +190,37 @@ describe('AzureOpenAIEmbeddings', () => {
 				);
 			});
 
+			// 'none' means "do not use this credential in the HTTP Request node". The editor
+			// writes it into every credential made through its OAuth flow, so blocking on it
+			// here would stop the node the credential belongs to.
+			it.each([
+				[
+					'a Foundry endpoint',
+					{
+						endpointType: 'foundry',
+						foundryEndpoint: 'https://test.services.ai.azure.com/openai/v1',
+					},
+				],
+				[
+					'a classic endpoint',
+					{ endpoint: 'https://test-resource-name.openai.azure.com', apiVersion: 'v1' },
+				],
+			])('still reaches %s when the restriction is None', async (_name, target) => {
+				const mockContext = setupMockContext();
+				mockContext.getCredentials.mockResolvedValue({
+					apiKey: 'test-api-key',
+					allowedHttpRequestDomains: 'none',
+					...target,
+				});
+				mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
+					if (paramName === 'model') return 'text-embedding-3-large';
+					if (paramName === 'options') return {};
+					return undefined;
+				});
+
+				await expect(embeddingsAzureOpenAi.supplyData.call(mockContext, 0)).resolves.toBeDefined();
+			});
+
 			it('allows a host the credential permits', async () => {
 				const mockContext = setupMockContext();
 				mockContext.getCredentials.mockResolvedValue({
@@ -285,6 +316,35 @@ describe('AzureOpenAIEmbeddings', () => {
 					await expect(embeddingsAzureOpenAi.supplyData.call(mockContext, 0)).rejects.toThrow(
 						'Domain not allowed',
 					);
+				});
+
+				// 'none' means "do not use this credential in the HTTP Request node". The editor
+				// writes it into every credential made through its OAuth flow, so blocking on it
+				// here would stop the node the credential belongs to.
+				it.each([
+					[
+						'a Foundry endpoint',
+						{
+							endpointType: 'foundry',
+							foundryEndpoint: 'https://test.services.ai.azure.com/openai/v1',
+						},
+					],
+					[
+						'a classic endpoint',
+						{ endpoint: 'https://test-resource-name.openai.azure.com', apiVersion: 'v1' },
+					],
+				])('still reaches %s when the restriction is None', async (_name, target) => {
+					const mockContext = setupMockContext();
+					mockContext.getCredentials.mockResolvedValue({
+						...entraCredential,
+						allowedHttpRequestDomains: 'none',
+						...target,
+					});
+					selectEntra(mockContext);
+
+					await expect(
+						embeddingsAzureOpenAi.supplyData.call(mockContext, 0),
+					).resolves.toBeDefined();
 				});
 
 				it('allows a host the credential permits', async () => {

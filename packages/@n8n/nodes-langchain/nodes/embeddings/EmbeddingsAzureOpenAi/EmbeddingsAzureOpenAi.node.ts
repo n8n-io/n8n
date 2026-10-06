@@ -7,10 +7,12 @@ import {
 	getConnectionHintNoticeField,
 } from '@n8n/ai-utilities';
 import {
-	assertCredentialAllowsUrl,
+	assertUrlAllowed,
+	getCredentialAllowedDomains,
 	NodeConnectionTypes,
 	NodeOperationError,
 	type ICredentialDataDecryptedObject,
+	type INode,
 	type INodeType,
 	type INodeTypeDescription,
 	type ISupplyDataFunctions,
@@ -41,6 +43,26 @@ type AzureTarget = Pick<
 	AzureApiKeyCredential,
 	'resourceName' | 'apiVersion' | 'endpoint' | 'endpointType' | 'foundryEndpoint'
 >;
+
+/**
+ * Applies the credential's domain restriction to a host the credential itself supplies.
+ *
+ * `'none'` is a no-op here. It means "do not use this credential in the HTTP Request node",
+ * and the editor writes it into every credential made through its OAuth flow, so honouring it
+ * would stop the node the credential belongs to. An explicit `'domains'` list still applies.
+ */
+function assertCredentialAllowsHost(
+	node: INode,
+	credentialData: ICredentialDataDecryptedObject,
+	url: string,
+): void {
+	const allowedDomains = getCredentialAllowedDomains({
+		node,
+		credentialData,
+		credentialOwnedSurface: true,
+	});
+	assertUrlAllowed({ url, allowedDomains, node });
+}
 
 export class EmbeddingsAzureOpenAi implements INodeType {
 	description: INodeTypeDescription = {
@@ -236,7 +258,9 @@ export class EmbeddingsAzureOpenAi implements INodeType {
 		}
 
 		const credentialLabel =
-			authentication === ENTRA_AUTH ? 'Microsoft Foundry (Entra ID)' : 'Microsoft Foundry (API Key)';
+			authentication === ENTRA_AUTH
+				? 'Microsoft Foundry (Entra ID)'
+				: 'Microsoft Foundry (API Key)';
 
 		const modelName = this.getNodeParameter('model', itemIndex) as string;
 
@@ -259,12 +283,7 @@ export class EmbeddingsAzureOpenAi implements INodeType {
 					`Foundry endpoint is missing in the selected ${credentialLabel} credential.`,
 				);
 			}
-			assertCredentialAllowsUrl({
-				node: this.getNode(),
-				credentialData,
-				url: foundryURL,
-				surface: 'Azure OpenAI',
-			});
+			assertCredentialAllowsHost(this.getNode(), credentialData, foundryURL);
 
 			const embeddings = new OpenAIEmbeddings({
 				// The openai client accepts a `() => Promise<string>` here and calls it per request
@@ -302,12 +321,7 @@ export class EmbeddingsAzureOpenAi implements INodeType {
 
 		// `||` rather than `??`, so an endpoint that is set but empty also falls back.
 		const dialledHost = target.endpoint || `https://${target.resourceName}.openai.azure.com`;
-		assertCredentialAllowsUrl({
-			node: this.getNode(),
-			credentialData,
-			url: dialledHost,
-			surface: 'Azure OpenAI',
-		});
+		assertCredentialAllowsHost(this.getNode(), credentialData, dialledHost);
 
 		const embeddings = new AzureOpenAIEmbeddings({
 			azureOpenAIApiDeploymentName: modelName,
