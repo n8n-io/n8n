@@ -126,12 +126,6 @@ export function useReferencedAgentSummary(activeNode: MaybeRefOrGetter<INodeUi |
 		{ immediate: true },
 	);
 
-	// An admin can turn agents back on while the NDV is open.
-	watch(agentsDisabled, async (disabled) => {
-		if (disabled || !agentId.value || !projectId.value || !isAgentNode.value) return;
-		await load(projectId.value, agentId.value);
-	});
-
 	// Cross-surface: another surface (the Agent Builder) wrote the same agent —
 	// refetch so this read-only view doesn't silently go stale.
 	function onAgentUpdated(event?: AgentUpdatedEvent) {

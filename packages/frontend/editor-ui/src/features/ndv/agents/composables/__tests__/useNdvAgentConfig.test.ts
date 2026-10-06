@@ -192,25 +192,6 @@ describe('useNdvAgentConfig', () => {
 			expect(getAgentMock).not.toHaveBeenCalled();
 		});
 
-		it('loads the agent once agents are turned back on while the NDV is open', async () => {
-			const agentsEnabled = ref(false);
-			vi.spyOn(useSettingsStore(), 'isAgentsEnabled', 'get').mockImplementation(
-				() => agentsEnabled.value,
-			);
-
-			const node = ref<INodeUi | null>(makeAgentNode('agent-1'));
-			const { api } = mountComposable(node);
-			await flushPromises();
-			expect(getAgentConfigMock).not.toHaveBeenCalled();
-
-			agentsEnabled.value = true;
-			await flushPromises();
-
-			expect(api.referenced.agentsDisabled.value).toBe(false);
-			expect(getAgentConfigMock).toHaveBeenCalledWith(expect.anything(), PROJECT_ID, 'agent-1');
-			expect(getAgentMock).toHaveBeenCalledWith(expect.anything(), PROJECT_ID, 'agent-1');
-		});
-
 		it('short-circuits when no agent is referenced (agentId === "")', async () => {
 			const node = ref<INodeUi | null>(makeAgentNode(''));
 			const { api } = mountComposable(node);
