@@ -162,8 +162,8 @@ can build a token. A step-bound resume URL and an approval callback end one wait
   request body. Engine v1 verifies that reference in the control plane. Here the data plane verifies
   it. The control plane reads only the id in the reference, to pick the engine, and forwards the
   body.
-- The approval callback must fit in 64 bytes, the limit of Telegram. Therefore it is a compact
-  reference, not the resume token.
+- The approval callback must fit in 64 bytes, the limit of Telegram. Therefore it carries its claims
+  in a compact signed form instead of the format of the resume token. Nothing is stored.
 - The control plane picks the engine by the shape of the id in the request, as its other execution
   routes do. A v1 id is numeric, and a v2 id is a UUID. Therefore an execution-bound resume URL
   carries the execution id in its path, and a step-bound resume URL and an approval callback carry
