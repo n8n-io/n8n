@@ -177,7 +177,7 @@ onClickOutside(
 	<div>
 		<aside :class="$style.nodeCreatorScrim" />
 		<N8nIconButton
-			variant="subtle"
+			variant="outline"
 			v-if="active"
 			:class="$style.close"
 			icon="x"
@@ -209,7 +209,7 @@ onClickOutside(
 @use '@/app/css/variables' as *;
 
 :global(strong) {
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 }
 .nodeCreator {
 	--node-creator--width: #{$node-creator-width};

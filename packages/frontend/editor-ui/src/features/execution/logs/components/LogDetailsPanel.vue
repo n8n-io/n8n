@@ -164,7 +164,7 @@ function handleResizeEnd() {
 				<div v-if="isOpen && !isTriggerNode && !isPlaceholderLog(logEntry)" :class="$style.actions">
 					<N8nButton
 						v-if="messageAgentSessionLink"
-						variant="subtle"
+						variant="outline"
 						size="xsmall"
 						data-test-id="log-details-view-agent-session"
 						@click.stop="messageAgentSessionLink.open()"
@@ -177,7 +177,7 @@ function handleResizeEnd() {
 						:shortcut="{ keys: ['i'] }"
 					>
 						<N8nButton
-							variant="subtle"
+							variant="outline"
 							size="xsmall"
 							:class="panels === LOG_DETAILS_PANEL_STATE.OUTPUT ? '' : $style.pressed"
 							@click.stop="emit('toggleInputOpen')"
@@ -190,7 +190,7 @@ function handleResizeEnd() {
 						:shortcut="{ keys: ['o'] }"
 					>
 						<N8nButton
-							variant="subtle"
+							variant="outline"
 							size="xsmall"
 							:class="panels === LOG_DETAILS_PANEL_STATE.INPUT ? '' : $style.pressed"
 							@click.stop="emit('toggleOutputOpen')"

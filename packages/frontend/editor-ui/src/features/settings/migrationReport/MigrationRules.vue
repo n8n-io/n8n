@@ -195,7 +195,7 @@ const sortedInstanceResults = computed(() => {
 						</I18nT>
 					</N8nText>
 					<N8nButton
-						variant="subtle"
+						variant="outline"
 						:label="i18n.baseText('settings.migrationReport.refreshButton')"
 						icon="refresh-cw"
 						:loading="isLoading"

@@ -195,7 +195,7 @@ async function install() {
 								/>
 							</N8nSelect>
 							<N8nButton
-								variant="subtle"
+								variant="outline"
 								:loading="installing"
 								:disabled="!selectedWorkspaceId"
 								data-testid="slack-managed-install"

@@ -57,7 +57,7 @@ const handleClick = async () => {
 
 <template>
 	<N8nButton
-		variant="subtle"
+		variant="outline"
 		v-if="showButton"
 		data-test-id="ready-to-run-button"
 		icon="zap"

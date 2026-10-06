@@ -740,7 +740,7 @@ onMounted(async () => {
 			</div>
 			<div :class="['pb-3xl', $style.buttonContainer]">
 				<N8nButton
-					variant="subtle"
+					variant="outline"
 					:label="i18n.baseText('settings.ldap.dryRun')"
 					size="large"
 					class="mr-s"
@@ -786,7 +786,7 @@ onMounted(async () => {
 
 	> span {
 		font-size: var(--font-size--sm);
-		font-weight: var(--font-weight--bold);
+		font-weight: var(--font-weight--medium);
 		padding: 0;
 	}
 

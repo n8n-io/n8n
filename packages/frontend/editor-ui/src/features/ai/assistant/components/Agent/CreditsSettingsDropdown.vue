@@ -107,6 +107,7 @@ function onGetMoreCredits() {
 	<div ref="dropdownRef" :class="$style.wrapper">
 		<N8nButton
 			icon="circle-dollar-sign"
+			icon-size="large"
 			variant="ghost"
 			:size="props.buttonSize"
 			icon-only
@@ -194,7 +195,7 @@ function onGetMoreCredits() {
 	align-items: center;
 	gap: var(--spacing--4xs);
 	font-size: var(--font-size--sm);
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 	color: var(--color--text--shade-1);
 }
 

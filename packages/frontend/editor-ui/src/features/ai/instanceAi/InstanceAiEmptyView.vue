@@ -75,6 +75,7 @@ import {
 import InstanceAiInput from './components/InstanceAiInput.vue';
 import InstanceAiEmptyState from './components/InstanceAiEmptyState.vue';
 import InstanceAiViewHeader from './components/InstanceAiViewHeader.vue';
+import DitherTrailGrid from './components/DitherTrailGrid.vue';
 import WorkflowBuilderUnavailableNotice from './components/WorkflowBuilderUnavailableNotice.vue';
 import LimitedModeNotice from './components/LimitedModeNotice.vue';
 import CreditWarningBanner from '@/features/ai/assistant/components/Agent/CreditWarningBanner.vue';
@@ -797,6 +798,8 @@ function handleShelfSuggestionInsert(payload: ShelfSuggestionPayload) {
 				</Transition>
 			</div>
 		</div>
+
+		<DitherTrailGrid :height="640" />
 	</div>
 </template>
 
@@ -811,6 +814,7 @@ function handleShelfSuggestionInsert(payload: ShelfSuggestionPayload) {
 	background-color: light-dark(var(--color--neutral-150), var(--color--neutral-800));
 	border-bottom-left-radius: var(--radius--xl);
 	border-bottom-right-radius: var(--radius--xl);
+	border: var(--border);
 	display: flex;
 	flex-direction: row;
 }
@@ -826,10 +830,12 @@ function handleShelfSuggestionInsert(payload: ShelfSuggestionPayload) {
 }
 
 .contentArea {
+	position: relative;
 	display: flex;
 	flex: 1;
 	min-height: 0;
 	position: relative;
+	z-index: 1;
 }
 
 .emptyLayout {

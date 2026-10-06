@@ -332,7 +332,7 @@ function handleRecovery() {
 				<span>{{ i18n.baseText('tools.connection.settings.remove') }}</span>
 			</N8nButton>
 			<N8nButton
-				variant="subtle"
+				variant="outline"
 				size="small"
 				:label="i18n.baseText('generic.cancel')"
 				data-test-id="tools-connection-settings-cancel"

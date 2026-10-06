@@ -71,7 +71,7 @@ const handleCopy = async (value: string) => {
 					placement="bottom"
 				>
 					<N8nButton
-						variant="subtle"
+						variant="outline"
 						iconOnly
 						v-if="props.allowCopy && isSupported"
 						:icon="copied ? 'check' : 'copy'"
@@ -171,18 +171,7 @@ const handleCopy = async (value: string) => {
 
 	button {
 		height: auto;
-		border: none;
 		border-radius: 0;
-		box-shadow: none;
-
-		&:hover {
-			border-color: inherit;
-			box-shadow: none;
-		}
-
-		&:active {
-			box-shadow: none;
-		}
 	}
 
 	button + button {
@@ -207,7 +196,6 @@ const handleCopy = async (value: string) => {
 }
 
 .copy-button {
-	border: none;
 	border-radius: 0;
 }
 </style>

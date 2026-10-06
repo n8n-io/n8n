@@ -361,7 +361,7 @@ function hasActiveToolCall(): boolean {
 				<template #trailingContent>
 					<N8nButton
 						size="small"
-						variant="subtle"
+						variant="outline"
 						data-test-id="agent-chat-tool-fix-with-assistant"
 						@click="emitFixWithAssistant"
 					>
