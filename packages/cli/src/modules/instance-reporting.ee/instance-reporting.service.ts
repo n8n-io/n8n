@@ -11,8 +11,7 @@ import { OperationalError } from 'n8n-workflow';
 
 import { N8N_VERSION } from '@/constants';
 import { License } from '@/license';
-import { InsightsConfig } from '@/modules/insights/insights.config';
-import { InsightsService } from '@/modules/insights/insights.service';
+import { InsightsConfig, InsightsService } from '@n8n/backend-module-insights';
 
 import type {
 	InstanceMonitoringReport,

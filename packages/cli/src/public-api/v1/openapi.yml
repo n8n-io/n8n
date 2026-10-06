@@ -79,8 +79,6 @@ tags:
     description: Operations about workflows
 
 paths:
-  /workflows/{id}/{versionId}:
-    $ref: './handlers/workflows/spec/paths/workflows.id.versionId.yml'
   /n8n-packages/export:
     $ref: './handlers/n8n-packages/spec/paths/n8n-packages.export.yml'
   /n8n-packages/import:

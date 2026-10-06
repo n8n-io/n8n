@@ -74,7 +74,7 @@ export function makeAzureFoundryFailedAttemptHandler(
 		route === 'anthropic'
 			? 'Set Model Family to OpenAI if the deployment is not a Claude model.'
 			: route === 'classic'
-				? 'Switch the credential to the Azure AI Foundry endpoint type if the deployment serves only the Responses API.'
+				? 'Switch the credential to the Microsoft Foundry endpoint type if the deployment serves only the Responses API.'
 				: useResponsesApi
 					? "Turn off 'Use Responses API' if the deployment serves Chat Completions."
 					: "Turn on 'Use Responses API' if the deployment serves only the Responses API.";
