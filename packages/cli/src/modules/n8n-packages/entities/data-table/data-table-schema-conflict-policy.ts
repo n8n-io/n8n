@@ -3,7 +3,7 @@ import type { SchemaIncompatibility } from './data-table-compat';
 import type { DataTableSchemaConflictPolicy } from '../../n8n-packages.types';
 import type { SerializedDataTableColumn } from '../../spec/serialized/data-table.schema';
 
-type TargetColumns = Array<{ name: string; type: string }>;
+type TargetColumns = Array<{ name: string; type: string; index: number }>;
 
 /**
  * Decides whether a matched table's schema blocks the import. `keep-existing`
@@ -25,7 +25,8 @@ const SCHEMA_CONFLICTS: Record<
 		const incompatibility = findSchemaIncompatibility(packageColumns, targetColumns);
 
 		const packageColumnNames = new Set(packageColumns.map(({ name }) => name));
-		const extraColumns = targetColumns
+		const extraColumns = [...targetColumns]
+			.sort((a, b) => a.index - b.index)
 			.map(({ name }) => name)
 			.filter((name) => !packageColumnNames.has(name));
 		if (extraColumns.length === 0) return incompatibility;
