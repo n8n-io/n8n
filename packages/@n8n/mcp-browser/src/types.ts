@@ -293,6 +293,11 @@ export interface ToolContext {
 	dir: string;
 	secretsBuffer?: SecretsBuffer;
 	createCredential?: (payload: CreateCredentialPayload) => Promise<{ credentialId: string }>;
+	/**
+	 * The names of a credential type's secret fields (password fields in its definition).
+	 * When set, `browser_create_credential` only puts captured secrets into these fields.
+	 */
+	getSecretFields?: (credentialType: string) => Promise<string[]>;
 }
 
 export interface ToolDefinition<TSchema extends z.ZodType = z.ZodType> {

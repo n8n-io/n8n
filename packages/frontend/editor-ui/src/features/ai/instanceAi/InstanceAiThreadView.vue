@@ -31,7 +31,7 @@ import {
 	getThreadDisplayTitle,
 } from './instanceAi.threadRuntime';
 import { useInstanceAiSettingsStore } from './instanceAiSettings.store';
-import { useCanvasPreview } from './useCanvasPreview';
+import { isArtifactTab, useCanvasPreview } from './useCanvasPreview';
 import { fetchThreadTabs, saveThreadTabs } from './instanceAi.memory.api';
 import { buildInstanceAiAgentPreviewHandoffContext } from './composables/useInstanceAiHandoff';
 import type { AgentPreviewHandoffParams } from './composables/useInstanceAiAgentPreviewHandoff';
@@ -55,6 +55,7 @@ import { buildFixWithAiPrompt } from './fixWithAi';
 import { isAgentWorthTesting, testAgentOfferKey } from './testAgentOffer';
 import InstanceAiDataTablePreview from './components/InstanceAiDataTablePreview.vue';
 import InstanceAiAgentPreview from './components/InstanceAiAgentPreview.vue';
+import InstanceAiBrowserPreview from './components/InstanceAiBrowserPreview.vue';
 import { TabsRoot } from 'reka-ui';
 import { useAgentEvalsFlag } from '@/features/ai/evaluation.ee/composables/useAgentEvalsFlag';
 import { useAgentCapabilitySummary } from '@/features/agents/composables/useAgentCapabilitySummary';
@@ -219,7 +220,7 @@ watch(
 // stored tabs load, the default tabs can still hold closed ones, so send none.
 watch(
 	[() => preview.openTabs.value, () => preview.tabsLoaded.value],
-	([tabs, loaded]) => thread.setOpenTabs(loaded ? tabs : null),
+	([tabs, loaded]) => thread.setOpenTabs(loaded ? tabs.filter(isArtifactTab) : null),
 	{ immediate: true },
 );
 // --- Setup panel (checklist docked above the composer) ---
@@ -295,6 +296,7 @@ const activeAgentPreviewSessionId = computed(() => {
 provide('openWorkflowPreview', openWorkflowPreview);
 provide('openDataTablePreview', preview.openDataTablePreview);
 provide('openAgentPreview', preview.openAgentPreview);
+provide('openCloudBrowserTab', preview.openCloudBrowserTab);
 provide('openAgentChatPreview', openAgentChatPreview);
 provide('pendingComposerContext', handoffContext);
 provide(
@@ -1004,6 +1006,11 @@ function handleNewThreadClick() {
 								:pending="preview.activeAgentPending.value"
 								@preview-open-change="handleAgentPreviewDockOpenChange"
 								@assistant-handoff="handleAgentPreviewAssistantHandoff"
+							/>
+							<InstanceAiBrowserPreview
+								v-if="preview.isPreviewVisible.value && preview.activeBrowserTab.value"
+								:class="$style.previewSlot"
+								:tab="preview.activeBrowserTab.value"
 							/>
 						</div>
 					</TabsRoot>

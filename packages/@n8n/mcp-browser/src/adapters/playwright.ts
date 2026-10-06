@@ -152,6 +152,14 @@ export class PlaywrightAdapter {
 			return;
 		}
 
+		if (this.resolvedConfig.mode === 'remote' && this.externalCdpEndpoint) {
+			// PROTOTYPE: remote mode without a relay - connect straight to a CDP endpoint
+			// (e.g. a Browserbase session). No extension, no local browser.
+			log.debug('remote mode: connecting directly to CDP endpoint');
+			await this.connectPlaywright(this.externalCdpEndpoint);
+			return;
+		}
+
 		// Local mode — connect to the user's running Chrome via extension bridge.
 		// The CDPRelayServer bridges Playwright ↔ Chrome extension (chrome.debugger).
 		this.relay = new CDPRelayServer();
@@ -196,7 +204,7 @@ export class PlaywrightAdapter {
 
 	/** Connect Playwright over CDP through the relay and wire up handlers. */
 	private async connectPlaywright(cdpEndpoint: string): Promise<void> {
-		const relay = this.relay!;
+		const relay = this.relay;
 		log.debug('connecting Playwright over CDP:', cdpEndpoint);
 		this.browser = await chromium.connectOverCDP(cdpEndpoint, {
 			headers: this.cdpConnectHeaders,
@@ -232,6 +240,14 @@ export class PlaywrightAdapter {
 			log.debug('browser disconnected event');
 			this.onDisconnect?.('browser_closed');
 		});
+
+		// PROTOTYPE: without a relay there is no lazy activation, and tabs that were
+		// already open get no 'page' event, so track them now.
+		if (!relay) {
+			for (const page of this.context.pages()) this.trackPage(page);
+			log.debug('launch complete, direct CDP connection');
+			return;
+		}
 
 		// In remote mode the relay outlives us, so chain onto the embedder's handlers
 		// and restore them on close. One closure so neither can be forgotten.
@@ -305,6 +321,7 @@ export class PlaywrightAdapter {
 
 	async closePage(pageId: string): Promise<void> {
 		// Clean up local Playwright state if tracked (may not be if never activated)
+		const state = this.pageStates.get(pageId);
 		this.pageStates.delete(pageId);
 
 		// Close via relay → extension → chrome.tabs.remove.
@@ -312,6 +329,9 @@ export class PlaywrightAdapter {
 		// cleans up the Page object and fires the 'close' event.
 		if (this.relay) {
 			await this.relay.closeTab(pageId);
+		} else if (state) {
+			// PROTOTYPE: direct CDP, every tab is tracked, so close it through Playwright.
+			await state.page.close();
 		}
 	}
 

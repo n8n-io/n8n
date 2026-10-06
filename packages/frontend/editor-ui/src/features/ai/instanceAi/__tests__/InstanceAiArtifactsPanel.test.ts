@@ -4,7 +4,12 @@ import { fireEvent, waitFor } from '@testing-library/vue';
 import { IconBodyLoaderKey } from '@n8n/design-system';
 import { nextTick, reactive, ref } from 'vue';
 import { createComponentRenderer } from '@/__tests__/render';
-import type { InstanceAiAgentNode, InstanceAiHandoffContext, TaskList } from '@n8n/api-types';
+import type {
+	InstanceAiAgentNode,
+	InstanceAiHandoffContext,
+	InstanceAiToolCallState,
+	TaskList,
+} from '@n8n/api-types';
 import type { ProjectListItem } from '@/features/collaboration/projects/projects.types';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import type { ResourceEntry } from '../useResourceRegistry';
@@ -21,6 +26,8 @@ const storeState = reactive({
 	}>,
 	projectId: undefined as string | undefined,
 	hydrationStatus: 'ready' as 'idle' | 'hydrating' | 'ready',
+	cancelBackgroundTask: vi.fn(async () => {}),
+	sendTaskCorrection: vi.fn(async () => {}),
 });
 const metadataState = ref<Record<string, unknown> | undefined>(undefined);
 const updateThreadMetadataMock = vi.fn(
@@ -596,5 +603,238 @@ describe('InstanceAiArtifactsPanel', () => {
 
 		expect(wasDefaultPreventedByComponent).toBe(false);
 		expect(openAgentPreview).not.toHaveBeenCalled();
+	});
+
+	describe('cloud browsers', () => {
+		function browserAgent(overrides: Partial<InstanceAiAgentNode> = {}): InstanceAiAgentNode {
+			return {
+				agentId: 'agent-browser-1',
+				role: 'cloud-browser',
+				taskId: 'browser-1',
+				subtitle: 'Check my latest invoices',
+				status: 'active',
+				textContent: '',
+				reasoning: '',
+				toolCalls: [],
+				children: [],
+				timeline: [],
+				...overrides,
+			};
+		}
+
+		function withBrowserAgent(agent: InstanceAiAgentNode) {
+			storeState.messages = [
+				{
+					role: 'assistant',
+					agentTree: {
+						...browserAgent(),
+						agentId: 'root',
+						role: 'orchestrator',
+						children: [agent],
+					},
+				},
+			];
+		}
+
+		it('hides the section when the thread has no browser sub-agent', () => {
+			const { queryByTestId } = renderComponent();
+
+			expect(queryByTestId('instance-ai-cloud-browsers')).not.toBeInTheDocument();
+		});
+
+		it('keeps finished browser tasks with their result, without a stop button', () => {
+			withBrowserAgent(
+				browserAgent({ status: 'completed', result: 'Top tag is "love".\nMore detail here.' }),
+			);
+
+			const { getByTestId, queryByTestId } = renderComponent();
+
+			expect(getByTestId('instance-ai-cloud-browser-status')).toHaveTextContent(
+				'Top tag is "love".',
+			);
+			expect(queryByTestId('instance-ai-cloud-browser-stop')).not.toBeInTheDocument();
+		});
+
+		it('shows failed browser tasks and hides stopped ones', () => {
+			storeState.messages = [
+				{
+					role: 'assistant',
+					agentTree: {
+						...browserAgent(),
+						agentId: 'root',
+						role: 'orchestrator',
+						children: [
+							browserAgent({ agentId: 'a1', status: 'error', error: 'Site blocked the browser' }),
+							browserAgent({ agentId: 'a2', status: 'cancelled' }),
+						],
+					},
+				},
+			];
+
+			const { getAllByTestId } = renderComponent();
+			const statuses = getAllByTestId('instance-ai-cloud-browser-status').map((el) =>
+				el.textContent?.trim(),
+			);
+
+			expect(statuses).toEqual(['Site blocked the browser']);
+		});
+
+		it('shows the reported outcome, not success, for a cleanly finished task', () => {
+			storeState.messages = [
+				{
+					role: 'assistant',
+					agentTree: {
+						...browserAgent(),
+						agentId: 'root',
+						role: 'orchestrator',
+						children: [
+							browserAgent({ agentId: 'a1', status: 'completed', outcome: 'denied', result: '' }),
+							browserAgent({ agentId: 'a2', status: 'completed', outcome: 'blocked', result: '' }),
+						],
+					},
+				},
+			];
+
+			const { getAllByTestId } = renderComponent();
+			const statuses = getAllByTestId('instance-ai-cloud-browser-status').map((el) =>
+				el.textContent?.trim(),
+			);
+
+			expect(statuses).toEqual(expect.arrayContaining(['Denied', 'Blocked by the site']));
+		});
+
+		it('shows a running browser and stops it', async () => {
+			withBrowserAgent(browserAgent());
+
+			const { getByText, getByTestId, queryByTestId } = renderComponent();
+
+			expect(getByText('Check my latest invoices')).toBeInTheDocument();
+			expect(queryByTestId('instance-ai-cloud-browser-live-view')).not.toBeInTheDocument();
+
+			await fireEvent.click(getByTestId('instance-ai-cloud-browser-stop'));
+			expect(storeState.cancelBackgroundTask).toHaveBeenCalledWith('browser-1');
+		});
+
+		it('links to the Live View while the browser waits for the user', () => {
+			withBrowserAgent(
+				browserAgent({
+					toolCalls: [
+						{
+							toolCallId: 'tc-1',
+							toolName: 'request-user-action',
+							args: { liveViewUrl: 'https://live.example/abc', reason: 'Sign in to Stripe' },
+							isLoading: true,
+						},
+					],
+				}),
+			);
+
+			const { getByTestId } = renderComponent();
+
+			expect(getByTestId('instance-ai-cloud-browser-live-view')).toHaveAttribute(
+				'href',
+				'https://live.example/abc',
+			);
+		});
+
+		it('shows when the browser task waits for an approval, and keeps it stoppable', () => {
+			withBrowserAgent(
+				browserAgent({
+					toolCalls: [
+						{
+							toolCallId: 'tc-cred',
+							toolName: 'browser_create_credential',
+							args: {},
+							isLoading: true,
+							confirmation: { requestId: 'req-1' } as InstanceAiToolCallState['confirmation'],
+						},
+					],
+				}),
+			);
+
+			const { getByTestId } = renderComponent();
+
+			expect(getByTestId('instance-ai-cloud-browser-status')).toHaveTextContent(
+				'Waiting for your approval',
+			);
+			expect(getByTestId('instance-ai-cloud-browser-stop')).toBeInTheDocument();
+		});
+
+		it('shows what the browser is doing, and what it waits for', () => {
+			storeState.messages = [
+				{
+					role: 'assistant',
+					agentTree: {
+						...browserAgent(),
+						agentId: 'root',
+						role: 'orchestrator',
+						children: [
+							browserAgent({
+								agentId: 'a1',
+								toolCalls: [
+									{
+										toolCallId: 'state-1',
+										toolName: 'cloud-browser-state',
+										args: { status: 'Looking up invoices', liveViewUrl: 'https://live.example/s' },
+										isLoading: false,
+									},
+								],
+							}),
+							browserAgent({
+								agentId: 'a2',
+								toolCalls: [
+									{
+										toolCallId: 'tc-1',
+										toolName: 'request-user-action',
+										args: {
+											liveViewUrl: 'https://live.example/abc',
+											reason: 'Sign in to Ledgerly',
+										},
+										isLoading: true,
+									},
+								],
+							}),
+						],
+					},
+				},
+			];
+
+			const { getAllByTestId } = renderComponent();
+			const statuses = getAllByTestId('instance-ai-cloud-browser-status').map((el) =>
+				el.textContent?.trim(),
+			);
+
+			expect(statuses).toEqual(
+				expect.arrayContaining(['Looking up invoices', 'Waiting for you: Sign in to Ledgerly']),
+			);
+		});
+
+		it('opens the browser tab from the preview when the thread view offers one', async () => {
+			withBrowserAgent(
+				browserAgent({
+					toolCalls: [
+						{
+							toolCallId: 'state-1',
+							toolName: 'cloud-browser-state',
+							args: { liveViewUrl: 'https://live.example/s' },
+							isLoading: false,
+						},
+					],
+				}),
+			);
+			const openCloudBrowserTab = vi.fn(() => true);
+
+			const { getByTestId } = renderComponent({
+				global: {
+					provide: {
+						[IconBodyLoaderKey as symbol]: async () => '<path d="M1 1"/>',
+						openCloudBrowserTab,
+					},
+				},
+			});
+			await fireEvent.click(getByTestId('instance-ai-cloud-browser-live-view'));
+
+			expect(openCloudBrowserTab).toHaveBeenCalledWith('agent-browser-1');
+		});
 	});
 });

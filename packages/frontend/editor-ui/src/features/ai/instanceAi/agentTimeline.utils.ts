@@ -218,6 +218,8 @@ export function buildTimelineBlocks(
 			// Running builder sub-agents are extracted and rendered at the bottom
 			// of the conversation by InstanceAiView; once a builder finishes it
 			// reappears here in its chronological slot.
+			// PROTOTYPE: the cloud browser sub-agent lives in the sidebar, never in the chat.
+			if (child?.role === 'cloud-browser') return;
 			if (child && !isActiveBuilderAgent(child)) {
 				pushStandalone({ type: 'child', key: `child-${idx}`, child });
 			}

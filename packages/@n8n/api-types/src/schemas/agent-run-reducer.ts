@@ -461,6 +461,7 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 				agent.result = event.payload.result;
 				agent.error = event.payload.error;
 				agent.agentChange = event.payload.agentChange;
+				agent.outcome = event.payload.outcome;
 				// A completed/errored agent can't have tool calls still in-flight.
 				// Clear isLoading so folded history trees don't show stale confirmations.
 				for (const tc of agent.toolCalls) {
@@ -624,6 +625,7 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 		// the plus menu read it from the durable log, so the run tree holds no copy.
 		case 'filesystem-request':
 		case 'thread-title-updated':
+		case 'background-inbox-updated':
 		case 'preferences-applied': {
 			// Handled externally — no state change
 			break;

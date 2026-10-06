@@ -1,6 +1,7 @@
 import { computed, ref, watch } from 'vue';
 import type { InstanceAiAttachment } from '@n8n/api-types';
 import type { IconName } from '@n8n/design-system';
+import { useI18n } from '@n8n/i18n';
 import {
 	getLatestBuildResult,
 	getLatestBuilderTarget,
@@ -14,6 +15,7 @@ import {
 } from './canvasPreview.utils';
 import { useAgentMutationRefresh } from './composables/useAgentMutationRefresh';
 import { useBuildingArtifactIds } from './composables/useBuildingArtifactIds';
+import { isLiveCloudBrowser, useCloudBrowserAgents } from './composables/useCloudBrowserAgents';
 import { useIsAgentWorking } from './composables/useIsAgentWorking';
 import {
 	ARTIFACT_TAB_ICONS,
@@ -32,6 +34,27 @@ export interface ArtifactTab {
 	pending?: boolean;
 	/** The AI is actively mutating this artifact right now. */
 	building?: boolean;
+}
+
+/** PROTOTYPE (cloud browser): a running cloud browser's Live View. Never stored with the thread. */
+export interface BrowserTab extends Omit<ArtifactTab, 'type'> {
+	type: 'browser';
+	/** The Live View the tab shows. */
+	url: string;
+	/** The page the browser is on, for the address bar. */
+	pageUrl?: string;
+	/** The browser window size, e.g. "1024x768", so the frame can match its shape. */
+	viewport?: string;
+	taskId?: string;
+	/** The task waits for the user, so the tab offers "I'm done". */
+	waitingForUser: boolean;
+}
+
+/** A tab in the preview tab bar. */
+export type PreviewTab = ArtifactTab | BrowserTab;
+
+export function isArtifactTab(tab: PreviewTab): tab is ArtifactTab {
+	return tab.type !== 'browser';
 }
 
 interface UseCanvasPreviewOptions {
@@ -59,6 +82,7 @@ function getAttachedArtifactId(attachment: InstanceAiAttachment): string | undef
 }
 
 export function useCanvasPreview({ thread, initialAgentId, tabsStorage }: UseCanvasPreviewOptions) {
+	const i18n = useI18n();
 	// --- Tab state ---
 	const activeTabId = ref<string>();
 	// The stored tabs of the thread remember this. It applies once they load.
@@ -130,7 +154,37 @@ export function useCanvasPreview({ thread, initialAgentId, tabsStorage }: UseCan
 		storage: tabsStorage,
 		previewOpen: () => isPreviewOpen.value,
 	});
-	const openTabs = tabs.openTabs;
+
+	// --- PROTOTYPE (cloud browser): Live View tabs ---
+	// One tab per running browser task, after the artifact tabs. Not stored: the session is
+	// short-lived. During a hand-off it shows the page that needs the user, otherwise the
+	// whole session. Closing it only hides it until the user opens it again.
+	const cloudBrowsers = useCloudBrowserAgents(thread);
+	const hiddenBrowserTabs = ref(new Set<string>());
+	const browserTabs = computed((): BrowserTab[] => {
+		const result: BrowserTab[] = [];
+		for (const browser of cloudBrowsers.value) {
+			if (!isLiveCloudBrowser(browser)) continue;
+			const id = `browser:${browser.agentId}`;
+			const url = browser.handOff?.liveViewUrl ?? browser.liveViewUrl;
+			if (!url || hiddenBrowserTabs.value.has(id)) continue;
+			result.push({
+				id,
+				type: 'browser',
+				name: browser.goal || i18n.baseText('instanceAi.previewTabBar.cloudBrowser'),
+				icon: 'globe',
+				url,
+				pageUrl: browser.pageUrl,
+				viewport: browser.viewport,
+				taskId: browser.taskId,
+				waitingForUser: browser.status === 'needs-user',
+			});
+		}
+		return result;
+	});
+	const isBrowserTabId = (tabId: string | undefined) => tabId?.startsWith('browser:') === true;
+
+	const openTabs = computed((): PreviewTab[] => [...tabs.openTabs.value, ...browserTabs.value]);
 
 	// Derived preview state from active tab
 	const activeWorkflowId = computed(() => {
@@ -156,6 +210,11 @@ export function useCanvasPreview({ thread, initialAgentId, tabsStorage }: UseCan
 	const activeAgentProjectId = computed(() => {
 		const tab = openTabs.value.find((t) => t.id === activeTabId.value);
 		return tab?.type === 'agent' ? (tab.projectId ?? null) : null;
+	});
+
+	const activeBrowserTab = computed(() => {
+		const tab = openTabs.value.find((t) => t.id === activeTabId.value);
+		return tab?.type === 'browser' ? tab : null;
 	});
 
 	const activeAgentPending = computed(() => {
@@ -267,6 +326,17 @@ export function useCanvasPreview({ thread, initialAgentId, tabsStorage }: UseCan
 	// --- Actions ---
 
 	function selectTab(tabId: string) {
+		if (isBrowserTabId(tabId)) {
+			hiddenBrowserTabs.value.delete(tabId);
+			activeTabId.value = tabId;
+			// Only a browser that waits for the user holds the preview. Otherwise the workflow
+			// the agent builds meanwhile takes over the preview as usual.
+			const waiting = browserTabs.value.find((tab) => tab.id === tabId)?.waitingForUser;
+			userTabId.value = isAgentWorking.value && waiting ? tabId : undefined;
+			// Not saved: a browser tab is gone after a reload.
+			setPreviewOpen(true, false);
+			return;
+		}
 		// Opening a closed artifact from the chat or the artifacts list shows its tab again.
 		tabs.reopenTab(tabId);
 		activeTabId.value = tabId;
@@ -282,11 +352,22 @@ export function useCanvasPreview({ thread, initialAgentId, tabsStorage }: UseCan
 	}
 
 	function reorderTab(tabId: string, toIndex: number) {
+		if (isBrowserTabId(tabId)) return;
 		tabs.moveTab(tabId, toIndex);
 		tabs.saveTabs(activeTabId.value);
 	}
 
 	function closeTab(tabId: string) {
+		if (isBrowserTabId(tabId)) {
+			hiddenBrowserTabs.value = new Set([...hiddenBrowserTabs.value, tabId]);
+			if (activeTabId.value === tabId) {
+				const next = openTabs.value.find((tab) => tab.id !== tabId)?.id;
+				activeTabId.value = next;
+				if (userTabId.value === tabId) userTabId.value = undefined;
+				if (next === undefined) setPreviewOpen(false);
+			}
+			return;
+		}
 		const nextTabId = tabs.closeTab(tabId);
 		if (activeTabId.value === tabId) {
 			activeTabId.value = nextTabId;
@@ -311,6 +392,24 @@ export function useCanvasPreview({ thread, initialAgentId, tabsStorage }: UseCan
 		if (!pinned) activeTabId.value = tabId;
 		setPreviewOpen(true);
 		if (reopened) tabs.saveTabs(activeTabId.value);
+	}
+
+	/**
+	 * PROTOTYPE: show the running cloud browser in its tab. Returns false when no browser
+	 * session is open yet, so the caller can open the Live View link in a new window.
+	 */
+	function openCloudBrowserTab(agentId?: string): boolean {
+		const browser = cloudBrowsers.value.find(
+			(b) =>
+				(!agentId || b.agentId === agentId) &&
+				isLiveCloudBrowser(b) &&
+				(b.handOff?.liveViewUrl ?? b.liveViewUrl),
+		);
+		if (!browser) return false;
+		const id = `browser:${browser.agentId}`;
+		hiddenBrowserTabs.value = new Set([...hiddenBrowserTabs.value].filter((t) => t !== id));
+		selectTab(id);
+		return true;
 	}
 
 	/**
@@ -590,6 +689,7 @@ export function useCanvasPreview({ thread, initialAgentId, tabsStorage }: UseCan
 		activeAgentId,
 		activeAgentProjectId,
 		activeAgentPending,
+		activeBrowserTab,
 		activeWorkflowExecutionResult,
 		dataTableRefreshKey,
 		isPreviewVisible,
@@ -602,5 +702,6 @@ export function useCanvasPreview({ thread, initialAgentId, tabsStorage }: UseCan
 		openWorkflowPreview,
 		openDataTablePreview,
 		openAgentPreview,
+		openCloudBrowserTab,
 	};
 }

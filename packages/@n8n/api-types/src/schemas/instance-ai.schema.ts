@@ -244,6 +244,7 @@ export const instanceAiEventTypeSchema = z.enum([
 	'preference-card',
 	'filesystem-request',
 	'thread-title-updated',
+	'background-inbox-updated',
 	'status',
 	'error',
 ]);
@@ -262,6 +263,8 @@ export const INSTANCE_AI_EPHEMERAL_EVENT_TYPES: ReadonlySet<InstanceAiEventType>
 	'reasoning-delta',
 	'status',
 	'filesystem-request',
+	// PROTOTYPE (cloud browser): the inbox lives in memory, so a replayed copy could be stale.
+	'background-inbox-updated',
 ]);
 
 // ---------------------------------------------------------------------------
@@ -484,6 +487,32 @@ export const agentSpawnedPayloadSchema = z.object({
 		.describe('Resource this agent works on'),
 });
 
+/**
+ * PROTOTYPE (cloud browser): how a background task ended, as the task reports it.
+ * `completed` only says the agent stopped without crashing; this says whether it did the job.
+ */
+export const backgroundTaskOutcomeSchema = z.enum(['succeeded', 'blocked', 'denied', 'failed']);
+export type InstanceAiBackgroundTaskOutcome = z.infer<typeof backgroundTaskOutcomeSchema>;
+
+/** PROTOTYPE (cloud browser): a background task event waiting to reach the orchestrator. */
+export const backgroundInboxItemSchema = z.object({
+	taskId: z.string(),
+	kind: z.enum([
+		'needs-user',
+		'user-replied',
+		'approval-requested',
+		'approval-answered',
+		'finished',
+	]),
+	/** The user asked for it to reach the orchestrator now. */
+	sendNow: z.boolean(),
+});
+export type InstanceAiBackgroundInboxItem = z.infer<typeof backgroundInboxItemSchema>;
+
+export const backgroundInboxUpdatedPayloadSchema = z.object({
+	items: z.array(backgroundInboxItemSchema),
+});
+
 export const agentCompletedPayloadSchema = z.object({
 	role: z.string(),
 	result: z.string().describe('Synthesized answer'),
@@ -495,6 +524,8 @@ export const agentCompletedPayloadSchema = z.object({
 	 * `error`, and the reducer keeps deriving the status from it for those.
 	 */
 	status: z.enum(['completed', 'cancelled', 'error']).optional(),
+	/** PROTOTYPE (cloud browser): set by background tasks that report an outcome. */
+	outcome: backgroundTaskOutcomeSchema.optional(),
 });
 
 export const textDeltaPayloadSchema = z.object({
@@ -1387,6 +1418,11 @@ export const instanceAiEventSchema = z.discriminatedUnion('type', [
 		...eventBase,
 		payload: threadTitleUpdatedPayloadSchema,
 	}),
+	z.object({
+		type: z.literal('background-inbox-updated'),
+		...eventBase,
+		payload: backgroundInboxUpdatedPayloadSchema,
+	}),
 ]);
 
 // ---------------------------------------------------------------------------
@@ -1780,6 +1816,11 @@ export class InstanceAiCorrectTaskRequest extends Z.class({
 	message: z.string().min(1),
 }) {}
 
+/** PROTOTYPE (cloud browser): no taskId sends every queued background event. */
+export class InstanceAiSendBackgroundEventsNowRequest extends Z.class({
+	taskId: z.string().optional(),
+}) {}
+
 /**
  * Entry-point taxonomy for Instance AI thread creation. Every new entry point
  * must register a value here — `InstanceAiEnsureThreadRequest.source` requires
@@ -2061,6 +2102,8 @@ export interface InstanceAiAgentNode {
 	activity?: InstanceAiAgentActivity;
 	/** Whether this sub-agent changed its Agent. */
 	agentChange?: InstanceAiAgentChange;
+	/** PROTOTYPE (cloud browser): how a background task ended, when it reports one. */
+	outcome?: InstanceAiBackgroundTaskOutcome;
 	/** Short display title, e.g. "Building workflow". */
 	title?: string;
 	/** Brief task description for distinguishing sibling agents. */

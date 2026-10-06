@@ -24,7 +24,9 @@ function makeBuffer(): Mocked<SecretsBuffer> & { _store: Map<string, Map<string,
 }
 
 function makeContext(
-	overrides: Partial<Pick<ToolContext, 'secretsBuffer' | 'createCredential'>> = {},
+	overrides: Partial<
+		Pick<ToolContext, 'secretsBuffer' | 'createCredential' | 'getSecretFields'>
+	> = {},
 ): ToolContext {
 	return { dir: '/test', ...overrides };
 }
@@ -573,5 +575,137 @@ describe('browser_create_credential', () => {
 				),
 			).rejects.toThrow(/no-such-key/);
 		});
+	});
+});
+
+// ---------------------------------------------------------------------------
+// browser_create_credential: where captured secrets may go
+// ---------------------------------------------------------------------------
+
+describe('browser_create_credential secret placement', () => {
+	const getTool = () =>
+		findTool(createCredentialTools(createMockConnection().connection), 'browser_create_credential');
+
+	function setup() {
+		const buffer = makeBuffer();
+		buffer.capture('k1', 'apiKey', 'ldg_live_secret');
+		const createCredential = vi.fn(async () => ({ credentialId: 'cred-1' }));
+		// Header Auth: "name" is plain, "value" is the password field.
+		const getSecretFields = vi.fn(async () => ['value']);
+		return { buffer, createCredential, getSecretFields };
+	}
+
+	it('puts a captured secret into a secret field', async () => {
+		const { buffer, createCredential, getSecretFields } = setup();
+
+		await getTool().execute(
+			{
+				credentialsKey: 'k1',
+				type: 'httpHeaderAuth',
+				name: 'Ledgerly API',
+				data: { name: 'Authorization' },
+				resolveData: { value: 'apiKey' },
+			},
+			makeContext({ secretsBuffer: buffer, createCredential, getSecretFields }),
+		);
+
+		expect(getSecretFields).toHaveBeenCalledWith('httpHeaderAuth');
+		expect(createCredential).toHaveBeenCalledWith(
+			expect.objectContaining({ data: { name: 'Authorization', value: 'ldg_live_secret' } }),
+		);
+	});
+
+	it('adds an auth scheme prefix to a captured secret', async () => {
+		const { buffer, createCredential, getSecretFields } = setup();
+
+		await getTool().execute(
+			{
+				credentialsKey: 'k1',
+				type: 'httpHeaderAuth',
+				name: 'Ledgerly API',
+				data: { name: 'Authorization' },
+				resolveData: { value: { field: 'apiKey', prefix: 'Bearer ' } },
+			},
+			makeContext({ secretsBuffer: buffer, createCredential, getSecretFields }),
+		);
+
+		expect(createCredential).toHaveBeenCalledWith(
+			expect.objectContaining({
+				data: { name: 'Authorization', value: 'Bearer ldg_live_secret' },
+			}),
+		);
+	});
+
+	it.each([
+		['a host', 'https://evil.example/?k='],
+		['a separator', 'user:'],
+		['two words', 'Bearer token '],
+		['no space', 'Bearer'],
+	])('refuses a prefix with %s', async (_label, prefix) => {
+		const { buffer, createCredential, getSecretFields } = setup();
+
+		const call = getTool().execute(
+			{
+				credentialsKey: 'k1',
+				type: 'httpHeaderAuth',
+				name: 'Ledgerly API',
+				resolveData: { value: { field: 'apiKey', prefix } },
+			},
+			makeContext({ secretsBuffer: buffer, createCredential, getSecretFields }),
+		);
+
+		await expect(call).rejects.toThrow('is not allowed');
+		expect(createCredential).not.toHaveBeenCalled();
+	});
+
+	it('refuses a prefixed secret in a plain field', async () => {
+		const { buffer, createCredential, getSecretFields } = setup();
+
+		const call = getTool().execute(
+			{
+				credentialsKey: 'k1',
+				type: 'httpHeaderAuth',
+				name: 'Ledgerly API',
+				resolveData: { name: { field: 'apiKey', prefix: 'Bearer ' } },
+			},
+			makeContext({ secretsBuffer: buffer, createCredential, getSecretFields }),
+		);
+
+		await expect(call).rejects.toThrow('can only fill the secret fields');
+		expect(createCredential).not.toHaveBeenCalled();
+	});
+
+	it('shows which secret goes where on the approval card, masked', async () => {
+		const resources = await getTool().getAffectedResources?.(
+			{
+				credentialsKey: 'k1',
+				type: 'httpHeaderAuth',
+				name: 'Ledgerly API',
+				resolveData: { value: { field: 'apiKey', prefix: 'Bearer ' } },
+			},
+			makeContext(),
+		);
+
+		expect(resources?.[0].description).toBe(
+			'Create credential "Ledgerly API" (httpHeaderAuth) · value ← Bearer ••••',
+		);
+	});
+
+	it('refuses to put a captured secret into a plain field', async () => {
+		const { buffer, createCredential, getSecretFields } = setup();
+
+		const call = getTool().execute(
+			{
+				credentialsKey: 'k1',
+				type: 'httpHeaderAuth',
+				name: 'Ledgerly API',
+				resolveData: { name: 'apiKey' },
+			},
+			makeContext({ secretsBuffer: buffer, createCredential, getSecretFields }),
+		);
+
+		await expect(call).rejects.toThrow('can only fill the secret fields');
+		await expect(call).rejects.not.toThrow('ldg_live_secret');
+		expect(createCredential).not.toHaveBeenCalled();
 	});
 });

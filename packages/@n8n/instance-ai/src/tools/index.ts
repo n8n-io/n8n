@@ -53,6 +53,10 @@ const loadBuildAgentTool = lazyMod(
 	() =>
 		require('./orchestration/build-agent.tool') as typeof import('./orchestration/build-agent.tool'),
 );
+const loadCloudBrowserAgentTool = lazyMod(
+	() =>
+		require('./orchestration/cloud-browser-agent.tool') as typeof import('./orchestration/cloud-browser-agent.tool'),
+);
 const loadGetSessionTool = lazyMod(
 	() =>
 		require('./orchestration/get-session.tool') as typeof import('./orchestration/get-session.tool'),
@@ -249,6 +253,14 @@ export function createOrchestrationTools(context: OrchestrationContext): Instanc
 		tools.push([
 			ORCHESTRATION_TOOL_IDS.BUILD_AGENT,
 			loadBuildAgentTool().createBuildAgentTool(context),
+		]);
+	}
+
+	// PROTOTYPE: the browser tools live on a background sub-agent, not on the orchestrator.
+	if (context.cloudBrowserServer && context.spawnBackgroundTask) {
+		tools.push([
+			ORCHESTRATION_TOOL_IDS.START_CLOUD_BROWSER,
+			loadCloudBrowserAgentTool().createStartCloudBrowserTool(context),
 		]);
 	}
 

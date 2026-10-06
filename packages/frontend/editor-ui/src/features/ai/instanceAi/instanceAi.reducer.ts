@@ -346,6 +346,7 @@ export function handleEvent(state: InstanceAiReducerState, event: InstanceAiEven
 		// runtime keeps the latest payload for the plus menu. It changes no run state.
 		case 'filesystem-request':
 		case 'thread-title-updated':
+		case 'background-inbox-updated':
 		case 'preferences-applied':
 			return state.activeRunId;
 

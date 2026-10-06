@@ -13,6 +13,10 @@ interface RawHtmlProbeNode {
 // Runs in the page context. Keep this as a collector only: no matching,
 // scoring, or redaction here, so the security logic stays testable in Node.
 export function serializeHtmlProbe(): HtmlProbeNode {
+	// A same-origin iframe can expose a document already being serialized (Google Cloud
+	// Console's pangolin iframe does), which would recurse until the renderer runs out of memory.
+	const seen = new Set<Document | ShadowRoot>();
+
 	function node(
 		kind: HtmlProbeNode['kind'],
 		root: Document | ShadowRoot,
@@ -21,12 +25,13 @@ export function serializeHtmlProbe(): HtmlProbeNode {
 		const children: HtmlProbeNode[] = [];
 		const errors: string[] = [];
 		const scope = root instanceof Document ? root : root;
+		seen.add(root);
 
 		// outerHTML does not include open shadow roots, so collect them as
 		// explicit child documents for host-side analysis.
 		for (const element of Array.from(scope.querySelectorAll('*'))) {
 			const shadowRoot = (element as HTMLElement).shadowRoot;
-			if (shadowRoot) {
+			if (shadowRoot && !seen.has(shadowRoot)) {
 				try {
 					children.push(node('shadow-root', shadowRoot, url));
 				} catch (error) {
@@ -39,7 +44,7 @@ export function serializeHtmlProbe(): HtmlProbeNode {
 		// and are intentionally recorded as collection errors, not matched here.
 		for (const frame of Array.from(scope.querySelectorAll('iframe'))) {
 			try {
-				if (frame.contentDocument?.documentElement) {
+				if (frame.contentDocument?.documentElement && !seen.has(frame.contentDocument)) {
 					children.push(node('iframe', frame.contentDocument, frame.src));
 				}
 			} catch (error) {

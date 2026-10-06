@@ -51,6 +51,7 @@ import type { AgentContextInput } from './tools/agent-context.tool';
 import type { McpClientManager } from './mcp/mcp-client-manager';
 import type { OrchestratorRunHandoffReason } from './runtime/orchestrator-run-control';
 import type { TraceStatus } from './runtime/resumable-stream-executor';
+import type { ConfirmationData } from './runtime/run-state-registry';
 import type { IterationLog } from './storage/iteration-log';
 import type { PatchableThreadMemory } from './storage/thread-patch';
 import type { BuilderUsageItem } from './stream/usage-accumulator';
@@ -2159,6 +2160,35 @@ export interface BackgroundTaskResult {
 	outcome?: Record<string, unknown>;
 }
 
+/** PROTOTYPE (cloud browser): an event a background task has for the orchestrator. */
+export interface BackgroundTaskInboxItem {
+	taskId: string;
+	role: string;
+	kind: 'needs-user' | 'user-replied' | 'approval-requested' | 'approval-answered' | 'finished';
+	/** What the orchestrator should know or do, in a few sentences. */
+	text: string;
+	/** Start a run for it if the thread is idle. Otherwise it waits for the next delivery. */
+	wake: boolean;
+}
+
+/** PROTOTYPE (cloud browser): restored subset of the spawn API removed in #36740. */
+export interface SpawnBackgroundTaskOptions {
+	taskId: string;
+	agentId: string;
+	role: string;
+	dedupeKey?: { workflowId?: string; role: string };
+	run: (
+		signal: AbortSignal,
+		drainCorrections: () => string[],
+		waitForCorrection: () => Promise<void>,
+	) => Promise<string | BackgroundTaskResult>;
+}
+
+export type SpawnBackgroundTaskResult =
+	| { status: 'started'; taskId: string; agentId: string }
+	| { status: 'limit-reached' }
+	| { status: 'duplicate'; existing: { taskId: string; agentId: string } };
+
 export interface WorkflowTaskService {
 	reportBuildOutcome(outcome: WorkflowBuildOutcome): Promise<WorkflowLoopAction>;
 	reportVerificationVerdict(verdict: VerificationResult): Promise<WorkflowLoopAction>;
@@ -2277,6 +2307,27 @@ export interface OrchestrationContext {
 		taskId: string,
 		correction: string,
 	) => 'queued' | 'task-completed' | 'task-not-found';
+	/** PROTOTYPE (cloud browser): spawn a detached task that outlives the current run. */
+	spawnBackgroundTask?: (opts: SpawnBackgroundTaskOptions) => SpawnBackgroundTaskResult;
+	/** PROTOTYPE (cloud browser): the browser tools, given to the browser sub-agent only. */
+	cloudBrowserServer?: LocalMcpServer;
+	/** PROTOTYPE (cloud browser): why the cloud browser cannot start now, or undefined. */
+	checkCloudBrowser?: () => Promise<string | undefined>;
+	/** PROTOTYPE (cloud browser): the open session's Live View and current page, for the UI. */
+	getCloudBrowserLiveView?: () => Promise<
+		| { liveViewUrl: string; pageUrl?: string; viewport?: { width: number; height: number } }
+		| undefined
+	>;
+	/**
+	 * PROTOTYPE (cloud browser): queue an event for the orchestrator. It is delivered when
+	 * the thread is idle (now, or when the current run ends), never dropped.
+	 */
+	notifyFromBackgroundTask?: (item: BackgroundTaskInboxItem) => void;
+	/**
+	 * PROTOTYPE (cloud browser): wait for the user's answer to an approval card a
+	 * background sub-agent raised. Resolved by the normal confirm endpoint.
+	 */
+	waitForConfirmation?: (requestId: string) => Promise<ConfirmationData>;
 	/** Mark the current orchestrator run as making progress. */
 	touchRun?: () => boolean;
 	/** Mark a running background task as making progress. */

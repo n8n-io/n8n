@@ -583,4 +583,133 @@ describe('createToolsFromLocalMcpServer', () => {
 			expect(onCredentialCreateResult).not.toHaveBeenCalled();
 		});
 	});
+
+	describe('statusField (cloud browser)', () => {
+		it('offers an optional status argument and strips it before the server call', async () => {
+			const server = makeMockServer();
+			server.callTool.mockResolvedValue({ content: [{ type: 'text', text: 'ok' }] });
+			const tool = createToolsFromLocalMcpServer({
+				server,
+				logger: mockLogger,
+				statusField: true,
+			}).get('write_file');
+			if (!tool) throw new Error('Tool was not created');
+
+			const schema = tool.inputSchema as { safeParse: (value: unknown) => { data?: unknown } };
+			// The model's status survives validation, so the UI can read it from the tool call.
+			expect(schema.safeParse({ filePath: 'a.txt', status: 'Saving' }).data).toEqual({
+				filePath: 'a.txt',
+				status: 'Saving',
+			});
+
+			await executeTool(tool, { filePath: 'a.txt', status: 'Saving the file' }, makeCtx({}));
+
+			expect(server.callTool).toHaveBeenCalledWith(
+				{ name: 'write_file', arguments: { filePath: 'a.txt' } },
+				expect.anything(),
+			);
+		});
+	});
+
+	describe("approvalStyle: 'instance' (cloud browser)", () => {
+		function getInstanceExecute(server: LocalMcpServer) {
+			const tool = createToolsFromLocalMcpServer({
+				server,
+				logger: mockLogger,
+				approvalStyle: 'instance',
+			}).get('write_file');
+			if (!tool) throw new Error('Tool was not created');
+			return async (args: Record<string, unknown>, ctx: unknown) =>
+				await executeTool<McpToolCallResult>(tool, args, ctx);
+		}
+
+		function confirmationError(payload: Record<string, unknown>): McpToolCallResult {
+			return {
+				content: [
+					{
+						type: 'text',
+						text: `${GATEWAY_CONFIRMATION_REQUIRED_PREFIX}${JSON.stringify(payload)}`,
+					},
+				],
+				isError: true,
+			};
+		}
+
+		it('raises the domain-access card for a domain decision', async () => {
+			const server = makeMockServer();
+			server.callTool.mockResolvedValue(
+				confirmationError({
+					toolGroup: 'browser',
+					resource: 'webhook.site',
+					description: 'Open webhook.site',
+					options: ['denyOnce', 'allowOnce', 'allowForSession'],
+				}),
+			);
+			const suspend = vi.fn().mockResolvedValue(undefined);
+
+			await getInstanceExecute(server)({}, makeCtx({ suspend }));
+
+			const payload = suspend.mock.calls[0][0];
+			expect(payload).toMatchObject({
+				domainAccess: { url: 'https://webhook.site', host: 'webhook.site' },
+				message: expect.stringContaining('cloud browser') as string,
+			});
+			expect(payload.inputType).toBeUndefined();
+			expect(payload.resourceDecision).toBeUndefined();
+		});
+
+		it('raises a plain approval for a credential write', async () => {
+			const server = makeMockServer();
+			server.callTool.mockResolvedValue(
+				confirmationError({
+					toolGroup: 'browser',
+					resource: 'credentials',
+					description: 'Create credential "Acme API"',
+					options: ['denyOnce', 'allowOnce'],
+				}),
+			);
+			const suspend = vi.fn().mockResolvedValue(undefined);
+
+			await getInstanceExecute(server)({}, makeCtx({ suspend }));
+
+			const payload = suspend.mock.calls[0][0];
+			expect(payload.message).toBe('Cloud browser: Create credential "Acme API"');
+			// No "Always allow": the gate allows credential writes once at a time only.
+			expect(payload.severity).toBe('destructive');
+			expect(payload.domainAccess).toBeUndefined();
+			expect(payload.inputType).toBeUndefined();
+		});
+
+		it.each([
+			['allow_domain', 'allowForSession'],
+			['allow_all', 'allowForSession'],
+			['allow_once', 'allowOnce'],
+			[undefined, 'allowOnce'],
+		])('maps domainAccessAction %s to the gate decision %s', async (action, decision) => {
+			const server = makeMockServer();
+			server.callTool.mockResolvedValue(SUCCESS_RESULT);
+
+			await getInstanceExecute(server)(
+				{ filePath: 'test.ts' },
+				makeCtx({ resumeData: { approved: true, domainAccessAction: action } }),
+			);
+
+			expect(server.callTool).toHaveBeenCalledWith(
+				{ name: 'write_file', arguments: { filePath: 'test.ts', _confirmation: decision } },
+				{ abortSignal: undefined },
+			);
+		});
+
+		it('treats a denied card as denied and does not call the gate', async () => {
+			const server = makeMockServer();
+
+			const result = await getInstanceExecute(server)(
+				{},
+				makeCtx({ resumeData: { approved: false } }),
+			);
+
+			expect(result.isError).toBe(true);
+			expect(server.callTool).not.toHaveBeenCalled();
+		});
+	});
 });

@@ -12,6 +12,8 @@ import {
 	instanceAiConfirmationSeveritySchema,
 	type GatewayConfirmationRequiredPayload,
 	type McpToolCallResult,
+	domainAccessActionSchema,
+	domainAccessMetaSchema,
 } from '@n8n/api-types';
 import type * as McpBrowserCredentialMod from '@n8n/mcp-browser/dist/tools/credential';
 import { isRecord } from '@n8n/utils/is-record';
@@ -52,12 +54,18 @@ type McpContentBlock = McpToolCallResult['content'][number];
 // Schemas shared across all gateway-gated tools
 // ---------------------------------------------------------------------------
 
+/**
+ * Daemon decisions use the resource-decision card (`inputType` + `resourceDecision`).
+ * PROTOTYPE: with `approvalStyle: 'instance'`, the same tools raise n8n's own cards
+ * instead: the domain-access card (`domainAccess`) or a plain approval (neither field).
+ */
 const gatewayConfirmationSuspendSchema = z.object({
 	requestId: z.string(),
 	message: z.string(),
 	severity: instanceAiConfirmationSeveritySchema,
-	inputType: z.literal('resource-decision'),
-	resourceDecision: gatewayConfirmationRequiredPayloadSchema,
+	inputType: z.literal('resource-decision').optional(),
+	resourceDecision: gatewayConfirmationRequiredPayloadSchema.optional(),
+	domainAccess: domainAccessMetaSchema.optional(),
 });
 
 const gatewayResourceDecisionSchema = z.enum(['denyOnce', 'allowOnce', 'allowForSession']);
@@ -70,7 +78,50 @@ const gatewayConfirmationRequiredWirePayloadSchema =
 export const gatewayConfirmationResumeSchema = z.object({
 	approved: z.boolean(),
 	resourceDecision: gatewayResourceDecisionSchema.optional(),
+	/** Answer from the domain-access card, in `approvalStyle: 'instance'`. */
+	domainAccessAction: domainAccessActionSchema.optional(),
 });
+
+/**
+ * Where browser approvals are decided, which picks the card the user sees.
+ * - `resource-decision`: the Computer Use daemon owns the rules and issues decision tokens.
+ * - `instance`: n8n's own gate decides (the cloud browser), so it uses n8n's cards.
+ */
+export type LocalMcpApprovalStyle = 'resource-decision' | 'instance';
+
+/** PROTOTYPE: n8n's own approval card for a gate decision, labelled as the cloud browser. */
+function toInstanceApproval(payload: GatewayConfirmationRequiredPayload) {
+	const requestId = nanoid();
+	// Domain access is the only decision that offers a session-wide grant.
+	if (payload.options.includes('allowForSession')) {
+		const host = payload.resource;
+		return {
+			requestId,
+			message: `The cloud browser wants to open ${host}`,
+			severity: 'info' as const,
+			domainAccess: { url: `https://${host}`, host },
+		};
+	}
+	// Destructive on purpose: the gate offers no session-wide grant for credential writes,
+	// and the frontend never offers or applies "Always allow" to a destructive card.
+	return {
+		requestId,
+		message: `Cloud browser: ${payload.description}`,
+		severity: 'destructive' as const,
+	};
+}
+
+/** PROTOTYPE: translate an answer from n8n's card into the gate's decision. */
+function instanceDecision(resumeData: {
+	approved: boolean;
+	domainAccessAction?: string;
+}): 'allowOnce' | 'allowForSession' | undefined {
+	if (!resumeData.approved) return undefined;
+	return resumeData.domainAccessAction === 'allow_domain' ||
+		resumeData.domainAccessAction === 'allow_all'
+		? 'allowForSession'
+		: 'allowOnce';
+}
 
 // ---------------------------------------------------------------------------
 // Helper
@@ -242,13 +293,44 @@ function warnSkippedLocalMcpTool(logger: Logger) {
  * The `toModelOutput` callback converts MCP image blocks into AI SDK content
  * output parts so the LLM receives gateway screenshots as real multimodal input.
  */
+type McpToolInputSchema = ReturnType<LocalMcpServer['getAvailableTools']>[number]['inputSchema'];
+
+/**
+ * Adds the optional `status` property to a tool's JSON Schema. It is added before the
+ * schema is converted, because the converter builds with its own copy of zod.
+ */
+function withStatusProperty(schema: McpToolInputSchema): McpToolInputSchema {
+	// Only plain object schemas. A union (anyOf) keeps its shape without a status.
+	if (!('properties' in schema)) return schema;
+	return {
+		...schema,
+		properties: {
+			...(schema.properties ?? {}),
+			status: {
+				type: 'string',
+				maxLength: 80,
+				description:
+					'What you are doing now, for the user, in a few words, e.g. "Looking up invoices in Ledgerly".',
+			},
+		},
+	};
+}
+
 export function createToolsFromLocalMcpServer({
 	server,
 	logger,
 	onCredentialCreateResult,
+	approvalStyle = 'resource-decision',
+	statusField = false,
 }: {
 	server: LocalMcpServer;
 	logger: Logger;
+	approvalStyle?: LocalMcpApprovalStyle;
+	/**
+	 * PROTOTYPE (cloud browser): add an optional `status` argument to every tool, a short
+	 * line for the UI about what the agent is doing. It is stripped before the server call.
+	 */
+	statusField?: boolean;
 	onCredentialCreateResult?: (
 		credentialType: string,
 		outcome: BrowserCredentialCreateOutcome,
@@ -300,7 +382,11 @@ export function createToolsFromLocalMcpServer({
 				// McpTool.inputSchema properties are typed as Record<string, unknown> to
 				// accommodate arbitrary JSON Schema values; the cast is safe here because
 				// the daemon always sends valid JSON Schema objects.
-				inputSchema = convertJsonSchemaToZod(mcpTool.inputSchema as JSONSchema);
+				inputSchema = convertJsonSchemaToZod(
+					(statusField
+						? withStatusProperty(mcpTool.inputSchema)
+						: mcpTool.inputSchema) as JSONSchema,
+				);
 			}
 		} catch {
 			// Fallback: accept any object if conversion fails
@@ -312,7 +398,10 @@ export function createToolsFromLocalMcpServer({
 			.input(inputSchema)
 			.suspend(gatewayConfirmationSuspendSchema)
 			.resume(gatewayConfirmationResumeSchema)
-			.handler(async (args: Record<string, unknown>, ctx) => {
+			.handler(async (rawArgs: Record<string, unknown>, ctx) => {
+				// The UI reads `status` from the tool call. The server never sees it.
+				const { status: _status, ...withoutStatus } = rawArgs;
+				const args = statusField ? withoutStatus : rawArgs;
 				const resumeData = ctx.resumeData;
 				const observeResult = (result: McpToolCallResult): McpToolCallResult => {
 					if (toolName === 'browser_create_credential' && typeof args.type === 'string') {
@@ -349,7 +438,11 @@ export function createToolsFromLocalMcpServer({
 
 				// Resume path: user has made a resource-access decision
 				if (resumeData !== undefined && resumeData !== null) {
-					if (!resumeData.resourceDecision) {
+					const decision =
+						approvalStyle === 'instance'
+							? instanceDecision(resumeData)
+							: resumeData.resourceDecision;
+					if (!decision) {
 						// User denied — no decision provided
 						return observeResult({
 							content: [{ type: 'text', text: JSON.stringify({ error: 'Access denied by user' }) }],
@@ -357,9 +450,7 @@ export function createToolsFromLocalMcpServer({
 						});
 					}
 					// Re-call the daemon with the user's decision
-					return observeResult(
-						await callServer({ ...args, _confirmation: resumeData.resourceDecision }),
-					);
+					return observeResult(await callServer({ ...args, _confirmation: decision }));
 				}
 
 				// First-call path: strip any LLM-provided _confirmation key so the agent
@@ -371,6 +462,9 @@ export function createToolsFromLocalMcpServer({
 				if (result.isError) {
 					const payload = tryParseGatewayConfirmationRequired(result);
 					if (payload && typeof ctx.suspend === 'function') {
+						if (approvalStyle === 'instance') {
+							return await ctx.suspend(toInstanceApproval(payload));
+						}
 						return await ctx.suspend({
 							requestId: nanoid(),
 							message: `${toolName}: ${payload.description}`,

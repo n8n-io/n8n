@@ -706,6 +706,20 @@ describe('buildTimelineBlocks', () => {
 		expect(blocks).toEqual([{ type: 'child', key: 'child-1', child: builderChild }]);
 	});
 
+	test('never renders the cloud browser sub-agent in the chat', () => {
+		const browserChild = makeAgentNode({ agentId: 'browser-1', role: 'cloud-browser' });
+
+		for (const status of ['active', 'completed'] as const) {
+			const blocks = blocksOf(
+				[{ type: 'child', agentId: 'browser-1', responseId: 'r1' }],
+				[],
+				'completed',
+				[{ ...browserChild, status }],
+			);
+			expect(blocks).toEqual([]);
+		}
+	});
+
 	test('keeps build-agent trace when no builder child exists', () => {
 		const blocks = blocksOf(
 			[toolEntry('tc-build-agent', 'r1')],

@@ -12,6 +12,7 @@ import {
 	InstanceAiEventsQuery,
 	instanceAiGatewayKeySchema,
 	InstanceAiCorrectTaskRequest,
+	InstanceAiSendBackgroundEventsNowRequest,
 	InstanceAiEnsureThreadRequest,
 	InstanceAiPersistPendingAgentRequest,
 	InstanceAiThreadMessagesQuery,
@@ -676,6 +677,25 @@ export class InstanceAiController {
 		await this.assertThreadAccess(req.user.id, threadId);
 		await this.instanceAiService.routeCorrectionToTask(threadId, taskId, payload.message);
 		return { ok: true };
+	}
+
+	/** PROTOTYPE (cloud browser): send queued background task events to the orchestrator now. */
+	@Post('/chat/:threadId/background-events/send-now')
+	@GlobalScope('instanceAi:message')
+	async sendBackgroundEventsNow(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('threadId') threadId: string,
+		@Body payload: InstanceAiSendBackgroundEventsNowRequest,
+	) {
+		this.requireInstanceAiEnabled();
+		await this.assertThreadAccess(req.user.id, threadId);
+		const sent = await this.instanceAiService.sendBackgroundEventsNow(
+			req.user,
+			threadId,
+			payload.taskId,
+		);
+		return { ok: sent };
 	}
 
 	// ── Preference card (the save_user_preference result in the chat) ────────

@@ -3,6 +3,7 @@ import ProjectIcon from '@/features/collaboration/projects/components/ProjectIco
 import type { InstanceAiHandoffContext, TaskItem } from '@n8n/api-types';
 import {
 	isIconOrEmoji,
+	N8nButton,
 	N8nHeading,
 	N8nIcon,
 	N8nIconButton,
@@ -12,6 +13,13 @@ import {
 import { useI18n } from '@n8n/i18n';
 import { computed, inject, type Ref } from 'vue';
 import { useBuildingArtifactIds } from '../composables/useBuildingArtifactIds';
+import { embeddedLiveViewUrl, liveViewKey, viewportAspectRatio } from '../cloudBrowserLink';
+import {
+	isLiveCloudBrowser,
+	useCloudBrowserAgents,
+	type CloudBrowserAgent,
+	type CloudBrowserStatus,
+} from '../composables/useCloudBrowserAgents';
 import { useInstanceAiStore, useThread } from '../instanceAi.store';
 import type { ResourceEntry } from '../useResourceRegistry';
 import {
@@ -105,6 +113,78 @@ const statusIconMap: Record<
 	failed: { icon: 'circle-x', spin: false, className: 'failedIcon' },
 	cancelled: { icon: 'ban', spin: false, className: 'cancelledIcon' },
 };
+
+// --- Cloud browsers (PROTOTYPE) ---
+const cloudBrowsers = useCloudBrowserAgents();
+
+const cloudBrowserStatusIcon: Record<CloudBrowserStatus, { icon: IconName; className: string }> = {
+	running: { icon: 'circle', className: 'artifactIcon' },
+	'needs-user': { icon: 'user-round', className: 'needsUserIcon' },
+	'needs-approval': { icon: 'shield', className: 'needsUserIcon' },
+	completed: { icon: 'circle-check', className: 'successIcon' },
+	failed: { icon: 'circle-x', className: 'failedIcon' },
+	blocked: { icon: 'triangle-alert', className: 'failedIcon' },
+	denied: { icon: 'x', className: 'cancelledIcon' },
+	cancelled: { icon: 'ban', className: 'cancelledIcon' },
+};
+
+/** The colour of the row's second line: orange while it needs the user, green on success. */
+function cloudBrowserTone(browser: CloudBrowserAgent): string {
+	if (browser.status === 'needs-user' || browser.status === 'needs-approval') return 'toneWaiting';
+	if (browser.status === 'completed') return 'toneSuccess';
+	if (browser.status === 'failed' || browser.status === 'blocked') return 'toneFailed';
+	return 'toneMuted';
+}
+
+function cloudBrowserSubtitle(browser: CloudBrowserAgent): string {
+	if (browser.status === 'running') {
+		return browser.activity ?? i18n.baseText('instanceAi.artifactsPanel.cloudBrowsers.working');
+	}
+	if (browser.status === 'needs-user') {
+		return i18n.baseText('instanceAi.artifactsPanel.cloudBrowsers.waitingForUser', {
+			interpolate: { reason: browser.handOff?.reason ?? '' },
+		});
+	}
+	if (browser.status === 'needs-approval') {
+		return i18n.baseText('instanceAi.artifactsPanel.cloudBrowsers.needsApproval');
+	}
+	if (browser.status === 'cancelled') {
+		return i18n.baseText('instanceAi.artifactsPanel.cloudBrowsers.stopped');
+	}
+	const fallback = {
+		completed: i18n.baseText('instanceAi.artifactsPanel.cloudBrowsers.completed'),
+		failed: i18n.baseText('instanceAi.artifactsPanel.cloudBrowsers.failed'),
+		blocked: i18n.baseText('instanceAi.artifactsPanel.cloudBrowsers.blocked'),
+		denied: i18n.baseText('instanceAi.artifactsPanel.cloudBrowsers.denied'),
+	}[browser.status as 'completed' | 'failed' | 'blocked' | 'denied'];
+	// First line only; the full result is in the row's tooltip.
+	return browser.summary?.trim().split('\n')[0] || fallback;
+}
+
+/** During a hand-off, the page that needs the user. Otherwise the whole session. */
+function browserThumbnailUrl(browser: CloudBrowserAgent): string | undefined {
+	return browser.handOff?.liveViewUrl ?? browser.liveViewUrl;
+}
+
+function embeddedThumbnailUrl(browser: CloudBrowserAgent): string | undefined {
+	const url = browserThumbnailUrl(browser);
+	return url ? embeddedLiveViewUrl(url) : undefined;
+}
+
+const openCloudBrowserTab = inject<((agentId?: string) => boolean) | undefined>(
+	'openCloudBrowserTab',
+	undefined,
+);
+
+/** Opens the browser tab. Without one (or with a modifier key), the link opens a new window. */
+function openBrowser(event: MouseEvent, agentId: string) {
+	if (event.metaKey || event.ctrlKey || event.shiftKey) return;
+	if (openCloudBrowserTab?.(agentId)) event.preventDefault();
+}
+
+function stopCloudBrowser(taskId: string | undefined) {
+	if (taskId) void thread.cancelBackgroundTask(taskId);
+}
 
 // --- Artifacts ---
 const buildingArtifactIds = useBuildingArtifactIds();
@@ -376,6 +456,90 @@ async function dismissContext(key: string) {
 				</div>
 			</div>
 		</div>
+		<!-- Browsers card (PROTOTYPE): one row per cloud browser task -->
+		<div
+			v-if="cloudBrowsers.length > 0"
+			:class="[$style.group, $style.browsersGroup]"
+			data-test-id="instance-ai-cloud-browsers"
+		>
+			<div :class="$style.section">
+				<div :class="$style.sectionHeader">
+					<N8nHeading tag="h3" size="small" :class="$style.sectionTitle">
+						{{ i18n.baseText('instanceAi.artifactsPanel.cloudBrowsers.title') }}
+					</N8nHeading>
+				</div>
+
+				<div :class="$style.contextList">
+					<div
+						v-for="browser in cloudBrowsers"
+						:key="browser.agentId"
+						:class="$style.browserRow"
+						data-test-id="instance-ai-cloud-browser-row"
+					>
+						<div :class="$style.browserHeader">
+							<span :class="$style.browserIconWrap">
+								<span v-if="browser.status === 'running'" :class="$style.runningDot" />
+								<N8nIcon
+									v-else
+									:icon="cloudBrowserStatusIcon[browser.status].icon"
+									size="large"
+									:class="$style[cloudBrowserStatusIcon[browser.status].className]"
+								/>
+							</span>
+							<span :class="$style.contextText">
+								<span :class="$style.contextName" :title="browser.goal">{{ browser.goal }}</span>
+								<span
+									:class="[$style.browserSubtitle, $style[cloudBrowserTone(browser)]]"
+									:title="browser.summary ?? browser.handOff?.reason"
+									data-test-id="instance-ai-cloud-browser-status"
+								>
+									{{ cloudBrowserSubtitle(browser) }}
+								</span>
+							</span>
+							<!-- The chat's stop icon, kept quiet: grey, orange on hover. -->
+							<N8nButton
+								v-if="browser.taskId && isLiveCloudBrowser(browser)"
+								variant="ghost"
+								icon-only
+								icon="filled-square"
+								icon-size="small"
+								size="mini"
+								:class="$style.browserStop"
+								:aria-label="i18n.baseText('instanceAi.artifactsPanel.cloudBrowsers.stop')"
+								:title="i18n.baseText('instanceAi.artifactsPanel.cloudBrowsers.stop')"
+								data-test-id="instance-ai-cloud-browser-stop"
+								@click="stopCloudBrowser(browser.taskId)"
+							/>
+						</div>
+						<!-- A small, read-only Live View. Hover offers to open it in a tab. -->
+						<a
+							v-if="isLiveCloudBrowser(browser) && browserThumbnailUrl(browser)"
+							:style="{ aspectRatio: viewportAspectRatio(browser.viewport) }"
+							:href="browserThumbnailUrl(browser)"
+							target="_blank"
+							rel="noopener noreferrer"
+							:class="$style.browserThumbnail"
+							data-test-id="instance-ai-cloud-browser-live-view"
+							@click="openBrowser($event, browser.agentId)"
+						>
+							<iframe
+								:key="liveViewKey(browserThumbnailUrl(browser) ?? '')"
+								:src="embeddedThumbnailUrl(browser)"
+								:class="$style.browserThumbnailFrame"
+								tabindex="-1"
+								aria-hidden="true"
+								sandbox="allow-same-origin allow-scripts"
+							/>
+							<span :class="$style.browserThumbnailOverlay">
+								<span :class="$style.openBrowserButton">
+									{{ i18n.baseText('instanceAi.artifactsPanel.cloudBrowsers.openBrowser') }}
+								</span>
+							</span>
+						</a>
+					</div>
+				</div>
+			</div>
+		</div>
 	</aside>
 </template>
 
@@ -435,6 +599,134 @@ async function dismissContext(key: string) {
 	color: var(--text-color--subtle);
 }
 
+/* Browsers card (PROTOTYPE) */
+.browsersGroup {
+	margin-top: var(--spacing--xs);
+}
+
+.browserRow {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--2xs);
+	padding: var(--spacing--3xs) var(--spacing--2xs) var(--spacing--2xs);
+}
+
+.browserHeader {
+	display: flex;
+	align-items: flex-start;
+	gap: var(--spacing--2xs);
+}
+
+.browserIconWrap {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: var(--spacing--md);
+	height: var(--spacing--md);
+	flex-shrink: 0;
+}
+
+.runningDot {
+	width: 8px;
+	height: 8px;
+	border-radius: 50%;
+	background: var(--color--text--tint-1);
+	animation: browser-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes browser-pulse {
+	50% {
+		opacity: 0.35;
+	}
+}
+
+.browserSubtitle {
+	font-size: var(--font-size--2xs);
+	line-height: var(--line-height--md);
+	overflow: hidden;
+	display: -webkit-box;
+	-webkit-line-clamp: 2;
+	-webkit-box-orient: vertical;
+}
+
+.toneWaiting {
+	color: var(--color--warning);
+}
+
+.toneSuccess {
+	color: var(--color--success);
+}
+
+.toneFailed {
+	color: var(--color--danger);
+}
+
+.toneMuted {
+	color: var(--color--text--tint-1);
+}
+
+.browserStop {
+	flex-shrink: 0;
+	color: var(--color--text--tint-1);
+	background: transparent;
+	transition: color 0.15s ease;
+
+	&:hover {
+		color: var(--color--primary);
+		background: transparent;
+	}
+}
+
+.successIcon {
+	color: var(--color--success);
+}
+
+/* The Live View rendered at 4x its box and scaled down, so the page lays out at desktop size. */
+.browserThumbnail {
+	position: relative;
+	display: block;
+	aspect-ratio: 16 / 10;
+	overflow: hidden;
+	border: var(--border);
+	border-radius: var(--radius);
+	background: var(--color--background--shade-1);
+	cursor: pointer;
+
+	&:hover .browserThumbnailOverlay,
+	&:focus-visible .browserThumbnailOverlay {
+		opacity: 1;
+	}
+}
+
+.browserThumbnailFrame {
+	width: 400%;
+	height: 400%;
+	border: 0;
+	transform: scale(0.25);
+	transform-origin: 0 0;
+	pointer-events: none;
+}
+
+.browserThumbnailOverlay {
+	position: absolute;
+	inset: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background: rgba(0, 0, 0, 0.35);
+	opacity: 0;
+	transition: opacity 0.15s ease;
+}
+
+.openBrowserButton {
+	padding: var(--spacing--3xs) var(--spacing--xs);
+	border-radius: var(--radius);
+	background: var(--color--primary);
+	color: var(--color--foreground--tint-2, white);
+	font-size: var(--font-size--2xs);
+	font-weight: var(--font-weight--bold);
+}
+
 /* Artifact list */
 .artifactList {
 	display: flex;
@@ -476,6 +768,29 @@ async function dismissContext(key: string) {
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
+}
+
+.needsUserIcon {
+	color: var(--color--warning);
+}
+
+.handBackButton {
+	align-self: flex-start;
+	margin-top: var(--spacing--4xs);
+}
+
+.liveViewLink {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
+	font-size: var(--font-size--2xs);
+	line-height: var(--line-height--sm);
+	color: var(--color--primary);
+	text-decoration: none;
+
+	&:hover {
+		text-decoration: underline;
+	}
 }
 
 .contextDismiss {

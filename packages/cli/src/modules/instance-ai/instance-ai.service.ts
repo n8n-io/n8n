@@ -1,6 +1,7 @@
 import { AgentEvent, createScopedWorkspace, filterRuntimeSkillSource } from '@n8n/agents';
 import type {
 	AgentDbMessage,
+	AgentInputBoundary,
 	Message,
 	Workspace,
 	ScopedMemoryTaskEvent,
@@ -36,6 +37,8 @@ import {
 	INSTANCE_CONTEXT_SURFACE_DEPTH,
 	type InstanceAiEvalThreadMemoryResponse,
 	type InstanceAiThreadArtifactsContext,
+	type InstanceAiBackgroundTaskOutcome,
+	backgroundTaskOutcomeSchema,
 } from '@n8n/api-types';
 import { Logger, ModuleRegistry } from '@n8n/backend-common';
 import { SsrfProtectionService } from '@n8n/backend-network';
@@ -114,6 +117,8 @@ import {
 	type ModelConfig,
 	type AgentSnapshotArtifact,
 	type OrchestrationContext,
+	type SpawnBackgroundTaskOptions,
+	type SpawnBackgroundTaskResult,
 	type InstanceAiTraceContext,
 	type PlannedTaskGraph,
 	type PlannedTaskRecord,
@@ -140,6 +145,7 @@ import {
 	WorkflowTaskCoordinator,
 	WorkflowLoopStorage,
 	ThreadTaskStorage,
+	type BackgroundTaskInboxItem,
 } from '@n8n/instance-ai';
 import { buildResumeData, toConfirmationData } from '@n8n/instance-ai/confirmation-payload';
 import type { Scope } from '@n8n/permissions';
@@ -225,6 +231,7 @@ import {
 	WORKFLOW_SETUP_STATE_CLOSE_TAG,
 	WORKFLOW_SETUP_STATE_OPEN_TAG,
 } from './internal-messages';
+import { BackgroundTaskInbox, renderInboxMessage } from './background-task-inbox';
 import { loadOnboardingSkill } from './onboarding';
 import { ONBOARDING_OPENING } from './onboarding-opening';
 import { INSTANCE_AI_RUN_TIMEOUT_REASON, InstanceAiLivenessService } from './liveness';
@@ -280,6 +287,16 @@ type TracedResourceAttachment = {
 	projectId?: string;
 	executionId?: string;
 };
+
+/**
+ * PROTOTYPE (cloud browser): the outcome a background task reported, if any. A crash or
+ * a stopped stream is `failed` even when the task never reported.
+ */
+function taskOutcome(task: ManagedBackgroundTask): InstanceAiBackgroundTaskOutcome | undefined {
+	if (task.status === 'failed') return 'failed';
+	const parsed = backgroundTaskOutcomeSchema.safeParse(task.outcome?.outcome);
+	return parsed.success ? parsed.data : undefined;
+}
 
 /** Root-run outputs for a suspended segment — keep the LangSmith turn readable (AGENT-371). */
 function buildSuspensionTraceOutputs(runId: string, suspension: SuspensionInfo | undefined) {
@@ -756,6 +773,17 @@ export class InstanceAiService {
 	 * run that completes or suspends, i.e. proves the thread is healthy again.
 	 */
 	private readonly failedInternalFollowUpStreaks = new Map<string, number>();
+
+	/** PROTOTYPE (cloud browser): background task events waiting for the orchestrator. */
+	private readonly backgroundInbox = new BackgroundTaskInbox((threadId) => {
+		// Live only: the inbox is in memory, so a replayed copy could be stale.
+		this.eventBus.publish(threadId, {
+			type: 'background-inbox-updated',
+			runId: '',
+			agentId: 'orchestrator',
+			payload: { items: this.backgroundInbox.snapshot(threadId) },
+		});
+	});
 
 	private readonly terminalOutcome: InstanceAiTerminalOutcomeService;
 
@@ -1281,6 +1309,7 @@ export class InstanceAiService {
 		return {
 			maxIterations: MAX_STEPS.ORCHESTRATOR,
 			abortSignal: signal,
+			onInputBoundary: this.backgroundInputBoundary(threadId),
 			// Recover token usage from raw provider events so a stopped/errored run
 			// is still billed for the tokens consumed before the stop.
 			recoverUsageOnAbort: true,
@@ -1320,6 +1349,7 @@ export class InstanceAiService {
 			runId: agentRunId,
 			toolCallId,
 			abortSignal: signal,
+			onInputBoundary: this.backgroundInputBoundary(threadId),
 			// Keep billing stopped/errored resumed runs (see stream-options builder).
 			recoverUsageOnAbort: true,
 			...modelStreamStallOptions(this.aiConfig),
@@ -1562,6 +1592,7 @@ export class InstanceAiService {
 		const cancelledTasks = this.backgroundTasks.cancelThread(threadId);
 		const user = this.runState.getThreadUser(threadId);
 		for (const task of cancelledTasks) {
+			this.noteCloudBrowserCancelled(task);
 			void this.tracing.finalizeBackgroundTaskTracing(task, 'cancelled');
 			this.eventBus.publish(threadId, {
 				type: 'agent-completed',
@@ -1573,7 +1604,7 @@ export class InstanceAiService {
 					status: 'cancelled',
 				},
 			});
-			void this.terminalOutcome.recordBackgroundTerminalOutcome(task);
+			void this.terminalOutcome.recordBackgroundTerminalOutcome(this.atLatestTurn(threadId, task));
 			if (user) {
 				void this.handlePlannedTaskSettlement(user, task, 'cancelled', { reschedule: false });
 			}
@@ -1607,6 +1638,33 @@ export class InstanceAiService {
 		void this.suspendedThreads.dropPendingConfirmationsForThread(threadId);
 	}
 
+	/**
+	 * PROTOTYPE (cloud browser): a stopped browser task's "cancelled" line belongs at the
+	 * bottom of the thread, where the user pressed stop, not in the turn that started it.
+	 */
+	private atLatestTurn(threadId: string, task: ManagedBackgroundTask): ManagedBackgroundTask {
+		if (task.role !== 'cloud-browser') return task;
+		const messageGroupId = this.runState.getMessageGroupId(threadId) ?? task.messageGroupId;
+		return { ...task, messageGroupId };
+	}
+
+	/**
+	 * PROTOTYPE (cloud browser): tells the orchestrator a browser task was stopped, so it does
+	 * not keep waiting for it. No wake: the user stopped it and knows. It arrives with the
+	 * next delivery or at the next step of a live run from the same turn.
+	 */
+	private noteCloudBrowserCancelled(task: ManagedBackgroundTask): void {
+		if (task.role !== 'cloud-browser') return;
+		this.backgroundInbox?.push(task.threadId, {
+			messageGroupId: task.messageGroupId,
+			taskId: task.taskId,
+			role: task.role,
+			kind: 'finished',
+			wake: false,
+			text: 'The user stopped this task. It will not report a result.',
+		});
+	}
+
 	/** Send a correction message to a running background task. */
 	sendCorrectionToTask(
 		threadId: string,
@@ -1616,10 +1674,149 @@ export class InstanceAiService {
 		return this.backgroundTasks.queueCorrection(threadId, taskId, correction);
 	}
 
+	/**
+	 * PROTOTYPE (cloud browser): trimmed restore of the spawn path removed in #36740.
+	 * No planned-task, checkpoint or verification handling. When the last task settles
+	 * and the thread is idle, an internal follow-up run hands the result to the orchestrator.
+	 */
+	private spawnBackgroundTask(
+		user: User,
+		threadId: string,
+		runId: string,
+		messageGroupId: string | undefined,
+		opts: SpawnBackgroundTaskOptions,
+	): SpawnBackgroundTaskResult {
+		const publishCompleted = (task: ManagedBackgroundTask) => {
+			const outcome = taskOutcome(task);
+			this.eventBus.publish(threadId, {
+				type: 'agent-completed',
+				runId,
+				agentId: opts.agentId,
+				payload: task.error
+					? { role: opts.role, result: '', error: task.error, outcome }
+					: { role: opts.role, result: task.result ?? '', outcome },
+			});
+		};
+
+		const outcome = this.backgroundTasks.spawn({
+			taskId: opts.taskId,
+			threadId,
+			runId,
+			role: opts.role,
+			agentId: opts.agentId,
+			messageGroupId: messageGroupId ?? this.runState.getMessageGroupId(threadId),
+			dedupeKey: opts.dedupeKey,
+			run: async (signal, drainCorrections, waitForCorrection) =>
+				await opts.run(signal, drainCorrections, waitForCorrection),
+			onCompleted: publishCompleted,
+			onFailed: publishCompleted,
+			// No terminal outcome line here: it is a UI-only "task finished" text the model never
+			// sees. The sidebar shows the outcome and the follow-up run tells the orchestrator.
+			onSettled: async (task) => {
+				if (task.status === 'cancelled' || task.timeoutReason) return;
+				const outcome = taskOutcome(task) ?? 'succeeded';
+				const detail = task.error ?? task.result ?? '';
+				this.backgroundInbox.push(threadId, {
+					messageGroupId: task.messageGroupId,
+					taskId: task.taskId,
+					role: task.role,
+					kind: 'finished',
+					wake: true,
+					text: `Finished with outcome "${outcome}".\n${detail}`.trim(),
+				});
+				await this.deliverBackgroundInbox(user, threadId);
+			},
+		});
+
+		if (outcome.status === 'started') {
+			return { status: 'started', taskId: outcome.task.taskId, agentId: outcome.task.agentId };
+		}
+		if (outcome.status === 'duplicate') {
+			return {
+				status: 'duplicate',
+				existing: { taskId: outcome.existing.taskId, agentId: outcome.existing.agentId },
+			};
+		}
+		return { status: 'limit-reached' };
+	}
+
+	/**
+	 * PROTOTYPE (cloud browser): queue a background task event and deliver it if the thread
+	 * is idle. While a run is live it waits in the inbox for the run's post-run step.
+	 */
+	private notifyFromBackgroundTask(
+		user: User,
+		threadId: string,
+		messageGroupId: string | undefined,
+		item: BackgroundTaskInboxItem,
+	): void {
+		this.backgroundInbox.push(threadId, { ...item, messageGroupId });
+		void this.deliverBackgroundInbox(user, threadId);
+	}
+
+	/**
+	 * PROTOTYPE (cloud browser): the user asked for queued background events to reach the
+	 * orchestrator now. A live run takes them at its next step, an idle thread gets a run.
+	 */
+	async sendBackgroundEventsNow(user: User, threadId: string, taskId?: string): Promise<boolean> {
+		if (!this.backgroundInbox.markSendNow(threadId, taskId)) return false;
+		await this.deliverBackgroundInbox(user, threadId);
+		return true;
+	}
+
+	/**
+	 * PROTOTYPE (cloud browser): hands background events to a live orchestrator run between
+	 * model steps, and before it ends. Only events from tasks this turn started, or that the
+	 * user asked to send now, so an unrelated conversation is not interrupted. The rest wait
+	 * for the run's post-run step.
+	 */
+	private backgroundInputBoundary(threadId: string) {
+		return async (boundary: AgentInputBoundary): Promise<AgentDbMessage[]> => {
+			if (!boundary.canContinue) return [];
+			const messageGroupId = this.runState.getMessageGroupId(threadId);
+			const items = this.backgroundInbox.drainForTurn(threadId, messageGroupId, {
+				completing: boundary.completing,
+			});
+			if (items.length === 0) return await Promise.resolve([]);
+			return [
+				{
+					id: nanoid(),
+					createdAt: new Date(Math.max(Date.now(), boundary.lastCreatedAt + 1)),
+					role: 'user',
+					content: [{ type: 'text', text: renderInboxMessage(items) }],
+				},
+			];
+		};
+	}
+
+	/**
+	 * PROTOTYPE (cloud browser): start one follow-up run with every queued event, if any of
+	 * them needs the orchestrator and no run is live. Events that need nothing ride along with
+	 * the next delivery. Called when an event arrives and when a run ends. No message group
+	 * is passed, so the reply lands as a new message at the bottom of the thread.
+	 */
+	private async deliverBackgroundInbox(user: User, threadId: string): Promise<void> {
+		// Optional: unit tests build this service from partial objects.
+		if (!this.backgroundInbox?.needsWake(threadId)) return;
+		if (this.runState.hasLiveRun(threadId)) return;
+		const items = this.backgroundInbox.drain(threadId);
+		const followUpRunId = await this.startInternalFollowUpRun(
+			user,
+			threadId,
+			renderInboxMessage(items),
+		);
+		if (!followUpRunId) {
+			// Raced with another run, or follow-ups keep failing. Keep them for the next try.
+			this.backgroundInbox.restore(threadId, items);
+			this.logger.warn('[browserbase demo] background events not delivered yet', { threadId });
+		}
+	}
+
 	/** Cancel a single background task by ID. */
 	cancelBackgroundTask(threadId: string, taskId: string): void {
 		const task = this.backgroundTasks.cancelTask(threadId, taskId);
 		if (!task) return;
+		this.noteCloudBrowserCancelled(task);
 
 		void this.tracing.finalizeBackgroundTaskTracing(task, 'cancelled');
 		this.eventBus.publish(threadId, {
@@ -1629,7 +1826,7 @@ export class InstanceAiService {
 			payload: { role: task.role, result: '', status: 'cancelled' },
 		});
 
-		void this.terminalOutcome.recordBackgroundTerminalOutcome(task);
+		void this.terminalOutcome.recordBackgroundTerminalOutcome(this.atLatestTurn(threadId, task));
 
 		const user = this.runState.getThreadUser(threadId);
 		if (user) {
@@ -1959,6 +2156,8 @@ export class InstanceAiService {
 		this.failedInternalFollowUpStreaks.delete(threadId);
 		this.domainAccessTrackersByThread.delete(threadId);
 		this.evalCredentialAllowlists.clearThread(threadId);
+		// Optional: unit tests build this service from partial objects.
+		this.backgroundInbox?.clearThread(threadId);
 		this.threadPushRef.delete(threadId);
 		this.planRequestsByThread.delete(threadId);
 		this.memoryTaskRegistry.clearThread(threadId);
@@ -2603,6 +2802,10 @@ export class InstanceAiService {
 		const browserMcpServer = browserUseEnabledGlobally
 			? this.browserSessionService.findMcpServer(user.id)
 			: undefined;
+		// PROTOTYPE: in cloud browser sub-agent mode the browser tools go to the sub-agent only.
+		const cloudBrowserServer = browserUseEnabledGlobally
+			? this.browserSessionService.findCloudBrowserServer(user.id)
+			: undefined;
 		const localMcpServer = composeLocalMcpServers(gatewayMcpServer, browserMcpServer);
 		if (localMcpServer) {
 			context.localMcpServer = localMcpServer;
@@ -2680,12 +2883,18 @@ export class InstanceAiService {
 			};
 		}
 
-		browserMcpServer?.setDomainGate({
+		const browserGate = {
 			tracker: domainTracker,
 			runId,
 			permissionMode: context.permissions?.fetchUrl,
 			createCredentialPermissionMode: context.permissions?.createCredential,
-		});
+		};
+		browserMcpServer?.setDomainGate(browserGate);
+		// PROTOTYPE: the cloud browser sub-agent's tools go through the same gate. Without it,
+		// every domain and credential write would be allowed without asking.
+		// TBD: the gate is per user and is replaced on each run, so an "allow once" granted
+		// under one run does not carry into a background task that outlives it.
+		cloudBrowserServer?.setDomainGate(browserGate);
 
 		// The client reports which + menu entries it renders, because only it can see
 		// its own rollout and the device. The admin switches are still applied here,
@@ -2693,7 +2902,8 @@ export class InstanceAiService {
 		context.computerUseState = resolveComputerUseState({
 			localGatewayDisabledGlobally,
 			localGatewayDisabledForUser,
-			browserUseEnabledGlobally,
+			// PROTOTYPE: with the cloud browser sub-agent, the prompt must not offer the extension.
+			browserUseEnabledGlobally: browserUseEnabledGlobally && !cloudBrowserServer,
 			clientChannels: this.runState.getComputerUseChannels(threadId),
 			localComputerToolCategories: gatewayMcpServer
 				? enabledToolCategories(gatewayMcpServer.getStatus().toolCategories)
@@ -2864,6 +3074,29 @@ export class InstanceAiService {
 			iterationLog,
 			sendCorrectionToTask: (taskId, correction) =>
 				this.sendCorrectionToTask(threadId, taskId, correction),
+			spawnBackgroundTask: (opts) =>
+				this.spawnBackgroundTask(user, threadId, runId, messageGroupId, opts),
+			cloudBrowserServer,
+			checkCloudBrowser: async () => await this.browserSessionService.checkCloudBrowser(),
+			getCloudBrowserLiveView: async () => await cloudBrowserServer?.getLiveView(),
+			notifyFromBackgroundTask: (item) =>
+				this.notifyFromBackgroundTask(
+					user,
+					threadId,
+					messageGroupId ?? this.runState.getMessageGroupId(threadId),
+					item,
+				),
+			// PROTOTYPE: a background sub-agent's approval card is answered through the normal
+			// confirm endpoint, which resolves this pending entry (the "sub-agent HITL" path).
+			waitForConfirmation: async (requestId) =>
+				await new Promise<ConfirmationData>((resolve) => {
+					this.runState.registerPendingConfirmation(requestId, {
+						resolve,
+						threadId,
+						userId: user.id,
+						createdAt: Date.now(),
+					});
+				}),
 			workflowTaskService: workflowTasks,
 			workspace: runtimeWorkspace,
 			workspaceRoot,
@@ -4914,6 +5147,10 @@ export class InstanceAiService {
 				await this.taskProjector.syncFromWorkflowLoop(threadId, runId);
 				if (reschedule) {
 					await this.maybeStartWorkflowSetupFollowUp(user, threadId);
+					// PROTOTYPE (cloud browser): hand over background events that arrived during the run.
+					// A stopped run must not start another one; its events wait for the next run's end.
+					// After the setup follow-up: if that starts a run, the events wait for its end.
+					await this.deliverBackgroundInbox(user, threadId);
 				}
 			}
 			if (errorReporterExecutionToken) {
@@ -6511,6 +6748,10 @@ export class InstanceAiService {
 				await this.taskProjector.syncFromWorkflowLoop(opts.threadId, opts.runId);
 				if (reschedule) {
 					await this.maybeStartWorkflowSetupFollowUp(opts.user, opts.threadId);
+					// PROTOTYPE (cloud browser): hand over background events that arrived during the run.
+					// A stopped run must not start another one; its events wait for the next run's end.
+					// After the setup follow-up: if that starts a run, the events wait for its end.
+					await this.deliverBackgroundInbox(opts.user, opts.threadId);
 				}
 			}
 			if (errorReporterExecutionToken) {

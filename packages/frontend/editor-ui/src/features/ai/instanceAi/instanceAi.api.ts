@@ -110,6 +110,38 @@ export async function postCancelTask(
 }
 
 /**
+ * POST /instance-ai/chat/:threadId/tasks/:taskId/correct -> 200 OK
+ * Send a message straight to a running background task, bypassing the orchestrator.
+ */
+/** PROTOTYPE (cloud browser): send queued background task events to the assistant now. */
+export async function postSendBackgroundEventsNow(
+	context: IRestApiContext,
+	threadId: string,
+	taskId?: string,
+): Promise<void> {
+	await makeRestApiRequest(
+		context,
+		'POST',
+		`/instance-ai/chat/${threadId}/background-events/send-now`,
+		taskId ? { taskId } : {},
+	);
+}
+
+export async function postCorrectTask(
+	context: IRestApiContext,
+	threadId: string,
+	taskId: string,
+	message: string,
+): Promise<void> {
+	await makeRestApiRequest(
+		context,
+		'POST',
+		`/instance-ai/chat/${threadId}/tasks/${taskId}/correct`,
+		{ message },
+	);
+}
+
+/**
  * POST /instance-ai/confirm/:requestId -> 200 OK
  * Resolve a confirmation request (HITL). The request body is a discriminated
  * union on `kind`.

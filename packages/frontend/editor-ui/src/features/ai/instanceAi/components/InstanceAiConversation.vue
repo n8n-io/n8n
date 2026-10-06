@@ -74,6 +74,7 @@ import InstanceAiInput from './InstanceAiInput.vue';
 import InstanceAiMarkdown from './InstanceAiMarkdown.vue';
 import AttachmentPreview from './AttachmentPreview.vue';
 import InstanceAiStatusBar from './InstanceAiStatusBar.vue';
+import InstanceAiBackgroundTaskBar from './InstanceAiBackgroundTaskBar.vue';
 import InstanceAiConfirmationPanel from './InstanceAiConfirmationPanel.vue';
 import WorkflowBuilderUnavailableNotice from './WorkflowBuilderUnavailableNotice.vue';
 import LimitedModeNotice from './LimitedModeNotice.vue';
@@ -1012,6 +1013,7 @@ defineExpose({
 								@dismiss="creditBanner.dismiss()"
 							/>
 							<slot name="above-input" />
+							<InstanceAiBackgroundTaskBar />
 							<div :class="$style.inputSwap">
 								<Transition name="input-swap">
 									<InstanceAiConfirmationPanel

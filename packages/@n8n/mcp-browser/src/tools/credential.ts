@@ -127,7 +127,10 @@ export const browserCreateCredentialSchema = z
 			.record(z.unknown())
 			.optional()
 			.describe(
-				'Same nested shape as data, but leaf string values are field names from the captured buffer. All leaves must resolve.',
+				'Same nested shape as data, but each leaf names a captured field. A leaf is either the ' +
+					'field name ("apiKey"), or { "field": "apiKey", "prefix": "Bearer " } when the ' +
+					'credential needs an auth scheme word before the secret. A prefix is one word and a ' +
+					"space, nothing else. Leaves may only fill the credential type's secret fields.",
 			),
 		projectId: z.string().optional().describe('Project to create the credential in'),
 		clear: z
@@ -143,7 +146,7 @@ function browserCreateCredential(
 	return {
 		name: 'browser_create_credential',
 		description:
-			'Assemble secrets captured with browser_capture_secret into a new n8n credential. Literal fields go in `data`; fields that must come from the buffer go in `resolveData` (leaf values are buffer field names). The buffer is cleared after success unless clear=false.',
+			'Assemble secrets captured with browser_capture_secret into a new n8n credential. Literal fields go in `data`; fields that must come from the buffer go in `resolveData` (leaf values are buffer field names, or { field, prefix } to put an auth scheme word such as "Bearer " before the secret). Captured secrets can only fill the credential type\'s secret fields. The buffer is cleared after success unless clear=false.',
 		inputSchema: browserCreateCredentialSchema,
 		async execute(args, context: ToolContext) {
 			requireSecretsBuffer(context);
@@ -156,6 +159,13 @@ function browserCreateCredential(
 				);
 			}
 
+			if (args.resolveData && context.getSecretFields) {
+				assertSecretsFillSecretFields(
+					args.type,
+					args.resolveData,
+					await context.getSecretFields(args.type),
+				);
+			}
 			const resolvedSecrets = args.resolveData ? resolveSecrets(args.resolveData, captured) : {};
 			const mergedData = deepMerge(args.data ?? {}, resolvedSecrets);
 
@@ -180,7 +190,7 @@ function browserCreateCredential(
 					toolGroup: 'browser',
 					kind: 'credential-write',
 					resource: BROWSER_CREDENTIALS_RESOURCE,
-					description: `Create credential "${args.name}" (${args.type})`,
+					description: `Create credential "${args.name}" (${args.type})${describeSecretMapping(args.resolveData)}`,
 				},
 			];
 		},
@@ -208,8 +218,84 @@ function requireCreateCredential(context: ToolContext): asserts context is ToolC
 }
 
 /**
- * Recursively walk `resolveData`. Every leaf string value is a field name to
- * look up in `captured`. Throws if a field name is not found.
+ * A `resolveData` leaf with an auth scheme word before the secret, e.g.
+ * `{ field: "apiKey", prefix: "Bearer " }`. The harness adds the prefix, so the agent never
+ * has to build a secret's final form on the page.
+ */
+interface PrefixedSecret {
+	field: string;
+	prefix: string;
+}
+
+/**
+ * One word and one space: "Bearer ", "Token ", "Bot ". No ":", "/", "@" or ".", so a prefix
+ * cannot carry a URL, a host or other data. It can only label the secret.
+ */
+const SECRET_PREFIX = /^[A-Za-z][A-Za-z0-9-]{0,19} $/;
+
+function isPrefixedSecret(value: unknown): value is PrefixedSecret {
+	return (
+		value !== null &&
+		typeof value === 'object' &&
+		!Array.isArray(value) &&
+		typeof (value as PrefixedSecret).field === 'string' &&
+		typeof (value as PrefixedSecret).prefix === 'string' &&
+		Object.keys(value).length === 2
+	);
+}
+
+/**
+ * Every leaf of `resolveData` with its path, e.g. `{ a: { b: 'x' } }` gives `a.b`. A
+ * prefixed secret is a leaf, not a nested object.
+ */
+function resolveLeaves(
+	value: Record<string, unknown>,
+	path = '',
+): Array<{ path: string; leaf: unknown }> {
+	return Object.entries(value).flatMap(([key, child]) =>
+		child !== null && typeof child === 'object' && !Array.isArray(child) && !isPrefixedSecret(child)
+			? resolveLeaves(child as Record<string, unknown>, `${path}${key}.`)
+			: [{ path: `${path}${key}`, leaf: child }],
+	);
+}
+
+/** For the approval card: which secret goes where, masked, e.g. ` · value ← Bearer ••••`. */
+function describeSecretMapping(resolveData: Record<string, unknown> | undefined): string {
+	if (!resolveData) return '';
+	const parts = resolveLeaves(resolveData).map(({ path, leaf }) =>
+		isPrefixedSecret(leaf) ? `${path} ← ${leaf.prefix}••••` : `${path} ← ••••`,
+	);
+	return parts.length > 0 ? ` · ${parts.join(', ')}` : '';
+}
+
+/**
+ * A captured secret may only fill one of the credential type's secret fields, as captured.
+ * It cannot go into a host, URL or any other plain field, where a workflow using the
+ * credential could send it somewhere else. Formatting such as a "Bearer " prefix belongs to
+ * the credential type, not to the agent.
+ */
+function assertSecretsFillSecretFields(
+	credentialType: string,
+	resolveData: Record<string, unknown>,
+	secretFields: string[],
+): void {
+	const allowed = new Set(secretFields);
+	const misplaced = resolveLeaves(resolveData)
+		.map(({ path }) => path)
+		.filter((path) => !allowed.has(path));
+	if (misplaced.length === 0) return;
+	throw new Error(
+		`Captured secrets can only fill the secret fields of "${credentialType}" ` +
+			`(${secretFields.join(', ') || 'it has none'}), not ${misplaced.map((p) => `"${p}"`).join(', ')}. ` +
+			'Pick a credential type whose secret field takes the value as the page shows it, or add an ' +
+			'auth scheme with { field, prefix }. Never build a secret on the page.',
+	);
+}
+
+/**
+ * Recursively walk `resolveData`. Every leaf is a field name to look up in `captured`, or a
+ * `{ field, prefix }` whose checked prefix goes before the secret. Throws if a field name is
+ * not found or a prefix is not one word and a space.
  */
 function resolveSecrets(
 	resolveData: Record<string, unknown>,
@@ -217,7 +303,21 @@ function resolveSecrets(
 ): Record<string, unknown> {
 	const result: Record<string, unknown> = {};
 	for (const [key, value] of Object.entries(resolveData)) {
-		if (value !== null && typeof value === 'object' && !Array.isArray(value)) {
+		if (isPrefixedSecret(value)) {
+			if (!SECRET_PREFIX.test(value.prefix)) {
+				throw new Error(
+					`Prefix "${value.prefix}" for "${key}" is not allowed. A prefix is one word and a space, ` +
+						'for example "Bearer " or "Token ".',
+				);
+			}
+			const secret = captured.get(value.field);
+			if (secret === undefined) {
+				throw new Error(
+					`resolveData references field "${value.field}" which was not captured. Call browser_capture_secret with field="${value.field}" first.`,
+				);
+			}
+			result[key] = `${value.prefix}${secret}`;
+		} else if (value !== null && typeof value === 'object' && !Array.isArray(value)) {
 			result[key] = resolveSecrets(value as Record<string, unknown>, captured);
 		} else if (typeof value === 'string') {
 			if (!captured.has(value)) {
@@ -228,7 +328,7 @@ function resolveSecrets(
 			result[key] = captured.get(value);
 		} else {
 			throw new Error(
-				`resolveData leaf values must be strings (field names). Got ${typeof value} for key "${key}".`,
+				`resolveData leaves must be field names or { field, prefix }. Got ${typeof value} for key "${key}".`,
 			);
 		}
 	}

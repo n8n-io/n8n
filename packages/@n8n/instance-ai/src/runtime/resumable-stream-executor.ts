@@ -349,6 +349,14 @@ async function consumeStreamPass(args: {
 	const drainedCorrectionsForResume: string[] = [];
 
 	for await (const chunk of activeStream) {
+		// Set only when the host passes `onInputBoundary`. The agent waits for this before it
+		// asks the host for more input between model steps, so it must always be acknowledged.
+		if (isRecord(chunk) && chunk.type === 'input-boundary') {
+			if (typeof chunk.acknowledge === 'function') chunk.acknowledge();
+			continue;
+		}
+		// Input the host committed at a boundary. The host already published what it needs.
+		if (isRecord(chunk) && chunk.type === 'input') continue;
 		if (options.context.signal.aborted) {
 			// A stop aborts the agent stream too: it stops generating and emits a
 			// terminal finish chunk carrying the run's usage. Drain the rest of the

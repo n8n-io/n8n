@@ -39,6 +39,20 @@ describe('HTML_PROBE_SCRIPT', () => {
 		expect(result.ok && result.root?.children[0].html).toContain('inside frame');
 	});
 
+	it('does not serialize a document twice when an iframe exposes one already visited', () => {
+		const dom = new JSDOM('<p>top</p><iframe title="loop"></iframe>', {
+			runScripts: 'dangerously',
+			url: 'http://test.local/page',
+		});
+		const frame = dom.window.document.querySelector('iframe');
+		Object.defineProperty(frame, 'contentDocument', { get: () => dom.window.document });
+
+		const result = parseHtmlProbeResult(dom.window.eval(HTML_PROBE_SCRIPT));
+
+		expect(result.ok && result.root?.html).toContain('<p>top</p>');
+		expect(result.ok && result.root?.children).toHaveLength(0);
+	});
+
 	it('collects open shadow-root HTML rather than host outerHTML', () => {
 		const result = parseHtmlProbeResult(
 			runProbe(`

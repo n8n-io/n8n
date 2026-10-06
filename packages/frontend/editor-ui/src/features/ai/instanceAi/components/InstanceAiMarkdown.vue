@@ -6,6 +6,7 @@ import {
 	type AgentPreviewTarget,
 } from '@/features/agents/utils/agentPreviewUrl';
 import { computed, inject, onMounted, onUpdated, ref, useCssModule } from 'vue';
+import { isLiveViewUrl, useCloudBrowserLinkHandler } from '../cloudBrowserLink';
 import { useThread } from '../instanceAi.store';
 import { INSTANCE_AI_EMBED_SUBJECT_KEY, isEmbedSubject } from '../embed/instanceAiEmbed.types';
 
@@ -43,6 +44,7 @@ const openAgentPreview = inject<((id: string, projectId: string) => boolean) | u
 	'openAgentPreview',
 	undefined,
 );
+const handleLiveViewClick = useCloudBrowserLinkHandler();
 const openAgentChatPreview = inject<((id: string, projectId: string) => boolean) | undefined>(
 	'openAgentChatPreview',
 	undefined,
@@ -83,7 +85,7 @@ const URL_BUILDERS: Record<string, (id: string) => string> = {
  */
 /** Internal XML blocks that should never render in the chat (LLM may echo them). */
 const INTERNAL_BLOCK_PATTERN =
-	/<(?:planning-blueprint|planned-task-follow-up|background-task-completed|running-tasks)[\s\S]*?<\/(?:planning-blueprint|planned-task-follow-up|background-task-completed|running-tasks)>/g;
+	/<(?:planning-blueprint|planned-task-follow-up|background-task-completed|background-task-events|running-tasks)[\s\S]*?<\/(?:planning-blueprint|planned-task-follow-up|background-task-completed|background-task-events|running-tasks)>/g;
 
 const rawContent = computed(() => props.content.replace(INTERNAL_BLOCK_PATTERN, '').trim());
 
@@ -412,6 +414,12 @@ function handleLinkClick(event: MouseEvent): void {
 	}
 
 	if (event.metaKey || event.ctrlKey) return;
+
+	// PROTOTYPE (cloud browser): a Live View link from the assistant opens the browser tab.
+	if (isLiveViewUrl(clickedLink.href)) {
+		handleLiveViewClick(event);
+		return;
+	}
 
 	const type = clickedLink.dataset.resourceChip;
 	const id = clickedLink.dataset.resourceId;

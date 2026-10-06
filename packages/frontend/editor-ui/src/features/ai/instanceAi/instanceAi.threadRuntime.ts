@@ -28,6 +28,7 @@ import {
 	type InstanceAiSetupItem,
 	type InstanceAiWorkflowAttachment,
 	type TaskList,
+	type InstanceAiBackgroundInboxItem,
 	type AgentRunState,
 	type InstanceAiRunLimitReason,
 	type AiPreferencesAppliedPayload,
@@ -50,6 +51,8 @@ import {
 	postMessage,
 	postCancel,
 	postCancelTask,
+	postCorrectTask,
+	postSendBackgroundEventsNow,
 	postConfirmation,
 	postFeedback,
 } from './instanceAi.api';
@@ -512,6 +515,8 @@ export function createThreadRuntime(
 	const activeRunId = ref<string | null>(null);
 	const archivedWorkflowIds = ref<Set<string>>(new Set());
 	const latestTasks = ref<TaskList | null>(null);
+	/** PROTOTYPE (cloud browser): background task events waiting to reach the assistant. */
+	const backgroundInbox = ref<InstanceAiBackgroundInboxItem[]>([]);
 	const latestSetupItems = ref<Record<string, InstanceAiSetupItem[]> | null>(null);
 	/**
 	 * What the latest turn reported as applied, from the durable fact on restore and from
@@ -1211,6 +1216,9 @@ export function createThreadRuntime(
 					[parsed.data.payload.workflowId]: parsed.data.payload.items,
 				};
 			}
+			if (parsed.data.type === 'background-inbox-updated') {
+				backgroundInbox.value = parsed.data.payload.items;
+			}
 			if (parsed.data.type === 'thread-title-updated') {
 				hooks.onTitleUpdated(threadId, parsed.data.payload.title);
 			}
@@ -1783,6 +1791,23 @@ export function createThreadRuntime(
 		}
 	}
 
+	/** PROTOTYPE: tell a background task the user is done, without going through the orchestrator. */
+	async function sendBackgroundEventsNow(taskId?: string): Promise<void> {
+		try {
+			await postSendBackgroundEventsNow(rootStore.restApiContext, threadId, taskId);
+		} catch {
+			toast.showError(new Error('Failed to reach the assistant. Try again.'), 'Send failed');
+		}
+	}
+
+	async function sendTaskCorrection(taskId: string, message: string): Promise<void> {
+		try {
+			await postCorrectTask(rootStore.restApiContext, threadId, taskId, message);
+		} catch {
+			toast.showError(new Error('Failed to reach the task. Try again.'), 'Send failed');
+		}
+	}
+
 	/** Stop an agent and prime the input for amend instructions. */
 	function amendAgent(agentId: string, role: string, taskId?: string): void {
 		if (taskId) {
@@ -1936,6 +1961,7 @@ export function createThreadRuntime(
 		activeRunId,
 		archivedWorkflowIds,
 		latestTasks,
+		backgroundInbox,
 		appliedPreferences,
 		debugEvents,
 		resolvedConfirmationIds,
@@ -1993,6 +2019,8 @@ export function createThreadRuntime(
 		sendMessage,
 		cancelRun,
 		cancelBackgroundTask,
+		sendTaskCorrection,
+		sendBackgroundEventsNow,
 		amendAgent,
 		requestPlanChanges,
 		markPlanUpdatePending,
