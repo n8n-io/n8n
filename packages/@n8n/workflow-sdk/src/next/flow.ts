@@ -1250,6 +1250,7 @@ declare const partList: unique symbol;
  * `PartList`.
  */
 type PartList = ReadonlyArray<Part<Loose, Loose, unknown, unknown>> & {
+	/** The fix that tsc shows when an array is passed as one body part. */
 	readonly [partList]: 'Put several parts in steps(a, b), not in an array [a, b]';
 };
 

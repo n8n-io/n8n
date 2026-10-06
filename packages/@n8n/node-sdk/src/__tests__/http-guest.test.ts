@@ -35,7 +35,7 @@ const versionOf = (manifest: VersionManifest, bundle: string): FrozenVersion => 
 const ACTIONS = `import { defineNode, t } from '@n8n/node-sdk';
 const notion = defineNode({ id: 'notion', displayName: 'Notion', baseUrl: 'https://api.notion.com/v1' });
 const page = t.obj({ object: t.lit('page'), id: t.str() });
-export const getUser = notion.resource('user', { input: { user: t.str() } }).action('get', {
+export const getUser = notion.resource('user', { input: { user: t.str().title('User') } }).action('get', {
 	action: 'Get a user',
 	summary: 'Get one Notion user by ID.',
 	flow: { effect: 'read', cardinality: 'per-item', idempotent: true },
@@ -47,7 +47,7 @@ export const searchPages = notion.resource('page', { input: {} }).action('search
 	action: 'Search pages',
 	summary: 'Search pages by title.',
 	flow: { effect: 'read', cardinality: '1:N', idempotent: true },
-	input: { query: t.str() },
+	input: { query: t.str().title('Query') },
 	output: page,
 	list: {
 		method: 'POST',
