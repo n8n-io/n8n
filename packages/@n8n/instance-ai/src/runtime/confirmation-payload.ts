@@ -1,6 +1,42 @@
+import type { InstanceAiCredentialDestinationDecision } from '@n8n/api-types';
 import type { InstanceAiConfirmRequest } from '@n8n/api-types';
 
-import type { ConfirmationData } from './run-state-registry';
+/**
+ * Flat confirmation payload consumed by native tool `resumeSchema`s and sub-agent HITL.
+ * The service layer constructs this from the typed `InstanceAiConfirmRequest` discriminated
+ * union sent by the frontend — only one subset of fields is populated per call, matching
+ * the confirmation kind that was originally requested.
+ */
+export interface ConfirmationData {
+	approved: boolean;
+	credentials?: Record<string, string>;
+	nodeCredentials?: Record<string, Record<string, string>>;
+	userInput?: string;
+	domainAccessAction?: string;
+	action?: 'apply' | 'test-trigger';
+	nodeParameters?: Record<string, Record<string, unknown>>;
+	/** Workflow-setup cards the user actively skipped, by node name. */
+	skippedNodes?: string[];
+	testTriggerNode?: string;
+	answers?: Array<{
+		questionId: string;
+		selectedOptions: string[];
+		customText?: string;
+		skipped?: boolean;
+	}>;
+	/** User's resource-access decision (e.g. 'allowForSession'). */
+	resourceDecision?: string;
+	/** Plan-review hard denial — distinct from a feedback-driven rejection. */
+	denied?: boolean;
+	/** `'session'` means the user chose "always allow": the resuming tool should
+	 *  persist a thread-level grant so the same action isn't re-asked. */
+	scope?: 'once' | 'session';
+	autoSetup?: { credentialType: string; attemptId?: string };
+	credentialDestination?: InstanceAiCredentialDestinationDecision;
+	connectedSlugs?: string[];
+}
+
+
 
 /**
  * The two-step translation from a frontend confirmation to a tool resume payload:

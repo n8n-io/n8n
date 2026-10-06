@@ -52,7 +52,7 @@ export const ASSISTANT_TURN_DEFAULTS_KEY = 'assistantTurnDefaults';
 
 export type AssistantTurnDefaults = Pick<
 	AssistantTurnOptions,
-	'timeZone' | 'pushRef' | 'computerUseChannels'
+	'timeZone' | 'pushRef' | 'computerUseChannels' | 'buildMode' | 'promptVersion'
 >;
 
 export function readAssistantTurnOptions(value: unknown): AssistantTurnOptions {

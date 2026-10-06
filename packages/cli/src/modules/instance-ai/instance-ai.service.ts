@@ -75,7 +75,6 @@ import {
 	PlannedTaskStorage,
 	PLANNED_TASK_PERMISSION_OVERRIDES,
 	releaseTraceClient,
-	RunStateRegistry,
 	shutdownProductTelemetryProviders,
 	tokenUsageToBuilderUsageItems,
 	truncateToTitle,
@@ -150,7 +149,6 @@ import {
 	InstanceContextService,
 	readInstanceContextCursor,
 	toContextInjection,
-	shouldTraceContextInjection,
 } from './instance-context.service';
 import { composeLocalMcpServers } from './browser/composite-local-mcp-server';
 import { InstanceAiBrowserSessionService } from './browser/instance-ai-browser-session.service';
@@ -596,7 +594,8 @@ export class InstanceAiService {
 
 	private readonly formBaseUrl: string;
 
-	private readonly runState = new RunStateRegistry();
+	/** Setup panel flag of the turn running on this main, for the obligation service. */
+	private readonly setupPanelByThread = new Map<string, boolean>();
 
 	private readonly memoryTaskRegistry = new MemoryTaskRegistry();
 
@@ -610,7 +609,6 @@ export class InstanceAiService {
 	private readonly domainAccessTrackersByThread = new Map<string, DomainAccessTracker>();
 
 	/** Tracks the iframe pushRef per thread for live execution push events. */
-	private readonly threadPushRef = new Map<string, string>();
 
 	/**
 	 * Runs where the credentials tool handed off to browser-assisted credential
@@ -693,7 +691,7 @@ export class InstanceAiService {
 		this.logger = logger.scoped('instance-ai');
 		this.workflowObligations = new WorkflowVerificationObligationService(
 			this.agentMemory,
-			(threadId) => this.runState.isSetupPanelEnabled(threadId),
+			(threadId) => this.setupPanelByThread.get(threadId) ?? false,
 		);
 		this.taskProjector = new WorkflowVerificationTaskProjector(
 			this.agentMemory,
@@ -997,14 +995,12 @@ export class InstanceAiService {
 	async getThreadStatus(threadId: string): Promise<InstanceAiThreadStatusResponse> {
 		const live = await this.getLiveRun(threadId);
 		const memoryTasks = this.memoryTaskRegistry.getTasks(threadId);
-		const selectedPrompt = this.runState.getPromptConfiguration(threadId);
 		return {
 			hasActiveRun: live.status === 'running',
 			isSuspended: live.status === 'suspended',
 			...(live.runId ? { runId: live.runId } : {}),
 			backgroundTasks: [],
 			memoryTasks,
-			...(selectedPrompt ? { promptConfiguration: selectedPrompt } : {}),
 		};
 	}
 
@@ -1140,7 +1136,7 @@ export class InstanceAiService {
 	 * Must be called when a thread is deleted so the maps don't leak.
 	 */
 	async clearThreadState(threadId: string, userId?: string): Promise<void> {
-		this.runState.clearThread(threadId);
+		this.setupPanelByThread.delete(threadId);
 		await this.tracing.finalizeRemainingMessageTraceRoots(threadId, {
 			status: 'cancelled',
 			reason: 'thread_cleared',
@@ -1151,7 +1147,6 @@ export class InstanceAiService {
 		this.failedInternalFollowUpStreaks.delete(threadId);
 		this.domainAccessTrackersByThread.delete(threadId);
 		this.evalCredentialAllowlists.clearThread(threadId);
-		this.threadPushRef.delete(threadId);
 		this.planRequestsByThread.delete(threadId);
 		this.memoryTaskRegistry.clearThread(threadId);
 		this.tracing.deleteTraceContextsForThread(threadId);
@@ -1196,7 +1191,6 @@ export class InstanceAiService {
 		// teardown paths.
 
 		this.domainAccessTrackersByThread.clear();
-		this.runState.clear();
 		this.tracing.clear();
 
 		// Flush in-flight drains + open coalesce buffers so the tail of every
@@ -1243,11 +1237,16 @@ export class InstanceAiService {
 		}
 	}
 
-	private createAgentMemoryOptions(user: User, threadId: string, runId: string) {
+	private createAgentMemoryOptions(
+		user: User,
+		threadId: string,
+		runId: string,
+		observerThresholdTokens?: number,
+	) {
 		return {
 			observationalMemory: {
 				observerThresholdTokens:
-					this.runState.getObserverThresholdTokens(threadId) ??
+					observerThresholdTokens ??
 					this.instanceAiConfig.observerMessageTokens,
 				reflectorThresholdTokens: this.instanceAiConfig.reflectorObservationTokens,
 				midRunObservation: this.instanceAiConfig.midRunObservation,
@@ -1451,12 +1450,6 @@ export class InstanceAiService {
 		const { taskStorage } = await this.createPlannedTaskState();
 		const tasks = await this.taskProjector.projectPlannedTaskList(threadId, graph);
 		await taskStorage.save(threadId, tasks);
-		this.eventBus.publish(threadId, {
-			type: 'tasks-update',
-			runId: graph.planRunId,
-			agentId: orchestratorAgentId(graph.planRunId),
-			payload: { tasks },
-		});
 	}
 
 	/**
@@ -1473,12 +1466,6 @@ export class InstanceAiService {
 
 			await plannedTaskService.clear(threadId);
 			await taskStorage.save(threadId, { tasks: [] });
-			this.eventBus.publish(threadId, {
-				type: 'tasks-update',
-				runId: graph.planRunId,
-				agentId: orchestratorAgentId(graph.planRunId),
-				payload: { tasks: { tasks: [] }, planItems: [] },
-			});
 		} catch (error) {
 			this.logger.warn('Failed to clean up awaiting_approval plan on cancel', {
 				threadId,
@@ -1505,6 +1492,7 @@ export class InstanceAiService {
 		instanceContextGates?: InstanceContextGates,
 		experimentGates?: Awaited<ReturnType<InstanceAiAdapterService['resolveExperimentGates']>>,
 		resumeAgentBuild = false,
+		turnOptions: Partial<AssistantTurnOptions> = {},
 	) {
 		const memory = this.agentMemory;
 		const boundProjectId = await this.resolveThreadProjectId(threadId);
@@ -1547,7 +1535,7 @@ export class InstanceAiService {
 			credentialDescriptionsEnabled,
 			aiPreferencesEnabled,
 		} = gates;
-		this.runState.setSetupPanelEnabled(threadId, setupPanelEnabled);
+		this.setupPanelByThread.set(threadId, setupPanelEnabled);
 		// Resumed segments use the gates bound to the original turn.
 		const { instanceContextEnabled, nodeUsageEnabled } = instanceContextGates ?? gates;
 		// One scoped reader backs both the tool and the first-turn hint.
@@ -1556,7 +1544,7 @@ export class InstanceAiService {
 			: undefined;
 		// Follow-ups and resumed runs retain the selected mode if flags change.
 		const mode =
-			this.runState.getBuildMode(threadId) ??
+			turnOptions.buildMode ??
 			(progressiveBuildingEnabled ? 'progressive' : 'default');
 		// The operator pin sits below the request pin and the thread's own selection,
 		// so evals and in-flight conversations keep the profile they started on.
@@ -1564,13 +1552,12 @@ export class InstanceAiService {
 		// thread or assignment keeps its own profile.
 		const selectedPrompt = resolvePromptProfile({
 			version:
-				this.runState.getPromptVersion(threadId) ??
+				turnOptions.promptVersion ??
 				resolveOperatorPromptVersion(this.instanceAiConfig.promptVersion) ??
 				(conciseStyleEnabled && mode === 'default' ? CONCISE_PROMPT_VERSION : undefined),
 			mode,
 		});
 		const buildMode = selectedPrompt.profile.mode;
-		this.runState.setBuildMode(threadId, buildMode);
 		// Read per run so a settings change applies to the next message.
 		const allowSendingParameterValues = await this.aiUsageService.isParameterValueSharingAllowed();
 		// The frontend writes the exit to thread metadata when the agent calls `leave-onboarding` or
@@ -1700,7 +1687,7 @@ export class InstanceAiService {
 			localGatewayDisabledGlobally,
 			localGatewayDisabledForUser,
 			browserUseEnabledGlobally,
-			clientChannels: this.runState.getComputerUseChannels(threadId),
+			clientChannels: turnOptions.computerUseChannels,
 			localComputerToolCategories: gatewayMcpServer
 				? enabledToolCategories(gatewayMcpServer.getStatus().toolCategories)
 				: undefined,
@@ -1735,7 +1722,6 @@ export class InstanceAiService {
 				? filterRuntimeSkillSource(selectedRuntimeSkills, flagDisabledSkillIds)
 				: selectedRuntimeSkills;
 		const promptMetadata = describePromptProfile(selectedPrompt, allRuntimeSkills);
-		this.runState.setPromptConfiguration(threadId, promptMetadata);
 		let runtimeSkills = allRuntimeSkills;
 		let runtimeWorkspace: Workspace | undefined;
 		let workspaceRoot: string | undefined;
@@ -1873,6 +1859,9 @@ export class InstanceAiService {
 		};
 
 		return {
+			buildMode,
+			promptVersion: turnOptions.promptVersion,
+			observerThresholdTokens: turnOptions.observerThresholdTokens,
 			context,
 			memory,
 			taskStorage,
@@ -2573,7 +2562,12 @@ export class InstanceAiService {
 			graph.planRunId,
 			createInertAbortSignal(),
 			graph.messageGroupId,
-			this.threadPushRef.get(threadId),
+			(await this.readTurnDefaults(threadId)).pushRef,
+			undefined,
+			undefined,
+			undefined,
+			false,
+			await this.readTurnDefaults(threadId),
 		);
 		environment.orchestrationContext.tracing = this.tracing.getTraceContext(graph.planRunId);
 		return environment.orchestrationContext;
@@ -2712,7 +2706,6 @@ export class InstanceAiService {
 	private async recordLiveRun(threadId: string, options: AssistantTurnOptions): Promise<void> {
 		const { runId } = options;
 		const messageGroupId = options.messageGroupId ?? runId;
-		this.runState.indexRunInGroup(threadId, messageGroupId, runId);
 		await patchThread(this.assistantMemory, {
 			threadId,
 			update: ({ metadata }) => {
@@ -2729,16 +2722,6 @@ export class InstanceAiService {
 				};
 			},
 		});
-	}
-
-	/** Restore per-thread state from the turn options. The queued turn can run on any main. */
-	private applyTurnState(threadId: string, options: AssistantTurnOptions): void {
-		if (options.timeZone) this.runState.setTimeZone(threadId, options.timeZone);
-		this.runState.setComputerUseChannels(threadId, options.computerUseChannels);
-		this.runState.setBuildMode(threadId, options.buildMode);
-		this.runState.setPromptVersion(threadId, options.promptVersion);
-		this.runState.setObserverThresholdTokens(threadId, options.observerThresholdTokens);
-		if (options.pushRef !== undefined) this.threadPushRef.set(threadId, options.pushRef);
 	}
 
 	private async readTurnDefaults(threadId: string): Promise<AssistantTurnDefaults> {
@@ -2791,7 +2774,6 @@ export class InstanceAiService {
 				: readAssistantTurnOptions(turn.checkpointHostMetadata[ASSISTANT_TURN_METADATA_KEY]);
 		if (!options.runId) options.runId = `run_${nanoid()}`;
 		const threadId = turn.thread.id;
-		this.applyTurnState(threadId, options);
 		await this.ensureMemoryThread(threadId, turn.resourceId);
 		await this.recordLiveRun(threadId, options);
 		return turn.type === 'start'
@@ -2892,38 +2874,22 @@ export class InstanceAiService {
 					browserExtension,
 				});
 
-		const traceId = tracing?.rootRun.otelTraceId;
-		const langsmithRunId = tracing?.rootRun.id;
-		const langsmithTraceId = tracing?.rootRun.traceId;
-		this.eventBus.publish(threadId, {
-			type: 'run-start',
-			runId,
-			agentId: orchestratorAgentId(runId),
-			userId: user.id,
-			payload: {
-				messageId,
-				messageGroupId,
-				...(traceId ? { traceId } : {}),
-				...(langsmithRunId ? { langsmithRunId } : {}),
-				...(langsmithTraceId ? { langsmithTraceId } : {}),
-			},
-		});
-
 		const environment = await this.createExecutionEnvironment(
 			user,
 			threadId,
 			runId,
 			signal,
 			messageGroupId,
-			options.pushRef ?? this.threadPushRef.get(threadId),
+			options.pushRef,
 			proxyRunConfig,
 			undefined,
 			experimentGates,
+			false,
+			options,
 		);
 		const {
 			context,
 			memory,
-			taskStorage,
 			workflowTasks,
 			plannedTaskService,
 			modelId,
@@ -2934,6 +2900,8 @@ export class InstanceAiService {
 			nodeUsageEnabled,
 		} = environment;
 		const promptVersion = orchestrationContext.promptConfiguration?.version;
+		// Resumes and follow-ups keep the build mode this turn selected.
+		options.buildMode = environment.buildMode;
 		setTracePromptVersion(tracing, promptVersion);
 		setTraceModelId(tracing, modelId);
 		const aiCreatedWorkflowIds = (context.aiCreatedWorkflowIds ??= new Set<string>());
@@ -3075,23 +3043,6 @@ export class InstanceAiService {
 			instanceContextEnabled,
 			nodeUsageEnabled,
 		};
-		if (shouldTraceContextInjection(contextInjection)) {
-			this.eventBus.publish(threadId, {
-				type: 'instance-context',
-				runId,
-				agentId: orchestratorAgentId(runId),
-				payload: { injection: contextInjection },
-			});
-		}
-		const existingTasks = await taskStorage.get(threadId);
-		if (existingTasks) {
-			this.eventBus.publish(threadId, {
-				type: 'tasks-update',
-				runId,
-				agentId: orchestratorAgentId(runId),
-				payload: { tasks: existingTasks },
-			});
-		}
 
 		let nonStructuredAttachments: InstanceAiFileAttachment[] = [];
 		let attachmentManifest = '';
@@ -3211,20 +3162,13 @@ export class InstanceAiService {
 				this.logger.warn('Failed to store the instance-context cursor', { error });
 			}
 		}
-		if (aiPreferencesTurn) {
-			this.eventBus.publish(threadId, {
-				type: 'preferences-applied',
-				runId,
-				agentId: orchestratorAgentId(runId),
-				userId: user.id,
-				payload: aiPreferencesTurn.payload,
-			});
-		}
 		if (resumeReason === undefined) {
 			await this.saveTurnDefaults(threadId, {
 				timeZone: options.timeZone,
 				pushRef: options.pushRef,
 				computerUseChannels: options.computerUseChannels,
+				buildMode: options.buildMode,
+				promptVersion: options.promptVersion,
 			});
 		}
 
@@ -3290,11 +3234,12 @@ export class InstanceAiService {
 			runId,
 			turn.abortSignal,
 			messageGroupId,
-			options.pushRef ?? this.threadPushRef.get(threadId),
+			options.pushRef,
 			undefined,
 			undefined,
 			undefined,
 			this.isAgentBuilderSuspension(pending?.toolName, pendingPayload),
+			options,
 		);
 		const { context, orchestrationContext, modelId } = environment;
 		const promptVersion = orchestrationContext.promptConfiguration?.version;
@@ -3399,8 +3344,8 @@ export class InstanceAiService {
 			hideUserMessage: params.hideUserMessage,
 			hostMetadata: {
 				[ASSISTANT_TURN_METADATA_KEY]: toJsonObject({ ...params.options, runId }),
-				buildMode: this.runState.getBuildMode(threadId) ?? null,
-				promptVersion: this.runState.getPromptVersion(threadId) ?? null,
+				buildMode: params.options.buildMode ?? null,
+				promptVersion: params.options.promptVersion ?? null,
 			} as JSONObject,
 			runOptions: {
 				maxIterations: MAX_STEPS.ORCHESTRATOR,
@@ -3766,7 +3711,12 @@ export class InstanceAiService {
 			orchestrationContext: environment.orchestrationContext,
 			mcpServers,
 			mcpManager: this.mcpClientManager,
-			memoryConfig: this.createAgentMemoryOptions(user, threadId, runId),
+			memoryConfig: this.createAgentMemoryOptions(
+				user,
+				threadId,
+				runId,
+				environment.observerThresholdTokens,
+			),
 			memory: environment.memory,
 			checkpointStore: this.assistantCheckpointStore,
 			onMemoryTaskEvent: this.memoryTaskObserverFor(threadId, tracing),
@@ -3780,7 +3730,6 @@ export class InstanceAiService {
 		// manager's getRegularTools call), not a shared manager field, so they
 		// reflect this run's config and can't leak another run's server names.
 		if (mcpConnectionFailures.length > 0) {
-			const names = mcpConnectionFailures.map((f) => f.server).join(', ');
 			for (const failure of mcpConnectionFailures) {
 				this.errorReporter.error(
 					new Error(`MCP server "${failure.server}" failed to connect: ${failure.error}`),
@@ -3792,14 +3741,6 @@ export class InstanceAiService {
 					},
 				);
 			}
-			this.eventBus.publish(threadId, {
-				type: 'status',
-				runId,
-				agentId: orchestratorAgentId(runId),
-				payload: {
-					message: `Couldn't reach MCP server${mcpConnectionFailures.length > 1 ? 's' : ''} ${names}; continuing without their tools.`,
-				},
-			});
 		}
 		this.subscribeToAgentErrors(agent, threadId, runId);
 		return agent;
@@ -4218,27 +4159,11 @@ export class InstanceAiService {
 		runId: string,
 		status: 'completed' | 'cancelled' | 'errored',
 		reason?: string,
-		archivedWorkflowIds?: string[],
+		_archivedWorkflowIds?: string[],
 		userId?: string,
 		metadata?: RunFinishMetadata,
 	): void {
 		const effectiveStatus = status === 'errored' ? 'error' : status;
-		const hasArchived = archivedWorkflowIds && archivedWorkflowIds.length > 0;
-		this.eventBus.publish(threadId, {
-			type: 'run-finish',
-			runId,
-			agentId: orchestratorAgentId(runId),
-			payload: {
-				status: effectiveStatus,
-				...(status === 'cancelled'
-					? { reason: reason ?? 'user_cancelled' }
-					: status === 'errored' && reason
-						? { reason }
-						: {}),
-				...(hasArchived ? { archivedWorkflowIds } : {}),
-				...(metadata?.contextReach ? { contextReach: metadata.contextReach } : {}),
-			},
-		});
 		// success-drop heartbeat; user_id required or PostHog drops instance-only events
 		this.telemetry.track('instance_ai_run_finished', {
 			thread_id: threadId,
@@ -4584,12 +4509,6 @@ export class InstanceAiService {
 			});
 
 			// Push SSE event so frontend updates immediately
-			this.eventBus.publish(threadId, {
-				type: 'thread-title-updated',
-				runId: '',
-				agentId: 'orchestrator',
-				payload: { title: llmTitle },
-			});
 		} catch (error) {
 			this.logger.warn('Failed to refine thread title', {
 				threadId,

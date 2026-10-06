@@ -14,8 +14,6 @@ import type * as PlannedTaskPermissionsMod from './planned-tasks/planned-task-pe
 import type * as PlannedTaskServiceMod from './planned-tasks/planned-task-service';
 import type * as PromptProfilesMod from './prompts/prompt-profiles';
 import type * as InstanceContextStateMod from './runtime/instance-context-state';
-import type * as RunStateRegistryMod from './runtime/run-state-registry';
-import type * as TerminalResponseGuardMod from './runtime/terminal-response-guard';
 import type * as MaterializeRuntimeSkillsMod from './skills/materialize-runtime-skills';
 import type * as RuntimeSkillsMod from './skills/runtime-skills';
 import type * as StorageMod from './storage';
@@ -30,7 +28,6 @@ import type * as SanitizeWebContentMod from './tools/web-research/sanitize-web-c
 import type * as AgentSnapshotEventMod from './tracing/agent-snapshot-event';
 import type * as LangsmithTracingMod from './tracing/langsmith-tracing';
 import type * as TraceReplayMod from './tracing/trace-replay';
-import type * as AgentTreeMod from './utils/agent-tree';
 import type * as EvalAgentsMod from './utils/eval-agents';
 import type * as StreamHelpersMod from './utils/stream-helpers';
 import type * as WorkflowLoopMod from './workflow-loop';
@@ -147,7 +144,6 @@ const loadMaterializeRuntimeSkills = lazyModule(
 	() => require('./skills/materialize-runtime-skills') as typeof MaterializeRuntimeSkillsMod,
 );
 const loadEvalAgents = lazyModule(() => require('./utils/eval-agents') as typeof EvalAgentsMod);
-const loadAgentTree = lazyModule(() => require('./utils/agent-tree') as typeof AgentTreeMod);
 const loadBuilderTemplatesService = lazyModule(
 	() => require('./workspace/builder-templates-service') as typeof BuilderTemplatesServiceMod,
 );
@@ -162,12 +158,6 @@ const loadSandboxSetup = lazyModule(
 );
 const loadSnapshotManager = lazyModule(
 	() => require('./workspace/snapshot-manager') as typeof SnapshotManagerMod,
-);
-const loadRunStateRegistry = lazyModule(
-	() => require('./runtime/run-state-registry') as typeof RunStateRegistryMod,
-);
-const loadTerminalResponseGuard = lazyModule(
-	() => require('./runtime/terminal-response-guard') as typeof TerminalResponseGuardMod,
 );
 const loadWorkflowLoop = lazyModule(() => require('./workflow-loop') as typeof WorkflowLoopMod);
 const loadWorkflowLoopRuntime = lazyModule(
@@ -480,12 +470,6 @@ defineLazyExport(
 	() => loadPlannedTaskPermissions().PLANNED_TASK_PERMISSION_OVERRIDES,
 );
 export type { SuspensionInfo, Resumable } from './utils/stream-helpers';
-export const buildAgentTreeFromEvents: typeof AgentTreeMod.buildAgentTreeFromEvents = lazyFunction(
-	() => loadAgentTree().buildAgentTreeFromEvents,
-);
-export const findAgentNodeInTree: typeof AgentTreeMod.findAgentNodeInTree = lazyFunction(
-	() => loadAgentTree().findAgentNodeInTree,
-);
 export type { SandboxConfig } from './workspace/create-workspace';
 export const createLazyRuntimeWorkspace: typeof LazyRuntimeWorkspaceMod.createLazyRuntimeWorkspace =
 	lazyFunction(() => loadLazyRuntimeWorkspace().createLazyRuntimeWorkspace);
@@ -514,10 +498,6 @@ export const SnapshotManager: typeof SnapshotManagerMod.SnapshotManager = lazyCl
 );
 export type { InstanceAiEventBus, StoredEvent } from './event-bus';
 export { MemoryTaskRegistry } from './runtime/memory-task-registry';
-export type RunStateRegistry = RunStateRegistryMod.RunStateRegistry;
-export const RunStateRegistry: typeof RunStateRegistryMod.RunStateRegistry = lazyClass(
-	() => loadRunStateRegistry().RunStateRegistry,
-);
 export { orchestratorAgentId } from './runtime/orchestrator-identity';
 export declare const suspendedInstanceContextSchema: typeof InstanceContextStateMod.suspendedInstanceContextSchema;
 export { createSetupItemsEmitter, isSetupPanelEnabled } from './tools/workflows/setup-items';
@@ -525,16 +505,7 @@ export {
 	formatWorkflowSetupStateNote,
 	observeWorkflowSetupStates,
 } from './tools/workflows/setup-panel-state';
-export type { ConfirmationData } from './runtime/run-state-registry';
-export type InstanceAiTerminalResponseGuard =
-	TerminalResponseGuardMod.InstanceAiTerminalResponseGuard;
-export const InstanceAiTerminalResponseGuard: typeof TerminalResponseGuardMod.InstanceAiTerminalResponseGuard =
-	lazyClass(() => loadTerminalResponseGuard().InstanceAiTerminalResponseGuard);
-export type {
-	TerminalResponseDecision,
-	TerminalResponseStatus,
-	TerminalVisibilitySource,
-} from './runtime/terminal-response-guard';
+export type { ConfirmationData } from './runtime/confirmation-payload';
 export type { WorkSummary, ToolCallSummary } from './stream/work-summary-accumulator';
 export type {
 	AgentChunkPublisherOptions,

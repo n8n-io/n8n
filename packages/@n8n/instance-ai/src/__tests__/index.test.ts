@@ -88,10 +88,6 @@ vi.mock('../utils/eval-agents', () => ({
 	createEvalAgent: () => 'eval-agent',
 	extractText: () => 'text',
 }));
-vi.mock('../utils/agent-tree', () => ({
-	buildAgentTreeFromEvents: () => ({ agentId: 'root', children: [] }),
-	findAgentNodeInTree: () => ({ agentId: 'root', children: [] }),
-}));
 vi.mock('../workspace/builder-templates-service', () => ({
 	BuilderTemplatesService: class BuilderTemplatesService {},
 	builderTemplatesOptionsFromEnv: () => ({ enabled: true }),
@@ -107,10 +103,6 @@ vi.mock('../workspace/sandbox-setup', () => ({
 	setupSandboxWorkspace: () => undefined,
 }));
 vi.mock('../workspace/snapshot-manager', () => ({ SnapshotManager: class SnapshotManager {} }));
-vi.mock('../runtime/run-state-registry', () => ({ RunStateRegistry: class RunStateRegistry {} }));
-vi.mock('../runtime/terminal-response-guard', () => ({
-	InstanceAiTerminalResponseGuard: class InstanceAiTerminalResponseGuard {},
-}));
 vi.mock('../workflow-loop', () => ({
 	workflowBuildOutcomeSchema: { safeParse: () => ({ success: true }) },
 	attemptRecordSchema: { safeParse: () => ({ success: false }) },
@@ -229,8 +221,6 @@ describe('@n8n/instance-ai public entrypoint', () => {
 
 		expect(call(entrypoint.createEvalAgent)).toBe('eval-agent');
 		expect(call(entrypoint.extractText)).toBe('text');
-		expect(call(entrypoint.buildAgentTreeFromEvents)).toEqual({ agentId: 'root', children: [] });
-		expect(call(entrypoint.findAgentNodeInTree)).toEqual({ agentId: 'root', children: [] });
 
 		expect(call(entrypoint.createLazyRuntimeWorkspace)).toEqual({ type: 'lazy-workspace' });
 		expect(call(entrypoint.setupSandboxWorkspace)).toBeUndefined();
@@ -242,10 +232,6 @@ describe('@n8n/instance-ai public entrypoint', () => {
 		expect(call(entrypoint.createWorkspace)).toEqual({ type: 'workspace' });
 		expect(construct(entrypoint.SnapshotManager)).toBeInstanceOf(entrypoint.SnapshotManager);
 
-		expect(construct(entrypoint.RunStateRegistry)).toBeInstanceOf(entrypoint.RunStateRegistry);
-		expect(construct(entrypoint.InstanceAiTerminalResponseGuard)).toBeInstanceOf(
-			entrypoint.InstanceAiTerminalResponseGuard,
-		);
 		expect(construct(entrypoint.WorkflowTaskCoordinator)).toBeInstanceOf(
 			entrypoint.WorkflowTaskCoordinator,
 		);
