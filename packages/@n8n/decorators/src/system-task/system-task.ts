@@ -76,10 +76,10 @@ export interface SystemTask {
 	/**
 	 * Executes one occurrence of the task. A run may take as long as it needs.
 	 * `signal` aborts on shutdown, and on loss of leadership for an in-memory timer.
-	 * A durable run also aborts on lease loss or expiry, unless its dispatch marker is stored.
+	 * A durable run also aborts on lease loss or expiry.
 	 * Ignoring the signal delays shutdown and can let another run overlap.
-	 * An idempotent durable run that settles after a lease abort counts as a failed
-	 * attempt while its claim still matches, and retries only while attempts remain.
+	 * A durable run that settles after a lease abort counts as a failed attempt
+	 * while its claim still matches, and retries only while attempts remain.
 	 */
 	run(signal: AbortSignal): Promise<void>;
 }
