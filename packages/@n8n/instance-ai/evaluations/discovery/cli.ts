@@ -39,9 +39,12 @@ import {
 	type RoutingCase,
 } from '../routing/cases';
 import {
+	afterQuestion,
+	answeredQuestions,
 	canReplyTo,
 	casePasses,
 	createRouteWatcher,
+	MAX_ANSWERS,
 	routeLabel,
 	trialPasses,
 	type RouteResolution,
@@ -309,10 +312,12 @@ async function runRoutingTurn(
 	args: CliArgs,
 	scenario: RoutingCase,
 	proxy?: UserProxyLlm,
+	maxAnswers?: number,
 ): Promise<{ turn: OrchestratorTurnResult; resolution: RouteResolution }> {
 	const watcher = createRouteWatcher(
 		judgeRoute,
 		proxy ? (question) => canReplyTo(scenario, question) : undefined,
+		maxAnswers,
 	);
 	const turn = await runOrchestratorTurn({
 		scenario,
@@ -340,7 +345,7 @@ async function runRoutingTurn(
 
 /**
  * One routing trial. A question in text ends the turn, so the user proxy
- * replies in a new turn with the first turn as history.
+ * replies in a new turn with the earlier turns as history.
  */
 async function runRoutingTrial(args: CliArgs, routingCase: RoutingCase) {
 	const proxy = routingCase.direction
@@ -351,38 +356,42 @@ async function runRoutingTrial(args: CliArgs, routingCase: RoutingCase) {
 				],
 			})
 		: undefined;
-	const first = await runRoutingTurn(args, routingCase, proxy);
-	if (
-		!proxy ||
-		first.resolution.question ||
-		first.turn.streamStatus !== 'completed' ||
-		!canReplyTo(routingCase, first.resolution)
-	) {
-		return { ...first, passed: trialPasses(routingCase, first.resolution) };
+	let scenario = routingCase;
+	// The text question that the last reply answered, with the questions before it.
+	let earlier: RouteResolution | undefined;
+	let durationMs = 0;
+	for (;;) {
+		const used = earlier ? answeredQuestions(earlier) + 1 : 0;
+		const run = await runRoutingTurn(args, scenario, proxy, MAX_ANSWERS - used);
+		durationMs += run.turn.durationMs;
+		const resolution = earlier ? afterQuestion(run.resolution, earlier) : run.resolution;
+		const result = {
+			turn: { ...run.turn, durationMs },
+			resolution,
+			passed: trialPasses(routingCase, resolution),
+		};
+		if (
+			!proxy ||
+			answeredQuestions(resolution) >= MAX_ANSWERS ||
+			run.turn.streamStatus !== 'completed' ||
+			!canReplyTo(routingCase, run.resolution)
+		) {
+			return result;
+		}
+		proxy.ingestEvents(run.turn.events);
+		const reply = await proxy.decideFollowUp();
+		// ponytail: a proxy that sees nothing to answer leaves the trial graded on the question.
+		if (reply.kind !== 'followUp') return result;
+		const assistantText = run.turn.instanceEvents
+			.flatMap((event) =>
+				event.type === 'text-delta' && event.agentId === ORCHESTRATOR_AGENT_ID
+					? [event.payload.text]
+					: [],
+			)
+			.join('');
+		scenario = buildReplyTurn(scenario, assistantText, reply.message);
+		earlier = resolution;
 	}
-	proxy.ingestEvents(first.turn.events);
-	const reply = await proxy.decideFollowUp();
-	// ponytail: a proxy that sees nothing to answer leaves the trial graded on the question.
-	if (reply.kind !== 'followUp') {
-		return { ...first, passed: trialPasses(routingCase, first.resolution) };
-	}
-	const assistantText = first.turn.instanceEvents
-		.flatMap((event) =>
-			event.type === 'text-delta' && event.agentId === ORCHESTRATOR_AGENT_ID
-				? [event.payload.text]
-				: [],
-		)
-		.join('');
-	const next = await runRoutingTurn(
-		args,
-		buildReplyTurn(routingCase, assistantText, reply.message),
-	);
-	const resolution = { ...next.resolution, question: first.resolution };
-	return {
-		turn: { ...next.turn, durationMs: first.turn.durationMs + next.turn.durationMs },
-		resolution,
-		passed: trialPasses(routingCase, resolution),
-	};
 }
 
 function percent(passed: number, total: number): string {

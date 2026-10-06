@@ -76,12 +76,19 @@ describe('buildReplyTurn', () => {
 		]);
 	});
 
-	it('makes a seed when the first turn has none', () => {
+	it('makes a seed when the first turn has none, and keeps both turns for a second reply', () => {
 		const first: DiscoveryScenario = { userMessage: 'Hi' };
 
 		const reply = buildReplyTurn(first, 'What do you need?', 'A report.');
+		const second = buildReplyTurn(reply, 'Daily or weekly?', 'Daily.');
 
 		expect(reply.seed?.messages.map(({ role }) => role)).toEqual(['user', 'assistant']);
+		expect(second.seed?.messages.map(({ role }) => role)).toEqual([
+			'user',
+			'assistant',
+			'user',
+			'assistant',
+		]);
 	});
 });
 

@@ -6,9 +6,9 @@
 // the turn ends first, the judge picks the route from the full trace. No tool
 // names appear here, so a new or renamed tool needs no grader change.
 //
-// A case with a stage direction lets the user proxy answer one accepted
-// question. The run then goes on, and the route after the answer decides the
-// trial (see ../discovery/cli.ts).
+// A case with a stage direction lets the user proxy answer up to
+// MAX_ANSWERS accepted questions. The run then goes on, and the route after
+// the last answer decides the trial (see ../discovery/cli.ts).
 // ---------------------------------------------------------------------------
 
 import type { InstanceAiEvent } from '@n8n/api-types';
@@ -30,9 +30,30 @@ export interface RouteResolution {
 	judgeReason?: string;
 	/** Set when a judge call in the trial failed. */
 	judgeError?: string;
-	/** The question that the user proxy answered before this route. */
+	/** The last question that the user proxy answered before this route. It holds the questions before it. */
 	question?: RouteResolution;
 }
+
+/** The user proxy answers at most this many questions in a trial. */
+export const MAX_ANSWERS = 2;
+
+/** `resolution` with `earlier` as the first answered question of its chain. */
+export function afterQuestion(
+	resolution: RouteResolution,
+	earlier: RouteResolution,
+): RouteResolution {
+	return {
+		...resolution,
+		question: resolution.question ? afterQuestion(resolution.question, earlier) : earlier,
+	};
+}
+
+/** The number of questions that the user answered before the route. */
+export function answeredQuestions(resolution: RouteResolution): number {
+	return resolution.question ? 1 + answeredQuestions(resolution.question) : 0;
+}
+
+const countAnswers = (steps: TraceStep[]) => steps.filter((step) => step.kind === 'answer').length;
 
 /**
  * The orchestrator's text and calls in order, with the user's answer after a
@@ -86,15 +107,16 @@ export interface RouteWatcher {
 }
 
 /**
- * One watcher for each trial. Before the user answers, a stop that `canReply`
- * accepts lets the run go on, so the user proxy can answer the question.
+ * One watcher for each turn. While the user has answers left, a stop that
+ * `canReply` accepts lets the run go on, so the user proxy can answer the question.
  */
 export function createRouteWatcher(
 	judge: (input: JudgeInput) => Promise<JudgeVerdict>,
 	canReply?: (question: RouteResolution) => boolean,
+	maxAnswers = MAX_ANSWERS,
 ): RouteWatcher {
 	let stopped: RouteResolution | undefined;
-	let question: RouteResolution | undefined;
+	const questions: RouteResolution[] = [];
 	let judgeError: string | undefined;
 	// Calls of one step can run in parallel, so the judge takes them one at a time.
 	let queue: Promise<unknown> = Promise.resolve();
@@ -125,8 +147,9 @@ export function createRouteWatcher(
 					evidence: `${call.toolName} call`,
 					judgeReason: verdict.reason,
 				};
-				if (!steps.some((step) => step.kind === 'answer') && canReply?.(resolution)) {
-					question ??= resolution;
+				const answers = countAnswers(steps);
+				if (answers < maxAnswers && canReply?.(resolution)) {
+					if (questions.length === answers) questions.push(resolution);
 					return false;
 				}
 				stopped = resolution;
@@ -140,13 +163,10 @@ export function createRouteWatcher(
 			// A check can still run after a timeout, and its verdict counts.
 			await queue;
 			const steps = traceSteps(instanceEvents);
-			// The question counts only when the user's answer reached the run.
+			// A question counts only when the user's answer reached the run.
+			const answered = questions.slice(0, countAnswers(steps));
 			const withQuestion = (resolution: RouteResolution): RouteResolution =>
-				withError(
-					question && steps.some((step) => step.kind === 'answer')
-						? { ...resolution, question }
-						: resolution,
-				);
+				withError(answered.reduceRight(afterQuestion, resolution));
 			if (stopped) return withQuestion(stopped);
 			const evidence = `end of turn (${streamStatus})`;
 			const verdict = await ask({ steps, endStatus: streamStatus });
@@ -183,11 +203,14 @@ function acceptTokenMatches(token: AcceptToken, { route, steer }: RouteResolutio
 
 /** The user proxy answers a question that the case accepts. */
 export function canReplyTo(routingCase: RoutingCase, question: RouteResolution): boolean {
-	return question.route === 'clarify' && trialPasses(routingCase, question);
+	return (
+		question.route === 'clarify' &&
+		routingCase.accepts.some((token) => acceptTokenMatches(token, question))
+	);
 }
 
 export function trialPasses(routingCase: RoutingCase, resolution: RouteResolution): boolean {
-	// After an answer, only the route that the user's facts point to passes. A second question fails.
+	// After an answer, only the route that the user's facts point to passes. A question after the last answer fails.
 	if (resolution.question) return routingCase.after.some((route) => route === resolution.route);
 	return routingCase.accepts.some((token) => acceptTokenMatches(token, resolution));
 }

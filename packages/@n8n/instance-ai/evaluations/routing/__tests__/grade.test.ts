@@ -3,6 +3,8 @@ import type { InstanceAiEvent } from '@n8n/api-types';
 import { ORCHESTRATOR_AGENT_ID } from '../../discovery/types';
 import type { RoutingCase } from '../cases';
 import {
+	afterQuestion,
+	answeredQuestions,
 	canReplyTo,
 	casePasses,
 	createRouteWatcher,
@@ -79,6 +81,9 @@ function judgeReturning(...verdicts: Array<JudgeVerdict | Error>) {
 		return await Promise.resolve(verdict);
 	});
 }
+
+/** The user proxy replies to questions only, as `canReplyTo` does. */
+const isQuestion = ({ route }: RouteResolution) => route === 'clarify';
 
 const clarify = (steer: RouteResolution['steer']): RouteResolution => ({
 	route: 'clarify',
@@ -217,7 +222,7 @@ describe('createRouteWatcher', () => {
 
 	it('lets a question run when the user can reply, then stops on the route after the answer', async () => {
 		const judge = judgeReturning(stop('clarify', 'agent'), stop('agent', 'agent'));
-		const watcher = createRouteWatcher(judge, () => true);
+		const watcher = createRouteWatcher(judge, isQuestion);
 		const answered = [callEvent('ask-user'), ...answerEvents()];
 
 		expect(await watcher.beforeToolCall(pending('ask-user'), [])).toBe(false);
@@ -234,8 +239,26 @@ describe('createRouteWatcher', () => {
 		});
 	});
 
-	it('stops on a second question once the user has answered', async () => {
-		const watcher = createRouteWatcher(judgeReturning(stop('clarify')), () => true);
+	it('lets a second question run, then stops on a third with both questions in order', async () => {
+		const judge = judgeReturning(stop('clarify'), stop('clarify', 'agent'), stop('clarify'));
+		const watcher = createRouteWatcher(judge, isQuestion);
+		const once = [callEvent('ask-user'), ...answerEvents()];
+		const twice = [...once, callEvent('ask-user-2'), ...answerEvents('ask-user-2')];
+
+		expect(await watcher.beforeToolCall(pending('ask-user'), [])).toBe(false);
+		expect(await watcher.beforeToolCall(pending('ask-user-2'), once)).toBe(false);
+		expect(await watcher.beforeToolCall(pending('ask-user-3'), twice)).toBe(true);
+		const resolution = await watcher.resolve({
+			instanceEvents: twice,
+			streamStatus: 'stopped-on-route',
+		});
+
+		expect(routeLabel(resolution)).toBe('clarify:none>clarify:agent>clarify:none');
+		expect(answeredQuestions(resolution)).toBe(2);
+	});
+
+	it('stops on a second question when the turn has one answer left', async () => {
+		const watcher = createRouteWatcher(judgeReturning(stop('clarify')), isQuestion, 1);
 		const answered = [callEvent('ask-user'), ...answerEvents()];
 
 		expect(await watcher.beforeToolCall(pending('ask-user'), [])).toBe(false);
@@ -245,7 +268,7 @@ describe('createRouteWatcher', () => {
 	it('drops the question when no answer reached the run', async () => {
 		const watcher = createRouteWatcher(
 			judgeReturning(stop('clarify'), stop('clarify')),
-			() => true,
+			isQuestion,
 		);
 		await watcher.beforeToolCall(pending('ask-user'), []);
 
@@ -303,6 +326,7 @@ describe('canReplyTo', () => {
 		const agentCase = routingCase('agent', ['agent', 'clarify:agent'], ['agent']);
 
 		expect(canReplyTo(agentCase, clarify('agent'))).toBe(true);
+		expect(canReplyTo(agentCase, { ...clarify('agent'), question: clarify('agent') })).toBe(true);
 		expect(canReplyTo(agentCase, clarify('workflow'))).toBe(false);
 		expect(canReplyTo(agentCase, { route: 'agent', evidence: 'build-agent' })).toBe(false);
 	});
@@ -312,6 +336,14 @@ describe('routeLabel', () => {
 	it('shows the answered question before the route', () => {
 		expect(routeLabel({ route: 'agent', evidence: 'x', question: clarify('both') })).toBe(
 			'clarify:both>agent',
+		);
+	});
+
+	it('shows a question from an earlier turn first', () => {
+		const route = { route: 'agent' as const, evidence: 'x', question: clarify('agent') };
+
+		expect(routeLabel(afterQuestion(route, clarify('none')))).toBe(
+			'clarify:none>clarify:agent>agent',
 		);
 	});
 });
