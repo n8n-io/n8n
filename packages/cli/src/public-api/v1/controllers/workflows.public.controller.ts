@@ -3,6 +3,7 @@ import {
 	CreatedWorkflowPublicDto,
 	CreateWorkflowPublicDto,
 	DeletedWorkflowPublicDto,
+	DeprecatedWorkflowVersionPublicDto,
 	GetWorkflowQueryDto,
 	ListWorkflowHistoryQueryDto,
 	ListWorkflowsQueryDto,
@@ -75,7 +76,8 @@ import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-hi
 import { WorkflowService } from '@/workflows/workflow.service';
 import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
 
-const DEPRECATED_ALIAS_SINCE = new Date('2026-07-23T00:00:00Z');
+const ACTIVATE_DEACTIVATE_DEPRECATED_SINCE = new Date('2026-07-23T00:00:00Z');
+const OLD_VERSION_PATH_DEPRECATED_SINCE = new Date('2026-08-26T00:00:00Z');
 
 const UPDATE_CONFLICT_DESCRIPTION =
 	'Conflict, e.g. re-publication blocked by an open workflow review (then `reason` and ' +
@@ -650,7 +652,7 @@ export class WorkflowsPublicController {
 	}
 
 	@Post('/:workflowId/activate')
-	@Deprecated({ since: DEPRECATED_ALIAS_SINCE })
+	@Deprecated({ since: ACTIVATE_DEACTIVATE_DEPRECATED_SINCE })
 	@ApiKeyScope('workflow:activate')
 	@ProjectScope('workflow:publish')
 	@ApiSummary('Publish a workflow')
@@ -675,7 +677,7 @@ export class WorkflowsPublicController {
 	}
 
 	@Post('/:workflowId/deactivate')
-	@Deprecated({ since: DEPRECATED_ALIAS_SINCE })
+	@Deprecated({ since: ACTIVATE_DEACTIVATE_DEPRECATED_SINCE })
 	@ApiKeyScope('workflow:deactivate')
 	@ProjectScope('workflow:unpublish')
 	@ApiSummary('Deactivate a workflow')
@@ -830,5 +832,45 @@ export class WorkflowsPublicController {
 		const tags = await this.workflowService.updateWorkflowTags(req.user, workflowId, tagIds);
 
 		return tags.map(toPublicTag);
+	}
+
+	/**
+	 * Keep this route as the last registered route in the controller, so that it does not shadow other routes.
+	 */
+	@Get('/:workflowId/:workflowVersionId')
+	@Deprecated({ since: OLD_VERSION_PATH_DEPRECATED_SINCE })
+	@ApiKeyScope('workflow:read')
+	@ProjectScope('workflow:read')
+	@ApiSummary('Retrieves a specific version of a workflow')
+	@ApiDescription(
+		'Deprecated: use GET /workflows/{workflowId}/versions/{workflowVersionId} instead. ' +
+			'Retrieves a specific version of a workflow from workflow history.',
+	)
+	@ApiTags(['Workflow'])
+	@ApiResponse(200, DeprecatedWorkflowVersionPublicDto)
+	@ApiErrorResponse(404)
+	async getDeprecatedWorkflowVersion(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('workflowId', workflowIdParamSchema) workflowId: string,
+		@Param('workflowVersionId', workflowVersionIdParamSchema) workflowVersionId: string,
+	): Promise<DeprecatedWorkflowVersionPublicDto> {
+		try {
+			const version = await this.workflowHistoryService.getVersion(
+				req.user,
+				workflowId,
+				workflowVersionId,
+				{ includePublishHistory: false },
+			);
+
+			this.eventService.emit('user-retrieved-workflow-version', {
+				userId: req.user.id,
+				publicApi: true,
+			});
+
+			return toPublicWorkflowVersion(version);
+		} catch (error) {
+			throw new NotFoundError('Version not found');
+		}
 	}
 }

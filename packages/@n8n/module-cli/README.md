@@ -28,11 +28,11 @@ the next `format:check` in CI fails on a module nobody touched by hand.
 
 ## Backend
 
-**A placeholder. Nothing loads it.** The backend runtime discovers modules
-under `packages/cli/src/modules/<name>`, which is where every real backend
-module lives; `packages/modules/<name>/backend` reserves the path for the day
-the two halves sit together and gets a README saying so. To create a backend
-module that runs, use `pnpm setup-backend-module`.
+Backend modules can run from a built workspace package at
+`packages/modules/<name>/backend`. Register the package with a lazy import in
+`packages/cli/src/modules/modules.manifest.ts`. The scaffolder does not create
+this package shape yet. Use `@n8n/backend-module-insights` as the current
+example.
 
 ## No build step
 

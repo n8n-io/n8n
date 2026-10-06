@@ -1,15 +1,8 @@
 import { N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api-types';
 import type { AgentIntegrationConfig, ListAgentsQueryDto } from '@n8n/api-types';
+import { BaseRepository, TransactionRunner, type OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
-import {
-	DataSource,
-	In,
-	IsNull,
-	Not,
-	Repository,
-	type EntityManager,
-	type SelectQueryBuilder,
-} from '@n8n/typeorm';
+import { DataSource, In, IsNull, Not, type SelectQueryBuilder } from '@n8n/typeorm';
 import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 
 import { Agent } from '../entities/agent.entity';
@@ -24,7 +17,7 @@ export type AgentSummary = Pick<
 	'id' | 'name' | 'projectId' | 'activeVersionId' | 'availableInMCP' | 'updatedAt'
 >;
 
-/** The only columns an integration mutation reads or writes. */
+/** Integration and publication state for channel runtime decisions. */
 export type AgentIntegrationState = Pick<Agent, 'integrations' | 'versionId' | 'activeVersionId'>;
 
 export type AgentSummaryFilters = {
@@ -35,9 +28,9 @@ export type AgentSummaryFilters = {
 };
 
 @Service()
-export class AgentRepository extends Repository<Agent> {
-	constructor(dataSource: DataSource) {
-		super(Agent, dataSource.manager);
+export class AgentRepository extends BaseRepository<Agent> {
+	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
+		super(Agent, dataSource.manager, transactionRunner);
 	}
 
 	/**
@@ -49,6 +42,10 @@ export class AgentRepository extends Repository<Agent> {
 		// `schema` is a free-form JSON column, which QueryDeepPartialEntity
 		// cannot express, so cast at this boundary.
 		await this.insert(agent as QueryDeepPartialEntity<Agent>);
+	}
+
+	async hasRevision(id: string, revision: number): Promise<boolean> {
+		return await this.existsBy({ id, revision });
 	}
 
 	async findByProjectId(projectId: string): Promise<Agent[]> {
@@ -103,7 +100,10 @@ export class AgentRepository extends Repository<Agent> {
 	async findByProjectIdsPaginated(
 		projectIds: string[] | null,
 		options: ListAgentsQueryDto,
-		{ withProject = false }: { withProject?: boolean } = {},
+		{
+			withProject = false,
+			usageCounts,
+		}: { withProject?: boolean; usageCounts?: Map<string, number> } = {},
 	): Promise<AgentListResult> {
 		if (projectIds?.length === 0) return { count: 0, data: [] };
 
@@ -122,11 +122,61 @@ export class AgentRepository extends Repository<Agent> {
 			query.where('agent.projectId IN (:...projectIds)', { projectIds });
 		}
 		this.applyFilters(query, options.filter);
-		this.applySorting(query, options.sortBy);
+		this.applySorting(query, options.sortBy, usageCounts);
 		query.skip(options.skip).take(options.take);
 
 		const [data, count] = await query.getManyAndCount();
 		return { count, data };
+	}
+
+	/**
+	 * Adds the shared n8n Chat reachability predicate to an already-started
+	 * `agent` query: the given projects (or any, when `projectIds` is null)
+	 * and {@link applyFilters}'s `availableInChat` predicate. Callers add their
+	 * own `where` first — this only appends `andWhere` clauses, so it never
+	 * discards a condition a caller already set. Shared by
+	 * `findChatReachableIds` and `findChatReachableById` so both stay in
+	 * lockstep with each other and with the chat agent list.
+	 */
+	private chatReachableQuery(
+		query: SelectQueryBuilder<Agent>,
+		projectIds: string[] | null,
+	): SelectQueryBuilder<Agent> {
+		if (projectIds !== null) {
+			query.andWhere('agent.projectId IN (:...projectIds)', { projectIds });
+		}
+		this.applyFilters(query, { availableInChat: true });
+		return query;
+	}
+
+	/** Ids of the agents the user can reach over n8n Chat: published config carries the channel. */
+	async findChatReachableIds(projectIds: string[] | null): Promise<string[]> {
+		if (projectIds?.length === 0) return [];
+
+		// `availableInChat` reads `activeVersion.schema`, so the join must exist
+		// even though the select list drops it again.
+		const query = this.createQueryBuilder('agent')
+			.leftJoin('agent.activeVersion', 'activeVersion')
+			.select(['agent.id']);
+
+		const rows = await this.chatReachableQuery(query, projectIds).getMany();
+		return rows.map((row) => row.id);
+	}
+
+	/**
+	 * One agent reachable over n8n Chat: in one of the given projects (or any
+	 * project, when `projectIds` is null) and its published config carries the
+	 * channel. Loads `project` too — the chat page labels the agent with it.
+	 */
+	async findChatReachableById(id: string, projectIds: string[] | null): Promise<Agent | null> {
+		if (projectIds?.length === 0) return null;
+
+		const query = this.createQueryBuilder('agent')
+			.leftJoinAndSelect('agent.activeVersion', 'activeVersion')
+			.leftJoinAndSelect('agent.project', 'project')
+			.where('agent.id = :id', { id });
+
+		return await this.chatReachableQuery(query, projectIds).getOne();
 	}
 
 	private applyFilters(
@@ -173,6 +223,7 @@ export class AgentRepository extends Repository<Agent> {
 	private applySorting(
 		query: SelectQueryBuilder<Agent>,
 		sortBy?: ListAgentsQueryDto['sortBy'],
+		usageCounts?: Map<string, number>,
 	): void {
 		const [field = 'updatedAt', direction = 'desc'] = sortBy?.split(':') ?? [];
 		const sortDirection = direction.toLowerCase() === 'asc' ? 'ASC' : 'DESC';
@@ -184,7 +235,39 @@ export class AgentRepository extends Repository<Agent> {
 			return;
 		}
 
+		if (field === 'usage') {
+			this.applyUsageSorting(query, usageCounts);
+			return;
+		}
+
 		query.orderBy(`agent.${field}`, sortDirection);
+	}
+
+	/**
+	 * Ranks by each agent's pre-counted n8n Chat thread usage, so the agents the
+	 * chat user actually talks to rise to the top. Ties (including agents with
+	 * no usage) fall back to `createdAt` DESC, then `id` DESC.
+	 */
+	private applyUsageSorting(
+		query: SelectQueryBuilder<Agent>,
+		usageCounts?: Map<string, number>,
+	): void {
+		if (!usageCounts || usageCounts.size === 0) {
+			query.orderBy('agent.createdAt', 'DESC').addOrderBy('agent.id', 'DESC');
+			return;
+		}
+
+		const agentIds = [...usageCounts.keys()];
+		const cases = agentIds.map((_, i) => `WHEN :usageAgent${i} THEN :usageCount${i}`).join(' ');
+		agentIds.forEach((id, i) => {
+			query.setParameter(`usageAgent${i}`, id).setParameter(`usageCount${i}`, usageCounts.get(id));
+		});
+
+		query
+			.addSelect(`CASE agent.id ${cases} ELSE 0 END`, 'agent_usage_count')
+			.orderBy('agent_usage_count', 'DESC')
+			.addOrderBy('agent.createdAt', 'DESC')
+			.addOrderBy('agent.id', 'DESC');
 	}
 
 	/**
@@ -322,10 +405,7 @@ export class AgentRepository extends Repository<Agent> {
 		return (result.affected ?? 0) > 0;
 	}
 
-	/**
-	 * Reads just the columns an integration mutation needs, so its write derives
-	 * from the current row rather than a possibly-stale request-scoped entity.
-	 */
+	/** Read current channel state without loading the agent definition. */
 	async findIntegrationState(id: string): Promise<AgentIntegrationState | null> {
 		return await this.findOne({
 			select: ['integrations', 'versionId', 'activeVersionId'],
@@ -334,29 +414,24 @@ export class AgentRepository extends Repository<Agent> {
 	}
 
 	/**
-	 * Compare-and-set the two columns an integration mutation owns, so a channel
-	 * change can never revert a concurrent publish or config write. Returns false
-	 * when another writer got there first; the caller can re-read and reapply,
-	 * because its input is a delta rather than a whole array.
-	 *
-	 * `activeVersionId` is guarded but never written: publishing leaves `versionId`
-	 * untouched, so without it in the `WHERE` a publish landing after the read
-	 * would let the write through and the caller would act on stale publication
-	 * state.
+	 * Fence channel changes against draft and publication writes.
+	 * Advance the revision so stale draft saves cannot overwrite the channels.
+	 * Return false on a conflict so the caller can reapply its delta to fresh state.
 	 */
 	async updateIntegrations(
 		id: string,
 		integrations: AgentIntegrationConfig[],
-		expected: Pick<AgentIntegrationState, 'versionId' | 'activeVersionId'>,
+		expected: Pick<Agent, 'revision' | 'versionId' | 'activeVersionId'>,
 		versionId: string | null,
 	): Promise<boolean> {
 		const result = await this.update(
 			{
 				id,
+				revision: expected.revision,
 				versionId: expected.versionId ?? IsNull(),
 				activeVersionId: expected.activeVersionId ?? IsNull(),
 			},
-			{ integrations, versionId },
+			{ integrations, versionId, revision: () => 'revision + 1' },
 		);
 
 		return (result.affected ?? 0) > 0;
@@ -465,9 +540,9 @@ export class AgentRepository extends Repository<Agent> {
 		id: string,
 		expectedRevision: number,
 		next: { activeVersionId: string | null; versionId: string },
-		trx?: EntityManager,
+		ctx: OperationContext = {},
 	): Promise<boolean> {
-		const result = await (trx ?? this)
+		const result = await this.managerFor(ctx)
 			.createQueryBuilder()
 			.update(Agent)
 			.set({
@@ -489,12 +564,12 @@ export class AgentRepository extends Repository<Agent> {
 	 * `updatedAt` are synced to what was written. Returns whether this caller
 	 * won the fence.
 	 */
-	async saveDraftFenced(agent: Agent, trx?: EntityManager): Promise<boolean> {
+	async saveDraftFenced(agent: Agent, ctx: OperationContext = {}): Promise<boolean> {
 		const expectedRevision = agent.revision;
 		// Written explicitly (instead of the builder's CURRENT_TIMESTAMP default)
 		// so the in-memory entity can report the exact persisted timestamp.
 		const updatedAt = new Date();
-		const result = await (trx ?? this)
+		const result = await this.managerFor(ctx)
 			.createQueryBuilder()
 			.update(Agent)
 			.set({
