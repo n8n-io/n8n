@@ -375,7 +375,9 @@ describe('workflow package import — with data tables', () => {
 				sourceId: existing.id,
 				missingColumns: ['signed_up_at'],
 				typeMismatches: [],
-				overwriteChanges: [{ kind: 'add-column', column: 'signed_up_at', type: 'date' }],
+				overwriteChanges: [
+					{ kind: 'add-column', column: 'signed_up_at', type: 'date', destructive: false },
+				],
 				usedByWorkflows: ['wf-0'],
 			});
 
@@ -409,7 +411,9 @@ describe('workflow package import — with data tables', () => {
 					missingColumns: [],
 					typeMismatches: [],
 					extraColumns: ['extra'],
-					overwriteChanges: [{ kind: 'remove-column', column: 'extra', type: 'boolean' }],
+					overwriteChanges: [
+						{ kind: 'remove-column', column: 'extra', type: 'boolean', destructive: true },
+					],
 				},
 			);
 

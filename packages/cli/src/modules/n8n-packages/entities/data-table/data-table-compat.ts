@@ -57,25 +57,38 @@ export function diffDataTableSchema(
 
 	for (const { name, type } of target.columns) {
 		if (!packageColumnsByName.has(name)) {
-			operations.push({ kind: 'remove-column', column: name, type });
+			operations.push({ kind: 'remove-column', column: name, type, destructive: true });
 		}
 	}
 	for (const { name, type } of target.columns) {
 		const packageType = packageColumnsByName.get(name)?.type;
 		if (packageType !== undefined && packageType !== type) {
-			operations.push({ kind: 'change-column-type', column: name, from: type, to: packageType });
+			operations.push({
+				kind: 'change-column-type',
+				column: name,
+				from: type,
+				to: packageType,
+				destructive: true,
+			});
 		}
 	}
 	for (const { name, type } of packageTable.columns) {
-		if (!targetColumnsByName.has(name)) operations.push({ kind: 'add-column', column: name, type });
+		if (!targetColumnsByName.has(name)) {
+			operations.push({ kind: 'add-column', column: name, type, destructive: false });
+		}
 	}
 	const isReordered = packageTable.columns.some((column) => {
 		const targetIndex = targetColumnsByName.get(column.name)?.index;
 		return targetIndex !== undefined && targetIndex !== column.index;
 	});
-	if (isReordered) operations.push({ kind: 'reorder-columns' });
+	if (isReordered) operations.push({ kind: 'reorder-columns', destructive: false });
 	if (target.name !== packageTable.name) {
-		operations.push({ kind: 'rename-table', from: target.name, to: packageTable.name });
+		operations.push({
+			kind: 'rename-table',
+			from: target.name,
+			to: packageTable.name,
+			destructive: false,
+		});
 	}
 
 	return operations;

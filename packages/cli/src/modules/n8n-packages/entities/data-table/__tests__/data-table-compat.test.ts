@@ -98,11 +98,17 @@ describe('diffDataTableSchema', () => {
 				],
 			}),
 		).toEqual([
-			{ kind: 'remove-column', column: 'extra', type: 'boolean' },
-			{ kind: 'change-column-type', column: 'age', from: 'string', to: 'number' },
-			{ kind: 'add-column', column: 'email', type: 'string' },
-			{ kind: 'reorder-columns' },
-			{ kind: 'rename-table', from: 'Orders', to: 'Customers' },
+			{ kind: 'remove-column', column: 'extra', type: 'boolean', destructive: true },
+			{
+				kind: 'change-column-type',
+				column: 'age',
+				from: 'string',
+				to: 'number',
+				destructive: true,
+			},
+			{ kind: 'add-column', column: 'email', type: 'string', destructive: false },
+			{ kind: 'reorder-columns', destructive: false },
+			{ kind: 'rename-table', from: 'Orders', to: 'Customers', destructive: false },
 		]);
 	});
 
@@ -116,8 +122,8 @@ describe('diffDataTableSchema', () => {
 				],
 			}),
 		).toEqual([
-			{ kind: 'remove-column', column: 'Email', type: 'string' },
-			{ kind: 'add-column', column: 'email', type: 'string' },
+			{ kind: 'remove-column', column: 'Email', type: 'string', destructive: true },
+			{ kind: 'add-column', column: 'email', type: 'string', destructive: false },
 		]);
 	});
 
@@ -130,6 +136,6 @@ describe('diffDataTableSchema', () => {
 					{ name: 'age', type: 'number', index: 2 },
 				],
 			}),
-		).toEqual([{ kind: 'reorder-columns' }]);
+		).toEqual([{ kind: 'reorder-columns', destructive: false }]);
 	});
 });

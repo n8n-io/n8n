@@ -77,17 +77,19 @@ export function createFailure(
 	};
 }
 
+/** `destructive` operations delete the data in a column. */
 export type DataTableSchemaOperation =
-	| { kind: 'add-column'; column: string; type: DataTableColumnType }
-	| { kind: 'remove-column'; column: string; type: DataTableColumnType }
+	| { kind: 'add-column'; column: string; type: DataTableColumnType; destructive: false }
+	| { kind: 'remove-column'; column: string; type: DataTableColumnType; destructive: true }
 	| {
 			kind: 'change-column-type';
 			column: string;
 			from: DataTableColumnType;
 			to: DataTableColumnType;
+			destructive: true;
 	  }
-	| { kind: 'reorder-columns' }
-	| { kind: 'rename-table'; from: string; to: string };
+	| { kind: 'reorder-columns'; destructive: false }
+	| { kind: 'rename-table'; from: string; to: string; destructive: false };
 
 export interface DataTableUpdate {
 	table: SerializedDataTable;

@@ -55,8 +55,8 @@ describe('toPackagesError', () => {
 						missingColumns: ['BaaId'],
 						typeMismatches: [],
 						overwriteChanges: [
-							{ kind: 'remove-column', column: 'note', type: 'string' },
-							{ kind: 'add-column', column: 'BaaId', type: 'string' },
+							{ kind: 'remove-column', column: 'note', type: 'string', destructive: true },
+							{ kind: 'add-column', column: 'BaaId', type: 'string', destructive: false },
 						],
 						usedByWorkflows: ['wf1'],
 					},
