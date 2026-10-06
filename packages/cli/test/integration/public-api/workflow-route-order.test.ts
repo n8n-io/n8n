@@ -79,7 +79,6 @@ async function seedWorkflow(label: string, tagNames: string[]) {
 	return { workflow, versions, tags, testRuns };
 }
 
-/** Sends a GET request and checks that exactly one `public-api-invoked` event came from it. */
 async function get(path: string) {
 	const emit = vi.spyOn(Container.get(EventService), 'emit');
 
