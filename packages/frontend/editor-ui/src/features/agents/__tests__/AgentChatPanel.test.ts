@@ -482,6 +482,27 @@ describe('AgentChatPanel', () => {
 				wrapper.unmount();
 			});
 
+			it('blocks reordering while the preview hides a queued message', async () => {
+				sendMessageMock.mockReturnValue(new Promise(() => {}));
+				const wrapper = mountPanel({ centerEmptyState: true, newSession: true });
+				(wrapper.vm as unknown as PanelVm).sendMessageFromOutside('hello agent');
+				await flushPromises();
+				sendMessageMock.mock.lastCall?.[2]?.('1');
+				queuedMessagesMock.value = ['1', '2', '3'].map((id) => ({
+					id,
+					steeringExecutionId: null,
+					message: id === '1' ? 'hello agent' : `message ${id}`,
+					createdAt: new Date().toISOString(),
+				}));
+				await flushPromises();
+
+				// The hidden item would be missing from the reorder's expected ids.
+				for (const handle of wrapper.findAll('[data-testid="chat-queue-drag-handle"]')) {
+					expect(handle.attributes('disabled')).toBeDefined();
+				}
+				wrapper.unmount();
+			});
+
 			it('keeps the first message as the preview bubble when a second send arrives before the first run starts', async () => {
 				const firstSend = createDeferredPromise<'sent' | 'busy'>();
 				sendMessageMock.mockReturnValueOnce(firstSend.promise);
