@@ -1270,7 +1270,7 @@ describe('InstanceAiService — revalidateActiveUser', () => {
 type PlannedTaskSchedulerServiceInternals = {
 	doSchedulePlannedTasks: (user: User, threadId: string) => Promise<void>;
 	revalidateActiveUser: Mock<(...args: [string]) => Promise<User | null>>;
-	cancelRun: Mock;
+	cancelAwaitingApprovalPlan: Mock;
 	createPlannedTaskState: Mock;
 	syncPlannedTasksToUi: Mock;
 	workflowObligations: {
@@ -1313,7 +1313,7 @@ function createPlannedTaskSchedulerService(): {
 	};
 
 	service.revalidateActiveUser = vi.fn();
-	service.cancelRun = vi.fn();
+	service.cancelAwaitingApprovalPlan = vi.fn(async () => {});
 	service.createPlannedTaskState = vi.fn(async () => ({ plannedTaskService }));
 	service.syncPlannedTasksToUi = vi.fn(async () => {});
 	service.workflowObligations = {
@@ -1358,7 +1358,7 @@ describe('InstanceAiService — planned task user revalidation', () => {
 
 		await service.doSchedulePlannedTasks(fakeUser, 'thread-a');
 
-		expect(service.cancelRun).toHaveBeenCalledWith('thread-a');
+		expect(service.cancelAwaitingApprovalPlan).toHaveBeenCalledWith('thread-a');
 		expect(service.createPlannedTaskState).not.toHaveBeenCalled();
 		expect(service.logger.warn).toHaveBeenCalledWith(
 			'Cancelling run: user no longer authorized for n8n Assistant',
@@ -1782,9 +1782,9 @@ describe('InstanceAiService — emitBrowserCredentialSetupOutcomes', () => {
 	});
 });
 
-describe('InstanceAiService — cancelRun plan cleanup', () => {
+describe('InstanceAiService — stopped-plan cleanup', () => {
 	type CancelService = {
-		cancelRun: (threadId: string, reason?: string) => void;
+		cancelAwaitingApprovalPlan: (threadId: string) => Promise<void>;
 		createPlannedTaskState: Mock;
 		logger: { warn: Mock };
 	};
@@ -1803,14 +1803,10 @@ describe('InstanceAiService — cancelRun plan cleanup', () => {
 		return { service, plannedTaskService, taskStorage };
 	}
 
-	/** cancelRun fires the cleanup with `void`, so let it settle. */
-	const flush = async () => await new Promise((resolve) => setTimeout(resolve, 0));
-
 	it('clears a plan that still waits for approval and empties the checklist', async () => {
 		const { service, plannedTaskService, taskStorage } = createCancelService('awaiting_approval');
 
-		service.cancelRun('thread-a');
-		await flush();
+		await service.cancelAwaitingApprovalPlan('thread-a');
 
 		expect(plannedTaskService.clear).toHaveBeenCalledWith('thread-a');
 		expect(taskStorage.save).toHaveBeenCalledWith('thread-a', { tasks: [] });
@@ -1819,8 +1815,7 @@ describe('InstanceAiService — cancelRun plan cleanup', () => {
 	it('leaves an approved plan alone', async () => {
 		const { service, plannedTaskService } = createCancelService('active');
 
-		service.cancelRun('thread-a');
-		await flush();
+		await service.cancelAwaitingApprovalPlan('thread-a');
 
 		expect(plannedTaskService.clear).not.toHaveBeenCalled();
 	});

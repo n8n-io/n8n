@@ -1087,13 +1087,6 @@ export class InstanceAiService {
 		this.tracing.clearTraceContextsForTest();
 	}
 
-	/** Clean up planned work that a stopped thread leaves behind. */
-	cancelRun(threadId: string, _reason = 'user_cancelled'): void {
-		// The user stopped before approving. A persisted awaiting-approval plan
-		// would republish its stale checklist on every scheduler pass.
-		void this.cancelAwaitingApprovalPlan(threadId);
-	}
-
 	/** Thread deletion clears this main's in-memory state only. */
 	async routeClearThreadState(threadId: string, userId?: string): Promise<void> {
 		await this.clearThreadState(threadId, userId);
@@ -2565,7 +2558,7 @@ export class InstanceAiService {
 				userId: user.id,
 				threadId,
 			});
-			this.cancelRun(threadId);
+			await this.cancelAwaitingApprovalPlan(threadId);
 			return;
 		}
 
@@ -3314,7 +3307,6 @@ export class InstanceAiService {
 			threadId,
 			runId,
 			agentId: orchestratorAgentId(runId),
-			eventBus: this.eventBus,
 			shouldStop: () => runControl.getStopSignal() !== undefined,
 			onStop: () => stopController.abort('planned-tasks-scheduled'),
 		});
@@ -3418,6 +3410,9 @@ export class InstanceAiService {
 				return;
 			}
 
+			// A plan the user stopped before approving would republish its stale
+			// checklist on every scheduler pass.
+			if (status === 'cancelled') await this.cancelAwaitingApprovalPlan(threadId);
 			const terminalError =
 				status === 'errored'
 					? await this.reclassifyMaskedStreamFailure(result.error ?? outcome.error, user, {
