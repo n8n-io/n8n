@@ -451,6 +451,7 @@ describe('AgentEvalService', () => {
 			datasetRepository.isDataTableReadByOtherDataset.mockResolvedValue(false);
 			datasetRepository.deleteDataset.mockResolvedValue(true);
 			runRepository.findByDatasetId.mockResolvedValue([]);
+			vi.mocked(userHasScopes).mockClear();
 			vi.mocked(userHasScopes).mockResolvedValue(true);
 		});
 
@@ -495,6 +496,37 @@ describe('AgentEvalService', () => {
 				'table is locked',
 			);
 
+			expect(datasetRepository.deleteDataset).not.toHaveBeenCalled();
+		});
+
+		// The table can be deleted separately (from the Data Tables page, say). The
+		// permission check then throws "not found" for a project member, and the
+		// delete itself does for an instance admin — neither may strand the draft.
+		it('still removes the dataset when the permission check finds the table already gone', async () => {
+			vi.mocked(userHasScopes).mockRejectedValue(new NotFoundError('Data table not found'));
+
+			await service.deleteDraftDataset(user, AGENT_ID, PROJECT_ID, 'ds-1');
+
+			expect(caseGenerationService.deleteDraftTable).not.toHaveBeenCalled();
+			expect(datasetRepository.deleteDataset).toHaveBeenCalledWith('ds-1', AGENT_ID);
+		});
+
+		it('still removes the dataset when the table is already gone by the time it is deleted', async () => {
+			caseGenerationService.deleteDraftTable.mockRejectedValue(
+				new NotFoundError('Data table not found'),
+			);
+
+			await service.deleteDraftDataset(user, AGENT_ID, PROJECT_ID, 'ds-1');
+
+			expect(datasetRepository.deleteDataset).toHaveBeenCalledWith('ds-1', AGENT_ID);
+		});
+
+		it('does not swallow other permission-check failures', async () => {
+			vi.mocked(userHasScopes).mockRejectedValue(new Error('db down'));
+
+			await expect(service.deleteDraftDataset(user, AGENT_ID, PROJECT_ID, 'ds-1')).rejects.toThrow(
+				'db down',
+			);
 			expect(datasetRepository.deleteDataset).not.toHaveBeenCalled();
 		});
 

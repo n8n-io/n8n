@@ -151,15 +151,28 @@ export class AgentEvalService {
 		}
 
 		const dataTableId = getDataTableId(dataset);
-		const mayDeleteTable =
-			dataTableId !== null &&
-			(await userHasScopes(user, ['dataTable:delete'], false, { dataTableId })) &&
-			!(await this.datasetRepository.isDataTableReadByOtherDataset(dataTableId, datasetId));
+		let mayDeleteTable = false;
+		if (dataTableId !== null) {
+			try {
+				mayDeleteTable =
+					(await userHasScopes(user, ['dataTable:delete'], false, { dataTableId })) &&
+					!(await this.datasetRepository.isDataTableReadByOtherDataset(dataTableId, datasetId));
+			} catch (error) {
+				// The scope check reports a missing table as "not found". A table that
+				// is already gone needs no cleanup, and must not strand the dataset.
+				if (!(error instanceof NotFoundError)) throw error;
+			}
+		}
 
 		// Table first: if it cannot be removed the dataset is still there, so the
 		// cleanup can be retried instead of orphaning the table for good.
-		if (mayDeleteTable) {
-			await this.caseGenerationService.deleteDraftTable(dataTableId, projectId);
+		if (dataTableId !== null && mayDeleteTable) {
+			try {
+				await this.caseGenerationService.deleteDraftTable(dataTableId, projectId);
+			} catch (error) {
+				// Deleted in the meantime — the outcome is the same as having removed it.
+				if (!(error instanceof NotFoundError)) throw error;
+			}
 		}
 
 		const deleted = await this.datasetRepository.deleteDataset(datasetId, agentId);
