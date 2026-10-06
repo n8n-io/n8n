@@ -1,19 +1,33 @@
-import { defineComponent, h, ref, computed } from 'vue';
+import { computed, defineComponent, h, nextTick, ref } from 'vue';
 import { createTestingPinia } from '@pinia/testing';
-import { renderComponent } from '@/__tests__/render';
-import { waitFor } from '@testing-library/vue';
+import { flushPromises } from '@vue/test-utils';
 import { describe, it, beforeEach, vi, expect } from 'vitest';
-import { useCommandBar } from './useCommandBar';
+import { renderComponent } from '@/__tests__/render';
 import { VIEWS } from '@/app/constants';
+import type {
+	CommandBarItem,
+	CommandBarRemoteSource,
+	CommandBarSearchRequest,
+	CommandBarSearchResult,
+	CommandGroup,
+} from '../types';
+import { ACTIONS_TAB, ALL_TAB, PAGE_SIZE, PREVIEW_LIMIT, useCommandBar } from './useCommandBar';
 
 vi.mock('@n8n/i18n', async (importOriginal) => ({
 	...(await importOriginal()),
-	useI18n: () => ({ baseText: (key: string) => key }),
+	useI18n: () => ({
+		baseText: (key: string, options?: { interpolate?: Record<string, string> }) =>
+			options?.interpolate ? `${key}:${Object.values(options.interpolate).join(',')}` : key,
+	}),
 }));
 
-// Router: drive route-based behavior via a ref
+vi.mock('lodash/debounce', () => ({
+	default: (fn: (...args: unknown[]) => unknown) =>
+		Object.assign((...args: unknown[]) => fn(...args), { cancel: vi.fn() }),
+}));
+
 const currentRoute = ref<{ name: string; params: Record<string, string> }>({
-	name: VIEWS.WORKFLOW,
+	name: VIEWS.WORKFLOWS,
 	params: {},
 });
 vi.mock('vue-router', () => ({
@@ -22,14 +36,11 @@ vi.mock('vue-router', () => ({
 	RouterLink: vi.fn(),
 }));
 
-// Stores
-vi.mock('@/app/stores/posthog.store', () => ({
-	usePostHog: () => ({ isVariantEnabled: vi.fn().mockReturnValue(true) }),
-}));
 const loadNodeTypesIfNotLoaded = vi.fn().mockResolvedValue(undefined);
 vi.mock('@/app/stores/nodeTypes.store', () => ({
 	useNodeTypesStore: () => ({ loadNodeTypesIfNotLoaded }),
 }));
+
 vi.mock('@/features/collaboration/projects/projects.store', () => ({
 	useProjectsStore: () => ({
 		personalProject: { id: 'p1' },
@@ -37,141 +48,411 @@ vi.mock('@/features/collaboration/projects/projects.store', () => ({
 		currentProjectId: 'p1',
 	}),
 }));
-vi.mock('@/app/stores/workflowDocument.store', () => ({
-	injectWorkflowDocumentStore: () => ref({ name: 'WF' }),
-	useWorkflowDocumentStore: () => ({
-		name: 'WF',
-		settings: {},
-		getPinDataSnapshot: () => ({}),
-		scopes: [],
-		isArchived: false,
-		versionData: null,
-		checksum: null,
-	}),
-	createWorkflowDocumentId: (id: string) => `${id}@latest`,
-}));
+
+const track = vi.fn();
 vi.mock('@n8n/composables/useTelemetry', () => ({
-	useTelemetry: () => ({ track: vi.fn() }),
+	useTelemetry: () => ({ track }),
 }));
 
-// Command groups
-type MkGroupOptions = {
-	loading?: boolean;
-	handlers?: {
-		onCommandBarChange?: (query: string) => void;
-		onCommandBarNavigateTo?: (to: string | null) => void;
+const items = (prefix: string, count: number, start = 0): CommandBarItem[] =>
+	Array.from({ length: count }, (_, index) => ({
+		id: `${prefix}-${start + index}`,
+		title: `${prefix} ${start + index}`,
+	}));
+
+function createRemoteSource(id: string, totalItems = 12) {
+	const search = vi.fn(
+		async ({ query, offset, limit }: CommandBarSearchRequest): Promise<CommandBarSearchResult> => ({
+			items: items(`${id}${query}`, Math.min(limit, Math.max(totalItems - offset, 0)), offset),
+			hasMore: offset + limit < totalItems,
+		}),
+	);
+	const source: CommandBarRemoteSource = {
+		id,
+		title: id,
+		isRemote: true,
+		isAvailable: () => true,
+		search,
 	};
-	initialize?: () => Promise<void>;
+	return { source, search };
+}
+
+const group = (commands: CommandBarItem[], extra: Partial<CommandGroup> = {}): CommandGroup => ({
+	commands: computed(() => commands),
+	...extra,
+});
+
+const subWorkflowAction: CommandBarItem = {
+	id: 'open-sub-workflow',
+	title: 'Open sub-workflow',
+	section: 'Workflow',
+	placeholder: 'Search sub-workflows',
+	children: [
+		{ id: 'child-alpha', title: 'Alpha child', handler: vi.fn() },
+		{ id: 'child-beta', title: 'Beta child', handler: vi.fn() },
+	],
 };
 
-const mkGroup = (id: string, opts: MkGroupOptions = {}) => ({
-	commands: computed(() => [{ id: `${id}-cmd`, title: `${id} title` }]),
-	isLoading: ref(!!opts.loading),
-	handlers: opts.handlers,
-	initialize: opts.initialize,
-});
-const changeSpy = vi.fn();
-const navSpy = vi.fn();
-const nodeInitSpy = vi.fn();
+const settingsHandler = vi.fn();
+const genericCommands: CommandBarItem[] = [
+	{ id: 'settings', title: 'Settings', section: 'General', handler: settingsHandler },
+	...Array.from({ length: 6 }, (_, index) => ({
+		id: `setting-${index}`,
+		title: `Settings page ${index}`,
+		section: 'General',
+	})),
+	{ id: 'docs', title: 'Documentation', section: 'Help', href: '/docs' },
+];
 
+const workflows = createRemoteSource('workflows');
+const credentials = createRemoteSource('credentials', 3);
+const nodeEntries = ref<CommandBarItem[]>(items('node', 25));
+const recentInitialize = vi.fn().mockResolvedValue(undefined);
+const workflowNavigationInitialize = vi.fn().mockResolvedValue(undefined);
+
+vi.mock('./useRecentResources', () => ({
+	useRecentResources: () =>
+		group([{ id: 'recent-1', title: 'Recent workflow', section: 'Recent' }], {
+			initialize: recentInitialize,
+		}),
+}));
 vi.mock('./useNodeCommands', () => ({
 	useNodeCommands: () =>
-		mkGroup('node', {
-			handlers: { onCommandBarChange: changeSpy, onCommandBarNavigateTo: navSpy },
-			initialize: nodeInitSpy,
+		group([{ id: 'add-sticky', title: 'Add sticky note', section: 'Nodes' }], {
+			source: {
+				id: 'nodes',
+				title: 'nodes',
+				isRemote: false,
+				isAvailable: () => true,
+				search: ({ offset, limit }: CommandBarSearchRequest) => ({
+					items: nodeEntries.value.slice(offset, offset + limit),
+					hasMore: offset + limit < nodeEntries.value.length,
+				}),
+			},
 		}),
 }));
 vi.mock('./useWorkflowCommands', () => ({
-	useWorkflowCommands: () => mkGroup('wf', { loading: true }),
-}));
-vi.mock('./useWorkflowNavigationCommands', () => ({
-	useWorkflowNavigationCommands: () => mkGroup('wfn'),
-}));
-vi.mock('./useDataTableNavigationCommands', () => ({
-	useDataTableNavigationCommands: () => mkGroup('dt'),
-}));
-vi.mock('./useCredentialNavigationCommands', () => ({
-	useCredentialNavigationCommands: () => mkGroup('cred'),
-}));
-vi.mock('./useExecutionNavigationCommands', () => ({
-	useExecutionNavigationCommands: () => mkGroup('execnav'),
-}));
-vi.mock('./useProjectNavigationCommands', () => ({
-	useProjectNavigationCommands: () => mkGroup('proj'),
+	useWorkflowCommands: () => group([subWorkflowAction]),
 }));
 vi.mock('./useExecutionCommands', () => ({
-	useExecutionCommands: () => mkGroup('execcmd'),
+	useExecutionCommands: () =>
+		group([{ id: 'delete-execution', title: 'Delete this execution', section: 'Execution' }]),
+}));
+vi.mock('./useWorkflowNavigationCommands', () => ({
+	useWorkflowNavigationCommands: () =>
+		group([{ id: 'create-workflow', title: 'Create workflow', section: 'Workflows' }], {
+			source: workflows.source,
+			initialize: workflowNavigationInitialize,
+		}),
+}));
+vi.mock('./useCredentialNavigationCommands', () => ({
+	useCredentialNavigationCommands: () => group([], { source: credentials.source }),
+}));
+vi.mock('./useProjectNavigationCommands', () => ({
+	useProjectNavigationCommands: () =>
+		group([], {
+			source: { ...createRemoteSource('projects').source, isAvailable: () => false },
+		}),
+}));
+vi.mock('./useDataTableNavigationCommands', () => ({
+	useDataTableNavigationCommands: () => group([]),
+}));
+vi.mock('./useExecutionNavigationCommands', () => ({
+	useExecutionNavigationCommands: () => group([]),
 }));
 vi.mock('./useGenericCommands', () => ({
-	useGenericCommands: () => mkGroup('gen'),
-}));
-vi.mock('./useRecentResources', () => ({
-	useRecentResources: () => mkGroup('recent'),
+	useGenericCommands: () => group(genericCommands),
 }));
 vi.mock('./useChatHubCommands', () => ({
-	useChatHubCommands: () => mkGroup('chathub'),
+	useChatHubCommands: () => group([]),
 }));
 vi.mock('./useInstanceAiCommands', () => ({
-	useInstanceAiCommands: () => mkGroup('instanceai'),
+	useInstanceAiCommands: () => group([]),
 }));
 
 describe('useCommandBar', () => {
-	let api: ReturnType<typeof useCommandBar>;
+	let commandBar: ReturnType<typeof useCommandBar>;
 
-	const renderHarness = () =>
+	const renderCommandBar = () =>
 		renderComponent(
 			defineComponent({
 				setup() {
-					api = useCommandBar();
+					commandBar = useCommandBar();
 					return () => h('div');
 				},
 			}),
 			{ pinia: createTestingPinia() },
 		);
 
+	async function open() {
+		commandBar.isOpen.value = true;
+		await flushPromises();
+	}
+
+	async function search(query: string) {
+		commandBar.query.value = query;
+		await flushPromises();
+	}
+
+	const sectionIds = () => commandBar.sections.value.map(({ id }) => id);
+	const itemIds = () =>
+		commandBar.sections.value.flatMap((section) => section.items.map(({ id }) => id));
+
 	beforeEach(() => {
 		vi.clearAllMocks();
-		currentRoute.value = { name: VIEWS.WORKFLOW, params: {} };
+		currentRoute.value = { name: VIEWS.WORKFLOWS, params: {} };
+		nodeEntries.value = items('node', 25);
+		renderCommandBar();
 	});
 
-	it('aggregates items for WORKFLOW view and exposes placeholder/context', async () => {
-		renderHarness();
-		await waitFor(() => expect(api.items.value.length).toBeGreaterThan(0));
+	it('initializes the groups and node types when it opens', async () => {
+		await open();
 
-		expect(api.placeholder).toBe('commandBar.placeholder');
-		expect(api.context.value).toBe('commandBar.sections.workflow ⋅ WF');
-
-		const ids = api.items.value.map((i) => i.id);
-		expect(ids).toEqual(expect.arrayContaining(['node-cmd', 'wf-cmd', 'wfn-cmd', 'gen-cmd']));
-	});
-
-	it('propagates onCommandBarChange and onCommandBarNavigateTo to groups', () => {
-		renderHarness();
-		api.onCommandBarChange('abc');
-		api.onCommandBarNavigateTo('xyz');
-		expect(changeSpy).toHaveBeenCalledWith('abc');
-		expect(navSpy).toHaveBeenCalledWith('xyz');
-	});
-
-	it('initializes node types and group initializers', async () => {
-		renderHarness();
-		await api.initialize();
 		expect(loadNodeTypesIfNotLoaded).toHaveBeenCalled();
-		expect(nodeInitSpy).toHaveBeenCalled();
+		expect(recentInitialize).toHaveBeenCalled();
+		expect(workflowNavigationInitialize).toHaveBeenCalled();
 	});
 
-	it('isLoading is true when any group is loading', () => {
-		renderHarness();
-		expect(api.isLoading.value).toBe(true);
+	it('shows a tab for each available source between All and Actions', async () => {
+		await open();
+		expect(commandBar.tabs.value.map(({ id }) => id)).toEqual([
+			ALL_TAB,
+			'workflows',
+			'credentials',
+			ACTIONS_TAB,
+		]);
+
+		currentRoute.value = { name: VIEWS.WORKFLOW, params: {} };
+		await nextTick();
+		expect(commandBar.tabs.value.map(({ id }) => id)).toEqual([
+			ALL_TAB,
+			'nodes',
+			'workflows',
+			'credentials',
+			ACTIONS_TAB,
+		]);
 	});
 
-	it('switches groups when route name changes', async () => {
-		renderHarness();
-		currentRoute.value = { name: VIEWS.EXECUTIONS, params: {} };
-		await waitFor(() =>
-			expect(api.items.value.map((i) => i.id)).toEqual(
-				expect.arrayContaining(['wfn-cmd', 'proj-cmd', 'cred-cmd', 'dt-cmd', 'gen-cmd']),
-			),
+	it('shows recent items and all actions by section without a query', async () => {
+		await open();
+
+		expect(sectionIds()).toEqual([
+			'recent:Recent',
+			'actions:Workflows',
+			'actions:General',
+			'actions:Help',
+		]);
+		expect(workflows.search).not.toHaveBeenCalled();
+	});
+
+	it('adds contextual actions for the current view', async () => {
+		currentRoute.value = { name: VIEWS.EXECUTION_PREVIEW, params: {} };
+		await open();
+
+		expect(itemIds()).toContain('delete-execution');
+		expect(itemIds()).not.toContain('open-sub-workflow');
+	});
+
+	it('previews matching actions and every source for a query', async () => {
+		await open();
+		await search('settings');
+
+		expect(workflows.search).toHaveBeenCalledWith({
+			query: 'settings',
+			offset: 0,
+			limit: PAGE_SIZE,
+		});
+		expect(credentials.search).toHaveBeenCalledWith({
+			query: 'settings',
+			offset: 0,
+			limit: PAGE_SIZE,
+		});
+
+		const [actionsSection, workflowsSection, credentialsSection] = commandBar.sections.value;
+		expect(actionsSection.items[0].id).toBe('settings');
+		expect(actionsSection.items).toHaveLength(PREVIEW_LIMIT + 1);
+		expect(actionsSection.items.at(-1)?.id).toBe(`show-all-${ACTIONS_TAB}`);
+		expect(workflowsSection.items).toHaveLength(PREVIEW_LIMIT + 1);
+		expect(workflowsSection.items.at(-1)?.id).toBe('show-all-workflows');
+		expect(credentialsSection.items.map(({ id }) => id)).toEqual([
+			'credentialssettings-0',
+			'credentialssettings-1',
+			'credentialssettings-2',
+		]);
+	});
+
+	it('switches to the type tab from a show all item', async () => {
+		await open();
+		await search('settings');
+
+		const showAll = commandBar.sections.value[1].items.at(-1);
+		if (!showAll) throw new Error('missing show all item');
+		commandBar.select(showAll, { newTab: false });
+
+		expect(commandBar.activeTab.value).toBe('workflows');
+		expect(commandBar.isOpen.value).toBe(true);
+	});
+
+	it('lists the source commands and a full page in a type tab', async () => {
+		await open();
+		commandBar.activeTab.value = 'workflows';
+		await flushPromises();
+
+		expect(workflows.search).toHaveBeenCalledWith({ query: '', offset: 0, limit: PAGE_SIZE });
+		expect(commandBar.sections.value[0].items.map(({ id }) => id)).toEqual(['create-workflow']);
+		expect(commandBar.sections.value[1].items).toHaveLength(12);
+		expect(commandBar.hasMore.value).toBe(false);
+	});
+
+	it('loads the next page of a remote source and skips known items', async () => {
+		const pages: CommandBarSearchResult[] = [
+			{ items: items('workflow', PAGE_SIZE), hasMore: true },
+			{
+				items: [...items('workflow', 1, PAGE_SIZE - 1), ...items('workflow', 2, PAGE_SIZE)],
+				hasMore: false,
+			},
+		];
+		workflows.search.mockImplementation(async ({ offset }) => pages[offset === 0 ? 0 : 1]);
+		await open();
+		commandBar.activeTab.value = 'workflows';
+		await flushPromises();
+		expect(commandBar.hasMore.value).toBe(true);
+
+		commandBar.loadMore();
+		await flushPromises();
+
+		expect(workflows.search).toHaveBeenLastCalledWith({
+			query: '',
+			offset: PAGE_SIZE,
+			limit: PAGE_SIZE,
+		});
+		expect(commandBar.sections.value[1].items).toHaveLength(PAGE_SIZE + 2);
+		expect(commandBar.hasMore.value).toBe(false);
+	});
+
+	it('ignores responses of outdated searches', async () => {
+		const pending: Record<string, (result: CommandBarSearchResult) => void> = {};
+		workflows.search.mockImplementation(
+			async ({ query }) => await new Promise((resolve) => (pending[query] = resolve)),
 		);
+		await open();
+		commandBar.activeTab.value = 'workflows';
+		await search('fir');
+		await search('first');
+
+		pending.first({ items: items('latest', 1), hasMore: false });
+		await flushPromises();
+		pending.fir({ items: items('outdated', 1), hasMore: false });
+		await flushPromises();
+
+		expect(commandBar.sections.value[1].items.map(({ id }) => id)).toEqual(['latest-0']);
+		expect(commandBar.isLoading.value).toBe(false);
+	});
+
+	it('reports loading while a remote search is pending', async () => {
+		workflows.search.mockImplementation(async () => await new Promise(() => {}));
+		await open();
+		await search('pending');
+
+		expect(commandBar.isLoading.value).toBe(true);
+		expect(commandBar.sections.value[1]).toMatchObject({ id: 'workflows', isLoading: true });
+	});
+
+	it('pages a local source and follows changes of its data', async () => {
+		currentRoute.value = { name: VIEWS.WORKFLOW, params: {} };
+		await open();
+		commandBar.activeTab.value = 'nodes';
+		await flushPromises();
+		expect(commandBar.sections.value[1].items).toHaveLength(PAGE_SIZE);
+
+		commandBar.loadMore();
+		await flushPromises();
+		expect(commandBar.sections.value[1].items).toHaveLength(25);
+
+		nodeEntries.value = items('node', 2);
+		await flushPromises();
+		expect(commandBar.sections.value[1].items).toHaveLength(2);
+	});
+
+	it('opens the children of an item and restores the query on back', async () => {
+		currentRoute.value = { name: VIEWS.WORKFLOW, params: {} };
+		await open();
+		await search('sub');
+
+		commandBar.select(subWorkflowAction, { newTab: false });
+		await flushPromises();
+
+		expect(commandBar.breadcrumb.value).toBe('Open sub-workflow');
+		expect(commandBar.placeholder.value).toBe('Search sub-workflows');
+		expect(commandBar.query.value).toBe('');
+		expect(itemIds()).toEqual(['child-alpha', 'child-beta']);
+
+		await search('beta');
+		expect(itemIds()).toEqual(['child-beta']);
+
+		commandBar.back();
+		await flushPromises();
+		expect(commandBar.breadcrumb.value).toBeUndefined();
+		expect(commandBar.query.value).toBe('sub');
+	});
+
+	it('runs the handler, closes and tracks the command', async () => {
+		await open();
+
+		commandBar.select(genericCommands[0], { newTab: false });
+
+		expect(settingsHandler).toHaveBeenCalled();
+		expect(commandBar.isOpen.value).toBe(false);
+		expect(track).toHaveBeenCalledWith('User executed command bar command', {
+			command_id: 'settings',
+			command_section: 'General',
+			view: VIEWS.WORKFLOWS,
+			parent_command_id: undefined,
+		});
+	});
+
+	it('tracks the parent of a child command', async () => {
+		currentRoute.value = { name: VIEWS.WORKFLOW, params: {} };
+		await open();
+		commandBar.select(subWorkflowAction, { newTab: false });
+
+		const child = subWorkflowAction.children?.[0];
+		if (!child) throw new Error('missing child');
+		commandBar.select(child, { newTab: false });
+
+		expect(child.handler).toHaveBeenCalled();
+		expect(track).toHaveBeenCalledWith(
+			'User executed command bar command',
+			expect.objectContaining({
+				command_id: 'child-alpha',
+				parent_command_id: 'open-sub-workflow',
+			}),
+		);
+	});
+
+	it('opens items with a link in a new tab', async () => {
+		const openWindow = vi.spyOn(window, 'open').mockReturnValue(null);
+		await open();
+
+		commandBar.select(genericCommands[genericCommands.length - 1], { newTab: true });
+
+		expect(openWindow).toHaveBeenCalledWith('/docs', '_blank', 'noopener');
+		expect(commandBar.isOpen.value).toBe(false);
+	});
+
+	it('resets the query, tab and scope when it opens again', async () => {
+		currentRoute.value = { name: VIEWS.WORKFLOW, params: {} };
+		await open();
+		commandBar.activeTab.value = 'workflows';
+		commandBar.select(subWorkflowAction, { newTab: false });
+		await search('alpha');
+
+		commandBar.isOpen.value = false;
+		await flushPromises();
+		await open();
+
+		expect(commandBar.query.value).toBe('');
+		expect(commandBar.activeTab.value).toBe(ALL_TAB);
+		expect(commandBar.breadcrumb.value).toBeUndefined();
 	});
 });

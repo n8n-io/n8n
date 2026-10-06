@@ -1,486 +1,601 @@
 <script lang="ts" setup>
-import { FocusScope } from 'reka-ui';
-import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, useId, watch } from 'vue';
 
 import N8nCommandBarItem from './CommandBarItem.vue';
-import type { CommandBarItem } from './types';
-import N8nBadge from '../N8nBadge';
-import N8nLoading from '../N8nLoading/Loading.vue';
-import N8nScrollArea from '../N8nScrollArea/N8nScrollArea.vue';
+import type {
+	CommandBarItem,
+	CommandBarSection,
+	CommandBarSelectOptions,
+	CommandBarTab,
+} from './types';
+import { useI18n } from '../../composables/useI18n';
+import N8nButton from '../N8nButton';
+import { N8nDialog, N8nDialogClose } from '../N8nDialog';
+import N8nIcon from '../N8nIcon';
+import { N8nKeyboardShortcut } from '../N8nKeyboardShortcut';
+import N8nLoading from '../N8nLoading';
 import N8nSpinner from '../N8nSpinner';
 
 interface CommandBarProps {
+	sections: CommandBarSection[];
+	tabs?: CommandBarTab[];
 	placeholder?: string;
-	context?: string;
-	items: CommandBarItem[];
+	breadcrumb?: string;
 	isLoading?: boolean;
-	zIndex?: number;
+	hasMore?: boolean;
 }
 
+type CommandBarRow =
+	| { type: 'header'; key: string; title: string }
+	| { type: 'item'; key: string; item: CommandBarItem }
+	| { type: 'skeleton'; key: string; index: number };
+
+type CommandBarItemRow = Extract<CommandBarRow, { type: 'item' }>;
+
 defineOptions({ name: 'N8nCommandBar' });
+
 const props = withDefaults(defineProps<CommandBarProps>(), {
-	placeholder: 'Type a command...',
-	context: '',
+	tabs: () => [],
+	placeholder: undefined,
+	breadcrumb: undefined,
 	isLoading: false,
-	zIndex: 1900,
+	hasMore: false,
 });
 
 const emit = defineEmits<{
-	inputChange: [value: string];
-	navigateTo: [parentId: string | null];
+	select: [item: CommandBarItem, options: CommandBarSelectOptions];
+	back: [];
+	loadMore: [];
 }>();
 
-const NUM_LOADING_ITEMS_FULL = 8;
-const NUM_LOADING_ITEMS_PARTIAL = 3;
-
 const isOpen = defineModel<boolean>('open', { default: false });
+const query = defineModel<string>('query', { default: '' });
+const activeTab = defineModel<string>('activeTab', { default: '' });
+
+const SKELETON_ROWS_PER_SECTION = 2;
+const LOAD_MORE_DISTANCE = 200;
+
+const { t } = useI18n();
+const listId = useId();
+
 const inputRef = ref<HTMLInputElement>();
-const selectedIndex = ref(-1);
-const inputValue = ref('');
-const currentParentId = ref<string | null>(null);
+const listRef = ref<HTMLElement>();
+const selectedKey = ref<string | null>(null);
 
-const currentParent = computed(() => {
-	return props.items.find((item) => item.id === currentParentId.value);
-});
+const rows = computed(() => {
+	const result: CommandBarRow[] = [];
+	for (const section of props.sections) {
+		const showSkeleton = section.isLoading === true && section.items.length === 0;
+		if (section.items.length === 0 && !showSkeleton) continue;
 
-const currentItems = computed(() => {
-	return currentParent.value ? (currentParent.value.children ?? []) : props.items;
-});
-
-const currentPlaceholder = computed(() => {
-	return currentParent.value?.placeholder ?? props.placeholder;
-});
-
-const commandBarRef = ref<HTMLElement>();
-const scrollAreaRef = ref<InstanceType<typeof N8nScrollArea>>();
-
-const filteredItems = computed(() => {
-	let items = currentItems.value;
-
-	if (inputValue.value) {
-		const query = inputValue.value.toLowerCase();
-		items = items.filter((item) => {
-			const searchText = [
-				typeof item.title === 'string' ? item.title : '',
-				...(item.keywords ?? []),
-			]
-				.filter(Boolean)
-				.join(' ')
-				.toLowerCase();
-
-			if (item.matchAnySearchTerm) {
-				return query
-					.split(' ')
-					.filter(Boolean)
-					.some((word) => searchText.includes(word));
-			}
-
-			return searchText.includes(query);
-		});
-	}
-
-	return items;
-});
-
-const groupedItems = computed(() => {
-	const items = filteredItems.value;
-	const ungrouped: CommandBarItem[] = [];
-	const sections: Record<string, CommandBarItem[]> = {};
-
-	items.forEach((item) => {
-		if (item.section) {
-			if (!sections[item.section]) {
-				sections[item.section] = [];
-			}
-			sections[item.section].push(item);
-		} else {
-			ungrouped.push(item);
+		if (section.title) {
+			result.push({ type: 'header', key: `header:${section.id}`, title: section.title });
 		}
-	});
-
-	return {
-		ungrouped,
-		sections: Object.entries(sections).map(([title, items]) => ({
-			title,
-			items,
-		})),
-	};
-});
-
-const flattenedItems = computed(() => {
-	const result: CommandBarItem[] = [];
-
-	result.push(...groupedItems.value.ungrouped);
-
-	groupedItems.value.sections.forEach((section) => {
-		result.push(...section.items);
-	});
-
+		for (const item of section.items) {
+			result.push({ type: 'item', key: `${section.id}:${item.id}`, item });
+		}
+		if (showSkeleton) {
+			for (let index = 0; index < SKELETON_ROWS_PER_SECTION; index++) {
+				result.push({ type: 'skeleton', key: `skeleton:${section.id}:${index}`, index });
+			}
+		}
+	}
 	return result;
 });
 
-const numLoadingItems = computed(() => {
-	return flattenedItems.value.length > 0 ? NUM_LOADING_ITEMS_PARTIAL : NUM_LOADING_ITEMS_FULL;
-});
+const itemRows = computed(() =>
+	rows.value.filter((row): row is CommandBarItemRow => row.type === 'item'),
+);
+const rowIndexByKey = computed(() => new Map(itemRows.value.map((row, index) => [row.key, index])));
 
-const getGlobalIndex = (item: CommandBarItem): number => {
-	return flattenedItems.value.findIndex((flatItem) => flatItem.id === item.id);
-};
+const selectedIndex = computed(
+	() => (selectedKey.value === null ? undefined : rowIndexByKey.value.get(selectedKey.value)) ?? 0,
+);
+const selectedRow = computed<CommandBarItemRow | undefined>(
+	() => itemRows.value[selectedIndex.value],
+);
+const selectedItem = computed(() => selectedRow.value?.item);
 
-const scrollSelectedIntoView = () => {
-	if (selectedIndex.value < 0) return;
+const showTabs = computed(() => props.tabs.length > 0 && !props.breadcrumb);
+const activeTabIndex = computed(() => props.tabs.findIndex((tab) => tab.id === activeTab.value));
+const isFilteredByTab = computed(() => showTabs.value && activeTabIndex.value > 0);
+const isEmpty = computed(() => rows.value.length === 0 && !props.isLoading);
+const emptyText = computed(() =>
+	isFilteredByTab.value
+		? t('commandBar.noResultsIn', { type: props.tabs[activeTabIndex.value].label })
+		: t('commandBar.noResults'),
+);
 
-	void nextTick(async () => {
+function scrollSelectionIntoView() {
+	void nextTick(() => {
+		const list = listRef.value;
+		if (!list) return;
 		if (selectedIndex.value === 0) {
-			await scrollAreaRef.value?.scrollToTop({ smooth: true });
-			return;
-		} else if (selectedIndex.value === flattenedItems.value.length - 1) {
-			await scrollAreaRef.value?.scrollToBottom({ smooth: true });
+			list.scrollTop = 0;
 			return;
 		}
-
-		const selectedItem = flattenedItems.value[selectedIndex.value];
-		if (!selectedItem) return;
-
-		const selectedElement = document.querySelector(`[data-item-id="${selectedItem.id}"]`);
-		if (selectedElement) {
-			selectedElement.scrollIntoView({
-				behavior: 'smooth',
-				block: 'nearest',
-			});
-		}
+		const key = selectedRow.value?.key;
+		if (!key) return;
+		list.querySelector(`[data-row-key="${CSS.escape(key)}"]`)?.scrollIntoView({ block: 'nearest' });
 	});
-};
+}
 
-const openCommandBar = async () => {
-	isOpen.value = true;
-	selectedIndex.value = 0;
-	inputValue.value = '';
-	await nextTick();
-	inputRef.value?.focus();
-};
+function moveSelection(delta: number) {
+	const count = itemRows.value.length;
+	if (count === 0) return;
+	const nextIndex = Math.min(Math.max(selectedIndex.value + delta, 0), count - 1);
+	selectedKey.value = itemRows.value[nextIndex].key;
+	scrollSelectionIntoView();
+}
 
-const closeCommandBar = () => {
-	isOpen.value = false;
-	selectedIndex.value = -1;
-	inputValue.value = '';
-	currentParentId.value = null;
-};
+function switchTab(delta: number) {
+	const count = props.tabs.length;
+	const nextIndex = (Math.max(activeTabIndex.value, 0) + delta + count) % count;
+	activeTab.value = props.tabs[nextIndex].id;
+}
 
-const navigateToChildren = (item: CommandBarItem) => {
-	currentParentId.value = item.id;
-	selectedIndex.value = 0;
-	inputValue.value = '';
-	scrollSelectedIntoView();
-
-	emit('navigateTo', item.id);
-};
-
-const navigateBack = () => {
-	if (!currentParent.value) return;
-
-	currentParentId.value = null;
-	selectedIndex.value = 0;
-	inputValue.value = '';
-
-	emit('navigateTo', null);
-};
-
-const selectItem = (item: CommandBarItem) => {
+function selectItem(item: CommandBarItem, options: CommandBarSelectOptions) {
 	if (item.disabled) return;
+	emit('select', item, options);
+}
 
-	if (item.children) {
-		navigateToChildren(item);
-		return;
-	}
+function isCaretAt(position: 'start' | 'end') {
+	const input = inputRef.value;
+	if (!input || input.selectionStart !== input.selectionEnd) return false;
+	return position === 'start'
+		? input.selectionStart === 0
+		: input.selectionEnd === input.value.length;
+}
 
-	if (item.handler) {
-		void item.handler();
-	}
-
-	closeCommandBar();
-};
-
-const handleKeydown = (event: KeyboardEvent) => {
-	if ((event.metaKey || event.ctrlKey) && event.key === 'k') {
-		event.preventDefault();
-		void openCommandBar();
-		return;
-	}
-
-	if (!isOpen.value) return;
-
+function onInputKeydown(event: KeyboardEvent) {
 	event.stopPropagation();
+	if (event.isComposing) return;
 
 	switch (event.key) {
-		case 'Escape':
-			event.preventDefault();
-			void closeCommandBar();
-			break;
 		case 'ArrowDown':
 			event.preventDefault();
-			selectedIndex.value = Math.min(selectedIndex.value + 1, flattenedItems.value.length - 1);
-			scrollSelectedIntoView();
+			moveSelection(1);
 			break;
 		case 'ArrowUp':
 			event.preventDefault();
-			selectedIndex.value = Math.max(selectedIndex.value - 1, 0);
-			scrollSelectedIntoView();
+			moveSelection(-1);
+			break;
+		case 'Enter': {
+			event.preventDefault();
+			const item = selectedItem.value;
+			if (item) selectItem(item, { newTab: event.metaKey || event.ctrlKey });
+			break;
+		}
+		case 'Tab':
+			event.preventDefault();
+			if (showTabs.value) switchTab(event.shiftKey ? -1 : 1);
 			break;
 		case 'ArrowLeft':
-			if (!inputValue.value && currentParent.value) {
+			if (props.breadcrumb && !query.value) {
 				event.preventDefault();
-				void navigateBack();
+				emit('back');
+			} else if (showTabs.value && isCaretAt('start')) {
+				event.preventDefault();
+				switchTab(-1);
 			}
 			break;
 		case 'ArrowRight':
-			if (selectedIndex.value >= 0 && flattenedItems.value[selectedIndex.value]) {
-				const selectedItem = flattenedItems.value[selectedIndex.value];
-				if (selectedItem.children && !selectedItem.disabled) {
-					event.preventDefault();
-					void navigateToChildren(selectedItem);
-				}
+			if (showTabs.value && isCaretAt('end')) {
+				event.preventDefault();
+				switchTab(1);
 			}
 			break;
-		case 'Enter':
+		case 'Backspace':
+			if (props.breadcrumb && !query.value) {
+				event.preventDefault();
+				emit('back');
+			}
+			break;
+		case 'Escape':
 			event.preventDefault();
-			if (selectedIndex.value >= 0 && flattenedItems.value[selectedIndex.value]) {
-				void selectItem(flattenedItems.value[selectedIndex.value]);
+			if (props.breadcrumb) {
+				emit('back');
+			} else {
+				isOpen.value = false;
 			}
 			break;
 	}
-};
+}
 
-const handleClickOutside = (event: MouseEvent) => {
-	if (!isOpen.value) return;
-
-	if (commandBarRef.value && !commandBarRef.value.contains(event.target as Node)) {
-		closeCommandBar();
+function onEscapeKeyDown(event: KeyboardEvent) {
+	if (props.breadcrumb) {
+		event.preventDefault();
+		emit('back');
 	}
-};
+}
 
-watch(inputValue, (newValue) => {
-	emit('inputChange', newValue);
-	selectedIndex.value = 0;
+function onOpenAutoFocus(event: Event) {
+	event.preventDefault();
+	inputRef.value?.focus();
+}
+
+function maybeLoadMore() {
+	const list = listRef.value;
+	if (!list || !props.hasMore || props.isLoading) return;
+	if (list.scrollTop + list.clientHeight >= list.scrollHeight - LOAD_MORE_DISTANCE) {
+		emit('loadMore');
+	}
+}
+
+function onGlobalKeydown(event: KeyboardEvent) {
+	if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
+		event.preventDefault();
+		isOpen.value = !isOpen.value;
+	}
+}
+
+watch(isOpen, async (open) => {
+	if (!open) return;
+	selectedKey.value = null;
+	await nextTick();
+	inputRef.value?.focus();
 });
+
+watch([query, activeTab, () => props.breadcrumb], () => {
+	selectedKey.value = null;
+	if (listRef.value) listRef.value.scrollTop = 0;
+});
+
+watch(
+	() => [rows.value.length, props.hasMore, props.isLoading],
+	async () => {
+		await nextTick();
+		maybeLoadMore();
+	},
+);
 
 onMounted(() => {
-	document.addEventListener('keydown', handleKeydown, { capture: true });
-	document.addEventListener('click', handleClickOutside);
+	document.addEventListener('keydown', onGlobalKeydown, { capture: true });
 });
 
-onUnmounted(() => {
-	document.removeEventListener('keydown', handleKeydown, { capture: true });
-	document.removeEventListener('click', handleClickOutside);
+onBeforeUnmount(() => {
+	document.removeEventListener('keydown', onGlobalKeydown, { capture: true });
 });
 </script>
 
 <template>
-	<Teleport to="body">
-		<FocusScope :trapped="isOpen">
-			<Transition name="command-bar" appear>
-				<div
-					v-if="isOpen"
-					ref="commandBarRef"
-					:class="$style.commandBar"
-					:style="{ zIndex }"
-					data-test-id="command-bar"
+	<N8nDialog
+		v-model:open="isOpen"
+		size="2xlarge"
+		:show-close-button="false"
+		:aria-label="t('commandBar.ariaLabel')"
+		:container-class="$style.dialog"
+		@escape-key-down="onEscapeKeyDown"
+		@open-auto-focus="onOpenAutoFocus"
+	>
+		<div :class="$style.commandBar" data-test-id="command-bar">
+			<div :class="$style.header">
+				<button
+					v-if="breadcrumb"
+					type="button"
+					tabindex="-1"
+					:class="$style.breadcrumb"
+					:aria-label="t('commandBar.back')"
+					data-test-id="command-bar-breadcrumb"
+					@mousedown.prevent
+					@click="emit('back')"
 				>
-					<div v-if="context" :class="$style.contextContainer">
-						<N8nBadge size="small">{{ context }}</N8nBadge>
-					</div>
-					<div :class="$style.inputWrapper">
-						<input
-							ref="inputRef"
-							v-model="inputValue"
-							:placeholder="currentPlaceholder"
-							:class="$style.input"
-							type="text"
-						/>
-						<div
-							v-if="isLoading"
-							:class="$style.inputSpinner"
-							data-test-id="command-bar-input-spinner"
-							aria-hidden="true"
-						>
-							<N8nSpinner size="medium" />
-						</div>
-					</div>
-					<N8nScrollArea
-						v-if="flattenedItems.length > 0 || isLoading"
-						ref="scrollAreaRef"
-						max-height="350px"
-						:class="$style.scrollArea"
-						data-test-id="command-bar-items-list"
+					<N8nIcon icon="chevron-left" size="small" />
+					<span :class="$style.breadcrumbText">{{ breadcrumb }}</span>
+				</button>
+				<input
+					ref="inputRef"
+					v-model="query"
+					type="text"
+					role="combobox"
+					autocomplete="off"
+					spellcheck="false"
+					aria-autocomplete="list"
+					aria-expanded="true"
+					:aria-controls="listId"
+					:aria-activedescendant="selectedRow?.key"
+					:placeholder="placeholder ?? t('commandBar.placeholder')"
+					:class="$style.input"
+					@keydown="onInputKeydown"
+				/>
+				<N8nSpinner
+					v-if="isLoading"
+					size="medium"
+					:class="$style.spinner"
+					data-test-id="command-bar-input-spinner"
+					aria-hidden="true"
+				/>
+				<N8nDialogClose as-child>
+					<button
+						type="button"
+						tabindex="-1"
+						:class="$style.iconButton"
+						:aria-label="t('commandBar.close')"
+						data-test-id="command-bar-close"
 					>
-						<div :class="$style.itemsList">
-							<div v-if="groupedItems.ungrouped.length > 0" :class="$style.ungroupedSection">
-								<div v-for="item in groupedItems.ungrouped" :key="item.id">
-									<N8nCommandBarItem
-										:item="item"
-										:is-selected="getGlobalIndex(item) === selectedIndex"
-										@select="selectItem"
-									/>
-								</div>
-							</div>
+						<N8nIcon icon="x" size="large" />
+					</button>
+				</N8nDialogClose>
+			</div>
 
-							<template v-for="section in groupedItems.sections" :key="section.title">
-								<div :class="$style.sectionHeader">{{ section.title }}</div>
-								<div v-for="item in section.items" :key="item.id">
-									<N8nCommandBarItem
-										:item="item"
-										:is-selected="getGlobalIndex(item) === selectedIndex"
-										@select="selectItem"
-									/>
-								</div>
-							</template>
+			<div v-if="showTabs" role="tablist" :class="$style.tabs">
+				<button
+					v-for="tab in tabs"
+					:key="tab.id"
+					type="button"
+					role="tab"
+					tabindex="-1"
+					:aria-selected="tab.id === activeTab"
+					:class="[$style.tab, { [$style.activeTab]: tab.id === activeTab }]"
+					:data-test-id="`command-bar-tab-${tab.id}`"
+					@mousedown.prevent
+					@click="activeTab = tab.id"
+				>
+					{{ tab.label }}
+				</button>
+			</div>
 
-							<div
-								v-if="isLoading"
-								:class="[$style.loadingSection, { [$style.hasItems]: flattenedItems.length > 0 }]"
-							>
-								<div v-for="i in numLoadingItems" :key="i" :class="$style.loadingItem">
-									<N8nLoading variant="custom" :class="$style.loading" />
-								</div>
-							</div>
-						</div>
-					</N8nScrollArea>
-					<div v-else-if="inputValue && flattenedItems.length === 0" :class="$style.noResults">
-						No results found
+			<div
+				:id="listId"
+				ref="listRef"
+				role="listbox"
+				:class="$style.list"
+				data-test-id="command-bar-items-list"
+				@scroll="maybeLoadMore"
+			>
+				<template v-for="row in rows" :key="row.key">
+					<div v-if="row.type === 'header'" role="presentation" :class="$style.sectionHeader">
+						{{ row.title }}
 					</div>
+					<N8nCommandBarItem
+						v-else-if="row.type === 'item'"
+						:item="row.item"
+						:row-key="row.key"
+						:is-selected="row.key === selectedRow?.key"
+						:query="query"
+						@select="selectItem"
+						@hover="selectedKey = $event"
+					/>
+					<div
+						v-else
+						role="presentation"
+						:class="$style.skeletonRow"
+						data-test-id="command-bar-skeleton"
+					>
+						<span :class="$style.skeletonIcon"><N8nLoading variant="custom" /></span>
+						<span :class="[$style.skeletonText, $style[`skeletonWidth${row.index}`]]">
+							<N8nLoading variant="custom" />
+						</span>
+					</div>
+				</template>
+
+				<div v-if="isEmpty" :class="$style.empty" data-test-id="command-bar-empty">
+					<span>{{ emptyText }}</span>
+					<N8nButton
+						v-if="isFilteredByTab"
+						variant="subtle"
+						size="small"
+						data-test-id="command-bar-search-all"
+						@mousedown.prevent
+						@click="activeTab = tabs[0].id"
+					>
+						{{ t('commandBar.searchAll') }}
+					</N8nButton>
 				</div>
-			</Transition>
-		</FocusScope>
-	</Teleport>
+			</div>
+
+			<div :class="$style.footer" aria-hidden="true">
+				<span :class="$style.hint">
+					{{ breadcrumb ? t('commandBar.back') : t('commandBar.close') }}
+					<N8nKeyboardShortcut :keys="['Esc']" />
+				</span>
+				<span v-if="showTabs" :class="$style.hint">
+					{{ t('commandBar.changeType') }}
+					<N8nKeyboardShortcut :keys="['←', '→']" />
+				</span>
+				<span v-if="selectedItem?.href" :class="$style.hint">
+					{{ t('commandBar.openInNewTab') }}
+					<N8nKeyboardShortcut meta-key :keys="['↵']" />
+				</span>
+			</div>
+		</div>
+	</N8nDialog>
 </template>
 
 <style lang="scss" module>
-.commandBar {
-	position: fixed;
-	top: 20vh;
-	left: 50%;
-	transform: translateX(-50%);
-	background: var(--color--background--light-3);
-	border: var(--border);
-	border-radius: var(--radius);
-	box-shadow: var(--command-bar--shadow);
-
-	width: 100%;
-	max-width: 700px;
+.dialog {
+	--n8n-dialog-content--padding: 0;
+	overflow: hidden;
 }
 
-.inputWrapper {
-	position: relative;
+.commandBar {
+	display: flex;
+	flex-direction: column;
+	height: min(34rem, calc(100dvh - var(--spacing--3xl)));
+}
+
+.header {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	padding: var(--spacing--sm) var(--spacing--sm) var(--spacing--xs) var(--spacing--md);
 }
 
 .input {
-	width: 100%;
+	flex: 1;
+	min-width: 0;
+	height: var(--spacing--xl);
+	padding: 0;
 	border: none;
 	outline: none;
 	background: transparent;
-	font-size: var(--font-size--sm);
+	color: var(--text-color);
 	font-family: var(--font-family);
-	color: var(--color--text);
-	height: var(--spacing--2xl);
-	padding: 0 var(--spacing--2xs);
-	padding-left: var(--spacing--sm);
-	padding-right: var(--spacing--xl);
-	border-bottom: var(--border);
+	font-size: var(--font-size--md);
 
 	&::placeholder {
-		color: var(--color--text--tint-1);
+		color: var(--text-color--subtler);
 	}
 }
 
-.inputSpinner {
-	position: absolute;
-	top: 0;
-	right: var(--spacing--sm);
-	height: 100%;
+.spinner {
+	color: var(--icon-color);
+}
+
+.breadcrumb {
 	display: flex;
 	align-items: center;
+	gap: var(--spacing--4xs);
+	flex-shrink: 0;
+	max-width: 40%;
+	height: var(--spacing--lg);
+	padding: 0 var(--spacing--2xs) 0 var(--spacing--3xs);
+	border: none;
+	border-radius: var(--radius--3xs);
+	background-color: var(--background--active);
+	color: var(--text-color--subtle);
+	font-size: var(--font-size--xs);
+	font-weight: var(--font-weight--regular);
+	cursor: pointer;
 }
 
-.scrollArea {
-	padding: 0 var(--spacing--2xs) var(--spacing--2xs);
+.breadcrumbText {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 }
 
-.itemsList {
+.iconButton {
 	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--5xs);
+	align-items: center;
+	justify-content: center;
+	flex-shrink: 0;
+	width: var(--spacing--xl);
+	height: var(--spacing--xl);
+	padding: 0;
+	border: none;
+	border-radius: var(--radius--xs);
+	background: none;
+	color: var(--text-color--subtle);
+	cursor: pointer;
+
+	&:hover {
+		background-color: var(--background--hover);
+		color: var(--text-color);
+	}
 }
 
-.ungroupedSection {
-	padding-top: var(--spacing--2xs);
+.tabs {
 	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--5xs);
+	gap: var(--spacing--4xs);
+	padding: 0 var(--spacing--md) var(--spacing--xs);
+	overflow-x: auto;
+	scrollbar-width: none;
+	border-bottom: var(--border);
+}
+
+.tab {
+	flex-shrink: 0;
+	height: calc(var(--spacing--lg) + var(--spacing--4xs));
+	padding: 0 var(--spacing--xs);
+	border: none;
+	border-radius: var(--radius--xs);
+	background: none;
+	color: var(--text-color--subtle);
+	font-family: var(--font-family);
+	font-size: var(--font-size--sm);
+	font-weight: var(--font-weight--regular);
+	cursor: pointer;
+
+	&:hover {
+		color: var(--text-color);
+	}
+}
+
+.activeTab {
+	background-color: var(--background--active);
+	color: var(--text-color);
+	font-weight: var(--font-weight--medium);
+}
+
+.list {
+	flex: 1;
+	min-height: 0;
+	padding: var(--spacing--2xs) var(--spacing--xs);
+	overflow-y: auto;
+	scrollbar-width: thin;
 }
 
 .sectionHeader {
-	padding: var(--spacing--xs) var(--spacing--2xs);
+	display: flex;
+	align-items: flex-end;
+	height: var(--spacing--xl);
+	padding: 0 var(--spacing--xs) var(--spacing--3xs);
+	color: var(--text-color--subtler);
 	font-size: var(--font-size--2xs);
-	font-weight: var(--font-weight--regular);
-	color: var(--color--text--tint-1);
+	user-select: none;
 }
 
-.noResults {
-	padding: var(--spacing--lg);
-	text-align: center;
-	color: var(--color--text--tint-1);
+.skeletonRow {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--xs);
+	height: var(--command-bar-item--height);
+	padding: 0 var(--spacing--xs);
+}
+
+.skeletonIcon {
+	flex-shrink: 0;
+	width: var(--spacing--lg);
+	height: var(--spacing--lg);
+	overflow: hidden;
+	border-radius: var(--radius--3xs);
+}
+
+.skeletonText {
+	height: var(--spacing--xs);
+	overflow: hidden;
+	border-radius: var(--radius--3xs);
+}
+
+.skeletonWidth0 {
+	width: 45%;
+}
+
+.skeletonWidth1 {
+	width: 60%;
+}
+
+.skeletonWidth2 {
+	width: 35%;
+}
+
+.empty {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: var(--spacing--sm);
+	height: 100%;
+	color: var(--text-color--subtle);
 	font-size: var(--font-size--sm);
 }
 
-.contextContainer {
-	padding: var(--spacing--xs) var(--spacing--xs) 0;
-}
-
-.loadingSection {
-	padding-top: var(--spacing--2xs);
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--5xs);
-
-	&.hasItems {
-		padding-top: 0;
-	}
-}
-
-.loadingItem {
-	height: var(--command-bar-item--height);
+.footer {
 	display: flex;
 	align-items: center;
-}
-</style>
-
-<style lang="scss">
-/* Global transition classes for command bar animations */
-.command-bar-enter-active {
-	transition:
-		opacity 0.1s ease-out,
-		transform 0.1s ease-out;
+	gap: var(--spacing--lg);
+	padding: var(--spacing--xs) var(--spacing--md);
+	overflow: hidden;
+	border-top: var(--border);
+	color: var(--text-color--subtler);
+	font-size: var(--font-size--2xs);
+	white-space: nowrap;
 }
 
-.command-bar-leave-active {
-	transition:
-		opacity 0.1s ease-in,
-		transform 0.1s ease-in;
-}
-
-.command-bar-enter-from {
-	opacity: 0;
-	transform: translateX(-50%) translateY(-20px) scale(0.95);
-}
-
-.command-bar-leave-to {
-	opacity: 0;
-	transform: translateX(-50%) translateY(-10px) scale(0.98);
-}
-
-.command-bar-enter-to,
-.command-bar-leave-from {
-	opacity: 1;
-	transform: translateX(-50%) translateY(0) scale(1);
+.hint {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
 }
 </style>

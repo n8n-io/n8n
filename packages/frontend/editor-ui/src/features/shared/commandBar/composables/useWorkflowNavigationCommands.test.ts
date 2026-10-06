@@ -1,25 +1,25 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ref } from 'vue';
-import { waitFor } from '@testing-library/vue';
+import { createTestingPinia } from '@pinia/testing';
+import type { INodeTypeDescription } from 'n8n-workflow';
+import { mockedStore, type MockedStore } from '@/__tests__/utils';
+import { createTestNode, createTestWorkflow } from '@/__tests__/mocks';
+import NodeIcon from '@/app/components/NodeIcon.vue';
+import { HTTP_REQUEST_NODE_TYPE, VIEWS } from '@/app/constants';
 import type { IWorkflowDb } from '@/Interface';
-import { ProjectTypes } from '@/features/collaboration/projects/projects.types';
-import { createTestWorkflow } from '@/__tests__/mocks';
-import { useWorkflowNavigationCommands } from './useWorkflowNavigationCommands';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import {
+	ProjectTypes,
+	type Project,
+	type ProjectSharingData,
+} from '@/features/collaboration/projects/projects.types';
 import { useTagsStore } from '@/features/shared/tags/tags.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
-import { useFoldersStore } from '@/features/core/folders/folders.store';
-import { createTestingPinia } from '@pinia/testing';
-import { setActivePinia } from 'pinia';
-import * as permissionsModule from '@n8n/permissions';
-
-vi.mock('lodash/debounce', () => ({
-	default: (fn: (...args: unknown[]) => unknown) => fn,
-}));
+import type { CommandBarSearchRequest } from '../types';
+import { useWorkflowNavigationCommands } from './useWorkflowNavigationCommands';
 
 vi.mock('@n8n/i18n', async (importOriginal) => ({
 	...(await importOriginal()),
@@ -28,347 +28,341 @@ vi.mock('@n8n/i18n', async (importOriginal) => ({
 	}),
 }));
 
-const resolveMock = vi.fn(() => ({ fullPath: '/resolved/path' }));
+const resolveMock = vi.fn((location: { params?: { workflowId?: string } }) => ({
+	href: `/workflow/${location.params?.workflowId}`,
+	fullPath: '/workflow/new',
+}));
 
 vi.mock('vue-router', () => ({
 	useRouter: () => ({ resolve: resolveMock }),
-	useRoute: () => ({ params: { folderId: 'folder-xyz' } }),
+	useRoute: () => ({ params: { folderId: 'folder-1' } }),
 	RouterLink: vi.fn(),
 }));
 
-vi.mock('@/features/shared/nodeCreator/composables/useActionsGeneration', () => ({
-	useActionsGenerator: () => ({
-		generateMergedNodesAndActions: (
-			visibleNodeTypes: Array<{ name: string; displayName?: string }>,
-		) => ({
-			mergedNodes: visibleNodeTypes,
-		}),
-	}),
-}));
+const WORKFLOW_FIELDS = ['id', 'name', 'updatedAt', 'ownedBy', 'parentFolder'];
 
-vi.mock('@n8n/permissions', async (importOriginal) => ({
-	...(await importOriginal()),
-	getResourcePermissions: vi.fn(() => ({
-		workflow: {
-			create: true,
-		},
-	})),
-}));
+const httpRequestNodeType = {
+	name: HTTP_REQUEST_NODE_TYPE,
+	displayName: 'HTTP Request',
+} as INodeTypeDescription;
+
+const teamProject: ProjectSharingData = {
+	id: 'team-1',
+	name: 'Team A',
+	icon: { type: 'icon', value: 'rocket' },
+	type: ProjectTypes.Team,
+	createdAt: '',
+	updatedAt: '',
+};
+
+const personalProject: ProjectSharingData = {
+	...teamProject,
+	id: 'personal-1',
+	name: 'Jane Doe <jane@example.com>',
+	icon: null,
+	type: ProjectTypes.Personal,
+};
+
+const createWorkflows = (count: number) =>
+	Array.from({ length: count }, (_, index) => createTestWorkflow({ id: `w${index}` }));
 
 describe('useWorkflowNavigationCommands', () => {
-	let mockNodeTypesStore: ReturnType<typeof useNodeTypesStore>;
-	let mockCredentialsStore: ReturnType<typeof useCredentialsStore>;
-	let mockWorkflowsStore: ReturnType<typeof useWorkflowsStore>;
-	let mockWorkflowsListStore: ReturnType<typeof useWorkflowsListStore>;
-	let mockProjectsStore: ReturnType<typeof useProjectsStore>;
-	let mockTagsStore: ReturnType<typeof useTagsStore>;
-	let mockSourceControlStore: ReturnType<typeof useSourceControlStore>;
-	let mockFoldersStore: ReturnType<typeof useFoldersStore>;
+	let workflowsStore: MockedStore<typeof useWorkflowsStore>;
+	let workflowsListStore: MockedStore<typeof useWorkflowsListStore>;
+	let projectsStore: MockedStore<typeof useProjectsStore>;
+	let tagsStore: MockedStore<typeof useTagsStore>;
+	let sourceControlStore: MockedStore<typeof useSourceControlStore>;
 
-	const allWorkflows = [
-		createTestWorkflow({
-			id: 'w1',
-			name: 'Alpha',
-			active: false,
-			isArchived: false,
-			homeProject: { id: 'proj-1', type: ProjectTypes.Personal } as IWorkflowDb['homeProject'],
-			parentFolder: { id: 'f2', name: 'Child' } as IWorkflowDb['parentFolder'],
-			tags: ['Marketing'] as IWorkflowDb['tags'],
-		}),
-		createTestWorkflow({
-			id: 'w2',
-			name: 'Beta',
-			active: true,
-			isArchived: false,
-			homeProject: { id: 'proj-2', name: 'Team A' } as IWorkflowDb['homeProject'],
-			parentFolder: undefined,
-			tags: [],
-		}),
-		createTestWorkflow({
-			id: 'w3',
-			name: 'Gamma',
-			active: true,
-			isArchived: true, // should be filtered out
-			homeProject: { id: 'proj-2', name: 'Team A' } as IWorkflowDb['homeProject'],
-			parentFolder: undefined,
-			tags: [],
-		}),
-	];
+	const createCommands = () =>
+		useWorkflowNavigationCommands({ currentProjectName: ref('My Project') });
+
+	const createSource = () => {
+		const { source } = createCommands();
+		if (!source) throw new Error('Workflow source is missing');
+		return source;
+	};
+
+	const search = async (request: Partial<CommandBarSearchRequest> = {}) =>
+		await createSource().search({ query: '', offset: 0, limit: 10, ...request });
+
+	const mockSearchResults = ({
+		byName = [],
+		byNodeType = [],
+		byTag = [],
+	}: {
+		byName?: IWorkflowDb[];
+		byNodeType?: IWorkflowDb[];
+		byTag?: IWorkflowDb[];
+	}) => {
+		workflowsListStore.searchWorkflows.mockImplementation(async ({ nodeTypes, tags }) => {
+			if (nodeTypes) return byNodeType;
+			if (tags) return byTag;
+			return byName;
+		});
+	};
 
 	beforeEach(() => {
 		vi.clearAllMocks();
-		setActivePinia(createTestingPinia());
+		createTestingPinia();
 
-		const folderCache = new Map<string, { id: string; name: string; parentFolder?: string }>();
+		const nodeTypesStore = mockedStore(useNodeTypesStore);
+		nodeTypesStore.allNodeTypes = [httpRequestNodeType];
+		nodeTypesStore.getNodeType = (name: string) =>
+			name === HTTP_REQUEST_NODE_TYPE ? httpRequestNodeType : null;
 
-		mockNodeTypesStore = useNodeTypesStore();
-		Object.defineProperty(mockNodeTypesStore, 'allNodeTypes', {
-			value: [{ name: 'n8n-nodes-base.httpRequest', displayName: 'http request' }],
-			configurable: true,
-		});
-		Object.defineProperty(mockNodeTypesStore, 'getNodeType', {
-			value: vi.fn((name: string) => ({ name, displayName: 'http request' })),
-			configurable: true,
-		});
+		workflowsStore = mockedStore(useWorkflowsStore);
+		workflowsStore.canViewWorkflows = true;
 
-		mockCredentialsStore = useCredentialsStore();
-		Object.defineProperty(mockCredentialsStore, 'httpOnlyCredentialTypes', {
-			value: [],
-			configurable: true,
-		});
+		workflowsListStore = mockedStore(useWorkflowsListStore);
+		workflowsListStore.searchWorkflows.mockResolvedValue([]);
 
-		mockProjectsStore = useProjectsStore();
-		Object.defineProperty(mockProjectsStore, 'currentProjectId', {
-			value: 'proj-1',
-			configurable: true,
-		});
+		projectsStore = mockedStore(useProjectsStore);
+		projectsStore.currentProject = { id: 'team-1', scopes: ['workflow:create'] } as Project;
 
-		mockTagsStore = useTagsStore();
-		mockTagsStore.tagsById = { t1: { id: 't1', name: 'Marketing' } };
-		mockTagsStore.fetchAll = vi.fn().mockResolvedValue(undefined);
+		tagsStore = mockedStore(useTagsStore);
+		tagsStore.tagsById = { t1: { id: 't1', name: 'Marketing' } };
 
-		mockSourceControlStore = useSourceControlStore();
-		mockSourceControlStore.preferences.branchReadOnly = false;
-
-		mockFoldersStore = useFoldersStore();
-		Object.defineProperty(mockFoldersStore, 'cacheFolders', {
-			value: vi.fn((folders: Array<{ id: string; name: string; parentFolder?: string }>) => {
-				for (const f of folders) folderCache.set(f.id, f);
-			}),
-			configurable: true,
-		});
-		Object.defineProperty(mockFoldersStore, 'getCachedFolder', {
-			value: vi.fn((id: string) => folderCache.get(id)),
-			configurable: true,
-		});
-
-		mockWorkflowsStore = useWorkflowsStore();
-		mockWorkflowsListStore = useWorkflowsListStore();
-		Object.defineProperty(mockWorkflowsStore, 'canViewWorkflows', {
-			value: true,
-			configurable: true,
-		});
-		vi.spyOn(mockWorkflowsListStore, 'searchWorkflows').mockImplementation(
-			async (params: { query?: string; nodeTypes?: string[]; tags?: string[] }) => {
-				if (params.nodeTypes && params.nodeTypes.length > 0) {
-					return [
-						{ ...allWorkflows[0], nodes: [{ type: 'n8n-nodes-base.httpRequest' }] } as IWorkflowDb,
-					];
-				}
-				if (params.tags && params.tags.length > 0) {
-					return [allWorkflows[0]];
-				}
-				if (typeof params.query === 'string') {
-					return [allWorkflows[0], allWorkflows[1], allWorkflows[2]];
-				}
-				return [];
-			},
-		);
+		sourceControlStore = mockedStore(useSourceControlStore);
+		sourceControlStore.preferences.branchReadOnly = false;
 
 		Object.defineProperty(window, 'location', {
 			value: { href: '' },
 			writable: true,
 		});
-
-		resolveMock.mockClear();
-		vi.mocked(permissionsModule).getResourcePermissions.mockRestore();
 	});
 
-	it('exposes create and open commands, respecting read-only mode', () => {
-		const api = useWorkflowNavigationCommands({
-			lastQuery: ref(''),
-			activeNodeId: ref(null),
-			currentProjectName: ref('My Project'),
+	describe('commands', () => {
+		it('returns the create workflow command when the user can create workflows', () => {
+			const { commands } = createCommands();
+
+			expect(commands.value).toEqual([
+				expect.objectContaining({
+					id: 'create-workflow',
+					title: 'commandBar.workflows.create',
+					section: 'commandBar.sections.workflows',
+				}),
+			]);
 		});
 
-		const ids = api.commands.value.map((c) => c.id);
-		expect(ids).toEqual(expect.arrayContaining(['create-workflow', 'open-workflow']));
+		it('returns no commands when the user cannot create workflows', () => {
+			projectsStore.currentProject = { id: 'team-1', scopes: ['workflow:read'] } as Project;
 
-		mockSourceControlStore.preferences.branchReadOnly = true;
-		const apiReadOnly = useWorkflowNavigationCommands({
-			lastQuery: ref(''),
-			activeNodeId: ref(null),
-			currentProjectName: ref('My Project'),
+			const { commands } = createCommands();
+
+			expect(commands.value).toEqual([]);
 		});
-		const idsReadOnly = apiReadOnly.commands.value.map((c) => c.id);
-		expect(idsReadOnly).not.toContain('create-workflow');
+
+		it('returns no commands when the branch is read-only', () => {
+			sourceControlStore.preferences.branchReadOnly = true;
+
+			const { commands } = createCommands();
+
+			expect(commands.value).toEqual([]);
+		});
+
+		it('navigates to a new workflow in the current project and folder', async () => {
+			const { commands } = createCommands();
+
+			await commands.value[0].handler?.();
+
+			expect(resolveMock).toHaveBeenCalledWith({
+				name: VIEWS.NEW_WORKFLOW,
+				query: { projectId: 'team-1', parentFolderId: 'folder-1' },
+			});
+			expect(window.location.href).toBe('/workflow/new');
+		});
 	});
 
-	it('should not include create workflow command when user has no permission', () => {
-		vi.mocked(permissionsModule).getResourcePermissions.mockReturnValue({
-			workflow: {
-				create: false,
-			},
-		} as unknown as permissionsModule.PermissionsRecord);
-		const apiReadOnly = useWorkflowNavigationCommands({
-			lastQuery: ref(''),
-			activeNodeId: ref(null),
-			currentProjectName: ref('My Project'),
+	describe('source', () => {
+		it('is available only when the user can view workflows', () => {
+			const source = createSource();
+
+			expect(source.isAvailable()).toBe(true);
+
+			workflowsStore.canViewWorkflows = false;
+
+			expect(source.isAvailable()).toBe(false);
 		});
-		const idsReadOnly = apiReadOnly.commands.value.map((c) => c.id);
-		expect(idsReadOnly).not.toContain('create-workflow');
+
+		it('searches non-archived workflows by name with server-side paging', async () => {
+			await search({ query: '  alpha  ', offset: 20, limit: 10 });
+
+			expect(workflowsListStore.searchWorkflows).toHaveBeenCalledTimes(1);
+			expect(workflowsListStore.searchWorkflows).toHaveBeenCalledWith({
+				query: 'alpha',
+				isArchived: false,
+				select: WORKFLOW_FIELDS,
+				options: { skip: 20, take: 11, sortBy: 'updatedAt:desc', includeScopes: false },
+			});
+		});
+
+		it('sends no query when the search text is empty', async () => {
+			await search({ query: '   ' });
+
+			expect(workflowsListStore.searchWorkflows).toHaveBeenCalledWith(
+				expect.objectContaining({ query: undefined }),
+			);
+		});
+
+		it('reports more results when the response contains the extra row', async () => {
+			mockSearchResults({ byName: createWorkflows(3) });
+
+			const result = await search({ limit: 2 });
+
+			expect(result.items.map((item) => item.id)).toEqual(['w0', 'w1']);
+			expect(result.hasMore).toBe(true);
+		});
+
+		it('reports no more results when the response has no extra row', async () => {
+			mockSearchResults({ byName: createWorkflows(2) });
+
+			const result = await search({ limit: 2 });
+
+			expect(result.items).toHaveLength(2);
+			expect(result.hasMore).toBe(false);
+		});
 	});
 
-	it('should not include any commands when user is chat user', () => {
-		vi.mocked(permissionsModule).getResourcePermissions.mockReturnValue({
-			workflow: {
-				create: false,
-			},
-		} as unknown as permissionsModule.PermissionsRecord);
-		Object.defineProperty(mockWorkflowsStore, 'canViewWorkflows', {
-			value: false,
+	describe('items', () => {
+		it('maps a workflow to an item with its project and folder', async () => {
+			mockSearchResults({
+				byName: [
+					createTestWorkflow({
+						id: 'w1',
+						name: 'Alpha',
+						updatedAt: '2026-01-02T00:00:00.000Z',
+						homeProject: teamProject,
+						parentFolder: { id: 'f1', name: 'Reports', parentFolderId: null },
+					}),
+				],
+			});
+
+			const { items } = await search();
+
+			expect(items).toEqual([
+				{
+					id: 'w1',
+					title: 'Alpha',
+					description: 'Team A / Reports',
+					descriptionIcon: { type: 'icon', value: 'rocket' },
+					icon: { type: 'icon', value: 'workflow' },
+					timestamp: '2026-01-02T00:00:00.000Z',
+					href: '/workflow/w1',
+					handler: expect.any(Function),
+				},
+			]);
+			expect(resolveMock).toHaveBeenCalledWith({
+				name: VIEWS.WORKFLOW,
+				params: { workflowId: 'w1' },
+			});
 		});
 
-		const { commands } = useWorkflowNavigationCommands({
-			lastQuery: ref(''),
-			activeNodeId: ref(null),
-			currentProjectName: ref('My Project'),
+		it('uses the unnamed label when the workflow has no name', async () => {
+			mockSearchResults({ byName: [createTestWorkflow({ id: 'w1', name: '' })] });
+
+			const { items } = await search();
+
+			expect(items[0].title).toBe('commandBar.workflows.unnamed');
 		});
-		expect(commands.value.length).toBe(0);
+
+		it('uses the personal label for workflows in a personal project', async () => {
+			mockSearchResults({
+				byName: [createTestWorkflow({ id: 'w1', homeProject: personalProject })],
+			});
+
+			const { items } = await search();
+
+			expect(items[0].description).toBe('projects.menu.personal');
+			expect(items[0].descriptionIcon).toEqual({ type: 'icon', value: 'user' });
+		});
+
+		it('navigates to the workflow when the item handler runs', async () => {
+			mockSearchResults({ byName: [createTestWorkflow({ id: 'w1' })] });
+
+			const { items } = await search();
+			await items[0].handler?.();
+
+			expect(window.location.href).toBe('/workflow/w1');
+		});
 	});
 
-	it('initialize() loads tags', async () => {
-		const api = useWorkflowNavigationCommands({
-			lastQuery: ref(''),
-			activeNodeId: ref(null),
-			currentProjectName: ref('My Project'),
+	describe('node type and tag matches', () => {
+		it('lists workflows that use a node matching the query first with the node icon', async () => {
+			mockSearchResults({
+				byName: [createTestWorkflow({ id: 'w1' })],
+				byNodeType: [
+					createTestWorkflow({
+						id: 'w2',
+						nodes: [createTestNode({ type: HTTP_REQUEST_NODE_TYPE })],
+					}),
+				],
+			});
+
+			const { items } = await search({ query: 'http request', limit: 5 });
+
+			expect(workflowsListStore.searchWorkflows).toHaveBeenCalledWith({
+				nodeTypes: [HTTP_REQUEST_NODE_TYPE],
+				isArchived: false,
+				select: [...WORKFLOW_FIELDS, 'nodes'],
+				options: { skip: 0, take: 5, sortBy: 'updatedAt:desc', includeScopes: false },
+			});
+			expect(items.map((item) => item.id)).toEqual(['w2', 'w1']);
+			expect(items[0].icon).toEqual({
+				component: NodeIcon,
+				props: { nodeType: httpRequestNodeType, size: 16 },
+			});
 		});
-		await api.initialize?.();
-		expect(mockTagsStore.fetchAll).toHaveBeenCalled();
+
+		it('includes workflows with a tag matching the query', async () => {
+			mockSearchResults({
+				byName: [createTestWorkflow({ id: 'w1' })],
+				byTag: [createTestWorkflow({ id: 'w2' })],
+			});
+
+			const { items } = await search({ query: 'marketing', limit: 5 });
+
+			expect(workflowsListStore.searchWorkflows).toHaveBeenCalledWith({
+				tags: ['Marketing'],
+				isArchived: false,
+				select: WORKFLOW_FIELDS,
+				options: { skip: 0, take: 5, sortBy: 'updatedAt:desc', includeScopes: false },
+			});
+			expect(items.map((item) => item.id)).toEqual(['w2', 'w1']);
+		});
+
+		it('searches only by name on later pages', async () => {
+			await search({ query: 'http request', offset: 10 });
+			await search({ query: 'marketing', offset: 10 });
+
+			expect(workflowsListStore.searchWorkflows).toHaveBeenCalledTimes(2);
+			expect(workflowsListStore.searchWorkflows).not.toHaveBeenCalledWith(
+				expect.objectContaining({ nodeTypes: expect.anything() }),
+			);
+			expect(workflowsListStore.searchWorkflows).not.toHaveBeenCalledWith(
+				expect.objectContaining({ tags: expect.anything() }),
+			);
+		});
+
+		it('returns each workflow once when several searches match it', async () => {
+			const matchingWorkflow = createTestWorkflow({
+				id: 'w1',
+				nodes: [createTestNode({ type: HTTP_REQUEST_NODE_TYPE })],
+			});
+			mockSearchResults({
+				byName: [createTestWorkflow({ id: 'w2' }), matchingWorkflow],
+				byNodeType: [matchingWorkflow],
+			});
+
+			const { items } = await search({ query: 'HTTP Request' });
+
+			expect(items.map((item) => item.id)).toEqual(['w1', 'w2']);
+			expect(items[0].icon).toEqual(expect.objectContaining({ component: NodeIcon }));
+		});
 	});
 
-	it('loads workflows when navigating to Open, filters archived, orders current project first', async () => {
-		const api = useWorkflowNavigationCommands({
-			lastQuery: ref(''),
-			activeNodeId: ref(null),
-			currentProjectName: ref('My Project'),
-		});
+	it('fetches tags on initialize', async () => {
+		await createCommands().initialize?.();
 
-		api.handlers?.onCommandBarNavigateTo?.('open-workflow');
-
-		await waitFor(() => {
-			const open = api.commands.value.find((c) => c.id === 'open-workflow');
-			expect(open?.children?.length).toBeGreaterThan(0);
-		});
-
-		const children = api.commands.value.find((c) => c.id === 'open-workflow')?.children;
-		if (!children) {
-			throw new Error('Open workflow command not found');
-		}
-		expect(children).toHaveLength(2);
-		expect(children[0].id).toBe('w1');
-		expect(children[1].id).toBe('w2');
-
-		// Suffix contains project/folder breadcrumbs
-		const first = children[0];
-		expect((first.title as unknown as { props?: { suffix?: string } }).props?.suffix).toContain(
-			'projects.menu.personal',
-		);
-		expect((first.title as unknown as { props?: { suffix?: string } }).props?.suffix).toContain(
-			'Child',
-		);
-	});
-
-	it('open workflow item navigates using router.resolve', async () => {
-		const api = useWorkflowNavigationCommands({
-			lastQuery: ref(''),
-			activeNodeId: ref(null),
-			currentProjectName: ref('My Project'),
-		});
-
-		api.handlers?.onCommandBarNavigateTo?.('open-workflow');
-		await waitFor(() => {
-			const open = api.commands.value.find((c) => c.id === 'open-workflow');
-			expect(open?.children?.length).toBeGreaterThan(0);
-		});
-
-		const openWorkflowCommand = api.commands.value.find((c) => c.id === 'open-workflow');
-		if (!openWorkflowCommand?.children) {
-			throw new Error('Open workflow command not found');
-		}
-		const item = openWorkflowCommand.children[0];
-		if (item?.handler) {
-			await item.handler();
-		}
-		expect(resolveMock).toHaveBeenCalled();
-	});
-
-	it('create workflow navigates to NEW_WORKFLOW route with project and folder', async () => {
-		const api = useWorkflowNavigationCommands({
-			lastQuery: ref(''),
-			activeNodeId: ref(null),
-			currentProjectName: ref('My Project'),
-		});
-
-		const createCmd = api.commands.value.find((c) => c.id === 'create-workflow');
-		if (createCmd?.handler) {
-			await createCmd.handler();
-		}
-		expect(resolveMock).toHaveBeenCalled();
-	});
-
-	it('search by node display name and by tag contributes keywords and icons', async () => {
-		const lastQuery = ref('http request');
-		const activeNodeId = ref('open-workflow');
-		const api = useWorkflowNavigationCommands({
-			lastQuery,
-			activeNodeId,
-			currentProjectName: ref('X'),
-		});
-
-		// Trigger fetch with query matching node display name
-		(api.handlers?.onCommandBarChange as (q: string) => void)('http request');
-		await waitFor(() => {
-			const open = api.commands.value.find((c) => c.id === 'open-workflow');
-			expect(open?.children?.length).toBeGreaterThan(0);
-		});
-
-		const item = api.commands.value.find((c) => c.id === 'open-workflow')?.children?.[0];
-		if (!item) {
-			throw new Error('Open workflow command not found');
-		}
-		// Expect keywords to include workflow name and tags
-		expect(item.keywords).toEqual(expect.arrayContaining(['Alpha', 'Marketing']));
-		// Icon present when matched by node type
-		expect(item.icon).toBeDefined();
-	});
-
-	it('root workflow items have correct title and section', async () => {
-		const api = useWorkflowNavigationCommands({
-			lastQuery: ref('Alpha'),
-			activeNodeId: ref(null),
-			currentProjectName: ref('My Project'),
-		});
-		(api.handlers?.onCommandBarChange as (q: string) => void)('Alpha');
-		await waitFor(() => {
-			expect(api.commands.value.length).toBeGreaterThan(2);
-		});
-		const alphaWf = api.commands.value.find((c) => c.id === 'w1');
-		expect((alphaWf?.title as unknown as { props?: { title?: string } }).props?.title).toBe(
-			'generic.openResource',
-		);
-		expect(alphaWf?.section).toBe('commandBar.sections.workflows');
-	});
-
-	it('open workflow children have correct title and section', async () => {
-		const api = useWorkflowNavigationCommands({
-			lastQuery: ref(''),
-			activeNodeId: ref(null),
-			currentProjectName: ref('My Project'),
-		});
-		api.handlers?.onCommandBarNavigateTo?.('open-workflow');
-		await waitFor(() => {
-			const open = api.commands.value.find((c) => c.id === 'open-workflow');
-			expect(open?.children?.length).toBeGreaterThan(0);
-		});
-		const children = api.commands.value.find((c) => c.id === 'open-workflow')?.children;
-		if (!children) {
-			throw new Error('Open workflow command not found');
-		}
-		expect(children).toHaveLength(2);
-		expect((children[0].title as unknown as { props?: { title?: string } }).props?.title).toBe(
-			'Alpha',
-		);
-		expect(children[0].section).toBe('commandBar.workflows.open');
+		expect(tagsStore.fetchAll).toHaveBeenCalled();
 	});
 });
