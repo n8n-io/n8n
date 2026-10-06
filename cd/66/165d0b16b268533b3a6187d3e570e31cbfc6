@@ -1,0 +1,50 @@
+packages/frontend/editor-ui/src/features/agents/components/AgentChatPanel.vue
+  s_71e25d45a5ee90::t_20438d2beeff85 214-217,219
+  s_71e25d45a5ee90::t_138fa9b27b463f 700-701,911-913,954,1031
+  s_71e25d45a5ee90::t_2451c7879f26e7 207-208,218,220,807-808,811-813,827
+  s_71e25d45a5ee90::t_18dcfa040d8566 870
+  s_71e25d45a5ee90::t_8492f9dcf2b731 806,809-810
+  s_71e25d45a5ee90::t_4c5845b7380de2 956,959-961
+  s_71e25d45a5ee90::t_8aefc8fd69b85c 828
+packages/frontend/editor-ui/src/features/ai/instanceAi/InstanceAiEmptyView.vue
+  s_71e25d45a5ee90::t_d3b0a9ea16326a 551-555
+  s_71e25d45a5ee90::t_d40d5a41f46356 851
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiInput.vue
+  s_71e25d45a5ee90::t_77b912a6147b18 274-276
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiEmptyView.test.ts
+  s_71e25d45a5ee90::t_ad83a433b2f0aa 290-294,304,307,312
+  s_71e25d45a5ee90::t_e79828ec0165c4 417
+  s_71e25d45a5ee90::t_fbeb27e5473171 372-374
+  s_71e25d45a5ee90::t_f4baf5ade015bd 513-522
+  s_71e25d45a5ee90::t_c8e14680af63f0 1487-1500
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentChatStream.test.ts
+  s_71e25d45a5ee90::t_80f2ffa6e35d01 3840-3855
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatPanel.test.ts
+  s_71e25d45a5ee90::t_18dcfa040d8566 432-434,453-455
+  s_71e25d45a5ee90::t_8a67ed8c660c23 449-452,456-525
+packages/frontend/editor-ui/src/features/agents/n8nChatPage/components/N8nChatAgentPicker.vue
+  s_71e25d45a5ee90::t_d7d068706d2cd3 254-257
+  s_71e25d45a5ee90::t_656c0d394fc6ff 34-35
+  s_71e25d45a5ee90::t_92fd109fb65350 130,145
+packages/frontend/editor-ui/src/features/agents/n8nChatPage/components/__tests__/N8nChatAgentPicker.test.ts
+  s_71e25d45a5ee90::t_3687b7e32d2427 203-216
+  s_71e25d45a5ee90::t_f77ef617ab656b 42-46
+packages/frontend/editor-ui/src/features/agents/composables/useAgentChatStream.ts
+  s_71e25d45a5ee90::t_c8734d37b3d814 596-597,951,1375,1476,1664,1695-1696
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "cd66165d0b16b268533b3a6187d3e570e31cbfc6",
+  "prompts": {},
+  "sessions": {
+    "s_71e25d45a5ee90": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2ca6b762-f376-4a31-af78-4066f186c7bb",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}
