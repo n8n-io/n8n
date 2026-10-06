@@ -827,14 +827,6 @@ export const countryCodes = [
 		'shortName': 'Macau',
 	},
 	{
-		'name': 'North Macedonia',
-		'alpha2': 'MK',
-		'alpha3': 'MKD',
-		'numeric': '807',
-		'altName': 'Macedonia, Republic of',
-		'shortName': 'Macedonia',
-	},
-	{
 		'name': 'Madagascar',
 		'alpha2': 'MG',
 		'alpha3': 'MDG',
@@ -1044,6 +1036,14 @@ export const countryCodes = [
 		'alpha2': 'NO',
 		'alpha3': 'NOR',
 		'numeric': '578',
+	},
+	{
+		'name': 'North Macedonia',
+		'alpha2': 'MK',
+		'alpha3': 'MKD',
+		'numeric': '807',
+		'altName': 'Macedonia, Republic of',
+		'shortName': 'Macedonia',
 	},
 	{
 		'name': 'Oman',

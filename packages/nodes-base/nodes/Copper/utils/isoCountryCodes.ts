@@ -526,10 +526,6 @@ export const isoCountryCodes = [
 		alpha2: 'MO',
 	},
 	{
-		name: 'North Macedonia',
-		alpha2: 'MK',
-	},
-	{
 		name: 'Madagascar',
 		alpha2: 'MG',
 	},
@@ -664,6 +660,10 @@ export const isoCountryCodes = [
 	{
 		name: 'Norway',
 		alpha2: 'NO',
+	},
+	{
+		name: 'North Macedonia',
+		alpha2: 'MK',
 	},
 	{
 		name: 'Oman',
