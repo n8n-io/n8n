@@ -11,6 +11,7 @@ import {
 	getN8nChatAgent,
 	getN8nChatThread,
 	removeAgentQueuedMessage,
+	reorderAgentQueuedMessage,
 	steerAgentQueuedMessage,
 	stopAgentBackgroundJobs,
 	updateAgentQueuedMessage,
@@ -121,11 +122,15 @@ describe('useAgentApi', () => {
 		expect(result).toBe(spend);
 	});
 
-	it('encodes the queue route identifiers for listing, editing, removal, and steering', async () => {
+	it('encodes the queue route identifiers for listing, editing, removal, reordering, and steering', async () => {
 		const args = [restApiContext, 'project/1', 'agent/1', 'agent:chat#1'] as const;
 		await getAgentChatQueue(...args);
 		await updateAgentQueuedMessage(...args, 'queue/1', { message: 'edited' });
 		await removeAgentQueuedMessage(...args, 'queue/1');
+		await reorderAgentQueuedMessage(...args, 'queue/1', {
+			targetQueueId: 'queue/2',
+			expectedQueueIds: ['queue/1', 'queue/2'],
+		});
 		await steerAgentQueuedMessage(...args, 'queue/1', { executionId: 'A' });
 
 		const path = '/projects/project%2F1/agents/v2/agent%2F1/chat/agent%3Achat%231/queue';
@@ -133,6 +138,12 @@ describe('useAgentApi', () => {
 			[restApiContext, 'GET', path],
 			[restApiContext, 'PATCH', `${path}/queue%2F1`, { message: 'edited' }],
 			[restApiContext, 'DELETE', `${path}/queue%2F1`],
+			[
+				restApiContext,
+				'POST',
+				`${path}/queue%2F1/reorder`,
+				{ targetQueueId: 'queue/2', expectedQueueIds: ['queue/1', 'queue/2'] },
+			],
 			[restApiContext, 'POST', `${path}/queue%2F1/steer`, { executionId: 'A' }],
 		]);
 	});
@@ -177,6 +188,13 @@ describe('useAgentApi', () => {
 			await getAgentChatQueue(...args, 'n8n-chat');
 			await updateAgentQueuedMessage(...args, 'queue-1', { message: 'edited' }, 'n8n-chat');
 			await removeAgentQueuedMessage(...args, 'queue-1', 'n8n-chat');
+			await reorderAgentQueuedMessage(
+				...args,
+				'queue-1',
+				{ targetQueueId: 'queue-2', expectedQueueIds: ['queue-1', 'queue-2'] },
+				'n8n-chat',
+			);
+			await steerAgentQueuedMessage(...args, 'queue-1', { executionId: 'execution-1' }, 'n8n-chat');
 			await getChatMessages(...args, 'n8n-chat');
 			await cancelAgentChatExecution(...args, 'execution-1', 'n8n-chat');
 			await cancelAgentChatRun(restApiContext, 'project-1', 'agent-1', 'run-1', 'n8n-chat');
@@ -187,6 +205,13 @@ describe('useAgentApi', () => {
 				[restApiContext, 'GET', `${path}/queue`],
 				[restApiContext, 'PATCH', `${path}/queue/queue-1`, { message: 'edited' }],
 				[restApiContext, 'DELETE', `${path}/queue/queue-1`],
+				[
+					restApiContext,
+					'POST',
+					`${path}/queue/queue-1/reorder`,
+					{ targetQueueId: 'queue-2', expectedQueueIds: ['queue-1', 'queue-2'] },
+				],
+				[restApiContext, 'POST', `${path}/queue/queue-1/steer`, { executionId: 'execution-1' }],
 				[restApiContext, 'GET', `${path}/messages`],
 				[restApiContext, 'DELETE', `${path}/executions/execution-1`],
 				[restApiContext, 'DELETE', '/projects/project-1/agents/v2/agent-1/n8n-chat/runs/run-1'],

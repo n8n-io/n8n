@@ -250,8 +250,6 @@ vi.mock('../composables/useAgentChatStream', () => ({
 		onHistoryLoaded = options.onHistoryLoaded;
 		return {
 			capabilities: computed(() => ({
-				steer: true,
-				reorder: true,
 				backgroundTasks: true,
 				previewHistory: true,
 			})),

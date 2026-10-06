@@ -771,11 +771,12 @@ export const reorderAgentQueuedMessage = async (
 	threadId: string,
 	queueId: string,
 	payload: AgentChatQueueReorderDto,
+	channel: AgentChatChannel = 'chat',
 ): Promise<void> => {
 	await makeRestApiRequest(
 		context,
 		'POST',
-		`/projects/${encodeURIComponent(projectId)}/agents/v2/${encodeURIComponent(agentId)}/chat/${encodeURIComponent(threadId)}/queue/${encodeURIComponent(queueId)}/reorder`,
+		`${agentChatPath(projectId, agentId, channel)}/${encodeURIComponent(threadId)}/queue/${encodeURIComponent(queueId)}/reorder`,
 		payload,
 	);
 };
@@ -802,11 +803,12 @@ export const steerAgentQueuedMessage = async (
 	threadId: string,
 	queueId: string,
 	payload: AgentChatQueueSteerDto,
+	channel: AgentChatChannel = 'chat',
 ): Promise<void> => {
 	await makeRestApiRequest(
 		context,
 		'POST',
-		`${agentChatPath(projectId, agentId)}/${encodeURIComponent(threadId)}/queue/${encodeURIComponent(queueId)}/steer`,
+		`${agentChatPath(projectId, agentId, channel)}/${encodeURIComponent(threadId)}/queue/${encodeURIComponent(queueId)}/steer`,
 		payload,
 	);
 };
