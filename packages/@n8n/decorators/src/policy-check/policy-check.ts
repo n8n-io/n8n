@@ -107,8 +107,8 @@ export type CredentialSaveContext = {
 };
 
 export type CredentialTransferContext = {
-	readonly credential: PolicedCredential;
-	readonly targetProjectId: string | null;
+	readonly credential: PolicedCredential & { readonly id: string };
+	readonly targetProjectId: string;
 };
 
 export type CredentialDecryptContext = {

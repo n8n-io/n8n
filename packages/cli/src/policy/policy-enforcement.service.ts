@@ -145,6 +145,10 @@ export class PolicyEnforcementService {
 		);
 	}
 
+	async evaluateCredentialTransfer(context: CredentialTransferContext): Promise<PolicyDecision> {
+		return await this.evaluate('credentialTransfer', context);
+	}
+
 	async enforceCredentialDecrypt(
 		context: CredentialDecryptContext,
 		actor: PolicyActor,

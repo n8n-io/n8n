@@ -105,6 +105,11 @@ const evaluateCalls = (service: PolicyEnforcementService) => ({
 			storedCredential: null,
 			projectId: 'proj-1',
 		}),
+	credentialTransfer: async () =>
+		await service.evaluateCredentialTransfer({
+			credential: { id: 'cred-1', type: 'slackApi' },
+			targetProjectId: 'proj-2',
+		}),
 	credentialDecrypt: async () =>
 		await service.evaluateCredentialDecrypt({
 			credentialType: 'slackApi',
