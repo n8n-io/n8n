@@ -1,4 +1,5 @@
 {
+  "threshold": 10.5,
   "reporters": ["json", "html"],
   "gitignore": true,
   "ignore": [
