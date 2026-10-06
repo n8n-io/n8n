@@ -161,7 +161,6 @@ can build a token. A step-bound resume URL and an approval callback end one wait
   other process accepts. The operator sets them in every deployment that enables engine v2, also
   where both planes run in one process. The engine does not generate them. A process without them
   fails at start, so a resume request never fails without a log entry.
-
 - The Slack and Telegram approval callback reaches a fixed URL, with its signed reference in the
   request body. Engine v1 verifies that reference in the control plane. Here the data plane verifies
   it. The control plane reads only the id in the reference, to pick the engine, and forwards the
@@ -194,7 +193,6 @@ can build a token. A step-bound resume URL and an approval callback end one wait
   same, so the bar is unchanged. An execution with two waits at the same time is ambiguous for an
   execution-bound resume URL, and the resolve path answers 409. Engine v1 has the same single-wait
   limit. A `webhookSuffix` is the natural way to tell two apart if that limit ever lifts.
-
 - The verification of the token shows which execution or step the caller means. It does not show
   that a step still waits. Therefore the resolve path reads the step row in all cases. The token
   does not remove a database read. It decides if the request can continue.
