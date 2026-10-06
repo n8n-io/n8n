@@ -447,7 +447,9 @@ it('preserves outdated reconciliation when shared dismissal rejects a moved work
 		{ workflowId: original.id, projectId: project.id },
 		{ projectId: destination.id },
 	);
-	await expect(service.dismiss(user, project.id, original.id, result.id)).rejects.toThrow();
+	await expect(service.dismiss(user, project.id, original.id, result.id)).rejects.toThrow(
+		'This result is no longer available in this project. Refresh the page.',
+	);
 	expect(await results.findOneByOrFail({ id: result.id })).toMatchObject({ dismissedAt: null });
 	expect(await suggestions.findOneByOrFail({ id: result.suggestionId! })).toMatchObject({
 		state: 'closed',
@@ -546,6 +548,9 @@ it.each(['apply', 'approve-and-publish'] as const)(
 		const { user, original, url } = await fixture('needs_you', true);
 		const response = await testServer.authAgentFor(user).post(`${url}/${action}`);
 		expect(response.status).toBe(409);
+		expect(response.body.message).toBe(
+			"This fix isn't ready to apply. Review the report for next steps.",
+		);
 		expect(await workflows.findOneByOrFail({ id: original.id })).toEqual(original);
 	},
 );

@@ -194,7 +194,7 @@ export class SelfHealingResultService {
 			resultId,
 		);
 		if (result.outcome !== 'fix_ready' || !result.suggestionId) {
-			throw new ConflictError('Only a Fix ready result permits this action.');
+			throw new ConflictError("This fix isn't ready to apply. Review the report for next steps.");
 		}
 		const { publishError, ...suggestion } =
 			action === 'approve-and-publish'
@@ -246,7 +246,11 @@ export class SelfHealingResultService {
 			return true;
 		});
 		// Commit outdated reconciliation before rejecting a stale project route.
-		if (!found) throw new NotFoundError('Result not found.');
+		if (!found) {
+			throw new NotFoundError(
+				'This result is no longer available in this project. Refresh the page.',
+			);
+		}
 		return await this.getDetail(user, projectId, workflowId, resultId);
 	}
 
@@ -268,6 +272,10 @@ export class SelfHealingResultService {
 		ctx: OperationContext = {},
 	) {
 		const owner = await this.ownership.getWorkflowOwningProject(workflowId, ctx);
-		if (owner?.id !== projectId) throw new NotFoundError('Result not found.');
+		if (owner?.id !== projectId) {
+			throw new NotFoundError(
+				'This result is no longer available in this project. Refresh the page.',
+			);
+		}
 	}
 }
