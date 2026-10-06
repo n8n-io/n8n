@@ -29,10 +29,17 @@ same key and the same fingerprint again. The stored response includes 4xx and
 5xx. The handler runs only for the first request. The client sends a new key
 after a real failure.
 
-1. Compare the fingerprint first. It is a hash of the method, the path, and
-   the body. The same key with a different fingerprint returns 422. This
-   applies while the first request is `processing` and after it completes.
-   The handler does not run. The client sends a new key.
+1. Compare the fingerprint first. It is a hash of the method, the path, the
+   query string, and the body. The path is the request path. It includes the
+   public API prefix and the version, for example `/api/v1/workflows`. It
+   excludes the scheme and the host. The query string is the raw text after
+   `?`, without that `?`. No query is an empty string. The body is the raw
+   JSON text. A retry must send the same characters. For
+   `POST /api/v1/workflows?source=api` with body `{"name":"Hello"}`, the hash
+   covers `POST`, `/api/v1/workflows`, `source=api`, and `{"name":"Hello"}`.
+   The same key with a different fingerprint returns 422. This applies while
+   the first request is `processing` and after it completes. The handler does
+   not run. The client sends a new key.
 2. The same key and the same fingerprint replay the stored response. A retry
    while that request is still `processing` returns 409 Conflict. A completed
    row returns the stored response, including a stored 400.
