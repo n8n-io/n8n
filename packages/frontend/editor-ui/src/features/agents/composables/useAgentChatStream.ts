@@ -476,9 +476,9 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		}
 	}
 
-	async function removeQueuedMessage(queueId: string): Promise<void> {
+	async function removeQueuedMessage(queueId: string): Promise<'removed' | 'failed'> {
 		const threadId = params.continueSessionId?.value ?? acceptedSessionId.value;
-		if (!threadId || removingQueueIds.value.has(queueId)) return;
+		if (!threadId || removingQueueIds.value.has(queueId)) return 'failed';
 		const target = targetKey();
 		removingQueueIds.value.add(queueId);
 		try {
@@ -490,15 +490,17 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				queueId,
 				channel.value,
 			);
-			if (disposed || target !== targetKey()) return;
+			if (disposed || target !== targetKey()) return 'failed';
 			queueVersion++;
 			queuedMessages.value = queuedMessages.value.filter((item) => item.id !== queueId);
 			for (const [controller, session] of streams) {
 				if (session.queueId === queueId && !session.executionId) controller.abort();
 			}
+			return 'removed';
 		} catch (error) {
 			if (!disposed && target === targetKey())
 				showError(error, locale.baseText('agents.chat.queue.removeError'));
+			return 'failed';
 		} finally {
 			if (target === targetKey()) {
 				removingQueueIds.value.delete(queueId);
