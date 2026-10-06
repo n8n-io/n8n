@@ -14,8 +14,9 @@ The Public API accepts an Idempotency-Key header on a POST that creates a
 resource or starts work. The client opts in by sending the header. A request
 with no header keeps today's behaviour and does no store I/O.
 
-PUT, PATCH, and DELETE already return the same outcome on a repeat. The store
-ignores the header on those routes, and on GET and HEAD.
+PUT and PATCH return the same outcome on a repeat. A second DELETE can return
+404 after the first returns 200. The record stays deleted. The store ignores
+the header on those routes, and on GET and HEAD.
 
 A handler can save a resource and then fail. The status code does not show
 whether that save happened. The credential create handler inserts the row,
