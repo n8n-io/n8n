@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { computed, nextTick, ref, Transition, TransitionGroup, useTemplateRef, watch } from 'vue';
+import { computed, nextTick, ref, useTemplateRef, watch } from 'vue';
+import type { TransitionGroup } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import type { AgentJsonConfig } from '@n8n/api-types';
-import { N8nButton, N8nIcon, N8nPopover, N8nText } from '@n8n/design-system';
+import { N8nIcon, N8nPopover, N8nText } from '@n8n/design-system';
 
 import type { SetupTask, SetupTaskId } from './agentSetupTasks.registry';
 
@@ -24,12 +25,15 @@ const areTasksResolved = computed(() => props.tasks.every((task) => task.state !
 
 const listRef = useTemplateRef<InstanceType<typeof TransitionGroup>>('list');
 
-watch(isPopoverOpen, async (isOpen) => {
-	if (!isOpen || !areTasksResolved.value) return;
+watch([isPopoverOpen, areTasksResolved, activeTaskIndex], async ([isOpen, resolved]) => {
+	if (!isOpen || !resolved) return;
 
 	await nextTick();
 	const listElement = listRef.value?.$el;
-	if (listElement instanceof HTMLElement) listElement.focus();
+	if (!(listElement instanceof HTMLElement)) return;
+
+	const activeTask = listElement.querySelector<HTMLElement>('[tabindex="0"]');
+	(activeTask ?? listElement).focus();
 });
 
 const sortedList = computed(() => {
@@ -71,6 +75,7 @@ function setActiveTask(task: SetupTask<SetupTaskId>) {
 
 function handleTaskKeydown(event: KeyboardEvent) {
 	if (!isPopoverOpen.value) return;
+	if (!['ArrowUp', 'ArrowDown', 'Enter', ' '].includes(event.key)) return;
 	event.preventDefault();
 
 	switch (event.key) {
@@ -103,6 +108,7 @@ function handleTaskKeydown(event: KeyboardEvent) {
 	>
 		<template #trigger>
 			<button
+				type="button"
 				:class="[
 					$style.trigger,
 					{ [$style.triggerShimmer]: isTriggerShimmering && !isPopoverOpen },
@@ -165,9 +171,11 @@ function handleTaskKeydown(event: KeyboardEvent) {
 					<li
 						v-for="(task, index) in completedTasksAreGrouped ? incompleteTasks : sortedList"
 						:key="task.id"
-						role="button"
-						:data-selected="activeTaskIndex === index"
+						:role="task.state !== 'complete' ? 'button' : undefined"
+						:tabindex="task.state !== 'complete' ? (activeTaskIndex === index ? 0 : -1) : undefined"
+						:data-selected="task.state !== 'complete' && activeTaskIndex === index"
 						:class="[$style.listItem, { [$style.isComplete]: task.state === 'complete' }]"
+						@focus="setActiveTask(task)"
 						@mouseenter="setActiveTask(task)"
 						@click="emit('action', task)"
 					>

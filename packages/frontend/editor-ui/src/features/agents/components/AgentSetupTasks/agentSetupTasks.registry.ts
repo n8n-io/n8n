@@ -132,7 +132,7 @@ export const setupTaskDefinitions = {
 	'add-channel': {
 		titleKey: 'agents.builder.setupTasks.addChannel',
 		descriptionKey: 'agents.builder.setupTasks.addChannel.description',
-		required: true,
+		required: false,
 		/** TODO: Decide if we want to conditionally render this */
 		getVisible: () => false,
 		action: {
