@@ -4,7 +4,12 @@ import type { BooleanLicenseFeature } from '@n8n/constants';
 import { UNLIMITED_LICENSE_QUOTA } from '@n8n/constants';
 import type { AuthenticatedRequest } from '@n8n/db';
 import { ControllerRegistryMetadata } from '@n8n/decorators';
-import type { AccessScope, ApiKeyScopeRequirement, Controller } from '@n8n/decorators';
+import type {
+	AccessScope,
+	ApiKeyScopeRequirement,
+	Controller,
+	RequestBodyMedia,
+} from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import type { Request, RequestHandler, Response, Router } from 'express';
 import { Router as createRouter } from 'express';
@@ -12,11 +17,12 @@ import { z } from 'zod';
 import type { ZodTypeAny } from 'zod';
 
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
-import { BadRequestError } from '@n8n/errors';
+import { BadRequestError, UnsupportedMediaTypeError } from '@n8n/errors';
 import { License } from '@/license';
+import { assertContentType } from '@/public-api/media-types/content-type';
+import type { RequestBodyHandler } from '@/public-api/media-types/request-body';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { USER_QUOTA_FORBIDDEN_MESSAGE } from '@/public-api/constants';
-import { assertJsonContentType } from '@/public-api/public-api-media-type';
 import type { ValidatedParamArg } from '@/public-api/public-api-route-resolver';
 import {
 	apiKeyScopesSatisfy,
@@ -86,25 +92,31 @@ export class PublicApiControllerRegistry {
 			);
 
 			const bodyArg = findBodyArg(resolvedArgs);
-			const bodyDto = bodyArg?.dto;
-			const bodyRequired = bodyDto ? (bodyArg?.required ?? isRequestBodyRequired(bodyDto)) : false;
+			const bodyRequired = bodyArg
+				? (bodyArg.required ?? isRequestBodyRequired(bodyArg.dto))
+				: false;
 
 			const handler = async (req: Request, res: Response) => {
-				if (bodyDto) assertJsonContentType(req.headers['content-type'], bodyRequired);
-
 				const args: unknown[] = [req, res];
 				for (const arg of resolvedArgs) {
 					if (arg.type === 'param') {
 						args.push(
 							arg.schema ? parsePathParam(arg.key, arg.schema, req.params) : req.params[arg.key],
 						);
+						continue;
+					}
+
+					const isBodyArg = arg.type === 'body' && bodyArg;
+					const input = isBodyArg ? bodyArg.handler.readInput(req) : req[arg.type];
+
+					const output = arg.dto.safeParse(input);
+					if (output.success) {
+						args.push(output.data);
 					} else {
-						const output = arg.dto.safeParse(req[arg.type]);
-						if (output.success) {
-							args.push(output.data);
-						} else {
-							throw new BadRequestError(formatValidationError(arg.type, output.error));
-						}
+						const message = isBodyArg
+							? bodyArg.handler.formatValidationError(output.error)
+							: formatValidationError(arg.type, output.error);
+						throw new BadRequestError(message);
 					}
 				}
 
@@ -152,6 +164,11 @@ export class PublicApiControllerRegistry {
 
 			if (route.requiresUserQuota) {
 				middlewares.push(this.createUserQuotaMiddleware());
+			}
+
+			// After every access gate, the body's Content-Type is checked and then parsed.
+			if (bodyArg) {
+				middlewares.push(this.createBodyMiddleware(bodyArg.media, bodyRequired, bodyArg.handler));
 			}
 
 			middlewares.push(...controllerMiddlewares, ...(route.middlewares ?? []));
@@ -230,6 +247,43 @@ export class PublicApiControllerRegistry {
 		return (_req, res, next) => {
 			if (Container.get(LicenseState).getMaxUsers() !== UNLIMITED_LICENSE_QUOTA) {
 				res.status(403).json({ message: USER_QUOTA_FORBIDDEN_MESSAGE });
+				return;
+			}
+
+			next();
+		};
+	}
+
+	private createBodyMiddleware(
+		media: RequestBodyMedia,
+		bodyRequired: boolean,
+		handler: RequestBodyHandler,
+	): RequestHandler {
+		return async (req, res, next) => {
+			let matched: boolean;
+			try {
+				matched = assertContentType({
+					header: req.headers['content-type'],
+					expected: media.mediaType,
+					bodyRequired,
+				});
+			} catch (error) {
+				sendPublicApiErrorResponse(
+					res,
+					error instanceof UnsupportedMediaTypeError ? error : new Error(String(error)),
+				);
+				return;
+			}
+
+			if (!matched || !handler.parseBody) {
+				next();
+				return;
+			}
+
+			try {
+				await handler.parseBody(media, req, res);
+			} catch (error) {
+				sendPublicApiErrorResponse(res, error instanceof Error ? error : new Error(String(error)));
 				return;
 			}
 

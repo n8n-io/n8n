@@ -41,6 +41,7 @@ export interface ImportPackageSelectionFields {
 	deletedWorkflowIds?: string[];
 	workflowConflictPolicy?: string;
 	workflowIdPolicy?: string;
+	overwriteDeletionPolicy?: string;
 }
 
 export interface ExportPackageFields {
@@ -464,6 +465,29 @@ export class N8nClient {
 		});
 	}
 
+	async applyProjectSelection(
+		projectId: string,
+		workflowIds: string[],
+		expectedSource?: PromotionExpectedSource,
+	) {
+		return await this.post<ApplyPackageResult>(`/promotions/projects/${projectId}/apply`, {
+			workflowIds,
+			// Dropped by JSON serialization when undefined, so the branch tip is applied.
+			expectedSource,
+		});
+	}
+
+	async continueApplyProjectSelection(
+		projectId: string,
+		workflowIds: string[],
+		expectedSource: PromotionExpectedSource,
+	) {
+		return await this.post<ApplyPackageResult>(`/promotions/projects/${projectId}/apply/continue`, {
+			workflowIds,
+			expectedSource,
+		});
+	}
+
 	// ─── Workflows ─────────────────────────────────────────────────
 
 	async listWorkflows(query: Record<string, string> = {}, limit?: number) {
@@ -786,6 +810,7 @@ export class N8nClient {
 			selectedProjectId: fields.selectedProjectId,
 			workflowConflictPolicy: fields.workflowConflictPolicy,
 			workflowIdPolicy: fields.workflowIdPolicy,
+			overwriteDeletionPolicy: fields.overwriteDeletionPolicy,
 		};
 		for (const [key, value] of Object.entries(stringFields)) {
 			if (typeof value === 'string' && value !== '') form.append(key, value);

@@ -125,9 +125,10 @@ are stubbed instead of blocking the import.
 
 Import a chosen subset of workflows from a `.n8np` project package. Workflow and
 folder packages are not supported. The command imports workflows listed in
-`--selected-workflow-ids` and archives workflows listed in `--deleted-workflow-ids`.
-It leaves workflows outside both lists and other projects unchanged. It can also
-create folders and referenced resources under the fixed policies below.
+`--selected-workflow-ids` and removes workflows listed in `--deleted-workflow-ids`
+(archived by default; see `--overwrite-deletion-policy`). It leaves workflows
+outside both lists and other projects unchanged. It can also create folders and
+referenced resources under the fixed policies below.
 
 The selection belongs to one source project (`--selected-project-id`). The command
 writes selected workflows into the target instance project with the same ID.
@@ -148,10 +149,13 @@ An imported workflow's destination ID must not appear in `--deleted-workflow-ids
 The command rejects this overlap before any writes, including with the `skip`
 policy. It checks the destination ID even if the workflow is absent or archived.
 
-The result lists archived workflows under `removedWorkflows`, each with
-`deletion: archived`. The command does not permanently delete workflows or their
-execution history. It skips absent or already archived workflows and omits them
-from this list.
+The result lists removed workflows under `removedWorkflows`. Each entry has a
+`deletion` field of `archived` or `deleted` that reports what actually happened.
+With the default `--overwrite-deletion-policy=archive` the command archives each
+workflow, so it and its execution history stay recoverable. `hard-delete` also
+removes the workflow permanently. A workflow can stay `archived` under
+`hard-delete` when deferred trigger teardown blocks the delete. The command skips
+absent workflows and omits them from this list.
 
 ```bash
 n8n-cli package export --project-id=<id> --output=project.n8np
@@ -164,9 +168,10 @@ n8n-cli package import-selection --file=project.n8np --selected-project-id=<id> 
 | `--file` | Path to the `.n8np` project package file. (required) |
 | `--selected-project-id` | Source project ID for the selection. The target project uses the same ID. (required) |
 | `--selected-workflow-ids` | Source workflow IDs to import. Comma-separate them, or repeat the flag. Only these workflows are imported. |
-| `--deleted-workflow-ids` | Target workflow IDs to archive. Separate IDs with commas, or repeat the flag. Absent or already archived workflows are ignored. |
+| `--deleted-workflow-ids` | Target workflow IDs to remove. Separate IDs with commas, or repeat the flag. The removal manner follows `--overwrite-deletion-policy`. Absent workflows are ignored. |
 | `--workflow-conflict-policy` | What to do when a workflow already exists by source ID: `new-version` (default), `fail`, or `skip`. |
 | `--workflow-id-policy` | Whether imported workflows keep their source ID (`source`) or receive a new one (`new`). |
+| `--overwrite-deletion-policy` | How `--deleted-workflow-ids` removes each target workflow: `archive` (default) archives it, keeping it and its execution history recoverable; `hard-delete` archives it — the step that unpublishes it — then deletes the workflow and its executions permanently. A workflow can stay `archived` under `hard-delete` when deferred trigger teardown blocks the delete. Each `removedWorkflows` entry reports the actual result in its `deletion` field. |
 
 Requires the API key to hold:
 

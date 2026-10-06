@@ -62,7 +62,7 @@ export interface RuntimeSkillMcpServerDependency {
 }
 
 export interface RuntimeSkillDependenciesContract {
-	/** Activate matching deferred tools while the skill is active. Tools must be registered on the agent. */
+	/** Keep matching deferred tools active for the whole run, so activating the skill never changes the tool list. Tools must be registered on the agent. */
 	tools?: string[];
 	secrets?: string[];
 	mcpServers?: RuntimeSkillMcpServerDependency[];
@@ -162,6 +162,12 @@ export type RuntimeSkillFileLoader = (
 
 export interface RuntimeSkillSource {
 	registry: RuntimeSkillRegistry;
+	/**
+	 * Lazy setup that runs before a skill is loaded, not when the agent is built.
+	 * It must not change catalog fields (id, name, description, category,
+	 * recommendedTools), because the catalog is rendered before it runs.
+	 * Only load_skill calls it, so loadSkill and loadFile must not depend on it.
+	 */
 	prepare?: () => Promise<void>;
 	loadSkill: RuntimeSkillLoader;
 	loadFile?: RuntimeSkillFileLoader;

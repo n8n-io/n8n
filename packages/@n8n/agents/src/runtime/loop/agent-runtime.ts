@@ -61,6 +61,7 @@ import { AgentMessageList, type SerializedMessageList } from '../model/message-l
 import { createModelTokenCounter } from '../model/model-token-counter';
 import { getEffectiveAnthropicCacheTtl } from '../model/prompt-cache';
 import { ActiveSkills } from '../skills/active-skills';
+import { activateSkillDependencyTools } from '../skills/skill-dependency-tools';
 import { BackgroundTaskTracker } from '../state/background-task-tracker';
 import { AgentEventBus, type AgentAbortScope } from '../state/event-bus';
 import { generateRunId, RunStateManager, StaleResumeError } from '../state/run-state';
@@ -164,7 +165,8 @@ export class AgentRuntime {
 	private toolExecutor: ToolCallExecutor;
 	private activeSkills?: ActiveSkills;
 
-	constructor(config: AgentRuntimeConfig) {
+	constructor(runtimeConfig: AgentRuntimeConfig) {
+		const config = activateSkillDependencyTools(runtimeConfig);
 		this.config = config;
 		// Keep full tool results when the memory backend cannot persist active skill IDs.
 		if (config.skillSource && (!config.memory || config.memory.skillState)) {
@@ -1013,9 +1015,6 @@ export class AgentRuntime {
 
 	private async prepareModelCall(ctx: PreparedLoopContext) {
 		const { list, options, abortScope, staticContext } = ctx;
-		for (const toolName of this.activeSkills?.toolDependencies() ?? []) {
-			this.deferredToolManager?.load(toolName);
-		}
 		const tools = this.context.buildToolLoopContext(
 			staticContext.aiProviderTools,
 			options?.persistence,

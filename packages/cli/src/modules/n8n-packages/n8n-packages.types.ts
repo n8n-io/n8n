@@ -288,7 +288,8 @@ export interface ImportSelection {
 
 /**
  * Match or create the destination project from the package. Callers cannot override its location.
- * The service fixes all policies except `workflowConflictPolicy` and `workflowIdPolicy`.
+ * The service fixes all policies except `workflowConflictPolicy`, `workflowIdPolicy`, and
+ * `overwriteDeletionPolicy` (how removals are carried out; defaults to `archive`).
  */
 export type ImportSelectionRequest = {
 	user: User;
@@ -296,6 +297,7 @@ export type ImportSelectionRequest = {
 	bindings?: Partial<PackageImportBindings>;
 	workflowConflictPolicy?: WorkflowConflictPolicy;
 	workflowIdPolicy?: WorkflowIdPolicy;
+	overwriteDeletionPolicy?: OverwriteDeletionPolicy;
 };
 
 export type ImportPackageSelectionRequest = ImportSelectionRequest & {
