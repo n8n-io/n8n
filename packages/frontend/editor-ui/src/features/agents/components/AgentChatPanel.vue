@@ -48,6 +48,8 @@ import {
 	parseApprovalInput,
 } from '@/features/ai/shared/agentsChat/messageMappers';
 import AgentChatEmptyState from './AgentChatEmptyState.vue';
+import type { ChatMessage } from '@/features/ai/shared/agentsChat/types';
+import { resolveFileMimeType } from '@/app/utils/fileUtils';
 import AgentChatMessageList from './AgentChatMessageList.vue';
 import AgentChatPlan from './AgentChatPlan.vue';
 import { selectLatestAgentPlan } from '../utils/agent-plan';
@@ -89,7 +91,10 @@ const props = withDefaults(
 		backgroundJobsActive?: boolean;
 		/** `'chat'` (default) talks to the builder's draft/test chat; `'n8n-chat'` talks to the published n8n Chat channel. */
 		channel?: AgentChatChannel;
-		/** Centers the empty state and the composer together until a new chat gets its first message. */
+		/**
+		 * The n8n Chat entry page: centers the empty state and the composer together until a
+		 * new chat gets its first message, and shows that message right away when sent.
+		 */
 		centerEmptyState?: boolean;
 		budgetCards?: boolean;
 		/**
@@ -196,12 +201,23 @@ const queueEdit = ref<{
 	unavailable: boolean;
 	saving: boolean;
 }>();
+// The stream adds a sent message only once its run starts. On the entry page the first
+// message shows right away instead, so the page doesn't sit in its empty state meanwhile.
+const firstMessagePreview = ref<ChatMessage>();
+// Queue item of the previewed message, once the server has queued it.
+const previewQueueId = ref<string>();
+const isPreviewingFirstMessage = computed(
+	() => !!firstMessagePreview.value && messages.value.length === 0,
+);
 const queueRows = computed(() => {
 	const edit = queueEdit.value;
-	if (edit && !queuedMessages.value.some((item) => item.id === edit.item.id)) {
-		return [...queuedMessages.value, edit.item];
-	}
-	return queuedMessages.value;
+	const rows =
+		edit && !queuedMessages.value.some((item) => item.id === edit.item.id)
+			? [...queuedMessages.value, edit.item]
+			: queuedMessages.value;
+	// The previewed message is already on screen as a bubble, so hide only its queue row.
+	if (!isPreviewingFirstMessage.value) return rows;
+	return rows.filter((item) => item.id !== previewQueueId.value);
 });
 const queueElement = useTemplateRef<HTMLDivElement>('messageQueue');
 const queueListId = useId();
@@ -681,6 +697,11 @@ const isPreparingToSend = ref(false);
 let disposed = false;
 let queuedExternalMessage: string | undefined;
 let submittingQueuedExternalMessage = false;
+// The bubble a hand-off installed before it was sent. Its own `onSubmit` takes it.
+let handoffPreview: ChatMessage | undefined;
+// Files a hand-off staged into `attachedFiles`, tracked so an abandoned hand-off
+// can drop only its own files and leave the user's own picks alone.
+let externalAttachedFiles: File[] = [];
 
 type SubmitResult = 'sent' | 'busy' | 'rejected';
 
@@ -782,9 +803,48 @@ const chatPlaceholder = computed(() => {
 		: locale.baseText('agents.chat.input.placeholder');
 });
 
+/**
+ * Installs the first-message bubble and returns it. Returns undefined when a bubble
+ * already shows: a second send before the first run starts must not replace it.
+ */
+function previewFirstMessage(text: string, files: File[] = []): ChatMessage | undefined {
+	if (!props.centerEmptyState || messages.value.length > 0 || firstMessagePreview.value) {
+		return undefined;
+	}
+	firstMessagePreview.value = {
+		id: 'first-message-preview',
+		role: 'user',
+		content: text,
+		status: 'success',
+		createdAt: Date.now(),
+		attachments: files.map((file) => ({
+			fileName: file.name,
+			mimeType: resolveFileMimeType(file.name, file.type) || 'application/octet-stream',
+			sizeBytes: file.size,
+			file,
+		})),
+	};
+	previewQueueId.value = undefined;
+	return firstMessagePreview.value;
+}
+watch([() => messages.value.length, fatalError], ([count, error]) => {
+	if (count > 0 || error) firstMessagePreview.value = undefined;
+});
+const displayedMessages = computed(() =>
+	isPreviewingFirstMessage.value && firstMessagePreview.value
+		? [firstMessagePreview.value]
+		: messages.value,
+);
+const displayedMessagingState = computed(() =>
+	isPreviewingFirstMessage.value ? 'waitingFirstChunk' : messagingState.value,
+);
+
 const isCenteredEmpty = computed(
 	() =>
-		props.centerEmptyState && props.newSession && messages.value.length === 0 && !isStreaming.value,
+		props.centerEmptyState &&
+		props.newSession &&
+		displayedMessages.value.length === 0 &&
+		!isStreaming.value,
 );
 
 watch(isStreaming, (v) => emit('update:streaming', v));
@@ -807,9 +867,19 @@ watch(
 	() => [props.projectId, props.agentId, props.continueSessionId],
 	() => {
 		queuedExternalMessage = undefined;
+		handoffPreview = undefined;
 		queueEdit.value = undefined;
 		queueExpanded.value = false;
 		queueOrder.value = undefined;
+		firstMessagePreview.value = undefined;
+		// A blocked hand-off's own files must not ride out with the next message to
+		// the new target; a file the user picked themselves stays.
+		if (externalAttachedFiles.length) {
+			attachedFiles.value = attachedFiles.value.filter(
+				(file) => !externalAttachedFiles.includes(file),
+			);
+			externalAttachedFiles = [];
+		}
 	},
 );
 
@@ -838,6 +908,9 @@ async function onSubmit(): Promise<SubmitResult> {
 	const files = [...attachedFiles.value];
 	if (!text && files.length === 0) return 'rejected';
 	if (isSubmissionBlocked.value) return 'busy';
+	// Taken before any await, so a user send made while this hand-off runs cannot claim it.
+	const ownedHandoffPreview = submittingQueuedExternalMessage ? handoffPreview : undefined;
+	if (ownedHandoffPreview) handoffPreview = undefined;
 	const hadNoMessagesBeforeSend = messages.value.length === 0;
 	const target = {
 		projectId: props.projectId,
@@ -878,8 +951,14 @@ async function onSubmit(): Promise<SubmitResult> {
 				: undefined;
 		if (!isCurrentTarget()) return 'rejected';
 
-		const sending = sendMessage(text, files.length > 0 ? files : undefined, () => {
+		const installedPreview = previewFirstMessage(text, files) ?? ownedHandoffPreview;
+		let accepted = false;
+		const sending = sendMessage(text, files.length > 0 ? files : undefined, (queueId) => {
+			accepted = true;
 			if (!isCurrentTarget()) return;
+			if (installedPreview && firstMessagePreview.value === installedPreview) {
+				previewQueueId.value = queueId;
+			}
 			if (fingerprint) {
 				agentTelemetry.trackSubmittedMessage({
 					agentId: props.agentId,
@@ -889,11 +968,19 @@ async function onSubmit(): Promise<SubmitResult> {
 			}
 			if (inputText.value.trim() === text) inputText.value = '';
 			attachedFiles.value = attachedFiles.value.filter((file) => !files.includes(file));
+			externalAttachedFiles = [];
 			consumeQueuedExternalMessage(text);
 			trackSentToN8nChat(hadNoMessagesBeforeSend);
 		});
 		isPreparingToSend.value = false;
 		const result = await sending;
+		// A send the server never accepted (busy, failed, lost) won't bring the real
+		// messages that replace the preview, so drop it here -- but only while this
+		// send's own preview is still the one showing. A newer hand-off's own preview
+		// must survive this one settling late.
+		if (!accepted && firstMessagePreview.value === installedPreview) {
+			firstMessagePreview.value = undefined;
+		}
 		if (result === 'busy') return 'busy';
 		return 'sent';
 	} finally {
@@ -934,15 +1021,24 @@ async function onIncreaseBudget(payload: { field: BudgetAmountField; amount: num
 	}
 }
 
-function sendMessageFromOutside(message: string) {
+function sendMessageFromOutside(message: string, files?: File[]) {
 	queuedExternalMessage = message;
-	inputText.value = message;
+	externalAttachedFiles = files ?? [];
+	// Staged as the composer's own attachments, with the same count and size checks
+	// as a picked file: `onSubmit` reads `attachedFiles`, so they ride along with
+	// every retry `submitQueuedExternalMessage` makes while blocked.
+	if (files?.length) handleFilesSelected(files);
+	handoffPreview = previewFirstMessage(message, attachedFiles.value);
+	// A previewed message already shows as a bubble; `submitQueuedExternalMessage` fills
+	// the composer itself right before it submits.
+	if (!firstMessagePreview.value) inputText.value = message;
 	void submitQueuedExternalMessage();
 }
 
 async function submitQueuedExternalMessage() {
 	const message = queuedExternalMessage;
-	if (!message || submittingQueuedExternalMessage || isSubmissionBlocked.value) return;
+	// An empty text is still a send when files are staged with it.
+	if (message === undefined || submittingQueuedExternalMessage || isSubmissionBlocked.value) return;
 
 	submittingQueuedExternalMessage = true;
 	let result: SubmitResult = 'rejected';
@@ -955,8 +1051,15 @@ async function submitQueuedExternalMessage() {
 
 	if (result === 'rejected' && queuedExternalMessage === message) {
 		queuedExternalMessage = undefined;
+		firstMessagePreview.value = undefined;
+		// The files stay in the composer as the user's draft now.
+		externalAttachedFiles = [];
 	}
-	if (queuedExternalMessage && queuedExternalMessage !== message && !isSubmissionBlocked.value) {
+	if (
+		queuedExternalMessage !== undefined &&
+		queuedExternalMessage !== message &&
+		!isSubmissionBlocked.value
+	) {
 		await nextTick();
 		void submitQueuedExternalMessage();
 	}
@@ -1050,15 +1153,15 @@ onBeforeUnmount(() => {
 			</N8nCallout>
 		</div>
 
-		<template v-if="messages.length === 0 && !isStreaming">
+		<template v-if="displayedMessages.length === 0 && !isStreaming">
 			<slot name="empty-state">
 				<AgentChatEmptyState :agent-config="agentConfig" />
 			</slot>
 		</template>
 		<AgentChatMessageList
 			v-else
-			:messages="messages"
-			:messaging-state="messagingState"
+			:messages="displayedMessages"
+			:messaging-state="displayedMessagingState"
 			:project-id="projectId"
 			:agent-id="agentId"
 			:session-id="continueSessionId"
