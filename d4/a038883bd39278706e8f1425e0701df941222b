@@ -1,0 +1,65 @@
+packages/cli/src/modules/agents/agent-definition.service.ts
+  s_245defbcefb1bb::t_ac6b0625155f5d 1,3-4,10,16,23-24,29-31,45,50-62
+  s_245defbcefb1bb::t_9eba778bbb2304 46-49
+  s_245defbcefb1bb::t_38ab390c812005 63
+packages/cli/src/workflows/workflow.service.ee.ts
+  s_245defbcefb1bb::t_00342a3868bdf5 41
+  s_245defbcefb1bb::t_1121064bbe927c 386-387
+packages/cli/src/modules/agents/utils/extract-agent-credential-ids.ts
+  s_245defbcefb1bb::t_00342a3868bdf5 3,5,7,9-11
+packages/cli/src/modules/agents/utils/__tests__/extract-agent-credential-ids.test.ts
+  s_245defbcefb1bb::t_2255273037e6ed 6,10-24,26,28-34,37,42-46,49,58-65,67-69,98
+  s_245defbcefb1bb::t_fd838ba8e983b6 51
+packages/cli/src/modules/agents/repositories/agent-credential-dependency.repository.ts
+  s_245defbcefb1bb::t_00342a3868bdf5 52-55
+packages/cli/src/modules/agents/__tests__/agent-config.service.test.ts
+  s_245defbcefb1bb::t_f6ced1cd53a01c 18,116-120
+packages/cli/src/modules/agents/utils/visit-agent-credential-references.ts
+  s_245defbcefb1bb::t_00342a3868bdf5 1-90
+packages/cli/src/modules/agents/json-config/__tests__/sanitize-unknown-agent-credentials.test.ts
+  s_245defbcefb1bb::t_2255273037e6ed 278,303-319,321-324,327-335,339
+  s_245defbcefb1bb::t_fd838ba8e983b6 320,336
+packages/cli/src/modules/agents/agent-config-preparation.service.ts
+  s_245defbcefb1bb::t_0088864445a835 69
+  s_245defbcefb1bb::t_2f6f39690f902b 1-68,70-128
+packages/cli/src/modules/mcp/__tests__/agent-tools.service.test.ts
+  s_245defbcefb1bb::t_f6ced1cd53a01c 32,253-257
+packages/cli/src/modules/agents/repositories/agent.repository.ts
+  s_245defbcefb1bb::t_ac6b0625155f5d 47-50
+packages/cli/src/modules/agents/__tests__/agent-validation.service.test.ts
+  s_245defbcefb1bb::t_75f8cd97cd33af 3,51,68,84-89
+packages/cli/src/modules/agents/__tests__/agent-runtime-reconstruction-integration-tools.test.ts
+  s_245defbcefb1bb::t_75f8cd97cd33af 268-270,274-275
+  s_245defbcefb1bb::t_f6ced1cd53a01c 38,283-287
+packages/cli/src/modules/agents/agent-publish.service.ts
+  s_245defbcefb1bb::t_0088864445a835 89
+  s_245defbcefb1bb::t_ac6b0625155f5d 422,424
+packages/cli/src/modules/agents/agent-config.service.ts
+  s_245defbcefb1bb::t_0088864445a835 1-4
+  s_245defbcefb1bb::t_2f6f39690f902b 7,20,60,83-84,116
+packages/cli/src/modules/agents/__tests__/agent-publish.service.test.ts
+  s_245defbcefb1bb::t_75f8cd97cd33af 154-159
+packages/cli/src/modules/agents/json-config/sanitize-unknown-agent-credentials.ts
+  s_245defbcefb1bb::t_661c6a268b6bb1 1,4,6,11,13-16,18,20
+packages/cli/test/integration/database/repositories/agent.repository.test.ts
+  s_245defbcefb1bb::t_0088864445a835 163,167,172-183,225,259,268
+  s_245defbcefb1bb::t_1432b8364b4599 187-191,228-232
+  s_245defbcefb1bb::t_f6ced1cd53a01c 11,111-115
+  s_245defbcefb1bb::t_9c96272f83af25 6,13,24,31,68,149,160-162,164-166,168-171,184-186,192-195,197-203,222,224,226-227,233-234,238-242,249-258,260-267,269-283
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d4a038883bd39278706e8f1425e0701df941222b",
+  "prompts": {},
+  "sessions": {
+    "s_245defbcefb1bb": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a10cad-0201-75d2-853e-9cbbe33991f2",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}
