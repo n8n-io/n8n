@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { waitFor } from '@testing-library/vue';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
-import { defineComponent, h } from 'vue';
+import { defineComponent, h, nextTick } from 'vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import InstanceAiInput from '../InstanceAiInput.vue';
 import AttachmentPreview from '../AttachmentPreview.vue';
@@ -20,6 +20,11 @@ const telemetryTrack = vi.hoisted(() => vi.fn());
 vi.mock('vue-router', async (importOriginal) => ({
 	...(await importOriginal<typeof import('vue-router')>()),
 	useRouter: () => ({ push: vi.fn() }),
+}));
+
+const showMessageMock = vi.fn();
+vi.mock('@n8n/composables/useToast', () => ({
+	useToast: () => ({ showMessage: showMessageMock, showError: vi.fn() }),
 }));
 
 vi.mock('@n8n/composables/useTelemetry', () => ({
@@ -171,6 +176,25 @@ describe('attach-only composer', () => {
 		expect(getByTestId('chat-input-attach-button')).toBeInTheDocument();
 		const fileInput = container.querySelector('input[type="file"]');
 		expect(fileInput).toHaveAttribute('accept', 'image/*,application/pdf');
+	});
+
+	it('tells the user when a dropped file type is not accepted', async () => {
+		const { getByRole } = renderComponent({
+			props: { attachOnlyMimeTypes: 'image/*' },
+		});
+		const file = new File(['%PDF'], 'report.pdf', { type: 'application/pdf' });
+		const drop = new Event('drop', { bubbles: true, cancelable: true });
+		Object.defineProperty(drop, 'dataTransfer', {
+			value: { files: [file], types: ['Files'], items: [{ kind: 'file', type: file.type }] },
+		});
+
+		getByRole('textbox').dispatchEvent(drop);
+		await nextTick();
+
+		expect(showMessageMock).toHaveBeenCalledWith({
+			type: 'error',
+			title: 'report.pdf is not a supported file type',
+		});
 	});
 
 	it('hides attaching entirely when the agent accepts no file types', () => {

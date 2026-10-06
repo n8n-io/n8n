@@ -782,6 +782,17 @@ function handleFilesSelected(files: File[]) {
 	attachedFiles.value.push(...files);
 }
 
+function handleFilesRejected(files: File[]) {
+	for (const file of files) {
+		toast.showMessage({
+			type: 'error',
+			title: i18n.baseText('agents.chat.attachments.unsupportedType', {
+				interpolate: { fileName: file.name },
+			}),
+		});
+	}
+}
+
 function handleFileRemove(file: File) {
 	const idx = attachedFiles.value.indexOf(file);
 	if (idx !== -1) {
@@ -929,6 +940,7 @@ const resizable = computed(() => {
 			@stop="handleStop"
 			@tab="handleTabAutocomplete"
 			@files-selected="handleFilesSelected"
+			@files-rejected="handleFilesRejected"
 		>
 			<template #attachments>
 				<div v-if="props.contextChip || attachedResources.length > 0" :class="$style.attachments">

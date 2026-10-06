@@ -62,6 +62,8 @@ const emit = defineEmits<{
 	stop: [];
 	tab: [];
 	'files-selected': [files: File[]];
+	/** Files dropped, pasted or picked whose type `acceptedMimeTypes` does not allow. */
+	'files-rejected': [files: File[]];
 }>();
 
 const i18n = useI18n();
@@ -191,6 +193,8 @@ function handleFiles(files: File[]) {
 	const acceptedByType = files.filter((file) =>
 		isFileAcceptedByAccept(file.name, file.type, props.acceptedMimeTypes ?? ''),
 	);
+	const rejected = files.filter((file) => !acceptedByType.includes(file));
+	if (rejected.length > 0) emit('files-rejected', rejected);
 	const accepted = withinSizeLimit(acceptedByType);
 	if (accepted.length > 0) emit('files-selected', accepted);
 }
