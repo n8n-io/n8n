@@ -15,6 +15,21 @@ a person who submits a form, or a person who approves a message. That caller use
 travels through channels that the engine does not control. It stays available for the length of the
 wait, which can be several months.
 
+This record uses these terms:
+
+- **Resume request:** a request that ends a wait. It carries a token.
+- **Execution-bound resume URL:** a resume URL that names the execution and no step.
+  `$execution.resumeUrl`, `$execution.resumeFormUrl`, and `$resumeWebhookUrl` hold it. Any node can
+  read it, also before the step that waits exists. Its caller chooses the query and the body.
+- **Step-bound resume URL:** a resume URL that names one step. The waiting node builds it with
+  `getSignedResumeUrl` while its step runs. The node fixes its query, for example `approved=true`.
+- **Approval callback:** a step-bound resume request that Slack or Telegram sends to one fixed URL
+  when a person presses a button. The reference that names the step is in the request body.
+- **Execution-bound wait:** a wait that accepts an execution-bound resume URL, for example the Wait
+  node in webhook or form mode.
+- **Step-bound wait:** a wait that accepts a step-bound resume URL or an approval callback, for
+  example a send-and-wait node.
+
 ADR-20260902-steps-declare-waits sends every resume request to a data-plane endpoint that checks it
 against the waiting step. That endpoint accepts every request, so the request must authorize itself.
 A resume request also runs the `webhook` method of the node that waits. That method needs the HTTP
@@ -26,17 +41,16 @@ issuer and audience values are opposite. This prevents the replay of one token a
 the other. Both tokens live for 60 seconds. That length is correct for a call between two services.
 It is too short for a URL in an email.
 
-Engine v1 has two kinds of resume URL. An open resume URL comes from `$execution.resumeUrl` or
-`$execution.resumeFormUrl`. It carries a random `resumeToken` from the data of the execution, and
-engine v1 compares it with a timing-safe equality check. The caller chooses the query and the body.
-The check is optional: an execution without a stored token accepts any caller.
+In engine v1, `$execution.resumeUrl` and `$execution.resumeFormUrl` carry a random `resumeToken`
+from the data of the execution. Engine v1 compares it with a timing-safe equality check. The check
+is optional: an execution without a stored token accepts any caller.
 
-A signed resume URL comes from `getSignedResumeUrl`, which the waiting node calls. Its path holds
-the execution id and the node id. Its query holds the parameters that the node sets, for example
-`approved=true`. Engine v1 signs the path and the query together with an HMAC secret, so a caller
-cannot change a parameter. Engine v1 derives that secret from the encryption key of the instance, so
-the control plane can build a URL. The node id in the path also selects the webhook of the waiting
-node. Therefore an open resume URL cannot end a wait that expects a signed one.
+In engine v1, `getSignedResumeUrl` builds a URL whose path holds the execution id and the node id,
+and whose query holds the parameters that the node sets. Engine v1 signs the path and the query
+together with an HMAC secret, so a caller cannot change a parameter. Engine v1 derives that secret
+from the encryption key of the instance, so the control plane can build a URL. The node id in the
+path also selects the webhook of the waiting node. Therefore the URL from `$execution.resumeUrl`
+cannot end the wait of a send-and-wait node.
 
 The data plane can run as its own process. That process has no access to the database or the
 encryption key of the control plane. Node code runs in the data plane, so every node builds its
@@ -54,7 +68,7 @@ from before it stored tokens. Engine v2 has no such executions.
 
 The bar this decision must meet is parity with engine v1: a resume request is as hard to forge here
 as it is there. The decision meets that bar. It goes past v1 in two places. Where the planes run as
-separate processes, the control plane cannot build a token. A signed resume URL and an approval
+separate processes, the control plane cannot build a token. A step-bound resume URL and an approval
 callback end one wait only.
 
 1. **The token has its own spec.** A third `SharedSecretTokenSpec` holds its own issuer and
@@ -64,19 +78,21 @@ callback end one wait only.
    its claims and the resume secret. It does this each time it needs a token. This needs no column
    and no migration. Any data-plane code that holds the claims can build the token. The
    send-and-wait nodes need this when they compose the message that they send.
-3. **The claims name what the builder knows.** An open resume URL names the execution. Whichever
-   node reads `$execution.resumeUrl` or `$execution.resumeFormUrl` evaluates it, usually before the
-   step that waits exists. The data plane therefore picks the waiting step of the execution when the
-   request arrives, as engine v1 does. A signed resume URL and an approval callback name the step.
-   The waiting node builds them while its step runs, so they end that wait and no other.
-4. **The token states its kind.** A token is an open resume URL, a signed resume URL, or an approval
-   callback, and the data plane applies the rule of that kind. A request resumes a step only if the
-   step accepts the kind of its token. A step of a send-and-wait node accepts a signed resume URL
-   and an approval callback. It does not accept an open resume URL.
-5. **The token binds what the node fixed.** A signed resume URL binds its path and its query, so a
-   caller cannot change, add, or remove a parameter. An approval callback binds its decision. An
-   open resume URL binds only the execution. Its caller chooses the query and the body, because a
-   webhook caller sends its data that way.
+3. **The claims name what the builder knows.** An execution-bound resume URL names the execution.
+   Whichever node reads `$execution.resumeUrl` or `$execution.resumeFormUrl` evaluates it, usually
+   before the step that waits exists. The data plane therefore picks the waiting step of the
+   execution when the request arrives, as engine v1 does. A step-bound resume URL and an approval
+   callback name the step. The waiting node builds them while its step runs, so they end that wait
+   and no other.
+4. **The token states its kind.** A token is an execution-bound resume URL, a step-bound resume URL,
+   or an approval callback, and the data plane applies the rule of that kind. A request resumes a
+   step only if the wait of the step is bound the same way as its token. An execution-bound wait
+   accepts an execution-bound resume URL. A step-bound wait accepts a step-bound resume URL and an
+   approval callback.
+5. **The token binds what the node fixed.** A step-bound resume URL binds its path and its query, so
+   a caller cannot change, add, or remove a parameter. An approval callback binds its decision. An
+   execution-bound resume URL binds only the execution. Its caller chooses the query and the body,
+   because a webhook caller sends its data that way.
 6. **The token does not expire.** The status of the step is the control. The token shows which
    caller can make the request. The compare-and-set that every other transition uses decides if the
    request still applies. `resumeStep` moves a step out of `waiting`, or it does nothing. A token
@@ -135,9 +151,9 @@ callback end one wait only.
 
 ## Consequences
 
-- A signed resume URL binds its query as the node built it, without the token parameter. The data
-  plane compares the same string when the request arrives. It does not rebuild the query from parsed
-  values, because two different queries can parse to the same values.
+- A step-bound resume URL binds its query as the node built it, without the token parameter. The
+  data plane compares the same string when the request arrives. It does not rebuild the query from
+  parsed values, because two different queries can parse to the same values.
 - Every data-plane process needs the resume secret, and all of them must use the same value. The
   operator sets it in every deployment that enables engine 2.0, also where both planes run in one
   process. The engine does not generate it. A process without it fails at start, so a resume request
@@ -151,9 +167,9 @@ callback end one wait only.
 - The approval callback must fit in 64 bytes, the limit of Telegram. Therefore it is a compact
   reference, not the resume token.
 - The control plane picks the engine by the shape of the id in the request, as its other execution
-  routes do. A v1 id is numeric, and a v2 id is a UUID. Therefore an open resume URL carries the
-  execution id in its path, and a signed resume URL and an approval callback carry the step id. An
-  id of the wrong shape reaches an engine that rejects the token.
+  routes do. A v1 id is numeric, and a v2 id is a UUID. Therefore an execution-bound resume URL
+  carries the execution id in its path, and a step-bound resume URL and an approval callback carry
+  the step id. An id of the wrong shape reaches an engine that rejects the token.
 - The engine cannot revoke one resume URL. A URL stops working when the step leaves the `waiting`
   status, or when its secret leaves the accepted set.
 - The data plane signs with one secret and accepts every secret in a configured set.
@@ -164,12 +180,12 @@ callback end one wait only.
   signed stop working. That removal is the only way to revoke resume URLs.
 - The token authenticates the request. It does not authorize the workflow. Who can resume a given
   wait is a separate decision, if that rule becomes narrower than "the caller that holds the URL".
-- An open resume URL covers every wait of the execution, not one wait. A request resumes the wait
-  that the execution is in when the request arrives. In a loop, the same URL resumes the wait of
-  every iteration, also a URL that a node sent in an earlier iteration. Engine v1 does the same, so
-  the bar is unchanged. An execution with two waits at the same time is ambiguous for an open resume
-  URL, and the resolve path answers 409. Engine v1 has the same single-wait limit. A `webhookSuffix`
-  is the natural way to tell two apart if that limit ever lifts.
+- An execution-bound resume URL covers every wait of the execution, not one wait. A request resumes
+  the wait that the execution is in when the request arrives. In a loop, the same URL resumes the
+  wait of every iteration, also a URL that a node sent in an earlier iteration. Engine v1 does the
+  same, so the bar is unchanged. An execution with two waits at the same time is ambiguous for an
+  execution-bound resume URL, and the resolve path answers 409. Engine v1 has the same single-wait
+  limit. A `webhookSuffix` is the natural way to tell two apart if that limit ever lifts.
 
 - The verification of the token shows which execution or step the caller means. It does not show
   that a step still waits. Therefore the resolve path reads the step row in all cases. The token
