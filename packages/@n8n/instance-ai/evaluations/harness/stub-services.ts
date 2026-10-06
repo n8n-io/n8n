@@ -216,8 +216,13 @@ export async function createStubServices(
 				seededWorkflows.get(workflowId)?.json ?? capturedWorkflows[capturedWorkflows.length - 1];
 			return latest ?? { id: workflowId, name: 'empty', nodes: [], connections: {} };
 		},
-		async getWorkflowHead() {
-			return { versionId: EVAL_WORKFLOW_VERSION_ID, activeVersionId, updatedAt: 0 };
+		async getWorkflowHead(workflowId: string) {
+			const seeded = seededWorkflows.get(workflowId);
+			return {
+				versionId: EVAL_WORKFLOW_VERSION_ID,
+				activeVersionId: seeded ? seeded.summary.activeVersionId : activeVersionId,
+				updatedAt: 0,
+			};
 		},
 		async getWorkflowSnapshot(workflowId: string) {
 			const latest =

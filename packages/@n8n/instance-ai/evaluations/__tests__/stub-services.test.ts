@@ -179,6 +179,11 @@ describe('createStubServices with a seed', () => {
 		expect((await context.workflowService.getAsWorkflowJSON('wf-report')).name).toBe(
 			'Daily report',
 		);
+		// The execution list reads the publish state from the head.
+		expect(
+			(await context.workflowService.getWorkflowHead('wf-report')).activeVersionId,
+		).not.toBeNull();
+		expect((await context.workflowService.getWorkflowHead('wf-orders')).activeVersionId).toBeNull();
 
 		const runs = await context.executionService.list();
 		expect(runs.map((r) => [r.workflowId, r.status])).toEqual([

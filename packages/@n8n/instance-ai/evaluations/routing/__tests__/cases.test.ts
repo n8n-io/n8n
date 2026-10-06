@@ -97,6 +97,9 @@ describe('loadRoutingCases', () => {
 		expect(seeded.credentials).toEqual([{ type: 'slackApi' }]);
 		expect(seeded.seed?.messages).toHaveLength(1);
 		expect(seeded.seed?.priorRuns).toEqual([{ workflow: 'wf-report' }]);
+		expect(seeded.seed?.workflows).toEqual([
+			{ id: 'wf-report', name: 'Daily report', nodes: [], connections: {} },
+		]);
 	});
 
 	it('returns the cases that need setup the stub instance cannot do, without running them', () => {
