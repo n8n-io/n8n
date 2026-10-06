@@ -4543,6 +4543,7 @@
 	"settings.migrationReport.documentationLink": "documentation",
 	"settings.migrationReport.progress.label": "{compatibleCount} of {totalCount} compatible",
 	"settings.migrationReport.refreshButton": "Refresh",
+	"settings.migrationReport.scopeNote": "This report only includes the workflows you can edit.",
 	"settings.migrationReport.lastSynced": "Last synced {time}",
 	"settings.migrationReport.tabs.workflowIssues": "Workflow issues",
 	"settings.migrationReport.tabs.instanceIssues": "Instance issues",

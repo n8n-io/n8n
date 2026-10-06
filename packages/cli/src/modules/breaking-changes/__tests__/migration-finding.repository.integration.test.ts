@@ -303,7 +303,7 @@ describe('MigrationFindingRepository', () => {
 			const [fixed] = await findingRepository.listForWorkflows('v3', [third.id], ctx);
 			await findingRepository.markFixedForIds([fixed.id], ctx);
 
-			const counts = await findingRepository.countOpenByRule('v3', ctx);
+			const counts = await findingRepository.countOpenByRule('v3', undefined, ctx);
 
 			expect(counts.sort((a, b) => a.ruleId.localeCompare(b.ruleId))).toEqual([
 				{ ruleId: 'rule-a', count: 2 },
@@ -315,7 +315,7 @@ describe('MigrationFindingRepository', () => {
 			const workflow = await createWorkflow();
 			await findingRepository.insertMany([finding(workflow.id, 'rule-a', 'v2')], ctx);
 
-			expect(await findingRepository.countOpenByRule('v3', ctx)).toEqual([]);
+			expect(await findingRepository.countOpenByRule('v3', undefined, ctx)).toEqual([]);
 		});
 	});
 
@@ -339,11 +339,11 @@ describe('MigrationFindingRepository', () => {
 			const [fixed] = await findingRepository.listForWorkflows('v3', [third.id], ctx);
 			await findingRepository.markFixedForIds([fixed.id], ctx);
 
-			expect(await findingRepository.countDistinctOpenWorkflows('v3', ctx)).toBe(2);
+			expect(await findingRepository.countDistinctOpenWorkflows('v3', undefined, ctx)).toBe(2);
 		});
 
 		test('returns zero when the version has no open findings', async () => {
-			expect(await findingRepository.countDistinctOpenWorkflows('v3', ctx)).toBe(0);
+			expect(await findingRepository.countDistinctOpenWorkflows('v3', undefined, ctx)).toBe(0);
 		});
 	});
 
@@ -369,7 +369,7 @@ describe('MigrationFindingRepository', () => {
 			const [fixedRow] = await findingRepository.listForWorkflows('v3', [fixed.id], ctx);
 			await findingRepository.markFixedForIds([fixedRow.id], ctx);
 
-			const listed = await findingRepository.listOpenForRule('v3', 'rule-a', ctx);
+			const listed = await findingRepository.listOpenForRule('v3', 'rule-a', undefined, ctx);
 
 			expect(listed.map((f) => f.workflowId).sort()).toEqual([published.id, draft.id].sort());
 			for (const row of listed) {
@@ -397,7 +397,45 @@ describe('MigrationFindingRepository', () => {
 			const workflow = await createWorkflow();
 			await findingRepository.insertMany([finding(workflow.id, 'rule-b')], ctx);
 
-			expect(await findingRepository.listOpenForRule('v3', 'rule-a', ctx)).toEqual([]);
+			expect(await findingRepository.listOpenForRule('v3', 'rule-a', undefined, ctx)).toEqual([]);
+		});
+	});
+
+	describe('workflow filter', () => {
+		test('limits the counts and the rule list to the given workflows', async () => {
+			const [first, second, third] = await Promise.all([
+				createWorkflow(),
+				createWorkflow(),
+				createWorkflow(),
+			]);
+			await findingRepository.insertMany(
+				[
+					finding(first.id, 'rule-a'),
+					finding(first.id, 'rule-b'),
+					finding(second.id, 'rule-a'),
+					finding(third.id, 'rule-a'),
+				],
+				ctx,
+			);
+			const inScope = [first.id, third.id];
+
+			const counts = await findingRepository.countOpenByRule('v3', inScope, ctx);
+			expect(counts.sort((a, b) => a.ruleId.localeCompare(b.ruleId))).toEqual([
+				{ ruleId: 'rule-a', count: 2 },
+				{ ruleId: 'rule-b', count: 1 },
+			]);
+			expect(await findingRepository.countDistinctOpenWorkflows('v3', inScope, ctx)).toBe(2);
+			const listed = await findingRepository.listOpenForRule('v3', 'rule-a', inScope, ctx);
+			expect(listed.map((row) => row.workflowId).sort()).toEqual([...inScope].sort());
+		});
+
+		test('an empty filter yields nothing without touching the table', async () => {
+			const workflow = await createWorkflow();
+			await findingRepository.insertMany([finding(workflow.id, 'rule-a')], ctx);
+
+			expect(await findingRepository.countOpenByRule('v3', [], ctx)).toEqual([]);
+			expect(await findingRepository.countDistinctOpenWorkflows('v3', [], ctx)).toBe(0);
+			expect(await findingRepository.listOpenForRule('v3', 'rule-a', [], ctx)).toEqual([]);
 		});
 	});
 

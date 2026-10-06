@@ -6,6 +6,7 @@ import type { EventBus } from '@n8n/utils/event-bus';
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { useRBACStore } from '@n8n/stores/rbac.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { MIGRATE_WORKFLOW_MODAL_KEY } from '@/app/constants';
 import MigrationRuleDetail from './MigrationRuleDetail.vue';
@@ -19,6 +20,7 @@ vi.mock('@n8n/rest-api-client/api/breaking-changes', () => ({
 
 let rootStore: ReturnType<typeof mockedStore<typeof useRootStore>>;
 let uiStore: ReturnType<typeof mockedStore<typeof useUIStore>>;
+let rbacStore: ReturnType<typeof mockedStore<typeof useRBACStore>>;
 let renderComponent: ReturnType<typeof createComponentRenderer>;
 
 const mockWorkflowWithIssue = {
@@ -107,6 +109,9 @@ describe('MigrationRuleDetail', () => {
 			pushRef: 'test-push-ref',
 		};
 		uiStore = mockedStore(useUIStore);
+		// By default the user may migrate workflows.
+		rbacStore = mockedStore(useRBACStore);
+		rbacStore.hasScope.mockReturnValue(true);
 
 		vi.mocked(breakingChangesApi.getReportForRule).mockResolvedValue(mockRuleResult);
 	});
@@ -178,6 +183,18 @@ describe('MigrationRuleDetail', () => {
 			renderComponent({ props: { migrationRuleId: 'rule-1' } });
 
 			await waitFor(() => expect(screen.getByText('Test Rule')).toBeInTheDocument());
+			expect(screen.queryByTestId('migrate-workflow-button')).not.toBeInTheDocument();
+		});
+
+		it('does not render a Migrate button for a user without the migrate scope', async () => {
+			rbacStore.hasScope.mockReturnValue(false);
+			vi.mocked(breakingChangesApi.getReportForRule).mockResolvedValue(
+				createMockRuleResult({ migratable: true, affectedWorkflows: [mockWorkflowWithIssue] }),
+			);
+
+			renderComponent({ props: { migrationRuleId: 'rule-1' } });
+
+			await waitFor(() => expect(screen.getByText('Test Workflow 1')).toBeInTheDocument());
 			expect(screen.queryByTestId('migrate-workflow-button')).not.toBeInTheDocument();
 		});
 

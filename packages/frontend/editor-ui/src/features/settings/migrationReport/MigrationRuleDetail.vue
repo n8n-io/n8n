@@ -30,6 +30,7 @@ import orderBy from 'lodash/orderBy';
 import { computed, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import ImpactTag from './components/ImpactTag.vue';
+import { hasPermission } from '@/app/utils/rbac/permissions';
 
 const i18n = useI18n();
 const uiStore = useUIStore();
@@ -39,6 +40,8 @@ useDocumentTitle().set(i18n.baseText('settings.migrationReport'));
 const props = defineProps<{ migrationRuleId: string }>();
 
 const router = useRouter();
+
+const canMigrate = hasPermission(['rbac'], { rbac: { scope: 'breakingChanges:migrate' } });
 
 const { state, isLoading } = useAsyncState(
 	async () => {
@@ -100,7 +103,7 @@ const tableHeaders = computed<Array<TableHeader<AffectedWorkflow>>>(() => {
 		},
 	];
 
-	if (state.value.migratable) {
+	if (state.value.migratable && canMigrate) {
 		headers.push({
 			title: '',
 			key: 'actions',

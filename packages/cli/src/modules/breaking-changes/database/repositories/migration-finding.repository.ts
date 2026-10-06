@@ -1,6 +1,7 @@
 import type { BreakingChangeVersion, MigrationFindingStatus } from '@n8n/api-types';
 import {
 	BaseRepository,
+	chunkIds,
 	type OperationContext,
 	TransactionRunner,
 	type WorkflowEntity,
@@ -21,6 +22,11 @@ export type OpenMigrationFinding = Pick<MigrationFinding, 'id' | 'ruleId' | 'wor
 export interface OpenFindingCount {
 	ruleId: string;
 	count: number;
+}
+
+/** The id lists to query one by one. No filter means one unfiltered query; an empty filter, none. */
+function chunksOrAll(workflowIds: string[] | undefined): Array<string[] | undefined> {
+	return workflowIds === undefined ? [undefined] : chunkIds(workflowIds);
 }
 
 @Service()
@@ -46,57 +52,91 @@ export class MigrationFindingRepository extends BaseRepository<MigrationFinding>
 		});
 	}
 
-	/** Number of open findings per rule for the version. Rules without open findings are absent. */
+	/**
+	 * Number of open findings per rule for the version. Rules without open findings
+	 * are absent. `workflowIds` limits the count to those workflows; `undefined` counts all.
+	 */
 	async countOpenByRule(
 		targetVersion: BreakingChangeVersion,
+		workflowIds: string[] | undefined,
 		ctx: OperationContext,
 	): Promise<OpenFindingCount[]> {
-		const rows = await this.managerFor(ctx)
-			.createQueryBuilder(MigrationFinding, 'finding')
-			.select('finding.ruleId', 'ruleId')
-			.addSelect('COUNT(finding.id)', 'count')
-			.where('finding.targetVersion = :targetVersion', { targetVersion })
-			.andWhere('finding.status = :status', { status: 'open' })
-			.groupBy('finding.ruleId')
-			.getRawMany<{ ruleId: string; count: number | string }>();
+		const countByRule = new Map<string, number>();
+		for (const chunk of chunksOrAll(workflowIds)) {
+			const query = this.managerFor(ctx)
+				.createQueryBuilder(MigrationFinding, 'finding')
+				.select('finding.ruleId', 'ruleId')
+				.addSelect('COUNT(finding.id)', 'count')
+				.where('finding.targetVersion = :targetVersion', { targetVersion })
+				.andWhere('finding.status = :status', { status: 'open' })
+				.groupBy('finding.ruleId');
+			if (chunk) query.andWhere('finding.workflowId IN (:...workflowIds)', { workflowIds: chunk });
+			const rows = await query.getRawMany<{ ruleId: string; count: number | string }>();
 
-		// Postgres returns COUNT as a bigint string, SQLite as a number.
-		return rows.map((row) => ({ ruleId: row.ruleId, count: Number(row.count) }));
+			// Postgres returns COUNT as a bigint string, SQLite as a number.
+			for (const row of rows) {
+				countByRule.set(row.ruleId, (countByRule.get(row.ruleId) ?? 0) + Number(row.count));
+			}
+		}
+		return [...countByRule].map(([ruleId, count]) => ({ ruleId, count }));
 	}
 
-	/** Number of distinct workflows with at least one open finding for the version. */
+	/**
+	 * Number of distinct workflows with at least one open finding for the version.
+	 * `workflowIds` limits the count to those workflows; `undefined` counts all.
+	 */
 	async countDistinctOpenWorkflows(
 		targetVersion: BreakingChangeVersion,
+		workflowIds: string[] | undefined,
 		ctx: OperationContext,
 	): Promise<number> {
-		const row = await this.managerFor(ctx)
-			.createQueryBuilder(MigrationFinding, 'finding')
-			.select('COUNT(DISTINCT finding.workflowId)', 'count')
-			.where('finding.targetVersion = :targetVersion', { targetVersion })
-			.andWhere('finding.status = :status', { status: 'open' })
-			.getRawOne<{ count: number | string }>();
+		let total = 0;
+		for (const chunk of chunksOrAll(workflowIds)) {
+			const query = this.managerFor(ctx)
+				.createQueryBuilder(MigrationFinding, 'finding')
+				.select('COUNT(DISTINCT finding.workflowId)', 'count')
+				.where('finding.targetVersion = :targetVersion', { targetVersion })
+				.andWhere('finding.status = :status', { status: 'open' });
+			if (chunk) query.andWhere('finding.workflowId IN (:...workflowIds)', { workflowIds: chunk });
+			const row = await query.getRawOne<{ count: number | string }>();
 
-		// Postgres returns COUNT as a bigint string, SQLite as a number.
-		return Number(row?.count ?? 0);
+			// Postgres returns COUNT as a bigint string, SQLite as a number.
+			// Chunks hold distinct ids, so their counts add up.
+			total += Number(row?.count ?? 0);
+		}
+		return total;
 	}
 
-	/** Open findings of one rule for the version, each with its workflow's report columns. */
+	/**
+	 * Open findings of one rule for the version, each with its workflow's report columns.
+	 * `workflowIds` limits the list to those workflows; `undefined` lists all.
+	 */
 	async listOpenForRule(
 		targetVersion: BreakingChangeVersion,
 		ruleId: string,
+		workflowIds: string[] | undefined,
 		ctx: OperationContext,
 	): Promise<OpenMigrationFinding[]> {
-		return await this.managerFor(ctx).find(MigrationFinding, {
-			select: {
-				id: true,
-				ruleId: true,
-				workflowId: true,
-				workflow: { id: true, name: true, activeVersionId: true, updatedAt: true },
-			},
-			where: { targetVersion, ruleId, status: 'open' },
-			relations: { workflow: true },
-			order: { id: 'ASC' },
-		});
+		const findings: OpenMigrationFinding[] = [];
+		for (const chunk of chunksOrAll(workflowIds)) {
+			const rows = await this.managerFor(ctx).find(MigrationFinding, {
+				select: {
+					id: true,
+					ruleId: true,
+					workflowId: true,
+					workflow: { id: true, name: true, activeVersionId: true, updatedAt: true },
+				},
+				where: {
+					targetVersion,
+					ruleId,
+					status: 'open',
+					...(chunk ? { workflowId: In(chunk) } : {}),
+				},
+				relations: { workflow: true },
+			});
+			findings.push(...rows);
+		}
+		return findings.sort((a, b) => a.id - b.id);
 	}
 
 	/**
