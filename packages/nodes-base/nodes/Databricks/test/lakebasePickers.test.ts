@@ -56,10 +56,17 @@ const apiErrorFromBody = (status: number, data: unknown) =>
 		}) as unknown as JsonObject,
 	);
 
-const endpointsPage = {
-	endpoints: [{ status: { endpoint_type: 'ENDPOINT_TYPE_READ_WRITE', hosts: { host: EP_HOST } } }],
+const workspaceHeaders = { 'x-databricks-org-id': WORKSPACE_ID };
+// Every management API response carries the workspace id header; the resolver reads it from this one
+const endpointsResponse = {
+	body: {
+		endpoints: [
+			{ status: { endpoint_type: 'ENDPOINT_TYPE_READ_WRITE', hosts: { host: EP_HOST } } },
+		],
+	},
+	headers: workspaceHeaders,
+	statusCode: 200,
 };
-const meResponse = { body: {}, headers: { 'x-databricks-org-id': WORKSPACE_ID }, statusCode: 200 };
 
 type Locator = { mode: string; value: string };
 
@@ -309,10 +316,7 @@ describe('listSearch -> getLakebaseTables', () => {
 		},
 	};
 	const mockChain = (context: ReturnType<typeof createLoadOptionsContext>, document: unknown) =>
-		apiMock(context)
-			.mockResolvedValueOnce(endpointsPage)
-			.mockResolvedValueOnce(meResponse)
-			.mockResolvedValueOnce(document);
+		apiMock(context).mockResolvedValueOnce(endpointsResponse).mockResolvedValueOnce(document);
 
 	it.each([
 		[{}, 'Please Select a Project First'],
@@ -350,7 +354,7 @@ describe('listSearch -> getLakebaseTables', () => {
 		const result = await getLakebaseTables.call(context);
 
 		expect(apiMock(context)).toHaveBeenNthCalledWith(
-			3,
+			2,
 			'databricksOAuth2Api',
 			expect.objectContaining({
 				url: `${SCHEMA_URL}/openapi.json`,
@@ -378,7 +382,7 @@ describe('listSearch -> getLakebaseTables', () => {
 		await getLakebaseTables.call(context);
 
 		expect(apiMock(context)).toHaveBeenNthCalledWith(
-			3,
+			2,
 			'databricksOAuth2Api',
 			expect.objectContaining({ url: expect.stringMatching(/\/my%20schema\/openapi\.json$/) }),
 		);
@@ -401,10 +405,7 @@ describe('listSearch -> getLakebaseTables', () => {
 			hint: null,
 			details: null,
 		});
-		apiMock(context)
-			.mockResolvedValueOnce(endpointsPage)
-			.mockResolvedValueOnce(meResponse)
-			.mockRejectedValueOnce(error);
+		apiMock(context).mockResolvedValueOnce(endpointsResponse).mockRejectedValueOnce(error);
 
 		await expect(getLakebaseTables.call(context)).rejects.toBe(error);
 
@@ -420,10 +421,7 @@ describe('listSearch -> getLakebaseTables', () => {
 		const context = createLoadOptionsContext(selectedSchema);
 		const error = apiErrorFromBody(401, { code: 'PGRST301', message: 'invalid token permissions' });
 		const { message: originalMessage, description: originalDescription } = error;
-		apiMock(context)
-			.mockResolvedValueOnce(endpointsPage)
-			.mockResolvedValueOnce(meResponse)
-			.mockRejectedValueOnce(error);
+		apiMock(context).mockResolvedValueOnce(endpointsResponse).mockRejectedValueOnce(error);
 
 		await expect(getLakebaseTables.call(context)).rejects.toBe(error);
 
@@ -456,31 +454,25 @@ describe('listSearch -> getLakebaseTables', () => {
 describe('resolveLakebaseRestBase', () => {
 	it('builds the base from the ENDPOINT_TYPE_READ_WRITE endpoint host and the workspace id header', async () => {
 		const context = createExecuteContext(defaultLocators());
-		apiMock(context)
-			.mockResolvedValueOnce({
+		apiMock(context).mockResolvedValueOnce({
+			body: {
 				endpoints: [
 					{ status: { endpoint_type: 'ENDPOINT_TYPE_READ_ONLY', hosts: { host: 'ro.example' } } },
 					{ status: { endpoint_type: 'ENDPOINT_TYPE_READ_WRITE', hosts: { host: EP_HOST } } },
 				],
-			})
-			.mockResolvedValueOnce(meResponse);
+			},
+			headers: workspaceHeaders,
+		});
 
 		await expect(resolveLakebaseRestBase(context, 'spike-test', 'production')).resolves.toBe(
 			REST_BASE,
 		);
 
-		expect(apiMock(context)).toHaveBeenNthCalledWith(
-			1,
+		expect(apiMock(context)).toHaveBeenCalledTimes(1);
+		expect(apiMock(context)).toHaveBeenCalledWith(
 			'databricksOAuth2Api',
 			expect.objectContaining({
 				url: `${HOST}/api/2.0/postgres/projects/spike-test/branches/production/endpoints`,
-			}),
-		);
-		expect(apiMock(context)).toHaveBeenNthCalledWith(
-			2,
-			'databricksOAuth2Api',
-			expect.objectContaining({
-				url: `${HOST}/api/2.0/preview/scim/v2/Me`,
 				returnFullResponse: true,
 			}),
 		);
@@ -488,7 +480,7 @@ describe('resolveLakebaseRestBase', () => {
 
 	it('encodes the project and branch in the path', async () => {
 		const context = createExecuteContext(defaultLocators());
-		apiMock(context).mockResolvedValueOnce(endpointsPage).mockResolvedValueOnce(meResponse);
+		apiMock(context).mockResolvedValueOnce(endpointsResponse);
 
 		await resolveLakebaseRestBase(context, 'a b', 'c/d');
 
@@ -511,9 +503,9 @@ describe('resolveLakebaseRestBase', () => {
 			],
 		},
 		{ endpoints: [{ status: { endpoint_type: 'ENDPOINT_TYPE_READ_WRITE', hosts: {} } }] },
-	])('fails when the branch has no read-write endpoint with a host (%j)', async (page) => {
+	])('fails when the branch has no read-write endpoint with a host (%j)', async (body) => {
 		const context = createExecuteContext(defaultLocators());
-		apiMock(context).mockResolvedValueOnce(page);
+		apiMock(context).mockResolvedValueOnce({ body, headers: workspaceHeaders });
 
 		const promise = resolveLakebaseRestBase(context, 'spike-test', 'production');
 
@@ -529,7 +521,10 @@ describe('resolveLakebaseRestBase', () => {
 		async (host) => {
 			const context = createExecuteContext(defaultLocators());
 			apiMock(context).mockResolvedValueOnce({
-				endpoints: [{ status: { endpoint_type: 'ENDPOINT_TYPE_READ_WRITE', hosts: { host } } }],
+				body: {
+					endpoints: [{ status: { endpoint_type: 'ENDPOINT_TYPE_READ_WRITE', hosts: { host } } }],
+				},
+				headers: workspaceHeaders,
 			});
 
 			await expect(resolveLakebaseRestBase(context, 'spike-test', 'production')).rejects.toThrow(
@@ -540,25 +535,25 @@ describe('resolveLakebaseRestBase', () => {
 	);
 
 	it.each([
-		['a missing header', { body: {}, statusCode: 200 }],
-		['an empty header', { ...meResponse, headers: { 'x-databricks-org-id': '' } }],
-		['letters', { ...meResponse, headers: { 'x-databricks-org-id': 'abc' } }],
-		['a path', { ...meResponse, headers: { 'x-databricks-org-id': '123/x' } }],
-	])('rejects a workspace id that is not numeric (%s)', async (_label, me) => {
+		['a missing header', {}],
+		['an empty header', { 'x-databricks-org-id': '' }],
+		['letters', { 'x-databricks-org-id': 'abc' }],
+		['a path', { 'x-databricks-org-id': '123/x' }],
+	])('rejects a workspace id that is not numeric (%s)', async (_label, headers) => {
 		const context = createExecuteContext(defaultLocators());
-		apiMock(context).mockResolvedValueOnce(endpointsPage).mockResolvedValueOnce(me);
+		apiMock(context).mockResolvedValueOnce({ ...endpointsResponse, headers });
 
 		await expect(resolveLakebaseRestBase(context, 'spike-test', 'production')).rejects.toThrow(
 			'Could not read the workspace ID from Databricks',
 		);
-		expect(apiMock(context)).toHaveBeenCalledTimes(2);
+		expect(apiMock(context)).toHaveBeenCalledTimes(1);
 	});
 });
 
 describe('resolveLakebaseSchemaUrl', () => {
 	it('reads the four locators of the item and returns the encoded schema URL', async () => {
 		const context = createExecuteContext({ ...defaultLocators(), lakebaseSchema: 'my schema' });
-		apiMock(context).mockResolvedValueOnce(endpointsPage).mockResolvedValueOnce(meResponse);
+		apiMock(context).mockResolvedValueOnce(endpointsResponse);
 
 		await expect(resolveLakebaseSchemaUrl(context, ITEM)).resolves.toBe(
 			`${REST_BASE}/databricks_postgres/my%20schema`,
@@ -609,7 +604,7 @@ describe('resolveLakebaseSchemaUrl', () => {
 describe('resolveLakebaseTableUrl', () => {
 	it('appends the encoded table to the schema URL', async () => {
 		const context = createExecuteContext(defaultLocators());
-		apiMock(context).mockResolvedValueOnce(endpointsPage).mockResolvedValueOnce(meResponse);
+		apiMock(context).mockResolvedValueOnce(endpointsResponse);
 
 		await expect(resolveLakebaseTableUrl(context, ITEM)).resolves.toBe(`${SCHEMA_URL}/my%20table`);
 

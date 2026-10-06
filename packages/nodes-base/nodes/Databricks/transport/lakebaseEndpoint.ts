@@ -7,10 +7,12 @@ import {
 	type DatabricksContext,
 } from '../actions/helpers';
 
-type EndpointsPage = {
-	endpoints?: Array<{ status?: { endpoint_type?: string; hosts?: { host?: string } } }>;
+type EndpointsResponse = {
+	body?: {
+		endpoints?: Array<{ status?: { endpoint_type?: string; hosts?: { host?: string } } }>;
+	};
+	headers?: Record<string, unknown>;
 };
-type FullResponse = { headers?: Record<string, unknown> };
 
 const HOSTNAME = /^[A-Za-z0-9.-]+$/;
 
@@ -25,14 +27,16 @@ export async function resolveLakebaseRestBase(
 	const host = await getHost(context, credentialType);
 	const parent = `${host}/api/2.0/postgres/projects/${encodeURIComponent(project)}/branches/${encodeURIComponent(branch)}`;
 
-	const { endpoints = [] }: EndpointsPage = await databricksApiRequest(context, credentialType, {
+	const response: EndpointsResponse = await databricksApiRequest(context, credentialType, {
 		method: 'GET',
 		url: `${parent}/endpoints`,
 		headers: { Accept: 'application/json' },
 		json: true,
+		returnFullResponse: true,
 	});
-	const endpointHost = endpoints.find((e) => e.status?.endpoint_type === 'ENDPOINT_TYPE_READ_WRITE')
-		?.status?.hosts?.host;
+	const endpointHost = response.body?.endpoints?.find(
+		(e) => e.status?.endpoint_type === 'ENDPOINT_TYPE_READ_WRITE',
+	)?.status?.hosts?.host;
 	if (!endpointHost) {
 		throw new NodeOperationError(
 			context.getNode(),
@@ -51,15 +55,8 @@ export async function resolveLakebaseRestBase(
 		);
 	}
 
-	// The management API does not return the workspace id; the SDK reads it from this header too
-	const me: FullResponse = await databricksApiRequest(context, credentialType, {
-		method: 'GET',
-		url: `${host}/api/2.0/preview/scim/v2/Me`,
-		headers: { Accept: 'application/json' },
-		json: true,
-		returnFullResponse: true,
-	});
-	const workspaceId = me.headers?.['x-databricks-org-id'];
+	// No management API body carries the workspace id, but every response header does (the SDK reads it from SCIM Me)
+	const workspaceId = response.headers?.['x-databricks-org-id'];
 	if (typeof workspaceId !== 'string' || !/^\d+$/.test(workspaceId)) {
 		throw new NodeOperationError(
 			context.getNode(),
