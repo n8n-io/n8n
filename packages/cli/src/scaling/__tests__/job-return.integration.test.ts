@@ -337,5 +337,36 @@ describe.skipIf(!REDIS_HOST || !REDIS_PORT)('returnJobToQueue (real Redis)', () 
 			expect(await stateOf(producer, job2.id)).toBe('waiting');
 			expect(await control.exists(job2.lockKey())).toBe(0);
 		});
+
+		it('waits for a job fetched by a completion to return before the current jobs are finished', async () => {
+			const producer = createQueue();
+			await addJob(producer, 'p1', 50);
+			const job2 = await addJob(producer, 'p2', 50);
+
+			const worker = createQueue();
+			let stopping = false;
+			let currentJobsFinished: Promise<unknown> | undefined;
+			let returned = false;
+			worker.on('failed', () => {
+				returned = true;
+			});
+			worker.on('completed', () => {
+				stopping = true;
+				void worker.pause(true, true);
+				currentJobsFinished = Promise.all(
+					Object.values(Reflect.get(worker, 'processing') as Record<string, Promise<unknown>>),
+				);
+			});
+			void worker.process(JOB_TYPE_NAME, 1, async (activeJob: Job) => {
+				if (stopping) await returnJobToQueue(activeJob);
+			});
+
+			await once(worker, 'completed');
+			await currentJobsFinished;
+
+			expect(returned).toBe(true);
+			expect(await stateOf(producer, job2.id)).toBe('waiting');
+			expect(await control.exists(job2.lockKey())).toBe(0);
+		});
 	});
 });
