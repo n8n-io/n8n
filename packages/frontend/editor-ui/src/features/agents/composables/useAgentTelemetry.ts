@@ -4,7 +4,13 @@ import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import type { AgentConfigFingerprint, AgentTelemetryStatus } from './agentTelemetry.utils';
 
-export type AgentCreateSource = 'button' | 'dropdown' | 'card';
+export type AgentCreateSource =
+	| 'button'
+	| 'dropdown'
+	| 'card'
+	| 'empty_state_blank'
+	| 'empty_state_prompt'
+	| 'empty_state_template';
 
 export function useAgentTelemetry() {
 	const telemetry = useTelemetry();
@@ -23,10 +29,11 @@ export function useAgentTelemetry() {
 		}
 	}
 
-	function trackClickedNewAgent(source: AgentCreateSource, agentId: string) {
+	function trackClickedNewAgent(source: AgentCreateSource, agentId: string, templateId?: string) {
 		safeTrack(TELEMETRY_EVENT.AGENTS.USER_CLICKED_NEW_AGENT, {
 			source,
 			agent_id: agentId,
+			...(templateId ? { template_id: templateId } : {}),
 			...common(),
 		});
 	}
