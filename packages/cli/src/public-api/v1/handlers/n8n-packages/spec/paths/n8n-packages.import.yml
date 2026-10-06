@@ -249,22 +249,38 @@ post:
                 - fail
                 - overwrite
               default: keep-existing
-              description: >
+              description: |
                 How strictly a matched data table's schema is compared.
                 `keep-existing` (default) accepts a target table that has every
                 package column with the same name and type. The target table can
                 have extra columns. `fail` rejects any difference, including
                 target-only columns. Under `keep-existing` and `fail`, a missing
                 package column or a type mismatch rejects the import, and the
-                target table does not change. `overwrite` changes the
-                matched target table to match the package: it renames the table,
-                adds, removes, and retypes columns, and sets the column order.
-                A rename to a name that another table in the project has rejects
-                the import. This includes two tables that swap names.
-                Data in removed or retyped columns is lost. The changes apply to
-                the table for all workflows that use it, not only for the imported
-                workflows. Requires the `dataTable:update` scope only when at
-                least one matched table changes.
+                target table does not change.
+
+                `overwrite` changes the matched target table to match the package.
+                It keeps all rows. It keeps the data in each column that has the
+                same name and type in the package.
+
+                These changes delete data:
+                - A target column that is not in the package is removed with its data.
+                - A column whose type is different in the package is removed and
+                  added again with the package type. Its data is lost.
+                - A column that was renamed in the source is removed and added with
+                  the new name, because packages do not contain column ids. Its data
+                  is lost.
+
+                These changes keep data: missing columns are added (empty for
+                existing rows), the column order is set, and the table gets the
+                package name. A rename to a name that another table in the project
+                has rejects the import, also when two tables swap names.
+
+                The import never deletes tables or rows. The changes apply to the
+                table for all workflows that use it, not only the imported
+                workflows. To see the changes before you apply them, import with
+                `keep-existing` or `fail`: a blocked import lists them in
+                `overwriteChanges`. Requires the `dataTable:update` scope only when
+                at least one matched table changes.
             variableMissingMode:
               type: string
               enum:
