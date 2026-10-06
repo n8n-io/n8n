@@ -30,10 +30,9 @@ describe('Logo', () => {
 		vi.stubGlobal('URL', { createObjectURL });
 		vi.stubGlobal('Blob', blob);
 		render(Logo, { props: { size: 'large', releaseChannel: 'dev' } });
-		expect(blob).toHaveBeenCalledWith(
-			[expect.stringContaining('path { fill: #898989; }')],
-			{ type: 'image/svg+xml' },
-		);
+		expect(blob).toHaveBeenCalledWith([expect.stringContaining('path { fill: #898989; }')], {
+			type: 'image/svg+xml',
+		});
 		expect(useFavicon).toHaveBeenCalledWith('blob:dev-logo');
 	});
 
