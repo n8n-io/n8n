@@ -15,6 +15,7 @@ import {
 } from 'n8n-core';
 import type { Failure, IWorkflowBase } from 'n8n-workflow';
 import { OperationalError, UnexpectedError } from 'n8n-workflow';
+import { aborted } from 'node:util';
 
 import { PollBackoffService } from '@/workflows/triggers/poll-backoff.service';
 import { TriggerExecutionContextFactory } from '@/workflows/triggers/trigger-execution-context.factory';
@@ -26,9 +27,6 @@ import {
 	type PollTriggerTaskPayload,
 } from './poll-trigger-task';
 
-/** Race sentinel: `poll()` can resolve to anything, so the deadline resolves to a symbol it cannot produce. */
-const TIMED_OUT = Symbol('poll timed out');
-
 /** Stands in for the error a hanging poll never threw, so backoff classifies the timeout as transient. */
 class PollTimeoutError extends OperationalError {
 	readonly failure: Failure = { cause: 'temporarily-unavailable' };
@@ -36,26 +34,6 @@ class PollTimeoutError extends OperationalError {
 	constructor() {
 		super('Poll exceeded its timeout and was abandoned');
 	}
-}
-
-/** An unref'd, cancellable deadline that resolves to {@link TIMED_OUT} after `ms`. */
-function timeoutAfter(ms: number): { timedOut: Promise<typeof TIMED_OUT>; cancel: () => void } {
-	let timer: ReturnType<typeof setTimeout> | undefined;
-	const timedOut = new Promise<typeof TIMED_OUT>((resolve) => {
-		timer = setTimeout(() => resolve(TIMED_OUT), ms);
-		timer.unref();
-	});
-	return { timedOut, cancel: () => clearTimeout(timer) };
-}
-
-/** A cancellable promise that rejects with the reason of `signal` when it aborts. */
-function rejectOnAbort(signal: AbortSignal): { aborted: Promise<never>; cancel: () => void } {
-	let onAbort = () => {};
-	const aborted = new Promise<never>((_resolve, reject) => {
-		onAbort = () => reject(signal.reason);
-	});
-	signal.addEventListener('abort', onAbort, { once: true });
-	return { aborted, cancel: () => signal.removeEventListener('abort', onAbort) };
 }
 
 /**
@@ -162,15 +140,16 @@ export class PollTriggerTaskHandler implements TaskHandler {
 				// outcome is discarded. The cursor never moves on that path (it only moves
 				// through the staged commit or __emit below), so an abandoned tick leaves
 				// the poll window untouched for the next occurrence to cover.
-				const deadline = timeoutAfter(this.pollTimeoutMs);
-				const leaseLoss = rejectOnAbort(leaseSignal);
+				const deadline = new AbortController();
+				const deadlineTimer = setTimeout(() => deadline.abort(), this.pollTimeoutMs).unref();
+				const abandon = AbortSignal.any([leaseSignal, deadline.signal]);
 				const poll = this.triggersAndPollers.runPollFunction(workflow, node, pollFunctions);
 
 				let pollResponse: Awaited<typeof poll>;
 				try {
-					const outcome = await Promise.race([poll, deadline.timedOut, leaseLoss.aborted]);
+					await Promise.race([poll, aborted(abandon, pollFunctions)]);
 					leaseSignal.throwIfAborted();
-					if (outcome === TIMED_OUT) {
+					if (deadline.signal.aborted) {
 						this.eventService.emit('poll-tick-timed-out', { nodeType: node.type });
 						this.logger.warn('Poll exceeded its timeout and was abandoned', {
 							...logContext,
@@ -189,10 +168,9 @@ export class PollTriggerTaskHandler implements TaskHandler {
 						leaseSignal.throwIfAborted();
 						return report.notDispatched();
 					}
-					pollResponse = outcome;
+					pollResponse = await poll;
 				} finally {
-					deadline.cancel();
-					leaseLoss.cancel();
+					clearTimeout(deadlineTimer);
 				}
 				polled = true;
 
