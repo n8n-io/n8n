@@ -46,7 +46,7 @@ export const INSTANCE_TELEMETRY = defineTelemetryEvents({
 					.enum(['eks', 'aks', 'gke', 'other'])
 					.optional()
 					.describe(
-						'Managed Kubernetes service, read from the kernel release. Only for `kubernetes`',
+						'Best-effort guess of the managed Kubernetes service, read from the kernel release. `other` also covers node images that do not name their cloud. Only for `kubernetes`',
 					),
 			}),
 			execution_variables: z.object({

@@ -40,6 +40,7 @@ describe('detectKubernetesKind', () => {
 		['aks', '5.15.0-1057-azure'],
 		['gke', '6.1.58+-gke'],
 		['gke', '5.15.0-1030-gke'],
+		['gke', '6.1.75+'],
 		['eks', '5.10.205-195.807.amzn2.x86_64'],
 		['eks', '6.1.102-111.182.amzn2023.aarch64'],
 		['other', '6.8.0-45-generic'],
