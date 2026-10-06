@@ -14,9 +14,6 @@ import { decode, verify as verifyJwt, type Jwt } from 'jsonwebtoken';
 import { Logger } from '@n8n/backend-common';
 import { getPublicKeyFromJwk } from './key.utils';
 
-/** The only `typ` accepted today. Its future home is the source config, next to `algorithms`. */
-export const ACCEPTED_TOKEN_TYPES = ['at+jwt', 'application/at+jwt'];
-
 type JwtFailure = { name: string; message: string };
 const isJwtFailure = (error: unknown): error is JwtFailure =>
 	typeof error === 'object' && error !== null && 'name' in error && typeof error.name === 'string';
@@ -123,7 +120,8 @@ export class Oauth2BearerDriver extends AuthenticationDriver {
 		}
 
 		const { typ } = token.header;
-		if (!typ || !ACCEPTED_TOKEN_TYPES.includes(typ)) {
+		const allowedTokenTypes = authentication.allowedTokenTypes;
+		if (!typ || !allowedTokenTypes.includes(typ)) {
 			return { ok: false, reason: 'not-an-access-token' };
 		}
 
