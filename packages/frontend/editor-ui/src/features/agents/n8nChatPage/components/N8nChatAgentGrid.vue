@@ -10,8 +10,10 @@ withDefaults(
 		agents: AgentChatListItem[];
 		loading?: boolean;
 		source: N8nChatAgentSource;
+		/** Puts an n8n Assistant card before the agents. */
+		includeAssistant?: boolean;
 	}>(),
-	{ loading: false },
+	{ loading: false, includeAssistant: false },
 );
 
 const SKELETON_CARD_COUNT = 6;
@@ -28,6 +30,7 @@ const SKELETON_CARD_COUNT = 6;
 			/>
 		</template>
 		<template v-else>
+			<N8nChatAgentCard v-if="includeAssistant" :agent="null" :source="source" />
 			<N8nChatAgentCard v-for="agent in agents" :key="agent.id" :agent="agent" :source="source" />
 		</template>
 	</div>

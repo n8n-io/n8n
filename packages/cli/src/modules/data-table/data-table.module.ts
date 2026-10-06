@@ -1,5 +1,5 @@
 import { OwnershipTransferHandlerRegistry } from '@n8n/backend-services';
-import type { ModuleInterface } from '@n8n/decorators';
+import type { ModuleInterface, SystemTaskClass } from '@n8n/decorators';
 import { BackendModule, OnShutdown } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 
@@ -36,9 +36,11 @@ export class DataTableModule implements ModuleInterface {
 
 		const { DataTableAggregateService } = await import('./data-table-aggregate.service.js');
 		await Container.get(DataTableAggregateService).start();
+	}
 
-		const { DataTableFileCleanupService } = await import('./data-table-file-cleanup.service.js');
-		await Container.get(DataTableFileCleanupService).start();
+	async systemTasks(): Promise<SystemTaskClass[]> {
+		const { DataTableFileCleanupTask } = await import('./data-table-file-cleanup.task.js');
+		return [DataTableFileCleanupTask];
 	}
 
 	@OnShutdown()
@@ -48,9 +50,6 @@ export class DataTableModule implements ModuleInterface {
 
 		const { DataTableAggregateService } = await import('./data-table-aggregate.service.js');
 		await Container.get(DataTableAggregateService).shutdown();
-
-		const { DataTableFileCleanupService } = await import('./data-table-file-cleanup.service.js');
-		await Container.get(DataTableFileCleanupService).shutdown();
 	}
 
 	async entities() {

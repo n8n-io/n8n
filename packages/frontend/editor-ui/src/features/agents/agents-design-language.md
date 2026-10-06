@@ -109,8 +109,10 @@ Do not add top padding or a top margin to a modal's first content wrapper. The
 shell supplies that space. Use the flush body only for a full-bleed workspace.
 The workspace must then own all of its edge spacing.
 
-When a nested credential dialog is open, release the parent focus trap and
-block parent dismissal. The nested dialog owns Escape until it closes.
+When a nested credential or parameter editor dialog is open, release the parent
+focus trap and block parent dismissal. The nested dialog owns Escape until it
+closes. Render expanded parameter editors in the body portal above the Agent
+modal.
 
 ### Title contract
 
@@ -227,6 +229,15 @@ treatment.
 Add a section when an Agent-specific pattern applies to two or more Agent
 surfaces. Keep implementation details with the owning pattern. Do not duplicate
 global Design System guidance.
+
+## Model-defined inputs
+
+Use `ParameterInputFull` for workflow inputs and node tool parameters.
+It owns the field label, Fixed/Expression controls, AI button, model chip,
+and hover and focus behavior. Use its controlled input mode for workflow
+bindings. Keep binding conversion and optional input guidance in the caller.
+Hide the Edit value action in read-only forms. Keep input issues visible
+beside the model label.
 
 ## Tool approvals
 

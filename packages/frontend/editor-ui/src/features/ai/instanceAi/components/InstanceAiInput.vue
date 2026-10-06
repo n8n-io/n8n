@@ -98,6 +98,8 @@ const props = withDefaults(
 		suggestionCatalogVersion?: string;
 		suggestionTelemetryPayload?: ITelemetryTrackProperties;
 		placeholderKey?: BaseTextKey;
+		/** Already-translated base placeholder; wins over `placeholderKey`. Never used as a prefill. */
+		placeholder?: string;
 		// Experiment cleanup: remove with instanceAiSplitEmptyState.
 		previewPromptKey?: BaseTextKey | null;
 		// Experiment cleanup: remove with instanceAiSplitEmptyState.
@@ -269,6 +271,9 @@ defineExpose({
 	// Experiment cleanup: remove with instanceAiSplitEmptyState.
 	insertSuggestion: handleSuggestionInsert,
 	submitSuggestion,
+	// Lets a host disable other controls (e.g. an agent picker) while a file
+	// attachment is still encoding, so they cannot change who a send targets.
+	isPreparingSubmission,
 });
 
 // A run suspended on a plan review is parked, not working: the user is meant to
@@ -451,7 +456,7 @@ const placeholder = computed(() => {
 	if (props.contextualSuggestion) {
 		return props.contextualSuggestion;
 	}
-	return i18n.baseText(props.placeholderKey ?? 'instanceAi.input.placeholder');
+	return props.placeholder ?? i18n.baseText(props.placeholderKey ?? 'instanceAi.input.placeholder');
 });
 
 watch(

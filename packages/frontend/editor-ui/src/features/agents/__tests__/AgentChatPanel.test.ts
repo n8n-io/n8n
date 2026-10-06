@@ -18,6 +18,8 @@ import type { AgentJsonConfig } from '../types';
 import AgentChatPlan from '../components/AgentChatPlan.vue';
 import { planMessage, planView } from './fixtures/agent-plan';
 
+type PanelVm = { sendMessageFromOutside: (message: string, files?: File[]) => void };
+
 const sendMessageMock = vi.fn();
 const stopGeneratingMock = vi.fn();
 const detachStreamMock = vi.fn();
@@ -229,7 +231,7 @@ vi.mock('../components/AgentChatMessageList.vue', () => ({
 	default: {
 		name: 'AgentChatMessageList',
 		template: '<div data-testid="message-list-stub" />',
-		props: ['messages', 'canIncreaseBudget', 'budgetIncreasePending'],
+		props: ['messages', 'messagingState', 'canIncreaseBudget', 'budgetIncreasePending'],
 		emits: ['send-to-assistant', 'increase-budget'],
 	},
 }));
@@ -389,12 +391,270 @@ describe('AgentChatPanel', () => {
 			expect(isCentered(mountPanel({ centerEmptyState: true, newSession: true }))).toBe(false);
 		});
 
+		describe('first message preview', () => {
+			const messageList = (wrapper: ReturnType<typeof mountPanel>) =>
+				wrapper.findComponent({ name: 'AgentChatMessageList' });
+
+			it('shows the first message right away, with the waiting indicator, until the run starts', async () => {
+				sendMessageMock.mockReturnValue(new Promise(() => {}));
+				const wrapper = mountPanel({ centerEmptyState: true, newSession: true });
+
+				(wrapper.vm as unknown as PanelVm).sendMessageFromOutside('hello agent');
+				await flushPromises();
+
+				expect(isCentered(wrapper)).toBe(false);
+				expect(wrapper.find('[data-testid="empty-state-stub"]').exists()).toBe(false);
+				expect(messageList(wrapper).props('messages')).toEqual([
+					expect.objectContaining({ role: 'user', content: 'hello agent' }),
+				]);
+				expect(messageList(wrapper).props('messagingState')).toBe('waitingFirstChunk');
+				wrapper.unmount();
+			});
+
+			it('shows it already while history loads, for a handed-off message', async () => {
+				isLoadingHistoryMock.value = true;
+				const wrapper = mountPanel({ centerEmptyState: true, newSession: true });
+
+				(wrapper.vm as unknown as PanelVm).sendMessageFromOutside('hello agent');
+				await flushPromises();
+
+				expect(sendMessageMock).not.toHaveBeenCalled();
+				expect(messageList(wrapper).props('messages')).toEqual([
+					expect.objectContaining({ content: 'hello agent' }),
+				]);
+				wrapper.unmount();
+			});
+
+			it('does not repeat the previewed message as a pending composer row', async () => {
+				sendMessageMock.mockReturnValue(new Promise(() => {}));
+				const wrapper = mountPanel({ centerEmptyState: true, newSession: true });
+				(wrapper.vm as unknown as PanelVm).sendMessageFromOutside('hello agent');
+				await flushPromises();
+				// The server queues the previewed message as item '1'.
+				sendMessageMock.mock.lastCall?.[2]?.('1');
+				queuedMessagesMock.value = [
+					{
+						id: '1',
+						steeringExecutionId: null,
+						message: 'hello agent',
+						createdAt: new Date().toISOString(),
+					},
+				];
+				await flushPromises();
+
+				expect(wrapper.text()).not.toContain('hello agent');
+				wrapper.unmount();
+			});
+
+			it('hides only the queued copy of the previewed message, keeping a second queued message visible', async () => {
+				sendMessageMock.mockReturnValue(new Promise(() => {}));
+				const wrapper = mountPanel({ centerEmptyState: true, newSession: true });
+				(wrapper.vm as unknown as PanelVm).sendMessageFromOutside('hello agent');
+				await flushPromises();
+				// The server queues the previewed message as item '1'.
+				sendMessageMock.mock.lastCall?.[2]?.('1');
+				queuedMessagesMock.value = [
+					{
+						id: '1',
+						steeringExecutionId: null,
+						message: 'hello agent',
+						createdAt: new Date().toISOString(),
+					},
+					{
+						id: '2',
+						steeringExecutionId: null,
+						message: 'second message',
+						createdAt: new Date().toISOString(),
+					},
+				];
+				await flushPromises();
+
+				const rows = wrapper.findAll('[data-testid="agent-queued-message"]');
+				expect(rows).toHaveLength(1);
+				expect(rows[0].text()).toContain('second message');
+				wrapper.unmount();
+			});
+
+			it('keeps the first message as the preview bubble when a second send arrives before the first run starts', async () => {
+				const firstSend = createDeferredPromise<'sent' | 'busy'>();
+				sendMessageMock.mockReturnValueOnce(firstSend.promise);
+				sendMessageMock.mockReturnValueOnce(new Promise(() => {}));
+				const wrapper = mountPanel({ centerEmptyState: true, newSession: true });
+
+				(wrapper.vm as unknown as PanelVm).sendMessageFromOutside('message one');
+				await flushPromises();
+				expect(messageList(wrapper).props('messages')).toEqual([
+					expect.objectContaining({ content: 'message one' }),
+				]);
+
+				// A second send lands in the gap before the first run has started.
+				const input = wrapper.findComponent({ name: 'ChatInputBase' });
+				await input.vm.$emit('update:modelValue', 'message two');
+				await input.vm.$emit('submit');
+				await flushPromises();
+
+				expect(messageList(wrapper).props('messages')).toEqual([
+					expect.objectContaining({ content: 'message one' }),
+				]);
+				wrapper.unmount();
+			});
+
+			it('does not clear the first message preview when a second, unaccepted send comes back busy', async () => {
+				const firstSend = createDeferredPromise<'sent' | 'busy'>();
+				const secondSend = createDeferredPromise<'sent' | 'busy'>();
+				sendMessageMock.mockReturnValueOnce(firstSend.promise);
+				sendMessageMock.mockReturnValueOnce(secondSend.promise);
+				const wrapper = mountPanel({ centerEmptyState: true, newSession: true });
+
+				(wrapper.vm as unknown as PanelVm).sendMessageFromOutside('message one');
+				await flushPromises();
+
+				const input = wrapper.findComponent({ name: 'ChatInputBase' });
+				await input.vm.$emit('update:modelValue', 'message two');
+				await input.vm.$emit('submit');
+				await flushPromises();
+
+				secondSend.resolve('busy');
+				await flushPromises();
+
+				expect(messageList(wrapper).props('messages')).toEqual([
+					expect.objectContaining({ content: 'message one' }),
+				]);
+				wrapper.unmount();
+			});
+
+			it('gives way to the real messages once they arrive', async () => {
+				sendMessageMock.mockReturnValue(new Promise(() => {}));
+				const wrapper = mountPanel({ centerEmptyState: true, newSession: true });
+				(wrapper.vm as unknown as PanelVm).sendMessageFromOutside('hello agent');
+				await flushPromises();
+
+				const real = [{ id: 'm1', role: 'user', content: 'hello agent' } as ChatMessage];
+				messagesMock.value = real;
+				await flushPromises();
+				messagesMock.value = [];
+				await flushPromises();
+
+				expect(messageList(wrapper).exists()).toBe(false);
+				wrapper.unmount();
+			});
+
+			it('drops the preview when the send comes back busy', async () => {
+				sendMessageMock.mockResolvedValue('busy');
+				const wrapper = mountPanel({ centerEmptyState: true, newSession: true });
+
+				(wrapper.vm as unknown as PanelVm).sendMessageFromOutside('hello agent');
+				await flushPromises();
+
+				expect(messageList(wrapper).exists()).toBe(false);
+				wrapper.unmount();
+			});
+
+			it('drops the preview when the send ends without being accepted', async () => {
+				sendMessageMock.mockResolvedValue('sent');
+				const wrapper = mountPanel({ centerEmptyState: true, newSession: true });
+
+				(wrapper.vm as unknown as PanelVm).sendMessageFromOutside('hello agent');
+				await flushPromises();
+
+				expect(messageList(wrapper).exists()).toBe(false);
+				wrapper.unmount();
+			});
+
+			it('keeps the preview once the send is accepted, until the run adds the messages', async () => {
+				sendMessageMock.mockImplementation(
+					async (_text: string, _files: File[] | undefined, onAccepted: () => void) => {
+						onAccepted();
+						return 'sent';
+					},
+				);
+				const wrapper = mountPanel({ centerEmptyState: true, newSession: true });
+
+				(wrapper.vm as unknown as PanelVm).sendMessageFromOutside('hello agent');
+				await flushPromises();
+
+				expect(messageList(wrapper).props('messages')).toEqual([
+					expect.objectContaining({ content: 'hello agent' }),
+				]);
+				wrapper.unmount();
+			});
+
+			it('does not preview outside the n8n Chat entry page', async () => {
+				sendMessageMock.mockReturnValue(new Promise(() => {}));
+				const wrapper = mountPanel();
+
+				(wrapper.vm as unknown as PanelVm).sendMessageFromOutside('hello agent');
+				await flushPromises();
+
+				expect(messageList(wrapper).exists()).toBe(false);
+				wrapper.unmount();
+			});
+
+			it('ignores a stale, unaccepted send after the target has moved on to a newer hand-off', async () => {
+				const firstSend = createDeferredPromise<'sent' | 'busy'>();
+				sendMessageMock.mockReturnValueOnce(firstSend.promise);
+				const wrapper = mountPanel({
+					centerEmptyState: true,
+					newSession: true,
+					continueSessionId: 's1',
+				});
+
+				(wrapper.vm as unknown as PanelVm).sendMessageFromOutside('hello agent');
+				await flushPromises();
+				expect(messageList(wrapper).props('messages')).toEqual([
+					expect.objectContaining({ content: 'hello agent' }),
+				]);
+
+				// Reused for a different session before the stale first send settles.
+				await wrapper.setProps({ continueSessionId: 's2' });
+				sendMessageMock.mockReturnValueOnce(new Promise(() => {}));
+				(wrapper.vm as unknown as PanelVm).sendMessageFromOutside('hello again');
+				await flushPromises();
+				expect(messageList(wrapper).props('messages')).toEqual([
+					expect.objectContaining({ content: 'hello again' }),
+				]);
+
+				// The first send's response arrives late, never accepted.
+				firstSend.resolve('sent');
+				await flushPromises();
+
+				expect(messageList(wrapper).props('messages')).toEqual([
+					expect.objectContaining({ content: 'hello again' }),
+				]);
+				wrapper.unmount();
+			});
+		});
+
 		it('does not center a continued thread or without the prop', () => {
 			expect(isCentered(mountPanel({ centerEmptyState: true, continueSessionId: 's1' }))).toBe(
 				false,
 			);
 			expect(isCentered(mountPanel())).toBe(false);
 		});
+	});
+
+	it('drops only a blocked hand-off own files when its target is abandoned, keeping user picks', async () => {
+		isLoadingHistoryMock.value = true;
+		const wrapper = mountPanel({ continueSessionId: 's1' });
+		const handOffFile = new File(['a'], 'hand-off.txt', { type: 'text/plain' });
+
+		(wrapper.vm as unknown as PanelVm).sendMessageFromOutside('hello agent', [handOffFile]);
+		await flushPromises();
+		expect(sendMessageMock).not.toHaveBeenCalled();
+
+		// Reused for a different session — the blocked hand-off is abandoned.
+		await wrapper.setProps({ continueSessionId: 's2' });
+		isLoadingHistoryMock.value = false;
+
+		const input = wrapper.findComponent({ name: 'ChatInputBase' });
+		const userFile = new File(['b'], 'user-picked.txt', { type: 'text/plain' });
+		input.vm.$emit('files-selected', [userFile]);
+		input.vm.$emit('update:modelValue', 'new message');
+		input.vm.$emit('submit');
+		await flushPromises();
+
+		expect(sendMessageMock).toHaveBeenCalledWith('new message', [userFile], expect.any(Function));
+		wrapper.unmount();
 	});
 
 	it('keeps two pending messages in the composer below background tasks and removes them without adding conversation bubbles', async () => {
@@ -1513,6 +1773,44 @@ describe('AgentChatPanel', () => {
 		expect(input.props('showStopButton')).toBe(true);
 		expect(wrapper.emitted('initial-consumed')).toEqual([[]]);
 		expect(trackSubmittedMessageMock).toHaveBeenCalledOnce();
+		wrapper.unmount();
+	});
+
+	it('sends files queued with an outside message, surviving the blocked-on-history-load retry', async () => {
+		isLoadingHistoryMock.value = true;
+		const file = new File(['content'], 'notes.txt', { type: 'text/plain' });
+		const wrapper = mountPanel();
+
+		(
+			wrapper.vm as unknown as {
+				sendMessageFromOutside: (message: string, files?: File[]) => void;
+			}
+		).sendMessageFromOutside('Test this task', [file]);
+		await flushPromises();
+		expect(sendMessageMock).not.toHaveBeenCalled();
+
+		isLoadingHistoryMock.value = false;
+		await flushPromises();
+		expect(sendMessageMock).toHaveBeenCalledExactlyOnceWith(
+			'Test this task',
+			[file],
+			expect.any(Function),
+		);
+		wrapper.unmount();
+	});
+
+	it('sends an outside message that carries only files', async () => {
+		const file = new File(['content'], 'notes.txt', { type: 'text/plain' });
+		const wrapper = mountPanel();
+
+		(
+			wrapper.vm as unknown as {
+				sendMessageFromOutside: (message: string, files?: File[]) => void;
+			}
+		).sendMessageFromOutside('', [file]);
+		await flushPromises();
+
+		expect(sendMessageMock).toHaveBeenCalledExactlyOnceWith('', [file], expect.any(Function));
 		wrapper.unmount();
 	});
 
