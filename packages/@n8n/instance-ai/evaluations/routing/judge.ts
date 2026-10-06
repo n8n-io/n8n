@@ -67,8 +67,8 @@ n8n is a workflow automation product. The Assistant can build two different arti
 route:
 - agent: The Assistant starts to build or change an Agent.
 - workflow: The Assistant starts to build or change a workflow that the user keeps and that runs again later.
-- one-off: The Assistant does a task once, now, and the task has an effect. For example, it runs a node or a workflow, writes or deletes data, publishes, unpublishes, or deletes a workflow, or tests a credential. A workflow that it builds only to run once is one-off.
-- debug: The Assistant reads or debugs the executions of a run to find why the run failed or gave a wrong result.
+- one-off: The Assistant does a task once, now, and the task has an effect. For example, it runs a node or a workflow, writes or deletes data, publishes, unpublishes, or deletes a workflow, or tests a credential. A workflow that it builds only to run once is one-off. Opening a credential setup for the user is not one-off, because the user must still finish the setup.
+- debug: The Assistant looks for why a run failed or gave a wrong result. It reads the executions of the run, or it reads the workflow or the Agent to find the cause.
 - multi: The Assistant plans two or more separate pieces of work, for example two workflows, or an Agent and a workflow. A plan for one artifact has the route of that artifact.
 - clarify: The Assistant asks the user for a decision or a missing detail and waits. It shows a question card, or its reply ends with questions that it must have answered before it continues.
 - answer: The Assistant gives information, instructions, an explanation, or a result, and it needs nothing from the user to continue. An answer that ends with an optional offer ("Do you want me to build this?") is still an answer.
@@ -76,10 +76,10 @@ route:
 - none: None of the routes above.
 
 decision:
-- continue: The Assistant only explored. Exploration is loading skills or tools, searching docs, nodes, or templates, and reading workflows, tables, credentials, or settings. Creating an empty table or adding columns is also exploration. Exploration never picks a route, even when the name of the skill, the tool, or the item names a route. Reading a workflow is not debug. Listing or reading credentials, or opening a credential setup for the user, is not one-off.
+- continue: The Assistant only explored. Exploration is loading skills or tools, searching docs, nodes, or templates, and reading workflows, tables, credentials, or settings. Creating an empty table or adding columns is also exploration. Exploration never picks a route, even when the name of the skill, the tool, or the item names a route. Reading a workflow is not debug, unless the Assistant reads it to find why a run failed. Listing or reading credentials is not one-off.
 - continue: The latest call starts work that can still end as more than one route. For example, it writes workflow code, but no call shows yet if the workflow runs once or stays.
-- stop: The latest call picks a route. It starts a build, does a task with an effect, plans tasks, reads executions to find a failure, or asks the user. Stop as soon as the route is clear. Do not wait for the work to finish.
-- When the turn has ended, stop and pick the route from all that the Assistant did and wrote. If the turn did not complete, its last text is not a reply to the user. Then pick the route from the calls only, or none.
+- stop: The latest call picks a route. It starts a build, does a task with an effect, plans tasks, looks for why a run failed, or asks the user. Stop as soon as the route is clear. Do not wait for the work to finish. The route is also clear when the Assistant says what it will build or do (for example, "I'll build this as a workflow").
+- When the turn has ended, stop and pick the route from all that the Assistant did and wrote. If the turn did not complete, its last text is not a reply to the user. Then pick the route from the calls and from what the Assistant said that it will build or do, or none.
 
 steer is the artifact that the Assistant pushes the user toward:
 - agent: It recommends or assumes an Agent, or its questions only make sense for an Agent (persona, tone, what the Agent remembers, where it talks to people). It does not offer a workflow as a real option.
