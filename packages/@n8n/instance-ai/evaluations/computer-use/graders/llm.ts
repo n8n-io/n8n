@@ -2,7 +2,7 @@
 // LLM-as-judge grader: did the agent actually complete the task?
 //
 // Reads the scenario's user prompt + the agent's final text + a compact
-// summary of tool calls, asks a small/cheap LLM "did the agent succeed?",
+// summary of tool calls, asks the judge model "did the agent succeed?",
 // and converts the verdict to a GraderResult. Catches failure modes the
 // trace-level graders can't see (e.g. the agent gave up with an apologetic
 // message but mechanically called the right tools).
@@ -17,7 +17,8 @@ import type {
 	ScenarioTrace,
 } from '../types';
 
-const DEFAULT_TIMEOUT_MS = 30_000;
+// Judges think at high effort, so match the binary checks' headroom.
+const DEFAULT_TIMEOUT_MS = 60_000;
 
 const SYSTEM_PROMPT = `You are a strict evaluator deciding whether an AI assistant successfully completed the task a user asked it to do.
 

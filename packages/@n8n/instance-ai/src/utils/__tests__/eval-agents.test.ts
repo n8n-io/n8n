@@ -290,36 +290,39 @@ describe('eval agent judge and effort settings', () => {
 	it('appends one usage line per model step when the usage log is set', async () => {
 		const dir = mkdtempSync(path.join(tmpdir(), 'eval-usage-'));
 		const file = path.join(dir, 'usage.jsonl');
-		process.env.N8N_INSTANCE_AI_EVAL_USAGE_LOG = file;
+		try {
+			process.env.N8N_INSTANCE_AI_EVAL_USAGE_LOG = file;
 
-		createEvalAgent('judge', { instructions: 'x', judge: true });
-		const hooks = lastAgent().configuration.mock.calls[0][0];
-		hooks.onStepStart({ callId: 'c1', stepNumber: 0 });
-		await hooks.onStepEnd({
-			callId: 'c1',
-			stepNumber: 0,
-			model: { modelId: 'claude-sonnet-5-5' },
-			rawFinishReason: 'end_turn',
-			usage: {
+			createEvalAgent('judge', { instructions: 'x', judge: true });
+			const hooks = lastAgent().configuration.mock.calls[0][0];
+			hooks.onStepStart({ callId: 'c1', stepNumber: 0 });
+			await hooks.onStepEnd({
+				callId: 'c1',
+				stepNumber: 0,
+				model: { modelId: 'claude-sonnet-5-5' },
+				rawFinishReason: 'end_turn',
+				usage: {
+					inputTokens: 100,
+					inputTokenDetails: { cacheReadTokens: 40, cacheWriteTokens: 10 },
+					outputTokens: 20,
+					outputTokenDetails: { reasoningTokens: 5 },
+				},
+			});
+
+			const line = JSON.parse(readFileSync(file, 'utf8').trim());
+			expect(line).toMatchObject({
+				agent: 'judge',
+				model: 'claude-sonnet-5-5',
+				effort: 'high',
+				stopReason: 'end_turn',
 				inputTokens: 100,
-				inputTokenDetails: { cacheReadTokens: 40, cacheWriteTokens: 10 },
+				cacheReadTokens: 40,
+				cacheWriteTokens: 10,
 				outputTokens: 20,
-				outputTokenDetails: { reasoningTokens: 5 },
-			},
-		});
-
-		const line = JSON.parse(readFileSync(file, 'utf8').trim());
-		expect(line).toMatchObject({
-			agent: 'judge',
-			model: 'claude-sonnet-5-5',
-			effort: 'high',
-			stopReason: 'end_turn',
-			inputTokens: 100,
-			cacheReadTokens: 40,
-			cacheWriteTokens: 10,
-			outputTokens: 20,
-			reasoningTokens: 5,
-		});
-		rmSync(dir, { recursive: true, force: true });
+				reasoningTokens: 5,
+			});
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
 	});
 });
