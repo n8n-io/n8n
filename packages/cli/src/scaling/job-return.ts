@@ -11,6 +11,7 @@ function grantRetryAttempt(job: Job) {
 async function moveToFrontOfPriority(job: Job) {
 	try {
 		const { priority } = job.opts;
+		// From 2 ** 52 up, doubles are one apart, so subtracting 0.5 would round.
 		if (typeof priority !== 'number' || !(priority > 0) || priority >= 2 ** 52) return;
 		// Bull's retry reads the stored priority and inserts behind equal scores, so 0.5 less puts the job first.
 		await job.queue.client.hset(job.queue.toKey(String(job.id)), 'priority', priority - 0.5);

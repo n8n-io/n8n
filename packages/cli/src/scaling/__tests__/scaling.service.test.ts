@@ -356,7 +356,7 @@ describe('ScalingService', () => {
 		});
 
 		describe('when a job reaches the worker after stop began', () => {
-			it('should warn and hand the job back without running it', async () => {
+			it('should warn and return the job to the queue without running it', async () => {
 				const processFn = await startWorker();
 				jobProcessor.getRunningJobIds.mockReturnValue([]);
 				const eventService = scalingService['eventService'];
@@ -375,7 +375,7 @@ describe('ScalingService', () => {
 				expect(eventService.emit).not.toHaveBeenCalledWith('job-dequeued', expect.anything());
 			});
 
-			it('should hand the job back without reporting a failure', async () => {
+			it('should return the job to the queue without reporting a failure', async () => {
 				const processFn = await startWorker();
 				jobProcessor.getRunningJobIds.mockReturnValue([]);
 
