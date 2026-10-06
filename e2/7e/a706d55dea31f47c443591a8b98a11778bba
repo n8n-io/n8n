@@ -1,0 +1,25 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/__tests__/InstanceAiAgentsConversation.test.ts
+  s_db74c72b258827::t_a321ff80fbb973 27,30-47,57,69,74-88,141,156,164-174
+packages/cli/src/modules/instance-ai/AGENTS_RUNTIME_POC_REPORT.md
+  ai_agent 43,162-167
+packages/frontend/editor-ui/src/features/agents/components/AgentChatPanel.vue
+  s_db74c72b258827::t_6c7b1a4ca34a0e 112-116,134,1013,1248
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiAgentsConversation.vue
+  s_db74c72b258827::t_6c7b1a4ca34a0e 76,615,640-642
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "e27ea706d55dea31f47c443591a8b98a11778bba",
+  "prompts": {},
+  "sessions": {
+    "s_db74c72b258827": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "623f2f12-b478-4119-a5b9-9b84971b2bbe",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

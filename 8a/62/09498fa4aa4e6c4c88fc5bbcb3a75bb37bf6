@@ -1,0 +1,21 @@
+packages/cli/src/modules/instance-ai/instance-ai.service.ts
+  s_db74c72b258827::t_7fc5ac433aa0e5 251-258,2866,2934-2949
+packages/cli/src/modules/instance-ai/AGENTS_RUNTIME_POC_REPORT.md
+  s_db74c72b258827::t_2dd6115e0f1f64 1-109
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "8a6209498fa4aa4e6c4c88fc5bbcb3a75bb37bf6",
+  "prompts": {},
+  "sessions": {
+    "s_db74c72b258827": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "623f2f12-b478-4119-a5b9-9b84971b2bbe",
+        "model": "unknown"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

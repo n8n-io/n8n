@@ -1,0 +1,27 @@
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/messageMappers.ts
+  s_db74c72b258827::t_b55588391d2bfd 186-193
+packages/frontend/editor-ui/src/features/ai/instanceAi/instanceAi.threadRuntime.ts
+  s_db74c72b258827::t_d930b26e5d6b45 4
+packages/frontend/editor-ui/src/features/ai/instanceAi/alwaysAllow.ts
+  s_db74c72b258827::t_d930b26e5d6b45 1-75
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/__tests__/InstanceAiConfirmationCard.test.ts
+  s_db74c72b258827::t_b0b5296ff1df1f 102-135
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/agentsChat/InstanceAiConfirmationCard.vue
+  s_db74c72b258827::t_b55588391d2bfd 19,185-194,196-200,401
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "3028069fffec193b7a4c0c705b3251bad7170212",
+  "prompts": {},
+  "sessions": {
+    "s_db74c72b258827": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "623f2f12-b478-4119-a5b9-9b84971b2bbe",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}
