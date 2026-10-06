@@ -9,7 +9,11 @@ import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 /** The part of an agent config the policy reads. */
 export type PolicedAgentContent = Pick<AgentJsonConfig, 'name' | 'tools'>;
 
-function policedAgent(agentId: string | null, content: PolicedAgentContent): PolicedWorkflow {
+/** Agents reuse the workflow policy points, so an agent is policed as a workflow of its node tools. */
+function policedWorkflowForAgent(
+	agentId: string | null,
+	content: PolicedAgentContent,
+): PolicedWorkflow {
 	return {
 		id: agentId,
 		name: content.name,
@@ -36,8 +40,8 @@ export class AgentPolicyService {
 	): Promise<void> {
 		await this.policyEnforcementService.enforceWorkflowSave(
 			{
-				workflow: policedAgent(agentId, content),
-				storedWorkflow: stored === null ? null : policedAgent(agentId, stored),
+				workflow: policedWorkflowForAgent(agentId, content),
+				storedWorkflow: stored === null ? null : policedWorkflowForAgent(agentId, stored),
 				projectId,
 			},
 			actor,
@@ -51,7 +55,7 @@ export class AgentPolicyService {
 		actor: PolicyActor,
 	): Promise<void> {
 		await this.policyEnforcementService.enforceWorkflowPublish(
-			{ workflow: policedAgent(agentId, content), projectId },
+			{ workflow: policedWorkflowForAgent(agentId, content), projectId },
 			actor,
 		);
 	}
@@ -62,7 +66,7 @@ export class AgentPolicyService {
 		content: PolicedAgentContent,
 	): Promise<PolicyDecision> {
 		return await this.policyEnforcementService.evaluateWorkflowPublish({
-			workflow: policedAgent(agentId, content),
+			workflow: policedWorkflowForAgent(agentId, content),
 			projectId,
 		});
 	}
