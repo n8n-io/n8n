@@ -12,6 +12,7 @@ import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { ref, shallowRef } from 'vue';
 
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { applyPromotion } from '../promotionsSettings.api';
 import PromotionBindingsFlow from './PromotionBindingsFlow.vue';
 import type { AppliedResult, BlockedApplyResult } from '../promotions.types';
@@ -29,6 +30,7 @@ const emit = defineEmits<{
 const i18n = useI18n();
 const toast = useToast();
 const rootStore = useRootStore();
+const projectsStore = useProjectsStore();
 
 const isSubmitting = ref(false);
 const blockedResult = shallowRef<BlockedApplyResult>();
@@ -66,6 +68,22 @@ function reportApplied(result: AppliedResult) {
 	});
 }
 
+// An instance apply can create and delete projects. The project sidebar is not mounted on
+// this page, so reload the store it reads from instead of emitting a promotion event.
+async function refreshProjects() {
+	try {
+		await Promise.all([projectsStore.getMyProjects(), projectsStore.getProjectsCount()]);
+	} catch {
+		// The apply went through. A stale project list is fixed by the next page load.
+	}
+}
+
+async function onApplied(result: AppliedResult) {
+	reportApplied(result);
+	close();
+	await refreshProjects();
+}
+
 function reportSourceChanged() {
 	toast.showMessage({
 		title: i18n.baseText('settings.promotions.apply.toast.sourceChanged.title'),
@@ -81,8 +99,7 @@ async function submit() {
 		// Whole-branch apply: no expectedSource, so the current branch tip is applied.
 		const result = await applyPromotion(rootStore.publicApiContext, props.connectionId);
 		if (result.status === 'applied') {
-			reportApplied(result);
-			close();
+			await onApplied(result);
 			return;
 		}
 		if (result.status === 'blocked') {
@@ -99,10 +116,9 @@ async function submit() {
 	}
 }
 
-function onBindingsApplied(result: AppliedResult) {
+async function onBindingsApplied(result: AppliedResult) {
 	blockedResult.value = undefined;
-	reportApplied(result);
-	close();
+	await onApplied(result);
 }
 
 function onBindingsSourceChanged() {

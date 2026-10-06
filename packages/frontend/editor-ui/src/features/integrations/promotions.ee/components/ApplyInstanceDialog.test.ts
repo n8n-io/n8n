@@ -1,8 +1,10 @@
 import { createTestingPinia } from '@pinia/testing';
 import { waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
+import { defineComponent, h } from 'vue';
 
 import { createComponentRenderer } from '@/__tests__/render';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { applied, blocked, credential, variable } from '../__tests__/bindings.fixtures';
 import type * as PromotionsApi from '../promotionsSettings.api';
 import ApplyInstanceDialog from './ApplyInstanceDialog.vue';
@@ -54,6 +56,64 @@ describe('ApplyInstanceDialog', () => {
 		);
 		expect(mockShowMessage).toHaveBeenCalledWith(
 			expect.objectContaining({ type: 'success', title: 'Instance updated' }),
+		);
+		await waitFor(() => expect(emitted('update:open')).toEqual([[false]]));
+	});
+
+	it('reloads the project list after a successful apply', async () => {
+		api.applyPromotion.mockResolvedValue(applied);
+		const projectsStore = useProjectsStore();
+		const { findByTestId } = renderComponent();
+
+		await userEvent.click(await findByTestId('apply-confirm-button'));
+
+		await waitFor(() => expect(projectsStore.getMyProjects).toHaveBeenCalledTimes(1));
+		expect(projectsStore.getProjectsCount).toHaveBeenCalledTimes(1);
+	});
+
+	it('reports success when the project list cannot be reloaded', async () => {
+		api.applyPromotion.mockResolvedValue(applied);
+		const projectsStore = useProjectsStore();
+		vi.mocked(projectsStore.getMyProjects).mockRejectedValue(new Error('network'));
+		const { findByTestId, emitted } = renderComponent();
+
+		await userEvent.click(await findByTestId('apply-confirm-button'));
+
+		await waitFor(() => expect(projectsStore.getMyProjects).toHaveBeenCalled());
+		expect(mockShowError).not.toHaveBeenCalled();
+		expect(mockShowMessage).toHaveBeenCalledWith(
+			expect.objectContaining({ title: 'Instance updated' }),
+		);
+		await waitFor(() => expect(emitted('update:open')).toEqual([[false]]));
+	});
+
+	it('reloads the project list after the binding flow applies', async () => {
+		api.applyPromotion.mockResolvedValue(blocked({ missingBindings: [credential] }));
+		const projectsStore = useProjectsStore();
+		const { findByTestId, emitted } = renderComponent({
+			global: {
+				stubs: {
+					PromotionBindingsFlow: defineComponent({
+						emits: ['applied'],
+						setup:
+							(_, { emit }) =>
+							() =>
+								h('button', {
+									'data-test-id': 'stub-applied',
+									onClick: () => emit('applied', applied),
+								}),
+					}),
+				},
+			},
+		});
+
+		await userEvent.click(await findByTestId('apply-confirm-button'));
+		await userEvent.click(await findByTestId('stub-applied'));
+
+		await waitFor(() => expect(projectsStore.getMyProjects).toHaveBeenCalledTimes(1));
+		expect(projectsStore.getProjectsCount).toHaveBeenCalledTimes(1);
+		expect(mockShowMessage).toHaveBeenCalledWith(
+			expect.objectContaining({ title: 'Instance updated' }),
 		);
 		await waitFor(() => expect(emitted('update:open')).toEqual([[false]]));
 	});
