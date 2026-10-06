@@ -34,7 +34,7 @@ import { useLocalStorage, useMediaQuery } from '@vueuse/core';
 import type { EventBus } from '@n8n/utils/event-bus';
 import type { ProjectSharingData } from '@/features/collaboration/projects/projects.types';
 import identity from 'lodash/identity';
-import { modalRegistry } from '@n8n/frontend-module-sdk';
+import { modalRegistry, type ModuleSettingsPage } from '@n8n/frontend-module-sdk';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 
 let savedTheme: ThemeOption = 'system';
@@ -173,7 +173,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 	 * Modules can register items and SettingsSidebar will render them
 	 * when the corresponding module is active.
 	 */
-	const registeredSettingsPages = ref<Record<string, IMenuItem[]>>({});
+	const registeredSettingsPages = ref<Record<string, ModuleSettingsPage[]>>({});
 
 	const appGridDimensions = ref<{ width: number; height: number }>({ width: 0, height: 0 });
 
@@ -286,9 +286,10 @@ export const useUIStore = defineStore(STORES.UI, () => {
 	const settingsSidebarItems = computed<IMenuItem[]>(() => {
 		const items: IMenuItem[] = [];
 		Object.entries(registeredSettingsPages.value).forEach(([moduleName, moduleItems]) => {
-			if (settingsStore.isModuleActive(moduleName)) {
-				items.push(...moduleItems.map((item) => ({ available: true, ...item })));
-			}
+			const isActive = settingsStore.isModuleActive(moduleName);
+			moduleItems.forEach(({ forceModuleVisibility, ...item }) => {
+				if (isActive || forceModuleVisibility) items.push({ available: true, ...item });
+			});
 		});
 		return items;
 	});
@@ -600,7 +601,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		moduleTabs.value[page][moduleName] = tabs;
 	};
 
-	const registerSettingsPages = (moduleName: string, items: IMenuItem[]) => {
+	const registerSettingsPages = (moduleName: string, items: ModuleSettingsPage[]) => {
 		registeredSettingsPages.value[moduleName] = items;
 	};
 

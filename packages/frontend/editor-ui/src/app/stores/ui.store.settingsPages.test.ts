@@ -48,4 +48,53 @@ describe('uiStore.settingsSidebarItems', () => {
 
 		expect(otelItem(uiStore)).toBeUndefined();
 	});
+
+	describe('forceModuleVisibility', () => {
+		const registerPage = (
+			page: { available?: boolean; forceModuleVisibility?: boolean },
+			moduleActive = false,
+		) => {
+			const settingsStore = useSettingsStore();
+			settingsStore.settings = {
+				...settingsStore.settings,
+				activeModules: moduleActive ? ['licensed'] : [],
+			};
+
+			const uiStore = useUIStore();
+			uiStore.registerSettingsPages('licensed', [
+				{ id: 'settings-licensed', label: 'Licensed', position: 'top', ...page },
+			]);
+
+			return uiStore.settingsSidebarItems.find((item) => item.id === 'settings-licensed');
+		};
+
+		it('should list a flagged page of an inactive module', () => {
+			expect(registerPage({ forceModuleVisibility: true })?.available).toBe(true);
+		});
+
+		it('should keep the available value of a flagged page', () => {
+			expect(registerPage({ forceModuleVisibility: true, available: false })?.available).toBe(
+				false,
+			);
+		});
+
+		it('should drop only the unflagged pages of an inactive module', () => {
+			const uiStore = useUIStore();
+			uiStore.registerSettingsPages('licensed', [
+				{ id: 'settings-paywall', label: 'Paywall', position: 'top', forceModuleVisibility: true },
+				{ id: 'settings-detail', label: 'Detail', position: 'top' },
+			]);
+
+			expect(uiStore.settingsSidebarItems.map((item) => item.id)).toEqual(['settings-paywall']);
+		});
+
+		it('should not pass the flag to the menu', () => {
+			expect(registerPage({ forceModuleVisibility: true })).not.toHaveProperty(
+				'forceModuleVisibility',
+			);
+			expect(registerPage({ forceModuleVisibility: true }, true)).not.toHaveProperty(
+				'forceModuleVisibility',
+			);
+		});
+	});
 });

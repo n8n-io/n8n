@@ -194,7 +194,7 @@ you use a surface.
 | `resources`             | `registerModuleResources`      | `ResourcesListLayout`                    |
 | `modals`                | `registerModuleModals`         | `DynamicModalLoader`                     |
 | `adHocModalKeyPrefixes` | `registerModuleModals`         | `modalRegistry` (keys minted at runtime) |
-| `settingsPages`         | `registerModuleSettingsPages`  | `SettingsSidebar`                        |
+| `settingsPages`         | `registerModuleSettingsPages`  | `SettingsSidebar` (see `forceModuleVisibility`) |
 | `pushHandlers`          | `registerModulePushHandlers`   | `useModulePushDispatcher`, in `App.vue`  |
 
 All the register functions are in `editor-ui/src/app/moduleInitializer/moduleInitializer.ts`.
@@ -270,6 +270,30 @@ routes: [
 
 If `meta.middleware` has no `'custom'` entry, the route resolves. The state of the module then
 makes no difference.
+
+### Licensed feature with a paywall page
+
+Without a license, a licensed module is inactive. The shell then hides its settings page,
+so unlicensed users never see the paywall. Set `forceModuleVisibility: true` to keep it:
+
+```ts
+settingsPages: [
+	{
+		id: 'settings-my-feature',
+		label: 'My feature',
+		position: 'top',
+		forceModuleVisibility: true,
+		get available() {
+			return hasScope('myFeature:manage');
+		},
+		route: { to: { name: MY_FEATURE_VIEW } },
+	},
+],
+```
+
+- The module can also be inactive because it is disabled. The page must handle both cases.
+- `available` still applies, so the scope check keeps working.
+- Gate the route with `'rbac'` only. `'custom'` redirects an inactive module before the page renders.
 
 ## Import-light descriptors
 

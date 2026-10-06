@@ -12,6 +12,16 @@ import type { ModuleSetupContext } from './setup';
 import type { ModuleShortcut } from './shortcut';
 import type { DynamicTabOptions } from './tabs';
 
+/** A settings sidebar item that a frontend module registers. */
+export type ModuleSettingsPage = IMenuItem & {
+	/**
+	 * @description Show the item when the module is inactive. Use it for the paywall page
+	 * of a licensed module. The module can be unlicensed or disabled, so the page must
+	 * handle both. The SDK does not check the license. `available` and route `rbac` still apply.
+	 */
+	forceModuleVisibility?: boolean;
+};
+
 /**
  * The declarative contract a frontend module exposes to the editor-ui shell.
  *
@@ -37,7 +47,7 @@ export type FrontendModuleDescription = {
 	 * here so they arrive on the same path as `modals`, not by import side effect.
 	 */
 	adHocModalKeyPrefixes?: string[];
-	settingsPages?: IMenuItem[];
+	settingsPages?: ModuleSettingsPage[];
 
 	// --- descriptor v2 (all optional, additive) ---
 
