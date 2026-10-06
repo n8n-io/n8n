@@ -33,6 +33,7 @@ export class CreateSkillsHubTables1791276719784 implements ReversibleMigration {
 	private async createSkillTable({
 		schemaBuilder: { createTable, column },
 		tablePrefix,
+		escape,
 	}: MigrationContext) {
 		// The id is the identity. Names live on skill_version and may repeat.
 		await createTable(SKILL_TABLE)
@@ -65,12 +66,13 @@ export class CreateSkillsHubTables1791276719784 implements ReversibleMigration {
 			})
 			.withCheck(
 				`CHK_${tablePrefix}skill_single_target`,
-				'"userId" IS NULL OR "projectId" IS NULL',
+				`${escape.columnName('userId')} IS NULL OR ${escape.columnName('projectId')} IS NULL`,
 			);
 	}
 
 	private async createSkillVersionTable({
 		schemaBuilder: { createTable, createIndex, column },
+		escape,
 	}: MigrationContext) {
 		await createTable(SKILL_VERSION_TABLE)
 			.withColumns(
@@ -111,7 +113,13 @@ export class CreateSkillsHubTables1791276719784 implements ReversibleMigration {
 
 		// One draft per skill. The unique (skillId, version) constraint does not cover
 		// it, because NULL versions are distinct there.
-		await createIndex(SKILL_VERSION_TABLE, ['skillId'], true, undefined, '"version" IS NULL');
+		await createIndex(
+			SKILL_VERSION_TABLE,
+			['skillId'],
+			true,
+			undefined,
+			`${escape.columnName('version')} IS NULL`,
+		);
 	}
 
 	private async createSkillFileTable({ schemaBuilder: { createTable, column } }: MigrationContext) {

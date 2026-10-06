@@ -9,12 +9,13 @@ type ProjectRow = { id: string; type: string };
 type OwnerRow = { projectId: string; userId: string };
 
 type SkillRef = { type: 'skill'; id: string; enabled?: boolean };
+type SkillReference = { path: string; content: string };
 type SkillBody = {
 	name: string;
 	description: string;
 	instructions: string;
 	allowedTools?: string[];
-	references?: Array<{ path: string; content: string }>;
+	references?: SkillReference[];
 };
 
 type Target = { userId: string | null; projectId: string | null };
@@ -25,7 +26,7 @@ type PlacedSkill = {
 	hash: string;
 	/** The draft row's content, used to save it as a version when nothing published matches. */
 	draftBody: SkillBody;
-	/** Content hash of the newest saved version, or null while there is none. */
+	/** Content hash of the newest saved version (the highest number), or null while there is none. */
 	latestHash: string | null;
 	draftVersionId: string;
 	/** True when no agent draft references the skill, only published history. */
@@ -35,14 +36,24 @@ type PlacedSkill = {
 	maxVersion: number;
 };
 
+/** `skill.id` is varchar(36); a longer legacy ref gets a minted id instead. */
+const SKILL_ID_MAX_LENGTH = 36;
+
+const BATCH_SIZE = 100;
+
 /**
  * Moves the skill bodies stored on each agent row into the skills hub. Every agent gets
  * its own skills, also for identical copies. Names are copied exactly. Expand phase:
- * `agents.skills` and `agent_history` stay untouched. The oldest agent keeps a skill id;
- * a later agent with the same id gets a new one, and only that agent's draft ref changes.
+ * `agent_history` stays untouched and `agents.skills` keeps every body; only an agent
+ * whose ref id changes has that body re-keyed, so it keeps reading its own copy until
+ * agents switch to the hub. The oldest agent keeps a skill id; a later agent with the
+ * same id gets a new one, and only that agent's ref changes.
  */
 export class MigrateAgentSkillsToHub1791276719785 implements IrreversibleMigration {
 	private targetsByProject = new Map<string, Target>();
+
+	/** Agent id to project id, filled by the draft pass and read by the history pass. */
+	private agentProjects = new Map<string, string>();
 
 	private skillsById = new Map<string, PlacedSkill>();
 
@@ -53,15 +64,14 @@ export class MigrateAgentSkillsToHub1791276719785 implements IrreversibleMigrati
 
 	private dependencies = new Set<string>();
 
-	private counts = { skills: 0, renamedIds: 0, versions: 0, pins: 0 };
+	private counts = { skills: 0, renamedIds: 0, versions: 0, pins: 0, skippedRows: 0 };
 
 	async up(context: MigrationContext) {
 		// TypeORM keeps one instance per data source, so a run starts from empty state.
 		this.reset();
 		await this.loadTargets(context);
-		const agents = await this.loadAgents(context);
-		await this.migrateDraftRefs(context, agents);
-		await this.migrateHistory(context, new Map(agents.map((agent) => [agent.id, agent])));
+		await this.migrateDraftRefs(context);
+		await this.migrateHistory(context);
 		await this.saveUnpublishedDrafts(context);
 		await this.writeDependencies(context);
 		context.logger.info(`[${context.migrationName}] ${JSON.stringify(this.counts)}`);
@@ -69,11 +79,12 @@ export class MigrateAgentSkillsToHub1791276719785 implements IrreversibleMigrati
 
 	private reset() {
 		this.targetsByProject = new Map();
+		this.agentProjects = new Map();
 		this.skillsById = new Map();
 		this.usedIds = new Set();
 		this.refMapping = new Map();
 		this.dependencies = new Set();
-		this.counts = { skills: 0, renamedIds: 0, versions: 0, pins: 0 };
+		this.counts = { skills: 0, renamedIds: 0, versions: 0, pins: 0, skippedRows: 0 };
 	}
 
 	private async loadTargets({ escape, runQuery }: MigrationContext) {
@@ -101,82 +112,108 @@ export class MigrateAgentSkillsToHub1791276719785 implements IrreversibleMigrati
 		}
 	}
 
-	private async loadAgents({ escape, runQuery }: MigrationContext): Promise<AgentRow[]> {
+	private async migrateDraftRefs(context: MigrationContext) {
+		const { escape, runInBatches } = context;
 		const columns = ['id', 'projectId', 'schema', 'skills']
 			.map((name) => escape.columnName(name))
 			.join(', ');
-		return await runQuery<AgentRow[]>(
+		// Updates below never change the sort key, so offset paging stays stable.
+		await runInBatches<AgentRow>(
 			`SELECT ${columns} FROM ${escape.tableName('agents')} ORDER BY ${escape.columnName('createdAt')}, ${escape.columnName('id')}`,
+			async (agents) => {
+				for (const agent of agents) {
+					this.agentProjects.set(agent.id, agent.projectId);
+					try {
+						await this.migrateAgentDraft(context, agent);
+					} catch (error) {
+						this.skipRow(context, `agent ${agent.id}`, error);
+					}
+				}
+			},
+			BATCH_SIZE,
 		);
 	}
 
-	private async migrateDraftRefs(context: MigrationContext, agents: AgentRow[]) {
+	private async migrateAgentDraft(context: MigrationContext, agent: AgentRow) {
 		const { escape, runQuery, parseJson } = context;
-		for (const agent of agents) {
-			const schema = agent.schema ? parseJson<{ skills?: SkillRef[] }>(agent.schema) : null;
-			const bodies = agent.skills ? parseJson<Record<string, unknown>>(agent.skills) : {};
-			const refs = schema?.skills ?? [];
-			const target = this.targetFor(agent.projectId);
-			let rewritten = false;
+		const schema = agent.schema ? parseJson<{ skills?: unknown }>(agent.schema) : null;
+		const bodies = toRecord(agent.skills ? parseJson<unknown>(agent.skills) : null);
+		const refs = toSkillRefs(schema?.skills);
+		const target = this.targetFor(agent.projectId);
+		let rewritten = false;
 
-			for (const ref of refs) {
-				const key = `${agent.id}|${ref.id}`;
-				// A body without a ref is never read today, so it is skipped. A ref without
-				// a body stays as it is: validation reports it, as it does today.
-				const body = toSkillBody(bodies[ref.id]);
-				if (!body) continue;
-				let skillId = this.refMapping.get(key);
-				if (!skillId) {
-					skillId = await this.placeSkill(context, target, body, ref.id, false);
-					this.refMapping.set(key, skillId);
-				}
-				this.dependencies.add(`${agent.id}|${skillId}`);
-				if (skillId !== ref.id) {
-					ref.id = skillId;
-					rewritten = true;
-				}
+		for (const ref of refs) {
+			const key = `${agent.id}|${ref.id}`;
+			// A body without a ref is never read today, so it is skipped. A ref without
+			// a body stays as it is: validation reports it, as it does today.
+			const body = toSkillBody(bodies[ref.id]);
+			if (!body) continue;
+			let skillId = this.refMapping.get(key);
+			if (!skillId) {
+				skillId = await this.placeSkill(context, target, body, ref.id, false);
+				this.refMapping.set(key, skillId);
 			}
+			this.dependencies.add(`${agent.id}|${skillId}`);
+			if (skillId !== ref.id) {
+				// The agent reads `skills[ref.id]` until it switches to the hub, so the
+				// body moves to the new key together with the ref.
+				bodies[skillId] = bodies[ref.id];
+				delete bodies[ref.id];
+				ref.id = skillId;
+				rewritten = true;
+			}
+		}
 
-			if (rewritten) {
-				this.counts.renamedIds++;
-				await runQuery(
-					`UPDATE ${escape.tableName('agents')} SET ${escape.columnName('schema')} = :schema WHERE ${escape.columnName('id')} = :id`,
-					{ schema: JSON.stringify(schema), id: agent.id },
-				);
-			}
+		if (rewritten && schema) {
+			this.counts.renamedIds++;
+			await runQuery(
+				`UPDATE ${escape.tableName('agents')} SET ${escape.columnName('schema')} = :schema, ${escape.columnName('skills')} = :skills WHERE ${escape.columnName('id')} = :id`,
+				{ schema: JSON.stringify(schema), skills: JSON.stringify(bodies), id: agent.id },
+			);
 		}
 	}
 
-	private async migrateHistory(context: MigrationContext, agentsById: Map<string, AgentRow>) {
-		const { escape, runQuery, parseJson } = context;
+	private async migrateHistory(context: MigrationContext) {
+		const { escape, runInBatches } = context;
 		const columns = ['versionId', 'agentId', 'skills'].map((name) => escape.columnName(name));
-		const history = await runQuery<HistoryRow[]>(
+		await runInBatches<HistoryRow>(
 			`SELECT ${columns.join(', ')} FROM ${escape.tableName('agent_history')} ORDER BY ${escape.columnName('createdAt')}, ${escape.columnName('versionId')}`,
-		);
-
-		for (const row of history) {
-			const agent = agentsById.get(row.agentId);
-			if (!agent || !row.skills) continue;
-			const bodies = parseJson<Record<string, unknown> | null>(row.skills) ?? {};
-			const target = this.targetFor(agent.projectId);
-
-			for (const [refId, raw] of Object.entries(bodies)) {
-				const body = toSkillBody(raw);
-				if (!body) continue;
-				const key = `${agent.id}|${refId}`;
-				let skillId = this.refMapping.get(key);
-				if (!skillId) {
-					// The skill left the draft after publish. It stays a normal live skill.
-					skillId = await this.placeSkill(context, target, body, refId, true);
-					this.refMapping.set(key, skillId);
+			async (rows) => {
+				for (const row of rows) {
+					const projectId = this.agentProjects.get(row.agentId);
+					if (projectId === undefined || !row.skills) continue;
+					try {
+						await this.migrateHistoryRow(context, row, projectId);
+					} catch (error) {
+						this.skipRow(context, `agent version ${row.versionId}`, error);
+					}
 				}
-				const versionId = await this.savedVersionFor(context, skillId, body);
-				await runQuery(
-					`INSERT INTO ${escape.tableName('agent_history_skill')} (${escape.columnName('agentVersionId')}, ${escape.columnName('skillRefId')}, ${escape.columnName('skillVersionId')}) VALUES (:agentVersionId, :skillRefId, :skillVersionId)`,
-					{ agentVersionId: row.versionId, skillRefId: refId, skillVersionId: versionId },
-				);
-				this.counts.pins++;
+			},
+			BATCH_SIZE,
+		);
+	}
+
+	private async migrateHistoryRow(context: MigrationContext, row: HistoryRow, projectId: string) {
+		const { escape, runQuery, parseJson } = context;
+		const bodies = toRecord(parseJson<unknown>(row.skills!));
+		const target = this.targetFor(projectId);
+
+		for (const [refId, raw] of Object.entries(bodies)) {
+			const body = toSkillBody(raw);
+			if (!body) continue;
+			const key = `${row.agentId}|${refId}`;
+			let skillId = this.refMapping.get(key);
+			if (!skillId) {
+				// The skill left the draft after publish. It stays a normal live skill.
+				skillId = await this.placeSkill(context, target, body, refId, true);
+				this.refMapping.set(key, skillId);
 			}
+			const versionId = await this.savedVersionFor(context, skillId, body);
+			await runQuery(
+				`INSERT INTO ${escape.tableName('agent_history_skill')} (${escape.columnName('agentVersionId')}, ${escape.columnName('skillRefId')}, ${escape.columnName('skillVersionId')}) VALUES (:agentVersionId, :skillRefId, :skillVersionId)`,
+				{ agentVersionId: row.versionId, skillRefId: refId, skillVersionId: versionId },
+			);
+			this.counts.pins++;
 		}
 	}
 
@@ -219,7 +256,10 @@ export class MigrateAgentSkillsToHub1791276719785 implements IrreversibleMigrati
 		preferredId: string,
 		historyOnly: boolean,
 	): Promise<string> {
-		const id = this.usedIds.has(preferredId) ? this.mintSkillId() : preferredId;
+		const id =
+			this.usedIds.has(preferredId) || preferredId.length > SKILL_ID_MAX_LENGTH
+				? this.mintSkillId()
+				: preferredId;
 		this.usedIds.add(id);
 		const { escape, runQuery } = context;
 		const columns = ['id', 'userId', 'projectId', 'source', 'createdById'];
@@ -252,19 +292,20 @@ export class MigrateAgentSkillsToHub1791276719785 implements IrreversibleMigrati
 		if (!skill) throw new Error(`Skill ${skillId} was not created by this migration`);
 
 		const hash = contentHash(body);
-		const reused = skill.savedVersions.get(hash);
-		if (reused) return reused;
-
-		skill.maxVersion++;
-		const versionId = await this.insertVersion(context, skillId, skill.maxVersion, body);
-		skill.savedVersions.set(hash, versionId);
-		skill.latestHash = hash;
-		this.counts.versions++;
+		let versionId = skill.savedVersions.get(hash);
+		if (!versionId) {
+			skill.maxVersion++;
+			versionId = await this.insertVersion(context, skillId, skill.maxVersion, body);
+			skill.savedVersions.set(hash, versionId);
+			skill.latestHash = hash;
+			this.counts.versions++;
+		}
 
 		// A history-only skill has no draft of its own, so its draft follows the newest
-		// published content.
+		// published content, also when that content repeats an older version.
 		if (skill.historyOnly && skill.hash !== hash) {
 			await this.replaceDraft(context, skill.draftVersionId, body);
+			skill.draftBody = body;
 			skill.hash = hash;
 		}
 		return versionId;
@@ -348,6 +389,13 @@ export class MigrateAgentSkillsToHub1791276719785 implements IrreversibleMigrati
 		await this.insertFiles(context, draftVersionId, body);
 	}
 
+	/** A row the migration cannot read is logged and left as it is; the rest proceeds. */
+	private skipRow({ logger, migrationName }: MigrationContext, what: string, error: unknown) {
+		this.counts.skippedRows++;
+		const message = error instanceof Error ? error.message : String(error);
+		logger.warn(`[${migrationName}] Skipping ${what}: ${message}`);
+	}
+
 	private targetFor(projectId: string): Target {
 		return this.targetsByProject.get(projectId) ?? { userId: null, projectId };
 	}
@@ -360,17 +408,49 @@ export class MigrateAgentSkillsToHub1791276719785 implements IrreversibleMigrati
 	}
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function toRecord(value: unknown): Record<string, unknown> {
+	return isRecord(value) ? value : {};
+}
+
+/** Only refs with a usable id are kept; anything else in the list is ignored. */
+function toSkillRefs(value: unknown): SkillRef[] {
+	if (!Array.isArray(value)) return [];
+	return value.filter(
+		(ref): ref is SkillRef =>
+			isRecord(ref) && ref.type === 'skill' && typeof ref.id === 'string' && ref.id.length > 0,
+	);
+}
+
+/** Null for a body the runtime could not load either. Optional fields are kept only when well formed. */
 function toSkillBody(raw: unknown): SkillBody | null {
-	if (typeof raw !== 'object' || raw === null) return null;
-	const body = raw as Partial<SkillBody>;
+	if (!isRecord(raw)) return null;
+	const { name, description, instructions, allowedTools, references } = raw;
 	if (
-		typeof body.name !== 'string' ||
-		typeof body.description !== 'string' ||
-		typeof body.instructions !== 'string'
+		typeof name !== 'string' ||
+		typeof description !== 'string' ||
+		typeof instructions !== 'string'
 	) {
 		return null;
 	}
-	return body as SkillBody;
+	const body: SkillBody = { name, description, instructions };
+	if (Array.isArray(allowedTools)) {
+		const tools = allowedTools.filter((tool): tool is string => typeof tool === 'string');
+		if (tools.length > 0) body.allowedTools = tools;
+	}
+	if (Array.isArray(references)) {
+		const files = references.filter(
+			(reference): reference is SkillReference =>
+				isRecord(reference) &&
+				typeof reference.path === 'string' &&
+				typeof reference.content === 'string',
+		);
+		if (files.length > 0) body.references = files;
+	}
+	return body;
 }
 
 function toFrontmatter(body: SkillBody): Record<string, string> | null {
