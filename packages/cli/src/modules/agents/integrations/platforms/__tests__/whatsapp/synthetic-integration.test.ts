@@ -96,8 +96,8 @@ describe('WhatsApp Cloud API integration scenarios', () => {
 			['image', whatsAppInboundImageMessage, 'image/jpeg'],
 			['document', whatsAppInboundDocumentMessage, 'application/pdf'],
 			['audio', whatsAppInboundAudioMessage, 'audio/mpeg'],
-			// Sniffed from real Opus/OGG magic bytes (see WHATSAPP_MEDIA_CONTENT) —
-			// the codec parameter comes from the sniffer, not the declared type.
+			// Real voice-note shape: `type: "audio"` with `audio.voice: true`. The
+			// MIME type is sniffed from the Opus/OGG bytes in WHATSAPP_MEDIA_CONTENT.
 			['voice', whatsAppInboundVoiceMessage, 'audio/ogg; codecs=opus'],
 			['video', whatsAppInboundVideoMessage, 'video/mp4'],
 			['sticker', whatsAppInboundStickerMessage, 'image/webp'],
@@ -191,11 +191,9 @@ describe('WhatsApp Cloud API integration scenarios', () => {
 			}
 		});
 
-		it('drops a contacts message entirely — the adapter has no handling for it', async () => {
-			// Documents a real gap in the pinned adapter version: `type: "contacts"`
-			// has no structured field on `WhatsAppInboundMessage` and no text
-			// fallback, so the message never reaches n8n at all. Not something this
-			// integration can fix without the version bump we already ruled out.
+		it('passes a shared contact to the agent as a text summary', async () => {
+			// The adapter has no handling for `contacts` and drops the message, so
+			// the integration's adapter subclass summarizes it as text instead.
 			const fixtures = whatsAppReplayFixtures();
 			const ctx = await createWhatsAppReplayContext(fixtures);
 			try {
@@ -207,7 +205,12 @@ describe('WhatsApp Cloud API integration scenarios', () => {
 					}),
 				);
 
-				expect(ctx.agentExecutor.executeForChatPublished).not.toHaveBeenCalled();
+				expect(ctx.attachmentService.storeInbound).not.toHaveBeenCalled();
+				expect(ctx.agentExecutor.executeForChatPublished).toHaveBeenCalledExactlyOnceWith(
+					expect.objectContaining({
+						message: expect.stringContaining('[Contact: Jane Doe - +44 7700 900123]'),
+					}),
+				);
 			} finally {
 				await ctx.shutdown();
 			}

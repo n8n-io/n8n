@@ -1,6 +1,7 @@
 import type { RichCardComponentType } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
+import { isRecord } from '@n8n/utils/is-record';
 import type {
 	AdapterPostableMessage,
 	ChatInstance,
@@ -30,7 +31,7 @@ import {
 } from '../component-mapper';
 import { assertCredentialNotClaimed } from '../credential-claim';
 import { loadChatSdk, loadWhatsAppAdapter } from '../esm-loader';
-import { deriveWhatsAppVerifyToken, stringValue } from '../integration-helpers';
+import { deriveWhatsAppVerifyToken, stringProperty, stringValue } from '../integration-helpers';
 import { resolveIntegrationActionDefinitions } from '../integration-tool-definitions';
 
 type ChatSdk = Awaited<ReturnType<typeof loadChatSdk>>;
@@ -229,6 +230,13 @@ export class WhatsAppIntegration extends AgentChatIntegration {
 				await assertCustomerServiceWindowOpen(this.chat, sdk, threadId, logger);
 				return await super.stream(threadId, textStream, options);
 			}
+
+			// The adapter returns null for `contacts`, which drops the message.
+			// Summarize shared contact cards as text so the agent still gets them.
+			protected override extractTextContent(message: WhatsAppRawMessage['message']) {
+				if (message.type === 'contacts') return formatSharedContacts(message);
+				return super.extractTextContent(message);
+			}
 		}
 
 		return new ConversationWindowGuardedAdapter(config);
@@ -360,6 +368,25 @@ export class WhatsAppIntegration extends AgentChatIntegration {
 		if (typeof value === 'string' && value.trim()) return value.trim();
 		throw new UserError(message);
 	}
+}
+
+/**
+ * Summarize a `contacts` message in the same bracketed style the adapter uses
+ * for other non-text types (e.g. `[Location: ...]`). The adapter's inbound
+ * type does not declare the `contacts` field, so read it defensively.
+ * @see https://developers.facebook.com/docs/whatsapp/cloud-api/webhooks/payload-examples#contacts-messages
+ */
+function formatSharedContacts(message: unknown): string {
+	const contacts = isRecord(message) && Array.isArray(message.contacts) ? message.contacts : [];
+	const lines = contacts.map((contact: unknown) => {
+		const name = isRecord(contact) ? stringProperty(contact.name, 'formatted_name') : undefined;
+		const phones = isRecord(contact) && Array.isArray(contact.phones) ? contact.phones : [];
+		const phoneNumbers = phones
+			.map((phone: unknown) => stringProperty(phone, 'phone'))
+			.filter((phone): phone is string => phone !== undefined);
+		return `[Contact: ${[name ?? 'Unknown', ...phoneNumbers].join(' - ')}]`;
+	});
+	return lines.length > 0 ? lines.join('\n') : '[Contact]';
 }
 
 /**

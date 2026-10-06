@@ -45,7 +45,6 @@ export interface WhatsAppInboundMessageFixture {
 		| 'image'
 		| 'document'
 		| 'audio'
-		| 'voice'
 		| 'video'
 		| 'sticker'
 		| 'location'
@@ -67,13 +66,13 @@ export interface WhatsAppInboundMessageFixture {
 		caption?: string;
 	};
 	audio?: { id: string; mime_type: string; sha256: string; voice?: boolean };
-	voice?: { id: string; mime_type: string; sha256: string };
 	video?: { id: string; mime_type: string; sha256: string; caption?: string };
 	sticker?: { id: string; mime_type: string; sha256: string; animated: boolean };
 	location?: { latitude: number; longitude: number; name?: string; address?: string; url?: string };
-	// `contacts` has no payload fixture field: the real adapter never surfaces
-	// structured content for it (see synthetic-fixtures.ts) — it's included
-	// here only so a webhook can carry `type: 'contacts'` to exercise that drop.
+	contacts?: Array<{
+		name: { formatted_name: string; first_name?: string; last_name?: string };
+		phones?: Array<{ phone: string; wa_id?: string; type?: string }>;
+	}>;
 }
 
 export interface WhatsAppWebhookFixture {
@@ -161,8 +160,8 @@ const WHATSAPP_MEDIA_CONTENT: Record<string, Buffer> = {
 	document: Buffer.from('%PDF-1.4\nsynthetic test content padding padding padding'),
 	audio: Buffer.from([0xff, 0xfb, 0x90, 0x64, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]),
 	// A minimal real OGG page (see https://www.rfc-editor.org/rfc/rfc3533)
-	// wrapping an Opus stream header, so it sniffs as audio/ogg like a real
-	// WhatsApp voice note would, not a generic/undetected container.
+	// wrapping a complete 19-byte Opus ID header (RFC 7845 §5.1), so it sniffs
+	// as audio/ogg like a real WhatsApp voice note would.
 	voice: Buffer.concat([
 		Buffer.from('OggS'),
 		Buffer.from([0x00]), // version
@@ -171,9 +170,15 @@ const WHATSAPP_MEDIA_CONTENT: Record<string, Buffer> = {
 		Buffer.from([0x01, 0x02, 0x03, 0x04]), // serial number
 		Buffer.alloc(4), // page sequence number
 		Buffer.alloc(4), // CRC checksum
-		Buffer.from([0x13]), // page_segments = 1 entry
-		Buffer.from([19]), // segment_table: one lacing value of 19 bytes
-		Buffer.from('OpusHead\x01\x02\x00\x00\x00\x00\x00\x00\x00'),
+		Buffer.from([0x01]), // page_segments: one lacing value follows
+		Buffer.from([19]), // segment_table: one 19-byte segment
+		Buffer.from('OpusHead'),
+		Buffer.from([0x01]), // version
+		Buffer.from([0x01]), // channel count
+		Buffer.from([0x38, 0x01]), // pre-skip (312, little-endian)
+		Buffer.from([0x80, 0xbb, 0x00, 0x00]), // input sample rate (48000, little-endian)
+		Buffer.from([0x00, 0x00]), // output gain
+		Buffer.from([0x00]), // channel mapping family
 	]),
 	video: Buffer.from([0, 0, 0, 0x18, 0x66, 0x74, 0x79, 0x70, 0x6d, 0x70, 0x34, 0x32]),
 	sticker: Buffer.concat([Buffer.from('RIFF'), Buffer.from([0, 0, 0, 0]), Buffer.from('WEBPVP8 ')]),

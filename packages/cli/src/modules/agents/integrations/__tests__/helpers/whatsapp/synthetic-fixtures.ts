@@ -75,13 +75,21 @@ export const whatsAppInboundAudioMessage = (
 	...overrides,
 });
 
-/** A recorded voice note, distinct from a shared `audio` file — see `type` on `WhatsAppInboundMessage`. */
+/**
+ * A recorded voice note. Meta sends these as `type: "audio"` with
+ * `audio.voice: true` and an Opus/OGG payload, not as `type: "voice"`.
+ */
 export const whatsAppInboundVoiceMessage = (
 	overrides: Partial<WhatsAppInboundMessageFixture> = {},
 ): WhatsAppInboundMessageFixture => ({
 	...mediaMessageBase(overrides),
-	type: 'voice',
-	voice: { id: 'media-voice-1', mime_type: 'audio/ogg', sha256: 'test-sha256-voice' },
+	type: 'audio',
+	audio: {
+		id: 'media-voice-1',
+		mime_type: 'audio/ogg; codecs=opus',
+		sha256: 'test-sha256-voice',
+		voice: true,
+	},
 	...overrides,
 });
 
@@ -117,17 +125,17 @@ export const whatsAppInboundLocationMessage = (
 	...overrides,
 });
 
-/**
- * The real adapter drops `contacts` messages entirely (no structured field on
- * `WhatsAppInboundMessage`, `extractTextContent` returns null for the type,
- * so the message never reaches n8n) — this fixture exists to prove that drop
- * in a test, not to exercise any handling of it.
- */
 export const whatsAppInboundContactsMessage = (
 	overrides: Partial<WhatsAppInboundMessageFixture> = {},
 ): WhatsAppInboundMessageFixture => ({
 	...mediaMessageBase(overrides),
 	type: 'contacts',
+	contacts: [
+		{
+			name: { formatted_name: 'Jane Doe', first_name: 'Jane', last_name: 'Doe' },
+			phones: [{ phone: '+44 7700 900123', wa_id: '447700900123', type: 'CELL' }],
+		},
+	],
 	...overrides,
 });
 
