@@ -25,10 +25,14 @@ export function detectRuntime(env: NodeJS.ProcessEnv, isDocker: boolean): Runtim
 	return isDocker ? 'docker' : 'other';
 }
 
-/** Reads the cloud from the kernel release string, for example `5.10.0-1234-azure`. */
+/**
+ * Best-effort guess of the cloud from the kernel release string, for example `5.10.0-1234-azure`.
+ * Container-Optimized OS, the default GKE image, ends in `+`. Other node images, such as
+ * Bottlerocket, carry no cloud name and give `other`.
+ */
 export function detectKubernetesKind(osRelease: string): KubernetesKind {
 	if (osRelease.includes('-azure')) return 'aks';
-	if (osRelease.includes('-gke')) return 'gke';
+	if (osRelease.includes('-gke') || /\d\+$/.test(osRelease)) return 'gke';
 	if (osRelease.includes('amzn2')) return 'eks';
 	return 'other';
 }
