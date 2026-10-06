@@ -12,7 +12,6 @@ import {
 } from '@n8n/db';
 import { Command } from '@n8n/decorators';
 import { Container } from '@n8n/di';
-import { In } from '@n8n/typeorm';
 import { UserError } from 'n8n-workflow';
 import { z } from 'zod';
 
@@ -104,20 +103,12 @@ export class Reset extends BaseCommand<z.infer<typeof flagsSchema>> {
 			);
 		}
 
-		const [ownedSharedWorkflows, ownedSharedCredentials] = await Promise.all([
-			Container.get(SharedWorkflowRepository).find({
-				select: { workflowId: true },
-				where: { projectId: In(personalProjectIds), role: 'workflow:owner' },
-			}),
-			Container.get(SharedCredentialsRepository).find({
-				relations: { credentials: true },
-				where: { projectId: In(personalProjectIds), role: 'credential:owner' },
-			}),
+		const [ownedWorkflowIds, ownedCredentials] = await Promise.all([
+			Container.get(SharedWorkflowRepository).findOwnedWorkflowIdsByProjects(personalProjectIds),
+			Container.get(SharedCredentialsRepository).findOwnedCredentialsByProjects(personalProjectIds),
 		]);
 
-		const ownedCredentials = ownedSharedCredentials.map(({ credentials }) => credentials);
-
-		for (const { workflowId } of ownedSharedWorkflows) {
+		for (const workflowId of ownedWorkflowIds) {
 			await Container.get(WorkflowService).delete(owner, workflowId, true);
 		}
 
@@ -133,7 +124,7 @@ export class Reset extends BaseCommand<z.infer<typeof flagsSchema>> {
 		await Container.get(AuthProviderSyncHistoryRepository).delete({ providerType: 'ldap' });
 		await Container.get(AuthIdentityRepository).delete({ providerType: 'ldap' });
 		await Container.get(UserRepository).deleteMany(ldapIdentities.map((i) => i.userId));
-		await Container.get(ProjectRepository).delete({ id: In(personalProjectIds) });
+		await Container.get(ProjectRepository).deleteByIds(personalProjectIds);
 		await Container.get(SettingsRepository).delete({ key: LDAP_FEATURE_NAME });
 		await Container.get(SettingsRepository).insert({
 			key: LDAP_FEATURE_NAME,

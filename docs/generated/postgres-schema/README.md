@@ -10,6 +10,8 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | ---- | ------- | ------- | ---- |
 | [public.activity_event](public.activity_event.md) | 11 |  | BASE TABLE |
 | [public.agent_background_job](public.agent_background_job.md) | 20 |  | BASE TABLE |
+| [public.agent_budget_applied_call](public.agent_budget_applied_call.md) | 2 |  | BASE TABLE |
+| [public.agent_budget_spend](public.agent_budget_spend.md) | 4 |  | BASE TABLE |
 | [public.agent_channel_status](public.agent_channel_status.md) | 11 |  | BASE TABLE |
 | [public.agent_chat_attachments](public.agent_chat_attachments.md) | 12 |  | BASE TABLE |
 | [public.agent_chat_subscriptions](public.agent_chat_subscriptions.md) | 6 |  | BASE TABLE |
@@ -132,7 +134,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.token_exchange_jti](public.token_exchange_jti.md) | 3 |  | BASE TABLE |
 | [public.trusted_key](public.trusted_key.md) | 4 |  | BASE TABLE |
 | [public.trusted_key_source](public.trusted_key_source.md) | 8 |  | BASE TABLE |
-| [public.trusted_source](public.trusted_source.md) | 12 |  | BASE TABLE |
+| [public.trusted_source](public.trusted_source.md) | 15 |  | BASE TABLE |
 | [public.trusted_source_identity](public.trusted_source_identity.md) | 8 |  | BASE TABLE |
 | [public.type_availability_policy](public.type_availability_policy.md) | 7 |  | BASE TABLE |
 | [public.type_availability_policy_attachment](public.type_availability_policy_attachment.md) | 6 |  | BASE TABLE |
@@ -442,6 +444,16 @@ erDiagram
   varchar_255_ title
   timestamp_3__with_time_zone updatedAt
   varchar_36_ workflowId
+}
+"public.agent_budget_applied_call" {
+  uuid callId
+  timestamp_3__with_time_zone createdAt
+}
+"public.agent_budget_spend" {
+  timestamp_3__with_time_zone createdAt
+  varchar_128_ key
+  double_precision totalUsd
+  timestamp_3__with_time_zone updatedAt
 }
 "public.agent_channel_status" {
   varchar_36_ agentId FK
@@ -1651,11 +1663,14 @@ erDiagram
   text config
   integer configVersion
   timestamp_3__with_time_zone createdAt
+  varchar_36_ discoveryClaimToken
+  timestamp_3__with_time_zone discoveryClaimedAt
   varchar_36_ id
   varchar issuer
   timestamp_3__with_time_zone lastCheckedAt
   text lastError
   varchar_16_ managedBy
+  text metadata
   varchar_128_ name
   varchar_16_ status
   varchar_32_ type

@@ -155,10 +155,8 @@ export default defineConfig({
 			// must fail CI. Entries are removed as each handler becomes a controller.
 			files: [
 				'./src/public-api/v1/handlers/evaluations/evaluations.handler.ts',
-				'./src/public-api/v1/handlers/ldap/ldap.handler.ts',
 				'./src/public-api/v1/handlers/log-streaming/log-streaming.handler.ts',
 				'./src/public-api/v1/handlers/n8n-packages/n8n-packages.handler.ts',
-				'./src/public-api/v1/handlers/workflows/workflows.handler.ts',
 			],
 			rules: {
 				'n8n-local-rules/require-public-api-controller': 'off',
@@ -316,22 +314,16 @@ export default defineConfig({
 				'./src/workflows/workflow.service.ee.ts',
 				'./src/workflows/workflow.service.ts',
 				'./src/workflows/workflows.controller.ts',
-				// services/ (incl. ownership.service.ts — surfaced only by the deep-path prefix change)
+				// services/
 				'./src/services/export.service.ts',
 				'./src/services/folder.service.ts',
 				'./src/services/hooks.service.ts',
 				'./src/services/import.service.ts',
-				'./src/services/ownership.service.ts',
 				'./src/services/ownership-transfer/ownership-transfer-handler.registry.ts',
 				'./src/services/project.service.ee.ts',
 				'./src/services/public-api-key.service.ts',
-				'./src/services/tag.service.ts',
 				// commands / controllers / eventbus / evaluation / public-api
 				'./src/commands/import/credentials.ts',
-				'./src/commands/ldap/reset.ts',
-				'./src/controllers/project.controller.ts',
-				'./src/eventbus/message-event-bus/message-event-bus.ts',
-				'./src/evaluation.ee/evaluation-collection.service.ts',
 				'./src/evaluation.ee/test-runner/test-runner.service.ee.ts',
 				// modules/** non-persistence services surfaced by narrowing the exemption
 				'./src/modules/agents/agent-knowledge.service.ts',
@@ -352,7 +344,6 @@ export default defineConfig({
 				'./src/modules/dynamic-credentials.ee/services/credential-resolver.service.ts',
 				'./src/modules/external-secrets.ee/secrets-providers-connections.service.ee.ts',
 				'./src/modules/favorites/favorites.service.ts',
-				'./src/modules/insights/insights-collection.service.ts',
 				'./src/modules/instance-ai/instance-ai.adapter.service.ts',
 				'./src/modules/instance-ai/mcp/instance-ai-mcp-registry.service.ts',
 				'./src/modules/instance-ai/storage/typeorm-agent-checkpoint-store.ts',
@@ -441,10 +432,7 @@ export default defineConfig({
 			// Shrink-only ratchet: periodic leader timers not yet migrated to system
 			// tasks. NEVER add to this list — new periodic leader work must be a
 			// @SystemTask() class. Entries are removed as each migrates on its own ticket.
-			files: [
-				'./src/services/pruning/executions-pruning.service.ts',
-				'./src/services/workflow-statistics-rollup.service.ts',
-			],
+			files: ['./src/services/pruning/executions-pruning.service.ts'],
 			rules: { 'n8n-local-rules/no-on-leader-takeover': 'off' },
 		},
 		{

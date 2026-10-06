@@ -264,6 +264,10 @@ describe('AgentWorkflowExecutionService', () => {
 			userId,
 		);
 
+		expect(reconstructionService.reconstructFromAgentEntity.mock.calls[0][8]).toEqual({
+			supportsHitl: false,
+			allowPlanTools: false,
+		});
 		expect(runtime.agent.stream).toHaveBeenCalledWith(
 			[{ id: 'message-1', role: 'user', content: [{ type: 'text', text: 'hello' }] }],
 			expect.objectContaining({
