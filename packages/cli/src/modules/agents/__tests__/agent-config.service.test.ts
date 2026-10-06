@@ -15,6 +15,7 @@ import type { CredentialsService } from '@/credentials/credentials.service';
 
 import type { Telemetry } from '@/telemetry';
 
+import { AgentConfigPreparationService } from '../agent-config-preparation.service';
 import { AgentConfigService } from '../agent-config.service';
 import { AgentModificationTelemetryService } from '../agent-modification-telemetry.service';
 import { AgentSaveCompletionService } from '../agent-save-completion.service';
@@ -112,9 +113,11 @@ function makeService() {
 		agentRepository,
 		agentTaskRepository,
 		agentSkillsService,
-		credentialsService,
-		workflowRepository,
-		nodeToolAiGatewayService,
+		new AgentConfigPreparationService(
+			credentialsService,
+			workflowRepository,
+			nodeToolAiGatewayService,
+		),
 		new AgentSetupCompletionService(agentValidationService, telemetry, agentRepository),
 		transactionRunner,
 		new AgentSaveCompletionService(

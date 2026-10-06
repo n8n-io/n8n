@@ -50,7 +50,6 @@ import { AgentTaskSnapshotRepository } from './repositories/agent-task-snapshot.
 import { AgentTaskRepository } from './repositories/agent-task.repository';
 import { AgentRepository } from './repositories/agent.repository';
 import { getAgentOrThrow } from './utils/get-agent-or-throw';
-import { saveAgentDraftFenced } from './utils/agent-draft.utils';
 
 export type AgentPublishTrigger = 'explicit' | 'republish';
 
@@ -87,7 +86,7 @@ function requireValidValidation(
 
 function draftSchemaFromVersion(schema: AgentJsonConfig | null): AgentJsonConfig | null {
 	if (!schema) return null;
-	const draft = deepCopy(schema);
+	const draft = { ...schema };
 	delete draft.integrations;
 	return draft;
 }
@@ -420,13 +419,9 @@ export class AgentPublishService {
 		const previousSkills = agent.skills ?? {};
 		const tasksChanged = await this.transactionRunner.run({}, async (ctx) => {
 			const definition = await this.definitionService.readVersion(version, ctx);
-			agent.schema = draftSchemaFromVersion(definition.schema);
-			agent.tools = deepCopy(definition.tools);
-			agent.skills = deepCopy(definition.skills);
+			definition.schema = draftSchemaFromVersion(definition.schema);
 			agent.versionId = nextVersionId;
-			if (agent.schema) agent.name = agent.schema.name;
-			await saveAgentDraftFenced(this.agentRepository, agent, ctx);
-			return await this.agentTaskRepository.replaceForAgent(agent.id, definition.tasks, ctx);
+			return await this.definitionService.replaceDraft(agent, definition, ctx);
 		});
 		const integrations = agent.integrations ?? [];
 		await this.saveCompletion.configurationSaved(

@@ -1,6 +1,6 @@
 import type { CredentialProvider } from '@n8n/agents';
 import { AI_GATEWAY_MANAGED_TAG, type AgentJsonConfig } from '@n8n/api-types';
-import type { WorkflowRepository } from '@n8n/db';
+import type { TransactionRunner, WorkflowRepository } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
 import type { NodeTypes } from '@/node-types';
@@ -48,6 +48,7 @@ function makeAgent(
 		skills,
 		tools: {},
 		integrations: [],
+		revision: 0,
 		...overrides,
 	} as unknown as Agent;
 }
@@ -64,6 +65,7 @@ function makeCredentialProvider(
 
 function makeService() {
 	const agentRepository = mock<AgentRepository>();
+	agentRepository.hasRevision.mockResolvedValue(true);
 	const agentSkillsService = mock<AgentSkillsService>();
 	const agentTaskRepository = mock<AgentTaskRepository>();
 	agentTaskRepository.findByAgentId.mockResolvedValue([]);
@@ -79,7 +81,12 @@ function makeService() {
 	return {
 		service: new AgentValidationService(
 			agentRepository,
-			new AgentDefinitionService(agentTaskRepository, agentTaskSnapshotRepository),
+			new AgentDefinitionService(
+				agentTaskRepository,
+				agentTaskSnapshotRepository,
+				agentRepository,
+				mock<TransactionRunner>(),
+			),
 			nodeTypes,
 			workflowRepository,
 			chatIntegrationRegistry,

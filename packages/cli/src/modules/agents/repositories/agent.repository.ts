@@ -44,6 +44,10 @@ export class AgentRepository extends BaseRepository<Agent> {
 		await this.insert(agent as QueryDeepPartialEntity<Agent>);
 	}
 
+	async hasRevision(id: string, revision: number): Promise<boolean> {
+		return await this.existsBy({ id, revision });
+	}
+
 	async findByProjectId(projectId: string): Promise<Agent[]> {
 		return await this.find({
 			where: { projectId },

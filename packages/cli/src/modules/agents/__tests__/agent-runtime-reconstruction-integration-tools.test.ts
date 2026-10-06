@@ -35,6 +35,7 @@ import type { WorkflowFinderService } from '@/workflows/workflow-finder.service'
 
 import { AgentChangePublisher } from '../agent-change-publisher.service';
 import type { AgentChatAttachmentService } from '../agent-chat-attachment.service';
+import { AgentConfigPreparationService } from '../agent-config-preparation.service';
 import { AgentConfigService } from '../agent-config.service';
 import type { NodeToolAiGatewayService } from '../json-config/node-tool-ai-gateway.service';
 import { AgentCustomToolsService } from '../agent-custom-tools.service';
@@ -264,21 +265,26 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			agentUpdateBroadcaster,
 			modificationTelemetry,
 		);
+		const transactionRunner = mock<TransactionRunner>();
+		transactionRunner.run.mockImplementation(async (ctx, fn) => await fn(ctx));
+		agentRepository.hasRevision.mockResolvedValue(true);
 		const definitionService = new AgentDefinitionService(
 			agentTaskRepository,
 			agentTaskSnapshotRepository,
+			agentRepository,
+			transactionRunner,
 		);
-		const transactionRunner = mock<TransactionRunner>();
-		transactionRunner.run.mockImplementation(async (ctx, fn) => await fn(ctx));
 		agentSkillsService = new AgentSkillsService(logger, agentRepository, saveCompletion);
 		agentConfigService = new AgentConfigService(
 			logger,
 			agentRepository,
 			agentTaskRepository,
 			agentSkillsService,
-			credentialsService,
-			mock<WorkflowRepository>(),
-			mock<NodeToolAiGatewayService>(),
+			new AgentConfigPreparationService(
+				credentialsService,
+				mock<WorkflowRepository>(),
+				mock<NodeToolAiGatewayService>(),
+			),
 			mock<AgentSetupCompletionService>(),
 			transactionRunner,
 			saveCompletion,

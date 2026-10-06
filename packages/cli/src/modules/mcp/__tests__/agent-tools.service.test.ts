@@ -29,6 +29,7 @@ vi.mock('@/modules/agents/json-config/mcp-client-factory', () => ({
 
 import { CredentialsService } from '@/credentials/credentials.service';
 import { ConflictError } from '@n8n/errors';
+import { AgentConfigPreparationService } from '@/modules/agents/agent-config-preparation.service';
 import { AgentConfigService } from '@/modules/agents/agent-config.service';
 import { AgentCustomToolsService } from '@/modules/agents/agent-custom-tools.service';
 import { AgentIntegrationManagementService } from '@/modules/agents/agent-integration-management.service';
@@ -249,9 +250,11 @@ describe('McpAgentToolsService', () => {
 			agentRepository,
 			agentTaskRepository,
 			mock<AgentSkillsService>(),
-			localCredentialsService,
-			workflowRepository,
-			mock<NodeToolAiGatewayService>(),
+			new AgentConfigPreparationService(
+				localCredentialsService,
+				workflowRepository,
+				mock<NodeToolAiGatewayService>(),
+			),
 			mock<AgentSetupCompletionService>(),
 			transactionRunner,
 			saveCompletion,

@@ -151,7 +151,12 @@ function makeService() {
 			agentUpdateBroadcaster,
 			new AgentModificationTelemetryService(telemetry),
 		),
-		new AgentDefinitionService(agentTaskRepository, taskSnapshotRepository),
+		new AgentDefinitionService(
+			agentTaskRepository,
+			taskSnapshotRepository,
+			agentRepository,
+			transactionRunner,
+		),
 	);
 
 	return {
