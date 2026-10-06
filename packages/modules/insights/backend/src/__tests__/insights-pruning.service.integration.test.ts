@@ -10,7 +10,7 @@ import { DateTime } from 'luxon';
 import { mock } from 'vitest-mock-extended';
 
 import { createCompactedInsightsEvent, createMetadata } from '../testing/db-utils';
-import { InsightsByPeriodRepository } from '../database/repositories/insights-by-period.repository';
+import { InsightsByPeriodRepository } from '../insights-by-period.repository';
 import { InsightsPruningService } from '../insights-pruning.service';
 import { InsightsConfig } from '../insights.config';
 

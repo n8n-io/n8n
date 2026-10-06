@@ -14,9 +14,9 @@ import { type ExecutionStatus, type IRun, type WorkflowExecuteMode } from 'n8n-w
 import assert from 'node:assert';
 import { mock } from 'vitest-mock-extended';
 
-import type { TypeUnit } from '../database/entities/insights-shared';
-import { InsightsMetadataRepository } from '../database/repositories/insights-metadata.repository';
-import { InsightsRawRepository } from '../database/repositories/insights-raw.repository';
+import type { TypeUnit } from '../insights-shared';
+import { InsightsMetadataRepository } from '../insights-metadata.repository';
+import { InsightsRawRepository } from '../insights-raw.repository';
 import { InsightsCollectionService } from '../insights-collection.service';
 import { InsightsConfig } from '../insights.config';
 

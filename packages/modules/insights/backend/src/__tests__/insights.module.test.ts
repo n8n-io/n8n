@@ -6,7 +6,7 @@ import { InstanceSettings } from 'n8n-core';
 import type { MockProxy } from 'vitest-mock-extended';
 import { mock } from 'vitest-mock-extended';
 
-import { InsightsByPeriodRepository } from '../database/repositories/insights-by-period.repository';
+import { InsightsByPeriodRepository } from '../insights-by-period.repository';
 import { InsightsCollectionService } from '../insights-collection.service';
 import { InsightsCompactionTask } from '../insights-compaction.task';
 import { InsightsPruningTask } from '../insights-pruning.task';

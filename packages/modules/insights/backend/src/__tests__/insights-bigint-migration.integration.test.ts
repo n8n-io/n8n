@@ -2,10 +2,10 @@ import { createTeamProject, createWorkflow, testDb, testModules } from '@n8n/bac
 import { Container } from '@n8n/di';
 import { DateTime } from 'luxon';
 
-import { InsightsRawRepository } from '../database/repositories/insights-raw.repository';
+import { InsightsRawRepository } from '../insights-raw.repository';
 
 import { createRawInsightsEvent, createRawInsightsEvents } from '../testing/db-utils';
-import { InsightsByPeriodRepository } from '../database/repositories/insights-by-period.repository';
+import { InsightsByPeriodRepository } from '../insights-by-period.repository';
 import { InsightsCompactionService } from '../insights-compaction.service';
 
 beforeAll(async () => {

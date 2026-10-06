@@ -1,7 +1,7 @@
 import { mockLogger } from '@n8n/backend-test-utils';
 import { mock } from 'vitest-mock-extended';
 
-import type { InsightsByPeriodRepository } from '../database/repositories/insights-by-period.repository';
+import type { InsightsByPeriodRepository } from '../insights-by-period.repository';
 import { InsightsPruningService } from '../insights-pruning.service';
 import { InsightsConfig } from '../insights.config';
 import { INSIGHTS_MAX_AGE_DAYS_CAP, INSIGHTS_MAX_AGE_DAYS_DEFAULT } from '../insights.constants';

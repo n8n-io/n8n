@@ -12,10 +12,10 @@ import { InstanceSettings } from 'n8n-core';
 import { UserError } from 'n8n-workflow';
 
 import { ForbiddenError } from '@n8n/errors';
-import type { PeriodUnit, TypeUnit, ByTimeInsightType } from './database/entities/insights-shared';
-import { NumberToType } from './database/entities/insights-shared';
-import type { InsightsAccessFilter } from './database/repositories/insights-by-period.repository';
-import { InsightsByPeriodRepository } from './database/repositories/insights-by-period.repository';
+import type { PeriodUnit, TypeUnit, ByTimeInsightType } from './insights-shared';
+import { NumberToType } from './insights-shared';
+import type { InsightsAccessFilter } from './insights-by-period.repository';
+import { InsightsByPeriodRepository } from './insights-by-period.repository';
 
 const BY_TIME_INSIGHT_TYPES: ByTimeInsightType[] = [
 	'time_saved_min',

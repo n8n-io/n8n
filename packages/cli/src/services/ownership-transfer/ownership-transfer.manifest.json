@@ -76,7 +76,7 @@
 		},
 		{
 			"name": "InsightsMetadata",
-			"path": "packages/modules/insights/backend/src/database/entities/insights-metadata.ts",
+			"path": "packages/modules/insights/backend/src/insights-metadata.entity.ts",
 			"reason": "Denormalized analytics snapshot; historical insights keep the original project reference by design."
 		},
 		{

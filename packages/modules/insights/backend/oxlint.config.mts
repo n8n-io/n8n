@@ -22,14 +22,9 @@ export default defineConfig({
 	},
 	overrides: [
 		{
-			// The persistence boundary does not prescribe a folder layout. Prefer semantic
-			// infixes. Keep exact entries only for existing entities that do not use one.
 			files: [
 				'./src/**/*.entity.ts',
 				'./src/**/*.repository.ts',
-				'./src/database/entities/insights-by-period.ts',
-				'./src/database/entities/insights-metadata.ts',
-				'./src/database/entities/insights-raw.ts',
 				'./src/**/__tests__/**/*.ts',
 				'./src/**/*.test.ts',
 			],

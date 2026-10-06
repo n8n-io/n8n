@@ -1,6 +1,6 @@
 import { testDb } from '@n8n/backend-test-utils';
 
-import { InsightsByPeriod } from '../insights-by-period';
+import { InsightsByPeriod } from '../insights-by-period.entity';
 import type { PeriodUnit, TypeUnit } from '../insights-shared';
 
 beforeAll(async () => {

@@ -3,8 +3,8 @@ import { Time } from '@n8n/constants';
 import { Service } from '@n8n/di';
 import { sleep } from '@n8n/utils/sleep';
 
-import { InsightsByPeriodRepository } from './database/repositories/insights-by-period.repository';
-import { InsightsRawRepository } from './database/repositories/insights-raw.repository';
+import { InsightsByPeriodRepository } from './insights-by-period.repository';
+import { InsightsRawRepository } from './insights-raw.repository';
 import { InsightsConfig } from './insights.config';
 
 type CompactionRunState = {

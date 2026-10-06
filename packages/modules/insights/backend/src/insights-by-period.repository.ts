@@ -16,9 +16,9 @@ import { UnexpectedError } from 'n8n-workflow';
 import { z } from 'zod';
 
 import { getDateRangesCommonTableExpressionQuery } from './insights-by-period-query.helper';
-import { InsightsByPeriod } from '../entities/insights-by-period';
-import type { PeriodUnit, TypeUnitNumber, ByTimeInsightType } from '../entities/insights-shared';
-import { PeriodUnitToNumber, TypeToNumber } from '../entities/insights-shared';
+import { InsightsByPeriod } from './insights-by-period.entity';
+import type { PeriodUnit, TypeUnitNumber, ByTimeInsightType } from './insights-shared';
+import { PeriodUnitToNumber, TypeToNumber } from './insights-shared';
 
 const dbType = Container.get(GlobalConfig).database.type;
 const displayTypeName = {

@@ -1,7 +1,7 @@
 import { Service } from '@n8n/di';
 import { DataSource, In, Repository } from '@n8n/typeorm';
 
-import { InsightsMetadata } from '../entities/insights-metadata';
+import { InsightsMetadata } from './insights-metadata.entity';
 
 @Service()
 export class InsightsMetadataRepository extends Repository<InsightsMetadata> {

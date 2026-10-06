@@ -5,7 +5,7 @@ import { Container } from '@n8n/di';
 import { DateTime } from 'luxon';
 import { mock } from 'vitest-mock-extended';
 
-import { InsightsRawRepository } from '../database/repositories/insights-raw.repository';
+import { InsightsRawRepository } from '../insights-raw.repository';
 
 import {
 	createMetadata,
@@ -13,8 +13,8 @@ import {
 	createCompactedInsightsEvent,
 	createRawInsightsEvents,
 } from '../testing/db-utils';
-import type { PeriodUnit } from '../database/entities/insights-shared';
-import { InsightsByPeriodRepository } from '../database/repositories/insights-by-period.repository';
+import type { PeriodUnit } from '../insights-shared';
+import { InsightsByPeriodRepository } from '../insights-by-period.repository';
 import { InsightsCompactionService } from '../insights-compaction.service';
 import { InsightsConfig } from '../insights.config';
 

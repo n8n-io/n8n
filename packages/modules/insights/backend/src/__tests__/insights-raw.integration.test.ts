@@ -2,16 +2,16 @@ import { createTeamProject, createWorkflow, testDb, testModules } from '@n8n/bac
 import { Container } from '@n8n/di';
 import { DateTime } from 'luxon';
 
-import { createMetadata, createRawInsightsEvent } from '../../../testing/db-utils';
-import { InsightsRawRepository } from '../../repositories/insights-raw.repository';
-import { InsightsRaw } from '../insights-raw';
+import { createMetadata, createRawInsightsEvent } from '../testing/db-utils';
+import { InsightsRawRepository } from '../insights-raw.repository';
+import { InsightsRaw } from '../insights-raw.entity';
 import type { TypeUnit } from '../insights-shared';
 
 let insightsRawRepository: InsightsRawRepository;
 
 beforeAll(async () => {
 	await testModules.loadModules(['insights'], {
-		insights: async () => await import('../../../insights.module.js'),
+		insights: async () => await import('../insights.module.js'),
 	});
 	await testDb.init();
 	insightsRawRepository = Container.get(InsightsRawRepository);

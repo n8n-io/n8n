@@ -7,8 +7,8 @@ import { mock } from 'vitest-mock-extended';
 
 import type { ProjectScopeService, WorkflowSharingService } from '@n8n/backend-services';
 
-import { TypeToNumber, type TypeUnitNumber } from '../database/entities/insights-shared';
-import type { InsightsByPeriodRepository } from '../database/repositories/insights-by-period.repository';
+import { TypeToNumber, type TypeUnitNumber } from '../insights-shared';
+import type { InsightsByPeriodRepository } from '../insights-by-period.repository';
 import { InsightsService } from '../insights.service';
 
 const user = mock<User>({ id: 'user-1' });

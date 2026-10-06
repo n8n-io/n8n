@@ -6,10 +6,10 @@ import { Service } from '@n8n/di';
 import { DateTime } from 'luxon';
 import { IRun, type ExecutionStatus, type WorkflowExecuteMode } from 'n8n-workflow';
 
-import { InsightsMetadata } from './database/entities/insights-metadata';
-import { InsightsRaw } from './database/entities/insights-raw';
-import { InsightsMetadataRepository } from './database/repositories/insights-metadata.repository';
-import { InsightsRawRepository } from './database/repositories/insights-raw.repository';
+import { InsightsMetadata } from './insights-metadata.entity';
+import { InsightsRaw } from './insights-raw.entity';
+import { InsightsMetadataRepository } from './insights-metadata.repository';
+import { InsightsRawRepository } from './insights-raw.repository';
 import { InsightsConfig } from './insights.config';
 
 const shouldSkipStatus: Record<ExecutionStatus, boolean> = {

@@ -22,9 +22,9 @@ export class InsightsModule implements ModuleInterface {
 	}
 
 	async entities() {
-		const { InsightsByPeriod } = await import('./database/entities/insights-by-period.js');
-		const { InsightsMetadata } = await import('./database/entities/insights-metadata.js');
-		const { InsightsRaw } = await import('./database/entities/insights-raw.js');
+		const { InsightsByPeriod } = await import('./insights-by-period.entity.js');
+		const { InsightsMetadata } = await import('./insights-metadata.entity.js');
+		const { InsightsRaw } = await import('./insights-raw.entity.js');
 
 		return [InsightsByPeriod, InsightsMetadata, InsightsRaw];
 	}

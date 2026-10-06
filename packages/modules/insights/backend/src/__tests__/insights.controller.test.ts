@@ -8,8 +8,8 @@ import { mock } from 'vitest-mock-extended';
 import { BadRequestError, ForbiddenError } from '@n8n/errors';
 import { WorkflowSharingService } from '@n8n/backend-services';
 
-import { TypeToNumber, type TypeUnitNumber } from '../database/entities/insights-shared';
-import { InsightsByPeriodRepository } from '../database/repositories/insights-by-period.repository';
+import { TypeToNumber, type TypeUnitNumber } from '../insights-shared';
+import { InsightsByPeriodRepository } from '../insights-by-period.repository';
 import { InsightsController } from '../insights.controller';
 
 function expectDatesClose(actual: Date, expected: Date, maxDriftMs?: number) {

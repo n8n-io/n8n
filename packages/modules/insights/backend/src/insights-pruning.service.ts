@@ -1,7 +1,7 @@
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 
-import { InsightsByPeriodRepository } from './database/repositories/insights-by-period.repository';
+import { InsightsByPeriodRepository } from './insights-by-period.repository';
 import { InsightsConfig } from './insights.config';
 import { INSIGHTS_MAX_AGE_DAYS_CAP, INSIGHTS_MAX_AGE_DAYS_DEFAULT } from './insights.constants';
 
