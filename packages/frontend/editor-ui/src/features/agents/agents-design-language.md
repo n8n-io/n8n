@@ -42,6 +42,9 @@ error, or session context and the fix prompt to that panel. Close configuration
 dialogs only after the panel accepts the request. Preserve a refused request.
 Show these actions only after Assistant setup is complete.
 
+Keep the test error and its fix action inside the callout. Move the action below
+the error when the row does not fit the panel. Wrap long URLs and error text.
+
 Agent artifacts inside an Assistant chat keep the handoff in that chat.
 
 ## Item context menus
