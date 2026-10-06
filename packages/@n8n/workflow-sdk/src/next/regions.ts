@@ -7,17 +7,8 @@
 export const SWITCH_NODE = { type: '@n8n/nodes-core.conditionSwitch', version: 1 };
 export const FILTER_NODE = { type: '@n8n/nodes-core.conditionFilter', version: 1 };
 export const WAIT_NODE = { type: '@n8n/nodes-core.waitInterval', version: 1 };
-export const STOP_NODE = { type: '@n8n/nodes-core.stopAndErrorStop', version: 1 };
 export const SPLIT_OUT_NODE = { type: '@n8n/nodes-core.itemsSplitOut', version: 1 };
 export const NO_OP_NODE = { type: '@n8n/nodes-core.noOpPass', version: 1 };
-/** The item of a loop pass is a whole object, which the Edit Fields contract cannot emit. */
-export const LOOP_STATE_NODE = {
-	/** The type of a loop head and of its `<head> next` node. */
-	type: '@n8n/nodes-core.loopStateSet',
-	/** The type version of both nodes. */
-	version: 1,
-};
-
 /** The `where` of a condition contract that holds when the compiled JavaScript is true. */
 export const trueWhere = (js: string) => ({
 	conditions: [{ type: 'boolean', left: `={{ ${js} }}`, test: { op: 'true' } }],
@@ -25,80 +16,11 @@ export const trueWhere = (js: string) => ({
 
 // ── loop, paginate, pollUntil ───────────────────────────────────────────────
 
-/** The nodes of a loop region named `head`. Only the head is a name the author writes. */
-export const loopNodeNames = (head: string) => ({
-	check: `${head} until`,
-	next: `${head} next`,
-	wait: `${head} wait`,
-	limit: `${head} limit`,
-});
-
-/**
- * The item field that counts the passes of loop `head`. A count in the item, not `$runIndex`,
- * stays correct when the loop is nested in another loop.
- */
-export const passKey = (head: string) => `${head} pass`;
-
-const passOf = (head: string) =>
-	`$(${JSON.stringify(head)}).item.json[${JSON.stringify(passKey(head))}]`;
-
-/** The head keeps the state and sets the pass: 0 on entry, the carried count on a return. */
-export const loopHeadParameters = (head: string, back: string) => ({
-	state: `={{ ({ ...$json, ${JSON.stringify(passKey(head))}: $prevNode.name === ${JSON.stringify(back)} ? $json[${JSON.stringify(passKey(head))}] : 0 }) }}`,
-});
-
 /** What a loop does after its last pass: fail the run, or end and emit that pass. */
 export type LoopLimit = 'fail' | 'continue';
 
-/**
- * Switch outputs of a loop check: the cases `done` and `limit`, then the fallback. With
- * `continue`, `done` also holds at the limit, so the check has no `limit` case.
- */
-export const CHECK_DONE = 0;
-export const CHECK_LIMIT = 1;
-export const checkAgain = (onLimit: LoopLimit) => (onLimit === 'fail' ? 2 : 1);
-
-export const loopLimitTest = (head: string, maxIterations: number) =>
-	`${passOf(head)} + 1 >= ${maxIterations}`;
-
-/** The `done` condition of a loop that ends at its limit. */
-const doneOrLimit = (head: string, until: string, maxIterations: number) =>
-	`(${until}) || ${loopLimitTest(head, maxIterations)}`;
-
-export const loopCheckParameters = (
-	head: string,
-	until: string,
-	maxIterations: number,
-	onLimit: LoopLimit = 'fail',
-) => ({
-	cases:
-		onLimit === 'fail'
-			? [
-					{ output: 'done', where: trueWhere(until) },
-					{ output: 'limit', where: trueWhere(loopLimitTest(head, maxIterations)) },
-				]
-			: [{ output: 'done', where: trueWhere(doneOrLimit(head, until, maxIterations)) }],
-});
-
-/** `loop` without `next` carries the body output to the next pass. */
-export const BODY_OUTPUT = '$json';
-
-export const loopNextSuffix = (head: string) =>
-	`), ${JSON.stringify(passKey(head))}: ${passOf(head)} + 1 }) }}`;
-
-export const loopNextParameters = (head: string, next: string) => ({
-	state: `={{ ({ ...(${next}${loopNextSuffix(head)}`,
-});
-
-export const loopLimitParameters = (head: string, maxIterations: number) => ({
-	message: `${head} stopped after ${maxIterations} passes without meeting its exit condition`,
-});
-
-/** `pollUntil` runs its attempt again on the same state. */
-export const samePass = (head: string) => `$(${JSON.stringify(head)}).item.json`;
-
-/** `paginate` ends when its next cursor is null. */
-export const noNextPage = (next: string) => `(${next}) == null`;
+/** When a region emits: once after the last pass (`last`), or after each pass (`each`). */
+export type RegionEmit = 'last' | 'each';
 
 /** The time unit of an `Interval`. */
 export type WaitUnit = 'seconds' | 'minutes' | 'hours' | 'days';

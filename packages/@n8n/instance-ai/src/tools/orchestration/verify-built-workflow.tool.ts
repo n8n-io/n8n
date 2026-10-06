@@ -446,7 +446,7 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 								triggerNodeName: resolvedInput.triggerNodeName,
 								verificationPinData,
 								isVerificationRun: true,
-								...(await liveReadRunOptions(workflow, liveReadNodeNames)),
+								...liveReadRunOptions(workflow, liveReadNodeNames),
 								...destination,
 								abortSignal: context.abortSignal,
 							});

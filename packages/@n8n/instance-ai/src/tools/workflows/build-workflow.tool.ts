@@ -95,7 +95,6 @@ import {
 } from './workflow-source-compiler';
 import { appendWorkflowSourceDiagnostics } from './workflow-source-diagnostics';
 import {
-	contractLoopsOf,
 	GROUP_DROPPED_OVER_CEILING_CODE,
 	GROUPING_DECISION_MISSING_CODE,
 	groupingDecisionBlocker,
@@ -1500,7 +1499,10 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 				await ensureWebhookIds(json, targetWorkflowId, context);
 				await preserveExistingNodeGroupIds(json, targetWorkflowId, context);
 				await preserveExistingNodePositions(json, targetWorkflowId, context);
-				const groupCountBeforeDrop = json.nodeGroups?.length ?? 0;
+				// A region repeats its nodes; it is no stage that the agent framed.
+				const stageGroupCount = () =>
+					(json.nodeGroups ?? []).filter((group) => !group.repeat).length;
+				const groupCountBeforeDrop = stageGroupCount();
 				const regionIds = new Set(
 					(json.nodeGroups ?? []).filter((group) => group.repeat).map((group) => group.id),
 				);
@@ -1509,16 +1511,10 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 					context.nodeTypesProvider ? makeGetNodeTypeForGrouping(context.nodeTypesProvider) : null,
 				);
 				const droppedGroupWarnings = nodeGroupDroppedWarnings(groupViolations);
-				droppedGroupCount = groupCountBeforeDrop - (json.nodeGroups?.length ?? 0);
+				droppedGroupCount = groupCountBeforeDrop - stageGroupCount();
 				informational.push(...droppedGroupWarnings);
 
-				// Node contracts: a loop counts as one box, as the author wrote it.
-				const topLevelOf = async (workflowJson: WorkflowJSON) =>
-					summarizeWorkflowTopLevelItems(
-						workflowJson,
-						context.nodeContractsEnabled ? await contractLoopsOf(workflowJson) : [],
-					);
-				const topLevel = await topLevelOf(json);
+				const topLevel = summarizeWorkflowTopLevelItems(json);
 				const grouping: GroupingOutcome = {
 					topLevelItemCount: topLevel.total,
 					ceiling: topLevel.ceiling,
@@ -1537,7 +1533,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 				// workflow over the ceiling. A small edit to a wide user workflow only warns.
 				const snapshotWasUnderCeiling =
 					savedWorkflowSnapshot !== undefined &&
-					!(await topLevelOf(savedWorkflowSnapshot)).overCeiling;
+					!summarizeWorkflowTopLevelItems(savedWorkflowSnapshot).overCeiling;
 
 				// agentExceededCeiling is true when the agent's build made the canvas exceed TOP_LEVEL_ITEM_CEILING boxes;
 				// false when the user's workflow already exceeded it. It gates only the "no groups" refusal.

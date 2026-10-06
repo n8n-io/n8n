@@ -63,6 +63,7 @@ import type {
 	IPinData,
 	IRunExecutionData,
 	ITaskData,
+	IWorkflowGroup,
 } from 'n8n-workflow';
 import {
 	AI_GATEWAY_MANAGED_TAG,
@@ -5352,35 +5353,33 @@ describe('createExecutionAdapter run()', () => {
 		expect(fetch.parameters).toHaveProperty('pages');
 	});
 
-	it('sends a redirected output where another output of the node sends it, on the run copy only', async () => {
+	it('ends the listed regions at their pass limit, on the run copy only', async () => {
+		const region = (name: string, kind: 'loop' | 'forEach') => ({
+			id: name,
+			name,
+			nodeIds: ['n1'],
+			repeat:
+				kind === 'loop'
+					? { kind, entry: 'n1', exits: [], maxIterations: 3, until: '={{ true }}' }
+					: { kind, entry: 'n1', exits: [], batchSize: 1 },
+		});
 		const workflow = {
 			id: 'wf-1',
 			nodes: [],
-			connections: {
-				'Walk until': {
-					main: [
-						[{ node: 'Report', type: 'main', index: 0 }],
-						[{ node: 'Walk limit', type: 'main', index: 0 }],
-						[{ node: 'Walk next', type: 'main', index: 0 }],
-					],
-				},
-			},
+			connections: {},
+			nodeGroups: [region('Walk', 'loop'), region('Each', 'forEach'), region('Other', 'loop')],
 		};
 		const { adapter, mockWorkflowRunner } = createRunAdapterForTests(workflow);
 
-		await adapter.run('wf-1', undefined, {
-			redirectOutputs: [{ nodeName: 'Walk until', output: 1, asOutput: 0 }],
-		});
+		await adapter.run('wf-1', undefined, { endAtLimitRegionNames: ['Walk', 'Each'] });
 
 		const runData = mockWorkflowRunner.run.mock.calls[0][0];
-		expect(runData.workflowData.connections['Walk until'].main).toEqual([
-			[{ node: 'Report', type: 'main', index: 0 }],
-			[{ node: 'Report', type: 'main', index: 0 }],
-			[{ node: 'Walk next', type: 'main', index: 0 }],
+		expect(runData.workflowData.nodeGroups.map(({ repeat }: IWorkflowGroup) => repeat)).toEqual([
+			{ ...region('Walk', 'loop').repeat, onLimit: 'continue' },
+			region('Each', 'forEach').repeat,
+			region('Other', 'loop').repeat,
 		]);
-		expect(workflow.connections['Walk until'].main[1]).toEqual([
-			{ node: 'Walk limit', type: 'main', index: 0 },
-		]);
+		expect(workflow.nodeGroups[0].repeat).not.toHaveProperty('onLimit');
 	});
 
 	it('runs only the destination node and its parents when a destination node is set', async () => {

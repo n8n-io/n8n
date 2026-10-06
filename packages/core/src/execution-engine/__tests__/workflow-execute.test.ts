@@ -57,6 +57,7 @@ import type { ExecutionLifecycleHooks } from '../execution-lifecycle-hooks';
 import { DirectedGraph } from '../partial-execution-utils';
 import * as partialExecutionUtils from '../partial-execution-utils';
 import { createNodeData, toITaskData } from '../partial-execution-utils/__tests__/helpers';
+import { RegionScheduler } from '../regions';
 import { WorkflowExecute } from '../workflow-execute';
 import { modifyNode, nodeTypeArguments, passThroughNode, types } from './mock-node-types';
 
@@ -262,6 +263,39 @@ describe('WorkflowExecute', () => {
 				expect(result.data.executionData!.runtimeData!.establishedAt).toBeGreaterThan(0);
 			});
 		}
+
+		test('runs a workflow whose groups have no repeat without a region scheduler', async () => {
+			const [testData] = tests;
+			assert(testData);
+			const { nodes, connections } = testData.input.workflowData;
+			const workflowInstance = new Workflow({
+				id: 'test',
+				nodes,
+				connections,
+				active: false,
+				nodeTypes,
+				settings: { executionOrder: 'v1' },
+				nodeGroups: [{ id: 'stage', name: 'Stage', nodeIds: nodes.map(({ id }) => id) }],
+			});
+			const regionsOf = vi.spyOn(RegionScheduler, 'of');
+			const waitPromise = createDeferredPromise<IRun>();
+			const additionalData = Helpers.WorkflowExecuteAdditionalData(waitPromise);
+
+			await new WorkflowExecute(additionalData, 'manual').run({ workflow: workflowInstance });
+			const result = await waitPromise.promise;
+
+			expect(regionsOf).toHaveReturnedWith(undefined);
+			expect(result.finished).toBe(true);
+			expect(result.data.resultData.error).toBeUndefined();
+			expect(result.data.executionData?.regions).toBeUndefined();
+			for (const [nodeName, expected] of Object.entries(testData.output.nodeData)) {
+				expect(
+					result.data.resultData.runData[nodeName]?.map(({ data }) => [
+						data?.main[0]?.map(({ json }) => json),
+					]),
+				).toEqual(expected);
+			}
+		});
 	});
 
 	describe('v0 hook order', () => {

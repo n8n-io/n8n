@@ -419,11 +419,21 @@ export class Workflow {
 		) {
 			throw new UserError(`The name "${newName}" is in use by a node or a region.`);
 		}
-		if (region) {
-			this.nodeGroups = this.nodeGroups.map((group) =>
-				group === region ? { ...group, name: newName } : group,
-			);
-		}
+		this.nodeGroups = this.nodeGroups.map((group) => {
+			const named = group === region ? { ...group, name: newName } : group;
+			const { repeat } = named;
+			if (!repeat || repeat.kind === 'forEach') return named;
+			const renamed = (expression: string) =>
+				String(this.renameNodeInParameterValue(expression, currentName, newName));
+			return {
+				...named,
+				repeat: {
+					...repeat,
+					...('until' in repeat ? { until: renamed(repeat.until) } : {}),
+					...('next' in repeat && repeat.next !== undefined ? { next: renamed(repeat.next) } : {}),
+				},
+			};
+		});
 		// Rename the node itself
 		if (this.nodes[currentName] !== undefined) {
 			this.nodes[newName] = this.nodes[currentName];

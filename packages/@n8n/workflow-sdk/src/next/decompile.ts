@@ -15,15 +15,15 @@ import {
 	edgeKey,
 	filter,
 	fromAiDescriptionOf,
-	forEachFragment,
 	groupFragment,
-	loopFragment,
 	MANUAL_NODE,
 	mergeFragment,
 	onError,
 	outputNamesOf,
 	partFragment,
+	pollWait,
 	recover,
+	regionFragment,
 	routeFragment,
 	isFieldPath,
 	SET_NODE,
@@ -38,45 +38,32 @@ import {
 	type NodeSettings,
 	type OutputList,
 	type Region,
+	type RegionRepeatSpec,
 	type SetKeep,
 	type Step,
 	type ProviderSlot,
 } from './flow';
 import { BUILTINS, childNodes, compileLambdaSource } from './lambda';
 import {
-	BODY_OUTPUT,
 	caseRouter,
-	CHECK_DONE,
 	FALLBACK_OUTPUT,
 	FILTER_NODE,
 	filterParameters,
-	LOOP_STATE_NODE,
-	loopCheckParameters,
-	loopHeadParameters,
-	loopLimitParameters,
-	loopLimitTest,
-	loopNextParameters,
-	loopNextSuffix,
-	loopNodeNames,
 	MERGE_APPEND_NODE,
 	MERGE_POSITION_NODE,
 	mergeNodeOf,
 	mergeParameters,
-	noNextPage,
-	samePass,
-	STOP_NODE,
-	SWITCH_NODE,
 	WAIT_NODE,
 	waitParameters,
 	type Interval,
 	type CaseRouter,
-	type LoopLimit,
 	type MergeJoin,
 	type WaitUnit,
 } from './regions';
 import { escapeTemplateLiteral } from '../codegen/string-utils';
 import { prepareSourceForLint } from '../lint/sdk/workflow-sdk-lint';
 import type { IConnections, NodeJSON, WorkflowJSON } from '../types/base';
+import type { WorkflowGroupRepeat } from 'n8n-workflow';
 
 /** The typed module factory for a contract node type. */
 export interface ContractFactory {
@@ -176,25 +163,6 @@ class Call {
 
 type Tree = string | number | boolean | null | Code | Call | Tree[] | { [key: string]: Tree };
 
-/** A loop region read from its head node and the nodes named after it. */
-type LoopShape = {
-	readonly kind: 'loop';
-	readonly maxIterations: number;
-	/** The node that returns to the head. */
-	readonly back: string;
-	readonly check: string;
-	readonly onLimit: LoopLimit;
-} & (
-	| {
-			readonly variant: 'loop';
-			readonly until: string;
-			/** Undefined when the body output is the next state. */
-			readonly next: string | undefined;
-	  }
-	| { readonly variant: 'paginate'; readonly next: string }
-	| { readonly variant: 'pollUntil'; readonly until: string; readonly every: Interval }
-);
-
 type Shape =
 	| { readonly kind: 'manual' }
 	| { readonly kind: 'trigger' }
@@ -203,9 +171,6 @@ type Shape =
 	| { readonly kind: 'set'; readonly fields: Tree; readonly keep: SetKeep }
 	| { readonly kind: 'contract'; readonly factory: ContractFactory; readonly parameters: Tree }
 	| { readonly kind: 'node'; readonly parameters: Tree }
-	| LoopShape
-	/** A node that a loop region owns: its check, next, wait, or limit node. */
-	| { readonly kind: 'loopPart' }
 	| {
 			readonly kind: 'switch';
 			readonly field: string;
@@ -224,9 +189,8 @@ type Segment =
 	  }
 	/** `rejoins`: the open ends of the handler continue (`recover`), else the branch ends. */
 	| { readonly kind: 'onError'; readonly handler: readonly Segment[]; readonly rejoins: boolean }
-	| { readonly kind: 'forEach'; readonly region: RegionRead; readonly body: readonly Segment[] }
+	| { readonly kind: 'region'; readonly region: RegionRead; readonly body: readonly Segment[] }
 	| { readonly kind: 'group'; readonly group: GroupRead; readonly body: readonly Segment[] }
-	| { readonly kind: 'loop'; readonly node: NamedNode; readonly body: readonly Segment[] }
 	| {
 			readonly kind: 'switch';
 			readonly node: NamedNode;
@@ -254,10 +218,13 @@ interface Chain {
 	readonly tails: readonly Tail[];
 }
 
-/** A saved `forEach` region, by node names. */
+/** A saved region, by node names. */
 interface RegionRead {
 	readonly name: string;
-	readonly batchSize: number;
+	/** How the region repeats, with lambdas that compile to nothing, for the replay. */
+	readonly repeat: RegionRepeatSpec;
+	/** The lambda source of `until` and `next`, for the source text. */
+	readonly lambdas: { readonly until?: string; readonly next?: string };
 	readonly members: ReadonlySet<string>;
 	readonly entry: string;
 	readonly exits: readonly Tail[];
@@ -583,89 +550,6 @@ function waitOf(node: NodeJSON | undefined): Interval | undefined {
 	return isEqual(waitParameters(every), node?.parameters) ? every : undefined;
 }
 
-/** A loop region whose head is `node`, read back from the nodes that `loopFragment` names. */
-function loopShape(
-	node: NamedNode,
-	nodes: ReadonlyMap<string, NamedNode>,
-	edges: readonly Edge[],
-	names: ReadonlySet<string>,
-): LoopShape | undefined {
-	if (!isNodeType(node, LOOP_STATE_NODE)) return undefined;
-	const head = node.name;
-	const parts = loopNodeNames(head);
-	const every = waitOf(nodes.get(parts.wait));
-	const back = every ? parts.wait : parts.next;
-	if (!isEqual(loopHeadParameters(head, back), node.parameters)) return undefined;
-
-	const check = nodes.get(parts.check);
-	const cases: unknown = check?.parameters?.cases;
-	const [done, limitCase] = Array.isArray(cases) ? cases : [];
-	const doneJs = trueWhereJs(isRecord(done) ? done.where : undefined);
-	// A loop that ends at its limit has the limit test in `done` and no `limit` case.
-	const onLimit: LoopLimit = Array.isArray(cases) && cases.length === 1 ? 'continue' : 'fail';
-	const limitJs =
-		onLimit === 'fail' ? trueWhereJs(isRecord(limitCase) ? limitCase.where : undefined) : doneJs;
-	const max = limitJs === undefined ? undefined : / >= (\d+)$/.exec(limitJs)?.[1];
-	const maxIterations = Number(max);
-	const until =
-		onLimit === 'fail'
-			? doneJs
-			: between(doneJs, '(', `) || ${loopLimitTest(head, maxIterations)}`);
-	if (!isNodeType(check, SWITCH_NODE) || until === undefined || max === undefined) {
-		return undefined;
-	}
-	if (!isEqual(loopCheckParameters(head, until, maxIterations, onLimit), check?.parameters))
-		return undefined;
-
-	const nextNode = nodes.get(parts.next);
-	const next = between(nextNode?.parameters?.state, '={{ ({ ...(', loopNextSuffix(head));
-	if (!isNodeType(nextNode, LOOP_STATE_NODE) || next === undefined) return undefined;
-	if (!isEqual(loopNextParameters(head, next), nextNode?.parameters)) return undefined;
-
-	const limit = nodes.get(parts.limit);
-	if (onLimit === 'fail') {
-		if (!isNodeType(limit, STOP_NODE)) return undefined;
-		if (!isEqual(loopLimitParameters(head, maxIterations), limit?.parameters)) return undefined;
-	}
-
-	const kind = 'loop';
-	const base = { maxIterations, back, check: parts.check, onLimit };
-	const untilLambda = lambdaForJs(until, names);
-	// Only `loop` takes `onLimit`.
-	if (every) {
-		return next === samePass(head) && untilLambda && onLimit === 'fail'
-			? { kind, ...base, variant: 'pollUntil', until: untilLambda, every }
-			: undefined;
-	}
-	const emitsLast = edges.some((edge) => edge.from === parts.check && edge.output === CHECK_DONE);
-	if (next === BODY_OUTPUT) {
-		return emitsLast && untilLambda
-			? { kind, ...base, variant: 'loop', until: untilLambda, next: undefined }
-			: undefined;
-	}
-	const nextLambda = lambdaForJs(next, names);
-	if (!nextLambda) return undefined;
-	if (!emitsLast && until === noNextPage(next)) {
-		return onLimit === 'fail'
-			? { kind, ...base, variant: 'paginate', next: nextLambda }
-			: undefined;
-	}
-	return untilLambda
-		? { kind, ...base, variant: 'loop', until: untilLambda, next: nextLambda }
-		: undefined;
-}
-
-/** The node names a loop region owns besides its head. */
-const loopParts = (head: string, shape: LoopShape) => {
-	const parts = loopNodeNames(head);
-	return [
-		parts.check,
-		parts.next,
-		...(shape.onLimit === 'fail' ? [parts.limit] : []),
-		...(shape.variant === 'pollUntil' ? [parts.wait] : []),
-	];
-};
-
 /** The Switch contract always has a fallback output; the region has a default when it connects. */
 function switchShape(node: NamedNode, edges: readonly Edge[]): Shape | undefined {
 	const { cases } = node.parameters ?? {};
@@ -879,12 +763,9 @@ function shapeOf(
 	isRoot: boolean,
 	names: ReadonlySet<string>,
 	factories: ReadonlyMap<string, ContractFactory>,
-	regions: ReadonlyMap<string, Shape>,
 	edges: readonly Edge[],
 	readLegacy: LegacyReader,
 ): Shape {
-	const region = regions.get(node.name);
-	if (region) return region;
 	if (isRoot) {
 		const isManual =
 			isNodeType(node, MANUAL_NODE) && Object.keys(node.parameters ?? {}).length === 0;
@@ -1026,25 +907,11 @@ const fromTail = (edge: Edge, tail: Tail) => edge.from === tail.node && edge.out
 
 const shapeKind = (graph: Graph, name: string) => graph.shapes.get(name)?.kind;
 
-/** A return edge of a loop region: from the body back to its loop head. */
-function isBackEdge(graph: Graph, edge: Edge): boolean {
-	const shape = graph.shapes.get(edge.to);
-	return shape?.kind === 'loop' && shape.back === edge.from;
-}
+/** The edges a chain follows from `tails`. */
+const edgesFrom = (graph: Graph, tails: readonly Tail[]) =>
+	graph.edges.filter((edge) => tails.some((tail) => fromTail(edge, tail)));
 
-/**
- * The edges a chain follows from `tails`. A loop part is reached only from inside its loop
- * body, where it is in `seen` and ends the body. Elsewhere its edge is not a way on.
- */
-const edgesFrom = (graph: Graph, tails: readonly Tail[], seen: ReadonlySet<string>) =>
-	graph.edges.filter(
-		(edge) =>
-			tails.some((tail) => fromTail(edge, tail)) &&
-			(shapeKind(graph, edge.to) !== 'loopPart' || seen.has(edge.to)),
-	);
-
-const forwardInto = (graph: Graph, name: string) =>
-	graph.edges.filter((edge) => edge.to === name && !isBackEdge(graph, edge));
+const forwardInto = (graph: Graph, name: string) => graph.edges.filter((edge) => edge.to === name);
 
 function stepChain(graph: Graph, node: NamedNode, seen: ReadonlySet<string>): Chain {
 	const shape = graph.shapes.get(node.name);
@@ -1082,14 +949,6 @@ function stepChain(graph: Graph, node: NamedNode, seen: ReadonlySet<string>): Ch
 			tails: [...cases, ...(fallback ? [fallback] : [])].flatMap(({ tails }) => tails),
 		};
 	}
-	if (shape?.kind === 'loop') {
-		const body = from(0, new Set([...seen, shape.check]));
-		return {
-			segments: [{ kind: 'loop', node, body: body.segments }],
-			tails:
-				shape.variant === 'paginate' ? body.tails : [{ node: shape.check, output: CHECK_DONE }],
-		};
-	}
 	const wired = (output: number) =>
 		graph.edges.some((edge) => edge.from === node.name && edge.output === output);
 	const outputs =
@@ -1124,7 +983,7 @@ function stepChain(graph: Graph, node: NamedNode, seen: ReadonlySet<string>): Ch
 		return { segments: [{ kind: 'step', node }], tails: [main] };
 	}
 	const handler = from(1);
-	const rejoins = handler.tails.some((tail) => edgesFrom(graph, [tail], seen).length > 0);
+	const rejoins = handler.tails.some((tail) => edgesFrom(graph, [tail]).length > 0);
 	return {
 		segments: [
 			{ kind: 'step', node },
@@ -1152,7 +1011,7 @@ function genericOutputs(graph: Graph, name: string): string[] {
  */
 function mergeChain(graph: Graph, tails: readonly Tail[], seen: ReadonlySet<string>): Chain {
 	const none = { segments: [], tails };
-	const next = edgesFrom(graph, tails, seen);
+	const next = edgesFrom(graph, tails);
 	const targets = [...new Set(next.map((edge) => edge.to))];
 	const fedByAll = (target: string) =>
 		tails.every((tail) => next.some((edge) => edge.to === target && fromTail(edge, tail)));
@@ -1179,7 +1038,7 @@ function mergeChain(graph: Graph, tails: readonly Tail[], seen: ReadonlySet<stri
 			const inner = new Set([...seen, target]);
 			const own = stepChain(graph, node, inner);
 			const rest = chain(graph, own.tails, inner);
-			const into = edgesFrom(graph, rest.tails, inner);
+			const into = edgesFrom(graph, rest.tails);
 			const [first] = into;
 			const oneInput =
 				first && into.every((edge) => edge.to === first.to && edge.input === first.input);
@@ -1234,11 +1093,15 @@ function regionChain(
 	seen: ReadonlySet<string>,
 ): Chain | undefined {
 	const outside = [...graph.nodes.keys()].filter((name) => !region.members.has(name));
-	const body = chain(graph, tails, new Set([...seen, region.name, ...outside]));
+	// The Wait node of `pollUntil` is its entry. The macro adds it, so the body starts after it.
+	const waits = region.repeat.kind === 'pollUntil';
+	const start = waits ? [{ node: region.entry, output: 0 }] : tails;
+	const inside = [...seen, region.name, ...outside, ...(waits ? [region.entry] : [])];
+	const body = chain(graph, start, new Set(inside));
 	if (!sameTails(body.tails, region.exits)) return undefined;
 	const rest = chain(graph, body.tails, new Set([...seen, region.name, ...region.members]));
 	return {
-		segments: [{ kind: 'forEach', region, body: body.segments }, ...rest.segments],
+		segments: [{ kind: 'region', region, body: body.segments }, ...rest.segments],
 		tails: rest.tails,
 	};
 }
@@ -1288,7 +1151,7 @@ function groupChain(
 
 /** The flow from `tails` on. It stops at a node that another path also leads into. */
 function chain(graph: Graph, tails: readonly Tail[], seen: ReadonlySet<string>): Chain {
-	const next = edgesFrom(graph, tails, seen);
+	const next = edgesFrom(graph, tails);
 	const targets = [...new Set(next.map((edge) => edge.to))];
 	const target = targets.length === 1 ? targets[0] : undefined;
 	const region = target ? regionAt(graph, target, tails, seen) : undefined;
@@ -1326,7 +1189,7 @@ function replay(graph: Graph, from: Fragment, segments: readonly Segment[]): Fra
 	});
 	return segments.reduce<Fragment>((current, segment) => {
 		const shape = graph.shapes.get(
-			segment.kind === 'onError' || segment.kind === 'forEach' || segment.kind === 'group'
+			segment.kind === 'onError' || segment.kind === 'region' || segment.kind === 'group'
 				? ''
 				: segment.node.name,
 		);
@@ -1353,11 +1216,11 @@ function replay(graph: Graph, from: Fragment, segments: readonly Segment[]): Fra
 					otherwise ? again(otherwise) : undefined,
 				);
 			}
-			case 'forEach':
-				return forEachFragment(
+			case 'region':
+				return regionFragment(
 					current,
 					segment.region.name,
-					segment.region.batchSize,
+					segment.region.repeat,
 					again(segment.body),
 				);
 			case 'group':
@@ -1367,22 +1230,6 @@ function replay(graph: Graph, from: Fragment, segments: readonly Segment[]): Fra
 					segment.group.description,
 					again(segment.body),
 				);
-			case 'loop':
-				return shape?.kind === 'loop'
-					? loopFragment(
-							current,
-							{
-								name: segment.node.name,
-								maxIterations: shape.maxIterations,
-								emit: shape.variant === 'paginate' ? 'each' : 'last',
-								onLimit: shape.onLimit,
-								...(shape.variant === 'pollUntil' ? { wait: shape.every } : {}),
-								until: () => '',
-								next: () => '',
-							},
-							again(segment.body),
-						)
-					: current;
 			case 'switch':
 				return shape?.kind === 'switch'
 					? switchFragment(
@@ -1413,17 +1260,31 @@ function replay(graph: Graph, from: Fragment, segments: readonly Segment[]): Fra
 	}, from);
 }
 
+/** The fields of a region repeat that a comparison reads: no lambdas, in a fixed order. */
+const REPEAT_KEYS = [
+	'kind',
+	'batchSize',
+	'maxIterations',
+	'maxPages',
+	'maxAttempts',
+	'onLimit',
+	'emit',
+	'every',
+	'amount',
+	'unit',
+];
+
 /** A region as a comparable value. */
 const regionKey = (region: {
 	name: string;
-	batchSize: number;
+	repeat: RegionRepeatSpec;
 	members: Iterable<string>;
 	entry: string;
 	exits: readonly Tail[];
 }) =>
 	JSON.stringify([
 		region.name,
-		region.batchSize,
+		JSON.stringify(region.repeat, REPEAT_KEYS),
 		[...region.members].sort(),
 		region.entry,
 		region.exits.map(({ node, output }) => `${node}#${output}`).sort(),
@@ -1659,9 +1520,9 @@ function renderRegion(
 	const value = indent + INDENT;
 	const call = (macro: string, config: Tree, parts: Tree) =>
 		`${macro}(${renderTree(config, indent)}, ${renderTree(parts, indent)})`;
-	if (segment.kind === 'forEach') {
-		const { name, batchSize } = segment.region;
-		return call('forEach', { name, batchSize }, partCode(graph, segment.body, indent));
+	if (segment.kind === 'region') {
+		const { macro, config } = regionCall(segment.region);
+		return call(macro, config, partCode(graph, segment.body, indent));
 	}
 	if (segment.kind === 'group') {
 		const { name, description } = segment.group;
@@ -1682,32 +1543,6 @@ function renderRegion(
 				...(segment.else ? { else: partCode(graph, segment.else, value) } : {}),
 			},
 		);
-	}
-	if (segment.kind === 'loop' && shape?.kind === 'loop') {
-		const max = shape.maxIterations;
-		const body = partCode(graph, segment.body, indent);
-		switch (shape.variant) {
-			case 'loop':
-				return call(
-					'loop',
-					{
-						name,
-						maxIterations: max,
-						...(shape.onLimit === 'continue' ? { onLimit: shape.onLimit } : {}),
-						until: new Code(shape.until),
-						...(shape.next === undefined ? {} : { next: new Code(shape.next) }),
-					},
-					body,
-				);
-			case 'paginate':
-				return call('paginate', { name, maxPages: max, next: new Code(shape.next) }, body);
-			case 'pollUntil':
-				return call(
-					'pollUntil',
-					{ name, maxAttempts: max, every: { ...shape.every }, until: new Code(shape.until) },
-					body,
-				);
-		}
 	}
 	if (segment.kind === 'switch' && shape?.kind === 'switch') {
 		const cases = Object.fromEntries([
@@ -1734,6 +1569,50 @@ function renderRegion(
 		return call('merge', { name, join }, branches);
 	}
 	return '';
+}
+
+/** The macro and config of a region, e.g. `forEach` and `{ name, batchSize }`. */
+function regionCall({ name, repeat, lambdas }: RegionRead): { macro: string; config: Tree } {
+	const lambda = (key: 'until' | 'next') => {
+		const text = lambdas[key];
+		return text === undefined ? {} : { [key]: new Code(text) };
+	};
+	switch (repeat.kind) {
+		case 'forEach':
+			return { macro: 'forEach', config: { name, batchSize: repeat.batchSize } };
+		case 'loop':
+			return {
+				macro: 'loop',
+				config: {
+					name,
+					maxIterations: repeat.maxIterations,
+					...(repeat.onLimit ? { onLimit: repeat.onLimit } : {}),
+					...(repeat.emit ? { emit: repeat.emit } : {}),
+					...lambda('until'),
+					...lambda('next'),
+				},
+			};
+		case 'paginate':
+			return {
+				macro: 'paginate',
+				config: {
+					name,
+					maxPages: repeat.maxPages,
+					...(repeat.emit ? { emit: repeat.emit } : {}),
+					...lambda('next'),
+				},
+			};
+		case 'pollUntil':
+			return {
+				macro: 'pollUntil',
+				config: {
+					name,
+					maxAttempts: repeat.maxAttempts,
+					every: { ...repeat.every },
+					...lambda('until'),
+				},
+			};
+	}
 }
 
 /** The source of one segment: a step call or a macro call. */
@@ -1793,14 +1672,10 @@ function macrosOf(graph: Graph, segments: readonly Segment[]): string[] {
 				return graph.shapes.get(segment.node.name)?.kind === 'filter' ? ['filter'] : [];
 			case 'branch':
 				return ['when', ...one(segment.then), ...(segment.else ? one(segment.else) : [])];
-			case 'forEach':
-				return ['forEach', ...one(segment.body)];
+			case 'region':
+				return [regionCall(segment.region).macro, ...one(segment.body)];
 			case 'group':
 				return ['group', ...one(segment.body)];
-			case 'loop': {
-				const shape = graph.shapes.get(segment.node.name);
-				return [shape?.kind === 'loop' ? shape.variant : 'loop', ...one(segment.body)];
-			}
 			case 'switch':
 				return [
 					'switchOn',
@@ -1824,11 +1699,9 @@ function segmentNodes(segments: readonly Segment[]): NamedNode[] {
 				return [segment.node];
 			case 'branch':
 				return [segment.node, ...segmentNodes(segment.then), ...segmentNodes(segment.else ?? [])];
-			case 'forEach':
+			case 'region':
 			case 'group':
 				return segmentNodes(segment.body);
-			case 'loop':
-				return [segment.node, ...segmentNodes(segment.body)];
 			case 'switch':
 				return [
 					segment.node,
@@ -1933,9 +1806,10 @@ function render(
 /**
  * `@n8n/workflow-sdk/next` source for a saved workflow, or `undefined` when the typed format
  * cannot express it (for example a sticky note, or a disabled node). Node settings such as
- * `retryOnFail` read back as `settings`. IF, Loop Over Items, Switch, Filter, and Merge nodes
- * read back as macros when their wiring and parameters are what the macro builds.
- * A node group reads back as `group()`, and workflow settings as `workflow({ name, settings })`.
+ * `retryOnFail` read back as `settings`. IF, Switch, Filter, and Merge nodes read back as
+ * macros when their wiring and parameters are what the macro builds. A region reads back as
+ * `forEach`, `loop`, `paginate` or `pollUntil`, a node group as `group()`, and workflow
+ * settings as `workflow({ name, settings })`.
  * An expression without a lambda form reads back as `expr()`; in `node()` and `provider()` every
  * expression does, as their items are untyped. An error output reads back as `onError`, or as
  * `recover` when the handler continues. `factories` maps
@@ -1959,30 +1833,22 @@ export function decompileWorkflow(
 		all.size === plain.length &&
 		[...edges.main, ...edges.providers].every((edge) => all.has(edge.from) && all.has(edge.to));
 	const children = fits ? childrenOf(all, edges.main, edges.providers) : undefined;
-	const forEachRegions = regionsOf(json);
-	if (!edges || !children || !forEachRegions) return undefined;
+	if (!edges || !children) return undefined;
 	const providerNames = new Set(edges.providers.map(({ from }) => from));
 	const groups = groupsOf(json, edges.main, children, providerNames);
 	if (!groups) return undefined;
 	const mainNodes = plain.filter((node) => !providerNames.has(node.name));
 	const nodes = new Map(mainNodes.map((node) => [node.name, node]));
 	// `$()` reads a region as it reads a node.
-	const names = new Set([...nodes.keys(), ...forEachRegions.map(({ name }) => name)]);
+	const regionNames = (json.nodeGroups ?? []).flatMap(({ name, repeat }) => (repeat ? [name] : []));
+	const names = new Set([...nodes.keys(), ...regionNames]);
+	const regions = regionsOf(json, nodes, names);
+	if (!regions) return undefined;
 	const targets = new Set(edges.main.map(({ to }) => to));
-	const loops = mainNodes.flatMap((node) => {
-		const shape = loopShape(node, nodes, edges.main, names);
-		return shape ? [{ head: node.name, shape }] : [];
-	});
-	const regions = new Map<string, Shape>([
-		...loops.map(({ head, shape }): [string, Shape] => [head, shape]),
-		...loops.flatMap(({ head, shape }) =>
-			loopParts(head, shape).map((part): [string, Shape] => [part, { kind: 'loopPart' }]),
-		),
-	]);
 	const shapes = new Map(
 		mainNodes.map((node) => [
 			node.name,
-			shapeOf(node, !targets.has(node.name), names, factories, regions, edges.main, readLegacy),
+			shapeOf(node, !targets.has(node.name), names, factories, edges.main, readLegacy),
 		]),
 	);
 	// A provider of a contract node is a contract provider, and node() takes legacy providers only.
@@ -2024,7 +1890,7 @@ export function decompileWorkflow(
 		children,
 		providerShapes,
 		names,
-		regions: forEachRegions,
+		regions,
 		groups,
 	};
 	const flows = mainNodes
@@ -2050,27 +1916,100 @@ export function decompileWorkflow(
 	return render(json.name, json.settings, graph, flows);
 }
 
-/** The `forEach` regions of `json`, or `undefined` when it has a region of another kind. */
-function regionsOf(json: WorkflowJSON): RegionRead[] | undefined {
+/**
+ * The regions of `json`, or `undefined` when one does not read back: an `until` or `next`
+ * without a lambda form, or a `pollUntil` entry that is not the Wait node the macro adds.
+ */
+function regionsOf(
+	json: WorkflowJSON,
+	nodes: ReadonlyMap<string, NamedNode>,
+	names: ReadonlySet<string>,
+): RegionRead[] | undefined {
 	const nameOf = new Map(json.nodes.map((node) => [node.id, node.name]));
 	const repeating = (json.nodeGroups ?? []).filter((group) => group.repeat !== undefined);
 	const regions = repeating.map((group) => {
 		const { repeat } = group;
-		if (repeat?.kind !== 'forEach') return undefined;
+		if (!repeat) return undefined;
 		const members = group.nodeIds.map((id) => nameOf.get(id));
 		const entry = nameOf.get(repeat.entry);
 		const exits = repeat.exits.map(({ node, output }) => ({ node: nameOf.get(node), output }));
 		if (entry === undefined || members.some((name) => name === undefined)) return undefined;
 		if (exits.some(({ node }) => node === undefined)) return undefined;
-		return {
-			name: group.name,
-			batchSize: repeat.batchSize,
-			members: new Set(members.flatMap((name) => name ?? [])),
-			entry,
-			exits: exits.flatMap(({ node, output }) => (node === undefined ? [] : [{ node, output }])),
-		};
+		const read = repeatRead(group.name, repeat, nodes.get(entry), names);
+		return read
+			? {
+					name: group.name,
+					...read,
+					members: new Set(members.flatMap((name) => name ?? [])),
+					entry,
+					exits: exits.flatMap(({ node, output }) =>
+						node === undefined ? [] : [{ node, output }],
+					),
+				}
+			: undefined;
 	});
 	return regions.every((region) => region !== undefined) ? regions : undefined;
+}
+
+/** A saved region repeat as the macro config, and the lambdas of its expressions. */
+function repeatRead(
+	name: string,
+	repeat: WorkflowGroupRepeat,
+	entry: NamedNode | undefined,
+	names: ReadonlySet<string>,
+): Pick<RegionRead, 'repeat' | 'lambdas'> | undefined {
+	const lambda = (expression: string) => {
+		const js = expressionJs(expression);
+		return js === undefined ? undefined : lambdaForJs(js, names);
+	};
+	// The replay compares graphs only, so its lambdas compile to nothing.
+	const none = () => '';
+	switch (repeat.kind) {
+		case 'forEach':
+			return { repeat: { kind: 'forEach', batchSize: repeat.batchSize }, lambdas: {} };
+		case 'loop': {
+			const until = lambda(repeat.until);
+			const next = repeat.next === undefined ? undefined : lambda(repeat.next);
+			if (until === undefined || (repeat.next !== undefined && next === undefined))
+				return undefined;
+			return {
+				repeat: {
+					kind: 'loop',
+					maxIterations: repeat.maxIterations,
+					until: none,
+					...(next === undefined ? {} : { next: none }),
+					...(repeat.onLimit ? { onLimit: repeat.onLimit } : {}),
+					...(repeat.emit ? { emit: repeat.emit } : {}),
+				},
+				lambdas: { until, ...(next === undefined ? {} : { next }) },
+			};
+		}
+		case 'paginate': {
+			const next = lambda(repeat.next);
+			// Only `loop` takes `onLimit`.
+			if (next === undefined || repeat.onLimit !== undefined) return undefined;
+			return {
+				repeat: {
+					kind: 'paginate',
+					maxPages: repeat.maxPages,
+					next: none,
+					...(repeat.emit ? { emit: repeat.emit } : {}),
+				},
+				lambdas: { next },
+			};
+		}
+		case 'pollUntil': {
+			const until = lambda(repeat.until);
+			const every = entry?.name === pollWait(name) ? waitOf(entry) : undefined;
+			if (until === undefined || every === undefined || repeat.onLimit !== undefined) {
+				return undefined;
+			}
+			return {
+				repeat: { kind: 'pollUntil', maxAttempts: repeat.maxAttempts, every, until: none },
+				lambdas: { until },
+			};
+		}
+	}
 }
 
 /**

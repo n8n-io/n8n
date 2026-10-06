@@ -423,13 +423,6 @@
 			"properties": ["fields", "groupBy", "output", "skipEmptyGroups"]
 		},
 		{
-			"name": "@n8n/nodes-core.loopStateSet",
-			"version": 1,
-			"hidden": true,
-			"credentials": [],
-			"properties": ["state"]
-		},
-		{
 			"name": "@n8n/nodes-core.mergeAppend",
 			"version": 2,
 			"hidden": true,
@@ -1843,7 +1836,6 @@
 		"@n8n/nodes-core.itemsSort",
 		"@n8n/nodes-core.itemsSplitOut",
 		"@n8n/nodes-core.itemsSummarize",
-		"@n8n/nodes-core.loopStateSet",
 		"@n8n/nodes-core.mergeAppend",
 		"@n8n/nodes-core.mergeCombine",
 		"@n8n/nodes-core.mergeCombineByPosition",

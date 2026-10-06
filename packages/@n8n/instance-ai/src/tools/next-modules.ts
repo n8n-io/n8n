@@ -50,7 +50,6 @@ const FLOW_STEP_OF_ACTION: ReadonlyMap<string, string> = new Map([
 	['merge.append', 'n8n-nodes-base.merge'],
 	['merge.combine', 'n8n-nodes-base.merge'],
 	['merge.combineByPosition', 'n8n-nodes-base.merge'],
-	['loopState.set', 'n8n-nodes-base.splitInBatches'],
 ]);
 
 /** The actions that discovery offers. */
@@ -58,9 +57,9 @@ const offeredActions = once(() => nextActions().filter(({ id }) => !FLOW_STEP_OF
 
 /**
  * The native contracts that a construct of the typed flow emits, so no module has a factory for
- * them: `manual()` emits the Manual Trigger, and `forEach` emits Loop Over Items.
+ * them: `manual()` emits the Manual Trigger.
  */
-const FLOW_NATIVES: ReadonlySet<string> = new Set(['manual.trigger', 'loop.batches']);
+const FLOW_NATIVES: ReadonlySet<string> = new Set(['manual.trigger']);
 
 /** A trigger of a module, from its manifest: a trigger with a bundle, or a native trigger. */
 interface ModuleTrigger {
@@ -187,7 +186,7 @@ export function nextNodeModule(ref: string): NextNodeModule | undefined {
 
 /**
  * The SDK step row for a ref to a module action that a flow step replaces: its action id, its
- * node type, or a node id without other actions, e.g. `loopState`.
+ * node type, or a node id without other actions, e.g. `merge`.
  */
 export function flowStepRowOf(ref: string): string | undefined {
 	const replaced = nextActions().find(

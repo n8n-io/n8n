@@ -126,6 +126,7 @@ import {
 	type INodeTypeDescription,
 	type IConnections,
 	type IWorkflowBase,
+	type IWorkflowGroup,
 	type IWorkflowSettings,
 	type IWorkflowExecutionDataProcess,
 	type IDestinationNode,
@@ -2148,12 +2149,19 @@ export class InstanceAiAdapterService {
 
 				// Sever the listed edges on this run's ephemeral copy only — used by
 				// scripted wait-gate verification to keep each pass acyclic.
-				const severed = options?.omitConnections?.length
+				const connections = options?.omitConnections?.length
 					? omitWorkflowConnections(workflow.connections, options.omitConnections)
 					: workflow.connections;
-				const connections = options?.redirectOutputs?.length
-					? redirectWorkflowOutputs(severed, options.redirectOutputs)
-					: severed;
+				const endAtLimit = new Set(options?.endAtLimitRegionNames ?? []);
+				const nodeGroups =
+					endAtLimit.size > 0
+						? workflow.nodeGroups.map(
+								(group): IWorkflowGroup =>
+									group.repeat && group.repeat.kind !== 'forEach' && endAtLimit.has(group.name)
+										? { ...group, repeat: { ...group.repeat, onLimit: 'continue' } }
+										: group,
+							)
+						: workflow.nodeGroups;
 				// A live read in verification sends one request: the node runs on its first item, once,
 				// and its later runs in this execution reuse that output.
 				const readOnce = new Set(options?.readOnceNodeNames ?? []);
@@ -2186,6 +2194,7 @@ export class InstanceAiAdapterService {
 						...workflow,
 						nodes: runNodes,
 						connections,
+						nodeGroups,
 						settings: {
 							...workflow.settings,
 							saveManualExecutions: true,
@@ -5321,21 +5330,6 @@ function omitWorkflowConnections(
 		result[source] = nextByType;
 	}
 	return result;
-}
-
-/** Sends the items of each listed node output where another output of that node sends them. */
-function redirectWorkflowOutputs(
-	connections: IConnections,
-	redirects: Array<{ nodeName: string; output: number; asOutput: number }>,
-): IConnections {
-	return redirects.reduce<IConnections>((result, { nodeName, output, asOutput }) => {
-		const main = result[nodeName]?.[NodeConnectionTypes.Main];
-		if (!main) return result;
-		const outputs = Array.from({ length: Math.max(main.length, output + 1) }, (_, index) =>
-			index === output ? (main[asOutput] ?? []) : (main[index] ?? null),
-		);
-		return { ...result, [nodeName]: { ...result[nodeName], [NodeConnectionTypes.Main]: outputs } };
-	}, connections);
 }
 
 /** Get the execution mode based on the trigger node type. */

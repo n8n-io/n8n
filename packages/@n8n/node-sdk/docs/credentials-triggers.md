@@ -245,9 +245,9 @@ export const webhookTrigger = webhook.trigger('trigger', {
   `native`, and the reply step in `reply`. `publishNative` publishes it with a signature. Its gate
   (`checkNativePublish`) rates the contract as for an action, and a patch must keep the legacy
   node. It has no fixtures: the legacy node runs it.
-- An action can be native too: `native: { type, version }` instead of `run` or `request`, e.g.
-  `loop.batches` for Loop Over Items. It has the same rules: no bundle, no node class
-  (`toNodeType` and `executorOf` throw), and the flow emits the legacy node.
+- An action can be native too: `native: { type, version }` instead of `run` or `request`. It has
+  the same rules: no bundle, no node class (`toNodeType` and `executorOf` throw), and the flow
+  emits the legacy node.
 
 ## Bindings
 

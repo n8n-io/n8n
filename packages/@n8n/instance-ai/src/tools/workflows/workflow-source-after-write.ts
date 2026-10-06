@@ -4,7 +4,6 @@ import type { WorkflowJSON } from '@n8n/workflow-sdk';
 
 import { compileWorkflowSource, isTypeScriptWorkflowSource } from './workflow-source-compiler';
 import {
-	contractLoopsOf,
 	groupingDecisionBlocker,
 	summarizeWorkflowTopLevelItems,
 } from './workflow-validation-warnings';
@@ -22,8 +21,8 @@ export const WRITE_CHECK_TIMEOUT_NOTE = `The check of this file did not complete
  * The refusal of build-workflow for a canvas over the ceiling without a group. An edit that adds
  * nodes gets it at the write, so the agent groups before the build.
  */
-async function groupingDiagnostics(workflow: WorkflowJSON): Promise<string[]> {
-	const summary = summarizeWorkflowTopLevelItems(workflow, await contractLoopsOf(workflow));
+function groupingDiagnostics(workflow: WorkflowJSON): string[] {
+	const summary = summarizeWorkflowTopLevelItems(workflow);
 	const blocker = groupingDecisionBlocker({
 		summary,
 		declaredGroupCount: summary.groupCount,
@@ -61,7 +60,7 @@ export function workflowSourceAfterWrite(
 					compileWorkflowSource(context, filePath, content, signal),
 					signal,
 				);
-				return result.success ? await groupingDiagnostics(result.workflow) : result.errors;
+				return result.success ? groupingDiagnostics(result.workflow) : result.errors;
 			} catch (error) {
 				if (abortSignal?.aborted) throw error;
 				if (deadline.signal.aborted && isAbortError(error)) return [WRITE_CHECK_TIMEOUT_NOTE];

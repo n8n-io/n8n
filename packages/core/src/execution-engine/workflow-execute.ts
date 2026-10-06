@@ -125,6 +125,9 @@ export class WorkflowExecute {
 
 	private regions: RegionScheduler | undefined;
 
+	/** The error of a region that ends the run, e.g. at its pass limit. */
+	private regionError: ExecutionBaseError | undefined;
+
 	constructor(
 		private readonly additionalData: IWorkflowExecuteAdditionalData,
 		private readonly mode: WorkflowExecuteMode,
@@ -2176,10 +2179,13 @@ export class WorkflowExecute {
 		};
 	}
 
-	/** Let the regions start their next pass first, as that can add a node to the stack. */
+	/**
+	 * Let the regions start their next pass first, as that can add a node to the stack. A region
+	 * that fails ends the run.
+	 */
 	private hasNodeToExecute(): boolean {
-		this.regions?.settle();
-		return this.isExecutionStackNotEmpty();
+		this.regionError ??= this.regions?.settle();
+		return this.regionError === undefined && this.isExecutionStackNotEmpty();
 	}
 
 	/** Add the node of `connection` to the stack, unless a region takes the items. */
@@ -2264,10 +2270,8 @@ export class WorkflowExecute {
 		Logger.debug('Workflow execution started', { workflowId: workflow.id });
 		const { startedAt, hooks } = this.setupExecution();
 		this.checkForWorkflowIssues(workflow);
-		this.regions = RegionScheduler.of(
-			workflow,
-			this.runExecutionData,
-			(connection, outputIndex, parentNodeName, nodeSuccessData, runIndex) =>
+		this.regions = RegionScheduler.of(workflow, this.runExecutionData, {
+			routeToNode: (connection, outputIndex, parentNodeName, nodeSuccessData, runIndex) =>
 				this.addNodeToBeExecuted(
 					workflow,
 					connection,
@@ -2276,8 +2280,12 @@ export class WorkflowExecute {
 					nodeSuccessData,
 					runIndex,
 				),
-			() => this.additionalData.currentNodeExecutionIndex++,
-		);
+			nextExecutionIndex: () => this.additionalData.currentNodeExecutionIndex++,
+			mode: this.mode,
+			additionalKeys: () =>
+				getAdditionalKeys(this.additionalData, this.mode, this.runExecutionData),
+		});
+		this.regionError = undefined;
 		this.handleWaitingState(workflow);
 
 		// Variables which hold temporary data for each node-execution
@@ -2814,7 +2822,7 @@ export class WorkflowExecute {
 					return await this.processSuccessExecution(
 						startedAt,
 						workflow,
-						executionError,
+						executionError ?? this.regionError,
 						closeFunction,
 					);
 				})

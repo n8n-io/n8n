@@ -137,9 +137,39 @@ const pollWorkflow = () =>
 				version: 3.4,
 				parameters: {
 					mode: 'raw',
-					jsonOutput: '={{ ({ job: $json.job, done: $json["Poll pass"] >= 2 }) }}',
+					jsonOutput: '={{ ({ job: $json.job, done: $runIndex >= 2 }) }}',
 				},
 			}),
+		),
+	);
+
+const paginateEachWorkflow = () =>
+	workflow(
+		'Each page',
+		manual(),
+		set({ name: 'Start page', fields: { cursor: 0 } }),
+		paginate(
+			{
+				name: 'Pages',
+				maxPages: 3,
+				emit: 'each',
+				next: (page) => (page.cursor < 2 ? { cursor: page.cursor + 1 } : null),
+			},
+			set({ name: 'Fetch', fields: { cursor: (p) => p.cursor } }),
+		),
+	);
+
+const loopInForEachWorkflow = () =>
+	workflow(
+		'Retry each',
+		manual(),
+		customers('Customers'),
+		forEach(
+			{ name: 'Each', batchSize: 1 },
+			loop(
+				{ name: 'Retry', maxIterations: 3, onLimit: 'continue', until: (out) => out.id !== '' },
+				set({ name: 'Try', fields: { id: (c) => c.id }, keep: 'all' }),
+			),
 		),
 	);
 
@@ -308,6 +338,22 @@ const connections = (json: WorkflowJSON, name: string) =>
 		(targets ?? []).map((target) => `${target.node}#${target.index}`),
 	);
 
+/** The region `name` of `json`, with node names in place of node IDs. */
+const regionOf = (json: WorkflowJSON, name: string) => {
+	const nameOf = new Map(json.nodes.map((n) => [n.id, n.name]));
+	const named = (id: string) => nameOf.get(id) ?? id;
+	const group = json.nodeGroups?.find((each) => each.name === name);
+	const repeat = group?.repeat;
+	return (
+		repeat && {
+			members: group.nodeIds.map(named),
+			...repeat,
+			entry: named(repeat.entry),
+			exits: repeat.exits.map(({ node, output }) => `${named(node)}#${output}`),
+		}
+	);
+};
+
 describe('regions compile to node contracts', () => {
 	it('emits nested forEach as regions, with no loop node', () => {
 		const json = forEachWorkflow().toJSON();
@@ -329,7 +375,7 @@ describe('regions compile to node contracts', () => {
 				members: nodeIds.map(named),
 				entry: repeat && named(repeat.entry),
 				exits: repeat?.exits.map(({ node, output }) => `${named(node)}#${output}`),
-				batchSize: repeat?.batchSize,
+				batchSize: repeat?.kind === 'forEach' ? repeat.batchSize : undefined,
 			})),
 		).toEqual([
 			{ name: 'Each order', members: ['Line'], entry: 'Line', exits: ['Line#0'], batchSize: 2 },
@@ -345,43 +391,72 @@ describe('regions compile to node contracts', () => {
 		expect(validateLoopWiring(json)).toEqual([]);
 	});
 
-	it('wires loop with a typed exit, a next state, and a pass limit', () => {
+	it('emits loop as a region of its body, with until, next and the limit in the repeat', () => {
 		const json = loopWorkflow(10).toJSON();
-		expect(connections(json, 'Count')).toEqual([['Add#0']]);
-		expect(connections(json, 'Add')).toEqual([['Count until#0']]);
-		expect(connections(json, 'Count until')).toEqual([
-			['Result#0'],
-			['Count limit#0'],
-			['Count next#0'],
-		]);
-		expect(connections(json, 'Count next')).toEqual([['Count#0']]);
-		const until = (left: string) => ({
-			conditions: [{ type: 'boolean', left, test: { op: 'true' } }],
+		expect(json.nodes.map((n) => n.name)).toEqual(['Start', 'Init', 'Add', 'Result']);
+		expect(connections(json, 'Init')).toEqual([['Add#0']]);
+		expect(connections(json, 'Add')).toEqual([['Result#0']]);
+		const count = regionOf(json, 'Count');
+		expect(count).toEqual({
+			members: ['Add'],
+			kind: 'loop',
+			entry: 'Add',
+			exits: ['Add#0'],
+			maxIterations: 10,
+			until: '={{ $json.n >= 3 }}',
+			next: expect.any(String),
 		});
-		const check = json.nodes.find((n) => n.name === 'Count until');
-		expect(check?.type).toBe('@n8n/nodes-core.conditionSwitch');
-		expect(check?.parameters).toEqual({
-			cases: [
-				{ output: 'done', where: until('={{ $json.n >= 3 }}') },
-				{ output: 'limit', where: until('={{ $("Count").item.json["Count pass"] + 1 >= 10 }}') },
-			],
-		});
-		const types = new Set(json.nodes.map((n) => n.type));
-		expect([...types].filter((type) => !type.startsWith('@n8n/nodes-core.'))).toEqual([
-			'n8n-nodes-base.manualTrigger',
-		]);
+		expect(count?.kind === 'loop' && count.next).toMatch(
+			/^=\{\{ \(\{\s+n: \$json\.n,\s+sum: \$json\.sum\s+\}\) \}\}$/,
+		);
+		expect(JSON.stringify(json)).not.toMatch(/pass"|\$prevNode|loopState/);
+		expect(json.settings).toEqual({ executionOrder: 'v1' });
 	});
 
-	it('emits every page of paginate and waits between pollUntil attempts', () => {
+	it('emits paginate as a region, and pollUntil as a region that starts with its Wait node', () => {
 		const pages = paginateWorkflow().toJSON();
-		expect(connections(pages, 'Fetch')).toEqual([['Pages until#0', 'Rows#0']]);
-		expect(connections(pages, 'Pages until')?.[0]).toEqual([]);
+		expect(connections(pages, 'Fetch')).toEqual([['Rows#0']]);
+		expect(regionOf(pages, 'Pages')).toEqual({
+			members: ['Fetch'],
+			kind: 'paginate',
+			entry: 'Fetch',
+			exits: ['Fetch#0'],
+			maxPages: 10,
+			next: '={{ $json.next === null ? null : { cursor: $json.next } }}',
+		});
 		const poll = pollWorkflow().toJSON();
-		expect(connections(poll, 'Poll next')).toEqual([['Poll wait#0']]);
-		expect(connections(poll, 'Poll wait')).toEqual([['Poll#0']]);
+		expect(poll.nodes.map((n) => n.name)).toEqual(['Start', 'Job', 'Poll wait', 'Status']);
+		expect(connections(poll, 'Job')).toEqual([['Poll wait#0']]);
+		expect(connections(poll, 'Poll wait')).toEqual([['Status#0']]);
 		const wait = poll.nodes.find((n) => n.name === 'Poll wait');
 		expect(wait?.type).toBe('@n8n/nodes-core.waitInterval');
 		expect(wait?.parameters).toEqual({ amount: 0, unit: 'seconds' });
+		expect(regionOf(poll, 'Poll')).toEqual({
+			members: ['Poll wait', 'Status'],
+			kind: 'pollUntil',
+			entry: 'Poll wait',
+			exits: ['Status#0'],
+			maxAttempts: 5,
+			until: '={{ $json.done === true }}',
+		});
+	});
+
+	it('emits emit each for loop and paginate', () => {
+		const json = workflow(
+			'Each page',
+			manual(),
+			set({ name: 'Start page', fields: { cursor: 0 } }),
+			paginate(
+				{ name: 'Pages', maxPages: 3, emit: 'each', next: () => null },
+				set({ name: 'Fetch', fields: { next: null } }),
+			),
+			loop(
+				{ name: 'Again', maxIterations: 2, emit: 'each', until: () => true },
+				set({ name: 'Copy', fields: { next: null } }),
+			),
+		).toJSON();
+		expect(regionOf(json, 'Pages')).toMatchObject({ kind: 'paginate', emit: 'each' });
+		expect(regionOf(json, 'Again')).toMatchObject({ kind: 'loop', emit: 'each' });
 	});
 
 	it('routes switch cases by output, and merges branches by input', () => {
@@ -416,7 +491,7 @@ describe('regions compile to node contracts', () => {
 		expect([...errors, ...warnings]).toEqual([]);
 	});
 
-	it('reports a loop region inside forEach as a build problem', () => {
+	it('nests loop and paginate regions inside forEach', () => {
 		const looped = workflow(
 			'Retry each',
 			manual(),
@@ -433,21 +508,30 @@ describe('regions compile to node contracts', () => {
 					set({ name: 'Add', fields: { id: (c) => c.id } }),
 				),
 			),
-		);
-		expect(() => looped.toJSON()).toThrow(/Region "Each": its nodes connect in a loop/);
+		).toJSON();
+		// Regions with the same nodes do not nest, so the outer region starts with a node of its own.
+		expect(regionOf(looped, 'Each')).toMatchObject({
+			members: ['Each start', 'Add'],
+			entry: 'Each start',
+		});
+		expect(regionOf(looped, 'Count')).toMatchObject({ members: ['Add'], entry: 'Add' });
 		const paged = workflow(
 			'Pages per customer',
 			manual(),
 			set({ name: 'Start', fields: { cursor: 0 } }),
 			forEach(
 				{ name: 'Each', batchSize: 1 },
-				paginate(
-					{ name: 'Pages', maxPages: 3, next: () => null },
-					set({ name: 'Fetch', fields: { next: null } }),
+				steps(
+					set({ name: 'First', fields: { cursor: 0 } }),
+					paginate(
+						{ name: 'Pages', maxPages: 3, next: () => null },
+						set({ name: 'Fetch', fields: { next: null } }),
+					),
 				),
 			),
-		);
-		expect(() => paged.toJSON()).toThrow(/Region "Each": its nodes connect in a loop/);
+		).toJSON();
+		expect(regionOf(paged, 'Each')?.members).toEqual(['First', 'Fetch']);
+		expect(regionOf(paged, 'Pages')?.members).toEqual(['Fetch']);
 	});
 
 	it('accepts a forEach body that drops items', () => {
@@ -490,28 +574,15 @@ describe('regions compile to node contracts', () => {
 
 	it('loop without next carries the body output, and onLimit continue ends at the limit', () => {
 		const json = cappedLoopWorkflow().toJSON();
-		const names = json.nodes.map((n) => n.name);
-		expect(names).toEqual(['Start', 'Init', 'Walk', 'Up', 'Walk until', 'Walk next', 'Depth']);
-		expect(connections(json, 'Walk until')).toEqual([['Depth#0'], ['Walk next#0']]);
-		const check = json.nodes.find((n) => n.name === 'Walk until');
-		expect(check?.parameters).toEqual({
-			cases: [
-				{
-					output: 'done',
-					where: {
-						conditions: [
-							{
-								type: 'boolean',
-								left: '={{ ($json.level >= 10) || $("Walk").item.json["Walk pass"] + 1 >= 3 }}',
-								test: { op: 'true' },
-							},
-						],
-					},
-				},
-			],
-		});
-		expect(json.nodes.find((n) => n.name === 'Walk next')?.parameters).toEqual({
-			state: '={{ ({ ...($json), "Walk pass": $("Walk").item.json["Walk pass"] + 1 }) }}',
+		expect(json.nodes.map((n) => n.name)).toEqual(['Start', 'Init', 'Up', 'Depth']);
+		expect(regionOf(json, 'Walk')).toEqual({
+			members: ['Up'],
+			kind: 'loop',
+			entry: 'Up',
+			exits: ['Up#0'],
+			maxIterations: 3,
+			until: '={{ $json.level >= 10 }}',
+			onLimit: 'continue',
 		});
 	});
 
@@ -623,9 +694,17 @@ describe('regions compile to node contracts', () => {
 		]);
 	});
 
-	it('reports a bad batch size and an empty body as build problems', () => {
+	it('reports a bad batch size or pass limit and an empty body as build problems', () => {
 		const empty = workflow('Empty', manual(), forEach({ name: 'Loop', batchSize: 0 }, steps()));
 		expect(() => empty.toJSON()).toThrow(/batchSize must be a whole number[\s\S]*needs a body/);
+		const unbounded = workflow(
+			'Unbounded',
+			manual(),
+			loop({ name: 'Loop', maxIterations: 0, until: () => true }, steps()),
+		);
+		expect(() => unbounded.toJSON()).toThrow(
+			/Loop: maxIterations must be a whole number of at least 1, not 0[\s\S]*Loop: loop needs a body/,
+		);
 	});
 
 	it('types items through regions', () => {
@@ -949,6 +1028,8 @@ describe('regions round-trip through decompile', () => {
 		['merge append', () => mergeJoinWorkflow('append'), 'join: "append"'],
 		['merge position', () => mergeJoinWorkflow('position'), 'join: "position"'],
 		['loop without next to its limit', cappedLoopWorkflow, 'onLimit: "continue",'],
+		['paginate that emits each page', paginateEachWorkflow, 'emit: "each",'],
+		['loop in forEach', loopInForEachWorkflow, 'name: "Each start"'],
 		['merge of three appended', () => mergeThreeWorkflow('append'), 'join: "append"'],
 		['merge of three by position', () => mergeThreeWorkflow('position'), 'join: "position"'],
 		['forEach of branches', forEachBranchesWorkflow, 'name: "Each start"'],
@@ -1342,7 +1423,7 @@ describe('workflow settings', () => {
 			executionOrder: 'v1',
 		});
 		expect(() => settled({ executionOrder: 'v0' }).toJSON()).toThrow(
-			'forEach runs in execution order v1 only. Remove settings.executionOrder',
+			'Regions run in execution order v1 only. Remove settings.executionOrder',
 		);
 	});
 

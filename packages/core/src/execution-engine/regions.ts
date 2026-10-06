@@ -1,18 +1,27 @@
 import type {
 	IConnection,
+	IDataObject,
+	IExecuteData,
 	INodeExecutionData,
 	IRunExecutionData,
 	ISourceData,
+	IWorkflowDataProxyAdditionalKeys,
 	Region,
 	RegionInstance,
+	RegionKept,
 	Workflow,
+	WorkflowExecuteMode,
 } from 'n8n-workflow';
 import {
 	classifyRegionEdge,
+	deepCopy,
+	ExecutionBaseError,
+	passLimitOf,
 	regionsAround,
 	regionTreeOf,
 	UnexpectedError,
 	UserError,
+	WorkflowOperationError,
 } from 'n8n-workflow';
 
 /** Adds the node of `connection` to the stack, as `WorkflowExecute.addNodeToBeExecuted` does. */
@@ -24,32 +33,56 @@ export type RouteToNode = (
 	runIndex: number,
 ) => void;
 
+/** What the scheduler needs from the engine that runs it. */
+export interface RegionEngine {
+	readonly routeToNode: RouteToNode;
+	readonly nextExecutionIndex: () => number;
+	/** The mode and keys of the expressions `until` and `next`, as for a node. */
+	readonly mode: WorkflowExecuteMode;
+	readonly additionalKeys: () => IWorkflowDataProxyAdditionalKeys;
+}
+
 const outputOf = (runExecutionData: IRunExecutionData, source: ISourceData) =>
 	runExecutionData.resultData.runData[source.previousNode]?.[source.previousNodeRun ?? 0]?.data
 		?.main[source.previousNodeOutput ?? 0] ?? [];
 
+const isDataObject = (value: unknown): value is IDataObject =>
+	typeof value === 'object' && value !== null && !Array.isArray(value);
+
+/** One item that left a pass, and the member output it left on. */
+interface ExitItem {
+	readonly source: ISourceData;
+	readonly items: INodeExecutionData[];
+	readonly index: number;
+}
+
+/** What a pass does with one exit item: emit it, and give the item of the next pass. */
+interface Decision {
+	readonly leaves: boolean;
+	readonly next?: IDataObject;
+}
+
 /**
  * Runs the regions of a workflow (node groups with `repeat`) on the v1 engine. A region holds
- * the items that leave a pass, starts the next pass when no member runs or waits, and emits all
- * items once after the last pass. Each pass is a run under the region name in the run data:
- * output 1 holds the pass input, and output 0 of the last run holds the emitted items. The state
- * is in `executionData.regions`, so a wait or a queue worker keeps it.
+ * the items that leave a pass, starts the next pass when no member runs or waits, and emits the
+ * items once after the last pass (or after each pass with `emit: 'each'`). Each pass is a run
+ * under the region name in the run data: output 1 holds the pass input, and output 0 holds the
+ * emitted items. The pass count and the limit are engine state, not item fields. The state is in
+ * `executionData.regions`, so a wait or a queue worker keeps it.
  */
 export class RegionScheduler {
 	private constructor(
 		private readonly workflow: Workflow,
 		private readonly regions: readonly Region[],
 		private readonly runExecutionData: IRunExecutionData,
-		private readonly routeToNode: RouteToNode,
-		private readonly nextExecutionIndex: () => number,
+		private readonly engine: RegionEngine,
 	) {}
 
 	/** The scheduler of the regions of `workflow`, or `undefined` when it has none. */
 	static of(
 		workflow: Workflow,
 		runExecutionData: IRunExecutionData,
-		routeToNode: RouteToNode,
-		nextExecutionIndex: () => number,
+		engine: RegionEngine,
 	): RegionScheduler | undefined {
 		const { regions, problems } = regionTreeOf({
 			nodes: Object.values(workflow.nodes),
@@ -64,7 +97,7 @@ export class RegionScheduler {
 			});
 		}
 		return regions.length > 0
-			? new RegionScheduler(workflow, regions, runExecutionData, routeToNode, nextExecutionIndex)
+			? new RegionScheduler(workflow, regions, runExecutionData, engine)
 			: undefined;
 	}
 
@@ -91,7 +124,7 @@ export class RegionScheduler {
 			});
 			return;
 		}
-		this.routeToNode(connection, outputIndex, nodeName, nodeSuccessData, runIndex);
+		this.engine.routeToNode(connection, outputIndex, nodeName, nodeSuccessData, runIndex);
 	}
 
 	/** Keep each output of the node run that is an exit of a running region. */
@@ -111,15 +144,17 @@ export class RegionScheduler {
 		});
 	}
 
-	/** Start the next pass, or emit, for each region whose pass is over. Innermost first. */
-	settle(): void {
+	/**
+	 * Start the next pass, or emit, for each region whose pass is over. Innermost first. Gives
+	 * the error that ends the run: a region at its pass limit, or an `until` or `next` that fails.
+	 */
+	settle(): ExecutionBaseError | undefined {
 		const [next] = this.regions
 			.filter((region) => this.instanceOf(region) !== undefined && !this.isBusy(region))
 			.sort((a, b) => b.depth - a.depth);
-		if (!next) return;
+		if (!next) return undefined;
 		this.dropWaiting(next);
-		this.advance(next);
-		this.settle();
+		return this.finishPass(next) ?? this.settle();
 	}
 
 	private get executionData() {
@@ -135,6 +170,11 @@ export class RegionScheduler {
 
 	private instanceOf(region: Region | undefined): RegionInstance | undefined {
 		return region ? this.instances[region.name] : undefined;
+	}
+
+	private runsOf(region: Region) {
+		const { runData } = this.runExecutionData.resultData;
+		return (runData[region.name] ??= []);
 	}
 
 	/**
@@ -166,94 +206,280 @@ export class RegionScheduler {
 			running.queued.push(input);
 			return;
 		}
-		this.instances[region.name] = { input, cursor: 0, exits: [], queued: [] };
-		this.advance(region);
+		this.start(region, input, []);
 	}
 
-	private advance(region: Region): void {
-		const instance = this.instanceOf(region);
-		if (!instance) return;
-		const items = outputOf(this.runExecutionData, instance.input);
-		if (instance.cursor < items.length) {
-			this.startPass(region, instance, items);
-		} else {
-			this.emit(region, instance);
+	private start(region: Region, input: ISourceData, queued: ISourceData[]): void {
+		const instance: RegionInstance = { input, cursor: 0, passes: 0, exits: [], kept: [], queued };
+		this.instances[region.name] = instance;
+		const items = outputOf(this.runExecutionData, input);
+		if (region.repeat.kind === 'forEach') {
+			this.startBatch(region, instance, items);
+			return;
 		}
+		this.startPass(
+			region,
+			instance,
+			items.map((item, index) => ({ ...item, pairedItem: { item: index } })),
+			[input],
+		);
 	}
 
-	private startPass(region: Region, instance: RegionInstance, items: INodeExecutionData[]): void {
+	private startBatch(region: Region, instance: RegionInstance, items: INodeExecutionData[]): void {
+		if (region.repeat.kind !== 'forEach') return;
 		const { cursor } = instance;
 		const batch = items
 			.slice(cursor, cursor + region.repeat.batchSize)
 			.map((item, index) => ({ ...item, pairedItem: { item: cursor + index } }));
 		instance.cursor = cursor + batch.length;
-		const { runData } = this.runExecutionData.resultData;
-		const runs = (runData[region.name] ??= []);
+		this.startPass(region, instance, batch, [instance.input]);
+	}
+
+	/** Write the region run of the next pass, and start its members on `batch`. */
+	private startPass(
+		region: Region,
+		instance: RegionInstance,
+		batch: INodeExecutionData[],
+		sources: ISourceData[],
+	): void {
+		const runs = this.runsOf(region);
 		runs.push({
 			startTime: Date.now(),
-			executionIndex: this.nextExecutionIndex(),
+			executionIndex: this.engine.nextExecutionIndex(),
 			executionTime: 0,
 			executionStatus: 'success',
-			source: [instance.input],
+			source: sources,
 			data: { main: [[], batch] },
 		});
+		instance.passes += 1;
 		const pass: ISourceData = {
 			previousNode: region.name,
 			previousNodeOutput: 1,
 			previousNodeRun: runs.length - 1,
 		};
-		const inner = this.regions.find(
-			(other) => other.parent === region.name && other.entry === region.entry,
-		);
-		if (inner) {
-			this.enter(inner, pass);
-			return;
+		// After an emit, the emitted items run on first, so the passes continue in pass order.
+		const afterEmit =
+			'emit' in region.repeat && region.repeat.emit === 'each' && instance.passes > 1;
+		for (const name of this.passStarts(region, instance)) {
+			const inner = this.regions.find(
+				(other) => other.parent === region.name && other.entry === name,
+			);
+			if (inner) {
+				this.enter(inner, pass);
+				continue;
+			}
+			const node = this.workflow.getNode(name);
+			if (!node) throw new UnexpectedError(`Region "${region.name}" has no node "${name}"`);
+			const start = { node, data: { main: [batch] }, source: { main: [pass] } };
+			if (afterEmit) this.executionData.nodeExecutionStack.push(start);
+			else this.executionData.nodeExecutionStack.unshift(start);
 		}
-		const entry = this.workflow.getNode(region.entry);
-		if (!entry) throw new UnexpectedError(`Region "${region.name}" has no entry node`);
-		this.executionData.nodeExecutionStack.unshift({
-			node: entry,
-			data: { main: [batch] },
-			source: { main: [pass] },
-		});
 	}
 
-	private emit(region: Region, instance: RegionInstance): void {
-		delete this.instances[region.name];
-		const runs = this.runExecutionData.resultData.runData[region.name] ?? [];
-		const lastRun = runs.length - 1;
-		const last = runs[lastRun];
-		if (!last) throw new UnexpectedError(`Region "${region.name}" emits without a pass`);
-		const done = instance.exits.flatMap((exit) =>
-			outputOf(this.runExecutionData, exit).map((item, index) => ({
-				...item,
-				pairedItem: { item: index, sourceOverwrite: exit },
+	/** The entry of `pollUntil` runs between attempts, so the first attempt starts after it. */
+	private passStarts(region: Region, instance: RegionInstance): string[] {
+		if (region.repeat.kind !== 'pollUntil' || instance.passes > 1) return [region.entry];
+		return (this.workflow.connectionsBySourceNode[region.entry]?.main?.[0] ?? []).map(
+			(connection) => connection.node,
+		);
+	}
+
+	private finishPass(region: Region): ExecutionBaseError | undefined {
+		const instance = this.instanceOf(region);
+		if (!instance) return undefined;
+		const exits = instance.exits;
+		instance.exits = [];
+		if (region.repeat.kind !== 'forEach') return this.finishUntilPass(region, instance, exits);
+		instance.kept.push(
+			...exits.map((source) => ({
+				source,
+				items: outputOf(this.runExecutionData, source).map((_item, index) => index),
 			})),
 		);
-		const data = [done, last.data?.main[1] ?? []];
-		runs[lastRun] = { ...last, data: { main: data } };
-		if (done.length > 0) this.forward(region, lastRun, data);
+		const items = outputOf(this.runExecutionData, instance.input);
+		if (instance.cursor < items.length) this.startBatch(region, instance, items);
+		else this.emit(region, instance);
+		return undefined;
+	}
 
-		const [queued, ...rest] = instance.queued;
-		if (queued) {
-			this.instances[region.name] = { input: queued, cursor: 0, exits: [], queued: rest };
-			this.advance(region);
+	/** Decide each exit item of the pass: emit it, run it again, or fail at the pass limit. */
+	private finishUntilPass(
+		region: Region,
+		instance: RegionInstance,
+		exits: ISourceData[],
+	): ExecutionBaseError | undefined {
+		const runs = this.runsOf(region);
+		const runIndex = runs.length - 1;
+		const exitItems = exits.flatMap((source) => {
+			const items = outputOf(this.runExecutionData, source);
+			return items.map((_item, index): ExitItem => ({ source, items, index }));
+		});
+		const decided = this.decideAll(region, exitItems);
+		if (decided instanceof ExecutionBaseError) return this.fail(region, decided);
+
+		const again = decided.filter(({ decision }) => decision.next !== undefined);
+		const limit = passLimitOf(region.repeat) ?? Infinity;
+		const atLimit = again.length > 0 && instance.passes >= limit;
+		const continues = 'onLimit' in region.repeat && region.repeat.onLimit === 'continue';
+		if (atLimit && !continues) {
+			return this.fail(
+				region,
+				new WorkflowOperationError(
+					`${region.name} stopped after ${limit} passes without meeting its exit condition`,
+				),
+			);
 		}
+		// With `emit: 'each'` the output of each pass continues, also the items that run again.
+		const emitsEach = 'emit' in region.repeat && region.repeat.emit === 'each';
+		const kept = keptOf(
+			decided.filter(
+				({ decision }) => emitsEach || decision.leaves || (atLimit && decision.next !== undefined),
+			),
+		);
+		if (emitsEach) this.emitItems(region, runIndex, kept);
+		else instance.kept.push(...kept);
+
+		if (atLimit || again.length === 0) {
+			this.emit(region, instance);
+			return undefined;
+		}
+		const sources = [...new Set(again.map(({ exit }) => exit.source))];
+		const batch = again.map(({ exit, decision }) => ({
+			json: decision.next ?? {},
+			pairedItem: { item: exit.index, input: sources.indexOf(exit.source) },
+		}));
+		this.startPass(region, instance, batch, sources);
+		return undefined;
+	}
+
+	private decideAll(
+		region: Region,
+		exitItems: ExitItem[],
+	): Array<{ exit: ExitItem; decision: Decision }> | ExecutionBaseError {
+		try {
+			return exitItems.map((exit) => ({ exit, decision: this.decide(region, exit) }));
+		} catch (error) {
+			if (error instanceof ExecutionBaseError) return error;
+			const message = error instanceof Error ? error.message : String(error);
+			return new WorkflowOperationError(`${region.name}: ${message}`);
+		}
+	}
+
+	private decide(region: Region, exit: ExitItem): Decision {
+		const { repeat } = region;
+		const item = exit.items[exit.index];
+		switch (repeat.kind) {
+			case 'forEach':
+				return { leaves: true };
+			case 'loop': {
+				if (this.evaluate(repeat.until, exit) === true) return { leaves: true };
+				const next = repeat.next === undefined ? item?.json : this.evaluate(repeat.next, exit);
+				return { leaves: false, next: this.nextItem(region, next) };
+			}
+			case 'paginate': {
+				const next = this.evaluate(repeat.next, exit);
+				return {
+					leaves: true,
+					...(next === null || next === undefined ? {} : { next: this.nextItem(region, next) }),
+				};
+			}
+			case 'pollUntil': {
+				if (this.evaluate(repeat.until, exit) === true) return { leaves: true };
+				// The next attempt takes the attempt input that the exit item comes from.
+				const input = this.evaluate(`={{ $(${JSON.stringify(region.name)}).item.json }}`, exit);
+				return { leaves: false, next: this.nextItem(region, input) };
+			}
+		}
+	}
+
+	private nextItem(region: Region, value: unknown): IDataObject {
+		if (!isDataObject(value)) {
+			throw new WorkflowOperationError(
+				`${region.name} needs an object as the item of the next pass, not ${Array.isArray(value) ? 'an array' : typeof value}`,
+			);
+		}
+		return deepCopy(value);
+	}
+
+	/**
+	 * An expression for one exit item, as a node right after the exit would resolve it: `$json`
+	 * is the exit item, and `$('X')` follows the paired items back from the exit.
+	 */
+	private evaluate(expression: string, { source, items, index }: ExitItem): unknown {
+		const node = this.workflow.getNode(source.previousNode);
+		if (!node) throw new UnexpectedError(`Region exit "${source.previousNode}" is not a node`);
+		const connectionInputData = items.map((item, itemIndex) => ({
+			...item,
+			pairedItem: { item: itemIndex },
+		}));
+		const executeData: IExecuteData = {
+			node,
+			data: { main: [connectionInputData] },
+			source: { main: [source] },
+		};
+		return this.workflow.expression.getParameterValue(
+			expression,
+			this.runExecutionData,
+			source.previousNodeRun ?? 0,
+			index,
+			node.name,
+			connectionInputData,
+			this.engine.mode,
+			this.engine.additionalKeys(),
+			executeData,
+		);
+	}
+
+	private fail(region: Region, error: ExecutionBaseError): ExecutionBaseError {
+		delete this.instances[region.name];
+		const runs = this.runsOf(region);
+		const last = runs.at(-1);
+		if (last) runs[runs.length - 1] = { ...last, executionStatus: 'error', error };
+		return error;
+	}
+
+	/** End the region: emit the kept items of all passes, then start a queued input. */
+	private emit(region: Region, instance: RegionInstance): void {
+		delete this.instances[region.name];
+		const lastRun = this.runsOf(region).length - 1;
+		if (lastRun < 0) throw new UnexpectedError(`Region "${region.name}" emits without a pass`);
+		this.emitItems(region, lastRun, instance.kept);
+		const [queued, ...rest] = instance.queued;
+		if (queued) this.start(region, queued, rest);
+	}
+
+	/** Write `kept` as output 0 of region run `runIndex`, and send it on the exits. */
+	private emitItems(region: Region, runIndex: number, kept: readonly RegionKept[]): void {
+		const runs = this.runsOf(region);
+		const run = runs[runIndex];
+		if (!run) throw new UnexpectedError(`Region "${region.name}" has no run ${runIndex}`);
+		const done = kept.flatMap(({ source, items }) => {
+			const output = outputOf(this.runExecutionData, source);
+			return items.flatMap((index) => {
+				const item = output[index];
+				return item ? [{ ...item, pairedItem: { item: index, sourceOverwrite: source } }] : [];
+			});
+		});
+		if (done.length === 0) return;
+		const data = [done, run.data?.main[1] ?? []];
+		runs[runIndex] = { ...run, data: { main: data } };
+		this.forward(region, runIndex, data);
 	}
 
 	/**
 	 * Send the emitted items on the exits of `region`. A running region around it that shares an
 	 * exit holds them for its own emit, and only its members on those edges run now.
 	 */
-	private forward(region: Region, lastRun: number, data: INodeExecutionData[][]): void {
+	private forward(region: Region, runIndex: number, data: INodeExecutionData[][]): void {
 		const emitted: ISourceData = {
 			previousNode: region.name,
 			previousNodeOutput: 0,
-			previousNodeRun: lastRun,
+			previousNodeRun: runIndex,
 		};
 		const [holder] = this.regions
 			.filter(
 				(outer) =>
+					outer !== region &&
 					this.instanceOf(outer) !== undefined &&
 					outer.members.has(region.entry) &&
 					outer.exits.some((exit) =>
@@ -278,10 +504,23 @@ export class RegionScheduler {
 			// The holder emits the items to its own exit targets later.
 			if (held && !holder?.members.has(connection.node)) continue;
 			const { exits, enters } = classifyRegionEdge(this.regions, node, connection.node);
-			if (exits.some((outer) => this.instanceOf(outer) !== undefined)) continue;
+			// With `emit: 'each'` the region still runs while it emits.
+			const heldOuter = exits.some(
+				(outer) => outer !== region && this.instanceOf(outer) !== undefined,
+			);
+			if (heldOuter) continue;
 			const [outer] = enters;
 			if (outer) this.enter(outer, emitted);
-			else this.routeToNode(connection, 0, region.name, data, lastRun);
+			else this.engine.routeToNode(connection, 0, region.name, data, runIndex);
 		}
 	}
+}
+
+/** The exit items by member output, in pass order. */
+function keptOf(decided: ReadonlyArray<{ exit: ExitItem }>): RegionKept[] {
+	const bySource = decided.reduce((groups, { exit }) => {
+		groups.set(exit.source, [...(groups.get(exit.source) ?? []), exit.index]);
+		return groups;
+	}, new Map<ISourceData, number[]>());
+	return [...bySource].map(([source, items]) => ({ source, items }));
 }

@@ -6,7 +6,6 @@ import {
 } from '@n8n/workflow-sdk';
 import {
 	formatTopLevelItemsMessage,
-	NodeConnectionTypes,
 	outermostGroups,
 	summarizeTopLevelItems,
 	TOP_LEVEL_ITEMS_OVER_CEILING_CODE,
@@ -77,99 +76,22 @@ export function partitionWarnings(warnings: ValidationWarning[]): {
 	return partitionValidationIssues(warnings);
 }
 
-/** The nodes of one `loop`, `paginate` or `pollUntil` of `@n8n/workflow-sdk/next`, by ID. */
-export interface ContractLoop {
-	readonly headId: string;
-	/** The head, the body and the nodes that the macro adds. */
-	readonly nodeIds: readonly string[];
-}
-
-/** The loops in `json`. The author writes each one as one part, so it counts as one box. */
-export async function contractLoopsOf(json: WorkflowJSON): Promise<ContractLoop[]> {
-	const { LOOP_STATE_NODE, loopNodeNames } = await import('@n8n/workflow-sdk/next');
-	const nodes = json.nodes ?? [];
-	const idOf = new Map(
-		nodes.flatMap(
-			(node): Array<[string, string]> => (node.name && node.id ? [[node.name, node.id]] : []),
-		),
-	);
-	const edges = Object.entries(toEngineConnections(json.connections)).flatMap(([from, byType]) =>
-		(byType[NodeConnectionTypes.Main] ?? []).flatMap((targets) =>
-			(targets ?? []).map((target) => ({ from, to: target.node })),
-		),
-	);
-	const reach = (start: string, stop: string, step: (name: string) => string[]) => {
-		const seen = new Set<string>();
-		const visit = (name: string): void => {
-			if (seen.has(name)) return;
-			seen.add(name);
-			if (name !== stop) step(name).forEach(visit);
-		};
-		visit(start);
-		return seen;
-	};
-	const after = (name: string) => edges.filter((edge) => edge.from === name).map(({ to }) => to);
-	const before = (name: string) => edges.filter((edge) => edge.to === name).map(({ from }) => from);
-
-	const loops = nodes.flatMap((head) => {
-		const headId = head.id;
-		if (head.type !== LOOP_STATE_NODE.type || !head.name || !headId) return [];
-		const parts = loopNodeNames(head.name);
-		if (!idOf.has(parts.check)) return [];
-		// The body is every node on a path from the head to the check.
-		const fromHead = reach(head.name, parts.check, after);
-		const toCheck = reach(parts.check, head.name, before);
-		const names = [
-			...[...fromHead].filter((name) => toCheck.has(name)),
-			parts.next,
-			parts.limit,
-			parts.wait,
-		];
-		return [{ headId, nodeIds: names.flatMap((name) => idOf.get(name) ?? []) }];
-	});
-	// A loop in the body holds nodes off that path, e.g. its limit node.
-	const withInner = (loop: ContractLoop): string[] => [
-		...loop.nodeIds,
-		...loops
-			.filter((inner) => inner !== loop && loop.nodeIds.includes(inner.headId))
-			.flatMap(withInner),
-	];
-	return loops.map((loop) => ({ ...loop, nodeIds: [...new Set(withInner(loop))] }));
-}
-
 /**
- * Boxes on the canvas with every group collapsed, for the saved shape of a build.
- * Each loop that no group or other loop holds counts as one box too.
+ * Boxes on the canvas with every group collapsed, for the saved shape of a build. A region of
+ * `@n8n/workflow-sdk/next` (`forEach`, `loop`, `paginate`, `pollUntil`) is a node group, so it
+ * counts as one box. It is no stage that the agent framed, so `groupCount` leaves it out.
  */
-export function summarizeWorkflowTopLevelItems(
-	json: WorkflowJSON,
-	loops: readonly ContractLoop[] = [],
-): TopLevelItemsSummary {
-	const nodes = json.nodes ?? [];
-	const connectionsBySourceNode = toEngineConnections(json.connections);
-	if (loops.length === 0) {
-		return summarizeTopLevelItems({ nodes, nodeGroups: json.nodeGroups, connectionsBySourceNode });
-	}
-
+export function summarizeWorkflowTopLevelItems(json: WorkflowJSON): TopLevelItemsSummary {
 	const groups = json.nodeGroups ?? [];
-	const groupedIds = new Set(groups.flatMap((group) => group.nodeIds));
-	const outerLoops = loops.filter(
-		(loop) =>
-			!groupedIds.has(loop.headId) &&
-			!loops.some((other) => other !== loop && other.nodeIds.includes(loop.headId)),
-	);
-	const groupsOutsideLoops = groups.filter(
-		(group) => !outerLoops.some((loop) => group.nodeIds.every((id) => loop.nodeIds.includes(id))),
-	);
 	const summary = summarizeTopLevelItems({
-		nodes,
-		nodeGroups: [
-			...groupsOutsideLoops,
-			...outerLoops.map((loop) => ({ nodeIds: [...loop.nodeIds] })),
-		],
-		connectionsBySourceNode,
+		nodes: json.nodes ?? [],
+		nodeGroups: groups,
+		connectionsBySourceNode: toEngineConnections(json.connections),
 	});
-	return { ...summary, groupCount: outermostGroups(groups).length };
+	const stages = groups.filter((group) => !group.repeat);
+	return stages.length === groups.length
+		? summary
+		: { ...summary, groupCount: outermostGroups(stages).length };
 }
 
 /**
@@ -207,7 +129,7 @@ export function regionDroppedBlocker(
 		code: REGION_DROPPED_CODE,
 		severity: 'error',
 		message:
-			`The save would remove ${reasons.length} forEach region(s), so their nodes would not run batch by batch. ` +
+			`The save would remove ${reasons.length} region(s), so their nodes would not repeat. ` +
 			`${reasons.join(' ')} Fix what each message names and build again.`,
 	};
 }

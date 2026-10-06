@@ -24,14 +24,14 @@ Import these steps from `@n8n/workflow-sdk/next`.
 ## Loops
 
 - `forEach({ name, batchSize }, body)` runs the body on batches, one after
-  the other. Use it only to pace work, e.g. for a rate limit: every node
+  the other. Use it only to pace work, e.g. for a rate limit: each node
   already runs once for each item.
-- `loop({ name, maxIterations, until, next?, onLimit? }, body)` runs the body
-  again until `until` holds. `onLimit: 'continue'` ends at maxIterations:
-  'at most N'.
+- `loop({ name, maxIterations, until, next?, onLimit?, emit? }, body)` runs
+  the body until `until` holds, then goes on once (`emit: 'each'`: each
+  pass). `onLimit: 'continue'` ends at maxIterations: 'at most N'.
 - The state is the item before `loop`: `set` it first.
 - A loop body ends with a `set` of the state fields; then `next` is
-  optional. There is no loop-state module.
+  optional.
 
 ```ts
 import { workflow, manual, set, loop } from '@n8n/workflow-sdk/next';

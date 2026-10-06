@@ -1714,12 +1714,12 @@ describe('nodes tool', () => {
 				definitions: Array<{ content: string; error?: string }>;
 			}>(createNodesTool(context, 'full'), {
 				action: 'type-definition',
-				nodeTypes: ['items.set', 'loopState', 'items'],
+				nodeTypes: ['items.set', 'merge', 'items'],
 			});
 
-			const [set, loopState, items] = result.definitions;
+			const [set, merge, items] = result.definitions;
 			expect(set.error).toMatch(/^The flow SDK builds items\.set\. Use its step instead: set\(\{/);
-			expect(loopState.error).toContain('loop({');
+			expect(merge.error).toContain('merge({');
 			expect(items.content).toContain('export const items = {');
 			expect(items.content).not.toContain('itemsSet');
 		});

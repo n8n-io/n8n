@@ -42,7 +42,6 @@ export const ACTION_ORDER: readonly string[] = [
 	'wait.interval',
 	'wait.until',
 	'stopAndError.stop',
-	'loopState.set',
 	'ai.prompt',
 	'ai.agent',
 	'ai.classify',

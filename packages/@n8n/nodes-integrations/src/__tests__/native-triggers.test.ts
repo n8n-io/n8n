@@ -24,7 +24,6 @@ describe('native contracts', () => {
 			['facebookTrigger.trigger', 'n8n-nodes-base.facebookTrigger'],
 			['form.trigger', 'n8n-nodes-base.formTrigger'],
 			['googleSheetsTrigger.trigger', 'n8n-nodes-base.googleSheetsTrigger'],
-			['loop.batches', 'n8n-nodes-base.splitInBatches'],
 			['manual.trigger', 'n8n-nodes-base.manualTrigger'],
 			['schedule.trigger', 'n8n-nodes-base.scheduleTrigger'],
 			['webhook.trigger', 'n8n-nodes-base.webhook'],

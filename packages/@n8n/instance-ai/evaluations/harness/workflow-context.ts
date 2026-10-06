@@ -1,9 +1,14 @@
+import type { WorkflowGroupRepeat } from 'n8n-workflow';
+
 import type { WorkflowResponse } from '../clients/n8n-client';
 
 // Judges read a group as a canvas frame unless told otherwise. The note shows only
 // with a `repeat` group, so the context of other workflows does not change.
 const REPEAT_GROUP_NOTE =
 	'A group with `repeat` is a loop, not only a visual frame. With `kind: "forEach"`, the engine runs the nodes of the group once for each batch of at most `batchSize` items that arrive at `entry`. The batches run one after the other, so a Wait node in the group pauses once for each batch. The items of all batches leave the group one time, on `exits`, after the last batch.';
+
+/** The settings of a `repeat`, e.g. `kind` and `batchSize`, without its node ids. */
+const settingsOf = ({ entry: _entry, exits: _exits, ...settings }: WorkflowGroupRepeat) => settings;
 
 /**
  * Renders node groups for the judge. Groups persist member node *ids*, but the
@@ -32,8 +37,7 @@ function renderNodeGroupLines(wf: WorkflowResponse): string[] {
 				...(group.repeat !== undefined
 					? {
 							repeat: {
-								kind: group.repeat.kind,
-								batchSize: group.repeat.batchSize,
+								...settingsOf(group.repeat),
 								entry: nameById.get(group.repeat.entry),
 								exits: group.repeat.exits.flatMap(({ node, output }) => {
 									const name = nameById.get(node);

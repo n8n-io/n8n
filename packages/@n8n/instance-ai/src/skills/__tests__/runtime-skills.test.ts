@@ -60,7 +60,6 @@ describe('Instance AI runtime skills', () => {
 		const modules = substituteSkillPlaceholders('{{NODE_CONTRACT_MODULES_PLACEHOLDER}}');
 		expect(modules).toContain('`items`');
 		expect(modules).not.toContain('`merge`');
-		expect(modules).not.toContain('`loopState`');
 	});
 
 	it('points the workflow-builder skill at the SDK language reference', () => {

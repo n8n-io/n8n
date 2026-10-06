@@ -9,20 +9,77 @@ const regionExitSchema = z.object({
 	output: z.number().int().min(0),
 });
 
-/**
- * The `repeat` of a node group. The engine runs the group again for each batch of the items
- * that arrive at `entry`, and emits the items of all passes once, on `exits`.
- */
-export const workflowGroupRepeatSchema = z.object({
-	kind: z.literal('forEach'),
+const regionBase = {
 	/** The ID of the member node that takes the region input. */
 	entry: z.string().min(1),
 	/** The member outputs whose items leave the region. */
 	exits: z.array(regionExitSchema),
-	batchSize: z.number().int().min(1),
-});
+};
+
+const passLimit = z.number().int().min(1);
+
+/** At the pass limit: `fail` fails the run, `continue` emits the items as if `until` held. */
+const regionOnLimitSchema = z.enum(['fail', 'continue']);
+
+/** `last` emits the items of all passes once, after the last pass. `each` emits after each pass. */
+const regionEmitSchema = z.enum(['last', 'each']);
+
+/**
+ * The `repeat` of a node group. `forEach` runs the group again for each batch of the items that
+ * arrive at `entry`. The other kinds run the group again on the items of the last pass until
+ * their exit condition holds. `until` and `next` are n8n expressions for each exit item.
+ */
+export const workflowGroupRepeatSchema = z.discriminatedUnion('kind', [
+	z.object({ kind: z.literal('forEach'), ...regionBase, batchSize: z.number().int().min(1) }),
+	z.object({
+		kind: z.literal('loop'),
+		...regionBase,
+		maxIterations: passLimit,
+		/** True when an exit item leaves the loop. */
+		until: z.string(),
+		/** The item of the next pass, from an exit item. Without it, the exit item is the next item. */
+		next: z.string().optional(),
+		onLimit: regionOnLimitSchema.optional(),
+		emit: regionEmitSchema.optional(),
+	}),
+	z.object({
+		kind: z.literal('paginate'),
+		...regionBase,
+		maxPages: passLimit,
+		/** The item of the next page, from an exit item, or null after the last page. */
+		next: z.string(),
+		onLimit: regionOnLimitSchema.optional(),
+		emit: regionEmitSchema.optional(),
+	}),
+	/**
+	 * The entry, e.g. a Wait node, runs before each attempt but the first. The first attempt
+	 * starts at the members that the entry connects to.
+	 */
+	z.object({
+		kind: z.literal('pollUntil'),
+		...regionBase,
+		maxAttempts: passLimit,
+		/** True when an exit item is the result. */
+		until: z.string(),
+		onLimit: regionOnLimitSchema.optional(),
+	}),
+]);
 
 export type WorkflowGroupRepeat = z.infer<typeof workflowGroupRepeatSchema>;
+
+/** The most passes of a region, or `undefined` for `forEach`, which ends with its input. */
+export function passLimitOf(repeat: WorkflowGroupRepeat): number | undefined {
+	switch (repeat.kind) {
+		case 'forEach':
+			return undefined;
+		case 'loop':
+			return repeat.maxIterations;
+		case 'paginate':
+			return repeat.maxPages;
+		case 'pollUntil':
+			return repeat.maxAttempts;
+	}
+}
 
 /** A member output whose items leave a region, by node name. */
 export interface RegionExit {
@@ -44,14 +101,25 @@ export interface Region {
 	readonly depth: number;
 }
 
+/** Items of one member output that leave a region when it emits. */
+export interface RegionKept {
+	readonly source: ISourceData;
+	/** The item indexes in the output. */
+	readonly items: number[];
+}
+
 /** The engine state of a region that runs. It is saved with the execution, so a resume keeps it. */
 export interface RegionInstance {
-	/** The run output that the region takes, batch by batch. */
+	/** The run output that the region takes: `forEach` batch by batch, the other kinds at once. */
 	input: ISourceData;
 	/** The first input item of the next batch. */
 	cursor: number;
-	/** The member outputs that left the region, in pass order. */
+	/** The passes that this instance started. */
+	passes: number;
+	/** The member outputs that left the region in the pass that runs. */
 	exits: ISourceData[];
+	/** The items of the passes that ended, for the emit after the last pass. */
+	kept: RegionKept[];
 	/** The inputs that arrived while the region ran. */
 	queued: ISourceData[];
 }
@@ -153,7 +221,27 @@ function regionProblems(
 		...(hasCycle(members, edges)
 			? [`${label}: its nodes connect in a loop. The region repeats its nodes, so remove the loop`]
 			: []),
+		...(repeat.kind !== 'forEach' && exits.length === 0
+			? [`${label}: it needs an exit, because its exit condition reads the exit items`]
+			: []),
+		...(repeat.kind === 'pollUntil' ? pollEntryProblems(label, entry, members, edges) : []),
 	];
+}
+
+/** The entry of `pollUntil` runs between attempts, so the first attempt starts after it. */
+function pollEntryProblems(
+	label: string,
+	entry: string,
+	members: ReadonlySet<string>,
+	edges: readonly MainEdge[],
+): string[] {
+	const out = edges.filter((edge) => edge.from === entry);
+	return out.length > 0 &&
+		out.every((edge) => edge.output === 0 && edge.input === 0 && members.has(edge.to))
+		? []
+		: [
+				`${label}: its entry "${entry}" runs between attempts, so it must connect from output 0 to input 0 of the attempt nodes, and only to them`,
+			];
 }
 
 /**

@@ -116,6 +116,58 @@ describe('regionTreeOf', () => {
 		]);
 	});
 
+	it('reports an until region without an exit, and a pollUntil entry that is not before the attempt', () => {
+		expect(
+			messages({
+				nodes: nodes(['Before', 'A']),
+				connections: chain('Before', 'A'),
+				nodeGroups: [
+					{
+						id: 'Count',
+						name: 'Count',
+						nodeIds: ['a'],
+						repeat: { kind: 'loop', entry: 'a', exits: [], maxIterations: 3, until: '={{ true }}' },
+					},
+				],
+			}),
+		).toEqual([
+			'Region "Count": it needs an exit, because its exit condition reads the exit items',
+		]);
+		const poll = (connections: IConnections) =>
+			messages({
+				nodes: nodes(['Before', 'Wait', 'Status', 'After']),
+				connections,
+				nodeGroups: [
+					{
+						id: 'Poll',
+						name: 'Poll',
+						nodeIds: ['wait', 'status'],
+						repeat: {
+							kind: 'pollUntil',
+							entry: 'wait',
+							exits: [{ node: 'status', output: 0 }],
+							maxAttempts: 3,
+							until: '={{ $json.done }}',
+						},
+					},
+				],
+			});
+		expect(poll(chain('Before', 'Wait', 'Status', 'After'))).toEqual([]);
+		expect(
+			poll({
+				...chain('Before', 'Wait', 'Status', 'After'),
+				Wait: {
+					main: [
+						[{ node: 'Status', type: NodeConnectionTypes.Main, index: 0 }],
+						[{ node: 'Status', type: NodeConnectionTypes.Main, index: 0 }],
+					],
+				},
+			}),
+		).toEqual([
+			'Region "Poll": its entry "Wait" runs between attempts, so it must connect from output 0 to input 0 of the attempt nodes, and only to them',
+		]);
+	});
+
 	it('reports regions that overlap or hold the same nodes', () => {
 		const input = { nodes: nodes(['A', 'B', 'C']), connections: chain('A', 'B', 'C') };
 
@@ -163,6 +215,37 @@ describe('Workflow.renameNode with regions', () => {
 
 		expect(workflow.nodeGroups.map(({ name }) => name)).toEqual(['Per item']);
 		expect(workflow.nodes.B.parameters.value1).toBe("={{ $('Per item').item.json.id }}");
+	});
+
+	it('renames a node in the until and next expressions of a region', () => {
+		const workflow = new Workflow({
+			nodes: [setNode('A'), setNode('B')],
+			connections: chain('A', 'B'),
+			nodeGroups: [
+				{
+					id: 'Count',
+					name: 'Count',
+					nodeIds: ['b'],
+					repeat: {
+						kind: 'loop',
+						entry: 'b',
+						exits: [{ node: 'b', output: 0 }],
+						maxIterations: 3,
+						until: "={{ $json.n >= $('A').item.json.max }}",
+						next: "={{ { n: $json.n, max: $('A').item.json.max } }}",
+					},
+				},
+			],
+			active: false,
+			nodeTypes: Helpers.NodeTypes(),
+		});
+
+		workflow.renameNode('A', 'Limits');
+
+		expect(workflow.nodeGroups[0]?.repeat).toMatchObject({
+			until: "={{ $json.n >= $('Limits').item.json.max }}",
+			next: "={{ { n: $json.n, max: $('Limits').item.json.max } }}",
+		});
 	});
 
 	it('refuses a name that a node or a region has', () => {

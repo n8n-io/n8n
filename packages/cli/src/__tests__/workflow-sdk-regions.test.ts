@@ -35,7 +35,7 @@ import type {
 	IWorkflowSettings,
 } from 'n8n-workflow';
 import { hostRuntime, storedParametersOf } from '@n8n/node-sdk/host';
-import { createRunExecutionData, NodeHelpers, Workflow } from 'n8n-workflow';
+import { createRunExecutionData, deepCopy, NodeHelpers, Workflow } from 'n8n-workflow';
 import path from 'node:path';
 import { mock } from 'vitest-mock-extended';
 
@@ -111,9 +111,13 @@ const toWorkflow = (executionOrder: ExecutionOrder, json: Built) =>
 	});
 
 /** `Workflow.renameNode` on the saved workflow, then the workflow as n8n loads it again. */
-function renamed(executionOrder: ExecutionOrder, json: Built, from: string, to: string) {
+function renamed(
+	executionOrder: ExecutionOrder,
+	json: Built,
+	...renames: ReadonlyArray<readonly [string, string]>
+) {
 	const instance = toWorkflow(executionOrder, json);
-	instance.renameNode(from, to);
+	for (const [from, to] of renames) instance.renameNode(from, to);
 	return new Workflow({
 		id: 'regions',
 		nodes: Object.values(instance.nodes),
@@ -171,6 +175,26 @@ async function runWorkflow(
 		if (counted.nodeRuns > MAX_NODE_RUNS) running.cancel();
 	});
 	await running;
+	return await done.promise;
+}
+
+/** Run the saved execution `data` again, as n8n does when a wait ends. */
+async function resume(instance: Workflow, data: IRun['data']): Promise<IRun> {
+	const hooks = new ExecutionLifecycleHooks('trigger', '1', mock());
+	const done = createDeferredPromise<IRun>();
+	hooks.addHandler('workflowExecuteAfter', (result) => done.resolve(result));
+	const additionalData = mock<IWorkflowExecuteAdditionalData>({
+		executionId: '1',
+		webhookWaitingBaseUrl: 'http://localhost/waiting-webhook',
+		formWaitingBaseUrl: 'http://localhost/waiting-form',
+		hooks,
+		currentNodeParameters: undefined,
+		parentCallbackManager: undefined,
+		ssrfBridge: undefined,
+		encryptedRunnerIdentity: undefined,
+	});
+	const saved = deepCopy(data);
+	await new WorkflowExecute(additionalData, 'trigger', saved).processRunExecutionData(instance);
 	return await done.promise;
 }
 
@@ -358,7 +382,7 @@ describe('workflow-sdk forEach regions on the legacy engine', () => {
 
 	it('forEach nested in forEach keeps working after a body node is renamed', async () => {
 		const result = await runWorkflow(
-			renamed('v1', nestedForEach(), 'Line', 'Make line'),
+			renamed('v1', nestedForEach(), ['Line', 'Make line']),
 			CUSTOMERS,
 		);
 
@@ -369,7 +393,7 @@ describe('workflow-sdk forEach regions on the legacy engine', () => {
 
 	it('forEach keeps working after its region is renamed', async () => {
 		const result = await runWorkflow(
-			renamed('v1', nestedForEach(), 'Each customer', 'Per customer'),
+			renamed('v1', nestedForEach(), ['Each customer', 'Per customer']),
 			CUSTOMERS,
 		);
 
@@ -575,132 +599,6 @@ describe.each<ExecutionOrder>(['v0', 'v1'])(
 			]);
 		});
 
-		const loopWorkflow = (maxIterations: number) =>
-			workflow(
-				'Count',
-				manual(),
-				set({ name: 'Init', fields: { n: 0, sum: 0 } }),
-				loop(
-					{
-						name: 'Count',
-						maxIterations,
-						until: (out) => out.n >= 3,
-						next: (out) => ({ n: out.n, sum: out.sum }),
-					},
-					set({ name: 'Add', fields: { n: (s) => s.n + 1, sum: (s) => s.sum + s.n + 1 } }),
-				),
-				set({ name: 'Result', fields: { sum: (out) => out.sum } }),
-			).toJSON();
-
-		it('loop runs until its exit condition and carries typed state', async () => {
-			const result = await run(loopWorkflow(10), [{}]);
-
-			expect(result.status).toBe('success');
-			expect(runs(result, 'Add')).toEqual([
-				[{ n: 1, sum: 1 }],
-				[{ n: 2, sum: 3 }],
-				[{ n: 3, sum: 6 }],
-			]);
-			expect(runs(result, 'Result')).toEqual([[{ sum: 6 }]]);
-			expect(runs(result, 'Count limit')).toEqual([]);
-		});
-
-		it('loop fails the run at its pass limit', async () => {
-			const result = await run(loopWorkflow(2), [{}]);
-
-			expect(result.status).toBe('error');
-			expect(result.data.resultData.error?.message).toBe(
-				'Count stopped after 2 passes without meeting its exit condition',
-			);
-			expect(runs(result, 'Add')).toHaveLength(2);
-			expect(runs(result, 'Result')).toEqual([]);
-		});
-
-		it('loop without next carries the body output and ends at its limit with onLimit continue', async () => {
-			const json = workflow(
-				'Walk',
-				manual(),
-				set({ name: 'Init', fields: { level: 0 } }),
-				loop(
-					{ name: 'Walk', maxIterations: 3, onLimit: 'continue', until: (out) => out.level >= 10 },
-					set({ name: 'Up', fields: { level: (s) => s.level + 1 } }),
-				),
-				set({ name: 'Depth', fields: { level: (out) => out.level } }),
-			).toJSON();
-
-			const result = await run(json, [{}]);
-
-			expect(result.status).toBe('success');
-			expect(runs(result, 'Up')).toEqual([[{ level: 1 }], [{ level: 2 }], [{ level: 3 }]]);
-			expect(runs(result, 'Depth')).toEqual([[{ level: 3 }]]);
-		});
-
-		it('paginate emits each page and stops when next is null', async () => {
-			const json = workflow(
-				'Pages',
-				manual(),
-				set({ name: 'Start page', fields: { cursor: 0 } }),
-				paginate(
-					{
-						name: 'Pages',
-						maxPages: 10,
-						next: (response) => (response.next === null ? null : { cursor: response.next }),
-					},
-					set({
-						name: 'Fetch',
-						fields: {
-							rows: (p) => [p.cursor * 10, p.cursor * 10 + 1],
-							next: (p) => (p.cursor < 2 ? p.cursor + 1 : null),
-						},
-					}),
-				),
-				splitOut({ name: 'Rows', field: 'rows' }),
-			).toJSON();
-
-			const result = await run(json, [{}]);
-
-			expect(result.status).toBe('success');
-			const pages = runs(result, 'Rows');
-			// v1 runs the child more to the top left first. Here that is the next page.
-			expect(order === 'v0' ? pages : [...pages].reverse()).toEqual([
-				[{ rows: 0 }, { rows: 1 }],
-				[{ rows: 10 }, { rows: 11 }],
-				[{ rows: 20 }, { rows: 21 }],
-			]);
-		});
-
-		it('pollUntil waits between attempts and emits the attempt that met the condition', async () => {
-			const json = workflow(
-				'Poll',
-				manual(),
-				set({ name: 'Job', fields: { job: 'j1' } }),
-				pollUntil(
-					{
-						name: 'Poll',
-						maxAttempts: 5,
-						every: { amount: 0, unit: 'seconds' },
-						until: (status) => status.done === true,
-					},
-					node({
-						name: 'Status',
-						type: 'n8n-nodes-base.set',
-						version: 3.4,
-						parameters: {
-							mode: 'raw',
-							jsonOutput: '={{ ({ job: $json.job, done: $json["Poll pass"] >= 2 }) }}',
-						},
-					}),
-				),
-			).toJSON();
-
-			const result = await run(json, [{}]);
-
-			expect(result.status).toBe('success');
-			expect(runs(result, 'Status')).toHaveLength(3);
-			expect(runs(result, 'Poll wait')).toHaveLength(2);
-			expect(runs(result, 'Poll until').at(-1)).toEqual([{ job: 'j1', done: true }]);
-		});
-
 		it('switch routes each ticket to its case, then filter keeps narrowed items', async () => {
 			const tickets = source<Ticket>();
 			const routed = workflow(
@@ -861,6 +759,334 @@ describe.each<ExecutionOrder>(['v0', 'v1'])(
 		});
 	},
 );
+
+describe('workflow-sdk loop regions on the legacy engine', () => {
+	const run = async (json: Built, items: readonly object[]) => await execute('v1', json, items);
+
+	const loopWorkflow = (maxIterations: number) =>
+		workflow(
+			'Count',
+			manual(),
+			set({ name: 'Init', fields: { n: 0, sum: 0 } }),
+			loop(
+				{
+					name: 'Count',
+					maxIterations,
+					until: (out) => out.n >= 3,
+					next: (out) => ({ n: out.n, sum: out.sum }),
+				},
+				set({ name: 'Add', fields: { n: (s) => s.n + 1, sum: (s) => s.sum + s.n + 1 } }),
+			),
+			set({ name: 'Result', fields: { sum: (out) => out.sum } }),
+		).toJSON();
+
+	const pagesWorkflow = (emit?: 'each') =>
+		workflow(
+			'Pages',
+			manual(),
+			set({ name: 'Start page', fields: { cursor: 0 } }),
+			paginate(
+				{
+					name: 'Pages',
+					maxPages: 10,
+					...(emit ? { emit } : {}),
+					next: (response) => (response.next === null ? null : { cursor: response.next }),
+				},
+				set({
+					name: 'Fetch',
+					fields: {
+						rows: (p) => [p.cursor * 10, p.cursor * 10 + 1],
+						next: (p) => (p.cursor < 2 ? p.cursor + 1 : null),
+					},
+				}),
+			),
+			splitOut({ name: 'Rows', field: 'rows' }),
+		).toJSON();
+
+	const pollWorkflow = (every: { amount: number; unit: 'seconds' | 'minutes' }) =>
+		workflow(
+			'Poll',
+			manual(),
+			set({ name: 'Job', fields: { job: 'j1' } }),
+			pollUntil(
+				{ name: 'Poll', maxAttempts: 5, every, until: (status) => status.done === true },
+				// The job is done on the third attempt.
+				node({
+					name: 'Status',
+					type: 'n8n-nodes-base.set',
+					version: 3.4,
+					parameters: {
+						mode: 'raw',
+						jsonOutput: '={{ ({ job: $json.job, done: $runIndex >= 2 }) }}',
+					},
+				}),
+			),
+		).toJSON();
+
+	it('loop emits no node of its own and runs until its exit condition', async () => {
+		const json = loopWorkflow(10);
+		expect(json.nodes.map(({ name }) => name)).toEqual(['Start', 'Init', 'Add', 'Result']);
+		expect(json.nodeGroups?.map(({ name }) => name)).toEqual(['Count']);
+
+		const result = await run(json, [{}]);
+
+		expect(result.status).toBe('success');
+		expect(runs(result, 'Add')).toEqual([
+			[{ n: 1, sum: 1 }],
+			[{ n: 2, sum: 3 }],
+			[{ n: 3, sum: 6 }],
+		]);
+		expect(runs(result, 'Result')).toEqual([[{ sum: 6 }]]);
+	});
+
+	it('loop puts no pass field on its items', async () => {
+		const json = workflow(
+			'Count',
+			manual(),
+			set({ name: 'Init', fields: { n: 0 } }),
+			loop(
+				{ name: 'Count', maxIterations: 10, until: (out) => out.n >= 3 },
+				set({ name: 'Add', fields: { n: (s) => s.n + 1 }, keep: 'all' }),
+			),
+			set({ name: 'Result', fields: {}, keep: 'all' }),
+		).toJSON();
+
+		const result = await run(json, [{}]);
+
+		expect(result.status).toBe('success');
+		expect(runs(result, 'Result')).toEqual([[{ n: 3 }]]);
+		expect(JSON.stringify(result.data.resultData.runData)).not.toContain('pass"');
+	});
+
+	it('loop fails the run at its pass limit', async () => {
+		const result = await run(loopWorkflow(2), [{}]);
+
+		expect(result.status).toBe('error');
+		expect(result.data.resultData.error?.message).toBe(
+			'Count stopped after 2 passes without meeting its exit condition',
+		);
+		expect(runs(result, 'Add')).toHaveLength(2);
+		expect(runs(result, 'Result')).toEqual([]);
+	});
+
+	it('loop keeps its pass limit after every region node is renamed', async () => {
+		const result = await runWorkflow(renamed('v1', loopWorkflow(2), ['Add', 'Increment']), [{}]);
+
+		expect(result.status).toBe('error');
+		expect(result.data.resultData.error?.message).toBe(
+			'Count stopped after 2 passes without meeting its exit condition',
+		);
+		expect(runs(result, 'Increment')).toHaveLength(2);
+
+		const region = await runWorkflow(renamed('v1', loopWorkflow(2), ['Count', 'Counter']), [{}]);
+		expect(region.data.resultData.error?.message).toBe(
+			'Counter stopped after 2 passes without meeting its exit condition',
+		);
+	});
+
+	it('loop passes a body that turns three items into one', async () => {
+		const json = workflow(
+			'Totals',
+			manual(),
+			source<{ n: number }>()('Numbers'),
+			loop(
+				{
+					name: 'Total',
+					maxIterations: 2,
+					until: (out) => out.data.length === 3,
+					next: () => ({ n: 0 }),
+				},
+				node({
+					name: 'Aggregate',
+					type: 'n8n-nodes-base.aggregate',
+					version: 1,
+					parameters: { aggregate: 'aggregateAllItemData', destinationFieldName: 'data' },
+				}),
+			),
+			set({ name: 'Result', fields: { count: (out) => out.data.length } }),
+		).toJSON();
+
+		const result = await run(json, [{ n: 1 }, { n: 2 }, { n: 3 }]);
+
+		expect(result.status).toBe('success');
+		expect(runs(result, 'Result')).toEqual([[{ count: 3 }]]);
+	});
+
+	it('loop without next carries the body output and ends at its limit with onLimit continue', async () => {
+		const json = workflow(
+			'Walk',
+			manual(),
+			set({ name: 'Init', fields: { level: 0 } }),
+			loop(
+				{ name: 'Walk', maxIterations: 3, onLimit: 'continue', until: (out) => out.level >= 10 },
+				set({ name: 'Up', fields: { level: (s) => s.level + 1 } }),
+			),
+			set({ name: 'Depth', fields: { level: (out) => out.level } }),
+		).toJSON();
+
+		const result = await run(json, [{}]);
+
+		expect(result.status).toBe('success');
+		expect(runs(result, 'Up')).toEqual([[{ level: 1 }], [{ level: 2 }], [{ level: 3 }]]);
+		expect(runs(result, 'Depth')).toEqual([[{ level: 3 }]]);
+	});
+
+	it('loop with emit each continues after each pass', async () => {
+		const json = workflow(
+			'Steps',
+			manual(),
+			set({ name: 'Init', fields: { n: 0 } }),
+			loop(
+				{ name: 'Count', maxIterations: 5, emit: 'each', until: (out) => out.n >= 3 },
+				set({ name: 'Add', fields: { n: (s) => s.n + 1 } }),
+			),
+			set({ name: 'Seen', fields: { n: (out) => out.n } }),
+		).toJSON();
+
+		const result = await run(json, [{}]);
+
+		expect(result.status).toBe('success');
+		expect(runs(result, 'Seen')).toEqual([[{ n: 1 }], [{ n: 2 }], [{ n: 3 }]]);
+	});
+
+	it('paginate gives the same pages once, or after each page with emit each', async () => {
+		const once = await run(pagesWorkflow(), [{}]);
+
+		expect(once.status).toBe('success');
+		expect(runs(once, 'Fetch')).toHaveLength(3);
+		expect(runs(once, 'Rows')).toEqual([
+			[{ rows: 0 }, { rows: 1 }, { rows: 10 }, { rows: 11 }, { rows: 20 }, { rows: 21 }],
+		]);
+
+		const each = await run(pagesWorkflow('each'), [{}]);
+
+		expect(each.status).toBe('success');
+		expect(runs(each, 'Rows')).toEqual([
+			[{ rows: 0 }, { rows: 1 }],
+			[{ rows: 10 }, { rows: 11 }],
+			[{ rows: 20 }, { rows: 21 }],
+		]);
+	});
+
+	it('paginate with onLimit continue ends at its limit, as verification runs it', async () => {
+		const json = pagesWorkflow();
+		const limited: Built = {
+			...json,
+			nodeGroups: json.nodeGroups?.map((group) =>
+				group.repeat?.kind === 'paginate'
+					? { ...group, repeat: { ...group.repeat, maxPages: 2, onLimit: 'continue' } }
+					: group,
+			),
+		};
+
+		const result = await run(limited, [{}]);
+
+		expect(result.status).toBe('success');
+		expect(runs(result, 'Rows')).toEqual([[{ rows: 0 }, { rows: 1 }, { rows: 10 }, { rows: 11 }]]);
+	});
+
+	it('pollUntil waits between attempts and emits the attempt that met the condition', async () => {
+		const result = await run(pollWorkflow({ amount: 0, unit: 'seconds' }), [{}]);
+
+		expect(result.status).toBe('success');
+		expect(runs(result, 'Status')).toHaveLength(3);
+		expect(runs(result, 'Poll wait')).toHaveLength(2);
+		expect(runs(result, 'Poll').at(-1)).toEqual([{ job: 'j1', done: true }]);
+	});
+
+	it('pollUntil keeps its pass across waits that suspend the execution', async () => {
+		const instance = toWorkflow('v1', pollWorkflow({ amount: 2, unit: 'minutes' }));
+		const first = await runWorkflow(instance, [{}]);
+		expect(first.status).toBe('waiting');
+		const second = await resume(instance, first.data);
+		expect(second.status).toBe('waiting');
+
+		const last = await resume(instance, second.data);
+
+		expect(last.status).toBe('success');
+		expect(runs(last, 'Status')).toHaveLength(3);
+		expect(runs(last, 'Poll wait')).toHaveLength(2);
+		expect(runs(last, 'Poll').at(-1)).toEqual([{ job: 'j1', done: true }]);
+	});
+
+	it('pollUntil runs each attempt on its input when the attempt splits and aggregates items', async () => {
+		const json = workflow(
+			'Poll',
+			manual(),
+			set({ name: 'Job', fields: { job: 'j1', parts: [1, 2, 3] } }),
+			pollUntil(
+				{
+					name: 'Poll',
+					maxAttempts: 5,
+					every: { amount: 0, unit: 'seconds' },
+					until: (status) => status.done === true,
+				},
+				steps(
+					splitOut({ name: 'Parts', field: 'parts' }),
+					node({
+						name: 'Collect',
+						type: 'n8n-nodes-base.aggregate',
+						version: 1,
+						parameters: { aggregate: 'aggregateAllItemData', destinationFieldName: 'data' },
+					}),
+					node({
+						name: 'Status',
+						type: 'n8n-nodes-base.set',
+						version: 3.4,
+						parameters: {
+							mode: 'raw',
+							jsonOutput: '={{ ({ count: $json.data.length, done: $runIndex >= 2 }) }}',
+						},
+					}),
+				),
+			),
+		).toJSON();
+
+		const result = await run(json, [{}]);
+
+		expect(result.status).toBe('success');
+		expect(runs(result, 'Parts')).toEqual([
+			[{ parts: 1 }, { parts: 2 }, { parts: 3 }],
+			[{ parts: 1 }, { parts: 2 }, { parts: 3 }],
+			[{ parts: 1 }, { parts: 2 }, { parts: 3 }],
+		]);
+		expect(runs(result, 'Poll').at(-1)).toEqual([{ count: 3, done: true }]);
+	});
+
+	it('pollUntil keeps its attempt limit after its Wait and attempt nodes are renamed', async () => {
+		const json = workflow(
+			'Poll',
+			manual(),
+			set({ name: 'Job', fields: { job: 'j1' } }),
+			pollUntil(
+				{
+					name: 'Poll',
+					maxAttempts: 2,
+					every: { amount: 0, unit: 'seconds' },
+					until: (status) => status.done,
+				},
+				set({ name: 'Status', fields: { done: false } }),
+			),
+		).toJSON();
+		const result = await runWorkflow(
+			renamed('v1', json, ['Poll wait', 'Pause'], ['Status', 'Check']),
+			[{}],
+		);
+
+		expect(result.status).toBe('error');
+		expect(result.data.resultData.error?.message).toBe(
+			'Poll stopped after 2 passes without meeting its exit condition',
+		);
+		expect(runs(result, 'Check')).toHaveLength(2);
+		expect(runs(result, 'Pause')).toHaveLength(1);
+	});
+
+	it('loop refuses execution order v0', async () => {
+		await expect(execute('v0', loopWorkflow(10), [{}])).rejects.toThrow(
+			'Region "Count" needs execution order v1',
+		);
+	});
+});
 
 describe('workflow-sdk sub-workflow calls on the legacy engine', () => {
 	const ORDERS: Order[] = [

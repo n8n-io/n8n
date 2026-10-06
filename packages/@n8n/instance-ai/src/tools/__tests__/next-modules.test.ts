@@ -98,16 +98,12 @@ describe('next-modules', () => {
 		const hidden = ['items.set', 'merge.append', 'merge.combine', 'merge.combineByPosition'];
 		expect(nextNodeIds).toContain('items');
 		expect(nextNodeIds).not.toContain('merge');
-		expect(nextNodeIds).not.toContain('loopState');
-		for (const query of ['loop until condition state', 'split in batches loop', 'loop']) {
-			expect(searchNextActions(query).nodes).not.toContain('loopState');
-		}
 		expect(searchNextActions('merge branches').nodes).toEqual([]);
 		expect(searchNextActions('merge branches', [], ['merge']).nodes).toEqual([]);
-		const found = ['edit fields', 'set fields', 'merge', 'loop state'].flatMap((query) =>
+		const found = ['edit fields', 'set fields', 'merge'].flatMap((query) =>
 			findNextActions(query).map(({ id }) => id),
 		);
-		expect(found.filter((id) => [...hidden, 'loopState.set'].includes(id))).toEqual([]);
+		expect(found.filter((id) => hidden.includes(id))).toEqual([]);
 		expect(nearestNextActions('items.set').map(({ id }) => id)).not.toContain('items.set');
 		expect(contractReplacementOf({ type: 'n8n-nodes-base.set' })).toBeUndefined();
 	});
@@ -116,7 +112,6 @@ describe('next-modules', () => {
 		expect(nextNodeModule('items')?.module).not.toContain('"@n8n/nodes-core.itemsSet"');
 		expect(nextNodeModule('items')?.module).toContain('"@n8n/nodes-core.itemsSort"');
 		expect(nodeModuleText('items')).toContain('contractStep("@n8n/nodes-core.itemsSet"');
-		expect(nodeModuleText('loopState')).toContain('contractStep("@n8n/nodes-core.loopStateSet"');
 		expect(nodeModuleText('merge')).toContain('// merge.append: Append items.');
 	});
 
@@ -125,8 +120,6 @@ describe('next-modules', () => {
 		['@n8n/nodes-core.itemsSet', 'set({'],
 		['merge', 'merge({'],
 		['merge.combineByPosition', 'merge({'],
-		['loopState', 'loop({'],
-		['loopState.set', 'loop({'],
 	])('points %s to its flow step', (ref, step) => {
 		expect(nextNodeModule(ref)).toBeUndefined();
 		expect(flowStepRowOf(ref)).toContain(step);
@@ -388,7 +381,7 @@ describe('next-modules', () => {
 				set({ name: 'Mark', fields: { n: (item) => item.n } }),
 			),
 		).toJSON();
-		const flowNatives = ['manual.trigger', 'loop.batches'].flatMap((id) => {
+		const flowNatives = ['manual.trigger'].flatMap((id) => {
 			const manifest = entryOf(id)?.manifest;
 			return manifest && 'native' in manifest ? [manifest] : [];
 		});
@@ -400,15 +393,12 @@ describe('next-modules', () => {
 				validate(emitted?.parameters ?? {}, native.contract.input, { allowExpressions: true }),
 			];
 		});
-		expect(issues[0]).toEqual(['manual.trigger', true, []]);
-		expect(json.nodes.some(({ type }) => type === flowNatives[1]?.native.type)).toBe(false);
+		expect(issues).toEqual([['manual.trigger', true, []]]);
+		expect(json.nodes.some(({ type }) => type === 'n8n-nodes-base.splitInBatches')).toBe(false);
 		expect(json.nodeGroups).toEqual([
 			expect.objectContaining({ name: 'Each', repeat: expect.objectContaining({ batchSize: 1 }) }),
 		]);
-		expect(flowNatives.map(({ contract }) => nodeModuleText(contract.node))).toEqual([
-			undefined,
-			undefined,
-		]);
+		expect(flowNatives.map(({ contract }) => nodeModuleText(contract.node))).toEqual([undefined]);
 	});
 });
 
@@ -425,7 +415,7 @@ describe('next-modules of the first-party packages', () => {
 
 	it('lists the node of each action and trigger of each first-party package', () => {
 		// A flow step replaces every action of these nodes; flow natives have no module.
-		const replaced = new Set(['merge', 'loopState', 'manual', 'loop']);
+		const replaced = new Set(['merge', 'manual']);
 		const nodeIdsOf = (name: string) => [
 			...new Set(
 				firstPartyCatalog()

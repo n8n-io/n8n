@@ -686,10 +686,10 @@ describe('spec/manifest.schema.json', () => {
 
 		describe('with a changed shipped manifest', () => {
 			const shippedOf = (isNative: boolean) => {
-				const found = shippedManifests().find(
-					({ manifest }) => manifest.kind === 'action' && 'native' in manifest === isNative,
+				const found = shippedManifests().find(({ manifest }) =>
+					isNative ? 'native' in manifest : manifest.kind === 'action' && !('native' in manifest),
 				);
-				if (!found) throw new Error(`no shipped action with native ${isNative}`);
+				if (!found) throw new Error(`no shipped manifest with native ${isNative}`);
 				return found.manifest;
 			};
 			it('refuses a manifest that matches no branch', () => {

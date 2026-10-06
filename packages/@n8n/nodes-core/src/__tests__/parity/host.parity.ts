@@ -1,5 +1,4 @@
 import { Code } from 'n8n-nodes-base/dist/nodes/Code/Code.node';
-import { Set as SetNode } from 'n8n-nodes-base/dist/nodes/Set/Set.node';
 import { DataTable } from 'n8n-nodes-base/dist/nodes/DataTable/DataTable.node';
 import { Merge } from 'n8n-nodes-base/dist/nodes/Merge/Merge.node';
 import { NoOp } from 'n8n-nodes-base/dist/nodes/NoOp/NoOp.node';
@@ -36,7 +35,6 @@ import { createTable } from '../../nodes/data-table/actions/table.create';
 import { deleteTable } from '../../nodes/data-table/actions/table.delete';
 import { listTables } from '../../nodes/data-table/actions/table.list';
 import { renameTable } from '../../nodes/data-table/actions/table.rename';
-import { setLoopState } from '../../nodes/loop-state/actions/set';
 import { appendItems } from '../../nodes/merge/actions/append';
 import { combineItems } from '../../nodes/merge/actions/combine';
 import { combineByPosition } from '../../nodes/merge/actions/combine-by-position';
@@ -1107,22 +1105,5 @@ describe('stop and error parity', () => {
 describe('no operation parity', () => {
 	it('passes the items on', async () => {
 		await expectParity(legacy(new NoOp(), 'noOp', 1, {}), passItems, {}, plain);
-	});
-});
-
-describe('loop state parity', () => {
-	it('emits the object of an expression, as Set in raw mode', async () => {
-		const state = '={{ ({ ...$json, "Count pass": $json.a + 1 }) }}';
-		await expectParity(
-			legacy(new SetNode(), 'set', 3.4, {
-				mode: 'raw',
-				jsonOutput: state,
-				includeOtherFields: false,
-				options: {},
-			}),
-			setLoopState,
-			{ state },
-			plain,
-		);
 	});
 });

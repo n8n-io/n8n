@@ -1,32 +1,19 @@
 import { compileBinaryKey, compileLambda, type LambdaRoot } from './lambda';
 import {
-	BODY_OUTPUT,
-	CHECK_DONE,
-	CHECK_LIMIT,
-	checkAgain,
 	FALLBACK_OUTPUT,
 	FILTER_NODE,
 	filterParameters,
-	LOOP_STATE_NODE,
 	MERGE_MAX_INPUTS,
 	mergeNodeOf,
 	NO_OP_NODE,
-	STOP_NODE,
-	SWITCH_NODE,
 	WAIT_NODE,
 	caseRouter,
-	loopCheckParameters,
-	loopHeadParameters,
-	loopLimitParameters,
-	loopNextParameters,
-	loopNodeNames,
 	mergeParameters,
-	noNextPage,
-	samePass,
 	waitParameters,
 	type Interval,
 	type LoopLimit,
 	type MergeJoin,
+	type RegionEmit,
 } from './regions';
 import type {
 	IDataObject,
@@ -61,6 +48,7 @@ import {
 	regionTreeOf,
 	type IConnections,
 	type IWorkflowSettings,
+	type WorkflowGroupRepeat,
 } from 'n8n-workflow';
 
 // ── Types the model reads ───────────────────────────────────────────────────
@@ -538,12 +526,58 @@ export interface Tail {
 	readonly output: number;
 }
 
-/** A `forEach` region by node names: the engine runs its members once for each batch. */
+/**
+ * How a region repeats, as the macro gives it. `until` and `next` compile per region, like the
+ * lambdas of a node. `every` of `pollUntil` builds its Wait node, the entry of the region.
+ */
+export type RegionRepeatSpec =
+	| {
+			/** The macro that made the region. */
+			readonly kind: 'forEach';
+			/** The items of one batch. */
+			readonly batchSize: number;
+	  }
+	| {
+			/** The macro that made the region. */
+			readonly kind: 'loop';
+			/** The most passes. */
+			readonly maxIterations: number;
+			/** Gives the expression that is true for an exit item that leaves the region. */
+			readonly until: (compiler: Compiler) => string;
+			/** Without it, the exit item is the item of the next pass. */
+			readonly next?: (compiler: Compiler) => string;
+			/** What the region does at the pass limit. */
+			readonly onLimit?: LoopLimit;
+			/** Which passes continue after the region. */
+			readonly emit?: RegionEmit;
+	  }
+	| {
+			/** The macro that made the region. */
+			readonly kind: 'paginate';
+			/** The most pages. */
+			readonly maxPages: number;
+			/** Gives the expression of the cursor of the next page, or of `null` after the last page. */
+			readonly next: (compiler: Compiler) => string;
+			/** Which pages continue after the region. */
+			readonly emit?: RegionEmit;
+	  }
+	| {
+			/** The macro that made the region. */
+			readonly kind: 'pollUntil';
+			/** The most attempts. */
+			readonly maxAttempts: number;
+			/** The wait before each attempt after the first. */
+			readonly every: Interval;
+			/** Gives the expression that is true for an attempt result that leaves the region. */
+			readonly until: (compiler: Compiler) => string;
+	  };
+
+/** A region by node names: the engine runs its members once for each pass. */
 export interface RegionSpec {
 	/** The region name, unique among nodes and regions. */
 	readonly name: string;
-	/** The items of one batch. */
-	readonly batchSize: number;
+	/** How the region repeats. */
+	readonly repeat: RegionRepeatSpec;
 	/** The member node names. */
 	readonly members: readonly string[];
 	/** The member node that takes each batch. */
@@ -570,7 +604,7 @@ export interface Graph {
 	readonly nodes: readonly NodeSpec[];
 	/** The connections. */
 	readonly edges: readonly Edge[];
-	/** The `forEach` regions. */
+	/** The regions: `forEach`, `loop`, `paginate`, `pollUntil`. */
 	readonly regions?: readonly RegionSpec[];
 	/** The canvas groups. */
 	readonly groups?: readonly GroupSpec[];
@@ -910,22 +944,32 @@ const fromTail = (edge: Edge, open: Tail) => edge.from === open.node && edge.out
 // ── Regions ─────────────────────────────────────────────────────────────────
 // Untyped builders, so decompile can replay a region without its item types.
 
-/** The name of the node that `forEach` adds when its body starts with several nodes. */
-const forEachStart = (region: string) => `${region} start`;
+/** The name of the node that a region adds when its body starts with several nodes. */
+const regionStart = (region: string) => `${region} start`;
+
+/** The name of the Wait node of `pollUntil`, which runs between attempts. */
+export const pollWait = (region: string) => `${region} wait`;
 
 /**
- * @internal A `forEach` region: the engine runs `body` on each batch of the items at the open
- * ends, then emits the body output of all batches once, on the open ends of the body. A region
- * takes its items at one node, so a body that starts with branches gets a No Operation node
- * before them.
+ * @internal A region: the engine runs `body` once for each pass, and emits the body output on
+ * the open ends of the body. A region takes its items at one node, so a body that starts with
+ * branches, or that is one region, gets a No Operation node before it. `pollUntil` starts with
+ * its Wait node, which the engine runs between attempts.
  */
-export function forEachFragment(
+export function regionFragment(
 	from: Fragment,
 	name: string,
-	batchSize: number,
-	body: (each: Fragment) => Fragment,
+	repeat: RegionRepeatSpec,
+	body: (pass: Fragment) => Fragment,
 ): Fragment {
 	const before = new Set(from.graph.nodes.map((spec) => spec.name));
+	const wait: NodeSpec | undefined =
+		repeat.kind === 'pollUntil'
+			? { name: pollWait(name), ...WAIT_NODE, parameters: () => waitParameters(repeat.every) }
+			: undefined;
+	const at: Fragment = wait
+		? { graph: attach(from.graph, from.tails, wait), tails: tail(wait.name, 0) }
+		: from;
 	const entriesOf = (built: Fragment) => [
 		...new Set(
 			built.graph.edges
@@ -933,26 +977,36 @@ export function forEachFragment(
 				.map((edge) => edge.to),
 		),
 	];
-	const direct = body(from);
-	const start: NodeSpec = { name: forEachStart(name), ...NO_OP_NODE, parameters: () => ({}) };
+	const membersOf = (built: Fragment) =>
+		built.graph.nodes.map((spec) => spec.name).filter((node) => !before.has(node));
+	const direct = body(at);
+	// Two regions with the same nodes do not nest, e.g. `forEach(loop(…))`.
+	const sameAsInner = (direct.graph.regions ?? []).some(
+		(inner) =>
+			!(from.graph.regions ?? []).includes(inner) &&
+			inner.members.length === membersOf(direct).length,
+	);
+	const start: NodeSpec = { name: regionStart(name), ...NO_OP_NODE, parameters: () => ({}) };
 	const inner =
-		entriesOf(direct).length > 1
+		!wait && (entriesOf(direct).length > 1 || sameAsInner)
 			? body({ graph: attach(from.graph, from.tails, start), tails: tail(start.name, 0) })
 			: direct;
-	const members = inner.graph.nodes.map((spec) => spec.name).filter((node) => !before.has(node));
+	const members = membersOf(inner);
 	const entries = entriesOf(inner);
+	const [setting, count] = countSettingOf(repeat);
+	const runs = members.filter((member) => member !== wait?.name);
 	const problems = [
-		...(Number.isInteger(batchSize) && batchSize >= 1
+		...(Number.isInteger(count) && count >= 1
 			? []
-			: [`batchSize must be a whole number of at least 1, not ${batchSize}`]),
-		...(members.length === 0 ? ['forEach needs a body that runs a node'] : []),
+			: [`${setting} must be a whole number of at least 1, not ${count}`]),
+		...(runs.length === 0 ? [`${repeat.kind} needs a body that runs a node`] : []),
 		...(entries.length > 1
-			? [`forEach needs a body that starts with one node, not ${quoted(entries)}`]
+			? [`${repeat.kind} needs a body that starts with one node, not ${quoted(entries)}`]
 			: []),
 	];
 	const region: RegionSpec = {
 		name,
-		batchSize,
+		repeat,
 		members,
 		entry: entries[0] ?? '',
 		exits: inner.tails,
@@ -963,6 +1017,20 @@ export function forEachFragment(
 		tails: inner.tails,
 	};
 }
+
+/** The whole-number setting of a region: its batch size or its pass limit. */
+const countSettingOf = (repeat: RegionRepeatSpec): readonly [string, number] => {
+	switch (repeat.kind) {
+		case 'forEach':
+			return ['batchSize', repeat.batchSize];
+		case 'loop':
+			return ['maxIterations', repeat.maxIterations];
+		case 'paginate':
+			return ['maxPages', repeat.maxPages];
+		case 'pollUntil':
+			return ['maxAttempts', repeat.maxAttempts];
+	}
+};
 
 /** @internal A canvas group of the nodes that `body` adds. The run is the run of `body`. */
 export function groupFragment(
@@ -978,87 +1046,6 @@ export function groupFragment(
 	return {
 		graph: { ...inner.graph, groups: [...(inner.graph.groups ?? []), group] },
 		tails: inner.tails,
-	};
-}
-
-/** @internal How a loop region decides and emits; lambdas arrive compiled per node. */
-export interface LoopOptions {
-	readonly name: string;
-	readonly maxIterations: number;
-	readonly until: (compiler: Compiler) => string;
-	readonly next: (compiler: Compiler) => string;
-	/** `each` emits every pass (pages); `last` emits the pass that met `until`. */
-	readonly emit: 'each' | 'last';
-	readonly wait?: Interval;
-	/** At `maxIterations`: fail the run (default), or end as if `until` held. */
-	readonly onLimit?: LoopLimit;
-}
-
-/**
- * @internal A while loop in node contracts: head (loop state) → body → check (Switch) → next
- * (loop state) → [wait] → head. At `maxIterations` the check fails the run (Stop and Error),
- * or with `onLimit: 'continue'` ends the loop as `until` does.
- */
-export function loopFragment(
-	from: Fragment,
-	options: LoopOptions,
-	body: (pass: Fragment) => Fragment,
-): Fragment {
-	const { name, maxIterations, wait, onLimit = 'fail' } = options;
-	const again = checkAgain(onLimit);
-	const names = loopNodeNames(name);
-	const back = wait ? names.wait : names.next;
-	const head: NodeSpec = {
-		name,
-		...LOOP_STATE_NODE,
-		parameters: () => loopHeadParameters(name, back),
-	};
-	const inner = body({ graph: attach(from.graph, from.tails, head), tails: tail(name, 0) });
-	const check: NodeSpec = {
-		name: names.check,
-		...SWITCH_NODE,
-		outputs: again + 1,
-		parameters: (compiler) => {
-			if (!Number.isInteger(maxIterations) || maxIterations < 1) {
-				compiler.issue(`The pass limit must be a whole number of at least 1, not ${maxIterations}`);
-			}
-			if (inner.tails.some(({ node }) => node === name)) {
-				compiler.issue(`${name} needs a body that runs a node`);
-			}
-			return loopCheckParameters(name, options.until(compiler), maxIterations, onLimit);
-		},
-	};
-	const limit: NodeSpec = {
-		name: names.limit,
-		...STOP_NODE,
-		parameters: () => loopLimitParameters(name, maxIterations),
-	};
-	const fails = onLimit === 'fail';
-	const parts: Graph[] = [
-		attach(inner.graph, inner.tails, check),
-		{
-			nodes: [
-				...(fails ? [limit] : []),
-				{
-					name: names.next,
-					...LOOP_STATE_NODE,
-					parameters: (compiler) => loopNextParameters(name, options.next(compiler)),
-				},
-				...(wait
-					? [{ name: names.wait, ...WAIT_NODE, parameters: () => waitParameters(wait) }]
-					: []),
-			],
-			edges: [
-				...(fails ? wire(tail(names.check, CHECK_LIMIT), names.limit) : []),
-				...wire(tail(names.check, again), names.next),
-				...(wait ? wire(tail(names.next, 0), names.wait) : []),
-				...wire(tail(back, 0), name),
-			],
-		},
-	];
-	return {
-		graph: unionGraphs(parts),
-		tails: options.emit === 'last' ? tail(names.check, CHECK_DONE) : inner.tails,
 	};
 }
 
@@ -1455,7 +1442,7 @@ export function forEach<In, Ctx, const N extends string, B>(
 ): Region<In, Ctx, B, Ctx & Record<N, B>>;
 export function forEach(config: { name: string; batchSize: number }, body: AnyPart): AnyRegion {
 	const { name, batchSize } = config;
-	return region((from) => forEachFragment(from, name, batchSize, run(body)));
+	return region((from) => regionFragment(from, name, { kind: 'forEach', batchSize }, run(body)));
 }
 
 /**
@@ -1466,14 +1453,14 @@ type NextNeeded<In, B, CB, S> = [S] extends [never]
 	? [B] extends [In]
 		? unknown
 		: {
-				/** The state of the next pass, from the body output. */
+				/** The item of the next pass, from the body output. */
 				next: (out: B, $: Dollar<CB>) => In;
 			}
 	: unknown;
 
 /** The config of `loop` besides `next`. */
 interface LoopConfig<N extends string, B, CB> {
-	/** The node name, unique in the workflow. */
+	/** The region name, unique among nodes and regions. */
 	name: N;
 	/** The most passes. After them the run fails, or the loop ends with `onLimit: 'continue'`. */
 	maxIterations: number;
@@ -1482,15 +1469,23 @@ interface LoopConfig<N extends string, B, CB> {
 	 * emits the last pass, as if `until` held, e.g. for "at most 10 levels deep".
 	 */
 	onLimit?: LoopLimit;
-	/** True when the loop ends, from the body output. */
+	/**
+	 * `last` (default): the flow continues once, with the items that met `until`. `each`: the
+	 * body output of each pass continues, also the items that run again.
+	 */
+	emit?: RegionEmit;
+	/** True when an item leaves the loop, from the body output. */
 	until: (out: B, $: Dollar<CB>) => boolean;
 }
 
 /**
- * Run `body` again until `until` holds. Each item is the loop state: `next` makes the state
- * of the next pass from the body output; without `next` the body output is the next state.
- * After `maxIterations` passes the run fails, or with `onLimit: 'continue'` the loop ends.
- * The flow continues with the output of the pass that met `until`.
+ * Run `body` again on each item until `until` holds for it. The engine repeats the body:
+ * `name` is a region, not a node, and `$(name)` reads the pass item in the body and the emitted
+ * item after it. `next` makes the item of the next pass from the body output; without `next`
+ * the body output is the next item. After `maxIterations` passes the run fails, or with
+ * `onLimit: 'continue'` the loop ends. The flow continues once with the items that met `until`,
+ * or after each pass with `emit: 'each'`. An author who needs the pass number keeps a counter
+ * in the item.
  *
  * @example
  * ```ts
@@ -1502,38 +1497,39 @@ interface LoopConfig<N extends string, B, CB> {
  */
 export function loop<In, Ctx, const N extends string, B, CB, S extends In = never>(
 	config: LoopConfig<N, B, CB> & {
-		/** The state of the next pass, from the body output. Default: the body output. */
+		/** The item of the next pass, from the body output. Default: the body output. */
 		next?: (out: B, $: Dollar<CB>) => S;
 	} & NextNeeded<NoInfer<In>, B, CB, S>,
 	body: Part<NoInfer<In>, NoInfer<Ctx & Record<N, In>>, B, CB>,
-): Region<In, Ctx, B, Ctx & Record<N, In>>;
+): Region<In, Ctx, B, Ctx & Record<N, B>>;
 export function loop(
 	config: {
 		name: string;
 		maxIterations: number;
 		onLimit?: LoopLimit;
+		emit?: RegionEmit;
 		until: unknown;
 		next?: unknown;
 	},
 	body: AnyPart,
 ): AnyRegion {
-	const { name, maxIterations, onLimit, until, next } = config;
-	const options: LoopOptions = {
-		name,
+	const { name, maxIterations, onLimit, emit, until, next } = config;
+	const repeat: RegionRepeatSpec = {
+		kind: 'loop',
 		maxIterations,
-		emit: 'last',
-		onLimit,
 		until: (compiler) => compiler.js(until),
-		next: (compiler) => (next === undefined ? BODY_OUTPUT : compiler.js(next)),
+		...(next === undefined ? {} : { next: (compiler: Compiler) => compiler.js(next) }),
+		...(onLimit === undefined ? {} : { onLimit }),
+		...(emit === undefined ? {} : { emit }),
 	};
-	return region((from) => loopFragment(from, options, run(body)));
+	return region((from) => regionFragment(from, name, repeat, run(body)));
 }
 
 /**
- * Request pages until `next` gives `null`; each item is the cursor state of one page. Every
- * page continues as it arrives. Prefer the pagination of the node when it has one. In
- * execution order v1 the pages can continue last page first: v1 runs the node more to the
- * top left first.
+ * Request pages until `next` gives `null`; each item is the cursor of one page. The engine
+ * repeats the request: `name` is a region, not a node. The flow continues once with all pages,
+ * or after each page with `emit: 'each'`. The run fails when `next` still gives a cursor after
+ * `maxPages` pages. Prefer the pagination of the node when it has one.
  *
  * @example
  * ```ts
@@ -1545,33 +1541,36 @@ export function loop(
  */
 export function paginate<In, Ctx, const N extends string, B, CB, S extends In>(
 	config: {
-		/** The node name, unique in the workflow. */
+		/** The region name, unique among nodes and regions. */
 		name: N;
 		/** The most pages. The run fails after them. */
 		maxPages: number;
-		/** The cursor state of the next page, or `null` after the last page. */
+		/** `last` (default): the flow continues once with all pages. `each`: after each page. */
+		emit?: RegionEmit;
+		/** The cursor of the next page, or `null` after the last page. */
 		next: (response: B, $: Dollar<CB>) => S | null;
 	},
 	request: Part<NoInfer<In>, NoInfer<Ctx & Record<N, In>>, B, CB>,
-): Region<In, Ctx, B, Ctx & Record<N, In>>;
+): Region<In, Ctx, B, Ctx & Record<N, B>>;
 export function paginate(
-	config: { name: string; maxPages: number; next: unknown },
+	config: { name: string; maxPages: number; emit?: RegionEmit; next: unknown },
 	request: AnyPart,
 ): AnyRegion {
-	const { name, maxPages, next } = config;
-	const options: LoopOptions = {
-		name,
-		maxIterations: maxPages,
-		emit: 'each',
-		until: (compiler) => noNextPage(compiler.js(next)),
+	const { name, maxPages, emit, next } = config;
+	const repeat: RegionRepeatSpec = {
+		kind: 'paginate',
+		maxPages,
 		next: (compiler) => compiler.js(next),
+		...(emit === undefined ? {} : { emit }),
 	};
-	return region((from) => loopFragment(from, options, run(request)));
+	return region((from) => regionFragment(from, name, repeat, run(request)));
 }
 
 /**
- * Run `attempt` until `until` holds, with a wait of `every` between attempts. The run fails
- * after `maxAttempts`. The flow continues with the output of the attempt that met `until`.
+ * Run `attempt` until `until` holds, with a wait of `every` between attempts (a Wait node named
+ * `"<name> wait"`). Each attempt reads the same item. The engine repeats the attempt: `name` is
+ * a region, not a node. The run fails after `maxAttempts`. The flow continues with the output
+ * of the attempt that met `until`.
  *
  * @example
  * ```ts
@@ -1583,7 +1582,7 @@ export function paginate(
  */
 export function pollUntil<In, Ctx, const N extends string, B, CB>(
 	config: {
-		/** The node name, unique in the workflow. */
+		/** The region name, unique among nodes and regions. */
 		name: N;
 		/** The most attempts. The run fails after them. */
 		maxAttempts: number;
@@ -1593,21 +1592,19 @@ export function pollUntil<In, Ctx, const N extends string, B, CB>(
 		until: (out: B, $: Dollar<CB>) => boolean;
 	},
 	attempt: Part<NoInfer<In>, NoInfer<Ctx & Record<N, In>>, B, CB>,
-): Region<In, Ctx, B, Ctx & Record<N, In>>;
+): Region<In, Ctx, B, Ctx & Record<N, B>>;
 export function pollUntil(
 	config: { name: string; maxAttempts: number; every: Interval; until: unknown },
 	attempt: AnyPart,
 ): AnyRegion {
 	const { name, maxAttempts, every, until } = config;
-	const options: LoopOptions = {
-		name,
-		maxIterations: maxAttempts,
-		emit: 'last',
-		wait: every,
+	const repeat: RegionRepeatSpec = {
+		kind: 'pollUntil',
+		maxAttempts,
+		every,
 		until: (compiler) => compiler.js(until),
-		next: () => samePass(name),
 	};
-	return region((from) => loopFragment(from, options, run(attempt)));
+	return region((from) => regionFragment(from, name, repeat, run(attempt)));
 }
 
 /** Keep the items `if` holds for (a Filter node). A type guard narrows the item type. */
@@ -2477,7 +2474,10 @@ function groupIssues(graph: Graph): string[] {
  * The problems of the regions of `graph`: their own, then the region rules of n8n, which the
  * engine checks again before a run.
  */
-function regionIssues(graph: Graph): string[] {
+function regionIssues(
+	graph: Graph,
+	repeats: ReadonlyMap<RegionSpec, WorkflowGroupRepeat>,
+): string[] {
 	const regions = graph.regions ?? [];
 	const own = regions.flatMap(({ name, problems }) =>
 		problems.map((problem) => `${name}: ${problem}`),
@@ -2496,20 +2496,54 @@ function regionIssues(graph: Graph): string[] {
 	const { problems } = regionTreeOf({
 		nodes: graph.nodes.map((spec) => ({ id: spec.name, name: spec.name })),
 		connections,
-		nodeGroups: regions.map((region) => ({
-			id: region.name,
-			name: region.name,
-			nodeIds: [...region.members],
-			repeat: {
-				kind: 'forEach',
-				batchSize: region.batchSize,
-				entry: region.entry,
-				exits: region.exits.map(({ node, output }) => ({ node, output })),
-			},
-		})),
+		nodeGroups: regions.flatMap((region) => {
+			const repeat = repeats.get(region);
+			return repeat
+				? [{ id: region.name, name: region.name, nodeIds: [...region.members], repeat }]
+				: [];
+		}),
 		executionOrder: 'v1',
 	});
 	return problems.map(({ message }) => message);
+}
+
+/** The `repeat` of a region as n8n saves it, by node names, with `until` and `next` compiled. */
+function savedRepeatOf(region: RegionSpec, compiler: Compiler): WorkflowGroupRepeat {
+	const { repeat } = region;
+	const base = {
+		entry: region.entry,
+		exits: region.exits.map(({ node, output }) => ({ node, output })),
+	};
+	const expression = (compile: (each: Compiler) => string) => `={{ ${compile(compiler)} }}`;
+	switch (repeat.kind) {
+		case 'forEach':
+			return { kind: 'forEach', ...base, batchSize: repeat.batchSize };
+		case 'loop':
+			return {
+				kind: 'loop',
+				...base,
+				maxIterations: repeat.maxIterations,
+				until: expression(repeat.until),
+				...(repeat.next ? { next: expression(repeat.next) } : {}),
+				...(repeat.onLimit ? { onLimit: repeat.onLimit } : {}),
+				...(repeat.emit ? { emit: repeat.emit } : {}),
+			};
+		case 'paginate':
+			return {
+				kind: 'paginate',
+				...base,
+				maxPages: repeat.maxPages,
+				next: expression(repeat.next),
+				...(repeat.emit ? { emit: repeat.emit } : {}),
+			};
+		case 'pollUntil':
+			return {
+				kind: 'pollUntil',
+				...base,
+				maxAttempts: repeat.maxAttempts,
+				until: expression(repeat.until),
+			};
+	}
 }
 
 /** The value `export default` gives the build: validate, serialize, and generate pin data. */
@@ -2905,6 +2939,13 @@ export function workflow(
 	);
 	const providers = [...new Set(graph.nodes.flatMap((spec) => allProviders(spec.providers)))];
 	const providerNames = providers.map((spec) => spec.name);
+	const repeatIssues: string[] = [];
+	const repeats = new Map(
+		regions.map((region) => [
+			region,
+			savedRepeatOf(region, createCompiler(region.name, readable, repeatIssues)),
+		]),
+	);
 	const issues: string[] = [
 		...[
 			...graph.nodes
@@ -2920,10 +2961,11 @@ export function workflow(
 			? []
 			: ['A workflow starts with a trigger, e.g. manual()']),
 		...(graph.problems ?? []),
-		...regionIssues(graph),
+		...regionIssues(graph, repeats),
+		...repeatIssues,
 		...groupIssues(graph),
 		...(regions.length > 0 && settings?.executionOrder === 'v0'
-			? ['forEach runs in execution order v1 only. Remove settings.executionOrder']
+			? ['Regions run in execution order v1 only. Remove settings.executionOrder']
 			: []),
 	];
 
@@ -2984,18 +3026,17 @@ export function workflow(
 		if (!instance) throw new Error(`Region node "${node}" is not in the workflow`);
 		return instance;
 	};
-	const withRegions = regions.reduce(
-		(builder, region) =>
-			builder.group(region.name, region.members.map(instanceOf), {
-				repeat: {
-					kind: 'forEach',
-					batchSize: region.batchSize,
-					entry: instanceOf(region.entry),
-					exits: region.exits.map(({ node, output }) => ({ node: instanceOf(node), output })),
-				},
-			}),
-		connected,
-	);
+	const withRegions = regions.reduce((builder, region) => {
+		const repeat = repeats.get(region);
+		if (!repeat) throw new Error(`Region "${region.name}" has no repeat`);
+		return builder.group(region.name, region.members.map(instanceOf), {
+			repeat: {
+				...repeat,
+				entry: instanceOf(region.entry),
+				exits: region.exits.map(({ node, output }) => ({ node: instanceOf(node), output })),
+			},
+		});
+	}, connected);
 	// A provider rides with its node on the canvas, so the group holds it too.
 	const byName = new Map(graph.nodes.map((spec) => [spec.name, spec]));
 	const groupMembers = (members: readonly string[]) =>

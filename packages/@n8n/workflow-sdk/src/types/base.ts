@@ -1089,10 +1089,15 @@ export type GroupOptions = {
 };
 
 /** The `repeat` of a group as authored: its entry and exits are member node handles. */
-export type GroupRepeat = Omit<WorkflowGroupRepeat, 'entry' | 'exits'> & {
-	entry: GroupMember;
-	exits: Array<{ node: GroupMember; output: number }>;
-};
+// A distributive conditional type keeps the fields of each repeat kind.
+export type GroupRepeat = WorkflowGroupRepeat extends infer Repeat
+	? Repeat extends WorkflowGroupRepeat
+		? Omit<Repeat, 'entry' | 'exits'> & {
+				entry: GroupMember;
+				exits: Array<{ node: GroupMember; output: number }>;
+			}
+		: never
+	: never;
 
 /**
  * A node group as authored: members are node handles, resolved to the emitted node

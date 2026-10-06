@@ -655,11 +655,11 @@ export interface InstanceAiExecutionService {
 			 */
 			omitParameters?: Array<{ nodeName: string; parameter: string }>;
 			/**
-			 * In this run's ephemeral workflow copy, the items of `output` of the node go where its
-			 * `asOutput` sends them. Verification ends a loop that holds a live read at its pass limit,
-			 * because the read gives the same response on each pass.
+			 * In this run's ephemeral workflow copy, these regions end at their pass limit and emit as
+			 * if `until` held (`onLimit: 'continue'`). Verification ends a region that holds a live read
+			 * at its pass limit, because the read gives the same response on each pass.
 			 */
-			redirectOutputs?: Array<{ nodeName: string; output: number; asOutput: number }>;
+			endAtLimitRegionNames?: string[];
 			/**
 			 * The run stops after this node: only the node and its parent nodes run, as in a partial
 			 * execution to a destination node. Verification uses it to verify one slice of a workflow.

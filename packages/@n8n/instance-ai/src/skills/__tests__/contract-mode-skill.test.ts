@@ -144,7 +144,9 @@ describe('contract-mode skill', () => {
 		expect(flowControl).toContain(
 			"`join` is `'append'`, `'position'` or `{ left, right }`. These are not the\n  Merge node action names.",
 		);
-		expect(flowControl).toContain('`loop({ name, maxIterations, until, next?, onLimit? }, body)`');
+		expect(flowControl).toContain(
+			'`loop({ name, maxIterations, until, next?, onLimit?, emit? }, body)`',
+		);
 		expect(flowControl).toContain('a failed item is only\n  `{ error: string }`');
 		expect(flowControl).toContain('`route(step, { a: part, b: part })`');
 		expect(flowControl).toContain('Use it only to pace work');
