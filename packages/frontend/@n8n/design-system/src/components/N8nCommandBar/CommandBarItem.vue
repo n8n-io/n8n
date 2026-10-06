@@ -34,7 +34,7 @@ const titleParts = computed(() => {
 
 function onClick(event: MouseEvent) {
 	const opensNewTab = event.metaKey || event.ctrlKey || event.shiftKey;
-	if (props.item.href && opensNewTab) {
+	if (props.item.href && opensNewTab && !props.item.disabled) {
 		return;
 	}
 	event.preventDefault();
@@ -63,7 +63,12 @@ function onClick(event: MouseEvent) {
 				v-if="'component' in item.icon"
 				v-bind="item.icon.props"
 			/>
-			<N8nIcon v-else-if="item.icon.type === 'icon'" :icon="item.icon.value" size="large" />
+			<N8nIcon
+				v-else-if="item.icon.type === 'icon'"
+				:icon="item.icon.value"
+				:color="item.icon.color"
+				size="large"
+			/>
 			<span v-else :class="$style.emoji">{{ item.icon.value }}</span>
 		</span>
 		<span :class="$style.content">
@@ -77,6 +82,7 @@ function onClick(event: MouseEvent) {
 					<N8nIcon
 						v-if="item.descriptionIcon.type === 'icon'"
 						:icon="item.descriptionIcon.value"
+						:color="item.descriptionIcon.color"
 						size="small"
 					/>
 					<span v-else>{{ item.descriptionIcon.value }}</span>

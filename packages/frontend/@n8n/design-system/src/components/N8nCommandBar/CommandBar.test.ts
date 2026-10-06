@@ -121,6 +121,24 @@ describe('N8nCommandBar', () => {
 		expect(wrapper.emitted('select')).toBeUndefined();
 	});
 
+	it('does not open disabled links in a new tab on Cmd+click', async () => {
+		await renderCommandBar({
+			sections: [
+				{
+					id: 'links',
+					items: [{ id: 'locked-link', title: 'Locked link', href: '/locked', disabled: true }],
+				},
+			],
+		});
+
+		const preventDefault = vi.spyOn(MouseEvent.prototype, 'preventDefault');
+
+		await fireEvent.click(screen.getByText('Locked link'), { metaKey: true });
+
+		expect(preventDefault).toHaveBeenCalled();
+		preventDefault.mockRestore();
+	});
+
 	it('selects an item on click', async () => {
 		const wrapper = await renderCommandBar();
 

@@ -32,6 +32,12 @@ const showCommandBar = computed(
 	() => hasPermission(['authenticated']) && !isDemoMode.value && !settingsStore.isCanvasOnly,
 );
 
+watch(showCommandBar, (show) => {
+	if (!show) {
+		isOpen.value = false;
+	}
+});
+
 watch(isOpen, (open) => {
 	if (open) {
 		commandBarEventBus.emit('open');

@@ -200,6 +200,7 @@ describe('useCommandBar', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		workflows.search.mockReset();
 		currentRoute.value = { name: VIEWS.WORKFLOWS, params: {} };
 		nodeEntries.value = items('node', 25);
 		renderCommandBar();

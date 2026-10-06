@@ -111,28 +111,28 @@ export function useWorkflowNavigationCommands(options: {
 	}: CommandBarSearchRequest): Promise<CommandBarSearchResult> {
 		const trimmed = query.trim();
 		const lowerCased = trimmed.toLowerCase();
-		const isFirstPage = offset === 0;
-		const matchedNodeTypeNames = isFirstPage
-			? nodeTypeNamesByDisplayName.value.get(lowerCased)
-			: undefined;
-		const matchedTag = isFirstPage
-			? tagsStore.allTags.find((tag) => tag.name.toLowerCase() === lowerCased)
-			: undefined;
-		const listOptions = { sortBy: 'updatedAt:desc', includeScopes: false };
+		const matchedNodeTypeNames = nodeTypeNamesByDisplayName.value.get(lowerCased);
+		const matchedTag = tagsStore.allTags.find((tag) => tag.name.toLowerCase() === lowerCased);
+		const listOptions = {
+			sortBy: 'updatedAt:desc',
+			includeScopes: false,
+			skip: offset,
+			take: limit + 1,
+		};
 
 		const [byName, byNodeType, byTag] = await Promise.all([
 			workflowsListStore.searchWorkflows({
 				query: trimmed || undefined,
 				isArchived: false,
 				select: WORKFLOW_FIELDS,
-				options: { ...listOptions, skip: offset, take: limit + 1 },
+				options: listOptions,
 			}),
 			matchedNodeTypeNames
 				? workflowsListStore.searchWorkflows({
 						nodeTypes: [...matchedNodeTypeNames],
 						isArchived: false,
 						select: [...WORKFLOW_FIELDS, 'nodes'],
-						options: { ...listOptions, skip: 0, take: limit },
+						options: listOptions,
 					})
 				: Promise.resolve([]),
 			matchedTag
@@ -140,23 +140,26 @@ export function useWorkflowNavigationCommands(options: {
 						tags: [matchedTag.name],
 						isArchived: false,
 						select: WORKFLOW_FIELDS,
-						options: { ...listOptions, skip: 0, take: limit },
+						options: listOptions,
 					})
 				: Promise.resolve([]),
 		]);
 
 		const items = new Map<string, CommandBarItem>();
-		for (const workflow of byNodeType) {
+		for (const workflow of byNodeType.slice(0, limit)) {
 			const matchedNodeType = matchedNodeTypeNames
 				? findMatchedNodeType(workflow, matchedNodeTypeNames)
 				: undefined;
 			items.set(workflow.id, toCommandBarItem(workflow, matchedNodeType));
 		}
-		for (const workflow of [...byTag, ...byName.slice(0, limit)]) {
+		for (const workflow of [...byTag.slice(0, limit), ...byName.slice(0, limit)]) {
 			if (!items.has(workflow.id)) items.set(workflow.id, toCommandBarItem(workflow));
 		}
 
-		return { items: [...items.values()], hasMore: byName.length > limit };
+		return {
+			items: [...items.values()],
+			hasMore: [byName, byNodeType, byTag].some((page) => page.length > limit),
+		};
 	}
 
 	const workflowNavigationCommands = computed<CommandBarItem[]>(() => {

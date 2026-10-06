@@ -304,7 +304,7 @@ describe('useWorkflowNavigationCommands', () => {
 				nodeTypes: [HTTP_REQUEST_NODE_TYPE],
 				isArchived: false,
 				select: [...WORKFLOW_FIELDS, 'nodes'],
-				options: { skip: 0, take: 5, sortBy: 'updatedAt:desc', includeScopes: false },
+				options: { skip: 0, take: 6, sortBy: 'updatedAt:desc', includeScopes: false },
 			});
 			expect(items.map((item) => item.id)).toEqual(['w2', 'w1']);
 			expect(items[0].icon).toEqual({
@@ -325,22 +325,44 @@ describe('useWorkflowNavigationCommands', () => {
 				tags: ['Marketing'],
 				isArchived: false,
 				select: WORKFLOW_FIELDS,
-				options: { skip: 0, take: 5, sortBy: 'updatedAt:desc', includeScopes: false },
+				options: { skip: 0, take: 6, sortBy: 'updatedAt:desc', includeScopes: false },
 			});
 			expect(items.map((item) => item.id)).toEqual(['w2', 'w1']);
 		});
 
-		it('searches only by name on later pages', async () => {
-			await search({ query: 'http request', offset: 10 });
-			await search({ query: 'marketing', offset: 10 });
+		it('pages the node type and tag searches with the name search', async () => {
+			await search({ query: 'http request', offset: 10, limit: 5 });
+			await search({ query: 'marketing', offset: 10, limit: 5 });
 
-			expect(workflowsListStore.searchWorkflows).toHaveBeenCalledTimes(2);
-			expect(workflowsListStore.searchWorkflows).not.toHaveBeenCalledWith(
-				expect.objectContaining({ nodeTypes: expect.anything() }),
+			expect(workflowsListStore.searchWorkflows).toHaveBeenCalledWith(
+				expect.objectContaining({
+					nodeTypes: [HTTP_REQUEST_NODE_TYPE],
+					options: expect.objectContaining({ skip: 10, take: 6 }),
+				}),
 			);
-			expect(workflowsListStore.searchWorkflows).not.toHaveBeenCalledWith(
-				expect.objectContaining({ tags: expect.anything() }),
+			expect(workflowsListStore.searchWorkflows).toHaveBeenCalledWith(
+				expect.objectContaining({
+					tags: ['Marketing'],
+					options: expect.objectContaining({ skip: 10, take: 6 }),
+				}),
 			);
+		});
+
+		it('reports more results when only the node type search has the extra row', async () => {
+			mockSearchResults({
+				byName: createWorkflows(1),
+				byNodeType: Array.from({ length: 3 }, (_, index) =>
+					createTestWorkflow({
+						id: `n${index}`,
+						nodes: [createTestNode({ type: HTTP_REQUEST_NODE_TYPE })],
+					}),
+				),
+			});
+
+			const result = await search({ query: 'http request', limit: 2 });
+
+			expect(result.items.map((item) => item.id)).toEqual(['n0', 'n1', 'w0']);
+			expect(result.hasMore).toBe(true);
 		});
 
 		it('returns each workflow once when several searches match it', async () => {
