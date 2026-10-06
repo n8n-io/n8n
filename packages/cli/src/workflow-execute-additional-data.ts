@@ -51,6 +51,7 @@ import {
 	summarizeDynamicCredentialsUsage,
 } from 'n8n-workflow';
 
+import type { PrepareWorkflowAgentForEval } from './modules/agents/agent-runtime-instrumentation';
 import {
 	createWorkflowAgentStreamObserver,
 	type WorkflowAgentStreamObserver,
@@ -406,6 +407,7 @@ export async function executeAgent(
 	outputSchema?: JSONSchema7,
 	workflowContext?: ExecuteAgentWorkflowContext,
 	invocationContext?: ExecuteAgentInvocationContext,
+	prepareForEval?: PrepareWorkflowAgentForEval,
 ): Promise<ExecuteAgentData> {
 	assertAgentsModuleActive();
 
@@ -440,14 +442,17 @@ export async function executeAgent(
 				invocation: invocationContext,
 			})
 		: undefined;
-	const streamObserverArguments: [] | [WorkflowAgentStreamObserver] = streamObserver
-		? [streamObserver]
-		: [];
+	const trailingArguments: [
+		streamObserver?: WorkflowAgentStreamObserver,
+		prepareForEval?: PrepareWorkflowAgentForEval,
+	] = prepareForEval ? [streamObserver, prepareForEval] : streamObserver ? [streamObserver] : [];
 	if (!additionalData.workflowId) {
 		throw new UnexpectedError('Cannot execute agent without a workflowId in additional data');
 	}
 
 	const scopedThreadId = `workflow:project-${projectId}:${threadId}`;
+	// Eval runs grade what was built, so they run the draft, as a manual run does.
+	const useDraftVersion = prepareForEval !== undefined || isManualOrChatExecution(executionMode);
 
 	if (source.inlineAgent) {
 		return await agentWorkflowExecutionService.executeInlineForWorkflow(
@@ -457,15 +462,14 @@ export async function executeAgent(
 			scopedThreadId,
 			projectId,
 			telemetryUserId,
-			isManualOrChatExecution(executionMode) ? 'test' : 'production',
+			useDraftVersion ? 'test' : 'production',
 			outputSchema,
 			workflowContext,
-			...streamObserverArguments,
+			...trailingArguments,
 		);
 	}
 
 	const { hashAgentSandboxPrincipal } = await import('@/modules/agents/agent-sandbox-principal.js');
-	const useDraftVersion = isManualOrChatExecution(executionMode);
 	const sandboxScope =
 		workflowContext?.hasCallerSessionId === true
 			? {
@@ -494,7 +498,7 @@ export async function executeAgent(
 		outputSchema,
 		workflowContext,
 		sandboxScope,
-		...streamObserverArguments,
+		...trailingArguments,
 	);
 
 	// Callers see the session id they supplied (or the derived per-call id), so

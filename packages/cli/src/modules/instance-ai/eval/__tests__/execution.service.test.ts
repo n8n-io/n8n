@@ -1,5 +1,6 @@
 import type { Mock } from 'vitest';
-import type { Logger } from '@n8n/backend-common';
+import type { AgentJsonConfig } from '@n8n/api-types';
+import type { Logger, ModuleRegistry } from '@n8n/backend-common';
 import type { ExecutionsConfig, InstanceAiConfig } from '@n8n/config';
 import type { ProcessedDataRepository, User } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
@@ -16,6 +17,7 @@ import { NodeConnectionTypes, TimeoutExecutionCancelledError, UserError } from '
 
 import type { ActiveExecutions } from '@/active-executions';
 import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import type { PrepareWorkflowAgentForEval } from '@/modules/agents/agent-runtime-instrumentation';
 import type { NodeTypes } from '@/node-types';
 import type { PostHogClient } from '@/posthog';
 import type { DataTableService } from '@/modules/data-table/data-table.service';
@@ -101,12 +103,22 @@ vi.mock('n8n-workflow', async () => {
 	};
 });
 
+const mockExecuteAgent = vi.fn();
+vi.mock('@/workflow-execute-additional-data', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@/workflow-execute-additional-data')>()),
+	executeAgent: async (...args: unknown[]) => await mockExecuteAgent(...args),
+}));
+vi.mock('../mcp-mock-fetch', () => ({ createMcpMockFetch: vi.fn() }));
+vi.mock('../web-search-mock', () => ({ createWebSearchMock: vi.fn() }));
+
 // ---------------------------------------------------------------------------
 // Import SUT and mocked modules (after vi.mock calls)
 // ---------------------------------------------------------------------------
 
 import { EvalExecutionService } from '../execution.service';
+import { createMcpMockFetch } from '../mcp-mock-fetch';
 import { createLlmMockHandler } from '../mock-handler';
+import { createWebSearchMock } from '../web-search-mock';
 import { generatePinData } from '../pin-data-generator';
 import {
 	detectBinaryDependencies,
@@ -227,6 +239,7 @@ describe('EvalExecutionService', () => {
 	const dataTableService = mock<DataTableService>();
 	const processedDataRepository = mock<ProcessedDataRepository>();
 	const instanceAiConfig = { evalInstance: true } as InstanceAiConfig;
+	const moduleRegistry = mock<ModuleRegistry>();
 
 	// Captured configureAdditionalData closure so tests can re-invoke it on a
 	// stub additionalData without booting the real runner.
@@ -265,6 +278,7 @@ describe('EvalExecutionService', () => {
 			dataTableService,
 			processedDataRepository,
 			instanceAiConfig,
+			moduleRegistry,
 		);
 		// Reset to safe default — tests that flip queue mode reassign in-test.
 		Object.assign(executionsConfig, { mode: 'regular' });
@@ -2043,6 +2057,109 @@ describe('EvalExecutionService', () => {
 
 			expect(result.hints.globalContext).toBe('Users: jane@example.com, john@example.com');
 			expect(result.hints.nodeHints).toEqual({ 'HTTP Request': 'Return user profiles' });
+		});
+	});
+
+	// ── agents a workflow calls ──────────────────────────────────────
+
+	describe('agents a workflow calls', () => {
+		const callingNode = 'Ask Support';
+		const agentConfig = {
+			name: 'Support Bot',
+			model: 'openai/gpt-5',
+			credential: 'cred-1',
+			instructions: 'Answer support questions.',
+			memory: { enabled: true, storage: 'n8n' },
+			vectorStores: [{ id: 'store-1' }],
+			mcpServers: [{ name: 'linear', url: 'https://mcp.linear.app/mcp' }],
+		} as unknown as AgentJsonConfig;
+		const toolNode: INode = {
+			id: 'tool-1',
+			name: 'slack',
+			type: 'n8n-nodes-base.slack',
+			typeVersion: 2,
+			position: [0, 0],
+			parameters: {},
+		};
+
+		type AgentCallData = StubAdditionalData & {
+			executeAgent: (...args: unknown[]) => Promise<unknown>;
+		};
+
+		it('runs the called agent with fake I/O and records it under the calling node', async () => {
+			workflowFinderService.findWorkflowForUser.mockResolvedValue(makeWorkflowEntity() as never);
+			createLlmMockHandlerMock.mockReturnValue(
+				vi.fn().mockResolvedValue({ body: { ok: true }, headers: {}, statusCode: 200 }),
+			);
+			let prepared: Awaited<ReturnType<PrepareWorkflowAgentForEval>> | undefined;
+			mockExecuteAgent.mockImplementation(async (...args: unknown[]) => {
+				const prepareForEval = args[9] as PrepareWorkflowAgentForEval;
+				prepared = await prepareForEval(agentConfig);
+				const toolData = makeMockedAdditionalData();
+				prepared.instrumentation.configureToolAdditionalData?.(toolData as never, {
+					toolName: 'slack',
+					toolKind: 'node',
+				});
+				await toolData.evalLlmMockHandler?.(
+					{ url: 'https://slack.com/api/chat.postMessage', method: 'POST', body: { text: 'hi' } },
+					toolNode,
+				);
+				vi.mocked(createMcpMockFetch).mock.calls[0][0].onToolCall({
+					serverName: 'linear',
+					toolName: 'list_issues',
+					args: { query: 'refund' },
+					result: { issues: [] },
+				});
+				vi.mocked(createWebSearchMock).mock.calls[0][0].onSearch(
+					{ query: 'refund policy' },
+					{ query: 'refund policy', results: [] },
+				);
+				return { response: 'done' };
+			});
+			workflowRunner.run.mockImplementation(async (data) => {
+				const ad = makeMockedAdditionalData() as AgentCallData;
+				await data.configureAdditionalData?.(ad as never);
+				await ad.executeAgent(
+					{ agentId: 'agent-1' },
+					'hi',
+					'exec-1',
+					'thread-1',
+					ad,
+					'evaluation',
+					undefined,
+					{ callingNodeName: callingNode },
+					undefined,
+				);
+				return DB_EXECUTION_ID;
+			});
+
+			const result = await service.executeWithLlmMock('wf-1', makeUser());
+
+			expect(mockExecuteAgent).toHaveBeenCalledWith(
+				{ agentId: 'agent-1' },
+				'hi',
+				'exec-1',
+				'thread-1',
+				expect.anything(),
+				'evaluation',
+				undefined,
+				{ callingNodeName: callingNode },
+				undefined,
+				expect.any(Function),
+			);
+			expect(prepared?.config.mcpServers).toEqual(agentConfig.mcpServers);
+			expect(prepared?.config.memory).toBeUndefined();
+			expect(prepared?.config.vectorStores).toBeUndefined();
+			const entry = result.nodeResults[callingNode];
+			expect(entry.executionMode).toBe('mocked');
+			expect(entry.interceptedRequests.map((request) => request.nodeType)).toEqual([
+				'n8n-nodes-base.slack',
+				'mcp:linear',
+				'web-search:fallback',
+			]);
+			expect(result.nodeResults.slack).toBeUndefined();
+			// Memory goes off without a flag; a lost capability gets one.
+			expect(result.hints.warnings).toEqual([expect.stringContaining('vectorStores')]);
 		});
 	});
 
