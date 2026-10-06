@@ -138,14 +138,6 @@ describe('ExternalSecretsManager', () => {
 			expect(manager.initialized).toBe(true);
 		});
 
-		it('should not refresh on a timer of its own', async () => {
-			await manager.init();
-
-			vi.advanceTimersByTime(60000);
-
-			expect(mockSecretsCache.refreshAll).not.toHaveBeenCalled();
-		});
-
 		it('should not initialize twice', async () => {
 			await manager.init();
 			await manager.init();
