@@ -39,7 +39,7 @@ export const useMcpDiscoveryStore = defineStore(STORES.EXPERIMENT_MCP_DISCOVERY,
 	const shouldShowEntryPoints = computed(() => isTreatment.value && !state.value.hasUsedClaudeMcp);
 	const ctaStage = computed(() => {
 		if (!settings.moduleSettings.mcp?.mcpAccessEnabled) return 'build';
-		return state.value.hasConnectedClaude ? 'prompt' : 'connect';
+		return state.value.hasConnectedClaude ? 'build_in_claude' : 'connect';
 	});
 	const coachmarkDismissed = computed(() => state.value.coachmarkDismissed);
 

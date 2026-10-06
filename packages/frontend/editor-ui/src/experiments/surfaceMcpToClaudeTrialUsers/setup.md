@@ -32,7 +32,8 @@ Before rollout, verify:
 - A qualifying owner sees entry points after the cutoff without refreshing.
 - Assistant edits before the cutoff exclude the owner. Edits after it do not.
 - Control and treatment keep one saved assignment after reload and restart.
-- All four placements show the correct CTA and open MCP settings.
+- All four placements open MCP settings before Claude connects, then open Claude in a new tab.
+- Only the expanded sidebar shows `Connect to n8n`, and only while MCP is disabled.
 - Modern and legacy Claude clients update connection state and hide all four
   entry points after a successful workflow write. Failed writes do not hide them.
 - Revocation, API-key rotation, dismissal, and reconnect behave as specified.

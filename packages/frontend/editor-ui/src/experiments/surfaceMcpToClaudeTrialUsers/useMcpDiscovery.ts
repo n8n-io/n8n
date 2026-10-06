@@ -4,24 +4,48 @@ import { useUsersStore } from '@n8n/stores/users.store';
 import { useIntervalFn } from '@vueuse/core';
 import { useI18n } from '@n8n/i18n';
 import { computed, watch } from 'vue';
+import { useRouter } from 'vue-router';
 
-import { useMcpDiscoveryStore } from './mcpDiscovery.store';
+import { MCP_SETTINGS_VIEW } from '@/features/ai/mcpAccess/mcp.constants';
+
+import { useMcpDiscoveryStore, type McpDiscoveryPlacement } from './mcpDiscovery.store';
 
 export function useMcpDiscovery() {
 	const mcpDiscovery = useMcpDiscoveryStore();
 	const i18n = useI18n();
 	const showMcpDiscovery = computed(() => mcpDiscovery.shouldShowEntryPoints);
 	const showMcpSettingsTreatment = computed(() => mcpDiscovery.isTreatment);
+	const router = useRouter();
 	const entryLabel = computed(() =>
 		i18n.baseText(
-			mcpDiscovery.ctaStage === 'prompt'
-				? 'experiments.mcpDiscovery.cta.prompt'
-				: mcpDiscovery.ctaStage === 'connect'
-					? 'experiments.mcpDiscovery.cta.connect'
-					: 'experiments.mcpDiscovery.cta.build',
+			mcpDiscovery.ctaStage === 'connect'
+				? 'experiments.mcpDiscovery.cta.connect'
+				: 'experiments.mcpDiscovery.cta.build',
 		),
 	);
-	return { mcpDiscovery, showMcpDiscovery, showMcpSettingsTreatment, entryLabel };
+	const entryDescription = computed(() =>
+		mcpDiscovery.ctaStage === 'build'
+			? i18n.baseText('experiments.mcpDiscovery.cta.connectToN8n')
+			: undefined,
+	);
+
+	function openEntry(placement: McpDiscoveryPlacement) {
+		mcpDiscovery.trackEntry(placement, 'clicked');
+		if (mcpDiscovery.ctaStage === 'build_in_claude') {
+			window.open('https://claude.ai/new', '_blank', 'noopener,noreferrer');
+		} else {
+			void router.push({ name: MCP_SETTINGS_VIEW });
+		}
+	}
+
+	return {
+		mcpDiscovery,
+		showMcpDiscovery,
+		showMcpSettingsTreatment,
+		entryLabel,
+		entryDescription,
+		openEntry,
+	};
 }
 
 /** Install once in App.vue. Individual placements only consume the shared store. */

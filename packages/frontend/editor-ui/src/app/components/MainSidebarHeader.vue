@@ -4,8 +4,7 @@ import { computed, ref, type Ref } from 'vue';
 import { useMcpDiscovery } from '@/experiments/surfaceMcpToClaudeTrialUsers/useMcpDiscovery';
 import ClaudeLogo from '@/features/ai/mcpAccess/components/ClaudeLogo.vue';
 import { I18nT } from 'vue-i18n';
-import { RouterLink, useRouter } from 'vue-router';
-import { MCP_SETTINGS_VIEW } from '@/features/ai/mcpAccess/mcp.constants';
+import { RouterLink } from 'vue-router';
 import {
 	N8nButton,
 	N8nLogo,
@@ -26,8 +25,7 @@ defineProps<{
 	hideCreate?: boolean;
 }>();
 
-const { showMcpDiscovery, mcpDiscovery, entryLabel } = useMcpDiscovery();
-const router = useRouter();
+const { showMcpDiscovery, mcpDiscovery, entryLabel, openEntry } = useMcpDiscovery();
 const emit = defineEmits<{
 	collapse: [];
 	openCommandBar: [event: MouseEvent];
@@ -73,8 +71,7 @@ const claudeMenu = computed(() =>
 );
 function selectItem(id: string) {
 	if (id === 'claude-mcp') {
-		mcpDiscovery.trackEntry('create_menu', 'clicked');
-		void router.push({ name: MCP_SETTINGS_VIEW });
+		openEntry('create_menu');
 	} else {
 		void handleMenuSelect(id);
 	}

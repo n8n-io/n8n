@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useId } from 'vue';
 import { N8nIcon } from '@n8n/design-system';
 import ClaudeLogo from '@/features/ai/mcpAccess/components/ClaudeLogo.vue';
 withDefaults(
@@ -6,11 +7,14 @@ withDefaults(
 		placement: 'canvas' | 'sidebar' | 'footer';
 		collapsed?: boolean;
 		label: string;
+		description?: string;
 	}>(),
 	{
 		collapsed: false,
+		description: undefined,
 	},
 );
+const descriptionId = useId();
 const emit = defineEmits<{ click: [] }>();
 </script>
 
@@ -19,17 +23,21 @@ const emit = defineEmits<{ click: [] }>();
 		type="button"
 		:class="[$style.entry, $style[placement], { [$style.collapsed]: collapsed }]"
 		:aria-label="label"
+		:aria-describedby="!collapsed && description ? descriptionId : undefined"
 		:data-test-id="`claude-entry-${placement}`"
 		@click.stop="emit('click')"
 	>
 		<span :class="$style.mark"><ClaudeLogo /></span>
 		<span v-if="!collapsed" :class="$style.copy">
 			<span>{{ label }}</span>
+			<span v-if="description" :id="descriptionId" :class="$style.description">{{
+				description
+			}}</span>
 		</span>
 		<N8nIcon
 			v-if="placement !== 'canvas' && !collapsed"
 			:icon="placement === 'footer' ? 'arrow-right' : 'chevron-right'"
-			size="small"
+			:size="placement === 'sidebar' ? 'large' : 'small'"
 		/>
 	</button>
 </template>
@@ -71,10 +79,20 @@ const emit = defineEmits<{ click: [] }>();
 	text-align: left;
 	gap: var(--spacing--4xs);
 }
+.description {
+	color: var(--text-color--subtler);
+}
 .sidebar {
-	margin: var(--spacing--4xs);
+	flex: 1;
+	min-width: 0;
+	padding: var(--spacing--4xs);
+	gap: var(--spacing--4xs);
 	font-size: var(--font-size--2xs);
 	justify-content: flex-start;
+}
+.sidebar .mark {
+	flex-shrink: 0;
+	--mcp-agent-logo-icon-size: var(--spacing--sm);
 }
 .sidebar .copy {
 	white-space: normal;

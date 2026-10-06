@@ -7,10 +7,15 @@ import { defaultSettings } from '@n8n/frontend-test-utils';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import MainSidebarHeader from './MainSidebarHeader.vue';
+import { useMcpDiscoveryStore } from '@/experiments/surfaceMcpToClaudeTrialUsers/mcpDiscovery.store';
+import { MCP_SETTINGS_VIEW } from '@/features/ai/mcpAccess/mcp.constants';
+
+const mocks = vi.hoisted(() => ({ push: vi.fn() }));
 
 vi.mock('vue-router', () => ({
 	useRouter: () => ({
 		resolve: vi.fn(() => ({ meta: {} })),
+		push: mocks.push,
 	}),
 	useRoute: () => reactive({}),
 	RouterLink: {
@@ -33,6 +38,36 @@ describe('MainSidebarHeader', () => {
 		sourceControlStore = mockedStore(useSourceControlStore);
 		settingsStore.settings = defaultSettings;
 	});
+
+	it.each(['build', 'connect', 'build_in_claude'] as const)(
+		'opens the correct destination from the create menu for %s',
+		async (stage) => {
+			mocks.push.mockClear();
+			const open = vi.spyOn(window, 'open').mockReturnValue(null);
+			const discovery = mockedStore(useMcpDiscoveryStore);
+			discovery.shouldShowEntryPoints = true;
+			discovery.ctaStage = stage;
+			const { getByRole } = createComponentRenderer(MainSidebarHeader, {
+				pinia,
+				props: { isCollapsed: false },
+			})();
+			await fireEvent.click(getByRole('button', { name: 'Add new item' }));
+			await fireEvent.click(
+				getByRole('menuitem', {
+					name: stage === 'connect' ? 'Connect Claude' : 'Build with Claude',
+				}),
+			);
+			expect(discovery.trackEntry).toHaveBeenCalledWith('create_menu', 'clicked');
+			if (stage === 'build_in_claude') {
+				expect(open).toHaveBeenCalledWith('https://claude.ai/new', '_blank', 'noopener,noreferrer');
+				expect(mocks.push).not.toHaveBeenCalled();
+			} else {
+				expect(mocks.push).toHaveBeenCalledWith({ name: MCP_SETTINGS_VIEW });
+				expect(open).not.toHaveBeenCalled();
+			}
+			open.mockRestore();
+		},
+	);
 
 	it('renders header without error', () => {
 		expect(() =>

@@ -1,6 +1,6 @@
 {
 	"experiments.mcpDiscovery.cta.connect": "Connect Claude",
-	"experiments.mcpDiscovery.cta.prompt": "Go back to Claude and prompt",
+	"experiments.mcpDiscovery.cta.connectToN8n": "Connect to n8n",
 	"experiments.mcpDiscovery.cta.build": "Build with Claude",
 	"_reusableBaseText": {
 		"cancel": "Cancel",

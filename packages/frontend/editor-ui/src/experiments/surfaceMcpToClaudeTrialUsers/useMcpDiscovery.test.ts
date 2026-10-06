@@ -120,7 +120,7 @@ describe('MCP discovery enrollment polling', () => {
 		await vi.advanceTimersByTimeAsync(60_000);
 		expect(useMcpDiscoveryStore().shouldShowEntryPoints).toBe(true);
 		await vi.advanceTimersByTimeAsync(60_000);
-		expect(useMcpDiscoveryStore().ctaStage).toBe('prompt');
+		expect(useMcpDiscoveryStore().ctaStage).toBe('build_in_claude');
 		await vi.advanceTimersByTimeAsync(60_000);
 		expect(useMcpDiscoveryStore().shouldShowEntryPoints).toBe(false);
 		expect(mocks.request).toHaveBeenCalledTimes(4);

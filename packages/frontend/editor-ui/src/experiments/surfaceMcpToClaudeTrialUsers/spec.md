@@ -34,10 +34,12 @@ Build an agent / Build a workflow screen does not change.
 | --- | --- |
 | MCP disabled | Build with Claude |
 | MCP enabled, Claude not connected | Connect Claude |
-| Claude connected, no successful workflow write | Go back to Claude and prompt |
+| Claude connected, no successful workflow write | Build with Claude |
 | First successful Claude workflow write | Hide all four entry points |
 
-Every CTA opens MCP settings in the same tab. It does not open Claude.
+When MCP is disabled, only the expanded sidebar entry adds the subtext `Connect to n8n`.
+Before Claude connects, all four CTAs open MCP settings in the same tab.
+After Claude connects, all four open `https://claude.ai/new` in a new tab.
 Treatment also changes the MCP settings copy and Connect button styling. These
 settings changes remain after the four entry points disappear.
 

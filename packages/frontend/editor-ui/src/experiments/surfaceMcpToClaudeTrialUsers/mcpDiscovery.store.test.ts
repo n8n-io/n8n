@@ -218,7 +218,7 @@ describe('MCP discovery store', () => {
 		};
 		expect(store.ctaStage).toBe('connect');
 		store.state.hasConnectedClaude = true;
-		expect(store.ctaStage).toBe('prompt');
+		expect(store.ctaStage).toBe('build_in_claude');
 	});
 
 	it('hides entries after Claude use while retaining experiment enrollment', async () => {
@@ -256,7 +256,7 @@ describe('MCP discovery store', () => {
 		expect(store.isEnabled).toBe(false);
 		expect(mocks.track).not.toHaveBeenCalled();
 	});
-	it.each(['build', 'connect', 'prompt'] as const)(
+	it.each(['build', 'connect', 'build_in_claude'] as const)(
 		'tracks the surface and %s CTA stage on clicks',
 		async (stage) => {
 			mocks.settings.moduleSettings.mcp.mcpAccessEnabled = stage !== 'build';
@@ -264,7 +264,7 @@ describe('MCP discovery store', () => {
 				status: 'assigned',
 				assignment: { variant: 'variant', assignedAt: 123 },
 				coachmarkDismissed: false,
-				hasConnectedClaude: stage === 'prompt',
+				hasConnectedClaude: stage === 'build_in_claude',
 			});
 			const store = useMcpDiscoveryStore();
 			await store.refresh();

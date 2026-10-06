@@ -43,16 +43,17 @@ export const MCP_TELEMETRY = defineTelemetryEvents({
 		properties: z.looseObject({
 			variant: z.enum(['control', 'variant']),
 			surface: z.enum(['canvas', 'sidebar', 'footer', 'create_menu']),
-			cta_stage: z.enum(['build', 'connect', 'prompt']),
+			cta_stage: z.enum(['build', 'connect', 'prompt', 'build_in_claude']),
 		}),
 	},
 	DISCOVERY_ENTRY_CLICKED: {
 		name: 'User clicked MCP discovery entry point',
-		description: 'A user clicked an experiment entry point to open MCP settings in the same tab.',
+		description:
+			'A user clicked an experiment entry point to open MCP settings or a new Claude browser tab.',
 		properties: z.looseObject({
 			variant: z.enum(['control', 'variant']),
 			surface: z.enum(['canvas', 'sidebar', 'footer', 'create_menu']),
-			cta_stage: z.enum(['build', 'connect', 'prompt']),
+			cta_stage: z.enum(['build', 'connect', 'prompt', 'build_in_claude']),
 		}),
 	},
 	MCP_NUDGE_VIEWED: {
