@@ -64,8 +64,8 @@ class TargetProjectDenyCheck implements RegisteredPolicyCheck {
 		return { violations: this.violationsFor(targetProjectId) };
 	}
 
-	private violationsFor(targetProjectId: string | null): PolicyViolation[] {
-		if (targetProjectId === null || !deniedTargetProjectIds.has(targetProjectId)) return [];
+	private violationsFor(targetProjectId: string): PolicyViolation[] {
+		if (!deniedTargetProjectIds.has(targetProjectId)) return [];
 
 		return [
 			{
