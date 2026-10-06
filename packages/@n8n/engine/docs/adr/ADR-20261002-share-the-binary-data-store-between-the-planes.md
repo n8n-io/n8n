@@ -12,20 +12,25 @@ Source: https://linear.app/n8n/issue/CAT-4824
 
 Every binary helper that a node uses gets `BinaryDataService` from the dependency container, in
 `binary-helper-functions.ts` in `n8n-core`. This works because the data plane (DP) runs in the
-control plane (CP) process today. The standalone engine entry point, `serve.ts`, creates no
-`BinaryDataService`. A DP in its own process cannot read or write a file.
+control plane (CP) process today. The DP host in its own process is the `n8n engine` command in
+`packages/cli`. It has the container, but it never set up the storage managers of its
+`BinaryDataService`, so a node on it could not read or write a file.
 
 There are four constraints:
 
 1. The engine package must not import `n8n-core`. Only the node-engine-compatibility layer and the
    host use `BinaryDataService`.
-2. The `BinaryDataConfig` constructor takes `InstanceSettings` to derive the signing secret, and
-   `initialize()` reads the secret from the CP database. So a process cannot create the
-   configuration without the encryption key and the CP database, even when it only reads and
-   writes files.
+2. `BinaryDataConfig.initialize()` reads the signing secret from the CP database, and only the CP
+   commands call it. The constructor itself needs no CP database: `InstanceSettings` generates a
+   local key when the process has no encryption key, as `n8n engine` requires. So the DP host can
+   create the configuration, but it can never get the CP signing secret.
 3. `createBinarySignedUrl()` signs a token with that secret. No node in this repository calls it.
    It is part of `BinaryHelperFunctions` in `n8n-workflow`, so community nodes can call it.
 4. The `database` mode stores the bytes in the CP database.
+
+The first version of this ADR took `serve.ts` in the engine package for the DP host. That entry
+point runs no v1 nodes, so it needs no store. Decisions 4 and 5 were corrected after the
+implementation of CAT-4857 showed this.
 
 ## Decision
 
@@ -40,13 +45,12 @@ There are four constraints:
    says the operation is not supported. This applies in every topology, so the behaviour does not
    change with the deployment model. The method stays in the interface, and v1 keeps it as it is.
    The signing secret is not given to the DP.
-4. **The storage configuration is split from the signing secret.** A DP builds its
-   `BinaryDataService` from the storage settings only, without `InstanceSettings` and without the CP
-   database.
-5. **The helpers get the service from `additionalData`.** The DP runtime sets its
-   `BinaryDataService` on `additionalData`, the same way it sets `credentialsHelper`. When
-   `additionalData` has no service, the helpers use the container. Thus v1 and integrated mode keep
-   the process singleton.
+4. **The DP host sets up the store at start, without the CP database.** `n8n engine` registers the
+   `filesystem`, `s3` and `azure` managers and never calls `BinaryDataConfig.initialize()`. It
+   refuses `s3` and `azure` when no bucket or container is configured, for the same reason it
+   refuses `database` mode: the service would otherwise keep every file inline and fail every read.
+5. **The helpers keep the container.** Every process that runs a node has one `BinaryDataService`
+   singleton, and the DP host sets it up before the first run. No change in `n8n-core` is needed.
 
 ```mermaid
 flowchart LR
@@ -77,19 +81,22 @@ flowchart LR
 
 ## Consequences
 
-1. Two code changes follow, each in its own ticket: the service on `additionalData`, with the
-   unsupported error for `createBinarySignedUrl()`, and the split of `BinaryDataConfig`.
+1. Two code changes follow, each in its own ticket: the store setup on the DP host (CAT-4857) and
+   the unsupported error for `createBinarySignedUrl()`.
 2. Until these changes are merged, a DP that runs nodes which use files must run in the CP process.
-3. An operator who runs `filesystem` mode on more than one host must provide a shared mount. v1
+3. The DP host checks no license for `s3` and `azure`, because it has no license: the certificate
+   is read from the CP database. The CP still refuses an unlicensed mode at start. The design of a
+   license on the DP is CAT-4858, and the check is CAT-4859.
+4. An operator who runs `filesystem` mode on more than one host must provide a shared mount. v1
    queue mode has the same requirement.
-4. A DP host in its own process that is configured for `database` mode fails at start. Such a host
+5. A DP host in its own process that is configured for `database` mode fails at start. Such a host
    has no CP database connection, so every file read and write fails in that mode. Without the
    check, the error shows only when a run handles its first file. That run fails in the middle,
    after earlier nodes have already called external services. A workflow that uses no files never
    shows the error, so the wrong configuration can stay unnoticed for a long time.
-5. A community node that calls `createBinarySignedUrl()` fails on engine v2, with an error that
+6. A community node that calls `createBinarySignedUrl()` fails on engine v2, with an error that
    names the operation. The same node keeps working on v1.
-6. This decision answers the open question in decision 6 and consequence 3 of
+7. This decision answers the open question in decision 6 and consequence 3 of
    ADR-20260925-delete-binary-files-with-the-execution-that-wrote-them.
 
 ## Links
