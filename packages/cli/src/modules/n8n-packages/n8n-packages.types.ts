@@ -245,7 +245,6 @@ export interface ExportPackageRequest {
 	projectWorkflowIds?: string[];
 	/** Internal opt-out for callers that cannot import Agents yet. */
 	includeAgents?: boolean;
-	canExportAgents?: boolean;
 	agentVersionPolicy?: WorkflowVersionPolicy;
 	missingAgentDependencyPolicy?: MissingWorkflowDependencyPolicy;
 	includeVariableValues?: boolean;

@@ -18,13 +18,14 @@ post:
     response is streamed as `application/gzip` with a `Content-Disposition`
     attachment header. Requires the n8n Packages feature to be licensed.
 
-    API key scopes: `agent:export` is required for selected Agents, including
-    Agents in selected projects. `workflow:export` is required for explicitly
-    selected workflows or folders. Workflow dependencies use the caller's project
-    permissions and do not require an additional API key scope. `project:export`
-    is required for selected projects. When `includeVariableValues` is true (the
-    default) and exported entities reference variables, `variable:list` is also
-    required. Exports that reference no variables do not need it.
+    API key scopes: `agent:export` is required for explicitly selected Agents.
+    `workflow:export` is required for explicitly selected workflows or folders.
+    `project:export` is sufficient for whole-project exports, including their
+    Agents and workflows. Included dependencies need no additional API key scope.
+    The caller's project permissions apply to all included entities. When
+    `includeVariableValues` is true (the default) and exported entities reference
+    variables, `variable:list` is also required. Exports that reference no variables
+    do not need it.
 
     Agent definitions include referenced skills, custom tools, and schedules.
     Knowledge base files and runtime data are excluded. Agent package imports

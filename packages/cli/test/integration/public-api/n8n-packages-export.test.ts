@@ -176,7 +176,6 @@ describe('POST /n8n-packages/export', () => {
 		{ agentVersionPolicy: 'published' },
 		{ missingAgentDependencyPolicy: 'skip' },
 		{ agentIds: [] },
-		{ canExportAgents: true },
 		{ includeAgents: false },
 	])('rejects invalid or internal Agent export options: %j', async (options) => {
 		const project = await createTeamProject('Export project', owner);

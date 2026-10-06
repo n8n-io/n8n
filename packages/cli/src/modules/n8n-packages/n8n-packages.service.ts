@@ -488,7 +488,6 @@ export class N8nPackagesService {
 						agentIds: request.agentIds,
 						projectIds,
 						projectWorkflowIds: request.projectWorkflowIds,
-						canExportAgents: request.canExportAgents,
 						agentVersionPolicy: request.agentVersionPolicy,
 						missingAgentDependencyPolicy: request.missingAgentDependencyPolicy,
 						projectTargetsById: projectExportResult?.projectTargetsById,

@@ -129,7 +129,6 @@ const n8nPackagesHandlers: N8nPackagesHandlers = {
 				const exportResult = await Container.get(N8nPackagesService).exportPackage({
 					user: req.user,
 					agentIds,
-					canExportAgents: apiKeyScopes.includes('agent:export'),
 					agentVersionPolicy: payload.data.agentVersionPolicy,
 					missingAgentDependencyPolicy: payload.data.missingAgentDependencyPolicy,
 					workflowIds,

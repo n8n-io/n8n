@@ -26,7 +26,6 @@ export interface AgentSelectionExportRequest {
 	user: User;
 	writer: PackageWriter;
 	agentIds?: string[];
-	canExportAgents?: boolean;
 	projectIds?: string[];
 	/** A restricted project export does not select Agents. */
 	projectWorkflowIds?: string[];

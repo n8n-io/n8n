@@ -27,6 +27,7 @@ import { PackageImportConfig } from '@/modules/n8n-packages/n8n-packages.config'
 import type { ExportPackageEventCounts } from '@/modules/n8n-packages/n8n-packages.types';
 import { serializedAgentSchema } from '@/modules/n8n-packages/spec/serialized/agent.schema';
 import { createFolder } from '@test-integration/db/folders';
+import { createCustomRoleWithScopeSlugs } from '@test-integration/db/roles';
 import { createMemberWithApiKey, createOwnerWithApiKey } from '@test-integration/db/users';
 import { createProjectVariable } from '@test-integration/db/variables';
 import { setupTestServer } from '@test-integration/utils';
@@ -129,14 +130,13 @@ it.each(['agents', 'mixed', 'project'] as const)(
 	'downloads a complete %s selection',
 	async (selection) => {
 		await addReferences();
-		const scopes: ApiKeyScope[] = ['agent:export'];
+		const scopes: ApiKeyScope[] = selection === 'project' ? ['project:export'] : ['agent:export'];
 		const body: Partial<ExportPackageRequestDto> = {
 			missingAgentDependencyPolicy: 'include-in-package',
 			missingWorkflowDependencyPolicy: 'include-in-package',
 		};
 		if (selection === 'project') {
 			body.projectIds = [project.id];
-			scopes.push('project:export');
 		} else {
 			body.agentIds = [agent.id, agent.id];
 		}
@@ -253,24 +253,39 @@ it('selects Agent and workflow versions independently and reports skipped select
 	);
 });
 
-it.each(['explicit', 'project'] as const)(
-	'requires the Agent API-key scope for %s selections before preparation',
-	async (selection) => {
-		const limited = await createOwnerWithApiKey({ scopes: ['project:export', 'workflow:export'] });
-		const prepare = vi.spyOn(Container.get(AgentExporter), 'prepare');
-		const emit = vi.spyOn(Container.get(EventService), 'emit');
-		const response = await server
-			.publicApiAgentFor(limited)
-			.post('/n8n-packages/export')
-			.send(selection === 'project' ? { projectIds: [project.id] } : { agentIds: [agent.id] });
-		expect(response.statusCode).toBe(403);
-		expect(prepare).not.toHaveBeenCalled();
-		expect(emit).toHaveBeenCalledWith(
-			'n8n-package-export-failed',
-			expect.objectContaining({ reason: 'access-denied' }),
-		);
-	},
-);
+it('requires the Agent API-key scope for explicit selections before preparation', async () => {
+	const limited = await createOwnerWithApiKey({ scopes: ['project:export', 'workflow:export'] });
+	const prepare = vi.spyOn(Container.get(AgentExporter), 'prepare');
+	const emit = vi.spyOn(Container.get(EventService), 'emit');
+	const response = await server
+		.publicApiAgentFor(limited)
+		.post('/n8n-packages/export')
+		.send({ agentIds: [agent.id] });
+	expect(response.statusCode).toBe(403);
+	expect(prepare).not.toHaveBeenCalled();
+	expect(emit).toHaveBeenCalledWith(
+		'n8n-package-export-failed',
+		expect.objectContaining({ reason: 'access-denied' }),
+	);
+});
+
+it('requires the user project role to allow Agent exports in a project selection', async () => {
+	const caller = await createMemberWithApiKey({ scopes: ['project:export'] });
+	const role = await createCustomRoleWithScopeSlugs(['project:export', 'agent:read']);
+	await linkUserToProject(caller, project, role.slug);
+	const prepare = vi.spyOn(Container.get(AgentExporter), 'prepare');
+	const emit = vi.spyOn(Container.get(EventService), 'emit');
+	const response = await server
+		.publicApiAgentFor(caller)
+		.post('/n8n-packages/export')
+		.send({ projectIds: [project.id] });
+	expect(response.statusCode).toBe(400);
+	expect(prepare).not.toHaveBeenCalled();
+	expect(emit).toHaveBeenCalledWith(
+		'n8n-package-export-failed',
+		expect.objectContaining({ reason: 'access-denied' }),
+	);
+});
 
 it('allows a project without Agents with only the project API-key scope', async () => {
 	const emptyProject = await createTeamProject('Empty project', owner);
