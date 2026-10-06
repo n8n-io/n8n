@@ -79,12 +79,8 @@ describe('Log streaming in Public API', () => {
 		setManagedByEnv(false);
 	});
 
-	// Every endpoint is gated the same way (valid key → licensed → required scope), so the
-	// 401 / 403-unlicensed / 403-missing-scope checks are asserted uniformly across all routes.
 	describe('authorization', () => {
 		const dummyId = '11111111-1111-4111-8111-111111111111';
-		// POST/PUT carry a valid body so the request passes body validation and reaches the
-		// license/scope middleware (otherwise a bodyless request short-circuits with 415).
 		const endpoints: Array<{
 			name: string;
 			method: 'get' | 'post' | 'put' | 'delete';
@@ -176,7 +172,6 @@ describe('Log streaming in Public API', () => {
 
 	describe('GET /settings/log-streaming/destinations/{id}', () => {
 		it('omits credentials and backend-only fields of a destination stored outside the Public API', async () => {
-			// The Public API cannot store these fields, so only a read can expose them.
 			const options: MessageEventBusDestinationWebhookOptions = {
 				__type: MessageEventBusDestinationTypeNames.webhook,
 				label: 'Stored with credentials',
@@ -258,7 +253,6 @@ describe('Log streaming in Public API', () => {
 			expect(response.body).not.toHaveProperty('__type');
 			expect(response.body.label).toBe('Test Webhook');
 
-			// the destination is persisted through the service, readable on the next request
 			const listResponse = await testServer
 				.publicApiAgentFor(owner)
 				.get('/settings/log-streaming/destinations');
@@ -273,7 +267,6 @@ describe('Log streaming in Public API', () => {
 				.post('/settings/log-streaming/destinations')
 				.send({ ...webhookPayload, id: clientId });
 
-			// id is readOnly: eov rejects it in the request body
 			expect(response.status).toBe(400);
 		});
 
@@ -304,7 +297,6 @@ describe('Log streaming in Public API', () => {
 			expect(response.status).toBe(200);
 			expect(response.body).toHaveProperty('id');
 			expect(response.body).toMatchObject(payload);
-			// fields the UI does not expose are dropped from the public surface
 			expect(response.body).not.toHaveProperty('responseCodeMustMatch');
 			expect(response.body).not.toHaveProperty('sendPayload');
 			expect(response.body).not.toHaveProperty('authentication');
@@ -391,7 +383,6 @@ describe('Log streaming in Public API', () => {
 			expect(response.body.label).toBe('Renamed webhook');
 			expect(response.body.url).toBe('http://localhost:9999');
 
-			// the change is persisted (no extra destination created)
 			const listResponse = await testServer
 				.publicApiAgentFor(owner)
 				.get('/settings/log-streaming/destinations');
