@@ -69,6 +69,8 @@ const firstPartyResourceType = computed(() =>
 		`oauth.consentView.firstParty.type.${clientDetails.value?.uiHints?.consentType ?? 'default'}` as BaseTextKey,
 	),
 );
+// A page view runs no workflow, so pages get their own copy instead of the run wording.
+const isWebpage = computed(() => clientDetails.value?.uiHints?.consentType === 'webpage');
 const availableScopes = computed(() => clientDetails.value?.scopes ?? []);
 const hasScopes = computed(() => availableScopes.value.length > 0);
 const trustRequired = computed(
@@ -249,9 +251,12 @@ onMounted(async () => {
 			<div v-else :class="$style.content" data-test-id="consent-content">
 				<N8nHeading v-if="clientDetails?.isFirstParty" tag="h2" size="large" :bold="true">
 					{{
-						i18n.baseText('oauth.consentView.firstParty.heading', {
-							interpolate: { resourceName: resourceName ?? '' },
-						})
+						i18n.baseText(
+							isWebpage
+								? 'oauth.consentView.firstParty.webpage.heading'
+								: 'oauth.consentView.firstParty.heading',
+							{ interpolate: { resourceName: resourceName ?? '' } },
+						)
 					}}
 				</N8nHeading>
 				<N8nHeading v-else-if="resourceName" tag="h2" size="large" :bold="true">
@@ -269,7 +274,10 @@ onMounted(async () => {
 					}}
 				</N8nHeading>
 				<div :class="$style['text-content']">
-					<N8nText v-if="clientDetails?.isFirstParty" color="text-base" size="medium">
+					<N8nText v-if="clientDetails?.isFirstParty && isWebpage" color="text-base" size="medium">
+						{{ i18n.baseText('oauth.consentView.firstParty.webpage.description') }}
+					</N8nText>
+					<N8nText v-else-if="clientDetails?.isFirstParty" color="text-base" size="medium">
 						{{
 							i18n.baseText('oauth.consentView.firstParty.description', {
 								interpolate: { resourceType: firstPartyResourceType },

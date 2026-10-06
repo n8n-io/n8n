@@ -27,6 +27,7 @@ import {
 	NodeConnectionTypes,
 	NodeHelpers,
 	WEBHOOK_NODE_TYPE,
+	WEBPAGE_NODE_TYPE,
 } from 'n8n-workflow';
 import * as workflowUtils from 'n8n-workflow/common';
 
@@ -885,11 +886,14 @@ export function useWorkflowHelpers() {
 			}
 			return [(trigger.parameters.httpMethod as string) ?? 'GET'];
 		}
+		if (trigger.type === WEBPAGE_NODE_TYPE) {
+			return ['GET'];
+		}
 		return ['POST'];
 	}
 
 	function getWebhookPath(trigger: INode) {
-		if (trigger.type === WEBHOOK_NODE_TYPE) {
+		if (trigger.type === WEBHOOK_NODE_TYPE || trigger.type === WEBPAGE_NODE_TYPE) {
 			return (trigger.parameters.path as string) || (trigger.webhookId as string);
 		}
 		if (trigger.type === FORM_TRIGGER_NODE_TYPE) {
@@ -916,7 +920,9 @@ export function useWorkflowHelpers() {
 			(node) =>
 				node.disabled !== true &&
 				node.webhookId &&
-				(node.type.toLowerCase().includes('trigger') || node.type === WEBHOOK_NODE_TYPE),
+				(node.type.toLowerCase().includes('trigger') ||
+					node.type === WEBHOOK_NODE_TYPE ||
+					node.type === WEBPAGE_NODE_TYPE),
 		);
 
 		for (const trigger of triggers) {

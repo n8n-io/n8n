@@ -40,7 +40,12 @@ import type {
 	NodeLoader,
 } from 'n8n-workflow';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
-import { injectDomainRestrictionFields, UnexpectedError, UserError } from 'n8n-workflow';
+import {
+	injectDomainRestrictionFields,
+	UnexpectedError,
+	UserError,
+	WEBPAGE_NODE_TYPE,
+} from 'n8n-workflow';
 import path from 'path';
 import picocolors from 'picocolors';
 
@@ -98,6 +103,11 @@ export class LoadNodesAndCredentials {
 		if (!isEnvFeatureEnabled('N8N_ENV_FEAT_DYNAMIC_CREDENTIALS')) {
 			this.excludeNodes = this.excludeNodes ?? [];
 			this.excludeNodes.push('n8n-nodes-base.dynamicCredentialCheck');
+		}
+
+		if (!isEnvFeatureEnabled('N8N_ENV_FEAT_WEBPAGE_NODE')) {
+			this.excludeNodes = this.excludeNodes ?? [];
+			this.excludeNodes.push(WEBPAGE_NODE_TYPE);
 		}
 
 		// Load nodes from `n8n-nodes-base`

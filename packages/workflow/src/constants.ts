@@ -46,6 +46,7 @@ export const STICKY_NODE_TYPE = 'n8n-nodes-base.stickyNote';
 export const NO_OP_NODE_TYPE = 'n8n-nodes-base.noOp';
 export const HTTP_REQUEST_NODE_TYPE = 'n8n-nodes-base.httpRequest';
 export const WEBHOOK_NODE_TYPE = 'n8n-nodes-base.webhook';
+export const WEBPAGE_NODE_TYPE = 'n8n-nodes-base.webpage';
 export const MANUAL_TRIGGER_NODE_TYPE = 'n8n-nodes-base.manualTrigger';
 export const EVALUATION_TRIGGER_NODE_TYPE = 'n8n-nodes-base.evaluationTrigger';
 // Fields the Evaluation Trigger adds to its output alongside dataset columns,

@@ -1,5 +1,5 @@
 import type { IConnections, INodeTypeDescription } from 'n8n-workflow';
-import { NodeHelpers, resolveNodeWebhookId } from 'n8n-workflow';
+import { NodeHelpers, resolveNodeWebhookId, WEBPAGE_NODE_TYPE } from 'n8n-workflow';
 import type { INodeUi, IWorkflowDb } from '@/Interface';
 import { FORM_TRIGGER_NODE_TYPE, MCP_TRIGGER_NODE_TYPE, WEBHOOK_NODE_TYPE } from '@/app/constants';
 import { ensureNodePosition, sanitizeConnections } from '@/app/utils/workflowUtils';
@@ -60,7 +60,12 @@ export function useWorkflowNormalization() {
 
 		// if it's a webhook and the path is empty set the UUID as the default path
 		if (
-			[WEBHOOK_NODE_TYPE, FORM_TRIGGER_NODE_TYPE, MCP_TRIGGER_NODE_TYPE].includes(node.type) &&
+			[
+				WEBHOOK_NODE_TYPE,
+				FORM_TRIGGER_NODE_TYPE,
+				MCP_TRIGGER_NODE_TYPE,
+				WEBPAGE_NODE_TYPE,
+			].includes(node.type) &&
 			node.parameters.path === ''
 		) {
 			node.parameters.path = node.webhookId as string;

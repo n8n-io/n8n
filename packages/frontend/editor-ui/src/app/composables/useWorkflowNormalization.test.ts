@@ -11,6 +11,7 @@ import {
 import { mockedStore } from '@/__tests__/utils';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { SET_NODE_TYPE } from '@/app/constants';
+import { WEBPAGE_NODE_TYPE } from 'n8n-workflow';
 import type { INodeUi, IWorkflowDb } from '@/Interface';
 import { useWorkflowNormalization } from '@/app/composables/useWorkflowNormalization';
 
@@ -148,6 +149,35 @@ describe('useWorkflowNormalization', () => {
 			expect(workflow.nodes).toBe(inputNodes);
 			expect(nodes).not.toBe(inputNodes);
 			expect(nodes[0]).not.toBe(node);
+		});
+	});
+
+	describe('resolveNodeWebhook', () => {
+		it('should assign a webhookId to a Webpage node and use it as the empty path', () => {
+			const node = createTestNode({ type: WEBPAGE_NODE_TYPE, parameters: { path: '' } });
+			const description = mockNodeTypeDescription({
+				name: WEBPAGE_NODE_TYPE,
+				webhooks: [{ name: 'default', httpMethod: 'GET', path: '', responseMode: 'onReceived' }],
+			});
+
+			const { resolveNodeWebhook } = useWorkflowNormalization();
+			resolveNodeWebhook(node, description);
+
+			expect(node.webhookId).toEqual(expect.any(String));
+			expect(node.parameters.path).toBe(node.webhookId);
+		});
+
+		it('should keep a custom Webpage path', () => {
+			const node = createTestNode({ type: WEBPAGE_NODE_TYPE, parameters: { path: 'my-page' } });
+			const description = mockNodeTypeDescription({
+				name: WEBPAGE_NODE_TYPE,
+				webhooks: [{ name: 'default', httpMethod: 'GET', path: '', responseMode: 'onReceived' }],
+			});
+
+			const { resolveNodeWebhook } = useWorkflowNormalization();
+			resolveNodeWebhook(node, description);
+
+			expect(node.parameters.path).toBe('my-page');
 		});
 	});
 

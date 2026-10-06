@@ -14,7 +14,12 @@ import { useI18n } from '@n8n/i18n';
 import { CANVAS_NODE_CONTEXT_FLAG } from '@n8n/api-types';
 import { getResourcePermissions } from '@n8n/permissions';
 import type { INode, INodeTypeDescription } from 'n8n-workflow';
-import { getEmptyGroupAnchor, NodeHelpers, WEBHOOK_NODE_TYPE } from 'n8n-workflow';
+import {
+	getEmptyGroupAnchor,
+	NodeHelpers,
+	WEBHOOK_NODE_TYPE,
+	WEBPAGE_NODE_TYPE,
+} from 'n8n-workflow';
 import { computed, type ComputedRef } from 'vue';
 import { isPresent } from '@/app/utils/typesUtils';
 import { useEditorContext } from '@/app/composables/useEditorContext';
@@ -183,7 +188,7 @@ export function useContextMenuItems(
 	};
 
 	const isWebhookNode = (node: INodeUi) => {
-		if (node.type === WEBHOOK_NODE_TYPE) return true;
+		if (node.type === WEBHOOK_NODE_TYPE || node.type === WEBPAGE_NODE_TYPE) return true;
 		if (!node.webhookId) return false;
 		if (!node.type.toLocaleLowerCase().includes('trigger')) return false;
 		if (!isExecutable(node)) return false;
