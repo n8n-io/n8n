@@ -17,6 +17,7 @@ import {
 import { useI18n } from '@n8n/i18n';
 import { useApprovalCardLabels } from '@/app/composables/useApprovalCardLabels';
 import { buildAlwaysAllowKey } from '../../alwaysAllow';
+import { formatApprovalDetails, formatApprovalTitle } from '../../approvalDetails';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import type { AssistantConfirmationInput } from '@/features/ai/shared/agentsChat/assistantConfirmation';
 import InstanceAiQuestions, { type QuestionAnswer } from '../InstanceAiQuestions.vue';
@@ -181,6 +182,27 @@ if (props.input.testListener) {
 	});
 	onBeforeUnmount(removePushListener);
 }
+
+// --- Plain approval ---
+
+const approvalTitle = computed(() => {
+	const { targetApproval, toolName, args, resourceName } = props.input;
+	if (!targetApproval) {
+		const title = formatApprovalTitle({ toolName, args, resourceName });
+		if (title) return title;
+	}
+	return i18n.baseText('agents.chat.approval.title');
+});
+
+const approvalDescription = computed(() => {
+	const { targetApproval, approvalDetails, message } = props.input;
+	if (targetApproval) {
+		return i18n.baseText('agents.chat.approval.description', {
+			interpolate: { toolName: targetApproval.displayName ?? targetApproval.toolName },
+		});
+	}
+	return approvalDetails ? formatApprovalDetails(approvalDetails) : message;
+});
 
 /** Same rule as the legacy panel: never for destructive or cross-target actions, or unscoped keys. */
 const canAlwaysAllow = computed(() => {
@@ -393,10 +415,11 @@ function onApprovalSelect(key: string) {
 	<!-- Plain approval, and the fallback for payloads that fail validation -->
 	<N8nApprovalCard
 		v-else
-		:title="i18n.baseText('agents.chat.approval.title')"
+		:title="approvalTitle"
 		:labels="approvalLabels"
-		:description="input.message"
-		:args="input.targetApproval?.args ?? input.args"
+		:description="approvalDescription"
+		:description-label="i18n.baseText('instanceAi.confirmation.details')"
+		:args="input.targetApproval?.args"
 		:destructive="input.severity === 'destructive'"
 		:supports-session-approval="canAlwaysAllow"
 		:disabled="isInactive"

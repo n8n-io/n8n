@@ -117,6 +117,46 @@ describe('InstanceAiConfirmationCard', () => {
 		expect(emitted().submit).toEqual([[{ kind: 'approval', approved: true, scope: 'session' }]]);
 	});
 
+	it('titles a plain approval with the tool phrase and shows the details, not the raw arguments', () => {
+		const { getByTestId } = renderComponent({
+			props: {
+				input: {
+					requestId: 'req-run',
+					message: 'Run this workflow live: Fetch the forecast',
+					severity: 'warning',
+					toolName: 'executions',
+					args: { action: 'run', workflowId: 'wf-1', approvalSummary: 'Fetch the forecast' },
+					resourceName: 'Daily weather',
+					approvalDetails: { action: 'run-workflow', summary: 'Fetch the forecast' },
+				},
+			},
+		});
+
+		const card = getByTestId('instance-ai-agents-chat-approval');
+		expect(card).toHaveTextContent('Assistant wants to run Daily weather');
+		expect(card).toHaveTextContent('Fetch the forecast');
+		expect(card).not.toHaveTextContent('workflowId');
+	});
+
+	it('falls back to the generic title and the message for a tool without a phrase', () => {
+		const { getByTestId } = renderComponent({
+			props: {
+				input: {
+					requestId: 'req-x',
+					message: 'Do the thing',
+					severity: 'info',
+					toolName: 'unknown-tool',
+					args: { secret: 'value' },
+				},
+			},
+		});
+
+		const card = getByTestId('instance-ai-agents-chat-approval');
+		expect(card).toHaveTextContent('Approval required');
+		expect(card).toHaveTextContent('Do the thing');
+		expect(card).not.toHaveTextContent('secret');
+	});
+
 	it('does not offer always allow for a destructive action', () => {
 		const { queryByTestId } = renderComponent({
 			props: {
