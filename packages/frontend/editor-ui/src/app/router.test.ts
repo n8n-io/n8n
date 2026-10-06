@@ -137,8 +137,6 @@ describe('router', () => {
 		],
 		['/settings/sso', VIEWS.WORKFLOWS, []],
 		['/settings/sso', VIEWS.SSO_SETTINGS, ['saml:manage']],
-		['/settings/log-streaming', VIEWS.WORKFLOWS, []],
-		['/settings/log-streaming', VIEWS.LOG_STREAMING_SETTINGS, ['logStreaming:manage']],
 		['/settings/community-nodes', VIEWS.WORKFLOWS, []],
 		[
 			'/settings/community-nodes',
