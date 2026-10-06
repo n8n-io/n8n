@@ -25,14 +25,17 @@ the credential already exists.
 ## Decision
 
 We keep the first finished response and return it when the same user sends the
-same key again. The stored response includes 4xx and 5xx. The handler runs
-only for the first request. The client sends a new key after a real failure.
+same key and the same fingerprint again. The stored response includes 4xx and
+5xx. The handler runs only for the first request. The client sends a new key
+after a real failure.
 
-1. A retry while the first request is still `processing` returns 409 Conflict.
-2. The fingerprint is a hash of the method, the path, and the body. The same
-   key with a different body returns 422. The handler does not run. The client
-   sends a new key to run the corrected body. The same body returns the stored
-   response, including a stored 400.
+1. Compare the fingerprint first. It is a hash of the method, the path, and
+   the body. The same key with a different fingerprint returns 422. This
+   applies while the first request is `processing` and after it completes.
+   The handler does not run. The client sends a new key.
+2. The same key and the same fingerprint replay the stored response. A retry
+   while that request is still `processing` returns 409 Conflict. A completed
+   row returns the stored response, including a stored 400.
 3. The key is an opaque string. We compare it exactly after trim. The length
    is 1 to 128 characters, and the characters are visible ASCII. A longer value
    or a disallowed character returns 400. An empty value, or a value that is
@@ -58,17 +61,17 @@ only for the first request. The client sends a new key after a real failure.
 
 ## Consequences
 
-1. If the process dies after the claim and before it stores the response, later
-   retries receive 409 until the row expires.
+1. If the process dies after the claim and before it stores the response, a
+   later retry with the same fingerprint receives 409 until the row expires.
 2. An instance setting can turn the feature off. While it is off, the header is
    ignored and the store is idle.
 3. Idempotency leaves version checks unchanged. `forceSave` still works as it
    does today.
 4. The stored row is defined in
    ADR-20261005-store-public-api-idempotency-keys-in-the-instance-database.
-5. After an error, that key returns the stored response until the row expires.
-   A bug fix does not change the stored response. A new key runs the handler
-   again.
+5. After an error, the same fingerprint returns the stored response until the
+   row expires. A bug fix does not change the stored response. A new key runs
+   the handler again.
 
 ## Links
 
