@@ -1,14 +1,12 @@
 import { Logger } from '@n8n/backend-common';
 import { AgentsConfig } from '@n8n/config';
 import type { ModuleInterface } from '@n8n/decorators';
-import { BackendModule, OnShutdown } from '@n8n/decorators';
+import { BackendModule } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 
 @BackendModule({ name: 'agents' })
 export class AgentsModule implements ModuleInterface {
-	private interruptedExecutionSweepTimer?: NodeJS.Timeout;
-
 	async init() {
 		const { SandboxSettingsService } = await import('@/services/sandbox-settings.service.js');
 		Container.get(SandboxSettingsService).registerCredentialUses();
@@ -139,19 +137,11 @@ export class AgentsModule implements ModuleInterface {
 			const { AgentInterruptedExecutionSweeper } = await import(
 				'./agent-interrupted-execution-sweeper.js'
 			);
-			const sweep = () => {
-				void Container.get(AgentInterruptedExecutionSweeper)
-					.sweep()
-					.catch((error: unknown) => {
-						logger.error('[Agents] Interrupted execution sweep failed', { error });
-					});
-			};
-			sweep();
-			this.interruptedExecutionSweepTimer = setInterval(
-				sweep,
-				AgentInterruptedExecutionSweeper.LIVENESS_GRACE_MS,
-			);
-			this.interruptedExecutionSweepTimer.unref();
+			void Container.get(AgentInterruptedExecutionSweeper)
+				.sweep()
+				.catch((error: unknown) => {
+					logger.error('[Agents] Interrupted execution sweep failed', { error });
+				});
 		}
 
 		// Workers never receive inbound platform events: no webhook route, no polling
@@ -208,14 +198,10 @@ export class AgentsModule implements ModuleInterface {
 
 	async systemTasks() {
 		const { AgentCheckpointPruningTask } = await import('./agent-checkpoint-pruning.task.js');
-		return [AgentCheckpointPruningTask];
-	}
-
-	@OnShutdown()
-	async shutdown() {
-		if (this.interruptedExecutionSweepTimer) {
-			clearInterval(this.interruptedExecutionSweepTimer);
-		}
+		const { AgentInterruptedExecutionSweepTask } = await import(
+			'./agent-interrupted-execution-sweep.task.js'
+		);
+		return [AgentCheckpointPruningTask, AgentInterruptedExecutionSweepTask];
 	}
 
 	async settings() {

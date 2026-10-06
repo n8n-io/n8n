@@ -22,7 +22,7 @@ export class AgentInterruptedExecutionSweeper {
 		this.logger = this.logger.scoped('agents');
 	}
 
-	async sweep(): Promise<void> {
+	async sweep(signal?: AbortSignal): Promise<void> {
 		let running;
 		try {
 			running = await this.executionRepository.findRunning();
@@ -32,6 +32,7 @@ export class AgentInterruptedExecutionSweeper {
 		}
 
 		for (const execution of running) {
+			if (this.stopped(signal, 'finalize')) return;
 			try {
 				if (
 					execution.updatedAt.getTime() >
@@ -64,20 +65,31 @@ export class AgentInterruptedExecutionSweeper {
 		// settle the job rows that pointed at them (plus timed-out ones).
 		// Workflow-job reconciliation runs even with the feature flag off, so
 		// rows created while it was on cannot strand as `running`.
+		if (this.stopped(signal, 'reconcile')) return;
 		try {
 			if (this.agentsConfig.backgroundTasksEnabled) {
-				await this.backgroundJobService.reconcile();
+				await this.backgroundJobService.reconcile(signal);
 			} else {
-				await this.backgroundJobService.reconcileWorkflowJobs();
+				await this.backgroundJobService.reconcileWorkflowJobs(signal);
 			}
 		} catch (error) {
 			this.logger.error('Failed to reconcile background job rows', { error });
 		}
 
+		if (this.stopped(signal, 'drain')) return;
 		try {
 			await this.agentWakeService.drainUnconsumed();
 		} catch (error) {
 			this.logger.error('Failed to schedule delivery of pending background job results', { error });
 		}
+	}
+
+	private stopped(
+		signal: AbortSignal | undefined,
+		before: 'finalize' | 'reconcile' | 'drain',
+	): boolean {
+		if (!signal?.aborted) return false;
+		this.logger.debug('Stopped the interrupted execution sweep early', { before });
+		return true;
 	}
 }

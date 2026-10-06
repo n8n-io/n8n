@@ -5,6 +5,8 @@ import { mock } from 'vitest-mock-extended';
 import { AiService } from '@/services/ai.service';
 import { SandboxSettingsService } from '@/services/sandbox-settings.service';
 
+import { AgentCheckpointPruningTask } from '../agent-checkpoint-pruning.task';
+import { AgentInterruptedExecutionSweepTask } from '../agent-interrupted-execution-sweep.task';
 import { AgentsSettingsService } from '../agents-settings.service';
 import { AgentsModule } from '../agents.module';
 
@@ -18,6 +20,15 @@ describe('AgentsModule', () => {
 			mock<AgentsSettingsService>({ getEnabled: async () => true }),
 		);
 		module = new AgentsModule();
+	});
+
+	describe('systemTasks()', () => {
+		it('registers the pruning and the sweep tasks', async () => {
+			await expect(module.systemTasks()).resolves.toEqual([
+				AgentCheckpointPruningTask,
+				AgentInterruptedExecutionSweepTask,
+			]);
+		});
 	});
 
 	describe('settings()', () => {
