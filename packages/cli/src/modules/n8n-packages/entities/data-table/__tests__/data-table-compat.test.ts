@@ -127,6 +127,23 @@ describe('diffDataTableSchema', () => {
 		]);
 	});
 
+	it('lists changes in column order when the target columns arrive unsorted', () => {
+		expect(
+			diffDataTableSchema(packageTable, {
+				name: 'Customers',
+				columns: [
+					{ name: 'second', type: 'string', index: 3 },
+					{ name: 'email', type: 'string', index: 0 },
+					{ name: 'first', type: 'string', index: 2 },
+					{ name: 'age', type: 'number', index: 1 },
+				],
+			}),
+		).toEqual([
+			{ kind: 'remove-column', column: 'first', type: 'string', destructive: true },
+			{ kind: 'remove-column', column: 'second', type: 'string', destructive: true },
+		]);
+	});
+
 	it('reports a reorder when the target has a gap in its column positions', () => {
 		expect(
 			diffDataTableSchema(packageTable, {

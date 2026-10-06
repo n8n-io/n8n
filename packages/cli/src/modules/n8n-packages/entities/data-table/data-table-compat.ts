@@ -52,15 +52,16 @@ export function diffDataTableSchema(
 	},
 ): DataTableSchemaOperation[] {
 	const packageColumnsByName = new Map(packageTable.columns.map((column) => [column.name, column]));
-	const targetColumnsByName = new Map(target.columns.map((column) => [column.name, column]));
+	const targetColumns = [...target.columns].sort((a, b) => a.index - b.index);
+	const targetColumnsByName = new Map(targetColumns.map((column) => [column.name, column]));
 	const operations: DataTableSchemaOperation[] = [];
 
-	for (const { name, type } of target.columns) {
+	for (const { name, type } of targetColumns) {
 		if (!packageColumnsByName.has(name)) {
 			operations.push({ kind: 'remove-column', column: name, type, destructive: true });
 		}
 	}
-	for (const { name, type } of target.columns) {
+	for (const { name, type } of targetColumns) {
 		const packageType = packageColumnsByName.get(name)?.type;
 		if (packageType !== undefined && packageType !== type) {
 			operations.push({
