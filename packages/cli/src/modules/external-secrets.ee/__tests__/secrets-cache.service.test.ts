@@ -1,5 +1,6 @@
 import { mockLogger } from '@n8n/backend-test-utils';
 import { Container } from '@n8n/di';
+import { OperationalError } from 'n8n-workflow';
 
 import { AnotherDummyProvider, DummyProvider } from '@test/external-secrets/utils';
 
@@ -99,7 +100,28 @@ describe('SecretsCache', () => {
 				const refreshPromise = cache.refreshProvider('dummy', dummyProvider);
 				await vi.advanceTimersByTimeAsync(config.refreshTimeout * 1000);
 
-				await expect(refreshPromise).resolves.toBeUndefined();
+				await expect(refreshPromise).resolves.toBe('failed');
+			} finally {
+				vi.useRealTimers();
+			}
+		});
+
+		it('should join the pull a timed-out refresh left running', async () => {
+			vi.useFakeTimers();
+			try {
+				const updateSpy = vi
+					.spyOn(dummyProvider, 'update')
+					.mockImplementation(async () => await new Promise(() => {}));
+
+				const timedOutRefresh = cache.refreshProvider('dummy', dummyProvider);
+				await vi.advanceTimersByTimeAsync(config.refreshTimeout * 1000);
+				await timedOutRefresh;
+
+				const nextRefresh = cache.refreshProvider('dummy', dummyProvider);
+				await vi.advanceTimersByTimeAsync(config.refreshTimeout * 1000);
+				await nextRefresh;
+
+				expect(updateSpy).toHaveBeenCalledTimes(1);
 			} finally {
 				vi.useRealTimers();
 			}
@@ -135,6 +157,65 @@ describe('SecretsCache', () => {
 
 		it('should handle empty registry', async () => {
 			await expect(cache.refreshAll()).resolves.not.toThrow();
+		});
+
+		it('should succeed when at least one connected provider refreshed', async () => {
+			vi.spyOn(dummyProvider, 'update').mockRejectedValue(new Error('Update failed'));
+			registry.set('dummy', dummyProvider);
+			registry.set('another', anotherProvider);
+
+			await expect(cache.refreshAll()).resolves.toBeUndefined();
+		});
+
+		it('should succeed when no provider is connected', async () => {
+			dummyProvider.setState('error', new Error('Test error'));
+			registry.set('dummy', dummyProvider);
+
+			await expect(cache.refreshAll()).resolves.toBeUndefined();
+		});
+
+		it('should fail when no connected provider refreshed', async () => {
+			vi.useFakeTimers();
+			try {
+				vi.spyOn(dummyProvider, 'update').mockRejectedValue(new Error('Update failed'));
+				vi.spyOn(anotherProvider, 'update').mockImplementation(
+					async () => await new Promise(() => {}),
+				);
+				registry.set('dummy', dummyProvider);
+				registry.set('another', anotherProvider);
+
+				const refresh = cache.refreshAll();
+				const assertions = Promise.all([
+					expect(refresh).rejects.toThrow(OperationalError),
+					expect(refresh).rejects.toMatchObject({ shouldReport: true }),
+				]);
+				await vi.advanceTimersByTimeAsync(config.refreshTimeout * 1000);
+
+				await assertions;
+			} finally {
+				vi.useRealTimers();
+			}
+		});
+
+		it('should stop waiting for the pulls when the signal aborts', async () => {
+			vi.useFakeTimers();
+			try {
+				vi.spyOn(dummyProvider, 'update').mockImplementation(
+					async () => await new Promise(() => {}),
+				);
+				registry.set('dummy', dummyProvider);
+				const controller = new AbortController();
+				let settled = false;
+
+				const refresh = cache.refreshAll(controller.signal).finally(() => (settled = true));
+				controller.abort();
+				await vi.advanceTimersByTimeAsync(0);
+
+				expect(settled).toBe(true);
+				await refresh;
+			} finally {
+				vi.useRealTimers();
+			}
 		});
 	});
 

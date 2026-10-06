@@ -2,11 +2,15 @@ import { Logger } from '@n8n/backend-common';
 import { Time } from '@n8n/constants';
 import { Service } from '@n8n/di';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
+import { OperationalError } from 'n8n-workflow';
 
 import { ExternalSecretsConfig } from './external-secrets.config';
 import { ExternalSecretsProviderRegistry } from './provider-registry.service';
 import type { SecretsProvider } from './types';
 import { TimeoutError, withTimeout } from './with-timeout';
+
+/** A timed-out pull counts as `failed`: the cache did not get its secrets. */
+type RefreshOutcome = 'refreshed' | 'not-connected' | 'failed';
 
 /**
  * Manages secrets caching and refresh from providers
@@ -26,39 +30,69 @@ export class ExternalSecretsSecretsCache {
 	}
 
 	/**
-	 * Refresh secrets from all connected providers
+	 * Refresh secrets from all connected providers, until `signal` aborts.
+	 *
+	 * @throws {OperationalError} when providers are connected and none of them refreshed
 	 */
-	async refreshAll(): Promise<void> {
-		const providers = this.registry.getAll();
-		await Promise.allSettled(
-			Array.from(providers.entries()).map(
-				async ([name, provider]) => await this.refreshProvider(name, provider),
+	async refreshAll(signal?: AbortSignal): Promise<void> {
+		const refreshes = Promise.all(
+			Array.from(this.registry.getAll().entries()).map(
+				async ([name, provider]) => [name, await this.refreshProvider(name, provider)] as const,
 			),
 		);
+		const outcomes = await this.unlessAborted(refreshes, signal);
+		if (!outcomes) return;
+
+		const connected = outcomes.filter(([, outcome]) => outcome !== 'not-connected');
+		if (connected.length > 0 && connected.every(([, outcome]) => outcome === 'failed')) {
+			throw new OperationalError('No connected external secrets provider refreshed', {
+				level: 'error',
+				extra: { providers: connected.map(([name]) => name) },
+			});
+		}
 		this.logger.debug('Refreshed secrets from all providers');
 	}
 
 	/**
 	 * Refresh secrets from a specific provider
 	 */
-	async refreshProvider(name: string, provider: SecretsProvider): Promise<void> {
+	async refreshProvider(name: string, provider: SecretsProvider): Promise<RefreshOutcome> {
 		// Only refresh connected providers
 		if (provider.state !== 'connected') {
-			return;
+			return 'not-connected';
 		}
 
 		try {
 			await this.updateProvider(name, provider);
+			return 'refreshed';
 		} catch (error) {
 			if (error instanceof TimeoutError) {
 				this.logger.warn(`Secrets refresh for provider ${name} is still running`, {
 					error,
 				});
-				return;
+			} else {
+				this.logger.error(`Error refreshing secrets from provider ${name}`, {
+					error: ensureError(error),
+				});
 			}
-			this.logger.error(`Error refreshing secrets from provider ${name}`, {
-				error: ensureError(error),
-			});
+			return 'failed';
+		}
+	}
+
+	/** Resolves to `undefined` once `signal` aborts. `work` keeps running. */
+	private async unlessAborted<T>(work: Promise<T>, signal?: AbortSignal): Promise<T | undefined> {
+		if (!signal) return await work;
+		if (signal.aborted) return undefined;
+
+		let onAbort!: () => void;
+		const aborted = new Promise<undefined>((resolve) => {
+			onAbort = () => resolve(undefined);
+		});
+		signal.addEventListener('abort', onAbort, { once: true });
+		try {
+			return await Promise.race([work, aborted]);
+		} finally {
+			signal.removeEventListener('abort', onAbort);
 		}
 	}
 

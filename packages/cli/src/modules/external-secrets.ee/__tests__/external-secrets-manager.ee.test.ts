@@ -138,14 +138,12 @@ describe('ExternalSecretsManager', () => {
 			expect(manager.initialized).toBe(true);
 		});
 
-		it('should start secrets refresh interval', async () => {
+		it('should not refresh on a timer of its own', async () => {
 			await manager.init();
 
+			vi.advanceTimersByTime(60000);
+
 			expect(mockSecretsCache.refreshAll).not.toHaveBeenCalled();
-
-			vi.advanceTimersByTime(60000); // 60 seconds
-
-			expect(mockSecretsCache.refreshAll).toHaveBeenCalledTimes(1);
 		});
 
 		it('should not initialize twice', async () => {
@@ -164,27 +162,13 @@ describe('ExternalSecretsManager', () => {
 	});
 
 	describe('shutdown', () => {
-		it('should stop refresh interval and disconnect all providers', async () => {
+		it('should disconnect all providers', async () => {
 			await manager.init();
 
 			manager.shutdown();
 
 			expect(mockProviderConnectionManager.shutdown).toHaveBeenCalled();
 			expect(manager.initialized).toBe(false);
-		});
-
-		it('should stop calling refresh after shutdown', async () => {
-			await manager.init();
-
-			const callsAfterInit = mockSecretsCache.refreshAll.mock.calls.length;
-
-			vi.advanceTimersByTime(60000);
-			expect(mockSecretsCache.refreshAll).toHaveBeenCalledTimes(callsAfterInit + 1);
-
-			manager.shutdown();
-
-			vi.advanceTimersByTime(60000);
-			expect(mockSecretsCache.refreshAll).toHaveBeenCalledTimes(callsAfterInit + 1); // No additional calls
 		});
 	});
 
