@@ -91,7 +91,9 @@ describe('makeAzureFoundryFailedAttemptHandler', () => {
 	it('should tell a classic credential to switch endpoint type, not to flip the toggle', () => {
 		const handler = makeAzureFoundryFailedAttemptHandler('gpt-4o', false, 'classic');
 
-		expect(() => handler({ status: 404 })).toThrow('Switch the credential to the Azure AI Foundry');
+		expect(() => handler({ status: 404 })).toThrow(
+			'Switch the credential to the Microsoft Foundry',
+		);
 		expect(() => handler({ status: 404 })).not.toThrow("Turn on 'Use Responses API'");
 	});
 
