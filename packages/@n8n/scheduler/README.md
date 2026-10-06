@@ -572,7 +572,7 @@ A few things that are not obvious from the code but save a lot of confusion.
     loop, a skewed clock), not routine sub-second jitter.
   - a **short-lease warning** at start-up when the lease is
     `MIN_RENEWAL_INTERVAL_MS` (`5s`) or shorter. Such a lease expires before its
-    first renewal, so every run longer than the lease loses its claim.
+    first renewal, but it may still be renewed before the reaper reclaims it.
 
 - **Runs are recorded ahead of time, within a window.** Because upcoming runs are
   queued in advance, a frequent schedule does not need one planning pass per fire.
