@@ -36,7 +36,8 @@ type LightWorkflowResult = BreakingChangeLightReportResult['report']['workflowRe
 
 /**
  * What a reader may see. The instance scope covers every workflow and the
- * instance rules. The workflows scope covers the listed workflows only.
+ * instance rules. The workflows scope covers the listed workflows only; the
+ * ids are unique, so their number is the reader's workflow total.
  */
 export type ReportScope = { kind: 'instance' } | { kind: 'workflows'; workflowIds: string[] };
 

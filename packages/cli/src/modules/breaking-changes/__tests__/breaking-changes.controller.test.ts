@@ -103,6 +103,23 @@ describe('BreakingChangesController', () => {
 			expect(workflowSharingService.getSharedWorkflowIdsForScopes).not.toHaveBeenCalled();
 		});
 
+		it("lists each workflow once in the scope, even when it is shared into several of the user's projects", async () => {
+			req.user = member;
+			workflowSharingService.getSharedWorkflowIdsForScopes.mockResolvedValue([
+				'wf-1',
+				'wf-2',
+				'wf-1',
+			]);
+			queryService.getLightReport.mockResolvedValue(lightReport(new Date()));
+
+			await controller.getDetectionReport(req, res, { version: 'v3' });
+
+			expect(queryService.getLightReport).toHaveBeenCalledWith('v3', {
+				kind: 'workflows',
+				workflowIds: ['wf-1', 'wf-2'],
+			});
+		});
+
 		it('scopes the overview to the workflows a user without global edit access can edit', async () => {
 			req.user = member;
 			queryService.getLightReport.mockResolvedValue(lightReport(new Date()));

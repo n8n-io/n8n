@@ -43,7 +43,8 @@ export class BreakingChangesController {
 		const workflowIds = await this.workflowSharingService.getSharedWorkflowIdsForScopes(user, [
 			'workflow:update',
 		]);
-		return { kind: 'workflows', workflowIds };
+		// A workflow shared into two of the user's projects comes back twice.
+		return { kind: 'workflows', workflowIds: [...new Set(workflowIds)] };
 	}
 
 	/**
