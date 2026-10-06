@@ -8,6 +8,7 @@ import { ExecutionPruningSoftDeleteTask } from '@/services/pruning/execution-pru
 import { WorkflowHistoryCompactionOptimizeTask } from '@/services/pruning/workflow-history-compaction-optimize.task';
 import { WorkflowHistoryCompactionTrimTask } from '@/services/pruning/workflow-history-compaction-trim.task';
 import { WorkflowHistoryPruningTask } from '@/services/pruning/workflow-history-pruning.task';
+import { WorkflowStatisticsRollupTask } from '@/services/workflow-statistics-rollup.task';
 import { TelemetryPulseTask } from '@/telemetry/telemetry-pulse.task';
 import { WorkflowPublicationOutboxCleanupTask } from '@/workflows/publication/workflow-publication-outbox-cleanup.task';
 
@@ -17,11 +18,13 @@ const configWith = ({
 	pruneData = true,
 	useWorkflowPublicationService = true,
 	diagnosticsEnabled = true,
+	dbType = 'postgresdb',
 } = {}) =>
 	mock<GlobalConfig>({
 		executions: { pruneData },
 		workflows: { useWorkflowPublicationService },
 		diagnostics: { enabled: diagnosticsEnabled },
+		database: { type: dbType as GlobalConfig['database']['type'] },
 	});
 
 it('should return every main task when all features are on', async () => {
@@ -37,6 +40,7 @@ it('should return every main task when all features are on', async () => {
 		ExecutionPruningSoftDeleteTask,
 		TelemetryPulseTask,
 		WorkflowPublicationOutboxCleanupTask,
+		WorkflowStatisticsRollupTask,
 	]);
 });
 
@@ -58,4 +62,10 @@ it('should leave out outbox cleanup when the publication service is off', async 
 
 	expect(tasks).not.toContain(WorkflowPublicationOutboxCleanupTask);
 	expect(tasks).toContain(ExecutionPruningSoftDeleteTask);
+});
+
+it('should leave out the statistics rollup when the database is not Postgres', async () => {
+	const tasks = await mainSystemTasks(configWith({ dbType: 'sqlite' }));
+
+	expect(tasks).not.toContain(WorkflowStatisticsRollupTask);
 });
