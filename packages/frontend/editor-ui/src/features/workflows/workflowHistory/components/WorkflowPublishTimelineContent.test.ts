@@ -310,6 +310,38 @@ describe('WorkflowPublishTimelineContent', () => {
 			await waitFor(() => expect(getAllByText('Published')).toHaveLength(101));
 		});
 
+		it('should remove overlapping events without shifting the offset or timestamp tie order', async () => {
+			const events = Array.from({ length: 205 }, (_, i) =>
+				buildEvent({
+					id: 205 - i,
+					versionName: `Version ${205 - i}`,
+					createdAt: '2026-03-01T10:00:00Z',
+				}),
+			);
+			const { findAllByText, getAllByText, workflowHistoryStore } = renderWithPages(
+				events.slice(0, 100),
+				events.slice(99, 199),
+				events.slice(199),
+			);
+			expect(await findAllByText(/^Published Version /)).toHaveLength(100);
+
+			scrollToEnd();
+			await waitFor(() => expect(getAllByText(/^Published Version /)).toHaveLength(199));
+			expect(getAllByText('Published Version 106')).toHaveLength(1);
+
+			scrollToEnd();
+			await waitFor(() => expect(getAllByText(/^Published Version /)).toHaveLength(205));
+
+			expect(workflowHistoryStore.getPublishTimeline.mock.calls).toEqual([
+				[workflowId, { take: 100, skip: 0 }],
+				[workflowId, { take: 100, skip: 100 }],
+				[workflowId, { take: 100, skip: 200 }],
+			]);
+			expect(getAllByText(/^Published Version /).map((element) => element.textContent)).toEqual(
+				events.map(({ versionName }) => `Published ${versionName}`),
+			);
+		});
+
 		it('should retry a failed page on the next scroll without advancing the offset', async () => {
 			registerToastNotifier();
 			const newest = new Date('2026-03-01T10:00:00Z');
