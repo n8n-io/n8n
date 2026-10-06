@@ -39,10 +39,6 @@ export const logStreamingDestinationCommonFieldDocs = {
 	},
 } as const satisfies Record<string, ZodOpenAPIMetadata>;
 
-/**
- * A read-only request field has no runtime type of its own, so its descriptor must carry the whole
- * documented schema.
- */
 export const logStreamingDestinationRequestReadOnlyFieldDocs = {
 	id: { type: 'string', readOnly: true, ...logStreamingDestinationCommonFieldDocs.id },
 } as const satisfies Record<string, ZodOpenAPIMetadata>;
