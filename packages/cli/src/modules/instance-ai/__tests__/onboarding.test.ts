@@ -1,27 +1,21 @@
-import type { InstanceAiConfirmRequest } from '@n8n/api-types';
 import type { User } from '@n8n/db';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { describe, expect, it } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import { BadRequestError } from '@n8n/errors';
 import type { Telemetry } from '@/telemetry';
 
-import type { DurableEventLog } from '../event-bus/durable-event-log';
-import type { InProcessEventBus } from '../event-bus/in-process-event-bus';
 import type { InstanceAiMemoryService } from '../instance-ai-memory.service';
-import { InstanceAiOnboardingService, startsOnboardingFirstTurn } from '../onboarding';
+import { InstanceAiOnboardingService } from '../onboarding';
 import { ONBOARDING_OPENING } from '../onboarding-opening';
 
 const user = mock<User>({ id: 'user-1', firstName: 'Ada' });
 const THREAD_ID = 'thread-1';
-const CARD_REQUEST_ID = 'onboarding-card';
 const urlSurvey = { survey: { what_team_are_you_on: 'Marketing' }, surveySource: 'url' };
 
-function setup(sourceContext?: Record<string, unknown>) {
+function setup(created = true) {
 	const memoryService = mock<InstanceAiMemoryService>();
 	const telemetry = mock<Telemetry>();
-	const eventBus = mock<InProcessEventBus>();
 	memoryService.ensureThread.mockResolvedValue({
 		thread: {
 			id: THREAD_ID,
@@ -29,24 +23,32 @@ function setup(sourceContext?: Record<string, unknown>) {
 			createdAt: '2026-09-28T00:00:00.000Z',
 			updatedAt: '2026-09-28T00:00:00.000Z',
 		},
-		created: true,
+		created,
 	});
-	memoryService.seedOpeningMessages.mockResolvedValue({ userMessageId: 'msg-1' });
-	memoryService.getThreadMetadata.mockResolvedValue({
-		source: 'onboarding',
-		sourceContext,
-		onboardingCard: { requestId: CARD_REQUEST_ID, runId: 'run-1', toolCallId: 'tc-1' },
-	});
-	const service = new InstanceAiOnboardingService(
-		memoryService,
-		eventBus,
-		mock<DurableEventLog>(),
-		telemetry,
-	);
-	return { service, telemetry, memoryService, eventBus };
+	const service = new InstanceAiOnboardingService(memoryService, telemetry);
+	return { service, telemetry, memoryService };
 }
 
-describe('InstanceAiOnboardingService telemetry', () => {
+describe('InstanceAiOnboardingService.ensureThread', () => {
+	it('creates the thread with the onboarding title', async () => {
+		const { service, memoryService } = setup();
+		const launchMetadata = {
+			source: 'onboarding',
+			origin: 'external',
+			sourceContext: urlSurvey,
+		} as const;
+
+		await service.ensureThread(user, THREAD_ID, 'project-1', launchMetadata);
+
+		expect(memoryService.ensureThread).toHaveBeenCalledWith(
+			user.id,
+			THREAD_ID,
+			'project-1',
+			launchMetadata,
+			ONBOARDING_OPENING.title,
+		);
+	});
+
 	it('tracks the start with the team and where the team came from', async () => {
 		const { service, telemetry } = setup();
 
@@ -62,123 +64,30 @@ describe('InstanceAiOnboardingService telemetry', () => {
 		);
 	});
 
-	it('tracks the card answers with the card as the team source', async () => {
+	it('tracks no team when the survey has none', async () => {
 		const { service, telemetry } = setup();
 
-		await service.answerCard(
-			user.id,
-			CARD_REQUEST_ID,
-			{
-				kind: 'questions',
-				answers: [
-					{ questionId: 'team', selectedOptions: ['Sales'] },
-					{ questionId: 'apps', selectedOptions: ['Gmail', 'Slack'] },
-				],
-			},
-			THREAD_ID,
-		);
-
-		expect(telemetry.track).toHaveBeenCalledWith(
-			TELEMETRY_EVENT.INSTANCE_AI.USER_ANSWERED_AI_ASSISTANT_ONBOARDING_CARD,
-			{
-				user_id: user.id,
-				thread_id: THREAD_ID,
-				team: 'Sales',
-				team_source: 'card',
-				apps: ['Gmail', 'Slack'],
-				custom_text: null,
-			},
-		);
-	});
-
-	it('keeps the survey as the team source when the survey answered the team step', async () => {
-		const { service, telemetry } = setup(urlSurvey);
-
-		await service.answerCard(
-			user.id,
-			CARD_REQUEST_ID,
-			{
-				kind: 'questions',
-				answers: [{ questionId: 'apps', selectedOptions: ['Gmail'] }],
-			},
-			THREAD_ID,
-		);
-
-		expect(telemetry.track).toHaveBeenCalledWith(
-			TELEMETRY_EVENT.INSTANCE_AI.USER_ANSWERED_AI_ASSISTANT_ONBOARDING_CARD,
-			expect.objectContaining({ team: 'Marketing', team_source: 'url', apps: ['Gmail'] }),
-		);
-	});
-});
-
-const freeTextAnswer: InstanceAiConfirmRequest = {
-	kind: 'questions',
-	answers: [{ questionId: 'apps', selectedOptions: [], customText: 'i just want to import a csv' }],
-};
-const approval: InstanceAiConfirmRequest = { kind: 'approval', approved: true };
-
-describe('InstanceAiOnboardingService answerCard', () => {
-	it('refuses an answer of another kind before the card is claimed', async () => {
-		const { service, memoryService, eventBus } = setup();
-
-		await expect(service.answerCard(user.id, CARD_REQUEST_ID, approval, THREAD_ID)).rejects.toThrow(
-			BadRequestError,
-		);
-		expect(memoryService.updateThread).not.toHaveBeenCalled();
-		expect(eventBus.publish).not.toHaveBeenCalled();
-	});
-
-	it('hands free text back as the first message and posts no follow-up', async () => {
-		const { service, memoryService } = setup();
-
-		const card = await service.answerCard(user.id, CARD_REQUEST_ID, freeTextAnswer, THREAD_ID);
-
-		expect(card).toEqual({
-			threadId: THREAD_ID,
-			firstMessage: expect.stringContaining('typed "i just want to import a csv"'),
+		await service.ensureThread(user, THREAD_ID, 'project-1', {
+			source: 'onboarding',
+			origin: 'external',
 		});
-		expect(memoryService.seedOpeningMessages).not.toHaveBeenCalled();
-	});
 
-	it('posts the follow-up as a finished run when the card holds no free text', async () => {
-		const { service, memoryService } = setup();
-
-		const card = await service.answerCard(
-			user.id,
-			CARD_REQUEST_ID,
-			{
-				kind: 'questions',
-				answers: [{ questionId: 'apps', selectedOptions: ['Gmail', 'Slack'] }],
-			},
-			THREAD_ID,
-		);
-
-		expect(card).toEqual({ threadId: THREAD_ID, runId: expect.any(String) });
-		expect(memoryService.seedOpeningMessages).toHaveBeenCalledWith(
-			THREAD_ID,
-			user.id,
-			'Last one: what do you usually do in Gmail and Slack?',
-			expect.stringContaining('<onboarding-answer>'),
+		expect(telemetry.track).toHaveBeenCalledWith(
+			TELEMETRY_EVENT.INSTANCE_AI.USER_STARTED_AI_ASSISTANT_ONBOARDING,
+			{ user_id: user.id, thread_id: THREAD_ID, team: null, team_source: null },
 		);
 	});
-});
 
-describe('startsOnboardingFirstTurn', () => {
-	it.each<[boolean, string, string, InstanceAiConfirmRequest]>([
-		[true, 'free text on the onboarding card', CARD_REQUEST_ID, freeTextAnswer],
-		[
-			false,
-			'blank free text on the onboarding card',
-			CARD_REQUEST_ID,
-			{
-				kind: 'questions',
-				answers: [{ questionId: 'apps', selectedOptions: ['Gmail'], customText: ' ' }],
-			},
-		],
-		[false, 'an answer of another kind on the onboarding card', CARD_REQUEST_ID, approval],
-		[false, 'free text on another card', 'req-1', freeTextAnswer],
-	])('returns %s for %s', (expected, _label, requestId, request) => {
-		expect(startsOnboardingFirstTurn(requestId, request)).toBe(expected);
+	it('tracks nothing when the thread already exists', async () => {
+		const { service, telemetry } = setup(false);
+
+		await service.ensureThread(user, THREAD_ID, 'project-1', {
+			source: 'onboarding',
+			origin: 'external',
+			sourceContext: urlSurvey,
+		});
+
+		expect(telemetry.track).not.toHaveBeenCalled();
 	});
 });
 

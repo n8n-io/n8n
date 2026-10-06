@@ -357,7 +357,6 @@ function createInstanceAiErrorReporterMock() {
 
 type ShutdownServiceInternals = {
 	shutdown: () => Promise<void>;
-	runState: { clear: MockedFunction<() => void> };
 	tracing: {
 		finalizeRemainingMessageTraceRoots: MockedFunction<
 			(threadId: string, options: unknown) => Promise<void>
@@ -369,8 +368,6 @@ type ShutdownServiceInternals = {
 	sandboxService: { stopSandboxExpiryTimers: MockedFunction<() => void> };
 	browserSessionService: { shutdown: MockedFunction<() => Promise<void>> };
 	domainAccessTrackersByThread: Map<string, unknown>;
-	eventBus: { clear: MockedFunction<() => void> };
-	eventLog: { flushAll: MockedFunction<() => Promise<void>> };
 	_mcpClientManager?: { disconnect: MockedFunction<() => Promise<void>> };
 	logger: { debug: Mock; warn: Mock };
 	instanceAiErrorReporter: ReturnType<typeof createInstanceAiErrorReporterMock>;
@@ -538,26 +535,13 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			instanceAiConfig: Record<string, never>;
 			aiConfig: Record<string, never>;
 			defaultTimeZone: string;
-			eventBus: unknown;
-			eventLog: { getSetupItemsSnapshots: Mock };
+			eventBus: { readSetupItems: Mock };
 			logger: { warn: Mock };
 			telemetry: { track: Mock };
 			oauth2CallbackUrl: string;
 			webhookBaseUrl: string;
 			formBaseUrl: string;
-			runState: {
-				touchActiveRun: Mock;
-				registerPendingConfirmation: Mock;
-				getBuildMode: Mock;
-				getPromptVersion: Mock;
-				getPromptConfiguration: Mock;
-				setPromptConfiguration: Mock;
-				setBuildMode: Mock;
-				setSetupPanelEnabled: Mock;
-				setPromptVersion: Mock;
-				setObserverThresholdTokens: Mock;
-				getComputerUseChannels: Mock;
-			};
+			setupPanelByThread: Map<string, boolean>;
 			schedulePlannedTasks: Mock;
 			sandboxService: InstanceAiSandboxService;
 			browserSessionService: { findMcpServer: Mock };
@@ -613,30 +597,17 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		service.instanceAiConfig = {};
 		service.aiConfig = {};
 		service.defaultTimeZone = 'UTC';
-		service.eventBus = {};
 		const initialSnapshots = [{ workflowId: 'wf-old', items: [] }];
-		service.eventLog = { getSetupItemsSnapshots: vi.fn().mockResolvedValue(initialSnapshots) };
+		service.eventBus = { readSetupItems: vi.fn().mockResolvedValue(initialSnapshots) };
 		if (snapshotMode === 'read failure') {
-			service.eventLog.getSetupItemsSnapshots.mockRejectedValue(new Error('storage unavailable'));
+			service.eventBus.readSetupItems.mockRejectedValue(new Error('storage unavailable'));
 		}
 		service.logger = { warn: vi.fn() };
 		service.telemetry = { track: vi.fn() };
 		service.oauth2CallbackUrl = 'http://localhost/rest/oauth2-credential/callback';
 		service.webhookBaseUrl = 'http://localhost/webhook';
 		service.formBaseUrl = 'http://localhost/form';
-		service.runState = {
-			touchActiveRun: vi.fn(),
-			registerPendingConfirmation: vi.fn(),
-			getBuildMode: vi.fn(() => undefined),
-			getPromptVersion: vi.fn(),
-			getPromptConfiguration: vi.fn(),
-			setPromptConfiguration: vi.fn(),
-			setBuildMode: vi.fn(),
-			setSetupPanelEnabled: vi.fn(),
-			setPromptVersion: vi.fn(),
-			setObserverThresholdTokens: vi.fn(),
-			getComputerUseChannels: vi.fn(() => undefined),
-		};
+		service.setupPanelByThread = new Map();
 		service.schedulePlannedTasks = vi.fn();
 		service.domainAccessTrackersByThread = new Map();
 		service.browserSessionService = { findMcpServer: vi.fn(() => undefined) };
@@ -695,16 +666,13 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		);
 		expect(service.settingsService.getPermissions).toHaveBeenCalled();
 		expect(environment.orchestrationContext.setupPanelEnabled).toBe(snapshotMode !== 'off');
-		expect(service.runState.setSetupPanelEnabled).toHaveBeenCalledWith(
-			'thread-1',
-			snapshotMode !== 'off',
-		);
+		expect(service.setupPanelByThread.get('thread-1')).toBe(snapshotMode !== 'off');
 		expect(service.adapterService.createContext).toHaveBeenCalledWith(
 			expect.anything(),
 			expect.objectContaining({ mcpConnectionsAvailable: true }),
 		);
 		if (snapshotMode === 'off') {
-			expect(service.eventLog.getSetupItemsSnapshots).not.toHaveBeenCalled();
+			expect(service.eventBus.readSetupItems).not.toHaveBeenCalled();
 			expect(createSetupItemsEmitter).not.toHaveBeenCalled();
 		} else {
 			expect(createSetupItemsEmitter).toHaveBeenCalledWith(
@@ -860,7 +828,15 @@ describe('InstanceAiService — runtime workspace setup', () => {
 				threadId: string,
 				runId: string,
 				abortSignal: AbortSignal,
+				messageGroupId?: string,
+				pushRef?: string,
+				proxyRunConfig?: undefined,
+				instanceContextGates?: undefined,
+				experimentGates?: undefined,
+				resumeAgentBuild?: boolean,
+				turnOptions?: { buildMode?: 'default' | 'progressive'; promptVersion?: string },
 			) => Promise<{
+				buildMode: string;
 				orchestrationContext: {
 					outputRedaction?: unknown;
 					workspace?: unknown;
@@ -904,19 +880,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			oauth2CallbackUrl: string;
 			webhookBaseUrl: string;
 			formBaseUrl: string;
-			runState: {
-				touchActiveRun: Mock;
-				registerPendingConfirmation: Mock;
-				getBuildMode: Mock;
-				getPromptVersion: Mock;
-				getPromptConfiguration: Mock;
-				setPromptConfiguration: Mock;
-				setBuildMode: Mock;
-				setSetupPanelEnabled: Mock;
-				setPromptVersion: Mock;
-				setObserverThresholdTokens: Mock;
-				getComputerUseChannels: Mock;
-			};
+			setupPanelByThread: Map<string, boolean>;
 			schedulePlannedTasks: Mock;
 			sandboxService: InstanceAiSandboxService;
 			browserSessionService: { findMcpServer: Mock };
@@ -977,19 +941,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		service.oauth2CallbackUrl = 'http://localhost/rest/oauth2-credential/callback';
 		service.webhookBaseUrl = 'http://localhost/webhook';
 		service.formBaseUrl = 'http://localhost/form';
-		service.runState = {
-			touchActiveRun: vi.fn(),
-			registerPendingConfirmation: vi.fn(),
-			getBuildMode: vi.fn(() => override),
-			getPromptVersion: vi.fn(() => version),
-			getPromptConfiguration: vi.fn(),
-			setPromptConfiguration: vi.fn(),
-			setBuildMode: vi.fn(),
-			setSetupPanelEnabled: vi.fn(),
-			setPromptVersion: vi.fn(),
-			setObserverThresholdTokens: vi.fn(),
-			getComputerUseChannels: vi.fn(() => undefined),
-		};
+		service.setupPanelByThread = new Map();
 		service.schedulePlannedTasks = vi.fn();
 		service.domainAccessTrackersByThread = new Map();
 		service.browserSessionService = { findMcpServer: vi.fn(() => undefined) };
@@ -1027,10 +979,17 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			'thread-1',
 			'run-1',
 			new AbortController().signal,
+			undefined,
+			undefined,
+			undefined,
+			undefined,
+			undefined,
+			false,
+			{ buildMode: override, promptVersion: version },
 		);
 
 		expect(service.adapterService.resolveExperimentGates).toHaveBeenCalledTimes(1);
-		expect(service.runState.setBuildMode).toHaveBeenCalledWith('thread-1', expected);
+		expect(environment.buildMode).toBe(expected);
 		expect(loadInstanceAiPromptSkills).toHaveBeenCalledWith(
 			expect.objectContaining({ mode: expected, version: profile }),
 		);
@@ -1053,7 +1012,6 @@ describe('InstanceAiService — shutdown', () => {
 		const service = Object.create(
 			InstanceAiService.prototype,
 		) as unknown as ShutdownServiceInternals;
-		service.runState = { clear: vi.fn() };
 		service.tracing = {
 			finalizeRemainingMessageTraceRoots: vi.fn(async (_threadId: string, _options: unknown) => {}),
 			getTrackedThreadIds: vi.fn(() => []),
@@ -1063,8 +1021,6 @@ describe('InstanceAiService — shutdown', () => {
 		service.sandboxService = { stopSandboxExpiryTimers: vi.fn() };
 		service.browserSessionService = { shutdown: vi.fn(async () => {}) };
 		service.domainAccessTrackersByThread = new Map();
-		service.eventBus = { clear: vi.fn() };
-		service.eventLog = { flushAll: vi.fn(async () => {}) };
 		service._mcpClientManager = { disconnect: vi.fn(async () => {}) };
 		service.logger = { debug: vi.fn(), warn: vi.fn() };
 		service.instanceAiErrorReporter = createInstanceAiErrorReporterMock();
@@ -1076,17 +1032,10 @@ describe('InstanceAiService — shutdown', () => {
 		// process can reconnect to them.
 		expect(service.sandboxService.stopSandboxExpiryTimers).toHaveBeenCalledTimes(1);
 
-		// The durable-log flush must precede eventBus.clear(): clear() invalidates
-		// drain lifecycles, so the reverse order would drop unflushed segment tails.
-		expect(service.eventLog.flushAll).toHaveBeenCalledTimes(1);
-		expect(service.eventLog.flushAll.mock.invocationCallOrder[0]).toBeLessThan(
-			service.eventBus.clear.mock.invocationCallOrder[0],
-		);
-
 		// Every trace's LangSmith provider is drained on final process shutdown,
 		// after the trace bookkeeping is released.
 		expect(shutdownProductTelemetryProviders).toHaveBeenCalledTimes(1);
-		expect(service.eventBus.clear.mock.invocationCallOrder[0]).toBeLessThan(
+		expect(service.tracing.clear.mock.invocationCallOrder[0]).toBeLessThan(
 			vi.mocked(shutdownProductTelemetryProviders).mock.invocationCallOrder[0],
 		);
 	});
@@ -1318,44 +1267,6 @@ describe('InstanceAiService — revalidateActiveUser', () => {
 	});
 });
 
-type ResolveConfirmationServiceInternals = {
-	resolveConfirmation: InstanceAiService['resolveConfirmation'];
-	revalidateActiveUser: Mock<(...args: [string]) => Promise<User | null>>;
-	systemAgents: { getThread: Mock; getStatus: Mock; resume: Mock };
-	logger: { debug: Mock; warn: Mock; error: Mock; info: Mock };
-};
-
-/** A thread whose suspended checkpoint waits for one confirmation card. */
-function suspendedStatus(requestId = 'req-1') {
-	return {
-		status: 'suspended',
-		checkpoint: {
-			pendingToolCalls: {
-				'tc-1': {
-					toolCallId: 'tc-1',
-					suspended: true,
-					suspendPayload: { requestId, message: 'Run it?' },
-				},
-			},
-			persistence: { hostMetadata: { instanceAiTurn: { runId: 'run-1' } } },
-		},
-	};
-}
-
-function createResolveConfirmationService(): ResolveConfirmationServiceInternals {
-	const service = Object.create(
-		InstanceAiService.prototype,
-	) as unknown as ResolveConfirmationServiceInternals;
-	service.revalidateActiveUser = vi.fn(async () => fakeUser);
-	service.systemAgents = {
-		getThread: vi.fn(async () => ({ id: 'thread-1' })),
-		getStatus: vi.fn(async () => suspendedStatus()),
-		resume: vi.fn(async () => undefined),
-	};
-	service.logger = { debug: vi.fn(), warn: vi.fn(), error: vi.fn(), info: vi.fn() };
-	return service;
-}
-
 type PlannedTaskSchedulerServiceInternals = {
 	doSchedulePlannedTasks: (user: User, threadId: string) => Promise<void>;
 	revalidateActiveUser: Mock<(...args: [string]) => Promise<User | null>>;
@@ -1369,10 +1280,6 @@ type PlannedTaskSchedulerServiceInternals = {
 	startInternalFollowUpRun: Mock;
 	buildPlannedTaskFollowUpMessage: Mock;
 	buildWorkflowVerificationFollowUpMessage: Mock;
-	runState: {
-		getThreadResearchMode: Mock;
-		hasLiveRun: Mock;
-	};
 	createPlannedTaskDispatchContext: Mock;
 	dispatchPlannedTask: Mock;
 	logger: { warn: Mock };
@@ -1416,10 +1323,6 @@ function createPlannedTaskSchedulerService(): {
 	service.startInternalFollowUpRun = vi.fn(async () => 'follow-up-run');
 	service.buildPlannedTaskFollowUpMessage = vi.fn(() => 'follow-up message');
 	service.buildWorkflowVerificationFollowUpMessage = vi.fn(() => 'workflow verification message');
-	service.runState = {
-		getThreadResearchMode: vi.fn(() => false),
-		hasLiveRun: vi.fn(() => false),
-	};
 	service.createPlannedTaskDispatchContext = vi.fn(async () => ({
 		plannedTaskService,
 		threadId: 'thread-a',
@@ -1447,72 +1350,6 @@ function createPlannedTaskSchedulerService(): {
 
 	return { service, plannedTaskService, graph };
 }
-
-describe('InstanceAiService — resolveConfirmation', () => {
-	it('resumes the suspended tool call that carries the request id', async () => {
-		const service = createResolveConfirmationService();
-
-		const result = await service.resolveConfirmation(
-			'user-1',
-			'req-1',
-			{ kind: 'approval', approved: true },
-			'thread-1',
-		);
-
-		expect(result).toEqual({ ok: true, runId: 'run-1' });
-		expect(service.systemAgents.getThread).toHaveBeenCalledWith(
-			'n8n-assistant',
-			fakeUser,
-			'thread-1',
-		);
-		expect(service.systemAgents.resume).toHaveBeenCalledWith({
-			agentId: 'n8n-assistant',
-			user: fakeUser,
-			threadId: 'thread-1',
-			toolCallId: 'tc-1',
-			resumeData: expect.objectContaining({ approved: true }),
-		});
-	});
-
-	it('returns null when the user is no longer authorized', async () => {
-		const service = createResolveConfirmationService();
-		service.revalidateActiveUser.mockResolvedValue(null);
-
-		const result = await service.resolveConfirmation(
-			'user-1',
-			'req-1',
-			{ kind: 'approval', approved: true },
-			'thread-1',
-		);
-
-		expect(result).toBeNull();
-		expect(service.systemAgents.resume).not.toHaveBeenCalled();
-	});
-
-	it('returns null without a thread id', async () => {
-		const service = createResolveConfirmationService();
-
-		expect(
-			await service.resolveConfirmation('user-1', 'req-1', { kind: 'approval', approved: true }),
-		).toBeNull();
-		expect(service.systemAgents.getThread).not.toHaveBeenCalled();
-	});
-
-	it('returns null when no suspended tool call carries the request id', async () => {
-		const service = createResolveConfirmationService();
-		service.systemAgents.getStatus.mockResolvedValue(suspendedStatus('req-other'));
-
-		const result = await service.resolveConfirmation(
-			'user-1',
-			'req-1',
-			{ kind: 'approval', approved: false },
-			'thread-1',
-		);
-
-		expect(result).toBeNull();
-		expect(service.systemAgents.resume).not.toHaveBeenCalled();
-	});
-});
 
 describe('InstanceAiService — planned task user revalidation', () => {
 	it('cancels planned-task scheduling when the user is no longer authorized', async () => {
@@ -1949,7 +1786,6 @@ describe('InstanceAiService — cancelRun plan cleanup', () => {
 	type CancelService = {
 		cancelRun: (threadId: string, reason?: string) => void;
 		createPlannedTaskState: Mock;
-		eventBus: { publish: Mock };
 		logger: { warn: Mock };
 	};
 
@@ -1962,7 +1798,6 @@ describe('InstanceAiService — cancelRun plan cleanup', () => {
 		const taskStorage = { save: vi.fn(async () => {}) };
 		Object.assign(service, {
 			createPlannedTaskState: vi.fn(async () => ({ plannedTaskService, taskStorage })),
-			eventBus: { publish: vi.fn() },
 			logger: { warn: vi.fn() },
 		});
 		return { service, plannedTaskService, taskStorage };
@@ -1971,7 +1806,7 @@ describe('InstanceAiService — cancelRun plan cleanup', () => {
 	/** cancelRun fires the cleanup with `void`, so let it settle. */
 	const flush = async () => await new Promise((resolve) => setTimeout(resolve, 0));
 
-	it('clears a plan that still waits for approval and publishes an empty checklist', async () => {
+	it('clears a plan that still waits for approval and empties the checklist', async () => {
 		const { service, plannedTaskService, taskStorage } = createCancelService('awaiting_approval');
 
 		service.cancelRun('thread-a');
@@ -1979,13 +1814,6 @@ describe('InstanceAiService — cancelRun plan cleanup', () => {
 
 		expect(plannedTaskService.clear).toHaveBeenCalledWith('thread-a');
 		expect(taskStorage.save).toHaveBeenCalledWith('thread-a', { tasks: [] });
-		expect(service.eventBus.publish).toHaveBeenCalledWith(
-			'thread-a',
-			expect.objectContaining({
-				type: 'tasks-update',
-				payload: { tasks: { tasks: [] }, planItems: [] },
-			}),
-		);
 	});
 
 	it('leaves an approved plan alone', async () => {
@@ -1995,7 +1823,6 @@ describe('InstanceAiService — cancelRun plan cleanup', () => {
 		await flush();
 
 		expect(plannedTaskService.clear).not.toHaveBeenCalled();
-		expect(service.eventBus.publish).not.toHaveBeenCalled();
 	});
 });
 
@@ -2556,14 +2383,12 @@ describe('InstanceAiService — deterministic workflow setup follow-up', () => {
 
 describe('InstanceAiService — clearThreadState agent-builder cleanup', () => {
 	type Internals = {
-		threadPushRef: Map<string, string>;
+		setupPanelByThread: Map<string, boolean>;
 		planRequestsByThread: Map<string, number>;
-		runState: { clearThread: Mock };
 		schedulerLocks: Map<string, unknown>;
 		failedInternalFollowUpStreaks: Map<string, number>;
 		domainAccessTrackersByThread: Map<string, unknown>;
 		evalCredentialAllowlists: EvalThreadCredentialAllowlistService;
-		eventBus: { clearThread: Mock };
 		tracing: {
 			finalizeRunTracing: Mock;
 			finalizeBackgroundTaskTracing: Mock;
@@ -2582,14 +2407,12 @@ describe('InstanceAiService — clearThreadState agent-builder cleanup', () => {
 	function buildService(): Internals {
 		const service = Object.create(InstanceAiService.prototype) as unknown as Internals;
 
-		service.threadPushRef = new Map();
+		service.setupPanelByThread = new Map();
 		service.planRequestsByThread = new Map();
-		service.runState = { clearThread: vi.fn(() => ({ active: undefined, suspended: undefined })) };
 		service.schedulerLocks = new Map();
 		service.failedInternalFollowUpStreaks = new Map();
 		service.domainAccessTrackersByThread = new Map();
 		service.evalCredentialAllowlists = new EvalThreadCredentialAllowlistService();
-		service.eventBus = { clearThread: vi.fn() };
 		service.tracing = {
 			finalizeRunTracing: vi.fn(async () => {}),
 			finalizeBackgroundTaskTracing: vi.fn(async () => {}),
@@ -2652,6 +2475,7 @@ describe('createAgentMemoryOptions', () => {
 			user: User,
 			threadId: string,
 			runId: string,
+			observerThresholdTokens?: number,
 		) => {
 			observationalMemory: {
 				observerThresholdTokens: number;
@@ -2662,7 +2486,6 @@ describe('createAgentMemoryOptions', () => {
 			InstanceAiConfig,
 			'observerMessageTokens' | 'reflectorObservationTokens'
 		>;
-		runState: { getObserverThresholdTokens: Mock };
 		creditService: { claimRunUsage: Mock; ensureQuotaLockApplied: Mock };
 		logger: { warn: Mock };
 	};
@@ -2670,7 +2493,6 @@ describe('createAgentMemoryOptions', () => {
 	function buildService(): MemoryOptionsInternals {
 		const service = Object.create(InstanceAiService.prototype) as unknown as MemoryOptionsInternals;
 		service.instanceAiConfig = { observerMessageTokens: 8_000, reflectorObservationTokens: 12_000 };
-		service.runState = { getObserverThresholdTokens: vi.fn().mockReturnValue(undefined) };
 		service.creditService = {
 			claimRunUsage: vi.fn(async () => {}),
 			ensureQuotaLockApplied: vi.fn(async () => {}),
@@ -2687,16 +2509,15 @@ describe('createAgentMemoryOptions', () => {
 			'run-1',
 		).observationalMemory;
 		expect(observerThresholdTokens).toBe(8_000);
-		expect(service.runState.getObserverThresholdTokens).toHaveBeenCalledWith('thread-1');
 	});
 
 	it('uses the per-thread override when an eval set one', () => {
 		const service = buildService();
-		service.runState.getObserverThresholdTokens.mockReturnValue(1_000);
 		const { observerThresholdTokens } = service.createAgentMemoryOptions(
 			{ id: 'user-1' } as User,
 			'thread-1',
 			'run-1',
+			1_000,
 		).observationalMemory;
 		expect(observerThresholdTokens).toBe(1_000);
 	});
@@ -3043,7 +2864,6 @@ describe('InstanceAiService — resolveAiPreferencesTurn', () => {
 			getActiveObservationLog: Mock;
 			getMessagesForObservationScope: Mock;
 		};
-		eventLog: { getLastPreferencesInjectionRunId: Mock };
 		logger: { warn: Mock };
 	};
 
@@ -3056,7 +2876,6 @@ describe('InstanceAiService — resolveAiPreferencesTurn', () => {
 			getActiveObservationLog: vi.fn().mockResolvedValue([]),
 			getMessagesForObservationScope: vi.fn().mockResolvedValue([]),
 		};
-		service.eventLog = { getLastPreferencesInjectionRunId: vi.fn().mockResolvedValue(undefined) };
 		service.logger = { warn: vi.fn() };
 		return service;
 	}
@@ -3140,17 +2959,12 @@ describe('InstanceAiService — resolveAiPreferencesTurn', () => {
 			expect(turn.block).toBe(block);
 			expect(turn.payload.injectedThisTurn).toBe(true);
 			expect(turn.payload.preferences.map(({ id }) => id)).not.toContain('removed-pref');
-			expect(service.eventLog.getLastPreferencesInjectionRunId).not.toHaveBeenCalled();
 
 			service.agentMemory.getMessages.mockResolvedValue([...history, storedUserTurn(turn.block)]);
-			service.eventLog.getLastPreferencesInjectionRunId.mockResolvedValue('refresh-run');
 			const nextTurn = await service.resolveAiPreferencesTurn('user-1', boundProject, 'thread-1');
 
 			expect(nextTurn.block).toBeUndefined();
-			expect(nextTurn.payload).toMatchObject({
-				injectedThisTurn: false,
-				carriedFromRunId: 'refresh-run',
-			});
+			expect(nextTurn.payload).toMatchObject({ injectedThisTurn: false });
 		},
 	);
 
@@ -3193,7 +3007,7 @@ describe('InstanceAiService — resolveAiPreferencesTurn', () => {
 		});
 	});
 
-	it('re-uses the previous copy when the rendered text is unchanged, and names the run that sent it', async () => {
+	it('re-uses the previous copy when the rendered text is unchanged', async () => {
 		const service = createService();
 		service.aiPreferenceService.getApplicable.mockResolvedValue(applicable);
 		const block = renderAiPreferencesBlock(applicable);
@@ -3204,7 +3018,6 @@ describe('InstanceAiService — resolveAiPreferencesTurn', () => {
 			{ role: 'assistant', content: 'Done.' },
 			storedUserTurn(undefined, 'Thanks'),
 		]);
-		service.eventLog.getLastPreferencesInjectionRunId.mockResolvedValue('run-1');
 
 		const turn = await service.resolveAiPreferencesTurn('user-1', boundProject, 'thread-1');
 
@@ -3216,7 +3029,6 @@ describe('InstanceAiService — resolveAiPreferencesTurn', () => {
 			],
 			renderedLength: block.length,
 			injectedThisTurn: false,
-			carriedFromRunId: 'run-1',
 		});
 	});
 
@@ -3234,7 +3046,6 @@ describe('InstanceAiService — resolveAiPreferencesTurn', () => {
 
 		expect(turn.block).toContain('- Keep replies short.');
 		expect(turn.payload).toMatchObject({ injectedThisTurn: true });
-		expect(service.eventLog.getLastPreferencesInjectionRunId).not.toHaveBeenCalled();
 	});
 
 	it('publishes an empty payload when the read fails, without touching the history', async () => {
@@ -3287,7 +3098,6 @@ describe('InstanceAiService — resolveAiPreferencesTurn', () => {
 
 		expect(turn.block).toBeUndefined();
 		expect(turn.payload).toEqual({ preferences: [], renderedLength: 0, injectedThisTurn: false });
-		expect(service.eventLog.getLastPreferencesInjectionRunId).not.toHaveBeenCalled();
 	});
 
 	it('injects when the history read fails, because re-sending is the safe direction', async () => {
@@ -3349,28 +3159,12 @@ describe('InstanceAiService — resolveAiPreferencesTurn', () => {
 		});
 		service.agentMemory.getActiveObservationLog.mockResolvedValue([]);
 		service.agentMemory.getMessages.mockResolvedValue([storedUserTurn(block)]);
-		service.eventLog.getLastPreferencesInjectionRunId.mockResolvedValue('run-1');
-
-		const turn = await service.resolveAiPreferencesTurn('user-1', boundProject, 'thread-1');
-
-		expect(turn.block).toBeUndefined();
-		expect(turn.payload).toMatchObject({ injectedThisTurn: false, carriedFromRunId: 'run-1' });
-		expect(service.agentMemory.getMessagesForObservationScope).not.toHaveBeenCalled();
-	});
-
-	it('still skips an unchanged block when the run attribution lookup fails', async () => {
-		const service = createService();
-		service.aiPreferenceService.getApplicable.mockResolvedValue(applicable);
-		const block = renderAiPreferencesBlock(applicable);
-		if (!block) throw new Error('expected a block');
-		service.agentMemory.getMessages.mockResolvedValue([storedUserTurn(block)]);
-		service.eventLog.getLastPreferencesInjectionRunId.mockRejectedValue(new Error('log down'));
 
 		const turn = await service.resolveAiPreferencesTurn('user-1', boundProject, 'thread-1');
 
 		expect(turn.block).toBeUndefined();
 		expect(turn.payload).toMatchObject({ injectedThisTurn: false });
-		expect(turn.payload).not.toHaveProperty('carriedFromRunId');
+		expect(service.agentMemory.getMessagesForObservationScope).not.toHaveBeenCalled();
 	});
 });
 

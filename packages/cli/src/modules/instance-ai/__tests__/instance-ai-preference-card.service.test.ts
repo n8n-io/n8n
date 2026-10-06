@@ -6,12 +6,12 @@ import { mock } from 'vitest-mock-extended';
 import type { AiPreferenceService } from '@/services/ai-preference.service';
 import type { Telemetry } from '@/telemetry';
 
-import type { InProcessEventBus } from '../event-bus/in-process-event-bus';
+import type { AssistantEventSink } from '../event-bus/assistant-event-sink';
 import { InstanceAiPreferenceCardService } from '../instance-ai-preference-card.service';
 
 describe('InstanceAiPreferenceCardService', () => {
 	const aiPreferenceService = mock<AiPreferenceService>();
-	const eventBus = mock<InProcessEventBus>();
+	const eventBus = mock<AssistantEventSink>();
 	const telemetry = mock<Telemetry>();
 	const service = new InstanceAiPreferenceCardService(aiPreferenceService, eventBus, telemetry);
 	const user = mock<User>({ id: 'user-1' });
