@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { defineComponent, h } from 'vue';
 
 import { createComponentRenderer } from '@/__tests__/render';
+import { mockedStore } from '@/__tests__/utils';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { applied, blocked, credential, variable } from '../__tests__/bindings.fixtures';
 import type * as PromotionsApi from '../promotionsSettings.api';
@@ -76,6 +77,20 @@ describe('ApplyInstanceDialog', () => {
 
 		await waitFor(() => expect(projectsStore.getMyProjects).toHaveBeenCalledTimes(1));
 		expect(projectsStore.getProjectsCount).toHaveBeenCalledTimes(1);
+		// This user cannot list every project, so the full list is not loaded.
+		expect(projectsStore.getAllProjects).not.toHaveBeenCalled();
+	});
+
+	it('also reloads all projects when the user can list them', async () => {
+		api.applyPromotion.mockResolvedValue(applied);
+		const projectsStore = mockedStore(useProjectsStore);
+		projectsStore.globalProjectPermissions = { list: true };
+		const { findByTestId } = renderComponent();
+
+		await userEvent.click(await findByTestId('apply-confirm-button'));
+
+		await waitFor(() => expect(projectsStore.getAllProjects).toHaveBeenCalledTimes(1));
+		expect(projectsStore.getMyProjects).toHaveBeenCalledTimes(1);
 	});
 
 	it('reports success when the project list cannot be reloaded', async () => {

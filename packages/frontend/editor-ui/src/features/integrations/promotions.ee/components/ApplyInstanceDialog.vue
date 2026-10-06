@@ -72,9 +72,15 @@ function reportApplied(result: AppliedResult) {
 
 // An instance apply can create and delete projects. The project sidebar is not mounted on
 // this page, so reload the store it reads from instead of emitting a promotion event.
+// The sidebar reads the user's own projects. Users who can list every project also read the
+// full list, so reload that too.
 async function refreshProjects() {
 	try {
-		await Promise.all([projectsStore.getMyProjects(), projectsStore.getProjectsCount()]);
+		await Promise.all([
+			projectsStore.getMyProjects(),
+			projectsStore.getProjectsCount(),
+			...(projectsStore.globalProjectPermissions.list ? [projectsStore.getAllProjects()] : []),
+		]);
 	} catch {
 		// The apply went through. A stale project list is fixed by the next page load.
 	}
