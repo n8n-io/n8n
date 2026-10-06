@@ -135,15 +135,17 @@ const tooltipPlacement = computed(() => {
 				@click="handleClick"
 			>
 				<div
-					v-if="item.icon"
+					v-if="item.icon || $slots.icon"
 					:class="[$style.menuItemIcon, { [$style.notification]: item.notification }]"
 				>
-					<N8nText
-						v-if="item.icon && typeof item.icon === 'object' && item.icon.type === 'emoji'"
-						:class="$style.menuItemEmoji"
-						>{{ item.icon.value }}</N8nText
-					>
-					<N8nIcon v-else-if="icon" :color="iconColor" :icon="icon" />
+					<slot name="icon">
+						<N8nText
+							v-if="item.icon && typeof item.icon === 'object' && item.icon.type === 'emoji'"
+							:class="$style.menuItemEmoji"
+							>{{ item.icon.value }}</N8nText
+						>
+						<N8nIcon v-else-if="icon" :color="iconColor" :icon="icon" />
+					</slot>
 				</div>
 				<div :class="$style.menuItemLabel">
 					<div

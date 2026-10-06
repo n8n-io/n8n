@@ -1,6 +1,8 @@
+import { AGENTS_N8N_CHAT_FLAG } from '@n8n/api-types';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { setActivePinia, createPinia } from 'pinia';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
+import { usePostHog } from '@/app/stores/posthog.store';
 import { useAgentTelemetry } from '../composables/useAgentTelemetry';
 
 const trackMock = vi.fn();
@@ -156,5 +158,87 @@ describe('useAgentTelemetry', () => {
 				projectId: 'project-1',
 			}),
 		).not.toThrow();
+	});
+
+	it('trackSelectedN8nChatAgent fires with agent_id, source, and the current flag variant', () => {
+		usePostHog().overrides = { [AGENTS_N8N_CHAT_FLAG]: { value: 'variant-a' } };
+
+		useAgentTelemetry().trackSelectedN8nChatAgent({ agentId: 'agent-1', source: 'library' });
+
+		expect(trackMock).toHaveBeenCalledWith(TELEMETRY_EVENT.AGENTS.USER_SELECTED_N8N_CHAT_AGENT, {
+			agent_id: 'agent-1',
+			source: 'library',
+			variant: 'variant-a',
+			session_id: 'session-xyz',
+		});
+	});
+
+	it('trackSelectedN8nChatAgent reports a null variant when the user has no flag value', () => {
+		useAgentTelemetry().trackSelectedN8nChatAgent({ agentId: 'agent-1', source: 'card' });
+
+		expect(trackMock).toHaveBeenCalledWith(TELEMETRY_EVENT.AGENTS.USER_SELECTED_N8N_CHAT_AGENT, {
+			agent_id: 'agent-1',
+			source: 'card',
+			variant: null,
+			session_id: 'session-xyz',
+		});
+	});
+
+	it('trackSentMessageToN8nChatAgent fires with agent_id, thread_id, is_new_thread, and variant', () => {
+		usePostHog().overrides = { [AGENTS_N8N_CHAT_FLAG]: { value: 'variant-b' } };
+
+		useAgentTelemetry().trackSentMessageToN8nChatAgent({
+			agentId: 'agent-1',
+			threadId: 'thread-1',
+			isNewThread: true,
+		});
+
+		expect(trackMock).toHaveBeenCalledWith(
+			TELEMETRY_EVENT.AGENTS.USER_SENT_MESSAGE_TO_N8N_CHAT_AGENT,
+			{
+				agent_id: 'agent-1',
+				thread_id: 'thread-1',
+				is_new_thread: true,
+				variant: 'variant-b',
+				session_id: 'session-xyz',
+			},
+		);
+	});
+
+	it('trackClickedSidebarItem fires "new_chat" with no chat_type and the current variant', () => {
+		usePostHog().overrides = { [AGENTS_N8N_CHAT_FLAG]: { value: 'variant-a' } };
+
+		useAgentTelemetry().trackClickedSidebarItem({ item: 'new_chat' });
+
+		expect(trackMock).toHaveBeenCalledWith(
+			TELEMETRY_EVENT.AGENTS.USER_CLICKED_N8N_CHAT_SIDEBAR_ITEM,
+			{
+				item: 'new_chat',
+				variant: 'variant-a',
+				session_id: 'session-xyz',
+			},
+		);
+	});
+
+	it('trackClickedSidebarItem fires "chat" with chat_type and the current variant', () => {
+		usePostHog().overrides = { [AGENTS_N8N_CHAT_FLAG]: { value: 'variant-a' } };
+
+		useAgentTelemetry().trackClickedSidebarItem({ item: 'chat', chatType: 'agent' });
+
+		expect(trackMock).toHaveBeenCalledWith(
+			TELEMETRY_EVENT.AGENTS.USER_CLICKED_N8N_CHAT_SIDEBAR_ITEM,
+			{
+				item: 'chat',
+				chat_type: 'agent',
+				variant: 'variant-a',
+				session_id: 'session-xyz',
+			},
+		);
+	});
+
+	it('trackClickedSidebarItem is a no-op with the flag off, so callers need not check it', () => {
+		useAgentTelemetry().trackClickedSidebarItem({ item: 'new_chat' });
+
+		expect(trackMock).not.toHaveBeenCalled();
 	});
 });

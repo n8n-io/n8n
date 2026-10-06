@@ -50,7 +50,7 @@ import { useKeybindings } from '@/app/composables/useKeybindings';
 import KeyboardShortcutTooltip from '@/app/components/KeyboardShortcutTooltip.vue';
 import { MODAL_CONFIRM } from '@/app/constants';
 import { AGENT_EXTERNAL_UPDATE_NOTICE_DURATION, TIME } from '@/app/constants/durations';
-import { deepCopy } from 'n8n-workflow';
+import { copyAgentConfig } from '../utils/agentSectionEditor.utils';
 import {
 	getAgent,
 	createAgent,
@@ -156,6 +156,7 @@ import {
 	type BudgetAmountField,
 } from '../utils/budget-config';
 import { hasBlockingIssues } from '../utils/validationIssues';
+import { isNotFoundError } from '../utils/errors';
 
 const props = withDefaults(
 	defineProps<{
@@ -817,7 +818,7 @@ watch(
 	config,
 	(c) => {
 		if (c) {
-			localConfig.value = deepCopy(c);
+			localConfig.value = copyAgentConfig(c);
 			syncAgentIdentityFromConfig(c);
 		}
 	},
@@ -1813,7 +1814,7 @@ function onConfigFieldUpdate(updates: Partial<AgentJsonConfig>, meta?: { source:
 		// session memory disabled. Normalize on save so legacy configs are
 		// corrected the next time the user makes a real edit, without mutating
 		// config during component mount.
-		config: normalizeAgentMemoryConfig(deepCopy(localConfig.value)),
+		config: normalizeAgentMemoryConfig(copyAgentConfig(localConfig.value)),
 		revision: configEditRevision,
 		baseConfigHash: configHash.value,
 	});
@@ -1861,13 +1862,13 @@ const appliedSkills = caps.appliedSkills;
 function replaceConfigAndScheduleSave(nextConfig: AgentJsonConfig) {
 	markConfigDraftEdited();
 	invalidateConfigValidation();
-	localConfig.value = deepCopy(nextConfig);
+	localConfig.value = copyAgentConfig(nextConfig);
 	syncAgentIdentityFromConfig(localConfig.value);
 	configAutosave.scheduleAutosave({
 		projectId: projectId.value,
 		agentId: agentId.value,
 		type: 'config',
-		config: normalizeAgentMemoryConfig(deepCopy(localConfig.value)),
+		config: normalizeAgentMemoryConfig(copyAgentConfig(localConfig.value)),
 		revision: configEditRevision,
 		baseConfigHash: configHash.value,
 	});
@@ -2785,15 +2786,6 @@ watch(
 	{ immediate: true },
 );
 
-function isNotFoundError(error: unknown): boolean {
-	return (
-		typeof error === 'object' &&
-		error !== null &&
-		'httpStatusCode' in error &&
-		error.httpStatusCode === 404
-	);
-}
-
 const pendingPreviewValidations = new Set<string>();
 async function ensurePreviewSessionAvailable(sessionId: string) {
 	if (previewSessionsLoading.value || currentSessionIsLocallyMinted.value) return;
@@ -3297,6 +3289,14 @@ useKeybindings({
 	max-width: 100%;
 	z-index: 1;
 	pointer-events: none;
+
+	&:has([data-preview-layout='fullpage']) {
+		width: 100%;
+
+		[data-dir='left'] {
+			display: none;
+		}
+	}
 }
 
 .previewResizeOpen {

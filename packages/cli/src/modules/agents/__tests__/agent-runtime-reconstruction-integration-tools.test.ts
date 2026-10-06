@@ -11,6 +11,7 @@ import type { CustomFetch, HttpTransport, OutboundHttp } from '@n8n/backend-netw
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { AiConfig, GlobalConfig } from '@n8n/config';
 import type {
+	TransactionRunner,
 	User,
 	CredentialsEntity,
 	ProjectRelationRepository,
@@ -34,6 +35,7 @@ import type { WorkflowFinderService } from '@/workflows/workflow-finder.service'
 
 import { AgentChangePublisher } from '../agent-change-publisher.service';
 import type { AgentChatAttachmentService } from '../agent-chat-attachment.service';
+import { AgentConfigPreparationService } from '../agent-config-preparation.service';
 import { AgentConfigService } from '../agent-config.service';
 import type { NodeToolAiGatewayService } from '../json-config/node-tool-ai-gateway.service';
 import { AgentCustomToolsService } from '../agent-custom-tools.service';
@@ -55,6 +57,8 @@ import { AgentTurnExecutionService } from '../agent-turn-execution.service';
 import type { AgentToolApprovalService } from '../agent-tool-approval.service';
 import { AgentRuntimeReconstructionService } from '../agent-runtime-reconstruction.service';
 import type { AgentSandboxRuntimeService } from '../agent-sandbox-runtime.service';
+import { AgentSaveCompletionService } from '../agent-save-completion.service';
+import { AgentDefinitionService } from '../agent-definition.service';
 import { AgentSkillsService } from '../agent-skills.service';
 import type { AgentUpdateBroadcaster } from '../agent-update-broadcaster';
 
@@ -256,33 +260,36 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 		Container.set(AgentRuntimeCacheService, runtimeCacheService);
 		const modificationTelemetry = mock<AgentModificationTelemetryService>();
 		const agentUpdateBroadcaster = mock<AgentUpdateBroadcaster>();
-		agentSkillsService = new AgentSkillsService(
-			logger,
-			agentRepository,
-			modificationTelemetry,
+		const saveCompletion = new AgentSaveCompletionService(
+			mock<EventService>(),
 			agentUpdateBroadcaster,
+			modificationTelemetry,
 		);
+		const transactionRunner = mock<TransactionRunner>();
+		transactionRunner.run.mockImplementation(async (ctx, fn) => await fn(ctx));
+		agentRepository.hasRevision.mockResolvedValue(true);
+		const definitionService = new AgentDefinitionService(
+			agentTaskRepository,
+			agentTaskSnapshotRepository,
+			agentRepository,
+			transactionRunner,
+		);
+		agentSkillsService = new AgentSkillsService(logger, agentRepository, saveCompletion);
 		agentConfigService = new AgentConfigService(
 			logger,
 			agentRepository,
 			agentTaskRepository,
 			agentSkillsService,
-			runtimeCacheService,
-			credentialsService,
-			mock<WorkflowRepository>(),
-			mock<NodeToolAiGatewayService>(),
-			mock<EventService>(),
+			new AgentConfigPreparationService(
+				credentialsService,
+				mock<WorkflowRepository>(),
+				mock<NodeToolAiGatewayService>(),
+			),
 			mock<AgentSetupCompletionService>(),
-			modificationTelemetry,
-			agentUpdateBroadcaster,
+			transactionRunner,
+			saveCompletion,
 		);
-		agentCustomToolsService = new AgentCustomToolsService(
-			logger,
-			agentRepository,
-			runtimeCacheService,
-			modificationTelemetry,
-			agentUpdateBroadcaster,
-		);
+		agentCustomToolsService = new AgentCustomToolsService(logger, agentRepository, saveCompletion);
 		agentExecutionOrchestratorService = new AgentExecutionOrchestratorService(
 			logger,
 			n8nCheckpointStorage,
@@ -319,8 +326,7 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 		);
 		agentValidationService = new AgentValidationService(
 			agentRepository,
-			agentTaskRepository,
-			agentTaskSnapshotRepository,
+			definitionService,
 			mock<NodeTypes>(),
 			mock<WorkflowRepository>(),
 			chatIntegrationRegistry,
@@ -339,8 +345,10 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			telemetry,
 			mock<EventService>(),
 			mock<AgentSetupCompletionService>(),
-			mock<AgentModificationTelemetryService>(),
 			mock<AgentUpdateBroadcaster>(),
+			transactionRunner,
+			saveCompletion,
+			definitionService,
 		);
 		agentTestChatService = new AgentTestChatService(n8nMemory, mock<AgentChatAttachmentService>());
 		agentsService = new AgentsService(

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import {
 	computed,
+	provide,
 	ref,
 	shallowRef,
 	toRef,
@@ -37,6 +38,7 @@ import {
 	PROVIDER_CAPABILITIES,
 } from '@n8n/api-types';
 import { useToast } from '@n8n/composables/useToast';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import ChatInputBase from '@/features/ai/shared/components/ChatInputBase.vue';
 import AttachmentPreview from '@/features/ai/instanceAi/components/AttachmentPreview.vue';
 import { useAgentChatStream } from '../composables/useAgentChatStream';
@@ -47,6 +49,9 @@ import {
 } from '@/features/ai/shared/agentsChat/messageMappers';
 import AgentChatEmptyState from './AgentChatEmptyState.vue';
 import AgentChatMessageList from './AgentChatMessageList.vue';
+import AgentChatPlan from './AgentChatPlan.vue';
+import { selectLatestAgentPlan } from '../utils/agent-plan';
+import { formatAgentElapsedTime } from '../utils/agent-elapsed-time';
 import type {
 	AgentContinueLoadedEvent,
 	AgentSendToAssistantEvent,
@@ -62,6 +67,8 @@ import {
 } from '../utils/budget-config';
 import { TIME } from '@/app/constants/durations';
 import { useAgentBackgroundJobs } from '../composables/useAgentBackgroundJobs';
+import { getChatAttachmentUrl, type AgentChatChannel } from '../composables/useAgentApi';
+import { AGENT_ATTACHMENT_URL_KEY } from './agentChatInjectionKeys';
 import ApprovalCard from './interactive/ApprovalCard.vue';
 
 const props = withDefaults(
@@ -80,6 +87,10 @@ const props = withDefaults(
 		beforeSend?: () => Promise<void> | void;
 		inputDraft?: string;
 		backgroundJobsActive?: boolean;
+		/** `'chat'` (default) talks to the builder's draft/test chat; `'n8n-chat'` talks to the published n8n Chat channel. */
+		channel?: AgentChatChannel;
+		/** Centers the empty state and the composer together until a new chat gets its first message. */
+		centerEmptyState?: boolean;
 		budgetCards?: boolean;
 		/**
 		 * Persists a raised budget cap. Omitted when the user cannot edit the
@@ -98,6 +109,8 @@ const props = withDefaults(
 		beforeSend: undefined,
 		inputDraft: undefined,
 		backgroundJobsActive: false,
+		channel: 'chat',
+		centerEmptyState: false,
 		budgetCards: false,
 		increaseBudget: undefined,
 	},
@@ -112,6 +125,8 @@ const emit = defineEmits<{
 	back: [];
 	'open-build': [];
 	'send-to-assistant': [event?: AgentSendToAssistantEvent];
+	/** The chat's first user message, for a host to title a thread that has no title yet. */
+	'first-user-message': [text: string | undefined];
 }>();
 
 const locale = useI18n();
@@ -119,6 +134,7 @@ const agentTelemetry = useAgentTelemetry();
 const toast = useToast();
 
 const {
+	capabilities,
 	messages,
 	queuedMessages,
 	removingQueueIds,
@@ -151,6 +167,7 @@ const {
 	agentId: toRef(props, 'agentId'),
 	continueSessionId: toRef(props, 'continueSessionId'),
 	newSession: toRef(props, 'newSession'),
+	channel: toRef(props, 'channel'),
 	onHistoryLoaded: (count) => {
 		if (props.continueSessionId) {
 			emit('continue-loaded', { sessionId: props.continueSessionId, count });
@@ -159,6 +176,19 @@ const {
 	onSessionCreated: (sessionId) => emit('session-created', sessionId),
 	budgetCards: props.budgetCards,
 });
+
+const currentPlan = computed(() => selectLatestAgentPlan(messages.value));
+
+const rootStore = useRootStore();
+provide(AGENT_ATTACHMENT_URL_KEY, (attachmentId) =>
+	getChatAttachmentUrl(
+		rootStore.restApiContext,
+		props.projectId,
+		props.agentId,
+		attachmentId,
+		props.channel,
+	),
+);
 
 const queueEdit = ref<{
 	item: AgentChatQueueItem;
@@ -209,7 +239,8 @@ function isQueueItemBusy(item: AgentChatQueueItem) {
 	);
 }
 function canMoveQueueItem(items: AgentChatQueueItem[], from: number, to: number) {
-	if (queueEdit.value || from === to || !items[from] || !items[to]) return false;
+	if (!capabilities.value.reorder || queueEdit.value || from === to || !items[from] || !items[to])
+		return false;
 	return !items.slice(Math.min(from, to), Math.max(from, to) + 1).some(isQueueItemBusy);
 }
 function canDragQueueItem(index: number) {
@@ -283,6 +314,9 @@ function onQueueEditKeydown(event: KeyboardEvent) {
 	}
 }
 
+const backgroundJobsActive = computed(
+	() => capabilities.value.backgroundTasks && props.backgroundJobsActive,
+);
 const {
 	jobs: backgroundJobs,
 	respondToApproval,
@@ -292,13 +326,11 @@ const {
 	projectId: () => props.projectId,
 	agentId: () => props.agentId,
 	threadId: () => props.continueSessionId,
-	active: () => props.backgroundJobsActive,
+	active: () => backgroundJobsActive.value,
 	receivedJobs: () => messages.value.flatMap((message) => message.backgroundJobSignal?.tasks ?? []),
 });
 const canStopBackgroundJobs = computed(() =>
-	backgroundJobs.value.some(
-		(job) => job.kind === 'subagent' && (job.status === 'running' || job.status === 'suspended'),
-	),
+	backgroundJobs.value.some((job) => job.status === 'running' || job.status === 'suspended'),
 );
 const backgroundStoppingIds = computed(
 	() =>
@@ -306,7 +338,6 @@ const backgroundStoppingIds = computed(
 			backgroundJobs.value
 				.filter(
 					(job) =>
-						job.kind === 'subagent' &&
 						(job.status === 'running' || job.status === 'suspended') &&
 						(isStopping.value || job.pauseRequested),
 				)
@@ -406,7 +437,7 @@ const backgroundJobStatuses = computed(() => ({
 }));
 
 const backgroundApproval = computed(() => {
-	if (!props.backgroundJobsActive) return undefined;
+	if (!backgroundJobsActive.value) return undefined;
 	for (const job of backgroundJobs.value) {
 		if (job.status !== 'suspended' || !job.approval) continue;
 		const input = parseApprovalInput(job.approval.suspendPayload);
@@ -464,13 +495,18 @@ async function respondToBackgroundApproval(
 const backgroundJobRows = computed(() =>
 	backgroundJobs.value.map((job) => {
 		const stopping = backgroundStoppingIds.value.has(job.id);
+		const stopped =
+			job.status === 'paused' ||
+			(job.kind === 'workflow' && job.status === 'cancelled' && job.pauseRequested);
 		let indicator = backgroundJobStatuses.value[job.status];
 		if (stopping) indicator = backgroundJobStatuses.value.stopping;
+		else if (stopped) indicator = backgroundJobStatuses.value.paused;
 		else if (job.kind === 'workflow' && job.status === 'running')
 			indicator = backgroundJobStatuses.value.waiting;
 		return {
 			...job,
 			stopping,
+			stopped,
 			label: locale.baseText(
 				job.kind === 'workflow'
 					? 'agents.chat.backgroundTasks.workflow'
@@ -492,7 +528,7 @@ const { pause: pauseTimer, resume: resumeTimer } = useIntervalFn(
 );
 watch(
 	() =>
-		props.backgroundJobsActive &&
+		backgroundJobsActive.value &&
 		backgroundInProgress.value &&
 		documentVisibility.value === 'visible',
 	(active) => {
@@ -509,12 +545,7 @@ const backgroundElapsed = computed(() => {
 	const end = backgroundInProgress.value
 		? now.value
 		: Math.max(...backgroundJobs.value.map((job) => Date.parse(job.settledAt ?? '') || now.value));
-	const seconds = Number.isFinite(start) ? Math.max(0, Math.floor((end - start) / TIME.SECOND)) : 0;
-	const minutes = Math.floor(seconds / 60);
-	const remainder = String(seconds % 60).padStart(2, '0');
-	return minutes < 60
-		? `${minutes}:${remainder}`
-		: `${Math.floor(minutes / 60)}:${String(minutes % 60).padStart(2, '0')}:${remainder}`;
+	return formatAgentElapsedTime(end - start);
 });
 
 const attachedFiles = ref<File[]>([]);
@@ -524,7 +555,7 @@ const backgroundJobStopButton =
 	useTemplateRef<InstanceType<typeof N8nButton>>('backgroundJobStopButton');
 const approvalCards = useTemplateRef<HTMLDivElement>('approvalCards');
 const showBackgroundJobs = computed(
-	() => props.backgroundJobsActive && backgroundJobs.value.length > 0,
+	() => backgroundJobsActive.value && backgroundJobs.value.length > 0,
 );
 
 function focusInput(options?: FocusOptions) {
@@ -751,7 +782,17 @@ const chatPlaceholder = computed(() => {
 		: locale.baseText('agents.chat.input.placeholder');
 });
 
+const isCenteredEmpty = computed(
+	() =>
+		props.centerEmptyState && props.newSession && messages.value.length === 0 && !isStreaming.value,
+);
+
 watch(isStreaming, (v) => emit('update:streaming', v));
+watch(
+	() => messages.value.find((message) => message.role === 'user')?.content,
+	(text) => emit('first-user-message', text),
+	{ immediate: true },
+);
 watch(isSubmissionBlocked, (blocked) => {
 	if (!blocked) void submitQueuedExternalMessage();
 });
@@ -778,11 +819,26 @@ function consumeQueuedExternalMessage(message: string) {
 	emit('initial-consumed');
 }
 
+/**
+ * Call this when a message is accepted, on both the normal send path and the
+ * cancel-and-steer path (answering an open question card). It is the single
+ * place that needs to track a send on the n8n Chat channel.
+ */
+function trackSentToN8nChat(hadNoMessagesBeforeSend: boolean) {
+	if (props.channel !== 'n8n-chat' || !props.continueSessionId) return;
+	agentTelemetry.trackSentMessageToN8nChatAgent({
+		agentId: props.agentId,
+		threadId: props.continueSessionId,
+		isNewThread: hadNoMessagesBeforeSend,
+	});
+}
+
 async function onSubmit(): Promise<SubmitResult> {
 	const text = inputText.value.trim();
 	const files = [...attachedFiles.value];
 	if (!text && files.length === 0) return 'rejected';
 	if (isSubmissionBlocked.value) return 'busy';
+	const hadNoMessagesBeforeSend = messages.value.length === 0;
 	const target = {
 		projectId: props.projectId,
 		agentId: props.agentId,
@@ -800,6 +856,7 @@ async function onSubmit(): Promise<SubmitResult> {
 			if (!isCurrentTarget()) return;
 			if (inputText.value.trim() === text) inputText.value = '';
 			consumeQueuedExternalMessage(text);
+			trackSentToN8nChat(hadNoMessagesBeforeSend);
 		});
 		return result === 'busy' ? 'busy' : 'sent';
 	}
@@ -813,22 +870,27 @@ async function onSubmit(): Promise<SubmitResult> {
 		}
 		if (!isCurrentTarget()) return 'rejected';
 
-		const fingerprint = await buildAgentConfigFingerprint(
-			props.agentConfig,
-			props.connectedTriggers,
-		);
+		// The preview chat metric counts only builder test messages; n8n Chat sends have
+		// their own event (`trackSentToN8nChat`).
+		const fingerprint =
+			props.channel === 'chat'
+				? await buildAgentConfigFingerprint(props.agentConfig, props.connectedTriggers)
+				: undefined;
 		if (!isCurrentTarget()) return 'rejected';
 
 		const sending = sendMessage(text, files.length > 0 ? files : undefined, () => {
 			if (!isCurrentTarget()) return;
-			agentTelemetry.trackSubmittedMessage({
-				agentId: props.agentId,
-				status: props.agentStatus,
-				agentConfig: fingerprint,
-			});
+			if (fingerprint) {
+				agentTelemetry.trackSubmittedMessage({
+					agentId: props.agentId,
+					status: props.agentStatus,
+					agentConfig: fingerprint,
+				});
+			}
 			if (inputText.value.trim() === text) inputText.value = '';
 			attachedFiles.value = attachedFiles.value.filter((file) => !files.includes(file));
 			consumeQueuedExternalMessage(text);
+			trackSentToN8nChat(hadNoMessagesBeforeSend);
 		});
 		isPreparingToSend.value = false;
 		const result = await sending;
@@ -923,7 +985,13 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-	<aside v-if="visible" :class="[mode === 'inline' ? $style.inlinePanel : $style.panel]">
+	<aside
+		v-if="visible"
+		:class="[
+			mode === 'inline' ? $style.inlinePanel : $style.panel,
+			{ [$style.centeredEmpty]: isCenteredEmpty },
+		]"
+	>
 		<N8nCallout v-if="fatalError" theme="danger" :class="$style.errorBanner" slim>
 			<div :class="$style.errorBannerBody">
 				<span :class="$style.errorBannerTitle">
@@ -982,7 +1050,11 @@ onBeforeUnmount(() => {
 			</N8nCallout>
 		</div>
 
-		<AgentChatEmptyState v-if="messages.length === 0 && !isStreaming" :agent-config="agentConfig" />
+		<template v-if="messages.length === 0 && !isStreaming">
+			<slot name="empty-state">
+				<AgentChatEmptyState :agent-config="agentConfig" />
+			</slot>
+		</template>
 		<AgentChatMessageList
 			v-else
 			:messages="messages"
@@ -1051,7 +1123,7 @@ onBeforeUnmount(() => {
 								</span>
 								<span :class="$style.jobLabel">{{ job.label }}</span>
 								<N8nText
-									v-if="job.stopping || job.status === 'paused'"
+									v-if="job.stopping || job.stopped"
 									:class="$style.jobProgress"
 									size="small"
 									color="text-light"
@@ -1124,239 +1196,252 @@ onBeforeUnmount(() => {
 					/>
 				</div>
 			</div>
-			<ChatInputBase
-				v-else
-				ref="chatInput"
-				v-model="inputText"
-				:placeholder="chatPlaceholder"
-				:is-streaming="false"
-				:show-stop-button="showStop"
-				show-voice
-				:show-attach="showAttach"
-				:accepted-mime-types="acceptedMimeTypes"
-				:can-submit="!isSubmissionBlocked && hasDraft"
-				:disabled="isPreparingToSend"
-				data-testid="chat-input"
-				@submit="onSubmit"
-				@stop="stopGenerating"
-				@files-selected="handleFilesSelected"
-			>
-				<template v-if="displayedQueueRows.length" #header>
-					<div ref="messageQueue" :class="$style.messageQueue" data-testid="agent-message-queue">
-						<Draggable
-							:id="queueListId"
-							:model-value="visibleQueueRows"
-							item-key="id"
-							tag="ul"
-							:class="[$style.backgroundJobList, $style.queueList]"
-							:handle="`.${$style.queueDragHandle}:not(:disabled)`"
-							:disabled="!!queueEdit || isReorderingQueue"
-							:move="canDropQueueItem"
-							:ghost-class="$style.queueGhost"
-							:drag-class="$style.queueDragging"
-							@start="startQueueDrag"
-							@end="endQueueDrag"
-						>
-							<template #item="{ element: item, index }">
-								<li :data-queue-id="item.id" data-testid="agent-queued-message">
-									<N8nTooltip
-										:content="locale.baseText('agents.chat.queue.reorderTooltip')"
-										:disabled="!canDragQueueItem(index)"
-										placement="top"
-									>
-										<N8nButton
-											icon-only
-											variant="ghost"
-											size="xsmall"
-											:class="$style.queueDragHandle"
-											:disabled="!canDragQueueItem(index)"
-											:aria-label="
-												locale.baseText('agents.chat.queue.reorder', {
-													interpolate: { position: index + 1, count: displayedQueueRows.length },
-												})
-											"
-											aria-keyshortcuts="ArrowUp ArrowDown"
-											data-testid="agent-queue-drag-handle"
-											@keydown="onQueueHandleKeydown($event, index)"
-										>
-											<template #icon>
-												<N8nIcon icon="grip-vertical" size="large" aria-hidden="true" />
-											</template>
-										</N8nButton>
-									</N8nTooltip>
-									<div :class="$style.queuePreview" :title="item.message">
-										<N8nInput
-											v-if="queueEdit && queueEdit.item.id === item.id"
-											v-model="queueEdit.text"
-											type="textarea"
-											size="small"
-											:autosize="{ minRows: 1, maxRows: 6 }"
-											:readonly="queueEdit.unavailable || queueEdit.saving"
-											:aria-label="locale.baseText('agents.chat.queue.edit')"
-											autofocus
-											@keydown="onQueueEditKeydown"
-										/>
-										<span v-else-if="item.message">{{ item.message }}</span>
-										<p
-											v-if="queueEdit && queueEdit.item.id === item.id && queueEdit.unavailable"
-											:class="$style.queueEditNotice"
-											role="status"
-										>
-											{{
-												locale.baseText(
-													item.steeringExecutionId && queuedMessages.includes(item)
-														? 'agents.chat.queue.editSteeringUnavailable'
-														: 'agents.chat.queue.editUnavailable',
-												)
-											}}
-										</p>
-										<span
-											v-else-if="item.steeringExecutionId"
-											:class="$style.queueEditNotice"
-											role="status"
-										>
-											{{ locale.baseText('agents.chat.queue.steering') }}
-										</span>
-										<span v-for="attachment in item.attachments" :key="attachment.id">{{
-											attachment.fileName
-										}}</span>
-									</div>
-									<div :class="$style.queueActions">
-										<template v-if="queueEdit && queueEdit.item.id === item.id">
-											<N8nTooltip
-												:content="locale.baseText('agents.chat.queue.save')"
-												:disabled="!canSaveQueueEdit"
-												placement="top"
-											>
-												<N8nButton
-													icon-only
-													variant="ghost"
-													size="xsmall"
-													:disabled="!canSaveQueueEdit"
-													:aria-label="locale.baseText('agents.chat.queue.save')"
-													@click="saveQueueEdit"
-												>
-													<template #icon
-														><N8nIcon icon="check" size="large" aria-hidden="true"
-													/></template>
-												</N8nButton>
-											</N8nTooltip>
-											<N8nTooltip
-												:content="locale.baseText('agents.chat.queue.cancelEdit')"
-												:disabled="queueEdit.saving"
-												placement="top"
-											>
-												<N8nButton
-													icon-only
-													variant="ghost"
-													size="xsmall"
-													:disabled="queueEdit.saving"
-													:aria-label="locale.baseText('agents.chat.queue.cancelEdit')"
-													@click="queueEdit = undefined"
-												>
-													<template #icon
-														><N8nIcon icon="x" size="large" aria-hidden="true"
-													/></template>
-												</N8nButton>
-											</N8nTooltip>
-										</template>
-										<template v-else>
-											<N8nTooltip
-												:content="locale.baseText('agents.chat.queue.steerTooltip')"
-												:disabled="!canSteer || !!queueEdit || isQueueItemBusy(item)"
-												placement="top"
-											>
-												<N8nButton
-													variant="ghost"
-													size="xsmall"
-													:disabled="!canSteer || !!queueEdit || isQueueItemBusy(item)"
-													:aria-label="locale.baseText('agents.chat.queue.steer')"
-													@click="steerQueuedMessage(item.id)"
-												>
-													<template #icon
-														><N8nIcon icon="corner-down-right" size="large" aria-hidden="true"
-													/></template>
-													{{ locale.baseText('agents.chat.queue.steer') }}
-												</N8nButton>
-											</N8nTooltip>
-											<N8nTooltip
-												:content="locale.baseText('agents.chat.queue.edit')"
-												:disabled="!!queueEdit || isQueueItemBusy(item)"
-												placement="top"
-											>
-												<N8nButton
-													icon-only
-													variant="ghost"
-													size="xsmall"
-													:disabled="!!queueEdit || isQueueItemBusy(item)"
-													:aria-label="locale.baseText('agents.chat.queue.edit')"
-													@click="startQueueEdit(item)"
-												>
-													<template #icon
-														><N8nIcon icon="pencil" size="large" aria-hidden="true"
-													/></template>
-												</N8nButton>
-											</N8nTooltip>
-											<N8nTooltip
-												:content="locale.baseText('agents.chat.queue.remove')"
-												:disabled="isQueueItemBusy(item)"
-												placement="top"
-											>
-												<N8nButton
-													icon-only
-													variant="ghost"
-													size="xsmall"
-													:disabled="isQueueItemBusy(item)"
-													:aria-label="locale.baseText('agents.chat.queue.remove')"
-													@click="removeQueuedMessage(item.id)"
-												>
-													<template #icon>
-														<N8nIcon icon="trash-2" size="large" aria-hidden="true" />
-													</template>
-												</N8nButton>
-											</N8nTooltip>
-										</template>
-									</div>
-								</li>
-							</template>
-						</Draggable>
-						<N8nAiActivityStepButton
-							v-if="displayedQueueRows.length > 2"
-							:aria-expanded="queueExpanded"
-							:aria-controls="queueListId"
-							:disabled="!!queueOrder"
-							full-width
-							@click="queueExpanded = !queueExpanded"
-						>
-							{{
-								queuedMessages.length > 2
-									? locale.baseText('agents.chat.queue.title', {
-											adjustToNumber: queuedMessages.length - 2,
-											interpolate: { count: queuedMessages.length - 2 },
-										})
-									: locale.baseText('agents.chat.queue.edit')
-							}}
-							<template #suffix>
-								<N8nAiActivityStepChevron :open="queueExpanded" direction="down" />
-							</template>
-						</N8nAiActivityStepButton>
-					</div>
-				</template>
-				<template v-if="attachedFiles.length > 0" #attachments>
-					<div :class="$style.attachmentsStrip">
-						<AttachmentPreview
-							v-for="(file, index) in attachedFiles"
-							:key="`${file.name}-${index}`"
-							:file="file"
-							is-removable
-							@remove="handleFileRemove"
+			<div v-else :class="$style.composer">
+				<ChatInputBase
+					ref="chatInput"
+					v-model="inputText"
+					:placeholder="chatPlaceholder"
+					:is-streaming="false"
+					:show-stop-button="showStop"
+					show-voice
+					:show-attach="showAttach"
+					:accepted-mime-types="acceptedMimeTypes"
+					:can-submit="!isSubmissionBlocked && hasDraft"
+					:disabled="isPreparingToSend"
+					data-testid="chat-input"
+					@submit="onSubmit"
+					@stop="stopGenerating"
+					@files-selected="handleFilesSelected"
+				>
+					<template v-if="currentPlan || displayedQueueRows.length" #header>
+						<AgentChatPlan
+							v-if="currentPlan"
+							:key="`${agentId}:${continueSessionId ?? ''}:${currentPlan.planId}`"
+							:plan="currentPlan"
+							:trace-route="continueSessionId ? backgroundTraceRoute : undefined"
 						/>
-					</div>
-				</template>
-				<template #footer-start>
-					<slot name="footer-start" />
-				</template>
-			</ChatInputBase>
+						<div
+							v-if="displayedQueueRows.length"
+							ref="messageQueue"
+							:class="$style.messageQueue"
+							data-testid="agent-message-queue"
+						>
+							<Draggable
+								:id="queueListId"
+								:model-value="visibleQueueRows"
+								item-key="id"
+								tag="ul"
+								:class="[$style.backgroundJobList, $style.queueList]"
+								:handle="`.${$style.queueDragHandle}:not(:disabled)`"
+								:disabled="!!queueEdit || isReorderingQueue"
+								:move="canDropQueueItem"
+								:ghost-class="$style.queueGhost"
+								:drag-class="$style.queueDragging"
+								@start="startQueueDrag"
+								@end="endQueueDrag"
+							>
+								<template #item="{ element: item, index }">
+									<li :data-queue-id="item.id" data-testid="agent-queued-message">
+										<N8nTooltip
+											:content="locale.baseText('agents.chat.queue.reorderTooltip')"
+											:disabled="!canDragQueueItem(index)"
+											placement="top"
+										>
+											<N8nButton
+												icon-only
+												variant="ghost"
+												size="xsmall"
+												:class="$style.queueDragHandle"
+												:disabled="!canDragQueueItem(index)"
+												:aria-label="
+													locale.baseText('agents.chat.queue.reorder', {
+														interpolate: { position: index + 1, count: displayedQueueRows.length },
+													})
+												"
+												aria-keyshortcuts="ArrowUp ArrowDown"
+												data-testid="agent-queue-drag-handle"
+												@keydown="onQueueHandleKeydown($event, index)"
+											>
+												<template #icon>
+													<N8nIcon icon="grip-vertical" size="large" aria-hidden="true" />
+												</template>
+											</N8nButton>
+										</N8nTooltip>
+										<div :class="$style.queuePreview" :title="item.message">
+											<N8nInput
+												v-if="queueEdit && queueEdit.item.id === item.id"
+												v-model="queueEdit.text"
+												type="textarea"
+												size="small"
+												:autosize="{ minRows: 1, maxRows: 6 }"
+												:readonly="queueEdit.unavailable || queueEdit.saving"
+												:aria-label="locale.baseText('agents.chat.queue.edit')"
+												autofocus
+												@keydown="onQueueEditKeydown"
+											/>
+											<span v-else-if="item.message">{{ item.message }}</span>
+											<p
+												v-if="queueEdit && queueEdit.item.id === item.id && queueEdit.unavailable"
+												:class="$style.queueEditNotice"
+												role="status"
+											>
+												{{
+													locale.baseText(
+														item.steeringExecutionId && queuedMessages.includes(item)
+															? 'agents.chat.queue.editSteeringUnavailable'
+															: 'agents.chat.queue.editUnavailable',
+													)
+												}}
+											</p>
+											<span
+												v-else-if="item.steeringExecutionId"
+												:class="$style.queueEditNotice"
+												role="status"
+											>
+												{{ locale.baseText('agents.chat.queue.steering') }}
+											</span>
+											<span v-for="attachment in item.attachments" :key="attachment.id">{{
+												attachment.fileName
+											}}</span>
+										</div>
+										<div :class="$style.queueActions">
+											<template v-if="queueEdit && queueEdit.item.id === item.id">
+												<N8nTooltip
+													:content="locale.baseText('agents.chat.queue.save')"
+													:disabled="!canSaveQueueEdit"
+													placement="top"
+												>
+													<N8nButton
+														icon-only
+														variant="ghost"
+														size="xsmall"
+														:disabled="!canSaveQueueEdit"
+														:aria-label="locale.baseText('agents.chat.queue.save')"
+														@click="saveQueueEdit"
+													>
+														<template #icon
+															><N8nIcon icon="check" size="large" aria-hidden="true"
+														/></template>
+													</N8nButton>
+												</N8nTooltip>
+												<N8nTooltip
+													:content="locale.baseText('agents.chat.queue.cancelEdit')"
+													:disabled="queueEdit.saving"
+													placement="top"
+												>
+													<N8nButton
+														icon-only
+														variant="ghost"
+														size="xsmall"
+														:disabled="queueEdit.saving"
+														:aria-label="locale.baseText('agents.chat.queue.cancelEdit')"
+														@click="queueEdit = undefined"
+													>
+														<template #icon
+															><N8nIcon icon="x" size="large" aria-hidden="true"
+														/></template>
+													</N8nButton>
+												</N8nTooltip>
+											</template>
+											<template v-else>
+												<N8nTooltip
+													:content="locale.baseText('agents.chat.queue.steerTooltip')"
+													:disabled="!canSteer || !!queueEdit || isQueueItemBusy(item)"
+													placement="top"
+												>
+													<N8nButton
+														variant="ghost"
+														size="xsmall"
+														:disabled="!canSteer || !!queueEdit || isQueueItemBusy(item)"
+														:aria-label="locale.baseText('agents.chat.queue.steer')"
+														@click="steerQueuedMessage(item.id)"
+													>
+														<template #icon
+															><N8nIcon icon="corner-down-right" size="large" aria-hidden="true"
+														/></template>
+														{{ locale.baseText('agents.chat.queue.steer') }}
+													</N8nButton>
+												</N8nTooltip>
+												<N8nTooltip
+													:content="locale.baseText('agents.chat.queue.edit')"
+													:disabled="!!queueEdit || isQueueItemBusy(item)"
+													placement="top"
+												>
+													<N8nButton
+														icon-only
+														variant="ghost"
+														size="xsmall"
+														:disabled="!!queueEdit || isQueueItemBusy(item)"
+														:aria-label="locale.baseText('agents.chat.queue.edit')"
+														@click="startQueueEdit(item)"
+													>
+														<template #icon
+															><N8nIcon icon="pencil" size="large" aria-hidden="true"
+														/></template>
+													</N8nButton>
+												</N8nTooltip>
+												<N8nTooltip
+													:content="locale.baseText('agents.chat.queue.remove')"
+													:disabled="isQueueItemBusy(item)"
+													placement="top"
+												>
+													<N8nButton
+														icon-only
+														variant="ghost"
+														size="xsmall"
+														:disabled="isQueueItemBusy(item)"
+														:aria-label="locale.baseText('agents.chat.queue.remove')"
+														@click="removeQueuedMessage(item.id)"
+													>
+														<template #icon>
+															<N8nIcon icon="trash-2" size="large" aria-hidden="true" />
+														</template>
+													</N8nButton>
+												</N8nTooltip>
+											</template>
+										</div>
+									</li>
+								</template>
+							</Draggable>
+							<N8nAiActivityStepButton
+								v-if="displayedQueueRows.length > 2"
+								:aria-expanded="queueExpanded"
+								:aria-controls="queueListId"
+								:disabled="!!queueOrder"
+								full-width
+								@click="queueExpanded = !queueExpanded"
+							>
+								{{
+									queuedMessages.length > 2
+										? locale.baseText('agents.chat.queue.title', {
+												adjustToNumber: queuedMessages.length - 2,
+												interpolate: { count: queuedMessages.length - 2 },
+											})
+										: locale.baseText('agents.chat.queue.edit')
+								}}
+								<template #suffix>
+									<N8nAiActivityStepChevron :open="queueExpanded" direction="down" />
+								</template>
+							</N8nAiActivityStepButton>
+						</div>
+					</template>
+					<template v-if="attachedFiles.length > 0" #attachments>
+						<div :class="$style.attachmentsStrip">
+							<AttachmentPreview
+								v-for="(file, index) in attachedFiles"
+								:key="`${file.name}-${index}`"
+								:file="file"
+								is-removable
+								@remove="handleFileRemove"
+							/>
+						</div>
+					</template>
+					<template #footer-start>
+						<slot name="footer-start" />
+					</template>
+				</ChatInputBase>
+				<slot name="input-footer" />
+			</div>
 		</div>
 	</aside>
 </template>
@@ -1382,6 +1467,15 @@ onBeforeUnmount(() => {
 	min-width: 0;
 }
 
+.centeredEmpty {
+	justify-content: center;
+}
+
+.composer {
+	display: flex;
+	flex-direction: column;
+}
+
 .inputArea {
 	flex-shrink: 0;
 	padding: var(--spacing--xs) var(--spacing--sm);
@@ -1404,6 +1498,7 @@ onBeforeUnmount(() => {
 }
 
 .backgroundJobs {
+	display: none;
 	background: var(--background--surface);
 	box-shadow: var(--shadow--outline), var(--shadow--xs);
 	border-radius: var(--radius--xs);
