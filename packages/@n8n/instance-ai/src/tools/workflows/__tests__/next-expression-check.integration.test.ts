@@ -585,7 +585,7 @@ export default workflow(
 		]);
 	}, 120_000);
 
-	it('types the values keys and matchOn of a sheet row by the header cells of the tab', async () => {
+	it('types matchOn of a sheet row by the header cells of the tab, and takes a values key for a new column', async () => {
 		const exploreResources = vi.fn(async () => ({
 			results: [
 				{ name: 'Name', value: 'Name' },
@@ -618,21 +618,15 @@ export default workflow(
 			await writeFile(join(root, 'src/workflow.ts'), text);
 			return await compileWorkflowSource(withHeader, 'src/workflow.ts', text);
 		};
-		const right = await buildWith(
-			source('Name: (item) => item.name, Email: (item) => item.email', 'Email'),
-		);
+		const row = 'Name: (item) => item.name, Email: (item) => item.email, Phone: "555"';
+		const right = await buildWith(source(row, 'Email'));
 		expect(right.success ? [] : right.errors).toEqual([]);
 		expect(exploreResources).toHaveBeenCalledWith(
 			expect.objectContaining({ methodName: 'googleSheets.sheetName' }),
 		);
-		const typo = await buildWith(
-			source('Name: (item) => item.name, Emial: (item) => item.email', 'Emial'),
-		);
-		expect(typo.success ? [] : typo.errors).toEqual([
-			expect.stringContaining("'Emial' does not exist in type"),
-			expect.stringContaining(
-				'error TS2820: Type \'"Emial"\' is not assignable to type \'"Email" | "Name"\'',
-			),
+		const newColumn = await buildWith(source(row, 'Phone'));
+		expect(newColumn.success ? [] : newColumn.errors).toEqual([
+			expect.stringContaining('Type \'"Phone"\' is not assignable to type \'"Email" | "Name"\''),
 		]);
 	}, 120_000);
 

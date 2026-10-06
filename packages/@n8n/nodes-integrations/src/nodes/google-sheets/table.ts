@@ -30,7 +30,7 @@ export const cellFormat = t
 export const rowValues = t
 	.json()
 	.title('Values')
-	.hint('Header text -> value; to add a column, select the tab by ID, not by name');
+	.hint('Header text -> value; a key not in the header adds a column');
 
 /**
  * The column keys of the header cells that the `googleSheets.sheetName` field lookup lists. The
@@ -39,11 +39,14 @@ export const rowValues = t
 export const headerKeysOf = (fields: readonly ResourceField[], headerRow: unknown) =>
 	(headerRow ?? 1) === 1 ? [...new Set(fields.map(({ name }) => columnKey(name)))] : [];
 
-/** `values` with the header keys only. A write skips `row_number`, so a read item fits too. */
+/**
+ * `values` with the header keys. Another key stays open: the write adds it as a column. A write
+ * skips `row_number`, so a read item fits too.
+ */
 export const headerValuesOf = (keys: readonly string[]): JsonSchema => ({
 	type: 'object',
 	properties: Object.fromEntries([ROW_NUMBER, ...keys].map((key) => [key, {}])),
-	additionalProperties: false,
+	additionalProperties: {},
 });
 
 /** A row as the read operation emits it. */

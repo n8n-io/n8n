@@ -738,6 +738,7 @@ import { googleGemini } from '@n8n/nodes/googleGemini';`;
 					'\t\t\t\trow_number?: Value<I, C, OpenValue>;',
 					'\t\t\t\tName?: Value<I, C, OpenValue>;',
 					'\t\t\t\tEmail?: Value<I, C, OpenValue>;',
+					'\t\t\t\t[key: string]: Value<I, C, OpenValue> | undefined;',
 					'\t\t\t};',
 					'\t\t\tmatchOn: "Name" | "Email";',
 					'\t\t};',

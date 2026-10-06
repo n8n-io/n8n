@@ -958,7 +958,7 @@ describe('googleSheets.sheet lookup', () => {
 			values: {
 				type: 'object',
 				properties: { row_number: {}, Name: {}, row_number_1: {} },
-				additionalProperties: false,
+				additionalProperties: {},
 			},
 			matchOn: { type: 'string', enum: ['Name', 'row_number_1'] },
 		});
