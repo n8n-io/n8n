@@ -123,7 +123,7 @@ export class ExtractFromFile implements INodeType {
 		if (spreadsheet.operations.includes(operation)) {
 			returnData = await spreadsheet.execute.call(this, items, 'operation', {
 				failOnCsvBufferError: version > 1,
-				formatSpreadsheetValues: version >= 1.2,
+				formatSpreadsheetDates: version >= 1.2,
 			});
 		}
 

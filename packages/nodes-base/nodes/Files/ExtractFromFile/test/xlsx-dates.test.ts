@@ -9,17 +9,38 @@ import { execute as readSpreadsheet } from '../../../SpreadsheetFile/v2/fromFile
 import { ExtractFromFile } from '../ExtractFromFile.node';
 
 describe('Extract from spreadsheet date cells', () => {
-	const sheet = utils.aoa_to_sheet([
-		['Start Date', 'Count', 'Amount', 'Enabled', 'ID', 'Rate'],
-		[new Date('2026-07-02T00:00:00.000Z'), 42, 1234.5, true, 123456789012345, 0.25],
-		[new Date('2026-07-03T00:00:00.000Z'), 43, 9876.5, false, 987654321012345, 0.5],
-	]);
+	const sheet = utils.aoa_to_sheet(
+		[
+			['Start Date', 'Count', 'Amount', 'Enabled', 'ID', 'Rate', 'Due At'],
+			[
+				new Date('2026-07-02T00:00:00.000Z'),
+				42,
+				1234.5,
+				true,
+				123456789012345,
+				0.25,
+				new Date('2026-07-02T15:30:00.000Z'),
+			],
+			[
+				new Date('2026-07-03T00:00:00.000Z'),
+				43,
+				9876.5,
+				false,
+				987654321012345,
+				0.5,
+				new Date('2026-07-03T18:15:00.000Z'),
+			],
+		],
+		{ UTC: true },
+	);
 	sheet.A2.z = 'yyyy/mm/dd';
 	sheet.A3.z = 'yyyy/mm/dd';
 	sheet.C2.z = '#,##0.00';
 	sheet.C3.z = '#,##0.00';
 	sheet.F2.z = '0%';
 	sheet.F3.z = '0%';
+	sheet.G2.z = 'm/d/yy h:mm';
+	sheet.G3.z = 'm/d/yy h:mm';
 	const workbook = utils.book_new();
 	utils.book_append_sheet(workbook, sheet, 'Dates');
 	const buffer: Buffer = write(workbook, { bookType: 'xlsx', type: 'buffer' });
@@ -53,7 +74,7 @@ describe('Extract from spreadsheet date cells', () => {
 		return await new ExtractFromFile().execute.call(context);
 	}
 
-	it('returns the displayed dates when RAW Data is disabled (NODE-5491)', async () => {
+	it('returns ISO dates and unchanged non-date values when RAW Data is disabled (NODE-5491)', async () => {
 		// NODE-5491: Excel stores dates as numbers with a date format.
 		const parsedSheet = read(buffer).Sheets.Dates;
 		expect(parsedSheet.A2).toMatchObject({ t: 'n', w: '2026/07/02' });
@@ -65,23 +86,25 @@ describe('Extract from spreadsheet date cells', () => {
 			[
 				{
 					json: {
-						'Start Date': '2026/07/02',
+						'Start Date': '2026-07-02T00:00:00.000Z',
 						Count: 42,
 						Amount: 1234.5,
 						Enabled: true,
 						ID: 123456789012345,
 						Rate: 0.25,
+						'Due At': '2026-07-02T15:30:00.000Z',
 					},
 					pairedItem: { item: 0 },
 				},
 				{
 					json: {
-						'Start Date': '2026/07/03',
+						'Start Date': '2026-07-03T00:00:00.000Z',
 						Count: 43,
 						Amount: 9876.5,
 						Enabled: false,
 						ID: 987654321012345,
 						Rate: 0.5,
+						'Due At': '2026-07-03T18:15:00.000Z',
 					},
 					pairedItem: { item: 0 },
 				},
@@ -95,26 +118,46 @@ describe('Extract from spreadsheet date cells', () => {
 		expect(result[0].map((item) => item.json['Start Date'])).toEqual([46205, 46206]);
 	});
 
-	it('returns displayed dates when RAW Data is not set', async () => {
+	it('returns ISO dates when RAW Data is not set', async () => {
 		const result = await extractDates(undefined);
 
-		expect(result[0].map((item) => item.json['Start Date'])).toEqual(['2026/07/02', '2026/07/03']);
+		expect(result[0].map((item) => item.json['Start Date'])).toEqual([
+			'2026-07-02T00:00:00.000Z',
+			'2026-07-03T00:00:00.000Z',
+		]);
 	});
 
-	it.each(['xls', 'ods'] as const)('returns displayed dates in %s files', async (fileFormat) => {
+	it.each(['xls', 'ods'] as const)('returns ISO dates in %s files', async (fileFormat) => {
 		const fileBuffer: Buffer = write(workbook, { bookType: fileFormat, type: 'buffer' });
-		const displayedDate = read(fileBuffer).Sheets.Dates.A2.w;
 		const context = createContext(false, 1.2, fileFormat, fileBuffer);
 		const result = await new ExtractFromFile().execute.call(context);
 
 		expect(result[0][0].json).toMatchObject({
-			'Start Date': displayedDate,
+			'Start Date': '2026-07-02T00:00:00.000Z',
 			Count: 42,
 			Amount: 1234.5,
 			Enabled: true,
 			ID: 123456789012345,
+			'Due At': '2026-07-02T15:30:00.000Z',
 		});
 	});
+
+	it.each(['UTC', 'America/Los_Angeles', 'Pacific/Auckland'])(
+		'keeps dates in UTC with server timezone %s',
+		async (timezone) => {
+			vi.stubEnv('TZ', timezone);
+			try {
+				const result = await extractDates(false);
+
+				expect(result[0][0].json).toMatchObject({
+					'Start Date': '2026-07-02T00:00:00.000Z',
+					'Due At': '2026-07-02T15:30:00.000Z',
+				});
+			} finally {
+				vi.unstubAllEnvs();
+			}
+		},
+	);
 
 	it.each(['html', 'rtf'] as const)(
 		'keeps numeric cells as numbers in %s files',
@@ -129,6 +172,19 @@ describe('Extract from spreadsheet date cells', () => {
 				{ A: 1, B: 2, C: 3 },
 				{ A: 4, B: 5, C: 6 },
 			]);
+		},
+	);
+
+	it.each(['html', 'rtf'] as const)(
+		'keeps date handling unchanged in %s files',
+		async (fileFormat) => {
+			const fileBuffer: Buffer = write(workbook, { bookType: fileFormat, type: 'buffer' });
+			const previous = createContext(false, 1.1, fileFormat, fileBuffer);
+			const current = createContext(false, 1.2, fileFormat, fileBuffer);
+
+			expect(await new ExtractFromFile().execute.call(current)).toEqual(
+				await new ExtractFromFile().execute.call(previous),
+			);
 		},
 	);
 

@@ -80,14 +80,14 @@ export const description: INodeProperties[] = [
 
 export interface FromFileOptions {
 	failOnCsvBufferError?: boolean;
-	formatSpreadsheetValues?: boolean;
+	formatSpreadsheetDates?: boolean;
 }
 
 export async function execute(
 	this: IExecuteFunctions,
 	items: INodeExecutionData[],
 	fileFormatProperty = 'fileFormat',
-	{ failOnCsvBufferError = false, formatSpreadsheetValues = false }: FromFileOptions = {},
+	{ failOnCsvBufferError = false, formatSpreadsheetDates = false }: FromFileOptions = {},
 ) {
 	const returnData: INodeExecutionData[] = [];
 	let fileExtension;
@@ -171,9 +171,13 @@ export async function execute(
 				}
 			} else {
 				const xlsxOptions: ParsingOptions = { raw: options.rawData as boolean };
-				const formatDates = formatSpreadsheetValues && options.rawData !== true;
+				const formatDates =
+					formatSpreadsheetDates &&
+					(fileFormat === 'xlsx' || fileFormat === 'xls' || fileFormat === 'ods') &&
+					options.rawData !== true;
 				if (formatDates) {
 					xlsxOptions.cellDates = true;
+					xlsxOptions.UTC = true;
 				}
 
 				let buffer: Buffer;
@@ -222,11 +226,10 @@ export async function execute(
 							't' in cell &&
 							cell.t === 'd' &&
 							'v' in cell &&
-							'w' in cell &&
-							typeof cell.w === 'string'
+							cell.v instanceof Date
 						) {
 							cell.t = 's';
-							cell.v = cell.w;
+							cell.v = cell.v.toISOString();
 							// ODS can parse formatted text as a date if the cell keeps its date format.
 							if ('z' in cell) delete cell.z;
 						}
@@ -235,6 +238,9 @@ export async function execute(
 
 				// Convert it to json
 				const sheetToJsonOptions: Sheet2JSONOpts = {};
+				if (formatDates) {
+					sheetToJsonOptions.UTC = true;
+				}
 				if (options.range) {
 					if (isNaN(options.range as number)) {
 						sheetToJsonOptions.range = options.range;
