@@ -54,8 +54,9 @@ Postgres and SQLite both receive the table.
 1. A keyed write takes the SQLite writer lock. A client that sends a key on
    every request should use Postgres.
 2. The same key can run the operation again after the row expires.
-3. A create response can be as large as the request. Express already caps that
-   size. Many keyed creates hold that payload until cleanup.
+3. A create response can be larger than the request. The JSON body parser caps
+   the incoming payload. Express does not cap the outgoing response. Many keyed
+   creates hold that response until cleanup.
 4. The request contract is recorded in
    ADR-20261005-replay-the-first-public-api-response-for-an-idempotency-key.
 
