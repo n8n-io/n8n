@@ -147,6 +147,10 @@ can build a token. A step-bound resume URL and an approval callback end one wait
 - **Sign the token with the shared secret of the two planes.** We rejected it for two reasons. The
   control plane holds that secret, so the control plane could build a URL. A rotation of it would
   also invalidate every outstanding resume URL. This option would need no new secret.
+- **Sign with an asymmetric key.** We did not select it because the data plane is the only party
+  that signs and verifies a token, and an asymmetric signature does not fit in the 64 bytes of an
+  approval callback. This option would let other parties verify a token without being able to sign
+  one.
 
 ## Consequences
 
