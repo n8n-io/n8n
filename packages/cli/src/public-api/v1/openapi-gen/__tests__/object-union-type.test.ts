@@ -32,6 +32,21 @@ describe('addObjectTypeToObjectUnions', () => {
 		expect(schema).toEqual({ type: 'array', items: { type: 'object', oneOf: [webhook, syslog] } });
 	});
 
+	it('normalizes a union under a property named like a data key', () => {
+		const schema = {
+			type: 'object',
+			properties: { default: { oneOf: [webhook, syslog] }, enum: { oneOf: [webhook, syslog] } },
+		};
+		addObjectTypeToObjectUnions(schema);
+		expect(schema).toEqual({
+			type: 'object',
+			properties: {
+				default: { type: 'object', oneOf: [webhook, syslog] },
+				enum: { type: 'object', oneOf: [webhook, syslog] },
+			},
+		});
+	});
+
 	it('does not rewrite example data', () => {
 		const schema = { type: 'object', example: { oneOf: [webhook, syslog] } };
 		addObjectTypeToObjectUnions(schema);
