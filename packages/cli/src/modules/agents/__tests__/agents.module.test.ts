@@ -28,6 +28,7 @@ import { SlackIntegration } from '../integrations/platforms/slack/slack-integrat
 import { TelegramIntegration } from '../integrations/platforms/telegram-integration';
 import { WhatsAppIntegration } from '../integrations/platforms/whatsapp-integration';
 import { AgentExecutionLogStore } from '../execution-log/agent-execution-log-store';
+import { AgentBudgetSpendRepository } from '../repositories/agent-budget-spend.repository';
 import { AgentHistoryRepository } from '../repositories/agent-history.repository';
 import { AgentCredentialDependencyRepository } from '../repositories/agent-credential-dependency.repository';
 import { AgentWorkflowDependencyRepository } from '../repositories/agent-workflow-dependency.repository';
@@ -52,6 +53,7 @@ function setUpContainerForInit() {
 	Container.set(ExecutionDataJsonStore, mock<ExecutionDataJsonStore>());
 	Container.set(AgentRuntimeCacheService, mock<AgentRuntimeCacheService>());
 	Container.set(AgentHistoryRepository, mock<AgentHistoryRepository>());
+	Container.set(AgentBudgetSpendRepository, mock<AgentBudgetSpendRepository>());
 	Container.set(AgentSecureRuntime, mock<AgentSecureRuntime>());
 
 	Container.set(AgentRepository, mock<AgentRepository>());
