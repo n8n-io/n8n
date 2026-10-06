@@ -1,5 +1,11 @@
 import { readFileSync } from 'fs';
-import type { IDataObject, INode, INodePropertyOptions, IPollFunctions } from 'n8n-workflow';
+import type {
+	IDataObject,
+	INode,
+	INodePropertyOptions,
+	IPollFunctions,
+	NodeOperationError,
+} from 'n8n-workflow';
 import { join } from 'path';
 import { mock } from 'vitest-mock-extended';
 
@@ -20,6 +26,15 @@ vi.mock('../transport/delta', async (importOriginal) => ({
 }));
 
 const deltaRequest = vi.mocked(microsoftApiRequestDelta);
+
+const failureDescription = async (poll: () => Promise<unknown>) => {
+	try {
+		await poll();
+	} catch (error) {
+		return (error as NodeOperationError).description;
+	}
+	throw new Error('expected the poll to fail');
+};
 
 describe('Microsoft SharePoint Trigger', () => {
 	const { description } = new MicrosoftSharePointTrigger();
@@ -353,6 +368,30 @@ describe('Microsoft SharePoint Trigger', () => {
 			deltaRequest.mockRejectedValue(Object.assign(new Error('Not Found'), { statusCode: 404 }));
 
 			await expect(poll()).rejects.toThrow('no longer reachable');
+		});
+
+		// A 404 means Graph could not find the ID. A rename keeps the ID, and a lost
+		// permission answers 403, so neither reaches this branch. Saying otherwise
+		// sends the reader to check the wrong thing.
+		it('blames deletion rather than a rename or a lost permission', async () => {
+			const { poll } = pollSetup({ mode: 'manual' });
+			deltaRequest.mockRejectedValue(Object.assign(new Error('Not Found'), { statusCode: 404 }));
+
+			const reason = await failureDescription(poll);
+
+			expect(reason).toContain('most likely deleted');
+			expect(reason).toContain('A rename does not cause this');
+			expect(reason).toContain('returns a permission error instead');
+		});
+
+		it('says a rename matters for a list given by title, and never for a library', async () => {
+			deltaRequest.mockRejectedValue(Object.assign(new Error('Not Found'), { statusCode: 404 }));
+
+			const list = await failureDescription(pollSetup({ mode: 'manual', resource: 'list' }).poll);
+			const library = await failureDescription(pollSetup({ mode: 'manual' }).poll);
+
+			expect(list).toContain('given by title');
+			expect(library).not.toContain('given by title');
 		});
 
 		it('goes quiet while one failure persists, rather than failing every poll', async () => {
