@@ -787,7 +787,11 @@ describe('SystemTaskRunner', () => {
 
 			const [, handler] = durableScheduler.registerTaskHandler.mock.calls[0];
 			await expect(
-				handler.execute(mock<ClaimedTask>(), createDispatchReporter(vi.fn())),
+				handler.execute(
+					mock<ClaimedTask>(),
+					createDispatchReporter(vi.fn()),
+					new AbortController().signal,
+				),
 			).rejects.toThrow(error);
 
 			expect(errorReporter.error).toHaveBeenCalledWith(error, {
@@ -812,7 +816,11 @@ describe('SystemTaskRunner', () => {
 			await initRunner(runner);
 
 			const [, handler] = durableScheduler.registerTaskHandler.mock.calls[0];
-			const executing = handler.execute(mock<ClaimedTask>(), createDispatchReporter(vi.fn()));
+			const executing = handler.execute(
+				mock<ClaimedTask>(),
+				createDispatchReporter(vi.fn()),
+				new AbortController().signal,
+			);
 			expect(runSignal?.aborted).toBe(false);
 
 			await runner.shutdown();
@@ -1331,7 +1339,11 @@ describe('SystemTaskRunner', () => {
 			await initRunner(runner);
 
 			const [, handler] = durableScheduler.registerTaskHandler.mock.calls[0];
-			await handler.execute(mock<ClaimedTask>(), createDispatchReporter(vi.fn()));
+			await handler.execute(
+				mock<ClaimedTask>(),
+				createDispatchReporter(vi.fn()),
+				new AbortController().signal,
+			);
 
 			expect(eventService.emit).toHaveBeenCalledWith('system-task-run-started', {
 				name: 'dummy',

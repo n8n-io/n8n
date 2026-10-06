@@ -6,7 +6,15 @@ import {
 	NodeConnectionTypes,
 } from 'n8n-workflow';
 
+import { getDrives } from './drive';
+import { getSites, SITE_ID_REGEX } from './site';
 import { SERVICE_PRINCIPAL_AUTH } from './transport';
+
+const GUID = '[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}';
+// Rejects a bare GUID, which is a list ID: the one value likely to land in this
+// field by mistake. Nothing further is asserted about a drive ID, because
+// rejecting a legitimate one is the worse failure.
+const DRIVE_ID_REGEX = `^(?!${GUID}$)\\S+$`;
 
 export class MicrosoftSharePointTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -74,7 +82,114 @@ export class MicrosoftSharePointTrigger implements INodeType {
 				],
 				default: 'microsoftOAuth2Api',
 			},
+			{
+				displayName: 'Site',
+				name: 'site',
+				type: 'resourceLocator',
+				required: true,
+				default: { mode: 'list', value: '' },
+				description: 'The SharePoint site holding the library to watch',
+				modes: [
+					{
+						displayName: 'From List',
+						name: 'list',
+						type: 'list',
+						typeOptions: { searchListMethod: 'getSites', searchable: true },
+					},
+					{
+						displayName: 'By URL',
+						name: 'url',
+						type: 'string',
+						placeholder: 'e.g. https://contoso.sharepoint.com/sites/mysite',
+						validation: [
+							{
+								type: 'regex',
+								properties: {
+									regex: '^https://.+',
+									errorMessage: 'The URL must start with https://',
+								},
+							},
+						],
+					},
+					{
+						displayName: 'By ID',
+						name: 'id',
+						type: 'string',
+						placeholder: 'e.g. contoso.sharepoint.com,5a58bb09-…,9f0d…',
+						validation: [
+							{
+								type: 'regex',
+								properties: {
+									regex: SITE_ID_REGEX,
+									errorMessage:
+										'Use the ID from the site picker or Graph (hostname,GUID,GUID), a site GUID, a hostname, or "root". For a site address, switch the field to URL mode.',
+								},
+							},
+						],
+					},
+				],
+			},
+			{
+				displayName: 'Document Library',
+				name: 'drive',
+				type: 'resourceLocator',
+				required: true,
+				default: { mode: 'list', value: '' },
+				description: 'The document library to watch for changes',
+				displayOptions: { hide: { site: [''] } },
+				typeOptions: { loadOptionsDependsOn: ['site.value'] },
+				modes: [
+					{
+						displayName: 'From List',
+						name: 'list',
+						type: 'list',
+						typeOptions: { searchListMethod: 'getDrives', searchable: true },
+					},
+					{
+						displayName: 'By ID',
+						name: 'id',
+						type: 'string',
+						placeholder: 'e.g. b!zXyF9k…',
+						validation: [
+							{
+								type: 'regex',
+								properties: {
+									regex: DRIVE_ID_REGEX,
+									errorMessage:
+										"That looks like a list ID. This field needs the library's drive ID, which the picker supplies.",
+								},
+							},
+						],
+					},
+				],
+			},
+			{
+				displayName: 'Events',
+				name: 'events',
+				type: 'multiOptions',
+				required: true,
+				default: ['changed', 'deleted'],
+				description: 'Which changes in the library start the workflow',
+				options: [
+					{
+						name: 'Changed',
+						value: 'changed',
+						description:
+							"A file was added, edited, renamed, or moved. Graph reports each item's latest state rather than every change, so a new file and an edited one arrive the same way.",
+					},
+					{
+						name: 'Deleted',
+						value: 'deleted',
+						description:
+							'A file was deleted. Graph drops most fields from a deletion entry, so it carries little beyond the ID.',
+					},
+				],
+			},
 		],
+	};
+
+	methods = {
+		listSearch: { getSites, getDrives },
 	};
 
 	async poll(this: IPollFunctions): Promise<INodeExecutionData[][] | null> {

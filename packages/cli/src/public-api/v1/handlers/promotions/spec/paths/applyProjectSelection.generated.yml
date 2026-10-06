@@ -1,0 +1,74 @@
+operationId: applyProjectSelection
+tags:
+  - Promotions
+summary: Apply a selection of a project's workflows
+description: Applies selected workflow changes from the project's Apply branch. Send the selected change-list IDs in workflowIds. The server imports IDs present on the branch for this project. It removes instance workflows owned by this project when their IDs are absent from the branch. Duplicate or invalid IDs reject the whole request. Unselected content stays unchanged. Optionally send expectedSource with the configId, branchName, and full commitSha from the reviewed change preview. Status `source-changed` means the source changed since that review and nothing was imported. Status `blocked` returns binding details before import writes when the selection needs binding setup. Retain configId and git for Continue. Status `applied` includes counts and warnings. Inspect status before reading counts. Requires a cloned Apply direction for the project's resolved promotion connection. The API key needs the gitConnection:pull scope. The importer checks user write permissions.
+x-required-scope: gitConnection:pull
+x-eov-operation-id: unreachable
+x-eov-operation-handler: v1/handlers/decorator-routed.handler
+x-decorator-routed: true
+parameters:
+  - schema:
+      type: string
+    required: true
+    description: The ID of the project.
+    name: projectId
+    in: path
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        properties:
+          workflowIds:
+            type: array
+            items:
+              type: string
+              minLength: 1
+              maxLength: 36
+            minItems: 1
+          expectedSource:
+            type: object
+            properties:
+              configId:
+                type: string
+                minLength: 1
+                maxLength: 36
+              branchName:
+                type: string
+                minLength: 1
+              commitSha:
+                type: string
+                pattern: ^[0-9a-f]{40}([0-9a-f]{24})?$
+            required:
+              - configId
+              - branchName
+              - commitSha
+            additionalProperties: false
+        required:
+          - workflowIds
+        additionalProperties: false
+responses:
+  '200':
+    description: Operation successful.
+    content:
+      application/json:
+        schema:
+          $ref: ../../../../shared/spec/schemas/applyPackageResultDto.generated.yml
+  '400':
+    $ref: ../../../../shared/spec/responses/badRequest.yml
+  '401':
+    $ref: ../../../../shared/spec/responses/unauthorized.yml
+  '403':
+    $ref: ../../../../shared/spec/responses/forbidden.yml
+  '404':
+    $ref: ../../../../shared/spec/responses/notFound.yml
+  '409':
+    $ref: ../../../../shared/spec/responses/conflict.yml
+  '415':
+    $ref: ../../../../shared/spec/responses/unsupportedMediaType.yml
+  '422':
+    $ref: ../../../../shared/spec/responses/unprocessableEntity.yml
+  '503':
+    $ref: ../../../../shared/spec/responses/serviceUnavailable.yml
