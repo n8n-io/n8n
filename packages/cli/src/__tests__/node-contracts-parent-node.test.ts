@@ -1,4 +1,4 @@
-import { parentNode } from '../index';
+import { parentNode } from '@/node-contracts-catalog';
 
 describe('parentNode', () => {
 	it('gives GitHub with the base URL of its credentials and the input of its resources', () => {

@@ -573,7 +573,7 @@ export function mockHttp(routes: readonly MockRoute[]): MockFetch {
  * Evaluates an n8n expression with only `variables` in scope, as `errorOf` reads `$response`.
  * There is no workflow, so the workflow variables are empty.
  */
-function evaluateAlone(expression: string, variables: IDataObject): unknown {
+export function evaluateAlone(expression: string, variables: IDataObject): unknown {
 	const data: IWorkflowDataProxyData = {
 		...variables,
 		$binary: undefined,

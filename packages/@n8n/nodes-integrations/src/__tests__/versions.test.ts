@@ -244,8 +244,6 @@ describe('bundled versions', () => {
 			'microsoftTeams.chatMessage.create',
 			'notion.databasePage.getAll',
 			'openAi.text.message',
-			'slack.channel.getAll',
-			'slack.channel.history',
 			'whatsApp.message.send',
 			'whatsApp.message.sendTemplate',
 		]);
@@ -258,17 +256,20 @@ describe('bundled versions', () => {
 						: requiredNodeContractOf(
 								toContract(contract),
 								'list' in contract && contract.list !== undefined,
+								typeof contract.node.errorOf === 'string',
 							),
 				]),
 			),
 		);
-		// Only the file readers need 2.8.0, only counted inputs and binary key patterns need 2.6.0,
+		// Only the error expressions need 2.10.0, only the file readers need 2.8.0, only counted inputs and binary key patterns need 2.6.0,
 		// only the paged lists need 2.4.0, only the actions with host imports, named inputs or
 		// providers need 2.3.0, and only the actions with binary data need 2.2.0.
 		const withVersion = (version: string) =>
 			Object.keys(versions)
 				.filter((id) => versions[id] === version)
 				.sort();
+		// The host reads the error expression of Slack from the manifest, from 2.10.0.
+		expect(withVersion('2.10.0').every((id) => id.startsWith('slack.'))).toBe(true);
 		expect(withVersion('2.9.0')).toEqual([...validating].sort());
 		expect(withVersion('2.8.0')).toEqual([
 			'extractFromFile.csv',
@@ -314,7 +315,6 @@ describe('bundled versions', () => {
 			'httpRequest.download',
 			'httpRequest.send',
 			'openAi.image.generate',
-			'slack.file.upload',
 		]);
 	});
 

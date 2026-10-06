@@ -1888,6 +1888,8 @@ async function nodeOf(
 		id: node.id,
 		displayName: node.displayName,
 		...(typeof node.baseUrl === 'string' ? { baseUrl: node.baseUrl } : {}),
+		// The host checks each response with the error expression of the manifest.
+		...(manifest.errorOf ? { errorOf: manifest.errorOf } : {}),
 		...(types.length > 0
 			? {
 					credential: {

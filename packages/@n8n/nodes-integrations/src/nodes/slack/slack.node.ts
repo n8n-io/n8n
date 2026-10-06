@@ -80,11 +80,16 @@ export const slack = defineNode({
 		},
 	}),
 	baseUrl: 'https://slack.com/api',
-	// Slack answers 200 with `ok: false` for most errors.
-	errorOf: (body) => {
-		const status = parse(slackStatus, body);
-		return status.ok === false ? slackErrorOf(status) : undefined;
-	},
+	// Slack answers 200 with `ok: false` for most errors. The messages mirror
+	// `throwOnSlackApiError` in nodes-base Slack/V2/GenericFunctions.ts.
+	errorOf: `={{ $response.body.ok !== false ? undefined : ({
+		missing_scope: 'Your Slack credential is missing required OAuth scopes: ' + $response.body.needed,
+		not_in_channel: 'The Slack app is not in this channel. Invite it with /invite, then run again.',
+		ratelimited: 'Slack error response: ' + JSON.stringify($response.body.error) + '. Wait before you run this again.',
+		rate_limited: 'Slack error response: ' + JSON.stringify($response.body.error) + '. Wait before you run this again.',
+		paid_teams_only: 'Your current Slack plan does not include this method',
+		not_admin: 'Need higher Role Level for this Operation (e.g. Owner or Admin Rights)',
+	})[$response.body.error] ?? 'Slack error response: ' + JSON.stringify($response.body.error) }}`,
 });
 
 // Slack recommends at most 200 entries per page.
@@ -279,34 +284,6 @@ export const slackUser = t.loose(
 		})
 		.with({ additionalProperties: true }),
 );
-
-/** The status fields of every Slack Web API body. */
-const slackStatus = t
-	.obj({
-		ok: t.bool(),
-		error: t.str().optional(),
-		needed: t.str().hint('The missing scopes of a missing_scope error').optional(),
-	})
-	.with({ additionalProperties: true });
-
-/** Mirrors `throwOnSlackApiError` in nodes-base Slack/V2/GenericFunctions.ts. */
-function slackErrorOf({ error, needed }: Loose<Infer<typeof slackStatus>>) {
-	switch (error) {
-		case 'missing_scope':
-			return `Your Slack credential is missing required OAuth scopes: ${String(needed)}`;
-		case 'not_in_channel':
-			return 'The Slack app is not in this channel. Invite it with /invite, then run again.';
-		case 'ratelimited':
-		case 'rate_limited':
-			return `Slack error response: ${JSON.stringify(error)}. Wait before you run this again.`;
-		case 'paid_teams_only':
-			return 'Your current Slack plan does not include this method';
-		case 'not_admin':
-			return 'Need higher Role Level for this Operation (e.g. Owner or Admin Rights)';
-		default:
-			return `Slack error response: ${JSON.stringify(error)}`;
-	}
-}
 
 /** A Slack body with these fields next to `ok`; Slack adds fields such as `warning`. */
 export const slackResponse = <S extends Shape>(shape: S) =>

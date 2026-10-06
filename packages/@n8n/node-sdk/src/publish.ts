@@ -61,7 +61,7 @@ import {
 	type StoreRecord,
 	type StoreStatusRecord,
 } from './store';
-import { mockHttp, sendRequest } from './testing';
+import { evaluateAlone, mockHttp, sendRequest } from './testing';
 import { validate } from './validator';
 import {
 	compareSemver,
@@ -286,6 +286,7 @@ export async function replayFixtures(
 			const inputs = fixture.inputs?.map((list) => list.map((json) => ({ json: { ...json } })));
 			const imports = fixtureImports(fixture);
 			const host: ExecutorHost = {
+				evaluate: evaluateAlone,
 				items: inputs?.[0] ?? (fixture.items ?? [{}]).map((json) => ({ json: { ...json } })),
 				inputItems: (index) => inputs?.[index] ?? [],
 				...imports.host,
