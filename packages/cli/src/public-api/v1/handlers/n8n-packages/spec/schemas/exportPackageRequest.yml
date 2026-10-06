@@ -1,10 +1,20 @@
 type: object
 additionalProperties: false
 description: >-
-  Selects what to export. Provide `workflowIds` and/or `folderIds` to export
-  loose workflows and folders, or `projectIds` to export whole projects, but not
-  both groups in the same request. At least one id must be supplied.
+  Selects what to export. Provide `agentIds`, `workflowIds`, and/or `folderIds`
+  to export loose entities, or `projectIds` to export whole projects.
+  Do not combine these two groups. Supply at least one ID.
 properties:
+  agentIds:
+    type: array
+    minItems: 1
+    maxItems: 300
+    description: IDs of the Agents to include. Requires the Agents module.
+    items:
+      type: string
+      minLength: 1
+    example:
+      - support_agent
   workflowIds:
     type: array
     maxItems: 300
@@ -27,7 +37,9 @@ properties:
       - 9xKp2mNqRzAbCdEf
   projectIds:
     type: array
-    description: IDs of the projects to include in the exported package.
+    description: >-
+      IDs of the projects to include in the exported package.
+      Includes their Agents when the Agents module is enabled.
     items:
       type: string
       minLength: 1
@@ -37,7 +49,7 @@ properties:
     type: boolean
     default: true
     description: >-
-      Whether values of variables referenced by the exported workflows are
+      Whether values of variables referenced by the exported entities are
       bundled into the package. When `false`, variables still travel as
       name/type files and are listed in the package requirements, but no
       values travel with the package.
@@ -48,6 +60,36 @@ properties:
       Whether tags assigned to the exported workflows are bundled into the
       package. When `false`, no tag files, tag references, or tag
       requirements travel with the package.
+  missingAgentDependencyPolicy:
+    type: string
+    enum:
+      - fail
+      - reference-only
+      - include-in-package
+    description: >-
+      Policy for Agent dependencies, including disabled references. `fail`
+      aborts when a referenced Agent is absent from the package.
+      `reference-only` records external requirements without reading those
+      definitions. `include-in-package` adds accessible Agent dependencies
+      recursively. This policy is independent of workflow dependency policy.
+    default: fail
+  agentVersionPolicy:
+    type: string
+    enum:
+      - published-strict
+      - prefer-published
+      - ignore-unpublished
+      - latest
+    description: >-
+      Which Agent definition travels in the package. `latest` exports the draft.
+      `published-strict` requires a published definition. `prefer-published`
+      uses the published definition when available, otherwise the draft.
+      `ignore-unpublished` skips unpublished selections. Required Agent
+      dependencies that cannot be included still cause the export to fail.
+      The selected definition supplies configuration and referenced bodies.
+      The current ID, name, and MCP availability always travel with it.
+      This policy is independent of workflow version policy.
+    default: latest
   missingWorkflowDependencyPolicy:
     type: string
     enum:
@@ -55,7 +97,8 @@ properties:
       - reference-only
       - include-in-package
     description: >-
-      Policy for missing static sub-workflow dependencies. `fail` aborts the
+      Policy for workflow dependencies from Agents and static sub-workflow
+      references. `fail` aborts the
       export when any static sub-workflow is missing from the package;
       `include-in-package` automatically adds missing static sub-workflows.
       `reference-only` keeps missing static sub-workflows out of the package

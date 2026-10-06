@@ -2,6 +2,7 @@ import { ModuleRegistry } from '@n8n/backend-common';
 import { ProjectScopeService } from '@n8n/backend-services';
 import type { Project } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
+import { ForbiddenError } from '@n8n/errors';
 
 import type { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import { ProjectService } from '@/services/project.service.ee';
@@ -105,6 +106,9 @@ export class AgentSelectionExporter {
 		const projectIds = request.projectIds ?? [];
 		const projectAgentIds = await repository.findIdsInProjectsForExport(projectIds);
 		const pending = [...new Set([...(request.agentIds ?? []), ...projectAgentIds])];
+		if (pending.length > 0 && request.canExportAgents === false) {
+			throw new ForbiddenError('The API key is missing the agent:export scope.');
+		}
 		const seen = new Set(pending);
 		const prepared: PreparedSelection[] = [];
 		const exportableProjects = await this.projectScopeService.getProjectIds(request.user, [
