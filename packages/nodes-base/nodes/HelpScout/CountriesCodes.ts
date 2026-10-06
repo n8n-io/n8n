@@ -825,14 +825,6 @@ export const countriesCodes = [
 		'shortName': 'Macau',
 	},
 	{
-		'name': 'North Macedonia',
-		'alpha2': 'MK',
-		'alpha3': 'MKD',
-		'numeric': '807',
-		'altName': 'Macedonia, Republic of',
-		'shortName': 'Macedonia',
-	},
-	{
 		'name': 'Madagascar',
 		'alpha2': 'MG',
 		'alpha3': 'MDG',
@@ -1029,6 +1021,14 @@ export const countriesCodes = [
 		'alpha2': 'NF',
 		'alpha3': 'NFK',
 		'numeric': '574',
+	},
+	{
+		'name': 'North Macedonia',
+		'alpha2': 'MK',
+		'alpha3': 'MKD',
+		'numeric': '807',
+		'altName': 'Macedonia, Republic of',
+		'shortName': 'Macedonia',
 	},
 	{
 		'name': 'Northern Mariana Islands (the)',
