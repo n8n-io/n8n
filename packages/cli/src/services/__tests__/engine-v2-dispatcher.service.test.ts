@@ -3,7 +3,6 @@ import type {
 	INode,
 	INodeExecutionData,
 	IPinData,
-	IRunData,
 	ITaskData,
 	ITaskDataConnections,
 	IWorkflowBase,
@@ -22,6 +21,10 @@ import {
 } from '@/services/engine-data-plane-proxy.service';
 import { createExecutionIdV2 } from '@/executions/execution-id';
 import { EngineV2Dispatcher } from '@/services/engine-v2-dispatcher.service';
+import type {
+	EngineV2ManualRunPlanner,
+	ManualRunPlan,
+} from '@/services/engine-v2-manual-run-planner';
 import type { EngineV2PayloadFiles } from '@/services/engine-v2-payload-files.service';
 import type { EngineV2PushRegistry } from '@/services/engine-v2-push-registry.service';
 
@@ -131,6 +134,7 @@ describe('EngineV2Dispatcher', () => {
 	const credentialsPermissionChecker = mock<CredentialsPermissionChecker>();
 	const pushRegistry = mock<EngineV2PushRegistry>();
 	const payloadFiles = mock<EngineV2PayloadFiles>();
+	const manualRunPlanner = mock<EngineV2ManualRunPlanner>();
 
 	let dispatcher: EngineV2Dispatcher;
 
@@ -140,11 +144,13 @@ describe('EngineV2Dispatcher', () => {
 		proxy.startExecution.mockResolvedValue({ executionId: 'dp-uuid' });
 		payloadFiles.claimForExecution.mockResolvedValue(undefined);
 		payloadFiles.discard.mockResolvedValue(undefined);
+		manualRunPlanner.applies.mockReturnValue(false);
 		dispatcher = new EngineV2Dispatcher(
 			proxy,
 			credentialsPermissionChecker,
 			pushRegistry,
 			payloadFiles,
+			manualRunPlanner,
 		);
 	});
 
@@ -576,18 +582,6 @@ describe('EngineV2Dispatcher', () => {
 
 			it.each([
 				{
-					name: 'a partial execution',
-					data: { runData: {} as IRunData },
-					message:
-						'Engine v2 cannot run a workflow from existing data yet. Run the whole workflow instead.',
-				},
-				{
-					name: 'a destination node',
-					data: { destinationNode: { nodeName: SET_NODE.name, mode: 'inclusive' as const } },
-					message:
-						'Engine v2 cannot run a workflow up to a single node yet. Run the whole workflow instead.',
-				},
-				{
 					name: 'selected start nodes',
 					data: { startNodes: [mock<StartNodeData>()] },
 					message:
@@ -598,18 +592,84 @@ describe('EngineV2Dispatcher', () => {
 					data: { agentRequest: { query: { [SET_NODE.name]: 'do it' }, tool: { name: 'tool' } } },
 					message: 'Engine v2 cannot run a workflow as an AI tool yet.',
 				},
-				{
-					name: 'pinned data on a non-trigger node',
-					data: { pinData: { [SET_NODE.name]: [{ json: { pinned: true } }] } as IPinData },
-					message:
-						'Engine v2 does not support pinned data on "Edit Fields" yet. Unpin it to run this workflow.',
-				},
 			])('rejects $name', async ({ data, message }) => {
 				const attempt = dispatcher.start(runData(data));
 
 				await expect(attempt).rejects.toThrow(UserError);
 				await expect(attempt).rejects.toThrow(message);
 				expect(proxy.startExecution).not.toHaveBeenCalled();
+			});
+		});
+
+		describe('a planned manual run', () => {
+			// Trigger -> Set, with Set already run: the planner roots at the trigger
+			// and seeds Set.
+			const plan: ManualRunPlan = {
+				workflow: workflow(),
+				triggerName: MANUAL_TRIGGER.name,
+				triggerOutputs: [[{ json: { from: 'runData' } }]],
+				seeded: [{ nodeId: SET_NODE.id, outputs: [[{ json: { reused: true } }], []] }],
+			};
+
+			beforeEach(() => {
+				manualRunPlanner.applies.mockReturnValue(true);
+				manualRunPlanner.plan.mockReturnValue(plan);
+			});
+
+			it('converts the planned workflow and sends its trigger payload and seeded steps', async () => {
+				await dispatcher.start(
+					runData({ destinationNode: { nodeName: SET_NODE.name, mode: 'inclusive' } }),
+				);
+
+				const request = proxy.startExecution.mock.calls[0][0];
+				expect(request.graph.nodes.map(({ id }) => id)).toEqual([MANUAL_TRIGGER.id, SET_NODE.id]);
+				expect(request.triggerOutputs).toEqual([[{ json: { from: 'runData' } }]]);
+				// An empty slot collapses to a dead edge, as for any other step.
+				expect(request.seededSteps).toEqual([
+					{ nodeId: SET_NODE.id, outputs: [[{ json: { reused: true } }], null] },
+				]);
+			});
+
+			it('still reports the whole workflow beside the trimmed graph', async () => {
+				manualRunPlanner.plan.mockReturnValue({
+					...plan,
+					workflow: workflow({ nodes: [MANUAL_TRIGGER], connections: {} }),
+					seeded: [],
+				});
+
+				await dispatcher.start(
+					runData({ destinationNode: { nodeName: SET_NODE.name, mode: 'inclusive' } }),
+				);
+
+				const request = proxy.startExecution.mock.calls[0][0];
+				expect(request.graph.nodes).toHaveLength(1);
+				expect(request.workflow.nodes).toHaveLength(2);
+			});
+
+			it('roots the graph at a non-trigger when the plan says so', async () => {
+				manualRunPlanner.plan.mockReturnValue({
+					...plan,
+					workflow: workflow({ nodes: [SET_NODE], connections: {} }),
+					triggerName: SET_NODE.name,
+					seeded: [],
+				});
+
+				await dispatcher.start(
+					runData({ destinationNode: { nodeName: SET_NODE.name, mode: 'inclusive' } }),
+				);
+
+				const request = proxy.startExecution.mock.calls[0][0];
+				expect(request.graph.nodes).toEqual([
+					expect.objectContaining({ id: SET_NODE.id, type: 'trigger' }),
+				]);
+			});
+
+			it('sends no seeded steps for an unplanned run', async () => {
+				manualRunPlanner.applies.mockReturnValue(false);
+
+				await dispatcher.start(runData());
+
+				expect(proxy.startExecution.mock.calls[0][0].seededSteps).toBeUndefined();
 			});
 		});
 

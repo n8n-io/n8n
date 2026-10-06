@@ -1,5 +1,5 @@
 import { Service } from '@n8n/di';
-import type { StartExecutionRequest, StepSlots, TriggerOutputs } from '@n8n/engine';
+import type { SeededStep, StartExecutionRequest, StepSlots, TriggerOutputs } from '@n8n/engine';
 import type {
 	INode,
 	INodeExecutionData,
@@ -22,6 +22,10 @@ import {
 	EngineDataPlaneProxyService,
 	isStartRefusedBeforeSave,
 } from '@/services/engine-data-plane-proxy.service';
+import {
+	EngineV2ManualRunPlanner,
+	type ManualRunPlan,
+} from '@/services/engine-v2-manual-run-planner';
 import { EngineV2PayloadFiles } from '@/services/engine-v2-payload-files.service';
 import { EngineV2PushRegistry } from '@/services/engine-v2-push-registry.service';
 import { toResponseExpectation } from '@/webhooks/engine-v2-response-expectation';
@@ -71,6 +75,7 @@ export class EngineV2Dispatcher {
 		private readonly credentialsPermissionChecker: CredentialsPermissionChecker,
 		private readonly pushRegistry: EngineV2PushRegistry,
 		private readonly payloadFiles: EngineV2PayloadFiles,
+		private readonly manualRunPlanner: EngineV2ManualRunPlanner,
 	) {}
 
 	/**
@@ -108,11 +113,16 @@ export class EngineV2Dispatcher {
 	 * deleted files fails, while a kept file is deleted with its execution.
 	 */
 	async start(data: IWorkflowExecutionDataProcess): Promise<string> {
-		const trigger = this.resolveFiredTrigger(data);
+		// A partial run, or one with pinned data, is planned here: the data plane
+		// gets a graph trimmed to what runs, plus the steps it records as done.
+		const plan = this.manualRunPlanner.applies(data) ? this.manualRunPlanner.plan(data) : undefined;
+		const trigger: FiredTrigger = plan
+			? { name: plan.triggerName, outputs: plan.triggerOutputs }
+			: this.resolveFiredTrigger(data);
 
 		let prepared: PreparedStart;
 		try {
-			prepared = await this.prepare(data, trigger);
+			prepared = await this.prepare(data, trigger, plan);
 		} catch (error) {
 			await this.payloadFiles.discard(trigger.outputs);
 			throw error;
@@ -135,6 +145,7 @@ export class EngineV2Dispatcher {
 	private async prepare(
 		data: IWorkflowExecutionDataProcess,
 		trigger: FiredTrigger,
+		plan?: ManualRunPlan,
 	): Promise<PreparedStart> {
 		this.assertSupported(data, trigger);
 
@@ -146,7 +157,15 @@ export class EngineV2Dispatcher {
 		// its dependencies into every n8n process, including ones with the module off.
 		const { V1WorkflowConverter, toStepOutputs } = await import('@n8n/node-engine-compatibility');
 
-		const graph = new V1WorkflowConverter().convert(workflowData, trigger.name);
+		// A planned run may root at a non-trigger: v1 starts from the nearest node
+		// with run data when no trigger has any, and the plan supplies its outputs.
+		const graph = new V1WorkflowConverter().convert(plan?.workflow ?? workflowData, trigger.name, {
+			allowNonTriggerRoot: plan !== undefined,
+		});
+		const seededSteps: SeededStep[] | undefined = plan?.seeded.map(({ nodeId, outputs }) => ({
+			nodeId,
+			outputs: toStepOutputs(outputs),
+		}));
 
 		const executionId = data.engineV2ExecutionId ?? createExecutionIdV2();
 		// A caller that minted the id is waiting on that exact run.
@@ -167,6 +186,7 @@ export class EngineV2Dispatcher {
 				// workflow that ran even after the live one is edited.
 				workflow: toWorkflowDocument(workflowData),
 				triggerOutputs: this.toTriggerOutputs(trigger.outputs, toStepOutputs),
+				seededSteps,
 				// The engine keeps only a coarse manual/production distinction. The exact
 				// host mode is carried in callerContext for reads and lifecycle events.
 				mode: data.executionMode === 'manual' ? 'manual' : 'production',
@@ -218,20 +238,6 @@ export class EngineV2Dispatcher {
 			);
 		}
 
-		if (data.runData !== undefined) {
-			throw new UserError(
-				'Engine v2 cannot run a workflow from existing data yet. Run the whole workflow instead.',
-			);
-		}
-
-		// The engine cannot stop at a node, so ignoring this would run nodes the
-		// user did not ask for, with their side effects.
-		if (data.destinationNode !== undefined) {
-			throw new UserError(
-				'Engine v2 cannot run a workflow up to a single node yet. Run the whole workflow instead.',
-			);
-		}
-
 		if (data.startNodes?.length) {
 			throw new UserError(
 				'Engine v2 cannot start from selected nodes yet. Run the whole workflow instead.',
@@ -254,14 +260,6 @@ export class EngineV2Dispatcher {
 		) {
 			throw new UserError(
 				`Engine v2 cannot run the "${firedNode.name}" trigger yet, because it takes credentials from the request.`,
-			);
-		}
-
-		// The trigger's own pinned data is the payload, so only the other nodes count.
-		const pinnedNode = Object.keys(data.pinData ?? {}).find((name) => name !== trigger.name);
-		if (pinnedNode !== undefined) {
-			throw new UserError(
-				`Engine v2 does not support pinned data on "${pinnedNode}" yet. Unpin it to run this workflow.`,
 			);
 		}
 	}
