@@ -21,6 +21,14 @@ import { DbLock, DbLockService } from '../services/db-lock.service';
 import { TransactionRunner } from '../services/transaction';
 import { TypeOrmTransactionRunner } from '../services/typeorm-transaction';
 
+/** Which managed Postgres services the server says it is. */
+export type ManagedPostgresMarkers = {
+	aurora: boolean;
+	rds: boolean;
+	azure: boolean;
+	cloudSql: boolean;
+};
+
 type ConnectionState = {
 	connected: boolean;
 	migrated: boolean;
@@ -87,6 +95,31 @@ export class DbConnection {
 		} catch (e) {
 			const error = ensureError(e);
 			this.logger.warn(`Could not determine database version: ${error.message}`);
+			return null;
+		}
+	}
+
+	/**
+	 * Settings and functions that only managed Postgres services have.
+	 * Reads the catalogs, so a missing marker never raises an error.
+	 * `null` when the database is not Postgres or the query fails.
+	 */
+	async getManagedPostgresMarkers(): Promise<ManagedPostgresMarkers | null> {
+		if (this.options.type !== 'postgres' || !this.dataSource.isInitialized) return null;
+
+		try {
+			const rows = await this.dataSource.query<ManagedPostgresMarkers[]>(
+				`SELECT
+					to_regproc('aurora_version') IS NOT NULL AS "aurora",
+					EXISTS (SELECT 1 FROM pg_settings WHERE name LIKE 'rds.%') AS "rds",
+					EXISTS (SELECT 1 FROM pg_settings WHERE name LIKE 'azure.%') AS "azure",
+					EXISTS (SELECT 1 FROM pg_settings WHERE name LIKE 'cloudsql.%') AS "cloudSql"`,
+			);
+			return rows[0] ?? null;
+		} catch (e) {
+			this.logger.warn(
+				`Could not determine the managed database service: ${ensureError(e).message}`,
+			);
 			return null;
 		}
 	}
