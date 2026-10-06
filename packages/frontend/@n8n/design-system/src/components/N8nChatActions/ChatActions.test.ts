@@ -59,6 +59,7 @@ describe('N8nChatActions', () => {
 		speechSupported.value = true;
 		speechIsPlaying.value = false;
 		utterance.value.voice = null;
+		utterance.value.lang = 'en-US';
 		getVoices.mockReturnValue([]);
 	});
 
@@ -108,35 +109,24 @@ describe('N8nChatActions', () => {
 	});
 
 	it.each([
-		{ name: 'Samantha', lang: 'en-US' },
-		{ name: 'Microsoft Zira Desktop - English (United States)', lang: 'en-US' },
-		{ name: 'Microsoft Zira - English (United States)', lang: 'en-US' },
-		{ name: 'Microsoft David Desktop - English (United States)', lang: 'en-US' },
-		{ name: 'Slt', lang: 'en' },
-		{ name: 'Alan', lang: 'en' },
-		{ name: 'Slt', lang: 'en_US' },
-	])('selects the local $name voice instead of the system default', async ({ name, lang }) => {
-		const defaultVoice = {
-			name: 'Zarvox',
-			lang: 'en-US',
-			localService: true,
-			default: true,
-			voiceURI: 'Zarvox',
-		};
-		const preferredVoice = {
-			name,
-			lang,
-			localService: true,
-			default: false,
-			voiceURI: name,
-		};
-		getVoices.mockReturnValue([defaultVoice, preferredVoice]);
+		{ name: 'Samantha', lang: 'en-US', localService: true },
+		{ name: 'Daniel', lang: 'en-GB', localService: true },
+		{ name: 'Microsoft Zira', lang: 'en-US', localService: true },
+		{ name: 'Slt', lang: 'en', localService: true },
+		{ name: 'Google US English', lang: 'en-US', localService: false },
+	])('uses the default $name voice and its language', async ({ name, lang, localService }) => {
+		const defaultVoice = { name, lang, localService, default: true, voiceURI: name };
+		getVoices.mockReturnValue([
+			{ ...defaultVoice, name: 'English (Premium)', default: false, voiceURI: 'other' },
+			defaultVoice,
+		]);
 		const wrapper = mount(N8nChatActions, {
 			props: { content: 'Message content', showCopy: false },
 			global,
 		});
 		speak.mockImplementationOnce(() => {
-			expect(utterance.value.voice).toBe(preferredVoice);
+			expect(utterance.value.voice).toBe(defaultVoice);
+			expect(utterance.value.lang).toBe(lang);
 		});
 
 		await wrapper.get('button').trigger('click');
@@ -144,50 +134,10 @@ describe('N8nChatActions', () => {
 		expect(speak).toHaveBeenCalledTimes(1);
 	});
 
-	it.each(['Natural', 'Enhanced', 'Premium'])(
-		'prefers a local voice labelled %s',
-		async (label) => {
-			const standardVoice = {
-				name: 'Microsoft Zira Desktop - English (United States)',
-				lang: 'en-US',
-				localService: true,
-				default: true,
-				voiceURI: 'standard',
-			};
-			const preferredVoice = {
-				...standardVoice,
-				name: `English (${label})`,
-				default: false,
-				voiceURI: 'preferred',
-			};
-			getVoices.mockReturnValue([standardVoice, preferredVoice]);
-			const wrapper = mount(N8nChatActions, {
-				props: { content: 'Message content', showCopy: false },
-				global,
-			});
-
-			await wrapper.get('button').trigger('click');
-
-			expect(utterance.value.voice).toBe(preferredVoice);
-		},
-	);
-
-	it('keeps a local standard voice when a natural voice is remote', async () => {
-		const standardVoice = {
-			name: 'Microsoft Zira Desktop - English (United States)',
-			lang: 'en-US',
-			localService: true,
-			default: true,
-			voiceURI: 'standard',
-		};
-		const remoteVoice = {
-			...standardVoice,
-			name: 'Microsoft Aria Online (Natural) - English (United States)',
-			localService: false,
-			default: false,
-			voiceURI: 'remote',
-		};
-		getVoices.mockReturnValue([remoteVoice, standardVoice]);
+	it('converts the default voice language to a BCP 47 tag', async () => {
+		getVoices.mockReturnValue([
+			{ name: 'Slt', lang: 'en_US', localService: true, default: true, voiceURI: 'Slt' },
+		]);
 		const wrapper = mount(N8nChatActions, {
 			props: { content: 'Message content', showCopy: false },
 			global,
@@ -195,36 +145,24 @@ describe('N8nChatActions', () => {
 
 		await wrapper.get('button').trigger('click');
 
-		expect(utterance.value.voice).toBe(standardVoice);
+		expect(utterance.value.lang).toBe('en-US');
 	});
 
 	it.each([
 		{ reason: 'voices have not loaded', voices: [] },
 		{
-			reason: 'the voice is remote',
+			reason: 'no voice is marked as the default',
 			voices: [
 				{
 					name: 'Samantha',
 					lang: 'en-US',
-					localService: false,
-					default: false,
-					voiceURI: 'remote',
-				},
-			],
-		},
-		{
-			reason: 'the language does not match',
-			voices: [
-				{
-					name: 'Samantha',
-					lang: 'fr-FR',
 					localService: true,
 					default: false,
-					voiceURI: 'other-language',
+					voiceURI: 'Samantha',
 				},
 			],
 		},
-	])('uses the browser default when $reason', async ({ voices }) => {
+	])('lets the browser choose when $reason', async ({ voices }) => {
 		getVoices.mockReturnValue(voices);
 		const wrapper = mount(N8nChatActions, {
 			props: { content: 'Message content', showCopy: false },
@@ -234,26 +172,69 @@ describe('N8nChatActions', () => {
 		await wrapper.get('button').trigger('click');
 
 		expect(utterance.value.voice).toBeNull();
+		expect(utterance.value.lang).toBe('en-US');
 		expect(speak).toHaveBeenCalledTimes(1);
 	});
 
-	it('uses voices that become available after the chat opens', async () => {
+	it('uses the default voice when voices load after the chat opens', async () => {
 		const wrapper = mount(N8nChatActions, {
 			props: { content: 'Message content', showCopy: false },
 			global,
 		});
-		const preferredVoice = {
-			name: 'Samantha',
-			lang: 'en-US',
+		const defaultVoice = {
+			name: 'Daniel',
+			lang: 'en-GB',
 			localService: true,
-			default: false,
-			voiceURI: 'Samantha',
+			default: true,
+			voiceURI: 'Daniel',
 		};
-		getVoices.mockReturnValue([preferredVoice]);
+		getVoices.mockReturnValue([defaultVoice]);
 
 		await wrapper.get('button').trigger('click');
 
-		expect(utterance.value.voice).toBe(preferredVoice);
+		expect(utterance.value.voice).toBe(defaultVoice);
+		expect(utterance.value.lang).toBe('en-GB');
+	});
+
+	it('checks the default voice again before each playback', async () => {
+		const firstVoice = {
+			name: 'Daniel',
+			lang: 'en-GB',
+			localService: true,
+			default: true,
+			voiceURI: 'Daniel',
+		};
+		const secondVoice = { ...firstVoice, name: 'Samantha', lang: 'en-US', voiceURI: 'Samantha' };
+		getVoices.mockReturnValue([firstVoice]);
+		const wrapper = mount(N8nChatActions, {
+			props: { content: 'Message content', showCopy: false },
+			global,
+		});
+
+		await wrapper.get('button').trigger('click');
+		getVoices.mockReturnValue([secondVoice]);
+		await wrapper.get('button').trigger('click');
+
+		expect(utterance.value.voice).toBe(secondVoice);
+		expect(utterance.value.lang).toBe('en-US');
+		expect(speak).toHaveBeenCalledTimes(2);
+	});
+
+	it('clears the selected voice when the default is no longer available', async () => {
+		getVoices.mockReturnValue([
+			{ name: 'Daniel', lang: 'en-GB', localService: true, default: true, voiceURI: 'Daniel' },
+		]);
+		const wrapper = mount(N8nChatActions, {
+			props: { content: 'Message content', showCopy: false },
+			global,
+		});
+
+		await wrapper.get('button').trigger('click');
+		getVoices.mockReturnValue([]);
+		await wrapper.get('button').trigger('click');
+
+		expect(utterance.value.voice).toBeNull();
+		expect(utterance.value.lang).toBe('en-US');
 	});
 
 	it('stops reading the content aloud', async () => {

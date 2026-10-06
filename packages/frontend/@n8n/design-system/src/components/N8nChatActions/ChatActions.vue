@@ -19,13 +19,6 @@ const props = withDefaults(defineProps<ChatActionsProps>(), {
 });
 
 const COPY_FEEDBACK_DURATION_MS = 2000;
-const PREFERRED_SPEECH_VOICES = [
-	/\b(natural|enhanced|premium)\b/i,
-	/^Samantha$/i,
-	/^Microsoft Zira\b/i,
-	/^Microsoft David\b/i,
-	/^(Slt|Alan)$/i,
-];
 
 defineSlots<{
 	default(): unknown;
@@ -82,17 +75,8 @@ function readMessageAloud() {
 
 	wasStoppedByUser.value = false;
 	const utterance = speech.utterance.value;
-	const language = utterance.lang.toLowerCase();
-	const localVoices = window.speechSynthesis.getVoices().filter((voice) => {
-		const voiceLanguage = voice.lang.toLowerCase().replace('_', '-');
-		return (
-			voice.localService && (voiceLanguage === language || voiceLanguage === language.split('-')[0])
-		);
-	});
-	utterance.voice =
-		PREFERRED_SPEECH_VOICES.map((pattern) =>
-			localVoices.find((voice) => pattern.test(voice.name)),
-		).find((voice) => voice !== undefined) ?? null;
+	utterance.voice = window.speechSynthesis.getVoices().find((voice) => voice.default) ?? null;
+	utterance.lang = utterance.voice?.lang.replace('_', '-') || 'en-US';
 	speech.speak();
 	props.onReadAloud?.({ text: props.content, status: 'started' });
 }
