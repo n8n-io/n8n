@@ -155,6 +155,16 @@ describe('Oauth2BearerDriver', () => {
 			expect(await driver.selectSource(extracted(token))).toBeUndefined();
 			expect(store.getByIssuer).not.toHaveBeenCalled();
 		});
+
+		it.each([
+			['a number', 42],
+			['an object', { url: ISSUER }],
+		])('returns undefined for an iss that is %s without reading the store', async (_name, iss) => {
+			const token = await sign({ iss: iss as never });
+
+			expect(await driver.selectSource(extracted(token))).toBeUndefined();
+			expect(store.getByIssuer).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('verify', () => {
@@ -278,7 +288,7 @@ describe('Oauth2BearerDriver', () => {
 		describe('audience', () => {
 			it.each<{
 				name: string;
-				aud?: string | string[];
+				aud?: unknown;
 				surfaceAudiences?: string[];
 				expected: 'ok' | 'audience-mismatch';
 			}>([
@@ -298,10 +308,17 @@ describe('Oauth2BearerDriver', () => {
 				},
 				{ name: 'an unrelated audience', aud: 'other', expected: 'audience-mismatch' },
 				{ name: 'no aud', aud: undefined, expected: 'audience-mismatch' },
+				{ name: 'a number', aud: 42, expected: 'audience-mismatch' },
+				{ name: 'an object', aud: { url: RESOURCE }, expected: 'audience-mismatch' },
+				{
+					name: 'an array with a non-string element and the resource URL',
+					aud: [42, RESOURCE],
+					expected: 'ok',
+				},
 			])('$name -> $expected', async ({ aud, surfaceAudiences, expected }) => {
 				const src = source({ surfaces: { [SURFACE]: { audiences: surfaceAudiences } } });
 
-				const result = await verify(await sign({ aud }), src);
+				const result = await verify(await sign({ aud: aud as never }), src);
 
 				if (expected === 'ok') expect(result).toMatchObject({ ok: true });
 				else expect(result).toMatchObject({ ok: false, reason: expected });

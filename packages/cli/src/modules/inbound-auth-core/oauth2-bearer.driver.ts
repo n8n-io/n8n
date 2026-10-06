@@ -18,6 +18,13 @@ type JwtFailure = { name: string; message: string };
 const isJwtFailure = (error: unknown): error is JwtFailure =>
 	typeof error === 'object' && error !== null && 'name' in error && typeof error.name === 'string';
 
+/** `aud` is attacker-controlled: keep a string or the string elements of an array, drop any other shape. */
+const normalizeAudiences = (aud: unknown): string[] => {
+	if (typeof aud === 'string') return [aud];
+	if (Array.isArray(aud)) return aud.filter((entry): entry is string => typeof entry === 'string');
+	return [];
+};
+
 /** Verifies `Authorization: Bearer` JWTs against the JWKS discovered for an oauth2 source. */
 @Service()
 export class Oauth2BearerDriver extends AuthenticationDriver {
@@ -39,9 +46,12 @@ export class Oauth2BearerDriver extends AuthenticationDriver {
 		let issuer: string | undefined;
 		try {
 			const decoded = decode(extracted.credential.token);
-			issuer = typeof decoded === 'object' && decoded !== null ? decoded?.iss : undefined;
+			// The payload is attacker-controlled, so `iss` can be any JSON value at runtime.
+			issuer =
+				typeof decoded === 'object' && decoded !== null && typeof decoded.iss === 'string'
+					? decoded.iss
+					: undefined;
 		} catch (error) {
-			// Handle JWT decode error if necessary
 			this.logger.warn('Failed to decode JWT', { error });
 		}
 		return issuer ? await this.store.getByIssuer(issuer) : undefined;
@@ -142,7 +152,7 @@ export class Oauth2BearerDriver extends AuthenticationDriver {
 			return { ok: false, reason: 'expired', detail: 'Token is not yet valid' };
 		}
 
-		const tokenAudiences = typeof payload.aud === 'string' ? [payload.aud] : (payload.aud ?? []);
+		const tokenAudiences = normalizeAudiences(payload.aud);
 
 		if (!tokenAudiences.some((aud) => allowedAudiences.includes(aud))) {
 			return {
