@@ -13,7 +13,7 @@ import {
 	microsoftApiRequest,
 	SERVICE_PRINCIPAL_AUTH,
 	type SharePointContext,
-} from '../../transport';
+} from '../transport';
 
 // The whole site-selection piece lives here — the field, the search behind
 // it, and the URL resolution — so later actions and the future trigger plug
