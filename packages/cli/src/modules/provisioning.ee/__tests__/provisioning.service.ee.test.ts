@@ -1,6 +1,8 @@
 import { BLOCK_ACCESS_ASSIGNMENT, type ProvisioningConfigDto } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import { type EventService } from '@n8n/backend-services';
+import { ModuleRegistry } from '@n8n/backend-common';
+import { Container } from '@n8n/di';
 import { type GlobalConfig } from '@n8n/config';
 import {
 	type User,
@@ -19,6 +21,7 @@ import { mock } from 'vitest-mock-extended';
 
 import { BadRequestError, ForbiddenError } from '@n8n/errors';
 import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
+import { ScimConfig } from '@/modules/scim/scim.config';
 import { type RoleMappingRuleService } from '@/modules/provisioning.ee/role-mapping-rule.service.ee';
 import { type RoleResolverService } from '@/modules/provisioning.ee/role-resolver.service.ee';
 import { type Publisher } from '@/scaling/pubsub/publisher.service';
@@ -44,6 +47,11 @@ const instanceSettings = mock<InstanceSettings>();
 const roleMappingRuleRepository = mock<RoleMappingRuleRepository>();
 const roleResolverService = mock<RoleResolverService>();
 const roleMappingRuleService = mock<RoleMappingRuleService>();
+
+const moduleRegistry = mock<ModuleRegistry>();
+const scimConfig = { rateLimit: 600, roleProvisioningEnabled: false } as ScimConfig;
+Container.set(ModuleRegistry, moduleRegistry);
+Container.set(ScimConfig, scimConfig);
 
 const provisioningService = new ProvisioningService(
 	eventService,
@@ -1300,6 +1308,98 @@ describe('ProvisioningService', () => {
 			roleMappingRuleRepository.count.mockResolvedValue(1);
 			// Mock getPreviousProjectRoles — no existing project access
 			projectRepository.find.mockResolvedValue([]);
+			moduleRegistry.isActive.mockReturnValue(false);
+			scimConfig.roleProvisioningEnabled = false;
+		});
+
+		describe('when SCIM role provisioning is active', () => {
+			beforeEach(() => {
+				moduleRegistry.isActive.mockImplementation((name) => name === 'scim');
+				scimConfig.roleProvisioningEnabled = true;
+			});
+
+			it('should not apply the mapped instance role at login', async () => {
+				roleResolverService.resolveRoles.mockResolvedValue({
+					instanceRole: {
+						role: 'global:admin',
+						matchedRuleId: 'rule-1',
+						expression: '{{ $claims.role === "admin" }}',
+						isFallback: false,
+					},
+					projectRoles: new Map(),
+				});
+
+				const context = { $claims: { role: 'admin' }, $provider: 'oidc' as const };
+				await provisioningService.provisionExpressionMappedRolesForUser(user, context);
+
+				// applying the instance role starts by loading it from the DB
+				expect(roleRepository.findOneOrFail).not.toHaveBeenCalled();
+				expect(eventService.emit).toHaveBeenCalledWith(
+					'expression-mapping-roles-resolved',
+					expect.objectContaining({
+						instanceRole: expect.objectContaining({
+							role: 'global:member',
+							previousRole: 'global:member',
+							changed: false,
+						}),
+					}),
+				);
+			});
+
+			it('should still apply mapped project roles', async () => {
+				roleResolverService.resolveRoles.mockResolvedValue({
+					instanceRole: {
+						role: 'global:admin',
+						matchedRuleId: 'rule-1',
+						expression: '{{ true }}',
+						isFallback: false,
+					},
+					projectRoles: new Map([
+						[
+							'proj-1',
+							{
+								projectId: 'proj-1',
+								role: 'project:editor',
+								matchedRuleId: 'rule-2',
+								expression: '{{ true }}',
+							},
+						],
+					]),
+				});
+
+				const context = { $claims: {}, $provider: 'oidc' as const };
+				await provisioningService.provisionExpressionMappedRolesForUser(user, context);
+
+				expect(eventService.emit).toHaveBeenCalledWith(
+					'expression-mapping-roles-resolved',
+					expect.objectContaining({
+						projectRoles: [
+							expect.objectContaining({ projectId: 'proj-1', role: 'project:editor' }),
+						],
+					}),
+				);
+			});
+
+			it('should keep applying the instance role when the scim module is inactive', async () => {
+				moduleRegistry.isActive.mockReturnValue(false);
+				roleResolverService.resolveRoles.mockResolvedValue({
+					instanceRole: {
+						role: 'global:admin',
+						matchedRuleId: 'rule-1',
+						expression: '{{ true }}',
+						isFallback: false,
+					},
+					projectRoles: new Map(),
+				});
+				roleRepository.findOneOrFail.mockResolvedValue(
+					mock<Role>({ slug: 'global:admin', roleType: 'global' }),
+				);
+
+				const context = { $claims: {}, $provider: 'oidc' as const };
+				await provisioningService.provisionExpressionMappedRolesForUser(user, context);
+
+				expect(roleRepository.findOneOrFail).toHaveBeenCalled();
+			});
 		});
 
 		it('should emit expression-mapping-roles-resolved with metadata', async () => {

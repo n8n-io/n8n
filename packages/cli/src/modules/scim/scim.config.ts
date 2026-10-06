@@ -11,4 +11,12 @@ export class ScimConfig {
 	 */
 	@Env('N8N_SCIM_RATE_LIMIT', z.number({ coerce: true }).int().nonnegative())
 	rateLimit: number = 600;
+
+	/**
+	 * Whether the identity provider may assign n8n roles via the SCIM
+	 * `roles` attribute. Off by default: while it is off, incoming role data
+	 * is ignored and provisioned users keep the default member role.
+	 */
+	@Env('N8N_SCIM_ROLE_PROVISIONING_ENABLED')
+	roleProvisioningEnabled: boolean = false;
 }
