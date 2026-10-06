@@ -271,6 +271,9 @@ defineExpose({
 	// Experiment cleanup: remove with instanceAiSplitEmptyState.
 	insertSuggestion: handleSuggestionInsert,
 	submitSuggestion,
+	// Lets a host disable other controls (e.g. an agent picker) while a file
+	// attachment is still encoding, so they cannot change who a send targets.
+	isPreparingSubmission,
 });
 
 // A run suspended on a plan review is parked, not working: the user is meant to

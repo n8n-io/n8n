@@ -287,7 +287,11 @@ vi.mock('@/features/agents/n8nChatPage/components/N8nChatAgentSection.vue', () =
 vi.mock('@/features/agents/n8nChatPage/components/N8nChatAgentPicker.vue', () => ({
 	default: {
 		name: 'N8nChatAgentPickerStub',
-		props: { modelValue: { required: false, default: null }, projectId: { required: false } },
+		props: {
+			modelValue: { required: false, default: null },
+			projectId: { required: false },
+			disabled: { type: Boolean, required: false, default: false },
+		},
 		emits: ['update:modelValue'],
 		data: () => ({
 			agent: {
@@ -297,13 +301,15 @@ vi.mock('@/features/agents/n8nChatPage/components/N8nChatAgentPicker.vue', () =>
 			},
 		}),
 		template: `
-			<div data-test-id="n8n-chat-agent-picker-stub">
+			<div data-test-id="n8n-chat-agent-picker-stub" :data-disabled="String(disabled)">
 				<button
 					data-test-id="n8n-chat-agent-picker-stub-select-agent"
+					:disabled="disabled"
 					@click="$emit('update:modelValue', agent)"
 				>select agent</button>
 				<button
 					data-test-id="n8n-chat-agent-picker-stub-select-assistant"
+					:disabled="disabled"
 					@click="$emit('update:modelValue', null)"
 				>select assistant</button>
 			</div>
@@ -363,6 +369,9 @@ const InstanceAiInputStub = defineComponent({
 		// Staged by the "attach" test button below; mirrors the real composer's
 		// encoded file attachments.
 		const stagedFileAttachments = ref<InstanceAiAttachment[]>([]);
+		// Toggled by a test button below; mirrors the real composer's own flag while
+		// it awaits file encoding before a submit.
+		const isPreparingSubmission = ref(false);
 		const submit = (message: string) => {
 			const prefill = activePrefill.value;
 			// Mirrors the real composer: the restore callback is always provided, and
@@ -405,6 +414,7 @@ const InstanceAiInputStub = defineComponent({
 				currentText.value = prefill.text;
 				activePrefill.value = { ...prefill };
 			},
+			isPreparingSubmission,
 			// Mirror the real submitSuggestion: resolve the prompt + emit submit.
 			submitSuggestion: (payload: {
 				promptKey: BaseTextKey;
@@ -499,6 +509,16 @@ const InstanceAiInputStub = defineComponent({
 							}),
 					},
 					'attach',
+				),
+				h(
+					'button',
+					{
+						'data-test-id': 'instance-ai-input-stub-toggle-preparing',
+						onClick: () => {
+							isPreparingSubmission.value = !isPreparingSubmission.value;
+						},
+					},
+					'toggle preparing',
 				),
 				...(slots.footer?.() ?? []),
 			]);
@@ -1462,6 +1482,20 @@ describe('InstanceAiEmptyView', () => {
 
 			expect(getByTestId('n8n-chat-agent-picker-stub')).toBeInTheDocument();
 			expect(queryByTestId('instance-ai-empty-state')).not.toBeInTheDocument();
+		});
+
+		it('disables the picker while the input is preparing a submission, and re-enables it after', async () => {
+			const { getByTestId } = renderView();
+
+			expect(getByTestId('n8n-chat-agent-picker-stub')).toHaveAttribute('data-disabled', 'false');
+
+			await fireEvent.click(getByTestId('instance-ai-input-stub-toggle-preparing'));
+			await nextTick();
+			expect(getByTestId('n8n-chat-agent-picker-stub')).toHaveAttribute('data-disabled', 'true');
+
+			await fireEvent.click(getByTestId('instance-ai-input-stub-toggle-preparing'));
+			await nextTick();
+			expect(getByTestId('n8n-chat-agent-picker-stub')).toHaveAttribute('data-disabled', 'false');
 		});
 
 		it('forces the default layout, even with the proactive starter and split-layout experiments on', () => {

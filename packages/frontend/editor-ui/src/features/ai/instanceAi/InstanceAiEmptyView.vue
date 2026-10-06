@@ -548,6 +548,11 @@ watch(chatInputRef, () => {
 	composerHasContent.value = false;
 });
 const isStartingThread = ref(false);
+// Blocks switching the recipient while a send targeting the current one is being
+// prepared (e.g. a file still encoding), so it cannot land with the wrong agent.
+const isChatAgentPickerDisabled = computed(
+	() => isStartingThread.value || !!chatInputRef.value?.isPreparingSubmission,
+);
 
 watch(
 	() => route.query[INSTANCE_AI_PROJECT_ID_QUERY],
@@ -843,6 +848,7 @@ function handleShelfSuggestionInsert(payload: ShelfSuggestionPayload) {
 					v-if="isAgentsN8nChatVariantB"
 					v-model="selectedChatAgent"
 					:project-id="selectedProject"
+					:disabled="isChatAgentPickerDisabled"
 				/>
 				<InstanceAiEmptyState v-else :title-key="emptyStateTitleKey" :show-title-icon="true" />
 				<div ref="centeredInput" :class="$style.centeredInput">

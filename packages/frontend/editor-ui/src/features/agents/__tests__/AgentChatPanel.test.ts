@@ -429,6 +429,9 @@ describe('AgentChatPanel', () => {
 				sendMessageMock.mockReturnValue(new Promise(() => {}));
 				const wrapper = mountPanel({ centerEmptyState: true, newSession: true });
 				(wrapper.vm as unknown as PanelVm).sendMessageFromOutside('hello agent');
+				await flushPromises();
+				// The server queues the previewed message as item '1'.
+				sendMessageMock.mock.lastCall?.[2]?.('1');
 				queuedMessagesMock.value = [
 					{
 						id: '1',
@@ -440,6 +443,83 @@ describe('AgentChatPanel', () => {
 				await flushPromises();
 
 				expect(wrapper.text()).not.toContain('hello agent');
+				wrapper.unmount();
+			});
+
+			it('hides only the queued copy of the previewed message, keeping a second queued message visible', async () => {
+				sendMessageMock.mockReturnValue(new Promise(() => {}));
+				const wrapper = mountPanel({ centerEmptyState: true, newSession: true });
+				(wrapper.vm as unknown as PanelVm).sendMessageFromOutside('hello agent');
+				await flushPromises();
+				// The server queues the previewed message as item '1'.
+				sendMessageMock.mock.lastCall?.[2]?.('1');
+				queuedMessagesMock.value = [
+					{
+						id: '1',
+						steeringExecutionId: null,
+						message: 'hello agent',
+						createdAt: new Date().toISOString(),
+					},
+					{
+						id: '2',
+						steeringExecutionId: null,
+						message: 'second message',
+						createdAt: new Date().toISOString(),
+					},
+				];
+				await flushPromises();
+
+				const rows = wrapper.findAll('[data-testid="agent-queued-message"]');
+				expect(rows).toHaveLength(1);
+				expect(rows[0].text()).toContain('second message');
+				wrapper.unmount();
+			});
+
+			it('keeps the first message as the preview bubble when a second send arrives before the first run starts', async () => {
+				const firstSend = createDeferredPromise<'sent' | 'busy'>();
+				sendMessageMock.mockReturnValueOnce(firstSend.promise);
+				sendMessageMock.mockReturnValueOnce(new Promise(() => {}));
+				const wrapper = mountPanel({ centerEmptyState: true, newSession: true });
+
+				(wrapper.vm as unknown as PanelVm).sendMessageFromOutside('message one');
+				await flushPromises();
+				expect(messageList(wrapper).props('messages')).toEqual([
+					expect.objectContaining({ content: 'message one' }),
+				]);
+
+				// A second send lands in the gap before the first run has started.
+				const input = wrapper.findComponent({ name: 'ChatInputBase' });
+				await input.vm.$emit('update:modelValue', 'message two');
+				await input.vm.$emit('submit');
+				await flushPromises();
+
+				expect(messageList(wrapper).props('messages')).toEqual([
+					expect.objectContaining({ content: 'message one' }),
+				]);
+				wrapper.unmount();
+			});
+
+			it('does not clear the first message preview when a second, unaccepted send comes back busy', async () => {
+				const firstSend = createDeferredPromise<'sent' | 'busy'>();
+				const secondSend = createDeferredPromise<'sent' | 'busy'>();
+				sendMessageMock.mockReturnValueOnce(firstSend.promise);
+				sendMessageMock.mockReturnValueOnce(secondSend.promise);
+				const wrapper = mountPanel({ centerEmptyState: true, newSession: true });
+
+				(wrapper.vm as unknown as PanelVm).sendMessageFromOutside('message one');
+				await flushPromises();
+
+				const input = wrapper.findComponent({ name: 'ChatInputBase' });
+				await input.vm.$emit('update:modelValue', 'message two');
+				await input.vm.$emit('submit');
+				await flushPromises();
+
+				secondSend.resolve('busy');
+				await flushPromises();
+
+				expect(messageList(wrapper).props('messages')).toEqual([
+					expect.objectContaining({ content: 'message one' }),
+				]);
 				wrapper.unmount();
 			});
 

@@ -204,17 +204,20 @@ const queueEdit = ref<{
 // The stream adds a sent message only once its run starts. On the entry page the first
 // message shows right away instead, so the page doesn't sit in its empty state meanwhile.
 const firstMessagePreview = ref<ChatMessage>();
+// Queue item of the previewed message, once the server has queued it.
+const previewQueueId = ref<string>();
 const isPreviewingFirstMessage = computed(
 	() => !!firstMessagePreview.value && messages.value.length === 0,
 );
 const queueRows = computed(() => {
-	// The previewed first message is already on screen as a bubble.
-	if (isPreviewingFirstMessage.value) return [];
 	const edit = queueEdit.value;
-	if (edit && !queuedMessages.value.some((item) => item.id === edit.item.id)) {
-		return [...queuedMessages.value, edit.item];
-	}
-	return queuedMessages.value;
+	const rows =
+		edit && !queuedMessages.value.some((item) => item.id === edit.item.id)
+			? [...queuedMessages.value, edit.item]
+			: queuedMessages.value;
+	// The previewed message is already on screen as a bubble, so hide only its queue row.
+	if (!isPreviewingFirstMessage.value) return rows;
+	return rows.filter((item) => item.id !== previewQueueId.value);
 });
 const queueElement = useTemplateRef<HTMLDivElement>('messageQueue');
 const queueListId = useId();
@@ -694,6 +697,8 @@ const isPreparingToSend = ref(false);
 let disposed = false;
 let queuedExternalMessage: string | undefined;
 let submittingQueuedExternalMessage = false;
+// The bubble a hand-off installed before it was sent. Its own `onSubmit` takes it.
+let handoffPreview: ChatMessage | undefined;
 // Files a hand-off staged into `attachedFiles`, tracked so an abandoned hand-off
 // can drop only its own files and leave the user's own picks alone.
 let externalAttachedFiles: File[] = [];
@@ -798,8 +803,14 @@ const chatPlaceholder = computed(() => {
 		: locale.baseText('agents.chat.input.placeholder');
 });
 
-function previewFirstMessage(text: string, files: File[] = []): void {
-	if (!props.centerEmptyState || messages.value.length > 0) return;
+/**
+ * Installs the first-message bubble and returns it. Returns undefined when a bubble
+ * already shows: a second send before the first run starts must not replace it.
+ */
+function previewFirstMessage(text: string, files: File[] = []): ChatMessage | undefined {
+	if (!props.centerEmptyState || messages.value.length > 0 || firstMessagePreview.value) {
+		return undefined;
+	}
 	firstMessagePreview.value = {
 		id: 'first-message-preview',
 		role: 'user',
@@ -813,6 +824,8 @@ function previewFirstMessage(text: string, files: File[] = []): void {
 			file,
 		})),
 	};
+	previewQueueId.value = undefined;
+	return firstMessagePreview.value;
 }
 watch([() => messages.value.length, fatalError], ([count, error]) => {
 	if (count > 0 || error) firstMessagePreview.value = undefined;
@@ -854,6 +867,7 @@ watch(
 	() => [props.projectId, props.agentId, props.continueSessionId],
 	() => {
 		queuedExternalMessage = undefined;
+		handoffPreview = undefined;
 		queueEdit.value = undefined;
 		queueExpanded.value = false;
 		queueOrder.value = undefined;
@@ -894,6 +908,9 @@ async function onSubmit(): Promise<SubmitResult> {
 	const files = [...attachedFiles.value];
 	if (!text && files.length === 0) return 'rejected';
 	if (isSubmissionBlocked.value) return 'busy';
+	// Taken before any await, so a user send made while this hand-off runs cannot claim it.
+	const ownedHandoffPreview = submittingQueuedExternalMessage ? handoffPreview : undefined;
+	if (ownedHandoffPreview) handoffPreview = undefined;
 	const hadNoMessagesBeforeSend = messages.value.length === 0;
 	const target = {
 		projectId: props.projectId,
@@ -934,12 +951,14 @@ async function onSubmit(): Promise<SubmitResult> {
 				: undefined;
 		if (!isCurrentTarget()) return 'rejected';
 
-		previewFirstMessage(text, files);
-		const installedPreview = firstMessagePreview.value;
+		const installedPreview = previewFirstMessage(text, files) ?? ownedHandoffPreview;
 		let accepted = false;
-		const sending = sendMessage(text, files.length > 0 ? files : undefined, () => {
+		const sending = sendMessage(text, files.length > 0 ? files : undefined, (queueId) => {
 			accepted = true;
 			if (!isCurrentTarget()) return;
+			if (installedPreview && firstMessagePreview.value === installedPreview) {
+				previewQueueId.value = queueId;
+			}
 			if (fingerprint) {
 				agentTelemetry.trackSubmittedMessage({
 					agentId: props.agentId,
@@ -1009,7 +1028,7 @@ function sendMessageFromOutside(message: string, files?: File[]) {
 	// as a picked file: `onSubmit` reads `attachedFiles`, so they ride along with
 	// every retry `submitQueuedExternalMessage` makes while blocked.
 	if (files?.length) handleFilesSelected(files);
-	previewFirstMessage(message, attachedFiles.value);
+	handoffPreview = previewFirstMessage(message, attachedFiles.value);
 	// A previewed message already shows as a bubble; `submitQueuedExternalMessage` fills
 	// the composer itself right before it submits.
 	if (!firstMessagePreview.value) inputText.value = message;

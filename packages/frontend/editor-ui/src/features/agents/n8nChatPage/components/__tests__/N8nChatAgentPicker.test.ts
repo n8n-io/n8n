@@ -39,7 +39,11 @@ function agent(id: string, name: string, description?: string): AgentChatListIte
 
 function setup(
 	result: { agents: AgentChatListItem[]; count: number; isLoading?: boolean },
-	props: { modelValue: AgentChatListItem | null; projectId?: string } = { modelValue: null },
+	props: {
+		modelValue: AgentChatListItem | null;
+		projectId?: string;
+		disabled?: boolean;
+	} = { modelValue: null },
 ) {
 	useN8nChatAgentsMock.mockReturnValue({
 		agents: ref(result.agents),
@@ -195,5 +199,19 @@ describe('N8nChatAgentPicker', () => {
 		await userEvent.click(createButton);
 
 		expect(createAgentMock).toHaveBeenCalledWith('dropdown', 'p1');
+	});
+
+	it('disables the trigger and blocks opening the menu when disabled', async () => {
+		const { getByTestId, queryByTestId } = setup(
+			{ agents: [agent('a1', 'Support Agent')], count: 1 },
+			{ modelValue: null, disabled: true },
+		);
+
+		const trigger = getByTestId('n8n-chat-agent-picker-trigger');
+		expect(trigger).toBeDisabled();
+
+		await userEvent.click(trigger);
+
+		expect(queryByTestId('n8n-chat-agent-picker-menu')).not.toBeInTheDocument();
 	});
 });

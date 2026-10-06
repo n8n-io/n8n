@@ -31,6 +31,8 @@ const props = defineProps<{
 	/** `null` selects n8n Assistant. */
 	modelValue: AgentChatListItem | null;
 	projectId?: string;
+	/** Blocks picking a different recipient, e.g. while a send is being prepared. */
+	disabled?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -125,6 +127,7 @@ function handleCreateAgent() {
 			<N8nDropdownMenu
 				:items="items"
 				:loading="isLoading"
+				:disabled="disabled"
 				searchable
 				:search-placeholder="i18n.baseText('agents.n8nChatPage.library.search.placeholder')"
 				:search-debounce="getDebounceTime(DEBOUNCE_TIME.INPUT.SEARCH)"
@@ -139,6 +142,7 @@ function handleCreateAgent() {
 					<button
 						type="button"
 						:class="$style.trigger"
+						:disabled="disabled"
 						data-test-id="n8n-chat-agent-picker-trigger"
 					>
 						<N8nAssistantIcon v-if="!modelValue" size="large" />
@@ -247,6 +251,10 @@ function handleCreateAgent() {
 	background: none;
 	border: none;
 	cursor: pointer;
+
+	&:disabled {
+		cursor: not-allowed;
+	}
 }
 
 .triggerName {
