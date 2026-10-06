@@ -16,6 +16,7 @@ import {
 import type { Project, User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { stringify } from 'flatted';
+import { DateTime } from 'luxon';
 import { InstanceSettings } from 'n8n-core';
 import { randomInt } from 'n8n-workflow';
 import assert from 'node:assert';
@@ -558,6 +559,57 @@ describe('ExecutionRecoveryService', () => {
 
 				expect(debugHelperTaskData.executionStatus).toBe('crashed');
 				expect(debugHelperTaskData.error).toBeInstanceOf(NodeCrashedError);
+			});
+
+			test('should stop at the latest node event when nodes ran out of canvas order', async () => {
+				const workflow = await createWorkflow(OOM_WORKFLOW);
+				const execution = await createExecution(
+					{ status: 'running', data: stringify(undefined) },
+					workflow,
+				);
+				const nodeEvent = (
+					eventName: 'n8n.node.started' | 'n8n.node.finished',
+					nodeName: string,
+					ts: string,
+				) =>
+					new EventMessageNode({
+						eventName,
+						ts: DateTime.fromISO(ts),
+						payload: {
+							executionId: execution.id,
+							workflowName: workflow.name,
+							nodeName,
+							nodeType: 'n8n-nodes-base.debugHelper',
+							nodeId: '123',
+						},
+					});
+				// The trigger comes first in the node list but finishes last.
+				const messages = [
+					nodeEvent('n8n.node.started', 'DebugHelper', '2025-01-01T00:00:01.000Z'),
+					nodeEvent('n8n.node.finished', 'DebugHelper', '2025-01-01T00:00:02.000Z'),
+					nodeEvent(
+						'n8n.node.started',
+						'When clicking "Execute workflow"',
+						'2025-01-01T00:00:03.000Z',
+					),
+					nodeEvent(
+						'n8n.node.finished',
+						'When clicking "Execute workflow"',
+						'2025-01-01T00:00:04.000Z',
+					),
+				];
+
+				const amendedExecution = await executionRecoveryService.recoverFromLogs(
+					execution.id,
+					messages,
+				);
+
+				const latest = new Date('2025-01-01T00:00:04.000Z');
+				expect(amendedExecution?.stoppedAt).toEqual(latest);
+				expect(eventService.emit).toHaveBeenCalledWith(
+					'execution-crashed',
+					expect.objectContaining({ stoppedAt: latest }),
+				);
 			});
 
 			test('should update `status`, `stoppedAt` and `data` if last node finished', async () => {

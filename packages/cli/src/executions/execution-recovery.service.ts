@@ -181,8 +181,6 @@ export class ExecutionRecoveryService {
 		// We initialize it to avoid referencing a property of undefined later on.
 		runExecutionData.resultData.runData ??= {};
 
-		let lastNodeRunTimestamp: DateTime | undefined;
-
 		for (const node of execution.workflowData.nodes) {
 			const nodeMessages = nodeMessagesByName[node.name] ?? [];
 			const nodeStartedMessage = nodeMessages.find(
@@ -210,20 +208,21 @@ export class ExecutionRecoveryService {
 				taskData.executionStatus = 'success';
 				taskData.data ??= ARTIFICIAL_TASK_DATA;
 				taskData.executionTime = nodeFinishedMessage.ts.diff(nodeStartedMessage.ts).toMillis();
-				lastNodeRunTimestamp = nodeFinishedMessage.ts;
 			} else {
 				taskData.executionStatus = 'crashed';
 				taskData.error = new NodeCrashedError(node);
 				taskData.executionTime = 0;
 				runExecutionData.resultData.error = new WorkflowCrashedError();
-				lastNodeRunTimestamp = nodeStartedMessage.ts;
 			}
 
 			runExecutionData.resultData.lastNodeExecuted = node.name;
 			runExecutionData.resultData.runData[node.name] = [taskData];
 		}
 
-		const stoppedAt = this.toStoppedAt(lastNodeRunTimestamp, workflowMessages);
+		const stoppedAt = this.toStoppedAt(
+			this.latestNodeEventTs(nodeMessagesByName),
+			workflowMessages,
+		);
 
 		// A finished row that lost its data is past the claim's status guard, so it is amended directly.
 		if (!['success', 'error', 'canceled'].includes(execution.status)) {
@@ -280,6 +279,17 @@ export class ExecutionRecoveryService {
 			},
 			{ nodeMessagesByName: {}, workflowMessages: [] },
 		);
+	}
+
+	/** The node list follows canvas order, not run order, so pick the latest event by time. */
+	private latestNodeEventTs(nodeMessagesByName: Record<string, EventMessageTypes[]>) {
+		let latest: DateTime | undefined;
+
+		for (const { ts } of Object.values(nodeMessagesByName).flat()) {
+			if (!latest || ts > latest) latest = ts;
+		}
+
+		return latest;
 	}
 
 	private toStoppedAt(timestamp: DateTime | undefined, messages: EventMessageTypes[]) {
