@@ -221,12 +221,14 @@ function usedInShareLabel(project: Pick<ProjectSharingData, 'name'>) {
 }
 
 function usedInAccessTooltip(project: ProjectListItem) {
+	const projectName = project.name ?? '';
+
 	return isOwnedByViewer.value
 		? i18n.baseText('credentialEdit.credentialSharing.availableToYou.tooltip', {
-				interpolate: { project: project.name ?? '' },
+				interpolate: { project: projectName },
 			})
 		: i18n.baseText('credentialEdit.credentialSharing.availableToOwner.tooltip', {
-				interpolate: { name: credentialOwnerFirstName.value, project: project.name ?? '' },
+				interpolate: { name: credentialOwnerFirstName.value, project: projectName },
 			});
 }
 

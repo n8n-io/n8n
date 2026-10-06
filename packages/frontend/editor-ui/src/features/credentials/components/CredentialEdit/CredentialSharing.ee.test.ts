@@ -778,7 +778,6 @@ describe('CredentialSharing.ee', () => {
 
 			expect(getByTestId('credential-used-in-project-share')).toHaveTextContent(/^\s*Share\s*$/);
 		});
-		});
 
 		it('explains in a tooltip that only the owner can use the credential in the project', async () => {
 			getDependenciesMock.mockReturnValue({
@@ -811,6 +810,41 @@ describe('CredentialSharing.ee', () => {
 
 			await waitFor(() =>
 				expect(getTooltip()).toHaveTextContent('Only you can use this credential in Marketing.'),
+			);
+		});
+
+		it('still explains the access in a tooltip when the project has no name', async () => {
+			projectsStore.myProjects = [{ ...marketingProject, name: null }];
+			getDependenciesMock.mockReturnValue({
+				dependencies: [
+					{
+						id: 'wf-1',
+						name: 'Email summary',
+						type: 'workflowParent',
+						projectId: 'marketing-project',
+					},
+				],
+				inaccessibleCount: 0,
+			});
+
+			const credential = createCredential({
+				homeProject: ownerPersonalProject,
+				sharedWithProjects: [],
+			});
+			const { getByText } = renderComponent({
+				props: {
+					credentialId: credential.id,
+					credentialData: {},
+					credentialPermissions: { share: true },
+					credential,
+					modalBus: createEventBus(),
+				},
+			});
+
+			await hoverTooltipTrigger(getByText('Available to you'));
+
+			await waitFor(() =>
+				expect(getTooltip()).toHaveTextContent('Only you can use this credential in'),
 			);
 		});
 
