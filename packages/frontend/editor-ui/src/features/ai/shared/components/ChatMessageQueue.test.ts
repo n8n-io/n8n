@@ -45,6 +45,9 @@ function mountQueue(
 		steerAction: ChatMessageQueueSteerAction;
 		canSteer: boolean;
 		canDragQueueItem: (index: number) => boolean;
+		canDropQueueItem: (event: {
+			draggedContext: { index: number; futureIndex: number };
+		}) => boolean;
 		isQueueItemBusy: (item: ChatMessageQueueItem) => boolean;
 	}> = {},
 ) {
@@ -109,6 +112,35 @@ describe('ChatMessageQueue', () => {
 
 		expect(wrapper.emitted('drag-start')).toEqual([[]]);
 		expect(wrapper.emitted('drag-end')).toEqual([[event]]);
+	});
+
+	it.each([
+		['ArrowUp', 0],
+		['ArrowDown', 2],
+	])('moves an item with %s', async (key, newIndex) => {
+		const wrapper = mountQueue({ expanded: true });
+		const handle = wrapper.get('[data-queue-id="2"] [data-testid="chat-queue-drag-handle"]');
+
+		expect(handle.attributes('aria-keyshortcuts')).toBe('ArrowUp ArrowDown');
+		await handle.trigger('keydown', { key });
+
+		expect(wrapper.emitted('drag-start')).toEqual([[]]);
+		expect(wrapper.emitted('drag-end')).toEqual([[{ oldIndex: 1, newIndex }]]);
+	});
+
+	it.each([
+		{ key: 'ArrowUp' },
+		{ key: 'ArrowDown', isReordering: true },
+		{ key: 'ArrowDown', canDropQueueItem: () => false },
+		{ key: 'Enter' },
+	])('does not move an item when the move is unavailable: %j', async ({ key, ...overrides }) => {
+		const wrapper = mountQueue({ expanded: true, ...overrides });
+		await wrapper
+			.get('[data-queue-id="1"] [data-testid="chat-queue-drag-handle"]')
+			.trigger('keydown', { key });
+
+		expect(wrapper.emitted('drag-start')).toBeUndefined();
+		expect(wrapper.emitted('drag-end')).toBeUndefined();
 	});
 
 	it('emits the selected queue actions', async () => {

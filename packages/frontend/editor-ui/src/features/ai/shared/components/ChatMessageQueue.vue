@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, useId } from 'vue';
+import { computed, nextTick, useId, watch } from 'vue';
 import Draggable from 'vuedraggable';
 import {
 	N8nButton,
@@ -40,6 +40,38 @@ const expanded = computed({
 	get: () => props.expanded,
 	set: (value: boolean) => emit('update:expanded', value),
 });
+
+let keyboardHandle: HTMLButtonElement | undefined;
+
+function onQueueHandleKeydown(event: KeyboardEvent, index: number) {
+	if (props.isReordering || !['ArrowUp', 'ArrowDown'].includes(event.key)) return;
+	event.preventDefault();
+	event.stopPropagation();
+	const futureIndex = index + (event.key === 'ArrowUp' ? -1 : 1);
+	if (
+		!props.canDragQueueItem(index) ||
+		!props.displayedItems[futureIndex] ||
+		!props.canDropQueueItem({ draggedContext: { index, futureIndex } })
+	) {
+		return;
+	}
+
+	if (event.currentTarget instanceof HTMLButtonElement) {
+		keyboardHandle = event.currentTarget;
+	}
+	emit('drag-start');
+	emit('drag-end', { oldIndex: index, newIndex: futureIndex });
+}
+
+watch(
+	() => props.isReordering,
+	async (isReordering) => {
+		if (isReordering || !keyboardHandle) return;
+		await nextTick();
+		keyboardHandle?.focus();
+		keyboardHandle = undefined;
+	},
+);
 </script>
 
 <template>
@@ -127,7 +159,9 @@ const expanded = computed({
 												interpolate: { position: index + 1, count: displayedItems.length },
 											})
 										"
+										aria-keyshortcuts="ArrowUp ArrowDown"
 										data-testid="chat-queue-drag-handle"
+										@keydown="onQueueHandleKeydown($event, index)"
 									/>
 								</N8nTooltip>
 								<N8nIcon

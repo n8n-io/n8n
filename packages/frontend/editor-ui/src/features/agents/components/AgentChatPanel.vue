@@ -286,6 +286,8 @@ async function startQueueEdit(item: AgentChatQueueItem) {
 		if (isCurrentTarget()) editingQueueId.value = undefined;
 	}
 }
+
+/** Allows Option/Alt + Up to edit the last sent queued message */
 function onChatInputKeydown(event: KeyboardEvent) {
 	if (
 		!(event.target instanceof HTMLTextAreaElement) ||
