@@ -32,9 +32,10 @@ describe('ProjectRepository', () => {
 	describe('findByIdsForUserWithRoles', () => {
 		it('batches large project id lists', async () => {
 			const projectIds = Array.from({ length: 10_001 }, (_, index) => `project-${index}`);
-			const earlier = { id: 'project-10000', createdAt: new Date('2026-01-01') } as Project;
-			const later = { id: 'project-0', createdAt: new Date('2026-01-02') } as Project;
-			entityManager.find.mockResolvedValueOnce([later]).mockResolvedValueOnce([earlier]);
+			const createdAt = new Date('2026-01-01');
+			const uppercase = { id: 'project-A', createdAt } as Project;
+			const lowercase = { id: 'project-a', createdAt } as Project;
+			entityManager.find.mockResolvedValueOnce([lowercase]).mockResolvedValueOnce([uppercase]);
 
 			const result = await projectRepository.findByIdsForUserWithRoles(projectIds);
 
@@ -45,7 +46,7 @@ describe('ProjectRepository', () => {
 			expect(entityManager.find).toHaveBeenNthCalledWith(2, Project, {
 				where: { id: In(projectIds.slice(10_000)) },
 			});
-			expect(result).toEqual([earlier, later]);
+			expect(result).toEqual([uppercase, lowercase]);
 		});
 	});
 });

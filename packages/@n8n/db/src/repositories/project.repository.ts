@@ -191,7 +191,8 @@ export class ProjectRepository extends BaseRepository<Project> {
 			);
 		}
 		return projects.sort(
-			(a, b) => a.createdAt.getTime() - b.createdAt.getTime() || a.id.localeCompare(b.id),
+			(a, b) =>
+				a.createdAt.getTime() - b.createdAt.getTime() || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0),
 		);
 	}
 
