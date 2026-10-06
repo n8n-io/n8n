@@ -568,11 +568,12 @@ workflow-builder, or spawned-agent entries in the spawned-agent section.
 
 Routing mode measures which route the orchestrator takes for a request: build
 an Agent, build a workflow, do the task once, debug, answer, ask a question,
-do many tasks, or decline. It stops each trial at the first call that commits
-to a route, so a trial takes seconds, not minutes.
+do many tasks, or decline. Before each tool call, a judge reads what the
+Assistant did so far and stops the trial when it has picked a route. A trial
+takes seconds, not minutes.
 
 ```bash
-pnpm eval:discovery --cases-dir <dir> --stop-on-route --timeout 120000
+pnpm eval:discovery --cases-dir <dir> --timeout 120000
 ```
 
 The runner reads each `route-<slug>.json` file in `<dir>`. A case is in the
@@ -580,7 +581,9 @@ format that LangTracer exports. The tags give the expected route:
 
 - `routing` marks the file as a routing case.
 - `bucket:<route>` is the main expected route. The summary groups cases by it.
-- `accepts:<token>` is a route that passes. A case can have more than one.
+- `accepts:<token>` is another route that passes. A case can have more than
+  one. The bucket always passes, except `bucket:clarify`: a clarify case must
+  list the questions that pass, for example `accepts:clarify:open`.
 
 A case can start with state. The stub instance and the thread then hold it
 before the turn:
