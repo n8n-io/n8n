@@ -9298,6 +9298,7 @@
 	"promotions.bindings.conflicts.incompatible-usage-scope": "The credential scope does not support these workflows. Correct the destination credential scope.",
 	"promotions.bindings.conflicts.missing-definition": "The source variable has no definition. Add its definition in the source.",
 	"promotions.bindings.conflicts.project-not-team": "The destination project is not a team project. Correct the project in the source or destination.",
+	"promotions.bindings.conflicts.destructive-change": "The source changes this data table and deletes data in the destination. Correct the data table in the source or destination.",
 	"promotions.bindings.restart": "After you correct access or conflicts, close this dialog and start Apply remote changes again.",
 	"promotions.bindings.warnings.title": "Warnings",
 	"promotions.bindings.warnings.variableShadowed": "A project variable overrides the global variable {name} for these workflows. You can continue.",

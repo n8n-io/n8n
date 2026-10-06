@@ -1464,6 +1464,7 @@ describe('PromotionsService', () => {
 				workflows: [branchWorkflow, foreignWorkflow, movedWorkflow],
 				credentials: [],
 				variables: [],
+				dataTables: [],
 			};
 
 			beforeEach(async () => {
