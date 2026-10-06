@@ -463,7 +463,7 @@ export class WorkflowRunner {
 					executionId,
 					workflowId,
 					data,
-					shouldReloadStaticData,
+					loadStaticData,
 					realtime,
 					existingExecution?.executionId,
 				);

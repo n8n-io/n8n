@@ -1244,6 +1244,18 @@ export function getNodeInputs(
 	workflow: WorkflowForNodeHelpers,
 	node: INode,
 	nodeTypeData: INodeTypeDescription,
+	options: {
+		/**
+		 * Surface a broken `inputs` expression instead of reporting no inputs.
+		 * Swallowing suits rendering; a caller judging validity wants the error.
+		 *
+		 * Only a thrown error counts. An expression that evaluates but yields a
+		 * non-list is left alone. This result usually means that the node is not
+		 * configured. The engine reads the same case as "no inputs" and runs.
+		 * Failing here would block a workflow that the runtime can run.
+		 */
+		throwOnExpressionError?: boolean;
+	} = {},
 ): Array<NodeConnectionType | INodeInputConfiguration> {
 	if (Array.isArray(nodeTypeData?.inputs)) {
 		return nodeTypeData.inputs;
@@ -1258,6 +1270,7 @@ export function getNodeInputs(
 			{},
 		) || []) as NodeConnectionType[];
 	} catch (e) {
+		if (options.throwOnExpressionError) throw e;
 		console.warn('Could not calculate inputs dynamically for node: ', node.name);
 		return [];
 	}

@@ -14,7 +14,7 @@ import { DataSource } from '@n8n/typeorm';
 import { sleep } from '@n8n/utils/sleep';
 import { DateTime } from 'luxon';
 
-import { InsightsConfig } from '@/modules/insights/insights.config';
+import { InsightsConfig } from '../../../insights.config';
 import { createMember } from '@test-integration/db/users';
 
 import {

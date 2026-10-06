@@ -73,6 +73,11 @@ export class AgentsModule implements ModuleInterface {
 		const { AgentHistoryRepository } = await import('./repositories/agent-history.repository.js');
 		Container.get(AgentHistoryRepository);
 
+		const { AgentBudgetSpendRepository } = await import(
+			'./repositories/agent-budget-spend.repository.js'
+		);
+		Container.get(AgentBudgetSpendRepository);
+
 		// Register the sandboxed runtime service (lazy — the V8 isolate is only
 		// created on first use, so this import has negligible startup cost).
 		const { AgentSecureRuntime } = await import('./runtime/agent-secure-runtime.js');
@@ -246,6 +251,8 @@ export class AgentsModule implements ModuleInterface {
 		const { AgentExecution } = await import('./entities/agent-execution.entity.js');
 		const { AgentMessageQueue } = await import('./entities/agent-message-queue.entity.js');
 		const { AgentBackgroundJob } = await import('./entities/agent-background-job.entity.js');
+		const { AgentPlan } = await import('./entities/agent-plan.entity.js');
+		const { AgentPlanHistory } = await import('./entities/agent-plan-history.entity.js');
 		const { AgentHistory } = await import('./entities/agent-history.entity.js');
 		const { AgentCredentialDependency } = await import(
 			'./entities/agent-credential-dependency.entity.js'
@@ -255,6 +262,10 @@ export class AgentsModule implements ModuleInterface {
 		);
 		const { AgentTask } = await import('./entities/agent-task.entity.js');
 		const { AgentTaskRunLock } = await import('./entities/agent-task-run-lock.entity.js');
+		const { AgentBudgetSpend } = await import('./entities/agent-budget-spend.entity.js');
+		const { AgentBudgetAppliedCall } = await import(
+			'./entities/agent-budget-applied-call.entity.js'
+		);
 		const { AgentTaskSnapshot } = await import('./entities/agent-task-snapshot.entity.js');
 		const { AgentObservationEntity } = await import('./entities/agent-observation.entity.js');
 		const { AgentObservationCursorEntity } = await import(
@@ -290,11 +301,15 @@ export class AgentsModule implements ModuleInterface {
 			AgentExecution,
 			AgentMessageQueue,
 			AgentBackgroundJob,
+			AgentPlan,
+			AgentPlanHistory,
 			AgentHistory,
 			AgentCredentialDependency,
 			AgentWorkflowDependency,
 			AgentTask,
 			AgentTaskRunLock,
+			AgentBudgetSpend,
+			AgentBudgetAppliedCall,
 			AgentTaskSnapshot,
 			AgentObservationEntity,
 			AgentObservationCursorEntity,

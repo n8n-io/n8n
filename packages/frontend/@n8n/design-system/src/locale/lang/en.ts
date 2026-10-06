@@ -236,6 +236,7 @@ export default {
 	'collapsiblePanel.expand': 'Expand',
 	'collapsiblePanel.dragToReorder': 'Drag to reorder',
 	'collapsiblePanel.delete': 'Delete',
+	'combobox.loading': 'Searching',
 	'combobox.clearSelection': 'Clear selection',
 	'combobox.showPopup': 'Show popup',
 	'combobox.placeholder': 'Select an option',

@@ -34,6 +34,7 @@ import NodeSettingsInvalidNodeWarning from './NodeSettingsInvalidNodeWarning.vue
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useInstalledCommunityPackage } from '@/features/settings/communityNodes/composables/useInstalledCommunityPackage';
 import { useNodeCredentialOptions } from '@/features/credentials/composables/useNodeCredentialOptions';
+import { useCredentialSharing } from '@/features/credentials/composables/useCredentialSharing';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import {
 	RestrictedNodePanel,
@@ -180,6 +181,16 @@ const isHomeProjectTeam = computed(
 );
 const isReadOnly = computed(
 	() => props.readOnly || (hasForeignCredential.value && !isHomeProjectTeam.value),
+);
+const { isEnabled: isCredentialSharingEnabled } = useCredentialSharing();
+/**
+ * With credential sharing, the picker stays usable on a node locked by a
+ * credential the user cannot use, so they can switch to one they can. The
+ * parameters stay locked: editing them while the node runs on the owner's
+ * account would let the owner later publish changed logic as themselves.
+ */
+const isCredentialPickerReadOnly = computed(() =>
+	isCredentialSharingEnabled.value ? props.readOnly : isReadOnly.value,
 );
 const node = computed(() => props.activeNode ?? ndvStore.value.activeNode);
 const { isRestricted, restrictionScope } = useNodeTypeRestriction(() => node.value?.type);
@@ -447,6 +458,7 @@ const valueChanged = (parameterData: IUpdateInformation) => {
 
 			nodeHelpers.updateNodeParameterIssuesByName(_node.name);
 			nodeHelpers.updateNodeCredentialIssuesByName(_node.name);
+			nodeHelpers.updateNodeInputIssuesByName(_node.name);
 		}
 	} else if (nameIsParameter(parameterData)) {
 		// A node parameter changed
@@ -747,9 +759,12 @@ function handleSelectAction(params: INodeParameters) {
 			<N8nNotice
 				v-if="hasForeignCredential && !isHomeProjectTeam"
 				:content="
-					i18n.baseText('nodeSettings.hasForeignCredential', {
-						interpolate: { owner: credentialOwnerName },
-					})
+					i18n.baseText(
+						isCredentialSharingEnabled
+							? 'nodeSettings.hasForeignCredential.canSwitch'
+							: 'nodeSettings.hasForeignCredential',
+						{ interpolate: { owner: credentialOwnerName } },
+					)
 				"
 			/>
 			<FreeAiCreditsCallout />
@@ -763,7 +778,7 @@ function handleSelectAction(params: INodeParameters) {
 			<NodeCredentials
 				v-if="openPanel === 'credential'"
 				:node="node"
-				:readonly="isReadOnly"
+				:readonly="isCredentialPickerReadOnly"
 				:show-all="true"
 				:hide-issues="hiddenIssuesInputs.includes('credentials')"
 				:hide-ask-assistant="hideCredentialHelp"
@@ -801,7 +816,7 @@ function handleSelectAction(params: INodeParameters) {
 					<NodeCredentials
 						v-if="!isEmbeddedInCanvas && !isDemoPreview"
 						:node="node"
-						:readonly="isReadOnly"
+						:readonly="isCredentialPickerReadOnly"
 						:show-all="true"
 						:hide-issues="hiddenIssuesInputs.includes('credentials')"
 						:hide-ask-assistant="hideCredentialHelp"

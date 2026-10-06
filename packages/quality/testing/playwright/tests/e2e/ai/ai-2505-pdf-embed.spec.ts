@@ -20,7 +20,7 @@ import { test } from '../../../fixtures/base';
 test.use({ capability: 'proxy' });
 test.describe(
 	'AI-2505 — PDF embed regression @capability:proxy',
-	{ annotation: [{ type: 'owner', description: 'AI' }] },
+	{ annotation: [{ type: 'owner', description: 'Agent' }] },
 	() => {
 		test.beforeEach(async ({ services }) => {
 			await setupEmbeddingsProxy(services.proxy);
