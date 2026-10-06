@@ -3789,11 +3789,13 @@ export interface IWorkflowExecutionDataProcess {
 	httpResponse?: express.Response; // Used for streaming responses
 	streamingEnabled?: boolean;
 	/**
-	 * True while the webhook caller still waits for a response that the run
-	 * itself produces (every response mode except `onReceived`). A worker must
-	 * not park such a run at shutdown before that response has gone out.
+	 * True while something on the main that started this run awaits its outcome
+	 * and would act on a paused segment as if it were the result: a webhook
+	 * caller owed a response, a trigger node's done promise (Kafka, RabbitMQ,
+	 * MQTT), or an Instance AI verification. A worker must not park such a run
+	 * at shutdown. A relayed webhook response clears it on the worker.
 	 */
-	webhookResponsePending?: boolean;
+	callerAwaitsOutcome?: boolean;
 	/**
 	 * Only engine v2 reads this. The data-plane execution id, set by a caller that
 	 * minted it before the run starts: to subscribe to the run's answer, or because

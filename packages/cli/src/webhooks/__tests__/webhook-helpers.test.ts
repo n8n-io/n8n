@@ -1757,7 +1757,7 @@ describe('executeWebhook credential-status gate', () => {
 			await vi.waitFor(() => expect(workflowRunner.run).toHaveBeenCalled());
 
 			const [runData] = vi.mocked(workflowRunner.run).mock.calls[0];
-			expect(runData.webhookResponsePending).toBe(false);
+			expect(runData.callerAwaitsOutcome).toBe(false);
 		},
 	);
 
@@ -1770,7 +1770,7 @@ describe('executeWebhook credential-status gate', () => {
 		await vi.waitFor(() => expect(workflowRunner.run).toHaveBeenCalled());
 
 		const [runData] = vi.mocked(workflowRunner.run).mock.calls[0];
-		expect(runData.webhookResponsePending).toBe(true);
+		expect(runData.callerAwaitsOutcome).toBe(true);
 	});
 
 	it('does not gate webhooks that do not establish a triggering identity', async () => {

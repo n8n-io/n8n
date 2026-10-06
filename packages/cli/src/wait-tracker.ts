@@ -174,9 +174,9 @@ export class WaitTracker {
 			projectId: project.id,
 			pushRef: fullExecutionData.data.pushRef,
 			startedAt: fullExecutionData.startedAt,
-			// The caller of a webhook run was answered when the run paused, so a
-			// resumed segment owes no response and may be suspended again.
-			webhookResponsePending: false,
+			// Whatever awaited this run on main was answered when the run paused, so
+			// a resumed segment owes nothing and may be suspended again.
+			callerAwaitsOutcome: false,
 			// Not a stored field, so a resume has to derive it again — otherwise the
 			// run comes back without an identity and a credential only its publisher
 			// may use is refused halfway through.

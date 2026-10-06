@@ -1191,7 +1191,7 @@ export async function executeWebhook(
 			projectName: project?.name,
 			userId: webhookData.userId,
 			encryptedRunnerIdentity: additionalData.encryptedRunnerIdentity,
-			webhookResponsePending: !IMMEDIATE_RESPONSE_MODES.has(responseMode),
+			callerAwaitsOutcome: !IMMEDIATE_RESPONSE_MODES.has(responseMode),
 			// v1 reads this from `executionData.startData`, which `prepareExecutionData`
 			// sets, so carrying it here changes nothing for v1. Engine v2 has no way to
 			// stop at a node, and its dispatcher refuses the run on this field.

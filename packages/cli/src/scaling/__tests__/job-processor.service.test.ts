@@ -311,7 +311,7 @@ describe('JobProcessor', () => {
 					loadStaticData: false,
 					streamingEnabled: false,
 					isMcpExecution: false,
-					webhookResponsePending: false,
+					callerAwaitsOutcome: false,
 				},
 			});
 
@@ -350,7 +350,7 @@ describe('JobProcessor', () => {
 					loadStaticData: false,
 					streamingEnabled: false,
 					isMcpExecution: false,
-					webhookResponsePending: false,
+					callerAwaitsOutcome: false,
 				},
 			});
 
@@ -374,11 +374,14 @@ describe('JobProcessor', () => {
 			await processPromise;
 		});
 
-		const startWebhookJob = async (jobData: Partial<Job['data']>) => {
+		const startWebhookJob = async (
+			jobData: Partial<Job['data']>,
+			mode: IExecutionResponse['mode'] = 'webhook',
+		) => {
 			const executionPersistence = mock<ExecutionPersistence>();
 			executionPersistence.findSingleExecution.mockResolvedValue(
 				mock<IExecutionResponse>({
-					mode: 'webhook',
+					mode,
 					workflowData: { nodes: [], staticData: {} },
 					data: mock<IRunExecutionData>(),
 				}),
@@ -411,7 +414,7 @@ describe('JobProcessor', () => {
 		};
 
 		it('should not suspend a webhook job while its response is still pending', async () => {
-			const { jobProcessor, finish } = await startWebhookJob({ webhookResponsePending: true });
+			const { jobProcessor, finish } = await startWebhookJob({ callerAwaitsOutcome: true });
 
 			jobProcessor.suspendRunningJobs();
 			expect(workflowExecuteSuspendMock).not.toHaveBeenCalled();
@@ -421,7 +424,7 @@ describe('JobProcessor', () => {
 		});
 
 		it('should treat a webhook job without the flag as owing a response', async () => {
-			const { jobProcessor, finish } = await startWebhookJob({ webhookResponsePending: undefined });
+			const { jobProcessor, finish } = await startWebhookJob({ callerAwaitsOutcome: undefined });
 
 			jobProcessor.suspendRunningJobs();
 			expect(workflowExecuteSuspendMock).not.toHaveBeenCalled();
@@ -431,13 +434,50 @@ describe('JobProcessor', () => {
 
 		it('should suspend a webhook job once it has relayed its response', async () => {
 			const { jobProcessor, hooks, finish } = await startWebhookJob({
-				webhookResponsePending: true,
+				callerAwaitsOutcome: true,
 			});
 
 			jobProcessor.suspendRunningJobs();
 			expect(workflowExecuteSuspendMock).not.toHaveBeenCalled();
 
 			await hooks.runHook('sendResponse', [{ body: {}, headers: {}, statusCode: 200 }]);
+			expect(workflowExecuteSuspendMock).toHaveBeenCalledTimes(1);
+
+			await finish();
+		});
+
+		it('should not suspend a trigger job whose outcome is awaited on main', async () => {
+			const { jobProcessor, finish } = await startWebhookJob(
+				{ callerAwaitsOutcome: true },
+				'trigger',
+			);
+
+			jobProcessor.suspendRunningJobs();
+			expect(workflowExecuteSuspendMock).not.toHaveBeenCalled();
+
+			await finish();
+		});
+
+		it('should not treat a relayed response as satisfying a trigger done promise', async () => {
+			const { jobProcessor, hooks, finish } = await startWebhookJob(
+				{ callerAwaitsOutcome: true },
+				'trigger',
+			);
+
+			jobProcessor.suspendRunningJobs();
+			await hooks.runHook('sendResponse', [{ body: {}, headers: {}, statusCode: 200 }]);
+			expect(workflowExecuteSuspendMock).not.toHaveBeenCalled();
+
+			await finish();
+		});
+
+		it('should suspend a fire-and-forget trigger job', async () => {
+			const { jobProcessor, finish } = await startWebhookJob(
+				{ callerAwaitsOutcome: false },
+				'trigger',
+			);
+
+			jobProcessor.suspendRunningJobs();
 			expect(workflowExecuteSuspendMock).toHaveBeenCalledTimes(1);
 
 			await finish();

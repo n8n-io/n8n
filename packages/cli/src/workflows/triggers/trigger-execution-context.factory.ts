@@ -218,6 +218,8 @@ export class TriggerExecutionContextFactory {
 							mode,
 							responsePromise,
 							deduplicationKey,
+							// The node acts on the run's end, so a paused segment must not stand in for it.
+							donePromise !== undefined,
 						);
 					})
 					.catch((error: unknown) => {
@@ -393,6 +395,8 @@ export class TriggerExecutionContextFactory {
 							runAdditionalData,
 							mode,
 							responsePromise,
+							undefined,
+							donePromise !== undefined,
 						);
 					}
 

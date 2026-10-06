@@ -22,8 +22,8 @@ export type JobData = {
 	loadStaticData: boolean;
 	pushRef?: string;
 	streamingEnabled?: boolean;
-	/** True while the webhook caller still waits for a response the run produces. */
-	webhookResponsePending?: boolean;
+	/** True while something on main awaits this run's outcome, see IWorkflowExecutionDataProcess. */
+	callerAwaitsOutcome?: boolean;
 	restartExecutionId?: string;
 	projectId?: string;
 	projectName?: string;

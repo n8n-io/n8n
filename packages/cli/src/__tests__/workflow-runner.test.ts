@@ -1193,7 +1193,7 @@ describe('enqueueExecution', () => {
 			executionData: undefined,
 			pushRef: 'push-ref',
 			streamingEnabled: true,
-			webhookResponsePending: true,
+			callerAwaitsOutcome: true,
 		});
 		const error = new Error('stop for test purposes');
 
@@ -1213,7 +1213,7 @@ describe('enqueueExecution', () => {
 				workflowId: 'workflow-xyz',
 				executionId: '1',
 				restartExecutionId,
-				webhookResponsePending: true,
+				callerAwaitsOutcome: true,
 			}),
 			expect.any(Object),
 		);

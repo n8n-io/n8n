@@ -89,6 +89,7 @@ export class WorkflowExecutionService {
 		mode: WorkflowExecuteMode,
 		responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
 		deduplicationKey?: string,
+		callerAwaitsOutcome = false,
 	) {
 		const nodeExecutionStack: IExecuteData[] = [
 			{
@@ -120,6 +121,7 @@ export class WorkflowExecutionService {
 			deduplicationKey,
 			projectId,
 			projectName,
+			callerAwaitsOutcome,
 		};
 
 		return await this.workflowRunner.run(runData, true, undefined, undefined, responsePromise);

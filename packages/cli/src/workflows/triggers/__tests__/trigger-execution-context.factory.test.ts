@@ -159,6 +159,7 @@ describe('TriggerExecutionContextFactory', () => {
 					mode,
 					undefined,
 					undefined,
+					false,
 				);
 				expect(eventService.emit).toHaveBeenCalledWith('workflow-executed', {
 					workflowId: workflowData.id,
@@ -222,6 +223,7 @@ describe('TriggerExecutionContextFactory', () => {
 					'trigger',
 					undefined,
 					undefined,
+					false,
 				);
 			});
 
@@ -264,6 +266,7 @@ describe('TriggerExecutionContextFactory', () => {
 					'trigger',
 					undefined,
 					undefined,
+					false,
 				);
 			});
 
@@ -297,6 +300,7 @@ describe('TriggerExecutionContextFactory', () => {
 					mode,
 					undefined,
 					'wf-1:node-1:1700000000000',
+					false,
 				);
 			});
 
@@ -327,6 +331,17 @@ describe('TriggerExecutionContextFactory', () => {
 
 				expect(activeExecutions.getPostExecutePromise).toHaveBeenCalledWith('exec-123');
 				await expect(donePromise.promise).resolves.toBe(runResult);
+				// The node waits for the run's end, so the run must not be parked at worker shutdown.
+				expect(workflowExecutionService.runWorkflow).toHaveBeenCalledWith(
+					workflowData,
+					node,
+					[[]],
+					expect.anything(),
+					mode,
+					undefined,
+					undefined,
+					true,
+				);
 			});
 
 			test('does not emit workflow-executed on DuplicateExecutionError', async () => {
@@ -720,6 +735,8 @@ describe('TriggerExecutionContextFactory', () => {
 					expect.objectContaining({ userId: undefined }),
 					mode,
 					undefined,
+					undefined,
+					false,
 				);
 			});
 
@@ -769,6 +786,8 @@ describe('TriggerExecutionContextFactory', () => {
 					expect.objectContaining({ userId: 'publisher-of-live-version' }),
 					'trigger',
 					undefined,
+					undefined,
+					false,
 				);
 			});
 
@@ -808,6 +827,8 @@ describe('TriggerExecutionContextFactory', () => {
 					expect.objectContaining({ userId: undefined }),
 					'trigger',
 					undefined,
+					undefined,
+					false,
 				);
 			});
 

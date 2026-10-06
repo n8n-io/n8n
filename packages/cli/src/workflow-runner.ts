@@ -763,7 +763,7 @@ export class WorkflowRunner {
 				loadStaticData: !!loadStaticData,
 				pushRef: data.pushRef,
 				streamingEnabled: data.streamingEnabled,
-				webhookResponsePending: data.webhookResponsePending,
+				callerAwaitsOutcome: data.callerAwaitsOutcome,
 				restartExecutionId,
 				projectId: data.projectId,
 				projectName: data.projectName,
