@@ -551,6 +551,11 @@ export function provideThread(thread: ThreadRuntime | string): ThreadRuntime {
 	return thread;
 }
 
+/** Thread of the nearest `provideThread()` ancestor, or `undefined` outside one. */
+export function useOptionalThread(): ThreadRuntime | undefined {
+	return inject(ThreadKey, null) ?? undefined;
+}
+
 export function useThread(threadId?: string): ThreadRuntime {
 	if (threadId) {
 		return useInstanceAiStore().getOrCreateRuntime(threadId);

@@ -38,7 +38,7 @@ export function useWorkflowSetupActions(deps: {
 	goToStep: (index: number) => void;
 	inputs: WorkflowSetupInputAccessors;
 	applyMachine: ApplyMachine;
-	thread: ThreadRuntime;
+	thread?: ThreadRuntime;
 }): WorkflowSetupActions {
 	const isActionPending = ref(false);
 	const workflowSetupTelemetry = useWorkflowSetupTelemetry({

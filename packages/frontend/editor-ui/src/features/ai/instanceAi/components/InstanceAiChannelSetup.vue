@@ -10,16 +10,18 @@ import { computed, ref } from 'vue';
 
 import ChannelSetupCard from '@/features/ai/shared/components/ChannelSetupCard.vue';
 
-import { useThread } from '../instanceAi.store';
+import { useConfirmationTransport, type ConfirmationSubmit } from '../confirmationTransport';
 
 const props = defineProps<{
 	requestId: string;
 	integrationType: string;
 	agentId: string;
 	projectId: string;
+	/** Sends the answer through the caller (Agents chat resume) instead of the thread. */
+	submit?: ConfirmationSubmit;
 }>();
 
-const thread = useThread();
+const transport = useConfirmationTransport(props.submit);
 
 const MAX_CONFIRM_ATTEMPTS = 2;
 
@@ -30,7 +32,7 @@ const submitted = ref(false);
 // another path (e.g. a concurrent confirmation), independent of this
 // adapter's own `submitted` guard below.
 const isResolvedOrSubmitted = computed(
-	() => submitted.value || thread.resolvedConfirmationIds.has(props.requestId),
+	() => submitted.value || transport.isResolved(props.requestId),
 );
 
 async function onResolve({ approved }: { approved: boolean }) {
@@ -39,9 +41,9 @@ async function onResolve({ approved }: { approved: boolean }) {
 
 	const resolution = approved ? 'approved' : 'deferred';
 	for (let attempt = 0; attempt < MAX_CONFIRM_ATTEMPTS; attempt++) {
-		if (await thread.confirmAction(props.requestId, { kind: 'approval', approved })) break;
+		if (await transport.confirm(props.requestId, { kind: 'approval', approved })) break;
 	}
-	thread.resolveConfirmation(props.requestId, resolution);
+	transport.resolve(props.requestId, resolution);
 }
 </script>
 

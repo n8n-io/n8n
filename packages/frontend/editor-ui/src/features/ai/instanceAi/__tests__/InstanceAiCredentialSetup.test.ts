@@ -528,6 +528,47 @@ describe('InstanceAiCredentialSetup', () => {
 			});
 		});
 
+		it('sends the credential map through the submit callback instead of the thread', async () => {
+			const requests = makeCredentialRequestsWithExisting(1);
+			const confirmSpy = vi.spyOn(thread, 'confirmAction');
+			const resolveSpy = vi.spyOn(thread, 'resolveConfirmation');
+			const submit = vi.fn();
+
+			const { getByTestId } = renderComponent({
+				props: {
+					requestId: 'req-1',
+					credentialRequests: requests,
+					message: 'Set up credentials',
+					submit,
+				},
+			});
+
+			await userEvent.click(getByTestId('credential-picker'));
+
+			expect(submit).toHaveBeenCalledWith({
+				kind: 'credentialSelection',
+				credentials: { type1: 'cred-123' },
+			});
+			expect(confirmSpy).not.toHaveBeenCalled();
+			expect(resolveSpy).not.toHaveBeenCalled();
+		});
+
+		it('sends a deferral through the submit callback', async () => {
+			const submit = vi.fn();
+			const { getByText } = renderComponent({
+				props: {
+					requestId: 'req-1',
+					credentialRequests: makeCredentialRequests(1),
+					message: 'Set up credentials',
+					submit,
+				},
+			});
+
+			await userEvent.click(getByText('instanceAi.credential.deny'));
+
+			expect(submit).toHaveBeenCalledWith({ kind: 'approval', approved: false });
+		});
+
 		it('calls confirmAction with false on defer', async () => {
 			const requests = makeCredentialRequests(1);
 			const confirmSpy = vi.spyOn(thread, 'confirmAction').mockResolvedValue(true);

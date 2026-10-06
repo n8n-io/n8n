@@ -25,7 +25,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
-import { useThread } from '../instanceAi.store';
+import { useConfirmationTransport, type ConfirmationSubmit } from '../confirmationTransport';
 import { useInstanceAiCredentialHelp } from '../composables/useInstanceAiCredentialHelp';
 import { useBrowserUseConnection } from '../composables/useBrowserUseConnection';
 import { AI_GATEWAY_MANAGED_TAG, INSTANCE_AI_BROWSER_CREDENTIAL_SETUP_ENABLED } from '../constants';
@@ -40,12 +40,15 @@ const props = defineProps<{
 	projectId?: string;
 	credentialFlow?: InstanceAiCredentialFlow;
 	requireUserSelection?: boolean;
+	/** Sends the answer through the caller (Agents chat resume) instead of the thread. */
+	submit?: ConfirmationSubmit;
 }>();
 
 const i18n = useI18n();
 const telemetry = useTelemetry();
 const rootStore = useRootStore();
-const thread = useThread();
+const transport = useConfirmationTransport(props.submit);
+const thread = transport.thread;
 const credentialsStore = useCredentialsStore();
 const uiStore = useUIStore();
 const { ensureConnected: ensureBrowserConnected } = useBrowserUseConnection();
@@ -497,7 +500,7 @@ function onCredentialSelected(
 }
 
 function trackCredentialInput() {
-	const tc = thread.findToolCallByRequestId(props.requestId);
+	const tc = thread?.findToolCallByRequestId(props.requestId);
 	const inputThreadId = tc?.confirmation?.inputThreadId ?? '';
 	const provided: Array<{ label: string; options: string[]; option_chosen: string }> = [];
 	const skipped: Array<{ label: string; options: string[] }> = [];
@@ -510,7 +513,7 @@ function trackCredentialInput() {
 		}
 	}
 	telemetry.track('User finished providing input', {
-		thread_id: thread.id,
+		thread_id: thread?.id ?? '',
 		input_thread_id: inputThreadId,
 		instance_id: rootStore.instanceId,
 		type: 'credential-setup',
@@ -534,12 +537,12 @@ async function handleContinue() {
 
 	isSubmitted.value = true;
 
-	const success = await thread.confirmAction(props.requestId, {
+	const success = await transport.confirm(props.requestId, {
 		kind: 'credentialSelection',
 		credentials,
 	});
 	if (success) {
-		thread.resolveConfirmation(props.requestId, 'approved');
+		transport.resolve(props.requestId, 'approved');
 	} else {
 		isSubmitted.value = false;
 	}
@@ -550,12 +553,12 @@ async function deferWholeCard() {
 	isSubmitted.value = true;
 	isDeferred.value = true;
 
-	const success = await thread.confirmAction(props.requestId, {
+	const success = await transport.confirm(props.requestId, {
 		kind: 'approval',
 		approved: false,
 	});
 	if (success) {
-		thread.resolveConfirmation(props.requestId, 'deferred');
+		transport.resolve(props.requestId, 'deferred');
 	} else {
 		isSubmitted.value = false;
 		isDeferred.value = false;
@@ -660,13 +663,13 @@ function handleSetupManually() {
 
 async function submitAutoSetup(credentialType: string, attemptId: string) {
 	isSubmitted.value = true;
-	const success = await thread.confirmAction(props.requestId, {
+	const success = await transport.confirm(props.requestId, {
 		kind: 'credentialAutoSetup',
 		credentialType,
 		attemptId,
 	});
 	if (success) {
-		thread.resolveConfirmation(props.requestId, 'approved');
+		transport.resolve(props.requestId, 'approved');
 	} else {
 		isSubmitted.value = false;
 	}

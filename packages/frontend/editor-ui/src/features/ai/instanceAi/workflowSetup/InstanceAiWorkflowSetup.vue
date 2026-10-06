@@ -5,6 +5,7 @@ import WorkflowSetupWizard from './components/WorkflowSetupWizard.vue';
 import WorkflowSetupStatus from './components/WorkflowSetupStatus.vue';
 import { provideWorkflowSetupContext } from './composables/useWorkflowSetupContext';
 import { ResourceLocatorDropdownTeleportedKey } from '@/app/constants';
+import type { ConfirmationSubmit } from '../confirmationTransport';
 
 const props = defineProps<{
 	requestId: string;
@@ -12,6 +13,8 @@ const props = defineProps<{
 	projectId?: string;
 	workflowId?: string;
 	credentialFlow?: InstanceAiCredentialFlow;
+	/** Sends the answer through the caller (Agents chat resume) instead of the thread. */
+	submit?: ConfirmationSubmit;
 }>();
 
 provide(ResourceLocatorDropdownTeleportedKey, true);
@@ -22,6 +25,7 @@ const ctx = provideWorkflowSetupContext({
 	projectId: toRef(props, 'projectId'),
 	workflowId: toRef(props, 'workflowId'),
 	credentialFlow: toRef(props, 'credentialFlow'),
+	submit: props.submit,
 });
 </script>
 

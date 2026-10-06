@@ -50,7 +50,8 @@ export function useWorkflowSetupTelemetry(deps: {
 	activeSection: ComputedRef<WorkflowSetupSection | undefined>;
 	isReady: Ref<boolean>;
 	inputs: WorkflowSetupTelemetryInputAccessors;
-	thread: ThreadRuntime;
+	/** Absent when the Agents chat renders the card outside a thread. */
+	thread?: ThreadRuntime;
 }) {
 	const telemetry = useTelemetry();
 	const rootStore = useRootStore();
@@ -60,12 +61,12 @@ export function useWorkflowSetupTelemetry(deps: {
 	const handledStepKeys = new Set<string>();
 
 	function getSetupTelemetryContext(): SetupTelemetryContext {
-		const tc = deps.thread.findToolCallByRequestId(deps.requestId.value);
+		const tc = deps.thread?.findToolCallByRequestId(deps.requestId.value);
 		return {
 			...getTelemetryPayload(),
 			session_id: rootStore.pushRef,
 			workflow_id: deps.workflowId?.value,
-			thread_id: deps.thread.id,
+			thread_id: deps.thread?.id ?? '',
 			input_thread_id: tc?.confirmation?.inputThreadId ?? '',
 			instance_id: rootStore.instanceId,
 			type: 'setup',
@@ -173,7 +174,7 @@ export function useWorkflowSetupTelemetry(deps: {
 			...getTelemetryPayload(),
 			instance_id: rootStore.instanceId,
 			workflow_id: workflowId,
-			thread_id: deps.thread.id,
+			thread_id: deps.thread?.id ?? '',
 			session_id: rootStore.pushRef,
 			source: 'instance_ai_setup_wizard',
 			request_id: deps.requestId.value,
