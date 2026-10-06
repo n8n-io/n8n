@@ -54,7 +54,41 @@ type BlockingIssue =
 			name?: string;
 			missingScope?: string;
 			usedByWorkflows: string[];
+	  }
+	| {
+			type: 'data-table-unresolved';
+			kind: string;
+			sourceId?: string;
+			name?: string;
+			missingScope?: string;
+			missingColumns?: string[];
+			typeMismatches?: Array<{ column: string }>;
+			extraColumns?: string[];
+			overwriteChanges?: DataTableSchemaChange[];
+			usedByWorkflows: string[];
 	  };
+
+type DataTableSchemaChange =
+	| { kind: 'add-column'; column: string }
+	| { kind: 'remove-column'; column: string }
+	| { kind: 'change-column-type'; column: string; from: string; to: string }
+	| { kind: 'reorder-columns' }
+	| { kind: 'rename-table'; from: string; to: string };
+
+function describeSchemaChange(change: DataTableSchemaChange): string {
+	switch (change.kind) {
+		case 'add-column':
+			return `add column ${change.column}`;
+		case 'remove-column':
+			return `remove column ${change.column} (data lost)`;
+		case 'change-column-type':
+			return `change column ${change.column} from ${change.from} to ${change.to} (data lost)`;
+		case 'reorder-columns':
+			return 'reorder columns';
+		case 'rename-table':
+			return `rename table "${change.from}" to "${change.to}"`;
+	}
+}
 
 function formatIssue(issue: unknown): string {
 	if (typeof issue !== 'object' || issue === null) return JSON.stringify(issue);
@@ -113,6 +147,26 @@ function formatIssue(issue: unknown): string {
 			return `tag import requires the ${it.missingScope} scope, needed by workflow(s) ${usedBy}`;
 		}
 		return `tag "${it.name}" (${it.sourceId}) unresolved (${it.kind}), used by workflow(s) ${usedBy}`;
+	}
+	if (it.type === 'data-table-unresolved') {
+		const usedBy = Array.isArray(it.usedByWorkflows) ? it.usedByWorkflows.join(', ') : '';
+		if (it.kind === 'permission-denied') {
+			return `data table import requires the ${it.missingScope} scope, needed by workflow(s) ${usedBy}`;
+		}
+		if (it.kind === 'schema-incompatible') {
+			const reasons = [
+				it.missingColumns?.length ? `missing columns: ${it.missingColumns.join(', ')}` : '',
+				it.typeMismatches?.length
+					? `different types: ${it.typeMismatches.map(({ column }) => column).join(', ')}`
+					: '',
+				it.extraColumns?.length ? `extra columns: ${it.extraColumns.join(', ')}` : '',
+			].filter(Boolean);
+			const changes = it.overwriteChanges?.length
+				? `\n      --data-table-schema-conflict-policy=overwrite would: ${it.overwriteChanges.map(describeSchemaChange).join(', ')}`
+				: '';
+			return `data table "${it.name}" (${it.sourceId}) does not match the package schema (${reasons.join('; ')}), used by workflow(s) ${usedBy}${changes}`;
+		}
+		return `data table "${it.name}" (${it.sourceId}) unresolved (${it.kind}), used by workflow(s) ${usedBy}`;
 	}
 	return JSON.stringify(issue);
 }
