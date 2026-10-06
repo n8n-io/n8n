@@ -21,6 +21,31 @@ vi.mock('@n8n/ai-utilities', async () => {
 
 const MockedAzureOpenAIEmbeddings = vi.mocked(AzureOpenAIEmbeddings);
 
+describe('EmbeddingsAzureOpenAi node identity', () => {
+	const { description } = new EmbeddingsAzureOpenAi();
+
+	it('should be labelled Microsoft Foundry Embeddings', () => {
+		expect(description.displayName).toBe('Microsoft Foundry Embeddings');
+		expect(description.defaults.name).toBe('Microsoft Foundry Embeddings');
+	});
+
+	// A saved workflow resolves its nodes by type, so the rename is only safe while this is untouched.
+	it('should keep the node type, which saved workflows resolve by', () => {
+		expect(description.name).toBe('embeddingsAzureOpenAi');
+	});
+
+	it.each([
+		'Azure',
+		'Azure OpenAI',
+		'Embeddings Azure OpenAI',
+		'Azure AI Foundry',
+		'Foundry',
+		'AOAI',
+	])('should be findable by %s', (term) => {
+		expect(description.codex?.alias).toContain(term);
+	});
+});
+
 describe('AzureOpenAIEmbeddings', () => {
 	let embeddingsAzureOpenAi: EmbeddingsAzureOpenAi;
 	let mockContext: Mocked<ISupplyDataFunctions>;
