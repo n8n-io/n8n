@@ -34,15 +34,17 @@ jobs:
           fetch-depth: 1
           persist-credentials: false
 
+      - name: Setup Node.js and install dependencies
+        uses: ./.github/actions/setup-nodejs
+        with:
+          build-command: ''
+
       - name: Run jscpd
         id: jscpd
         continue-on-error: true
         run: |
           mkdir -p "$RUNNER_TEMP/jscpd-report"
-          version="$(node -p "require('./package.json').devDependencies.jscpd")"
-          npx --yes "jscpd@$version" . \
-            --output "$RUNNER_TEMP/jscpd-report" \
-            --silent
+          pnpm jscpd -- --output "$RUNNER_TEMP/jscpd-report" --silent
 
       - name: Upload jscpd report
         id: report-artifact
