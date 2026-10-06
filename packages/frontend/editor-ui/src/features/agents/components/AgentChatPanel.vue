@@ -870,19 +870,23 @@ async function onSubmit(): Promise<SubmitResult> {
 		}
 		if (!isCurrentTarget()) return 'rejected';
 
-		const fingerprint = await buildAgentConfigFingerprint(
-			props.agentConfig,
-			props.connectedTriggers,
-		);
+		// The preview chat metric counts only builder test messages; n8n Chat sends have
+		// their own event (`trackSentToN8nChat`).
+		const fingerprint =
+			props.channel === 'chat'
+				? await buildAgentConfigFingerprint(props.agentConfig, props.connectedTriggers)
+				: undefined;
 		if (!isCurrentTarget()) return 'rejected';
 
 		const sending = sendMessage(text, files.length > 0 ? files : undefined, () => {
 			if (!isCurrentTarget()) return;
-			agentTelemetry.trackSubmittedMessage({
-				agentId: props.agentId,
-				status: props.agentStatus,
-				agentConfig: fingerprint,
-			});
+			if (fingerprint) {
+				agentTelemetry.trackSubmittedMessage({
+					agentId: props.agentId,
+					status: props.agentStatus,
+					agentConfig: fingerprint,
+				});
+			}
 			if (inputText.value.trim() === text) inputText.value = '';
 			attachedFiles.value = attachedFiles.value.filter((file) => !files.includes(file));
 			consumeQueuedExternalMessage(text);

@@ -96,7 +96,11 @@ export function usePagedN8nChatThreads(options: UsePagedN8nChatThreadsOptions) {
 	if (options.agentId !== undefined) {
 		watch(
 			() => toValue(options.agentId),
-			() => reset(),
+			() => {
+				reset();
+				// Unlike a reopen, another agent's threads must not show while the new page loads.
+				items.value = [];
+			},
 		);
 	}
 

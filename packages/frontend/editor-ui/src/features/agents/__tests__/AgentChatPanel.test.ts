@@ -1759,6 +1759,9 @@ describe('AgentChatPanel', () => {
 			threadId: 'thread-1',
 			isNewThread: true,
 		});
+		// The preview chat metric counts only builder test messages.
+		expect(trackSubmittedMessageMock).not.toHaveBeenCalled();
+		expect(buildAgentConfigFingerprint).not.toHaveBeenCalled();
 		wrapper.unmount();
 	});
 
@@ -1819,6 +1822,7 @@ describe('AgentChatPanel', () => {
 		await flushPromises();
 
 		expect(trackSentMessageToN8nChatAgentMock).not.toHaveBeenCalled();
+		expect(trackSubmittedMessageMock).toHaveBeenCalledOnce();
 		wrapper.unmount();
 	});
 

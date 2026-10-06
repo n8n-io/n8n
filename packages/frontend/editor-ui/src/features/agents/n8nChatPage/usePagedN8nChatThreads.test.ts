@@ -182,7 +182,7 @@ describe('usePagedN8nChatThreads', () => {
 		await vi.waitFor(() => expect(wrapper.vm.items).toEqual([thread('new')]));
 	});
 
-	it('resets paging when agentId changes', async () => {
+	it("resets paging and clears the previous agent's items when agentId changes", async () => {
 		const agentId = ref<string | undefined>('agent-1');
 		listN8nChatThreadsMock.mockResolvedValue({ data: [thread('t1')], nextCursor: 'cursor-1' });
 		const wrapper = mountComposable(() => agentId.value);
@@ -192,7 +192,7 @@ describe('usePagedN8nChatThreads', () => {
 		agentId.value = 'agent-2';
 		await wrapper.vm.$nextTick();
 
-		expect(wrapper.vm.items).toEqual([thread('t1')]);
+		expect(wrapper.vm.items).toEqual([]);
 		expect(wrapper.vm.hasMore).toBe(true);
 
 		listN8nChatThreadsMock.mockClear();
