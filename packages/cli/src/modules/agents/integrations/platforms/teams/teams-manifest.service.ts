@@ -100,7 +100,7 @@ export class TeamsManifestService {
 				name: this.truncate('n8n', LIMITS.developerName),
 				websiteUrl: 'https://n8n.io',
 				privacyUrl: 'https://n8n.io/legal/privacy',
-				termsOfUseUrl: 'https://n8n.io/legal/terms',
+				termsOfUseUrl: 'https://n8n.io/legal/',
 			},
 			name: {
 				short: this.truncate(appName, LIMITS.shortName),

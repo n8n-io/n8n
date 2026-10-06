@@ -14,6 +14,9 @@ export async function mainSystemTasks(globalConfig: GlobalConfig): Promise<Syste
 	const { WorkflowHistoryCompactionTrimTask } = await import(
 		'@/services/pruning/workflow-history-compaction-trim.task.js'
 	);
+	const { WorkflowHistoryPruningTask } = await import(
+		'@/services/pruning/workflow-history-pruning.task.js'
+	);
 	const { PendingAuthorizationCleanupTask } = await import(
 		'@/credentials/pending-authorization-cleanup.task.js'
 	);
@@ -22,6 +25,7 @@ export async function mainSystemTasks(globalConfig: GlobalConfig): Promise<Syste
 		ActivityPruningTask,
 		WorkflowHistoryCompactionOptimizeTask,
 		WorkflowHistoryCompactionTrimTask,
+		WorkflowHistoryPruningTask,
 		PendingAuthorizationCleanupTask,
 	];
 

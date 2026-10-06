@@ -3,11 +3,13 @@ import { ExpressionError } from '../../errors/expression.error';
 import type { IWorkflowDataProxyData } from '../../interfaces';
 import {
 	ARRAY_METHODS,
+	MAX_DEPTH,
 	MAX_RESULT_LENGTH,
 	NUMBER_METHODS,
 	STRING_METHODS,
 	hasOwn,
 	isArray,
+	isObj,
 	toNum,
 	toStr,
 	type BinaryOp,
@@ -21,30 +23,38 @@ import {
 // only fields that exist. The switch has no default branch: adding a kind to
 // the grammar stops compilation until it is handled here.
 
-// Thrown when a runtime value falls outside what parsing proved statically
-// (a whitelisted string method on a non-string receiver, an operator on an
-// object operand, a result above MAX_RESULT_LENGTH). The whole evaluation is
-// abandoned and the caller re-runs the expression through the regular engine
-// pipeline. Anything evaluated before the bail runs again in the engine: a
-// nested `$parameter` expression, or a getter on a data object. Expressions
-// are pure and workflow data is JSON, so the only cost is the repeated work.
+/**
+ * Thrown when a runtime value falls outside what parsing proved statically
+ * (a whitelisted string method on a non-string receiver, an operator on an
+ * object operand, a result above MAX_RESULT_LENGTH). The whole evaluation is
+ * abandoned and the caller re-runs the expression through the regular engine
+ * pipeline. Anything evaluated before the bail runs again in the engine: a
+ * nested `$parameter` expression, or a getter on a data object. Expressions
+ * are pure and workflow data is JSON, so the only cost is the repeated work.
+ */
 export class EngineFallbackError extends Error {}
 
-// Thrown by an optional member/call on a nullish receiver and caught by the
-// enclosing chain node, which yields undefined for the whole chain. One
-// shared instance: a missing optional hop is ordinary data, not an error.
+/**
+ * Thrown by an optional member/call on a nullish receiver and caught by the
+ * enclosing chain node, which yields undefined for the whole chain. One
+ * shared instance: a missing optional hop is ordinary data, not an error.
+ */
 class ChainShortCircuit extends Error {}
 const chainShortCircuit = new ChainShortCircuit();
 
-// Property lookup on a non-nullish primitive is well-defined and side-effect
-// free, so primitives are indexable here even though the predicate's type
-// only names objects.
+/**
+ * Property lookup on a non-nullish primitive is well-defined and side-effect
+ * free, so primitives are indexable here even though the predicate's type
+ * only names objects.
+ */
 const isIndexable = (value: unknown): value is Record<string | number, unknown> =>
 	value !== null && value !== undefined;
 
-// Operators only ever see primitives. An object operand would coerce through
-// its valueOf/toString on the host, where the engine sees a structured-clone
-// copy; a reference comparison would differ from the engine's copy semantics.
+/**
+ * Operators only ever see primitives. An object operand would coerce through
+ * its valueOf/toString on the host, where the engine sees a structured-clone
+ * copy; a reference comparison would differ from the engine's copy semantics.
+ */
 const isPrimitive = (value: unknown): boolean =>
 	value === null || (typeof value !== 'object' && typeof value !== 'function');
 
@@ -118,9 +128,11 @@ function evalMember(
 	return value;
 }
 
-// Parsing only proves the method name; the receiver's type is data. A
-// receiver whose type has no allowlist entry for the method could be
-// intercepted by extensions, so it hands the whole expression to the engine.
+/**
+ * Parsing only proves the method name; the receiver's type is data. A
+ * receiver whose type has no allowlist entry for the method could be
+ * intercepted by extensions, so it hands the whole expression to the engine.
+ */
 function methodFor(receiver: unknown, name: string): NativeMethod {
 	let method: NativeMethod | undefined;
 
@@ -137,21 +149,25 @@ function methodFor(receiver: unknown, name: string): NativeMethod {
 	return method;
 }
 
-// Arguments are primitives, plus arrays for concat. An object argument would
-// compare by live reference where the isolate compares copies (includes/
-// indexOf) or coerce on the host where the isolate sees a copy.
+/**
+ * Arguments are primitives, plus arrays for concat. An object argument would
+ * compare by live reference where the isolate compares copies (includes/
+ * indexOf) or coerce on the host where the isolate sees a copy.
+ */
 function isAllowedArgument(method: string, arg: unknown): boolean {
 	if (isPrimitive(arg)) return true;
 
 	return method === 'concat' && isArray(arg);
 }
 
-// The engine runs under a timeout; a synchronous native call cannot be
-// interrupted, so the input size is the budget. A receiver above the result
-// cap goes to the engine before any work is done, and the amplifying methods
-// (which can allocate far beyond MAX_RESULT_LENGTH before bounded() sees the
-// result) bail on an upper bound of their output.
-function preflightSize(receiver: unknown, method: string, args: unknown[]): void {
+/**
+ * The engine runs under a timeout; a synchronous native call cannot be
+ * interrupted, so the input size is the budget. A receiver above the result
+ * cap goes to the engine before any work is done, and the amplifying methods
+ * (which can allocate far beyond MAX_RESULT_LENGTH before bounded() sees the
+ * result) bail on an upper bound of their output.
+ */
+function assertPreflightSize(receiver: unknown, method: string, args: unknown[]): void {
 	let upperBound = typeof receiver === 'number' ? 0 : (receiver as { length: number }).length;
 
 	if (method === 'concat') {
@@ -161,15 +177,21 @@ function preflightSize(receiver: unknown, method: string, args: unknown[]): void
 	} else if (method === 'flat' && isArray(receiver)) {
 		const depth = args.length === 0 ? 1 : toNum(args[0]);
 		upperBound = flatSize(receiver, depth);
-	} else if (method === 'replaceAll' && typeof receiver === 'string') {
+	} else if ((method === 'replace' || method === 'replaceAll') && typeof receiver === 'string') {
 		// A missing replacement inserts the string "undefined".
 		const replacement = args.length < 2 ? 'undefined' : toStr(args[1]);
 
-		// `$&`, `$\``, `$'` splice match context into every replacement, so
-		// the result is not bounded by the replacement's length.
-		if (replacement.includes('$')) throw new EngineFallbackError();
+		// Three replacement tokens expand: `$&`, `$\`` and `$'` insert match
+		// context, so the output is not bounded by the replacement's length.
+		// `$$` is an escaped literal `$`; strip those pairs first so that `$$&`
+		// (a literal "$&") stays native while `$$$&` (a literal "$" then `$&`)
+		// bails. With a string pattern every other `$` is literal.
+		if (/\$[&`']/.test(replacement.replaceAll('$$', ''))) throw new EngineFallbackError();
 
-		upperBound = (receiver.length + 1) * (replacement.length + 1);
+		upperBound =
+			method === 'replace'
+				? receiver.length + replacement.length
+				: (receiver.length + 1) * (replacement.length + 1);
 	} else if (method === 'join' && isArray(receiver)) {
 		// Only an undefined separator means ","; null joins with "null".
 		const separator = args[0] === undefined ? ',' : toStr(args[0]);
@@ -185,9 +207,11 @@ function preflightSize(receiver: unknown, method: string, args: unknown[]): void
 	}
 }
 
-// Element count of `array.flat(depth)`, stopping early once past the cap
-// (a nested structure can flatten to far more elements than the outer
-// array holds).
+/**
+ * Element count of `array.flat(depth)`, stopping early once past the cap
+ * (a nested structure can flatten to far more elements than the outer
+ * array holds).
+ */
 function flatSize(array: unknown[], depth: number): number {
 	let size = 0;
 	for (const element of array) {
@@ -195,6 +219,74 @@ function flatSize(array: unknown[], depth: number): number {
 		if (size > MAX_RESULT_LENGTH) break;
 	}
 	return size;
+}
+
+/**
+ * Array methods that call toString on their elements: join() on every
+ * element, toSorted()'s default comparator on both operands per comparison.
+ * On nested arrays that work is proportional to the nested size, which no
+ * element count bounds, so these run natively over primitive elements only.
+ */
+const STRINGIFIES_ELEMENTS = new Set(['join', 'toSorted']);
+
+/**
+ * Hands off to the engine unless every element is a primitive. O(n) over a
+ * receiver the size cap already limits, and runs before anything is
+ * stringified.
+ */
+function assertPrimitiveElements(receiver: unknown[]): void {
+	// The receiver cap applies before the scan, so the scan never walks more
+	// than the cap either.
+	if (receiver.length > MAX_RESULT_LENGTH) throw new EngineFallbackError();
+
+	for (const element of receiver) {
+		if (!isPrimitive(element)) throw new EngineFallbackError();
+	}
+}
+
+/**
+ * Content size of a JSON value: string lengths plus one per element and
+ * key, stopping early past the budget. Deeper than the grammar's own depth
+ * cap hands off: the engine owns data that deep.
+ */
+function contentWeight(value: unknown, budget: number, depth = 0): number {
+	if (depth > MAX_DEPTH) throw new EngineFallbackError();
+	if (typeof value === 'string') return value.length;
+	if (!isObj(value)) return 1;
+
+	let weight = 1;
+	if (isArray(value)) {
+		for (const element of value) {
+			weight += contentWeight(element, budget - weight, depth + 1);
+			if (weight > budget) break;
+		}
+		return weight;
+	}
+
+	// Walk keys without materialising an entries array: an object with many
+	// keys would otherwise be copied before the budget is checked.
+	for (const key in value) {
+		if (!hasOwn(value, key)) continue;
+		weight += key.length + contentWeight(value[key], budget - weight, depth + 1);
+		if (weight > budget) break;
+	}
+	return weight;
+}
+
+/**
+ * concat() is the one method that can hold more content than the payload
+ * delivered: N arguments that reference one large string become N copies
+ * when the result is cloned (copyResult) and N operands for every method
+ * downstream (join, toSorted, includes). Element count does not see that,
+ * so concat is bounded by the content size of receiver plus arguments.
+ */
+function assertConcatWeight(receiver: unknown[], args: unknown[]): void {
+	let weight = contentWeight(receiver, MAX_RESULT_LENGTH);
+	for (const arg of args) {
+		if (weight > MAX_RESULT_LENGTH) break;
+		weight += contentWeight(arg, MAX_RESULT_LENGTH - weight);
+	}
+	if (weight > MAX_RESULT_LENGTH) throw new EngineFallbackError();
 }
 
 function evalCall(
@@ -225,7 +317,11 @@ function evalCall(
 		throw new EngineFallbackError();
 	}
 
-	preflightSize(receiver, node.method, args);
+	if (isArray(receiver)) {
+		if (STRINGIFIES_ELEMENTS.has(node.method)) assertPrimitiveElements(receiver);
+		if (node.method === 'concat') assertConcatWeight(receiver, args);
+	}
+	assertPreflightSize(receiver, node.method, args);
 
 	return bounded(method.apply(receiver, args));
 }
@@ -317,9 +413,11 @@ function evalNode(node: SimpleNode, data: IWorkflowDataProxyData): unknown {
 	}
 }
 
-// Tournament wraps each code chunk in try/catch and routes errors to the E()
-// handler, which rethrows ExpressionErrors and swallows everything else (the
-// chunk then yields undefined). Mirror that exactly.
+/**
+ * Tournament wraps each code chunk in try/catch and routes errors to the E()
+ * handler, which rethrows ExpressionErrors and swallows everything else (the
+ * chunk then yields undefined). Mirror that exactly.
+ */
 export function evalChunk(node: SimpleNode, data: IWorkflowDataProxyData): unknown {
 	try {
 		return evalNode(node, data);

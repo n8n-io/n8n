@@ -2,7 +2,7 @@
 
 The module has two retry mechanisms. The code keeps them separate. Both feed
 the same state machine on `instance_monitoring_report`: a row goes from
-`pending` to `delivered`, or from `pending` to `skipped_after_max_retries`.
+`pending` through `sending` to `delivered`, or from `pending` to `skipped_after_max_retries`.
 
 - **Type 1, delivery retry.** Resend the pending row until it lands, its budget
   runs out, or its own next slot passes. It continues across the UTC midnight
@@ -15,31 +15,37 @@ takes over and delivers that row.
 
 ## The send decision
 
-`start()` fires the first `tick()` (on `server-started`, or on leader takeover).
-Every pass then re-arms the next with `setTimeout`, so the loop drives itself.
-Each pass makes one choice, from `findPending()` — the newest row, and only if
-that row is still pending:
+`InstanceReportingTask.run()` makes one pass every 15 minutes. The shared system
+task runner owns scheduling and leadership. Each pass reads the current report
+time and the newest report row. Only a pending row can be retried. A `sending`
+row waits for its request to finish, including when the next slot passes. A
+claim left by a stopped main returns to `pending` on the first pass after two
+minutes. Claim age uses the database clock. A row with no claim timestamp can
+be released immediately. Failure writes must match the active claim. A late
+`201` or `409` still records delivery after a reclaim or skip. Further results
+cannot change a delivered row.
 
 ```mermaid
 flowchart TD
-    S(["start(): server-started / leader takeover"]) --> T
-    T["tick()"] --> P{"waiting between retries?<br/>(up to 5 min, but not past its slot)"}
-    P -- yes --> ARM
-    P -- no --> L["report = findPending()"]
-    L --> Q1{"is there a report to resume?"}
-    Q1 -- yes --> Q1b{"too old to still send?"}
-    Q1b -- no --> R["resend it — retry, even past midnight"]
-    Q1b -- yes --> SK["mark it skipped"] --> Q2
-    Q1 -- "no — delivered, skipped, or none" --> Q2{"reached today's report time?"}
-    Q2 -- no --> N["do nothing — wait"]
-    Q2 -- yes --> Q3{"already reported today?"}
+    T["System task pass"] --> L["Read report time and newest pending row"]
+    L --> Q1{"Pending report?"}
+    Q1 -- yes --> Q1b{"Its next slot passed?"}
+    Q1b -- no --> P{"Five minutes since last attempt?"}
+    P -- no --> N["Return"]
+    P -- yes --> R["Resend stored batch, even after midnight"]
+    Q1b -- yes --> SK["Mark it skipped"] --> Q2
+    Q1 -- no --> Q2{"Today's slot passed, or yesterday's within one hour?"}
+    Q2 -- no --> N
+    Q2 -- yes --> Q3{"Day settled?"}
     Q3 -- yes --> N
-    Q3 -- no --> C["create a new report"]
-    R --> ARM
-    C --> ARM
-    N --> ARM
-    ARM["scheduleNext() — arms setTimeout(tick)"] -. re-arms .-> T
+    Q3 -- no --> C["Create and send a report"]
+    R --> N
+    C --> N
 ```
+
+The report row owns delivery retries. Durable occurrences use `maxAttempts: 1`.
+A delivery error fails that occurrence. The next scheduled pass checks the
+stored retry delay and budget. It does not get a new delivery budget.
 
 ## Type 1: delivery retry
 
@@ -51,8 +57,9 @@ next slot has passed, the retry stops: the row is marked
 - The row is created once, as `pending`, with its data points already
   measured. A retry changes only `attempts`, `lastAttemptAt`, `lastError` and,
   in the end, `status`. The data points and the `batchId` stay the same.
-- `InstanceReportingScheduler.msUntilRetryAllowed()` reads `lastAttemptAt` from
-  the row. The scheduler waits `RETRY_DELAY_MS` (5 minutes) between attempts.
+- `InstanceReportingTask.run()` reads `lastAttemptAt` from the row. A retry
+  waits at least `RETRY_DELAY_MS` (5 minutes), then runs on the next 15-minute
+  pass. The five-minute floor also applies after a restart or takeover.
 - The budget is `MAX_ATTEMPTS` (3). The attempt that spends the last one flips
   the row to `skipped_after_max_retries` at once. There is no fourth attempt,
   and no new row for today.
@@ -124,14 +131,14 @@ gap in delivered rows.
 
 ```mermaid
 flowchart TD
-    subgraph T1["Type 1: delivery retry (max 3 attempts, 5 min apart, crosses midnight)"]
+    subgraph T1["Type 1: delivery retry (max 3 attempts, 15-minute passes, crosses midnight)"]
         A["Newest row is pending\n+ measured data points"] --> B["POST attempt"]
         B -->|"201 / 409"| C["delivered"]
         B -->|"failure"| D["attempts++\nlastAttemptAt, lastError"]
         D --> R{"400 / 413?"}
         R -- yes --> G
         R -- no --> E{"attempts >= 3?"}
-        E -- no --> F["wait 5 min"] --> B
+        E -- no --> F["wait for next pass, at least 5 min"] --> B
         E -- yes --> G["skipped_after_max_retries"]
     end
 

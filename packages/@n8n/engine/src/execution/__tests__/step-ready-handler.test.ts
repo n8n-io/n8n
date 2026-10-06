@@ -82,6 +82,7 @@ function makeExecutionStore(overrides: Partial<ExecutionRecord> = {}): Execution
 		triggerOutputs: null,
 		callerContext: { hostMode: 'trigger' },
 		responseExpectation: { kind: 'none' },
+		finishedAt: null,
 		...overrides,
 	};
 	return {
@@ -113,6 +114,7 @@ function makeStepStore(step: Partial<StepRecord> = {}, overrides: Partial<StepSt
 		completeStep: vi.fn().mockResolvedValue(true),
 		failStep: vi.fn().mockResolvedValue(true),
 		cancelPendingSteps: vi.fn(),
+		cancelStep: vi.fn().mockResolvedValue(true),
 		loadStepsByKeys: vi
 			.fn()
 			.mockResolvedValue({ [at('trigger')]: stepRow('trigger', 'completed', [{}]) }),
@@ -553,23 +555,29 @@ describe('StepReadyHandler', () => {
 		expect(queue.publish).not.toHaveBeenCalled();
 	});
 
-	it('claims the step but runs nothing when the execution is no longer running', async () => {
-		// the claim already happened, so the step stays `running` for
-		// reconciliation (CAT-2938) to resolve — nothing is recorded or announced
+	it('settles a claimed step as cancelled when its execution has ended, announcing nothing', async () => {
+		// the claim already happened, so the row would otherwise sit `running`
 		const stepStore = makeStepStore();
 		const queue = makeQueue();
 		const executor = makeExecutor();
-		const handler = makeHandler(makeExecutionStore({ status: 'cancelled' }), stepStore, queue, {
-			v1StepExecutor: executor,
-		});
+		const lifecycleEventPublisher = makeLifecycleEventPublisher();
+		const handler = makeHandler(
+			makeExecutionStore({ status: 'cancelled' }),
+			stepStore,
+			queue,
+			{ v1StepExecutor: executor },
+			lifecycleEventPublisher,
+		);
 
 		await handler.handle(event);
 
 		expect(stepStore.claimStep).toHaveBeenCalledWith('step-a');
+		expect(stepStore.cancelStep).toHaveBeenCalledExactlyOnceWith('step-a');
 		expect(executor.execute).not.toHaveBeenCalled();
 		expect(stepStore.completeStep).not.toHaveBeenCalled();
 		expect(stepStore.failStep).not.toHaveBeenCalled();
 		expect(queue.publish).not.toHaveBeenCalled();
+		expect(lifecycleEventPublisher.publish).not.toHaveBeenCalled();
 	});
 
 	it('runs the step when the execution is waiting', async () => {

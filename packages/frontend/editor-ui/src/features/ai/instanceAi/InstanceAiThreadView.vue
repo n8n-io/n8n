@@ -2,7 +2,6 @@
 import { computed, onMounted, onUnmounted, provide, ref, useTemplateRef, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import {
-	N8nHeading,
 	N8nIconButton,
 	N8nResizeWrapper,
 	N8nText,
@@ -685,10 +684,12 @@ function handleAgentPreviewAssistantHandoff(params: AgentPreviewHandoffParams) {
 	// preview chat open reads as two places to ask the same thing.
 	isAgentPreviewDockOpen.value = false;
 
-	conversationRef.value?.applyHandoff(
+	if (!conversationRef.value) return;
+	conversationRef.value.applyHandoff(
 		buildInstanceAiAgentPreviewHandoffContext(params),
 		params.initialDraft,
 	);
+	params.onAccepted?.();
 }
 
 /**
@@ -755,17 +756,8 @@ function handleNewThreadClick() {
 				:class="[$style.builderChatHeader, { [$style.chromeHidden]: isOnboardingChromeHidden }]"
 				data-test-id="instance-ai-builder-chat-header"
 			>
-				<InstanceAiViewHeader :show-thread-history-label="!currentThreadTitle">
-					<template #title>
-						<N8nHeading
-							v-if="currentThreadTitle"
-							tag="h2"
-							bold
-							size="small"
-							:class="$style.headerTitle"
-						>
-							{{ currentThreadTitle }}
-						</N8nHeading>
+				<InstanceAiViewHeader :title="currentThreadTitle">
+					<template #status>
 						<N8nText
 							v-if="thread.sseState === 'reconnecting'"
 							size="small"
@@ -1074,14 +1066,6 @@ function handleNewThreadClick() {
 	z-index: 4;
 	border-left: none;
 	background-color: var(--color--background--light-2);
-}
-
-.headerTitle {
-	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
-	min-width: 0;
-	color: var(--color--text);
 }
 
 .activeButton {

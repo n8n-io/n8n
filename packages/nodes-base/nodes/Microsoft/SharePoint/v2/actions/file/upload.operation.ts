@@ -3,10 +3,10 @@ import { NodeOperationError } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '../../../../../../utils/utilities';
 import { folderRLC } from '../../folder';
-import { getUploadBufferWithinCap, validateSharePointFileName } from '../../helpers/utils';
+import { getUploadBufferWithinCap, validateSharePointFileName } from '../../../helpers/utils';
 import { untilSiteSelected } from '../../list';
-import { resolveSiteId, siteRLC } from '../../site';
-import { microsoftApiRequest } from '../../transport';
+import { resolveSiteId, siteRLC } from '../../../site';
+import { microsoftApiRequest } from '../../../transport';
 
 const properties: INodeProperties[] = [
 	{

@@ -19,7 +19,7 @@ import { apiRequest } from './GenericFunctions';
 import { listFields, listOperations } from './ListDescription';
 import { wrapData } from '../../utils/utilities';
 
-// https://wekan.github.io/api/v4.41/
+// https://wekan.fi/api/
 
 export class Wekan implements INodeType {
 	description: INodeTypeDescription = {

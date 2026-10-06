@@ -190,16 +190,23 @@ export interface ThreadRuntimeHooks {
  * rendering only on a defined value avoids a "New conversation" → real title
  * flash. Shared by `InstanceAiThreadView` and the embedded `InstanceAiChatPanel`.
  */
+const FIRST_MESSAGE_TITLE_LENGTH = 60;
+
+/** A thread title made from its first user message, for a thread that has no title yet. */
+export function firstMessageTitle(text: string): string {
+	const trimmed = text.trim();
+	return trimmed.length > FIRST_MESSAGE_TITLE_LENGTH
+		? trimmed.slice(0, FIRST_MESSAGE_TITLE_LENGTH) + '…'
+		: trimmed;
+}
+
 export function getThreadDisplayTitle(
 	summary: InstanceAiThreadSummary | undefined,
 	messages: InstanceAiMessage[],
 ): string | undefined {
 	if (summary?.title && summary.title !== NEW_CONVERSATION_TITLE) return summary.title;
 	const firstUserMessage = messages.find((message) => message.role === 'user');
-	if (firstUserMessage?.content) {
-		const text = firstUserMessage.content.trim();
-		return text.length > 60 ? text.slice(0, 60) + '…' : text;
-	}
+	if (firstUserMessage?.content) return firstMessageTitle(firstUserMessage.content);
 	return undefined;
 }
 
@@ -1060,6 +1067,7 @@ export function createThreadRuntime(
 		if (conf.credentialFlow) return false;
 		if (conf.questions?.length) return false;
 		if (conf.channelConfig) return false;
+		if (conf.testListener) return false;
 		return true;
 	}
 

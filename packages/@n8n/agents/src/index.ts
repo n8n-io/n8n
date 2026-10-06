@@ -6,6 +6,13 @@ export type {
 	BuiltEpisodicMemoryCaptureStore,
 	BuiltEpisodicMemoryStore,
 	BuiltGuardrail,
+	GuardrailDecision,
+	GuardrailModelCallContext,
+	GuardrailModelCallSource,
+	GuardrailStop,
+	GuardrailToolCallContext,
+	GuardrailsOptions,
+	ModelGuardrail,
 	PiiDetectionType,
 	BuiltEval,
 	RunOptions,
@@ -19,6 +26,7 @@ export type {
 	ToolContext,
 	ToolCancellationContext,
 	ToolExecutionContext,
+	ToolApprovalContext,
 	InterruptibleToolContext,
 	ToolSuspendOptions,
 	CheckpointStore,
@@ -157,6 +165,13 @@ export {
 } from './sdk/vector-store-filter';
 export type { VectorFilterInput } from './sdk/vector-store-filter';
 export { Guardrail } from './sdk/guardrail';
+export { budgetMonthKey, createBudgetGuardrail } from './runtime/guardrails/budget-guardrail';
+export type {
+	BudgetGuardrailOptions,
+	SpendEntry,
+	SpendLedger,
+	SpendTotal,
+} from './runtime/guardrails/budget-guardrail';
 export {
 	redactText,
 	redactDeep,

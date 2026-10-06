@@ -116,7 +116,7 @@ const sessionTokenFor = async (resourceUrl: string) => {
 		state: 'test-state',
 		resource: resourceUrl,
 	};
-	return jwtService.sign(payload, { expiresIn: '10m' });
+	return jwtService.sign('oauthSession', payload, { expiresIn: '10m' });
 };
 
 beforeAll(async () => {
@@ -282,7 +282,7 @@ describe('token endpoint: refresh grants stay on their approved resource', () =>
 		const response = await refresh(clientId, refreshToken);
 
 		expect(response.statusCode).toBe(200);
-		expect(jwtService.decode(response.body.access_token).aud).toBe(resourceUrl);
+		expect(jwtService.decodeUnverified(response.body.access_token).aud).toBe(resourceUrl);
 	});
 
 	test('keeps the resource on the rotated refresh token', async () => {
@@ -299,6 +299,6 @@ describe('token endpoint: refresh grants stay on their approved resource', () =>
 
 		const reused = await refresh(clientId, rotated.body.refresh_token);
 		expect(reused.statusCode).toBe(200);
-		expect(jwtService.decode(reused.body.access_token).aud).toBe(resourceA);
+		expect(jwtService.decodeUnverified(reused.body.access_token).aud).toBe(resourceA);
 	});
 });

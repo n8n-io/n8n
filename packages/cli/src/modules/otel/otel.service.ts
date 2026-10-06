@@ -2,8 +2,14 @@ import type { Metadata } from '@grpc/grpc-js';
 import { Logger } from '@n8n/backend-common';
 import { OutboundHttp } from '@n8n/backend-network';
 import { Service } from '@n8n/di';
-import type { DiagLogger, Tracer, TracerProvider } from '@opentelemetry/api';
-import { DiagLogLevel, ProxyTracerProvider, diag, trace } from '@opentelemetry/api';
+import type { DiagLogger, Tracer } from '@opentelemetry/api';
+import { DiagLogLevel, context, diag, propagation, trace } from '@opentelemetry/api';
+import { AsyncLocalStorageContextManager } from '@opentelemetry/context-async-hooks';
+import {
+	CompositePropagator,
+	W3CBaggagePropagator,
+	W3CTraceContextPropagator,
+} from '@opentelemetry/core';
 import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-proto';
 import {
 	detectResources,
@@ -13,6 +19,7 @@ import {
 	resourceFromAttributes,
 } from '@opentelemetry/resources';
 import {
+	AlwaysOffSampler,
 	BasicTracerProvider,
 	BatchSpanProcessor,
 	type ReadableSpan,
@@ -35,15 +42,7 @@ export type OtelTestTraceResult = { success: true } | { success: false; error: s
 const stripEmptyResolutionNote = (message: string) =>
 	message.replace(/\s*Resolution note:\s*$/, '');
 
-// Deprecated in `@opentelemetry/api` 1.x, but the only public source of a no-op tracer provider.
-const noopTracerProvider = new ProxyTracerProvider();
-
-function registeredGlobalTracerProvider(): TracerProvider | undefined {
-	const globalProvider = trace.getTracerProvider();
-	const delegate =
-		globalProvider instanceof ProxyTracerProvider ? globalProvider.getDelegate() : globalProvider;
-	return delegate === noopTracerProvider.getDelegate() ? undefined : delegate;
-}
+let noopTracerProvider: BasicTracerProvider | undefined;
 
 @Service()
 export class OtelService {
@@ -71,7 +70,9 @@ export class OtelService {
 	}
 
 	getTracer(name: string): Tracer {
-		return (this.provider ?? noopTracerProvider).getTracer(name);
+		if (this.provider) return this.provider.getTracer(name);
+		noopTracerProvider ??= new BasicTracerProvider({ sampler: new AlwaysOffSampler() });
+		return noopTracerProvider.getTracer(name);
 	}
 
 	/**
@@ -189,13 +190,20 @@ export class OtelService {
 			return;
 		}
 
-		if (registeredGlobalTracerProvider()) {
+		// Claim the global API before installing context and propagation defaults.
+		// A failed claim leaves another library's global registrations in place.
+		this.ownsGlobalApi = trace.setGlobalTracerProvider(provider);
+		if (!this.ownsGlobalApi) {
 			this.logForeignGlobalApiOwner();
 			return;
 		}
 
-		provider.register();
-		this.ownsGlobalApi = registeredGlobalTracerProvider() === provider;
+		context.setGlobalContextManager(new AsyncLocalStorageContextManager().enable());
+		propagation.setGlobalPropagator(
+			new CompositePropagator({
+				propagators: [new W3CTraceContextPropagator(), new W3CBaggagePropagator()],
+			}),
+		);
 	}
 
 	private logForeignGlobalApiOwner(): void {

@@ -43,6 +43,14 @@ const messagingKey = computed(() => (isSwitchingToManual.value ? 'disable' : 'en
 
 const shouldShowProjectRolesCsv = computed(() => props.showProjectRolesCsv);
 
+// The manual flow renders no CSV controls, so it must never wait for a download.
+const isCsvBackupPending = computed(
+	() =>
+		!isSwitchingToManual.value &&
+		(!hasDownloadedInstanceRoleCsv.value ||
+			(shouldShowProjectRolesCsv.value && !hasDownloadedProjectRoleCsv.value)),
+);
+
 watch(visible, () => {
 	loading.value = false;
 	confirmationChecked.value = false;
@@ -157,7 +165,9 @@ const onConfirmProvisioningSetting = () => {
 				}}</N8nText>
 				<br />
 				<N8nText color="text-base" size="small">{{
-					locale.baseText('settings.provisioningConfirmDialog.projectRulesDeletion.description')
+					locale.baseText(
+						`settings.provisioningConfirmDialog.projectRulesDeletion.description.${messagingKey}`,
+					)
 				}}</N8nText>
 			</N8nCallout>
 		</div>
@@ -165,11 +175,7 @@ const onConfirmProvisioningSetting = () => {
 			<N8nCard :class="$style.card">
 				<N8nCheckbox
 					v-model="confirmationChecked"
-					:disabled="
-						!isSwitchingToManual &&
-						(!hasDownloadedInstanceRoleCsv ||
-							(shouldShowProjectRolesCsv && !hasDownloadedProjectRoleCsv))
-					"
+					:disabled="isCsvBackupPending"
 					data-test-id="provisioning-confirmation-checkbox"
 				>
 					<template #label>
@@ -193,12 +199,7 @@ const onConfirmProvisioningSetting = () => {
 				<N8nButton
 					variant="solid"
 					type="button"
-					:disabled="
-						loading ||
-						!confirmationChecked ||
-						(!isSwitchingToManual && !hasDownloadedInstanceRoleCsv) ||
-						(shouldShowProjectRolesCsv && !hasDownloadedProjectRoleCsv)
-					"
+					:disabled="loading || !confirmationChecked || isCsvBackupPending"
 					data-test-id="provisioning-confirm-button"
 					@click="onConfirmProvisioningSetting"
 					>{{

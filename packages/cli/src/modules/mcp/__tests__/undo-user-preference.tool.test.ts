@@ -75,6 +75,7 @@ describe('undo_user_preference MCP tool', () => {
 		await tool.handler({ id: 'pref-1' });
 
 		expect(telemetry.track).toHaveBeenCalledWith(TELEMETRY_EVENT.CONTEXT.USER_DELETED_PREFERENCES, {
+			user_id: 'user-1',
 			count: 1,
 			source: 'rejected',
 			scope_types: ['user'],
@@ -97,6 +98,7 @@ describe('undo_user_preference MCP tool', () => {
 		expect(telemetry.track).toHaveBeenCalledWith(
 			TELEMETRY_EVENT.CONTEXT.PREFERENCE_CONFIRMATION_RESOLVED,
 			{
+				user_id: 'user-1',
 				surface: 'mcp',
 				outcome: 'rejected',
 				scope_type: 'user',

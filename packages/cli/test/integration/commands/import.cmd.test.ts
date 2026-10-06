@@ -148,6 +148,66 @@ test('import:workflow can import a single workflow object', async () => {
 	});
 });
 
+test('import:workflow should generate an ID for a workflow without one', async () => {
+	//
+	// ARRANGE
+	//
+	const owner = await createOwner();
+	const ownerProject = await getPersonalProject(owner);
+
+	//
+	// ACT
+	//
+	await command.run([
+		'--input=./test/integration/commands/import-workflows/without-id/001-workflow.json',
+	]);
+
+	//
+	// ASSERT
+	//
+	const workflows = await getAllWorkflows();
+	expect(workflows).toEqual([
+		expect.objectContaining({ id: expect.any(String), name: 'workflow-without-id-1' }),
+	]);
+	expect(await getAllSharedWorkflows()).toEqual([
+		expect.objectContaining({
+			workflowId: workflows[0].id,
+			projectId: ownerProject.id,
+			role: 'workflow:owner',
+		}),
+	]);
+});
+
+test('`import:workflow --separate ...` should generate an ID for each workflow without one', async () => {
+	//
+	// ARRANGE
+	//
+	const owner = await createOwner();
+	const ownerProject = await getPersonalProject(owner);
+
+	//
+	// ACT
+	//
+	await command.run([
+		'--separate',
+		'--input=./test/integration/commands/import-workflows/without-id',
+	]);
+
+	//
+	// ASSERT
+	//
+	const workflowIds = (await getAllWorkflows()).map(({ id }) => id);
+	expect(workflowIds).toHaveLength(2);
+	expect(new Set(workflowIds).size).toBe(2);
+	expect(await getAllSharedWorkflows()).toEqual(
+		expect.arrayContaining(
+			workflowIds.map((workflowId) =>
+				expect.objectContaining({ workflowId, projectId: ownerProject.id, role: 'workflow:owner' }),
+			),
+		),
+	);
+});
+
 test('`import:workflow --userId ...` should fail if the workflow exists already and is owned by somebody else', async () => {
 	//
 	// ARRANGE
@@ -423,6 +483,43 @@ test('`import:workflow --projectId ...` should fail if the workflow already exis
 			}),
 		],
 	});
+});
+
+test('`import:workflow --projectId ...` should import a workflow without an ID', async () => {
+	//
+	// ARRANGE
+	//
+	const owner = await createOwner();
+	const member = await createMember();
+	const memberProject = await getPersonalProject(member);
+
+	// Another project owns this workflow. The ownership check must not match it to a workflow
+	// that has no ID.
+	await command.run([
+		'--input=./test/integration/commands/import-workflows/combined-with-update/original.json',
+		`--userId=${owner.id}`,
+	]);
+
+	//
+	// ACT
+	//
+	await command.run([
+		'--input=./test/integration/commands/import-workflows/without-id/001-workflow.json',
+		`--projectId=${memberProject.id}`,
+	]);
+
+	//
+	// ASSERT
+	//
+	const imported = (await getAllWorkflows()).filter(({ id }) => id !== '998');
+	expect(imported).toEqual([expect.objectContaining({ name: 'workflow-without-id-1' })]);
+	expect(await getAllSharedWorkflows()).toContainEqual(
+		expect.objectContaining({
+			workflowId: imported[0].id,
+			projectId: memberProject.id,
+			role: 'workflow:owner',
+		}),
+	);
 });
 
 test('`import:workflow --projectId ... --userId ...` fails explaining that only one of the options can be used at a time', async () => {

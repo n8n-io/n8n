@@ -45,9 +45,8 @@ value. Rerun the check after the user confirms. Continue only when it passes.
 - Author the case at
   `packages/@n8n/instance-ai/evaluations/data/agents/<slug>.json`.
 - Set `"datasets": ["agents"]`.
-- Push general Agent Builder cases to
-  [Instance AI capabilities — agents](https://lang-tracer.n8n-maintenance.workers.dev/suites/10).
-  Its suite slug is `agents`.
+- Ask the driver for the target suite before you do anything else. See
+  "Ask for the target suite first" below. Do not assume `agents`.
 - Do not commit the case JSON. LangTracer is the durable source of truth.
 - Commit changes to this skill, the harness, and CI when applicable.
 
@@ -110,6 +109,22 @@ calibration rules in [create-instance-ai-eval](../create-instance-ai-eval/SKILL.
 This skill overrides its workflow directory and suite guidance for Agent cases.
 The sections below add the Agent-specific parts. Do not skip the general rules
 they point to.
+
+## Ask for the target suite first
+
+Follow "Ask for the target suite first" in
+[create-instance-ai-eval](../create-instance-ai-eval/SKILL.md). Do it after the
+LangTracer preflight and before you source or draft anything. If the request
+already names a suite, state it and do not ask. Otherwise ask, in autonomous
+mode too, in the same message as the autonomy question.
+
+For Agent cases, recommend
+[Instance AI capabilities — agents](https://lang-tracer.n8n-maintenance.workers.dev/suites/10)
+(slug `agents`). Offer `baseline` as well: the Instance AI (INS) team monitors
+it and it runs nightly. Get the full list from `list_suites`. Use the suite the
+driver picks in every push command, in place of `agents` in the examples below.
+Keep the `agents` dataset and the `data/agents/` directory. They do not depend
+on the suite.
 
 ## Set the autonomy level first
 
@@ -325,14 +340,14 @@ credential such as `EVAL_OPENAI_API_KEY`. A build-only case does not need one.
 4. Classify each red as a product gap, harness limitation, or non-determinism.
 5. Use `--iterations 5` before adding a case to a gating tier.
 6. Preview the LangTracer change.
-7. Push it to `agents`.
+7. Push it to the suite the driver chose (`<suite>` below).
 
 ```bash
 pnpm exec dotenvx run -f ../../../.env.eval -- \
-  pnpm eval:langtracer-push --suite agents --dry-run --changed
+  pnpm eval:langtracer-push --suite <suite> --dry-run --changed
 
 pnpm exec dotenvx run -f ../../../.env.eval -- \
-  pnpm eval:langtracer-push --suite agents --changed
+  pnpm eval:langtracer-push --suite <suite> --changed
 ```
 
 The push needs `LANGTRACER_URL` and `LANGTRACER_API_KEY`. Generate a key on the
@@ -343,6 +358,7 @@ after a successful push.
 ## Completion checklist
 
 - The LangTracer environment preflight passed before authoring.
+- The driver chose the target suite before any work, including in autonomous mode.
 - The autonomy level was set and stated before any work.
 - A sourced case links to its source thread, and the source turn was read raw.
 - Each conditional expectation has proof that its precondition fired.
@@ -355,6 +371,7 @@ after a successful push.
 - No expectation names a sub-agent, an internal tool, or a delegation step.
   Each one passes for a correct build from a different architecture.
 - Repeated runs are stable enough for the selected tier.
-- The case is pushed to `Instance AI capabilities — agents` with suite slug `agents`.
-- Agent Builder PR changes select the `agents` suite in CI.
+- The case is pushed to the suite the driver chose, and the report links to it.
+- Agent Builder PR changes select the `agents` suite in CI. A case pushed to
+  another suite does not run in that lane.
 - The local case JSON is not committed.

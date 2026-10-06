@@ -49,7 +49,7 @@ const makeTracer = () => {
 function makeScheduler(deps: Partial<SchedulerDeps> = {}) {
 	const taskStore = mock<SchedulerTaskStore>();
 	taskStore.markDispatched.mockResolvedValue(1);
-	taskStore.retireMissedPending.mockResolvedValue(0);
+	taskStore.retireMissedPending.mockResolvedValue({ retired: 0, heldByConcurrencyLimit: [] });
 	const onEvent = vi.fn<(event: SchedulerEvent) => void>();
 	const materializerTransaction: RunInTransaction = vi.fn();
 	const scheduler = createScheduler({
@@ -1249,6 +1249,18 @@ describe('createScheduler reap', () => {
 			context: { taskId: '7', attempts: 3, maxAttempts: 3 },
 		});
 	});
+
+	it('hands the host the occurrences a concurrency limit held back', async () => {
+		const onHeldByConcurrencyLimit = vi.fn();
+		const { scheduler, taskStore } = makeScheduler({ onHeldByConcurrencyLimit });
+		const held = [{ id: '7', jobId: 3, taskType: 'system:pruning' }];
+		taskStore.findExpiredLeases.mockResolvedValue([]);
+		taskStore.retireMissedPending.mockResolvedValue({ retired: 1, heldByConcurrencyLimit: held });
+
+		await scheduler.reap();
+
+		expect(onHeldByConcurrencyLimit).toHaveBeenCalledWith(held);
+	});
 });
 
 describe('createScheduler tracing', () => {
@@ -1766,6 +1778,118 @@ describe('createScheduler metrics', () => {
 			expect(metrics.recordLeaseLost).toHaveBeenCalledWith('test-task');
 		});
 		expect(metrics.recordFireOutcome).not.toHaveBeenCalled();
+	});
+
+	describe('lease renewal', () => {
+		beforeEach(() => {
+			vi.useFakeTimers();
+		});
+
+		afterEach(() => {
+			vi.useRealTimers();
+		});
+
+		// A 15s lease renews every 5 seconds, the shortest interval.
+		const LEASE_SECONDS = 15;
+		const RENEWAL_INTERVAL_MS = 5_000;
+
+		/** Fires one long handler that stays pending until `finish` is called. */
+		const fireLongHandler = async (metrics: SchedulerMetrics) => {
+			const made = makeScheduler({
+				metrics,
+				executor: { leaseSeconds: LEASE_SECONDS, lookaheadSeconds: 1 },
+			});
+			let finish!: () => void;
+			made.scheduler.registerTaskHandler('test-task', {
+				execute: async (_task, report) => {
+					await new Promise<void>((resolve) => {
+						finish = resolve;
+					});
+					return report.notDispatched();
+				},
+			});
+			made.taskStore.claimDueTasks.mockResolvedValue([claimedTask()]);
+			made.taskStore.beginDispatch.mockResolvedValue(1);
+			made.taskStore.completeTask.mockResolvedValue(1);
+			await made.scheduler.execute();
+			return { ...made, finish: () => finish() };
+		};
+
+		it('maps renewals onto the renewal metric, and warns when the claim is lost', async () => {
+			const metrics = mock<SchedulerMetrics>();
+			const { taskStore, onEvent, finish } = await fireLongHandler(metrics);
+			taskStore.renewLease.mockResolvedValueOnce(true).mockResolvedValue(false);
+
+			await vi.advanceTimersByTimeAsync(2 * RENEWAL_INTERVAL_MS);
+
+			expect(metrics.recordLeaseRenewal).toHaveBeenCalledWith('test-task', 'renewed');
+			expect(metrics.recordLeaseRenewal).toHaveBeenCalledWith('test-task', 'lost');
+			expect(onEvent).toHaveBeenCalledWith({
+				level: 'warn',
+				message:
+					'Scheduler lost the claim of a running task; another instance may run it unless it was already dispatched',
+				context: { taskId: claimedTask().id, taskType: 'test-task' },
+			});
+			finish();
+		});
+
+		it('maps a whole lease without a renewal onto the renewal metric, and warns', async () => {
+			const metrics = mock<SchedulerMetrics>();
+			const { taskStore, onEvent, finish } = await fireLongHandler(metrics);
+			taskStore.renewLease.mockRejectedValue(new Error('db down'));
+
+			await vi.advanceTimersByTimeAsync(LEASE_SECONDS * 1_000);
+
+			expect(metrics.recordLeaseRenewal).toHaveBeenCalledWith('test-task', 'expired');
+			expect(onEvent).toHaveBeenCalledWith({
+				level: 'warn',
+				message:
+					'Scheduler could not renew the lease of a running task in time; another instance may run it unless it was already dispatched',
+				context: { taskId: claimedTask().id, taskType: 'test-task' },
+			});
+			finish();
+		});
+
+		it('warns when a renewal write fails', async () => {
+			const metrics = mock<SchedulerMetrics>();
+			const { taskStore, onEvent, finish } = await fireLongHandler(metrics);
+			taskStore.renewLease.mockRejectedValue(new Error('db down'));
+
+			await vi.advanceTimersByTimeAsync(RENEWAL_INTERVAL_MS);
+
+			expect(onEvent).toHaveBeenCalledWith(
+				expect.objectContaining({
+					level: 'warn',
+					message: 'Scheduler could not renew the lease of a running task; retrying',
+				}),
+			);
+			expect(metrics.recordLeaseRenewal).not.toHaveBeenCalled();
+			finish();
+		});
+
+		it('warns once when a run is still pending after sixty leases', async () => {
+			const { taskStore, onEvent, finish } = await fireLongHandler(mock<SchedulerMetrics>());
+			taskStore.renewLease.mockResolvedValue(true);
+			const stuckWarning = {
+				level: 'warn',
+				message: 'Scheduler task is still running after many leases; it may be stuck',
+				context: {
+					taskId: claimedTask().id,
+					taskType: 'test-task',
+					runningSeconds: 60 * LEASE_SECONDS,
+				},
+			};
+
+			await vi.advanceTimersByTimeAsync(60 * LEASE_SECONDS * 1_000 - 1);
+			expect(onEvent).not.toHaveBeenCalledWith(stuckWarning);
+
+			await vi.advanceTimersByTimeAsync(60_000);
+			const warnings = onEvent.mock.calls.filter(
+				([event]) => event.message === stuckWarning.message,
+			);
+			expect(warnings).toEqual([[stuckWarning]]);
+			finish();
+		});
 	});
 
 	it('does not let a throwing metrics sink break a pass', async () => {

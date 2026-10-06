@@ -6,9 +6,9 @@ import type {
 	ResourceMapperFields,
 } from 'n8n-workflow';
 
-import { assertPathSegment } from '../helpers/utils';
-import { resolveSiteId } from '../site';
-import { microsoftApiRequest } from '../transport';
+import { assertPathSegment } from '../../helpers/utils';
+import { resolveSiteId } from '../../site';
+import { microsoftApiRequest } from '../../transport';
 import { untilListSelected, untilSiteSelected } from './index';
 
 export interface SharePointListColumn {

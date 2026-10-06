@@ -26,7 +26,11 @@ import { prepareWorkflowSetup } from '../prepare-workflow-setup';
 import { buildCredentialMap, resolveCredentials } from '../resolve-credentials';
 import type { SetupRequest } from '../setup-workflow.schema';
 import { analyzeWorkflow, getValidCredentialTypes } from '../setup-workflow.service';
-import { getWorkflowSourceFileBinding, hashWorkflowSource } from '../workflow-file-bindings';
+import {
+	getWorkflowSourceFileBinding,
+	hashWorkflowSource,
+	saveWorkflowSourceFileBinding,
+} from '../workflow-file-bindings';
 import { ensureWebhookIds } from '../workflow-json-utils';
 import { compileWorkflowSource } from '../workflow-source-compiler';
 import { appendWorkflowSourceDiagnostics } from '../workflow-source-diagnostics';
@@ -470,6 +474,40 @@ describe('createBuildWorkflowTool', () => {
 			expect(result.success).toBe(false);
 			expect(context.workflowService.updateFromWorkflowJSON).not.toHaveBeenCalled();
 			expect(result.errors?.join(' ')).toContain('move-workflow-to-folder');
+		});
+
+		it.each(['', ' ', '/'])(
+			'creates at the project root when folderPath is %j',
+			async (folderPath) => {
+				const { context, filePath } = makeContext({
+					overrides: { folderExplorationEnabled: true },
+				});
+
+				const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
+					filePath,
+					name: 'Root workflow',
+					folderPath,
+				});
+
+				expect(result.success).toBe(true);
+				expect(context.workflowService.createFromWorkflowJSON).toHaveBeenCalledWith(
+					expect.objectContaining({ name: 'Root workflow' }),
+					{ markAsAiTemporary: true },
+				);
+			},
+		);
+
+		it('updates an existing workflow when folderPath is blank', async () => {
+			const { context, filePath } = makeContext({ overrides: { folderExplorationEnabled: true } });
+
+			const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
+				filePath,
+				workflowId: 'wf-1',
+				folderPath: '',
+			});
+
+			expect(result.success).toBe(true);
+			expect(context.workflowService.updateFromWorkflowJSON).toHaveBeenCalled();
 		});
 	});
 
@@ -1509,6 +1547,90 @@ describe('createBuildWorkflowTool', () => {
 			}),
 		);
 	});
+
+	it('blocks the build before any work when parameter values are hidden', async () => {
+		const { context, filePath } = makeContext({
+			overrides: { allowSendingParameterValues: false },
+		});
+
+		const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
+			filePath,
+		});
+
+		expect(result).toMatchObject({
+			success: false,
+			remediation: {
+				category: 'blocked',
+				shouldEdit: false,
+				reason: 'parameter_values_hidden',
+			},
+		});
+		expect(context.workspace?.filesystem?.readFile).not.toHaveBeenCalled();
+		expect(compileWorkflowSource).not.toHaveBeenCalled();
+		expect(context.workflowService.createFromWorkflowJSON).not.toHaveBeenCalled();
+		expect(context.workflowService.updateFromWorkflowJSON).not.toHaveBeenCalled();
+	});
+
+	it('requires a source refresh when the bound source was read with parameter values hidden', async () => {
+		const { context, filePath, trackTelemetry } = makeContext({});
+		await saveWorkflowSourceFileBinding(context, {
+			filePath,
+			workflowId: 'wf-bound',
+			parameterValuesIncluded: false,
+		});
+
+		const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
+			filePath,
+		});
+
+		expect(result).toMatchObject({
+			success: false,
+			workflowId: 'wf-bound',
+			remediation: {
+				category: 'code_fixable',
+				shouldEdit: false,
+				reason: 'workflow_source_refresh_required',
+			},
+		});
+		expect(compileWorkflowSource).not.toHaveBeenCalled();
+		expect(context.workflowService.updateFromWorkflowJSON).not.toHaveBeenCalled();
+		expect(context.workflowService.createFromWorkflowJSON).not.toHaveBeenCalled();
+		expect(trackTelemetry).toHaveBeenCalledWith(
+			'instance_ai_workflow_source_build',
+			expect.objectContaining({
+				result: 'blocked',
+				stage: 'source_read',
+				target_workflow_id: 'wf-bound',
+				remediation_reason: 'workflow_source_refresh_required',
+			}),
+		);
+	});
+
+	it.each([
+		['parameter values allowed', true, true],
+		['parameter values allowed, no binding flag', true, undefined],
+		['no run setting, no binding flag', undefined, undefined],
+	] as const)(
+		'updates the bound workflow when %s',
+		async (_label, allowSendingParameterValues, parameterValuesIncluded) => {
+			const { context, filePath } = makeContext({
+				overrides: { allowSendingParameterValues },
+			});
+			await saveWorkflowSourceFileBinding(context, {
+				filePath,
+				workflowId: 'wf-bound',
+				workflowChecksum: 'checksum-current',
+				parameterValuesIncluded,
+			});
+
+			const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
+				filePath,
+			});
+
+			expect(result).toMatchObject({ success: true, workflowId: 'wf-bound' });
+			expect(context.workflowService.updateFromWorkflowJSON).toHaveBeenCalledTimes(1);
+		},
+	);
 
 	it('continues a stopped early setup draft with the same file and selected account', async () => {
 		const filePath = 'src/workflows/main.workflow.ts';

@@ -59,8 +59,7 @@ import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry
 import { NodeTypes } from '@/node-types';
 import { OauthService } from '@/oauth/oauth.service';
 import { userHasScopes } from '@/permissions.ee/check-access';
-import { ProjectScopeService } from '@/permissions.ee/project-scope.service';
-import { UrlService } from '@n8n/backend-services';
+import { ProjectScopeService, UrlService } from '@n8n/backend-services';
 import { Telemetry } from '@/telemetry';
 import { createAiMcpFetch } from '@/utils/ai-proxy-fetch';
 
@@ -84,6 +83,7 @@ import type {
 } from '../../mcp.types';
 
 const MCP_SERVER_DISCOVERY_LIMIT = 20;
+const MODEL_DISCOVERY_LIMIT = 50;
 
 const INTEGRATIONS_NOT_IN_CONFIG_MESSAGE =
 	"Integrations can't be changed through config.replace or config.patch. Use update_agent_integration to configure or disconnect Slack, Telegram, or Linear. Configuration never publishes the Agent; an unpublished Agent's channel stays inactive until publish_agent is called.";
@@ -297,7 +297,7 @@ const discoverAssetsInput = {
 		.trim()
 		.min(1)
 		.optional()
-		.describe('Optional filter for workflows, subagents, or MCP servers'),
+		.describe('Optional filter for model IDs, workflows, subagents, or MCP servers'),
 	provider: z
 		.enum(AGENT_MODEL_PROVIDERS)
 		.optional()
@@ -1154,16 +1154,17 @@ export class McpAgentToolsService {
 	 * must not be usable as a mutate_agent baseConfigHash.
 	 */
 	private async getAgentVersionSnapshot(projectId: string, agentId: string, versionId: string) {
-		const { agent, version, tasks } = await this.agentPublishService.getVersion(
+		const { agent, version, definition } = await this.agentPublishService.getVersion(
 			agentId,
 			projectId,
 			versionId,
 		);
-		if (!version.schema) throw new UserError(`Version "${versionId}" has no JSON config.`);
+		if (!definition.schema) throw new UserError(`Version "${versionId}" has no JSON config.`);
 		// Integrations are managed separately and are not versioned, so omit any
 		// legacy snapshot field here for the same reason as in getAgentSnapshot.
-		const { integrations: _integrations, ...editableConfig } = version.schema;
+		const { integrations: _integrations, ...editableConfig } = definition.schema;
 
+		const enabledTasks = new Map((editableConfig.tasks ?? []).map((ref) => [ref.id, ref.enabled]));
 		return {
 			agent: {
 				id: agent.id,
@@ -1180,16 +1181,16 @@ export class McpAgentToolsService {
 				isActive: version.versionId === agent.activeVersionId,
 			},
 			config: editableConfig,
-			skills: version.skills ?? {},
-			tasks: tasks.map((task) => ({
-				id: task.taskId,
+			skills: definition.skills,
+			tasks: [...definition.tasks].map(([id, task]) => ({
+				id,
 				name: task.name,
 				objective: task.objective,
 				cronExpression: task.cronExpression,
 				timezone: task.timezone,
-				enabled: task.enabled,
+				enabled: enabledTasks.get(id) ?? false,
 			})),
-			customTools: Object.entries(version.tools ?? {}).map(([id, tool]) => ({
+			customTools: Object.entries(definition.tools).map(([id, tool]) => ({
 				id,
 				descriptor: tool.descriptor,
 			})),
@@ -1628,12 +1629,23 @@ export class McpAgentToolsService {
 		switch (input.kind) {
 			case 'models': {
 				if (input.provider) {
-					return await this.agentModelCatalogService.getProviderModels(
+					const catalog = await this.agentModelCatalogService.getProviderModels(
 						user,
 						input.projectId,
 						input.provider,
 						input.credentialId,
 					);
+					const query = input.query?.trim().toLowerCase();
+					const models = query
+						? catalog.models.filter((model) => model.id.toLowerCase().includes(query))
+						: catalog.models;
+					const truncated = models.length > MODEL_DISCOVERY_LIMIT;
+					return {
+						...catalog,
+						models: models.slice(0, MODEL_DISCOVERY_LIMIT),
+						truncated,
+						...(truncated ? { hint: 'Pass query to filter models by ID.' } : {}),
+					};
 				}
 				// The full catalog runs to hundreds of KB — far past MCP client
 				// token limits — so without a provider return a summary instead.

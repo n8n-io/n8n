@@ -2,8 +2,7 @@ import { nextTick } from 'vue';
 import { createTestingPinia } from '@pinia/testing';
 import { waitFor, within } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
-import { createComponentRenderer } from '@/__tests__/render';
-import { mockedStore, type MockedStore } from '@/__tests__/utils';
+import { createComponentRenderer, mockedStore, type MockedStore } from '@n8n/frontend-test-utils';
 import SettingsMCPClientsView from '@/features/ai/mcpAccess/SettingsMCPClientsView.vue';
 import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
@@ -36,7 +35,7 @@ vi.mock('vue-router', async (importOriginal) => ({
 	},
 }));
 
-vi.mock('@/app/composables/useDocumentTitle', () => ({
+vi.mock('@n8n/composables/useDocumentTitle', () => ({
 	useDocumentTitle: () => ({
 		set: vi.fn(),
 	}),
