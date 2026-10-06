@@ -66,6 +66,8 @@ const label = computed(() => {
 
 	return i18n.baseText('nodeView.runButtonText.executingWorkflow');
 });
+// Picking an item runs it, so the menu shows no selection state.
+// The button's trigger icon and tooltip show the current trigger.
 const actions = computed(() =>
 	props.triggerNodes
 		.filter((node) => (props.includeChatTrigger ? true : !isChatNode(node)))
@@ -79,7 +81,6 @@ const actions = computed(() =>
 			label: truncateBeforeLast(node.name, 50),
 			disabled: !!node.disabled || props.executing,
 			id: node.name,
-			checked: props.selectedTriggerNodeName === node.name,
 		})),
 );
 const isSplitButton = computed(
