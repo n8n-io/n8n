@@ -38,8 +38,7 @@ jobs:
         continue-on-error: true
         run: |
           mkdir -p "$RUNNER_TEMP/jscpd-report"
-          version="$(node -p "require('./package.json').devDependencies?.jscpd" 2>/dev/null || true)"
-          case "$version" in [0-9]*) ;; *) version=5.2.0 ;; esac
+          version="$(node -p "require('./package.json').devDependencies.jscpd")"
           npx --yes "jscpd@$version" . \
             --output "$RUNNER_TEMP/jscpd-report" \
             --silent
@@ -65,7 +64,6 @@ jobs:
         env:
           REPORT_PATH: ${{ runner.temp }}/jscpd-report/jscpd-report.json
           OUTPUT_DIR: ${{ runner.temp }}/jscpd-buckets
-          BUCKET_COUNT: ${{ env.BUCKET_COUNT }}
         run: node .github/scripts/split-jscpd-report.mjs
 
       # BUCKET_COUNT static upload steps, one per bucket file: GitHub Actions
