@@ -11,7 +11,9 @@ vi.mock('../../composables/useAgentConfirmationModal', () => ({
 	useAgentConfirmationModal: () => ({ openAgentConfirmationModal: vi.fn() }),
 }));
 
-const renderComponent = createComponentRenderer(AgentEvalTryRow);
+// The complete view expands in place; the small view hands off via `open` and
+// is covered in `agents/__tests__/AgentEvalTryRow.test.ts`.
+const renderComponent = createComponentRenderer(AgentEvalTryRow, { props: { view: 'complete' } });
 
 describe('AgentEvalTryRow', () => {
 	it('renders the status avatar and input, with an optional label', () => {
@@ -26,7 +28,7 @@ describe('AgentEvalTryRow', () => {
 
 	it('shows the label when provided', () => {
 		const { getByText } = renderComponent({
-			props: { status: 'pass', input: 'x', output: 'y', label: 'Your try' },
+			props: { status: 'pass', input: 'x', output: 'y', label: 'Your try', view: 'small' },
 		});
 
 		expect(getByText('Your try')).toBeInTheDocument();

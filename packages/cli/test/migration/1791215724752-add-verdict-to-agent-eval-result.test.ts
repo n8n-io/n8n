@@ -126,12 +126,14 @@ describe('AddVerdictToAgentEvalResult migration', () => {
 				`UPDATE ${escape.tableName('agent_eval_result')} SET "verdict" = :verdict WHERE "id" = :resultId`,
 				{ verdict, resultId },
 			);
-			const rows = await runQuery<Array<{ verdict: string | null }>>(
+			const rows = await runQuery<Array<{ verdict: string | object | null }>>(
 				`SELECT "verdict" FROM ${escape.tableName('agent_eval_result')} WHERE "id" = :resultId`,
 				{ resultId },
 			);
 			expect(rows).toHaveLength(1);
-			expect(JSON.parse(rows[0].verdict ?? 'null')).toEqual({
+			// Postgres returns a JSON column already parsed; SQLite returns text.
+			const stored = rows[0].verdict;
+			expect(typeof stored === 'string' ? JSON.parse(stored) : stored).toEqual({
 				status: 'completed',
 				outcome: 'fail',
 				reasoning: 'Off-task.',
