@@ -1,22 +1,31 @@
 import type { Embeddings } from '@langchain/core/embeddings';
-import type { INode } from 'n8n-workflow';
+import type { VectorStoreNodeConstructorArgs } from '@n8n/ai-utilities';
+import { configurePostgres } from 'n8n-nodes-base/dist/nodes/Postgres/transport/index';
+import type { INode, ISupplyDataFunctions } from 'n8n-workflow';
 import type pg from 'pg';
 
 import { escapeQualifiedSqlIdentifier, escapeSqlIdentifier } from '@utils/sqlIdentifier';
 
-// Keep the module import light: the node body calls createVectorStoreNode and
-// configurePostgres at load time, neither of which is needed to exercise the
-// ExtendedPGVectorStore identifier handling.
+// Keep the node factory light and use a mock pool for initialization tests.
 vi.mock('@n8n/ai-utilities', () => ({
 	metadataFilterField: {},
-	createVectorStoreNode: () => class {},
+	createVectorStoreNode: (
+		config: Pick<
+			VectorStoreNodeConstructorArgs<ExtendedPGVectorStore>,
+			'getVectorStoreClient' | 'populateVectorStore'
+		>,
+	) =>
+		class {
+			getVectorStoreClient = config.getVectorStoreClient;
+			populateVectorStore = config.populateVectorStore;
+		},
 }));
 
 vi.mock('n8n-nodes-base/dist/nodes/Postgres/transport/index', () => ({
 	configurePostgres: vi.fn(),
 }));
 
-import { ExtendedPGVectorStore } from './VectorStorePGVector.node';
+import { ExtendedPGVectorStore, VectorStorePGVector } from './VectorStorePGVector.node';
 
 const embeddings = {} as unknown as Embeddings;
 const node = { name: 'Postgres PGVector Store' } as unknown as INode;
@@ -37,6 +46,30 @@ function createStore(args: {
 	});
 	store.n8nNode = node;
 	return store;
+}
+
+function createNodeContext(skipInitializationCheck: boolean, rejectExtensionCreation: boolean) {
+	const query = vi.fn(async (sql: string) => {
+		if (rejectExtensionCreation && sql.startsWith('CREATE EXTENSION')) {
+			throw new Error('permission denied to create extension "vector"');
+		}
+		return { rows: [] };
+	});
+	const client = { release: vi.fn() };
+	const pool = { query, connect: vi.fn().mockResolvedValue(client) } as unknown as pg.Pool;
+	vi.mocked(configurePostgres).mockResolvedValue({ db: { $pool: pool } } as never);
+
+	const context = {
+		getNode: () => node,
+		getCredentials: vi.fn().mockResolvedValue({}),
+		getNodeParameter: vi.fn((name: string, _itemIndex: number, fallback?: unknown) => {
+			if (name === 'tableName') return 'n8n_vectors';
+			if (name === 'options.skipInitializationCheck') return skipInitializationCheck;
+			return fallback;
+		}),
+	} as unknown as ISupplyDataFunctions;
+
+	return { context, query, client };
 }
 
 describe('ExtendedPGVectorStore', () => {
@@ -119,4 +152,62 @@ describe('ExtendedPGVectorStore', () => {
 			);
 		});
 	});
+});
+
+describe('VectorStorePGVector initialization', () => {
+	const vectorStoreNode = new VectorStorePGVector() as unknown as Pick<
+		VectorStoreNodeConstructorArgs<ExtendedPGVectorStore>,
+		'getVectorStoreClient' | 'populateVectorStore'
+	>;
+	const nodeEmbeddings = {
+		embedDocuments: vi.fn().mockResolvedValue([[0.1, 0.2]]),
+	} as unknown as Embeddings;
+
+	it('initializes the table when the default option is used', async () => {
+		const { context, query, client } = createNodeContext(false, false);
+
+		const store = await vectorStoreNode.getVectorStoreClient(context, undefined, nodeEmbeddings, 0);
+		store.client?.release();
+
+		expect(query).toHaveBeenCalledWith('CREATE EXTENSION IF NOT EXISTS vector;');
+		expect(query).toHaveBeenCalledTimes(2);
+		expect(client.release).toHaveBeenCalledOnce();
+	});
+
+	// NODE-6101: A preconfigured database must work without initialization privileges.
+	it.each(['insert', 'retrieve'] as const)(
+		'uses existing tables without initialization in %s mode',
+		async (mode) => {
+			const { context, query, client } = createNodeContext(true, true);
+
+			if (mode === 'insert') {
+				await vectorStoreNode.populateVectorStore(
+					context,
+					nodeEmbeddings,
+					[{ pageContent: 'text', metadata: {} }],
+					0,
+				);
+				expect(query).toHaveBeenCalledWith(
+					expect.stringContaining('INSERT INTO'),
+					expect.any(Array),
+				);
+			} else {
+				const store = await vectorStoreNode.getVectorStoreClient(
+					context,
+					undefined,
+					nodeEmbeddings,
+					0,
+				);
+				try {
+					await store.similaritySearchVectorWithScore([0.1, 0.2], 1);
+				} finally {
+					store.client?.release();
+				}
+				expect(query).toHaveBeenCalledWith(expect.stringContaining('SELECT'), expect.any(Array));
+			}
+
+			expect(query).toHaveBeenCalledTimes(1);
+			expect(client.release).toHaveBeenCalledOnce();
+		},
+	);
 });
