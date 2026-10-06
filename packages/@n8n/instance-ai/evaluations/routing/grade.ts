@@ -95,7 +95,8 @@ export function createRouteWatcher(
 			const check = queue.then(async () => {
 				if (stopped) return true;
 				const verdict = await ask({ steps: traceSteps(events, call) });
-				if (verdict?.decision !== 'stop') return false;
+				// A stop without a route lets the run go on.
+				if (verdict?.decision !== 'stop' || verdict.route === 'none') return false;
 				stopped = {
 					route: verdict.route,
 					steer: verdict.steer,

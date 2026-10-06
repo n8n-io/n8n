@@ -126,6 +126,12 @@ describe('createRouteWatcher', () => {
 		});
 	});
 
+	it('lets the run go on when the judge stops without a route', async () => {
+		const watcher = createRouteWatcher(judgeReturning(stop('none')));
+
+		expect(await watcher.beforeToolCall(pending('search-nodes'), [])).toBe(false);
+	});
+
 	it('stops a parallel call without a second judge call once the route is picked', async () => {
 		const judge = judgeReturning(stop('multi'));
 		const watcher = createRouteWatcher(judge);
