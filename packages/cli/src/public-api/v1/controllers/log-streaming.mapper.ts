@@ -1,6 +1,6 @@
 import {
 	LogStreamingDestinationPublicDto,
-	type CreateLogStreamingDestinationPublic,
+	type UpdateLogStreamingDestinationPublic,
 	type LogStreamingDestinationPublicType,
 } from '@n8n/api-types';
 import type { MessageEventBusDestinationOptions } from 'n8n-workflow';
@@ -29,7 +29,7 @@ export function toLogStreamingDestinationPublic(options: MessageEventBusDestinat
 }
 
 export function toInternalDestinationOptions(
-	input: CreateLogStreamingDestinationPublic,
+	input: UpdateLogStreamingDestinationPublic,
 ): MessageEventBusDestinationOptions {
 	const { type, ...rest } = input;
 	return { ...rest, __type: PUBLIC_TO_INTERNAL[type] };

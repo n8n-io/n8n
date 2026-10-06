@@ -1,5 +1,6 @@
 import {
 	CreateLogStreamingDestinationPublicDto,
+	UpdateLogStreamingDestinationPublicDto,
 	LogStreamingDestinationListPublicDto,
 	LogStreamingDestinationPublicDto,
 	LogStreamingEventTypesPublicDto,
@@ -135,7 +136,7 @@ export class LogStreamingPublicController {
 		req: AuthenticatedRequest,
 		_res: Response,
 		@Param('id', logStreamingDestinationIdParamSchema) id: string,
-		@Body body: CreateLogStreamingDestinationPublicDto,
+		@Body body: UpdateLogStreamingDestinationPublicDto,
 	): Promise<LogStreamingDestinationPublicDto> {
 		this.assertNotManagedByEnv();
 		await this.findDestinationOrFail(id);

@@ -205,6 +205,27 @@ export const CreateLogStreamingDestinationPublicDto = class {
 	}
 };
 
+const updateLogStreamingDestinationPublicSchema = z
+	.discriminatedUnion('type', [publicWebhookSchema, publicSyslogSchema, publicSentrySchema])
+	.openapi(logStreamingDestinationDocs);
+
+export type UpdateLogStreamingDestinationPublic = z.infer<
+	typeof updateLogStreamingDestinationPublicSchema
+>;
+
+export type UpdateLogStreamingDestinationPublicDto = UpdateLogStreamingDestinationPublic;
+export const UpdateLogStreamingDestinationPublicDto = class {
+	static schema = updateLogStreamingDestinationPublicSchema;
+
+	static safeParse(data: unknown) {
+		return updateLogStreamingDestinationPublicSchema.safeParse(data);
+	}
+
+	static parse(data: unknown): UpdateLogStreamingDestinationPublic {
+		return updateLogStreamingDestinationPublicSchema.parse(data);
+	}
+};
+
 const idSchema = z.string().openapi(commonDocs.id);
 
 export const logStreamingDestinationPublicSchema = z

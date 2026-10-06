@@ -225,11 +225,6 @@ requestBody:
                         description: Maximum idle sockets per host kept open.
                     description: Connection socket options.
                 description: Additional HTTP request options.
-              id:
-                type: string
-                description: Server-generated unique id of the destination. Returned in responses; not accepted in requests.
-                readOnly: true
-                example: 88be6560-bfb4-455c-8aa1-06971e9e5522
             required:
               - type
               - url
@@ -308,11 +303,6 @@ requestBody:
               tlsCa:
                 type: string
                 description: PEM-encoded CA certificate used when `protocol` is `tls`.
-              id:
-                type: string
-                description: Server-generated unique id of the destination. Returned in responses; not accepted in requests.
-                readOnly: true
-                example: 88be6560-bfb4-455c-8aa1-06971e9e5522
             required:
               - type
               - host
@@ -364,11 +354,6 @@ requestBody:
                 format: uri
                 description: Sentry DSN the events are sent to.
                 example: https://examplePublicKey@o0.ingest.sentry.io/0
-              id:
-                type: string
-                description: Server-generated unique id of the destination. Returned in responses; not accepted in requests.
-                readOnly: true
-                example: 88be6560-bfb4-455c-8aa1-06971e9e5522
             required:
               - type
               - dsn

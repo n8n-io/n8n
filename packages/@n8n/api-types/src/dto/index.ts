@@ -340,8 +340,10 @@ export {
 	LogStreamingDestinationPublicDto,
 	LogStreamingEventTypesPublicDto,
 	CreateLogStreamingDestinationPublicDto,
+	UpdateLogStreamingDestinationPublicDto,
 	type LogStreamingDestinationPublic,
 	type CreateLogStreamingDestinationPublic,
+	type UpdateLogStreamingDestinationPublic,
 	type LogStreamingDestinationPublicType,
 } from './log-streaming/log-streaming-public.dto';
 

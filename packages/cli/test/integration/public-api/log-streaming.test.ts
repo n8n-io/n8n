@@ -415,6 +415,22 @@ describe('Log streaming in Public API', () => {
 			expect(listResponse.body.data[0].label).toBe('Renamed webhook');
 		});
 
+		it('accepts a GET response as the body and keeps the path id', async () => {
+			const created = await createDestination();
+			const read = await testServer
+				.publicApiAgentFor(owner)
+				.get(`/settings/log-streaming/destinations/${created.id}`);
+
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.put(`/settings/log-streaming/destinations/${created.id}`)
+				.send({ ...read.body, id: '99999999-9999-4999-8999-999999999999', label: 'Round trip' });
+
+			expect(response.status).toBe(200);
+			expect(response.body.id).toBe(created.id);
+			expect(response.body.label).toBe('Round trip');
+		});
+
 		it('returns 404 for an unknown destination id', async () => {
 			const response = await testServer
 				.publicApiAgentFor(owner)
