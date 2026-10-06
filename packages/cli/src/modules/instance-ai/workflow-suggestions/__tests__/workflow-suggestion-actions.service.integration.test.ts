@@ -8,7 +8,6 @@ import {
 	ProjectRepository,
 	ProjectRelationRepository,
 	SharedWorkflowRepository,
-	TransactionRunner,
 	UserRepository,
 	WorkflowEntity,
 	WorkflowHistoryRepository,
@@ -215,7 +214,7 @@ it('rejects applying a Needs attention result', async () => {
 });
 
 it('discards a proposal without saving its graph or changing its stored content', async () => {
-	const { original, suggestion, act } = await fixture();
+	const { user, original, suggestion, act } = await fixture();
 	const beforeHistory = await history.countBy({ workflowId: original.id });
 
 	await act('discard');
@@ -230,24 +229,23 @@ it('discards a proposal without saving its graph or changing its stored content'
 		payload: suggestion.payload,
 	});
 	expect(await suggestions.getActivity(suggestion.id)).toEqual(activity);
+	expect(activity).toEqual(
+		expect.arrayContaining([
+			expect.objectContaining({ action: 'submitted', author: 'assistant', actorId: null }),
+			expect.objectContaining({ action: 'discarded', author: 'human', actorId: user.id }),
+		]),
+	);
+	expect(activity).toHaveLength(2);
 });
 
-it('restores the suggestion and activity when the caller rolls back a discard', async () => {
-	const { user, original, project, suggestion } = await fixture();
+it('rolls back discard when its activity cannot be saved', async () => {
+	const { original, project, suggestion, act } = await fixture();
 	const beforeActivity = await suggestions.getActivity(suggestion.id);
 	const scope = { workflowId: original.id, projectId: project.id };
 	const beforeSuggestion = await suggestions.getSuggestion(suggestion.id, scope);
+	vi.spyOn(suggestions, 'appendActivity').mockRejectedValueOnce(new Error('Activity unavailable.'));
 
-	await expect(
-		Container.get(TransactionRunner).run({}, async (ctx) => {
-			await actions.discard(user, project.id, original.id, suggestion.id, ctx);
-			expect(await suggestions.getSuggestion(suggestion.id, scope, ctx)).toMatchObject({
-				state: 'closed',
-				closedReason: 'discarded',
-			});
-			throw new Error('Caller transaction failed.');
-		}),
-	).rejects.toThrow('Caller transaction failed.');
+	await expect(act('discard')).rejects.toThrow('Activity unavailable.');
 
 	expect(await suggestions.getSuggestion(suggestion.id, scope)).toEqual(beforeSuggestion);
 	expect(await suggestions.getActivity(suggestion.id)).toEqual(beforeActivity);
@@ -275,77 +273,36 @@ it('keeps a moved proposal outdated when discard rejects the old project', async
 	expect(await workflows.findOneByOrFail({ id: original.id })).toEqual(original);
 });
 
-it('creates and discards a suggestion in the caller transaction', async () => {
-	const { user, original, project, prepared } = await prepareFixture();
+it.each(['disabled', 'unrelated'] as const)('rejects discard by a %s user', async (access) => {
+	const { user, original, project, suggestion } = await fixture();
+	const actor = access === 'disabled' ? user : await createUser();
+	if (access === 'disabled') {
+		await Container.get(UserRepository).update(actor.id, { disabled: true });
+	}
 	const scope = { workflowId: original.id, projectId: project.id };
+	const beforeSuggestion = await suggestions.getSuggestion(suggestion.id, scope);
+	const beforeActivity = await suggestions.getActivity(suggestion.id);
 
-	const suggestion = await Container.get(TransactionRunner).run({}, async (ctx) => {
-		const created = await suggestionService.createSuggestion(prepared, ctx);
-		await actions.discard(user, project.id, original.id, created.id, ctx);
-		expect(await suggestions.getSuggestion(created.id, scope, ctx)).toMatchObject({
-			state: 'closed',
-			closedReason: 'discarded',
-		});
-		return created;
-	});
+	await expect(
+		actions.act(actor, project.id, original.id, suggestion.id, 'discard'),
+	).rejects.toThrow('edit access');
 
-	expect(await suggestions.getSuggestion(suggestion.id, scope)).toMatchObject({
-		state: 'closed',
-		closedReason: 'discarded',
-		payload: suggestion.payload,
-	});
-	const activity = await suggestions.getActivity(suggestion.id);
-	expect(activity).toEqual(
-		expect.arrayContaining([
-			expect.objectContaining({ action: 'submitted', author: 'assistant', actorId: null }),
-			expect.objectContaining({ action: 'discarded', author: 'human', actorId: user.id }),
-		]),
-	);
-	expect(activity).toHaveLength(2);
+	expect(await suggestions.getSuggestion(suggestion.id, scope)).toEqual(beforeSuggestion);
+	expect(await suggestions.getActivity(suggestion.id)).toEqual(beforeActivity);
 });
 
-it.each(['disabled', 'unrelated'] as const)(
-	'rejects a caller-transaction discard by a %s user',
-	async (access) => {
-		const { user, original, project, suggestion } = await fixture();
-		const actor = access === 'disabled' ? user : await createUser();
-		if (access === 'disabled') {
-			await Container.get(UserRepository).update(actor.id, { disabled: true });
-		}
-		const scope = { workflowId: original.id, projectId: project.id };
-		const beforeSuggestion = await suggestions.getSuggestion(suggestion.id, scope);
-		const beforeActivity = await suggestions.getActivity(suggestion.id);
-
-		await Container.get(TransactionRunner).run({}, async (ctx) => {
-			await expect(
-				actions.discard(actor, project.id, original.id, suggestion.id, ctx),
-			).rejects.toThrow('edit access');
-			expect(await suggestions.getSuggestion(suggestion.id, scope, ctx)).toEqual(beforeSuggestion);
-		});
-
-		expect(await suggestions.getSuggestion(suggestion.id, scope)).toEqual(beforeSuggestion);
-		expect(await suggestions.getActivity(suggestion.id)).toEqual(beforeActivity);
-	},
-);
-
 it('closes a proposal as outdated after settings change without a new version', async () => {
-	const { user, original, project, suggestion, act } = await fixture();
+	const { original, act } = await fixture();
 	await workflows.update(original.id, { settings: { executionTimeout: 45 } });
 
-	const detail = await suggestionService.refreshProposal(
-		user,
-		project.id,
-		original.id,
-		suggestion.id,
-	);
+	const detail = await act('open-in-editor');
 
 	expect(detail).toMatchObject({ state: 'closed', closedReason: 'outdated' });
-	expect(await act('open-in-editor')).toMatchObject({ state: 'closed', closedReason: 'outdated' });
 	expect((await workflows.findOneByOrFail({ id: original.id })).versionId).toBe(original.versionId);
 });
 
 it('closes a proposal after publication changes even if the original version is live again', async () => {
-	const { user, original, project, suggestion, act } = await fixture();
+	const { user, original, act } = await fixture();
 	const publications = Container.get(WorkflowPublishHistoryRepository);
 	for (const event of ['deactivated', 'activated'] as const) {
 		await publications.addRecord({
@@ -356,15 +313,9 @@ it('closes a proposal after publication changes even if the original version is 
 		});
 	}
 
-	const detail = await suggestionService.refreshProposal(
-		user,
-		project.id,
-		original.id,
-		suggestion.id,
-	);
+	const detail = await act('open-in-editor');
 
 	expect(detail).toMatchObject({ state: 'closed', closedReason: 'outdated' });
-	expect(await act('open-in-editor')).toMatchObject({ state: 'closed', closedReason: 'outdated' });
 	expect(await workflows.findOneByOrFail({ id: original.id })).toEqual(original);
 });
 
@@ -561,8 +512,8 @@ it.skipIf(process.env.DB_TYPE !== 'postgresdb')(
 	},
 );
 
-it('rejects an intervening edit and closes the suggestion only on refresh', async () => {
-	const { user, original, project, graph, suggestion, act } = await fixture();
+it('rejects an intervening edit and closes the suggestion on the next action', async () => {
+	const { user, original, graph, suggestion, act } = await fixture();
 	const editorNodes = original.nodes.map((node) => ({
 		...node,
 		position: [300, 300] as [number, number],
@@ -605,9 +556,10 @@ it('rejects an intervening edit and closes the suggestion only on refresh', asyn
 		expect((await suggestions.getActivity(suggestion.id)).map(({ action }) => action)).toEqual([
 			'submitted',
 		]);
-		expect(
-			await suggestionService.refreshProposal(user, project.id, original.id, suggestion.id),
-		).toMatchObject({ state: 'closed', closedReason: 'outdated' });
+		expect(await act('open-in-editor')).toMatchObject({
+			state: 'closed',
+			closedReason: 'outdated',
+		});
 		expect(
 			(await suggestions.getActivity(suggestion.id)).map(({ action }) => action).sort(),
 		).toEqual(['outdated', 'submitted']);

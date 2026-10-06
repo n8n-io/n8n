@@ -406,9 +406,6 @@ it.each(['missing', 'disabled', 'no edit access'] as const)(
 		await expect(service.getProposal(user, 'project', workflow.id, suggestion.id)).rejects.toThrow(
 			'edit access',
 		);
-		await expect(
-			service.refreshProposal(user, 'project', workflow.id, suggestion.id),
-		).rejects.toThrow('edit access');
 		expect(suggestions.createPending).not.toHaveBeenCalled();
 		expect(suggestions.getSuggestion).not.toHaveBeenCalled();
 		expect(suggestions.closePending).not.toHaveBeenCalled();
@@ -438,8 +435,5 @@ it('rejects review after ownership changes', async () => {
 	await expect(service.getProposal(user, 'project', workflow.id, suggestion.id)).rejects.toThrow(
 		'not found',
 	);
-	await expect(
-		service.refreshProposal(user, 'project', workflow.id, suggestion.id),
-	).rejects.toThrow('not found');
 	expect(suggestions.closePending).not.toHaveBeenCalled();
 });

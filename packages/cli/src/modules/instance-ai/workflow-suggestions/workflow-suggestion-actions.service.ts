@@ -209,15 +209,8 @@ export class WorkflowSuggestionActionsService {
 		});
 	}
 
-	async discard(
-		user: User,
-		projectId: string,
-		workflowId: string,
-		suggestionId: string,
-		ctx: OperationContext = {},
-	) {
-		const found = await this.txRunner.run(ctx, async (ctx) => {
-			await this.service.requireEditor(user.id, workflowId, ctx);
+	private async discard(user: User, projectId: string, workflowId: string, suggestionId: string) {
+		const found = await this.txRunner.run({}, async (ctx) => {
 			const { suggestion, target } = await this.service.reconcilePending(
 				suggestionId,
 				{ workflowId, projectId },
@@ -234,7 +227,7 @@ export class WorkflowSuggestionActionsService {
 			}
 			return true;
 		});
-		// Keep the outdated closure when this call owns the transaction.
+		// Commit the outdated closure before rejecting the old project.
 		if (!found) throw new NotFoundError('Suggestion not found.');
 	}
 }

@@ -14,13 +14,13 @@ Use `WorkflowSuggestionService` from trusted backend code.
 
 Storage checks current edit access and basic graph structure. Apply runs credential checks, workflow-save policies, and normal save preparation. It rejects preparation that changes the reviewed fix. A result without valid graph changes has no suggestion.
 
-## Read and refresh
+## Read a proposal
 
-`getProposal(user, projectId, workflowId, suggestionId)` reads the stored proposal and activity without changing them. `refreshProposal(...)` first closes an outdated pending suggestion, then returns its detail. Use refresh when opening a review so the displayed state reflects current workflow changes.
+`getProposal(user, projectId, workflowId, suggestionId)` reads the stored proposal and activity without changing them.
 
-Both operations require an enabled user with current workflow read and edit access, including access through sharing. They check the proposal's original project and the workflow's current owner project. Publish access is not required.
+The read requires an enabled user with current workflow read and edit access, including access through sharing. It checks the proposal's original project and the workflow's current owner project. Publish access is not required.
 
-The detail includes the original and proposed snapshots. Stored proposal content does not change after creation. Workflow events also refresh pending suggestions. Save events are debounced per workflow for two seconds, with a maximum wait of five seconds during continuous saves. Publish, unpublish, and archive events cancel the pending save refresh and refresh immediately. Explicit refresh and action checks run immediately and cover missed events.
+The detail includes the original and proposed snapshots. Stored proposal content does not change after creation. Workflow events update pending suggestions. Save events are debounced per workflow for two seconds, with a maximum wait of five seconds during continuous saves. Publish, unpublish, and archive events cancel the pending save check and reconcile immediately. Reads can show a pending suggestion until an event or action updates its state. Actions check the current state before saving.
 
 ## Review actions
 
@@ -36,13 +36,13 @@ Use **Approve and publish** as the action label. Only `fix_ready` permits Apply.
 
 Apply calls `WorkflowService.prepareUpdate()` for normal save validation and preparation. Inside a transaction, it locks the workflow and rechecks the baseline and edit access. `savePreparedUpdate()` saves the workflow and required history. The action records the applied version, closes the suggestion, and adds human activity before commit. `finishUpdate()` runs after-save hooks and events after commit.
 
-A failed transaction rolls back the workflow, history, suggestion closure, and activity. Apply returns the original save error without reading the suggestion again. A save error does not close the suggestion as outdated. Workflow events and review refreshes update that state. A competing action can cause Apply to return a conflict. After-save hook failures are logged and leave the committed application intact.
+A failed transaction rolls back the workflow, history, suggestion closure, and activity. Apply returns the original save error without reading the suggestion again. A save error does not close the suggestion as outdated. Workflow events and later actions update that state. A competing action can cause Apply to return a conflict. After-save hook failures are logged and leave the committed application intact.
 
 Approve and publish calls the normal publisher with the saved version and checksum. A publish failure leaves the suggestion applied and returns `publishError`. Applied means saved, not published or verified fixed. The UI should open the editor after either Apply action. The editor owns publication status, errors, and retries.
 
 Only the request that applies the fix can start publication. Repeated actions return the recorded result without another save or publish request. A closed page or lost response can leave a saved fix unpublished. The service does not store publication status or reconstruct an outcome on reads.
 
-Pass the caller's transaction to `discard(user, projectId, workflowId, suggestionId, ctx)` to commit result dismissal and suggestion closure together. A caller rollback restores the suggestion and activity. Calls without a context own their transaction.
+Discard runs through `act()` and commits the suggestion closure and activity in its own transaction.
 
 ## Storage and limits
 

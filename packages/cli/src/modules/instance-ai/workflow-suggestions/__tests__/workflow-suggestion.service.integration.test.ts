@@ -131,12 +131,13 @@ it('keeps a suggestion pending after an autosave with no content changes', async
 
 	expect(updated).toMatchObject({ ...saved, updatedAt: expect.any(Date) });
 	expect(updated.updatedAt.getTime()).toBeGreaterThan(previousTimestamp.getTime());
-	const detail = await service.refreshProposal(user, project.id, saved.id, suggestion.id);
+	await service.reconcileWorkflow(saved.id);
+	const detail = await service.getProposal(user, project.id, saved.id, suggestion.id);
 	expect(detail).toMatchObject({ state: 'pending', closedReason: null });
 	expect(detail.activity).toHaveLength(1);
 });
 
-it('keeps reads unchanged and closes an outdated suggestion only on refresh', async () => {
+it('keeps reads unchanged and closes an outdated suggestion during reconciliation', async () => {
 	const { user, saved, workflows, project, baseline, graph } = await fixture();
 	const prepared = await service.prepareSuggestion(baseline, {
 		resultKind: 'fix_ready',
@@ -151,16 +152,17 @@ it('keeps reads unchanged and closes an outdated suggestion only on refresh', as
 	expect((await suggestions.getSuggestion(suggestion.id, baseline)).state).toBe('pending');
 	expect(await suggestions.getActivity(suggestion.id)).toHaveLength(1);
 
-	const refreshed = await service.refreshProposal(user, project.id, saved.id, suggestion.id);
-	expect(refreshed).toMatchObject({ state: 'closed', closedReason: 'outdated' });
-	expect(refreshed.payload).toEqual(detail.payload);
-	expect(refreshed.activity).toEqual(
+	await service.reconcileWorkflow(saved.id);
+	const reconciled = await service.getProposal(user, project.id, saved.id, suggestion.id);
+	expect(reconciled).toMatchObject({ state: 'closed', closedReason: 'outdated' });
+	expect(reconciled.payload).toEqual(detail.payload);
+	expect(reconciled.activity).toEqual(
 		expect.arrayContaining([
 			expect.objectContaining({ action: 'submitted', author: 'assistant', actorId: null }),
 			expect.objectContaining({ action: 'outdated', author: 'system', actorId: null }),
 		]),
 	);
-	await service.refreshProposal(user, project.id, saved.id, suggestion.id);
+	await service.reconcileWorkflow(saved.id);
 	expect(await suggestions.getActivity(suggestion.id)).toHaveLength(2);
 });
 

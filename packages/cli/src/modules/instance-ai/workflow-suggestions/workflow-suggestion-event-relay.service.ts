@@ -18,7 +18,7 @@ export class WorkflowSuggestionEventRelay {
 			try {
 				await suggestions.reconcileWorkflow(workflowId);
 			} catch (error) {
-				// Review refreshes and actions repeat this check if delivery is interrupted.
+				// Actions repeat this check if delivery is interrupted.
 				logger.warn('Could not reconcile workflow suggestions', { workflowId, error });
 			}
 		};

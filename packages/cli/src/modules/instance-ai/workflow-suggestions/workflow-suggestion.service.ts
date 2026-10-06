@@ -269,17 +269,6 @@ export class WorkflowSuggestionService {
 		}
 	}
 
-	async refreshProposal(
-		viewer: User,
-		projectId: string,
-		workflowId: string,
-		suggestionId: string,
-	): Promise<WorkflowSuggestionProposalDetail> {
-		await this.requireProposalAccess(viewer, projectId, workflowId);
-		await this.reconcilePending(suggestionId, { workflowId, projectId });
-		return await this.getProposal(viewer, projectId, workflowId, suggestionId);
-	}
-
 	async getProposal(
 		viewer: User,
 		projectId: string,
