@@ -6,14 +6,20 @@ import {
 	hashAgentSandboxPrincipal,
 } from '../../agent-sandbox-principal';
 import type { AgentBackgroundJobService, BackgroundJobView } from '../agent-background-job.service';
+import type { AgentBackgroundJob } from '../../entities/agent-background-job.entity';
+import { EXECUTION_METADATA_KEY } from '../../types/agent-queued-message';
 import {
 	createCancelBackgroundJobTool,
 	createCheckBackgroundJobsTool,
+	createResumeBackgroundJobsTool,
 	createSpawnBackgroundSubAgentTool,
 	type BackgroundJobToolsOptions,
 } from '../background-job-tools';
 import type { SubAgentBackgroundRunner } from '../sub-agent-background-runner';
-import { PARENT_TASK_CANCELLED_REASON } from '../sub-agent-background-state';
+import {
+	BACKGROUND_PAUSE_USER_TURN_KEY,
+	PARENT_TASK_CANCELLED_REASON,
+} from '../sub-agent-background-state';
 
 const principalHash = hashAgentSandboxPrincipal({ type: 'n8n-user', userId: 'user-1' });
 const persistence = {
@@ -34,6 +40,7 @@ function jobView(overrides: Partial<BackgroundJobView> = {}): BackgroundJobView 
 		timeoutAt: null,
 		settledAt: null,
 		notifiedAt: null,
+		pauseRequestId: null,
 		childExecutionId: null,
 		...overrides,
 	};
@@ -323,6 +330,84 @@ describe('check_background_jobs', () => {
 
 		expect(output).toMatchObject({ jobs: [], note: expect.stringContaining('No persisted') });
 		expect(jobService.listForThread).not.toHaveBeenCalled();
+	});
+});
+
+describe('resume_background_jobs', () => {
+	it('requires a user turn, rejects early continuation, and reports each admitted resume', async () => {
+		const { options, jobService, backgroundRunner } = setup();
+		const tool = createResumeBackgroundJobsTool(options);
+		expect(await tool.handler!({}, { persistence })).toMatchObject({ status: 'unavailable' });
+		expect(jobService.preparePausedResume).not.toHaveBeenCalled();
+		const userPersistence = {
+			...persistence,
+			hostMetadata: {
+				...persistence.hostMetadata,
+				[BACKGROUND_PAUSE_USER_TURN_KEY]: true,
+				[EXECUTION_METADATA_KEY]: 'execution-1',
+			},
+		};
+		for (const status of ['stopping', 'limit-reached', 'expired'] as const) {
+			jobService.preparePausedResume.mockResolvedValue({ status, jobs: [] });
+			expect(await tool.handler!({}, { persistence: userPersistence })).toMatchObject({ status });
+		}
+		expect(backgroundRunner.resumePaused).not.toHaveBeenCalled();
+		expect(jobService.releaseResumeReservations).not.toHaveBeenCalled();
+		const jobs = [
+			mock<AgentBackgroundJob>({ id: 'job-1' }),
+			mock<AgentBackgroundJob>({ id: 'job-2' }),
+		];
+		const timeoutAt = new Date(Date.now() + 60_000);
+		const workflowsToRestart = [
+			{
+				jobId: 'workflow-job',
+				title: 'Send request',
+				workflowId: 'workflow-1',
+				previousExecutionId: 'execution-1',
+			},
+		];
+		jobService.preparePausedResume.mockResolvedValue({
+			status: 'ready',
+			jobs,
+			timeoutAt,
+			workflowsToRestart,
+		});
+		backgroundRunner.resumePaused
+			.mockResolvedValueOnce(undefined)
+			.mockRejectedValueOnce(new Error('checkpoint has expired'));
+		expect(await tool.handler!({}, { persistence: userPersistence })).toMatchObject({
+			status: 'resumed',
+			jobs: [
+				{ jobId: 'job-1', status: 'resumed' },
+				{
+					jobId: 'job-2',
+					status: 'failed',
+					error: expect.stringContaining('checkpoint has expired'),
+				},
+			],
+			workflowsToRestart,
+		});
+		expect(jobService.preparePausedResume).toHaveBeenLastCalledWith(
+			'agent-1',
+			'thread-1',
+			'resource-1',
+			'execution-1',
+		);
+		expect(backgroundRunner.resumePaused).toHaveBeenCalledTimes(2);
+		expect(jobService.releaseResumeReservations).toHaveBeenCalledWith(jobs, timeoutAt);
+		backgroundRunner.resumePaused.mockClear();
+		jobService.preparePausedResume.mockResolvedValue({
+			status: 'ready',
+			jobs: [],
+			timeoutAt,
+			workflowsToRestart,
+		});
+		expect(await tool.handler!({}, { persistence: userPersistence })).toMatchObject({
+			status: 'ready',
+			jobs: [],
+			workflowsToRestart,
+		});
+		expect(backgroundRunner.resumePaused).not.toHaveBeenCalled();
 	});
 });
 

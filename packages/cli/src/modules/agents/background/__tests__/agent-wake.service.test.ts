@@ -1,3 +1,4 @@
+import type { SerializableAgentState } from '@n8n/agents';
 import type { LockService, Logger } from '@n8n/backend-common';
 import type { AgentsConfig } from '@n8n/config';
 import type { UserRepository } from '@n8n/db';
@@ -23,7 +24,12 @@ import {
 	WAKE_DEBOUNCE_MS,
 } from '../agent-wake.service';
 import type { AgentBackgroundJobService } from '../agent-background-job.service';
-import { formatWakeMessage, WAKE_RESULT_TEXT_MAX_CHARS } from '../background-job-messages';
+import {
+	formatPauseHandoff,
+	formatWakeMessage,
+	REPLACED_PAUSE_GROUP_NOTICE,
+	WAKE_RESULT_TEXT_MAX_CHARS,
+} from '../background-job-messages';
 
 vi.mock('@/permissions.ee/check-access', () => ({
 	userHasScopes: vi.fn().mockResolvedValue(true),
@@ -79,6 +85,7 @@ function setup(options: { worker?: boolean; enabled?: boolean } = {}) {
 	logger.scoped.mockReturnValue(logger);
 
 	jobRepository.findWakeableUnconsumed.mockResolvedValue([makeJob()]);
+	jobRepository.hasRequestedStop.mockResolvedValue(false);
 	executionRepository.existsRunningByThread.mockResolvedValue(false);
 	checkpointStorage.findSuspendedForThread.mockResolvedValue(null);
 	agentRepository.findById.mockResolvedValue({ id: 'agent-1', projectId: 'project-1' } as never);
@@ -120,6 +127,92 @@ function setup(options: { worker?: boolean; enabled?: boolean } = {}) {
 }
 
 describe('AgentWakeService', () => {
+	it('delivers a stopped group once and marks it only after the report finishes', async () => {
+		const { service, backgroundJobService, jobRepository, orchestrator } = setup();
+		const report = createDeferredPromise();
+		const started = createDeferredPromise();
+		const handoffs = Array.from({ length: 5 }, (_, index) => ({
+			pendingApprovals: [`approve-task-${index + 1}`],
+			latestProgress: Array.from({ length: 4 }, (_, step) =>
+				JSON.stringify(
+					`Task ${index + 1}, step ${4 - step}: ${'x'.repeat(1_400)} Remaining: verify results.`,
+				),
+			),
+			task: [JSON.stringify(`Complete task ${index + 1}.`)],
+		}));
+		const jobs = handoffs.map((handoff, index) =>
+			makeJob({
+				id: `job-${index + 1}`,
+				status: 'paused',
+				pauseRequestId: 'stop-1',
+				result: JSON.stringify(handoff),
+			}),
+		);
+		jobs.push(
+			makeJob({
+				id: 'workflow',
+				kind: 'workflow',
+				status: 'cancelled',
+				pauseRequestId: 'stop-1',
+				result: `\n${REPLACED_PAUSE_GROUP_NOTICE}`,
+			}),
+		);
+		jobRepository.findWakeableUnconsumed
+			.mockResolvedValueOnce(
+				jobs.map((job) => (job.kind === 'workflow' ? { ...job, result: null } : job)),
+			)
+			.mockResolvedValue([]);
+		backgroundJobService.retainLatestStopGroup.mockImplementationOnce(async () => {
+			jobRepository.findWakeableUnconsumed.mockResolvedValueOnce([
+				...jobs,
+				makeJob({ id: 'later' }),
+			]);
+		});
+		orchestrator.executeForWake.mockImplementation(async () => {
+			started.resolve();
+			await report.promise;
+		});
+		const wake = service.attemptWake('thread-1');
+		await started.promise;
+		expect(orchestrator.executeForWake).toHaveBeenCalledWith(
+			expect.objectContaining({
+				pauseReport: true,
+				backgroundJobSignal: { tasks: [] },
+			}),
+		);
+		const message = orchestrator.executeForWake.mock.calls[0]?.[0].message ?? '';
+		const payload = JSON.parse(
+			message.slice(
+				'<background-jobs-settled>'.length,
+				message.indexOf('</background-jobs-settled>'),
+			),
+		) as Array<{ jobId: string; result: string; truncated?: boolean }>;
+		expect(payload).toHaveLength(6);
+		for (const [index, job] of payload.slice(0, 5).entries()) {
+			expect(job.jobId).toBe(`job-${index + 1}`);
+			expect(job.truncated).toBeUndefined();
+			expect(JSON.parse(job.result)).toEqual(handoffs[index]);
+		}
+		expect(payload[5]).toMatchObject({
+			jobId: 'workflow',
+			kind: 'workflow',
+			status: 'cancelled',
+			progressUnavailable: true,
+			previousStoppedGroupReplaced: true,
+		});
+		expect(payload[5]).not.toHaveProperty('result');
+		expect(jobRepository.markMailConsumed).not.toHaveBeenCalled();
+		report.resolve();
+		await wake;
+		expect(jobRepository.markMailConsumed).toHaveBeenCalledWith(
+			'thread-1',
+			['job-1', 'job-2', 'job-3', 'job-4', 'job-5', 'workflow'],
+			true,
+		);
+		await service.attemptWake('thread-1');
+		expect(orchestrator.executeForWake).toHaveBeenCalledOnce();
+	});
+
 	it('passes only the delivered jobs and their display fields to the signal', async () => {
 		const { service, jobRepository, orchestrator } = setup();
 		jobRepository.findWakeableUnconsumed.mockResolvedValue([
@@ -242,15 +335,20 @@ describe('AgentWakeService', () => {
 
 	describe('getBackgroundUpdates', () => {
 		it.each([
-			{ state: 'empty', jobs: [] },
-			{ state: 'suspended', jobs: [makeJob({ status: 'suspended', settledAt: null })] },
-		])('returns no hint when the thread has no pending results ($state)', async ({ jobs }) => {
+			{ state: 'empty', jobs: [], stoppedHere: false },
+			{
+				state: 'suspended',
+				jobs: [makeJob({ status: 'suspended', settledAt: null })],
+				stoppedHere: false,
+			},
+			{ state: 'requested stop', jobs: [], stoppedHere: true },
+		])('returns a stop hint only for a requested stop ($state)', async ({ jobs, stoppedHere }) => {
 			const { service, jobRepository } = setup();
 			jobRepository.findWakeableUnconsumed.mockResolvedValue(jobs);
+			jobRepository.hasRequestedStop.mockResolvedValue(stoppedHere);
 
-			await expect(
-				service.getBackgroundUpdates('thread-1', `draft-chat:${user.id}`),
-			).resolves.toBeUndefined();
+			const hint = await service.getBackgroundUpdates('thread-1', `draft-chat:${user.id}`);
+			expect(hint !== undefined).toBe(stoppedHere);
 		});
 
 		it('quotes job titles in the hint to check settled jobs', async () => {
@@ -319,7 +417,7 @@ describe('AgentWakeService', () => {
 				identity: expect.objectContaining({ type: 'draft', principalHash }),
 			}),
 		);
-		expect(jobRepository.markMailConsumed).toHaveBeenCalledWith('thread-1', ['job-1']);
+		expect(jobRepository.markMailConsumed).toHaveBeenCalledWith('thread-1', ['job-1'], false);
 	});
 
 	it('delivers results that arrive during a wake and stops after the queue is empty', async () => {
@@ -346,8 +444,18 @@ describe('AgentWakeService', () => {
 			expect(orchestrator.executeForWake).toHaveBeenLastCalledWith(
 				expect.objectContaining({ message: expect.stringContaining('Later result') }),
 			);
-			expect(jobRepository.markMailConsumed).toHaveBeenNthCalledWith(1, 'thread-1', ['job-1']);
-			expect(jobRepository.markMailConsumed).toHaveBeenNthCalledWith(2, 'thread-1', ['job-2']);
+			expect(jobRepository.markMailConsumed).toHaveBeenNthCalledWith(
+				1,
+				'thread-1',
+				['job-1'],
+				false,
+			);
+			expect(jobRepository.markMailConsumed).toHaveBeenNthCalledWith(
+				2,
+				'thread-1',
+				['job-2'],
+				false,
+			);
 
 			jobRepository.findWakeableUnconsumed.mockResolvedValue([]);
 			await vi.advanceTimersByTimeAsync(WAKE_DEBOUNCE_MS * 3);
@@ -377,7 +485,7 @@ describe('AgentWakeService', () => {
 					memory: { threadId: 'thread-1', resourceId: 'draft-chat:user-1' },
 				}),
 			);
-			expect(jobRepository.markMailConsumed).toHaveBeenCalledWith('thread-1', ['job-1']);
+			expect(jobRepository.markMailConsumed).toHaveBeenCalledWith('thread-1', ['job-1'], false);
 
 			await vi.advanceTimersByTimeAsync(WAKE_DEBOUNCE_MS);
 			expect(lockService.withLease).toHaveBeenCalledTimes(2);
@@ -466,9 +574,11 @@ describe('AgentWakeService', () => {
 				},
 			}),
 		);
-		expect(jobRepository.markMailConsumed).toHaveBeenCalledExactlyOnceWith('thread-1', [
-			completed.id,
-		]);
+		expect(jobRepository.markMailConsumed).toHaveBeenCalledExactlyOnceWith(
+			'thread-1',
+			[completed.id],
+			false,
+		);
 	});
 
 	it('allows a wake after the suspension ends', async () => {
@@ -641,7 +751,11 @@ describe('AgentWakeService', () => {
 
 		expect(service.isWakeActive('thread-1')).toBe(false);
 		expect(orchestrator.executeForWake).toHaveBeenCalledTimes(2);
-		expect(jobRepository.markMailConsumed).toHaveBeenCalledExactlyOnceWith('thread-1', ['job-1']);
+		expect(jobRepository.markMailConsumed).toHaveBeenCalledExactlyOnceWith(
+			'thread-1',
+			['job-1'],
+			false,
+		);
 	});
 
 	it('stops after three failed wakes for the same pending jobs', async () => {
@@ -713,16 +827,87 @@ describe('AgentWakeService', () => {
 		expect(jobRepository.markMailConsumed).not.toHaveBeenCalled();
 
 		await service.attemptWake('thread-1');
-		expect(jobRepository.markMailConsumed).toHaveBeenCalledExactlyOnceWith('thread-1', [
-			completed.id,
-		]);
+		expect(jobRepository.markMailConsumed).toHaveBeenCalledExactlyOnceWith(
+			'thread-1',
+			[completed.id],
+			false,
+		);
+	});
+});
+
+describe('formatPauseHandoff', () => {
+	it('selects the task, approvals, and four latest responses with clipped content', () => {
+		const checkpoint: SerializableAgentState = {
+			status: 'suspended',
+			pendingToolCalls: {
+				first: { toolCallId: 'first', toolName: 'send_email', input: {}, suspended: false },
+				second: { toolCallId: 'second', toolName: 'write_record', input: {}, suspended: false },
+			},
+			messageList: {
+				historyIds: ['old-task', 'old-progress'],
+				inputIds: ['task'],
+				responseIds: ['progress-1', 'progress-2', 'progress-3', 'progress-4', 'progress-5'],
+				messages: [
+					{
+						id: 'old-task',
+						createdAt: new Date(0),
+						role: 'user',
+						content: [{ type: 'text', text: 'Unrelated task' }],
+					},
+					{
+						id: 'task',
+						createdAt: new Date(0),
+						role: 'user',
+						content: [{ type: 'text', text: `Current task: ${'t'.repeat(2_000)}` }],
+					},
+					...[1, 2, 3, 4, 5].map((step) => ({
+						id: `progress-${step}`,
+						createdAt: new Date(0),
+						role: 'assistant' as const,
+						content: [{ type: 'text' as const, text: `Progress ${step}: ${'p'.repeat(2_000)}` }],
+					})),
+					{
+						id: 'old-progress',
+						createdAt: new Date(0),
+						role: 'assistant',
+						content: [{ type: 'text', text: 'Unrelated progress' }],
+					},
+				],
+			},
+		};
+
+		const handoff = JSON.parse(formatPauseHandoff(checkpoint)) as {
+			pendingApprovals: string[];
+			latestProgress: string[];
+			task: string[];
+		};
+
+		expect(handoff).toEqual({
+			pendingApprovals: ['send_email', 'write_record'],
+			latestProgress: [
+				expect.stringContaining('Progress 5: '),
+				expect.stringContaining('Progress 4: '),
+				expect.stringContaining('Progress 3: '),
+				expect.stringContaining('Progress 2: '),
+			],
+			task: [expect.stringContaining('Current task: ')],
+		});
+		for (const content of [...handoff.task, ...handoff.latestProgress]) {
+			expect(content).toHaveLength(1_500);
+		}
 	});
 });
 
 describe('formatWakeMessage', () => {
 	it('divides the text limit equally between jobs and marks truncated text', () => {
 		const jobs = [
-			makeJob({ id: 'job-1', result: 'a'.repeat(WAKE_RESULT_TEXT_MAX_CHARS) }),
+			makeJob({
+				id: 'job-1',
+				kind: 'workflow',
+				status: 'cancelled',
+				pauseRequestId: 'stop-1',
+				result: `${'a'.repeat(WAKE_RESULT_TEXT_MAX_CHARS)}\n${REPLACED_PAUSE_GROUP_NOTICE}`,
+			}),
 			makeJob({ id: 'job-2', title: 'Second job', result: null, error: 'b'.repeat(100) }),
 		];
 
@@ -735,7 +920,11 @@ describe('formatWakeMessage', () => {
 		) as Array<{ jobId: string; result?: string; error?: string; truncated?: boolean }>;
 
 		expect(payload).toHaveLength(2);
-		expect(payload[0]).toMatchObject({ jobId: 'job-1', truncated: true });
+		expect(payload[0]).toMatchObject({
+			jobId: 'job-1',
+			truncated: true,
+			previousStoppedGroupReplaced: true,
+		});
 		expect(payload[0]?.result).toHaveLength(WAKE_RESULT_TEXT_MAX_CHARS / 2);
 		expect(payload[1]).toMatchObject({ jobId: 'job-2', error: 'b'.repeat(100) });
 		expect(payload[1]?.truncated).toBeUndefined();

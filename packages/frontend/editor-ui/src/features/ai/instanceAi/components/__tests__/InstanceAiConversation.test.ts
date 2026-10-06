@@ -270,7 +270,8 @@ describe('InstanceAiConversation', () => {
 		// Wraps the subject in `reactive` and returns it alongside the render
 		// result, so a test can mutate `subject.name` after mount and assert the
 		// chip follows the live value — the actual AGENT-954 scenario (a rename in
-		// the builder while the panel stays open).
+		// the builder while the panel stays open). The stashed agent is a saved
+		// one: a pending (brand-new) agent shows no chip at all.
 		function mountWithSubject(subject: InstanceAiEmbedSubject | undefined) {
 			thread.sseState = 'disconnected';
 			stashPendingAgentAttachment('thread-1', {
@@ -278,7 +279,6 @@ describe('InstanceAiConversation', () => {
 				id: 'agent-1',
 				projectId: 'proj-1',
 				name: 'Stashed Name',
-				pending: true,
 			});
 			const reactiveSubject = subject === undefined ? undefined : reactive({ ...subject });
 			const renderer = createThreadComponentRenderer(
@@ -338,6 +338,51 @@ describe('InstanceAiConversation', () => {
 			const { getByTestId } = mountWithSubject(undefined);
 			await vi.waitFor(() =>
 				expect(getByTestId('instance-ai-input-context-chip').textContent).toBe('Stashed Name'),
+			);
+		});
+	});
+
+	describe('pending agent composer', () => {
+		function mountWithPendingAgent() {
+			thread.sseState = 'disconnected';
+			stashPendingAgentAttachment('thread-1', {
+				type: 'agent',
+				id: 'agent-1',
+				projectId: 'proj-1',
+				pending: true,
+			});
+			const renderer = createThreadComponentRenderer(
+				InstanceAiConversation,
+				{
+					global: { stubs: { InstanceAiInput: InstanceAiInputStub } },
+				},
+				() => thread,
+			);
+			return renderer();
+		}
+
+		it('shows no context chip, but keeps the new-agent placeholder', async () => {
+			const { getByTestId } = mountWithPendingAgent();
+
+			await vi.waitFor(() =>
+				expect(getByTestId('instance-ai-input-placeholder-key').textContent).toBe(
+					'instanceAi.input.newAgentPlaceholder',
+				),
+			);
+			expect(getByTestId('instance-ai-input-context-chip').textContent).toBe('');
+		});
+
+		it('still attaches the pending agent to the first message', async () => {
+			const { getByTestId } = mountWithPendingAgent();
+
+			await fireEvent.click(getByTestId('instance-ai-input-submit'));
+			await vi.waitFor(() => expect(thread.sendMessage).toHaveBeenCalled());
+
+			expect(thread.sendMessage).toHaveBeenCalledWith(
+				'Normal message',
+				expect.objectContaining({
+					attachments: [{ type: 'agent', id: 'agent-1', projectId: 'proj-1', pending: true }],
+				}),
 			);
 		});
 	});

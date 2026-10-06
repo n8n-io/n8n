@@ -15,7 +15,7 @@ export class CredentialTestContext implements ICredentialTestFunctions {
 		this.helpers = {
 			...getSSHTunnelFunctions(),
 			request: async (uriOrObject: string | object, options?: object) => {
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-return
+				// oxlint-disable-next-line typescript/no-deprecated
 				return await proxyRequestToAxios(
 					undefined,
 					additionalData,

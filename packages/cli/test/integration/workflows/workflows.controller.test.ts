@@ -1,4 +1,4 @@
-import { EventService } from '@n8n/backend-services';
+import { EventService, InstanceWriteAccessService } from '@n8n/backend-services';
 import {
 	createTeamProject,
 	getPersonalProject,
@@ -46,7 +46,6 @@ import { v4 as uuid } from 'uuid';
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { CollaborationService } from '@/collaboration/collaboration.service';
 import { EngineDataPlaneProxyService } from '@/services/engine-data-plane-proxy.service';
-import { InstanceWriteAccessService } from '@/services/instance-write-access.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { WorkflowValidationService } from '@/workflows/workflow-validation.service';
 import { createFolder } from '@test-integration/db/folders';
@@ -143,7 +142,7 @@ beforeEach(async () => {
 	authMemberAgent = testServer.authAgentFor(member);
 	anotherMember = await createMember();
 
-	workflowValidationService.validateForActivation.mockReturnValue({ isValid: true });
+	workflowValidationService.validateForActivation.mockResolvedValue({ isValid: true });
 	workflowValidationService.validateDynamicCredentials.mockResolvedValue({ isValid: true });
 	workflowValidationService.validatePublisherCredentialAccess.mockResolvedValue({ isValid: true });
 	workflowValidationService.validateSubWorkflowReferences.mockResolvedValue({ isValid: true });
@@ -5136,6 +5135,7 @@ describe('POST /workflows/:workflowId/run', () => {
 				startExecution,
 				getExecution,
 				searchExecutions: vi.fn().mockResolvedValue({ items: [], nextCursor: null, total: 0 }),
+				cancelExecution: vi.fn(),
 			});
 		});
 

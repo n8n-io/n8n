@@ -30,7 +30,10 @@ export class WorkflowPublishHistoryRepository extends Repository<WorkflowPublish
 		});
 	}
 
-	/** Do not join `workflowPublishHistory` instead: a join repeats the version's nodes JSON for each event. */
+	/**
+	 * Use this method, not a join on the `workflowPublishHistory` relation.
+	 * A join repeats the nodes JSON of the version for each event.
+	 */
 	async findByVersion(
 		workflowId: string,
 		versionId: string,

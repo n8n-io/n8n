@@ -216,7 +216,11 @@ afterEach(() => {
 
 function buildHook(
 	continueSessionId?: string,
-	options: { newSession?: Ref<boolean>; onSessionCreated?: (sessionId: string) => void } = {},
+	options: {
+		newSession?: Ref<boolean>;
+		onSessionCreated?: (sessionId: string) => void;
+		budgetCards?: boolean;
+	} = {},
 ) {
 	const scope = effectScope();
 	hookScopes.push(scope);
@@ -1213,6 +1217,383 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 		await flushPromises();
 		await nextTick();
 
+		expect(hook.isStreaming.value).toBe(false);
+	});
+
+	it('keeps the budget stop card after history replaces the transcript', async () => {
+		getTestChatMessagesMock.mockResolvedValue({
+			messages: [
+				{
+					id: 'user-1',
+					role: 'user',
+					content: [{ type: 'text', text: 'hi' }],
+					executionId: 'exec-1',
+				},
+				{
+					id: 'assistant-1',
+					role: 'assistant',
+					content: [{ type: 'text', text: 'partial' }],
+					executionId: 'exec-1',
+				},
+			],
+			openSuspensions: [],
+		});
+		const events: AgentSseEvent[] = [
+			{ type: 'text-delta', id: 't-1', delta: 'partial' },
+			{ type: 'finish', finishReason: 'guardrail', guardrail: { code: 'budget.session' } },
+			{ type: 'done', executionId: 'exec-1' },
+		];
+		globalThis.fetch = vi.fn(async () => makeSseResponse(events)) as typeof fetch;
+
+		const hook = buildHook(undefined, { budgetCards: true });
+		await hook.sendMessage('hi');
+		await flushPromises();
+
+		const assistant = hook.messages.value.find((message) => message.role === 'assistant');
+		expect(assistant?.content).toBe('partial');
+		expect(assistant?.budgetNotices?.[0]?.code).toBe('budget.session');
+	});
+
+	it('keeps a budget stop card when the stop persisted no assistant text', async () => {
+		getTestChatMessagesMock.mockResolvedValue({
+			messages: [
+				{
+					id: 'user-1',
+					role: 'user',
+					content: [{ type: 'text', text: 'hi' }],
+					executionId: 'exec-1',
+				},
+			],
+			openSuspensions: [],
+		});
+		const events: AgentSseEvent[] = [
+			{ type: 'finish', finishReason: 'guardrail', guardrail: { code: 'budget.monthly' } },
+			{ type: 'done', executionId: 'exec-1' },
+		];
+		globalThis.fetch = vi.fn(async () => makeSseResponse(events)) as typeof fetch;
+
+		const hook = buildHook(undefined, { budgetCards: true });
+		await hook.sendMessage('hi');
+		await flushPromises();
+
+		const assistant = hook.messages.value.find((message) => message.role === 'assistant');
+		expect(assistant?.budgetNotices?.[0]?.code).toBe('budget.monthly');
+	});
+
+	it('does not reinsert a budget stop card on a later history refresh', async () => {
+		getTestChatMessagesMock.mockResolvedValue({
+			messages: [
+				{
+					id: 'user-1',
+					role: 'user',
+					content: [{ type: 'text', text: 'hi' }],
+					executionId: 'exec-1',
+				},
+				{
+					id: 'assistant-1',
+					role: 'assistant',
+					content: [{ type: 'text', text: 'partial' }],
+					executionId: 'exec-1',
+				},
+			],
+			openSuspensions: [],
+		});
+		const events: AgentSseEvent[] = [
+			{ type: 'text-delta', id: 't-1', delta: 'partial' },
+			{ type: 'finish', finishReason: 'guardrail', guardrail: { code: 'budget.session' } },
+			{ type: 'done', executionId: 'exec-1' },
+		];
+		globalThis.fetch = vi.fn(async () => makeSseResponse(events)) as typeof fetch;
+
+		const hook = buildHook(undefined, { budgetCards: true });
+		await hook.sendMessage('hi');
+		await flushPromises();
+
+		const restored = hook.messages.value.find((message) => message.role === 'assistant');
+		expect(restored?.budgetNotices?.[0]?.code).toBe('budget.session');
+
+		// Simulate the user raising the budget: the card is cleared in memory.
+		for (const message of hook.messages.value) {
+			delete message.budgetNotices;
+		}
+
+		// A later push-triggered refresh must not bring the consumed notice back.
+		for (const listener of [...pushListeners]) {
+			listener({
+				type: 'agentExecutionUpdated',
+				data: { projectId: 'p1', agentId: 'a1', threadId: 'thread-1', executionId: 'exec-1' },
+			});
+		}
+		await flushPromises();
+
+		const after = hook.messages.value.find((message) => message.role === 'assistant');
+		expect(after?.budgetNotices).toBeUndefined();
+	});
+
+	it('does not restore a budget stop card into another session’s transcript', async () => {
+		const threadId = ref('thread-1');
+		const firstRefresh = Promise.withResolvers<AgentChatMessagesResponse>();
+		const secondRefresh = Promise.withResolvers<AgentChatMessagesResponse>();
+		getTestChatMessagesMock
+			.mockReturnValueOnce(firstRefresh.promise)
+			.mockReturnValueOnce(secondRefresh.promise)
+			.mockResolvedValue({
+				messages: [
+					{
+						id: 'user-1',
+						role: 'user',
+						content: [{ type: 'text', text: 'hi' }],
+						executionId: 'exec-1',
+					},
+					{
+						id: 'assistant-1',
+						role: 'assistant',
+						content: [{ type: 'text', text: 'partial' }],
+						executionId: 'exec-1',
+					},
+				],
+				openSuspensions: [],
+			});
+		const events: AgentSseEvent[] = [
+			{ type: 'text-delta', id: 't-1', delta: 'partial' },
+			{ type: 'finish', finishReason: 'guardrail', guardrail: { code: 'budget.session' } },
+			{ type: 'done', executionId: 'exec-1' },
+		];
+		globalThis.fetch = vi.fn(async () => makeSseResponse(events)) as typeof fetch;
+
+		const scope = effectScope();
+		hookScopes.push(scope);
+		const hook = scope.run(() =>
+			useAgentChatStream({
+				projectId: ref('p1'),
+				agentId: ref('a1'),
+				continueSessionId: threadId,
+				budgetCards: true,
+			}),
+		)!;
+
+		await hook.sendMessage('hi');
+		await flushPromises();
+		// The post-done history read for thread-1 is in flight but unresolved.
+		expect(getTestChatMessagesMock).toHaveBeenCalledTimes(1);
+
+		threadId.value = 'thread-2';
+		await flushPromises();
+		// The in-flight read holds the refresh queue; the switch queues another.
+		expect(getTestChatMessagesMock).toHaveBeenCalledTimes(1);
+
+		// The stale read for thread-1 resolves after the switch and is dropped.
+		firstRefresh.resolve({ messages: [], openSuspensions: [] });
+		await flushPromises();
+		expect(getTestChatMessagesMock).toHaveBeenCalledTimes(2);
+
+		secondRefresh.resolve({
+			messages: [
+				{
+					id: 'user-2',
+					role: 'user',
+					content: [{ type: 'text', text: 'other' }],
+					executionId: 'exec-2',
+				},
+			],
+			openSuspensions: [],
+		});
+		await flushPromises();
+
+		expect(hook.messages.value.map((message) => message.content)).toEqual(['other']);
+		expect(hook.messages.value.some((message) => message.budgetNotices?.length)).toBe(false);
+
+		// Back on thread-1, the stop card restores onto its own persisted turn.
+		threadId.value = 'thread-1';
+		await flushPromises();
+
+		const assistant = hook.messages.value.find((message) => message.role === 'assistant');
+		expect(assistant?.budgetNotices?.[0]?.code).toBe('budget.session');
+	});
+
+	it('keeps the budget stop card when a trailing push refresh follows the restore', async () => {
+		getTestChatMessagesMock.mockResolvedValue({
+			messages: [
+				{
+					id: 'user-1',
+					role: 'user',
+					content: [{ type: 'text', text: 'hi' }],
+					executionId: 'exec-1',
+				},
+				{
+					id: 'assistant-1',
+					role: 'assistant',
+					content: [{ type: 'text', text: 'partial' }],
+					executionId: 'exec-1',
+				},
+			],
+			openSuspensions: [],
+		});
+		const events: AgentSseEvent[] = [
+			{ type: 'text-delta', id: 't-1', delta: 'partial' },
+			{ type: 'finish', finishReason: 'guardrail', guardrail: { code: 'budget.session' } },
+			{ type: 'done', executionId: 'exec-1' },
+		];
+		globalThis.fetch = vi.fn(async () => makeSseResponse(events)) as typeof fetch;
+
+		const hook = buildHook(undefined, { budgetCards: true });
+		await hook.sendMessage('hi');
+		await flushPromises();
+
+		const restored = hook.messages.value.find((message) => message.role === 'assistant');
+		expect(restored?.budgetNotices?.[0]?.code).toBe('budget.session');
+
+		// The execution's terminal push can land right after the post-done
+		// refresh. Nothing dismissed the card, so this refresh must keep it.
+		for (const listener of [...pushListeners]) {
+			listener({
+				type: 'agentExecutionUpdated',
+				data: { projectId: 'p1', agentId: 'a1', threadId: 'thread-1', executionId: 'exec-1' },
+			});
+		}
+		await flushPromises();
+
+		const after = hook.messages.value.find((message) => message.role === 'assistant');
+		expect(after?.budgetNotices?.[0]?.code).toBe('budget.session');
+	});
+
+	it('does not restore a stop cleared while the first history read is still in flight', async () => {
+		const firstRead = Promise.withResolvers<AgentChatMessagesResponse>();
+		getTestChatMessagesMock.mockReturnValueOnce(firstRead.promise);
+		const events: AgentSseEvent[] = [
+			{ type: 'text-delta', id: 't-1', delta: 'partial' },
+			{ type: 'finish', finishReason: 'guardrail', guardrail: { code: 'budget.session' } },
+			{ type: 'done', executionId: 'exec-1' },
+		];
+		globalThis.fetch = vi.fn(async () => makeSseResponse(events)) as typeof fetch;
+
+		const hook = buildHook(undefined, { budgetCards: true });
+		await hook.sendMessage('hi');
+		await flushPromises();
+
+		// The card is up; the post-done history read has not landed yet.
+		expect(
+			hook.messages.value.find((message) => message.role === 'assistant')?.budgetNotices?.[0]?.code,
+		).toBe('budget.session');
+		expect(getTestChatMessagesMock).toHaveBeenCalledTimes(1);
+
+		// The cap increase succeeds while the read is pending: both copies go.
+		hook.clearBudgetNotices(new Set(['budget.session']));
+		expect(
+			hook.messages.value.find((message) => message.role === 'assistant')?.budgetNotices,
+		).toEqual([]);
+
+		firstRead.resolve({
+			messages: [
+				{
+					id: 'user-1',
+					role: 'user',
+					content: [{ type: 'text', text: 'hi' }],
+					executionId: 'exec-1',
+				},
+				{
+					id: 'assistant-1',
+					role: 'assistant',
+					content: [{ type: 'text', text: 'partial' }],
+					executionId: 'exec-1',
+				},
+			],
+			openSuspensions: [],
+		});
+		await flushPromises();
+
+		const after = hook.messages.value.find((message) => message.role === 'assistant');
+		expect(after?.budgetNotices).toBeUndefined();
+	});
+
+	it('keeps a buffered alert when only the session stop is cleared', async () => {
+		const firstRead = Promise.withResolvers<AgentChatMessagesResponse>();
+		getTestChatMessagesMock.mockReturnValueOnce(firstRead.promise);
+		const events: AgentSseEvent[] = [
+			{ type: 'text-delta', id: 't-1', delta: 'partial' },
+			{ type: 'budget-notice', code: 'budget.alert' },
+			{ type: 'finish', finishReason: 'guardrail', guardrail: { code: 'budget.session' } },
+			{ type: 'done', executionId: 'exec-1' },
+		];
+		globalThis.fetch = vi.fn(async () => makeSseResponse(events)) as typeof fetch;
+
+		const hook = buildHook(undefined, { budgetCards: true });
+		await hook.sendMessage('hi');
+		await flushPromises();
+
+		// Both cards are up on the same turn.
+		const live = hook.messages.value.find((message) => message.role === 'assistant');
+		expect(live?.budgetNotices?.map((notice) => notice.code)).toEqual([
+			'budget.alert',
+			'budget.session',
+		]);
+
+		hook.clearBudgetNotices(new Set(['budget.session']));
+
+		firstRead.resolve({
+			messages: [
+				{
+					id: 'user-1',
+					role: 'user',
+					content: [{ type: 'text', text: 'hi' }],
+					executionId: 'exec-1',
+				},
+				{
+					id: 'assistant-1',
+					role: 'assistant',
+					content: [{ type: 'text', text: 'partial' }],
+					executionId: 'exec-1',
+				},
+			],
+			openSuspensions: [],
+		});
+		await flushPromises();
+
+		const after = hook.messages.value.find((message) => message.role === 'assistant');
+		expect(after?.budgetNotices?.map((notice) => notice.code)).toEqual(['budget.alert']);
+	});
+
+	it('attaches a budget stop card on a guardrail finish chunk', async () => {
+		const events: AgentSseEvent[] = [
+			{ type: 'text-delta', id: 't-1', delta: 'partial' },
+			{ type: 'finish', finishReason: 'guardrail', guardrail: { code: 'budget.monthly' } },
+			{ type: 'done' },
+		];
+		globalThis.fetch = vi.fn(async () => makeSseResponse(events)) as typeof fetch;
+
+		const hook = buildHook(undefined, { budgetCards: true });
+		await hook.sendMessage('hi');
+		await flushPromises();
+
+		expect(hook.messages.value[1]?.budgetNotices?.[0]?.code).toBe('budget.monthly');
+	});
+
+	it('keeps the turn running when the budget alert arrives', async () => {
+		let emitMore: (events: AgentSseEvent[]) => void = () => {};
+		let closeStream: (events?: AgentSseEvent[]) => void = () => {};
+		globalThis.fetch = vi.fn(async () => {
+			const controlled = makeControllableSseResponse(
+				[{ type: 'text-delta', id: 't-1', delta: 'still going' }],
+				null,
+			);
+			emitMore = controlled.emit;
+			closeStream = controlled.close;
+			return controlled.response;
+		}) as typeof fetch;
+
+		const hook = buildHook(undefined, { budgetCards: true });
+		const pending = hook.sendMessage('hi');
+		await flushPromises();
+		emitMore([{ type: 'budget-notice', code: 'budget.alert' }]);
+		await flushPromises();
+
+		expect(hook.isStreaming.value).toBe(true);
+		expect(hook.messages.value[1]?.status).toBe('streaming');
+		expect(hook.messages.value[1]?.budgetNotices?.[0]?.code).toBe('budget.alert');
+
+		closeStream([{ type: 'done' }]);
+		await pending;
+		await flushPromises();
 		expect(hook.isStreaming.value).toBe(false);
 	});
 

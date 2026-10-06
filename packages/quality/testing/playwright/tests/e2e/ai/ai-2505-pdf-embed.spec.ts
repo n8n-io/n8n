@@ -13,7 +13,7 @@ import { test } from '../../../fixtures/base';
  */
 test.describe(
 	'AI-2505 — PDF embed regression',
-	{ annotation: [{ type: 'owner', description: 'AI' }] },
+	{ annotation: [{ type: 'owner', description: 'Agent' }] },
 	() => {
 		test('embeds a PDF through Default Data Loader → In-Memory Vector Store without the pdf-parse v1 error', async ({
 			n8n,

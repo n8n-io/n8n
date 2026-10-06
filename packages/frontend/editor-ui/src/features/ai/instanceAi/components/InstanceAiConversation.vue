@@ -297,7 +297,12 @@ const awaitingOnboardingGreeting = computed(
 
 const composerContextChip = computed(() => {
 	const agentAttachment = currentAgentAttachment.value;
-	if (agentAttachment && pendingComposerContext.value?.source !== 'agent-preview') {
+	const isNewAgent =
+		agentAttachment !== null &&
+		pendingAgentAttachment.value?.id === agentAttachment.id &&
+		pendingAgentAttachment.value.pending === true;
+	// A brand-new agent is already the focus of the builder — no composer chip.
+	if (agentAttachment && !isNewAgent && pendingComposerContext.value?.source !== 'agent-preview') {
 		// Prefer the host's live subject name when it refers to the same agent as
 		// the stashed attachment, so a rename in the builder updates the chip
 		// without re-stashing. Falls back to the stashed snapshot otherwise.
@@ -309,9 +314,6 @@ const composerContextChip = computed(() => {
 			type: 'agent-artifact' as const,
 			agentId: agentAttachment.id,
 			projectId: agentAttachment.projectId,
-			isNewAgent:
-				pendingAgentAttachment.value?.id === agentAttachment.id &&
-				pendingAgentAttachment.value.pending === true,
 			key: `pending-agent:${agentAttachment.id}`,
 			label: liveSubjectName ?? agentAttachment.name ?? i18n.baseText('agents.new.defaultName'),
 			icon: 'robot',
@@ -374,6 +376,10 @@ const composerContextChip = computed(() => {
 
 	return null;
 });
+
+// The new-agent placeholder no longer rides the context chip (a pending agent
+// shows none), so it is passed to the input as an explicit placeholder key.
+const isPendingAgentComposer = computed(() => pendingAgentAttachment.value?.pending === true);
 
 const workflowHandoffGreeting = computed(() => {
 	const attachment = thread.pendingWorkflowAttachment;
@@ -821,7 +827,7 @@ function dismissPendingComposerContext(key: string): boolean {
 async function dismissComposerContextChip() {
 	if (!composerContextChip.value) return;
 
-	if (pendingAgentAttachment.value && pendingComposerContext.value?.source !== 'agent-preview') {
+	if (composerContextChip.value.type === 'agent-artifact' && pendingAgentAttachment.value) {
 		clearPendingAgentAttachment(thread.id);
 		pendingAgentAttachment.value = null;
 		return;
@@ -1030,6 +1036,9 @@ defineExpose({
 										:current-thread-id="thread.id"
 										:amend-context="thread.amendContext"
 										:context-chip="composerContextChip"
+										:placeholder-key="
+											isPendingAgentComposer ? 'instanceAi.input.newAgentPlaceholder' : undefined
+										"
 										:contextual-suggestion="thread.contextualSuggestion"
 										:mentions-enabled="props.mentionsEnabled"
 										:mention-project-id="thread.projectId"

@@ -71,6 +71,8 @@ export class EngineLifecycleEventPushRelay {
 				return this.onExecutionFinished(update.executionId, update.workflowId, 'success', session);
 			case 'execution:failed':
 				return this.onExecutionFinished(update.executionId, update.workflowId, 'error', session);
+			case 'execution:cancelled':
+				return this.onExecutionFinished(update.executionId, update.workflowId, 'canceled', session);
 		}
 	}
 

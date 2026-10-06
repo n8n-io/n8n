@@ -45,6 +45,7 @@ import {
 	type AgentSandboxPrincipalHash,
 } from './agent-sandbox-principal';
 import { AgentSandboxRuntimeService } from './agent-sandbox-runtime.service';
+import { AgentsSettingsService } from './agents-settings.service';
 import { buildAgentConfigurationTelemetry } from './agent-telemetry';
 import { AgentTurnExecutionService, type AgentTurnRequest } from './agent-turn-execution.service';
 import { withBudgetGuardrail } from './budget-guardrail';
@@ -64,7 +65,10 @@ import { modelStreamStallOptions } from './model-stream-stall-options';
 import { AgentRepository } from './repositories/agent.repository';
 import { AgentBackgroundJobRepository } from './repositories/agent-background-job.repository';
 import { AgentBackgroundJobService } from './background/agent-background-job.service';
-import { BACKGROUND_APPROVAL_RUN_PREFIX } from './background/sub-agent-background-state';
+import {
+	BACKGROUND_APPROVAL_RUN_PREFIX,
+	BACKGROUND_PAUSE_USER_TURN_KEY,
+} from './background/sub-agent-background-state';
 import type { ToolRegistry } from './tool-registry';
 import type { StoredAttachmentRef } from './types/agent-chat-attachment';
 import type { AgentExecutionAdmission } from './types/agent-queued-message';
@@ -118,6 +122,8 @@ export interface ExecuteForChatConfig extends ChatExecutionInput, ChatExecutionC
 	 * callers (AI Assistant test calls, MCP, "Run now") leave it unset.
 	 */
 	previewChat?: boolean;
+	/** Preview chat sends the approaching-budget card. The run continues. */
+	onBudgetNotice?: () => void;
 	abortSignal?: AbortSignal;
 }
 
@@ -180,6 +186,8 @@ export interface ResumeForChatConfig extends ChatExecutionCallbacks {
 	 * callers (AI Assistant test calls, MCP, "Run now") leave it unset.
 	 */
 	previewChat?: boolean;
+	/** Preview chat sends the approaching-budget card. The run continues. */
+	onBudgetNotice?: () => void;
 	/** Allows an automatic preview resume to overlap its predecessor's finalization. */
 	automaticPreviewContinuation?: boolean;
 	abortSignal?: AbortSignal;
@@ -207,6 +215,7 @@ export interface ExecuteForTaskNowConfig extends AgentExecutionInput {
 
 export interface ExecuteForWakeConfig extends AgentExecutionInput {
 	backgroundJobSignal: AgentBackgroundJobSignal;
+	pauseReport?: boolean;
 	abortSignal: AbortSignal;
 	identity:
 		| { type: 'draft'; user: User; principalHash: AgentSandboxPrincipalHash }
@@ -241,12 +250,15 @@ export interface StreamChatResponseConfig extends ChatExecutionInput, ChatExecut
 		configuration: IAgentConfigurationTelemetryProperties;
 	};
 	previewChat?: boolean;
+	/** Preview chat sends the approaching-budget card. The run continues. */
+	onBudgetNotice?: () => void;
 	abortSignal?: AbortSignal;
 	sandboxPrincipalHash: AgentSandboxPrincipalHash;
 	/** Hide the internal wake instruction from the execution transcript. */
 	hideUserMessageFromTranscript?: boolean;
 	/** Prevent this wake run from triggering another wake. */
 	isWakeRun?: boolean;
+	pauseReport?: boolean;
 	backgroundJobSignal?: AgentBackgroundJobSignal;
 }
 
@@ -284,6 +296,7 @@ export class AgentExecutionOrchestratorService {
 		private readonly chatExecutionService: AgentChatExecutionService,
 		private readonly backgroundJobRepository: AgentBackgroundJobRepository,
 		private readonly backgroundJobService: AgentBackgroundJobService,
+		private readonly settingsService: AgentsSettingsService,
 	) {}
 
 	async getSessionMode(threadId: string): Promise<AgentSessionMode> {
@@ -948,6 +961,8 @@ export class AgentExecutionOrchestratorService {
 			if (delivery) chunks.push(chunk);
 			if (chunk.type === 'error') runError = chunk.error;
 			if (chunk.type === 'finish' && chunk.finishReason === 'error') runError ??= chunk;
+			if (chunk.type === 'finish' && chunk.guardrail?.code === 'background-pause-report')
+				runError ??= chunk;
 			yield chunk;
 		}
 		// Leave failed job results pending so the caller can retry delivery.
@@ -994,6 +1009,10 @@ export class AgentExecutionOrchestratorService {
 	async *streamChatResponse(
 		config: StreamChatResponseConfig,
 	): AsyncGenerator<AgentExecutionStreamChunk> {
+		// Admitted runs and background continuations can finish after Agents is disabled.
+		if (!config.admittedExecution && !config.isWakeRun) {
+			await this.settingsService.assertEnabled();
+		}
 		yield* this.turnExecutionService.execute({
 			admittedExecution: config.admittedExecution,
 			onAdmitted: config.onAdmitted,
@@ -1065,6 +1084,7 @@ export class AgentExecutionOrchestratorService {
 			onExecutionRecorded?: (executionId: string) => void;
 			abortSignal?: AbortSignal;
 			automaticContinuationRunId?: string;
+			isWakeRun?: boolean;
 		},
 	): Promise<AgentRuntime> {
 		const {
@@ -1072,9 +1092,13 @@ export class AgentExecutionOrchestratorService {
 			abortSignal,
 			automaticContinuationRunId,
 			admittedExecution,
+			isWakeRun,
 			...recording
 		} = session;
 		abortSignal?.throwIfAborted();
+		if (!admittedExecution && !recording.resumeRunId && !isWakeRun) {
+			await this.settingsService.assertEnabled();
+		}
 		try {
 			return await this.runtimeCacheService.getRuntime(params);
 		} catch (error) {
@@ -1198,7 +1222,14 @@ export class AgentExecutionOrchestratorService {
 			resumeData: config.resumeData,
 			options: withBudgetGuardrail(
 				this.createResumeOptions(config, memoryScope, messageContext, tracing),
-				{ budget: runtime.budget, sessionId: memoryScope.threadId, agentId: config.agentId },
+				{
+					budget: runtime.budget,
+					sessionId: memoryScope.threadId,
+					agentId: config.agentId,
+					...(config.previewChat && config.onBudgetNotice
+						? { onNotice: config.onBudgetNotice }
+						: {}),
+				},
 			),
 			recording: this.createResumeRecording(config, checkpoint, runtime, executionSource),
 		};
@@ -1415,6 +1446,7 @@ export class AgentExecutionOrchestratorService {
 			onExecutionRecorded,
 			abortSignal,
 			previewChat,
+			onBudgetNotice: config.onBudgetNotice,
 			onExecutionStarted: config.onExecutionStarted,
 			sandboxPrincipalHash,
 			sessionMode,
@@ -1471,6 +1503,9 @@ export class AgentExecutionOrchestratorService {
 				principalHash: sandboxPrincipalHash,
 			}),
 			...encodeIntegrationMessageContext(messageContext),
+			...(config.previewChat && !config.isWakeRun && !config.hideUserMessageFromTranscript
+				? { [BACKGROUND_PAUSE_USER_TURN_KEY]: true }
+				: {}),
 		};
 
 		return {
@@ -1479,6 +1514,21 @@ export class AgentExecutionOrchestratorService {
 			options: withBudgetGuardrail(
 				{
 					persistence: { threadId, resourceId, hostMetadata },
+					...(config.pauseReport
+						? {
+								toolsEnabled: false,
+								guardrails: {
+									hooks: [
+										{
+											beforeTool: async () => ({
+												action: 'stop' as const,
+												code: 'background-pause-report',
+											}),
+										},
+									],
+								},
+							}
+						: {}),
 					executionCounter: createAgentExecutionCounter(this.telemetry, {
 						agentId,
 						userId,
@@ -1488,7 +1538,14 @@ export class AgentExecutionOrchestratorService {
 					...(tracing ? { telemetry: tracing } : {}),
 					...(abortSignal ? { abortSignal } : {}),
 				},
-				{ budget: config.budget, sessionId: threadId, agentId },
+				{
+					budget: config.budget,
+					sessionId: threadId,
+					agentId,
+					...(config.previewChat && config.onBudgetNotice
+						? { onNotice: config.onBudgetNotice }
+						: {}),
+				},
 			),
 			recording: this.createChatRecording(config),
 		};
@@ -1562,6 +1619,7 @@ export class AgentExecutionOrchestratorService {
 				resourceId: memory.resourceId,
 				userMessage: config.message,
 				hideUserMessageFromTranscript: true,
+				isWakeRun: true,
 				source: productionUserId ? N8N_CHAT_PRODUCTION_SOURCE : integrationType,
 				abortSignal,
 				access,
@@ -1605,6 +1663,7 @@ export class AgentExecutionOrchestratorService {
 			sandboxPrincipalHash: identity.principalHash,
 			hideUserMessageFromTranscript: true,
 			isWakeRun: true,
+			pauseReport: config.pauseReport,
 			sessionMode: 'existing',
 			backgroundJobSignal: config.backgroundJobSignal,
 		});

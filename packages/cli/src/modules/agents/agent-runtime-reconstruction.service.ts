@@ -174,6 +174,7 @@ interface RuntimeReconstructionOptions extends ReconstructAgentRuntimeParams {
 	credentialIntegrations: AgentIntegrationConfig[];
 	subAgentDelegation: SubAgentDelegationConfig;
 	allowBackgroundTasks?: boolean;
+	allowPlanTools?: boolean;
 	/** Tools the access filter already dropped; reported together with build-time stubs. */
 	unavailableTools?: UnavailableTool[];
 	/** Set by the in-app preview chat only — see `BuildFromJsonOptions.previewChat`. */
@@ -301,6 +302,7 @@ export class AgentRuntimeReconstructionService {
 			supportsHitl,
 			previewChat,
 			allowBackgroundTasks = true,
+			allowPlanTools = true,
 			attributionUserId,
 		}: {
 			/** Pass false when the caller cannot resume a suspended run (workflow executions). */
@@ -309,6 +311,7 @@ export class AgentRuntimeReconstructionService {
 			previewChat?: boolean;
 			/** Disable background jobs for task-triggered runtimes. */
 			allowBackgroundTasks?: boolean;
+			allowPlanTools?: boolean;
 			attributionUserId?: string;
 		} = {},
 	): Promise<ReconstructedAgentRuntime & { userToolAccessSnapshot?: UserToolAccessSnapshot }> {
@@ -359,6 +362,7 @@ export class AgentRuntimeReconstructionService {
 			sandboxPrincipalHash,
 			unavailableTools,
 			allowBackgroundTasks,
+			allowPlanTools,
 			previewChat,
 		});
 		return {
@@ -1050,12 +1054,19 @@ export class AgentRuntimeReconstructionService {
 			rootSessionCapUsd: params.rootSessionCapUsd,
 			budgetForwarded: params.budgetForwarded,
 		});
-		this.attachWriteTodosTool(agent, agentId);
+		if (params.allowPlanTools !== false && Container.get(AgentsConfig).planToolsEnabled) {
+			const { AgentPlanService } = await import('./agent-plan.service.js');
+			const { createAgentPlanTools } = await import('./plans/agent-plan-tools.js');
+			agent.tool(createAgentPlanTools(Container.get(AgentPlanService)));
+		} else {
+			this.attachWriteTodosTool(agent, agentId);
+		}
 		agent.tool(createMarkSessionFailedTool());
 		if (!backgroundTasksEnabled) return;
 		// Background tools attach only to the root agent, so its cap is the root cap.
 		const budget = config.config?.guardrails?.budget;
-		const rootSessionCapUsd = budget?.enabled ? budget.sessionCostCapUsd : undefined;
+		const sessionCap = budget?.enabled ? budget.sessionCostCapUsd : undefined;
+		const rootSessionCapUsd = sessionCap !== undefined && sessionCap > 0 ? sessionCap : undefined;
 		await this.attachBackgroundJobTools({
 			...delegationParams,
 			...(parentWorkspaceHandle !== undefined ? { parentWorkspaceHandle } : {}),
@@ -1176,6 +1187,7 @@ export class AgentRuntimeReconstructionService {
 			createSpawnBackgroundSubAgentTool,
 			createCheckBackgroundJobsTool,
 			createCancelBackgroundJobTool,
+			createResumeBackgroundJobsTool,
 		} = await import('./background/background-job-tools.js');
 		const { AgentBackgroundJobService } = await import(
 			'./background/agent-background-job.service.js'
@@ -1187,6 +1199,15 @@ export class AgentRuntimeReconstructionService {
 
 		agent.tool(createCheckBackgroundJobsTool(jobService));
 		agent.tool(createCancelBackgroundJobTool(jobService));
+		agent.tool(
+			createResumeBackgroundJobsTool({
+				jobService,
+				backgroundRunner: Container.get(SubAgentBackgroundRunner),
+				projectId,
+				parentAgentId,
+				runContext,
+			}),
+		);
 
 		// Attached even with no configured sub-agents: inline self-delegation is
 		// always available.

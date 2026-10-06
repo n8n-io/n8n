@@ -15,6 +15,9 @@ import { ModuleLoadError } from './errors/module-load.error';
 import { ModulesConfig } from './modules.config';
 import type { ModuleName } from './modules.config';
 
+/** Modules that load from workspace packages instead of the n8n modules directory. */
+export type PackagedModules = Partial<Record<ModuleName, () => Promise<unknown>>>;
+
 const getModuleEntryPath = (modulesDir: string, moduleName: string, isEnterprise = false) =>
 	path.join(modulesDir, isEnterprise ? `${moduleName}.ee` : moduleName, `${moduleName}.module.js`);
 
@@ -43,6 +46,10 @@ export class ModuleRegistry {
 		// policy-infrastructure leads: it registers the enforcement implementation
 		// that every policy feature's checks are run by.
 		'policy-infrastructure',
+		// inbound-auth-core binds the inbound-auth contracts that later modules inject. Modules
+		// initialize in this order, and an unbound abstract constructor parameter resolves to
+		// `undefined` in the container, so it has to run before every consumer.
+		'inbound-auth-core',
 		'insights',
 		'external-secrets',
 		'community-packages',
@@ -76,10 +83,15 @@ export class ModuleRegistry {
 		'workflow-reviews',
 		'instance-ai',
 		'agents',
-		'inbound-auth-core',
 	];
 
 	private readonly activeModules: string[] = [];
+
+	private readonly packagedModules: PackagedModules = {};
+
+	registerPackagedModules(packagedModules: PackagedModules) {
+		Object.assign(this.packagedModules, packagedModules);
+	}
 
 	get eligibleModules(): ModuleName[] {
 		const { enabledModules, disabledModules } = this.modulesConfig;
@@ -118,6 +130,18 @@ export class ModuleRegistry {
 		}
 
 		for (const moduleName of modules ?? this.eligibleModules) {
+			const importPackagedModule = this.packagedModules[moduleName];
+
+			if (importPackagedModule) {
+				try {
+					await importPackagedModule();
+				} catch (error) {
+					throw new ModuleLoadError(moduleName, error);
+				}
+
+				continue;
+			}
+
 			const entryPath = getModuleEntryPath(modulesDir, moduleName);
 
 			try {

@@ -1129,8 +1129,7 @@ type CronRecurrenceRule =
 /**
  * @deprecated Remnant of the legacy in-memory scheduling path. `registerCron`
  * takes {@link Cron}, not this type; the durable scheduler path never uses it.
- * Only `ScheduledTaskManager` and its helper still reference it (and only for
- * `CronContext['recurrence']`). Slated to go away with `ScheduledTaskManager`.
+ * Legacy test helpers still use it. Use {@link Cron} for new scheduling code.
  */
 export type CronContext = {
 	nodeId: string;
@@ -3802,7 +3801,7 @@ export interface IWorkflowExecutionDataProcess {
 	 * which answer the caller waits for. Without this field, nobody waits.
 	 */
 	engineV2Response?: {
-		responseMode: 'lastNode' | 'responseNode';
+		responseMode: 'lastNode' | 'responseNode' | 'streaming';
 	};
 	startedAt?: Date;
 

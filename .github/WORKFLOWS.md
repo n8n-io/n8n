@@ -10,7 +10,6 @@ Complete reference for n8n's `.github/` folder.
 .github/
 ├── WORKFLOWS.md                          # This document
 ├── CI-TELEMETRY.md                       # Telemetry & metrics guide
-├── CODEOWNERS                            # Temporary, side by side with OWNERS during the trial
 ├── pull_request_template.md              # PR description template
 ├── pull_request_title_conventions.md     # Title format rules (Angular)
 ├── actionlint.yml                        # Workflow linter config
@@ -850,9 +849,8 @@ See **[CI-TELEMETRY.md](CI-TELEMETRY.md)** for:
 
 ## OWNERS
 
-Team ownership lives in the top-level `OWNERS` file (this replaces the
-GitHub-native `CODEOWNERS` file; see the transition note below). The scripts
-that consume it live in `.github/scripts/owners/`. Line format:
+Team ownership lives in the top-level `OWNERS` file. The scripts that consume
+it live in `.github/scripts/owners/`. Line format:
 
 ```
 <pattern> <@org/team> [required]
@@ -884,8 +882,10 @@ The file drives four workflows:
 ### Required reviews
 
 An entry with the `required` option makes team approval mandatory: when a PR
-changes a file whose winning entry carries `required`, a member of each listed
-team must approve the PR. `ci-owners-required-reviews.yml` evaluates this on
+changes a non-test file whose winning entry carries `required`, a member of each
+listed team must approve the PR. Test files match the shared patterns in
+`test-files.mjs` and do not trigger required reviews.
+`ci-owners-required-reviews.yml` evaluates this on
 PR changes and review events, and reports a commit status
 named **Required Reviews** on the head SHA. A missing approval reports
 `pending` ("Waiting for approval from: …"), not `failure`, so an unreviewed PR
@@ -920,8 +920,7 @@ Reviews** status succeed without required OWNERS team approvals. A team member
 must apply the `large-scale-change` label. The gate checks the actor from the
 label event and verifies their current team membership. The label alone is not
 sufficient. Label changes re-evaluate the status. Removing the label removes
-the exemption. During the CODEOWNERS trial, GitHub still enforces its separate
-code-owner review requirement.
+the exemption.
 
 Every path that writes the status runs in the base repository context, because
 a fork-context run has no secrets and a read-only token. PR changes arrive
@@ -934,16 +933,6 @@ and skips same-repo heads, which the direct event already covers. A first
 contribution whose runs still wait for approval gets no review-event
 re-evaluation until a maintainer approves the runs; `workflow_dispatch` with
 the PR number is the manual fallback.
-
-### Transition from CODEOWNERS
-
-During a trial period, `.github/CODEOWNERS` stays in place next to OWNERS:
-GitHub's native code-owner enforcement keeps gating merges while the
-"Required Reviews" status runs side by side. The two must agree — CODEOWNERS
-holds exactly the `required` entries of OWNERS (plus the OWNERS file itself)
-and must not gain new entries; new ownership goes into OWNERS. After the
-trial, delete `.github/CODEOWNERS`, remove "Require review from Code Owners"
-from the master ruleset, and delete this section (tracked in DEVP-887).
 
 ---
 

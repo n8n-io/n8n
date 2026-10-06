@@ -107,9 +107,11 @@ function mergeResults(passes: DecisionPass[]): ExecutionRunResult {
 	const failing = passes.find((pass) => !pass.analysis.success);
 	const data: Record<string, unknown> = {};
 	const executedNodeNames = new Set<string>();
+	const binaryOutputNodeNames = new Set<string>();
 	for (const pass of passes) {
 		Object.assign(data, pass.result.data ?? {});
 		for (const name of pass.analysis.reachedNames) executedNodeNames.add(name);
+		for (const name of pass.result.binaryOutputNodeNames ?? []) binaryOutputNodeNames.add(name);
 	}
 
 	// A pass can fail on node errors while its engine status is still
@@ -125,6 +127,7 @@ function mergeResults(passes: DecisionPass[]): ExecutionRunResult {
 		status: failingStatus ?? last.result.status,
 		data: Object.keys(data).length > 0 ? data : undefined,
 		executedNodeNames: [...executedNodeNames],
+		binaryOutputNodeNames: binaryOutputNodeNames.size > 0 ? [...binaryOutputNodeNames] : undefined,
 		error: failing?.result.error ?? failing?.analysis.errorMessage,
 	};
 }
