@@ -5,6 +5,7 @@ import {
 	saveWorkflowSourceFileBinding,
 	type WorkflowSourceFileBinding,
 } from './workflow-file-bindings';
+import type { ValidationWarning } from './workflow-validation-warnings';
 import type { InstanceAiContext } from '../../types';
 import type { WorkflowBuildOutcome } from '../../workflow-loop/workflow-loop-state';
 
@@ -133,6 +134,10 @@ export function resolveBuildIdentifiers(input: {
 
 export function formatWarning(code: string, message: string): string {
 	return `[${code}]: ${message}`;
+}
+
+export function blockingErrorOf(warning: ValidationWarning): string {
+	return `[${warning.code}]${warning.nodeName ? ` (${warning.nodeName})` : ''}: ${warning.message}`;
 }
 
 export function combineWarnings(...groups: Array<string[] | undefined>): string[] | undefined {

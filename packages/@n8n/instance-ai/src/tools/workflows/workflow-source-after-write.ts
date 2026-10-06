@@ -2,10 +2,16 @@ import { isAbortError, raceWithAbort, type WorkspaceAfterWrite } from '@n8n/agen
 import { getWorkspaceRoot } from '@n8n/agents/sandbox';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 
+import { blockingErrorOf, formatWarning } from './workflow-build-context';
+import { getWorkflowSourceFileBinding } from './workflow-file-bindings';
+import { preserveExistingNodeIds } from './workflow-json-utils';
+import { downgradeUnchangedNodeBlockers } from './workflow-node-diff';
 import { compileWorkflowSource, isTypeScriptWorkflowSource } from './workflow-source-compiler';
 import {
 	groupingDecisionBlocker,
+	partitionWarnings,
 	summarizeWorkflowTopLevelItems,
+	type ValidationWarning,
 } from './workflow-validation-warnings';
 import type { InstanceAiContext } from '../../types';
 import { normalizeWorkspaceRelativePath } from '../../workspace/workspace-paths';
@@ -33,10 +39,56 @@ function groupingDiagnostics(workflow: WorkflowJSON): string[] {
 }
 
 /**
+ * The saved workflow of the file, with its node ids put on the built nodes, so the downgrade of
+ * build-workflow can pair them. A `/next` node has no id in the source. Undefined when the file
+ * has no saved workflow or the saved workflow cannot be read: then every node counts as changed.
+ */
+async function savedWorkflowOf(
+	context: InstanceAiContext,
+	filePath: string,
+	workflow: WorkflowJSON,
+): Promise<WorkflowJSON | undefined> {
+	try {
+		const workflowId = (await getWorkflowSourceFileBinding(context, filePath))?.workflowId;
+		if (!workflowId) return undefined;
+		const saved = await context.workflowService.getAsWorkflowJSON(workflowId);
+		await preserveExistingNodeIds(workflow, workflowId, context);
+		return saved;
+	} catch {
+		return undefined;
+	}
+}
+
+interface WriteCheck {
+	errors: string[];
+	warnings: string[];
+}
+
+/** The warnings of the build, in its text: blocking ones as its errors, then the others. */
+async function warningLines(
+	context: InstanceAiContext,
+	filePath: string,
+	workflow: WorkflowJSON,
+	warnings: ValidationWarning[],
+): Promise<string[]> {
+	const saved =
+		partitionWarnings(warnings).blocking.length > 0
+			? await savedWorkflowOf(context, filePath, workflow)
+			: undefined;
+	const { blocking, informational } = partitionWarnings(
+		downgradeUnchangedNodeBlockers(warnings, workflow, saved),
+	);
+	return [
+		...blocking.map(blockingErrorOf),
+		...informational.map((warning) => formatWarning(warning.code, warning.message)),
+	];
+}
+
+/**
  * Node contracts: when a workspace tool writes a typed workflow source, run the check of
  * build-workflow on it (the sandbox build, tsc, n8n expressions, Code text, fixed inputs, groups),
- * so the tool result has the errors that the build would return. It saves nothing. A check that
- * fails to run adds nothing: build-workflow still checks the source.
+ * so the tool result has the errors that the build would return, then its warnings. It saves
+ * nothing. A check that fails to run adds nothing: build-workflow still checks the source.
  */
 export function workflowSourceAfterWrite(
 	context: InstanceAiContext,
@@ -51,19 +103,25 @@ export function workflowSourceAfterWrite(
 		const deadline = new AbortController();
 		const timer = setTimeout(() => deadline.abort(), WRITE_CHECK_DEADLINE_MS);
 		const signal = abortSignal ? AbortSignal.any([abortSignal, deadline.signal]) : deadline.signal;
-		const diagnostics = await (async (): Promise<string[] | undefined> => {
+		const check = await (async (): Promise<WriteCheck | undefined> => {
 			try {
 				const workspaceRoot = await getWorkspaceRoot(workspace);
 				const filePath = normalizeWorkspaceRelativePath(path, { workspaceRoot });
+				const checkSource = async () => {
+					const result = await compileWorkflowSource(context, filePath, content, signal);
+					if (!result.success) return { errors: result.errors, warnings: [] };
+					return {
+						errors: groupingDiagnostics(result.workflow),
+						warnings: await warningLines(context, filePath, result.workflow, result.warnings),
+					};
+				};
 				// The race keeps the deadline when a step of the check does not watch the signal.
-				const result = await raceWithAbort(
-					compileWorkflowSource(context, filePath, content, signal),
-					signal,
-				);
-				return result.success ? groupingDiagnostics(result.workflow) : result.errors;
+				return await raceWithAbort(checkSource, signal);
 			} catch (error) {
 				if (abortSignal?.aborted) throw error;
-				if (deadline.signal.aborted && isAbortError(error)) return [WRITE_CHECK_TIMEOUT_NOTE];
+				if (deadline.signal.aborted && isAbortError(error)) {
+					return { errors: [WRITE_CHECK_TIMEOUT_NOTE], warnings: [] };
+				}
 				context.logger.warn('Workflow source check after write failed', {
 					error: error instanceof Error ? error.message : String(error),
 				});
@@ -73,6 +131,7 @@ export function workflowSourceAfterWrite(
 			}
 		})();
 		const durationMs = Date.now() - startedAt;
+		const diagnostics = check && [...check.errors, ...check.warnings];
 		context.logger.debug('Workflow source checked after write', {
 			path,
 			durationMs,
@@ -83,8 +142,8 @@ export function workflowSourceAfterWrite(
 				code: content,
 				source: 'full-code',
 				toolCallId,
-				success: diagnostics?.length === 0,
-				errors: diagnostics,
+				success: check?.errors.length === 0,
+				errors: check?.errors,
 				capturedAt: startedAt,
 				durationMs,
 			});

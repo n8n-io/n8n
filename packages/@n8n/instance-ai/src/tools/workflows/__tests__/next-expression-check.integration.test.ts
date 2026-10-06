@@ -24,6 +24,7 @@ import {
 	WORKFLOW_DIAGNOSTICS_FILENAME,
 } from '../../../workspace/sandbox-typescript';
 import { createWorkflowsTool } from '../../workflows.tool';
+import { workflowSourceAfterWrite } from '../workflow-source-after-write';
 import { compileWorkflowSource } from '../workflow-source-compiler';
 
 const exec = promisify(execFile);
@@ -1269,6 +1270,32 @@ export default workflow(
 				expect.stringContaining("'config' does not exist"),
 			]),
 		);
+	}, 120_000);
+
+	it('returns the build warnings of a written source from the write check', async () => {
+		const source = `import { workflow, manual, node, set } from '@n8n/workflow-sdk/next';
+import { httpRequest } from '@n8n/nodes/httpRequest';
+
+export default workflow(
+	'Write check',
+	manual(),
+	httpRequest.get({
+		name: 'Fetch',
+		url: 'https://api.example.com/x',
+		schema: { type: 'object', properties: { total: { type: 'integer' } } },
+		sample: [{ total: 1.5 }],
+	}),
+	node({ name: 'Pass', type: 'n8n-nodes-base.noOp', version: 1 }),
+	set({ name: 'Read', fields: { a: (item) => item.id } }),
+);
+`;
+		const path = join(root, 'src/workflow.ts');
+		await writeFile(path, source);
+
+		expect(await workflowSourceAfterWrite(context)?.({ path, content: source }, {})).toEqual([
+			'[UNTYPED_OUTPUT]: "Pass": reads of id are untyped (node() and trigger() have no output type), so tsc does not check them. Give it `sample` items.',
+			'[SAMPLE_SCHEMA_MISMATCH]: "Fetch": the sample does not match the output schema: $json.total: must be integer. Fix the sample to match the real output.',
+		]);
 	}, 120_000);
 
 	it('fails the build of a source that imports both SDKs', async () => {

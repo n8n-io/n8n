@@ -34,6 +34,7 @@ import { recordWorkflowSetupState } from './setup-panel-state';
 import { getSkippedSetupSubjects, partitionSkippedSetupRequests } from './setup-skip-state';
 import { analyzeWorkflow, stripStaleCredentialsFromWorkflow } from './setup-workflow.service';
 import {
+	blockingErrorOf,
 	combineWarnings,
 	formatWarning,
 	getBuildFailureTrackingKey,
@@ -564,9 +565,6 @@ function resolveGroupingDecision(input: {
 
 	return 'under_ceiling';
 }
-
-const blockingErrorOf = (e: ValidationWarning) =>
-	`[${e.code}]${e.nodeName ? ` (${e.nodeName})` : ''}: ${e.message}`;
 
 async function handleValidationFailure(args: ValidationFailureArgs) {
 	const {
