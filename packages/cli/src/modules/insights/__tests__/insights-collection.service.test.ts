@@ -1,11 +1,5 @@
 import { mockLogger } from '@n8n/backend-test-utils';
-import type {
-	Project,
-	SharedWorkflow,
-	SharedWorkflowRepository,
-	IWorkflowDb,
-	WorkflowEntity,
-} from '@n8n/db';
+import type { Project, SharedWorkflowRepository, IWorkflowDb, WorkflowEntity } from '@n8n/db';
 import type { WorkflowExecuteAfterContext } from '@n8n/decorators';
 import { DateTime } from 'luxon';
 import type { IRun } from 'n8n-workflow';
@@ -90,15 +84,11 @@ describe('initialization safeguards', () => {
 		});
 
 		// mock shared workflow repository for the flushing process
-		sharedWorkflowRepository.find.mockResolvedValueOnce([
-			mock<SharedWorkflow>({
-				workflow,
-				project: mock<Project>(),
-				role: 'workflow:editor',
-			}),
-		]);
+		sharedWorkflowRepository.findOwnerProjectsByWorkflowIds.mockResolvedValueOnce(
+			new Map([[workflow.id, mock<Project>()]]),
+		);
 		// mock insights metadata repository for the flushing process
-		insightsMetadataRepository.findBy.mockResolvedValueOnce([
+		insightsMetadataRepository.findByWorkflowIds.mockResolvedValueOnce([
 			mock<InsightsMetadata>({ workflowId: ctx.workflow.id, metaId: 1 }),
 		]);
 
@@ -285,15 +275,10 @@ describe('flushEvents with an insight that has no shared workflow', () => {
 		service.init();
 
 		// Only "known-workflow" has an owner row, so "gone-workflow" gets no metadata.
-		sharedWorkflowRepository.find.mockResolvedValue([
-			mock<SharedWorkflow>({
-				workflowId: 'known-workflow',
-				projectId: 'project-id',
-				project: mock<Project>({ name: 'Project' }),
-				role: 'workflow:owner',
-			}),
-		]);
-		insightsMetadataRepository.findBy.mockResolvedValue([
+		sharedWorkflowRepository.findOwnerProjectsByWorkflowIds.mockResolvedValue(
+			new Map([['known-workflow', mock<Project>({ id: 'project-id', name: 'Project' })]]),
+		);
+		insightsMetadataRepository.findByWorkflowIds.mockResolvedValue([
 			mock<InsightsMetadata>({ workflowId: 'known-workflow', metaId: 1 }),
 		]);
 	});
@@ -326,8 +311,8 @@ describe('flushEvents with an insight that has no shared workflow', () => {
 	});
 
 	test('does not re-buffer the event on the next flush', async () => {
-		sharedWorkflowRepository.find.mockResolvedValue([]);
-		insightsMetadataRepository.findBy.mockResolvedValue([]);
+		sharedWorkflowRepository.findOwnerProjectsByWorkflowIds.mockResolvedValue(new Map());
+		insightsMetadataRepository.findByWorkflowIds.mockResolvedValue([]);
 		bufferEvent('gone-workflow');
 
 		await service.flushEvents();

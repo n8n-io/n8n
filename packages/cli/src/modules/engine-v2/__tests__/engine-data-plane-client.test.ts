@@ -261,4 +261,62 @@ describe('EngineDataPlaneClient', () => {
 			await expect(client.getExecution(EXECUTION_ID)).rejects.toThrow(OperationalError);
 		});
 	});
+
+	describe('cancelExecution', () => {
+		it('reports a cancelled execution', async () => {
+			respondWith(200, {
+				executionId: EXECUTION_ID,
+				status: 'cancelled',
+				finishedAt: '2026-10-02T09:00:00.000Z',
+			});
+
+			await expect(client.cancelExecution(EXECUTION_ID)).resolves.toEqual({
+				cancelled: true,
+				finishedAt: new Date('2026-10-02T09:00:00.000Z'),
+			});
+
+			expect(http.request).toHaveBeenCalledWith(
+				expect.objectContaining({
+					url: `/api/workflow-executions/${EXECUTION_ID}/cancel`,
+					method: 'POST',
+					disableFollowRedirect: true,
+				}),
+			);
+		});
+
+		it('reports the status of an execution that had already ended', async () => {
+			respondWith(409, {
+				error: 'not_cancellable',
+				reason: 'The execution has already completed',
+				details: { status: 'completed' },
+			});
+
+			await expect(client.cancelExecution(EXECUTION_ID)).resolves.toEqual({
+				cancelled: false,
+				status: 'completed',
+			});
+		});
+
+		it.each([
+			['no details', { error: 'not_cancellable' }],
+			['no status', { error: 'not_cancellable', details: {} }],
+			['an unknown status', { error: 'not_cancellable', details: { status: 'paused' } }],
+		])('throws on a refusal that names %s', async (_case, body) => {
+			respondWith(409, body);
+
+			await expect(client.cancelExecution(EXECUTION_ID)).rejects.toThrow(OperationalError);
+		});
+
+		it('returns undefined for an execution the engine does not have', async () => {
+			respondWith(404, { error: 'not_found' });
+
+			await expect(client.cancelExecution(EXECUTION_ID)).resolves.toBeUndefined();
+		});
+
+		it('throws on any other engine failure', async () => {
+			respondWith(500, { error: 'internal' });
+
+			await expect(client.cancelExecution(EXECUTION_ID)).rejects.toThrow(OperationalError);
+		});
+	});
 });

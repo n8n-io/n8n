@@ -66,6 +66,12 @@ describe('toWebhookOutcome', () => {
 		});
 	});
 
+	it('reports a cancelled run', () => {
+		expect(toWebhookOutcome(ended({ status: 'cancelled', lastStep: null }), runEnd)).toEqual({
+			status: 'cancelled',
+		});
+	});
+
 	it('reports a response failure without attributing it to a node', () => {
 		const outcome = toWebhookOutcome(
 			{

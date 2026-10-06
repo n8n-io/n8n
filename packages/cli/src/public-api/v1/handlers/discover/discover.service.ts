@@ -139,7 +139,11 @@ function buildDecoratorEndpoints(): EndpointInfo[] {
 		operationId: route.handlerName,
 		tag: route.tags?.[0] ?? 'Other',
 		scope: route.apiKeyScope ?? null,
-		requestSchema: buildRequestBodyJsonSchema(route),
+		// A non-JSON body shows no request schema (`discoverable: false` on its handler), so a
+		// client doesn't assume one.
+		requestSchema: route.requestBodyHandler?.discoverable
+			? buildRequestBodyJsonSchema(route)
+			: undefined,
 	}));
 }
 

@@ -52,6 +52,7 @@ import { AgentTurnExecutionService } from '../agent-turn-execution.service';
 import type { AgentExecutionStreamChunk } from '../types/agent-steering';
 import type { AgentToolApprovalService } from '../agent-tool-approval.service';
 import type { AgentValidationService } from '../agent-validation.service';
+import { AgentSpendLedger } from '../budget-guardrail';
 import type { Agent } from '../entities/agent.entity';
 import type { AgentBackgroundJob } from '../entities/agent-background-job.entity';
 import type { AgentExecutionThread } from '../entities/agent-execution-thread.entity';
@@ -238,6 +239,16 @@ function makeService(sandboxEnabled = false) {
 	});
 	const wakeService = mock<AgentWakeService>();
 	Container.set(AgentWakeService, wakeService);
+
+	// The budget guardrail resolves its ledger from the container. Stub it with
+	// an empty ledger: reads stay under every cap, and `add` reports each entry's
+	// cost as the new total so alert-crossing tests can pick a crossing amount.
+	const spendLedger = mock<AgentSpendLedger>();
+	spendLedger.read.mockResolvedValue(0);
+	spendLedger.add.mockImplementation(async (_callId, entries) =>
+		entries.map((entry) => ({ key: entry.key, totalUsd: entry.usd, previousUsd: 0 })),
+	);
+	Container.set(AgentSpendLedger, spendLedger);
 
 	executionService.canUseDraftThread.mockResolvedValue(true);
 	executionService.findThreadById.mockResolvedValue({
@@ -2379,6 +2390,41 @@ describe('AgentExecutionOrchestratorService', () => {
 				}),
 			),
 		).resolves.toEqual(expect.any(Array));
+	});
+
+	it('blocks tools and rejects a pause report interrupted by its guardrail', async () => {
+		const { service, runtimeCacheService } = makeService();
+		const runtime = makeRuntime([
+			{
+				type: 'finish',
+				finishReason: 'guardrail',
+				guardrail: { code: 'background-pause-report' },
+			},
+		]);
+		runtimeCacheService.getRuntime.mockResolvedValue(runtime);
+		await expect(
+			service.executeForWake({
+				backgroundJobSignal: { tasks: [] },
+				pauseReport: true,
+				agentId,
+				projectId,
+				message: 'Report the stopped tasks.',
+				memory: { threadId: 'thread-1', resourceId: 'draft-chat:user-1' },
+				identity: { type: 'draft', user, principalHash: userPrincipalHash },
+				abortSignal: new AbortController().signal,
+			}),
+		).rejects.toMatchObject({
+			constructor: OperationalError,
+			message: 'Background job wake failed',
+			cause: { guardrail: { code: 'background-pause-report' } },
+		});
+		const options = runtime.agent.stream.mock.calls[0][1] as ExecutionOptions;
+		expect(options.toolsEnabled).toBe(false);
+		const hook = options.guardrails?.hooks?.find((candidate) => candidate.beforeTool);
+		expect(await hook?.beforeTool?.(mock())).toMatchObject({
+			action: 'stop',
+			code: 'background-pause-report',
+		});
 	});
 
 	it('records a background continuation while Agents is disabled', async () => {

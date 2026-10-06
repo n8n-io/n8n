@@ -95,18 +95,21 @@ export class WorkflowHistoryService {
 			throw new SharedWorkflowNotFoundError('');
 		}
 
-		const includePublishHistory = settings?.includePublishHistory ?? true;
-		const relations = includePublishHistory ? ['workflowPublishHistory'] : [];
-
 		const hist = await this.workflowHistoryRepository.findOne({
 			where: {
 				workflowId: workflow.id,
 				versionId,
 			},
-			relations,
 		});
 		if (!hist) {
 			throw new WorkflowHistoryVersionNotFoundError('');
+		}
+
+		if (settings?.includePublishHistory ?? true) {
+			hist.workflowPublishHistory = await this.workflowPublishHistoryRepository.findByVersion(
+				workflow.id,
+				versionId,
+			);
 		}
 		return hist;
 	}

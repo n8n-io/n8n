@@ -43,6 +43,11 @@ export const properties: INodeProperties[] = [
 		description: 'The name of the model(deployment) to use (e.g., gpt-4, gpt-35-turbo)',
 		required: true,
 		default: '',
+		displayOptions: {
+			show: {
+				'@version': [1],
+			},
+		},
 	},
 	{
 		displayName: 'Project',
@@ -51,6 +56,55 @@ export const properties: INodeProperties[] = [
 		description:
 			'The Azure AI Foundry project that owns the deployment. Required for an Azure AI Foundry resource; leave empty for a classic Azure OpenAI resource.',
 		default: '',
+	},
+	{
+		displayName: 'Model (Deployment)',
+		name: 'model',
+		type: 'resourceLocator',
+		default: { mode: 'id', value: '' },
+		required: true,
+		builderHint: {
+			propertyHint:
+				'Set the project parameter before you list deployments. The list needs an Azure AI Foundry credential. With a classic credential, use the id mode and enter the deployment name.',
+		},
+		modes: [
+			{
+				displayName: 'From List',
+				name: 'list',
+				type: 'list',
+				placeholder: 'Select a deployment...',
+				typeOptions: {
+					searchListMethod: 'searchModels',
+					searchable: true,
+				},
+			},
+			{
+				displayName: 'By ID',
+				name: 'id',
+				type: 'string',
+				placeholder: 'e.g. gpt-4o',
+			},
+		],
+		description:
+			'The deployment to use. Choose from the list (Azure AI Foundry credentials only), or enter the deployment name.',
+		displayOptions: {
+			show: {
+				'@version': [{ _cnd: { gte: 1.1 } }],
+			},
+		},
+	},
+	{
+		displayName: 'Use Responses API',
+		name: 'responsesApiEnabled',
+		type: 'boolean',
+		default: false,
+		description:
+			'Whether to call the deployment on the Responses API instead of Chat Completions. Azure does not tell us which one a deployment supports, so set this to match your deployment: leave it off for a chat-completions deployment, turn it on for a Responses-only one. Needs a credential using the Azure AI Foundry endpoint type.',
+		displayOptions: {
+			show: {
+				'@version': [{ _cnd: { gte: 1.1 } }],
+			},
+		},
 	},
 	{
 		displayName: 'Options',
@@ -139,6 +193,14 @@ export const properties: INodeProperties[] = [
 				description:
 					'Controls diversity via nucleus sampling: 0.5 means half of all likelihood-weighted options are considered. We generally recommend altering this or temperature but not both.',
 				type: 'number',
+			},
+			{
+				displayName: 'Extra Body',
+				name: 'extraBody',
+				type: 'json',
+				default: '{}',
+				description:
+					'Optional additional JSON properties to include in the request body. Use this for parameters a deployment supports that the options above do not cover.',
 			},
 		],
 	},

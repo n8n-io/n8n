@@ -10,6 +10,8 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | ---- | ------- | ------- | ---- |
 | [public.activity_event](public.activity_event.md) | 11 |  | BASE TABLE |
 | [public.agent_background_job](public.agent_background_job.md) | 20 |  | BASE TABLE |
+| [public.agent_budget_applied_call](public.agent_budget_applied_call.md) | 2 |  | BASE TABLE |
+| [public.agent_budget_spend](public.agent_budget_spend.md) | 4 |  | BASE TABLE |
 | [public.agent_channel_status](public.agent_channel_status.md) | 11 |  | BASE TABLE |
 | [public.agent_chat_attachments](public.agent_chat_attachments.md) | 12 |  | BASE TABLE |
 | [public.agent_chat_subscriptions](public.agent_chat_subscriptions.md) | 6 |  | BASE TABLE |
@@ -25,6 +27,8 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.agent_files](public.agent_files.md) | 10 |  | BASE TABLE |
 | [public.agent_history](public.agent_history.md) | 9 |  | BASE TABLE |
 | [public.agent_message_queue](public.agent_message_queue.md) | 10 |  | BASE TABLE |
+| [public.agent_plan](public.agent_plan.md) | 8 |  | BASE TABLE |
+| [public.agent_plan_history](public.agent_plan_history.md) | 6 |  | BASE TABLE |
 | [public.agent_task_definition](public.agent_task_definition.md) | 8 |  | BASE TABLE |
 | [public.agent_task_run_lock](public.agent_task_run_lock.md) | 6 |  | BASE TABLE |
 | [public.agent_task_snapshot](public.agent_task_snapshot.md) | 9 |  | BASE TABLE |
@@ -130,7 +134,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.token_exchange_jti](public.token_exchange_jti.md) | 3 |  | BASE TABLE |
 | [public.trusted_key](public.trusted_key.md) | 4 |  | BASE TABLE |
 | [public.trusted_key_source](public.trusted_key_source.md) | 8 |  | BASE TABLE |
-| [public.trusted_source](public.trusted_source.md) | 12 |  | BASE TABLE |
+| [public.trusted_source](public.trusted_source.md) | 15 |  | BASE TABLE |
 | [public.trusted_source_identity](public.trusted_source_identity.md) | 8 |  | BASE TABLE |
 | [public.type_availability_policy](public.type_availability_policy.md) | 7 |  | BASE TABLE |
 | [public.type_availability_policy_attachment](public.type_availability_policy_attachment.md) | 6 |  | BASE TABLE |
@@ -214,6 +218,8 @@ erDiagram
 "public.agent_message_queue" }o--o| "public.agent_execution" : "FOREIGN KEY (#quot;executionId#quot;) REFERENCES agent_execution(id)"
 "public.agent_message_queue" }o--o| "public.agent_execution" : "FOREIGN KEY (#quot;steeringExecutionId#quot;) REFERENCES agent_execution(id)"
 "public.agent_message_queue" }o--|| "public.agent_execution_threads" : "FOREIGN KEY (#quot;threadId#quot;) REFERENCES agent_execution_threads(id) ON DELETE CASCADE"
+"public.agent_plan" }o--|| "public.agent_execution_threads" : "FOREIGN KEY (#quot;threadId#quot;) REFERENCES agent_execution_threads(id) ON DELETE CASCADE"
+"public.agent_plan_history" }o--|| "public.agent_plan" : "FOREIGN KEY (#quot;planId#quot;) REFERENCES agent_plan(id) ON DELETE CASCADE"
 "public.agent_task_definition" }o--|| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
 "public.agent_task_run_lock" }o--|| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
 "public.agent_task_snapshot" }o--|| "public.agent_history" : "FOREIGN KEY (#quot;versionId#quot;) REFERENCES agent_history(#quot;versionId#quot;) ON DELETE CASCADE"
@@ -440,6 +446,16 @@ erDiagram
   timestamp_3__with_time_zone updatedAt
   varchar_36_ workflowId
 }
+"public.agent_budget_applied_call" {
+  uuid callId
+  timestamp_3__with_time_zone createdAt
+}
+"public.agent_budget_spend" {
+  timestamp_3__with_time_zone createdAt
+  varchar_128_ key
+  double_precision totalUsd
+  timestamp_3__with_time_zone updatedAt
+}
 "public.agent_channel_status" {
   varchar_36_ agentId FK
   integer attempts
@@ -631,6 +647,24 @@ erDiagram
   integer steeringOrder
   varchar_128_ threadId FK
   timestamp_3__with_time_zone updatedAt
+}
+"public.agent_plan" {
+  timestamp_3__with_time_zone closedAt
+  timestamp_3__with_time_zone createdAt
+  json data
+  integer formatVersion
+  uuid id
+  integer revision
+  varchar_128_ threadId FK
+  timestamp_3__with_time_zone updatedAt
+}
+"public.agent_plan_history" {
+  timestamp_3__with_time_zone closedAt
+  timestamp_3__with_time_zone createdAt
+  json data
+  integer formatVersion
+  uuid planId FK
+  integer revision
 }
 "public.agent_task_definition" {
   varchar_36_ agentId FK
@@ -1630,11 +1664,14 @@ erDiagram
   text config
   integer configVersion
   timestamp_3__with_time_zone createdAt
+  varchar_36_ discoveryClaimToken
+  timestamp_3__with_time_zone discoveryClaimedAt
   varchar_36_ id
   varchar issuer
   timestamp_3__with_time_zone lastCheckedAt
   text lastError
   varchar_16_ managedBy
+  text metadata
   varchar_128_ name
   varchar_16_ status
   varchar_32_ type

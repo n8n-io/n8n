@@ -59,8 +59,7 @@ import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry
 import { NodeTypes } from '@/node-types';
 import { OauthService } from '@/oauth/oauth.service';
 import { userHasScopes } from '@/permissions.ee/check-access';
-import { ProjectScopeService } from '@/permissions.ee/project-scope.service';
-import { UrlService } from '@n8n/backend-services';
+import { ProjectScopeService, UrlService } from '@n8n/backend-services';
 import { Telemetry } from '@/telemetry';
 import { createAiMcpFetch } from '@/utils/ai-proxy-fetch';
 
@@ -1155,16 +1154,17 @@ export class McpAgentToolsService {
 	 * must not be usable as a mutate_agent baseConfigHash.
 	 */
 	private async getAgentVersionSnapshot(projectId: string, agentId: string, versionId: string) {
-		const { agent, version, tasks } = await this.agentPublishService.getVersion(
+		const { agent, version, definition } = await this.agentPublishService.getVersion(
 			agentId,
 			projectId,
 			versionId,
 		);
-		if (!version.schema) throw new UserError(`Version "${versionId}" has no JSON config.`);
+		if (!definition.schema) throw new UserError(`Version "${versionId}" has no JSON config.`);
 		// Integrations are managed separately and are not versioned, so omit any
 		// legacy snapshot field here for the same reason as in getAgentSnapshot.
-		const { integrations: _integrations, ...editableConfig } = version.schema;
+		const { integrations: _integrations, ...editableConfig } = definition.schema;
 
+		const enabledTasks = new Map((editableConfig.tasks ?? []).map((ref) => [ref.id, ref.enabled]));
 		return {
 			agent: {
 				id: agent.id,
@@ -1181,16 +1181,16 @@ export class McpAgentToolsService {
 				isActive: version.versionId === agent.activeVersionId,
 			},
 			config: editableConfig,
-			skills: version.skills ?? {},
-			tasks: tasks.map((task) => ({
-				id: task.taskId,
+			skills: definition.skills,
+			tasks: [...definition.tasks].map(([id, task]) => ({
+				id,
 				name: task.name,
 				objective: task.objective,
 				cronExpression: task.cronExpression,
 				timezone: task.timezone,
-				enabled: task.enabled,
+				enabled: enabledTasks.get(id) ?? false,
 			})),
-			customTools: Object.entries(version.tools ?? {}).map(([id, tool]) => ({
+			customTools: Object.entries(definition.tools).map(([id, tool]) => ({
 				id,
 				descriptor: tool.descriptor,
 			})),

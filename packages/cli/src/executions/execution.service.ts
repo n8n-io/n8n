@@ -51,6 +51,7 @@ import type { IExecutionFlattedResponse } from '@/interfaces';
 import { License } from '@/license';
 import { NodeTypes } from '@/node-types';
 import { ExecutionStopService } from '@/scaling/execution-stop.service';
+import { EngineDataPlaneProxyService } from '@/services/engine-data-plane-proxy.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { WaitTracker } from '@/wait-tracker';
 import { WorkflowRunner } from '@/workflow-runner';
@@ -58,7 +59,7 @@ import { getWorkflowProjectDetailsSafe } from '@/workflows/utils';
 
 import { EngineV2ExecutionReader } from './engine-v2-execution-reader.service';
 import { MissingExecutionDataError } from './execution-data/missing-execution-data.error';
-import { isExecutionIdV2 } from './execution-id';
+import { isExecutionIdV2, type ExecutionIdV2 } from './execution-id';
 import { ExecutionPersistence } from './execution-persistence';
 import { ExecutionRedactionServiceProxy } from './execution-redaction-proxy.service';
 import type { ExecutionRequest, StopResult } from './execution.types';
@@ -125,6 +126,7 @@ export class ExecutionService {
 		private readonly executionStopService: ExecutionStopService,
 		private readonly ownershipService: OwnershipService,
 		private readonly engineV2ExecutionReader: EngineV2ExecutionReader,
+		private readonly engineDataPlane: EngineDataPlaneProxyService,
 	) {}
 
 	/**
@@ -512,6 +514,10 @@ export class ExecutionService {
 	}
 
 	async stop(executionId: string, sharedWorkflowIds: string[]): Promise<StopResult> {
+		if (isExecutionIdV2(executionId)) {
+			return await this.stopEngineV2Execution(executionId, sharedWorkflowIds);
+		}
+
 		const execution = await this.executionPersistence.findWithUnflattenedData(
 			executionId,
 			sharedWorkflowIds,
@@ -570,10 +576,47 @@ export class ExecutionService {
 		const STOPPABLE_STATUSES: ExecutionStatus[] = ['new', 'unknown', 'waiting', 'running'];
 
 		if (!STOPPABLE_STATUSES.includes(execution.status)) {
-			throw new WorkflowOperationError(
-				`Only running or waiting executions can be stopped and ${execution.id} is currently ${execution.status}`,
-			);
+			throw this.notStoppableError(execution.id, execution.status);
 		}
+	}
+
+	private notStoppableError(executionId: string, status: string) {
+		return new WorkflowOperationError(
+			`Only running or waiting executions can be stopped and ${executionId} is currently ${status}`,
+		);
+	}
+
+	/**
+	 * The data plane owns the run, so the cancel goes to the engine. The reader
+	 * answers the visibility check: absent and inaccessible read alike.
+	 */
+	private async stopEngineV2Execution(
+		executionId: ExecutionIdV2,
+		sharedWorkflowIds: string[],
+	): Promise<StopResult> {
+		const execution = await this.engineV2ExecutionReader.findOne(executionId, sharedWorkflowIds);
+		if (!execution) {
+			this.logger.info(
+				`Unable to stop execution "${executionId}" as it was not found or not accessible`,
+				{ executionId },
+			);
+			throw new MissingExecutionStopError(executionId);
+		}
+
+		this.assertStoppable(execution);
+
+		// The engine decides the race against completion, so its answer wins over the read above.
+		const outcome = await this.engineDataPlane.cancelExecution(executionId);
+		if (!outcome) throw new MissingExecutionStopError(executionId);
+		if (!outcome.cancelled) throw this.notStoppableError(executionId, outcome.status);
+
+		return {
+			mode: execution.mode,
+			startedAt: execution.startedAt,
+			stoppedAt: outcome.finishedAt,
+			finished: false,
+			status: 'canceled',
+		};
 	}
 
 	private async stopInRegularMode(execution: IExecutionResponse) {
@@ -618,7 +661,8 @@ export class ExecutionService {
 		return await this.stopDuringRun(execution);
 	}
 
-	private async stopDuringRun(execution: IExecutionResponse) {
+	private async stopDuringRun(execution: IExecutionResponse): Promise<IExecutionResponse> {
+		const expectedStatus = execution.status;
 		const error = new ManualExecutionCancelledError(execution.id);
 
 		execution.data = execution.data ?? createEmptyRunExecutionData();
@@ -631,7 +675,22 @@ export class ExecutionService {
 		execution.waitTill = null;
 		execution.status = 'canceled';
 
-		await this.executionPersistence.updateExistingExecution(execution.id, execution);
+		const stopped = await this.executionPersistence.updateExistingExecution(
+			execution.id,
+			execution,
+			{ requireStatus: expectedStatus },
+		);
+		if (!stopped) {
+			const current = await this.executionPersistence.findWithUnflattenedData(execution.id, [
+				execution.workflowId,
+			]);
+			if (!current) throw new MissingExecutionStopError(execution.id);
+			if (current.status === 'canceled') return current;
+			this.assertStoppable(current);
+			return this.globalConfig.executions.mode === 'regular'
+				? await this.stopInRegularMode(current)
+				: await this.stopInScalingMode(current);
+		}
 
 		return execution;
 	}

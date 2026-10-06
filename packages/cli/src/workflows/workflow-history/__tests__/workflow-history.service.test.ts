@@ -52,6 +52,7 @@ describe('WorkflowHistoryService', () => {
 		mockClear(workflowHistoryRepository.find);
 		mockClear(workflowHistoryRepository.findOne);
 		mockClear(workflowPublishHistoryRepository.find);
+		mockClear(workflowPublishHistoryRepository.findByVersion);
 		mockClear(workflowFinderService.findWorkflowForUser);
 	});
 
@@ -297,6 +298,26 @@ describe('WorkflowHistoryService', () => {
 
 			// Assert
 			expect(workflowHistoryRepository.insert).toHaveBeenCalled();
+		});
+	});
+
+	describe('getVersion', () => {
+		it('should not load publish history when includePublishHistory is false', async () => {
+			// Arrange
+			const workflow = getWorkflow({ addNodeWithoutCreds: true });
+			workflow.id = '123';
+			const version = getWorkflowHistory(workflow, { versionId: 'version1' });
+			workflowFinderService.findWorkflowForUser.mockResolvedValueOnce(workflow);
+			workflowHistoryRepository.findOne.mockResolvedValueOnce(version);
+
+			// Act
+			const result = await workflowHistoryService.getVersion(testUser, workflow.id, 'version1', {
+				includePublishHistory: false,
+			});
+
+			// Assert
+			expect(result).toBe(version);
+			expect(workflowPublishHistoryRepository.findByVersion).not.toHaveBeenCalled();
 		});
 	});
 

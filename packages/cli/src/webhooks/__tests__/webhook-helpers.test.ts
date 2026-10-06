@@ -1790,6 +1790,7 @@ describe('executeWebhook establishTriggerIdentity', () => {
 
 	const resourceWithoutGrant: ProtectedResource = {
 		id: `workflow-webhook-test:${WORKFLOW_ID}:abc`,
+		surface: 'trigger',
 		getResourceUrl: () => RESOURCE_URL,
 		getAudiences: () => [RESOURCE_URL],
 		scopes: [],
@@ -2745,6 +2746,25 @@ describe('executeWebhook on engine v2', () => {
 					data: { message: 'The response is too large.' },
 					responseCode: 500,
 				},
+			]);
+		});
+
+		it('answers with an error when the run is cancelled', async () => {
+			const { responseCallback } = await startWebhook({ responseMode: 'lastNode' });
+			const executionId = workflowRunner.run.mock.calls[0][0].engineV2ExecutionId as string;
+
+			dataPlane.get(executionId)?.({
+				type: 'ended',
+				executionId,
+				workflowId: 'wf-1',
+				status: 'cancelled',
+				lastStep: null,
+			});
+
+			await vi.waitFor(() => expect(responseCallback).toHaveBeenCalledTimes(1));
+			expect(responseCallback.mock.calls[0]).toEqual([
+				null,
+				{ data: { message: 'The execution was cancelled' }, responseCode: 500 },
 			]);
 		});
 	});

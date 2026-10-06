@@ -15,7 +15,7 @@ import type { AgentRuntimeCacheService } from '../agent-runtime-cache.service';
 import type { AgentSetupCompletionService } from '../agent-setup-completion.service';
 import type { Agent } from '../entities/agent.entity';
 import type { ChatIntegrationRegistry } from '../integrations/agent-chat-integration';
-import type { AgentIntegrationState, AgentRepository } from '../repositories/agent.repository';
+import type { AgentRepository } from '../repositories/agent.repository';
 
 const agentId = 'agent-1';
 const projectId = 'project-1';
@@ -58,38 +58,39 @@ function setup(options: SetupOptions = {}) {
 	const credentialsService = mock<CredentialsService>();
 	const setupCompletionService = mock<AgentSetupCompletionService>();
 
-	const row: AgentIntegrationState = {
+	const row = {
+		id: agentId,
+		projectId,
+		revision: 0,
+		schema: options.schema === undefined ? configuredConfig : options.schema,
 		integrations: options.integrations ?? [],
 		versionId: options.versionId ?? 'version-1',
 		activeVersionId: options.activeVersionId === undefined ? 'version-1' : options.activeVersionId,
-	};
+		setupCompletedAt: null,
+		updatedAt: new Date('2025-01-01T00:00:00Z'),
+	} as Agent;
 
-	agentRepository.findIntegrationState.mockImplementation(async () => ({
+	agentRepository.findById.mockImplementation(async () => ({
 		...row,
 		integrations: [...(row.integrations ?? [])],
 	}));
 	agentRepository.updateIntegrations.mockImplementation(
 		async (_id, integrations, expected, versionId) => {
-			// Mirrors the real WHERE clause: both guarded columns must still match.
+			if (row.revision !== expected.revision) return false;
 			if (row.versionId !== expected.versionId) return false;
 			if (row.activeVersionId !== expected.activeVersionId) return false;
 			row.integrations = integrations;
 			row.versionId = versionId;
+			row.revision += 1;
 			return true;
 		},
 	);
 	setupCompletionService.recordIfSetupComplete.mockResolvedValue(null);
 
 	const agent = {
-		id: agentId,
-		projectId,
-		versionId: row.versionId,
-		activeVersionId: row.activeVersionId,
-		schema: options.schema === undefined ? configuredConfig : options.schema,
+		...row,
 		integrations: options.stale ?? [...(row.integrations ?? [])],
-		setupCompletedAt: null,
-		updatedAt: new Date('2025-01-01T00:00:00Z'),
-	} as Agent;
+	};
 
 	return {
 		service: new AgentIntegrationPersistenceService(
@@ -179,6 +180,7 @@ describe('AgentIntegrationPersistenceService', () => {
 			expect(row.versionId).not.toBe(row.activeVersionId);
 			expect(agent.integrations).toEqual(row.integrations);
 			expect(agent.versionId).toBe(row.versionId);
+			expect(agent.revision).toBe(1);
 			expect(runtimeCacheService.clearRuntimes).toHaveBeenCalledWith(agentId);
 			expect(eventService.emit).toHaveBeenCalledWith('agent-saved', { agentId });
 		});
@@ -196,8 +198,7 @@ describe('AgentIntegrationPersistenceService', () => {
 			expect(agentRepository.updateIntegrations).toHaveBeenCalledWith(
 				agentId,
 				[{ type: 'slack', credentialId: 'slack-1' }],
-				// Both guarded columns, so a publish landing after the read is caught.
-				{ versionId: 'version-1', activeVersionId: 'version-1' },
+				{ revision: 0, versionId: 'version-1', activeVersionId: 'version-1' },
 				expect.not.stringMatching('^version-1$'),
 			);
 		});
@@ -270,8 +271,6 @@ describe('AgentIntegrationPersistenceService', () => {
 		});
 
 		it('rotates the draft version even when the agent is already dirty', async () => {
-			// The version is the compare-and-set token, so it has to move on every
-			// write or a concurrent channel write would match the same value.
 			const { service, agent, row } = setup({ versionId: 'draft-9', activeVersionId: 'version-1' });
 
 			await service.applyIntegrationDelta(
@@ -289,9 +288,7 @@ describe('AgentIntegrationPersistenceService', () => {
 			['already dirty', { versionId: 'draft-9', activeVersionId: 'version-1' }],
 			['in sync with its published version', { versionId: 'v', activeVersionId: 'v' }],
 			['never published', { versionId: 'v', activeVersionId: null }],
-		])('advances the compare-and-set token for an agent %s', async (_case, versions) => {
-			// A write that guards on a value it also writes back cannot detect a
-			// concurrent writer that read the same value.
+		])('starts a new version for an agent %s', async (_case, versions) => {
 			const { service, agent, agentRepository } = setup(versions);
 
 			await service.applyIntegrationDelta(
@@ -511,14 +508,26 @@ describe('AgentIntegrationPersistenceService', () => {
 	});
 
 	describe('concurrent writers', () => {
-		it('re-reads and reapplies the delta when it loses the compare-and-set', async () => {
-			const { service, agent, row, agentRepository } = setup();
-			// A concurrent publish bumps the version between our read and our write.
-			agentRepository.updateIntegrations.mockImplementationOnce(async () => {
-				row.versionId = 'version-2';
-				row.integrations = [{ type: 'linear', credentialId: 'linear-1' }];
-				return false;
+		it('reapplies the delta and validates the current draft after a revision conflict', async () => {
+			const { service, agent, row, setupCompletionService } = setup({
+				versionId: 'draft-1',
+				activeVersionId: 'version-1',
 			});
+			const discardedCompletion = vi.fn(async () => {});
+			const savedCompletion = vi.fn(async () => {});
+			const updatedSchema = { ...configuredConfig, instructions: 'Updated instructions' };
+			setupCompletionService.recordIfSetupComplete
+				.mockImplementationOnce(async () => {
+					row.revision = 1;
+					row.schema = updatedSchema;
+					row.integrations = [{ type: 'linear', credentialId: 'linear-1' }];
+					return discardedCompletion;
+				})
+				.mockImplementationOnce(async (candidate) => {
+					expect(candidate.schema).toEqual(updatedSchema);
+					expect(candidate.revision).toBe(1);
+					return savedCompletion;
+				});
 
 			const result = await service.applyIntegrationDelta(
 				agent,
@@ -527,7 +536,11 @@ describe('AgentIntegrationPersistenceService', () => {
 			);
 
 			expect(result.changed).toBe(true);
-			expect(agentRepository.findIntegrationState).toHaveBeenCalledTimes(2);
+			expect(result.agent.schema).toEqual(updatedSchema);
+			expect(result.agent.revision).toBe(2);
+			expect(row.revision).toBe(2);
+			expect(discardedCompletion).not.toHaveBeenCalled();
+			expect(savedCompletion).toHaveBeenCalledOnce();
 			// The winner's change survives, and ours is applied on top of it.
 			expect(row.integrations).toEqual([
 				{ type: 'linear', credentialId: 'linear-1' },
@@ -542,7 +555,7 @@ describe('AgentIntegrationPersistenceService', () => {
 				versionId: 'v',
 				activeVersionId: null,
 			});
-			agentRepository.findIntegrationState.mockImplementationOnce(async () => {
+			agentRepository.findById.mockImplementationOnce(async () => {
 				const snapshot = { ...row, integrations: [...(row.integrations ?? [])] };
 				row.activeVersionId = 'version-1';
 				return snapshot;
@@ -557,10 +570,12 @@ describe('AgentIntegrationPersistenceService', () => {
 			// The first attempt is refused, and the retry guards on what is now there.
 			expect(agentRepository.updateIntegrations).toHaveBeenCalledTimes(2);
 			expect(agentRepository.updateIntegrations.mock.calls[0][2]).toEqual({
+				revision: 0,
 				versionId: 'v',
 				activeVersionId: null,
 			});
 			expect(agentRepository.updateIntegrations.mock.calls[1][2]).toEqual({
+				revision: 0,
 				versionId: 'v',
 				activeVersionId: 'version-1',
 			});
@@ -576,7 +591,7 @@ describe('AgentIntegrationPersistenceService', () => {
 				versionId: 'v',
 				activeVersionId: 'version-1',
 			});
-			agentRepository.findIntegrationState.mockImplementationOnce(async () => {
+			agentRepository.findById.mockImplementationOnce(async () => {
 				const snapshot = { ...row, integrations: [...(row.integrations ?? [])] };
 				row.activeVersionId = null;
 				return snapshot;
@@ -615,7 +630,7 @@ describe('AgentIntegrationPersistenceService', () => {
 
 		it('fails when the agent was deleted underneath the mutation', async () => {
 			const { service, agent, agentRepository } = setup();
-			agentRepository.findIntegrationState.mockResolvedValue(null);
+			agentRepository.findById.mockResolvedValue(null);
 
 			await expect(
 				service.applyIntegrationDelta(
