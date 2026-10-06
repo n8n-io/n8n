@@ -382,6 +382,41 @@ describe('MigrationFindingRepository', () => {
 		});
 	});
 
+	describe('listWorkflowIdsWithOpenFindings', () => {
+		test('returns each given workflow with an open finding once, skipping fixed findings, other versions and other workflows', async () => {
+			const [first, second, third, fourth] = await Promise.all([
+				createWorkflow(),
+				createWorkflow(),
+				createWorkflow(),
+				createWorkflow(),
+			]);
+			await findingRepository.insertMany(
+				[
+					finding(first.id, 'rule-a'),
+					finding(first.id, 'rule-b'),
+					finding(second.id, 'rule-a'),
+					finding(third.id, 'rule-a', 'v2'),
+					finding(fourth.id, 'rule-a'),
+				],
+				ctx,
+			);
+			const [fixed] = await findingRepository.listForWorkflows('v3', [second.id], ctx);
+			await findingRepository.markFixedForIds([fixed.id], ctx);
+
+			const ids = await findingRepository.listWorkflowIdsWithOpenFindings(
+				'v3',
+				[first.id, second.id, third.id],
+				ctx,
+			);
+
+			expect(ids).toEqual([first.id]);
+		});
+
+		test('returns an empty list for an empty id array', async () => {
+			expect(await findingRepository.listWorkflowIdsWithOpenFindings('v3', [], ctx)).toEqual([]);
+		});
+	});
+
 	describe('listTriageableForRule', () => {
 		test('returns each open and wont_fix finding of the rule with its status, workflow name, published state and last update', async () => {
 			const published = await createWorkflowWithHistory({ name: 'Published flow' });

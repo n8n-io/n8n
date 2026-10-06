@@ -94,6 +94,20 @@ export class MigrationFindingRepository extends BaseRepository<MigrationFinding>
 		return Number(row?.count ?? 0);
 	}
 
+	/** The given workflows that have at least one open finding for the version. */
+	async listWorkflowIdsWithOpenFindings(
+		targetVersion: BreakingChangeVersion,
+		workflowIds: string[],
+		ctx: OperationContext,
+	): Promise<string[]> {
+		if (workflowIds.length === 0) return [];
+		const rows = await this.managerFor(ctx).find(MigrationFinding, {
+			select: { workflowId: true },
+			where: { targetVersion, status: 'open', workflowId: In(workflowIds) },
+		});
+		return [...new Set(rows.map((row) => row.workflowId))];
+	}
+
 	/** Rules with at least one won't fix finding for the version. */
 	async listRuleIdsWithWontFix(
 		targetVersion: BreakingChangeVersion,

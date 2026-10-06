@@ -48,6 +48,13 @@ const mockWorkflowWithIssue = {
 	lastUpdatedAt: new Date('2024-01-15'),
 	lastExecutedAt: new Date('2024-01-14'),
 	status: 'open' as const,
+	owner: {
+		id: 'user-1',
+		firstName: 'Ada',
+		lastName: 'Lovelace',
+		email: 'ada@example.com',
+		source: 'suggested' as const,
+	},
 	issues: [
 		{
 			nodeId: 'node-1',
@@ -186,6 +193,7 @@ describe('MigrationRuleDetail', () => {
 
 			await waitFor(() => {
 				expect(screen.getByText('Name')).toBeInTheDocument();
+				expect(screen.getByText('Owner')).toBeInTheDocument();
 				expect(screen.getByText('Status', { selector: 'th' })).toBeInTheDocument();
 				expect(screen.getByText('Nodes affected')).toBeInTheDocument();
 				expect(screen.getByText(/Number of executions/)).toBeInTheDocument();
@@ -433,6 +441,42 @@ describe('MigrationRuleDetail', () => {
 				expect(screen.getByText('HTTP Request')).toBeInTheDocument();
 				expect(screen.getByText('Webhook')).toBeInTheDocument();
 				expect(screen.getByText('Gmail')).toBeInTheDocument();
+			});
+		});
+
+		it('should show the owner name, or Unassigned when the workflow has none', async () => {
+			renderComponent({
+				props: {
+					migrationRuleId: 'rule-1',
+				},
+			});
+
+			await waitFor(() => {
+				expect(screen.getByText('Ada Lovelace')).toBeInTheDocument();
+				expect(screen.getByText('Unassigned')).toBeInTheDocument();
+			});
+		});
+
+		it('should fall back to the email when the owner has no name', async () => {
+			vi.mocked(breakingChangesApi.getReportForRule).mockResolvedValue(
+				createMockRuleResult({
+					affectedWorkflows: [
+						{
+							...mockWorkflowWithIssue,
+							owner: { ...mockWorkflowWithIssue.owner, firstName: '', lastName: '' },
+						},
+					],
+				}),
+			);
+
+			renderComponent({
+				props: {
+					migrationRuleId: 'rule-1',
+				},
+			});
+
+			await waitFor(() => {
+				expect(screen.getByText('ada@example.com')).toBeInTheDocument();
 			});
 		});
 
