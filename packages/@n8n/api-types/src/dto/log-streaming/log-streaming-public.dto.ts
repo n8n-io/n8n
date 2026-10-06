@@ -167,27 +167,51 @@ const publicSentrySchema = z.object({
 	dsn: sentryShape.dsn.openapi(sentryDocs.dsn),
 });
 
+const idSchema = z.string().openapi(commonDocs.id);
+
 const readOnlyIdSchema = readOnlyPublicSchema({
 	type: 'string',
 	readOnly: true,
 	...commonDocs.id,
 });
 
-const createLogStreamingDestinationPublicSchema = z
-	.discriminatedUnion('type', [
-		publicWebhookSchema.extend({ id: readOnlyIdSchema }),
-		publicSyslogSchema.extend({ id: readOnlyIdSchema }),
-		publicSentrySchema.extend({ id: readOnlyIdSchema }),
-	])
+const destinationUnion = <Id extends z.ZodTypeAny>(id: Id) =>
+	z
+		.discriminatedUnion('type', [
+			publicWebhookSchema.extend({ id }),
+			publicSyslogSchema.extend({ id }),
+			publicSentrySchema.extend({ id }),
+		])
+		.openapi(logStreamingDestinationDocs);
+
+export const logStreamingDestinationPublicSchema = destinationUnion(idSchema);
+const createLogStreamingDestinationPublicSchema = destinationUnion(readOnlyIdSchema);
+const updateLogStreamingDestinationPublicSchema = z
+	.discriminatedUnion('type', [publicWebhookSchema, publicSyslogSchema, publicSentrySchema])
 	.openapi(logStreamingDestinationDocs);
 
+export type LogStreamingDestinationPublic = z.infer<typeof logStreamingDestinationPublicSchema>;
 export type CreateLogStreamingDestinationPublic = z.infer<
 	typeof createLogStreamingDestinationPublicSchema
 >;
+export type UpdateLogStreamingDestinationPublic = z.infer<
+	typeof updateLogStreamingDestinationPublicSchema
+>;
+export type LogStreamingDestinationPublicType = LogStreamingDestinationPublic['type'];
 
-export type LogStreamingDestinationPublicType = CreateLogStreamingDestinationPublic['type'];
+/** A discriminated union has no object shape, so these cannot extend `Z.class`. */
+export class LogStreamingDestinationPublicDto {
+	static schema = logStreamingDestinationPublicSchema;
 
-// `@Body` reads the class from the decorator metadata; the same-named type gives the handler the union.
+	static safeParse(data: unknown) {
+		return logStreamingDestinationPublicSchema.safeParse(data);
+	}
+
+	static parse(data: unknown): LogStreamingDestinationPublic {
+		return logStreamingDestinationPublicSchema.parse(data);
+	}
+}
+
 export type CreateLogStreamingDestinationPublicDto = CreateLogStreamingDestinationPublic;
 export const CreateLogStreamingDestinationPublicDto = class {
 	static schema = createLogStreamingDestinationPublicSchema;
@@ -201,14 +225,6 @@ export const CreateLogStreamingDestinationPublicDto = class {
 	}
 };
 
-const updateLogStreamingDestinationPublicSchema = z
-	.discriminatedUnion('type', [publicWebhookSchema, publicSyslogSchema, publicSentrySchema])
-	.openapi(logStreamingDestinationDocs);
-
-export type UpdateLogStreamingDestinationPublic = z.infer<
-	typeof updateLogStreamingDestinationPublicSchema
->;
-
 export type UpdateLogStreamingDestinationPublicDto = UpdateLogStreamingDestinationPublic;
 export const UpdateLogStreamingDestinationPublicDto = class {
 	static schema = updateLogStreamingDestinationPublicSchema;
@@ -221,31 +237,6 @@ export const UpdateLogStreamingDestinationPublicDto = class {
 		return updateLogStreamingDestinationPublicSchema.parse(data);
 	}
 };
-
-const idSchema = z.string().openapi(commonDocs.id);
-
-export const logStreamingDestinationPublicSchema = z
-	.discriminatedUnion('type', [
-		publicWebhookSchema.extend({ id: idSchema }),
-		publicSyslogSchema.extend({ id: idSchema }),
-		publicSentrySchema.extend({ id: idSchema }),
-	])
-	.openapi(logStreamingDestinationDocs);
-
-export type LogStreamingDestinationPublic = z.infer<typeof logStreamingDestinationPublicSchema>;
-
-/** A discriminated union has no object shape, so this cannot extend `Z.class`. */
-export class LogStreamingDestinationPublicDto {
-	static schema = logStreamingDestinationPublicSchema;
-
-	static safeParse(data: unknown) {
-		return logStreamingDestinationPublicSchema.safeParse(data);
-	}
-
-	static parse(data: unknown): LogStreamingDestinationPublic {
-		return logStreamingDestinationPublicSchema.parse(data);
-	}
-}
 
 const logStreamingDestinationListPublicSchema = z
 	.object({
