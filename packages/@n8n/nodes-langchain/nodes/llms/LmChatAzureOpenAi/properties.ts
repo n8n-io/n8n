@@ -178,14 +178,27 @@ export const properties: INodeProperties[] = [
 				type: 'number',
 				displayOptions: { show: { '/modelFamily': ['openai'] } },
 			},
+			// Same option twice: the editor picks the definition whose displayOptions match.
+			// OpenAI accepts a temperature up to 2, Claude rejects anything above 1 with a 400.
 			{
 				displayName: 'Sampling Temperature',
 				name: 'temperature',
 				default: 0.7,
-				typeOptions: { maxValue: 2, minValue: 0, numberPrecision: 1 }, // Max temp can be 2
+				typeOptions: { maxValue: 2, minValue: 0, numberPrecision: 1 },
 				description:
 					'Controls randomness: Lowering results in less random completions. As the temperature approaches zero, the model will become deterministic and repetitive.',
 				type: 'number',
+				displayOptions: { show: { '/modelFamily': ['openai'] } },
+			},
+			{
+				displayName: 'Sampling Temperature',
+				name: 'temperature',
+				default: 0.7,
+				typeOptions: { maxValue: 1, minValue: 0, numberPrecision: 1 },
+				description:
+					'Controls randomness: Lowering results in less random completions. As the temperature approaches zero, the model will become deterministic and repetitive. Claude accepts values from 0 to 1.',
+				type: 'number',
+				displayOptions: { show: { '/modelFamily': ['anthropic'] } },
 			},
 			{
 				displayName: 'Timeout (Ms)',

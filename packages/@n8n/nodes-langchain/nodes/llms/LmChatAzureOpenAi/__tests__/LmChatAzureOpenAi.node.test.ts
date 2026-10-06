@@ -453,6 +453,23 @@ describe('LmChatAzureOpenAi', () => {
 			},
 		);
 
+		it('should cap Sampling Temperature at 1 for the Anthropic family and 2 for OpenAI', () => {
+			const temperatures = properties
+				.find((p) => p?.name === 'options')
+				?.options?.filter((o) => 'name' in o && o.name === 'temperature');
+
+			expect(temperatures).toEqual([
+				expect.objectContaining({
+					typeOptions: expect.objectContaining({ maxValue: 2 }),
+					displayOptions: { show: { '/modelFamily': ['openai'] } },
+				}),
+				expect.objectContaining({
+					typeOptions: expect.objectContaining({ maxValue: 1 }),
+					displayOptions: { show: { '/modelFamily': ['anthropic'] } },
+				}),
+			]);
+		});
+
 		it('should build the client against the resource origin plus /anthropic', async () => {
 			const ctx = setupMockContext('azureOpenAiApi', foundry, {}, false, 'anthropic');
 
