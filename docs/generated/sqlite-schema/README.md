@@ -117,6 +117,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [promotion_connection](promotion_connection.md) | 7 |  | table |
 | [promotion_connection_project](promotion_connection_project.md) | 4 |  | table |
 | [promotion_provider](promotion_provider.md) | 8 |  | table |
+| [promotion_review](promotion_review.md) | 12 |  | table |
 | [role](role.md) | 7 |  | table |
 | [role_mapping_rule](role_mapping_rule.md) | 7 |  | table |
 | [role_mapping_rule_project](role_mapping_rule_project.md) | 2 |  | table |
@@ -329,6 +330,9 @@ erDiagram
 "promotion_connection" }o--|| "promotion_provider" : "FOREIGN KEY (providerId) REFERENCES promotion_provider (id) ON UPDATE NO ACTION ON DELETE RESTRICT MATCH NONE"
 "promotion_connection_project" }o--|| "promotion_connection" : "FOREIGN KEY (connectionId) REFERENCES promotion_connection (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "promotion_connection_project" |o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"promotion_review" }o--o| "user" : "FOREIGN KEY (approvedById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
+"promotion_review" }o--o| "user" : "FOREIGN KEY (createdById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
+"promotion_review" }o--o| "promotion_connection" : "FOREIGN KEY (connectionId) REFERENCES promotion_connection (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "role_mapping_rule" }o--|| "role" : "FOREIGN KEY (role) REFERENCES role (slug) ON UPDATE CASCADE ON DELETE CASCADE MATCH NONE"
 "role_mapping_rule_project" |o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "role_mapping_rule_project" |o--|| "role_mapping_rule" : "FOREIGN KEY (roleMappingRuleId) REFERENCES role_mapping_rule (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
@@ -1478,6 +1482,20 @@ erDiagram
   varchar_128_ name
   varchar_32_ type
   datetime_3_ updatedAt
+}
+"promotion_review" {
+  datetime_3_ approvedAt
+  varchar approvedById FK
+  varchar_255_ branchName
+  datetime_3_ closedAt
+  varchar_64_ commitSha
+  varchar_36_ connectionId FK
+  datetime_3_ createdAt
+  varchar createdById FK
+  varchar_36_ id PK
+  datetime_3_ mergedAt
+  varchar_255_ remoteReviewId
+  varchar_16_ state
 }
 "role" {
   datetime_3_ createdAt

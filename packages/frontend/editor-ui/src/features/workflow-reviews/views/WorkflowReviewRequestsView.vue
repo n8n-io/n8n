@@ -17,18 +17,41 @@ import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useResizablePanel } from '@n8n/design-system';
 import { LOCAL_STORAGE_WORKFLOW_REVIEW_SIDEBAR_WIDTH } from '@/app/constants/localStorage';
 import { useToast } from '@n8n/composables/useToast';
+import { hasPermission } from '@/app/utils/rbac/permissions';
+import { usePromotionsEnabled } from '@/features/shared/promotions/usePromotionsEnabled';
 
 import WorkflowReviewDetailTabs from '../components/WorkflowReviewDetailTabs.vue';
 import type { WorkflowReviewDetailTab } from '../components/WorkflowReviewDetailTabs.vue';
 import WorkflowReviewRequestsSidebar from '../components/WorkflowReviewRequestsSidebar.vue';
 import type { ReviewInboxSidebarSection } from '../components/WorkflowReviewRequestsSidebar.vue';
 import WorkflowReviewStatusDot from '../components/WorkflowReviewStatusDot.vue';
+import PromotionReviewDetail from '../components/PromotionReviewDetail.vue';
+import PromotionReviewStateDot from '../components/PromotionReviewStateDot.vue';
 import { REVIEW_INBOX_QUERY_PARAM, WORKFLOW_REVIEW_REQUESTS_VIEW } from '../constants';
+import {
+	fromPromotionReviewRouteId,
+	isPromotionReviewId,
+	promotionReviewTitle,
+	usePromotionReviewsStore,
+} from '../promotionReviews.store';
 import { useReviewActivityStore } from '../reviewActivity.store';
 import { useReviewInboxStore, type ReviewInboxSectionKey } from '../reviewInbox.store';
 import type { WorkflowReviewDecisionInput } from '../workflowReviews.api';
 
 const store = useReviewInboxStore();
+// Promotion Reviews share the inbox. They are one more task for the reviewer,
+// so they sit in the same lists, sorted by creation time.
+const promotionStore = usePromotionReviewsStore();
+// Same gate as the Promotions settings page: module active, rollout flag on, and
+// the viewer may read connections. Otherwise the inbox never asks for runs and a
+// `promotion:` deep link falls through to the not-found state.
+const { isEnabled: isPromotionsEnabled } = usePromotionsEnabled();
+const promotionReviewsEnabled = computed(
+	() =>
+		isPromotionsEnabled.value && hasPermission(['rbac'], { rbac: { scope: 'gitConnection:read' } }),
+);
+const isPromotionRoute = (id: string | null): id is string =>
+	promotionReviewsEnabled.value && isPromotionReviewId(id);
 // The tab round trip destroys the feed subtree, so its lifecycle lives here; the
 // feed and the composer read the store themselves.
 const activityStore = useReviewActivityStore();
@@ -49,9 +72,18 @@ const {
 // unwraps the slice refs, so read them through the store.
 function toSidebarSection(key: ReviewInboxSectionKey): ReviewInboxSidebarSection {
 	const slice = store.sections[key];
+	// Admins see every Promotion Review under "Waiting for review" and "Closed".
+	const promotionItems = !promotionReviewsEnabled.value
+		? undefined
+		: key === 'waiting'
+			? promotionStore.items.open
+			: key === 'closed'
+				? promotionStore.items.closed
+				: undefined;
 	return {
 		key,
 		items: slice.items,
+		promotionItems,
 		loadingMore: slice.loadingMore,
 		hasMore: slice.hasMore,
 		error: slice.error,
@@ -90,6 +122,16 @@ function firstParam(value: string | string[] | undefined): string | null {
 }
 
 const selectedReviewId = computed(() => firstParam(route.params.reviewRequestId));
+const selectedPromotionId = computed(() =>
+	isPromotionRoute(selectedReviewId.value)
+		? fromPromotionReviewRouteId(selectedReviewId.value)
+		: null,
+);
+const selectedPromotion = computed(() =>
+	selectedPromotionId.value
+		? (promotionStore.detail ?? promotionStore.findItemById(selectedPromotionId.value))
+		: null,
+);
 
 /**
  * Watchers and resolved requests below both reach this view after the viewer may have left it,
@@ -107,14 +149,26 @@ function stateFromQuery(value: unknown): WorkflowReviewRequestState {
 // one has started loading, and a teardown clear would invalidate those requests.
 store.reset();
 activityStore.reset();
+promotionStore.reset();
 
 // Hydrate the tab before loading so the first list fetch uses the URL state.
 store.activeTab = stateFromQuery(route.query[REVIEW_INBOX_QUERY_PARAM.state]);
 
 const selectedListItem = computed(() =>
-	selectedReviewId.value ? store.findItemById(selectedReviewId.value) : null,
+	selectedReviewId.value && !selectedPromotionId.value
+		? store.findItemById(selectedReviewId.value)
+		: null,
 );
 const selectedItem = computed(() => detail.value ?? selectedListItem.value);
+
+// The empty and no-selection states must count Promotion Reviews too.
+const hasPromotionRowsInActiveTab = computed(
+	() => promotionReviewsEnabled.value && promotionStore.items[activeTab.value].length > 0,
+);
+const inboxIsEmpty = computed(() => isEmpty.value && !hasPromotionRowsInActiveTab.value);
+const inboxHasItems = computed(
+	() => hasItemsInActiveTab.value || hasPromotionRowsInActiveTab.value,
+);
 
 const i18n = useI18n();
 const documentTitle = useDocumentTitle();
@@ -156,6 +210,13 @@ watch(
 	selectedReviewId,
 	(id) => {
 		if (!isOnInbox()) return;
+		if (isPromotionRoute(id)) {
+			store.clearDetail();
+			activityStore.reset();
+			void promotionStore.fetchDetail(fromPromotionReviewRouteId(id)).catch(handleLoadError);
+			return;
+		}
+		promotionStore.clearDetail();
 		if (id) {
 			void store.fetchDetail(id).catch(handleLoadError);
 			// Failures surface in the feed's own error row, never as a second toast.
@@ -173,6 +234,7 @@ watch(
 	(next) => {
 		if (!isOnInbox()) return;
 		void store.setActiveTab(stateFromQuery(next));
+		if (promotionReviewsEnabled.value) void promotionStore.fetchTab(stateFromQuery(next));
 	},
 );
 
@@ -306,10 +368,45 @@ async function onDecide(id: string, input: WorkflowReviewDecisionInput) {
 	}
 }
 
+const approving = ref(false);
+
+/**
+ * Approve merges on GitLab, which removes the row from the open list. Follow it
+ * to the closed tab like a decided Workflow Review, so the detail stays selected.
+ */
+async function onApprovePromotion(reviewId: string) {
+	approving.value = true;
+	try {
+		await promotionStore.approve(reviewId);
+		if (!isMounted) return;
+		showMessage({
+			type: 'success',
+			title: i18n.baseText('promotionReviews.approve.success.title'),
+			message: i18n.baseText('promotionReviews.approve.success.message'),
+		});
+		if (selectedPromotionId.value === reviewId) followClosedReview(selectedReviewId.value ?? '');
+		void promotionStore.fetchTab('closed');
+	} catch (error) {
+		if (!isMounted) return;
+		showError(error, i18n.baseText('promotionReviews.approve.error.title'));
+		// A 409 means the state moved on GitLab. Refetch, so the button reflects it.
+		void promotionStore.fetchDetail(reviewId).catch(handleLoadError);
+		void promotionStore.fetchTab(activeTab.value);
+	} finally {
+		approving.value = false;
+	}
+}
+
+async function loadPromotionDiff(workflowId: string) {
+	if (!selectedPromotionId.value) throw new Error('No promotion review selected');
+	return await promotionStore.fetchWorkflowDiff(selectedPromotionId.value, workflowId);
+}
+
 onMounted(() => {
 	isMounted = true;
 	void store.fetchSummary();
 	void store.fetchActiveTab();
+	if (promotionReviewsEnabled.value) void promotionStore.fetchTab(activeTab.value);
 });
 
 onUnmounted(() => {
@@ -348,7 +445,17 @@ onUnmounted(() => {
 			<div :class="$style.main">
 				<div :class="$style.columnTitle">
 					<div
-						v-if="selectedItem"
+						v-if="selectedPromotion"
+						:class="$style.reviewTitle"
+						data-test-id="promotion-review-title-row"
+					>
+						<PromotionReviewStateDot :state="selectedPromotion.state" />
+						<N8nHeading bold tag="h2" size="xlarge" data-test-id="promotion-review-title">
+							{{ promotionReviewTitle(selectedPromotion) }}
+						</N8nHeading>
+					</div>
+					<div
+						v-else-if="selectedItem"
 						:class="$style.reviewTitle"
 						data-test-id="workflow-review-request-title-row"
 					>
@@ -364,7 +471,32 @@ onUnmounted(() => {
 
 				<div :class="$style.mainBody">
 					<div
-						v-if="selectedReviewId && detailNotFound"
+						v-if="selectedPromotionId && promotionStore.detailNotFound"
+						:class="$style.emptyStateWrapper"
+						data-test-id="promotion-review-detail-not-found"
+					>
+						<N8nEmptyState
+							:class="$style.emptyState"
+							:icon="alertIcon"
+							:heading="i18n.baseText('workflowReviews.detail.notFound.title')"
+							:description="i18n.baseText('promotionReviews.detail.notFound.body')"
+						/>
+					</div>
+					<div
+						v-else-if="selectedPromotionId && promotionStore.detailLoading && !selectedPromotion"
+						:class="$style.detailSkeleton"
+					>
+						<N8nLoading :loading="true" :rows="3" />
+					</div>
+					<PromotionReviewDetail
+						v-else-if="selectedPromotionId && selectedPromotion"
+						:review="selectedPromotion"
+						:approving="approving"
+						:load-diff="loadPromotionDiff"
+						@approve="onApprovePromotion(selectedPromotionId)"
+					/>
+					<div
+						v-else-if="selectedReviewId && detailNotFound"
 						:class="$style.emptyStateWrapper"
 						data-test-id="workflow-review-detail-not-found"
 					>
@@ -390,7 +522,7 @@ onUnmounted(() => {
 					/>
 					<N8nLoading v-else-if="isLoadingActiveTab" :loading="true" :rows="3" />
 					<div
-						v-else-if="activeTabInitialLoadFailed && !hasItemsInActiveTab"
+						v-else-if="activeTabInitialLoadFailed && !inboxHasItems"
 						:class="$style.emptyStateWrapper"
 						data-test-id="workflow-reviews-load-error"
 					>
@@ -403,7 +535,7 @@ onUnmounted(() => {
 						/>
 					</div>
 					<div
-						v-else-if="isEmpty"
+						v-else-if="inboxIsEmpty"
 						:class="$style.emptyStateWrapper"
 						data-test-id="workflow-reviews-empty-state"
 					>
@@ -415,7 +547,7 @@ onUnmounted(() => {
 						/>
 					</div>
 					<div
-						v-else-if="hasItemsInActiveTab"
+						v-else-if="inboxHasItems"
 						:class="$style.emptyStateWrapper"
 						data-test-id="workflow-reviews-no-selection"
 					>

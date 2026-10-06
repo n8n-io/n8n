@@ -46,6 +46,25 @@ properties:
     required:
       - commitSha
       - branchName
+  mergeRequest:
+    type: object
+    properties:
+      reviewId:
+        type: string
+        minLength: 1
+        maxLength: 36
+      iid:
+        type: integer
+      webUrl:
+        type: string
+    required:
+      - reviewId
+      - iid
+      - webUrl
+  warnings:
+    type: array
+    items:
+      type: string
 required:
   - connectionId
   - configId

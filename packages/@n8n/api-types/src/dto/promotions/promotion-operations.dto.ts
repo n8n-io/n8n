@@ -6,6 +6,7 @@ import {
 	promotionBindingPreflightResultSchema,
 	promotionBindingWarningSchema,
 } from './promotion-binding-preflight.dto';
+import { promotionMergeRequestResultSchema } from './promotion-review.dto';
 
 export class PromotePackageDto extends Z.class(
 	{
@@ -44,6 +45,10 @@ export const promotePackageResultSchema = z.object({
 	configId: n8nIdSchema,
 	counts: promotePackageCountsSchema,
 	git: promotionGitResultSchema,
+	/** Set when the push went to a promotion branch on a Git host that opened a merge request. */
+	mergeRequest: promotionMergeRequestResultSchema.optional(),
+	/** The push succeeded, but a follow-up step did not. The admin can finish it on the host. */
+	warnings: z.array(z.string()).optional(),
 });
 
 export class PromotePackageResultDto extends Z.class(promotePackageResultSchema.shape) {}

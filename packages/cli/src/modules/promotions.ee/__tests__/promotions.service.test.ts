@@ -15,6 +15,8 @@ import type {
 	PackageDirectoryInventoryReader,
 } from '@/modules/n8n-packages/io/directory/package-directory-inventory-reader';
 import type { PackageImportConfig } from '@/modules/n8n-packages/n8n-packages.config';
+
+import type { PromotionReviewsService } from '../promotion-reviews.service';
 import type { N8nPackagesService } from '@/modules/n8n-packages/n8n-packages.service';
 import {
 	MissingWorkflowDependencyPolicy,
@@ -71,6 +73,7 @@ describe('PromotionsService', () => {
 	const bindingPreflight = mock<PromotionBindingPreflightService>();
 	const inventoryReader = mock<PackageDirectoryInventoryReader>();
 	const packageImportConfig = mock<PackageImportConfig>();
+	const reviewsService = mock<PromotionReviewsService>();
 	const logger = mock<Logger>();
 	logger.scoped.mockReturnValue(logger);
 
@@ -139,8 +142,10 @@ describe('PromotionsService', () => {
 			bindingPreflight,
 			inventoryReader,
 			packageImportConfig,
+			reviewsService,
 			logger,
 		);
+		reviewsService.openMergeRequest.mockResolvedValue({ warnings: [] });
 		providersService.decryptCredentials.mockResolvedValue({
 			authType: 'ssh-key',
 			privateKey: 'PRIV',

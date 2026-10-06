@@ -1,5 +1,9 @@
 <script lang="ts" setup>
-import type { WorkflowReviewInboxItem, WorkflowReviewRequestState } from '@n8n/api-types';
+import type {
+	PromotionReviewSummary,
+	WorkflowReviewInboxItem,
+	WorkflowReviewRequestState,
+} from '@n8n/api-types';
 import { computed, ref, watch } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import {
@@ -21,15 +25,51 @@ import {
 	type CollapsibleReviewInboxSection,
 } from '../composables/useReviewInboxSectionCollapse';
 import type { ReviewInboxSectionKey } from '../reviewInbox.store';
+import { promotionReviewTitle, toPromotionReviewRouteId } from '../promotionReviews.store';
+import PromotionReviewStateDot from './PromotionReviewStateDot.vue';
 
 /** One independently paginated list, flattened from its store slice. */
 export type ReviewInboxSidebarSection = {
 	key: ReviewInboxSectionKey;
 	items: WorkflowReviewInboxItem[];
+	/** Promotion Reviews interleaved into this section by creation time. */
+	promotionItems?: PromotionReviewSummary[];
 	loadingMore: boolean;
 	hasMore: boolean;
 	error: Error | null;
 };
+
+/** Every review kind is one task for the reviewer, so the list mixes them. */
+type ReviewInboxRow =
+	| { kind: 'workflow'; id: string; createdAt: string; item: WorkflowReviewInboxItem }
+	| { kind: 'promotion'; id: string; createdAt: string; item: PromotionReviewSummary };
+
+function toRows(section: ReviewInboxSidebarSection): ReviewInboxRow[] {
+	const rows: ReviewInboxRow[] = [
+		...section.items.map(
+			(item): ReviewInboxRow => ({
+				kind: 'workflow',
+				id: item.id,
+				createdAt: item.createdAt,
+				item,
+			}),
+		),
+		...(section.promotionItems ?? []).map(
+			(item): ReviewInboxRow => ({
+				kind: 'promotion',
+				id: toPromotionReviewRouteId(item.id),
+				createdAt: item.createdAt,
+				item,
+			}),
+		),
+	];
+	if (!section.promotionItems?.length) return rows;
+	return rows.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+}
+
+function sectionRowCount(section: ReviewInboxSidebarSection): number {
+	return section.items.length + (section.promotionItems?.length ?? 0);
+}
 
 const props = defineProps<{
 	sections: ReviewInboxSidebarSection[];
@@ -90,7 +130,9 @@ function isCollapsibleSection(key: ReviewInboxSectionKey): key is CollapsibleRev
 	return key !== 'closed';
 }
 
-const hasUsableRows = computed(() => props.sections.some((section) => section.items.length > 0));
+const hasUsableRows = computed(() =>
+	props.sections.some((section) => sectionRowCount(section) > 0),
+);
 const showInitialLoadError = computed(() => props.initialLoadFailed && !hasUsableRows.value);
 
 const groups = computed(() =>
@@ -100,6 +142,7 @@ const groups = computed(() =>
 			return {
 				key: section.key,
 				section,
+				rows: toRows(section),
 				collapsible: collapsibleKey !== null,
 				title: collapsibleKey ? sectionTitle(collapsibleKey) : null,
 				collapsed: collapsibleKey !== null && isCollapsed(collapsibleKey),
@@ -107,7 +150,7 @@ const groups = computed(() =>
 				groupId: `workflow-review-section-group-${section.key}`,
 				// A settled, empty section is dropped entirely. When another section
 				// has rows, an error stays visible with its section-specific retry.
-				visible: section.error !== null || section.items.length > 0 || section.hasMore,
+				visible: section.error !== null || sectionRowCount(section) > 0 || section.hasMore,
 			};
 		})
 		.filter((group) => group.visible && !props.loading && !showInitialLoadError.value),
@@ -227,34 +270,54 @@ function onListBackgroundClick() {
 				>
 					<template v-if="!group.collapsed">
 						<N8nCard
-							v-for="item in group.section.items"
-							:key="item.id"
-							:class="[$style.card, { [$style.cardSelected]: selectedId === item.id }]"
-							data-test-id="workflow-review-request-row"
+							v-for="row in group.rows"
+							:key="row.id"
+							:class="[$style.card, { [$style.cardSelected]: selectedId === row.id }]"
+							:data-test-id="
+								row.kind === 'promotion'
+									? 'promotion-review-request-row'
+									: 'workflow-review-request-row'
+							"
 							role="option"
 							tabindex="0"
-							:aria-selected="selectedId === item.id"
-							@click="emit('select', item.id)"
-							@keydown.enter.prevent="emit('select', item.id)"
-							@keydown.space.prevent="emit('select', item.id)"
+							:aria-selected="selectedId === row.id"
+							@click="emit('select', row.id)"
+							@keydown.enter.prevent="emit('select', row.id)"
+							@keydown.space.prevent="emit('select', row.id)"
 						>
 							<div :class="$style.cardContent">
 								<div :class="$style.cardHeader">
 									<N8nText bold tag="h3" :class="$style.cardTitle">
-										{{ item.title }}
+										{{ row.kind === 'promotion' ? promotionReviewTitle(row.item) : row.item.title }}
 									</N8nText>
-									<WorkflowReviewStatusDot :state="item.state" :decision="item.decision" />
+									<WorkflowReviewStatusDot
+										v-if="row.kind === 'workflow'"
+										:state="row.item.state"
+										:decision="row.item.decision"
+									/>
+									<PromotionReviewStateDot v-else :state="row.item.state" />
 								</div>
 								<div :class="$style.cardMeta">
 									<N8nBadge
-										v-if="item.workflowName"
+										v-if="row.kind === 'workflow' && row.item.workflowName"
 										variant="outline"
 										:class="$style.workflowBadge"
 										data-test-id="workflow-review-request-workflow-badge"
 									>
-										<span :class="$style.workflowBadgeText" :title="item.workflowName">
+										<span :class="$style.workflowBadgeText" :title="row.item.workflowName">
 											<N8nIcon icon="workflow" size="small" />
-											<span>{{ item.workflowName }}</span>
+											<span>{{ row.item.workflowName }}</span>
+										</span>
+									</N8nBadge>
+									<N8nBadge
+										v-else-if="row.kind === 'promotion'"
+										variant="outline"
+										:class="$style.workflowBadge"
+										data-test-id="promotion-review-request-badge"
+									>
+										<span :class="$style.workflowBadgeText" :title="row.item.branchName">
+											<N8nIcon icon="git-branch" size="small" />
+											<span>{{ i18n.baseText('promotionReviews.sidebar.badge') }}</span>
 										</span>
 									</N8nBadge>
 									<div :class="$style.cardMetaActions">
@@ -264,7 +327,7 @@ function onListBackgroundClick() {
 											:class="$style.cardMetaTime"
 											data-test-id="workflow-review-request-created-at"
 										>
-											<TimeAgo :date="item.createdAt" />
+											<TimeAgo :date="row.createdAt" />
 										</N8nText>
 									</div>
 								</div>
