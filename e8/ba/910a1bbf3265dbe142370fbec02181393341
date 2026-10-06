@@ -1,0 +1,42 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/agentsChatThreadAdapter.test.ts
+  s_db74c72b258827::t_e7bbb1a9e4984a 1-131
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/__tests__/InstanceAiAgentsConversation.test.ts
+  s_db74c72b258827::t_ff091775b2c36b 1-172
+packages/frontend/editor-ui/src/features/agents/components/AgentChatPanel.vue
+  s_db74c72b258827::t_f0827a695b9c1d 944-949,951,953
+  s_db74c72b258827::t_d2ca9b96d6521d 950,952
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/instanceAi.threadRuntime.test.ts
+  s_db74c72b258827::t_e7bbb1a9e4984a 3830-3912
+packages/frontend/editor-ui/src/features/ai/instanceAi/instanceAi.threadRuntime.ts
+  s_db74c72b258827::t_b9e95cd964a065 630-636,638,1368,1459-1471,1473-1490,1787-1789,2036-2039
+packages/frontend/editor-ui/src/features/ai/instanceAi/instanceAi.store.ts
+  s_db74c72b258827::t_d2c26d8a9a624c 249-269,520
+packages/cli/src/modules/instance-ai/instance-ai-memory.service.ts
+  s_db74c72b258827::t_a307c1e1007b99 318,860,869
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiAgentsConversation.vue
+  s_db74c72b258827::t_0a5e8a12a03abe 6-9,11,20,22,29-31,38-39,60-67,69-94,97-113,117,127-128,145-146,173-175
+  s_db74c72b258827::t_ddc57ba4218500 114-116,120,122-126,135-137
+packages/frontend/editor-ui/src/features/ai/instanceAi/agentsChatThreadAdapter.ts
+  s_db74c72b258827::t_19ba3b5e4dec9d 1-8,11-152
+  s_db74c72b258827::t_4fba9de425c179 9-10
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/instanceAi.store.test.ts
+  s_db74c72b258827::t_0647b6195339d4 176-189
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/assistantConfirmation.ts
+  s_db74c72b258827::t_0abb16e4033165 51-52,54-56
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "e8ba910a1bbf3265dbe142370fbec02181393341",
+  "prompts": {},
+  "sessions": {
+    "s_db74c72b258827": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "623f2f12-b478-4119-a5b9-9b84971b2bbe",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}
