@@ -6,7 +6,6 @@ import { PrometheusMetricsConfig } from '@n8n/config';
 import { mock } from 'vitest-mock-extended';
 import promClient from 'prom-client';
 
-import type { InstanceAiRunProbe } from '@/modules/instance-ai/instance-ai-run-probe';
 
 import { DURATION_BUCKETS_SECONDS } from '../constant';
 import { PrometheusInstanceAiMetricsService } from '../instance-ai-metrics.service';
@@ -18,7 +17,6 @@ describe('PrometheusInstanceAiMetricsService', () => {
 		prefix: 'n8n_',
 	});
 	const eventService = mock<EventService>();
-	const runProbe = mock<InstanceAiRunProbe>();
 	let service: PrometheusInstanceAiMetricsService;
 	let mockCounterInc: Mock;
 	let mockHistogramObserve: Mock;
@@ -30,7 +28,7 @@ describe('PrometheusInstanceAiMetricsService', () => {
 
 	beforeEach(() => {
 		Object.assign(config, { prefix: 'n8n_' });
-		service = new PrometheusInstanceAiMetricsService(config, eventService, runProbe);
+		service = new PrometheusInstanceAiMetricsService(config, eventService);
 		mockCounterInc = vi.fn();
 		promClient.Counter.prototype.inc = mockCounterInc;
 		mockHistogramObserve = vi.fn();
@@ -90,21 +88,6 @@ describe('PrometheusInstanceAiMetricsService', () => {
 			});
 		});
 
-		it('should create instance_ai_active_runs gauge that reads the run probe on collect', () => {
-			runProbe.activeRunCount.mockReturnValue(3);
-			service.init();
-
-			const gaugeOptions = (promClient.Gauge as unknown as Mock).mock.calls.find(
-				(c) => c[0]?.name === 'n8n_instance_ai_active_runs',
-			)?.[0];
-			expect(gaugeOptions).toBeDefined();
-			expect(gaugeOptions.help).toBe('Number of Instance AI runs currently executing.');
-
-			// Invoke the collect() hook with a gauge-like `this` to verify it reads the probe.
-			gaugeOptions.collect.call({ set: mockGaugeSet });
-			expect(runProbe.activeRunCount).toHaveBeenCalled();
-			expect(mockGaugeSet).toHaveBeenCalledWith(3);
-		});
 	});
 
 	describe('instance-ai-run-finished event handler', () => {
