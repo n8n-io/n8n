@@ -1,33 +1,3 @@
-get:
-  x-eov-operation-id: getDestination
-  x-required-scope: eventBusDestination:read
-  x-eov-operation-handler: v1/handlers/log-streaming/log-streaming.handler
-  tags:
-    - LogStreaming
-  summary: Retrieve a log streaming destination
-  description: >
-    Retrieve a single log streaming destination by id. Requires the `eventBusDestination:read`
-    scope and the Log Streaming feature to be licensed.
-  parameters:
-    - name: id
-      in: path
-      description: The id of the log streaming destination.
-      required: true
-      schema:
-        type: string
-  responses:
-    '200':
-      description: Operation successful.
-      content:
-        application/json:
-          schema:
-            $ref: '../schemas/destination.yml'
-    '401':
-      $ref: '../../../../shared/spec/responses/unauthorized.yml'
-    '403':
-      $ref: '../../../../shared/spec/responses/forbidden.yml'
-    '404':
-      $ref: '../../../../shared/spec/responses/notFound.yml'
 put:
   x-eov-operation-id: updateDestination
   x-required-scope: eventBusDestination:update
