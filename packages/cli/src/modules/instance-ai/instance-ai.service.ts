@@ -198,6 +198,7 @@ import {
 } from './instance-ai-error-reporter.service';
 import { InstanceAiGatewayService } from './instance-ai-gateway.service';
 import { InstanceAiMemoryService } from './instance-ai-memory.service';
+import { InstanceAiChatAttachmentService } from './instance-ai-chat-attachment.service';
 import { InstanceAiModelService } from './instance-ai-model.service';
 import { InstanceAiRunLimitError } from './instance-ai-run-limit.error';
 import { InstanceAiRunProbe } from './instance-ai-run-probe';
@@ -836,6 +837,7 @@ export class InstanceAiService {
 		private readonly instanceContext: InstanceContextService,
 		private readonly aiPreferenceService: AiPreferenceService,
 		private readonly aiUsageService: AiUsageService,
+		private readonly chatAttachmentService: InstanceAiChatAttachmentService,
 	) {
 		this.logger = logger.scoped('instance-ai');
 		runProbe.registerActiveRunCountProvider(() => this.runState.activeRunCount());
@@ -3684,6 +3686,22 @@ export class InstanceAiService {
 		}
 	}
 
+	private async persistSessionFileAttachments(
+		threadId: string,
+		messageId: string,
+		fileAttachments: InstanceAiFileAttachment[],
+	): Promise<void> {
+		for (const attachment of fileAttachments) {
+			await this.chatAttachmentService.storeInbound({
+				threadId,
+				messageId,
+				fileName: attachment.fileName,
+				mimeType: attachment.mimeType,
+				data: Buffer.from(attachment.data, 'base64'),
+			});
+		}
+	}
+
 	/** Save the user's prompt when Stop is hit before the stream starts; the SDK only persists it once the stream is invoked. */
 	private async persistInterruptedUserMessage(
 		threadId: string,
@@ -3820,6 +3838,9 @@ export class InstanceAiService {
 			errorReporterExecutionToken = this.instanceAiErrorReporter.beginRun(runId);
 
 			messageId = nanoid();
+			if (this.instanceAiConfig.sessionFilesEnabled && fileAttachments.length > 0) {
+				await this.persistSessionFileAttachments(threadId, messageId, fileAttachments);
+			}
 			const traceInput: Record<string, unknown> = { message };
 			if (fileAttachments.length) {
 				traceInput.attachments = fileAttachments.map((attachment) => ({

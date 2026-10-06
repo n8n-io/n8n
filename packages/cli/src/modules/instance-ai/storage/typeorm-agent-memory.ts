@@ -454,6 +454,14 @@ export class TypeORMAgentMemory
 		return ownerThreads.length;
 	}
 
+	async listThreadIdsByResourceId(resourceId: string): Promise<string[]> {
+		const rows = await this.threadRepo.find({
+			where: { resourceId },
+			select: { id: true },
+		});
+		return rows.map((row) => row.id);
+	}
+
 	async getMessages(
 		threadId: string,
 		opts?: { limit?: number; before?: Date },

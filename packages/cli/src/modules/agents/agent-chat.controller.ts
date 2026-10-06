@@ -955,6 +955,50 @@ export class AgentChatController {
 		);
 	}
 
+	@Get('/:agentId/sessions/:sessionId/files')
+	@ProjectScope('agent:read')
+	async listSessionFiles(
+		req: AuthenticatedRequest<{ projectId: string; agentId: string; sessionId: string }>,
+	) {
+		this.assertSessionFilesEnabled();
+		const { projectId, agentId, sessionId } = req.params;
+		const agent = await this.agentsService.findById(agentId, projectId);
+		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
+		return {
+			files: await this.agentChatAttachmentService.listSessionFiles(sessionId, {
+				projectId,
+				agentId,
+			}),
+		};
+	}
+
+	@Get('/:agentId/sessions/:sessionId/files/:fileId/content')
+	@ProjectScope('agent:read')
+	async getSessionFileContent(
+		req: AuthenticatedRequest<{
+			projectId: string;
+			agentId: string;
+			sessionId: string;
+			fileId: string;
+		}>,
+		res: Response,
+	) {
+		this.assertSessionFilesEnabled();
+		const { projectId, agentId, sessionId, fileId } = req.params;
+		const agent = await this.agentsService.findById(agentId, projectId);
+		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
+
+		const attachment = await this.agentChatAttachmentService.findByIdInThread(fileId, {
+			projectId,
+			threadId: sessionId,
+		});
+		if (!attachment || attachment.agentId !== agentId) {
+			throw new NotFoundError(`Attachment "${fileId}" not found`);
+		}
+
+		await this.streamAttachment(attachment, res);
+	}
+
 	@Get('/:agentId/chat/attachments/:attachmentId')
 	@ProjectScope('agent:read')
 	async getChatAttachment(
@@ -975,6 +1019,12 @@ export class AgentChatController {
 			throw new NotFoundError(`Attachment "${attachmentId}" not found`);
 		}
 		await this.streamAttachment(attachment, res);
+	}
+
+	private assertSessionFilesEnabled() {
+		if (!this.agentsConfig.sessionFilesEnabled) {
+			throw new NotFoundError('Session files are not enabled');
+		}
 	}
 
 	private async streamAttachment(attachment: AgentChatAttachment, res: Response) {

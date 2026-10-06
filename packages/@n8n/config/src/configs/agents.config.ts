@@ -82,6 +82,12 @@ export class AgentsConfig {
 	@Env('N8N_AGENTS_BACKGROUND_TASKS_ENABLED')
 	backgroundTasksEnabled: boolean = false;
 
+	/**
+	 * Session Files list, download, and persist APIs. Same env as Instance AI.
+	 */
+	@Env('N8N_SESSION_FILES_ENABLED')
+	sessionFilesEnabled: boolean = false;
+
 	/** Enable sandbox-backed agent knowledge base operations. */
 	@Env('N8N_AGENTS_AI_SANDBOX_ENABLED')
 	sandboxEnabled: boolean = false;

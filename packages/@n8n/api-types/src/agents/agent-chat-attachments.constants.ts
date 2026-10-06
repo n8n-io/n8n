@@ -11,3 +11,5 @@ export const MAX_AGENT_CHAT_ATTACHMENTS_PER_MESSAGE = 10;
 // Matches the agent_chat_attachments.fileName varchar(255) column.
 export const MAX_AGENT_CHAT_ATTACHMENT_FILENAME_LENGTH = 255;
 export const MAX_AGENT_CHAT_ATTACHMENT_MIMETYPE_LENGTH = 100;
+/** 1.5 GiB persist cap for all Attachments on one Session. */
+export const MAX_SESSION_ATTACHMENT_PERSIST_BYTES = 1.5 * 1024 * 1024 * 1024;

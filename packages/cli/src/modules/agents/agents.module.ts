@@ -225,6 +225,7 @@ export class AgentsModule implements ModuleInterface {
 			modules: [...config.modules],
 			knowledgeBaseEnabled: Container.get(SandboxSettingsService).isAgentSandboxEnabled(),
 			proxyEnabled,
+			sessionFilesEnabled: config.sessionFilesEnabled,
 		};
 	}
 

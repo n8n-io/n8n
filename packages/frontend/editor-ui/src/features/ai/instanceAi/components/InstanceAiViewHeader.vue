@@ -1,14 +1,18 @@
 <script lang="ts" setup>
-import { computed } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
-import { N8nCallout } from '@n8n/design-system';
+import type { InstanceAiThreadSummary, SessionFileDto } from '@n8n/api-types';
+import { N8nCallout, N8nIconButton, N8nTooltip, TOOLTIP_DELAY_MS } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import type { InstanceAiThreadSummary } from '@n8n/api-types';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { useInstanceAiStore } from '../instanceAi.store';
 import CreditsSettingsDropdown from '@/features/ai/assistant/components/Agent/CreditsSettingsDropdown.vue';
 import ChatHistoryDropdownTrigger from '@/features/ai/shared/components/ChatHistoryDropdownTrigger.vue';
+import SessionFilesList from '@/features/ai/shared/components/SessionFilesList.vue';
+import { getSessionFiles } from '../instanceAi.memory.api';
 import InstanceAiThreadList from './InstanceAiThreadList.vue';
 
 const props = withDefaults(
@@ -41,6 +45,8 @@ const sourceControlStore = useSourceControlStore();
 const i18n = useI18n();
 const route = useRoute();
 const { goToUpgrade } = usePageRedirectionHelper();
+const rootStore = useRootStore();
+const settingsStore = useSettingsStore();
 
 const isReadOnlyEnvironment = computed(() => sourceControlStore.preferences.branchReadOnly);
 
@@ -60,6 +66,43 @@ const threadCreditsUsed = computed(() =>
 function handleThreadSelect(threadId: string) {
 	emit('select', threadId);
 }
+
+const showSessionFiles = computed(() =>
+	Boolean(settingsStore.moduleSettings['instance-ai']?.sessionFilesEnabled && activeThreadId.value),
+);
+const sessionFilesOpen = ref(false);
+const sessionFiles = ref<SessionFileDto[]>([]);
+const sessionFilesLoading = ref(false);
+
+function sessionFileContentHref(fileId: string): string {
+	const sessionId = activeThreadId.value ?? '';
+	return `${rootStore.restApiContext.baseUrl}/instance-ai/sessions/${encodeURIComponent(sessionId)}/files/${encodeURIComponent(fileId)}/content`;
+}
+
+async function loadSessionFiles() {
+	if (!activeThreadId.value) return;
+	sessionFilesLoading.value = true;
+	try {
+		const response = await getSessionFiles(rootStore.restApiContext, activeThreadId.value);
+		sessionFiles.value = response.files;
+	} catch {
+		sessionFiles.value = [];
+	} finally {
+		sessionFilesLoading.value = false;
+	}
+}
+
+async function toggleSessionFiles() {
+	sessionFilesOpen.value = !sessionFilesOpen.value;
+	if (sessionFilesOpen.value) {
+		await loadSessionFiles();
+	}
+}
+
+watch(activeThreadId, () => {
+	sessionFilesOpen.value = false;
+	sessionFiles.value = [];
+});
 </script>
 
 <template>
@@ -93,6 +136,30 @@ function handleThreadSelect(threadId: string) {
 				button-size="small"
 				@upgrade-click="goToUpgrade('instance-ai', 'upgrade-instance-ai')"
 			/>
+			<div v-if="showSessionFiles" :class="$style.sessionFiles">
+				<N8nTooltip
+					:content="i18n.baseText('sessionFiles.title')"
+					placement="bottom"
+					:show-after="TOOLTIP_DELAY_MS"
+				>
+					<N8nIconButton
+						icon="folder"
+						variant="ghost"
+						size="small"
+						icon-size="large"
+						data-testid="session-files-toggle"
+						:aria-label="i18n.baseText('sessionFiles.title')"
+						@click="toggleSessionFiles"
+					/>
+				</N8nTooltip>
+				<div v-if="sessionFilesOpen" :class="$style.sessionFilesPanel">
+					<SessionFilesList
+						:files="sessionFiles"
+						:content-href="sessionFileContentHref"
+						:loading="sessionFilesLoading"
+					/>
+				</div>
+			</div>
 			<slot name="actions" />
 		</div>
 	</div>
@@ -128,6 +195,20 @@ function handleThreadSelect(threadId: string) {
 
 .threadHistory {
 	min-width: 0;
+}
+
+.sessionFiles {
+	position: relative;
+}
+
+.sessionFilesPanel {
+	position: absolute;
+	right: 0;
+	top: 100%;
+	z-index: 2;
+	width: 280px;
+	background-color: var(--color--background--light-2);
+	border: var(--border);
 }
 
 .readOnlyBanner {

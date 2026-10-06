@@ -8,6 +8,7 @@ export const SourceTypeSchema = z.enum([
 	'chat_message_attachment',
 	'agent_file',
 	'agent_chat_attachment',
+	'instance_ai_chat_attachment',
 ]);
 
 export type SourceType = z.infer<typeof SourceTypeSchema>;

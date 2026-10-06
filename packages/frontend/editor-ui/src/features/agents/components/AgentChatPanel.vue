@@ -23,6 +23,7 @@ import {
 	N8nLink,
 	N8nText,
 	N8nTooltip,
+	N8nIconButton,
 } from '@n8n/design-system';
 import { useDocumentVisibility, useIntervalFn } from '@vueuse/core';
 import { useI18n } from '@n8n/i18n';
@@ -35,11 +36,16 @@ import {
 	MAX_AGENT_CHAT_ATTACHMENT_SIZE_MB,
 	MAX_AGENT_CHAT_ATTACHMENTS_PER_MESSAGE,
 	PROVIDER_CAPABILITIES,
+	type SessionFileDto,
 } from '@n8n/api-types';
 import { useToast } from '@n8n/composables/useToast';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import ChatInputBase from '@/features/ai/shared/components/ChatInputBase.vue';
+import SessionFilesList from '@/features/ai/shared/components/SessionFilesList.vue';
 import AttachmentPreview from '@/features/ai/instanceAi/components/AttachmentPreview.vue';
 import { useAgentChatStream } from '../composables/useAgentChatStream';
+import { getSessionFiles } from '../composables/useAgentApi';
 import {
 	findTailOpenInteractive,
 	getMessageInteractives,
@@ -117,6 +123,8 @@ const emit = defineEmits<{
 const locale = useI18n();
 const agentTelemetry = useAgentTelemetry();
 const toast = useToast();
+const settingsStore = useSettingsStore();
+const rootStore = useRootStore();
 
 const {
 	messages,
@@ -912,6 +920,54 @@ function getConversationMarkdown(): string {
 		.join('\n\n---\n\n');
 }
 
+const sessionFilesEnabled = computed(
+	() => settingsStore.moduleSettings.agents?.sessionFilesEnabled,
+);
+const showSessionFiles = computed(() =>
+	Boolean(sessionFilesEnabled.value && props.continueSessionId),
+);
+const sessionFilesOpen = ref(false);
+const sessionFiles = ref<SessionFileDto[]>([]);
+const sessionFilesLoading = ref(false);
+
+function sessionFileContentHref(fileId: string): string {
+	const { baseUrl } = rootStore.restApiContext;
+	return `${baseUrl}/projects/${encodeURIComponent(props.projectId)}/agents/v2/${encodeURIComponent(props.agentId)}/sessions/${encodeURIComponent(props.continueSessionId ?? '')}/files/${encodeURIComponent(fileId)}/content`;
+}
+
+async function loadSessionFiles() {
+	if (!props.continueSessionId) return;
+	sessionFilesLoading.value = true;
+	try {
+		const response = await getSessionFiles(
+			rootStore.restApiContext,
+			props.projectId,
+			props.agentId,
+			props.continueSessionId,
+		);
+		sessionFiles.value = response.files;
+	} catch {
+		sessionFiles.value = [];
+	} finally {
+		sessionFilesLoading.value = false;
+	}
+}
+
+async function toggleSessionFiles() {
+	sessionFilesOpen.value = !sessionFilesOpen.value;
+	if (sessionFilesOpen.value) {
+		await loadSessionFiles();
+	}
+}
+
+watch(
+	() => props.continueSessionId,
+	() => {
+		sessionFilesOpen.value = false;
+		sessionFiles.value = [];
+	},
+);
+
 defineExpose({ focusInput, getConversationMarkdown, sendMessageFromOutside, clearBudgetStops });
 
 onMounted(() => {
@@ -1002,6 +1058,12 @@ onBeforeUnmount(() => {
 		/>
 
 		<div :class="$style.inputArea">
+			<SessionFilesList
+				v-if="sessionFilesOpen"
+				:files="sessionFiles"
+				:content-href="sessionFileContentHref"
+				:loading="sessionFilesLoading"
+			/>
 			<div
 				v-if="showBackgroundJobs"
 				ref="backgroundJobCard"
@@ -1356,6 +1418,17 @@ onBeforeUnmount(() => {
 					</div>
 				</template>
 				<template #footer-start>
+					<N8nIconButton
+						v-if="showSessionFiles"
+						icon="folder"
+						variant="ghost"
+						size="small"
+						icon-size="large"
+						data-testid="session-files-toggle"
+						:aria-label="locale.baseText('sessionFiles.title')"
+						:title="locale.baseText('sessionFiles.title')"
+						@click="toggleSessionFiles"
+					/>
 					<slot name="footer-start" />
 				</template>
 			</ChatInputBase>

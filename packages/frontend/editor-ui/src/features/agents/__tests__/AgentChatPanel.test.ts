@@ -54,6 +54,10 @@ const respondToApprovalMock = vi.fn();
 const stopAllMock = vi.fn();
 const isStoppingMock = ref(false);
 const showErrorMock = vi.fn();
+const { sessionFilesEnabledMock, getSessionFilesMock } = vi.hoisted(() => ({
+	sessionFilesEnabledMock: { value: false },
+	getSessionFilesMock: vi.fn().mockResolvedValue({ files: [] }),
+}));
 vi.mock('../composables/useAgentBackgroundJobs', () => ({
 	useAgentBackgroundJobs: () => ({
 		jobs: backgroundJobsMock,
@@ -184,6 +188,22 @@ vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({ showMessage: vi.fn(), showError: showErrorMock }),
 }));
 
+vi.mock('@n8n/stores/settings.store', () => ({
+	useSettingsStore: () => ({
+		get moduleSettings() {
+			return { agents: { sessionFilesEnabled: sessionFilesEnabledMock.value } };
+		},
+	}),
+}));
+
+vi.mock('@n8n/stores/useRootStore', () => ({
+	useRootStore: () => ({ restApiContext: { baseUrl: '/rest' } }),
+}));
+
+vi.mock('../composables/useAgentApi', () => ({
+	getSessionFiles: (...args: unknown[]) => getSessionFilesMock(...args),
+}));
+
 vi.mock('@/features/ai/shared/components/ChatInputBase.vue', async () => {
 	const { defineComponent, ref } = await import('vue');
 	return {
@@ -298,6 +318,9 @@ describe('AgentChatPanel', () => {
 		respondToApprovalMock.mockReset().mockResolvedValue(undefined);
 		fatalErrorMock.value = null;
 		onHistoryLoaded = undefined;
+		sessionFilesEnabledMock.value = false;
+		getSessionFilesMock.mockReset();
+		getSessionFilesMock.mockResolvedValue({ files: [] });
 	});
 
 	function mountPanel(
@@ -2215,6 +2238,44 @@ describe('AgentChatPanel', () => {
 		expect(wrapper.text()).toContain('MCP server');
 		expect(wrapper.text()).toContain('Sub-agent');
 		expect(wrapper.text()).toContain('integrations.0.credentialId');
+	});
+
+	describe('session files', () => {
+		it('hides the files button when the flag is off', () => {
+			const wrapper = mountPanel({ continueSessionId: 'session-1' });
+			expect(wrapper.find('[data-testid="session-files-toggle"]').exists()).toBe(false);
+			wrapper.unmount();
+		});
+
+		it('shows the files button and fetches the list when opened', async () => {
+			sessionFilesEnabledMock.value = true;
+			getSessionFilesMock.mockResolvedValueOnce({
+				files: [
+					{
+						id: 'att-1',
+						kind: 'attachment',
+						fileName: 'notes.txt',
+						mimeType: 'text/plain',
+						sizeBytes: 5,
+						createdAt: '2026-01-01T00:00:00.000Z',
+						previewable: true,
+					},
+				],
+			});
+			const wrapper = mountPanel({ continueSessionId: 'session-1' });
+
+			await wrapper.get('[data-testid="session-files-toggle"]').trigger('click');
+			await flushPromises();
+
+			expect(getSessionFilesMock).toHaveBeenCalledWith(
+				{ baseUrl: '/rest' },
+				'p1',
+				'a1',
+				'session-1',
+			);
+			expect(wrapper.get('[data-testid="session-files-list"]').text()).toContain('notes.txt');
+			wrapper.unmount();
+		});
 	});
 });
 

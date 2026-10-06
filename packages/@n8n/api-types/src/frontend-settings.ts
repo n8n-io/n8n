@@ -394,6 +394,7 @@ export type FrontendModuleSettings = {
 		/** Whether model, sandbox, and the explicit web-search decision are configured. */
 		setupCompleted?: boolean;
 		sandboxEnabled: boolean;
+		sessionFilesEnabled?: boolean;
 		workflowBuilderAvailable: boolean;
 		sandboxUnavailableReason: string | null;
 		/** When true, orchestrator LLM step / workflow code debug is captured (`N8N_INSTANCE_AI_RUN_DEBUG_ENABLED`). */
@@ -450,6 +451,8 @@ export type FrontendModuleSettings = {
 		knowledgeBaseEnabled: boolean;
 		/** Whether the AI Assistant proxy is available to the agents module. */
 		proxyEnabled: boolean;
+		/** Whether Session Files list and download APIs are enabled. */
+		sessionFilesEnabled?: boolean;
 	};
 };
 

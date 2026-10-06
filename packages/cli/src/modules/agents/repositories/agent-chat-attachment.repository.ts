@@ -40,4 +40,13 @@ export class AgentChatAttachmentRepository extends Repository<AgentChatAttachmen
 	async findByIds(ids: string[]): Promise<AgentChatAttachment[]> {
 		return await this.findBy({ id: In(ids) });
 	}
+
+	async sumFileSizeBytesByThread(threadId: string, scope: { projectId: string }): Promise<number> {
+		const raw = await this.createQueryBuilder('attachment')
+			.select('COALESCE(SUM(attachment.fileSizeBytes), 0)', 'total')
+			.where('attachment.threadId = :threadId', { threadId })
+			.andWhere('attachment.projectId = :projectId', { projectId: scope.projectId })
+			.getRawOne<{ total: string | number }>();
+		return Number(raw?.total ?? 0);
+	}
 }

@@ -1,4 +1,5 @@
 export * from './agent-chat-attachments.constants';
+export * from './session-file.dto';
 export * from './agent-config-lifecycle';
 export * from './agent-config-validation.schema';
 export * from './agent-files.constants';

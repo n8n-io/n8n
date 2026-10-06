@@ -28,6 +28,9 @@ import {
 	InstanceAiEvalSeedDataTableRowsRequest,
 	findSeedFolderIssues,
 	findUnbackedSeedWorkflowTools,
+	MAX_SESSION_ATTACHMENT_PERSIST_BYTES,
+	ViewableMimeTypes,
+	type InstanceAiFileAttachment,
 } from '@n8n/api-types';
 import type {
 	InstanceAiAdminSettingsResponse,
@@ -68,6 +71,9 @@ import {
 } from '@n8n/instance-ai/parsers';
 import type { NextFunction, Request, Response } from 'express';
 import { randomUUID, timingSafeEqual } from 'node:crypto';
+import { pipeline } from 'node:stream/promises';
+import { FileNotFoundError, getHtmlSandboxCSP } from 'n8n-core';
+import { sanitizeFilename } from '@n8n/utils/files/sanitize-filename';
 import { InstanceAiBrowserSessionService } from './browser/instance-ai-browser-session.service';
 import { EvalAgentExecutionService } from './eval/agent-execution.service';
 import { EvalExecutionService } from './eval/execution.service';
@@ -84,6 +90,7 @@ import { InstanceAiPendingAgentService } from './instance-ai-pending-agent.servi
 import { InstanceAiPreferenceCardService } from './instance-ai-preference-card.service';
 import { InstanceAiSettingsService } from './instance-ai-settings.service';
 import { InstanceAiThreadTabsService } from './instance-ai-thread-tabs.service';
+import { InstanceAiChatAttachmentService } from './instance-ai-chat-attachment.service';
 import { InstanceAiVerificationService } from './instance-ai-verification.service';
 import { InstanceAiService } from './instance-ai.service';
 import { InstanceAiOnboardingService, startsOnboardingFirstTurn } from './onboarding';
@@ -128,10 +135,15 @@ export class InstanceAiController {
 		private readonly instanceAiErrorReporter: InstanceAiErrorReporterService,
 		private readonly publisher: Publisher,
 		private readonly preferenceCardService: InstanceAiPreferenceCardService,
-		globalConfig: GlobalConfig,
+		private readonly globalConfig: GlobalConfig,
 		private readonly threadTabsService: InstanceAiThreadTabsService,
+		private readonly chatAttachmentService: InstanceAiChatAttachmentService,
 	) {
 		this.gatewayApiKey = globalConfig.instanceAi.gatewayApiKey;
+	}
+
+	private get sessionFilesEnabled(): boolean {
+		return this.globalConfig.instanceAi.sessionFilesEnabled;
 	}
 
 	private requireInstanceAiEnabled(): void {
@@ -192,7 +204,7 @@ export class InstanceAiController {
 		// Only file attachments carry a mime type to validate; workflow and agent
 		// attachments are resource references the agent resolves with its tools.
 		const fileAttachments = (payload.attachments ?? []).filter(
-			(attachment) => attachment.type === 'file',
+			(attachment): attachment is InstanceAiFileAttachment => attachment.type === 'file',
 		);
 		if (fileAttachments.length > 0) {
 			try {
@@ -224,6 +236,17 @@ export class InstanceAiController {
 					);
 				}
 				throw error;
+			}
+
+			if (this.sessionFilesEnabled) {
+				const incomingBytes = fileAttachments.reduce(
+					(sum, attachment) => sum + Buffer.from(attachment.data, 'base64').byteLength,
+					0,
+				);
+				const existingBytes = await this.chatAttachmentService.sumFileSizeBytesByThread(threadId);
+				if (existingBytes + incomingBytes > MAX_SESSION_ATTACHMENT_PERSIST_BYTES) {
+					throw new BadRequestError('Session Attachments exceed 1.5 GB');
+				}
 			}
 		}
 
@@ -970,6 +993,75 @@ export class InstanceAiController {
 		await this.instanceAiService.routeClearThreadState(threadId, req.user.id);
 		await this.memoryService.deleteThread(threadId);
 		return { ok: true };
+	}
+
+	@Get('/sessions/:sessionId/files')
+	@GlobalScope('instanceAi:message')
+	async listSessionFiles(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('sessionId') sessionId: string,
+	) {
+		this.requireInstanceAiEnabled();
+		this.assertSessionFilesEnabled();
+		await this.assertThreadAccess(req.user.id, sessionId);
+		return { files: await this.chatAttachmentService.listSessionFiles(sessionId) };
+	}
+
+	@Get('/sessions/:sessionId/files/:fileId/content')
+	@GlobalScope('instanceAi:message')
+	async getSessionFileContent(
+		req: AuthenticatedRequest,
+		res: Response,
+		@Param('sessionId') sessionId: string,
+		@Param('fileId') fileId: string,
+	) {
+		this.requireInstanceAiEnabled();
+		this.assertSessionFilesEnabled();
+		await this.assertThreadAccess(req.user.id, sessionId);
+
+		const attachment = await this.chatAttachmentService.findByIdInThread(fileId, sessionId);
+		if (!attachment) throw new NotFoundError(`Attachment "${fileId}" not found`);
+
+		let stream: Awaited<ReturnType<InstanceAiChatAttachmentService['getStream']>>;
+		try {
+			stream = await this.chatAttachmentService.getStream(attachment);
+		} catch (error) {
+			if (error instanceof FileNotFoundError) {
+				throw new NotFoundError(`Attachment "${fileId}" is no longer available`);
+			}
+			throw error;
+		}
+
+		res.setHeader('Content-Type', attachment.mimeType);
+		res.setHeader('Content-Length', attachment.fileSizeBytes);
+		res.setHeader('X-Content-Type-Options', 'nosniff');
+		res.setHeader('Content-Security-Policy', getHtmlSandboxCSP());
+		if (!ViewableMimeTypes.includes(attachment.mimeType.toLowerCase())) {
+			res.setHeader(
+				'Content-Disposition',
+				`attachment; filename="${sanitizeFilename(attachment.fileName)}"`,
+			);
+		}
+
+		try {
+			await pipeline(stream, res);
+		} catch (error) {
+			if (
+				error instanceof Error &&
+				'code' in error &&
+				error.code === 'ERR_STREAM_PREMATURE_CLOSE'
+			) {
+				return;
+			}
+			throw error;
+		}
+	}
+
+	private assertSessionFilesEnabled() {
+		if (!this.sessionFilesEnabled) {
+			throw new NotFoundError('Session files are not enabled');
+		}
 	}
 
 	@Patch('/threads/:threadId')

@@ -6,6 +6,7 @@ const mockSaveThread = vi.fn();
 const mockDeleteThread = vi.fn();
 const mockDeleteThreadsByResourceIdPrefix = vi.fn();
 const mockDeleteThreadsByResourceId = vi.fn();
+const mockListThreadIdsByResourceId = vi.fn();
 const mockListThreads = vi.fn();
 const mockListThreadHistory = vi.fn();
 const mockSaveThreadWithProject = vi.fn();
@@ -18,6 +19,7 @@ const mockAgentMemory = {
 	deleteThread: mockDeleteThread,
 	deleteThreadsByResourceIdPrefix: mockDeleteThreadsByResourceIdPrefix,
 	deleteThreadsByResourceId: mockDeleteThreadsByResourceId,
+	listThreadIdsByResourceId: mockListThreadIdsByResourceId,
 	listThreads: mockListThreads,
 	listThreadHistory: mockListThreadHistory,
 	saveThreadWithProject: mockSaveThreadWithProject,
@@ -82,6 +84,11 @@ function installLogDouble(rows: LogRow[] = []): void {
 }
 const mockDurableLogMetrics = { recordFoldRead: vi.fn() };
 
+const mockChatAttachmentService = {
+	deleteByThread: vi.fn(),
+	deleteByThreadIds: vi.fn(),
+};
+
 function createService(options: { threadTtlDays?: number } = {}): InstanceAiMemoryService {
 	const mockConfig = {
 		instanceAi: {
@@ -107,6 +114,7 @@ function createService(options: { threadTtlDays?: number } = {}): InstanceAiMemo
 		mockPendingConfirmationRepository as never,
 		mockEventLogRepository as never,
 		mockDurableLogMetrics as never,
+		mockChatAttachmentService as never,
 	);
 }
 
@@ -1235,11 +1243,14 @@ describe('InstanceAiMemoryService.deleteThread', () => {
 
 		await service.deleteThread('00000000-0000-4000-8000-000000000001');
 
+		expect(mockChatAttachmentService.deleteByThread).toHaveBeenCalledWith(
+			'00000000-0000-4000-8000-000000000001',
+		);
 		expect(mockDeleteThreadsByResourceIdPrefix).toHaveBeenCalledWith(
 			'instance-ai-subagent:00000000-0000-4000-8000-000000000001:',
 		);
 		expect(mockDeleteThread).toHaveBeenCalledWith('00000000-0000-4000-8000-000000000001');
-		expect(mockDeleteThreadsByResourceIdPrefix.mock.invocationCallOrder[0]).toBeLessThan(
+		expect(mockChatAttachmentService.deleteByThread.mock.invocationCallOrder[0]).toBeLessThan(
 			mockDeleteThread.mock.invocationCallOrder[0],
 		);
 	});
@@ -1347,12 +1358,17 @@ describe('InstanceAiMemoryService.deleteThreadsForUser', () => {
 	});
 
 	it('delegates to the agent memory and returns the number of deleted threads', async () => {
+		mockListThreadIdsByResourceId.mockResolvedValueOnce(['thread-a', 'thread-b']);
 		mockDeleteThreadsByResourceId.mockResolvedValueOnce(3);
 		const service = createService();
 
 		const deleted = await service.deleteThreadsForUser('user-1');
 
 		expect(deleted).toBe(3);
+		expect(mockChatAttachmentService.deleteByThreadIds).toHaveBeenCalledWith([
+			'thread-a',
+			'thread-b',
+		]);
 		expect(mockDeleteThreadsByResourceId).toHaveBeenCalledWith('user-1');
 	});
 });

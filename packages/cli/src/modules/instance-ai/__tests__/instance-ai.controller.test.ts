@@ -64,6 +64,7 @@ import {
 	InstanceAiPersistPendingAgentRequest,
 	InstanceAiThreadTabsRequestDto,
 	MAX_ATTACHMENT_BASE64_BYTES,
+	MAX_SESSION_ATTACHMENT_PERSIST_BYTES,
 	MAX_TOTAL_ATTACHMENT_BASE64_BYTES,
 } from '@n8n/api-types';
 import type { AuthenticatedRequest, User, UserRepository } from '@n8n/db';
@@ -100,6 +101,7 @@ import type { InstanceAiModelCatalogService } from '../instance-ai-model-catalog
 import type { InstanceAiSettingsService } from '../instance-ai-settings.service';
 import { InstanceAiController } from '../instance-ai.controller';
 import type { InstanceAiService } from '../instance-ai.service';
+import type { InstanceAiChatAttachmentService } from '../instance-ai-chat-attachment.service';
 import type { InstanceAiErrorReporterService } from '../instance-ai-error-reporter.service';
 
 const USER_ID = 'user-1';
@@ -132,7 +134,7 @@ describe('InstanceAiController', () => {
 	const publisher = mock<Publisher>();
 	const urlService = mock<UrlService>();
 	const globalConfig = mock<GlobalConfig>({
-		instanceAi: { gatewayApiKey: 'static-key' },
+		instanceAi: { gatewayApiKey: 'static-key', sessionFilesEnabled: true },
 		editorBaseUrl: 'http://localhost:5678',
 		port: 5678,
 	});
@@ -141,6 +143,7 @@ describe('InstanceAiController', () => {
 	const credentialsService = mock<CredentialsService>();
 	const projectService = mock<ProjectService>();
 	const instanceAiErrorReporter = mock<InstanceAiErrorReporterService>();
+	const chatAttachmentService = mock<InstanceAiChatAttachmentService>();
 
 	const evalCredentialAllowlists = new EvalThreadCredentialAllowlistService();
 	const evalThreadRestore = mock<EvalThreadRestoreService>();
@@ -175,6 +178,7 @@ describe('InstanceAiController', () => {
 		preferenceCardService,
 		globalConfig,
 		threadTabsService,
+		chatAttachmentService,
 	);
 
 	const req = mock<AuthenticatedRequest>({ user: { id: USER_ID } });
@@ -189,6 +193,8 @@ describe('InstanceAiController', () => {
 		eventLog.getOpenSegments.mockReturnValue([]);
 		settingsService.isInstanceAiEnabled.mockReturnValue(true);
 		settingsService.isModelConfigured.mockResolvedValue(true);
+		chatAttachmentService.sumFileSizeBytesByThread.mockResolvedValue(0);
+		globalConfig.instanceAi.sessionFilesEnabled = true;
 	});
 
 	describe('chat', () => {
@@ -467,6 +473,24 @@ describe('InstanceAiController', () => {
 				runId: 'run-3',
 			});
 			expect(instanceAiService.startRun).toHaveBeenCalled();
+		});
+
+		it('rejects an upload that would exceed the Session persist cap', async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('owned');
+			instanceAiService.hasActiveRun.mockReturnValue(false);
+			chatAttachmentService.sumFileSizeBytesByThread.mockResolvedValue(
+				MAX_SESSION_ATTACHMENT_PERSIST_BYTES,
+			);
+			const overCapPayload = mock<InstanceAiSendMessageRequest>({
+				message: 'see attached',
+				attachments: [{ type: 'file', data: 'YQ==', mimeType: 'image/png', fileName: 'photo.png' }],
+				timeZone: 'UTC',
+			});
+
+			await expect(controller.chat(req, res, THREAD_ID, overCapPayload)).rejects.toMatchObject({
+				message: 'Session Attachments exceed 1.5 GB',
+			});
+			expect(instanceAiService.startRun).not.toHaveBeenCalled();
 		});
 
 		it('should accept a nodes attachment with multiple sets and forward it intact', async () => {
@@ -2134,6 +2158,57 @@ describe('InstanceAiController', () => {
 		});
 	});
 
+	describe('session files', () => {
+		it('should require instanceAi:message scope', () => {
+			expect(scopeOf('listSessionFiles')).toEqual({
+				scope: 'instanceAi:message',
+				globalOnly: true,
+			});
+			expect(scopeOf('getSessionFileContent')).toEqual({
+				scope: 'instanceAi:message',
+				globalOnly: true,
+			});
+		});
+
+		it('lists files for the owned session', async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('owned');
+			chatAttachmentService.listSessionFiles.mockResolvedValue([
+				{
+					id: 'att-1',
+					kind: 'attachment',
+					fileName: 'notes.txt',
+					mimeType: 'text/plain',
+					sizeBytes: 5,
+					createdAt: '2026-01-01T00:00:00.000Z',
+					previewable: true,
+				},
+			]);
+
+			const result = await controller.listSessionFiles(req, res, THREAD_ID);
+
+			expect(result).toEqual({
+				files: [expect.objectContaining({ id: 'att-1', fileName: 'notes.txt' })],
+			});
+			expect(chatAttachmentService.listSessionFiles).toHaveBeenCalledWith(THREAD_ID);
+		});
+
+		it('returns 404 when the file is not in the session', async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('owned');
+			chatAttachmentService.findByIdInThread.mockResolvedValue(null);
+
+			await expect(controller.getSessionFileContent(req, res, THREAD_ID, 'att-1')).rejects.toThrow(
+				NotFoundError,
+			);
+		});
+
+		it('returns 404 when session files are disabled', async () => {
+			globalConfig.instanceAi.sessionFilesEnabled = false;
+
+			await expect(controller.listSessionFiles(req, res, THREAD_ID)).rejects.toThrow(NotFoundError);
+			expect(chatAttachmentService.listSessionFiles).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('persistPendingAgent', () => {
 		const payload = new InstanceAiPersistPendingAgentRequest({
 			projectId: 'project-1',
@@ -2790,7 +2865,7 @@ describe('InstanceAiController — durable-log SSE replay', () => {
 	const eventLog = mock<DurableEventLog>();
 	const durableLogMetrics = mock<DurableLogMetrics>();
 	const globalConfig = mock<GlobalConfig>({
-		instanceAi: { gatewayApiKey: 'static-key' },
+		instanceAi: { gatewayApiKey: 'static-key', sessionFilesEnabled: true },
 		editorBaseUrl: 'http://localhost:5678',
 		port: 5678,
 	});
@@ -2822,6 +2897,7 @@ describe('InstanceAiController — durable-log SSE replay', () => {
 		mock<InstanceAiPreferenceCardService>(),
 		globalConfig,
 		mock<InstanceAiThreadTabsService>(),
+		mock<InstanceAiChatAttachmentService>(),
 	);
 
 	beforeEach(() => {

@@ -11,6 +11,7 @@ import type {
 	InstanceAiThreadDebugRunsResponse,
 	InstanceAiThreadTabsResponse,
 	InstanceAiThreadTabsState,
+	SessionFilesListResponse,
 } from '@n8n/api-types';
 import type { AgentResource } from '@/features/agents/types';
 
@@ -128,4 +129,15 @@ export async function fetchThreadDebugRuns(
 	threadId: string,
 ): Promise<InstanceAiThreadDebugRunsResponse> {
 	return await makeRestApiRequest(context, 'GET', `/instance-ai/debug/threads/${threadId}/runs`);
+}
+
+export async function getSessionFiles(
+	context: IRestApiContext,
+	sessionId: string,
+): Promise<SessionFilesListResponse> {
+	return await makeRestApiRequest(
+		context,
+		'GET',
+		`/instance-ai/sessions/${encodeURIComponent(sessionId)}/files`,
+	);
 }

@@ -1,6 +1,6 @@
+import type { AgentsConfig } from '@n8n/config';
 import { EventEmitter } from 'node:events';
 import type { SerializableAgentState } from '@n8n/agents';
-import type { AgentsConfig } from '@n8n/config';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
@@ -63,7 +63,10 @@ function makeController() {
 	const agentValidationService = mock<AgentValidationService>();
 	const backgroundJobService = mock<AgentBackgroundJobService>();
 	const chatExecutionService = mock<AgentChatExecutionService>();
-	const agentsConfig = mock<AgentsConfig>({ backgroundTasksEnabled: true });
+	const agentsConfig = mock<AgentsConfig>({
+		backgroundTasksEnabled: true,
+		sessionFilesEnabled: true,
+	});
 	agentExecutionService.findThreadById.mockResolvedValue(null);
 	agentExecutionService.canUseDraftThread.mockResolvedValue(true);
 	agentExecutionService.canUseProductionChatThread.mockResolvedValue(true);
@@ -186,6 +189,8 @@ describe('AgentChatController route access scopes', () => {
 		['getBackgroundJobs', 'agent:read'],
 		['stopBackgroundJobs', 'agent:execute'],
 		['getTestChatMessages', 'agent:read'],
+		['listSessionFiles', 'agent:read'],
+		['getSessionFileContent', 'agent:read'],
 		['clearTestChatMessages', 'agent:update'],
 	])('%s uses %s', (handlerName, scope) => {
 		expect(routes.get(handlerName)?.accessScope?.scope).toBe(scope);
@@ -1260,5 +1265,62 @@ describe('AgentChatController production n8n Chat', () => {
 			controller.updateProductionQueuedMessage(req, makeSseResponse([]), { message: 'x' }),
 		).rejects.toThrow(NotFoundError);
 		await expect(controller.removeProductionQueuedMessage(req)).rejects.toThrow(NotFoundError);
+	});
+});
+
+describe('AgentChatController session files', () => {
+	const sessionReq = {
+		params: { projectId: 'project-1', agentId: 'agent-1', sessionId: 'thread-1' },
+	} as never;
+
+	it('returns 404 when session files are disabled', async () => {
+		const { controller, agentsConfig } = makeController();
+		agentsConfig.sessionFilesEnabled = false;
+
+		await expect(controller.listSessionFiles(sessionReq)).rejects.toThrow(NotFoundError);
+	});
+
+	it('lists session files for the agent and thread', async () => {
+		const { controller, agentsService, agentChatAttachmentService } = makeController();
+		agentsService.findById.mockResolvedValue({ id: 'agent-1' } as never);
+		agentChatAttachmentService.listSessionFiles.mockResolvedValue([
+			{
+				id: 'att-1',
+				kind: 'attachment',
+				fileName: 'notes.txt',
+				mimeType: 'text/plain',
+				sizeBytes: 5,
+				createdAt: '2026-01-01T00:00:00.000Z',
+				previewable: true,
+			},
+		]);
+
+		await expect(controller.listSessionFiles(sessionReq)).resolves.toEqual({
+			files: [expect.objectContaining({ id: 'att-1', fileName: 'notes.txt', previewable: true })],
+		});
+		expect(agentChatAttachmentService.listSessionFiles).toHaveBeenCalledWith('thread-1', {
+			projectId: 'project-1',
+			agentId: 'agent-1',
+		});
+	});
+
+	it('returns 404 when the file belongs to another session', async () => {
+		const { controller, agentsService, agentChatAttachmentService } = makeController();
+		agentsService.findById.mockResolvedValue({ id: 'agent-1' } as never);
+		agentChatAttachmentService.findByIdInThread.mockResolvedValue(null);
+
+		await expect(
+			controller.getSessionFileContent(
+				{
+					params: {
+						projectId: 'project-1',
+						agentId: 'agent-1',
+						sessionId: 'other-thread',
+						fileId: 'att-1',
+					},
+				} as never,
+				{ setHeader: vi.fn() } as never,
+			),
+		).rejects.toThrow(NotFoundError);
 	});
 });

@@ -27,6 +27,7 @@ import type {
 	AgentProviderModelsResponse,
 	AgentVersionListItemDto,
 	ChatIntegrationDescriptor,
+	SessionFilesListResponse,
 	VectorStoreTestResult,
 } from '@n8n/api-types';
 import { getFullApiResponse, makeRestApiRequest } from '@n8n/rest-api-client';
@@ -687,6 +688,19 @@ export const getChatMessages = async (
 		context,
 		'GET',
 		`/projects/${encodeURIComponent(projectId)}/agents/v2/${encodeURIComponent(agentId)}/chat/${encodeURIComponent(threadId)}/messages`,
+	);
+};
+
+export const getSessionFiles = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	sessionId: string,
+): Promise<SessionFilesListResponse> => {
+	return await makeRestApiRequest<SessionFilesListResponse>(
+		context,
+		'GET',
+		`/projects/${encodeURIComponent(projectId)}/agents/v2/${encodeURIComponent(agentId)}/sessions/${encodeURIComponent(sessionId)}/files`,
 	);
 };
 

@@ -1,11 +1,16 @@
-import { isAttachmentMediaTypeSupported } from '@n8n/api-types';
+import {
+	isAttachmentMediaTypeSupported,
+	MAX_SESSION_ATTACHMENT_PERSIST_BYTES,
+	toSessionFileDto,
+	type SessionFileDto,
+} from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import type { SourceType } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { generateNanoId } from '@n8n/utils/generate-nano-id';
 import type { BuiltFileStore, ContentFileRef } from '@n8n/agents';
 import { BinaryDataService, FileLocation, FileNotFoundError } from 'n8n-core';
-import { OperationalError, type IBinaryData } from 'n8n-workflow';
+import { OperationalError, UserError, type IBinaryData } from 'n8n-workflow';
 import type { Readable } from 'node:stream';
 
 import { AgentChatAttachment } from './entities/agent-chat-attachment.entity';
@@ -65,6 +70,13 @@ export class AgentChatAttachmentService {
 	) {}
 
 	async storeInbound(params: StoreInboundAttachmentParams): Promise<AgentChatAttachment> {
+		const existingBytes = await this.repository.sumFileSizeBytesByThread(params.threadId, {
+			projectId: params.projectId,
+		});
+		if (existingBytes + params.data.byteLength > MAX_SESSION_ATTACHMENT_PERSIST_BYTES) {
+			throw new UserError('Session Attachments exceed 1.5 GB');
+		}
+
 		const attachmentId = generateNanoId();
 
 		const binaryData: IBinaryData = {
@@ -108,6 +120,25 @@ export class AgentChatAttachmentService {
 				);
 			throw error;
 		}
+	}
+
+	async listSessionFiles(
+		threadId: string,
+		scope: { projectId: string; agentId: string },
+	): Promise<SessionFileDto[]> {
+		const rows = await this.repository.findBy({
+			threadId,
+			projectId: scope.projectId,
+			agentId: scope.agentId,
+		});
+		return rows.map((row) => toSessionFileDto(row));
+	}
+
+	async findByIdInThread(
+		attachmentId: string,
+		scope: { projectId: string; threadId: string },
+	): Promise<AgentChatAttachment | null> {
+		return await this.repository.findByIdInThread(attachmentId, scope);
 	}
 
 	/** Return metadata only when the caller can read the session. */

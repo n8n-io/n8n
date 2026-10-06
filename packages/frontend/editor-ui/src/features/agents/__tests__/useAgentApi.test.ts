@@ -12,6 +12,7 @@ import {
 	stopAgentBackgroundJobs,
 	updateAgentQueuedMessage,
 	getChatMessages,
+	getSessionFiles,
 	listAgents,
 	listAgentsPage,
 	duplicateAgent,
@@ -161,6 +162,20 @@ describe('useAgentApi', () => {
 			'DELETE',
 			'/projects/project%2F1/agents/v2/agent%2F1/chat/agent%3Achat%231/executions/execution%2F1',
 		);
+	});
+
+	describe('getSessionFiles', () => {
+		it('requests session files for the agent session', async () => {
+			vi.mocked(makeRestApiRequest).mockResolvedValueOnce({ files: [] });
+
+			await getSessionFiles(restApiContext, 'project-1', 'agent-1', 'thread-1');
+
+			expect(makeRestApiRequest).toHaveBeenCalledWith(
+				restApiContext,
+				'GET',
+				'/projects/project-1/agents/v2/agent-1/sessions/thread-1/files',
+			);
+		});
 	});
 
 	describe('duplicateAgent', () => {

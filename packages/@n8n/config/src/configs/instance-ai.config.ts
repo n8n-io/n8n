@@ -73,6 +73,12 @@ export class InstanceAiConfig {
 	@Env('N8N_INSTANCE_AI_SANDBOX_ENABLED')
 	sandboxEnabled: boolean = false;
 
+	/**
+	 * Session Files list, download, and persist APIs. Same env as Product Agents.
+	 */
+	@Env('N8N_SESSION_FILES_ENABLED')
+	sessionFilesEnabled: boolean = false;
+
 	/** Sandbox provider: 'n8n-sandbox' for n8n sandbox service, 'daytona' for Daytona-backed containers. */
 	@Env('N8N_INSTANCE_AI_SANDBOX_PROVIDER')
 	sandboxProvider: string = 'n8n-sandbox';

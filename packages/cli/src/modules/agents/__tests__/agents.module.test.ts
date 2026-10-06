@@ -27,7 +27,10 @@ describe('AgentsModule', () => {
 		])(
 			'keeps knowledge base ($sandboxEnabled) and proxy ($proxyEnabled) availability independent',
 			async ({ sandboxEnabled, proxyEnabled }) => {
-				Container.set(AgentsConfig, mock<AgentsConfig>({ modules: [] }));
+				Container.set(
+					AgentsConfig,
+					mock<AgentsConfig>({ modules: [], sessionFilesEnabled: false }),
+				);
 				Container.set(
 					SandboxSettingsService,
 					mock<SandboxSettingsService>({ isAgentSandboxEnabled: () => sandboxEnabled }),
@@ -38,6 +41,7 @@ describe('AgentsModule', () => {
 
 				expect(settings.knowledgeBaseEnabled).toBe(sandboxEnabled);
 				expect(settings.proxyEnabled).toBe(proxyEnabled);
+				expect(settings.sessionFilesEnabled).toBe(false);
 			},
 		);
 	});

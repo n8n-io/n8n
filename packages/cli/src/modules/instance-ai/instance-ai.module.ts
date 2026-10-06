@@ -85,6 +85,7 @@ export class InstanceAiModule implements ModuleInterface {
 			cloudManaged: globalConfig.deployment.type === 'cloud',
 			setupCompleted,
 			sandboxEnabled: sandboxStatus.enabled,
+			sessionFilesEnabled: globalConfig.instanceAi.sessionFilesEnabled,
 			workflowBuilderAvailable: enabled && sandboxStatus.workflowBuilderAvailable,
 			sandboxUnavailableReason: sandboxStatus.unavailableReason,
 			runDebugEnabled: globalConfig.instanceAi.runDebugEnabled,
@@ -124,6 +125,9 @@ export class InstanceAiModule implements ModuleInterface {
 		const { WorkflowSuggestionActivity } = await import(
 			'./workflow-suggestions/database/workflow-suggestion-activity.entity.js'
 		);
+		const { InstanceAiChatAttachment } = await import(
+			'./entities/instance-ai-chat-attachment.entity.js'
+		);
 
 		return [
 			InstanceAiThread,
@@ -141,6 +145,7 @@ export class InstanceAiModule implements ModuleInterface {
 			InstanceAiEventLogEntry,
 			WorkflowSuggestion,
 			WorkflowSuggestionActivity,
+			InstanceAiChatAttachment,
 		];
 	}
 
