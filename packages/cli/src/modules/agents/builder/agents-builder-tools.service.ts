@@ -221,6 +221,9 @@ const updateTaskInputSchema = z
 
 type UpdateTaskInput = z.infer<typeof updateTaskInputSchema>;
 
+/** A call_agent continuation that carries a sessionNote across an approval. */
+const notedContinuationSchema = z.object({ run: z.unknown(), sessionNote: z.string() }).strict();
+
 type BuilderConfigFailure = {
 	ok: false;
 	stage?: 'parse' | 'stale' | 'patch' | 'schema';
@@ -694,16 +697,19 @@ export class AgentsBuilderToolsService {
 					'To continue this conversation, pass the sessionId from this result.',
 			};
 		}
+		// A continuation without a note is the raw test-run continuation.
+		const noted = notedContinuationSchema.safeParse(ctx.continuation);
 		return {
 			result: await this.agentTestRunService.resumeDraftApproval({
 				agentId,
 				projectId,
-				continuation: ctx.continuation,
+				continuation: noted.success ? noted.data.run : ctx.continuation,
 				approved: ctx.resumeData.approved,
 				user,
 				source: 'instance-ai',
 				...(ctx.abortSignal ? { abortSignal: ctx.abortSignal } : {}),
 			}),
+			...(noted.success ? { sessionNote: noted.data.sessionNote } : {}),
 		};
 	}
 
@@ -1434,7 +1440,10 @@ export class AgentsBuilderToolsService {
 		const firstApproval = approvals?.[0];
 		if (firstApproval) {
 			const { continuation, ...approval } = firstApproval;
-			return await ctx.suspend(approval, { continuation });
+			// Keep the note across the approval, so the resumed result still has it.
+			return await ctx.suspend(approval, {
+				continuation: sessionNote ? { run: continuation, sessionNote } : continuation,
+			});
 		}
 
 		return {

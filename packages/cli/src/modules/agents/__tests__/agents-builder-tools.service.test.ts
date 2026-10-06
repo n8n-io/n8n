@@ -2398,6 +2398,77 @@ describe('AgentsBuilderToolsService', () => {
 			});
 		});
 
+		it('keeps the sessionNote across a standard approval', async () => {
+			const { service, agentTestRunService } = makeService();
+			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
+			const approval = {
+				type: 'approval' as const,
+				toolName: 'delete_record',
+				displayName: 'Delete record',
+				args: { id: 'record-1' },
+			};
+			const continuation = {
+				runId: 'target-run-1',
+				toolCallId: 'target-tool-call-1',
+				sessionId: 'session-new',
+				response: 'I need approval.',
+			};
+			agentTestRunService.executeDraftRun
+				.mockResolvedValueOnce({ status: 'session_not_found' })
+				.mockResolvedValueOnce({
+					status: 'suspended',
+					response: continuation.response,
+					sessionId: continuation.sessionId,
+					executionId: 'execution-1',
+					suspensions: [
+						{
+							runId: continuation.runId,
+							toolCallId: continuation.toolCallId,
+							toolName: approval.toolName,
+							input: approval.args,
+							suspendPayload: approval,
+							resumeSchema: standardApprovalResumeSchema,
+						},
+					],
+				});
+			agentTestRunService.resumeDraftApproval.mockResolvedValue({
+				status: 'completed',
+				response: 'Deleted.',
+				sessionId: 'session-new',
+				executionId: 'execution-2',
+			});
+			const tool = getCallAgentTool(service);
+			const suspend = vi.fn().mockResolvedValue(undefined as never);
+
+			await tool.handler!({ message: 'Delete it', sessionId: 'new' }, { ...ctx, suspend });
+
+			expect(suspend).toHaveBeenCalledTimes(1);
+			const [payload, options] = suspend.mock.calls[0];
+			expect(payload).toEqual(approval);
+			expect(options.continuation).toEqual({
+				run: continuation,
+				sessionNote: expect.stringContaining('started a new conversation'),
+			});
+
+			const result = await tool.handler!(
+				{ message: 'Delete it', sessionId: 'new' },
+				{
+					...ctx,
+					resumeData: { approved: true },
+					continuation: options.continuation,
+				},
+			);
+
+			expect(agentTestRunService.resumeDraftApproval).toHaveBeenCalledWith(
+				expect.objectContaining({ continuation, approved: true }),
+			);
+			expect(result).toMatchObject({
+				status: 'completed',
+				response: 'Deleted.',
+				sessionNote: expect.stringContaining('started a new conversation'),
+			});
+		});
+
 		it('continues a known session without a note', async () => {
 			const { service, agentTestRunService } = makeService();
 			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
@@ -2414,6 +2485,9 @@ describe('AgentsBuilderToolsService', () => {
 			);
 
 			expect(agentTestRunService.executeDraftRun).toHaveBeenCalledTimes(1);
+			expect(agentTestRunService.executeDraftRun).toHaveBeenCalledWith(
+				expect.objectContaining({ sessionId: 'session-1' }),
+			);
 			expect(result).toEqual({
 				status: 'completed',
 				response: 'Welcome back.',
