@@ -11,6 +11,7 @@ import {
 	filterRuntimeSkillSource,
 	InvalidRuntimeSkillError,
 	loadRuntimeSkillSourceFromDirectory,
+	mergeRuntimeSkillSources,
 	parseRuntimeSkillMarkdown,
 	renderSkillCatalogPrompt,
 } from '..';
@@ -388,6 +389,73 @@ Use the workflow SDK.`,
 		await expect(filtered.loadFile?.('kept_skill', 'references/a.md')).resolves.toMatchObject({
 			content: 'file body',
 		});
+	});
+
+	it('merges sources so the registry lists every skill and each loader answers from its owner', async () => {
+		const builtIn = createRuntimeSkillSource([
+			{
+				id: 'build-workflow',
+				name: 'build-workflow',
+				description: 'Build.',
+				instructions: 'Body.',
+			},
+		]);
+		const hub = {
+			...createRuntimeSkillSource([
+				{ id: 'skill_a', name: 'Brand voice', description: 'Tone.', instructions: 'Body.' },
+			]),
+			loadFile: async (skillId: string, filePath: string) =>
+				await Promise.resolve({ skillId, filePath, content: 'reference body' }),
+		};
+
+		const merged = mergeRuntimeSkillSources([builtIn, hub]);
+
+		// Registry order is by name, whichever source a skill came from.
+		expect(merged.registry.skills.map((skill) => skill.id)).toEqual(['skill_a', 'build-workflow']);
+		expect(merged.registry.skillsHash).toBe(
+			createRuntimeSkillRegistry([
+				{
+					id: 'build-workflow',
+					name: 'build-workflow',
+					description: 'Build.',
+					instructions: 'Body.',
+				},
+				{ id: 'skill_a', name: 'Brand voice', description: 'Tone.', instructions: 'Body.' },
+			]).skillsHash,
+		);
+		await expect(merged.loadSkill('build-workflow')).resolves.toMatchObject({
+			id: 'build-workflow',
+		});
+		await expect(merged.loadSkill('skill_a')).resolves.toMatchObject({ name: 'Brand voice' });
+		await expect(merged.loadSkill('missing')).resolves.toBeNull();
+		// The built-in source has no file loader, so only hub ids answer with a file.
+		await expect(merged.loadFile?.('build-workflow', 'references/a.md')).resolves.toBeNull();
+		await expect(merged.loadFile?.('skill_a', 'references/a.md')).resolves.toMatchObject({
+			content: 'reference body',
+		});
+	});
+
+	it('rejects merging sources whose skills share an id or a name', () => {
+		const left = createRuntimeSkillSource([
+			{ id: 'skill_a', name: 'Brand voice', description: 'Tone.', instructions: 'Body.' },
+		]);
+
+		expect(() =>
+			mergeRuntimeSkillSources([
+				left,
+				createRuntimeSkillSource([
+					{ id: 'skill_a', name: 'Other', description: 'Other.', instructions: 'Body.' },
+				]),
+			]),
+		).toThrow(InvalidRuntimeSkillError);
+		expect(() =>
+			mergeRuntimeSkillSources([
+				left,
+				createRuntimeSkillSource([
+					{ id: 'skill_b', name: 'brand voice', description: 'Other.', instructions: 'Body.' },
+				]),
+			]),
+		).toThrow(InvalidRuntimeSkillError);
 	});
 
 	it('renders a compact skill catalog without skill bodies', () => {

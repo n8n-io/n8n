@@ -23,7 +23,9 @@ const {
 	mcpTelemetry,
 	router,
 	settingsStore,
+	skillsStore,
 	uiStore,
+	usersStore,
 } = vi.hoisted(() => ({
 	browserUseTelemetry: { trackModalOpened: vi.fn() },
 	contextStore: {
@@ -40,7 +42,16 @@ const {
 			return this.runtimes.get(threadId);
 		},
 	},
-	router: { push: vi.fn(), resolve: vi.fn(() => ({ href: '/settings/context/preferences' })) },
+	router: {
+		push: vi.fn(),
+		resolve: vi.fn((to: { name: string; query?: Record<string, string> }) => ({
+			href: `/${to.name}${to.query ? `?${new URLSearchParams(to.query).toString()}` : ''}`,
+		})),
+	},
+	skillsStore: {
+		fetchSkills: vi.fn<() => Promise<{ count: number; data: Array<Record<string, unknown>> }>>(),
+	},
+	usersStore: { currentUserId: 'user-1' as string | null },
 	mcpStore: {
 		connections: [] as Array<Record<string, unknown>>,
 		fetchConnectionsLazy: vi.fn(),
@@ -85,6 +96,14 @@ vi.mock('@/features/settings/context/context.store', () => ({
 
 vi.mock('@/features/settings/context/context.utils', () => ({
 	isContextPreferencesEnabled: () => featureFlags.preferences,
+}));
+
+vi.mock('@/features/settings/context/skills.store', () => ({
+	useSkillsHubStore: () => skillsStore,
+}));
+
+vi.mock('@n8n/stores/users.store', () => ({
+	useUsersStore: () => usersStore,
 }));
 
 vi.mock('../instanceAi.store', () => ({
@@ -170,6 +189,8 @@ describe('useInstanceAiInputMenuItems', () => {
 		featureFlags.preferences = false;
 		instanceAiStore.runtimes.clear();
 		contextStore.fetchPreferencesByIds.mockResolvedValue([]);
+		skillsStore.fetchSkills.mockResolvedValue({ count: 0, data: [] });
+		usersStore.currentUserId = 'user-1';
 		mcpStore.connections = [];
 		settingsStore.isMcpAvailable = true;
 		settingsStore.isLocalGatewayDisabled = false;
@@ -493,9 +514,121 @@ describe('useInstanceAiInputMenuItems', () => {
 			await findItem(menuItems.value, 'preferences-manage')?.data?.action?.();
 
 			expect(router.resolve).toHaveBeenCalledWith({ name: 'SettingsContextPreferences' });
-			expect(openSpy).toHaveBeenCalledWith('/settings/context/preferences', '_blank');
+			expect(openSpy).toHaveBeenCalledWith('/SettingsContextPreferences', '_blank');
 			expect(router.push).not.toHaveBeenCalled();
 			openSpy.mockRestore();
+		});
+	});
+	describe('skills hub', () => {
+		function hubSkill(
+			id: string,
+			name: string,
+			scope: 'user' | 'instance' | 'project',
+			userId?: string,
+		) {
+			return { id, name, scope, userId: userId ?? null, projectId: null, description: '' };
+		}
+
+		it('hides the section while the flag is off', () => {
+			const { menuItems } = useInstanceAiInputMenuItems(vi.fn());
+
+			expect(findItem(menuItems.value, 'skills')).toBeUndefined();
+			expect(skillsStore.fetchSkills).not.toHaveBeenCalled();
+		});
+
+		it('shows the empty state, with manage and create, when the hub has nothing for the assistant', async () => {
+			featureFlags.preferences = true;
+
+			const { menuItems } = useInstanceAiInputMenuItems(vi.fn());
+			await flushPromises();
+
+			expect(findItem(menuItems.value, 'skills')?.children?.map(({ id }) => id)).toEqual([
+				'skills-empty',
+				'skills-manage',
+				'skills-create',
+			]);
+			expect(findItem(menuItems.value, 'skills-empty')?.disabled).toBe(true);
+		});
+
+		it("lists the user's own and the instance skills by name, grouped by scope, and skips the rest", async () => {
+			featureFlags.preferences = true;
+			skillsStore.fetchSkills.mockResolvedValue({
+				count: 5,
+				data: [
+					hubSkill('skill_tone', 'support-tone', 'instance'),
+					hubSkill('skill_notes', 'crit-notes', 'user', 'user-1'),
+					hubSkill('skill_other', 'someone-else', 'user', 'user-2'),
+					hubSkill('skill_proj', 'project-only', 'project'),
+					hubSkill('skill_creds', 'creds-rotation', 'instance'),
+				],
+			});
+
+			const { menuItems } = useInstanceAiInputMenuItems(vi.fn());
+			await flushPromises();
+
+			const children = findItem(menuItems.value, 'skills')?.children ?? [];
+			expect(children.map(({ id, label, header }) => ({ id, label, header }))).toEqual([
+				{ id: 'skills-group-user', label: 'instanceAi.inputMenu.skills.scope.user', header: true },
+				{ id: 'skill-skill_notes', label: 'crit-notes', header: undefined },
+				{
+					id: 'skills-group-instance',
+					label: 'settings.context.skills.scope.instance',
+					header: true,
+				},
+				{ id: 'skill-skill_creds', label: 'creds-rotation', header: undefined },
+				{ id: 'skill-skill_tone', label: 'support-tone', header: undefined },
+				{ id: 'skills-manage', label: 'instanceAi.inputMenu.skills.manage', header: undefined },
+				{ id: 'skills-create', label: 'instanceAi.inputMenu.skills.create', header: undefined },
+			]);
+		});
+
+		it('reads as unavailable, not as empty, when the hub read fails', async () => {
+			featureFlags.preferences = true;
+			skillsStore.fetchSkills.mockRejectedValue(new Error('offline'));
+
+			const { menuItems } = useInstanceAiInputMenuItems(vi.fn());
+			await flushPromises();
+
+			expect(findItem(menuItems.value, 'skills-unavailable')?.disabled).toBe(true);
+			expect(findItem(menuItems.value, 'skills-empty')).toBeUndefined();
+		});
+
+		it('opens the hub page in a new tab: a skill to edit, the list, or the create flow', async () => {
+			featureFlags.preferences = true;
+			skillsStore.fetchSkills.mockResolvedValue({
+				count: 1,
+				data: [hubSkill('skill_notes', 'crit-notes', 'user', 'user-1')],
+			});
+			const open = vi.spyOn(window, 'open').mockImplementation(() => null);
+
+			const { menuItems } = useInstanceAiInputMenuItems(vi.fn());
+			await flushPromises();
+			await findItem(menuItems.value, 'skill-skill_notes')?.data?.action?.();
+			await findItem(menuItems.value, 'skills-manage')?.data?.action?.();
+			await findItem(menuItems.value, 'skills-create')?.data?.action?.();
+
+			expect(open.mock.calls.map(([url]) => url)).toEqual([
+				'/SettingsContextSkills?skillId=skill_notes',
+				'/SettingsContextSkills',
+				'/SettingsContextSkills?create=true',
+			]);
+			open.mockRestore();
+		});
+
+		it('re-reads the hub on demand, so a skill saved in settings shows up', async () => {
+			featureFlags.preferences = true;
+
+			const { menuItems, refreshAssistantSkills } = useInstanceAiInputMenuItems(vi.fn());
+			await flushPromises();
+			expect(findItem(menuItems.value, 'skills-empty')).toBeDefined();
+
+			skillsStore.fetchSkills.mockResolvedValue({
+				count: 1,
+				data: [hubSkill('skill_new', 'new-skill', 'instance')],
+			});
+			await refreshAssistantSkills();
+
+			expect(findItem(menuItems.value, 'skill-skill_new')?.label).toBe('new-skill');
 		});
 	});
 });

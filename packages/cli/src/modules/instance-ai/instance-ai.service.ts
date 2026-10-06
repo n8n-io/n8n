@@ -6,6 +6,7 @@ import type {
 	ScopedMemoryTaskEvent,
 	AgentEventData,
 	MemoryTaskUsageReport,
+	RuntimeSkillSource,
 } from '@n8n/agents';
 import { getPromptWorkspaceRoot, getWorkspaceRoot } from '@n8n/agents/sandbox';
 import {
@@ -156,6 +157,7 @@ import { N8N_VERSION, WORKFLOW_SDK_VERSION } from '@/constants';
 import { BadRequestError, ForbiddenError } from '@n8n/errors';
 import { InstanceAiBuilderDelegateAdapterService } from '@/modules/agents/instance-ai-builder-delegate.adapter';
 import { InstanceAiAgentContextAdapterService } from '@/modules/agents/instance-ai-agent-context.adapter';
+import { InstanceAiHubSkillsAdapterService } from '@/modules/agents/instance-ai-hub-skills.adapter';
 import { modelStreamStallOptions } from '@/modules/agents/model-stream-stall-options';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { Push } from '@/push';
@@ -2725,10 +2727,14 @@ export class InstanceAiService {
 		});
 		const selectedSkills = await loadInstanceAiPromptSkills(selectedPrompt.profile);
 		const selectedRuntimeSkills = selectedSkills.source;
-		const allRuntimeSkills =
+		const builtInRuntimeSkills =
 			flagDisabledSkillIds.length > 0
 				? filterRuntimeSkillSource(selectedRuntimeSkills, flagDisabledSkillIds)
 				: selectedRuntimeSkills;
+		// The skills hub ships under the Context flag, with preferences.
+		const allRuntimeSkills = aiPreferencesEnabled
+			? await this.withHubSkills(user, builtInRuntimeSkills)
+			: builtInRuntimeSkills;
 		const promptMetadata = describePromptProfile(selectedPrompt, allRuntimeSkills);
 		this.runState.setPromptConfiguration(threadId, promptMetadata);
 		let runtimeSkills = allRuntimeSkills;
@@ -2900,6 +2906,27 @@ export class InstanceAiService {
 			return Container.get(AgentExecutionService);
 		} catch {
 			return null;
+		}
+	}
+
+	/**
+	 * The user's skills-hub skills on top of the built-in ones. The agents module owns
+	 * the hub tables, so without it the assistant runs the built-in set alone.
+	 */
+	private async withHubSkills(
+		user: User,
+		builtIn: RuntimeSkillSource,
+	): Promise<RuntimeSkillSource> {
+		if (!Container.get(ModuleRegistry).isActive('agents')) return builtIn;
+		try {
+			return await Container.get(InstanceAiHubSkillsAdapterService).extendSource(user, builtIn);
+		} catch (error) {
+			// A hub read that fails must not take the turn down with it.
+			this.logger.warn('Failed to load skills-hub skills for the assistant', {
+				userId: user.id,
+				error: getErrorMessage(error),
+			});
+			return builtIn;
 		}
 	}
 

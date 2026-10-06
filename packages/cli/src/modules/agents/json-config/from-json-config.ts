@@ -428,7 +428,7 @@ export function getConfiguredSkillSource(
 	};
 }
 
-function linkedFilesForSkill(skill: AgentSkill): RuntimeSkillLinkedFiles {
+export function linkedFilesForSkill(skill: AgentSkill): RuntimeSkillLinkedFiles {
 	return {
 		references: (skill.references ?? []).map((reference) => ({
 			path: reference.path,

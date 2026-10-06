@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { computed, onMounted, ref } from 'vue';
-import { useRouter } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import type { AgentSkill, HubSkillListItem, HubSkillScope } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';
@@ -39,6 +39,7 @@ const PROJECT_SCOPE_PREFIX = 'project:';
 
 const i18n = useI18n();
 const router = useRouter();
+const route = useRoute();
 const documentTitle = useDocumentTitle();
 const message = useMessage();
 const uiStore = useUIStore();
@@ -223,6 +224,14 @@ async function goBack() {
 onMounted(async () => {
 	documentTitle.set(i18n.baseText('settings.context.skills.title'));
 	await Promise.all([load(), projectsStore.getMyProjects().catch(() => undefined)]);
+	// Deep links from the assistant's input menu: one skill to open, or a new one to start.
+	const { skillId, create } = route.query;
+	if (typeof skillId === 'string') {
+		const item = skillsStore.skills.find((skill) => skill.id === skillId);
+		if (item) await openEditModal(item);
+	} else if (create === 'true') {
+		openCreateModal();
+	}
 });
 </script>
 

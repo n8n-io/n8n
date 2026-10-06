@@ -1,12 +1,14 @@
 import { computed, ref, toValue, watch, type MaybeRefOrGetter } from 'vue';
 import { useRouter } from 'vue-router';
-import type { AiPreferencesAppliedPayload } from '@n8n/api-types';
+import type { AiPreferencesAppliedPayload, HubSkillListItem } from '@n8n/api-types';
 import type { DropdownMenuItemProps, IconName } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { VIEWS } from '@/app/constants';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useContextStore } from '@/features/settings/context/context.store';
 import { isContextPreferencesEnabled } from '@/features/settings/context/context.utils';
+import { useSkillsHubStore } from '@/features/settings/context/skills.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import type { ToolConnectionStatus, ToolIconSource } from '@/features/shared/toolsConnection/types';
 import {
 	INSTANCE_AI_COMPUTER_USE_SETUP_MODAL_KEY,
@@ -48,6 +50,8 @@ export function useInstanceAiInputMenuItems(
 	const mcpStore = useInstanceAiMcpStore();
 	const instanceAiStore = useInstanceAiStore();
 	const contextStore = useContextStore();
+	const skillsStore = useSkillsHubStore();
+	const usersStore = useUsersStore();
 	const { ignorePendingConnectResult } = useMcpServerConnect();
 	const mcpTelemetry = useInstanceAiMcpTelemetry();
 	const { ensureConnected: ensureBrowserConnected } = useBrowserUseConnection();
@@ -275,6 +279,96 @@ export function useInstanceAiInputMenuItems(
 		window.open(router.resolve({ name: VIEWS.SETTINGS_CONTEXT_PREFERENCES }).href, '_blank');
 	}
 
+	// --- Skills hub ---
+	//
+	// The assistant runs the hub skills in the user's reach: the instance's and their own
+	// "Just you" skills, at the latest saved version. That set is per user, not per turn,
+	// so a fresh read of the hub is what the next turn will carry. The hub ships under
+	// the same flag as preferences.
+	const isSkillsAvailable = computed(() => isContextPreferencesEnabled());
+	const assistantSkills = ref<HubSkillListItem[]>([]);
+	const isLoadingSkills = ref(false);
+	const didSkillsLoadFail = ref(false);
+	let latestSkillsRead = 0;
+
+	/** Re-reads the hub. Safe to call again: the newest read wins. */
+	async function refreshAssistantSkills() {
+		if (!isSkillsAvailable.value) return;
+		const read = ++latestSkillsRead;
+		// Skeletons only while nothing is known yet; afterwards the list stays usable.
+		isLoadingSkills.value = assistantSkills.value.length === 0;
+		try {
+			const { data } = await skillsStore.fetchSkills();
+			if (read !== latestSkillsRead) return;
+			const userId = usersStore.currentUserId;
+			assistantSkills.value = data
+				.filter(
+					(skill) =>
+						skill.scope === 'instance' || (skill.scope === 'user' && skill.userId === userId),
+				)
+				.sort((left, right) => left.name.localeCompare(right.name));
+			didSkillsLoadFail.value = false;
+		} catch {
+			// Skills already listed stay; an empty list reads as unavailable, not as none.
+			if (read === latestSkillsRead) didSkillsLoadFail.value = true;
+		} finally {
+			if (read === latestSkillsRead) isLoadingSkills.value = false;
+		}
+	}
+
+	watch(
+		isSkillsAvailable,
+		(isAvailable) => {
+			if (isAvailable) void refreshAssistantSkills();
+		},
+		{ immediate: true },
+	);
+
+	function openSkillSettings(query?: Record<string, string>) {
+		window.open(
+			router.resolve({ name: VIEWS.SETTINGS_CONTEXT_SKILLS, ...(query ? { query } : {}) }).href,
+			'_blank',
+		);
+	}
+
+	/** "Just you" first, then the instance, each group by name. */
+	function skillItems(): InputMenuItem[] {
+		if (assistantSkills.value.length === 0) {
+			return [
+				{
+					id: didSkillsLoadFail.value ? 'skills-unavailable' : 'skills-empty',
+					label: i18n.baseText(
+						didSkillsLoadFail.value
+							? 'instanceAi.inputMenu.skills.unavailable'
+							: 'instanceAi.inputMenu.skills.empty',
+					),
+					disabled: true,
+				},
+			];
+		}
+
+		const items: InputMenuItem[] = [];
+		const groups = [
+			{ scope: 'user', label: i18n.baseText('instanceAi.inputMenu.skills.scope.user') },
+			// The settings page names the scope; one string keeps the two aligned.
+			{ scope: 'instance', label: i18n.baseText('settings.context.skills.scope.instance') },
+		] as const;
+		for (const group of groups) {
+			const skills = assistantSkills.value.filter((skill) => skill.scope === group.scope);
+			if (skills.length === 0) continue;
+			items.push({ id: `skills-group-${group.scope}`, label: group.label, header: true });
+			for (const skill of skills) {
+				items.push({
+					id: `skill-${skill.id}`,
+					label: skill.name,
+					icon: { type: 'icon', value: 'graduation-cap' },
+					data: { action: () => openSkillSettings({ skillId: skill.id }) },
+				});
+			}
+		}
+		return items;
+	}
+
 	const disconnectedConnectionCount = computed(() => {
 		let count = 0;
 		if (settingsStore.isMcpAvailable) {
@@ -443,8 +537,38 @@ export function useInstanceAiInputMenuItems(
 			});
 		}
 
+		if (isSkillsAvailable.value) {
+			items.push({
+				id: 'skills',
+				label: i18n.baseText('instanceAi.inputMenu.skills.label'),
+				icon: { type: 'icon', value: 'graduation-cap' },
+				loading: isLoadingSkills.value,
+				children: [
+					...skillItems(),
+					{
+						id: 'skills-manage',
+						label: i18n.baseText('instanceAi.inputMenu.skills.manage'),
+						icon: { type: 'icon', value: 'settings' },
+						divided: true,
+						data: { action: () => openSkillSettings() },
+					},
+					{
+						id: 'skills-create',
+						label: i18n.baseText('instanceAi.inputMenu.skills.create'),
+						icon: { type: 'icon', value: 'plus' },
+						data: { action: () => openSkillSettings({ create: 'true' }) },
+					},
+				],
+			});
+		}
+
 		return items;
 	});
 
-	return { menuItems, disconnectedConnectionCount, refreshAppliedPreferences };
+	return {
+		menuItems,
+		disconnectedConnectionCount,
+		refreshAppliedPreferences,
+		refreshAssistantSkills,
+	};
 }

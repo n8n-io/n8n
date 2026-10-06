@@ -25,11 +25,15 @@ const props = withDefaults(defineProps<{ disabled?: boolean; threadId?: string }
 const emit = defineEmits<{ attachFiles: [] }>();
 const i18n = useI18n();
 const telemetry = useTelemetry();
-const { menuItems, disconnectedConnectionCount, refreshAppliedPreferences } =
-	useInstanceAiInputMenuItems(
-		() => emit('attachFiles'),
-		() => props.threadId,
-	);
+const {
+	menuItems,
+	disconnectedConnectionCount,
+	refreshAppliedPreferences,
+	refreshAssistantSkills,
+} = useInstanceAiInputMenuItems(
+	() => emit('attachFiles'),
+	() => props.threadId,
+);
 
 const tooltip = computed(() => {
 	const count = disconnectedConnectionCount.value;
@@ -66,8 +70,9 @@ function trackInputPlusButtonClick() {
 function handleUpdateDropdownModelValue(open: boolean) {
 	if (open) {
 		trackInputPlusButtonClick();
-		// A preference edited in settings while this chat sat open should read as edited.
+		// A preference or skill edited in settings while this chat sat open should read as edited.
 		void refreshAppliedPreferences();
+		void refreshAssistantSkills();
 	}
 }
 </script>

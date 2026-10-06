@@ -218,6 +218,7 @@ export {
 	InvalidRuntimeSkillError,
 	loadRuntimeSkillsFromDirectory,
 	loadRuntimeSkillSourceFromDirectory,
+	mergeRuntimeSkillSources,
 	parseRuntimeSkillMarkdown,
 	renderSkillCatalogPrompt,
 	RUNTIME_SKILL_TOOL_NAMES,

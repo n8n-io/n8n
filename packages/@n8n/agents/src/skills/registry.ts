@@ -91,6 +91,58 @@ export function filterRuntimeSkillSource(
 	};
 }
 
+/**
+ * One source over several. The registry lists every skill, and each loader answers
+ * from the source that owns the id. Ids and names must not repeat across sources,
+ * the same rule one source applies to its own skills.
+ */
+export function mergeRuntimeSkillSources(sources: RuntimeSkillSource[]): RuntimeSkillSource {
+	if (sources.length === 0) return createRuntimeSkillSource([]);
+	if (sources.length === 1) return sources[0];
+
+	const ownerById = new Map<string, RuntimeSkillSource>();
+	const seenNames = new Set<string>();
+	for (const source of sources) {
+		for (const skill of source.registry.skills) {
+			if (ownerById.has(skill.id)) {
+				throw new InvalidRuntimeSkillError(`Duplicate skill id "${skill.id}"`);
+			}
+			const normalizedName = skill.name.toLowerCase();
+			if (seenNames.has(normalizedName)) {
+				throw new InvalidRuntimeSkillError(`Duplicate skill name "${skill.name}"`);
+			}
+			ownerById.set(skill.id, source);
+			seenNames.add(normalizedName);
+		}
+	}
+
+	const skills = sources.flatMap((source) => source.registry.skills).sort(compareRegistryEntries);
+	const prepares = sources.flatMap((source) => (source.prepare ? [source.prepare] : []));
+	const hasFileLoader = sources.some((source) => source.loadFile !== undefined);
+
+	return {
+		registry: {
+			schemaVersion: RUNTIME_SKILL_REGISTRY_SCHEMA_VERSION,
+			skillsHash: hashRegistry(skills),
+			skills,
+		},
+		...(prepares.length > 0
+			? {
+					prepare: async () => {
+						for (const prepare of prepares) await prepare();
+					},
+				}
+			: {}),
+		loadSkill: async (skillId) => (await ownerById.get(skillId)?.loadSkill(skillId)) ?? null,
+		...(hasFileLoader
+			? {
+					loadFile: async (skillId: string, filePath: string) =>
+						(await ownerById.get(skillId)?.loadFile?.(skillId, filePath)) ?? null,
+				}
+			: {}),
+	};
+}
+
 export function loadRuntimeSkillSourceFromDirectory(
 	rootDir: string,
 	options: LoadRuntimeSkillSourceFromDirectoryOptions = {},

@@ -40,6 +40,7 @@ export {
 	InvalidRuntimeSkillError,
 	loadRuntimeSkillsFromDirectory,
 	loadRuntimeSkillSourceFromDirectory,
+	mergeRuntimeSkillSources,
 } from './registry';
 export type { LoadRuntimeSkillSourceFromDirectoryOptions } from './registry';
 export {
