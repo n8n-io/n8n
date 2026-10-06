@@ -7,6 +7,7 @@
 import { camelCase } from 'change-case';
 
 import type { McpRegistryServer } from './mcp-registry.types';
+import { AI_GATEWAY_MANAGED_AUTH_TYPE } from './mcp-registry.types';
 import {
 	getConfiguredEndpointUrl,
 	resolveMcpRegistryConnection,
@@ -34,10 +35,10 @@ function toSearchResult(server: McpRegistryServer): McpRegistrySearchResult | nu
 	if (!connection) return null;
 	const defaultCredential = connection.credentialBindings[0];
 	if (!defaultCredential) return null;
-	// A gateway server needs no user credential: the token is minted at run time
-	// from `metadata.nodeTypeName`. Its `*McpGatewayApi` type is not a valid
-	// config `authentication` value, so surface it as `none` and ask for nothing.
-	const isGateway = server.authType === 'gateway';
+	// An n8n Connect MCP server needs no user credential: the token is minted at
+	// run time from `metadata.nodeTypeName`. Its `*McpGatewayApi` type is not a
+	// valid config `authentication` value, so surface it as `none` and ask for nothing.
+	const isAiGatewayManaged = server.authType === AI_GATEWAY_MANAGED_AUTH_TYPE;
 	return {
 		slug: server.slug,
 		name: camelCase(server.slug),
@@ -45,8 +46,8 @@ function toSearchResult(server: McpRegistryServer): McpRegistrySearchResult | nu
 		description: server.tagline,
 		url: getConfiguredEndpointUrl(connection),
 		transport: toAgentMcpTransport(connection.transport),
-		authentication: isGateway ? 'none' : defaultCredential.credentialType,
-		credentialType: isGateway ? '' : defaultCredential.credentialType,
+		authentication: isAiGatewayManaged ? 'none' : defaultCredential.credentialType,
+		credentialType: isAiGatewayManaged ? '' : defaultCredential.credentialType,
 		tools: server.tools.map((tool) => ({
 			name: tool.name,
 			...(tool.title ? { title: tool.title } : {}),

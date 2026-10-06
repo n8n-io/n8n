@@ -12,6 +12,7 @@ import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import { BadRequestError } from '@n8n/errors';
 import type { License } from '@/license';
 import { AiGatewayService } from '@/services/ai-gateway.service';
+import { AI_GATEWAY_MANAGED_AUTH_TYPE } from '@/modules/mcp-registry/registry/mcp-registry.types';
 import type { OwnershipService } from '@/services/ownership.service';
 import type { UrlService } from '@n8n/backend-services';
 
@@ -882,17 +883,17 @@ describe('AiGatewayService', () => {
 		});
 	});
 
-	describe('getHostedMcpServers()', () => {
+	describe('getN8nConnectMcpServers()', () => {
 		it('maps the gateway MCP servers to registry entries', async () => {
 			requestMock.mockResolvedValueOnce(ok(MOCK_MCP_SERVERS));
 			const service = makeService();
 
-			const servers = await service.getHostedMcpServers();
+			const servers = await service.getN8nConnectMcpServers();
 
 			expect(servers).toHaveLength(1);
 			expect(servers[0]).toMatchObject({
 				slug: 'firecrawl',
-				authType: 'gateway',
+				authType: AI_GATEWAY_MANAGED_AUTH_TYPE,
 				remotes: [{ type: 'streamable-http', url: 'http://gateway.test/v1/gateway/mcp/firecrawl' }],
 			});
 		});
@@ -901,7 +902,7 @@ describe('AiGatewayService', () => {
 			requestMock.mockRejectedValue(new Error('gateway down'));
 			const service = makeService();
 
-			expect(await service.getHostedMcpServers()).toEqual([]);
+			expect(await service.getN8nConnectMcpServers()).toEqual([]);
 			expect(requestMock).toHaveBeenCalledTimes(5);
 		});
 
@@ -911,10 +912,13 @@ describe('AiGatewayService', () => {
 				.mockResolvedValueOnce(ok(MOCK_MCP_SERVERS));
 			const service = makeService();
 
-			const servers = await service.getHostedMcpServers();
+			const servers = await service.getN8nConnectMcpServers();
 
 			expect(servers).toHaveLength(1);
-			expect(servers[0]).toMatchObject({ slug: 'firecrawl', authType: 'gateway' });
+			expect(servers[0]).toMatchObject({
+				slug: 'firecrawl',
+				authType: AI_GATEWAY_MANAGED_AUTH_TYPE,
+			});
 			expect(requestMock).toHaveBeenCalledTimes(2);
 		});
 
@@ -922,14 +926,14 @@ describe('AiGatewayService', () => {
 			requestMock.mockResolvedValue(fail(400));
 			const service = makeService();
 
-			expect(await service.getHostedMcpServers()).toEqual([]);
+			expect(await service.getN8nConnectMcpServers()).toEqual([]);
 			expect(requestMock).toHaveBeenCalledTimes(1);
 		});
 
 		it('returns an empty list when n8n Connect is disabled', async () => {
 			const service = makeService({ aiGatewayEnabled: false });
 
-			expect(await service.getHostedMcpServers()).toEqual([]);
+			expect(await service.getN8nConnectMcpServers()).toEqual([]);
 			expect(requestMock).not.toHaveBeenCalled();
 		});
 	});

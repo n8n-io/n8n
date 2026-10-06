@@ -21,6 +21,7 @@ import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import { BadRequestError } from '@n8n/errors';
 import { License } from '@/license';
 import type { McpRegistryServer } from '@/modules/mcp-registry/registry/mcp-registry.types';
+import { AI_GATEWAY_MANAGED_AUTH_TYPE } from '@/modules/mcp-registry/registry/mcp-registry.types';
 import { checkAiGatewayEligibility } from '@/services/ai-gateway-eligibility';
 import { OwnershipService } from '@/services/ownership.service';
 import { UrlService } from '@n8n/backend-services';
@@ -32,9 +33,9 @@ interface GatewayTokenResponse {
 }
 
 /**
- * Maps a gateway-served MCP server DTO to a registry entry. The remote URL is
+ * Maps an n8n Connect MCP server DTO to a registry entry. The remote URL is
  * built from the configured gateway base and the server slug, so it tracks
- * feature/staging/prod. `authType: 'gateway'` means Gateway credits.
+ * feature/staging/prod. `AI_GATEWAY_MANAGED_AUTH_TYPE` means Gateway credits.
  */
 function mcpServerToRegistryServer(server: AiGatewayMcpServer, baseUrl: string): McpRegistryServer {
 	return {
@@ -50,7 +51,7 @@ function mcpServerToRegistryServer(server: AiGatewayMcpServer, baseUrl: string):
 			...(icon.theme ? { theme: icon.theme } : {}),
 		})),
 		websiteUrl: server.websiteUrl,
-		authType: 'gateway',
+		authType: AI_GATEWAY_MANAGED_AUTH_TYPE,
 		remotes: [{ type: 'streamable-http', url: `${baseUrl}/v1/gateway/mcp/${server.slug}` }],
 		tools: server.tools.map((tool) => ({
 			name: tool.name,
@@ -91,10 +92,10 @@ export class AiGatewayService {
 	private configFetchFailedAt = 0;
 	private static readonly CONFIG_FAILURE_TTL_MS = 60 * 1000; // 1 minute
 
-	/** Cached hosted MCP servers (mapped to registry entries). Same TTL as the config. */
-	private hostedMcpServers: McpRegistryServer[] | null = null;
-	private hostedFetchedAt = 0;
-	private hostedFetchFailedAt = 0;
+	/** Cached n8n Connect MCP servers (mapped to registry entries). Same TTL as the config. */
+	private n8nConnectMcpServers: McpRegistryServer[] | null = null;
+	private n8nConnectMcpFetchedAt = 0;
+	private n8nConnectMcpFetchFailedAt = 0;
 	private static readonly MCP_SERVERS_FETCH_MAX_ATTEMPTS = 5;
 	private static readonly MCP_SERVERS_FETCH_BASE_DELAY_MS = 500;
 	private static readonly MCP_SERVERS_FETCH_MAX_DELAY_MS = 10_000;
@@ -112,9 +113,7 @@ export class AiGatewayService {
 		private readonly outboundHttp: OutboundHttp,
 	) {}
 
-	/**
-	 * Whether this instance is licensed and configured for n8n Connect.
-	 */
+	/** Whether this instance is licensed and configured for n8n Connect. */
 	isEnabled(): boolean {
 		return (
 			this.licenseState.isAiGatewayLicensed() &&
@@ -129,9 +128,7 @@ export class AiGatewayService {
 		}
 	}
 
-	/**
-	 * Performs a request against the AI Gateway and returns the parsed body.
-	 */
+	/** Performs a request against the AI Gateway and returns the parsed body. */
 	private async gatewayRequest<T>(
 		options: {
 			method: IHttpRequestMethods;
@@ -214,9 +211,9 @@ export class AiGatewayService {
 	 * instead of the real provider. Called from `CredentialsHelper.getDecrypted` when
 	 * `nodeCredentials.__aiGatewayManaged` is set.
 	 *
-	 * `node` is optional — callers with no workflow node to check against (e.g.
-	 * Agents) skip eligibility entirely. When provided, it's checked against
-	 * `checkAiGatewayEligibility` before minting.
+	 * `node` is optional: callers with no workflow node to check against (for
+	 * example Agents) skip eligibility entirely. When provided, it is checked
+	 * against `checkAiGatewayEligibility` before minting.
 	 */
 	async getSyntheticCredential({
 		credentialType,
@@ -244,17 +241,14 @@ export class AiGatewayService {
 
 		const baseUrl = this.requireBaseUrl();
 
-		// MCP servers the gateway hosts carry no provider config: the endpoint URL
-		// comes from the registry entry on the node, so the credential is just the
-		// bearer token. The token is not provider-scoped, so one mint serves any
-		// gateway path the entry points at. The type is authorized by the persisted
-		// registry binding that produced it, so minting stays independent of the
-		// gateway being reachable at execution time (and of startup order).
+		// n8n Connect MCP servers carry no provider config: the endpoint URL comes
+		// from the registry entry on the node, so the credential is just a bearer
+		// token, not provider-scoped. The persisted registry binding authorized the
+		// type, so minting does not depend on the gateway being reachable here.
 		if (isMcpGatewayAuthentication(credentialType)) {
 			const { jwt } = await this.resolveAndMintToken({ userId, workflowId, projectId });
-			// Billed, non-provider-scoped token: pin its egress to the gateway host so
-			// no consumer can send it elsewhere, whatever URL the node carries. This is
-			// what contains a token minted for a hand-planted managed marker.
+			// Pin the token's egress to the gateway host so no consumer can send this
+			// billed, non-provider-scoped token elsewhere, whatever URL the node carries.
 			return {
 				token: jwt,
 				allowedHttpRequestDomains: 'domains',
@@ -353,9 +347,7 @@ export class AiGatewayService {
 		};
 	}
 
-	/**
-	 * Returns paginated usage history for the given user.
-	 */
+	/** Returns paginated usage history for the given user. */
 	async getUsage(userId: string, offset: number, limit: number): Promise<AiGatewayUsageResponse> {
 		const baseUrl = this.requireBaseUrl();
 
@@ -382,9 +374,7 @@ export class AiGatewayService {
 		return data;
 	}
 
-	/**
-	 * Returns the current wallet (budget and remaining balance) for the given user.
-	 */
+	/** Returns the current wallet (budget and remaining balance) for the given user. */
 	async getWallet(userId: string): Promise<AiGatewayWalletResponse> {
 		const baseUrl = this.requireBaseUrl();
 
@@ -473,48 +463,48 @@ export class AiGatewayService {
 	}
 
 	/**
-	 * Gateway-hosted MCP servers merged live into the registry listing. The gateway
+	 * n8n Connect MCP servers merged live into the registry listing. The AI Gateway
 	 * (not the remote MCP registry) is their source of truth, fetched from
 	 * `/v1/gateway/mcp-servers` and cached. Returns `[]` unless n8n Connect is
 	 * licensed and enabled, and never throws: on a gateway outage it serves the
 	 * last good list, or `[]` if none was ever fetched.
 	 */
-	async getHostedMcpServers(): Promise<McpRegistryServer[]> {
+	async getN8nConnectMcpServers(): Promise<McpRegistryServer[]> {
 		if (!this.isEnabled()) return [];
 		try {
-			await this.refreshHostedMcpServers();
+			await this.refreshN8nConnectMcpServers();
 		} catch {
 			// Keep the last good list (empty if never fetched).
 		}
-		return this.hostedMcpServers ?? [];
+		return this.n8nConnectMcpServers ?? [];
 	}
 
 	/**
-	 * Refreshes the cached hosted-server list from the gateway. Serves the cache
-	 * while fresh, throttles retries after a failure, and serves a stale list
-	 * rather than re-hitting a down gateway.
+	 * Refreshes the cached n8n Connect MCP server list from the AI Gateway. Serves
+	 * the cache while fresh, throttles retries after a failure, and serves a stale
+	 * list rather than re-hitting a down gateway.
 	 */
-	private async refreshHostedMcpServers(): Promise<void> {
+	private async refreshN8nConnectMcpServers(): Promise<void> {
 		const fresh =
-			this.hostedMcpServers !== null &&
-			Date.now() - this.hostedFetchedAt <= AiGatewayService.CONFIG_TTL_MS;
+			this.n8nConnectMcpServers !== null &&
+			Date.now() - this.n8nConnectMcpFetchedAt <= AiGatewayService.CONFIG_TTL_MS;
 		if (fresh) return;
 
 		if (
-			this.hostedFetchFailedAt > 0 &&
-			Date.now() - this.hostedFetchFailedAt < AiGatewayService.CONFIG_FAILURE_TTL_MS
+			this.n8nConnectMcpFetchFailedAt > 0 &&
+			Date.now() - this.n8nConnectMcpFetchFailedAt < AiGatewayService.CONFIG_FAILURE_TTL_MS
 		) {
-			if (this.hostedMcpServers !== null) return;
+			if (this.n8nConnectMcpServers !== null) return;
 			throw new OperationalError(
 				'Gateway credits MCP server fetch recently failed; retry is throttled.',
 			);
 		}
 
 		const baseUrl = this.requireBaseUrl();
-		// Retry a transport blip a few times before giving up, so the gateway not
-		// yet being reachable at startup does not leave the instance on an empty
-		// list for the whole failure-throttle window. The caller keeps serving the
-		// last good list if every attempt fails.
+		// Retry a transient transport error (for example the gateway not yet being
+		// reachable at startup) a few times before giving up, so it does not leave
+		// the instance on an empty list for the whole failure-throttle window. The
+		// caller keeps serving the last good list if every attempt fails.
 		let lastError: unknown;
 		for (let attempt = 1; attempt <= AiGatewayService.MCP_SERVERS_FETCH_MAX_ATTEMPTS; attempt++) {
 			try {
@@ -526,11 +516,11 @@ export class AiGatewayService {
 				if (!parsed.success) {
 					throw new UserError('Gateway credits returned an invalid MCP servers response.');
 				}
-				this.hostedMcpServers = parsed.data.servers.map((server) =>
+				this.n8nConnectMcpServers = parsed.data.servers.map((server) =>
 					mcpServerToRegistryServer(server, baseUrl),
 				);
-				this.hostedFetchedAt = Date.now();
-				this.hostedFetchFailedAt = 0;
+				this.n8nConnectMcpFetchedAt = Date.now();
+				this.n8nConnectMcpFetchFailedAt = 0;
 				return;
 			} catch (error) {
 				lastError = error;
@@ -550,7 +540,7 @@ export class AiGatewayService {
 			}
 		}
 
-		this.hostedFetchFailedAt = Date.now();
+		this.n8nConnectMcpFetchFailedAt = Date.now();
 		throw lastError;
 	}
 
@@ -619,8 +609,8 @@ export class AiGatewayService {
 	 * static agent validator which must never trigger a network fetch. Returns:
 	 *  - the credential type when the cached config serves the provider,
 	 *  - `null` when support is definitively unavailable (unlicensed, or the
-	 *    cached config does not serve the provider) — a real "gateway says no",
-	 *  - `undefined` when it can't be determined (no config cached yet) — a
+	 *    cached config does not serve the provider): a real "gateway says no",
+	 *  - `undefined` when it cannot be determined (no config cached yet): a
 	 *    "could not ask", so callers must not fail closed on it.
 	 *
 	 * Uses the last cached config even if past its refresh TTL: a slightly stale
@@ -652,9 +642,7 @@ export class AiGatewayService {
 		);
 	}
 
-	/**
-	 * Headers required by the AI Gateway credentials endpoint (`HeadersMetadataDto`).
-	 */
+	/** Headers required by the AI Gateway credentials endpoint (`HeadersMetadataDto`). */
 	private buildGatewayCredentialsHeaders(userId: string): Record<string, string> {
 		const headers: Record<string, string> = {};
 		headers['Content-Type'] = 'application/json';

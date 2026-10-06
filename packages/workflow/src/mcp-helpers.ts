@@ -8,7 +8,7 @@ const OAUTH2_REFRESH_BUFFER_RATIO = 0.1;
 /** Covers MCP-specific and existing native OAuth2 credential type names. */
 export type McpOAuth2CredentialType = 'oAuth2Api' | `${string}OAuth2Api` | `${string}OAuth2`;
 
-/** Either credential kind an MCP registry binding can carry: user OAuth2 or gateway-managed. */
+/** Either credential kind an MCP registry binding can carry: user OAuth2 or AI-Gateway-managed. */
 export type McpRegistryCredentialType = McpOAuth2CredentialType | McpGatewayCredentialType;
 
 interface McpRegistryConnectionBase {
@@ -149,7 +149,7 @@ export function getMcpAuthHeaders(
 	}
 
 	if (authentication === 'bearerAuth' || isMcpGatewayAuthentication(authentication)) {
-		// A gateway-hosted server's synthetic credential carries the minted Gateway
+		// An n8n Connect MCP server's synthetic credential carries the minted Gateway
 		// token as `token`, sent as a plain bearer to the gateway's MCP endpoint.
 		return typeof credentialData.token === 'string' && credentialData.token.length > 0
 			? { ['Authorization']: `Bearer ${credentialData.token}` }

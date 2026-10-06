@@ -242,7 +242,7 @@ function resolveAuthenticationParameterFromCredentialType(
 }
 
 /**
- * A gateway-hosted registry node declares its credential as a `*McpGatewayApi`
+ * An n8n Connect MCP registry node declares its credential as a `*McpGatewayApi`
  * type. Such a credential is managed by the AI Gateway and has no stored id, so
  * the round-tripped config carries no `credential`. Return the type so we can
  * rebuild the managed slot on the node.

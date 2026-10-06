@@ -20,7 +20,7 @@ import {
 	type McpRegistrySearchResult,
 } from './mcp-registry-search';
 import type { McpRegistryServer } from './mcp-registry.types';
-import { toEntity, fromEntity } from './mcp-registry.types';
+import { AI_GATEWAY_MANAGED_AUTH_TYPE, toEntity, fromEntity } from './mcp-registry.types';
 import { MCP_REGISTRY_PACKAGE_NAME } from '../node-description-transform';
 
 @Service()
@@ -55,17 +55,18 @@ export class McpRegistryService {
 		includeDeprecated = false,
 	}: { includeDeprecated?: boolean } = {}): Promise<McpRegistryServer[]> {
 		const stored = await this.getStoredServers(includeDeprecated);
-		// Gateway-hosted servers are merged live and never persisted. When n8n
-		// Connect is off, `getHostedMcpServers()` returns [], so none appear here.
-		const gateway = await this.aiGatewayService.getHostedMcpServers();
-		return [...stored, ...gateway].filter(({ requiredCapabilities }) =>
+		// n8n Connect MCP servers are merged live and never persisted. When n8n
+		// Connect is off, `getN8nConnectMcpServers()` returns [], so none appear here.
+		const n8nConnectMcpServers = await this.aiGatewayService.getN8nConnectMcpServers();
+		return [...stored, ...n8nConnectMcpServers].filter(({ requiredCapabilities }) =>
 			this.capabilities.supports(requiredCapabilities),
 		);
 	}
 
 	async get(slug: string): Promise<McpRegistryServer | undefined> {
-		const gateway = await this.aiGatewayService.getHostedMcpServers();
-		const server = gateway.find((s) => s.slug === slug) ?? (await this.getStoredServer(slug));
+		const n8nConnectMcpServers = await this.aiGatewayService.getN8nConnectMcpServers();
+		const server =
+			n8nConnectMcpServers.find((s) => s.slug === slug) ?? (await this.getStoredServer(slug));
 		if (!server) return undefined;
 		if (!this.capabilities.supports(server.requiredCapabilities)) return undefined;
 		return server;
@@ -77,14 +78,17 @@ export class McpRegistryService {
 		}
 
 		const wanted = new Set(slugs);
-		const gateway = (await this.aiGatewayService.getHostedMcpServers()).filter((server) =>
-			wanted.has(server.slug),
+		const n8nConnectMcpServers = (await this.aiGatewayService.getN8nConnectMcpServers()).filter(
+			(server) => wanted.has(server.slug),
 		);
-		const gatewaySlugs = new Set(gateway.map((server) => server.slug));
+		const n8nConnectMcpSlugs = new Set(n8nConnectMcpServers.map((server) => server.slug));
 		const stored = (await this.repository.findBy(slugs.map((slug) => ({ slug }))))
 			.map(fromEntity)
-			.filter((server) => server.authType !== 'gateway' && !gatewaySlugs.has(server.slug));
-		return [...gateway, ...stored].filter(({ requiredCapabilities }) =>
+			.filter(
+				(server) =>
+					server.authType !== AI_GATEWAY_MANAGED_AUTH_TYPE && !n8nConnectMcpSlugs.has(server.slug),
+			);
+		return [...n8nConnectMcpServers, ...stored].filter(({ requiredCapabilities }) =>
 			this.capabilities.supports(requiredCapabilities),
 		);
 	}
@@ -150,17 +154,19 @@ export class McpRegistryService {
 		const entities = includeDeprecated
 			? await this.repository.find()
 			: await this.repository.findBy({ status: 'active' });
-		// Gateway servers come from the live overlay, not the DB. Ignore any legacy
-		// rows left by the old seeding path so they can't duplicate the overlay.
-		return entities.map(fromEntity).filter((server) => server.authType !== 'gateway');
+		// n8n Connect MCP servers come from the live overlay, never the DB. Drop any
+		// that somehow landed in a stored row so they can't duplicate the overlay.
+		return entities
+			.map(fromEntity)
+			.filter((server) => server.authType !== AI_GATEWAY_MANAGED_AUTH_TYPE);
 	}
 
-	/** A single persisted (remote) server by slug, ignoring legacy gateway rows. */
+	/** A single persisted (remote) server by slug, excluding any n8n Connect MCP row. */
 	private async getStoredServer(slug: string): Promise<McpRegistryServer | undefined> {
 		const entity = await this.repository.findOneBy({ slug });
 		if (!entity) return undefined;
 		const server = fromEntity(entity);
-		return server.authType === 'gateway' ? undefined : server;
+		return server.authType === AI_GATEWAY_MANAGED_AUTH_TYPE ? undefined : server;
 	}
 
 	private async refreshUpdatedServers(

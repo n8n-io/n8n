@@ -119,13 +119,14 @@ function resolveMcpDomainPolicy(
 
 /**
  * A `CredentialProvider` that can also mint the n8n Connect (AI Gateway) managed
- * credential for a gateway-hosted MCP server, keyed by its credential type (e.g.
- * `firecrawlMcpGatewayApi`). Such credentials have no stored id — the bearer
- * token is minted on demand — so they cannot go through `resolve`. Mirrors
- * `AiGatewayModelCredentialResolver` for the model path; `AgentsCredentialProvider`
- * implements it, so the capability rides on the provider instead of threading a
- * separate resolver through the build path. Kept off the `@n8n/agents` SDK
- * interface because it is n8n-Connect-specific.
+ * credential for an n8n Connect MCP server, keyed by its credential type (for
+ * example `firecrawlMcpGatewayApi`). These credentials have no stored id: the
+ * bearer token is minted on demand, so they cannot go through `resolve`.
+ *
+ * This mirrors `AiGatewayModelCredentialResolver` on the model path.
+ * `AgentsCredentialProvider` implements it, so the capability rides on the
+ * provider instead of threading a separate resolver through the build path. It
+ * stays off the `@n8n/agents` SDK interface because it is n8n-Connect-specific.
  */
 export interface AiGatewayMcpCredentialResolver {
 	resolveAiGatewayMcpCredential(credentialType: string): Promise<ResolvedCredential>;
@@ -202,18 +203,22 @@ export async function buildMcpClientForServer(
 				throw new OperationalError('MCP registry connection could not be resolved');
 			}
 
-			// A gateway-hosted server mints its bearer token on demand (no stored
+			// An n8n Connect MCP server mints its bearer token on demand (no stored
 			// credential), keyed by the gateway credential type the registry node
 			// binds. This is independent of `server.credential`/`authentication`,
 			// which the managed credential cannot carry (it has no stored id).
-			const gatewayBinding = connection.credentialBindings.find((binding) =>
+			const aiGatewayMcpBinding = connection.credentialBindings.find((binding) =>
 				isMcpGatewayAuthentication(binding.credentialType),
 			);
-			if (gatewayBinding && !credentialData && credentialProvider.resolveAiGatewayMcpCredential) {
+			if (
+				aiGatewayMcpBinding &&
+				!credentialData &&
+				credentialProvider.resolveAiGatewayMcpCredential
+			) {
 				credentialData = (await credentialProvider.resolveAiGatewayMcpCredential(
-					gatewayBinding.credentialType,
+					aiGatewayMcpBinding.credentialType,
 				)) as ICredentialDataDecryptedObject;
-				credentialType = gatewayBinding.credentialType;
+				credentialType = aiGatewayMcpBinding.credentialType;
 			}
 
 			if (

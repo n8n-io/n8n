@@ -160,19 +160,20 @@ export const useAiGatewayStore = defineStore(STORES.AI_GATEWAY, () => {
 	}
 
 	function isCredentialTypeSupported(credentialType: string): boolean {
-		// MCP servers the gateway hosts are not in `credentialTypes`: the registry
+		// n8n Connect MCP servers are not in `credentialTypes`: the registry
 		// synthesizes a credential type per server, and only ever for an entry whose
-		// `authType` is `gateway`. Those entries are withheld from the listing on
-		// unlicensed instances, so the type existing at all is the support signal.
+		// `authType` is `__aiGatewayManaged`. Those entries are withheld from the
+		// listing on unlicensed instances, so the type existing at all is the support
+		// signal.
 		if (isMcpGatewayAuthentication(credentialType)) return true;
 		return config.value?.credentialTypes.includes(credentialType) ?? false;
 	}
 
 	/**
-	 * Whether the gateway holds a provider config for this credential type, i.e.
-	 * whether it can actually mint a managed credential for it. Narrower than
+	 * Whether the gateway holds a provider config for this credential type, that
+	 * is whether it can actually mint a managed credential for it. Narrower than
 	 * {@link isCredentialTypeSupported}, which lists every credential type the
-	 * gateway serves for any node — use this one to gate model providers, so the
+	 * gateway serves for any node. Use this one to gate model providers, so the
 	 * offer matches what the backend will accept.
 	 */
 	function canServeCredentialType(credentialType: string): boolean {

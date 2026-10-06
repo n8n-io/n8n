@@ -9,6 +9,12 @@ export type McpRegistryServerUpsertRow = Pick<
 
 const serverStatuses = ['active', 'deprecated'] as const;
 
+/**
+ * `authType` value for an MCP server the AI Gateway hosts and bills to Gateway
+ * credits. The value mirrors the `__aiGatewayManaged` credential marker.
+ */
+export const AI_GATEWAY_MANAGED_AUTH_TYPE = '__aiGatewayManaged';
+
 const optionalField = <T extends z.ZodType>(schema: T) =>
 	schema.nullish().transform((value) => value ?? undefined);
 
@@ -138,7 +144,7 @@ const mcpRegistryServerAuthSchema = z.discriminatedUnion('authType', [
 	}),
 	// A server the AI Gateway hosts and bills to Gateway credits. It needs no
 	// credential from the user and is only offered on instances licensed for it.
-	z.object({ authType: z.literal('gateway') }),
+	z.object({ authType: z.literal(AI_GATEWAY_MANAGED_AUTH_TYPE) }),
 ]);
 
 export const mcpRegistryServerSchema = mcpRegistryServerBaseSchema.and(mcpRegistryServerAuthSchema);

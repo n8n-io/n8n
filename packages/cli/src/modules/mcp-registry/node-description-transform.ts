@@ -16,6 +16,7 @@ import {
 	resolveMcpRegistryConnection,
 } from './mcp-registry-connection';
 import {
+	AI_GATEWAY_MANAGED_AUTH_TYPE,
 	mcpRegistryExtendsCredentialSchema,
 	mcpRegistryUsesCredentialsSchema,
 	type McpRegistryExtendsCredential,
@@ -35,7 +36,7 @@ export {
 	getMcpRegistryCredentialTypeName,
 } from './mcp-registry-connection';
 
-// Base credential a gateway-hosted server's synthetic type extends. The suffix
+// Base credential an n8n Connect MCP server's synthetic type extends. The suffix
 // is load-bearing: the MCP runtime picks the gateway auth strategy from the
 // credential type name (`isMcpGatewayAuthentication`).
 const MCP_BASE_GATEWAY_CREDENTIAL_NAME = 'mcpGatewayApi';
@@ -247,7 +248,7 @@ function getNodeDescriptionCredentials(
 	switch (server.authType) {
 		case 'oauth2':
 			return [{ name: getMcpRegistryCredentialTypeName(server), required: true }];
-		case 'gateway':
+		case AI_GATEWAY_MANAGED_AUTH_TYPE:
 			return [{ name: getMcpRegistryGatewayCredentialTypeName(server), required: true }];
 		case 'extendsCredential': {
 			const validated = getValidatedExtendsCredential(server, isKnownCredentialType);
@@ -342,7 +343,7 @@ export function serverToCredentialDescription(
 			return serverToOAuth2CredentialDescription(server);
 		case 'extendsCredential':
 			return serverToExtendedCredentialDescription(server, isKnownCredentialType);
-		case 'gateway':
+		case AI_GATEWAY_MANAGED_AUTH_TYPE:
 			return serverToGatewayCredentialDescription(server);
 		case 'usesCredentials':
 			return null;
@@ -363,7 +364,7 @@ export function serverToNodeDescription(
 		server.authType !== 'oauth2' &&
 		server.authType !== 'extendsCredential' &&
 		server.authType !== 'usesCredentials' &&
-		server.authType !== 'gateway'
+		server.authType !== AI_GATEWAY_MANAGED_AUTH_TYPE
 	) {
 		return null;
 	}

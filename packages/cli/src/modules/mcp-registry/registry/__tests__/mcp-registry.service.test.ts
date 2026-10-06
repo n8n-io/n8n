@@ -17,16 +17,16 @@ import type { McpRegistryServerEntity } from '../mcp-registry-server.entity';
 import type { McpRegistryServerRepository } from '../mcp-registry-server.repository';
 import { McpRegistryService } from '../mcp-registry.service';
 import type { McpRegistryServer } from '../mcp-registry.types';
-import { toEntity } from '../mcp-registry.types';
+import { AI_GATEWAY_MANAGED_AUTH_TYPE, toEntity } from '../mcp-registry.types';
 import { linearMockServer, notionMockServer } from '../mock-servers';
 
 const DB_NOW = new Date('2026-05-01T00:00:00.000Z');
 
-const gatewayMockServer: McpRegistryServer = {
+const n8nConnectMockServer: McpRegistryServer = {
 	...notionMockServer,
-	name: 'gateway-notion',
-	slug: 'gateway-notion',
-	authType: 'gateway',
+	name: 'n8n-connect-notion',
+	slug: 'n8n-connect-notion',
+	authType: AI_GATEWAY_MANAGED_AUTH_TYPE,
 };
 
 function toMockEntity(server: McpRegistryServer): McpRegistryServerEntity {
@@ -39,7 +39,7 @@ type CreateServiceOptions = {
 	instanceType?: 'main' | 'worker';
 	/**
 	 * `isEnabled` flag on the gateway service mock. Reads are gated by
-	 * `getHostedMcpServers` returning `[]` when n8n Connect is off, so override
+	 * `getN8nConnectMcpServers` returning `[]` when n8n Connect is off, so override
 	 * that mock to exercise the gateway overlay.
 	 */
 	aiGatewayEnabled?: boolean;
@@ -61,7 +61,7 @@ function createService(options: CreateServiceOptions = {}) {
 	const publisher = mock<Publisher>({ publishCommand: vi.fn().mockResolvedValue(undefined) });
 	const aiGatewayService = mock<AiGatewayService>({
 		isEnabled: vi.fn().mockReturnValue(options.aiGatewayEnabled ?? true),
-		getHostedMcpServers: vi.fn().mockResolvedValue([]),
+		getN8nConnectMcpServers: vi.fn().mockResolvedValue([]),
 	});
 
 	if (options.storedServers === null) {
@@ -123,45 +123,48 @@ describe('McpRegistryService', () => {
 		vi.restoreAllMocks();
 	});
 
-	describe('gateway overlay', () => {
-		it('merges gateway-hosted servers from the gateway, without persisting them', async () => {
+	describe('n8n Connect MCP overlay', () => {
+		it('merges n8n Connect MCP servers from the gateway, without persisting them', async () => {
 			const { service, repository, aiGatewayService } = createService();
-			aiGatewayService.getHostedMcpServers.mockResolvedValue([gatewayMockServer]);
+			aiGatewayService.getN8nConnectMcpServers.mockResolvedValue([n8nConnectMockServer]);
 
 			await service.init();
 			const servers = await service.getAll();
 
-			expect(servers).toContainEqual(gatewayMockServer);
+			expect(servers).toContainEqual(n8nConnectMockServer);
 			expect(repository.upsertFetchedServers).not.toHaveBeenCalled();
 		});
 
-		it('omits gateway servers when the gateway returns none (n8n Connect off)', async () => {
+		it('omits n8n Connect MCP servers when the gateway returns none (n8n Connect off)', async () => {
 			const { service, aiGatewayService } = createService();
-			aiGatewayService.getHostedMcpServers.mockResolvedValue([]);
+			aiGatewayService.getN8nConnectMcpServers.mockResolvedValue([]);
 
 			const servers = await service.getAll();
 
 			expect(servers).toEqual([notionMockServer, linearMockServer]);
 		});
 
-		it('resolves a gateway server by slug from the overlay', async () => {
+		it('resolves an n8n Connect MCP server by slug from the overlay', async () => {
 			const { service, aiGatewayService } = createService();
-			aiGatewayService.getHostedMcpServers.mockResolvedValue([gatewayMockServer]);
+			aiGatewayService.getN8nConnectMcpServers.mockResolvedValue([n8nConnectMockServer]);
 
-			expect(await service.get(gatewayMockServer.slug)).toEqual(gatewayMockServer);
-			expect(await service.getBySlugs([gatewayMockServer.slug])).toEqual([gatewayMockServer]);
+			expect(await service.get(n8nConnectMockServer.slug)).toEqual(n8nConnectMockServer);
+			expect(await service.getBySlugs([n8nConnectMockServer.slug])).toEqual([n8nConnectMockServer]);
 		});
 
-		it('ignores legacy gateway rows left in the DB by the old seeding path', async () => {
-			const legacyRow: McpRegistryServer = { ...gatewayMockServer, slug: 'legacy-gateway' };
+		it('drops an n8n Connect MCP server that is stored in the DB, so it cannot duplicate the overlay', async () => {
+			const storedManaged: McpRegistryServer = {
+				...n8nConnectMockServer,
+				slug: 'stored-managed',
+			};
 			const { service, aiGatewayService } = createService({
-				storedServers: [notionMockServer, legacyRow],
+				storedServers: [notionMockServer, storedManaged],
 			});
-			aiGatewayService.getHostedMcpServers.mockResolvedValue([]);
+			aiGatewayService.getN8nConnectMcpServers.mockResolvedValue([]);
 
 			expect(await service.getAll()).toEqual([notionMockServer]);
-			expect(await service.get('legacy-gateway')).toBeUndefined();
-			expect(await service.getBySlugs(['legacy-gateway'])).toEqual([]);
+			expect(await service.get('stored-managed')).toBeUndefined();
+			expect(await service.getBySlugs(['stored-managed'])).toEqual([]);
 		});
 	});
 

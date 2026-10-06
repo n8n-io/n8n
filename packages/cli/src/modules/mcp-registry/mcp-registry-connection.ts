@@ -13,6 +13,7 @@ import {
 } from 'n8n-workflow';
 
 import type { McpRegistryServer, McpRegistryUsesCredential } from './registry/mcp-registry.types';
+import { AI_GATEWAY_MANAGED_AUTH_TYPE } from './registry/mcp-registry.types';
 
 export { getConfiguredEndpointUrl };
 
@@ -37,10 +38,11 @@ export function getMcpRegistryCredentialOptions(
 	server: McpRegistryServer,
 ): McpRegistryUsesCredential[] {
 	if (server.authType === 'usesCredentials') return server.usesCredentials ?? [];
-	// A gateway-hosted server authenticates with the minted Gateway credential, not
-	// an OAuth2 one, so its binding must carry the gateway credential type — else it
-	// never matches the node's credential and the connection resolves to nothing.
-	if (server.authType === 'gateway') {
+	// An n8n Connect MCP server authenticates with the minted Gateway credential,
+	// not an OAuth2 one, so its binding must carry the gateway credential type.
+	// Otherwise it never matches the node's credential and the connection resolves
+	// to nothing.
+	if (server.authType === AI_GATEWAY_MANAGED_AUTH_TYPE) {
 		return [
 			{
 				credentialType: getMcpRegistryGatewayCredentialTypeName(server),
