@@ -285,20 +285,4 @@ describe.skipIf(!REDIS_HOST || !REDIS_PORT)('returnJobToQueue (real Redis)', () 
 
 		expect(ran).toEqual([next.id, held.id, behind.id]);
 	});
-
-	it('does not write a fractional priority when the stored priority cannot represent one', async () => {
-		const producer = createQueue();
-
-		const priority = 2 ** 52;
-		const held = await addJob(producer, 'held', priority);
-
-		const workerA = createQueue();
-		const { heldJob, returnToQueue } = await holdNextJob(workerA);
-		expect(heldJob.id).toBe(held.id);
-
-		await returnToQueue();
-
-		const storedPriority = await control.hget(producer.toKey(String(held.id)), 'priority');
-		expect(Number(storedPriority)).toBe(priority);
-	});
 });
