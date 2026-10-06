@@ -171,7 +171,7 @@ export class ScalingService {
 		this.assertQueue();
 
 		void this.defaultQueue.process(JOB_TYPE_NAME, concurrency, async (job: Job) => {
-			// The job still runs: JobProcessor already tracks it from dequeue, holding the drain.
+			// The job still runs: the handler passes it to JobProcessor, which tracks it and holds the drain.
 			if (this.stopping) {
 				const { executionId } = job.data;
 				const jobId = job.id;
