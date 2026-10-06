@@ -3,8 +3,8 @@
 // main eval case format that LangTracer exports. The slug is the case id.
 //
 // The routing labels are tags: `routing`, one `bucket:<route>`, and one
-// `accepts:<token>` for each accepted route. The grader resolves the route from
-// the recorded calls after the run (see grade.ts).
+// `accepts:<token>` for each other accepted route. A judge picks the route of
+// each trial (see grade.ts).
 //
 // An inline `seed` and `credentials` set up the stub instance and the thread
 // before the turn: earlier messages, an open workflow or Agent, failed runs,
@@ -35,15 +35,27 @@ export type RoutingBucket = (typeof ROUTING_BUCKETS)[number];
 export const ROUTING_ACCEPT_TOKENS = [...ROUTING_BUCKETS, 'clarify:agent', 'clarify:open'] as const;
 export type AcceptToken = (typeof ROUTING_ACCEPT_TOKENS)[number];
 
-const routingTagsSchema = z.object({
-	/** The main expected route. Reports group cases by it. */
-	bucket: z
-		.array(z.enum(ROUTING_BUCKETS))
-		.length(1, 'needs exactly one bucket:<route> tag')
-		.transform((buckets) => buckets[0]),
-	/** A trial passes when its route matches one of these tokens. */
-	accepts: z.array(z.enum(ROUTING_ACCEPT_TOKENS)).min(1, 'needs an accepts:<route> tag'),
-});
+const routingTagsSchema = z
+	.object({
+		/** The main expected route. Reports group cases by it. */
+		bucket: z
+			.array(z.enum(ROUTING_BUCKETS))
+			.length(1, 'needs exactly one bucket:<route> tag')
+			.transform((buckets) => buckets[0]),
+		/** A trial passes when its route matches one of these tokens. */
+		accepts: z.array(z.enum(ROUTING_ACCEPT_TOKENS)),
+	})
+	// The bucket always passes, so case files need not repeat it. A clarify case
+	// keeps only its own tokens: most accept only `clarify:open`, and plain
+	// `clarify` would also pass a question that only asks about a workflow.
+	.transform(({ bucket, accepts }) => ({
+		bucket,
+		accepts: bucket === 'clarify' || accepts.includes(bucket) ? accepts : [bucket, ...accepts],
+	}))
+	.refine(({ accepts }) => accepts.length > 0, {
+		message: 'a bucket:clarify case needs an accepts:<token> tag',
+		path: ['accepts'],
+	});
 
 export type RoutingCase = z.infer<typeof routingTagsSchema> &
 	Pick<DiscoveryScenario, 'seed' | 'attach' | 'credentials'> & { id: string; userMessage: string };

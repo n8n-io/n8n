@@ -115,8 +115,18 @@ export type DiscoveryStreamStatus =
 	| 'timed-out'
 	| 'suspended'
 	| 'step-exhausted'
-	/** The runner ended the run at the orchestrator's first committing call. */
+	/** The runner ended the run before an orchestrator tool call, because the route was picked. */
 	| 'stopped-on-route';
+
+/** Only the orchestrator's calls pick a route; sub-agents act on its choice. */
+export const ORCHESTRATOR_AGENT_ID = 'n8n-instance-agent';
+
+/** An orchestrator tool call that is about to run. */
+export interface PendingToolCall {
+	toolCallId: string;
+	toolName: string;
+	args: Record<string, unknown>;
+}
 
 export interface DiscoveryTrialFacts {
 	streamStatus: DiscoveryStreamStatus;

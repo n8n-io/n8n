@@ -32,11 +32,14 @@ function caseDir(files: Record<string, unknown>): string {
 }
 
 describe('loadRoutingCases', () => {
-	it('loads the route-*.json files in name order, drops export-only keys, and reads the tags', () => {
+	it('loads the route-*.json files in name order, drops export-only keys, and reads the tags with the bucket accepted', () => {
 		const dir = caseDir({
 			'route-debug-two.json': exportedCase([], { id: 42, name: 'Two', suiteId: 64 }),
+			'route-clarify-open.json': exportedCase([], {
+				tags: ['routing', 'bucket:clarify', 'accepts:clarify:open'],
+			}),
 			'route-prod-agent-one.json': exportedCase([], {
-				tags: ['routing', 'bucket:agent', 'accepts:agent', 'accepts:clarify:agent'],
+				tags: ['routing', 'bucket:agent', 'accepts:clarify:agent'],
 				conversation: [{ role: 'user', text: ['Answer our support inbox.', 'Use our FAQ.'] }],
 			}),
 			'results.json': '{}',
@@ -46,6 +49,12 @@ describe('loadRoutingCases', () => {
 		const { cases, needsSetup } = loadRoutingCases(dir);
 
 		expect(cases).toEqual([
+			{
+				id: 'route-clarify-open',
+				bucket: 'clarify',
+				accepts: ['clarify:open'],
+				userMessage: 'It failed again.',
+			},
 			{
 				id: 'route-debug-two',
 				bucket: 'debug',
@@ -139,7 +148,7 @@ describe('loadRoutingCases', () => {
 				[],
 				tags('bucket:debug', 'bucket:agent', 'accepts:debug'),
 			),
-			'route-debug-no-accepts.json': exportedCase([], tags('bucket:debug')),
+			'route-clarify-no-accepts.json': exportedCase([], tags('bucket:clarify')),
 			'route-debug-bad-token.json': exportedCase(
 				[],
 				tags('bucket:debug', 'accepts:clarify:workflow'),
@@ -155,7 +164,7 @@ describe('loadRoutingCases', () => {
 		expect(() => loadRoutingCases(dir)).toThrow(
 			expect.objectContaining({
 				message: expect.stringMatching(
-					/route-debug-assistant-turn\.json: needs exactly one user message[\s\S]*route-debug-bad-token\.json: accepts\.0[\s\S]*route-debug-broken\.json[\s\S]*route-debug-no-accepts\.json: accepts: needs an accepts:<route> tag[\s\S]*route-debug-no-routing-tag\.json: has no "routing" tag[\s\S]*route-debug-two-buckets\.json: bucket: needs exactly one bucket:<route> tag[\s\S]*route-debug-two-turns\.json: needs exactly one user message/,
+					/route-clarify-no-accepts\.json: accepts: a bucket:clarify case needs an accepts:<token> tag[\s\S]*route-debug-assistant-turn\.json: needs exactly one user message[\s\S]*route-debug-bad-token\.json: accepts\.0[\s\S]*route-debug-broken\.json[\s\S]*route-debug-no-routing-tag\.json: has no "routing" tag[\s\S]*route-debug-two-buckets\.json: bucket: needs exactly one bucket:<route> tag[\s\S]*route-debug-two-turns\.json: needs exactly one user message/,
 				),
 			}),
 		);

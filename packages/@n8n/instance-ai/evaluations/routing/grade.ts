@@ -1,167 +1,128 @@
 // ---------------------------------------------------------------------------
 // Route resolution and scoring for the routing eval.
 //
-// The grader reads the orchestrator's calls up to and including the first
-// committing call. With `--stop-on-route` the runner already ends there, so a
-// run with and a run without the flag grade the same way. Tool call status is
-// ignored: an errored `build-workflow` still shows the chosen route.
+// A route watcher asks the judge before each orchestrator tool call runs (see
+// judge.ts). The first `stop` verdict ends the run and decides the route. When
+// the turn ends first, the judge picks the route from the full trace. No tool
+// names appear here, so a new or renamed tool needs no grader change.
 // ---------------------------------------------------------------------------
 
 import type { InstanceAiEvent } from '@n8n/api-types';
 
 import type { AcceptToken, RoutingBucket, RoutingCase } from './cases';
-import type { JudgeInput, JudgeVerdict, Steer } from './judge';
-import { actionOf, committedRoute, isCommittingCall, ORCHESTRATOR_AGENT_ID } from './route-rules';
-import { askUserInputSchema } from '../../src/tools/shared/ask-user.tool';
-import { DOMAIN_TOOL_IDS } from '../../src/tools/tool-ids';
-import type { DiscoveryStreamStatus } from '../discovery/types';
-
-export type Route =
-	| 'agent'
-	| 'workflow'
-	| 'one-off'
-	| 'debug'
-	| 'multi'
-	| 'clarify'
-	| 'answer'
-	| 'decline'
-	| 'none';
-
-export interface RoutingToolCall {
-	toolName: string;
-	args: Record<string, unknown>;
-}
-
-export interface RoutingTrial {
-	/** Orchestrator calls in call order, up to and including the first committing call. */
-	toolCalls: RoutingToolCall[];
-	/** Orchestrator text after its last call, else its last non-empty text segment. */
-	finalText: string;
-	streamStatus: DiscoveryStreamStatus;
-}
+import type { JudgeInput, JudgeVerdict, Route, Steer, TraceStep } from './judge';
+import {
+	ORCHESTRATOR_AGENT_ID,
+	type DiscoveryStreamStatus,
+	type PendingToolCall,
+} from '../discovery/types';
 
 export interface RouteResolution {
 	route: Route;
-	/** Set for `clarify`, and for judged text replies. */
+	/** Unset only when the judge failed. */
 	steer?: Steer;
-	/** The call or reply that decided the route. */
+	/** Where the route was decided: the tool call that the run stopped before, or the end of the turn. */
 	evidence: string;
 	judgeReason?: string;
+	/** Set when a judge call in the trial failed. */
 	judgeError?: string;
 }
 
-export function readRoutingTrial(run: {
-	instanceEvents: readonly InstanceAiEvent[];
-	streamStatus: DiscoveryStreamStatus;
-}): RoutingTrial {
-	const toolCalls: RoutingToolCall[] = [];
-	const segments: string[] = [];
-	let current = '';
-	for (const event of run.instanceEvents) {
+/**
+ * The orchestrator's text and calls in order. A pending call that has no
+ * event yet goes last, after the text that the run published before it.
+ */
+export function traceSteps(
+	events: readonly InstanceAiEvent[],
+	pending?: PendingToolCall,
+): TraceStep[] {
+	const steps: TraceStep[] = [];
+	let text = '';
+	let pendingSeen = false;
+	for (const event of events) {
 		if (event.agentId !== ORCHESTRATOR_AGENT_ID) continue;
 		if (event.type === 'text-delta') {
-			current += event.payload.text;
+			text += event.payload.text;
 			continue;
 		}
 		if (event.type !== 'tool-call') continue;
-		const { toolName, args } = event.payload;
-		toolCalls.push({ toolName, args });
-		if (current.trim()) segments.push(current);
-		current = '';
-		if (isCommittingCall(toolName, args)) break;
+		if (text.trim()) steps.push({ kind: 'text', text: text.trim() });
+		text = '';
+		const { toolCallId, toolName, args } = event.payload;
+		steps.push({ kind: 'call', toolName, args });
+		if (toolCallId === pending?.toolCallId) pendingSeen = true;
 	}
-	return {
-		toolCalls,
-		finalText: (current.trim() || segments.at(-1) || '').trim(),
-		streamStatus: run.streamStatus,
-	};
+	if (text.trim()) steps.push({ kind: 'text', text: text.trim() });
+	if (pending && !pendingSeen) {
+		steps.push({ kind: 'call', toolName: pending.toolName, args: pending.args });
+	}
+	return steps;
 }
 
-function describeCall(call: RoutingToolCall): string {
-	const action = actionOf(call.args);
-	return action ? `${call.toolName} ${action}` : call.toolName;
+export interface RouteWatcher {
+	/** The runner's `stopBeforeTool` hook: `true` ends the run before the call runs. */
+	beforeToolCall: (call: PendingToolCall, events: readonly InstanceAiEvent[]) => Promise<boolean>;
+	/** The route of the finished turn. */
+	resolve: (turn: {
+		instanceEvents: readonly InstanceAiEvent[];
+		streamStatus: DiscoveryStreamStatus;
+	}) => Promise<RouteResolution>;
 }
 
-const DEBUG_EXECUTIONS_READ_ACTIONS: ReadonlySet<string> = new Set([
-	'get',
-	'list',
-	'get-node-output',
-	'get-resolved-node-parameters',
-]);
-
-/** Loading the `debugging-executions` skill alone is not a debug route. */
-function isDebugRead(call: RoutingToolCall): boolean {
-	const action = actionOf(call.args);
-	return (
-		call.toolName === DOMAIN_TOOL_IDS.EXECUTIONS &&
-		action !== undefined &&
-		DEBUG_EXECUTIONS_READ_ACTIONS.has(action)
-	);
-}
-
-/** Resolves the trial's route, and asks the judge when calls cannot decide it. */
-export async function resolveRoute(
-	routingCase: RoutingCase,
-	trial: RoutingTrial,
+/** One watcher for each trial. */
+export function createRouteWatcher(
 	judge: (input: JudgeInput) => Promise<JudgeVerdict>,
-): Promise<RouteResolution> {
-	const judged = async (input: JudgeInput): Promise<RouteResolution> => {
-		const evidence = input.mode === 'ask-user' ? 'ask-user' : 'final text';
+): RouteWatcher {
+	let stopped: RouteResolution | undefined;
+	let judgeError: string | undefined;
+	// Calls of one step can run in parallel, so the judge takes them one at a time.
+	let queue: Promise<unknown> = Promise.resolve();
+
+	const ask = async (input: JudgeInput): Promise<JudgeVerdict | undefined> => {
 		try {
-			const verdict = await judge(input);
-			return {
-				// An ask-user card is a question by construction; the judge only gives its steer.
-				route: input.mode === 'ask-user' ? 'clarify' : verdict.kind,
+			return await judge(input);
+		} catch (error) {
+			// A failed check before a call lets the run go on; the next check decides.
+			judgeError ??= error instanceof Error ? error.message : String(error);
+			return undefined;
+		}
+	};
+	const withError = (resolution: RouteResolution): RouteResolution =>
+		judgeError ? { ...resolution, judgeError } : resolution;
+
+	return {
+		beforeToolCall: async (call, events) => {
+			const check = queue.then(async () => {
+				if (stopped) return true;
+				const verdict = await ask({ steps: traceSteps(events, call) });
+				if (verdict?.decision !== 'stop') return false;
+				stopped = {
+					route: verdict.route,
+					steer: verdict.steer,
+					evidence: `${call.toolName} call`,
+					judgeReason: verdict.reason,
+				};
+				return true;
+			});
+			queue = check;
+			return await check;
+		},
+
+		resolve: async ({ instanceEvents, streamStatus }) => {
+			// A check can still run after a timeout, and its verdict counts.
+			await queue;
+			if (stopped) return withError(stopped);
+			const evidence = `end of turn (${streamStatus})`;
+			const verdict = await ask({ steps: traceSteps(instanceEvents), endStatus: streamStatus });
+			if (!verdict) return withError({ route: 'none', evidence: `${evidence}, judge failed` });
+			return withError({
+				route: verdict.route,
 				steer: verdict.steer,
 				evidence,
 				judgeReason: verdict.reason,
-			};
-		} catch (error) {
-			return {
-				route: 'none',
-				evidence: `${evidence}, judge failed`,
-				judgeError: error instanceof Error ? error.message : String(error),
-			};
-		}
+			});
+		},
 	};
-
-	// Only the last call can commit (see `readRoutingTrial`).
-	const last = trial.toolCalls.at(-1);
-	const route = last ? committedRoute(last.toolName, last.args) : undefined;
-	if (last && route && route !== 'ask-user') return { route, evidence: describeCall(last) };
-
-	// An execution read before an ask-user card is still a debug route.
-	const debugRead = trial.toolCalls.find(isDebugRead);
-	if (debugRead) return { route: 'debug', evidence: describeCall(debugRead) };
-
-	if (last && route === 'ask-user') {
-		const card = askUserInputSchema.safeParse(last.args);
-		return await judged({
-			mode: 'ask-user',
-			userMessage: routingCase.userMessage,
-			askUserIntro: card.data?.introMessage,
-			askUserQuestions: (card.data?.questions ?? []).map(({ question, options }) => ({
-				question,
-				options: options ?? [],
-			})),
-			finalText: trial.finalText,
-		});
-	}
-
-	// The text of a run that did not finish (for example a timeout) is mid-work narration, not a reply.
-	if (trial.streamStatus !== 'completed' || trial.finalText === '') {
-		return {
-			route: 'none',
-			evidence: `no committing call and no finished reply (${trial.streamStatus})`,
-		};
-	}
-
-	return await judged({
-		mode: 'text',
-		userMessage: routingCase.userMessage,
-		askUserQuestions: [],
-		finalText: trial.finalText,
-	});
 }
 
 /** Short label for output: the route, with the steer for `clarify`. */
