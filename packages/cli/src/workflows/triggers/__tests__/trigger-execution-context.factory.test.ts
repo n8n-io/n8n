@@ -344,6 +344,41 @@ describe('TriggerExecutionContextFactory', () => {
 				);
 			});
 
+			test('marks a run as awaited for its response when the trigger passes only a response promise', async () => {
+				const workflowData = mock<WorkflowEntity>({ id: 'wf-1', name: 'Test Workflow' });
+				const additionalData = mock<IWorkflowExecuteAdditionalData>();
+				const mode: WorkflowExecuteMode = 'trigger';
+				const activation: WorkflowActivateMode = 'activate';
+				const workflow = mock<Workflow>({ name: 'Test Workflow' });
+				const node = mock<INode>({ name: 'Trigger Node' });
+
+				const getTriggerFunctions = factory.getExecuteTriggerFunctions(
+					workflowData,
+					additionalData,
+					mode,
+					activation,
+					async () => workflowData,
+					vi.fn(),
+					scheduleCollectionSession,
+				);
+				const context = getTriggerFunctions(workflow, node, additionalData, mode, activation);
+				const responsePromise = createDeferredPromise<IExecuteResponsePromiseData>();
+
+				context.emit([[]], responsePromise);
+				await sleep(0);
+
+				expect(workflowExecutionService.runWorkflow).toHaveBeenCalledWith(
+					workflowData,
+					node,
+					[[]],
+					expect.anything(),
+					mode,
+					responsePromise,
+					undefined,
+					'response',
+				);
+			});
+
 			test('does not emit workflow-executed on DuplicateExecutionError', async () => {
 				workflowExecutionService.runWorkflow.mockRejectedValueOnce(
 					new DuplicateExecutionError('wf-1:node-1:1700000000000'),
