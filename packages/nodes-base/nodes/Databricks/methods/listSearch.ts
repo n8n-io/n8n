@@ -1,4 +1,7 @@
+import { isRecord } from '@n8n/utils/is-record';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 import type {
+	IDataObject,
 	IHttpRequestOptions,
 	ILoadOptionsFunctions,
 	INodeListSearchResult,
@@ -17,6 +20,7 @@ import {
 } from '../actions/helpers';
 import type { DatabricksJobRun } from '../actions/interfaces';
 import { getRunOutcome } from '../actions/job/runState';
+import { resolveLakebaseRestBase } from '../transport';
 
 // Dropdown requests never pass through the router, so its permission-error hook
 // doesn't cover them — apply it here for every listSearch call site instead
@@ -441,12 +445,12 @@ async function fetchListPage<T>(
 	credentialType: DatabricksCredentialType,
 	host: string,
 	path: string,
-	limit: number,
+	qs: IDataObject,
 	pageToken?: string,
 	permissionHint?: string,
 ): Promise<T> {
 	try {
-		return await fetchDatabricksPage<T>(context, credentialType, host, path, { limit }, pageToken);
+		return await fetchDatabricksPage<T>(context, credentialType, host, path, qs, pageToken);
 	} catch (error) {
 		makePermissionErrorLegible(error, permissionHint);
 		throw error;
@@ -472,7 +476,7 @@ export async function getJobs(
 			credentialType,
 			host,
 			'/api/2.2/jobs/list',
-			JOBS_PAGE_SIZE,
+			{ limit: JOBS_PAGE_SIZE },
 			pageToken,
 			permissionHintFor('job'),
 		);
@@ -534,7 +538,7 @@ export async function getRuns(
 			credentialType,
 			host,
 			'/api/2.2/jobs/runs/list',
-			RUNS_PAGE_SIZE,
+			{ limit: RUNS_PAGE_SIZE },
 			pageToken,
 			permissionHintFor('job'),
 		);
@@ -559,4 +563,182 @@ export async function getRuns(
 	}
 
 	return { results, paginationToken: pageToken };
+}
+
+const LAKEBASE_PAGE_SIZE = 100;
+const INTERNAL_TABLE_PREFIX = /^(databricks_|pg_databricks_|_dbx_|grant_)/;
+
+type LakebaseListItem = { name: string; value: string; description?: string };
+
+function getSelectedLakebaseTarget(context: ILoadOptionsFunctions) {
+	const read = (name: string) => {
+		try {
+			return (
+				extractResourceLocatorValue(context.getCurrentNodeParameter(name) as unknown) || undefined
+			);
+		} catch {
+			return undefined;
+		}
+	};
+	return {
+		project: read('lakebaseProject'),
+		branch: read('lakebaseBranch'),
+		database: read('lakebaseDatabase'),
+		schema: read('lakebaseSchema'),
+	};
+}
+
+const byText = (filter: string | undefined) => (item: LakebaseListItem) =>
+	!filter ||
+	item.name.toLowerCase().includes(filter.toLowerCase()) ||
+	item.value.toLowerCase().includes(filter.toLowerCase());
+
+async function fetchLakebasePage<T>(
+	context: ILoadOptionsFunctions,
+	path: string,
+	pageToken?: string,
+): Promise<T> {
+	const credentialType = getActiveCredentialType(context);
+	const host = await getHost(context, credentialType);
+	return await fetchListPage<T>(
+		context,
+		credentialType,
+		host,
+		path,
+		{ page_size: LAKEBASE_PAGE_SIZE },
+		pageToken,
+	);
+}
+
+export async function getLakebaseProjects(
+	this: ILoadOptionsFunctions,
+	filter?: string,
+	paginationToken?: string,
+): Promise<INodeListSearchResult> {
+	const page = await fetchLakebasePage<{
+		projects?: Array<{ project_id: string; status?: { display_name?: string } }>;
+		next_page_token?: string;
+	}>(this, '/api/2.0/postgres/projects', paginationToken);
+	const results = (page.projects ?? [])
+		.map((p) => ({ name: p.status?.display_name || p.project_id, value: p.project_id }))
+		.filter(byText(filter));
+	return { results, paginationToken: page.next_page_token };
+}
+
+export async function getLakebaseBranches(
+	this: ILoadOptionsFunctions,
+	filter?: string,
+	paginationToken?: string,
+): Promise<INodeListSearchResult> {
+	const { project } = getSelectedLakebaseTarget(this);
+	if (!project) {
+		return { results: [{ name: 'Please Select a Project First', value: '' }] };
+	}
+
+	const page = await fetchLakebasePage<{
+		branches?: Array<{ branch_id: string; status?: { default?: boolean } }>;
+		next_page_token?: string;
+	}>(this, `/api/2.0/postgres/projects/${encodeURIComponent(project)}/branches`, paginationToken);
+	// Locators cannot preselect, so the default branch leads the list instead
+	const results = (page.branches ?? [])
+		.sort((a, b) => Number(Boolean(b.status?.default)) - Number(Boolean(a.status?.default)))
+		.map((b) => ({
+			name: b.branch_id,
+			value: b.branch_id,
+			description: b.status?.default ? 'Default branch' : undefined,
+		}))
+		.filter(byText(filter));
+	return { results, paginationToken: page.next_page_token };
+}
+
+export async function getLakebaseDatabases(
+	this: ILoadOptionsFunctions,
+	filter?: string,
+	paginationToken?: string,
+): Promise<INodeListSearchResult> {
+	const { project, branch } = getSelectedLakebaseTarget(this);
+	if (!project) {
+		return { results: [{ name: 'Please Select a Project First', value: '' }] };
+	}
+	if (!branch) {
+		return { results: [{ name: 'Please Select a Branch First', value: '' }] };
+	}
+
+	const page = await fetchLakebasePage<{
+		databases?: Array<{ database_id: string; status?: { postgres_database?: string } }>;
+		next_page_token?: string;
+	}>(
+		this,
+		`/api/2.0/postgres/projects/${encodeURIComponent(project)}/branches/${encodeURIComponent(branch)}/databases`,
+		paginationToken,
+	);
+	// The Data API path uses the Postgres database name, which can differ from the resource id
+	const results = (page.databases ?? [])
+		.map((d) => ({ name: d.database_id, value: d.status?.postgres_database || d.database_id }))
+		.filter(byText(filter));
+	return { results, paginationToken: page.next_page_token };
+}
+
+// No management endpoint lists Postgres schemas; other schemas go through By ID
+export async function getLakebaseSchemas(
+	this: ILoadOptionsFunctions,
+): Promise<INodeListSearchResult> {
+	// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+	return { results: [{ name: 'public', value: 'public' }] };
+}
+
+export async function getLakebaseTables(
+	this: ILoadOptionsFunctions,
+	filter?: string,
+): Promise<INodeListSearchResult> {
+	const { project, branch, database, schema = 'public' } = getSelectedLakebaseTarget(this);
+	if (!project) {
+		return { results: [{ name: 'Please Select a Project First', value: '' }] };
+	}
+	if (!branch) {
+		return { results: [{ name: 'Please Select a Branch First', value: '' }] };
+	}
+	if (!database) {
+		return { results: [{ name: 'Please Select a Database First', value: '' }] };
+	}
+	if (getActiveCredentialType(this) === 'databricksApi') {
+		throw new NodeOperationError(
+			this.getNode(),
+			'Lakebase requires OAuth2 authentication. Set Authentication to OAuth2 to list tables, or enter the table name By ID.',
+		);
+	}
+
+	try {
+		const base = await resolveLakebaseRestBase(this, project, branch);
+		const doc: { components?: { schemas?: Record<string, unknown> } } = await databricksApiRequest(
+			this,
+			'databricksOAuth2Api',
+			{
+				method: 'GET',
+				url: `${base}/${encodeURIComponent(database)}/${encodeURIComponent(schema)}/openapi.json`,
+				headers: { Accept: 'application/openapi+json, application/json' },
+				json: true,
+			},
+		);
+		const results = Object.keys(doc.components?.schemas ?? {})
+			.filter((name) => !INTERNAL_TABLE_PREFIX.test(name))
+			.map((name) => ({ name, value: name }))
+			.filter(byText(filter));
+		return { results };
+	} catch (error) {
+		if (
+			error instanceof NodeApiError &&
+			isRecord(error.context.data) &&
+			error.context.data.code === 'PGRST205'
+		) {
+			// Only a NodeApiError keeps its description on the way to the dropdown, so mutate like makePermissionErrorLegible does
+			error.message =
+				'Turn on the "OpenAPI specification" setting of the Data API to list tables, or enter the table name By ID';
+			error.description =
+				'In Databricks open the project, then Data API > API > Advanced settings, and enable OpenAPI specification.';
+			throw error;
+		}
+		makePermissionErrorLegible(error);
+		throw error;
+	}
 }
