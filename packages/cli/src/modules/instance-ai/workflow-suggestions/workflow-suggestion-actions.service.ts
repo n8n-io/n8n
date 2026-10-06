@@ -121,54 +121,41 @@ export class WorkflowSuggestionActionsService {
 			'update',
 		);
 
-		try {
-			const prepared = await this.workflows.prepareUpdate(
-				user,
-				Object.assign(new WorkflowEntity(), structuredClone(suggestion.payload.candidate)),
-				workflowId,
-				{ expectedChecksum: suggestion.expectedBaseline.checksum, source: 'n8n-ai' },
+		const prepared = await this.workflows.prepareUpdate(
+			user,
+			Object.assign(new WorkflowEntity(), structuredClone(suggestion.payload.candidate)),
+			workflowId,
+			{ expectedChecksum: suggestion.expectedBaseline.checksum, source: 'n8n-ai' },
+		);
+		const { saved, appliedVersion } = await this.txRunner.run({}, async (ctx) => {
+			await this.validatePreparedWorkflow(suggestion, prepared.workflow, ctx);
+			await this.service.requireEditor(user.id, workflowId, ctx);
+			const saved = await this.workflows.savePreparedUpdate(prepared, ctx);
+			const appliedVersion: WorkflowSuggestionAppliedVersion = {
+				versionId: saved.versionId,
+				checksum: await calculateWorkflowChecksum(saved),
+				action,
+				actorId: user.id,
+			};
+			const closed = await this.suggestions.closePending(
+				suggestion,
+				'applied',
+				{ author: 'human', actorId: user.id },
+				ctx,
+				appliedVersion,
 			);
-			const { saved, appliedVersion } = await this.txRunner.run({}, async (ctx) => {
-				await this.validatePreparedWorkflow(suggestion, prepared.workflow, ctx);
-				await this.service.requireEditor(user.id, workflowId, ctx);
-				const saved = await this.workflows.savePreparedUpdate(prepared, ctx);
-				const appliedVersion: WorkflowSuggestionAppliedVersion = {
-					versionId: saved.versionId,
-					checksum: await calculateWorkflowChecksum(saved),
-					action,
-					actorId: user.id,
-				};
-				const closed = await this.suggestions.closePending(
-					suggestion,
-					'applied',
-					{ author: 'human', actorId: user.id },
-					ctx,
-					appliedVersion,
-				);
-				if (!closed) throw new ConflictError('The suggestion has already closed.');
-				return { saved, appliedVersion };
-			});
-			try {
-				await this.workflows.finishUpdate(prepared, saved);
-			} catch (error) {
-				this.logger.warn('Could not finish the workflow update after Apply committed', {
-					suggestionId,
-					error,
-				});
-			}
-			return appliedVersion;
+			if (!closed) throw new ConflictError('The suggestion has already closed.');
+			return { saved, appliedVersion };
+		});
+		try {
+			await this.workflows.finishUpdate(prepared, saved);
 		} catch (error) {
-			try {
-				const current = await this.suggestions.getSuggestion(suggestion.id, scope);
-				if (current.state === 'closed') return undefined;
-			} catch (recoveryError) {
-				this.logger.warn('Could not read the suggestion after Apply failed', {
-					suggestionId,
-					error: recoveryError,
-				});
-			}
-			throw error;
+			this.logger.warn('Could not finish the workflow update after Apply committed', {
+				suggestionId,
+				error,
+			});
 		}
+		return appliedVersion;
 	}
 
 	private async validatePreparedWorkflow(

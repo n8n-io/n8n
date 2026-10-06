@@ -36,7 +36,7 @@ Use **Approve and publish** as the action label. Only `fix_ready` permits Apply.
 
 Apply calls `WorkflowService.prepareUpdate()` for normal save validation and preparation. Inside a transaction, it locks the workflow and rechecks the baseline and edit access. `savePreparedUpdate()` saves the workflow and required history. The action records the applied version, closes the suggestion, and adds human activity before commit. `finishUpdate()` runs after-save hooks and events after commit.
 
-A failed transaction rolls back the workflow, history, suggestion closure, and activity. A save error does not close the suggestion as outdated. Workflow events and review refreshes update that state. A competing action can still close the suggestion. If the follow-up status read also fails, the action preserves the original save error. After-save hook failures are logged and leave the committed application intact.
+A failed transaction rolls back the workflow, history, suggestion closure, and activity. Apply returns the original save error without reading the suggestion again. A save error does not close the suggestion as outdated. Workflow events and review refreshes update that state. A competing action can cause Apply to return a conflict. After-save hook failures are logged and leave the committed application intact.
 
 Approve and publish calls the normal publisher with the saved version and checksum. A publish failure leaves the suggestion applied and returns `publishError`. Applied means saved, not published or verified fixed. The UI should open the editor after either Apply action. The editor owns publication status, errors, and retries.
 
