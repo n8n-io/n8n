@@ -134,6 +134,84 @@ describe('ProjectRelationRepository', () => {
 		});
 	});
 
+	describe('membership operations', () => {
+		const relation = (userId: string, roleSlug: string) =>
+			({ userId, projectId: 'project1', role: { slug: roleSlug } }) as ProjectRelation;
+
+		beforeEach(() => {
+			entityManager.find.mockReset();
+		});
+
+		it('finds memberships without eager scopes and then attaches them', async () => {
+			const projectRelation = relation('user1', 'project:viewer');
+			entityManager.find.mockResolvedValueOnce([projectRelation]);
+			entityManager.find.mockResolvedValueOnce([
+				{ slug: 'project:viewer', scopes: [{ slug: 'workflow:read' }] } as Role,
+			]);
+
+			const result = await projectRelationRepository.findForUserInProjects('user1', ['project1']);
+
+			expect(entityManager.find).toHaveBeenNthCalledWith(1, ProjectRelation, {
+				where: { userId: 'user1', projectId: In(['project1']) },
+				relations: ['role'],
+				loadEagerRelations: false,
+			});
+			expect(result[0].role.scopes.map(({ slug }) => slug)).toEqual(['workflow:read']);
+		});
+
+		it('replaces every project member through the operation context', async () => {
+			await projectRelationRepository.replaceProjectMembers(
+				'project1',
+				[{ userId: 'user1', role: 'project:viewer' }],
+				{},
+			);
+
+			expect(entityManager.delete).toHaveBeenCalledWith(ProjectRelation, {
+				projectId: 'project1',
+			});
+			expect(entityManager.insert).toHaveBeenCalledWith(ProjectRelation, [
+				{ projectId: 'project1', userId: 'user1', role: { slug: 'project:viewer' } },
+			]);
+		});
+
+		it('updates and deletes one project member', async () => {
+			await projectRelationRepository.updateProjectMemberRole(
+				'project1',
+				'user1',
+				'project:editor',
+				{},
+			);
+			await projectRelationRepository.deleteProjectMember('project1', 'user1', {});
+
+			expect(entityManager.update).toHaveBeenCalledWith(
+				ProjectRelation,
+				{ projectId: 'project1', userId: 'user1' },
+				{ role: { slug: 'project:editor' } },
+			);
+			expect(entityManager.delete).toHaveBeenCalledWith(ProjectRelation, {
+				projectId: 'project1',
+				userId: 'user1',
+			});
+		});
+
+		it('maps page bounds for member lists', async () => {
+			entityManager.findAndCount.mockResolvedValueOnce([[], 0]);
+
+			await projectRelationRepository.findMembersAndCount('project1', {
+				offset: 20,
+				limit: 10,
+			});
+
+			expect(entityManager.findAndCount).toHaveBeenCalledWith(ProjectRelation, {
+				where: { projectId: 'project1' },
+				relations: { user: true, role: true },
+				order: { createdAt: 'ASC', userId: 'ASC' },
+				skip: 20,
+				take: 10,
+			});
+		});
+	});
+
 	describe('findProjectIdsByUserIds', () => {
 		beforeEach(() => {
 			entityManager.find.mockReset();
