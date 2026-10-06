@@ -88,7 +88,7 @@ describe('diffDataTableSchema', () => {
 		).toEqual([]);
 	});
 
-	it('lists every change in the order the import applies them', () => {
+	it('detects every kind of change and lists them in a fixed order', () => {
 		expect(
 			diffDataTableSchema(packageTable, {
 				name: 'Orders',
