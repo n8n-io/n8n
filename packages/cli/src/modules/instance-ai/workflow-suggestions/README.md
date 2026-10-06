@@ -20,7 +20,7 @@ Storage checks current edit access and basic graph structure. Apply runs credent
 
 Both operations require an enabled user with current workflow read and edit access, including access through sharing. They check the proposal's original project and the workflow's current owner project. Publish access is not required.
 
-The detail includes the original and proposed snapshots. Stored proposal content does not change after creation. Workflow events also refresh pending suggestions. Explicit refresh and action checks cover missed events.
+The detail includes the original and proposed snapshots. Stored proposal content does not change after creation. Workflow events also refresh pending suggestions. Save events are debounced per workflow for two seconds, with a maximum wait of five seconds during continuous saves. Publish, unpublish, and archive events cancel the pending save refresh and refresh immediately. Explicit refresh and action checks run immediately and cover missed events.
 
 ## Review actions
 
