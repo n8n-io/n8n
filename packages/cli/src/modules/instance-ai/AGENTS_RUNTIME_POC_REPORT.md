@@ -166,11 +166,9 @@ turn running on that main.
 
 ## How to try it
 
-The PoC instance is running: UI on http://localhost:8080 (Vite dev server),
-backend on port 5699, owner `owner@example.com` / `Passw0rd!x`, data in
-`~/.n8n-ass1573`. Open `/assistant`.
+Use a fresh user folder, because the migrations drop the old Assistant tables.
+Open `/assistant` after setup.
 
-To run it yourself:
 
 ```bash
 git switch ass-1573-aia-agents-framework-agent

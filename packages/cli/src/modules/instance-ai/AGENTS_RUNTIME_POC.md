@@ -21,7 +21,7 @@ Status: plan. Branch `ass-1573-aia-agents-framework-agent`.
   sandbox. Keep it modest: a few end-to-end checks for each milestone. Always
   set `N8N_INSTANCE_AI_SANDBOX_EPHEMERAL=true`. Never run the daytona-audit
   script.
-- Live-run env: load `/Users/jaakko/work/n8n/.env.eval` (gitignored). It has
+- Live-run env: load `.env.eval` at the repo root (gitignored). It has
   working Anthropic and Daytona keys, `N8N_ENABLED_MODULES`, ephemeral
   sandboxes, and a prebuilt `N8N_INSTANCE_AI_SANDBOX_SNAPSHOT` that skips the
   11-minute cold image build. Also export `ANTHROPIC_API_KEY` from
