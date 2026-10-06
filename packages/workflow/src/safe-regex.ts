@@ -212,7 +212,7 @@ export function setUserRegexEngine(regexEngine: RegexEngine): void {
 }
 
 export function resetUserRegexEngine(): void {
-	userEngine = createDefaultEngine();
+	userEngine = undefined;
 }
 
 function getUserEngine(): RegexEngine {
