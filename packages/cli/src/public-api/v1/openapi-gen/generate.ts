@@ -15,6 +15,7 @@ import {
 	type NamedResponseDto,
 	type SchemaResolver,
 } from './decorator-routes';
+import { addObjectTypeToObjectUnions } from './object-union-type';
 import { stripUntypedNullable } from './untyped-nullable';
 
 const COMPONENT_SCHEMA_REF = /^#\/components\/schemas\/(.+)$/;
@@ -93,6 +94,7 @@ export function buildArtifactsFromRegistry(
 	// zod-to-openapi emits `z.unknown()`/`z.any()` as `{ nullable: true }` with no `type` which
 	// express-openapi-validator rejects at schema-compile time once bundled.
 	stripUntypedNullable(document);
+	addObjectTypeToObjectUnions(document);
 
 	const artifacts: GeneratedArtifact[] = [];
 
