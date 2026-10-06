@@ -170,6 +170,10 @@ callback end one wait only.
   routes do. A v1 id is numeric, and a v2 id is a UUID. Therefore an execution-bound resume URL
   carries the execution id in its path, and a step-bound resume URL and an approval callback carry
   the step id. An id of the wrong shape reaches an engine that rejects the token.
+- Every resume request also carries the identity token of the control plane that forwards it, like
+  every other call from the control plane to the data plane. The data plane resumes an execution
+  only if the execution belongs to the tenant of that identity token. The trust layer between the
+  planes specifies that check.
 - The engine cannot revoke one resume URL. A URL stops working when the step leaves the `waiting`
   status, or when its secret leaves the accepted set.
 - The data plane signs with one secret and accepts every secret in a configured set.
@@ -201,6 +205,6 @@ callback end one wait only.
 
 RFC: -
 
-Documentation: Engine 2.0 — Detailed Design, §3.3 https://app.notion.com/p/n8n/34b5b6e0c94f81feba4bdb59a65d55dc
+Documentation: Engine 2.0 — Detailed Design, §3.3 https://app.notion.com/p/n8n/34b5b6e0c94f81feba4bdb59a65d55dc; Engine 2.0: Trust Layer: CP ↔ DP — Design Overview https://app.notion.com/p/n8n/3725b6e0c94f8077a562cb2e2c821e9c
 
 Related ADRs: ADR-20260902-steps-declare-waits
