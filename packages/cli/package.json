@@ -158,6 +158,7 @@
     "@n8n/ai-workflow-builder": "workspace:*",
     "@n8n/api-types": "workspace:*",
     "@n8n/backend-common": "workspace:*",
+    "@n8n/backend-module-insights": "workspace:*",
     "@n8n/backend-network": "workspace:*",
     "@n8n/backend-services": "workspace:*",
     "@n8n/blob-storage": "workspace:*",

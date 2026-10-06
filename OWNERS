@@ -109,7 +109,7 @@ packages/cli/src/environments.ee/                       @n8n-io/ligo
 packages/cli/src/public-api/                            @n8n-io/ligo
 packages/cli/src/modules/source-control.ee/             @n8n-io/ligo
 packages/cli/src/modules/external-secrets.ee/           @n8n-io/ligo
-packages/cli/src/modules/insights/                      @n8n-io/ligo
+packages/modules/insights/                              @n8n-io/ligo
 
 packages/cli/src/collaboration/                         @n8n-io/catalysts
 packages/cli/src/binary-data/                           @n8n-io/catalysts
@@ -250,10 +250,6 @@ packages/@n8n/mcp-browser-extension/                    @n8n-io/nodes
 packages/@n8n/permissions/                              @n8n-io/iam
 packages/@n8n/client-oauth2/                            @n8n-io/iam
 packages/@n8n/inbound-auth/                             @n8n-io/iam
-
-# LiGo
-
-packages/extensions/insights/                           @n8n-io/ligo
 
 # Governance & Observability
 
