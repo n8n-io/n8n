@@ -126,6 +126,26 @@ describe('AgentEvalResultRepository', () => {
 			expect(callArgs?.[1]).toBe('res-1');
 			expect(callArgs?.[2]).toMatchObject({ status: 'running', runAt: expect.any(Date) });
 		});
+
+		// A rerun reuses the row, so a failed attempt's error must not survive into a
+		// successful one, nor a successful attempt's answer into a failed one.
+		it('clears every field a previous attempt left behind', async () => {
+			entityManager.update.mockResolvedValueOnce({ affected: 1, generatedMaps: [], raw: [] });
+
+			await repo.markAsRunning('res-1');
+
+			expect(entityManager.update.mock.calls[0]?.[2]).toEqual({
+				status: 'running',
+				runAt: expect.any(Date),
+				completedAt: null,
+				output: null,
+				toolCalls: null,
+				metrics: null,
+				verdict: null,
+				errorCode: null,
+				errorDetails: null,
+			});
+		});
 	});
 
 	describe('markAsCancelled', () => {

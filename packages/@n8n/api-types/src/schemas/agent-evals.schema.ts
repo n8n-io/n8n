@@ -359,7 +359,7 @@ export type PreviewRunResult =
 // the result's own snapshot) bundles the new text into the same request —
 // persisted onto the result's snapshot before it re-executes.
 const rerunResultOptionsShape = {
-	whatToCheck: z.string().min(1).optional(),
+	whatToCheck: z.string().trim().min(1).optional(),
 };
 export const rerunResultOptionsSchema = z.object(rerunResultOptionsShape);
 export type RerunResultOptions = z.infer<typeof rerunResultOptionsSchema>;

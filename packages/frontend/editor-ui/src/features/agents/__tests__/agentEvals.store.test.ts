@@ -1173,6 +1173,22 @@ describe('useAgentEvalsStore', () => {
 			store.removeCachedResult(RUN_ID, 'does-not-exist');
 
 			expect(store.getReview(RUN_ID).results.map((r) => r.id)).toEqual(['c1']);
+			// The run's total only shrinks for a row this cache actually held.
+			expect(store.getReview(RUN_ID).resultsCount).toBe(1);
+		});
+
+		it('drops the removed result’s rating so reviewed counts follow the surviving rows', async () => {
+			mockRun({
+				results: [result('c1'), result('c2')],
+				count: 2,
+				ratings: [rating('c1'), rating('c2')],
+			});
+			const store = useAgentEvalsStore();
+			await store.openRun(PROJECT_ID, AGENT_ID, RUN_ID);
+
+			store.removeCachedResult(RUN_ID, 'c1');
+
+			expect(Object.keys(store.getReview(RUN_ID).ratingsByResultId)).toEqual(['c2']);
 		});
 	});
 
@@ -1249,6 +1265,69 @@ describe('useAgentEvalsStore', () => {
 			rerunResult.mockRejectedValue(new Error('timeout'));
 
 			await expect(store.rerunResult(PROJECT_ID, AGENT_ID, 'c1')).rejects.toThrow('timeout');
+
+			expect(store.getReview(RUN_ID).results[0].status).toBe('error');
+		});
+
+		it('leaves a fresher row alone when the rerun fails after a refresh replaced the optimistic patch', async () => {
+			mockRun({ results: [{ ...result('c1'), status: 'error' }], count: 1, ratings: [] });
+			const store = useAgentEvalsStore();
+			await store.openRun(PROJECT_ID, AGENT_ID, RUN_ID);
+
+			let rejectRerun!: (error: Error) => void;
+			rerunResult.mockImplementation(
+				async () => await new Promise<AgentEvalResultRecord>((_, reject) => (rejectRerun = reject)),
+			);
+			const pending = store.rerunResult(PROJECT_ID, AGENT_ID, 'c1');
+			// A poll lands first and replaces the optimistic row with settled data.
+			getRunDetail.mockResolvedValue(runDetail([{ ...result('c1'), status: 'success' }], 1));
+			await store.openRun(PROJECT_ID, AGENT_ID, RUN_ID);
+
+			rejectRerun(new Error('timeout'));
+			await expect(pending).rejects.toThrow('timeout');
+
+			expect(store.getReview(RUN_ID).results[0].status).toBe('success');
+		});
+
+		it('reads the result back instead of reverting when a failed rerun carried an edited rule', async () => {
+			mockRun({
+				results: [{ ...result('c1'), status: 'error', input: { input: 'q', criteria: 'old' } }],
+				count: 1,
+				ratings: [],
+			});
+			const store = useAgentEvalsStore();
+			await store.openRun(PROJECT_ID, AGENT_ID, RUN_ID);
+			rerunResult.mockRejectedValue(new Error('timeout'));
+			// The backend saved the rule before the failure.
+			getRunDetail.mockResolvedValue(
+				runDetail(
+					[{ ...result('c1'), status: 'error', input: { input: 'q', criteria: 'new' } }],
+					1,
+				),
+			);
+
+			await expect(
+				store.rerunResult(PROJECT_ID, AGENT_ID, 'c1', { whatToCheck: 'new' }),
+			).rejects.toThrow('timeout');
+
+			expect(getRunDetail).toHaveBeenLastCalledWith(REST_CONTEXT, PROJECT_ID, AGENT_ID, RUN_ID, {
+				take: 1,
+				skip: 0,
+			});
+			expect(store.getReview(RUN_ID).results[0].input).toEqual({ input: 'q', criteria: 'new' });
+			expect(store.getReview(RUN_ID).results[0].status).toBe('error');
+		});
+
+		it('falls back to the previous row when reading it back also fails', async () => {
+			mockRun({ results: [{ ...result('c1'), status: 'error' }], count: 1, ratings: [] });
+			const store = useAgentEvalsStore();
+			await store.openRun(PROJECT_ID, AGENT_ID, RUN_ID);
+			rerunResult.mockRejectedValue(new Error('timeout'));
+			getRunDetail.mockRejectedValue(new Error('offline'));
+
+			await expect(
+				store.rerunResult(PROJECT_ID, AGENT_ID, 'c1', { whatToCheck: 'new' }),
+			).rejects.toThrow('timeout');
 
 			expect(store.getReview(RUN_ID).results[0].status).toBe('error');
 		});

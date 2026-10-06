@@ -860,7 +860,7 @@ function toJsonObject(value: unknown): JsonObject {
 function readResultInputText(input: JsonObject | null): string | null {
 	if (!input) return null;
 	const value = input.input;
-	if (typeof value === 'string' && value.length > 0) return value;
+	if (typeof value === 'string' && value.trim().length > 0) return value;
 	if (typeof value === 'number' || typeof value === 'boolean') return String(value);
 	return null;
 }

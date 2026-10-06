@@ -1037,6 +1037,18 @@ describe('AgentEvalRunnerService', () => {
 			expect(evalAgentExecutionService.executeWithLlmMock).not.toHaveBeenCalled();
 		});
 
+		it('rejects a whitespace-only input, like the batch path does', async () => {
+			await expect(
+				service.rerunResult(
+					mock<AgentEvalResult>({ ...result, input: { input: '   ' } }),
+					'agent-1',
+					'proj-1',
+					user,
+				),
+			).rejects.toThrow('no input to rerun');
+			expect(evalAgentExecutionService.executeWithLlmMock).not.toHaveBeenCalled();
+		});
+
 		it("re-executes the result's own persisted input, not a re-resolved dataset row", async () => {
 			evalAgentExecutionService.executeWithLlmMock.mockResolvedValue(successExec() as never);
 			resultRepository.findById.mockResolvedValue(

@@ -69,8 +69,20 @@ export class AgentEvalResultRepository extends Repository<AgentEvalResult> {
 		return counts;
 	}
 
+	/** Starts an attempt. Clears whatever a previous attempt left behind, so a
+	 *  rerun can't settle with an old error next to a new answer (or the reverse). */
 	async markAsRunning(id: string) {
-		return await this.update(id, { status: 'running', runAt: new Date() });
+		return await this.update(id, {
+			status: 'running',
+			runAt: new Date(),
+			completedAt: null,
+			output: null,
+			toolCalls: null,
+			metrics: null,
+			verdict: null,
+			errorCode: null,
+			errorDetails: null,
+		});
 	}
 
 	async markAsCancelled(id: string) {

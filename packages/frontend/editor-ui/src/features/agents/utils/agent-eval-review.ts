@@ -131,7 +131,8 @@ export function readVerdictReasoning(verdict: AgentEvalVerdict | null | undefine
  * Maps a result's execution status plus its (optional) judge verdict onto the
  * avatar vocabulary shared across every agent-eval view. Execution statuses
  * other than `success` are unaffected by judging — there is nothing to grade
- * until a case actually finishes.
+ * until a case actually finishes. A judge call that errored leaves the case
+ * ungraded, which reads as `work` so it is never counted as a pass.
  *
  * A graded fail reads as `work` ("needs a look"), not `fail` — `fail` already
  * means "couldn't finish" (an execution error) elsewhere in this vocabulary,
@@ -149,7 +150,10 @@ export function toAvatarKind(
 	if (status === 'error') return 'fail';
 	if (status === 'cancelled') return 'work';
 	// status === 'success':
-	if (!verdict || verdict.status !== 'completed') return 'pass'; // ungraded — old behavior
+	// A judge that errored never graded the case, so it can't count as a pass.
+	if (verdict?.status === 'error') return 'work';
+	// No verdict, or judging skipped (no rule or gold answer): nothing to grade against.
+	if (!verdict || verdict.status !== 'completed') return 'pass';
 	return verdict.outcome === 'pass' ? 'pass' : 'work';
 }
 

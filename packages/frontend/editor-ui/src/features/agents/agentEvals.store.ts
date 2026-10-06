@@ -332,9 +332,20 @@ export const useAgentEvalsStore = defineStore(STORES.AGENT_EVALS, () => {
 	// cached page by hand, here, rather than through a server response.
 	const removeCachedResult = (runId: string, resultId: string) => {
 		const current = getReview(runId);
+		const results = current.results.filter((result) => result.id !== resultId);
+		// Not cached (e.g. on a page that was never loaded): nothing to drop, and the
+		// run's total must not shrink for a row this cache never counted.
+		if (results.length === current.results.length) return;
+
+		const { [resultId]: _rating, ...ratingsByResultId } = current.ratingsByResultId;
+		const { [resultId]: _pending, ...pendingByResultId } = current.pendingByResultId;
+		const { [resultId]: _draft, ...draftsByResultId } = current.draftsByResultId;
 		patchReview(runId, {
-			results: current.results.filter((result) => result.id !== resultId),
+			results,
 			resultsCount: Math.max(0, current.resultsCount - 1),
+			ratingsByResultId,
+			pendingByResultId,
+			draftsByResultId,
 		});
 	};
 
@@ -1033,6 +1044,27 @@ export const useAgentEvalsStore = defineStore(STORES.AGENT_EVALS, () => {
 		});
 	};
 
+	// Re-reads one cached result from the server, using its position in the cached
+	// page (results are paged in a stable order) to fetch just that row.
+	const refreshCachedResult = async (
+		projectId: string,
+		agentId: string,
+		runId: string,
+		resultId: string,
+	) => {
+		const index = getReview(runId).results.findIndex((r) => r.id === resultId);
+		if (index < 0) return;
+		const detail = await agentEvalsApi.getRunDetail(
+			rootStore.restApiContext,
+			projectId,
+			agentId,
+			runId,
+			{ take: 1, skip: index },
+		);
+		const fresh = detail.results.data[0];
+		if (fresh?.id === resultId) replaceCachedResult(runId, resultId, fresh);
+	};
+
 	// Re-executes one already-settled case in place — no new run. Patches the
 	// result to `running` in the cache before the request even lands, the same
 	// way a batch run's own seeded rows read while in flight — every consumer
@@ -1076,9 +1108,20 @@ export const useAgentEvalsStore = defineStore(STORES.AGENT_EVALS, () => {
 			replaceCachedResult(updated.runId, resultId, updated);
 			return updated;
 		} catch (error) {
-			// Revert the optimistic patch so a failed rerun doesn't strand the row
-			// reading as "running" (or showing the unsaved rule) forever.
-			if (cached) replaceCachedResult(cached.runId, resultId, cached.result);
+			// A poll or refresh may already have replaced the optimistic row with
+			// fresher data — only undo it while it is still the patch we made.
+			if (cached && findCachedResult(resultId)?.result.status === 'running') {
+				if (options.whatToCheck === undefined) {
+					replaceCachedResult(cached.runId, resultId, cached.result);
+				} else {
+					// The backend saves an edited rule before it executes, so a failure
+					// doesn't say whether the old or new rule is stored — read it back
+					// rather than guess. Falls back to the old row if that read fails too.
+					await refreshCachedResult(projectId, agentId, cached.runId, resultId).catch(() =>
+						replaceCachedResult(cached.runId, resultId, cached.result),
+					);
+				}
+			}
 			throw error;
 		}
 	};

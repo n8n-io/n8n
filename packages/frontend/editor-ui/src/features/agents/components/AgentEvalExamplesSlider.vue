@@ -4,7 +4,7 @@
  * form. Split out of `InstanceAiTestAgentExamplesPanel` so the same picker can
  * also drive the evals-tab empty-state preview.
  */
-import { computed, ref, watch } from 'vue';
+import { computed, ref, useId, watch } from 'vue';
 import type { AgentEvalDraftCase } from '@n8n/api-types';
 import { ElSlider } from 'element-plus';
 import { N8nIcon, N8nSpinner, N8nText } from '@n8n/design-system';
@@ -124,6 +124,7 @@ function cancelAddOwn() {
 }
 
 const ownInputRef = ref<HTMLInputElement | null>(null);
+const ownInputId = useId();
 
 function focusOwnInput() {
 	ownInputRef.value?.focus();
@@ -201,12 +202,13 @@ defineExpose({ sliderValue, focusOwnInput });
 		<div :class="$style.addOwnForm">
 			<AgentAvatar kind="idle" size="xs" />
 			<div :class="$style.addOwnFormHeader">
-				<label for="ownInput">
+				<label :for="ownInputId">
 					<N8nText color="text-light" size="small">
 						{{ i18n.baseText('instanceAi.testAgentPreview.customExampleLabel') }}
 					</N8nText>
 				</label>
 				<input
+					:id="ownInputId"
 					ref="ownInputRef"
 					v-model="ownInput"
 					name="ownInput"

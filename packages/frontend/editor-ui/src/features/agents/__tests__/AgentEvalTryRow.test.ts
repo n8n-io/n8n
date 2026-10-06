@@ -387,6 +387,20 @@ describe('AgentEvalTryRow', () => {
 			expect(emitted('delete-check')).toBeUndefined();
 		});
 
+		it('still offers delete, but no rule editor, when the case has no criteria', async () => {
+			openAgentConfirmationModal.mockResolvedValue(MODAL_CONFIRM);
+			const user = userEvent.setup();
+			const { getByTestId, queryByTestId, emitted } = renderComponent({
+				props: { testId: 'row', whatToCheck: null },
+			});
+			await user.click(getByTestId('row-toggle'));
+
+			expect(queryByTestId('row-edit-rule')).not.toBeInTheDocument();
+			await user.click(getByTestId('row-delete-check'));
+
+			expect(emitted('delete-check')).toBeTruthy();
+		});
+
 		it('disables the delete button for a read-only viewer', async () => {
 			const user = userEvent.setup();
 			const { getByTestId } = renderWithRule({ testId: 'row', disabled: true });

@@ -240,13 +240,15 @@ watch(
 			:class="$style.sample"
 			:data-test-id="testId && `${testId}-placeholder`"
 		>
-			<div v-if="whatToCheck" :class="$style.whatToCheck">
+			<div :class="$style.whatToCheck">
 				<div :class="$style.whatToCheckHeader">
-					<N8nText bold color="text-dark" size="medium">{{
+					<N8nText v-if="whatToCheck" bold color="text-dark" size="medium">{{
 						i18n.baseText('instanceAi.testAgentPreview.rule')
 					}}</N8nText>
 					<div v-if="!editingWhatToCheck" :class="$style.whatToCheckActions">
+						<!-- Only the rule is editable; a case with no criteria column can still be deleted. -->
 						<N8nButton
+							v-if="whatToCheck"
 							variant="subtle"
 							size="small"
 							icon-only
@@ -275,36 +277,38 @@ watch(
 					</div>
 				</div>
 
-				<N8nText v-if="!editingWhatToCheck" color="text-dark" size="medium">{{
-					whatToCheck
-				}}</N8nText>
-				<div v-else :class="$style.whatToCheckEdit">
-					<N8nInput
-						v-model="whatToCheckDraft"
-						size="medium"
-						:data-test-id="testId && `${testId}-rule-input`"
-						@keydown.meta.enter="onSaveWhatToCheck"
-						@keydown.ctrl.enter="onSaveWhatToCheck"
-						@keydown.esc="onCancelEditWhatToCheck"
-					/>
-					<N8nButton
-						variant="solid"
-						size="small"
-						:disabled="!whatToCheckDraft.trim()"
-						:data-test-id="testId && `${testId}-rule-save`"
-						@click="onSaveWhatToCheck"
-					>
-						{{ i18n.baseText('generic.save') }}
-					</N8nButton>
-					<N8nButton
-						variant="subtle"
-						size="small"
-						:data-test-id="testId && `${testId}-rule-cancel`"
-						@click="onCancelEditWhatToCheck"
-					>
-						{{ i18n.baseText('generic.cancel') }}
-					</N8nButton>
-				</div>
+				<template v-if="whatToCheck">
+					<N8nText v-if="!editingWhatToCheck" color="text-dark" size="medium">{{
+						whatToCheck
+					}}</N8nText>
+					<div v-else :class="$style.whatToCheckEdit">
+						<N8nInput
+							v-model="whatToCheckDraft"
+							size="medium"
+							:data-test-id="testId && `${testId}-rule-input`"
+							@keydown.meta.enter="onSaveWhatToCheck"
+							@keydown.ctrl.enter="onSaveWhatToCheck"
+							@keydown.esc="onCancelEditWhatToCheck"
+						/>
+						<N8nButton
+							variant="solid"
+							size="small"
+							:disabled="!whatToCheckDraft.trim()"
+							:data-test-id="testId && `${testId}-rule-save`"
+							@click="onSaveWhatToCheck"
+						>
+							{{ i18n.baseText('generic.save') }}
+						</N8nButton>
+						<N8nButton
+							variant="subtle"
+							size="small"
+							:data-test-id="testId && `${testId}-rule-cancel`"
+							@click="onCancelEditWhatToCheck"
+						>
+							{{ i18n.baseText('generic.cancel') }}
+						</N8nButton>
+					</div>
+				</template>
 			</div>
 			<N8nText bold color="text-dark" size="medium">{{
 				i18n.baseText('instanceAi.testAgentPreview.conversation')
@@ -439,6 +443,7 @@ watch(
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--3xs);
+	margin-left: auto;
 }
 
 .whatToCheckEdit {

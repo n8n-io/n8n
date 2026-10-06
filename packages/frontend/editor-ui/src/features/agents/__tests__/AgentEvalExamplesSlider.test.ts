@@ -54,6 +54,14 @@ describe('AgentEvalExamplesSlider', () => {
 		);
 	});
 
+	it('associates the "Custom" label with the input, so assistive tech reads it', () => {
+		const { getByLabelText } = renderComponent();
+
+		expect(getByLabelText('Custom')).toBe(
+			document.querySelector('[data-test-id="instance-ai-test-agent-examples-add-own-input"]'),
+		);
+	});
+
 	it('labels a submitted own example as "Custom", same as the other rows', async () => {
 		const user = userEvent.setup();
 		const { getByTestId, getAllByText } = renderComponent();

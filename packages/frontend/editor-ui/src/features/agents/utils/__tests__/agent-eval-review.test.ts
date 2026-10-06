@@ -278,8 +278,8 @@ describe('toAvatarKind', () => {
 			expect(toAvatarKind('success', verdict({ status: 'skipped', outcome: null }))).toBe('pass');
 		});
 
-		it('reads as "pass" when the judge call itself errored (ungraded, not a fail)', () => {
-			expect(toAvatarKind('success', verdict({ status: 'error', outcome: null }))).toBe('pass');
+		it('reads as "work" when the judge call itself errored (never graded, so not a pass)', () => {
+			expect(toAvatarKind('success', verdict({ status: 'error', outcome: null }))).toBe('work');
 		});
 
 		it('reads as "pass" when the judge completed with a pass outcome', () => {
