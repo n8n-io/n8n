@@ -21,7 +21,7 @@ type HeartbeatRun = {
 	claim: ClaimedTaskRef;
 	/** `performance.now()` just before the write that last set the lease. */
 	leaseSetAt: number;
-	isDispatchStored: () => boolean;
+	isMarkedDispatched: () => boolean;
 };
 
 /**
@@ -301,11 +301,11 @@ export class Executor {
 		// no-op, so an explicit `dispatched()` and the post-return fallback below collapse to
 		// one write.
 		let dispatchMark: Promise<void> | undefined;
-		let isDispatchStored = false;
+		let isMarkedDispatched = false;
 		const markDispatched = (): void => {
 			dispatchMark ??= this.store.markDispatched(claim).then(
 				(rowsAffected) => {
-					isDispatchStored = rowsAffected > 0;
+					isMarkedDispatched = rowsAffected > 0;
 				},
 				(error: unknown) => this.hooks.onFireError?.(task, error),
 			);
@@ -319,7 +319,7 @@ export class Executor {
 			await this.executeWithHeartbeat(handler, task, report, {
 				claim,
 				leaseSetAt,
-				isDispatchStored: () => isDispatchStored,
+				isMarkedDispatched: () => isMarkedDispatched,
 			});
 		} catch (error) {
 			await dispatchMark;
@@ -389,7 +389,7 @@ export class Executor {
 		handler: TaskHandler,
 		task: ClaimedTask,
 		report: DispatchReporter,
-		{ claim, leaseSetAt, isDispatchStored }: HeartbeatRun,
+		{ claim, leaseSetAt, isMarkedDispatched }: HeartbeatRun,
 	): Promise<void> {
 		const lease = new AbortController();
 		const heartbeat = new LeaseHeartbeat(
@@ -402,7 +402,7 @@ export class Executor {
 					// it again, so stopping its run would only leave the work half done. A
 					// marker write still in flight counts as not stored: the reaper may
 					// already redeliver the row, and that write may never finish.
-					if (result !== 'renewed' && !isDispatchStored()) {
+					if (result !== 'renewed' && !isMarkedDispatched()) {
 						lease.abort(new LeaseLostError());
 					}
 				},
