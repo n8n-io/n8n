@@ -175,7 +175,7 @@ const hasFavorites = computed(() => favoritesStore.favorites.length > 0);
 
 const instanceAi = computed<IMenuItem>(() => ({
 	id: 'instance-ai',
-	icon: isAgentsN8nChatFlag.value ? 'message-square-plus' : 'sparkles',
+	icon: isAgentsN8nChatFlag.value ? 'message-square-plus' : 'n8n-assistant',
 	label: isAgentsN8nChatFlag.value
 		? locale.baseText('instanceAi.thread.new')
 		: locale.baseText('projects.menu.instanceAi'),
