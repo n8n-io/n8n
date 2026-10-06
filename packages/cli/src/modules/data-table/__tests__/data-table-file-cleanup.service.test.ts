@@ -1,9 +1,7 @@
 import type { GlobalConfig } from '@n8n/config';
 import { promises as fs } from 'fs';
-import type { InstanceSettings } from 'n8n-core';
 import path from 'path';
 import type { Mock } from 'vitest';
-import { mock } from 'vitest-mock-extended';
 
 import { DataTableFileCleanupService } from '../data-table-file-cleanup.service';
 
@@ -26,13 +24,10 @@ describe('DataTableFileCleanupService', () => {
 		},
 	} as GlobalConfig;
 
-	const instanceSettings = mock<InstanceSettings>({ instanceType: 'main' });
-
-	const service = new DataTableFileCleanupService(globalConfig, instanceSettings);
+	const service = new DataTableFileCleanupService(globalConfig);
 
 	beforeEach(() => {
-		vi.clearAllMocks();
-		vi.spyOn(console, 'error').mockImplementation(() => {});
+		vi.resetAllMocks();
 	});
 
 	afterEach(() => {
@@ -81,234 +76,94 @@ describe('DataTableFileCleanupService', () => {
 		});
 	});
 
-	describe('start and shutdown', () => {
-		it('should start cleanup interval on main', async () => {
-			vi.useFakeTimers();
-
-			await service.start();
-
-			expect(service['cleanupInterval']).toBeDefined();
-
-			vi.useRealTimers();
-		});
-
-		it('should skip cleanup interval on worker', async () => {
-			vi.useFakeTimers();
-
-			const workerSettings = mock<InstanceSettings>({ instanceType: 'worker' });
-			const workerService = new DataTableFileCleanupService(globalConfig, workerSettings);
-
-			await workerService.start();
-
-			expect(workerService['cleanupInterval']).toBeUndefined();
-
-			vi.useRealTimers();
-		});
-
-		it('should clear interval on shutdown', async () => {
-			vi.useFakeTimers();
-
-			await service.start();
-			expect(service['cleanupInterval']).toBeDefined();
-
-			await service.shutdown();
-
-			expect(service['cleanupInterval']).toBeUndefined();
-
-			vi.useRealTimers();
-		});
-
-		it('should not error on shutdown if interval was never started', async () => {
-			await expect(service.shutdown()).resolves.toBeUndefined();
-		});
-	});
-
 	describe('cleanupOrphanedFiles', () => {
-		const flushPromises = async () => {
-			const { setImmediate: realSetImmediate } =
-				await vi.importActual<typeof import('timers')>('timers');
-			await new Promise(realSetImmediate);
-		};
+		const OLD_FILE = 'old-file.csv';
+		const NEW_FILE = 'new-file.csv';
+		let oldMtimeMs: number;
+		let newMtimeMs: number;
 
 		beforeEach(() => {
-			vi.useFakeTimers();
-		});
-
-		afterEach(() => {
-			vi.useRealTimers();
-		});
-
-		it('should delete files older than 2 minutes', async () => {
 			const now = Date.now();
-			const oldFile1 = 'old-file-1.csv';
-			const oldFile2 = 'old-file-2.csv';
-
-			(fs.readdir as Mock).mockResolvedValue([oldFile1, oldFile2]);
-			(fs.stat as Mock).mockResolvedValue({
-				mtimeMs: now - 3 * 60 * 1000, // 3 minutes ago
-			});
-			(fs.unlink as Mock).mockResolvedValue(undefined);
-
-			await service.start();
-
-			// Trigger cleanup and let promises resolve
-			vi.advanceTimersByTime(60 * 1000);
-			await flushPromises();
-
-			expect(fs.readdir).toHaveBeenCalledWith(uploadDir);
-			expect(fs.stat).toHaveBeenCalledTimes(2);
-			expect(fs.unlink).toHaveBeenCalledWith(path.join(uploadDir, oldFile1));
-			expect(fs.unlink).toHaveBeenCalledWith(path.join(uploadDir, oldFile2));
+			oldMtimeMs = now - 3 * 60 * 1000;
+			newMtimeMs = now - 1 * 60 * 1000;
 		});
 
-		it('should not delete files newer than 2 minutes', async () => {
-			const now = Date.now();
-			const newFile = 'new-file.csv';
+		const errnoError = (code: string): NodeJS.ErrnoException =>
+			Object.assign(new Error(code), { code });
 
-			(fs.readdir as Mock).mockResolvedValue([newFile]);
-			(fs.stat as Mock).mockResolvedValue({
-				mtimeMs: now - 1 * 60 * 1000, // 1 minute ago
-			});
+		const cleanup = async (signal = new AbortController().signal): Promise<void> =>
+			await service.cleanupOrphanedFiles(signal);
 
-			await service.start();
-			vi.advanceTimersByTime(60 * 1000); // Trigger cleanup
-			await flushPromises();
+		it('should delete only the files older than the maximum age', async () => {
+			(fs.readdir as Mock).mockResolvedValue([OLD_FILE, NEW_FILE]);
+			(fs.stat as Mock).mockImplementation(async (filePath: string) => ({
+				mtimeMs: filePath.endsWith(OLD_FILE) ? oldMtimeMs : newMtimeMs,
+			}));
 
-			expect(fs.readdir).toHaveBeenCalled();
-			expect(fs.stat).toHaveBeenCalled();
-			expect(fs.unlink).not.toHaveBeenCalled();
+			await cleanup();
+
+			expect((fs.unlink as Mock).mock.calls).toEqual([[path.join(uploadDir, OLD_FILE)]]);
 		});
 
-		it('should handle mixed old and new files', async () => {
-			const now = Date.now();
-			const oldFile = 'old-file.csv';
-			const newFile = 'new-file.csv';
-
-			(fs.readdir as Mock).mockResolvedValue([oldFile, newFile]);
-			(fs.stat as Mock)
-				.mockResolvedValueOnce({
-					mtimeMs: now - 3 * 60 * 1000, // 3 minutes ago (old)
-				})
-				.mockResolvedValueOnce({
-					mtimeMs: now - 1 * 60 * 1000, // 1 minute ago (new)
-				});
-			(fs.unlink as Mock).mockResolvedValue(undefined);
-
-			await service.start();
-			vi.advanceTimersByTime(60 * 1000); // Trigger cleanup
-			await flushPromises();
-
-			expect(fs.unlink).toHaveBeenCalledTimes(1);
-			expect(fs.unlink).toHaveBeenCalledWith(path.join(uploadDir, oldFile));
-			expect(fs.unlink).not.toHaveBeenCalledWith(path.join(uploadDir, newFile));
-		});
-
-		it('should handle empty upload directory', async () => {
+		it('should do nothing when the upload directory is empty', async () => {
 			(fs.readdir as Mock).mockResolvedValue([]);
 
-			await service.start();
-			vi.advanceTimersByTime(60 * 1000); // Trigger cleanup
-			await flushPromises();
+			await cleanup();
 
-			expect(fs.readdir).toHaveBeenCalled();
 			expect(fs.stat).not.toHaveBeenCalled();
 			expect(fs.unlink).not.toHaveBeenCalled();
 		});
 
-		it('should ignore ENOENT error if upload directory does not exist', async () => {
-			const error = new Error('ENOENT: no such file or directory') as NodeJS.ErrnoException;
-			error.code = 'ENOENT';
+		it('should resolve when the upload directory does not exist', async () => {
+			(fs.readdir as Mock).mockRejectedValue(errnoError('ENOENT'));
+
+			await expect(cleanup()).resolves.toBeUndefined();
+		});
+
+		it.each(['stat', 'unlink'] as const)(
+			'should skip a file that is already gone on %s',
+			async (operation) => {
+				(fs.readdir as Mock).mockResolvedValue(['gone.csv', OLD_FILE]);
+				(fs.stat as Mock).mockResolvedValue({ mtimeMs: oldMtimeMs });
+				(fs[operation] as Mock).mockRejectedValueOnce(errnoError('ENOENT'));
+
+				await expect(cleanup()).resolves.toBeUndefined();
+				expect(fs.unlink).toHaveBeenLastCalledWith(path.join(uploadDir, OLD_FILE));
+			},
+		);
+
+		it('should reject when the upload directory cannot be read', async () => {
+			const error = errnoError('EACCES');
 			(fs.readdir as Mock).mockRejectedValue(error);
 
-			await service.start();
-			vi.advanceTimersByTime(60 * 1000); // Trigger cleanup
-			await flushPromises();
-
-			expect(fs.readdir).toHaveBeenCalled();
-			expect(console.error).not.toHaveBeenCalled();
+			await expect(cleanup()).rejects.toBe(error);
 		});
 
-		it('should log error for non-ENOENT readdir errors', async () => {
-			const error = new Error('Permission denied');
-			(fs.readdir as Mock).mockRejectedValue(error);
+		it.each(['stat', 'unlink'] as const)(
+			'should delete the other files and then reject with the first %s error',
+			async (operation) => {
+				const error = errnoError('EACCES');
+				(fs.readdir as Mock).mockResolvedValue(['a', 'b', 'c']);
+				(fs.stat as Mock).mockResolvedValue({ mtimeMs: oldMtimeMs });
+				(fs[operation] as Mock).mockRejectedValueOnce(error);
 
-			await service.start();
-			vi.advanceTimersByTime(60 * 1000); // Trigger cleanup
-			await flushPromises();
+				await expect(cleanup()).rejects.toBe(error);
+				expect((fs.unlink as Mock).mock.calls.slice(-2)).toEqual([
+					[path.join(uploadDir, 'b')],
+					[path.join(uploadDir, 'c')],
+				]);
+			},
+		);
 
-			expect(console.error).toHaveBeenCalledWith('Error cleaning up orphaned CSV files:', error);
-		});
+		it('should stop before the next file when the signal is aborted', async () => {
+			const controller = new AbortController();
+			(fs.readdir as Mock).mockResolvedValue(['a', 'b']);
+			(fs.stat as Mock).mockResolvedValue({ mtimeMs: oldMtimeMs });
+			(fs.unlink as Mock).mockImplementation(async () => controller.abort());
 
-		it('should continue cleanup if individual file stat fails', async () => {
-			const file1 = 'file1.csv';
-			const file2 = 'file2.csv';
+			await cleanup(controller.signal);
 
-			(fs.readdir as Mock).mockResolvedValue([file1, file2]);
-			(fs.stat as Mock)
-				.mockRejectedValueOnce(new Error('Stat failed for file1'))
-				.mockResolvedValueOnce({
-					mtimeMs: Date.now() - 3 * 60 * 1000, // file2 is old
-				});
-			(fs.unlink as Mock).mockResolvedValue(undefined);
-
-			await service.start();
-			vi.advanceTimersByTime(60 * 1000); // Trigger cleanup
-			await flushPromises();
-
-			// Should still delete file2 even though file1 failed
-			expect(fs.unlink).toHaveBeenCalledWith(path.join(uploadDir, file2));
-			expect(fs.unlink).toHaveBeenCalledTimes(1);
-		});
-
-		it('should continue cleanup if individual file unlink fails', async () => {
-			const now = Date.now();
-			const file1 = 'file1.csv';
-			const file2 = 'file2.csv';
-
-			(fs.readdir as Mock).mockResolvedValue([file1, file2]);
-			(fs.stat as Mock).mockResolvedValue({
-				mtimeMs: now - 3 * 60 * 1000, // Both files are old
-			});
-			(fs.unlink as Mock)
-				.mockRejectedValueOnce(new Error('Unlink failed for file1'))
-				.mockResolvedValueOnce(undefined);
-
-			await service.start();
-			vi.advanceTimersByTime(60 * 1000); // Trigger cleanup
-			await flushPromises();
-
-			// Should attempt to delete both files
-			expect(fs.unlink).toHaveBeenCalledWith(path.join(uploadDir, file1));
-			expect(fs.unlink).toHaveBeenCalledWith(path.join(uploadDir, file2));
-			expect(fs.unlink).toHaveBeenCalledTimes(2);
-		});
-
-		it('should run cleanup every 60 seconds', async () => {
-			const now = Date.now();
-			(fs.readdir as Mock).mockResolvedValue(['old-file.csv']);
-			(fs.stat as Mock).mockResolvedValue({
-				mtimeMs: now - 3 * 60 * 1000,
-			});
-			(fs.unlink as Mock).mockResolvedValue(undefined);
-
-			await service.start();
-
-			// First cleanup
-			vi.advanceTimersByTime(60 * 1000);
-			await flushPromises();
-			expect(fs.readdir).toHaveBeenCalledTimes(1);
-
-			// Second cleanup
-			vi.advanceTimersByTime(60 * 1000);
-			await flushPromises();
-			expect(fs.readdir).toHaveBeenCalledTimes(2);
-
-			// Third cleanup
-			vi.advanceTimersByTime(60 * 1000);
-			await flushPromises();
-			expect(fs.readdir).toHaveBeenCalledTimes(3);
-
-			await service.shutdown();
+			expect((fs.unlink as Mock).mock.calls).toEqual([[path.join(uploadDir, 'a')]]);
 		});
 	});
 });
