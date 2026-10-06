@@ -478,7 +478,7 @@ describe('AgentChatPanel', () => {
 				];
 				await flushPromises();
 
-				const rows = wrapper.findAll('[data-testid="agent-queued-message"]');
+				const rows = wrapper.findAll('[data-testid="chat-queued-message"]');
 				expect(rows).toHaveLength(1);
 				expect(rows[0].text()).toContain('second message');
 				wrapper.unmount();
