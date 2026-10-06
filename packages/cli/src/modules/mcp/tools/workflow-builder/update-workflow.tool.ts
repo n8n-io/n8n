@@ -735,8 +735,6 @@ const isTagOperation = (op: PartialUpdateOperation) =>
 const isSettingsOperation = (op: PartialUpdateOperation) => op.type === 'setWorkflowSettings';
 
 /**
-<<<<<<< HEAD
-=======
  * Operations that cannot leave a required subnode input unsatisfied: they touch
  * neither connections nor the parameters a conditional `inputs` expression reads.
  * Node-level execution settings qualify, since `inputs` only sees `$parameter`.
@@ -757,20 +755,6 @@ const GRAPH_NEUTRAL_OPERATIONS = new Set<PartialUpdateOperation['type']>([
 const touchesGraph = (op: PartialUpdateOperation) => !GRAPH_NEUTRAL_OPERATIONS.has(op.type);
 
 /**
- * Rejects operations this instance cannot serve, before anything is loaded or
- * applied.
- */
-function assertOperationsSupported(
-	strictOperations: PartialUpdateOperation[],
-	{ tagsDisabled }: { tagsDisabled: boolean },
-): void {
-	if (tagsDisabled && strictOperations.some(isTagOperation)) {
-		throw new Error('Tag operations are not supported on this instance because tags are disabled.');
-	}
-}
-
-/**
->>>>>>> a448b8d2dfdb07f6a2b61babbcc8e2e06d55ea49
  * Group rules depend on how the workflow looks after the whole batch, so they
  * are checked once here rather than per operation. A broken group is dropped
  * and reported; the update still goes through.
