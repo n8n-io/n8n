@@ -44,7 +44,7 @@ jobs:
         continue-on-error: true
         run: |
           mkdir -p "$RUNNER_TEMP/jscpd-report"
-          pnpm jscpd -- --output "$RUNNER_TEMP/jscpd-report" --silent
+          pnpm jscpd -- . --output "$RUNNER_TEMP/jscpd-report" --silent
 
       - name: Upload jscpd report
         id: report-artifact
