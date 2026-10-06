@@ -150,7 +150,8 @@ describe('MCP discovery store', () => {
 		mocks.request.mockResolvedValue({ status: 'unknown', coachmarkDismissed: false });
 		const store = useMcpDiscoveryStore();
 		await store.refresh();
-		expect(mocks.request).toHaveBeenLastCalledWith(expect.objectContaining({ data: {} }));
+		expect(mocks.request).toHaveBeenCalledTimes(1);
+		expect(mocks.request.mock.calls[0]?.[0].data.pickedClaude).toBeUndefined();
 
 		mocks.cloud.fetchUserCloudAccount.mockImplementation(async () => {
 			mocks.cloud.currentUserCloudInfo = {

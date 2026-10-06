@@ -3540,6 +3540,7 @@
 	"settings.mcp.page.description": "Let AI assistants and IDEs connect to this instance over the Model Context Protocol (MCP), then control which tools and workflows they can use.",
 	"experiments.mcpDiscovery.settings.mcp.page.description": "Connect AI assistants like Claude to build and run workflows in n8n. You choose which workflows and tools they can access.",
 	"settings.mcp.page.docsLeadingText": "Learn how to get started in the ",
+	"settings.mcp.page.docsLabel": "documentation",
 	"settings.mcp.header.toggle.enabled": "Enabled",
 	"settings.mcp.header.toggle.disabled": "Disabled",
 	"settings.mcp.actionBox.heading": "Connect AI assistants to build and run workflows",

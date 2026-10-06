@@ -318,6 +318,7 @@ onBeforeUnmount(() => {
 				showMcpDiscovery ? i18n.baseText('settings.mcp.page.docsLeadingText') : undefined
 			"
 			:docs-url="MCP_DOCS_PAGE_URL"
+			:docs-label="i18n.baseText('settings.mcp.page.docsLabel')"
 			data-test-id="mcp-settings-header"
 		/>
 
