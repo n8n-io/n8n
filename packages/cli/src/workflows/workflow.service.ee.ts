@@ -648,8 +648,15 @@ export class EnterpriseWorkflowService {
 
 		// 2. Get all workflows in the nested folders
 
+		const checksTransfer = this.policyEnforcementService.hasChecksFor('workflowTransfer');
 		const workflows = await this.workflowRepository.find({
-			select: ['id', 'activeVersionId', 'shared'],
+			select: [
+				'id',
+				'name',
+				'activeVersionId',
+				'shared',
+				...(checksTransfer ? ['nodes' as const] : []),
+			],
 			relations: ['shared', 'shared.project'],
 			where: {
 				parentFolder: { id: In([...childrenFolderIds, sourceFolderId]) },
@@ -690,6 +697,15 @@ export class EnterpriseWorkflowService {
 			if (sourceProject.id === destinationProject.id) {
 				throw new TransferWorkflowError(
 					"You can't transfer a workflow into the project that's already owning it.",
+				);
+			}
+		}
+
+		if (checksTransfer) {
+			for (const workflow of workflows) {
+				await this.policyEnforcementService.enforceWorkflowTransfer(
+					{ workflow, targetProjectId: destinationProject.id },
+					{ kind: 'user', user },
 				);
 			}
 		}
