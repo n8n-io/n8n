@@ -194,6 +194,85 @@ export const Embedded = {
 	},
 } satisfies Story;
 
+export const Trailing = {
+	render: () => ({
+		components: { TagsInput, N8nIcon },
+		setup() {
+			const tags = ['workflow', 'production'];
+			const xlargeValue = ref([...tags]);
+			const largeValue = ref([...tags]);
+			const mediumValue = ref([...tags]);
+			const smallValue = ref([...tags]);
+			const miniValue = ref([...tags]);
+			const trailingStyle = {
+				display: 'inline-flex',
+				flexShrink: 0,
+				alignItems: 'center',
+				alignSelf: 'flex-end',
+				height: 'calc(var(--input--height) - 2px)',
+				marginTop: '0',
+				paddingInline: 'var(--spacing--2xs)',
+				color: 'var(--text-color--subtle)',
+			};
+			return {
+				xlargeValue,
+				largeValue,
+				mediumValue,
+				smallValue,
+				miniValue,
+				trailingStyle,
+			};
+		},
+		template: `
+		<div style="${storyContainerStyle}; display: flex; flex-direction: column; gap: var(--spacing--md);">
+			<TagsInput v-model="xlargeValue" size="xlarge" placeholder="xlarge (40px)">
+				<template #trailing>
+					<span :style="trailingStyle">
+						<N8nIcon icon="search" size="large" />
+					</span>
+				</template>
+			</TagsInput>
+			<TagsInput v-model="largeValue" size="large" placeholder="large (36px, default)">
+				<template #trailing>
+					<span :style="trailingStyle">
+						<N8nIcon icon="search" size="medium" />
+					</span>
+				</template>
+			</TagsInput>
+			<TagsInput v-model="mediumValue" size="medium" placeholder="medium (32px)">
+				<template #trailing>
+					<span :style="trailingStyle">
+						<N8nIcon icon="search" size="small" />
+					</span>
+				</template>
+			</TagsInput>
+			<TagsInput v-model="smallValue" size="small" placeholder="small (28px)">
+				<template #trailing>
+					<span :style="trailingStyle">
+						<N8nIcon icon="search" size="small" />
+					</span>
+				</template>
+			</TagsInput>
+			<TagsInput v-model="miniValue" size="mini" placeholder="mini (24px)">
+				<template #trailing>
+					<span :style="trailingStyle">
+						<N8nIcon icon="search" size="xsmall" />
+					</span>
+				</template>
+			</TagsInput>
+		</div>
+		`,
+	}),
+	parameters: {
+		docs: {
+			description: {
+				story:
+					'The `trailing` slot is unstyled. This story sets its height to the field height minus the 1px padding on each side, so it fills one row and stays inside the field. The icon stays centered on one line and on the last row as the field grows.',
+			},
+		},
+	},
+} satisfies Story;
+
 export const Multiline = {
 	render: (args) => ({
 		components: { TagsInput },

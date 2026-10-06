@@ -61,6 +61,26 @@ describe('WorkflowFinderService', () => {
 				]),
 			);
 		});
+
+		it('also returns archived workflows when asked to', async () => {
+			const project = await createTeamProject('Target', owner);
+			const active = await createWorkflow({ name: 'Active' }, project);
+			const archived = await createWorkflow({ name: 'Archived', isArchived: true }, project);
+
+			const candidates = await workflowFinderService.findOwnedWorkflowRemovalCandidates(
+				project.id,
+				[active.id, archived.id],
+				{ includeArchived: true },
+			);
+
+			expect(candidates).toHaveLength(2);
+			expect(candidates).toEqual(
+				expect.arrayContaining([
+					{ id: active.id, name: 'Active', parentFolderId: null },
+					{ id: archived.id, name: 'Archived', parentFolderId: null },
+				]),
+			);
+		});
 	});
 
 	describe('findWorkflowHeadForUser', () => {

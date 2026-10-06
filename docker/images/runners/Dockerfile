@@ -91,7 +91,7 @@ RUN uv pip install . && rm -rf /app/task-runner-python/src
 # ==============================================================================
 FROM alpine:3.22 AS launcher-downloader
 ARG TARGETPLATFORM
-ARG LAUNCHER_VERSION=1.5.0
+ARG LAUNCHER_VERSION=1.5.1
 
 RUN set -e; \
     case "$TARGETPLATFORM" in \

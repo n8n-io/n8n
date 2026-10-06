@@ -3,7 +3,7 @@ import { CronLoggingConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import { Service } from '@n8n/di';
 import { CronJob, CronTime } from 'cron';
-import type { CronContext } from 'n8n-workflow';
+import type { Cron } from 'n8n-workflow';
 
 import { InstanceSettings } from '@/instance-settings';
 
@@ -21,8 +21,7 @@ export type ScheduledTaskContext = {
 	targetId: string;
 	timezone: string;
 	expression: string;
-	// oxlint-disable-next-line typescript/no-deprecated
-	recurrence?: CronContext['recurrence'];
+	recurrence?: Cron['recurrence'];
 };
 
 @Service()

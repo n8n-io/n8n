@@ -6,7 +6,8 @@ import {
 	type AgentJsonConfig,
 } from '@n8n/api-types';
 import { mockLogger } from '@n8n/backend-test-utils';
-import type { User, WorkflowRepository } from '@n8n/db';
+import type { User, WorkflowRepository, TransactionRunner } from '@n8n/db';
+import { Container } from '@n8n/di';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { mock } from 'vitest-mock-extended';
 
@@ -14,9 +15,11 @@ import type { CredentialsService } from '@/credentials/credentials.service';
 
 import type { Telemetry } from '@/telemetry';
 
+import { AgentConfigPreparationService } from '../agent-config-preparation.service';
 import { AgentConfigService } from '../agent-config.service';
 import { AgentModificationTelemetryService } from '../agent-modification-telemetry.service';
-import type { AgentRuntimeCacheService } from '../agent-runtime-cache.service';
+import { AgentSaveCompletionService } from '../agent-save-completion.service';
+import { AgentRuntimeCacheService } from '../agent-runtime-cache.service';
 import { AgentSetupCompletionService } from '../agent-setup-completion.service';
 import type { AgentSkillsService } from '../agent-skills.service';
 import type { AgentUpdateBroadcaster } from '../agent-update-broadcaster';
@@ -102,19 +105,26 @@ function makeService() {
 		);
 	});
 
+	const transactionRunner = mock<TransactionRunner>();
+	transactionRunner.run.mockImplementation(async (ctx, fn) => await fn(ctx));
+	Container.set(AgentRuntimeCacheService, runtimeCacheService);
 	const service = new AgentConfigService(
 		mockLogger(),
 		agentRepository,
 		agentTaskRepository,
 		agentSkillsService,
-		runtimeCacheService,
-		credentialsService,
-		workflowRepository,
-		nodeToolAiGatewayService,
-		eventService,
+		new AgentConfigPreparationService(
+			credentialsService,
+			workflowRepository,
+			nodeToolAiGatewayService,
+		),
 		new AgentSetupCompletionService(agentValidationService, telemetry, agentRepository),
-		new AgentModificationTelemetryService(telemetry),
-		agentUpdateBroadcaster,
+		transactionRunner,
+		new AgentSaveCompletionService(
+			eventService,
+			agentUpdateBroadcaster,
+			new AgentModificationTelemetryService(telemetry),
+		),
 	);
 
 	return {
@@ -290,40 +300,44 @@ describe('AgentConfigService', () => {
 			},
 		);
 
-		it('rejects saving an HTTP Request URL controlled by $fromAI', async () => {
-			const { service, agentRepository } = makeService();
-			const agent = makeAgent();
-			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+		it.each([undefined, true, false])(
+			'validates HTTP Request URLs with enabled=%s',
+			async (enabled) => {
+				const { service, agentRepository } = makeService();
+				const agent = makeAgent();
+				agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
 
-			await expect(
-				service.updateConfig(
-					agentId,
-					projectId,
-					{
-						...baseConfig,
-						tools: [
-							{
-								type: 'node',
-								name: 'Fetch page',
-								node: {
-									nodeType: 'n8n-nodes-base.httpRequestTool',
-									nodeTypeVersion: 4.5,
-									nodeParameters: {
-										url: "={{ $fromAI('url', 'The URL to inspect', 'string') }}",
-									},
+				const config: AgentJsonConfig = {
+					...baseConfig,
+					tools: [
+						{
+							type: 'node',
+							name: 'Fetch page',
+							enabled,
+							node: {
+								nodeType: 'n8n-nodes-base.httpRequestTool',
+								nodeTypeVersion: 4.5,
+								nodeParameters: {
+									url: "={{ $fromAI('url', 'The URL to inspect', 'string') }}",
 								},
 							},
-						],
-					},
-					user,
-					byUser,
-				),
-			).rejects.toThrow(
-				'HTTP Request tool "Fetch page" cannot use $fromAI in tools.0.node.nodeParameters.url. Enter a fixed URL.',
-			);
-			expect(agent.schema).toBe(baseConfig);
-			expect(agentRepository.save).not.toHaveBeenCalled();
-		});
+						},
+					],
+				};
+				const save = service.updateConfig(agentId, projectId, config, user, byUser);
+
+				if (enabled === false) {
+					await expect(save).resolves.toMatchObject({ config: { tools: config.tools } });
+					return;
+				}
+
+				await expect(save).rejects.toThrow(
+					'HTTP Request tool "Fetch page" cannot use $fromAI in tools.0.node.nodeParameters.url. Enter a fixed URL.',
+				);
+				expect(agent.schema).toBe(baseConfig);
+				expect(agentRepository.saveDraftFenced).not.toHaveBeenCalled();
+			},
+		);
 
 		it('persists an explicit web-search disable and clears native provider tools', async () => {
 			// Regression: previously the disable was stripped on write and resurrected
@@ -625,7 +639,7 @@ describe('AgentConfigService', () => {
 			const saved = agentRepository.saveDraftFenced.mock.calls.at(-1)?.[0] as Agent;
 			expect(saved.tools).toEqual({});
 			expect(saved.skills).toEqual({});
-			expect(agentTaskRepository.delete).toHaveBeenCalledWith(['task-1']);
+			expect(agentTaskRepository.deleteForAgent).toHaveBeenCalledWith(agentId, ['task-1'], {});
 		});
 
 		it('keeps the resources of omitted tools, skills, and tasks by default', async () => {
@@ -646,7 +660,7 @@ describe('AgentConfigService', () => {
 			const saved = agentRepository.saveDraftFenced.mock.calls.at(-1)?.[0] as Agent;
 			expect(saved.tools).toEqual(storedCustomTool);
 			expect(Object.keys(saved.skills ?? {})).toEqual(['skill-1']);
-			expect(agentTaskRepository.delete).not.toHaveBeenCalled();
+			expect(agentTaskRepository.deleteForAgent).not.toHaveBeenCalled();
 		});
 
 		it('resolves accessible credentials via the user when one is provided', async () => {
@@ -782,11 +796,13 @@ describe('AgentConfigService', () => {
 					tools: [
 						{ type: 'custom', id: 'tool_1', enabled: false, requireApproval: true },
 						{ type: 'custom', id: 'missing_tool' },
+						{ type: 'custom', id: 'toString' },
 						{ type: 'custom', id: 'disabled_missing_tool', enabled: false },
 					],
 					skills: [
 						{ type: 'skill', id: 'skill-1', enabled: false },
 						{ type: 'skill', id: 'missing-skill' },
+						{ type: 'skill', id: 'toString' },
 						{ type: 'skill', id: 'disabled-missing-skill', enabled: false },
 					],
 					tasks: [
@@ -809,7 +825,7 @@ describe('AgentConfigService', () => {
 			]);
 			expect(saved.schema?.tasks).toEqual([{ type: 'task', id: 'task-1', enabled: true }]);
 			expect(Object.keys(saved.tools)).toEqual(['tool_1']);
-			expect(agentTaskRepository.delete).toHaveBeenCalledWith(['task-2']);
+			expect(agentTaskRepository.deleteForAgent).toHaveBeenCalledWith(agentId, ['task-2'], {});
 			expect(agentSkillsService.removeUnreferencedSkills).toHaveBeenCalled();
 			expect(runtimeCacheService.clearRuntimes).toHaveBeenCalledWith(agentId);
 		});
@@ -1168,7 +1184,14 @@ describe('AgentConfigService', () => {
 		});
 
 		it('surfaces a lost revision fence as a retryable conflict without side effects', async () => {
-			const { service, agentRepository, telemetry, eventService } = makeService();
+			const {
+				service,
+				agentRepository,
+				telemetry,
+				eventService,
+				runtimeCacheService,
+				agentUpdateBroadcaster,
+			} = makeService();
 			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
 			// A concurrent publish/unpublish/edit bumped `revision` between this
 			// request's load and its save.
@@ -1180,6 +1203,8 @@ describe('AgentConfigService', () => {
 
 			expect(telemetry.track).not.toHaveBeenCalled();
 			expect(eventService.emit).not.toHaveBeenCalled();
+			expect(runtimeCacheService.clearRuntimes).not.toHaveBeenCalled();
+			expect(agentUpdateBroadcaster.notify).not.toHaveBeenCalled();
 		});
 	});
 
