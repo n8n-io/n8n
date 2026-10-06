@@ -210,6 +210,12 @@ function providerError(error: unknown): unknown {
 	return isRecord(error) && 'lastError' in error ? error.lastError : error;
 }
 
+/** An AI SDK API call error (directly or as the last retry), not a runtime or setup error. */
+function isProviderError(error: unknown): boolean {
+	const apiError = providerError(error);
+	return isRecord(apiError) && typeof apiError.isRetryable === 'boolean';
+}
+
 /** False only for a model error the provider marked as permanent (bad key, bad request). */
 export function isRetryableEvalError(error: unknown): boolean {
 	if (!(error instanceof EvalModelCallError)) return true;
@@ -217,9 +223,15 @@ export function isRetryableEvalError(error: unknown): boolean {
 	return !(isRecord(apiError) && apiError.isRetryable === false);
 }
 
-/** Assistant text of an eval call. Throws when the call itself failed. */
+/**
+ * Assistant text of an eval call. Throws when the call itself failed. Only a
+ * provider error is reported as one; any other agent failure is thrown as is.
+ */
 export function extractText(result: GenerateResult): string {
-	if (result.finishReason === 'error') throw new EvalModelCallError(result.error);
+	if (result.finishReason === 'error') {
+		if (isProviderError(result.error)) throw new EvalModelCallError(result.error);
+		throw result.error instanceof Error ? result.error : new Error(String(result.error));
+	}
 	const texts: string[] = [];
 	for (const msg of result.messages) {
 		if (!('role' in msg) || msg.role !== 'assistant') continue;

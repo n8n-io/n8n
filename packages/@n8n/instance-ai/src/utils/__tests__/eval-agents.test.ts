@@ -264,10 +264,10 @@ describe('extractText', () => {
 		);
 	});
 
-	it('throws a readable message for a non-Error failure', () => {
-		expect(() => extractText(failed('socket closed'))).toThrow(
-			'Eval model provider call failed: socket closed',
-		);
+	it('throws a failure that is not a provider error as it is', () => {
+		const runtimeError = new Error('memory store unavailable');
+		expect(() => extractText(failed(runtimeError))).toThrow(runtimeError);
+		expect(() => extractText(failed('socket closed'))).toThrow(/^socket closed$/);
 	});
 
 	it('marks a failure the provider will not recover from as not retryable', () => {

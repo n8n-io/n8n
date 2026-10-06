@@ -34,6 +34,17 @@ describe('generateJson', () => {
 		);
 	});
 
+	it('retries a model error the provider can recover from, then gives up', async () => {
+		generate.mockResolvedValue({
+			messages: [],
+			finishReason: 'error',
+			error: Object.assign(new Error('Overloaded'), { statusCode: 529, isRetryable: true }),
+		});
+
+		expect(await generateJson('mock', 'i', 'p', validate, mock<Logger>())).toBeUndefined();
+		expect(generate).toHaveBeenCalledTimes(2);
+	});
+
 	it('retries an unusable shape', async () => {
 		generate
 			.mockResolvedValueOnce({
