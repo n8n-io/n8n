@@ -52,10 +52,10 @@ describe('SettingsContextView', () => {
 		expect(getByTestId('settings-context-sources-row')).toBeInTheDocument();
 	});
 
-	it('marks Skills and Sources as unavailable', () => {
+	it('marks Sources as unavailable and Skills as live', () => {
 		const { getByTestId } = renderView();
 
-		expect(getByTestId('settings-context-skills-row')).toHaveTextContent('Coming soon');
+		expect(getByTestId('settings-context-skills-row')).not.toHaveTextContent('Coming soon');
 		expect(getByTestId('settings-context-sources-row')).toHaveTextContent('Coming soon');
 	});
 

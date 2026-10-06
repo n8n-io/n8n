@@ -17,6 +17,8 @@ export const useRBACStore = defineStore(STORES.RBAC, () => {
 		aiAssistant: {},
 		aiPreference: {},
 		projectAiPreference: {},
+		skill: {},
+		projectSkill: {},
 		workflow: {},
 		tag: {},
 		annotationTag: {},

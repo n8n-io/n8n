@@ -43,9 +43,9 @@ function scopeOf(skill: Pick<Skill, 'userId' | 'projectId'>): HubSkillScope {
 /**
  * The skills hub as users see it in Settings: list, create, edit, save and delete
  * skills across the three scopes. Permission is decided per skill from its scope,
- * the same way AI preferences do it (prototype stand-in scopes: `aiPreference:*`
- * for instance and other users' skills, `projectAiPreference:*` for project
- * skills; a user always owns their "Just you" skills).
+ * the same way AI preferences do it: `skill:*` for instance skills and other users'
+ * skills, `projectSkill:*` for project skills. A user always owns their "Just you"
+ * skills, and every user may read instance skills.
  */
 @Service()
 export class SkillsHubApiService {
@@ -61,12 +61,10 @@ export class SkillsHubApiService {
 	// ---------------------------------------------------------------- reads
 
 	async list(user: User, query: ListHubSkillsQueryDto): Promise<HubSkillListResponse> {
-		const projectIds = await this.projectScopeService.getProjectIds(user, [
-			'projectAiPreference:list',
-		]);
+		const projectIds = await this.projectScopeService.getProjectIds(user, ['projectSkill:list']);
 		let skills = await this.skillHubRepository.findVisibleSkills({
 			userId: user.id,
-			allUsers: hasGlobalScope(user, 'aiPreference:list'),
+			allUsers: hasGlobalScope(user, 'skill:list'),
 			projectIds: projectIds ?? 'all',
 		});
 		if (query.scope) skills = skills.filter((skill) => scopeOf(skill) === query.scope);
@@ -202,11 +200,11 @@ export class SkillsHubApiService {
 	private async canSee(user: User, skill: Skill): Promise<boolean> {
 		switch (scopeOf(skill)) {
 			case 'project':
-				return await userHasScopes(user, ['projectAiPreference:read'], false, {
+				return await userHasScopes(user, ['projectSkill:read'], false, {
 					projectId: skill.projectId!,
 				});
 			case 'user':
-				return skill.userId === user.id || hasGlobalScope(user, 'aiPreference:read');
+				return skill.userId === user.id || hasGlobalScope(user, 'skill:read');
 			case 'instance':
 				return true;
 		}
@@ -215,13 +213,13 @@ export class SkillsHubApiService {
 	private async canWrite(user: User, skill: Skill, operation: WriteOperation): Promise<boolean> {
 		switch (scopeOf(skill)) {
 			case 'project':
-				return await userHasScopes(user, [`projectAiPreference:${operation}`], false, {
+				return await userHasScopes(user, [`projectSkill:${operation}`], false, {
 					projectId: skill.projectId!,
 				});
 			case 'user':
-				return skill.userId === user.id || hasGlobalScope(user, `aiPreference:${operation}`);
+				return skill.userId === user.id || hasGlobalScope(user, `skill:${operation}`);
 			case 'instance':
-				return hasGlobalScope(user, `aiPreference:${operation}`);
+				return hasGlobalScope(user, `skill:${operation}`);
 		}
 	}
 
@@ -246,13 +244,13 @@ export class SkillsHubApiService {
 				return { userId: user.id, projectId: null };
 			case 'instance':
 				if (payload.projectId) throw new UserError('An instance skill has no project.');
-				if (!hasGlobalScope(user, `aiPreference:${operation}`)) {
+				if (!hasGlobalScope(user, `skill:${operation}`)) {
 					throw new ForbiddenError('You are not allowed to create skills for the whole instance');
 				}
 				return { userId: null, projectId: null };
 			case 'project': {
 				if (!payload.projectId) throw new UserError('A project skill needs a project id.');
-				const allowed = await userHasScopes(user, [`projectAiPreference:${operation}`], false, {
+				const allowed = await userHasScopes(user, [`projectSkill:${operation}`], false, {
 					projectId: payload.projectId,
 				});
 				if (!allowed) {

@@ -30,7 +30,7 @@ import type {
 
 import SkillsTable from '../components/SkillsTable.vue';
 import { PREFERENCES_DEFAULT_PAGE_SIZE } from '../context.constants';
-import { canWriteInstanceScope, canWriteProjectScope } from '../context.utils';
+import { canWriteInstanceSkillScope, canWriteProjectSkillScope } from '../context.utils';
 import { useSkillsHubStore } from '../skills.store';
 
 const USER_SCOPE = 'user';
@@ -87,14 +87,14 @@ const scopeOptions = computed<AgentSkillModalScopeOption[]>(() => {
 	const options: AgentSkillModalScopeOption[] = [
 		{ value: USER_SCOPE, label: i18n.baseText('settings.context.skills.scope.user') },
 	];
-	if (canWriteInstanceScope()) {
+	if (canWriteInstanceSkillScope()) {
 		options.push({
 			value: INSTANCE_SCOPE,
 			label: i18n.baseText('settings.context.skills.scope.instance'),
 		});
 	}
 	for (const project of projectsStore.myProjects) {
-		if (project.type !== 'team' || !canWriteProjectScope(project.id)) continue;
+		if (project.type !== 'team' || !canWriteProjectSkillScope(project.id)) continue;
 		options.push({
 			value: `${PROJECT_SCOPE_PREFIX}${project.id}`,
 			label: project.name ?? project.id,

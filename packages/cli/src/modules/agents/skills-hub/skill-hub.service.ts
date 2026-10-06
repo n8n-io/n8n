@@ -253,20 +253,18 @@ export class SkillHubService {
 
 	/**
 	 * Whether the user may change the skill's name or content. The check uses the
-	 * skill's own scope, not the agent's. Prototype stand-in: there are no skill scopes
-	 * yet, so a project skill maps to `projectAiPreference:update` on its project, and an
-	 * instance or "Just you" skill to the global `aiPreference:update` (owner and admin).
-	 * A "Just you" skill is also editable by its owner.
+	 * skill's own scope, not the agent's: `projectSkill:update` on the project for a
+	 * project skill, the global `skill:update` for an instance skill or another user's
+	 * "Just you" skill. A "Just you" skill is always editable by its owner.
 	 */
 	async canEditSkill(user: User, skill: Skill): Promise<boolean> {
 		if (skill.projectId) {
-			return await userHasScopes(user, ['projectAiPreference:update'], false, {
+			return await userHasScopes(user, ['projectSkill:update'], false, {
 				projectId: skill.projectId,
 			});
 		}
-		if (skill.userId)
-			return skill.userId === user.id || hasGlobalScope(user, 'aiPreference:update');
-		return hasGlobalScope(user, 'aiPreference:update');
+		if (skill.userId) return skill.userId === user.id || hasGlobalScope(user, 'skill:update');
+		return hasGlobalScope(user, 'skill:update');
 	}
 
 	async assertCanEditSkills(user: User, skillIds: string[], trx?: HubTransaction): Promise<void> {

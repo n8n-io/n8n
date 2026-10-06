@@ -7,6 +7,10 @@ export const RESOURCES = {
 	// `projectAiPreference`: rows of a project. A user's own rows need no scope.
 	aiPreference: [...DEFAULT_OPERATIONS] as const,
 	projectAiPreference: [...DEFAULT_OPERATIONS] as const,
+	// Skills hub. `skill`: instance-wide skills and other users' skills. `projectSkill`:
+	// skills of a project. A user's own "Just you" skills need no scope.
+	skill: [...DEFAULT_OPERATIONS] as const,
+	projectSkill: [...DEFAULT_OPERATIONS] as const,
 	annotationTag: [...DEFAULT_OPERATIONS] as const,
 	auditLogs: ['manage'] as const,
 	banner: ['dismiss'] as const,

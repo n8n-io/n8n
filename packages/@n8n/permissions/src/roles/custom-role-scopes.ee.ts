@@ -51,6 +51,7 @@ export const PROJECT_CUSTOM_ROLE_OPERATIONS = {
 	],
 	projectVariable: ['read', 'update', 'create', 'delete'],
 	projectAiPreference: ['read', 'update', 'create', 'delete'],
+	projectSkill: ['read', 'update', 'create', 'delete'],
 } as const satisfies {
 	[R in keyof typeof RESOURCES]?: ReadonlyArray<(typeof RESOURCES)[R][number]>;
 };
@@ -103,6 +104,11 @@ export const GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS = {
 			'aiPreference:update',
 			'aiPreference:delete',
 			'aiPreference:list',
+			'skill:create', // Context (instance-wide skills)
+			'skill:read',
+			'skill:update',
+			'skill:delete',
+			'skill:list',
 			'chatHub:manage', // Chat
 			'aiAssistant:manage', // n8n Assistant
 			'instanceAi:manage',

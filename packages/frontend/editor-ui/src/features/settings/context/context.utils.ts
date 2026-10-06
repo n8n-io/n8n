@@ -114,6 +114,19 @@ export function canWriteInstanceScope(): boolean {
 	return getResourcePermissions(currentUser?.globalScopes).aiPreference?.create === true;
 }
 
+/* The same two checks for skills, which have their own scopes. */
+
+export function canWriteProjectSkillScope(projectId: string | null | undefined): boolean {
+	if (!projectId) return false;
+	const project = useProjectsStore().myProjects.find((candidate) => candidate.id === projectId);
+	return getResourcePermissions(project?.scopes).projectSkill?.create === true;
+}
+
+export function canWriteInstanceSkillScope(): boolean {
+	const { currentUser } = useUsersStore();
+	return getResourcePermissions(currentUser?.globalScopes).skill?.create === true;
+}
+
 /** The service builds the cap message from the scope and the number, so match the fixed part. */
 const SCOPE_FULL_MESSAGE = 'cannot hold more than';
 
