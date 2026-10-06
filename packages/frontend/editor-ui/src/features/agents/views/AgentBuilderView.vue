@@ -87,6 +87,7 @@ import {
 } from '../composables/useAgentConfigAutosave';
 import { useAgentBuilderMainTabs } from '../composables/useAgentBuilderMainTabs';
 import { useAgentCapabilitiesActions } from '../composables/useAgentCapabilitiesActions';
+import { useAgentSetupTasks } from '../components/AgentSetupTasks/useAgentSetupTasks';
 import {
 	removeProjectAgentFromListCache,
 	upsertProjectAgentsListCache,
@@ -123,6 +124,7 @@ import AgentBuilderHeader from '../components/AgentBuilderHeader.vue';
 import AgentCollaborationBanner from '../components/AgentCollaborationBanner.vue';
 import AgentBuilderEditorColumn from '../components/AgentBuilderEditorColumn.vue';
 import AgentBuilderIntro from '../components/AgentBuilderIntro.vue';
+import type { SetupTask } from '../components/AgentSetupTasks/agentSetupTasks.registry';
 import AgentPreviewHeader from '../components/AgentPreviewHeader.vue';
 import AgentPreviewChatPage from '../components/AgentPreviewChatPage.vue';
 import AgentPreviewDock from '../components/AgentPreviewDock.vue';
@@ -670,6 +672,7 @@ async function onSendPreviewToAssistant(event?: AgentSendToAssistantEvent) {
  *   - render the preview chat before the route/config/session state has settled.
  */
 const initialized = ref(false);
+const previewSessionsLoaded = ref(false);
 let disposed = false;
 let latestSessionsFetchRequestId = 0;
 /**
@@ -755,6 +758,63 @@ function markConfigDraftEdited() {
 	configEditRevision += 1;
 }
 const connectedTriggers = ref<string[]>([]);
+const isPublishReady = ref(false);
+const setupChecklistContext = computed(() => {
+	return {
+		config: {
+			loaded: initialized.value && localConfig.value !== null,
+			model: localConfig.value?.model ?? '',
+			instructions: localConfig.value?.instructions ?? '',
+			toolCount:
+				(localConfig.value?.tools?.length ?? 0) +
+				(localConfig.value?.mcpServers?.length ?? 0) +
+				(localConfig.value?.subAgents?.agents?.length ?? 0),
+		},
+		channels: {
+			loaded: initialized.value,
+			ids: connectedTriggers.value,
+		},
+		publication: {
+			loaded: initialized.value,
+			canPublish:
+				initialized.value &&
+				!isUnsaved.value &&
+				effectiveCanEditAgent.value &&
+				isPublishReady.value,
+			activeVersionId: agent.value?.activeVersionId ?? null,
+		},
+		sessions: {
+			loaded: initialized.value && previewSessionsLoaded.value,
+			count: sessionsStore.previewThreads.length,
+		},
+	};
+});
+const { tasks: setupTasks, isVisible: areSetupTasksVisible } =
+	useAgentSetupTasks(setupChecklistContext);
+const builderHeader = useTemplateRef<{ publishAgent: () => Promise<void> | undefined }>(
+	'builderHeader',
+);
+const editorColumn = useTemplateRef<{ onSetupTaskAction: (task: SetupTask) => void }>(
+	'editorColumn',
+);
+
+async function onSetupTaskAction(task: SetupTask) {
+	if (task.action.path === 'preview') {
+		await onOpenPreview();
+		return;
+	}
+
+	if (activeMainTab.value !== 'agent') {
+		activeMainTab.value = 'agent';
+		await nextTick();
+	}
+
+	editorColumn.value?.onSetupTaskAction(task);
+}
+
+function onSetupTaskPublishAgent() {
+	void builderHeader.value?.publishAgent();
+}
 /** Bumped when the config changes outside the local editor (modal flows, version revert) so the Tasks panel reloads. */
 const tasksReloadKey = ref(0);
 const versionHistoryPanel = useTemplateRef<{ refresh: () => Promise<void> }>('versionHistoryPanel');
@@ -2561,6 +2621,7 @@ async function initialize({ preserveState = false }: { preserveState?: boolean }
 		// Stop any in-flight auto-refresh from the previous agent before kicking
 		// off a new fetch — keeps the store tied to the current project/agent.
 		sessionsStore.stopAutoRefresh();
+		previewSessionsLoaded.value = false;
 		if (!isUnsaved.value) {
 			void sessionsStore
 				.fetchThreads(targetProjectId, targetAgentId)
@@ -2570,6 +2631,7 @@ async function initialize({ preserveState = false }: { preserveState?: boolean }
 				})
 				.finally(() => {
 					if (!isCurrentInitialization()) return;
+					previewSessionsLoaded.value = true;
 					sessionsStore.startAutoRefresh();
 				});
 		}
@@ -2895,6 +2957,7 @@ useKeybindings({
 		/>
 		<AgentBuilderHeader
 			v-else
+			ref="builderHeader"
 			:agent="agent"
 			:project-id="projectId"
 			:agent-id="agentId"
@@ -2909,13 +2972,16 @@ useKeybindings({
 			:config-validation-issues="configValidation?.issues ?? []"
 			:before-publish="refreshValidationBeforePublish"
 			:is-preview-open="isPreviewDockOpen"
+			:tasks="areSetupTasksVisible ? setupTasks : undefined"
 			@header-action="onHeaderAction"
 			@open-preview="onOpenPreview"
 			@close-preview="closePreviewDock"
+			@publish-ready="isPublishReady = $event"
 			@published="onPublished"
 			@unpublished="onUnpublished"
 			@reverted="onReverted"
 			@switch-agent="onSwitchAgent"
+			@setup-task-action="onSetupTaskAction"
 		/>
 		<AgentCollaborationBanner v-if="!isArtifactMode" />
 		<div
@@ -3054,6 +3120,7 @@ useKeybindings({
 				/>
 
 				<AgentBuilderEditorColumn
+					ref="editorColumn"
 					v-else
 					v-model:active-main-tab="activeMainTab"
 					:class="$style.editorColumn"
@@ -3106,6 +3173,7 @@ useKeybindings({
 					@agent-changed="refreshAgentAfterIntegrationChange"
 					@generate-eval-cases="onGenerateEvalCases"
 					@open-preview="onOpenPreview"
+					@publish-agent="onSetupTaskPublishAgent"
 				/>
 
 				<AgentVersionHistoryPanel
