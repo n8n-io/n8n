@@ -1007,10 +1007,16 @@ function handleNewThreadClick() {
 								@preview-open-change="handleAgentPreviewDockOpenChange"
 								@assistant-handoff="handleAgentPreviewAssistantHandoff"
 							/>
+							<!-- Every browser tab stays mounted, so its Live View does not reload on each switch. -->
 							<InstanceAiBrowserPreview
-								v-if="preview.isPreviewVisible.value && preview.activeBrowserTab.value"
+								v-for="browserTab in preview.browserTabs.value"
+								v-show="
+									preview.isPreviewVisible.value &&
+									preview.activeBrowserTab.value?.id === browserTab.id
+								"
+								:key="browserTab.id"
 								:class="$style.previewSlot"
-								:tab="preview.activeBrowserTab.value"
+								:tab="browserTab"
 							/>
 						</div>
 					</TabsRoot>

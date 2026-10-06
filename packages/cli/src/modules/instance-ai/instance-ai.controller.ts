@@ -675,6 +675,14 @@ export class InstanceAiController {
 	) {
 		this.requireInstanceAiEnabled();
 		await this.assertThreadAccess(req.user.id, threadId);
+		// PROTOTYPE (saved logins): "I'm done" binds the browser to its site before the task resumes.
+		if (payload.handBack) {
+			await this.browserSessionService.handBackCloudBrowser(
+				req.user.id,
+				taskId,
+				payload.handBack.rememberLogin,
+			);
+		}
 		await this.instanceAiService.routeCorrectionToTask(threadId, taskId, payload.message);
 		return { ok: true };
 	}
@@ -1635,6 +1643,28 @@ export class InstanceAiController {
 		this.requireInstanceAiEnabled();
 		this.assertBrowserChannelEnabled();
 		return this.browserSessionService.getStatus(req.user.id);
+	}
+
+	/** PROTOTYPE (saved logins): the user's saved logins for the cloud browser. */
+	@Get('/browser/saved-logins')
+	@GlobalScope('instanceAi:message')
+	async listSavedLogins(req: AuthenticatedRequest) {
+		this.requireInstanceAiEnabled();
+		const logins = await this.browserSessionService.listSavedLogins(req.user.id);
+		if (!logins) throw new NotFoundError('The cloud browser is not configured');
+		return logins;
+	}
+
+	@Delete('/browser/saved-logins/:id')
+	@GlobalScope('instanceAi:message')
+	async deleteSavedLogin(req: AuthenticatedRequest, _res: Response, @Param('id') id: string) {
+		this.requireInstanceAiEnabled();
+		const outcome = await this.browserSessionService.deleteSavedLogin(req.user.id, id);
+		if (outcome === 'not-found') throw new NotFoundError('Saved login not found');
+		if (outcome === 'in-use') {
+			throw new ConflictError('This saved login is in use by a running browser task');
+		}
+		return { ok: true };
 	}
 
 	@Post('/browser/disconnect-session')

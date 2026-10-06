@@ -34,6 +34,7 @@ import type { Logger } from '../../logger';
 import type {
 	BackgroundTaskResult,
 	InstanceAiToolRegistry,
+	CloudBrowserHandle,
 	OrchestrationContext,
 } from '../../types';
 import { createToolsFromLocalMcpServer } from '../filesystem/create-tools-from-mcp-server';
@@ -44,6 +45,13 @@ const REQUEST_USER_ACTION = 'request-user-action';
 const REPORT_RESULT = 'report-result';
 /** Not a real tool: carries the browser's status line, Live View and current page to the UI. */
 const BROWSER_STATE_EVENT = 'cloud-browser-state';
+/** PROTOTYPE (saved logins): `loginSite` when the browser offers no "Remember this login". */
+const NO_LOGIN_SITE = '-';
+/**
+ * PROTOTYPE: the `liveViewUrl` marker for "no browser open right now", while it switches
+ * sites or after it closed. The UI shows a placeholder instead of a dead Live View.
+ */
+const NO_LIVE_VIEW = '-';
 
 /** Give up on the user after this long. Below the cloud browser's 15 minute idle release. */
 const USER_WAIT_MS = 10 * 60 * 1000;
@@ -163,7 +171,12 @@ function createRequestUserActionTool(
 						'Tell them in one sentence what to do, and that they can open the browser from the ' +
 						'Browsers panel and click "I\'m done" there when finished (or reply here). Do not ' +
 						'share a link, and do not do the step yourself. If they reply here instead, forward ' +
-						`the reply with task-control(action="correct-task", taskId="${taskId}").`,
+						`the reply with task-control(action="correct-task", taskId="${taskId}"). ` +
+						"Then keep working in this turn on everything that does not need this task's result, " +
+						'such as creating data tables, building the workflow or setting up credentials. ' +
+						'A reply with only text ends your turn, so put the sentence in the same reply as your ' +
+						'next tool call, not on its own. End your turn only when every remaining step needs ' +
+						'this task, and do not say you will do something unless you do it now.',
 				});
 
 				const touch = setInterval(() => context.touchBackgroundTask?.(taskId), TOUCH_INTERVAL_MS);
@@ -425,6 +438,8 @@ interface BrowserStatePublisher {
 	setStatus(status: string): void;
 	/** Reads the session's Live View and current page after a browser step. */
 	refreshPage(): void;
+	/** The user answered an approval card, so the UI stops showing it as waiting. */
+	approvalAnswered(requestId: string): void;
 }
 
 /**
@@ -434,6 +449,7 @@ interface BrowserStatePublisher {
  */
 function createBrowserStatePublisher(
 	context: OrchestrationContext,
+	browser: CloudBrowserHandle,
 	agentId: string,
 ): BrowserStatePublisher {
 	const last: Record<string, string | undefined> = {};
@@ -463,21 +479,34 @@ function createBrowserStatePublisher(
 	};
 
 	const refreshPage = () => {
-		if (!context.getCloudBrowserLiveView) return;
 		if (checking) {
 			checkAgain = true;
 			return;
 		}
+		// Between the user's approval and the browser being up, say so, not "waiting".
+		if (browser.isStarting()) {
+			publish({ phase: 'starting' });
+			return;
+		}
 		checking = true;
-		void context
-			.getCloudBrowserLiveView()
+		void browser
+			.getLiveView()
 			.then((view) => {
-				if (!view) return;
+				if (!view) {
+					publish({
+						phase: 'idle',
+						liveViewUrl: last.liveViewUrl ? NO_LIVE_VIEW : undefined,
+					});
+					return;
+				}
 				const { width, height } = view.viewport ?? {};
 				publish({
 					liveViewUrl: view.liveViewUrl,
 					pageUrl: view.pageUrl,
 					viewport: width && height ? `${width}x${height}` : undefined,
+					// Only set fields are sent, so "no checkbox" (a saved login is in use) is a marker.
+					loginSite: view.loginSite ?? NO_LOGIN_SITE,
+					phase: 'live',
 				});
 			})
 			.catch(() => undefined)
@@ -490,13 +519,22 @@ function createBrowserStatePublisher(
 			});
 	};
 
-	return { setStatus: (status) => publish({ status }), refreshPage };
+	// Pages the user opens in the Live View, and the switch between sessions, show at once.
+	browser.onChange(refreshPage);
+
+	return {
+		setStatus: (status) => publish({ status }),
+		refreshPage,
+		approvalAnswered: (requestId) => publish({ answeredApproval: requestId }),
+	};
 }
 
-function buildBrowserTools(context: OrchestrationContext): InstanceAiToolRegistry {
-	if (!context.cloudBrowserServer) return createToolRegistry();
+function buildBrowserTools(
+	context: OrchestrationContext,
+	browser: CloudBrowserHandle,
+): InstanceAiToolRegistry {
 	return createToolsFromLocalMcpServer({
-		server: context.cloudBrowserServer,
+		server: browser.server,
 		logger: context.logger,
 		// n8n's own gate decides cloud browser access, so it uses n8n's approval cards.
 		approvalStyle: 'instance',
@@ -530,7 +568,9 @@ export function createStartCloudBrowserTool(context: OrchestrationContext) {
 		.description(
 			'Start a background task that uses a cloud browser to do something on a website, ' +
 				'for example read data from a web app or fill in a form. The task runs while you keep ' +
-				'talking to the user. If a site needs the user to sign in, you are told, and the user ' +
+				'working. Do not wait for it: carry on with every step that does not need its result, ' +
+				'and only end your turn when all that is left depends on it. If a site needs the user ' +
+				'to sign in, you are told, and the user ' +
 				'opens the browser from the Browsers panel. Never share browser links with the user. ' +
 				'You are woken again with the result when the task ends. ' +
 				'It can also set up n8n credentials: sign in to the service, get the API key or token, ' +
@@ -565,7 +605,17 @@ export function createStartCloudBrowserTool(context: OrchestrationContext) {
 
 				const taskId = `browser-${nanoid(8)}`;
 				const agentId = `agent-browser-${nanoid(6)}`;
-				const browserTools = buildBrowserTools(context);
+				const opened = context.createCloudBrowser?.(taskId);
+				if (!opened) {
+					return {
+						result:
+							'Could not start: the cloud browser is not ready. Tell the user in one sentence.',
+						taskId: '',
+					};
+				}
+				// A const of the narrowed type, so the nested functions below see it as set.
+				const browser: CloudBrowserHandle = opened;
+				const browserTools = buildBrowserTools(context, browser);
 				const credentialBrief = credentialType
 					? await buildCredentialBrief(context, credentialType)
 					: undefined;
@@ -574,8 +624,6 @@ export function createStartCloudBrowserTool(context: OrchestrationContext) {
 					taskId,
 					agentId,
 					role: ROLE,
-					// One cloud browser per user, so one browser task per user at a time.
-					dedupeKey: { role: ROLE, workflowId: `user:${context.userId}` },
 					run: async (signal, drainCorrections, waitForCorrection) => {
 						const trace = createTraceWriter(taskId, context.logger);
 						context.logger.info('[browserbase demo] sub-agent trace', { taskId, file: trace.file });
@@ -590,6 +638,13 @@ export function createStartCloudBrowserTool(context: OrchestrationContext) {
 							});
 							throw error;
 						} finally {
+							// PROTOTYPE (saved logins): the task's browsers end with it. The release
+							// saves or deletes each one's context.
+							await browser.release().catch((error: unknown) => {
+								context.logger.warn('[browserbase demo] release at task end failed', {
+									error: error instanceof Error ? error.message : String(error),
+								});
+							});
 							await trace.close();
 						}
 					},
@@ -642,6 +697,7 @@ export function createStartCloudBrowserTool(context: OrchestrationContext) {
 					if (!waitForConfirmation) {
 						throw new Error('Approvals are not available for background tasks.');
 					}
+					const statePublisher = createBrowserStatePublisher(context, browser, agentId);
 					// Auto mode: an approval card pauses the sub-agent in place until the user answers.
 					// The browser gate in the host decides which calls need a card.
 					const result = await executeResumableStream({
@@ -651,11 +707,7 @@ export function createStartCloudBrowserTool(context: OrchestrationContext) {
 							threadId: context.threadId,
 							runId: context.runId,
 							agentId,
-							eventBus: createBackgroundEventBus(
-								context.eventBus,
-								trace,
-								createBrowserStatePublisher(context, agentId),
-							),
+							eventBus: createBackgroundEventBus(context.eventBus, trace, statePublisher),
 							signal,
 							logger: context.logger,
 						},
@@ -669,25 +721,13 @@ export function createStartCloudBrowserTool(context: OrchestrationContext) {
 									() => context.touchBackgroundTask?.(taskId),
 									TOUCH_INTERVAL_MS,
 								);
-								context.notifyFromBackgroundTask?.({
-									taskId,
-									role: ROLE,
-									kind: 'approval-requested',
-									wake: false,
-									text: 'The task is paused on an approval card the user has to answer.',
-								});
+								// The user sees the card in the chat and the sidebar. The orchestrator is not
+								// told: by the time it reads such an event the card is often answered, and
+								// it then asks the user to approve a card that is already gone.
 								try {
 									const data = await waitForConfirmation(requestId);
-									context.notifyFromBackgroundTask?.({
-										taskId,
-										role: ROLE,
-										kind: 'approval-answered',
-										wake: false,
-										text: data.approved
-											? 'The user approved. The task is running again.'
-											: 'The user denied the approval. The task will stop and report it as denied.',
-									});
 									trace.write({ type: 'approval-answered', requestId, approved: data.approved });
+									statePublisher.approvalAnswered(requestId);
 									if (!data.approved) deniedApprovals++;
 									return buildResumeData(data);
 								} finally {
@@ -708,6 +748,8 @@ export function createStartCloudBrowserTool(context: OrchestrationContext) {
 					return { text: summary, outcome: { outcome, deniedApprovals } };
 				}
 
+				// The task never ran, so its browser was never opened. Drop it.
+				if (spawned.status !== 'started') void browser.release().catch(() => undefined);
 				if (spawned.status === 'duplicate') {
 					return {
 						result:
@@ -740,6 +782,12 @@ export function createStartCloudBrowserTool(context: OrchestrationContext) {
 				return {
 					result:
 						`Cloud browser task started (task: ${taskId}). It runs in the background. ` +
+						(credentialType
+							? `It creates a ${credentialType} credential. Do not wait for it: build the ` +
+								'whole workflow now with that credential type on the nodes that need it, and ' +
+								'leave the credential itself unset. When the task finishes, attach the new ' +
+								'credential and run the workflow. '
+							: '') +
 						'Tell the user in one sentence, then keep going in this turn with any work that does not ' +
 						'need its result, such as looking up nodes, checking credentials or drafting the workflow. ' +
 						'Only say you will do something if you do it now. You are woken with a message when the ' +

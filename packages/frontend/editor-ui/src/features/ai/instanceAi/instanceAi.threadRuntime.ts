@@ -1800,9 +1800,13 @@ export function createThreadRuntime(
 		}
 	}
 
-	async function sendTaskCorrection(taskId: string, message: string): Promise<void> {
+	async function sendTaskCorrection(
+		taskId: string,
+		message: string,
+		handBack?: { rememberLogin: boolean },
+	): Promise<void> {
 		try {
-			await postCorrectTask(rootStore.restApiContext, threadId, taskId, message);
+			await postCorrectTask(rootStore.restApiContext, threadId, taskId, message, handBack);
 		} catch {
 			toast.showError(new Error('Failed to reach the task. Try again.'), 'Send failed');
 		}

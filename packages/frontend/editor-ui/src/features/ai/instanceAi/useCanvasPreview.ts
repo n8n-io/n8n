@@ -48,6 +48,10 @@ export interface BrowserTab extends Omit<ArtifactTab, 'type'> {
 	taskId?: string;
 	/** The task waits for the user, so the tab offers "I'm done". */
 	waitingForUser: boolean;
+	/** PROTOTYPE (saved logins): offers "Remember this login for <site>" next to "I'm done". */
+	loginSite?: string;
+	/** A session is being created. Without a Live View, the tab says the browser is opening. */
+	starting?: boolean;
 }
 
 /** A tab in the preview tab bar. */
@@ -105,6 +109,11 @@ export function useCanvasPreview({ thread, initialAgentId, tabsStorage }: UseCan
 	// cannot undo the click. The pick lapses when something else moves the
 	// selection, for example when the picked artifact is deleted.
 	const userTabId = ref<string>();
+	/**
+	 * PROTOTYPE (cloud browser): an artifact the agent touched while a browser tab waiting
+	 * for the user held the preview. It is shown once that browser stops waiting.
+	 */
+	const deferredAgentTab = ref<{ tabId: string; behind: string }>();
 	watch(isAgentWorking, (working) => {
 		if (!working) userTabId.value = undefined;
 	});
@@ -166,8 +175,9 @@ export function useCanvasPreview({ thread, initialAgentId, tabsStorage }: UseCan
 		for (const browser of cloudBrowsers.value) {
 			if (!isLiveCloudBrowser(browser)) continue;
 			const id = `browser:${browser.agentId}`;
-			const url = browser.handOff?.liveViewUrl ?? browser.liveViewUrl;
-			if (!url || hiddenBrowserTabs.value.has(id)) continue;
+			// Between sessions (switching sites) the tab stays, with no Live View to show.
+			const url = browser.handOff?.liveViewUrl ?? browser.liveViewUrl ?? '';
+			if ((!url && !browser.betweenSessions) || hiddenBrowserTabs.value.has(id)) continue;
 			result.push({
 				id,
 				type: 'browser',
@@ -178,11 +188,27 @@ export function useCanvasPreview({ thread, initialAgentId, tabsStorage }: UseCan
 				viewport: browser.viewport,
 				taskId: browser.taskId,
 				waitingForUser: browser.status === 'needs-user',
+				loginSite: browser.loginSite,
+				starting: browser.starting,
 			});
 		}
 		return result;
 	});
 	const isBrowserTabId = (tabId: string | undefined) => tabId?.startsWith('browser:') === true;
+
+	// A browser tab holds the preview only while it waits for the user. Once they hand back,
+	// the workflow the agent builds next takes over the preview again.
+	watch(browserTabs, (current) => {
+		const stillWaiting = (tabId: string | undefined) =>
+			current.some((t) => t.id === tabId && t.waitingForUser);
+		const pinned = userTabId.value;
+		if (isBrowserTabId(pinned) && !stillWaiting(pinned)) userTabId.value = undefined;
+		// Show what the agent built while the user was busy in the browser.
+		const deferred = deferredAgentTab.value;
+		if (!deferred || stillWaiting(deferred.behind)) return;
+		deferredAgentTab.value = undefined;
+		if (activeTabId.value === deferred.behind) activeTabId.value = deferred.tabId;
+	});
 
 	const openTabs = computed((): PreviewTab[] => [...tabs.openTabs.value, ...browserTabs.value]);
 
@@ -390,6 +416,10 @@ export function useCanvasPreview({ thread, initialAgentId, tabsStorage }: UseCan
 		const reopened = tabs.reopenTab(tabId);
 		const pinned = userTabId.value !== undefined && userTabId.value === activeTabId.value;
 		if (!pinned) activeTabId.value = tabId;
+		// A browser tab waiting for the user holds the preview. Show this once it lets go.
+		else if (userTabId.value && isBrowserTabId(userTabId.value)) {
+			deferredAgentTab.value = { tabId, behind: userTabId.value };
+		}
 		setPreviewOpen(true);
 		if (reopened) tabs.saveTabs(activeTabId.value);
 	}
@@ -690,6 +720,7 @@ export function useCanvasPreview({ thread, initialAgentId, tabsStorage }: UseCan
 		activeAgentProjectId,
 		activeAgentPending,
 		activeBrowserTab,
+		browserTabs,
 		activeWorkflowExecutionResult,
 		dataTableRefreshKey,
 		isPreviewVisible,

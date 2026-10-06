@@ -2803,9 +2803,8 @@ export class InstanceAiService {
 			? this.browserSessionService.findMcpServer(user.id)
 			: undefined;
 		// PROTOTYPE: in cloud browser sub-agent mode the browser tools go to the sub-agent only.
-		const cloudBrowserServer = browserUseEnabledGlobally
-			? this.browserSessionService.findCloudBrowserServer(user.id)
-			: undefined;
+		const cloudBrowserTasks =
+			browserUseEnabledGlobally && this.browserSessionService.hasCloudBrowserTasks();
 		const localMcpServer = composeLocalMcpServers(gatewayMcpServer, browserMcpServer);
 		if (localMcpServer) {
 			context.localMcpServer = localMcpServer;
@@ -2886,15 +2885,14 @@ export class InstanceAiService {
 		const browserGate = {
 			tracker: domainTracker,
 			runId,
+			threadId,
 			permissionMode: context.permissions?.fetchUrl,
 			createCredentialPermissionMode: context.permissions?.createCredential,
 		};
 		browserMcpServer?.setDomainGate(browserGate);
 		// PROTOTYPE: the cloud browser sub-agent's tools go through the same gate. Without it,
 		// every domain and credential write would be allowed without asking.
-		// TBD: the gate is per user and is replaced on each run, so an "allow once" granted
-		// under one run does not carry into a background task that outlives it.
-		cloudBrowserServer?.setDomainGate(browserGate);
+		// Each browser task gets the gate of the run that started it, in createCloudBrowser.
 
 		// The client reports which + menu entries it renders, because only it can see
 		// its own rollout and the device. The admin switches are still applied here,
@@ -2903,7 +2901,7 @@ export class InstanceAiService {
 			localGatewayDisabledGlobally,
 			localGatewayDisabledForUser,
 			// PROTOTYPE: with the cloud browser sub-agent, the prompt must not offer the extension.
-			browserUseEnabledGlobally: browserUseEnabledGlobally && !cloudBrowserServer,
+			browserUseEnabledGlobally: browserUseEnabledGlobally && !cloudBrowserTasks,
 			clientChannels: this.runState.getComputerUseChannels(threadId),
 			localComputerToolCategories: gatewayMcpServer
 				? enabledToolCategories(gatewayMcpServer.getStatus().toolCategories)
@@ -3076,9 +3074,22 @@ export class InstanceAiService {
 				this.sendCorrectionToTask(threadId, taskId, correction),
 			spawnBackgroundTask: (opts) =>
 				this.spawnBackgroundTask(user, threadId, runId, messageGroupId, opts),
-			cloudBrowserServer,
+			createCloudBrowser: cloudBrowserTasks
+				? (taskId) => {
+						const server = this.browserSessionService.createCloudBrowserServer(user.id, taskId);
+						if (!server) return undefined;
+						server.setDomainGate(browserGate);
+						return {
+							server,
+							getLiveView: async () => await server.getLiveView(),
+							onChange: (listener) => server.onChange(listener),
+							isStarting: () => server.isStarting(),
+							release: async () =>
+								await this.browserSessionService.releaseCloudBrowser(taskId, 'task ended'),
+						};
+					}
+				: undefined,
 			checkCloudBrowser: async () => await this.browserSessionService.checkCloudBrowser(),
-			getCloudBrowserLiveView: async () => await cloudBrowserServer?.getLiveView(),
 			notifyFromBackgroundTask: (item) =>
 				this.notifyFromBackgroundTask(
 					user,

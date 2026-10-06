@@ -2214,6 +2214,32 @@ export interface WorkflowTaskService {
 
 // ── Orchestration context (plan tools) ──────────────────────────────────────
 
+/** PROTOTYPE (cloud browser): one browser task's browser. */
+export interface CloudBrowserHandle {
+	/** The browser tools, given to the browser sub-agent only. */
+	server: LocalMcpServer;
+	/** The live session's Live View and current page, for the UI. Undefined when none is open. */
+	getLiveView: () => Promise<
+		| {
+				liveViewUrl: string;
+				pageUrl?: string;
+				viewport?: { width: number; height: number };
+				/** PROTOTYPE (saved logins): the site "Remember this login" names, if offered. */
+				loginSite?: string;
+		  }
+		| undefined
+	>;
+	/**
+	 * Calls `listener` when the Live View or page may have changed: the session opened or
+	 * closed, or a page navigated, also when the user drives it. Returns the unsubscribe.
+	 */
+	onChange: (listener: () => void) => () => void;
+	/** Whether a session is being created right now, e.g. just after the user approved. */
+	isStarting: () => boolean;
+	/** PROTOTYPE (saved logins): sessions are scoped to a task. Releases them when it ends. */
+	release: () => Promise<void>;
+}
+
 export interface OrchestrationContext {
 	threadId: string;
 	runId: string;
@@ -2309,15 +2335,13 @@ export interface OrchestrationContext {
 	) => 'queued' | 'task-completed' | 'task-not-found';
 	/** PROTOTYPE (cloud browser): spawn a detached task that outlives the current run. */
 	spawnBackgroundTask?: (opts: SpawnBackgroundTaskOptions) => SpawnBackgroundTaskResult;
-	/** PROTOTYPE (cloud browser): the browser tools, given to the browser sub-agent only. */
-	cloudBrowserServer?: LocalMcpServer;
+	/**
+	 * PROTOTYPE (cloud browser): opens the browser for one background browser task. Each task
+	 * has its own browser, so tasks can run in parallel. Undefined when not configured.
+	 */
+	createCloudBrowser?: (taskId: string) => CloudBrowserHandle | undefined;
 	/** PROTOTYPE (cloud browser): why the cloud browser cannot start now, or undefined. */
 	checkCloudBrowser?: () => Promise<string | undefined>;
-	/** PROTOTYPE (cloud browser): the open session's Live View and current page, for the UI. */
-	getCloudBrowserLiveView?: () => Promise<
-		| { liveViewUrl: string; pageUrl?: string; viewport?: { width: number; height: number } }
-		| undefined
-	>;
 	/**
 	 * PROTOTYPE (cloud browser): queue an event for the orchestrator. It is delivered when
 	 * the thread is idle (now, or when the current run ends), never dropped.

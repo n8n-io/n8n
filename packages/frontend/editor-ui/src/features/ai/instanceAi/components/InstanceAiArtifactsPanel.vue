@@ -138,6 +138,7 @@ function cloudBrowserTone(browser: CloudBrowserAgent): string {
 
 function cloudBrowserSubtitle(browser: CloudBrowserAgent): string {
 	if (browser.status === 'running') {
+		if (browser.starting) return i18n.baseText('instanceAi.artifactsPanel.cloudBrowsers.starting');
 		return browser.activity ?? i18n.baseText('instanceAi.artifactsPanel.cloudBrowsers.working');
 	}
 	if (browser.status === 'needs-user') {

@@ -22,6 +22,8 @@ export type {
 	Config,
 	ConnectConfig,
 	ConnectResult,
+	ClearedSiteData,
+	SiteDataToKeep,
 	ConnectionState,
 	Cookie,
 	CreateCredentialPayload,

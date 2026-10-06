@@ -25,7 +25,6 @@ interface BarItem {
 	detail?: string;
 	browser: CloudBrowserAgent;
 	kind: 'needs-user' | 'needs-approval' | 'queued';
-	sendNow?: boolean;
 }
 
 const i18n = useI18n();
@@ -73,7 +72,8 @@ const items = computed<BarItem[]>(() => {
 			});
 		}
 	}
-	// A finished task whose result has not reached the assistant yet.
+	// A finished task whose result has not reached the assistant yet. It is named by the
+	// task, and says the assistant picks it up on its own.
 	for (const queued of thread.backgroundInbox ?? []) {
 		if (queued.kind !== 'finished') continue;
 		const browser = cloudBrowsers.value.find((b) => b.taskId === queued.taskId);
@@ -82,15 +82,12 @@ const items = computed<BarItem[]>(() => {
 		result.push({
 			key: `${browser.agentId}:queued`,
 			...icon,
-			title: i18n.baseText('instanceAi.backgroundTaskBar.finished', {
+			title: browser.goal || i18n.baseText('instanceAi.backgroundTaskBar.finishedFallback'),
+			detail: i18n.baseText('instanceAi.backgroundTaskBar.queued', {
 				interpolate: { outcome: outcomeLabel(browser.status) },
 			}),
-			detail: queued.sendNow
-				? i18n.baseText('instanceAi.backgroundTaskBar.sending')
-				: i18n.baseText('instanceAi.backgroundTaskBar.queued'),
 			browser,
 			kind: 'queued',
-			sendNow: queued.sendNow,
 		});
 	}
 	return result.filter((item) => !dismissed.value.has(item.key));
@@ -114,12 +111,6 @@ function handBack(item: BarItem) {
 			taskId,
 			'The user finished the step in the Live View. Check the page and continue.',
 		);
-	});
-}
-
-function sendNow(item: BarItem) {
-	void withPending(item.key, async () => {
-		await thread.sendBackgroundEventsNow(item.browser.taskId);
 	});
 }
 
@@ -166,16 +157,7 @@ function dismiss(item: BarItem) {
 				</N8nButton>
 			</template>
 			<template v-else-if="item.kind === 'queued'">
-				<N8nButton
-					v-if="!item.sendNow"
-					variant="outline"
-					size="mini"
-					:loading="pending.has(item.key)"
-					data-test-id="instance-ai-background-task-bar-send-now"
-					@click="sendNow(item)"
-				>
-					{{ i18n.baseText('instanceAi.backgroundTaskBar.sendNow') }}
-				</N8nButton>
+				<!-- PROTOTYPE: "Send now" is hidden for now. The endpoint and store action stay. -->
 				<N8nIconButton
 					icon="x"
 					variant="ghost"

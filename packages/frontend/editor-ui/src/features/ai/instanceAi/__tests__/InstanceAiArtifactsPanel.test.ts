@@ -28,6 +28,7 @@ const storeState = reactive({
 	hydrationStatus: 'ready' as 'idle' | 'hydrating' | 'ready',
 	cancelBackgroundTask: vi.fn(async () => {}),
 	sendTaskCorrection: vi.fn(async () => {}),
+	resolvedConfirmationIds: new Map<string, string>(),
 });
 const metadataState = ref<Record<string, unknown> | undefined>(undefined);
 const updateThreadMetadataMock = vi.fn(
@@ -758,6 +759,65 @@ describe('InstanceAiArtifactsPanel', () => {
 				'Waiting for your approval',
 			);
 			expect(getByTestId('instance-ai-cloud-browser-stop')).toBeInTheDocument();
+		});
+
+		it('stops waiting for the approval as soon as the user answers it', () => {
+			withBrowserAgent(
+				browserAgent({
+					toolCalls: [
+						{
+							toolCallId: 'tc-nav',
+							toolName: 'browser_navigate',
+							args: {},
+							// The tool still runs: the browser starts after the approval.
+							isLoading: true,
+							confirmation: { requestId: 'req-1' } as InstanceAiToolCallState['confirmation'],
+						},
+					],
+				}),
+			);
+			storeState.resolvedConfirmationIds.set('req-1', 'approved');
+
+			const { getByTestId } = renderComponent();
+
+			expect(getByTestId('instance-ai-cloud-browser-status')).not.toHaveTextContent(
+				'Waiting for your approval',
+			);
+			storeState.resolvedConfirmationIds.clear();
+		});
+
+		it('shows the browser starting once the backend reports the approval answered', () => {
+			withBrowserAgent(
+				browserAgent({
+					toolCalls: [
+						{
+							toolCallId: 'tc-nav',
+							toolName: 'browser_start_session',
+							args: {},
+							isLoading: true,
+							confirmation: { requestId: 'req-2' } as InstanceAiToolCallState['confirmation'],
+						},
+						{
+							toolCallId: 'state-1',
+							toolName: 'cloud-browser-state',
+							args: { answeredApproval: 'req-2' },
+							isLoading: false,
+						},
+						{
+							toolCallId: 'state-2',
+							toolName: 'cloud-browser-state',
+							args: { phase: 'starting' },
+							isLoading: false,
+						},
+					],
+				}),
+			);
+
+			const { getByTestId } = renderComponent();
+
+			expect(getByTestId('instance-ai-cloud-browser-status')).toHaveTextContent(
+				'Starting the browser',
+			);
 		});
 
 		it('shows what the browser is doing, and what it waits for', () => {

@@ -72,6 +72,11 @@ export interface Adapter {
 	 * disconnect details, so there a block is reported without naming the extension.
 	 */
 	onBlocked?: (details: DisconnectDetails) => void;
+	/**
+	 * PROTOTYPE (cloud browser): a page navigated, opened or closed, whoever did it. Lets a
+	 * host show the current page while the user drives the browser.
+	 */
+	onPagesChanged?: () => void;
 	launch(config: ConnectConfig): Promise<void>;
 	close(): Promise<void>;
 	// Tabs
@@ -142,6 +147,28 @@ export interface Adapter {
 	getPageUrl(pageId: string): string | undefined;
 	// Credential capture
 	getElementValue(pageId: string, target: ElementTarget): Promise<string>;
+	/** PROTOTYPE (cloud browser saved logins): Playwright adapter only. */
+	clearSiteDataExcept?(keep: SiteDataToKeep, origins?: Iterable<string>): Promise<ClearedSiteData>;
+}
+
+/** PROTOTYPE (cloud browser saved logins): what a site cleanup removed. */
+/**
+ * PROTOTYPE (cloud browser saved logins): what `clearSiteDataExcept` keeps. Cookies and
+ * storage are scoped differently: a cookie on a parent domain reaches its subdomains,
+ * storage belongs to one exact origin.
+ */
+export interface SiteDataToKeep {
+	/** Keep cookies with this domain (without a leading dot). */
+	cookieDomain: (domain: string) => boolean;
+	/** Keep storage of origins on this host. */
+	origin: (host: string) => boolean;
+}
+
+export interface ClearedSiteData {
+	/** Cookie domains whose cookies were removed. */
+	cookieDomains: string[];
+	/** Origins whose storage was cleared. */
+	origins: string[];
 }
 
 export interface ConnectionState {

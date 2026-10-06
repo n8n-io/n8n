@@ -257,7 +257,7 @@ export function createOrchestrationTools(context: OrchestrationContext): Instanc
 	}
 
 	// PROTOTYPE: the browser tools live on a background sub-agent, not on the orchestrator.
-	if (context.cloudBrowserServer && context.spawnBackgroundTask) {
+	if (context.createCloudBrowser && context.spawnBackgroundTask) {
 		tools.push([
 			ORCHESTRATION_TOOL_IDS.START_CLOUD_BROWSER,
 			loadCloudBrowserAgentTool().createStartCloudBrowserTool(context),

@@ -15,6 +15,8 @@ import type {
 	BrowserName,
 	Config,
 	ConnectConfig,
+	ClearedSiteData,
+	SiteDataToKeep,
 	ConnectResult,
 	ConnectionState,
 	ResolvedBrowserInfo,
@@ -146,7 +148,17 @@ export class BrowserConnection {
 		return { browser, pages };
 	}
 
+	/** PROTOTYPE (cloud browser): called when a page navigates, opens or closes. */
+	private pagesChangedListener?: () => void;
+
+	/** PROTOTYPE (cloud browser): see `Adapter.onPagesChanged`. */
+	onPagesChanged(listener: (() => void) | undefined): void {
+		this.pagesChangedListener = listener;
+	}
+
 	private installAdapterHandlers(adapter: Adapter): void {
+		adapter.onPagesChanged = () => this.pagesChangedListener?.();
+
 		// Listen for unexpected disconnections so we can invalidate state immediately
 		adapter.onDisconnect = (reason, details) => {
 			if (!this.state) return; // already disconnected
@@ -161,6 +173,21 @@ export class BrowserConnection {
 		adapter.onBlocked = ({ blockingExtensionIds }) => {
 			this.blockedDuringCall = blockingExtensionIds;
 		};
+	}
+
+	/**
+	 * PROTOTYPE (cloud browser saved logins): removes every site's cookies and storage
+	 * except what `keep` accepts. See `PlaywrightAdapter.clearSiteDataExcept`.
+	 */
+	async clearSiteDataExcept(
+		keep: SiteDataToKeep,
+		origins?: Iterable<string>,
+	): Promise<ClearedSiteData> {
+		const { adapter } = this.getConnection();
+		if (!adapter.clearSiteDataExcept) {
+			throw new Error('This browser adapter cannot clear site data');
+		}
+		return await adapter.clearSiteDataExcept(keep, origins);
 	}
 
 	async disconnect(): Promise<void> {

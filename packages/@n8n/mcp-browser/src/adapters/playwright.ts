@@ -24,6 +24,8 @@ import { buildExtensionConnectUrl } from '../extension-connect';
 import { createLogger } from '../logger';
 import { HTML_PROBE_SCRIPT, parseHtmlProbeResult } from '../sensitivity/html-probe';
 import type {
+	ClearedSiteData,
+	SiteDataToKeep,
 	ClickOptions,
 	ConnectConfig,
 	ConsoleEntry,
@@ -127,6 +129,8 @@ export class PlaywrightAdapter {
 	onDisconnect?: (reason: ConnectionLostReason, details?: DisconnectDetails) => void;
 
 	onBlocked?: (details: DisconnectDetails) => void;
+
+	onPagesChanged?: () => void;
 
 	constructor(config: ResolvedConfig, options?: PlaywrightAdapterOptions) {
 		this.resolvedConfig = config;
@@ -311,7 +315,7 @@ export class PlaywrightAdapter {
 		const state = this.findPageState(page) ?? this.trackPage(page, tabId);
 
 		if (url) {
-			await page.goto(url, { waitUntil });
+			await gotoWithSoftWait(page, url, waitUntil);
 			state.info.title = await page.title();
 			state.info.url = page.url();
 		}
@@ -401,7 +405,7 @@ export class PlaywrightAdapter {
 		waitUntil: 'load' | 'domcontentloaded' | 'networkidle' = 'domcontentloaded',
 	): Promise<NavigateResult> {
 		const { page } = await this.ensurePage(pageId);
-		const response = await page.goto(url, { waitUntil });
+		const response = await gotoWithSoftWait(page, url, waitUntil);
 		return {
 			title: await page.title(),
 			url: page.url(),
@@ -804,6 +808,57 @@ export class PlaywrightAdapter {
 		await this.requireContext().clearCookies();
 	}
 
+	/**
+	 * PROTOTYPE (cloud browser saved logins): removes the cookies and site storage `keep`
+	 * rejects, so a saved login's context holds one site. Cookies go by their exact cookie
+	 * domain. Storage goes by origin: the given origins, the origins of every open page
+	 * and frame, and an https origin for each removed cookie domain. CDP cannot list the
+	 * origins that hold storage, so storage on an origin outside those is missed.
+	 */
+	async clearSiteDataExcept(
+		keep: SiteDataToKeep,
+		origins: Iterable<string> = [],
+	): Promise<ClearedSiteData> {
+		const context = this.requireContext();
+		const bare = (domain: string) => domain.replace(/^\./, '');
+
+		const cookieDomains = [...new Set((await context.cookies()).map((c) => c.domain))].filter(
+			(domain) => !keep.cookieDomain(bare(domain)),
+		);
+		for (const domain of cookieDomains) {
+			await context.clearCookies({ domain });
+		}
+
+		const candidates = new Set<string>();
+		const addOrigin = (url: string) => {
+			try {
+				const { origin, protocol } = new URL(url);
+				if (protocol === 'https:' || protocol === 'http:') candidates.add(origin);
+			} catch {
+				// Not a URL, e.g. about:blank.
+			}
+		};
+		for (const origin of origins) addOrigin(origin);
+		for (const page of context.pages()) {
+			for (const frame of page.frames()) addOrigin(frame.url());
+		}
+		for (const domain of cookieDomains) addOrigin(`https://${bare(domain)}`);
+		const cleared = [...candidates].filter((origin) => !keep.origin(new URL(origin).hostname));
+
+		if (cleared.length > 0) {
+			const page = context.pages()[0] ?? (await context.newPage());
+			const cdp = await context.newCDPSession(page);
+			try {
+				for (const origin of cleared) {
+					await cdp.send('Storage.clearDataForOrigin', { origin, storageTypes: 'all' });
+				}
+			} finally {
+				await cdp.detach().catch(() => {});
+			}
+		}
+		return { cookieDomains, origins: cleared };
+	}
+
 	async getStorage(pageId: string, kind: 'local' | 'session'): Promise<Record<string, string>> {
 		const { page } = await this.ensurePage(pageId);
 		const storageObj = kind === 'local' ? 'localStorage' : 'sessionStorage';
@@ -1147,6 +1202,13 @@ export class PlaywrightAdapter {
 			state.pendingFileChooser = chooser;
 		});
 
+		// PROTOTYPE (cloud browser): report navigations and closed pages, including the user's.
+		page.on('framenavigated', (frame) => {
+			if (frame === page.mainFrame()) this.onPagesChanged?.();
+		});
+		page.on('close', () => this.onPagesChanged?.());
+		this.onPagesChanged?.();
+
 		// Clean up on page close — also clear relay activation so re-activation works
 		page.on('close', () => {
 			log.debug('page closed:', id);
@@ -1202,4 +1264,28 @@ export class PlaywrightAdapter {
 			.replace(/\?/g, '.');
 		return new RegExp(`^${escaped}$`);
 	}
+}
+
+/**
+ * PROTOTYPE (cloud browser): how long to wait for a page to load once its navigation has
+ * committed. Some pages never reach it in a cloud browser, e.g. when a blocking script
+ * hangs, while the page itself is already usable.
+ */
+const SOFT_LOAD_TIMEOUT_MS = 10_000;
+
+/**
+ * Navigates, then waits a bounded time for the load state. A navigation that fails to
+ * commit still throws. One that commits but does not finish loading goes on with the page
+ * as it is, instead of failing after 30 seconds with a page that was there all along.
+ */
+async function gotoWithSoftWait(
+	page: Page,
+	url: string,
+	waitUntil: 'load' | 'domcontentloaded' | 'networkidle',
+): Promise<Response | null> {
+	const response = await page.goto(url, { waitUntil: 'commit' });
+	await page.waitForLoadState(waitUntil, { timeout: SOFT_LOAD_TIMEOUT_MS }).catch((error) => {
+		log.debug('navigate: page did not finish loading, going on', url, error);
+	});
+	return response;
 }

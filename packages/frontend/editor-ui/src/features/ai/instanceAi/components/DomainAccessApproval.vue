@@ -11,6 +11,8 @@ interface DomainProps {
 	severity?: string;
 	url: string;
 	host: string;
+	/** PROTOTYPE (saved logins): asks to use the saved login for `host`, a site. */
+	savedLogin?: boolean;
 	query?: never;
 }
 
@@ -20,6 +22,7 @@ interface WebSearchProps {
 	query: string;
 	url?: never;
 	host?: never;
+	savedLogin?: never;
 }
 
 const props = defineProps<DomainProps | WebSearchProps>();
@@ -31,23 +34,37 @@ const resolved = ref(false);
 const isWebSearch = computed(() => props.query !== undefined);
 const isDestructive = computed(() => props.severity === 'destructive');
 
-const promptText = computed(() =>
-	isWebSearch.value
-		? i18n.baseText('instanceAi.webSearch.prompt')
-		: i18n.baseText('instanceAi.domainAccess.prompt', {
-				interpolate: { domain: props.host ?? '' },
-			}),
-);
+const isSavedLogin = computed(() => props.savedLogin === true);
+const promptText = computed(() => {
+	if (isWebSearch.value) return i18n.baseText('instanceAi.webSearch.prompt');
+	if (isSavedLogin.value) {
+		return i18n.baseText('instanceAi.savedLogin.prompt', {
+			interpolate: { site: props.host ?? '' },
+		});
+	}
+	return i18n.baseText('instanceAi.domainAccess.prompt', {
+		interpolate: { domain: props.host ?? '' },
+	});
+});
 
-const previewText = computed(() => (isWebSearch.value ? props.query : props.url) ?? '');
+// A saved login explains what using it does, instead of repeating the site's address.
+const previewText = computed(() => {
+	if (isWebSearch.value) return props.query ?? '';
+	if (isSavedLogin.value) {
+		return i18n.baseText('instanceAi.savedLogin.description', {
+			interpolate: { site: props.host ?? '' },
+		});
+	}
+	return props.url ?? '';
+});
 
-const persistentLabel = computed(() =>
-	isWebSearch.value
-		? i18n.baseText('instanceAi.webSearch.allowThread')
-		: i18n.baseText('instanceAi.domainAccess.allowDomain', {
-				interpolate: { domain: props.host ?? '' },
-			}),
-);
+const persistentLabel = computed(() => {
+	if (isWebSearch.value) return i18n.baseText('instanceAi.webSearch.allowThread');
+	if (isSavedLogin.value) return i18n.baseText('instanceAi.savedLogin.useAlways');
+	return i18n.baseText('instanceAi.domainAccess.allowDomain', {
+		interpolate: { domain: props.host ?? '' },
+	});
+});
 
 // Mirrors the floating-approval layout: persistent option first, single-use
 // allow next, deny last. Destructive hides the persistent row by design.
@@ -65,14 +82,18 @@ const options = computed<ApprovalOption[]>(() => {
 	list.push({
 		key: 'allow_once',
 		icon: 'check',
-		label: i18n.baseText('instanceAi.domainAccess.allowOnce'),
+		label: isSavedLogin.value
+			? i18n.baseText('instanceAi.savedLogin.useOnce')
+			: i18n.baseText('instanceAi.domainAccess.allowOnce'),
 		destructive: isDestructive.value,
 		testId: 'domain-access-allow-once',
 	});
 	list.push({
 		key: 'deny',
 		icon: 'ban',
-		label: i18n.baseText('instanceAi.domainAccess.deny'),
+		label: isSavedLogin.value
+			? i18n.baseText('instanceAi.savedLogin.decline')
+			: i18n.baseText('instanceAi.domainAccess.deny'),
 		withArrow: false,
 		testId: 'domain-access-deny',
 	});

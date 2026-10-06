@@ -702,6 +702,7 @@ function handleQuestionsSubmit(conf: InstanceAiConfirmation, answers: QuestionAn
 				:request-id="chunk.item.toolCall.confirmation.requestId"
 				:url="chunk.item.toolCall.confirmation.domainAccess.url"
 				:host="chunk.item.toolCall.confirmation.domainAccess.host"
+				:saved-login="chunk.item.toolCall.confirmation.domainAccess.savedLogin"
 				:severity="chunk.item.toolCall.confirmation.severity"
 			/>
 

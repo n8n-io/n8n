@@ -8,6 +8,10 @@ const CLOUD_BROWSER_ROLE = 'cloud-browser';
 const REQUEST_USER_ACTION = 'request-user-action';
 /** PROTOTYPE: matches `BROWSER_STATE_EVENT` in `cloud-browser-agent.tool.ts`. */
 const BROWSER_STATE_EVENT = 'cloud-browser-state';
+/** PROTOTYPE: matches `NO_LOGIN_SITE` in `cloud-browser-agent.tool.ts`. */
+const NO_LOGIN_SITE = '-';
+/** PROTOTYPE: matches `NO_LIVE_VIEW` in `cloud-browser-agent.tool.ts`. */
+const NO_LIVE_VIEW = '-';
 
 export type CloudBrowserStatus =
 	| 'running'
@@ -39,6 +43,15 @@ export interface CloudBrowserAgent {
 	summary?: string;
 	/** Live View of the whole browser session, once it has started. */
 	liveViewUrl?: string;
+	/** The browser had a session and none is open now: it is switching sites, or closed. */
+	betweenSessions?: boolean;
+	/** A browser session is being created, e.g. right after the user approved a page. */
+	starting?: boolean;
+	/**
+	 * PROTOTYPE (saved logins): the site "Remember this login" names at hand-back. Unset
+	 * when the browser already uses a saved login.
+	 */
+	loginSite?: string;
 }
 
 /** Whether the task is still going, so its browser session is open. */
@@ -63,10 +76,35 @@ function pendingHandOff(node: InstanceAiAgentNode): CloudBrowserAgent['handOff']
 	return { liveViewUrl, reason: typeof reason === 'string' ? reason : '' };
 }
 
-/** An approval card the sub-agent raised that is still waiting for the user. */
-function hasPendingApproval(node: InstanceAiAgentNode): boolean {
+/** Approvals the backend reports as answered, in the browser state events. */
+function answeredApprovals(node: InstanceAiAgentNode): Set<string> {
+	const answered = new Set<string>();
+	for (const toolCall of node.toolCalls) {
+		if (toolCall.toolName !== BROWSER_STATE_EVENT) continue;
+		const requestId = toolCall.args.answeredApproval;
+		if (typeof requestId === 'string') answered.add(requestId);
+	}
+	return answered;
+}
+
+/**
+ * An approval card the sub-agent raised that is still waiting for the user. Its tool call
+ * keeps loading until the tool has run, which for a navigation includes starting the
+ * browser, so an answered card is told apart by the backend's report, or by this tab's
+ * click before that report arrives.
+ */
+function hasPendingApproval(
+	node: InstanceAiAgentNode,
+	answeredHere: ReadonlyMap<string, unknown>,
+): boolean {
+	const answered = answeredApprovals(node);
 	return node.toolCalls.some(
-		(toolCall) => toolCall.confirmation && toolCall.isLoading && !toolCall.confirmationStatus,
+		(toolCall) =>
+			toolCall.confirmation &&
+			toolCall.isLoading &&
+			!toolCall.confirmationStatus &&
+			!answered.has(toolCall.confirmation.requestId) &&
+			!answeredHere.has(toolCall.confirmation.requestId),
 	);
 }
 
@@ -81,20 +119,34 @@ function latestState(node: InstanceAiAgentNode, field: string): string | undefin
 	return undefined;
 }
 
-function toBrowserAgent(node: InstanceAiAgentNode): CloudBrowserAgent {
+function liveViewOf(value: string | undefined): string | undefined {
+	return value === NO_LIVE_VIEW ? undefined : value;
+}
+
+function loginSiteOf(value: string | undefined): string | undefined {
+	return value === NO_LOGIN_SITE ? undefined : value;
+}
+
+function toBrowserAgent(
+	node: InstanceAiAgentNode,
+	answered: ReadonlyMap<string, unknown>,
+): CloudBrowserAgent {
 	const base = {
 		agentId: node.agentId,
 		taskId: node.taskId,
 		goal: node.subtitle ?? node.goal ?? node.title ?? '',
-		liveViewUrl: latestState(node, 'liveViewUrl'),
+		liveViewUrl: liveViewOf(latestState(node, 'liveViewUrl')),
+		betweenSessions: latestState(node, 'liveViewUrl') === NO_LIVE_VIEW,
+		starting: latestState(node, 'phase') === 'starting',
 		pageUrl: latestState(node, 'pageUrl'),
 		viewport: latestState(node, 'viewport'),
 		activity: latestState(node, 'status'),
+		loginSite: loginSiteOf(latestState(node, 'loginSite')),
 	};
 	if (node.status === 'active') {
 		const handOff = pendingHandOff(node);
 		if (handOff) return { ...base, status: 'needs-user', handOff };
-		if (hasPendingApproval(node)) return { ...base, status: 'needs-approval' };
+		if (hasPendingApproval(node, answered)) return { ...base, status: 'needs-approval' };
 		return { ...base, status: 'running' };
 	}
 	if (node.status === 'error') return { ...base, status: 'failed', summary: node.error };
@@ -122,7 +174,7 @@ export function useCloudBrowserAgents(runtime?: ThreadRuntime): ComputedRef<Clou
 		// A task the user stopped is gone: they know, and it has nothing to show.
 		const agents = nodes
 			.reverse()
-			.map(toBrowserAgent)
+			.map((node) => toBrowserAgent(node, thread.resolvedConfirmationIds))
 			.filter((agent) => agent.status !== 'cancelled');
 		return [
 			...agents.filter(isLiveCloudBrowser),

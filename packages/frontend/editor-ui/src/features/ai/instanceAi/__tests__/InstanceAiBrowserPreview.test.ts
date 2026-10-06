@@ -81,6 +81,31 @@ describe('InstanceAiBrowserPreview', () => {
 		expect(storeState.sendTaskCorrection).toHaveBeenCalledWith(
 			'browser-1',
 			expect.stringContaining('finished the step'),
+			{ rememberLogin: false },
 		);
+	});
+
+	it('offers to remember the login for the site and sends the choice with "I\'m done"', async () => {
+		const { getByTestId, getByText } = renderComponent({
+			props: { tab: browserTab({ waitingForUser: true, loginSite: 'example.com' }) },
+		});
+
+		expect(getByText('Remember this login for example.com')).toBeInTheDocument();
+		await fireEvent.click(getByText('Remember this login for example.com'));
+		await fireEvent.click(getByTestId('instance-ai-browser-preview-done'));
+
+		expect(storeState.sendTaskCorrection).toHaveBeenCalledWith(
+			'browser-1',
+			expect.stringContaining('finished the step'),
+			{ rememberLogin: true },
+		);
+	});
+
+	it('does not offer to remember a browser that already uses a saved login', () => {
+		const { queryByTestId } = renderComponent({
+			props: { tab: browserTab({ waitingForUser: true }) },
+		});
+
+		expect(queryByTestId('instance-ai-browser-preview-remember-login')).not.toBeInTheDocument();
 	});
 });

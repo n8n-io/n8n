@@ -132,12 +132,42 @@ export async function postCorrectTask(
 	threadId: string,
 	taskId: string,
 	message: string,
+	/** PROTOTYPE (saved logins): sent by "I'm done" in the cloud browser tab. */
+	handBack?: { rememberLogin: boolean },
 ): Promise<void> {
 	await makeRestApiRequest(
 		context,
 		'POST',
 		`/instance-ai/chat/${threadId}/tasks/${taskId}/correct`,
-		{ message },
+		handBack ? { message, handBack } : { message },
+	);
+}
+
+/** PROTOTYPE (saved logins): a saved login for the cloud browser, as the settings list shows it. */
+export interface CloudBrowserSavedLogin {
+	id: string;
+	site: string;
+	label: string;
+	region: string;
+	createdAt: string;
+	lastUsedAt?: string;
+	lastVerifiedAt?: string;
+}
+
+export async function fetchCloudBrowserSavedLogins(
+	context: IRestApiContext,
+): Promise<CloudBrowserSavedLogin[]> {
+	return await makeRestApiRequest(context, 'GET', '/instance-ai/browser/saved-logins');
+}
+
+export async function deleteCloudBrowserSavedLogin(
+	context: IRestApiContext,
+	id: string,
+): Promise<void> {
+	await makeRestApiRequest(
+		context,
+		'DELETE',
+		`/instance-ai/browser/saved-logins/${encodeURIComponent(id)}`,
 	);
 }
 

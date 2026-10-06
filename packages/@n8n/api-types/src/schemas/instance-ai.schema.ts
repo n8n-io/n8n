@@ -327,6 +327,8 @@ export type DomainAccessAction = z.infer<typeof domainAccessActionSchema>;
 export const domainAccessMetaSchema = z.object({
 	url: z.string(),
 	host: z.string(),
+	/** PROTOTYPE (saved logins): the card asks to use a saved login for `host`, a site. */
+	savedLogin: z.boolean().optional(),
 });
 export type DomainAccessMeta = z.infer<typeof domainAccessMetaSchema>;
 
@@ -1814,6 +1816,8 @@ export class InstanceAiSendMessageRequest extends Z.class({
 
 export class InstanceAiCorrectTaskRequest extends Z.class({
 	message: z.string().min(1),
+	/** PROTOTYPE (saved logins): set by "I'm done" in the cloud browser tab. */
+	handBack: z.object({ rememberLogin: z.boolean() }).optional(),
 }) {}
 
 /** PROTOTYPE (cloud browser): no taskId sends every queued background event. */

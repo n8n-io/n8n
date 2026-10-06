@@ -8,6 +8,8 @@ export interface BrowserbaseSession {
 	id: string;
 	/** CDP WebSocket URL. Carries a per-session signing key, so never log it. */
 	connectUrl: string;
+	/** Browserbase region the session runs in, e.g. `us-west-2`. */
+	region?: string;
 	/** PROTOTYPE: the browser window size the gateway set, for the Live View frame's shape. */
 	viewport?: { width: number; height: number };
 }
@@ -17,6 +19,13 @@ export interface BrowserbaseLivePage {
 	title: string;
 	url: string;
 	debuggerFullscreenUrl: string;
+}
+
+export interface CreateSessionOptions {
+	/** Browserbase context to start from. With `persist`, the session writes back to it on release. */
+	context?: { id: string; persist: boolean };
+	/** A saved login only works in the region it was saved in. */
+	region?: string;
 }
 
 export class BrowserbaseGatewayClient {
@@ -32,8 +41,23 @@ export class BrowserbaseGatewayClient {
 		return new BrowserbaseGatewayClient(baseUrl.replace(/\/$/, ''), apiKey);
 	}
 
-	async createSession(userId: string): Promise<BrowserbaseSession> {
-		return await this.request<BrowserbaseSession>(userId, 'POST', '/v1/sessions', {});
+	async createSession(
+		userId: string,
+		options: CreateSessionOptions = {},
+	): Promise<BrowserbaseSession> {
+		return await this.request<BrowserbaseSession>(userId, 'POST', '/v1/sessions', {
+			...(options.region ? { region: options.region } : {}),
+			...(options.context ? { browserSettings: { context: options.context } } : {}),
+		});
+	}
+
+	async getSessionStatus(userId: string, sessionId: string): Promise<string> {
+		const session = await this.request<{ status: string }>(
+			userId,
+			'GET',
+			`/v1/sessions/${encodeURIComponent(sessionId)}`,
+		);
+		return session.status;
 	}
 
 	async getLivePages(
@@ -47,6 +71,15 @@ export class BrowserbaseGatewayClient {
 		await this.request(userId, 'POST', `/v1/sessions/${encodeURIComponent(sessionId)}`, {
 			status: 'REQUEST_RELEASE',
 		});
+	}
+
+	/** PROTOTYPE (saved logins): a new, empty Browserbase context. */
+	async createContext(userId: string): Promise<{ id: string }> {
+		return await this.request<{ id: string }>(userId, 'POST', '/v1/contexts', {});
+	}
+
+	async deleteContext(userId: string, contextId: string): Promise<void> {
+		await this.request(userId, 'DELETE', `/v1/contexts/${encodeURIComponent(contextId)}`);
 	}
 
 	/**
@@ -73,7 +106,7 @@ export class BrowserbaseGatewayClient {
 			method,
 			headers: {
 				authorization: `Bearer ${this.apiKey}`,
-				'content-type': 'application/json',
+				...(body === undefined ? {} : { 'content-type': 'application/json' }),
 				'x-n8n-user-id': userId,
 			},
 			body: body === undefined ? undefined : JSON.stringify(body),
@@ -84,6 +117,8 @@ export class BrowserbaseGatewayClient {
 				`Browserbase gateway ${method} ${path} failed with ${response.status} ${text}`,
 			);
 		}
-		return (await response.json()) as T;
+		// DELETE answers 204 with no body.
+		const text = await response.text();
+		return (text ? JSON.parse(text) : undefined) as T;
 	}
 }

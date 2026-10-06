@@ -101,17 +101,18 @@ describe('InstanceAiBackgroundTaskBar', () => {
 		expect(storeState.sendTaskCorrection).toHaveBeenCalledWith('browser-1', expect.any(String));
 	});
 
-	it('shows a queued result with its outcome and sends it now', async () => {
+	it('shows a queued result by task, with its outcome and no "Send now"', () => {
 		withBrowserAgent(browserAgent({ status: 'completed', outcome: 'denied', result: '' }));
 		storeState.backgroundInbox = [{ taskId: 'browser-1', kind: 'finished', sendNow: false }];
 
-		const { getByText, getByTestId } = renderComponent();
+		const { getByText, queryByTestId } = renderComponent();
 
-		expect(getByText('Cloud browser finished: Denied')).toBeInTheDocument();
-		expect(getByText('The assistant gets this after its current reply')).toBeInTheDocument();
-
-		await fireEvent.click(getByTestId('instance-ai-background-task-bar-send-now'));
-		expect(storeState.sendBackgroundEventsNow).toHaveBeenCalledWith('browser-1');
+		expect(
+			getByText(
+				'Denied. The assistant will pick up the result when it finishes its current reply.',
+			),
+		).toBeInTheDocument();
+		expect(queryByTestId('instance-ai-background-task-bar-send-now')).not.toBeInTheDocument();
 	});
 
 	it('hides a finished task once its result has reached the assistant', () => {

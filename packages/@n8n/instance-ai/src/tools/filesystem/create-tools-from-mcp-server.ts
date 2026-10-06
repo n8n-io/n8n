@@ -92,6 +92,17 @@ export type LocalMcpApprovalStyle = 'resource-decision' | 'instance';
 /** PROTOTYPE: n8n's own approval card for a gate decision, labelled as the cloud browser. */
 function toInstanceApproval(payload: GatewayConfirmationRequiredPayload) {
 	const requestId = nanoid();
+	// PROTOTYPE (saved logins): "Use your saved login for <site>?", on the domain card's
+	// layout (once, for the conversation, no). Raised by `CloudBrowserMcpServer`.
+	if (payload.toolGroup === 'saved-login') {
+		const site = payload.resource;
+		return {
+			requestId,
+			message: payload.description,
+			severity: 'info' as const,
+			domainAccess: { url: `https://${site}`, host: site, savedLogin: true },
+		};
+	}
 	// Domain access is the only decision that offers a session-wide grant.
 	if (payload.options.includes('allowForSession')) {
 		const host = payload.resource;
@@ -436,11 +447,28 @@ export function createToolsFromLocalMcpServer({
 					}
 				};
 
+				// If the daemon requires a resource-access confirmation, suspend the agent
+				const suspendIfAsked = async (result: McpToolCallResult) => {
+					if (!result.isError) return undefined;
+					const payload = tryParseGatewayConfirmationRequired(result);
+					if (!payload || typeof ctx.suspend !== 'function') return undefined;
+					if (approvalStyle === 'instance') {
+						return await ctx.suspend(toInstanceApproval(payload));
+					}
+					return await ctx.suspend({
+						requestId: nanoid(),
+						message: `${toolName}: ${payload.description}`,
+						severity: 'warning',
+						inputType: 'resource-decision',
+						resourceDecision: payload,
+					});
+				};
+
 				// Resume path: user has made a resource-access decision
 				if (resumeData !== undefined && resumeData !== null) {
 					const decision =
 						approvalStyle === 'instance'
-							? instanceDecision(resumeData)
+							? (instanceDecision(resumeData) ?? 'denyOnce')
 							: resumeData.resourceDecision;
 					if (!decision) {
 						// User denied — no decision provided
@@ -449,8 +477,13 @@ export function createToolsFromLocalMcpServer({
 							isError: true,
 						});
 					}
-					// Re-call the daemon with the user's decision
-					return observeResult(await callServer({ ...args, _confirmation: decision }));
+					// Re-call the daemon with the user's decision. PROTOTYPE (saved logins): in
+					// `instance` style a denial goes to the server too, because declining the saved
+					// login card is not a refusal: the call goes on without it. The server's gate
+					// answers any other denial with "Access denied by user". One answer can also
+					// lead to the next card (domain access, then the saved login).
+					const result = await callServer({ ...args, _confirmation: decision });
+					return (await suspendIfAsked(result)) ?? observeResult(result);
 				}
 
 				// First-call path: strip any LLM-provided _confirmation key so the agent
@@ -458,24 +491,7 @@ export function createToolsFromLocalMcpServer({
 				const { _confirmation: _stripped, ...safeArgs } = args;
 				const result = await callServer(safeArgs);
 
-				// If the daemon requires a resource-access confirmation, suspend the agent
-				if (result.isError) {
-					const payload = tryParseGatewayConfirmationRequired(result);
-					if (payload && typeof ctx.suspend === 'function') {
-						if (approvalStyle === 'instance') {
-							return await ctx.suspend(toInstanceApproval(payload));
-						}
-						return await ctx.suspend({
-							requestId: nanoid(),
-							message: `${toolName}: ${payload.description}`,
-							severity: 'warning',
-							inputType: 'resource-decision',
-							resourceDecision: payload,
-						});
-					}
-				}
-
-				return observeResult(result);
+				return (await suspendIfAsked(result)) ?? observeResult(result);
 			})
 			.toModelOutput((result: unknown) => {
 				const raw = unwrapMcpToolResult(result);

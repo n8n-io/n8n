@@ -44,6 +44,7 @@ import { useSetupPageViewTelemetry } from '../instanceAiSetup.telemetry';
 import type { InstanceAiConnectionKind } from '../constants';
 import ConnectionDialog from '../components/settings/ConnectionDialog.vue';
 import SandboxSettingsRow from '../components/settings/SandboxSettingsRow.vue';
+import CloudBrowserSavedLogins from '../components/settings/CloudBrowserSavedLogins.vue';
 
 const i18n = useI18n();
 const documentTitle = useDocumentTitle();
@@ -795,6 +796,9 @@ function openAiUsageSettings() {
 		<!-- Experiment cleanup: remove with openWorkflowInAssistant. Members see
 		none of the admin sections above, so they get the row on its own. -->
 		<DefaultEditorSetting v-if="!isAdmin && !store.isLoading && !neverConfigured" />
+
+		<!-- PROTOTYPE (saved logins): per user, so outside the admin sections. -->
+		<CloudBrowserSavedLogins v-if="!store.isLoading" />
 
 		<ConnectionDialog
 			v-if="showCredentialsRows && !isModelReadOnly"

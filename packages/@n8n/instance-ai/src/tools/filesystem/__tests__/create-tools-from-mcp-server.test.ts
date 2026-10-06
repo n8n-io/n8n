@@ -115,10 +115,7 @@ function getExecute(server: LocalMcpServer, toolName = 'write_file') {
 }
 
 /** Build a ctx object with suspend/resumeData for use in execute calls. */
-function makeCtx(opts: {
-	suspend?: Mock;
-	resumeData?: Record<string, unknown> | null;
-}): unknown {
+function makeCtx(opts: { suspend?: Mock; resumeData?: Record<string, unknown> | null }): unknown {
 	return { suspend: opts.suspend ?? vi.fn(), resumeData: opts.resumeData ?? null };
 }
 
@@ -700,16 +697,66 @@ describe('createToolsFromLocalMcpServer', () => {
 			);
 		});
 
-		it('treats a denied card as denied and does not call the gate', async () => {
+		it('passes a denied card to the gate, which decides what a denial means', async () => {
 			const server = makeMockServer();
+			const denied: McpToolCallResult = {
+				content: [{ type: 'text', text: 'Access denied by user' }],
+				isError: true,
+			};
+			server.callTool.mockResolvedValue(denied);
 
 			const result = await getInstanceExecute(server)(
-				{},
+				{ filePath: 'test.ts' },
 				makeCtx({ resumeData: { approved: false } }),
 			);
 
-			expect(result.isError).toBe(true);
-			expect(server.callTool).not.toHaveBeenCalled();
+			expect(server.callTool).toHaveBeenCalledWith(
+				{ name: 'write_file', arguments: { filePath: 'test.ts', _confirmation: 'denyOnce' } },
+				{ abortSignal: undefined },
+			);
+			expect(result).toEqual(denied);
+		});
+
+		it('raises the saved login card on the domain card layout', async () => {
+			const server = makeMockServer();
+			server.callTool.mockResolvedValue(
+				confirmationError({
+					toolGroup: 'saved-login',
+					resource: 'example.com',
+					description: 'Use your saved login for example.com?',
+					options: ['denyOnce', 'allowOnce', 'allowForSession'],
+				}),
+			);
+			const suspend = vi.fn().mockResolvedValue(undefined);
+
+			await getInstanceExecute(server)({}, makeCtx({ suspend }));
+
+			expect(suspend.mock.calls[0][0]).toMatchObject({
+				message: 'Use your saved login for example.com?',
+				severity: 'info',
+				domainAccess: { host: 'example.com', savedLogin: true },
+			});
+		});
+
+		it('raises the next card when an answer leads to another one', async () => {
+			const server = makeMockServer();
+			server.callTool.mockResolvedValue(
+				confirmationError({
+					toolGroup: 'saved-login',
+					resource: 'example.com',
+					description: 'Use your saved login for example.com?',
+					options: ['denyOnce', 'allowOnce', 'allowForSession'],
+				}),
+			);
+			const suspend = vi.fn().mockResolvedValue(undefined);
+
+			await getInstanceExecute(server)(
+				{},
+				makeCtx({ suspend, resumeData: { approved: true, domainAccessAction: 'allow_once' } }),
+			);
+
+			expect(suspend).toHaveBeenCalledTimes(1);
+			expect(suspend.mock.calls[0][0]).toMatchObject({ domainAccess: { savedLogin: true } });
 		});
 	});
 });

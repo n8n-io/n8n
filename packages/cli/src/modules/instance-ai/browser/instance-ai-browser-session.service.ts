@@ -15,6 +15,7 @@ import type {
 	SecretsBuffer,
 	ToolContext,
 } from '@n8n/mcp-browser';
+import { Cipher, InstanceSettings } from 'n8n-core';
 import { UnexpectedError } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 import { timingSafeEqual } from 'node:crypto';
@@ -31,6 +32,7 @@ import { Telemetry } from '@/telemetry';
 import { BrowserLocalMcpServer } from './browser-local-mcp-server';
 import { BrowserbaseGatewayClient } from './browserbase-gateway.client';
 import { CloudBrowserMcpServer } from './cloud-browser-mcp-server';
+import { JsonFileSavedLoginStore, type SavedLogin } from './saved-login.store';
 import {
 	BROWSER_USE_WS_NAMESPACE,
 	CDP_TOKEN_HEADER,
@@ -75,8 +77,17 @@ export class InstanceAiBrowserSessionService {
 	 */
 	private readonly browserbaseDirect = process.env.N8N_INSTANCE_AI_BROWSERBASE_DIRECT === 'true';
 
-	/** PROTOTYPE: one cloud browser server per user, keyed by userId. */
+	/**
+	 * PROTOTYPE: cloud browser servers. One per browser task, keyed by task id, so parallel
+	 * tasks have their own browsers. In direct mode, one per user, keyed by `user:<id>`.
+	 */
 	private readonly browserbaseServers = new Map<string, CloudBrowserMcpServer>();
+
+	/** PROTOTYPE (saved logins): sites whose saved login a user allowed for a conversation. */
+	private readonly savedLoginGrants = new Map<string, Set<string>>();
+
+	/** PROTOTYPE (saved logins): the BYOK store, a JSON file standing in for a table. */
+	private savedLoginStore?: JsonFileSavedLoginStore;
 
 	/** PROTOTYPE: preloaded so `findMcpServer` can stay synchronous. */
 	private mcpBrowser?: typeof import('@n8n/mcp-browser');
@@ -130,7 +141,12 @@ export class InstanceAiBrowserSessionService {
 	}
 
 	async disconnect(userId: string): Promise<void> {
-		await this.browserbaseServers.get(userId)?.release('user disconnected');
+		await Promise.all(
+			this.serversOf(userId).map(async ([key, server]) => {
+				this.browserbaseServers.delete(key);
+				await server.release('user disconnected');
+			}),
+		);
 		const session = this.sessions.get(userId);
 		if (!session) return;
 		this.sessions.delete(userId);
@@ -143,16 +159,24 @@ export class InstanceAiBrowserSessionService {
 		if (this.browserbaseGateway) {
 			// In sub-agent mode the orchestrator gets no browser tools, see findCloudBrowserServer.
 			if (!this.browserbaseDirect) return undefined;
-			return this.getBrowserbaseServer(userId, this.browserbaseGateway);
+			return this.getBrowserbaseServer(userId, `user:${userId}`, this.browserbaseGateway);
 		}
 		const session = this.sessions.get(userId);
 		return session?.connected ? session.mcpServer : undefined;
 	}
 
-	/** PROTOTYPE: the cloud browser tools for the background browser sub-agent. */
-	findCloudBrowserServer(userId: string): CloudBrowserMcpServer | undefined {
+	/** PROTOTYPE: whether browser tasks get a cloud browser (sub-agent mode). */
+	hasCloudBrowserTasks(): boolean {
+		return this.browserbaseGateway !== undefined && !this.browserbaseDirect;
+	}
+
+	/**
+	 * PROTOTYPE: the cloud browser tools for one background browser task. Each task has its
+	 * own browser, released by `releaseCloudBrowser` when the task ends.
+	 */
+	createCloudBrowserServer(userId: string, taskId: string): CloudBrowserMcpServer | undefined {
 		if (!this.browserbaseGateway || this.browserbaseDirect) return undefined;
-		return this.getBrowserbaseServer(userId, this.browserbaseGateway);
+		return this.getBrowserbaseServer(userId, taskId, this.browserbaseGateway);
 	}
 
 	/** PROTOTYPE: why the cloud browser cannot start right now, or undefined when it can. */
@@ -161,6 +185,67 @@ export class InstanceAiBrowserSessionService {
 		return (await this.browserbaseGateway.isReachable())
 			? undefined
 			: 'The cloud browser service is unreachable.';
+	}
+
+	/**
+	 * PROTOTYPE (saved logins): the user clicked "I'm done" in the browser tab. Binds the
+	 * session to the site the user is on, and remembers the sign-in if they ticked the box.
+	 */
+	async handBackCloudBrowser(
+		userId: string,
+		taskId: string,
+		rememberLogin: boolean,
+	): Promise<void> {
+		const server = this.browserbaseServers.get(taskId);
+		if (server?.userId !== userId) return;
+		await server.handBack(rememberLogin);
+	}
+
+	/** PROTOTYPE (saved logins): sessions are scoped to a task, so its end releases them. */
+	async releaseCloudBrowser(taskId: string, reason: string): Promise<void> {
+		const server = this.browserbaseServers.get(taskId);
+		this.browserbaseServers.delete(taskId);
+		await server?.release(reason);
+	}
+
+	/**
+	 * PROTOTYPE (saved logins): the user's saved logins, without their context ids.
+	 * Undefined when the cloud browser is not configured.
+	 */
+	async listSavedLogins(userId: string): Promise<Array<Omit<SavedLogin, 'contextId'>> | undefined> {
+		if (!this.browserbaseGateway) return undefined;
+		const logins = await this.getSavedLoginStore().list(userId);
+		return logins.map(({ contextId: _contextId, ...login }) => login);
+	}
+
+	/**
+	 * PROTOTYPE (saved logins): deletes a saved login and its Browserbase context. A login
+	 * in use by an open browser is refused, since its release would write it back.
+	 */
+	async deleteSavedLogin(userId: string, id: string): Promise<'deleted' | 'not-found' | 'in-use'> {
+		if (this.serversOf(userId).some(([, server]) => server.isUsing(id))) return 'in-use';
+		const removed = await this.getSavedLoginStore().remove(userId, id);
+		if (!removed) return 'not-found';
+		await this.browserbaseGateway?.deleteContext(userId, removed.contextId).catch((error) => {
+			this.logger.warn('[browserbase demo] deleting a saved login context failed', {
+				error: error instanceof Error ? error.message : String(error),
+			});
+		});
+		return 'deleted';
+	}
+
+	private getSavedLoginStore(): JsonFileSavedLoginStore {
+		if (!this.savedLoginStore) {
+			const cipher = Container.get(Cipher);
+			this.savedLoginStore = new JsonFileSavedLoginStore(
+				join(Container.get(InstanceSettings).n8nFolder, 'cloud-browser-saved-logins.json'),
+				{
+					encrypt: async (contextId) => await cipher.encryptV2(contextId),
+					decrypt: async (stored) => await cipher.decryptV2(stored),
+				},
+			);
+		}
+		return this.savedLoginStore;
 	}
 
 	isConnected(userId: string): boolean {
@@ -270,11 +355,16 @@ export class InstanceAiBrowserSessionService {
 	}
 
 	/** PROTOTYPE: the Browserbase session is only created by the first tool call. */
+	private serversOf(userId: string): Array<[string, CloudBrowserMcpServer]> {
+		return [...this.browserbaseServers].filter(([, server]) => server.userId === userId);
+	}
+
 	private getBrowserbaseServer(
 		userId: string,
+		key: string,
 		gateway: BrowserbaseGatewayClient,
 	): CloudBrowserMcpServer | undefined {
-		const existing = this.browserbaseServers.get(userId);
+		const existing = this.browserbaseServers.get(key);
 		if (existing) return existing;
 
 		const mcpBrowser = this.mcpBrowser;
@@ -289,9 +379,18 @@ export class InstanceAiBrowserSessionService {
 					this.createToolContext(userId),
 					this.logger,
 				),
+			this.getSavedLoginStore(),
 			this.logger,
+			{
+				savedLoginGrants: this.savedLoginGrants,
+				// One browser per saved login, across the user's tasks.
+				inUseElsewhere: (savedLoginId) =>
+					this.serversOf(userId).some(
+						([, other]) => other !== server && other.isUsing(savedLoginId),
+					),
+			},
 		);
-		this.browserbaseServers.set(userId, server);
+		this.browserbaseServers.set(key, server);
 		return server;
 	}
 

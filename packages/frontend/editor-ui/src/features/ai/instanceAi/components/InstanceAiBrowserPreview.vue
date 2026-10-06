@@ -8,7 +8,7 @@
  * TBD: taking control does not pause the sub-agent. Outside a hand-off, both could act on
  * the page at once. A real take-over would tell the sub-agent to wait until released.
  */
-import { N8nButton, N8nIcon } from '@n8n/design-system';
+import { N8nButton, N8nCheckbox, N8nIcon } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed, ref, watch } from 'vue';
 
@@ -22,6 +22,8 @@ const props = defineProps<{ tab: BrowserTab }>();
 const i18n = useI18n();
 const thread = useThread();
 const handingBack = ref(false);
+/** PROTOTYPE (saved logins): "Remember this login for <site>", sent with "I'm done". */
+const rememberLogin = ref(false);
 const reloadKey = ref(0);
 /**
  * View-only until the user takes control. While the task waits for the user, they have
@@ -63,8 +65,10 @@ async function handBack() {
 		await thread.sendTaskCorrection(
 			taskId,
 			'The user finished the step in the Live View. Check the page and continue.',
+			{ rememberLogin: Boolean(props.tab.loginSite) && rememberLogin.value },
 		);
 		controlling.value = false;
+		rememberLogin.value = false;
 	} finally {
 		handingBack.value = false;
 	}
@@ -117,8 +121,29 @@ async function handBack() {
 						<N8nIcon icon="external-link" size="small" />
 					</a>
 				</div>
-				<div :class="$style.frameBox">
+				<div
+					:class="[$style.frameBox, { [$style.viewOnlyBox]: !controlling && tab.url }]"
+					:title="
+						!controlling && tab.url
+							? i18n.baseText('instanceAi.browserPreview.viewOnlyHint')
+							: undefined
+					"
+				>
+					<div
+						v-if="!tab.url"
+						:class="$style.placeholder"
+						data-test-id="instance-ai-browser-preview-placeholder"
+					>
+						{{
+							i18n.baseText(
+								tab.starting
+									? 'instanceAi.browserPreview.betweenSessions'
+									: 'instanceAi.browserPreview.closing',
+							)
+						}}
+					</div>
 					<iframe
+						v-else
 						:key="frameKey"
 						:src="frameUrl"
 						:title="i18n.baseText('instanceAi.browserPreview.title')"
@@ -132,6 +157,16 @@ async function handBack() {
 			</div>
 		</div>
 		<div v-if="tab.waitingForUser && tab.taskId" :class="$style.footer">
+			<N8nCheckbox
+				v-if="tab.loginSite"
+				v-model="rememberLogin"
+				:label="
+					i18n.baseText('instanceAi.browserPreview.rememberLogin', {
+						interpolate: { site: tab.loginSite },
+					})
+				"
+				data-test-id="instance-ai-browser-preview-remember-login"
+			/>
 			<N8nButton
 				variant="solid"
 				size="medium"
@@ -182,6 +217,11 @@ async function handBack() {
 .frameBox {
 	aspect-ratio: var(--browser-aspect);
 	width: 100%;
+}
+
+/* The frame ignores the mouse while view-only, so the cursor here is what the user sees. */
+.viewOnlyBox {
+	cursor: not-allowed;
 }
 
 .toolbar {
@@ -244,6 +284,17 @@ async function handBack() {
 	}
 }
 
+.placeholder {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 100%;
+	height: 100%;
+	background: var(--color--background--light-2);
+	color: var(--color--text--tint-1);
+	font-size: var(--font-size--sm);
+}
+
 .frame {
 	display: block;
 	width: 100%;
@@ -260,5 +311,7 @@ async function handBack() {
 .footer {
 	display: flex;
 	justify-content: flex-end;
+	align-items: center;
+	gap: var(--spacing--sm);
 }
 </style>
