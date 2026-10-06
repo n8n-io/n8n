@@ -225,7 +225,9 @@ async function onRerunCheck(resultId: string) {
 // this result's snapshot. A result with no row to write to (an older run, or a dataset
 // with no rule column) keeps the snapshot-only edit.
 async function onSaveWhatToCheck(resultId: string, whatToCheck: string) {
-	const rowId = Number(rows.value.find((row) => row.id === resultId)?.sourceRowId);
+	// `Number(null)` is 0, which would aim the write at a row that is not this check's.
+	const sourceRowId = rows.value.find((row) => row.id === resultId)?.sourceRowId;
+	const rowId = sourceRowId ? Number(sourceRowId) : Number.NaN;
 	const source = addCheckSource.value;
 	if (source && Number.isInteger(rowId)) {
 		try {

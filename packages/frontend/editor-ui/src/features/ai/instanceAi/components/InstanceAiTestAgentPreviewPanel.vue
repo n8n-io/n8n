@@ -299,15 +299,18 @@ async function onCheckAgent(count: number) {
 	let runSubmitted = false;
 	// The panel can go away while a request is pending. A continuation that finds it
 	// gone before the run was submitted has nobody left to follow the draft, so it
-	// discards what it created. A submitted run is left alone.
-	const discardIfAbandoned = async (datasetId: string) => {
-		if (isMounted) return false;
+	// discards what it created. A submitted run is left alone. Each check is
+	// synchronous: an `await` between it and the next step would let an unmount in
+	// between go unseen.
+	const discardDraft = async (datasetId: string) => {
 		await store.deleteDraftDataset(projectId, agentId, datasetId).catch(() => null);
-		return true;
 	};
 	try {
 		const created = await store.createDraftDataset(projectId, agentId);
-		if (await discardIfAbandoned(created.datasetId)) return;
+		if (!isMounted) {
+			await discardDraft(created.datasetId);
+			return;
+		}
 		suiteDatasetId.value = created.datasetId;
 		// Resolved straight from the create response — not a `getDatasets` refetch,
 		// which could itself fail transiently after the dataset already exists and
@@ -327,10 +330,16 @@ async function onCheckAgent(count: number) {
 		// depend on each other.
 		await store.createCase(projectId, source, confirmedTry);
 		await Promise.all(toCreate.map((value) => store.createCase(projectId, source, value)));
-		if (await discardIfAbandoned(created.datasetId)) return;
+		if (!isMounted) {
+			await discardDraft(created.datasetId);
+			return;
+		}
 
 		const cases = await store.fetchCases(projectId, source);
-		if (await discardIfAbandoned(created.datasetId)) return;
+		if (!isMounted) {
+			await discardDraft(created.datasetId);
+			return;
+		}
 		// The Data Table has no column for the scenario tag — carry it over here,
 		// matched by the input text each row was created from, before `cases`
 		// (keyed by row id, stable across later revisions) replaces that lookup.

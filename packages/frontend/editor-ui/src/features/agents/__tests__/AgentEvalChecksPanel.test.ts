@@ -548,7 +548,12 @@ describe('AgentEvalChecksPanel', () => {
 					createdAt: '2026-01-01T00:00:00.000Z',
 					updatedAt: '2026-01-01T00:00:30.000Z',
 				},
-				results: [{ ...result('c1', 'success'), sourceRowId: options.sourceRowId ?? 'row-c1' }],
+				results: [
+					{
+						...result('c1', 'success'),
+						sourceRowId: options.sourceRowId === undefined ? 'row-c1' : options.sourceRowId,
+					},
+				],
 				resultsCount: 1,
 				ratingsByResultId: {},
 				pendingByResultId: {},
