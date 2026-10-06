@@ -3,7 +3,7 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync
 import path from 'node:path';
 
 import { actions } from '../../../nodes-base-next/dist/index.js';
-import { versionsOf } from '../../../nodes-base-next/dist/registry.js';
+import { packageOf, versionsOf } from '../../../nodes-base-next/dist/registry.js';
 import { freezeAction } from '../freeze';
 import { replayFixtures } from '../publish';
 import type { ExecutorHost } from '../runtime';
@@ -13,7 +13,6 @@ import { parseFixtures } from '../version';
 
 const SANDBOX = path.resolve(__dirname, '..', '..', 'sandbox');
 const SIDECAR = path.join(SANDBOX, 'sidecar', 'target', 'release', 'n8n-sandbox');
-const FIXTURES = path.resolve(__dirname, '..', '..', '..', 'nodes-base-next', 'fixtures');
 // Next to the guest, so docker shares it whenever it shares the guest. Colima shares no tmpdir.
 const CACHE_ROOT = path.resolve(__dirname, '..', '..', 'node_modules', '.cache');
 
@@ -51,7 +50,9 @@ async function replay(id: string, sandbox: SandboxOptions): Promise<string[]> {
 	if (!head) return [`${id} has no bundled HEAD`];
 	const loaded = await sandboxedVersionOf(head, sandbox).catch((error: Error) => error);
 	if (loaded instanceof Error) return [`${id} refused: ${loaded.message}`];
-	const fixtures = parseFixtures(readFileSync(path.join(FIXTURES, `${id}.json`), 'utf8'));
+	const fixtures = parseFixtures(
+		readFileSync(path.join(packageOf(id).dir, 'fixtures', `${id}.json`), 'utf8'),
+	);
 	return await replayFixtures(
 		{ manifest: head.manifest, bundle: await head.readBundle() },
 		fixtures,

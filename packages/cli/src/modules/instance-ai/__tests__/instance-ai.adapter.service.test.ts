@@ -5424,7 +5424,7 @@ describe('createExecutionAdapter run()', () => {
 	it('ignores the destination node when node contracts are disabled', async () => {
 		const { adapter, mockWorkflowRunner } = createRunAdapterForTests({
 			id: 'wf-1',
-			nodes: [makeNode('Webhook', 'n8n-nodes-base.webhook'), makeNode('A')],
+			nodes: [makeNode('Webhook', 'n8n-nodes-base.webhook'), makeNode('A', 'n8n-nodes-base.set')],
 			connections: { Webhook: { main: [[{ node: 'A', type: 'main', index: 0 }]] } },
 		});
 

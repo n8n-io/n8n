@@ -44,7 +44,15 @@ describe('node contracts tool schemas', () => {
 	it('nodes changes only the build discovery text', () => {
 		const on = jsonOf(createNodesTool(context({ nodeContractsEnabled: true }))).properties ?? {};
 		const off = jsonOf(createNodesTool(context({}))).properties ?? {};
-		const discovery = ['action', 'connectionType', 'limit', 'nodeTypes', 'queries'];
+		const discovery = [
+			'action',
+			'connectionType',
+			'currentNodeParameters',
+			'limit',
+			'methodName',
+			'nodeTypes',
+			'queries',
+		];
 		const actionText = (properties: Record<string, unknown>, action: string) =>
 			String((properties.action as { description?: string }).description)
 				.split(/(?="[a-z-]+": )/)
