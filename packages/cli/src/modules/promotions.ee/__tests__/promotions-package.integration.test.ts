@@ -1729,6 +1729,41 @@ describe('Apply data table changes', () => {
 			expect(applyPackageResultSchema.parse(result)).toEqual(result);
 		},
 	);
+
+	it.each([{ flow: 'full' as const }, { flow: 'selection' as const }])(
+		'applies a $flow data table change that deletes no data, counts the table as updated and recreates a missing table',
+		async ({ flow }) => {
+			const promoted = await promoteDataTableWorkflows();
+			const { project, orders, customers, dataTableService } = promoted;
+			const note = (await dataTableService.getColumns(orders.id, project.id)).find(
+				({ name }) => name === 'note',
+			);
+			assert(note);
+			await dataTableService.deleteColumn(orders.id, project.id, note.id);
+			await dataTableService.updateDataTable(orders.id, project.id, { name: 'Local orders' });
+			await dataTableService.deleteDataTable(customers.id, project.id);
+
+			const result = await applyFlow(flow, promoted);
+
+			assert(result.status === 'applied');
+			expect(result.counts.dataTables).toEqual({ matched: 0, created: 1, updated: 1 });
+			expect(await dataTableService.getOne(orders.id, project.id)).toMatchObject({
+				name: 'Orders',
+			});
+			expect(
+				(await dataTableService.getColumns(orders.id, project.id)).map(({ name, type }) => ({
+					name,
+					type,
+				})),
+			).toEqual([
+				{ name: 'email', type: 'string' },
+				{ name: 'note', type: 'string' },
+			]);
+			expect(await dataTableService.getOne(customers.id, project.id)).toMatchObject({
+				name: 'Customers',
+			});
+		},
+	);
 });
 
 describe('Promote a project selection — branch effects', () => {

@@ -74,7 +74,7 @@ export const applied: AppliedResult = {
 			publishing: { published: 0, unpublished: 0, unchanged: 0, blocked: 1, failed: 1 },
 		},
 		credentials: { matched: 1, stubbed: 0 },
-		dataTables: { matched: 0, created: 0 },
+		dataTables: { matched: 0, created: 0, updated: 0 },
 		variables: { matched: 0, created: 0, updated: 0, stubbed: 0, missing: 0 },
 		tags: { matched: 0, created: 0, renamed: 0, reconciled: 0, skipped: 0 },
 	},

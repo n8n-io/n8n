@@ -132,9 +132,13 @@ oneOf:
               created:
                 type: integer
                 minimum: 0
+              updated:
+                type: integer
+                minimum: 0
             required:
               - matched
               - created
+              - updated
           variables:
             type: object
             properties:

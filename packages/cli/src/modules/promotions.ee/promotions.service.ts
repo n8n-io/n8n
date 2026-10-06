@@ -90,7 +90,7 @@ const IMPORT_POLICY: Omit<ImportRequest, 'user'> = {
 	overwriteDeletionPolicy: OverwriteDeletionPolicy.HardDelete,
 	dataTableMatchingMode: 'by-id',
 	dataTableMissingMode: DataTableMissingMode.Create,
-	dataTableSchemaConflictPolicy: DataTableSchemaConflictPolicy.Fail,
+	dataTableSchemaConflictPolicy: DataTableSchemaConflictPolicy.OverwriteNonDestructive,
 	variableMissingMode: VariableMissingMode.MustPreexist,
 	variableConflictPolicy: VariableConflictPolicy.KeepExisting,
 	tagMissingMode: TagMissingMode.Create,
@@ -617,7 +617,11 @@ export class PromotionsService {
 		});
 
 		const result = await this.n8nPackagesService.importPackageSelectionFromDirectory(
-			{ user: actor, overwriteDeletionPolicy: OverwriteDeletionPolicy.HardDelete },
+			{
+				user: actor,
+				overwriteDeletionPolicy: IMPORT_POLICY.overwriteDeletionPolicy,
+				dataTableSchemaConflictPolicy: IMPORT_POLICY.dataTableSchemaConflictPolicy,
+			},
 			{ sourceDir: packageFolder },
 			selection,
 		);
@@ -913,6 +917,7 @@ export class PromotionsService {
 			dataTables: {
 				matched: importResult.dataTables.matched,
 				created: importResult.dataTables.created,
+				updated: importResult.dataTables.updated,
 			},
 			variables: {
 				matched: importResult.variables.matched.length,
