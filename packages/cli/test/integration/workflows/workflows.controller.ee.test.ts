@@ -958,6 +958,46 @@ describe('GET /workflows/:workflowId', () => {
 				},
 			]);
 		});
+
+		describe('the Owner in a team-project workflow', () => {
+			const ownerSees = async (credentialId: string, teamProject: Project) => {
+				const workflow = await createWorkflow(
+					makeWorkflow({
+						withPinData: false,
+						withCredential: { id: credentialId, name: 'Credential' },
+					}),
+					teamProject,
+				);
+				const response = await authOwnerAgent.get(`/workflows/${workflow.id}`).expect(200);
+				const responseWorkflow: WorkflowWithSharingsMetaDataAndCredentials = response.body.data;
+				return responseWorkflow.usedCredentials?.[0]?.currentUserCanUse;
+			};
+
+			test('cannot use a personal credential that nobody shared with the project', async () => {
+				const teamProject = await createTeamProject('Marketing', member);
+				const credential = await saveCredential(randomCredentialPayload(), { user: member });
+
+				expect(await ownerSees(credential.id, teamProject)).toBe(false);
+			});
+
+			test('can use a credential shared with the project', async () => {
+				const teamProject = await createTeamProject('Marketing', member);
+				const credential = await saveCredential(randomCredentialPayload(), { user: member });
+				await shareCredentialWithProjects(credential, [teamProject]);
+
+				expect(await ownerSees(credential.id, teamProject)).toBe(true);
+			});
+
+			test('can use a credential shared with everyone', async () => {
+				const teamProject = await createTeamProject('Marketing', member);
+				const credential = await saveCredential(
+					{ ...randomCredentialPayload(), isGlobal: true },
+					{ user: member },
+				);
+
+				expect(await ownerSees(credential.id, teamProject)).toBe(true);
+			});
+		});
 	});
 });
 

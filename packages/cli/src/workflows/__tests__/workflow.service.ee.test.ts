@@ -17,6 +17,7 @@ import { mock } from 'vitest-mock-extended';
 import type { ActiveWorkflowManager } from '@/active-workflow-manager';
 import type { CredentialsFinderService } from '@n8n/backend-services';
 import type { CredentialsService } from '@/credentials/credentials.service';
+import type { CredentialsPermissionChecker } from '@/executions/pre-execution-checks/credentials-permission-checker';
 import type { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import type { OwnershipService } from '@/services/ownership.service';
 import type { ProjectService } from '@/services/project.service.ee';
@@ -43,6 +44,7 @@ describe('EnterpriseWorkflowService', () => {
 	const credentialsService = mock<CredentialsService>();
 	const ownershipService = mock<OwnershipService>();
 	const credentialsFinderService = mock<CredentialsFinderService>();
+	const credentialsPermissionChecker = mock<CredentialsPermissionChecker>();
 
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -63,6 +65,7 @@ describe('EnterpriseWorkflowService', () => {
 			workflowPublishHistoryRepository,
 			workflowMutationHooks,
 			policyEnforcementService,
+			credentialsPermissionChecker,
 		);
 	});
 
@@ -305,28 +308,30 @@ describe('EnterpriseWorkflowService', () => {
 			expect(credentialsService.getCredentialsAUserCanUseInAWorkflow).toHaveBeenCalledWith(user, {
 				workflowId: 'workflow-1',
 			});
-			expect(credentialsFinderService.findUnusableCredentialsForUser).not.toHaveBeenCalled();
+			expect(credentialsPermissionChecker.findUnusableInWorkflow).not.toHaveBeenCalled();
 			expect(workflow.usedCredentials).toMatchObject([{ id: 'cred-1', currentUserCanUse: true }]);
 		});
 
-		it('when the flag is on, asks the identity-based check instead', async () => {
+		it('when the flag is on, asks the rule a run acting as the user follows', async () => {
 			flags.credSharingEnabled = true;
-			credentialsFinderService.findUnusableCredentialsForUser.mockResolvedValue([]);
+			credentialsPermissionChecker.findUnusableInWorkflow.mockResolvedValue([]);
 			const workflow = buildWorkflow();
 
 			await service.addCredentialsToWorkflow(workflow, user);
 
-			expect(credentialsFinderService.findUnusableCredentialsForUser).toHaveBeenCalledWith(user, [
-				'cred-1',
-			]);
+			expect(credentialsPermissionChecker.findUnusableInWorkflow).toHaveBeenCalledWith(
+				'workflow-1',
+				['cred-1'],
+				user.id,
+			);
 			expect(credentialsService.getCredentialsAUserCanUseInAWorkflow).not.toHaveBeenCalled();
 			expect(workflow.usedCredentials).toMatchObject([{ id: 'cred-1', currentUserCanUse: true }]);
 		});
 
-		it('when the flag is on, a credential the identity check rejects is unusable', async () => {
+		it('when the flag is on, a credential that rule rejects is unusable', async () => {
 			flags.credSharingEnabled = true;
-			credentialsFinderService.findUnusableCredentialsForUser.mockResolvedValue([
-				mock({ id: 'cred-1' }),
+			credentialsPermissionChecker.findUnusableInWorkflow.mockResolvedValue([
+				{ id: 'cred-1', name: 'Google', exists: true, ownerProject: null },
 			]);
 			const workflow = buildWorkflow();
 

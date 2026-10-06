@@ -118,12 +118,14 @@ export class CredentialsPermissionChecker {
 	}
 
 	/**
-	 * Non-throwing, named-credential sibling of `checkForUser`, for publish validation. Gated
-	 * behind {@link isCredSharingEnabled}, same as the acting-user route inside `findInaccessible`.
+	 * Non-throwing, named-credential check for publish validation: what a triggered
+	 * run acting as the publisher could not use in this workflow (see
+	 * {@link findUnusableInWorkflow}). Gated behind {@link isCredSharingEnabled}.
 	 */
 	async findInaccessibleForUser(
 		userId: string,
 		nodes: INode[],
+		workflowId: string,
 	): Promise<Array<{ id: string; name: string; exists: boolean }>> {
 		if (!isCredSharingEnabled()) return [];
 
@@ -132,9 +134,7 @@ export class CredentialsPermissionChecker {
 
 		if (workflowCredIds.length === 0) return [];
 
-		const unusable = CredentialsPermissionChecker.flatten(
-			await this.findUnusable(await this.loadUserWithRole(userId), workflowCredIds),
-		);
+		const unusable = await this.findUnusableInWorkflow(workflowId, workflowCredIds, userId);
 
 		return unusable.map(({ id, name, exists }) => ({
 			id,
@@ -383,10 +383,15 @@ export class CredentialsPermissionChecker {
 		// here are already the project route's leftovers, so re-partitioning would
 		// re-query for nothing, and an unresolvable user has to keep the sharing
 		// answer above instead of failing closed with a named credential.
+		//
+		// In a team project, the acting user's own access only: an Owner's or Admin's
+		// instance-wide `credential:use` does not reach a credential nobody gave the
+		// project.
 		const unusableForActingUser =
 			await this.credentialsFinderService.findUnusableCredentialsForUser(
 				actingUser,
 				rejectedByProject,
+				{ ignoreGlobalUseScope: homeProject.type === 'team' },
 			);
 
 		return {
@@ -396,6 +401,66 @@ export class CredentialsPermissionChecker {
 			),
 			unusableForActingUser,
 		};
+	}
+
+	/**
+	 * Behind {@link isCredSharingEnabled}: the credentials `userId` may not use in
+	 * this workflow. The workflow payload and the publish check share it.
+	 *
+	 * Global credentials and credentials of the workflow's team project are
+	 * usable. Anything else needs the user's own access, and in a team project an
+	 * Owner's or Admin's global `credential:use` does not count. A personal
+	 * project does not lend its owner's credentials.
+	 */
+	async findUnusableInWorkflow(
+		workflowId: string,
+		credentialIds: string[],
+		userId: string,
+	): Promise<UnusableCredential[]> {
+		if (!isCredSharingEnabled() || credentialIds.length === 0) return [];
+
+		const homeProject = await this.ownershipService.getWorkflowProjectCached(workflowId);
+		const isTeamProject = homeProject.type === 'team';
+		const { instanceScopedIds, projectScopedIds } = await this.partitionByUsageScope(credentialIds);
+		const carried = await this.findCarried(isTeamProject ? homeProject : null, projectScopedIds);
+		const leftover = projectScopedIds.filter((id) => !carried.has(id));
+
+		// The ids are already partitioned, so this asks the finder directly rather
+		// than through `findUnusable`, which would partition them again.
+		const [instanceScoped, notGranted] = await Promise.all([
+			instanceScopedIds.length > 0
+				? this.credentialsFinderService.describeCredentials(instanceScopedIds)
+				: [],
+			leftover.length > 0
+				? this.credentialsFinderService.findUnusableCredentialsForUser(
+						await this.loadUserWithRole(userId),
+						leftover,
+						{ ignoreGlobalUseScope: isTeamProject },
+					)
+				: [],
+		]);
+
+		return [...instanceScoped, ...notGranted];
+	}
+
+	/** The ids among `projectScopedIds` that are global, or shared with `teamProject`. */
+	private async findCarried(
+		teamProject: Project | null,
+		projectScopedIds: string[],
+	): Promise<ReadonlySet<string>> {
+		if (projectScopedIds.length === 0) return new Set();
+
+		const [shared, global] = await Promise.all([
+			teamProject
+				? this.sharedCredentialsRepository.getFilteredAccessibleCredentials(
+						[teamProject.id],
+						projectScopedIds,
+					)
+				: [],
+			this.credentialsRepository.findGlobalProjectCredentialIds(projectScopedIds),
+		]);
+
+		return new Set([...shared, ...global]);
 	}
 
 	/**
