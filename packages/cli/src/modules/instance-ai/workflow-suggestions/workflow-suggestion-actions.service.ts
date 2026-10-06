@@ -1,5 +1,4 @@
 import type {
-	WorkflowSuggestionAction,
 	WorkflowSuggestionActionResult,
 	WorkflowSuggestionAppliedVersion,
 } from '@n8n/api-types';
@@ -32,71 +31,91 @@ export class WorkflowSuggestionActionsService {
 		private readonly logger: Logger,
 	) {}
 
-	async act(
+	async applyAndOpenInEditor(
 		actor: User,
 		projectId: string,
 		workflowId: string,
 		suggestionId: string,
-		action: WorkflowSuggestionAction,
 		clientId?: string,
 	): Promise<WorkflowSuggestionActionResult> {
 		const user = await this.service.requireEditor(actor.id, workflowId);
-		const scope = { workflowId, projectId };
-		let newlyAppliedVersion: WorkflowSuggestionAppliedVersion | undefined;
-		let publishError: string | undefined;
-		switch (action) {
-			case 'discard':
-				await this.discard(user, projectId, workflowId, suggestionId);
-				break;
-			case 'open-in-editor':
-				newlyAppliedVersion = await this.applySuggestion(
-					user,
-					scope,
-					suggestionId,
-					action,
-					clientId,
-				);
-				break;
-			case 'approve-and-publish':
-				if (!(await userHasScopes(user, ['workflow:publish'], false, { workflowId }))) {
-					throw new ForbiddenError('Workflow publish access is required.');
-				}
-				newlyAppliedVersion = await this.applySuggestion(
-					user,
-					scope,
-					suggestionId,
-					action,
-					clientId,
-				);
-				if (newlyAppliedVersion) {
-					try {
-						await this.publishAppliedVersion(
-							user,
-							workflowId,
-							newlyAppliedVersion,
-							clientId ?? suggestionId,
-						);
-					} catch (error) {
-						// Apply is committed. The editor owns publication status and recovery.
-						publishError = ensureError(error).message;
-					}
-				}
-				break;
+		const newlyAppliedVersion = await this.applySuggestion(
+			user,
+			{ workflowId, projectId },
+			suggestionId,
+			'apply-and-open-in-editor',
+			clientId,
+		);
+		if (newlyAppliedVersion) await this.notifyEditors(workflowId, user.id);
+		return await this.service.getProposal(user, projectId, workflowId, suggestionId);
+	}
+
+	async approveAndPublish(
+		actor: User,
+		projectId: string,
+		workflowId: string,
+		suggestionId: string,
+		clientId?: string,
+	): Promise<WorkflowSuggestionActionResult> {
+		const user = await this.service.requireEditor(actor.id, workflowId);
+		if (!(await userHasScopes(user, ['workflow:publish'], false, { workflowId }))) {
+			throw new ForbiddenError('Workflow publish access is required.');
 		}
+		const newlyAppliedVersion = await this.applySuggestion(
+			user,
+			{ workflowId, projectId },
+			suggestionId,
+			'approve-and-publish',
+			clientId,
+		);
+		let publishError: string | undefined;
 		if (newlyAppliedVersion) {
 			try {
-				await this.collaboration.broadcastWorkflowUpdate(workflowId, user.id);
-			} catch (error) {
-				this.logger.warn('Could not notify editors about the applied suggestion', {
+				await this.publishAppliedVersion(
+					user,
 					workflowId,
-					error,
-				});
+					newlyAppliedVersion,
+					clientId ?? suggestionId,
+				);
+			} catch (error) {
+				// Apply is committed. The editor owns publication status and recovery.
+				publishError = ensureError(error).message;
 			}
+			await this.notifyEditors(workflowId, user.id);
 		}
 		return {
 			...(await this.service.getProposal(user, projectId, workflowId, suggestionId)),
 			...(publishError !== undefined ? { publishError } : {}),
 		};
+	}
+
+	async discard(
+		actor: User,
+		projectId: string,
+		workflowId: string,
+		suggestionId: string,
+	): Promise<WorkflowSuggestionActionResult> {
+		const user = await this.service.requireEditor(actor.id, workflowId);
+		const found = await this.txRunner.run({}, async (ctx) => {
+			const { suggestion, target } = await this.service.reconcilePending(
+				suggestionId,
+				{ workflowId, projectId },
+				ctx,
+			);
+			if (!target.workflow || target.projectId !== projectId) return false;
+			if (suggestion.state === 'pending') {
+				await this.suggestions.closePending(
+					suggestion,
+					'discarded',
+					{ author: 'human', actorId: user.id },
+					ctx,
+				);
+			}
+			return true;
+		});
+		// Commit the outdated closure before rejecting the old project.
+		if (!found) throw new NotFoundError('Suggestion not found.');
+		return await this.service.getProposal(user, projectId, workflowId, suggestionId);
 	}
 
 	private async applySuggestion(
@@ -130,7 +149,9 @@ export class WorkflowSuggestionActionsService {
 		const { saved, appliedVersion } = await this.txRunner.run({}, async (ctx) => {
 			await this.validatePreparedWorkflow(suggestion, prepared.workflow, ctx);
 			await this.service.requireEditor(user.id, workflowId, ctx);
-			const saved = await this.workflows.savePreparedUpdate(prepared, ctx);
+			const saved = await this.workflows.savePreparedUpdate(prepared, ctx, {
+				propagateVersionHistoryErrors: true,
+			});
 			const appliedVersion: WorkflowSuggestionAppliedVersion = {
 				versionId: saved.versionId,
 				checksum: await calculateWorkflowChecksum(saved),
@@ -209,25 +230,14 @@ export class WorkflowSuggestionActionsService {
 		});
 	}
 
-	private async discard(user: User, projectId: string, workflowId: string, suggestionId: string) {
-		const found = await this.txRunner.run({}, async (ctx) => {
-			const { suggestion, target } = await this.service.reconcilePending(
-				suggestionId,
-				{ workflowId, projectId },
-				ctx,
-			);
-			if (!target.workflow || target.projectId !== projectId) return false;
-			if (suggestion.state === 'pending') {
-				await this.suggestions.closePending(
-					suggestion,
-					'discarded',
-					{ author: 'human', actorId: user.id },
-					ctx,
-				);
-			}
-			return true;
-		});
-		// Commit the outdated closure before rejecting the old project.
-		if (!found) throw new NotFoundError('Suggestion not found.');
+	private async notifyEditors(workflowId: string, userId: string) {
+		try {
+			await this.collaboration.broadcastWorkflowUpdate(workflowId, userId);
+		} catch (error) {
+			this.logger.warn('Could not notify editors about the applied suggestion', {
+				workflowId,
+				error,
+			});
+		}
 	}
 }

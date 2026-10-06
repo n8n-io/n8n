@@ -801,7 +801,11 @@ export class WorkflowService {
 	}
 
 	/** Pass the caller's context to include the workflow and history in its transaction. */
-	async savePreparedUpdate(prepared: PreparedWorkflowUpdate, ctx: OperationContext = {}) {
+	async savePreparedUpdate(
+		prepared: PreparedWorkflowUpdate,
+		ctx: OperationContext = {},
+		{ propagateVersionHistoryErrors = false }: { propagateVersionHistoryErrors?: boolean } = {},
+	) {
 		const { user, changes, updatePayload, cleared, saveNewVersion, tagsDisabled } = prepared;
 		const workflowId = prepared.workflow.id;
 		const { tagIds, autosaved, source, versionName, versionDescription } = prepared.options;
@@ -810,22 +814,16 @@ export class WorkflowService {
 				versionName || versionDescription
 					? { name: versionName, description: versionDescription }
 					: undefined;
-			if (ctx.trx) {
-				await this.workflowHistoryService.saveVersionRequired(
-					{ user, workflow: changes, workflowId, autosaved, source, versionMetadata },
-					ctx,
-				);
-			} else {
-				await this.workflowHistoryService.saveVersion(
-					user,
-					changes,
-					workflowId,
-					autosaved,
-					source,
-					undefined,
-					versionMetadata,
-				);
-			}
+			await this.workflowHistoryService.saveVersion(
+				user,
+				changes,
+				workflowId,
+				autosaved,
+				source,
+				undefined,
+				versionMetadata,
+				{ ctx, propagateErrors: propagateVersionHistoryErrors },
+			);
 		}
 		await this.workflowRepository.updateContent(workflowId, updatePayload, {
 			...ctx,

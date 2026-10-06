@@ -208,7 +208,9 @@ describe('update()', () => {
 		externalHooks.run.mockClear();
 		await expect(
 			Container.get(TransactionRunner).run({}, async (ctx) => {
-				const saved = await workflowService.savePreparedUpdate(prepared, ctx);
+				const saved = await workflowService.savePreparedUpdate(prepared, ctx, {
+					propagateVersionHistoryErrors: true,
+				});
 				expect(saved.nodes).toEqual([candidateNode('Suggested')]);
 				expect(saved.tags?.map(({ id }) => id)).toEqual([replacementTag.id]);
 				throw new Error('Related state failed');

@@ -20,29 +20,33 @@ Storage checks current edit access and basic graph structure. Apply runs credent
 
 The read requires an enabled user with current workflow read and edit access, including access through sharing. It checks the proposal's original project and the workflow's current owner project. Publish access is not required.
 
-The detail includes the original and proposed snapshots. Stored proposal content does not change after creation. Workflow events update pending suggestions. Save events are debounced per workflow for two seconds, with a maximum wait of five seconds during continuous saves. Publish, unpublish, and archive events cancel the pending save check and reconcile immediately. Reads can show a pending suggestion until an event or action updates its state. Actions check the current state before saving.
+The detail includes the original and proposed snapshots. Stored proposal content does not change after creation. Workflow events update pending suggestions. Save events are debounced per workflow for 30 seconds, with a maximum wait of 60 seconds during continuous saves. Publish, unpublish, and archive events cancel the pending save check and reconcile immediately. Reads can show a pending suggestion until an event or action updates its state. Actions check the current state before saving.
 
 ## Review actions
 
-Call `WorkflowSuggestionActionsService.act()` with the acting user, project, workflow, suggestion, action, and editor client ID (`push-ref`). The calling review service coordinates its result record with the suggestion. The frontend should not send a second request to synchronize result state.
+Call the matching method on `WorkflowSuggestionActionsService` with the acting user, project, workflow, and suggestion. Supply the editor client ID (`push-ref`) for Apply actions. The calling review service coordinates its result record with the suggestion. The frontend should not send a second request to synchronize result state.
 
-| Action | Behavior |
+| Method | Behavior |
 | --- | --- |
-| `approve-and-publish` | Save the reviewed fix once. Request normal publication of that saved version. |
-| `open-in-editor` | Save the reviewed fix once without publication. |
-| `discard` | Close a pending suggestion without changing the workflow. |
+| `approveAndPublish()` | Save the reviewed fix once. Request normal publication of that saved version. |
+| `applyAndOpenInEditor()` | Save the reviewed fix once without publication. The caller opens the editor. |
+| `discard()` | Close a pending suggestion without changing the workflow. |
 
 Use **Approve and publish** as the action label. Only `fix_ready` permits Apply. All actions require current edit access. Approval also requires publish access. Save and publication respect editor write locks. Publication keeps the normal credential checks and enterprise review guards.
 
 Apply calls `WorkflowService.prepareUpdate()` for normal save validation and preparation. Inside a transaction, it locks the workflow and rechecks the baseline and edit access. `savePreparedUpdate()` saves the workflow and required history. The action records the applied version, closes the suggestion, and adds human activity before commit. `finishUpdate()` runs after-save hooks and events after commit.
 
+Apply passes `propagateVersionHistoryErrors: true` to `savePreparedUpdate()`. A history error then fails the transaction. Ordinary saves keep their existing history error handling.
+
 A failed transaction rolls back the workflow, history, suggestion closure, and activity. Apply returns the original save error without reading the suggestion again. A save error does not close the suggestion as outdated. Workflow events and later actions update that state. A competing action can cause Apply to return a conflict. After-save hook failures are logged and leave the committed application intact.
 
-Approve and publish calls the normal publisher with the saved version and checksum. A publish failure leaves the suggestion applied and returns `publishError`. Applied means saved, not published or verified fixed. The UI should open the editor after either Apply action. The editor owns publication status, errors, and retries.
+Approve and publish calls the normal publisher with the saved version and checksum. A publish failure leaves the suggestion applied and returns `publishError`. Applied means saved, not published or verified fixed. The editor owns publication status, errors, and retries.
+
+After either Apply action, the caller must check `closedReason` before opening the editor or showing success. Open the editor only when it is `applied`. If it is `outdated`, keep the review open and explain that the workflow has changed. If the save fails, keep the review open and show the error.
 
 Only the request that applies the fix can start publication. Repeated actions return the recorded result without another save or publish request. A closed page or lost response can leave a saved fix unpublished. The service does not store publication status or reconstruct an outcome on reads.
 
-Discard runs through `act()` and commits the suggestion closure and activity in its own transaction.
+`discard()` commits the suggestion closure and activity in its own transaction.
 
 ## Storage and limits
 

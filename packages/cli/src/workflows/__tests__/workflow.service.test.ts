@@ -440,7 +440,7 @@ describe('WorkflowService', () => {
 		});
 	});
 
-	describe('update() redactionPolicy scope enforcement', () => {
+	describe('workflow updates', () => {
 		const userHasScopesMock = vi.mocked(userHasScopes);
 		let workflowService: WorkflowService;
 		let workflowFinderServiceMock: MockProxy<WorkflowFinderService>;
@@ -571,7 +571,6 @@ describe('WorkflowService', () => {
 			expect(prepared.previousWorkflow).toBe(original);
 			expect(workflowRepositoryMock.updateContent).not.toHaveBeenCalled();
 			expect(workflowHistoryServiceMock.saveVersion).not.toHaveBeenCalled();
-			expect(workflowHistoryServiceMock.saveVersionRequired).not.toHaveBeenCalled();
 			expect(externalHooksMock.run).not.toHaveBeenCalledWith(
 				'workflow.afterUpdate',
 				expect.anything(),
@@ -592,11 +591,16 @@ describe('WorkflowService', () => {
 
 			const saved = await workflowService.savePreparedUpdate(prepared, ctx);
 
-			expect(workflowHistoryServiceMock.saveVersionRequired).toHaveBeenCalledWith(
-				expect.objectContaining({ workflowId: original.id, source: 'n8n-ai' }),
-				ctx,
+			expect(workflowHistoryServiceMock.saveVersion).toHaveBeenCalledWith(
+				user,
+				prepared.changes,
+				original.id,
+				false,
+				'n8n-ai',
+				undefined,
+				undefined,
+				{ ctx, propagateErrors: false },
 			);
-			expect(workflowHistoryServiceMock.saveVersion).not.toHaveBeenCalled();
 			expect(workflowRepositoryMock.updateContent).toHaveBeenCalledWith(
 				original.id,
 				expect.anything(),
@@ -633,12 +637,23 @@ describe('WorkflowService', () => {
 				Object.assign(new WorkflowEntity(), { nodes: [mock<INode>()] }),
 				original.id,
 			);
-			workflowHistoryServiceMock.saveVersionRequired.mockRejectedValueOnce(
-				new Error('History unavailable'),
-			);
+			const error = new Error('History unavailable');
+			workflowHistoryServiceMock.saveVersion.mockRejectedValueOnce(error);
 
-			await expect(workflowService.savePreparedUpdate(prepared, ctx)).rejects.toThrow(
-				'History unavailable',
+			await expect(
+				workflowService.savePreparedUpdate(prepared, ctx, {
+					propagateVersionHistoryErrors: true,
+				}),
+			).rejects.toBe(error);
+			expect(workflowHistoryServiceMock.saveVersion).toHaveBeenCalledWith(
+				prepared.user,
+				prepared.changes,
+				original.id,
+				false,
+				'ui',
+				undefined,
+				undefined,
+				{ ctx, propagateErrors: true },
 			);
 
 			expect(workflowRepositoryMock.updateContent).not.toHaveBeenCalled();
@@ -647,6 +662,77 @@ describe('WorkflowService', () => {
 				expect.anything(),
 			);
 			expect(eventServiceMock.emit).not.toHaveBeenCalled();
+		});
+
+		test('can require history persistence without a transaction', async () => {
+			const original = setupExistingWorkflow();
+			const prepared = await workflowService.prepareUpdate(
+				mock<User>(),
+				Object.assign(new WorkflowEntity(), { nodes: [mock<INode>()] }),
+				original.id,
+				{ versionName: 'Suggested fix', versionDescription: 'Update the node' },
+			);
+
+			await workflowService.savePreparedUpdate(
+				prepared,
+				{},
+				{
+					propagateVersionHistoryErrors: true,
+				},
+			);
+
+			expect(workflowHistoryServiceMock.saveVersion).toHaveBeenCalledWith(
+				prepared.user,
+				prepared.changes,
+				original.id,
+				false,
+				'ui',
+				undefined,
+				{ name: 'Suggested fix', description: 'Update the node' },
+				{ ctx: {}, propagateErrors: true },
+			);
+		});
+
+		test('returns the save error without running after-save hooks or events', async () => {
+			const original = setupExistingWorkflow();
+			const error = new Error('Workflow persistence failed');
+			workflowRepositoryMock.updateContent.mockRejectedValueOnce(error);
+
+			await expect(
+				workflowService.update(
+					mock<User>(),
+					Object.assign(new WorkflowEntity(), { nodes: [mock<INode>()] }),
+					original.id,
+				),
+			).rejects.toBe(error);
+
+			expect(workflowRepositoryMock.get).not.toHaveBeenCalled();
+			expect(externalHooksMock.run).not.toHaveBeenCalledWith(
+				'workflow.afterUpdate',
+				expect.anything(),
+			);
+			expect(eventServiceMock.emit).not.toHaveBeenCalled();
+		});
+
+		test('saves metadata without creating a history version', async () => {
+			const original = setupExistingWorkflow();
+			const ctx: OperationContext = { trx: mock<Transaction>() };
+			const prepared = await workflowService.prepareUpdate(
+				mock<User>(),
+				Object.assign(new WorkflowEntity(), { name: 'Renamed workflow' }),
+				original.id,
+			);
+
+			await workflowService.savePreparedUpdate(prepared, ctx, {
+				propagateVersionHistoryErrors: true,
+			});
+
+			expect(workflowHistoryServiceMock.saveVersion).not.toHaveBeenCalled();
+			expect(workflowRepositoryMock.updateContent).toHaveBeenCalledWith(
+				original.id,
+				expect.objectContaining({ name: 'Renamed workflow', versionId: original.versionId }),
+				expect.objectContaining({ trx: ctx.trx }),
+			);
 		});
 
 		test('forwards the workflow hook context to workflow.update and workflow.afterUpdate', async () => {
@@ -877,6 +963,7 @@ describe('WorkflowService', () => {
 				'ui',
 				undefined,
 				undefined,
+				{ ctx: {}, propagateErrors: false },
 			);
 		});
 

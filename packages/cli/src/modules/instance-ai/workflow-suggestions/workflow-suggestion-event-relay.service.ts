@@ -5,8 +5,8 @@ import debounce from 'lodash/debounce';
 
 import { WorkflowSuggestionService } from './workflow-suggestion.service';
 
-const SAVE_DEBOUNCE_MS = 2_000;
-const MAX_SAVE_WAIT_MS = 5_000;
+const SAVE_DEBOUNCE_MS = 30_000;
+const MAX_SAVE_WAIT_MS = 60_000;
 
 @Service()
 export class WorkflowSuggestionEventRelay {

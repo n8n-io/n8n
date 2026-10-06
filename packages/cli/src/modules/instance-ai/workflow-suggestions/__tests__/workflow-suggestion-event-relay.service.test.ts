@@ -33,11 +33,11 @@ afterEach(() => {
 	vi.useRealTimers();
 });
 
-it('coalesces saves until two seconds after the last save', async () => {
+it('coalesces saves until thirty seconds after the last save', async () => {
 	save('first');
-	await vi.advanceTimersByTimeAsync(1_000);
+	await vi.advanceTimersByTimeAsync(15_000);
 	save('first');
-	await vi.advanceTimersByTimeAsync(1_999);
+	await vi.advanceTimersByTimeAsync(29_999);
 	expect(suggestions.reconcileWorkflow).not.toHaveBeenCalled();
 
 	await vi.advanceTimersByTimeAsync(1);
@@ -50,28 +50,28 @@ it('handles other workflows and later saves while a check is still running', asy
 	const firstCheck = createDeferredPromise();
 	suggestions.reconcileWorkflow.mockReturnValueOnce(firstCheck.promise);
 	save('first');
-	await vi.advanceTimersByTimeAsync(1_000);
+	await vi.advanceTimersByTimeAsync(15_000);
 	save('second');
-	await vi.advanceTimersByTimeAsync(1_000);
+	await vi.advanceTimersByTimeAsync(15_000);
 	expect(suggestions.reconcileWorkflow).toHaveBeenCalledExactlyOnceWith('first');
 
 	save('first');
-	await vi.advanceTimersByTimeAsync(1_000);
+	await vi.advanceTimersByTimeAsync(15_000);
 	expect(suggestions.reconcileWorkflow).toHaveBeenNthCalledWith(2, 'second');
-	await vi.advanceTimersByTimeAsync(1_000);
+	await vi.advanceTimersByTimeAsync(15_000);
 	expect(suggestions.reconcileWorkflow).toHaveBeenNthCalledWith(3, 'first');
 	expect(suggestions.reconcileWorkflow).toHaveBeenCalledTimes(3);
 	expect(vi.getTimerCount()).toBe(0);
 	firstCheck.resolve();
 });
 
-it('checks within five seconds when saves continue', async () => {
+it('checks within sixty seconds when saves continue', async () => {
 	save('first');
-	for (let index = 0; index < 4; index++) {
-		await vi.advanceTimersByTimeAsync(1_000);
+	for (let index = 0; index < 3; index++) {
+		await vi.advanceTimersByTimeAsync(15_000);
 		save('first');
 	}
-	await vi.advanceTimersByTimeAsync(999);
+	await vi.advanceTimersByTimeAsync(14_999);
 	expect(suggestions.reconcileWorkflow).not.toHaveBeenCalled();
 
 	await vi.advanceTimersByTimeAsync(1);
@@ -85,14 +85,14 @@ it.each(['workflow-activated', 'workflow-deactivated', 'workflow-archived'] as c
 	async (eventName) => {
 		save('first');
 		save('second');
-		await vi.advanceTimersByTimeAsync(1_000);
+		await vi.advanceTimersByTimeAsync(15_000);
 
 		events.emit(eventName, mock<RelayEventMap[typeof eventName]>({ workflowId: 'first' }));
 
 		expect(suggestions.reconcileWorkflow).toHaveBeenCalledExactlyOnceWith('first');
-		await vi.advanceTimersByTimeAsync(1_000);
+		await vi.advanceTimersByTimeAsync(15_000);
 		expect(suggestions.reconcileWorkflow).toHaveBeenNthCalledWith(2, 'second');
-		await vi.advanceTimersByTimeAsync(5_000);
+		await vi.advanceTimersByTimeAsync(60_000);
 		expect(suggestions.reconcileWorkflow).toHaveBeenCalledTimes(2);
 	},
 );
@@ -104,7 +104,7 @@ it.each(['workflow-saved', 'workflow-archived'] as const)(
 		suggestions.reconcileWorkflow.mockRejectedValueOnce(error);
 		if (eventName === 'workflow-saved') save('first');
 		else events.emit(eventName, mock<RelayEventMap[typeof eventName]>({ workflowId: 'first' }));
-		await vi.advanceTimersByTimeAsync(2_000);
+		await vi.advanceTimersByTimeAsync(30_000);
 
 		expect(logger.warn).toHaveBeenCalledExactlyOnceWith(
 			'Could not reconcile workflow suggestions',
@@ -114,7 +114,7 @@ it.each(['workflow-saved', 'workflow-archived'] as const)(
 			},
 		);
 		save('first');
-		await vi.advanceTimersByTimeAsync(2_000);
+		await vi.advanceTimersByTimeAsync(30_000);
 		expect(suggestions.reconcileWorkflow).toHaveBeenCalledTimes(2);
 		expect(logger.warn).toHaveBeenCalledOnce();
 	},

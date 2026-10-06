@@ -190,6 +190,7 @@ export class WorkflowHistoryService {
 		source?: WorkflowActionSource,
 		transactionManager?: EntityManager,
 		versionMetadata?: WorkflowHistoryVersionInput['versionMetadata'],
+		{ ctx, propagateErrors = false }: { ctx?: OperationContext; propagateErrors?: boolean } = {},
 	) {
 		const version = this.createVersionRecord({
 			user,
@@ -199,23 +200,22 @@ export class WorkflowHistoryService {
 			source,
 			versionMetadata,
 		});
-		const repository = transactionManager
-			? transactionManager.getRepository(WorkflowHistory)
-			: this.workflowHistoryRepository;
-
 		try {
-			await repository.insert(version);
+			if (ctx) {
+				await this.workflowHistoryRepository.insertVersion(version, ctx);
+			} else {
+				const repository = transactionManager
+					? transactionManager.getRepository(WorkflowHistory)
+					: this.workflowHistoryRepository;
+				await repository.insert(version);
+			}
 		} catch (e) {
+			if (propagateErrors) throw e;
 			const error = ensureError(e);
 			this.logger.error(`Failed to save workflow history version for workflow ${workflowId}`, {
 				error,
 			});
 		}
-	}
-
-	/** Propagate write failures so the caller can roll back the related changes. */
-	async saveVersionRequired(input: WorkflowHistoryVersionInput, ctx: OperationContext) {
-		await this.workflowHistoryRepository.insertVersion(this.createVersionRecord(input), ctx);
 	}
 
 	private createVersionRecord({

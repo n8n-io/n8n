@@ -33,12 +33,12 @@ export type WorkflowSuggestionActivity = {
 	createdAt: string;
 };
 
-export type WorkflowSuggestionAction = 'approve-and-publish' | 'open-in-editor' | 'discard';
+export type WorkflowSuggestionAction = WorkflowSuggestionAppliedVersion['action'] | 'discard';
 
 export type WorkflowSuggestionAppliedVersion = {
 	versionId: string;
 	checksum: string;
-	action: 'approve-and-publish' | 'open-in-editor';
+	action: 'approve-and-publish' | 'apply-and-open-in-editor';
 	actorId: string;
 };
 
