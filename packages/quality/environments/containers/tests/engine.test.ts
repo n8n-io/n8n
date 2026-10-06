@@ -4,7 +4,7 @@ import {
 	applyEngineEnv,
 	assertEngineSupported,
 	ENGINE_DATABASE,
-	ENGINE_SHARED_BINARY_DATA_PATH,
+	ENGINE_SHARED_STORAGE_PATH,
 	engineContainerEnv,
 } from '../services/engine';
 import { redis } from '../services/redis';
@@ -127,16 +127,29 @@ describe('applyEngineEnv', () => {
 			expect(containerEnv().N8N_ENGINE_DATABASE_URL).toBeUndefined();
 		});
 
-		test('points the main at the binary data store it shares with the engine container', () => {
-			expect(containerEnv().N8N_BINARY_DATA_STORAGE_PATH).toBe(ENGINE_SHARED_BINARY_DATA_PATH);
+		test('points the main at the storage path it shares with the engine container', () => {
+			expect(containerEnv().N8N_STORAGE_PATH).toBe(ENGINE_SHARED_STORAGE_PATH);
+		});
+
+		test('drops a caller storage path, since the planes must share one and the two variables must not differ', () => {
+			const env: Record<string, string> = {
+				...postgresEnv,
+				N8N_ENGINE_DATABASE_URL: 'postgres://engine-postgres/db',
+				N8N_STORAGE_PATH: '/custom/storage',
+				N8N_BINARY_DATA_STORAGE_PATH: '/custom/binary',
+			};
+			applyEngineEnv(env, { engine: 'container', mains: 1, isQueueMode: false, ...engineOptions });
+
+			expect(env.N8N_STORAGE_PATH).toBe(ENGINE_SHARED_STORAGE_PATH);
+			expect(env.N8N_BINARY_DATA_STORAGE_PATH).toBeUndefined();
 		});
 	});
 
-	test('leaves the binary data store alone in in-process mode, since one process holds both planes', () => {
+	test('leaves the storage path alone in in-process mode, since one process holds both planes', () => {
 		const env = { ...postgresEnv };
 		applyEngineEnv(env, { engine: 'in-process', mains: 1, isQueueMode: false, projectName });
 
-		expect(env.N8N_BINARY_DATA_STORAGE_PATH).toBeUndefined();
+		expect(env.N8N_STORAGE_PATH).toBeUndefined();
 	});
 
 	test('rejects a stack without Postgres', () => {
@@ -219,8 +232,13 @@ describe('engineContainerEnv', () => {
 		);
 	});
 
-	test('stores binary data where the main stores it', () => {
-		const mainEnv: Record<string, string> = { ...dedicatedEngineEnv };
+	test('stores binary data where the main stores it, whatever storage path the caller set', () => {
+		const callerEnv = {
+			...dedicatedEngineEnv,
+			N8N_STORAGE_PATH: '/custom/storage',
+			N8N_BINARY_DATA_STORAGE_PATH: '/custom/binary',
+		};
+		const mainEnv: Record<string, string> = { ...callerEnv };
 		applyEngineEnv(mainEnv, {
 			engine: 'container',
 			mains: 1,
@@ -228,9 +246,10 @@ describe('engineContainerEnv', () => {
 			...engineOptions,
 		});
 
-		expect(engineContainerEnv(dedicatedEngineEnv, engineOptions).N8N_BINARY_DATA_STORAGE_PATH).toBe(
-			mainEnv.N8N_BINARY_DATA_STORAGE_PATH,
-		);
+		const env = engineContainerEnv(callerEnv, engineOptions);
+
+		expect(env.N8N_STORAGE_PATH).toBe(mainEnv.N8N_STORAGE_PATH);
+		expect(env.N8N_BINARY_DATA_STORAGE_PATH).toBeUndefined();
 	});
 
 	test('passes the Redis connection through for the response channel', () => {

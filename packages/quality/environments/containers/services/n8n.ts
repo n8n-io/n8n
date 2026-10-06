@@ -15,7 +15,7 @@ import { TEST_CONTAINER_IMAGES } from '../test-containers';
 import {
 	applyEngineEnv,
 	ENGINE_PORT,
-	ENGINE_SHARED_BINARY_DATA_PATH,
+	ENGINE_SHARED_STORAGE_PATH,
 	engineContainerEnv,
 	engineHostname,
 	type EngineMode,
@@ -114,9 +114,9 @@ export interface N8NInstancesOptions {
 	 */
 	userHomeHostDir?: string;
 	/**
-	 * Host dir bind-mounted as the binary data store of the main and the engine
-	 * container, so a file one plane stores is read by the other. `container`
-	 * engine mode only. Disables container reuse.
+	 * Host dir bind-mounted as the storage path of the main and the engine
+	 * container, so a binary file one plane stores is read by the other.
+	 * `container` engine mode only. Disables container reuse.
 	 */
 	binaryDataHostDir?: string;
 	/** Run the container as this uid:gid (e.g. the host user for bind mounts). */
@@ -327,7 +327,7 @@ async function createContainer(
 		chmodSync(binaryDataHostDir, 0o777);
 		bindMounts.push({
 			source: binaryDataHostDir,
-			target: ENGINE_SHARED_BINARY_DATA_PATH,
+			target: ENGINE_SHARED_STORAGE_PATH,
 			mode: 'rw',
 		});
 	}
