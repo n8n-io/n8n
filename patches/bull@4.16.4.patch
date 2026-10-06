@@ -19,3 +19,23 @@ index 1642d3fb35cbd64b553291660fc63bae2e7f2ef5..3301e3fbc7296f545b65331dad1f12c8
            removeListeners();
          }
        };
+diff --git a/lib/queue.js b/lib/queue.js
+index 19eefc35d815e324e47c4fe4c152f39c7c547470..309f033382594b70fc6d7de85910439fefe5b99a 100755
+--- a/lib/queue.js
++++ b/lib/queue.js
+@@ -1112,12 +1112,14 @@ Queue.prototype._processJobOnNextTick = function(
+   job
+ ) {
+   if (!this.closing) {
+-    (this.paused || Promise.resolve())
++    // A job fetched by a completion before a local pause still goes to the handler.
++    (job ? Promise.resolve() : this.paused || Promise.resolve())
+       .then(() => {
+         const gettingNextJob = job ? Promise.resolve(job) : this.getNextJob();
+ 
+         return (this.processing[index] = gettingNextJob
+           .then(this.processJob)
++          .then(next => (next && this.paused ? this.processJob(next) : next))
+           .then(processJobs, err => {
+             if (!(this.closing && err.message === 'Connection is closed.')) {
+               utils.emitSafe(this, 'error', err, 'Error processing job');
