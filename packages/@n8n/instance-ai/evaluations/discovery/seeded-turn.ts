@@ -14,6 +14,7 @@ import { jsonParse } from 'n8n-workflow';
 import type { DiscoveryScenario } from './types';
 // Deep relative import, like the node-definition resolver in harness/stub-services.ts:
 // the eval must render the exact block production renders.
+// @boundaries-ignore eval-only reach-in into packages/cli
 import {
 	buildThreadArtifactsBlock,
 	buildThreadContextBlock,
