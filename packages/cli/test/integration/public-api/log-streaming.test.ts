@@ -320,12 +320,14 @@ describe('Log streaming in Public API', () => {
 				.send(payload);
 
 			expect(response.status).toBe(200);
-			expect(response.body).toHaveProperty('id');
-			expect(response.body).toMatchObject(payload);
-			expect(response.body).not.toHaveProperty('responseCodeMustMatch');
-			expect(response.body).not.toHaveProperty('sendPayload');
-			expect(response.body).not.toHaveProperty('authentication');
-			expect(response.body).not.toHaveProperty('credentials');
+			// Strict match: `responseCodeMustMatch`, `sendPayload`, `authentication` and
+			// `credentials` must not appear.
+			expect(response.body).toStrictEqual({
+				id: expect.any(String),
+				...payload,
+				jsonHeaders: '',
+				jsonQuery: '',
+			});
 		});
 
 		it('creates a fully-populated syslog destination', async () => {
@@ -349,8 +351,7 @@ describe('Log streaming in Public API', () => {
 				.send(payload);
 
 			expect(response.status).toBe(200);
-			expect(response.body).toHaveProperty('id');
-			expect(response.body).toMatchObject(payload);
+			expect(response.body).toStrictEqual({ id: expect.any(String), ...payload });
 		});
 
 		it('creates a fully-populated sentry destination', async () => {
@@ -370,8 +371,7 @@ describe('Log streaming in Public API', () => {
 				.send(payload);
 
 			expect(response.status).toBe(200);
-			expect(response.body).toHaveProperty('id');
-			expect(response.body).toMatchObject(payload);
+			expect(response.body).toStrictEqual({ id: expect.any(String), ...payload });
 		});
 
 		it('rejects a malformed body with 400', async () => {
