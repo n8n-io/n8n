@@ -1,6 +1,8 @@
 import type { IExecuteFunctions, ExecuteAgentData, NodeParameterValueType } from 'n8n-workflow';
 import { getNodeParameters, NodeOperationError } from 'n8n-workflow';
 import { createHash } from 'node:crypto';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import type { Mocked } from 'vitest';
 import { mockDeep } from 'vitest-mock-extended';
 
@@ -1022,6 +1024,44 @@ describe('MessageAnAgent Node', () => {
 
 		expect(executeFunctions.executeAgent).not.toHaveBeenCalled();
 		expect(result[0]).toHaveLength(0);
+	});
+
+	it.each([
+		['v1.0.0', 1],
+		['v2.0.0', 2],
+		['v3.1.0', 3.1],
+	])('emits an item that the %s output schema describes', async (schemaDir, typeVersion) => {
+		const schema = JSON.parse(
+			readFileSync(join(__dirname, '..', '__schema__', schemaDir, 'output.json'), 'utf8'),
+		) as { required: string[]; properties: Record<string, { type: string | string[] }> };
+		const versionNode =
+			typeVersion === 1
+				? new MessageAnAgentV1(baseDescription)
+				: new MessageAnAgentV2(baseDescription);
+		executeFunctions.getNode.mockReturnValue({
+			id: 'test-node-id',
+			name: 'Message an Agent',
+			type: 'n8n-nodes-base.messageAnAgent',
+			typeVersion,
+			position: [0, 0],
+			parameters: {},
+		});
+		executeFunctions.getInputData.mockReturnValue([{ json: {} }]);
+		mockParams();
+		// An inline agent with no output schema: every nullable field is null.
+		executeFunctions.executeAgent.mockResolvedValue({
+			...mockAgentResult,
+			usage: null,
+			session: null,
+		});
+
+		const result = await versionNode.execute.call(executeFunctions);
+		const item = result[0][0].json;
+
+		expect([...schema.required].sort()).toEqual(Object.keys(item).sort());
+		for (const [key, value] of Object.entries(item)) {
+			if (value === null) expect([schema.properties[key].type].flat()).toContain('null');
+		}
 	});
 });
 

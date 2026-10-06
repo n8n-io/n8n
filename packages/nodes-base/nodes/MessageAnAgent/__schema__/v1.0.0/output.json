@@ -1,17 +1,17 @@
 {
 	"type": "object",
-	"required": ["response", "finishReason"],
+	"required": ["response", "structuredOutput", "usage", "toolCalls", "finishReason", "session"],
 	"properties": {
 		"response": {
 			"type": "string",
 			"description": "The called agent's final reply text"
 		},
 		"structuredOutput": {
-			"type": "object",
+			"type": ["object", "null"],
 			"description": "Parsed structured output when the node defines an output schema; null otherwise"
 		},
 		"usage": {
-			"type": "object",
+			"type": ["object", "null"],
 			"properties": {
 				"promptTokens": {
 					"type": "number"
@@ -46,7 +46,7 @@
 			"description": "Why the agent stopped, e.g. stop"
 		},
 		"session": {
-			"type": "object",
+			"type": ["object", "null"],
 			"description": "The agent session this call wrote to; null for inline agents",
 			"properties": {
 				"agentId": {
