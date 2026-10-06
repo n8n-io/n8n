@@ -55,8 +55,8 @@ export async function lakebaseApiRequest(
 	let retriedSchemaCache = false;
 	for (;;) {
 		try {
-			// Lakebase answers permission denied with 403, the credential's expiry status, so core
-			// only refreshes on 403 when the stored token is at or past its expiry.
+			// Lakebase returns 403 for permission denied. 403 is also the credential's
+			// tokenExpiredStatusCode, so core refreshes on it only when the stored token has expired.
 			return await databricksApiRequest(context, 'databricksOAuth2Api', options, {
 				oauth2: { skipRefreshWhileTokenIsFresh: true },
 			});

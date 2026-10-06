@@ -247,11 +247,13 @@ describe('lakebaseApiRequest', () => {
 	});
 
 	it('works on a context without an item index or cancel signal', async () => {
-		const loadOptionsContext = mock<ILoadOptionsFunctions>({
+		// A plain object, not a proxy mock: an unguarded read of the cancel signal must throw here
+		const getNodeParameter = vi.fn().mockReturnValue('oAuth2');
+		const loadOptionsContext = {
 			getNode: () => node,
+			getNodeParameter,
 			helpers: { httpRequestWithAuthentication, refreshOAuth2Token },
-		});
-		loadOptionsContext.getNodeParameter.mockReturnValue('oAuth2');
+		} as unknown as ILoadOptionsFunctions;
 		httpRequestWithAuthentication
 			.mockRejectedValueOnce(expiredJwt())
 			.mockRejectedValueOnce(pgrst205())
@@ -259,14 +261,9 @@ describe('lakebaseApiRequest', () => {
 
 		await expect(lakebaseApiRequest(loadOptionsContext, request)).resolves.toEqual([{ id: 1 }]);
 
-		expect(loadOptionsContext.getNodeParameter).toHaveBeenCalledWith(
-			'authentication',
-			'accessToken',
-		);
+		expect(getNodeParameter).toHaveBeenCalledWith('authentication', 'accessToken');
 		expect(refreshOAuth2Token).toHaveBeenCalledTimes(1);
 		expect(httpRequestWithAuthentication).toHaveBeenCalledTimes(3);
 		expect(sleep).toHaveBeenCalledWith(1000, undefined);
-		// The mock creates a key on first read, so a read of the cancel signal would show up here
-		expect('getExecutionCancelSignal' in loadOptionsContext).toBe(false);
 	});
 });
