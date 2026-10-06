@@ -171,6 +171,10 @@ export async function execute(
 				}
 			} else {
 				const xlsxOptions: ParsingOptions = { raw: options.rawData as boolean };
+				const formatDates = formatSpreadsheetValues && options.rawData !== true;
+				if (formatDates) {
+					xlsxOptions.cellDates = true;
+				}
 
 				let buffer: Buffer;
 				if (binaryData.id) {
@@ -208,10 +212,29 @@ export async function execute(
 					sheetName = options.sheetName as string;
 				}
 
+				const sheet = workbook.Sheets[sheetName];
+				if (formatDates) {
+					for (const value of Object.values(sheet)) {
+						const cell: unknown = value;
+						if (
+							typeof cell === 'object' &&
+							cell !== null &&
+							't' in cell &&
+							cell.t === 'd' &&
+							'v' in cell &&
+							'w' in cell &&
+							typeof cell.w === 'string'
+						) {
+							cell.t = 's';
+							cell.v = cell.w;
+							// ODS can parse formatted text as a date if the cell keeps its date format.
+							if ('z' in cell) delete cell.z;
+						}
+					}
+				}
+
 				// Convert it to json
-				const sheetToJsonOptions: Sheet2JSONOpts = formatSpreadsheetValues
-					? { raw: options.rawData ?? false }
-					: {};
+				const sheetToJsonOptions: Sheet2JSONOpts = {};
 				if (options.range) {
 					if (isNaN(options.range as number)) {
 						sheetToJsonOptions.range = options.range;
@@ -228,7 +251,7 @@ export async function execute(
 					sheetToJsonOptions.header = 1; // Consider the first row as a data row
 				}
 
-				rows = xlsxUtils.sheet_to_json(workbook.Sheets[sheetName], sheetToJsonOptions);
+				rows = xlsxUtils.sheet_to_json(sheet, sheetToJsonOptions);
 
 				// Check if data could be found in file
 				if (rows.length === 0) {
