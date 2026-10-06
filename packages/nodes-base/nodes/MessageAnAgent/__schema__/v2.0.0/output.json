@@ -1,0 +1,68 @@
+{
+	"type": "object",
+	"required": ["text", "finishReason"],
+	"properties": {
+		"text": {
+			"type": "string",
+			"description": "The called agent's final reply text"
+		},
+		"structuredOutput": {
+			"type": "object",
+			"description": "Parsed structured output when the node defines an output schema; null otherwise"
+		},
+		"usage": {
+			"type": "object",
+			"properties": {
+				"promptTokens": {
+					"type": "number"
+				},
+				"completionTokens": {
+					"type": "number"
+				},
+				"totalTokens": {
+					"type": "number"
+				}
+			}
+		},
+		"toolCalls": {
+			"type": "array",
+			"items": {
+				"type": "object",
+				"properties": {
+					"toolName": {
+						"type": "string"
+					},
+					"input": {
+						"type": "object"
+					},
+					"result": {
+						"type": "object"
+					}
+				}
+			}
+		},
+		"finishReason": {
+			"type": "string",
+			"description": "Why the agent stopped, e.g. stop"
+		},
+		"session": {
+			"type": "object",
+			"description": "The agent session this call wrote to; null for inline agents",
+			"properties": {
+				"agentId": {
+					"type": "string"
+				},
+				"projectId": {
+					"type": "string"
+				},
+				"sessionId": {
+					"type": "string"
+				},
+				"threadId": {
+					"type": "string"
+				}
+			}
+		}
+	},
+	"version": 1
+}

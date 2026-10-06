@@ -180,6 +180,7 @@ describe('identifyNodesForPinData', () => {
 			'n8n-nodes-base.emailSend',
 			'n8n-nodes-base.rssFeedRead',
 			'n8n-nodes-base.git',
+			'n8n-nodes-base.messageAnAgent',
 		];
 
 		const nodes = bypassTypes.map((type, i) => makeNode({ name: `Node${i}`, type }));
@@ -414,6 +415,27 @@ describe('partitionAiRoots', () => {
 			const result = partitionAiRoots(makeWorkflow(nodes, connections));
 			expect(result.pinNodes).toEqual(['Agent']);
 			expect(result.autoPinned.some((e) => e.reason === 'protocol_binary')).toBe(true);
+		});
+
+		it('auto-pins an Agent that calls another agent through the Message an Agent tool', () => {
+			const nodes = [
+				makeNode({ name: 'OpenAI', type: '@n8n/n8n-nodes-langchain.lmChatOpenAi' }),
+				makeNode({ name: 'Ask Support', type: 'n8n-nodes-base.messageAnAgentTool' }),
+				makeNode({ name: 'Agent', type: '@n8n/n8n-nodes-langchain.agent' }),
+			];
+			const connections: IConnections = {
+				OpenAI: { ai_languageModel: [[{ node: 'Agent', type: 'ai_languageModel', index: 0 }]] },
+				'Ask Support': { ai_tool: [[{ node: 'Agent', type: 'ai_tool', index: 0 }]] },
+			};
+			const result = partitionAiRoots(makeWorkflow(nodes, connections));
+			expect(result.unpinNodes).toEqual([]);
+			expect(result.pinNodes).toEqual(['Agent']);
+			expect(result.autoPinned).toContainEqual({
+				root: 'Agent',
+				subNode: 'Ask Support',
+				subNodeType: 'n8n-nodes-base.messageAnAgentTool',
+				reason: 'in_process_agent',
+			});
 		});
 
 		it('partitions independently across multiple roots — pin one, intercept the other', () => {

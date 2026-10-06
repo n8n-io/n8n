@@ -33,7 +33,11 @@ function findAiSubNodeNames(workflow: IWorkflowBase): Set<string> {
 	return subNodes;
 }
 
-/** Node types that bypass the HTTP mock handler (non-HTTP protocols or non-helper HTTP). */
+/** Runs another n8n agent in-process (its own model and tools) — no HTTP mock can reach it. */
+const MESSAGE_AN_AGENT_NODE_TYPE = 'n8n-nodes-base.messageAnAgent';
+const MESSAGE_AN_AGENT_TOOL_NODE_TYPE = 'n8n-nodes-base.messageAnAgentTool';
+
+/** Node types that bypass the HTTP mock handler (non-HTTP protocols, non-helper HTTP, in-process agents). */
 const BYPASS_NODE_TYPES = new Set([
 	'n8n-nodes-base.redis',
 	'n8n-nodes-base.mongoDb',
@@ -51,6 +55,7 @@ const BYPASS_NODE_TYPES = new Set([
 	'n8n-nodes-base.emailSend',
 	'n8n-nodes-base.rssFeedRead',
 	'n8n-nodes-base.git',
+	MESSAGE_AN_AGENT_NODE_TYPE,
 ]);
 
 /** LLM sub-node types whose vendor URL can be rewritten to the wire server (must match `EVAL_PROVIDER_URL_FIELD`). */
@@ -306,7 +311,8 @@ export type AutoPinReason =
 	| 'unsupported_vendor_llm'
 	| 'unsupported_vendor_embeddings'
 	| 'unsafe_baseurl_override'
-	| 'shared_vendor_llm_subnode';
+	| 'shared_vendor_llm_subnode'
+	| 'in_process_agent';
 
 export interface AutoPinEntry {
 	root: string;
@@ -528,7 +534,8 @@ function trackSharedSupportedSubNodes(
 
 /**
  * Return the auto-pin reason for a sub-node, or null if it's safe to intercept.
- * Order: protocol-binary (HTTP can't reach it) → shared (attribution ambiguous) →
+ * Order: protocol-binary (HTTP can't reach it) → in-process agent tool (runs a
+ * real agent) → shared (attribution ambiguous) →
  * supported-vendor-with-baseURL-override (SDK bypasses the rewrite) → unsupported
  * vendor LLM or embeddings (no URL-rewrite mapping yet).
  */
@@ -538,6 +545,7 @@ function categorizeSubNodeIncompatibility(
 ): AutoPinReason | null {
 	if (PROTOCOL_BINARY_SUB_NODE_TYPES.has(sourceNode.type)) return 'protocol_binary';
 	if (isMcpRegistryNode(sourceNode.type)) return 'protocol_binary';
+	if (sourceNode.type === MESSAGE_AN_AGENT_TOOL_NODE_TYPE) return 'in_process_agent';
 	if (SUPPORTED_VENDOR_LLM_SUB_NODE_TYPES.has(sourceNode.type)) {
 		if (sharedSupportedSubNodes.has(sourceNode.name)) return 'shared_vendor_llm_subnode';
 		return hasUnsafeBaseUrlOverride(sourceNode) ? 'unsafe_baseurl_override' : null;
