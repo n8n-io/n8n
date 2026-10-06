@@ -24,6 +24,7 @@ const fullyDefaultedDocument = {
 		keys: { kind: 'jwks-uri' },
 		verification: { mode: 'jwt' },
 		algorithms: [...JwtAlgorithmSchema.options],
+		allowedTokenTypes: ['at+jwt', 'application/at+jwt'],
 		maxTokenLifetimeSeconds: 86400,
 		clockSkewSeconds: 60,
 	},
