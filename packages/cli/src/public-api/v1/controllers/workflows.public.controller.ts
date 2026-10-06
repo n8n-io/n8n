@@ -853,15 +853,26 @@ export class WorkflowsPublicController {
 	@ApiErrorResponse(404)
 	async getDeprecatedWorkflowVersion(
 		req: AuthenticatedRequest,
-		res: Response,
+		_res: Response,
 		@Param('workflowId', workflowIdParamSchema) workflowId: string,
 		@Param('workflowVersionId', workflowVersionIdParamSchema) workflowVersionId: string,
 	): Promise<DeprecatedWorkflowVersionPublicDto> {
 		try {
-			return await this.getWorkflowVersion(req, res, workflowId, workflowVersionId);
+			const version = await this.workflowHistoryService.getVersion(
+				req.user,
+				workflowId,
+				workflowVersionId,
+				{ includePublishHistory: false },
+			);
+
+			this.eventService.emit('user-retrieved-workflow-version', {
+				userId: req.user.id,
+				publicApi: true,
+			});
+
+			return toPublicWorkflowVersion(version);
 		} catch (error) {
-			if (error instanceof NotFoundError) throw new NotFoundError('Version not found');
-			throw error;
+			throw new NotFoundError('Version not found');
 		}
 	}
 }
