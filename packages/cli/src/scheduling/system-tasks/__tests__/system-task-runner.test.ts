@@ -34,6 +34,7 @@ describe('SystemTaskRunner', () => {
 		enabledForSystemTasks = false,
 		instanceRole = 'leader' as InstanceSettings['instanceRole'],
 		instanceType = 'main' as InstanceSettings['instanceType'],
+		timezone = 'UTC',
 	} = {}) {
 		const logger = mock<Logger>();
 		const metadata = new SystemTaskMetadata();
@@ -54,7 +55,7 @@ describe('SystemTaskRunner', () => {
 			jobRegistrar,
 			systemTaskOwner,
 			mock<GlobalConfig>({
-				generic: { timezone: 'UTC' },
+				generic: { timezone },
 				scheduler: { enabledForSystemTasks },
 			}),
 			instanceSettings,
@@ -860,6 +861,22 @@ describe('SystemTaskRunner', () => {
 
 			await initRunner(runner);
 			await vi.advanceTimersByTimeAsync(ONE_INTERVAL_MS);
+
+			expect(durableScheduler.registerTaskHandler).not.toHaveBeenCalled();
+			expect(dummy.runCount).toBe(1);
+		});
+
+		it('runs a durable cron task on its timer, in the instance timezone, while the scheduler is inactive', async () => {
+			dummy.placement = { scope: 'cluster', durable: true };
+			dummy.schedule = { kind: 'cron', cronExpression: '0 3 * * *', timezone: null };
+			const { runner, metadata, durableScheduler } = setup({ timezone: 'Europe/Berlin' });
+			metadata.register(DummySystemTask);
+
+			await initRunner(runner);
+			// 03:00 in Berlin is 02:00 UTC in January.
+			await vi.advanceTimersByTimeAsync(2 * Time.hours.toMilliseconds - 1);
+			expect(dummy.runCount).toBe(0);
+			await vi.advanceTimersByTimeAsync(1);
 
 			expect(durableScheduler.registerTaskHandler).not.toHaveBeenCalled();
 			expect(dummy.runCount).toBe(1);
