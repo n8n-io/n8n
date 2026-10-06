@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { onKeyStroke } from '@vueuse/core';
+import { useMcpDiscovery } from '@/experiments/surfaceMcpToClaudeTrialUsers/useMcpDiscovery';
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
@@ -17,6 +19,7 @@ import {
 	N8nSettingsRowConfigure,
 	N8nSettingsRowGroup,
 	N8nSettingsSection,
+	N8nPopover,
 } from '@n8n/design-system';
 
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
@@ -43,6 +46,7 @@ import { hasPermission } from '@/app/utils/rbac/permissions';
 import { UNKNOWN_COUNT_VALUE } from '@/features/ai/mcpAccess/mcp.constants';
 
 const i18n = useI18n();
+const { showMcpSettingsTreatment: showMcpDiscovery, mcpDiscovery } = useMcpDiscovery();
 const toast = useToast();
 const documentTitle = useDocumentTitle();
 const mcp = useMcp();
@@ -57,6 +61,16 @@ const agentsModuleActive = computed(() => settingsStore.isModuleActive('agents')
 
 const mcpStatusLoading = ref(false);
 const showDisableDialog = ref(false);
+const showConnectHint = ref(true);
+onKeyStroke('Escape', () => {
+	showConnectHint.value = false;
+});
+const dismissConnectHint = () => {
+	showConnectHint.value = false;
+	void mcpDiscovery.dismissCoachmark().catch((error) => {
+		toast.showError(error, i18n.baseText('generic.error'));
+	});
+};
 const isLoadingClients = ref(true);
 
 const canManageMcpInstance = computed(() =>
@@ -149,6 +163,7 @@ const onToggleMCPAccess = async (enabled: boolean) => {
 	try {
 		mcpStatusLoading.value = true;
 		const updated = await mcpStore.setMcpAccessEnabled(enabled);
+		showConnectHint.value = enabled && updated;
 		if (updated) {
 			await Promise.all([
 				fetchExposedWorkflowsCount(),
@@ -208,6 +223,7 @@ const showViewAllRow = computed(
 );
 
 const onConnectClient = () => {
+	dismissConnectHint();
 	mcp.trackConnectClientClicked('settings');
 	mcpStore.openConnectPopover();
 };
@@ -291,7 +307,16 @@ onBeforeUnmount(() => {
 	<N8nSettingsLayout :class="$style.layout">
 		<N8nSettingsPageHeader
 			:title="i18n.baseText('settings.mcp.page.title')"
-			:description="i18n.baseText('settings.mcp.page.description')"
+			:description="
+				i18n.baseText(
+					showMcpDiscovery
+						? 'experiments.mcpDiscovery.settings.mcp.page.description'
+						: 'settings.mcp.page.description',
+				)
+			"
+			:docs-leading-text="
+				showMcpDiscovery ? i18n.baseText('settings.mcp.page.docsLeadingText') : undefined
+			"
 			:docs-url="MCP_DOCS_PAGE_URL"
 			data-test-id="mcp-settings-header"
 		/>
@@ -331,11 +356,66 @@ onBeforeUnmount(() => {
 						</template>
 					</N8nSettingsRow>
 					<N8nSettingsRow
-						:title="i18n.baseText('settings.mcp.yourClient.title')"
-						:description="i18n.baseText('settings.mcp.yourClient.description')"
+						:title="
+							i18n.baseText(
+								showMcpDiscovery
+									? 'experiments.mcpDiscovery.settings.mcp.yourClient.title'
+									: 'settings.mcp.yourClient.title',
+							)
+						"
+						:description="
+							i18n.baseText(
+								showMcpDiscovery
+									? 'experiments.mcpDiscovery.settings.mcp.yourClient.description'
+									: 'settings.mcp.yourClient.description',
+							)
+						"
+						data-test-id="mcp-connect-next-step"
 					>
 						<template #action>
+							<N8nPopover
+								v-if="showMcpDiscovery"
+								:open="
+									showMcpDiscovery &&
+									showConnectHint &&
+									!mcpDiscovery.coachmarkDismissed &&
+									!mcpDiscovery.state.hasConnectedClaude &&
+									!mcpDiscovery.state.hasUsedClaudeMcp &&
+									!isLoadingClients
+								"
+								side="bottom"
+								align="end"
+								show-arrow
+								:content-class="$style.connectHintPopover"
+								:enable-scrolling="false"
+								suppress-auto-focus
+								width="calc(var(--spacing--5xl) + var(--spacing--3xl))"
+								@update:open="showConnectHint = $event && showConnectHint"
+							>
+								<template #trigger>
+									<N8nButton
+										:variant="showMcpDiscovery ? 'solid' : 'outline'"
+										size="medium"
+										icon="mcp"
+										:label="i18n.baseText('settings.mcp.yourClient.connect')"
+										data-test-id="mcp-connect-client-button"
+										@click="onConnectClient"
+									/>
+								</template>
+								<template #content>
+									<div :class="$style.connectHint" data-test-id="mcp-connect-hint">
+										<p>{{ i18n.baseText('settings.mcp.yourClient.tooltip') }}</p>
+										<N8nButton
+											size="small"
+											variant="outline"
+											:label="i18n.baseText('settings.mcp.yourClient.dismissHint')"
+											@click="dismissConnectHint"
+										/>
+									</div>
+								</template>
+							</N8nPopover>
 							<N8nButton
+								v-else
 								variant="outline"
 								size="medium"
 								icon="mcp"
@@ -492,5 +572,36 @@ onBeforeUnmount(() => {
 /* Collapse the layout's own top inset; the settings shell already pads the page top. */
 .layout {
 	padding-top: 0;
+}
+
+.connectHintPopover {
+	--background--surface: var(--color--neutral-black);
+	--border-color: var(--color--neutral-black);
+	color: var(--color--neutral-100);
+
+	button {
+		background: var(--color--neutral-100);
+		border-color: var(--color--neutral-100);
+		color: var(--color--neutral-black);
+	}
+
+	button:hover {
+		background: var(--color--neutral-200);
+		border-color: var(--color--neutral-200);
+	}
+}
+
+.connectHint {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	gap: var(--spacing--xs);
+	padding: var(--spacing--sm);
+	font-size: var(--font-size--2xs);
+	line-height: var(--line-height--xl);
+
+	p {
+		margin: 0;
+	}
 }
 </style>

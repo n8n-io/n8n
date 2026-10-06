@@ -1,3 +1,5 @@
+import { mock } from 'vitest-mock-extended';
+import type { McpDiscoveryActivityService } from '@/experiments/mcp-discovery/activity.service';
 import { INSTANCE_ACTIVITY_CONTEXT_FLAG } from '@n8n/api-types';
 import { LicenseState, ModuleRegistry } from '@n8n/backend-common';
 import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
@@ -161,6 +163,7 @@ describe('McpService scope enforcement', () => {
 		postHogClient?: PostHogClient;
 	} = {}) =>
 		new McpService(
+			mock<McpDiscoveryActivityService>(),
 			mockLogger(),
 			mockInstance(ExecutionsConfig, { mode: 'regular' }),
 			mockInstance(InstanceSettings, { hostId: 'test-host-id', instanceId: 'test-instance-id' }),

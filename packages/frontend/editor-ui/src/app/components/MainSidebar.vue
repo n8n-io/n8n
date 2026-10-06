@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import ClaudeEntryPoint from '@/experiments/surfaceMcpToClaudeTrialUsers/McpDiscoveryEntry.vue';
+import { useMcpDiscovery } from '@/experiments/surfaceMcpToClaudeTrialUsers/useMcpDiscovery';
+
 import { computed, onBeforeUnmount, onMounted, ref, nextTick, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
@@ -33,6 +36,7 @@ import { useSidebarExpandedExperiment } from '@/experiments/sidebarExpanded';
 import { trackTemplatesClick, TemplateClickSource } from '@/experiments/utils';
 import { injectWorkflowDocumentStore } from '../stores/workflowDocument.store';
 
+const { showMcpDiscovery } = useMcpDiscovery();
 const cloudPlanStore = useCloudPlanStore();
 const rootStore = useRootStore();
 const settingsStore = useSettingsStore();
@@ -396,6 +400,7 @@ useKeybindings({
 				/>
 			</N8nScrollArea>
 		</div>
+		<ClaudeEntryPoint v-if="showMcpDiscovery" placement="sidebar" :collapsed="isCollapsed" />
 		<BottomMenu
 			:items="visibleMenuItems"
 			:is-collapsed="isCollapsed"

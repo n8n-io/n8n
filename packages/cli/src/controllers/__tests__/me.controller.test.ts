@@ -1,4 +1,4 @@
-import { UserUpdateRequestDto } from '@n8n/api-types';
+import { McpDiscoveryVisitRequestDto, UserUpdateRequestDto } from '@n8n/api-types';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import type { AuthenticatedRequest, User, PublicUser, AuthIdentity } from '@n8n/db';
@@ -14,6 +14,8 @@ import { MeController } from '@/controllers/me.controller';
 import { BadRequestError, ForbiddenError } from '@n8n/errors';
 import { InvalidMfaCodeError } from '@/errors/response-errors/invalid-mfa-code.error';
 import { EventService } from '@/events/event.service';
+import { McpDiscoveryActivityService } from '@/experiments/mcp-discovery/activity.service';
+import { McpDiscoveryEnrollmentService } from '@/experiments/mcp-discovery/enrollment.service';
 import { ExternalHooks } from '@/external-hooks';
 import { License } from '@/license';
 import { MfaService } from '@/mfa/mfa.service';
@@ -32,6 +34,8 @@ const getCurrentAuthenticationMethodMock = getCurrentAuthenticationMethod as Moc
 const browserId = 'test-browser-id';
 
 describe('MeController', () => {
+	const discoveryActivity = mockInstance(McpDiscoveryActivityService);
+	const discoveryEnrollment = mockInstance(McpDiscoveryEnrollmentService);
 	const externalHooks = mockInstance(ExternalHooks);
 	const eventService = mockInstance(EventService);
 	const userService = mockInstance(UserService);
@@ -42,8 +46,24 @@ describe('MeController', () => {
 	const controller = Container.get(MeController);
 
 	beforeEach(() => {
+		discoveryActivity.recordFirstLogin.mockResolvedValue(undefined);
 		userService.findSsoIdentity.mockResolvedValue(undefined);
 		getCurrentAuthenticationMethodMock.mockReturnValue('email');
+	});
+
+	it('passes the authenticated user and validated Claude choice to enrollment', async () => {
+		const user = mock<User>({ id: 'owner', role: GLOBAL_OWNER_ROLE });
+		const req = mock<AuthenticatedRequest>({ user });
+		const state = { status: 'unknown', coachmarkDismissed: false } as const;
+		discoveryEnrollment.visit.mockResolvedValueOnce(state);
+		expect(
+			await controller.visitMcpDiscovery(
+				req,
+				mock<Response>(),
+				new McpDiscoveryVisitRequestDto({ pickedClaude: true }),
+			),
+		).toEqual(state);
+		expect(discoveryEnrollment.visit).toHaveBeenCalledWith(user, true);
 	});
 
 	describe('updateCurrentUser', () => {

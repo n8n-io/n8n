@@ -4,6 +4,7 @@ import { ExecutionsConfig, GlobalConfig, WorkflowsConfig } from '@n8n/config';
 import { ExecutionRepository, ProjectRepository, SharedWorkflowRepository, User } from '@n8n/db';
 import { InstanceSettings } from 'n8n-core';
 
+import type { McpDiscoveryActivityService } from '@/experiments/mcp-discovery/activity.service';
 import { ActiveExecutions } from '@/active-executions';
 import { CollaborationService } from '@/collaboration/collaboration.service';
 import { CredentialsService } from '@/credentials/credentials.service';
@@ -93,6 +94,7 @@ describe('install_community_node registration', () => {
 		managedByEnv = false,
 	}: { builderEnabled?: boolean; managedByEnv?: boolean } = {}) =>
 		new McpService(
+			mock<McpDiscoveryActivityService>(),
 			mockLogger(),
 			mockInstance(ExecutionsConfig, { mode: 'regular' }),
 			mockInstance(InstanceSettings, { hostId: 'test-host-id', instanceId: 'test-instance-id' }),

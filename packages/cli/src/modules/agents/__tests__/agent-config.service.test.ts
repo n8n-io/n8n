@@ -5,6 +5,7 @@ import type { User, WorkflowRepository } from '@n8n/db';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { mock } from 'vitest-mock-extended';
 
+import type { McpDiscoveryActivityService } from '@/experiments/mcp-discovery/activity.service';
 import type { CredentialsService } from '@/credentials/credentials.service';
 import type { EventService } from '@/events/event.service';
 
@@ -106,7 +107,7 @@ function makeService() {
 		nodeToolAiGatewayService,
 		eventService,
 		new AgentSetupCompletionService(agentValidationService, telemetry, agentRepository),
-		new AgentModificationTelemetryService(telemetry),
+		new AgentModificationTelemetryService(telemetry, mock<McpDiscoveryActivityService>()),
 		agentUpdateBroadcaster,
 	);
 

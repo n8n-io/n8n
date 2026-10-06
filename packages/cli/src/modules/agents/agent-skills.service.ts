@@ -319,7 +319,7 @@ export class AgentSkillsService {
 			context.pushRef,
 		);
 		await this.clearRuntimes(entity.id);
-		this.modificationTelemetry.record(
+		await this.modificationTelemetry.record(
 			buildAgentMutationEvent(saved, projectId, context, previous, { skills: true }),
 		);
 		return saved;

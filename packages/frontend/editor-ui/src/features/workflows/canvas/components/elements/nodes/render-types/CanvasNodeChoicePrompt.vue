@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import ClaudeEntryPoint from '@/experiments/surfaceMcpToClaudeTrialUsers/McpDiscoveryEntry.vue';
+import { useMcpDiscovery } from '@/experiments/surfaceMcpToClaudeTrialUsers/useMcpDiscovery';
+
 import { NODE_CREATOR_OPEN_SOURCES, VIEWS } from '@/app/constants';
 import {
 	isExtraTemplateLinksExperimentEnabled,
@@ -18,6 +21,7 @@ import { useEditorContext } from '@/app/composables/useEditorContext';
 import { useWorkflowId } from '@/app/composables/useWorkflowId';
 import { useInstanceAiEditorCapability } from '@/app/composables/useInstanceAiEditorCapability';
 
+const { showMcpDiscovery } = useMcpDiscovery();
 const nodeCreatorStore = useNodeCreatorStore();
 const chatPanelStore = useChatPanelStore();
 const i18n = useI18n();
@@ -115,7 +119,11 @@ async function onClickTemplatesLink() {
 			</p>
 		</div>
 
-		<template v-if="showInstanceAiBuildWithAi || showLegacyBuildWithAi">
+		<template v-if="showMcpDiscovery">
+			<div :class="$style.orDivider">{{ i18n.baseText('generic.or') }}</div>
+			<ClaudeEntryPoint placement="canvas" />
+		</template>
+		<template v-else-if="showInstanceAiBuildWithAi || showLegacyBuildWithAi">
 			<!-- Or Divider -->
 			<div :class="$style.orDivider">
 				<span :class="$style.orText">{{ i18n.baseText('generic.or') }}</span>

@@ -43,6 +43,7 @@ import { Container } from '@n8n/di';
 import type { InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
+import type { McpDiscoveryActivityService } from '@/experiments/mcp-discovery/activity.service';
 import type { ActiveExecutions } from '@/active-executions';
 import type { CollaborationService } from '@/collaboration/collaboration.service';
 import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
@@ -127,6 +128,7 @@ function buildAdapter(options: { dependencyQueryService?: WorkflowDependencyQuer
 		mock<WorkflowTemplatesService>(),
 		mock<CollaborationService>(),
 		mock<PolicyEnforcementService>(),
+		mock<McpDiscoveryActivityService>(),
 		undefined,
 		undefined,
 		undefined,

@@ -99,6 +99,7 @@ describe('McpController', () => {
 	const mcpService = {
 		getServer: vi.fn(),
 		resolveFeatureFlags: vi.fn(),
+		recordDiscoveryConnection: vi.fn().mockResolvedValue(undefined),
 	} as unknown as McpService;
 	const mcpSettingsService = { getEnabled: vi.fn() } as unknown as McpSettingsService;
 	const mcpProtectedResource = {
@@ -185,6 +186,10 @@ describe('McpController', () => {
 			res,
 		);
 
+		expect(mcpService.recordDiscoveryConnection).toHaveBeenCalledWith('user-1', 'Claude', {
+			authType: 'oauth',
+			clientId: 'client-abc',
+		});
 		expect(telemetry.track).toHaveBeenCalledWith('User connected to MCP server', {
 			user_id: 'user-1',
 			client_name: 'Claude',

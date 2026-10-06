@@ -148,6 +148,7 @@ import { randomUUID } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 
+import { McpDiscoveryActivityService } from '@/experiments/mcp-discovery/activity.service';
 import { ActiveExecutions } from '@/active-executions';
 import { CollaborationService } from '@/collaboration/collaboration.service';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
@@ -435,6 +436,7 @@ export class InstanceAiAdapterService {
 		private readonly workflowTemplatesService: WorkflowTemplatesService,
 		private readonly collaborationService: CollaborationService,
 		private readonly policyEnforcementService: PolicyEnforcementService,
+		private readonly mcpDiscoveryActivity: McpDiscoveryActivityService,
 		private readonly nodeCatalogService?: NodeCatalogService,
 		// Optional: absent only in package/test contexts constructed without DI.
 		// DI (by type, not position) always provides it in a running instance.
@@ -1033,6 +1035,7 @@ export class InstanceAiAdapterService {
 			license,
 			allowSendingParameterValues,
 			telemetry,
+			mcpDiscoveryActivity,
 			collaborationService,
 			policyEnforcementService,
 			workflowDependencyQueryService,
@@ -1747,6 +1750,7 @@ export class InstanceAiAdapterService {
 				}
 
 				if (threadId) {
+					await mcpDiscoveryActivity.recordAssistantMutation(user.id);
 					telemetry.track('Builder created workflow', {
 						...setupExperimentProperties,
 						user_id: user.id,
@@ -1839,6 +1843,7 @@ export class InstanceAiAdapterService {
 				}
 
 				if (threadId) {
+					await mcpDiscoveryActivity.recordAssistantMutation(user.id);
 					telemetry.track('Builder modified workflow', {
 						...setupExperimentProperties,
 						user_id: user.id,

@@ -17,9 +17,14 @@ import { Service } from '@n8n/di';
 import type { Application } from 'express';
 import { InstanceSettings } from 'n8n-core';
 import type { FeatureFlagPayloads, FeatureFlags, ITelemetryTrackProperties } from 'n8n-workflow';
-import type { AllFlagsOptions, FeatureFlagEvaluations, PostHog } from 'posthog-node';
+import type { AllFlagsOptions, FeatureFlagEvaluations } from 'posthog-node';
 
 import { N8N_VERSION } from '@/constants';
+
+import type {
+	InstanceFlagEvaluation,
+	PostHogWithEvaluationStatus,
+} from './posthog-with-evaluation-status';
 
 /**
  * PostHog group type for instance-level properties.
@@ -47,7 +52,12 @@ interface CachedFlags extends FeatureFlagData {
 
 @Service()
 export class PostHogClient {
-	private postHog?: PostHog;
+	private postHog?: PostHogWithEvaluationStatus;
+
+	private readonly instanceFlagCache = new Map<
+		string,
+		{ value: boolean | string; expiresAt: number }
+	>();
 
 	private readonly flagsCache = new Map<string, CachedFlags>();
 
@@ -62,8 +72,8 @@ export class PostHogClient {
 			return;
 		}
 
-		const { PostHog } = await import('posthog-node');
-		this.postHog = new PostHog(posthogConfig.apiKey, {
+		const { PostHogWithEvaluationStatus } = await import('./posthog-with-evaluation-status.js');
+		this.postHog = new PostHogWithEvaluationStatus(posthogConfig.apiKey, {
 			host: posthogConfig.apiHost,
 		});
 	}
@@ -161,6 +171,36 @@ export class PostHogClient {
 		}
 
 		return this.applyEnvOverrides(data).featureFlags[flagName];
+	}
+
+	/** Unlike a flag snapshot, this result distinguishes an absent flag from a failed request. */
+	async getFeatureFlagForInstanceWithStatus(flagName: string): Promise<InstanceFlagEvaluation> {
+		const override = this.applyEnvOverrides({ featureFlags: {}, featureFlagPayloads: {} })
+			.featureFlags[flagName];
+		if (override !== undefined) return { status: 'available', value: override };
+		if (!this.postHog) return { status: 'available', value: false };
+		const cached = this.instanceFlagCache.get(flagName);
+		if (cached && cached.expiresAt > Date.now()) {
+			return { status: 'available', value: cached.value };
+		}
+		const { instanceId } = this.instanceSettings;
+		try {
+			const evaluation = await this.postHog.evaluateFlagWithStatus(
+				flagName,
+				`${POSTHOG_GROUP_TYPE_INSTANCE}_${instanceId}`,
+				{ [POSTHOG_GROUP_TYPE_INSTANCE]: instanceId },
+			);
+			if (evaluation.status === 'available') {
+				// A successful response without the flag is also safe to cache.
+				this.instanceFlagCache.set(flagName, {
+					value: evaluation.value,
+					expiresAt: Date.now() + FLAGS_CACHE_TTL_MS,
+				});
+			}
+			return evaluation;
+		} catch {
+			return { status: 'unavailable' };
+		}
 	}
 
 	async getFeatureFlagsAndPayloads(

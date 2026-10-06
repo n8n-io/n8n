@@ -22,6 +22,39 @@ const nudgeSurface = z
 	);
 
 export const MCP_TELEMETRY = defineTelemetryEvents({
+	DISCOVERY_EXPOSED: {
+		name: 'User entered MCP discovery experiment',
+		description:
+			'A user passed the durable personal eligibility check and inherited the instance assignment. Includes control and treatment, independently of clicks.',
+		properties: z.looseObject({
+			variant: z.enum(['control', 'variant']),
+			assigned_at: z.number(),
+			eligible_at: z
+				.number()
+				.optional()
+				.describe('The user first login plus 30 minutes. Assignment can be saved later.'),
+			concurrent_experiments: z.record(z.string(), z.string()),
+		}),
+	},
+	DISCOVERY_ENTRY_VIEWED: {
+		name: 'User viewed MCP discovery entry point',
+		description:
+			'A treatment entry point became visible on screen. Recorded once per placement per editor session.',
+		properties: z.looseObject({
+			variant: z.enum(['control', 'variant']),
+			surface: z.enum(['canvas', 'sidebar', 'footer', 'create_menu']),
+			cta_stage: z.enum(['build', 'connect', 'prompt']),
+		}),
+	},
+	DISCOVERY_ENTRY_CLICKED: {
+		name: 'User clicked MCP discovery entry point',
+		description: 'A user clicked an experiment entry point to open MCP settings in the same tab.',
+		properties: z.looseObject({
+			variant: z.enum(['control', 'variant']),
+			surface: z.enum(['canvas', 'sidebar', 'footer', 'create_menu']),
+			cta_stage: z.enum(['build', 'connect', 'prompt']),
+		}),
+	},
 	MCP_NUDGE_VIEWED: {
 		name: 'User viewed MCP nudge',
 		description:

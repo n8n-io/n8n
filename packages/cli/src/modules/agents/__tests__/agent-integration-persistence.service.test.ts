@@ -5,6 +5,7 @@ import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { OperationalError, UserError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
+import type { McpDiscoveryActivityService } from '@/experiments/mcp-discovery/activity.service';
 import type { CredentialsService } from '@/credentials/credentials.service';
 import type { EventService } from '@/events/event.service';
 import type { Telemetry } from '@/telemetry';
@@ -97,7 +98,7 @@ function setup(options: SetupOptions = {}) {
 			runtimeCacheService,
 			chatIntegrationRegistry,
 			eventService,
-			new AgentModificationTelemetryService(telemetry),
+			new AgentModificationTelemetryService(telemetry, mock<McpDiscoveryActivityService>()),
 			credentialsService,
 			setupCompletionService,
 		),

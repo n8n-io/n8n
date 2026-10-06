@@ -1,4 +1,5 @@
 import type { InputRequiredResult, McpServer } from '@modelcontextprotocol/server';
+import { McpDiscoveryActivityService } from '@/experiments/mcp-discovery/activity.service';
 import {
 	CREDENTIAL_DESCRIPTIONS_FLAG,
 	MCP_APPS_FLAG,
@@ -232,6 +233,7 @@ export class McpService {
 	private readonly pendingResponses = new Map<string, PendingMcpResponse>();
 
 	constructor(
+		private readonly mcpDiscoveryActivity: McpDiscoveryActivityService,
 		private readonly logger: Logger,
 		private readonly executionsConfig: ExecutionsConfig,
 		private readonly instanceSettings: InstanceSettings,
@@ -272,6 +274,18 @@ export class McpService {
 		private readonly aiPreferenceService: AiPreferenceService,
 		private readonly mcpConfig: McpConfig,
 	) {}
+
+	async recordDiscoveryConnection(
+		userId: string,
+		clientName?: string,
+		caller?: McpAuthContext['caller'],
+	) {
+		try {
+			await this.mcpDiscoveryActivity.recordClaudeConnection(userId, clientName, caller);
+		} catch (error) {
+			this.logger.warn('Failed to record MCP discovery connection', { error });
+		}
+	}
 
 	/** Resolves user experience flags and the shared activity gate. */
 	async resolveFeatureFlags(user: User): Promise<McpFeatureFlags> {
@@ -359,6 +373,8 @@ export class McpService {
 		clientInfo?: McpClientInfo,
 		auth?: McpAuthContext,
 	) {
+		const caller = auth?.caller;
+		const telemetryCaller = caller?.authType === 'api_key' ? { authType: caller.authType } : caller;
 		return (tool: ToolDefinition<z.ZodRawShape, ToolHandlerResult>) => {
 			// `ToolHandler` is a union of 1- and 2-arity signatures, so we invoke it
 			// through a generic callable and narrow the result back to a tool result.
@@ -370,6 +386,27 @@ export class McpService {
 				try {
 					const result = await invoke(...handlerArgs);
 					const { status, errorMessage } = getToolCallOutcome(result);
+					if (result && !isInputRequired(result)) {
+						// Experiment bookkeeping must not turn a successful tool write into an error.
+						try {
+							await this.mcpDiscoveryActivity.recordClaudeToolResult(
+								user.id,
+								clientInfo?.name,
+								tool.name,
+								status,
+								getWorkflowId(result.structuredContent),
+								typeof result.structuredContent === 'object' &&
+									result.structuredContent !== null &&
+									'appliedOperations' in result.structuredContent &&
+									typeof result.structuredContent.appliedOperations === 'number'
+									? result.structuredContent.appliedOperations
+									: undefined,
+								auth?.caller,
+							);
+						} catch (error) {
+							this.logger.warn('Failed to record MCP discovery activity', { error });
+						}
+					}
 					this.eventService.emit('mcp-tool-called', {
 						user,
 						toolName: tool.name,
@@ -378,7 +415,7 @@ export class McpService {
 							(isInputRequired(result) ? undefined : getWorkflowId(result?.structuredContent)),
 						status,
 						errorMessage,
-						...auth?.caller,
+						...telemetryCaller,
 						clientName: clientInfo?.name,
 					});
 					return result;
@@ -389,7 +426,7 @@ export class McpService {
 						workflowId,
 						status: 'error',
 						errorMessage: error instanceof Error ? error.message : String(error),
-						...auth?.caller,
+						...telemetryCaller,
 						clientName: clientInfo?.name,
 					});
 					throw error;

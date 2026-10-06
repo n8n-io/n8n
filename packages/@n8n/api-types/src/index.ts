@@ -1,3 +1,4 @@
+export * from './mcp-discovery';
 export { Z, type ZodClass, type ZodArrayClass } from './zod-class';
 export type * from './datetime';
 export * from './dto';

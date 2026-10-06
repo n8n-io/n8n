@@ -11,6 +11,7 @@ import { JsonWebTokenError, TokenExpiredError } from 'jsonwebtoken';
 import escapeRegExp from 'lodash/escapeRegExp';
 import type { StringValue as TimeUnitValue } from 'ms';
 
+import { McpDiscoveryActivityService } from '@/experiments/mcp-discovery/activity.service';
 import { AUTH_COOKIE_NAME, RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { AuthError, ForbiddenError } from '@n8n/errors';
 import { License } from '@/license';
@@ -97,6 +98,7 @@ export class AuthService {
 	private skipBrowserIdCheckEndpoints: Array<string | RegExp>;
 
 	constructor(
+		private readonly mcpDiscoveryActivity: McpDiscoveryActivityService,
 		private readonly globalConfig: GlobalConfig,
 		private readonly logger: Logger,
 		private readonly license: License,
@@ -259,6 +261,21 @@ export class AuthService {
 	}
 
 	issueCookie(
+		res: Response,
+		user: User,
+		usedMfa: boolean,
+		browserId?: string,
+		isEmbed?: boolean,
+		cookieOverrides?: { sameSite?: 'strict' | 'lax' | 'none'; secure?: boolean },
+	) {
+		this.setAuthCookie(res, user, usedMfa, browserId, isEmbed, cookieOverrides);
+		// Capture the login time now; experiment storage must not delay authentication.
+		this.mcpDiscoveryActivity.recordFirstLogin(user.id, Date.now()).catch((error: unknown) => {
+			this.logger.warn('Failed to record MCP discovery login', { error });
+		});
+	}
+
+	private setAuthCookie(
 		res: Response,
 		user: User,
 		usedMfa: boolean,
@@ -436,7 +453,7 @@ export class AuthService {
 			const embedCookieOverrides = jwtPayload.isEmbed
 				? ({ sameSite: 'none' as const, secure: true } as const)
 				: undefined;
-			this.issueCookie(
+			this.setAuthCookie(
 				res,
 				user,
 				jwtPayload.usedMfa ?? false,

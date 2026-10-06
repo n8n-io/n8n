@@ -470,7 +470,7 @@ export class AgentPublishService {
 		sidecarChanges: AgentSidecarChanges,
 	): Promise<void> {
 		const integrations = agent.integrations ?? [];
-		this.modificationTelemetry.record({
+		await this.modificationTelemetry.record({
 			agent,
 			projectId,
 			user,

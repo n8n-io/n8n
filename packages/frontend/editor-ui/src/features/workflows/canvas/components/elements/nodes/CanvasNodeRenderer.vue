@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import { h, inject } from 'vue';
+import { useMcpDiscovery } from '@/experiments/surfaceMcpToClaudeTrialUsers/useMcpDiscovery';
 import CanvasNodeDefault from './render-types/CanvasNodeDefault.vue';
 import CanvasNodeStickyNote from './render-types/CanvasNodeStickyNote.vue';
 import CanvasNodeAddNodes from './render-types/CanvasNodeAddNodes.vue';
@@ -8,6 +9,7 @@ import CanvasNodeAgent from './render-types/CanvasNodeAgent.vue';
 import { CanvasNodeKey } from '@/app/constants';
 import { CanvasNodeRenderType } from '../../../canvas.types';
 
+const { showMcpDiscovery } = useMcpDiscovery();
 const node = inject(CanvasNodeKey);
 
 const Render = () => {
@@ -19,7 +21,7 @@ const Render = () => {
 			Component = CanvasNodeStickyNote;
 			break;
 		case CanvasNodeRenderType.AddNodes:
-			Component = CanvasNodeAddNodes;
+			Component = showMcpDiscovery.value ? CanvasNodeChoicePrompt : CanvasNodeAddNodes;
 			break;
 		case CanvasNodeRenderType.ChoicePrompt:
 			Component = CanvasNodeChoicePrompt;

@@ -1,6 +1,7 @@
 import type { Logger } from '@n8n/backend-common';
 import type { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type {
 	AuthenticatedRequest,
 	User,
@@ -14,6 +15,7 @@ import { mock } from 'vitest-mock-extended';
 
 import { AuthService } from '@/auth/auth.service';
 import { AUTH_COOKIE_NAME } from '@/constants';
+import type { McpDiscoveryActivityService } from '@/experiments/mcp-discovery/activity.service';
 import type { License } from '@/license';
 import type { MfaService } from '@/mfa/mfa.service';
 import { JwtService } from '@/services/jwt.service';
@@ -48,7 +50,9 @@ describe('AuthService', () => {
 	const mfaService = mock<MfaService>();
 	const license = mock<License>();
 	const logger = mock<Logger>();
+	const discoveryActivity = mock<McpDiscoveryActivityService>();
 	const authService = new AuthService(
+		discoveryActivity,
 		globalConfig,
 		logger,
 		license,
@@ -70,6 +74,7 @@ describe('AuthService', () => {
 
 	beforeEach(() => {
 		vi.resetAllMocks();
+		discoveryActivity.recordFirstLogin.mockResolvedValue(undefined);
 		vi.setSystemTime(now);
 		globalConfig.userManagement.jwtSessionDurationHours = 168;
 		globalConfig.userManagement.jwtRefreshTimeoutHours = 0;
@@ -532,6 +537,39 @@ describe('AuthService', () => {
 			});
 		});
 
+		it('sets the cookie synchronously while the login write is pending', async () => {
+			const write = createDeferredPromise();
+			discoveryActivity.recordFirstLogin.mockReturnValueOnce(write.promise);
+			const result = authService.issueCookie(res, user, false, browserId);
+			expect(result).toBeUndefined();
+			expect(res.cookie).toHaveBeenCalled();
+			expect(discoveryActivity.recordFirstLogin).toHaveBeenCalledWith(user.id, now.getTime());
+			expect(res.cookie.mock.invocationCallOrder[0]).toBeLessThan(
+				discoveryActivity.recordFirstLogin.mock.invocationCallOrder[0],
+			);
+			write.resolve();
+			await write.promise;
+		});
+
+		it('logs a failed background write without blocking sign-in', async () => {
+			const error = new Error('Database unavailable');
+			discoveryActivity.recordFirstLogin.mockRejectedValueOnce(error);
+			expect(() => authService.issueCookie(res, user, false, browserId)).not.toThrow();
+			expect(res.cookie).toHaveBeenCalled();
+			await Promise.resolve();
+			expect(logger.warn).toHaveBeenCalledWith('Failed to record MCP discovery login', { error });
+		});
+
+		it('does not record a login if cookie issuance fails', () => {
+			res.cookie.mockImplementationOnce(() => {
+				throw new Error('Headers already sent');
+			});
+			expect(() => authService.issueCookie(res, user, false, browserId)).toThrow(
+				'Headers already sent',
+			);
+			expect(discoveryActivity.recordFirstLogin).not.toHaveBeenCalled();
+		});
+
 		describe('when user limit is reached', () => {
 			it('should block issuance if the user is not the global owner', async () => {
 				user.role = GLOBAL_MEMBER_ROLE;
@@ -539,6 +577,7 @@ describe('AuthService', () => {
 				expect(() => {
 					authService.issueCookie(res, user, false, browserId);
 				}).toThrowError('Maximum number of users reached');
+				expect(discoveryActivity.recordFirstLogin).not.toHaveBeenCalled();
 			});
 
 			it('should allow issuance if the user is the global owner', async () => {
@@ -809,6 +848,7 @@ describe('AuthService', () => {
 				secure: true,
 			});
 
+			expect(discoveryActivity.recordFirstLogin).not.toHaveBeenCalled();
 			const newToken = res.cookie.mock.calls[0].at(1);
 			expect(newToken).not.toBe(validToken);
 			expect(await authService.resolveJwt(newToken, req, res)).toEqual([user, { usedMfa: false }]);
@@ -854,6 +894,7 @@ describe('AuthService', () => {
 				secure: true,
 			});
 
+			expect(discoveryActivity.recordFirstLogin).not.toHaveBeenCalled();
 			const refreshedToken = res.cookie.mock.calls[0].at(1);
 			const decoded = jwt.decode(refreshedToken) as jwt.JwtPayload;
 			expect(decoded.isEmbed).toBe(true);

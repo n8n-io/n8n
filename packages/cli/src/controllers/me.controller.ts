@@ -1,8 +1,10 @@
+import { McpDiscoveryEnrollmentService } from '@/experiments/mcp-discovery/enrollment.service';
 import {
 	createPasswordSchema,
 	PasswordUpdateRequestDto,
 	UserSelfSettingsUpdateRequestDto,
 	UserUpdateRequestDto,
+	McpDiscoveryVisitRequestDto,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
@@ -38,7 +40,23 @@ export class MeController {
 		private readonly eventService: EventService,
 		private readonly mfaService: MfaService,
 		private readonly globalConfig: GlobalConfig,
+		private readonly mcpDiscovery: McpDiscoveryEnrollmentService,
 	) {}
+
+	@Post('/mcp-discovery/visit')
+	async visitMcpDiscovery(
+		req: AuthenticatedRequest,
+		_: Response,
+		@Body payload: McpDiscoveryVisitRequestDto,
+	) {
+		return await this.mcpDiscovery.visit(req.user, payload.pickedClaude);
+	}
+
+	@Post('/mcp-discovery/dismiss')
+	async dismissMcpDiscovery(req: AuthenticatedRequest) {
+		await this.mcpDiscovery.dismissCoachmark(req.user.id);
+		return { success: true };
+	}
 
 	/**
 	 * Update the logged-in user's properties, except password.

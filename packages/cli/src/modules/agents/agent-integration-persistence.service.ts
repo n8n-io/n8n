@@ -175,16 +175,16 @@ export class AgentIntegrationPersistenceService {
 		return parseResult.data;
 	}
 
-	private recordIntegrationMutation(
+	private async recordIntegrationMutation(
 		agent: Agent,
 		previousIntegrations: AgentIntegrationConfig[],
 		context: CredentialIntegrationMutationContext,
-	): void {
+	): Promise<void> {
 		// The schema is not re-read — it is not part of this write, and the entity
 		// copy is only used to classify the change for telemetry.
 		const previousSchema = agent.schema ?? null;
 		const wasUnconfigured = isUnconfiguredAgent(previousSchema, previousIntegrations);
-		this.modificationTelemetry.record({
+		await this.modificationTelemetry.record({
 			agent,
 			projectId: agent.projectId,
 			user: context.user,
@@ -238,7 +238,7 @@ export class AgentIntegrationPersistenceService {
 		this.runtimeCacheService.clearRuntimes(agent.id);
 		this.eventService.emit('agent-saved', { agentId: agent.id });
 		await written.emitSetupCompleted?.();
-		this.recordIntegrationMutation(agent, current, context);
+		await this.recordIntegrationMutation(agent, current, context);
 
 		return { agent, changed: true, published, ...(removed ? { removed } : {}) };
 	}

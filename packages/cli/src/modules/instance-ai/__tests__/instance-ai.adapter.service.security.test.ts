@@ -42,6 +42,7 @@ import type {
 import type { InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
+import type { McpDiscoveryActivityService } from '@/experiments/mcp-discovery/activity.service';
 import type { ActiveExecutions } from '@/active-executions';
 import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import type { CredentialsService } from '@/credentials/credentials.service';
@@ -171,6 +172,7 @@ const service = new InstanceAiAdapterService(
 	mock<WorkflowTemplatesService>(),
 	mock<CollaborationService>(),
 	policyEnforcementService,
+	mock<McpDiscoveryActivityService>(),
 );
 
 const user = mock<User>({

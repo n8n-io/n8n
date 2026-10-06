@@ -1620,7 +1620,7 @@ describe('WorkflowService', () => {
 
 			expect(workflowPublishGuardMock.assertCanPublish).toHaveBeenCalledWith(WORKFLOW_ID);
 			expect(externalHooksMock.run).toHaveBeenCalledTimes(1);
-			const [hookName, hookArgs] = externalHooksMock.run.mock.calls[0] as [
+			const [hookName, hookArgs] = externalHooksMock.run.mock.calls[0] as unknown as [
 				string,
 				[WorkflowEntity, WorkflowHookContextService, WorkflowLifecycleHookActor],
 			];
@@ -1800,7 +1800,7 @@ describe('WorkflowService', () => {
 			await workflowService.deactivateWorkflow(user, WORKFLOW_ID);
 
 			expect(externalHooksMock.run).toHaveBeenCalledTimes(1);
-			const [hookName, hookArgs] = externalHooksMock.run.mock.calls[0] as [
+			const [hookName, hookArgs] = externalHooksMock.run.mock.calls[0] as unknown as [
 				string,
 				[WorkflowEntity, WorkflowHookContextService, WorkflowLifecycleHookActor],
 			];
@@ -1829,7 +1829,7 @@ describe('WorkflowService', () => {
 
 			await workflowService.deactivateWorkflow(mock<User>(), WORKFLOW_ID);
 
-			const [, hookArgs] = externalHooksMock.run.mock.calls[0] as [
+			const [, hookArgs] = externalHooksMock.run.mock.calls[0] as unknown as [
 				string,
 				[WorkflowEntity, WorkflowHookContextService, WorkflowLifecycleHookActor],
 			];

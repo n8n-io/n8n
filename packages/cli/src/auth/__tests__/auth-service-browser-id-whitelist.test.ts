@@ -1,3 +1,4 @@
+import type { McpDiscoveryActivityService } from '@/experiments/mcp-discovery/activity.service';
 import type { GlobalConfig } from '@n8n/config';
 import type { InvalidAuthTokenRepository, UserRepository } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
@@ -21,6 +22,7 @@ describe('AuthService Browser ID Whitelist', () => {
 		const mfaService = mock<MfaService>();
 
 		authService = new AuthService(
+			mock<McpDiscoveryActivityService>(),
 			globalConfig,
 			mock(),
 			mock(),

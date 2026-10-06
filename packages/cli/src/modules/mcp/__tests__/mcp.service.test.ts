@@ -1,4 +1,6 @@
-import { createMcpHandler, type McpServer } from '@modelcontextprotocol/server';
+import { mock } from 'vitest-mock-extended';
+import type { McpDiscoveryActivityService } from '@/experiments/mcp-discovery/activity.service';
+import { createMcpHandler, McpServer } from '@modelcontextprotocol/server';
 import {
 	MCP_APPS_FLAG,
 	MCP_APPS_VARIANT_CONTROL,
@@ -87,6 +89,7 @@ describe('McpService', () => {
 	let instanceSettings: InstanceSettings;
 	let logger: Logger;
 	let eventService: EventService;
+	let discoveryActivity: ReturnType<typeof mock<McpDiscoveryActivityService>>;
 
 	beforeEach(() => {
 		eventService = mockInstance(EventService);
@@ -101,7 +104,9 @@ describe('McpService', () => {
 		logger = mockLogger();
 
 		aiPreferenceService = mockInstance(AiPreferenceService);
+		discoveryActivity = mock<McpDiscoveryActivityService>();
 		mcpService = new McpService(
+			discoveryActivity,
 			logger,
 			executionsConfig,
 			instanceSettings,
@@ -158,6 +163,7 @@ describe('McpService', () => {
 			});
 
 			const queueMcpService = new McpService(
+				mock<McpDiscoveryActivityService>(),
 				mockLogger(),
 				queueExecutionsConfig,
 				instanceSettings,
@@ -363,6 +369,7 @@ describe('McpService', () => {
 			mcpAppsEnabled?: boolean;
 		}) =>
 			new McpService(
+				mock<McpDiscoveryActivityService>(),
 				mockLogger(),
 				executionsConfig,
 				instanceSettings,
@@ -895,6 +902,71 @@ describe('McpService', () => {
 			return await invokeTool(args, {});
 		};
 
+		it('records successful Claude workflow results through the production registrar', async () => {
+			const user = mcpUser();
+			const server = new McpServer({ name: 'discovery-test', version: '1.0.0' });
+			const caller = { authType: 'oauth' as const, clientId: 'claude-client' };
+			await registerAndInvoke(
+				server,
+				'update_workflow',
+				async () => ({
+					content: [],
+					structuredContent: { workflowId: 'wf-42', appliedOperations: 2 },
+				}),
+				{},
+				{ clientInfo: { name: 'Claude' }, auth: { grantedScopes: undefined, caller } },
+			);
+			expect(discoveryActivity.recordClaudeToolResult).toHaveBeenCalledWith(
+				user.id,
+				'Claude',
+				'update_workflow',
+				'success',
+				'wf-42',
+				2,
+				caller,
+			);
+		});
+
+		it('passes credentials to discovery when a legacy tool call has no client name', async () => {
+			const user = mcpUser();
+			const server = new McpServer({ name: 'discovery-test', version: '1.0.0' });
+			const caller = { authType: 'api_key', apiKeyId: 'claude-key' } as const;
+			await registerAndInvoke(
+				server,
+				'create_workflow_from_code',
+				async () => ({
+					content: [],
+					structuredContent: { workflowId: 'wf-42' },
+				}),
+				{},
+				{ auth: { grantedScopes: undefined, caller } },
+			);
+			expect(discoveryActivity.recordClaudeToolResult).toHaveBeenCalledWith(
+				user.id,
+				undefined,
+				'create_workflow_from_code',
+				'success',
+				'wf-42',
+				undefined,
+				caller,
+			);
+		});
+
+		it('does not turn a successful write into an error when discovery persistence fails', async () => {
+			const server = new McpServer({ name: 'discovery-test', version: '1.0.0' });
+			discoveryActivity.recordClaudeToolResult.mockRejectedValue(new Error('Database unavailable'));
+			const result = { content: [], structuredContent: { workflowId: 'wf-42' } };
+			await expect(
+				registerAndInvoke(
+					server,
+					'create_workflow_from_code',
+					async () => result,
+					{},
+					{ clientInfo: { name: 'Claude' } },
+				),
+			).resolves.toEqual(result);
+		});
+
 		it('should emit `mcp-tool-called` with the target workflow on tool success', async () => {
 			const user = mcpUser();
 			const server = await mcpService.getServer(user, mcpFeatureFlags());
@@ -1166,6 +1238,7 @@ describe('McpService', () => {
 			const nodeCatalogService = mockInstance(NodeCatalogService);
 
 			const service = new McpService(
+				mock<McpDiscoveryActivityService>(),
 				mockLogger(),
 				executionsConfig,
 				instanceSettings,
@@ -1224,6 +1297,7 @@ describe('McpService', () => {
 			const nodeCatalogService = mockInstance(NodeCatalogService);
 
 			const service = new McpService(
+				mock<McpDiscoveryActivityService>(),
 				mockLogger(),
 				executionsConfig,
 				instanceSettings,
@@ -1302,6 +1376,7 @@ describe('McpService', () => {
 				(urlService.getInstanceBaseUrl as Mock).mockReturnValue(instanceBaseUrl);
 
 				return new McpService(
+					mock<McpDiscoveryActivityService>(),
 					mockLogger(),
 					executionsConfig,
 					instanceSettings,

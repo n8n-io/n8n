@@ -13,6 +13,7 @@ import { useTelemetryContext } from '@/app/composables/useTelemetryContext';
 import { useTelemetryInitializer } from '@/app/composables/useTelemetryInitializer';
 import { useWorkflowDiffRouting } from '@/app/composables/useWorkflowDiffRouting';
 import { useModulePushDispatcher } from '@/app/composables/useModulePushDispatcher';
+import { useMcpDiscoveryEnrollment } from '@/experiments/surfaceMcpToClaudeTrialUsers/useMcpDiscovery';
 import { useTrialIntroModalAutoOpen } from '@/experiments/trialIntroModal/useTrialIntroModalAutoOpen';
 import { CODEMIRROR_TOOLTIP_CONTAINER_ELEMENT_ID, HIRING_BANNER, VIEWS } from '@/app/constants';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
@@ -73,6 +74,7 @@ useBackendStatus();
 useModulePushDispatcher({ router });
 
 useTrialIntroModalAutoOpen();
+useMcpDiscoveryEnrollment();
 
 const loading = ref(true);
 const defaultLocale = computed(() => rootStore.defaultLocale);

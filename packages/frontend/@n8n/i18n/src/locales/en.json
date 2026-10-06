@@ -1,4 +1,7 @@
 {
+	"experiments.mcpDiscovery.cta.connect": "Connect Claude",
+	"experiments.mcpDiscovery.cta.prompt": "Go back to Claude and prompt",
+	"experiments.mcpDiscovery.cta.build": "Build with Claude",
 	"_reusableBaseText": {
 		"cancel": "Cancel",
 		"codeNodeEditor": {
@@ -3503,6 +3506,8 @@
 	"settings.mcp.description": "Connect MCP clients like Claude Code and Cursor to build, run, and iterate on workflows in your instance",
 	"settings.mcp.page.title": "Instance level MCP",
 	"settings.mcp.page.description": "Let AI assistants and IDEs connect to this instance over the Model Context Protocol (MCP), then control which tools and workflows they can use.",
+	"experiments.mcpDiscovery.settings.mcp.page.description": "Connect AI assistants like Claude to build and run workflows in n8n. You choose which workflows and tools they can access.",
+	"settings.mcp.page.docsLeadingText": "Learn how to get started in the ",
 	"settings.mcp.header.toggle.enabled": "Enabled",
 	"settings.mcp.header.toggle.disabled": "Disabled",
 	"settings.mcp.actionBox.heading": "Connect AI assistants to build and run workflows",
@@ -3516,8 +3521,12 @@
 	"settings.mcp.status.disableDialog.description": "This disconnects all connected clients and revokes their access. You can turn it back on later.",
 	"settings.mcp.status.disableDialog.confirm": "Disable MCP access",
 	"settings.mcp.connectionDetails.title": "Connection details",
+	"settings.mcp.yourClient.dismissHint": "Got it",
+	"settings.mcp.yourClient.tooltip": "Next, connect an AI assistant like Claude to start building workflows.",
 	"settings.mcp.yourClient.title": "Connect your client",
+	"experiments.mcpDiscovery.settings.mcp.yourClient.title": "Connect your AI assistant",
 	"settings.mcp.yourClient.description": "Choose your AI assistant, IDE, or CLI to get tailored setup steps.",
+	"experiments.mcpDiscovery.settings.mcp.yourClient.description": "Choose an assistant like Claude and follow the steps to connect it to n8n.",
 	"settings.mcp.yourClient.connect": "Connect",
 	"settings.mcp.access.title": "Access",
 	"settings.mcp.access.description": "Which workflows connected clients can reach. What each client can do is granted per client.",

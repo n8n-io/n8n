@@ -6,6 +6,7 @@ import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { QueryFailedError } from '@n8n/typeorm';
 import { mock } from 'vitest-mock-extended';
 
+import type { McpDiscoveryActivityService } from '@/experiments/mcp-discovery/activity.service';
 import type { CredentialsService } from '@/credentials/credentials.service';
 import { ConflictError } from '@n8n/errors';
 import type { EventService } from '@/events/event.service';
@@ -159,7 +160,7 @@ function makeService() {
 		telemetry,
 		eventService,
 		new AgentSetupCompletionService(agentValidationService, telemetry, agentRepository),
-		new AgentModificationTelemetryService(telemetry),
+		new AgentModificationTelemetryService(telemetry, mock<McpDiscoveryActivityService>()),
 		agentUpdateBroadcaster,
 	);
 

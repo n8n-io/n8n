@@ -1,4 +1,6 @@
 <script lang="ts" setup>
+import ClaudeEntryPoint from '@/experiments/surfaceMcpToClaudeTrialUsers/McpDiscoveryEntry.vue';
+import { useMcpDiscovery } from '@/experiments/surfaceMcpToClaudeTrialUsers/useMcpDiscovery';
 import { computed, nextTick, onMounted, onUnmounted, ref, useTemplateRef, watch } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useRoute, useRouter } from 'vue-router';
@@ -85,6 +87,8 @@ import {
 } from '@/features/ai/assistant-at-mentions/assistantAtMentions.types';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { InstanceAiFreeNudge } from '@/experiments/instanceAiFreeNudge';
+
+const { showMcpDiscovery } = useMcpDiscovery();
 
 // Experiment cleanup: remove with instanceAiPromptSuggestionsV2.
 const INSTANCE_AI_PROMPT_SUGGESTIONS_V2_TITLE_KEY: BaseTextKey =
@@ -694,6 +698,7 @@ function handleShelfSuggestionInsert(payload: ShelfSuggestionPayload) {
 						</template>
 					</InstanceAiInput>
 				</div>
+				<ClaudeEntryPoint v-if="showMcpDiscovery" placement="footer" />
 			</div>
 			<InstanceAiSplitEmptyState
 				v-else-if="isSplitVariantEnabled"
@@ -739,6 +744,7 @@ function handleShelfSuggestionInsert(payload: ShelfSuggestionPayload) {
 								</div>
 							</template>
 						</InstanceAiInput>
+						<ClaudeEntryPoint v-if="showMcpDiscovery" placement="footer" />
 					</div>
 				</template>
 			</InstanceAiSplitEmptyState>
@@ -779,6 +785,7 @@ function handleShelfSuggestionInsert(payload: ShelfSuggestionPayload) {
 						</template>
 					</InstanceAiInput>
 				</div>
+				<ClaudeEntryPoint v-if="showMcpDiscovery" placement="footer" />
 				<Transition name="workflow-preview-fade">
 					<div
 						v-if="activeWorkflowPreview && hasSpaceForPreview"

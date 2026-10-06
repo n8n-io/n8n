@@ -75,7 +75,7 @@ export class AgentCustomToolsService {
 
 		const saved = await this.saveToolChanges(entity, projectId, context);
 		if (options.recordTelemetry !== false) {
-			this.modificationTelemetry.record(
+			await this.modificationTelemetry.record(
 				buildAgentMutationEvent(saved, projectId, context, previous, { tools: true }),
 			);
 		}
@@ -115,7 +115,7 @@ export class AgentCustomToolsService {
 		}
 
 		const saved = await this.saveToolChanges(entity, projectId, context);
-		this.modificationTelemetry.record(
+		await this.modificationTelemetry.record(
 			buildAgentMutationEvent(saved, projectId, context, previous, { tools: true }),
 		);
 

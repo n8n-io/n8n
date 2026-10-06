@@ -1,5 +1,5 @@
 import type { Mocked } from 'vitest';
-import type { ApiKeyRepository, User, TokenGrant } from '@n8n/db';
+import type { ApiKey, ApiKeyRepository, User, TokenGrant } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
 import type { AuthStrategyRegistry } from '@/services/auth-strategy.registry';
@@ -12,14 +12,13 @@ const makeUser = (id: string): User => ({ ...mock<User>(), id });
 describe('McpServerApiKeyService', () => {
 	let authStrategyRegistry: Mocked<AuthStrategyRegistry>;
 	let service: McpServerApiKeyService;
+	let apiKeys: Mocked<ApiKeyRepository>;
 
 	beforeEach(() => {
 		authStrategyRegistry = mock<AuthStrategyRegistry>();
-		service = new McpServerApiKeyService(
-			mock<ApiKeyRepository>(),
-			mock<JwtService>(),
-			authStrategyRegistry,
-		);
+		apiKeys = mock<ApiKeyRepository>();
+		apiKeys.findOne.mockResolvedValue(null);
+		service = new McpServerApiKeyService(apiKeys, mock<JwtService>(), authStrategyRegistry);
 	});
 
 	describe('verifyApiKey', () => {
@@ -69,6 +68,25 @@ describe('McpServerApiKeyService', () => {
 			const result = await service.verifyApiKey('scoped-jwt');
 
 			expect(result.caller).toEqual({ authType: 'api_key' });
+		});
+
+		it('passes only the verified stored key ID for connection tracking', async () => {
+			const subject = makeUser('subject-1');
+			authStrategyRegistry.buildContextFromToken.mockResolvedValue({ subject, scopes: [] });
+			apiKeys.findOne.mockResolvedValue(mock<ApiKey>({ id: 'key-1' }));
+			const result = await service.verifyApiKey('secret-key');
+			expect(result.caller).toEqual({ authType: 'api_key', apiKeyId: 'key-1' });
+			expect(apiKeys.findOne).toHaveBeenCalledWith({
+				where: { apiKey: 'secret-key', audience: 'mcp-server-api', userId: subject.id },
+				select: ['id'],
+			});
+		});
+
+		it('does not reject a valid login when connection metadata is unavailable', async () => {
+			const subject = makeUser('subject-1');
+			authStrategyRegistry.buildContextFromToken.mockResolvedValue({ subject, scopes: [] });
+			apiKeys.findOne.mockRejectedValue(new Error('Temporary failure'));
+			expect((await service.verifyApiKey('token')).user).toBe(subject);
 		});
 
 		it('returns a rejection context when the registry returns null', async () => {

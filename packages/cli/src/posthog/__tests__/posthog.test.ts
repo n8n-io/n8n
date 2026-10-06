@@ -10,6 +10,7 @@ import { mock } from 'vitest-mock-extended';
 
 import { N8N_VERSION } from '@/constants';
 import { PostHogClient } from '@/posthog';
+import { PostHogWithEvaluationStatus } from '../posthog-with-evaluation-status';
 
 vi.mock('posthog-node');
 
@@ -759,6 +760,92 @@ describe('PostHog', () => {
 			globalConfig.diagnostics.enabled = false;
 
 			expect(await setupWithApp()).toHaveLength(0);
+		});
+	});
+	describe('getFeatureFlagForInstanceWithStatus', () => {
+		afterEach(() => {
+			globalConfig.featureFlags.override = {};
+			vi.restoreAllMocks();
+		});
+
+		it.each([false, 'variant'] as const)('caches a successful %s result', async (value) => {
+			const evaluate = vi
+				.spyOn(PostHogWithEvaluationStatus.prototype, 'evaluateFlagWithStatus')
+				.mockResolvedValue({ status: 'available', value });
+			const ph = new PostHogClient(instanceSettings, globalConfig);
+			await ph.init();
+			expect(await ph.getFeatureFlagForInstanceWithStatus('experiment')).toEqual({
+				status: 'available',
+				value,
+			});
+			await ph.getFeatureFlagForInstanceWithStatus('experiment');
+			expect(evaluate).toHaveBeenCalledTimes(1);
+			expect(evaluate).toHaveBeenCalledWith('experiment', `company_${instanceId}`, {
+				company: instanceId,
+			});
+		});
+
+		it('checks an inactive flag again after the cache expires', async () => {
+			const clock = vi.spyOn(Date, 'now').mockReturnValue(1_000);
+			const evaluate = vi
+				.spyOn(PostHogWithEvaluationStatus.prototype, 'evaluateFlagWithStatus')
+				.mockResolvedValueOnce({ status: 'available', value: false })
+				.mockResolvedValue({ status: 'available', value: 'variant' });
+			const ph = new PostHogClient(instanceSettings, globalConfig);
+			await ph.init();
+			expect(await ph.getFeatureFlagForInstanceWithStatus('experiment')).toEqual({
+				status: 'available',
+				value: false,
+			});
+			clock.mockReturnValue(1_000 + 10 * 60 * 1000);
+			expect(await ph.getFeatureFlagForInstanceWithStatus('experiment')).toEqual({
+				status: 'available',
+				value: 'variant',
+			});
+			expect(evaluate).toHaveBeenCalledTimes(2);
+		});
+
+		it('does not cache an unavailable result', async () => {
+			const evaluate = vi
+				.spyOn(PostHogWithEvaluationStatus.prototype, 'evaluateFlagWithStatus')
+				.mockResolvedValueOnce({ status: 'unavailable' })
+				.mockResolvedValue({ status: 'available', value: 'variant' });
+			const ph = new PostHogClient(instanceSettings, globalConfig);
+			await ph.init();
+			expect(await ph.getFeatureFlagForInstanceWithStatus('experiment')).toEqual({
+				status: 'unavailable',
+			});
+			expect(await ph.getFeatureFlagForInstanceWithStatus('experiment')).toEqual({
+				status: 'available',
+				value: 'variant',
+			});
+			expect(evaluate).toHaveBeenCalledTimes(2);
+		});
+
+		it('reports unexpected SDK errors as unavailable', async () => {
+			vi.spyOn(PostHogWithEvaluationStatus.prototype, 'evaluateFlagWithStatus').mockRejectedValue(
+				new Error('Unavailable'),
+			);
+			const ph = new PostHogClient(instanceSettings, globalConfig);
+			await ph.init();
+			expect(await ph.getFeatureFlagForInstanceWithStatus('experiment')).toEqual({
+				status: 'unavailable',
+			});
+		});
+
+		it('returns inactive when diagnostics are disabled and respects local overrides', async () => {
+			globalConfig.diagnostics.enabled = false;
+			const ph = new PostHogClient(instanceSettings, globalConfig);
+			await ph.init();
+			expect(await ph.getFeatureFlagForInstanceWithStatus('experiment')).toEqual({
+				status: 'available',
+				value: false,
+			});
+			globalConfig.featureFlags.override = { experiment: 'variant' };
+			expect(await ph.getFeatureFlagForInstanceWithStatus('experiment')).toEqual({
+				status: 'available',
+				value: 'variant',
+			});
 		});
 	});
 });

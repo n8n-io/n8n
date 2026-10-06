@@ -172,7 +172,7 @@ export class AgentTaskService {
 			context.pushRef,
 		);
 
-		this.modificationTelemetry.record(
+		await this.modificationTelemetry.record(
 			buildAgentMutationEvent(agent, projectId, context, previous, { tasks: true }),
 		);
 
@@ -230,7 +230,7 @@ export class AgentTaskService {
 			context.pushRef,
 		);
 
-		this.modificationTelemetry.record(
+		await this.modificationTelemetry.record(
 			buildAgentMutationEvent(agent, projectId, context, previous, { tasks: true }),
 		);
 
@@ -263,7 +263,7 @@ export class AgentTaskService {
 			context.pushRef,
 		);
 
-		this.modificationTelemetry.record(
+		await this.modificationTelemetry.record(
 			buildAgentMutationEvent(agent, projectId, context, previous, { tasks: true }),
 		);
 

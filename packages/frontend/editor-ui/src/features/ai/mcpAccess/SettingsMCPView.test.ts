@@ -1,3 +1,4 @@
+import { useMcpDiscoveryStore } from '@/experiments/surfaceMcpToClaudeTrialUsers/mcpDiscovery.store';
 import { nextTick } from 'vue';
 import { createTestingPinia } from '@pinia/testing';
 import { waitFor, within } from '@testing-library/vue';
@@ -10,6 +11,7 @@ import { mockedStore, type MockedStore, waitAllPromises } from '@/__tests__/util
 import SettingsMCPView from '@/features/ai/mcpAccess/SettingsMCPView.vue';
 import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import type { FrontendSettings, OAuthClientResponseDto } from '@n8n/api-types';
 import { MCP_CLIENTS_VIEW, MCP_WORKFLOWS_VIEW } from '@/features/ai/mcpAccess/mcp.constants';
 import type { McpAgent, McpWorkflow } from '@/features/ai/mcpAccess/mcp.types';
@@ -87,6 +89,7 @@ vi.mock('@/features/ai/mcpAccess/composables/useMcp', () => ({
 let pinia: ReturnType<typeof createTestingPinia>;
 let mcpStore: MockedStore<typeof useMCPStore>;
 let settingsStore: MockedStore<typeof useSettingsStore>;
+let discoveryStore: MockedStore<typeof useMcpDiscoveryStore>;
 let exposeAllOffer: {
 	isEnabled: Mock<McpExposeAllOffer['isEnabled']>;
 	offer: Mock<McpExposeAllOffer['offer']>;
@@ -135,6 +138,9 @@ describe('SettingsMCPView', () => {
 		pinia = createTestingPinia();
 		mcpStore = mockedStore(useMCPStore);
 		settingsStore = mockedStore(useSettingsStore);
+		mockedStore(useUsersStore).isInstanceOwner = true;
+		discoveryStore = mockedStore(useMcpDiscoveryStore);
+		discoveryStore.dismissCoachmark.mockResolvedValue(undefined);
 		exposeAllOffer = {
 			isEnabled: vi.fn(() => false),
 			offer: vi.fn(async () => false),
@@ -580,6 +586,59 @@ describe('SettingsMCPView', () => {
 		});
 	});
 
+	it('keeps the original settings copy and no coachmark for control', async () => {
+		discoveryStore.state = {
+			status: 'assigned',
+			assignment: { variant: 'control', assignedAt: 1 },
+			coachmarkDismissed: false,
+		};
+		enableMcpSettings();
+		const { getByText } = createComponent({ pinia });
+		await waitAllPromises();
+		expect(getByText('Connect your client')).toBeVisible();
+		expect(within(document.body).queryByTestId('mcp-connect-hint')).not.toBeInTheDocument();
+	});
+
+	it('does not repeat an explicitly dismissed coachmark', async () => {
+		discoveryStore.state = {
+			status: 'assigned',
+			assignment: { variant: 'variant', assignedAt: 1 },
+			coachmarkDismissed: true,
+		};
+		enableMcpSettings();
+		createComponent({ pinia });
+		await waitAllPromises();
+		expect(within(document.body).queryByTestId('mcp-connect-hint')).not.toBeInTheDocument();
+	});
+
+	it('does not show experiment treatment to a non-owner with an old assignment', async () => {
+		mockedStore(useUsersStore).isInstanceOwner = false;
+		discoveryStore.state = {
+			status: 'assigned',
+			assignment: { variant: 'variant', assignedAt: 1 },
+			coachmarkDismissed: false,
+		};
+		enableMcpSettings();
+		const { getByText } = createComponent({ pinia });
+		await waitAllPromises();
+		expect(getByText('Connect your client')).toBeVisible();
+		expect(within(document.body).queryByTestId('mcp-connect-hint')).not.toBeInTheDocument();
+	});
+
+	it('hides the coachmark after a connection reported by the server', async () => {
+		discoveryStore.state = {
+			status: 'assigned',
+			assignment: { variant: 'variant', assignedAt: 1 },
+			coachmarkDismissed: false,
+			hasConnectedClaude: true,
+		};
+		enableMcpSettings();
+		const { getByTestId } = createComponent({ pinia });
+		await waitAllPromises();
+		expect(getByTestId('mcp-connect-client-button')).toBeVisible();
+		expect(within(document.body).queryByTestId('mcp-connect-hint')).not.toBeInTheDocument();
+	});
+
 	describe('Toggle MCP on/off', () => {
 		beforeEach(() => {
 			hasPermissionMock.mockReturnValue(true);
@@ -594,6 +653,49 @@ describe('SettingsMCPView', () => {
 			await userEvent.click(getByTestId('enable-mcp-button'));
 
 			expect(mcpStore.setMcpAccessEnabled).toHaveBeenCalledWith(true);
+		});
+
+		it('shows the connection hint after enabling MCP and dismisses it with Escape', async () => {
+			discoveryStore.state = {
+				status: 'assigned',
+				assignment: { variant: 'variant', assignedAt: 1 },
+				coachmarkDismissed: false,
+			};
+			mcpStore.setMcpAccessEnabled.mockImplementation(async () => {
+				enableMcpSettings();
+				return true;
+			});
+			const { getByTestId } = createComponent({ pinia });
+			await userEvent.click(getByTestId('enable-mcp-button'));
+			await waitFor(() => {
+				expect(within(document.body).getByTestId('mcp-connect-hint')).toHaveTextContent(
+					'Next, connect an AI assistant like Claude to start building workflows.',
+				);
+			});
+			await userEvent.keyboard('{Escape}');
+			await waitFor(() => {
+				expect(within(document.body).queryByTestId('mcp-connect-hint')).not.toBeInTheDocument();
+			});
+			expect(mcpStore.openConnectPopover).not.toHaveBeenCalled();
+		});
+
+		it('shows the connection hint on an enabled instance and lets the user dismiss it', async () => {
+			discoveryStore.state = {
+				status: 'assigned',
+				assignment: { variant: 'variant', assignedAt: 1 },
+				coachmarkDismissed: false,
+			};
+			enableMcpSettings();
+			const { getByTestId } = createComponent({ pinia });
+			await waitAllPromises();
+			expect(getByTestId('mcp-connect-client-button')).toBeVisible();
+			await waitFor(() => {
+				expect(within(document.body).getByTestId('mcp-connect-hint')).toBeVisible();
+			});
+			await userEvent.click(within(document.body).getByRole('button', { name: 'Got it' }));
+			await waitFor(() => {
+				expect(within(document.body).queryByTestId('mcp-connect-hint')).not.toBeInTheDocument();
+			});
 		});
 
 		it('should fetch the workflow count and oauth clients after enabling MCP', async () => {

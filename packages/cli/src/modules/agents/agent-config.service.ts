@@ -265,7 +265,7 @@ export class AgentConfigService {
 		);
 		this.logger.debug('Updated agent JSON config', { agentId, projectId });
 
-		this.modificationTelemetry.record({
+		await this.modificationTelemetry.record({
 			agent: saved,
 			projectId,
 			user,
