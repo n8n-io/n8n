@@ -86,6 +86,14 @@ describe('Execution Lifecycle Hooks', () => {
 	const node = mock<INode>();
 	const workflowId = 'test-workflow-id';
 	const executionId = 'test-execution-id';
+	const makeNode = (): INode => ({
+		id: nodeId,
+		name: nodeName,
+		type: nodeType,
+		typeVersion: 1,
+		position: [100, 200],
+		parameters: {},
+	});
 	const workflowData: IWorkflowBase = {
 		id: workflowId,
 		name: 'Test Workflow',
@@ -93,16 +101,7 @@ describe('Execution Lifecycle Hooks', () => {
 		activeVersionId: 'some-version-id',
 		isArchived: false,
 		connections: {},
-		nodes: [
-			{
-				id: nodeId,
-				name: nodeName,
-				type: nodeType,
-				typeVersion: 1,
-				position: [100, 200],
-				parameters: {},
-			},
-		],
+		nodes: [makeNode()],
 		settings: {},
 		createdAt: new Date(),
 		updatedAt: new Date(),
@@ -216,6 +215,9 @@ describe('Execution Lifecycle Hooks', () => {
 		userRepository.findOne.mockResolvedValue(mock<User>());
 		redactionProxy.processExecution.mockImplementation(async (execution) => execution);
 		workflowData.settings = {};
+		// `mock<T>({ workflowData })` deep-proxies this fixture, which leaves mock
+		// functions on the node. Rebuild it so later tests read plain values.
+		workflowData.nodes = [makeNode()];
 		successfulRun.data = createRunExecutionData({
 			resultData: {
 				runData: {},
