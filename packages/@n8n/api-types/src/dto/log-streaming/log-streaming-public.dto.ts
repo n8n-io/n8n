@@ -15,6 +15,7 @@ import {
 	logStreamingDestinationCommonFieldDocs,
 	logStreamingDestinationDocs,
 	logStreamingDestinationListFieldDocs,
+	logStreamingDestinationRequestReadOnlyFieldDocs,
 	logStreamingEventTypesFieldDocs,
 	logStreamingParameterFieldDocs,
 	logStreamingParameterListDocs,
@@ -169,11 +170,7 @@ const publicSentrySchema = z.object({
 
 const idSchema = z.string().openapi(commonDocs.id);
 
-const readOnlyIdSchema = readOnlyPublicSchema({
-	type: 'string',
-	readOnly: true,
-	...commonDocs.id,
-});
+const readOnlyIdSchema = readOnlyPublicSchema(logStreamingDestinationRequestReadOnlyFieldDocs.id);
 
 const destinationUnion = <Id extends z.ZodTypeAny>(id: Id) =>
 	z
