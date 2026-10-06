@@ -42,6 +42,16 @@ export const INSTANCE_TELEMETRY = defineTelemetryEvents({
 					])
 					.optional()
 					.describe('Platform n8n runs on, read from well-known platform variables'),
+				memory_limit: z
+					.number()
+					.nullable()
+					.optional()
+					.describe('Memory limit n8n was given in KiB. Null when it has none'),
+				cpu_limit: z
+					.number()
+					.nullable()
+					.optional()
+					.describe('CPU quota n8n was given, in CPUs, for example 0.5. Null when it has none'),
 				kubernetes_provider: z
 					.enum(['aws', 'azure', 'gcp', 'other'])
 					.optional()
