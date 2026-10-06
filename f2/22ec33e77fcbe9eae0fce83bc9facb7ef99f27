@@ -1,0 +1,23 @@
+packages/cli/src/modules/n8n-packages/entities/data-table/data-table-importer.ts
+  s_a5c113d3dab7cc::t_6d65f09281c48f 239-242
+packages/cli/src/modules/n8n-packages/entities/data-table/data-table.types.ts
+  s_a5c113d3dab7cc::t_6d65f09281c48f 43-44,65
+packages/cli/src/modules/n8n-packages/__tests__/import-data-tables.integration.test.ts
+  s_a5c113d3dab7cc::t_6d65f09281c48f 378,412
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "f222ec33e77fcbe9eae0fce83bc9facb7ef99f27",
+  "prompts": {},
+  "sessions": {
+    "s_a5c113d3dab7cc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8aff32f9-b97d-43bb-b0cd-f1499312b90b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}
