@@ -153,7 +153,10 @@ export class LoadNodesAndCredentials {
 	 */
 	private async contractNodeLoaders() {
 		const [{ ContractNodeLoader, useNodeContractsRegistry }, { FIRST_PARTY_PACKAGES }] =
-			await Promise.all([import('@/node-contracts-registry.js'), import('@n8n/nodes-base-next')]);
+			await Promise.all([
+				import('@/node-contracts-registry.js'),
+				import('@n8n/nodes-integrations'),
+			]);
 		await useNodeContractsRegistry();
 		return FIRST_PARTY_PACKAGES.map(
 			(source) =>

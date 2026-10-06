@@ -263,7 +263,7 @@ describe('declared shapes in verification', () => {
 			{
 				id: 'Fetch',
 				name: 'Fetch',
-				type: '@n8n/nodes-base-next.httpRequestGet',
+				type: '@n8n/nodes-core.httpRequestGet',
 				typeVersion: 3,
 				position: [0, 0],
 				parameters: {
@@ -357,7 +357,7 @@ describe('live reads in build verification', () => {
 			{
 				id: 'Fetch',
 				name: 'Fetch',
-				type: '@n8n/nodes-base-next.httpRequestGet',
+				type: '@n8n/nodes-core.httpRequestGet',
 				typeVersion: 3,
 				position: [0, 0],
 				parameters: {

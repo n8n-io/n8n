@@ -787,7 +787,7 @@ describe('prompt construction', () => {
 
 		await handler(
 			{ url: 'https://gmail.googleapis.com/gmail/v1/users/me/messages/m1', method: 'GET' },
-			{ name: 'Get Message', type: '@n8n/nodes-base-next.gmailMessageGet' } as INode,
+			{ name: 'Get Message', type: '@n8n/nodes-integrations.gmailMessageGet' } as INode,
 		);
 
 		const prompt = mockGenerate.mock.calls[0][0];

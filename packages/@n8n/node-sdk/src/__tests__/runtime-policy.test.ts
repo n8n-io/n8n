@@ -2,7 +2,7 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
-import { versionsOf } from '../../../nodes-base-next/dist/registry.js';
+import { versionsOf } from '../../../nodes-integrations/dist/registry.js';
 import {
 	resolveRuntime,
 	type RuntimeAvailability,

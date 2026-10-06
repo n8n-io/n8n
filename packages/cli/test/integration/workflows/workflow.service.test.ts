@@ -25,7 +25,7 @@ import type { INode, INodeType } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 import { mock } from 'vitest-mock-extended';
 
-import { versionsOf } from '@n8n/nodes-base-next';
+import { packageOf, versionsOf } from '@n8n/nodes-integrations';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import type { ExternalHooks } from '@/external-hooks';
@@ -379,15 +379,20 @@ describe('update() with node contracts', () => {
 		...(contract && { contract }),
 	});
 	const get = (contract?: INode['contract']) =>
-		nodeOf('Get', '@n8n/nodes-base-next.httpRequestGet', contract);
-	const tool = nodeOf('Tool', '@n8n/nodes-base-next.httpRequestGetTool');
+		nodeOf('Get', '@n8n/nodes-core.httpRequestGet', contract);
+	const tool = nodeOf('Tool', '@n8n/nodes-core.httpRequestGetTool');
 	const set = nodeOf('Set', 'n8n-nodes-base.set');
 
 	beforeAll(async () => {
-		const loader = new ContractNodeLoader([], [], async () => ({
-			versions: async () => new Map(),
-			credentials: async () => new Map(),
-		}));
+		const loader = new ContractNodeLoader(
+			[],
+			[],
+			async () => ({ versions: async () => new Map(), credentials: async () => new Map() }),
+			[],
+			undefined,
+			undefined,
+			packageOf('httpRequest.get'),
+		);
 		await loader.loadAll();
 		Container.set(
 			LoadNodesAndCredentials,

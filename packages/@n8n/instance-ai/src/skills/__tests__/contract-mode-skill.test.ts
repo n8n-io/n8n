@@ -82,7 +82,7 @@ describe('contract-mode skill', () => {
 		expect(skill).toContain(
 			'- Typed steps, `set` and `node()` take `settings: { retryOnFail: true',
 		);
-		expect(skill).toContain('`nodeModules` and `builtIns`');
+		expect(skill).toContain('`nodeModules` and `coreSteps`');
 		expect(skill).toMatch(/\}\),\n {2}onError\(set\(\{ name: 'Log'/);
 		expect(skill).toContain("placeholder('Database')");
 		expect(skill).not.toContain("'<Notion tasks database ID>'");

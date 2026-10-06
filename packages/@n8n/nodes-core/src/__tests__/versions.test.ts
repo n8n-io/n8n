@@ -45,7 +45,9 @@ describe('bundled versions', () => {
 					.filter((file) => statSync(path.join(dir, file)).isFile())
 					.sort()
 					.map((file) => [file, readFileSync(path.join(dir, file), 'base64')]);
-			expect(manifests.map(({ id }) => id)).toEqual(['noOp.pass']);
+			expect(manifests.map(({ id }) => id).sort()).toEqual(
+				nodesCore.actions.map(({ id }) => id).sort(),
+			);
 			expect(filesOf(copy)).toEqual(filesOf(STORE_DIR));
 		} finally {
 			rmSync(copy, { recursive: true, force: true });
@@ -65,10 +67,16 @@ describe('bundled versions', () => {
 });
 
 const SANDBOX = path.resolve(__dirname, '../../node_modules/@n8n/node-sdk/sandbox');
+// The credential types of the shipped nodes stand in for the registry of n8n.
+const shippedCredentialTypes = new Map(
+	nodesCore.actions
+		.flatMap(({ node }) => node.credential?.types ?? [])
+		.map((type) => [type.name, type]),
+);
 const sandbox = {
 	sidecar: path.join(SANDBOX, 'sidecar/target/release/n8n-sandbox'),
 	guests: path.join(SANDBOX, 'dist'),
-	credentialType: () => undefined,
+	credentialType: (name: string) => shippedCredentialTypes.get(name),
 };
 // `pnpm --filter @n8n/node-sdk sandbox:build` builds them.
 const sandboxBuilt = [sandbox.sidecar, path.join(sandbox.guests, 'action.wasm')].every(existsSync);

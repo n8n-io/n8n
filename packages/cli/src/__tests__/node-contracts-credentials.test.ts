@@ -1,5 +1,5 @@
 import type { CommaSeparatedStringArray, GlobalConfig } from '@n8n/config';
-import { bundledCredentialsOf } from '@n8n/nodes-base-next';
+import { bundledCredentialsOf } from '@n8n/nodes-integrations';
 import { LazyPackageDirectoryLoader } from 'n8n-core';
 import type {
 	ICredentialDataDecryptedObject,
@@ -18,7 +18,7 @@ import { LoadNodesAndCredentials } from '../load-nodes-and-credentials';
 import { ContractNodeLoader } from '../node-contracts-registry';
 
 const PACKAGES = path.resolve(__dirname, '../../..');
-const NEXT = '@n8n/nodes-base-next';
+const NEXT = '@n8n/nodes-integrations';
 
 /** The real packages, the contract package registered first, so the order does not decide. */
 async function loaded(nodeContractsEnabled: boolean) {
@@ -140,8 +140,8 @@ describe('credential types of the node contracts package', () => {
 			...(listed[0].supportedNodes ?? []),
 			'n8n-nodes-base.notionTool',
 			'n8n-nodes-base.notionTool',
-			'@n8n/nodes-base-next.notionDatabasePageGetAllTool',
-			'@n8n/nodes-base-next.notionUserGetTool',
+			'@n8n/nodes-integrations.notionDatabasePageGetAllTool',
+			'@n8n/nodes-integrations.notionUserGetTool',
 		]);
 		// The editor shows the HTTP Request option only for a type with `authenticate`.
 		expect(JSON.stringify(listed[0])).toContain('"authenticate":{}');

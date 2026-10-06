@@ -1,7 +1,7 @@
 import { EventService } from '@n8n/backend-services';
 import { PrometheusMetricsConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
-import type { RunProfile } from '@n8n/nodes-base-next';
+import type { RunProfile } from '@n8n/nodes-integrations';
 import promClient from 'prom-client';
 
 import type { PrometheusMetricsCollector } from './base';

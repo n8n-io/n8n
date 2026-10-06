@@ -15,7 +15,7 @@ import {
 	type Trigger,
 } from './define';
 import {
-	actionEntries,
+	contractsOfPackage,
 	credentialTypesOf,
 	freezeAction,
 	freezeCredential,
@@ -634,7 +634,7 @@ export async function publishStatus(
 }
 
 /** The fixtures of a contract of a package. A trigger replays only migration pairs, so it may have no file. */
-async function fixturesOf(pkg: SourcePackage, action: Action | Trigger) {
+async function fixturesOf(pkg: Pick<SourcePackage, 'dir'>, action: Action | Trigger) {
 	const file = path.join(pkg.dir, 'fixtures', `${action.id}.json`);
 	if ('kind' in action && !existsSync(file)) return undefined;
 	return parseFixtures(await readFile(file, 'utf8'));
@@ -684,7 +684,7 @@ function statusOfArgs(args: readonly string[], at: string): StoreStatusRecord {
  * signing key.
  */
 export async function publishPackage(
-	pkg: SourcePackage,
+	pkg: Pick<SourcePackage, 'name' | 'dir'>,
 	args: readonly string[] = [],
 	log: (line: string) => void = () => {},
 ): Promise<void> {
@@ -696,12 +696,13 @@ export async function publishPackage(
 	}
 	const logVersion = ({ id, semver }: { readonly id: string; readonly semver: string }) =>
 		log(`${id}@${semver}`);
+	const { entries, natives } = await contractsOfPackage(pkg);
 	// One at a time: each version appends to the registry index, and the log stays readable.
-	for (const type of credentialTypesOf(pkg))
+	for (const type of credentialTypesOf([...entries.map(({ action }) => action), ...natives]))
 		logVersion(await publishCredential({ ...target, type }));
-	for (const { entryFile, exportName, action } of await actionEntries(pkg)) {
+	for (const { entryFile, exportName, action } of entries) {
 		const fixtures = await fixturesOf(pkg, action);
 		logVersion(await publishAction({ ...target, entryFile, exportName, fixtures }));
 	}
-	for (const native of pkg.natives) logVersion(await publishNative({ ...target, native }));
+	for (const native of natives) logVersion(await publishNative({ ...target, native }));
 }

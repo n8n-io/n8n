@@ -2,6 +2,7 @@ import { createWorkflow, testDb } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import { NodeContractVersionRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { packageOf } from '@n8n/nodes-integrations';
 import { createHash, generateKeyPairSync } from 'node:crypto';
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { createServer } from 'node:http';
@@ -23,7 +24,7 @@ interface Manifest {
 }
 
 // The cli does not depend on the node-sdk, so load it through the package that does.
-const sdkRequire = createRequire(createRequire(__filename).resolve('@n8n/nodes-base-next'));
+const sdkRequire = createRequire(createRequire(__filename).resolve('@n8n/nodes-integrations'));
 const sdk = sdkRequire('@n8n/node-sdk/registry') as {
 	parseManifest(text: string): Manifest;
 	addToStore(
@@ -35,7 +36,7 @@ const sdk = sdkRequire('@n8n/node-sdk/registry') as {
 
 const OLDER = path.resolve(
 	__dirname,
-	'../../../../@n8n/nodes-base-next/fixtures/versions/httpRequest.get@2.0.0',
+	'../../../../@n8n/nodes-core/fixtures/versions/httpRequest.get@2.0.0',
 );
 
 const keyPair = () =>
@@ -45,10 +46,15 @@ const keyPair = () =>
 	});
 const keys = keyPair();
 
-const contractLoader = new ContractNodeLoader([], [], async () => ({
-	versions: async () => new Map(),
-	credentials: async () => new Map(),
-}));
+const contractLoader = new ContractNodeLoader(
+	[],
+	[],
+	async () => ({ versions: async () => new Map(), credentials: async () => new Map() }),
+	[],
+	undefined,
+	undefined,
+	packageOf('httpRequest.get'),
+);
 Container.set(
 	LoadNodesAndCredentials,
 	Object.assign(mock<LoadNodesAndCredentials>(), {
@@ -66,7 +72,7 @@ const pinnedWorkflow = async (digest = state.digest) =>
 			{
 				id: 'get',
 				name: 'Get',
-				type: '@n8n/nodes-base-next.httpRequestGet',
+				type: '@n8n/nodes-core.httpRequestGet',
 				typeVersion: 2,
 				contract: { version: state.manifest.semver, digest },
 				position: [0, 0],

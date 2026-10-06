@@ -418,7 +418,7 @@ export interface GeneratedAction {
 	readonly resource?: string;
 	/** The factory name, e.g. `getAll`. */
 	readonly operation: string;
-	/** The n8n node type, e.g. `@n8n/nodes-base-next.notionDatabasePageGetAll` or `n8n-nodes-base.notion`. */
+	/** The n8n node type, e.g. `@n8n/nodes-integrations.notionDatabasePageGetAll` or `n8n-nodes-base.notion`. */
 	readonly nodeType: string;
 	/**
 	 * The slot of a composed or derived node version that runs the action, e.g. Notion v4

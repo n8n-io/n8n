@@ -1,7 +1,7 @@
 import { createWorkflow, mockInstance, testDb } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import { ExecutionRepository, type User } from '@n8n/db';
-import { versionsOf } from '@n8n/nodes-base-next';
+import { packageOf, versionsOf } from '@n8n/nodes-integrations';
 import { Container } from '@n8n/di';
 import { createRunExecutionData, type INode } from 'n8n-workflow';
 import { existsSync } from 'node:fs';
@@ -69,10 +69,11 @@ describe('node contracts in their runtimes', () => {
 			nodeContractSandboxCacheDir: cacheDir(),
 		});
 		await utils.initBinaryDataService();
-		const next = new ContractNodeLoader();
+		const core = packageOf('httpRequest.send');
+		const next = new ContractNodeLoader([], [], undefined, [], undefined, undefined, core);
 		await next.loadAll();
 		const loadNodesAndCredentials = Container.get(LoadNodesAndCredentials);
-		loadNodesAndCredentials.loaders = { '@n8n/nodes-base-next': next };
+		loadNodesAndCredentials.loaders = { [next.packageName]: next };
 		await loadNodesAndCredentials.postProcessLoaders();
 	});
 
@@ -89,7 +90,7 @@ describe('node contracts in their runtimes', () => {
 		const node: INode = {
 			id: 'send',
 			name: 'Send',
-			type: '@n8n/nodes-base-next.httpRequestSend',
+			type: '@n8n/nodes-core.httpRequestSend',
 			typeVersion: 3,
 			position: [0, 0],
 			parameters: {
@@ -157,14 +158,23 @@ describe('node contracts in their runtimes', () => {
 	it('does not run a version whose permission class is denied, whatever the runtime lists', async () => {
 		const loadNodesAndCredentials = Container.get(LoadNodesAndCredentials);
 		const { loaders } = loadNodesAndCredentials;
-		const denied = new ContractNodeLoader([], [], undefined, ['egress-input']);
+		const core = packageOf('httpRequest.send');
+		const denied = new ContractNodeLoader(
+			[],
+			[],
+			undefined,
+			['egress-input'],
+			undefined,
+			undefined,
+			core,
+		);
 		await denied.loadAll();
-		loadNodesAndCredentials.loaders = { '@n8n/nodes-base-next': denied };
+		loadNodesAndCredentials.loaders = { [denied.packageName]: denied };
 		await loadNodesAndCredentials.postProcessLoaders();
 		const made = vi.spyOn(Container.get(NodeContractsRuntimes), 'get');
 		try {
 			await expect(runSend(['in-process', 'worker'])).rejects.toThrow(
-				'Unrecognized node type: @n8n/nodes-base-next.httpRequestSend',
+				'Unrecognized node type: @n8n/nodes-core.httpRequestSend',
 			);
 			expect(made).not.toHaveBeenCalled();
 		} finally {

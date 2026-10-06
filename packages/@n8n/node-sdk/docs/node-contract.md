@@ -108,8 +108,8 @@ and `published`. Freeze adds none of them, so it writes the same bytes for the s
 ### Status lines
 
 A publisher never changes a version line. To withdraw or deprecate a version, it appends a
-status line (`addStatusToStore`, or `pnpm publish:contracts yank|revoke|deprecate …` in
-nodes-base-next):
+status line (`addStatusToStore`, or `pnpm publish:contracts yank|revoke|deprecate …` in a
+source package):
 
 ```json
 {"id":"gmail.message.get","yank":"1.0.4","reason":"sends Bcc as Cc","at":"2026-10-02T12:00:00.000Z","signatures":[…]}

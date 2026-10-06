@@ -34,7 +34,7 @@ import type {
 	IWorkflowExecuteAdditionalData,
 	IWorkflowSettings,
 } from 'n8n-workflow';
-import { actionOfNode, FIRST_PARTY_PACKAGES, storedParametersOf } from '@n8n/nodes-base-next';
+import { actionOfNode, FIRST_PARTY_PACKAGES, storedParametersOf } from '@n8n/nodes-integrations';
 import { createRunExecutionData, NodeHelpers, Workflow } from 'n8n-workflow';
 import path from 'node:path';
 import { mock } from 'vitest-mock-extended';
@@ -482,7 +482,7 @@ describe('workflow-sdk failed items on the legacy engine', () => {
 	const year = (settings: NodeSettings = {}) =>
 		node({
 			name: 'Year',
-			type: '@n8n/nodes-base-next.itemsDateTime',
+			type: '@n8n/nodes-core.itemsDateTime',
 			version: 1,
 			parameters: { date: '={{ $json.date }}', operation: { op: 'extract', part: 'year' } },
 			settings,

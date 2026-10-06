@@ -434,7 +434,7 @@ export default workflow(
 				{
 					id: 'n2',
 					name: 'Post',
-					type: '@n8n/nodes-base-next.httpRequestSend',
+					type: '@n8n/nodes-core.httpRequestSend',
 					typeVersion: 3,
 					position: [224, 0],
 					parameters: {
@@ -958,7 +958,7 @@ export default workflow(
 		if (!result.success) return;
 		const parts = result.workflow.nodes.find((node) => node.name === 'Parts');
 		expect(parts).toMatchObject({
-			type: '@n8n/nodes-base-next.mergeCombineByPosition',
+			type: '@n8n/nodes-core.mergeCombineByPosition',
 			parameters: { inputs: 3 },
 		});
 		expect(result.workflow.nodes.map((node) => node.name)).toContain('Each workflow start');

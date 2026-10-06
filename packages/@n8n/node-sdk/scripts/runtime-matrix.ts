@@ -8,7 +8,12 @@ import path from 'node:path';
 import { parseArgs } from 'node:util';
 import type { IHttpRequestOptions } from 'n8n-workflow';
 
-import { actions, sandboxCredentialTypeOf, versionsOf } from '../../nodes-base-next/dist/index.js';
+import {
+	actions,
+	packageOf,
+	sandboxCredentialTypeOf,
+	versionsOf,
+} from '../../nodes-integrations/dist/index.js';
 import { defineCredential, field } from '../src/credentials';
 import { freezeAction } from '../src/freeze';
 import { replayFixtures } from '../src/publish';
@@ -17,7 +22,6 @@ import { sandboxedVersionOf, type GuestRuntime, type SandboxOptions } from '../s
 import { parseFixtures } from '../src/version';
 import { RUNTIME_NAMES, runtimeByName } from './runtimes';
 
-const FIXTURES = path.resolve(__dirname, '../../nodes-base-next/fixtures');
 const LIMITS = { cpuMs: 1_000, memoryMb: 64, wallMs: 3_000 };
 /** A probe that runs longer than this was not stopped by its runtime. */
 const GUARD_MS = 10_000;
@@ -157,7 +161,9 @@ async function replayAll({ runtime }: Runtime, budget: Budget) {
 			issues.push(`${id} refused: ${loaded.message}`);
 			continue;
 		}
-		const fixtures = parseFixtures(readFileSync(path.join(FIXTURES, `${id}.json`), 'utf8'));
+		const fixtures = parseFixtures(
+			readFileSync(path.join(packageOf(id).dir, 'fixtures', `${id}.json`), 'utf8'),
+		);
 		const replayed = await budget
 			.within(
 				replayFixtures(

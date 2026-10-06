@@ -359,22 +359,22 @@ describe('classifyNodesForSimulation', () => {
 			trigger,
 			{
 				name: 'Short',
-				type: '@n8n/nodes-base-next.waitInterval',
+				type: '@n8n/nodes-core.waitInterval',
 				parameters: { amount: 30, unit: 'seconds' },
 			},
 			{
 				name: 'Long',
-				type: '@n8n/nodes-base-next.waitInterval',
+				type: '@n8n/nodes-core.waitInterval',
 				parameters: { amount: 2, unit: 'hours' },
 			},
 			{
 				name: 'Until',
-				type: '@n8n/nodes-base-next.waitUntil',
+				type: '@n8n/nodes-core.waitUntil',
 				parameters: { time: '2030-01-01T00:00:00Z' },
 			},
 			{
 				name: 'Pure',
-				type: '@n8n/nodes-base-next.codeJavaScript',
+				type: '@n8n/nodes-core.codeJavaScript',
 				parameters: { code: 'return $input.all();' },
 			},
 		]);
@@ -419,8 +419,8 @@ describe('classifyNodesForSimulation', () => {
 	it('classifies contract actions by their declared effect without calling the LLM', async () => {
 		const verdicts = await classify([
 			trigger,
-			{ name: 'Get Pages', type: '@n8n/nodes-base-next.notionDatabasePageGetAll' },
-			{ name: 'Append Row', type: '@n8n/nodes-base-next.googleSheetsSheetAppend' },
+			{ name: 'Get Pages', type: '@n8n/nodes-integrations.notionDatabasePageGetAll' },
+			{ name: 'Append Row', type: '@n8n/nodes-integrations.googleSheetsSheetAppend' },
 		]);
 		expect(verdictOf(verdicts, 'Get Pages')).toMatchObject({
 			verdict: 'execute',
@@ -456,7 +456,7 @@ describe('classifyNodesForSimulation', () => {
 
 	it('keeps mocked-credential precedence over contract action effects', async () => {
 		const verdicts = await classify(
-			[trigger, { name: 'Get Pages', type: '@n8n/nodes-base-next.notionDatabasePageGetAll' }],
+			[trigger, { name: 'Get Pages', type: '@n8n/nodes-integrations.notionDatabasePageGetAll' }],
 			['Get Pages'],
 		);
 		expect(verdictOf(verdicts, 'Get Pages')).toMatchObject({
@@ -471,7 +471,7 @@ describe('classifyNodesForSimulation', () => {
 		);
 		const verdicts = await classify([
 			trigger,
-			{ name: 'Unknown', type: '@n8n/nodes-base-next.notARealAction' },
+			{ name: 'Unknown', type: '@n8n/nodes-integrations.notARealAction' },
 		]);
 		expect(verdictOf(verdicts, 'Unknown').source).toBe('llm');
 		expect(mockCreateEvalAgent).toHaveBeenCalled();

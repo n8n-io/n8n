@@ -7,12 +7,14 @@ import {
 	bundledIdsOf,
 	embeddedStoreDirOf,
 	FIRST_PARTY_PACKAGES,
+	isContractNodeType,
 	nodeDescriptionOf,
+	packageOf,
 	versionsOf,
 	type ContractPermissionClass,
 	type CredentialManifest,
 	type FrozenVersion,
-} from '@n8n/nodes-base-next';
+} from '@n8n/nodes-integrations';
 import { LazyPackageDirectoryLoader } from 'n8n-core';
 import {
 	deepCopy,
@@ -31,8 +33,8 @@ import { LoadNodesAndCredentials } from '../load-nodes-and-credentials';
 import { ContractNodeLoader, NodeContractsStore } from '../node-contracts-registry';
 
 const PACKAGES = path.resolve(__dirname, '../../..');
-const [nodesBaseNext, nodesCore] = FIRST_PARTY_PACKAGES;
-const NEXT = nodesBaseNext.name;
+const nodesCore = packageOf('noOp.pass');
+const nodesIntegrations = packageOf('notion.user.get');
 const storeOf =
 	(
 		versions: ReadonlyMap<string, readonly FrozenVersion[]> = new Map(),
@@ -50,7 +52,7 @@ interface Served {
 
 /** What n8n serves of the node contracts, in a form that keeps the order of the loaders out. */
 function contractTypesOf({ nodes, credentials, knownNodes, knownCredentials }: Served) {
-	const own = (name: string) => name.startsWith(`${NEXT}.`);
+	const own = isContractNodeType;
 	const sorted = (names: readonly string[] | undefined) => [...(names ?? [])].sort();
 	return {
 		nodes: nodes
@@ -93,7 +95,7 @@ function contractTypesOf({ nodes, credentials, knownNodes, knownCredentials }: S
 }
 
 /** n8n with n8n-nodes-base and the node contracts, after the post-processing of the loaders. */
-async function served(next: ContractNodeLoader) {
+async function served(contracts: readonly ContractNodeLoader[]) {
 	const instance = new LoadNodesAndCredentials(
 		mock(),
 		mock(),
@@ -106,10 +108,16 @@ async function served(next: ContractNodeLoader) {
 		mock(),
 	);
 	const nodesBase = new LazyPackageDirectoryLoader(path.join(PACKAGES, 'nodes-base'));
-	await Promise.all([nodesBase.loadAll(), next.loadAll()]);
-	instance.loaders = { 'n8n-nodes-base': nodesBase, [NEXT]: next };
+	await Promise.all([
+		nodesBase.loadAll(),
+		...contracts.map(async (loader) => await loader.loadAll()),
+	]);
+	instance.loaders = {
+		'n8n-nodes-base': nodesBase,
+		...Object.fromEntries(contracts.map((loader) => [loader.packageName, loader])),
+	};
 	await instance.postProcessLoaders();
-	const own = (name: string) => name in next.known.credentials;
+	const own = (name: string) => contracts.some(({ known }) => name in known.credentials);
 	const value: Served = {
 		nodes: instance.types.nodes,
 		credentials: instance.types.credentials.filter(({ name }) => own(name)),
@@ -124,34 +132,44 @@ async function served(next: ContractNodeLoader) {
 
 describe('ContractNodeLoader', () => {
 	it('serves the node and credential types that the generated class files served', async () => {
-		const value = await served(new ContractNodeLoader([], [], noStore));
+		const value = await served(
+			FIRST_PARTY_PACKAGES.map(
+				(pkg) => new ContractNodeLoader([], [], noStore, [], undefined, undefined, pkg),
+			),
+		);
 		const recorded: unknown = JSON.parse(
 			readFileSync(path.join(__dirname, 'fixtures/node-contracts-loader.types.json'), 'utf8'),
 		);
 		expect(contractTypesOf(value)).toEqual(recorded);
 	}, 30_000);
 
-	it('projects one node type for each bundled manifest, with Poll Times for a polling trigger', async () => {
-		const loader = new ContractNodeLoader([], [], noStore);
-		await loader.loadAll();
-		const ids = bundledIdsOf(embeddedStoreDirOf(nodesBaseNext));
+	it.each(FIRST_PARTY_PACKAGES)(
+		'projects one node type for each bundled manifest of $name, with Poll Times for a polling trigger',
+		async (pkg) => {
+			const loader = new ContractNodeLoader([], [], noStore, [], undefined, undefined, pkg);
+			await loader.loadAll();
+			const ids = bundledIdsOf(embeddedStoreDirOf(pkg));
 
-		expect(Object.keys(loader.known.nodes)).toHaveLength(ids.length);
-		expect(Object.keys(loader.known.credentials)).toHaveLength(bundledCredentialsOf().length);
-		for (const id of ids) {
-			const [head] = versionsOf(id);
-			if (!head) throw new Error(`${id} has no bundled HEAD`);
-			const description = nodeDescriptionOf(head.manifest);
-			const { type } = loader.getNode(description.name);
-			expect(type.description.defaultVersion).toBe(head.manifest.contract.version);
-			const served = loader.types.nodes.find(({ name }) => name === description.name);
-			const pollTimes = description.polling ? ['pollTimes'] : [];
-			expect(served?.properties.map(({ name }) => name)).toEqual([
-				...pollTimes,
-				...description.properties.map(({ name }) => name),
-			]);
-		}
-	});
+			expect(ids.length).toBeGreaterThan(0);
+			expect(Object.keys(loader.known.nodes)).toHaveLength(ids.length);
+			expect(Object.keys(loader.known.credentials)).toHaveLength(
+				bundledCredentialsOf(embeddedStoreDirOf(pkg)).length,
+			);
+			for (const id of ids) {
+				const [head] = versionsOf(id);
+				if (!head) throw new Error(`${id} has no bundled HEAD`);
+				const description = nodeDescriptionOf(head.manifest);
+				const { type } = loader.getNode(description.name);
+				expect(type.description.defaultVersion).toBe(head.manifest.contract.version);
+				const served = loader.types.nodes.find(({ name }) => name === description.name);
+				const pollTimes = description.polling ? ['pollTimes'] : [];
+				expect(served?.properties.map(({ name }) => name)).toEqual([
+					...pollTimes,
+					...description.properties.map(({ name }) => name),
+				]);
+			}
+		},
+	);
 
 	it('adds a stored major next to the bundled HEAD, and leaves the stored manifest as it is', async () => {
 		const id = 'notion.dataSource.pageAdded';
@@ -214,9 +232,11 @@ describe('ContractNodeLoader', () => {
 	});
 
 	it('loads only the node types that the node settings allow', async () => {
-		const excluded = new ContractNodeLoader([`${NEXT}.httpRequestGet`], [], noStore);
-		const included = new ContractNodeLoader([], [`${NEXT}.httpRequestGet`], noStore);
-		const otherPackage = new ContractNodeLoader([], ['n8n-nodes-base.httpRequest'], noStore);
+		const coreLoader = (exclude: string[], include: string[]) =>
+			new ContractNodeLoader(exclude, include, noStore, [], undefined, undefined, nodesCore);
+		const excluded = coreLoader(['@n8n/nodes-core.httpRequestGet'], []);
+		const included = coreLoader([], ['@n8n/nodes-core.httpRequestGet']);
+		const otherPackage = coreLoader([], ['n8n-nodes-base.httpRequest']);
 		await Promise.all([excluded.loadAll(), included.loadAll(), otherPackage.loadAll()]);
 
 		expect(excluded.known.nodes).not.toHaveProperty('httpRequestGet');
@@ -228,10 +248,12 @@ describe('ContractNodeLoader', () => {
 	it('does not load a version with a denied permission class, and warns and reports once for each', async () => {
 		const logger = mockInstance(Logger);
 		const events = mockInstance(EventService);
-		const all = new ContractNodeLoader([], [], noStore);
-		const egressInput = new ContractNodeLoader([], [], noStore, ['egress-input']);
-		const code = new ContractNodeLoader([], [], noStore, ['code']);
-		const others = new ContractNodeLoader([], [], noStore, ['files', 'full-community']);
+		const coreLoader = (deny: NodePermissionClass[]) =>
+			new ContractNodeLoader([], [], noStore, deny, undefined, undefined, nodesCore);
+		const all = coreLoader([]);
+		const egressInput = coreLoader(['egress-input']);
+		const code = coreLoader(['code']);
+		const others = coreLoader(['files', 'full-community']);
 		await Promise.all([all.loadAll(), egressInput.loadAll(), code.loadAll(), others.loadAll()]);
 		const refused = ({ known }: ContractNodeLoader) =>
 			Object.keys(all.known.nodes).filter((name) => !(name in known.nodes));
@@ -282,11 +304,11 @@ describe('ContractNodeLoader', () => {
 			mock(),
 		);
 		await Promise.all([next.loadAll(), core.loadAll()]);
-		instance.loaders = { [NEXT]: next, [nodesCore.name]: core };
+		instance.loaders = { [nodesIntegrations.name]: next, [nodesCore.name]: core };
 		await instance.postProcessLoaders();
 
 		expect(core.packageName).toBe('@n8n/nodes-core');
-		expect(Object.keys(core.known.nodes)).toEqual(['noOpPass']);
+		expect(Object.keys(core.known.nodes)).toContain('noOpPass');
 		expect(core.known.credentials).toEqual({});
 		expect(next.known.nodes).not.toHaveProperty('noOpPass');
 		expect(

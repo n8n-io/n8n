@@ -669,9 +669,10 @@ export function verifyStoreSignature(
 }
 
 /**
- * The contracts of one source package, as `freezePackage` and `publishPackage` read them. The
- * package folder holds one file for each action or trigger in `src/nodes/<node>/actions/`, and
- * the fixtures of each action in `fixtures/<id>.json`.
+ * One source package, as the host reads it. The package folder holds one file for each action or
+ * trigger in `src/nodes/<node>/actions/`, and the fixtures of each action in `fixtures/<id>.json`.
+ * `freezePackage` and `publishPackage` read only `name` and `dir`: they find the contracts in the
+ * action files.
  */
 export interface SourcePackage {
 	/** The package name, e.g. `@n8n/nodes-core`. It is the node type prefix of its contracts. */

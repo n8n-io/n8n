@@ -10,7 +10,7 @@ import { ExecutionsConfig, InstanceAiConfig } from '@n8n/config';
 import { ProcessedDataRepository, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { currentBuildTracingContext } from '@n8n/instance-ai';
-import { actionOfNode, exampleOf, matches } from '@n8n/nodes-base-next';
+import { actionOfNode, exampleOf, matches } from '@n8n/nodes-integrations';
 import { isRecord } from '@n8n/utils/is-record';
 import { sleep } from '@n8n/utils/sleep';
 import type { DataTableColumnInfo, WorkflowJSON } from '@n8n/workflow-sdk';
@@ -93,8 +93,8 @@ import {
 // Constants
 // ---------------------------------------------------------------------------
 
-const CONTRACT_WAIT_INTERVAL = '@n8n/nodes-base-next.waitInterval';
-const CONTRACT_WAIT_TYPES = new Set([CONTRACT_WAIT_INTERVAL, '@n8n/nodes-base-next.waitUntil']);
+const CONTRACT_WAIT_INTERVAL = '@n8n/nodes-core.waitInterval';
+const CONTRACT_WAIT_TYPES = new Set([CONTRACT_WAIT_INTERVAL, '@n8n/nodes-core.waitUntil']);
 
 /** Max output items per branch kept in the artifact. The full count lives in `outputCount`. */
 const MAX_OUTPUT_ITEMS_PER_BRANCH = 10;

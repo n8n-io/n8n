@@ -10,7 +10,11 @@ import path from 'node:path';
 import { Readable } from 'node:stream';
 import { parseArgs, promisify } from 'node:util';
 
-import { sandboxCredentialTypeOf, versionsOf } from '../../nodes-base-next/dist/index.js';
+import {
+	packageOf,
+	sandboxCredentialTypeOf,
+	versionsOf,
+} from '../../nodes-integrations/dist/index.js';
 import {
 	loadExecutor,
 	nodeDescriptionOf,
@@ -40,7 +44,6 @@ interface Workload {
 	readonly latencyMs?: number;
 }
 
-const FIXTURES = path.resolve(__dirname, '../../nodes-base-next/fixtures');
 const IN_PROCESS_RUNTIME: Runtime = { name: IN_PROCESS, runtime: undefined };
 
 // Under the package, not the OS temp dir: Docker in a VM (colima) mounts only shared paths.
@@ -74,9 +77,9 @@ const table = (...columns: string[]) =>
 const row = (...cells: string[]) => console.log(`| ${cells.join(' | ')} |`);
 
 const fixtureOf = (id: string, index = 0) => {
-	const fixture = parseFixtures(readFileSync(path.join(FIXTURES, `${id}.json`), 'utf8')).executions[
-		index
-	];
+	const fixture = parseFixtures(
+		readFileSync(path.join(packageOf(id).dir, 'fixtures', `${id}.json`), 'utf8'),
+	).executions[index];
 	if (!fixture) throw new Error(`${id} has no fixture ${index}`);
 	return fixture;
 };

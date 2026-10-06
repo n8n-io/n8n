@@ -2205,7 +2205,7 @@ describe('EvalExecutionService', () => {
 				({
 					id: name,
 					name,
-					type: '@n8n/nodes-base-next.dataTableRowExists',
+					type: '@n8n/nodes-core.dataTableRowExists',
 					typeVersion: 1,
 					position: [200, 0],
 					parameters: { table },

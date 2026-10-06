@@ -4,16 +4,16 @@
  * reads back only when its parameters match exactly.
  */
 
-export const SWITCH_NODE = { type: '@n8n/nodes-base-next.conditionSwitch', version: 1 };
-export const FILTER_NODE = { type: '@n8n/nodes-base-next.conditionFilter', version: 1 };
-export const WAIT_NODE = { type: '@n8n/nodes-base-next.waitInterval', version: 1 };
-export const STOP_NODE = { type: '@n8n/nodes-base-next.stopAndErrorStop', version: 1 };
-export const SPLIT_OUT_NODE = { type: '@n8n/nodes-base-next.itemsSplitOut', version: 1 };
+export const SWITCH_NODE = { type: '@n8n/nodes-core.conditionSwitch', version: 1 };
+export const FILTER_NODE = { type: '@n8n/nodes-core.conditionFilter', version: 1 };
+export const WAIT_NODE = { type: '@n8n/nodes-core.waitInterval', version: 1 };
+export const STOP_NODE = { type: '@n8n/nodes-core.stopAndErrorStop', version: 1 };
+export const SPLIT_OUT_NODE = { type: '@n8n/nodes-core.itemsSplitOut', version: 1 };
 export const NO_OP_NODE = { type: '@n8n/nodes-core.noOpPass', version: 1 };
 /** The item of a loop pass is a whole object, which the Edit Fields contract cannot emit. */
 export const LOOP_STATE_NODE = {
 	/** The type of a loop head and of its `<head> next` node. */
-	type: '@n8n/nodes-base-next.loopStateSet',
+	type: '@n8n/nodes-core.loopStateSet',
 	/** The type version of both nodes. */
 	version: 1,
 };
@@ -170,12 +170,12 @@ export type MergeJoin = 'append' | 'position' | { readonly left: string; readonl
  * `merge` builds the Merge node contracts. Append and combine by position count their inputs
  * (`inputs`, 2 when unset); combine by fields has the inputs left and right.
  */
-export const MERGE_APPEND_NODE = { type: '@n8n/nodes-base-next.mergeAppend', version: 2 };
+export const MERGE_APPEND_NODE = { type: '@n8n/nodes-core.mergeAppend', version: 2 };
 export const MERGE_POSITION_NODE = {
-	type: '@n8n/nodes-base-next.mergeCombineByPosition',
+	type: '@n8n/nodes-core.mergeCombineByPosition',
 	version: 1,
 };
-export const MERGE_COMBINE_NODE = { type: '@n8n/nodes-base-next.mergeCombine', version: 1 };
+export const MERGE_COMBINE_NODE = { type: '@n8n/nodes-core.mergeCombine', version: 1 };
 /** The most inputs of the Merge contracts. */
 export const MERGE_MAX_INPUTS = 10;
 

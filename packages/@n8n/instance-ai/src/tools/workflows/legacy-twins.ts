@@ -14,7 +14,7 @@ const codeOf = (node: NamedNode) =>
  */
 const LEGACY_TWINS = new Map<string, (node: NamedNode) => NamedNode>([
 	[
-		'@n8n/nodes-base-next.waitInterval',
+		'@n8n/nodes-core.waitInterval',
 		(node: NamedNode) => ({
 			...node,
 			type: WAIT_NODE_TYPE,
@@ -22,7 +22,7 @@ const LEGACY_TWINS = new Map<string, (node: NamedNode) => NamedNode>([
 		}),
 	],
 	[
-		'@n8n/nodes-base-next.waitUntil',
+		'@n8n/nodes-core.waitUntil',
 		(node: NamedNode) => ({
 			...node,
 			type: WAIT_NODE_TYPE,
@@ -30,7 +30,7 @@ const LEGACY_TWINS = new Map<string, (node: NamedNode) => NamedNode>([
 		}),
 	],
 	[
-		'@n8n/nodes-base-next.codeJavaScript',
+		'@n8n/nodes-core.codeJavaScript',
 		(node: NamedNode) => ({
 			...node,
 			type: 'n8n-nodes-base.code',
@@ -38,7 +38,7 @@ const LEGACY_TWINS = new Map<string, (node: NamedNode) => NamedNode>([
 		}),
 	],
 	[
-		'@n8n/nodes-base-next.codePython',
+		'@n8n/nodes-core.codePython',
 		(node: NamedNode) => ({
 			...node,
 			type: 'n8n-nodes-base.code',

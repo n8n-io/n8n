@@ -116,7 +116,7 @@ describe('native triggers', () => {
 			field: 'responseMode',
 			value: 'responseNode',
 		};
-		const generated = generatedTriggersOf(call, '@n8n/nodes-base-next.hooksTrigger');
+		const generated = generatedTriggersOf(call, '@n8n/nodes-integrations.hooksTrigger');
 		expect(
 			generated.map(({ nodeType, typeVersion, operation }) => [nodeType, typeVersion, operation]),
 		).toEqual([
@@ -164,10 +164,10 @@ describe('native triggers', () => {
 				cursor: { id: () => 1 },
 			},
 		});
-		expect(generatedTriggersOf(polled, '@n8n/nodes-base-next.hooksPolled')).toEqual([
+		expect(generatedTriggersOf(polled, '@n8n/nodes-integrations.hooksPolled')).toEqual([
 			{
 				contract: toContract(polled),
-				nodeType: '@n8n/nodes-base-next.hooksPolled',
+				nodeType: '@n8n/nodes-integrations.hooksPolled',
 				resource: undefined,
 				operation: 'polled',
 			},

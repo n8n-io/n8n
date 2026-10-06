@@ -18,8 +18,8 @@ export interface PinnedReadFilterResult {
 }
 
 // A condition the harness cannot evaluate counts as a match and lifts the limit, so no row the real node might return is dropped.
-const CONTRACT_ROW_GET = '@n8n/nodes-base-next.dataTableRowGet';
-const CONTRACT_ROW_EXISTS = '@n8n/nodes-base-next.dataTableRowExists';
+const CONTRACT_ROW_GET = '@n8n/nodes-core.dataTableRowGet';
+const CONTRACT_ROW_EXISTS = '@n8n/nodes-core.dataTableRowExists';
 
 const isObject = (value: unknown): value is Record<string, unknown> =>
 	typeof value === 'object' && value !== null && !Array.isArray(value);

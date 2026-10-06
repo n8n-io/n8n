@@ -575,7 +575,7 @@ describe('nodes tool', () => {
 			});
 			const input = {
 				action: 'explore-resources' as const,
-				nodeType: '@n8n/nodes-base-next.googleSheetsSheetRead',
+				nodeType: '@n8n/nodes-integrations.googleSheetsSheetRead',
 				version: 1,
 				methodName: 'googleSheets.sheet',
 				methodType: 'listSearch' as const,
@@ -1600,13 +1600,13 @@ describe('nodes tool', () => {
 						['n8n-nodes-base.compareDatasets', `${displayName} Compare Datasets`],
 					]),
 				);
-				const result = await executeTool<ModuleSearch & { builtIns?: string[] }>(
+				const result = await executeTool<ModuleSearch & { coreSteps?: string[] }>(
 					createNodesTool(context, 'full'),
 					{ action: 'search', query, limit: 10 },
 				);
 
-				expect(result.builtIns).toHaveLength(1);
-				expect(result.builtIns?.[0].startsWith(step)).toBe(true);
+				expect(result.coreSteps).toHaveLength(1);
+				expect(result.coreSteps?.[0].startsWith(step)).toBe(true);
 				expect(result).not.toHaveProperty('results');
 				expect(result).not.toHaveProperty('otherActions');
 				expect(result.otherNodes).toEqual([

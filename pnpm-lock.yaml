@@ -3122,9 +3122,9 @@ importers:
       '@n8n/node-sdk':
         specifier: workspace:*
         version: link:../node-sdk
-      '@n8n/nodes-base-next':
+      '@n8n/nodes-integrations':
         specifier: workspace:*
-        version: link:../nodes-base-next
+        version: link:../nodes-integrations
       '@n8n/utils':
         specifier: workspace:*
         version: link:../utils
@@ -3733,17 +3733,11 @@ importers:
         specifier: 'catalog:'
         version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10))(vite@8.0.2(@emnapi/core@1.11.2)(@emnapi/runtime@1.11.2)(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
 
-  packages/@n8n/nodes-base-next:
+  packages/@n8n/nodes-core:
     dependencies:
-      '@n8n/node-contract-compat':
-        specifier: workspace:*
-        version: link:../node-contract-compat
       '@n8n/node-sdk':
         specifier: workspace:*
         version: link:../node-sdk
-      '@n8n/nodes-core':
-        specifier: workspace:*
-        version: link:../nodes-core
       n8n-workflow:
         specifier: workspace:*
         version: link:../../workflow
@@ -3770,11 +3764,20 @@ importers:
         specifier: 'catalog:'
         version: 5.0.1(@opentelemetry/api@1.9.1)(@types/node@20.19.41)(@vitest/browser-playwright@5.0.1)(@vitest/coverage-istanbul@5.0.1)(@vitest/coverage-v8@5.0.1)(@vitest/ui@5.0.1)(jsdom@23.0.1(bufferutil@4.0.9)(supports-color@8.1.1)(utf-8-validate@5.0.10))(vite@8.0.2(@emnapi/core@1.11.2)(@emnapi/runtime@1.11.2)(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3))
 
-  packages/@n8n/nodes-core:
+  packages/@n8n/nodes-integrations:
     dependencies:
+      '@n8n/node-contract-compat':
+        specifier: workspace:*
+        version: link:../node-contract-compat
       '@n8n/node-sdk':
         specifier: workspace:*
         version: link:../node-sdk
+      '@n8n/nodes-core':
+        specifier: workspace:*
+        version: link:../nodes-core
+      n8n-workflow:
+        specifier: workspace:*
+        version: link:../../workflow
     devDependencies:
       '@n8n/eslint-config':
         specifier: workspace:*
@@ -3785,6 +3788,9 @@ importers:
       '@n8n/vitest-config':
         specifier: workspace:*
         version: link:../vitest-config
+      n8n-nodes-base:
+        specifier: workspace:*
+        version: link:../../nodes-base
       tsx:
         specifier: 'catalog:'
         version: 4.19.3
@@ -4895,9 +4901,9 @@ importers:
       '@n8n/node-engine-compatibility':
         specifier: workspace:*
         version: link:../@n8n/node-engine-compatibility
-      '@n8n/nodes-base-next':
+      '@n8n/nodes-integrations':
         specifier: workspace:*
-        version: link:../@n8n/nodes-base-next
+        version: link:../@n8n/nodes-integrations
       '@n8n/permissions':
         specifier: workspace:*
         version: link:../@n8n/permissions

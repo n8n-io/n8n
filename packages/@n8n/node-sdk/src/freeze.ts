@@ -381,16 +381,18 @@ export const lastPublishedIn =
 			.sort((a, b) => compareSemver(a.version, b.version))
 			.at(-1);
 
-/** The credential types of the contracts of a package that are not compat types. Each one has a credential manifest. */
-export const credentialTypesOf = ({
-	actions,
-	triggers,
-	natives,
-}: Pick<SourcePackage, 'actions' | 'triggers' | 'natives'>): AnyCredentialType[] =>
+/**
+ * The credential types of contracts that are not compat types, one for each id. Each one has a
+ * credential manifest.
+ */
+export const credentialTypesOf = (
+	contracts: ReadonlyArray<Action | Trigger>,
+): AnyCredentialType[] =>
+	// Two module loads give two objects for one type, so the key is the id.
 	[
-		...new Set(
-			[...actions, ...triggers, ...natives].flatMap(({ node }) => node.credential?.types ?? []),
-		),
+		...new Map(
+			contracts.flatMap(({ node }) => node.credential?.types ?? []).map((type) => [type.id, type]),
+		).values(),
 	].filter(({ scheme }) => scheme.kind !== 'compat');
 
 /** The source file and the export name of an action or a trigger with a bundle. */
@@ -403,63 +405,55 @@ export interface ActionEntry {
 	readonly action: Action | Trigger;
 }
 
-const looksLikeAction = (value: unknown) =>
-	isRecord(value) && typeof value.id === 'string' && isRecord(value.inputSchema);
+/** The contracts of a source package, as its action files export them. */
+export interface PackageContracts {
+	/** Each action and trigger with a bundle. */
+	readonly entries: readonly ActionEntry[];
+	/** The contracts that a legacy node runs. They have a manifest and no bundle. */
+	readonly natives: ReadonlyArray<Action | Trigger>;
+}
+
+// A built contract has these fields; other exports of an action file are helpers.
+const isContractExport = (value: unknown): value is Action | Trigger =>
+	isRecord(value) &&
+	typeof value.id === 'string' &&
+	typeof value.version === 'number' &&
+	isRecord(value.inputSchema) &&
+	isRecord(value.node);
 
 /**
- * The listed contract that an export is. It compares the id and the major, because tsx loads the
- * file again, outside the module system of the caller.
+ * The contracts of a package: the exports of its `src/nodes/<node>/actions/*.ts` files. An
+ * action file without a contract export is an error, because freeze would drop it without a
+ * sign. Two exports of one id and major are an error, because freeze would write two versions
+ * for one.
  */
-const listedAs = <C extends Action | Trigger>(listed: readonly C[], value: unknown) =>
-	isRecord(value)
-		? listed.find(({ id, version }) => id === value.id && version === value.version)
-		: undefined;
-
-/**
- * The entry of each action and trigger of a package. A file without a listed export, or an
- * action export that the package does not list, is an error, because freeze would drop it
- * without a sign. Two exports of one listed id and major are an error, because freeze would
- * write two bundles for one version.
- */
-export async function actionEntries(pkg: SourcePackage): Promise<ActionEntry[]> {
+export async function contractsOfPackage(
+	pkg: Pick<SourcePackage, 'name' | 'dir'>,
+): Promise<PackageContracts> {
 	const nodesDir = path.join(pkg.dir, 'src', 'nodes');
-	const contracts: ReadonlyArray<Action | Trigger> = [...pkg.actions, ...pkg.triggers];
-	const isListed = (value: unknown) =>
-		listedAs([...contracts, ...pkg.natives], value) !== undefined;
 	const files = readdirSync(nodesDir, { recursive: true, encoding: 'utf8' }).filter(
 		(file) => path.basename(path.dirname(file)) === 'actions' && file.endsWith('.ts'),
 	);
 	// tsx loads TypeScript in any caller: a tsx script, vitest or plain Node.
 	const { require: tsxRequire } = await import('tsx/cjs/api');
-	const modules = files.map((file) => {
+	const found = files.flatMap((file) => {
 		const entryFile = path.join(nodesDir, file);
 		const module: unknown = tsxRequire(entryFile, __filename);
-		return { file, entryFile, exported: isRecord(module) ? Object.entries(module) : [] };
+		return (isRecord(module) ? Object.entries(module) : []).flatMap(([exportName, action]) =>
+			isContractExport(action) ? [{ file, entryFile, exportName, action }] : [],
+		);
 	});
-	const unlisted = modules.flatMap(({ file, exported }) =>
-		exported.some(([, value]) => isListed(value))
-			? exported
-					.filter(([, value]) => looksLikeAction(value) && !isListed(value))
-					.map(([exportName]) => `${file}#${exportName}`)
-			: [file],
-	);
-	if (unlisted.length > 0) {
+	const empty = files.filter((file) => !found.some((entry) => entry.file === file));
+	if (empty.length > 0) {
 		throw new UserError(
-			`These action files or exports are not actions of ${pkg.name}: ${unlisted.join(', ')}. Add the action to its actions or triggers.`,
+			`These action files of ${pkg.name} export no action or trigger: ${empty.join(', ')}.`,
 		);
 	}
-	const entries = modules.flatMap(({ file, entryFile, exported }) =>
-		exported.flatMap(([exportName, value]) => {
-			const action = listedAs(contracts, value);
-			return action ? [{ file, entryFile, exportName, action }] : [];
-		}),
-	);
-	const repeated = contracts.flatMap((contract) => {
-		const exports = entries.filter(({ action }) => action === contract);
+	const keyOf = ({ action }: (typeof found)[number]) => `${action.id}@${action.version}`;
+	const repeated = [...new Set(found.map(keyOf))].flatMap((key) => {
+		const exports = found.filter((entry) => keyOf(entry) === key);
 		return exports.length > 1
-			? [
-					`${contract.id}@${contract.version} (${exports.map(({ file, exportName }) => `${file}#${exportName}`).join(', ')})`,
-				]
+			? [`${key} (${exports.map(({ file, exportName }) => `${file}#${exportName}`).join(', ')})`]
 			: [];
 	});
 	if (repeated.length > 0) {
@@ -467,7 +461,12 @@ export async function actionEntries(pkg: SourcePackage): Promise<ActionEntry[]> 
 			`These contracts of ${pkg.name} have more than one export: ${repeated.join('; ')}. Export each action once.`,
 		);
 	}
-	return entries.map(({ entryFile, exportName, action }) => ({ entryFile, exportName, action }));
+	return {
+		entries: found.flatMap(({ entryFile, exportName, action }) =>
+			action.native ? [] : [{ entryFile, exportName, action }],
+		),
+		natives: found.flatMap(({ action }) => (action.native ? [action] : [])),
+	};
 }
 
 /** The manifests that `freezePackage` writes. */
@@ -486,27 +485,26 @@ export interface FrozenPackage {
  * store in `outDir`: n8n loads every version there, so a removed contract must not stay from an
  * older build. The registry is the one record of published patches: with
  * `N8N_NODE_CONTRACTS_REGISTRY_URL`, each patch follows the newest published one, and without
- * it, each HEAD is patch 0.
+ * it, each HEAD is patch 0. It finds the contracts in the action files (`contractsOfPackage`).
  */
 export async function freezePackage(
-	pkg: SourcePackage,
+	pkg: Pick<SourcePackage, 'name' | 'dir'>,
 	outDir = embeddedStoreDirOf(pkg),
 ): Promise<FrozenPackage> {
 	const registryUrl = process.env.N8N_NODE_CONTRACTS_REGISTRY_URL;
 	const lastOf = registryUrl
 		? lastPublishedIn(storeReader(storeFilesOfUrl(registryUrl, async (url) => await fetch(url))))
 		: undefined;
+	const { entries, natives: sources } = await contractsOfPackage(pkg);
+	const types = credentialTypesOf([...entries.map(({ action }) => action), ...sources]);
 	const [frozen, credentials, natives] = await Promise.all([
-		actionEntries(pkg).then(
-			async (entries) =>
-				await Promise.all(
-					entries.map(
-						async ({ entryFile, exportName }) => await freezeAction(entryFile, exportName, lastOf),
-					),
-				),
+		Promise.all(
+			entries.map(
+				async ({ entryFile, exportName }) => await freezeAction(entryFile, exportName, lastOf),
+			),
 		),
-		Promise.all(credentialTypesOf(pkg).map(async (type) => await freezeCredential(type, lastOf))),
-		Promise.all(pkg.natives.map(async (native) => await freezeNative(native, lastOf))),
+		Promise.all(types.map(async (type) => await freezeCredential(type, lastOf))),
+		Promise.all(sources.map(async (native) => await freezeNative(native, lastOf))),
 	]);
 	const credentialManifests = credentials.flatMap((manifest) => manifest ?? []);
 	rmSync(outDir, { recursive: true, force: true });

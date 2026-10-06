@@ -1,5 +1,5 @@
 import type { GlobalConfig } from '@n8n/config';
-import { versionsOf } from '@n8n/nodes-base-next';
+import { FIRST_PARTY_PACKAGES, isContractNodeType, versionsOf } from '@n8n/nodes-integrations';
 import { LazyPackageDirectoryLoader } from 'n8n-core';
 import type { INodeProperties, INodeTypeDescription, IVersionedNodeType } from 'n8n-workflow';
 import path from 'node:path';
@@ -32,16 +32,23 @@ async function postProcessed(nodeContractsEnabled: boolean, excludeContractNodes
 	await langchain.loadAll();
 	// As in production, n8n builds no contract loader when node contracts are off.
 	if (nodeContractsEnabled) {
-		const next = new ContractNodeLoader(
-			excludeContractNodes,
-			[],
-			async () => ({ versions: async () => new Map(), credentials: async () => new Map() }),
-			[],
-			undefined,
-			() => legacyLoaders,
+		const contracts = FIRST_PARTY_PACKAGES.map(
+			(pkg) =>
+				new ContractNodeLoader(
+					excludeContractNodes,
+					[],
+					async () => ({ versions: async () => new Map(), credentials: async () => new Map() }),
+					[],
+					undefined,
+					() => legacyLoaders,
+					pkg,
+				),
 		);
-		await next.loadAll();
-		instance.loaders = { ...legacyLoaders, '@n8n/nodes-base-next': next };
+		await Promise.all(contracts.map(async (loader) => await loader.loadAll()));
+		instance.loaders = {
+			...legacyLoaders,
+			...Object.fromEntries(contracts.map((loader) => [loader.packageName, loader])),
+		};
 	} else {
 		instance.loaders = legacyLoaders;
 	}
@@ -50,8 +57,6 @@ async function postProcessed(nodeContractsEnabled: boolean, excludeContractNodes
 }
 
 const versionOf = ({ version }: INodeTypeDescription) => [version].flat().join(',');
-
-const NEXT = '@n8n/nodes-base-next';
 
 /** The nodes panel items and the node types that each lists as its actions, as the editor reads them. */
 function nodesPanelOf({ types }: LoadNodesAndCredentials) {
@@ -118,40 +123,46 @@ describe('composeContractNodes', () => {
 		const slack = panel.get('n8n-nodes-base.slack');
 		expect(slack).toHaveLength(11);
 		expect(slack).toEqual(
-			expect.arrayContaining([`${NEXT}.slackMessageSend`, `${NEXT}.slackMessageUpdate`]),
+			expect.arrayContaining([
+				'@n8n/nodes-integrations.slackMessageSend',
+				'@n8n/nodes-integrations.slackMessageUpdate',
+			]),
 		);
-		expect(panel.get('n8n-nodes-base.github')).toContain(`${NEXT}.githubRepositoryEvent`);
-		expect(panel.get('n8n-nodes-base.notion')).toContain(`${NEXT}.notionDataSourcePageAdded`);
-		expect(panel.get('n8n-nodes-base.if')).toEqual([`${NEXT}.conditionIf`]);
+		expect(panel.get('n8n-nodes-base.github')).toContain(
+			'@n8n/nodes-integrations.githubRepositoryEvent',
+		);
+		expect(panel.get('n8n-nodes-base.notion')).toContain(
+			'@n8n/nodes-integrations.notionDataSourcePageAdded',
+		);
+		expect(panel.get('n8n-nodes-base.if')).toEqual(['@n8n/nodes-core.conditionIf']);
 		expect(panel.get('@n8n/n8n-nodes-langchain.openAi')).toEqual(
-			expect.arrayContaining([`${NEXT}.openAiTextMessage`]),
+			expect.arrayContaining(['@n8n/nodes-integrations.openAiTextMessage']),
 		);
 		expect(panel.get('n8n-nodes-base.discord')).toEqual([]);
 		expect(panel.get('@n8n/n8n-nodes-langchain.lmChatAnthropic')).toEqual([]);
-		expect([...panel.keys()].filter((name) => name.startsWith(`${NEXT}.`))).toEqual([]);
-		expect(instance.getNode(`${NEXT}.slackMessageSend`).type).toBeDefined();
+		expect([...panel.keys()].filter(isContractNodeType)).toEqual([]);
+		expect(instance.getNode('@n8n/nodes-integrations.slackMessageSend').type).toBeDefined();
 	});
 
 	it('hides the tool variants, the providers and the contract node types without a legacy node', async () => {
 		const instance = await postProcessed(true);
-		const typesOf = (name: string) =>
-			instance.types.nodes.filter((type) => type.name === `${NEXT}.${name}`);
+		const typesOf = (name: string) => instance.types.nodes.filter((type) => type.name === name);
 
 		for (const name of [
-			'httpRequestGetTool',
-			'anthropicChatModel',
-			'openAiChatModel',
-			'aiPrompt',
+			'@n8n/nodes-core.httpRequestGetTool',
+			'@n8n/nodes-integrations.anthropicChatModel',
+			'@n8n/nodes-integrations.openAiChatModel',
+			'@n8n/nodes-core.aiPrompt',
 		]) {
 			expect(typesOf(name).length).toBeGreaterThan(0);
 			expect(typesOf(name).every((type) => type.hidden && !type.nodeCreatorItem)).toBe(true);
 		}
-		expect(instance.recognizesNode(`${NEXT}.anthropicChatModel`)).toBe(true);
+		expect(instance.recognizesNode('@n8n/nodes-integrations.anthropicChatModel')).toBe(true);
 	});
 
 	it('adds an agent tool node type for each tool action, which supplies its tool', async () => {
 		const instance = await postProcessed(true);
-		const tool = '@n8n/nodes-base-next.httpRequestGetTool';
+		const tool = '@n8n/nodes-core.httpRequestGetTool';
 		const description = instance.types.nodes.find(({ name }) => name === tool);
 
 		expect(description).toMatchObject({ outputs: ['ai_tool'], inputs: [], hidden: true });
@@ -182,14 +193,14 @@ describe('composeContractNodes', () => {
 					[type.version].flat().includes(type.defaultVersion ?? -1),
 			);
 		const pairs = [
-			['slackMessageSend', 'slack', 'Send a message'],
-			['notionDatabasePageGetAll', 'notion', 'Get many database pages'],
-			['itemsSet', 'set', 'Edit fields'],
-			['httpRequestGet', 'httpRequest', 'GET a URL'],
+			['@n8n/nodes-integrations.slackMessageSend', 'slack', 'Send a message'],
+			['@n8n/nodes-integrations.notionDatabasePageGetAll', 'notion', 'Get many database pages'],
+			['@n8n/nodes-core.itemsSet', 'set', 'Edit fields'],
+			['@n8n/nodes-core.httpRequestGet', 'httpRequest', 'GET a URL'],
 		] as const;
 
 		for (const [contract, legacy, action] of pairs) {
-			const type = typeOf(`@n8n/nodes-base-next.${contract}`);
+			const type = typeOf(contract);
 			const twin = legacyOf(`n8n-nodes-base.${legacy}`);
 			expect(twin?.codex?.categories?.length).toBeGreaterThan(0);
 			expect(type).toMatchObject({
@@ -203,15 +214,14 @@ describe('composeContractNodes', () => {
 				twin?.iconColor,
 			]);
 			expect(type?.codex?.alias).toBeUndefined();
-			const loaded = instance.getNode(`@n8n/nodes-base-next.${contract}`)
-				.type as IVersionedNodeType;
+			const loaded = instance.getNode(contract).type as IVersionedNodeType;
 			const { icon, iconUrl, codex } = loaded.getNodeType().description;
 			expect([icon, iconUrl, codex]).toEqual([type?.icon, type?.iconUrl, type?.codex]);
 		}
-		expect(typeOf('@n8n/nodes-base-next.slackMessageSend')?.iconUrl).toBe(
+		expect(typeOf('@n8n/nodes-integrations.slackMessageSend')?.iconUrl).toBe(
 			'icons/n8n-nodes-base/dist/nodes/Slack/slack.svg',
 		);
-		const tool = '@n8n/nodes-base-next.httpRequestGetTool';
+		const tool = '@n8n/nodes-core.httpRequestGetTool';
 		const nodeTypes = new NodeTypes(mock(), instance);
 		expect([typeOf(tool)?.icon, nodeTypes.getByNameAndVersion(tool).description.icon]).toEqual([
 			'node:http-request',
@@ -223,12 +233,12 @@ describe('composeContractNodes', () => {
 		const instance = await postProcessed(true);
 		const typeOf = (name: string) => instance.types.nodes.find((type) => type.name === name);
 
-		expect(typeOf('@n8n/nodes-base-next.aiPrompt')).toMatchObject({
+		expect(typeOf('@n8n/nodes-core.aiPrompt')).toMatchObject({
 			icon: 'node:basic-llm-chain',
 			subtitle: 'Prompt a model',
 		});
-		expect(typeOf('@n8n/nodes-base-next.aiPrompt')?.codex).toBeUndefined();
-		const xAi = typeOf('@n8n/nodes-base-next.xAiChatModel');
+		expect(typeOf('@n8n/nodes-core.aiPrompt')?.codex).toBeUndefined();
+		const xAi = typeOf('@n8n/nodes-integrations.xAiChatModel');
 		expect([xAi?.icon, xAi?.iconUrl, xAi?.codex]).toEqual([undefined, undefined, undefined]);
 	});
 
@@ -248,7 +258,7 @@ describe('composeContractNodes', () => {
 		expect(notion.map(versionOf)).toEqual(['2,2.1,2.2', '3', '1']);
 		expect(notion.map(({ defaultVersion }) => defaultVersion)).toEqual([3, 3, 3]);
 		expect(
-			instance.types.nodes.some(({ hidden, name }) => hidden && name.startsWith(`${NEXT}.`)),
+			instance.types.nodes.some(({ hidden, name }) => hidden && isContractNodeType(name)),
 		).toBe(false);
 		expect(
 			instance.types.nodes
@@ -261,7 +271,9 @@ describe('composeContractNodes', () => {
 	});
 
 	it('does not add Notion v4 when the contract loader does not load the action of its slot', async () => {
-		const instance = await postProcessed(true, ['@n8n/nodes-base-next.notionDatabasePageGetAll']);
+		const instance = await postProcessed(true, [
+			'@n8n/nodes-integrations.notionDatabasePageGetAll',
+		]);
 		const notion = instance.types.nodes.filter(({ name }) => name === NOTION);
 
 		expect(notion.map(versionOf)).toEqual(['2,2.1,2.2', '3', '1']);

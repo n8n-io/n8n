@@ -132,20 +132,24 @@ interface ShippedManifest {
 	reply?: { contract: { input: JsonSchema; output: JsonSchema } };
 }
 
-const STORE_DIR = path.resolve(__dirname, '../../../nodes-base-next/dist/store');
+const STORE_DIRS = ['nodes-core', 'nodes-integrations'].map((name) =>
+	path.resolve(__dirname, '../../..', name, 'dist/store'),
+);
 
-/** Each manifest of each version in the store that nodes-base-next builds. */
+/** Each manifest of each version in the stores that the first-party source packages build. */
 const shippedManifests = () =>
-	readdirSync(path.join(STORE_DIR, 'index')).flatMap((file) => {
-		const id = path.basename(file, '.ndjson');
-		const records = parseStoreIndex(readFileSync(path.join(STORE_DIR, 'index', file), 'utf8'), id);
-		return records.map(({ version, manifest }) => ({
-			file: `${id}@${version}`,
-			manifest: JSON.parse(
-				readFileSync(path.join(STORE_DIR, storeBlobFileOf(manifest)), 'utf8'),
-			) as ShippedManifest,
-		}));
-	});
+	STORE_DIRS.flatMap((storeDir) =>
+		readdirSync(path.join(storeDir, 'index')).flatMap((file) => {
+			const id = path.basename(file, '.ndjson');
+			const records = parseStoreIndex(readFileSync(path.join(storeDir, 'index', file), 'utf8'), id);
+			return records.map(({ version, manifest }) => ({
+				file: `${id}@${version}`,
+				manifest: JSON.parse(
+					readFileSync(path.join(storeDir, storeBlobFileOf(manifest)), 'utf8'),
+				) as ShippedManifest,
+			}));
+		}),
+	);
 
 /** The parsed WIT, with lookups by name. Items newer than `implemented` stay out. */
 function shapeOf(pkg: WitPackage, implemented = pkg.version) {
@@ -639,7 +643,7 @@ describe('spec/manifest.schema.json', () => {
 			);
 		});
 
-		it('accepts each manifest that nodes-base-next ships, with exactly one branch', () => {
+		it('accepts each manifest that the first-party packages ship, with exactly one branch', () => {
 			const shipped = shippedManifests();
 			expect(shipped.length).toBeGreaterThan(100);
 			const failures = shipped.flatMap(({ file, manifest }) => {
@@ -659,7 +663,7 @@ describe('spec/manifest.schema.json', () => {
 			expect(shipped.some(({ manifest }) => 'native' in manifest)).toBe(true);
 		});
 
-		it('compiles each contract and credential schema that nodes-base-next ships', () => {
+		it('compiles each contract and credential schema that the first-party packages ship', () => {
 			const schemas = shippedManifests().flatMap(({ file, manifest }) =>
 				[
 					manifest.fields,

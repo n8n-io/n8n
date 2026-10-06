@@ -29,13 +29,16 @@ The code calls these "node contracts". The product name is "next nodes"
 flowchart BT
   sdk["@n8n/node-sdk<br/>author API, spec, host runtime,<br/>store format, runtimes"]
   compat["@n8n/node-contract-compat<br/>legacy ↔ contract"]
-  base["@n8n/nodes-base-next<br/>first-party nodes, embedded store,<br/>instance registry logic"]
+  base["@n8n/nodes-integrations<br/>integration nodes, embedded store,<br/>instance registry logic"]
+  core["@n8n/nodes-core<br/>core nodes, embedded store"]
   wsdk["@n8n/workflow-sdk/next<br/>typed workflow code"]
   ai["@n8n/instance-ai<br/>AI workflow builder"]
   cli["cli<br/>n8n wiring"]
   legacy["n8n-nodes-base<br/>legacy nodes"]
   base --> sdk
   base --> compat
+  base --> core
+  core --> sdk
   compat --> sdk
   ai --> base
   ai --> compat
@@ -47,15 +50,15 @@ flowchart BT
 | Package | Has | Read first |
 |---|---|---|
 | `@n8n/node-sdk` | `defineNode` and `t` for authors; the spec (`spec/`); the host side that makes n8n node types from frozen versions (`toVersionedNodeType`); freeze, publish and the store format; the guest runtimes and the sandbox | `src/runtime.ts`, `src/sandbox.ts`, `src/runtime-policy.ts` |
-| `@n8n/nodes-base-next` | First-party nodes (`src/nodes/<service>/actions/*.ts`); the list of first-party packages (`FIRST_PARTY_PACKAGES`); the instance logic that has no n8n dependency: origin, admission, pins, version resolution, sync, import and export | `src/index.ts`, `src/registry.ts`, `src/contract-registry.ts`, `src/migrated.ts` |
-| `@n8n/nodes-core` | Core nodes (`noOp` only, as the proof that n8n loads more than one first-party package) | `src/index.ts` |
+| `@n8n/nodes-integrations` | Integration nodes, one vendor each (`src/nodes/<service>/actions/*.ts`); the list of first-party packages (`FIRST_PARTY_PACKAGES`); the instance logic that has no n8n dependency: origin, admission, pins, version resolution, sync, import and export | `src/index.ts`, `src/registry.ts`, `src/contract-registry.ts`, `src/migrated.ts` |
+| `@n8n/nodes-core` | Core nodes: flow control, item transforms, host features (wait, webhook, form, schedule, data tables, code), HTTP Request and the AI roots. The engine and the flow SDK may name them by type | `src/index.ts` |
 | `@n8n/node-contract-compat` | Derives manifests and typed modules from legacy node descriptions; composes a legacy node version where contract actions run some operations | `src/derive/`, `src/migrate/` |
 | `@n8n/workflow-sdk` (`/next`) | The typed workflow code that the AI builder writes. `@n8n/node-sdk/codegen` makes the module text of each node for it | `src/next/flow.ts` |
 | `@n8n/instance-ai` | Offers the typed node modules to the agent and builds the workflow | `src/tools/next-modules.ts`, `src/tools/workflows/next-workflow-build.ts` |
 | `cli` | Loads the node types, pins each contract node at save, keeps the store in the database, makes the runtimes, syncs from the registry, and has the `contracts:*` commands | `src/load-nodes-and-credentials.ts`, `src/node-contracts-*.ts`, `src/commands/contracts/` |
 | `@n8n/config`, `@n8n/db` | The settings (`instance-ai.config.ts`, `nodes.config.ts`) and the tables `node_contract_version` and `node_contract_status` | — |
 
-`@n8n/nodes-base-next` keeps n8n-specific code out: `cli` gives it the database rows, the keys,
+`@n8n/nodes-integrations` keeps n8n-specific code out: `cli` gives it the database rows, the keys,
 the runtimes and the logger through `useContractRegistry`. So the same logic runs in tests and
 scripts without n8n.
 
@@ -65,7 +68,7 @@ scripts without n8n.
 |---|---|---|
 | Unit | One class with all resources and operations | One action per operation |
 | Description | Written by hand in the class | Made from the contract (`nodeDescriptionOf`) |
-| n8n type | `n8n-nodes-base.notion`, `typeVersion` set in the class | `@n8n/nodes-base-next.<nodeNameOf(id)>`, `typeVersion` = action major |
+| n8n type | `n8n-nodes-base.notion`, `typeVersion` set in the class | `<source package>.<nodeNameOf(id)>`, e.g. `@n8n/nodes-core.httpRequestGet`; `typeVersion` = action major |
 | Old versions | Kept in the class code | Separate frozen versions in a store |
 | Comes from | The release only | The release (HEAD), the registry, or an import |
 | Permissions | None declared | Declared in the manifest, checked by the host |
@@ -73,7 +76,7 @@ scripts without n8n.
 
 The engine sees both as `INodeType` in one registry (`LoadNodesAndCredentials`). Bridges:
 
-- **Composed versions.** `MIGRATED_NODES` (`nodes-base-next/src/migrated.ts`) adds a new
+- **Composed versions.** `MIGRATED_NODES` (`nodes-integrations/src/migrated.ts`) adds a new
   version of a legacy node, for example Notion v4. A contract action runs some operations, and
   the legacy version runs the rest (`migrateVersion` of compat). A user sees one Notion node.
 - **Hidden single types.** The nodes panel hides the type of each single action
@@ -81,7 +84,7 @@ The engine sees both as `INodeType` in one registry (`LoadNodesAndCredentials`).
 - **Credentials.** A contract credential type replaces the legacy type of the same name, for
   example `notionApi`. So legacy and contract nodes use one credential
   (`preferContractCredentials`).
-- **Native contracts.** A legacy trigger or flow node can have a manifest and no bundle. The
+- **Native contracts.** A legacy trigger or core node can have a manifest and no bundle. The
   legacy node runs it; the manifest gives the AI builder and the store its contract.
 - **Derived modules.** For a legacy node without a contract, the AI builder derives a typed
   module from its description (`deriveModuleVersion` of compat).
@@ -108,8 +111,9 @@ An author writes `defineNode` and one `node.action(...)` per operation, then run
 
 ### 2. Freeze
 
-`pnpm freeze` in each first-party package (part of `build`) calls `freezePackage`. It bundles
-each action and writes its manifest, bundle and fixtures into `dist/store`.
+`pnpm freeze` in each first-party package (part of `build`) calls `freezePackage`. It finds the
+contracts in the exports of `src/nodes/<node>/actions/*.ts`, with no list. It bundles each action
+and writes its manifest, bundle and fixtures into `dist/store`.
 `pnpm publish:contracts` calls `publishPackage`. Freeze sets the patch number and the lowest
 Node Contract version that the bundle needs. The same source gives the same bytes. The release
 ships this store, so its versions are first-party with no key check. Details:
@@ -166,7 +170,7 @@ so a node of a major that arrived after start does not fail with `NodeVersionNot
 sequenceDiagram
   participant E as engine
   participant T as node type (node-sdk)
-  participant V as version loader (nodes-base-next)
+  participant V as version loader (nodes-integrations)
   participant P as executor loader (node-sdk)
   participant G as guest runtime
   E->>T: execute()
@@ -210,7 +214,7 @@ sequenceDiagram
   every path. See [node-contract.md, Rules](node-contract.md#rules).
 
 The seams are two setters in `@n8n/node-sdk/src/runtime.ts`: `setContractVersionLoader` and
-`setExecutorLoader`. `useContractRegistry` (`nodes-base-next`) sets both at start, and
+`setExecutorLoader`. `useContractRegistry` (`nodes-integrations`) sets both at start, and
 `useNodeContractsRegistry` (`cli`) calls it with the n8n settings.
 
 ## Versions in one view

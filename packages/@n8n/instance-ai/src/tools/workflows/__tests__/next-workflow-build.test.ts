@@ -1,4 +1,4 @@
-import type { WorkflowNodeRef } from '@n8n/nodes-base-next';
+import type { WorkflowNodeRef } from '@n8n/nodes-integrations';
 import type { IDataObject, WorkflowJSON } from '@n8n/workflow-sdk';
 import * as flowSdk from '@n8n/workflow-sdk/next';
 import {
@@ -44,8 +44,8 @@ import {
 } from '../next-workflow-build';
 
 // The HTTP GET action with its body schema and pages in the Options collection of the form.
-vi.mock('@n8n/nodes-base-next', async (importOriginal) => {
-	const original = await importOriginal<typeof import('@n8n/nodes-base-next')>();
+vi.mock('@n8n/nodes-integrations', async (importOriginal) => {
+	const original = await importOriginal<typeof import('@n8n/nodes-integrations')>();
 	const get = original.actions.find(({ id }) => id === 'httpRequest.get');
 	const advanced = get && { ...get, ui: { advanced: ['schema', 'pages'] } };
 	return {
@@ -121,7 +121,7 @@ import { googleGemini } from '@n8n/nodes/googleGemini';`;
 				{
 					id: '1',
 					name: 'Done tasks',
-					type: '@n8n/nodes-base-next.notionDatabasePageGetAll',
+					type: '@n8n/nodes-integrations.notionDatabasePageGetAll',
 					typeVersion: 1,
 					position: [0, 0],
 					parameters: {
@@ -165,7 +165,7 @@ import { googleGemini } from '@n8n/nodes/googleGemini';`;
 				{
 					id: '1',
 					name: 'Get',
-					type: '@n8n/nodes-base-next.gmailMessageGet',
+					type: '@n8n/nodes-integrations.gmailMessageGet',
 					typeVersion: 2,
 					position: [0, 0],
 					parameters: { messageId: 'm1', simplify: false, downloadAttachments: true },
@@ -186,7 +186,7 @@ import { googleGemini } from '@n8n/nodes/googleGemini';`;
 				{
 					id: '1',
 					name: 'Lookup',
-					type: '@n8n/nodes-base-next.httpRequestGet',
+					type: '@n8n/nodes-core.httpRequestGet',
 					typeVersion: 3,
 					position: [0, 0],
 					parameters: { url: 'https://api.example.com/x', fullResponse: true, neverError: true },
@@ -218,10 +218,10 @@ import { googleGemini } from '@n8n/nodes/googleGemini';`;
 			name: 'Continue',
 			connections: {},
 			nodes: [
-				step('Post', '@n8n/nodes-base-next.httpRequestSend', 'continueRegularOutput'),
+				step('Post', '@n8n/nodes-core.httpRequestSend', 'continueRegularOutput'),
 				step('Fields', 'n8n-nodes-base.set', 'continueRegularOutput'),
-				step('Plain', '@n8n/nodes-base-next.httpRequestSend'),
-				step('Exists', '@n8n/nodes-base-next.dataTableRowExists', 'continueRegularOutput'),
+				step('Plain', '@n8n/nodes-core.httpRequestSend'),
+				step('Exists', '@n8n/nodes-core.dataTableRowExists', 'continueRegularOutput'),
 			],
 		};
 		const text = nodeOutputsDeclaration(workflow);
@@ -248,14 +248,14 @@ import { googleGemini } from '@n8n/nodes/googleGemini';`;
 			name: 'Lists',
 			connections: {},
 			nodes: [
-				node('Get', '@n8n/nodes-base-next.gmailMessageGet', { messageId: '={{ $json.id }}' }),
-				node('Set', '@n8n/nodes-base-next.itemsSet', {
+				node('Get', '@n8n/nodes-integrations.gmailMessageGet', { messageId: '={{ $json.id }}' }),
+				node('Set', '@n8n/nodes-core.itemsSet', {
 					fields: { quoted: '={{ "={{ $json.id }}" }}', plain: 'text' },
 				}),
 				node('Code', 'n8n-nodes-base.code', { jsCode: 'return $input.all();' }),
 				node('Python', 'n8n-nodes-base.code', { language: 'python', pythonCode: 'return []' }),
-				node('Step', '@n8n/nodes-base-next.codeJavaScript', { code: 'return [{ n: 1 }];' }),
-				node('Python step', '@n8n/nodes-base-next.codePython', { code: 'return []' }),
+				node('Step', '@n8n/nodes-core.codeJavaScript', { code: 'return [{ n: 1 }];' }),
+				node('Python step', '@n8n/nodes-core.codePython', { code: 'return []' }),
 			],
 		};
 		expect(JSON.parse(workflowExpressions(workflow))).toEqual({
@@ -354,14 +354,14 @@ import { googleGemini } from '@n8n/nodes/googleGemini';`;
 				name: 'Static',
 				connections: {},
 				nodes: [
-					node('Pages', '@n8n/nodes-base-next.notionDatabasePageGetAll', {
+					node('Pages', '@n8n/nodes-integrations.notionDatabasePageGetAll', {
 						database: 'not-an-id',
 						limit: 0,
 					}),
-					node('Mail', '@n8n/nodes-base-next.gmailMessageGetAll', {
+					node('Mail', '@n8n/nodes-integrations.gmailMessageGetAll', {
 						paging: { mode: 'limit', max: 0 },
 					}),
-					node('Mail text', '@n8n/nodes-base-next.gmailMessageGetAll', {
+					node('Mail text', '@n8n/nodes-integrations.gmailMessageGetAll', {
 						paging: ' {"mode":"limit","max":0}',
 					}),
 				],
@@ -381,16 +381,16 @@ import { googleGemini } from '@n8n/nodes/googleGemini';`;
 				name: 'Probes',
 				connections: {},
 				nodes: [
-					node('B3', '@n8n/nodes-base-next.notionDatabasePageGetAll', {
+					node('B3', '@n8n/nodes-integrations.notionDatabasePageGetAll', {
 						database: '<Notion tasks database ID>',
 					}),
-					node('B6 fraction', '@n8n/nodes-base-next.gmailMessageGetAll', {
+					node('B6 fraction', '@n8n/nodes-integrations.gmailMessageGetAll', {
 						paging: { mode: 'limit', max: 2.5 },
 					}),
-					node('B6 zero', '@n8n/nodes-base-next.gmailMessageGetAll', {
+					node('B6 zero', '@n8n/nodes-integrations.gmailMessageGetAll', {
 						paging: { mode: 'limit', max: 0 },
 					}),
-					node('B8', '@n8n/nodes-base-next.googleSheetsSheetRead', {
+					node('B8', '@n8n/nodes-integrations.googleSheetsSheetRead', {
 						spreadsheet: '1abcdefghijklmnopqrstuvwxyz0123',
 						sheet: { mode: 'id', id: 'Sheet1' },
 					}),
@@ -422,7 +422,7 @@ import { googleGemini } from '@n8n/nodes/googleGemini';`;
 				name: 'Names',
 				connections: {},
 				nodes: [
-					node('Add row', '@n8n/nodes-base-next.googleSheetsSheetAppend', {
+					node('Add row', '@n8n/nodes-integrations.googleSheetsSheetAppend', {
 						spreadsheet: 'Invoice Tracker 2026',
 						sheet: { mode: 'id', id: 'Invoices' },
 					}),
@@ -441,11 +441,11 @@ import { googleGemini } from '@n8n/nodes/googleGemini';`;
 				name: 'Tools',
 				connections: {},
 				nodes: [
-					node('Pages', '@n8n/nodes-base-next.notionDatabasePageGetAllTool', {
+					node('Pages', '@n8n/nodes-integrations.notionDatabasePageGetAllTool', {
 						database: 'not-an-id',
 						limit: "={{ $fromAi('limit') }}",
 					}),
-					node('Model pages', '@n8n/nodes-base-next.notionDatabasePageGetAllTool', {
+					node('Model pages', '@n8n/nodes-integrations.notionDatabasePageGetAllTool', {
 						database: "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('database') }}",
 					}),
 				],
@@ -459,7 +459,7 @@ import { googleGemini } from '@n8n/nodes/googleGemini';`;
 
 		it('fails an expression in a binary field and takes the key of a binary of the item', () => {
 			const send = (name: string, file: unknown) =>
-				node(name, '@n8n/nodes-base-next.httpRequestSend', {
+				node(name, '@n8n/nodes-core.httpRequestSend', {
 					method: 'POST',
 					url: 'https://archive.example.com/api/upload',
 					body: { kind: 'binary', file },
@@ -479,14 +479,14 @@ import { googleGemini } from '@n8n/nodes/googleGemini';`;
 				name: 'Later',
 				connections: {},
 				nodes: [
-					node('Pages', '@n8n/nodes-base-next.notionDatabasePageGetAll', {
+					node('Pages', '@n8n/nodes-integrations.notionDatabasePageGetAll', {
 						database: '={{ $json.db }}',
 						limit: '={{ $json.limit }}',
 					}),
-					node('User', '@n8n/nodes-base-next.notionUserGet', {
+					node('User', '@n8n/nodes-integrations.notionUserGet', {
 						user: '<__PLACEHOLDER_VALUE__Notion user ID__>',
 					}),
-					node('Mail', '@n8n/nodes-base-next.gmailMessageGet', {}),
+					node('Mail', '@n8n/nodes-integrations.gmailMessageGet', {}),
 					node('Other', 'n8n-nodes-base.noOp', { database: 'not-an-id' }),
 				],
 			};
@@ -503,7 +503,7 @@ import { googleGemini } from '@n8n/nodes/googleGemini';`;
 				{
 					id: '1',
 					name: 'Tasks',
-					type: '@n8n/nodes-base-next.notionDatabasePageGetAll',
+					type: '@n8n/nodes-integrations.notionDatabasePageGetAll',
 					typeVersion: 1,
 					position: [0, 0],
 					parameters: { database: `https://www.notion.so/Tasks-${databaseId}` },
@@ -696,17 +696,17 @@ import { googleGemini } from '@n8n/nodes/googleGemini';`;
 			name: 'Pages',
 			connections: chain('Get Pages', 'Keep Open', 'Build Rows', 'Shape', 'Summarize', 'Upsert'),
 			nodes: [
-				node('Get Pages', '@n8n/nodes-base-next.notionDatabasePageGetAll', { database: 'x' }),
-				node('Keep Open', '@n8n/nodes-base-next.conditionFilter', {}),
-				node('Build Rows', '@n8n/nodes-base-next.itemsSet', {
+				node('Get Pages', '@n8n/nodes-integrations.notionDatabasePageGetAll', { database: 'x' }),
+				node('Keep Open', '@n8n/nodes-core.conditionFilter', {}),
+				node('Build Rows', '@n8n/nodes-core.itemsSet', {
 					fields: { Region: '={{ $json.property_region }}' },
 				}),
-				node('Shape', '@n8n/nodes-base-next.codeJavaScript', { code: 'return $input.all();' }),
-				node('Summarize', '@n8n/nodes-base-next.openAiTextMessage', {
+				node('Shape', '@n8n/nodes-core.codeJavaScript', { code: 'return $input.all();' }),
+				node('Summarize', '@n8n/nodes-integrations.openAiTextMessage', {
 					model: 'gpt-5',
 					prompt: 'Sum up',
 				}),
-				node('Upsert', '@n8n/nodes-base-next.googleSheetsSheetAppendOrUpdate', {
+				node('Upsert', '@n8n/nodes-integrations.googleSheetsSheetAppendOrUpdate', {
 					values: { Summary: '={{ $json.text }}' },
 				}),
 			],
@@ -743,7 +743,7 @@ import { googleGemini } from '@n8n/nodes/googleGemini';`;
 	});
 
 	describe('synthesizedFixtures read keys', () => {
-		const getAll = '@n8n/nodes-base-next.notionDatabasePageGetAll';
+		const getAll = '@n8n/nodes-integrations.notionDatabasePageGetAll';
 		const deals: WorkflowJSON = {
 			name: 'Deals',
 			connections: {
@@ -753,14 +753,14 @@ import { googleGemini } from '@n8n/nodes/googleGemini';`;
 			},
 			nodes: [
 				node('Get Deals', getAll, { database: 'x' }),
-				node('Build Rows', '@n8n/nodes-base-next.itemsSet', {
+				node('Build Rows', '@n8n/nodes-core.itemsSet', {
 					fields: {
 						'Deal ID': '={{ $json.property_deal_id }}',
 						Stage: '={{ $json["property_stage"] }}',
 						Typo: '={{ $json.not_a_property }}',
 					},
 				}),
-				node('Upsert', '@n8n/nodes-base-next.googleSheetsSheetAppendOrUpdate', {
+				node('Upsert', '@n8n/nodes-integrations.googleSheetsSheetAppendOrUpdate', {
 					values: {
 						'Deal ID': '={{ $json["Deal ID"] }}',
 						Grandchild: '={{ $json.property_grandchild }}',
@@ -768,7 +768,7 @@ import { googleGemini } from '@n8n/nodes/googleGemini';`;
 						Amount: '={{ $("Get Deals").item.json["property_amount"] }}',
 					},
 				}),
-				node('Report', '@n8n/nodes-base-next.itemsSet', {
+				node('Report', '@n8n/nodes-core.itemsSet', {
 					fields: { Row: '={{ $json.row_number }}' },
 				}),
 			],
@@ -859,7 +859,7 @@ import { googleGemini } from '@n8n/nodes/googleGemini';`;
 		const getNode = (url: string, credentials: WorkflowJSON['nodes'][number]['credentials']) => ({
 			id: '1',
 			name: 'Fetch',
-			type: '@n8n/nodes-base-next.httpRequestGet',
+			type: '@n8n/nodes-core.httpRequestGet',
 			typeVersion: 2,
 			position: [0, 0] as [number, number],
 			parameters: { authentication: 'httpHeaderAuth', url },
@@ -942,7 +942,7 @@ describe('contract input readers', () => {
 			},
 		],
 	});
-	const GET = '@n8n/nodes-base-next.httpRequestGet';
+	const GET = '@n8n/nodes-core.httpRequestGet';
 	const stored = {
 		plain: (paging: IDataObject) => fetchOf(GET, { schema, pages: paging }),
 		'JSON text': (paging: IDataObject) =>

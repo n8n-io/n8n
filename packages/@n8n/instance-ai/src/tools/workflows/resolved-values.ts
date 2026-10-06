@@ -1,5 +1,5 @@
 import { wrapUntrustedData } from '@n8n/agents';
-import { actionOfNode } from '@n8n/nodes-base-next';
+import { actionOfNode } from '@n8n/nodes-integrations';
 import { isRecord } from '@n8n/utils/is-record';
 import { toEngineConnections, type WorkflowJSON } from '@n8n/workflow-sdk';
 import {

@@ -41,13 +41,7 @@ import {
 	publishPackage,
 	replayFixtures,
 } from '../publish';
-import {
-	isVersionManifest,
-	parseStoreIndex,
-	storeFilesOfDir,
-	storeReader,
-	type SourcePackage,
-} from '../store';
+import { isVersionManifest, parseStoreIndex, storeFilesOfDir, storeReader } from '../store';
 import { evaluateBundle } from '../runtime';
 import type { AnySchema } from '../schema';
 import type { MockRoute } from '../testing';
@@ -1117,14 +1111,8 @@ export const pass = demo.action('pass', {
 			await writeFile(entryFile, pass);
 			await writeFile(path.join(dir, 'fixtures', 'demo.pass.json'), JSON.stringify(fixtures));
 			await writeFile(keyFile, privateKey);
-			const action = ((await import(entryFile)) as { pass: SourcePackage['actions'][number] }).pass;
-			const pkg: SourcePackage = {
-				name: '@acme/nodes',
-				dir,
-				actions: [action],
-				triggers: [],
-				natives: [],
-			};
+			// No list of contracts: freeze and publish find them in the action files.
+			const pkg = { name: '@acme/nodes', dir };
 			vi.stubEnv('N8N_NODE_CONTRACTS_REGISTRY_URL', `file://${registryDir}`);
 			vi.stubEnv('N8N_NODE_CONTRACTS_SIGNING_KEY_FILE', keyFile);
 			const log: string[] = [];
@@ -1151,28 +1139,22 @@ export const pass = demo.action('pass', {
 		}
 	});
 
-	it('refuses two exports of one listed action', async () => {
+	it('refuses two exports of one action, and an action file without an action', async () => {
 		const dir = await mkdtemp(path.join(__dirname, '..', '..', '.package-test-'));
 		try {
 			const actionsDir = path.join(dir, 'src', 'nodes', 'demo', 'actions');
 			await mkdir(actionsDir, { recursive: true });
 			await writeFile(path.join(actionsDir, 'pass.ts'), pass);
 			await writeFile(path.join(actionsDir, 'copy.ts'), pass);
-			const action = (
-				(await import(path.join(actionsDir, 'pass.ts'))) as {
-					pass: SourcePackage['actions'][number];
-				}
-			).pass;
-			const pkg: SourcePackage = {
-				name: '@acme/nodes',
-				dir,
-				actions: [action],
-				triggers: [],
-				natives: [],
-			};
+			const pkg = { name: '@acme/nodes', dir };
 
 			await expect(freezePackage(pkg)).rejects.toThrow(
 				'These contracts of @acme/nodes have more than one export: demo.pass@1 (demo/actions/copy.ts#pass, demo/actions/pass.ts#pass)',
+			);
+			await rm(path.join(actionsDir, 'copy.ts'));
+			await writeFile(path.join(actionsDir, 'label.ts'), 'export const label = "Pass";\n');
+			await expect(freezePackage(pkg)).rejects.toThrow(
+				'These action files of @acme/nodes export no action or trigger: demo/actions/label.ts.',
 			);
 		} finally {
 			await rm(dir, { recursive: true, force: true });

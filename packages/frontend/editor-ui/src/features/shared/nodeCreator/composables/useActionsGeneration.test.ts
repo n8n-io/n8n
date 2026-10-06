@@ -670,7 +670,7 @@ describe('useActionsGenerator', () => {
 			nodeCreatorItem: string | undefined,
 		): INodeTypeDescription => ({
 			...baseV2NodeWoProps,
-			name: `@n8n/nodes-base-next.${name}`,
+			name: `@n8n/nodes-integrations.${name}`,
 			displayName: `Slack: ${action}`,
 			defaults: { name: action },
 			nodeCreatorItem,
@@ -769,7 +769,10 @@ describe('useActionsGenerator', () => {
 				[],
 			);
 
-			expect(mergedNodes.map(({ name }) => name)).toEqual([orphan.name, '@n8n/nodes-base-next.x']);
+			expect(mergedNodes.map(({ name }) => name)).toEqual([
+				orphan.name,
+				'@n8n/nodes-integrations.x',
+			]);
 		});
 
 		it('keeps the actions of an item that no node type names', () => {

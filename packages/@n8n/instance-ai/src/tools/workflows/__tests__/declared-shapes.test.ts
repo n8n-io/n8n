@@ -1,6 +1,6 @@
 import { wrapUntrustedData } from '@n8n/agents';
 import { mockHttp, runAction } from '@n8n/node-sdk/testing';
-import { actionOfNode } from '@n8n/nodes-base-next';
+import { actionOfNode } from '@n8n/nodes-integrations';
 import type { IDataObject, WorkflowJSON } from '@n8n/workflow-sdk';
 
 import type { NodeOutputResult } from '../../../types';
@@ -15,7 +15,7 @@ import {
 	synthesizedFixtures,
 } from '../next-workflow-build';
 
-const GET = '@n8n/nodes-base-next.httpRequestGet';
+const GET = '@n8n/nodes-core.httpRequestGet';
 
 const node = (name: string, type: string, parameters: IDataObject) => ({
 	id: name,
@@ -46,7 +46,7 @@ const workflowOf = (parameters: IDataObject): WorkflowJSON => ({
 	nodes: [
 		node('Start', 'n8n-nodes-base.manualTrigger', {}),
 		node('Fetch', GET, { url: 'https://api.example.com/issues', ...parameters }),
-		node('Keep', '@n8n/nodes-base-next.itemsSet', { fields: { title: '={{ $json.total }}' } }),
+		node('Keep', '@n8n/nodes-core.itemsSet', { fields: { title: '={{ $json.total }}' } }),
 	],
 });
 
@@ -258,7 +258,7 @@ describe('liveReadNodeNames', () => {
 				entry.name === 'Fetch'
 					? {
 							...entry,
-							type: '@n8n/nodes-base-next.httpRequestSend',
+							type: '@n8n/nodes-core.httpRequestSend',
 							parameters: {
 								url: 'https://api.example.com/issues',
 								method: 'POST',
@@ -342,7 +342,7 @@ describe('sampledReadIssues', () => {
 				entry.name === 'Fetch'
 					? {
 							...entry,
-							type: '@n8n/nodes-base-next.httpRequestSend',
+							type: '@n8n/nodes-core.httpRequestSend',
 							parameters: { url: 'https://api.example.com/issues', method: 'POST' },
 						}
 					: entry,

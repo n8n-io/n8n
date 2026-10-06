@@ -37,7 +37,7 @@ function makeContractWorkflow(): WorkflowJSON {
 			{
 				id: 'n2',
 				name: 'Get Done Pages',
-				type: '@n8n/nodes-base-next.notionDatabasePageGetAll',
+				type: '@n8n/nodes-integrations.notionDatabasePageGetAll',
 				typeVersion: 1,
 				position: [224, 0],
 				parameters: {
@@ -55,7 +55,7 @@ function makeContractWorkflow(): WorkflowJSON {
 			{
 				id: 'n3',
 				name: 'Post Done Page',
-				type: '@n8n/nodes-base-next.httpRequestSend',
+				type: '@n8n/nodes-core.httpRequestSend',
 				typeVersion: 3,
 				position: [448, 0],
 				parameters: {
@@ -284,7 +284,7 @@ describe('workflows get-as-code integration', () => {
 				workflowId: 'wf-managed',
 			});
 
-			expect(result.code).toContain('type: "@n8n/nodes-base-next.notionDatabasePageGetAll"');
+			expect(result.code).toContain('type: "@n8n/nodes-integrations.notionDatabasePageGetAll"');
 			expect(result.code).toContain('unfurlLinks: true');
 			expect(result.nodes?.find(({ name }) => name === 'Get Done Pages')?.untyped).toBe(
 				'notion.databasePage.getAll does not take "unfurlLinks"',

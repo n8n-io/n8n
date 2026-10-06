@@ -18,7 +18,7 @@ import { z } from 'zod';
 import { credentialOptionsOf, toTs } from '@n8n/node-sdk/codegen';
 import { advancedFieldsOf, jsonFieldPathsOf, toolUiOf } from '@n8n/node-sdk/host';
 import { toContract } from '@n8n/node-sdk/registry';
-import { migratedTargetOf, nodeTypeOf, toolActions, toolTypeOf } from '@n8n/nodes-base-next';
+import { migratedTargetOf, nodeTypeOf, toolActions, toolTypeOf } from '@n8n/nodes-integrations';
 import type { composedFactoryKey, ContractFactory } from '@n8n/workflow-sdk/next';
 
 import { approvalSummarySchema, formatApprovalMessage } from './approval-copy';

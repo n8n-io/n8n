@@ -5,7 +5,7 @@ Define n8n nodes as typed action contracts. One action is one operation, for exa
 validator, the `run()` input type, the n8n node type (`toNodeType`), and the typed module
 that the AI workflow builder reads (`generateNodeModule`).
 
-See `packages/@n8n/nodes-base-next/src/nodes/**` for real nodes.
+See `packages/@n8n/nodes-core/src/nodes/**` and `packages/@n8n/nodes-integrations/src/nodes/**` for real nodes.
 
 For how the packages fit together, and how a node is installed, versioned and run in n8n, see
 [docs/architecture.md](docs/architecture.md).

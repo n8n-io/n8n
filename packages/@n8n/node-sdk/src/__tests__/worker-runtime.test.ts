@@ -2,8 +2,8 @@ import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'no
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
-import { actions } from '../../../nodes-base-next/dist/index.js';
-import { packageOf, versionsOf } from '../../../nodes-base-next/dist/registry.js';
+import { actions } from '../../../nodes-integrations/dist/index.js';
+import { packageOf, versionsOf } from '../../../nodes-integrations/dist/registry.js';
 import { freezeAction } from '../freeze';
 import { replayFixtures } from '../publish';
 import { t } from '../schema';

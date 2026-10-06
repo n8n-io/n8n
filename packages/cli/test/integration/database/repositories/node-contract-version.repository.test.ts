@@ -8,7 +8,7 @@ import {
 	storeReader,
 	versionsOf,
 	type StoredVersion,
-} from '@n8n/nodes-base-next';
+} from '@n8n/nodes-integrations';
 import { InstanceSettings } from 'n8n-core';
 import { createHash, generateKeyPairSync } from 'node:crypto';
 import { mkdtemp, readdir, readFile, rm } from 'node:fs/promises';
@@ -27,15 +27,17 @@ interface StoreVersion {
 }
 
 // The cli does not depend on the node-sdk, so load it through the package that does.
-const sdkRequire = createRequire(createRequire(__filename).resolve('@n8n/nodes-base-next'));
+const sdkRequire = createRequire(createRequire(__filename).resolve('@n8n/nodes-integrations'));
 const sdk = sdkRequire('@n8n/node-sdk/registry') as {
 	addToStore(dir: string, versions: StoreVersion[]): Promise<unknown>;
 	manifestTextOf(manifest: unknown): string;
 	signStoreManifest(manifestText: string, privateKey: string): unknown;
 };
 
-const NEXT = path.resolve(__dirname, '../../../../../@n8n/nodes-base-next');
-const OLDER = path.join(NEXT, 'fixtures/versions/httpRequest.get@2.0.0');
+const OLDER = path.resolve(
+	__dirname,
+	'../../../../../@n8n/nodes-core/fixtures/versions/httpRequest.get@2.0.0',
+);
 
 const keys = generateKeyPairSync('ed25519', {
 	publicKeyEncoding: { type: 'spki', format: 'pem' },

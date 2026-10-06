@@ -105,7 +105,7 @@ Use the first `auth` that fits:
 `toCredentialType` projects a type to the legacy `ICredentialType` that n8n core runs. A placement
 becomes a generic `authenticate` block. What that block cannot express (`defaults`, optional
 fields, `when`) becomes a function that the SDK generates, never author code. OAuth2 becomes an
-`oAuth2Api` child. The parity suite (`nodes-base-next/src/__tests__/parity/credentials.parity.ts`)
+`oAuth2Api` child. The parity suite (`nodes-integrations/src/__tests__/parity/credentials.parity.ts`)
 compares each type with its legacy class and lists each difference.
 
 Stored credential data is not migrated in the database. Each read fills the declared defaults

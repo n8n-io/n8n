@@ -12,7 +12,7 @@ import {
 	type ContractSyncResult,
 	type PinnedNode,
 	type VersionManifest,
-} from '@n8n/nodes-base-next';
+} from '@n8n/nodes-integrations';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { InstanceSettings } from 'n8n-core';
 import {

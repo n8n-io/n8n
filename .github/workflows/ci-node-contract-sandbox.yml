@@ -8,14 +8,14 @@ on:
       - packages/@n8n/node-sdk/scripts/sandbox.ts
       - packages/@n8n/node-sdk/spec/wit/**
       - packages/@n8n/node-sdk/src/**
-      - packages/@n8n/nodes-base-next/package.json
-      - packages/@n8n/nodes-base-next/scripts/**
-      - packages/@n8n/nodes-base-next/src/**
-      - packages/@n8n/nodes-base-next/fixtures/**
       - packages/@n8n/nodes-core/package.json
       - packages/@n8n/nodes-core/scripts/**
       - packages/@n8n/nodes-core/src/**
       - packages/@n8n/nodes-core/fixtures/**
+      - packages/@n8n/nodes-integrations/package.json
+      - packages/@n8n/nodes-integrations/scripts/**
+      - packages/@n8n/nodes-integrations/src/**
+      - packages/@n8n/nodes-integrations/fixtures/**
       - pnpm-lock.yaml
       - .github/workflows/ci-node-contract-sandbox.yml
 
@@ -35,7 +35,7 @@ jobs:
         with:
           persist-credentials: false
 
-      # The sandbox tests need only the production dependencies of nodes-base-next, not n8n-nodes-base.
+      # The sandbox tests need only the production dependencies of nodes-integrations, not n8n-nodes-base.
       # They include @n8n/nodes-core.
       # The root supplies @types/node for the shared tsconfig.
       - name: Setup Node.js
@@ -43,14 +43,14 @@ jobs:
         with:
           node-version: 24.18.1
           build-command: ''
-          install-command: pnpm install --frozen-lockfile --filter n8n-monorepo --filter-prod @n8n/nodes-base-next... --filter @n8n/vitest-config
+          install-command: pnpm install --frozen-lockfile --filter n8n-monorepo --filter-prod @n8n/nodes-integrations... --filter @n8n/vitest-config
           # Keep the partial pnpm store separate from the full install cache.
           cache-dependency-path: |
             pnpm-lock.yaml
             .github/workflows/ci-node-contract-sandbox.yml
 
-      - name: Build nodes-base-next and its dependencies
-        run: pnpm --filter-prod "@n8n/nodes-base-next..." --filter @n8n/vitest-config run build
+      - name: Build nodes-integrations and its dependencies
+        run: pnpm --filter-prod "@n8n/nodes-integrations..." --filter @n8n/vitest-config run build
 
       - name: Install Rust
         run: |
@@ -99,8 +99,8 @@ jobs:
         working-directory: packages/@n8n/node-sdk
         run: pnpm exec vitest run src/__tests__/sandbox.test.ts src/__tests__/freeze.test.ts
 
-      - name: Replay the bundled versions in the sandbox
-        working-directory: packages/@n8n/nodes-base-next
+      - name: Replay the bundled versions of nodes-integrations in the sandbox
+        working-directory: packages/@n8n/nodes-integrations
         run: pnpm exec vitest run src/__tests__/versions.test.ts
 
       - name: Replay the bundled versions of nodes-core in the sandbox

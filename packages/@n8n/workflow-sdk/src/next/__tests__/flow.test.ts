@@ -292,10 +292,10 @@ describe('workflow', () => {
 		expect(json.nodes.map((n) => [n.name, n.type])).toEqual([
 			['Start', 'n8n-nodes-base.manualTrigger'],
 			['Tasks', 'notion.databasePage.getAll'],
-			['Has owner?', '@n8n/nodes-base-next.conditionIf'],
+			['Has owner?', '@n8n/nodes-core.conditionIf'],
 			['Report', 'httpRequest.post'],
-			['Unowned', '@n8n/nodes-base-next.itemsSet'],
-			['Log', '@n8n/nodes-base-next.itemsSet'],
+			['Unowned', '@n8n/nodes-core.itemsSet'],
+			['Log', '@n8n/nodes-core.itemsSet'],
 		]);
 		expect(json.connections['Has owner?']?.main.map((out) => out?.map((c) => c.node))).toEqual([
 			['Report'],
@@ -512,7 +512,7 @@ describe('workflow', () => {
 		const exists = <In, Ctx, const N extends string>(config: {
 			name: N;
 		}): RoutedStep<In, Ctx, { email: string }, N, 'exists' | 'missing'> =>
-			routedStep('@n8n/nodes-base-next.dataTableRowExists', config, ['exists', 'missing']);
+			routedStep('@n8n/nodes-core.dataTableRowExists', config, ['exists', 'missing']);
 		const json = workflow(
 			'Twelve',
 			manual(),
@@ -722,12 +722,12 @@ describe('workflow', () => {
 
 	it('routes a contract step with named outputs, and continues from the first output', () => {
 		const owned = routedStep<Page, unknown, Page, 'Owned', 'kept' | 'discarded'>(
-			'@n8n/nodes-base-next.conditionFilter',
+			'@n8n/nodes-core.conditionFilter',
 			{ name: 'Owned' },
 			['kept', 'discarded'],
 		);
 		const switchConfig = { name: 'Route', cases: [{ output: 'a' }, { output: 'b' }] };
-		const cases = routedStep('@n8n/nodes-base-next.conditionSwitch', switchConfig, {
+		const cases = routedStep('@n8n/nodes-core.conditionSwitch', switchConfig, {
 			each: 'cases',
 			then: ['fallback'],
 		});
@@ -769,7 +769,7 @@ describe('workflow', () => {
 			name: N;
 			cases: ReadonlyArray<{ output: E }>;
 		}): RoutedStep<In, Ctx, In, N, E | 'fallback'> =>
-			routedStep('@n8n/nodes-base-next.conditionSwitch', config, {
+			routedStep('@n8n/nodes-core.conditionSwitch', config, {
 				each: 'cases',
 				then: ['fallback'],
 			});
@@ -791,12 +791,12 @@ describe('workflow', () => {
 		const exists = <In, Ctx, const N extends string>(config: {
 			name: N;
 		}): RoutedStep<In, Ctx, Row, N, 'exists' | 'missing'> =>
-			routedStep('@n8n/nodes-base-next.dataTableRowExists', config, ['exists', 'missing']);
+			routedStep('@n8n/nodes-core.dataTableRowExists', config, ['exists', 'missing']);
 		const classify = <In, Ctx, const N extends string, const E extends string>(config: {
 			name: N;
 			categories: ReadonlyArray<{ output: E }>;
 		}): RoutedStep<In, Ctx, In, N, E | 'other'> =>
-			routedStep('@n8n/nodes-base-next.aiClassify', config, {
+			routedStep('@n8n/nodes-core.aiClassify', config, {
 				each: 'categories',
 				then: ['other'],
 			});
@@ -1088,7 +1088,7 @@ describe('workflow', () => {
 		const read = { credential: 'notion', scopes: ['content:read'] };
 		const config = { name: 'Added' as const, dataSource: 'ds' };
 		const added = contractTrigger<Page, 'Added'>(
-			'@n8n/nodes-base-next.notionDataSourcePageAdded',
+			'@n8n/nodes-integrations.notionDataSourcePageAdded',
 			config,
 			1,
 			read,
@@ -1101,7 +1101,7 @@ describe('workflow', () => {
 			workflow(options, added, create, post({ name: 'Post', url: 'u', json: () => ({}) }));
 		const json = scoped('Scoped').toJSON();
 		expect(json.nodes.find((n) => n.name === 'Added')).toMatchObject({
-			type: '@n8n/nodes-base-next.notionDataSourcePageAdded',
+			type: '@n8n/nodes-integrations.notionDataSourcePageAdded',
 			parameters: { dataSource: 'ds' },
 		});
 		expect(scoped('Scoped').scopes()).toEqual({
@@ -1522,7 +1522,7 @@ describe('native triggers', () => {
 	});
 
 	it('declares the sample of a contract step as pin data, but not of node() or a derived node', () => {
-		const fetch = contractStep('@n8n/nodes-base-next.gmailMessageGet', {
+		const fetch = contractStep('@n8n/nodes-integrations.gmailMessageGet', {
 			name: 'Get',
 			sample: [{ id: 'm1' }],
 		});

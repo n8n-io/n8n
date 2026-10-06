@@ -81,7 +81,7 @@
     "@n8n/mcp-browser": "workspace:*",
     "@n8n/node-contract-compat": "workspace:*",
     "@n8n/node-sdk": "workspace:*",
-    "@n8n/nodes-base-next": "workspace:*",
+    "@n8n/nodes-integrations": "workspace:*",
     "@n8n/utils": "workspace:*",
     "@n8n/workflow-sdk": "workspace:*",
     "@opentelemetry/api": "catalog:",

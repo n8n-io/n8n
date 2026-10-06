@@ -4,8 +4,8 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import type { INode } from 'n8n-workflow';
 
-import { actions } from '../../../nodes-base-next/dist/index.js';
-import { versionsOf } from '../../../nodes-base-next/dist/registry.js';
+import { actions } from '../../../nodes-integrations/dist/index.js';
+import { packageOf, versionsOf } from '../../../nodes-integrations/dist/registry.js';
 import { freezeAction } from '../freeze';
 import { replayFixtures } from '../publish';
 import type { ExecutorHost } from '../runtime';
@@ -19,7 +19,6 @@ const SIDECAR =
 	process.env.N8N_NODE_CONTRACT_SANDBOX_SIDECAR ??
 	path.join(SANDBOX, 'sidecar', 'target', 'release', 'n8n-sandbox');
 const GUESTS = path.join(SANDBOX, 'dist');
-const FIXTURES = path.resolve(__dirname, '..', '..', '..', 'nodes-base-next', 'fixtures');
 
 const credentialTypes = new Map(
 	actions.flatMap(({ node }) => node.credential?.types ?? []).map((type) => [type.name, type]),
@@ -161,7 +160,9 @@ describe.skipIf(!existsSync(SIDECAR) || !existsSync(path.join(GUESTS, 'action-sn
 						cacheDir: cacheDir(),
 						credentialType: (name) => credentialTypes.get(name),
 					});
-					const fixtures = parseFixtures(readFileSync(path.join(FIXTURES, `${id}.json`), 'utf8'));
+					const fixtures = parseFixtures(
+						readFileSync(path.join(packageOf(id).dir, 'fixtures', `${id}.json`), 'utf8'),
+					);
 					expect(
 						await replayFixtures(
 							{ manifest: head.manifest, bundle: await head.readBundle() },

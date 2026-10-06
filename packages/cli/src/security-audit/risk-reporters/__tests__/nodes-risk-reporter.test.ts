@@ -2,7 +2,7 @@ import { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
-import { nodeNameOf, versionsOf } from '@n8n/nodes-base-next';
+import { FIRST_PARTY_PACKAGES, nodeTypeOf, toolTypeOf, versionsOf } from '@n8n/nodes-integrations';
 import type { INode, IWorkflowBase } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
@@ -13,9 +13,7 @@ import { NodesRiskReporter } from '@/security-audit/risk-reporters/nodes-risk-re
 import type { PackagesRepository } from '@/security-audit/security-audit.repository';
 import type { Risk } from '@/security-audit/types';
 
-const NODE_PACKAGE = '@n8n/nodes-base-next';
-
-const nodeOf = (name: string, id: string, type = `${NODE_PACKAGE}.${nodeNameOf(id)}`): INode => ({
+const nodeOf = (name: string, id: string, type = nodeTypeOf({ id })): INode => ({
 	id: name,
 	name,
 	type,
@@ -26,13 +24,21 @@ const nodeOf = (name: string, id: string, type = `${NODE_PACKAGE}.${nodeNameOf(i
 
 const auditContractNodes = async () => {
 	mockInstance(Logger);
-	const loader = new ContractNodeLoader([], [], async () => ({
-		versions: async () => new Map(),
-		credentials: async () => new Map(),
-	}));
-	await loader.loadAll();
+	const loaders = FIRST_PARTY_PACKAGES.map(
+		(pkg) =>
+			new ContractNodeLoader(
+				[],
+				[],
+				async () => ({ versions: async () => new Map(), credentials: async () => new Map() }),
+				[],
+				undefined,
+				undefined,
+				pkg,
+			),
+	);
+	await Promise.all(loaders.map(async (loader) => await loader.loadAll()));
 	const loadNodesAndCredentials = Object.assign(mock<LoadNodesAndCredentials>(), {
-		loaders: { [NODE_PACKAGE]: loader },
+		loaders: Object.fromEntries(loaders.map((loader) => [loader.packageName, loader])),
 	});
 	loadNodesAndCredentials.getCustomDirectories.mockReturnValue([]);
 	const packagesRepository = mock<PackagesRepository>();
@@ -42,7 +48,7 @@ const auditContractNodes = async () => {
 		name: 'Audit',
 		nodes: [
 			nodeOf('GET', 'httpRequest.get'),
-			nodeOf('GET tool', 'httpRequest.get', `${NODE_PACKAGE}.${nodeNameOf('httpRequest.get')}Tool`),
+			nodeOf('GET tool', 'httpRequest.get', toolTypeOf({ id: 'httpRequest.get' })),
 			nodeOf('Code', 'code.javaScript'),
 			nodeOf('Notion', 'notion.databasePage.getAll'),
 		],

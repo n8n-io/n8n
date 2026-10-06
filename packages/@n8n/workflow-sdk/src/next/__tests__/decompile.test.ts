@@ -40,8 +40,8 @@ interface Page {
 	property_owners: string[];
 }
 
-const NOTION_TYPE = '@n8n/nodes-base-next.notionDatabasePageGetAll';
-const SEND_TYPE = '@n8n/nodes-base-next.httpRequestSend';
+const NOTION_TYPE = '@n8n/nodes-integrations.notionDatabasePageGetAll';
+const SEND_TYPE = '@n8n/nodes-core.httpRequestSend';
 
 type Where = {
 	match: 'all' | 'any';
@@ -79,7 +79,7 @@ const composedNotion = {
 	},
 };
 
-const GET_TOOL_TYPE = '@n8n/nodes-base-next.httpRequestGetTool';
+const GET_TOOL_TYPE = '@n8n/nodes-core.httpRequestGetTool';
 
 const httpRequest = {
 	getTool: <In, Ctx>(
@@ -93,8 +93,8 @@ const httpRequest = {
 	}): Step<In, Ctx, { ok: boolean }, N> => contractStep(SEND_TYPE, config),
 };
 
-const AGENT_TYPE = '@n8n/nodes-base-next.aiAgent';
-const MODEL_TYPE = '@n8n/nodes-base-next.openAiChatModel';
+const AGENT_TYPE = '@n8n/nodes-core.aiAgent';
+const MODEL_TYPE = '@n8n/nodes-integrations.openAiChatModel';
 
 const ai = {
 	agent: <In, Ctx, const N extends string>(config: {
@@ -140,7 +140,7 @@ const webhook = {
 		contractStep(RESPOND_TYPE, config, 1.5, undefined, undefined, pairing),
 };
 
-const SLACK_TYPE = '@n8n/nodes-base-next.slackMessageSend';
+const SLACK_TYPE = '@n8n/nodes-integrations.slackMessageSend';
 
 // A stand-in for a module whose form keeps `threadTs` and `blocks` in the Options collection.
 const slack = {
@@ -159,7 +159,7 @@ const slack = {
 	},
 };
 
-const EXISTS_TYPE = '@n8n/nodes-base-next.dataTableRowExists';
+const EXISTS_TYPE = '@n8n/nodes-core.dataTableRowExists';
 
 const dataTable = {
 	row: {
@@ -171,7 +171,7 @@ const dataTable = {
 	},
 };
 
-const UPLOAD_TYPE = '@n8n/nodes-base-next.driveFileUpload';
+const UPLOAD_TYPE = '@n8n/nodes-integrations.driveFileUpload';
 
 const drive = {
 	file: {
@@ -816,7 +816,7 @@ describe('decompileWorkflow', () => {
 		const withIf = new Map([
 			...factories,
 			[
-				'@n8n/nodes-base-next.conditionIf',
+				'@n8n/nodes-core.conditionIf',
 				{
 					module: 'condition',
 					from: '@n8n/nodes/condition',
@@ -1295,7 +1295,7 @@ describe('decompileWorkflow', () => {
 		const setNode = (name: string, index: number) => ({
 			id: name,
 			name,
-			type: '@n8n/nodes-base-next.itemsSet',
+			type: '@n8n/nodes-core.itemsSet',
 			typeVersion: 1,
 			position: [index * 100, 0] as [number, number],
 			parameters: { fields: { n: index }, include: { mode: 'none' } },

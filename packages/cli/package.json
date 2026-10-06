@@ -177,7 +177,7 @@
     "@n8n/mcp-browser": "workspace:*",
     "@n8n/n8n-nodes-langchain": "workspace:*",
     "@n8n/node-engine-compatibility": "workspace:*",
-    "@n8n/nodes-base-next": "workspace:*",
+    "@n8n/nodes-integrations": "workspace:*",
     "@n8n/permissions": "workspace:*",
     "@n8n/scheduler": "workspace:*",
     "@n8n/syslog-client": "workspace:*",

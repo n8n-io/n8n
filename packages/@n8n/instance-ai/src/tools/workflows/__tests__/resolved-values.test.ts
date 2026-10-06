@@ -47,8 +47,8 @@ const simulate = (nodeName: string) => ({
 	source: 'deterministic' as const,
 });
 
-const GET_ALL = '@n8n/nodes-base-next.notionDatabasePageGetAll';
-const UPSERT = '@n8n/nodes-base-next.googleSheetsSheetAppendOrUpdate';
+const GET_ALL = '@n8n/nodes-integrations.notionDatabasePageGetAll';
+const UPSERT = '@n8n/nodes-integrations.googleSheetsSheetAppendOrUpdate';
 
 const upsertParameters = {
 	matchOn: 'Deal ID',
@@ -66,14 +66,14 @@ const deals: WorkflowJSON = {
 	nodes: [
 		node('Start', 'n8n-nodes-base.manualTrigger', {}),
 		node('Get Deals', GET_ALL, { database: 'x' }),
-		node('Build Rows', '@n8n/nodes-base-next.itemsSet', {
+		node('Build Rows', '@n8n/nodes-core.itemsSet', {
 			fields: {
 				'Deal ID': '={{ $json.id }}',
 				Stage: '={{ $json.property_stage }}',
 				Region: 'EU',
 			},
 		}),
-		node('Is Open', '@n8n/nodes-base-next.conditionIf', {
+		node('Is Open', '@n8n/nodes-core.conditionIf', {
 			where: {
 				match: 'all',
 				conditions: [
@@ -190,7 +190,7 @@ describe('resolvedValueLines', () => {
 			connections: chain('Start', 'Fetch', 'Upsert'),
 			nodes: [
 				node('Start', 'n8n-nodes-base.manualTrigger', {}),
-				node('Fetch', '@n8n/nodes-base-next.httpRequestGet', {
+				node('Fetch', '@n8n/nodes-core.httpRequestGet', {
 					url: 'https://api.example.com/deal',
 					schema: { type: 'object', properties: { stage: { type: 'string' } } },
 				}),

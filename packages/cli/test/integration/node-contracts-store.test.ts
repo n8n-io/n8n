@@ -2,7 +2,7 @@ import { createWorkflow, mockInstance, testDb } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import { ExecutionRepository, NodeContractVersionRepository, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { versionsOf } from '@n8n/nodes-base-next';
+import { packageOf, versionsOf } from '@n8n/nodes-integrations';
 import {
 	createRunExecutionData,
 	type INode,
@@ -50,7 +50,7 @@ interface StoreVersion {
 }
 
 // The cli does not depend on the node-sdk, so load it through the package that does.
-const sdkRequire = createRequire(createRequire(__filename).resolve('@n8n/nodes-base-next'));
+const sdkRequire = createRequire(createRequire(__filename).resolve('@n8n/nodes-integrations'));
 const sdk = sdkRequire('@n8n/node-sdk/registry') as {
 	parseManifest(text: string): Manifest;
 	addToStore(dir: string, versions: StoreVersion[]): Promise<unknown>;
@@ -58,8 +58,7 @@ const sdk = sdkRequire('@n8n/node-sdk/registry') as {
 	signStoreManifest(manifestText: string, privateKey: string): StoreSignature;
 };
 
-const NEXT = path.resolve(__dirname, '../../../@n8n/nodes-base-next');
-const GET = '@n8n/nodes-base-next.httpRequestGet';
+const GET = '@n8n/nodes-core.httpRequestGet';
 const OLDER = '2.0.0';
 
 const keys = generateKeyPairSync('ed25519', {
@@ -119,7 +118,10 @@ beforeAll(async () => {
 	state.owner = await createOwner();
 	state.dir = await mkdtemp(path.join(tmpdir(), 'node-contracts-store-'));
 
-	const olderDir = path.join(NEXT, `fixtures/versions/httpRequest.get@${OLDER}`);
+	const olderDir = path.join(
+		packageOf('httpRequest.get').dir,
+		`fixtures/versions/httpRequest.get@${OLDER}`,
+	);
 	const older = signed(
 		await readFile(path.join(olderDir, 'manifest.json'), 'utf8'),
 		await readFile(path.join(olderDir, 'bundle.cjs'), 'utf8'),
@@ -176,10 +178,11 @@ beforeAll(async () => {
 	]);
 	await useNodeContractsRegistry();
 	await utils.initBinaryDataService();
-	const next = new ContractNodeLoader();
+	const core = packageOf('httpRequest.get');
+	const next = new ContractNodeLoader([], [], undefined, [], undefined, undefined, core);
 	await next.loadAll();
 	const loadNodesAndCredentials = Container.get(LoadNodesAndCredentials);
-	loadNodesAndCredentials.loaders = { '@n8n/nodes-base-next': next };
+	loadNodesAndCredentials.loaders = { [next.packageName]: next };
 	await loadNodesAndCredentials.postProcessLoaders();
 });
 

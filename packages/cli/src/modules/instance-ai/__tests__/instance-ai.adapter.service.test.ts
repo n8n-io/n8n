@@ -5311,7 +5311,7 @@ describe('createExecutionAdapter run()', () => {
 		const fetch = {
 			id: 'node-1',
 			name: 'Fetch',
-			type: '@n8n/nodes-base-next.httpRequestGet',
+			type: '@n8n/nodes-core.httpRequestGet',
 			typeVersion: 3,
 			parameters: {
 				url: 'https://api.example.com/items',

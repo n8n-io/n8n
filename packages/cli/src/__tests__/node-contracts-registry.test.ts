@@ -16,7 +16,7 @@ import type {
 	ContractRegistryOptions,
 	ContractStoreOptions,
 	RunProfile,
-} from '@n8n/nodes-base-next';
+} from '@n8n/nodes-integrations';
 import { mock } from 'vitest-mock-extended';
 import { InstanceSettings } from 'n8n-core';
 import type { IExecuteFunctions, INode } from 'n8n-workflow';
@@ -41,7 +41,7 @@ const languages: string[][] = [];
 const extractors: Array<(file: unknown, request: unknown) => Promise<unknown>> = [];
 const closed: string[] = [];
 const warmed: object[] = [];
-vi.mock('@n8n/nodes-base-next', () => ({
+vi.mock('@n8n/nodes-integrations', () => ({
 	sandboxCredentialTypeOf: (known: (name: string) => boolean) => (name: string) =>
 		known(name) ? { name } : undefined,
 	useContractRegistry: (options: ContractRegistryOptions) => registered.push(options),
@@ -239,7 +239,7 @@ describe('useNodeContractsRegistry', () => {
 		const eventService = mockInstance(EventService);
 		registered.length = 0;
 		await useNodeContractsRegistry();
-		const node = mock<INode>({ name: 'GET', type: '@n8n/nodes-base-next.httpRequestGet' });
+		const node = mock<INode>({ name: 'GET', type: '@n8n/nodes-core.httpRequestGet' });
 		const install = {
 			id: 'demo.echo',
 			version: '2.0.0',
@@ -260,7 +260,7 @@ describe('useNodeContractsRegistry', () => {
 		expect(eventService.emit).toHaveBeenCalledWith('node-permission-refused', {
 			action: 'httpRequest.get',
 			nodeName: 'GET',
-			nodeType: '@n8n/nodes-base-next.httpRequestGet',
+			nodeType: '@n8n/nodes-core.httpRequestGet',
 			permission: 'egress-input',
 			host: 'other.test',
 			message: 'Host not allowed',
@@ -551,12 +551,12 @@ describe('NodeContractsStore', () => {
 		Container.set(
 			LoadNodesAndCredentials,
 			Object.assign(mock<LoadNodesAndCredentials>(), {
-				loaders: { '@n8n/nodes-base-next': loader },
+				loaders: { '@n8n/nodes-integrations': loader },
 			}),
 		);
 		const echo = {
 			name: 'Echo',
-			type: '@n8n/nodes-base-next.demoEcho',
+			type: '@n8n/nodes-integrations.demoEcho',
 			typeVersion: 1,
 			contract: { version: '1.0.0', digest: `sha256:${'a'.repeat(64)}` },
 		};

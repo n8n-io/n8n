@@ -4,17 +4,18 @@ import {
 	flowNatives,
 	migratedTargetOf,
 	nodeTypeOf,
-} from '@n8n/nodes-base-next';
+} from '@n8n/nodes-integrations';
 import * as flowSdk from '@n8n/workflow-sdk/next';
 import { forEach, manual, set, workflow } from '@n8n/workflow-sdk/next';
 
 import {
-	BUILT_IN_STEPS,
-	builtInRowOf,
+	CORE_NODE_STEPS,
+	coreStepRowOf,
 	catalogRowsBesideModules,
 	contractReplacementOf,
 	findNextActions,
 	flowStepRowOf,
+	missingNodeTypeIssue,
 	namesDisplayName,
 	nearestNextActions,
 	nextActions,
@@ -76,7 +77,7 @@ describe('next-modules', () => {
 
 	it('adds the triggers of a node, so a workflow can start at one', () => {
 		expect(nodeModuleText('notion')).toContain(
-			'contractTrigger("@n8n/nodes-base-next.notionDataSourcePageAdded", config, 1, {"credential":"notion","scopes":["content:read"]}, {"example":{"id":"example"}})',
+			'contractTrigger("@n8n/nodes-integrations.notionDataSourcePageAdded", config, 1, {"credential":"notion","scopes":["content:read"]}, {"example":{"id":"example"}})',
 		);
 		expect(nextNodeModule('github.repository.event')?.module).toContain(
 			'): Trigger<OutputOf<N, GithubRepositoryEventOutput>, N> =>',
@@ -113,18 +114,16 @@ describe('next-modules', () => {
 	});
 
 	it('types a module without the hidden actions, and keeps them in the sandbox module', () => {
-		expect(nextNodeModule('items')?.module).not.toContain('"@n8n/nodes-base-next.itemsSet"');
-		expect(nextNodeModule('items')?.module).toContain('"@n8n/nodes-base-next.itemsSort"');
-		expect(nodeModuleText('items')).toContain('contractStep("@n8n/nodes-base-next.itemsSet"');
-		expect(nodeModuleText('loopState')).toContain(
-			'contractStep("@n8n/nodes-base-next.loopStateSet"',
-		);
+		expect(nextNodeModule('items')?.module).not.toContain('"@n8n/nodes-core.itemsSet"');
+		expect(nextNodeModule('items')?.module).toContain('"@n8n/nodes-core.itemsSort"');
+		expect(nodeModuleText('items')).toContain('contractStep("@n8n/nodes-core.itemsSet"');
+		expect(nodeModuleText('loopState')).toContain('contractStep("@n8n/nodes-core.loopStateSet"');
 		expect(nodeModuleText('merge')).toContain('// merge.append: Append items.');
 	});
 
 	it.each([
 		['items.set', 'set({'],
-		['@n8n/nodes-base-next.itemsSet', 'set({'],
+		['@n8n/nodes-core.itemsSet', 'set({'],
 		['merge', 'merge({'],
 		['merge.combineByPosition', 'merge({'],
 		['loopState', 'loop({'],
@@ -146,7 +145,7 @@ describe('next-modules', () => {
 	it.each([
 		'notion',
 		'notion.databasePage.getAll',
-		'@n8n/nodes-base-next.notionDatabasePageGetAll',
+		'@n8n/nodes-integrations.notionDatabasePageGetAll',
 	])('resolves %s to the notion module', (ref) => {
 		expect(nextNodeModule(ref)).toEqual({
 			node: 'notion',
@@ -158,7 +157,7 @@ describe('next-modules', () => {
 	it.each([
 		['n8n-nodes-base.notion', 'notion'],
 		['n8n-nodes-base.httpRequest', 'httpRequest'],
-		['@n8n/nodes-base-next.httpRequestSend', 'httpRequest'],
+		['@n8n/nodes-core.httpRequestSend', 'httpRequest'],
 		['n8n-nodes-base.slack', 'slack'],
 		['n8n-nodes-base.mattermost', undefined],
 		['@n8n/n8n-nodes-langchain.notion', undefined],
@@ -178,7 +177,7 @@ describe('next-modules', () => {
 		['n8n-nodes-base.slackTool', 'slack'],
 		['n8n-nodes-base.httpRequestTool', 'httpRequest'],
 		['n8n-nodes-base.mattermostTool', undefined],
-		['@n8n/nodes-base-next.httpRequestGetTool', 'httpRequest'],
+		['@n8n/nodes-core.httpRequestGetTool', 'httpRequest'],
 	])('maps the catalog node type %s to the module node %s', (nodeType, nodeId) => {
 		expect(nextNodeIdOfNodeType(nodeType)).toBe(nodeId);
 	});
@@ -205,17 +204,17 @@ describe('next-modules', () => {
 		});
 	});
 
-	it.each(BUILT_IN_STEPS.flatMap(({ nodeType, steps }) => steps.map((step) => [step, nodeType])))(
+	it.each(CORE_NODE_STEPS.flatMap(({ nodeType, steps }) => steps.map((step) => [step, nodeType])))(
 		'names the SDK step %s for %s, which the flow SDK has',
 		(step, nodeType) => {
 			expect(step in flowSdk).toBe(true);
-			expect(builtInRowOf(nodeType)).toContain(`${step}({`);
+			expect(coreStepRowOf(nodeType)).toContain(`${step}({`);
 		},
 	);
 
 	it('has no SDK step row for a node type that a module types', () => {
-		expect(builtInRowOf('n8n-nodes-base.webhook')).toBeUndefined();
-		expect(builtInRowOf('n8n-nodes-base.mattermost')).toBeUndefined();
+		expect(coreStepRowOf('n8n-nodes-base.webhook')).toBeUndefined();
+		expect(coreStepRowOf('n8n-nodes-base.mattermost')).toBeUndefined();
 	});
 
 	it('finds the chat model sub-nodes of module nodes for a sub-node search', () => {
@@ -407,7 +406,7 @@ describe('next-modules', () => {
 	});
 });
 
-describe('next-modules of @n8n/nodes-core', () => {
+describe('next-modules of the first-party packages', () => {
 	it('offers the noOp module by search, by its node type and for the legacy node', () => {
 		expect(searchNextActions('no operation').nodes).toEqual(['noOp']);
 		expect(nextNodeIdOfNodeType('@n8n/nodes-core.noOpPass')).toBe('noOp');
@@ -416,6 +415,34 @@ describe('next-modules of @n8n/nodes-core', () => {
 			nodeId: 'noOp',
 			actions: [{ id: 'noOp.pass' }],
 		});
+	});
+
+	it('lists the node of each action and trigger of each first-party package', () => {
+		// A flow step replaces every action of these nodes; flow natives have no module.
+		const replaced = new Set(['merge', 'loopState', ...flowNatives.map(({ node }) => node.id)]);
+		const nodeIdsOf = ({ actions, triggers, natives }: (typeof FIRST_PARTY_PACKAGES)[number]) => [
+			...new Set([...actions, ...triggers, ...natives].map(({ node }) => node.id)),
+		];
+		const listed = FIRST_PARTY_PACKAGES.map((pkg) =>
+			nodeIdsOf(pkg).filter((nodeId) => !replaced.has(nodeId)),
+		);
+		expect(listed.every((nodeIds) => nodeIds.length > 0)).toBe(true);
+		expect([...nextNodeIds].sort()).toEqual(listed.flat().sort());
+	});
+
+	it('finds a core node and an integration node, each typed with its package name', () => {
+		expect(searchNextActions('http request').nodes).toContain('httpRequest');
+		expect(searchNextActions('slack send message').nodes).toContain('slack');
+		expect(nodeModuleText('httpRequest')).toContain('"@n8n/nodes-core.httpRequestGet"');
+		expect(nodeModuleText('slack')).toContain('"@n8n/nodes-integrations.slackMessageSend"');
+	});
+
+	it('does not ask to install a first-party package for a node type that it does not have', () => {
+		for (const { name } of FIRST_PARTY_PACKAGES) {
+			expect(missingNodeTypeIssue(`${name}.nope`, {})).toBe(
+				`n8n has no node type ${name}.nope. Find the type with nodes(action="search").`,
+			);
+		}
 	});
 
 	it('pins the sample of a contract step of each first-party package in the flow SDK', () => {

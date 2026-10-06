@@ -6,7 +6,7 @@ import type {
 	SharedWorkflowRepository,
 	User,
 } from '@n8n/db';
-import { toVersionedNodeType, versionsOf } from '@n8n/nodes-base-next';
+import { toVersionedNodeType, versionsOf } from '@n8n/nodes-integrations';
 import type { EvalLlmMockHandler } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 import {
@@ -897,7 +897,7 @@ describe('NodeResourceExplorerService with a contract node', () => {
 		const result = await service.exploreResources(
 			mock<User>({ id: 'user-1' }),
 			{
-				nodeType: '@n8n/nodes-base-next.slackMessageDelete',
+				nodeType: '@n8n/nodes-integrations.slackMessageDelete',
 				version: 1,
 				methodName: 'slack.channel',
 				methodType: 'listSearch',

@@ -575,7 +575,7 @@ describe('withPassThroughFloor', () => {
 		expect(result.Hold).toEqual([{ email: 'ada@example.com', id: 7 }]);
 	});
 
-	it.each(['@n8n/nodes-base-next.waitInterval', '@n8n/nodes-base-next.waitUntil'])(
+	it.each(['@n8n/nodes-core.waitInterval', '@n8n/nodes-core.waitUntil'])(
 		'rebuilds the contract wait %s from its input',
 		(waitType) => {
 			const result = withPassThroughFloor(

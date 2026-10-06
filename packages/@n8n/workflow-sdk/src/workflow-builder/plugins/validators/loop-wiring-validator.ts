@@ -14,21 +14,18 @@ import type { PluginContext, ValidationIssue, ValidatorPlugin } from '../types';
 const LOOP_TYPE = 'n8n-nodes-base.splitInBatches';
 const MERGE_TYPES = new Set([
 	'n8n-nodes-base.merge',
-	'@n8n/nodes-base-next.mergeAppend',
-	'@n8n/nodes-base-next.mergeCombine',
-	'@n8n/nodes-base-next.mergeCombineByPosition',
+	'@n8n/nodes-core.mergeAppend',
+	'@n8n/nodes-core.mergeCombine',
+	'@n8n/nodes-core.mergeCombineByPosition',
 ]);
-const IF_TYPES = new Set(['n8n-nodes-base.if', '@n8n/nodes-base-next.conditionIf']);
+const IF_TYPES = new Set(['n8n-nodes-base.if', '@n8n/nodes-core.conditionIf']);
 const SWITCH_TYPE = 'n8n-nodes-base.switch';
 const FILTER_TYPE = 'n8n-nodes-base.filter';
 /** The Switch contract: one output per case, then `fallback`. */
-const CONTRACT_SWITCH_TYPE = '@n8n/nodes-base-next.conditionSwitch';
+const CONTRACT_SWITCH_TYPE = '@n8n/nodes-core.conditionSwitch';
 /** The Filter contract: `kept`, then `discarded`. */
-const CONTRACT_FILTER_TYPE = '@n8n/nodes-base-next.conditionFilter';
-const STOP_TYPES = new Set([
-	'n8n-nodes-base.stopAndError',
-	'@n8n/nodes-base-next.stopAndErrorStop',
-]);
+const CONTRACT_FILTER_TYPE = '@n8n/nodes-core.conditionFilter';
+const STOP_TYPES = new Set(['n8n-nodes-base.stopAndError', '@n8n/nodes-core.stopAndErrorStop']);
 
 export interface LoopWiringNode {
 	readonly name: string;

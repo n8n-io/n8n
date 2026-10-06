@@ -16,7 +16,7 @@
  *    recoverable; running a destructive operation against user data is not.
  */
 
-import { actionOfNode, toolActionOfNode } from '@n8n/nodes-base-next';
+import { actionOfNode, toolActionOfNode } from '@n8n/nodes-integrations';
 import { isRecord } from '@n8n/utils/is-record';
 import { isAiRootNodeType, type WorkflowJSON } from '@n8n/workflow-sdk';
 import { z } from 'zod';

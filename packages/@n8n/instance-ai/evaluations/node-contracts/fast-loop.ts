@@ -59,7 +59,14 @@ import { createRequire } from 'node:module';
 import path from 'node:path';
 import pLimit from 'p-limit';
 
-import { actionOfNode, migratedSlotOf, nodeTypeOf } from '@n8n/nodes-base-next';
+import {
+	actionOfNode,
+	isContractNodeType,
+	migratedSlotOf,
+	nodeTypeOf,
+	toVersionedNodeType,
+	versionsOf,
+} from '@n8n/nodes-integrations';
 
 import type { InstanceAiRunDebugResponse } from '@n8n/api-types';
 
@@ -93,21 +100,20 @@ const nodesBaseRequire = createRequire(
 	path.resolve(__dirname, '../../../../nodes-base/package.json'),
 );
 const coreRequire = createRequire(path.resolve(__dirname, '../../../../core/package.json'));
-const nextRequire = createRequire(path.resolve(__dirname, '../../../nodes-base-next/package.json'));
-
-const NEXT_PREFIX = '@n8n/nodes-base-next.';
-const NEXT_NOTION_GET_ALL = `${NEXT_PREFIX}notionDatabasePageGetAll`;
-const NEXT_HTTP_GET = `${NEXT_PREFIX}httpRequestGet`;
-const NEXT_HTTP_SEND = `${NEXT_PREFIX}httpRequestSend`;
-const NEXT_SHEETS_READ = `${NEXT_PREFIX}googleSheetsSheetRead`;
-const NEXT_SHEETS_APPEND = `${NEXT_PREFIX}googleSheetsSheetAppend`;
-const NEXT_SHEETS_UPSERT = `${NEXT_PREFIX}googleSheetsSheetAppendOrUpdate`;
-const NEXT_GMAIL_SEND = `${NEXT_PREFIX}gmailMessageSend`;
-const NEXT_GMAIL_GET_ALL = `${NEXT_PREFIX}gmailMessageGetAll`;
-const NEXT_GEMINI_MESSAGE = `${NEXT_PREFIX}googleGeminiTextMessage`;
-const NEXT_SET = `${NEXT_PREFIX}itemsSet`;
-const NEXT_IF = `${NEXT_PREFIX}conditionIf`;
-const NEXT_FILTER = `${NEXT_PREFIX}conditionFilter`;
+const CORE_PREFIX = '@n8n/nodes-core.';
+const INTEGRATIONS_PREFIX = '@n8n/nodes-integrations.';
+const NEXT_NOTION_GET_ALL = `${INTEGRATIONS_PREFIX}notionDatabasePageGetAll`;
+const NEXT_HTTP_GET = `${CORE_PREFIX}httpRequestGet`;
+const NEXT_HTTP_SEND = `${CORE_PREFIX}httpRequestSend`;
+const NEXT_SHEETS_READ = `${INTEGRATIONS_PREFIX}googleSheetsSheetRead`;
+const NEXT_SHEETS_APPEND = `${INTEGRATIONS_PREFIX}googleSheetsSheetAppend`;
+const NEXT_SHEETS_UPSERT = `${INTEGRATIONS_PREFIX}googleSheetsSheetAppendOrUpdate`;
+const NEXT_GMAIL_SEND = `${INTEGRATIONS_PREFIX}gmailMessageSend`;
+const NEXT_GMAIL_GET_ALL = `${INTEGRATIONS_PREFIX}gmailMessageGetAll`;
+const NEXT_GEMINI_MESSAGE = `${INTEGRATIONS_PREFIX}googleGeminiTextMessage`;
+const NEXT_SET = `${CORE_PREFIX}itemsSet`;
+const NEXT_IF = `${CORE_PREFIX}conditionIf`;
+const NEXT_FILTER = `${CORE_PREFIX}conditionFilter`;
 
 const isHttpRequest = (node: WorkflowNodeResponse) =>
 	['n8n-nodes-base.httpRequest', NEXT_HTTP_GET, NEXT_HTTP_SEND].includes(node.type);
@@ -168,8 +174,8 @@ const isParameterValue = (value: unknown): value is NodeParameterValueType =>
 
 /** The node's parameters with description defaults filled in, as the Workflow constructor does. */
 function withDefaults(node: WorkflowNodeResponse): INodeParameters {
-	// nodes-base-next defaults ('{}' and 0) fail the node's own input check. Grade the saved parameters.
-	if (node.type.startsWith(NEXT_PREFIX)) {
+	// Contract defaults ('{}' and 0) fail the node's own input check. Grade the saved parameters.
+	if (isContractNodeType(node.type)) {
 		return isNodeParameters(node.parameters) ? node.parameters : {};
 	}
 	const version = node.typeVersion ?? 1;
@@ -407,7 +413,7 @@ function parseJsonBody(body: unknown): unknown {
 	}
 }
 
-/** The body a nodes-base-next HTTP node would send: `body` resolved per item, then its payload. */
+/** The body a contract HTTP node would send: `body` resolved per item, then its payload. */
 async function nextHttpBodies(http: WorkflowNodeResponse, walked: PathStep[]): Promise<unknown[]> {
 	const body = http.parameters?.body;
 	const once = http.executeOnce === true;
@@ -433,7 +439,7 @@ async function nextHttpBodies(http: WorkflowNodeResponse, walked: PathStep[]): P
 
 /** The JSON body an HTTP Request node would send for each input item. */
 async function httpBodies(http: WorkflowNodeResponse, walked: PathStep[]): Promise<unknown[]> {
-	if (http.type.startsWith(NEXT_PREFIX)) return await nextHttpBodies(http, walked);
+	if (isContractNodeType(http.type)) return await nextHttpBodies(http, walked);
 	const parameters = http.parameters ?? {};
 	const once = http.executeOnce === true;
 	const { items } = walked[walked.length - 1];
@@ -517,7 +523,7 @@ const RUNNABLE_NODE_TYPES = new Set([
 		'itemsSort',
 		'itemsRemoveDuplicates',
 		'codeJavaScript',
-	].map((name) => `${NEXT_PREFIX}${name}`),
+	].map((name) => `${CORE_PREFIX}${name}`),
 ]);
 
 /** Nodes whose output 0 holds the items that match: the true branch or the kept items. */
@@ -576,11 +582,11 @@ async function runJavaScriptJob(
 	);
 }
 
-/** The dist class of a nodes-base-next node: `dist/nodes/<Pascal>.node.js` exports `<Pascal>`. */
-function nextNodeClass(type: string) {
-	const name = type.slice(NEXT_PREFIX.length);
-	const className = `${name.charAt(0).toUpperCase()}${name.slice(1)}`;
-	return loadDist(nextRequire, `./dist/nodes/${className}.node.js`, [className])[className];
+/** The node class of a contract node: n8n projects it from the bundled versions of its action. */
+function nextNodeClass(node: WorkflowNodeResponse) {
+	const action = actionOfNode(node);
+	if (!action) throw new Error(`${node.type} is not a contract node type`);
+	return toVersionedNodeType(versionsOf(action.id));
 }
 
 /** The node class of a nodes-base node, found in `known/nodes.json` as the node loader does. */
@@ -594,9 +600,7 @@ function nodesBaseClass(type: string) {
 
 /** The node type for the saved typeVersion, loaded from the package dist. */
 function loadNodeType(node: WorkflowNodeResponse): Record<string, unknown> {
-	const nodeClass = node.type.startsWith(NEXT_PREFIX)
-		? nextNodeClass(node.type)
-		: nodesBaseClass(node.type);
+	const nodeClass = isContractNodeType(node.type) ? nextNodeClass(node) : nodesBaseClass(node.type);
 	const instance: unknown = typeof nodeClass === 'function' ? Reflect.construct(nodeClass, []) : {};
 	if (!isRecord(instance)) throw new Error(`${node.type} did not construct`);
 	const versioned: unknown =
@@ -844,7 +848,7 @@ function fakeApiHelpers(respond: (request: unknown) => unknown, requests: unknow
 }
 
 /**
- * What a nodes-base-next sub-node supplies to its root node after `walked`, run by its own supply
+ * What a contract sub-node supplies to its root node after `walked`, run by its own supply
  * code against a fake API that `respond` answers. Its parameters resolve against root item 0.
  */
 async function nextSupply(
@@ -892,7 +896,7 @@ const subNodeOf = (workflow: WorkflowResponse, nodeName: string, connectionType:
 	});
 
 /**
- * Runs a nodes-base-next node after `walked` with its own action code against a fake API.
+ * Runs a contract node after `walked` with its own action code against a fake API.
  * `respond` answers each request (it may throw); `requests` holds every request sent.
  */
 async function runNext(
@@ -911,7 +915,7 @@ async function runNext(
 	}
 }
 
-/** The `filter` the nodes-base-next Notion node sends, run by its own execute code on a fake API. */
+/** The `filter` the contract Notion node sends, run by its own execute code on a fake API. */
 async function nextNotionFilter(
 	workflow: WorkflowResponse,
 	notion: WorkflowNodeResponse,
@@ -975,7 +979,7 @@ interface NotionTask {
 	conditions: unknown[][];
 	/** More POST body fields, by page title. */
 	body: (title: string) => Record<string, unknown>;
-	/** The edit keeps the typed nodes-base-next nodes of the seed. */
+	/** The edit keeps the typed contract nodes of the seed. */
 	typed: boolean;
 }
 
@@ -1426,7 +1430,7 @@ async function paginatedRequests(workflow: WorkflowResponse, http: WorkflowNodeR
 	}
 }
 
-/** Runs the nodes-base-next GET against CUSTOMER_PAGES and returns the URLs it requests. */
+/** Runs the contract GET against CUSTOMER_PAGES and returns the URLs it requests. */
 async function nextPaginatedRequests(workflow: WorkflowResponse, http: WorkflowNodeResponse) {
 	const answered: string[] = [];
 	const { output, requests, error } = await runNext(
@@ -1503,10 +1507,10 @@ interface SentEmail {
 	message: string;
 }
 
-/** The nodes-base-next send action adds this before its attribution footer. */
+/** The contract send action adds this before its attribution footer. */
 const ATTRIBUTION_SEPARATOR = '\n\n---\n';
 
-/** The email in the raw MIME message that the nodes-base-next send action posts. */
+/** The email in the raw MIME message that the contract send action posts. */
 function decodeSentEmail(raw: unknown): SentEmail {
 	const mime = Buffer.from(asText(raw), 'base64url').toString('utf8');
 	const [head = '', ...body] = mime.split('\r\n\r\n');
@@ -1677,7 +1681,7 @@ async function sheetsWrites(
 	sheetName: string,
 	values: unknown[][],
 ) {
-	if (sheets.type.startsWith(NEXT_PREFIX)) {
+	if (isContractNodeType(sheets.type)) {
 		const { output, requests, error } = await runNext(
 			sheets,
 			walked,
@@ -2061,8 +2065,8 @@ async function triageGmailOutput(workflow: WorkflowResponse, gmail: WorkflowNode
 
 const LEGACY_GEMINI = '@n8n/n8n-nodes-langchain.googleGemini';
 
-const NEXT_AI_PROMPT = `${NEXT_PREFIX}aiPrompt`;
-const NEXT_GEMINI_CHAT_MODEL = `${NEXT_PREFIX}googleGeminiChatModel`;
+const NEXT_AI_PROMPT = `${CORE_PREFIX}aiPrompt`;
+const NEXT_GEMINI_CHAT_MODEL = `${INTEGRATIONS_PREFIX}googleGeminiChatModel`;
 
 /** A node that sends a Gemini message. geminiOutput checks the chat model of an AI prompt. */
 const isGeminiMessage = (node: WorkflowNodeResponse) =>

@@ -606,7 +606,11 @@ describe('resource lookups', () => {
 			request: { path: '/projects/{project}' },
 		});
 		const text = generateNodeModule('todo', [
-			{ contract: toContract(pick), nodeType: 'n8n-nodes-base-next.todoPick', operation: 'pick' },
+			{
+				contract: toContract(pick),
+				nodeType: '@n8n/nodes-integrations.todoPick',
+				operation: 'pick',
+			},
 		]);
 		expect(text).toContain('/** Project ID @searchListMethod todo.project */');
 		expect(text).toContain('/** @searchListMethod todo.project */');
@@ -1003,7 +1007,7 @@ describe('generateNodeModule', () => {
 			'todo',
 			actions.map((action) => ({
 				contract: toContract(action),
-				nodeType: `@n8n/nodes-base-next.${action.id}`,
+				nodeType: `@n8n/nodes-integrations.${action.id}`,
 				resource: action.resource,
 				operation: action.operation,
 			})),
@@ -1035,7 +1039,7 @@ describe('generateNodeModule', () => {
 		expect(text).toContain('project: Value<I, C, string>;');
 		expect(text).toContain('status?: "open" | "done";');
 		expect(text).toContain('export const todo = {\n task: {\n  /** Get many tasks.');
-		expect(text).toContain('contractStep("@n8n/nodes-base-next.todo.task.getAll", config)');
+		expect(text).toContain('contractStep("@n8n/nodes-integrations.todo.task.getAll", config)');
 	});
 
 	it('lets an optional leaf of a contract action take a lambda that gives undefined', () => {
@@ -1107,12 +1111,12 @@ describe('generateNodeModule', () => {
 	it('passes the advanced fields of the form to the step, which stores them in options', () => {
 		const generated = {
 			contract: toContract(listTasks),
-			nodeType: '@n8n/nodes-base-next.todo.task.getAll',
+			nodeType: '@n8n/nodes-integrations.todo.task.getAll',
 			operation: 'getAll',
 		};
 		const text = generateNodeModule('todo', [{ ...generated, ui: { advanced: ['status'] } }]);
 		expect(text).toMatch(
-			/contractStep\("@n8n\/nodes-base-next.todo.task.getAll", config, .*\["status"\]\)/,
+			/contractStep\("@n8n\/nodes-integrations.todo.task.getAll", config, .*\["status"\]\)/,
 		);
 		expect(generateNodeModule('todo', [generated])).not.toContain('["status"]');
 	});
@@ -1164,7 +1168,7 @@ describe('generateNodeModule', () => {
 			'RoutedStep<In, Ctx, Sampled<OutputOf<N, TodoTaskRouteOutput>, S>, N, E | "fallback">',
 		);
 		expect(text).toContain(
-			'routedStep("@n8n/nodes-base-next.todo.task.route", config, {"each":"cases","then":["fallback"]})',
+			'routedStep("@n8n/nodes-integrations.todo.task.route", config, {"each":"cases","then":["fallback"]})',
 		);
 		expect(text).toContain(
 			'RoutedStep<In, Ctx, Sampled<OutputOf<N, TodoTaskCheckOutput>, S>, N, "open" | "done">',

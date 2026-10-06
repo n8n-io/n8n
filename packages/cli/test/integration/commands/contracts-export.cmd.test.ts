@@ -1,6 +1,6 @@
 import { createWorkflow, testDb } from '@n8n/backend-test-utils';
 import { Container } from '@n8n/di';
-import { versionsOf } from '@n8n/nodes-base-next';
+import { packageOf, versionsOf } from '@n8n/nodes-integrations';
 import { createHash } from 'node:crypto';
 import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -14,13 +14,18 @@ import { setupTestCommand } from '@test-integration/utils/test-command';
 
 const OLDER = path.resolve(
 	__dirname,
-	'../../../../@n8n/nodes-base-next/fixtures/versions/httpRequest.get@2.0.0',
+	'../../../../@n8n/nodes-core/fixtures/versions/httpRequest.get@2.0.0',
 );
 
-const contractLoader = new ContractNodeLoader([], [], async () => ({
-	versions: async () => new Map(),
-	credentials: async () => new Map(),
-}));
+const contractLoader = new ContractNodeLoader(
+	[],
+	[],
+	async () => ({ versions: async () => new Map(), credentials: async () => new Map() }),
+	[],
+	undefined,
+	undefined,
+	packageOf('httpRequest.get'),
+);
 Container.set(
 	LoadNodesAndCredentials,
 	Object.assign(mock<LoadNodesAndCredentials>(), {
@@ -42,7 +47,7 @@ const pinnedWorkflow = async ({ semver, digest }: Manifest & { digest: string })
 			{
 				id: 'get',
 				name: 'Get',
-				type: '@n8n/nodes-base-next.httpRequestGet',
+				type: '@n8n/nodes-core.httpRequestGet',
 				typeVersion: 2,
 				contract: { version: semver, digest },
 				position: [0, 0],

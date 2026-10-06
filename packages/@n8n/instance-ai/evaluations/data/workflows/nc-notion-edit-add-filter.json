@@ -18,7 +18,7 @@
 	"seed": {
 		"mode": "inline",
 		"source": {
-			"note": "Synthetic seed: the workflow that the node contracts build saves for nc-notion-filter-and-read, with nodes-base-next node types."
+			"note": "Synthetic seed: the workflow that the node contracts build saves for nc-notion-filter-and-read, with contract node types."
 		},
 		"workflows": [
 			{
@@ -36,7 +36,7 @@
 					{
 						"id": "eeee6666-0002-4000-8000-000000000002",
 						"name": "Get Done Pages",
-						"type": "@n8n/nodes-base-next.notionDatabasePageGetAll",
+						"type": "@n8n/nodes-integrations.notionDatabasePageGetAll",
 						"typeVersion": 1,
 						"position": [224, 0],
 						"parameters": {
@@ -69,7 +69,7 @@
 					{
 						"id": "eeee6666-0003-4000-8000-000000000003",
 						"name": "Post Done Page",
-						"type": "@n8n/nodes-base-next.httpRequestSend",
+						"type": "@n8n/nodes-core.httpRequestSend",
 						"typeVersion": 3,
 						"position": [448, 0],
 						"parameters": {
@@ -90,7 +90,7 @@
 		],
 		"dataTables": []
 	},
-	"description": "Edit round trip for node contracts. The seed is the saved Notion done pages workflow with nodes-base-next node types, so the node contracts arm reads it back with get-as-code and edits it in the typed format. The live turn adds a fourth filter condition on a select property and a new POST body field. Run it on the node contracts arm only: an instance without the flag does not load nodes-base-next.",
+	"description": "Edit round trip for node contracts. The seed is the saved Notion done pages workflow with contract node types, so the node contracts arm reads it back with get-as-code and edits it in the typed format. The live turn adds a fourth filter condition on a select property and a new POST body field. Run it on the node contracts arm only: an instance without the flag does not load the contract node types.",
 	"executionScenarios": [
 		{
 			"name": "added-filter-and-field",
@@ -102,6 +102,6 @@
 	"outcomeExpectations": [
 		"The Notion node keeps the three seeded conditions and adds Priority select equals High, all combined with AND.",
 		"The POST body keeps name, owners and completed, and adds url from the page URL.",
-		"The edited workflow keeps the nodes-base-next Notion and HTTP Request node types."
+		"The edited workflow keeps the contract Notion and HTTP Request node types (@n8n/nodes-integrations and @n8n/nodes-core)."
 	]
 }

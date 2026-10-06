@@ -1,7 +1,7 @@
 import type { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
-import { versionsOf } from '@n8n/nodes-base-next';
+import { packageOf, versionsOf } from '@n8n/nodes-integrations';
 import { mock } from 'vitest-mock-extended';
 import type { INode, Workflow } from 'n8n-workflow';
 
@@ -15,10 +15,15 @@ import type { InstanceWriteAccessService } from '@/services/instance-write-acces
 import type { OwnershipService } from '@/services/ownership.service';
 
 describe('DataTableProxyService', () => {
-	const contracts = new ContractNodeLoader([], [], async () => ({
-		versions: async () => new Map(),
-		credentials: async () => new Map(),
-	}));
+	const contracts = new ContractNodeLoader(
+		[],
+		[],
+		async () => ({ versions: async () => new Map(), credentials: async () => new Map() }),
+		[],
+		undefined,
+		undefined,
+		packageOf('dataTable.row.insert'),
+	);
 	const service = new DataTableProxyService(
 		mock<DataTableService>(),
 		mock<DataTableAggregateService>(),
@@ -26,7 +31,7 @@ describe('DataTableProxyService', () => {
 		mock<Logger>({ scoped: () => mock<Logger>() }),
 		mock<InstanceWriteAccessService>(),
 		Object.assign(mock<LoadNodesAndCredentials>(), {
-			loaders: { '@n8n/nodes-base-next': contracts },
+			loaders: { [contracts.packageName]: contracts },
 		}),
 	);
 	const workflow = mock<Workflow>();
@@ -42,7 +47,7 @@ describe('DataTableProxyService', () => {
 		await expect(
 			service.getDataTableAggregateProxy(
 				workflow,
-				nodeOf('@n8n/nodes-base-next.dataTableRowInsert', majorOf('dataTable.row.insert')),
+				nodeOf('@n8n/nodes-core.dataTableRowInsert', majorOf('dataTable.row.insert')),
 				'p1',
 			),
 		).resolves.toBeDefined();
@@ -52,14 +57,14 @@ describe('DataTableProxyService', () => {
 		await expect(
 			service.getDataTableAggregateProxy(
 				workflow,
-				nodeOf('@n8n/nodes-base-next.httpRequestGet', majorOf('httpRequest.get')),
+				nodeOf('@n8n/nodes-core.httpRequestGet', majorOf('httpRequest.get')),
 				'p1',
 			),
 		).rejects.toThrow('This proxy is only available for Data table nodes');
 		await expect(
 			service.getDataTableAggregateProxy(
 				workflow,
-				nodeOf('@n8n/nodes-base-next.dataTableRowInsert', 99),
+				nodeOf('@n8n/nodes-core.dataTableRowInsert', 99),
 				'p1',
 			),
 		).rejects.toThrow('This proxy is only available for Data table nodes');
@@ -72,7 +77,7 @@ describe('DataTableProxyService', () => {
 			await expect(
 				service.getDataTableAggregateProxy(
 					workflow,
-					nodeOf('@n8n/nodes-base-next.dataTableRowInsert', majorOf('dataTable.row.insert')),
+					nodeOf('@n8n/nodes-core.dataTableRowInsert', majorOf('dataTable.row.insert')),
 					'p1',
 				),
 			).rejects.toThrow('This proxy is only available for Data table nodes');

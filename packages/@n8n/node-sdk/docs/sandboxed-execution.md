@@ -308,7 +308,7 @@ A trap stops the component: every later call of the execution gets the same erro
 
 ## Coverage and cost
 
-`versions.test.ts` of nodes-base-next replays the fixtures of every frozen action in the sandbox.
+`versions.test.ts` of nodes-core and of nodes-integrations replays the fixtures of every frozen action in the sandbox.
 84 of 84 pass, the 6 binary-data actions, the 3 AI roots and the 5 providers included. The 2
 triggers have no fixtures; `sandbox.test.ts` runs a poll and a webhook trigger in the sandbox. The CI job `ci-node-contract-sandbox.yml` builds the sandbox
 and runs these tests, so they do not skip there.
@@ -342,7 +342,7 @@ Measured on macOS arm64 (load 9 to 12), medians, for `slack.message.send`,
 
 A real API call takes 50 to 500 ms, so the sandbox adds little to an HTTP-bound action.
 
-`useContractRegistry` of nodes-base-next calls `warmSandbox(options)` when the sandbox is on. It
+`useContractRegistry` of nodes-integrations calls `warmSandbox(options)` when the sandbox is on. It
 compiles `action.wasm`, `provider.wasm` and `trigger.wasm` into the cache directory, one after the other, and n8n
 does not wait for it. A sidecar without `--bundle` compiles the guest at `[initialize]`. A run
 that starts before the compile ends, or after a failed warm-up, compiles the guest itself. Two

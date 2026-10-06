@@ -1,6 +1,6 @@
 import type { Logger } from '@n8n/backend-common';
 import type { TextMapPropagator } from '@opentelemetry/api';
-import type { RunProfile } from '@n8n/nodes-base-next';
+import type { RunProfile } from '@n8n/nodes-integrations';
 import { context, propagation, SpanKind, SpanStatusCode, trace } from '@opentelemetry/api';
 import { hrTimeToMilliseconds } from '@opentelemetry/core';
 import { mock } from 'vitest-mock-extended';
@@ -1095,13 +1095,13 @@ describe('ExecutionLevelTracer', () => {
 			tracer.startWorkflow({ executionId, workflow: defaultWorkflow });
 			tracer.startNode({
 				executionId,
-				node: { id: 'n1', name: 'Notion', type: '@n8n/nodes-base-next.notion', typeVersion: 2 },
+				node: { id: 'n1', name: 'Notion', type: '@n8n/nodes-integrations.notion', typeVersion: 2 },
 			});
 		};
 		const endNode = (executionId: string) => {
 			tracer.endNode({
 				executionId,
-				node: { id: 'n1', name: 'Notion', type: '@n8n/nodes-base-next.notion', typeVersion: 2 },
+				node: { id: 'n1', name: 'Notion', type: '@n8n/nodes-integrations.notion', typeVersion: 2 },
 				inputItemCount: 1,
 				outputItemCount: 150,
 			});

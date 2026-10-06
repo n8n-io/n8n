@@ -114,7 +114,7 @@ describe('INodeSchema', () => {
 	const node = {
 		id: '1',
 		name: 'Get',
-		type: '@n8n/nodes-base-next.httpRequestGet',
+		type: '@n8n/nodes-core.httpRequestGet',
 		typeVersion: 3,
 		position: [0, 0],
 		parameters: {},

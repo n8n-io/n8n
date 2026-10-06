@@ -208,7 +208,7 @@ describe('dataTableReadView', () => {
 	const contractNode = (parameters: Record<string, unknown>): INode => ({
 		id: 'node-2',
 		name: 'Get Rows',
-		type: '@n8n/nodes-base-next.dataTableRowGet',
+		type: '@n8n/nodes-core.dataTableRowGet',
 		typeVersion: 1,
 		position: [0, 0],
 		parameters: parameters as INode['parameters'],
@@ -240,7 +240,7 @@ describe('dataTableReadView', () => {
 	});
 
 	it('leaves the row check and other nodes as they are', () => {
-		const exists = { ...contractNode({}), type: '@n8n/nodes-base-next.dataTableRowExists' };
+		const exists = { ...contractNode({}), type: '@n8n/nodes-core.dataTableRowExists' };
 		expect(dataTableReadView(exists)).toBe(exists);
 		expect(isDataTableRead(exists)).toBe(false);
 	});

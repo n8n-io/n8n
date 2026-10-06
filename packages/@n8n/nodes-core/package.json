@@ -32,12 +32,14 @@
     "test:unit": "vitest run"
   },
   "dependencies": {
-    "@n8n/node-sdk": "workspace:*"
+    "@n8n/node-sdk": "workspace:*",
+    "n8n-workflow": "workspace:*"
   },
   "devDependencies": {
     "@n8n/eslint-config": "workspace:*",
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
+    "n8n-nodes-base": "workspace:*",
     "tsx": "catalog:",
     "typescript": "catalog:typescript",
     "vitest": "catalog:"

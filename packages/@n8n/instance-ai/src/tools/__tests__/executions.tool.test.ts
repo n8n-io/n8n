@@ -1143,7 +1143,7 @@ describe('executions tool', () => {
 					{
 						id: 'Fetch',
 						name: 'Fetch',
-						type: '@n8n/nodes-base-next.httpRequestGet',
+						type: '@n8n/nodes-core.httpRequestGet',
 						typeVersion: 3,
 						position: [0, 0],
 						parameters: {

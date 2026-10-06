@@ -27,6 +27,7 @@ import {
 import { toContract } from '@n8n/node-sdk/registry';
 import {
 	actions,
+	FIRST_PARTY_PACKAGES,
 	isContractNodeType,
 	migratedTargetOf,
 	nativeTriggers,
@@ -34,14 +35,14 @@ import {
 	toolActions,
 	toolTypeOf,
 	triggers,
-} from '@n8n/nodes-base-next';
+} from '@n8n/nodes-integrations';
 
 /** Every action, as the sandbox modules and get-as-code read them. */
 export const nextActions: readonly Action[] = actions;
 
 /**
  * Module actions that a flow step emits with better types, with the catalog node type of that
- * step in `BUILT_IN_STEPS`. Discovery does not offer them. The sandbox module keeps them, so a
+ * step in `CORE_NODE_STEPS`. Discovery does not offer them. The sandbox module keeps them, so a
  * source that get-as-code reads back still builds.
  */
 const FLOW_STEP_OF_ACTION: ReadonlyMap<string, string> = new Map([
@@ -152,7 +153,7 @@ export function flowStepRowOf(ref: string): string | undefined {
 				(action.node.id === ref && !stepsOfNode(ref).length)),
 	);
 	const nodeType = replaced && FLOW_STEP_OF_ACTION.get(replaced.id);
-	return nodeType === undefined ? undefined : builtInRowOf(nodeType);
+	return nodeType === undefined ? undefined : coreStepRowOf(nodeType);
 }
 
 interface ActionLine {
@@ -265,8 +266,8 @@ export const actionRow = (action: Action) => `${action.id}: ${action.summary}`;
 
 export const actionRowsOfNode = (nodeId: string) => actionsOfNode(nodeId).map(actionRow);
 
-/** Steps and macros of `@n8n/workflow-sdk/next` that replace a catalog node, by SDK name. */
-export const BUILT_IN_STEPS: ReadonlyArray<{
+/** Steps and macros of `@n8n/workflow-sdk/next` that replace a core node, by SDK name. */
+export const CORE_NODE_STEPS: ReadonlyArray<{
 	readonly nodeType: string;
 	readonly steps: readonly string[];
 	readonly row: string;
@@ -313,10 +314,10 @@ export const BUILT_IN_STEPS: ReadonlyArray<{
 	},
 ];
 
-/** The SDK step row that replaces a catalog node type. A typed native trigger comes first. */
-export function builtInRowOf(nodeType: string): string | undefined {
+/** The SDK step row that replaces a core node type. A typed native trigger comes first. */
+export function coreStepRowOf(nodeType: string): string | undefined {
 	if (nativeNodeIdOf(nodeType)) return undefined;
-	return BUILT_IN_STEPS.find((builtIn) => builtIn.nodeType === nodeType)?.row;
+	return CORE_NODE_STEPS.find((step) => step.nodeType === nodeType)?.row;
 }
 
 const words = (text: string) =>
@@ -574,7 +575,7 @@ function derivedNodeOf(
 	version?: number,
 ): DerivedNode | undefined {
 	const nodeTypes = source.nodeTypesProvider;
-	if (!nodeTypes || builtInRowOf(nodeType)) return undefined;
+	if (!nodeTypes || coreStepRowOf(nodeType)) return undefined;
 	const authored = nextNodeIdOfNodeType(nodeType) !== undefined;
 	const cache = derivedNodes.get(nodeTypes) ?? new Map<string, DerivedNode | undefined>();
 	derivedNodes.set(nodeTypes, cache);
@@ -621,9 +622,11 @@ export function isInstalledNodeType(nodeType: string, source: DeriveSource): boo
 	}
 }
 
-const BUILT_IN_PACKAGES: ReadonlySet<string> = new Set([
+/** The packages that every n8n ships: the legacy nodes and the first-party contract packages. */
+const SHIPPED_PACKAGES: ReadonlySet<string> = new Set([
 	'n8n-nodes-base',
 	'@n8n/n8n-nodes-langchain',
+	...FIRST_PARTY_PACKAGES.map(({ name }) => name),
 ]);
 
 const NEAREST_NODE_TYPES = 3;
@@ -646,7 +649,7 @@ function nearestNodeTypes(nodeType: string, source: DeriveSource): string[] {
 /** Why a node type that the instance does not have cannot build, in one line. */
 export function missingNodeTypeIssue(nodeType: string, source: DeriveSource): string {
 	const packageName = nodeType.slice(0, nodeType.lastIndexOf('.'));
-	if (!BUILT_IN_PACKAGES.has(packageName) && packageName) {
+	if (!SHIPPED_PACKAGES.has(packageName) && packageName) {
 		return `Node type ${nodeType} is not installed. Install package ${packageName} first.`;
 	}
 	const nearest = nearestNodeTypes(nodeType, source);

@@ -2583,7 +2583,7 @@ describe('verify-built-workflow tool — live reads', () => {
 				{
 					id: 'fetch',
 					name: 'Fetch',
-					type: '@n8n/nodes-base-next.httpRequestGet',
+					type: '@n8n/nodes-core.httpRequestGet',
 					typeVersion: 3,
 					position: [0, 0],
 					parameters: {
@@ -2677,7 +2677,7 @@ describe('verify-built-workflow tool — live reads', () => {
 });
 
 describe('verify-built-workflow tool — slices and variants', () => {
-	const GET = '@n8n/nodes-base-next.httpRequestGet';
+	const GET = '@n8n/nodes-core.httpRequestGet';
 	const node = (name: string, type: string, parameters: Record<string, unknown> = {}) => ({
 		id: name,
 		name,
@@ -2701,10 +2701,10 @@ describe('verify-built-workflow tool — slices and variants', () => {
 		nodes: [
 			node('Start', 'n8n-nodes-base.manualTrigger'),
 			node('Fetch', GET, { url: 'https://api.example.com/org', schema: organizationSchema }),
-			node('Keep', '@n8n/nodes-base-next.itemsSet', {
+			node('Keep', '@n8n/nodes-core.itemsSet', {
 				fields: { name: '={{ $json.organization.name }}' },
 			}),
-			node('Post', '@n8n/nodes-base-next.httpRequestSend', { url: 'https://api.example.com/x' }),
+			node('Post', '@n8n/nodes-core.httpRequestSend', { url: 'https://api.example.com/x' }),
 		],
 	};
 	const declared = [{ organization: { name: 'example' } }];
@@ -2828,7 +2828,7 @@ describe('verify-built-workflow tool — slices and variants', () => {
 			nodes: [
 				...workflow.nodes,
 				node('Other', 'n8n-nodes-base.scheduleTrigger'),
-				node('Side', '@n8n/nodes-base-next.itemsSet'),
+				node('Side', '@n8n/nodes-core.itemsSet'),
 			],
 		} as never);
 

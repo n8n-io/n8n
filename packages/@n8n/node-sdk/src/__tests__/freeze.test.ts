@@ -2,8 +2,10 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
+import type { Action } from '../define';
 import { setPermissionRefusalListener, type PermissionRefusal } from '../egress';
-import { freezeAction, GUEST_LACKS, type FrozenAction } from '../freeze';
+import { defineCredential, field } from '../entry/credentials';
+import { credentialTypesOf, freezeAction, GUEST_LACKS, type FrozenAction } from '../freeze';
 import {
 	executorOf,
 	loadExecutor,
@@ -16,6 +18,21 @@ import { loadTriggerExecutor } from '../triggers';
 
 it('GUEST_LACKS are globals of Node, besides the CommonJS names', () => {
 	expect(GUEST_LACKS.filter((name) => !(name in globalThis))).toEqual(['__dirname', '__filename']);
+});
+
+it('credentialTypesOf lists each credential type id once', () => {
+	const token = () =>
+		defineCredential({
+			id: 'probe.token',
+			displayName: 'Probe',
+			fields: { token: field.secret('Token') },
+			auth: (a) => a.apply({ headers: { Authorization: 'Bearer {token}' } }),
+		});
+	const contractWith = (type: ReturnType<typeof token>) =>
+		({ node: { credential: { types: [type] } } }) as unknown as Action;
+	expect(
+		credentialTypesOf([contractWith(token()), contractWith(token())]).map(({ id }) => id),
+	).toEqual(['probe.token']);
 });
 
 const probeSource = (value: string, header = '', spec = '') => `import { defineNode, t } from '@n8n/node-sdk';

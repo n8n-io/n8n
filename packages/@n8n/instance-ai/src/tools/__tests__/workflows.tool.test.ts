@@ -246,7 +246,7 @@ describe('workflows tool', () => {
 			const contract = (name: string, type: string, parameters: IDataObject) => ({
 				id: name,
 				name,
-				type: `@n8n/nodes-base-next.${type}`,
+				type: `@n8n/nodes-integrations.${type}`,
 				typeVersion: 2,
 				position: [0, 0] as [number, number],
 				parameters,
@@ -282,7 +282,7 @@ describe('workflows tool', () => {
 
 			expect(result.code).toContain('gmail.message.get(');
 			expect(result.code).toContain('messageId: expr("{{ $input.first().json.id }}")');
-			expect(result.code).toContain('type: "@n8n/nodes-base-next.gmailMessageGetAll"');
+			expect(result.code).toContain('type: "@n8n/nodes-integrations.gmailMessageGetAll"');
 		});
 
 		it('decompiles the binary key of a binary field as the lambda that reads it', async () => {
@@ -301,7 +301,7 @@ describe('workflows tool', () => {
 					{
 						id: 'Upload',
 						name: 'Upload',
-						type: '@n8n/nodes-base-next.googleDriveFileUpload',
+						type: '@n8n/nodes-integrations.googleDriveFileUpload',
 						typeVersion: 1,
 						position: [0, 0],
 						parameters: { file: 'data', folderId: 'root' },

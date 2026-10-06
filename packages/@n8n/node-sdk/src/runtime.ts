@@ -989,7 +989,7 @@ async function readCapabilities(
 				throw new NodeOperationError(
 					host.node,
 					`The ${name} input needs a ${kind} from a node contract sub-node`,
-					{ description: 'Connect a sub-node of @n8n/nodes-base-next to this input.' },
+					{ description: 'Connect a node contract sub-node to this input.' },
 				);
 			}
 			return [name, many ? values : values[0]] as const;

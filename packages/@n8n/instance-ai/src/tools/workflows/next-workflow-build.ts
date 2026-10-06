@@ -21,7 +21,12 @@ import {
 	type ResourceLookupCall,
 } from '@n8n/node-sdk/host';
 import { toContract } from '@n8n/node-sdk/registry';
-import { actionOfNode, actions, isContractNodeType, toolActionOfNode } from '@n8n/nodes-base-next';
+import {
+	actionOfNode,
+	actions,
+	isContractNodeType,
+	toolActionOfNode,
+} from '@n8n/nodes-integrations';
 import { isRecord } from '@n8n/utils/is-record';
 import { hasPlaceholderDeep } from '@n8n/utils/placeholder';
 import { sublimeSearch } from '@n8n/utils/search/sublime-search';
@@ -41,7 +46,7 @@ import type { ValidationWarning } from './workflow-validation-warnings';
 import type { InstanceAiContext } from '../../types';
 import type { FixtureOrigin } from '../../workflow-loop/workflow-loop-state';
 import {
-	builtInRowOf,
+	coreStepRowOf,
 	contractReplacementOf,
 	derivedNodeModuleText,
 	factoryPathOf,
@@ -762,7 +767,7 @@ export async function contractEgressWarnings(
 /** The JavaScript field of each node type that runs JavaScript in the Code runner. */
 const JAVASCRIPT_CODE_FIELDS: ReadonlyMap<string, string> = new Map([
 	['n8n-nodes-base.code', 'jsCode'],
-	['@n8n/nodes-base-next.codeJavaScript', 'code'],
+	['@n8n/nodes-core.codeJavaScript', 'code'],
 ]);
 
 const expressionStrings = (value: unknown): string[] => {
@@ -852,7 +857,7 @@ export async function legacyNodeIssues(
 	return workflow.nodes.flatMap((node): ValidationWarning[] => {
 		if (!node.name || !written.has(node.name) || actionOfNode(node)) return [];
 		const replacement = contractReplacementOf(node);
-		const flowStep = replacement ? undefined : builtInRowOf(node.type);
+		const flowStep = replacement ? undefined : coreStepRowOf(node.type);
 		if (flowStep) {
 			return [
 				{

@@ -2,8 +2,8 @@ import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 
-import { actions } from '../../../nodes-base-next/dist/index.js';
-import { packageOf, versionsOf } from '../../../nodes-base-next/dist/registry.js';
+import { actions } from '../../../nodes-integrations/dist/index.js';
+import { packageOf, versionsOf } from '../../../nodes-integrations/dist/registry.js';
 import { freezeAction } from '../freeze';
 import { replayFixtures } from '../publish';
 import type { ExecutorHost } from '../runtime';

@@ -585,9 +585,9 @@ describe('planVerificationSimulation — contract nodes', () => {
 		mockClassify.mockImplementation(actual.classifyNodesForSimulation);
 		const workflow = wf(
 			[
-				{ name: 'Get Deals', type: '@n8n/nodes-base-next.notionDatabasePageGetAll' },
-				{ name: 'Build Rows', type: '@n8n/nodes-base-next.itemsSet' },
-				{ name: 'Upsert', type: '@n8n/nodes-base-next.googleSheetsSheetAppendOrUpdate' },
+				{ name: 'Get Deals', type: '@n8n/nodes-integrations.notionDatabasePageGetAll' },
+				{ name: 'Build Rows', type: '@n8n/nodes-core.itemsSet' },
+				{ name: 'Upsert', type: '@n8n/nodes-integrations.googleSheetsSheetAppendOrUpdate' },
 			],
 			{
 				'Get Deals': { main: [[{ node: 'Build Rows', type: 'main', index: 0 }]] },

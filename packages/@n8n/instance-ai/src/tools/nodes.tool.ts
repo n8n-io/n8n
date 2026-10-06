@@ -25,7 +25,7 @@ import { sanitizeInputSchema } from '../agent/sanitize-mcp-schemas';
 import {
 	actionRow,
 	actionRowsOfNode,
-	builtInRowOf,
+	coreStepRowOf,
 	catalogRowsBesideModules,
 	contractReplacementOf,
 	derivedActionIds,
@@ -117,7 +117,7 @@ const moduleSearchAction = searchAction.extend({
 		.describe(
 			'Search nodes by service and operation, e.g. "notion get many pages", or by AI connection type. ' +
 				'`nodeModules` holds the typed or derived module of each service: import it and call its actions. ' +
-				'`builtIns` are flow steps of `@n8n/workflow-sdk/next` that replace catalog nodes. ' +
+				'`coreSteps` are flow steps of `@n8n/workflow-sdk/next` that replace core nodes. ' +
 				'Pass `queries` with every service of the workflow in one call, also HTTP. ' +
 				'Call it in the same step as `load_skill`, not after it.',
 		),
@@ -479,9 +479,9 @@ async function searchOneWithModules(
 	const catalog = await handleSearch(context, input, cache);
 	const notInstalledPart = catalog.notInstalled ? { notInstalled: catalog.notInstalled } : {};
 	const namesHit = (hit: { displayName: string }) => namesDisplayName(query, hit.displayName);
-	const builtInHits = catalog.results.filter((hit) => builtInRowOf(hit.name) !== undefined);
-	const builtIns = [...new Set(builtInHits.flatMap((hit) => builtInRowOf(hit.name) ?? []))];
-	const moduleHits = catalog.results.filter((hit) => builtInRowOf(hit.name) === undefined);
+	const coreStepHits = catalog.results.filter((hit) => coreStepRowOf(hit.name) !== undefined);
+	const coreSteps = [...new Set(coreStepHits.flatMap((hit) => coreStepRowOf(hit.name) ?? []))];
+	const moduleHits = catalog.results.filter((hit) => coreStepRowOf(hit.name) === undefined);
 	const coveredNodes = moduleHits.flatMap((hit) => nextNodeIdOfNodeType(hit.name) ?? []);
 	const unmoduled = moduleHits.filter((hit) => nextNodeIdOfNodeType(hit.name) === undefined);
 	// A catalog node that the query names gets its derived module, when it has one.
@@ -513,11 +513,11 @@ async function searchOneWithModules(
 		...typed.actions,
 		...derived.flatMap((nodeType) => derivedActionsNamedBy(nodeType, context, query)),
 	];
-	const namesBuiltIn = builtInHits.some(namesHit);
+	const namesCoreStep = coreStepHits.some(namesHit);
 	// A named SDK step does the job, so the actions behind it (condition.if for when) are noise.
-	const otherActionsPart = otherActions.length && !namesBuiltIn ? { otherActions } : {};
-	const builtInsPart = builtIns.length ? { builtIns } : {};
-	if (nodes.length || namesBuiltIn) {
+	const otherActionsPart = otherActions.length && !namesCoreStep ? { otherActions } : {};
+	const coreStepsPart = coreSteps.length ? { coreSteps } : {};
+	if (nodes.length || namesCoreStep) {
 		// Other catalog hits of a query that the modules match fully are noise, unless the
 		// query names them, e.g. the legacy agent for "AI agent".
 		const shown = coversQuery ? results.filter(namesHit) : results;
@@ -525,7 +525,7 @@ async function searchOneWithModules(
 		return {
 			nodes,
 			actions,
-			...builtInsPart,
+			...coreStepsPart,
 			...otherActionsPart,
 			...(otherNodes.length ? { otherNodes } : {}),
 			...notInstalledPart,
@@ -534,7 +534,7 @@ async function searchOneWithModules(
 	return {
 		nodes,
 		actions,
-		...builtInsPart,
+		...coreStepsPart,
 		...otherActionsPart,
 		results,
 		totalResults: results.length,
@@ -649,7 +649,7 @@ function moduleOfRequest(
 	const nodeType = typeof request === 'string' ? request : request.nodeType;
 	const direct = nextNodeModule(nodeType);
 	if (direct) return direct;
-	if (builtInRowOf(nodeType)) return undefined;
+	if (coreStepRowOf(nodeType)) return undefined;
 	const nodeId = nextNodeIdOfNodeType(nodeType);
 	const { resource, operation } = typeof request === 'string' ? {} : request;
 	if (nodeId === undefined) {
@@ -758,9 +758,9 @@ async function resolveNodeTypeDefinitions(
 			}
 
 			const options = typeof req === 'string' ? undefined : req;
-			const builtInRow = context.nodeContractsEnabled ? builtInRowOf(nodeType) : undefined;
+			const coreStepRow = context.nodeContractsEnabled ? coreStepRowOf(nodeType) : undefined;
 			const moduleNode =
-				context.nodeContractsEnabled && !builtInRow ? nextNodeIdOfNodeType(nodeType) : undefined;
+				context.nodeContractsEnabled && !coreStepRow ? nextNodeIdOfNodeType(nodeType) : undefined;
 			const actions = moduleNode ? actionRowsOfNode(moduleNode) : [];
 
 			const result = await context.nodeService.getNodeTypeDefinition!(nodeType, options);
@@ -801,8 +801,8 @@ async function resolveNodeTypeDefinitions(
 			const version = definitionVersion(result);
 			const nodeCall = `node({ name, type: '${nodeType}', version: ${version}, parameters, sample }) from '@n8n/workflow-sdk/next'`;
 			const sampleNote = 'Its `sample` items type the output, not type arguments.';
-			const noModuleHint = builtInRow
-				? `// Use the flow step instead of node(): ${builtInRow}\n`
+			const noModuleHint = coreStepRow
+				? `// Use the flow step instead of node(): ${coreStepRow}\n`
 				: !context.nodeContractsEnabled
 					? ''
 					: moduleNode

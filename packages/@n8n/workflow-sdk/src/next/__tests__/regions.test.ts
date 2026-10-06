@@ -359,7 +359,7 @@ describe('regions compile to node contracts', () => {
 			conditions: [{ type: 'boolean', left, test: { op: 'true' } }],
 		});
 		const check = json.nodes.find((n) => n.name === 'Count until');
-		expect(check?.type).toBe('@n8n/nodes-base-next.conditionSwitch');
+		expect(check?.type).toBe('@n8n/nodes-core.conditionSwitch');
 		expect(check?.parameters).toEqual({
 			cases: [
 				{ output: 'done', where: until('={{ $json.n >= 3 }}') },
@@ -367,7 +367,7 @@ describe('regions compile to node contracts', () => {
 			],
 		});
 		const types = new Set(json.nodes.map((n) => n.type));
-		expect([...types].filter((type) => !type.startsWith('@n8n/nodes-base-next.'))).toEqual([
+		expect([...types].filter((type) => !type.startsWith('@n8n/nodes-core.'))).toEqual([
 			'n8n-nodes-base.manualTrigger',
 		]);
 	});
@@ -380,7 +380,7 @@ describe('regions compile to node contracts', () => {
 		expect(connections(poll, 'Poll next')).toEqual([['Poll wait#0']]);
 		expect(connections(poll, 'Poll wait')).toEqual([['Poll#0']]);
 		const wait = poll.nodes.find((n) => n.name === 'Poll wait');
-		expect(wait?.type).toBe('@n8n/nodes-base-next.waitInterval');
+		expect(wait?.type).toBe('@n8n/nodes-core.waitInterval');
 		expect(wait?.parameters).toEqual({ amount: 0, unit: 'seconds' });
 	});
 
@@ -518,14 +518,14 @@ describe('regions compile to node contracts', () => {
 	it('merges more than two branches in one Merge contract that counts its inputs', () => {
 		const appended = mergeThreeWorkflow('append').toJSON();
 		expect(appended.nodes.find((n) => n.name === 'All')).toMatchObject({
-			type: '@n8n/nodes-base-next.mergeAppend',
+			type: '@n8n/nodes-core.mergeAppend',
 			typeVersion: 2,
 			parameters: { inputs: 3 },
 		});
 		expect(connections(appended, 'Tags')).toEqual([['All#2']]);
 		const joined = mergeThreeWorkflow('position').toJSON();
 		expect(joined.nodes.find((n) => n.name === 'All')).toMatchObject({
-			type: '@n8n/nodes-base-next.mergeCombineByPosition',
+			type: '@n8n/nodes-core.mergeCombineByPosition',
 			typeVersion: 1,
 			parameters: { inputs: 3 },
 		});
@@ -536,11 +536,11 @@ describe('regions compile to node contracts', () => {
 				.toJSON()
 				.nodes.find((n) => n.name === 'Both');
 		expect(both('append')).toMatchObject({
-			type: '@n8n/nodes-base-next.mergeAppend',
+			type: '@n8n/nodes-core.mergeAppend',
 			parameters: {},
 		});
 		expect(both('position')).toMatchObject({
-			type: '@n8n/nodes-base-next.mergeCombineByPosition',
+			type: '@n8n/nodes-core.mergeCombineByPosition',
 			parameters: {},
 		});
 	});
@@ -1074,7 +1074,7 @@ describe('loopWiringIssues', () => {
 
 	it('knows the routing contracts: an open fallback is no output, an open discarded is', () => {
 		const contract = (name: string, type: string, parameters?: Record<string, unknown>) => ({
-			...plain(name, `@n8n/nodes-base-next.${type}`),
+			...plain(name, `@n8n/nodes-core.${type}`),
 			...(parameters ? { parameters } : {}),
 		});
 		const cases = { cases: [{ output: 'a' }, { output: 'b' }] };

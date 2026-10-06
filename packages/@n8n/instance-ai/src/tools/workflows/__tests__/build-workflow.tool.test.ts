@@ -3510,7 +3510,7 @@ describe('createBuildWorkflowTool', () => {
 					{
 						id: 'fetch-1',
 						name: 'Fetch',
-						type: '@n8n/nodes-base-next.httpRequestGet',
+						type: '@n8n/nodes-core.httpRequestGet',
 						typeVersion: 3,
 						position: [240, 0],
 						parameters: {
@@ -3726,7 +3726,7 @@ describe('createBuildWorkflowTool', () => {
 		const fetchNode = {
 			id: '1',
 			name: 'Fetch',
-			type: '@n8n/nodes-base-next.httpRequestGet',
+			type: '@n8n/nodes-core.httpRequestGet',
 			typeVersion: 2,
 			position: [0, 0] as [number, number],
 			parameters: { authentication: 'httpHeaderAuth', url: 'https://other.test/x' },

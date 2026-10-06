@@ -815,15 +815,15 @@ const isProviderKind = (kind: string): kind is ProviderKind =>
 	Object.hasOwn(PROVIDER_KIND_SLOTS, kind);
 /** The legacy Manual Trigger node, which the native contract `manual.trigger` types. */
 export const MANUAL_NODE = { type: 'n8n-nodes-base.manualTrigger', version: 1 };
-/** The IF and Edit Fields contracts of `@n8n/nodes-base-next` (`condition.if`, `items.set`). */
-export const BRANCH_NODE = { type: '@n8n/nodes-base-next.conditionIf', version: 1 };
-export const SET_NODE = { type: '@n8n/nodes-base-next.itemsSet', version: 1 };
+/** The IF and Edit Fields contracts of `@n8n/nodes-core` (`condition.if`, `items.set`). */
+export const BRANCH_NODE = { type: '@n8n/nodes-core.conditionIf', version: 1 };
+export const SET_NODE = { type: '@n8n/nodes-core.itemsSet', version: 1 };
 /**
  * The first-party contract packages. Their names are the node type prefixes of their contracts.
- * This SDK cannot import `FIRST_PARTY_PACKAGES` of `@n8n/nodes-base-next`, so a test in
+ * This SDK cannot import `FIRST_PARTY_PACKAGES` of `@n8n/nodes-integrations`, so a test in
  * `@n8n/instance-ai` (`next-modules.test.ts`) checks that this list holds each of them.
  */
-const CONTRACT_PACKAGES = ['@n8n/nodes-base-next', '@n8n/nodes-core'];
+const CONTRACT_PACKAGES = ['@n8n/nodes-core', '@n8n/nodes-integrations'];
 
 /** The IF contract parameters of `when` for the compiled JavaScript of its condition. */
 export const branchParameters = (condition: string) => ({

@@ -3,11 +3,12 @@ import { GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import {
 	contractStore,
+	FIRST_PARTY_PACKAGES,
 	nodeTypeOf,
 	toolTypeOf,
 	versionsOf,
 	type InstanceStore,
-} from '@n8n/nodes-base-next';
+} from '@n8n/nodes-integrations';
 import type { INode } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
@@ -50,14 +51,14 @@ describe('prepareNodeContractsRun', () => {
 		const sync = mockInstance(NodeContractsSync);
 		instanceAi.nodeContractsEnabled = true;
 		await prepareNodeContractsRun(workflowOf('@n8n/nodes-core.noOpPass'));
-		await prepareNodeContractsRun(workflowOf('@n8n/nodes-base-next.httpRequestGet'));
+		await prepareNodeContractsRun(workflowOf('@n8n/nodes-core.httpRequestGet'));
 		await prepareNodeContractsRun(workflowOf('n8n-nodes-base.noOp'));
 		instanceAi.nodeContractsEnabled = false;
 		await prepareNodeContractsRun(workflowOf('@n8n/nodes-core.noOpPass'));
 
 		expect(sync.prepareRun.mock.calls.map(([{ nodes }]) => nodes[0]?.type)).toEqual([
 			'@n8n/nodes-core.noOpPass',
-			'@n8n/nodes-base-next.httpRequestGet',
+			'@n8n/nodes-core.httpRequestGet',
 		]);
 	});
 });
@@ -98,14 +99,24 @@ describe('pinNodeContracts', () => {
 	const legacy = nodeOf('Set', 'n8n-nodes-base.set', 3);
 
 	beforeAll(async () => {
-		const loader = new ContractNodeLoader([], [], async () => ({
-			versions: async () => new Map(),
-			credentials: async () => new Map(),
-		}));
-		await loader.loadAll();
+		const loaders = FIRST_PARTY_PACKAGES.map(
+			(pkg) =>
+				new ContractNodeLoader(
+					[],
+					[],
+					async () => ({ versions: async () => new Map(), credentials: async () => new Map() }),
+					[],
+					undefined,
+					undefined,
+					pkg,
+				),
+		);
+		await Promise.all(loaders.map(async (loader) => await loader.loadAll()));
 		Container.set(
 			LoadNodesAndCredentials,
-			Object.assign(mock<LoadNodesAndCredentials>(), { loaders: { [loader.packageName]: loader } }),
+			Object.assign(mock<LoadNodesAndCredentials>(), {
+				loaders: Object.fromEntries(loaders.map((loader) => [loader.packageName, loader])),
+			}),
 		);
 		nodesStore.open.mockResolvedValue(
 			contractStore({

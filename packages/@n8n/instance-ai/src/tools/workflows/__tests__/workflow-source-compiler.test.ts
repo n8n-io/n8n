@@ -198,7 +198,7 @@ describe('compileWorkflowSource', () => {
 					{
 						id: 'get',
 						name: 'Get',
-						type: '@n8n/nodes-base-next.gmailMessageGet',
+						type: '@n8n/nodes-integrations.gmailMessageGet',
 						typeVersion: 2,
 						position: [200, 0],
 						parameters: getParameters,
@@ -242,7 +242,7 @@ describe('compileWorkflowSource', () => {
 						{
 							id: 'sort',
 							name: 'Sort',
-							type: '@n8n/nodes-base-next.itemsSort',
+							type: '@n8n/nodes-core.itemsSort',
 							typeVersion: 1,
 							position: [0, 0],
 							parameters: { by },

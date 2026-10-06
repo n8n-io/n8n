@@ -20,7 +20,7 @@ import {
 	credentialTypeOfManifest,
 	deniedPermissionClassOf,
 	embeddedStoreDirOf,
-	FIRST_PARTY_PACKAGES,
+	FALLBACK_PACKAGE,
 	isContractNodeType,
 	isStoreStatusRecord,
 	MIGRATED_NODES,
@@ -50,7 +50,7 @@ import {
 	type GuestRuntime,
 	type RuntimeAvailability,
 	type RuntimeName,
-} from '@n8n/nodes-base-next';
+} from '@n8n/nodes-integrations';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { existsSync } from 'fs';
 import {
@@ -201,7 +201,7 @@ export class NodeContractsStore {
 	}
 
 	private async create(registryUrl: string) {
-		const { contractStore } = await import('@n8n/nodes-base-next');
+		const { contractStore } = await import('@n8n/nodes-integrations');
 		return contractStore({
 			registryUrl,
 			keys: await this.keys(),
@@ -381,8 +381,8 @@ const credentialNamesOf = ({ nodeVersions }: VersionedNodeType) =>
  * only: one versioned node type for each id of the package with the bundled HEAD and the stored
  * versions of its other majors, and the bundled credential manifests with the stored ones of
  * other names. The type names keep the package name as prefix. A node type shows the icon and
- * codex of the legacy node it stands for. The first package also loads the stored ids and
- * credential types that no package ships.
+ * codex of the legacy node it stands for. The loader of `FALLBACK_PACKAGE` also loads the stored
+ * ids and credential types that no package ships.
  */
 export class ContractNodeLoader implements NodeLoader {
 	readonly packageName: string;
@@ -412,7 +412,7 @@ export class ContractNodeLoader implements NodeLoader {
 		private readonly deny: readonly NodePermissionClass[] = [],
 		private readonly hasOtherCredentialType = hasOtherCredentialTypeInN8n,
 		private readonly legacyLoaders: () => Readonly<Record<string, NodeLoader>> = () => ({}),
-		source: SourcePackage = FIRST_PARTY_PACKAGES[0],
+		source: SourcePackage = FALLBACK_PACKAGE,
 	) {
 		this.packageName = source.name;
 		this.storeDir = embeddedStoreDirOf(source);
@@ -534,14 +534,14 @@ export class ContractNodeLoader implements NodeLoader {
 	}
 
 	/**
-	 * The bundled credential manifests of the package, and for the first package the stored ones
+	 * The bundled credential manifests of the package, and for `FALLBACK_PACKAGE` the stored ones
 	 * of names that n8n does not bundle, e.g. a type that a stored version pins. A stored type
 	 * never replaces the type of another package, e.g. a legacy class. A stored type that n8n
 	 * cannot project is skipped.
 	 */
 	private credentialManifestsOf(stored: ReadonlyMap<string, CredentialManifest>) {
 		const bundled = bundledCredentialsOf(this.storeDir);
-		if (this.packageName !== FIRST_PARTY_PACKAGES[0].name) return bundled;
+		if (this.packageName !== FALLBACK_PACKAGE.name) return bundled;
 		const names = new Set(bundledCredentialsOf().map(({ manifest }) => manifest.name));
 		const others = [...stored.values()].filter((manifest) => {
 			if (names.has(manifest.name) || this.hasOtherCredentialType(manifest.name)) return false;
@@ -670,7 +670,7 @@ export async function useNodeContractsRegistry() {
 		warmSandbox,
 		wasmReuseRuntime,
 		workerRuntime,
-	} = await import('@n8n/nodes-base-next');
+	} = await import('@n8n/nodes-integrations');
 	// The Code contracts follow the same switch as the Code node.
 	setCodeLanguages(nodes.pythonEnabled ? ['javascript', 'python'] : ['javascript']);
 	// The `parsers` import uses the parsers of the Extract from File node. They load at the first read.
@@ -909,7 +909,7 @@ function versionedNodeOf(loaders: Readonly<Record<string, NodeLoader>>, nodeType
 }
 
 /**
- * The agent tool node types of the actions, e.g. `@n8n/nodes-base-next.httpRequestGetTool`. The
+ * The agent tool node types of the actions, e.g. `@n8n/nodes-core.httpRequestGetTool`. The
  * host generates them as the tool variants of legacy nodes, with the same description changes.
  * A tool supplies the action itself, so the tool schema is the action input schema.
  */
