@@ -1,4 +1,4 @@
-import type { Locator } from '@playwright/test';
+import type { Locator, Response } from '@playwright/test';
 
 import { BasePage } from './BasePage';
 import { SettingsSidebar } from './components/SettingsSidebar';
@@ -41,37 +41,35 @@ export class SettingsPersonalPage extends BasePage {
 		return this.getPersonalDataForm().locator('input[name="email"]');
 	}
 
-	/** The save action of the floating save bar, shown once there are unsaved changes. */
-	getSaveSettingsButton(): Locator {
-		return this.page.getByTestId('settings-save-bar-save');
+	/**
+	 * Each field saves when it loses focus, and Enter leaves the field. Resolves with the save
+	 * response; the value must differ from the saved one, or no request is sent.
+	 */
+	async saveFirstName(firstName: string): Promise<Response> {
+		return await this.saveNameField(this.getFirstNameField(), firstName);
 	}
 
-	async fillPersonalData(firstName: string, lastName: string): Promise<void> {
-		await this.getFirstNameField().fill(firstName);
-		await this.getLastNameField().fill(lastName);
+	async saveLastName(lastName: string): Promise<Response> {
+		return await this.saveNameField(this.getLastNameField(), lastName);
+	}
+
+	private async saveNameField(field: Locator, value: string): Promise<Response> {
+		const responsePromise = this.page.waitForResponse(
+			(res) =>
+				new URL(res.url()).pathname.endsWith('/rest/me') && res.request().method() === 'PATCH',
+		);
+		await field.fill(value);
+		await field.press('Enter');
+		return await responsePromise;
 	}
 
 	async fillEmail(email: string): Promise<void> {
 		await this.getEmailField().fill(email);
 	}
 
+	/** Leaves the email field, which starts the confirmation (password or 2FA code). */
 	async pressEnterOnEmail(): Promise<void> {
 		await this.getEmailField().press('Enter');
-	}
-
-	async saveSettings(): Promise<void> {
-		await this.getSaveSettingsButton().click();
-	}
-
-	/**
-	 * Complete workflow to update user's first and last name
-	 * @param firstName - The new first name
-	 * @param lastName - The new last name
-	 */
-	async updateFirstAndLastName(firstName: string, lastName: string): Promise<void> {
-		await this.goto();
-		await this.fillPersonalData(firstName, lastName);
-		await this.saveSettings();
 	}
 
 	getEnableMfaButton(): Locator {
@@ -86,8 +84,8 @@ export class SettingsPersonalPage extends BasePage {
 		return this.page.locator('input[name="mfaCodeOrMfaRecoveryCode"]');
 	}
 
-	getMfaSaveButton(): Locator {
-		return this.page.getByTestId('mfa-save-button');
+	getMfaConfirmButton(): Locator {
+		return this.page.getByTestId('mfa-code-confirm-button');
 	}
 
 	async clickEnableMfa(): Promise<void> {
@@ -107,12 +105,12 @@ export class SettingsPersonalPage extends BasePage {
 	}
 
 	/**
-	 * Fill in MFA code or recovery code and save the form
+	 * Fill in MFA code or recovery code and confirm the dialog
 	 * @param code - MFA token or recovery code
 	 */
-	async fillMfaCodeAndSave(code: string): Promise<void> {
+	async fillMfaCodeAndConfirm(code: string): Promise<void> {
 		await this.getMfaCodeOrRecoveryCodeInput().fill(code);
-		await this.getMfaSaveButton().click();
+		await this.getMfaConfirmButton().click();
 	}
 
 	getUpgradeCta(): Locator {

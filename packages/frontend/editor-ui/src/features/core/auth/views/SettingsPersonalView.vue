@@ -2,7 +2,6 @@
 import { ref, computed, reactive, onMounted, onBeforeUnmount } from 'vue';
 import { ROLE, type Role, type ChangeEmailRequestDto } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
-import type { BaseTextKey } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import type { ThemeOption } from '@/Interface';
@@ -13,31 +12,34 @@ import {
 	CONFIRM_PASSWORD_MODAL_KEY,
 	MFA_SETUP_MODAL_KEY,
 	PROMPT_MFA_CODE_MODAL_KEY,
+	type ConfirmPasswordModalData,
+	type PromptMfaCodeModalData,
 } from '../auth.constants';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { useRolesStore } from '@n8n/stores/roles.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useCloudPlanStore } from '@n8n/stores/cloudPlan.store';
-import type { ConfirmPasswordModalEvents, MfaModalEvents } from '../auth.eventBus';
+import type {
+	ConfirmPasswordModalEvents,
+	MfaModalClosedEventPayload,
+	MfaModalEvents,
+} from '../auth.eventBus';
 import { confirmPasswordEventBus, promptMfaCodeBus } from '../auth.eventBus';
 import { useSSOStore } from '@/features/settings/sso/sso.store';
 
-import type { IconName } from '@n8n/design-system';
+import type { SelectOptionBase, SelectValue } from '@n8n/design-system';
 import {
 	N8nAvatar,
 	N8nButton,
-	N8nIcon,
+	N8nExternalLink,
 	N8nInput,
-	N8nLink,
 	N8nNotice,
-	N8nOption,
-	N8nSelect,
+	N8nSelect2,
 	N8nSettingsLayout,
 	N8nSettingsPageHeader,
 	N8nSettingsRow,
 	N8nSettingsRowGroup,
-	N8nSettingsSaveBar,
 	N8nSettingsSection,
 	N8nText,
 	N8nTooltip,
@@ -51,7 +53,7 @@ type RoleContent = {
 };
 
 const i18n = useI18n();
-const { showToast, showError } = useToast();
+const { showMessage, showToast, showError } = useToast();
 const documentTitle = useDocumentTitle();
 
 const uiStore = useUIStore();
@@ -60,9 +62,6 @@ const rolesStore = useRolesStore();
 const settingsStore = useSettingsStore();
 const ssoStore = useSSOStore();
 const cloudPlanStore = useCloudPlanStore();
-
-const isActive = ref(true);
-const saving = ref(false);
 
 const currentUser = computed((): IUser | null => usersStore.currentUser);
 
@@ -157,14 +156,13 @@ const currentUserRole = computed<RoleContent>(() => {
 });
 
 /**
- * Draft/saved pattern: edits land in `draft` and the save bar appears while the draft differs
- * from what the stores hold. Saving commits the draft; discarding resets it.
+ * Each field saves when it loses focus (or on Enter). `draft` holds what is being typed until then;
+ * Escape puts the saved value back.
  */
-const draft = reactive<Record<ProfileField, string> & { theme: ThemeOption }>({
+const draft = reactive<Record<ProfileField, string>>({
 	firstName: '',
 	lastName: '',
 	email: '',
-	theme: uiStore.theme,
 });
 
 // Validation messages wait for the first blur so a field isn't flagged while it is being typed.
@@ -182,11 +180,9 @@ const savedValues = computed(
 	}),
 );
 
-function resetDraft() {
-	Object.assign(draft, savedValues.value, { theme: uiStore.theme });
-	touched.firstName = false;
-	touched.lastName = false;
-	touched.email = false;
+function resetField(field: ProfileField) {
+	draft[field] = savedValues.value[field];
+	touched[field] = false;
 }
 
 const profileFields = computed(() => [
@@ -235,143 +231,139 @@ const fieldErrors = computed((): Partial<Record<ProfileField, string>> => {
 	return errors;
 });
 
-const isFormValid = computed((): boolean => Object.keys(fieldErrors.value).length === 0);
-
 function visibleError(field: ProfileField): string | undefined {
 	return touched[field] ? fieldErrors.value[field] : undefined;
 }
 
-const hasNameChanges = computed(
-	(): boolean =>
-		canEditName.value &&
-		(draft.firstName !== savedValues.value.firstName ||
-			draft.lastName !== savedValues.value.lastName),
-);
-const hasEmailChanges = computed(
-	(): boolean => canEditEmail.value && draft.email !== savedValues.value.email,
-);
-const hasThemeChanges = computed((): boolean => draft.theme !== uiStore.theme);
-
-const hasAnyChanges = computed(
-	(): boolean => hasNameChanges.value || hasEmailChanges.value || hasThemeChanges.value,
+const themeItems = computed(
+	(): Array<SelectOptionBase<ThemeOption>> => [
+		{
+			value: 'system',
+			label: i18n.baseText('settings.personal.theme.systemDefault'),
+			icon: 'monitor',
+		},
+		{ value: 'light', label: i18n.baseText('settings.personal.theme.light'), icon: 'sun' },
+		{ value: 'dark', label: i18n.baseText('settings.personal.theme.dark'), icon: 'moon' },
+	],
 );
 
-const themeOptions: Array<{ value: ThemeOption; label: BaseTextKey; icon: IconName }> = [
-	{ value: 'system', label: 'settings.personal.theme.systemDefault', icon: 'monitor' },
-	{ value: 'light', label: 'settings.personal.theme.light', icon: 'sun' },
-	{ value: 'dark', label: 'settings.personal.theme.dark', icon: 'moon' },
-];
-
-const selectedThemeIcon = computed(
-	(): IconName => themeOptions.find((option) => option.value === draft.theme)?.icon ?? 'monitor',
-);
+function onThemeChange(value: SelectValue | undefined) {
+	const item = themeItems.value.find((option) => option.value === value);
+	if (item && item.value !== uiStore.theme) uiStore.setTheme(item.value);
+}
 
 onMounted(() => {
 	documentTitle.set(i18n.baseText('settings.personal.personalSettings'));
-	resetDraft();
+	Object.assign(draft, savedValues.value);
 });
 
-async function onSave() {
-	if (!hasAnyChanges.value || !isFormValid.value || saving.value) return;
+// Quick successive saves replace the previous confirmation instead of stacking toasts.
+// It closes itself after the default notification duration, so it has no close button.
+let savedToast: ReturnType<typeof showMessage> | undefined;
 
-	const newEmail = hasEmailChanges.value ? draft.email.trim() : null;
+function confirmSaved(content?: { title: string; message: string }) {
+	savedToast?.close();
+	savedToast = showMessage({
+		title: i18n.baseText('settings.personal.personalSettingsUpdated'),
+		...content,
+		type: 'success',
+		showClose: false,
+	});
+}
 
-	saving.value = true;
-	try {
-		// Name and theme save immediately - they need no re-authentication.
-		await saveNameAndPersonalisation();
-	} finally {
-		saving.value = false;
-	}
-
-	// Email changes go through the confirmation flow, gated by password or MFA.
-	// Skip if the view unmounted during the awaited save, so the modal never
-	// opens on a departed page.
-	if (newEmail && isActive.value) {
-		startEmailChange(newEmail);
+function onFieldBlur(field: ProfileField) {
+	touched[field] = true;
+	if (field === 'email') {
+		commitEmail();
+	} else {
+		void commitName(field);
 	}
 }
 
-function onDiscard() {
-	resetDraft();
+function onFieldEnter(event: KeyboardEvent) {
+	(event.target as HTMLElement).blur();
 }
 
-/** Saves name and personalization settings, only when they changed. */
-async function saveNameAndPersonalisation() {
-	if (!hasNameChanges.value && !hasThemeChanges.value) {
+// Saves run one at a time, so a slow response can't overwrite a newer name.
+let nameSaveQueue: Promise<void> = Promise.resolve();
+
+async function commitName(field: 'firstName' | 'lastName') {
+	nameSaveQueue = nameSaveQueue.then(async () => await saveName(field));
+	await nameSaveQueue;
+}
+
+async function saveName(field: 'firstName' | 'lastName') {
+	const value = draft[field].trim();
+	if (!canEditName.value || fieldErrors.value[field]) return;
+	if (value === savedValues.value[field]) {
+		draft[field] = savedValues.value[field];
 		return;
 	}
 
 	try {
-		if (hasNameChanges.value && usersStore.currentUserId) {
-			await usersStore.updateUserName({ firstName: draft.firstName, lastName: draft.lastName });
-			// Adopt what the server stored, so the draft and the saved state agree again.
-			draft.firstName = savedValues.value.firstName;
-			draft.lastName = savedValues.value.lastName;
-		}
-		if (hasThemeChanges.value) {
-			uiStore.setTheme(draft.theme);
-		}
-
-		showToast({
-			title: i18n.baseText('settings.personal.personalSettingsUpdated'),
-			message: '',
-			type: 'success',
-		});
+		// Send the saved value for the other name field, so an edit that is not valid stays unsaved.
+		const { firstName, lastName } = savedValues.value;
+		await usersStore.updateUserName({ firstName, lastName, [field]: value });
+		if (draft[field].trim() === value) draft[field] = savedValues.value[field];
+		confirmSaved();
 	} catch (e) {
 		showError(e, i18n.baseText('settings.personal.personalSettingsUpdatedError'));
 	}
 }
 
-function startEmailChange(newEmail: string) {
+/** The new address while its confirmation (password or 2FA code) is pending. */
+const pendingEmail = ref<string | null>(null);
+
+function commitEmail() {
+	const value = draft.email.trim();
+	if (!canEditEmail.value || pendingEmail.value !== null || fieldErrors.value.email) return;
+	if (value === savedValues.value.email) {
+		draft.email = savedValues.value.email;
+		return;
+	}
+
+	pendingEmail.value = value;
 	if (usersStore.currentUser?.mfaEnabled) {
-		uiStore.openModal(PROMPT_MFA_CODE_MODAL_KEY);
-
-		promptMfaCodeBus.once('closed', async (payload: MfaModalEvents['closed']) => {
-			if (!payload) {
-				// User closed the modal without submitting the form
-				return;
-			}
-
-			await submitEmailChange({ email: newEmail, mfaCode: payload.mfaCode });
+		promptMfaCodeBus.on('closed', onEmailConfirmClosed);
+		openPromptMfaCodeModal({
+			purpose: 'changeEmail',
+			submit: async ({ mfaCode }) => await requestEmailChange(value, { mfaCode }),
 		});
 	} else {
-		uiStore.openModal(CONFIRM_PASSWORD_MODAL_KEY);
-
-		confirmPasswordEventBus.once('close', async (payload: ConfirmPasswordModalEvents['close']) => {
-			if (!payload) {
-				// User closed the modal without submitting the form
-				return;
-			}
-
-			await submitEmailChange({ email: newEmail, currentPassword: payload.currentPassword });
-			uiStore.closeModal(CONFIRM_PASSWORD_MODAL_KEY);
+		confirmPasswordEventBus.on('closed', onEmailConfirmClosed);
+		openConfirmPasswordModal({
+			submit: async ({ currentPassword }) => await requestEmailChange(value, { currentPassword }),
 		});
 	}
 }
 
-async function submitEmailChange(params: ChangeEmailRequestDto) {
-	try {
-		const result = await usersStore.requestEmailChange(params);
+/** Both dialogs send the request themselves, so closing one only ends the pending change. */
+function onEmailConfirmClosed(
+	payload: MfaModalEvents['closed'] | ConfirmPasswordModalEvents['closed'],
+) {
+	promptMfaCodeBus.off('closed', onEmailConfirmClosed);
+	confirmPasswordEventBus.off('closed', onEmailConfirmClosed);
+	pendingEmail.value = null;
+	// Closing the dialog without confirming leaves the email as it was.
+	if (!payload) resetField('email');
+}
 
-		if (result.status === 'confirmation-sent') {
-			// The change is not applied yet, so put the field back to the current email.
-			draft.email = savedValues.value.email;
-			showToast({
-				title: i18n.baseText('settings.personal.emailChange.confirmationSent.title'),
-				message: i18n.baseText('settings.personal.emailChange.confirmationSent.message'),
-				type: 'success',
-			});
-		} else {
-			// status 'changed': no email delivery is configured, so it applied at once.
-			showToast({
-				title: i18n.baseText('settings.personal.personalSettingsUpdated'),
-				message: '',
-				type: 'success',
-			});
-		}
-	} catch (e) {
-		showError(e, i18n.baseText('settings.personal.personalSettingsUpdatedError'));
+async function requestEmailChange(
+	email: string,
+	credentials: Omit<ChangeEmailRequestDto, 'email'>,
+) {
+	const result = await usersStore.requestEmailChange({ email, ...credentials });
+	// 'confirmation-sent': nothing changes until the link is clicked, so show the current email.
+	// 'changed': no email delivery is set up, so the store already holds the new address.
+	draft.email = savedValues.value.email;
+
+	if (result.status === 'confirmation-sent') {
+		confirmSaved({
+			title: i18n.baseText('settings.personal.emailChange.confirmationSent.title'),
+			message: i18n.baseText('settings.personal.emailChange.confirmationSent.message'),
+		});
+	} else {
+		confirmSaved();
 	}
 }
 
@@ -398,35 +390,32 @@ async function onMfaEnableClick() {
 	}
 }
 
-async function disableMfa(payload: MfaModalEvents['closed']) {
-	if (!payload) {
-		// User closed the modal without submitting the form
-		return;
-	}
+async function disableMfa(credentials: MfaModalClosedEventPayload) {
+	await usersStore.disableMfa(credentials);
 
-	try {
-		await usersStore.disableMfa(payload);
-
-		showToast({
-			title: i18n.baseText('settings.personal.mfa.toast.disabledMfa.title'),
-			message: i18n.baseText('settings.personal.mfa.toast.disabledMfa.message'),
-			type: 'success',
-			duration: 0,
-		});
-	} catch (e) {
-		showError(e, i18n.baseText('settings.personal.mfa.toast.disabledMfa.error.message'));
-	}
+	showToast({
+		title: i18n.baseText('settings.personal.mfa.toast.disabledMfa.title'),
+		message: i18n.baseText('settings.personal.mfa.toast.disabledMfa.message'),
+		type: 'success',
+		duration: 0,
+	});
 }
 
-async function onMfaDisableClick() {
-	uiStore.openModal(PROMPT_MFA_CODE_MODAL_KEY);
+function openPromptMfaCodeModal(data: PromptMfaCodeModalData) {
+	uiStore.openModalWithData({ name: PROMPT_MFA_CODE_MODAL_KEY, data });
+}
 
-	promptMfaCodeBus.once('closed', disableMfa);
+function openConfirmPasswordModal(data: ConfirmPasswordModalData) {
+	uiStore.openModalWithData({ name: CONFIRM_PASSWORD_MODAL_KEY, data });
+}
+
+function onMfaDisableClick() {
+	openPromptMfaCodeModal({ purpose: 'disableMfa', submit: disableMfa });
 }
 
 onBeforeUnmount(() => {
-	isActive.value = false;
-	promptMfaCodeBus.off('closed', disableMfa);
+	promptMfaCodeBus.off('closed', onEmailConfirmClosed);
+	confirmPasswordEventBus.off('closed', onEmailConfirmClosed);
 });
 </script>
 
@@ -436,26 +425,7 @@ onBeforeUnmount(() => {
 			:title="i18n.baseText('settings.personal.personalSettings')"
 			:description="i18n.baseText('settings.personal.description')"
 			:show-docs-link="false"
-		>
-			<template #titleTrailing>
-				<div v-if="currentUser" :class="$style.user">
-					<span :class="$style.username" data-test-id="current-user-name">
-						<N8nText color="text-base" bold>{{ currentUser.fullName }}</N8nText>
-						<N8nTooltip placement="bottom" :disabled="!currentUserRole.description">
-							<template #content>{{ currentUserRole.description }}</template>
-							<N8nText :class="$style.role" color="text-light" data-test-id="current-user-role">{{
-								currentUserRole.name
-							}}</N8nText>
-						</N8nTooltip>
-					</span>
-					<N8nAvatar
-						:first-name="currentUser.firstName"
-						:last-name="currentUser.lastName"
-						size="large"
-					/>
-				</div>
-			</template>
-		</N8nSettingsPageHeader>
+		/>
 
 		<N8nNotice
 			v-if="isManagedByEnv"
@@ -468,6 +438,20 @@ onBeforeUnmount(() => {
 			data-test-id="personal-data-form"
 		>
 			<N8nSettingsRowGroup>
+				<N8nSettingsRow
+					v-if="currentUser"
+					:title="i18n.baseText('settings.personal.profilePicture')"
+					data-test-id="personal-profile-picture-row"
+				>
+					<template #action>
+						<N8nAvatar
+							:first-name="currentUser.firstName"
+							:last-name="currentUser.lastName"
+							size="medium"
+							data-test-id="current-user-avatar"
+						/>
+					</template>
+				</N8nSettingsRow>
 				<N8nSettingsRow
 					v-for="field in profileFields"
 					:key="field.name"
@@ -493,8 +477,9 @@ onBeforeUnmount(() => {
 								:aria-describedby="
 									visibleError(field.name) ? `personal-${field.name}-error` : undefined
 								"
-								@blur="touched[field.name] = true"
-								@keydown.enter="onSave"
+								@blur="onFieldBlur(field.name)"
+								@keydown.enter="onFieldEnter"
+								@keydown.esc="resetField(field.name)"
 							/>
 							<N8nText
 								v-if="visibleError(field.name)"
@@ -516,6 +501,20 @@ onBeforeUnmount(() => {
 						>
 							{{ savedValues[field.name] }}
 						</N8nText>
+					</template>
+				</N8nSettingsRow>
+				<N8nSettingsRow
+					v-if="currentUser"
+					:title="i18n.baseText('auth.role')"
+					data-test-id="personal-role-row"
+				>
+					<template #action>
+						<N8nTooltip placement="bottom" :disabled="!currentUserRole.description">
+							<template #content>{{ currentUserRole.description }}</template>
+							<N8nText color="text-base" data-test-id="current-user-role">
+								{{ currentUserRole.name }}
+							</N8nText>
+						</N8nTooltip>
 					</template>
 				</N8nSettingsRow>
 			</N8nSettingsRowGroup>
@@ -557,9 +556,14 @@ onBeforeUnmount(() => {
 									? i18n.baseText('settings.personal.mfa.description.disabled')
 									: i18n.baseText('settings.personal.mfa.description.enabled')
 							}}
-							<N8nLink :to="MFA_DOCS_URL" size="small" new-window>
+							<N8nExternalLink
+								:href="MFA_DOCS_URL"
+								size="small"
+								:class="$style.docsLink"
+								data-test-id="mfa-docs-link"
+							>
 								{{ i18n.baseText('generic.learnMore') }}
-							</N8nLink>
+							</N8nExternalLink>
 						</N8nText>
 					</template>
 					<template #action>
@@ -589,79 +593,44 @@ onBeforeUnmount(() => {
 				<N8nSettingsRow
 					:title="i18n.baseText('settings.personal.theme')"
 					:description="i18n.baseText('settings.personal.theme.description')"
-					action-fill
-					action-max-width="12.5rem"
 				>
 					<template #action>
-						<N8nSelect v-model="draft.theme" size="medium" data-test-id="theme-select">
-							<template #prefix>
-								<N8nIcon :icon="selectedThemeIcon" size="small" :class="$style.themeIcon" />
-							</template>
-							<N8nOption
-								v-for="option in themeOptions"
-								:key="option.value"
-								:value="option.value"
-								:label="i18n.baseText(option.label)"
-							>
-								<span :class="$style.themeOption">
-									<N8nIcon :icon="option.icon" size="small" :class="$style.themeIcon" />
-									<span>{{ i18n.baseText(option.label) }}</span>
+						<N8nSelect2
+							:model-value="uiStore.theme"
+							:items="themeItems"
+							size="medium"
+							:aria-label="i18n.baseText('settings.personal.theme')"
+							data-test-id="theme-select"
+							@update:model-value="onThemeChange"
+						>
+							<!-- Every label shares one grid cell, so the trigger is as wide as the widest theme whichever one is chosen. -->
+							<template #default="{ modelValue }">
+								<span :class="$style.themeValue">
+									<span
+										v-for="item in themeItems"
+										:key="item.value"
+										:class="[
+											$style.themeLabel,
+											{ [$style.themeLabelHidden]: item.value !== modelValue },
+										]"
+										:aria-hidden="item.value !== modelValue || undefined"
+									>
+										{{ item.label }}
+									</span>
 								</span>
-							</N8nOption>
-						</N8nSelect>
+							</template>
+						</N8nSelect2>
 					</template>
 				</N8nSettingsRow>
 			</N8nSettingsRowGroup>
 		</N8nSettingsSection>
-
-		<N8nSettingsSaveBar
-			floating
-			:visible="hasAnyChanges"
-			:saving="saving"
-			:save-disabled="!isFormValid"
-			:message="i18n.baseText('settings.personal.saveBar.unsavedChanges')"
-			:save-label="i18n.baseText('settings.personal.saveBar.save')"
-			:discard-label="i18n.baseText('settings.personal.saveBar.discard')"
-			@save="onSave"
-			@discard="onDiscard"
-		/>
 	</N8nSettingsLayout>
 </template>
 
 <style lang="scss" module>
-@use '@/app/css/variables' as *;
-
 /* Collapse the layout's own top inset; the settings shell already pads the page top. */
 .layout {
 	padding-top: 0;
-}
-
-/* The signed-in identity sits beside the title, so the page reads as "Personal settings — you". */
-.user {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--sm);
-	margin-inline-start: var(--spacing--2xs);
-
-	@media (max-width: $breakpoint-2xs) {
-		display: none;
-	}
-}
-
-.username {
-	display: grid;
-	grid-template-columns: 1fr;
-	min-width: 0;
-
-	@media (max-width: $breakpoint-sm) {
-		max-width: 100px;
-		overflow: hidden;
-		text-overflow: ellipsis;
-	}
-}
-
-.role {
-	justify-self: start;
 }
 
 /* Read-only value of a locked field; long emails truncate instead of pushing the row wider. */
@@ -688,16 +657,25 @@ onBeforeUnmount(() => {
 .fieldInvalid :global(.n8n-input) {
 	--input--border-color: var(--color--danger);
 	--input--border-color--hover: var(--color--danger);
+	--input--border-color--focus: var(--color--danger);
 }
 
-.themeOption {
-	display: inline-flex;
-	align-items: center;
-	gap: var(--spacing--2xs);
+/* Keep the link's hover padding without making the description line taller than its neighbours. */
+.docsLink {
+	margin-block: calc(-1 * var(--spacing--4xs));
 }
 
-/* The select's own prefix color is near-invisible; use the standard icon tone instead. */
-.themeIcon {
-	color: var(--icon-color);
+/* The theme labels are stacked in one cell: the cell takes the widest, the hidden ones only reserve width. */
+.themeValue {
+	display: inline-grid;
+}
+
+.themeLabel {
+	grid-area: 1 / 1;
+	white-space: nowrap;
+}
+
+.themeLabelHidden {
+	visibility: hidden;
 }
 </style>
