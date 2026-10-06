@@ -665,6 +665,8 @@ describe('workflow package import — with data tables', () => {
 	});
 
 	describe('public API key scopes', () => {
+		afterEach(() => licenseMocker.reset());
+
 		it('rejects a table-creating import when the API key lacks the dataTable:create scope', async () => {
 			const { packageBuffer } = await buildDataTablePackage([serializedDataTable()]);
 
