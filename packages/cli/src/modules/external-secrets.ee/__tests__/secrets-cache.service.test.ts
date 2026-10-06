@@ -184,14 +184,12 @@ describe('SecretsCache', () => {
 				registry.set('dummy', dummyProvider);
 				registry.set('another', anotherProvider);
 
-				const refresh = cache.refreshAll();
-				const assertions = Promise.all([
-					expect(refresh).rejects.toThrow(OperationalError),
-					expect(refresh).rejects.toMatchObject({ shouldReport: true }),
-				]);
+				const refresh = cache.refreshAll().catch((error: unknown) => error);
 				await vi.advanceTimersByTimeAsync(config.refreshTimeout * 1000);
+				const error = await refresh;
 
-				await assertions;
+				expect(error).toBeInstanceOf(OperationalError);
+				expect(error).toMatchObject({ shouldReport: true });
 			} finally {
 				vi.useRealTimers();
 			}
