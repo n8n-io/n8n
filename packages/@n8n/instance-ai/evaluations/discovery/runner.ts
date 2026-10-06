@@ -17,11 +17,13 @@
 //
 // Routing mode (`stopBeforeTool`) checks each orchestrator tool call before it
 // runs, and ends the run when the check says so (see ../routing/grade.ts).
+// `answerQuestions` lets the user proxy answer a question card.
 // Routing cases have no tool expectations, so they call `runOrchestratorTurn`
 // and skip the check. A routing case can seed the stub instance and the thread
 // (see ./seeded-turn.ts).
 // ---------------------------------------------------------------------------
 
+import type { GuardrailsOptions } from '@n8n/agents';
 import type { InstanceAiEvent, TaskList } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
 import { nanoid } from 'nanoid';
@@ -135,6 +137,11 @@ export interface OrchestratorTurnOptions extends Omit<DiscoveryRunOptions, 'scen
 	 * `true` ends the run there, before the call runs.
 	 */
 	stopBeforeTool?: (call: PendingToolCall, events: readonly InstanceAiEvent[]) => Promise<boolean>;
+	/** Returns the resume data for a question card (`inputType: questions`). Unset uses the confirmation policy. */
+	answerQuestions?: (
+		suspension: SuspensionInfo,
+		events: CapturedEvent[],
+	) => Promise<Record<string, unknown>>;
 }
 
 export interface OrchestratorTurnResult {
@@ -159,7 +166,7 @@ export async function runOrchestratorTurn(
 	const maxSteps = options.scenario?.maxSteps ?? options.maxSteps;
 	const timeoutMs = options.scenario?.timeoutMs ?? options.timeoutMs ?? 60_000;
 	const nodesJsonPath = options.nodesJsonPath ?? defaultNodesJsonPath();
-	const { stopBeforeTool } = options;
+	const { stopBeforeTool, answerQuestions } = options;
 
 	const events: CapturedEvent[] = [];
 	const instanceEvents: InstanceAiEvent[] = [];
@@ -246,6 +253,18 @@ export async function runOrchestratorTurn(
 			thinkingEnabled: false,
 		});
 
+		const guardrails: GuardrailsOptions | undefined = stopBeforeTool && {
+			hooks: [
+				{
+					beforeTool: async ({ toolCallId, toolName, input }) => {
+						const call = { toolCallId, toolName, args: isRecord(input) ? input : {} };
+						if (!(await stopBeforeTool(call, instanceEvents))) return undefined;
+						stopRun();
+						return { action: 'stop' as const, code: 'route-picked' };
+					},
+				},
+			],
+		};
 		const streamSource = normalizeStreamSource(
 			await agent.stream(buildTurnMessage(options.scenario), {
 				maxIterations: maxSteps,
@@ -254,22 +273,7 @@ export async function runOrchestratorTurn(
 				providerOptions: {
 					anthropic: { cacheControl: { type: 'ephemeral' as const } },
 				},
-				...(stopBeforeTool
-					? {
-							guardrails: {
-								hooks: [
-									{
-										beforeTool: async ({ toolCallId, toolName, input }) => {
-											const call = { toolCallId, toolName, args: isRecord(input) ? input : {} };
-											if (!(await stopBeforeTool(call, instanceEvents))) return undefined;
-											stopRun();
-											return { action: 'stop' as const, code: 'route-picked' };
-										},
-									},
-								],
-							},
-						}
-					: {}),
+				...(guardrails ? { guardrails } : {}),
 			}),
 		);
 
@@ -287,10 +291,19 @@ export async function runOrchestratorTurn(
 			control: {
 				mode: 'auto',
 				onSuspension: (suspension) => suspensions.set(suspension.requestId, suspension),
-				waitForConfirmation: async (requestId: string): Promise<Record<string, unknown>> =>
-					await Promise.resolve(
-						resolveConfirmation(suspensions.get(requestId), confirmationPolicy, approvalResponders),
-					),
+				// A resumed stream runs without the stream options, so the route check goes along.
+				buildResumeOptions: ({ agentRunId, suspension }) => ({
+					runId: agentRunId,
+					toolCallId: suspension.toolCallId,
+					...(guardrails ? { guardrails } : {}),
+				}),
+				waitForConfirmation: async (requestId: string): Promise<Record<string, unknown>> => {
+					const suspension = suspensions.get(requestId);
+					if (answerQuestions && suspension?.suspendPayload.inputType === 'questions') {
+						return await answerQuestions(suspension, events);
+					}
+					return resolveConfirmation(suspension, confirmationPolicy, approvalResponders);
+				},
 			},
 		});
 		void run.catch(() => {});

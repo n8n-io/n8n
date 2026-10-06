@@ -3,9 +3,11 @@ import type { InstanceAiEvent } from '@n8n/api-types';
 import { ORCHESTRATOR_AGENT_ID } from '../../discovery/types';
 import type { RoutingCase } from '../cases';
 import {
+	canReplyTo,
 	casePasses,
 	createRouteWatcher,
 	type RouteResolution,
+	routeLabel,
 	traceSteps,
 	trialPasses,
 } from '../grade';
@@ -25,6 +27,26 @@ function callEvent(
 	return { type: 'tool-call', ...base, agentId, payload: { toolCallId: toolName, toolName, args } };
 }
 
+/** The card of an ask-user call and the user's answer to it. */
+function answerEvents(toolCallId = 'ask-user'): InstanceAiEvent[] {
+	return [
+		{
+			type: 'confirmation-request',
+			...base,
+			payload: {
+				requestId: 'request-1',
+				toolCallId,
+				toolName: 'ask-user',
+				args: {},
+				severity: 'info',
+				message: 'Two questions',
+				inputType: 'questions',
+			},
+		},
+		{ type: 'tool-result', ...base, payload: { toolCallId, result: { answered: true } } },
+	];
+}
+
 function pending(toolName: string, args: Record<string, unknown> = {}) {
 	return { toolCallId: toolName, toolName, args };
 }
@@ -32,8 +54,9 @@ function pending(toolName: string, args: Record<string, unknown> = {}) {
 function routingCase(
 	bucket: RoutingCase['bucket'],
 	accepts: RoutingCase['accepts'] = [],
+	after: RoutingCase['after'] = [],
 ): RoutingCase {
-	return { id: `route-${bucket}-x`, bucket, userMessage: 'Do the thing.', accepts };
+	return { id: `route-${bucket}-x`, bucket, userMessage: 'Do the thing.', accepts, after };
 }
 
 const go: JudgeVerdict = {
@@ -87,6 +110,19 @@ describe('traceSteps', () => {
 		expect(steps).toEqual([
 			{ kind: 'text', text: 'A question first.' },
 			{ kind: 'call', toolName: 'ask-user', args: {} },
+		]);
+	});
+
+	it('adds the user answer after a question card and no other tool result', () => {
+		const steps = traceSteps([
+			callEvent('ask-user'),
+			...answerEvents(),
+			{ type: 'tool-result', ...base, payload: { toolCallId: 'search-nodes', result: [] } },
+		]);
+
+		expect(steps).toEqual([
+			{ kind: 'call', toolName: 'ask-user', args: {} },
+			{ kind: 'answer', result: { answered: true } },
 		]);
 	});
 
@@ -179,6 +215,49 @@ describe('createRouteWatcher', () => {
 		expect(resolution).toMatchObject({ route: 'debug', judgeError: 'Routing judge failed: 529' });
 	});
 
+	it('lets a question run when the user can reply, then stops on the route after the answer', async () => {
+		const judge = judgeReturning(stop('clarify', 'agent'), stop('agent', 'agent'));
+		const watcher = createRouteWatcher(judge, () => true);
+		const answered = [callEvent('ask-user'), ...answerEvents()];
+
+		expect(await watcher.beforeToolCall(pending('ask-user'), [])).toBe(false);
+		expect(await watcher.beforeToolCall(pending('build-agent'), answered)).toBe(true);
+		const resolution = await watcher.resolve({
+			instanceEvents: answered,
+			streamStatus: 'stopped-on-route',
+		});
+
+		expect(resolution).toMatchObject({
+			route: 'agent',
+			evidence: 'build-agent call',
+			question: { route: 'clarify', steer: 'agent', evidence: 'ask-user call' },
+		});
+	});
+
+	it('stops on a second question once the user has answered', async () => {
+		const watcher = createRouteWatcher(judgeReturning(stop('clarify')), () => true);
+		const answered = [callEvent('ask-user'), ...answerEvents()];
+
+		expect(await watcher.beforeToolCall(pending('ask-user'), [])).toBe(false);
+		expect(await watcher.beforeToolCall(pending('ask-user-2'), answered)).toBe(true);
+	});
+
+	it('drops the question when no answer reached the run', async () => {
+		const watcher = createRouteWatcher(
+			judgeReturning(stop('clarify'), stop('clarify')),
+			() => true,
+		);
+		await watcher.beforeToolCall(pending('ask-user'), []);
+
+		const resolution = await watcher.resolve({
+			instanceEvents: [callEvent('ask-user')],
+			streamStatus: 'timed-out',
+		});
+
+		expect(resolution.question).toBeUndefined();
+		expect(resolution.route).toBe('clarify');
+	});
+
 	it('returns none with the error when the end-of-turn judge fails', async () => {
 		const watcher = createRouteWatcher(judgeReturning(new Error('Routing judge failed: 529')));
 
@@ -207,6 +286,33 @@ describe('trialPasses', () => {
 
 	it('fails a question toward the bucket artifact when the case accepts no question', () => {
 		expect(trialPasses(routingCase('workflow', ['workflow']), clarify('workflow'))).toBe(false);
+	});
+
+	it('grades the route after an answer against the after routes only', () => {
+		const openCase = routingCase('clarify', ['clarify:open'], ['agent']);
+		const answered = (route: RouteResolution) => ({ ...route, question: clarify('none') });
+
+		expect(trialPasses(openCase, answered({ route: 'agent', evidence: 'build-agent' }))).toBe(true);
+		expect(trialPasses(openCase, answered({ route: 'workflow', evidence: 'build' }))).toBe(false);
+		expect(trialPasses(openCase, answered(clarify('none')))).toBe(false);
+	});
+});
+
+describe('canReplyTo', () => {
+	it('replies only to a question that the case accepts', () => {
+		const agentCase = routingCase('agent', ['agent', 'clarify:agent'], ['agent']);
+
+		expect(canReplyTo(agentCase, clarify('agent'))).toBe(true);
+		expect(canReplyTo(agentCase, clarify('workflow'))).toBe(false);
+		expect(canReplyTo(agentCase, { route: 'agent', evidence: 'build-agent' })).toBe(false);
+	});
+});
+
+describe('routeLabel', () => {
+	it('shows the answered question before the route', () => {
+		expect(routeLabel({ route: 'agent', evidence: 'x', question: clarify('both') })).toBe(
+			'clarify:both>agent',
+		);
 	});
 });
 

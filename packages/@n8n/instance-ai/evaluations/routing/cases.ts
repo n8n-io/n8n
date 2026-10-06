@@ -6,6 +6,11 @@
 // `accepts:<token>` for each other accepted route. A judge picks the route of
 // each trial (see grade.ts).
 //
+// An optional second user turn holds only [stage directions]: the facts that
+// the user proxy uses to answer a question. The proxy answers one accepted
+// question, and the route after the answer must be an `after:<route>` tag, or
+// else an accepted route that is not a question.
+//
 // An inline `seed` and `credentials` set up the stub instance and the thread
 // before the turn: earlier messages, an open workflow or Agent, failed runs,
 // data tables, and accounts (see ../discovery/seeded-turn.ts).
@@ -44,21 +49,32 @@ const routingTagsSchema = z
 			.transform((buckets) => buckets[0]),
 		/** A trial passes when its route matches one of these tokens. */
 		accepts: z.array(z.enum(ROUTING_ACCEPT_TOKENS)),
+		/** The routes that pass after the user proxy answers a question. */
+		after: z.array(z.enum(ROUTING_BUCKETS).exclude(['clarify'])),
 	})
 	// The bucket always passes, so case files need not repeat it. A clarify case
 	// keeps only its own tokens: most accept only `clarify:open`, and plain
 	// `clarify` would also pass a question that only asks about a workflow.
-	.transform(({ bucket, accepts }) => ({
-		bucket,
-		accepts: bucket === 'clarify' || accepts.includes(bucket) ? accepts : [bucket, ...accepts],
-	}))
+	.transform(({ bucket, accepts: tokens, after }) => {
+		const accepts = bucket === 'clarify' || tokens.includes(bucket) ? tokens : [bucket, ...tokens];
+		return {
+			bucket,
+			accepts,
+			after: after.length > 0 ? after : accepts.filter((token) => !token.startsWith('clarify')),
+		};
+	})
 	.refine(({ accepts }) => accepts.length > 0, {
 		message: 'a bucket:clarify case needs an accepts:<token> tag',
 		path: ['accepts'],
 	});
 
 export type RoutingCase = z.infer<typeof routingTagsSchema> &
-	Pick<DiscoveryScenario, 'seed' | 'attach' | 'credentials'> & { id: string; userMessage: string };
+	Pick<DiscoveryScenario, 'seed' | 'attach' | 'credentials'> & {
+		id: string;
+		userMessage: string;
+		/** The [stage directions] for the user proxy. Never sent to the Assistant. */
+		direction?: string;
+	};
 
 type ParsedFile = { kind: 'case'; routingCase: RoutingCase } | { kind: 'needs-setup'; id: string };
 
@@ -94,19 +110,32 @@ function parseRoutingCaseFile(filePath: string): ParsedFile {
 	) {
 		return { kind: 'needs-setup', id };
 	}
-	if (conversation.length !== 1 || conversation[0].role !== 'user') {
-		throw new Error(`${filePath}: needs exactly one user message`);
+	const [opener, directionTurn, ...rest] = conversation;
+	if (
+		opener?.role !== 'user' ||
+		rest.length > 0 ||
+		(directionTurn &&
+			(directionTurn.role !== 'user' || directionTurn.text.replace(/\[[^\]]*\]/g, '').trim()))
+	) {
+		throw new Error(
+			`${filePath}: needs one user message, then at most one user turn with only [stage directions]`,
+		);
 	}
 
 	const labels = routingTagsSchema.safeParse({
 		bucket: tagValues(tags, 'bucket:'),
 		accepts: tagValues(tags, 'accepts:'),
+		after: tagValues(tags, 'after:'),
 	});
 	if (!labels.success) throw new Error(`${filePath}: ${formatIssues(labels.error)}`);
-	const { text: userMessage, attach } = conversation[0];
+	const direction = directionTurn?.text;
+	if (direction && labels.data.after.length === 0) {
+		throw new Error(`${filePath}: a case with stage directions needs an after:<route> tag`);
+	}
+	const { text: userMessage, attach } = opener;
 	return {
 		kind: 'case',
-		routingCase: { id, userMessage, ...labels.data, seed, attach, credentials },
+		routingCase: { id, userMessage, ...labels.data, direction, seed, attach, credentials },
 	};
 }
 

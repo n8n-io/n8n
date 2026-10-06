@@ -5,13 +5,15 @@
 // sends an editor hand-off as a resource attachment inside a leading
 // `<thread-context>` block. The runner uses the same builders, so the model
 // reads the same block. Earlier messages go into the agent's memory as thread
-// history, the way a restored thread holds them.
+// history, the way a restored thread holds them. A reply turn puts the first
+// turn there too.
 // ---------------------------------------------------------------------------
 
 import { Memory, type AgentDbMessage, type BuiltMemory } from '@n8n/agents';
 import { jsonParse } from 'n8n-workflow';
 
 import type { DiscoveryScenario } from './types';
+import { CaseSeedSchema } from '../harness/schema';
 import {
 	buildThreadArtifactsBlock,
 	buildThreadContextBlock,
@@ -42,6 +44,29 @@ export function buildTurnMessage({ userMessage, attach, seed }: DiscoveryScenari
 				};
 	const block = buildThreadContextBlock([buildThreadArtifactsBlock(undefined, [attachment])]);
 	return [block, userMessage].filter(Boolean).join('\n\n');
+}
+
+/**
+ * The user's reply as the next turn. The first turn's message and the
+ * Assistant's text become thread history. The reply has no attachment.
+ */
+export function buildReplyTurn<T extends DiscoveryScenario>(
+	scenario: T,
+	assistantText: string,
+	reply: string,
+): T {
+	// The schema expands the `{role, text}` shorthand and orders the timestamps.
+	const history = CaseSeedSchema.parse({
+		mode: 'inline',
+		messages: [
+			...(scenario.seed?.messages ?? []),
+			{ role: 'user', text: buildTurnMessage(scenario) },
+			{ role: 'assistant', text: assistantText },
+		],
+	});
+	if (history.mode !== 'inline') throw new Error('A reply turn needs an inline seed');
+	const seed = scenario.seed ? { ...scenario.seed, messages: history.messages } : history;
+	return { ...scenario, userMessage: reply, attach: undefined, seed };
 }
 
 /** An in-memory thread that holds the seeded messages, or none when there are none. */

@@ -1,4 +1,9 @@
-import { buildTurnMessage, createSeededMemory, STUB_PROJECT_ID } from '../seeded-turn';
+import {
+	buildReplyTurn,
+	buildTurnMessage,
+	createSeededMemory,
+	STUB_PROJECT_ID,
+} from '../seeded-turn';
 import type { DiscoveryScenario } from '../types';
 
 const seed = {
@@ -47,6 +52,36 @@ describe('buildTurnMessage', () => {
 		expect(message).toContain('agent-hr');
 		expect(message).toContain('HR helper');
 		expect(message).toContain(STUB_PROJECT_ID);
+	});
+});
+
+describe('buildReplyTurn', () => {
+	it('sends the reply with the first turn as history and no attachment', () => {
+		const first = { userMessage: 'Why did it fail?', seed, attach: { workflow: 'wf-report' } };
+
+		const reply = buildReplyTurn(first, 'Which run?', 'The 6am run.');
+
+		expect(reply.userMessage).toBe('The 6am run.');
+		expect(reply.attach).toBeUndefined();
+		expect(reply.seed?.workflows).toEqual(seed.workflows);
+		expect(
+			reply.seed?.messages.map(({ role, content }) => [role, JSON.stringify(content)]),
+		).toEqual([
+			['user', JSON.stringify(seed.messages[0].content)],
+			['user', expect.stringContaining('Why did it fail?')],
+			['assistant', expect.stringContaining('Which run?')],
+		]);
+		expect(reply.seed?.messages[1].content).toEqual([
+			{ type: 'text', text: buildTurnMessage(first) },
+		]);
+	});
+
+	it('makes a seed when the first turn has none', () => {
+		const first: DiscoveryScenario = { userMessage: 'Hi' };
+
+		const reply = buildReplyTurn(first, 'What do you need?', 'A report.');
+
+		expect(reply.seed?.messages.map(({ role }) => role)).toEqual(['user', 'assistant']);
 	});
 });
 

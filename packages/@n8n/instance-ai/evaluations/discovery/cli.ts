@@ -15,17 +15,39 @@
 //
 // Routing mode (`--cases-dir`) loads `route-*.json` cases from that folder, in
 // the format LangTracer exports. A judge ends each trial as soon as the
-// Assistant picks a route. The CLI prints a pass rate per bucket.
+// Assistant picks a route. When a case has stage directions, the user proxy
+// answers one accepted question first: on the card in the same run, or as a
+// reply turn after a question in text. The CLI prints a pass rate per bucket.
 // It always exits 0: it measures routing and does not gate a merge.
 // ---------------------------------------------------------------------------
 
-import { runDiscoveryScenario, runOrchestratorTurn, type DiscoveryRunResult } from './runner';
-import type { DiscoveryTestCase } from './types';
+import {
+	runDiscoveryScenario,
+	runOrchestratorTurn,
+	type DiscoveryRunResult,
+	type OrchestratorTurnResult,
+} from './runner';
+import { buildReplyTurn } from './seeded-turn';
+import { ORCHESTRATOR_AGENT_ID, type DiscoveryTestCase } from './types';
+import { buildResumeData, toConfirmationData } from '../../src/runtime/confirmation-payload';
 import { isAgentFeatureEnabled } from '../../src/utils/agent-feature-enabled';
 import { loadDiscoveryTestCasesWithFiles } from '../data/discovery';
-import { loadRoutingCases, ROUTING_BUCKETS, type RoutingBucket } from '../routing/cases';
-import { casePasses, createRouteWatcher, routeLabel, trialPasses } from '../routing/grade';
+import {
+	loadRoutingCases,
+	ROUTING_BUCKETS,
+	type RoutingBucket,
+	type RoutingCase,
+} from '../routing/cases';
+import {
+	canReplyTo,
+	casePasses,
+	createRouteWatcher,
+	routeLabel,
+	trialPasses,
+	type RouteResolution,
+} from '../routing/grade';
 import { judgeRoute } from '../routing/judge';
+import { UserProxyLlm } from '../utils/user-proxy';
 
 // ---------------------------------------------------------------------------
 // Args
@@ -282,6 +304,87 @@ function printSummary(aggregates: ScenarioAggregate[], args: CliArgs): void {
 // Routing mode
 // ---------------------------------------------------------------------------
 
+/** Runs one routing turn under a fresh route watcher. */
+async function runRoutingTurn(
+	args: CliArgs,
+	scenario: RoutingCase,
+	proxy?: UserProxyLlm,
+): Promise<{ turn: OrchestratorTurnResult; resolution: RouteResolution }> {
+	const watcher = createRouteWatcher(
+		judgeRoute,
+		proxy ? (question) => canReplyTo(scenario, question) : undefined,
+	);
+	const turn = await runOrchestratorTurn({
+		scenario,
+		modelId: args.modelId,
+		maxSteps: args.maxSteps,
+		timeoutMs: args.timeoutMs,
+		stopBeforeTool: watcher.beforeToolCall,
+		...(proxy
+			? {
+					answerQuestions: async (suspension, events) => {
+						proxy.ingestEvents(events);
+						const answer = await proxy.respondToConfirmation({
+							timestamp: Date.now(),
+							type: 'confirmation-request',
+							data: { payload: suspension.suspendPayload },
+						});
+						return buildResumeData(toConfirmationData(answer));
+					},
+				}
+			: {}),
+		...(args.nodesJsonPath ? { nodesJsonPath: args.nodesJsonPath } : {}),
+	});
+	return { turn, resolution: await watcher.resolve(turn) };
+}
+
+/**
+ * One routing trial. A question in text ends the turn, so the user proxy
+ * replies in a new turn with the first turn as history.
+ */
+async function runRoutingTrial(args: CliArgs, routingCase: RoutingCase) {
+	const proxy = routingCase.direction
+		? new UserProxyLlm({
+				conversation: [
+					{ role: 'user', text: routingCase.userMessage },
+					{ role: 'user', text: routingCase.direction },
+				],
+			})
+		: undefined;
+	const first = await runRoutingTurn(args, routingCase, proxy);
+	if (
+		!proxy ||
+		first.resolution.question ||
+		first.turn.streamStatus !== 'completed' ||
+		!canReplyTo(routingCase, first.resolution)
+	) {
+		return { ...first, passed: trialPasses(routingCase, first.resolution) };
+	}
+	proxy.ingestEvents(first.turn.events);
+	const reply = await proxy.decideFollowUp();
+	// ponytail: a proxy that sees nothing to answer leaves the trial graded on the question.
+	if (reply.kind !== 'followUp') {
+		return { ...first, passed: trialPasses(routingCase, first.resolution) };
+	}
+	const assistantText = first.turn.instanceEvents
+		.flatMap((event) =>
+			event.type === 'text-delta' && event.agentId === ORCHESTRATOR_AGENT_ID
+				? [event.payload.text]
+				: [],
+		)
+		.join('');
+	const next = await runRoutingTurn(
+		args,
+		buildReplyTurn(routingCase, assistantText, reply.message),
+	);
+	const resolution = { ...next.resolution, question: first.resolution };
+	return {
+		turn: { ...next.turn, durationMs: first.turn.durationMs + next.turn.durationMs },
+		resolution,
+		passed: trialPasses(routingCase, resolution),
+	};
+}
+
 function percent(passed: number, total: number): string {
 	return `${String(passed)}/${String(total)} (${total > 0 ? ((passed / total) * 100).toFixed(0) : '0'}%)`;
 }
@@ -313,23 +416,12 @@ async function runRoutingMode(args: CliArgs, casesDir: string): Promise<void> {
 
 	for (const routingCase of cases) {
 		process.stdout.write(`▸ ${routingCase.id} ... `);
-		const trials = await runTrials(args, async () => {
-			const watcher = createRouteWatcher(judgeRoute);
-			const turn = await runOrchestratorTurn({
-				scenario: routingCase,
-				modelId: args.modelId,
-				maxSteps: args.maxSteps,
-				timeoutMs: args.timeoutMs,
-				stopBeforeTool: watcher.beforeToolCall,
-				...(args.nodesJsonPath ? { nodesJsonPath: args.nodesJsonPath } : {}),
-			});
-			const resolution = await watcher.resolve(turn);
-			return { turn, resolution, passed: trialPasses(routingCase, resolution) };
-		});
+		const trials = await runTrials(args, async () => await runRoutingTrial(args, routingCase));
 
 		const passed = casePasses(trials.filter((t) => t.passed).length, trials.length);
+		const after = routingCase.direction ? `; after a reply ${routingCase.after.join(' | ')}` : '';
 		console.log(
-			`${passed ? '✓' : '✗'} ${trials.map((t) => routeLabel(t.resolution)).join(', ')} (accepts ${routingCase.accepts.join(' | ')})`,
+			`${passed ? '✓' : '✗'} ${trials.map((t) => routeLabel(t.resolution)).join(', ')} (accepts ${routingCase.accepts.join(' | ')}${after})`,
 		);
 		for (const [idx, { turn, resolution, passed: trialPassed }] of trials.entries()) {
 			if (turn.runError) runErrors++;
