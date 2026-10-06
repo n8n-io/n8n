@@ -154,10 +154,10 @@ callback end one wait only.
 - A step-bound resume URL binds its query as the node built it, without the token parameter. The
   data plane compares the same string when the request arrives. It does not rebuild the query from
   parsed values, because two different queries can parse to the same values.
-- Every data-plane process needs the resume secret, and all of them must use the same value. The
-  operator sets it in every deployment that enables engine 2.0, also where both planes run in one
-  process. The engine does not generate it. A process without it fails at start, so a resume request
-  never fails without a log entry.
+- Every data-plane process needs the resume secrets. A process signs only with a secret that every
+  other process accepts. The operator sets them in every deployment that enables engine 2.0, also
+  where both planes run in one process. The engine does not generate them. A process without them
+  fails at start, so a resume request never fails without a log entry.
 - Where both planes run in one process, the control plane can read the resume secret. The control
   plane is excluded only where the planes run as separate processes.
 - The Slack and Telegram approval callback reaches a fixed URL, with its signed reference in the
