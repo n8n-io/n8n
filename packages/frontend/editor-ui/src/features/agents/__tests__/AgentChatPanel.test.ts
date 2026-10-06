@@ -42,6 +42,7 @@ const isStreamingMock = ref(false);
 const isSubmittingMock = ref(false);
 const isLoadingHistoryMock = ref(false);
 const trackSubmittedMessageMock = vi.fn();
+const trackSentMessageToN8nChatAgentMock = vi.fn();
 const queuedMessagesMock = ref<AgentChatQueueItem[]>([]);
 const removeQueuedMessageMock = vi.fn();
 const updateQueuedMessageMock = vi.fn();
@@ -63,6 +64,9 @@ vi.mock('../composables/useAgentBackgroundJobs', () => ({
 		stopAll: stopAllMock,
 		isStopping: isStoppingMock,
 	}),
+}));
+vi.mock('@n8n/stores/useRootStore', () => ({
+	useRootStore: () => ({ restApiContext: { baseUrl: '/rest' } }),
 }));
 let onHistoryLoaded: ((count: number) => void) | undefined;
 
@@ -234,6 +238,12 @@ vi.mock('../composables/useAgentChatStream', () => ({
 	useAgentChatStream: (options: { onHistoryLoaded: (count: number) => void }) => {
 		onHistoryLoaded = options.onHistoryLoaded;
 		return {
+			capabilities: computed(() => ({
+				steer: true,
+				reorder: true,
+				backgroundTasks: true,
+				previewHistory: true,
+			})),
 			messages: messagesMock,
 			isStreaming: isStreamingMock,
 			isSubmitting: isSubmittingMock,
@@ -264,7 +274,10 @@ vi.mock('../composables/useAgentChatStream', () => ({
 }));
 
 vi.mock('../composables/useAgentTelemetry', () => ({
-	useAgentTelemetry: () => ({ trackSubmittedMessage: trackSubmittedMessageMock }),
+	useAgentTelemetry: () => ({
+		trackSubmittedMessage: trackSubmittedMessageMock,
+		trackSentMessageToN8nChatAgent: trackSentMessageToN8nChatAgentMock,
+	}),
 }));
 
 vi.mock('../composables/agentTelemetry.utils', () => ({
@@ -313,6 +326,9 @@ describe('AgentChatPanel', () => {
 				field: 'monthlyBudgetUsd' | 'sessionCostCapUsd';
 				amount: number;
 			}) => Promise<boolean>;
+			channel: 'chat' | 'n8n-chat';
+			centerEmptyState: boolean;
+			newSession: boolean;
 		}> = {},
 		attachTo?: HTMLElement,
 	) {
@@ -340,6 +356,46 @@ describe('AgentChatPanel', () => {
 			},
 		});
 	}
+
+	it('reports the first user message, for a title before the thread has one', async () => {
+		messagesMock.value = [
+			{ id: 'm1', role: 'assistant', content: 'Hi' } as ChatMessage,
+			{ id: 'm2', role: 'user', content: 'Review my draft' } as ChatMessage,
+		];
+		const wrapper = mountPanel();
+		await flushPromises();
+
+		expect(wrapper.emitted('first-user-message')?.at(-1)).toEqual(['Review my draft']);
+		wrapper.unmount();
+	});
+
+	describe('centerEmptyState', () => {
+		const isCentered = (wrapper: ReturnType<typeof mountPanel>) =>
+			wrapper
+				.get('aside')
+				.classes()
+				.some((c) => c.includes('centeredEmpty'));
+
+		it('centers an empty new chat, which already carries a minted session id', () => {
+			expect(
+				isCentered(
+					mountPanel({ centerEmptyState: true, newSession: true, continueSessionId: 'minted' }),
+				),
+			).toBe(true);
+		});
+
+		it('stops centering once the chat has messages', () => {
+			messagesMock.value = [{ id: 'm1', role: 'user', content: 'hi' } as ChatMessage];
+			expect(isCentered(mountPanel({ centerEmptyState: true, newSession: true }))).toBe(false);
+		});
+
+		it('does not center a continued thread or without the prop', () => {
+			expect(isCentered(mountPanel({ centerEmptyState: true, continueSessionId: 's1' }))).toBe(
+				false,
+			);
+			expect(isCentered(mountPanel())).toBe(false);
+		});
+	});
 
 	it('keeps two pending messages in the composer below background tasks and removes them without adding conversation bubbles', async () => {
 		queuedMessagesMock.value = [
@@ -1682,6 +1738,92 @@ describe('AgentChatPanel', () => {
 
 		expect(cancelAndSteerMock).toHaveBeenCalledWith('go another direction', expect.any(Function));
 		expect(sendMessageMock).not.toHaveBeenCalled();
+	});
+
+	it('tracks a sent message to the n8n Chat channel on the normal send path, as a new thread', async () => {
+		messagesMock.value = [];
+		const response = Promise.withResolvers<'sent'>();
+		sendMessageMock.mockReturnValueOnce(response.promise);
+		const wrapper = mountPanel({ channel: 'n8n-chat', continueSessionId: 'thread-1' });
+
+		(
+			wrapper.vm as unknown as { sendMessageFromOutside: (message: string) => void }
+		).sendMessageFromOutside('Hi there');
+		await flushPromises();
+		sendMessageMock.mock.lastCall?.[2]?.();
+		response.resolve('sent');
+		await flushPromises();
+
+		expect(trackSentMessageToN8nChatAgentMock).toHaveBeenCalledWith({
+			agentId: 'a1',
+			threadId: 'thread-1',
+			isNewThread: true,
+		});
+		// The preview chat metric counts only builder test messages.
+		expect(trackSubmittedMessageMock).not.toHaveBeenCalled();
+		expect(buildAgentConfigFingerprint).not.toHaveBeenCalled();
+		wrapper.unmount();
+	});
+
+	it('tracks a sent message to the n8n Chat channel as not-new when the thread already had messages', async () => {
+		messagesMock.value = [{ id: 'm1', role: 'user', content: 'hi', status: 'success' }];
+		const response = Promise.withResolvers<'sent'>();
+		sendMessageMock.mockReturnValueOnce(response.promise);
+		const wrapper = mountPanel({ channel: 'n8n-chat', continueSessionId: 'thread-2' });
+
+		(
+			wrapper.vm as unknown as { sendMessageFromOutside: (message: string) => void }
+		).sendMessageFromOutside('Hi again');
+		await flushPromises();
+		sendMessageMock.mock.lastCall?.[2]?.();
+		response.resolve('sent');
+		await flushPromises();
+
+		expect(trackSentMessageToN8nChatAgentMock).toHaveBeenCalledWith({
+			agentId: 'a1',
+			threadId: 'thread-2',
+			isNewThread: false,
+		});
+		wrapper.unmount();
+	});
+
+	it('tracks a sent message to the n8n Chat channel on the cancel-and-steer path', async () => {
+		messagesMock.value = [openInteractiveMessage()];
+		const wrapper = mountPanel({ channel: 'n8n-chat', continueSessionId: 'thread-3' });
+
+		(
+			wrapper.vm as unknown as { sendMessageFromOutside: (message: string) => void }
+		).sendMessageFromOutside('go another direction');
+		await flushPromises();
+		// Simulate `cancelAndSteer` accepting the message, same as `sendMessage`'s callback.
+		cancelAndSteerMock.mock.lastCall?.[1]?.();
+		await flushPromises();
+
+		expect(trackSentMessageToN8nChatAgentMock).toHaveBeenCalledWith({
+			agentId: 'a1',
+			threadId: 'thread-3',
+			// An open interactive question means the thread already had messages.
+			isNewThread: false,
+		});
+	});
+
+	it('does not track a sent message when the channel is not n8n-chat', async () => {
+		messagesMock.value = [];
+		const response = Promise.withResolvers<'sent'>();
+		sendMessageMock.mockReturnValueOnce(response.promise);
+		const wrapper = mountPanel({ continueSessionId: 'thread-4' });
+
+		(
+			wrapper.vm as unknown as { sendMessageFromOutside: (message: string) => void }
+		).sendMessageFromOutside('Hi there');
+		await flushPromises();
+		sendMessageMock.mock.lastCall?.[2]?.();
+		response.resolve('sent');
+		await flushPromises();
+
+		expect(trackSentMessageToN8nChatAgentMock).not.toHaveBeenCalled();
+		expect(trackSubmittedMessageMock).toHaveBeenCalledOnce();
+		wrapper.unmount();
 	});
 
 	it('keeps a steering draft after a busy rejection without retrying it', async () => {

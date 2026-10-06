@@ -111,6 +111,18 @@ describe('N8nMenuItem', () => {
 			});
 			expect(getByText('🏠')).toBeVisible();
 		});
+
+		it('should render the icon slot instead of the item icon when given', () => {
+			const { getByTestId, queryByTestId } = render(N8nMenuItem, {
+				props: {
+					item: createMenuItem({ icon: 'house' }),
+				},
+				slots: { icon: '<div data-test-id="custom-icon" />' },
+				global: { stubs },
+			});
+			expect(getByTestId('custom-icon')).toBeVisible();
+			expect(queryByTestId('menu-item')?.querySelector('svg')).toBeNull();
+		});
 	});
 
 	describe('active prop', () => {

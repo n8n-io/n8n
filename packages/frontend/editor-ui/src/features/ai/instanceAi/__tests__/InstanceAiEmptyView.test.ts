@@ -264,7 +264,7 @@ vi.mock('uuid', () => ({
 
 vi.mock('vue-router', async (importOriginal) => ({
 	...(await importOriginal()),
-	useRoute: () => ({ query: routeQuery }),
+	useRoute: () => ({ query: routeQuery, params: {} }),
 	useRouter: () => ({ push: vi.fn(), replace: replaceMock }),
 }));
 
