@@ -8,7 +8,6 @@ export const workflowVersionPublicSchema = activeWorkflowVersionPublicSchema.omi
 
 export class WorkflowVersionPublicDto extends Z.class(workflowVersionPublicSchema.shape) {}
 
-// The deprecated path keeps its original contract. That contract left these five fields optional.
 export const deprecatedWorkflowVersionPublicSchema = workflowVersionPublicSchema.partial({
 	nodeGroups: true,
 	name: true,

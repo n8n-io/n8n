@@ -834,7 +834,11 @@ export class WorkflowsPublicController {
 		return tags.map(toPublicTag);
 	}
 
-	// Keep this last: history and tags must match first. Evaluations mounts before workflows for test-runs.
+	/**
+	 * Keep this route as the last registered route in the controller, so that it does not shadow other routes.
+	 * The route is deprecated and we should not encourage use, preferring consumers to use the new route
+	 * at /workflows/{workflowId}/versions/{workflowVersionId} instead.
+	 */
 	@Get('/:workflowId/:workflowVersionId')
 	@Deprecated({ since: VERSION_PATH_DEPRECATED_SINCE })
 	@ApiKeyScope('workflow:read')
