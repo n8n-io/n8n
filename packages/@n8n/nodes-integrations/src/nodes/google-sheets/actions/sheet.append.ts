@@ -21,7 +21,7 @@ export const appendSheetRow = sheet.action('append', {
 	flow: { effect: 'write', cardinality: 'per-item', idempotent: false },
 	input: {
 		values: rowValues,
-		headerRow: t.int().with({ minimum: 1 }).default(1),
+		headerRow: t.int().with({ minimum: 1 }).default(1).title('Header Row'),
 		cellFormat,
 	},
 	output: writtenRow,

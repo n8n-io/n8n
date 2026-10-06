@@ -78,14 +78,17 @@ export const whatsAppEvent = whatsAppTrigger.trigger('trigger', {
 		updates: t
 			.arr(fields)
 			.with({ minItems: 1 })
+			.title('Trigger On')
 			.hint('messages: received messages and their statuses'),
 		options: t
 			.obj({
 				messageStatusUpdates: t
 					.arr(t.oneOf('all', 'deleted', 'delivered', 'failed', 'read', 'sent'))
 					.optional()
+					.title('Receive Message Status Updates')
 					.hint('Status updates that start the workflow; [] for none'),
 			})
+			.title('Options')
 			.optional(),
 	},
 	output: t.obj({

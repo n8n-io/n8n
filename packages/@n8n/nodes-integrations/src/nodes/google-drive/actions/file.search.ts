@@ -24,11 +24,18 @@ export const searchFiles = file.action('search', {
 	flow: { effect: 'read', cardinality: '1:N', idempotent: true },
 	minor: 1,
 	input: {
-		nameContains: t.str().hint('Part of the name').optional(),
-		query: t.str().hint("Drive query syntax, e.g. modifiedTime > '2026-01-01'").optional(),
-		folderId: ref(driveFolderId).hint('Only items directly in this folder; ID or URL').optional(),
-		type: t.oneOf('all', 'files', 'folders').default('all'),
-		includeTrashed: t.bool().default(false),
+		nameContains: t.str().title('Name Contains').hint('Part of the name').optional(),
+		query: t
+			.str()
+			.title('Query String')
+			.hint("Drive query syntax, e.g. modifiedTime > '2026-01-01'")
+			.optional(),
+		folderId: ref(driveFolderId)
+			.title('Folder')
+			.hint('Only items directly in this folder; ID or URL')
+			.optional(),
+		type: t.oneOf('all', 'files', 'folders').default('all').title('What to Search'),
+		includeTrashed: t.bool().default(false).title('Include Trashed Items'),
 	},
 	output: driveFile,
 	list: {

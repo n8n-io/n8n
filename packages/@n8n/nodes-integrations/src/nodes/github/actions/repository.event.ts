@@ -17,8 +17,12 @@ export const repositoryEvent = repository.trigger('event', {
 	summary: 'Starts on each GitHub event of a repository, e.g. a push or an opened issue.',
 	scopes: ['admin:repo_hook'],
 	input: {
-		events: t.arr(t.str()).default(['*']).hint('GitHub event names, e.g. push; * is every event'),
-		insecureSSL: t.bool().default(false),
+		events: t
+			.arr(t.str())
+			.default(['*'])
+			.hint('GitHub event names, e.g. push; * is every event')
+			.title('Events'),
+		insecureSSL: t.bool().default(false).title('Insecure SSL'),
 	},
 	output: delivery,
 	webhook: {

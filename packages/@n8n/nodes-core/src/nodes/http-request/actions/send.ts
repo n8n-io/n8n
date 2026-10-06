@@ -25,19 +25,29 @@ export const sendRequest = httpRequest.action('send', {
 	flow: { effect: 'write', cardinality: '1:N', idempotent: false },
 	egress: { fromInput: 'url' },
 	input: {
-		method: t.oneOf('POST', 'PUT', 'PATCH', 'DELETE'),
+		method: t.oneOf('POST', 'PUT', 'PATCH', 'DELETE').title('Method'),
 		...common,
 		body: t
 			.variant('kind', {
-				json: { json: t.json().hint('A JSON object; build it in one lambda, never as a string') },
-				form: { fields: t.record(t.str()) },
-				text: { text: t.str(), contentType: t.str().hint('e.g. text/plain') },
+				json: {
+					json: t
+						.json()
+						.title('JSON')
+						.hint('A JSON object; build it in one lambda, never as a string'),
+				},
+				form: { fields: t.record(t.str()).title('Body Fields') },
+				text: {
+					text: t.str().title('Body'),
+					contentType: t.str().title('Content Type').hint('e.g. text/plain'),
+				},
 				binary: {
 					file: t
 						.binary()
+						.title('Input Data Field Name')
 						.hint('Streamed as is; its MIME type is the content-type unless headers set one'),
 				},
 			})
+			.title('Body')
 			.optional(),
 		...responseOptions,
 		schema: bodySchema,

@@ -9,7 +9,10 @@ export const deleteSlackMessage = message.action('delete', {
 	summary: 'Delete a message that the app posted.',
 	flow: { effect: 'write', cardinality: 'per-item', idempotent: false },
 	scopes: ['chat:write'],
-	input: { channel: ref(slackChannelId), ts: slackTs },
+	input: {
+		channel: ref(slackChannelId).title('Channel'),
+		ts: slackTs.title('Message Timestamp'),
+	},
 	output: deleted,
 	async run({ input, http }) {
 		const body = { channel: input.channel, ts: input.ts };

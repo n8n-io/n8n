@@ -12,10 +12,17 @@ import {
 /** Rows of the n8n data tables of the workflow's project. The host gives the tables; no credential. */
 export const dataTable = defineNode({ id: 'dataTable', displayName: 'Data table' });
 
-const tableId = t.obj({ id: t.str().with({ minLength: 1 }).hint('Data table ID') });
-const tableName = t.obj({ name: t.str().with({ minLength: 1 }).hint('Exact data table name') });
+const tableId = t.obj({
+	id: t.str().with({ minLength: 1 }).title('Data Table ID').hint('Data table ID'),
+});
+const tableName = t.obj({
+	name: t.str().with({ minLength: 1 }).title('Data Table Name').hint('Exact data table name'),
+});
 
-export const tableRef = t.union(tableId, tableName).hint('The table by ID or by name');
+export const tableRef = t
+	.union(tableId, tableName)
+	.title('Data Table')
+	.hint('The table by ID or by name');
 
 export const row = dataTable.resource('row', { input: { table: tableRef } });
 
@@ -27,30 +34,33 @@ export const cell = t.nullable(t.union(t.str(), t.num(), t.bool())).hint('A date
 const column = t
 	.str()
 	.with({ minLength: 1 })
+	.title('Column')
 	.hint('Column name, or the system column id, createdAt or updatedAt');
 
 const ordered = t.union(t.num(), t.str());
 
 const condition = t.variant('op', {
-	eq: { column, value: cell },
-	neq: { column, value: cell },
-	like: { column, value: t.str().hint('% matches any text') },
-	ilike: { column, value: t.str().hint('% matches any text; case is ignored') },
-	gt: { column, value: ordered },
-	gte: { column, value: ordered },
-	lt: { column, value: ordered },
-	lte: { column, value: ordered },
+	eq: { column, value: cell.title('Value') },
+	neq: { column, value: cell.title('Value') },
+	like: { column, value: t.str().title('Pattern').hint('% matches any text') },
+	ilike: { column, value: t.str().title('Pattern').hint('% matches any text; case is ignored') },
+	gt: { column, value: ordered.title('Value') },
+	gte: { column, value: ordered.title('Value') },
+	lt: { column, value: ordered.title('Value') },
+	lte: { column, value: ordered.title('Value') },
 	isEmpty: { column },
 	isNotEmpty: { column },
 });
 
 /** Rows that match all or any of the conditions. */
-export const where = t.obj({
-	match: t.oneOf('all', 'any').hint('all = AND, any = OR'),
-	conditions: t.arr(condition).with({ minItems: 1 }),
-});
+export const where = t
+	.obj({
+		match: t.oneOf('all', 'any').title('Must Match').hint('all = AND, any = OR'),
+		conditions: t.arr(condition).with({ minItems: 1 }).title('Conditions'),
+	})
+	.title('Filters');
 
-export const values = t.record(cell).hint('Cell values by column name');
+export const values = t.record(cell).title('Values').hint('Cell values by column name');
 
 export const toFilter = ({ match, conditions }: Infer<typeof where>): DataTableFilter => ({
 	match,
@@ -94,11 +104,11 @@ export const storedRow = t
 		additionalProperties: { ...cell.json, 'x-n8n-hint': 'One field per column, by column name' },
 	});
 
-export const direction = t.oneOf('asc', 'desc');
+export const direction = t.oneOf('asc', 'desc').title('Direction');
 
-export const sort = t.obj({ column, direction });
+export const sort = t.obj({ column, direction }).title('Order By');
 
-export const limit = t.int().with({ minimum: 1 }).hint('Omit for every match');
+export const limit = t.int().with({ minimum: 1 }).title('Limit').hint('Omit for every match');
 
 /** The rows or tables of one read come in pages of this size. */
 const PAGE_SIZE = 1000;
@@ -125,7 +135,11 @@ export async function* pagesOf<T>(
 
 const columnType = t.oneOf('string', 'number', 'boolean', 'date');
 
-export const columns = t.arr(t.obj({ name: t.str().with({ minLength: 1 }), type: columnType }));
+export const columns = t
+	.arr(
+		t.obj({ name: t.str().with({ minLength: 1 }).title('Name'), type: columnType.title('Type') }),
+	)
+	.title('Columns');
 
 /** A table without its rows. */
 export const tableInfo = t.obj({

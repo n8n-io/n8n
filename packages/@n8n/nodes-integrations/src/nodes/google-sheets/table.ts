@@ -21,10 +21,14 @@ export const columnKey = (cell: unknown) => {
 	return text === ROW_NUMBER ? USER_ROW_NUMBER : text;
 };
 
-export const cellFormat = t.oneOf('USER_ENTERED', 'RAW').default('USER_ENTERED');
+export const cellFormat = t
+	.oneOf('USER_ENTERED', 'RAW')
+	.default('USER_ENTERED')
+	.title('Cell Format');
 
 export const rowValues = t
 	.json()
+	.title('Values')
 	.hint('Header text -> value; a key not in the header adds a column');
 
 /** A row as the read operation emits it. */

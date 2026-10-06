@@ -11,7 +11,10 @@ export const renameKeys = itemsNode.action('renameKeys', {
 		'Move fields of each item to new names. A name is a dot path; a missing field is skipped.',
 	flow: { effect: 'transform', cardinality: 'per-item' },
 	input: {
-		keys: t.arr(t.obj({ from: field(), to: field() })).with({ minItems: 1 }),
+		keys: t
+			.arr(t.obj({ from: field().title('Current Key Name'), to: field().title('New Key Name') }))
+			.with({ minItems: 1 })
+			.title('Keys'),
 	},
 	ui: { fields: { keys: { widget: 'list' } } },
 	output: t.json(),

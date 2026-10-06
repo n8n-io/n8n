@@ -11,10 +11,12 @@ export const getSlackUser = user.action('get', {
 	minor: 1,
 	scopes: ['users:read', 'users:read.email'],
 	input: {
-		user: t.variant('by', {
-			id: { id: ref(slackUserId) },
-			email: { email: t.str().with({ pattern: '^[^@\\s]+@[^@\\s]+$' }) },
-		}),
+		user: t
+			.variant('by', {
+				id: { id: ref(slackUserId).title('User ID') },
+				email: { email: t.str().with({ pattern: '^[^@\\s]+@[^@\\s]+$' }).title('Email') },
+			})
+			.title('User'),
 	},
 	output: slackUser,
 	async run({ input, http }) {

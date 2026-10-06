@@ -48,8 +48,9 @@ export const facebookEvent = facebookTrigger.trigger('trigger', {
 		authType: t
 			.oneOf('accessToken', 'oAuth2')
 			.default('accessToken')
+			.title('Authentication')
 			.hint('accessToken: facebookGraphAppApi; oAuth2: facebookGraphAppOAuth2Api'),
-		appId: t.str().with({ minLength: 1 }).hint('The Meta app ID'),
+		appId: t.str().with({ minLength: 1 }).title('App ID').hint('The Meta app ID'),
 		object: t
 			.oneOf(
 				'adAccount',
@@ -65,12 +66,17 @@ export const facebookEvent = facebookTrigger.trigger('trigger', {
 				'workplaceSecurity',
 			)
 			.default('user')
+			.title('Object')
 			.hint('page for page posts and comments; WhatsApp has its own trigger'),
 		fields: t
 			.arr(t.str())
 			.with({ minItems: 1 })
+			.title('Field Names')
 			.hint('Fields of the object to subscribe to, e.g. feed for page posts and comments'),
-		options: t.obj({ includeValues: t.bool().optional() }).optional(),
+		options: t
+			.obj({ includeValues: t.bool().optional().title('Include Values') })
+			.title('Options')
+			.optional(),
 	},
 	output: t.obj({
 		id: t.str().hint('The ID of the changed object, e.g. the page'),

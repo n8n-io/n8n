@@ -58,10 +58,11 @@ export const whatsAppPhoneNumber = defineResource({
 /** The sender and the recipient of each message. */
 export const message = whatsApp.resource('message', {
 	input: {
-		phoneNumberId: ref(whatsAppPhoneNumber),
+		phoneNumberId: ref(whatsAppPhoneNumber).title('Sender Phone Number (or ID)'),
 		to: t
 			.str()
 			.with({ pattern: '^\\+?[0-9][0-9 ()-]{4,}$' })
+			.title("Recipient's Phone Number")
 			.hint('Recipient number with country code, e.g. +4915112345678'),
 	},
 });

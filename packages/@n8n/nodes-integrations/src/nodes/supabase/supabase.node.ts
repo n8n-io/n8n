@@ -37,8 +37,13 @@ export const row = supabase.resource('row', {
 		table: t
 			.str()
 			.with({ pattern: '^(?!\\.{1,2}$).+$' })
+			.title('Table Name')
 			.hint('Table or view name, e.g. customers'),
-		schema: t.str().hint('Postgres schema; the API default (public) when not set').optional(),
+		schema: t
+			.str()
+			.title('Schema')
+			.hint('Postgres schema; the API default (public) when not set')
+			.optional(),
 	},
 });
 

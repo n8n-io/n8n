@@ -9,8 +9,8 @@ export const promptModel = ai.action('prompt', {
 	flow: { effect: 'transform', cardinality: 'per-item' },
 	input: {
 		model: provider.input('chatModel'),
-		prompt: t.str().with({ minLength: 1 }),
-		system: t.str().optional().hint('Instructions for the model'),
+		prompt: t.str().with({ minLength: 1 }).title('Prompt'),
+		system: t.str().optional().title('System Message').hint('Instructions for the model'),
 		schema: replySchema,
 	},
 	output: replyOutput,

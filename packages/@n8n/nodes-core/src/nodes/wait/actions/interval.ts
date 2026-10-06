@@ -10,8 +10,8 @@ export const waitInterval = wait.action('interval', {
 	flow: { effect: 'transform', cardinality: 'batch' },
 	imports: ['wait'],
 	input: {
-		amount: t.num().with({ minimum: 0 }),
-		unit: t.oneOf('seconds', 'minutes', 'hours', 'days'),
+		amount: t.num().with({ minimum: 0 }).title('Wait Amount'),
+		unit: t.oneOf('seconds', 'minutes', 'hours', 'days').title('Wait Unit'),
 	},
 	output: heldItems,
 	async *run({ input, items, wait: host }) {

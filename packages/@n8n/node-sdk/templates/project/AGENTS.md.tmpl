@@ -35,7 +35,7 @@ Run `check` and `test` after each change. Both must pass.
 export const node = defineNode({ id: '__service__', displayName: '__Service__', baseUrl: 'https://api.example.com/v1',
 	credential: credential({ types: [__service__Api], scopes: { 'items:write': 'Create items' } }) }); // add `optional: true` if the API also works without a key
 // A resource groups actions. Its `input` (optional) goes into the input of each of its actions.
-export const item = node.resource('item', { input: { workspace: t.str() } });
+export const item = node.resource('item', { input: { workspace: t.str().title('Workspace') } });
 // src/credentials.ts: `defineCredential`, `credential` and `field` come from '@n8n/node-sdk/credentials'. Id `service.scheme`. auth is data: a.bearer/header/query/basic/apply/when/oauth2.*; a.custom({ reason, sign }) last.
 export const __service__Api = defineCredential({ id: '__service__.apiKey', legacyName: '__service__Api',
 	displayName: '__Service__ API', fields: { apiKey: field.secret('API Key') }, baseUrl: 'https://api.example.com/v1',
@@ -51,7 +51,7 @@ export const createItem = item.action('create', {
 	summary: 'Create one item.',            // one sentence, at most 120 characters, ends with a period
 	flow: { effect: 'write', cardinality: 'per-item', idempotent: false },
 	scopes: ['items:write'],                // scopes of the node's credential; tsc rejects others
-	input: { name: t.str(), ownerId: t.str().optional() },  // run() also gets `workspace` from the resource
+	input: { name: t.str().title('Name'), ownerId: t.str().title('Owner ID').optional() },  // run() also gets `workspace`
 	output: itemOutput,
 	async run({ input, http }) {
 		const body = { name: input.name, ...(input.ownerId ? { ownerId: input.ownerId } : {}) };
@@ -94,7 +94,7 @@ export const createItem = item.action('create', {
 | `t.variant('mode', { a: {...}, b: {...} })` | tagged union | fields that depend on a choice |
 | `t.union(a, b)` | `A \| B` | a value that matches one of the schemas |
 
-- Chain `.optional()`, `.default(v)` (also optional for callers), `.describe(text)`,
+- Every input field, also nested, needs `.title(text)`: the label n8n shows, e.g. `Owner ID`. Chain `.optional()`, `.default(v)` (also optional for callers), `.describe(text)`,
   `.hint(text)` (at most 80 characters, no period, more than the type), `.with({ pattern, minimum, maximum, minLength, format, examples })`.
 - `t.obj` rejects fields it does not list. To return an API object unchanged, list all of its fields,
   or keep unlisted fields with `t.obj({ ... }).with({ additionalProperties: true })`.

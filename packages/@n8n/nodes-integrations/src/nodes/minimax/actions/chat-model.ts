@@ -10,10 +10,16 @@ export const minimaxChatModel = minimax.provider('chatModel', {
 	input: {
 		model: t
 			.modelId('minimax')
+			.title('Model')
 			.hint('A model ID from the catalog, e.g. MiniMax-M2; never invent one'),
-		temperature: t.num().with({ minimum: 0, maximum: 2 }).optional(),
-		maxTokens: t.int().with({ minimum: 1 }).optional().hint('Most tokens in one reply'),
-		topP: t.num().with({ minimum: 0, maximum: 1 }).optional(),
+		temperature: t.num().with({ minimum: 0, maximum: 2 }).optional().title('Sampling Temperature'),
+		maxTokens: t
+			.int()
+			.with({ minimum: 1 })
+			.optional()
+			.hint('Most tokens in one reply')
+			.title('Maximum Number of Tokens'),
+		topP: t.num().with({ minimum: 0, maximum: 1 }).optional().title('Top P'),
 	},
 	async provide({ input, http }) {
 		// MiniMax puts its reasoning in the reply text unless the request splits it out.

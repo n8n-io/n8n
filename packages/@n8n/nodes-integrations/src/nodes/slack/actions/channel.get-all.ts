@@ -13,8 +13,9 @@ export const getManySlackChannels = channel.action('getAll', {
 		types: t
 			.arr(t.oneOf('public_channel', 'private_channel', 'mpim', 'im'))
 			.with({ minItems: 1 })
-			.default(['public_channel']),
-		excludeArchived: t.bool().default(false),
+			.default(['public_channel'])
+			.title('Types'),
+		excludeArchived: t.bool().default(false).title('Exclude Archived'),
 		paging,
 	},
 	output: slackChannel,

@@ -24,12 +24,17 @@ export const sendSlackMessage = message.action('send', {
 	flow: { effect: 'write', cardinality: 'per-item', idempotent: false },
 	scopes: ['chat:write'],
 	input: {
-		channel: ref(slackConversation),
+		channel: ref(slackConversation).title('Channel'),
 		...content,
 		threadTs: slackTs
+			.title('Thread Timestamp')
 			.hint('ts of the parent message, as a string, to reply in its thread')
 			.optional(),
-		replyBroadcast: t.bool().default(false).hint('Also show the thread reply in the channel'),
+		replyBroadcast: t
+			.bool()
+			.default(false)
+			.title('Also Send to Channel')
+			.hint('Also show the thread reply in the channel'),
 	},
 	output: sent,
 	async run({ input, http }) {

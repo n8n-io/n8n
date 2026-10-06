@@ -72,9 +72,13 @@ export const document = googleDocs.resource('document');
 /** What a write adds to a document. Markdown keeps headings, lists, bold and links. */
 export const content = t
 	.variant('format', {
-		text: { text: t.str().with({ minLength: 1 }) },
+		text: { text: t.str().with({ minLength: 1 }).title('Text') },
 		markdown: {
-			markdown: t.str().hint('Headings, - and 1. lists, **bold**, *italic*, [links](url)'),
+			markdown: t
+				.str()
+				.title('Markdown')
+				.hint('Headings, - and 1. lists, **bold**, *italic*, [links](url)'),
 		},
 	})
+	.title('Content')
 	.hint('Use markdown for headings and bullet points');

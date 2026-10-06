@@ -38,16 +38,30 @@ export const sendGmailMessage = message.action('send', {
 	summary: 'Send an email.',
 	flow: { effect: 'write', cardinality: 'per-item', idempotent: false },
 	input: {
-		to: addresses,
-		subject: t.str(),
-		body: t.variant('format', { text: { text: t.str() }, html: { html: t.str() } }),
-		cc: addresses.optional(),
-		bcc: addresses.optional(),
-		senderName: t.str().hint('Display name; the address is the account address').optional(),
-		replyTo: addresses.optional(),
-		appendAttribution: t.bool().default(true).hint('Adds a "sent with n8n" footer'),
+		to: addresses.title('To'),
+		subject: t.str().title('Subject'),
+		body: t
+			.variant('format', {
+				text: { text: t.str().title('Message') },
+				html: { html: t.str().title('Message') },
+			})
+			.title('Message'),
+		cc: addresses.title('CC').optional(),
+		bcc: addresses.title('BCC').optional(),
+		senderName: t
+			.str()
+			.title('Sender Name')
+			.hint('Display name; the address is the account address')
+			.optional(),
+		replyTo: addresses.title('Send Replies To').optional(),
+		appendAttribution: t
+			.bool()
+			.default(true)
+			.title('Append n8n Attribution')
+			.hint('Adds a "sent with n8n" footer'),
 		attachments: t
 			.arr(t.binary())
+			.title('Attachments')
 			.hint('Files to attach, e.g. [(item) => item.binary.data]')
 			.optional(),
 	},

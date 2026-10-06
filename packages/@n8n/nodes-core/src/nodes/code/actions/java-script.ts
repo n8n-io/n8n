@@ -28,7 +28,9 @@ export const runJavaScript = code.action('javaScript', {
 	flow: { effect: 'transform', cardinality: 'batch' },
 	imports: ['code'],
 	input: {
-		code: codeText.hint('Read items with $input.all() or $json. No network access'),
+		code: codeText
+			.title('JavaScript')
+			.hint('Read items with $input.all() or $json. No network access'),
 		mode,
 		returns,
 	},

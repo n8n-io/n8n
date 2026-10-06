@@ -8,8 +8,12 @@ export const deleteFile = file.action('delete', {
 	flow: { effect: 'write', cardinality: 'per-item', idempotent: true },
 	minor: 1,
 	input: {
-		fileId: ref(driveFileId),
-		permanently: t.bool().default(false).hint('true skips the trash; it cannot be undone'),
+		fileId: ref(driveFileId).title('File'),
+		permanently: t
+			.bool()
+			.default(false)
+			.title('Delete Permanently')
+			.hint('true skips the trash; it cannot be undone'),
 	},
 	output: t.obj({ id: t.str(), success: t.lit(true) }),
 	async run({ input, http }) {

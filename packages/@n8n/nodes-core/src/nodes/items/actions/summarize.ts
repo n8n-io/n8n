@@ -4,20 +4,25 @@ import { itemsNode } from '../items.node';
 import { getPath, pathOf } from '../path';
 
 const field = t.str().with({ minLength: 1 });
+const summed = { field: field.title('Field') };
 const counted = {
-	field,
-	includeEmpty: t.bool().default(false).hint('Count null and empty values'),
+	...summed,
+	includeEmpty: t
+		.bool()
+		.default(false)
+		.title('Include Empty Values')
+		.hint('Count null and empty values'),
 };
 
 const summary = t.variant('aggregation', {
 	append: counted,
-	concatenate: { ...counted, separator: t.str().default(',') },
+	concatenate: { ...counted, separator: t.str().default(',').title('Separator') },
 	count: counted,
 	countUnique: counted,
-	sum: { field },
-	average: { field },
-	min: { field },
-	max: { field },
+	sum: summed,
+	average: summed,
+	min: summed,
+	max: summed,
 });
 
 type Summary = Infer<typeof summary>;
@@ -112,13 +117,18 @@ export const summarizeItems = itemsNode.action('summarize', {
 		'Count, sum, or list field values of all items, like a pivot table, optionally by group.',
 	flow: { effect: 'transform', cardinality: 'batch' },
 	input: {
-		fields: t.arr(summary).with({ minItems: 1 }),
-		groupBy: t.arr(field).default([]).hint('Fields whose values form the groups'),
+		fields: t.arr(summary).with({ minItems: 1 }).title('Fields to Summarize'),
+		groupBy: t
+			.arr(field)
+			.default([])
+			.title('Fields to Group By')
+			.hint('Fields whose values form the groups'),
 		output: t
 			.oneOf('separateItems', 'singleItem')
 			.default('separateItems')
+			.title('Output Format')
 			.hint('singleItem nests groups by value in one item'),
-		skipEmptyGroups: t.bool().default(false),
+		skipEmptyGroups: t.bool().default(false).title('Skip Empty Groups'),
 	},
 	output: t.json(),
 	run({ input, items }) {

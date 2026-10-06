@@ -57,7 +57,7 @@ export const notionDatabase = defineResource({
 export const notionIdOf = (value: string) => new RegExp(ID).exec(value)?.[0] ?? value;
 
 export const databasePage = notion.resource('databasePage', {
-	input: { database: ref(notionDatabase) },
+	input: { database: ref(notionDatabase).title('Database') },
 });
 
 /** A declarative request has no code to read an ID out of a URL. */
@@ -75,7 +75,7 @@ export const dataSource = notion.resource('dataSource', {
 				shape: exactId('Data Source'),
 				list: dataSourceList,
 			}),
-		),
+		).title('Data Source'),
 	},
 });
 
@@ -104,6 +104,6 @@ export const user = notion.resource('user', {
 					search: 'label',
 				},
 			}),
-		),
+		).title('User ID'),
 	},
 });

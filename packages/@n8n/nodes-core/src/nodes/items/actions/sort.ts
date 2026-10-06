@@ -31,11 +31,12 @@ export const sortItems = itemsNode.action('sort', {
 		by: t
 			.arr(
 				t.obj({
-					field: t.str().with({ minLength: 1 }),
-					order: t.oneOf('ascending', 'descending').default('ascending'),
+					field: t.str().with({ minLength: 1 }).title('Field Name'),
+					order: t.oneOf('ascending', 'descending').default('ascending').title('Order'),
 				}),
 			)
-			.with({ minItems: 1 }),
+			.with({ minItems: 1 })
+			.title('Fields To Sort By'),
 	},
 	ui: { fields: { by: { widget: 'list' } } },
 	output: t.passedItem(),

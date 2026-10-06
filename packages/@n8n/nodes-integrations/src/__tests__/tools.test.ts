@@ -113,7 +113,7 @@ describe('contract actions as agent tools', () => {
 		);
 		expect(tool.input).toEqual({
 			type: 'object',
-			properties: { url: { type: 'string', description: 'The page URL' } },
+			properties: { url: { type: 'string', title: 'URL', description: 'The page URL' } },
 			required: ['url'],
 			additionalProperties: false,
 		});

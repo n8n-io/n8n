@@ -12,15 +12,21 @@ import {
 	simplify,
 } from '../message';
 
-const filters = t.obj({
-	q: t.str().hint('Gmail search syntax, e.g. "is:unread from:ada@example.com"').optional(),
-	readStatus: t.oneOf('both', 'unread', 'read').default('both'),
-	sender: t.str().optional(),
-	labelIds: t.arr(ref(gmailLabel)).hint('Label IDs, not names').optional(),
-	receivedAfter: t.str().hint('ISO 8601 date or date-time').optional(),
-	receivedBefore: t.str().hint('ISO 8601 date or date-time').optional(),
-	includeSpamTrash: t.bool().optional(),
-});
+const filters = t
+	.obj({
+		q: t
+			.str()
+			.hint('Gmail search syntax, e.g. "is:unread from:ada@example.com"')
+			.optional()
+			.title('Search'),
+		readStatus: t.oneOf('both', 'unread', 'read').default('both').title('Read Status'),
+		sender: t.str().optional().title('Sender'),
+		labelIds: t.arr(ref(gmailLabel)).hint('Label IDs, not names').optional().title('Label IDs'),
+		receivedAfter: t.str().hint('ISO 8601 date or date-time').optional().title('Received After'),
+		receivedBefore: t.str().hint('ISO 8601 date or date-time').optional().title('Received Before'),
+		includeSpamTrash: t.bool().optional().title('Include Spam and Trash'),
+	})
+	.title('Filters');
 
 function seconds(value: string, label: 'After' | 'Before') {
 	const time = Date.parse(value);

@@ -3,27 +3,46 @@ import { t, type Infer } from '@n8n/node-sdk';
 import { message, sendMessage, sent } from '../whats-app.node';
 
 const bodyParameter = t.variant('type', {
-	text: { text: t.str() },
+	text: { text: t.str().title('Text') },
 	currency: {
-		code: t.str().with({ pattern: '^[A-Z]{3}$' }).hint('ISO 4217 code, e.g. EUR'),
-		amount: t.num().hint('In the main unit, e.g. 12.5'),
-		fallback: t.str().hint('Text when the client cannot format it, e.g. €12.50'),
+		code: t
+			.str()
+			.with({ pattern: '^[A-Z]{3}$' })
+			.title('Currency Code')
+			.hint('ISO 4217 code, e.g. EUR'),
+		amount: t.num().title('Amount').hint('In the main unit, e.g. 12.5'),
+		fallback: t
+			.str()
+			.title('Fallback Value')
+			.hint('Text when the client cannot format it, e.g. €12.50'),
 	},
-	date_time: { fallback: t.str().hint('The date as text, e.g. March 3, 2026') },
+	date_time: {
+		fallback: t.str().title('Fallback Value').hint('The date as text, e.g. March 3, 2026'),
+	},
 });
 
 const component = t.variant('type', {
-	body: { parameters: t.arr(bodyParameter).hint('One per template placeholder, in order') },
+	body: {
+		parameters: t
+			.arr(bodyParameter)
+			.title('Parameters')
+			.hint('One per template placeholder, in order'),
+	},
 	header: {
-		parameter: t.variant('type', {
-			text: { text: t.str() },
-			image: { link: t.str().with({ format: 'uri' }) },
-		}),
+		parameter: t
+			.variant('type', {
+				text: { text: t.str().title('Text') },
+				image: { link: t.str().with({ format: 'uri' }).title('Image Link') },
+			})
+			.title('Parameter'),
 	},
 	button: {
-		index: t.int().with({ minimum: 0, maximum: 9 }),
-		subType: t.oneOf('quick_reply', 'url'),
-		value: t.str().hint('The payload of a quick reply, or the URL suffix of a URL button'),
+		index: t.int().with({ minimum: 0, maximum: 9 }).title('Index'),
+		subType: t.oneOf('quick_reply', 'url').title('Sub Type'),
+		value: t
+			.str()
+			.title('Payload')
+			.hint('The payload of a quick reply, or the URL suffix of a URL button'),
 	},
 });
 
@@ -85,12 +104,18 @@ export const sendWhatsAppTemplate = message.action('sendTemplate', {
 		template: t
 			.str()
 			.with({ pattern: '^[a-z0-9_]+$' })
+			.title('Template')
 			.hint('Approved template name, e.g. order_confirmation'),
 		language: t
 			.str()
 			.with({ pattern: '^[a-z]{2,3}(_[A-Z]{2})?$' })
+			.title('Language')
 			.hint('The language of the approved template, e.g. en_US'),
-		components: t.arr(component).hint('Values for the template placeholders').optional(),
+		components: t
+			.arr(component)
+			.title('Components')
+			.hint('Values for the template placeholders')
+			.optional(),
 	},
 	output: sent,
 	async run({ input, http }) {

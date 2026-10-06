@@ -9,15 +9,21 @@ export const messageOpenAi = text.action('message', {
 		'Send one prompt to an OpenAI model and get its reply: text, or an object typed by schema.',
 	flow: { effect: 'transform', cardinality: 'per-item' },
 	input: {
-		model: t.modelId('openai'),
-		prompt: t.str().with({ minLength: 1 }),
-		system: t.str().optional().hint('Instructions for the model'),
+		model: t.modelId('openai').title('Model'),
+		prompt: t.str().with({ minLength: 1 }).title('Prompt'),
+		system: t.str().optional().hint('Instructions for the model').title('System Message'),
 		schema: replySchema,
-		temperature: t.num().with({ minimum: 0, maximum: 2 }).optional(),
-		maxTokens: t.int().with({ minimum: 1 }).optional().hint('Most tokens in one reply'),
+		temperature: t.num().with({ minimum: 0, maximum: 2 }).optional().title('Sampling Temperature'),
+		maxTokens: t
+			.int()
+			.with({ minimum: 1 })
+			.optional()
+			.hint('Most tokens in one reply')
+			.title('Maximum Number of Tokens'),
 		reasoningEffort: t
 			.oneOf('minimal', 'low', 'medium', 'high')
 			.optional()
+			.title('Reasoning Effort')
 			.hint('Reasoning models only, e.g. gpt-5 and o3'),
 	},
 	output: replyOutput,

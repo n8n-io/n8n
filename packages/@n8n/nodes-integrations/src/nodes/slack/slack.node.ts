@@ -176,7 +176,7 @@ export const file = slack.resource('file');
 const ATTRIBUTION =
 	'_Automated with <https://n8n.io/?utm_source=n8n-internal&utm_medium=powered_by&utm_campaign=n8n-nodes-base.slack|n8n>_';
 
-const block = t.obj({ type: t.str() }).with({
+const block = t.obj({ type: t.str().title('Type') }).with({
 	additionalProperties: true,
 	'x-n8n-hint': 'A Block Kit block, e.g. { type: "section", text: { type: "mrkdwn", text } }',
 });
@@ -186,9 +186,18 @@ export const content = {
 	text: t
 		.str()
 		.with({ minLength: 1 })
+		.title('Message Text')
 		.hint('Slack mrkdwn, e.g. *bold* and <https://x.io|link>; the fallback for blocks'),
-	blocks: t.arr(block).hint('Block Kit layout; text is then the notification text').optional(),
-	appendAttribution: t.bool().default(true).hint('Adds an "Automated with n8n" line'),
+	blocks: t
+		.arr(block)
+		.title('Blocks')
+		.hint('Block Kit layout; text is then the notification text')
+		.optional(),
+	appendAttribution: t
+		.bool()
+		.default(true)
+		.title('Include Link to Workflow')
+		.hint('Adds an "Automated with n8n" line'),
 };
 
 /** Mirrors `getMessageContent`: the line goes into the blocks when there are blocks. */

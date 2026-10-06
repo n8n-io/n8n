@@ -24,7 +24,11 @@ export const updateSlackMessage = message.action('update', {
 	summary: 'Replace the text or blocks of a message the app posted.',
 	flow: { effect: 'write', cardinality: 'per-item', idempotent: true },
 	scopes: ['chat:write'],
-	input: { channel: ref(slackChannelId), ts: slackTs, ...content },
+	input: {
+		channel: ref(slackChannelId).title('Channel'),
+		ts: slackTs.title('Message Timestamp'),
+		...content,
+	},
 	output: updated,
 	async run({ input, http }) {
 		const body = { channel: input.channel, ts: input.ts, ...contentOf(input) };

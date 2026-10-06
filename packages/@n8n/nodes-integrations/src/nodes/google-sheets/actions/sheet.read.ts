@@ -92,15 +92,29 @@ function lookup(
 	return toObjects(data, keyCells, true);
 }
 
-const location = t.obj({
-	headerRow: t.int().with({ minimum: 1 }).default(1),
-	firstDataRow: t.int().with({ minimum: 1 }).default(2),
-});
+const location = t
+	.obj({
+		headerRow: t.int().with({ minimum: 1 }).default(1).title('Header Row'),
+		firstDataRow: t.int().with({ minimum: 1 }).default(2).title('First Data Row'),
+	})
+	.title('Data Location on Sheet');
 
 const input = {
-	filters: t.arr(t.obj({ column: t.str().hint('Exact header text'), value: t.str() })).optional(),
-	combine: t.oneOf('AND', 'OR').default('AND'),
-	allMatches: t.bool().default(true).hint('false returns only the first match'),
+	filters: t
+		.arr(
+			t.obj({
+				column: t.str().title('Column').hint('Exact header text'),
+				value: t.str().title('Value'),
+			}),
+		)
+		.title('Filters')
+		.optional(),
+	combine: t.oneOf('AND', 'OR').default('AND').title('Combine Filters'),
+	allMatches: t
+		.bool()
+		.default(true)
+		.title('Return All Matches')
+		.hint('false returns only the first match'),
 	header: location.hint('Omit to detect the table; set to read fixed rows').optional(),
 };
 

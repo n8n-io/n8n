@@ -20,8 +20,12 @@ export const commentOnIssue = issueResource.action('createComment', {
 	flow: { effect: 'write', cardinality: 'per-item', idempotent: false },
 	minor: 1,
 	input: {
-		issueNumber: t.int().with({ minimum: 1 }).hint('The number shown as #123, not the ID'),
-		body: t.str().with({ minLength: 1 }).hint('Markdown'),
+		issueNumber: t
+			.int()
+			.with({ minimum: 1 })
+			.hint('The number shown as #123, not the ID')
+			.title('Issue Number'),
+		body: t.str().with({ minLength: 1 }).hint('Markdown').title('Body'),
 	},
 	output: comment,
 	async run({ input, http }) {

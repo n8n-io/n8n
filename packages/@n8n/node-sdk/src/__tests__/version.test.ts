@@ -395,7 +395,8 @@ const echoSource = ({
 	migrate = '',
 }: EchoOptions = {}) => `
 import { defineNode, path, t } from '@n8n/node-sdk';
-const { obj, str } = t;
+const { obj } = t;
+const str = () => t.str().title('Text');
 import { shout } from './shout';
 
 const demo = defineNode({ id: 'demo', displayName: 'Demo', baseUrl: 'https://demo.test' });
@@ -540,7 +541,7 @@ describe('checkPublish', () => {
 	it('needs a major for a ui change that moves the stored parameters', async () => {
 		await writeShout('text.toUpperCase()');
 		const input =
-			"{ text: str(), note: str().optional(), body: t.variant('kind', { a: { a: str(), inner: t.variant('mode', { x: { x: str() } }).optional() } }).optional(), rows: t.arr(t.obj({ a: str() })).optional(), meta: t.record(str()).optional() }";
+			"{ text: str(), note: str().optional(), body: t.variant('kind', { a: { a: str(), inner: t.variant('mode', { x: { x: str() } }).title('Inner').optional() } }).title('Body').optional(), rows: t.arr(t.obj({ a: str() })).title('Rows').optional(), meta: t.record(str()).title('Meta').optional() }";
 		const prev = (await freeze({ input })).manifest;
 		const next = await freeze({ input }, olderBundleOf(prev));
 		const withUi = (ui: VersionManifest['ui']): FrozenAction => ({
@@ -593,6 +594,14 @@ describe('checkPublish', () => {
 		);
 		await expect(checkPublish(prev, patch, { executions: [] })).rejects.toThrow(
 			'needs an execution fixture',
+		);
+	});
+
+	it('refuses an input field without a title', async () => {
+		await writeShout('text.toUpperCase()');
+		const untitled = await freeze({ input: '{ text: t.str(), rows: t.arr(obj({ a: str() })) }' });
+		await expect(checkPublish(undefined, untitled, fixturesOf('HELLO!'))).rejects.toThrow(
+			'demo.echo@1.0.0 needs field titles: demo.echo: input.text has no title; demo.echo: input.rows has no title',
 		);
 	});
 
@@ -694,7 +703,8 @@ describe('checkPublish', () => {
 			await writeFile(
 				entry,
 				`import { defineNode, t } from '@n8n/node-sdk';
-const { obj, str } = t;
+const { obj } = t;
+const str = () => t.str().title('Text');
 const demo = defineNode({ id: 'demo', displayName: 'Demo' });
 export const ping = demo.trigger('ping', {
 	version: ${version},

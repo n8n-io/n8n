@@ -10,10 +10,18 @@ export const createIssue = issueResource.action('create', {
 	flow: { effect: 'write', cardinality: 'per-item', idempotent: false },
 	minor: 1,
 	input: {
-		title: t.str().with({ minLength: 1 }),
-		body: t.str().hint('Markdown').default(''),
-		labels: t.arr(t.str()).hint('Label names; GitHub drops them without push access').default([]),
-		assignees: t.arr(t.str()).hint('Logins of users with access to the repository').default([]),
+		title: t.str().with({ minLength: 1 }).title('Title'),
+		body: t.str().hint('Markdown').default('').title('Body'),
+		labels: t
+			.arr(t.str())
+			.hint('Label names; GitHub drops them without push access')
+			.default([])
+			.title('Labels'),
+		assignees: t
+			.arr(t.str())
+			.hint('Logins of users with access to the repository')
+			.default([])
+			.title('Assignees'),
 	},
 	output: issue,
 	async run({ input, http }) {

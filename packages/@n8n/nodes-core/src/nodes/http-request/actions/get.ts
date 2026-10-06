@@ -27,17 +27,19 @@ const name = t.str().with({ minLength: 1, 'x-n8n-literal': true });
 
 /** Where the next request sends the cursor or the page number. */
 const send = t
-	.union(t.obj({ query: name }), t.obj({ header: name }))
+	.union(t.obj({ query: name.title('Query Parameter') }), t.obj({ header: name.title('Header') }))
+	.title('Send Cursor In')
 	.hint('e.g. { query: "cursor" }; the first request sends none');
 
 /** The fields of every page style. */
 const each = {
 	more: t
 		.pageValue(t.bool())
+		.title('More Pages')
 		.hint('false ends the list, e.g. (page) => page.body.has_more')
 		.optional(),
 	// Same page limit as the legacy HTTP Request node.
-	maxPages: t.int().with({ minimum: 1, 'x-n8n-literal': true }).default(100),
+	maxPages: t.int().with({ minimum: 1, 'x-n8n-literal': true }).default(100).title('Max Pages'),
 };
 
 const pagesInput = t
@@ -45,6 +47,7 @@ const pagesInput = t
 		cursor: {
 			next: t
 				.pageValue(t.nullable(t.union(t.str(), t.num())))
+				.title('Next Cursor')
 				.hint('The next cursor, e.g. (page) => page.body.next_cursor; empty ends the list'),
 			send,
 			...each,
@@ -52,6 +55,7 @@ const pagesInput = t
 		link: {
 			next: t
 				.pageValue(t.nullable(t.str()))
+				.title('Next URL')
 				.hint('The next URL, e.g. (page) => page.body.next; else the Link header')
 				.optional(),
 			...each,
@@ -60,20 +64,24 @@ const pagesInput = t
 			send,
 			unit: t
 				.oneOf('item', 'page')
+				.title('Offset Unit')
 				.hint('item: send the count of items so far; page: the page number'),
 			start: t
 				.int()
 				.with({ 'x-n8n-literal': true })
+				.title('First Page')
 				.hint('The number of the first page; 1 when not set')
 				.optional(),
 			size: t
 				.int()
 				.with({ minimum: 1, 'x-n8n-literal': true })
+				.title('Page Size')
 				.hint('Items per page; a shorter page ends the list. Also set the page size in query')
 				.optional(),
 			...each,
 		},
 	})
+	.title('Pagination')
 	.hint('Each page emits its items; an empty page ends an offset list');
 
 /** v2 read the cursor at a dot path of the body: `meta.next` is `$response.body.meta.next`. */
@@ -115,6 +123,7 @@ export const getRequest = httpRequest.action('get', {
 		...common,
 		items: t
 			.pageValue(t.arr(t.jsonValue()))
+			.title('Items')
 			.hint('The documented array field: (page) => page.body.<field>; omit for a list body')
 			.optional(),
 		pages: pagesInput.optional(),

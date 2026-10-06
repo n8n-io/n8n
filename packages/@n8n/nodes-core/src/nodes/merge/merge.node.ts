@@ -10,6 +10,7 @@ export const INPUT_COUNT = t
 	.int()
 	.with({ minimum: 2, maximum: 10 })
 	.default(2)
+	.title('Number of Inputs')
 	.hint('Number of inputs, from 2 to 10');
 
 /**

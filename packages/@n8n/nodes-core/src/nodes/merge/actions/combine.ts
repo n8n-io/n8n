@@ -19,22 +19,26 @@ export const combineItems = merge.action('combine', {
 					unpaired: t
 						.bool()
 						.default(false)
+						.title('Include Any Unpaired Items')
 						.hint('Keep an item that has no partner at its position'),
 				},
 				fields: {
-					left: field,
-					right: field,
+					left: field.title('Input 1 Field'),
+					right: field.title('Input 2 Field'),
 					join: t
 						.oneOf('inner', 'left', 'right', 'outer', 'leftOnly', 'rightOnly')
 						.default('inner')
+						.title('Output Type')
 						.hint('left/right/outer keep unmatched items; leftOnly/rightOnly keep only those'),
 				},
 				all: {},
 			})
+			.title('Combine By')
 			.hint('position pairs item i; fields pairs equal values; all pairs every left and right'),
 		prefer: t
 			.oneOf('left', 'right')
 			.optional()
+			.title('When Field Values Clash')
 			.hint('Which value wins a field clash. Default: right; left in a right join'),
 	},
 	output: t.json().hint('The fields of both items'),

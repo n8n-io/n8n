@@ -41,7 +41,7 @@ export const echo = defineNode({ id: 'demo', displayName: 'Demo' }).action('echo
 	action: 'Echo',
 	summary: 'Echo the text.',
 	flow: { effect: 'transform', cardinality: 'per-item' },
-	input: { text: t.str()${minor > 0 ? ', suffix: t.str().optional()' : ''} },
+	input: { text: t.str().title('Text')${minor > 0 ? ", suffix: t.str().title('Suffix').optional()" : ''} },
 	output: t.obj({ text: t.str() }),
 	egress: { hosts: ['b.example.com', 'a.example.com'] },
 	async run({ input }) {
@@ -71,11 +71,11 @@ const tokenWith = (spec: { displayName?: string; hosts?: string[]; version?: num
 		hosts: spec.hosts,
 	});
 
-const hookWith = (summary: string, version = 2.2) =>
+const hookWith = (summary: string, version = 2.2, path = t.str().title('Path')) =>
 	defineNode({ id: 'demo', displayName: 'Demo' }).trigger('hook', {
 		trigger: 'On call',
 		summary,
-		input: { path: t.str() },
+		input: { path },
 		output: t.obj({ body: t.str() }),
 		native: { type: 'n8n-nodes-base.webhook', version, on: 'webhook' },
 	});
@@ -550,5 +550,16 @@ describe('publishNative', () => {
 				privateKey,
 			}),
 		).rejects.toThrow('demo.hook@1.0.1 is a patch, so it must keep the legacy node');
+	});
+
+	it('refuses an input field without a title', async () => {
+		const registry = await newDir('native-untitled');
+		await expect(
+			publishNative({
+				native: hookWith('Starts on a call.', 2.2, t.str()),
+				registryDir: registry,
+				privateKey,
+			}),
+		).rejects.toThrow('demo.hook@1.0.0 needs field titles: demo.hook: input.path has no title');
 	});
 });

@@ -13,8 +13,9 @@ export const createSlackChannel = channel.action('create', {
 		name: t
 			.str()
 			.with({ pattern: '^#?[a-z0-9_-]{1,80}$' })
+			.title('Name')
 			.hint('Lower case letters, digits, - and _; at most 80 characters'),
-		isPrivate: t.bool().default(false),
+		isPrivate: t.bool().default(false).title('Is Private'),
 	},
 	output: slackChannel,
 	async run({ input, http }) {

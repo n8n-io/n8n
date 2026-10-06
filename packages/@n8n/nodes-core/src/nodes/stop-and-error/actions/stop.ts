@@ -7,8 +7,12 @@ export const stopWithError = stopAndError.action('stop', {
 	summary: 'Fail the execution with this message when items arrive. It emits no item.',
 	flow: { effect: 'transform', cardinality: 'batch' },
 	input: {
-		message: t.str().with({ minLength: 1 }),
-		description: t.str().optional().hint('More detail n8n shows under the message'),
+		message: t.str().with({ minLength: 1 }).title('Error Message'),
+		description: t
+			.str()
+			.optional()
+			.title('Error Description')
+			.hint('More detail n8n shows under the message'),
 	},
 	output: t.passedItem(),
 	// eslint-disable-next-line require-yield -- the action ends every run with its error

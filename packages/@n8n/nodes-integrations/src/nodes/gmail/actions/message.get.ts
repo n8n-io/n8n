@@ -19,7 +19,7 @@ export const getGmailMessage = message.action('get', {
 	summary: 'Get one message by ID.',
 	flow: { effect: 'read', cardinality: 'per-item', idempotent: true },
 	input: {
-		messageId: t.str().hint('Gmail message ID, e.g. 182b676d244938bd'),
+		messageId: t.str().title('Message ID').hint('Gmail message ID, e.g. 182b676d244938bd'),
 		simplify,
 		downloadAttachments,
 		attachmentPrefix,

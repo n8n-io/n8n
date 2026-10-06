@@ -45,10 +45,15 @@ export const runAgent = ai.action('agent', {
 		model: provider.input('chatModel'),
 		tools: t.arr(provider.input('tool')).optional(),
 		memory: provider.input('memory').optional(),
-		prompt: t.str().with({ minLength: 1 }),
-		system: t.str().optional().hint('Instructions for the agent'),
+		prompt: t.str().with({ minLength: 1 }).title('Prompt'),
+		system: t.str().optional().title('System Message').hint('Instructions for the agent'),
 		schema: replySchema,
-		maxIterations: t.int().with({ minimum: 1, maximum: 50 }).default(10).hint('Most model calls'),
+		maxIterations: t
+			.int()
+			.with({ minimum: 1, maximum: 50 })
+			.default(10)
+			.title('Max Iterations')
+			.hint('Most model calls'),
 	},
 	output: replyOutput,
 	deriveOutput: ({ schema }) => replyOutputOf(schema),

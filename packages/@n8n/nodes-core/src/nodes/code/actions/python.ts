@@ -6,7 +6,7 @@ export const runPython = code.action('python', {
 	flow: { effect: 'transform', cardinality: 'batch' },
 	imports: ['code'],
 	input: {
-		code: codeText.hint('Read items with _items or _item. No imports by default'),
+		code: codeText.title('Python').hint('Read items with _items or _item. No imports by default'),
 		mode,
 		returns,
 	},

@@ -23,16 +23,29 @@ export const messageGemini = text.action('message', {
 	summary: 'Send messages to a Gemini model and get its reply as text.',
 	flow: { effect: 'read', cardinality: 'per-item', idempotent: false },
 	input: {
-		model: t.str().hint('Model ID such as "models/gemini-2.5-flash"; never invent one'),
+		model: t
+			.str()
+			.hint('Model ID such as "models/gemini-2.5-flash"; never invent one')
+			.title('Model'),
 		messages: t
-			.arr(t.obj({ role: t.oneOf('user', 'model').default('user'), content: t.str() }))
+			.arr(
+				t.obj({
+					role: t.oneOf('user', 'model').default('user').title('Role'),
+					content: t.str().title('Prompt'),
+				}),
+			)
 			.with({
 				minItems: 1,
-			}),
-		systemMessage: t.str().optional(),
-		jsonOutput: t.bool().default(false).hint('Reply text is JSON; still a string'),
-		temperature: t.num().optional(),
-		maxOutputTokens: t.int().with({ minimum: 1 }).optional(),
+			})
+			.title('Messages'),
+		systemMessage: t.str().optional().title('System Message'),
+		jsonOutput: t
+			.bool()
+			.default(false)
+			.hint('Reply text is JSON; still a string')
+			.title('Output Content as JSON'),
+		temperature: t.num().optional().title('Sampling Temperature'),
+		maxOutputTokens: t.int().with({ minimum: 1 }).optional().title('Maximum Number of Tokens'),
 	},
 	output: candidate,
 	async run({ input, http }) {

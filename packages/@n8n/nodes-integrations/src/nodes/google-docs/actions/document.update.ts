@@ -23,7 +23,7 @@ export const updateDocument = document.action('update', {
 	action: 'Append to a document',
 	summary: 'Add text or Markdown at the end of a Google Doc.',
 	flow: { effect: 'write', cardinality: 'per-item', idempotent: false },
-	input: { document: ref(googleDocument), content },
+	input: { document: ref(googleDocument).title('Doc ID or URL'), content },
 	output: t.obj({ documentId: t.str(), url: t.str() }),
 	async run({ input, http }) {
 		const documentId = documentIdOf(input.document);

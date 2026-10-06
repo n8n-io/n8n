@@ -2761,28 +2761,26 @@ function deriveOutputIssues(action: Action): string[] {
 }
 
 /**
- * When true, `checkAction` and the publish gate refuse an input field without a `title`. It stays
- * off until every first-party field has a title.
- */
-export const REQUIRE_FIELD_TITLES = false;
-
-/**
- * The input fields of the n8n form that have no `title`, one line each: the top-level fields and
- * the fields of each variant branch. A sub-node input is no form field.
+ * The input fields without a `title`, one line each. It checks every depth: object fields,
+ * variant and union branches, and list items. `checkAction` and the publish gate refuse them.
+ * A sub-node input is no form field.
  */
 export function missingTitlesOf({ id, input }: Pick<ContractDocument, 'id' | 'input'>): string[] {
 	// The tag of a variant is a dropdown under the title of the variant field.
-	const untitled = (schema: JsonSchema, at: string, tag?: string): string[] =>
-		Object.entries(schema.properties ?? {})
+	const untitled = (
+		schema: JsonSchema,
+		at: string,
+		tag = schema.discriminator?.propertyName,
+	): string[] => [
+		...Object.entries(schema.properties ?? {})
 			.filter(([name, field]) => name !== tag && providerInputOf(field) === undefined)
 			.flatMap(([name, field]) => [
 				...(field.title === undefined ? [`${id}: ${at}.${name} has no title`] : []),
-				...(field.discriminator
-					? (field.oneOf ?? []).flatMap((branch) =>
-							untitled(branch, `${at}.${name}`, field.discriminator?.propertyName),
-						)
-					: []),
-			]);
+				...untitled(field, `${at}.${name}`),
+			]),
+		...(schema.oneOf ?? schema.anyOf ?? []).flatMap((branch) => untitled(branch, at, tag)),
+		...(schema.items ? untitled(schema.items, `${at}[]`) : []),
+	];
 	return [...new Set(untitled(input, 'input'))];
 }
 
@@ -2794,9 +2792,11 @@ export function missingTitlesOf({ id, input }: Pick<ContractDocument, 'id' | 'in
 export function checkAction(action: Action | Trigger): string[] {
 	const scopes = Object.keys(action.node.credential?.scopes ?? {});
 	const contract = toContract(action);
+	const reply = 'kind' in action && action.kind === 'native' ? replyContractOf(action) : undefined;
 	return [
 		...lintContract(contract),
-		...(REQUIRE_FIELD_TITLES ? missingTitlesOf(contract) : []),
+		...missingTitlesOf(contract),
+		...(reply ? missingTitlesOf(reply) : []),
 		...[
 			...exampleIssues(action.inputSchema, 'input'),
 			...exampleIssues(action.output.json, 'output'),

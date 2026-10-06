@@ -25,12 +25,16 @@ export const appendOrUpdateSheetRow = sheet.action('appendOrUpdate', {
 	flow: { effect: 'write', cardinality: 'per-item', idempotent: true },
 	input: {
 		values: rowValues,
-		matchOn: t.str().hint('Header text of the key column; values must set it'),
+		matchOn: t
+			.str()
+			.title('Column to Match On')
+			.hint('Header text of the key column; values must set it'),
 		header: t
 			.obj({
-				headerRow: t.int().with({ minimum: 1 }).default(1),
-				firstDataRow: t.int().with({ minimum: 1 }).default(2),
+				headerRow: t.int().with({ minimum: 1 }).default(1).title('Header Row'),
+				firstDataRow: t.int().with({ minimum: 1 }).default(2).title('First Data Row'),
 			})
+			.title('Data Location on Sheet')
 			.optional(),
 		cellFormat,
 	},

@@ -44,14 +44,15 @@ export const github = defineNode({
 
 export const repository = github.resource('repository', {
 	input: {
-		owner: t.str().hint('User or organization name'),
-		repository: t.str().hint('Repository name, without the owner'),
+		owner: t.str().title('Repository Owner').hint('User or organization name'),
+		repository: t.str().title('Repository Name').hint('Repository name, without the owner'),
 	},
 });
 
 const owner = t
 	.str()
 	.with({ pattern: '^[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?$' })
+	.title('Repository Owner')
 	.hint('User or organization name, e.g. acme');
 
 /** A repository of the owner that the action names. */
@@ -74,5 +75,5 @@ export const githubRepository = defineResource({
 });
 
 export const issueResource = github.resource('issue', {
-	input: { owner, repository: ref(githubRepository) },
+	input: { owner, repository: ref(githubRepository).title('Repository Name') },
 });

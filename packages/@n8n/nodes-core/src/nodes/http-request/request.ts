@@ -16,9 +16,17 @@ export function toItems(body: unknown): Array<Record<string, unknown>> {
 }
 
 export const common = {
-	url: t.str().hint('Full URL; never URL-encode an expression'),
-	query: t.record(t.str()).hint('Never put secrets here; attach a credential').optional(),
-	headers: t.record(t.str()).hint('Never put secrets here; attach a credential').optional(),
+	url: t.str().title('URL').hint('Full URL; never URL-encode an expression'),
+	query: t
+		.record(t.str())
+		.title('Query Parameters')
+		.hint('Never put secrets here; attach a credential')
+		.optional(),
+	headers: t
+		.record(t.str())
+		.title('Headers')
+		.hint('Never put secrets here; attach a credential')
+		.optional(),
 };
 
 const assignments: FieldUi<Readonly<Record<string, string>>> = { widget: 'assignments' };
@@ -31,11 +39,13 @@ export const responseOptions = {
 	fullResponse: t
 		.bool()
 		.with({ 'x-n8n-literal': true })
+		.title('Include Response Headers and Status')
 		.hint('true: one item { body, headers, statusCode } for the response')
 		.optional(),
 	neverError: t
 		.bool()
 		.with({ 'x-n8n-literal': true })
+		.title('Never Error')
 		.hint('true: a non-2xx response is no error; read its statusCode with fullResponse')
 		.optional(),
 };
@@ -53,6 +63,7 @@ const fullResponse = t.obj({
 export const bodySchema = t
 	.json()
 	.with({ 'x-n8n-literal': true, 'x-n8n-declared': true })
+	.title('Response Schema')
 	.hint('Body JSON Schema from the API docs, not a sample. Types items; objects closed')
 	.optional();
 

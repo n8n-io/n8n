@@ -2,12 +2,20 @@ import { t } from '@n8n/node-sdk';
 
 import { message, sendMessage, sent } from '../whats-app.node';
 
-const media = t.variant('source', {
-	link: { link: t.str().with({ format: 'uri' }).hint('Public HTTPS URL that WhatsApp downloads') },
-	id: { id: t.str().hint('Media ID from an earlier upload to WhatsApp') },
-});
+const media = t
+	.variant('source', {
+		link: {
+			link: t
+				.str()
+				.with({ format: 'uri' })
+				.title('Link')
+				.hint('Public HTTPS URL that WhatsApp downloads'),
+		},
+		id: { id: t.str().title('ID').hint('Media ID from an earlier upload to WhatsApp') },
+	})
+	.title('Media');
 
-const caption = t.str().optional();
+const caption = t.str().optional().title('Caption');
 
 export const sendWhatsAppMessage = message.action('send', {
 	action: 'Send a message',
@@ -18,15 +26,20 @@ export const sendWhatsAppMessage = message.action('send', {
 		message: t
 			.variant('type', {
 				text: {
-					body: t.str().with({ minLength: 1 }).hint('At most 4096 characters'),
-					previewUrl: t.bool().default(false).hint('Show a preview of the first URL'),
+					body: t.str().with({ minLength: 1 }).title('Text Body').hint('At most 4096 characters'),
+					previewUrl: t
+						.bool()
+						.default(false)
+						.title('Show URL Previews')
+						.hint('Show a preview of the first URL'),
 				},
 				image: { media, caption },
 				video: { media, caption },
 				audio: { media },
-				document: { media, caption, filename: t.str().optional() },
+				document: { media, caption, filename: t.str().optional().title('Filename') },
 				sticker: { media },
 			})
+			.title('Message')
 			.hint('Outside the 24-hour reply window, use message.sendTemplate'),
 	},
 	output: sent,

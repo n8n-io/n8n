@@ -18,13 +18,18 @@ export const getSlackChannelHistory = channel.action('history', {
 	flow: { effect: 'read', cardinality: '1:N', idempotent: true },
 	scopes: ['channels:history', 'groups:history', 'im:history', 'mpim:history'],
 	input: {
-		channel: ref(slackChannelId),
+		channel: ref(slackChannelId).title('Channel'),
 		filters: t
 			.obj({
-				oldest: date.optional(),
-				latest: date.optional(),
-				inclusive: t.bool().default(false).hint('Include messages exactly at oldest or latest'),
+				oldest: date.title('Oldest').optional(),
+				latest: date.title('Latest').optional(),
+				inclusive: t
+					.bool()
+					.default(false)
+					.title('Inclusive')
+					.hint('Include messages exactly at oldest or latest'),
 			})
+			.title('Filters')
 			.optional(),
 		paging,
 	},

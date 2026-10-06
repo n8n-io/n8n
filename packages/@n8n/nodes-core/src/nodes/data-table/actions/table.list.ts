@@ -8,8 +8,15 @@ export const listTables = table.action('list', {
 	flow: { effect: 'read', cardinality: '1:N' },
 	imports: ['dataTables'],
 	input: {
-		name: t.str().optional().hint('Tables whose name contains this text, case ignored'),
-		sort: t.obj({ by: t.oneOf('name', 'createdAt', 'updatedAt'), direction }).optional(),
+		name: t
+			.str()
+			.optional()
+			.title('Filter by Name')
+			.hint('Tables whose name contains this text, case ignored'),
+		sort: t
+			.obj({ by: t.oneOf('name', 'createdAt', 'updatedAt').title('Sort Field'), direction })
+			.title('Sort')
+			.optional(),
 		limit: limit.optional(),
 	},
 	output: tableInfo,

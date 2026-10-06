@@ -8,25 +8,39 @@ export const aggregateItems = itemsNode.action('aggregate', {
 	summary: 'Combine all items into one item: lists of field values, or the list of all items.',
 	flow: { effect: 'transform', cardinality: 'batch' },
 	input: {
-		aggregate: t.variant('mode', {
-			fields: {
-				fields: t
-					.arr(
-						t.obj({
-							field: t.str().with({ minLength: 1 }),
-							as: t
-								.str()
-								.with({ minLength: 1 })
-								.optional()
-								.hint('Output field; default: last path part'),
-						}),
-					)
-					.with({ minItems: 1 }),
-				keepMissing: t.bool().default(false).hint('Keep null and missing values'),
-				mergeLists: t.bool().default(false).hint('Put the entries of list values in one list'),
-			},
-			items: { into: t.str().with({ minLength: 1 }).default('data') },
-		}),
+		aggregate: t
+			.variant('mode', {
+				fields: {
+					fields: t
+						.arr(
+							t.obj({
+								field: t.str().with({ minLength: 1 }).title('Input Field Name'),
+								as: t
+									.str()
+									.with({ minLength: 1 })
+									.optional()
+									.title('Output Field Name')
+									.hint('Output field; default: last path part'),
+							}),
+						)
+						.with({ minItems: 1 })
+						.title('Fields To Aggregate'),
+					keepMissing: t
+						.bool()
+						.default(false)
+						.title('Keep Missing And Null Values')
+						.hint('Keep null and missing values'),
+					mergeLists: t
+						.bool()
+						.default(false)
+						.title('Merge Lists')
+						.hint('Put the entries of list values in one list'),
+				},
+				items: {
+					into: t.str().with({ minLength: 1 }).default('data').title('Put Output in Field'),
+				},
+			})
+			.title('Aggregate'),
 	},
 	output: t.json().with({ 'x-n8n-aggregate': 'aggregate' }),
 	run({ input, items }) {

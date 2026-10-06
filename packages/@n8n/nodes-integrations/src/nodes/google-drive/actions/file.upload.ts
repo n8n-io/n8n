@@ -21,9 +21,16 @@ export const uploadFile = file.action('upload', {
 	flow: { effect: 'write', cardinality: 'per-item', idempotent: false },
 	minor: 1,
 	input: {
-		file: t.binary().hint('The file to upload, e.g. (item) => item.binary.data'),
-		name: t.str().hint('The name in Drive; the file name of the binary when not set').optional(),
-		folderId: ref(driveFolderId).default('root'),
+		file: t
+			.binary()
+			.title('Input Data Field Name')
+			.hint('The file to upload, e.g. (item) => item.binary.data'),
+		name: t
+			.str()
+			.title('File Name')
+			.hint('The name in Drive; the file name of the binary when not set')
+			.optional(),
+		folderId: ref(driveFolderId).title('Parent Folder').default('root'),
 	},
 	output: driveFile,
 	async run({ input, http }) {

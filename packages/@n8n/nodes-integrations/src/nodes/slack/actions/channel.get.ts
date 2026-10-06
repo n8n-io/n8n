@@ -9,7 +9,7 @@ export const getSlackChannel = channel.action('get', {
 	summary: 'Get the details of a Slack channel by ID.',
 	flow: { effect: 'read', cardinality: 'per-item', idempotent: true },
 	scopes: ['channels:read', 'groups:read', 'im:read', 'mpim:read'],
-	input: { channel: ref(slackChannelId) },
+	input: { channel: ref(slackChannelId).title('Channel') },
 	output: slackChannel,
 	async run({ input, http }) {
 		const query = { channel: input.channel };

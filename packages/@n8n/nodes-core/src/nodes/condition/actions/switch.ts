@@ -11,14 +11,23 @@ export const switchCases = conditionNode.action('switch', {
 		cases: t
 			.arr(
 				t.obj({
-					output: t.str().with({ minLength: 1, 'x-n8n-literal': true }).hint('Output name'),
+					output: t
+						.str()
+						.with({ minLength: 1, 'x-n8n-literal': true })
+						.title('Output Name')
+						.hint('Output name'),
 					where,
 				}),
 			)
 			.with({
 				minItems: 1,
-			}),
-		allMatches: t.bool().default(false).hint('Send an item to every case it matches'),
+			})
+			.title('Routing Rules'),
+		allMatches: t
+			.bool()
+			.default(false)
+			.title('Send to All Matching Outputs')
+			.hint('Send an item to every case it matches'),
 	},
 	ui: { fields: { cases: { widget: 'list' }, 'cases.where': { widget: 'filter' } } },
 	output: t.passedItem(),

@@ -9,7 +9,10 @@ export const waitUntil = wait.action('until', {
 	imports: ['wait'],
 	input: {
 		// A time without an offset means another moment on each host. The `date-time` check requires one.
-		time: t.dateTime().hint('ISO 8601 with an offset, e.g. 2026-09-01T09:00:00+02:00'),
+		time: t
+			.dateTime()
+			.title('Date and Time')
+			.hint('ISO 8601 with an offset, e.g. 2026-09-01T09:00:00+02:00'),
 	},
 	output: heldItems,
 	async *run({ input, items, wait: host }) {

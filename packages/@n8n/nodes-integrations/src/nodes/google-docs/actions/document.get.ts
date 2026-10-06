@@ -15,7 +15,7 @@ export const getDocument = document.action('get', {
 	action: 'Get a document',
 	summary: 'Read the text of a Google Doc.',
 	flow: { effect: 'read', cardinality: 'per-item', idempotent: true },
-	input: { document: ref(googleDocument) },
+	input: { document: ref(googleDocument).title('Doc ID or URL') },
 	output: t.obj({
 		documentId: t.str(),
 		title: t.str(),

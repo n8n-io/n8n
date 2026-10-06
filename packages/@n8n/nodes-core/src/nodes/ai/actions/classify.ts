@@ -45,20 +45,26 @@ export const classifyText = ai.action('classify', {
 	flow: { effect: 'transform', cardinality: '1:N' },
 	input: {
 		model: provider.input('chatModel'),
-		text: t.str().with({ minLength: 1 }).hint('The text to classify'),
+		text: t.str().with({ minLength: 1 }).title('Text to Classify').hint('The text to classify'),
 		categories: t
 			.arr(
 				t.obj({
 					output: t
 						.str()
 						.with({ minLength: 1 })
+						.title('Category')
 						.hint('The category name; the output has this name'),
-					description: t.str().optional().hint('When the category applies'),
+					description: t.str().optional().title('Description').hint('When the category applies'),
 				}),
 			)
-			.with({ minItems: 1 }),
-		multiple: t.bool().default(false).hint('An item may go to more than one category'),
-		system: t.str().optional().hint('More instructions for the model'),
+			.with({ minItems: 1 })
+			.title('Categories'),
+		multiple: t
+			.bool()
+			.default(false)
+			.title('Allow Multiple Categories')
+			.hint('An item may go to more than one category'),
+		system: t.str().optional().title('System Message').hint('More instructions for the model'),
 	},
 	outputs: { each: 'categories', then: [OTHER] },
 	output: t.passedItem(),

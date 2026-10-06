@@ -52,11 +52,12 @@ export const googleSheet = defineResource({
 
 export const sheetInput = t
 	.variant('mode', {
-		name: { name: t.str().hint('Exact tab name the user gave') },
-		id: { id: ref(googleSheet) },
+		name: { name: t.str().title('Sheet Name').hint('Exact tab name the user gave') },
+		id: { id: ref(googleSheet).title('Sheet ID') },
 	})
+	.title('Sheet')
 	.hint('Never assume "Sheet1"; ask when the tab name is unknown');
 
 export const sheet = googleSheets.resource('sheet', {
-	input: { spreadsheet: ref(googleSpreadsheet), sheet: sheetInput },
+	input: { spreadsheet: ref(googleSpreadsheet).title('Document'), sheet: sheetInput },
 });

@@ -18,8 +18,8 @@ const MS: Readonly<Record<(typeof FIXED)[number], number>> = {
 
 const iso = () => t.str().hint('ISO 8601, e.g. 2026-09-01T10:00:00Z');
 const step = {
-	amount: t.num().hint('A whole number for years, quarters, and months'),
-	unit: t.oneOf(...CALENDAR, ...FIXED),
+	amount: t.num().title('Duration').hint('A whole number for years, quarters, and months'),
+	unit: t.oneOf(...CALENDAR, ...FIXED).title('Time Unit'),
 };
 const ROUND_UNITS = [
 	'year',
@@ -112,16 +112,25 @@ export const dateTime = itemsNode.action('dateTime', {
 	summary: 'Add to, subtract from, round, compare, or read a part of a date, in UTC.',
 	flow: { effect: 'transform', cardinality: 'per-item' },
 	input: {
-		date: iso(),
-		operation: t.variant('op', {
-			add: step,
-			subtract: step,
-			round: { direction: t.oneOf('down', 'up'), unit: t.oneOf(...ROUND_UNITS) },
-			between: { until: iso(), unit: t.oneOf(...FIXED) },
-			extract: { part: t.oneOf(...PARTS) },
-		}),
-		outputField: t.str().with({ minLength: 1 }).default('newDate'),
-		keepInput: t.bool().default(false).hint('Keep the input fields beside the output field'),
+		date: iso().title('Date'),
+		operation: t
+			.variant('op', {
+				add: step,
+				subtract: step,
+				round: {
+					direction: t.oneOf('down', 'up').title('Mode'),
+					unit: t.oneOf(...ROUND_UNITS).title('To Nearest'),
+				},
+				between: { until: iso().title('End Date'), unit: t.oneOf(...FIXED).title('Unit') },
+				extract: { part: t.oneOf(...PARTS).title('Part') },
+			})
+			.title('Operation'),
+		outputField: t.str().with({ minLength: 1 }).default('newDate').title('Output Field Name'),
+		keepInput: t
+			.bool()
+			.default(false)
+			.title('Include Input Fields')
+			.hint('Keep the input fields beside the output field'),
 	},
 	output: t.json(),
 	async run({ input, item }) {

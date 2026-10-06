@@ -65,11 +65,12 @@ export const geminiChatModel = googleGemini.provider('chatModel', {
 	input: {
 		model: t
 			.modelId('google')
+			.title('Model')
 			.hint('A model ID from the catalog, e.g. gemini-2.5-flash; never invent one'),
-		temperature: t.num().with({ minimum: 0, maximum: 2 }).optional(),
-		maxOutputTokens: t.int().with({ minimum: 1 }).optional(),
-		topP: t.num().with({ minimum: 0, maximum: 1 }).optional(),
-		topK: t.int().with({ minimum: 1 }).optional(),
+		temperature: t.num().with({ minimum: 0, maximum: 2 }).optional().title('Sampling Temperature'),
+		maxOutputTokens: t.int().with({ minimum: 1 }).optional().title('Maximum Number of Tokens'),
+		topP: t.num().with({ minimum: 0, maximum: 1 }).optional().title('Top P'),
+		topK: t.int().with({ minimum: 1 }).optional().title('Top K'),
 	},
 	async provide({ input, http }) {
 		const model = input.model.replace(/^models\//, '');

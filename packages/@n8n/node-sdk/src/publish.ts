@@ -14,7 +14,6 @@ import {
 import { isSecretField, type AnyCredentialType } from './credentials';
 import {
 	missingTitlesOf,
-	REQUIRE_FIELD_TITLES,
 	type Action,
 	type DataTable,
 	type DataTables,
@@ -449,7 +448,7 @@ export async function checkPublish(
 			throw new UserError(`${at} needs a migration fixture from major ${fromMajor}`);
 		}
 	}
-	const untitled = REQUIRE_FIELD_TITLES ? missingTitlesOf(manifest.contract) : [];
+	const untitled = missingTitlesOf(manifest.contract);
 	if (untitled.length > 0) throw new UserError(`${at} needs field titles: ${untitled.join('; ')}`);
 	const issues = await replayFixtures(frozen, fixtures);
 	if (issues.length > 0) throw new UserError(`${at} fails its fixtures: ${issues.join('; ')}`);
@@ -461,6 +460,13 @@ export async function checkPublish(
  * legacy node migrates old parameters. A patch keeps the contract hash and the legacy node.
  */
 export function checkNativePublish(previous: NativeManifest | undefined, manifest: NativeManifest) {
+	const contracts = [manifest.contract, ...(manifest.reply ? [manifest.reply.contract] : [])];
+	const untitled = contracts.flatMap(missingTitlesOf);
+	if (untitled.length > 0) {
+		throw new UserError(
+			`${manifest.id}@${manifest.semver} needs field titles: ${untitled.join('; ')}`,
+		);
+	}
 	if (!previous) return;
 	const { bump } = checkContractBump(previous, manifest);
 	const bindingOf = ({ native, reply }: NativeManifest) => canonicalJson({ native, reply });

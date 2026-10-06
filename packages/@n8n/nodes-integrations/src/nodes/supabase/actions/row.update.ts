@@ -8,7 +8,7 @@ export const updateSupabaseRows = rowResource.action('update', {
 	action: 'Update rows',
 	summary: 'Set columns on the rows of a table that match the filter, and return the updated rows.',
 	flow: { effect: 'write', cardinality: '1:N', idempotent: true },
-	input: { filter: rowFilter, columns: tableRow },
+	input: { filter: rowFilter, columns: tableRow.title('Fields to Send') },
 	output: tableRow,
 	async *run({ input, http }) {
 		const updated = await http.request({

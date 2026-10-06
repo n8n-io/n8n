@@ -200,8 +200,10 @@ host without a registry, import a copy of the registry folder.
   the text as its value, and so does the typed source of a saved workflow (`jsonFieldPathsOf`).
 - A node with a credential selector stores the picked type in the `authentication` parameter.
   The generated module of the node type takes `authentication`, so typed source keeps it.
-- `missingTitlesOf` lists the form fields without a `title`. `checkAction` and the publish
-  gate refuse them only when `REQUIRE_FIELD_TITLES` is true.
+- Every input field needs a `title`, at every depth: object fields, variant and union
+  branches, and list items. The form shows no field name as a label. `missingTitlesOf` lists
+  the fields without one, and `checkAction` and the publish gates refuse them, also in the
+  reply step of a native trigger. A variant tag and a sub-node input need none.
 - A credential major changes when stored data or a saved workflow can break: a new required
   field, a new host, a new scheme. A compat credential type has no manifest and no pin.
 - An action major changes when it adds a permission: a scope, an egress host, an import, a

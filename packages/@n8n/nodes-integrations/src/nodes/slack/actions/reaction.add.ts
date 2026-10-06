@@ -10,11 +10,12 @@ export const addSlackReaction = reaction.action('add', {
 	flow: { effect: 'write', cardinality: 'per-item', idempotent: false },
 	scopes: ['reactions:write'],
 	input: {
-		channel: ref(slackChannelId),
-		ts: slackTs,
+		channel: ref(slackChannelId).title('Channel'),
+		ts: slackTs.title('Message Timestamp'),
 		name: t
 			.str()
 			.with({ pattern: "^[a-z0-9_+'-]+$" })
+			.title('Emoji Code')
 			.hint('Emoji name without colons, e.g. white_check_mark'),
 	},
 	output: added,

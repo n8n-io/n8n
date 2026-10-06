@@ -33,10 +33,14 @@ function ops<V extends string, T, E extends string = (typeof VALUELESS)[number]>
 	value: Schema<T>,
 	valueless: readonly E[] = [],
 ): Schema<{ op: V; value: T } | { op: E }> {
-	const { json } = t.variant('op', {
-		...Object.fromEntries(valueOps.map((op): [string, Shape] => [op, { value }])),
-		...Object.fromEntries(valueless.map((op): [string, Shape] => [op, {}])),
-	});
+	const { json } = t
+		.variant('op', {
+			...Object.fromEntries(
+				valueOps.map((op): [string, Shape] => [op, { value: value.title('Value') }]),
+			),
+			...Object.fromEntries(valueless.map((op): [string, Shape] => [op, {}])),
+		})
+		.title('Condition');
 	return new Schema(json, false);
 }
 
@@ -67,7 +71,7 @@ const date = ops(
 	[...VALUELESS, ...RELATIVE],
 );
 
-const property = t.str().hint('Exact Notion property name');
+const property = t.str().title('Property Name').hint('Exact Notion property name');
 
 const condition = t
 	.variant('type', {
@@ -91,24 +95,27 @@ const condition = t
 
 type Condition = Infer<typeof condition>;
 
-const direction = t.oneOf('ascending', 'descending');
+const direction = t.oneOf('ascending', 'descending').title('Direction');
+const conditions = t.arr(condition).with({ minItems: 1 }).title('Conditions');
 
 const input = {
 	where: t
-		.variant('match', {
-			all: { conditions: t.arr(condition).with({ minItems: 1 }) },
-			['any']: { conditions: t.arr(condition).with({ minItems: 1 }) },
-		})
+		.variant('match', { all: { conditions }, ['any']: { conditions } })
+		.title('Filters')
 		.hint('all = AND, any = OR')
 		.optional(),
-	limit: t.int().with({ minimum: 1 }).hint('Omit for every page').optional(),
+	limit: t.int().with({ minimum: 1 }).title('Limit').hint('Omit for every page').optional(),
 	sort: t
 		.arr(
 			t.variant('by', {
 				property: { property, direction },
-				timestamp: { timestamp: t.oneOf('created_time', 'last_edited_time'), direction },
+				timestamp: {
+					timestamp: t.oneOf('created_time', 'last_edited_time').title('Timestamp'),
+					direction,
+				},
 			}),
 		)
+		.title('Sort')
 		.optional(),
 };
 

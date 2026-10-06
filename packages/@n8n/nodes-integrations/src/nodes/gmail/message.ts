@@ -98,16 +98,19 @@ const withAttachments = (prefix?: string) => t.indexedBinaries(fullMessage, pref
 export const simplify = t
 	.bool()
 	.default(true)
+	.title('Simplify')
 	.hint('false: the full mail with from.value[0].address, text, html and headers');
 
 export const downloadAttachments = t
 	.bool()
 	.default(false)
+	.title('Download Attachments')
 	.hint('Needs simplify: false; puts each file in binary.attachment_0, attachment_1, …');
 
 export const attachmentPrefix = t
 	.str()
 	.default('attachment_')
+	.title('Attachment Prefix')
 	.hint('The binary key of each file is this prefix and its index from 0');
 
 /** The full message for `simplify: false`, the simplified one otherwise. */

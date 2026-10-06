@@ -21,11 +21,12 @@ const literal: JsonSchema = { 'x-n8n-literal': true };
  */
 export const replySchema = t
 	.obj({
-		type: t.lit('object'),
-		properties: t.record(t.json().with(literal)),
-		required: t.arr(t.str().with(literal)).optional(),
+		type: t.lit('object').title('Type'),
+		properties: t.record(t.json().with(literal)).title('Properties'),
+		required: t.arr(t.str().with(literal)).title('Required').optional(),
 	})
 	.with({ additionalProperties: true, 'x-n8n-literal': true })
+	.title('Reply Schema')
 	.optional()
 	.hint('JSON Schema of the reply; leave a field the model may not find out of `required`');
 

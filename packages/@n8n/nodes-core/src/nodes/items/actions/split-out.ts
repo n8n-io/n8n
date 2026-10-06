@@ -18,15 +18,25 @@ export const splitOut = itemsNode.action('splitOut', {
 	summary: 'Emit one item for each entry of a list field of each item.',
 	flow: { effect: 'transform', cardinality: '1:N' },
 	input: {
-		field: t.str().with({ minLength: 1 }).hint('Dot path to the list, e.g. order.lines'),
+		field: t
+			.str()
+			.with({ minLength: 1 })
+			.title('Field To Split Out')
+			.hint('Dot path to the list, e.g. order.lines'),
 		into: t
 			.str()
 			.with({ minLength: 1 })
 			.optional()
+			.title('Destination Field Name')
 			.hint('Output field of each entry; default: an object entry is the item'),
 		include: t
-			.variant('mode', { none: {}, all: {}, selected: { fields: t.arr(t.str()) } })
+			.variant('mode', {
+				none: {},
+				all: {},
+				selected: { fields: t.arr(t.str()).title('Fields To Include') },
+			})
 			.default({ mode: 'none' })
+			.title('Include')
 			.hint('Other input fields to copy to each item'),
 	},
 	output: t.json(),

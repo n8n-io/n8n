@@ -3,16 +3,30 @@ import { t } from '@n8n/node-sdk';
 import { issueResource } from '../github.node';
 import { issue, issueFrom, issueResponse } from '../issue';
 
-const filters = t.obj({
-	state: t.oneOf('open', 'closed', 'all').default('open'),
-	labels: t.arr(t.str()).hint('Label names; an issue must have every label').optional(),
-	assignee: t.str().hint('A login, "none" for unassigned, or "*" for any').optional(),
-	creator: t.str().hint('A login').optional(),
-	mentioned: t.str().hint('A login').optional(),
-	since: t.str().hint('ISO 8601 date-time; issues updated at or after it').optional(),
-	sort: t.oneOf('created', 'updated', 'comments').default('created'),
-	direction: t.oneOf('asc', 'desc').default('desc'),
-});
+const filters = t
+	.obj({
+		state: t.oneOf('open', 'closed', 'all').default('open').title('State'),
+		labels: t
+			.arr(t.str())
+			.hint('Label names; an issue must have every label')
+			.optional()
+			.title('Labels'),
+		assignee: t
+			.str()
+			.hint('A login, "none" for unassigned, or "*" for any')
+			.optional()
+			.title('Assignee'),
+		creator: t.str().hint('A login').optional().title('Creator'),
+		mentioned: t.str().hint('A login').optional().title('Mentioned'),
+		since: t
+			.str()
+			.hint('ISO 8601 date-time; issues updated at or after it')
+			.optional()
+			.title('Updated Since'),
+		sort: t.oneOf('created', 'updated', 'comments').default('created').title('Sort'),
+		direction: t.oneOf('asc', 'desc').default('desc').title('Direction'),
+	})
+	.title('Filters');
 
 export const getManyIssues = issueResource.action('getAll', {
 	action: 'Get many issues',
@@ -26,6 +40,7 @@ export const getManyIssues = issueResource.action('getAll', {
 		includePullRequests: t
 			.bool()
 			.default(false)
+			.title('Include Pull Requests')
 			.hint('GitHub lists pull requests as issues; true keeps them'),
 	},
 	output: issue,

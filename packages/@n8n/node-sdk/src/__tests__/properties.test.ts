@@ -648,7 +648,7 @@ describe('the filter widget', () => {
 	};
 
 	it('shows the n8n filter and stores its value', () => {
-		expect(rowsOf(descriptionOf(route).properties)).toEqual(['where | where | filter']);
+		expect(rowsOf(descriptionOf(route).properties)).toEqual(['where | Conditions | filter']);
 		expect(nodeParametersOf({ where: value }, route.inputSchema, route.ui)).toEqual({
 			where: filterValue,
 		});
@@ -880,7 +880,7 @@ describe('getNodeParametersIssues', () => {
 });
 
 describe('missingTitlesOf', () => {
-	it('lists the form fields without a title, and the gate is off', () => {
+	it('lists the input fields without a title at every depth, and checkAction refuses them', () => {
 		const untitled = web.action('untitled', {
 			action: 'Untitled',
 			summary: 'Fields without titles.',
@@ -889,6 +889,9 @@ describe('missingTitlesOf', () => {
 				name: t.str(),
 				label: t.str().title('Label'),
 				body: t.variant('kind', { text: { text: t.str() } }).title('Body'),
+				rows: t.arr(t.obj({ key: t.str(), value: t.str().title('Value') })).title('Rows'),
+				limits: t.obj({ max: t.int() }).title('Limits'),
+				match: t.union(t.obj({ id: t.str() }), t.str()).title('Match'),
 			},
 			output: t.json(),
 			async run() {
@@ -898,9 +901,30 @@ describe('missingTitlesOf', () => {
 		expect(missingTitlesOf(toContract(untitled))).toEqual([
 			'web.untitled: input.name has no title',
 			'web.untitled: input.body.text has no title',
+			'web.untitled: input.rows[].key has no title',
+			'web.untitled: input.limits.max has no title',
+			'web.untitled: input.match.id has no title',
 		]);
 		expect(missingTitlesOf(toContract(sendRequest))).toEqual([]);
-		expect(checkAction(untitled).filter((issue) => issue.includes('has no title'))).toEqual([]);
+		expect(checkAction(untitled).filter((issue) => issue.includes('has no title'))).toHaveLength(5);
+	});
+
+	it('checks the reply step of a native trigger', () => {
+		const hook = web.trigger('hook', {
+			trigger: 'On call',
+			summary: 'Starts on a call.',
+			input: { path: t.str().title('Path') },
+			output: t.obj({}),
+			native: { type: 'n8n-nodes-base.webhook', version: 2.2, on: 'webhook' },
+			reply: {
+				operation: 'respond',
+				action: 'Respond',
+				summary: 'Sends the reply.',
+				native: { type: 'n8n-nodes-base.respondToWebhook', version: 1.5 },
+				input: { body: t.str() },
+			},
+		});
+		expect(checkAction(hook)).toEqual(['web.respond: input.body has no title']);
 	});
 });
 

@@ -10,7 +10,7 @@ export const getManySupabaseRows = rowResource.action('getAll', {
 	flow: { effect: 'read', cardinality: '1:N', idempotent: true },
 	input: {
 		filter: rowFilter.optional(),
-		order: t.str().hint('PostgREST order, e.g. created_at.desc').optional(),
+		order: t.str().title('Order By').hint('PostgREST order, e.g. created_at.desc').optional(),
 	},
 	output: tableRow,
 	list: {

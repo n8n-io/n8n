@@ -9,7 +9,10 @@ export const getSupabaseRows = rowResource.action('get', {
 	summary: 'Get the rows whose columns equal the given values, e.g. { id: 3 }.',
 	flow: { effect: 'read', cardinality: '1:N', idempotent: true },
 	input: {
-		where: t.record(scalar).hint('Column = value pairs; a row must match every pair'),
+		where: t
+			.record(scalar)
+			.title('Select Conditions')
+			.hint('Column = value pairs; a row must match every pair'),
 	},
 	output: tableRow,
 	async *run({ input, http }) {

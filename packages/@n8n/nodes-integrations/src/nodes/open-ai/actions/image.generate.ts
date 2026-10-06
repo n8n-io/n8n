@@ -18,12 +18,13 @@ export const generateImage = image.action('generate', {
 	flow: { effect: 'read', cardinality: '1:N' },
 	input: {
 		// The model catalog lists text models only, so the image models are a fixed list.
-		model: t.oneOf('gpt-image-1', 'gpt-image-1-mini', 'dall-e-3', 'dall-e-2'),
-		prompt: t.str().with({ minLength: 1 }),
+		model: t.oneOf('gpt-image-1', 'gpt-image-1-mini', 'dall-e-3', 'dall-e-2').title('Model'),
+		prompt: t.str().with({ minLength: 1 }).title('Prompt'),
 		count: t
 			.int()
 			.with({ minimum: 1, maximum: 10 })
 			.optional()
+			.title('Number of Images')
 			.hint('Images to create, 1 when unset'),
 		size: t
 			.oneOf(
@@ -37,12 +38,14 @@ export const generateImage = image.action('generate', {
 				'1024x1792',
 			)
 			.optional()
+			.title('Resolution')
 			.hint('Square: 1024x1024. dall-e-2 takes up to 1024x1024 only'),
 		quality: t
 			.oneOf('auto', 'high', 'medium', 'low', 'hd', 'standard')
 			.optional()
+			.title('Quality')
 			.hint('gpt-image: auto|high|medium|low; dall-e-3: hd|standard'),
-		style: t.oneOf('vivid', 'natural').optional().hint('dall-e-3 only'),
+		style: t.oneOf('vivid', 'natural').optional().hint('dall-e-3 only').title('Style'),
 	},
 	output: t.obj({
 		data: t.binary().hint('The image as PNG'),

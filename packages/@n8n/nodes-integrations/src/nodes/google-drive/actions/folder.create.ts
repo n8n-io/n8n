@@ -15,8 +15,8 @@ export const createFolder = folder.action('create', {
 	flow: { effect: 'write', cardinality: 'per-item', idempotent: false },
 	minor: 1,
 	input: {
-		name: t.str().with({ minLength: 1 }),
-		parentId: ref(driveFolderId).default('root'),
+		name: t.str().with({ minLength: 1 }).title('Folder Name'),
+		parentId: ref(driveFolderId).title('Parent Folder').default('root'),
 	},
 	output: driveFile,
 	async run({ input, http }) {

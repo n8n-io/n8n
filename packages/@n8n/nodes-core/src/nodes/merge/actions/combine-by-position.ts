@@ -9,10 +9,15 @@ export const combineByPosition = merge.action('combineByPosition', {
 	inputs: { count: 'inputs' },
 	input: {
 		inputs: INPUT_COUNT,
-		unpaired: t.bool().default(false).hint('Keep a position that some inputs have no item at'),
+		unpaired: t
+			.bool()
+			.default(false)
+			.title('Include Any Unpaired Items')
+			.hint('Keep a position that some inputs have no item at'),
 		prefer: t
 			.oneOf('first', 'last')
 			.default('last')
+			.title('When Field Values Clash')
 			.hint('Which input wins a field clash: the first or the last'),
 	},
 	output: t.json().hint('The fields of the items at one position'),

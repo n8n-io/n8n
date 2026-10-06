@@ -18,6 +18,7 @@ export const code = defineNode({ id: 'code', displayName: 'Code' });
 export const mode = t
 	.oneOf('allItems', 'eachItem')
 	.default('allItems')
+	.title('Mode')
 	.hint('allItems: one run for all items. eachItem: one run per item');
 
 /**
@@ -26,13 +27,15 @@ export const mode = t
  */
 export const returns = t
 	.obj({
-		type: t.lit('object'),
+		type: t.lit('object').title('Type'),
 		properties: t
 			.record(t.json())
+			.title('Properties')
 			.hint('A JSON Schema per field, e.g. { "id": { "type": "number" } }'),
-		required: t.arr(t.str()).optional(),
+		required: t.arr(t.str()).title('Required').optional(),
 	})
 	.with({ additionalProperties: true })
+	.title('Output Schema')
 	.optional()
 	.hint('Types the output items and checks each one');
 

@@ -25,12 +25,22 @@ export const uploadSlackFile = file.action('upload', {
 	// files.getUploadURLExternal gives a URL on this host for the bytes.
 	egress: { hosts: ['files.slack.com'] },
 	input: {
-		file: t.binary().hint('A binary of the input item, e.g. (item) => item.binary.data'),
-		channel: ref(slackChannelId).optional(),
-		initialComment: t.str().hint('Message text posted with the file').optional(),
-		threadTs: slackTs.hint('ts of the parent message, to share the file in its thread').optional(),
-		title: t.str().hint('The file name when empty').optional(),
-		fileName: t.str().hint('The binary file name when empty').optional(),
+		file: t
+			.binary()
+			.title('Input Binary Field')
+			.hint('A binary of the input item, e.g. (item) => item.binary.data'),
+		channel: ref(slackChannelId).title('Channel').optional(),
+		initialComment: t
+			.str()
+			.title('Initial Comment')
+			.hint('Message text posted with the file')
+			.optional(),
+		threadTs: slackTs
+			.title('Thread Timestamp')
+			.hint('ts of the parent message, to share the file in its thread')
+			.optional(),
+		title: t.str().title('Title').hint('The file name when empty').optional(),
+		fileName: t.str().title('File Name').hint('The binary file name when empty').optional(),
 	},
 	output: slackFile,
 	async run({ input, http }) {

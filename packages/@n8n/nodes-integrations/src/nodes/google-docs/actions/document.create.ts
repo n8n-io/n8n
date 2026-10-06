@@ -26,8 +26,8 @@ export const createDocument = document.action('create', {
 	// The Docs API has no folder field, so the Drive API creates the file.
 	egress: { hosts: ['www.googleapis.com'] },
 	input: {
-		title: t.str().with({ minLength: 1 }),
-		folderId: t.str().hint('Drive folder ID; My Drive when not set').optional(),
+		title: t.str().with({ minLength: 1 }).title('Title'),
+		folderId: t.str().title('Folder ID').hint('Drive folder ID; My Drive when not set').optional(),
 		content: contentSchema.optional(),
 	},
 	output: created,

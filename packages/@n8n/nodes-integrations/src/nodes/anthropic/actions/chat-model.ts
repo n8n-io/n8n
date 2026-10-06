@@ -88,15 +88,16 @@ export const anthropicChatModel = anthropic.provider('chatModel', {
 	summary: 'An Anthropic Claude chat model for an AI node, e.g. ai.prompt or ai.agent.',
 	provides: 'chatModel',
 	input: {
-		model: t.modelId('anthropic'),
+		model: t.modelId('anthropic').title('Model'),
 		maxTokens: t
 			.int()
 			.with({ minimum: 1 })
 			.default(DEFAULT_MAX_TOKENS)
+			.title('Maximum Number of Tokens')
 			.hint('Most tokens in one reply'),
-		temperature: t.num().with({ minimum: 0, maximum: 1 }).optional(),
-		topP: t.num().with({ minimum: 0, maximum: 1 }).optional(),
-		topK: t.int().with({ minimum: 1 }).optional(),
+		temperature: t.num().with({ minimum: 0, maximum: 1 }).optional().title('Sampling Temperature'),
+		topP: t.num().with({ minimum: 0, maximum: 1 }).optional().title('Top P'),
+		topK: t.int().with({ minimum: 1 }).optional().title('Top K'),
 	},
 	async provide({ input, http }) {
 		const { model } = input;
