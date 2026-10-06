@@ -101,9 +101,9 @@ can build a token. A step-bound resume URL and an approval callback end one wait
    every resume request. No node code runs for a resume request before the data plane accepts its
    token. The control plane passes the token to the data plane and does not read it. The engine does
    not start without the resume secret.
-8. **A rolling rollout rotates the resume secret.** A rotation rejects no valid token and does not
-   stop an outstanding resume URL. Processes with the old configuration and the new configuration
-   can run side by side.
+8. **A rolling rollout rotates the resume secret.** A rotation rejects no valid token. Processes
+   with the old configuration and the new configuration can run side by side. An outstanding resume
+   URL keeps working until the operator removes the secret that signed it.
 9. **The control plane sends each resume request to the engine that runs the execution.** It picks
    engine v1 or engine v2, and it does not read the token to do so.
 
@@ -176,7 +176,9 @@ can build a token. A step-bound resume URL and an approval callback end one wait
   status, or when its secret leaves the accepted set.
 - The data plane signs with one secret and accepts every secret in a configured set.
 - A rotation takes two rollouts. The first adds the new secret to the accepted set. The second makes
-  it the signing secret. A rotation does not invalidate an outstanding resume URL.
+  it the signing secret. The order matters, because during a rolling rollout a process that has not
+  updated yet must already accept the new secret. A third rollout removes the old secret, when the
+  operator chooses.
 - The token does not expire, so an old secret stays in the accepted set while a step that it signed
   still waits. The removal of a secret from the set makes every outstanding resume URL that it
   signed stop working. That removal is the only way to revoke resume URLs.
