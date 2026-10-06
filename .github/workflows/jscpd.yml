@@ -12,6 +12,7 @@ name: 🍝 jscpd
 
 on:
   workflow_dispatch:
+  pull_request: # TEMP: verify this workflow runs for real on this PR; remove before merge
 
 permissions:
   contents: read
