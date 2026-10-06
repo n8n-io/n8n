@@ -75,6 +75,8 @@ export async function lakebaseApiRequest(
 				}
 				continue;
 			}
+			// After DDL the PostgREST replicas reload their schema unevenly, so a new table can
+			// briefly answer PGRST205. One retry rides that out; a missing table fails the same way.
 			if (!retriedSchemaCache && body?.code === 'PGRST205') {
 				retriedSchemaCache = true;
 				await sleep(SCHEMA_CACHE_RETRY_DELAY_MS, abortSignal);
