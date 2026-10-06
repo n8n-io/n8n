@@ -1231,6 +1231,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 					name: 'Test Workflow',
 					active: true,
 					activeVersionId: 'version-456',
+					versionId: 'draft-version',
 					nodes: currentNodes,
 					connections: currentConnections,
 					activeVersion: mock({
@@ -1249,6 +1250,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 
 			expect(result.nodes).toEqual(activeVersionNodes);
 			expect(result.connections).toEqual(activeVersionConnections);
+			expect(result.versionId).toBe('version-456');
 			expect(workflowRepository.get).toHaveBeenCalledWith(
 				{ id: 'workflow-123' },
 				{ relations: ['activeVersion', 'tags'] },
@@ -1381,8 +1383,13 @@ describe('WorkflowExecuteAdditionalData', () => {
 			];
 			const mappingConnections = { 'Mapping Node': {} };
 			workflowPublishedDataService.getPublishedWorkflowData.mockResolvedValue({
-				workflow: mock<WorkflowEntity>({ id: 'workflow-123', name: 'Test Workflow' }),
+				workflow: mock<WorkflowEntity>({
+					id: 'workflow-123',
+					name: 'Test Workflow',
+					versionId: 'draft-version',
+				}),
 				publishedVersion: mock<WorkflowHistory>({
+					versionId: 'published-version',
 					nodes: mappingNodes,
 					connections: mappingConnections,
 				}),
@@ -1397,6 +1404,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 			expect(workflowRepository.get).not.toHaveBeenCalled();
 			expect(result.nodes).toEqual(mappingNodes);
 			expect(result.connections).toEqual(mappingConnections);
+			expect(result.versionId).toBe('published-version');
 		});
 
 		it('throws when there is no published version (flag on)', async () => {

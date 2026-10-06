@@ -13,8 +13,7 @@ export type WorkflowSuggestionBaseline = {
 		publishedVersionId: string;
 		checksum: string;
 		versionCounter: number;
-		savedAt: string;
-		publicationId: number | null;
+		latestPublishHistoryEventId: number | null;
 	};
 	original: WorkflowSuggestionSnapshot;
 };
@@ -34,12 +33,12 @@ export type WorkflowSuggestionActivity = {
 	createdAt: string;
 };
 
-export type WorkflowSuggestionAction = 'approve-and-publish' | 'open-in-editor' | 'discard';
+export type WorkflowSuggestionAction = WorkflowSuggestionAppliedVersion['action'] | 'discard';
 
 export type WorkflowSuggestionAppliedVersion = {
 	versionId: string;
 	checksum: string;
-	action: 'approve-and-publish' | 'open-in-editor';
+	action: 'approve-and-publish' | 'apply';
 	actorId: string;
 };
 
@@ -60,5 +59,5 @@ export type WorkflowSuggestionProposalDetail = {
 
 export type WorkflowSuggestionActionResult = WorkflowSuggestionProposalDetail & {
 	/** A publish request error does not establish whether the version is live. */
-	publicationError?: string;
+	publishError?: string;
 };

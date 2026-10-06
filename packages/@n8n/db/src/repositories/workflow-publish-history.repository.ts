@@ -12,7 +12,7 @@ export class WorkflowPublishHistoryRepository extends BaseRepository<WorkflowPub
 		super(WorkflowPublishHistory, dataSource.manager, transactionRunner);
 	}
 
-	async getLatestPublicationId(workflowId: string, ctx: OperationContext = {}) {
+	async getLatestPublishHistoryEventId(workflowId: string, ctx: OperationContext = {}) {
 		const publication = await this.managerFor(ctx).findOne(WorkflowPublishHistory, {
 			where: { workflowId },
 			order: { id: 'DESC' },
@@ -36,6 +36,16 @@ export class WorkflowPublishHistoryRepository extends BaseRepository<WorkflowPub
 			event,
 			userId,
 		});
+	}
+
+	/**
+	 * Returns the events of one version, oldest first. Use this method, not a
+	 * join on the `workflowPublishHistory` relation. A join repeats the nodes
+	 * JSON of the version for each event, and a version can have many events.
+	 */
+	async findByVersion(workflowId: string, versionId: string, trx?: EntityManager) {
+		const repository = trx ? trx.getRepository(WorkflowPublishHistory) : this;
+		return await repository.find({ where: { workflowId, versionId }, order: { id: 'ASC' } });
 	}
 
 	async getPublishedVersions(

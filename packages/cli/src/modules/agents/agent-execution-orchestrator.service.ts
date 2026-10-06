@@ -65,7 +65,10 @@ import { modelStreamStallOptions } from './model-stream-stall-options';
 import { AgentRepository } from './repositories/agent.repository';
 import { AgentBackgroundJobRepository } from './repositories/agent-background-job.repository';
 import { AgentBackgroundJobService } from './background/agent-background-job.service';
-import { BACKGROUND_APPROVAL_RUN_PREFIX } from './background/sub-agent-background-state';
+import {
+	BACKGROUND_APPROVAL_RUN_PREFIX,
+	BACKGROUND_PAUSE_USER_TURN_KEY,
+} from './background/sub-agent-background-state';
 import type { ToolRegistry } from './tool-registry';
 import type { StoredAttachmentRef } from './types/agent-chat-attachment';
 import type { AgentExecutionAdmission } from './types/agent-queued-message';
@@ -212,6 +215,7 @@ export interface ExecuteForTaskNowConfig extends AgentExecutionInput {
 
 export interface ExecuteForWakeConfig extends AgentExecutionInput {
 	backgroundJobSignal: AgentBackgroundJobSignal;
+	pauseReport?: boolean;
 	abortSignal: AbortSignal;
 	identity:
 		| { type: 'draft'; user: User; principalHash: AgentSandboxPrincipalHash }
@@ -254,6 +258,7 @@ export interface StreamChatResponseConfig extends ChatExecutionInput, ChatExecut
 	hideUserMessageFromTranscript?: boolean;
 	/** Prevent this wake run from triggering another wake. */
 	isWakeRun?: boolean;
+	pauseReport?: boolean;
 	backgroundJobSignal?: AgentBackgroundJobSignal;
 }
 
@@ -956,6 +961,8 @@ export class AgentExecutionOrchestratorService {
 			if (delivery) chunks.push(chunk);
 			if (chunk.type === 'error') runError = chunk.error;
 			if (chunk.type === 'finish' && chunk.finishReason === 'error') runError ??= chunk;
+			if (chunk.type === 'finish' && chunk.guardrail?.code === 'background-pause-report')
+				runError ??= chunk;
 			yield chunk;
 		}
 		// Leave failed job results pending so the caller can retry delivery.
@@ -1496,6 +1503,9 @@ export class AgentExecutionOrchestratorService {
 				principalHash: sandboxPrincipalHash,
 			}),
 			...encodeIntegrationMessageContext(messageContext),
+			...(config.previewChat && !config.isWakeRun && !config.hideUserMessageFromTranscript
+				? { [BACKGROUND_PAUSE_USER_TURN_KEY]: true }
+				: {}),
 		};
 
 		return {
@@ -1504,6 +1514,21 @@ export class AgentExecutionOrchestratorService {
 			options: withBudgetGuardrail(
 				{
 					persistence: { threadId, resourceId, hostMetadata },
+					...(config.pauseReport
+						? {
+								toolsEnabled: false,
+								guardrails: {
+									hooks: [
+										{
+											beforeTool: async () => ({
+												action: 'stop' as const,
+												code: 'background-pause-report',
+											}),
+										},
+									],
+								},
+							}
+						: {}),
 					executionCounter: createAgentExecutionCounter(this.telemetry, {
 						agentId,
 						userId,
@@ -1638,6 +1663,7 @@ export class AgentExecutionOrchestratorService {
 			sandboxPrincipalHash: identity.principalHash,
 			hideUserMessageFromTranscript: true,
 			isWakeRun: true,
+			pauseReport: config.pauseReport,
 			sessionMode: 'existing',
 			backgroundJobSignal: config.backgroundJobSignal,
 		});

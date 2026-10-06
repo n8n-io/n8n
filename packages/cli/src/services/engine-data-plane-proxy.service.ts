@@ -1,6 +1,7 @@
 import { Service } from '@n8n/di';
 import type {
 	ExecutionSnapshot,
+	ExecutionStatus,
 	StartExecutionRequest,
 	StartExecutionResult,
 	SearchExecutionsRequest,
@@ -25,7 +26,15 @@ export const isStartRefusedBeforeSave = (error: unknown): boolean =>
 	error instanceof EngineRejectedWorkflowError || error instanceof EngineDidNotAdmitError;
 
 /**
- * Starts and reads executions on the engine v2 data plane.
+ * Outcome of the cancellation request. `cancelled: false` carries the status
+ * the execution had already ended with.
+ */
+export type CancelExecutionOutcome =
+	| { cancelled: true; finishedAt: Date }
+	| { cancelled: false; status: ExecutionStatus };
+
+/**
+ * Starts, reads, and cancels executions on the engine v2 data plane.
  *
  * The control plane always reaches the engine over HTTP, even when the engine
  * runs in the same process, so this stays a network-shaped contract.
@@ -48,6 +57,9 @@ export interface EngineDataPlaneProvider {
 		id: ExecutionIdV2,
 		options?: { includeSteps?: boolean },
 	): Promise<ExecutionSnapshot | undefined>;
+
+	/** `undefined` when the data plane holds no execution under that id. */
+	cancelExecution(id: ExecutionIdV2): Promise<CancelExecutionOutcome | undefined>;
 }
 
 /**
@@ -93,5 +105,12 @@ export class EngineDataPlaneProxyService implements EngineDataPlaneProvider {
 		if (!this.provider) return undefined;
 
 		return await this.provider.getExecution(id, options);
+	}
+
+	/** As `getExecution`: no provider, no v2 execution to cancel. */
+	async cancelExecution(id: ExecutionIdV2): Promise<CancelExecutionOutcome | undefined> {
+		if (!this.provider) return undefined;
+
+		return await this.provider.cancelExecution(id);
 	}
 }

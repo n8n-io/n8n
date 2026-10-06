@@ -5,6 +5,7 @@ import {
 	type SelfHealingResultDetail,
 	type SelfHealingResultActionResponse,
 	type WorkflowSuggestionAction,
+	type WorkflowSuggestionActionResult,
 	type WorkflowSuggestionProposalDetail,
 } from '@n8n/api-types';
 import {
@@ -201,14 +202,36 @@ export class SelfHealingResultService {
 		if (result.outcome !== 'fix_ready' || !result.suggestionId) {
 			throw new ConflictError('Only a Fix ready result permits this action.');
 		}
-		const { publicationError, ...suggestion } = await this.actions.act(
-			reviewer,
-			projectId,
-			workflowId,
-			result.suggestionId,
-			action,
-			clientId,
-		);
+		let actionResult: WorkflowSuggestionActionResult;
+		switch (action) {
+			case 'approve-and-publish':
+				actionResult = await this.actions.approveAndPublish(
+					reviewer,
+					projectId,
+					workflowId,
+					result.suggestionId,
+					clientId,
+				);
+				break;
+			case 'apply':
+				actionResult = await this.actions.apply(
+					reviewer,
+					projectId,
+					workflowId,
+					result.suggestionId,
+					clientId,
+				);
+				break;
+			case 'discard':
+				actionResult = await this.actions.discard(
+					reviewer,
+					projectId,
+					workflowId,
+					result.suggestionId,
+				);
+				break;
+		}
+		const { publishError, ...suggestion } = actionResult;
 		const execution = await this.executionReferences.getReference(
 			reviewer,
 			workflowId,
@@ -216,7 +239,7 @@ export class SelfHealingResultService {
 		);
 		return {
 			...this.toDetail(result, suggestion, execution),
-			...(publicationError !== undefined ? { publicationError } : {}),
+			...(publishError !== undefined ? { publishError } : {}),
 		};
 	}
 
@@ -234,7 +257,7 @@ export class SelfHealingResultService {
 			}
 			if (result.dismissedAt) return true;
 			if (result.suggestionId) {
-				const outcome = await this.actions.discard(
+				const outcome = await this.actions.discardPending(
 					reviewer,
 					projectId,
 					workflowId,

@@ -5,7 +5,7 @@ import type {
 } from '@n8n/api-types';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { TransactionRunner, WorkflowRepository } from '@n8n/db';
-import type { ErrorReporter, InstanceSettings } from 'n8n-core';
+import type { ErrorReporter } from 'n8n-core';
 import type { MockProxy } from 'vitest-mock-extended';
 import { mock } from 'vitest-mock-extended';
 
@@ -63,7 +63,6 @@ function detectionResult(
 			workflowResults,
 		},
 		totalWorkflows: 0,
-		shouldCache: false,
 		failedChecks,
 	};
 }
@@ -89,15 +88,7 @@ describe('MigrationFindingSyncService', () => {
 	let syncRepository: MockProxy<MigrationFindingSyncRepository>;
 	let txRunner: MockProxy<TransactionRunner>;
 	let errorReporter: MockProxy<ErrorReporter>;
-	let isLeader: boolean;
 	let service: MigrationFindingSyncService;
-
-	// A getter, so a test can take leadership away while a sync is running.
-	const instanceSettings = {
-		get isLeader() {
-			return isLeader;
-		},
-	} as InstanceSettings;
 
 	/** Feeds `getIdsAfter` from a mutable list, so a test can remove a workflow between pages. */
 	function givenWorkflows(count: number) {
@@ -119,7 +110,6 @@ describe('MigrationFindingSyncService', () => {
 		syncRepository = mock<MigrationFindingSyncRepository>();
 		txRunner = mock<TransactionRunner>();
 		errorReporter = mock<ErrorReporter>();
-		isLeader = true;
 
 		txRunner.run.mockImplementation(async (ctx, fn) => await fn(ctx));
 		// By default every paged id still exists when the batch re-checks it.
@@ -135,7 +125,6 @@ describe('MigrationFindingSyncService', () => {
 			findingRepository,
 			syncRepository,
 			txRunner,
-			instanceSettings,
 			mockLogger(),
 			errorReporter,
 		);
@@ -408,25 +397,6 @@ describe('MigrationFindingSyncService', () => {
 			expect(breakingChangeService.detect).toHaveBeenCalledTimes(2);
 			expect(await syncRepository.getForVersion(TARGET_VERSION, {})).not.toBeNull();
 		});
-
-		it('leaves no record after a leadership loss, so the next read on the leader syncs again', async () => {
-			givenWorkflows(250);
-			givenPersistedSyncRecord();
-			txRunner.run.mockImplementationOnce(async (ctx, fn) => {
-				const result = await fn(ctx);
-				isLeader = false;
-				return result;
-			});
-
-			await service.sync(TARGET_VERSION);
-			expect(await syncRepository.getForVersion(TARGET_VERSION, {})).toBeNull();
-
-			isLeader = true;
-			await service.syncIfStale(TARGET_VERSION);
-
-			expect(breakingChangeService.detect).toHaveBeenCalledTimes(2);
-			expect(await syncRepository.getForVersion(TARGET_VERSION, {})).not.toBeNull();
-		});
 	});
 
 	describe('rule set fingerprint', () => {
@@ -457,32 +427,6 @@ describe('MigrationFindingSyncService', () => {
 				expect.anything(),
 			);
 		});
-	});
-
-	it('computes and writes nothing when the instance is not the leader', async () => {
-		isLeader = false;
-		givenWorkflows(3);
-
-		await service.sync(TARGET_VERSION);
-
-		expect(breakingChangeService.detect).not.toHaveBeenCalled();
-		expect(workflowRepository.getIdsAfter).not.toHaveBeenCalled();
-		expect(txRunner.run).not.toHaveBeenCalled();
-		expect(syncRepository.upsertForVersion).not.toHaveBeenCalled();
-	});
-
-	it('stops writing and records no sync when leadership is lost between batches', async () => {
-		givenWorkflows(250);
-		txRunner.run.mockImplementation(async (ctx, fn) => {
-			const result = await fn(ctx);
-			isLeader = false;
-			return result;
-		});
-
-		await service.sync(TARGET_VERSION);
-
-		expect(txRunner.run).toHaveBeenCalledTimes(1);
-		expect(syncRepository.upsertForVersion).not.toHaveBeenCalled();
 	});
 
 	it('shares one run between two concurrent calls for the same version', async () => {
@@ -526,8 +470,7 @@ describe('MigrationFindingSyncService', () => {
 			expect(syncRepository.upsertForVersion).not.toHaveBeenCalled();
 		});
 
-		it('inserts an open finding for a workflow that now trips a rule, on any main', async () => {
-			isLeader = false;
+		it('inserts an open finding for a workflow that now trips a rule', async () => {
 			breakingChangeService.detectWorkflowHits.mockResolvedValue({
 				hits: [{ ruleId: 'rule-a', workflowId: WORKFLOW_ID }],
 				failedChecks: [],

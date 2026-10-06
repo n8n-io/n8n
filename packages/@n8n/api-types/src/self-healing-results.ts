@@ -47,5 +47,5 @@ export type SelfHealingResultDetail = SelfHealingResultContent & {
 
 export type SelfHealingResultActionResponse = SelfHealingResultDetail & {
 	/** This request error does not establish whether the saved version is live. */
-	publicationError?: string;
+	publishError?: string;
 };

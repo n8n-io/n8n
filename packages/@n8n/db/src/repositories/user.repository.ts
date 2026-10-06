@@ -11,6 +11,7 @@ import type {
 import { Brackets, DataSource, In, IsNull, Not } from '@n8n/typeorm';
 
 import { BaseRepository } from './base-repository';
+import { GLOBAL_OWNER_ROLE } from '../constants';
 import { ApiKey, Project, ProjectRelation, User } from '../entities';
 import { type OperationContext, TransactionRunner } from '../services/transaction';
 import { isUniqueConstraintError } from '../utils/is-unique-constraint-error';
@@ -124,6 +125,22 @@ export class UserRepository extends BaseRepository<User> {
 				throw error;
 			}
 			return 'changed';
+		});
+	}
+
+	/**
+	 * True when a claimed instance owner exists. A claimed owner has logged in
+	 * (`lastActiveAt` is set) or has a password. Some setup paths set a password
+	 * before the first login, so the password check is required. The unclaimed
+	 * "shell" owner that first boot creates matches neither condition.
+	 */
+	async hasClaimedInstanceOwner(): Promise<boolean> {
+		return await this.exists({
+			where: [
+				{ role: { slug: GLOBAL_OWNER_ROLE.slug }, lastActiveAt: Not(IsNull()) },
+				{ role: { slug: GLOBAL_OWNER_ROLE.slug }, password: Not(IsNull()) },
+			],
+			relations: ['role'],
 		});
 	}
 

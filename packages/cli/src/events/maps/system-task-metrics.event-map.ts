@@ -14,9 +14,10 @@ export type SystemTaskMode = 'leader_timer' | 'instance_timer' | 'durable';
 
 /**
  * How a run settled. A rejection after the run's abort signal fired is the task
- * honoring the abort, so it is `aborted`, not `failure`.
+ * honoring the abort, so it is `aborted`, not `failure`. A durable run stopped
+ * because its claim was lost is `lease_lost`.
  */
-export type SystemTaskRunResult = 'success' | 'failure' | 'aborted';
+export type SystemTaskRunResult = 'success' | 'failure' | 'aborted' | 'lease_lost';
 
 /**
  * Why an occurrence did not run: the previous run was still going, another

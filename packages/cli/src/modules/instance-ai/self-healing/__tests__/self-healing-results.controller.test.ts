@@ -8,10 +8,10 @@ describe('SelfHealingResultsController route access', () => {
 	it('registers every review action and read', () => {
 		expect(routes.map(({ route }) => route.path).sort()).toEqual([
 			'/:resultId',
+			'/:resultId/apply',
 			'/:resultId/approve-and-publish',
 			'/:resultId/discard',
 			'/:resultId/dismiss',
-			'/:resultId/open-in-editor',
 		]);
 	});
 

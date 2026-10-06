@@ -5,7 +5,7 @@ import { Container } from '@n8n/di';
 import { DateTime } from 'luxon';
 import { mock } from 'vitest-mock-extended';
 
-import { InsightsRawRepository } from '@/modules/insights/database/repositories/insights-raw.repository';
+import { InsightsRawRepository } from '../database/repositories/insights-raw.repository';
 
 import {
 	createMetadata,

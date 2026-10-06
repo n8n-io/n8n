@@ -74,7 +74,7 @@ beforeAll(async () => {
 beforeEach(() => {
 	Container.get(GlobalConfig).workflows.useWorkflowPublicationService = true;
 	validation.validateTriggerNodeIds.mockReturnValue({ isValid: true });
-	validation.validateForActivation.mockReturnValue({ isValid: true });
+	validation.validateForActivation.mockResolvedValue({ isValid: true });
 	validation.validateDynamicCredentials.mockResolvedValue({ isValid: true });
 	validation.validatePublisherCredentialAccess.mockResolvedValue({ isValid: true });
 	validation.validateSubWorkflowReferences.mockResolvedValue({ isValid: true });
@@ -371,7 +371,7 @@ it('keeps the winner when informational dismissal races another discard', async 
 	const { user, project, original, result, getDetail } = await fixture('needs_you', true);
 	const [, discardOutcome] = await Promise.all([
 		service.dismiss(user, project.id, original.id, result.id),
-		actions.discard(user, project.id, original.id, result.suggestionId!),
+		actions.discardPending(user, project.id, original.id, result.suggestionId!),
 	]);
 	const directlyDiscarded = discardOutcome === 'discarded';
 	const detail = await getDetail();
@@ -418,15 +418,15 @@ it('preserves outdated reconciliation when shared dismissal rejects a moved work
 
 it('reflects internal suggestion actions without a separate result update', async () => {
 	const { user, project, original, result, getDetail } = await fixture('fix_ready', true);
-	await actions.act(user, project.id, original.id, result.suggestionId!, 'open-in-editor');
+	await actions.apply(user, project.id, original.id, result.suggestionId!);
 	expect(await getDetail()).toMatchObject({
 		reviewState: 'applied',
 		dismissedAt: null,
-		suggestion: { appliedVersion: { action: 'open-in-editor' } },
+		suggestion: { appliedVersion: { action: 'apply' } },
 	});
 });
 
-it.each(['open-in-editor', 'approve-and-publish'] as const)(
+it.each(['apply', 'approve-and-publish'] as const)(
 	'applies through %s and forwards the editor client identity',
 	async (action) => {
 		const { user, result, original, url } = await fixture('fix_ready', true);
@@ -463,10 +463,10 @@ it('returns Applied and a request error when publication fails', async () => {
 	expect(response.status).toBe(200);
 	expect(response.body.data).toMatchObject({
 		reviewState: 'applied',
-		publicationError: 'An open review blocks publication.',
+		publishError: 'An open review blocks publication.',
 	});
 	expect(await getDetail()).toMatchObject({ reviewState: 'applied' });
-	expect(await getDetail()).not.toHaveProperty('publicationError');
+	expect(await getDetail()).not.toHaveProperty('publishError');
 });
 
 it('discards Fix ready through the result route without saving the graph', async () => {
@@ -480,7 +480,7 @@ it('discards Fix ready through the result route without saving the graph', async
 it('does not report Apply when reconciliation finds an outdated proposal', async () => {
 	const { user, original, url } = await fixture('fix_ready', true);
 	await workflows.update(original.id, { settings: { executionTimeout: 60 } });
-	const response = await testServer.authAgentFor(user).post(`${url}/open-in-editor`);
+	const response = await testServer.authAgentFor(user).post(`${url}/apply`);
 	expect(response.status).toBe(200);
 	expect(response.body.data).toMatchObject({
 		reviewState: 'outdated',
@@ -488,7 +488,7 @@ it('does not report Apply when reconciliation finds an outdated proposal', async
 	});
 });
 
-it.each(['open-in-editor', 'approve-and-publish', 'discard'] as const)(
+it.each(['apply', 'approve-and-publish', 'discard'] as const)(
 	'rejects %s for Needs attention',
 	async (action) => {
 		const { user, original, url } = await fixture('needs_you', true);
@@ -536,7 +536,7 @@ it('keeps detail and non-publish actions available without publish scope', async
 	const agent = testServer.authAgentFor(editor);
 	await agent.get(url).expect(200);
 	await agent.post(`${url}/approve-and-publish`).expect(403);
-	await agent.post(`${url}/open-in-editor`).expect(200);
+	await agent.post(`${url}/apply`).expect(200);
 });
 
 it('keeps the report readable when a reviewer loses execution read access', async () => {

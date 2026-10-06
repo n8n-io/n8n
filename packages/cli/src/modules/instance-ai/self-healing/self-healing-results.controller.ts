@@ -34,16 +34,16 @@ export class SelfHealingResultsController {
 		);
 	}
 
-	@Post('/:resultId/open-in-editor')
+	@Post('/:resultId/apply')
 	@ProjectScope('workflow:update')
-	async openInEditor(req: ResultRequest) {
+	async apply(req: ResultRequest) {
 		const { projectId, workflowId, resultId } = req.params;
 		return await this.results.act(
 			req.user,
 			projectId,
 			workflowId,
 			resultId,
-			'open-in-editor',
+			'apply',
 			req.headers['push-ref'],
 		);
 	}

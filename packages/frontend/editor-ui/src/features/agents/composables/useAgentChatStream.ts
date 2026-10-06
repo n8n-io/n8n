@@ -16,6 +16,7 @@ import { applyForwardedChildChunk, APPROVAL_TOOL_NAME, emptyChildTrace } from '@
 import { useToast } from '@n8n/composables/useToast';
 import { convertFileToBinaryData, resolveFileMimeType } from '@/app/utils/fileUtils';
 import {
+	agentChatBaseUrl,
 	cancelAgentChatExecution,
 	cancelAgentChatRun,
 	clearTestChatMessages,
@@ -26,6 +27,7 @@ import {
 	steerAgentQueuedMessage,
 	reorderAgentQueuedMessage,
 	getTestChatMessages,
+	type AgentChatChannel,
 } from './useAgentApi';
 
 import {
@@ -70,6 +72,12 @@ export interface UseAgentChatStreamParams {
 	 */
 	continueSessionId?: Ref<string | undefined>;
 	newSession?: Ref<boolean>;
+	/**
+	 * `'chat'` (default) talks to the builder's draft/test chat; `'n8n-chat'`
+	 * talks to the published n8n Chat channel. See `capabilities` for what
+	 * that channel cannot do.
+	 */
+	channel?: Ref<AgentChatChannel>;
 	onHistoryLoaded?: (count: number) => void;
 	onSessionCreated?: (sessionId: string) => void;
 	/** Builder preview shows the budget stop and alert cards. Other chats ignore them. */
@@ -106,6 +114,18 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 	const rootStore = useRootStore();
 	const locale = useI18n();
 	const { showError } = useToast();
+	const channel = params.channel ?? ref<AgentChatChannel>('chat');
+	/**
+	 * What the current channel supports. n8n Chat has no steer or
+	 * background-task routes, and no single default thread to fall back to
+	 * like the builder's test chat — `previewHistory` gates that fallback.
+	 */
+	const capabilities = computed(() => ({
+		steer: channel.value !== 'n8n-chat',
+		backgroundTasks: channel.value !== 'n8n-chat',
+		previewHistory: channel.value !== 'n8n-chat',
+		reorder: channel.value !== 'n8n-chat',
+	}));
 
 	const messages = ref<ChatMessage[]>([]);
 	const isStreamOpen = ref(false);
@@ -140,6 +160,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 	const isCancelling = ref(false);
 	const canSteer = computed(
 		() =>
+			capabilities.value.steer &&
 			!!steerableExecutionId.value &&
 			steerableExecutionId.value === activeExecutionId.value &&
 			!isCancelling.value &&
@@ -222,10 +243,17 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 					params.projectId.value,
 					params.agentId.value,
 					continueId,
+					channel.value,
 				);
 				dbMessages = envelope.messages;
 				openSuspensions = envelope.openSuspensions;
 				runningExecutionId = envelope.activeExecutionId;
+			} else if (!capabilities.value.previewHistory) {
+				// A fresh n8n Chat has no default thread to fall back to (unlike the
+				// builder's single test chat) — nothing to load until the first
+				// message mints a session.
+				dbMessages = [];
+				runningExecutionId = null;
 			} else {
 				const envelope = await getTestChatMessages(
 					rootStore.restApiContext,
@@ -334,6 +362,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				params.projectId.value,
 				params.agentId.value,
 				threadId,
+				channel.value,
 			);
 			if (!disposed && target === targetKey() && version === queueVersion) {
 				queuedMessages.value = result.items.filter((item) => !consumedQueueIds.has(item.id));
@@ -361,6 +390,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				threadId,
 				queueId,
 				{ message },
+				channel.value,
 			);
 			if (disposed || target !== targetKey()) return 'failed';
 			queueVersion++;
@@ -384,6 +414,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		targetQueueId: string,
 		expectedQueueIds: string[],
 	): Promise<void> {
+		if (!capabilities.value.reorder) return;
 		const threadId = params.continueSessionId?.value ?? acceptedSessionId.value;
 		if (!threadId || disposed || isReorderingQueue.value) return;
 		const target = targetKey();
@@ -457,6 +488,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				params.agentId.value,
 				threadId,
 				queueId,
+				channel.value,
 			);
 			if (disposed || target !== targetKey()) return;
 			queueVersion++;
@@ -1444,8 +1476,12 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		userMessage?: ChatMessage,
 	) {
 		const target = targetKey();
-		const { baseUrl } = rootStore.restApiContext;
-		const url = `${baseUrl}/projects/${params.projectId.value}/agents/v2/${params.agentId.value}/chat`;
+		const url = agentChatBaseUrl(
+			rootStore.restApiContext,
+			params.projectId.value,
+			params.agentId.value,
+			channel.value,
+		);
 		const body: Record<string, unknown> = { message };
 		const sessionId = params.continueSessionId?.value ?? acceptedSessionId.value;
 		const newSession = params.newSession?.value === true && sessionId !== acknowledgedSessionId;
@@ -1564,8 +1600,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			});
 		}
 
-		const { baseUrl } = rootStore.restApiContext;
-		const url = `${baseUrl}/projects/${params.projectId.value}/agents/v2/${params.agentId.value}/chat/resume`;
+		const url = `${agentChatBaseUrl(rootStore.restApiContext, params.projectId.value, params.agentId.value, channel.value)}/resume`;
 		const { outcome } = await postAndConsume(
 			url,
 			{ runId: payload.runId, toolCallId: payload.toolCallId, resumeData },
@@ -1728,6 +1763,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				params.agentId.value,
 				threadId,
 				executionId,
+				channel.value,
 			);
 			if (!cancelRequested && target === targetKey() && stopTargetId === executionId) {
 				isCancelling.value = false;
@@ -1770,6 +1806,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				params.projectId.value,
 				params.agentId.value,
 				openSuspension.runId,
+				channel.value,
 			);
 			if (cancelled) markRunCancelled(openSuspension.runId);
 			else await refreshHistory();
@@ -1784,6 +1821,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 	}
 
 	return {
+		capabilities,
 		queuedMessages,
 		canSteer,
 		steeringQueueIds,

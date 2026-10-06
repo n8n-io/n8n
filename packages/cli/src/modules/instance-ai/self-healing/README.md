@@ -39,7 +39,7 @@ Routes use `/projects/:projectId/workflows/:workflowId/self-healing-results`:
 
 - `GET /:resultId`
 - `POST /:resultId/approve-and-publish`
-- `POST /:resultId/open-in-editor`
+- `POST /:resultId/apply`
 - `POST /:resultId/discard`
 - `POST /:resultId/dismiss`
 
@@ -47,11 +47,14 @@ Current workflow editors can review results. Approval also requires publish acce
 Each action resolves its suggestion from the result and returns the updated review.
 Send the editor client ID in `push-ref` for Apply actions.
 Read the returned review state before navigating. A competing action can close the suggestion first.
+Apply saves the proposed fix without publishing; the UI opens the editor when `reviewState` is `applied`.
+Detail reads do not change suggestion state. Workflow events reconcile stale suggestions, and actions
+check the current workflow before writing. If Apply fails, keep the review open and show the error.
 
 The suggestion owns applied, discarded, and outdated closure. The result stores explicit dismissal.
 Dismissal closes an attached pending suggestion in the same transaction.
 Apply uses the existing suggestion action service. An applied result stays applied if publication
-returns an error. `publicationError` describes that request only. The response includes the workflow
+returns an error. `publishError` describes that request only. The response includes the workflow
 ID and the suggestion's recorded applied version. Open the normal editor for publication status
 and recovery. Repeating a review action does not save or publish again.
 

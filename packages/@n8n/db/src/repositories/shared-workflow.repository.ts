@@ -14,6 +14,7 @@ import type {
 } from '@n8n/typeorm';
 
 import { BaseRepository } from './base-repository';
+import { WorkflowPublishHistoryRepository } from './workflow-publish-history.repository';
 import type { User } from '../entities';
 import { Project, ProjectRelation, SharedWorkflow } from '../entities';
 import { type OperationContext, TransactionRunner } from '../services/transaction';
@@ -21,7 +22,11 @@ import { chunkIds } from '../utils/chunk-ids';
 
 @Service()
 export class SharedWorkflowRepository extends BaseRepository<SharedWorkflow> {
-	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
+	constructor(
+		dataSource: DataSource,
+		transactionRunner: TransactionRunner,
+		private readonly workflowPublishHistoryRepository: WorkflowPublishHistoryRepository,
+	) {
 		super(SharedWorkflow, dataSource.manager, transactionRunner);
 	}
 
@@ -88,6 +93,7 @@ export class SharedWorkflowRepository extends BaseRepository<SharedWorkflow> {
 	async findOwnedWorkflowRemovalCandidates(
 		projectId: string,
 		workflowIds: string[],
+		options: { includeArchived?: boolean } = {},
 	): Promise<Array<{ id: string; name: string; parentFolderId: string | null }>> {
 		const candidates: Array<{ id: string; name: string; parentFolderId: string | null }> = [];
 
@@ -97,7 +103,7 @@ export class SharedWorkflowRepository extends BaseRepository<SharedWorkflow> {
 					projectId,
 					workflowId: In(chunk),
 					role: 'workflow:owner',
-					workflow: { isArchived: false },
+					...(options.includeArchived ? {} : { workflow: { isArchived: false } }),
 				},
 				relations: { workflow: { parentFolder: true } },
 				select: {
@@ -143,6 +149,18 @@ export class SharedWorkflowRepository extends BaseRepository<SharedWorkflow> {
 		}
 
 		return found;
+	}
+
+	/** IDs of the workflows owned by any of the given projects. */
+	async findOwnedWorkflowIdsByProjects(projectIds: string[]): Promise<string[]> {
+		if (projectIds.length === 0) return [];
+
+		const rows = await this.find({
+			select: { workflowId: true },
+			where: { projectId: In(projectIds), role: 'workflow:owner' },
+		});
+
+		return rows.map(({ workflowId }) => workflowId);
 	}
 
 	/** Owner project of each workflow, keyed by workflow id. */
@@ -277,16 +295,6 @@ export class SharedWorkflowRepository extends BaseRepository<SharedWorkflow> {
 		)?.project;
 	}
 
-	async getWorkflowOwningProjectIdForUpdate(workflowId: string, ctx: OperationContext) {
-		const manager = this.managerFor(ctx);
-		const lockRows = manager.connection.options.type === 'postgres' && !!ctx.trx;
-		const owner = await manager.findOne(SharedWorkflow, {
-			where: { workflowId, role: 'workflow:owner' },
-			lock: lockRows ? { mode: 'pessimistic_read' } : undefined,
-		});
-		return owner?.projectId;
-	}
-
 	async getRelationsByWorkflowIdsAndProjectIds(workflowIds: string[], projectIds: string[]) {
 		return await this.find({
 			where: {
@@ -341,7 +349,7 @@ export class SharedWorkflowRepository extends BaseRepository<SharedWorkflow> {
 			em = this.managerFor(ctx),
 		} = options;
 
-		return await em.findOne(SharedWorkflow, {
+		const sharedWorkflow = await em.findOne(SharedWorkflow, {
 			where: {
 				workflowId,
 				...where,
@@ -351,10 +359,22 @@ export class SharedWorkflowRepository extends BaseRepository<SharedWorkflow> {
 					shared: { project: true },
 					tags: includeTags,
 					parentFolder: includeParentFolder,
-					activeVersion: includeActiveVersion ? { workflowPublishHistory: true } : false,
+					activeVersion: includeActiveVersion,
 				},
 			},
 		});
+
+		const activeVersion = sharedWorkflow?.workflow.activeVersion;
+		if (activeVersion) {
+			activeVersion.workflowPublishHistory =
+				await this.workflowPublishHistoryRepository.findByVersion(
+					workflowId,
+					activeVersion.versionId,
+					em,
+				);
+		}
+
+		return sharedWorkflow;
 	}
 
 	/**
