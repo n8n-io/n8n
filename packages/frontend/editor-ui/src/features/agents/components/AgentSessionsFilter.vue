@@ -38,6 +38,7 @@ const origins: Array<{ id: AgentSessionOrigin | 'all'; name: string }> = [
 	{ id: 'sub-agent', name: i18n.baseText('agentSessions.origin.subAgent') },
 	{ id: 'schedule', name: i18n.baseText('agentSessions.origin.schedule') },
 	{ id: 'workflow', name: i18n.baseText('agentSessions.origin.workflow') },
+	{ id: 'n8n_chat_production', name: i18n.baseText('agentSessions.origin.n8nChat') },
 	{ id: 'slack', name: i18n.baseText('agentSessions.origin.slack') },
 	{ id: 'telegram', name: i18n.baseText('agentSessions.origin.telegram') },
 	{ id: 'linear', name: i18n.baseText('agentSessions.origin.linear') },

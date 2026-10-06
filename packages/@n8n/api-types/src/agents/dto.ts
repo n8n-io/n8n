@@ -28,6 +28,10 @@ export const AGENTS_LIST_SORT_OPTIONS = [
 	'createdAt:desc',
 	'updatedAt:asc',
 	'updatedAt:desc',
+	// Ranks by the requesting user's n8n Chat thread count per agent. Only the
+	// chat-filtered list supplies usage counts; other consumers of this sort
+	// option fall back to createdAt desc.
+	'usage:desc',
 ] as const;
 
 export const AGENT_SESSION_STATUSES = [
@@ -113,6 +117,15 @@ export type AgentSessionQueryFilters = Pick<
 	ListAgentSessionsQueryDto,
 	'status' | 'origin' | 'scope' | 'updatedAfter' | 'updatedBefore' | 'previewOnly'
 >;
+
+/** Cross-agent n8n Chat thread list: cursor + limit only, no status/origin/scope filters. */
+export class ListN8nChatThreadsQueryDto extends Z.class({
+	// The cursor is a thread's `updatedAt` ISO string (see `paginateByUpdatedAt`).
+	cursor: z.string().datetime().optional(),
+	limit: z.string().optional(),
+	/** Filters threads to one agent. */
+	agentId: z.string().min(1).max(128).optional(),
+}) {}
 
 export class AgentProviderModelsQueryDto extends Z.class({
 	credentialId: z.string().min(1).max(64).optional(),

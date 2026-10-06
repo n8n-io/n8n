@@ -167,4 +167,31 @@ describe('observeSystemTaskRun', () => {
 		expect(span.setAttribute).toHaveBeenCalledWith('n8n.system_task.result', 'aborted');
 		expect(span.setStatus).toHaveBeenCalledWith({ code: SpanStatus.ok });
 	});
+
+	it.each([
+		{ aborted: ['lease'], result: 'lease_lost' },
+		{ aborted: ['shutdown'], result: 'aborted' },
+		{ aborted: ['shutdown', 'lease'], result: 'lease_lost' },
+	] as const)('settles a run stopped by $aborted as $result', async ({ aborted, result }) => {
+		const eventService = mock<EventService>();
+		const controllers = { shutdown: new AbortController(), lease: new AbortController() };
+		const task = taskThat(async () => {
+			aborted.forEach((source) => controllers[source].abort());
+		});
+
+		const outcome = await observeSystemTaskRun(
+			eventService,
+			setupTracing().tracing,
+			task,
+			'durable',
+			controllers.shutdown.signal,
+			controllers.lease.signal,
+		);
+
+		expect(outcome.result).toBe(result);
+		expect(eventService.emit).toHaveBeenCalledWith(
+			'system-task-run-settled',
+			expect.objectContaining({ result }),
+		);
+	});
 });
