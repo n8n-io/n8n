@@ -29,14 +29,15 @@ async function startRun(
 
 /** How one observed run ended. A rejected run carries its error. */
 export type SystemTaskRunOutcome =
-	| { result: 'success' | 'aborted'; rejected: false }
-	| { result: 'failure' | 'aborted'; rejected: true; error: unknown };
+	| { result: 'success' | 'aborted' | 'lease_lost'; rejected: false }
+	| { result: 'failure' | 'aborted' | 'lease_lost'; rejected: true; error: unknown };
 
 /**
  * Run one occurrence of `task` with `signal`, emit its start and its settlement,
- * paired by construction, and record one `system_task.run` span around it. Never
- * rejects: a run that settles after `signal` aborted ends as `aborted`, otherwise
- * a resolution ends as `success` and a rejection as `failure`.
+ * paired by construction, and record one `system_task.run` span around it. The
+ * run also stops when `leaseSignal` aborts. Never rejects: a run that settles
+ * after `leaseSignal` aborted ends as `lease_lost`, after `signal` aborted as
+ * `aborted`, otherwise a resolution ends as `success` and a rejection as `failure`.
  */
 export async function observeSystemTaskRun(
 	eventService: EventService,
@@ -44,8 +45,16 @@ export async function observeSystemTaskRun(
 	task: Pick<SystemTask, 'name' | 'run'>,
 	mode: SystemTaskMode,
 	signal: AbortSignal,
+	leaseSignal?: AbortSignal,
 ): Promise<SystemTaskRunOutcome> {
 	const { name } = task;
+	const runSignal = leaseSignal ? AbortSignal.any([signal, leaseSignal]) : signal;
+	const abortResult = (): 'lease_lost' | 'aborted' | undefined => {
+		if (leaseSignal?.aborted) {
+			return 'lease_lost';
+		}
+		return signal.aborted ? 'aborted' : undefined;
+	};
 	const spanOptions = {
 		name: 'System task run',
 		op: 'system_task.run',
@@ -63,13 +72,13 @@ export async function observeSystemTaskRun(
 	return await startSpan(spanOptions, async (span: Span) => {
 		const startedAt = performance.now();
 		emitSystemTaskMetric(eventService, 'system-task-run-started', { name, mode });
-		const outcome = await startRun(task, signal, mode).then(
+		const outcome = await startRun(task, runSignal, mode).then(
 			(): SystemTaskRunOutcome => ({
-				result: signal.aborted ? 'aborted' : 'success',
+				result: abortResult() ?? 'success',
 				rejected: false,
 			}),
 			(error: unknown): SystemTaskRunOutcome => ({
-				result: signal.aborted ? 'aborted' : 'failure',
+				result: abortResult() ?? 'failure',
 				rejected: true,
 				error,
 			}),
@@ -81,7 +90,7 @@ export async function observeSystemTaskRun(
 			durationMs: performance.now() - startedAt,
 		});
 		span.setAttribute(SYSTEM_TASK_ATTRIBUTES.result, outcome.result);
-		// An abort is an expected shutdown, so only a real failure errors the span.
+		// A shutdown or a lost lease is an expected stop, so only a real failure errors the span.
 		if (outcome.result === 'failure') {
 			span.setStatus({ code: SpanStatus.error, message: ensureError(outcome.error).message });
 		} else {
