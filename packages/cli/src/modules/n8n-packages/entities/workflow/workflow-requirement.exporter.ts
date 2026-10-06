@@ -3,14 +3,14 @@ import { Service } from '@n8n/di';
 
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
-import type { WorkflowSubWorkflowRequirement } from './workflow.types';
+import type { WorkflowDependencyRequirement } from './workflow.types';
 import type { ManifestEntry } from '../../spec/manifest.schema';
 import type { PackageWorkflowRequirement } from '../../spec/requirements.schema';
 import { groupRequirementUsage } from '../requirement-source';
 
 export interface WorkflowRequirementExportRequest {
 	user: User;
-	requirements: WorkflowSubWorkflowRequirement[];
+	requirements: WorkflowDependencyRequirement[];
 	workflows: ManifestEntry[];
 }
 

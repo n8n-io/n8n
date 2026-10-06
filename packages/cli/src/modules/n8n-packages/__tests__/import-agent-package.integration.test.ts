@@ -26,6 +26,8 @@ import {
 } from './fixtures/agent-package-fixtures';
 import { importPackageRequest } from './fixtures/import-request';
 import { streamToBuffer } from './utils/tar-support';
+import { AgentSelectionExporter } from '../entities/agent/agent-selection.exporter';
+import { CapturingWriter } from '../io/__tests__/utils/capturing-writer';
 import { DirectoryPackageWriter } from '../io/directory/directory-package-writer';
 import { TarPackageWriter } from '../io/tar/tar-package-writer';
 import { N8nPackagesService } from '../n8n-packages.service';
@@ -155,6 +157,35 @@ describe('Agent package import boundary', () => {
 			).rejects.toThrow('Importing packages that contain Agents is not supported yet.');
 		},
 	);
+
+	it('guards Agent selection before loading Agent tables when the module is disabled', async () => {
+		expect(Container.get(ModuleRegistry).isActive('agents')).toBe(false);
+		const exporter = Container.get(AgentSelectionExporter);
+		await expect(
+			exporter.export({ user: owner, writer: new CapturingWriter(), agentIds: ['selected-agent'] }),
+		).rejects.toThrow('agents module is disabled');
+		const project = await createTeamProject('Available project', owner);
+		const workflow = await createWorkflow({ name: 'Available workflow', nodes: [] }, project);
+		for (const selection of [
+			{ workflowIds: [workflow.id] },
+			{ folderIds: ['folder'] },
+			{ projectIds: [project.id] },
+			{ projectIds: [project.id], projectWorkflowIds: [] },
+		]) {
+			const result = await exporter.export({
+				user: owner,
+				writer: new CapturingWriter(),
+				...selection,
+			});
+			expect(result.agentEntries).toEqual([]);
+		}
+		const result = await service.exportPackageToWriter(
+			{ user: owner, projectIds: [project.id] },
+			new CapturingWriter(),
+		);
+		expect(result.manifest.workflows?.map(({ id }) => id)).toEqual([workflow.id]);
+		expect(result.manifest.agents).toBeUndefined();
+	});
 
 	it('imports a workflow package with an empty Agent collection while Agents are disabled', async () => {
 		const fixture = projectAgentsFixture();

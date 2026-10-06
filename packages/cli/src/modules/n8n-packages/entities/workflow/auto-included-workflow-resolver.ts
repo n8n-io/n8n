@@ -11,7 +11,10 @@ import {
 	assertEveryRequestedEntityAccessible,
 } from '../package-export.errors';
 import { applyWorkflowVersionPolicy, needsActiveVersion } from './workflow-version-policy';
-import type { WorkflowSubWorkflowRequirement } from './workflow.types';
+import type {
+	WorkflowDependencyRequirement,
+	WorkflowSubWorkflowRequirement,
+} from './workflow.types';
 import type { WorkflowVersionPolicy } from '../../n8n-packages.types';
 
 export type WorkflowExportOrigin = 'top-level' | 'folder' | 'project';
@@ -38,7 +41,7 @@ export class AutoIncludedWorkflowResolver {
 
 	async resolve(options: {
 		user: User;
-		requirements: WorkflowSubWorkflowRequirement[];
+		requirements: WorkflowDependencyRequirement[];
 		topLevelWorkflowIds: string[];
 		folderWorkflowIds: string[];
 		projectWorkflowIds: string[];
@@ -51,6 +54,15 @@ export class AutoIncludedWorkflowResolver {
 			projectWorkflowIds: options.projectWorkflowIds,
 		});
 		const exportedWorkflowIds = new Set(originsByWorkflowId.keys());
+		// Agent references seed inclusion without marking the workflows as already exported.
+		for (const requirement of options.requirements) {
+			if ('workflowId' in requirement) continue;
+			const origins =
+				originsByWorkflowId.get(requirement.referencedWorkflowId) ??
+				new Set<WorkflowExportOrigin>();
+			origins.add(requirement.origin);
+			originsByWorkflowId.set(requirement.referencedWorkflowId, origins);
+		}
 
 		this.propagateOrigins(originsByWorkflowId, options.requirements);
 
@@ -105,11 +117,12 @@ export class AutoIncludedWorkflowResolver {
 	 */
 	private propagateOrigins(
 		originsByWorkflowId: Map<string, Set<WorkflowExportOrigin>>,
-		requirements: WorkflowSubWorkflowRequirement[],
+		requirements: WorkflowDependencyRequirement[],
 	): void {
 		const requirementsByWorkflowId = new Map<string, WorkflowSubWorkflowRequirement[]>();
 
 		for (const requirement of requirements) {
+			if (!('workflowId' in requirement)) continue;
 			const current = requirementsByWorkflowId.get(requirement.workflowId) ?? [];
 			current.push(requirement);
 			requirementsByWorkflowId.set(requirement.workflowId, current);

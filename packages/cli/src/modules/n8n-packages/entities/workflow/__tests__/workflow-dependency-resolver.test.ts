@@ -58,6 +58,36 @@ function makeResolver(workflows: WorkflowEntity[]) {
 }
 
 describe('WorkflowDependencyResolver', () => {
+	it.each(['direct', 'transitive'] as const)(
+		'combines Agent roots with packaged workflows for %s traversal',
+		async (traversal) => {
+			const { resolver } = makeResolver([
+				makeWorkflow('same-id', 'workflow-c'),
+				makeWorkflow('workflow-b', 'workflow-d'),
+			]);
+			const agent = {
+				agentId: 'same-id',
+				projectId: 'project',
+				referencedWorkflowId: 'workflow-b',
+				origin: 'top-level' as const,
+			};
+			const requirements = await resolver.resolve({
+				user,
+				workflowIds: ['same-id'],
+				agentRequirements: [agent],
+				traversal,
+				workflowVersionPolicy: 'latest',
+			});
+			expect(requirements).toEqual([
+				agent,
+				{ workflowId: 'same-id', referencedWorkflowId: 'workflow-c' },
+				...(traversal === 'transitive'
+					? [{ workflowId: 'workflow-b', referencedWorkflowId: 'workflow-d' }]
+					: []),
+			]);
+		},
+	);
+
 	it('traverses nested sub-workflow dependencies', async () => {
 		const { resolver } = makeResolver([
 			makeWorkflow('workflow-a', 'workflow-b'),

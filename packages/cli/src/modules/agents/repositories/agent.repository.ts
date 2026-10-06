@@ -56,6 +56,31 @@ export class AgentRepository extends BaseRepository<Agent> {
 		});
 	}
 
+	async findForExport(agentIds: string[], projectIds: string[] | null): Promise<Agent[]> {
+		if (agentIds.length === 0 || projectIds?.length === 0) return [];
+		return await this.find({
+			where: { id: In(agentIds), ...(projectIds === null ? {} : { projectId: In(projectIds) }) },
+			relations: { activeVersion: true },
+			order: { id: 'ASC' },
+		});
+	}
+
+	async findIdsInProjectsForExport(projectIds: string[]): Promise<string[]> {
+		if (projectIds.length === 0) return [];
+		const agents = await this.find({
+			select: ['id'],
+			where: { projectId: In(projectIds) },
+			order: { id: 'ASC' },
+		});
+		return agents.map(({ id }) => id);
+	}
+
+	async findExistingIds(agentIds: string[]): Promise<Set<string>> {
+		if (agentIds.length === 0) return new Set();
+		const agents = await this.find({ select: ['id'], where: { id: In(agentIds) } });
+		return new Set(agents.map(({ id }) => id));
+	}
+
 	/**
 	 * Lean listing for search surfaces: selects only summary columns, skipping
 	 * the JSON config columns and the activeVersion join, and pushes all

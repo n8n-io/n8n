@@ -28,6 +28,27 @@ import {
 } from '@/roles/scopes/project-scopes.ee';
 import { ALL_SCOPES } from '@/scope-information';
 
+describe('Agent package export scope', () => {
+	it.each(
+		Object.entries({
+			owner: GLOBAL_OWNER_SCOPES,
+			admin: GLOBAL_ADMIN_SCOPES,
+			personalOwner: PERSONAL_PROJECT_OWNER_SCOPES,
+			projectAdmin: REGULAR_PROJECT_ADMIN_SCOPES,
+			editor: PROJECT_EDITOR_SCOPES,
+			viewer: PROJECT_VIEWER_SCOPES,
+		}),
+	)('grants Agent export to %s', (_role, scopes) => {
+		expect(scopes).toContain('agent:export');
+	});
+	it('keeps export separate from chat access and API-key scopes', () => {
+		expect(PROJECT_CHAT_USER_SCOPES).not.toContain('agent:export');
+		expect(GLOBAL_MEMBER_SCOPES).not.toContain('agent:export');
+		expect(PROJECT_CUSTOM_ROLE_SCOPES.has('agent:export')).toBe(true);
+		expect(API_KEY_RESOURCES).not.toHaveProperty('agent');
+	});
+});
+
 describe('custom role scope whitelists', () => {
 	const allScopes = new Set<string>(ALL_SCOPES);
 

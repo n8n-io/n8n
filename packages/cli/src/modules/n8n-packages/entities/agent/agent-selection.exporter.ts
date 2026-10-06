@@ -1,0 +1,228 @@
+import { ModuleRegistry } from '@n8n/backend-common';
+import { ProjectScopeService } from '@n8n/backend-services';
+import { Container, Service } from '@n8n/di';
+
+import type { AgentRepository } from '@/modules/agents/repositories/agent.repository';
+import { ProjectService } from '@/services/project.service.ee';
+
+import type {
+	AgentExportRequirements,
+	AgentSelectionExportRequest,
+	AgentSelectionExportResult,
+	PreparedAgentExport,
+} from './agent-export.types';
+import { AgentRequirementsExtractor } from './agent-requirements.extractor';
+import type { AgentExporter } from './agent.exporter';
+import { MissingWorkflowDependencyPolicy, WorkflowVersionPolicy } from '../../n8n-packages.types';
+import type { PackageAgentRequirement } from '../../spec/requirements.schema';
+import {
+	assertEveryRequestedEntityAccessible,
+	PackageExportBlockedError,
+} from '../package-export.errors';
+import { ProjectExporter } from '../project/project.exporter';
+import { addRequirementUsage } from '../requirement-source';
+import { mergeRequirements } from '../requirements.types';
+
+interface PreparedSelection {
+	snapshot: PreparedAgentExport;
+	requirements: AgentExportRequirements;
+}
+
+@Service()
+export class AgentSelectionExporter {
+	constructor(
+		private readonly moduleRegistry: ModuleRegistry,
+		private readonly projectScopeService: ProjectScopeService,
+		private readonly projectService: ProjectService,
+		private readonly projectExporter: ProjectExporter,
+		private readonly requirementsExtractor: AgentRequirementsExtractor,
+	) {}
+
+	async export(request: AgentSelectionExportRequest): Promise<AgentSelectionExportResult> {
+		const result: AgentSelectionExportResult = {
+			agentEntries: [],
+			projectEntries: [],
+			projectTargetsById: new Map(request.projectTargetsById),
+			requirements: mergeRequirements(),
+			workflowRequirements: [],
+			agentRequirements: [],
+			agentIds: [],
+			counts: { agents: 0 },
+		};
+		const projectIds = request.projectIds ?? [];
+		const agentIds = request.agentIds ?? [];
+		if (
+			projectIds.length > 0 &&
+			[agentIds, request.workflowIds, request.folderIds].some((ids) => ids?.length)
+		) {
+			throw new PackageExportBlockedError(
+				'Select whole projects or loose entities. Export aborted.',
+			);
+		}
+		if (
+			agentIds.length === 0 &&
+			(projectIds.length === 0 || request.projectWorkflowIds !== undefined)
+		) {
+			return result;
+		}
+		if (!this.moduleRegistry.isActive('agents')) {
+			if (agentIds.length > 0) {
+				throw new PackageExportBlockedError(
+					'Agents cannot be exported because the agents module is disabled.',
+				);
+			}
+			return result;
+		}
+
+		await this.assertProjectsAccessible(request);
+		// Resolve Agent services only after the module check.
+		const { AgentRepository } = await import('@/modules/agents/repositories/agent.repository.js');
+		const { AgentExporter } = await import('./agent.exporter.js');
+		const exporter = Container.get(AgentExporter);
+		const prepared = await this.prepareSelection(request, Container.get(AgentRepository), exporter);
+		this.assertAgentDependenciesIncluded(request, prepared);
+
+		if (projectIds.length > 0) await this.addProjectShells(request, prepared, result);
+		for (const { snapshot } of prepared) {
+			const prefix = projectIds.length > 0 ? result.projectTargetsById.get(snapshot.projectId) : '';
+			result.agentEntries.push(await exporter.write(snapshot, request.writer, prefix));
+		}
+		result.requirements = mergeRequirements(...prepared.map(({ requirements }) => requirements));
+		result.workflowRequirements = prepared.flatMap(({ requirements }) => requirements.workflows);
+		result.agentRequirements = this.collectAgentRequirements(prepared);
+		result.agentIds = result.agentEntries.map(({ id }) => id);
+		result.counts.agents = result.agentEntries.length;
+		return result;
+	}
+
+	private async assertProjectsAccessible(request: AgentSelectionExportRequest): Promise<void> {
+		if (!request.projectIds?.length) return;
+		const projects = await this.projectService.findProjectsByIdsForUser(
+			request.user,
+			request.projectIds,
+			['project:export'],
+		);
+		await assertEveryRequestedEntityAccessible(
+			'project',
+			request.projectIds,
+			projects,
+			async (ids) => await this.projectService.findExistingProjectIds(ids),
+		);
+	}
+
+	private async prepareSelection(
+		request: AgentSelectionExportRequest,
+		repository: AgentRepository,
+		exporter: AgentExporter,
+	): Promise<PreparedSelection[]> {
+		const projectIds = request.projectIds ?? [];
+		const projectAgentIds = await repository.findIdsInProjectsForExport(projectIds);
+		const pending = [...new Set([...(request.agentIds ?? []), ...projectAgentIds])];
+		const seen = new Set(pending);
+		const prepared: PreparedSelection[] = [];
+		const exportableProjects = await this.projectScopeService.getProjectIds(request.user, [
+			'agent:export',
+		]);
+		const policy = request.agentVersionPolicy ?? WorkflowVersionPolicy.Latest;
+		while (pending.length > 0) {
+			const ids = pending.splice(0);
+			const agents = await repository.findForExport(ids, exportableProjects);
+			await assertEveryRequestedEntityAccessible(
+				'Agent',
+				ids,
+				agents,
+				async (missingIds) => await repository.findExistingIds(missingIds),
+			);
+			const agentsById = new Map(agents.map((agent) => [agent.id, agent]));
+			for (const id of ids) {
+				const agent = agentsById.get(id);
+				if (!agent) continue;
+				const snapshot = await exporter.prepare(agent, policy);
+				if (!snapshot) continue;
+				const requirements = this.requirementsExtractor.extract(
+					snapshot,
+					projectIds.length > 0 ? 'project' : 'top-level',
+				);
+				prepared.push({ snapshot, requirements });
+				if (
+					request.missingAgentDependencyPolicy !== MissingWorkflowDependencyPolicy.IncludeInPackage
+				)
+					continue;
+				this.enqueueDependencies(requirements.agentIds, seen, pending);
+			}
+		}
+		return prepared;
+	}
+
+	private enqueueDependencies(ids: string[], seen: Set<string>, pending: string[]): void {
+		for (const id of ids) {
+			if (seen.has(id)) continue;
+			seen.add(id);
+			pending.push(id);
+		}
+	}
+
+	private assertAgentDependenciesIncluded(
+		request: AgentSelectionExportRequest,
+		prepared: PreparedSelection[],
+	): void {
+		if (request.missingAgentDependencyPolicy === MissingWorkflowDependencyPolicy.ReferenceOnly)
+			return;
+		const included = new Set(prepared.map(({ snapshot }) => snapshot.content.id));
+		for (const { snapshot, requirements } of prepared) {
+			const missing = requirements.agentIds.filter((id) => !included.has(id));
+			if (missing.length === 0) continue;
+			throw new PackageExportBlockedError(
+				`Agent "${snapshot.content.id}" has Agent dependencies not included in the package. Export aborted.`,
+				{
+					description: `Agent IDs not included in the package: ${missing.slice(0, 20).join(', ')}`,
+				},
+			);
+		}
+	}
+
+	private async addProjectShells(
+		request: AgentSelectionExportRequest,
+		prepared: PreparedSelection[],
+		result: AgentSelectionExportResult,
+	): Promise<void> {
+		const projectIds = [...new Set(prepared.map(({ snapshot }) => snapshot.projectId))].filter(
+			(id) => !result.projectTargetsById.has(id),
+		);
+		if (projectIds.length === 0) return;
+		const projects = await this.projectExporter.export({
+			user: request.user,
+			writer: request.writer,
+			projectIds,
+			workflowIds: [],
+			includeTags: false,
+			includeArchivedWorkflows: false,
+			workflowVersionPolicy: WorkflowVersionPolicy.Latest,
+		});
+		result.projectEntries.push(...projects.entries);
+		for (const [id, target] of projects.projectTargetsById)
+			result.projectTargetsById.set(id, target);
+	}
+
+	private collectAgentRequirements(prepared: PreparedSelection[]): PackageAgentRequirement[] {
+		const names = new Map(
+			prepared.map(({ snapshot }) => [snapshot.content.id, snapshot.content.name]),
+		);
+		const byId = new Map<string, PackageAgentRequirement>();
+		for (const { snapshot, requirements } of prepared) {
+			for (const id of requirements.agentIds) {
+				const requirement = byId.get(id) ?? {
+					id,
+					...(names.has(id) ? { name: names.get(id) } : {}),
+					usedBy: [],
+				};
+				addRequirementUsage(requirement, {
+					agentId: snapshot.content.id,
+					projectId: snapshot.projectId,
+				});
+				byId.set(id, requirement);
+			}
+		}
+		return [...byId.values()];
+	}
+}

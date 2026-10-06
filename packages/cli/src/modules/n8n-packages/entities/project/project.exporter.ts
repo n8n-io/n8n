@@ -17,7 +17,7 @@ import {
 	PackageEntityNotFoundError,
 } from '../package-export.errors';
 import { mergeRequirements } from '../requirements.types';
-import type { WorkflowExportRequirements } from '../requirements.types';
+import type { ExportRequirements } from '../requirements.types';
 import { WorkflowExporter } from '../workflow/workflow.exporter';
 import type { WorkflowExportResult } from '../workflow/workflow.exporter';
 
@@ -40,7 +40,7 @@ interface ProjectExportResult {
 	entries: ManifestEntry[];
 	folderEntries: ManifestEntry[];
 	workflowEntries: ManifestEntry[];
-	requirements: WorkflowExportRequirements;
+	requirements: ExportRequirements;
 	projectTargetsById: Map<string, string>;
 }
 

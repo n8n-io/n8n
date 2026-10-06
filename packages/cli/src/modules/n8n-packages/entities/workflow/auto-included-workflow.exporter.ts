@@ -2,7 +2,7 @@ import type { Folder, Project } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { UnexpectedError } from 'n8n-workflow';
 
-import type { WorkflowNodeTypeSource } from './node-type-usage';
+import type { NodeTypeSource } from './node-type-usage';
 import type { AutoIncludedWorkflow } from './auto-included-workflow-resolver';
 import { WorkflowSerializer } from './workflow.serializer';
 import {
@@ -18,7 +18,7 @@ import { DataTableRequirementsExtractor } from '../data-table/data-table-require
 import type { WorkflowDataTableRequirement } from '../data-table/data-table.types';
 import { FolderSerializer } from '../folder/folder.serializer';
 import { ProjectSerializer } from '../project/project.serializer';
-import type { WorkflowExportRequirements } from '../requirements.types';
+import type { ExportRequirements } from '../requirements.types';
 import { TagRequirementsExtractor } from '../tag/tag-requirements.extractor';
 import type { WorkflowTagUsage } from '../tag/tag.types';
 import { VariableRequirementsExtractor } from '../variable/variable-requirements.extractor';
@@ -38,7 +38,7 @@ export interface AutoIncludedWorkflowExportResult {
 	workflowEntries: ManifestEntry[];
 	folderEntries: ManifestEntry[];
 	projectEntries: ManifestEntry[];
-	requirements: WorkflowExportRequirements;
+	requirements: ExportRequirements;
 	projectTargetsById: Map<string, string>;
 }
 
@@ -96,7 +96,7 @@ export class AutoIncludedWorkflowExporter {
 		const dataTables: WorkflowDataTableRequirement[] = [];
 		const variables: WorkflowVariableRequirement[] = [];
 		const tags: WorkflowTagUsage[] = [];
-		const nodeTypes: WorkflowNodeTypeSource[] = [];
+		const nodeTypes: NodeTypeSource[] = [];
 
 		for (const included of request.workflows) {
 			if (workflowEntriesById.has(included.workflow.id)) continue;
