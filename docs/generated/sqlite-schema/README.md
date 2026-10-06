@@ -10,6 +10,8 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | ---- | ------- | ------- | ---- |
 | [activity_event](activity_event.md) | 11 |  | table |
 | [agent_background_job](agent_background_job.md) | 20 |  | table |
+| [agent_budget_applied_call](agent_budget_applied_call.md) | 2 |  | table |
+| [agent_budget_spend](agent_budget_spend.md) | 4 |  | table |
 | [agent_channel_status](agent_channel_status.md) | 11 |  | table |
 | [agent_chat_attachments](agent_chat_attachments.md) | 12 |  | table |
 | [agent_chat_subscriptions](agent_chat_subscriptions.md) | 6 |  | table |
@@ -428,6 +430,16 @@ erDiagram
   varchar_255_ title
   datetime_3_ updatedAt
   varchar_36_ workflowId
+}
+"agent_budget_applied_call" {
+  varchar callId PK
+  datetime_3_ createdAt
+}
+"agent_budget_spend" {
+  datetime_3_ createdAt
+  varchar_128_ key PK
+  REAL totalUsd
+  datetime_3_ updatedAt
 }
 "agent_channel_status" {
   varchar_36_ agentId PK

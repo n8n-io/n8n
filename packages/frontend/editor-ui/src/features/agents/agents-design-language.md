@@ -215,6 +215,15 @@ skill, What the skill does, and Allowed tools. Use `Save skill` to confirm.
 - Confirm UI text uses i18n.
 - Confirm the layout works at 375 by 667 pixels in light and dark themes.
 
+## Recoverable plan errors
+
+Show rejected plan input and revision conflicts in the normal tool-call row.
+Keep the warning icon and use a short tooltip. Do not show a separate error
+callout or a Fix with Assistant action for these errors. Keep the full input
+and output in the collapsed details and the trace. Keep earlier failed calls
+visible after a successful retry. Unexpected failures keep the existing error
+treatment.
+
 ## Extend this document
 
 Add a section when an Agent-specific pattern applies to two or more Agent

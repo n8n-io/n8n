@@ -341,6 +341,7 @@ export {
 	type PublicCreateDestination,
 	type PublicDestinationType,
 } from './log-streaming/public-destination.dto';
+export { LogStreamingEventTypesPublicDto } from './log-streaming/log-streaming-public.dto';
 
 export { PaginationDto, MAX_ITEMS_PER_PAGE } from './pagination/pagination.dto';
 
@@ -624,6 +625,9 @@ export {
 export {
 	PromotionChangesDto,
 	PromotionChangesQueryDto,
+	PROMOTIONS_WORKFLOWS_MOVED_CROSS_PROJECT_CODE,
+	parsePromotionsWorkflowsMovedCrossProjectMeta,
+	promotionsWorkflowsMovedCrossProjectMetaSchema,
 	promotableResourceSchema,
 	promotableResourceStatusSchema,
 	promotableResourceTypeSchema,
@@ -635,9 +639,13 @@ export {
 	type PromotableResourceType,
 	type PromoteRequest,
 	type PromotionChanges,
+	type PromotionsWorkflowsMovedCrossProjectMeta,
 } from './promotions/promotable-resource.dto';
 
-export { promotionDisplayNameSchema } from './promotions/promotion-common.dto';
+export {
+	PROMOTION_BRANCH_PREFIX,
+	promotionDisplayNameSchema,
+} from './promotions/promotion-common.dto';
 export {
 	CreatePromotionProviderDto,
 	ListPromotionProvidersQueryDto,

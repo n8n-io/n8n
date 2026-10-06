@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/require-await, @typescript-eslint/unbound-method -- async mock stubs and unbound-method references are acceptable test idioms */
 import type { Mocked } from 'vitest';
+import type { EventService } from '@n8n/backend-services';
 import { mockLogger } from '@n8n/backend-test-utils';
 import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
@@ -7,6 +8,7 @@ import { mock } from 'vitest-mock-extended';
 import type { Agent } from '../entities/agent.entity';
 import { AgentRuntimeCacheService } from '../agent-runtime-cache.service';
 import type { AgentModificationTelemetryService } from '../agent-modification-telemetry.service';
+import { AgentSaveCompletionService } from '../agent-save-completion.service';
 import { AgentSkillsService } from '../agent-skills.service';
 import type { AgentUpdateBroadcaster } from '../agent-update-broadcaster';
 import type { AgentRepository } from '../repositories/agent.repository';
@@ -57,8 +59,11 @@ describe('AgentSkillsService', () => {
 		service = new AgentSkillsService(
 			mockLogger(),
 			agentRepository,
-			modificationTelemetry,
-			agentUpdateBroadcaster,
+			new AgentSaveCompletionService(
+				mock<EventService>(),
+				agentUpdateBroadcaster,
+				modificationTelemetry,
+			),
 		);
 	});
 
@@ -125,7 +130,7 @@ describe('AgentSkillsService', () => {
 					[result.id]: expect.objectContaining({ references: result.skill.references }),
 				},
 			}),
-			undefined,
+			{},
 		);
 	});
 
@@ -366,7 +371,7 @@ describe('AgentSkillsService', () => {
 					summarize_notes: skill,
 				},
 			}),
-			undefined,
+			{},
 		);
 	});
 

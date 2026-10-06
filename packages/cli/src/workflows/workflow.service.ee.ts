@@ -38,10 +38,7 @@ import { EnterpriseCredentialsService } from '@/credentials/credentials.service.
 import { FolderNotFoundError } from '@/errors/folder-not-found.error';
 import { BadRequestError, NotFoundError } from '@n8n/errors';
 import { TransferWorkflowError } from '@/errors/response-errors/transfer-workflow.error';
-import {
-	AGENT_CONFIG_ID_KEYS,
-	extractAgentCredentialIds,
-} from '@/modules/agents/utils/extract-agent-credential-ids';
+import { extractAgentCredentialIds } from '@/modules/agents/utils/extract-agent-credential-ids';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { ProjectService } from '@/services/project.service.ee';
@@ -386,8 +383,8 @@ export class EnterpriseWorkflowService {
 			}
 
 			const inlineAgent = this.parseInlineAgent(current.parameters?.inlineAgent);
-			if (inlineAgent) {
-				ids.push(...extractAgentCredentialIds(inlineAgent, AGENT_CONFIG_ID_KEYS));
+			if (isRecord(inlineAgent)) {
+				ids.push(...extractAgentCredentialIds(inlineAgent.config));
 				stack.push(...this.getAgentToolNodes(inlineAgent));
 			}
 		}
