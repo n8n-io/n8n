@@ -1,0 +1,75 @@
+packages/cli/src/modules/instance-ai/__tests__/workflow-verification-obligation-service.test.ts
+  s_db74c72b258827::t_0a37a8f4ef779d 5,14,96-97
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.controller.test.ts
+  s_db74c72b258827::t_7ea7169993e73d 1639-1644,1657-1662
+  s_db74c72b258827::t_25d608910346b0 903,1631,1653,1668,1679,1694,1714,2771
+  s_db74c72b258827::t_30c447dd04cb39 191
+  s_db74c72b258827::t_13e6dbb5a5b896 76
+  s_db74c72b258827::t_0905c6acc63db4 208,241,271,299,315,345,382,437,456,560-565,591-596,701,726-731,1689,2843-2848,2907-2912,3130-3135,3232-3237
+packages/cli/src/modules/agents/integrations/__tests__/n8n-memory.test.ts
+  s_db74c72b258827::t_85f0667c763e61 370-408,410-416,418-476
+  s_db74c72b258827::t_f61710c22b62e5 409,417
+packages/@n8n/instance-ai/src/stream/__tests__/agent-chunk-publisher.test.ts
+  s_db74c72b258827::t_5fe013cd64533e 30
+  s_db74c72b258827::t_6a5ba5e03183fe 1-29,31-219
+packages/cli/src/modules/instance-ai/__tests__/onboarding.test.ts
+  s_db74c72b258827::t_4a497610743a49 35-39,46,122,124,127,134
+  s_db74c72b258827::t_6ebf4b30457225 68-79,97-105,146-154
+packages/cli/test/integration/instance-ai-preference-card.api.test.ts
+  s_db74c72b258827::t_1f8c68d084b312 37-38
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.service.test.ts
+  s_db74c72b258827::t_199c977887e6c8 1322,1324,1328-1344,1349-1353,1355,1452,1455-1459,1462-1470,1472-1473,1477,1481,1484-1485,1488-1489,1492,1495-1498,1501,1503,1505,1508-1509,1512-1513
+  s_db74c72b258827::t_389eb71c9975a3 379-380,409,412-413,1808,1822,1830,1888,1906,1929
+  s_db74c72b258827::t_efa07f72657b93 2756-2757,2770-2771,2822,2829-2838,2850,2867
+  s_db74c72b258827::t_95ccf4a66d6902 279-295,360,535,608,894,965,1056,1087,1804-1805,1807,1809-1819,1821,1824,1826,1829,1831-1838,1840-1844,1846,1848,1850-1861,1863,1865-1871,1873-1876,1878-1880,1883-1887,1889-1891,1895-1896,1898-1900,1905,1907-1915,1917,1919-1923,1930-1932,1936-1940,1944
+  s_db74c72b258827::t_cb20f057326a37 1948-1949,1952-1953,1956-1957,1959-1960,1962,1964,1966,1968,1971,1974-1975,1980-1981,1985-1986,1991-1992,1994,1997-1998
+  s_db74c72b258827::t_b5ef775fe58aad 3380-3381,3386-3388,3390-3391,3400-3401,3406,3412,3422,3435-3439
+  s_db74c72b258827::t_225b64a7d570cc 1893,1928,1934,1941
+  s_db74c72b258827::t_1ad146a85a717a 298,301,305-306,308-309,1127-1129,1131,1133,1137,1145-1146,1148,1162
+  s_db74c72b258827::t_628ef54893f30b 2200,2341-2345
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-memory.service.test.ts
+  s_db74c72b258827::t_537ef03b725112 1-7,10-11,15,19-20,23,28-44,101,111-112,115,117-118
+  s_db74c72b258827::t_5ef98a9a14eac7 126-128,132-133,168,178
+  s_db74c72b258827::t_97bee22fa3b215 214,555-559
+  s_db74c72b258827::t_187cb36fe14272 1105-1106,1109-1115,1117,1120-1121,1123,1126-1139,1141,1143-1161,1165-1166,1170,1175,1180-1193,1234,1282-1283,1285-1286,1290,1295-1299,1301,1303-1306,1310,1315-1325,1327,1334,1337-1342,1346-1348,1350-1351,1355-1361,1370-1371,1373,1376-1379,1384,1387,1394,1408,1414-1428,1448
+  s_db74c72b258827::t_73cd66ae6503c2 1395,1402-1406
+  s_db74c72b258827::t_1a569977c57a98 553,917-929,1019,1024,1052-1056,1061
+  s_db74c72b258827::t_6ebf4b30457225 144-162
+packages/cli/test/integration/instance-ai/instance-ai-thread-tabs.integration.test.ts
+  s_db74c72b258827::t_ff9e8d84466ff9 7-8,34-35,42,45,49-60,68-69,71-72
+packages/cli/src/modules/agents/system-agents/__tests__/system-agent-execution.service.test.ts
+  s_db74c72b258827::t_7708c5f571d509 328
+  s_db74c72b258827::t_756c9f7a454ffc 1-327,329-456
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.service.threadPushRef.test.ts
+  s_db74c72b258827::t_f99b7e6ee334b7 42,102,104-126
+packages/cli/src/modules/instance-ai/workflow-suggestions/__tests__/workflow-suggestion.service.integration.test.ts
+  s_db74c72b258827::t_4c9b200ec69fa1 32-33
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-temporary-workflow.service.test.ts
+  s_db74c72b258827::t_ae6930bac2b6f5 11-12,36,186,215,236
+packages/cli/src/modules/instance-ai/event-bus/__tests__/interrupted-run-sweeper.test.ts
+  s_db74c72b258827::t_c92c7414e1bd5b 4,7-10,67-70,102-113,128,214-215,225,233-234,289,294,298-300
+packages/cli/src/modules/instance-ai/__tests__/assistant-agent.provider.test.ts
+  s_db74c72b258827::t_d81398b29b2533 2,26,30
+  s_db74c72b258827::t_e9e817f8de4303 27-29
+  s_db74c72b258827::t_7f4678d2438fce 1,3-25,31-137
+packages/cli/src/modules/agents/__tests__/agent-message-queue-consumer.service.test.ts
+  s_db74c72b258827::t_d93e7575fee3d2 4,25,27,42-44,114,127,428-493
+packages/cli/src/modules/instance-ai/workflow-suggestions/__tests__/workflow-suggestion.repository.integration.test.ts
+  s_db74c72b258827::t_4c9b200ec69fa1 54-55
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "21cfdc17ff488155d14a138c4ac43d42be3168e2",
+  "prompts": {},
+  "sessions": {
+    "s_db74c72b258827": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "623f2f12-b478-4119-a5b9-9b84971b2bbe",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}
