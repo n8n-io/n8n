@@ -3,7 +3,7 @@ import { ensureError } from '@n8n/utils/errors/ensure-error';
 
 import { backoff } from './backoff';
 import { LeaseLostError } from '../errors';
-import { LONG_RUN_THRESHOLD_IN_LEASES } from './lease-constants';
+import { LONG_RUN_THRESHOLD_IN_LEASES, MIN_RENEWAL_INTERVAL_MS } from './lease-constants';
 import { LeaseHeartbeat } from './lease-heartbeat';
 import type { LeaseRenewalResult } from './lease-heartbeat';
 import { DEFAULT_EXECUTOR_OPTIONS, type ExecutorOptions } from './options';
@@ -21,7 +21,7 @@ type HeartbeatRun = {
 	claim: ClaimedTaskRef;
 	/** `performance.now()` just before the write that last set the lease. */
 	leaseSetAt: number;
-	isDispatchStored: () => boolean;
+	isMarkedDispatched: () => boolean;
 };
 
 /**
@@ -36,6 +36,15 @@ export interface ExecutorHooks {
 	 * raised once, at construction.
 	 */
 	onLeaseShorterThanLookahead?: (context: { lookaheadMs: number; leaseMs: number }) => void;
+
+	/**
+	 * The lease is too short to be renewed, so a task that runs longer than the
+	 * lease may be stopped and run again. Raised once, at construction.
+	 */
+	onLeaseShorterThanRenewalInterval?: (context: {
+		leaseMs: number;
+		minRenewalIntervalMs: number;
+	}) => void;
 
 	/**
 	 * A claimed task's type had no handler at fire time (e.g. a rolling restart
@@ -148,6 +157,13 @@ export class Executor {
 			this.hooks.onLeaseShorterThanLookahead?.({
 				lookaheadMs: this.lookaheadMs,
 				leaseMs: this.leaseMs,
+			});
+		}
+
+		if (this.leaseMs <= MIN_RENEWAL_INTERVAL_MS) {
+			this.hooks.onLeaseShorterThanRenewalInterval?.({
+				leaseMs: this.leaseMs,
+				minRenewalIntervalMs: MIN_RENEWAL_INTERVAL_MS,
 			});
 		}
 	}
@@ -285,11 +301,11 @@ export class Executor {
 		// no-op, so an explicit `dispatched()` and the post-return fallback below collapse to
 		// one write.
 		let dispatchMark: Promise<void> | undefined;
-		let isDispatchStored = false;
+		let isMarkedDispatched = false;
 		const markDispatched = (): void => {
 			dispatchMark ??= this.store.markDispatched(claim).then(
 				(rowsAffected) => {
-					isDispatchStored = rowsAffected > 0;
+					isMarkedDispatched = rowsAffected > 0;
 				},
 				(error: unknown) => this.hooks.onFireError?.(task, error),
 			);
@@ -303,7 +319,7 @@ export class Executor {
 			await this.executeWithHeartbeat(handler, task, report, {
 				claim,
 				leaseSetAt,
-				isDispatchStored: () => isDispatchStored,
+				isMarkedDispatched: () => isMarkedDispatched,
 			});
 		} catch (error) {
 			await dispatchMark;
@@ -373,7 +389,7 @@ export class Executor {
 		handler: TaskHandler,
 		task: ClaimedTask,
 		report: DispatchReporter,
-		{ claim, leaseSetAt, isDispatchStored }: HeartbeatRun,
+		{ claim, leaseSetAt, isMarkedDispatched }: HeartbeatRun,
 	): Promise<void> {
 		const lease = new AbortController();
 		const heartbeat = new LeaseHeartbeat(
@@ -386,7 +402,7 @@ export class Executor {
 					// it again, so stopping its run would only leave the work half done. A
 					// marker write still in flight counts as not stored: the reaper may
 					// already redeliver the row, and that write may never finish.
-					if (result !== 'renewed' && !isDispatchStored()) {
+					if (result !== 'renewed' && !isMarkedDispatched()) {
 						lease.abort(new LeaseLostError());
 					}
 				},

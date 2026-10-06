@@ -1,7 +1,6 @@
 import { Logger } from '@n8n/backend-common';
 import { EventService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
-import { Time } from '@n8n/constants';
 import { DataSource, ScheduledJobRepository, ScheduledTaskRepository } from '@n8n/db';
 import { OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
@@ -11,7 +10,6 @@ import {
 	pollLookaheadSeconds,
 	withOwnerKeys,
 	DEFAULT_MATERIALIZER_OPTIONS,
-	MIN_RENEWAL_INTERVAL_MS,
 } from '@n8n/scheduler';
 import { InstanceSettings, Tracing } from 'n8n-core';
 
@@ -119,7 +117,6 @@ export class DurableScheduler implements Scheduler {
 		if (enabled) {
 			warnOnMisfireGrace(logger, config);
 			warnOnDrainRate(logger, config);
-			warnOnShortLease(logger, config);
 		}
 		this.registerTaskHandler(scheduleTriggerTaskHandler.taskType, scheduleTriggerTaskHandler);
 		this.registerTaskHandler(pollTriggerTaskHandler.taskType, pollTriggerTaskHandler);
@@ -190,21 +187,6 @@ function warnOnDrainRate(logger: Logger, config: GlobalConfig['scheduler']): voi
 		logger.warn(
 			'Scheduler materialization interval is long enough that a pass may never fully drain the busiest possible schedule; under the coalesce misfire policy such a schedule could stop producing catch-up runs entirely',
 			{ materializationIntervalSeconds, fastestIntervalSeconds },
-		);
-	}
-}
-
-/**
- * Warn when a lease ends before its first renewal: every run that lasts longer
- * than the lease then loses its claim, even on a single instance.
- */
-function warnOnShortLease(logger: Logger, config: GlobalConfig['scheduler']): void {
-	const { leaseDurationSeconds } = config;
-	const minRenewalIntervalSeconds = MIN_RENEWAL_INTERVAL_MS / Time.seconds.toMilliseconds;
-	if (leaseDurationSeconds <= minRenewalIntervalSeconds) {
-		logger.warn(
-			'Scheduler lease duration is at or below the shortest renewal interval; a run that lasts longer than the lease loses its claim',
-			{ leaseDurationSeconds, minRenewalIntervalSeconds },
 		);
 	}
 }

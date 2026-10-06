@@ -295,6 +295,13 @@ export function createScheduler(deps: SchedulerDeps): Scheduler & SchedulerPasse
 					{ ...context },
 				);
 			},
+			onLeaseShorterThanRenewalInterval: (context) => {
+				emit(
+					'warn',
+					'Scheduler lease is too short to be renewed. A task that runs longer than the lease may be stopped and run again',
+					{ ...context },
+				);
+			},
 			onMissingHandler: (task) => {
 				emit('warn', 'Scheduler claimed a task with no registered handler; claim released', {
 					taskId: task.id,
