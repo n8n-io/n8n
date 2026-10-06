@@ -5,7 +5,7 @@ import type { IDataObject, WorkflowJSON } from '@n8n/workflow-sdk';
 
 import type { NodeOutputResult } from '../../../types';
 import type { WorkflowBuildOutcome } from '../../../workflow-loop/workflow-loop-state';
-import { declaredShapeNote, shapeWarningsBlock } from '../declared-shapes';
+import { declaredShapeNote, declaredVariants, shapeWarningsBlock } from '../declared-shapes';
 import {
 	firstPageOmissions,
 	fixtureOriginsOf,
@@ -367,5 +367,81 @@ describe('splitLiveReadFixtures', () => {
 			pinned: fixtures,
 			liveReadFallbacks: {},
 		});
+	});
+});
+
+describe('declaredVariants', () => {
+	const schema = {
+		type: 'object',
+		properties: {
+			owner: {
+				oneOf: [{ type: 'object', properties: { login: { type: 'string' } } }, { type: 'string' }],
+			},
+			issues: {
+				type: 'array',
+				items: {
+					type: 'object',
+					properties: {
+						assignee: {
+							anyOf: [
+								{ type: 'object', properties: { id: { type: 'integer' } } },
+								{ type: 'null' },
+							],
+						},
+					},
+				},
+			},
+		},
+	};
+	const workflow = workflowOf({ schema });
+
+	it('gives one fixture per union branch that the default does not take, null first', () => {
+		const base = {
+			owner: { login: 'octo' },
+			issues: [{ assignee: { id: 7 } }, { assignee: null }],
+		};
+
+		expect(
+			declaredVariants(
+				workflow,
+				() => [base],
+				() => true,
+			),
+		).toEqual([
+			{
+				nodeName: 'Fetch',
+				branch: '$json.issues[].assignee: null',
+				items: [{ owner: { login: 'octo' }, issues: [{ assignee: null }, { assignee: null }] }],
+			},
+			{
+				nodeName: 'Fetch',
+				branch: '$json.owner: oneOf[1]',
+				items: [{ ...base, owner: 'example' }],
+			},
+		]);
+	});
+
+	it('starts from the example of the declared output without a fixture, and skips excluded nodes', () => {
+		expect(
+			declaredVariants(
+				workflow,
+				() => undefined,
+				() => true,
+			)[0]?.items,
+		).toEqual([{ owner: { login: 'example' }, issues: [{ assignee: null }] }]);
+		expect(
+			declaredVariants(
+				workflow,
+				() => undefined,
+				() => false,
+			),
+		).toEqual([]);
+		expect(
+			declaredVariants(
+				workflowOf({}),
+				() => undefined,
+				() => true,
+			),
+		).toEqual([]);
 	});
 });

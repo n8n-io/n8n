@@ -130,6 +130,35 @@ describe('processRunExecutionData', () => {
 		expect(runHook).toHaveBeenNthCalledWith(6, 'workflowExecuteAfter', expect.any(Array));
 	});
 
+	test('runs only the nodes in the run node filter of the start data', async () => {
+		const [trigger, a, b, c] = ['Trigger', 'A', 'B', 'C'].map((name) =>
+			createNodeData({ name, type: types.passThrough }),
+		);
+		const workflow = new DirectedGraph()
+			.addNodes(trigger, a, b, c)
+			.addConnections({ from: trigger, to: a }, { from: a, to: b }, { from: b, to: c })
+			.toWorkflow({ name: '', active: false, nodeTypes, settings: { executionOrder: 'v1' } });
+		const executionData = createRunExecutionData({
+			startData: {
+				destinationNode: { nodeName: 'B', mode: 'inclusive' },
+				runNodeFilter: ['B', 'A', 'Trigger'],
+			},
+			executionData: {
+				nodeExecutionStack: [{ data: { main: [[{ json: {} }]] }, node: trigger, source: null }],
+			},
+		});
+
+		const result = await new WorkflowExecute(
+			additionalData,
+			executionMode,
+			executionData,
+		).processRunExecutionData(workflow);
+
+		expect(Object.keys(result.data.resultData.runData)).toEqual(['Trigger', 'A', 'B']);
+		expect(result.data.resultData.lastNodeExecuted).toBe('B');
+		expect(result.status).toBe('success');
+	});
+
 	describe('a handler that throws at workflowExecuteBefore', () => {
 		const blocked = new UnexpectedError('blocked before the first node ran');
 		const node = createNodeData({ name: 'node', type: types.passThrough });

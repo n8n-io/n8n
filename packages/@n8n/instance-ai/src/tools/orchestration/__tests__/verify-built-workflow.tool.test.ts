@@ -23,7 +23,11 @@ import type {
 } from '../../../workflow-loop/workflow-loop-state';
 import { WorkflowTaskCoordinator } from '../../../workflow-loop/workflow-task-service';
 import { CREDENTIALLESS_AI_ROOT_SIMULATION_REASON } from '../../workflows/plan-verification-simulation';
-import { createVerifyBuiltWorkflowTool } from '../verify-built-workflow.tool';
+import { reverifyInputSchema } from '../../workflows/reverify-description';
+import {
+	createVerifyBuiltWorkflowTool,
+	type verifyBuiltWorkflowInputSchema,
+} from '../verify-built-workflow.tool';
 
 type VerifyBuiltWorkflowOutput = {
 	success: boolean;
@@ -2669,5 +2673,227 @@ describe('verify-built-workflow tool — live reads', () => {
 		expect(result.success).toBe(false);
 		expect((result as { liveReadNote?: string }).liveReadNote).toBeUndefined();
 		expect(result.remediation).toMatchObject({ category: 'code_fixable' });
+	});
+});
+
+describe('verify-built-workflow tool — slices and variants', () => {
+	const GET = '@n8n/nodes-base-next.httpRequestGet';
+	const node = (name: string, type: string, parameters: Record<string, unknown> = {}) => ({
+		id: name,
+		name,
+		type,
+		typeVersion: 3,
+		position: [0, 0] as [number, number],
+		parameters,
+	});
+	const to = (name: string) => ({ main: [[{ node: name, type: 'main', index: 0 }]] });
+	const organizationSchema = {
+		type: 'object',
+		properties: {
+			organization: {
+				anyOf: [{ type: 'object', properties: { name: { type: 'string' } } }, { type: 'null' }],
+			},
+		},
+	};
+	const workflow = {
+		name: 'Leads',
+		connections: { Start: to('Fetch'), Fetch: to('Keep'), Keep: to('Post') },
+		nodes: [
+			node('Start', 'n8n-nodes-base.manualTrigger'),
+			node('Fetch', GET, { url: 'https://api.example.com/org', schema: organizationSchema }),
+			node('Keep', '@n8n/nodes-base-next.itemsSet', {
+				fields: { name: '={{ $json.organization.name }}' },
+			}),
+			node('Post', '@n8n/nodes-base-next.httpRequestSend', { url: 'https://api.example.com/x' }),
+		],
+	};
+	const declared = [{ organization: { name: 'example' } }];
+	const outcome = () =>
+		makeBuildOutcome({
+			nodeSimulationPlan: [
+				{
+					nodeName: 'Fetch',
+					verdict: 'execute',
+					reason: 'GET a URL reads from HTTP Request',
+					confidence: 'high',
+					source: 'deterministic',
+				},
+				{
+					nodeName: 'Post',
+					verdict: 'simulate',
+					reason: 'Sends data',
+					confidence: 'high',
+					source: 'deterministic',
+				},
+			],
+			liveReadFallbacks: { Fetch: declared },
+			simulationFixtures: { Post: [{ ok: true }] },
+			fixtureOrigins: { Fetch: 'declared' },
+		});
+
+	/** Runs the slice like the engine: Keep reads `$json.organization.name` of the Fetch item. */
+	const engineRun = async (
+		_workflowId: string,
+		_inputData: Record<string, unknown> | undefined,
+		options: { verificationPinData?: unknown; destinationNodeName?: string },
+	): Promise<ExecutionRunResult> => {
+		await Promise.resolve();
+		const pins = (options.verificationPinData ?? {}) as Record<
+			string,
+			Array<{ organization: { name: string } | null }>
+		>;
+		const item = pins.Fetch?.[0] ?? { organization: { name: 'Acme' } };
+		const order = ['Start', 'Fetch', 'Keep', 'Post'];
+		const ran = order.slice(0, order.indexOf(options.destinationNodeName ?? 'Post') + 1);
+		try {
+			const data = Object.fromEntries(ran.map((name) => [name, [item.organization!.name]]));
+			return {
+				executionId: `exec-${String(item.organization === null)}`,
+				status: 'success',
+				executedNodeNames: ran,
+				lastNodeExecuted: ran.at(-1),
+				data,
+			};
+		} catch (error) {
+			const message = error instanceof Error ? error.message : String(error);
+			return {
+				executionId: 'exec-true',
+				status: 'error',
+				error: message,
+				nodeErrors: [{ nodeName: 'Keep', message }],
+				executedNodeNames: ['Start', 'Fetch', 'Keep'],
+				lastNodeExecuted: 'Keep',
+			};
+		}
+	};
+
+	const contextFor = () => {
+		const made = makeContext(outcome(), { executionId: 'unused', status: 'success' });
+		vi.mocked(made.ctx.domainContext.workflowService!.getAsWorkflowJSON).mockResolvedValue(
+			workflow as never,
+		);
+		made.ctx.domainContext.executionService.run.mockImplementation(engineRun);
+		return made;
+	};
+
+	const runSlice = async (ctx: VerifyToolContext, input: Record<string, unknown>) => {
+		const tool = createVerifyBuiltWorkflowTool(ctx as unknown as OrchestrationContext);
+		const schema = reverifyInputSchema(tool.inputSchema) as typeof verifyBuiltWorkflowInputSchema;
+		return await executeTool<
+			VerifyBuiltWorkflowOutput & {
+				variants?: Array<{ nodeName?: string; branch: string; success: boolean; error?: string }>;
+				variantsNote?: string;
+			}
+		>(tool, schema.parse({ workItemId: 'wi-1', workflowId: 'wf-1', ...input }));
+	};
+
+	it('runs to the `until` node and stops, so later nodes do not run and do not count as unreached', async () => {
+		const { ctx } = contextFor();
+
+		const result = await runSlice(ctx, { until: 'Keep' });
+
+		const run = ctx.domainContext.executionService.run;
+		expect(run).toHaveBeenCalledTimes(1);
+		expect(run.mock.calls[0][2]).toMatchObject({ destinationNodeName: 'Keep' });
+		expect(result.success).toBe(true);
+		expect(result.nodesExecuted).toEqual(['Start', 'Fetch', 'Keep']);
+		expect(result.nodesNotReached).toBeUndefined();
+		expect(result.claim?.level).not.toBe('verified');
+	});
+
+	it('rejects an `until` node that the workflow does not have', async () => {
+		const { ctx } = contextFor();
+
+		const result = await runSlice(ctx, { until: 'Nope' });
+
+		expect(ctx.domainContext.executionService.run).not.toHaveBeenCalled();
+		expect(result.error).toContain('Could not find node "Nope" for `until`');
+	});
+
+	it('rejects an `until` node that the selected trigger does not reach', async () => {
+		const made = makeContext(
+			{
+				...outcome(),
+				triggerNodes: [
+					{ nodeName: 'Start', nodeType: 'n8n-nodes-base.manualTrigger' },
+					{ nodeName: 'Other', nodeType: 'n8n-nodes-base.scheduleTrigger' },
+				],
+				verificationProgress: {},
+			},
+			{ status: 'success' },
+		);
+		vi.mocked(made.ctx.domainContext.workflowService!.getAsWorkflowJSON).mockResolvedValue({
+			...workflow,
+			connections: { ...workflow.connections, Other: to('Side') },
+			nodes: [
+				...workflow.nodes,
+				node('Other', 'n8n-nodes-base.scheduleTrigger'),
+				node('Side', '@n8n/nodes-base-next.itemsSet'),
+			],
+		} as never);
+
+		const result = await runSlice(made.ctx, { triggerNodeName: 'Start', until: 'Side' });
+
+		expect(made.ctx.domainContext.executionService.run).not.toHaveBeenCalled();
+		expect(result.success).toBe(false);
+		expect(result.error).toContain('is not on the path of trigger "Start"');
+	});
+
+	it('runs a nullable declared field in 2 variants, and the null branch fails the downstream read', async () => {
+		const { ctx } = contextFor();
+
+		const result = await runSlice(ctx, { until: 'Keep', variants: true });
+
+		const run = ctx.domainContext.executionService.run;
+		expect(run).toHaveBeenCalledTimes(2);
+		expect(run.mock.calls[0][2]).toMatchObject({ readOnceNodeNames: ['Fetch'] });
+		expect(run.mock.calls[1][2]).toMatchObject({
+			verificationPinData: { Fetch: [{ organization: null }] },
+			destinationNodeName: 'Keep',
+		});
+		expect(run.mock.calls[1][2]).not.toHaveProperty('readOnceNodeNames');
+		expect(result.variants).toEqual([
+			{
+				branch: 'default fixtures',
+				success: true,
+				executionId: 'exec-false',
+				lastNodeExecuted: 'Keep',
+			},
+			{
+				nodeName: 'Fetch',
+				branch: '$json.organization: null',
+				success: false,
+				executionId: 'exec-true',
+				lastNodeExecuted: 'Keep',
+				error: "Cannot read properties of null (reading 'name')",
+			},
+		]);
+		expect(result.success).toBe(false);
+		expect(result.nodeErrors).toEqual([
+			{
+				nodeName: 'Keep',
+				message:
+					"[variant Fetch $json.organization: null] Cannot read properties of null (reading 'name')",
+			},
+		]);
+		expect(result.executionId).toBe('exec-false');
+		expect(result.variantsNote).toBeUndefined();
+	});
+
+	it('runs no variant when the normal run fails', async () => {
+		const { ctx } = contextFor();
+		ctx.domainContext.executionService.run.mockResolvedValue({
+			executionId: 'exec-1',
+			status: 'error',
+			error: 'boom',
+			nodeErrors: [{ nodeName: 'Post', message: 'boom' }],
+			lastNodeExecuted: 'Post',
+		});
+
+		const result = await runSlice(ctx, { variants: true });
+
+		expect(ctx.domainContext.executionService.run).toHaveBeenCalledTimes(1);
+		expect(result.variants).toBeUndefined();
+		expect(result.variantsNote).toBe('Variants did not run, because the normal run failed.');
 	});
 });

@@ -659,6 +659,11 @@ export interface InstanceAiExecutionService {
 			 * because the read gives the same response on each pass.
 			 */
 			redirectOutputs?: Array<{ nodeName: string; output: number; asOutput: number }>;
+			/**
+			 * The run stops after this node: only the node and its parent nodes run, as in a partial
+			 * execution to a destination node. Verification uses it to verify one slice of a workflow.
+			 */
+			destinationNodeName?: string;
 			abortSignal?: AbortSignal;
 		},
 	): Promise<ExecutionResult>;

@@ -7,7 +7,8 @@
  */
 
 import { Tool } from '@n8n/agents';
-import { isTriggerNodeType } from 'n8n-workflow';
+import { toEngineConnections } from '@n8n/workflow-sdk';
+import { getParentNodes, isTriggerNodeType, mapConnectionsByDestination } from 'n8n-workflow';
 import { z } from 'zod';
 
 import type { OrchestrationContext } from '../../types';
@@ -27,7 +28,7 @@ import {
 	liveReadRunOptions,
 	runWithLiveReadFallback,
 } from './verification/live-read';
-import { prepareVerificationRun } from './verification/prepare-run';
+import { prepareVerificationRun, type PreparedVerificationRun } from './verification/prepare-run';
 import { resolvePublishState } from './verification/publish-state';
 import { reconcileStaleCredentialPlan } from './verification/reconcile-plan';
 import { resolveVerificationTarget } from './verification/resolve-target';
@@ -39,14 +40,25 @@ import {
 } from './verification/resolved-parameter-warnings';
 import { runScriptedGateVerification } from './verification/scripted-gate-run';
 import { checkToolSimulationSupport } from './verification/tool-simulation-preflight';
+import type { ExecutionRunResult } from './verification/types';
+import {
+	runDeclaredVariants,
+	variantRunsOf,
+	variantsNote,
+	withVariantFailures,
+} from './verification/variant-runs';
 import { createVerificationGraph, getTriggerMainFlowScope } from '../workflows/verification-graph';
 import { describeClaimLiveState } from '../../workflow-loop/render-claim';
-import type { VerificationClaim } from '../../workflow-loop/workflow-loop-state';
+import type {
+	VerificationClaim,
+	WorkflowBuildOutcome,
+} from '../../workflow-loop/workflow-loop-state';
 import {
 	executionNodeErrorSchema,
 	verificationClaimSchema,
 } from '../../workflow-loop/workflow-loop-state';
 import { collectChatModelRecoveryContext } from '../workflows/chat-model-validation';
+import type { SliceInput } from '../workflows/reverify-description';
 
 const DEFAULT_NODE_PREVIEW_CHARS = 600;
 
@@ -210,6 +222,20 @@ const verifyBuiltWorkflowOutputSchema = z.object({
 	liveStateNote: z.string().optional(),
 	/** A live read failed, so its declared fixture stood in. Not a workflow error. */
 	liveReadNote: z.string().optional(),
+	/** Node contracts: one entry for each run of `variants`, the normal run first. */
+	variants: z
+		.array(
+			z.object({
+				nodeName: z.string().optional(),
+				branch: z.string(),
+				success: z.boolean(),
+				executionId: z.string().optional(),
+				lastNodeExecuted: z.string().optional(),
+				error: z.string().optional(),
+			}),
+		)
+		.optional(),
+	variantsNote: z.string().optional(),
 	claim: verificationClaimSchema.optional(),
 	data: z.record(z.unknown()).optional(),
 	error: z.string().optional(),
@@ -217,7 +243,8 @@ const verifyBuiltWorkflowOutputSchema = z.object({
 	guidance: z.string().optional(),
 });
 
-type VerifyInput = z.infer<typeof verifyBuiltWorkflowInputSchema>;
+/** Only the node contracts input, see `reverifyInputSchema`, has the slice keys. */
+type VerifyInput = z.infer<typeof verifyBuiltWorkflowInputSchema> & SliceInput;
 
 export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 	return new Tool('verify-built-workflow')
@@ -282,6 +309,26 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 					error: `Could not find trigger "${resolvedInput.triggerNodeName}" in this workflow. Read the workflow. Select an existing trigger.`,
 				};
 			}
+			const { until } = input;
+			if (workflow && until !== undefined && !workflow.nodes.some(({ name }) => name === until)) {
+				return {
+					success: false,
+					resolvedWorkItemId: resolvedInput.workItemId,
+					error: `Could not find node "${until}" for \`until\` in this workflow. Read the workflow. Select an existing node.`,
+				};
+			}
+			// The node and the nodes that feed it: the nodes that a run to `until` runs.
+			const sliceNodeNames =
+				workflow && until !== undefined
+					? new Set([
+							until,
+							...getParentNodes(
+								mapConnectionsByDestination(toEngineConnections(workflow.connections)),
+								until,
+								'ALL',
+							),
+						])
+					: undefined;
 			// WorkflowJSON omits saved pins. The summary supplies names without their payloads.
 			let workflowPinnedNodeNames: string[] | undefined;
 			try {
@@ -335,83 +382,138 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 							getTriggerMainFlowScope(workflow.connections, selectedTriggerNodeName),
 						)
 					: undefined;
+			if (until !== undefined && verificationScope && !verificationScope.has(until)) {
+				return {
+					success: false,
+					resolvedWorkItemId: resolvedInput.workItemId,
+					error: `Node "${until}" for \`until\` is not on the path of trigger "${selectedTriggerNodeName}". Select a node that this trigger reaches, or select the trigger that reaches it.`,
+				};
+			}
 			const previousProgress = await workflowTaskService.startVerification(
 				resolvedInput.workItemId,
 				verificationScope ? selectedTriggerNodeName : undefined,
 			);
+			// Nodes after `until` do not run, so coverage leaves them out.
+			const analysisScope =
+				sliceNodeNames && verificationScope
+					? new Set([...verificationScope].filter((name) => sliceNodeNames.has(name)))
+					: (sliceNodeNames ?? verificationScope);
+			const destination = until !== undefined ? { destinationNodeName: until } : {};
 
 			// A scripted gate replaces the halt with one loop-safe pass per decision;
 			// otherwise run the single standard pass (halted gates pin zero items).
-			const { result, analysis, parameterCheckRuns, verifiedOutcome, liveReadFailures } =
-				prepared.gateScript
-					? {
-							...(await runScriptedGateVerification({
-								script: prepared.gateScript,
-								prepared,
-								executionService: target.domainContext.executionService,
-								workflowId,
-								inputData: resolvedInput.inputData,
-								triggerNodeName: resolvedInput.triggerNodeName,
+			const {
+				result,
+				analysis,
+				parameterCheckRuns,
+				verifiedOutcome,
+				liveReadFailures,
+				variantRuns,
+				variantsNote: variantsNoteText,
+			} = prepared.gateScript
+				? {
+						...(await runScriptedGateVerification({
+							script: prepared.gateScript,
+							prepared,
+							executionService: target.domainContext.executionService,
+							workflowId,
+							inputData: resolvedInput.inputData,
+							triggerNodeName: resolvedInput.triggerNodeName,
+							timeout: resolvedInput.timeout,
+							abortSignal: context.abortSignal,
+							buildOutcome,
+							stateBefore: target.stateBefore,
+							runId: context.runId,
+							chatModelRelatedNodeNames,
+							chatModelRecovery,
+							verificationScope: analysisScope,
+							...destination,
+						})),
+						verifiedOutcome: buildOutcome,
+						liveReadFailures: [],
+						variantRuns: undefined,
+						variantsNote: input.variants
+							? variantsNote({ mainFailed: false, scriptedGate: true, ran: 0, notRun: 0 })
+							: undefined,
+					}
+				: await (async () => {
+						const runPass = async ({
+							verificationPinData,
+							liveReadNodeNames,
+						}: PreparedVerificationRun) =>
+							await target.domainContext.executionService.run(workflowId, resolvedInput.inputData, {
 								timeout: resolvedInput.timeout,
+								triggerNodeName: resolvedInput.triggerNodeName,
+								verificationPinData,
+								isVerificationRun: true,
+								...(await liveReadRunOptions(workflow, liveReadNodeNames)),
+								...destination,
 								abortSignal: context.abortSignal,
-								buildOutcome,
-								stateBefore: target.stateBefore,
-								runId: context.runId,
-								chatModelRelatedNodeNames,
-								chatModelRecovery,
-								verificationScope,
-							})),
-							verifiedOutcome: buildOutcome,
-							liveReadFailures: [],
-						}
-					: await (async () => {
-							const pass = await runWithLiveReadFallback({
-								buildOutcome,
-								prepared,
-								input: resolvedInput,
-								run: async ({ verificationPinData, liveReadNodeNames }) =>
-									await target.domainContext.executionService.run(
-										workflowId,
-										resolvedInput.inputData,
-										{
-											timeout: resolvedInput.timeout,
-											triggerNodeName: resolvedInput.triggerNodeName,
-											verificationPinData,
-											isVerificationRun: true,
-											...(await liveReadRunOptions(workflow, liveReadNodeNames)),
-											abortSignal: context.abortSignal,
-										},
-									),
-								workflowTaskService,
-								abortSignal: context.abortSignal,
-								logger: context.logger,
 							});
-							const runResult = pass.result;
-							const analysis = analyzeVerificationResult({
+						const analyzePass = (
+							runResult: ExecutionRunResult,
+							outcome: WorkflowBuildOutcome,
+							passPrepared: PreparedVerificationRun,
+						) =>
+							analyzeVerificationResult({
 								result: runResult,
-								buildOutcome: pass.buildOutcome,
-								simulatedNodes: pass.prepared.simulatedNodes,
-								haltedGateNames: pass.prepared.haltedGateNames,
+								buildOutcome: outcome,
+								simulatedNodes: passPrepared.simulatedNodes,
+								haltedGateNames: passPrepared.haltedGateNames,
 								triggerNodeName: resolvedInput.triggerNodeName,
 								stateBefore: target.stateBefore,
 								runId: context.runId,
 								chatModelRelatedNodeNames,
 								chatModelRecovery,
-								verificationScope,
+								verificationScope: analysisScope,
 							});
-							return {
-								result: runResult,
-								analysis,
-								parameterCheckRuns: [
-									{
-										executionId: runResult.executionId,
-										nodeNames: analysis.reachedSimulatedNodes.map((node) => node.nodeName),
-									},
-								],
-								verifiedOutcome: pass.buildOutcome,
-								liveReadFailures: pass.failures,
-							};
-						})();
+						const pass = await runWithLiveReadFallback({
+							buildOutcome,
+							prepared,
+							input: resolvedInput,
+							run: runPass,
+							workflowTaskService,
+							abortSignal: context.abortSignal,
+							logger: context.logger,
+						});
+						const main = {
+							result: pass.result,
+							analysis: analyzePass(pass.result, pass.buildOutcome, pass.prepared),
+						};
+						const variants =
+							input.variants && main.analysis.success && workflow
+								? await runDeclaredVariants({
+										workflow,
+										buildOutcome: pass.buildOutcome,
+										input: resolvedInput,
+										slice: sliceNodeNames,
+										run: runPass,
+										analyze: (runResult, passPrepared) =>
+											analyzePass(runResult, pass.buildOutcome, passPrepared),
+									})
+								: undefined;
+						const merged = variants ? withVariantFailures(main, variants.passes) : main;
+						return {
+							...merged,
+							parameterCheckRuns: [
+								{
+									executionId: main.result.executionId,
+									nodeNames: main.analysis.reachedSimulatedNodes.map((node) => node.nodeName),
+								},
+							],
+							verifiedOutcome: pass.buildOutcome,
+							liveReadFailures: pass.failures,
+							variantRuns: variants ? variantRunsOf(main, variants.passes) : undefined,
+							variantsNote: input.variants
+								? variantsNote({
+										mainFailed: !main.analysis.success,
+										scriptedGate: false,
+										ran: variants?.passes.length ?? 0,
+										notRun: variants?.notRun ?? 0,
+									})
+								: undefined,
+						};
+					})();
 
 			// The repair target from an earlier verdict counts even when the model
 			// omits it here — that is exactly the turn where it stops mentioning it.
@@ -513,6 +615,8 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 				),
 				liveStateNote: formatLiveStateNote(claim),
 				liveReadNote: liveReadFailures.length > 0 ? liveReadNote(liveReadFailures) : undefined,
+				variants: variantRuns,
+				variantsNote: variantsNoteText,
 				...(resolvedInput.includeData ? { data: result.data } : {}),
 				error: analysis.errorMessage,
 				remediation: analysis.remediation,

@@ -128,6 +128,7 @@ import {
 	type IWorkflowBase,
 	type IWorkflowSettings,
 	type IWorkflowExecutionDataProcess,
+	type IDestinationNode,
 	type AiAgentRequest,
 	type DataTableRow,
 	type DataTableRows,
@@ -149,6 +150,8 @@ import {
 	jsonParse,
 	createRunExecutionData,
 	calculateWorkflowChecksum,
+	getParentNodes,
+	mapConnectionsByDestination,
 } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 import { randomUUID } from 'node:crypto';
@@ -2221,6 +2224,31 @@ export class InstanceAiAdapterService {
 					// verification fixtures while starting from the trigger node.
 					runData.executionData = pinDataPlan.triggerExecutionData;
 				}
+				if (
+					globalConfig.instanceAi.nodeContractsEnabled &&
+					options?.destinationNodeName !== undefined
+				) {
+					const destinationNode: IDestinationNode = {
+						nodeName: options.destinationNodeName,
+						mode: 'inclusive',
+					};
+					runData.destinationNode = destinationNode;
+					// A run from `executionData` does not derive the filter from the destination node.
+					if (runData.executionData) {
+						runData.executionData.startData = {
+							...runData.executionData.startData,
+							destinationNode,
+							runNodeFilter: [
+								destinationNode.nodeName,
+								...getParentNodes(
+									mapConnectionsByDestination(connections),
+									destinationNode.nodeName,
+									'ALL',
+								),
+							],
+						};
+					}
+				}
 
 				runData.source = 'instance_ai';
 				runData.telemetryMetadata = {
@@ -2257,7 +2285,10 @@ export class InstanceAiAdapterService {
 					!runData.executionData
 				) {
 					runData.executionData = createRunExecutionData({
-						startData: { startNodes: runData.startNodes },
+						startData: {
+							startNodes: runData.startNodes,
+							...(runData.destinationNode ? { destinationNode: runData.destinationNode } : {}),
+						},
 						resultData: { pinData: runData.pinData, runData: null },
 						manualData: {
 							userId: runData.userId,

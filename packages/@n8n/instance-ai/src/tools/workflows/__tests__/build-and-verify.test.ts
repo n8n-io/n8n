@@ -25,7 +25,7 @@ const ready = {
 };
 
 describe('asReverifyTool', () => {
-	it('describes a re-run and keeps the input fields and handler', () => {
+	it('describes a re-run, keeps the input fields and handler, and adds the slice keys', () => {
 		const handler = vi.fn();
 		const inputSchema = z.object({
 			workflowId: z.string().describe('long text'),
@@ -36,7 +36,7 @@ describe('asReverifyTool', () => {
 		expect(reverify).toMatchObject({ name: 'verify-built-workflow', handler });
 		expect(reverify.inputSchema).toBeInstanceOf(z.ZodObject);
 		const shape = reverify.inputSchema instanceof z.ZodObject ? reverify.inputSchema.shape : {};
-		expect(Object.keys(shape)).toEqual(['workflowId', 'extra']);
+		expect(Object.keys(shape)).toEqual(['workflowId', 'extra', 'until', 'variants']);
 		expect(shape.workflowId.description).toBe('The workflow ID to verify');
 	});
 });

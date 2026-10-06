@@ -6,7 +6,33 @@ import type { verifyBuiltWorkflowInputSchema } from '../orchestration/verify-bui
 /** Node contracts: the build already verifies, so the verify tool only describes a re-run. */
 export const REVERIFY_DESCRIPTION =
 	'Re-run verification after a change, or with other inputData or fixtures. build-workflow already verifies each successful build. ' +
-	'A wrong `inputData` shape gives null values downstream. Fix the shape, not the workflow.';
+	'A wrong `inputData` shape gives null values downstream. Fix the shape, not the workflow. ' +
+	'`until` verifies one slice; `variants` also runs the null and `anyOf` branches of a declared `schema`.';
+
+/**
+ * Most extra runs that `variants` adds. Each one is a full run that the agent waits for, so one
+ * call stays below 4 normal runs. Null branches run first.
+ */
+export const MAX_VARIANT_RUNS = 3;
+
+/** Node contracts: the keys that verify one slice of the workflow. Only the re-verify input has them. */
+export const sliceInputShape = {
+	until: z
+		.string()
+		.min(1)
+		.optional()
+		.describe(
+			'Run to this node and stop: only it and the nodes before it run. Give the node before the slice its items with `fixtureOverrides`.',
+		),
+	variants: z
+		.boolean()
+		.optional()
+		.describe(
+			`True: after the normal run, run once more for each other branch (null first) of each \`anyOf\` or nullable field of a declared \`schema\`, with a fixture made from that branch. At most ${MAX_VARIANT_RUNS} more runs. Writes stay simulated.`,
+		),
+};
+
+export type SliceInput = z.infer<z.ZodObject<typeof sliceInputShape>>;
 
 const REVERIFY_FIELD_DESCRIPTIONS: Record<
 	keyof typeof verifyBuiltWorkflowInputSchema.shape,
@@ -35,20 +61,21 @@ const REVERIFY_FIELD_DESCRIPTIONS: Record<
 };
 
 /**
- * Node contracts: the verify input with the same fields and rules and shorter text.
- * It takes the schema from the tool so that this module does not load the lazy verify tool.
+ * Node contracts: the verify input with the same fields and rules, shorter text, and the slice
+ * keys. It takes the schema from the tool so that this module does not load the lazy verify tool.
  */
 export function reverifyInputSchema(
 	inputSchema: BuiltTool['inputSchema'],
 ): BuiltTool['inputSchema'] {
 	if (!(inputSchema instanceof z.ZodObject)) return inputSchema;
 	const shape: z.ZodRawShape = inputSchema.shape;
-	return inputSchema.extend(
-		Object.fromEntries(
+	return inputSchema.extend({
+		...Object.fromEntries(
 			Object.entries(REVERIFY_FIELD_DESCRIPTIONS).flatMap(([name, description]) => {
 				const field = shape[name];
 				return field ? [[name, field.describe(description)]] : [];
 			}),
 		),
-	);
+		...sliceInputShape,
+	});
 }

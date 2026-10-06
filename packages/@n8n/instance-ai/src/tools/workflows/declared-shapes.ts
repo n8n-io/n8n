@@ -1,5 +1,6 @@
 import { wrapUntrustedData } from '@n8n/agents';
 import { validate, type JsonSchema } from '@n8n/node-sdk';
+import { exampleOf } from '@n8n/node-sdk/host';
 import { isRecord } from '@n8n/utils/is-record';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 
@@ -158,4 +159,103 @@ export function declaredShapeNote(
 	return names.length > 0
 		? `Verification pinned a fixture made from the declared \`schema\` of ${names.join(', ')}, so this response shape is unproven. Take the schema from the API docs; a real run of the node reports where the response differs.`
 		: undefined;
+}
+
+/** A key of an object, or `0`, the first entry of a list. */
+type Segment = string | 0;
+
+interface UnionBranch {
+	readonly path: readonly Segment[];
+	readonly schema: JsonSchema;
+	/** E.g. `$json.organization: null` or `$json.owner: anyOf[1]`. */
+	readonly label: string;
+}
+
+const pathText = (path: readonly Segment[]) =>
+	path.reduce<string>(
+		(text, segment) => (segment === 0 ? `${text}[]` : `${text}.${segment}`),
+		'$json',
+	);
+
+/**
+ * Each union option that `exampleOf` does not take: for each `anyOf` or `oneOf`, every option
+ * but the first that is not null. Below a union, only the taken option is walked, because the
+ * other variants start from the example.
+ */
+function otherBranchesOf(schema: JsonSchema, path: readonly Segment[] = []): UnionBranch[] {
+	const union = schema.oneOf ?? schema.anyOf;
+	if (union) {
+		const keyword = schema.oneOf ? 'oneOf' : 'anyOf';
+		const taken = union.find((option) => option.type !== 'null') ?? union[0];
+		return [
+			...union.flatMap((option, index) =>
+				option === taken
+					? []
+					: [
+							{
+								path,
+								schema: option,
+								label: `${pathText(path)}: ${option.type === 'null' ? 'null' : `${keyword}[${index}]`}`,
+							},
+						],
+			),
+			...(taken ? otherBranchesOf(taken, path) : []),
+		];
+	}
+	return [
+		...Object.entries(schema.properties ?? {}).flatMap(([key, child]) =>
+			otherBranchesOf(child, [...path, key]),
+		),
+		...(schema.items ? otherBranchesOf(schema.items, [...path, 0]) : []),
+	];
+}
+
+const withValueAt = (
+	value: unknown,
+	[head, ...rest]: readonly Segment[],
+	leaf: unknown,
+): unknown => {
+	if (head === undefined) return leaf;
+	if (head === 0) {
+		const list: unknown[] = Array.isArray(value) ? value : [];
+		return [withValueAt(list[0], rest, leaf), ...list.slice(1)];
+	}
+	const record = isRecord(value) ? value : {};
+	return { ...record, [head]: withValueAt(record[head], rest, leaf) };
+};
+
+/** One fixture for a node with a declared output, with one union branch other than the default. */
+export interface DeclaredVariant {
+	readonly nodeName: string;
+	readonly branch: string;
+	readonly items: Array<Record<string, unknown>>;
+}
+
+/**
+ * One variant for each union option of each declared output that the default fixture does not
+ * take, null options first: a run with the default fixture never takes a null path. A variant
+ * starts from the first item of `baseItems`, else from the example of the declared output, and
+ * sets the one value. A node that `includes` rejects gets no variant.
+ */
+export function declaredVariants(
+	workflow: WorkflowJSON,
+	baseItems: (nodeName: string) => ReadonlyArray<Record<string, unknown>> | undefined,
+	includes: (nodeName: string) => boolean,
+): DeclaredVariant[] {
+	const variants = workflow.nodes.flatMap((node) => {
+		const schema = declaredOutputOf(node);
+		const nodeName = node.name;
+		if (!schema || !nodeName || !includes(nodeName)) return [];
+		const base = baseItems(nodeName)?.[0] ?? exampleOf(schema);
+		return otherBranchesOf(schema).flatMap(({ path, schema: branch, label }) => {
+			const item = withValueAt(base, path, exampleOf(branch));
+			return isRecord(item)
+				? [{ nodeName, branch: label, items: [item], isNull: branch.type === 'null' }]
+				: [];
+		});
+	});
+	return [
+		...variants.filter(({ isNull }) => isNull),
+		...variants.filter(({ isNull }) => !isNull),
+	].map(({ nodeName, branch, items }) => ({ nodeName, branch, items }));
 }

@@ -5376,6 +5376,58 @@ describe('createExecutionAdapter run()', () => {
 		]);
 	});
 
+	it('runs only the destination node and its parents when a destination node is set', async () => {
+		const node = (name: string, type = 'n8n-nodes-base.set') => ({
+			id: name,
+			name,
+			type,
+			typeVersion: 1,
+			parameters: {},
+			position: [0, 0] as [number, number],
+		});
+		const to = (name: string) => ({ main: [[{ node: name, type: 'main', index: 0 }]] });
+		const workflow = {
+			id: 'wf-1',
+			nodes: [node('Webhook', 'n8n-nodes-base.webhook'), node('A'), node('B'), node('C')],
+			connections: { Webhook: to('A'), A: to('B'), B: to('C') },
+		};
+		const { adapter, mockWorkflowRunner } = createRunAdapterForTests(workflow, {
+			nodeContractsEnabled: true,
+		});
+
+		await adapter.run('wf-1', { id: 'input' }, { destinationNodeName: 'B' });
+		await adapter.run('wf-1', { id: 'input' });
+
+		const [slice, plain] = mockWorkflowRunner.run.mock.calls.map((call) => call[0]);
+		const destinationNode = { nodeName: 'B', mode: 'inclusive' };
+		expect(slice.destinationNode).toEqual(destinationNode);
+		expect(slice.executionData?.startData).toEqual({
+			destinationNode,
+			runNodeFilter: expect.any(Array),
+		});
+		expect(slice.executionData?.startData?.runNodeFilter?.toSorted()).toEqual([
+			'A',
+			'B',
+			'Webhook',
+		]);
+		expect(plain).not.toHaveProperty('destinationNode');
+		expect(plain.executionData?.startData).toEqual({});
+	});
+
+	it('ignores the destination node when node contracts are disabled', async () => {
+		const { adapter, mockWorkflowRunner } = createRunAdapterForTests({
+			id: 'wf-1',
+			nodes: [makeNode('Webhook', 'n8n-nodes-base.webhook'), makeNode('A')],
+			connections: { Webhook: { main: [[{ node: 'A', type: 'main', index: 0 }]] } },
+		});
+
+		await adapter.run('wf-1', { id: 'input' }, { destinationNodeName: 'Webhook' });
+
+		const runData = mockWorkflowRunner.run.mock.calls[0][0];
+		expect(runData).not.toHaveProperty('destinationNode');
+		expect(runData.executionData?.startData).toEqual({});
+	});
+
 	it('attaches Instance AI execution telemetry metadata to workflow runs', async () => {
 		const { adapter, mockWorkflowRunner } = createRunAdapterForTests({
 			id: 'wf-1',

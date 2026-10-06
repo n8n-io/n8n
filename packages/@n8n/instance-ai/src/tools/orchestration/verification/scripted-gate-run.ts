@@ -42,6 +42,8 @@ export interface ScriptedGateRunArgs {
 	chatModelRelatedNodeNames?: ReadonlySet<string>;
 	chatModelRecovery?: ChatModelRecoveryOptions;
 	verificationScope?: ReadonlySet<string>;
+	/** Each pass stops after this node, see the `destinationNodeName` run option. */
+	destinationNodeName?: string;
 }
 
 interface DecisionPass {
@@ -76,6 +78,9 @@ export async function runScriptedGateVerification(args: ScriptedGateRunArgs): Pr
 			verificationPinData: { ...basePins, [script.nodeName]: decision.items },
 			omitConnections: [script.cutEdge],
 			isVerificationRun: true,
+			...(args.destinationNodeName !== undefined
+				? { destinationNodeName: args.destinationNodeName }
+				: {}),
 			abortSignal: args.abortSignal,
 		});
 		const analysis = analyzeVerificationResult({
