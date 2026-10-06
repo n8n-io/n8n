@@ -50,5 +50,12 @@ export async function mainSystemTasks(globalConfig: GlobalConfig): Promise<Syste
 		tasks.push(WorkflowPublicationOutboxCleanupTask);
 	}
 
+	if (globalConfig.database.type === 'postgresdb') {
+		const { WorkflowStatisticsRollupTask } = await import(
+			'@/services/workflow-statistics-rollup.task.js'
+		);
+		tasks.push(WorkflowStatisticsRollupTask);
+	}
+
 	return tasks;
 }

@@ -43,6 +43,11 @@ export const properties: INodeProperties[] = [
 		description: 'The name of the model(deployment) to use (e.g., gpt-4, gpt-35-turbo)',
 		required: true,
 		default: '',
+		displayOptions: {
+			show: {
+				'@version': [1],
+			},
+		},
 	},
 	{
 		displayName: 'Project',
@@ -51,6 +56,68 @@ export const properties: INodeProperties[] = [
 		description:
 			'The Azure AI Foundry project that owns the deployment. Required for an Azure AI Foundry resource; leave empty for a classic Azure OpenAI resource.',
 		default: '',
+	},
+	{
+		displayName: 'Model (Deployment)',
+		name: 'model',
+		type: 'resourceLocator',
+		default: { mode: 'id', value: '' },
+		required: true,
+		builderHint: {
+			propertyHint:
+				'Set the project parameter before you list deployments. The list needs an Azure AI Foundry credential. With a classic credential, use the id mode and enter the deployment name.',
+		},
+		modes: [
+			{
+				displayName: 'From List',
+				name: 'list',
+				type: 'list',
+				placeholder: 'Select a deployment...',
+				typeOptions: {
+					searchListMethod: 'searchModels',
+					searchable: true,
+				},
+			},
+			{
+				displayName: 'By ID',
+				name: 'id',
+				type: 'string',
+				placeholder: 'e.g. gpt-4o',
+			},
+		],
+		description:
+			'The deployment to use. Choose from the list (Azure AI Foundry credentials only), or enter the deployment name.',
+		displayOptions: {
+			show: {
+				'@version': [{ _cnd: { gte: 1.1 } }],
+			},
+		},
+	},
+	{
+		displayName: 'Model Family',
+		name: 'modelFamily',
+		type: 'options',
+		default: 'openai',
+		description:
+			'The API family the deployment answers on. Azure does not report this, so set it to match the deployment: OpenAI for GPT and other OpenAI-compatible models, Anthropic for Claude. Anthropic needs a credential using the Azure AI Foundry endpoint type.',
+		options: [
+			{ name: 'OpenAI', value: 'openai' },
+			{ name: 'Anthropic', value: 'anthropic' },
+		],
+	},
+	{
+		displayName: 'Use Responses API',
+		name: 'responsesApiEnabled',
+		type: 'boolean',
+		default: false,
+		description:
+			'Whether to call the deployment on the Responses API instead of Chat Completions. Azure does not tell us which one a deployment supports, so set this to match your deployment: leave it off for a chat-completions deployment, turn it on for a Responses-only one. Needs a credential using the Azure AI Foundry endpoint type.',
+		displayOptions: {
+			show: {
+				'@version': [{ _cnd: { gte: 1.1 } }],
+				modelFamily: ['openai'],
+			},
+		},
 	},
 	{
 		displayName: 'Options',
@@ -68,6 +135,7 @@ export const properties: INodeProperties[] = [
 				description:
 					"Positive values penalize new tokens based on their existing frequency in the text so far, decreasing the model's likelihood to repeat the same line verbatim",
 				type: 'number',
+				displayOptions: { show: { '/modelFamily': ['openai'] } },
 			},
 			{
 				displayName: 'Maximum Number of Tokens',
@@ -98,6 +166,7 @@ export const properties: INodeProperties[] = [
 							'Enables JSON mode, which should guarantee the message the model generates is valid JSON',
 					},
 				],
+				displayOptions: { show: { '/modelFamily': ['openai'] } },
 			},
 			{
 				displayName: 'Presence Penalty',
@@ -107,15 +176,29 @@ export const properties: INodeProperties[] = [
 				description:
 					"Positive values penalize new tokens based on whether they appear in the text so far, increasing the model's likelihood to talk about new topics",
 				type: 'number',
+				displayOptions: { show: { '/modelFamily': ['openai'] } },
+			},
+			// Same option twice: the editor picks the definition whose displayOptions match.
+			// OpenAI accepts a temperature up to 2, Claude rejects anything above 1 with a 400.
+			{
+				displayName: 'Sampling Temperature',
+				name: 'temperature',
+				default: 0.7,
+				typeOptions: { maxValue: 2, minValue: 0, numberPrecision: 1 },
+				description:
+					'Controls randomness: Lowering results in less random completions. As the temperature approaches zero, the model will become deterministic and repetitive.',
+				type: 'number',
+				displayOptions: { show: { '/modelFamily': ['openai'] } },
 			},
 			{
 				displayName: 'Sampling Temperature',
 				name: 'temperature',
 				default: 0.7,
-				typeOptions: { maxValue: 2, minValue: 0, numberPrecision: 1 }, // Max temp can be 2
+				typeOptions: { maxValue: 1, minValue: 0, numberPrecision: 1 },
 				description:
-					'Controls randomness: Lowering results in less random completions. As the temperature approaches zero, the model will become deterministic and repetitive.',
+					'Controls randomness: Lowering results in less random completions. As the temperature approaches zero, the model will become deterministic and repetitive. Claude accepts values from 0 to 1.',
 				type: 'number',
+				displayOptions: { show: { '/modelFamily': ['anthropic'] } },
 			},
 			{
 				displayName: 'Timeout (Ms)',
@@ -139,6 +222,14 @@ export const properties: INodeProperties[] = [
 				description:
 					'Controls diversity via nucleus sampling: 0.5 means half of all likelihood-weighted options are considered. We generally recommend altering this or temperature but not both.',
 				type: 'number',
+			},
+			{
+				displayName: 'Extra Body',
+				name: 'extraBody',
+				type: 'json',
+				default: '{}',
+				description:
+					'Optional additional JSON properties to include in the request body. Use this for parameters a deployment supports that the options above do not cover.',
 			},
 		],
 	},

@@ -239,9 +239,6 @@ describe('sanitizeUnknownAgentCredentials', () => {
 	});
 
 	it('preserves the n8n Connect managed sentinel on a node-tool credential', () => {
-		// Relies on the non-string-id recursion branch of the `credentials`
-		// handler — this pin exists so a refactor of that branch can't silently
-		// start clearing managed refs.
 		const result = sanitizeUnknownAgentCredentials(
 			{
 				tools: [
@@ -278,7 +275,7 @@ describe('sanitizeUnknownAgentCredentials', () => {
 		});
 	});
 
-	it('clears unknown credentialId fields at arbitrary nesting depth', () => {
+	it('clears unknown integration and memory credentials', () => {
 		const result = sanitizeUnknownAgentCredentials(
 			{
 				integrations: [{ type: 'slack', credentialId: 'unknown-cred' }],
@@ -303,21 +300,43 @@ describe('sanitizeUnknownAgentCredentials', () => {
 		});
 	});
 
-	it('clears unknown credentials map ids but leaves unrelated id fields untouched', () => {
-		const result = sanitizeUnknownAgentCredentials(
-			{
-				tools: [
-					{ type: 'custom', id: 'tool-1', credentials: { openAiApi: { id: 'unknown-cred' } } },
-				],
-				tasks: [{ type: 'task', id: 'task-1', enabled: true }],
-			},
-			accessibleCredentialIds,
-		);
+	it('clears node credentials without changing authored inputs or the original config', () => {
+		const authoredInput = {
+			credentialId: 'remote-id',
+			credential: 'authored-value',
+			credentials: { remote: { id: 'remote-value' } },
+		};
+		const node = {
+			nodeType: 'n8n-nodes-base.n8n',
+			nodeTypeVersion: 1,
+			credentials: { n8nApi: { id: 'unknown-cred', name: 'Remote instance' } },
+			nodeParameters: authoredInput,
+		};
+		const config = {
+			tools: [
+				{ type: 'node', name: 'Remote', enabled: false, node },
+				{ type: 'workflow', inputs: { data: { value: authoredInput } } },
+			],
+			providerTools: { custom: authoredInput },
+			tasks: [{ type: 'task', id: 'task-1', enabled: true }],
+		};
+		const original = structuredClone(config);
+		const result = sanitizeUnknownAgentCredentials(config, accessibleCredentialIds);
 
 		expect(result).toEqual({
-			tools: [{ type: 'custom', id: 'tool-1', credentials: { openAiApi: { id: '' } } }],
+			tools: [
+				{
+					type: 'node',
+					name: 'Remote',
+					enabled: false,
+					node: { ...node, credentials: { n8nApi: { id: '', name: 'Remote instance' } } },
+				},
+				{ type: 'workflow', inputs: { data: { value: authoredInput } } },
+			],
+			providerTools: { custom: authoredInput },
 			tasks: [{ type: 'task', id: 'task-1', enabled: true }],
 		});
+		expect(config).toEqual(original);
 	});
 
 	it('clears unknown credentials on vector store connections, including the nested embedding credential', () => {
