@@ -1,0 +1,11 @@
+packages/cli/src/modules/instance-ai/AGENTS_RUNTIME_POC.md
+  ai_agent 24
+packages/cli/src/modules/instance-ai/AGENTS_RUNTIME_POC_REPORT.md
+  ai_agent 169-170
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "aaf457d5762d206eff3609fd229fea1547437b69",
+  "prompts": {}
+}
