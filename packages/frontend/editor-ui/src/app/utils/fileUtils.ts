@@ -22,6 +22,12 @@ export function resolveFileMimeType(fileName: string, mimeType: string): string 
 	return '';
 }
 
+/** Inverse of `convertFileToBinaryData`: decodes base64 file data back into a `File`. */
+export function base64ToFile(data: string, fileName: string, mimeType: string): File {
+	const bytes = Uint8Array.from(atob(data), (char) => char.charCodeAt(0));
+	return new File([bytes], fileName, { type: mimeType });
+}
+
 export async function convertFileToBinaryData(file: File): Promise<IBinaryData> {
 	const reader = new FileReader();
 	return await new Promise((resolve, reject) => {

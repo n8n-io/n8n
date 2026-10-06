@@ -12,7 +12,7 @@ import {
 	HYPERLINK_WRITE_HEADERS,
 } from '../../../helpers/utils';
 import { buildItemFieldsPayload, resolveItemMapperValues } from '../../item';
-import { listRLC, untilSiteSelected } from '../../list';
+import { listRLC, untilSiteSelected } from '../../../list';
 import { itemColumns } from '../../list/columns';
 import { resolveSiteId, siteRLC } from '../../../site';
 import { microsoftApiRequest } from '../../../transport';

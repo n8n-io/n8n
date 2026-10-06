@@ -22,6 +22,7 @@ import AgentPersonalisationIcon from '../components/AgentPersonalisationIcon.vue
 import N8nChatPageLayout from './components/N8nChatPageLayout.vue';
 import N8nChatThreadHistory from './components/N8nChatThreadHistory.vue';
 import { useAgentN8nChatThreadsStore } from './n8nChatThreads.store';
+import { consumePendingN8nChatMessage, type PendingN8nChatMessage } from './pendingN8nChatMessage';
 import ProjectIcon from '@/features/collaboration/projects/components/ProjectIcon.vue';
 import { firstMessageTitle } from '@/features/ai/instanceAi/instanceAi.threadRuntime';
 
@@ -82,10 +83,14 @@ const isNewSession = computed(() => !props.agentThreadId);
 
 const panel = useTemplateRef<InstanceType<typeof AgentChatPanel>>('panel');
 
+// Hand-off from the Assistant picker. Consumed per `agentId` because `RouterView`
+// reuses this view across agents.
+let pendingMessage: PendingN8nChatMessage | undefined;
 watch(
 	() => props.agentId,
 	async (id) => {
 		if (!id) return;
+		pendingMessage = consumePendingN8nChatMessage(id);
 		await loadAgent(id);
 	},
 	{ immediate: true },
@@ -102,6 +107,12 @@ watch(
 	},
 	{ immediate: true },
 );
+
+watch(panel, (current) => {
+	if (!current || !pendingMessage || props.agentThreadId) return;
+	current.sendMessageFromOutside(pendingMessage.text, pendingMessage.files);
+	pendingMessage = undefined;
+});
 
 // The same recent-threads list the sidebar shows, so both name the open chat the same way.
 // A thread outside the newest page (e.g. opened directly by URL) is missing here until

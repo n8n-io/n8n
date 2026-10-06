@@ -81,7 +81,11 @@ export interface SystemTask {
 	 * An idempotent durable run that settles after a lease abort counts as a failed
 	 * attempt while its claim still matches, and retries only while attempts remain.
 	 */
-	run(signal: AbortSignal): Promise<void>;
+	run(signal: AbortSignal, context: SystemTaskRunContext): Promise<void>;
+}
+
+export interface SystemTaskRunContext {
+	readonly durable: boolean;
 }
 
 /** How a task's occurrences are retried and how late they may still run. */
