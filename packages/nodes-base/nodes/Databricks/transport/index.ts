@@ -17,3 +17,4 @@ export {
 	type PipelineEvent,
 	type PipelineEventLevel,
 } from './pipelineEvents';
+export { resolveLakebaseRestBase } from './lakebaseEndpoint';
