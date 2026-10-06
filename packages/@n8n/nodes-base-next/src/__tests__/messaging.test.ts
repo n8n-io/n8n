@@ -1,8 +1,11 @@
+import { lookupActionOf, lookupsOf } from '@n8n/node-sdk/host';
+import { toContract } from '@n8n/node-sdk/registry';
 import { mockHttp, runAction } from '@n8n/node-sdk/testing';
 import { SlackApi } from 'n8n-nodes-base/dist/credentials/SlackApi.credentials';
 import { WhatsAppApi } from 'n8n-nodes-base/dist/credentials/WhatsAppApi.credentials';
 
 import { getSlackChannelHistory } from '../nodes/slack/actions/channel.history';
+import { deleteSlackMessage } from '../nodes/slack/actions/message.delete';
 import { sendSlackMessage } from '../nodes/slack/actions/message.send';
 import { sendWhatsAppMessage } from '../nodes/whats-app/actions/message.send';
 
@@ -171,5 +174,54 @@ describe('whatsApp.message.send', () => {
 			ok: false,
 			error: { message: 'WhatsApp refused the message: Access token has expired', httpStatus: 401 },
 		});
+	});
+});
+
+describe('slack.channel lookup', () => {
+	it('pages through conversations.list and keeps the channels whose name has the search text', async () => {
+		const lookup = lookupsOf(toContract(deleteSlackMessage).input).get('slack.channel');
+		if (!lookup) throw new Error('slack.channel has no lookup');
+		const fetch = mockHttp([
+			{
+				path: '/conversations.list',
+				query: { cursor: 'c2' },
+				reply: { json: { ok: true, channels: [{ id: 'C02', name: 'eng-general' }] } },
+			},
+			{
+				path: '/conversations.list',
+				times: 1,
+				reply: {
+					json: {
+						ok: true,
+						channels: [
+							{ id: 'C01', name: 'general' },
+							{ id: 'C03', name: 'random' },
+						],
+						response_metadata: { next_cursor: 'c2' },
+					},
+				},
+			},
+		]);
+		const result = await runAction(lookupActionOf(deleteSlackMessage, 'slack.channel', lookup), {
+			...slack,
+			input: { search: 'General', paging: { mode: 'limit', max: 500 } },
+			fetch,
+		});
+		expect(result).toEqual({
+			ok: true,
+			items: [
+				{ id: 'C01', label: '#general' },
+				{ id: 'C02', label: '#eng-general' },
+			],
+		});
+		expect(fetch.calls.map((call) => call.query)).toEqual([
+			{ types: 'public_channel,private_channel', exclude_archived: 'true', limit: '200' },
+			{
+				types: 'public_channel,private_channel',
+				exclude_archived: 'true',
+				limit: '200',
+				cursor: 'c2',
+			},
+		]);
 	});
 });

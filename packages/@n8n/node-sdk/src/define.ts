@@ -3,6 +3,7 @@ import { toHostname, UserError, type IconRef } from 'n8n-workflow';
 
 import type { AnyCredentialType, Credential, CredentialKey, RunCredential } from './credentials';
 import {
+	canonicalJson,
 	hasBinary,
 	Schema,
 	t,
@@ -1211,8 +1212,21 @@ export interface RequestBinding<Input, P extends string = string> {
 		| Readonly<Record<string, string>>
 		| FromInput<Input, Readonly<Record<string, string>>>;
 	/** The JSON body fields, e.g. `{ archived: true, parent: { input: 'parent' } }`. */
-	readonly body?: Readonly<Record<string, RequestValue<Input>>>;
+	readonly body?: RequestBody<Input>;
 }
+
+/**
+ * A JSON body value: a literal, the input field `{ input: 'page' }`, or a list or an object of
+ * them. An object with only the key `input` is always an input field.
+ */
+export type BodyValue<Input> =
+	| RequestValue<Input>
+	| null
+	| ReadonlyArray<BodyValue<Input>>
+	| { readonly [key: string]: BodyValue<Input> };
+
+/** The JSON body of a declarative request, e.g. `{ filter: { value: 'page' } }`. */
+export type RequestBody<Input> = Readonly<Record<string, BodyValue<Input>>>;
 
 /** Where the host sends a page value: a query parameter or a field of the JSON body. */
 export type PageParam =
@@ -1255,6 +1269,10 @@ export type Pages<Page> =
 			/** Where the host sends the page size. */
 			readonly size?: PageSize;
 	  }
+	| CountedPages;
+
+/** The `link` and `offset` styles of `Pages`: the host finds the next page without the page body. */
+type CountedPages =
 	| {
 			/** The `rel="next"` URL of the `Link` header gives the next page. */
 			readonly style: 'link';
@@ -1386,6 +1404,270 @@ export type ActionBinding<
 			readonly imports?: never;
 			readonly inputs?: never;
 	  };
+
+/**
+ * A dot path into a value, e.g. `response_metadata.next_cursor` or `title.0.plain_text`. A
+ * number is the index of a list entry.
+ */
+export type PathOf<T, Depth extends readonly unknown[] = []> = Depth['length'] extends 4
+	? never
+	: T extends ReadonlyArray<infer E>
+		? `${number}` | `${number}.${PathOf<NonNullable<E>, [...Depth, unknown]>}`
+		: T extends object
+			? {
+					[K in keyof T & string]: K | `${K}.${PathOf<NonNullable<T[K]>, [...Depth, unknown]>}`;
+				}[keyof T & string]
+			: never;
+
+type StepOf<T, K extends string> = T extends ReadonlyArray<infer E>
+	? K extends `${number}`
+		? NonNullable<E>
+		: never
+	: K extends keyof T
+		? NonNullable<T[K]>
+		: never;
+
+/** The value at a `PathOf` path. */
+export type ValueAtPath<T, P extends string> = P extends `${infer Head}.${infer Rest}`
+	? ValueAtPath<StepOf<T, Head>, Rest>
+	: StepOf<T, P>;
+
+/** The paths of `T` that hold a list. */
+type ListPathOf<T> = {
+	[P in PathOf<T>]: ValueAtPath<T, P> extends readonly unknown[] ? P : never;
+}[PathOf<T>];
+
+/** One entry of the list at `items`; the page itself without `items`. */
+type EntryOf<Page, Items extends string> = (
+	[Items] extends ['']
+		? Page
+		: ValueAtPath<Page, Items>
+) extends ReadonlyArray<infer E>
+	? NonNullable<E>
+	: never;
+
+/** Text with one `{path}` or more into a list entry, e.g. `#{name}` or `{title.0.plain_text}`. */
+export type EntryTemplate<Entry> = `${string}{${PathOf<Entry>}}${string}`;
+
+/** The input of a resource lookup: the search text, and the input fields that the request reads. */
+export type LookupInput<In extends Shape> = RunInput<In> & {
+	/** The text that the user types in the search box. Absent: the whole list. */
+	readonly search?: string;
+};
+
+/**
+ * How a lookup narrows the list to a search text:
+ * - `service`: the request sends the `search` input, e.g. `query: { q: { input: 'search' } }`.
+ * - `label`: the host keeps the entries whose label holds the text, in any case.
+ */
+export type LookupSearch = 'service' | 'label';
+
+/** How the host gets the next page of a lookup: `Pages` with the cursor as a path into the page. */
+export type LookupPages<Next extends string = string> =
+	| {
+			/** The page gives the cursor of the next page. */
+			readonly style: 'cursor';
+			/** The path of the cursor in the page. A missing, null or empty cursor ends the list. */
+			readonly next: Next;
+			/** Where the host sends the cursor. */
+			readonly send: PageParam;
+			/** Where the host sends the page size. */
+			readonly size?: PageSize;
+	  }
+	| CountedPages;
+
+/** The request of a lookup. It reaches only the egress hosts of the action. */
+export type LookupRequest<Input, P extends string = string> = {
+	/**
+	 * The HTTP method. `POST` is for a search API that takes a body, as Notion's.
+	 *
+	 * @defaultValue `'GET'`
+	 */
+	readonly method?: 'GET' | 'POST';
+	/** Values by parameter name, e.g. `{ q: { input: 'search' } }`. */
+	readonly query?: Readonly<Record<string, RequestValue<Input>>>;
+	/** Request headers. The host adds the credential. */
+	readonly headers?: Readonly<Record<string, string>>;
+	/** The JSON body, e.g. `{ query: { input: 'search' } }`. */
+	readonly body?: RequestBody<Input>;
+} & (
+	| {
+			/** After the node's `baseUrl`. `{field}` is an input field of the lookup. */
+			readonly path: P & `/${string}` & RequestPath<P, Input>;
+			readonly url?: never;
+	  }
+	| {
+			/** An absolute URL on an egress host of the action, instead of `path`. */
+			readonly url: `https://${string}`;
+			readonly path?: never;
+	  }
+);
+
+/** One entry of a resource lookup, as the host gives it to the n8n form and to agents. */
+export interface LookupEntry {
+	/** The ID that the `ref` field stores, e.g. `C0123ABCDEF`. */
+	readonly id: string;
+	/** The name that the list shows, e.g. `#general`. */
+	readonly label: string;
+	/** A link that opens the resource in its service. */
+	readonly url?: string;
+}
+
+/**
+ * The declarative lookup of a resource: data that the host sends with the credential and the
+ * egress of the action whose field refers to the resource. No code runs, so a lookup works for
+ * every origin and runtime. Each value of `item` is a template over one list entry.
+ */
+export interface ResourceList<
+	In extends Shape,
+	P extends string,
+	R extends AnySchema,
+	Items extends string,
+> {
+	/** The request of the first page. */
+	readonly request: LookupRequest<LookupInput<In>, P>;
+	/** The fields of one page that the lookup reads. The host checks each page against it. */
+	readonly response: R;
+	/** The path of the entry list in the page, e.g. `channels`. Absent: the page is the list. */
+	readonly items?: Items & ListPathOf<Infer<R>>;
+	/** What the n8n form shows for one entry, e.g. `{ id: '{id}', label: '#{name}' }`. */
+	readonly item: {
+		/** The ID that the field stores. */
+		readonly id: EntryTemplate<EntryOf<Infer<R>, Items>>;
+		/** The name in the list. */
+		readonly label: EntryTemplate<EntryOf<Infer<R>, Items>>;
+		/** A link to the resource. */
+		readonly url?: EntryTemplate<EntryOf<Infer<R>, Items>>;
+	};
+	/** Without it, the lookup is one request. */
+	readonly pages?: LookupPages<PathOf<Infer<R>>>;
+	/** Absent: the list has no search box. */
+	readonly search?: LookupSearch;
+}
+
+/**
+ * A resource lookup in a contract document (`x-n8n-lookup` on each `ref` field). It is not in
+ * the contract hash: a workflow does not depend on it, and a run never sends it.
+ */
+export interface LookupDocument {
+	/** The request of the first page. `{ input }` values name fields of the lookup input. */
+	readonly request: {
+		/** The HTTP method; `GET` when absent. */
+		readonly method?: 'GET' | 'POST';
+		/** After the node base URL, e.g. `/conversations.list`. */
+		readonly path?: string;
+		/** An absolute URL instead of `path`. */
+		readonly url?: string;
+		/** Values by parameter name. */
+		readonly query?: Readonly<Record<string, RequestValue<Record<string, unknown>>>>;
+		/** Request headers. The host adds the credential. */
+		readonly headers?: Readonly<Record<string, string>>;
+		/** The JSON body. */
+		readonly body?: RequestBody<Record<string, unknown>>;
+	};
+	/** The JSON Schema of one page. */
+	readonly response: JsonSchema;
+	/** The path of the entry list in the page. Absent: the page is the list. */
+	readonly items?: string;
+	/** The templates of one entry over its fields, e.g. `#{name}`. */
+	readonly item: {
+		/** The ID that the field stores. */
+		readonly id: string;
+		/** The name in the list. */
+		readonly label: string;
+		/** A link to the resource. */
+		readonly url?: string;
+	};
+	/** How the host gets the next page. Absent: one request. */
+	readonly pages?: LookupPages;
+	/** How the list narrows to a search text. Absent: no search box. */
+	readonly search?: LookupSearch;
+	/**
+	 * The input fields of the action that the request reads, e.g. `spreadsheet` for the sheets of
+	 * a spreadsheet. The n8n form reloads the list when one of them changes.
+	 */
+	readonly input?: readonly string[];
+}
+
+/** A resource the user owns (a database, a channel), checked against its ID shape. */
+export interface Resource {
+	/** `service.resource`, e.g. `notion.database`. */
+	readonly id: string;
+	/** The resource name in the n8n UI, e.g. `Database`. */
+	readonly label: string;
+	/** The JSON Schema keywords of its ID, e.g. `{ pattern: '^[0-9a-f]{32}$' }`. */
+	readonly shape: JsonSchema;
+	/** The lookup that lists the resources. Absent: the user types the ID. */
+	readonly lookup?: LookupDocument;
+}
+
+/**
+ * Defines a resource type that `ref` fields point to, e.g. a Slack channel. With `list`, the n8n
+ * form shows a searchable list for each `ref` field, and agents list the resources by the
+ * resource id (`nodes explore-resources`). A dependent resource names the input fields that its
+ * request reads in `input`, e.g. the spreadsheet of a sheet; each action that refers to it must
+ * have them.
+ *
+ * @example
+ * ```ts
+ * export const slackChannel = defineResource({
+ *   id: 'slack.channel',
+ *   label: 'Channel',
+ *   shape: { pattern: '^[CGD][A-Z0-9]{2,}$' },
+ *   list: {
+ *     request: { path: '/conversations.list', query: { exclude_archived: true } },
+ *     response: t.obj({ channels: t.arr(t.obj({ id: t.str(), name: t.str() })) }),
+ *     items: 'channels',
+ *     item: { id: '{id}', label: '#{name}' },
+ *     search: 'label',
+ *   },
+ * });
+ * ```
+ */
+export function defineResource<
+	const In extends Shape = Record<never, never>,
+	const P extends string = string,
+	R extends AnySchema = AnySchema,
+	const Items extends string = '',
+>(spec: {
+	/** `service.resource`, e.g. `slack.channel`. */
+	readonly id: string;
+	/** The resource name in the n8n UI, e.g. `Channel`. */
+	readonly label: string;
+	/** The JSON Schema keywords of its ID, e.g. `{ pattern: '^[CGD][A-Z0-9]{2,}$' }`. */
+	readonly shape: JsonSchema;
+	/** The input fields of the action that the lookup reads, e.g. `{ spreadsheet: ref(spreadsheet) }`. */
+	readonly input?: In;
+	/** The lookup that lists the resources. */
+	readonly list?: ResourceList<In, P, R, Items>;
+}): Resource {
+	const { input, list, ...resource } = spec;
+	if (!list) return resource;
+	const { response, ...lookup } = list;
+	return {
+		...resource,
+		lookup: {
+			...lookup,
+			response: response.json,
+			...(input ? { input: Object.keys(input) } : {}),
+		},
+	};
+}
+
+/**
+ * A string field that holds the ID of `resource` (`x-n8n-ref`). The ID must match its shape. The
+ * field also holds the lookup of the resource (`x-n8n-lookup`), outside the contract hash.
+ *
+ * @example
+ * ```ts
+ * input: { channel: ref(slackChannel) },
+ * ```
+ */
+export const ref = ({ id, shape, lookup }: Resource) =>
+	new Schema<string>(
+		{ type: 'string', ...shape, 'x-n8n-ref': id, ...(lookup ? { 'x-n8n-lookup': lookup } : {}) },
+		false,
+	);
 
 /**
  * A container image that the action needs, e.g. for ffmpeg or a native addon. Such an action runs
@@ -2038,6 +2320,11 @@ export interface ContractDocument {
 	readonly inputs?: ActionInputs;
 	/** The container image the action needs. Absent: web APIs and host imports only. */
 	readonly runtime?: ActionRuntime;
+	/**
+	 * The base URL of the node, for the lookups (`x-n8n-lookup`) that the host sends without the
+	 * bundle. Absent when the input has no lookup or the node has no base URL.
+	 */
+	readonly baseUrl?: string;
 }
 
 /**
@@ -2193,6 +2480,9 @@ export const toContract = (source: ContractSource): ContractDocument => {
 		...(imports.length ? { imports } : {}),
 		...(inputs ? { inputs } : {}),
 		...(runtime ? { runtime } : {}),
+		...(source.node.baseUrl && lookupsOf(source.inputSchema).size > 0
+			? { baseUrl: source.node.baseUrl }
+			: {}),
 	};
 };
 
@@ -2423,6 +2713,7 @@ export function lintContract(contract: ContractDocument): string[] {
 			: []),
 		...egressIssues(contract),
 		...resourceIssues(contract),
+		...lookupIssues(contract),
 		...typicalIssues(contract.id, 'output', contract.output),
 		...inputIssues(contract),
 		...providerIssues(contract.id, contract.input, contract.output, contract.flow),
@@ -2548,6 +2839,74 @@ function resourceIssues({ id, input, output }: ContractDocument): string[] {
 			: [`${id}: resourceOutput.input names no input field: ${pointer.input}`]),
 		...(pointer.loadOptions.length ? [] : [`${id}: resourceOutput lists no loadOptions call`]),
 	];
+}
+
+/** The resource id and the lookup of each `ref` field with a lookup, at any depth. */
+const refLookupsOf = (schema: JsonSchema): Array<[string, LookupDocument]> => [
+	...(schema['x-n8n-ref'] !== undefined && schema['x-n8n-lookup'] !== undefined
+		? [[schema['x-n8n-ref'], schema['x-n8n-lookup']] satisfies [string, LookupDocument]]
+		: []),
+	...[
+		...Object.values(schema.properties ?? {}),
+		...(schema.items ? [schema.items] : []),
+		...(schema.oneOf ?? []),
+		...(schema.anyOf ?? []),
+	].flatMap(refLookupsOf),
+];
+
+/**
+ * The lookup of each resource that an input field refers to (`x-n8n-lookup`), by resource id, at
+ * any depth: a `ref` field in a variant branch has its lookup too.
+ */
+export function lookupsOf(input: JsonSchema): ReadonlyMap<string, LookupDocument> {
+	return new Map(refLookupsOf(input));
+}
+
+/** The fields that a request description names: `{field}` in the path and `{ input }` values. */
+function lookupFieldsOf({ request }: LookupDocument): string[] {
+	const named = (value: unknown): string[] =>
+		Array.isArray(value)
+			? value.flatMap(named)
+			: isRecord(value)
+				? Object.keys(value).length === 1 && typeof value.input === 'string'
+					? [value.input]
+					: Object.values(value).flatMap(named)
+				: [];
+	const inPath = [...(request.path ?? '').matchAll(/\{([^}]+)\}/g)].map(([, field]) => field);
+	return [...inPath, ...named(request.query), ...named(request.body)];
+}
+
+/**
+ * A resource id has one lookup, as n8n has one `listSearch` method per resource id. A lookup reads
+ * only `search` and its own input fields, a `service` search sends `search`, and the action has
+ * each input field of the lookup.
+ */
+function lookupIssues({ id, input }: ContractDocument): string[] {
+	const all = refLookupsOf(input);
+	return [...lookupsOf(input)].flatMap(([resource, lookup]) => {
+		const own = lookup.input ?? [];
+		const fields = lookupFieldsOf(lookup);
+		const at = `${id}: lookup ${resource}`;
+		return [
+			...(all.some(
+				([other, found]) => other === resource && canonicalJson(found) !== canonicalJson(lookup),
+			)
+				? [`${id}: resource ${resource} has two different lookups`]
+				: []),
+			...fields
+				.filter((field) => field !== 'search' && !own.includes(field))
+				.map((field) => `${at} reads ${field}, which is not in its input`),
+			...(lookup.search === 'service' && !fields.includes('search')
+				? [`${at} has a service search, but its request does not send search`]
+				: []),
+			...((lookup.request.path === undefined) === (lookup.request.url === undefined)
+				? [`${at} needs a path or a url`]
+				: []),
+			...own
+				.filter((field) => input.properties?.[field] === undefined)
+				.map((field) => `${at} reads ${field}, which is not an input field of the action`),
+		];
+	});
 }
 
 /** A typical field may be absent, so it cannot be required. */

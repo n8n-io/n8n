@@ -1,6 +1,13 @@
-import { t } from '@n8n/node-sdk';
+import { ref, t } from '@n8n/node-sdk';
 
-import { driveFile, driveIdOf, file, FILE_FIELDS, FOLDER_TYPE } from '../google-drive.node';
+import {
+	driveFile,
+	driveFolderId,
+	driveIdOf,
+	file,
+	FILE_FIELDS,
+	FOLDER_TYPE,
+} from '../google-drive.node';
 
 /** Mirrors `escapeBackslashQuotedValue` in nodes-base: a value in a Drive query string. */
 const quoted = (value: string) => `'${value.replaceAll('\\', '\\\\').replaceAll("'", "\\'")}'`;
@@ -15,10 +22,11 @@ export const searchFiles = file.action('search', {
 	action: 'Search files and folders',
 	summary: 'Find files and folders by name, folder, and type.',
 	flow: { effect: 'read', cardinality: '1:N', idempotent: true },
+	minor: 1,
 	input: {
 		nameContains: t.str().hint('Part of the name').optional(),
 		query: t.str().hint("Drive query syntax, e.g. modifiedTime > '2026-01-01'").optional(),
-		folderId: t.str().hint('Only items directly in this folder; ID or URL').optional(),
+		folderId: ref(driveFolderId).hint('Only items directly in this folder; ID or URL').optional(),
 		type: t.oneOf('all', 'files', 'folders').default('all'),
 		includeTrashed: t.bool().default(false),
 	},

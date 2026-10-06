@@ -1,6 +1,6 @@
-import { limitOf, pages, paging, path, t, UserError, type Infer } from '@n8n/node-sdk';
+import { limitOf, pages, paging, path, ref, t, UserError, type Infer } from '@n8n/node-sdk';
 
-import { message } from '../gmail.node';
+import { gmailLabel, message } from '../gmail.node';
 import {
 	attachmentPrefix,
 	downloadAttachments,
@@ -16,7 +16,7 @@ const filters = t.obj({
 	q: t.str().hint('Gmail search syntax, e.g. "is:unread from:ada@example.com"').optional(),
 	readStatus: t.oneOf('both', 'unread', 'read').default('both'),
 	sender: t.str().optional(),
-	labelIds: t.arr(t.str()).hint('Label IDs, not names').optional(),
+	labelIds: t.arr(ref(gmailLabel)).hint('Label IDs, not names').optional(),
 	receivedAfter: t.str().hint('ISO 8601 date or date-time').optional(),
 	receivedBefore: t.str().hint('ISO 8601 date or date-time').optional(),
 	includeSpamTrash: t.bool().optional(),
@@ -60,6 +60,7 @@ export const getManyGmailMessages = message.action('getAll', {
 	action: 'Get many messages',
 	summary: 'List messages that match a Gmail search.',
 	flow: { effect: 'read', cardinality: '1:N', idempotent: true },
+	minor: 1,
 	input: {
 		filters: filters.optional(),
 		paging,

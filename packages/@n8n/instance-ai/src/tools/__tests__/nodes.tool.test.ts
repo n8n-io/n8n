@@ -3,6 +3,7 @@ import {
 	suggestedNodesData,
 	type SearchableNodeType,
 } from '@n8n/ai-utilities/node-catalog';
+import { zodToJsonSchema } from '@n8n/ai-utilities/json-schema';
 import { validateNodeConfig } from '@n8n/workflow-sdk';
 import type { Mock } from 'vitest';
 
@@ -565,6 +566,39 @@ describe('nodes tool', () => {
 				results: [],
 				error: 'Resource exploration is not available.',
 			});
+		});
+
+		it('lists a contract resource by its resource id with the node contracts on', async () => {
+			const context = createMockContext({ nodeContractsEnabled: true });
+			(context.nodeService.exploreResources as Mock).mockResolvedValue({
+				results: [{ name: 'Leads', value: '0' }],
+			});
+			const input = {
+				action: 'explore-resources' as const,
+				nodeType: '@n8n/nodes-base-next.googleSheetsSheetRead',
+				version: 1,
+				methodName: 'googleSheets.sheet',
+				methodType: 'listSearch' as const,
+				credentialType: 'googleSheetsOAuth2Api',
+				credentialId: 'cred1',
+				currentNodeParameters: { spreadsheet: 'abc' },
+			};
+
+			const result = await executeTool(createNodesTool(context, 'full'), input, {} as never);
+
+			expect(context.nodeService.exploreResources).toHaveBeenCalledWith(input);
+			expect(result).toEqual({ results: [{ name: 'Leads', value: '0' }] });
+		});
+
+		it('names the resource id as the method only with the node contracts on', () => {
+			const methodNameOf = (nodeContractsEnabled: boolean) => {
+				const tool = createNodesTool(createMockContext({ nodeContractsEnabled }), 'full');
+				const { inputSchema } = tool as unknown as { inputSchema: never };
+				const json = JSON.stringify(zodToJsonSchema(inputSchema));
+				return json.includes('it is the resource id, e.g. \\"slack.channel\\"');
+			};
+			expect(methodNameOf(true)).toBe(true);
+			expect(methodNameOf(false)).toBe(false);
 		});
 
 		it('should handle errors from exploreResources gracefully', async () => {

@@ -40,7 +40,7 @@ import {
 } from './runtime';
 import { parameterPathOf, toProperty } from './properties';
 import { providedKindOf, providerInputsOf, replayCapability, type ProviderKind } from './providers';
-import { shapeOf } from './schema';
+import { canonicalJson, shapeOf } from './schema';
 import type { CredentialManifest, NativeManifest } from './manifest';
 import {
 	addStatusToStore,
@@ -59,7 +59,6 @@ import {
 import { mockHttp, sendRequest } from './testing';
 import { validate } from './validator';
 import {
-	canonicalJson,
 	compareSemver,
 	diffContracts,
 	isFixtureBinary,

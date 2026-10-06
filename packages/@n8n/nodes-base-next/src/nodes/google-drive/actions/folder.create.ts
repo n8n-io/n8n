@@ -1,17 +1,22 @@
-import { parse, path, t } from '@n8n/node-sdk';
+import { parse, path, ref, t } from '@n8n/node-sdk';
 
-import { driveFile, driveIdOf, FILE_FIELDS, FOLDER_TYPE, folder } from '../google-drive.node';
+import {
+	driveFile,
+	driveFolderId,
+	driveIdOf,
+	FILE_FIELDS,
+	FOLDER_TYPE,
+	folder,
+} from '../google-drive.node';
 
 export const createFolder = folder.action('create', {
 	action: 'Create a folder',
 	summary: 'Create a folder in Google Drive.',
 	flow: { effect: 'write', cardinality: 'per-item', idempotent: false },
+	minor: 1,
 	input: {
 		name: t.str().with({ minLength: 1 }),
-		parentId: t
-			.str()
-			.default('root')
-			.hint('Parent folder or shared drive ID or URL; root is My Drive'),
+		parentId: ref(driveFolderId).default('root'),
 	},
 	output: driveFile,
 	async run({ input, http }) {

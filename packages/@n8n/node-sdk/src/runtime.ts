@@ -23,9 +23,11 @@ import {
 	type IDataObject,
 	type IExecuteFunctions,
 	type IHttpRequestOptions,
+	type ILoadOptionsFunctions,
 	type INode,
 	type INodeExecutionData,
 	type INodeInputConfiguration,
+	type INodeListSearchResult,
 	type INodeProperties,
 	type IPairedItemData,
 	type INodeType,
@@ -35,7 +37,14 @@ import {
 	type SupplyData,
 } from 'n8n-workflow';
 
-import { credentialBaseUrlOf, plainFieldsOf, redactedValue, secretRedactorOf } from './credentials';
+import {
+	compat,
+	compatTypeOfManifest,
+	credentialBaseUrlOf,
+	plainFieldsOf,
+	redactedValue,
+	secretRedactorOf,
+} from './credentials';
 import {
 	codeRunnerOf,
 	dataTableHostOf,
@@ -55,7 +64,14 @@ import {
 	reportRefusal,
 } from './egress';
 import { actionUiSchema, type CredentialManifest } from './manifest';
-import { formPropertiesOf, inputReaderOf, parameterPathOf, toolUiOf } from './properties';
+import {
+	formPropertiesOf,
+	inputReaderOf,
+	locatorValueOf,
+	parameterPathOf,
+	toolUiOf,
+	type ActionUiDocument,
+} from './properties';
 import {
 	bytesOf,
 	payloadOf,
@@ -82,11 +98,15 @@ import {
 	type HostImports,
 	type Http,
 	type HttpMethod,
+	type EncodedPath,
 	type HttpRequest,
 	isRequestPath,
 	limitOf,
 	type ListBinding,
 	type LogLevel,
+	type LookupDocument,
+	type LookupEntry,
+	lookupsOf,
 	type NodeDefinition,
 	nextLinkOf,
 	nextOffsetOf,
@@ -95,7 +115,6 @@ import {
 	paging,
 	pathSegmentOf,
 	type RequestBinding,
-	type RequestValue,
 	type RunContext,
 	type RunInput,
 	type RunLimits,
@@ -104,12 +123,14 @@ import {
 	credentialOptionsOf,
 	type Trigger,
 } from './define';
-import { testPattern } from './pattern';
+import { firstMatchOf, testPattern } from './pattern';
 import {
 	binaryKeyIssue,
 	hasBinary,
 	hasPageValue,
+	Schema,
 	shapeOf,
+	t,
 	type AnySchema,
 	type Binary,
 	type JsonSchema,
@@ -771,30 +792,51 @@ const supplyHostOf = (
 		await context.getInputConnectionData(PROVIDER_CONNECTIONS[kind], itemIndex),
 });
 
-const inputValue = <I>(value: RequestValue<I>, input: Readonly<Record<string, unknown>>) =>
-	typeof value === 'object' ? input[value.input] : value;
+const isInputField = (value: object): value is { readonly input: string } =>
+	Object.keys(value).length === 1 && 'input' in value && typeof value.input === 'string';
 
-const inputValues = <I>(
-	values: Readonly<Record<string, RequestValue<I>>> | undefined,
+/** A body value with each `{ input }` object replaced by the input field it names. */
+const inputValue = (value: unknown, input: Readonly<Record<string, unknown>>): unknown => {
+	if (typeof value !== 'object' || value === null) return value;
+	if (Array.isArray(value)) return value.map((entry) => inputValue(entry, input));
+	if (isInputField(value)) return input[value.input];
+	return inputValues(isRecord(value) ? value : {}, input);
+};
+
+/** The values with each input field filled in. An unset input field leaves its key out. */
+function inputValues(
+	values: Readonly<Record<string, unknown>> | undefined,
 	input: Readonly<Record<string, unknown>>,
-) =>
-	values &&
-	Object.fromEntries(
-		Object.entries(values).flatMap(([key, value]) => {
-			const resolved = inputValue(value, input);
-			return resolved === undefined ? [] : [[key, resolved]];
-		}),
+) {
+	return (
+		values &&
+		Object.fromEntries(
+			Object.entries(values).flatMap(([key, value]) => {
+				const resolved = inputValue(value, input);
+				return resolved === undefined ? [] : [[key, resolved]];
+			}),
+		)
 	);
+}
 
 const queryValue = (value: unknown) =>
 	typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean'
 		? value
 		: JSON.stringify(value);
 
-/** The request of a declarative binding for one item's input. */
-export function requestOf<I>(binding: RequestBinding<I>, input: I): HttpRequest {
-	const values: Readonly<Record<string, unknown>> = isRecord(input) ? input : {};
-	const filled = binding.path.replace(/\{([^}]+)\}/g, (_, field: string) => {
+/** A declarative request: a `path` after the base URL, or the absolute `url` of a lookup. */
+export type RequestTarget<I> = Omit<RequestBinding<I>, 'path'> &
+	(
+		| { readonly path: string; readonly url?: never }
+		| { readonly url: string; readonly path?: never }
+	);
+
+/** `path` with each `{field}` filled in from the input, URL-encoded. */
+function filledPathOf(
+	path: string,
+	values: Readonly<Record<string, unknown>>,
+): { readonly path: EncodedPath } {
+	const filled = path.replace(/\{([^}]+)\}/g, (_, field: string) => {
 		const value = values[field];
 		// An empty segment sends the request to another URL, e.g. a collection.
 		if (value === undefined || value === '') {
@@ -802,15 +844,23 @@ export function requestOf<I>(binding: RequestBinding<I>, input: I): HttpRequest 
 		}
 		return pathSegmentOf(String(queryValue(value)));
 	});
-	const path = `/${filled.replace(/^\//, '')}`;
-	if (!isRequestPath(path)) throw new UserError(`The path ${path} must start with one "/"`);
+	const encoded = `/${filled.replace(/^\//, '')}`;
+	if (!isRequestPath(encoded)) throw new UserError(`The path ${encoded} must start with one "/"`);
+	return { path: encoded };
+}
+
+/** The request of a declarative binding for one item's input. */
+export function requestOf<I>(binding: RequestTarget<I>, input: I): HttpRequest {
+	const values: Readonly<Record<string, unknown>> = isRecord(input) ? input : {};
+	const target =
+		binding.url === undefined ? filledPathOf(binding.path, values) : { url: binding.url };
 	const query =
 		typeof binding.query === 'function' ? binding.query(input) : inputValues(binding.query, values);
 	const headers = typeof binding.headers === 'function' ? binding.headers(input) : binding.headers;
 	const body = inputValues(binding.body, values);
 	return {
 		method: binding.method ?? 'GET',
-		path,
+		...target,
 		...(query
 			? {
 					query: Object.fromEntries(
@@ -840,7 +890,7 @@ const withParam = (request: HttpRequest, param: PageParam, value: string | numbe
  */
 export function listItems<I>(
 	http: Http,
-	binding: ListBinding<I, string, AnySchema, unknown>,
+	binding: Omit<ListBinding<I, string, AnySchema, unknown>, 'path'> & RequestTarget<I>,
 	input: I,
 	drift?: (issues: readonly string[]) => void,
 ) {
@@ -2114,6 +2164,236 @@ function webhookOf({
 	return { name: 'default', httpMethod: method, responseMode: 'onReceived', path };
 }
 
+/** The most entries one lookup gives. A search narrows a longer list. */
+export const MAX_LOOKUP_ENTRIES = 500;
+
+const lookupEntry = t.obj({ id: t.str(), label: t.str(), url: t.str().optional() });
+
+/** The value at a dot path, e.g. `title.0.plain_text`. An empty path is the value itself. */
+const valueAtPath = (value: unknown, at: string | undefined): unknown =>
+	(at ?? '')
+		.split('.')
+		.filter((key) => key !== '')
+		.reduce<unknown>(
+			(current, key) =>
+				Array.isArray(current)
+					? current[Number(key)]
+					: isRecord(current)
+						? current[key]
+						: undefined,
+			value,
+		);
+
+/** A template of a lookup item with each `{path}` filled in from one entry. */
+const filledTemplate = (template: string, entry: unknown) =>
+	template.replace(/\{([^}]+)\}/g, (_, at: string) => {
+		const value = valueAtPath(entry, at);
+		return ['string', 'number', 'boolean'].includes(typeof value) ? String(value) : '';
+	});
+
+/** The entries of one lookup page. A `label` search keeps the entries whose label has the text. */
+export function lookupEntriesOf(
+	lookup: LookupDocument,
+	page: unknown,
+	search: string | undefined,
+): LookupEntry[] {
+	const list = valueAtPath(page, lookup.items);
+	const text = lookup.search === 'label' ? search?.trim().toLowerCase() : undefined;
+	return (Array.isArray(list) ? list : []).flatMap((entry: unknown) => {
+		const id = filledTemplate(lookup.item.id, entry);
+		const label = filledTemplate(lookup.item.label, entry) || id;
+		const url = lookup.item.url === undefined ? '' : filledTemplate(lookup.item.url, entry);
+		if (id === '' || (text && !label.toLowerCase().includes(text))) return [];
+		// The URL can come from the service, and the editor shows it as a link.
+		return [{ id, label, ...(/^https?:\/\//i.test(url) ? { url } : {}) }];
+	});
+}
+
+/** What a lookup needs of the action whose field refers to the resource. */
+export type LookupOwner = Pick<Action, 'id' | 'node' | 'version' | 'credentialTypes' | 'egress'>;
+
+/**
+ * The action that runs one lookup. It has the node, the credential types and the egress of the
+ * action whose field refers to the resource, so the host sends the lookup as it sends a step:
+ * with the credential, the egress check, the retries and the limits.
+ */
+export function lookupActionOf(
+	owner: LookupOwner,
+	resourceId: string,
+	lookup: LookupDocument,
+): Action {
+	const { pages: style, request } = lookup;
+	const { url, path: at, ...options } = request;
+	const binding = {
+		...options,
+		...(url === undefined ? { path: at ?? '/' } : { url }),
+		response: new Schema<unknown>(lookup.response, false),
+		items: (page: unknown, input: { readonly search?: string }) =>
+			lookupEntriesOf(lookup, page, input.search),
+		...(style === undefined
+			? {}
+			: {
+					pages:
+						style.style === 'cursor'
+							? {
+									...style,
+									next: (page: unknown) => {
+										const cursor = valueAtPath(page, style.next);
+										return typeof cursor === 'string' || typeof cursor === 'number'
+											? cursor
+											: undefined;
+									},
+								}
+							: style,
+				}),
+	};
+	const input: Shape = {
+		search: t.str().optional(),
+		...Object.fromEntries((lookup.input ?? []).map((name) => [name, t.str()])),
+		...(style === undefined ? {} : { paging }),
+	};
+	const { id, node, version, credentialTypes, egress } = owner;
+	return {
+		node,
+		version,
+		credentialTypes,
+		...(egress ? { egress } : {}),
+		id: `${id}:${resourceId}`,
+		operation: resourceId,
+		action: `List ${resourceId}`,
+		summary: `Lists the ${resourceId} resources.`,
+		flow: { effect: 'read', cardinality: '1:N', idempotent: true },
+		input,
+		inputSchema: t.obj(input).json,
+		output: lookupEntry,
+		scopes: [],
+		// `response` lists only the fields the lookup reads, so other fields are no drift.
+		run: ({ http, input: values }) => listItems(http, binding, values, () => undefined),
+	};
+}
+
+/** Runs one lookup and gives its entries as n8n list search results. */
+export async function runLookup(
+	action: Action,
+	host: ExecutorHost,
+): Promise<INodeListSearchResult> {
+	const [entries = []] = await executorOf(action)(host);
+	return {
+		results: entries.flatMap(({ json }) =>
+			matches(lookupEntry, json)
+				? [{ name: json.label, value: json.id, ...(json.url ? { url: json.url } : {}) }]
+				: [],
+		),
+	};
+}
+
+/** The host of a lookup in the n8n form: the parameters of the node, without items. */
+function lookupHostOf(
+	context: ILoadOptionsFunctions,
+	input: Readonly<Record<string, unknown>>,
+): ExecutorHost {
+	return {
+		node: context.getNode(),
+		...hostLimitsOf(),
+		items: [{ json: {} }],
+		parameter: (name) =>
+			name === AUTHENTICATION ? context.getCurrentNodeParameter(AUTHENTICATION) : input[name],
+		request: async (options, credentialType) => {
+			const response: unknown = credentialType
+				? await context.helpers.httpRequestWithAuthentication.call(context, credentialType, options)
+				: await context.helpers.httpRequest(options);
+			return response;
+		},
+		credentialData: async (type) => await context.getCredentials(type),
+		continueOnFail: () => false,
+		log: (level, message) => context.logger[level](message, { node: context.getNode().name }),
+		// A lookup page with other fields still lists what it can.
+		warn: (message) => context.logger.debug(message, { node: context.getNode().name }),
+	};
+}
+
+/**
+ * The value of an input field that a dependent lookup reads, e.g. the spreadsheet of a sheet:
+ * the ID of a resource locator, the first match of the field pattern, e.g. in a URL.
+ */
+function lookupInputValueOf(
+	context: ILoadOptionsFunctions,
+	parameter: string,
+	schema: JsonSchema | undefined,
+): unknown {
+	const value = locatorValueOf(context.getCurrentNodeParameter(parameter));
+	if (typeof value !== 'string' || schema?.pattern === undefined) return value;
+	return firstMatchOf(schema.pattern, value) ?? value;
+}
+
+/**
+ * The n8n `listSearch` method of each resource that an input field refers to, by resource id.
+ * `ownerOf` gives the action that the lookups run as. Absent when the input has no lookup.
+ */
+export function listSearchMethodsOf(
+	contract: Pick<ContractDocument, 'input'>,
+	ui: ActionUiDocument | undefined,
+	ownerOf: () => Promise<LookupOwner>,
+): INodeType['methods'] | undefined {
+	const lookups = lookupsOf(contract.input);
+	if (lookups.size === 0) return undefined;
+	const pathOf = parameterPathOf(contract.input, ui);
+	const methods = [...lookups].map(([resourceId, lookup]) => {
+		async function listSearch(this: ILoadOptionsFunctions, filter?: string) {
+			const parents = (lookup.input ?? []).map((name) => [
+				name,
+				lookupInputValueOf(this, pathOf(name), contract.input.properties?.[name]),
+			]);
+			// The list stays empty until the user sets each parent field.
+			if (parents.some(([, value]) => value === undefined || value === '')) return { results: [] };
+			const input = {
+				...Object.fromEntries(parents),
+				...(filter ? { search: filter } : {}),
+				...(lookup.pages ? { paging: { mode: 'limit', max: MAX_LOOKUP_ENTRIES } } : {}),
+			};
+			return await runLookup(
+				lookupActionOf(await ownerOf(), resourceId, lookup),
+				lookupHostOf(this, input),
+			);
+		}
+		return [resourceId, listSearch] as const;
+	});
+	return { listSearch: Object.fromEntries(methods) };
+}
+
+/**
+ * The lookup owner of a frozen version, without its bundle: the credential types from the
+ * credential manifests of the host, else as n8n defines them, and the egress of the manifest.
+ */
+export async function manifestLookupOwnerOf({ contract }: VersionManifest): Promise<LookupOwner> {
+	const types = await Promise.all(
+		contract.credentials.map(async (name) => {
+			const stored = await credentialManifestOf(name);
+			return stored ? compatTypeOfManifest(stored) : compat(name);
+		}),
+	);
+	return {
+		id: contract.id,
+		version: contract.version,
+		credentialTypes: contract.credentials,
+		egress: contract.egress ?? { hosts: [] },
+		node: {
+			id: contract.node,
+			displayName: contract.nodeDisplayName,
+			...(contract.baseUrl === undefined ? {} : { baseUrl: contract.baseUrl }),
+			...(types.length > 0
+				? {
+						credential: {
+							types,
+							scopes: {},
+							optional: contract.credentialOptional === true,
+						},
+					}
+				: {}),
+		},
+	};
+}
+
 /**
  * The n8n node description of one version of an action, trigger or provider. The host projects it
  * from the contract and the `ui` block, so the editor shows only what the contract types. Every Node Contract version
@@ -2178,9 +2458,12 @@ export function toNodeType<S extends Shape, O extends AnySchema>(
 	const run = executorOf(action);
 	const pathOf = parameterPathOf(action.inputSchema, ui);
 	const kind = providedKindOf(action.output.json);
+	const methods = listSearchMethodsOf({ input: action.inputSchema }, ui, async () => action);
 	if (kind) {
 		return class implements INodeType {
 			description = description;
+
+			methods = methods;
 
 			async supplyData(this: ISupplyDataFunctions, itemIndex: number) {
 				const outputs = await run(supplyHostOf(this, itemIndex, pathOf));
@@ -2190,6 +2473,8 @@ export function toNodeType<S extends Shape, O extends AnySchema>(
 	}
 	return class implements INodeType {
 		description = description;
+
+		methods = methods;
 
 		async execute(this: IExecuteFunctions) {
 			return await run(hostOf(this, pathOf));
@@ -2531,12 +2816,18 @@ export function versionedTypeOf(
  */
 export const toVersionedNodeType = (versions: readonly FrozenVersion[]) =>
 	versionedTypeOf(versions, (frozen): INodeType => {
-		const { contract } = frozen.manifest;
+		const { contract, ui } = frozen.manifest;
 		const description = nodeDescriptionOf(frozen.manifest);
 		const kind = providedKindOf(contract.output);
+		const methods = listSearchMethodsOf(
+			contract,
+			ui,
+			async () => await manifestLookupOwnerOf(frozen.manifest),
+		);
 		if (kind) {
 			return {
 				description,
+				...(methods ? { methods } : {}),
 				async supplyData(this: ISupplyDataFunctions, itemIndex: number) {
 					return await supplyVersion(this, frozen, kind, itemIndex);
 				},
@@ -2545,6 +2836,7 @@ export const toVersionedNodeType = (versions: readonly FrozenVersion[]) =>
 		return {
 			// The host generates the tool node types from this flag, as for a legacy node.
 			description: isToolContract(contract) ? { ...description, usableAsTool: true } : description,
+			...(methods ? { methods } : {}),
 			async execute(this: IExecuteFunctions) {
 				return await executeVersion(this, frozen);
 			},
@@ -2610,7 +2902,7 @@ function toolOf(context: NodeContext, frozen: FrozenVersion, itemIndex: number) 
 	const descriptions = new Map(
 		Object.entries(contract.input.properties ?? {}).flatMap(([name, schema]) => {
 			const raw = context.getNodeParameter(name, itemIndex, undefined, { rawExpressions: true });
-			const field = modelFieldOf(node, name, raw);
+			const field = modelFieldOf(node, name, locatorValueOf(raw));
 			if (field && hasPageValue(schema)) {
 				throw new NodeOperationError(node, `The model cannot fill ${name}: it reads each page`);
 			}

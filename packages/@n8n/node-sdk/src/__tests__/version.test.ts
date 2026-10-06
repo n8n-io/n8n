@@ -25,7 +25,15 @@ import {
 	type NodeContractVersion,
 	type VersionManifest,
 } from '../entry/registry';
-import { defineNode, provider, t, type ActionFlow, type Shape } from '../index';
+import {
+	defineNode,
+	defineResource,
+	provider,
+	ref,
+	t,
+	type ActionFlow,
+	type Shape,
+} from '../index';
 import {
 	checkPublish,
 	lastPublishedIn,
@@ -187,6 +195,30 @@ describe('diffContracts', () => {
 		expect(diffContracts(base, contractOf({ input: baseInput, summary: 'Echo it.' })).kind).toBe(
 			'patch',
 		);
+	});
+
+	it('keeps the hash for a changed lookup, and classifies an added ref as a minor, a dropped or other ref as a major', () => {
+		const lookup = (path: `/${string}`) =>
+			defineResource({
+				id: 'demo.item',
+				label: 'Item',
+				shape: {},
+				list: {
+					request: { path },
+					response: t.arr(t.obj({ id: t.str() })),
+					item: { id: '{id}', label: '{id}' },
+				},
+			});
+		const listed = contractOf({ input: { ...baseInput, text: ref(lookup('/items')) } });
+		const moved = contractOf({ input: { ...baseInput, text: ref(lookup('/v2/items')) } });
+		expect(contractHash(moved)).toBe(contractHash(listed));
+		expect(diffContracts(listed, moved).kind).toBe('patch');
+		expect(diffContracts(base, listed).kind).toBe('minor');
+		expect(diffContracts(listed, base).kind).toBe('major');
+		const other = defineResource({ id: 'demo.other', label: 'Other', shape: {} });
+		expect(
+			diffContracts(listed, contractOf({ input: { ...baseInput, text: ref(other) } })).kind,
+		).toBe('major');
 	});
 
 	it('classifies an additive optional input as a minor', () => {

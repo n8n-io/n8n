@@ -87,6 +87,34 @@ export const slack = defineNode({
 	},
 });
 
+// Slack recommends at most 200 entries per page.
+const PAGE_SIZE = 200;
+
+/** The cursor fields of a Slack list method. */
+const nextCursor = t.obj({ next_cursor: t.str().optional() }).optional();
+
+/** The channels the token can see, as the legacy channel list shows them. */
+const channelList = {
+	request: {
+		path: '/conversations.list',
+		query: { types: 'public_channel,private_channel', exclude_archived: true },
+	},
+	response: t.obj({
+		channels: t.arr(t.obj({ id: t.str(), name: t.str() })),
+		response_metadata: nextCursor,
+	}),
+	items: 'channels',
+	item: { id: '{id}', label: '#{name}' },
+	pages: {
+		style: 'cursor',
+		next: 'response_metadata.next_cursor',
+		send: { query: 'cursor' },
+		size: { query: 'limit', max: PAGE_SIZE },
+	},
+	// conversations.list has no name filter.
+	search: 'label',
+} as const;
+
 /** chat.postMessage takes a conversation ID, a user ID for a DM, or a channel name. */
 export const slackConversation = defineResource({
 	id: 'slack.conversation',
@@ -96,6 +124,7 @@ export const slackConversation = defineResource({
 		'x-n8n-hint': 'Channel ID (C…), #channel-name, or a user ID (U…) for a DM',
 		examples: ['#general'],
 	},
+	list: channelList,
 });
 
 /** Methods other than chat.postMessage take a conversation ID only. */
@@ -106,6 +135,30 @@ export const slackChannelId = defineResource({
 		pattern: '^[CGD][A-Z0-9]{2,}$',
 		'x-n8n-hint': 'Channel ID such as C0123ABCDEF, not a #name; channel.getAll lists IDs',
 		examples: ['C0123ABCDEF'],
+	},
+	list: channelList,
+});
+
+/** A user of the workspace. */
+export const slackUserId = defineResource({
+	id: 'slack.user',
+	label: 'User',
+	shape: { pattern: '^[UW][A-Z0-9]{2,}$', 'x-n8n-hint': 'User ID, e.g. U0123ABCDEF' },
+	list: {
+		request: { path: '/users.list' },
+		response: t.obj({
+			members: t.arr(t.obj({ id: t.str(), name: t.str() })),
+			response_metadata: nextCursor,
+		}),
+		items: 'members',
+		item: { id: '{id}', label: '@{name}' },
+		pages: {
+			style: 'cursor',
+			next: 'response_metadata.next_cursor',
+			send: { query: 'cursor' },
+			size: { query: 'limit', max: PAGE_SIZE },
+		},
+		search: 'label',
 	},
 });
 
@@ -263,9 +316,6 @@ const cursorPage = slackResponse({
 		.with({ additionalProperties: true })
 		.optional(),
 });
-
-// Slack recommends at most 200 entries per page.
-const PAGE_SIZE = 200;
 
 /** The entries of a cursor list method, page by page, up to the paging limit. */
 export function slackList<S extends AnySchema, T>(

@@ -18,6 +18,7 @@ export const commentOnIssue = issueResource.action('createComment', {
 	summary: 'Add a comment to an issue or a pull request.',
 	scopes: ['repo'],
 	flow: { effect: 'write', cardinality: 'per-item', idempotent: false },
+	minor: 1,
 	input: {
 		issueNumber: t.int().with({ minimum: 1 }).hint('The number shown as #123, not the ID'),
 		body: t.str().with({ minLength: 1 }).hint('Markdown'),

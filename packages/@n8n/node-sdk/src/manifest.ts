@@ -144,6 +144,12 @@ const contract = typed<ContractDocument>()(
 			.describe('The container image the action needs. Absent: web APIs and host imports only.')
 			.with(SINCE_2_7)
 			.optional(),
+		baseUrl: t
+			.str()
+			.describe(
+				'The node base URL, for the lookups (`x-n8n-lookup`) that the host sends. Not in contractHash.',
+			)
+			.optional(),
 	}),
 );
 

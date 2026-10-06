@@ -326,6 +326,9 @@ function basePropertyOf(
 			default: '',
 		};
 	}
+	const resource = json['x-n8n-ref'];
+	if (resource !== undefined && json.type === 'string')
+		return locatorPropertyOf(base, json, resource);
 	if (json.enum) {
 		const labels = json['x-n8n-options'] ?? {};
 		const options = json.enum.flatMap((value) => {
@@ -373,6 +376,57 @@ function basePropertyOf(
 			return { ...base, type: 'json', default: jsonDefaultOf(schema) };
 	}
 }
+
+/**
+ * A `ref` field is a resource locator: a list of the resources when the resource has a lookup,
+ * and the ID. The host generates the list method from the lookup, named by the resource id.
+ */
+function locatorPropertyOf(
+	base: Pick<INodeProperties, 'displayName' | 'name' | 'required' | 'description' | 'placeholder'>,
+	json: JsonSchema,
+	resource: string,
+): INodeProperties {
+	const lookup = json['x-n8n-lookup'];
+	const { placeholder, ...rest } = base;
+	const parents = lookup?.input ?? [];
+	return {
+		...rest,
+		type: 'resourceLocator',
+		default: {
+			mode: lookup ? 'list' : 'id',
+			value: typeof json.default === 'string' ? json.default : '',
+		},
+		modes: [
+			...(lookup
+				? [
+						{
+							displayName: 'From List',
+							name: 'list',
+							type: 'list' as const,
+							typeOptions: {
+								searchListMethod: resource,
+								searchable: lookup.search !== undefined,
+							},
+						},
+					]
+				: []),
+			{
+				displayName: 'By ID',
+				name: 'id',
+				type: 'string' as const,
+				...(placeholder === undefined ? {} : { placeholder }),
+			},
+		],
+		...(parents.length > 0 ? { typeOptions: { loadOptionsDependsOn: [...parents] } } : {}),
+	};
+}
+
+/**
+ * The value of a resource locator parameter, or the parameter value as it is. As n8n core reads
+ * it, a filled-in default `{ mode, value }` has no `__rl` flag.
+ */
+export const locatorValueOf = (value: unknown): unknown =>
+	isRecord(value) && 'mode' in value && 'value' in value ? value.value : value;
 
 interface Branch {
 	/** The tag value of the branch. */
@@ -460,6 +514,7 @@ function variantProperty(
 export function inputReaderOf(schema: AnySchema): (value: unknown) => unknown {
 	if (!isVariant(schema.json)) {
 		const { type } = toProperty('', schema);
+		if (type === 'resourceLocator') return locatorValueOf;
 		return type === 'json' ? (value) => parameterValue(value, true) : (value) => value;
 	}
 	const tag = schema.json.discriminator?.propertyName ?? '';

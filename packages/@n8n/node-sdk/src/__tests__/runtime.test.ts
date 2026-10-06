@@ -3,6 +3,7 @@ import {
 	NodeApiError,
 	NodeOperationError,
 	type IHttpRequestOptions,
+	type ILoadOptionsFunctions,
 	type INode,
 	type JsonObject,
 } from 'n8n-workflow';
@@ -10,6 +11,7 @@ import {
 import { compat, credential, defineCredential, field } from '../entry/credentials';
 import {
 	defineNode,
+	defineResource,
 	isRecord,
 	OperationalError,
 	pages,
@@ -19,6 +21,7 @@ import {
 	path,
 	readAllAs,
 	readAs,
+	ref,
 	Schema,
 	t,
 	UserError,
@@ -28,7 +31,17 @@ import {
 	type HttpRequest,
 	type Infer,
 } from '../index';
-import { executorOf, outputsPerEntryOf, toNodeType, type ExecutorHost } from '../runtime';
+import { toContract } from '../define';
+import {
+	executorOf,
+	lookupActionOf,
+	outputsPerEntryOf,
+	runLookup,
+	toNodeType,
+	toVersionedNodeType,
+	type ExecutorHost,
+} from '../runtime';
+import { contractHash, NODE_CONTRACT_VERSION } from '../version';
 import { mockHttp, runAction } from '../testing';
 
 const echo = defineNode({
@@ -1558,5 +1571,246 @@ describe('node errorOf', () => {
 		expect(outputs[0]?.map(({ json: value }) => value)).toEqual([{ ok: false }]);
 		expect(caught[0]).toBeInstanceOf(UserError);
 		expect(caught[0]).toMatchObject({ message: 'Slack: not_in_channel' });
+	});
+});
+
+describe('resource lookups', () => {
+	const directory = defineNode({
+		id: 'directory',
+		displayName: 'Directory',
+		credential: credential({ types: [compat('directoryApi')] }),
+		baseUrl: 'https://directory.test/api',
+	});
+	const channel = defineResource({
+		id: 'directory.channel',
+		label: 'Channel',
+		shape: { pattern: '^C[0-9]+$' },
+		list: {
+			request: { path: '/channels', query: { archived: false } },
+			response: t.obj({
+				channels: t.arr(t.obj({ id: t.str(), name: t.str() })),
+				meta: t.obj({ next: t.str().optional() }).optional(),
+			}),
+			items: 'channels',
+			item: { id: '{id}', label: '#{name}', url: 'https://directory.test/c/{id}' },
+			pages: {
+				style: 'cursor',
+				next: 'meta.next',
+				send: { query: 'cursor' },
+				size: { query: 'limit', max: 2 },
+			},
+			search: 'label',
+		},
+	});
+	const database = defineResource({
+		id: 'directory.database',
+		label: 'Database',
+		shape: { pattern: '[0-9a-f]{8}' },
+		list: {
+			request: {
+				method: 'POST',
+				path: '/search',
+				body: { filter: { property: 'object', value: 'database' }, query: { input: 'search' } },
+			},
+			response: t.obj({
+				results: t.arr(t.obj({ id: t.str(), title: t.arr(t.obj({ text: t.str() })) })),
+			}),
+			items: 'results',
+			item: { id: '{id}', label: '{title.0.text}' },
+			search: 'service',
+		},
+	});
+	const table = defineResource({
+		id: 'directory.table',
+		label: 'Table',
+		shape: { pattern: '^[0-9]+$' },
+		input: { database: ref(database) },
+		list: {
+			request: { path: '/databases/{database}/tables' },
+			response: t.arr(t.obj({ position: t.int(), name: t.str() })),
+			item: { id: '{position}', label: '{name}' },
+		},
+	});
+	const readRow = directory.resource('row').action('read', {
+		action: 'Read a row',
+		summary: 'Read one row.',
+		flow: { effect: 'read', cardinality: 'per-item' },
+		input: { channel: ref(channel), database: ref(database), table: ref(table) },
+		output: t.json(),
+		request: { path: '/databases/{database}/tables/{table}' },
+	});
+	const lookupOf = (id: string) => {
+		const lookup = toContract(readRow).input.properties?.[id]?.['x-n8n-lookup'];
+		if (!lookup) throw new Error(`${id} has no lookup`);
+		return lookup;
+	};
+	const credentialed: INode = { ...node, credentials: { directoryApi: { id: '1', name: 'Dir' } } };
+	const valuesOf = (input: Readonly<Record<string, unknown>>) => ({
+		parameter: (name: string) => input[name],
+	});
+
+	it('pages through the list, maps each entry and keeps the labels that hold the search text', async () => {
+		const { host, requests } = hostOf(
+			[
+				{
+					channels: [
+						{ id: 'C1', name: 'General' },
+						{ id: 'C2', name: 'random' },
+					],
+					meta: { next: 'p2' },
+				},
+				{ channels: [{ id: 'C3', name: 'general-eng' }] },
+			],
+			valuesOf({ search: 'GEN', paging: { mode: 'limit', max: 500 } }),
+		);
+		const action = lookupActionOf(readRow, 'directory.channel', lookupOf('channel'));
+		expect(await runLookup(action, host)).toEqual({
+			results: [
+				{ name: '#General', value: 'C1', url: 'https://directory.test/c/C1' },
+				{ name: '#general-eng', value: 'C3', url: 'https://directory.test/c/C3' },
+			],
+		});
+		expect(requests.map(({ url, qs }) => [url, qs])).toEqual([
+			['https://directory.test/api/channels', { archived: false, limit: 2 }],
+			['https://directory.test/api/channels', { archived: false, limit: 2, cursor: 'p2' }],
+		]);
+	});
+
+	it('sends the search text in a nested body for a service search, and leaves it out without one', async () => {
+		const page = { results: [{ id: 'abcdef12', title: [{ text: 'Tasks' }] }] };
+		const action = lookupActionOf(readRow, 'directory.database', lookupOf('database'));
+		const searched = hostOf([page], valuesOf({ search: 'Tas' }));
+		const all = hostOf([page]);
+		expect(await runLookup(action, searched.host)).toEqual({
+			results: [{ name: 'Tasks', value: 'abcdef12' }],
+		});
+		await runLookup(action, all.host);
+		expect([searched.requests[0]?.body, all.requests[0]?.body]).toEqual([
+			{ filter: { property: 'object', value: 'database' }, query: 'Tas' },
+			{ filter: { property: 'object', value: 'database' } },
+		]);
+	});
+
+	it('reads the input fields of a dependent lookup, and fails without them', async () => {
+		const action = lookupActionOf(readRow, 'directory.table', lookupOf('table'));
+		const { host, requests } = hostOf(
+			[[{ position: 3, name: 'Q3' }]],
+			valuesOf({ database: 'abcdef12' }),
+		);
+		expect(await runLookup(action, host)).toEqual({ results: [{ name: 'Q3', value: '3' }] });
+		expect(requests[0]?.url).toBe('https://directory.test/api/databases/abcdef12/tables');
+		await expect(runLookup(action, hostOf([]).host)).rejects.toThrow('database');
+	});
+
+	it('keeps only an http or https entry URL', async () => {
+		const linked = { ...lookupOf('channel'), item: { id: '{id}', label: '{name}', url: '{link}' } };
+		const action = lookupActionOf(readRow, 'directory.channel', linked);
+		const page = {
+			channels: [
+				{ id: 'C1', name: 'web', link: 'https://directory.test/c/C1' },
+				{ id: 'C2', name: 'script', link: 'javascript:alert(1)' },
+			],
+		};
+		expect(await runLookup(action, hostOf([page]).host)).toEqual({
+			results: [
+				{ name: 'web', value: 'C1', url: 'https://directory.test/c/C1' },
+				{ name: 'script', value: 'C2' },
+			],
+		});
+	});
+
+	it('reaches only the egress hosts of the action', async () => {
+		const outside = { ...lookupOf('table'), request: { url: 'https://elsewhere.test/tables' } };
+		const action = lookupActionOf(readRow, 'directory.table', outside);
+		await expect(
+			runLookup(action, hostOf([[]], valuesOf({ database: 'abcdef12' })).host),
+		).rejects.toThrow('Host not allowed');
+	});
+
+	it('gives the node type a listSearch method per resource, run as the action in the n8n form', async () => {
+		const sent: Array<[string, IHttpRequestOptions]> = [];
+		const context = {
+			getNode: () => credentialed,
+			getCurrentNodeParameter: (name: string) =>
+				name === 'database' ? { __rl: true, mode: 'list', value: 'abcdef12' } : undefined,
+			getCredentials: async () => ({}),
+			helpers: {
+				httpRequestWithAuthentication: async (type: string, options: IHttpRequestOptions) => {
+					sent.push([type, options]);
+					return [{ position: 1, name: 'Q1' }];
+				},
+			},
+			logger: { debug: () => undefined },
+		};
+		const { methods } = new (toNodeType(readRow))();
+		expect(Object.keys(methods?.listSearch ?? {})).toEqual([
+			'directory.channel',
+			'directory.database',
+			'directory.table',
+		]);
+		const listTables = methods?.listSearch?.['directory.table'];
+		// The lookup reads only these members.
+		const result = await listTables?.call(context as unknown as ILoadOptionsFunctions);
+		expect(result).toEqual({ results: [{ name: 'Q1', value: '1' }] });
+		expect(sent.map(([type, { url }]) => [type, url])).toEqual([
+			['directoryApi', 'https://directory.test/api/databases/abcdef12/tables'],
+		]);
+	});
+
+	it('lists nothing and sends no request while a parent field of a dependent lookup is empty', async () => {
+		const sent: string[] = [];
+		const contextOf = (database: unknown) => ({
+			getNode: () => credentialed,
+			getCurrentNodeParameter: (name: string) => (name === 'database' ? database : undefined),
+			getCredentials: async () => ({}),
+			helpers: {
+				httpRequestWithAuthentication: async (_: string, { url }: IHttpRequestOptions) => {
+					sent.push(url);
+					return [];
+				},
+			},
+			logger: { debug: () => undefined },
+		});
+		const listTables = new (toNodeType(readRow))().methods?.listSearch?.['directory.table'];
+		for (const database of [undefined, '', { __rl: true, mode: 'list', value: '' }]) {
+			expect(
+				await listTables?.call(contextOf(database) as unknown as ILoadOptionsFunctions),
+			).toEqual({ results: [] });
+		}
+		expect(sent).toEqual([]);
+	});
+
+	it('runs the lookup of a frozen version from its manifest, without its bundle', async () => {
+		const contract = toContract(readRow);
+		const frozen = {
+			manifest: {
+				kind: 'action' as const,
+				id: readRow.id,
+				semver: '1.0.0',
+				nodeContract: NODE_CONTRACT_VERSION,
+				contractHash: contractHash(contract),
+				bundleHash: '0'.repeat(64),
+				contract,
+			},
+			origin: 'community' as const,
+			readBundle: async () => await Promise.reject(new Error('the lookup read the bundle')),
+		};
+		expect(contract.baseUrl).toBe('https://directory.test/api');
+		const nodeType = new (toVersionedNodeType([frozen]))().getNodeType(1);
+		const context = {
+			getNode: () => credentialed,
+			getCurrentNodeParameter: () => undefined,
+			getCredentials: async () => ({}),
+			helpers: {
+				httpRequestWithAuthentication: async () => ({
+					channels: [{ id: 'C9', name: 'ops' }],
+				}),
+			},
+			logger: { debug: () => undefined },
+		};
+		const listChannels = nodeType.methods?.listSearch?.['directory.channel'];
+		expect(await listChannels?.call(context as unknown as ILoadOptionsFunctions, 'op')).toEqual({
+			results: [{ name: '#ops', value: 'C9', url: 'https://directory.test/c/C9' }],
+		});
 	});
 });

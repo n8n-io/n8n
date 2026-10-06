@@ -1,5 +1,7 @@
-import { resourceLookupsOf } from '@n8n/node-sdk/host';
+import { lookupActionOf, lookupsOf, resourceLookupsOf } from '@n8n/node-sdk/host';
 import { toContract } from '@n8n/node-sdk/registry';
+import { mockHttp, runAction } from '@n8n/node-sdk/testing';
+import { NotionApi } from 'n8n-nodes-base/dist/credentials/NotionApi.credentials';
 
 import { getManyDatabasePages } from '../nodes/notion/actions/database-page.get-all';
 
@@ -64,5 +66,44 @@ describe('notion.databasePage.getAll resourceOutput', () => {
 			{ ...legacy, version: 3, currentNodeParameters: { ...parameters, dataSourceId: locator } },
 			{ ...legacy, version: 2.2, currentNodeParameters: { ...parameters, databaseId: locator } },
 		]);
+	});
+});
+
+describe('notion.database lookup', () => {
+	it('searches the data sources with the search text, page by page', async () => {
+		const lookup = lookupsOf(toContract(getManyDatabasePages).input).get('notion.database');
+		if (!lookup) throw new Error('notion.database has no lookup');
+		const source = (id: string, title: string) => ({ id, title: [{ plain_text: title }] });
+		const fetch = mockHttp([
+			{
+				method: 'POST',
+				path: '/v1/search',
+				reply: {
+					json: { results: [source('a1', 'Tasks'), source('b2', 'Task log')], next_cursor: null },
+				},
+			},
+		]);
+		const result = await runAction(
+			lookupActionOf(getManyDatabasePages, 'notion.database', lookup),
+			{
+				credential: { type: 'notionApi', data: { apiKey: 'secret_test' } },
+				credentials: [new NotionApi()],
+				input: { search: 'Task', paging: { mode: 'limit', max: 500 } },
+				fetch,
+			},
+		);
+		expect(result).toEqual({
+			ok: true,
+			items: [
+				{ id: 'a1', label: 'Tasks' },
+				{ id: 'b2', label: 'Task log' },
+			],
+		});
+		expect(fetch.calls[0]?.body).toEqual({
+			filter: { property: 'object', value: 'data_source' },
+			query: 'Task',
+			page_size: 100,
+		});
+		expect(fetch.calls[0]?.headers['notion-version']).toBe('2026-03-11');
 	});
 });

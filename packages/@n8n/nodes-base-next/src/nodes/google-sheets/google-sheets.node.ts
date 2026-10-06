@@ -33,10 +33,27 @@ export const googleSpreadsheet = defineResource({
 
 export const spreadsheetIdOf = (value: string) => googleFileIdOf(value, 'Google Sheets');
 
+/** A tab of a spreadsheet. The lookup lists the tabs of the spreadsheet of the action. */
+export const googleSheet = defineResource({
+	id: 'googleSheets.sheet',
+	label: 'Sheet',
+	shape: { pattern: '^(gid=)?[0-9]+$', 'x-n8n-hint': 'A numeric sheet gid' },
+	input: { spreadsheet: ref(googleSpreadsheet) },
+	list: {
+		request: { path: '/{spreadsheet}', query: { fields: 'sheets.properties(sheetId,title)' } },
+		response: t.obj({
+			sheets: t.arr(t.obj({ properties: t.obj({ sheetId: t.int(), title: t.str() }) })),
+		}),
+		items: 'sheets',
+		item: { id: '{properties.sheetId}', label: '{properties.title}' },
+		search: 'label',
+	},
+});
+
 export const sheetInput = t
 	.variant('mode', {
 		name: { name: t.str().hint('Exact tab name the user gave') },
-		id: { id: t.str().with({ pattern: '^(gid=)?[0-9]+$' }).hint('A numeric sheet gid') },
+		id: { id: ref(googleSheet) },
 	})
 	.hint('Never assume "Sheet1"; ask when the tab name is unknown');
 

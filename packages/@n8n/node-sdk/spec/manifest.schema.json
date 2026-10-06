@@ -307,6 +307,10 @@
 							"additionalProperties": false,
 							"description": "The container image the action needs. Absent: web APIs and host imports only.",
 							"x-n8n-since": "2.7.0"
+						},
+						"baseUrl": {
+							"type": "string",
+							"description": "The node base URL, for the lookups (`x-n8n-lookup`) that the host sends. Not in contractHash."
 						}
 					},
 					"required": [
@@ -1359,6 +1363,10 @@
 							"additionalProperties": false,
 							"description": "The container image the action needs. Absent: web APIs and host imports only.",
 							"x-n8n-since": "2.7.0"
+						},
+						"baseUrl": {
+							"type": "string",
+							"description": "The node base URL, for the lookups (`x-n8n-lookup`) that the host sends. Not in contractHash."
 						}
 					},
 					"required": [
@@ -1653,6 +1661,10 @@
 									"additionalProperties": false,
 									"description": "The container image the action needs. Absent: web APIs and host imports only.",
 									"x-n8n-since": "2.7.0"
+								},
+								"baseUrl": {
+									"type": "string",
+									"description": "The node base URL, for the lookups (`x-n8n-lookup`) that the host sends. Not in contractHash."
 								}
 							},
 							"required": [

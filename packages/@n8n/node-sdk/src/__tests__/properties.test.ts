@@ -146,6 +146,53 @@ const rowsOf = (properties: readonly INodeProperties[], indent = ''): string[] =
 
 const descriptionOf = (action: Action) => new (toNodeType(action))().description;
 
+const sheets = defineNode({ id: 'sheets', displayName: 'Sheets', baseUrl: 'https://sheets.test' });
+const spreadsheet = defineResource({
+	id: 'sheets.spreadsheet',
+	label: 'Spreadsheet',
+	shape: { pattern: '^[a-z0-9]+$' },
+	list: {
+		request: { path: '/files', query: { q: { input: 'search' } } },
+		response: t.obj({ files: t.arr(t.obj({ id: t.str(), name: t.str() })) }),
+		items: 'files',
+		item: { id: '{id}', label: '{name}' },
+		search: 'service',
+	},
+});
+const sheet = defineResource({
+	id: 'sheets.sheet',
+	label: 'Sheet',
+	shape: { pattern: '^[0-9]+$' },
+	input: { spreadsheet: ref(spreadsheet) },
+	list: {
+		request: { path: '/{spreadsheet}' },
+		response: t.obj({
+			sheets: t.arr(t.obj({ properties: t.obj({ sheetId: t.int(), title: t.str() }) })),
+		}),
+		items: 'sheets',
+		item: { id: '{properties.sheetId}', label: '{properties.title}' },
+	},
+});
+const owner = defineResource({ id: 'sheets.owner', label: 'Owner', shape: { minLength: 1 } });
+
+/** Reads a row of a sheet in a spreadsheet. It echoes its input. */
+const readRow = sheets.resource('row').action('read', {
+	action: 'Read a row',
+	summary: 'Read one row of a sheet.',
+	flow: { effect: 'read', cardinality: 'per-item' },
+	input: {
+		spreadsheet: ref(spreadsheet).title('Spreadsheet'),
+		tab: t
+			.variant('by', { id: { id: ref(sheet).title('Sheet') }, name: { name: t.str() } })
+			.title('Tab'),
+		owner: ref(owner).title('Owner').optional(),
+	},
+	output: t.json(),
+	async run({ input }) {
+		return await Promise.resolve({ ...input });
+	},
+});
+
 /** Runs the node type as n8n does: n8n fills the description defaults into the parameters. */
 async function runInputOf(action: Action, stored: Readonly<Record<string, unknown>>) {
 	const NodeType = toNodeType(action);
@@ -186,7 +233,7 @@ async function runInputOf(action: Action, stored: Readonly<Record<string, unknow
 describe('nodeDescriptionOf', () => {
 	it('shows the Slack message.send probe with titles, order, widgets and an Options collection', () => {
 		expect(rowsOf(descriptionOf(sendMessage).properties)).toEqual([
-			'channel | Channel | string | placeholder=#general',
+			'channel | Channel | resourceLocator',
 			'text | Text | string | typeOptions={"rows":6}',
 			'options | Options | collection | placeholder=Add option',
 			'  blocks | Blocks | json',
@@ -194,6 +241,40 @@ describe('nodeDescriptionOf', () => {
 			'  threadTs | Thread | string',
 			'  replyBroadcast | Also send to channel | boolean',
 		]);
+	});
+
+	it('shows a ref field as a resource locator: the list of its lookup, then the ID', () => {
+		const [field, tab, ownerField] = descriptionOf(readRow).properties;
+		expect(field).toMatchObject({
+			name: 'spreadsheet',
+			type: 'resourceLocator',
+			required: true,
+			default: { mode: 'list', value: '' },
+			modes: [
+				{
+					name: 'list',
+					type: 'list',
+					typeOptions: { searchListMethod: 'sheets.spreadsheet', searchable: true },
+				},
+				{ name: 'id', type: 'string' },
+			],
+		});
+		const [, sheetField] = tab?.options ?? [];
+		expect(sheetField).toMatchObject({
+			name: 'id',
+			type: 'resourceLocator',
+			typeOptions: { loadOptionsDependsOn: ['spreadsheet'] },
+			modes: [
+				{ name: 'list', typeOptions: { searchListMethod: 'sheets.sheet', searchable: false } },
+				{ name: 'id' },
+			],
+		});
+		// A resource without a lookup takes the ID only.
+		expect(ownerField).toMatchObject({
+			type: 'resourceLocator',
+			default: { mode: 'id', value: '' },
+			modes: [{ name: 'id' }],
+		});
 	});
 
 	it('shows option labels, number limits, and a variant as a tag dropdown with fields per tag', () => {
@@ -355,6 +436,16 @@ describe('node parameters', () => {
 			options: { threadTs: value.threadTs },
 		});
 		expect(input).toEqual(value);
+	});
+
+	it('reads the ID of a resource locator, also in a variant branch, and a plain ID', async () => {
+		const locator = (mode: string, value: string) => ({ __rl: true, mode, value });
+		const { input } = await runInputOf(readRow, {
+			spreadsheet: locator('list', 'abc'),
+			tab: { by: 'id', id: locator('id', '7') },
+			owner: 'ada',
+		});
+		expect(input).toEqual({ spreadsheet: 'abc', tab: { by: 'id', id: '7' }, owner: 'ada' });
 	});
 
 	it('reads an unset advanced field as unset, so its default applies', async () => {

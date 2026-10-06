@@ -2,7 +2,7 @@ import { Readable } from 'node:stream';
 
 import { validate, type Action } from '@n8n/node-sdk';
 import { toNodeType } from '@n8n/node-sdk/host';
-import type { IDataObject, IExecuteFunctions } from 'n8n-workflow';
+import type { IDataObject, IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-workflow';
 import {
 	parseRawEmail,
 	simplifyOutput,
@@ -843,5 +843,43 @@ describe('googleGemini.text.message', () => {
 			() => ({ promptFeedback: { blockReason: 'SAFETY' } }),
 		);
 		await expect(items).rejects.toThrow('Gemini returned no reply: SAFETY');
+	});
+});
+
+describe('googleSheets.sheet lookup', () => {
+	it('lists the tabs of the spreadsheet that the form names, as a resource locator or a URL', async () => {
+		const calls: Options[] = [];
+		const parameters: Record<string, unknown> = {
+			spreadsheet: { __rl: true, mode: 'id', value: SPREADSHEET },
+		};
+		const context = {
+			getNode: () => ({
+				name: 'Sheets',
+				credentials: { googleSheetsOAuth2Api: { id: '1', name: 'G' } },
+			}),
+			getCurrentNodeParameter: (name: string) => parameters[name],
+			getCredentials: async () => ({}),
+			helpers: {
+				httpRequestWithAuthentication: async (_type: string, options: Options) => {
+					calls.push(options);
+					return {
+						sheets: [
+							{ properties: { sheetId: 0, title: 'Leads' } },
+							{ properties: { sheetId: 7, title: 'Archive' } },
+						],
+					};
+				},
+			},
+			logger: { debug: () => undefined },
+		};
+		const listSheets = new (toNodeType(readSheetRows))().methods?.listSearch?.[
+			'googleSheets.sheet'
+		];
+		// The lookup reads only these members.
+		const result = await listSheets?.call(context as unknown as ILoadOptionsFunctions, 'lea');
+		expect(result).toEqual({ results: [{ name: 'Leads', value: '0' }] });
+		expect(calls.map(({ url, qs }) => [url, qs])).toEqual([
+			[BASE, { fields: 'sheets.properties(sheetId,title)' }],
+		]);
 	});
 });

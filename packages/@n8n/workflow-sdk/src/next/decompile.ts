@@ -834,9 +834,25 @@ function inputRead(factory: ContractFactory, saved: NodeParameters): ContractRea
 		factory,
 		parameters: (factory.jsonPaths ?? []).reduce<NodeParameters>(
 			(read, path) => withJsonAt(read, path),
-			parameters,
+			withoutLocators(parameters),
 		),
 	};
+}
+
+/**
+ * The form shows a resource field as a resource locator, which stores `{ __rl, mode, value }`.
+ * The input field is its value. A contract value never has the `__rl` key.
+ */
+function withoutLocators(parameters: NodeParameters): NodeParameters {
+	const read = (value: unknown): unknown =>
+		Array.isArray(value)
+			? value.map(read)
+			: isRecord(value)
+				? value.__rl === true && 'value' in value
+					? value.value
+					: Object.fromEntries(Object.entries(value).map(([key, member]) => [key, read(member)]))
+				: value;
+	return Object.fromEntries(Object.entries(parameters).map(([key, value]) => [key, read(value)]));
 }
 
 /** n8n keeps a `json` parameter as text after an edit. Text that does not parse stays text. */

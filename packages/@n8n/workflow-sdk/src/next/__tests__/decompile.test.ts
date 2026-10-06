@@ -877,6 +877,21 @@ describe('decompileWorkflow', () => {
 			});
 		});
 
+		it('reads the value of a resource locator that the form stores for a resource field', () => {
+			const json = withSlack(slackWorkflow(), {
+				channel: { __rl: true, mode: 'list', value: 'C0123', cachedResultName: '#general' },
+				text: 'Hi',
+				options: { threadTs: '1.2' },
+			});
+			const { source, rebuilt } = roundTrip(json);
+			expect(source).toContain('channel: "C0123"');
+			expect(rebuilt.nodes.find((n) => n.type === SLACK_TYPE)?.parameters).toEqual({
+				channel: 'C0123',
+				text: 'Hi',
+				options: { threadTs: '1.2' },
+			});
+		});
+
 		it('keeps a node in node() when options holds a field that is not advanced', () => {
 			const json = withSlack(slackWorkflow(), {
 				channel: '#general',

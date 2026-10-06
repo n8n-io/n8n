@@ -9,7 +9,7 @@ export {
 	type PermissionRefusalListener,
 	type RefusedPermission,
 } from '../egress';
-export { isToolContract, resourceLookupsOf, type ResourceLookupCall } from '../define';
+export { isToolContract, lookupsOf, resourceLookupsOf, type ResourceLookupCall } from '../define';
 export { credentialTypeOfManifest, toCredentialType } from '../credentials';
 export { setCodeLanguages, setFileExtractor, type FileExtractor } from '../host-imports';
 export {
@@ -22,6 +22,7 @@ export {
 } from '../properties';
 export {
 	AUTHENTICATION,
+	lookupActionOf,
 	nodeDescriptionOf,
 	nodeNameOf,
 	setContractVersionLoader,
@@ -38,6 +39,7 @@ export {
 	type Executor,
 	type ExecutorLoader,
 	type FrozenVersion,
+	type LookupOwner,
 } from '../runtime';
 export {
 	setRunProfileListener,

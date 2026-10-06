@@ -39,6 +39,8 @@ import {
 	credentialTypeOf,
 	executorOf,
 	hostLimitsOf,
+	listSearchMethodsOf,
+	manifestLookupOwnerOf,
 	nativeRunError,
 	nodeDescriptionOf,
 	verifiedBundleOf,
@@ -48,10 +50,10 @@ import {
 	type ExecutorHost,
 	type FrozenVersion,
 } from './runtime';
-import { Schema, type Shape } from './schema';
+import { canonicalJson, Schema, type Shape } from './schema';
 import { readAs } from './validate';
 import { validate } from './validator';
-import { canonicalJson, NODE_CONTRACT_VERSION } from './version';
+import { NODE_CONTRACT_VERSION } from './version';
 
 /**
  * What starts a trigger: a service webhook, a poll, the event of a native trigger, or an `event`
@@ -792,8 +794,12 @@ export function toTriggerNodeType(trigger: Trigger): new () => INodeType {
 		nodeDescriptionOf({ contract, nodeContract: NODE_CONTRACT_VERSION }),
 		async () => await Promise.resolve(executor),
 	);
+	const { id, node, version, credentialTypes } = trigger;
+	const owner = { id, node, version, credentialTypes, egress: contract.egress ?? { hosts: [] } };
 	return class implements INodeType {
 		description = type.description;
+
+		methods = listSearchMethodsOf(contract, undefined, async () => await Promise.resolve(owner));
 
 		poll = type.poll;
 
@@ -807,12 +813,19 @@ export function toTriggerNodeType(trigger: Trigger): new () => INodeType {
  * One frozen trigger version. Its bundle loads at the first call, with the executor loader of
  * the host: in this process or in the sandbox, by origin.
  */
-const frozenTriggerType = (frozen: FrozenVersion): INodeType =>
-	triggerTypeOf(
+const frozenTriggerType = (frozen: FrozenVersion): INodeType => {
+	const type = triggerTypeOf(
 		frozen.manifest.contract,
 		nodeDescriptionOf(frozen.manifest),
 		async () => (await cachedExecutorOf(frozen, loadTriggerExecutor)).executor,
 	);
+	const methods = listSearchMethodsOf(
+		frozen.manifest.contract,
+		frozen.manifest.ui,
+		async () => await manifestLookupOwnerOf(frozen.manifest),
+	);
+	return methods ? { ...type, methods } : type;
+};
 
 /** The versioned node type of a trigger, from its frozen versions. */
 export const toVersionedTriggerType = (versions: readonly FrozenVersion[]) =>

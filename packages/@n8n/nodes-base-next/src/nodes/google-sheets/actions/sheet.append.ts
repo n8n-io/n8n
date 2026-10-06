@@ -15,7 +15,7 @@ import {
 
 export const appendSheetRow = sheet.action('append', {
 	// Minor 1: an ID of any length, and the ID after /d/ in a URL.
-	minor: 1,
+	minor: 2,
 	action: 'Append row',
 	summary: 'Append one row per item. Never updates existing rows; use appendOrUpdate to upsert.',
 	flow: { effect: 'write', cardinality: 'per-item', idempotent: false },

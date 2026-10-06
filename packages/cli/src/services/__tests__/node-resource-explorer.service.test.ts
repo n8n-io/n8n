@@ -1,13 +1,28 @@
 import type { Mocked } from 'vitest';
 import type { Logger } from '@n8n/backend-common';
-import type { ProjectRepository, User } from '@n8n/db';
+import type {
+	CredentialsRepository,
+	ProjectRepository,
+	SharedWorkflowRepository,
+	User,
+} from '@n8n/db';
+import { toVersionedNodeType, versionsOf } from '@n8n/nodes-base-next';
+import type { EvalLlmMockHandler } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
-import type { INodeTypeDescription } from 'n8n-workflow';
+import {
+	Expression,
+	type ICredentialsHelper,
+	type IHttpRequestOptions,
+	type INodeTypeDescription,
+	type IWorkflowExecuteAdditionalData,
+} from 'n8n-workflow';
 
 import type { CredentialsFinderService } from '@n8n/backend-services';
 import type { NodeTypes } from '@/node-types';
-import type { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
+import { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
 import { NodeResourceExplorerService } from '@/services/node-resource-explorer.service';
+import type { WorkflowLoaderService } from '@/services/workflow-loader.service';
+import { getBase } from '@/workflow-execute-additional-data';
 
 vi.mock('@/workflow-execute-additional-data', () => ({
 	getBase: vi.fn().mockResolvedValue({ additional: 'data' }),
@@ -822,5 +837,78 @@ describe('NodeResourceExplorerService', () => {
 				expect.anything(),
 			);
 		});
+	});
+});
+
+describe('NodeResourceExplorerService with a contract node', () => {
+	it('lists the channels of a contract resource by its resource id, with the eval mock', async () => {
+		const nodeType = new (toVersionedNodeType(versionsOf('slack.message.delete')))().getNodeType(1);
+		const nodeTypes = mock<NodeTypes>();
+		nodeTypes.getByNameAndVersion.mockReturnValue(nodeType);
+		vi.spyOn(Expression.prototype, 'acquireIsolate').mockResolvedValue(true);
+		vi.spyOn(Expression.prototype, 'releaseIsolate').mockResolvedValue(undefined);
+		vi.mocked(getBase).mockResolvedValueOnce(
+			mock<IWorkflowExecuteAdditionalData>({
+				credentialsHelper: mock<ICredentialsHelper>({
+					getDecrypted: async () => ({ accessToken: 'xoxb-test' }),
+					isCredentialUsableByNode: () => true,
+				}),
+			}),
+		);
+		const credentialsFinderService = mock<CredentialsFinderService>();
+		credentialsFinderService.findCredentialForUser.mockResolvedValue({
+			id: 'cred-1',
+			type: 'slackApi',
+			name: 'My Slack',
+		} as never);
+		const projectRepository = mock<ProjectRepository>();
+		projectRepository.getPersonalProjectForUserOrFail.mockResolvedValue({ id: 'proj-1' } as never);
+		const dynamicNodeParametersService = new DynamicNodeParametersService(
+			mock<Logger>(),
+			nodeTypes,
+			mock<WorkflowLoaderService>(),
+			mock<SharedWorkflowRepository>(),
+			credentialsFinderService,
+			mock<CredentialsRepository>(),
+		);
+		const service = new NodeResourceExplorerService(
+			mock<Logger>(),
+			dynamicNodeParametersService,
+			credentialsFinderService,
+			projectRepository,
+			nodeTypes,
+		);
+		const requests: IHttpRequestOptions[] = [];
+		const evalMock: EvalLlmMockHandler = async (options) => {
+			requests.push(options);
+			return {
+				statusCode: 200,
+				headers: {},
+				body: {
+					ok: true,
+					channels: [
+						{ id: 'C01', name: 'general' },
+						{ id: 'C02', name: 'random' },
+					],
+				},
+			};
+		};
+
+		const result = await service.exploreResources(
+			mock<User>({ id: 'user-1' }),
+			{
+				nodeType: '@n8n/nodes-base-next.slackMessageDelete',
+				version: 1,
+				methodName: 'slack.channel',
+				methodType: 'listSearch',
+				credentialType: 'slackApi',
+				credentialId: 'cred-1',
+				filter: 'gen',
+			},
+			evalMock,
+		);
+
+		expect(result.results).toEqual([{ name: '#general', value: 'C01', url: undefined }]);
+		expect(requests.map(({ url }) => url)).toEqual(['https://slack.com/api/conversations.list']);
 	});
 });

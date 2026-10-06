@@ -12,7 +12,6 @@ export {
 } from '../define';
 export {
 	addedPermissionsOf,
-	canonicalJson,
 	compareSemver,
 	contractHash,
 	diffContracts,
@@ -35,6 +34,7 @@ export {
 	type Semver,
 	type VersionManifest,
 } from '../version';
+export { canonicalJson } from '../schema';
 export { checkCredentialType } from '../credentials';
 export {
 	parseCredentialManifest,

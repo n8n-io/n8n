@@ -13,7 +13,7 @@ import {
 import { permissionsOf, type ContractPermissions } from './egress';
 import type { ActionUiDocument } from './properties';
 import { nativeManifestSchema, versionManifestSchema, type NativeManifest } from './manifest';
-import { hasPageValue, type JsonSchema } from './schema';
+import { canonicalJson, hasPageValue, type JsonSchema } from './schema';
 import { providedOf } from './providers';
 import type { MockRoute } from './testing';
 import { matches } from './validate';
@@ -161,31 +161,25 @@ export interface VersionManifest {
 const isRecord = (value: unknown): value is Record<string, unknown> =>
 	typeof value === 'object' && value !== null && !Array.isArray(value);
 
-const sortKeys = (value: unknown): unknown =>
-	Array.isArray(value)
-		? value.map(sortKeys)
-		: isRecord(value)
-			? Object.fromEntries(
-					Object.keys(value)
-						.sort()
-						.map((key) => [key, sortKeys(value[key])]),
-				)
-			: value;
-
-/** JSON with sorted object keys, so equal values give equal text. */
-export const canonicalJson = (value: unknown) => JSON.stringify(sortKeys(value));
-
 export const sha256 = (text: string) => createHash('sha256').update(text).digest('hex');
 
-const PROSE_KEYWORDS = new Set(['title', 'description', 'x-n8n-hint', 'examples', 'x-n8n-options']);
+/** Prose, and the lookup of a `ref` field: a workflow depends on neither, and a run reads neither. */
+const NON_NORMATIVE_KEYWORDS = new Set([
+	'title',
+	'description',
+	'x-n8n-hint',
+	'examples',
+	'x-n8n-options',
+	'x-n8n-lookup',
+]);
 const SCHEMA_MAPS = new Set(['properties', 'patternProperties', 'x-n8n-value-types']);
 
-/** A schema without its prose keywords. Property names stay, also `description`. */
+/** A schema without its prose keywords and lookups. Property names stay, also `description`. */
 export const normativeSchema = (schema: unknown): unknown =>
 	isRecord(schema)
 		? Object.fromEntries(
 				Object.entries(schema)
-					.filter(([keyword]) => !PROSE_KEYWORDS.has(keyword))
+					.filter(([keyword]) => !NON_NORMATIVE_KEYWORDS.has(keyword))
 					.map(([keyword, value]) => [
 						keyword,
 						SCHEMA_MAPS.has(keyword) && isRecord(value)
@@ -390,6 +384,12 @@ function boundChanges(side: Side, at: string, prev: JsonSchema, next: JsonSchema
 	const exact = EXACT_KEYWORDS.flatMap((keyword) => {
 		const [old, now] = [prev[keyword], next[keyword]];
 		if (canonicalJson(old) === canonicalJson(now)) return [];
+		// A ref takes the same values as before. The runtime reads a stored resource locator only
+		// for a ref field, so a removed ref breaks stored parameters.
+		if (keyword === 'x-n8n-ref') {
+			if (old === undefined) return [minor(`${at} adds ${keyword}`)];
+			return [major(`${at} ${now === undefined ? 'drops' : 'changes'} ${keyword}`)];
+		}
 		if (old === undefined) return [narrowed(side, true, `${at} adds ${keyword}`)];
 		if (now === undefined) return [narrowed(side, false, `${at} drops ${keyword}`)];
 		return [major(`${at} changes ${keyword}`)];

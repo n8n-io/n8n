@@ -1,4 +1,4 @@
-import { defineNode, t, UserError } from '@n8n/node-sdk';
+import { defineNode, defineResource, t, UserError } from '@n8n/node-sdk';
 import { credential } from '@n8n/node-sdk/credentials';
 
 import { googleOAuth2 } from '../google-oauth2';
@@ -46,6 +46,48 @@ export const driveFile = t.loose(
 		webViewLink: t.str().hint('The link that opens the file in Drive').optional(),
 	}),
 );
+
+/** The files and folders the credential can see, as `query` narrows them, up to the lookup limit. */
+const driveList = (query: string) =>
+	({
+		request: {
+			path: '/drive/v3/files',
+			query: {
+				q: query,
+				fields: 'nextPageToken,files(id,name,webViewLink)',
+				supportsAllDrives: true,
+				includeItemsFromAllDrives: true,
+			},
+		},
+		response: t.obj({
+			files: t.arr(t.obj({ id: t.str(), name: t.str(), webViewLink: t.str().optional() })),
+			nextPageToken: t.str().optional(),
+		}),
+		items: 'files',
+		item: { id: '{id}', label: '{name}', url: '{webViewLink}' },
+		pages: {
+			style: 'cursor',
+			next: 'nextPageToken',
+			send: { query: 'pageToken' },
+			size: { query: 'pageSize', max: 100 },
+		},
+		// A name search needs Drive query syntax, which a template cannot quote.
+		search: 'label',
+	}) as const;
+
+export const driveFileId = defineResource({
+	id: 'googleDrive.file',
+	label: 'File',
+	shape: { 'x-n8n-hint': 'File or folder ID or URL' },
+	list: driveList('trashed = false'),
+});
+
+export const driveFolderId = defineResource({
+	id: 'googleDrive.folder',
+	label: 'Folder',
+	shape: { 'x-n8n-hint': 'Folder or shared drive ID or URL; root is My Drive' },
+	list: driveList(`mimeType = '${FOLDER_TYPE}' and trashed = false`),
+});
 
 export const file = googleDrive.resource('file');
 

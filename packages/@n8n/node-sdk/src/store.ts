@@ -31,9 +31,9 @@ import {
 	type CredentialManifest,
 	type NativeManifest,
 } from './manifest';
+import { canonicalJson } from './schema';
 import { matches } from './validate';
 import {
-	canonicalJson,
 	compareSemver,
 	parseManifest,
 	parseNativeManifest,

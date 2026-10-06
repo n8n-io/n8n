@@ -20,7 +20,17 @@ const typeName = (id: string) => id.split('.').map(pascal).join('');
 const key = (name: string) => (/^[A-Za-z_$][\w$]*$/.test(name) ? name : JSON.stringify(name));
 const doc = (text: string | undefined, indent: string) =>
 	text ? `${indent}/** ${text.replace(/\*\//g, '*\\/')} */\n` : '';
-const docOf = (schema: JsonSchema) => schema['x-n8n-hint'] ?? schema.description;
+/** The resource id of a `ref` field, or of the entries of a list of them, that has a lookup. */
+const lookupOf = (schema: JsonSchema) =>
+	[schema, schema.items].find((member) => member?.['x-n8n-lookup'] !== undefined)?.['x-n8n-ref'];
+
+/** The field doc; a field with a lookup names it, the method name of `nodes explore-resources`. */
+const docOf = (schema: JsonSchema) => {
+	const text = schema['x-n8n-hint'] ?? schema.description;
+	const lookup = lookupOf(schema);
+	if (lookup === undefined) return text;
+	return `${text === undefined ? '' : `${text} `}@searchListMethod ${lookup}`;
+};
 
 /** A local type that replaces a type text used more than once in a module. */
 interface Alias {

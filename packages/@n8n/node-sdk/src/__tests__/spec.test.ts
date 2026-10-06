@@ -92,6 +92,7 @@ const N8N_KEYWORDS = keysOf<Pick<JsonSchema, Extract<keyof JsonSchema, `x-n8n-${
 	'x-n8n-hint',
 	'x-n8n-literal',
 	'x-n8n-ref',
+	'x-n8n-lookup',
 	'x-n8n-passed',
 	'x-n8n-value-types',
 	'x-n8n-binary',

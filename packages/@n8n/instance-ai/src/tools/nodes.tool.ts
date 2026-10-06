@@ -215,6 +215,21 @@ const exploreResourcesAction = z.object({
 		.describe(CURRENT_NODE_PARAMETERS_DESCRIPTION),
 });
 
+/** Flag on: a typed node module names the lookup of a resource field with its resource id. */
+const moduleExploreResourcesAction = exploreResourcesAction.extend({
+	methodName: z
+		.string()
+		.describe(
+			'Exact method name from a @searchListMethod annotation in a type definition. For a typed module field it is the resource id, e.g. "slack.channel"; never guess.',
+		),
+	currentNodeParameters: z
+		.record(z.unknown())
+		.optional()
+		.describe(
+			'Current node parameters for dependent lookups. A typed module field takes its plain input value, e.g. { spreadsheet: "<spreadsheetId>" } to list the sheets of a spreadsheet.',
+		),
+});
+
 const MAX_EXECUTE_TIMEOUT_MS = 60_000;
 
 // Envelope mirrors a workflow-sdk node so the agent can pass a node it is
@@ -297,7 +312,7 @@ const moduleFullInputSchema = sanitizeInputSchema(
 		describeAction,
 		moduleTypeDefinitionAction,
 		moduleSuggestedAction,
-		exploreResourcesAction,
+		moduleExploreResourcesAction,
 		executeAction,
 	]),
 );
@@ -1081,7 +1096,12 @@ export function createNodesTool(
 		const orchestratorInputSchema = sanitizeInputSchema(
 			z.discriminatedUnion('action', [
 				context.nodeContractsEnabled ? moduleTypeDefinitionAction : typeDefinitionAction,
-				orchestratorExploreAction,
+				context.nodeContractsEnabled
+					? orchestratorExploreAction.extend({
+							methodName: moduleExploreResourcesAction.shape.methodName,
+							currentNodeParameters: moduleExploreResourcesAction.shape.currentNodeParameters,
+						})
+					: orchestratorExploreAction,
 			]),
 		);
 

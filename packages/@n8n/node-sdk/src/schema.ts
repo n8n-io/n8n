@@ -6,6 +6,22 @@
 
 import { isRecord } from '@n8n/utils/is-record';
 
+import type { LookupDocument } from './define';
+
+const sortKeys = (value: unknown): unknown =>
+	Array.isArray(value)
+		? value.map(sortKeys)
+		: isRecord(value)
+			? Object.fromEntries(
+					Object.keys(value)
+						.sort()
+						.map((key) => [key, sortKeys(value[key])]),
+				)
+			: value;
+
+/** JSON with sorted object keys, so equal values give equal text. */
+export const canonicalJson = (value: unknown) => JSON.stringify(sortKeys(value));
+
 /**
  * The JSON Schema subset of a contract: JSON Schema 2020-12 keywords plus closed `x-n8n-*`
  * keywords. `spec/manifest.schema.json` lists them.
@@ -70,6 +86,8 @@ export interface JsonSchema {
 	'x-n8n-literal'?: boolean;
 	/** A resource reference, e.g. `notion.database`. */
 	'x-n8n-ref'?: string;
+	/** The lookup of the resource of an `x-n8n-ref` field. Not in the contract hash. */
+	'x-n8n-lookup'?: LookupDocument;
 	/** Each output item is an input item, passed on unchanged, so it keeps the input item type. */
 	'x-n8n-passed'?: boolean;
 	/** Value types by source type (Notion property type), for open `patternProperties`. */
@@ -789,41 +807,6 @@ export const hasPageValue = (schema: JsonSchema): boolean =>
 		...(schema.oneOf ?? []),
 		...(schema.anyOf ?? []),
 	].some(hasPageValue);
-
-/** A resource the user owns (a database, a channel), checked against its ID shape. */
-export interface Resource {
-	/** `service.resource`, e.g. `notion.database`. */
-	readonly id: string;
-	/** The resource name in the n8n UI, e.g. `Database`. */
-	readonly label: string;
-	/** The JSON Schema keywords of its ID, e.g. `{ pattern: '^[0-9a-f]{32}$' }`. */
-	readonly shape: JsonSchema;
-}
-
-/**
- * Defines a resource type that `ref` fields point to, e.g. a Notion database.
- *
- * @example
- * ```ts
- * export const notionDatabase = defineResource({
- *   id: 'notion.database',
- *   label: 'Database',
- *   shape: { pattern: '[0-9a-f]{32}', 'x-n8n-hint': 'Notion database ID or URL' },
- * });
- * ```
- */
-export const defineResource = (resource: Resource): Resource => resource;
-
-/**
- * A string field that holds the ID of `resource` (`x-n8n-ref`). The ID must match its shape.
- *
- * @example
- * ```ts
- * input: { database: ref(notionDatabase) },
- * ```
- */
-export const ref = (resource: Resource) =>
-	new Schema<string>({ type: 'string', ...resource.shape, 'x-n8n-ref': resource.id }, false);
 
 /**
  * A model ID of `provider` in the model catalog (models.dev). The typed flow SDK types it by

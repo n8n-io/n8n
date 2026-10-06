@@ -1,13 +1,14 @@
-import { path, t } from '@n8n/node-sdk';
+import { path, ref, t } from '@n8n/node-sdk';
 
-import { driveIdOf, file } from '../google-drive.node';
+import { driveFileId, driveIdOf, file } from '../google-drive.node';
 
 export const deleteFile = file.action('delete', {
 	action: 'Delete a file',
 	summary: 'Move a file or folder to the trash, or delete it for good.',
 	flow: { effect: 'write', cardinality: 'per-item', idempotent: true },
+	minor: 1,
 	input: {
-		fileId: t.str().hint('File or folder ID or URL'),
+		fileId: ref(driveFileId),
 		permanently: t.bool().default(false).hint('true skips the trash; it cannot be undone'),
 	},
 	output: t.obj({ id: t.str(), success: t.lit(true) }),

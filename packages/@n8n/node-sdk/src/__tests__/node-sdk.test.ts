@@ -19,8 +19,10 @@ import {
 } from '../entry/registry';
 import {
 	defineNode,
+	defineResource,
 	isHttpError,
 	path,
+	ref,
 	t,
 	validate,
 	type Action,
@@ -517,6 +519,119 @@ describe('resourceOutput', () => {
 			'todo.sheet.read: resourceOutput lists no loadOptions call',
 			'todo.sheet.read: output.id is typical, so it must not be required',
 		]);
+	});
+});
+
+describe('resource lookups', () => {
+	const project = defineResource({
+		id: 'todo.project',
+		label: 'Project',
+		shape: {},
+		list: {
+			request: { path: '/projects' },
+			response: t.obj({ projects: t.arr(t.obj({ id: t.str(), name: t.str() })) }),
+			items: 'projects',
+			item: { id: '{id}', label: '{name}' },
+		},
+	});
+	const list = project.lookup ?? { request: {}, response: {}, item: { id: '', label: '' } };
+
+	it('refuses a lookup that reads a field outside its input or the action, or no request target', () => {
+		const contract = toContract(
+			todo.action('pick', {
+				action: 'Pick a project',
+				summary: 'Pick a project.',
+				flow: { effect: 'read', cardinality: 'per-item' },
+				input: { project: ref(project) },
+				output: t.json(),
+				request: { path: '/projects/{project}' },
+			}),
+		);
+		expect(lintContract(contract)).toEqual([]);
+		const broken = {
+			...list,
+			request: { path: '/workspaces/{workspace}/projects', url: 'https://todo.test/projects' },
+			search: 'service' as const,
+			input: ['owner'],
+		};
+		const input = {
+			...contract.input,
+			properties: {
+				project: { type: 'string' as const, 'x-n8n-ref': 'todo.project', 'x-n8n-lookup': broken },
+			},
+		};
+		expect(lintContract({ ...contract, input })).toEqual([
+			'todo.pick: lookup todo.project reads workspace, which is not in its input',
+			'todo.pick: lookup todo.project has a service search, but its request does not send search',
+			'todo.pick: lookup todo.project needs a path or a url',
+			'todo.pick: lookup todo.project reads owner, which is not an input field of the action',
+		]);
+	});
+
+	it('refuses two different lookups for one resource id', () => {
+		const archived = defineResource({
+			id: 'todo.project',
+			label: 'Project',
+			shape: {},
+			list: {
+				request: { path: '/archive' },
+				response: t.arr(t.obj({ id: t.str() })),
+				item: { id: '{id}', label: '{id}' },
+			},
+		});
+		const move = (to: typeof project) =>
+			toContract(
+				todo.action('move', {
+					action: 'Move a project',
+					summary: 'Move a project.',
+					flow: { effect: 'write', cardinality: 'per-item' },
+					input: { from: ref(project), to: ref(to) },
+					output: t.json(),
+					request: { path: '/projects/{from}/{to}' },
+				}),
+			);
+		expect(lintContract(move(project))).toEqual([]);
+		expect(lintContract(move(archived))).toEqual([
+			'todo.move: resource todo.project has two different lookups',
+		]);
+	});
+
+	it('names the lookup in the module doc of each ref field, the method of explore-resources', () => {
+		const pick = todo.action('pick', {
+			action: 'Pick projects',
+			summary: 'Pick projects.',
+			flow: { effect: 'read', cardinality: 'per-item' },
+			input: { project: ref(project).hint('Project ID'), more: t.arr(ref(project)).optional() },
+			output: t.json(),
+			request: { path: '/projects/{project}' },
+		});
+		const text = generateNodeModule('todo', [
+			{ contract: toContract(pick), nodeType: 'n8n-nodes-base-next.todoPick', operation: 'pick' },
+		]);
+		expect(text).toContain('/** Project ID @searchListMethod todo.project */');
+		expect(text).toContain('/** @searchListMethod todo.project */');
+	});
+
+	it('types the entry paths and templates from the response', () => {
+		defineResource({
+			id: 'todo.typed',
+			label: 'Typed',
+			shape: {},
+			list: {
+				request: { path: '/projects' },
+				response: t.obj({
+					projects: t.arr(t.obj({ id: t.str(), owner: t.obj({ name: t.str() }) })),
+				}),
+				items: 'projects',
+				item: {
+					id: '{id}',
+					label: '{owner.name}',
+					// @ts-expect-error -- an entry has no field `title`
+					url: 'https://todo.test/{title}',
+				},
+			},
+		});
+		expect(list.item).toEqual({ id: '{id}', label: '{name}' });
 	});
 });
 

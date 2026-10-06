@@ -222,7 +222,8 @@ The publish gate (`checkPublish`) refuses a smaller bump. A patch must keep the 
 
 | Change | Kind |
 |---|---|
-| Prose only (`title`, `description`, `x-n8n-hint`, `examples`, `x-n8n-options`, summary, `nodeDisplayName`), or the `ui` block (`order`, placeholders, a widget that keeps the stored form) | patch |
+| Prose only (`title`, `description`, `x-n8n-hint`, `examples`, `x-n8n-options`, summary, `nodeDisplayName`), the `ui` block (`order`, placeholders, a widget that keeps the stored form), or a resource lookup (`x-n8n-lookup`, `baseUrl`) | patch |
+| An added `x-n8n-ref`: the field takes the same values | minor |
 | An optional input, or a required input with a default | minor |
 | A required output field becomes typical (`x-n8n-claim: 'typical'`, not in `required`) | minor |
 | An optional or typical output field becomes typical or required | minor |
@@ -233,6 +234,7 @@ The publish gate (`checkPublish`) refuses a smaller bump. A patch must keep the 
 | A `ui` change that moves a stored parameter: a field into or out of `advanced`, a variant to or from the `json` widget | major |
 | A removed output field, a removed key pattern, or an output field that becomes optional (from required or typical) | major |
 | An added or removed `x-n8n-resource`, or another `method` or `input` in it | major |
+| A removed or other `x-n8n-ref`: the runtime reads a stored resource locator only for a ref field | major |
 | A credential that becomes optional (`credentialOptional`) | minor |
 | A changed flow, output list, input list, trigger kind, webhook `endpoint` or webhook signature (`verify`); a new scope, egress host, host import, provider call, binary data access or credential type; a removed credential type; a credential that becomes required | major |
 
@@ -249,6 +251,21 @@ that holds the resource ID, and the legacy load-options calls that list the fiel
 resource. A builder runs the calls with `resourceLookupsOf` and the node's credential, and
 gives the fields to the `toOutput` hatch. When the input field has a `pattern`, the ID is the
 first match in the value, for example in a URL.
+
+Resource lookups: `defineResource({ list })` declares a lookup as data: a request (`path` or
+an absolute `url`, `query`, `headers`, a JSON `body`), the `response` fields it reads, the path
+of the entry list (`items`), templates for each entry (`item: { id: '{id}', label: '#{name}' }`),
+optional `pages` (the `list` styles, with the cursor as a path) and `search` (`service`: the
+request sends the `search` input; `label`: the host filters the labels). A dependent resource
+names the action input fields that its request reads in `input`, e.g. the spreadsheet of a
+sheet. `ref()` writes the lookup into the field as `x-n8n-lookup`, and freeze writes the node
+`baseUrl` into the contract. The host runs a lookup from the manifest without the bundle, as an
+action with the node's credential, the action egress, the retries and the limits. The n8n form
+shows each `ref` field as a resource locator with a list (the generated `listSearch` method,
+named by the resource id) and an ID. One resource id has one lookup in a contract (lint). A
+dependent list stays empty until each parent field has a value. The host keeps an entry URL only
+if it starts with `http://` or `https://`. Agents list a resource with
+`nodes explore-resources` and the resource id as the method name.
 
 ## Files and commands
 
