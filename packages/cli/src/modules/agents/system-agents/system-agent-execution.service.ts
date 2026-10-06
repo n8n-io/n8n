@@ -7,7 +7,9 @@ import { NotFoundError } from '@n8n/errors';
 import { UserError } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
 
+import { AgentChatAttachmentService } from '../agent-chat-attachment.service';
 import { AgentChatExecutionService } from '../agent-chat-execution.service';
+import { buildInboundUserMessage } from '../utils/inbound-attachments';
 import type { StartExecutionParams } from '../agent-execution.service';
 import type { ClaimedAgentMessage } from '../agent-message-queue.service';
 import { AgentMessageQueueService } from '../agent-message-queue.service';
@@ -56,6 +58,7 @@ export class SystemAgentExecutionService {
 		private readonly chatExecutionService: AgentChatExecutionService,
 		private readonly checkpointStorage: N8NCheckpointStorage,
 		private readonly txRunner: TransactionRunner,
+		private readonly attachmentService: AgentChatAttachmentService,
 	) {}
 
 	/** Register a provider and make sure its agent row exists. */
@@ -274,9 +277,24 @@ export class SystemAgentExecutionService {
 			options: payload.options ?? {},
 		};
 		const handle = await provider.prepareTurn(turn);
+		const attachments = payload.attachments ?? [];
+		const text = handle.input ?? payload.message;
+		if (attachments.length > 0) {
+			// Messages keep file references. The runtime loads bytes from binary data per call.
+			handle.agent.fileStore(
+				this.attachmentService.getFileStore(
+					{ agentId: thread.agentId, projectId: thread.projectId },
+					handle.agent.snapshot.model.provider ?? '',
+				),
+			);
+		}
+		const input =
+			attachments.length > 0 && typeof text === 'string'
+				? buildInboundUserMessage(text, attachments)
+				: text;
 		await this.runTurn(provider, thread, handle, send, admission, async () => ({
 			type: 'start',
-			input: handle.input ?? payload.message,
+			input,
 			options: {
 				persistence: { threadId: thread.id, resourceId, hostMetadata: handle.hostMetadata },
 				...handle.runOptions,
@@ -379,6 +397,8 @@ export class SystemAgentExecutionService {
 		sessionId?: string;
 		message: string;
 		messageId?: string;
+		hostContext?: Record<string, unknown>;
+		storeAttachments?: (threadId: string) => Promise<StoredAttachmentRef[] | undefined>;
 	}): Promise<Parameters<AgentMessageQueueService['enqueue']>[0]> {
 		const provider = await this.assertCanUse(params.agentId, params.user, params.projectId);
 		const existing = params.sessionId
@@ -393,7 +413,9 @@ export class SystemAgentExecutionService {
 				...(params.sessionId ? { threadId: params.sessionId } : {}),
 			}));
 		if (thread.projectId !== params.projectId) throw new NotFoundError('Session not found');
-		const options = (await provider.chatTurnOptions?.(params.user, thread)) ?? {};
+		const options =
+			(await provider.chatTurnOptions?.(params.user, thread, params.hostContext)) ?? {};
+		const attachments = await params.storeAttachments?.(thread.id);
 		return {
 			agentId: params.agentId,
 			projectId: thread.projectId,
@@ -406,6 +428,7 @@ export class SystemAgentExecutionService {
 				message: params.message,
 				resourceId: this.resourceIdFor(params.user),
 				...(params.messageId ? { messageId: params.messageId } : {}),
+				...(attachments?.length ? { attachments } : {}),
 				options,
 			},
 		};

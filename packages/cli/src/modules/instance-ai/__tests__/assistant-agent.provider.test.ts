@@ -19,7 +19,7 @@ function createProvider() {
 	const getThread = vi.fn();
 	const memory = mock<N8nMemory>();
 	memory.getImplementation.mockReturnValue({ getThread } as never);
-	const provider = new AssistantAgentProvider(instanceAiService, memory);
+	const provider = new AssistantAgentProvider(instanceAiService, memory, mock());
 	return { provider, instanceAiService, memory, getThread };
 }
 
@@ -94,7 +94,7 @@ describe('AssistantAgentProvider', () => {
 			const { provider, instanceAiService } = createProvider();
 			const handle = { agent: {} };
 			instanceAiService.prepareAssistantTurn.mockResolvedValue(handle as never);
-			const turn = { type: 'start' } as never;
+			const turn = { type: 'start', attachments: [] } as never;
 
 			expect(await provider.prepareTurn(turn)).toBe(handle);
 			expect(instanceAiService.prepareAssistantTurn).toHaveBeenCalledWith(turn);

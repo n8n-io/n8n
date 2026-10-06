@@ -40,6 +40,8 @@ export interface AssistantTurnOptions {
 	isReplanFollowUp?: boolean;
 	checkpoint?: { isCheckpointFollowUp: true; checkpointTaskId: string };
 	plannedBuild?: Omit<PlannedBuildFollowUp, 'savedOutcome'>;
+	/** The host sends the files as references; do not inline their bytes in the input. */
+	fileRefsHandledByHost?: boolean;
 }
 
 /** Thread metadata key for the live run: its run id, message group and the group's run ids. */

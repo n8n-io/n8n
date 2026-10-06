@@ -106,6 +106,7 @@ function setup(chunks: AgentExecutionStreamChunk[] = []) {
 		mock<AgentChatExecutionService>(),
 		checkpointStorage,
 		mock<TransactionRunner>(),
+		mock(),
 	);
 
 	return {

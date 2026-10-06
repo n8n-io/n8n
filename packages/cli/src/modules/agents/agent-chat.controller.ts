@@ -384,6 +384,15 @@ export class AgentChatController {
 						sessionId: newSession ? undefined : sessionId,
 						message,
 						messageId,
+						hostContext: payload.hostContext,
+						storeAttachments: async (threadId) =>
+							await this.storeChatAttachments({
+								attachments,
+								agentId,
+								projectId,
+								threadId,
+								resourceId: draftChatMemoryResourceId(req.user.id),
+							}),
 					}),
 			);
 			return;

@@ -80,7 +80,11 @@ export interface SystemAgentProvider {
 	authorize(user: User, projectId: string): Promise<boolean>;
 	prepareTurn(turn: SystemAgentTurn): Promise<SystemAgentTurnHandle>;
 	/** Turn options for a message sent through the generic Agents chat endpoints. */
-	chatTurnOptions?(user: User, thread: AgentExecutionThread): Promise<SystemAgentTurnOptions>;
+	chatTurnOptions?(
+		user: User,
+		thread: AgentExecutionThread,
+		hostContext?: Record<string, unknown>,
+	): Promise<SystemAgentTurnOptions>;
 	/** Convert a resume payload from a client into the tool's resume data. */
 	normalizeResumeData?(resumeData: unknown): unknown;
 }

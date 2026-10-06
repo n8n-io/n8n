@@ -241,6 +241,12 @@ const agentChatMessageShape = {
 		.array(agentChatAttachmentSchema)
 		.max(MAX_AGENT_CHAT_ATTACHMENTS_PER_MESSAGE)
 		.optional(),
+	/**
+	 * Client context for a code-defined instance agent (for example the n8n
+	 * Assistant: time zone, push ref, hand-off context). The agent's provider
+	 * validates it. Project agents ignore it.
+	 */
+	hostContext: z.record(z.unknown()).optional(),
 };
 
 const agentChatMessageSchema = z

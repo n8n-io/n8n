@@ -3200,7 +3200,8 @@ export class InstanceAiService {
 			);
 			attachmentManifest = buildAttachmentManifest(classifiedAttachments);
 		}
-		const turnHadFileAttachments = nonStructuredAttachments.length > 0;
+		const turnHadFileAttachments =
+			nonStructuredAttachments.length > 0 && !options.fileRefsHandledByHost;
 		const enrichedMessage = message;
 		const messageBody =
 			!message && hasParseableAttachment
@@ -3249,7 +3250,7 @@ export class InstanceAiService {
 			.filter(Boolean)
 			.join('\n\n');
 		const input: string | Message[] =
-			nonStructuredAttachments.length > 0
+			nonStructuredAttachments.length > 0 && !options.fileRefsHandledByHost
 				? [
 						{
 							role: 'user' as const,
