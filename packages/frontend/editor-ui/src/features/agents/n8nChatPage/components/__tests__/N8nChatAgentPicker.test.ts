@@ -63,6 +63,14 @@ describe('N8nChatAgentPicker', () => {
 		canCreateState.value = true;
 	});
 
+	it('renders the heading as one translated phrase with the picker in its agent slot', () => {
+		const { getByTestId } = setup({ agents: [], count: 0 });
+
+		const heading = getByTestId('n8n-chat-agent-picker-heading');
+		expect(heading).toHaveTextContent(/^Chat with\s*n8n Assistant$/);
+		expect(heading).toContainElement(getByTestId('n8n-chat-agent-picker-trigger'));
+	});
+
 	it('shows n8n Assistant as the selection by default', () => {
 		const { getByTestId } = setup({ agents: [], count: 0 });
 

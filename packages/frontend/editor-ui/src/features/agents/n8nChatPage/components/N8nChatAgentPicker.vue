@@ -11,6 +11,7 @@ import {
 	type DropdownMenuItemProps,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
+import { I18nT } from 'vue-i18n';
 import { getDebounceTime } from '@n8n/composables/useDebounce';
 import { DEBOUNCE_TIME } from '@/app/constants';
 import { AGENT_N8N_CHAT_LIBRARY_VIEW } from '../../constants';
@@ -122,94 +123,103 @@ function handleCreateAgent() {
 
 <template>
 	<div :class="$style.container" data-test-id="n8n-chat-agent-picker">
-		<N8nText tag="h1" size="xlarge" bold :class="$style.heading">
-			{{ i18n.baseText('agents.n8nChatPage.picker.chatWith') }}
-			<N8nDropdownMenu
-				:items="items"
-				:loading="isLoading"
-				:disabled="disabled"
-				searchable
-				:search-placeholder="i18n.baseText('agents.n8nChatPage.library.search.placeholder')"
-				:search-debounce="getDebounceTime(DEBOUNCE_TIME.INPUT.SEARCH)"
-				:empty-text="i18n.baseText('agents.n8nChatPage.library.empty.noResults.title')"
-				placement="bottom-start"
-				max-height="50vh"
-				content-test-id="n8n-chat-agent-picker-menu"
-				@search="handleSearch"
-				@select="handleSelect"
-			>
-				<template #trigger>
-					<button
-						type="button"
-						:class="$style.trigger"
+		<N8nText
+			tag="h1"
+			size="xlarge"
+			bold
+			:class="$style.heading"
+			data-test-id="n8n-chat-agent-picker-heading"
+		>
+			<I18nT keypath="agents.n8nChatPage.picker.chatWith" scope="global">
+				<template #agent>
+					<N8nDropdownMenu
+						:items="items"
+						:loading="isLoading"
 						:disabled="disabled"
-						data-test-id="n8n-chat-agent-picker-trigger"
+						searchable
+						:search-placeholder="i18n.baseText('agents.n8nChatPage.library.search.placeholder')"
+						:search-debounce="getDebounceTime(DEBOUNCE_TIME.INPUT.SEARCH)"
+						:empty-text="i18n.baseText('agents.n8nChatPage.library.empty.noResults.title')"
+						placement="bottom-start"
+						max-height="50vh"
+						content-test-id="n8n-chat-agent-picker-menu"
+						@search="handleSearch"
+						@select="handleSelect"
 					>
-						<N8nAssistantIcon v-if="!modelValue" size="large" />
-						<AgentPersonalisationIcon
-							v-else
-							:personalisation="modelValue.personalisation"
-							:size="24"
-						/>
-						<span :class="$style.triggerName">{{ selectedName }}</span>
-						<N8nIcon icon="chevron-down" size="small" color="text-light" />
-					</button>
-				</template>
+						<template #trigger>
+							<button
+								type="button"
+								:class="$style.trigger"
+								:disabled="disabled"
+								data-test-id="n8n-chat-agent-picker-trigger"
+							>
+								<N8nAssistantIcon v-if="!modelValue" size="large" />
+								<AgentPersonalisationIcon
+									v-else
+									:personalisation="modelValue.personalisation"
+									:size="24"
+								/>
+								<span :class="$style.triggerName">{{ selectedName }}</span>
+								<N8nIcon icon="chevron-down" size="small" color="text-light" />
+							</button>
+						</template>
 
-				<template #item-leading="{ item, ui }">
-					<span :class="[ui.class, $style.itemAvatar]">
-						<N8nAssistantIcon v-if="item.data?.kind === 'assistant'" size="large" />
-						<AgentPersonalisationIcon
-							v-else
-							:personalisation="
-								item.data?.kind === 'agent' ? item.data.agent.personalisation : null
-							"
-							:size="24"
-						/>
-					</span>
-				</template>
+						<template #item-leading="{ item, ui }">
+							<span :class="[ui.class, $style.itemAvatar]">
+								<N8nAssistantIcon v-if="item.data?.kind === 'assistant'" size="large" />
+								<AgentPersonalisationIcon
+									v-else
+									:personalisation="
+										item.data?.kind === 'agent' ? item.data.agent.personalisation : null
+									"
+									:size="24"
+								/>
+							</span>
+						</template>
 
-				<template #item-label="{ item }">
-					<div :class="$style.itemLabel">
-						<N8nText bold>{{ item.label }}</N8nText>
-						<N8nText
-							v-if="itemDescription(item.data)"
-							size="small"
-							color="text-light"
-							:class="$style.itemDescription"
-						>
-							{{ itemDescription(item.data) }}
-						</N8nText>
-					</div>
-				</template>
+						<template #item-label="{ item }">
+							<div :class="$style.itemLabel">
+								<N8nText bold>{{ item.label }}</N8nText>
+								<N8nText
+									v-if="itemDescription(item.data)"
+									size="small"
+									color="text-light"
+									:class="$style.itemDescription"
+								>
+									{{ itemDescription(item.data) }}
+								</N8nText>
+							</div>
+						</template>
 
-				<template v-if="showFooter" #footer>
-					<div :class="$style.footer">
-						<N8nButton
-							v-if="showViewAll"
-							variant="ghost"
-							:class="$style.footerButton"
-							data-test-id="n8n-chat-agent-picker-view-all"
-							@click="goToLibrary"
-						>
-							{{ i18n.baseText('agents.n8nChatPage.viewAllAgents') }}
-							<N8nIcon icon="chevron-right" size="small" />
-						</N8nButton>
-						<N8nButton
-							v-if="canCreateInProject"
-							variant="ghost"
-							:class="$style.footerButton"
-							icon="plus"
-							data-test-id="n8n-chat-agent-picker-create"
-							@click="handleCreateAgent"
-						>
-							{{ i18n.baseText('agents.n8nChatPage.picker.createNewAgent') }}
-							<!-- Opens the agent builder, a new page. -->
-							<N8nIcon icon="external-link" size="small" />
-						</N8nButton>
-					</div>
+						<template v-if="showFooter" #footer>
+							<div :class="$style.footer">
+								<N8nButton
+									v-if="showViewAll"
+									variant="ghost"
+									:class="$style.footerButton"
+									data-test-id="n8n-chat-agent-picker-view-all"
+									@click="goToLibrary"
+								>
+									{{ i18n.baseText('agents.n8nChatPage.viewAllAgents') }}
+									<N8nIcon icon="chevron-right" size="small" />
+								</N8nButton>
+								<N8nButton
+									v-if="canCreateInProject"
+									variant="ghost"
+									:class="$style.footerButton"
+									icon="plus"
+									data-test-id="n8n-chat-agent-picker-create"
+									@click="handleCreateAgent"
+								>
+									{{ i18n.baseText('agents.n8nChatPage.picker.createNewAgent') }}
+									<!-- Opens the agent builder, a new page. -->
+									<N8nIcon icon="external-link" size="small" />
+								</N8nButton>
+							</div>
+						</template>
+					</N8nDropdownMenu>
 				</template>
-			</N8nDropdownMenu>
+			</I18nT>
 		</N8nText>
 		<N8nText
 			v-if="selectedDescription"

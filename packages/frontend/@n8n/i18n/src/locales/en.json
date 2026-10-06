@@ -8178,7 +8178,7 @@
 	"agents.n8nChatPage.library.empty.noResults.title": "No agents match your search",
 	"agents.n8nChatPage.chooseAgent": "Talk to your agents",
 	"agents.n8nChatPage.viewAllAgents": "View all agents",
-	"agents.n8nChatPage.picker.chatWith": "Chat with",
+	"agents.n8nChatPage.picker.chatWith": "Chat with {agent}",
 	"agents.n8nChatPage.picker.assistantDescription": "Turns plain language into working workflows and agents.",
 	"agents.n8nChatPage.picker.createNewAgent": "Create new agent",
 	"agents.n8nChatPage.picker.placeholder": "Ask {name}…",
