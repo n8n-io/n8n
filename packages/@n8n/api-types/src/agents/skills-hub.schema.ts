@@ -2,7 +2,23 @@ import { z } from 'zod';
 
 import { agentSkillSchema } from './agent-skill.schema';
 import type { AgentSkill } from './types';
+import { paginationSchema } from '../dto/pagination/pagination.dto';
 import { Z } from '../zod-class';
+
+export const HUB_SKILLS_MAX_PAGE_SIZE = 100;
+export const HUB_SKILLS_DEFAULT_PAGE_SIZE = 50;
+
+/** Optional on purpose: a request without `take` gets every visible skill, which the agent builder's picker and the assistant's menu need. */
+const optionalTake = z
+	.string()
+	.optional()
+	.transform((value) => (value === undefined || value === '' ? undefined : parseInt(value, 10)))
+	.refine((value) => value === undefined || (Number.isInteger(value) && value > 0), {
+		message: 'Param `take` must be a positive integer',
+	})
+	.transform((value) =>
+		value === undefined ? undefined : Math.min(value, HUB_SKILLS_MAX_PAGE_SIZE),
+	);
 
 /** Derived from `userId` and `projectId` on the skill row. A CHECK constraint forbids both. */
 export const hubSkillScopeSchema = z.enum(['user', 'project', 'instance']);
@@ -77,7 +93,19 @@ export type HubSkillSaveResponse = {
 	created: boolean;
 };
 
+/** The request side of {@link ListHubSkillsQueryDto}: every field optional, numbers as the client holds them. */
+export type HubSkillListQuery = {
+	skip?: number;
+	take?: number;
+	search?: string;
+	scope?: HubSkillScope;
+	projectId?: string;
+	attachableToProjectId?: string;
+};
+
 export class ListHubSkillsQueryDto extends Z.class({
+	skip: paginationSchema.skip,
+	take: optionalTake,
 	search: z.string().trim().max(200).optional(),
 	scope: hubSkillScopeSchema.optional(),
 	projectId: z.string().max(36).optional(),

@@ -70,24 +70,38 @@ export class SkillsHubApiService {
 		if (query.scope) skills = skills.filter((skill) => scopeOf(skill) === query.scope);
 		if (query.projectId) skills = skills.filter((skill) => skill.projectId === query.projectId);
 
-		let items = await this.toListItems(user, skills);
+		// Names live on the version rows, so a search reads them before the page is cut:
+		// the count and the page both describe the matching skills, not the visible ones.
+		const search = query.search?.toLowerCase();
+		if (search) {
+			const summaries = await this.skillHubRepository.findLatestVersionSummaries(
+				skills.map((skill) => skill.id),
+			);
+			skills = skills.filter((skill) => {
+				const summary = summaries.get(skill.id);
+				return (
+					summary !== undefined &&
+					(summary.name.toLowerCase().includes(search) ||
+						summary.description.toLowerCase().includes(search))
+				);
+			});
+		}
+
+		const count = skills.length;
+		// Without `take` the caller gets the whole set (the builder's picker, the assistant's menu).
+		const page =
+			query.take === undefined ? skills : skills.slice(query.skip, query.skip + query.take);
+
+		let items = await this.toListItems(user, page);
 		if (query.attachableToProjectId) {
 			const target = await this.skillHub.targetForProject(query.attachableToProjectId);
-			const byId = new Map(skills.map((skill) => [skill.id, skill]));
+			const byId = new Map(page.map((skill) => [skill.id, skill]));
 			items = items.map((item) => {
 				const skill = byId.get(item.id);
 				return { ...item, attachable: skill ? this.skillHub.isAttachable(skill, target) : false };
 			});
 		}
-		const search = query.search?.toLowerCase();
-		const data = search
-			? items.filter(
-					(item) =>
-						item.name.toLowerCase().includes(search) ||
-						item.description.toLowerCase().includes(search),
-				)
-			: items;
-		return { count: data.length, data };
+		return { count, data: items };
 	}
 
 	async get(user: User, skillId: string): Promise<HubSkillDetail> {

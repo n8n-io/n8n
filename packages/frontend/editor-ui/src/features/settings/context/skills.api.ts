@@ -3,8 +3,8 @@ import type {
 	CreateHubSkillDto,
 	HubSkillDetail,
 	HubSkillListResponse,
+	HubSkillListQuery,
 	HubSkillSaveResponse,
-	ListHubSkillsQueryDto,
 	UpdateAgentSkillDto,
 } from '@n8n/api-types';
 import { makeRestApiRequest } from '@n8n/rest-api-client';
@@ -14,7 +14,7 @@ const ENDPOINT = '/skills-hub';
 
 export async function getSkills(
 	context: IRestApiContext,
-	query: ListHubSkillsQueryDto = {},
+	query: HubSkillListQuery = {},
 ): Promise<HubSkillListResponse> {
 	return await makeRestApiRequest<HubSkillListResponse>(context, 'GET', ENDPOINT, { ...query });
 }

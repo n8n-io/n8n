@@ -3,8 +3,8 @@ import type {
 	CreateHubSkillDto,
 	HubSkillDetail,
 	HubSkillListItem,
+	HubSkillListQuery,
 	HubSkillSaveResponse,
-	ListHubSkillsQueryDto,
 } from '@n8n/api-types';
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
@@ -24,7 +24,7 @@ export const useSkillsHubStore = defineStore('skillsHub', () => {
 	// Only the newest read commits, so a slow earlier search cannot overwrite a later one.
 	let latestRead = 0;
 
-	async function fetchSkills(query: ListHubSkillsQueryDto = {}) {
+	async function fetchSkills(query: HubSkillListQuery = {}) {
 		const read = ++latestRead;
 		loading.value = true;
 		try {

@@ -269,6 +269,27 @@ export class SkillHubRepository {
 		return result;
 	}
 
+	/** Name and description of the latest saved version, without files: what a list or a search needs. */
+	async findLatestVersionSummaries(
+		skillIds: string[],
+		trx?: EntityManager,
+	): Promise<Map<string, { name: string; description: string }>> {
+		const result = new Map<string, { name: string; description: string }>();
+		const ids = [...new Set(skillIds)];
+		if (ids.length === 0) return result;
+		const versions = await this.m(trx).find(SkillVersion, {
+			select: ['skillId', 'version', 'name', 'description'],
+			where: { skillId: In(ids), version: Not(IsNull()) },
+			order: { version: 'DESC' },
+		});
+		for (const version of versions) {
+			if (!result.has(version.skillId)) {
+				result.set(version.skillId, { name: version.name, description: version.description });
+			}
+		}
+		return result;
+	}
+
 	/** The next version number for a skill: max saved version + 1, or 1. */
 	async nextVersionNumber(skillId: string, trx?: EntityManager): Promise<number> {
 		const row = await this.m(trx)

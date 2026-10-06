@@ -1,7 +1,13 @@
 <script lang="ts" setup>
 import { computed, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import type { AgentSkill, HubSkillListItem, HubSkillScope } from '@n8n/api-types';
+import { useDebounceFn } from '@vueuse/core';
+import type {
+	AgentSkill,
+	HubSkillListItem,
+	HubSkillListQuery,
+	HubSkillScope,
+} from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';
 import {
@@ -56,31 +62,30 @@ const search = ref('');
 const scopeFilter = ref<HubSkillScope | ''>('');
 const loadFailed = ref(false);
 
-// The list is small and comes back whole: filtering and paging happen here.
-const filtered = computed(() => {
-	const term = search.value.trim().toLowerCase();
-	return skillsStore.skills.filter(
-		(skill) =>
-			(!scopeFilter.value || skill.scope === scopeFilter.value) &&
-			(!term ||
-				skill.name.toLowerCase().includes(term) ||
-				skill.description.toLowerCase().includes(term)),
-	);
-});
-const pageItems = computed(() => {
-	const { page = 0, itemsPerPage = PREFERENCES_DEFAULT_PAGE_SIZE } = tableOptions.value;
-	return filtered.value.slice(page * itemsPerPage, (page + 1) * itemsPerPage);
-});
-// A failed load also reports zero rows, so the empty state must not stand in for it.
+// Paging, search and the scope filter run on the server: the count and the page both
+// describe the matching skills, and the page is the only slice the browser holds.
+const isFiltered = computed(() => search.value.trim() !== '' || scopeFilter.value !== '');
+// A failed load also reports zero rows, so the empty state must not stand in for it. A
+// filter that matches nothing is not "no skills yet" either.
 const showEmptyState = computed(
-	() => !skillsStore.loading && !loadFailed.value && skillsStore.count === 0,
+	() => !skillsStore.loading && !loadFailed.value && !isFiltered.value && skillsStore.count === 0,
 );
 const countLabel = computed(() =>
 	i18n.baseText('settings.context.skills.count', {
-		interpolate: { count: filtered.value.length },
-		adjustToNumber: filtered.value.length,
+		interpolate: { count: skillsStore.count },
+		adjustToNumber: skillsStore.count,
 	}),
 );
+
+function listQuery(page: number, itemsPerPage: number): HubSkillListQuery {
+	const term = search.value.trim();
+	return {
+		skip: page * itemsPerPage,
+		take: itemsPerPage,
+		...(term ? { search: term } : {}),
+		...(scopeFilter.value ? { scope: scopeFilter.value } : {}),
+	};
+}
 
 /** Where a new skill can live: the user, the instance, and the team projects they can write to. */
 const scopeOptions = computed<AgentSkillModalScopeOption[]>(() => {
@@ -112,26 +117,34 @@ function parseScope(value: string): { scope: HubSkillScope; projectId?: string }
 }
 
 async function load() {
+	const { page = 0, itemsPerPage = PREFERENCES_DEFAULT_PAGE_SIZE } = tableOptions.value;
 	try {
-		await skillsStore.fetchSkills();
+		await skillsStore.fetchSkills(listQuery(page, itemsPerPage));
 		loadFailed.value = false;
 		// Deleting the last rows of a page can leave the page past the end.
-		const { page = 0, itemsPerPage = PREFERENCES_DEFAULT_PAGE_SIZE } = tableOptions.value;
-		const lastPage = Math.max(0, Math.ceil(filtered.value.length / itemsPerPage) - 1);
-		if (page > lastPage) tableOptions.value = { ...tableOptions.value, page: lastPage };
+		const lastPage = Math.max(0, Math.ceil(skillsStore.count / itemsPerPage) - 1);
+		if (page > lastPage) {
+			tableOptions.value = { ...tableOptions.value, page: lastPage };
+			await skillsStore.fetchSkills(listQuery(lastPage, itemsPerPage));
+		}
 	} catch (error) {
 		loadFailed.value = true;
 		showError(error, i18n.baseText('settings.context.skills.error.load'));
 	}
 }
 
-function onOptionsUpdate(options: TableOptions) {
+async function onOptionsUpdate(options: TableOptions) {
 	tableOptions.value = options;
+	await load();
 }
 
-function resetPage() {
+/** A new filter starts at the first page. */
+async function resetPage() {
 	tableOptions.value = { ...tableOptions.value, page: 0 };
+	await load();
 }
+
+const onSearch = useDebounceFn(resetPage, 300);
 
 function openModal(data: AgentSkillModalData) {
 	uiStore.openModalWithData({ name: AGENT_SKILL_MODAL_KEY, data });
@@ -157,7 +170,7 @@ async function onCreate(skill: AgentSkill, scopeValue: string) {
 	}
 }
 
-async function openEditModal(item: HubSkillListItem) {
+async function openEditModal(item: Pick<HubSkillListItem, 'id'>) {
 	try {
 		const detail = await skillsStore.fetchSkill(item.id);
 		openModal({
@@ -225,10 +238,10 @@ onMounted(async () => {
 	documentTitle.set(i18n.baseText('settings.context.skills.title'));
 	await Promise.all([load(), projectsStore.getMyProjects().catch(() => undefined)]);
 	// Deep links from the assistant's input menu: one skill to open, or a new one to start.
+	// The skill may sit on another page, so it is read by id rather than from the list.
 	const { skillId, create } = route.query;
 	if (typeof skillId === 'string') {
-		const item = skillsStore.skills.find((skill) => skill.id === skillId);
-		if (item) await openEditModal(item);
+		await openEditModal({ id: skillId });
 	} else if (create === 'true') {
 		openCreateModal();
 	}
@@ -257,7 +270,7 @@ onMounted(async () => {
 				:placeholder="i18n.baseText('settings.context.skills.search.placeholder')"
 				clearable
 				data-test-id="skills-search"
-				@update:model-value="resetPage"
+				@update:model-value="onSearch"
 			>
 				<template #prefix>
 					<N8nIcon icon="search" />
@@ -291,8 +304,8 @@ onMounted(async () => {
 
 		<SkillsTable
 			v-model:table-options="tableOptions"
-			:skills="pageItems"
-			:items-length="filtered.length"
+			:skills="skillsStore.skills"
+			:items-length="skillsStore.count"
 			:loading="skillsStore.loading"
 			:show-empty="showEmptyState"
 			@open="openEditModal"
