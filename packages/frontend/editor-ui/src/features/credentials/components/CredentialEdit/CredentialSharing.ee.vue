@@ -26,7 +26,7 @@ import { getResourcePermissions } from '@n8n/permissions';
 import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
 import { useDependencies } from '@/app/composables/useDependencies';
 
-import { N8nButton, N8nEmptyState, N8nInfoTip, N8nText } from '@n8n/design-system';
+import { N8nButton, N8nEmptyState, N8nInfoTip, N8nText, N8nTooltip } from '@n8n/design-system';
 type Props = {
 	credentialId: string;
 	credentialData: ICredentialDataDecryptedObject;
@@ -203,8 +203,8 @@ const usedInProjects = computed(() => {
 
 const usedInAccessText = computed(() =>
 	isOwnedByViewer.value
-		? i18n.baseText('credentialEdit.credentialSharing.onlyYou')
-		: i18n.baseText('credentialEdit.credentialSharing.onlyOwner', {
+		? i18n.baseText('credentialEdit.credentialSharing.availableToYou')
+		: i18n.baseText('credentialEdit.credentialSharing.availableToOwner', {
 				interpolate: { name: credentialOwnerFirstName.value },
 			}),
 );
@@ -218,6 +218,16 @@ function usedInShareLabel(project: Pick<ProjectSharingData, 'name'>) {
 				interpolate: { project: name },
 			})
 		: i18n.baseText('credentialEdit.credentialSharing.share');
+}
+
+function usedInAccessTooltip(project: ProjectListItem) {
+	return isOwnedByViewer.value
+		? i18n.baseText('credentialEdit.credentialSharing.availableToYou.tooltip', {
+				interpolate: { project: project.name ?? '' },
+			})
+		: i18n.baseText('credentialEdit.credentialSharing.availableToOwner.tooltip', {
+				interpolate: { name: credentialOwnerFirstName.value, project: project.name ?? '' },
+			});
 }
 
 function shareUsedInProject(projectId: string) {
@@ -314,9 +324,11 @@ function goToUpgrade() {
 			>
 				<template #unshared-actions="{ project }">
 					<div :class="$style.onlyYou">
-						<N8nText :class="$style.accessText" color="text-light" :title="usedInAccessText">
-							{{ usedInAccessText }}
-						</N8nText>
+						<N8nTooltip :content="usedInAccessTooltip(project)" placement="top">
+							<N8nText :class="$style.accessText" color="text-light">
+								{{ usedInAccessText }}
+							</N8nText>
+						</N8nTooltip>
 						<N8nButton
 							variant="outline"
 							data-test-id="credential-used-in-project-share"
