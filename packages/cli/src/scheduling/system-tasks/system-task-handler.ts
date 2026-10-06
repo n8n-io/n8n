@@ -48,11 +48,9 @@ export class SystemTaskHandler implements TaskHandler {
 			throw outcome.error;
 		}
 
-		if (outcome.result === 'lease_lost') {
-			// A clean stop after lease loss must reject so the executor counts the failed attempt.
-			// A clean stop on shutdown still completes.
-			leaseSignal.throwIfAborted();
-		}
+		// A clean stop after lease loss must reject so the executor counts the failed attempt.
+		// A clean stop on shutdown still completes.
+		leaseSignal.throwIfAborted();
 
 		this.logger.debug('Ran a system task occurrence', {
 			name: this.systemTask.name,
