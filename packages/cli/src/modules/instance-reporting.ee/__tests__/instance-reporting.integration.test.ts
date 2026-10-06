@@ -16,7 +16,8 @@ import { mock } from 'vitest-mock-extended';
 
 import type { License } from '@/license';
 import { createCompactedInsightsEvent } from '@n8n/backend-module-insights/testing';
-import { InsightsConfig, InsightsService } from '@n8n/backend-module-insights';
+import { InsightsService } from '@n8n/backend-module-insights';
+import { InsightsConfig } from '@n8n/backend-module-insights/config';
 import { packagedModules } from '@/modules/modules.manifest';
 
 import type {

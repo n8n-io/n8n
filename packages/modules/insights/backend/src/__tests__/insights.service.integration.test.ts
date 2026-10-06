@@ -1,4 +1,5 @@
 import type { LicenseState } from '@n8n/backend-common';
+import type { ProjectScopeService, WorkflowSharingService } from '@n8n/backend-services';
 import {
 	createTeamProject,
 	createWorkflow,
@@ -11,6 +12,7 @@ import type { InstanceType } from '@n8n/constants';
 import type { IWorkflowDb, Project, User, WorkflowEntity } from '@n8n/db';
 import { WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { ForbiddenError } from '@n8n/errors';
 import { DateTime } from 'luxon';
 import type { InstanceSettings } from 'n8n-core';
 import { UserError } from 'n8n-workflow';
@@ -18,21 +20,18 @@ import type { MockInstance, Mocked } from 'vitest';
 import type { MockProxy } from 'vitest-mock-extended';
 import { mock } from 'vitest-mock-extended';
 
-import { ForbiddenError } from '@n8n/errors';
-import type { ProjectScopeService, WorkflowSharingService } from '@n8n/backend-services';
-import {
-	type InsightsByPeriod,
-	type InsightsByPeriodRepository,
-	InsightsCollectionService,
-	InsightsService,
-} from '@n8n/backend-module-insights';
-import { createCompactedInsightsEvent } from '@n8n/backend-module-insights/testing';
-import { createMember } from '@test-integration/db/users';
-import { packagedModules } from '@/modules/modules.manifest';
+import type { InsightsByPeriod } from '../insights-by-period.entity';
+import type { InsightsByPeriodRepository } from '../insights-by-period.repository';
+import { InsightsCollectionService } from '../insights-collection.service';
+import { InsightsService } from '../insights.service';
+import { createCompactedInsightsEvent } from '../testing/db-utils';
+import { createMember } from './test-users';
 
 describe('InsightsService (Integration)', () => {
 	beforeAll(async () => {
-		await testModules.loadModules(['insights'], packagedModules);
+		await testModules.loadModules(['insights'], {
+			insights: async () => await import('../insights.module.js'),
+		});
 		await testDb.init();
 	});
 
@@ -91,7 +90,7 @@ describe('InsightsService (Integration)', () => {
 		});
 
 		const setupMocks = (instanceType: InstanceType) => {
-			(instanceSettings as any).instanceType = instanceType;
+			Object.defineProperty(instanceSettings, 'instanceType', { value: instanceType });
 		};
 
 		test('starts collection for main instance', async () => {
