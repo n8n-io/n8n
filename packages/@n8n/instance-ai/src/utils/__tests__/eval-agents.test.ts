@@ -250,6 +250,20 @@ describe('extractText', () => {
 		);
 	});
 
+	it('reads the status from the last error when the SDK retries ran out', () => {
+		const lastError = Object.assign(new Error('Service Unavailable'), {
+			statusCode: 503,
+			isRetryable: true,
+		});
+		const retryError = Object.assign(
+			new Error('Failed after 3 attempts. Last error: Service Unavailable'),
+			{ lastError },
+		);
+		expect(() => extractText(failed(retryError))).toThrow(
+			'Eval model provider call failed (HTTP 503): Failed after 3 attempts. Last error: Service Unavailable',
+		);
+	});
+
 	it('throws a readable message for a non-Error failure', () => {
 		expect(() => extractText(failed('socket closed'))).toThrow(
 			'Eval model provider call failed: socket closed',

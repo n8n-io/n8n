@@ -192,8 +192,11 @@ export function createEvalAgent(
  */
 class EvalModelCallError extends Error {
 	constructor(cause: unknown) {
+		const apiError = providerError(cause);
 		const status =
-			isRecord(cause) && typeof cause.statusCode === 'number' ? cause.statusCode : undefined;
+			isRecord(apiError) && typeof apiError.statusCode === 'number'
+				? apiError.statusCode
+				: undefined;
 		const detail = cause instanceof Error ? cause.message : String(cause);
 		super(`Eval model provider call failed${status ? ` (HTTP ${status})` : ''}: ${detail}`, {
 			cause,
@@ -202,10 +205,16 @@ class EvalModelCallError extends Error {
 	}
 }
 
+/** The provider's own error: the SDK wraps it in a retry error once its retries run out. */
+function providerError(error: unknown): unknown {
+	return isRecord(error) && 'lastError' in error ? error.lastError : error;
+}
+
 /** False only for a model error the provider marked as permanent (bad key, bad request). */
 export function isRetryableEvalError(error: unknown): boolean {
 	if (!(error instanceof EvalModelCallError)) return true;
-	return !(isRecord(error.cause) && error.cause.isRetryable === false);
+	const apiError = providerError(error.cause);
+	return !(isRecord(apiError) && apiError.isRetryable === false);
 }
 
 /** Assistant text of an eval call. Throws when the call itself failed. */
