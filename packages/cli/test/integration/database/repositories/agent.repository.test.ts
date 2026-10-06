@@ -81,6 +81,60 @@ describe('AgentRepository', () => {
 		await agentRepo.delete({});
 	});
 
+	describe('package export reads', () => {
+		it.each(['global', 'project'] as const)(
+			'reads large Agent selections with %s access',
+			async (access) => {
+				const first = await createAgent();
+				const last = await createAgent();
+				const otherProject = await createTeamProject();
+				const other = await createAgent({ projectId: otherProject.id });
+				const versionId = uuid();
+				await createHistory(last.id, versionId);
+				await agentRepo.update(last.id, { activeVersionId: versionId });
+				const ids = [
+					first.id,
+					...Array.from({ length: 32_768 }, (_, index) => `missing-agent-${index}`),
+					last.id,
+					other.id,
+					first.id,
+				];
+				const projects = access === 'global' ? null : [projectId];
+				const expectedIds =
+					access === 'global' ? [first.id, last.id, other.id] : [first.id, last.id];
+
+				const agents = await agentRepo.findForExport(ids, projects);
+
+				expect(agents.map(({ id }) => id)).toEqual(expectedIds.sort());
+				expect(agents.find(({ id }) => id === last.id)?.activeVersion?.versionId).toBe(versionId);
+				expect(await agentRepo.findExistingIds(ids)).toEqual(
+					new Set([first.id, last.id, other.id]),
+				);
+			},
+		);
+
+		it('reads large project selections and preserves project filters', async () => {
+			const first = await createAgent();
+			const otherProject = await createTeamProject();
+			const last = await createAgent({ projectId: otherProject.id });
+			const hiddenProject = await createTeamProject();
+			const hidden = await createAgent({ projectId: hiddenProject.id });
+			const projectIds = [
+				projectId,
+				...Array.from({ length: 32_768 }, (_, index) => `missing-project-${index}`),
+				otherProject.id,
+				projectId,
+			];
+
+			const agents = await agentRepo.findForExport([first.id, last.id, hidden.id], projectIds);
+
+			expect(agents.map(({ id }) => id)).toEqual([first.id, last.id].sort());
+			expect(await agentRepo.findIdsInProjectsForExport(projectIds)).toEqual(
+				[first.id, last.id].sort(),
+			);
+		});
+	});
+
 	describe('draft definition writes', () => {
 		const taskBody = {
 			name: 'Daily task',

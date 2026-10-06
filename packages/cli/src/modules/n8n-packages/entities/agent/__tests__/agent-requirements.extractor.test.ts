@@ -157,8 +157,8 @@ describe('AgentRequirementsExtractor', () => {
 				type: 'n8n-nodes-base.httpRequest',
 				typeVersion: 4,
 				usedBy: [
-					{ kind: 'agent', id: source.agentId },
 					{ kind: 'workflow', id: source.agentId },
+					{ kind: 'agent', id: source.agentId },
 				],
 			},
 			{

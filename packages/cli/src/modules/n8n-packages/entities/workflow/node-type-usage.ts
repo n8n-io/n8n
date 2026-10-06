@@ -1,7 +1,10 @@
 import type { INode } from 'n8n-workflow';
 
-import type { PackageNodeTypeRequirement } from '../../spec/requirements.schema';
-import { addRequirementUsage, type RequirementSource } from '../requirement-source';
+import type {
+	PackageNodeTypeRequirement,
+	PackageRequirementConsumer,
+} from '../../spec/requirements.schema';
+import type { RequirementSource } from '../requirement-source';
 
 export type NodeTypeSource = RequirementSource & {
 	nodes: Array<Pick<INode, 'type' | 'typeVersion'>>;
@@ -15,7 +18,15 @@ export type NodeTypeUsage = PackageNodeTypeRequirement;
  * Collect usage without node registry lookups.
  */
 export function collectNodeTypeUsage(sources: NodeTypeSource[]): NodeTypeUsage[] {
-	const usage = new Map<string, NodeTypeUsage>();
+	const usage = new Map<
+		string,
+		{
+			type: string;
+			typeVersion: number;
+			workflowIds: Set<string>;
+			agentIds: Set<string>;
+		}
+	>();
 
 	for (const source of sources) {
 		for (const node of source.nodes) {
@@ -23,12 +34,21 @@ export function collectNodeTypeUsage(sources: NodeTypeSource[]): NodeTypeUsage[]
 			const entry = usage.get(key) ?? {
 				type: node.type,
 				typeVersion: node.typeVersion,
-				usedBy: [],
+				workflowIds: new Set<string>(),
+				agentIds: new Set<string>(),
 			};
-			addRequirementUsage(entry, source);
+			if ('workflowId' in source) entry.workflowIds.add(source.workflowId);
+			else entry.agentIds.add(source.agentId);
 			usage.set(key, entry);
 		}
 	}
 
-	return [...usage.values()];
+	return [...usage.values()].map(({ type, typeVersion, workflowIds, agentIds }) => ({
+		type,
+		typeVersion,
+		usedBy: [
+			...[...workflowIds].map<PackageRequirementConsumer>((id) => ({ kind: 'workflow', id })),
+			...[...agentIds].map<PackageRequirementConsumer>((id) => ({ kind: 'agent', id })),
+		],
+	}));
 }
