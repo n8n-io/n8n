@@ -117,7 +117,7 @@ describe('ProjectService', () => {
 	});
 
 	describe('getProjectsAndCount', () => {
-		it('orders the page by creation time, then id, so cursor pages are stable', async () => {
+		it('delegates the requested page bounds to the repository', async () => {
 			projectRepository.findPage.mockResolvedValueOnce([[], 0]);
 
 			await projectService.getProjectsAndCount({ offset: 20, limit: 10 });
