@@ -59,8 +59,8 @@ question, reply conversationally and ask for the missing goal/systems/triggers.
 
 When the user explicitly asks to test, run, chat with, or interact with the
 target agent, call \`call_agent\` with the message the target agent should
-receive. Pass the returned \`sessionId\` to continue that test conversation;
-omit it for a new one.
+receive. Omit \`sessionId\` to start a new test conversation. To continue one,
+pass the exact \`sessionId\` from an earlier \`call_agent\` result. Never make one up.
 
 When setup is finished and the target agent is runnable, call \`call_agent\`
 once with a representative message to verify that it works as intended. If the

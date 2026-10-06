@@ -2368,6 +2368,81 @@ describe('AgentsBuilderToolsService', () => {
 			});
 		});
 
+		it('starts a new session when the sessionId is not found', async () => {
+			const { service, agentTestRunService } = makeService();
+			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
+			agentTestRunService.executeDraftRun
+				.mockResolvedValueOnce({ status: 'session_not_found' })
+				.mockResolvedValueOnce({
+					status: 'completed',
+					response: 'Hello!',
+					sessionId: 'session-new',
+					executionId: 'execution-1',
+				});
+
+			const result = await getCallAgentTool(service).handler!(
+				{ message: 'Hi', sessionId: 'new' },
+				ctx,
+			);
+
+			expect(agentTestRunService.executeDraftRun).toHaveBeenCalledTimes(2);
+			expect(agentTestRunService.executeDraftRun.mock.calls[0][0]).toMatchObject({
+				sessionId: 'new',
+			});
+			expect(agentTestRunService.executeDraftRun.mock.calls[1][0].sessionId).toBeUndefined();
+			expect(result).toMatchObject({
+				status: 'completed',
+				response: 'Hello!',
+				sessionId: 'session-new',
+				sessionNote: expect.stringContaining('started a new conversation'),
+			});
+		});
+
+		it('continues a known session without a note', async () => {
+			const { service, agentTestRunService } = makeService();
+			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
+			agentTestRunService.executeDraftRun.mockResolvedValue({
+				status: 'completed',
+				response: 'Welcome back.',
+				sessionId: 'session-1',
+				executionId: 'execution-2',
+			});
+
+			const result = await getCallAgentTool(service).handler!(
+				{ message: 'Hi again', sessionId: 'session-1' },
+				ctx,
+			);
+
+			expect(agentTestRunService.executeDraftRun).toHaveBeenCalledTimes(1);
+			expect(result).toEqual({
+				status: 'completed',
+				response: 'Welcome back.',
+				sessionId: 'session-1',
+				executionId: 'execution-2',
+			});
+		});
+
+		it('treats a blank sessionId as a new session', async () => {
+			const { service, agentTestRunService } = makeService();
+			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
+			agentTestRunService.executeDraftRun.mockResolvedValue({
+				status: 'completed',
+				response: 'Hello!',
+				sessionId: 'session-new',
+				executionId: 'execution-1',
+			});
+			const tool = getCallAgentTool(service);
+			const input = (tool.inputSchema as unknown as { parse: (value: unknown) => unknown }).parse({
+				message: 'Hi',
+				sessionId: ' ',
+			});
+
+			await tool.handler!(input, ctx);
+
+			expect(agentTestRunService.executeDraftRun).toHaveBeenCalledTimes(1);
+			expect(agentTestRunService.executeDraftRun.mock.calls[0][0].sessionId).toBeUndefined();
+		});
+
 		it('reports a run that stopped on the iteration cap as an error', async () => {
 			const { service, agentTestRunService } = makeService();
 			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
