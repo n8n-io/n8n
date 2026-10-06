@@ -63,6 +63,7 @@
     "@n8n/frontend-utils": "workspace:*",
     "@n8n/frontend-vite-config": "workspace:*",
     "@n8n/i18n": "workspace:*",
+    "@n8n/oxlint-config": "workspace:*",
     "@n8n/permissions": "workspace:*",
     "@n8n/playwright-janitor": "workspace:*",
     "@n8n/rest-api-client": "workspace:*",

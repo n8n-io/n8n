@@ -1,8 +1,9 @@
-import type { ESLint, Linter } from 'eslint';
+import type { ESLint } from 'eslint';
 
 import pkg from '../package.json' with { type: 'json' };
 import { rules } from './rules/index.js';
 
+/** Oxlint loads this plugin through `@n8n/oxlint-config/vue`. */
 const plugin = {
 	meta: {
 		name: pkg.name,
@@ -13,19 +14,5 @@ const plugin = {
 	rules: rules as ESLint.Plugin['rules'],
 } satisfies ESLint.Plugin;
 
-const configs = {
-	recommended: {
-		files: ['**/*.vue'],
-		plugins: {
-			'@n8n/design-system': plugin,
-		},
-		rules: {
-			'@n8n/design-system/require-teleported-tooltip-in-dropdown': 'error',
-		},
-	},
-} satisfies Record<string, Linter.Config>;
-
-const pluginWithConfigs = { ...plugin, configs } satisfies ESLint.Plugin;
-
-export default pluginWithConfigs;
-export { configs, rules };
+export default plugin;
+export { rules };

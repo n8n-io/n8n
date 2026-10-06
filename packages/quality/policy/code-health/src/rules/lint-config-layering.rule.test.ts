@@ -126,6 +126,19 @@ export default defineConfig(backendConfig, {
 			expect(await analyze()).toEqual([]);
 		});
 
+		it('an oxlint config that only extends the vue layer', async () => {
+			writePackage(
+				'packages/a',
+				'import { frontendConfig } from "@n8n/eslint-config/frontend";\nexport default frontendConfig;\n',
+				`import { vueConfig } from '@n8n/oxlint-config/vue';
+import { defineConfig } from 'oxlint';
+export default defineConfig({ extends: [vueConfig], settings: vueConfig.settings });
+`,
+			);
+
+			expect(await analyze()).toEqual([]);
+		});
+
 		it('an oxlint relaxation scoped to paths via overrides', async () => {
 			writePackage(
 				'packages/a',

@@ -7,8 +7,6 @@ export default defineConfig(
 	frontendConfig,
 	{
 		rules: {
-			'vue/no-undef-components': ['error', { ignorePatterns: ['N8nDropdownMenuItem'] }],
-
 			'no-prototype-builtins': 'warn',
 			'@typescript-eslint/prefer-optional-chain': 'warn',
 			'@typescript-eslint/restrict-template-expressions': 'warn',

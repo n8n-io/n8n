@@ -1,5 +1,4 @@
 <script lang="ts" setup>
-/* eslint-disable vue/no-multiple-template-root */
 import type { CanvasConnectionData } from '../../../canvas.types';
 import { HOVER_DELAY } from '@/app/constants/durations';
 import { isValidNodeConnectionType } from '@/app/utils/typeGuards';
@@ -151,6 +150,7 @@ function onEdgeLabelMouseLeave() {
 </script>
 
 <template>
+	<!-- eslint-disable vue/no-multiple-template-root -->
 	<g
 		data-test-id="edge"
 		:data-source-node-name="data.source?.node"

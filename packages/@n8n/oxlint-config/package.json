@@ -16,6 +16,10 @@
       "types": "./dist/configs/frontend.d.ts",
       "default": "./dist/configs/frontend.js"
     },
+    "./vue": {
+      "types": "./dist/configs/vue.d.ts",
+      "default": "./dist/configs/vue.js"
+    },
     "./nodes": {
       "types": "./dist/configs/nodes.d.ts",
       "default": "./dist/configs/nodes.js"
@@ -45,11 +49,13 @@
   },
   "dependencies": {
     "@n8n/eslint-config": "workspace:*",
+    "@n8n/eslint-plugin-design-system": "workspace:*",
     "@stylistic/eslint-plugin": "^5.0.0",
     "eslint-plugin-import-x": "^4.15.2",
     "eslint-plugin-lodash": "^8.0.0",
     "eslint-plugin-unused-imports": "^4.1.4",
-    "oxlint": "catalog:"
+    "oxlint": "catalog:",
+    "oxlint-plugin-vize": "catalog:"
   },
   "license": "LicenseRef-n8n-sustainable-use"
 }

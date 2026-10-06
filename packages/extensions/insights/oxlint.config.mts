@@ -1,10 +1,12 @@
-import { baseConfig } from '@n8n/oxlint-config/base';
+import { frontendConfig } from '@n8n/oxlint-config/frontend';
 import { defineConfig } from 'oxlint';
 
 export default defineConfig({
-	extends: [baseConfig],
+	extends: [frontendConfig],
 	options: { typeAware: true },
-	ignorePatterns: ['src/shims.d.ts', '**/*.vue'],
+	// oxlint does not inherit `settings` through `extends`.
+	settings: frontendConfig.settings,
+	ignorePatterns: ['src/shims.d.ts'],
 	rules: {
 		'typescript/no-deprecated': 'off',
 	},

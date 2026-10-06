@@ -1,5 +1,4 @@
 <script lang="ts" setup>
-/* eslint-disable vue/no-multiple-template-root */
 import type { ConnectionLineProps } from '@vue-flow/core';
 import { BaseEdge } from '@vue-flow/core';
 import { computed, onMounted, ref, useCssModule } from 'vue';
@@ -60,6 +59,7 @@ onMounted(() => {
 </script>
 
 <template>
+	<!-- eslint-disable vue/no-multiple-template-root -->
 	<BaseEdge
 		v-for="segment in segments"
 		:key="segment[0]"

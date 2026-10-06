@@ -1,5 +1,4 @@
 <script setup lang="ts">
-/* eslint-disable vue/no-multiple-template-root */
 import { computed, defineAsyncComponent, nextTick } from 'vue';
 import { getMidCanvasPosition } from '@/app/utils/nodeViewUtils';
 import {
@@ -186,6 +185,7 @@ function openCommandBar(event: MouseEvent) {
 </script>
 
 <template>
+	<!-- eslint-disable vue/no-multiple-template-root -->
 	<N8nButtonList
 		v-if="!createNodeActive"
 		orientation="vertical"

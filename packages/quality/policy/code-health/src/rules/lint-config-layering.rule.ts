@@ -13,12 +13,13 @@ const CONFIG_FILENAMES = ['eslint.config.mjs', 'eslint.config.js', 'eslint.confi
 /**
  * A package that has moved to oxlint deletes its ESLint config, so the layering
  * policy has to follow it there. Only the layered `oxlint.config.{mts,ts}` form
- * is checked: `.oxlintrc.json` is the editor-ui bridge, a standalone rule table
- * whose policy still lives in its ESLint config.
+ * is checked: editor-ui's `oxlint-rules.json` is a bridge, a standalone rule
+ * table whose policy still lives in its ESLint config.
  */
 const OXLINT_CONFIG_FILENAMES = ['oxlint.config.mts', 'oxlint.config.ts'];
 
-const LAYERS = ['base', 'backend', 'frontend', 'nodes'];
+// `vue` is the oxlint layer of a Vue package that keeps ESLint for its TypeScript.
+const LAYERS = ['base', 'backend', 'frontend', 'nodes', 'vue'];
 const LAYER_IMPORT = /^@n8n\/eslint-config\/([a-z-]+)$/;
 const OXLINT_LAYER_IMPORT = /^@n8n\/oxlint-config\/([a-z-]+)$/;
 

@@ -43,6 +43,7 @@ const files = (name) => [
 	['tsconfig.json.template', 'tsconfig.json'],
 	['vite.config.ts.template', 'vite.config.ts'],
 	['eslint.config.mjs.template', 'eslint.config.mjs'],
+	['oxlint.config.mts.template', 'oxlint.config.mts'],
 	['stylelint.config.mjs.template', 'stylelint.config.mjs'],
 	['biome.jsonc.template', 'biome.jsonc'],
 	['README.md.template', 'README.md'],

@@ -1,6 +1,6 @@
 # Oxlint migration blockers
 
-Last reviewed: 2026-09-22
+Last reviewed: 2026-10-06
 Oxlint version: 1.78.0
 
 This file is the working backlog for the ESLint to Oxlint migration. It focuses on rules that block an Oxlint-only lint command for many packages. `oxlint-gap.json` is the machine-readable source of truth for shared-layer parity.
@@ -77,77 +77,31 @@ Reconsider this exception only if the package removal plan changes.
 
 ## Frontend package blockers
 
-Oxlint can lint the script section of a Vue SFC, but it does not expose the Vue template AST. An Oxlint-only frontend package would lose the following 59 rules:
+Oxlint lints only the script block of a Vue SFC. Vize (`oxlint-plugin-vize`) closes most of the template gap: it parses the whole SFC and reports through Oxlint's JS plugin bridge. `@n8n/oxlint-config/vue` holds the Vue rules:
 
-```text
-vue/block-order
-vue/comment-directive
-vue/component-name-in-template-casing
-vue/jsx-uses-vars
-vue/no-child-content
-vue/no-deprecated-dollar-listeners-api
-vue/no-deprecated-dollar-scopedslots-api
-vue/no-deprecated-filter
-vue/no-deprecated-functional-template
-vue/no-deprecated-html-element-is
-vue/no-deprecated-inline-template
-vue/no-deprecated-router-link-tag-prop
-vue/no-deprecated-scope-attribute
-vue/no-deprecated-slot-attribute
-vue/no-deprecated-slot-scope-attribute
-vue/no-deprecated-v-bind-sync
-vue/no-deprecated-v-is
-vue/no-deprecated-v-on-native-modifier
-vue/no-deprecated-v-on-number-modifiers
-vue/no-dupe-v-else-if
-vue/no-duplicate-attributes
-vue/no-multiple-template-root
-vue/no-parsing-error
-vue/no-ref-as-operand
-vue/no-template-key
-vue/no-textarea-mustache
-vue/no-undef-components
-vue/no-unused-components
-vue/no-unused-vars
-vue/no-use-computed-property-like-method
-vue/no-use-v-if-with-v-for
-vue/no-useless-template-attributes
-vue/no-v-for-template-key-on-child
-vue/no-v-html
-vue/require-component-is
-vue/require-macro-variable-name
-vue/require-toggle-inside-transition
-vue/require-v-for-key
-vue/require-valid-default-prop
-vue/use-v-on-exact
-vue/v-slot-style
-vue/valid-attribute-name
-vue/valid-template-root
-vue/valid-v-bind
-vue/valid-v-cloak
-vue/valid-v-else
-vue/valid-v-else-if
-vue/valid-v-for
-vue/valid-v-html
-vue/valid-v-if
-vue/valid-v-is
-vue/valid-v-memo
-vue/valid-v-model
-vue/valid-v-on
-vue/valid-v-once
-vue/valid-v-pre
-vue/valid-v-show
-vue/valid-v-slot
-vue/valid-v-text
-```
+- 30 native Oxlint `vue/*` rules for the script block.
+- 51 Vize rules (`vize/vue/*` and `vize/script/*`). `vue/block-order` becomes `vize/vue/sfc-element-order`, and `vue/no-undef-components` becomes `vize/vue/require-component-registration`.
+- `n8n-local-rules/require-macro-variable-name`, a port of `vue/require-macro-variable-name`.
+- `@n8n/design-system/require-teleported-tooltip-in-dropdown`, which now parses the template with `@vue/compiler-dom`.
 
-The design-system rule `@n8n/design-system/require-teleported-tooltip-in-dropdown` has the same blocker. It uses `vue-eslint-parser` template services, not TypeScript type information.
+`eslint-plugin-vue` is gone. ESLint still parses `.vue` files with `vue-eslint-parser`, so the type-aware TypeScript rules still reach the SFC script. Oxlint's type-aware rules skip `.vue` files.
+
+`frontend/vue-template-rules` in `oxlint-gap.json` lists the eight rules without a Vize equivalent.
+
+Known limits:
+
+- Oxlint rejects a JS plugin location outside the script block. A template diagnostic points at the start of the script block, and its message ends with the real position, for example `(at <template>:12:5)`.
+- Vize skips an SFC without a `<script>` block. The `oxlint-vize` wrapper fixes this, but it shifts every script diagnostic, so we do not use it.
+- Oxlint does not pass `settings` or `ignorePatterns` through `extends`. A package config must repeat `settings: vueConfig.settings`. Without it, Vize applies its default preset and silently skips rules.
+- To suppress a template rule, put the `eslint-disable` comment inside `<template>`. Vize does not read comments in the script block or before `<template>`.
+- `vue/attribute-hyphenation` stays at `warn` in editor-ui, as it was in ESLint.
+- Vize is experimental and releases often. The catalog pins one version, and `minimumReleaseAge` applies.
 
 Suggested direction:
 
-1. Keep ESLint for `.vue` files until Oxlint exposes a template AST or another template-aware linter replaces it.
-2. Run Oxlint for `.ts`, `.tsx`, and the SFC script section.
-3. Do not rewrite 60 template rules as source-text checks.
+1. Run Oxlint with `@n8n/oxlint-config/vue` (or `frontend`) in every Vue package.
+2. Move the TypeScript rules of each frontend package to Oxlint, then remove the ESLint pass.
+3. Re-check the gap list when Vize releases new rules.
 
 ## Node package blockers
 
@@ -187,7 +141,7 @@ The main exceptions are:
 3. Audit and reduce `naming-convention` package overrides.
 4. Re-test the two nursery rules.
 5. Run a JS-plugin bridge spike for `n8n-nodes-base`.
-6. Keep a template-only ESLint pass for Vue until native template support exists.
+6. Run Vue template rules through Vize. Re-check the Vize gap list on each upgrade.
 
 ## Validation commands
 

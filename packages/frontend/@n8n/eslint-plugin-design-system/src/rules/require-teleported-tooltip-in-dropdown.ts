@@ -1,47 +1,86 @@
+import { readFileSync } from 'node:fs';
 import { ESLintUtils } from '@typescript-eslint/utils';
-import type { TSESTree } from '@typescript-eslint/utils';
-import type { RuleListener } from '@typescript-eslint/utils/ts-eslint';
-import type { Node, VAttribute, VDirective, VElement } from 'vue-eslint-parser/ast/nodes';
+import { NodeTypes, parse } from '@vue/compiler-dom';
+import type {
+	AttributeNode,
+	DirectiveNode,
+	ElementNode,
+	RootNode,
+	SourceLocation,
+	TemplateChildNode,
+} from '@vue/compiler-dom';
 
 const TOOLTIP_NAMES = new Set(['N8nTooltip', 'n8n-tooltip']);
 const DROPDOWN_NAMES = new Set(['N8nDropdownMenu', 'n8n-dropdown-menu']);
 
-type TemplateVisitor = Record<string, (node: VElement) => void>;
+const isElement = (node: TemplateChildNode | RootNode['children'][number]): node is ElementNode =>
+	node.type === NodeTypes.ELEMENT;
 
-type VueParserServices = {
-	defineTemplateBodyVisitor: (visitor: TemplateVisitor) => RuleListener;
-};
-
-const isInsideDropdown = (node: VElement) => {
-	let parent: Node | null | undefined = node.parent;
-
-	while (parent) {
-		if (parent.type === 'VElement' && DROPDOWN_NAMES.has(parent.rawName)) return true;
-		parent = parent.parent;
-	}
-
-	return false;
-};
-
-const isTeleportedAttribute = (attribute: VAttribute | VDirective) => {
-	if (!attribute.directive) return attribute.key.name === 'teleported';
+const isTeleportedAttribute = (prop: AttributeNode | DirectiveNode) => {
+	if (prop.type === NodeTypes.ATTRIBUTE) return prop.name === 'teleported';
 
 	return (
-		attribute.key.name.name === 'bind' &&
-		attribute.key.argument?.type === 'VIdentifier' &&
-		attribute.key.argument.name === 'teleported'
+		prop.name === 'bind' &&
+		prop.arg?.type === NodeTypes.SIMPLE_EXPRESSION &&
+		prop.arg.content === 'teleported'
 	);
 };
 
-const guaranteesTeleportation = (attribute: VAttribute | VDirective) => {
-	if (!attribute.directive) {
-		return (
-			attribute.value === null || attribute.value.value === '' || attribute.value.value === 'true'
-		);
+const guaranteesTeleportation = (prop: AttributeNode | DirectiveNode) => {
+	if (prop.type === NodeTypes.ATTRIBUTE) {
+		return prop.value === undefined || prop.value.content === '' || prop.value.content === 'true';
 	}
 
-	const expression = attribute.value?.expression;
-	return expression?.type === 'Literal' && expression.value === true;
+	return prop.exp?.type === NodeTypes.SIMPLE_EXPRESSION && prop.exp.content.trim() === 'true';
+};
+
+const parseSfc = (source: string) =>
+	// The other Vue rules report template syntax errors, so this rule ignores them.
+	parse(source, { parseMode: 'sfc', onError: () => {} });
+
+/**
+ * Returns the location of each `teleported` attribute that lets an
+ * `N8nTooltip` inside an `N8nDropdownMenu` render inline.
+ */
+const findUnteleportedTooltips = (root: RootNode): SourceLocation[] => {
+	const found: SourceLocation[] = [];
+
+	const visit = (node: ElementNode, insideDropdown: boolean) => {
+		if (insideDropdown && TOOLTIP_NAMES.has(node.tag)) {
+			const prop = node.props.find(isTeleportedAttribute);
+			if (prop && !guaranteesTeleportation(prop)) found.push(prop.loc);
+		}
+
+		const childInsideDropdown = insideDropdown || DROPDOWN_NAMES.has(node.tag);
+		for (const child of node.children) {
+			if (isElement(child)) visit(child, childInsideDropdown);
+		}
+	};
+
+	const template = root.children.find(
+		(node): node is ElementNode => isElement(node) && node.tag === 'template',
+	);
+	for (const child of template?.children ?? []) {
+		if (isElement(child)) visit(child, false);
+	}
+
+	return found;
+};
+
+/** Exported for tests. */
+export const findUnteleportedTooltipsInSource = (source: string) =>
+	findUnteleportedTooltips(parseSfc(source));
+
+/**
+ * Oxlint runs a rule once for each script block of an SFC, and gives it only
+ * the script text. The rule reads the SFC itself and reports from the first
+ * script block, so it reports each problem once.
+ */
+const isFirstScriptBlock = (root: RootNode, scriptText: string) => {
+	const firstScript = root.children.find(
+		(node): node is ElementNode => isElement(node) && node.tag === 'script',
+	);
+	return firstScript?.innerLoc?.source.trim() === scriptText.trim();
 };
 
 export const RequireTeleportedTooltipInDropdownRule = ESLintUtils.RuleCreator.withoutDocs({
@@ -52,27 +91,29 @@ export const RequireTeleportedTooltipInDropdownRule = ESLintUtils.RuleCreator.wi
 		},
 		messages: {
 			requireTeleported:
-				'N8nTooltip inside N8nDropdownMenu must be teleported to avoid being clipped by the menu.',
+				'N8nTooltip inside N8nDropdownMenu must be teleported to avoid being clipped by the menu. (at <template>:{{line}}:{{column}})',
 		},
 		schema: [],
 	},
 	defaultOptions: [],
 	create(context) {
-		const parserServices = context.sourceCode.parserServices as unknown as VueParserServices;
-		if (!parserServices.defineTemplateBodyVisitor) return {};
+		if (!context.filename.endsWith('.vue')) return {};
 
-		return parserServices.defineTemplateBodyVisitor({
-			VElement(node) {
-				if (!TOOLTIP_NAMES.has(node.rawName) || !isInsideDropdown(node)) return;
+		return {
+			Program(program) {
+				const root = parseSfc(readFileSync(context.physicalFilename, 'utf8'));
+				if (!isFirstScriptBlock(root, context.sourceCode.text)) return;
 
-				const attribute = node.startTag.attributes.find(isTeleportedAttribute);
-				if (!attribute || guaranteesTeleportation(attribute)) return;
-
-				context.report({
-					node: attribute as unknown as TSESTree.Node,
-					messageId: 'requireTeleported',
-				});
+				// Oxlint rejects a location outside the script block, so the
+				// message carries the template position.
+				for (const { start } of findUnteleportedTooltips(root)) {
+					context.report({
+						node: program,
+						messageId: 'requireTeleported',
+						data: { line: start.line, column: start.column },
+					});
+				}
 			},
-		});
+		};
 	},
 });

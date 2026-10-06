@@ -89,6 +89,8 @@ function getThStyle(column: DatatableColumn) {
 				</tr>
 			</thead>
 			<tbody>
+				<!-- TODO: move the row key to this template, as Vue 3 expects -->
+				<!-- eslint-disable-next-line vue/require-v-for-key -->
 				<template v-for="row in visibleRows">
 					<slot name="row" :columns="columns" :row="row" :get-td-value="getTdValue">
 						<tr :key="row.id">
