@@ -29,6 +29,23 @@ describe('WorkflowPublishHistoryRepository', () => {
 		await testDb.terminate();
 	});
 
+	describe('findTimelinePage', () => {
+		afterEach(() => {
+			vi.restoreAllMocks();
+		});
+
+		it.each([0, -1])('should not query events when the limit is %i', async (limit) => {
+			const repository = Container.get(WorkflowPublishHistoryRepository);
+			const createQueryBuilder = vi.spyOn(repository, 'createQueryBuilder');
+
+			await expect(
+				repository.findTimelinePage('workflow-1', { offset: 0, limit }),
+			).resolves.toEqual([]);
+
+			expect(createQueryBuilder).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('addRecord', () => {
 		it('should create a publish history record with all fields', async () => {
 			const id1 = uuid();

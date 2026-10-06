@@ -68,6 +68,9 @@ export class WorkflowPublishHistoryRepository extends Repository<WorkflowPublish
 	}
 
 	async findTimelinePage(workflowId: string, { offset, limit }: { offset: number; limit: number }) {
+		// TypeORM omits the SQL limit when it is zero.
+		if (limit <= 0) return [];
+
 		// The joins are many-to-one, so `offset` and `limit` page the events.
 		return await this.createQueryBuilder('wph')
 			.leftJoinAndSelect('wph.user', 'user')

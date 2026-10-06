@@ -1,3 +1,4 @@
+import { WORKFLOW_HISTORY_DEFAULT_TAKE } from '@n8n/api-types';
 import { LicenseState } from '@n8n/backend-common';
 import { createWorkflow, mockInstance, testDb } from '@n8n/backend-test-utils';
 import type { User, WorkflowHistory } from '@n8n/db';
@@ -7,7 +8,10 @@ import type { IConnections, INode } from 'n8n-workflow';
 import { ProjectService } from '@/services/project.service.ee';
 import { createOwner, createUser } from '@test-integration/db/users';
 import { createWorkflowHistoryItem } from '@test-integration/db/workflow-history';
-import { createWorkflowPublishHistoryItem } from '@test-integration/db/workflow-publish-history';
+import {
+	createManyWorkflowPublishHistoryItems,
+	createWorkflowPublishHistoryItem,
+} from '@test-integration/db/workflow-publish-history';
 
 import type { SuperAgentTest } from './shared/types';
 import * as utils from './shared/utils/';
@@ -480,6 +484,63 @@ describe('PATCH /workflow-history/workflow/:workflowId/versions/:versionId', () 
 });
 
 describe('GET /workflow-history/workflow/:workflowId/publish-timeline', () => {
+	test('should return an empty page when take is zero', async () => {
+		const workflow = await createWorkflow(undefined, owner);
+		const version = await createWorkflowHistoryItem(workflow.id);
+		await createManyWorkflowPublishHistoryItems(version, 5);
+
+		const response = await authOwnerAgent
+			.get(`/workflow-history/workflow/${workflow.id}/publish-timeline`)
+			.query({ take: 0 })
+			.expect(200);
+
+		expect(response.body.data).toEqual([]);
+	});
+
+	test('should use the default page size when take is omitted', async () => {
+		const workflow = await createWorkflow(undefined, owner);
+		const version = await createWorkflowHistoryItem(workflow.id);
+		const events = await createManyWorkflowPublishHistoryItems(
+			version,
+			WORKFLOW_HISTORY_DEFAULT_TAKE + 5,
+		);
+
+		const response = await authOwnerAgent
+			.get(`/workflow-history/workflow/${workflow.id}/publish-timeline`)
+			.expect(200);
+
+		const page = response.body.data as Array<{ id: number }>;
+		expect(page).toHaveLength(WORKFLOW_HISTORY_DEFAULT_TAKE);
+		expect(page.map(({ id }) => id)).toEqual(
+			events
+				.slice(-WORKFLOW_HISTORY_DEFAULT_TAKE)
+				.toReversed()
+				.map(({ id }) => id),
+		);
+	});
+
+	test('should page events with equal timestamps in descending ID order', async () => {
+		const workflow = await createWorkflow(undefined, owner);
+		const version = await createWorkflowHistoryItem(workflow.id);
+		const createdAt = new Date('2026-01-01T00:00:00Z');
+		const events = [];
+		for (let i = 0; i < 5; i++) {
+			events.push(await createWorkflowPublishHistoryItem(version, { createdAt }));
+		}
+
+		const returnedIds: number[] = [];
+		for (const skip of [0, 2, 4]) {
+			const response = await authOwnerAgent
+				.get(`/workflow-history/workflow/${workflow.id}/publish-timeline`)
+				.query({ skip, take: 2 })
+				.expect(200);
+			const page = response.body.data as Array<{ id: number }>;
+			returnedIds.push(...page.map(({ id }) => id));
+		}
+
+		expect(returnedIds).toEqual(events.toReversed().map(({ id }) => id));
+	});
+
 	test('should return one page of events, newest first, with the version name', async () => {
 		const workflow = await createWorkflow(undefined, owner);
 		const version = await createWorkflowHistoryItem(workflow.id, { name: 'Release 1' });
