@@ -28,4 +28,24 @@ describe('ProjectRepository', () => {
 			});
 		});
 	});
+
+	describe('findByIdsForUserWithRoles', () => {
+		it('batches large project id lists', async () => {
+			const projectIds = Array.from({ length: 10_001 }, (_, index) => `project-${index}`);
+			const earlier = { id: 'project-10000', createdAt: new Date('2026-01-01') } as Project;
+			const later = { id: 'project-0', createdAt: new Date('2026-01-02') } as Project;
+			entityManager.find.mockResolvedValueOnce([later]).mockResolvedValueOnce([earlier]);
+
+			const result = await projectRepository.findByIdsForUserWithRoles(projectIds);
+
+			expect(entityManager.find).toHaveBeenCalledTimes(2);
+			expect(entityManager.find).toHaveBeenNthCalledWith(1, Project, {
+				where: { id: In(projectIds.slice(0, 10_000)) },
+			});
+			expect(entityManager.find).toHaveBeenNthCalledWith(2, Project, {
+				where: { id: In(projectIds.slice(10_000)) },
+			});
+			expect(result).toEqual([earlier, later]);
+		});
+	});
 });

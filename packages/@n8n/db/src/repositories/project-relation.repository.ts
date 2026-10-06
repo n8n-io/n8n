@@ -16,10 +16,18 @@ export class ProjectRelationRepository extends BaseRepository<ProjectRelation> {
 
 	async findForUserInProjects(userId: string, projectIds: string[]): Promise<ProjectRelation[]> {
 		if (projectIds.length === 0) return [];
-		return await this.find({
-			where: { userId, projectId: In(projectIds) },
-			relations: ['role'],
-		});
+		const relations: ProjectRelation[] = [];
+		for (const projectIdChunk of chunkIds([...new Set(projectIds)])) {
+			relations.push(
+				...(await this.find({
+					where: { userId, projectId: In(projectIdChunk) },
+					relations: ['role'],
+					loadEagerRelations: false,
+				})),
+			);
+		}
+		await this.attachRoleScopes(relations);
+		return relations;
 	}
 
 	async replaceProjectMembers(

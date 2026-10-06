@@ -153,15 +153,22 @@ export class ProjectRepository extends BaseRepository<Project> {
 		projectIds?: string[];
 		restrictToTeamProjects?: boolean;
 	}): Promise<string[]> {
-		const projects = await this.find({
-			where: {
-				...(projectIds ? { id: In(projectIds) } : {}),
-				...(restrictToTeamProjects ? { type: 'team' as const } : {}),
-				...(userId && projectRoles ? { projectRelations: { userId, role: In(projectRoles) } } : {}),
-			},
-			select: ['id'],
-		});
-		return projects.map(({ id }) => id);
+		const batches = projectIds ? chunkIds([...new Set(projectIds)]) : [undefined];
+		const result: string[] = [];
+		for (const projectIdBatch of batches) {
+			const projects = await this.find({
+				where: {
+					...(projectIdBatch ? { id: In(projectIdBatch) } : {}),
+					...(restrictToTeamProjects ? { type: 'team' as const } : {}),
+					...(userId && projectRoles
+						? { projectRelations: { userId, role: In(projectRoles) } }
+						: {}),
+				},
+				select: ['id'],
+			});
+			result.push(...projects.map(({ id }) => id));
+		}
+		return result;
 	}
 
 	async findByIdsForUserWithRoles(
@@ -170,19 +177,32 @@ export class ProjectRepository extends BaseRepository<Project> {
 		projectRoles?: string[],
 	): Promise<Project[]> {
 		if (projectIds.length === 0) return [];
-		return await this.find({
-			where: {
-				id: In(projectIds),
-				...(userId && projectRoles ? { projectRelations: { userId, role: In(projectRoles) } } : {}),
-			},
-			order: { createdAt: 'ASC', id: 'ASC' },
-		});
+		const projects: Project[] = [];
+		for (const projectIdChunk of chunkIds([...new Set(projectIds)])) {
+			projects.push(
+				...(await this.find({
+					where: {
+						id: In(projectIdChunk),
+						...(userId && projectRoles
+							? { projectRelations: { userId, role: In(projectRoles) } }
+							: {}),
+					},
+				})),
+			);
+		}
+		return projects.sort(
+			(a, b) => a.createdAt.getTime() - b.createdAt.getTime() || a.id.localeCompare(b.id),
+		);
 	}
 
 	async findExistingIds(projectIds: string[]): Promise<string[]> {
 		if (projectIds.length === 0) return [];
-		const projects = await this.find({ select: ['id'], where: { id: In(projectIds) } });
-		return projects.map(({ id }) => id);
+		const result: string[] = [];
+		for (const projectIdChunk of chunkIds([...new Set(projectIds)])) {
+			const projects = await this.find({ select: ['id'], where: { id: In(projectIdChunk) } });
+			result.push(...projects.map(({ id }) => id));
+		}
+		return result;
 	}
 
 	async findOwnedOrAdminByUser(userId: string): Promise<Project[]> {
