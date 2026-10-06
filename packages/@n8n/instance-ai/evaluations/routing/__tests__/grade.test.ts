@@ -1,17 +1,15 @@
 import type { InstanceAiEvent } from '@n8n/api-types';
 
+import { ORCHESTRATOR_AGENT_ID } from '../../discovery/types';
 import type { RoutingCase } from '../cases';
 import {
 	casePasses,
-	readRoutingTrial,
-	resolveRoute,
+	createRouteWatcher,
 	type RouteResolution,
-	type RoutingToolCall,
-	type RoutingTrial,
+	traceSteps,
 	trialPasses,
 } from '../grade';
 import type { JudgeInput, JudgeVerdict } from '../judge';
-import { ORCHESTRATOR_AGENT_ID } from '../route-rules';
 
 const base = { runId: 'run-1', agentId: ORCHESTRATOR_AGENT_ID };
 
@@ -27,8 +25,8 @@ function callEvent(
 	return { type: 'tool-call', ...base, agentId, payload: { toolCallId: toolName, toolName, args } };
 }
 
-function read(instanceEvents: InstanceAiEvent[]): RoutingTrial {
-	return readRoutingTrial({ instanceEvents, streamStatus: 'completed' });
+function pending(toolName: string, args: Record<string, unknown> = {}) {
+	return { toolCallId: toolName, toolName, args };
 }
 
 function routingCase(
@@ -38,178 +36,153 @@ function routingCase(
 	return { id: `route-${bucket}-x`, bucket, userMessage: 'Do the thing.', accepts };
 }
 
-function call(toolName: string, args: Record<string, unknown> = {}): RoutingToolCall {
-	return { toolName, args };
+const go: JudgeVerdict = {
+	decision: 'continue',
+	route: 'none',
+	steer: 'none',
+	reason: 'Explores.',
+};
+
+function stop(route: JudgeVerdict['route'], steer: JudgeVerdict['steer'] = 'none'): JudgeVerdict {
+	return { decision: 'stop', route, steer, reason: `Picks ${route}.` };
 }
 
-function trial(toolCalls: RoutingToolCall[], finalText = 'Here is what I found.'): RoutingTrial {
-	return { toolCalls, finalText, streamStatus: 'completed' };
-}
-
-function judgeReturning(verdict: JudgeVerdict) {
-	return vi.fn(async (_input: JudgeInput) => await Promise.resolve(verdict));
+/** A judge that returns the verdicts in order, then the last one again. */
+function judgeReturning(...verdicts: Array<JudgeVerdict | Error>) {
+	let index = 0;
+	return vi.fn(async (_input: JudgeInput) => {
+		const verdict = verdicts[Math.min(index++, verdicts.length - 1)];
+		if (verdict instanceof Error) throw verdict;
+		return await Promise.resolve(verdict);
+	});
 }
 
 const clarify = (steer: RouteResolution['steer']): RouteResolution => ({
 	route: 'clarify',
 	steer,
-	evidence: 'ask-user',
+	evidence: 'ask-user call',
 });
 
-describe('readRoutingTrial', () => {
-	it('keeps orchestrator calls up to and including the first committing call', () => {
-		const result = read([
-			callEvent('load_skill', { skillId: 'planning' }),
-			callEvent('data-tables', { action: 'create' }),
-			callEvent('write_config', {}, 'builder-1'),
-			callEvent('build-workflow'),
-			callEvent('ask-user'),
-		]);
-
-		expect(result.toolCalls.map((c) => c.toolName)).toEqual([
-			'load_skill',
-			'data-tables',
-			'build-workflow',
-		]);
-	});
-
-	it('reads the text after the last call', () => {
-		const result = read([
-			textEvent('Let me check. '),
-			callEvent('n8n-docs', { query: 'webhooks' }),
-			textEvent('Webhooks '),
+describe('traceSteps', () => {
+	it('keeps the orchestrator text and calls in order and drops sub-agent events', () => {
+		const steps = traceSteps([
+			textEvent('Let me '),
+			textEvent('check. '),
+			callEvent('search-nodes', { query: 'slack' }),
 			textEvent('sub-agent text', 'builder-1'),
-			textEvent('start workflows.'),
+			callEvent('write_config', {}, 'builder-1'),
+			textEvent('Found it.'),
 		]);
 
-		expect(result.finalText).toBe('Webhooks start workflows.');
+		expect(steps).toEqual([
+			{ kind: 'text', text: 'Let me check.' },
+			{ kind: 'call', toolName: 'search-nodes', args: { query: 'slack' } },
+			{ kind: 'text', text: 'Found it.' },
+		]);
 	});
 
-	it('falls back to the last text before the calls when no text follows them', () => {
-		const result = read([
-			textEvent('A few questions first.'),
-			callEvent('ask-user'),
-			textEvent('Text after the stop.'),
-		]);
+	it('adds the pending call last when it has no event yet', () => {
+		const steps = traceSteps([textEvent('A question first.')], pending('ask-user'));
 
-		expect(result.finalText).toBe('A few questions first.');
+		expect(steps).toEqual([
+			{ kind: 'text', text: 'A question first.' },
+			{ kind: 'call', toolName: 'ask-user', args: {} },
+		]);
+	});
+
+	it('does not add the pending call twice when its event is already in', () => {
+		const steps = traceSteps([callEvent('ask-user')], pending('ask-user'));
+
+		expect(steps).toEqual([{ kind: 'call', toolName: 'ask-user', args: {} }]);
 	});
 });
 
-describe('resolveRoute', () => {
-	it.each<[string, RoutingToolCall[], RouteResolution['route']]>([
-		['build-agent', [call('build-agent', { operation: 'create' })], 'agent'],
-		[
-			'build-workflow after an exploring build-agent',
-			[call('build-agent', { operation: 'exploring' }), call('build-workflow')],
-			'workflow',
-		],
-		['one-off build', [call('build-workflow', { executionIntent: 'one-off' })], 'one-off'],
-		['create-tasks', [call('create-tasks')], 'multi'],
-		[
-			'build after data-table schema setup',
-			[call('data-tables', { action: 'create' }), call('build-workflow')],
-			'workflow',
-		],
-		['data-table row write', [call('data-tables', { action: 'insert-rows' })], 'one-off'],
-		['node execution', [call('nodes', { action: 'execute' })], 'one-off'],
-		['step run', [call('executions', { action: 'run-step' })], 'one-off'],
-		['workflow publish', [call('workflows', { action: 'publish' })], 'one-off'],
-		[
-			'execution read after the debugging skill',
-			[
-				call('load_skill', { skillId: 'debugging-executions' }),
-				call('executions', { action: 'get' }),
-			],
-			'debug',
-		],
-		['execution debug', [call('executions', { action: 'debug' })], 'debug'],
-		[
-			'execution read before an ask-user card',
-			[call('executions', { action: 'list' }), call('ask-user', { questions: [] })],
-			'debug',
-		],
-		['node output read', [call('executions', { action: 'get-node-output' })], 'debug'],
-		[
-			'resolved parameters read',
-			[call('executions', { action: 'get-resolved-node-parameters' })],
-			'debug',
-		],
-	])('routes %s from the calls alone', async (_name, calls, route) => {
-		const judge = judgeReturning({ kind: 'answer', steer: 'none', reason: 'unused' });
+describe('createRouteWatcher', () => {
+	it('stops before the call that the judge marks as the route', async () => {
+		const judge = judgeReturning(go, stop('workflow', 'workflow'));
+		const watcher = createRouteWatcher(judge);
 
-		const resolution = await resolveRoute(routingCase('workflow'), trial(calls), judge);
-
-		expect(resolution.route).toBe(route);
-		expect(judge).not.toHaveBeenCalled();
-	});
-
-	it('keeps an ask-user card as clarify and takes only the steer from the judge', async () => {
-		const judge = judgeReturning({ kind: 'answer', steer: 'agent', reason: 'Asks for a persona.' });
-		const askUser = call('ask-user', {
-			introMessage: 'Before I build',
-			questions: [
-				{ id: 'q1', question: 'Which tone?', type: 'single', options: ['Formal', 'Casual'] },
-			],
+		expect(await watcher.beforeToolCall(pending('search-nodes'), [])).toBe(false);
+		expect(
+			await watcher.beforeToolCall(pending('build-workflow'), [callEvent('search-nodes')]),
+		).toBe(true);
+		const resolution = await watcher.resolve({
+			instanceEvents: [],
+			streamStatus: 'stopped-on-route',
 		});
 
-		const resolution = await resolveRoute(
-			routingCase('agent'),
-			trial([askUser], 'Two questions.'),
-			judge,
-		);
+		expect(resolution).toEqual({
+			route: 'workflow',
+			steer: 'workflow',
+			evidence: 'build-workflow call',
+			judgeReason: 'Picks workflow.',
+		});
+		expect(judge).toHaveBeenCalledTimes(2);
+		expect(judge).toHaveBeenLastCalledWith({
+			steps: [
+				{ kind: 'call', toolName: 'search-nodes', args: {} },
+				{ kind: 'call', toolName: 'build-workflow', args: {} },
+			],
+		});
+	});
 
-		expect(resolution).toMatchObject({ route: 'clarify', steer: 'agent' });
-		expect(judge).toHaveBeenCalledWith({
-			mode: 'ask-user',
-			userMessage: 'Do the thing.',
-			askUserIntro: 'Before I build',
-			askUserQuestions: [{ question: 'Which tone?', options: ['Formal', 'Casual'] }],
-			finalText: 'Two questions.',
+	it('stops a parallel call without a second judge call once the route is picked', async () => {
+		const judge = judgeReturning(stop('multi'));
+		const watcher = createRouteWatcher(judge);
+
+		const results = await Promise.all([
+			watcher.beforeToolCall(pending('create-tasks'), []),
+			watcher.beforeToolCall(pending('search-nodes'), []),
+		]);
+
+		expect(results).toEqual([true, true]);
+		expect(judge).toHaveBeenCalledTimes(1);
+	});
+
+	it('asks the judge for the route of the full turn when no call stopped the run', async () => {
+		const judge = judgeReturning(go, stop('answer'));
+		const watcher = createRouteWatcher(judge);
+		await watcher.beforeToolCall(pending('n8n-docs'), []);
+
+		const resolution = await watcher.resolve({
+			instanceEvents: [callEvent('n8n-docs'), textEvent('Webhooks start workflows.')],
+			streamStatus: 'completed',
+		});
+
+		expect(resolution).toMatchObject({ route: 'answer', evidence: 'end of turn (completed)' });
+		expect(judge).toHaveBeenLastCalledWith({
+			steps: [
+				{ kind: 'call', toolName: 'n8n-docs', args: {} },
+				{ kind: 'text', text: 'Webhooks start workflows.' },
+			],
+			endStatus: 'completed',
 		});
 	});
 
-	it('takes the kind and the steer from the judge for a reply without a committing call', async () => {
-		const judge = judgeReturning({ kind: 'decline', steer: 'none', reason: 'Refuses.' });
+	it('lets the run go on when a check fails and reports the error', async () => {
+		const judge = judgeReturning(new Error('Routing judge failed: 529'), stop('debug'));
+		const watcher = createRouteWatcher(judge);
 
-		const resolution = await resolveRoute(
-			routingCase('decline'),
-			trial([call('data-tables', { action: 'create' })], 'I cannot do that.'),
-			judge,
-		);
+		expect(await watcher.beforeToolCall(pending('executions'), [])).toBe(false);
+		expect(await watcher.beforeToolCall(pending('executions'), [])).toBe(true);
+		const resolution = await watcher.resolve({
+			instanceEvents: [],
+			streamStatus: 'stopped-on-route',
+		});
 
-		expect(resolution).toMatchObject({ route: 'decline', steer: 'none', judgeReason: 'Refuses.' });
-		expect(judge).toHaveBeenCalledWith(expect.objectContaining({ mode: 'text' }));
+		expect(resolution).toMatchObject({ route: 'debug', judgeError: 'Routing judge failed: 529' });
 	});
 
-	it('returns none without the judge when the reply has no call and no text', async () => {
-		const judge = judgeReturning({ kind: 'answer', steer: 'none', reason: 'unused' });
+	it('returns none with the error when the end-of-turn judge fails', async () => {
+		const watcher = createRouteWatcher(judgeReturning(new Error('Routing judge failed: 529')));
 
-		const resolution = await resolveRoute(routingCase('answer'), trial([], ''), judge);
+		const resolution = await watcher.resolve({ instanceEvents: [], streamStatus: 'timed-out' });
 
-		expect(resolution.route).toBe('none');
-		expect(judge).not.toHaveBeenCalled();
-	});
-
-	it('returns none without the judge when the run ends before a committing call', async () => {
-		const judge = judgeReturning({ kind: 'answer', steer: 'none', reason: 'unused' });
-		const timedOut: RoutingTrial = { ...trial([call('search-nodes')]), streamStatus: 'timed-out' };
-
-		const resolution = await resolveRoute(routingCase('answer'), timedOut, judge);
-
-		expect(resolution).toMatchObject({
+		expect(resolution).toEqual({
 			route: 'none',
-			evidence: expect.stringContaining('timed-out'),
+			evidence: 'end of turn (timed-out), judge failed',
+			judgeError: 'Routing judge failed: 529',
 		});
-		expect(judge).not.toHaveBeenCalled();
-	});
-
-	it('returns none with the error when the judge fails', async () => {
-		const judge = vi.fn(async () => await Promise.reject(new Error('Routing judge failed: 529')));
-
-		const resolution = await resolveRoute(routingCase('answer'), trial([]), judge);
-
-		expect(resolution).toMatchObject({ route: 'none', judgeError: 'Routing judge failed: 529' });
 	});
 });
 

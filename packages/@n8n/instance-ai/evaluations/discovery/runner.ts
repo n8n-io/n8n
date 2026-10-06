@@ -15,12 +15,14 @@
 // and the abandoned stream is left to unwind on its own. Scenarios or --max-steps
 // can additionally opt into an iteration cap.
 //
-// Routing mode (`stopOnRoute`) aborts the run at the orchestrator's first
-// committing call (see ../routing/route-rules.ts). Routing cases have no tool
-// expectations, so they call `runOrchestratorTurn` and skip the check.
+// Routing mode (`stopBeforeTool`) checks each orchestrator tool call before it
+// runs, and ends the run when the check says so (see ../routing/grade.ts).
+// Routing cases have no tool expectations, so they call `runOrchestratorTurn`
+// and skip the check.
 // ---------------------------------------------------------------------------
 
 import type { InstanceAiEvent, TaskList } from '@n8n/api-types';
+import { isRecord } from '@n8n/utils/is-record';
 import { nanoid } from 'nanoid';
 
 import {
@@ -41,11 +43,13 @@ import {
 	stubMcpServerConfigs,
 	type StubMcpRegistry,
 } from './stub-mcp-registry';
-import type {
-	DiscoveryCheckResult,
-	DiscoveryScenario,
-	DiscoveryStreamStatus,
-	DiscoveryTestCase,
+import {
+	ORCHESTRATOR_AGENT_ID,
+	type DiscoveryCheckResult,
+	type DiscoveryScenario,
+	type DiscoveryStreamStatus,
+	type DiscoveryTestCase,
+	type PendingToolCall,
 } from './types';
 import { createInstanceAgent } from '../../src/agent/instance-agent';
 import type { InstanceAiEventBus } from '../../src/event-bus';
@@ -70,7 +74,6 @@ import { createInMemoryEventBus, wrapEventBusWithObserver } from '../harness/in-
 import { createStubServices, defaultNodesJsonPath } from '../harness/stub-services';
 import { createStubWorkspace, stubWorkspaceRoot } from '../harness/stub-workspace';
 import { extractOutcomeFromEvents } from '../outcome/event-parser';
-import { isCommittingCall, ORCHESTRATOR_AGENT_ID } from '../routing/route-rules';
 import type { CapturedEvent, EventOutcome } from '../types';
 
 // ---------------------------------------------------------------------------
@@ -125,8 +128,11 @@ export async function runDiscoveryScenario(
 
 export interface OrchestratorTurnOptions extends Omit<DiscoveryRunOptions, 'scenario'> {
 	scenario: DiscoveryScenario;
-	/** Abort the run at the orchestrator's first committing call. */
-	stopOnRoute?: boolean;
+	/**
+	 * Runs before each orchestrator tool call, and the call waits for it.
+	 * `true` ends the run there, before the call runs.
+	 */
+	stopBeforeTool?: (call: PendingToolCall, events: readonly InstanceAiEvent[]) => Promise<boolean>;
 }
 
 export interface OrchestratorTurnResult {
@@ -151,6 +157,7 @@ export async function runOrchestratorTurn(
 	const maxSteps = options.scenario?.maxSteps ?? options.maxSteps;
 	const timeoutMs = options.scenario?.timeoutMs ?? options.timeoutMs ?? 60_000;
 	const nodesJsonPath = options.nodesJsonPath ?? defaultNodesJsonPath();
+	const { stopBeforeTool } = options;
 
 	const events: CapturedEvent[] = [];
 	const instanceEvents: InstanceAiEvent[] = [];
@@ -178,7 +185,6 @@ export async function runOrchestratorTurn(
 			abortController.abort();
 		};
 	});
-	let routeFound = false;
 
 	try {
 		const services = await createStubServices({ nodesJsonPath });
@@ -203,17 +209,6 @@ export async function runOrchestratorTurn(
 		const eventBus = wrapEventBusWithObserver(createInMemoryEventBus(), (event) => {
 			events.push(toCapturedEvent(event));
 			instanceEvents.push(event);
-			if (
-				options.stopOnRoute &&
-				!routeFound &&
-				event.type === 'tool-call' &&
-				event.agentId === ORCHESTRATOR_AGENT_ID &&
-				isCommittingCall(event.payload.toolName, event.payload.args)
-			) {
-				routeFound = true;
-				// Abort outside the publisher's call stack.
-				queueMicrotask(stopRun);
-			}
 		});
 
 		// `OrchestrationContext` is required for the orchestrator to receive tools like
@@ -246,6 +241,22 @@ export async function runOrchestratorTurn(
 				providerOptions: {
 					anthropic: { cacheControl: { type: 'ephemeral' as const } },
 				},
+				...(stopBeforeTool
+					? {
+							guardrails: {
+								hooks: [
+									{
+										beforeTool: async ({ toolCallId, toolName, input }) => {
+											const call = { toolCallId, toolName, args: isRecord(input) ? input : {} };
+											if (!(await stopBeforeTool(call, instanceEvents))) return undefined;
+											stopRun();
+											return { action: 'stop' as const, code: 'route-picked' };
+										},
+									},
+								],
+							},
+						}
+					: {}),
 			}),
 		);
 

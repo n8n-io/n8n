@@ -6,7 +6,7 @@
 //   pnpm eval:discovery                                # run all scenarios, 3 trials each
 //   pnpm eval:discovery --filter slack-oauth --verbose
 //   pnpm eval:discovery --trials 5
-//   pnpm eval:discovery --cases-dir <dir> --stop-on-route   # routing mode
+//   pnpm eval:discovery --cases-dir <dir>              # routing mode
 //
 // Loads scenarios from evaluations/data/discovery/, runs each scenario × N
 // trials via the in-process runner, reports per-scenario pass-rates, exits
@@ -14,9 +14,9 @@
 // when --fail-on-zero-pass is set.
 //
 // Routing mode (`--cases-dir`) loads `route-*.json` cases from that folder, in
-// the format LangTracer exports, grades the route of each trial, and prints a
-// pass rate per bucket. It always
-// exits 0: it measures routing and does not gate a merge.
+// the format LangTracer exports. A judge ends each trial as soon as the
+// Assistant picks a route. The CLI prints a pass rate per bucket.
+// It always exits 0: it measures routing and does not gate a merge.
 // ---------------------------------------------------------------------------
 
 import { runDiscoveryScenario, runOrchestratorTurn, type DiscoveryRunResult } from './runner';
@@ -24,13 +24,7 @@ import type { DiscoveryTestCase } from './types';
 import { isAgentFeatureEnabled } from '../../src/utils/agent-feature-enabled';
 import { loadDiscoveryTestCasesWithFiles } from '../data/discovery';
 import { loadRoutingCases, ROUTING_BUCKETS, type RoutingBucket } from '../routing/cases';
-import {
-	casePasses,
-	readRoutingTrial,
-	resolveRoute,
-	routeLabel,
-	trialPasses,
-} from '../routing/grade';
+import { casePasses, createRouteWatcher, routeLabel, trialPasses } from '../routing/grade';
 import { judgeRoute } from '../routing/judge';
 
 // ---------------------------------------------------------------------------
@@ -51,7 +45,6 @@ interface CliArgs {
 	failOnZeroPass: boolean;
 	/** Folder of routing cases. Set switches the CLI to routing mode. */
 	casesDir?: string;
-	stopOnRoute: boolean;
 }
 
 const DEFAULT_MODEL = process.env.N8N_INSTANCE_AI_EVAL_MODEL ?? 'anthropic/claude-sonnet-4-6';
@@ -108,7 +101,6 @@ function parseArgs(argv: string[]): CliArgs {
 		modelId: DEFAULT_MODEL,
 		concurrency: 3,
 		failOnZeroPass: false,
-		stopOnRoute: false,
 	};
 
 	for (let i = 0; i < argv.length; i++) {
@@ -153,17 +145,9 @@ function parseArgs(argv: string[]): CliArgs {
 					process.exit(1);
 				}
 				break;
-			case '--stop-on-route':
-				args.stopOnRoute = true;
-				break;
 			default:
 				break;
 		}
-	}
-
-	if (args.stopOnRoute && !args.casesDir) {
-		console.error('--stop-on-route needs --cases-dir: only routing cases can stop on their route.');
-		process.exit(1);
 	}
 
 	return args;
@@ -320,7 +304,7 @@ async function runRoutingMode(args: CliArgs, casesDir: string): Promise<void> {
 	}
 
 	console.log(
-		`Running ${String(cases.length)} routing case(s) × ${String(args.trials)} trial(s) (model: ${args.modelId}, concurrency: ${String(args.concurrency)}, stop on route: ${args.stopOnRoute ? 'yes' : 'no'}).\n`,
+		`Running ${String(cases.length)} routing case(s) × ${String(args.trials)} trial(s) (model: ${args.modelId}, concurrency: ${String(args.concurrency)}).\n`,
 	);
 
 	const results: Array<{ bucket: RoutingBucket; passed: boolean }> = [];
@@ -330,15 +314,16 @@ async function runRoutingMode(args: CliArgs, casesDir: string): Promise<void> {
 	for (const routingCase of cases) {
 		process.stdout.write(`▸ ${routingCase.id} ... `);
 		const trials = await runTrials(args, async () => {
+			const watcher = createRouteWatcher(judgeRoute);
 			const turn = await runOrchestratorTurn({
 				scenario: routingCase,
 				modelId: args.modelId,
 				maxSteps: args.maxSteps,
 				timeoutMs: args.timeoutMs,
-				stopOnRoute: args.stopOnRoute,
+				stopBeforeTool: watcher.beforeToolCall,
 				...(args.nodesJsonPath ? { nodesJsonPath: args.nodesJsonPath } : {}),
 			});
-			const resolution = await resolveRoute(routingCase, readRoutingTrial(turn), judgeRoute);
+			const resolution = await watcher.resolve(turn);
 			return { turn, resolution, passed: trialPasses(routingCase, resolution) };
 		});
 
