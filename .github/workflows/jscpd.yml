@@ -1,4 +1,4 @@
-# 🐱 jscpd — deterministic copy-paste/duplication scan.
+# 🍝 jscpd — deterministic copy-paste/duplication scan.
 #
 # Runs jscpd against this repo and uploads the full JSON+HTML report, plus
 # the report split into BUCKET_COUNT small JSON files, so a caller can
@@ -9,7 +9,7 @@
 # Reporters/ignores/threshold come from this repo's own .jscpd.json; this
 # workflow passes none of those flags itself.
 
-name: 🐱 jscpd
+name: 🍝 jscpd
 
 on:
   workflow_dispatch:
