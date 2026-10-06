@@ -11,7 +11,7 @@ import { DataSource } from '@n8n/typeorm';
 import { generateNanoId } from '@n8n/utils/generate-nano-id';
 import { randomUUID } from 'node:crypto';
 
-const MIGRATION_NAME = 'CreateIdempotencyKeyTable1791209641749';
+const MIGRATION_NAME = 'CreateIdempotencyKeyTable1791321358882';
 const TABLE_NAME = 'idempotency_key';
 
 type IdempotencyKeyRow = {
