@@ -22,6 +22,13 @@ import { linearMockServer, notionMockServer } from '../mock-servers';
 
 const DB_NOW = new Date('2026-05-01T00:00:00.000Z');
 
+const gatewayMockServer: McpRegistryServer = {
+	...notionMockServer,
+	name: 'gateway-notion',
+	slug: 'gateway-notion',
+	authType: 'gateway',
+};
+
 function toMockEntity(server: McpRegistryServer): McpRegistryServerEntity {
 	const now = new Date();
 	return { ...toEntity(server), createdAt: now, updatedAt: now } as McpRegistryServerEntity;
@@ -30,7 +37,11 @@ function toMockEntity(server: McpRegistryServer): McpRegistryServerEntity {
 type CreateServiceOptions = {
 	storedServers?: McpRegistryServer[] | null;
 	instanceType?: 'main' | 'worker';
-	/** n8n Connect enabled — gates `authType: 'gateway'` entries out of every read. */
+	/**
+	 * `isEnabled` flag on the gateway service mock. Reads are gated by
+	 * `getHostedMcpServers` returning `[]` when n8n Connect is off, so override
+	 * that mock to exercise the gateway overlay.
+	 */
 	aiGatewayEnabled?: boolean;
 };
 
@@ -112,17 +123,45 @@ describe('McpRegistryService', () => {
 		vi.restoreAllMocks();
 	});
 
-	describe('seedGatewayServers', () => {
-		it('reads the DB clock before fetching, so a slow snapshot cannot win the newest-wins guard', async () => {
-			const { service, repository, aiGatewayService } = createService({ storedServers: null });
-			aiGatewayService.getHostedMcpServers.mockResolvedValue([notionMockServer]);
+	describe('gateway overlay', () => {
+		it('merges gateway-hosted servers from the gateway, without persisting them', async () => {
+			const { service, repository, aiGatewayService } = createService();
+			aiGatewayService.getHostedMcpServers.mockResolvedValue([gatewayMockServer]);
 
 			await service.init();
+			const servers = await service.getAll();
 
-			const readOrder = repository.readDbNow.mock.invocationCallOrder[0];
-			const fetchOrder = aiGatewayService.getHostedMcpServers.mock.invocationCallOrder[0];
-			expect(readOrder).toBeLessThan(fetchOrder);
-			expect(repository.upsertFetchedServers.mock.calls[0][1]).toBe(DB_NOW);
+			expect(servers).toContainEqual(gatewayMockServer);
+			expect(repository.upsertFetchedServers).not.toHaveBeenCalled();
+		});
+
+		it('omits gateway servers when the gateway returns none (n8n Connect off)', async () => {
+			const { service, aiGatewayService } = createService();
+			aiGatewayService.getHostedMcpServers.mockResolvedValue([]);
+
+			const servers = await service.getAll();
+
+			expect(servers).toEqual([notionMockServer, linearMockServer]);
+		});
+
+		it('resolves a gateway server by slug from the overlay', async () => {
+			const { service, aiGatewayService } = createService();
+			aiGatewayService.getHostedMcpServers.mockResolvedValue([gatewayMockServer]);
+
+			expect(await service.get(gatewayMockServer.slug)).toEqual(gatewayMockServer);
+			expect(await service.getBySlugs([gatewayMockServer.slug])).toEqual([gatewayMockServer]);
+		});
+
+		it('ignores legacy gateway rows left in the DB by the old seeding path', async () => {
+			const legacyRow: McpRegistryServer = { ...gatewayMockServer, slug: 'legacy-gateway' };
+			const { service, aiGatewayService } = createService({
+				storedServers: [notionMockServer, legacyRow],
+			});
+			aiGatewayService.getHostedMcpServers.mockResolvedValue([]);
+
+			expect(await service.getAll()).toEqual([notionMockServer]);
+			expect(await service.get('legacy-gateway')).toBeUndefined();
+			expect(await service.getBySlugs(['legacy-gateway'])).toEqual([]);
 		});
 	});
 

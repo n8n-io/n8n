@@ -40,61 +40,34 @@ export class McpRegistryService {
 	}
 
 	async init(): Promise<void> {
-		await this.seedGatewayServers();
 		await this.refreshRegistryNodeTypes(false);
 	}
 
 	@OnPubSubEvent('reload-mcp-registry')
 	async handleReloadMcpRegistry(): Promise<void> {
-		await this.seedGatewayServers();
 		await this.refreshRegistryNodeTypes(true);
 		if (this.isMainInstance()) {
 			this.notifyNodeDescriptionsUpdated();
 		}
 	}
 
-	/**
-	 * Persist gateway-hosted servers as real registry rows so every process
-	 * resolves them from the DB like any remote server, not from a live in-memory
-	 * injection a loader refresh could miss. `getHostedMcpServers()` is empty when
-	 * n8n Connect is off, so nothing is seeded then.
-	 */
-	private async seedGatewayServers(): Promise<void> {
-		// Read the DB clock before the fetch, so a slow run that returns an older
-		// snapshot carries an earlier `fetchedAt` and loses the upsert's newest-wins
-		// guard instead of overwriting fresher data.
-		const fetchedAt = await this.repository.readDbNow();
-		const hosted = await this.aiGatewayService.getHostedMcpServers();
-		if (hosted.length === 0) return;
-		await this.saveServers(hosted, fetchedAt);
-	}
-
 	async getAll({
 		includeDeprecated = false,
 	}: { includeDeprecated?: boolean } = {}): Promise<McpRegistryServer[]> {
-		const servers = await this.getStoredServers(includeDeprecated);
-		const supported = servers.filter(({ requiredCapabilities }) =>
+		const stored = await this.getStoredServers(includeDeprecated);
+		// Gateway-hosted servers are merged live and never persisted. When n8n
+		// Connect is off, `getHostedMcpServers()` returns [], so none appear here.
+		const gateway = await this.aiGatewayService.getHostedMcpServers();
+		return [...stored, ...gateway].filter(({ requiredCapabilities }) =>
 			this.capabilities.supports(requiredCapabilities),
 		);
-		return this.filterGatewayEligibility(supported);
-	}
-
-	/**
-	 * Hide gateway-hosted rows when n8n Connect is off, so a row left over from a
-	 * licensed period can't be selected on an instance that can no longer mint a
-	 * token. Applied to every read, not just `getAll`.
-	 */
-	private filterGatewayEligibility(servers: McpRegistryServer[]): McpRegistryServer[] {
-		if (this.aiGatewayService.isEnabled()) return servers;
-		return servers.filter((server) => server.authType !== 'gateway');
 	}
 
 	async get(slug: string): Promise<McpRegistryServer | undefined> {
-		const entity = await this.repository.findOneBy({ slug });
-		if (!entity) return undefined;
-		const server = fromEntity(entity);
+		const gateway = await this.aiGatewayService.getHostedMcpServers();
+		const server = gateway.find((s) => s.slug === slug) ?? (await this.getStoredServer(slug));
+		if (!server) return undefined;
 		if (!this.capabilities.supports(server.requiredCapabilities)) return undefined;
-		if (server.authType === 'gateway' && !this.aiGatewayService.isEnabled()) return undefined;
 		return server;
 	}
 
@@ -103,11 +76,17 @@ export class McpRegistryService {
 			return [];
 		}
 
-		const entities = await this.repository.findBy(slugs.map((slug) => ({ slug })));
-		const supported = entities
+		const wanted = new Set(slugs);
+		const gateway = (await this.aiGatewayService.getHostedMcpServers()).filter((server) =>
+			wanted.has(server.slug),
+		);
+		const gatewaySlugs = new Set(gateway.map((server) => server.slug));
+		const stored = (await this.repository.findBy(slugs.map((slug) => ({ slug }))))
 			.map(fromEntity)
-			.filter(({ requiredCapabilities }) => this.capabilities.supports(requiredCapabilities));
-		return this.filterGatewayEligibility(supported);
+			.filter((server) => server.authType !== 'gateway' && !gatewaySlugs.has(server.slug));
+		return [...gateway, ...stored].filter(({ requiredCapabilities }) =>
+			this.capabilities.supports(requiredCapabilities),
+		);
 	}
 
 	/**
@@ -171,7 +150,17 @@ export class McpRegistryService {
 		const entities = includeDeprecated
 			? await this.repository.find()
 			: await this.repository.findBy({ status: 'active' });
-		return entities.map(fromEntity);
+		// Gateway servers come from the live overlay, not the DB. Ignore any legacy
+		// rows left by the old seeding path so they can't duplicate the overlay.
+		return entities.map(fromEntity).filter((server) => server.authType !== 'gateway');
+	}
+
+	/** A single persisted (remote) server by slug, ignoring legacy gateway rows. */
+	private async getStoredServer(slug: string): Promise<McpRegistryServer | undefined> {
+		const entity = await this.repository.findOneBy({ slug });
+		if (!entity) return undefined;
+		const server = fromEntity(entity);
+		return server.authType === 'gateway' ? undefined : server;
 	}
 
 	private async refreshUpdatedServers(
@@ -186,14 +175,7 @@ export class McpRegistryService {
 			.filter((entry) => this.shouldFetchFullServer(entry, existingBySlug.get(entry.slug)))
 			.map(({ slug }) => slug);
 		const serversToDeprecate = existingServers
-			// Gateway-hosted rows are seeded locally and never appear in the remote
-			// metadata, so exclude them or every refresh would deprecate them.
-			.filter(
-				(server) =>
-					server.authType !== 'gateway' &&
-					!metadataSlugs.has(server.slug) &&
-					server.status !== 'deprecated',
-			)
+			.filter((server) => !metadataSlugs.has(server.slug) && server.status !== 'deprecated')
 			.map((server) => ({ ...server, status: 'deprecated' as const, updatedAt: now }));
 
 		if (slugsToFetch.length === 0 && serversToDeprecate.length === 0) {

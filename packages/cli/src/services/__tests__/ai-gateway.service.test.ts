@@ -15,6 +15,9 @@ import { AiGatewayService } from '@/services/ai-gateway.service';
 import type { OwnershipService } from '@/services/ownership.service';
 import type { UrlService } from '@n8n/backend-services';
 
+// Make the gateway-fetch retry backoff instant so retry tests do not actually sleep.
+vi.mock('@n8n/utils/sleep', () => ({ sleep: vi.fn().mockResolvedValue(undefined) }));
+
 const INSTANCE_BASE_URL = 'https://my-n8n.example.com';
 
 const BASE_URL = 'http://gateway.test';
@@ -894,11 +897,33 @@ describe('AiGatewayService', () => {
 			});
 		});
 
-		it('returns an empty list when the gateway is unreachable', async () => {
-			requestMock.mockRejectedValueOnce(new Error('gateway down'));
+		it('returns an empty list when the gateway is unreachable after retries', async () => {
+			requestMock.mockRejectedValue(new Error('gateway down'));
 			const service = makeService();
 
 			expect(await service.getHostedMcpServers()).toEqual([]);
+			expect(requestMock).toHaveBeenCalledTimes(5);
+		});
+
+		it('recovers from a transient failure and still returns the servers', async () => {
+			requestMock
+				.mockRejectedValueOnce(new Error('transient blip'))
+				.mockResolvedValueOnce(ok(MOCK_MCP_SERVERS));
+			const service = makeService();
+
+			const servers = await service.getHostedMcpServers();
+
+			expect(servers).toHaveLength(1);
+			expect(servers[0]).toMatchObject({ slug: 'firecrawl', authType: 'gateway' });
+			expect(requestMock).toHaveBeenCalledTimes(2);
+		});
+
+		it('does not retry a settled failure (non-2xx response)', async () => {
+			requestMock.mockResolvedValue(fail(400));
+			const service = makeService();
+
+			expect(await service.getHostedMcpServers()).toEqual([]);
+			expect(requestMock).toHaveBeenCalledTimes(1);
 		});
 
 		it('returns an empty list when n8n Connect is disabled', async () => {

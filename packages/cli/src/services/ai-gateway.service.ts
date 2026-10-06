@@ -24,6 +24,7 @@ import type { McpRegistryServer } from '@/modules/mcp-registry/registry/mcp-regi
 import { checkAiGatewayEligibility } from '@/services/ai-gateway-eligibility';
 import { OwnershipService } from '@/services/ownership.service';
 import { UrlService } from '@n8n/backend-services';
+import { sleep } from '@n8n/utils/sleep';
 
 interface GatewayTokenResponse {
 	token: string;
@@ -94,6 +95,9 @@ export class AiGatewayService {
 	private hostedMcpServers: McpRegistryServer[] | null = null;
 	private hostedFetchedAt = 0;
 	private hostedFetchFailedAt = 0;
+	private static readonly MCP_SERVERS_FETCH_MAX_ATTEMPTS = 5;
+	private static readonly MCP_SERVERS_FETCH_BASE_DELAY_MS = 500;
+	private static readonly MCP_SERVERS_FETCH_MAX_DELAY_MS = 10_000;
 
 	private static readonly GATEWAY_PATH_PREFIX = '/v1/gateway';
 
@@ -469,16 +473,11 @@ export class AiGatewayService {
 	}
 
 	/**
-	 * Returns `{ available: true, config }` when n8n Connect is enabled, licensed,
-	 * and its config fetches successfully; `{ available: false }` otherwise.
-	 * Never propagates gateway or config errors.
-	 */
-	/**
-	 * Gateway-hosted MCP servers to inject into the registry listing. The gateway
+	 * Gateway-hosted MCP servers merged live into the registry listing. The gateway
 	 * (not the remote MCP registry) is their source of truth, fetched from
 	 * `/v1/gateway/mcp-servers` and cached. Returns `[]` unless n8n Connect is
-	 * licensed and enabled, and never throws: a gateway outage serves the last
-	 * good list, or `[]` if none was ever fetched, so seeding is not blocked.
+	 * licensed and enabled, and never throws: on a gateway outage it serves the
+	 * last good list, or `[]` if none was ever fetched.
 	 */
 	async getHostedMcpServers(): Promise<McpRegistryServer[]> {
 		if (!this.isEnabled()) return [];
@@ -512,24 +511,47 @@ export class AiGatewayService {
 		}
 
 		const baseUrl = this.requireBaseUrl();
-		try {
-			const data = await this.gatewayRequest<unknown>(
-				{ method: 'GET', url: `${baseUrl}/v1/gateway/mcp-servers` },
-				'Failed to fetch Gateway credits MCP servers',
-			);
-			const parsed = AiGatewayMcpServersResponse.safeParse(data);
-			if (!parsed.success) {
-				throw new UserError('Gateway credits returned an invalid MCP servers response.');
+		// Retry a transport blip a few times before giving up, so the gateway not
+		// yet being reachable at startup does not leave the instance on an empty
+		// list for the whole failure-throttle window. The caller keeps serving the
+		// last good list if every attempt fails.
+		let lastError: unknown;
+		for (let attempt = 1; attempt <= AiGatewayService.MCP_SERVERS_FETCH_MAX_ATTEMPTS; attempt++) {
+			try {
+				const data = await this.gatewayRequest<unknown>(
+					{ method: 'GET', url: `${baseUrl}/v1/gateway/mcp-servers` },
+					'Failed to fetch Gateway credits MCP servers',
+				);
+				const parsed = AiGatewayMcpServersResponse.safeParse(data);
+				if (!parsed.success) {
+					throw new UserError('Gateway credits returned an invalid MCP servers response.');
+				}
+				this.hostedMcpServers = parsed.data.servers.map((server) =>
+					mcpServerToRegistryServer(server, baseUrl),
+				);
+				this.hostedFetchedAt = Date.now();
+				this.hostedFetchFailedAt = 0;
+				return;
+			} catch (error) {
+				lastError = error;
+				// A non-2xx response or an invalid payload is a settled condition that
+				// a retry cannot fix. `gatewayRequest` surfaces both as `UserError`,
+				// while a transport failure throws before that, so only the latter is
+				// worth retrying.
+				const isTransient = !(error instanceof UserError);
+				if (!isTransient || attempt === AiGatewayService.MCP_SERVERS_FETCH_MAX_ATTEMPTS) {
+					break;
+				}
+				const delay = Math.min(
+					AiGatewayService.MCP_SERVERS_FETCH_BASE_DELAY_MS * 2 ** (attempt - 1),
+					AiGatewayService.MCP_SERVERS_FETCH_MAX_DELAY_MS,
+				);
+				await sleep(delay);
 			}
-			this.hostedMcpServers = parsed.data.servers.map((server) =>
-				mcpServerToRegistryServer(server, baseUrl),
-			);
-			this.hostedFetchedAt = Date.now();
-			this.hostedFetchFailedAt = 0;
-		} catch (error) {
-			this.hostedFetchFailedAt = Date.now();
-			throw error;
 		}
+
+		this.hostedFetchFailedAt = Date.now();
+		throw lastError;
 	}
 
 	async isAvailable(): Promise<AiGatewayAvailability> {
