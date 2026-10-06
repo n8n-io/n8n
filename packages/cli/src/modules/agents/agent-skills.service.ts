@@ -24,6 +24,10 @@ import { AgentRepository } from './repositories/agent.repository';
 import { getAgentOrThrow } from './utils/get-agent-or-throw';
 import { getAgentSkillHash } from './utils/agent-config-hash';
 import { generateAgentResourceId } from './utils/agent-resource-id';
+import {
+	applySkillInstructionEdits,
+	type SkillInstructionEdit,
+} from './utils/skill-instruction-edits';
 
 @Service()
 export class AgentSkillsService {
@@ -138,6 +142,10 @@ export class AgentSkillsService {
 		}));
 	}
 
+	/**
+	 * `instructionEdits` are applied to the stored instructions after the
+	 * `baseSkillHash` check, so the edits always match the version the caller read.
+	 */
 	async updateSkill(
 		agentId: string,
 		projectId: string,
@@ -145,6 +153,7 @@ export class AgentSkillsService {
 		updates: Partial<AgentSkill>,
 		context: AgentMutationTelemetryContext,
 		baseSkillHash?: string,
+		instructionEdits?: SkillInstructionEdit[],
 	): Promise<AgentSkillMutationResponse> {
 		const entity = await getAgentOrThrow(
 			this.agentRepository,
@@ -160,6 +169,14 @@ export class AgentSkillsService {
 		}
 
 		const updated = { ...existing, ...updates };
+		if (instructionEdits?.length) {
+			if (updates.instructions !== undefined) {
+				throw new UserError('Pass either instructions or instructionEdits, not both.');
+			}
+			const edited = applySkillInstructionEdits(existing.instructions, instructionEdits);
+			if (!edited.ok) throw new UserError(edited.message);
+			updated.instructions = edited.instructions;
+		}
 		if ('allowedTools' in updates && !updates.allowedTools?.length) delete updated.allowedTools;
 		if ('references' in updates && !updates.references?.length) delete updated.references;
 		this.validateSkill(updated);

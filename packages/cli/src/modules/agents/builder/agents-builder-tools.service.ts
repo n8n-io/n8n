@@ -142,7 +142,30 @@ const updateSkillFieldsSchema = z
 	.object({
 		name: agentSkillSchema.shape.name.optional(),
 		description: agentSkillSchema.shape.description.optional(),
-		instructions: agentSkillSchema.shape.instructions.optional(),
+		instructions: agentSkillSchema.shape.instructions
+			.optional()
+			.describe('Complete replacement body. Use only for a rewrite of most of the body.'),
+		instructionEdits: z
+			.array(
+				z
+					.object({
+						oldText: z
+							.string()
+							.min(1)
+							.describe(
+								'Text from the current instructions. It must match exactly one place; whitespace differences are ignored when there is no exact match.',
+							),
+						newText: z.string().describe('Replacement text. Use an empty string to delete.'),
+					})
+					.strict(),
+			)
+			.min(1)
+			.max(20)
+			.optional()
+			.describe(
+				'Targeted replacements in the current instructions, applied in order. Prefer this to ' +
+					'`instructions` for a partial change. Do not pass both.',
+			),
 		allowedTools: agentSkillSchema.shape.allowedTools.unwrap().min(1).nullable().optional(),
 		references: agentSkillSchema.shape.references
 			.unwrap()
@@ -153,6 +176,9 @@ const updateSkillFieldsSchema = z
 	.strict()
 	.refine((updates) => Object.keys(updates).length > 0, {
 		message: 'At least one skill field must be supplied.',
+	})
+	.refine((updates) => !(updates.instructions && updates.instructionEdits), {
+		message: 'Pass either instructions or instructionEdits, not both.',
 	});
 
 const updateSkillInputSchema = z
@@ -984,16 +1010,19 @@ export class AgentsBuilderToolsService {
 			.description(
 				'Update selected fields of an existing target-agent skill in place, preserving its id and ' +
 					'agent config reference. Requires baseSkillHash from the immediately preceding agent-context with type "skill" ' +
-					'result. Pass null for allowedTools to remove the tool restriction, or null ' +
-					'for references to remove all references; empty arrays are invalid. Returns ' +
-					'{ ok: true, id, name, configMutated: true, agentId } or { ok: false, errors }. On a stale ' +
-					'skill error, call agent-context with type "skill" and retry once with its fresh skillHash.',
+					'result. To change part of the body, pass instructionEdits with oldText/newText pairs ' +
+					'instead of rewriting instructions. Pass null for allowedTools to remove the tool restriction, ' +
+					'or null for references to remove all references; empty arrays are invalid. Returns ' +
+					'{ ok: true, id, name, configMutated: true, agentId } or { ok: false, errors }. A failed edit ' +
+					'saves nothing and its error quotes the closest text in the skill: copy that text into oldText ' +
+					'and retry with the same baseSkillHash. On a stale skill error, ' +
+					'call agent-context with type "skill" and retry once with its fresh skillHash.',
 			)
 			.input(updateSkillInputSchema)
 			.handler(async ({ skillId, baseSkillHash, updates }: UpdateSkillInput) => {
 				const editorLock = await this.getEditorLockFailure(agentId);
 				if (editorLock) return editorLock;
-				const { allowedTools, references, ...requiredUpdates } = updates;
+				const { allowedTools, references, instructionEdits, ...requiredUpdates } = updates;
 				const normalizedUpdates = {
 					...requiredUpdates,
 					...(allowedTools !== undefined ? { allowedTools: allowedTools ?? undefined } : {}),
@@ -1008,6 +1037,7 @@ export class AgentsBuilderToolsService {
 						normalizedUpdates,
 						{ user, modifiedBy: 'builder' },
 						baseSkillHash,
+						instructionEdits,
 					);
 					return {
 						ok: true,

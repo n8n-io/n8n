@@ -335,6 +335,94 @@ describe('AgentSkillsService', () => {
 		expect(agentUpdateBroadcaster.notify).not.toHaveBeenCalled();
 	});
 
+	describe('instructionEdits', () => {
+		const editableSkill = {
+			...skill,
+			instructions: '## Steps\n1. Extract decisions.\n2. Extract action items.\n',
+		};
+
+		it('applies the edits to the stored instructions', async () => {
+			agentRepository.findByIdAndProjectId.mockResolvedValue(
+				makeAgent({ skills: { summarize_notes: editableSkill } }),
+			);
+
+			const result = await service.updateSkill(
+				agentId,
+				projectId,
+				'summarize_notes',
+				{ description: 'Summarizes support notes' },
+				telemetryContext,
+				getAgentSkillHash(editableSkill),
+				[{ oldText: '2. Extract action items.', newText: '2. Extract action items with owners.' }],
+			);
+
+			expect(result.skill).toEqual({
+				...editableSkill,
+				description: 'Summarizes support notes',
+				instructions: '## Steps\n1. Extract decisions.\n2. Extract action items with owners.\n',
+			});
+			expect(agentRepository.saveDraftFenced.mock.calls[0][0].skills).toEqual({
+				summarize_notes: result.skill,
+			});
+		});
+
+		it('rejects an edit that does not match and saves nothing', async () => {
+			agentRepository.findByIdAndProjectId.mockResolvedValue(
+				makeAgent({ skills: { summarize_notes: editableSkill } }),
+			);
+
+			await expect(
+				service.updateSkill(
+					agentId,
+					projectId,
+					'summarize_notes',
+					{},
+					telemetryContext,
+					getAgentSkillHash(editableSkill),
+					[{ oldText: 'Extract risks.', newText: 'x' }],
+				),
+			).rejects.toThrow('instructionEdits[0]: oldText was not found');
+			expect(agentRepository.saveDraftFenced).not.toHaveBeenCalled();
+		});
+
+		it('checks the base hash before it applies the edits', async () => {
+			agentRepository.findByIdAndProjectId.mockResolvedValue(
+				makeAgent({ skills: { summarize_notes: editableSkill } }),
+			);
+
+			await expect(
+				service.updateSkill(
+					agentId,
+					projectId,
+					'summarize_notes',
+					{},
+					telemetryContext,
+					'stale-hash',
+					[{ oldText: 'Extract risks.', newText: 'x' }],
+				),
+			).rejects.toThrow('Skill was changed elsewhere');
+		});
+
+		it('rejects instructions and instructionEdits together', async () => {
+			agentRepository.findByIdAndProjectId.mockResolvedValue(
+				makeAgent({ skills: { summarize_notes: editableSkill } }),
+			);
+
+			await expect(
+				service.updateSkill(
+					agentId,
+					projectId,
+					'summarize_notes',
+					{ instructions: 'New body' },
+					telemetryContext,
+					undefined,
+					[{ oldText: 'Extract decisions.', newText: 'x' }],
+				),
+			).rejects.toThrow('Pass either instructions or instructionEdits, not both.');
+			expect(agentRepository.saveDraftFenced).not.toHaveBeenCalled();
+		});
+	});
+
 	it('removes optional list fields when an update clears them', async () => {
 		const agent = makeAgent({
 			skills: {
