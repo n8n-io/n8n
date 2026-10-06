@@ -70,8 +70,8 @@ describe('LmChatAzureOpenAi', () => {
 		const { description } = new LmChatAzureOpenAi();
 
 		it('should be labelled for the whole Foundry catalogue, not just OpenAI', () => {
-			expect(description.displayName).toBe('Azure AI Foundry Chat Model');
-			expect(description.defaults.name).toBe('Azure AI Foundry Chat Model');
+			expect(description.displayName).toBe('Microsoft Foundry Chat Model');
+			expect(description.defaults.name).toBe('Microsoft Foundry Chat Model');
 		});
 
 		// A saved workflow resolves its nodes by type, so the rename is only safe while this is
@@ -86,7 +86,7 @@ describe('LmChatAzureOpenAi', () => {
 			expect(description.codex?.alias).toContain('Azure OpenAI');
 		});
 
-		it.each(['Azure OpenAI Chat Model', 'Azure AI Foundry', 'Foundry'])(
+		it.each(['Azure', 'Azure OpenAI Chat Model', 'Azure AI Foundry', 'Foundry', 'AOAI'])(
 			'should be findable by %s',
 			(term) => {
 				expect(description.codex?.alias).toContain(term);
@@ -278,7 +278,7 @@ describe('LmChatAzureOpenAi', () => {
 			const ctx = setupMockContext('azureOpenAiApi', apiKeyCredential, {}, true);
 
 			await expect(new LmChatAzureOpenAi().supplyData.call(ctx, 0)).rejects.toThrow(
-				'The Responses API needs a credential using the Azure AI Foundry endpoint type',
+				'The Responses API needs a credential using the Microsoft Foundry endpoint type',
 			);
 			expect(vi.mocked(AzureChatOpenAI)).not.toHaveBeenCalled();
 		});

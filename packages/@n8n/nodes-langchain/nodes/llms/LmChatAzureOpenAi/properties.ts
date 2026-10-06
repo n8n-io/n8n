@@ -54,7 +54,7 @@ export const properties: INodeProperties[] = [
 		name: 'project',
 		type: 'string',
 		description:
-			'The Azure AI Foundry project that owns the deployment. Required for an Azure AI Foundry resource; leave empty for a classic Azure OpenAI resource.',
+			'The Microsoft Foundry project that owns the deployment. Required for an Microsoft Foundry resource; leave empty for a classic Azure OpenAI resource.',
 		default: '',
 	},
 	{
@@ -65,7 +65,7 @@ export const properties: INodeProperties[] = [
 		required: true,
 		builderHint: {
 			propertyHint:
-				'Set the project parameter before you list deployments. The list needs an Azure AI Foundry credential. With a classic credential, use the id mode and enter the deployment name.',
+				'Set the project parameter before you list deployments. The list needs an Microsoft Foundry credential. With a classic credential, use the id mode and enter the deployment name.',
 		},
 		modes: [
 			{
@@ -86,7 +86,7 @@ export const properties: INodeProperties[] = [
 			},
 		],
 		description:
-			'The deployment to use. Choose from the list (Azure AI Foundry credentials only), or enter the deployment name.',
+			'The deployment to use. Choose from the list (Microsoft Foundry credentials only), or enter the deployment name.',
 		displayOptions: {
 			show: {
 				'@version': [{ _cnd: { gte: 1.1 } }],
@@ -111,7 +111,7 @@ export const properties: INodeProperties[] = [
 		type: 'boolean',
 		default: false,
 		description:
-			'Whether to call the deployment on the Responses API instead of Chat Completions. Azure does not tell us which one a deployment supports, so set this to match your deployment: leave it off for a chat-completions deployment, turn it on for a Responses-only one. Needs a credential using the Azure AI Foundry endpoint type.',
+			'Whether to call the deployment on the Responses API instead of Chat Completions. Azure does not tell us which one a deployment supports, so set this to match your deployment: leave it off for a chat-completions deployment, turn it on for a Responses-only one. Needs a credential using the Microsoft Foundry endpoint type.',
 		displayOptions: {
 			show: {
 				'@version': [{ _cnd: { gte: 1.1 } }],

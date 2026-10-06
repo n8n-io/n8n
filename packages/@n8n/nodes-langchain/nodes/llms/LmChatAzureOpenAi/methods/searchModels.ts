@@ -27,7 +27,7 @@ function resolveFoundryBaseURL(node: INode, foundryEndpoint?: string): string {
 function classicCredentialError(node: INode): NodeOperationError {
 	return new NodeOperationError(
 		node,
-		"Only an Azure AI Foundry credential can list deployments. Select By ID and enter the deployment name, or set the credential's Endpoint Type to Azure AI Foundry.",
+		"Only an Microsoft Foundry credential can list deployments. Select By ID and enter the deployment name, or set the credential's Endpoint Type to Microsoft Foundry.",
 	);
 }
 

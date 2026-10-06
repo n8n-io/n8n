@@ -16,7 +16,7 @@ import {
 
 export class EmbeddingsAzureOpenAi implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Embeddings Azure OpenAI',
+		displayName: 'Microsoft Foundry Embeddings',
 		name: 'embeddingsAzureOpenAi',
 		icon: 'file:azure.svg',
 		credentials: [
@@ -27,9 +27,9 @@ export class EmbeddingsAzureOpenAi implements INodeType {
 		],
 		group: ['transform'],
 		version: 1,
-		description: 'Use Embeddings Azure OpenAI',
+		description: 'Use Microsoft Foundry Embeddings',
 		defaults: {
-			name: 'Embeddings Azure OpenAI',
+			name: 'Microsoft Foundry Embeddings',
 		},
 
 		codex: {
@@ -44,6 +44,15 @@ export class EmbeddingsAzureOpenAi implements INodeType {
 					},
 				],
 			},
+			// The old labels. Fuzzy search needs them verbatim to find the renamed node.
+			alias: [
+				'Azure',
+				'Azure OpenAI',
+				'Embeddings Azure OpenAI',
+				'Azure AI Foundry',
+				'Foundry',
+				'AOAI',
+			],
 		},
 
 		inputs: [],

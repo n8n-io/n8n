@@ -27,7 +27,7 @@ describe('AzureOpenAIEmbeddings', () => {
 
 	const mockNode: INode = {
 		id: '1',
-		name: 'Embeddings Azure OpenAI',
+		name: 'Microsoft Foundry Embeddings',
 		typeVersion: 1,
 		type: '@n8n/n8n-nodes-langchain.embeddingsAzureOpenAi',
 		position: [0, 0],
