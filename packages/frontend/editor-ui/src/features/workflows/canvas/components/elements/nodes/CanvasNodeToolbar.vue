@@ -194,7 +194,7 @@ function onAddToChat() {
 					variant="ghost"
 					data-test-id="execute-node-button"
 					size="small"
-					icon="play"
+					icon="node-play"
 					:disabled="isExecuting || isDisabled"
 					:aria-label="i18n.baseText('node.testStep')"
 					@click.stop="executeNode"
@@ -205,7 +205,7 @@ function onAddToChat() {
 					variant="ghost"
 					data-test-id="disable-node-button"
 					size="small"
-					icon="power"
+					icon="node-power"
 					:aria-label="nodeDisabledTitle"
 					@click.stop="onToggleNode"
 				/>
@@ -219,7 +219,7 @@ function onAddToChat() {
 					variant="ghost"
 					data-test-id="delete-node-button"
 					size="small"
-					icon="trash-2"
+					icon="node-trash"
 					:aria-label="i18n.baseText('node.delete')"
 					@click.stop="onDeleteNode"
 				/>
@@ -228,7 +228,7 @@ function onAddToChat() {
 				v-if="isFocusNodeVisible"
 				variant="ghost"
 				size="small"
-				icon="crosshair"
+				icon="node-focus"
 				:aria-label="i18n.baseText('node.focusNode')"
 				@click.stop="onFocusNode"
 			/>
@@ -243,7 +243,7 @@ function onAddToChat() {
 					variant="ghost"
 					size="small"
 					text
-					icon="sparkle"
+					icon="node-sparkle"
 					:aria-label="i18n.baseText('node.addToAi')"
 					@click.stop="onAddToAi"
 				/>
@@ -258,7 +258,7 @@ function onAddToChat() {
 					variant="ghost"
 					size="small"
 					text
-					icon="sparkle"
+					icon="node-sparkle"
 					:aria-label="i18n.baseText('node.addToChat')"
 					@click.stop="onAddToChat"
 				/>
@@ -268,7 +268,7 @@ function onAddToChat() {
 					variant="ghost"
 					data-test-id="overflow-node-button"
 					size="small"
-					icon="ellipsis"
+					icon="node-ellipsis"
 					:aria-label="i18n.baseText('node.moreActions')"
 					@click.stop="onOpenContextMenu"
 				/>

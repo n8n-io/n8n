@@ -13,13 +13,15 @@ import Linear from './custom/linear.svg';
 import Lovable from './custom/lovable.svg';
 import Mcp from './custom/mcp.svg';
 import NodeDirty from './custom/node-dirty.svg';
-import NodeEllipsis from './custom/node-ellipsis.svg';
+import NodeEllipsis from './custom/brand/dots-horizontal--solid-16.svg';
 import NodeExecutionError from './custom/node-execution-error.svg';
+import NodeFocus from './custom/brand/crosshair--solid-16.svg';
 import NodePin from './custom/node-pin.svg';
-import NodePlay from './custom/node-play.svg';
-import NodePower from './custom/node-power.svg';
+import NodePlay from './custom/brand/play--solid-16.svg';
+import NodePower from './custom/brand/power--solid-16.svg';
+import NodeSparkle from './custom/brand/sparkle--solid-16.svg';
 import NodeSuccess from './custom/node-success.svg';
-import NodeTrash from './custom/node-trash.svg';
+import NodeTrash from './custom/brand/trash--solid-16.svg';
 import NodeValidationError from './custom/node-validation-error.svg';
 import PopOut from './custom/pop-out.svg';
 import Resolver from './custom/resolver.svg';
@@ -553,11 +555,13 @@ export const updatedIconSet = {
 	spinner: Spinner,
 	'node-dirty': NodeDirty,
 	'node-ellipsis': NodeEllipsis,
+	'node-focus': NodeFocus,
 	'node-execution-error': NodeExecutionError,
 	'node-validation-error': NodeValidationError,
 	'node-pin': NodePin,
 	'node-play': NodePlay,
 	'node-power': NodePower,
+	'node-sparkle': NodeSparkle,
 	'node-success': NodeSuccess,
 	'node-trash': NodeTrash,
 	mcp: Mcp,
