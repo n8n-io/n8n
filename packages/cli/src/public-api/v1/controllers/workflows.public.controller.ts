@@ -836,8 +836,6 @@ export class WorkflowsPublicController {
 
 	/**
 	 * Keep this route as the last registered route in the controller, so that it does not shadow other routes.
-	 * The route is deprecated and we should not encourage use, preferring consumers to use the new route
-	 * at /workflows/{workflowId}/versions/{workflowVersionId} instead.
 	 */
 	@Get('/:workflowId/:workflowVersionId')
 	@Deprecated({ since: OLD_VERSION_PATH_DEPRECATED_SINCE })
