@@ -170,7 +170,7 @@ export class ExecutionRecoveryService {
 		 * */
 		if (
 			!execution ||
-			(['success', 'error', 'canceled'].includes(execution.status) && execution.data)
+			(['success', 'error', 'canceled', 'crashed'].includes(execution.status) && execution.data)
 		) {
 			return null;
 		}
@@ -223,10 +223,26 @@ export class ExecutionRecoveryService {
 			runExecutionData.resultData.runData[node.name] = [taskData];
 		}
 
+		const stoppedAt = this.toStoppedAt(lastNodeRunTimestamp, workflowMessages);
+
+		// A finished row that lost its data is past the claim's status guard, so it is amended directly.
+		if (!['success', 'error', 'canceled'].includes(execution.status)) {
+			const [claimed] = await this.executionCrashService.markAsCrashedWithoutCounting(
+				executionId,
+				'startup-recovery',
+				{ stoppedAt },
+			);
+
+			// Another detector crashed it first, or it moved on to a status that must be kept.
+			if (!claimed) return null;
+		}
+
 		return {
 			...execution,
 			status: execution.status === 'error' ? 'error' : 'crashed',
-			stoppedAt: this.toStoppedAt(lastNodeRunTimestamp, workflowMessages),
+			stoppedAt,
+			// The claim clears `waitTill`, so the later write must not restore the stale value.
+			waitTill: null,
 			data: runExecutionData,
 		} as IExecutionResponse;
 	}
