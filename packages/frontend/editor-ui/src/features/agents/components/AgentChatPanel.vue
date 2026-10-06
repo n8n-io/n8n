@@ -109,6 +109,11 @@ const props = withDefaults(
 		attachmentAccept?: string;
 		/** Overrides the default composer placeholder. */
 		placeholder?: string;
+		/**
+		 * Shows the composer's own attach button. A host that offers attachments
+		 * from its own `footer-start` menu turns it off and calls `openFilePicker`.
+		 */
+		showAttachButton?: boolean;
 	}>(),
 	{
 		visible: true,
@@ -126,6 +131,7 @@ const props = withDefaults(
 		hostContext: undefined,
 		attachmentAccept: undefined,
 		placeholder: undefined,
+		showAttachButton: true,
 	},
 );
 
@@ -1004,6 +1010,7 @@ defineExpose({
 	isDirty,
 	setDraft,
 	clearBudgetStops,
+	openFilePicker: () => chatInput.value?.openFilePicker(),
 	// Read-only views of the chat state, for hosts that derive side panels from it.
 	messages: computed(() => messages.value),
 	isStreaming,
@@ -1238,6 +1245,7 @@ onBeforeUnmount(() => {
 				:show-stop-button="showStop"
 				show-voice
 				:show-attach="showAttach"
+				:show-attach-button="showAttachButton"
 				:accepted-mime-types="acceptedMimeTypes"
 				:can-submit="!isSubmissionBlocked && hasDraft"
 				:disabled="isPreparingToSend"

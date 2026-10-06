@@ -40,6 +40,7 @@ browser checks with Playwright. Scripts: `/tmp/poc/` (not committed).
 | Canvas hand-off ("open in assistant") with workflow context | Works |
 | Setup panel above the composer | Works with the PostHog override (see gaps) |
 | Plan checklist from thread metadata | Works |
+| Composer "+" menu in a thread (attach files, connect services, connect browser) | Works (menu opens; connecting was not tested) |
 
 Tests: `pnpm test src/modules/instance-ai src/modules/agents` in `packages/cli`
 (about 6.3k tests), `pnpm test` in `@n8n/instance-ai` (about 5.3k tests), the
@@ -158,6 +159,12 @@ turn running on that main.
 - `agents.projectId` keeps the TypeScript type `string` although instance
   agents store null.
 - The instance-ai module requires the agents module (it fails fast).
+- Computer use and browser use were not tested live (that needs the
+  `@n8n/computer-use` daemon or a browser connection). The gateway code, the
+  `/gateway/*` and `/browser/*` endpoints and the per-turn tool wiring did not
+  change, so they should work, but this is not verified.
+- `InstanceAiService.domainAccessTrackersByThread` and the setup panel flag are
+  per-main memory. Both also exist on master (AST-1652).
 - Evals that drove the in-process runtime or the removed endpoints are
   broken or deleted (discovery evals were deleted). Playwright E2E for the
   Assistant was not run.

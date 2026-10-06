@@ -24,7 +24,26 @@ const chatState = vi.hoisted(() => ({
 		| undefined,
 	sendMessageFromOutside: undefined as unknown as ReturnType<typeof vi.fn>,
 	setDraft: undefined as unknown as ReturnType<typeof vi.fn>,
+	openFilePicker: undefined as unknown as ReturnType<typeof vi.fn>,
 }));
+
+vi.mock('../InstanceAiInputMenu.vue', async () => {
+	const { defineComponent: define, h: render } = await import('vue');
+	return {
+		default: define({
+			props: { threadId: { type: String, required: false } },
+			emits: ['attach-files'],
+			setup(props, { emit }) {
+				return () =>
+					render('button', {
+						'data-test-id': 'input-menu-stub',
+						'data-thread-id': props.threadId,
+						onClick: () => emit('attach-files'),
+					});
+			},
+		}),
+	};
+});
 
 vi.mock('@/features/agents/components/AgentChatPanel.vue', async () => {
 	const { defineComponent: define, h: render } = await import('vue');
@@ -35,6 +54,7 @@ vi.mock('@/features/agents/components/AgentChatPanel.vue', async () => {
 				projectId: { type: String, required: true },
 				hostContext: { type: Function, required: false },
 				attachmentAccept: { type: String, required: false },
+				showAttachButton: { type: Boolean, default: true },
 			},
 			emits: ['message-accepted'],
 			setup(props, { expose, emit, slots }) {
@@ -46,16 +66,26 @@ vi.mock('@/features/agents/components/AgentChatPanel.vue', async () => {
 					isLoadingHistory: chatState.isLoadingHistory,
 					sendMessageFromOutside: chatState.sendMessageFromOutside,
 					setDraft: chatState.setDraft,
+					openFilePicker: chatState.openFilePicker,
 					focusInput: vi.fn(),
 					isDirty: () => false,
 				});
 				return () =>
-					render('div', { 'data-test-id': 'chat-panel', 'data-accept': props.attachmentAccept }, [
-						props.projectId,
-						slots['above-input']?.(),
-						slots['inline-offers']?.(),
-						slots['composer-attachments']?.(),
-					]);
+					render(
+						'div',
+						{
+							'data-test-id': 'chat-panel',
+							'data-accept': props.attachmentAccept,
+							'data-attach-button': String(props.showAttachButton),
+						},
+						[
+							props.projectId,
+							slots['above-input']?.(),
+							slots['inline-offers']?.(),
+							slots['composer-attachments']?.(),
+							slots['footer-start']?.(),
+						],
+					);
 			},
 		}),
 	};
@@ -108,6 +138,7 @@ describe('InstanceAiAgentsConversation', () => {
 		chatState.hostContext = undefined;
 		chatState.sendMessageFromOutside = vi.fn().mockResolvedValue(true);
 		chatState.setDraft = vi.fn();
+		chatState.openFilePicker = vi.fn();
 		vi.mocked(fetchThread).mockResolvedValue(threadInfo('First title'));
 	});
 
@@ -122,12 +153,25 @@ describe('InstanceAiAgentsConversation', () => {
 		expect(runtime.hydrationStatus).toBe('hydrating');
 
 		const panel = await findByTestId('chat-panel');
-		expect(panel.textContent).toBe('project-1');
+		expect(panel.textContent).toContain('project-1');
 		expect(panel.dataset.accept).toBe('');
 		expect(runtime.projectId).toBe('project-1');
 		expect(useInstanceAiStore().threads[0].title).toBe('First title');
 		expect(getByTestId('above-input-slot')).toBeInTheDocument();
 		expect(getByTestId('inline-offers-slot')).toBeInTheDocument();
+	});
+
+	it('should render the input menu in the composer and open the file picker from it', async () => {
+		const { findByTestId } = renderComponent();
+		const panel = await findByTestId('chat-panel');
+		// The menu offers attachments, so the composer hides its own attach button.
+		expect(panel.dataset.attachButton).toBe('false');
+
+		const menu = await findByTestId('input-menu-stub');
+		expect(menu.dataset.threadId).toBe('thread-1');
+		menu.click();
+
+		expect(chatState.openFilePicker).toHaveBeenCalledOnce();
 	});
 
 	it('should mirror the chat into the thread runtime once the history has loaded', async () => {

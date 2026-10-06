@@ -73,6 +73,7 @@ import type { SuggestionSelectionPayload } from './InstanceAiInput.vue';
 import AttachmentPreview from './AttachmentPreview.vue';
 import InstanceAiResourceChip from './InstanceAiResourceChip.vue';
 import InstanceAiMarkdown from './InstanceAiMarkdown.vue';
+import InstanceAiInputMenu from './InstanceAiInputMenu.vue';
 
 const props = defineProps<{
 	/** Runs before every send (e.g. flush a pending autosave). Rejecting cancels the send. */
@@ -611,6 +612,7 @@ onBeforeUnmount(() => {
 			:host-context="buildHostContext"
 			:before-send="props.beforeSend"
 			attachment-accept=""
+			:show-attach-button="false"
 			:placeholder="composerPlaceholder"
 			mode="inline"
 			@message-accepted="onMessageAccepted"
@@ -634,6 +636,10 @@ onBeforeUnmount(() => {
 			</template>
 			<template #above-input>
 				<slot name="above-input" />
+			</template>
+			<!-- Same menu as the empty view: attachments, computer use, browser use and MCP tools -->
+			<template #footer-start>
+				<InstanceAiInputMenu :thread-id="thread.id" @attach-files="chatPanel?.openFilePicker()" />
 			</template>
 			<template v-if="composerContextChip || composerResources.length" #composer-attachments>
 				<InstanceAiResourceChip
