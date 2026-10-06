@@ -20,8 +20,6 @@ import { z } from 'zod';
 import { BadRequestError } from '@n8n/errors';
 import { Telemetry } from '@/telemetry';
 
-import { DurableEventLog } from './event-bus/durable-event-log';
-import { InProcessEventBus } from './event-bus/in-process-event-bus';
 import {
 	InstanceAiMemoryService,
 	type InstanceAiThreadLaunchMetadata,
@@ -29,6 +27,7 @@ import {
 import { buildOnboardingAnswerMessage } from './internal-messages';
 import { ONBOARDING_OPENING } from './onboarding-opening';
 import { isRecord } from '@n8n/utils/is-record';
+import { AssistantEventSink } from './event-bus/assistant-event-sink';
 
 /** Thread metadata key for the unanswered onboarding card. */
 export const ONBOARDING_CARD_METADATA_KEY = 'onboardingCard';
@@ -163,8 +162,7 @@ export async function loadOnboardingSkill(): Promise<string> {
 export class InstanceAiOnboardingService {
 	constructor(
 		private readonly memoryService: InstanceAiMemoryService,
-		private readonly eventBus: InProcessEventBus,
-		private readonly eventLog: DurableEventLog,
+		private readonly eventBus: AssistantEventSink,
 		private readonly telemetry: Telemetry,
 	) {}
 
@@ -279,7 +277,6 @@ export class InstanceAiOnboardingService {
 		});
 		// Committed before the follow-up writes its rows, so the fold keeps the card under the
 		// greeting.
-		await this.eventLog.flush(row.threadId);
 		// A survey answer counts as a pick, so the funnel reads the same from both entry points.
 		const picked = (id: string) => {
 			const fromSurvey = answered.get(id);
@@ -407,7 +404,6 @@ export class InstanceAiOnboardingService {
 		}
 		for (const event of events) this.eventBus.publish(threadId, event);
 		// The client reads the messages right after the response; the fold reads committed rows.
-		await this.eventLog.flush(threadId);
 		return runId;
 	}
 }

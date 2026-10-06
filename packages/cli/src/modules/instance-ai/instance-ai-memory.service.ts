@@ -1,8 +1,6 @@
 import type { AgentDbMessage } from '@n8n/agents';
 import type {
 	InstanceAiEnsureThreadResponse,
-	InstanceAiEvent,
-	InstanceAiRichMessagesResponse,
 	InstanceAiThreadInfo,
 	InstanceAiThreadListResponse,
 	InstanceAiThreadHistoryQuery,
@@ -18,37 +16,24 @@ import { Container, Service } from '@n8n/di';
 import { z } from 'zod';
 import { randomUUID } from 'node:crypto';
 import {
-	buildAgentTreeFromEvents,
 	patchThread,
 	withBoundAgentTarget,
 	type AgentBuilderTarget,
-	type AgentTreeSnapshot,
 } from '@n8n/instance-ai';
 
 import { BadRequestError, ForbiddenError, NotFoundError } from '@n8n/errors';
 
 import { UserRepository } from '@n8n/db';
-import { isRecord } from '@n8n/utils/is-record';
 
 import type { AgentExecutionThread } from '../agents/entities/agent-execution-thread.entity';
-import { N8NCheckpointStorage } from '../agents/integrations/n8n-checkpoint-storage';
 import { N8nMemory, type N8nMemoryImpl } from '../agents/integrations/n8n-memory';
 import { AgentExecutionThreadRepository } from '../agents/repositories/agent-execution-thread.repository';
 import { SystemAgentExecutionService } from '../agents/system-agents/system-agent-execution.service';
 import { draftChatMemoryResourceId } from '../agents/utils/agent-memory-scope';
 import {
 	ASSISTANT_AGENT_ID,
-	ASSISTANT_TURN_METADATA_KEY,
-	readAssistantTurnOptions,
 } from './assistant-turn-options';
-import { DurableLogMetrics } from './event-bus/durable-log-metrics';
 import { AUTO_FOLLOW_UP_MESSAGE } from './internal-messages';
-import {
-	collectConfirmationRequestIds,
-	markExpiredConfirmations,
-	parseStoredMessages,
-} from './message-parser';
-import { InstanceAiEventLogRepository } from './repositories/instance-ai-event-log.repository';
 
 /** Write-path launch attribution. `unknown` is reserved for legacy rows on read. */
 export interface InstanceAiThreadLaunchMetadata {
@@ -80,21 +65,9 @@ function toRestorableMessage(value: Record<string, unknown>): AgentDbMessage | u
 	return isRestorableMessage(candidate) ? candidate : undefined;
 }
 
-function messageCreatedAtMs(message: AgentDbMessage): number {
-	const at = message.createdAt;
-	if (at instanceof Date) return at.getTime();
-	const parsed = new Date(at).getTime();
-	return Number.isNaN(parsed) ? 0 : parsed;
-}
-
 /** Span of a returned message page — the only trees a read needs to hydrate.
  *  Half-open (`[since, before)`) so consecutive pages partition the thread:
  *  every tree is claimed by exactly one page, none by two or by none. */
-interface HistoryWindow {
-	since?: Date;
-	before?: Date;
-}
-
 /**
  * Bounds tree hydration to the page being rendered. Trees older than the page
  * have no message to pair with and `parseStoredMessages` renders them as
@@ -116,55 +89,13 @@ interface HistoryWindow {
  * An empty older page is out of range — nothing to pair a tree with, and no
  * bounds to read it with, so it hydrates nothing (`undefined`).
  */
-function historyWindow(
-	messages: AgentDbMessage[],
-	page: number,
-	newerBoundaryAt?: Date,
-): HistoryWindow | undefined {
-	if (messages.length === 0) return page === 0 ? {} : undefined;
-	const since = new Date(messageCreatedAtMs(messages[0]));
-	return newerBoundaryAt ? { since, before: newerBoundaryAt } : { since };
-}
-
 /**
  * Widens a windowed run set to whole message groups. A group's runs fold into
  * one tree, and a background run can outlive the turn that spawned it, so a
  * window that catches one run of a group has to pull in its siblings — folding
  * a group from half its facts yields a tree missing the other half's work.
  */
-function expandRunIdsToGroups(
-	runIds: string[],
-	runStarts: Array<{ runId: string; messageGroupId?: string }>,
-): string[] {
-	const groupByRun = new Map<string, string>();
-	const runsByGroup = new Map<string, string[]>();
-	for (const { runId, messageGroupId } of runStarts) {
-		if (!messageGroupId) continue;
-		groupByRun.set(runId, messageGroupId);
-		const siblings = runsByGroup.get(messageGroupId);
-		if (siblings) siblings.push(runId);
-		else runsByGroup.set(messageGroupId, [runId]);
-	}
-
-	const expanded = new Set(runIds);
-	for (const runId of runIds) {
-		const groupId = groupByRun.get(runId);
-		if (!groupId) continue;
-		for (const sibling of runsByGroup.get(groupId) ?? []) expanded.add(sibling);
-	}
-	return [...expanded];
-}
-
 /** Runs with a `run-start` fact but no terminal `run-finish` in the log. */
-function collectUnfinishedRunIds(rows: Array<{ runId: string; event: InstanceAiEvent }>) {
-	const unfinished = new Set<string>();
-	for (const row of rows) {
-		if (row.event.type === 'run-start') unfinished.add(row.runId);
-		else if (row.event.type === 'run-finish') unfinished.delete(row.runId);
-	}
-	return unfinished;
-}
-
 /** Snapshot-shaped entries derived from the log, grouped the way the snapshot
  *  writer groups its rows: by run-start messageGroupId, else one entry per
  *  run. Events keep their thread (seq) order within each group — runs of one
@@ -174,97 +105,6 @@ function collectUnfinishedRunIds(rows: Array<{ runId: string; event: InstanceAiE
  *  entries to assistant messages positionally by createdAt, so the entry is
  *  anchored at the FIRST run's last fact time (≈ parent-run end, the moment
  *  a stored snapshot row would have been created). */
-function buildLogDerivedSnapshots(
-	rows: Array<{ runId: string; createdAt: Date; event: InstanceAiEvent }>,
-	skipRunIds: Set<string>,
-	skipGroupIds: Set<string>,
-): { entries: AgentTreeSnapshot[] } {
-	// A run's run-start is its first fact, so the run-to-group mapping is
-	// complete before any grouping decision needs it.
-	const groupKeyByRun = new Map<string, string>();
-	for (const row of rows) {
-		if (row.event.type === 'run-start') {
-			const groupId = row.event.payload.messageGroupId;
-			if (typeof groupId === 'string' && groupId) groupKeyByRun.set(row.runId, groupId);
-		}
-	}
-	// An excluded run poisons its whole message group: deriving a partial tree
-	// from the group's completed runs would pair it against a turn whose
-	// assistant message does not exist yet — the misalignment excludeRunIds
-	// exists to prevent. The in-flight turn renders via the SSE bootstrap, not
-	// history. Seeded from the caller's live group ids first: an excluded run
-	// whose run-start row is still in the drain queue has no mapping here, so
-	// persisted rows alone cannot be trusted to identify its group.
-	const skipGroupKeys = new Set<string>(skipGroupIds);
-	for (const runId of skipRunIds) {
-		const groupId = groupKeyByRun.get(runId);
-		if (groupId) skipGroupKeys.add(groupId);
-	}
-
-	type Group = {
-		runIds: string[];
-		events: InstanceAiEvent[];
-		messageGroupId?: string;
-		/** Last fact time of the group's FIRST run — the parent-run-end moment a
-		 *  stored snapshot's createdAt would carry. Background runs can finish
-		 *  after LATER turns, so anchoring on the group's last fact would push
-		 *  the entry past the next message and break positional pairing. */
-		anchorAt: Date;
-		lastAt: Date;
-	};
-	const groups = new Map<string, Group>();
-	for (const row of rows) {
-		if (!row.runId) continue;
-		const messageGroupId = groupKeyByRun.get(row.runId);
-		const key = messageGroupId ?? row.runId;
-		if (skipRunIds.has(row.runId) || skipGroupKeys.has(key)) continue;
-		let group = groups.get(key);
-		if (!group) {
-			group = {
-				runIds: [],
-				events: [],
-				messageGroupId,
-				anchorAt: row.createdAt,
-				lastAt: row.createdAt,
-			};
-			groups.set(key, group);
-		}
-		if (!group.runIds.includes(row.runId)) group.runIds.push(row.runId);
-		group.events.push(row.event);
-		// A `preference-card` fact is appended by an Edit or an Undo, which can
-		// happen long after the turn. It must not move the anchor: the parser
-		// drops a snapshot anchored after the next conversational message, so a
-		// late fact would unpair the whole turn instead of correcting one card.
-		if (
-			row.runId === group.runIds[0] &&
-			row.event.type !== 'preference-card' &&
-			row.createdAt > group.anchorAt
-		) {
-			group.anchorAt = row.createdAt;
-		}
-		if (row.createdAt > group.lastAt) group.lastAt = row.createdAt;
-	}
-
-	const entries: AgentTreeSnapshot[] = [];
-	for (const group of groups.values()) {
-		// Nothing renderable beyond the run lifecycle — skip, matching today's
-		// behavior of not surfacing empty orphan cards.
-		const hasContent = group.events.some((e) => e.type !== 'run-start' && e.type !== 'run-finish');
-		if (!hasContent) continue;
-		entries.push({
-			tree: buildAgentTreeFromEvents(group.events),
-			runId: group.runIds[group.runIds.length - 1],
-			messageGroupId: group.messageGroupId,
-			runIds: group.runIds,
-			// Mirror the stored-snapshot row: created at parent-run end (save),
-			// only updatedAt advances as later group runs complete (updateLast).
-			createdAt: group.anchorAt,
-			updatedAt: group.lastAt,
-		});
-	}
-	return { entries };
-}
-
 @Service()
 export class InstanceAiMemoryService {
 	private readonly instanceAiConfig: InstanceAiConfig;
@@ -272,8 +112,6 @@ export class InstanceAiMemoryService {
 	constructor(
 		private readonly logger: Logger,
 		globalConfig: GlobalConfig,
-		private readonly eventLogRepository: InstanceAiEventLogRepository,
-		private readonly durableLogMetrics: DurableLogMetrics,
 	) {
 		this.instanceAiConfig = globalConfig.instanceAi;
 	}
@@ -285,10 +123,6 @@ export class InstanceAiMemoryService {
 
 	private get threads(): AgentExecutionThreadRepository {
 		return Container.get(AgentExecutionThreadRepository);
-	}
-
-	private get checkpoints(): N8NCheckpointStorage {
-		return Container.get(N8NCheckpointStorage);
 	}
 
 	/** Session row (owner, project, title) plus memory thread (metadata). */
@@ -522,178 +356,6 @@ export class InstanceAiMemoryService {
 			threadId,
 			messages: result.messages.map((m) => this.toThreadMessage(m)),
 		};
-	}
-
-	async getRichMessages(
-		_userId: string,
-		threadId: string,
-		options?: {
-			limit?: number;
-			page?: number;
-			excludeRunIds?: string[];
-			/** Live in-flight group ids from run state — the durable-log fold
-			 *  cannot rely on persisted run-start rows alone to map an excluded
-			 *  run to its group (the row may still be in the drain queue). */
-			excludeMessageGroupIds?: string[];
-		},
-	): Promise<Omit<InstanceAiRichMessagesResponse, 'nextEventId'>> {
-		const page = options?.page ?? 0;
-		const result = await this.listMessages({
-			threadId,
-			limit: options?.limit ?? 50,
-			page,
-			// The next page's first message is this page's upper bound.
-			withNewerBoundary: true,
-		});
-
-		// Hydrate trees only for the page we are about to render.
-		const pageWindow = historyWindow(result.messages, page, result.newerBoundaryAt);
-
-		// The fold's suspension carve-out: a HITL-suspended run legitimately has
-		// no run-finish, so its turn still folds (the confirmation card and the
-		// in-flight work are durable facts) instead of being skipped as in-flight.
-		const suspendedRunIds = await this.loadSuspendedRunIds(threadId);
-
-		// No window means an out-of-range older page: it has no message rows for
-		// a tree to pair with, and hydrating it unbounded would read the whole
-		// thread to render nothing.
-		//
-		// Fold-on-read: history trees derive from the event log.
-		const snapshots = !pageWindow
-			? []
-			: await this.foldSnapshotsFromLog(
-					threadId,
-					suspendedRunIds,
-					pageWindow,
-					options?.excludeRunIds,
-					options?.excludeMessageGroupIds,
-				);
-
-		const messages = parseStoredMessages(result.messages, snapshots);
-		await this.flagExpiredConfirmations(threadId, messages);
-
-		const projectId = await this.getThreadProjectId(threadId);
-		return { threadId, projectId, messages };
-	}
-
-	/**
-	 * Fold-on-read: history agent trees derive from the event log.
-	 *
-	 * Only the runs behind the requested page are read and folded, so a long
-	 * thread costs the same per read as a short one. Run-start facts are
-	 * read for the whole thread — one row per run, no group can be resolved
-	 * without them — but their payloads are the only ones parsed outside the
-	 * window.
-	 */
-	private async foldSnapshotsFromLog(
-		threadId: string,
-		suspendedRunIds: ReadonlySet<string>,
-		pageWindow: HistoryWindow,
-		excludeRunIds?: string[],
-		excludeMessageGroupIds?: string[],
-	): Promise<AgentTreeSnapshot[]> {
-		const start = Date.now();
-		let rows;
-		try {
-			const runStarts = await this.eventLogRepository.getRunStarts(threadId);
-			if (runStarts.length === 0) return [];
-
-			const windowedRunIds = await this.eventLogRepository.findRunIdsInWindow(threadId, pageWindow);
-			rows = await this.eventLogRepository.getForThreadRuns(
-				threadId,
-				expandRunIdsToGroups(windowedRunIds, runStarts),
-			);
-		} catch (error) {
-			// Degrade to messages-without-trees rather than failing the page read.
-			this.logger.warn('Failed to read Instance AI event log for history', {
-				threadId,
-				error: error instanceof Error ? error.message : String(error),
-			});
-			return [];
-		}
-		if (rows.length === 0) return [];
-
-		// Multi-main backstop (INS-913): the caller's exclusions come from
-		// per-process run state, which is empty on a main that is not driving
-		// the run — the log knows main-agnostically that a run without a
-		// terminal run-finish is in flight, and its group must stay out of
-		// history (SSE renders it live). HITL-suspended runs are the exception:
-		// they legitimately lack a run-finish and their turn folds, paired with
-		// the checkpoint-surfaced messages. A crashed run stays hidden until the
-		// startup sweep terminalizes it — hidden beats a forever-spinning
-		// partial tree.
-		const skipRunIds = new Set(excludeRunIds ?? []);
-		for (const runId of collectUnfinishedRunIds(rows)) {
-			if (!suspendedRunIds.has(runId)) skipRunIds.add(runId);
-		}
-
-		const { entries } = buildLogDerivedSnapshots(
-			rows,
-			skipRunIds,
-			new Set(excludeMessageGroupIds ?? []),
-		);
-		if (entries.length === 0) return [];
-		entries.sort((a, b) => (a.createdAt?.getTime() ?? 0) - (b.createdAt?.getTime() ?? 0));
-
-		this.durableLogMetrics.recordFoldRead(Date.now() - start, entries.length);
-		return entries;
-	}
-
-	async flagExpiredConfirmations(
-		threadId: string,
-		messages: Parameters<typeof markExpiredConfirmations>[0],
-	): Promise<void> {
-		const requestIds = collectConfirmationRequestIds(messages);
-		if (requestIds.length === 0) return;
-		try {
-			// A card is live while the suspended Agents checkpoint still waits for it.
-			markExpiredConfirmations(messages, await this.loadLiveRequestIds(threadId));
-		} catch (error) {
-			this.logger.warn('Failed to flag expired confirmation cards', {
-				error: error instanceof Error ? error.message : String(error),
-			});
-		}
-	}
-
-	private async loadSuspendedCheckpoint(threadId: string) {
-		try {
-			return await this.checkpoints.findSuspendedForThread(ASSISTANT_AGENT_ID, threadId);
-		} catch (error) {
-			this.logger.warn('Failed to load the suspended checkpoint', {
-				threadId,
-				error: error instanceof Error ? error.message : String(error),
-			});
-			return null;
-		}
-	}
-
-	/** Run ids of the suspended turn. Its run has no run-finish, but its card is a durable fact. */
-	private async loadSuspendedRunIds(threadId: string): Promise<Set<string>> {
-		const checkpoint = await this.loadSuspendedCheckpoint(threadId);
-		const options = readAssistantTurnOptions(
-			checkpoint?.persistence?.hostMetadata?.[ASSISTANT_TURN_METADATA_KEY],
-		);
-		return new Set(options.runId ? [options.runId] : []);
-	}
-
-	async loadLiveRequestIds(threadId: string): Promise<Set<string>> {
-		const checkpoint = await this.loadSuspendedCheckpoint(threadId);
-		const live = new Set<string>();
-		// The seeded onboarding card waits in thread metadata, not in a checkpoint.
-		const onboardingCard = (await this.agentMemory.getThread(threadId))?.metadata?.onboardingCard;
-		if (isRecord(onboardingCard) && typeof onboardingCard.requestId === 'string') {
-			live.add(onboardingCard.requestId);
-		}
-		for (const toolCall of Object.values(checkpoint?.pendingToolCalls ?? {})) {
-			if (
-				toolCall.suspended &&
-				isRecord(toolCall.suspendPayload) &&
-				typeof toolCall.suspendPayload.requestId === 'string'
-			) {
-				live.add(toolCall.suspendPayload.requestId);
-			}
-		}
-		return live;
 	}
 
 	/**

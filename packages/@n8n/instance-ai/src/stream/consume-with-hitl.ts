@@ -22,6 +22,8 @@ export interface ConsumeStreamCascadingOptions {
 	logger: Logger;
 	threadId: string;
 	abortSignal: AbortSignal;
+	/** Sees every raw chunk, e.g. to forward sub-agent progress to the parent stream. */
+	onChunk?: (chunk: unknown) => void;
 }
 
 export type ConsumeStreamCascadingResult =
@@ -195,6 +197,7 @@ export async function consumeStreamCascading(
 		}
 
 		usageAccumulator.observe(chunk);
+		options.onChunk?.(chunk);
 
 		if (isRecord(chunk) && chunk.type === 'start-step') {
 			nativeStepIndex += 1;

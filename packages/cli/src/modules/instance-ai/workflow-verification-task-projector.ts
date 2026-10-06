@@ -11,8 +11,8 @@ import {
 	type WorkflowVerificationObligation,
 } from '@n8n/instance-ai';
 import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
+import { AssistantEventSink } from './event-bus/assistant-event-sink';
 
-import type { InProcessEventBus } from './event-bus/in-process-event-bus';
 import {
 	parseWorkflowBuildOutcome,
 	type WorkflowVerificationObligationService,
@@ -215,7 +215,7 @@ function taskItemsEqual(first: TaskItem, second: TaskItem): boolean {
 export class WorkflowVerificationTaskProjector {
 	constructor(
 		private readonly agentMemory: ConstructorParameters<typeof WorkflowLoopStorage>[0],
-		private readonly eventBus: InProcessEventBus,
+		private readonly eventBus: AssistantEventSink,
 		private readonly logger: Logger,
 		private readonly obligations: WorkflowVerificationObligationService,
 	) {}

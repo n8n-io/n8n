@@ -13,8 +13,8 @@ import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { AiPreferenceService } from '@/services/ai-preference.service';
 import { secondsSinceSaved } from '@/services/ai-preference-write';
 import { Telemetry } from '@/telemetry';
+import { AssistantEventSink } from './event-bus/assistant-event-sink';
 
-import { InProcessEventBus } from './event-bus/in-process-event-bus';
 
 /**
  * Edit and Undo for the preference card in the chat. Both go through the same
@@ -33,7 +33,7 @@ import { InProcessEventBus } from './event-bus/in-process-event-bus';
 export class InstanceAiPreferenceCardService {
 	constructor(
 		private readonly aiPreferenceService: AiPreferenceService,
-		private readonly eventBus: InProcessEventBus,
+		private readonly eventBus: AssistantEventSink,
 		private readonly telemetry: Telemetry,
 	) {}
 

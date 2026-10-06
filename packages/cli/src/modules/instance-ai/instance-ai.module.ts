@@ -1,4 +1,3 @@
-import { Logger } from '@n8n/backend-common';
 import type { ModuleInterface } from '@n8n/decorators';
 import { BackendModule, ModuleMetadata, OnShutdown } from '@n8n/decorators';
 import { Container } from '@n8n/di';
@@ -37,15 +36,7 @@ export class InstanceAiModule implements ModuleInterface {
 		const { InstanceAiEventRelay } = await import('./instance-ai-event-relay.service.js');
 		Container.get(InstanceAiEventRelay);
 
-		// Startup sweep resolves runs the previous process left mid-flight by
-		// converting their in-flight tool calls into tool-interrupted facts and
-		// appending run-finish{interrupted}.
-		const { InterruptedRunSweeper } = await import('./event-bus/interrupted-run-sweeper.js');
 		const { InstanceAiService } = await import('./instance-ai.service.js');
-		const sweepLogger = Container.get(Logger).scoped('instance-ai');
-		const sweeper = Container.get(InterruptedRunSweeper);
-		// Live turns belong to the Agents runtime. The sweep's grace window keeps them safe.
-		sweeper.setResumeHost({ isRunLive: () => false });
 		Container.get(InstanceAiService);
 
 		// Register the Assistant as an instance agent on the Agents runtime.
@@ -56,9 +47,6 @@ export class InstanceAiModule implements ModuleInterface {
 		await Container.get(SystemAgentExecutionService).register(
 			Container.get(AssistantAgentProvider),
 		);
-		void sweeper.sweep().catch((error: unknown) => {
-			sweepLogger.error('Interrupted-run sweep failed on startup', { error });
-		});
 
 		if (process.env.E2E_TESTS === 'true' && process.env.NODE_ENV !== 'production') {
 			await import('./instance-ai-test.controller.js');
@@ -119,9 +107,6 @@ export class InstanceAiModule implements ModuleInterface {
 			'./entities/instance-ai-mcp-registry-connection.entity.js'
 		);
 		const { InstanceAiThreadTabs } = await import('./entities/instance-ai-thread-tabs.entity.js');
-		const { InstanceAiEventLogEntry } = await import(
-			'./entities/instance-ai-event-log-entry.entity.js'
-		);
 		const { WorkflowSuggestion } = await import(
 			'./workflow-suggestions/database/workflow-suggestion.entity.js'
 		);
@@ -133,7 +118,6 @@ export class InstanceAiModule implements ModuleInterface {
 			InstanceAiIterationLog,
 			InstanceAiMcpRegistryConnection,
 			InstanceAiThreadTabs,
-			InstanceAiEventLogEntry,
 			WorkflowSuggestion,
 			WorkflowSuggestionActivity,
 		];

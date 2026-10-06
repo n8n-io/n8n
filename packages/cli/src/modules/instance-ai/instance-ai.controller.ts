@@ -1,5 +1,4 @@
 import {
-	InstanceAiConfirmRequestDto,
 	InstanceAiFeedbackRequestDto,
 	InstanceAiGatewayCapabilitiesDto,
 	InstanceAiGatewayCreateCredentialDto,
@@ -8,12 +7,9 @@ import {
 	InstanceAiThreadTabsRequestDto,
 	InstanceAiPreferenceCardEditRequestDto,
 	InstanceAiPreferenceCardUndoRequestDto,
-	InstanceAiSendMessageRequest,
-	InstanceAiEventsQuery,
 	instanceAiGatewayKeySchema,
 	InstanceAiEnsureThreadRequest,
 	InstanceAiPersistPendingAgentRequest,
-	InstanceAiThreadMessagesQuery,
 	InstanceAiThreadHistoryQuery,
 	InstanceAiAdminSettingsUpdateRequest,
 	InstanceAiVerifyModelRequest,
@@ -31,7 +27,6 @@ import {
 import type {
 	InstanceAiAdminSettingsResponse,
 	InstanceAiEvalThreadMemoryResponse,
-	InstanceAiEvent,
 	InstanceAiThreadTabsResponse,
 } from '@n8n/api-types';
 import { ModuleRegistry } from '@n8n/backend-common';
@@ -52,19 +47,10 @@ import {
 	Body,
 	Query,
 } from '@n8n/decorators';
-import type { StoredEvent } from '@n8n/instance-ai';
-import { hasGlobalScope } from '@n8n/permissions';
 import {
-	buildAgentTreeFromEvents,
 	clearedAgentBuilderTargetMetadata,
 	seedAgentBuilderTargetMetadata,
 } from '@n8n/instance-ai';
-import {
-	OversizedAttachmentError,
-	UnsupportedAttachmentError,
-	validateAttachmentMimeTypes,
-	validateAttachmentSizes,
-} from '@n8n/instance-ai/parsers';
 import type { NextFunction, Request, Response } from 'express';
 import { randomUUID, timingSafeEqual } from 'node:crypto';
 import { InstanceAiBrowserSessionService } from './browser/instance-ai-browser-session.service';
@@ -72,9 +58,6 @@ import { EvalAgentExecutionService } from './eval/agent-execution.service';
 import { EvalExecutionService } from './eval/execution.service';
 import { EvalThreadCredentialAllowlistService } from './eval/thread-credential-allowlist.service';
 import { EvalThreadRestoreService } from './eval/thread-restore.service';
-import { DurableEventLog } from './event-bus/durable-event-log';
-import { DurableLogMetrics } from './event-bus/durable-log-metrics';
-import { InProcessEventBus } from './event-bus/in-process-event-bus';
 import { InstanceAiErrorReporterService } from './instance-ai-error-reporter.service';
 import { InstanceAiGatewayService } from './instance-ai-gateway.service';
 import { InstanceAiMemoryService } from './instance-ai-memory.service';
@@ -85,7 +68,7 @@ import { InstanceAiSettingsService } from './instance-ai-settings.service';
 import { InstanceAiThreadTabsService } from './instance-ai-thread-tabs.service';
 import { InstanceAiVerificationService } from './instance-ai-verification.service';
 import { InstanceAiService } from './instance-ai.service';
-import { InstanceAiOnboardingService, startsOnboardingFirstTurn } from './onboarding';
+import { InstanceAiOnboardingService, } from './onboarding';
 import { CredentialsService } from '@/credentials/credentials.service';
 
 import { BadRequestError, ForbiddenError, NotFoundError } from '@n8n/errors';
@@ -115,9 +98,6 @@ export class InstanceAiController {
 		private readonly evalAgentExecutionService: EvalAgentExecutionService,
 		private readonly evalCredentialAllowlists: EvalThreadCredentialAllowlistService,
 		private readonly evalThreadRestore: EvalThreadRestoreService,
-		private readonly eventBus: InProcessEventBus,
-		private readonly eventLog: DurableEventLog,
-		private readonly durableLogMetrics: DurableLogMetrics,
 		private readonly moduleRegistry: ModuleRegistry,
 		private readonly push: Push,
 		private readonly urlService: UrlService,
@@ -139,20 +119,6 @@ export class InstanceAiController {
 		}
 	}
 
-	/**
-	 * Without a model the run starts and then dies inside the provider call, with
-	 * nothing to tell the user why. The frontend routes an unconfigured instance
-	 * to setup rather than the composer, but that is one gate per entry point and
-	 * the endpoint is reachable on its own, so refuse the run here too.
-	 */
-	private async requireModelConfigured(): Promise<void> {
-		if (!(await this.settingsService.isModelConfigured())) {
-			throw new BadRequestError(
-				'The n8n Assistant has no model configured. An instance owner can add one in Settings > Assistant.',
-			);
-		}
-	}
-
 	// Each BrotliCompress stream allocates ~8.6 MB of native memory for its
 	// dictionary, and the compression middleware retains streams via closures on
 	// the response object for the lifetime of the HTTP keep-alive connection.
@@ -164,445 +130,6 @@ export class InstanceAiController {
 			req.headers['accept-encoding'] = ae.replace(/\bbr\b,?\s*/g, '').replace(/,\s*$/, '');
 		}
 		next();
-	}
-
-	@Post('/chat/:threadId')
-	@GlobalScope('instanceAi:message')
-	async chat(
-		req: AuthenticatedRequest,
-		_res: Response,
-		@Param('threadId') threadId: string,
-		@Body payload: InstanceAiSendMessageRequest,
-	) {
-		this.requireInstanceAiEnabled();
-		await this.requireModelConfigured();
-		if (!payload.message && (!payload.attachments || payload.attachments.length === 0)) {
-			throw new BadRequestError('Either message or attachments must be provided');
-		}
-
-		// Verify the requesting user owns this thread (or it's new)
-		await this.assertThreadAccess(req.user.id, threadId, { allowNew: true });
-
-		// Only file attachments carry a mime type to validate; workflow and agent
-		// attachments are resource references the agent resolves with its tools.
-		const fileAttachments = (payload.attachments ?? []).filter(
-			(attachment) => attachment.type === 'file',
-		);
-		if (fileAttachments.length > 0) {
-			try {
-				validateAttachmentMimeTypes(fileAttachments);
-				// Reject oversized payloads here rather than letting them reach the model.
-				// The provider answers an oversized image with an opaque 400, and the
-				// attachment is already persisted in thread history by then — so every
-				// later turn replays it and fails too, stranding the conversation.
-				//
-				// Note the request schema caps each `data` field at the same per-file
-				// limit, and body validation runs before this handler — so over HTTP a
-				// single oversized file is answered by the schema and only the combined
-				// budget reaches here. This call stays because it is the check for
-				// non-HTTP callers and the one that enforces the total.
-				validateAttachmentSizes(fileAttachments);
-			} catch (error) {
-				if (error instanceof UnsupportedAttachmentError) {
-					const summary = error.unsupported.map((u) => `${u.fileName} (${u.mimeType})`).join(', ');
-					throw new BadRequestError(
-						`Unsupported attachment type: ${summary}. Supported types include CSV, JSON, ` +
-							'PDF, DOCX, XLSX, HTML, plain text, markdown, and images.',
-					);
-				}
-				if (error instanceof OversizedAttachmentError) {
-					throw new BadRequestError(
-						error.reason === 'per_file'
-							? `${error.message} Attach a smaller version, or resize the image before sending.`
-							: `${error.message} Send them across separate messages, or attach smaller versions.`,
-					);
-				}
-				throw error;
-			}
-		}
-
-		// The override is an eval knob. It changes how often the observer runs, so a
-		// plain chat caller must not be able to set it.
-		if (
-			payload.observerThresholdTokens !== undefined &&
-			!hasGlobalScope(req.user, 'instanceAi:eval')
-		) {
-			throw new ForbiddenError('observerThresholdTokens requires the instanceAi:eval scope');
-		}
-
-		const runId = await this.instanceAiService.startRun(
-			req.user,
-			threadId,
-			payload.message,
-			payload.attachments,
-			payload.context,
-			payload.timeZone,
-			payload.pushRef,
-			payload.mode,
-			payload.promptVersion,
-			payload.computerUseChannels,
-			payload.threadArtifacts,
-			payload.observerThresholdTokens,
-		);
-		return { runId };
-	}
-
-	// usesTemplates bypasses the send() wrapper so we can write SSE frames directly
-	@Get('/events/:threadId', { usesTemplates: true })
-	@GlobalScope('instanceAi:message')
-	async events(
-		req: AuthenticatedRequest,
-		res: FlushableResponse,
-		@Param('threadId') threadId: string,
-		@Query query: InstanceAiEventsQuery,
-	) {
-		this.requireInstanceAiEnabled();
-		// Verify the requesting user owns this thread before streaming events.
-		// A thread that doesn't exist yet is allowed — the frontend opens the SSE
-		// connection for new conversations before the first message creates the thread.
-		const ownership = await this.memoryService.checkThreadOwnership(req.user.id, threadId);
-		if (ownership === 'other_user') {
-			throw new ForbiddenError('Not authorized for this thread');
-		}
-		// When the thread didn't exist at connect time, another user could create
-		// and own it before events start flowing. We re-check once on the first
-		// event and close the stream if ownership changed. Events are buffered
-		// until the check resolves to prevent leaking data during the async gap.
-		let ownershipVerified = ownership === 'owned';
-		let ownershipCheckInFlight = false;
-		const pendingEvents: StoredEvent[] = [];
-		const userId = req.user.id;
-
-		// 1. Subscribe to live events before the async bootstrap below.
-		//    hasSubscribers() must be true across the awaits that follow: in
-		//    multi-main, sibling mains drop relayed events for threads without a
-		//    local subscriber, so a relayed event arriving during an await would
-		//    otherwise be lost for good. Events emitted while bootstrapping are
-		//    NOT delivered here — they land in the event store and the replay in
-		//    step 6 picks them up, avoiding duplicates.
-		let bootstrapping = true;
-
-		const deliver = (stored: StoredEvent) => {
-			if (ownershipVerified) {
-				this.writeSseEvent(res, stored);
-				return;
-			}
-
-			// When the thread was not_found at connect time, re-validate ownership
-			// on the first event. Buffer all events until the check resolves to
-			// avoid leaking data during the async gap.
-			pendingEvents.push(stored);
-
-			if (ownershipCheckInFlight) return;
-			ownershipCheckInFlight = true;
-
-			void this.memoryService
-				.checkThreadOwnership(userId, threadId)
-				.then((currentOwnership) => {
-					if (currentOwnership === 'other_user') {
-						res.end();
-						return;
-					}
-					ownershipVerified = true;
-					for (const buffered of pendingEvents) {
-						this.writeSseEvent(res, buffered);
-					}
-					pendingEvents.length = 0;
-				})
-				.catch(() => {
-					pendingEvents.length = 0;
-					res.end();
-				});
-		};
-
-		const unsubscribe = this.eventBus.subscribe(threadId, (stored) => {
-			if (bootstrapping) return;
-			deliver(stored);
-		});
-
-		// Cleanup is registered before the async bootstrap so a client disconnect
-		// (or an error response) during the awaits below doesn't leak the
-		// subscription.
-		let closed = false;
-		let keepAlive: NodeJS.Timeout | undefined = undefined;
-		const cleanup = () => {
-			closed = true;
-			unsubscribe();
-			if (keepAlive !== undefined) clearInterval(keepAlive);
-		};
-		req.once('close', cleanup);
-		res.once('finish', cleanup);
-
-		// 2. Set SSE headers.
-		// Disable response compression — SSE streams small chunks where compression
-		// overhead exceeds the benefit, and each Brotli compressor retains ~8.6 MB
-		// of native memory for the lifetime of the connection.
-		(res as unknown as { compress: boolean }).compress = false;
-		res.setHeader('Content-Type', 'text/event-stream; charset=UTF-8');
-		res.setHeader('Cache-Control', 'no-cache, no-transform');
-		res.setHeader('Connection', 'keep-alive');
-		res.setHeader('X-Accel-Buffering', 'no');
-		res.flushHeaders();
-
-		// 3. Determine replay cursor
-		//    Last-Event-ID header (browser auto-reconnect) takes precedence over query param.
-		//    Both are validated as non-negative integers; invalid values fall back to 0.
-		const headerValue = req.headers['last-event-id'];
-		const parsedHeader = headerValue ? parseInt(String(headerValue), 10) : NaN;
-		const cursor =
-			Number.isFinite(parsedHeader) && parsedHeader >= 0 ? parsedHeader : (query.lastEventId ?? 0);
-
-		// 4. Collect live message groups.
-		//    Multiple groups can be active simultaneously when a background task
-		//    from an older turn outlives its original turn.
-		const liveRun = await this.instanceAiService.getLiveRun(threadId);
-
-		// Collect all distinct message groups that have live activity.
-		const liveGroups = new Map<
-			string,
-			{ runIds: string[]; status: 'active' | 'suspended' | 'background' }
-		>();
-		if (liveRun.status !== 'idle' && liveRun.messageGroupId) {
-			liveGroups.set(liveRun.messageGroupId, {
-				runIds: liveRun.runIds,
-				status: liveRun.status === 'running' ? 'active' : 'suspended',
-			});
-		}
-
-		// 6b (used by both arms below). Emit one run-sync control frame for a live
-		//     message group. Each frame uses a named SSE event type
-		//     (event: run-sync) with NO id: field so the browser's lastEventId is
-		//     unaffected and the replay cursor stays consistent.
-		const writeRunSyncFrame = async (
-			groupId: string,
-			group: { runIds: string[]; status: 'active' | 'suspended' | 'background' },
-			runEvents: InstanceAiEvent[],
-		) => {
-			if (runEvents.length === 0) return;
-
-			const agentTree = buildAgentTreeFromEvents(runEvents);
-			// The fold records that a confirmation was requested, not that it was
-			// answered. Settle cards whose pending row is gone (same check as the
-			// history read); otherwise a client that reconnects mid-run re-arms a
-			// card the server already consumed, and every click on it fails.
-			await this.memoryService.flagExpiredConfirmations(threadId, [{ agentTree }]);
-			if (closed) return;
-			res.write(
-				`event: run-sync\ndata: ${JSON.stringify({
-					runId: group.runIds.at(-1),
-					messageGroupId: groupId,
-					runIds: group.runIds,
-					agentTree,
-					status: group.status,
-					backgroundTasks: [],
-				})}\n\n`,
-			);
-		};
-
-		// 5. Replay missed events from the durable log — survives restarts and is
-		//    valid on any main (the table is in the shared DB). The reads are
-		//    async, so live events can land mid-bootstrap: buffer them across
-		//    every await (the
-		//    replay read, the run-sync tree reads, AND the gap read) and flush
-		//    with seq dedupe only when no await remains before live delivery
-		//    takes over (the drain persists before it emits, so a fact is never
-		//    in neither place). A flushed event may already be folded into a
-		//    run-sync tree; the shared reducer applies it idempotently, same as
-		//    any live event arriving after a frame.
-		const arrivedDuringReplay: StoredEvent[] = [];
-		const stopBuffering = this.eventBus.subscribe(threadId, (stored) => {
-			arrivedDuringReplay.push(stored);
-		});
-		try {
-			const missed = await this.eventLog.getEventsAfter(threadId, cursor);
-			// The client may have disconnected during the read: stop before
-			// writing to the dead response or arming the keep-alive below.
-			if (closed) return;
-			let lastReplayedSeq = cursor;
-			for (const stored of missed) {
-				deliver(stored);
-				if (stored.id !== undefined) lastReplayedSeq = stored.id;
-			}
-			// Build each live group's bootstrap tree from the durable log, so the
-			// group renders fully even when the process
-			// restarted, or this main never buffered the thread (sibling main).
-			// Remember which coalesced blocks each delivered tree folds: the gap
-			// read below may return the same rows, and re-applying a block the
-			// tree already renders would append a duplicate timeline entry.
-			const blockKey = (event: {
-				type: string;
-				runId: string;
-				agentId: string;
-				responseId?: string;
-				payload: { text: string };
-			}) =>
-				`${event.type}:${event.runId}:${event.agentId}:${event.responseId ?? ''}:${event.payload.text}`;
-			const foldedBlockKeys = new Set<string>();
-			for (const [groupId, group] of liveGroups) {
-				const runEvents = await this.eventLog.getEventsForRuns(threadId, group.runIds);
-				if (closed) return;
-				await writeRunSyncFrame(groupId, group, runEvents);
-				for (const event of runEvents) {
-					if (event.type === 'text-block' || event.type === 'reasoning-block') {
-						foldedBlockKeys.add(blockKey(event));
-					}
-				}
-			}
-			// One more durable read: coalesced blocks are persisted but never
-			// live-emitted (live clients saw the deltas), so a segment that closed
-			// during the awaits above exists only as rows the replay read predates
-			// — invisible to the buffering subscription. Without this read, the
-			// buffered fact that follows such a block would advance the browser
-			// cursor past it and no later replay would ever return it.
-			const gapRows = await this.eventLog.getEventsAfter(threadId, lastReplayedSeq);
-			if (closed) return;
-			// A still-streaming segment exists only in the log's coalesce buffer
-			// (deltas are never persisted), so a mid-stream refresh would render
-			// only the post-refresh tail. Serve each open segment as one ephemeral
-			// delta frame (no `id:` line — the cursor stays on durable facts), after
-			// the run-sync frames so live deltas keep appending to it and the
-			// segment's eventual block replaces it. Everything from this read to
-			// `bootstrapping = false` is synchronous, so a buffered delta of a
-			// served segment is exactly text inside the snapshot: skipping it loses
-			// nothing and delivering it would duplicate.
-			const openSegments = this.eventLog.getOpenSegments(threadId);
-			const segmentKey = (
-				kind: 'text' | 'reasoning',
-				event: { runId: string; agentId: string; responseId?: string },
-			) => `${kind}:${event.runId}:${event.agentId}:${event.responseId ?? ''}`;
-			const served = new Set(openSegments.map((segment) => segmentKey(segment.kind, segment)));
-			// Deliver the gap rows first. A block identical to one folded into a
-			// delivered run-sync tree is not re-applied (that would duplicate its
-			// text) but still counts as delivered for cursor contiguity — its
-			// content reached the client inside the frame. Buffered deltas of a
-			// gap block's segment are skipped below like served ones: their text
-			// is inside the block, and delivering them after it would duplicate.
-			const gapBlockSegments = new Set<string>();
-			for (const row of gapRows) {
-				if (row.id === undefined || row.id <= lastReplayedSeq) continue;
-				const { event } = row;
-				if (event.type === 'text-block' || event.type === 'reasoning-block') {
-					gapBlockSegments.add(
-						segmentKey(event.type === 'text-block' ? 'text' : 'reasoning', event),
-					);
-					if (foldedBlockKeys.has(blockKey(event))) {
-						lastReplayedSeq = row.id;
-						continue;
-					}
-				}
-				deliver(row);
-				lastReplayedSeq = row.id;
-			}
-			for (const stored of arrivedDuringReplay) {
-				if (stored.id !== undefined) {
-					if (stored.id <= lastReplayedSeq) continue;
-					if (stored.id === lastReplayedSeq + 1) {
-						deliver(stored);
-						lastReplayedSeq = stored.id;
-						continue;
-					}
-					// Rows between the cursor and this fact were persisted after the
-					// gap read (a segment closed while it was in flight): deliver the
-					// fact's content but strip its id line, so the cursor never
-					// crosses a row the client has not seen — the next replay returns
-					// the missing block and re-applies this fact idempotently.
-					deliver({ event: stored.event });
-					continue;
-				}
-				const { event } = stored;
-				if (
-					(event.type === 'text-delta' || event.type === 'reasoning-delta') &&
-					(served.has(segmentKey(event.type === 'text-delta' ? 'text' : 'reasoning', event)) ||
-						gapBlockSegments.has(
-							segmentKey(event.type === 'text-delta' ? 'text' : 'reasoning', event),
-						))
-				) {
-					continue;
-				}
-				deliver(stored);
-			}
-			for (const segment of openSegments) {
-				deliver({
-					event: {
-						type: segment.kind === 'text' ? 'text-delta' : 'reasoning-delta',
-						runId: segment.runId,
-						agentId: segment.agentId,
-						...(segment.responseId ? { responseId: segment.responseId } : {}),
-						payload: { text: segment.text },
-					},
-				});
-			}
-			this.durableLogMetrics.recordReplay(missed.length, Math.max(0, lastReplayedSeq - cursor));
-		} finally {
-			// The buffering subscription must not outlive the bootstrap, even when
-			// a durable read throws.
-			stopBuffering();
-		}
-		if (liveGroups.size > 0) res.flush?.();
-
-		bootstrapping = false;
-
-		// 6. Keep-alive
-		keepAlive = setInterval(() => {
-			res.write(': ping\n\n');
-			res.flush?.();
-		}, KEEP_ALIVE_INTERVAL_MS);
-	}
-
-	@Post('/confirm/:requestId')
-	@GlobalScope('instanceAi:message')
-	async confirm(req: AuthenticatedRequest, _res: Response, @Param('requestId') requestId: string) {
-		this.requireInstanceAiEnabled();
-
-		// Manual parse: `@Body` decorator can't resolve zod discriminated unions via reflection,
-		// so validate the request body against the union schema directly.
-		const parseResult = InstanceAiConfirmRequestDto.safeParse(req.body);
-		if (!parseResult.success) {
-			throw new BadRequestError(parseResult.error.errors[0].message);
-		}
-
-		// The host-seeded onboarding card has no run to resume: settle it and post the follow-up
-		// question as a finished synthetic run. The user's next chat message starts the first turn.
-		// Free text in the card starts that turn now, with the answers as the message, so the model
-		// check of `chat` applies; it runs before the card is consumed.
-		if (startsOnboardingFirstTurn(requestId, parseResult.data)) {
-			await this.requireModelConfigured();
-		}
-		const { threadId: rawThreadId } = req.query as { threadId?: unknown };
-		const threadId = typeof rawThreadId === 'string' ? rawThreadId : undefined;
-		const card = await this.onboarding.answerCard(
-			req.user.id,
-			requestId,
-			parseResult.data,
-			threadId,
-		);
-		if (card) {
-			const runId =
-				'firstMessage' in card
-					? await this.instanceAiService.startRun(req.user, card.threadId, card.firstMessage)
-					: card.runId;
-			return { ok: true, runId };
-		}
-
-		const resolved = await this.instanceAiService.resolveConfirmation(
-			req.user.id,
-			requestId,
-			parseResult.data,
-			threadId,
-		);
-		if (!resolved) {
-			throw new NotFoundError('Confirmation request not found or not authorized');
-		}
-		return resolved;
-	}
-
-	@Post('/chat/:threadId/cancel')
-	@GlobalScope('instanceAi:message')
-	async cancel(req: AuthenticatedRequest, _res: Response, @Param('threadId') threadId: string) {
-		this.requireInstanceAiEnabled();
-		await this.assertThreadAccess(req.user.id, threadId);
-		await this.instanceAiService.routeCancelRun(req.user, threadId);
-		return { ok: true };
 	}
 
 	@Post('/feedback/:threadId/:responseId')
@@ -981,69 +508,6 @@ export class InstanceAiController {
 		this.requireInstanceAiEnabled();
 		await this.assertThreadAccess(req.user.id, threadId);
 		return await this.pendingAgentService.persistAndBind(req.user, threadId, payload);
-	}
-
-	@Get('/threads/:threadId/messages')
-	@GlobalScope('instanceAi:message')
-	async getThreadMessages(
-		req: AuthenticatedRequest,
-		_res: Response,
-		@Param('threadId') threadId: string,
-		@Query query: InstanceAiThreadMessagesQuery,
-	) {
-		this.requireInstanceAiEnabled();
-		await this.assertThreadAccess(req.user.id, threadId);
-
-		// ?raw=true returns the old format for the thread inspector
-		if (query.raw === 'true') {
-			return await this.memoryService.getThreadMessages(req.user.id, threadId, {
-				limit: query.limit,
-				page: query.page,
-			});
-		}
-
-		// Exclude snapshots for active/suspended runs — they have no matching
-		// assistant message in native memory yet and would misalign the
-		// positional snapshot-to-message matching in parseStoredMessages. The
-		// live message-group ids ride along so the durable-log fold can exclude
-		// a whole in-flight group even when the active run's own run-start row
-		// has not been persisted yet (it is the group mapping's source there).
-		const liveRun = await this.instanceAiService.getLiveRun(threadId);
-		const excludeRunIds: string[] = [];
-		const excludeMessageGroupIds: string[] = [];
-		if (liveRun.status === 'running' && liveRun.runId) {
-			excludeRunIds.push(liveRun.runId);
-			if (liveRun.messageGroupId) excludeMessageGroupIds.push(liveRun.messageGroupId);
-		}
-
-		const result = await this.memoryService.getRichMessages(req.user.id, threadId, {
-			limit: query.limit,
-			page: query.page,
-			excludeRunIds: excludeRunIds.length > 0 ? excludeRunIds : undefined,
-			excludeMessageGroupIds:
-				excludeMessageGroupIds.length > 0 ? excludeMessageGroupIds : undefined,
-		});
-
-		// Include the next SSE event ID so the frontend can skip past events
-		// already covered by these historical messages (prevents duplicates).
-		// Read from the log, so the cursor is valid across restarts and across
-		// mains sharing the database.
-		//
-		// The applied-preferences payload rides along because the messages
-		// endpoint is what opens a thread: without it a reopened thread could
-		// only claim "none applied" until its next turn.
-		//
-		// Cursor first, payload second, on purpose. A turn that commits its
-		// `preferences-applied` fact between the two reads then lands in the
-		// payload AND replays over SSE (a harmless repeat). The other order
-		// would move the cursor past a fact the payload never saw.
-		const nextEventId = await this.eventLog.getNextEventId(threadId);
-		const appliedPreferences = await this.eventLog.getLastAppliedPreferences(threadId);
-		return {
-			...result,
-			nextEventId,
-			...(appliedPreferences ? { appliedPreferences } : {}),
-		};
 	}
 
 	@Get('/threads/:threadId/status')
@@ -1623,13 +1087,4 @@ export class InstanceAiController {
 		return user;
 	}
 
-	private writeSseEvent(res: FlushableResponse, stored: StoredEvent): void {
-		// No `event:` field — events are discriminated by data.type per streaming-protocol.md.
-		// Ephemeral events (deltas/status) carry no `id:` line, so the browser's
-		// Last-Event-ID only ever advances on durable facts — same precedent as
-		// the run-sync control frames above.
-		const idLine = stored.id !== undefined ? `id: ${stored.id}\n` : '';
-		res.write(`${idLine}data: ${JSON.stringify(stored.event)}\n\n`);
-		res.flush?.();
-	}
 }

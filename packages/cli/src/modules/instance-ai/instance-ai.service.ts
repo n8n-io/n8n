@@ -18,8 +18,6 @@ import {
 	formatAttachmentSizeLimit,
 	TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE,
 	type InstanceAiAttachment,
-	type ComputerUseChannel,
-	type InstanceAiBuildMode,
 	type InstanceAiHandoffContext,
 	type InstanceAiAgentAttachment,
 	type InstanceAiFileAttachment,
@@ -27,10 +25,7 @@ import {
 	type InstanceAiResourceAttachment,
 	type InstanceAiWorkflowAttachment,
 	type AiPreferencesAppliedPayload,
-	type InstanceAiConfirmRequest,
 	type InstanceAiCredits,
-	type InstanceAiConfirmResponse,
-	type InstanceAiEvent,
 	type InstanceAiThreadStatusResponse,
 	type InstanceContextReach,
 	INSTANCE_CONTEXT_SURFACE_DEPTH,
@@ -121,7 +116,6 @@ import {
 	AgentChunkPublisher,
 	type SuspensionInfo,
 } from '@n8n/instance-ai';
-import { buildResumeData, toConfirmationData } from '@n8n/instance-ai/confirmation-payload';
 import type { Scope } from '@n8n/permissions';
 import { redactTelemetryProperties, redactTelemetryText, TELEMETRY_EVENT } from '@n8n/telemetry';
 import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
@@ -133,7 +127,7 @@ import { OperationalError, UnexpectedError, UserError } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 
 import { N8N_VERSION, WORKFLOW_SDK_VERSION } from '@/constants';
-import { BadRequestError, ForbiddenError } from '@n8n/errors';
+import { ForbiddenError } from '@n8n/errors';
 import { InstanceAiBuilderDelegateAdapterService } from '@/modules/agents/instance-ai-builder-delegate.adapter';
 import { InstanceAiAgentContextAdapterService } from '@/modules/agents/instance-ai-agent-context.adapter';
 import { modelStreamStallOptions } from '@/modules/agents/model-stream-stall-options';
@@ -163,8 +157,7 @@ import { InstanceAiBrowserSessionService } from './browser/instance-ai-browser-s
 import { enabledToolCategories, resolveComputerUseState } from './computer-use-availability';
 import { dropRejectedAttachmentsFromHistory } from './drop-rejected-attachments';
 import { EvalThreadCredentialAllowlistService } from './eval/thread-credential-allowlist.service';
-import { DurableEventLog } from './event-bus/durable-event-log';
-import { InProcessEventBus } from './event-bus/in-process-event-bus';
+import { AssistantEventSink } from './event-bus/assistant-event-sink';
 import { InstanceAiConversationHistoryService } from './instance-ai-conversation-history.service';
 import { maskCreditsForDisplay } from './instance-ai-credit-display';
 import { InstanceAiCreditService } from './instance-ai-credit.service';
@@ -177,7 +170,6 @@ import { InstanceAiMemoryService } from './instance-ai-memory.service';
 import { InstanceAiModelService } from './instance-ai-model.service';
 import { InstanceAiSettingsService } from './instance-ai-settings.service';
 import { InstanceAiTemporaryWorkflowService } from './instance-ai-temporary-workflow.service';
-import { InstanceAiTerminalOutcomeService } from './instance-ai-terminal-outcome.service';
 import { InstanceAiAdapterService } from './instance-ai.adapter.service';
 import {
 	AUTO_FOLLOW_UP_MESSAGE,
@@ -214,7 +206,6 @@ import {
 	type PlannedWorkflowVerificationGate,
 	type PlannedWorkflowVerificationTracker,
 } from './planned-task-action-runner';
-import { InstanceAiEventLogRepository } from './repositories/instance-ai-event-log.repository';
 import {
 	ASSISTANT_AGENT_ID,
 	ASSISTANT_TURN_DEFAULTS_KEY,
@@ -371,10 +362,6 @@ const GENERIC_ERROR_USER_MESSAGE =
 	'Something went wrong before I could finish that response. Please try again.';
 
 /** Structured error code for the UI when a run failed because credits ran out. */
-function getUserFacingErrorCode(error: unknown): 'quota_exhausted' | undefined {
-	return isQuotaExhaustedError(error) ? 'quota_exhausted' : undefined;
-}
-
 /** `fallback` lets a caller name what specifically failed when the error itself
  *  carries no user-facing meaning. */
 export function getUserFacingErrorMessage(
@@ -661,7 +648,6 @@ export class InstanceAiService {
 	 */
 	private readonly failedInternalFollowUpStreaks = new Map<string, number>();
 
-	private readonly terminalOutcome: InstanceAiTerminalOutcomeService;
 
 	/** Default IANA timezone for the instance (from GENERIC_TIMEZONE env var). */
 	private readonly defaultTimeZone: string;
@@ -676,8 +662,7 @@ export class InstanceAiService {
 		logger: Logger,
 		globalConfig: GlobalConfig,
 		private readonly adapterService: InstanceAiAdapterService,
-		private readonly eventBus: InProcessEventBus,
-		private readonly eventLog: DurableEventLog,
+		private readonly eventBus: AssistantEventSink,
 		private readonly settingsService: InstanceAiSettingsService,
 		private readonly gatewayService: InstanceAiGatewayService,
 		private readonly browserSessionService: InstanceAiBrowserSessionService,
@@ -685,7 +670,6 @@ export class InstanceAiService {
 		private readonly aiService: AiService,
 		private readonly threadGrantRepo: AgentThreadGrantRepository,
 		private readonly urlService: UrlService,
-		private readonly eventLogRepository: InstanceAiEventLogRepository,
 		private readonly dbIterationLogStorage: DbIterationLogStorage,
 		private readonly instanceWriteAccess: InstanceWriteAccessService,
 		private readonly telemetry: Telemetry,
@@ -721,12 +705,9 @@ export class InstanceAiService {
 		this.aiConfig = globalConfig.ai;
 		this.tracing = new InstanceAiTracingService({
 			logger: this.logger,
-			// `first_visible_state` has to see the run's streamed text, which lives
-			// in the log as coalesced blocks — the bus retains nothing.
-			eventReader: {
-				getEventsForRun: async (threadId, runId) => await this.readRunEvents(threadId, [runId]),
-			},
-			eventLog: this.eventLogRepository,
+			// Turn events stream through the Agents runtime; there is no event log to read.
+			eventReader: { getEventsForRun: async () => [] },
+			eventLog: { findLangsmithAnchor: async () => undefined },
 			aiService: this.aiService,
 		});
 		this.sandboxService = new InstanceAiSandboxService({
@@ -741,20 +722,6 @@ export class InstanceAiService {
 				const { tracingProxyConfig } = await this.createProxyRunConfig({ id: ownerId });
 				return { userId: ownerId, proxyConfig: tracingProxyConfig };
 			},
-		});
-		this.terminalOutcome = new InstanceAiTerminalOutcomeService({
-			// The terminal guard and outcome-replay dedup must see the run's events
-			// after a restart too, which only the durable log can provide (the bus
-			// cache is empty in a fresh process).
-			eventBus: {
-				publish: (threadId, event) => this.eventBus.publish(threadId, event),
-				getEventsForRun: async (threadId, runId) => await this.readRunEvents(threadId, [runId]),
-				getEventsForRuns: async (threadId, runIds) => await this.readRunEvents(threadId, runIds),
-			},
-			telemetry: this.telemetry,
-			errorReporter: this.instanceAiErrorReporter,
-			logger: this.logger,
-			runState: this.runState,
 		});
 		this.defaultTimeZone = globalConfig.generic.timezone;
 		const restEndpoint = globalConfig.endpoints.rest;
@@ -1027,10 +994,6 @@ export class InstanceAiService {
 		};
 	}
 
-	async hasActiveRun(threadId: string): Promise<boolean> {
-		return (await this.getLiveRun(threadId)).status !== 'idle';
-	}
-
 	async getThreadStatus(threadId: string): Promise<InstanceAiThreadStatusResponse> {
 		const live = await this.getLiveRun(threadId);
 		const memoryTasks = this.memoryTaskRegistry.getTasks(threadId);
@@ -1140,65 +1103,11 @@ export class InstanceAiService {
 		await this.tracing.submitLangsmithFeedback(user, threadId, responseId, payload);
 	}
 
-	/** Queue a user message. The Agents runtime runs it, or steers it into the running turn. */
-	async startRun(
-		user: User,
-		threadId: string,
-		message: string,
-		attachments?: InstanceAiAttachment[],
-		context?: InstanceAiHandoffContext,
-		timeZone?: string,
-		pushRef?: string,
-		mode?: InstanceAiBuildMode,
-		promptVersion?: string,
-		computerUseChannels?: ComputerUseChannel[],
-		threadArtifacts?: InstanceAiThreadArtifactsContext,
-		observerThresholdTokens?: number,
-	): Promise<string> {
-		if (
-			promptVersion !== undefined &&
-			resolvePromptProfile({ version: promptVersion }).fallbackFrom
-		) {
-			throw new BadRequestError(`Unknown Instance AI prompt version "${promptVersion}"`);
-		}
-		const { runId } = await this.enqueueAssistantTurn(user, threadId, message, {
-			runId: `run_${nanoid()}`,
-			messageGroupId: `mg_${nanoid()}`,
-			timeZone,
-			pushRef,
-			buildMode: mode,
-			promptVersion,
-			computerUseChannels,
-			observerThresholdTokens,
-			attachments,
-			handoffContext: context,
-			threadArtifacts,
-		});
-		return runId;
-	}
-
 	/** Clean up planned work that a stopped thread leaves behind. */
 	cancelRun(threadId: string, _reason = 'user_cancelled'): void {
 		// The user stopped before approving. A persisted awaiting-approval plan
 		// would republish its stale checklist on every scheduler pass.
 		void this.cancelAwaitingApprovalPlan(threadId);
-	}
-
-	/** Stop the running turn, or cancel the suspended one. Works from any main. */
-	async routeCancelRun(user: User, threadId: string): Promise<void> {
-		const thread = await this.systemAgents.getThread(ASSISTANT_AGENT_ID, user, threadId);
-		const status = await this.systemAgents.getStatus(thread);
-		this.cancelRun(threadId);
-		await this.systemAgents.cancel(ASSISTANT_AGENT_ID, user, threadId);
-		if (status.status === 'suspended') {
-			// A suspended turn has no stream left to report its end.
-			const options = readAssistantTurnOptions(
-				status.checkpoint?.persistence?.hostMetadata?.[ASSISTANT_TURN_METADATA_KEY],
-			);
-			if (options.runId) {
-				this.publishRunFinish(threadId, options.runId, 'cancelled', 'user_cancelled', [], user.id);
-			}
-		}
 	}
 
 	/** Thread deletion clears this main's in-memory state only. */
@@ -1249,7 +1158,6 @@ export class InstanceAiService {
 		await this.deleteAgentBuilderSessions(threadId);
 		await this.sandboxService.destroySandbox(threadId, 'thread_cleanup', userId);
 		await this.temporaryWorkflowService.reapForThreadCleanup(threadId);
-		this.eventBus.clearThread(threadId);
 	}
 
 	/** Builder sub-agent sessions (`ia-builder:<threadId>:*`) live in the agents
@@ -1293,9 +1201,7 @@ export class InstanceAiService {
 
 		// Flush in-flight drains + open coalesce buffers so the tail of every
 		// streamed segment survives the restart.
-		await this.eventLog.flushAll();
 
-		this.eventBus.clear();
 		await this._mcpClientManager?.disconnect();
 
 		// Final drain of every trace's LangSmith provider so spans still sitting
@@ -1731,7 +1637,7 @@ export class InstanceAiService {
 				threadId,
 				runId,
 				agentId: orchestratorAgentId(runId),
-				initialSnapshots: await this.eventLog.getSetupItemsSnapshots(threadId).catch((error) => {
+				initialSnapshots: await this.eventBus.readSetupItems(threadId).catch((error) => {
 					this.logger.warn('Failed to read setup panel snapshots', {
 						threadId,
 						error: getErrorMessage(error),
@@ -1739,7 +1645,7 @@ export class InstanceAiService {
 					return [];
 				}),
 				readPersistedSnapshot: async (workflowId) => {
-					const snapshots = await this.eventLog.getSetupItemsSnapshots(threadId);
+					const snapshots = await this.eventBus.readSetupItems(threadId);
 					return snapshots.find((snapshot) => snapshot.workflowId === workflowId)?.items;
 				},
 			});
@@ -3571,16 +3477,8 @@ export class InstanceAiService {
 						'suspended',
 					);
 				}
-				const waitingDecision = await this.terminalOutcome.evaluateWaitingResponse(
-					threadId,
-					runId,
-					result.confirmationEvent,
-					{ messageGroupId, correlationId: messageId },
-				);
-				if (waitingDecision?.reason !== 'confirmation-invalid') {
-					const confirmation = publisher.flushConfirmation();
-					if (confirmation) this.trackConfirmationRequest(user.id, threadId, confirmation);
-				}
+				const confirmation = publisher.flushConfirmation();
+				if (confirmation) this.trackConfirmationRequest(user.id, threadId, confirmation);
 				const suspensionOutputs = buildSuspensionTraceOutputs(runId, result.suspension);
 				await this.tracing.finalizeRunTracing(runId, tracing, {
 					status: 'suspended',
@@ -3631,20 +3529,6 @@ export class InstanceAiService {
 				status === 'errored'
 					? getUserFacingErrorMessage(terminalError, undefined, { attachmentRemoved })
 					: undefined;
-			const userFacingErrorCode =
-				status === 'errored' ? getUserFacingErrorCode(terminalError) : undefined;
-			if (!result.stopped) {
-				await this.terminalOutcome.evaluateTerminalResponse(threadId, runId, status, {
-					messageGroupId,
-					correlationId: messageId,
-					workSummary: result.workSummary,
-					errorMessage: userFacingErrorMessage,
-					errorCode: userFacingErrorCode,
-					suppressCompletedFallback:
-						params.checkpoint?.isCheckpointFollowUp === true ||
-						params.plannedBuild?.isPlannedBuildFollowUp === true,
-				});
-			}
 			const finalStatus = status === 'errored' ? 'error' : status;
 			await this.tracing.finalizeRunTracing(runId, tracing, {
 				status: finalStatus,
@@ -3830,42 +3714,6 @@ export class InstanceAiService {
 
 		if (!reschedule) return;
 		await this.schedulePlannedTasks(user, threadId);
-	}
-
-	/** Answer a HITL card. The Agents runtime resumes the suspended turn from its checkpoint. */
-	async resolveConfirmation(
-		requestingUserId: string,
-		requestId: string,
-		request: InstanceAiConfirmRequest,
-		threadId?: string,
-	): Promise<InstanceAiConfirmResponse | null> {
-		const user = await this.revalidateActiveUser(requestingUserId);
-		if (!user || !threadId) return null;
-		const data = toConfirmationData(request);
-		const status = await this.systemAgents.getStatus(
-			await this.systemAgents.getThread(ASSISTANT_AGENT_ID, user, threadId),
-		);
-		const pending = Object.values(status.checkpoint?.pendingToolCalls ?? {}).find(
-			(toolCall) =>
-				toolCall.suspended &&
-				isRecord(toolCall.suspendPayload) &&
-				toolCall.suspendPayload.requestId === requestId,
-		);
-		if (!pending) {
-			this.logger.debug('Confirmation target not found', { requestId, threadId });
-			return null;
-		}
-		const options = readAssistantTurnOptions(
-			status.checkpoint?.persistence?.hostMetadata?.[ASSISTANT_TURN_METADATA_KEY],
-		);
-		await this.systemAgents.resume({
-			agentId: ASSISTANT_AGENT_ID,
-			user,
-			threadId,
-			toolCallId: pending.toolCallId,
-			resumeData: buildResumeData(data),
-		});
-		return { ok: true, ...(options.runId ? { runId: options.runId } : {}) };
 	}
 
 	private async buildMcpServers(
@@ -4096,18 +3944,12 @@ export class InstanceAiService {
 			asStoredThreadContextSection(freshBlock) === lastBlock
 		) {
 			// A lookup failure only costs the run attribution, never the skip itself.
-			const carriedFromRunId = await this.bestEffort(
-				'Instance AI failed to resolve which run sent the AI preferences block',
-				{ threadId },
-				async () => await this.eventLog.getLastPreferencesInjectionRunId(threadId),
-			);
 			return {
 				block: undefined,
 				payload: buildAppliedPreferencesPayload({
 					preferences,
 					renderedLength: freshBlock.length,
 					injectedThisTurn: false,
-					...(carriedFromRunId ? { carriedFromRunId } : {}),
 				}),
 			};
 		}
@@ -4763,18 +4605,6 @@ export class InstanceAiService {
 			return content.flatMap((part) => (isTextMessagePart(part) ? [part.text] : [])).join('\n');
 		}
 		return '';
-	}
-
-	/**
-	 * Read-own-writes barrier for run-scoped reads: settle the thread's drain
-	 * (including open coalesce buffers) so everything published before this call
-	 * is visible, then read the log. Every caller is a run boundary —
-	 * terminal-guard inputs, trace metadata, snapshot builds — where closing the
-	 * open segment early is correct anyway.
-	 */
-	private async readRunEvents(threadId: string, runIds: string[]): Promise<InstanceAiEvent[]> {
-		await this.eventLog.flush(threadId);
-		return await this.eventLog.getEventsForRuns(threadId, runIds);
 	}
 
 	private parseMcpServers(raw: string): McpServerConfig[] {

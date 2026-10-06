@@ -23,7 +23,6 @@ import {
 	buildInstanceAiRunTraceMetadata,
 	type InstanceAiRunTraceMetadataOptions,
 } from '../run-trace-metadata';
-import type { InstanceAiEventLogRepository } from '../repositories/instance-ai-event-log.repository';
 import { TraceReplayState } from '../trace-replay-state';
 
 // Stable UUID namespace for deterministic feedback IDs. Submitting the same
@@ -61,7 +60,12 @@ export type InstanceAiTracingEventReader = {
 	getEventsForRun: (threadId: string, runId: string) => Promise<InstanceAiEvent[]>;
 };
 
-export type InstanceAiTracingEventLog = Pick<InstanceAiEventLogRepository, 'findLangsmithAnchor'>;
+export type InstanceAiTracingEventLog = {
+	findLangsmithAnchor(
+		threadId: string,
+		responseId: string,
+	): Promise<{ langsmithRunId: string; langsmithTraceId: string } | undefined | null>;
+};
 
 export type InstanceAiTracingAiService = Pick<AiService, 'isProxyEnabled' | 'getClient'>;
 

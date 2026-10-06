@@ -21,8 +21,8 @@
  * (`ia-builder:<threadId>:<agentId>`) so nothing appears in the agents-module
  * builder UI — it is a private sub-agent conversation.
  */
-import type { InterruptibleToolContext } from '@n8n/agents';
-import { APPROVAL_SUSPEND_SCHEMA, createAbortError, Tool } from '@n8n/agents';
+import type { ForwardedChildChunk, InterruptibleToolContext } from '@n8n/agents';
+import { AgentEvent, APPROVAL_SUSPEND_SCHEMA, createAbortError, Tool } from '@n8n/agents';
 import {
 	BUILDER_CHECKPOINT_UNAVAILABLE_CODE,
 	BUILDER_NOT_CONFIGURED_CODE,
@@ -492,6 +492,37 @@ function targetIdentity(target: AgentBuilderTarget): {
 	};
 }
 
+/** Chunk types the parent chat renders as live sub-agent progress. */
+const FORWARDED_BUILDER_CHUNK_TYPES = new Set([
+	'text-delta',
+	'reasoning-start',
+	'reasoning-delta',
+	'reasoning-end',
+	'tool-input-start',
+	'tool-execution-start',
+	'tool-execution-end',
+]);
+
+/**
+ * Forward the builder's progress as SDK sub-agent chunks. The Agents runtime
+ * streams them to the chat as `subagent-chunk` events under this tool call.
+ */
+function createBuilderProgressForwarder(ctx: BuildAgentToolContext) {
+	return (chunk: unknown) => {
+		if (!ctx.emitEvent || !ctx.toolCallId) return;
+		if (!isRecord(chunk) || typeof chunk.type !== 'string') return;
+		if (!FORWARDED_BUILDER_CHUNK_TYPES.has(chunk.type)) return;
+		ctx.emitEvent({
+			type: AgentEvent.SubAgentChunk,
+			taskName: BUILDER_SUB_AGENT_ROLE,
+			taskPath: BUILDER_SUB_AGENT_ROLE,
+			parentToolCallId: ctx.toolCallId,
+			// The type set above matches ForwardedChildChunk.
+			chunk: chunk as unknown as ForwardedChildChunk,
+		});
+	};
+}
+
 /**
  * Consume a builder turn stream to completion or suspension, and either
  * finish the tool call or cascade the suspension through `ctx.suspend()`.
@@ -566,6 +597,7 @@ async function runBuilderConsumeLoop(params: {
 					logger: context.logger,
 					threadId: context.threadId,
 					abortSignal: context.abortSignal,
+					onChunk: createBuilderProgressForwarder(params.ctx),
 				}),
 		);
 	} catch (error) {
