@@ -261,7 +261,9 @@ export function getProjects(): Project[] {
 		projects.push({
 			name: 'coverage',
 			testDir: './tests/e2e',
-			timeout: 60000,
+			// V8 collection adds per-test overhead (page load and fixture teardown), so
+			// UI tests that take ~30s elsewhere can take ~60s here.
+			timeout: 90_000,
 			fullyParallel: true,
 			use: {
 				containerConfig: {},
