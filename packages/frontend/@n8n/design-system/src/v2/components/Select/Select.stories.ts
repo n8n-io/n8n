@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import type { Meta, StoryObj } from '@storybook/vue3-vite';
+import { ElDialog } from 'element-plus';
 import { action } from 'storybook/actions';
 import { defineComponent, ref, computed } from 'vue';
 
@@ -1070,5 +1071,105 @@ export const FormExample: Story = {
 	render: () => ({
 		components: { FormExampleDemo },
 		template: '<FormExampleDemo />',
+	}),
+};
+
+const expirationItems: SelectItem[] = [
+	{ label: '7 days', value: 7 },
+	{ label: '30 days', value: 30 },
+	{ label: '60 days', value: 60 },
+	{ label: '90 days', value: 90 },
+	{ label: 'Custom', value: 1 },
+	{ label: 'No expiration', value: 0 },
+];
+
+const ApiKeyModalDemo = defineComponent({
+	name: 'ApiKeyModalDemo',
+	components: {
+		Select,
+		ElDialog,
+		N8nDialog,
+		N8nDialogFooter,
+		N8nDialogClose,
+		N8nButton,
+		N8nInput,
+		N8nInputLabel,
+	},
+	setup() {
+		const elementOpen = ref(false);
+		const elementLabel = ref('');
+		const elementExpiration = ref(30);
+		const n8nOpen = ref(false);
+		const n8nLabel = ref('');
+		const n8nExpiration = ref(30);
+
+		return {
+			elementOpen,
+			elementLabel,
+			elementExpiration,
+			n8nOpen,
+			n8nLabel,
+			n8nExpiration,
+			expirationItems,
+		};
+	},
+	template: `
+		<div style="padding: var(--spacing--xl); display: flex; gap: var(--spacing--sm);">
+			<N8nButton label="Element Plus dialog" @click="elementOpen = true" />
+			<ElDialog
+				v-model="elementOpen"
+				title="Create API key"
+				width="600px"
+				:z-index="2000"
+				:lock-scroll="false"
+				:close-on-click-modal="false"
+				:close-on-press-escape="true"
+				:show-close="true"
+			>
+				<div style="display: flex; flex-direction: column; gap: var(--spacing--md);">
+					<N8nInputLabel label="Label" color="text-dark">
+						<N8nInput v-model="elementLabel" size="large" placeholder="e.g. production" />
+					</N8nInputLabel>
+					<N8nInputLabel label="Expiration" color="text-dark">
+						<Select v-model="elementExpiration" :items="expirationItems" size="large" />
+					</N8nInputLabel>
+				</div>
+				<template #footer>
+					<N8nButton label="Save" @click="elementOpen = false" />
+				</template>
+			</ElDialog>
+			<N8nButton label="N8n dialog" @click="n8nOpen = true" />
+			<N8nDialog v-model:open="n8nOpen" header="Create API key" size="medium">
+				<div style="display: flex; flex-direction: column; gap: var(--spacing--md);">
+					<N8nInputLabel label="Label" color="text-dark">
+						<N8nInput v-model="n8nLabel" size="large" placeholder="e.g. production" />
+					</N8nInputLabel>
+					<N8nInputLabel label="Expiration" color="text-dark">
+						<Select v-model="n8nExpiration" :items="expirationItems" size="large" />
+					</N8nInputLabel>
+				</div>
+				<N8nDialogFooter>
+					<N8nDialogClose as-child>
+						<N8nButton label="Save" />
+					</N8nDialogClose>
+				</N8nDialogFooter>
+			</N8nDialog>
+		</div>
+	`,
+});
+
+export const ApiKeyModal: Story = {
+	name: 'API key modal',
+	parameters: {
+		docs: {
+			description: {
+				story:
+					'The same API key form in Element Plus `ElDialog` and in `N8nDialog`. Each select uses its default portaled menu.',
+			},
+		},
+	},
+	render: () => ({
+		components: { ApiKeyModalDemo },
+		template: '<ApiKeyModalDemo />',
 	}),
 };
