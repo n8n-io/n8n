@@ -1,0 +1,30 @@
+packages/@n8n/instance-ai/src/prompts/prompt-profiles.ts
+  s_19fd6642294ae3::t_a7e5dfe2c17e2c 6
+packages/@n8n/config/src/configs/instance-ai.config.ts
+  s_19fd6642294ae3::t_b3db02e5a04286 208-212
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.service.prompt-version.test.ts
+  s_19fd6642294ae3::t_260a3b7fd8686a 22
+packages/@n8n/instance-ai/src/agent/communication-style.prompt.ts
+  s_19fd6642294ae3::t_b7ff784ec8a915 24-97
+packages/@n8n/instance-ai/src/prompts/__tests__/prompt-profiles.test.ts
+  s_19fd6642294ae3::t_969ad31854e5a8 83-101
+packages/@n8n/instance-ai/docs/prompt-profiles.md
+  s_19fd6642294ae3::t_31f0f0c29e3d99 12-21
+  s_19fd6642294ae3::t_501956699a2d87 39-44
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "113ca118f832a6616001c2c316098a861aca2348",
+  "prompts": {},
+  "sessions": {
+    "s_19fd6642294ae3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f4631dfd-075c-445c-80e8-97d30beb6751",
+        "model": "claude-opus-5"
+      },
+      "human_author": null
+    }
+  }
+}

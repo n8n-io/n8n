@@ -1,0 +1,48 @@
+packages/cli/src/modules/agents/integrations/chat-integration.service.ts
+  s_c6e8ad20979443::t_e1798c87f8f47e 4
+  s_c6e8ad20979443::t_19a5bff048e27d 5
+  s_c6e8ad20979443::t_6ee7c0a4c520ae 12
+  s_c6e8ad20979443::t_6020afe2232b70 108-114
+  s_c6e8ad20979443::t_a7c822153be179 151
+  s_c6e8ad20979443::t_de89cf60d5de00 152-153
+  s_c6e8ad20979443::t_befe1caa4594d1 303-305
+  s_c6e8ad20979443::t_7ec38373698e80 306-309
+  s_c6e8ad20979443::t_82c3950350df19 310,314-315
+  s_c6e8ad20979443::t_85598adc9ca325 311-313,495
+  s_c6e8ad20979443::t_364dc83fec9b17 476-480,485,489,491
+  s_c6e8ad20979443::t_ef18a02f487b64 481-483
+  s_c6e8ad20979443::t_e90a3267f12d74 487-488,490,492-494,499,503-504
+  s_c6e8ad20979443::t_3bae23b62e5736 496-498,500-502,505-509
+  s_c6e8ad20979443::t_7288421272b157 655-656
+  s_c6e8ad20979443::t_6681491d17a383 658-661
+  s_c6e8ad20979443::t_2c181bc8efc007 681-688
+  s_c6e8ad20979443::t_97b65275acdaa1 936-938,940-942,951
+packages/cli/src/modules/agents/integrations/__tests__/chat-integration.service.test.ts
+  s_c6e8ad20979443::t_e1c5e0d87fd857 6
+  s_c6e8ad20979443::t_4bde5f8d89db14 12
+  s_c6e8ad20979443::t_35cfb8e576d260 38-44
+  s_c6e8ad20979443::t_cdaa4eaef682d4 516,518-529,539-549,555-556
+  s_c6e8ad20979443::t_78c5aef46804a2 517
+  s_c6e8ad20979443::t_0f1c25bf6a2ae5 530-538
+  s_c6e8ad20979443::t_c817dd0ffff3d8 550-554,557-562,570,579
+  s_c6e8ad20979443::t_d6d72dbe6b0ab4 563-567,569,571-572,580-590,594,599-602,607,615
+  s_c6e8ad20979443::t_c62a5430cd3720 568,573-578,591-593,595-598,603-606,608-614,616-632
+  s_c6e8ad20979443::t_960bdf47e41730 856-954
+  s_c6e8ad20979443::t_0821e38211aa11 1468-1478
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d2b7b7633da3bdf743b0c3533437333ed834f328",
+  "prompts": {},
+  "sessions": {
+    "s_c6e8ad20979443": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "40d5cce1-49fe-49a2-8778-c2ef1961ddfe",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

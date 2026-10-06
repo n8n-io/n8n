@@ -1,0 +1,16 @@
+packages/cli/src/modules/inbound-auth-core/trusted-source.store.ts
+  h_435b1d7d3e52c0 27
+packages/cli/test/integration/inbound-auth-core/trusted-source.store.integration.test.ts
+  h_435b1d7d3e52c0 16
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d17059c2f2e429b2145baa340d20b8362fdd3d95",
+  "prompts": {},
+  "humans": {
+    "h_435b1d7d3e52c0": {
+      "author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

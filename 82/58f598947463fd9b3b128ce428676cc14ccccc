@@ -1,0 +1,38 @@
+packages/cli/src/modules/n8n-packages/n8n-packages.types.ts
+  s_334dc4cc4d71aa::t_0522d8092b0b63 278-283,288
+packages/cli/src/modules/n8n-packages/entities/workflow/__tests__/workflow-remover.test.ts
+  s_334dc4cc4d71aa::t_b00cd4c3b70bbd 218-297
+packages/cli/src/modules/n8n-packages/__tests__/import-package-selection.integration.test.ts
+  s_334dc4cc4d71aa::t_f2037d3db6fb7e 400-484,486-542
+  s_334dc4cc4d71aa::t_7015d75c57d3fa 485
+  s_334dc4cc4d71aa::t_1117b217139238 5,19-21
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow-removal.types.ts
+  s_334dc4cc4d71aa::t_06d1c50b952642 24-29
+packages/cli/src/modules/n8n-packages/engine/project-package-importer.ts
+  s_334dc4cc4d71aa::t_4071cc06267663 361-366,369-379
+  s_334dc4cc4d71aa::t_02df11e9c44161 22
+  s_334dc4cc4d71aa::t_87d99afb724bbc 329-330
+  s_334dc4cc4d71aa::t_b10eaece566b0a 380
+packages/cli/src/modules/n8n-packages/engine/import-orchestrator.ts
+  s_334dc4cc4d71aa::t_9f09a92cff909c 237
+  s_334dc4cc4d71aa::t_5148100655b639 87-88
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow-remover.ts
+  s_334dc4cc4d71aa::t_7fba4f734ea3a3 40-45
+  s_334dc4cc4d71aa::t_8a951a90b211d8 87-135
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8258f598947463fd9b3b128ce428676cc14ccccc",
+  "prompts": {},
+  "sessions": {
+    "s_334dc4cc4d71aa": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "51a685f4-1fc8-458c-b883-03f840755ed3",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

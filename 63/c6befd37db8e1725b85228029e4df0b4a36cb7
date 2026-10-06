@@ -1,0 +1,30 @@
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/ApplyInstanceDialog.vue
+  h_9b272a633435fb 56
+  s_dcbd6018e07b46::t_c0c7ab3e4a0d0e 47-55,57,60-65
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_dcbd6018e07b46::t_a4761977f1ab7b 3871
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/ApplyInstanceDialog.test.ts
+  s_dcbd6018e07b46::t_c708b7a59c450d 36-46,61-77
+  s_dcbd6018e07b46::t_b0da923e74a719 78-80
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "63c6befd37db8e1725b85228029e4df0b4a36cb7",
+  "prompts": {},
+  "humans": {
+    "h_9b272a633435fb": {
+      "author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_dcbd6018e07b46": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "acd512bf-bff6-44cd-aadb-b21b389b1d38",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

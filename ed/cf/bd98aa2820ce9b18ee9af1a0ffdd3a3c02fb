@@ -1,0 +1,67 @@
+packages/cli/src/modules/agents/agent-execution.service.ts
+  s_c5954c3047b5ed::t_90f5af44dcebb3 284,286-287,289
+packages/cli/src/modules/agents/repositories/agent-execution.repository.ts
+  s_c5954c3047b5ed::t_b578947bd2aac5 92-98
+packages/@n8n/agents/src/runtime/loop/hydrate-file-parts.ts
+  s_c5954c3047b5ed::t_a0aeb8a29ca8db 6,35,37,44,48-50,52,54-57,59
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentChatStream.test.ts
+  s_c5954c3047b5ed::t_d18c46a0e6d56e 3445-3467
+packages/frontend/editor-ui/src/features/agents/composables/useAgentChatStream.ts
+  s_c5954c3047b5ed::t_b578947bd2aac5 376-379
+packages/cli/src/modules/agents/builder/format-preview-context.ts
+  s_c5954c3047b5ed::t_b578947bd2aac5 39-44
+packages/@n8n/agents/src/runtime/loop/agent-runtime.ts
+  s_c5954c3047b5ed::t_a0aeb8a29ca8db 111,769,806-808,814-817,819-824,826-827,831,887,890,922,953,961-962,965
+  s_c5954c3047b5ed::t_b578947bd2aac5 768
+  s_c5954c3047b5ed::t_4a8b1847705107 828-830
+packages/@n8n/agents/src/runtime/model/message-list.ts
+  s_c5954c3047b5ed::t_a0aeb8a29ca8db 429-435
+packages/cli/src/modules/agents/__tests__/agent-execution.service.test.ts
+  s_c5954c3047b5ed::t_d0ef7a1ec72899 313-336,338-368,370-376
+packages/@n8n/agents/src/runtime/__tests__/memory-orchestrator-persist-input.test.ts
+  s_c5954c3047b5ed::t_a0aeb8a29ca8db 49,60,63-64,68-69,74-75,77-78,81-82
+  s_c5954c3047b5ed::t_67c1723bb8d0a5 61-62
+packages/cli/test/migration/1790259878851-add-agent-message-steering.test.ts
+  s_c5954c3047b5ed::t_d18c46a0e6d56e 19,47-50,90-91,99-100,105-106
+packages/@n8n/agents/src/runtime/__tests__/file-parts.test.ts
+  s_c5954c3047b5ed::t_4a8b1847705107 114-120,122,124-128
+  s_c5954c3047b5ed::t_6e7539a0e1fb9e 99,105,108,121,123
+  s_c5954c3047b5ed::t_7c6a3caeb7e292 129
+packages/@n8n/agents/src/runtime/memory/memory-orchestrator.ts
+  s_c5954c3047b5ed::t_a0aeb8a29ca8db 291,294
+packages/@n8n/agents/src/runtime/__tests__/agent-runtime.test.ts
+  s_c5954c3047b5ed::t_67c1723bb8d0a5 19,414,869,894
+  s_c5954c3047b5ed::t_d18c46a0e6d56e 901,903-934,936-937
+  s_c5954c3047b5ed::t_624c4ce4207a2a 935
+  s_c5954c3047b5ed::t_4a8b1847705107 649-709,741-745,884-885
+  s_c5954c3047b5ed::t_408e6883cf5555 417,420,613-615,644-648,711-716,727-736,739,748-750,754-756,864-868,870-883,886-893,895-900
+  s_c5954c3047b5ed::t_8bffa827fae7cd 902
+packages/@n8n/db/src/migrations/common/1790259878851-AddAgentMessageSteering.ts
+  s_c5954c3047b5ed::t_b578947bd2aac5 4,6-10,12-16,43-47,53-55
+packages/cli/src/modules/agents/builder/__tests__/format-preview-context.test.ts
+  s_c5954c3047b5ed::t_d18c46a0e6d56e 79-90,110
+docs/generated/sqlite-schema/README.md
+  s_c5954c3047b5ed::t_6393e47a882dda 510
+docs/generated/sqlite-schema/agent_execution.md
+  s_c5954c3047b5ed::t_57b253be3d7bc4 9,18,46-48,71
+docs/generated/sqlite-schema/agent_execution_threads.md
+  s_c5954c3047b5ed::t_4aae643abdc4a0 110
+docs/generated/sqlite-schema/agent_message_queue.md
+  s_c5954c3047b5ed::t_e14d4edb2135c9 67
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "edcfbd98aa2820ce9b18ee9af1a0ffdd3a3c02fb",
+  "prompts": {},
+  "sessions": {
+    "s_c5954c3047b5ed": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0cf61-9581-7951-a01f-21637c8a6267",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,28 @@
+packages/@n8n/api-types/src/schemas/breaking-changes.schema.ts
+  s_33a4aa42b0ff04::t_80416834c11bd6 111-113
+packages/frontend/editor-ui/src/features/settings/migrationReport/MigrationRules.test.ts
+  s_33a4aa42b0ff04::t_2cfbfdbce433f9 67,85,393,458-484,486,488,490-498,528-542,633
+packages/cli/src/modules/breaking-changes/__tests__/breaking-changes.controller.test.ts
+  s_33a4aa42b0ff04::t_a6788393a5da2a 1-39,41-88
+  s_33a4aa42b0ff04::t_a6c7cea2336bee 40
+packages/cli/src/modules/breaking-changes/breaking-changes.controller.ts
+  s_33a4aa42b0ff04::t_80416834c11bd6 25-29,31-39,53-54,64-65
+packages/frontend/editor-ui/src/features/settings/migrationReport/MigrationRules.vue
+  s_33a4aa42b0ff04::t_80416834c11bd6 105,111-112
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "75c5683b745fc8134449b195a362441ac991c6c3",
+  "prompts": {},
+  "sessions": {
+    "s_33a4aa42b0ff04": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5c6d1051-3d72-4122-9490-499c85622a1a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

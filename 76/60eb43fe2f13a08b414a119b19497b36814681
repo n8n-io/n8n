@@ -1,0 +1,31 @@
+packages/frontend/editor-ui/src/features/agents/components/AgentConfirmationModal.vue
+  s_e980f852ea73c9::t_9292f45a550acb 71
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_e980f852ea73c9::t_ef7a74d1c5ad0a 2675
+packages/frontend/editor-ui/src/features/agents/components/AgentVectorStoresModal.vue
+  s_e980f852ea73c9::t_ef7a74d1c5ad0a 472
+packages/frontend/editor-ui/src/features/execution/executions/components/workflow/WorkflowExecutionsPreview.vue
+  s_e980f852ea73c9::t_ef7a74d1c5ad0a 427,449
+packages/frontend/editor-ui/src/features/roles/instance/InstanceRoleView.vue
+  s_e980f852ea73c9::t_ef7a74d1c5ad0a 266
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialEdit.vue
+  s_e980f852ea73c9::t_ef7a74d1c5ad0a 1581,1593
+packages/frontend/@n8n/design-system/src/components/N8nMarkdownEditor/MarkdownEditor.vue
+  s_e980f852ea73c9::t_6a6fc691f8a888 427
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7660eb43fe2f13a08b414a119b19497b36814681",
+  "prompts": {},
+  "sessions": {
+    "s_e980f852ea73c9": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0d3c8-b9e9-73d3-9e99-dffd8378eb3f",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

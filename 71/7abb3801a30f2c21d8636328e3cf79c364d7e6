@@ -1,0 +1,321 @@
+packages/cli/src/modules/n8n-packages/n8n-packages.types.ts
+  s_a0365df61f0da7::t_6b8ddaf4d11f8e 259,272,277-278,280,282,285-287,290-292,293-298
+  s_334dc4cc4d71aa::t_0522d8092b0b63 274,284
+  s_d9e246703828a2::t_d5bdacb2729dd4 299-302
+  s_ceea518ec91e06::t_c6debd8b9fc8a1 556,588-591
+  s_ceea518ec91e06::t_7579c483f4814c 592-594
+  s_7d92849ff15ae6::t_a2d3991d307c42 258,273,275-276,279,281,283,288-289
+packages/cli/src/modules/n8n-packages/n8n-packages.service.ts
+  s_92d10ec3c1bd93::t_07793561738150 84-87
+  s_a0365df61f0da7::t_ad8a6bbda2bb64 89-115
+  s_a0365df61f0da7::t_dda31a6c2424ae 47-48,59-60,63
+  s_a0365df61f0da7::t_4cf883b9047d27 451,453-457,511-512,514-518,521-529,530-532,533-537
+  s_92d10ec3c1bd93::t_699607b4096452 442-450,458-464,466-469,498-500,504-505,507-510
+  s_a0365df61f0da7::t_8b8eff15a35857 452
+  s_d9e246703828a2::t_2a157c349abcb8 519-520,538-544
+  s_d9e246703828a2::t_96cf794da091ec 465-469,471-485,487-493
+  s_d9e246703828a2::t_3122f98993c29f 56
+  s_7d92849ff15ae6::t_a63f289611349a 88,470,497,513
+packages/cli/src/modules/n8n-packages/__tests__/fixtures/package-fixtures.ts
+  s_a0365df61f0da7::t_0e4893e377cf30 5,7
+  s_a0365df61f0da7::t_e3402892deb869 361,369-370,371-374,435,438,443,447,451,455,458,460-467,470,472-479
+  s_7d92849ff15ae6::t_65327fc303aa9f 471
+  s_4ab1f7a942a8c3::t_ed688d13733001 439-440,444,448,452,456
+  s_4ab1f7a942a8c3::t_6c6a5401623748 6
+  s_4ab1f7a942a8c3::t_d7c1fe06934b4d 267-269,272
+packages/cli/src/modules/n8n-packages/__tests__/import-package-selection.integration.test.ts
+  s_a0365df61f0da7::t_42974b6dbe1dc2 1-4,6-9,11-18,23-26,28,30-34,36-40,42-81,83,85-86,96,98,124,138-139,141-146,148,149-153,155-160,162-169,171-176,177-186,188-203,205-210,211-212,213-216,218-233,235-245,247-255,262-263,265-267,282-285,287-292,293-298,300-303,305-314,316-320,354-369,371-380,382-387,388-389,390,391-394,398-409,414-416,417-418,669
+  s_a0365df61f0da7::t_163bb091ad7471 27,29,35,82,84,87-95,97,99-100,104-105,106-123,125-137,140,154,161,170,187,204,217,234,246,257-261,264,286,299,304,315,370,381,395-397,410-413
+  s_a0365df61f0da7::t_2ee2ef8cbda0f9 101-103
+  s_a0365df61f0da7::t_a62b2729a6047d 256,268-281
+  s_334dc4cc4d71aa::t_f2037d3db6fb7e 419-420,535-551,552-561,562-567,568-574,575-589,590-607,609-611,613-664,665-668
+  s_334dc4cc4d71aa::t_7015d75c57d3fa 612
+  s_334dc4cc4d71aa::t_1117b217139238 5,20-22
+  s_ceea518ec91e06::t_92208ec5c950ce 10,19,421-464,468-534
+  s_ceea518ec91e06::t_7089728a3636b0 465-467
+  s_7d92849ff15ae6::t_18272446d86348 41,147,608
+  s_4ab1f7a942a8c3::t_bf0fd0b5d17336 324-356
+packages/cli/src/modules/n8n-packages/engine/project-package-importer.ts
+  s_a0365df61f0da7::t_7d5c4f08dc71b1 75,76-83
+  s_a0365df61f0da7::t_5093dd44647dd0 116
+  s_a0365df61f0da7::t_3060c91587e517 258-259,261-265
+  s_334dc4cc4d71aa::t_4071cc06267663 356,358-360,363,364-369
+  s_334dc4cc4d71aa::t_02df11e9c44161 22
+  s_334dc4cc4d71aa::t_87d99afb724bbc 325
+  s_334dc4cc4d71aa::t_b10eaece566b0a 370
+  s_7d92849ff15ae6::t_6d45cab7eac993 260,357
+packages/cli/src/modules/n8n-packages/entities/workflow/__tests__/workflow-remover.test.ts
+  s_334dc4cc4d71aa::t_b00cd4c3b70bbd 225,275-283,284-285,287-290,291,326-384
+  s_ceea518ec91e06::t_7089728a3636b0 389
+  s_ceea518ec91e06::t_aad9a7e69417e3 226-240,242-254,256-274
+  s_ceea518ec91e06::t_69baa6a0fd9854 217,444
+  s_ceea518ec91e06::t_39b8806cfe1319 23-28,241,255,286,295
+  s_ceea518ec91e06::t_efcd89879a3ec5 292-294
+  s_4ab1f7a942a8c3::t_b4c20c2aa928f4 303-332
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow-removal.types.ts
+  s_334dc4cc4d71aa::t_06d1c50b952642 25,28-29
+  s_ceea518ec91e06::t_c6debd8b9fc8a1 7,42
+  s_7d92849ff15ae6::t_e2569b5abbdcdb 12,26-27
+packages/cli/src/modules/n8n-packages/engine/import-orchestrator.ts
+  s_334dc4cc4d71aa::t_9f09a92cff909c 237
+  s_334dc4cc4d71aa::t_5148100655b639 88
+  s_ceea518ec91e06::t_c6debd8b9fc8a1 431-433
+  s_7d92849ff15ae6::t_56a48b8673781f 87
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow-remover.ts
+  s_334dc4cc4d71aa::t_7fba4f734ea3a3 42-45
+  s_334dc4cc4d71aa::t_8a951a90b211d8 88-92,110,112,114,115-118,120-134,136-139,141-144
+  s_ceea518ec91e06::t_c6debd8b9fc8a1 36,79,93-109,119,135
+  s_ceea518ec91e06::t_4de6fa15c283ab 111,113
+  s_7d92849ff15ae6::t_2765bc67148a9f 41,140
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/schemas/importResult.yml
+  s_d9e246703828a2::t_436bd76ccd4b1b 1-128,130-412
+  s_4ab1f7a942a8c3::t_453517ae6804e0 129
+packages/@n8n/api-types/src/dto/packages/import-package-request.dto.ts
+  s_d9e246703828a2::t_b70b693742efbd 121,122-123,124-135,137,138-156,159-171,173-181,182,184-187
+  s_d9e246703828a2::t_e042c41227b6a0 188
+  s_7d92849ff15ae6::t_bbdd155ba6c8e3 157-158,172
+  s_4ab1f7a942a8c3::t_dfa0d09f73bc5f 136
+  s_4ab1f7a942a8c3::t_f3e000c5ec4857 183
+packages/cli/src/public-api/v1/handlers/n8n-packages/__tests__/n8n-packages.handler.test.ts
+  s_d9e246703828a2::t_fbc0b48aa55672 35,41
+  s_d9e246703828a2::t_7b3a1ab49ee452 820-823,825-832,833-856,870-877,878-893,894-922,924-926,927-929
+  s_d9e246703828a2::t_ca74f039974024 109-123,134-137,142
+  s_d9e246703828a2::t_876355da5275aa 138-141
+  s_d9e246703828a2::t_9a04c0a18d7e74 143
+  s_ba71b7cb49bb4f::t_1d8b922dee676e 824
+  s_ba71b7cb49bb4f::t_ffedbc8520f3ac 857-869
+  s_ba71b7cb49bb4f::t_2202267438f0c5 923
+packages/cli/test/integration/public-api/n8n-packages-import-selection.test.ts
+  s_d9e246703828a2::t_8375ce82f4fcf1 1-7
+  s_d9e246703828a2::t_31ca815a167c91 25
+  s_d9e246703828a2::t_01322e6f9a6676 9-24,26-31,32-71,95-106,107-112,113,176-221,227-270
+  s_d9e246703828a2::t_88f5bbf0090e56 222-223,226
+  s_d9e246703828a2::t_bea9c5854fede0 271-272
+  s_ceea518ec91e06::t_8f492f7cde7b2a 8,72-94
+  s_7d92849ff15ae6::t_8c891dfd01f980 224-225
+  s_4ab1f7a942a8c3::t_c23facbf256719 114-119
+  s_4ab1f7a942a8c3::t_853f7a70ff1010 122-174,176-177
+  s_4ab1f7a942a8c3::t_9ff23e76b3fda5 175
+packages/cli/src/public-api/v1/handlers/n8n-packages/n8n-packages.handler.ts
+  s_d9e246703828a2::t_87dc4a2829f8d7 22-25
+  s_d9e246703828a2::t_4be1692ba9b214 60-63,67,294
+  s_d9e246703828a2::t_769daf0b3644e2 255-257,258-263,264-274,275-291,292-293
+  s_d9e246703828a2::t_d5e0444b39e0c4 1-5
+  s_d9e246703828a2::t_6d2646196f112a 295-296
+packages/cli/src/modules/n8n-packages/utils/import-package-upload.ts
+  s_d9e246703828a2::t_fc3b7bf79978b1 1-4,14,20-21
+  s_d9e246703828a2::t_6f14f925997ecb 62-68,81
+  s_d9e246703828a2::t_ef69d71f75a5ec 22-24
+  s_7d92849ff15ae6::t_3fa808a8870736 19
+packages/cli/src/public-api/types.ts
+  s_d9e246703828a2::t_1012252c2f814c 56-60,61-69
+packages/cli/src/public-api/v1/openapi.yml
+  s_d9e246703828a2::t_82c0dda250c542 126-127
+packages/cli/src/modules/n8n-packages/__tests__/utils/import-package-upload.test.ts
+  s_d9e246703828a2::t_d8c99ab7094d58 11
+  s_d9e246703828a2::t_a7c3854d8e2535 148-155,156-168,183-184,185-192
+  s_ba71b7cb49bb4f::t_dda2bab388e2e0 169-182
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/paths/n8n-packages.import-selection.yml
+  s_d9e246703828a2::t_1f12e431b305a8 1-17,25-61,64-96,99-139
+  s_ba71b7cb49bb4f::t_9f5796cbcd3ab7 18-22
+  s_ceea518ec91e06::t_8f492f7cde7b2a 23-24,62-63,97-98
+packages/@n8n/api-types/src/dto/packages/__tests__/import-package-selection-request.dto.test.ts
+  s_d9e246703828a2::t_aafa64a897b15d 1-3,5-25,27-28,29-33,34-42,43-70,73-82,84-92,97-137,139-140,143-150,154-163,164-171
+  s_d9e246703828a2::t_059ddb9d67ef79 4
+  s_ba71b7cb49bb4f::t_4f4245689681e0 26
+  s_ba71b7cb49bb4f::t_320d3f647591b1 138,141-142,152-153
+  s_7d92849ff15ae6::t_2fe2a9ea758f91 151
+  s_4ab1f7a942a8c3::t_a2e7321dc13141 93
+  s_4ab1f7a942a8c3::t_09bfdeadbde638 71-72
+  s_4ab1f7a942a8c3::t_f9ff3a26ff2d8b 83
+  s_4ab1f7a942a8c3::t_c15564d864b8a8 94-96
+packages/@n8n/api-types/src/dto/index.ts
+  s_d9e246703828a2::t_26386db27a9cc0 434-435
+  s_8ff9a9e76fd7a8::t_9e9a7f1329fbbe 660,662
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/paths/n8n-packages.import.yml
+  s_d9e246703828a2::t_5e0e0e72506610 375
+packages/@n8n/cli/src/client.ts
+  s_eb18f8dee46988::t_9b626b865640a6 35,37,39,41-45
+  s_eb18f8dee46988::t_b540e80eb36b00 735-741,742-748,750-758
+  s_7d92849ff15ae6::t_8195525081ad07 36,38,40,749
+  s_a78dc62f1d7fa6::t_a21eb10f90d11b 35-45,735-754
+  s_a78dc62f1d7fa6::t_0fffe5f47a5f2c 755-758
+  s_7d92849ff15ae6::t_3e93a40382e65e 35-45,735-758
+packages/@n8n/cli/src/__tests__/package-import-selection.test.ts
+  s_eb18f8dee46988::t_7d2eee1a4a1d59 182-184
+  s_eb18f8dee46988::t_558aaf1c3ec46f 1-9,11-14,15-21,22-35,36-51,52-66,67-84,85-104,106-181,185-187
+  s_7d92849ff15ae6::t_31e3555d2746fd 10,105
+  s_a78dc62f1d7fa6::t_a21eb10f90d11b 1-187
+  s_7d92849ff15ae6::t_f11ba7255295a8 1-187
+packages/@n8n/cli/docs/commands/package.md
+  s_eb18f8dee46988::t_16955000eb4b4c 122-124,154-155,159-162,165,167-172,180-182
+  s_ceea518ec91e06::t_e9d015def342dd 146-149
+  s_a78dc62f1d7fa6::t_a21eb10f90d11b 122-124,145-149,155,159-162,165,167-172,180-182
+  s_7d92849ff15ae6::t_51721d5b5ceb94 122-124,145-149,155,159-162,165,167-172,180-182
+  s_0059aef72f3440::t_71dcb906ed1245 154
+  s_7d92849ff15ae6::t_71d1a5a622dac8 125-144,150-153,156-158,163-164,166,173-179
+packages/@n8n/cli/src/commands/package/import-selection.ts
+  s_eb18f8dee46988::t_77919457a8b92a 1-9,11-14,16-19,21-34,36-67,68-81
+  s_ba71b7cb49bb4f::t_0474a43d2b3f37 15
+  s_a78dc62f1d7fa6::t_a21eb10f90d11b 1-9,11-19,21-34,36-81
+  s_7d92849ff15ae6::t_2b81bb96d8ed29 1-9,11-19,21-34,36-81
+  s_7d92849ff15ae6::t_d8aee70dc07d0c 10,20,35
+packages/@n8n/cli/src/index.ts
+  s_ba71b7cb49bb4f::t_03e7a8af5b7928 29
+  s_ba71b7cb49bb4f::t_ce58704f326802 173
+  s_a78dc62f1d7fa6::t_a21eb10f90d11b 29,173
+  s_7d92849ff15ae6::t_e2c84883db5edb 29,173
+packages/@n8n/cli/src/__tests__/package-error.test.ts
+  s_ceea518ec91e06::t_8f492f7cde7b2a 7-26
+  s_a78dc62f1d7fa6::t_a21eb10f90d11b 7-26
+  s_7d92849ff15ae6::t_3bef1569eebbff 7-26
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/schemas/importBlockingIssue.yml
+  s_ceea518ec91e06::t_8f492f7cde7b2a 4-22
+  s_ceea518ec91e06::t_15d4755ed3ba22 2-3
+packages/@n8n/cli/src/commands/package/package-error.ts
+  s_ceea518ec91e06::t_8f492f7cde7b2a 19-23,79-80
+  s_ceea518ec91e06::t_fb2045426a4200 18
+  s_ceea518ec91e06::t_359348f1ab9338 81
+  s_a78dc62f1d7fa6::t_a21eb10f90d11b 19-23,79-80
+  s_a78dc62f1d7fa6::t_10f1dec57e8551 18,81
+  s_7d92849ff15ae6::t_fddc6d86485098 18-23,79-81
+packages/cli/src/modules/n8n-packages/engine/import-blocked.error.ts
+  s_ceea518ec91e06::t_c6debd8b9fc8a1 20
+packages/@n8n/db/src/repositories/__tests__/shared-workflow.repository.test.ts
+  s_ceea518ec91e06::t_39b8806cfe1319 6,29-118
+  s_ceea518ec91e06::t_c29ede47af2bf5 119-120
+packages/cli/src/workflows/workflow-finder.service.ts
+  s_ceea518ec91e06::t_4de6fa15c283ab 263-269,277
+packages/@n8n/db/src/repositories/shared-workflow.repository.ts
+  s_ceea518ec91e06::t_4de6fa15c283ab 28-59
+packages/cli/test/integration/workflows/workflow-finder.service.test.ts
+  s_ceea518ec91e06::t_6a18938f0a4933 1-7,13,30,38-50,55-65
+  s_ceea518ec91e06::t_efcd89879a3ec5 51-54
+packages/@n8n/cli/README.md
+  s_7d92849ff15ae6::t_55d552511f3110 66
+packages/@n8n/cli/src/__tests__/client.test.ts
+  s_7d92849ff15ae6::t_bb28e8db86bc06 335-405
+packages/@n8n/api-types/src/dto/promotions/promotion-operations.dto.ts
+  s_8ff9a9e76fd7a8::t_9e9a7f1329fbbe 107-122
+packages/@n8n/api-types/src/dto/promotions/__tests__/promotion-operations.dto.test.ts
+  s_8ff9a9e76fd7a8::t_7cf0a1e9c2c778 4,6,90-142,144-145
+  s_8ff9a9e76fd7a8::t_82b8032c48b99b 143
+  s_8ff9a9e76fd7a8::t_04632131aa8dbd 146
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "717abb3801a30f2c21d8636328e3cf79c364d7e6",
+  "prompts": {},
+  "humans": {
+    "h_9b272a633435fb": {
+      "author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_0059aef72f3440": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7817fc3b-49c5-4ff5-bb00-c6333d2512b3",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_334dc4cc4d71aa": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "51a685f4-1fc8-458c-b883-03f840755ed3",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_4ab1f7a942a8c3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0fb80efc-2e5d-4c0b-bd76-2078658ef9dd",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_7d92849ff15ae6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b926ff1f-b15f-4ce1-85be-a0fb73556029",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_8ff9a9e76fd7a8": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0d773-5b1e-7071-8fdf-f73d12e42146",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_92d10ec3c1bd93": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "5e37c32b-1c8f-45f6-b79b-eb7625ad32b1",
+        "model": "grok-4.7"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_a0365df61f0da7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1652a565-6ec5-45a6-8314-fa08732ffc4b",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_a78dc62f1d7fa6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "340040a2-879d-454b-b9a8-49ba33255e03",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_ba71b7cb49bb4f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fad57780-9be2-4b45-b05e-76db87f3e95e",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_ceea518ec91e06": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0d6c8-dc68-7ef2-9d12-e19ee76a253d",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_d9e246703828a2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ef6bf45b-5856-493d-aa56-19350759501f",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_dd6e2d00011911": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "478872db-05f3-4102-934c-6972f168d379",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_eb18f8dee46988": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1d4dc1fe-2f8e-499e-a92b-dc069931aff9",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

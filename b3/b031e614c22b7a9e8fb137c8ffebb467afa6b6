@@ -1,0 +1,45 @@
+packages/@n8n/cli/src/client.ts
+  s_75f6b6ded4db2e::t_e34e5b34a92b75 36,38,40,749
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow-remover.ts
+  s_75f6b6ded4db2e::t_e34e5b34a92b75 41,140
+packages/cli/src/modules/n8n-packages/n8n-packages.service.ts
+  s_75f6b6ded4db2e::t_e34e5b34a92b75 88,470,497,513
+packages/cli/src/modules/n8n-packages/utils/import-package-upload.ts
+  s_75f6b6ded4db2e::t_e34e5b34a92b75 19
+packages/cli/src/modules/n8n-packages/__tests__/import-package-selection.integration.test.ts
+  s_75f6b6ded4db2e::t_5944d9e8f8e3f9 41,147,575
+packages/cli/test/integration/public-api/n8n-packages-import-selection.test.ts
+  s_75f6b6ded4db2e::t_5944d9e8f8e3f9 162-163
+packages/cli/src/modules/n8n-packages/n8n-packages.types.ts
+  s_75f6b6ded4db2e::t_e34e5b34a92b75 258,273,275-276,279,281,283,288-289
+packages/@n8n/api-types/src/dto/packages/import-package-request.dto.ts
+  s_75f6b6ded4db2e::t_e34e5b34a92b75 157-158,172
+packages/cli/src/modules/n8n-packages/engine/import-orchestrator.ts
+  s_75f6b6ded4db2e::t_e34e5b34a92b75 87
+packages/cli/src/modules/n8n-packages/engine/project-package-importer.ts
+  s_75f6b6ded4db2e::t_e34e5b34a92b75 260,357
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow-removal.types.ts
+  s_75f6b6ded4db2e::t_e34e5b34a92b75 12,26-27
+packages/@n8n/api-types/src/dto/packages/__tests__/import-package-selection-request.dto.test.ts
+  s_75f6b6ded4db2e::t_5944d9e8f8e3f9 144
+packages/@n8n/cli/src/__tests__/package-import-selection.test.ts
+  s_75f6b6ded4db2e::t_5944d9e8f8e3f9 10,105
+packages/cli/src/modules/n8n-packages/__tests__/fixtures/package-fixtures.ts
+  s_75f6b6ded4db2e::t_5944d9e8f8e3f9 469
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b3b031e614c22b7a9e8fb137c8ffebb467afa6b6",
+  "prompts": {},
+  "sessions": {
+    "s_75f6b6ded4db2e": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0d6e2-d74d-7a02-b6c5-3229117b3326",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,95 @@
+packages/cli/src/modules/token-exchange/services/__tests__/scoped-jwt.strategy.integration.test.ts
+  s_a4556b837ab6e9::t_3036e6b9bafeb2 15,24,102-104
+packages/cli/src/services/__tests__/deployment-signing-secrets.integration.test.ts
+  s_a4556b837ab6e9::t_3036e6b9bafeb2 8,134,137
+packages/cli/eslint.config.mjs
+  s_a4556b837ab6e9::t_3036e6b9bafeb2 34-57,203-210,227,229-244,249-285
+packages/cli/src/modules/mcp/__tests__/mcp-api-key.service.integration.test.ts
+  s_a4556b837ab6e9::t_3036e6b9bafeb2 24,169
+packages/cli/src/modules/sso-oidc/__tests__/oidc.service.ee.test.ts
+  s_a4556b837ab6e9::t_3036e6b9bafeb2 399-400
+packages/cli/src/services/__tests__/jwt.service.test.ts
+  s_a4556b837ab6e9::t_3036e6b9bafeb2 1,3,34,40,58,61-64,68-71,77-149,166,178,193,208
+packages/cli/src/controllers/users.controller.ts
+  s_a4556b837ab6e9::t_3036e6b9bafeb2 154
+packages/cli/src/modules/mcp/__tests__/mcp-server-middleware.service.test.ts
+  s_a4556b837ab6e9::t_3036e6b9bafeb2 29,64-67,86,102,130-133,143,304-307,331-334,355-358,380,411,438-441
+packages/cli/src/services/__tests__/api-key-auth.strategy.integration.test.ts
+  s_a4556b837ab6e9::t_3036e6b9bafeb2 35,108-111,120
+packages/cli/src/controllers/__tests__/users.controller.test.ts
+  s_a4556b837ab6e9::t_3036e6b9bafeb2 88,147
+packages/cli/src/modules/oauth-server/__tests__/workflow-mcp-trigger-authorization.api.test.ts
+  s_a4556b837ab6e9::t_3036e6b9bafeb2 119,285,302
+packages/cli/src/services/public-api-key.service.ts
+  s_a4556b837ab6e9::t_3036e6b9bafeb2 342-343,349
+packages/cli/src/modules/token-exchange/services/token-exchange.service.ts
+  s_a4556b837ab6e9::t_3036e6b9bafeb2 205
+packages/cli/src/modules/oauth-server/oauth-token.service.ts
+  s_a4556b837ab6e9::t_3036e6b9bafeb2 81,97,481,486
+packages/cli/src/modules/token-exchange/services/__tests__/scoped-jwt.strategy.test.ts
+  s_a4556b837ab6e9::t_3036e6b9bafeb2 13,17,40,69-76,82,89,179
+packages/cli/src/services/__tests__/public-api-key.service.integration.test.ts
+  s_a4556b837ab6e9::t_3036e6b9bafeb2 15
+packages/cli/src/modules/mcp/mcp-server-middleware.service.ts
+  s_a4556b837ab6e9::t_3036e6b9bafeb2 47
+packages/cli/src/modules/mcp/mcp-api-key.service.ts
+  s_a4556b837ab6e9::t_3036e6b9bafeb2 33
+packages/cli/oxlint.config.mts
+  s_a4556b837ab6e9::t_3036e6b9bafeb2 34-57,211-218,235,237,251-299
+packages/cli/src/services/user.service.ts
+  s_a4556b837ab6e9::t_3036e6b9bafeb2 218,461-464
+packages/cli/src/services/__tests__/public-api-key.service.test.ts
+  s_a4556b837ab6e9::t_3036e6b9bafeb2 108,114,142
+packages/cli/test/integration/oidc/oidc.service.ee.test.ts
+  s_a4556b837ab6e9::t_3036e6b9bafeb2 1394,1399-1401,1410,1415-1417
+packages/cli/src/services/__tests__/user.service.test.ts
+  s_a4556b837ab6e9::t_3036e6b9bafeb2 576
+packages/cli/test/integration/public-api/endpoints-with-scopes-enabled.test.ts
+  s_a4556b837ab6e9::t_3036e6b9bafeb2 1712
+packages/cli/src/modules/oauth-server/oauth-session.service.ts
+  s_a4556b837ab6e9::t_3036e6b9bafeb2 35,55
+packages/cli/src/modules/token-exchange/services/scoped-jwt.strategy.ts
+  s_a4556b837ab6e9::t_3036e6b9bafeb2 31,39
+packages/cli/src/services/token-purposes.ts
+  s_a4556b837ab6e9::t_3036e6b9bafeb2 1-74
+packages/cli/src/auth/__tests__/auth.service.test.ts
+  s_a4556b837ab6e9::t_3036e6b9bafeb2 44,66,69,591,608,664,673,688
+packages/cli/src/modules/oauth-server/__tests__/oauth-token.service.test.ts
+  s_a4556b837ab6e9::t_3036e6b9bafeb2 27,100,126,136,143,266,290-292,389,399,410,474-477,486-489,511-514,535-538,552-555,793-796,804-807,815-818,829-832,896-899,997-1000,1011-1014
+packages/cli/src/modules/sso-oidc/oidc.service.ee.ts
+  s_a4556b837ab6e9::t_3036e6b9bafeb2 148,158,197,205
+packages/cli/src/auth/auth.service.ts
+  s_a4556b837ab6e9::t_3036e6b9bafeb2 250,295,394,459,470,485,501
+packages/cli/src/modules/oauth-server/__tests__/oauth-consent.controller.api.test.ts
+  s_a4556b837ab6e9::t_3036e6b9bafeb2 24
+packages/cli/src/services/api-key-auth.strategy.ts
+  s_a4556b837ab6e9::t_3036e6b9bafeb2 12,39-40,56
+packages/cli/src/services/jwt.service.ts
+  s_a4556b837ab6e9::t_3036e6b9bafeb2 1,3,5,10-29,35-42,81-86,89-102,106-167
+packages/cli/test/integration/auth.api.test.ts
+  s_a4556b837ab6e9::t_3036e6b9bafeb2 339,361,374,403
+packages/cli/test/integration/token-exchange/token-exchange.controller.test.ts
+  s_a4556b837ab6e9::t_3036e6b9bafeb2 161,214,218,261,294
+packages/cli/src/modules/oauth-server/__tests__/oauth-session.service.test.ts
+  s_a4556b837ab6e9::t_3036e6b9bafeb2 14,26,32,40,45-55,57,64
+packages/cli/test/integration/controllers/invitation/invitation.controller.integration.test.ts
+  s_a4556b837ab6e9::t_3036e6b9bafeb2 61
+packages/cli/test/integration/password-reset.api.test.ts
+  s_a4556b837ab6e9::t_3036e6b9bafeb2 152
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "91bd1d614ff4ce7671775aeb922ca0112849807d",
+  "prompts": {},
+  "sessions": {
+    "s_a4556b837ab6e9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5eb18d59-43bb-430f-8f1b-0d965479bf74",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}

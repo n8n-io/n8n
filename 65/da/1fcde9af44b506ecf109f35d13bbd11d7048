@@ -1,0 +1,59 @@
+packages/@n8n/db/src/entities/index.ts
+  s_97b2e2a4f3d080::t_0ec7e6eff0c143 230
+  s_97b2e2a4f3d080::t_2b502d61deaf6f 132-134
+  s_97b2e2a4f3d080::t_f933a4aab938dc 40-44
+docs/adr/ADR-20261005-store-public-api-idempotency-keys-in-the-instance-database.md
+  s_97b2e2a4f3d080::t_38bb4c258ef14d 23
+  s_97b2e2a4f3d080::t_1f0ad6fe08954f 1-12,16,20-22,33,39-41,51-53,56,61-68
+  s_97b2e2a4f3d080::t_2b04127483ca99 13-15,17-19,24-29,34-38,42-50,54-55,57-60
+  s_97b2e2a4f3d080::t_899505971239fc 30-32
+packages/@n8n/db/src/repositories/index.ts
+  s_97b2e2a4f3d080::t_ec569e77fa2e44 58
+packages/@n8n/db/src/entities/idempotency-key.ts
+  s_97b2e2a4f3d080::t_79aed9974b85f1 2-13,15-39
+  s_97b2e2a4f3d080::t_715786be03d0a2 1
+  s_97b2e2a4f3d080::t_b1dbec62137a96 14
+docs/adr/ADR-20261005-replay-the-first-public-api-response-for-an-idempotency-key.md
+  s_97b2e2a4f3d080::t_06475730cb6948 33-35
+  s_97b2e2a4f3d080::t_f19ef4ba4c24e2 69-71
+  s_97b2e2a4f3d080::t_1108cbd1e60070 13-15,17-18,27-29,32,36-43,47-54,61-68
+  s_97b2e2a4f3d080::t_98e0c70811ed23 20-24
+  s_97b2e2a4f3d080::t_a6f80fd1813ef9 1-12,16,19,25-26,30-31,44-46,58-60,72-79
+  s_97b2e2a4f3d080::t_459247a00d1609 55-57
+packages/@n8n/db/src/repositories/idempotency-key.repository.ts
+  s_97b2e2a4f3d080::t_41e27c4c7052ba 1-13
+packages/quality/policy/code-health/src/index.ts
+  s_97b2e2a4f3d080::t_344dd4a3c82860 35
+docs/generated/postgres-schema/README.md
+  s_97b2e2a4f3d080::t_fc06828d49ad8e 76,300,1104-1114
+docs/generated/postgres-schema/public.idempotency_key.md
+  s_97b2e2a4f3d080::t_6a7d0fe02157a9 1-80
+docs/generated/postgres-schema/public.user.md
+  s_97b2e2a4f3d080::t_bfba0ef73e34e8 11,64,267-277
+docs/generated/sqlite-schema/README.md
+  s_97b2e2a4f3d080::t_37a5fa66a00f41 76,282,1090-1100
+docs/generated/sqlite-schema/idempotency_key.md
+  s_97b2e2a4f3d080::t_be417ddadad174 1-85
+docs/generated/sqlite-schema/user.md
+  s_97b2e2a4f3d080::t_9949e1aaad0ef4 22,70,273-283
+packages/@n8n/db/src/migrations/common/1791209641749-CreateIdempotencyKeyTable.ts
+  s_97b2e2a4f3d080::t_e866a4597f08d8 1-51
+packages/cli/test/migration/1791209641749-create-idempotency-key-table.test.ts
+  s_97b2e2a4f3d080::t_62d94ca80e3341 1-216
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "65da1fcde9af44b506ecf109f35d13bbd11d7048",
+  "prompts": {},
+  "sessions": {
+    "s_97b2e2a4f3d080": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "ac7b07c7-7d74-41fb-80d6-220b6bac9b5a",
+        "model": "grok-4.7"
+      },
+      "human_author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    }
+  }
+}

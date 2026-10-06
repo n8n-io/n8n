@@ -1,0 +1,71 @@
+packages/workflow/src/run-execution-data-factory.ts
+  s_2b4a89f78e7997::t_c1f64dc8246921 48,98
+packages/workflow/src/run-execution-data/run-execution-data.v1.ts
+  s_2b4a89f78e7997::t_c1f64dc8246921 19,66-67
+packages/testing/playwright/workflows/ado-5857-parent.json
+  s_2b4a89f78e7997::t_f6b1d425878b6e 2-128
+  s_2b4a89f78e7997::t_955eb4aeef5b24 1,129
+packages/cli/src/__tests__/workflow-execute-additional-data.test.ts
+  s_2b4a89f78e7997::t_f6b1d425878b6e 214-245,253-260
+  s_2b4a89f78e7997::t_955eb4aeef5b24 24
+  s_2b4a89f78e7997::t_a3ba9c04c9ecbc 69,521,628,2079
+  s_2b4a89f78e7997::t_6c593f60e3b683 246-252,261-262
+packages/workflow/test/run-execution-data-factory.test.ts
+  s_2b4a89f78e7997::t_1fc75b26ab1c92 92-98
+packages/cli/src/wait-tracker.ts
+  s_2b4a89f78e7997::t_2480c422400954 13,184,203,214,242,252,379
+packages/cli/src/webhooks/webhook-helpers.ts
+  s_2b4a89f78e7997::t_2480c422400954 1388-1393
+packages/cli/src/__tests__/workflow-helpers.test.ts
+  s_2b4a89f78e7997::t_f6b1d425878b6e 1023-1027,1042-1050,1055-1067,1074-1077,1082-1084,1087-1096,1101-1102,1104-1105,1116-1118
+  s_2b4a89f78e7997::t_9afa2d670eca46 19,1031,1039-1041,1051-1054,1068-1073,1078-1081,1085-1086,1097-1100,1106-1115,1119-1120
+  s_2b4a89f78e7997::t_57858a10900d28 1103
+packages/cli/src/workflow-execute-additional-data.ts
+  s_2b4a89f78e7997::t_2480c422400954 46-47,328-334,734,736
+  s_2b4a89f78e7997::t_a3ba9c04c9ecbc 735
+packages/workflow/src/sub-workflow-output.ts
+  s_2b4a89f78e7997::t_4a2df2ca72acdf 1
+  s_2b4a89f78e7997::t_c1f64dc8246921 9-29,33-36,39-57,59-61,63-66,70,80,85-86
+  s_2b4a89f78e7997::t_6c593f60e3b683 37-38
+  s_2b4a89f78e7997::t_a3ba9c04c9ecbc 58,62
+  s_2b4a89f78e7997::t_f6b1d425878b6e 2-8,30-32,68,71-79,81-84
+  s_2b4a89f78e7997::t_57858a10900d28 67,69
+packages/testing/playwright/workflows/ado-5857-child.json
+  s_2b4a89f78e7997::t_955eb4aeef5b24 1,172
+  s_2b4a89f78e7997::t_f6b1d425878b6e 2-171
+packages/testing/playwright/tests/e2e/workflows/editor/subworkflows/output.spec.ts
+  s_2b4a89f78e7997::t_ae52a0e98dd7d0 1-8,11-19,21-32,41-48,66-78,85-86,104,121,125-128,130
+  s_2b4a89f78e7997::t_f6b1d425878b6e 33-40,79-84,87-92,96-103,105-120,122,124,129,131,137-142,152-184,187-189,191-196,199-210
+  s_2b4a89f78e7997::t_e6e6ec66d2a360 9-10,20,49-60,62,93-95,123,132-136,197-198
+  s_2b4a89f78e7997::t_57858a10900d28 61,63-65,143-151,185-186,190
+packages/cli/src/__tests__/wait-tracker.test.ts
+  s_2b4a89f78e7997::t_d25ab0a1b505f1 3,28,308-309,313-314,319-322
+  s_2b4a89f78e7997::t_f6b1d425878b6e 310-312,315-318,935-978,980,982-996
+packages/nodes-base/nodes/ExecuteWorkflow/ExecuteWorkflowTrigger/ExecuteWorkflowTrigger.node.ts
+  s_2b4a89f78e7997::t_c1f64dc8246921 30
+packages/cli/src/workflow-helpers.ts
+  s_2b4a89f78e7997::t_a3ba9c04c9ecbc 550
+  s_2b4a89f78e7997::t_2480c422400954 6-9,38,43,452,540-549,551-555
+packages/workflow/test/sub-workflow-output.test.ts
+  s_2b4a89f78e7997::t_57858a10900d28 110,116
+  s_2b4a89f78e7997::t_4a2df2ca72acdf 97-98,107-109,113-114,134
+  s_2b4a89f78e7997::t_a3ba9c04c9ecbc 137,164,174,181,192,205,215,228,230
+  s_2b4a89f78e7997::t_1fc75b26ab1c92 1,12,18,82-86,96,111-112,135-136,138,144-145,163,172-173,175,179-180,186,190-191,203-204,206-209,213-214,220,224-227,229,234-237,240-247
+  s_2b4a89f78e7997::t_f6b1d425878b6e 3-11,13-17,87-95,99-106,115,117-133,139-143,146-162,165-171,176-178,182-185,187-189,193-202,210-212,216-219,221-223,231-233,238-239
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d90130ee0cd55430f222a0950aa49fc3112882e0",
+  "prompts": {},
+  "sessions": {
+    "s_2b4a89f78e7997": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0e756-7f52-77d2-be06-7dedfde4aa9f",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

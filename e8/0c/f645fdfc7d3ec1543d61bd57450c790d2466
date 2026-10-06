@@ -1,0 +1,72 @@
+packages/frontend/editor-ui/src/features/ai/mcpAccess/components/tabs/OAuthClientsTable.vue
+  s_bc92c7e8a354c5::t_4891e79eca4c8b 13,21,23,41,344-348
+packages/frontend/editor-ui/src/features/ai/mcpAccess/components/WorkflowLocation.test.ts
+  s_bc92c7e8a354c5::t_09fcdde5de8eae 1,5-7,17
+packages/frontend/editor-ui/src/features/ai/mcpAccess/SettingsMCPAgentsView.test.ts
+  s_bc92c7e8a354c5::t_09fcdde5de8eae 5,29
+packages/frontend/editor-ui/src/features/ai/mcpAccess/SettingsMCPClientsView.vue
+  s_bc92c7e8a354c5::t_4891e79eca4c8b 8-9,27-29
+packages/frontend/editor-ui/src/features/ai/mcpAccess/components/McpAllowedCallbackUrlsDialog.test.ts
+  s_bc92c7e8a354c5::t_09fcdde5de8eae 3
+packages/frontend/editor-ui/src/features/ai/mcpAccess/SettingsMCPAgentsView.vue
+  s_bc92c7e8a354c5::t_4891e79eca4c8b 13,32-34
+packages/frontend/editor-ui/src/features/ai/mcpAccess/components/McpStatusControl.test.ts
+  s_bc92c7e8a354c5::t_09fcdde5de8eae 3
+packages/frontend/editor-ui/src/features/ai/mcpAccess/mcp.test.utils.ts
+  s_bc92c7e8a354c5::t_09fcdde5de8eae 2
+packages/frontend/editor-ui/src/features/ai/mcpAccess/components/OAuthClientDetailsModal.vue
+  s_bc92c7e8a354c5::t_4891e79eca4c8b 14,18,33,94-98
+packages/frontend/editor-ui/src/features/ai/mcpAccess/SettingsMCPWorkflowsView.vue
+  s_bc92c7e8a354c5::t_4891e79eca4c8b 14,17-18,33-35
+packages/frontend/editor-ui/src/features/ai/mcpAccess/components/tabs/AgentsTable.vue
+  s_bc92c7e8a354c5::t_49ac06f9aab87f 5,15-16
+  s_bc92c7e8a354c5::t_95f1b87b1893d2 63
+packages/frontend/editor-ui/src/features/ai/mcpAccess/SettingsMCPClientsView.test.ts
+  s_bc92c7e8a354c5::t_09fcdde5de8eae 5,38
+packages/frontend/editor-ui/src/features/ai/mcpAccess/components/MCPWorkflowsSelect.test.ts
+  s_bc92c7e8a354c5::t_09fcdde5de8eae 5,11-13,23
+packages/frontend/editor-ui/src/features/ai/mcpAccess/components/WorkflowLocation.vue
+  s_bc92c7e8a354c5::t_49ac06f9aab87f 5-7,33
+packages/frontend/editor-ui/src/features/ai/mcpAccess/components/tabs/OAuthClientsFilters.test.ts
+  s_bc92c7e8a354c5::t_09fcdde5de8eae 3
+packages/frontend/editor-ui/src/features/ai/mcpAccess/components/tabs/WorkflowsTable.test.ts
+  s_bc92c7e8a354c5::t_09fcdde5de8eae 3,7-9,16
+packages/frontend/editor-ui/src/features/ai/mcpAccess/mcp.constants.ts
+  s_bc92c7e8a354c5::t_49ac06f9aab87f 8
+packages/frontend/editor-ui/src/features/ai/mcpAccess/SettingsMCPView.vue
+  s_bc92c7e8a354c5::t_4891e79eca4c8b 21,36,42-44,50,60
+packages/frontend/editor-ui/src/features/ai/mcpAccess/components/McpConnectClientDialog.test.ts
+  s_bc92c7e8a354c5::t_09fcdde5de8eae 4
+packages/frontend/editor-ui/src/features/ai/mcpAccess/SettingsMCPView.test.ts
+  s_bc92c7e8a354c5::t_09fcdde5de8eae 8
+  s_bc92c7e8a354c5::t_2c3e51c6dc2dee 12
+  s_bc92c7e8a354c5::t_5c5a7f9ea8b386 9-11,13,17,55,72,118-119,371,377,384,398,418,428,495,504,522,563,574,584,594,603,618,628,638,648,662
+packages/frontend/editor-ui/src/features/ai/mcpAccess/SettingsMCPWorkflowsView.test.ts
+  s_bc92c7e8a354c5::t_09fcdde5de8eae 6,11,32
+packages/frontend/editor-ui/src/features/ai/mcpAccess/modals/MCPConnectWorkflowsModal.test.ts
+  s_bc92c7e8a354c5::t_09fcdde5de8eae 5,21-23,33
+packages/frontend/editor-ui/src/features/ai/mcpAccess/components/tabs/OAuthClientsTable.test.ts
+  s_bc92c7e8a354c5::t_09fcdde5de8eae 4
+  s_bc92c7e8a354c5::t_45c1850cccbf1c 38-45
+packages/frontend/editor-ui/src/features/ai/mcpAccess/components/tabs/WorkflowsTable.vue
+  s_bc92c7e8a354c5::t_95f1b87b1893d2 69
+  s_bc92c7e8a354c5::t_49ac06f9aab87f 5,17-18
+packages/frontend/editor-ui/src/features/ai/mcpAccess/components/McpAccessTokenTab.test.ts
+  s_bc92c7e8a354c5::t_09fcdde5de8eae 3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "e80cf645fdfc7d3ec1543d61bd57450c790d2466",
+  "prompts": {},
+  "sessions": {
+    "s_bc92c7e8a354c5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cc1157de-8f47-4713-bdfb-a52867a41957",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

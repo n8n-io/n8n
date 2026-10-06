@@ -1,0 +1,32 @@
+packages/@n8n/db/src/repositories/__tests__/shared-workflow.repository.test.ts
+  s_ceea518ec91e06::t_39b8806cfe1319 6,29-118
+  s_ceea518ec91e06::t_c29ede47af2bf5 119-120
+packages/cli/src/workflows/workflow-finder.service.ts
+  s_ceea518ec91e06::t_4de6fa15c283ab 263-269,277
+packages/cli/src/modules/n8n-packages/entities/workflow/__tests__/workflow-remover.test.ts
+  s_ceea518ec91e06::t_39b8806cfe1319 23-28,241,255,287,297
+  s_ceea518ec91e06::t_efcd89879a3ec5 294-296
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow-remover.ts
+  s_ceea518ec91e06::t_4de6fa15c283ab 120,122
+packages/@n8n/db/src/repositories/shared-workflow.repository.ts
+  s_ceea518ec91e06::t_4de6fa15c283ab 28-59
+packages/cli/test/integration/workflows/workflow-finder.service.test.ts
+  s_ceea518ec91e06::t_6a18938f0a4933 1-7,13,30,38-50,55-65
+  s_ceea518ec91e06::t_efcd89879a3ec5 51-54
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6961e2f87a95bcb32d2945c2fa79a15233b47584",
+  "prompts": {},
+  "sessions": {
+    "s_ceea518ec91e06": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0d6c8-dc68-7ef2-9d12-e19ee76a253d",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

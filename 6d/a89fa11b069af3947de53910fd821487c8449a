@@ -1,0 +1,20 @@
+packages/cli/src/modules/instance-ai/__tests__/onboarding.test.ts
+  s_2ed659fa6b1ae7::t_f9dc06fda3321d 1-101
+  s_2ed659fa6b1ae7::t_781c0d94da7008 102-104
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "6da89fa11b069af3947de53910fd821487c8449a",
+  "prompts": {},
+  "sessions": {
+    "s_2ed659fa6b1ae7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d3f128a4-3e8f-4275-b045-49313edd5a2e",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

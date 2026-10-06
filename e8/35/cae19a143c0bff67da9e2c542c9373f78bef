@@ -1,0 +1,38 @@
+packages/cli/src/modules/type-availability-policies/database/repositories/type-availability-policy-attachment.repository.ts
+  s_e774d5c3523bbd::t_18e8012355fc0c 64-66
+  s_20f4a06721c4ff::t_f85859bb017dc4 1,39-42,46,51,67,69
+  s_921d1449fd82b3::t_f2b51024fb135f 47-49
+  s_921d1449fd82b3::t_3e8f50084f4b19 34-36,45,50,52-57,59-62
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "e835cae19a143c0bff67da9e2c542c9373f78bef",
+  "prompts": {},
+  "sessions": {
+    "s_20f4a06721c4ff": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f90ca28d-05ac-40f5-bdb1-276d6414762d",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "sim <olivier.dejong@n8n.io>"
+    },
+    "s_921d1449fd82b3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f38c4379-293a-48cd-bdfa-d2c30af0c1c3",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "sim <olivier.dejong@n8n.io>"
+    },
+    "s_e774d5c3523bbd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "34bf5677-7afc-4bdc-abfa-6f002b6ef7a3",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": null
+    }
+  }
+}

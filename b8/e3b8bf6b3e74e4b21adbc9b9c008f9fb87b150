@@ -1,0 +1,28 @@
+packages/@n8n/db/src/repositories/workflow-history.repository.ts
+  s_be34f2a9936255::t_aef7943f67ff3d 2,163,182,185-186
+packages/cli/test/integration/database/repositories/workflow-history.repository.test.ts
+  s_be34f2a9936255::t_cbee4a76baf5f1 141-165
+  s_be34f2a9936255::t_fdb4e848c66af7 31-33
+  s_be34f2a9936255::t_90c39dffe1b0e0 268-290,298-314,316-320
+  s_be34f2a9936255::t_0d327f00742ab6 10
+  s_be34f2a9936255::t_7c0d5924d7763e 206,208,211-217,220-226,229-235
+  s_be34f2a9936255::t_94b78e7e96189a 291-297
+  s_be34f2a9936255::t_544e1019347fc5 60-84
+  s_be34f2a9936255::t_84bc85790dac17 315
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b8e3b8bf6b3e74e4b21adbc9b9c008f9fb87b150",
+  "prompts": {},
+  "sessions": {
+    "s_be34f2a9936255": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9a0f2c47-6407-4069-a583-c102c8290868",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Veljko Terzic <veljko.terzic@n8n.io>"
+    }
+  }
+}

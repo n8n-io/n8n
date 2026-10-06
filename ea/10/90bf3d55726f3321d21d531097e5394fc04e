@@ -1,0 +1,21 @@
+packages/@n8n/nodes-langchain/nodes/llms/LmChatAzureOpenAi/methods/searchModels.ts
+  s_cca0ec99e3cb7c::t_e2d59eee9d105e 78-85
+packages/@n8n/nodes-langchain/nodes/llms/LmChatAzureOpenAi/methods/searchModels.test.ts
+  s_cca0ec99e3cb7c::t_2968af29887c5f 84-101
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "ea1090bf3d55726f3321d21d531097e5394fc04e",
+  "prompts": {},
+  "sessions": {
+    "s_cca0ec99e3cb7c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "81bd28dc-a949-4c3b-ad09-a8bc34ca1c37",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}
