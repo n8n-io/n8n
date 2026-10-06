@@ -127,7 +127,7 @@ describe('derived node modules', () => {
 			operation: 'post',
 		});
 		expect(text).toContain(
-			'export type MattermostMessagePostOutput = { id?: string | null; message?: string | null; [key: string]: any };',
+			'export type MattermostMessagePostOutput = { id?: string | null; message?: string | null; [key: string]: Json | undefined };',
 		);
 	});
 

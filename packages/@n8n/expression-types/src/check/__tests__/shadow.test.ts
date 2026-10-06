@@ -72,4 +72,19 @@ describe('shadowOf', () => {
 		expect(locate(shadow, replacement?.propertyName ?? -1, 2339)).toBeUndefined();
 		expect(locate(shadow, 0, 2304)).toBeUndefined();
 	});
+
+	it('makes the scope of a nested expression a lambda, and reads its parameters in place', () => {
+		const source = "f({ json: { a: { b: ['={{ $json.idd }}'], c: '={{ $now }}' } } });";
+		const scoped = { start: source.indexOf('{ b:'), end: source.indexOf(' } }') + 2 };
+		const spans = [
+			{ ...spanOf(source, "'={{ $json.idd }}'"), scope: scoped },
+			{ ...spanOf(source, "'={{ $now }}'"), scope: scoped },
+		];
+		const shadow = shadowOf(source, spans, scope);
+
+		expect(shadow.text.slice(0, shadow.trailerStart)).toBe(
+			'f({ json: { a: ((...__scopeArgs0) => ({ b: [__n8nExpression(__scopeArgs0, (__scope) => { const { $json, $now } = __scope; return ( $json.idd \n); })], c: __n8nExpression(__scopeArgs0, (__scope) => { const { $json, $now } = __scope; return ( $now \n); }) })) } });',
+		);
+		expect(locate(shadow, shadow.text.indexOf('idd'), 2339)?.start).toBe(source.indexOf('idd'));
+	});
 });

@@ -20,6 +20,13 @@ export interface ExpressionSpan {
 	readonly text: string;
 	/** The offset of the property name the node is the value of. */
 	readonly propertyName?: number;
+	/**
+	 * The value around an expression that sits in no field of its own, e.g. two levels deep in an
+	 * open JSON value: the nearest object or array literal that takes a lambda. The shadow makes
+	 * that value a lambda, and the expression reads the item of its parameters. The result is not
+	 * compared with a field.
+	 */
+	readonly scope?: { readonly start: number; readonly end: number };
 }
 
 /** What an expression and Code node JavaScript see, as global names and their declarations. */
@@ -92,15 +99,19 @@ function codeWrapperOf(text: string, globals: readonly string[]): Wrapper {
 	};
 }
 
-/** The lambda that replaces an expression, and where each body sits in it. */
-function expressionWrapperOf(text: string, globals: readonly string[]): Wrapper {
+/**
+ * The lambda that replaces an expression, and where each body sits in it. In a scope, it is a
+ * call that reads the parameters of the scope lambda, `args`.
+ */
+function expressionWrapperOf(text: string, globals: readonly string[], args?: string): Wrapper {
 	const blocks = [...text.slice(1).matchAll(BLOCK)].map((match) => ({
 		body: match[1] ?? '',
 		textStart: (match.index ?? 0) + 3,
 	}));
 	// As @n8n/tournament: one block and no text returns its value, else the parts concatenate.
 	const single = blocks.length === 1 && text.slice(1).replace(BLOCK, '') === '';
-	const head = `((...__args) => __n8nExpression(__args, (__scope) => { ${locals(globals)} return `;
+	const call = `__n8nExpression(${args ?? '__args'}, (__scope) => { ${locals(globals)} return `;
+	const head = args === undefined ? `((...__args) => ${call}` : call;
 	const start = head.length + (single ? 0 : 1);
 	const built = blocks.reduce<Wrapper>(
 		(acc, { body, textStart }, index) => {
@@ -116,7 +127,51 @@ function expressionWrapperOf(text: string, globals: readonly string[]): Wrapper 
 		{ text: '', bodies: [] },
 	);
 	const result = single ? built.text : `[${built.text}].join('')`;
-	return { text: `${head}${result}; }))`, bodies: built.bodies };
+	return { text: `${head}${result}; })${args === undefined ? ')' : ''}`, bodies: built.bodies };
+}
+
+type Edit =
+	| { readonly at: number; readonly insert: string }
+	| { readonly at: number; readonly span: ExpressionSpan; readonly args?: string };
+
+/**
+ * The spans, and the start and end of each scope, in source order. A scope inside another
+ * scope uses the outer one: both read the same item.
+ */
+function editsOf(spans: readonly ExpressionSpan[]): Edit[] {
+	type Scope = NonNullable<ExpressionSpan['scope']>;
+	const scopes = [
+		...new Map(
+			spans.flatMap(
+				({ scope }): Array<[string, Scope]> =>
+					scope ? [[`${scope.start}:${scope.end}`, scope]] : [],
+			),
+		).values(),
+	];
+	const outer = scopes.filter(
+		(scope) =>
+			!scopes.some(
+				(other) =>
+					other !== scope &&
+					other.start <= scope.start &&
+					other.end >= scope.end &&
+					(other.start < scope.start || other.end > scope.end),
+			),
+	);
+	const argsOf = (at: number) => {
+		const index = outer.findIndex((scope) => scope.start <= at && at < scope.end);
+		return index === -1 ? undefined : `__scopeArgs${index}`;
+	};
+	return [
+		...outer.flatMap((scope, index): Edit[] => [
+			{ at: scope.start, insert: `((...__scopeArgs${index}) => (` },
+			{ at: scope.end, insert: '))' },
+		]),
+		...spans.map((span): Edit => {
+			const args = span.scope && argsOf(span.start);
+			return args ? { at: span.start, span, args } : { at: span.start, span };
+		}),
+	].sort((a, b) => a.at - b.at || ('insert' in a ? -1 : 1));
 }
 
 /** The shadow of `source` with each span replaced. */
@@ -125,47 +180,54 @@ export function shadowOf(
 	spans: readonly ExpressionSpan[],
 	scope: ExpressionScope,
 ): Shadow {
-	const built = [...spans]
-		.sort((a, b) => a.start - b.start)
-		.reduce<{ text: string; cursor: number; replacements: Replacement[] }>(
-			(acc, span) => {
-				const code = span.kind === 'code';
-				const text = code || span.text.startsWith('=') ? span.text : `=${span.text}`;
-				const before = `${acc.text}${source.slice(acc.cursor, span.start)}`;
-				const wrapper = code
-					? codeWrapperOf(text, scope.globals.code)
-					: expressionWrapperOf(text, scope.globals.item);
-				const offsets = textOffsets(
-					source.slice(span.literalStart + 1, span.literalEnd - 1),
-					span.literalStart + 1,
-					span.text.length,
-				);
-				return {
-					text: `${before}${wrapper.text}`,
-					cursor: span.end,
-					replacements: [
-						...acc.replacements,
-						{
-							span,
-							shadowStart: before.length,
-							shadowEnd: before.length + wrapper.text.length,
-							bodies: wrapper.bodies.map(({ at, length, textStart }) => ({
-								shadowStart: before.length + at,
-								length,
-								textStart,
-							})),
-							// An added `=` has no place in the source: it maps to the node.
-							offsets: offsets && (text === span.text ? offsets : [span.start, ...offsets]),
-							// Only the node changes before the name, so the name moves as far.
-							...(span.propertyName === undefined
-								? {}
-								: { propertyName: span.propertyName + before.length - span.start }),
-						},
-					],
-				};
-			},
-			{ text: '', cursor: 0, replacements: [] },
-		);
+	const built = editsOf(spans).reduce<{
+		text: string;
+		cursor: number;
+		replacements: Replacement[];
+	}>(
+		(acc, edit) => {
+			if ('insert' in edit) {
+				const text = `${acc.text}${source.slice(acc.cursor, edit.at)}${edit.insert}`;
+				return { ...acc, text, cursor: edit.at };
+			}
+			const { span, args } = edit;
+			const code = span.kind === 'code';
+			const text = code || span.text.startsWith('=') ? span.text : `=${span.text}`;
+			const before = `${acc.text}${source.slice(acc.cursor, span.start)}`;
+			const wrapper = code
+				? codeWrapperOf(text, scope.globals.code)
+				: expressionWrapperOf(text, scope.globals.item, args);
+			const offsets = textOffsets(
+				source.slice(span.literalStart + 1, span.literalEnd - 1),
+				span.literalStart + 1,
+				span.text.length,
+			);
+			return {
+				text: `${before}${wrapper.text}`,
+				cursor: span.end,
+				replacements: [
+					...acc.replacements,
+					{
+						span,
+						shadowStart: before.length,
+						shadowEnd: before.length + wrapper.text.length,
+						bodies: wrapper.bodies.map(({ at, length, textStart }) => ({
+							shadowStart: before.length + at,
+							length,
+							textStart,
+						})),
+						// An added `=` has no place in the source: it maps to the node.
+						offsets: offsets && (text === span.text ? offsets : [span.start, ...offsets]),
+						// Only the node changes before the name, so the name moves as far.
+						...(span.propertyName === undefined
+							? {}
+							: { propertyName: span.propertyName + before.length - span.start }),
+					},
+				],
+			};
+		},
+		{ text: '', cursor: 0, replacements: [] },
+	);
 	const body = `${built.text}${source.slice(built.cursor)}`;
 	return {
 		text: `${body}\n${scope.trailer}`,

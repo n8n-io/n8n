@@ -65,6 +65,9 @@ import {
 
 // ── Types the model reads ───────────────────────────────────────────────────
 
+/** A JSON value. A key that an object does not have reads as `undefined`. */
+export type Json = string | number | boolean | null | Json[] | { [key: string]: Json | undefined };
+
 /** Item shape of a node whose output is unknown. Reads compile; their values are not checked. */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- gradual typing: an unknown shape must never block a build
 export type Loose = { [key: string]: any };
@@ -290,8 +293,11 @@ type AllKeys<T> = T extends unknown ? keyof T : never;
 
 type ValueAt<T, K> = T extends unknown ? (K extends keyof T ? T[K] : never) : never;
 
-/** `T` with each key that `Shape` does not have, at any depth, typed `never`, so tsc names it. */
-export type Exact<T, Shape> = unknown extends Shape
+/**
+ * `T` with each key that `Shape` does not have, at any depth, typed `never`, so tsc names it. An
+ * open `Shape` (`Json`, `unknown`) takes any `T`.
+ */
+export type Exact<T, Shape> = [Json] extends [Shape]
 	? T
 	: T extends readonly unknown[]
 		? { [I in keyof T]: Exact<T[I], NonNullable<Shape> extends ReadonlyArray<infer E> ? E : never> }
@@ -1927,19 +1933,33 @@ export type OutputOf<N extends string, Default> = N extends keyof NodeOutputs
 	? NodeOutputs[N]
 	: Default;
 
-type AnyKeys<O> = { [K in keyof O]-?: 0 extends 1 & O[K] ? K : never }[keyof O];
+/** The keys of `O` with an open type (`Json`, `unknown`, `any`), also an index signature. */
+type OpenKeys<O> = { [K in keyof O]-?: [Json] extends [O[K]] ? K : never }[keyof O];
+
+/** A sample value is one example, so its literal types widen: `3` types a field as `number`. */
+type SampleOf<S> = S extends string
+	? string
+	: S extends number
+		? number
+		: S extends boolean
+			? boolean
+			: S extends ReadonlyArray<infer E>
+				? Array<SampleOf<E>>
+				: S extends object
+					? { -readonly [K in keyof S]: SampleOf<S[K]> }
+					: S;
 
 /**
- * Output `O` with the fields of a sample `S` that fits it: `O & S`. A field of `O` typed `any`
- * takes the type of the sample, because `any & S` stays `any`. A field that the sample leaves
- * out keeps its type in `O`. `S` is `never` when there is no sample.
+ * Output `O` with the fields of a sample `S` that fits it: `O & S`. A field of `O` with an open
+ * type takes the type of the sample. A field that the sample leaves out keeps its type in `O`.
+ * `S` is `never` when there is no sample.
  */
 export type Sampled<O, S> = [S] extends [never]
 	? O
 	: O extends unknown
-		? [AnyKeys<O> & keyof S] extends [never]
-			? O & S
-			: Omit<O, AnyKeys<O> & keyof S> & S
+		? [OpenKeys<O> & keyof S] extends [never]
+			? O & SampleOf<S>
+			: { [K in keyof O as K extends OpenKeys<O> & keyof S ? never : K]: O[K] } & SampleOf<S>
 		: never;
 
 /** The lambda of a binary field. It compiles to the key of a binary of the input item. */

@@ -30,6 +30,7 @@ import {
 	type Compiler,
 	type Dollar,
 	type Expr,
+	type Json,
 	type Loose,
 	type NodeSettings,
 	type NodeSpec,
@@ -95,6 +96,7 @@ export type {
 	FailedItem,
 	FromModel,
 	FromSchema,
+	Json,
 	Loose,
 	Maybe,
 	ModelCatalog,
@@ -128,9 +130,6 @@ export type {
 	WorkflowOptions,
 	WorkflowSettings,
 } from './flow';
-
-/** A JSON value. */
-export type Json = string | number | boolean | null | Json[] | { [key: string]: Json };
 
 /** A parameter tree whose leaves may be lambdas. */
 export type Params<Item, Ctx> = {

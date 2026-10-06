@@ -31,6 +31,7 @@ import {
 	liveReadNodeNames,
 	sampledKeysOf,
 	sampledReadIssues,
+	sampleSchemaIssues,
 	missingNodeTypeErrors,
 	NEXT_TSCONFIG_FILENAME,
 	MODEL_CATALOG_PATH,
@@ -43,6 +44,7 @@ import {
 	synthesizedFixtures,
 	typecheckWorkflowSource,
 	untypedNodeIssues,
+	untypedOutputIssues,
 	workflowExpressions,
 } from './next-workflow-build';
 
@@ -507,9 +509,8 @@ async function compileNextWorkflowSource(
 		abortSignal,
 		NEXT_TSCONFIG_FILENAME,
 	);
-	const resourceFields = built.success
-		? await fetchResourceFields(context, built.workflow)
-		: undefined;
+	const lookups = built.success ? await fetchResourceFields(context, built.workflow) : undefined;
+	const resourceFields = lookups?.fields;
 	const revealed = built.success
 		? new Map([
 				[NODE_OUTPUTS_PATH, nodeOutputsDeclaration(built.workflow, resourceFields)],
@@ -545,6 +546,12 @@ async function compileNextWorkflowSource(
 	}
 	if (!built.success) return built;
 	const untyped = await untypedNodeIssues(source, built.workflow, context);
+	const untypedOutputs = await untypedOutputIssues(
+		source,
+		built.workflow,
+		built.declaredOutputFixtures,
+		lookups,
+	);
 	const fixtures = synthesizedFixtures(
 		built.workflow,
 		built.declaredOutputFixtures,
@@ -564,6 +571,8 @@ async function compileNextWorkflowSource(
 		warnings: [
 			...built.warnings,
 			...untyped,
+			...untypedOutputs,
+			...sampleSchemaIssues(built.workflow, built.declaredOutputFixtures, resourceFields),
 			...sampledReadIssues(built.workflow, built.declaredOutputFixtures),
 		],
 	};

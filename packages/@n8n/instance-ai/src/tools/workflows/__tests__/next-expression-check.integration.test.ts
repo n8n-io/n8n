@@ -182,6 +182,7 @@ export default workflow(
 			`${at(source, '$json.idd', 6)}: error TS2339: Property 'idd' does not exist on type '{ id: string; subject: string; count: number; }'.`,
 			`${at(source, '$now.toISo', 5)}: error TS2551: Property 'toISo' does not exist on type 'DateTime'. Did you mean 'toISO'?`,
 			`${at(source, '$pageCount')}: error TS2304: Cannot find name '$pageCount'.`,
+			`${at(source, '\'={{ $("Strat")')}: error TS2322: The expression result does not fit the field: Type 'null' is not assignable to type 'string | undefined'.`,
 			`${at(source, '"Strat"')}: error TS2345: Argument of type '"Strat"' is not assignable to parameter of type '"Get" | "Start"'.`,
 			`${at(source, "'={{ $json.Subject }}'")}: error TS2322: The expression result does not fit the field: Type 'string' is not assignable to type 'number'.`,
 			`${at(source, 'subjcet')}: error TS2551: Property 'subjcet' does not exist on type '{ id: string; subject: string; count: number; }'. Did you mean 'subject'?`,
@@ -553,9 +554,11 @@ export default workflow(
 		const store = result.workflow.nodes.find((node) => node.name === 'Store');
 		expect(store?.parameters?.body).toEqual({ kind: 'binary', file: 'image' });
 		const bodyOnly = await build(source(false));
-		expect(bodyOnly.success ? [] : bodyOnly.errors).toEqual([
-			expect.stringContaining("'item.statusCode' is of type 'unknown'"),
-		]);
+		expect(bodyOnly.success ? [] : bodyOnly.errors).toEqual(
+			expect.arrayContaining([
+				expect.stringContaining("'item.statusCode' is possibly 'null' or 'undefined'"),
+			]),
+		);
 	}, 120_000);
 
 	it('lets the lambda of an optional contract field give undefined, but not another type', async () => {
@@ -674,6 +677,8 @@ export default workflow(
 		const wrong = await build(source("{ statusCode: '200' }"));
 		expect(wrong.success ? [] : wrong.errors).toEqual([
 			expect.stringContaining("Type 'string' is not assignable to type 'number'"),
+			expect.stringContaining("'item.body' is possibly 'null' or 'undefined'"),
+			expect.stringContaining('type the step with `sample` items'),
 		]);
 	}, 120_000);
 
@@ -777,6 +782,63 @@ export default workflow(
 		const located = await build(raw);
 		expect(located.success ? [] : located.errors).toEqual([
 			`${at(raw, 'idd')}: error TS2339: Property 'idd' does not exist on type '{ id: number; }'.`,
+		]);
+	}, 120_000);
+
+	it('types an undeclared key of an open output as Json or undefined, so a read must check it', async () => {
+		const source = (read: string) => `import { workflow, manual, set } from '@n8n/workflow-sdk/next';
+import { gmail } from '@n8n/nodes/gmail';
+
+export default workflow(
+	'Mail',
+	manual(),
+	gmail.message.getAll({ name: 'Mail', paging: { mode: 'limit', max: 5 } }),
+	set({ name: 'Read', fields: { a: (m) => ${read} } }),
+);
+`;
+		const declared = await build(source("m.id + (m.Subject ?? '')"));
+		expect(declared.success ? [] : declared.errors).toEqual([]);
+		const guarded = await build(source("typeof m.Subjcet === 'string' ? m.Subjcet : ''"));
+		expect(guarded.success ? [] : guarded.errors).toEqual([]);
+		expect(
+			guarded.success &&
+				guarded.warnings
+					.filter((warning) => warning.code === 'UNTYPED_OUTPUT')
+					.map((w) => w.message),
+		).toEqual([
+			'"Mail": reads of Subjcet are untyped (the output type does not declare them), so tsc does not check the key names. Give the step `sample` items.',
+		]);
+		const typo = await build(source('m.Subjcet.toUpperCase()'));
+		expect(typo.success ? [] : typo.errors).toEqual([
+			expect.stringContaining("'m.Subjcet' is possibly 'null' or 'undefined'"),
+			expect.stringContaining(
+				"Property 'toUpperCase' does not exist on type 'string | number | boolean | Json[] | { [key: string]: Json | undefined; }'",
+			),
+		]);
+	}, 120_000);
+
+	it('checks an expression at any depth of an open JSON body, but compares no field', async () => {
+		const source = (deep: string) => `import { workflow, manual } from '@n8n/workflow-sdk/next';
+import { httpRequest } from '@n8n/nodes/httpRequest';
+
+export default workflow(
+	'Deep body',
+	manual({ sample: ${SAMPLE} }),
+	httpRequest.send({
+		name: 'Post',
+		method: 'POST',
+		url: 'https://api.example.com/x',
+		body: { kind: 'json', json: { a: { b: [${deep}], c: 1 } } },
+	}),
+);
+`;
+		const right = await build(source("'={{ $json.subject }}', { d: '={{ $json.count + 1 }}' }"));
+		expect(right.success ? [] : right.errors).toEqual([]);
+		const wrong = source("'={{ $(\"Nope\").item.json.id }}', { d: '={{ $json.cuont }}' }");
+		const failed = await build(wrong);
+		expect(failed.success ? [] : failed.errors).toEqual([
+			`${at(wrong, '"Nope"')}: error TS2345: Argument of type '"Nope"' is not assignable to parameter of type '"Start"'.`,
+			`${at(wrong, 'cuont')}: error TS2551: Property 'cuont' does not exist on type '{ id: string; subject: string; count: number; }'. Did you mean 'count'?`,
 		]);
 	}, 120_000);
 

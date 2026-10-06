@@ -107,6 +107,9 @@ function patternDoc(schema: JsonSchema, child: JsonSchema, mode: Mode, indent: s
 /** A value in an open input object. Unlike `unknown`, it keeps a lambda typed. */
 const OPEN_VALUE = 'OpenValue';
 
+/** The value of an undeclared key of an output object. */
+const OPEN_OUTPUT = 'Json | undefined';
+
 function leaf(text: string, schema: JsonSchema, mode: Mode): string {
 	if (!mode.input || mode.plain || schema['x-n8n-literal']) return text;
 	return `${mode.optional ? 'Maybe' : 'Value'}<I, C, ${text}>`;
@@ -187,8 +190,10 @@ function objectTs(
 			doc: '',
 			body: `[key: string]: ${toTs(additionalProperties, childMode)}${optional ? ' | undefined' : ''}`,
 		});
-	} else if (additionalProperties === true || (additionalProperties === undefined && !mode.input)) {
-		// Open shape: reads compile, so missing type information never blocks a build.
+	} else if (!mode.input && additionalProperties !== false) {
+		// Open shape: n8n data is JSON, and an undeclared key can be absent, so a read needs a check.
+		members.push({ doc: '', body: `[key: string]: ${OPEN_OUTPUT}` });
+	} else if (additionalProperties === true) {
 		members.push({ doc: '', body: '[key: string]: any' });
 	}
 	if (!members.length) return 'Record<string, never>';
@@ -320,22 +325,22 @@ function renderTs(schema: JsonSchema, mode: Mode): string {
 		case 'array':
 			return `Array<${toTs(schema.items ?? {}, { ...mode, optional: false })}>`;
 		case 'object':
-			// Until the workflow declares it, a declared field reads like an open shape, so a
-			// decompiled flow without its schema still compiles.
+			// Until the workflow declares it, a declared field reads as `any`, so a decompiled flow
+			// without its schema still compiles. The build names the field as untyped.
 			if (schema['x-n8n-declared'] && !mode.input) return '{ [key: string]: any }';
 			if (schema.additionalProperties === true && !schema.properties) {
 				// Each key takes a lambda too. `Record<string, unknown>` gives it no parameter types.
-				return mode.input && !mode.plain && !schema['x-n8n-literal']
+				if (!mode.input) return `{ [key: string]: ${OPEN_OUTPUT} }`;
+				return !mode.plain && !schema['x-n8n-literal']
 					? `Value<I, C, { [key: string]: Value<I, C, ${OPEN_VALUE}> }>`
 					: 'Record<string, unknown>';
 			}
 			return objectTs(schema, mode);
 		default:
 			if (schema.properties) return objectTs(schema, mode);
-			// Any JSON value. An input lambda gets typed parameters; an output read compiles.
-			return mode.input && !mode.plain && !schema['x-n8n-literal']
-				? `Value<I, C, ${OPEN_VALUE}>`
-				: 'any';
+			// Any JSON value. An input lambda gets typed parameters.
+			if (!mode.input) return 'Json';
+			return !mode.plain && !schema['x-n8n-literal'] ? `Value<I, C, ${OPEN_VALUE}>` : 'any';
 	}
 }
 
@@ -1109,6 +1114,7 @@ export function generateNodeModule(nodeId: string, contracts: readonly Generated
 		...(named.some(({ contract }) => hasBinary(contract.input)) ? ['type Dollar'] : []),
 		...(hasEntries ? ['type EntryFields'] : []),
 		...(hasEntries || derived ? ['type Exact'] : []),
+		...(/\bJson\b/.test(body) ? ['type Json'] : []),
 		...(body.includes(`Value<I, C, ${OPEN_VALUE}>`) ? [`type ${OPEN_VALUE}`] : []),
 		...(body.includes('Maybe<') ? ['type Maybe'] : []),
 		...(body.includes('ModelOf<') ? ['type ModelOf'] : []),

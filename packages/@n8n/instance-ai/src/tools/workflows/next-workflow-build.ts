@@ -46,6 +46,7 @@ import type { ValidationWarning } from './workflow-validation-warnings';
 import {
 	actionOfNode,
 	contractActions,
+	firstPartyCatalog,
 	isContractNodeType,
 	toolActionOfNode,
 } from '../contract-catalog';
@@ -284,6 +285,15 @@ async function withTimeout<T>(work: Promise<T>, fallback: T, timeoutMs: number):
 /** How a lookup ended. `mocked`: the eval mock answered it. */
 type LookupOutcome = 'ok' | 'mocked' | 'failed' | 'timeout' | 'no-credential';
 
+/** How a lookup that gave no fields ended. */
+export type LookupMiss = Exclude<LookupOutcome, 'ok' | 'mocked'>;
+
+/** The resource fields of each node, and why a lookup gave none, by node name. */
+export interface ResourceLookups {
+	fields: ResourceFields;
+	misses: ReadonlyMap<string, LookupMiss>;
+}
+
 interface Lookup {
 	fields: ResourceField[];
 	outcome: LookupOutcome;
@@ -314,9 +324,10 @@ async function firstFields(
 export async function fetchResourceFields(
 	context: InstanceAiContext,
 	workflow: WorkflowJSON,
-): Promise<ResourceFields> {
+): Promise<ResourceLookups> {
+	const none: ResourceLookups = { fields: new Map(), misses: new Map() };
 	const explore = context.nodeService.exploreResources?.bind(context.nodeService);
-	if (!explore) return new Map();
+	if (!explore) return none;
 	const targets = workflow.nodes.flatMap((node) => {
 		const action = actionOfNode(node);
 		const contract = action && toContract(action);
@@ -326,7 +337,7 @@ export async function fetchResourceFields(
 			? [{ name: node.name, node, action, method, calls }]
 			: [];
 	});
-	if (targets.length === 0) return new Map();
+	if (targets.length === 0) return none;
 	const stored = await context.credentialService.list().catch(() => []);
 	const timeoutMs =
 		(await context.nodeService.resourceLookupTimeoutMs?.().catch(() => undefined)) ??
@@ -358,10 +369,23 @@ export async function fetchResourceFields(
 				outcome,
 				fields: fields.length,
 			});
-			return fields.length > 0 ? [[name, fields] as const] : [];
+			return { name, fields, outcome };
 		}),
 	);
-	return new Map(fetched.flat());
+	return {
+		fields: new Map(
+			fetched.flatMap(
+				({ name, fields }): Array<[string, ResourceField[]]> =>
+					fields.length > 0 ? [[name, fields]] : [],
+			),
+		),
+		misses: new Map(
+			fetched.flatMap(
+				({ name, fields, outcome }): Array<[string, LookupMiss]> =>
+					fields.length === 0 && outcome !== 'ok' && outcome !== 'mocked' ? [[name, outcome]] : [],
+			),
+		),
+	};
 }
 
 type Fixtures = NonNullable<WorkflowJSON['pinData']>;
@@ -640,6 +664,69 @@ export function sampledReadIssues(
 	});
 }
 
+/** `schema` with no field required at any depth: a sample gives only the fields that it needs. */
+function partialOf(schema: JsonSchema): JsonSchema {
+	const { additionalProperties, properties, items, anyOf, oneOf, patternProperties } = schema;
+	const each = (children: Record<string, JsonSchema>) =>
+		Object.fromEntries(Object.entries(children).map(([key, child]) => [key, partialOf(child)]));
+	return {
+		...Object.fromEntries(Object.entries(schema).filter(([key]) => key !== 'required')),
+		...(properties ? { properties: each(properties) } : {}),
+		...(patternProperties ? { patternProperties: each(patternProperties) } : {}),
+		...(items ? { items: partialOf(items) } : {}),
+		...(anyOf ? { anyOf: anyOf.map(partialOf) } : {}),
+		...(oneOf ? { oneOf: oneOf.map(partialOf) } : {}),
+		...(isRecord(additionalProperties)
+			? { additionalProperties: partialOf(additionalProperties) }
+			: {}),
+	};
+}
+
+// One warning names this many issues of a node, as the output drift warning of verification.
+const MAX_SAMPLE_ISSUES = 10;
+
+/**
+ * One informational warning for each contract node whose `sample` items do not fit its output
+ * schema: the output for its parameters and resource fields, e.g. after a declared HTTP `schema`.
+ * The sample types the output and pins the step in verification, so a wrong one hides a defect.
+ * A field that the sample leaves out is no issue.
+ */
+export function sampleSchemaIssues(
+	workflow: WorkflowJSON,
+	declared: Fixtures = {},
+	resourceFields: ResourceFields = new Map(),
+): ValidationWarning[] {
+	return workflow.nodes.flatMap((node): ValidationWarning[] => {
+		const action = actionOfNode(node);
+		const items = node.name ? declared[node.name] : undefined;
+		if (!action || !node.name || !items?.length) return [];
+		const schema = partialOf(
+			outputItemSchema(outputOf(action, nodeInputOf(node, action), resourceFields.get(node.name))),
+		);
+		const issues = [
+			...new Set(
+				items.flatMap((item) =>
+					validate(item, schema, { path: '$json' }).map((issue) =>
+						issue.replace(/\[\d+\]/g, '[]').replace(/, got .*$/, ''),
+					),
+				),
+			),
+		];
+		if (issues.length === 0) return [];
+		const shown = issues.slice(0, MAX_SAMPLE_ISSUES).join('; ');
+		const more =
+			issues.length > MAX_SAMPLE_ISSUES ? ` (${issues.length - MAX_SAMPLE_ISSUES} more)` : '';
+		return [
+			{
+				code: 'SAMPLE_SCHEMA_MISMATCH',
+				nodeName: node.name,
+				severity: 'informational',
+				message: `"${node.name}": the sample does not match the output schema: ${shown}${more}. Fix the sample to match the real output.`,
+			},
+		];
+	});
+}
+
 /**
  * Splits the fixtures of the live reads out: verification runs a live read, and pins its fixture
  * only when the read fails. A node with a mocked credential cannot read, so its fixture stays.
@@ -702,8 +789,10 @@ export function nodeOutputsDeclaration(
 			: [],
 	);
 	if (members.length + continued.length === 0) return EMPTY_OUTPUTS;
+	// skipLibCheck hides a name that does not resolve here, and tsc then reads it as `any`.
+	const usesJson = members.some((member) => /\bJson\b/.test(member));
 	return [
-		'export {};',
+		usesJson ? "import type { Json } from '@n8n/workflow-sdk/next';" : 'export {};',
 		"declare module '@n8n/workflow-sdk/next' {",
 		...(members.length > 0 ? ['\tinterface NodeOutputs {', ...members, '\t}'] : []),
 		...(continued.length > 0 ? ['\tinterface ContinuedNodes {', ...continued, '\t}'] : []),
@@ -886,6 +975,137 @@ export async function legacyNodeIssues(
 					: `"${node.name}" is a legacy ${node.type} node. The typed module ${nodeId} (${from}) has ${steps}: use the step that does this job instead of node({ type }).`,
 			},
 		];
+	});
+}
+
+const LOOKUP_MISS_TEXT: Readonly<Record<LookupMiss, string>> = {
+	failed: 'failed',
+	timeout: 'timed out',
+	'no-credential': 'had no credential: bind one, or store exactly one that the step accepts',
+};
+
+/** A schema that takes any JSON value: tsc reads it as `Json`. */
+const isOpenSchema = (schema: JsonSchema) =>
+	schema.type === undefined &&
+	schema.properties === undefined &&
+	schema.anyOf === undefined &&
+	schema.oneOf === undefined &&
+	schema.enum === undefined &&
+	schema.const === undefined;
+
+/**
+ * No branch of the output types `key`, and one branch takes it as any JSON value: an open key
+ * space (`Json | undefined`), or a key pattern without a value type, e.g. Notion properties
+ * before their lookup.
+ */
+function readsOpenKey(output: JsonSchema, key: string): boolean {
+	const branches = output.anyOf ?? output.oneOf ?? [output];
+	const patterns = (branch: JsonSchema) =>
+		Object.entries(branch.patternProperties ?? {}).flatMap(([pattern, child]) =>
+			safeRegex.test(pattern, key) ? [child] : [],
+		);
+	const types = (branch: JsonSchema) =>
+		branch.properties?.[key] !== undefined ||
+		patterns(branch).some((child) => !isOpenSchema(child));
+	const open = (branch: JsonSchema) =>
+		patterns(branch).length > 0 ||
+		branch.additionalProperties === true ||
+		branch.additionalProperties === undefined;
+	return !branches.some(types) && branches.some(open);
+}
+
+/** A field that reads as `any` until the workflow declares its `schema`, e.g. a webhook `body`. */
+const readsUndeclaredField = (output: JsonSchema, key: string) =>
+	output.properties?.[key]?.['x-n8n-declared'] === true;
+
+/** The output of the trigger that a node runs: a trigger of a contract package, or a native trigger. */
+function triggerOutputOf(nodeType: string): JsonSchema | undefined {
+	const entry = firstPartyCatalog().entries.find(
+		({ manifest, nodeType: type }) =>
+			manifest.kind === 'trigger' &&
+			('native' in manifest ? manifest.native.type : type) === nodeType,
+	);
+	return entry?.manifest.contract.output;
+}
+
+const MAX_LISTED_KEYS = 5;
+
+/**
+ * One informational line for each node whose output keys the workflow reads, where `tsc` cannot
+ * type them: a `node()` or `trigger()` without `sample` items (its item is `Loose`), a trigger
+ * field without a `schema`, and an open output key that a failed resource lookup or the output
+ * type leaves undeclared. Each line names the node, the keys and why.
+ */
+export async function untypedOutputIssues(
+	source: string,
+	workflow: WorkflowJSON,
+	declared: Fixtures = {},
+	lookups: ResourceLookups = { fields: new Map(), misses: new Map() },
+): Promise<ValidationWarning[]> {
+	const { locateNextNodes } = await import('@n8n/workflow-sdk/next');
+	const written = new Set(
+		locateNextNodes(source).flatMap(({ name, type }) => (type === undefined ? [] : [name])),
+	);
+	return workflow.nodes.flatMap((node): ValidationWarning[] => {
+		const name = node.name;
+		if (!name || node.disabled) return [];
+		const items = declared[name] ?? [];
+		const reads = [...readKeysOf(workflow, name)];
+		const unsampled = reads.filter((key) => !items.some((item) => key in item));
+		const issue = (
+			keys: readonly string[],
+			reason: string,
+			fix: string,
+			unchecked = 'them',
+		): ValidationWarning[] => {
+			if (keys.length === 0) return [];
+			const listed = keys.slice(0, MAX_LISTED_KEYS).join(', ');
+			const more = keys.length > MAX_LISTED_KEYS ? ', …' : '';
+			return [
+				{
+					code: 'UNTYPED_OUTPUT',
+					nodeName: name,
+					severity: 'informational',
+					message: `"${name}": reads of ${listed}${more} are untyped (${reason}), so tsc does not check ${unchecked}. ${fix}`,
+				},
+			];
+		};
+		const action = actionOfNode(node);
+		if (!action) {
+			const triggerOutput = triggerOutputOf(node.type);
+			if (triggerOutput) {
+				// A trigger sample has every field of the example, so only a filled value declares one.
+				const filled = (key: string) =>
+					items.some((item) => isRecord(item[key]) && Object.keys(item[key]).length > 0);
+				return issue(
+					reads.filter((key) => readsUndeclaredField(triggerOutput, key) && !filled(key)),
+					'no `schema` declares them',
+					'Declare their fields in the trigger `schema`.',
+				);
+			}
+			return written.has(name) && items.length === 0
+				? issue(reads, 'node() and trigger() have no output type', 'Give it `sample` items.')
+				: [];
+		}
+		if (action.output.json['x-n8n-passed'] === true) return [];
+		const output = outputOf(action, nodeInputOf(node, action), lookups.fields.get(name));
+		const miss = lookups.misses.get(name);
+		const method = toContract(action).output['x-n8n-resource']?.method;
+		const lookup = method === undefined ? 'the field lookup' : `the ${method} field lookup`;
+		const declaredInput = Object.entries(action.inputSchema.properties ?? {}).find(
+			([, field]) => field['x-n8n-declared'] === true,
+		)?.[0];
+		return issue(
+			unsampled.filter((key) => readsOpenKey(output, key)),
+			miss === undefined
+				? 'the output type does not declare them'
+				: `${lookup} ${LOOKUP_MISS_TEXT[miss]}`,
+			declaredInput === undefined
+				? 'Give the step `sample` items.'
+				: `Give the step \`${declaredInput}\`, the JSON Schema from the API docs, or \`sample\` items.`,
+			// An open key is `Json`, so tsc makes a read narrow the value, but it accepts any key name.
+			'the key names',
+		);
 	});
 }
 
@@ -1174,6 +1394,12 @@ const UNDEFINED_LAMBDA_HINT =
 const UNDEFINED_HINT =
 	"The value can be undefined. After a step with `onError: 'continueRegularOutput'`, check `item.error === undefined` first: then its output fields are set. A `schema` field is optional until its `required` list names it: add it there if the data always has it. Else give a default, e.g. `item.f ?? ''`.";
 
+const OPEN_OUTPUT_HINT =
+	"The output type does not declare this key, so its value is any JSON value or undefined (`Json | undefined`). Read a field that the type lists, type the step with `sample` items or an HTTP `schema`, or narrow the value: `typeof v === 'string' ? v : ''`.";
+
+const NULLISH_HINT =
+	"The value can be null or undefined: an optional output field, or a key that the output does not declare (`Json | undefined`). Check it first, e.g. `item.f ?? ''`, or read a field that the type lists.";
+
 const LOOP_STATE_HINT =
 	'The loop state has the type of the item before `loop`, and `next` returns it. Put a `set` of only the state fields before `loop`. Then end the body with a `set` of the same fields, or return them from `next`.';
 
@@ -1310,6 +1536,13 @@ const TSC_HINTS: ReadonlyArray<{
 		hint: () =>
 			'The `error` of a failed item is the error message as text. Read `item.error`, not `item.error.message`.',
 	},
+	{
+		codes: [2322, 2339, 2345, 2362, 2363, 2365],
+		// `Json`, as tsc prints it with or without its name.
+		message: /type '(?:Json\b|string \| number \| boolean \| (?:Json\[\]|\(string \| number))/,
+		hint: () => OPEN_OUTPUT_HINT,
+	},
+	{ codes: [18049], message: /is possibly 'null' or 'undefined'/, hint: () => NULLISH_HINT },
 	{
 		codes: [2339],
 		message: unionTypeMessage,

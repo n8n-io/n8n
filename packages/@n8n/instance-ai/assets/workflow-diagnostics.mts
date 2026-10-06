@@ -76,6 +76,8 @@ function formatError(source: SourceFile, file: string, pos: number, error: strin
 // before, `$('Node')` an earlier node, and the result must fit the field. This worker finds the
 // spans and runs the programs; the check package builds the shadow and decides what counts.
 
+type ContextualType = NonNullable<Awaited<ReturnType<Checker['getContextualType']>>>;
+
 /** Loaded with the expression check only, so the plain type check starts as fast as before. */
 type Ast = typeof import('typescript/unstable/ast');
 type Check = typeof import('@n8n/expression-types/check');
@@ -112,15 +114,45 @@ async function takesLambda(ast: Ast, check: Check, checker: Checker, node: Node)
 	if (!ast.isExpression(node)) return false;
 	const contextual = await checker.getContextualType(node);
 	if (!contextual) return false;
-	const parts = contextual.isUnionType() ? await contextual.getTypes() : [contextual];
-	const signatures = await Promise.all(
-		parts.map(async (part) => await checker.getSignaturesOfType(part, SignatureKind.Call)),
-	);
-	if (signatures.some((list) => list.length > 0)) return true;
+	if (await hasCallSignature(checker, contextual)) return true;
 	if (ast.isCallExpression(node)) {
 		return (await checker.getPropertyOfType(contextual, check.EXPRESSION_BRAND)) !== undefined;
 	}
 	return await isInferredField(ast, checker, node);
+}
+
+/** A contextual type with a call signature: the value can be a lambda. */
+async function hasCallSignature(checker: Checker, contextual: ContextualType): Promise<boolean> {
+	const parts = contextual.isUnionType() ? await contextual.getTypes() : [contextual];
+	const signatures = await Promise.all(
+		parts.map(async (part) => await checker.getSignaturesOfType(part, SignatureKind.Call)),
+	);
+	return signatures.some((list) => list.length > 0);
+}
+
+/**
+ * The nearest object or array literal that takes a lambda around a value that sits in it through
+ * object and array literals only, e.g. two levels deep in an open JSON value. n8n resolves an
+ * expression at any depth of a parameter, so the expression reads the item of that lambda.
+ */
+async function lambdaScopeOf(ast: Ast, checker: Checker, node: Node): Promise<Node | undefined> {
+	const { parent } = node;
+	const container =
+		ast.isPropertyAssignment(parent) && parent.initializer === node
+			? parent.parent
+			: ast.isArrayLiteralExpression(parent)
+				? parent
+				: undefined;
+	if (
+		!container ||
+		!(ast.isObjectLiteralExpression(container) || ast.isArrayLiteralExpression(container))
+	) {
+		return undefined;
+	}
+	const contextual = await checker.getContextualType(container);
+	return contextual && (await hasCallSignature(checker, contextual))
+		? container
+		: await lambdaScopeOf(ast, checker, container);
 }
 
 /** A property value of an object literal whose contextual type the call infers from that literal. */
@@ -178,23 +210,47 @@ async function spansOf(
 			),
 		)
 	).flat();
-	// A literal whose call is a slot is part of that slot.
-	const calls = new Set(slots.filter((slot) => !isLiteral(slot.node)).map((slot) => slot.literal));
-	return slots
-		.filter((slot) => !(isLiteral(slot.node) && calls.has(slot.literal)))
-		.map(({ node, literal, kind }) => {
-			const { parent } = node;
-			const named = ast.isPropertyAssignment(parent) && parent.initializer === node;
-			return {
-				kind,
-				start: node.getStart(source),
-				end: node.end,
-				literalStart: literal.getStart(source),
-				literalEnd: literal.end,
-				text: literal.text,
-				...(named ? { propertyName: parent.name.getStart(source) } : {}),
-			};
-		});
+	const slotted = new Set(slots.map((slot) => slot.node));
+	const scoped = (
+		await Promise.all(
+			candidates.map(async (candidate) => {
+				if (candidate.kind !== 'expression' || slotted.has(candidate.node)) return [];
+				const scope = await lambdaScopeOf(ast, checker, candidate.node);
+				return scope ? [{ ...candidate, scope }] : [];
+			}),
+		)
+	).flat();
+	// A literal whose call is a slot or in a scope is part of that call.
+	const calls = new Set(
+		[...slots, ...scoped].filter((slot) => !isLiteral(slot.node)).map((slot) => slot.literal),
+	);
+	const spanOf = ({ node, literal, kind }: (typeof candidates)[number]) => ({
+		kind,
+		start: node.getStart(source),
+		end: node.end,
+		literalStart: literal.getStart(source),
+		literalEnd: literal.end,
+		text: literal.text,
+	});
+	return [
+		...slots
+			.filter((slot) => !(isLiteral(slot.node) && calls.has(slot.literal)))
+			.map((slot) => {
+				const { parent } = slot.node;
+				const named = ast.isPropertyAssignment(parent) && parent.initializer === slot.node;
+				return {
+					...spanOf(slot),
+					...(named ? { propertyName: parent.name.getStart(source) } : {}),
+				};
+			}),
+		// No field types the result in a scope, so it has no property name to compare.
+		...scoped
+			.filter((slot) => !(isLiteral(slot.node) && calls.has(slot.literal)))
+			.map((slot) => ({
+				...spanOf(slot),
+				scope: { start: slot.scope.getStart(source), end: slot.scope.end },
+			})),
+	];
 }
 
 async function diagnosticsOf(program: Program, file: string): Promise<readonly Diagnostic[]> {

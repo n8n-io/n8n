@@ -27,6 +27,7 @@ import {
 	liveReadNodeNames,
 	sampledReadIssues,
 	sampledKeysOf,
+	sampleSchemaIssues,
 	catalogProvidersOf,
 	legacyNodeIssues,
 	modelCatalogFile,
@@ -38,6 +39,7 @@ import {
 	tscHintOf,
 	typecheckWorkflowSource,
 	untypedNodeIssues,
+	untypedOutputIssues,
 	usedNodeIds,
 	withTscHints,
 	workflowExpressions,
@@ -541,7 +543,7 @@ import { googleGemini } from '@n8n/nodes/googleGemini';`;
 				makeContext(exploreResources, undefined, logger),
 				tasks,
 			);
-			expect(result.get('Tasks')).toEqual(fields);
+			expect(result.fields.get('Tasks')).toEqual(fields);
 			expect(outcomeLogged(logger)).toMatchObject({
 				nodeName: 'Tasks',
 				method: 'notion.dataSourceProperties',
@@ -574,8 +576,10 @@ import { googleGemini } from '@n8n/nodes/googleGemini';`;
 				nodes: tasks.nodes.map((node) => ({ ...node, parameters: { database } })),
 			});
 			const context = makeContext(exploreResources);
-			expect((await fetchResourceFields(context, withDatabase('={{ $json.db }}'))).size).toBe(0);
-			expect((await fetchResourceFields(context, withDatabase('Tasks'))).size).toBe(0);
+			expect(
+				(await fetchResourceFields(context, withDatabase('={{ $json.db }}'))).fields.size,
+			).toBe(0);
+			expect((await fetchResourceFields(context, withDatabase('Tasks'))).fields.size).toBe(0);
 			expect(exploreResources).not.toHaveBeenCalled();
 		});
 
@@ -590,7 +594,9 @@ import { googleGemini } from '@n8n/nodes/googleGemini';`;
 				],
 				logger,
 			);
-			expect((await fetchResourceFields(context, tasks)).size).toBe(0);
+			const result = await fetchResourceFields(context, tasks);
+			expect(result.fields.size).toBe(0);
+			expect(result.misses.get('Tasks')).toBe('no-credential');
 			expect(exploreResources).not.toHaveBeenCalled();
 			expect(outcomeLogged(logger)).toMatchObject({ outcome: 'no-credential' });
 		});
@@ -602,7 +608,7 @@ import { googleGemini } from '@n8n/nodes/googleGemini';`;
 				makeContext(exploreResources, undefined, logger),
 				tasks,
 			);
-			expect(result.get('Tasks')).toEqual(fields);
+			expect(result.fields.get('Tasks')).toEqual(fields);
 			expect(outcomeLogged(logger)).toMatchObject({ outcome: 'mocked' });
 		});
 
@@ -613,7 +619,8 @@ import { googleGemini } from '@n8n/nodes/googleGemini';`;
 				makeContext(exploreResources, undefined, logger),
 				tasks,
 			);
-			expect(result.size).toBe(0);
+			expect(result.fields.size).toBe(0);
+			expect(result.misses.get('Tasks')).toBe('failed');
 			expect(outcomeLogged(logger)).toMatchObject({ outcome: 'failed', fields: 0 });
 		});
 
@@ -630,7 +637,9 @@ import { googleGemini } from '@n8n/nodes/googleGemini';`;
 					tasks,
 				);
 				await vi.advanceTimersByTimeAsync(5_000);
-				expect((await pending).size).toBe(0);
+				const result = await pending;
+				expect(result.fields.size).toBe(0);
+				expect(result.misses.get('Tasks')).toBe('timeout');
 				expect(outcomeLogged(logger)).toMatchObject({ outcome: 'timeout' });
 			} finally {
 				vi.useRealTimers();
@@ -661,9 +670,9 @@ import { googleGemini } from '@n8n/nodes/googleGemini';`;
 				]);
 				await vi.advanceTimersByTimeAsync(30_000);
 				const [mockedFields, realFields] = await pending;
-				expect(mockedFields.get('Tasks')).toEqual(fields);
+				expect(mockedFields.fields.get('Tasks')).toEqual(fields);
 				expect(outcomeLogged(mocked)).toMatchObject({ outcome: 'mocked' });
-				expect(realFields.size).toBe(0);
+				expect(realFields.fields.size).toBe(0);
 				expect(outcomeLogged(real)).toMatchObject({ outcome: 'timeout' });
 			} finally {
 				vi.useRealTimers();
@@ -1177,6 +1186,18 @@ describe('tsc hints', () => {
 			"TS2339: Property 'settings' does not exist on type 'Workflow'.",
 			"Workflow settings go in the first argument: `workflow({ name, settings: { errorWorkflow: '<id>' } }, trigger, \u2026)`.",
 		],
+		[
+			"TS2339: Property 'toUpperCase' does not exist on type 'string | number | boolean | Json[] | { [key: string]: Json | undefined; }'.",
+			"The output type does not declare this key, so its value is any JSON value or undefined (`Json | undefined`). Read a field that the type lists, type the step with `sample` items or an HTTP `schema`, or narrow the value: `typeof v === 'string' ? v : ''`.",
+		],
+		[
+			"TS2339: Property 'toUpperCase' does not exist on type 'Json'.",
+			"The output type does not declare this key, so its value is any JSON value or undefined (`Json | undefined`). Read a field that the type lists, type the step with `sample` items or an HTTP `schema`, or narrow the value: `typeof v === 'string' ? v : ''`.",
+		],
+		[
+			"TS18049: 'm.Subjcet' is possibly 'null' or 'undefined'.",
+			"The value can be null or undefined: an optional output field, or a key that the output does not declare (`Json | undefined`). Check it first, e.g. `item.f ?? ''`, or read a field that the type lists.",
+		],
 	])('hints %s', (message, hint) => {
 		expect(tscHintOf(`${at}${message}`, macros)).toBe(hint);
 	});
@@ -1187,6 +1208,7 @@ describe('tsc hints', () => {
 		"TS2769: No overload matches this call.\n  The last overload gave the following error.\n    Argument of type 'number' is not assignable to parameter of type 'string'.",
 		"TS2322: Type 'string' is not assignable to type 'number'.",
 		'TS2345: Argument of type \'"Strat"\' is not assignable to parameter of type \'"Get" | "Start"\'.',
+		"TS2339: Property 'idd' does not exist on type 'JsonObject'.",
 		"TS2304: Cannot find name '$pageCount'.",
 		"TS2304: Cannot find name 'orderTotal'.",
 		"TS2322: Type '(item: { ok: boolean; }) => string' is not assignable to type '(out: { ok: boolean; }, $: Dollar<Record<\"Start\", {}>>) => boolean'.\n  Type 'string' is not assignable to type 'boolean'.",
@@ -1446,5 +1468,134 @@ describe('untypedNodeIssues', () => {
 			)
 			.toJSON();
 		expect(await untypedNodeIssues(source, json, context())).toEqual([]);
+	});
+});
+
+describe('untypedOutputIssues', () => {
+	const step = (name: string, type: string, parameters: IDataObject = {}) => ({
+		id: name,
+		name,
+		type,
+		typeVersion: 1,
+		position: [0, 0] as [number, number],
+		parameters,
+	});
+	const chain = (...nodes: Array<ReturnType<typeof step>>): WorkflowJSON => ({
+		name: 'W',
+		nodes,
+		connections: Object.fromEntries(
+			nodes
+				.slice(0, -1)
+				.map((node, index) => [
+					node.name,
+					{ main: [[{ node: nodes[index + 1]?.name ?? '', type: 'main', index: 0 }]] },
+				]),
+		),
+	});
+	const read = (expression: string) => step('Read', 'n8n-nodes-base.set', { value: expression });
+	const messages = (issues: Array<{ message: string }>) => issues.map(({ message }) => message);
+
+	it('names a node() output that the workflow reads, unless sample items type it', async () => {
+		const source = `workflow('W', manual(),
+	node({ name: 'Pass', type: 'n8n-nodes-base.noOp', version: 1 }), set({ name: 'Read' }));`;
+		const json = chain(step('Pass', 'n8n-nodes-base.noOp'), read('={{ $json.id }}'));
+		expect(await untypedOutputIssues(source, json)).toEqual([
+			{
+				code: 'UNTYPED_OUTPUT',
+				nodeName: 'Pass',
+				severity: 'informational',
+				message:
+					'"Pass": reads of id are untyped (node() and trigger() have no output type), so tsc does not check them. Give it `sample` items.',
+			},
+		]);
+		expect(await untypedOutputIssues(source, json, { Pass: [{ id: 1 }] })).toEqual([]);
+	});
+
+	it('names an open output key of a contract step, and keys that a sample gives are typed', async () => {
+		const json = chain(
+			step('Fetch', '@n8n/nodes-core.httpRequestGet', { url: 'https://api.example.com/x' }),
+			read('={{ $json.total + $json.items.length }}'),
+		);
+		expect(messages(await untypedOutputIssues('', json))).toEqual([
+			'"Fetch": reads of total, items are untyped (the output type does not declare them), so tsc does not check the key names. Give the step `schema`, the JSON Schema from the API docs, or `sample` items.',
+		]);
+		expect(messages(await untypedOutputIssues('', json, { Fetch: [{ total: 1 }] }))).toEqual([
+			'"Fetch": reads of items are untyped (the output type does not declare them), so tsc does not check the key names. Give the step `schema`, the JSON Schema from the API docs, or `sample` items.',
+		]);
+	});
+
+	it('says why a resource lookup left the output keys open', async () => {
+		const json = chain(
+			step('Tasks', '@n8n/nodes-integrations.notionDatabasePageGetAll', {
+				database: 'https://www.notion.so/Tasks-0123456789abcdef0123456789abcdef',
+			}),
+			read('={{ $json.property_status }}'),
+		);
+		const lookups = { fields: new Map(), misses: new Map([['Tasks', 'no-credential' as const]]) };
+		expect(messages(await untypedOutputIssues('', json, {}, lookups))).toEqual([
+			'"Tasks": reads of property_status are untyped (the notion.dataSourceProperties field lookup had no credential: bind one, or store exactly one that the step accepts), so tsc does not check the key names. Give the step `sample` items.',
+		]);
+		const fields = new Map([['Tasks', [{ name: 'Status', value: 'Status|status' }]]]);
+		expect(await untypedOutputIssues('', json, {}, { fields, misses: new Map() })).toEqual([]);
+	});
+
+	it('names a webhook body without a schema, and not one that the schema fills', async () => {
+		const json = chain(
+			step('Hook', 'n8n-nodes-base.webhook', { path: 'orders' }),
+			read('={{ $json.body.order.id }}'),
+		);
+		const message =
+			'"Hook": reads of body are untyped (no `schema` declares them), so tsc does not check them. Declare their fields in the trigger `schema`.';
+		expect(messages(await untypedOutputIssues('', json))).toEqual([message]);
+		expect(messages(await untypedOutputIssues('', json, { Hook: [{ body: {} }] }))).toEqual([
+			message,
+		]);
+		const declared = { Hook: [{ body: { order: { id: 'o1' } } }] };
+		expect(await untypedOutputIssues('', json, declared)).toEqual([]);
+	});
+});
+
+describe('sampleSchemaIssues', () => {
+	const fetch = (parameters: IDataObject): WorkflowJSON => ({
+		name: 'W',
+		connections: {},
+		nodes: [
+			{
+				id: '1',
+				name: 'Fetch',
+				type: '@n8n/nodes-core.httpRequestGet',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: { url: 'https://api.example.com/x', ...parameters },
+			},
+		],
+	});
+	const schema = {
+		type: 'object',
+		properties: {
+			total: { type: 'number' },
+			users: { type: 'array', items: { type: 'object', properties: { id: { type: 'string' } } } },
+		},
+	};
+
+	it('names the paths of a sample that does not fit the declared schema', () => {
+		const issues = sampleSchemaIssues(fetch({ schema }), {
+			Fetch: [{ total: '3', users: [{ id: 1 }, { id: 2 }], extra: true }],
+		});
+		expect(issues).toEqual([
+			{
+				code: 'SAMPLE_SCHEMA_MISMATCH',
+				nodeName: 'Fetch',
+				severity: 'informational',
+				message:
+					'"Fetch": the sample does not match the output schema: $json.total: must be number; $json.users[].id: must be string; $json: unknown field(s) extra. Allowed: total, users. Fix the sample to match the real output.',
+			},
+		]);
+	});
+
+	it('accepts a sample that gives some fields of the output, and a node without a sample', () => {
+		expect(sampleSchemaIssues(fetch({ schema }), { Fetch: [{ users: [{}] }] })).toEqual([]);
+		expect(sampleSchemaIssues(fetch({ schema }))).toEqual([]);
+		expect(sampleSchemaIssues(fetch({}), { Fetch: [{ anything: { goes: 1 } }] })).toEqual([]);
 	});
 });

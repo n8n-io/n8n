@@ -1,4 +1,5 @@
-import { isZodSchema } from '@n8n/agents';
+import { isZodSchema, zodToJsonSchema } from '@n8n/agents';
+import { createHash } from 'node:crypto';
 import {
 	instanceAiSetupCredentialAppliedKey,
 	instanceAiSetupCredentialSelectionKey,
@@ -142,6 +143,7 @@ vi.mock('../generate-simulation-fixtures.service', async (importOriginal) => ({
 type BuildToolOutput = {
 	success: boolean;
 	filePath: string;
+	checkOnly?: true;
 	grouping?: {
 		topLevelItemCount: number;
 		ceiling: number;
@@ -360,6 +362,21 @@ describe('createBuildWorkflowTool', () => {
 			);
 		});
 
+		it('keeps the description and input schema byte-identical while node contracts are off', () => {
+			const hashes = [false, true].map((folderExplorationEnabled) => {
+				const { tool } = modelText({ folderExplorationEnabled });
+				const text = JSON.stringify({
+					description: tool.description,
+					input: zodToJsonSchema(tool.inputSchema as never),
+				});
+				return createHash('sha256').update(text).digest('hex');
+			});
+			expect(hashes).toEqual([
+				'7b025ff5e21633ba39928187a90a3a562dadf569c7ae118d90b39da6240efe57',
+				'6d5a9c19a9808f716bd0f4b47d5eab90a0d7d509cb7d60c642cdccd8854a8968',
+			]);
+		});
+
 		it('shortens every text while node contracts are on', () => {
 			for (const folderExplorationEnabled of [false, true]) {
 				const off = modelText({ folderExplorationEnabled });
@@ -368,8 +385,12 @@ describe('createBuildWorkflowTool', () => {
 				expect(on.description.length).toBeLessThan(off.description.length);
 				expect(on.description).toContain('load_skill');
 				expect(on.description).toContain('data-table-manager');
-				expect(Object.keys(on.fields)).toEqual(Object.keys(off.fields));
+				expect(Object.keys(on.fields).filter((key) => key !== 'checkOnly')).toEqual(
+					Object.keys(off.fields),
+				);
+				expect(on.fields).toHaveProperty('checkOnly');
 				for (const [key, text] of Object.entries(on.fields)) {
+					if (key === 'checkOnly') continue;
 					expect(text?.length).toBeLessThan(off.fields[key]?.length ?? 0);
 				}
 			}
@@ -1985,6 +2006,93 @@ describe('createBuildWorkflowTool', () => {
 
 		expect(result.success).toBe(false);
 		expect(result.errors?.some((e) => e.includes('Missing discriminator'))).toBe(true);
+	});
+
+	describe('check-only build', () => {
+		const checkContext = () =>
+			makeContext({
+				source: 'workflow source',
+				overrides: {
+					nodeContractsEnabled: true,
+					permissions: {
+						createWorkflow: 'always_allow',
+						updateWorkflow: 'require_approval',
+					} as InstanceAiContext['permissions'],
+				},
+			});
+
+		it('checks an edit without an approval card, and saves nothing', async () => {
+			vi.mocked(partitionWarnings).mockImplementation((warnings: ValidationWarning[]) => ({
+				blocking: warnings.filter((w) => w.severity !== 'informational'),
+				informational: warnings.filter((w) => w.severity === 'informational'),
+			}));
+			vi.mocked(compileWorkflowSource).mockResolvedValueOnce({
+				success: true,
+				workflow: structuredClone(generatedWorkflow),
+				warnings: [{ code: 'UNTYPED_OUTPUT', severity: 'informational', message: 'untyped' }],
+				compiler: 'sandbox-tsx',
+			});
+			const { context, filePath, trackTelemetry } = checkContext();
+			const suspend = vi.fn();
+
+			const result = await executeTool<BuildToolOutput>(
+				createBuildWorkflowTool(context),
+				{ filePath, workflowId: 'wf-existing', checkOnly: true },
+				{ suspend },
+			);
+
+			expect(result).toMatchObject({ success: true, checkOnly: true });
+			expect(result.workflowId).toBeUndefined();
+			expect(result.warnings?.some((w) => w.includes('untyped'))).toBe(true);
+			expect(suspend).not.toHaveBeenCalled();
+			expect(context.workflowService.updateFromWorkflowJSON).not.toHaveBeenCalled();
+			expect(context.workflowService.createFromWorkflowJSON).not.toHaveBeenCalled();
+			expect(trackTelemetry).not.toHaveBeenCalled();
+		});
+
+		it('returns the compile errors and the blocking warnings without a failed build', async () => {
+			vi.mocked(compileWorkflowSource).mockResolvedValueOnce(
+				workflowSourceBuildFailure('src/workflow.ts(3,1): error TS2339: nope'),
+			);
+			const { context, filePath, trackTelemetry } = checkContext();
+			const failed = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
+				filePath,
+				checkOnly: true,
+			});
+			expect(failed).toMatchObject({
+				success: false,
+				checkOnly: true,
+				errors: ['src/workflow.ts(3,1): error TS2339: nope'],
+			});
+			expect(trackTelemetry).not.toHaveBeenCalled();
+
+			vi.mocked(partitionWarnings).mockImplementation((warnings: ValidationWarning[]) => ({
+				blocking: warnings,
+				informational: [],
+			}));
+			vi.mocked(compileWorkflowSource).mockResolvedValueOnce({
+				success: true,
+				workflow: structuredClone(generatedWorkflow),
+				warnings: [{ code: 'CONTRACT_EGRESS', nodeName: 'Fetch', message: 'host' }],
+				compiler: 'sandbox-tsx',
+			});
+			const blocked = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
+				filePath,
+				checkOnly: true,
+			});
+			expect(blocked).toMatchObject({
+				success: false,
+				checkOnly: true,
+				errors: ['[CONTRACT_EGRESS] (Fetch): host'],
+			});
+			expect(context.workflowService.createFromWorkflowJSON).not.toHaveBeenCalled();
+		});
+
+		it('has no checkOnly field while node contracts are off', () => {
+			expect(
+				buildWorkflowInputSchema.safeParse({ filePath: 'a.workflow.ts', checkOnly: true }).success,
+			).toBe(false);
+		});
 	});
 
 	describe('edit build of a /next source', () => {

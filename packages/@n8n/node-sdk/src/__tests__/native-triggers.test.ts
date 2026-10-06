@@ -147,7 +147,7 @@ describe('native triggers', () => {
 			'(trigger, webhook; schema types body; reply when responseMode is responseNode)',
 		);
 		expect(text).toContain(
-			"import { contractStep, contractTrigger, type Declared, type DeepPartial, type EntryFields, type Exact, type NodeSettings, type OutputOf, type Step, type Trigger, type Value, type ValueSchema } from '@n8n/workflow-sdk/next';",
+			"import { contractStep, contractTrigger, type Declared, type DeepPartial, type EntryFields, type Exact, type Json, type NodeSettings, type OutputOf, type Step, type Trigger, type Value, type ValueSchema } from '@n8n/workflow-sdk/next';",
 		);
 	});
 

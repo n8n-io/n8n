@@ -1253,14 +1253,16 @@ describe('generateNodeModule', () => {
 		});
 		const text = moduleOf(append);
 		expect(text).toContain('{ values: Value<I, C, { [key: string]: Value<I, C, OpenValue> }> }');
-		expect(text).toContain('export type TodoRowAppendOutput = Record<string, unknown>;');
 		expect(text).toContain(
-			'import { contractStep, contractTool, type DeepPartial, type Exact, type OpenValue, type NodeSettings, type OutputOf,',
+			'export type TodoRowAppendOutput = { [key: string]: Json | undefined };',
+		);
+		expect(text).toContain(
+			'import { contractStep, contractTool, type DeepPartial, type Exact, type Json, type OpenValue, type NodeSettings, type OutputOf,',
 		);
 		expect(moduleOf(listTasks)).not.toContain('OpenValue');
 	});
 
-	it('gives an input JSON value a lambda type and keeps an output JSON value open', () => {
+	it('gives an input JSON value a lambda type and types an output JSON value as Json', () => {
 		const put = todo.resource('row').action('put', {
 			action: 'Put row',
 			summary: 'Put a row.',
@@ -1273,8 +1275,27 @@ describe('generateNodeModule', () => {
 		expect(text).toContain('fields: { [key: string]: Value<I, C, OpenValue> }');
 		expect(text).toContain('list: Array<Value<I, C, OpenValue>>');
 		expect(text).toContain('raw: Value<I, C, OpenValue>');
-		expect(text).toContain('body: any');
+		expect(text).toContain('body: Json');
+		expect(text).not.toMatch(/\bany\b/);
 		expect(text).toContain('type OpenValue');
+	});
+
+	it('types the undeclared keys of an open output object as Json or undefined', () => {
+		const get = todo.resource('row').action('get', {
+			action: 'Get row',
+			summary: 'Get a row.',
+			flow: { effect: 'read', cardinality: 'per-item' },
+			input: {},
+			output: t
+				.obj({ id: t.str(), owner: t.obj({ login: t.str() }).with({ additionalProperties: true }) })
+				.with({
+					additionalProperties: true,
+				}),
+			run: async () => await Promise.resolve({ id: '1', owner: { login: 'a' } }),
+		});
+		const text = moduleOf(get);
+		expect(text).toContain(' owner: { login: string; [key: string]: Json | undefined };\n');
+		expect(text).toContain(' [key: string]: Json | undefined;\n};');
 	});
 
 	it('types the output of a step by its sample, within the declared output', () => {

@@ -297,6 +297,12 @@ const buildWorkflowContractsInputSchema = buildWorkflowInputSchema
 			'`not_warranted`, with `groupingReason`, only when no valid node group can hold the nodes above the top-level ceiling',
 		),
 		groupingReason: fields.groupingReason.describe('Why no valid node group can hold the nodes'),
+		checkOnly: z
+			.boolean()
+			.optional()
+			.describe(
+				'True to type-check and validate the source only: the workflow is not saved and no approval card shows. Inline `sourceCode` is still written to `filePath`. Then build without it.',
+			),
 	})
 	.strict();
 
@@ -560,6 +566,9 @@ function resolveGroupingDecision(input: {
 	return 'under_ceiling';
 }
 
+const blockingErrorOf = (e: ValidationWarning) =>
+	`[${e.code}]${e.nodeName ? ` (${e.nodeName})` : ''}: ${e.message}`;
+
 async function handleValidationFailure(args: ValidationFailureArgs) {
 	const {
 		context,
@@ -584,9 +593,7 @@ async function handleValidationFailure(args: ValidationFailureArgs) {
 		grouping,
 	} = args;
 
-	const validationErrors = blocking.map(
-		(e) => `[${e.code}]${e.nodeName ? ` (${e.nodeName})` : ''}: ${e.message}`,
-	);
+	const validationErrors = blocking.map(blockingErrorOf);
 	const formattedErrors = withEscalation(
 		reason === 'workflow_source_validation_failed' && sourceSdk === 'legacy'
 			? await appendWorkflowSourceDiagnostics(context, filePath, validationErrors, args.abortSignal)
@@ -669,6 +676,8 @@ const buildWorkflowOutputSchema = z.object({
 	remediation: remediationMetadataSchema.optional(),
 	errors: z.array(z.string()).optional(),
 	warnings: z.array(z.string()).optional(),
+	/** Node contracts: the call only checked the source and saved nothing. */
+	checkOnly: z.literal(true).optional(),
 });
 
 /** The output mirrors the input gate: `folder` is advertised only while folder exploration is on. */
@@ -903,9 +912,12 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 
 			const canSkipUpdateHitl =
 				targetWorkflowId !== undefined && canSkipWorkflowUpdateHitl(context, targetWorkflowId);
+			// A check saves nothing, so it needs no approval and does not count as a failed build.
+			const checkOnly = 'checkOnly' in input && input.checkOnly === true;
 
 			if (
 				targetWorkflowId &&
+				!checkOnly &&
 				!canSkipUpdateHitl &&
 				!isApprovedBuildContext(context) &&
 				context.permissions?.updateWorkflow !== 'always_allow'
@@ -1167,13 +1179,22 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 								ctx.abortSignal,
 							)
 						: compiled.errors;
-				const errors = compiled.editable
-					? withEscalation(buildErrors, { trackingErrors: compiled.errors })
-					: buildErrors;
 				const remediation = createSourceCompileRemediation({
 					reason: compiled.reason,
 					editable: compiled.editable,
 				});
+				if (checkOnly) {
+					return {
+						success: false,
+						...sourceResponseBase(binding),
+						checkOnly: true,
+						errors: buildErrors,
+						remediation,
+					};
+				}
+				const errors = compiled.editable
+					? withEscalation(buildErrors, { trackingErrors: compiled.errors })
+					: buildErrors;
 				binding = await markSourceBuildFailed(context, binding, sourceHash);
 				await reportFailedWorkflowBuildOutcome(context, {
 					targetWorkflowId,
@@ -1231,6 +1252,21 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 				downgradeUnchangedNodeBlockers(compiled.warnings, compiled.workflow, savedWorkflowSnapshot),
 			);
 			informational = partitionedWarnings.informational;
+
+			if (checkOnly) {
+				const { blocking } = partitionedWarnings;
+				return {
+					success: blocking.length === 0,
+					...sourceResponseBase(binding),
+					checkOnly: true,
+					...(blocking.length > 0
+						? {
+								errors: blocking.map(blockingErrorOf),
+							}
+						: {}),
+					warnings: combineWarnings(informational.map((w) => formatWarning(w.code, w.message))),
+				};
+			}
 
 			if (partitionedWarnings.blocking.length > 0) {
 				return await handleValidationFailure({
