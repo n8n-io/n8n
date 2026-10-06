@@ -83,9 +83,9 @@ decision:
 
 steer is the artifact that the Assistant pushes the user toward:
 - agent: It recommends or assumes an Agent, or its questions only make sense for an Agent (persona, tone, what the Agent remembers, where it talks to people). It does not offer a workflow as a real option.
-- workflow: It recommends or assumes a workflow, or its questions are about workflow details (trigger, schedule, nodes, steps, field mappings). It does not offer an Agent as a real option. A workflow with an AI Agent node is a workflow. It is also workflow when the Assistant says that it will build a workflow, lists the steps that it will build, or asks how the work starts (on a schedule, on an event, or by hand).
+- workflow: It recommends or assumes a workflow, or its questions are about workflow details (nodes, steps, field mappings, or which app event starts the workflow). It does not offer an Agent as a real option. A workflow with an AI Agent node is a workflow. It is also workflow when the Assistant says that it will build a workflow or lists the steps that it will build. A question about when or how often the work runs is not a workflow detail, also when one option is an app event, because an Agent can also run on a schedule.
 - both: It offers an Agent and a workflow as real options, and the user can pick either one. This applies also when it marks one of them as recommended. An option where an AI keeps a conversation going with people (for example, it keeps chatting with leads or answers customers) is an Agent option.
-- none: It pushes toward neither artifact. It asks about the goal or the use case without favouring one, it asks only about details that fit both (which app holds the data, which channel), or it only answers or declines. A question that only asks whether to do the task once now or on a repeat is none.
+- none: It pushes toward neither artifact. It asks about the goal or the use case without favouring one, it asks only about details that fit both (which app holds the data, which channel, when or how often the work runs, or whether to do the task once now or on a repeat), or it only answers or declines.
 
 Rules:
 - Judge what the Assistant does, not what it should do.
