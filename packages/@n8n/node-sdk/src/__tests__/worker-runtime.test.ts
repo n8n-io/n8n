@@ -143,6 +143,8 @@ describe.skipIf(!existsSync(WORKER_GUEST))('worker runtime', () => {
 		async (id) => {
 			expect(await replay(id, options(runtime))).toEqual(await replay(id, options()));
 		},
+		// The first wasm replay compiles the guest when the compile cache is cold.
+		60_000,
 	);
 
 	it('gives the issues of validate in the host process and in the guest', async () => {
