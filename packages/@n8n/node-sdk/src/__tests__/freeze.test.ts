@@ -1,4 +1,4 @@
-import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
@@ -100,6 +100,12 @@ describe('freezeAction', () => {
 		['setImmediate', 'setImmediate(() => undefined)', '', 'the global setImmediate'],
 		['__dirname', '__dirname', '', 'the global __dirname'],
 		['Intl', "new Intl.NumberFormat('de').format(1)", '', 'the global Intl'],
+		[
+			'Intl outside its typeof guard',
+			"(typeof Intl === 'undefined' ? '' : 'intl') + new Intl.NumberFormat('de').format(1)",
+			'',
+			'the global Intl',
+		],
 		['fetch', "await fetch('https://example.com')", '', 'the global fetch'],
 		['globalThis.fetch', "await globalThis.fetch('https://example.com')", '', 'the global fetch'],
 		['setTimeout', 'setTimeout(() => undefined, 0)', '', 'the global setTimeout'],
@@ -130,11 +136,39 @@ describe('freezeAction', () => {
 	it.each([
 		['a global guarded with typeof', "typeof process === 'undefined' ? 'none' : process.env.HOME"],
 		['fetch guarded with typeof', "typeof fetch === 'function' ? 'fetch' : 'none'"],
+		[
+			'a global after a typeof guard that throws',
+			"(() => { if (typeof process === 'undefined') throw new Error('no process'); return process.version; })()",
+		],
 		['a local that shadows a global', '((process: string) => process)("local")'],
 		['a property with the name of a global', '({ process: 1, Buffer: 2 }).process'],
 		['a regex without \\p{}', "/[a-zé]+/u.test('é')"],
 	])('freezes a bundle with %s', async (_what, value) => {
 		await expect(freeze(value)).resolves.toMatchObject({ manifest: { id: 'probe.probe' } });
+	});
+
+	it('resolves a package without exports, with its browser build first', async () => {
+		const packageOf = async (name: string, manifest: object, files: Record<string, string>) => {
+			const dir = path.join(dirs.root, 'node_modules', name);
+			await mkdir(dir, { recursive: true });
+			await writeFile(path.join(dir, 'package.json'), JSON.stringify({ name, ...manifest }));
+			for (const [file, code] of Object.entries(files)) await writeFile(path.join(dir, file), code);
+		};
+		await packageOf('main-only', { main: 'lib.js' }, { 'lib.js': "module.exports = 'from-main';" });
+		await packageOf(
+			'browser-first',
+			{ main: 'node.js', browser: 'browser.js' },
+			{
+				'node.js': "module.exports = require('stream').name;",
+				'browser.js': "module.exports = 'from-browser';",
+			},
+		);
+		const { bundle } = await freeze(
+			'mainOnly + browserFirst',
+			"import mainOnly from 'main-only';\nimport browserFirst from 'browser-first';",
+		);
+		expect(bundle).toContain('from-main');
+		expect(bundle).toContain('from-browser');
 	});
 
 	it('refuses a bundle that carries ajv', async () => {

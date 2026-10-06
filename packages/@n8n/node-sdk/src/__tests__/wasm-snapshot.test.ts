@@ -1,5 +1,6 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
-import { chmod, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { createHash } from 'node:crypto';
+import { chmod, mkdir, mkdtemp, readFile, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import type { INode } from 'n8n-workflow';
@@ -11,7 +12,7 @@ import { replayFixtures } from '../publish';
 import type { ExecutorHost } from '../runtime';
 import { childProcessSnapshotBuilder } from '../../scripts/snapshot-bundle';
 import { wasmSnapshotRuntime } from '../runtimes/wasm-snapshot';
-import { sandboxedVersionOf, type GuestRuntime } from '../sandbox';
+import { sandboxedVersionOf, type GuestRuntime, type GuestSession } from '../sandbox';
 import { parseFixtures } from '../version';
 
 const SANDBOX = path.resolve(__dirname, '..', '..', 'sandbox');
@@ -46,6 +47,105 @@ export const count = counter.action('count', {
 	run: async () => ({ runs: ++state.runs }),
 });
 `;
+
+describe('the snapshot cache of wasmSnapshotRuntime', () => {
+	const dirs = { root: '' };
+	beforeEach(async () => {
+		dirs.root = await mkdtemp(path.join(tmpdir(), 'node-sdk-snapshot-cache-'));
+		await writeFile(path.join(dirs.root, 'action-snapshot.js'), 'template');
+	});
+	afterEach(async () => await rm(dirs.root, { recursive: true, force: true }));
+
+	const cacheDir = () => path.join(dirs.root, 'cache');
+	const TEMPLATE = createHash('sha256').update('template').digest('hex').slice(0, 16);
+	const snapshotDir = (bundleHash: string) =>
+		path.join(cacheDir(), 'snapshots', `${bundleHash}-${TEMPLATE}`);
+	const digestOf = (bundleHash: string) =>
+		createHash('sha256').update(Buffer.alloc(1_000, bundleHash)).digest('hex');
+	const compiledOf = (bundleHash: string) =>
+		path.join(cacheDir(), `${digestOf(bundleHash)}-engine.cwasm`);
+	/** Writes a snapshot of 1064 bytes and, as the sidecar would, its `.cwasm` of 1000 bytes. */
+	const writeSnapshot = async (bundleHash: string) => {
+		await mkdir(snapshotDir(bundleHash), { recursive: true });
+		await writeFile(
+			path.join(snapshotDir(bundleHash), 'action.wasm'),
+			Buffer.alloc(1_000, bundleHash),
+		);
+		await writeFile(path.join(snapshotDir(bundleHash), 'action.wasm.sha256'), digestOf(bundleHash));
+		await writeFile(compiledOf(bundleHash), Buffer.alloc(1_000));
+	};
+	const sessionOf = (bundleHash: string) =>
+		({
+			kind: 'action',
+			manifest: { id: `bundle.${bundleHash}`, bundleHash, nodeContract: '2.7.0' },
+			bundleFile: path.join(dirs.root, `${bundleHash}.js`),
+			grants: ['http'],
+			limits: { memoryMb: 64, cpuMs: 1_000, wallMs: 20_000, maxMessageBytes: 1_000 },
+			cacheDir: cacheDir(),
+		}) as unknown as GuestSession;
+
+	it('removes the snapshots used longest ago when a build makes the cache larger than its cap', async () => {
+		await writeSnapshot('old');
+		const runtime = wasmSnapshotRuntime({
+			sidecar: '/usr/bin/false',
+			guests: dirs.root,
+			buildSnapshot: async ({ bundleSha256 }) => await writeSnapshot(bundleSha256),
+			maxCacheBytes: 5_200,
+		});
+		try {
+			for (const bundleHash of ['a', 'b', 'a', 'c'])
+				(await runtime.start(sessionOf(bundleHash))).close();
+			expect(existsSync(snapshotDir('old'))).toBe(false);
+			expect(existsSync(compiledOf('old'))).toBe(false);
+			expect([existsSync(snapshotDir('a')), existsSync(compiledOf('a'))]).toEqual([true, true]);
+			expect([existsSync(snapshotDir('b')), existsSync(compiledOf('b'))]).toEqual([true, false]);
+			expect([existsSync(snapshotDir('c')), existsSync(compiledOf('c'))]).toEqual([true, true]);
+		} finally {
+			runtime.close();
+		}
+	});
+
+	it('removes old snapshots when a snapshot directory goes away during the eviction', async () => {
+		await writeSnapshot('old');
+		await symlink(path.join(dirs.root, 'gone'), path.join(cacheDir(), 'snapshots', 'gone'));
+		const runtime = wasmSnapshotRuntime({
+			sidecar: '/usr/bin/false',
+			guests: dirs.root,
+			buildSnapshot: async ({ bundleSha256 }) => await writeSnapshot(bundleSha256),
+			maxCacheBytes: 3_000,
+		});
+		try {
+			(await runtime.start(sessionOf('a'))).close();
+			expect(existsSync(snapshotDir('old'))).toBe(false);
+			expect(existsSync(snapshotDir('a'))).toBe(true);
+		} finally {
+			runtime.close();
+		}
+	});
+
+	it('runs the new snapshot when the eviction cannot remove an old one', async () => {
+		await writeSnapshot('old');
+		const runtime = wasmSnapshotRuntime({
+			sidecar: '/usr/bin/false',
+			guests: dirs.root,
+			buildSnapshot: async ({ bundleSha256 }) => {
+				await writeSnapshot(bundleSha256);
+				await chmod(snapshotDir('old'), 0o500);
+			},
+			maxCacheBytes: 3_000,
+		});
+		const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+		try {
+			(await runtime.start(sessionOf('a'))).close();
+			(await runtime.start(sessionOf('a'))).close();
+			expect(warn).toHaveBeenCalledWith(expect.stringContaining('cannot remove old snapshots'));
+		} finally {
+			warn.mockRestore();
+			runtime.close();
+			await chmod(snapshotDir('old'), 0o700);
+		}
+	});
+});
 
 describe.skipIf(!existsSync(SIDECAR) || !existsSync(path.join(GUESTS, 'action-snapshot.js')))(
 	'wasmSnapshotRuntime',

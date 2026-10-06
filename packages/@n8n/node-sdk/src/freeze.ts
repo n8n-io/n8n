@@ -109,8 +109,8 @@ const LACKS_MARKER = '__n8n_guest_lacks_';
 /**
  * What a bundle may not use: a module that the host does not give, ajv, a global
  * of `REFUSED_GLOBALS`, or a Unicode property escape (`\p{…}`). esbuild replaces only a global that
- * no scope binds. A global that the bundle also tests with `typeof` counts as guarded. A name
- * built at run time is not found: the sandbox still stops it.
+ * no scope binds. A use counts as guarded only where a `typeof` test of the global skips it when
+ * the global is missing. A name built at run time is not found: the sandbox still stops it.
  */
 async function sandboxGapsOf(
 	bundle: string,
@@ -128,19 +128,22 @@ async function sandboxGapsOf(
 			]),
 		),
 	});
-	const namesAfter = (prefix: string) =>
-		new Set(
-			[...code.matchAll(new RegExp(`${prefix}${LACKS_MARKER}(\\w+)`, 'g'))].map(([, name]) => name),
-		);
-	const guarded = namesAfter('typeof ');
-	const globals = [...namesAfter('')].filter((name) => !guarded.has(name));
+	// Each `typeof` test gives "undefined", as for a missing global, so esbuild drops the code that
+	// the test guards. A use that stays runs also when the global is missing.
+	const { code: unguarded } = await transform(
+		code.replace(new RegExp(`typeof ${LACKS_MARKER}\\w+`, 'g'), '"undefined"'),
+		{ loader: 'js', minifySyntax: true },
+	);
+	const globals = new Set(
+		[...unguarded.matchAll(new RegExp(`${LACKS_MARKER}(\\w+)`, 'g'))].map(([, name]) => name),
+	);
 	return [
 		...modules.filter((module) => !isHostModule(module)).map((module) => `the module ${module}`),
 		// The host validates with its own ajv, so a bundle that carries ajv only grows.
 		...(inputs.some((input) => /(^|\/)node_modules\/ajv\//.test(input))
 			? ['ajv (use validate of @n8n/node-sdk: the host gives it)']
 			: []),
-		...globals.map((name) => `the global ${name}`),
+		...[...globals].map((name) => `the global ${name}`),
 		...(/\\[pP]\{/.test(code)
 			? ['a Unicode property escape (\\p{…}) in a regular expression']
 			: []),
@@ -229,6 +232,9 @@ export async function freezeAction(
 		metafile: true,
 		format: 'cjs',
 		platform: 'neutral',
+		// The neutral platform reads no main field, so a package without `exports` would not resolve.
+		// The guest has web APIs and no Node builtins, so the browser build of a package comes first.
+		mainFields: ['browser', 'module', 'main'],
 		target: 'es2022',
 		charset: 'utf8',
 		// Comments and layout stay out of the bytes, so only code changes need a new version.

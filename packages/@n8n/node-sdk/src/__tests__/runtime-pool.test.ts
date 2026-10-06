@@ -118,6 +118,39 @@ describe('pooledRuntime', () => {
 		pool.close();
 	});
 
+	it('keeps at most 8 waiting connections and closes those of the key used longest ago', async () => {
+		const fake = fakeRuntime();
+		const pool = pooledRuntime(fake.runtime, { size: 2 });
+		for (const key of ['a', 'b', 'c', 'd', 'e']) await pool.start(sessionOf(key));
+		await settled();
+		const open = fake.started.filter(({ closed }) => !closed);
+		expect(fake.started.filter(({ closed }) => closed).map(idOf)).toEqual([2, 3]);
+		expect(open.length - 5).toBe(8);
+		await pool.start(sessionOf('a'));
+		expect(fake.calls.starts).toBe(18);
+		pool.close();
+	});
+
+	it('closes a connection that waits 30 s', async () => {
+		vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+		try {
+			const fake = fakeRuntime();
+			const pool = pooledRuntime(fake.runtime, { size: 1 });
+			await pool.start(sessionOf('a'));
+			vi.advanceTimersByTime(29_999);
+			await settled();
+			expect(fake.started.map(({ closed }) => closed)).toEqual([false, false]);
+			vi.advanceTimersByTime(1);
+			await settled();
+			expect(fake.started.map(({ closed }) => closed)).toEqual([false, true]);
+			await pool.start(sessionOf('a'));
+			expect(idOf(fake.started[2]!)).toBe(3);
+			pool.close();
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
 	it('closes the waiting connections and prestarts no more after close', async () => {
 		const fake = fakeRuntime();
 		const pool = pooledRuntime(fake.runtime, { size: 2 });

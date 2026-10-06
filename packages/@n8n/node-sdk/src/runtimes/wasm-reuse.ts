@@ -14,6 +14,24 @@ import {
  */
 const MAX_TIMER_MS = 2 ** 31 - 1;
 
+/**
+ * The most sidecars that wait, over all keys. A waiting sidecar keeps about 24 MB of memory, so 8
+ * keep the idle memory near 200 MB.
+ */
+const MAX_IDLE = 8;
+
+/** The most sidecars that wait for one key, so a burst of one bundle leaves room for others. */
+const MAX_IDLE_PER_KEY = 4;
+
+/** A sidecar that no session takes in this time stops, so a bundle that ran once frees it. */
+const IDLE_MS = 30_000;
+
+/**
+ * A sidecar stops after this many sessions. This frees the memory that the process does not give
+ * back, and keeps the life of the sidecar far below its own wall clock of `MAX_TIMER_MS`.
+ */
+const MAX_RUNS = 100;
+
 /** Sessions with the same key start the sidecar with the same arguments. */
 const keyOf = ({ kind, manifest, bundleFile, grants, limits, cacheDir }: GuestSession) =>
 	JSON.stringify([
@@ -100,49 +118,92 @@ function sessionOf(
 	};
 }
 
+interface Parked {
+	/** The sidecar after its `[reset]`. */
+	readonly sidecar: Promise<Connection>;
+	/** The sessions that the sidecar served. */
+	readonly runs: number;
+	readonly timer: NodeJS.Timeout;
+}
+
+const stop = (sidecar: Promise<Connection>) => {
+	void sidecar.then(
+		(connection) => connection.close(),
+		() => undefined,
+	);
+};
+
 /**
  * Like `wasmSidecarRuntime`, but a closed session gives its sidecar back for the next session with
  * the same key. `[reset]` drops the component instance, so the next `[initialize]` gets a fresh
  * one with a new CPU budget, memory limit and handle tables, and no state of the bundle.
- * `close()` stops the sidecars that wait.
+ * At most 8 sidecars wait (4 for one key), each for at most 30 s and 100 sessions. When 8 wait,
+ * the key that was used longest ago gives up a sidecar. `close()` stops the sidecars that wait.
  */
 export function wasmReuseRuntime(options: WasmSidecarOptions): GuestRuntime & {
 	/** Stops the sidecars that wait. */
 	close(): void;
 } {
 	const spawner = wasmSidecarRuntime(options);
-	// A parked sidecar waits for its `[reset]`, so the next session can take it at once.
-	const idle = new Map<string, Array<Promise<Connection>>>();
+	// The keys in the order of their last use. A parked sidecar waits for its `[reset]`, so the next
+	// session can take it at once.
+	const idle = new Map<string, Parked[]>();
 	const state = { closed: false };
-	const stop = (parked: Promise<Connection>) => {
-		void parked.then(
-			(sidecar) => sidecar.close(),
-			() => undefined,
-		);
+	const unpark = (key: string, parked: Parked) => {
+		clearTimeout(parked.timer);
+		const rest = (idle.get(key) ?? []).filter((each) => each !== parked);
+		if (rest.length > 0) idle.set(key, rest);
+		else idle.delete(key);
 	};
-	const park = (key: string, parked: Promise<Connection>) => {
+	const evictOldest = () => {
+		const [key, [oldest] = []] = [...idle][0] ?? [];
+		if (key === undefined || !oldest) return;
+		unpark(key, oldest);
+		stop(oldest.sidecar);
+	};
+	const park = (key: string, sidecar: Promise<Connection>, runs: number) => {
 		// A failed reset is no error of any session: `start()` then spawns a new sidecar.
-		void parked.catch(() => undefined);
-		if (state.closed) stop(parked);
-		else idle.set(key, [...(idle.get(key) ?? []), parked]);
+		void sidecar.catch(() => undefined);
+		if (state.closed || runs >= MAX_RUNS || (idle.get(key)?.length ?? 0) >= MAX_IDLE_PER_KEY) {
+			stop(sidecar);
+			return;
+		}
+		if ([...idle.values()].reduce((sum, each) => sum + each.length, 0) >= MAX_IDLE) evictOldest();
+		const parked: Parked = {
+			sidecar,
+			runs,
+			timer: setTimeout(() => {
+				unpark(key, parked);
+				stop(sidecar);
+			}, IDLE_MS).unref(),
+		};
+		idle.set(key, [...(idle.get(key) ?? []), parked]);
 	};
 	return {
 		name: 'wasm-reuse',
 		...(spawner.compiled && { compiled: spawner.compiled }),
 		async start(session) {
 			const key = keyOf(session);
-			const reused = await idle
-				.get(key)
-				?.pop()
-				?.catch(() => undefined);
+			const parked = idle.get(key)?.at(-1);
+			if (parked) unpark(key, parked);
+			const rest = idle.get(key);
+			idle.delete(key);
+			if (rest) idle.set(key, rest);
+			const reused = await parked?.sidecar.catch(() => undefined);
+			const runs = reused && parked ? parked.runs : 0;
 			const sidecar =
 				reused ??
 				(await spawner.start({ ...session, limits: { ...session.limits, wallMs: MAX_TIMER_MS } }));
-			return sessionOf(sidecar, session, (parked) => park(key, parked));
+			return sessionOf(sidecar, session, (reset) => park(key, reset, runs + 1));
 		},
 		close() {
 			state.closed = true;
-			idle.forEach((parked) => parked.forEach(stop));
+			idle.forEach((each) =>
+				each.forEach(({ sidecar, timer }) => {
+					clearTimeout(timer);
+					stop(sidecar);
+				}),
+			);
 			idle.clear();
 		},
 	};

@@ -77,6 +77,10 @@ export const undeclared = spec(async (context: any) => ({
 export const loop = spec(async () => {
 	for (;;) {}
 });
+export const grow = spec(async () => {
+	const kept: unknown[] = [];
+	for (;;) kept.push(new Array(1_000_000).fill(kept.length));
+});
 `;
 
 const host: ExecutorHost = {
@@ -157,6 +161,23 @@ describe.skipIf(!runtime)('container runtime', () => {
 			interval: 500,
 		});
 	}, 60_000);
+
+	it('names the memory limit when the container stops at it', async () => {
+		const { run } = await probe('grow', { memoryMb: 64 });
+		await expect(run()).rejects.toThrow('most likely at its memory limit of 64 MB');
+	}, 60_000);
+
+	it('tells to build or load an image that docker cannot pull', () => {
+		expect(() => containerRuntime({ image: `sha256:${'0'.repeat(64)}` })).toThrow(
+			`The container runtime needs the image sha256:${'0'.repeat(64)}. Build or load it on this host`,
+		);
+	});
+
+	it('tells to pull, build or load an image tag', () => {
+		expect(() => containerRuntime({ image: 'n8n-node-sdk-missing:none' })).toThrow(
+			'Run: docker pull n8n-node-sdk-missing:none, or build or load it on this host',
+		);
+	});
 
 	it('replays the fixtures of every action', async () => {
 		const issues: string[] = [];

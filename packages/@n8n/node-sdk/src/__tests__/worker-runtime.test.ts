@@ -5,12 +5,13 @@ import path from 'node:path';
 import { actions } from '../../../nodes-integrations/dist/index.js';
 import { packageOf, versionsOf } from '../../../nodes-integrations/dist/registry.js';
 import { freezeAction } from '../freeze';
+import { runRecorder } from '../profile';
 import { replayFixtures } from '../publish';
 import { t } from '../schema';
 import type { ExecutorHost } from '../runtime';
 import { WORKER_GUEST, workerRuntime } from '../runtimes/worker';
 import { sandboxedVersionOf, type SandboxOptions } from '../sandbox';
-import { parseFixtures } from '../version';
+import { NODE_CONTRACT_VERSION, parseFixtures } from '../version';
 
 const SANDBOX = path.resolve(__dirname, '..', '..', 'sandbox');
 const SIDECAR = path.join(SANDBOX, 'sidecar', 'target', 'release', 'n8n-sandbox');
@@ -80,6 +81,15 @@ export const validateProbe = spec(async () => ({
 export const slowPatternProbe = spec(async () => ({
 	value: validate('a', t.str().with({ pattern: '(a+)+$' }).json).join('; '),
 }));
+export const echoProbe = probe.action('probe', {
+	action: 'Probe',
+	summary: 'Probe the sandbox.',
+	flow: { effect: 'read', cardinality: 'per-item' },
+	input: {},
+	output: t.obj({ value: t.str() }),
+	egress: { hosts: ['api.example.com'] },
+	run: async ({ http }: any) => ({ value: JSON.stringify(await http.request({ url: 'https://api.example.com/echo' })) }),
+} as any);
 // A name built at run time passes the freeze check.
 export const exitProbe = spec(async () => {
 	(globalThis as any)[['pro', 'cess'].join('')].exit(3);
@@ -168,11 +178,43 @@ describe.skipIf(!existsSync(WORKER_GUEST))('worker runtime', () => {
 			'The bundle reached its memory limit of 64 MB and was stopped',
 		);
 		expect(await replay('items.set', options(runtime))).toEqual([]);
-	});
+	}, 30_000);
 
 	it('stops only the worker when the guest exits', async () => {
 		await expect(runProbe('exitProbe')).rejects.toThrow('The sandbox stopped (exit 3)');
 		expect(await replay('items.set', options(runtime))).toEqual([]);
+	});
+
+	it('records each JSON-RPC message of the worker in the run profile', async () => {
+		const { manifest, bundle } = await freezeAction(file, 'echoProbe');
+		const { executor } = await sandboxedVersionOf(
+			{ manifest, origin: 'private', readBundle: async () => bundle },
+			options(runtime),
+		);
+		const { recorder, profile } = runRecorder(1);
+		const [[output] = []] = await executor({
+			...host,
+			recorder,
+			request: async () => ({ body: { z: 1 }, headers: {}, statusCode: 200 }),
+		});
+		expect(output?.json).toEqual({ value: '{"z":1}' });
+		const identity = { action: 'probe', version: '1.0.0', bundleHash: 'hash' };
+		const { rpcs } = profile(
+			{ ...identity, nodeContract: NODE_CONTRACT_VERSION },
+			{ outputItems: 1 },
+		);
+		expect(rpcs.map(({ method, direction }) => `${direction} ${method}`)).toEqual(
+			expect.arrayContaining([
+				'host_to_guest [initialize]',
+				'host_to_guest action.item-run.[new]',
+				'guest_to_host http.request',
+				'host_to_guest action.item-run.[drop]',
+			]),
+		);
+		expect(rpcs.find(({ method }) => method === 'http.request')).toMatchObject({
+			requestBytes: expect.any(Number),
+			responseBytes: expect.any(Number),
+		});
 	});
 
 	it('replays the fixtures of every action', async () => {

@@ -35,7 +35,12 @@ interface Runtime {
 	readonly runtime: GuestRuntime | undefined;
 	/** `+chunk`: per-item actions run their items in one guest run. */
 	readonly chunkItems?: boolean;
+	/** Stops the guests that the runtime keeps, e.g. the prestarted guests of a pool. */
+	readonly close: () => void;
 }
+
+const hasClose = (runtime: GuestRuntime): runtime is GuestRuntime & { close(): void } =>
+	'close' in runtime && typeof runtime.close === 'function';
 
 interface Workload {
 	readonly items: readonly IDataObject[];
@@ -44,7 +49,11 @@ interface Workload {
 	readonly latencyMs?: number;
 }
 
-const IN_PROCESS_RUNTIME: Runtime = { name: IN_PROCESS, runtime: undefined };
+const IN_PROCESS_RUNTIME: Runtime = {
+	name: IN_PROCESS,
+	runtime: undefined,
+	close: () => undefined,
+};
 
 // Under the package, not the OS temp dir: Docker in a VM (colima) mounts only shared paths.
 const CACHE_ROOT = path.resolve(__dirname, '../node_modules/.cache');
@@ -526,13 +535,17 @@ async function main() {
 			try {
 				// `+pool` prestarts guests with `pooledRuntime`, so the start is off the request path.
 				// `+chunk` runs the items of a per-item action in one guest run.
-				const [base = name, ...flags] = name.split('+');
-				const runtime = await runtimeByName(base);
+				const [baseName = name, ...flags] = name.split('+');
+				const base = await runtimeByName(baseName);
+				const runtime = flags.includes('pool') && base ? pooledRuntime(base, { size: 2 }) : base;
 				return {
 					name,
-					runtime:
-						flags.includes('pool') && runtime ? pooledRuntime(runtime, { size: 2 }) : runtime,
+					runtime,
 					chunkItems: flags.includes('chunk'),
+					close: () =>
+						new Set([runtime, base]).forEach((each) => {
+							if (each && hasClose(each)) each.close();
+						}),
 				};
 			} catch (error) {
 				console.log(`- skipped ${error instanceof Error ? error.message : String(error)}`);
@@ -549,7 +562,11 @@ async function main() {
 		.join(' ');
 	console.log(`node ${process.version}, ${cpu?.model}, ${os.cpus().length} cores, load ${load}`);
 	console.log(`runtimes: ${runtimes.map(({ name }) => name).join(', ')}`);
-	for (const name of scenarios) if (isScenario(name)) await SCENARIOS[name](runtimes);
+	try {
+		for (const name of scenarios) if (isScenario(name)) await SCENARIOS[name](runtimes);
+	} finally {
+		runtimes.forEach(({ close }) => close());
+	}
 }
 
 main()
@@ -557,8 +574,4 @@ main()
 		console.error(error);
 		process.exitCode = 1;
 	})
-	.finally(() => {
-		rmSync(cacheDir, { recursive: true, force: true });
-		// Pools and the wasm runtime keep guests with open pipes, so the process would not exit.
-		process.exit();
-	});
+	.finally(() => rmSync(cacheDir, { recursive: true, force: true }));

@@ -341,38 +341,54 @@ export function wasmSidecarRuntime(options: WasmSidecarOptions): GuestRuntime {
 	};
 }
 
+/** Where `connectLines` writes the messages of the host, and how it stops the guest. */
+export interface LineTransport {
+	/** Writes one message line to the guest, without the line end. */
+	write(line: string): void;
+	/** Stops the guest at once. */
+	stop(): void;
+}
+
+/** The limits and the name of a session, for the errors of a connection. */
+export interface ConnectionOptions {
+	/** The limits of the session. */
+	readonly limits: SandboxLimits;
+	/** The name of the session in the errors, e.g. the action id. */
+	readonly label: string;
+}
+
+/** A `Connection` that gets the message lines of the guest from its transport. */
+export interface LineConnection extends Connection {
+	/** Handles one message line of the guest. A line that is not valid stops the guest. */
+	receive(line: string): void;
+	/** Rejects the waiting requests and stops the guest. The first error stays. */
+	fail(error: Error): void;
+	trace(recorder: RunRecorder): () => boolean;
+}
+
 /**
- * The connection to a child process that speaks `spec/json-rpc.md` as newline-delimited JSON on
- * stdin and stdout. It kills the child at the wall clock limit and on a message larger than
- * `maxMessageBytes`.
+ * The JSON-RPC part of a connection to a guest that speaks `spec/json-rpc.md` one message per line,
+ * over any transport, e.g. a worker thread. `connectChild` adds a child process. It stops the
+ * guest at the wall clock limit and on a line larger than `maxMessageBytes`.
  */
-export function connectChild(
-	child: ChildProcessWithoutNullStreams,
-	{
-		limits,
-		label,
-	}: {
-		/** The limits of the session. */
-		readonly limits: SandboxLimits;
-		/** The name of the session in the errors, e.g. the action id. */
-		readonly label: string;
-	},
-): Connection {
+export function connectLines(
+	transport: LineTransport,
+	{ limits, label }: ConnectionOptions,
+): LineConnection {
 	const pending = new Map<number, { resolve(answer: Answer): void; reject(error: Error): void }>();
-	const state = { next: 1, rpc: 1, partialLength: 0, stderr: '' };
+	const state = { next: 1, rpc: 1 };
 	const traced = new Map<'recorder', RunRecorder>();
-	// The chunks of an incomplete line, so a long line is joined once.
-	const partial: string[] = [];
 	const served = new Map<'calls', GuestCalls>();
 	const failure = new Map<'error', Error>();
-	const fail = (error: Error) => {
-		if (!failure.has('error')) failure.set('error', error);
-		pending.forEach(({ reject }) => reject(error));
-		pending.clear();
-		child.kill('SIGKILL');
-	};
 	// The wall clock starts at the first request, so a prestarted guest loses no run time.
 	const timers = new Map<'wall', NodeJS.Timeout>();
+	const fail = (error: Error) => {
+		if (!failure.has('error')) failure.set('error', error);
+		clearTimeout(timers.get('wall'));
+		pending.forEach(({ reject }) => reject(error));
+		pending.clear();
+		transport.stop();
+	};
 	const startClock = () => {
 		if (timers.has('wall')) return;
 		timers.set(
@@ -383,20 +399,19 @@ export function connectChild(
 			),
 		);
 	};
-	const stopClock = () => clearTimeout(timers.get('wall'));
 	/** Writes a message. With a recorder, it gives the line for the profile. */
 	const send = (message: Record<string, unknown>): Line | undefined => {
 		const recorder = traced.get('recorder');
-		// An answer can come after the sidecar stopped, e.g. at the wall clock limit.
+		// An answer can come after the guest stopped, e.g. at the wall clock limit.
 		if (failure.has('error')) return undefined;
 		if (!recorder) {
-			child.stdin.write(`${JSON.stringify({ jsonrpc: '2.0', ...message })}\n`);
+			transport.write(JSON.stringify({ jsonrpc: '2.0', ...message }));
 			return undefined;
 		}
 		const startMs = recorder.now();
 		const text = JSON.stringify({ jsonrpc: '2.0', ...message });
 		const ms = recorder.now() - startMs;
-		child.stdin.write(`${text}\n`);
+		transport.write(text);
 		return { startMs, bytes: Buffer.byteLength(text), ms };
 	};
 	const answer = async (
@@ -442,7 +457,7 @@ export function connectChild(
 			...('error' in reply ? { errorType: String(reply.error.code) } : {}),
 		});
 	};
-	const receive = (text: string) => {
+	const handle = (text: string) => {
 		const recorder = traced.get('recorder');
 		const startMs = recorder?.now();
 		const message: unknown = JSON.parse(text);
@@ -461,47 +476,19 @@ export function connectChild(
 		pending.delete(message.id);
 		waiting.resolve({ message, line });
 	};
-	child.stdout.setEncoding('utf8');
-	child.stdout.on('data', (chunk: string) => {
-		const [head = '', ...rest] = chunk.split('\n');
-		const tail = rest.pop();
-		const lines = tail === undefined ? [] : [[...partial, head].join(''), ...rest].filter(Boolean);
-		if (tail !== undefined) {
-			partial.length = 0;
-			state.partialLength = 0;
-		}
-		const open = tail ?? head;
-		partial.push(open);
-		state.partialLength += open.length;
-		if (state.partialLength > limits.maxMessageBytes) {
-			fail(new UserError(`${label} gave a message larger than ${limits.maxMessageBytes} bytes`));
-			return;
-		}
-		try {
-			lines.forEach(receive);
-		} catch (error) {
-			fail(error instanceof Error ? error : new UnexpectedError(String(error)));
-		}
-	});
-	child.stdin.on('error', (error) =>
-		fail(new UnexpectedError(`The sandbox connection failed: ${error.message}`)),
-	);
-	child.stderr.setEncoding('utf8');
-	child.stderr.on('data', (chunk: string) => {
-		state.stderr = `${state.stderr}${chunk}`.slice(-STDERR_KEPT);
-	});
-	child.on('error', (error) =>
-		fail(new UnexpectedError(`The sandbox did not start: ${error.message}`)),
-	);
-	child.on('exit', (code, signal) => {
-		stopClock();
-		fail(
-			new UnexpectedError(
-				`The sandbox stopped (${signal ?? `exit ${code}`})${state.stderr ? `: ${state.stderr.trim()}` : ''}`,
-			),
-		);
-	});
 	return {
+		receive(text) {
+			if (Buffer.byteLength(text) > limits.maxMessageBytes) {
+				fail(new UserError(`${label} gave a message larger than ${limits.maxMessageBytes} bytes`));
+				return;
+			}
+			try {
+				handle(text);
+			} catch (error) {
+				fail(error instanceof Error ? error : new UnexpectedError(String(error)));
+			}
+		},
+		fail,
 		async request(method, params) {
 			startClock();
 			const known = failure.get('error');
@@ -564,12 +551,78 @@ export function connectChild(
 			return () => traced.delete('recorder');
 		},
 		close() {
-			stopClock();
-			failure.set('error', failure.get('error') ?? new UnexpectedError('The sandbox is closed'));
-			child.stdin.end();
-			child.kill('SIGKILL');
+			fail(new UnexpectedError('The sandbox is closed'));
 		},
 	};
+}
+
+/**
+ * The connection to a child process that speaks `spec/json-rpc.md` as newline-delimited JSON on
+ * stdin and stdout, see `connectLines`.
+ */
+export function connectChild(
+	child: ChildProcessWithoutNullStreams,
+	{
+		stoppedError,
+		...options
+	}: ConnectionOptions & {
+		/** The error for an exit code that the runtime can explain, e.g. a container at its memory limit. */
+		readonly stoppedError?: (code: number | null) => Error | undefined;
+	},
+): LineConnection {
+	const { limits, label } = options;
+	const state = { partialLength: 0, stderr: '' };
+	// The chunks of an incomplete line, so a long line is joined once.
+	const partial: string[] = [];
+	const connection = connectLines(
+		{
+			write: (line) => child.stdin.write(`${line}\n`),
+			stop: () => {
+				child.stdin.end();
+				child.kill('SIGKILL');
+			},
+		},
+		options,
+	);
+	child.stdout.setEncoding('utf8');
+	child.stdout.on('data', (chunk: string) => {
+		const [head = '', ...rest] = chunk.split('\n');
+		const tail = rest.pop();
+		const lines = tail === undefined ? [] : [[...partial, head].join(''), ...rest].filter(Boolean);
+		if (tail !== undefined) {
+			partial.length = 0;
+			state.partialLength = 0;
+		}
+		const open = tail ?? head;
+		partial.push(open);
+		state.partialLength += Buffer.byteLength(open);
+		if (state.partialLength > limits.maxMessageBytes) {
+			connection.fail(
+				new UserError(`${label} gave a message larger than ${limits.maxMessageBytes} bytes`),
+			);
+			return;
+		}
+		lines.forEach((line) => connection.receive(line));
+	});
+	child.stdin.on('error', (error) =>
+		connection.fail(new UnexpectedError(`The sandbox connection failed: ${error.message}`)),
+	);
+	child.stderr.setEncoding('utf8');
+	child.stderr.on('data', (chunk: string) => {
+		state.stderr = `${state.stderr}${chunk}`.slice(-STDERR_KEPT);
+	});
+	child.on('error', (error) =>
+		connection.fail(new UnexpectedError(`The sandbox did not start: ${error.message}`)),
+	);
+	child.on('exit', (code, signal) => {
+		connection.fail(
+			stoppedError?.(code) ??
+				new UnexpectedError(
+					`The sandbox stopped (${signal ?? `exit ${code}`})${state.stderr ? `: ${state.stderr.trim()}` : ''}`,
+				),
+		);
+	});
+	return connection;
 }
 
 async function openSession(

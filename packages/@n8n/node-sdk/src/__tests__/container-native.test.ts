@@ -236,7 +236,7 @@ describe.skipIf(!images.ffmpeg)('container runtime with ffmpeg', () => {
 
 describe.skipIf(!images.chromium)('container runtime with Chromium', () => {
 	const image = images.chromium ?? '';
-	const options = { image, ...TOOL, limits: { pids: 256 } };
+	const options = { image, ...TOOL };
 	const limits = { memoryMb: 1024 };
 
 	it('takes a screenshot of an HTML page', async () => {

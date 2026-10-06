@@ -126,5 +126,76 @@ describe.skipIf(!existsSync(SIDECAR) || !existsSync(path.join(GUESTS, 'action.wa
 				runtime.close();
 			}
 		}, 60_000);
+
+		const limits = { cpuMs: 1_000, memoryMb: 64, wallMs: 20_000 };
+
+		it('keeps at most 4 sidecars of one key', async () => {
+			const runtime = reuseRuntime();
+			const run = await counterOf(runtime, limits);
+			const burst = async () =>
+				await Promise.all(Array.from({ length: 6 }, async () => await run('count')));
+			try {
+				await burst();
+				const before = await spawns();
+				await burst();
+				expect(await spawns()).toBe(before + 2);
+			} finally {
+				runtime.close();
+			}
+		}, 60_000);
+
+		it('keeps at most 8 sidecars and stops the one of the key used longest ago', async () => {
+			const runtime = reuseRuntime();
+			try {
+				const runs = await [1, 2, 3, 4, 5, 6, 7, 8, 9].reduce<
+					Promise<Array<(mode: string) => Promise<unknown>>>
+				>(
+					async (previous, key) => [
+						...(await previous),
+						await counterOf(runtime, { ...limits, cpuMs: 1_000 + key }),
+					],
+					Promise.resolve([]),
+				);
+				const before = await spawns();
+				expect(await runs[8]?.('count')).toEqual({ runs: 1 });
+				expect(await spawns()).toBe(before);
+				expect(await runs[0]?.('count')).toEqual({ runs: 1 });
+				expect(await spawns()).toBe(before + 1);
+			} finally {
+				runtime.close();
+			}
+		}, 60_000);
+
+		it('stops a sidecar after 100 sessions', async () => {
+			const runtime = reuseRuntime();
+			const run = await counterOf(runtime, limits);
+			const before = await spawns();
+			try {
+				await Array.from({ length: 99 }).reduce<Promise<unknown>>(
+					async (previous) => await previous.then(async () => await run('count')),
+					Promise.resolve(),
+				);
+				expect(await spawns()).toBe(before);
+				expect(await run('count')).toEqual({ runs: 1 });
+				expect(await spawns()).toBe(before + 1);
+			} finally {
+				runtime.close();
+			}
+		}, 120_000);
+
+		it('stops a sidecar that waits 30 s', async () => {
+			vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+			const runtime = reuseRuntime();
+			try {
+				const run = await counterOf(runtime, limits);
+				const before = await spawns();
+				vi.advanceTimersByTime(30_000);
+				expect(await run('count')).toEqual({ runs: 1 });
+				expect(await spawns()).toBe(before + 1);
+			} finally {
+				vi.useRealTimers();
+				runtime.close();
+			}
+		}, 60_000);
 	},
 );
