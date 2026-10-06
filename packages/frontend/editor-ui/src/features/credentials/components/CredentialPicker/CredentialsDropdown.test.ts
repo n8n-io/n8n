@@ -19,16 +19,23 @@ const CREDENTIAL_OPTION = {
 
 const managedTestId = `node-credentials-select-item-${MANAGED_OPTION.value}`;
 
-function renderComponent() {
+function renderComponent(selectedCredentialId: string | null = null) {
 	return mount(CredentialsDropdown, {
 		global: { plugins: [createTestingPinia()] },
 		props: {
 			credentialOptions: [CREDENTIAL_OPTION],
-			selectedCredentialId: null,
+			selectedCredentialId,
 			permissions: { create: true },
 			managedOption: MANAGED_OPTION,
 		},
 	});
+}
+
+function selectHasIconClass(wrapper: ReturnType<typeof renderComponent>) {
+	return wrapper
+		.findComponent(N8nSelect)
+		.classes()
+		.some((className) => className.includes('selectWithIcon'));
 }
 
 describe('CredentialsDropdown', () => {
@@ -49,5 +56,11 @@ describe('CredentialsDropdown', () => {
 		select.vm.$emit('visible-change', false);
 		await nextTick();
 		expect(wrapper.find(`[data-test-id="${managedTestId}"]`).exists()).toBe(true);
+	});
+
+	it('adds the icon class only when a credential is selected', () => {
+		expect(selectHasIconClass(renderComponent())).toBe(false);
+		expect(selectHasIconClass(renderComponent(CREDENTIAL_OPTION.id))).toBe(true);
+		expect(selectHasIconClass(renderComponent(MANAGED_OPTION.value))).toBe(true);
 	});
 });

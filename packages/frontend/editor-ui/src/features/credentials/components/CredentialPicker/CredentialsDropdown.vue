@@ -123,7 +123,10 @@ const onCreateNewCredential = async () => {
 			:loading="props.loading"
 			:disabled="props.disabled"
 			:teleported="props.teleported ?? false"
-			:class="{ [$style.selectWithBalance]: isManagedSelected && managedOption?.pill }"
+			:class="{
+				[$style.selectWithIcon]: !!selectedPrefixIcon,
+				[$style.selectWithBalance]: isManagedSelected && managedOption?.pill,
+			}"
 			:popper-class="$style.selectPopper"
 			@update:model-value="onCredentialSelected"
 			@visible-change="onVisibleChange"
@@ -256,7 +259,13 @@ const onCreateNewCredential = async () => {
 		left: var(--credential-select-side-padding);
 	}
 
-	:global(.el-select .el-input.el-input--prefix .el-input__inner) {
+	// Element Plus does not update `el-input--prefix` when the prefix slot
+	// appears or disappears after mount, so key the padding on our own class.
+	:global(.el-select .el-input .el-input__inner) {
+		padding-left: var(--credential-select-side-padding);
+	}
+
+	.selectWithIcon :global(.el-select .el-input .el-input__inner) {
 		padding-left: var(--credential-select-label-padding);
 	}
 }
