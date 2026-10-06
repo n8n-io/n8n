@@ -142,10 +142,6 @@ export class AgentSkillsService {
 		}));
 	}
 
-	/**
-	 * `instructionEdits` are applied to the stored instructions after the
-	 * `baseSkillHash` check, so the edits always match the version the caller read.
-	 */
 	async updateSkill(
 		agentId: string,
 		projectId: string,

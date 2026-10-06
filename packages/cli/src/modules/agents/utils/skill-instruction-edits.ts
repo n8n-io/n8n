@@ -12,7 +12,6 @@ interface Span {
 	end: number;
 }
 
-/** Below this similarity the closest text is likely unrelated, so it is not shown. */
 const MIN_HINT_SIMILARITY = 0.5;
 const MAX_HINT_LENGTH = 1500;
 
@@ -30,11 +29,6 @@ function escapeRegExp(value: string): string {
 	return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-/**
- * Finds spans that equal `search` when all whitespace is ignored. Each span
- * starts and ends on a non-whitespace character, so the whitespace around the
- * match stays in place.
- */
 function findWhitespaceInsensitiveSpans(text: string, search: string): Span[] {
 	const chars = Array.from(search.replace(/\s+/g, ''));
 	if (chars.length === 0) return [];
@@ -70,11 +64,6 @@ function similarity(target: Map<string, number>, targetSize: number, candidate: 
 	return (2 * shared) / (targetSize + candidateSize);
 }
 
-/**
- * Finds the span of `text` that is most similar to `search`. It compares word
- * windows of about the same word count as `search`, first with a coarse stride
- * and then word by word around the best coarse result.
- */
 function findClosestSpan(text: string, search: string): Span | undefined {
 	const target = normalizeForSimilarity(search);
 	if (target.length < 2) return undefined;
@@ -140,13 +129,6 @@ function describeClosestText(text: string, search: string): string {
 	return ` The closest text is ${JSON.stringify(closest)}. Use that exact text as oldText if it is the intended target.`;
 }
 
-/**
- * Applies text replacements to skill instructions, in order. Each `oldText`
- * must match exactly one place in the text as left by earlier edits. An exact
- * match wins; otherwise a match that ignores whitespace is accepted. The
- * builder sends small edits instead of a full body rewrite, because output
- * tokens dominate the latency of a skill update.
- */
 export function applySkillInstructionEdits(
 	instructions: string,
 	edits: SkillInstructionEdit[],
