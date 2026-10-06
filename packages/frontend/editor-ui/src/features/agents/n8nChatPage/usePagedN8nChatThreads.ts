@@ -1,8 +1,9 @@
-import { ref, toValue, watch, type MaybeRefOrGetter } from 'vue';
+import { computed, ref, toValue, watch, type MaybeRefOrGetter } from 'vue';
 import type { AgentN8nChatThreadSummary } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
 
 import { listN8nChatThreads } from '../composables/useAgentApi';
+import { useAgentN8nChatThreadsStore } from './n8nChatThreads.store';
 
 export type UsePagedN8nChatThreadsOptions = {
 	/** Narrows every page to one agent's threads. Changing it resets paging. */
@@ -22,8 +23,14 @@ export type UsePagedN8nChatThreadsOptions = {
  */
 export function usePagedN8nChatThreads(options: UsePagedN8nChatThreadsOptions) {
 	const rootStore = useRootStore();
+	const threadsStore = useAgentN8nChatThreadsStore();
 
-	const items = ref<AgentN8nChatThreadSummary[]>([]);
+	// Raw, unfiltered list — paging and de-dup key off this, so a deleted row leaving
+	// `items` never shifts the cursor or lets it reappear on the next page.
+	const rawItems = ref<AgentN8nChatThreadSummary[]>([]);
+	const items = computed(() =>
+		rawItems.value.filter((thread) => !threadsStore.deletedThreadIds.has(thread.id)),
+	);
 	const hasMore = ref(true);
 	const isLoading = ref(false);
 	const error = ref(false);
@@ -50,10 +57,10 @@ export function usePagedN8nChatThreads(options: UsePagedN8nChatThreadsOptions) {
 				search: toValue(options.search),
 			});
 			if (version !== requestVersion) return;
-			const base = replacing ? [] : items.value;
+			const base = replacing ? [] : rawItems.value;
 			const seenIds = new Set(base.map((thread) => thread.id));
 			const freshItems = result.data.filter((thread) => !seenIds.has(thread.id));
-			items.value = [...base, ...freshItems];
+			rawItems.value = [...base, ...freshItems];
 			cursor = result.nextCursor ?? undefined;
 			hasMore.value = result.nextCursor !== null;
 			error.value = false;
@@ -106,7 +113,7 @@ export function usePagedN8nChatThreads(options: UsePagedN8nChatThreadsOptions) {
 			() => {
 				reset();
 				// Unlike a reopen, another agent's threads must not show while the new page loads.
-				items.value = [];
+				rawItems.value = [];
 			},
 		);
 	}
@@ -117,7 +124,7 @@ export function usePagedN8nChatThreads(options: UsePagedN8nChatThreadsOptions) {
 			() => toValue(options.search),
 			() => {
 				reset();
-				items.value = [];
+				rawItems.value = [];
 				loadNext();
 			},
 		);

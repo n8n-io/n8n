@@ -18,6 +18,7 @@ import RecentChatIcon from '@/features/agents/n8nChatPage/components/RecentChatI
 import { useAgentN8nChatThreadsStore } from '@/features/agents/n8nChatPage/n8nChatThreads.store';
 import { useMergedChatHistory } from '@/features/agents/n8nChatPage/useMergedChatHistory';
 import {
+	agentThreadActions,
 	chatItemRoute,
 	chatItemTitle,
 	mergeRecentChats,
@@ -122,6 +123,8 @@ const threadActions: Array<ActionDropdownItem<'rename' | 'delete'>> = [
 	},
 ];
 
+const agentActions = agentThreadActions(i18n);
+
 const AGENT_ITEM_ID_PREFIX = 'agent:';
 
 function itemRowId(item: RecentChatItem): string {
@@ -177,7 +180,7 @@ const menuItems = computed<Array<DropdownMenuItemProps<string, ChatHistoryItemDa
 			label: chatItemTitle(item, i18n),
 			disabled: props.disabled,
 			testId: 'instance-ai-agent-thread-item',
-			data: { updatedAt: item.thread.updatedAt },
+			data: { updatedAt: item.thread.updatedAt, actions: agentActions },
 		};
 	}),
 );
@@ -330,13 +333,21 @@ function handleMenuSelect(itemId: string) {
 	void router.push(chatItemRoute(agentItem));
 }
 
-function handleThreadAction(action: string, threadId: string) {
+function handleThreadAction(action: string, itemId: string) {
 	if (props.disabled) return;
+	if (itemId.startsWith(AGENT_ITEM_ID_PREFIX)) {
+		// This dropdown is Assistant-only (never open on an agent's own chat page), so
+		// deleting here never needs to navigate away.
+		const item = itemsById.value.get(itemId);
+		if (action === 'delete' && item?.kind === 'agent')
+			void agentThreadsStore.deleteThread(item.thread);
+		return;
+	}
 	if (action === 'delete') {
-		void handleDeleteThread(threadId);
+		void handleDeleteThread(itemId);
 	} else if (action === 'rename') {
 		// Wait for the action menu to unmount before the rename input takes focus.
-		requestAnimationFrame(() => startRename(threadId));
+		requestAnimationFrame(() => startRename(itemId));
 	}
 }
 </script>

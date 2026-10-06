@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import userEvent from '@testing-library/user-event';
-import { fireEvent } from '@testing-library/vue';
+import { fireEvent, within } from '@testing-library/vue';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import type { InstanceAiThreadSummary } from '@n8n/api-types';
@@ -455,7 +455,7 @@ describe('InstanceAiThreadList', () => {
 			expect(mockedStore(useAgentN8nChatThreadsStore).fetchRecent).toHaveBeenCalledWith(10);
 		});
 
-		it('merges agent threads in by updatedAt, with icons and no rename/delete actions', async () => {
+		it('merges agent threads in by updatedAt, with icons and a delete-only action', async () => {
 			mockedStore(useAgentN8nChatThreadsStore).recentThreads = [
 				agentThread('g1', '2026-01-02T00:00:00.000Z'),
 			];
@@ -468,7 +468,7 @@ describe('InstanceAiThreadList', () => {
 			expect(
 				agentRows[0].querySelector('[data-test-id="agent-personalisation-icon-tile"]'),
 			).not.toBeNull();
-			expect(agentRows[0].querySelector('button')).toBeNull();
+			expect(agentRows[0].querySelector('button')).not.toBeNull();
 
 			const assistantRows = queryAllByTestId('instance-ai-thread-item');
 			expect(assistantRows).toHaveLength(1);
@@ -480,6 +480,22 @@ describe('InstanceAiThreadList', () => {
 				),
 			].map((el) => el.getAttribute('data-test-id'));
 			expect(rowTestIds).toEqual(['instance-ai-agent-thread-item', 'instance-ai-thread-item']);
+		});
+
+		it('deletes an agent thread through the agent threads store, not the Assistant store', async () => {
+			const g1 = agentThread('g1', '2026-01-02T00:00:00.000Z');
+			mockedStore(useAgentN8nChatThreadsStore).recentThreads = [g1];
+			const agentStore = mockedStore(useAgentN8nChatThreadsStore);
+			agentStore.deleteThread.mockResolvedValue(true);
+			const instanceAiStore = mockedStore(useInstanceAiStore);
+
+			const { findAllByTestId } = await renderList();
+
+			const [agentRow] = await findAllByTestId('instance-ai-agent-thread-item');
+			await userEvent.click(within(agentRow).getByTestId('thread-actions'));
+
+			expect(agentStore.deleteThread).toHaveBeenCalledWith(g1);
+			expect(instanceAiStore.deleteThread).not.toHaveBeenCalled();
 		});
 
 		it('falls back to the sidebar untitled label for an agent thread with no title', async () => {

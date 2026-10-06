@@ -2,6 +2,7 @@
 import { computed, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { refDebounced } from '@vueuse/core';
+import type { AgentN8nChatThreadSummary } from '@n8n/api-types';
 import type { ChatHistoryItem } from '@/features/ai/shared/components/ChatHistoryDropdown.vue';
 import ChatHistoryDropdown from '@/features/ai/shared/components/ChatHistoryDropdown.vue';
 import ChatHistoryDropdownTrigger from '@/features/ai/shared/components/ChatHistoryDropdownTrigger.vue';
@@ -11,6 +12,8 @@ import { getDebounceTime } from '@n8n/composables/useDebounce';
 import { DEBOUNCE_TIME } from '@/app/constants';
 
 import { usePagedN8nChatThreads } from '../usePagedN8nChatThreads';
+import { useAgentN8nChatThreadsStore } from '../n8nChatThreads.store';
+import { agentThreadActions } from '../mergeRecentChats';
 import { AGENT_N8N_CHAT_HISTORY_PAGE_SIZE, AGENT_N8N_CHAT_VIEW } from '../../constants';
 
 const props = defineProps<{
@@ -22,6 +25,7 @@ const props = defineProps<{
 const i18n = useI18n();
 const router = useRouter();
 const route = useRoute();
+const threadsStore = useAgentN8nChatThreadsStore();
 
 const NEW_CHAT_ITEM_ID = '__new-chat__';
 
@@ -30,6 +34,8 @@ const open = ref(false);
 const currentThreadId = computed(() =>
 	typeof route.params.agentThreadId === 'string' ? route.params.agentThreadId : undefined,
 );
+
+const threadActions = agentThreadActions(i18n);
 
 // Debounced like the Assistant's own thread-history search, so typing doesn't fire a
 // request per keystroke.
@@ -41,6 +47,20 @@ const paged = usePagedN8nChatThreads({
 	search: () => debouncedSearch.value.trim() || undefined,
 	pageSize: AGENT_N8N_CHAT_HISTORY_PAGE_SIZE,
 });
+
+async function handleDeleteThread(thread: AgentN8nChatThreadSummary): Promise<void> {
+	const wasOpen = thread.id === currentThreadId.value;
+	if (!(await threadsStore.deleteThread(thread))) return;
+	// Mirrors the Assistant: deleting the open thread lands on a new chat for the same agent.
+	if (!wasOpen) return;
+	void router.push({ name: AGENT_N8N_CHAT_VIEW, params: { agentId: props.agentId } });
+}
+
+function handleAction(action: string, itemId: string): void {
+	if (action !== 'delete') return;
+	const thread = paged.items.value.find((t) => t.id === itemId);
+	if (thread) void handleDeleteThread(thread);
+}
 
 function handleOpenChange(isOpen: boolean): void {
 	open.value = isOpen;
@@ -81,7 +101,7 @@ const items = computed<ChatHistoryItem[]>(() =>
 		label: thread.title ?? i18n.baseText('commandBar.instanceAi.newThread'),
 		checked: thread.id === currentThreadId.value,
 		testId: 'agent-n8n-chat-history-item',
-		data: { updatedAt: thread.updatedAt },
+		data: { updatedAt: thread.updatedAt, actions: threadActions },
 	})),
 );
 
@@ -121,6 +141,7 @@ const showLoadMore = computed(
 		@update:model-value="handleOpenChange"
 		@search="handleSearch"
 		@select="handleSelect"
+		@action="handleAction"
 	>
 		<template #trigger>
 			<ChatHistoryDropdownTrigger

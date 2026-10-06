@@ -1,4 +1,4 @@
-import { defineComponent, ref } from 'vue';
+import { defineComponent, reactive, ref } from 'vue';
 import { mount } from '@vue/test-utils';
 import type { AgentN8nChatThreadSummary } from '@n8n/api-types';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
@@ -15,6 +15,13 @@ vi.mock('@n8n/stores/useRootStore', () => ({
 const listN8nChatThreadsMock = vi.fn();
 vi.mock('../composables/useAgentApi', () => ({
 	listN8nChatThreads: (...args: unknown[]) => listN8nChatThreadsMock(...args),
+}));
+
+// `reactive`, not a plain Set: mirrors the real store's ref-wrapped Set, so a
+// mutation is seen by the pager's `computed` the same way it would in production.
+const deletedThreadIds = reactive(new Set<string>());
+vi.mock('./n8nChatThreads.store', () => ({
+	useAgentN8nChatThreadsStore: () => ({ deletedThreadIds }),
 }));
 
 const thread = (id: string, updatedAt = '2026-01-01T00:00:00.000Z') => ({
@@ -40,6 +47,7 @@ function mountComposable(options: Partial<UsePagedN8nChatThreadsOptions> = {}) {
 describe('usePagedN8nChatThreads', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		deletedThreadIds.clear();
 	});
 
 	it('loads the first page with no cursor', async () => {
@@ -236,6 +244,30 @@ describe('usePagedN8nChatThreads', () => {
 		expect(listN8nChatThreadsMock).toHaveBeenCalledWith(
 			expect.anything(),
 			expect.objectContaining({ cursor: undefined, search: 'refund' }),
+		);
+	});
+
+	it('drops a deleted id from items without disturbing the cursor', async () => {
+		listN8nChatThreadsMock
+			.mockResolvedValueOnce({ data: [thread('t1'), thread('t2')], nextCursor: 'cursor-1' })
+			.mockResolvedValueOnce({ data: [thread('t3')], nextCursor: null });
+		const wrapper = mountComposable();
+		wrapper.vm.loadNext();
+		await vi.waitFor(() => expect(wrapper.vm.items).toHaveLength(2));
+
+		deletedThreadIds.add('t1');
+		await wrapper.vm.$nextTick();
+		expect(wrapper.vm.items.map((t: { id: string }) => t.id)).toEqual(['t2']);
+
+		// The deleted id never resurfaces de-dup, and the next page still starts from
+		// the cursor the raw (unfiltered) list returned — paging is unaffected.
+		wrapper.vm.loadNext();
+		await vi.waitFor(() =>
+			expect(wrapper.vm.items.map((t: { id: string }) => t.id)).toEqual(['t2', 't3']),
+		);
+		expect(listN8nChatThreadsMock).toHaveBeenLastCalledWith(
+			expect.anything(),
+			expect.objectContaining({ cursor: 'cursor-1' }),
 		);
 	});
 

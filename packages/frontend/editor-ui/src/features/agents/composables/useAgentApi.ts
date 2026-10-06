@@ -223,6 +223,20 @@ export const getN8nChatThread = async (
 	);
 };
 
+/** Deletes one of the user's own n8n Chat threads. */
+export const deleteN8nChatThread = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	threadId: string,
+): Promise<{ success: true }> => {
+	return await makeRestApiRequest<{ success: true }>(
+		context,
+		'DELETE',
+		`${agentChatPath(projectId, agentId, 'n8n-chat')}/${encodeURIComponent(threadId)}`,
+	);
+};
+
 export const listAgents = async (
 	context: IRestApiContext,
 	projectId: string,
