@@ -463,7 +463,7 @@ describe('MigrationRuleDetail', () => {
 					affectedWorkflows: [
 						{
 							...mockWorkflowWithIssue,
-							owner: { ...mockWorkflowWithIssue.owner, firstName: '', lastName: '' },
+							owner: { ...mockWorkflowWithIssue.owner, firstName: null, lastName: null },
 						},
 					],
 				}),
@@ -590,6 +590,39 @@ describe('MigrationRuleDetail', () => {
 				const firstDataRow = rows[1]; // Skip header row
 				expect(firstDataRow.textContent).toContain('Test Workflow 1');
 				expect(firstDataRow.textContent).toContain('100');
+			});
+		});
+
+		it('should sort by the shown owner label in both directions', async () => {
+			vi.mocked(breakingChangesApi.getReportForRule).mockResolvedValue(
+				createMockRuleResult({
+					affectedWorkflows: [
+						{
+							...mockWorkflowWithIssue,
+							owner: { ...mockWorkflowWithIssue.owner, firstName: 'Zed', lastName: 'Zulu' },
+						},
+						{ ...mockWorkflowWithMultipleNodes, owner: mockWorkflowWithIssue.owner },
+					],
+				}),
+			);
+			renderComponent({
+				props: {
+					migrationRuleId: 'rule-1',
+				},
+			});
+			// Default order is by executions, so the Zed Zulu workflow comes first.
+			await waitFor(() => {
+				expect(screen.getAllByRole('row')[1].textContent).toContain('Test Workflow 1');
+			});
+
+			await userEvent.click(screen.getByRole('columnheader', { name: /Owner/ }));
+			await waitFor(() => {
+				expect(screen.getAllByRole('row')[1].textContent).toContain('Ada Lovelace');
+			});
+
+			await userEvent.click(screen.getByRole('columnheader', { name: /Owner/ }));
+			await waitFor(() => {
+				expect(screen.getAllByRole('row')[1].textContent).toContain('Zed Zulu');
 			});
 		});
 	});

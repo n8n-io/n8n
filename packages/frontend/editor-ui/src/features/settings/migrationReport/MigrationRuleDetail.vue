@@ -74,9 +74,10 @@ type AffectedWorkflow = BreakingChangeRuleDetailWorkflow;
 
 function ownerLabel(workflow: AffectedWorkflow): string {
 	const owner = workflow.owner;
-	if (!owner) return i18n.baseText('settings.migrationReport.detail.table.unassigned');
-	const fullName = `${owner.firstName} ${owner.lastName}`.trim();
-	return fullName || owner.email;
+	const fullName = [owner?.firstName, owner?.lastName].filter(Boolean).join(' ');
+	return (
+		fullName || owner?.email || i18n.baseText('settings.migrationReport.detail.table.unassigned')
+	);
 }
 
 const tableHeaders = computed<Array<TableHeader<AffectedWorkflow>>>(() => {
