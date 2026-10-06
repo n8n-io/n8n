@@ -14,6 +14,7 @@ import { AgentDefinitionService } from '@/modules/agents/agent-definition.servic
 import type { AgentSaveCompletionService } from '@/modules/agents/agent-save-completion.service';
 import type { AgentSetupCompletionService } from '@/modules/agents/agent-setup-completion.service';
 import type { AgentSkillsService } from '@/modules/agents/agent-skills.service';
+import { AgentTaskService } from '@/modules/agents/agent-task.service';
 import type { Agent } from '@/modules/agents/entities/agent.entity';
 import { composeJsonConfig } from '@/modules/agents/json-config/agent-config-composition';
 import type { NodeToolAiGatewayService } from '@/modules/agents/json-config/node-tool-ai-gateway.service';
@@ -210,6 +211,58 @@ describe('AgentRepository', () => {
 				]),
 			);
 			expect(await restore()).toBe(false);
+		});
+
+		it('rejects a task update when a definition replacement commits after the task read', async () => {
+			const agent = await createAgent();
+			await taskRepo.insert({ id: 'task-1', agentId: agent.id, ...taskBody });
+			const completion = mock<AgentSaveCompletionService>();
+			const service = new AgentTaskService(
+				mockLogger(),
+				mock(),
+				taskRepo,
+				mock(),
+				mock(),
+				agentRepo,
+				mock(),
+				mock(),
+				mock(),
+				mock(),
+				mock(),
+				completion,
+				mock(),
+				transactionRunner,
+			);
+			const readTask = taskRepo.findByIdAndAgentId.bind(taskRepo);
+			vi.spyOn(taskRepo, 'findByIdAndAgentId').mockImplementationOnce(async (id, agentId) => {
+				const task = await readTask(id, agentId);
+				await definitionService.replaceDraft(agent, {
+					schema: agent.schema,
+					tools: agent.tools,
+					skills: agent.skills,
+					tasks: new Map([['task-1', { ...taskBody, objective: 'Restored objective' }]]),
+				});
+				return task;
+			});
+
+			await expect(
+				service.update(
+					agent.id,
+					projectId,
+					'task-1',
+					{ name: 'Renamed task' },
+					{
+						user: mock<User>(),
+						modifiedBy: 'user',
+					},
+				),
+			).rejects.toThrow(ConflictError);
+			expect(await taskRepo.findByIdAndAgentId('task-1', agent.id)).toMatchObject({
+				...taskBody,
+				objective: 'Restored objective',
+			});
+			expect(await agentRepo.findById(agent.id)).toMatchObject({ revision: 1 });
+			expect(completion.taskSaved).not.toHaveBeenCalled();
 		});
 
 		it('rolls back draft and task changes when a restored task ID belongs to another agent', async () => {

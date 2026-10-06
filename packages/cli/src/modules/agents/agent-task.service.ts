@@ -203,14 +203,14 @@ export class AgentTaskService {
 		dto: UpdateAgentTaskDto,
 		context: AgentMutationTelemetryContext,
 	): Promise<{ task: AgentTaskDto; changed: boolean }> {
+		// Read the revision before the task to detect concurrent replacements.
+		const agent = await getAgentOrThrow(this.agentRepository, agentId, projectId);
 		const task = await this.getOrThrow(agentId, taskId);
 
 		const changed = this.applyTaskUpdates(task, dto);
 
-		// Nothing actually changed — skip the agent lookup, draft-dirty bump, and writes.
+		// Skip the draft version change and writes when no field changed.
 		if (!changed) return { task: this.toDto(task), changed: false };
-
-		const agent = await getAgentOrThrow(this.agentRepository, agentId, projectId);
 
 		const previous = captureAgentMutation(agent);
 

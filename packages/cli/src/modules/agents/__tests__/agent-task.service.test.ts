@@ -545,8 +545,7 @@ describe('AgentTaskService', () => {
 		});
 
 		it('is a no-op when no field changes (skips the agent write)', async () => {
-			const task = makeTask();
-			(taskRepository.findByIdAndAgentId as Mock).mockResolvedValue(task);
+			const task = arrangeUpdate();
 
 			const dto = await service.update(
 				AGENT_ID,
@@ -561,11 +560,12 @@ describe('AgentTaskService', () => {
 			);
 
 			expect(dto.cronExpression).toBe(task.cronExpression);
-			expect(agentRepository.findByIdAndProjectId).not.toHaveBeenCalled();
+			expect(agentRepository.saveDraftFenced).not.toHaveBeenCalled();
 			expect(taskRepository.saveDefinitions).not.toHaveBeenCalled();
 		});
 
 		it('throws NotFoundError when updating a missing task', async () => {
+			arrangeUpdate();
 			(taskRepository.findByIdAndAgentId as Mock).mockResolvedValue(null);
 			await expect(
 				service.update(AGENT_ID, PROJECT_ID, 'missing', { name: 'x' }, telemetryContext),
