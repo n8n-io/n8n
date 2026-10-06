@@ -1,0 +1,241 @@
+packages/cli/src/modules/agents/integrations/__tests__/channel-status-report.test.ts
+  s_281efd42004ec0::t_50f4d71d5f5298 14,56-69
+packages/cli/test/integration/agents/cassettes/n8n-chat-production/streams-the-published-instructions-and-records-a-private-production-session.json
+  s_281efd42004ec0::t_4846eb23d9f7b4 1-660
+packages/cli/src/modules/agents/json-config/agent-config-composition.ts
+  s_281efd42004ec0::t_d773b239764711 28-31
+packages/cli/src/modules/agents/integrations/integration-tool-factory.ts
+  s_281efd42004ec0::t_1fd07c4c1acf64 108-110
+packages/cli/src/modules/agents/agents.service.ts
+  s_281efd42004ec0::t_1adb4854d0c222 201-203
+  s_281efd42004ec0::t_874e93194fba09 222-225
+  s_a2999f6753c62b::t_3fea4f7fb807d1 183-186
+packages/@n8n/api-types/src/agents/__tests__/agent-integration.schema.test.ts
+  s_281efd42004ec0::t_163eef1750725e 2,11-21
+  s_281efd42004ec0::t_4ebc349f7cfcfb 1,5-10,22
+packages/cli/test/integration/agents/n8n-chat-production.model.test.ts
+  s_281efd42004ec0::t_f6f58106d960c4 157
+  s_281efd42004ec0::t_4d8dba97308ddc 2,102,151,199,252-256,269
+  s_281efd42004ec0::t_409ea1dba5fbeb 33,382-412
+  s_281efd42004ec0::t_f7b2bcebaae796 35,163-180,291
+  s_281efd42004ec0::t_781c51837735d2 47-48,50,313-314
+  s_281efd42004ec0::t_39726859e81196 338,373
+  s_281efd42004ec0::t_646a6fd4c52dc4 8,130-134
+  s_281efd42004ec0::t_5d89d6d47aa2ec 12,141-146
+  s_281efd42004ec0::t_6f8aa9df66af2e 280-281,287-290
+  s_281efd42004ec0::t_88b68c94a723f5 41-46,49,51-54,162,257,274-278,309-312,315-318
+  s_281efd42004ec0::t_55d5b6032da337 28-29
+  s_281efd42004ec0::t_a5615c1bf161e8 24-27,30-32
+  s_281efd42004ec0::t_e4ebf73dcd1a11 4,104-119,308,333
+  s_281efd42004ec0::t_2c63c5506bd51e 37,230,238
+  s_281efd42004ec0::t_38f95b56207918 93-99,266-267,279,282-283,367
+  s_281efd42004ec0::t_29085cefa8f01c 284-286
+  s_281efd42004ec0::t_7ed8282a3af981 327-331,334-337,342-346,369-372
+  s_281efd42004ec0::t_6d4c53e695760f 366
+  s_281efd42004ec0::t_6c2f86d4cfb798 1,3,5-7,9-11,13-23,34,36,38-40,55-92,100-101,103,120-129,135-140,147-150,152-156,158-161,182-187,189-198,200-229,231-237,239-251,258-265,268,270-273,292-307,319-326,332,339-341,347-348,350-365,368,374-381,414
+  s_281efd42004ec0::t_bc61f5e2a48ef5 181,188,349,413
+packages/cli/src/modules/agents/__tests__/agent-runtime-cache.service.test.ts
+  s_281efd42004ec0::t_8d7e27d4454e0e 627-671
+packages/cli/src/modules/agents/integrations/agent-channel-reconciler.service.ts
+  s_281efd42004ec0::t_f6eb8fd249bcdf 1-5,356-359
+packages/cli/src/modules/agents/agent-runtime-reconstruction.service.ts
+  s_281efd42004ec0::t_9f16a7213f9875 17,936
+  s_281efd42004ec0::t_d773b239764711 639-640
+  s_281efd42004ec0::t_3b6f2d7f466f49 145,293,301,346,621,636
+  s_281efd42004ec0::t_13e590f99716bb 638,641
+  s_281efd42004ec0::t_8ab6235a662109 197
+packages/cli/src/modules/agents/agent-workflow-tool-resume.service.ts
+  s_281efd42004ec0::t_d773b239764711 204-207,211-215,231-233,238-244
+  s_281efd42004ec0::t_f395bee227c2b6 14-17,49-50,150-152,208-210,216-230,234-237
+  s_281efd42004ec0::t_f55272d78ae8e5 149
+  s_281efd42004ec0::t_d742eea03e7aeb 245-246
+packages/cli/src/modules/agents/agent-chat.controller.ts
+  s_281efd42004ec0::t_61a762b0a49dc0 26,592,749-750,752-753
+  s_281efd42004ec0::t_874e93194fba09 18,35,45,99,101,123
+  s_281efd42004ec0::t_d773b239764711 155-164,182-186,213-215,233-235,237-243,261-265,291-294,297-303,509-518,530-536,548-551,554-557,559-560,562-565,579-581,583-587,610-611,613-620,650-651,653-660
+  s_281efd42004ec0::t_862fbbf902eebe 143-154,165-181,187-212,216-217,225,229-232,236,244-260,266-282,296,304-308,498-508,519-529,537-547,552-553,558,561,566-578,582,588-591
+  s_281efd42004ec0::t_bac9a550063ca6 612,652,746-748
+  s_281efd42004ec0::t_a8447747bcb054 218-224,226-228,283-290,295
+  s_281efd42004ec0::t_ef2c5496aceb93 593
+packages/cli/src/modules/agents/tools/workflow-tool-factory.ts
+  s_281efd42004ec0::t_13e590f99716bb 170,647
+packages/cli/src/modules/agents/__tests__/agent-chat.controller.test.ts
+  s_281efd42004ec0::t_ad576732c1913b 60,93,96,139-144
+  s_281efd42004ec0::t_d773b239764711 36-41,919-924,931-935,937-939,942-944,952-953,957-967,976-980,983-984,993-1003,1005-1007
+  s_281efd42004ec0::t_66adfcf0942ed5 989-992,1004,1008-1010
+  s_281efd42004ec0::t_d76a9cebfb3af5 911-918,925-930,936,940-941,945-951,954-956,968-975,981-982,985-988,1011
+packages/cli/test/integration/agents/n8n-chat-production.api.test.ts
+  s_281efd42004ec0::t_741ffb936d0d62 3,12,73,82,112,123,131-136,140-145,147-148,164-181,186-189,208
+  s_281efd42004ec0::t_692c0718f483f7 8-10,23,36-40,42-45,52-72,74-79,83-87,106-111,113-122,124-130,137-139,146,182-185,190-191,204-207,209-212
+  s_281efd42004ec0::t_144fd73a54f0f4 149-153,155-158,162
+  s_281efd42004ec0::t_39726859e81196 154,159-161,163
+  s_281efd42004ec0::t_7ec4e9f1d41117 24
+  s_281efd42004ec0::t_16077693afa426 192-203
+  s_281efd42004ec0::t_2c63c5506bd51e 20,32,46-51
+  s_281efd42004ec0::t_594aaf15dcdc9c 41,88-99
+  s_281efd42004ec0::t_6272c729a12c2b 1-2,4-7,11,13-19,21-22,25,102-105,213-214
+  s_281efd42004ec0::t_d773b239764711 26-31,33-35,80-81,100-101
+packages/cli/src/modules/agents/__tests__/agent-workflow-tool-resume.service.test.ts
+  s_281efd42004ec0::t_d773b239764711 99-100,106-116
+  s_281efd42004ec0::t_8ab6235a662109 15-16
+  s_281efd42004ec0::t_2be7e1da24b322 63-64,76-77,92-93,97-98,101-105,117-126
+  s_281efd42004ec0::t_2e1f92439fd184 127
+packages/cli/src/modules/agents/integrations/chat-integration.service.ts
+  s_281efd42004ec0::t_6dd96a73608e8c 533-536,538,544-546
+  s_281efd42004ec0::t_f6eb8fd249bcdf 1-5,198,216,252,437
+packages/workflow/src/interfaces.ts
+  s_281efd42004ec0::t_13e590f99716bb 3479-3480
+packages/cli/src/modules/agents/__tests__/agent-integrations.controller.test.ts
+  s_281efd42004ec0::t_6c1dbbc5a91436 407-409,418-423,425-429,431-433,438-439
+  s_281efd42004ec0::t_964528c5b7cbb5 410-417,424,430,434-437
+packages/cli/test/integration/agents/cassettes/n8n-chat-production/suspends-a-tool-call-and-resumes-it-only-for-the-session-owner.json
+  s_281efd42004ec0::t_4846eb23d9f7b4 1-656
+packages/cli/src/modules/agents/agent-publish.service.ts
+  s_281efd42004ec0::t_012570e9b976b1 2,84-90
+  s_281efd42004ec0::t_2ea7fe63f370cf 379,430,750-751,757
+  s_281efd42004ec0::t_179fddd9d23dd1 752-755
+  s_281efd42004ec0::t_bfb6a723cd4ca6 756
+  s_281efd42004ec0::t_f54d84fe3965cb 3,239,645
+  s_281efd42004ec0::t_c41a57da355ccb 185-186,461-462
+packages/@n8n/api-types/src/agents/agent-config-lifecycle.ts
+  s_281efd42004ec0::t_c41a57da355ccb 4
+  s_281efd42004ec0::t_ebe8b96813a030 13-14
+packages/cli/src/modules/agents/__tests__/agent-execution.service.test.ts
+  s_281efd42004ec0::t_d773b239764711 1194-1205,1209-1220,1222-1230
+  s_281efd42004ec0::t_04c4213a842770 1187-1193,1206-1208,1221,1231-1233
+packages/cli/src/modules/agents/utils/agent-thread-access.ts
+  s_281efd42004ec0::t_cfc648c75b0953 6
+.agents/specs/AGENT-963-n8n-chat-production.md
+  s_281efd42004ec0::t_3186d8f16384bf 1-54,56-67
+  s_281efd42004ec0::t_3c6a9417c66b62 55
+biome.jsonc
+  s_281efd42004ec0::t_6da265d3e3ff6a 38
+  s_281efd42004ec0::t_29085cefa8f01c 37
+packages/cli/src/modules/agents/builder/agents-builder-tools.service.ts
+  s_281efd42004ec0::t_9f16a7213f9875 32,455-458,515-518
+packages/cli/src/modules/agents/agent-integrations.controller.ts
+  s_281efd42004ec0::t_23b8c8583cd8eb 93-97,103-106
+  s_281efd42004ec0::t_1452581d683194 98
+  s_281efd42004ec0::t_179fddd9d23dd1 101-102,107-108
+  s_a2999f6753c62b::t_8fb9c3289d5036 92,99-100,109-110
+packages/cli/test/integration/agents/cassettes/n8n-chat-production/allows-only-the-session-owner-to-cancel-a-suspended-run.json
+  s_281efd42004ec0::t_3eb9478727e0b1 1-300
+packages/cli/src/modules/agents/integrations/__tests__/chat-integration.service.test.ts
+  s_281efd42004ec0::t_4ebc349f7cfcfb 194-205
+packages/cli/src/modules/agents/__tests__/agent-publish.service.test.ts
+  s_281efd42004ec0::t_0fdd067ca816e8 407,438,608-613,626-627,716,720,737,740
+  s_281efd42004ec0::t_3cc1e060b29b3b 628
+packages/@n8n/api-types/src/agents/dto.ts
+  s_281efd42004ec0::t_3b6f2d7f466f49 43
+packages/cli/src/modules/agents/integrations/channel-status-report.ts
+  s_281efd42004ec0::t_23b8c8583cd8eb 2,40,54,70-76
+  s_281efd42004ec0::t_e15e1eb584e434 41
+packages/cli/src/modules/agents/repositories/agent.repository.ts
+  s_281efd42004ec0::t_cfc648c75b0953 167,174-175
+  s_281efd42004ec0::t_2ea7fe63f370cf 1,168-173
+packages/cli/src/modules/agents/agent-execution.service.ts
+  s_281efd42004ec0::t_5b309720220ce4 40
+  s_281efd42004ec0::t_3b6f2d7f466f49 632-645,648-649
+  s_281efd42004ec0::t_d773b239764711 646-647
+  s_281efd42004ec0::t_c35ef150412a21 650-651
+packages/cli/test/integration/database/repositories/agent.repository.test.ts
+  s_281efd42004ec0::t_ad576732c1913b 62-64,66-70,74-79,81-98,101-103
+  s_281efd42004ec0::t_2c63c5506bd51e 65,80
+  s_281efd42004ec0::t_30eb0b02a002ac 99-100
+  s_281efd42004ec0::t_700ea30049cef6 71-73
+packages/cli/test/integration/agents/cassettes/n8n-chat-production/sends-an-image-to-the-model-and-reloads-the-stored-attachment.json
+  s_281efd42004ec0::t_4846eb23d9f7b4 1-335
+packages/cli/src/modules/agents/integrations/agent-chat-bridge.ts
+  s_281efd42004ec0::t_65ba0517630733 519-522
+packages/cli/src/modules/agents/agent-runtime-cache.service.ts
+  s_281efd42004ec0::t_3b6f2d7f466f49 48,136,314,349
+packages/cli/test/integration/workflows/workflow-dependency.controller.test.ts
+  s_281efd42004ec0::t_8ab6235a662109 107
+packages/cli/src/modules/agents/agent-validation.service.ts
+  s_281efd42004ec0::t_f6eb8fd249bcdf 488
+  s_281efd42004ec0::t_c41a57da355ccb 213-214
+packages/cli/src/modules/agents/integrations/platforms/n8n-chat-integration.ts
+  s_281efd42004ec0::t_c41a57da355ccb 24-27
+packages/cli/src/modules/agents/integrations/integration-tool-types.ts
+  s_281efd42004ec0::t_c41a57da355ccb 85-86
+packages/@n8n/api-types/src/agents/agent-integration.schema.ts
+  s_281efd42004ec0::t_fbf1f8a4cd3b40 148-150,152-154
+  s_281efd42004ec0::t_ebe8b96813a030 151
+  s_281efd42004ec0::t_179fddd9d23dd1 158-161
+  s_281efd42004ec0::t_490f3a6cb6edd4 164-174
+packages/@n8n/api-types/src/agents/agent-json-config.schema.ts
+  s_281efd42004ec0::t_5e1541d1a71199 487-492
+  s_281efd42004ec0::t_e647be0885bf3e 485-486,493
+packages/cli/src/modules/agents/utils/agent-memory-scope.ts
+  s_281efd42004ec0::t_cfc648c75b0953 3,27-35
+  s_281efd42004ec0::t_75f36c6fb726de 36
+packages/cli/src/modules/agents/agent-execution-orchestrator.service.ts
+  s_281efd42004ec0::t_49ac67ad7b1000 737-738
+  s_281efd42004ec0::t_fb992e5a58b801 600,739-746,1410
+  s_281efd42004ec0::t_986b68b468775f 216,999
+  s_281efd42004ec0::t_7784a8fadf18bd 735-736
+  s_281efd42004ec0::t_2539e869f3df99 432-433,606,853
+  s_281efd42004ec0::t_59aaa1b6eb911a 557-568
+  s_281efd42004ec0::t_6855e83e3554fd 609,931,966-967,996-997
+  s_281efd42004ec0::t_d773b239764711 136-138,388,428-431,544-553,733-734,747-748,761-764,769-776,1362-1364,1396-1400
+  s_281efd42004ec0::t_8fc18d03b40121 593-596,1212,1237
+  s_281efd42004ec0::t_3091686bd5a127 407
+  s_281efd42004ec0::t_e4898b0e1eaa75 554-556,730-732,751-753,766,1352,1371,1385,1404
+  s_a2999f6753c62b::t_ede5f7c5fc72f1 32,34,36,139-142,352,356,358,361-379,401,411,541-543,569-592,597-599,601-605,607-608,610-618
+packages/cli/src/modules/agents/__tests__/agent-config.service.test.ts
+  s_281efd42004ec0::t_0fdd067ca816e8 427,441,443-445
+  s_281efd42004ec0::t_d773b239764711 431-435,437-440
+  s_281efd42004ec0::t_179fddd9d23dd1 436
+  s_281efd42004ec0::t_19decff636245d 442
+  s_281efd42004ec0::t_edd0a742313e0a 428-430
+  s_a2999f6753c62b::t_df3554acaa87c2 446-447
+packages/cli/src/modules/agents/agent-turn-execution.service.ts
+  s_281efd42004ec0::t_d773b239764711 412-417
+  s_281efd42004ec0::t_49e0ba2f3f413e 227
+  s_281efd42004ec0::t_986b68b468775f 51,127
+packages/cli/src/modules/agents/agent-chat-execution.service.ts
+  s_281efd42004ec0::t_d30af90d38892f 243,245-249,251-254
+  s_281efd42004ec0::t_d773b239764711 21-25,195-205
+  s_281efd42004ec0::t_49e0ba2f3f413e 17,19,133-135,223-225
+  s_281efd42004ec0::t_e3d730bacebb73 241-242,244,250
+packages/cli/src/modules/agents/__tests__/agent-execution-orchestrator.service.test.ts
+  s_281efd42004ec0::t_efa45df4c04f9e 1433,1441,1443-1444,1454,1472-1473,1478-1479,1511-1512
+  s_281efd42004ec0::t_66adfcf0942ed5 1513-1519,1531-1532,1548-1550
+  s_281efd42004ec0::t_6a2b5095147aad 2148-2191
+  s_281efd42004ec0::t_528e93da932ffe 1434-1440,1461-1469
+  s_281efd42004ec0::t_78af54ebc8551a 1442,1480-1510
+  s_281efd42004ec0::t_d773b239764711 1445-1453,1455-1460,1470-1471,1474-1477,1520-1530,1533-1547
+packages/cli/src/scaling/pubsub/pubsub.event-map.ts
+  s_281efd42004ec0::t_cf37cf2f1acfec 141
+packages/cli/src/modules/agents/__tests__/agent-chat-execution.service.test.ts
+  s_281efd42004ec0::t_b96c8b02683690 258-305
+packages/@n8n/api-types/src/agents/types.ts
+  s_281efd42004ec0::t_c41a57da355ccb 401-402
+  s_a2999f6753c62b::t_03ff6c8044c3a1 167
+packages/cli/src/modules/agents/agent-config.service.ts
+  s_a2999f6753c62b::t_4edac70e5142d1 326-332
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "bb7052e703a81db2369bf5e16a4b8e8b8d764483",
+  "prompts": {},
+  "sessions": {
+    "s_281efd42004ec0": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0ceb8-26d9-7362-a99e-66779bbf1d1d",
+        "model": "gpt-6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    },
+    "s_a2999f6753c62b": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a080bf-405e-70f0-8af9-fbce616d04c3",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

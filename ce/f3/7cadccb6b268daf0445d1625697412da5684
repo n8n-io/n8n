@@ -1,0 +1,24 @@
+packages/frontend/editor-ui/src/features/ndv/panel/components/TriggerPanel.vue
+  s_f489685fba5f6b::t_d34a10583b9a00 597-600
+  s_f489685fba5f6b::t_599ce1252aa90b 458-463
+  s_f489685fba5f6b::t_ba4db52723bb37 479-500
+  s_f489685fba5f6b::t_0a7fbffd599b56 512-531
+  s_f489685fba5f6b::t_21c983ccf6b509 581-596,601-602
+  s_f489685fba5f6b::t_eeb5f0e4963936 478,501,503
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "cef37cadccb6b268daf0445d1625697412da5684",
+  "prompts": {},
+  "sessions": {
+    "s_f489685fba5f6b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a873cd76-015f-4b9b-95b0-e7a8bccf4620",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Dmitrii Kulikov <dmitrii.kulikov@n8n.io>"
+    }
+  }
+}

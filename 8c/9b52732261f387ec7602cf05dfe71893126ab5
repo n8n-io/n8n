@@ -1,0 +1,1983 @@
+packages/@n8n/api-types/src/index.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 155,160,390-391,429,494-495,573-574,858-861
+packages/frontend/@n8n/design-system/package.json
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 72
+packages/cli/src/executions/pre-execution-checks/credentials-permission-checker.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1,76-139,147,149-157,159-172,175-187,321-344
+packages/@n8n/cli/src/__tests__/promotion-connection-list-changes.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-121
+packages/@n8n/engine/src/execution/execution.types.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 3-24
+packages/cli/src/modules/agents/__tests__/instance-ai-agent-context.adapter.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-348
+packages/cli/test/integration/shared/utils/community-nodes.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 13,15,22,38-47
+packages/cli/src/modules/agents/integrations/__tests__/agent-credential-lookup.service.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-77
+packages/frontend/editor-ui/src/app/composables/useAiGateway.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 12,20-22,115-121
+packages/cli/src/webhooks/live-webhooks.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 23,53,141-148
+packages/@n8n/crdt/package.json
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 45
+packages/cli/src/modules/agents/agent-execution-update-broadcaster.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 80-105
+packages/@n8n/engine/src/index.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 40,46-47
+packages/cli/src/modules/agents/agent-custom-tools.service.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 49,66,85
+packages/@n8n/instance-ai/evaluations/harness/agent-execution.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 17,103-104,116,118-127
+packages/@n8n/eslint-plugin-community-nodes/src/plugin.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 64,114
+packages/cli/src/modules/agents/builder/__tests__/agents-builder-model-recommendations.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 125,128,131,138-140
+packages/cli/src/modules/agents/builder/prompts/llm-selection.prompt.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 15,19,27-29
+packages/@n8n/cli/src/__tests__/promotion-command-wiring.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 12,141-146
+packages/cli/src/services/__tests__/engine-v2-payload-guard.service.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 9,83
+packages/cli/src/credentials/credentials-finder.service.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 36-39,178,326,335-338,366-389
+packages/@n8n/instance-ai/evaluations/langtracer/push.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 6-7,144-147,177-188
+packages/cli/src/scheduling/system-tasks/__tests__/instance-system-tasks.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-33
+packages/cli/src/modules/n8n-packages/io/__tests__/package-directory-inventory-reader.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 91-115,154-155
+packages/cli/src/commands/__tests__/webhook.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 83-84,87,95
+packages/cli/src/collaboration/collaboration.service.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 17-21,24,27-28,31,49,100-109,141-142,190-191,206-207,231-236,407-411,424-697
+.github/workflows/util-determine-current-version.yml
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 27
+packages/frontend/editor-ui/src/app/composables/usePushConnection/handlers/executionFinished.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 13-17,64-69,1001-1045
+packages/core/src/execution-engine/partial-execution-utils/__tests__/rewire-graph.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1,230-264
+packages/@n8n/instance-ai/src/agent/shared-prompts.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 20
+packages/cli/src/modules/agents/__tests__/from-json-config.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 4,326,983-1100
+packages/cli/src/modules/agents/builder/verify-mcp-server.tool.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 23,126
+packages/cli/src/webhooks/webhook-responder.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-42
+packages/@n8n/workflow-sdk/src/mock-data/context.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 4,62
+packages/@n8n/eslint-plugin-community-nodes/docs/rules/valid-node-categories.md
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-27
+packages/cli/src/workflows/triggers/trigger-execution-context.factory.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 50,89,115,221,392,405-409,415,426,436,528-529,553-578
+packages/cli/test/integration/policy/node-type-policy.save.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 29-30,230-245
+packages/@n8n/db/src/utils/principal-from-user.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-15
+packages/cli/src/modules/mcp/tools/workflow-builder/get-workflow-node-types.tool.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 19,117
+.github/workflows/test-e2e-helm.yml
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 42,75,90,167
+packages/frontend/@n8n/design-system/src/components/N8nDropdownMenu/DropdownMenuItem.vue
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 47,263,321-335,471,511,593,607,620,630,652-653,658
+packages/@n8n/backend-test-utils/src/test-db.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1,9-10,33-38,45-47,57-69,87,137-166
+packages/core/src/execution-engine/node-execution-context/execute-context.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 27,112
+packages/@n8n/vitest-config/node.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 7,75-76
+packages/cli/src/workflows/node-group-rules-flag-gate.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-27
+packages/cli/src/public-api/public-api-route-resolver.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 31-45,48-50,257
+packages/@n8n/instance-ai/src/tools/save-user-preference.tool.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 31-37,41-44,46-55,74,88-101
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentChatStream.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 25-27,57-59,69-85,87,91,111-115,132,151-155,162,182-185,197-203,240,283,328,379,440,517,519,562,599,614,644,649-651,653,655,723,780,826,878,941,995,1044,1118,1179,1205,1223,1258,1288,1308,1353,1405,1431,1458,1478,1484,1499,1522,1526,1558,1562,1580,1601,1622,1642,1668,1693,1729,1765,1796,1834,1864,1893,1931,1972,2019,2082,2166,2300,2361,2384,2395,2397,2447,2489,2520,2555,2611,2642,2754-2757,2771,2788-2791,2819-2822,2889-2912,2922,2929,3009-3012,3015,3053,3251-3289,3310-3314,3427-3729
+packages/@n8n/cli/src/commands/package/package-error.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 19-23,77-80
+packages/frontend/@n8n/design-system/src/components/N8nMarkdownEditor/MarkdownEditor.types.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 7,9,11,13,15,17,19,21,23-27,29,31,36,38,40,42,44,46
+.github/workflows/test-workflows-callable.yml
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 32
+packages/cli/src/modules/engine-v2/__tests__/buffer-webhook-response.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-83
+packages/cli/src/scaling/pubsub/pubsub.event-map.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 3,14-19,151-153
+packages/cli/src/scheduling/schedule-trigger-node/__tests__/schedule-trigger-task-handler.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 18,30,46,92,98-117
+packages/frontend/editor-ui/src/app/stores/aiGateway.store.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 17-24,155-159,214-242,302
+.github/workflows/util-update-credential-setupability.yml
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 37
+packages/cli/src/commands/__tests__/engine.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-219
+packages/@n8n/engine/src/server/routes/workflow-executions.handlers.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 25-32
+packages/cli/src/modules/mcp/__tests__/webhook-utils.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 41
+packages/cli/src/modules/agents/agent-capabilities.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 5-6
+packages/cli/src/scaling/pubsub/pubsub.types.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 63,65,114,116
+packages/@n8n/api-types/src/push/collaboration.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 9-16,19,26,34
+packages/@n8n/instance-ai/evaluations/data/agents/index.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 9-13,18,20
+packages/cli/src/modules/agents/__tests__/agent-integrations.controller.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 15-16,31,39,52,59,225-281
+packages/@n8n/instance-ai/src/tools/__tests__/agent-context.tool.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-123
+packages/cli/src/modules/type-availability-policies/__tests__/policy-evaluator.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 5,10-11,50,54,71,92,94,101,133,163,185,201,207-216,218-227,230-231,233-236,238-250,267,279,291,303,315,327,339,348,360,381,384,394,407,417,424-435
+packages/@n8n/nodes-langchain/nodes/llms/LmChatAzureOpenAi/__tests__/LmChatAzureOpenAi.node.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1,51-78,112-136
+.github/WORKFLOWS.md
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 586
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentSkillModal.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 6,16-17,19-21,30-33,38-40,61-65,141-143,154-196,199-205,207-223,244-246,268-270,283-285,310-319,322-384,388-394
+packages/cli/src/modules/agents/__tests__/agent-execution.service.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 24,82,88-92,96,121,186,204,218-219,234,242,245-246,275-312,519,611,1077,1083-1092,1119-1120
+packages/cli/src/modules/engine-v2/__tests__/engine-additional-data.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-183
+.github/workflows/release-publish-new-package.yml
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 31
+.github/workflows/release-create-github-releases.yml
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 65
+packages/cli/src/modules/mcp/tools/save-user-preference.tool.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-406
+packages/frontend/editor-ui/src/app/composables/useWorkflowPublicationStatusSync.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 12,20,25-32,85,115-154,166-168,330-331
+packages/frontend/editor-ui/src/app/composables/useWorkflowPublicationStatusSync.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 43-53,55,61-63,95-100,107
+packages/cli/src/modules/agents/agent-context-readers.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-43
+.github/workflows/test-evals-python.yml
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 21
+packages/cli/src/modules/engine-v2/engine-additional-data.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-141
+packages/cli/src/scaling/__tests__/scaling.service.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 155,840,884-921
+packages/cli/test/integration/public-api/data-tables.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 78-84,90-110,124-165,411-428,439-466,518-551,570-588,601-628,675-709,721-738,793-809
+packages/cli/src/workflows/__tests__/workflow-validation.service.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1,13,22,28,39,1399-1483,1491
+packages/@n8n/db/src/entities/credentials-entity.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 5,79-86
+packages/cli/src/modules/engine-v2/response-channel/redis-execution-response-receiver.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-165
+packages/cli/src/modules/engine-v2/engine-control-plane-server.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 51,55,73
+packages/cli/src/public-api/v1/controllers/data-tables.public.controller.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-240
+packages/cli/src/modules/agents/integrations/__tests__/n8n-checkpoint-storage.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 4-7,38,43-46,73,93-104,121,151,182,338-343
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentInfoPanel.spec.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 263,269
+packages/cli/vitest.config.integration.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 13-14
+packages/cli/src/scheduling/system-tasks/__tests__/system-task-runner.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 122-132,1346-1355
+packages/cli/src/workflows/workflow-creation.service.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 39,80,218-222,226
+packages/@n8n/agents/src/runtime/state/run-state.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 112-113,117-118
+packages/@n8n/node-engine-compatibility/package.json
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 4
+.github/workflows/test-evals-instance-ai.yml
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 181,459
+.github/workflows/util-data-tooling.yml
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 20,54
+.github/workflows/test-get-n8n.yml
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 34,47,61,88
+packages/@n8n/crdt/src/__tests__/test-matchers.d.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 10,14-15
+packages/cli/src/node-execution/ephemeral-node-executor.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 4,381,401,511,590
+packages/@n8n/api-types/src/dto/data-table/data-table-public.dto.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-64
+packages/cli/src/workflows/workflow.service.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 34,62,134,523-527,535,998-1000,1036-1040,1831-1844
+packages/cli/test/integration/engine-v2-credentials-resolve.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 28
+packages/cli/src/modules/instance-reporting.ee/database/repositories/__tests__/instance-monitoring-report.repository.integration.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 45-52,54,57,60,63,67,71,74-80,82,85-88,90,98
+packages/@n8n/node-engine-compatibility/src/v1-workflow-converter.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 26
+packages/@n8n/engine/src/dependencies/external-dependencies.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 4,46-50
+packages/cli/src/services/pruning/__tests__/workflow-history-compaction.service.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 108
+packages/frontend/editor-ui/src/app/composables/useAiGateway.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 55-56
+packages/@n8n/decorators/src/system-task/index.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 3-4
+packages/cli/src/modules/engine-v2/__tests__/engine-v2.runtime.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 10,103,117,148-153,223,228-231
+packages/frontend/editor-ui/src/app/views/NodeView.vue
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 224,615
+.github/workflows/util-cleanup-abandoned-release-branches.yml
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 25
+packages/@n8n/api-types/src/agents/dto.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 11,48,264-267,296-303
+packages/cli/src/services/pending-webhook-response.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 11,21-22,34,39-40,48-53,55,65-66
+packages/cli/test/integration/database/repositories/workflow-publish-history.repository.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 14,102,111,155,206-334
+packages/cli/src/modules/instance-reporting.ee/instance-reporting-scheduler.service.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 10,116-123,132,146-152,156-171,174-185,187-193,210-218
+packages/cli/src/modules/promotions.ee/__tests__/promotions-package.integration.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 174,381-406,721-774,1066,1074-1078,1094-1098,1112-1157,1193-1197,1223-1230,1256-1262,1289-1293,1319-1323,1365-1369,1402-1539
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentPreviewMoreMenu.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 387
+packages/cli/src/modules/redaction/executions/strategies/__tests__/node-defined-field-redaction.strategy.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 16
+packages/core/src/execution-engine/node-execution-context/__tests__/node-execution-context.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 598-610
+packages/cli/src/modules/agents/integrations/__tests__/credential-fields.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-37
+packages/core/src/instance-settings/instance-settings.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 101
+packages/cli/src/modules/agents/json-config/sanitize-unknown-agent-credentials.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 48-52,57-59
+packages/cli/test/integration/database/repositories/agent-execution.repository.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 45-51,118,141-153,169,171-182,187-189,197,366,439-454,457-461,464,466,486-491,493-495,851,859-860,864,1018-1489
+packages/@n8n/api-types/src/instance-registry-types.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 11,36
+packages/cli/src/modules/agents/integrations/platforms/teams/teams-integration.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-210
+packages/frontend/editor-ui/src/app/api/workflows.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1,11-48
+packages/cli/src/middlewares/list-query/__tests__/list-query.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 51-77
+packages/@n8n/api-types/src/agents/teams/index.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1
+packages/@n8n/api-types/src/dto/packages/__tests__/import-package-selection-request.dto.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-171
+packages/frontend/@n8n/design-system/src/locale/lang/en.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 211,258-260
+packages/cli/src/modules/agents/integrations/agent-chat-hitl-resume-handler.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 2,11,21-28,72-77,82-94,108,156,167,181,184,189-192,219-245,272-282,285-286,289-291,312
+.github/workflows/release-populate-cloud-with-releases.yml
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 43
+packages/@n8n/node-cli/src/template/templates/programmatic/ai/model-ai-custom/template/nodes/ExampleChatModel/ExampleChatModel.node.json
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 5
+packages/cli/src/modules/instance-reporting.ee/database/repositories/instance-monitoring-report.repository.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 15-16,18-22,24-25,27-28,30-33
+packages/cli/src/modules/agents/agent-conversation-state.service.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 25-34
+packages/cli/src/modules/agents/integrations/__tests__/channel-integration-contract.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 10-18,33,118-162
+packages/cli/src/executions/executions.controller.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 154
+packages/cli/src/modules/agents/agent-checkpoint-pruning.task.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 2,15
+packages/@n8n/node-cli/vite.config.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1,17-18
+packages/@n8n/workflow-sdk/src/mock-data/types.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-2,70-71
+.github/workflows/util-publish-api-schema.yml
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 30
+packages/@n8n/node-cli/src/test-utils/matchers.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 178-188
+packages/cli/src/services/__tests__/frontend.service.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 324-345,693-706
+packages/cli/src/services/engine-v2-dispatcher.service.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 43,46,109,174,180,188,194,199,213,221
+packages/cli/src/modules/agents/agents-skills.controller.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 16,20-23,53-60,79-86,110-117
+packages/frontend/@n8n/design-system/src/components/N8nDropdownMenu/DropdownMenu.types.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 79-80,100-101,141-142,203
+packages/cli/src/modules/agents/builder/agents-builder-tools.service.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 37,41,46,48,63,96,101,104-112,114,165-167,288,310-311,331-332,341-358,684-685,726-727,729-731,744-747,764,768,770-772,781,799,802,804,813,837-843,921-922,959-960,962-970,972,987,991,995-996,1015-1017,1020,1023,1038,1067-1068,1108-1109,1119,1154-1158,1270-1271,1294-1295
+packages/@n8n/agents/src/runtime/loop/agent-runtime.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 476,888,1237
+packages/@n8n/instance-ai/src/agent/__tests__/system-prompt.preferences.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 14-19
+packages/cli/src/modules/agents/agent-teams-integrations.controller.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-120
+packages/cli/src/modules/agents/execution-recorder.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 332,334,382
+packages/cli/src/modules/instance-ai/instance-ai-checkpoint-pruning.task.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 2,16-18,24
+packages/cli/src/modules/instance-ai/instance-ai-preference-card.service.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 7,14,21-23,46-48,50,56-72,79-86,88-96,99-101,103-111,116-123,128,131-149,161-163
+packages/@n8n/nodes-langchain/nodes/llms/LmChatAzureOpenAi/credentials/requireTenantId.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-44
+packages/cli/src/modules/mcp/tools/undo-user-preference.tool.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-129
+packages/@n8n/cli/docs/commands/package.md
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 122-182
+packages/cli/src/modules/agents/adapters/agents-credential-provider.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 11,30,47-48,52-67
+packages/cli/src/modules/agents/builder/skills/external-services.skill.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 17,24,91,107-109,126,136,146,158,166,179,185-187,198-199,224,230,237,281,283,301,343,347
+packages/cli/src/public-api/v1/controllers/evaluations.public.controller.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 2,241-270
+packages/cli/src/webhooks/webhook.service.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 475-478
+packages/@n8n/instance-ai/evaluations/utils/confirmation-payload.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 57-64
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.service.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 737-740,940,942,1294,5064-5067,5088,5150,5172-5173
+packages/@n8n/engine/src/execution/step-settled-handler.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 14-20,62-64,80,82-84
+packages/@n8n/instance-ai/evaluations/run/build-orchestrator.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 166
+packages/cli/src/auth/auth.service.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 7,39-61,394,398
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.service.agent-context.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-58
+packages/frontend/@n8n/design-system/src/components/N8nHeaderAction/HeaderAction.vue
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 42
+.github/workflows/test-evals-ai-reusable.yml
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 54
+packages/cli/src/modules/agents/repositories/agent-execution-thread.repository.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 45-53
+packages/cli/src/__tests__/workflow-runner.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 845,864
+packages/frontend/AGENTS.md
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 12
+packages/frontend/editor-ui/src/app/composables/useCanvasOperations.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 86,108-115,264-265,2903-2928
+.devcontainer/codespaces/opencode-server.test.mjs
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 10-25,43-44,58-64,85,88-90,92,97-113,126,149,155-172,176-192,200,206,211,256,260-261,263-264,266-273
+packages/cli/src/modules/n8n-packages/__tests__/import-package-selection.integration.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-669
+.github/workflows/release-set-stable-npm-packages-to-latest.yml
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 19
+packages/cli/src/modules/agents/integrations/__tests__/callback-store.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 37,43
+.github/workflows/test-e2e-pc-nightly.yml
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 104
+packages/@n8n/nodes-langchain/nodes/llms/LmChatAzureOpenAi/__tests__/N8nOAuth2TokenCredential.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1,10-16,28,44-45,51-56,60-61,63,75,91,96-97,128-136,138-139,142-159,161-201,204,207-214,219-248,262-268
+packages/cli/src/modules/agents/integrations/platforms/teams/__tests__/fixtures/MicrosoftTeams.schema.v1.16.json
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-904
+packages/@n8n/instance-ai/src/index.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 31,116-118,380-381,773-775
+packages/cli/vitest.config.migration.testcontainers.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 5-8,14-15
+packages/@n8n/nodes-langchain/nodes/vendors/Anthropic/Anthropic.node.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1,283-459
+packages/@n8n/instance-ai/src/agent/system-prompt.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 178
+packages/cli/src/modules/agents/integrations/integration-helpers.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 108-170
+.devcontainer/codespaces/README.md
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 49-50,76-77,88,91-93,105-110,118-119,138-139,146,431
+packages/@n8n/cli/docs/guides/ai-agents.md
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 61-62
+packages/cli/src/modules/mcp/tools/list-tags.tool.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 11,104
+packages/cli/src/policy/__tests__/enforce-workflow-publish.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-53
+packages/@n8n/workflow-sdk/src/mock-data/index.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 26-31
+packages/cli/src/modules/agents/json-config/from-json-config.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 27,37,48-51,310,343-347,350-359,363,366-370,374
+packages/cli/src/webhooks/webhook-helpers.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 7,90,101,114-126,245,247-255,333-336,338-339,347-349,361-363,407-476,480,486,494-501,510,531-637,756-777,780-781,804-808,855,872,908-996,1059-1070,1086-1091,1093-1094,1104-1108,1111,1121,1167,1174,1177,1183,1198-1204,1212-1215,1237,1273,1285,1292-1293,1296,1300,1319-1335,1337-1341,1365-1366,1394,1398-1399,1415,1424,1434,1437,1440,1446-1447,1458,1470,1480,1491-1492,1523-1524
+packages/@n8n/db/src/utils/__tests__/principal-from-user.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-63
+packages/cli/src/auth/__tests__/auth.service.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 659-695
+packages/@n8n/node-cli/src/commands/release.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 14
+packages/cli/src/commands/import/credentials.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 68,206-207
+packages/cli/src/modules/agents/integrations/esm-loader.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 43-46
+packages/cli/src/modules/mcp/__tests__/update-user-preference.tool.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-283
+packages/cli/src/public-api/v1/controllers/index.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 6,9
+packages/cli/test/setup-sqlite-template.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-56
+packages/cli/src/modules/oauth-server/oauth-server.service.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 168-174
+packages/cli/src/modules/insights/__tests__/insights-pruning.task.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1,24-30
+packages/@n8n/cli/src/__tests__/promotion-connection-operations.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 6-11,13,22-27,35-36,39-56,58-63,66,80-92,127,129-130,133-134,136-147,150,154-355
+packages/cli/src/modules/mcp/mcp.types.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1,18-28,31,33-36,52,56-60
+.github/workflows/util-cleanup-pr-images.yml
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 17
+packages/frontend/@n8n/design-system/src/components/N8nActionDropdown/ActionDropdown.types.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 19-20
+.github/workflows/test-db-reusable.yml
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 19-23,40-42,65,67
+packages/@n8n/node-cli/src/template/templates/declarative/custom/template/nodes/Example/Example.node.json
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 5
+.github/workflows/release-storybook.yml
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 30
+packages/@n8n/nodes-langchain/nodes/mcp/shared/utils.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 34-35,219-238
+packages/cli/src/modules/mcp/tools/list-credentials.tool.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 21,186,189-190
+packages/@n8n/api-types/src/schemas/__tests__/instance-ai.schema.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1189-1202
+packages/cli/src/services/pruning/workflow-history-compaction-trim.task.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 2,17
+packages/cli/src/modules/agents/sub-agents/__tests__/sub-agent-runner.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 22,136,147
+packages/@n8n/instance-ai/src/tools/orchestration/__tests__/build-agent.tool.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 393,445,672-675,756,770,828,1577,1677,1711,1800,2077,2112
+packages/cli/src/errors/response-errors/ai-preference-scope-full.error.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-14
+packages/@n8n/cli/src/commands/promotion-connection/apply-command.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-82
+packages/@n8n/engine/package.json
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 31
+.github/workflows/test-single-instance-npm.yml
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 77
+packages/cli/src/modules/type-availability-policies/package-resolver.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 2,4-9,54-57
+packages/cli/src/modules/instance-registry/stale-member-cleanup.task.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 2,16-18
+packages/cli/src/modules/instance-reporting.ee/RETRIES.md
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 7-9,16,18-49,61-65,67,74,96-97,100-102,111,120-129
+packages/frontend/@n8n/design-system/src/components/N8nDropdownMenu/DropdownMenu.utils.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 15,108-129,188,235,246,251,295,313,340,374,480,486,497,506
+packages/@n8n/node-cli/src/template/templates/declarative/github-issues/template/nodes/GithubIssues/GithubIssues.node.json
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 5
+packages/core/package.json
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 46
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-checkpoint-pruning.task.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 16
+packages/@n8n/engine/src/database/migrations/1784890100000-CreateWorkflowStepExecution.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 92-98
+.agents/skills/create-agent-builder-eval/SKILL.md
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 94
+packages/@n8n/permissions/src/roles/__tests__/ai-preference-scope.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 22-27
+packages/cli/src/modules/mcp-registry/mcp-registry-refresh.task.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 2,17-19
+packages/cli/src/scheduling/system-tasks/instance-system-tasks.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-25
+packages/cli/src/modules/agents/builder/interactive/resolve-llm.tool.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 312
+packages/@n8n/telemetry/src/events/credentials.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 16-25
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.controller.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1609-1611,1625-1627,1635-1642
+packages/core/src/execution-engine/node-execution-context/utils/__tests__/binary-helper-functions.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 27,1164-1182
+packages/cli/src/commands/__tests__/execute.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 189
+packages/frontend/@n8n/design-system/src/components/N8nButtonList/ButtonList.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 33-57
+packages/cli/src/modules/agents/integrations/platforms/teams/__tests__/teams-credential-check.service.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-210
+.github/workflows/util-update-boundaries-baseline.yml
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-108
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderHeader.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 75-76,125-129,150,167,242-247
+packages/cli/src/modules/agents/agent-execution.service.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 23-25,91-99,135,159,163-198,200-257,262,264-267,329-332,339-360,389-398,405-411,416,442,921
+packages/cli/src/modules/instance-reporting.ee/__tests__/instance-reporting.integration.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 65-66,227-262,359-390,470-701
+packages/cli/src/modules/agents/__tests__/agents-builder-tools.service.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 29-30,38,96-97,111,114,136-137,142,277-305,391-396,398-399,404-408,411-416,418-419,421-422,424-425,1386,1405,1424-1426,1569-1570,1866-1872,1879,1886,1896-1915,2282-2302,2316-2329,2397-2418
+packages/cli/src/events/__tests__/principal-user-like.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-19
+.github/workflows/test-benchmark-nightly.yml
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 45,110
+packages/cli/src/modules/agents/integrations/__tests__/helpers/teams/replay-test-context.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-215
+packages/cli/src/modules/engine-v2/engine-v2.runtime.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 9,23,29,59,64,75,98,116,126,129-130,138,145,154,178
+packages/cli/src/modules/oauth-server/protected-resource-resolvers/workflow-webhook-test-trigger-resource.resolver.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 23,153
+packages/cli/src/modules/n8n-packages/engine/project-package-importer.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 22,75-83,116,258-265,325,356-360,363-369
+packages/frontend/@n8n/design-system/src/components/N8nBreadcrumbs/Breadcrumbs.vue
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 4,54,213-221,408,410-413
+packages/@n8n/engine/src/database/__tests__/workflow-execution.integration.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 7,181-309
+packages/@n8n/node-engine-compatibility/src/index.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 18
+packages/cli/src/modules/mcp/__tests__/save-user-preference.tool.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-598
+packages/cli/src/modules/agents/__tests__/agents-config.controller.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 10,42
+packages/frontend/@n8n/design-system/src/components/N8nButtonList/ButtonList.stories.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 25-29,93-110
+packages/frontend/@n8n/design-system/src/components/N8nMarkdownEditor/MarkdownEditor.vue
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 9,14,18-20,31,38-42,58-68,93,105,176-177,246-251,287-292,327-444,446-449,451,465-468,473-477,491-510,548,602-618
+packages/cli/src/modules/mcp/__tests__/get-user-preferences.tool.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 3,342-385
+packages/cli/src/modules/type-availability-policies/__tests__/type-availability-policy.service.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 10,89,99,117-120,1424-1463
+packages/@n8n/engine/AGENTS.md
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 71
+packages/cli/src/webhooks/__tests__/webhook-helpers.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 68,84-85,87,149-165,316,344,376,398,428,451,475,495,519,541,561,583,613,637-640,645-649,659-660,662,666-667,670,677-679,681,685-687,1199,1204,1207,1212-1413,1908,1911,1913,1973,1995,1997,2009,2011-2028,2236-2334,2450,2557,2575,2594-2681,2693,2699,2704,2709,2714,2720,2725,2735,2755,2777,2801,2807,2814
+packages/cli/src/scaling/scaling.service.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 525-527,529
+packages/cli/src/node-execution/__tests__/ephemeral-node-executor.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 156-179,476-485,487-493,495-498,642-649,651-657,659-662,751-765
+packages/cli/src/modules/oauth-server/protected-resource-resolvers/workflow-webhook-trigger-resource.resolver.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 22,177
+codecov.yml
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 13-14,18-30
+packages/cli/src/modules/agents/integrations/n8n-checkpoint-storage.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 9,11,18-21,55-58,69-74,107-109,113,120-151,159-163,186,196-214,226,228-233,276-285,289-290
+packages/frontend/editor-ui/src/features/agents/channels/registry.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 26-28
+packages/cli/src/commands/engine.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-120
+packages/cli/src/executions/engine-v2-mapping.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 13
+.github/workflows/test-benchmark-destroy-nightly.yml
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 23
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-step-run.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-10,15,17-19,22,26,30,59-70,75-85,205-211,276-279,286-604,622-658,695-1136
+packages/cli/test/integration/ai-preference.api.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 167,610,620,626,665,727-729,736-761
+packages/cli/src/modules/token-exchange/services/jti-cleanup.task.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 2,16-18
+.github/workflows/release-merge-tag-to-branch.yml
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 33,64
+packages/@n8n/db/src/repositories/credentials.repository.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 5,105-108,119-140,334-337,341-357,494-498,607
+packages/cli/src/public-api/v1/handlers/n8n-packages/n8n-packages.handler.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-5,22-25,60-63,67,255-291
+packages/cli/src/public-api/v1/controllers/credentials.public.controller.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 26,36,68,79-82,86,99-102,104,137-147,202,225,237-238,244,254,337,411-414,447
+.github/workflows/docker-sbom-probe.yml
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 49,90,156
+packages/cli/src/modules/agents/agent-tasks.controller.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 15-16,26,50-57,76-83,101-108
+.github/workflows/sec-sync-public-to-private.yml
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 45
+packages/core/src/binary-data/blob.manager.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 198-211
+packages/frontend/@n8n/design-system/src/css/mixins/motion.scss
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 212,217,375,380,399,404,423,428,445,450
+packages/cli/test/integration/executions.controller.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 254,417,427
+packages/@n8n/node-cli/src/template/templates/declarative/custom/template/package.json
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 42
+packages/@n8n/api-types/src/dto/credentials/create-credential.dto.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 16-21
+packages/cli/src/controllers/__tests__/project.controller.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 280,290-393
+packages/cli/src/scheduling/system-tasks/main-system-tasks.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 18-20,27,37-39
+packages/cli/src/controllers/project.controller.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 142-148,158,166-171
+packages/cli/src/modules/agents/integrations/agent-chat-bridge.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 13-14,20-24,41-45,52,144,149-151,154,165-171,182,224-226,315-316,337-338,355-357,493-501,505-509,515-518,711,752,778,791-792,798-799,802,804-864,866-867,870,876,878,881,888-911,1024,1038,1062,1075-1090
+packages/cli/src/workflows/__tests__/workflow-publisher.service.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-86
+packages/cli/src/modules/agents/agents.module.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 30,91-93,100,125-128,241,283
+packages/@n8n/instance-ai/src/tools/conversation-history.tool.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 15,128-133,156-161
+packages/cli/src/modules/insights/insights-pruning.task.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 2,16-18
+packages/cli/src/modules/agents/builder/interactive/configure-channel.tool.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 17,26,65
+packages/cli/src/workflows/publication/workflow-publication-applier.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 18,446-449
+packages/frontend/editor-ui/src/app/stores/ui.store.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 4,338,340,342,344,348
+packages/@n8n/api-types/src/dto/evaluations/__tests__/cancelled-test-run-public.dto.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-30
+packages/@n8n/instance-ai/evaluations/__tests__/agent-execution-seed.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-122
+packages/@n8n/instance-ai/src/tools/orchestration/__tests__/build-agent.cascade-restart.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 181-182,192-193
+packages/cli/src/modules/instance-reporting.ee/__tests__/instance-reporting.service.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 106,421-441,448,461,487,498,508,523,530,537,547
+.github/workflows/util-probe-registry.yml
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 47
+packages/@n8n/instance-ai/src/tools/__tests__/executions.tool.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 998,1011,1018-1032
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.adapter.service.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 52,70-71,171,190,1340-1569,1821,1825,4883-4907,4917,4968-4970,5786,5965-5968,5985-5988,6136-6714,6992,7008,7065,7069-7079,7087-7088,7101,7151,7169,7619-7620,7636-7643,7648-7668,7670-7673,7675-7688,7694-7695,7785
+packages/@n8n/config/src/index.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 85
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentMemoryPanel.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 79
+packages/@n8n/db/src/migrations/common/1790231058977-AllowTeamsAgentChatSubscriptions.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-21
+packages/@n8n/node-engine-compatibility/src/__tests__/v1-execution-read.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 60,76-93
+packages/cli/src/modules/agents/integrations/__tests__/helpers/linear/replay-test-context.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 102,266,291
+packages/cli/src/modules/agents/repositories/agent-execution.repository.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 4,48-60,67-72,89-90,92-98,155-158,166-168
+packages/cli/src/webhooks/__tests__/live-webhooks.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 36,56,73,207-308
+.github/workflows/release-standalone-package.yml
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 59,111
+packages/@n8n/engine/src/execution/__tests__/step-ready-handler.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 6,60,69,91,177-178,527-545,760-761,773,787,806
+packages/cli/src/modules/n8n-packages/n8n-packages.types.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 258-259,272-302,556,588-591
+packages/cli/src/workflows/workflow-validation.service.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1,29,63,389-420
+packages/frontend/@n8n/stores/src/composables/useBasePageRedirectionHelper.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 35-45,55,225-275
+.github/workflows/release-push-to-channel.yml
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 106,146
+packages/@n8n/api-types/src/schemas/instance-ai.schema.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 4,455-466,474,489,1193-1194,1200-1201,1515-1516,1519,1542-1543,1672-1673,1676-1679,1925-1926,1940-1945,1974-1977,2737-2738
+packages/cli/src/services/pruning/activity-pruning.task.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 5,23
+packages/cli/src/modules/agents/builder/skills/custom-tools.skill.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 9,13
+packages/cli/src/modules/engine-v2/engine-credentials.service.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 30
+packages/cli/src/modules/mcp/__tests__/undo-user-preference.tool.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-136
+packages/cli/src/modules/agents/json-config/__tests__/sanitize-unknown-agent-credentials.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 71-98
+packages/cli/src/modules/engine-v2/engine-lifecycle-event.controller.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 9
+packages/cli/src/node-types.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 32
+packages/@n8n/nodes-langchain/nodes/mcp/shared/runtime.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 610
+packages/@n8n/instance-ai/src/types.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 18,49,219-228,244-250,257-261,657-659,679-687,1083-1087,1090-1104,1107,1112-1116,1527-1557,1601-1602
+packages/frontend/editor-ui/src/app/composables/useInvalidNodeGroupCleanup.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 3,5,8,27-32,57-79,84-117
+packages/@n8n/db/src/repositories/__tests__/credentials.repository.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 5,52-92,343-354
+packages/cli/src/modules/instance-ai/eval/execution.service.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 20,42,67,262-269,293,316,360-368,528-541,690-723,1233-1234
+packages/@n8n/api-types/src/agents/index.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 16
+packages/cli/src/modules/n8n-packages/utils/import-package-upload.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-4,14,19-24,62-68,81
+packages/cli/src/scaling/job-processor.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 324
+packages/cli/src/modules/mcp/__tests__/mcp-protected-resource.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 178-186
+packages/@n8n/instance-ai/src/tools/orchestration/build-agent.tool.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 29-30,36-37,111-123,196-199,255,291,353,364,445,448-449,456,471,507,526,540-543,616,634,696,802,811,1132-1133,1135,1162
+packages/@n8n/nodes-langchain/nodes/vendors/Anthropic/actions/text/message.operation.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 170-181,286-297,311,375-377,386,388-394
+packages/cli/src/modules/engine-v2/response-channel/execution-response-frame.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-83
+packages/cli/src/services/__tests__/credentials-finder.service.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 42,452-459,873,914-954,1010-1026
+packages/@n8n/api-types/src/dto/index.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 263-272,410-417,444-445,584
+packages/cli/src/events/relays/telemetry.event-relay.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 45-47,51,129,132,135,570,584
+packages/cli/src/modules/otel/execution-level-tracer.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 40,44,61,76,83,180-181,183,198,201,339-344
+packages/cli/src/modules/agents/builder/skills/sub-agents.skill.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 14-15,48-52,55-56,64,69-70,75
+packages/cli/src/scheduling/system-tasks/system-task-timer.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 58,95-109
+packages/@n8n/instance-ai/evaluations/__tests__/langtracer-push.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 438-464
+packages/cli/src/modules/agents/integrations/platforms/telegram-bridge-behavior.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 26-32
+packages/frontend/@n8n/design-system/src/components/N8nMarkdownEditor/MarkdownEditorToolbar.vue
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 17,36-37,42,506-511,547,627,640-642
+packages/@n8n/cli/src/client.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 35-45,122-138,144-177,435-464,779-798
+packages/cli/test/integration/public-api/projects.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 27,1171-1188
+packages/cli/src/modules/agents/agent-sandbox-principal.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 5-8
+packages/@n8n/scan-community-package/scanner/scanner.test.mjs
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 267-283
+packages/cli/src/modules/mcp/mcp.constants.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 55-57
+packages/cli/src/modules/agents/PREVIEW_CHAT_RECOVERY.md
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 3,9,11,15-19
+packages/cli/src/oauth/oauth.service.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 420-423,425
+packages/cli/src/modules/agents/__tests__/agent-teams-integrations.controller.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-110
+packages/cli/test/integration/engine-v2-webhooks.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 113,148,158
+packages/cli/src/services/__tests__/engine-v2-webhook-responder.service.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 4-5,13,31,37-38,69,76-80,83,86-87,92,94,98-100,103-108,113,117-118,131,142,153-216,218,241,259-261,267,276-375
+.github/workflows/release-recreate-failed-release.yml
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 70,169
+packages/@n8n/cli/src/__tests__/package-import-selection.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-187
+packages/cli/src/modules/instance-reporting.ee/README.md
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 40,53
+packages/@n8n/node-engine-compatibility/src/v1-response-hooks.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-121
+packages/core/src/binary-data/__tests__/blob.manager.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 187-219
+packages/@n8n/api-types/src/dto/instance-ai/instance-ai-preference-card-request.dto.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 3-6,18-23,27-29
+packages/@n8n/engine/src/response-channel/execution-response-sender.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-7,11-12,18-19
+packages/cli/src/workflows/__tests__/workflow-execution.service.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 520
+packages/cli/src/modules/agents/integrations/platforms/teams/teams-credential-check.service.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-101
+packages/cli/src/modules/engine-v2/response-channel/redis-execution-response-sender.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-92
+packages/@n8n/utils/src/search/snapshots/toplevel.snapshot.json
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 11621,11623,11642-11643
+packages/@n8n/db/src/repositories/__tests__/workflow.repository.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 243-273
+packages/cli/src/executions/__tests__/executions.controller.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 41,58,66
+packages/cli/src/modules/agents/builder/skills/node-tools.skill.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 13,20,40,61-63,83-86,126
+packages/cli/src/public-api/v1/handlers/credentials/credentials.utils.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 106-111,153,283
+packages/@n8n/node-cli/package.json
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 69
+packages/cli/src/services/cache/cache.service.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 215-229
+packages/cli/src/events/relays/activity.event-relay.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 258,268
+packages/cli/src/modules/otel/__tests__/execution-level-tracer.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 93-97,99-101,104-123,125-138
+packages/frontend/@n8n/design-system/src/components/index.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 63
+.github/workflows/build-base-image.yml
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 41
+packages/frontend/editor-ui/src/features/agents/agents-design-language.md
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 3-4,14-19,75-79,141-149,154,172-191
+packages/@n8n/telemetry/src/events/instance-ai.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 47,470-502,537-541
+packages/@n8n/cli/src/commands/package/import-selection.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-81
+packages/@n8n/nodes-langchain/nodes/llms/LmChatAzureOpenAi/credentials/N8nOAuth2TokenCredential.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 4,7,12-29,38,42-43,46-49,61-63,68-69,80,88
+packages/cli/src/workflows/workflow-publisher.service.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-85
+packages/cli/test/integration/workflows/workflow-publication-outbox-cleanup.task.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-183
+packages/cli/test/integration/environments/source-control-import.service.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 716-732
+packages/frontend/@n8n/design-system/src/components/N8nMarkdownEditor/MarkdownEditorExpandedViewButton.vue
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-46
+packages/cli/src/modules/agents/integrations/__tests__/helpers/slack/replay-test-context.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 215,231
+packages/cli/src/modules/engine-v2/__tests__/redis-execution-response.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-331
+packages/@n8n/node-cli/src/template/templates/programmatic/ai/model-ai-custom/template/package.json
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 45
+packages/cli/src/modules/agents/integrations/platforms/teams/teams-arm-template.service.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-205
+packages/cli/src/modules/promotions.ee/promotion-changes.controller.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 8,20
+packages/@n8n/node-cli/src/template/templates/programmatic/ai/model-openai-compatible/template/package.json
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 45
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-temporary-workflow.service.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 51
+packages/cli/test/integration/agents/agent-conversation-state.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 6-7,53,56-59,113,119-121
+packages/@n8n/instance-ai/evaluations/README.md
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 201-204
+.github/workflows/util-refresh-cubic-schema.yml
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 37
+packages/cli/test/integration/instance-ai-preference-card.api.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-7,26-27,35-36,60-74,161-167,181-187,199-205,217-223,238-244,256-262,275-276,283-414
+packages/cli/src/modules/agents/__tests__/agent-execution-orchestrator.service.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 38,180,238-243,392-396,400,441-443,469,476,639-643,1150,1693,2047,2153-2159,2499
+packages/cli/src/modules/agents/__tests__/agent-chat-execution.service.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 11,58,70,130-151
+.github/workflows/release-update-pointer-tag.yml
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 45
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentSessionTimelineView.spec.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 206
+packages/@n8n/engine/README.md
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 5
+packages/@n8n/eslint-plugin-community-nodes/src/rules/valid-node-categories.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-72
+packages/@n8n/workflow-sdk/src/mock-data/mock-data.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 3,115-219
+packages/cli/src/modules/agents/builder/skills/memory.skill.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 15,23
+packages/cli/src/workflows/publication/__tests__/workflow-publication-outbox-cleanup.task.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 12,16-17
+packages/cli/src/modules/instance-ai/__tests__/instance-context.service.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 38-44,982-1011
+packages/cli/src/scheduling/schedule-trigger-node/schedule-trigger-task-handler.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 16,46,85-93,97
+packages/cli/src/executions/__tests__/engine-v2-execution-reader.service.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 78,81-82,230
+packages/@n8n/api-types/src/dto/credentials/credential-public.dto.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 5,20-23,57-61,94-98,153-154
+packages/cli/src/modules/agents/integrations/agent-chat-stream-consumer.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 28,48-52,202,370
+packages/@n8n/instance-ai/evaluations/utils/user-proxy/tools.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 376-395,402,410-435
+packages/@n8n/db/src/services/transaction.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 2,39-40,45
+packages/cli/test/integration/project.api.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 16,46-52,451-541,1069,1078,1085,1307-1402
+packages/cli/src/modules/agents/integrations/chat-integration.service.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 8-9,12,17,79-80,115-121,158-160,313-325,496-503,505,507-516,524-532,649-666,696-702,721-729,977-979,981-983,992,1044-1045,1189,1205-1212
+packages/@n8n/db/src/repositories/workflow.repository.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1307,1318-1328
+.devcontainer/codespaces/cloud-session.test.mjs
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 104-107
+packages/@n8n/db/src/repositories/__tests__/shared-workflow.repository.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 6,29-118
+packages/@n8n/node-engine-compatibility/src/errors.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 89-110
+packages/cli/src/public-api/v1/handlers/community-packages/community-packages.mapper.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1,22-23
+packages/@n8n/node-cli/src/template/templates/programmatic/ai/model-ai-custom-example/template/nodes/ExampleChatModel/ExampleChatModel.node.json
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 5
+packages/@n8n/cli/src/__tests__/package-error.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 7-45
+.github/actions/setup-nodejs/action.yml
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 174
+packages/cli/package.json
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 37,108-109,125,146
+.github/test-metrics/playwright.json
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 2,7,9,11-14,17,19,21-24,27,29,32,34,36-39,42,44,47,49,51-54,57,59,61-69,72,74,76-79,81-82,84,86-87,89,92-99,102,104,106-107,109-114,117,119,121-127,129,131-132,134,137,139,142,144,146-149,151-154,157,159,161-164,166-167,169,172,174,177,179,181-182,184,186-187,189,191-199,202,204,206-214,217,219,221-222,224,227,229,231-244,247,249,252,254,256-258,261-270,272,274,276-279,281-284,286-289,292,294,296-297,299,302,304,306-307,309,311-312,314,316-319,322,324-329,332,334,336-339,341-344,347,351-352,356-358,361-369,372,374,377,381-382,384,386-388,391-395,397,401-402,404,406-414,417,419,421-422,424,426-429,431-432,434,437,439,442,444,446-447,449,451-454,456-457,459,461-464,467,469-478,481-487,489,491-492,494,496-508,511-514,516-519,521-522,524,526-529,531-533,537,541-543,546-547,549,551-552,556-562,564-568,571-580,582,586-589,591-592,596-599,601-612,614,616-619,621-622,626-629,631-642,644,646-647,649,651-654,656-663,666-668,672,676-678,681-682,684,686-687,689,691-694,697,699,701-702,704,707,711-712,714,716-718,722,726-730,732,736-738,741-744,747,751-757,761-763,767,769,771-774,777,781-784,786-788,791-793,796-797,799-803,806-814,817,821-824,827,831-832,834,836-837,841-844,846-847,852,856-865,867,871-877,881-884,886-887,891-892,896-897,901-902,904,906-912,916-919,922,926-927,929,931-934,936-937,941-942,944,946-947,951-952,954,956-957,961-962,966-967,971-977,981-982,984,986-993,996-997,1001-1002,1006-1007,1011-1012,1016-1019,1021-1022,1026-1030,1032,1036-1039,1042,1046-1050,1052,1056-1060,1062,1066-1068,1072,1076,1081
+packages/cli/src/modules/n8n-packages/engine/import-orchestrator.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 87-88,237,431-432
+packages/cli/src/workflows/triggers/__tests__/engine-v2-active-triggers.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 56,69
+.github/workflows/release-promote-github-release.yml
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 36
+packages/cli/src/modules/instance-registry/checks/instance-registry-reconciliation.task.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1,16-18
+packages/core/src/execution-engine/eval-mock-helpers.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 12,126,168,181,192,201-202,215-218,225-232
+packages/cli/src/telemetry/__tests__/telemetry-buffer-flush.task.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-31
+packages/@n8n/instance-ai/skills/debugging-executions/SKILL.md
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 89-92,149-196
+packages/frontend/@n8n/design-system/src/components/N8nDropdownMenu/DropdownMenu.utils.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 40
+packages/frontend/editor-ui/src/app/composables/useWorkflowActivate.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 32-33,55,270,282-298,300
+packages/cli/src/modules/mcp/tools/search-folders.tool.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 11,123-127
+packages/@n8n/telemetry/src/events/agents.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 575-647
+packages/cli/src/modules/agents/integrations/__tests__/helpers/teams/synthetic-fixtures.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-205
+packages/@n8n/instance-ai/evaluations/__tests__/case-pipeline.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 579-653
+packages/@n8n/nodes-langchain/package.json
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 262,276
+packages/cli/src/modules/agents/builder/__tests__/agents-builder.service.session.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 383-384,400,452-453,455-456,469,474-475,479
+packages/cli/src/__tests__/active-workflow-manager.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 892-893,952,995,1340
+packages/@n8n/eslint-plugin-community-nodes/src/rules/index.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 45,92
+packages/cli/src/modules/engine-v2/remote-credentials-helper.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 25,71,97,132,164,172,182
+packages/@n8n/vitest-config/package.json
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 51-55,66-68
+packages/cli/src/workflows/triggers/engine-v2-active-triggers.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 24,30,42,60,76
+packages/frontend/editor-ui/src/app/stores/aiGateway.store.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 428-518
+packages/@n8n/db/src/repositories/test-run.repository.ee.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 128
+packages/@n8n/nodes-langchain/nodes/llms/LmChatAzureOpenAi/LmChatAzureOpenAi.node.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 31,39,54-56,153-159,171,177,179
+packages/cli/src/modules/agents/integrations/credential-fields.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-30
+packages/cli/src/events/__tests__/telemetry-event-relay.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 718-752
+packages/cli/src/modules/type-availability-policies/README.md
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 178-187
+packages/@n8n/decorators/src/system-task/__tests__/run-options.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 109-136
+packages/cli/src/services/engine-v2-webhook-responder.service.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 5,27-29,53,64-67,69-72,75,80,84-90,93,97-120,123-126,128-151,156-168,175-182
+packages/frontend/@n8n/design-system/src/components/N8nSwitch/Switch.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 8-38
+packages/@n8n/vitest-config/changed-file-coverage.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-94
+packages/frontend/editor-ui/src/app/stores/recentWorkflows.store.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-205
+packages/cli/src/public-api/types.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 48-59
+packages/@n8n/api-types/src/schemas/public-api-path-params.schema.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 55-62
+packages/frontend/editor-ui/src/app/composables/useDebugInfo.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 5,8-11
+packages/cli/src/__tests__/external-hooks.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 38-41
+packages/@n8n/constants/src/index.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 44
+packages/cli/src/modules/instance-ai/repositories/instance-ai-conversation-history.repository.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 126,147,308,336-337
+packages/core/src/execution-engine/node-execution-context/utils/request-helpers/__tests__/factory-eval-mock.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-62
+packages/cli/src/eventbus/message-event-bus/__tests__/event-bus-unsent-message-flush.task.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-41
+.github/workflows/docker-build-push.yml
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 101,191,297,617,812
+packages/frontend/@n8n/design-system/src/components/N8nDropdownMenu/DropdownMenu.vue
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 10,35,84,86-87,90,134-142,191-194,197-200,257,260-263,364,368-374,386,389-392,437,442-451,474-475
+packages/frontend/@n8n/frontend-module-sdk/src/capabilities/workflowMcpAccessSync.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 7
+packages/frontend/editor-ui/src/app/composables/useWorkflowActivate.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 134-135,137-147,232,244-267
+packages/@n8n/agents/src/runtime/model/messages.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-2,272,277,291,300,306-316,398,421,431,435,450,490
+packages/@n8n/node-cli/src/configs/eslint.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 78-94
+packages/cli/src/modules/instance-ai/instance-ai.service.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 157,2470,2501,2863-2878,3677-3678,3680,3682-3683,3701,3753-3757,3920-3921,5066
+packages/cli/src/workflows/triggers/__tests__/trigger-execution-context.factory.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 43,75,103,124,158,173-269,296,720,726-813,1130,1139,1154,1164,1172,1278,1368,1599,1922,1987,2031,2061,2078,2082
+packages/frontend/editor-ui/src/app/composables/usePolicyViolationToast.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-115
+packages/cli/src/services/pruning/execution-pruning-soft-delete.task.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 3,16-18
+.github/workflows/release-create-experiment.yml
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 32
+packages/frontend/@n8n/stores/src/constants.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 30
+packages/@n8n/instance-ai/skills/agent-builder/SKILL.md
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 12,26-31,36,49,95-106
+packages/core/src/execution-engine/node-execution-context/webhook-context.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 27-30,92
+packages/@n8n/engine/src/database/migrations/1778529600000-CreateWorkflowExecution.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 42-43
+packages/cli/src/__tests__/vitest.d.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 10
+packages/frontend/@n8n/design-system/src/components/N8nDialog/Dialog.vue
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 82-85,129
+packages/frontend/editor-ui/src/features/agents/channels/teams/AgentChannelTeamsEditView.vue
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-30
+packages/cli/src/modules/agents/__tests__/agent-custom-tools.service.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 90,108-122
+packages/cli/src/modules/agents/builder/agents-builder-prompts.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 22,26,31,45,124-125,146,167,175,181,185,188-190,194-195,236,259,274,278,282-283,288,299,307,313,315,322,336,338,350,362,368,400
+packages/@n8n/permissions/src/__tests__/principal.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-47
+packages/cli/src/modules/type-availability-policies/policy-shadow-lint.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-5,51-55,64-67,72,87-90
+packages/frontend/@n8n/design-system/src/components/N8nChatInput/ChatInput.stories.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 561
+.github/workflows/build-windows.yml
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 35
+.github/workflows/util-probe-npm-oidc-exchange.yml
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 38
+.github/workflows/build-v3-nightly.yml
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 83
+packages/@n8n/instance-ai/evaluations/cli/langtracer-push.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 19,45-48,183-195,197-198
+packages/cli/src/modules/agents/integrations/__tests__/helpers/telegram/replay-test-context.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 95,233,256
+packages/cli/src/modules/agents/integrations/platforms/teams/__tests__/teams-manifest.service.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-430
+packages/@n8n/instance-ai/src/tools/executions.tool.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 116-118,143-152,534
+packages/@n8n/workflow-sdk/src/mock-data/prompt.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1,65-70
+packages/cli/src/telemetry/telemetry-buffer-flush.task.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-30
+packages/cli/src/modules/mcp/tools/data-table/add-data-table-rows.tool.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 10,84,86-88
+packages/@n8n/engine/src/response-channel/execution-response.types.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1,32-44
+packages/cli/src/modules/engine-v2/response-channel/in-memory-execution-response-receiver.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 2,4,21,24,28-30
+.boundaries-baseline.json
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 2
+packages/cli/src/modules/mcp/tools/data-table/rename-data-table-column.tool.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 15,83-86
+packages/frontend/@n8n/chat/package.json
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 65
+packages/@n8n/instance-ai/src/tools/index.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 7,49-51,157-166
+packages/cli/src/modules/mcp/tools/update-user-preference.tool.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-243
+packages/cli/src/modules/engine-v2/engine-credentials.controller.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 11
+packages/@n8n/api-types/src/dto/community-packages/community-package-public.dto.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-56
+.github/workflows/build-benchmark-image.yml
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 19
+packages/frontend/editor-ui/src/features/agents/channels/teams/AgentChannelTeamsAvailability.vue
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-251
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentSessionsListView.spec.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 432-433
+packages/cli/src/executions/execution-cursor.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 15
+packages/cli/src/public-api/public-api-controller.registry.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 20,24,133-140,240-251
+packages/cli/test/integration/workflows/workflows.controller.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 146,1186-1232,5193
+packages/cli/test/integration/eventbus.ee.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 89-105,282-284,289-291,293,311-320,323,348-351,353
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/paths/n8n-packages.import-selection.yml
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-139
+packages/cli/test/migration/1790241069212-create-agent-message-queue.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-48
+packages/frontend/editor-ui/src/app/capabilities.manifest.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 9-19,23,71-128
+packages/@n8n/node-engine-compatibility/src/__tests__/v1-step-executor.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 9-14,19,349-462
+packages/frontend/editor-ui/src/app/components/MainHeader/MainHeader.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 17-18
+packages/cli/src/modules/agents/integrations/callback-store.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 14
+packages/cli/src/modules/agents/integrations/__tests__/helpers/replay-test-helpers.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 4,21-23,92,192,201,235-237,240-246,248,257-259,283-295
+packages/cli/src/modules/engine-v2/response-channel/in-memory-execution-response-sender.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 2-11,20,23-26,28-29,31,34-38,41-42
+packages/@n8n/nodes-langchain/nodes/llms/LmChatAzureOpenAi/methods/searchModels.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 62
+packages/cli/test/integration/public-api/n8n-packages-import-selection.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-272
+.github/workflows/sec-sync-bundle-branches.yml
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 76,115
+.github/test-metrics/e2e-impact-map.json
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1
+packages/cli/src/workflows/workflow-finder.service.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 263-269,277
+packages/cli/src/modules/agents/builder/skills/target-tasks.skill.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 13,21,35,83
+.agents/skills/create-instance-ai-eval/case-shapes.md
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 665-682
+packages/core/src/execution-engine/partial-execution-utils/rewire-graph.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 6-45,52,54-55
+packages/@n8n/instance-ai/evaluations/langtracer/to-exported.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 6,15,173,180
+packages/cli/src/commands/__tests__/start-system-task-metrics.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 29,44,124
+.github/workflows/util-backport-bundle.yml
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 37
+packages/cli/src/modules/agents/integrations/__tests__/agent-chat-subscription.constraint.integration.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-64
+packages/@n8n/eslint-plugin-community-nodes/src/rules/valid-node-categories.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-79
+.github/workflows/release-version-release-notification.yml
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 32
+packages/@n8n/engine/src/execution/step-ready-handler.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 11,17,54,79-82,141-142,144-145,147,189
+.github/workflows/sec-publish-fix-1x.yml
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 26,60
+packages/cli/src/modules/mcp/tools/search-projects.tool.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 10,175-179
+packages/frontend/@n8n/design-system/src/components/N8nIcon/custom/teams.svg
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1
+packages/cli/src/services/engine-v2-payload-guard.service.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 11,68
+packages/cli/test/integration/public-api/promotions.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 17,754-862
+packages/cli/src/modules/agents/repositories/agent.repository.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 228-236,365-387
+packages/cli/test/integration/engine-v2-active-triggers.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 109
+packages/@n8n/engine/src/response-channel/execution-response.schema.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 22-26
+packages/cli/src/workflows/publication/__tests__/workflow-publication-outbox-cleanup.service.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 76,79,81,98
+packages/@n8n/blob-storage/src/__tests__/fs-byte-store.integration.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 128-139,234-245
+packages/cli/src/modules/agents/integrations/platforms/discord-integration.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 7,30-32,241,363,410,474,488,496
+packages/@n8n/api-types/src/agents/agent-integration.schema.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 107-166,172-174,194-196,212-213
+.github/workflows/clean-stale-branches.yml
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 32
+packages/cli/src/modules/agents/agents-config.controller.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 12,24,75-82,99-106
+packages/cli/src/modules/agents/builder/prompts/initial-build.prompt.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 14-30,33-34,38-41,46,66,71-73
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow-remover.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 36,41-45,79,88-141
+packages/@n8n/agents/src/types/sdk/memory.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 384-385
+packages/cli/src/modules/agents/agent-integrations.controller.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 21,33,47-54,78-85
+packages/cli/src/modules/source-control.ee/__tests__/source-control-helper.ee.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 599,620,640
+packages/@n8n/instance-ai/src/tools/tool-ids.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 17,73-75
+packages/cli/src/modules/agents/__tests__/agent-checkpoint.repository.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 2-5,19,32,42,57,65,71-72
+packages/cli/src/modules/agents/agent-queued-preview-stream.service.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-158
+packages/frontend/@n8n/stores/src/settings.store.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 179-182,534
+packages/cli/src/modules/redaction/executions/execution-redaction.interfaces.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 19-23
+packages/@n8n/api-types/src/agents/types.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 384-394
+packages/cli/src/public-api/v1/handlers/credentials/__tests__/credentials.utils.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 145-158,428,549
+packages/cli/src/workflow-helpers.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 26,170,177,179
+.agents/skills/create-pr/SKILL.md
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 37
+packages/@n8n/node-engine-compatibility/src/v1-step-executor.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 9-15,19,23,28,36,46-82,111,125
+packages/cli/src/modules/oauth-server/__tests__/workflow-webhook-test-trigger-resource.resolver.api.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 47-48,54-55,60,68,180-217
+packages/cli/src/modules/agents/__tests__/agents.controller.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 14,31,43,56,347-366
+packages/cli/src/modules/n8n-packages/__tests__/fixtures/package-fixtures.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 5-7,267-269,272,361,369-374,435,438-440,443-444,447-448,451-452,455-456,458,460-467,470-478
+.github/workflows/sbom-generation-callable.yml
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 47
+packages/cli/src/modules/agents/instance-ai-builder-delegate.adapter.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 39-40,242
+.github/workflows/ci-pull-request-review.yml
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 25,66
+packages/cli/src/modules/token-exchange/services/trusted-key-refresh.task.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1,17
+packages/@n8n/cli/README.md
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 64,66
+packages/cli/test/integration/policy/available-types.controller.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 39,41,82-85,182,186-199
+packages/frontend/@n8n/stores/src/composables/useBasePageRedirectionHelper.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 10-16,42,144-147,149
+packages/cli/src/posthog/__tests__/posthog.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 361-362,413-452
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/schemas/importResult.yml
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-412
+packages/cli/src/modules/redaction/executions/__tests__/execution-redaction.service.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 4,15,21-25,32,46,54,59-73,87,100,175,180-191,1034-1256
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentModelSelector.spec.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 5,97-98
+.github/workflows/test-e2e-infrastructure-reusable.yml
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 61,104
+packages/@n8n/nodes-langchain/nodes/llms/LmChatAzureOpenAi/__tests__/requireTenantId.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-63
+packages/@n8n/node-engine-compatibility/src/__tests__/v1-response-hooks.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-133
+packages/cli/src/modules/mcp/tools/data-table/rename-data-table.tool.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 10,66-69
+packages/frontend/editor-ui/src/app/composables/useWorkflowSaving.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 47-48,145-163,166,193-197,202,213,274,527,547,550,595,599,776,792
+packages/cli/src/modules/agents/json-config/web-search-credential.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-68
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatPanel.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 7,26-31,54,91-92,154-162,197-202,219,238,241-243,285-434,553,810,862-864,868-869,872,874-879,881-887,890-899,901-911,914-917,925,1005,1041,1053-1057,1066,1085,1136,1177,1184-1193,1201,1226,1232-1235,1238,1248,1351,1366,1369,1389-1401,1426-1427
+packages/cli/src/policy/enforce-workflow-publish.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-29
+packages/@n8n/instance-ai/evaluations/utils/load-eval-cases.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 14-20,50,52-66,69-71
+packages/@n8n/instance-ai/docs/tools.md
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 63,644,673-762,813,819-833,1472-1482,1484-1487
+packages/cli/src/modules/agents/agent-chat-execution.service.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1,35,39-44,62-67,116-117,135-138,143-151
+packages/frontend/@n8n/design-system/src/components/N8nMarkdownEditor/MarkdownEditor.stories.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 7-8,10,12,14-17,19,21,23-28,30,32-34,36,56-58,121,127,138,143-144,150-159,161-163,165-194,201,204-213,222-232
+packages/cli/src/modules/agents/agent-interrupted-execution-sweeper.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 42-47
+packages/cli/src/modules/mcp/__tests__/mcp-scopes.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 118-125,494-543
+packages/@n8n/engine/src/execution/__tests__/step-execution.integration.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 240,272,549
+packages/@n8n/instance-ai/docs/streaming-protocol.md
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 220,240-241,246-247,413-427,716
+packages/cli/src/modules/promotions.ee/constants.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 7-9
+packages/cli/src/services/project.service.ee.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 13,25-26,45-49,105,673-674,676,679,718-719,728,738,781-812,827-828,856-859,1034-1045
+packages/@n8n/decorators/src/pubsub/pubsub-metadata.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 29,31
+packages/@n8n/node-engine-compatibility/src/__tests__/fixtures.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 2,6-7,191-254,265-267,334
+packages/@n8n/decorators/src/system-task/system-task.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 6,140,156-171,175-200,206-211,219-223
+packages/@n8n/api-types/src/agents/teams/types.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-88
+packages/@n8n/nodes-langchain/nodes/mcp/shared/__test__/utils.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 38-40,513,986-1073
+packages/cli/src/executions/pre-execution-checks/__tests__/credentials-permission-checker.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 76-77,717-769,779,794,799-800,810-812,821,833-962,1013,1018,1033-1116
+.github/workflows/release-publish.yml
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 25,55,247
+packages/cli/bin/n8n
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 9-12
+packages/cli/src/modules/agents/integrations/platforms/teams/teams-manifest.service.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-215
+packages/@n8n/cli/src/commands/promotion-connection/apply.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 3-4,7,9,11-14,18-21,26-27
+packages/frontend/editor-ui/src/app/composables/useFloatingUiOffsets.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 80
+packages/cli/src/executions/engine-v2-execution-reader.service.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 54
+packages/core/src/execution-engine/node-execution-context/utils/binary-helper-functions.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 239-246
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentHeaders.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 44-45,78,113-118
+packages/@n8n/engine/src/execution/__tests__/start-execution.service.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 32
+packages/cli/src/license/license-renewal.task.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1,15
+packages/cli/src/modules/oauth-server/protected-resource-resolvers/utils.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 3-4,147-162
+packages/@n8n/engine/src/database/typeorm-execution-store.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1,10,52,54,59-88
+packages/cli/src/executions/__tests__/execution-list-v2.service.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 222-224,226,299
+packages/cli/src/modules/type-availability-policies/type-availability-policy.service.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 13,21,268,439,477,732,943,979,984
+packages/cli/src/scaling/pubsub/__tests__/publisher.service.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 176
+packages/@n8n/instance-ai/src/tools/shared/safe-error-message.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-12
+packages/@n8n/api-types/src/dto/data-table/data-table-public.openapi.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-87
+packages/cli/test/integration/workflows/workflow-finder.service.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-7,13,30,38-65
+packages/cli/src/modules/redaction/executions/strategies/full-item-redaction.strategy.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 31-35
+.github/workflows/security-trivy-scan-callable.yml
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 27
+packages/cli/src/modules/engine-v2/engine-lifecycle-event-push-relay.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 23
+.github/workflows/test-sbom-nightly.yml
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 30,130
+packages/cli/src/modules/agents/integrations/component-mapper.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 79-95
+packages/cli/src/modules/promotions.ee/promotions.module.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 15
+packages/cli/src/active-workflow-manager.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 47,604-608,634-636
+packages/@n8n/api-types/src/dto/community-packages/community-package-public.openapi.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-25
+packages/frontend/editor-ui/src/app/composables/useActivityDetection.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 6-9,11,13,32,44
+packages/@n8n/instance-ai/evaluations/__tests__/langtracer-to-exported.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 88-117
+packages/cli/src/workflows/__tests__/workflow.service.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 56,58,136,446,468-471,510,648-703,705-708,1354,1362,1369,1471-1514,2111,2252,2558,2728,2909,3012
+packages/cli/src/modules/agents/agent-turn-execution.service.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 16,18-19,46-47,112,122-126,132,152-157,282,299,311,349-357,367-368,370-371,382-384,386,399-400,420-434,449
+packages/cli/src/workflows/__tests__/node-group-rules.test-data.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-13
+packages/cli/src/workflow-execute-additional-data.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 576-581,585-590,792-808
+packages/frontend/@n8n/design-system/src/components/N8nDropdownMenu/DropdownMenuItem.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 135,518-530
+packages/@n8n/engine/src/database/entities/workflow-step-execution.entity.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 28-30
+packages/cli/src/modules/type-availability-policies/policy-evaluator.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 53-54,57,62,64,97,101,108,111,115,130,133,143,148-149,173,179,195
+packages/cli/src/modules/engine-v2/__tests__/execution-response-frame.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-96
+packages/cli/src/modules/mcp/tools/data-table/delete-data-table-column.tool.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 10,67-70
+packages/@n8n/api-types/src/dto/evaluations/test-run-public.dto.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 105-109
+packages/@n8n/vitest-config/changed-file-coverage.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-87
+packages/cli/src/public-api/v1/controllers/community-packages.public.controller.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-110
+packages/frontend/@n8n/design-system/src/components/N8nButtonList/ButtonList.vue
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 6,12-16,39-45
+packages/@n8n/node-cli/src/template/templates/declarative/github-issues/template/package.json
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 45
+packages/cli/src/modules/agents/integrations/CHANNEL_INTEGRATION_TESTS.md
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 37,59-69,77-110
+packages/cli/src/modules/agents/entities/agent-message-queue.entity.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-54
+packages/cli/src/public-api/v1/controllers/promotions.public.controller.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 12,624-649
+packages/cli/src/services/__tests__/project.service.ee.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 11,27,51,66,72,75-77,191-217,418-478,538-553,697-720
+packages/@n8n/api-types/src/schemas/mcp.schema.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 35
+packages/frontend/editor-ui/src/app/composables/useNodeGroupRules.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-87
+packages/cli/src/modules/agents/builder/skills/target-skills.skill.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 16,23,80,82,85,90,109
+packages/cli/src/modules/promotions.ee/__tests__/promotions.service.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 3,63,129,498,505-512,581,601-606,621-657,660,663-667,685,687-691,708,710-714,728-729,731-735,756,758-762,783-788,810,812-816,852,854-858,877,880-884,891,901,904-908,914-915,918-922,929,932-936,942-1068
+packages/@n8n/utils/src/search/sublime-search.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 41-62
+packages/cli/src/credentials/credentials.service.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 3,157-163,2101-2109,2169-2171
+packages/@n8n/engine/src/runtime/create-engine-runtime.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 117
+packages/@n8n/node-cli/src/configs/eslint.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 36,38-39
+packages/cli/src/modules/agents/__tests__/agent-conversation-state.service.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-61
+packages/core/src/webhook-response/buffer-body-codec.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 13-14,16,19-20
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderView.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 45,88-92,94-103,148-149,173,243,584,646-648,653,716-724,823-828,841,3317-3321,3450,3457-3459,3461,3463,3465-3468,4512,5015-5120
+packages/cli/src/modules/mcp/tools/user-preference-tool.utils.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-78
+packages/cli/src/scaling/constants.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 48,50
+packages/cli/src/modules/agents/agent-task.service.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 201-211,217,238
+packages/@n8n/instance-ai/evaluations/__tests__/load-eval-cases.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-55
+packages/cli/src/modules/agents/__tests__/instance-ai-builder-delegate.adapter.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 104,417-422,489
+packages/cli/src/public-api/__tests__/public-api-controller.registry.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 14,24,26,36-37,248-309
+.github/workflows/ci-owners-assign-reviewers.yml
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 53
+packages/cli/src/scheduling/system-tasks/__tests__/dummy.task.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1,8
+packages/cli/src/modules/mcp/mcp.service.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1,25,74,114,120,123,168-172,183,188-190,361,364,375-377,527,773-794
+packages/cli/src/services/engine-data-plane-proxy.service.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 14,62
+packages/cli/src/modules/agents/agent-mcp-access.controller.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 32-36
+packages/cli/src/modules/promotions.ee/promotions.service.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 7,12,21,44-49,64,104,166,239-242,244-245,247,250,252,258-262,310-315,318,321,325,337,370-434,573-596
+packages/@n8n/json-schema-to-zod/test/extend-expect.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 20-21
+packages/cli/src/scheduling/system-tasks/__tests__/main-system-tasks.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 4,10,15-19,23,34,36,41-44
+packages/@n8n/backend-common/src/license-state.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 121-124
+packages/cli/src/modules/agents/integrations/__tests__/agent-chat-hitl-resume-handler.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-2,5-15,19,22,28-144,147-343
+packages/cli/src/collaboration/__tests__/collaboration.state.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 151-269
+.github/workflows/ci-master.yml
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 56-58,73,76
+packages/@n8n/vitest-config/frontend.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 5,22-30,44-47,73-74
+.github/workflows/release-chromatic.yml
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 27
+.github/workflows/release-create-minor-pr.yml
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 59
+packages/cli/src/modules/promotions.ee/__tests__/promotion-changes.integration.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 654
+packages/cli/src/webhooks/engine-v2-webhooks.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1,49-53,64,76,79,87,105,111,115,127,133-138,145,194
+packages/@n8n/engine/src/server/__tests__/workflow-executions.integration.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 75-79
+packages/cli/src/workflows/publication/workflow-publication-outbox-cleanup.service.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 35-37,51,63
+packages/frontend/@n8n/stores/src/composables/useAssistantTopUpEligibility.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-158
+packages/cli/src/executions/execution-data/types.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 33
+packages/cli/src/modules/agents/integrations/platforms/__tests__/teams/synthetic-integration.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-519
+packages/cli/src/modules/agents/types/agent-queued-message.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-50
+packages/@n8n/instance-ai/src/tools/__tests__/index.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 32-35,254-266
+packages/cli/src/modules/agents/integrations/__tests__/agent-chat-stream-consumer.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 30-36,122-153
+.agents/skills/create-instance-ai-eval/SKILL.md
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 618-619,850-856
+.devcontainer/codespaces/opencode-client.test.mjs
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 3,46-51,100-115,165,169-176,179,204-208
+packages/cli/src/modules/engine-v2/response-channel/execution-response-receiver.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 10
+packages/cli/src/modules/agents/integrations/__tests__/chat-integration.service.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 6,12,29,37-44,528-646,921-1019,1218-1248,1564-1572
+.github/workflows/ci-owners-review-recommendations.yml
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 44
+packages/cli/src/modules/n8n-packages/__tests__/utils/import-package-upload.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 11,148-191
+packages/cli/test/setup-migration-database.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-33
+packages/@n8n/cli/skills/n8n-cli/SKILL.md
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 219-238,297-302
+packages/cli/src/modules/agents/__tests__/agent-execution-update-broadcaster.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 84,93-94,138-141,143-144
+packages/cli/src/services/__tests__/engine-v2-dispatcher.service.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 139,152,156,480,512,521,527,533,538,544
+packages/cli/src/modules/n8n-packages/engine/import-blocked.error.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 20
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/schemas/importBlockingIssue.yml
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 4-22,205-209
+packages/frontend/editor-ui/src/app/composables/useSelectionValidation.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 4,8-10,16,22-28,61-112,179-180,271-354
+.github/workflows/backport.yml
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 41
+packages/cli/src/telemetry/__tests__/telemetry-pulse.task.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-39
+.github/workflows/util-ensure-release-candidate-branches.yml
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 22
+packages/@n8n/instance-ai/skills/intent-recognition/SKILL.md
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 284,399,441
+packages/cli/src/modules/mcp/tools/workflow-builder/get-workflow-best-practices.tool.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 16,153
+packages/@n8n/api-types/src/push/agents.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 32-41
+packages/frontend/@n8n/design-system/src/components/N8nMarkdownEditor/MarkdownEditor.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1,221-335
+packages/cli/src/workflows/workflow-execution.service.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 266,503-505
+.github/workflows/encryption-upgrade-test.yml
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 67,143
+packages/cli/src/modules/promotions.ee/promotion-change.service.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 97,123-125,128
+packages/cli/src/credentials/pending-authorization-cleanup.task.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-40
+packages/cli/src/telemetry/telemetry-pulse.task.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-36
+packages/@n8n/db/src/migrations/common/1790241069212-CreateAgentMessageQueue.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-47
+packages/@n8n/cli/src/commands/promotion-connection/expected-source.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-72
+packages/frontend/@n8n/frontend-test-utils/src/defaults.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 140-141,175,210
+packages/cli/src/modules/oauth-server/__tests__/oauth-session.service.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-58
+package.json
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 52-55
+packages/@n8n/api-types/src/constants/canvas-feature-flags.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-5
+.github/workflows/release-create-pr.yml
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 65
+packages/cli/src/modules/mcp/tools/data-table/add-data-table-column.tool.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 15,82-85
+packages/frontend/editor-ui/src/app/constants/experiments.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 2,153,166
+.github/workflows/util-sync-master-to-3x.yml
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 66,106,129
+packages/frontend/editor-ui/src/app/stores/recentWorkflows.store.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-191
+packages/@n8n/engine/src/execution/execution-store.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 58-59,62-74
+packages/cli/src/modules/source-control.ee/source-control-import.service.ee.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 432-433,435
+packages/cli/src/telemetry/__tests__/telemetry.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 5-6,14-15,1198-1288,1291-1308
+packages/cli/src/collaboration/__tests__/collaboration.service.agent.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-324
+.github/workflows/release-create-patch-pr.yml
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 39,82
+packages/cli/src/workflows/publication/workflow-publication-outbox-cleanup.task.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 2,15-17,23,28-29
+packages/@n8n/cli/src/commands/promotion-connection/apply-continue.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-32
+packages/cli/src/modules/mcp/mcp-scopes.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 4-9,115-122
+packages/cli/src/modules/agents/agents-tools.service.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 66,85,145
+packages/cli/src/modules/oauth-server/oauth-session.service.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 4,8-13,15-18,48-52,55-56
+packages/@n8n/db/src/index.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 23
+packages/cli/src/modules/agents/integrations/platforms/teams/__tests__/teams-arm-template.service.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-248
+packages/@n8n/engine/src/execution/__tests__/step-settled-handler.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 68,478-499
+packages/cli/src/modules/engine-v2/__tests__/remote-credentials-helper.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 153
+packages/cli/src/modules/agents/__tests__/agent-mcp-access.service.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 4-5,22-27,99,105-113,124-131,147-154,172-179,193-200,219-226,239-246,252-281
+.github/scripts/db-test-matrix.mjs
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 15-19,94,103-104
+packages/@n8n/config/src/configs/__tests__/engine.config.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-78
+packages/cli/src/modules/agents/builder/prompts/tools.prompt.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 11-12,20-22,30,40,43-45,53,92-93,95
+.github/workflows/util-update-node-popularity.yml
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 31
+packages/@n8n/db/src/repositories/workflow-publish-history.repository.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 50-82
+.github/workflows/build-node-pc-image.yml
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 45,103
+packages/@n8n/api-types/src/dto/evaluations/llm-judge-providers.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 43
+packages/@n8n/instance-ai/evaluations/run/eval-session.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 214,226
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-preference-card.service.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 20-21,24-25,42-69,79-81,83-85,88-102,106-107,118-119,126-138,140,142-144,146-219,221-227,233-284,288,291,295-301
+packages/cli/src/modules/mcp/tools/tool-error.utils.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-37
+packages/@n8n/config/src/configs/instance-ai.config.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 169
+packages/@n8n/telemetry/src/events/context.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 17,22-47,72-76,88,91-99,117-119,136-153,164-166,173,181-194,198,204,216,230
+packages/frontend/editor-ui/package.json
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 100
+packages/cli/src/public-api/v1/handlers/n8n-packages/__tests__/n8n-packages.handler.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 35,41,109-123,134-143,820-927
+packages/frontend/editor-ui/src/app/composables/useSelectionValidation.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 14,30,78-79
+packages/cli/src/modules/n8n-packages/entities/credential/credential.serializer.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 26
+packages/cli/test/integration/policy/workflow-start.policy.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 18-19,83,317-334
+packages/frontend/editor-ui/src/app/capabilities.manifest.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 3,5-9,25-44,47
+packages/frontend/editor-ui/src/app/constants/localStorage.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 60
+.agents/skills/create-instance-ai-eval/running-evals.md
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 221-258
+packages/cli/src/modules/agents/integrations/adapter-logger.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-23
+.github/workflows/sec-publish-fix.yml
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 26
+packages/cli/src/__tests__/node-types.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 281-310
+packages/@n8n/engine/src/database/__tests__/workflow-step-execution.integration.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1099-1100
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.module.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-28
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/paths/n8n-packages.import.yml
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 375
+packages/cli/src/services/ai-preference.service.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 7,24,118-128,245-257,260-265,267,270-271,276,286-308,317-343,411-422,474-484,513-516
+packages/@n8n/nodes-langchain/credentials/AzureEntraCognitiveServicesOAuth2Api.credentials.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 20,73-78,92-97,112-113,116,131
+packages/cli/src/modules/mcp/tools/data-table/search-data-tables.tool.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 11,100-104
+packages/cli/src/modules/agents/integrations/__tests__/discord-integration.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 258-265
+packages/cli/src/modules/agents/agents.controller.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 16,28,129-137
+packages/core/src/execution-engine/node-execution-context/node-execution-context.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 275-278
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChannelModal.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1,3,17-19,47,58-65,171,288-291,302,766-937
+packages/@n8n/blob-storage/src/fs-byte-store.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 89-91,97
+packages/frontend/editor-ui/data/node-popularity.json
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 4,8,12,16,24,28,32,36,40,44,48,52,56,60,64,68,76,80,84,92,96,100,108,116,120,124,128,132,136,140,144,148,152,156,160,164,168,172,176,180,188,204,208,216,220,224,228,232,236,240,252,256,260,264,268,276,280,284,288,292,296,300,304,308,312,316,320,324,332,336,340,344,348,352,356,360,364,368,376,380,384,388,392,396,400,404,408,412,416,420,424,428,432,436,440,444,452,456,460,464,468,472,476,484,488,492,496,500,504,508,512,516,520,524,528,532,536,540,544,548,556,560,564,572,580,584,588,592,596,600,604,608,620,624,628,632,636,640,644,648,652,660,664,668,672,676,680,684,688,696,700,704,708,712,716,720,724,732,736,744,748,752,756,760,764,768,776,780,784,788,796,800,804,808,812,816,820,824,828,832,836,840,848,852,856,860,864,868,872,876,880,884,888,896,904,908,912,916,920,924,928,932,936,940,944,948,952,956,960,964,972,976,980,984,988,992,996,1000,1004,1008,1012,1016,1020,1024,1028,1032,1036,1040,1048,1052,1056,1060,1064,1068,1076,1080,1084,1088,1092,1096,1100,1104,1108,1112,1116,1120,1124,1128,1132,1136,1140,1144,1148,1152,1156,1160,1164,1172,1176,1180,1184,1188,1192,1196,1204,1208,1212,1216,1220,1224,1228,1232,1236,1240,1244,1248,1252,1256,1260,1264,1268,1272,1276,1280,1284,1288,1292,1296,1300,1304,1308,1312,1316,1320,1324,1328,1332,1336,1340,1344,1348,1352,1356,1360,1364,1368,1372,1376,1380,1384,1388,1392,1396,1400,1404,1408,1412,1416,1420,1424,1428,1432,1436,1440,1444,1448,1452,1456,1460,1464,1468,1472,1476,1480,1484,1488,1492,1496,1500,1504,1508,1512,1516,1520,1524,1528,1532,1536,1544,1548,1552,1556,1560,1564,1568,1572,1576,1580,1584,1588,1592,1596,1600,1604,1608,1612,1616,1620,1624,1628,1632,1636,1640,1644,1648,1652,1656,1660,1664,1676,1680,1684,1688,1692,1696,1700,1704,1712,1716,1720,1724,1728,1732,1736,1740,1744,1748,1752,1756,1764,1768,1772,1776,1780,1784,1788,1792,1796,1800,1804,1808,1812,1816,1820,1824,1828,1832,1836,1844,1848,1852,1856,1860,1864,1868,1872,1876,1888,1892,1896,1900,1904,1908,1912,1916,1920,1924,1928,1932,1936,1940,1944,1948,1952,1956,1960,1964,1968,1972,1976,1980,1984,1988,1992,1996,2000,2004,2008,2012,2016,2020,2024,2028,2032,2036,2040,2044,2048,2052,2056,2060,2064,2068,2072,2076,2080,2084,2088,2092,2096,2100,2104,2108,2116,2120,2124,2128,2132,2136,2140,2144,2148,2152,2156,2160,2164,2168,2172,2176,2180,2184,2188,2192,2196,2200,2204,2208,2212,2216,2220,2224,2228,2232,2236,2240,2244,2248,2252,2256,2260,2264,2268,2272,2280,2284,2288,2292,2296,2300,2304,2308,2312,2316,2320,2324,2328,2336,2344,2348,2352,2356,2360,2368,2372,2376,2380,2384,2388,2392,2396,2400,2404,2408,2412,2416,2420,2424,2428,2432,2436,2440,2448,2452,2456,2460,2464,2468,2472,2476,2480,2484,2488,2496,2500,2504,2508,2512,2516,2520,2524,2528,2532,2536,2544,2548,2552,2556,2560,2564,2568,2572,2576,2580,2584,2588,2592,2596,2600,2604,2608,2620,2624,2628,2632,2636,2640,2644,2648,2652,2656,2660,2664,2668,2672,2680,2684,2688,2692,2696,2700,2708,2712,2716,2720,2724,2728,2732,2736,2740,2744,2748,2752,2756,2760,2764,2768,2772,2780,2784,2788,2792,2796,2800,2804,2808,2812,2816,2820,2824,2828,2832,2836,2840,2844,2848,2852,2856,2860,2868,2872,2876,2880,2884,2888,2892,2896,2900,2904,2908,2912,2916,2920,2924,2932,2936,2940,2944,2948,2952,2964,2968,2976,2980,2984,2988,2992,2996,3000,3004,3012,3016,3020,3028,3032,3036,3052,3056,3060,3072,3076,3080,3084,3088,3092,3096,3100,3104,3112,3124,3128,3132,3136,3140,3144,3160,3164,3168,3176,3180,3184,3188,3196,3204,3208,3216,3220,3224,3228,3236,3244,3252,3256,3260,3268,3272,3276,3280,3288,3292,3296,3304,3312,3316,3324,3328,3344,3348,3352,3356,3360,3380,3384,3392,3400,3408,3412,3420,3424,3444,3452,3460,3464,3468,3480,3488,3492,3496,3500,3504,3512,3516,3520,3540,3544,3556,3560,3572,3576,3580,3584,3588,3624,3628,3632,3636,3648,3652,3656,3664,3672,3676,3696,3700,3724,3732,3748,3768,3772,3776,3780,3800,3808,3812,3816,3820,3824,3832,3836,3852,3856,3872,3880,3888,3892,3896,3912,3920,3924,3928,3936,3952,3956,3960,3972,3980,3988,3992
+.devcontainer/codespaces/opencode-server.mjs
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 98,136-139,147,149,170-182,184-191,198,211-213,215,220-223
+packages/cli/src/modules/mcp/tools/data-table/get-data-table-rows.tool.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 15,152-156
+.github/workflows/ci-owners-validation.yml
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 34
+packages/cli/src/collaboration/collaboration.state.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 18-22,42-74,204-213,215-220,223,225-232,234-235,240,249-253,259-273,280-281,290-299,301-335,338-462
+packages/frontend/editor-ui/src/app/api/workflows.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 73-79,83,86-87,89,91
+packages/@n8n/nodes-langchain/nodes/llms/LmChatAzureOpenAi/methods/searchModels.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 122,127
+packages/@n8n/instance-ai/evaluations/run/case-pipeline.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 26,37-40,307-311,346-414,418-446,457
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderIntro.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-2,12-13,19,21-25,44-57,59,61-97
+packages/cli/src/controllers/e2e.controller.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 131
+packages/frontend/editor-ui/src/app/stores/workflows.store.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 66-67
+packages/@n8n/api-types/src/dto/data-table/list-data-table-query.dto.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-2,6,76-79
+packages/frontend/editor-ui/src/app/components/Modals.vue
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 2,446-447
+packages/@n8n/permissions/src/index.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 3
+packages/cli/src/modules/mcp/tools/workflow-builder/search-workflow-nodes.tool.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 19,157
+AGENTS.md
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 67-71,306-323
+packages/cli/src/modules/agents/__tests__/agent-queued-preview-stream.service.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-217
+packages/cli/src/executions/__tests__/execution.service.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 169
+packages/cli/src/services/ai-preference-write.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-135
+packages/cli/test/integration/workflows/workflow.service.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 42,131,147
+.github/workflows/ci-detect-new-packages.yml
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 17
+packages/cli/src/modules/agents/__tests__/agent-message-queue-consumer.service.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-269
+packages/cli/src/scheduling/system-tasks/__tests__/system-task-timer.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 51-65,315-316
+packages/@n8n/config/src/configs/workflows.config.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 73-80
+packages/@n8n/workflow-sdk/src/mock-data/data-table-read.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-87
+packages/cli/src/modules/mcp/tools/get-user-preferences.tool.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 2,133-134,140-141,145-152
+packages/@n8n/instance-ai/evaluations/__tests__/user-proxy.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 872-924,1689-1725
+packages/@n8n/cli/docs/commands/promotions.md
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 228-271,279-280,283-302,304-340
+.github/workflows/ci-pr-quality.yml
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 34,67,93,114,141,177
+packages/@n8n/node-cli/src/template/templates/programmatic/ai/model-ai-custom-example/template/package.json
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 45
+packages/@n8n/nodes-langchain/nodes/llms/LmChatAzureOpenAi/types.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 111
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentSkillUpload.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-176
+.github/workflows/ci-instance-ai-evals.yml
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 142
+packages/cli/src/__tests__/workflow-execute-additional-data.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 316-321,326,337-405
+packages/@n8n/instance-ai/src/tools/__tests__/save-user-preference.tool.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 69,73,79-85,87-100,109-113,115
+packages/frontend/@n8n/design-system/src/components/N8nDialog/DialogContent.vue
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 166
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow-removal.types.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 7,12,25-29,42
+packages/cli/src/modules/agents/builder/interactive/finish-setup.tool.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 187,446
+packages/cli/src/modules/agents/integrations/platforms/slack/slack-integration.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 38,183
+packages/cli/src/modules/insights/insights-compaction.task.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 2,16-18
+.github/workflows/release-build-daytona-snapshot.yml
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 60
+packages/frontend/editor-ui/src/app/composables/usePushConnection/handlers/executionFinished.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 37-38,447-455
+packages/frontend/editor-ui/src/app/stores/workflowsList.store.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 381-429
+packages/@n8n/api-types/src/agents/__tests__/agent-integration.schema.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 32-56,175-210
+packages/cli/src/modules/instance-ai/eval/data-table-pin-filter.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-200
+packages/@n8n/cli/src/__tests__/client.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 81-143,398-465
+packages/cli/src/modules/mcp/tools/data-table/create-data-table.tool.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 10,98
+packages/cli/src/public-api/v1/openapi.yml
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 116-117
+packages/@n8n/node-cli/src/commands/release.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 101
+packages/cli/src/modules/instance-ai/eval/__tests__/data-table-pin-filter.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-204
+packages/cli/test/integration/public-api/evaluations.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 8,456,460,476,507-514
+packages/cli/src/modules/type-availability-policies/__tests__/policy-shadow-lint.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 11-16,58-84
+packages/@n8n/constants/src/instance.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 4
+packages/frontend/editor-ui/src/app/composables/useWorkflowSaving.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 60-68,79-80,931-988
+packages/@n8n/nodes-langchain/credentials/test/AzureEntraCognitiveServicesOAuth2Api.credentials.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-22
+packages/@n8n/nodes-langchain/nodes/vendors/Microsoft/__tests__/microsoft-utils.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 131-138,140
+packages/@n8n/api-types/src/schemas/__tests__/agent-run-reducer.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 122-125,131,820-859,877-893,1255-1357,2293
+packages/cli/src/commands/__tests__/base-command.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 3-9,52-89
+packages/cli/src/modules/instance-ai/instance-context.service.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 702-704,726-728,751-753,855-858,874
+packages/@n8n/node-engine-compatibility/src/v1-adapters.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 265-286,295,321
+packages/frontend/editor-ui/src/features/agents/channels/registry.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 14-15,111-114
+.github/workflows/docker-build-smoke.yml
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 60,96,116,137
+packages/cli/src/modules/agents/agent-message-queue-consumer.service.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-256
+packages/cli/src/modules/n8n-packages/__tests__/import-project-from-directory.integration.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 22-23,181-235
+packages/frontend/editor-ui/src/__tests__/setup.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 6-7
+packages/frontend/editor-ui/src/app/stores/workflowsList.store.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 189,196,199,206,208-209,212,228
+packages/cli/test/integration/public-api/credentials.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-5,31,1768,1916-2013,2032-2033
+packages/cli/src/modules/agents/__tests__/agent-runtime-reconstruction-integration-tools.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 37,221,286
+packages/@n8n/cli/src/commands/promotion-connection/promote-selection.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-46
+packages/cli/src/collaboration/collaboration.message.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 8-13,51-86,93-97,112-126
+packages/@n8n/scan-community-package/package.json
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 22
+packages/cli/src/modules/agents/repositories/agent-message-queue.repository.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-123
+packages/cli/src/modules/n8n-packages/n8n-packages.service.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 47-48,56,59-60,63,84-115,442-475,478,480-493,497-544
+packages/frontend/editor-ui/src/app/composables/useNodeGroupRules.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-30
+.github/workflows/ci-owners-required-reviews.yml
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 176
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentVectorStoresModal.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 30-31
+packages/cli/test/integration/commands/worker.cmd.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 25,49-52
+packages/@n8n/api-types/src/agent-sse.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 76-77
+packages/cli/src/commands/webhook.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 108
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.service.nodesContext.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 2,25-26,29-30,33-34,36,41-42,44,49-50,52-56,58,60,63-64,67
+packages/cli/src/modules/engine-v2/__tests__/engine-control-plane-server.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 89
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentApi.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 8-10,98-109
+packages/cli/src/modules/agents/integrations/platforms/slack/slack-bridge-behavior.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 30,35,98,120,132,143-144,409
+packages/@n8n/permissions/src/principal.ee.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-81
+packages/cli/src/modules/agents/agent-turn-already-running.error.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-7
+.github/workflows/test-e2e-performance-reusable.yml
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 38,44
+packages/@n8n/api-types/src/schemas/agent-run-reducer.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 402,418-419,436,463,547-548,551-553,555-558
+packages/@n8n/nodes-langchain/nodes/llms/LmChatMistralCloud/test/LmChatMistralCloud.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-39
+packages/frontend/@n8n/design-system/src/components/N8nButtonList/index.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 3
+.github/workflows/release-promote-backport-labels.yml
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 44
+packages/cli/src/modules/agents/integrations/__tests__/teams-integration.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-240
+packages/cli/src/services/__tests__/ai-preference.service.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 15-16,449-463,497,506-516,527-576,582-586,630-634,648-741,746-878
+packages/cli/src/commands/worker.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 230
+packages/@n8n/api-types/src/dto/packages/import-package-request.dto.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 121-188
+packages/cli/test/integration/policy/node-type-policy.fan-out.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 8,156
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentVersionHistoryPanel.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 37-42,203-215
+packages/cli/test/integration/public-api/community-packages.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 24,93-105,119-126,128-134,139-157,171,173-177,179,181-184,186-187,211-213,217-224,236-250,260-300,330-357,359-368,383-397,418-437,441-470,503-518
+packages/cli/src/modules/agents/agent-message-queue.service.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-277
+packages/cli/src/modules/engine-v2/response-channel/redis-execution-response-channel.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-48
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 675-681,1040-1045,2306-2309,2484-2488,3349-3352,3521,3524,3554-3555,3612-3613,3633,4767,6163-6165,6210,7128,7291-7292,7383-7386,7388-7391,7760-7784,7923-7933,7978-7987,8410-8412,8417,8425-8426,8429-8432,8447,8453-8454,8826-8866,9061,9096-9136
+packages/cli/src/modules/n8n-packages/io/directory/package-directory-inventory-reader.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 259,261-265
+packages/@n8n/node-cli/src/template/templates/programmatic/ai/memory-custom/template/nodes/ExampleChatMemory/ExampleChatMemory.node.json
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 5
+packages/@n8n/nodes-langchain/nodes/vendors/Anthropic/helpers/interfaces.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 82-90,94
+packages/@n8n/eslint-plugin-community-nodes/README.md
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 91
+.github/workflows/sbom-validation-callable.yml
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 21
+packages/@n8n/node-cli/src/template/templates/programmatic/ai/memory-custom/template/package.json
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 43
+packages/cli/src/workflows/__tests__/node-group-rules-flag-gate.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-79
+packages/cli/src/modules/redaction/executions/execution-redaction.service.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 2,11,20,51,104-105,107-118,123-125,142-153,196-201,208,211,262-263,283-284,297-342
+.github/workflows/ci-pull-requests.yml
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 149,161-162,232,390,396,447,546
+packages/@n8n/node-engine-compatibility/src/v1-execution-read.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 35-46,52
+packages/@n8n/cli/src/commands/promotion-connection/list-changes.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-65
+packages/cli/src/modules/engine-v2/__tests__/engine-v2.module.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 2,4,8,14-16,25-27,33,37-43,89-98,114-194
+packages/cli/src/modules/agents/__tests__/agent-chat.controller.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 15-22,76-88,100-101,106-107,174-176,185-209,543,575,726-728,736,740-779,781-823
+packages/@n8n/api-types/src/dto/promotions/promotable-resource.dto.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 51-58,62-66
+packages/cli/test/integration/commands/credentials.cmd.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 798-825
+packages/frontend/@n8n/design-system/src/components/N8nActionDropdown/ActionDropdown.vue
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 28,114
+packages/cli/src/modules/n8n-packages/entities/workflow/__tests__/workflow-remover.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 23-28,217,225-384,389,444
+packages/@n8n/engine/src/response-channel/index.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 4,8-9
+packages/cli/src/modules/agents/integrations/platforms/teams/__tests__/teams-setup.service.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-449
+packages/cli/src/modules/workflow-reviews.ee/__tests__/support/workflow-review-test-data.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 59
+packages/cli/src/eventbus/message-event-bus/event-bus-unsent-message-flush.task.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-36
+packages/cli/src/requests.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 289-300,308,310
+packages/@n8n/decorators/src/system-task/__tests__/resolve-schedule.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 2-3,8,10-13,17,35-58,64-94
+packages/cli/src/modules/instance-ai/instance-ai.adapter.service.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 4-5,24,28,65,122,129,183,217-225,269-283,655-656,695-696,739-752,754,758-760,2282-2285,2295,2298-2388,2422,2449-2451,2507-2512,2546-2548,4556-4598,4611-4615,4642,4650-4658,4697-4700,4952-4973,4977-4978,4981-4982,4984-5000,5002-5004,5007-5010,5017
+packages/cli/src/modules/oauth-server/__tests__/workflow-webhook-trigger-resource.resolver.api.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 44-45,51-52,57,65,251-255,268-293
+packages/frontend/editor-ui/src/features/agents/__tests__/utils/AgentModalTestStub.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 10,47
+packages/frontend/editor-ui/src/app/composables/useCanvasOperations.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 3495-3496,3513
+packages/frontend/@n8n/design-system/src/components/N8nDropdownMenu/DropdownMenu.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 80,90-94,899-936,939,942,956,962,1037,1045,1051,1060,1073,1084,1116
+packages/@n8n/instance-ai/evaluations/data/workflows/index.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-5,13,15
+packages/@n8n/node-cli/src/template/templates/programmatic/example/template/package.json
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 42
+packages/cli/src/services/ai-preference.md
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 38-97,111-113,125-127,203-207,210-216
+packages/@n8n/config/src/configs/engine.config.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 12-15,18-28
+packages/@n8n/nodes-langchain/nodes/llms/LmChatAzureOpenAi/credentials/oauth2.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 23-28,31-32
+packages/cli/src/modules/agents/__tests__/agent-interrupted-execution-sweeper.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 32-33,35-36,50-53
+packages/cli/src/modules/agents/__tests__/agent-tasks.controller.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 9,18,22,25
+packages/cli/src/modules/agents/__tests__/agent-workflow-execution.service.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 17,125,151
+packages/cli/src/modules/agents/agent-publish.controller.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 13,20,31-38,62-69,91-98,121-128
+packages/@n8n/cli/src/base-command.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 9,12-13,68
+packages/cli/src/services/pruning/workflow-history-compaction-optimize.task.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 3,18-20
+packages/@n8n/cli/src/index.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 29,40,48,51,122,126,128,175
+packages/cli/src/executions/execution-list-v2.service.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 123
+packages/@n8n/config/test/config.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 252-253
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentCapabilitiesSection.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 751,755
+packages/frontend/editor-ui/src/app/composables/useInvalidNodeGroupCleanup.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-4,9,12,27,53-54
+packages/cli/src/modules/instance-ai/eval/__tests__/execution.service.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 8,15,75-76,86,88,92-95,433-603
+packages/cli/AGENTS.md
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 65-72
+packages/cli/src/services/__tests__/ai-preference-write.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-165
+packages/cli/src/modules/agents/__tests__/agent-publish.controller.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 5,11,21,26,35-39,42,132-184
+packages/core/src/instance-settings/__tests__/instance-settings.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 211-221
+packages/cli/src/eventbus/message-event-bus/message-event-bus.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 142-143
+packages/@n8n/node-cli/src/template/templates/programmatic/example/template/nodes/Example/Example.node.json
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 5
+packages/cli/src/modules/engine-v2/engine-v2.module.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 11-12,19-22,36-41,49,54-73,84-101,105-108,120-132
+packages/cli/src/modules/redaction/executions/strategies/__tests__/full-item-redaction.strategy.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 14,223-263
+packages/cli/src/modules/agents/integrations/platforms/teams/teams-setup.service.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-232
+packages/frontend/editor-ui/src/app/components/MainHeader/ActionsDropdownMenu.vue
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 324,435-436
+packages/cli/src/events/__tests__/activity-event-relay.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 417-447
+packages/cli/src/modules/agents/__tests__/agent-task.service.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 469-490
+packages/cli/src/webhooks/__tests__/engine-v2-webhooks.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 2-4,16,19-56
+packages/cli/src/modules/instance-ai/instance-ai-step-run.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 2-3,12-20,50-67,132-251,268-269,272,284-286,320-321,326-332,337-408,414-505,512-513,518-522,530-531,535-542,549,555-578,585,590-594,596-608,615,620-627,632-642,670-747
+packages/@n8n/db/src/migrations/common/1790319787160-AddPendingAuthorizationToCredentials.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-27
+packages/cli/src/services/frontend.service.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 20,302-304,306,312,588-589
+packages/cli/test/integration/credentials/credentials.api.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 26-31,2111-2242
+packages/cli/src/modules/instance-reporting.ee/instance-reporting.service.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 7,32-49,111,121-123,137,143,189-190,205-213,224-229,231-232,244
+packages/frontend/@n8n/stores/src/composables/useAssistantTopUpEligibility.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-41
+packages/cli/test/integration/public-api/executions.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 22,46,50
+packages/cli/src/modules/agents/builder/prompts/config-mutation.prompt.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 10,18,71,156-158
+packages/@n8n/db/src/repositories/shared-workflow.repository.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 28-59
+.github/workflows/test-unit-reusable.yml
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 38-40,276-277,279
+packages/cli/src/modules/agents/agent-mcp-access.service.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 5,32,57,81-94
+packages/cli/src/modules/engine-v2/__tests__/in-memory-execution-response.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 3,73-103,107,114,118,126,129,136,142-143,151,156,163,168,193
+packages/cli/src/workflows/__tests__/workflow-creation.service.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 30,36,61,100-103,127,202-211,213-267
+packages/frontend/@n8n/design-system/src/components/N8nButtonList/ButtonList.types.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 3-4,11-16
+packages/cli/src/modules/mcp/tools/get-workflow-details.tool.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 24,158
+packages/frontend/editor-ui/src/app/stores/ui.store.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 447,453-458,460,487-492,512-517
+packages/cli/src/commands/start.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 10,430
+packages/cli/test/integration/instance-ai/instance-ai-checkpoint-pruning.integration.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-201
+packages/cli/src/modules/agents/builder/skills/resource-locators.skill.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 16,25
+packages/@n8n/node-cli/src/template/templates/programmatic/ai/model-openai-compatible/template/nodes/ExampleChatModel/ExampleChatModel.node.json
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 5
+packages/cli/src/modules/agents/repositories/agent-checkpoint.repository.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1,3,8-10,13-14,17-22,25-32,37-40,58,61,68-75,83-92
+packages/cli/src/commands/base-command.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 17-18,51,94-100,179-185,187-191,193,195-200,202-214,216-220,299-311
+packages/core/src/execution-engine/__tests__/eval-mock-helpers.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 343-353,507-530,662-726
+packages/cli/src/posthog/index.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 9-10,211-213,221,283-288
+packages/cli/src/telemetry/index.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 213-217,225-226,228-235,258-271
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentAdvancedPanel.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 47-58
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentWebSearchSection.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 6-7,14-21,64-73,205-296
+.github/workflows/test-e2e-coverage-nightly.yml
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 21,46,110,138,191,309,406
+packages/frontend/@n8n/design-system/src/components/N8nIcon/icons.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 37,319,541
+packages/cli/src/modules/agents/integrations/agent-chat-integration.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 13,107-130,133,152-153,226,278-285,530
+packages/@n8n/api-types/src/frontend-settings.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 181-182,184-188,206
+packages/cli/src/modules/oauth-server/__tests__/oauth-server.service.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 171-172,280-298
+packages/@n8n/engine/src/execution/__tests__/execution-start-handler.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 31
+packages/@n8n/instance-ai/src/tools/agent-context.tool.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-149
+packages/cli/src/modules/mcp/__tests__/tool-error.utils.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-63
+packages/cli/src/modules/instance-ai/eval/__tests__/workflow-analysis.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 19,1139-1170
+packages/cli/src/modules/agents/integrations/agent-credential-lookup.service.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-59
+.github/workflows/ci-python.yml
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 21
+packages/@n8n/task-runner/src/start.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 10-11
+packages/@n8n/agents/src/runtime/__tests__/agent-runtime.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 5954,5983,6132-6139,9587
+packages/@n8n/agents/src/runtime/__tests__/agent-runtime-conversion.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 67-155
+packages/frontend/editor-ui/src/app/composables/usePolicyViolationToast.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-271
+packages/frontend/@n8n/storybook/tsconfig.app.json
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 31
+packages/frontend/@n8n/design-system/src/components/N8nMarkdownEditor/component-markdown-editor.md
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 38-39
+packages/cli/src/modules/instance-ai/repositories/__tests__/instance-ai-conversation-history.repository.integration.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 430-463
+packages/cli/src/modules/instance-ai/eval/workflow-analysis.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 595-597,709,711,715-717,786,799-802
+packages/cli/test/integration/agents/agent-checkpoint-pruning.task.integration.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 6,18-20,44-55,62,157-163,175,180,182,190-192,194-198
+packages/cli/src/workflow-runner.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 414
+packages/@n8n/workflow-sdk/src/codegen/emit-instance-ai.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 290,292
+packages/cli/src/modules/agents/instance-ai-agent-context.adapter.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-257
+packages/cli/src/modules/agents/integrations/__tests__/adapter-logger.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 1-31
+packages/cli/scripts/build.mjs
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 139-143,151-155,157-158,160-178
+packages/cli/src/middlewares/list-query/dtos/workflow.filter.dto.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 2-9,14-21
+packages/cli/src/modules/agents/integrations/__tests__/agent-chat-bridge.test.ts
+  s_cc97e995c0bd14::t_ae1c4794ab5ccd 2,7-9,11,35-89,110,113-117,120-124,133,335,366-384,483,517,563,616,710,749-755,757-759,761-775,778,782,785,799,849,883,911,965,1030,1061,1092,1120,1146,1173,1209,1271,1280-1283,1295-1298,1309,1341,1372,1418,1481,1540,1648,1743,2024,2065,2171,2206,2244,2284,2335,2385,2434,2491,2550,2609,2647,2694,2738,2770,2833,2880,2944,2996,3034,3055,3075,3114,3135,3155,3188-3189,3191-3193,3196,3201-3204,3206-3214,3216-3228,3230-3232,3252-3253,3265,3330,3376,3408,3444,3491,3534,3612,3657,3701
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "8c9b52732261f387ec7602cf05dfe71893126ab5",
+  "prompts": {},
+  "sessions": {
+    "s_cc97e995c0bd14": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "37192a1f-294b-426f-b852-0b185ab3dbee",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

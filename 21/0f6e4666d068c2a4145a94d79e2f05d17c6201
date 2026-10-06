@@ -1,0 +1,23 @@
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/composables/usePromotionBindingCreation.ts
+  s_e8e4a2455511ee::t_6220e0ae532ff9 24,27-36,96-226,231-232,254-267,269-270,282
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionSelectModal.vue
+  s_e8e4a2455511ee::t_da15e110618ff4 221
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_e8e4a2455511ee::t_da15e110618ff4 8879
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "210f6e4666d068c2a4145a94d79e2f05d17c6201",
+  "prompts": {},
+  "sessions": {
+    "s_e8e4a2455511ee": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "710773de-55e8-4d08-a4c7-828589b7562f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,25 @@
+packages/cli/test/integration/public-api/folders.test.ts
+  s_b85500b839c02b::t_07ea9b195c6665 405,409-410,414,417-420
+  s_b85500b839c02b::t_f2d7ff60c606cb 7-8
+  s_b85500b839c02b::t_d17e3f733bff50 291-297,300-302,305-343
+packages/@n8n/api-types/src/dto/folders/folder-public.openapi.ts
+  s_b85500b839c02b::t_2a5a6a45214308 48-49
+packages/cli/src/public-api/v1/handlers/projects/spec/paths/listFolders.generated.yml
+  s_b85500b839c02b::t_a26231195ec7ec 19-20
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "23b11eaa32a53e8d843588d71f5d84e5ea60c0c4",
+  "prompts": {},
+  "sessions": {
+    "s_b85500b839c02b": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "57be2f03-fb0f-4c9d-8d3a-8ad52454ebcb",
+        "model": "grok-4.6"
+      },
+      "human_author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    }
+  }
+}

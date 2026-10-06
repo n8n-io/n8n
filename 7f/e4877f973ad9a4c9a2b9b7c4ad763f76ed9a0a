@@ -1,0 +1,19 @@
+packages/cli/src/modules/agents/__tests__/agents-builder-tools.service.test.ts
+  s_658c3c04b321fe::t_524ba7f6215d2c 2466-2469
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "7fe4877f973ad9a4c9a2b9b7c4ad763f76ed9a0a",
+  "prompts": {},
+  "sessions": {
+    "s_658c3c04b321fe": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "685e3749-5431-4076-af1d-db56a2ab1bea",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

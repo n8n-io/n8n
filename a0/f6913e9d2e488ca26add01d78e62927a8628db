@@ -1,0 +1,41 @@
+packages/@n8n/engine/src/database/__tests__/workflow-step-execution.integration.test.ts
+  s_9c30e64d236bdf::t_bf3377bab5978a 7,78,80,400,437,454-460,468,471,477,488,500-505,512-513,527,557,559,563
+packages/@n8n/engine/src/database/entities/workflow-step-execution.entity.ts
+  s_9c30e64d236bdf::t_12316a1e2c958b 13,50-56,58-61,66-69,71-72
+packages/@n8n/engine/src/database/migrations/1784890100000-CreateWorkflowStepExecution.ts
+  s_9c30e64d236bdf::t_2733288b7aac68 36,40,47-48,51,55
+packages/@n8n/engine/src/database/typeorm-step-store.ts
+  s_9c30e64d236bdf::t_d4226a1b2e8aff 9,50-51,138-139,167,180-181,190,195-196,200,203,217,288,290
+packages/@n8n/engine/src/execution/__tests__/step-execution.integration.test.ts
+  s_9c30e64d236bdf::t_e92ba8874dd0ae 279,324,377
+packages/@n8n/engine/src/execution/__tests__/step-ready-handler.test.ts
+  s_9c30e64d236bdf::t_6306e136e52846 29-30,98-99,812-834,873-874,903-904,919-927,929-930,934-941,949-950,1160-1161
+packages/@n8n/engine/src/execution/__tests__/step-settled-handler.test.ts
+  s_9c30e64d236bdf::t_ad68934d0f5a76 85-86
+packages/@n8n/engine/src/execution/execution.types.ts
+  s_9c30e64d236bdf::t_5b8360e758cfaf 136-139,141
+packages/@n8n/engine/src/execution/index.ts
+  s_9c30e64d236bdf::t_4846b173e633b1 14
+packages/@n8n/engine/src/execution/step-ready-handler.ts
+  s_9c30e64d236bdf::t_c95eef98c36bbf 19,68-71,73,86-87,95-97,108-109,168-172,186,383-386,391-394,402-430
+packages/@n8n/engine/src/execution/step-store.ts
+  s_9c30e64d236bdf::t_a7ce15e3ff0279 5,40,42,123,127,130,142
+packages/@n8n/engine/src/index.ts
+  s_9c30e64d236bdf::t_8d989dccadd8b0 115
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "a0f6913e9d2e488ca26add01d78e62927a8628db",
+  "prompts": {},
+  "sessions": {
+    "s_9c30e64d236bdf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f103e602-540f-4c9e-a1e6-ff3bee67124c",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}

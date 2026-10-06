@@ -1,0 +1,19 @@
+.github/workflows/ci-cla-check.yml
+  s_220038b2328800::t_72667ad2eeb52b 72
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0482c157259bfb60bc9fa710ad9b5251f1a15108",
+  "prompts": {},
+  "sessions": {
+    "s_220038b2328800": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f32f268e5ffecxHS8Ci9w6d9ID",
+        "model": "openai/gpt-5.6-sol"
+      },
+      "human_author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,72 @@
+packages/frontend/editor-ui/src/features/shared/contextMenu/composables/__snapshots__/useContextMenu.test.ts.snap
+  ai_agent 61,168,315,462,569,728,887,1046,1205,1317
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_b1a69ed75d6063::t_fd81e1be45c7b0 2079-2081
+packages/frontend/editor-ui/src/features/shared/contextMenu/composables/useContextMenu.test.ts
+  s_b1a69ed75d6063::t_bbf8bf6287fe32 27,1033-1044,1046-1055,1057-1059,1061-1065,1067-1069,1071-1075
+  s_b1a69ed75d6063::t_6da7f6f219826c 1045,1056,1060,1066
+  s_b1a69ed75d6063::t_b09b3a59b17d6a 1070
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/render-types/CanvasNodeDefault.test.ts
+  s_b1a69ed75d6063::t_f8f8bd5c703a94 9,78,93-97,151-162,164-217
+  s_b1a69ed75d6063::t_e92330dcedb244 163
+packages/frontend/editor-ui/src/features/workflows/canvas/composables/useCanvasNode.ts
+  s_b1a69ed75d6063::t_4693314f58e69d 38
+  s_b1a69ed75d6063::t_c4a5b542e2b2f2 74
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/render-types/parts/CanvasNodeStatusIcons.vue
+  s_b1a69ed75d6063::t_2e62b6687d0ad4 5
+  s_b1a69ed75d6063::t_73dbf6710dd169 32
+  s_b1a69ed75d6063::t_44f83423c2fd10 42
+  ai_agent 90-93
+  s_b1a69ed75d6063::t_d2ab768d295cce 94-97
+  s_b1a69ed75d6063::t_b4633bfbbfa738 98-100
+packages/frontend/editor-ui/src/app/composables/useCanvasOperations.test.ts
+  s_b1a69ed75d6063::t_52683c3b24a1a9 56,257,4665-4677
+packages/frontend/editor-ui/src/app/composables/useNodeTypeRestriction.test.ts
+  s_b1a69ed75d6063::t_aecdc45762a98a 1-33,35-46,48-65
+  s_b1a69ed75d6063::t_44f83423c2fd10 34,47
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/CanvasNodeRenderer.test.ts
+  s_b1a69ed75d6063::t_e0d3576985e70e 7,9,26-28
+packages/frontend/editor-ui/src/features/shared/contextMenu/composables/useContextMenuItems.ts
+  s_b1a69ed75d6063::t_50da713a716ce0 25
+  s_b1a69ed75d6063::t_a9ae545efefb09 97
+  s_b1a69ed75d6063::t_8321ee74f2a31e 149,151-153,155-156
+  s_b1a69ed75d6063::t_0f23cde48dcda5 150
+  s_b1a69ed75d6063::t_52f1969c983ea5 490-493
+  s_b1a69ed75d6063::t_c447d925375ca8 499
+  ai_agent 575
+packages/frontend/editor-ui/src/app/composables/useCanvasOperations.ts
+  s_b1a69ed75d6063::t_52683c3b24a1a9 70,244,3497-3508,3522-3523,3527-3529
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/render-types/CanvasNodeDefault.vue
+  s_b1a69ed75d6063::t_6293960cdf92ec 13
+  s_b1a69ed75d6063::t_6593811a838fb3 39
+  s_b1a69ed75d6063::t_ef904a17988a56 56
+  s_b1a69ed75d6063::t_654a25f5cf926d 91-92,94-96
+  s_b1a69ed75d6063::t_99e83c299747eb 236,243
+  s_b1a69ed75d6063::t_5def53a85143e2 255-258,262
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/render-types/parts/CanvasNodeStatusIcons.test.ts
+  s_b1a69ed75d6063::t_f8f8bd5c703a94 9,52,56-60,302-353
+packages/frontend/editor-ui/src/app/composables/useNodeTypeRestriction.ts
+  s_b1a69ed75d6063::t_fd81e1be45c7b0 1-22,24-29,31
+  s_b1a69ed75d6063::t_44f83423c2fd10 23,30
+packages/frontend/editor-ui/src/app/views/NodeView.vue
+  s_b1a69ed75d6063::t_af05514fcda77f 101
+  s_b1a69ed75d6063::t_b3ea4ca6df5ce6 205
+  s_b1a69ed75d6063::t_52683c3b24a1a9 615
+  s_b1a69ed75d6063::t_26ef90e5ec4d67 1774-1790
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "85b3be35260306a4ac24f4855b0f6a5af2581871",
+  "prompts": {},
+  "sessions": {
+    "s_b1a69ed75d6063": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "77ef5e06-1c4a-4ad6-ac34-da5435a74cdb",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Olivier de Jong <olivier.dejong@n8n.io>"
+    }
+  }
+}

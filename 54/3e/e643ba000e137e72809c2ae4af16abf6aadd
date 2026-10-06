@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/features/agents/components/AgentCard.vue
+  s_3bd6054d353838::t_10ab3959a47fcb 81
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "543ee643ba000e137e72809c2ae4af16abf6aadd",
+  "prompts": {},
+  "sessions": {
+    "s_3bd6054d353838": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0c8df-ac40-70a1-aad7-a303e6b7d090",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

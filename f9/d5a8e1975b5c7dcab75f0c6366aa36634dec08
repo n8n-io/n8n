@@ -1,0 +1,30 @@
+packages/frontend/editor-ui/src/features/credentials/composables/__tests__/useCredentialForm.test.ts
+  s_9eab84e6b23b8a::t_bd93511e681ce3 116-120,184-197
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionBindingsDialog.vue
+  s_9eab84e6b23b8a::t_7f850b42aaf113 33
+  s_9eab84e6b23b8a::t_2b02796d518ff5 62-68
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionBindingsFlow.vue
+  s_9eab84e6b23b8a::t_7f850b42aaf113 23,35
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionSelectModal.test.ts
+  s_9eab84e6b23b8a::t_7f850b42aaf113 457-459
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/composables/usePromotionBindingCreation.ts
+  s_9eab84e6b23b8a::t_7f850b42aaf113 41-46,58,98,195,226,265
+packages/frontend/editor-ui/src/features/credentials/composables/useCredentialForm.ts
+  s_9eab84e6b23b8a::t_2933d154ec6a3a 555-562
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f9d5a8e1975b5c7dcab75f0c6366aa36634dec08",
+  "prompts": {},
+  "sessions": {
+    "s_9eab84e6b23b8a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0ccef-01fd-7a30-b4a4-037b783449cb",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

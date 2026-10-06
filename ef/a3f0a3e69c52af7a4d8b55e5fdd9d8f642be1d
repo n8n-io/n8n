@@ -1,0 +1,112 @@
+packages/cli/src/modules/oauth-jwe/__tests__/oauth-jwe-key.service.test.ts
+  s_23a03234855e2f::t_fe1c2d4d14057d 67-69,74,79-80,82-84,90-94,100,109-111,120-121,132-133,146-147,159,161,169,222,227,235,239,243,261-262
+packages/cli/src/modules/oauth-jwe/__tests__/oauth-jwe-key.service.integration.test.ts
+  s_23a03234855e2f::t_9294443b53eb24 2,4,18-19,26,42,63,87,108,125,131
+packages/cli/src/encryption/__tests__/get-key-by-id-type-scope.integration.test.ts
+  s_23a03234855e2f::t_8b098630b8e2fd 45-46
+  s_23a03234855e2f::t_ad136968dd9e18 2,4,9-10,19,30-31
+packages/@n8n/db/src/repositories/__tests__/deployment-key.repository.test.ts
+  s_23a03234855e2f::t_e1a39b305d4ecd 17-19
+  s_23a03234855e2f::t_e26ef4f1b037e9 10-16
+packages/cli/src/commands/__tests__/execute-batch.test.ts
+  s_23a03234855e2f::t_7e01f78a0acf73 62-63
+packages/@n8n/backend-services/eslint.config.mjs
+  s_223d08db0c60dd::t_cfaa3f1f076ccb 20-23
+packages/@n8n/eslint-config/src/rules/no-guardrail-disable.ts
+  s_223d08db0c60dd::t_6579e8a99e61f7 4,28
+packages/cli/src/encryption/__tests__/key-manager.service.test.ts
+  s_23a03234855e2f::t_46276e2718d8f5 334,360-362,366-367,371,380-383,390,396-399,404,406,412-415,432,440,445,451,459,464,474,484-486,493,592,594,596,600,602,605,610,612,618,633,638,640,646,659,663
+  s_23a03234855e2f::t_e2c8a95b57e620 69,83,88,93-96,126,145,155,160,169,174,180,185,190,199,204,211,215,218,220,237,242,248,259,269,275
+  s_223d08db0c60dd::t_2f86804ee5b4ab 276-277,282,288,300,314,340,345,354,648,654
+packages/cli/src/commands/__tests__/webhook.test.ts
+  s_23a03234855e2f::t_7e01f78a0acf73 29-30
+packages/core/src/instance-settings/instance-settings.ts
+  s_23a03234855e2f::t_18acf8b6722ccd 37-38,163,169-170
+packages/cli/src/modules/policy-infrastructure/README.md
+  s_223d08db0c60dd::t_cfaa3f1f076ccb 197-200
+packages/@n8n/eslint-config/src/rules/no-encryption-guardrail-disable.test.ts
+  s_223d08db0c60dd::t_cfaa3f1f076ccb 41-43
+  s_223d08db0c60dd::t_0a77e85c576490 40
+packages/@n8n/eslint-config/src/rules/no-unsealed-workflow-entity-write.test.ts
+  s_223d08db0c60dd::t_80cd2ff4c8c138 28-31,53-54
+  s_223d08db0c60dd::t_a4366d184bc2be 11,13-14,23-27,32,35,37-39,41-48,52
+packages/@n8n/db/src/subscribers/__tests__/workflow-entity-subscriber.test.ts
+  s_223d08db0c60dd::t_7a4ff600bb1685 21-27,31,33-35,37-39,43-47,49-54,64-70
+  s_223d08db0c60dd::t_b356fa6dab41d6 8-9,36,48
+packages/cli/src/commands/__tests__/start.test.ts
+  s_23a03234855e2f::t_7e01f78a0acf73 42-43
+packages/@n8n/db/src/subscribers/workflow-entity-subscriber.ts
+  s_223d08db0c60dd::t_7a4ff600bb1685 21-22
+  s_223d08db0c60dd::t_e049f812da0abe 24
+  s_223d08db0c60dd::t_cfaa3f1f076ccb 23,25-27
+packages/@n8n/db/src/entities/index.ts
+  s_223d08db0c60dd::t_bc94661b94b29c 26,143
+packages/cli/src/commands/__tests__/execute.test.ts
+  s_23a03234855e2f::t_7e01f78a0acf73 67-68,136-137
+  s_223d08db0c60dd::t_a271a6cdbefdc6 138-139,149
+packages/cli/src/encryption/__tests__/encryption-bootstrap.service.integration.test.ts
+  s_23a03234855e2f::t_ad136968dd9e18 2,4,12,22,37,51,61,75,93,102,106,152-157,162,172-173
+  s_23a03234855e2f::t_e7c8b1b204cb54 139-140
+  s_223d08db0c60dd::t_f69cb820e9e208 108,138,151,213
+packages/@n8n/db/src/entities/deployment-key.ts
+  s_223d08db0c60dd::t_80ca748b18b1b9 5-6
+packages/cli/src/encryption/key-manager.service.ts
+  s_23a03234855e2f::t_18acf8b6722ccd 85,117,216-217,249-250,279-280,285,338-339,341,344-345
+  s_223d08db0c60dd::t_83e2d6d89e7b78 346,364,373
+packages/core/src/instance-settings/__tests__/instance-settings.test.ts
+  s_23a03234855e2f::t_e2c8a95b57e620 227-228,243-244,256-257
+  s_223d08db0c60dd::t_8c171f0984db9e 258-259,264,271-273,282,298-299,301,364,401
+packages/@n8n/db/src/repositories/deployment-key.repository.ts
+  s_23a03234855e2f::t_e7c8b1b204cb54 71
+  s_223d08db0c60dd::t_80ca748b18b1b9 7,287,292-297
+  s_223d08db0c60dd::t_5dba1556aeab38 165,180
+  s_23a03234855e2f::t_18acf8b6722ccd 108,141,145-146,153-163,166-179,181-185,236,243-252,264,267-270,272-286,288-291
+  s_223d08db0c60dd::t_14fe7982618acd 164
+packages/cli/src/commands/__tests__/worker.test.ts
+  s_23a03234855e2f::t_7e01f78a0acf73 47-48
+packages/cli/src/modules/oauth-jwe/oauth-jwe.constants.ts
+  s_223d08db0c60dd::t_80ca748b18b1b9 1
+packages/@n8n/eslint-config/src/rules/no-guardrail-disable.test.ts
+  s_223d08db0c60dd::t_d6134ad13fe3a4 79-82
+  s_223d08db0c60dd::t_29a91703b1e7a4 78
+packages/cli/src/services/__tests__/deployment-signing-secrets.integration.test.ts
+  s_23a03234855e2f::t_e26ef4f1b037e9 3,5,31,36,118
+  s_23a03234855e2f::t_e7c8b1b204cb54 47,68,87,114-116
+  s_23a03234855e2f::t_b560f9e67a4f1c 57-64,74-81,98-105
+packages/cli/eslint.config.mjs
+  s_223d08db0c60dd::t_cfaa3f1f076ccb 66-69
+scripts/lint-parity/OXLINT_MIGRATION_BLOCKERS.md
+  s_223d08db0c60dd::t_cfaa3f1f076ccb 14,148,176,181
+packages/@n8n/eslint-config/src/rules/no-unsealed-workflow-entity-write.ts
+  s_223d08db0c60dd::t_df59e844bbcc74 9,11-32,44-62,65,68,72,74,78-90,115-117,120-132,137-140,143-160,194-196
+  s_223d08db0c60dd::t_5dba1556aeab38 63-64
+  s_223d08db0c60dd::t_80cd2ff4c8c138 7-8
+packages/cli/src/modules/oauth-jwe/oauth-jwe-key.service.ts
+  s_23a03234855e2f::t_18acf8b6722ccd 183,224
+packages/cli/test/integration/encryption-keys.api.test.ts
+  s_23a03234855e2f::t_9294443b53eb24 2,4,12,19,42-43,52,56,321,331,348
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "efa3f0a3e69c52af7a4d8b55e5fdd9d8f642be1d",
+  "prompts": {},
+  "sessions": {
+    "s_223d08db0c60dd": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f3d77be9dffePL74xPlWxBGKl7",
+        "model": "openai/gpt-5.6-sol"
+      },
+      "human_author": "Matsuuu <matias.huhta@n8n.io>"
+    },
+    "s_23a03234855e2f": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f3c2a7e0dffeDadLS6eeJD1kgu",
+        "model": "openai/gpt-5.6-sol"
+      },
+      "human_author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}

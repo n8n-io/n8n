@@ -1,0 +1,23 @@
+packages/frontend/editor-ui/src/app/layouts/InstanceAiLayout.vue
+  s_2ed659fa6b1ae7::t_d12dd3299978bf 2-3,7,10-15,28
+packages/frontend/editor-ui/src/features/ai/instanceAi/InstanceAiThreadView.vue
+  s_2ed659fa6b1ae7::t_f82e0c57eb3473 188-190,733-737
+packages/frontend/editor-ui/src/features/ai/instanceAi/instanceAi.store.ts
+  s_2ed659fa6b1ae7::t_6040ef733fc370 435-446,488-489
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "2cc9173d7a65b5a68e86418f129d8038741f80d9",
+  "prompts": {},
+  "sessions": {
+    "s_2ed659fa6b1ae7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d3f128a4-3e8f-4275-b045-49313edd5a2e",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

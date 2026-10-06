@@ -1,0 +1,20 @@
+packages/frontend/@n8n/design-system/src/components/N8nBadge/Badge.vue
+  s_4fa01cf393af7f::t_750b82af4c2e4a 91-92,131-132,137-138,143-144,149-150,155-156,161-162,226,230
+  s_4fa01cf393af7f::t_4a313a5640b0df 99
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8944d3b0930e1d3afb6e66425d5d2013ef28c993",
+  "prompts": {},
+  "sessions": {
+    "s_4fa01cf393af7f": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a0c96d-0a4a-777b-a263-a9b4c501b9ef",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

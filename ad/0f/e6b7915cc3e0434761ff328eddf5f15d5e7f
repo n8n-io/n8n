@@ -1,0 +1,33 @@
+packages/frontend/editor-ui/src/features/ai/shared/components/ChatMessageQueue.test.ts
+  s_0cc016513eb6f8::t_f9a34537e176d8 48-50,117-142
+  s_0cc016513eb6f8::t_fddec173ad47a6 143-145
+packages/frontend/editor-ui/src/features/ai/shared/components/ChatMessageQueue.vue
+  s_0cc016513eb6f8::t_b974c00e29d21c 2,43-54,58-74,162,164
+  s_0cc016513eb6f8::t_9b16d06a8e4458 55-57
+packages/frontend/editor-ui/src/features/agents/components/AgentChatPanel.vue
+  s_7d92a1078763b1::t_979a4921580adb 243-244
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ad0fe6b7915cc3e0434761ff328eddf5f15d5e7f",
+  "prompts": {},
+  "sessions": {
+    "s_0cc016513eb6f8": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a110ed-e9b6-760b-a5cd-f01b95d38a7f",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_7d92a1078763b1": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a110f2-4366-760b-a5cd-f01df5df2f2e",
+        "model": "unknown"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

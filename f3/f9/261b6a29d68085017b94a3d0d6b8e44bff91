@@ -1,0 +1,48 @@
+demo-report-backfilling/.gitignore
+  s_088272d4812bff::t_d0bccfb3d02902 1-4
+demo-report-backfilling/env.sh
+  s_088272d4812bff::t_a3e285a3a37f86 6
+  s_088272d4812bff::t_96112bfdf706f2 3-5
+  s_088272d4812bff::t_789e1f95fe19da 7-9
+  s_088272d4812bff::t_53ee983e3cf0bc 1-2,10-31
+demo-report-backfilling/case-downtime.sh
+  s_088272d4812bff::t_441fc4ffd2fe75 1-30
+demo-report-backfilling/case-skipped-first-report.sh
+  s_088272d4812bff::t_3a5e62ae4bf446 1-31
+demo-report-backfilling/force-report-now.sh
+  s_088272d4812bff::t_64571616b97721 1-22
+demo-report-backfilling/seed-insights.sh
+  s_088272d4812bff::t_17b9e888513b4c 1-80
+demo-report-backfilling/setup-instance.sh
+  s_088272d4812bff::t_9d10f191c91311 1-14
+demo-report-backfilling/show-insights.sh
+  s_088272d4812bff::t_32e5edfeb284f0 1-37
+demo-report-backfilling/show-n8n-reports.sh
+  s_088272d4812bff::t_45d83ce4551e6a 1-13
+demo-report-backfilling/show-receiver.sh
+  s_088272d4812bff::t_3976c5e9532018 1-27
+demo-report-backfilling/start-n8n.sh
+  s_088272d4812bff::t_711672566b04f9 1-19
+demo-report-backfilling/start-receiver.sh
+  s_088272d4812bff::t_9d7f17738e915b 1-15
+demo-report-backfilling/README.md
+  s_088272d4812bff::t_20fe41029b59ef 1-135
+demo-report-backfilling/demo-workflow.json
+  s_088272d4812bff::t_bb92484b1eb58d 1-29
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "f3f9261b6a29d68085017b94a3d0d6b8e44bff91",
+  "prompts": {},
+  "sessions": {
+    "s_088272d4812bff": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a800ddce-ab93-44ed-88ed-2e1a905df5e0",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  }
+}

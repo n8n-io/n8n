@@ -1,0 +1,25 @@
+packages/core/src/execution-engine/partial-execution-utils/rewire-graph.ts
+  s_6c11961446ba1c::t_7bfeb33237875e 6-45,52,54-55
+packages/core/src/execution-engine/partial-execution-utils/__tests__/rewire-graph.test.ts
+  s_6c11961446ba1c::t_b27163dc8937ad 1,231-254,257-264
+  ai_agent 255-256
+  s_6c11961446ba1c::t_580325bc616f27 230
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-step-run.test.ts
+  s_6c11961446ba1c::t_84cab2a40fc1bc 491-546
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "055b326f1fda4faff5848ff19d4409b8e8d2122c",
+  "prompts": {},
+  "sessions": {
+    "s_6c11961446ba1c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1b890a66-1c01-4bb2-a8b5-a997e8ac5204",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

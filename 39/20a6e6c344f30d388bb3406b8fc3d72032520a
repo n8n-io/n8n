@@ -1,0 +1,38 @@
+packages/cli/src/commands/__tests__/webhook.test.ts
+  s_c1b900abc49f1b::t_4823bbfe5ce9a2 93,98,100
+packages/cli/src/commands/worker.ts
+  s_c1b900abc49f1b::t_ac651c012a6cdf 231
+packages/cli/src/scheduling/system-tasks/__tests__/system-task-runner.test.ts
+  s_c1b900abc49f1b::t_e02653ac9ea1a9 1255-1256,1260,1267
+  s_c1b900abc49f1b::t_4823bbfe5ce9a2 25,474,477-478,483-484,488-490,897,907,1263,1278,1286,1365,1399,1444
+packages/cli/src/scheduling/system-tasks/system-task-runner.ts
+  s_c1b900abc49f1b::t_ac651c012a6cdf 125-134,136,138-141,158-160,165-167,171,257,324,480
+  h_32d8cd6a0d6aad 137,146,152-154
+packages/cli/src/commands/webhook.ts
+  s_c1b900abc49f1b::t_ac651c012a6cdf 109
+packages/cli/src/commands/start.ts
+  s_c1b900abc49f1b::t_ac651c012a6cdf 436
+packages/cli/src/commands/__tests__/worker.test.ts
+  s_c1b900abc49f1b::t_4823bbfe5ce9a2 323,328,330,334,337
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "3920a6e6c344f30d388bb3406b8fc3d72032520a",
+  "prompts": {},
+  "humans": {
+    "h_32d8cd6a0d6aad": {
+      "author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_c1b900abc49f1b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bf789242-fe85-465b-ab28-b6487acb7db0",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}
