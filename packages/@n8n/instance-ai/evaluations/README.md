@@ -585,6 +585,14 @@ format that LangTracer exports. The tags give the expected route:
   one. The bucket always passes, except `bucket:clarify`: a clarify case must
   list the questions that pass, for example `accepts:clarify:open`.
 
+A case can add a second user turn with only `[stage directions]`: the facts
+that a user proxy uses to answer a question, for example
+`[Customers message the shop all day and want answers.]`. The proxy answers
+one accepted question, and the trial passes only on the route after the
+answer. A second question fails. `after:<route>` gives the routes that pass
+after the answer. Without it, the accepted routes that are not questions pass.
+A `bucket:clarify` case with stage directions needs an `after:<route>` tag.
+
 A case can start with state. The stub instance and the thread then hold it
 before the turn:
 
