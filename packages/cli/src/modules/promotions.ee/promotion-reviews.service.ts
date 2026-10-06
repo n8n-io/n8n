@@ -19,15 +19,18 @@ import { BadRequestError, ConflictError, NotFoundError } from '@n8n/errors';
 import { PACKAGE_ENTITY_LAYOUT } from '@/modules/n8n-packages/io/manifest-entry';
 
 import { PACKAGE_SUBFOLDER } from './constants';
-import type { PromotionRun } from './database/entities/promotion-run.entity';
+import type { PromotionReview } from './database/entities/promotion-review.entity';
 import {
-	PromotionRunRepository,
-	type PromotionRunStateSync,
-} from './database/repositories/promotion-run.repository';
+	PromotionReviewRepository,
+	type PromotionReviewStateSync,
+} from './database/repositories/promotion-review.repository';
 import type { GitHostAccess } from './git-hosts/git-host.types';
 import {
 	GitLabMergeRequestClient,
+	parseGitLabReviewId,
+	toGitLabReviewId,
 	type GitLabMergeRequest,
+	type MergeRequestRef,
 } from './git-hosts/gitlab-merge-request.client';
 import { PromotionConfigResolver } from './promotion-config.resolver';
 import { PromotionProvidersService } from './promotion-providers.service';
@@ -39,18 +42,25 @@ import type { PromotionOperationInput } from './promotions.types';
 /** A workflow file in the package tree at one commit. */
 type WorkflowFile = { workflowId: string; path: string; blobSha: string; projectId: string | null };
 
+/**
+ * Merge requests read from the host, by review id. A `null` value means the
+ * host answered but does not know the merge request. A missing key means the
+ * host could not be asked.
+ */
+type MergeRequestsById = Map<string, GitLabMergeRequest | null>;
+
 const WORKFLOW_PATHSPEC = `${PACKAGE_SUBFOLDER}/`;
 
 /**
  * Promotion Reviews on top of GitLab merge requests. Opens the merge request
- * after a branched Promote, mirrors its state into `promotion_run`, and reads the
- * diff from the promote config's checkout. GitLab is authoritative while a run is
- * open; the row is authoritative once the run is terminal.
+ * after a branched Promote, keeps `promotion_review` to what n8n alone knows,
+ * and reads title, URL, conflicts and the merged baseline from GitLab. GitLab is
+ * authoritative while a review is open; the row is authoritative once terminal.
  */
 @Service()
 export class PromotionReviewsService {
 	constructor(
-		private readonly runRepository: PromotionRunRepository,
+		private readonly reviewRepository: PromotionReviewRepository,
 		private readonly providersService: PromotionProvidersService,
 		private readonly resolver: PromotionConfigResolver,
 		private readonly workingDirectory: PromotionWorkingDirectoryService,
@@ -65,14 +75,14 @@ export class PromotionReviewsService {
 	// -- Promote hook ---------------------------------------------------------
 
 	/**
-	 * Opens the merge request for a pushed promotion branch and records the run.
+	 * Opens the merge request for a pushed promotion branch and records the review.
 	 * The push already succeeded, so a failure here is a warning for the caller,
 	 * not an error: the admin can open the merge request on GitLab by hand.
 	 */
 	async openMergeRequest(
 		input: PromotionOperationInput,
 		actor: User,
-		run: { branchName: string; commitSha: string; title: string; projectId: string | null },
+		push: { branchName: string; commitSha: string; title: string },
 	): Promise<{ mergeRequest?: PromotionMergeRequestResult; warnings: string[] }> {
 		if (input.providerType !== 'gitlab') return { warnings: [] };
 
@@ -83,37 +93,36 @@ export class PromotionReviewsService {
 			projectPath = gitlabProjectPath(repositoryUrl(input), access.baseUrl);
 		} catch (error) {
 			this.logger.warn('Could not prepare the GitLab merge request call', { error });
-			return { warnings: [mergeRequestWarning(run.branchName, error)] };
+			return { warnings: [mergeRequestWarning(push.branchName, error)] };
 		}
 
 		let mergeRequest: GitLabMergeRequest;
 		try {
 			mergeRequest = await this.mergeRequests.createMergeRequest(access, {
 				projectPath,
-				sourceBranch: run.branchName,
+				sourceBranch: push.branchName,
 				targetBranch: checkoutBranchName(input.config),
-				title: run.title,
-				description: mergeRequestDescription(actor, run.commitSha),
+				title: push.title,
+				description: mergeRequestDescription(actor, push.commitSha),
 			});
 		} catch (error) {
 			this.logger.warn('Could not open the GitLab merge request', { error });
-			return { warnings: [mergeRequestWarning(run.branchName, error)] };
+			return { warnings: [mergeRequestWarning(push.branchName, error)] };
 		}
 
-		const row = await this.runRepository.insertRun({
+		const row = await this.reviewRepository.insertReview({
 			connectionId: input.connectionId,
-			projectId: run.projectId,
 			createdById: actor.id,
-			branchName: run.branchName,
-			commitSha: run.commitSha,
-			title: run.title,
-			gitlabProjectId: mergeRequest.project_id,
-			mergeRequestIid: mergeRequest.iid,
-			webUrl: mergeRequest.web_url,
+			branchName: push.branchName,
+			commitSha: push.commitSha,
+			remoteReviewId: toGitLabReviewId({
+				projectId: mergeRequest.project_id,
+				iid: mergeRequest.iid,
+			}),
 		});
 
 		return {
-			mergeRequest: { runId: row.id, iid: mergeRequest.iid, webUrl: mergeRequest.web_url },
+			mergeRequest: { reviewId: row.id, iid: mergeRequest.iid, webUrl: mergeRequest.web_url },
 			warnings: [],
 		};
 	}
@@ -123,29 +132,43 @@ export class PromotionReviewsService {
 	async list(query: ListPromotionReviewsQueryDto): Promise<PromotionReviewListPublicDto> {
 		// Open rows mirror GitLab. Refresh them so the tabs are right, but never let
 		// an unreachable host hide the inbox.
-		await this.refreshOpenRuns().catch((error: unknown) => {
-			this.logger.warn('Could not refresh open promotion runs', { error });
+		const refreshed = await this.refreshOpenReviews().catch((error: unknown) => {
+			this.logger.warn('Could not refresh open promotion reviews', { error });
+			return new Map() as MergeRequestsById;
 		});
 
-		const { count, data } = await this.runRepository.listRuns({
+		const { count, data } = await this.reviewRepository.listReviews({
 			tab: query.tab,
 			skip: query.skip ?? 0,
 			take: query.take ?? 50,
 		});
-		return { count, data: data.map((run) => this.toSummary(run)) };
+
+		// Title and URL live on the host. Read the rows the refresh did not cover.
+		const missing = data.filter((review) => !refreshed.has(review.id));
+		const read = await this.readMergeRequests(missing);
+		return {
+			count,
+			data: data.map((review) =>
+				this.toSummary(review, refreshed.get(review.id) ?? read.get(review.id) ?? null),
+			),
+		};
 	}
 
-	async getDetail(runId: string): Promise<PromotionReviewDetailDto> {
-		const run = await this.getRun(runId);
+	async getDetail(reviewId: string): Promise<PromotionReviewDetailDto> {
+		const review = await this.getReview(reviewId);
 		const warnings: string[] = [];
 
-		const mergeRequest = await this.readMergeRequest(run, warnings);
-		if (mergeRequest) await this.applyMergeRequestState(run, mergeRequest);
+		const mergeRequest = await this.readMergeRequest(review, warnings);
+		if (mergeRequest) await this.applyMergeRequestState(review, mergeRequest);
 
-		const { workflows, baselineCommitSha } = await this.readWorkflowChanges(run, warnings);
+		const { workflows, baselineCommitSha } = await this.readWorkflowChanges(
+			review,
+			frozenBaseline(review, mergeRequest),
+			warnings,
+		);
 
 		return {
-			...this.toSummary(run),
+			...this.toSummary(review, mergeRequest),
 			mergeRequest: mergeRequest
 				? {
 						description: mergeRequest.description,
@@ -163,14 +186,23 @@ export class PromotionReviewsService {
 	}
 
 	async getWorkflowDiff(
-		runId: string,
+		reviewId: string,
 		workflowId: string,
 	): Promise<PromotionReviewWorkflowDiffDto> {
-		const run = await this.getRun(runId);
-		const trees = await this.readTrees(run);
+		const review = await this.getReview(reviewId);
+		// A terminal review has no merge base to compute: the branch is merged or
+		// gone. Only the host still knows the baseline it was reviewed against.
+		const mergeRequest = review.state === 'open' ? null : await this.readMergeRequest(review, []);
+		const frozen = frozenBaseline(review, mergeRequest);
+		if (frozen === undefined) {
+			throw new BadRequestError(
+				'GitLab did not report the reviewed baseline. The diff cannot be read.',
+			);
+		}
+		const trees = await this.readTrees(review, frozen);
 		if (!trees) {
 			throw new BadRequestError(
-				'The connection of this promotion run is gone. The diff cannot be read.',
+				'The connection of this promotion review is gone. The diff cannot be read.',
 			);
 		}
 
@@ -179,7 +211,7 @@ export class PromotionReviewsService {
 		if (!headFile && !baseFile) throw new NotFoundError('Workflow not found in this promotion');
 
 		const [head, base] = await Promise.all([
-			headFile ? this.readWorkflowJson(trees.input, run.commitSha, headFile.path) : null,
+			headFile ? this.readWorkflowJson(trees.input, review.commitSha, headFile.path) : null,
 			baseFile && trees.baselineCommitSha
 				? this.readWorkflowJson(trees.input, trees.baselineCommitSha, baseFile.path)
 				: null,
@@ -188,7 +220,7 @@ export class PromotionReviewsService {
 		return {
 			workflowId,
 			baselineCommitSha: trees.baselineCommitSha,
-			headCommitSha: run.commitSha,
+			headCommitSha: review.commitSha,
 			base,
 			head,
 		};
@@ -199,22 +231,22 @@ export class PromotionReviewsService {
 	/**
 	 * Approves in n8n, then merges on GitLab as the bot user. The note records the
 	 * n8n user, because GitLab only sees the token. The row is claimed first, so
-	 * two admins cannot merge the same run at once.
+	 * two admins cannot merge the same review at once.
 	 */
-	async approve(runId: string, actor: User): Promise<PromotionReviewDetailDto> {
-		const run = await this.getRun(runId);
-		const context = await this.hostContext(run);
+	async approve(reviewId: string, actor: User): Promise<PromotionReviewDetailDto> {
+		const review = await this.getReview(reviewId);
+		const context = await this.hostContext(review);
 		if (!context) {
 			throw new BadRequestError(
-				'The connection of this promotion run is gone. Nothing can be merged.',
+				'The connection of this promotion review is gone. Nothing can be merged.',
 			);
 		}
 
 		// Read the live state first: the row may lag behind GitLab.
 		const current = await this.mergeRequests.getMergeRequest(context.access, context.ref);
-		await this.applyMergeRequestState(run, current);
-		if (run.state !== 'open') {
-			throw new ConflictError(`This promotion run is already ${run.state}.`);
+		await this.applyMergeRequestState(review, current);
+		if (review.state !== 'open') {
+			throw new ConflictError(`This promotion review is already ${review.state}.`);
 		}
 		if (current.has_conflicts) {
 			throw new ConflictError(
@@ -222,8 +254,8 @@ export class PromotionReviewsService {
 			);
 		}
 
-		if (!(await this.runRepository.claimApproval(run.id, actor.id))) {
-			throw new ConflictError('Another user is approving this promotion run.');
+		if (!(await this.reviewRepository.claimApproval(review.id, actor.id))) {
+			throw new ConflictError('Another user is approving this promotion review.');
 		}
 
 		try {
@@ -234,125 +266,139 @@ export class PromotionReviewsService {
 				// Approval rules are a GitLab concern. The merge below decides whether they block.
 				this.logger.info('GitLab did not accept the approval from the bot user', { error });
 			}
-			const merged = await this.mergeRequests.merge(context.access, context.ref, run.commitSha);
-			await this.applyMergeRequestState(run, merged);
+			const merged = await this.mergeRequests.merge(context.access, context.ref, review.commitSha);
+			await this.applyMergeRequestState(review, merged);
 		} catch (error) {
-			await this.runRepository.releaseApproval(run.id);
+			await this.reviewRepository.releaseApproval(review.id);
 			throw error;
 		}
 
-		return await this.getDetail(run.id);
+		return await this.getDetail(review.id);
 	}
 
 	// -- State sync -----------------------------------------------------------
 
-	/** Reads every open row from GitLab, one call for each GitLab project. */
-	private async refreshOpenRuns(): Promise<void> {
-		const openRuns = await this.runRepository.findOpenRuns();
-		if (openRuns.length === 0) return;
-
-		const groups = new Map<string, PromotionRun[]>();
-		for (const run of openRuns) {
-			if (!run.connectionId) {
-				await this.markUnavailable(run);
+	/** Reads every open row from GitLab and mirrors its state. Returns what it read. */
+	private async refreshOpenReviews(): Promise<MergeRequestsById> {
+		const openReviews = await this.reviewRepository.findOpenReviews();
+		const read = await this.readMergeRequests(openReviews);
+		for (const review of openReviews) {
+			if (!review.connectionId) {
+				await this.markUnavailable(review);
 				continue;
 			}
-			const key = `${run.connectionId}:${run.gitlabProjectId}`;
-			groups.set(key, [...(groups.get(key) ?? []), run]);
+			const mergeRequest = read.get(review.id);
+			if (mergeRequest) await this.applyMergeRequestState(review, mergeRequest);
+			else if (mergeRequest === null) await this.markUnavailable(review);
+		}
+		return read;
+	}
+
+	/** One GitLab call for each project. Rows whose host cannot be asked are left out. */
+	private async readMergeRequests(reviews: PromotionReview[]): Promise<MergeRequestsById> {
+		const read: MergeRequestsById = new Map();
+		type Entry = { review: PromotionReview; ref: MergeRequestRef };
+		const groups = new Map<string, { providerId: string; entries: Entry[] }>();
+		for (const review of reviews) {
+			if (!review.connection) continue;
+			let ref: MergeRequestRef;
+			try {
+				ref = parseGitLabReviewId(review.remoteReviewId);
+			} catch {
+				this.logger.warn('Promotion review references an unknown host', { reviewId: review.id });
+				continue;
+			}
+			const { providerId } = review.connection;
+			const key = `${providerId}:${ref.projectId}`;
+			const group = groups.get(key) ?? { providerId, entries: [] };
+			group.entries.push({ review, ref });
+			groups.set(key, group);
 		}
 
-		for (const runs of groups.values()) {
-			const context = await this.hostContext(runs[0]);
-			if (!context) continue;
+		for (const { providerId, entries } of groups.values()) {
+			const { review, ref } = entries[0];
 			let mergeRequests: GitLabMergeRequest[];
 			try {
+				const access = await this.providersService.hostAccessFor(providerId);
 				mergeRequests = await this.mergeRequests.listMergeRequests(
-					context.access,
-					runs[0].gitlabProjectId,
-					runs.map((run) => run.mergeRequestIid),
+					access,
+					ref.projectId,
+					entries.map((entry) => entry.ref.iid),
 				);
 			} catch (error) {
-				this.logger.warn('Could not refresh promotion runs from GitLab', {
-					connectionId: runs[0].connectionId,
+				this.logger.warn('Could not read promotion reviews from GitLab', {
+					connectionId: review.connectionId,
 					error,
 				});
 				continue;
 			}
 			const byIid = new Map(mergeRequests.map((mr) => [mr.iid, mr]));
-			for (const run of runs) {
-				const mergeRequest = byIid.get(run.mergeRequestIid);
-				if (mergeRequest) await this.applyMergeRequestState(run, mergeRequest);
-				else await this.markUnavailable(run);
-			}
+			for (const entry of entries) read.set(entry.review.id, byIid.get(entry.ref.iid) ?? null);
 		}
+		return read;
 	}
 
-	/** Mirrors the merge request into the row. Terminal states freeze the baseline. */
-	private async applyMergeRequestState(run: PromotionRun, mergeRequest: GitLabMergeRequest) {
-		const sync: PromotionRunStateSync = {
-			state: toRunState(mergeRequest.state),
-			hasConflicts: mergeRequest.has_conflicts,
+	/** Mirrors the merge request state into the row. */
+	private async applyMergeRequestState(review: PromotionReview, mergeRequest: GitLabMergeRequest) {
+		const sync: PromotionReviewStateSync = {
+			state: toReviewState(mergeRequest.state),
 			mergedAt: toDate(mergeRequest.merged_at),
 			closedAt: toDate(mergeRequest.closed_at),
 		};
-		if (sync.state !== 'open' && run.baselineCommitSha === null) {
-			sync.baselineCommitSha = mergeRequest.diff_refs?.base_sha ?? null;
-		}
 		// Terminal rows are owned by n8n. GitLab cannot reopen them here.
-		if (run.state !== 'open' && sync.state === 'open') return;
+		if (review.state !== 'open' && sync.state === 'open') return;
 
-		await this.runRepository.recordSync(run.id, sync);
-		Object.assign(run, sync, { lastSyncedAt: new Date() });
+		await this.reviewRepository.recordSync(review.id, sync);
+		Object.assign(review, sync);
 	}
 
 	/** The merge request or its connection is gone. The row keeps the history. */
-	private async markUnavailable(run: PromotionRun) {
-		await this.runRepository.recordSync(run.id, {
+	private async markUnavailable(review: PromotionReview) {
+		await this.reviewRepository.recordSync(review.id, {
 			state: 'unavailable',
-			hasConflicts: run.hasConflicts,
-			mergedAt: run.mergedAt,
-			closedAt: run.closedAt,
+			mergedAt: review.mergedAt,
+			closedAt: review.closedAt,
 		});
-		run.state = 'unavailable';
+		review.state = 'unavailable';
 	}
 
 	// -- Helpers --------------------------------------------------------------
 
-	private async getRun(runId: string): Promise<PromotionRun> {
-		const run = await this.runRepository.findByIdWithRelations(runId);
-		if (!run) throw new NotFoundError('Promotion run not found');
-		return run;
+	private async getReview(reviewId: string): Promise<PromotionReview> {
+		const review = await this.reviewRepository.findByIdWithRelations(reviewId);
+		if (!review) throw new NotFoundError('Promotion review not found');
+		return review;
 	}
 
-	/** Host access for a run, or null when its connection is gone. */
-	private async hostContext(run: PromotionRun) {
-		if (!run.connection) return null;
-		const access = await this.providersService.hostAccessFor(run.connection.providerId);
-		return { access, ref: { projectId: run.gitlabProjectId, iid: run.mergeRequestIid } };
+	/** Host access for a review, or null when its connection is gone. */
+	private async hostContext(review: PromotionReview) {
+		if (!review.connection) return null;
+		const access = await this.providersService.hostAccessFor(review.connection.providerId);
+		return { access, ref: parseGitLabReviewId(review.remoteReviewId) };
 	}
 
 	private async readMergeRequest(
-		run: PromotionRun,
+		review: PromotionReview,
 		warnings: string[],
 	): Promise<GitLabMergeRequest | null> {
-		const context = await this.hostContext(run);
+		const context = await this.hostContext(review);
 		if (!context) {
-			warnings.push('The connection of this promotion run was deleted.');
+			warnings.push('The connection of this promotion review was deleted.');
 			return null;
 		}
 		try {
 			return await this.mergeRequests.getMergeRequest(context.access, context.ref);
 		} catch (error) {
-			this.logger.warn('Could not read the merge request', { runId: run.id, error });
+			this.logger.warn('Could not read the merge request', { reviewId: review.id, error });
 			warnings.push('GitLab could not be reached. The state shown is the last one synced.');
 			return null;
 		}
 	}
 
 	/** The package trees at the head and the baseline, keyed by workflow id. */
-	private async readTrees(run: PromotionRun) {
-		if (!run.connectionId) return null;
-		const input = await this.resolver.resolveForConnection(run.connectionId, 'promote');
+	private async readTrees(review: PromotionReview, frozenBaselineCommitSha: string | null) {
+		if (!review.connectionId) return null;
+		const input = await this.resolver.resolveForConnection(review.connectionId, 'promote');
 		const credentials = await this.providersService.decryptCredentials({
 			authType: input.authType,
 			auth: input.encryptedAuth,
@@ -363,8 +409,8 @@ export class PromotionReviewsService {
 			paths: this.workingDirectory.paths(input.configId),
 			branchName: checkoutBranchName(input.config),
 			configId: input.configId,
-			headCommitSha: run.commitSha,
-			frozenBaselineCommitSha: run.baselineCommitSha,
+			headCommitSha: review.commitSha,
+			frozenBaselineCommitSha,
 			pathspecs: [WORKFLOW_PATHSPEC],
 		});
 		return {
@@ -376,20 +422,28 @@ export class PromotionReviewsService {
 		};
 	}
 
-	private async readWorkflowChanges(run: PromotionRun, warnings: string[]) {
+	private async readWorkflowChanges(
+		review: PromotionReview,
+		frozenBaselineCommitSha: string | null | undefined,
+		warnings: string[],
+	) {
+		if (frozenBaselineCommitSha === undefined) {
+			warnings.push('GitLab did not report the reviewed baseline. No diff is available.');
+			return { workflows: [], baselineCommitSha: null };
+		}
 		let trees: Awaited<ReturnType<typeof this.readTrees>>;
 		try {
-			trees = await this.readTrees(run);
+			trees = await this.readTrees(review, frozenBaselineCommitSha);
 		} catch (error) {
 			this.logger.warn('Could not read the promotion checkout for a review', {
-				runId: run.id,
+				reviewId: review.id,
 				error,
 			});
 			warnings.push('The local checkout could not be read. Clone the Promote direction again.');
 			return { workflows: [], baselineCommitSha: null };
 		}
 		if (!trees) {
-			warnings.push('The connection of this promotion run was deleted. No diff is available.');
+			warnings.push('The connection of this promotion review was deleted. No diff is available.');
 			return { workflows: [], baselineCommitSha: null };
 		}
 		warnings.push(...trees.warnings);
@@ -401,9 +455,9 @@ export class PromotionReviewsService {
 		}> = [];
 		for (const [workflowId, file] of trees.head) {
 			const before = trees.baseline.get(workflowId);
-			if (!before) changes.push({ file, commitSha: run.commitSha, change: 'added' });
+			if (!before) changes.push({ file, commitSha: review.commitSha, change: 'added' });
 			else if (before.blobSha !== file.blobSha) {
-				changes.push({ file, commitSha: run.commitSha, change: 'modified' });
+				changes.push({ file, commitSha: review.commitSha, change: 'modified' });
 			}
 		}
 		if (trees.baselineCommitSha) {
@@ -481,35 +535,55 @@ export class PromotionReviewsService {
 		return isRecord(parsed) ? parsed : null;
 	}
 
-	private toSummary(run: PromotionRun): PromotionReviewSummary {
+	private toSummary(
+		review: PromotionReview,
+		mergeRequest: GitLabMergeRequest | null,
+	): PromotionReviewSummary {
 		return {
-			id: run.id,
-			title: run.title,
-			state: run.state,
-			hasConflicts: run.hasConflicts,
-			branchName: run.branchName,
-			commitSha: run.commitSha,
-			webUrl: run.webUrl,
-			mergeRequestIid: run.mergeRequestIid,
-			connection: run.connection ? { id: run.connection.id, name: run.connection.name } : null,
-			projectId: run.projectId,
-			createdBy: toReviewUser(run.createdBy),
-			approvedBy: toReviewUser(run.approvedBy),
-			createdAt: run.createdAt.toISOString(),
-			approvedAt: run.approvedAt?.toISOString() ?? null,
-			mergedAt: run.mergedAt?.toISOString() ?? null,
-			closedAt: run.closedAt?.toISOString() ?? null,
-			lastSyncedAt: run.lastSyncedAt?.toISOString() ?? null,
+			id: review.id,
+			state: review.state,
+			branchName: review.branchName,
+			commitSha: review.commitSha,
+			remoteReviewId: review.remoteReviewId,
+			connection: review.connection
+				? { id: review.connection.id, name: review.connection.name }
+				: null,
+			createdBy: toReviewUser(review.createdBy),
+			approvedBy: toReviewUser(review.approvedBy),
+			createdAt: review.createdAt.toISOString(),
+			approvedAt: review.approvedAt?.toISOString() ?? null,
+			mergedAt: review.mergedAt?.toISOString() ?? null,
+			closedAt: review.closedAt?.toISOString() ?? null,
+			remote: mergeRequest
+				? {
+						title: mergeRequest.title,
+						webUrl: mergeRequest.web_url,
+						hasConflicts: mergeRequest.has_conflicts,
+					}
+				: null,
 		};
 	}
 }
 
 // -- Pure helpers -------------------------------------------------------------
 
-function toRunState(state: GitLabMergeRequest['state']): PromotionRun['state'] {
+function toReviewState(state: GitLabMergeRequest['state']): PromotionReview['state'] {
 	if (state === 'merged') return 'merged';
 	if (state === 'closed') return 'closed';
 	return 'open';
+}
+
+/**
+ * The baseline the checkout must diff against. `null` while the review is open:
+ * the merge base is computed at read time. A terminal review takes the base the
+ * host reviewed against; `undefined` when the host did not report one.
+ */
+function frozenBaseline(
+	review: PromotionReview,
+	mergeRequest: GitLabMergeRequest | null,
+): string | null | undefined {
+	if (review.state === 'open') return null;
+	return mergeRequest?.diff_refs?.base_sha ?? undefined;
 }
 
 function toDate(value: string | null | undefined): Date | null {

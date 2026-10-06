@@ -25,7 +25,7 @@ import {
 	type CollapsibleReviewInboxSection,
 } from '../composables/useReviewInboxSectionCollapse';
 import type { ReviewInboxSectionKey } from '../reviewInbox.store';
-import { toPromotionReviewRouteId } from '../promotionReviews.store';
+import { promotionReviewTitle, toPromotionReviewRouteId } from '../promotionReviews.store';
 import PromotionReviewStateDot from './PromotionReviewStateDot.vue';
 
 /** One independently paginated list, flattened from its store slice. */
@@ -288,7 +288,7 @@ function onListBackgroundClick() {
 							<div :class="$style.cardContent">
 								<div :class="$style.cardHeader">
 									<N8nText bold tag="h3" :class="$style.cardTitle">
-										{{ row.item.title }}
+										{{ row.kind === 'promotion' ? promotionReviewTitle(row.item) : row.item.title }}
 									</N8nText>
 									<WorkflowReviewStatusDot
 										v-if="row.kind === 'workflow'"

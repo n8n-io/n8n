@@ -42,39 +42,44 @@ entity, controller, FE section), so rebases stay cheap. Building on it tests
 whether the provider boundary fits MR operations, which feeds back into
 LIGO-1063.
 
-### 3. The entity is `promotion_run`, not `promotion_review` — Decided
+### 3. The entity is `promotion_review`, minimal and host-neutral — Decided (revised)
 
 A Promotion Run is one execution of Promote. The Promotion Review is the gate
-on it (the MR, in the POC). See the glossary.
+on it (the MR, in the POC). The table is named after the gate, because that is
+the row n8n keeps: a row exists if and only if a review was opened on a host.
 
-The POC takes the v1 shape of the table. Revised after E6/E7: the first cut
-had no status column and derived everything from GitLab on load. That cannot
-serve the Open and Closed tabs (decision 11) without one GitLab call per run
-ever made, and it loses history when the MR or the connection is deleted.
+The first POC cut took a wide "v1 shape" (`promotion_run` with GitLab ids,
+title, URL, conflict flag, frozen baseline, sync timestamp, project id). It
+was cut back on 2026-10-06: the table must stay generic so GitHub and
+Bitbucket fit later without a migration of host-specific columns, and v1 may
+still reshape it. The row now holds only what n8n alone knows, one opaque host
+reference, and the review state.
 
-**Rule:** GitLab is authoritative while a run is open; n8n is authoritative
-once the run is terminal. `merged` and `closed` never change in GitLab, so a
-terminal row is never re-read. Only open rows are refreshed.
+**Rule:** the host is authoritative while a review is open; n8n is
+authoritative once the review is terminal. `merged` and `closed` never change
+on the host, so a terminal row is never re-synced. Only open rows are refreshed.
 
 | group | columns | why |
 |---|---|---|
-| identity | `id`, `connectionId` (FK, **SET NULL**), `projectId` (nullable), `createdById` (SET NULL), `createdAt` | row survives connection deletion; project-scoped promote; requester |
-| the run | `branchName`, `commitSha`, `title` | n8n facts known at promote time |
-| the review ref | `gitlabProjectId`, `mergeRequestIid`, `webUrl` | re-find the MR; link even when GitLab is unreachable |
-| state cache | `state` (`open`, `merged`, `closed`, `unavailable`), `hasConflicts`, `lastSyncedAt`, `mergedAt`, `closedAt` | tabs and sorting from the DB; refresh only while `open` |
-| n8n audit | `approvedById`, `approvedAt` | who clicked Approve in n8n; GitLab only sees the bot |
+| identity | `id`, `createdAt`, `connectionId` (FK, **SET NULL**), `createdById` (SET NULL) | row survives connection deletion; requester |
+| the push | `branchName`, `commitSha` | n8n facts known at promote time; the diff head and the merge SHA check |
+| the review ref | `remoteReviewId` (varchar) | opaque, parsed by the host client; `gitlab:<projectId>!<iid>` now, `github:<owner>/<repo>#<n>` and `bitbucket:<workspace>/<slug>#<n>` later. The prefix picks the client. |
+| state | `state` (`open`, `merged`, `closed`, `unavailable`), `mergedAt`, `closedAt` | tabs, sorting and dates from the DB without a host call |
+| n8n audit | `approvedById`, `approvedAt` | who clicked Approve in n8n; the host only sees the bot. Also the claim against a double merge (E8) |
 
-The POC writes a row only when it opens an MR.
+Read live from the host, not stored: title, web URL, conflict flag, the base
+SHA a terminal review was diffed against. The list fetches them in one call
+per project (`iids[]=`); a row whose host did not answer renders with the
+branch name as its title and no link. No `updatedAt`: the row changes only
+through the sync and the approval, both dated by their own columns.
 
-Rejected: "ID + MR reference" alone. An MR `iid` is scoped to a GitLab
-project, and the token and base URL come from the provider, so `connectionId`
-is the minimum that lets n8n re-find the MR. Rejected: a JSON `externalRef`
-column (provider-neutral, but no FK semantics; revisit when a second host
-type exists). Rejected: derive-only with no status column (see above).
-Rejected: cache only (`state`, timestamps) and defer `projectId`,
-`commitSha`, `approvedById` to v1: five nullable columns are not worth a
-second migration, and `approvedById` is what makes the n8n review an audit
-record.
+Rejected: a JSON `reviewRef` column (same information, less greppable, no
+cheaper to migrate). Rejected: generic `remoteRepositoryId` + integer
+`remoteReviewNumber` (two columns, and Bitbucket Server would need a third).
+Rejected: integer `remoteReviewId` with the repository derived from the
+connection's remote URL (a repointed connection would orphan its reviews).
+Rejected (from the first cut): `projectId` on the row. Which project a
+promote covered is in the package tree at `commitSha`; E12 is open for v1.
 
 ### 4. Promotion Reviews are interleaved with Workflow Reviews — To be confirmed
 
@@ -112,10 +117,11 @@ in the POC. The detail view links to GitLab for everything else.
 The review lives on the Source Instance, which always has a promote Config
 and its checkout.
 
-Flow: `fetchBranch(source_branch)` and `fetchBranch(base)`,
-`git merge-base origin/<base> <head_sha>` as the Review Baseline, `ls-tree` at
-baseline and head, `diffPackageFiles`, `readFilesAtCommit` per workflow on
-click. All inside the existing per-config `lockCheckout`.
+Flow: `fetchBranch(base)`, fetch the head commit by SHA if it is not local,
+`git merge-base <head_sha> origin/<base>` as the Review Baseline, `ls-tree` at
+baseline and head, compare the trees, `readFilesAtCommit` per workflow on
+click. All inside the existing per-config `lockCheckout`. The POC compares the
+trees with its own loop, not with `diffPackageFiles`; see "Findings".
 
 Reasons:
 
@@ -138,7 +144,7 @@ Members hold no `gitConnection:*` scope (`GLOBAL_MEMBER_SCOPES`), so this is
 
 ### 8. Which MRs count, and sync — Decided
 
-A Promotion Review exists if and only if a `promotion_run` row exists. MRs a
+A Promotion Review exists if and only if a `promotion_review` row exists. MRs a
 human opens on a promotion branch are not reviews.
 
 Sync: refresh-on-read for open rows, on list and detail load, one GitLab call
@@ -166,7 +172,7 @@ unless the POC shows otherwise.
   reviewers, or labels.
 - If MR creation fails after the push: the promotion succeeds, the result
   carries `warnings: [{ code: 'merge-request-not-created', message }]`, the
-  dialog shows it with the branch name, and no `promotion_run` row is written.
+  dialog shows it with the branch name, and no `promotion_review` row is written.
 - No backlink from the MR to n8n in the POC.
 
 ### 11. Promotion Reviews use their own state vocabulary — Decided
@@ -300,11 +306,12 @@ under findings.
 
 `createdById` and `approvedById` are SET NULL. Rows show "Deleted user".
 
-### E12. Project-scoped promote — Decided
+### E12. Project-scoped promote — Open for v1
 
-`projectId` is stored (decision 3) but not used for visibility in the POC:
-instance owners and admins see every run. v1 decides whether project admins
-see their project's runs.
+The row does not record the project (decision 3, revised). Instance owners
+and admins see every review. v1 decides whether project admins see their
+project's reviews, and where that scope comes from: a column, or the package
+tree at `commitSha`.
 
 ## Findings
 
@@ -319,22 +326,48 @@ see their project's runs.
   a checkout (change preview, review diff) depends on which main serves the
   request. Pre-existing; the review diff inherits it.
 - The connection target stores only `remoteUrl`. The GitLab project path is
-  derived from `remoteUrl` minus `baseUrl` minus `.git` until an MR exists;
-  after that `gitlabProjectId` is used.
+  derived from `remoteUrl` minus `baseUrl` minus `.git` to open the MR; after
+  that the numeric project id inside `remoteReviewId` is used.
+- The review diff does not use the change-preview diff engine. Decision 6
+  planned to reuse `diffPackageFiles`; the POC did not. The two paths share
+  `PromotionsGitService` and `WorkflowDiffView`, but compare differently:
+
+  | | Change preview (`PromotionChangeService.getChanges`) | Promotion Review (`PromotionReviewsService.readWorkflowChanges`) |
+  |---|---|---|
+  | Sides | `origin/<base>` tree vs. in-memory instance export | tree at head commit vs. tree at Review Baseline |
+  | Parser | `parseBaseBranchFiles` (every entity type) | `parseWorkflowFiles` (workflow files only, own parser) |
+  | Diff | `diffPackageFiles`: added, modified, deleted, renamed, renamed-and-modified | own loop: added, modified, deleted, by blob SHA |
+  | Extra | `calculateDependencyImpact`, archive state, `buildPromotableResources` | none |
+
+  The two views can therefore disagree on what counts as a change (renames,
+  workflows affected by a credential or variable change, archived vs.
+  modified). v1 must build the review diff on `parseBaseBranchFiles` and
+  `diffPackageFiles`. Both `ls-tree` outputs parse into `PackageFile[]`, so
+  the reuse needs no new helper. `calculateDependencyImpact` can follow if
+  the review must flag dependent workflows.
+- The change preview does not know about open Promotion Reviews. It compares
+  the instance with `origin/<base>`, and an open review's commit is on
+  `n8n-promotion/<ts>`. A workflow that is already in review shows as
+  promotable until the MR is merged. A second Promote opens a second MR with
+  the same or a newer version (decision 9). v1 option: read the workflow blob
+  SHAs at each open run's `commitSha` (the commits are local) and mark the
+  row `inReview` with the run id, split into "identical to the open review"
+  and "changed since the open review". Do not fold open MR heads into the
+  baseline; two open reviews can hold different versions of one workflow.
 
 ## Build order
 
-1. Migration, `PromotionRun` entity and repository (`promotions.ee/database/`). — Done
+1. Migration, `PromotionReview` entity and repository (`promotions.ee/database/`). — Done
 2. `GitLabMergeRequestClient` next to `GitLabHostClient`: `createMergeRequest`,
    `getMergeRequest`, `listMergeRequests`, `createNote`, `approve`, `merge`.
    Unit tests mock `HttpRequestClient`. — Done
 3. Hook in `promote()` / `promoteSelectionResolved()` after `commitAndPush`:
-   create the MR, write `promotion_run`, extend `promotePackageResultSchema`
+   create the MR, write `promotion_review`, extend `promotePackageResultSchema`
    with `mergeRequest?` and `warnings`. — Done
 4. Review read model: `GET /rest/promotions/reviews?state=`,
-   `GET /rest/promotions/reviews/:runId`,
-   `GET …/reviews/:runId/workflows/:workflowId/diff`. — Done
-5. `POST /rest/promotions/reviews/:runId/approve`. — Done
+   `GET /rest/promotions/reviews/:reviewId`,
+   `GET …/reviews/:reviewId/workflows/:workflowId/diff`. — Done
+5. `POST /rest/promotions/reviews/:reviewId/approve`. — Done
 6. FE: `promotionReviews.store.ts` and api, interleave into
    `WorkflowReviewRequestsView.vue`, row kind, `PromotionReviewDetail`. — Done
 7. Manual demo against local GitLab (Docker, group access token). — Set up,
@@ -354,18 +387,22 @@ Where the code differs from the plan above:
   promote checkout, after a `git fetch origin <targetBranch>`
   (`PromotionsGitService.readReviewTrees`). The service compares blob SHAs of
   `n8n-export/projects/<project>/workflows/<slug>-<id>/workflow.json` on both
-  trees to classify `added`, `modified` and `deleted`. The frozen
-  `baselineCommitSha` on the row is the fallback when the fetch fails.
-- Approve claims the row first (`PromotionRunRepository.claimApproval`, a
+  trees to classify `added`, `modified` and `deleted`. A terminal review has
+  no merge base left to compute (the branch is merged or gone), so its
+  baseline is the `diff_refs.base_sha` GitLab reports; when GitLab does not
+  answer, the detail shows a warning and no diff.
+- Approve claims the row first (`PromotionReviewRepository.claimApproval`, a
   conditional update on `approvedById IS NULL`) and releases the claim if the
   GitLab call fails. This is the E8 guard.
-- Inbox rows carry the route id `promotion:<runId>`; Workflow Review rows keep
+- Inbox rows carry the route id `promotion:<reviewId>`; Workflow Review rows keep
   their plain id. `WorkflowReviewRequestsSidebar.vue` merges both into one
   list sorted by `createdAt`. The merge happens client side on the loaded
   pages, not on a shared cursor (follow-up for v1).
-- Open runs are synced from GitLab with one `GET /merge_requests?iids[]=`
-  per project on every inbox load (`PromotionReviewsService.list`). A 404
-  marks the run `unavailable`.
+- Open reviews are synced from GitLab with one `GET /merge_requests?iids[]=`
+  per project on every inbox load (`PromotionReviewsService.list`). A merge
+  request missing from the answer marks the review `unavailable`. The same
+  batch supplies title, URL and conflict flag for the page; terminal rows on
+  the page are read in a second batch, because they are never synced.
 
 ## Manual demo
 
@@ -419,7 +456,7 @@ curl -s -H "X-N8N-API-KEY: $(cat ~/.n8n-promotion-demo/n8n-api-key)" \
 2. Change a workflow in that project and run Promote.
 3. Expect: the promote result shows `mergeRequest.webUrl`; GitLab shows an
    open MR from `n8n-promotion/<timestamp>` to the target branch; the row in
-   `promotion_run` has `state = 'open'`.
+   `promotion_review` has `state = 'open'`.
 4. Open `/reviews`. Expect a `Promotion` row in "Waiting for review" next to
    the Workflow Reviews. Select it. Expect the MR link, branch metadata and the
    list of changed workflows with `Added`, `Modified` or `Deleted` badges.

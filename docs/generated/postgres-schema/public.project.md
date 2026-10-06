@@ -9,7 +9,7 @@
 | customTelemetryTags | json | '[]'::json | false |  |  |  |
 | description | varchar(512) |  | true |  |  |  |
 | icon | json |  | true |  |  |  |
-| id | varchar(36) |  | false | [public.activity_event](public.activity_event.md) [public.agent_chat_attachments](public.agent_chat_attachments.md) [public.agent_execution_threads](public.agent_execution_threads.md) [public.agents](public.agents.md) [public.ai_preference](public.ai_preference.md) [public.data_table](public.data_table.md) [public.folder](public.folder.md) [public.insights_metadata](public.insights_metadata.md) [public.instance_ai_threads](public.instance_ai_threads.md) [public.project_pool_settings](public.project_pool_settings.md) [public.project_relation](public.project_relation.md) [public.project_secrets_provider_access](public.project_secrets_provider_access.md) [public.promotion_connection_project](public.promotion_connection_project.md) [public.promotion_run](public.promotion_run.md) [public.role_mapping_rule_project](public.role_mapping_rule_project.md) [public.shared_credentials](public.shared_credentials.md) [public.shared_workflow](public.shared_workflow.md) [public.type_availability_policy_scope](public.type_availability_policy_scope.md) [public.variables](public.variables.md) [public.workflow_review_request](public.workflow_review_request.md) [public.workflow_suggestion](public.workflow_suggestion.md) |  |  |
+| id | varchar(36) |  | false | [public.activity_event](public.activity_event.md) [public.agent_chat_attachments](public.agent_chat_attachments.md) [public.agent_execution_threads](public.agent_execution_threads.md) [public.agents](public.agents.md) [public.ai_preference](public.ai_preference.md) [public.data_table](public.data_table.md) [public.folder](public.folder.md) [public.insights_metadata](public.insights_metadata.md) [public.instance_ai_threads](public.instance_ai_threads.md) [public.project_pool_settings](public.project_pool_settings.md) [public.project_relation](public.project_relation.md) [public.project_secrets_provider_access](public.project_secrets_provider_access.md) [public.promotion_connection_project](public.promotion_connection_project.md) [public.role_mapping_rule_project](public.role_mapping_rule_project.md) [public.shared_credentials](public.shared_credentials.md) [public.shared_workflow](public.shared_workflow.md) [public.type_availability_policy_scope](public.type_availability_policy_scope.md) [public.variables](public.variables.md) [public.workflow_review_request](public.workflow_review_request.md) [public.workflow_suggestion](public.workflow_suggestion.md) |  |  |
 | name | varchar(255) |  | false |  |  |  |
 | type | varchar(36) |  | false |  |  |  |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
@@ -52,7 +52,6 @@ erDiagram
 "public.project_relation" }o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
 "public.project_secrets_provider_access" }o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
 "public.promotion_connection_project" |o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
-"public.promotion_run" }o--o| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE SET NULL"
 "public.role_mapping_rule_project" }o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
 "public.shared_credentials" }o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
 "public.shared_workflow" }o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
@@ -219,28 +218,6 @@ erDiagram
   timestamp_3__with_time_zone createdAt
   varchar_36_ projectId FK
   timestamp_3__with_time_zone updatedAt
-}
-"public.promotion_run" {
-  timestamp_3__with_time_zone approvedAt
-  uuid approvedById FK
-  varchar_64_ baselineCommitSha
-  varchar_255_ branchName
-  timestamp_3__with_time_zone closedAt
-  varchar_64_ commitSha
-  varchar_36_ connectionId FK
-  timestamp_3__with_time_zone createdAt
-  uuid createdById FK
-  integer gitlabProjectId
-  boolean hasConflicts
-  varchar_36_ id
-  timestamp_3__with_time_zone lastSyncedAt
-  integer mergeRequestIid
-  timestamp_3__with_time_zone mergedAt
-  varchar_36_ projectId FK
-  varchar_16_ state
-  varchar_255_ title
-  timestamp_3__with_time_zone updatedAt
-  text webUrl
 }
 "public.role_mapping_rule_project" {
   varchar_36_ projectId FK

@@ -30,37 +30,37 @@ export class PromotionReviewsController {
 		return await this.reviewsService.list(query);
 	}
 
-	@Get('/:runId')
+	@Get('/:reviewId')
 	@GlobalScope('gitConnection:read')
 	@Licensed(LICENSE_FEATURES.GIT_CONNECTIONS)
 	async getDetail(
 		_req: AuthenticatedRequest,
 		_res: Response,
-		@Param('runId') runId: string,
+		@Param('reviewId') reviewId: string,
 	): Promise<PromotionReviewDetailDto> {
-		return await this.reviewsService.getDetail(runId);
+		return await this.reviewsService.getDetail(reviewId);
 	}
 
-	@Get('/:runId/workflows/:workflowId/diff')
+	@Get('/:reviewId/workflows/:workflowId/diff')
 	@GlobalScope('gitConnection:read')
 	@Licensed(LICENSE_FEATURES.GIT_CONNECTIONS)
 	async getWorkflowDiff(
 		_req: AuthenticatedRequest,
 		_res: Response,
-		@Param('runId') runId: string,
+		@Param('reviewId') reviewId: string,
 		@Param('workflowId') workflowId: string,
 	): Promise<PromotionReviewWorkflowDiffDto> {
-		return await this.reviewsService.getWorkflowDiff(runId, workflowId);
+		return await this.reviewsService.getWorkflowDiff(reviewId, workflowId);
 	}
 
-	@Post('/:runId/approve')
+	@Post('/:reviewId/approve')
 	@GlobalScope('gitConnection:push')
 	@Licensed(LICENSE_FEATURES.GIT_CONNECTIONS)
 	async approve(
 		req: AuthenticatedRequest,
 		_res: Response,
-		@Param('runId') runId: string,
+		@Param('reviewId') reviewId: string,
 	): Promise<PromotionReviewDetailDto> {
-		return await this.reviewsService.approve(runId, req.user);
+		return await this.reviewsService.approve(reviewId, req.user);
 	}
 }

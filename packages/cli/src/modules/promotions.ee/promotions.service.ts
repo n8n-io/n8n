@@ -246,7 +246,6 @@ export class PromotionsService {
 					targetBranchName,
 					commitSha,
 					title: request.commitMessage,
-					projectId: null,
 				})),
 			};
 		} finally {
@@ -261,19 +260,17 @@ export class PromotionsService {
 	private async openReview(
 		input: PromotionOperationInput,
 		actor: User,
-		run: {
+		push: {
 			targetBranchName: string | undefined;
 			commitSha: string;
 			title: string;
-			projectId: string | null;
 		},
 	): Promise<Pick<PromotePackageResultDto, 'mergeRequest' | 'warnings'>> {
-		if (!run.targetBranchName) return {};
+		if (!push.targetBranchName) return {};
 		const { mergeRequest, warnings } = await this.reviewsService.openMergeRequest(input, actor, {
-			branchName: run.targetBranchName,
-			commitSha: run.commitSha,
-			title: run.title.split('\n')[0].slice(0, 255),
-			projectId: run.projectId,
+			branchName: push.targetBranchName,
+			commitSha: push.commitSha,
+			title: push.title.split('\n')[0].slice(0, 255),
 		});
 		return {
 			...(mergeRequest && { mergeRequest }),
@@ -385,7 +382,6 @@ export class PromotionsService {
 					targetBranchName,
 					commitSha,
 					title: request.commitMessage,
-					projectId: selection.projectId,
 				})),
 			};
 		} catch (error) {

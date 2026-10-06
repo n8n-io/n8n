@@ -20,34 +20,34 @@ export async function fetchPromotionReviews(
 
 export async function fetchPromotionReviewDetail(
 	context: IRestApiContext,
-	runId: string,
+	reviewId: string,
 ): Promise<PromotionReviewDetailDto> {
 	return await makeRestApiRequest<PromotionReviewDetailDto>(
 		context,
 		'GET',
-		`/promotions/reviews/${encodeURIComponent(runId)}`,
+		`/promotions/reviews/${encodeURIComponent(reviewId)}`,
 	);
 }
 
 export async function fetchPromotionReviewWorkflowDiff(
 	context: IRestApiContext,
-	runId: string,
+	reviewId: string,
 	workflowId: string,
 ): Promise<PromotionReviewWorkflowDiffDto> {
 	return await makeRestApiRequest<PromotionReviewWorkflowDiffDto>(
 		context,
 		'GET',
-		`/promotions/reviews/${encodeURIComponent(runId)}/workflows/${encodeURIComponent(workflowId)}/diff`,
+		`/promotions/reviews/${encodeURIComponent(reviewId)}/workflows/${encodeURIComponent(workflowId)}/diff`,
 	);
 }
 
 export async function approvePromotionReview(
 	context: IRestApiContext,
-	runId: string,
+	reviewId: string,
 ): Promise<PromotionReviewDetailDto> {
 	return await makeRestApiRequest<PromotionReviewDetailDto>(
 		context,
 		'POST',
-		`/promotions/reviews/${encodeURIComponent(runId)}/approve`,
+		`/promotions/reviews/${encodeURIComponent(reviewId)}/approve`,
 	);
 }

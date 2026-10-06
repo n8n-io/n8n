@@ -41,6 +41,27 @@ export type GitLabMergeRequest = z.infer<typeof mergeRequestSchema>;
 /** Identifies one merge request on one GitLab project. */
 export type MergeRequestRef = Readonly<{ projectId: number; iid: number }>;
 
+const REVIEW_ID_PREFIX = 'gitlab:';
+const REVIEW_ID_PATTERN = /^gitlab:(\d+)!(\d+)$/;
+
+/**
+ * Encodes a merge request as the opaque `remoteReviewId` stored on a Promotion
+ * Review: `gitlab:<projectId>!<iid>`. The numeric project id is stable across
+ * repository renames. The prefix tells the GitLab client apart from later hosts.
+ */
+export function toGitLabReviewId(ref: MergeRequestRef): string {
+	return `${REVIEW_ID_PREFIX}${ref.projectId}!${ref.iid}`;
+}
+
+/** Inverse of {@link toGitLabReviewId}. Throws when the id belongs to another host. */
+export function parseGitLabReviewId(remoteReviewId: string): MergeRequestRef {
+	const match = REVIEW_ID_PATTERN.exec(remoteReviewId);
+	if (!match) {
+		throw new BadRequestError('This promotion review does not reference a GitLab merge request.');
+	}
+	return { projectId: Number(match[1]), iid: Number(match[2]) };
+}
+
 /**
  * Writes and reads merge requests through the GitLab REST API (v4) with the
  * provider's group access token. Every write happens as the token's bot user.

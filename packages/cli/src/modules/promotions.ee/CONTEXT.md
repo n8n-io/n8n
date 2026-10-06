@@ -106,8 +106,9 @@ Reviews. The POC adds Promotion Reviews next to them.
 
 - "promotion review" and "promotion run" were used for the same thing.
   Resolved: the **Promotion Run** is the event, the **Promotion Review** is the
-  gate on it. The POC entity is `promotion_run`.
+  gate on it. The POC entity is `promotion_review`: n8n keeps a row for the
+  gate, not for the event.
 - "target branch" means the **Base Branch** in n8n and GitLab's `target_branch`
   in an MR. Use **Base Branch** in n8n code and copy.
-- The POC only writes a `promotion_run` row when it opens an MR. The term still
-  covers direct pushes; the row for those comes later.
+- The POC only writes a `promotion_review` row when it opens an MR. A direct
+  push has no review and no row.

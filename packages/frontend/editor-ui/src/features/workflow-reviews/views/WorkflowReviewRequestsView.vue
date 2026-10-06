@@ -31,6 +31,7 @@ import { REVIEW_INBOX_QUERY_PARAM, WORKFLOW_REVIEW_REQUESTS_VIEW } from '../cons
 import {
 	fromPromotionReviewRouteId,
 	isPromotionReviewId,
+	promotionReviewTitle,
 	usePromotionReviewsStore,
 } from '../promotionReviews.store';
 import { useReviewActivityStore } from '../reviewActivity.store';
@@ -121,14 +122,14 @@ function firstParam(value: string | string[] | undefined): string | null {
 }
 
 const selectedReviewId = computed(() => firstParam(route.params.reviewRequestId));
-const selectedPromotionRunId = computed(() =>
+const selectedPromotionId = computed(() =>
 	isPromotionRoute(selectedReviewId.value)
 		? fromPromotionReviewRouteId(selectedReviewId.value)
 		: null,
 );
 const selectedPromotion = computed(() =>
-	selectedPromotionRunId.value
-		? (promotionStore.detail ?? promotionStore.findItemById(selectedPromotionRunId.value))
+	selectedPromotionId.value
+		? (promotionStore.detail ?? promotionStore.findItemById(selectedPromotionId.value))
 		: null,
 );
 
@@ -154,7 +155,7 @@ promotionStore.reset();
 store.activeTab = stateFromQuery(route.query[REVIEW_INBOX_QUERY_PARAM.state]);
 
 const selectedListItem = computed(() =>
-	selectedReviewId.value && !selectedPromotionRunId.value
+	selectedReviewId.value && !selectedPromotionId.value
 		? store.findItemById(selectedReviewId.value)
 		: null,
 );
@@ -373,23 +374,23 @@ const approving = ref(false);
  * Approve merges on GitLab, which removes the row from the open list. Follow it
  * to the closed tab like a decided Workflow Review, so the detail stays selected.
  */
-async function onApprovePromotion(runId: string) {
+async function onApprovePromotion(reviewId: string) {
 	approving.value = true;
 	try {
-		await promotionStore.approve(runId);
+		await promotionStore.approve(reviewId);
 		if (!isMounted) return;
 		showMessage({
 			type: 'success',
 			title: i18n.baseText('promotionReviews.approve.success.title'),
 			message: i18n.baseText('promotionReviews.approve.success.message'),
 		});
-		if (selectedPromotionRunId.value === runId) followClosedReview(selectedReviewId.value ?? '');
+		if (selectedPromotionId.value === reviewId) followClosedReview(selectedReviewId.value ?? '');
 		void promotionStore.fetchTab('closed');
 	} catch (error) {
 		if (!isMounted) return;
 		showError(error, i18n.baseText('promotionReviews.approve.error.title'));
 		// A 409 means the state moved on GitLab. Refetch, so the button reflects it.
-		void promotionStore.fetchDetail(runId).catch(handleLoadError);
+		void promotionStore.fetchDetail(reviewId).catch(handleLoadError);
 		void promotionStore.fetchTab(activeTab.value);
 	} finally {
 		approving.value = false;
@@ -397,8 +398,8 @@ async function onApprovePromotion(runId: string) {
 }
 
 async function loadPromotionDiff(workflowId: string) {
-	if (!selectedPromotionRunId.value) throw new Error('No promotion review selected');
-	return await promotionStore.fetchWorkflowDiff(selectedPromotionRunId.value, workflowId);
+	if (!selectedPromotionId.value) throw new Error('No promotion review selected');
+	return await promotionStore.fetchWorkflowDiff(selectedPromotionId.value, workflowId);
 }
 
 onMounted(() => {
@@ -450,7 +451,7 @@ onUnmounted(() => {
 					>
 						<PromotionReviewStateDot :state="selectedPromotion.state" />
 						<N8nHeading bold tag="h2" size="xlarge" data-test-id="promotion-review-title">
-							{{ selectedPromotion.title }}
+							{{ promotionReviewTitle(selectedPromotion) }}
 						</N8nHeading>
 					</div>
 					<div
@@ -470,7 +471,7 @@ onUnmounted(() => {
 
 				<div :class="$style.mainBody">
 					<div
-						v-if="selectedPromotionRunId && promotionStore.detailNotFound"
+						v-if="selectedPromotionId && promotionStore.detailNotFound"
 						:class="$style.emptyStateWrapper"
 						data-test-id="promotion-review-detail-not-found"
 					>
@@ -482,17 +483,17 @@ onUnmounted(() => {
 						/>
 					</div>
 					<div
-						v-else-if="selectedPromotionRunId && promotionStore.detailLoading && !selectedPromotion"
+						v-else-if="selectedPromotionId && promotionStore.detailLoading && !selectedPromotion"
 						:class="$style.detailSkeleton"
 					>
 						<N8nLoading :loading="true" :rows="3" />
 					</div>
 					<PromotionReviewDetail
-						v-else-if="selectedPromotionRunId && selectedPromotion"
+						v-else-if="selectedPromotionId && selectedPromotion"
 						:review="selectedPromotion"
 						:approving="approving"
 						:load-diff="loadPromotionDiff"
-						@approve="onApprovePromotion(selectedPromotionRunId)"
+						@approve="onApprovePromotion(selectedPromotionId)"
 					/>
 					<div
 						v-else-if="selectedReviewId && detailNotFound"

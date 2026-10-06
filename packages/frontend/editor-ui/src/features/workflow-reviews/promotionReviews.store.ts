@@ -24,12 +24,17 @@ export function isPromotionReviewId(id: string | null): id is string {
 	return id !== null && id.startsWith(PROMOTION_REVIEW_ID_PREFIX);
 }
 
-export function toPromotionReviewRouteId(runId: string): string {
-	return `${PROMOTION_REVIEW_ID_PREFIX}${runId}`;
+export function toPromotionReviewRouteId(reviewId: string): string {
+	return `${PROMOTION_REVIEW_ID_PREFIX}${reviewId}`;
 }
 
 export function fromPromotionReviewRouteId(id: string): string {
 	return id.slice(PROMOTION_REVIEW_ID_PREFIX.length);
+}
+
+/** The title lives on the Git host. The branch name stands in when the host did not answer. */
+export function promotionReviewTitle(review: PromotionReviewSummary): string {
+	return review.remote?.title ?? review.branchName;
 }
 
 const PAGE_SIZE = 50;
@@ -81,24 +86,24 @@ export const usePromotionReviewsStore = defineStore('promotionReviews', () => {
 		}
 	}
 
-	function findItemById(runId: string): PromotionReviewSummary | null {
+	function findItemById(reviewId: string): PromotionReviewSummary | null {
 		return (
-			items.value.open.find((item) => item.id === runId) ??
-			items.value.closed.find((item) => item.id === runId) ??
+			items.value.open.find((item) => item.id === reviewId) ??
+			items.value.closed.find((item) => item.id === reviewId) ??
 			null
 		);
 	}
 
-	async function fetchDetail(runId: string) {
+	async function fetchDetail(reviewId: string) {
 		const seq = ++detailRequestSeq;
-		if (detail.value?.id !== runId) {
+		if (detail.value?.id !== reviewId) {
 			detail.value = null;
 			diffs.value = {};
 			detailLoading.value = true;
 			detailNotFound.value = false;
 		}
 		try {
-			const response = await fetchPromotionReviewDetail(rootStore.restApiContext, runId);
+			const response = await fetchPromotionReviewDetail(rootStore.restApiContext, reviewId);
 			if (seq !== detailRequestSeq) return;
 			detail.value = response;
 			detailNotFound.value = false;
@@ -114,12 +119,12 @@ export const usePromotionReviewsStore = defineStore('promotionReviews', () => {
 		}
 	}
 
-	async function fetchWorkflowDiff(runId: string, workflowId: string) {
-		const key = `${runId}:${workflowId}`;
+	async function fetchWorkflowDiff(reviewId: string, workflowId: string) {
+		const key = `${reviewId}:${workflowId}`;
 		if (diffs.value[key]) return diffs.value[key];
 		const diff = await fetchPromotionReviewWorkflowDiff(
 			rootStore.restApiContext,
-			runId,
+			reviewId,
 			workflowId,
 		);
 		diffs.value[key] = diff;
@@ -127,10 +132,10 @@ export const usePromotionReviewsStore = defineStore('promotionReviews', () => {
 	}
 
 	/** Approves and merges. The detail and both lists are refreshed from the response. */
-	async function approve(runId: string) {
-		const response = await approvePromotionReview(rootStore.restApiContext, runId);
+	async function approve(reviewId: string) {
+		const response = await approvePromotionReview(rootStore.restApiContext, reviewId);
 		detail.value = response;
-		items.value.open = items.value.open.filter((item) => item.id !== runId);
+		items.value.open = items.value.open.filter((item) => item.id !== reviewId);
 		if (counts.value.open !== null) counts.value.open = Math.max(0, counts.value.open - 1);
 		if (counts.value.closed !== null) counts.value.closed += 1;
 		return response;

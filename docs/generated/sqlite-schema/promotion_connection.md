@@ -16,7 +16,7 @@ CREATE TABLE "promotion_connection" ("id" varchar(36) PRIMARY KEY NOT NULL, "nam
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
 | createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
-| id | varchar(36) |  | false | [promotion_config](promotion_config.md) [promotion_connection_project](promotion_connection_project.md) [promotion_run](promotion_run.md) |  |  |
+| id | varchar(36) |  | false | [promotion_config](promotion_config.md) [promotion_connection_project](promotion_connection_project.md) [promotion_review](promotion_review.md) |  |  |
 | name | varchar(128) |  | false |  |  |  |
 | providerId | varchar(36) |  | false |  | [promotion_provider](promotion_provider.md) |  |
 | scope | varchar(16) |  | false |  |  |  |
@@ -47,7 +47,7 @@ erDiagram
 
 "promotion_config" }o--|| "promotion_connection" : "FOREIGN KEY (connectionId) REFERENCES promotion_connection (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "promotion_connection_project" }o--|| "promotion_connection" : "FOREIGN KEY (connectionId) REFERENCES promotion_connection (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
-"promotion_run" }o--o| "promotion_connection" : "FOREIGN KEY (connectionId) REFERENCES promotion_connection (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
+"promotion_review" }o--o| "promotion_connection" : "FOREIGN KEY (connectionId) REFERENCES promotion_connection (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "promotion_connection" }o--|| "promotion_provider" : "FOREIGN KEY (providerId) REFERENCES promotion_provider (id) ON UPDATE NO ACTION ON DELETE RESTRICT MATCH NONE"
 
 "promotion_connection" {
@@ -74,27 +74,19 @@ erDiagram
   varchar_36_ projectId PK
   datetime_3_ updatedAt
 }
-"promotion_run" {
+"promotion_review" {
   datetime_3_ approvedAt
   varchar approvedById FK
-  varchar_64_ baselineCommitSha
   varchar_255_ branchName
   datetime_3_ closedAt
   varchar_64_ commitSha
   varchar_36_ connectionId FK
   datetime_3_ createdAt
   varchar createdById FK
-  INTEGER gitlabProjectId
-  boolean hasConflicts
   varchar_36_ id PK
-  datetime_3_ lastSyncedAt
-  INTEGER mergeRequestIid
   datetime_3_ mergedAt
-  varchar_36_ projectId FK
+  varchar_255_ remoteReviewId
   varchar_16_ state
-  varchar_255_ title
-  datetime_3_ updatedAt
-  TEXT webUrl
 }
 "promotion_provider" {
   TEXT auth

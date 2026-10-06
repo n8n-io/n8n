@@ -4,12 +4,12 @@ import { n8nIdSchema } from '../../schemas/id.schema';
 import { Z } from '../../zod-class';
 
 /**
- * The state of a Promotion Review. `open` mirrors the merge request while it is
- * open. `merged` and `closed` are terminal and owned by n8n. `unavailable` means
- * the merge request or its connection is gone.
+ * The state of a Promotion Review. `open` mirrors the review on the host while
+ * it is open. `merged` and `closed` are terminal and owned by n8n. `unavailable`
+ * means the review on the host or its connection is gone.
  */
-export const promotionRunStateSchema = z.enum(['open', 'merged', 'closed', 'unavailable']);
-export type PromotionRunState = z.infer<typeof promotionRunStateSchema>;
+export const promotionReviewStateSchema = z.enum(['open', 'merged', 'closed', 'unavailable']);
+export type PromotionReviewState = z.infer<typeof promotionReviewStateSchema>;
 
 const reviewUserSchema = z.object({
 	id: z.string(),
@@ -18,25 +18,30 @@ const reviewUserSchema = z.object({
 	email: z.string().nullable(),
 });
 
-/** One inbox row. Everything here comes from the database, so the list is cheap. */
+/** What the host reports about the review. NULL when the host did not answer. */
+const promotionReviewRemoteSchema = z.object({
+	title: z.string(),
+	webUrl: z.string(),
+	hasConflicts: z.boolean(),
+});
+export type PromotionReviewRemote = z.infer<typeof promotionReviewRemoteSchema>;
+
+/** One inbox row: the database row plus what the host reports, when it answers. */
 export const promotionReviewSummarySchema = z.object({
 	id: n8nIdSchema,
-	title: z.string(),
-	state: promotionRunStateSchema,
-	hasConflicts: z.boolean(),
+	state: promotionReviewStateSchema,
 	branchName: z.string(),
 	commitSha: z.string(),
-	webUrl: z.string(),
-	mergeRequestIid: z.number().int(),
+	/** Opaque host reference, e.g. `gitlab:<projectId>!<iid>`. */
+	remoteReviewId: z.string(),
 	connection: z.object({ id: n8nIdSchema, name: z.string() }).nullable(),
-	projectId: n8nIdSchema.nullable(),
 	createdBy: reviewUserSchema.nullable(),
 	approvedBy: reviewUserSchema.nullable(),
 	createdAt: z.string(),
 	approvedAt: z.string().nullable(),
 	mergedAt: z.string().nullable(),
 	closedAt: z.string().nullable(),
-	lastSyncedAt: z.string().nullable(),
+	remote: promotionReviewRemoteSchema.nullable(),
 });
 export type PromotionReviewSummary = z.infer<typeof promotionReviewSummarySchema>;
 
@@ -59,7 +64,7 @@ export class ListPromotionReviewsQueryDto extends Z.class({
 export const promotionReviewChangeKindSchema = z.enum(['added', 'modified', 'deleted']);
 export type PromotionReviewChangeKind = z.infer<typeof promotionReviewChangeKindSchema>;
 
-/** A workflow the Promotion Run changed against the Review Baseline. */
+/** A workflow the Promotion Review changed against the Review Baseline. */
 export const promotionReviewWorkflowChangeSchema = z.object({
 	workflowId: z.string(),
 	name: z.string(),
@@ -104,7 +109,7 @@ export class PromotionReviewWorkflowDiffDto extends Z.class(
 
 /** The merge request a Promote opened, as returned with the promote result. */
 export const promotionMergeRequestResultSchema = z.object({
-	runId: n8nIdSchema,
+	reviewId: n8nIdSchema,
 	iid: z.number().int(),
 	webUrl: z.string(),
 });

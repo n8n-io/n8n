@@ -4,7 +4,26 @@ import { mock } from 'vitest-mock-extended';
 
 import { BadRequestError, ConflictError, ServiceUnavailableError } from '@n8n/errors';
 
-import { GitLabMergeRequestClient } from '../gitlab-merge-request.client';
+import {
+	GitLabMergeRequestClient,
+	parseGitLabReviewId,
+	toGitLabReviewId,
+} from '../gitlab-merge-request.client';
+
+describe('remoteReviewId helpers', () => {
+	it('round-trips a merge request reference', () => {
+		const id = toGitLabReviewId({ projectId: 42, iid: 7 });
+		expect(id).toBe('gitlab:42!7');
+		expect(parseGitLabReviewId(id)).toEqual({ projectId: 42, iid: 7 });
+	});
+
+	it.each(['github:org/repo#7', 'gitlab:42', 'gitlab:abc!7', '', 'gitlab:42!7!1'])(
+		'rejects %j',
+		(value) => {
+			expect(() => parseGitLabReviewId(value)).toThrow(BadRequestError);
+		},
+	);
+});
 
 describe('GitLabMergeRequestClient', () => {
 	const http = mock<HttpRequestClient>();

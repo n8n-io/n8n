@@ -1,54 +1,42 @@
-import type { PromotionRunState, PromotionReviewTab } from '@n8n/api-types';
+import type { PromotionReviewState, PromotionReviewTab } from '@n8n/api-types';
 import { BaseRepository, type OperationContext, TransactionRunner } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { DataSource, In, IsNull, type FindOptionsWhere } from '@n8n/typeorm';
 
-import { PromotionRun } from '../entities/promotion-run.entity';
+import { PromotionReview } from '../entities/promotion-review.entity';
 
-export type NewPromotionRun = Pick<
-	PromotionRun,
-	| 'connectionId'
-	| 'projectId'
-	| 'createdById'
-	| 'branchName'
-	| 'commitSha'
-	| 'title'
-	| 'gitlabProjectId'
-	| 'mergeRequestIid'
-	| 'webUrl'
+export type NewPromotionReview = Pick<
+	PromotionReview,
+	'connectionId' | 'createdById' | 'branchName' | 'commitSha' | 'remoteReviewId'
 >;
 
 /** What a state refresh learned from the host. */
-export type PromotionRunStateSync = {
-	state: PromotionRunState;
-	hasConflicts: boolean;
-	mergedAt: Date | null;
-	closedAt: Date | null;
-	/** Set when the run leaves `open`, so the reviewed diff stays readable. */
-	baselineCommitSha?: string | null;
-};
+export type PromotionReviewStateSync = Pick<PromotionReview, 'state' | 'mergedAt' | 'closedAt'>;
 
-const TERMINAL_STATES: PromotionRunState[] = ['merged', 'closed', 'unavailable'];
+const TERMINAL_STATES: PromotionReviewState[] = ['merged', 'closed', 'unavailable'];
 
 const WITH_PEOPLE = { connection: true, createdBy: true, approvedBy: true } as const;
 
 @Service()
-export class PromotionRunRepository extends BaseRepository<PromotionRun> {
+export class PromotionReviewRepository extends BaseRepository<PromotionReview> {
 	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
-		super(PromotionRun, dataSource.manager, transactionRunner);
+		super(PromotionReview, dataSource.manager, transactionRunner);
 	}
 
-	async insertRun(run: NewPromotionRun, ctx: OperationContext = {}): Promise<PromotionRun> {
-		return await this.managerFor(ctx).save(PromotionRun, this.create(run));
+	async insertReview(
+		review: NewPromotionReview,
+		ctx: OperationContext = {},
+	): Promise<PromotionReview> {
+		return await this.managerFor(ctx).save(PromotionReview, this.create(review));
 	}
 
-	async findByIdWithRelations(id: string): Promise<PromotionRun | null> {
+	async findByIdWithRelations(id: string): Promise<PromotionReview | null> {
 		return await this.findOne({ where: { id }, relations: WITH_PEOPLE });
 	}
 
 	/** Newest first, because the inbox sorts every review kind by creation time. */
-	async listRuns(options: { tab?: PromotionReviewTab; skip: number; take: number }) {
-		const where: FindOptionsWhere<PromotionRun> = {};
+	async listReviews(options: { tab?: PromotionReviewTab; skip: number; take: number }) {
+		const where: FindOptionsWhere<PromotionReview> = {};
 		if (options.tab === 'open') where.state = 'open';
 		if (options.tab === 'closed') where.state = In(TERMINAL_STATES);
 
@@ -63,12 +51,12 @@ export class PromotionRunRepository extends BaseRepository<PromotionRun> {
 	}
 
 	/** Only open rows change on the host, so a refresh reads these alone. */
-	async findOpenRuns(): Promise<PromotionRun[]> {
+	async findOpenReviews(): Promise<PromotionReview[]> {
 		return await this.find({ where: { state: 'open' }, relations: { connection: true } });
 	}
 
-	async recordSync(id: string, sync: PromotionRunStateSync): Promise<void> {
-		await this.update({ id }, { ...sync, lastSyncedAt: new Date() });
+	async recordSync(id: string, sync: PromotionReviewStateSync): Promise<void> {
+		await this.update({ id }, sync);
 	}
 
 	/**

@@ -1,11 +1,11 @@
 <script lang="ts" setup>
-import type { PromotionRunState } from '@n8n/api-types';
+import type { PromotionReviewState } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
 
 const props = withDefaults(
 	defineProps<{
-		state: PromotionRunState;
+		state: PromotionReviewState;
 		decorative?: boolean;
 	}>(),
 	{ decorative: false },

@@ -42,8 +42,13 @@ const detail = computed<PromotionReviewDetailDto | null>(() =>
 	'workflows' in props.review ? props.review : null,
 );
 
+// Approve needs the host: the conflict flag comes from it, and the merge happens there.
 const canApprove = computed(
-	() => detail.value?.state === 'open' && !detail.value.hasConflicts && !!detail.value.connection,
+	() =>
+		detail.value?.state === 'open' &&
+		detail.value.remote !== null &&
+		!detail.value.remote.hasConflicts &&
+		!!detail.value.connection,
 );
 
 const stateLabel = computed(() => i18n.baseText(`promotionReviews.state.${props.review.state}`));
@@ -166,7 +171,13 @@ function changeBadgeVariant(
 				{{ i18n.baseText('promotionReviews.detail.kind') }}
 			</N8nText>
 			<div :class="$style.actions">
-				<N8nLink :to="review.webUrl" new-window size="small" theme="text">
+				<N8nLink
+					v-if="review.remote"
+					:to="review.remote.webUrl"
+					new-window
+					size="small"
+					theme="text"
+				>
 					<span :class="$style.externalLink">
 						<N8nIcon icon="external-link" size="small" />
 						{{ i18n.baseText('promotionReviews.detail.openInGitLab') }}
@@ -192,7 +203,7 @@ function changeBadgeVariant(
 		>
 			{{ warning }}
 		</N8nCallout>
-		<N8nCallout v-if="detail?.hasConflicts" theme="danger" :class="$style.callout">
+		<N8nCallout v-if="detail?.remote?.hasConflicts" theme="danger" :class="$style.callout">
 			{{ i18n.baseText('promotionReviews.detail.conflicts') }}
 		</N8nCallout>
 		<N8nCallout v-if="review.state === 'merged'" theme="success" :class="$style.callout">
