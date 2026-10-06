@@ -236,7 +236,10 @@ function resolveRequirement(
 		if (incompatibility) {
 			return {
 				action: 'fail',
-				failure: createFailure(requirement, 'schema-incompatible', incompatibility),
+				failure: createFailure(requirement, 'schema-incompatible', {
+					...incompatibility,
+					overwriteChanges: diffDataTableSchema(packageTable, matchedTargetTable),
+				}),
 			};
 		}
 		if (schemaConflictPolicy === DataTableSchemaConflictPolicy.Overwrite) {

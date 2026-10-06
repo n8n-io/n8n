@@ -40,6 +40,8 @@ export type DataTableResolutionFailure = {
 	typeMismatches?: DataTableColumnTypeMismatch[];
 	/** For `schema-incompatible` under the `fail` policy: target columns not in the package schema. */
 	extraColumns?: string[];
+	/** For `schema-incompatible`: the changes `overwrite` would make to the target table. */
+	overwriteChanges?: DataTableSchemaOperation[];
 	/** For `permission-denied`: the project scope the user lacks. */
 	missingScope?: 'dataTable:create' | 'dataTable:update';
 	/** For `name-conflict`: the other table that holds or claims the name. */
@@ -60,6 +62,7 @@ export function createFailure(
 			| 'missingColumns'
 			| 'typeMismatches'
 			| 'extraColumns'
+			| 'overwriteChanges'
 			| 'conflictingTableId'
 			| 'currentName'
 		>
