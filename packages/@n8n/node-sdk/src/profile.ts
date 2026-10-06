@@ -199,28 +199,6 @@ export interface RunProfileMeta {
 /** Gets the profile of each contract node execution. It runs before n8n ends the node run. */
 export type RunProfileListener = (meta: RunProfileMeta, profile: RunProfile) => void;
 
-// One slot: the host sets it once at start, as the executor loader.
-const listeners = new Map<
-	'listener',
-	{ readonly listener: RunProfileListener; readonly payloads?: PayloadCapture }
->();
-
-/**
- * Sets the listener of run profiles. Without one, the runtime records nothing. With `payloads`,
- * the profile also keeps the input, the output and the HTTP bodies of each run, cut to 2048
- * characters each. Use it in development only: the data goes to the listener.
- */
-export const setRunProfileListener = (
-	listener: RunProfileListener | undefined,
-	payloads?: PayloadCapture,
-) => {
-	if (listener) listeners.set('listener', { listener, payloads });
-	else listeners.delete('listener');
-};
-
-/** The listener of run profiles and its payload capture mode, if the host set one. */
-export const runProfileListener = () => listeners.get('listener');
-
 /** The profile keeps this many attempts and this many JSON-RPC messages, so a long run does not hold memory. */
 const MAX_PROFILED = 200;
 

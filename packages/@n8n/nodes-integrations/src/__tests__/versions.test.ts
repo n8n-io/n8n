@@ -1,4 +1,5 @@
-import { isRecord, validate, type JsonSchema } from '@n8n/node-sdk';
+import { isRecord, validate, type Action, type JsonSchema, type Trigger } from '@n8n/node-sdk';
+import type { AnyCredentialType } from '@n8n/node-sdk/credentials';
 import * as host from '@n8n/node-sdk/host';
 import {
 	actionFileOf,
@@ -27,27 +28,52 @@ import { sandboxedVersionOf } from '@n8n/node-sdk/sandbox';
 import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { nodesCore } from '@n8n/nodes-core';
 import type { ICredentialType, IExecuteFunctions } from 'n8n-workflow';
 
-import { nodesIntegrations } from '../nodes';
 import {
 	bundledCredentialsOf,
 	bundledIdsOf,
 	FIRST_PARTY_PACKAGES,
+	nodesCore,
+	nodesIntegrations,
 	packageOf,
+	sourceOf,
 	versionsOf,
-} from '../registry';
+	type SourceContracts,
+} from './first-party';
 
 // The checks run over every first-party package: the packages share one store format and the
-// expectations name actions of both.
-const contractsOf = ({ actions, triggers }: SourcePackage) => [...actions, ...triggers];
-const contracts = FIRST_PARTY_PACKAGES.flatMap(contractsOf);
-const triggers = FIRST_PARTY_PACKAGES.flatMap((pkg) => pkg.triggers);
-const natives = FIRST_PARTY_PACKAGES.flatMap((pkg) => pkg.natives);
-const credentialTypes = credentialTypesOf([...contracts, ...natives]);
-// The core package replays its own actions.
-const { actions } = nodesIntegrations;
+// expectations name actions of both. The contracts come from the action files, as freeze finds them.
+const sources = new Map<string, SourceContracts>();
+const contractsOf = ({ name }: SourcePackage): Array<Action | Trigger> => {
+	const found = sources.get(name);
+	return found ? [...found.actions, ...found.triggers] : [];
+};
+const source = {
+	contracts: [] as Array<Action | Trigger>,
+	triggers: [] as Trigger[],
+	natives: [] as Array<Action | Trigger>,
+	credentialTypes: [] as AnyCredentialType[],
+	// The core package replays its own actions.
+	actions: [] as Action[],
+};
+
+beforeAll(async () => {
+	const found = await Promise.all(FIRST_PARTY_PACKAGES.map(async (pkg) => await sourceOf(pkg)));
+	FIRST_PARTY_PACKAGES.forEach((pkg, index) => {
+		const contracts = found[index];
+		if (contracts) sources.set(pkg.name, contracts);
+	});
+	const contracts = FIRST_PARTY_PACKAGES.flatMap(contractsOf);
+	const natives = found.flatMap((pkg) => pkg.natives);
+	Object.assign(source, {
+		contracts,
+		triggers: found.flatMap((pkg) => pkg.triggers),
+		natives,
+		credentialTypes: credentialTypesOf([...contracts, ...natives]),
+		actions: sources.get(nodesIntegrations.name)?.actions ?? [],
+	});
+});
 
 const sortedIdsOf = (list: ReadonlyArray<{ readonly id: string }>) =>
 	list.map(({ id }) => id).sort();
@@ -59,7 +85,7 @@ const nodeTypeOf = (id: string, dir: string) => {
 		versions[0]?.manifest.kind === 'trigger'
 			? host.toVersionedTriggerType
 			: host.toVersionedNodeType;
-	return new (typeOf(versions))();
+	return new (typeOf(versions, host.hostRuntime()))();
 };
 
 const fixturesOf = (actionId: string) =>
@@ -68,15 +94,6 @@ const fixturesOf = (actionId: string) =>
 	);
 
 describe('action files', () => {
-	// The host reads the lists of each package until it reads the catalog from the manifests.
-	it.each(FIRST_PARTY_PACKAGES)('of $name hold the contracts of its lists', async (pkg) => {
-		const { entries, natives: found } = await contractsOfPackage(pkg);
-		const keysOf = (list: ReadonlyArray<{ readonly id: string; readonly version: number }>) =>
-			list.map(({ id, version }) => `${id}@${version}`).sort();
-		expect(keysOf(entries.map(({ action }) => action))).toEqual(keysOf(contractsOf(pkg)));
-		expect(keysOf(found)).toEqual(keysOf(pkg.natives));
-	});
-
 	it.each(FIRST_PARTY_PACKAGES)(
 		'of $name hold one action each, named after its id',
 		async (pkg) => {
@@ -86,13 +103,11 @@ describe('action files', () => {
 				action.id,
 				path.relative(path.join(pkg.dir, 'src', 'nodes'), entryFile),
 			]);
-			expect(files.sort()).toEqual(
-				contractsOf(pkg)
-					.map(({ id, node, resource, operation }) => [
-						id,
-						path.join(kebab(node.id), actionFileOf({ resource, operation })),
-					])
-					.sort(),
+			expect(files).toEqual(
+				entries.map(({ action: { id, node, resource, operation } }) => [
+					id,
+					path.join(kebab(node.id), actionFileOf({ resource, operation })),
+				]),
 			);
 		},
 	);
@@ -126,7 +141,9 @@ describe('bundled versions', () => {
 
 	it('hold the HEAD of every action, as the source builds it', () => {
 		const { manifests } = frozen;
-		expect(manifests.map(({ id }) => id).sort()).toEqual(contracts.map(({ id }) => id).sort());
+		expect(manifests.map(({ id }) => id).sort()).toEqual(
+			source.contracts.map(({ id }) => id).sort(),
+		);
 		expect(manifests.map(({ id }) => versionsOf(id)[0]?.manifest)).toEqual(manifests);
 	});
 
@@ -157,8 +174,8 @@ describe('bundled versions', () => {
 			parseStoreCatalog(readFileSync(path.join(copyOf(pkg), STORE_CATALOG_FILE), 'utf8')),
 		);
 		const lineOf = (id: string) => catalog.find((line) => line.id === id);
-		expect(natives.map(({ id }) => [id, lineOf(id)?.native, lineOf(id)?.bundle])).toEqual(
-			natives.map(({ id, native }) => [id, native?.type, undefined]),
+		expect(source.natives.map(({ id }) => [id, lineOf(id)?.native, lineOf(id)?.bundle])).toEqual(
+			source.natives.map(({ id, native }) => [id, native?.type, undefined]),
 		);
 	});
 
@@ -166,15 +183,16 @@ describe('bundled versions', () => {
 		const manifest: unknown = JSON.parse(readFileSync(path.join(pkg.dir, 'package.json'), 'utf8'));
 		expect(isRecord(manifest) && 'n8n' in manifest).toBe(false);
 		expect(bundledIdsOf(copyOf(pkg)).sort()).toEqual(sortedIdsOf(contractsOf(pkg)));
-		expect(bundledIdsOf().sort()).toEqual(sortedIdsOf(contracts));
+		expect(bundledIdsOf().sort()).toEqual(sortedIdsOf(source.contracts));
 	});
 
 	it('project the node description of each version from its contract fields only', () => {
 		const describe = (id: string) => {
-			const source = contracts.find((contract) => contract.id === id);
-			if (!source) throw new Error(`${id} has no source`);
-			return new ('kind' in source ? host.toTriggerNodeType(source) : host.toNodeType(source))()
-				.description;
+			const contract = source.contracts.find((each) => each.id === id);
+			if (!contract) throw new Error(`${id} has no source`);
+			return new ('kind' in contract
+				? host.toTriggerNodeType(contract)
+				: host.toNodeType(contract))().description;
 		};
 		const { manifests } = frozen;
 		expect(manifests.filter((manifest) => 'description' in manifest)).toEqual([]);
@@ -200,11 +218,13 @@ describe('bundled versions', () => {
 	});
 
 	it('project one node type each, named after its id', () => {
-		const loaded = contracts.map(({ id }) => {
+		const loaded = source.contracts.map(({ id }) => {
 			const { description } = nodeTypeOf(id, copyOf(packageOf(id)));
 			return [description.name, description.defaultVersion];
 		});
-		expect(loaded).toEqual(contracts.map(({ id, version }) => [host.nodeNameOf(id), version]));
+		expect(loaded).toEqual(
+			source.contracts.map(({ id, version }) => [host.nodeNameOf(id), version]),
+		);
 		const versions = Object.fromEntries(
 			frozen.manifests.map(({ id, nodeContract }) => [id, nodeContract]),
 		);
@@ -229,7 +249,7 @@ describe('bundled versions', () => {
 		]);
 		expect(versions).toEqual(
 			Object.fromEntries(
-				contracts.map((contract) => [
+				source.contracts.map((contract) => [
 					contract.id,
 					validating.has(contract.id)
 						? '2.9.0'
@@ -320,9 +340,9 @@ describe('bundled versions', () => {
 					.sort();
 			const sortedIds = (list: ReadonlyArray<{ readonly id: string }>) =>
 				list.map(({ id }) => id).sort();
-			expect(idsOf('bundled')).toEqual(sortedIds(contracts));
-			expect(idsOf('credential')).toEqual(sortedIds(credentialTypes));
-			expect(idsOf('native')).toEqual(sortedIds(natives));
+			expect(idsOf('bundled')).toEqual(sortedIds(source.contracts));
+			expect(idsOf('credential')).toEqual(sortedIds(source.credentialTypes));
+			expect(idsOf('native')).toEqual(sortedIds(source.natives));
 			const issues = catalog.flatMap(({ id, manifest, dir }) =>
 				validate(readJson(path.join(dir, storeBlobFileOf(manifest))), schema, { path: id }),
 			);
@@ -344,7 +364,9 @@ describe('bundled versions', () => {
 			credentials: ['slack.token@1'],
 		});
 		expect(byId.get('openAi.chatModel')).toMatchObject({ kind: 'provider' });
-		expect(triggers.map(({ id }) => byId.get(id)?.kind)).toEqual(triggers.map(() => 'trigger'));
+		expect(source.triggers.map(({ id }) => byId.get(id)?.kind)).toEqual(
+			source.triggers.map(() => 'trigger'),
+		);
 		expect(byId.get('gmail.message.send')).toMatchObject({ credentials: ['gmail.oauth2@1'] });
 		// A compat credential type has no credential manifest, so no pin.
 		expect(byId.get('github.issue.getAll')?.credentials).toEqual(['github.token@1']);
@@ -393,7 +415,7 @@ describe('bundled versions', () => {
 
 	it('replay the fixtures of the HEAD through the current executor', async () => {
 		const issues = await Promise.all(
-			actions.map(async ({ id }) => {
+			source.actions.map(async ({ id }) => {
 				const [head] = versionsOf(id);
 				if (!head) return [`${id} has no bundled HEAD`];
 				const bundle = await head.readBundle();
@@ -444,13 +466,13 @@ describe('bundled versions', () => {
 
 const SANDBOX = path.resolve(__dirname, '../../node_modules/@n8n/node-sdk/sandbox');
 // The credential types of the shipped nodes stand in for the registry of n8n.
-const shippedCredentialTypes = new Map(
-	contracts.flatMap(({ node }) => node.credential?.types ?? []).map((type) => [type.name, type]),
-);
 const sandbox = {
 	sidecar: path.join(SANDBOX, 'sidecar/target/release/n8n-sandbox'),
 	guests: path.join(SANDBOX, 'dist'),
-	credentialType: (name: string) => shippedCredentialTypes.get(name),
+	credentialType: (name: string) =>
+		source.contracts
+			.flatMap(({ node }) => node.credential?.types ?? [])
+			.find((type) => type.name === name),
 };
 // `pnpm --filter @n8n/node-sdk sandbox:build` builds them.
 const sandboxBuilt = [
@@ -466,15 +488,17 @@ describe.skipIf(!sandboxBuilt)('bundled versions in the sandbox', () => {
 		const refused: Record<string, string> = {};
 		const issues: string[] = [];
 		// One at a time: the first load compiles the guest for all.
-		for (const { id } of actions) {
+		for (const { id } of source.actions) {
 			const [head] = versionsOf(id);
 			if (!head) throw new Error(`${id} has no bundled HEAD`);
-			const loaded = await sandboxedVersionOf(head, { ...sandbox, cacheDir }).catch(
-				(error: Error) => {
-					refused[id] = error.message;
-					return undefined;
-				},
-			);
+			const loaded = await sandboxedVersionOf(
+				head,
+				{ ...sandbox, cacheDir },
+				host.hostRuntime(),
+			).catch((error: Error) => {
+				refused[id] = error.message;
+				return undefined;
+			});
 			if (!loaded) continue;
 			const bundle = await head.readBundle();
 			const replayed = await replayFixtures({ manifest: head.manifest, bundle }, fixturesOf(id), {
@@ -490,20 +514,19 @@ describe.skipIf(!sandboxBuilt)('bundled versions in the sandbox', () => {
 });
 
 describe('credential manifests', () => {
-	const ownTypes = [
-		...new Map(
-			[...contracts, ...natives]
-				.flatMap(({ node }) => node.credential?.types ?? [])
-				.filter(({ scheme }) => scheme.kind !== 'compat')
-				.map((type) => [type.name, type]),
-		).values(),
-	];
-
 	it('exist for every non-compat type of a shipped node', () => {
+		const ownTypes = [
+			...new Map(
+				[...source.contracts, ...source.natives]
+					.flatMap(({ node }) => node.credential?.types ?? [])
+					.filter(({ scheme }) => scheme.kind !== 'compat')
+					.map((type) => [type.name, type]),
+			).values(),
+		];
 		expect(ownTypes.map(({ name }) => name)).toEqual(
 			expect.arrayContaining(['notionApi', 'slackApi', 'whatsAppTriggerApi']),
 		);
-		expect(credentialTypes).toEqual(ownTypes);
+		expect(source.credentialTypes).toEqual(ownTypes);
 		expect(
 			bundledCredentialsOf()
 				.map(({ manifest }) => manifest.id)
@@ -526,7 +549,7 @@ describe('credential manifests', () => {
 		);
 		expect(Object.fromEntries(projected)).toEqual(
 			Object.fromEntries(
-				credentialTypes.flatMap((type) => {
+				source.credentialTypes.flatMap((type) => {
 					const source = host.toCredentialType(type);
 					return source ? [[type.id, comparable(source)]] : [];
 				}),
@@ -547,7 +570,7 @@ describe.skipIf(!REGISTRY_URL)('published versions', () => {
 		);
 		const publicKey = FIRST_PARTY_KEY_FILE ? readFileSync(FIRST_PARTY_KEY_FILE, 'utf8') : undefined;
 		const issues = await Promise.all(
-			actions.map(async ({ id }) => {
+			source.actions.map(async ({ id }) => {
 				const replayed = await Promise.all(
 					(await registry.records(id)).map(async (record) => {
 						const at = `${id}@${record.version}`;

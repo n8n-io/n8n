@@ -1,5 +1,4 @@
 import { wrapUntrustedData } from '@n8n/agents';
-import { actionOfNode } from '@n8n/nodes-integrations';
 import { isRecord } from '@n8n/utils/is-record';
 import { toEngineConnections, type WorkflowJSON } from '@n8n/workflow-sdk';
 import {
@@ -17,6 +16,7 @@ import {
 	type FieldRead,
 } from './next-workflow-build';
 import { isTriggerNodeType } from './workflow-json-utils';
+import { actionOfNode } from '../contract-catalog';
 import type { ResolvedNodeParametersResult } from '../../types';
 import type { WorkflowBuildOutcome } from '../../workflow-loop/workflow-loop-state';
 import { unwrapUntrustedData } from '../orchestration/verification/analyze-result';

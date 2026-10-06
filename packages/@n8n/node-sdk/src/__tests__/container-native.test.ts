@@ -5,7 +5,7 @@ import { Readable } from 'node:stream';
 import type { IBinaryData, INodeParameters } from 'n8n-workflow';
 
 import { freezeAction } from '../freeze';
-import type { BinaryStore, ExecutorHost } from '../runtime';
+import { hostRuntime, type BinaryStore, type ExecutorHost } from '../runtime';
 import { CONTAINER_GUEST, containerRuntime, type ContainerOptions } from '../runtimes/container';
 import { sandboxedVersionOf, type SandboxOptions } from '../sandbox';
 
@@ -144,6 +144,7 @@ const probe = async (
 			credentialType: () => undefined,
 			limits: { wallMs: 60_000, ...limits },
 		},
+		hostRuntime(),
 	);
 	return executor;
 };

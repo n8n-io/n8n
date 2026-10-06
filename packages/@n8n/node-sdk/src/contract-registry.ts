@@ -1,55 +1,10 @@
-import {
-	permissionsOf,
-	runsNodeContract,
-	setContractVersionLoader,
-	setCredentialManifests,
-	setEgressInputHosts,
-	setExecutorLoader,
-	setMaxResponseBytes,
-	setNodeContractRange,
-	setPermissionRefusalListener,
-	setRunProfileListener,
-	type ContractOrigin,
-	type ContractPermissions,
-	type ContractVersionLoader,
-	type FrozenVersion,
-	type PayloadCapture,
-	type PermissionRefusalListener,
-	type RunProfileListener,
-} from '@n8n/node-sdk/host';
-import {
-	addStatusToStore,
-	addedPermissionsOf,
-	addToStore,
-	canonicalJson,
-	compareSemver,
-	isVersionManifest,
-	parseCredentialManifest,
-	parseManifest,
-	parseNativeManifest,
-	parseSemver,
-	resolveContractVersion,
-	storeFilesOfUrl,
-	storeReader,
-	storeStatusTextOf,
-	unresolvedCredentialPinsOf,
-	verifyStoreSignature,
-	withdrawalOf,
-	type CredentialManifest,
-	type NodeContractLock,
-	type NodeContractsPolicy,
-	type NodeContractVersion,
-	type StoreIndex,
-	type StoreReader,
-	type StoreRecord,
-	type StoreRevoke,
-	type StoreStatusRecord,
-	type StoreVersion,
-	type StoreYank,
-	type VersionManifest,
-} from '@n8n/node-sdk/registry';
-import type { RuntimePolicy } from '@n8n/node-sdk/runtimes';
-import { policyExecutorLoader, type SandboxOptions } from '@n8n/node-sdk/sandbox';
+/**
+ * The store of the contract versions of a host: the embedded stores of its source packages, the
+ * store of the instance and the registry. It checks each version before the store takes it, and
+ * picks the version that a node pin names.
+ */
+import { existsSync } from 'node:fs';
+import path from 'node:path';
 import {
 	LoggerProxy,
 	UserError,
@@ -59,8 +14,46 @@ import {
 	type ISupplyDataFunctions,
 } from 'n8n-workflow';
 
-import { bundledCredentialsOf, versionsOf, type DigestedVersion } from './registry';
+import { bundledCredentialsOf, versionsOf, type DigestedVersion } from './catalog';
+import { permissionsOf, type ContractPermissions, type PermissionRefusalListener } from './egress';
+import { parseCredentialManifest, type CredentialManifest } from './manifest';
+import type { ContractOrigin, ContractVersionLoader, FrozenVersion } from './runtime';
+import { canonicalJson } from './schema';
+import {
+	addStatusToStore,
+	addToStore,
+	embeddedStoreDirOf,
+	isVersionManifest,
+	storeFilesOfUrl,
+	storeIndexFileOf,
+	storeReader,
+	storeStatusTextOf,
+	unresolvedCredentialPinsOf,
+	verifyStoreSignature,
+	withdrawalOf,
+	type SourcePackage,
+	type StoreIndex,
+	type StoreReader,
+	type StoreRecord,
+	type StoreRevoke,
+	type StoreStatusRecord,
+	type StoreVersion,
+	type StoreYank,
+} from './store';
+import {
+	addedPermissionsOf,
+	compareSemver,
+	parseManifest,
+	parseNativeManifest,
+	parseSemver,
+	resolveContractVersion,
+	type NodeContractLock,
+	type NodeContractsPolicy,
+	type NodeContractVersion,
+	type VersionManifest,
+} from './version';
 
+/** The options of `contractStore`. */
 export interface ContractStoreOptions {
 	/**
 	 * The registry: a static store at `https://…` or `file://…`. Empty: only the bundled HEAD and
@@ -80,46 +73,30 @@ export interface ContractStoreOptions {
 	 * does not have fails. Default: true.
 	 */
 	readonly mayFetch?: () => boolean;
-	readonly fetch: (url: string, init: { signal: AbortSignal }) => Promise<Response>;
+	/** Reads one registry file. `signal` ends the request at the timeout. */
+	readonly fetch: (
+		url: string,
+		init: {
+			/** Aborts the request. */
+			signal: AbortSignal;
+		},
+	) => Promise<Response>;
 	/** For each registry request. */
 	readonly fetchTimeoutMs?: number;
+	/** Whether the host runs a Node Contract version, see `HostRuntime.runsNodeContract`. */
+	readonly runsNodeContract: (version: NodeContractVersion) => boolean;
 }
 
-export interface ContractRegistryOptions {
+/** The options of `contractVersionLoader`. */
+export interface ContractVersionLoaderOptions {
 	/** The instance policy. `meta.nodeContractsPolicy` of a workflow overrides it. */
 	readonly policy: NodeContractsPolicy;
+	/** The store that resolves each pin. */
 	readonly store: ContractStore;
 	/** The `meta` of the running workflow, from a root node or a sub-node. */
 	readonly metaOf: (context: IExecuteFunctions | ISupplyDataFunctions) => Promise<unknown>;
-	/** The Node Contract versions a bundle may declare, e.g. `>=2.0.0 <3.0.0`. */
-	readonly nodeContractRange: string;
-	/**
-	 * Where each version runs, by its origin: `first-party`, `community` or `private`.
-	 */
-	readonly runtimes: RuntimePolicy;
-	/** The cache, the credential types and the limits of the runtimes other than `in-process`. */
-	readonly sandbox: SandboxOptions;
-	/** Gets the run profile of each node execution, e.g. for traces. Without it, nothing is recorded. */
-	readonly onRunProfile?: RunProfileListener;
-	/** Gets each request or bundle that a permission refuses, e.g. for the audit log. */
+	/** Gets each version that a permission refuses, e.g. for the audit log. */
 	readonly onPermissionRefused?: PermissionRefusalListener;
-	/**
-	 * Also records the input, the output and the HTTP bodies of each run in the profile. For
-	 * development only. Without it, the profile has no payload.
-	 */
-	readonly tracePayloads?: PayloadCapture;
-	/** The host patterns that a URL from input may reach, in-process and in the sandbox. Empty: no limit. */
-	readonly egressInputHosts?: readonly string[];
-	/**
-	 * The most bytes of one HTTP response body, in-process and in the sandbox. `Infinity` is no
-	 * limit. Absent: the node-sdk default, 100 MiB.
-	 */
-	readonly maxResponseBytes?: number;
-	/**
-	 * Whether another package of n8n has a credential type of this name, e.g. a legacy class. That
-	 * type signs, so a stored credential manifest of the name does not apply.
-	 */
-	readonly hasOtherCredentialType?: (name: string) => boolean;
 	/**
 	 * `<id>@<version>` of each revoked version that may still run, e.g. `gmail.message.get@1.0.4`.
 	 * An admin sets it. Without it, a revoked version does not run.
@@ -210,13 +187,39 @@ async function admitStatuses(
 	return added;
 }
 
+/** The versions and credential manifests in the embedded stores of the source packages of a host. */
+export interface EmbeddedContracts {
+	/** The embedded versions of an id, newest first. Empty when no package ships the id. */
+	versionsOf(id: string): readonly DigestedVersion[];
+	/** The embedded credential manifests. n8n registers each one and signs with it. */
+	credentials(): readonly CredentialManifest[];
+}
+
+/** The embedded contracts of `packages`. A package that ships no index of an id gives no version. */
+export const embeddedContractsOf = (packages: readonly SourcePackage[]): EmbeddedContracts => {
+	const dirs = packages.map(embeddedStoreDirOf);
+	return {
+		versionsOf: (id) =>
+			dirs.flatMap((dir) =>
+				existsSync(path.join(dir, storeIndexFileOf(id))) ? versionsOf(id, dir) : [],
+			),
+		credentials: () =>
+			dirs.flatMap((dir) => bundledCredentialsOf(dir).map(({ manifest }) => manifest)),
+	};
+};
+
 /**
  * The store of action versions that n8n does not bundle. Each version is checked before the
  * store takes it: the digests of its blobs, the manifest against the lock, and the publisher
  * signature when a key is set. The store records the origin of each version when it takes it.
  */
 export interface ContractStore {
+	/** The registry URL, see `ContractStoreOptions.registryUrl`. */
 	readonly registryUrl: string;
+	/** The versions and credential manifests that ship in the release. */
+	readonly embedded: EmbeddedContracts;
+	/** Whether the host runs a Node Contract version, see `HostRuntime.runsNodeContract`. */
+	readonly runsNodeContract: (version: NodeContractVersion) => boolean;
 	/** The bundle hashes in the store. */
 	bundleHashes(): Promise<ReadonlySet<string>>;
 	/**
@@ -235,7 +238,10 @@ export interface ContractStore {
 		actionId: string,
 		major: number,
 		current?: INodeContractPin,
-		options?: { keepUnknown?: boolean },
+		options?: {
+			/** Keeps a pin that no bundled or stored version knows, so that a sync can fetch it. */
+			keepUnknown?: boolean;
+		},
 	): Promise<INodeContractPin | undefined>;
 	/** The newest stored version of each major, by action id. A bad version is skipped. */
 	versions(): Promise<ReadonlyMap<string, readonly FrozenVersion[]>>;
@@ -267,6 +273,7 @@ export interface ContractStore {
  */
 export type StoredVersion = StoreVersion &
 	Pick<StoreRecord, 'id' | 'version' | 'kind' | 'manifest'> & {
+		/** The origin that the store recorded when it took the version. */
 		readonly origin: ContractOrigin;
 	};
 
@@ -282,6 +289,8 @@ export type StoredManifest = Pick<
  * not check the versions: `admitVersions` checks them before they go in.
  */
 export interface InstanceStore {
+	/** The versions and credential manifests that ship in the release, see `embeddedContractsOf`. */
+	readonly embedded: EmbeddedContracts;
 	/** The stored versions of one id, or of every id. */
 	manifests(id?: string): Promise<readonly StoredManifest[]>;
 	/** The stored credential manifests. */
@@ -335,6 +344,7 @@ const versionManifestOf = ({ kind, manifestText }: StoredManifest) => {
  * has it. Each one with the permissions that it adds to the newest version of a lower major.
  */
 function installsOf(
+	embedded: EmbeddedContracts,
 	stored: readonly StoredManifest[],
 	added: readonly StoredVersion[],
 ): ContractInstall[] {
@@ -344,7 +354,7 @@ function installsOf(
 	const known = [
 		...stored.flatMap(versionManifestOf),
 		...[...new Set(fresh.map(({ id }) => id))].flatMap((id) =>
-			bundledVersionsOf(id).map(({ manifest }) => manifest),
+			embedded.versionsOf(id).map(({ manifest }) => manifest),
 		),
 	];
 	const all = [...known, ...fresh.map(({ manifest }) => manifest)];
@@ -399,8 +409,6 @@ const parsedCredentialsOf = (rows: ReadonlyArray<Pick<StoredManifest, 'manifestT
 		}
 	});
 
-const bundledCredentialManifests = () => bundledCredentialsOf().map(({ manifest }) => manifest);
-
 /**
  * Refuses the versions whose credential pins resolve to no credential manifest: none in `added`,
  * none in the store and none that n8n bundles. Without it, n8n cannot project the credential
@@ -413,7 +421,7 @@ async function assertPinsResolve(store: InstanceStore, added: readonly StoredVer
 	});
 	if (pinning.length === 0) return;
 	const known = [
-		...bundledCredentialManifests(),
+		...store.embedded.credentials(),
 		...parsedCredentialsOf(await store.credentialManifests()),
 		...parsedCredentialsOf(added.filter(({ kind }) => kind === 'credential')),
 	];
@@ -455,7 +463,7 @@ export async function admitVersions(
 	await store.insert(added);
 	// Another admission can store other bytes after the read above. The table then skips the row.
 	assertSameBytes(await storedManifestsOf(store, ids), added);
-	const installs = installsOf(stored, added);
+	const installs = installsOf(store.embedded, stored, added);
 	try {
 		if (installs.length > 0) store.installed?.(installs);
 	} catch (error) {
@@ -537,6 +545,7 @@ interface LoadedVersion extends PinnableVersion {
 	readonly bundle: string;
 }
 
+/** The store of a host over the instance store and the registry, see `ContractStore`. */
 export function contractStore(options: ContractStoreOptions): ContractStore {
 	const { registryUrl, keys, store } = options;
 	const mayFetch = options.mayFetch ?? (() => true);
@@ -676,7 +685,7 @@ export function contractStore(options: ContractStoreOptions): ContractStore {
 	 */
 	const pinnedCredentials = async (manifest: VersionManifest): Promise<StoredVersion[]> => {
 		if (!hasKey(keys)) return [];
-		const known = [...bundledCredentialManifests(), ...(await storedCredentials())];
+		const known = [...store.embedded.credentials(), ...(await storedCredentials())];
 		const missing = unresolvedCredentialPinsOf(manifest, known);
 		if (missing.length === 0) return [];
 		const registry = registryOf();
@@ -792,7 +801,7 @@ export function contractStore(options: ContractStoreOptions): ContractStore {
 			major === locked.major &&
 			minor === locked.minor &&
 			patch > locked.patch &&
-			runsNodeContract(candidate.nodeContract) &&
+			options.runsNodeContract(candidate.nodeContract) &&
 			candidate.contractHash === lock.contractHash
 		);
 	};
@@ -807,13 +816,17 @@ export function contractStore(options: ContractStoreOptions): ContractStore {
 
 	return {
 		registryUrl,
+		embedded: store.embedded,
+		runsNodeContract: options.runsNodeContract,
 
 		async bundleHashes() {
 			return new Set((await storedManifests()).map(({ manifest }) => manifest.bundleHash));
 		},
 
 		async locked(actionId, pin) {
-			const bundled = bundledVersionsOf(actionId).find(({ digest }) => digest === pin.digest);
+			const bundled = store.embedded
+				.versionsOf(actionId)
+				.find(({ digest }) => digest === pin.digest);
 			if (bundled) {
 				assertPinned(bundled.manifest, actionId, pin);
 				return bundled;
@@ -827,9 +840,9 @@ export function contractStore(options: ContractStoreOptions): ContractStore {
 		},
 
 		async pinOf(actionId, major, current, { keepUnknown = false } = {}) {
-			const known = [...bundledVersionsOf(actionId), ...(await storedOf(actionId))].filter(
+			const known = [...store.embedded.versionsOf(actionId), ...(await storedOf(actionId))].filter(
 				({ manifest }) =>
-					manifest.contract.version === major && runsNodeContract(manifest.nodeContract),
+					manifest.contract.version === major && options.runsNodeContract(manifest.nodeContract),
 			);
 			const isKnown = (pin: INodeContractPin) =>
 				known.some(
@@ -860,7 +873,7 @@ export function contractStore(options: ContractStoreOptions): ContractStore {
 				store.statuses(),
 				storedCredentials(),
 			]);
-			const known = [...bundledCredentialManifests(), ...credentials];
+			const known = [...store.embedded.credentials(), ...credentials];
 			const checked = all.filter(({ manifest }) => {
 				const pins = unresolvedCredentialPinsOf(manifest, known);
 				if (pins.length === 0) return true;
@@ -957,7 +970,7 @@ export function contractStore(options: ContractStoreOptions): ContractStore {
  * A revoked version does not run unless `revokedAllowed` lists it.
  */
 export function contractVersionLoader(
-	options: Omit<ContractRegistryOptions, 'runtimes' | 'sandbox' | 'nodeContractRange'>,
+	options: ContractVersionLoaderOptions,
 ): ContractVersionLoader {
 	const { store } = options;
 	const allowed = new Set(options.revokedAllowed ?? []);
@@ -1038,60 +1051,54 @@ export function contractVersionLoader(
 	};
 }
 
-const bundledVersionsOf = (actionId: string) => {
-	try {
-		return versionsOf(actionId);
-	} catch {
-		// Not an action of this package, or a build without frozen versions.
-		return [];
-	}
-};
-
 /**
  * The credential manifest of a name: the bundled one, which n8n registers and signs with, else
  * the newest one in the store, unless another package has a type of that name.
  */
 export function credentialManifestsOf(
-	store: Pick<ContractStore, 'credentials'>,
+	store: Pick<ContractStore, 'credentials' | 'embedded'>,
 	hasOtherCredentialType: (name: string) => boolean = () => false,
 ) {
-	const bundled = new Map(bundledCredentialsOf().map(({ manifest }) => [manifest.name, manifest]));
+	const bundled = new Map(
+		store.embedded.credentials().map((manifest) => [manifest.name, manifest]),
+	);
 	return async (name: string) =>
 		bundled.get(name) ??
 		(hasOtherCredentialType(name) ? undefined : (await store.credentials()).get(name));
 }
 
-/**
- * Sets the Node Contract range, the version loader, the credential manifests, the runtime
- * policy, the run profile listener, the permission refusal listener, the input hosts and the
- * response limit of this package's node-sdk, which its nodes run with.
- */
-export const useContractRegistry = (options: ContractRegistryOptions) => {
-	setNodeContractRange(options.nodeContractRange);
-	setContractVersionLoader(contractVersionLoader(options));
-	setCredentialManifests(credentialManifestsOf(options.store, options.hasOtherCredentialType));
-	setRunProfileListener(options.onRunProfile, options.tracePayloads);
-	setPermissionRefusalListener(options.onPermissionRefused);
-	setEgressInputHosts(options.egressInputHosts ?? []);
-	setMaxResponseBytes(options.maxResponseBytes);
-	setExecutorLoader(policyExecutorLoader(options.runtimes, options.sandbox));
-};
-
 /** A node of a saved workflow, the action that it runs and its pin. */
 export interface PinnedNode {
+	/** The id of the workflow. */
 	readonly workflowId: string;
+	/** The name of the workflow. */
 	readonly workflowName: string;
+	/** The name of the node. */
 	readonly node: string;
+	/** The action id that the node runs. */
 	readonly action: string;
+	/** The pin of the node. */
 	readonly pin: INodeContractPin;
 }
 
+/** What `syncContractStore` did. */
 export interface ContractSyncResult {
 	/** Versions the store did not have before. */
 	readonly added: readonly VersionManifest[];
-	readonly failed: ReadonlyArray<PinnedNode & { readonly error: string }>;
+	/** Nodes whose pinned version the store could not take. */
+	readonly failed: ReadonlyArray<
+		PinnedNode & {
+			/** Why the store did not take the version. */
+			readonly error: string;
+		}
+	>;
 	/** Nodes whose pinned version declares a Node Contract version that this host does not run. */
-	readonly unsupported: ReadonlyArray<PinnedNode & { readonly nodeContract: NodeContractVersion }>;
+	readonly unsupported: ReadonlyArray<
+		PinnedNode & {
+			/** The Node Contract version of the pinned version. */
+			readonly nodeContract: NodeContractVersion;
+		}
+	>;
 }
 
 /**
@@ -1112,7 +1119,7 @@ export async function syncContractStore(
 	);
 	const ids = [...new Set(nodes.map(({ action }) => action))];
 	const bundled = new Set(
-		ids.flatMap((id) => bundledVersionsOf(id).map(({ manifest }) => manifest.bundleHash)),
+		ids.flatMap((id) => store.embedded.versionsOf(id).map(({ manifest }) => manifest.bundleHash)),
 	);
 	const syncPin = async ({ action, pin }: PinnedNode, group: readonly PinnedNode[]) => {
 		const manifest = await store.locked(action, pin).then(
@@ -1141,7 +1148,7 @@ export async function syncContractStore(
 			typeof manifest === 'string' ? group.map((node) => ({ ...node, error: manifest })) : [],
 		),
 		unsupported: results.flatMap(({ manifest, group }) =>
-			typeof manifest === 'string' || runsNodeContract(manifest.nodeContract)
+			typeof manifest === 'string' || store.runsNodeContract(manifest.nodeContract)
 				? []
 				: group.map((node) => ({ ...node, nodeContract: manifest.nodeContract })),
 		),

@@ -2,7 +2,7 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
-import { versionsOf } from '../../../nodes-integrations/dist/registry.js';
+import { firstPartyVersionsOf as versionsOf } from './first-party';
 import {
 	resolveRuntime,
 	type RuntimeAvailability,
@@ -10,7 +10,7 @@ import {
 	type RuntimePolicy,
 	type RuntimeRequest,
 } from '../runtime-policy';
-import type { ContractOrigin } from '../runtime';
+import { hostRuntime, type ContractOrigin } from '../runtime';
 import { policyExecutorLoader, type GuestRuntime } from '../sandbox';
 
 const LISTS: RuntimeLists = {
@@ -120,10 +120,10 @@ describe('policyExecutorLoader', () => {
 		...overrides,
 	});
 	const load = async (loaderPolicy: RuntimePolicy, origin: ContractOrigin) =>
-		await policyExecutorLoader(loaderPolicy, { cacheDir, credentialType: () => undefined })({
-			...head!,
-			origin,
-		});
+		await policyExecutorLoader(loaderPolicy, { cacheDir, credentialType: () => undefined })(
+			{ ...head!, origin },
+			hostRuntime(),
+		);
 
 	it('runs first-party web in the worker', async () => {
 		await expect(load(policy(), 'first-party')).rejects.toThrow('started worker');
@@ -152,10 +152,10 @@ describe('policyExecutorLoader', () => {
 	it('runs a community trigger in wasm and a first-party trigger in this process', async () => {
 		const [trigger] = versionsOf('notion.dataSource.pageAdded');
 		const loadTrigger = async (origin: ContractOrigin) =>
-			await policyExecutorLoader(policy(), { cacheDir, credentialType: () => undefined })({
-				...trigger!,
-				origin,
-			});
+			await policyExecutorLoader(policy(), { cacheDir, credentialType: () => undefined })(
+				{ ...trigger!, origin },
+				hostRuntime(),
+			);
 		await expect(loadTrigger('community')).rejects.toThrow('started wasm');
 		await expect(loadTrigger('first-party')).resolves.toBeInstanceOf(Function);
 	});

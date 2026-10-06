@@ -32,7 +32,6 @@ import { allowsHost, permissionsOf } from './egress';
 import { fileRequestIssues, isFileExtractRequest } from './host-imports';
 import type { RunRecorder, RunRequest, RunRpc, RunSandboxStats } from './profile';
 import {
-	credentialManifestOf,
 	executorOf,
 	loadExecutor,
 	verifiedCodeOf,
@@ -40,8 +39,10 @@ import {
 	type ChunkContext,
 	type ChunkRunner,
 	type Executor,
+	type CredentialManifestOf,
 	type ExecutorLoader,
 	type FrozenVersion,
+	type HostRuntime,
 	type ItemOutcome,
 } from './runtime';
 import { hasBinary, Schema, shapeOf, type Binary, type JsonSchema } from './schema';
@@ -120,7 +121,7 @@ export interface SandboxOptions {
 	readonly cacheDir: string;
 	/**
 	 * The credential type of a name that has no credential manifest in the store of the host, e.g. a
-	 * compat type that n8n has. A credential manifest comes first (`setCredentialManifests`). The
+	 * compat type that n8n has. A credential manifest comes first (`HostRuntime.credentialManifestOf`). The
 	 * hosts and the base URL of a credential never come from the bundle.
 	 */
 	readonly credentialType: (name: string) => AnyCredentialType | undefined;
@@ -1844,6 +1845,7 @@ async function nodeOf(
 	manifest: VersionManifest,
 	described: unknown,
 	credentialType: SandboxOptions['credentialType'],
+	credentialManifestOf: CredentialManifestOf,
 ): Promise<NodeDefinition> {
 	const { id, semver, contract } = manifest;
 	const node = isRecord(described) ? described.node : undefined;
@@ -2215,7 +2217,11 @@ function unsupported({ id, kind, contract }: VersionManifest): string | undefine
 }
 
 /** The action of a frozen version in the sandbox, the executor that runs it, and its `migrate`. */
-export async function sandboxedVersionOf(frozen: FrozenVersion, options: SandboxOptions) {
+export async function sandboxedVersionOf(
+	frozen: FrozenVersion,
+	options: SandboxOptions,
+	hostRuntime: HostRuntime,
+) {
 	const { manifest } = frozen;
 	const missing = unsupported(manifest);
 	if (missing) throw new UserError(missing);
@@ -2231,7 +2237,7 @@ export async function sandboxedVersionOf(frozen: FrozenVersion, options: Sandbox
 		throw new UserError(`The contract of ${manifest.id}@${manifest.semver}: ${refused.join('; ')}`);
 	}
 	const kind: SandboxKind = manifest.kind;
-	const code = await verifiedCodeOf(frozen);
+	const code = await verifiedCodeOf(frozen, hostRuntime.nodeContractRange);
 	const config: GuestSession = {
 		kind,
 		limits: { ...DEFAULT_LIMITS, ...options.limits },
@@ -2248,11 +2254,15 @@ export async function sandboxedVersionOf(frozen: FrozenVersion, options: Sandbox
 		.finally(() => describing.close());
 	if (kind === 'trigger') {
 		const webhook = isRecord(described) ? described.webhook : undefined;
-		assertWebhookSignature(manifest, isRecord(webhook) ? webhook.verify : undefined);
+		assertWebhookSignature(
+			manifest,
+			isRecord(webhook) ? webhook.verify : undefined,
+			hostRuntime.reportRefusal,
+		);
 	}
 	const action = sandboxedAction(
 		manifest,
-		await nodeOf(manifest, described, options.credentialType),
+		await nodeOf(manifest, described, options.credentialType, hostRuntime.credentialManifestOf),
 		start,
 		chunksItems(manifest, options),
 	);
@@ -2386,18 +2396,19 @@ export function policyExecutorLoader(
 	policy: RuntimePolicy,
 	options: SandboxOptions,
 ): ExecutorLoader {
-	return async (frozen) => {
+	return async (frozen, hostRuntime) => {
 		const { manifest } = frozen;
 		const name = runtimeNameOf(policy, frozen);
 		policy.log?.(`${manifest.id}@${manifest.semver} (${frozen.origin}) runs in ${name}`);
 		if (name === 'in-process') {
 			return manifest.kind === 'trigger'
-				? await loadTriggerExecutor(frozen)
-				: await loadExecutor(frozen);
+				? await loadTriggerExecutor(frozen, hostRuntime)
+				: await loadExecutor(frozen, hostRuntime);
 		}
 		const runtime = policy.runtimes[name];
 		if (!runtime)
 			throw new UnexpectedError(`The ${name} runtime is available, but the host gave none`);
-		return (await sandboxedVersionOf(frozen, { ...options, runtime: runtime() })).executor;
+		return (await sandboxedVersionOf(frozen, { ...options, runtime: runtime() }, hostRuntime))
+			.executor;
 	};
 }

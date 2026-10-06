@@ -1,6 +1,6 @@
 import { EventService } from '@n8n/backend-services';
 import type { PrometheusMetricsConfig } from '@n8n/config';
-import type { RunProfile } from '@n8n/nodes-integrations';
+import type { RunProfile } from '@n8n/node-sdk/host';
 import promClient from 'prom-client';
 import { mock } from 'vitest-mock-extended';
 

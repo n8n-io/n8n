@@ -1,7 +1,8 @@
 import type { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
-import { packageOf, versionsOf } from '@n8n/nodes-integrations';
+import { hostRuntime } from '@n8n/node-sdk/host';
+import { packageOf, versionsOf } from '@test/first-party-contracts';
 import { mock } from 'vitest-mock-extended';
 import type { INode, Workflow } from 'n8n-workflow';
 
@@ -16,6 +17,7 @@ import type { OwnershipService } from '@/services/ownership.service';
 
 describe('DataTableProxyService', () => {
 	const contracts = new ContractNodeLoader(
+		hostRuntime(),
 		[],
 		[],
 		async () => ({ versions: async () => new Map(), credentials: async () => new Map() }),

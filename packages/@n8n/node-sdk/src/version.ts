@@ -94,35 +94,31 @@ export const implementsNodeContract = (version: NodeContractVersion) => {
 	});
 };
 
-// One slot: the host sets its configured range once at start.
-const nodeContractRange = new Map<
-	'range',
-	{ text: string; includes: (version: string) => boolean }
->();
+/** The Node Contract versions that a host runs, e.g. `>=2.0.0 <3.0.0`. */
+export interface NodeContractRange {
+	/** The range as the host configures it. */
+	readonly text: string;
+	/** True when the range has the version. */
+	readonly includes: (version: string) => boolean;
+}
 
-/** Sets the Node Contract versions this host runs, e.g. `>=2.0.0 <3.0.0`. Throws for a bad range. */
-export const setNodeContractRange = (range: string) => {
-	nodeContractRange.set('range', { text: range, includes: semverRange(range) });
-};
-
-const rangeOf = () =>
-	nodeContractRange.get('range') ?? {
-		text: DEFAULT_NODE_CONTRACT_RANGE,
-		includes: semverRange(DEFAULT_NODE_CONTRACT_RANGE),
-	};
+/** The range of a range text. Throws for a bad range. */
+export const nodeContractRangeOf = (text = DEFAULT_NODE_CONTRACT_RANGE): NodeContractRange => ({
+	text,
+	includes: semverRange(text),
+});
 
 /** In the configured range, and implemented by this host. */
-export const runsNodeContract = (version: NodeContractVersion) =>
-	rangeOf().includes(version) && implementsNodeContract(version);
+export const runsNodeContract = (range: NodeContractRange, version: NodeContractVersion) =>
+	range.includes(version) && implementsNodeContract(version);
 
-export function assertNodeContract({
-	id,
-	semver,
-	nodeContract,
-}: Pick<VersionManifest, 'id' | 'semver' | 'nodeContract'>) {
-	if (runsNodeContract(nodeContract)) return;
+export function assertNodeContract(
+	range: NodeContractRange,
+	{ id, semver, nodeContract }: Pick<VersionManifest, 'id' | 'semver' | 'nodeContract'>,
+) {
+	if (runsNodeContract(range, nodeContract)) return;
 	throw new UserError(
-		`${id}@${semver} needs Node Contract ${nodeContract}. This host runs ${rangeOf().text} and implements ${IMPLEMENTED_NODE_CONTRACTS.join(', ')}.`,
+		`${id}@${semver} needs Node Contract ${nodeContract}. This host runs ${range.text} and implements ${IMPLEMENTED_NODE_CONTRACTS.join(', ')}.`,
 	);
 }
 

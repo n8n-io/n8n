@@ -60,8 +60,16 @@
 			"name": "@n8n/nodes-core.dataTableRowDelete",
 			"version": 1,
 			"hidden": true,
+			"usableAsTool": true,
 			"credentials": [],
 			"properties": ["table", "where"]
+		},
+		{
+			"name": "@n8n/nodes-core.dataTableRowDeleteTool",
+			"version": 1,
+			"hidden": true,
+			"credentials": [],
+			"properties": ["toolDescription", "table", "where"]
 		},
 		{
 			"name": "@n8n/nodes-core.dataTableRowExists",
@@ -74,8 +82,16 @@
 			"name": "@n8n/nodes-core.dataTableRowGet",
 			"version": 1,
 			"hidden": true,
+			"usableAsTool": true,
 			"credentials": [],
 			"properties": ["table", "where", "sort", "limit"]
+		},
+		{
+			"name": "@n8n/nodes-core.dataTableRowGetTool",
+			"version": 1,
+			"hidden": true,
+			"credentials": [],
+			"properties": ["toolDescription", "table", "where", "sort", "limit"]
 		},
 		{
 			"name": "@n8n/nodes-core.dataTableRowInsert",
@@ -88,50 +104,151 @@
 			"name": "@n8n/nodes-core.dataTableRowUpdate",
 			"version": 1,
 			"hidden": true,
+			"usableAsTool": true,
 			"credentials": [],
 			"properties": ["table", "where", "values"]
+		},
+		{
+			"name": "@n8n/nodes-core.dataTableRowUpdateTool",
+			"version": 1,
+			"hidden": true,
+			"credentials": [],
+			"properties": ["toolDescription", "table", "where", "values"]
 		},
 		{
 			"name": "@n8n/nodes-core.dataTableRowUpsert",
 			"version": 1,
 			"hidden": true,
+			"usableAsTool": true,
 			"credentials": [],
 			"properties": ["table", "where", "values"]
+		},
+		{
+			"name": "@n8n/nodes-core.dataTableRowUpsertTool",
+			"version": 1,
+			"hidden": true,
+			"credentials": [],
+			"properties": ["toolDescription", "table", "where", "values"]
 		},
 		{
 			"name": "@n8n/nodes-core.dataTableTableClear",
 			"version": 1,
 			"hidden": true,
+			"usableAsTool": true,
 			"credentials": [],
 			"properties": ["table"]
+		},
+		{
+			"name": "@n8n/nodes-core.dataTableTableClearTool",
+			"version": 1,
+			"hidden": true,
+			"credentials": [],
+			"properties": ["toolDescription", "table"]
 		},
 		{
 			"name": "@n8n/nodes-core.dataTableTableCreate",
 			"version": 1,
 			"hidden": true,
+			"usableAsTool": true,
 			"credentials": [],
 			"properties": ["name", "columns", "reuse"]
+		},
+		{
+			"name": "@n8n/nodes-core.dataTableTableCreateTool",
+			"version": 1,
+			"hidden": true,
+			"credentials": [],
+			"properties": ["toolDescription", "name", "columns", "reuse"]
 		},
 		{
 			"name": "@n8n/nodes-core.dataTableTableDelete",
 			"version": 1,
 			"hidden": true,
+			"usableAsTool": true,
 			"credentials": [],
 			"properties": ["table"]
+		},
+		{
+			"name": "@n8n/nodes-core.dataTableTableDeleteTool",
+			"version": 1,
+			"hidden": true,
+			"credentials": [],
+			"properties": ["toolDescription", "table"]
 		},
 		{
 			"name": "@n8n/nodes-core.dataTableTableList",
 			"version": 1,
 			"hidden": true,
+			"usableAsTool": true,
 			"credentials": [],
 			"properties": ["name", "sort", "limit"]
+		},
+		{
+			"name": "@n8n/nodes-core.dataTableTableListTool",
+			"version": 1,
+			"hidden": true,
+			"credentials": [],
+			"properties": ["toolDescription", "name", "sort", "limit"]
 		},
 		{
 			"name": "@n8n/nodes-core.dataTableTableRename",
 			"version": 1,
 			"hidden": true,
+			"usableAsTool": true,
 			"credentials": [],
 			"properties": ["table", "name"]
+		},
+		{
+			"name": "@n8n/nodes-core.dataTableTableRenameTool",
+			"version": 1,
+			"hidden": true,
+			"credentials": [],
+			"properties": ["toolDescription", "table", "name"]
+		},
+		{
+			"name": "@n8n/nodes-core.extractFromFileCsv",
+			"version": 1,
+			"hidden": true,
+			"credentials": [],
+			"properties": [
+				"file",
+				"delimiter",
+				"header",
+				"includeEmptyCells",
+				"fromLine",
+				"maxRows",
+				"relaxQuotes",
+				"encoding",
+				"bom"
+			]
+		},
+		{
+			"name": "@n8n/nodes-core.extractFromFileJson",
+			"version": 1,
+			"hidden": true,
+			"credentials": [],
+			"properties": ["file", "encoding", "stripBom"]
+		},
+		{
+			"name": "@n8n/nodes-core.extractFromFilePdf",
+			"version": 1,
+			"hidden": true,
+			"credentials": [],
+			"properties": ["file", "password", "maxPages"]
+		},
+		{
+			"name": "@n8n/nodes-core.extractFromFileText",
+			"version": 1,
+			"hidden": true,
+			"credentials": [],
+			"properties": ["file", "encoding", "stripBom"]
+		},
+		{
+			"name": "@n8n/nodes-core.extractFromFileXlsx",
+			"version": 1,
+			"hidden": true,
+			"credentials": [],
+			"properties": ["file", "sheet", "range", "header", "includeEmptyCells"]
 		},
 		{
 			"name": "@n8n/nodes-core.httpRequestDownload",
@@ -166,7 +283,8 @@
 				"items",
 				"pages",
 				"fullResponse",
-				"neverError"
+				"neverError",
+				"schema"
 			]
 		},
 		{
@@ -189,7 +307,8 @@
 				"items",
 				"pages",
 				"fullResponse",
-				"neverError"
+				"neverError",
+				"schema"
 			]
 		},
 		{
@@ -212,7 +331,8 @@
 				"headers",
 				"body",
 				"fullResponse",
-				"neverError"
+				"neverError",
+				"schema"
 			]
 		},
 		{
@@ -235,7 +355,8 @@
 				"headers",
 				"body",
 				"fullResponse",
-				"neverError"
+				"neverError",
+				"schema"
 			]
 		},
 		{
@@ -310,10 +431,10 @@
 		},
 		{
 			"name": "@n8n/nodes-core.mergeAppend",
-			"version": 1,
+			"version": 2,
 			"hidden": true,
 			"credentials": [],
-			"properties": []
+			"properties": ["inputs"]
 		},
 		{
 			"name": "@n8n/nodes-core.mergeCombine",
@@ -321,6 +442,20 @@
 			"hidden": true,
 			"credentials": [],
 			"properties": ["by", "prefer"]
+		},
+		{
+			"name": "@n8n/nodes-core.mergeCombineByPosition",
+			"version": 1,
+			"hidden": true,
+			"credentials": [],
+			"properties": ["inputs", "unpaired", "prefer"]
+		},
+		{
+			"name": "@n8n/nodes-core.noOpPass",
+			"version": 1,
+			"hidden": true,
+			"credentials": [],
+			"properties": []
 		},
 		{
 			"name": "@n8n/nodes-core.stopAndErrorStop",
@@ -1162,6 +1297,7 @@
 		},
 		{
 			"name": "facebookGraphAppApi",
+			"extends": ["facebookGraphApi"],
 			"supportedNodes": ["n8n-nodes-base.facebookTrigger"],
 			"properties": ["accessToken", "appSecret"],
 			"iconUrl": "icons/n8n-nodes-base/dist/nodes/Facebook/facebook.svg",
@@ -1669,16 +1805,30 @@
 		"@n8n/nodes-core.conditionIf",
 		"@n8n/nodes-core.conditionSwitch",
 		"@n8n/nodes-core.dataTableRowDelete",
+		"@n8n/nodes-core.dataTableRowDeleteTool",
 		"@n8n/nodes-core.dataTableRowExists",
 		"@n8n/nodes-core.dataTableRowGet",
+		"@n8n/nodes-core.dataTableRowGetTool",
 		"@n8n/nodes-core.dataTableRowInsert",
 		"@n8n/nodes-core.dataTableRowUpdate",
+		"@n8n/nodes-core.dataTableRowUpdateTool",
 		"@n8n/nodes-core.dataTableRowUpsert",
+		"@n8n/nodes-core.dataTableRowUpsertTool",
 		"@n8n/nodes-core.dataTableTableClear",
+		"@n8n/nodes-core.dataTableTableClearTool",
 		"@n8n/nodes-core.dataTableTableCreate",
+		"@n8n/nodes-core.dataTableTableCreateTool",
 		"@n8n/nodes-core.dataTableTableDelete",
+		"@n8n/nodes-core.dataTableTableDeleteTool",
 		"@n8n/nodes-core.dataTableTableList",
+		"@n8n/nodes-core.dataTableTableListTool",
 		"@n8n/nodes-core.dataTableTableRename",
+		"@n8n/nodes-core.dataTableTableRenameTool",
+		"@n8n/nodes-core.extractFromFileCsv",
+		"@n8n/nodes-core.extractFromFileJson",
+		"@n8n/nodes-core.extractFromFilePdf",
+		"@n8n/nodes-core.extractFromFileText",
+		"@n8n/nodes-core.extractFromFileXlsx",
 		"@n8n/nodes-core.httpRequestDownload",
 		"@n8n/nodes-core.httpRequestGet",
 		"@n8n/nodes-core.httpRequestGetTool",
@@ -1696,6 +1846,8 @@
 		"@n8n/nodes-core.loopStateSet",
 		"@n8n/nodes-core.mergeAppend",
 		"@n8n/nodes-core.mergeCombine",
+		"@n8n/nodes-core.mergeCombineByPosition",
+		"@n8n/nodes-core.noOpPass",
 		"@n8n/nodes-core.stopAndErrorStop",
 		"@n8n/nodes-core.waitInterval",
 		"@n8n/nodes-core.waitUntil",
@@ -1790,6 +1942,7 @@
 			"supportedNodes": ["@n8n/nodes-integrations.anthropicChatModel"]
 		},
 		"facebookGraphAppApi": {
+			"extends": ["facebookGraphApi"],
 			"supportedNodes": ["n8n-nodes-base.facebookTrigger"]
 		},
 		"facebookGraphAppOAuth2Api": {

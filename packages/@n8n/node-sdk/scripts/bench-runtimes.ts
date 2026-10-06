@@ -11,11 +11,13 @@ import { Readable } from 'node:stream';
 import { parseArgs, promisify } from 'node:util';
 
 import {
-	packageOf,
-	sandboxCredentialTypeOf,
-	versionsOf,
-} from '../../nodes-integrations/dist/index.js';
+	firstPartyCredentialType,
+	firstPartyVersionsOf as versionsOf,
+	fixturesFileOf,
+} from '../src/__tests__/first-party';
+import { compat } from '../src/credentials';
 import {
+	hostRuntime,
 	loadExecutor,
 	nodeDescriptionOf,
 	type BinaryStore,
@@ -28,6 +30,9 @@ import type { MockRoute } from '../src/testing';
 import { parseFixtures } from '../src/version';
 import { pooledRuntime } from '../src/runtimes/pool';
 import { IN_PROCESS, runtimeByName } from './runtimes';
+
+// One host runtime for every run of the script.
+const HOST = hostRuntime();
 
 /** A runtime under test. Without `runtime`, the bundle runs in this process. */
 interface Runtime {
@@ -59,7 +64,7 @@ const IN_PROCESS_RUNTIME: Runtime = {
 const CACHE_ROOT = path.resolve(__dirname, '../node_modules/.cache');
 mkdirSync(CACHE_ROOT, { recursive: true });
 const cacheDir = mkdtempSync(path.join(CACHE_ROOT, 'bench-runtimes-'));
-const credentialType = sandboxCredentialTypeOf(() => true);
+const credentialType = (name: string) => firstPartyCredentialType(name) ?? compat(name);
 const sandboxOptions = (
 	runtime: GuestRuntime,
 	cache = cacheDir,
@@ -86,9 +91,7 @@ const table = (...columns: string[]) =>
 const row = (...cells: string[]) => console.log(`| ${cells.join(' | ')} |`);
 
 const fixtureOf = (id: string, index = 0) => {
-	const fixture = parseFixtures(
-		readFileSync(path.join(packageOf(id).dir, 'fixtures', `${id}.json`), 'utf8'),
-	).executions[index];
+	const fixture = parseFixtures(readFileSync(fixturesFileOf(id), 'utf8')).executions[index];
 	if (!fixture) throw new Error(`${id} has no fixture ${index}`);
 	return fixture;
 };
@@ -106,10 +109,10 @@ const executorFor = async (id: string, { name, runtime, chunkItems }: Runtime) =
 	const executor =
 		executors.get(key) ??
 		(runtime
-			? sandboxedVersionOf(head, sandboxOptions(runtime, cacheDir, chunkItems)).then(
+			? sandboxedVersionOf(head, sandboxOptions(runtime, cacheDir, chunkItems), HOST).then(
 					({ executor }) => executor,
 				)
-			: loadExecutor(head));
+			: loadExecutor(head, HOST));
 	executors.set(key, executor);
 	return await executor;
 };
@@ -270,7 +273,8 @@ async function fixed(runtimes: readonly Runtime[]) {
 	);
 	for (const { name, runtime } of runtimes) {
 		if (!runtime) {
-			const load = async (id: string) => await timed(async () => await loadExecutor(headOf(id)));
+			const load = async (id: string) =>
+				await timed(async () => await loadExecutor(headOf(id), HOST));
 			const [first, next, again] = [
 				await load('items.set'),
 				await load('slack.message.send'),
@@ -283,7 +287,7 @@ async function fixed(runtimes: readonly Runtime[]) {
 		try {
 			const load = async (id: string) =>
 				await timed(
-					async () => await sandboxedVersionOf(headOf(id), sandboxOptions(runtime, fresh)),
+					async () => await sandboxedVersionOf(headOf(id), sandboxOptions(runtime, fresh), HOST),
 				);
 			const [first, next, again] = [
 				await load('items.set'),
@@ -293,6 +297,7 @@ async function fixed(runtimes: readonly Runtime[]) {
 			const { start } = await sandboxedVersionOf(
 				headOf('items.set'),
 				sandboxOptions(runtime, fresh),
+				HOST,
 			);
 			const sessions: number[] = [];
 			for (let i = 0; i < 10; i++) sessions.push(await timed(async () => (await start()).close()));

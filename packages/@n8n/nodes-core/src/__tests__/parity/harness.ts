@@ -26,7 +26,13 @@ import { isDeepStrictEqual } from 'node:util';
 import type * as Core from '../../../../../core/dist/index.js';
 import type Nock from '../../../../../core/node_modules/nock';
 import type { Action } from '@n8n/node-sdk';
-import { nodeNameOf, nodeParametersOf, toNodeType } from '@n8n/node-sdk/host';
+import {
+	hostRuntime,
+	nodeNameOf,
+	nodeParametersOf,
+	toNodeType,
+	type HostRuntime,
+} from '@n8n/node-sdk/host';
 import { parseFixtures } from '@n8n/node-sdk/registry';
 import type { MockRoute } from '@n8n/node-sdk/testing';
 import type * as N8nWorkflow from 'n8n-workflow';
@@ -142,8 +148,9 @@ export const actionNode = (
 	action: Action,
 	parameters: Readonly<Record<string, unknown>>,
 	credential?: string,
+	runtime: HostRuntime = hostRuntime(),
 ): NodeUnderTest => {
-	const NodeType = toNodeType(action);
+	const NodeType = toNodeType(action, runtime);
 	return {
 		nodeType: new NodeType(),
 		// Any unique type works: the one-node workflow resolves it to `nodeType`.

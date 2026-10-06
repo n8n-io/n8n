@@ -3,16 +3,13 @@ import { WorkflowRepository } from '@n8n/db';
 import { OnLeaderTakeover } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import {
-	isContractNodeType,
 	isNodeContractPin,
-	nodeTypeOf,
-	runsNodeContract,
 	syncContractStore,
 	type ContractStore,
 	type ContractSyncResult,
 	type PinnedNode,
 	type VersionManifest,
-} from '@n8n/nodes-integrations';
+} from '@n8n/node-sdk/registry';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { InstanceSettings } from 'n8n-core';
 import {
@@ -24,6 +21,7 @@ import {
 } from 'n8n-workflow';
 
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { isContractNodeType, nodeTypeOf } from '@/node-contracts-catalog';
 import { contractActionOf, NodeContractsStore } from '@/node-contracts-registry';
 
 const PAGE_SIZE = 100;
@@ -98,7 +96,7 @@ export class NodeContractsSync {
 		const { nodes, next } = await this.pinnedPage(published, afterId);
 		const result = nodes.length > 0 ? await syncContractStore(store, nodes, since) : NO_RESULT;
 		this.report(result);
-		const newMajor = () => !this.listsAll(result.added);
+		const newMajor = () => !this.listsAll(result.added, store.runsNodeContract);
 		if (options.refreshNodeTypes && newMajor()) {
 			await this.loadNodesAndCredentials.refreshNodeTypes(newMajor);
 		}
@@ -186,10 +184,10 @@ export class NodeContractsSync {
 	}
 
 	/** True when each node type lists the major of each version that this host runs. */
-	private listsAll(manifests: readonly VersionManifest[]) {
+	private listsAll(manifests: readonly VersionManifest[], runs: ContractStore['runsNodeContract']) {
 		return manifests.every(
 			({ id, contract, nodeContract }) =>
-				!runsNodeContract(nodeContract) || this.listsVersion(nodeTypeOf({ id }), contract.version),
+				!runs(nodeContract) || this.listsVersion(nodeTypeOf(id), contract.version),
 		);
 	}
 
@@ -209,12 +207,14 @@ export class NodeContractsSync {
 		const manifests = await Promise.all(
 			pinned.map(async ({ node, action, pin }) => {
 				const { manifest } = await store.locked(action, pin);
-				assertRunsAs(node, action, pin, manifest);
+				assertRunsAs(node, action, pin, manifest, store.runsNodeContract);
 				return manifest;
 			}),
 		);
-		const newMajor = !this.listsAll(manifests);
-		await this.loadNodesAndCredentials.refreshNodeTypes(() => !this.listsAll(manifests));
+		const newMajor = !this.listsAll(manifests, store.runsNodeContract);
+		await this.loadNodesAndCredentials.refreshNodeTypes(
+			() => !this.listsAll(manifests, store.runsNodeContract),
+		);
 		// Only a host that fetches adds rows. A worker or a follower read a row that the leader announced.
 		if (newMajor && this.nodeContractsStore.mayFetch()) {
 			await this.nodeContractsStore.reloadOtherMains();
@@ -228,12 +228,14 @@ function assertRunsAs(
 	action: string,
 	pin: INodeContractPin,
 	manifest: VersionManifest,
+	runs: ContractStore['runsNodeContract'],
 ) {
+	const nodeType = nodeTypeOf(manifest.id);
 	const checks: ReadonlyArray<readonly [boolean, string]> = [
-		[nodeTypeOf(manifest) === node.type, `is a version of ${nodeTypeOf(manifest)}`],
+		[nodeType === node.type, `is a version of ${nodeType}`],
 		[manifest.contract.version === node.typeVersion, `is major ${manifest.contract.version}`],
 		[
-			runsNodeContract(manifest.nodeContract),
+			runs(manifest.nodeContract),
 			`needs Node Contract ${manifest.nodeContract}, which this host does not run`,
 		],
 	];

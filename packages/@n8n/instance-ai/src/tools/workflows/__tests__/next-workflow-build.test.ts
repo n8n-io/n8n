@@ -1,4 +1,4 @@
-import type { WorkflowNodeRef } from '@n8n/nodes-integrations';
+import type { WorkflowNodeRef } from '../../contract-catalog';
 import type { IDataObject, WorkflowJSON } from '@n8n/workflow-sdk';
 import * as flowSdk from '@n8n/workflow-sdk/next';
 import {
@@ -44,9 +44,9 @@ import {
 } from '../next-workflow-build';
 
 // The HTTP GET action with its body schema and pages in the Options collection of the form.
-vi.mock('@n8n/nodes-integrations', async (importOriginal) => {
-	const original = await importOriginal<typeof import('@n8n/nodes-integrations')>();
-	const get = original.actions.find(({ id }) => id === 'httpRequest.get');
+vi.mock('../../contract-catalog', async (importOriginal) => {
+	const original = await importOriginal<typeof import('../../contract-catalog')>();
+	const get = original.contractActions().find(({ id }) => id === 'httpRequest.get');
 	const advanced = get && { ...get, ui: { advanced: ['schema', 'pages'] } };
 	return {
 		...original,

@@ -1,3 +1,9 @@
+import {
+	addToStore,
+	manifestTextOf,
+	signStoreManifest,
+	type StoreVersion,
+} from '@n8n/node-sdk/registry';
 import { testDb } from '@n8n/backend-test-utils';
 import { NodeContractStatusRepository, NodeContractVersionRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -6,33 +12,16 @@ import {
 	importContractStore,
 	storeFilesOfDir,
 	storeReader,
-	versionsOf,
 	type StoredVersion,
-} from '@n8n/nodes-integrations';
+} from '@n8n/node-sdk/registry';
+import { versionsOf } from '@test/first-party-contracts';
 import { InstanceSettings } from 'n8n-core';
 import { createHash, generateKeyPairSync } from 'node:crypto';
 import { mkdtemp, readdir, readFile, rm } from 'node:fs/promises';
-import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
 import { NodeContractsStore } from '@/node-contracts-registry';
-
-interface StoreVersion {
-	readonly manifestText: string;
-	readonly bundle: string;
-	readonly fixtures?: string;
-	readonly signatures?: unknown[];
-	readonly published?: string;
-}
-
-// The cli does not depend on the node-sdk, so load it through the package that does.
-const sdkRequire = createRequire(createRequire(__filename).resolve('@n8n/nodes-integrations'));
-const sdk = sdkRequire('@n8n/node-sdk/registry') as {
-	addToStore(dir: string, versions: StoreVersion[]): Promise<unknown>;
-	manifestTextOf(manifest: unknown): string;
-	signStoreManifest(manifestText: string, privateKey: string): unknown;
-};
 
 const OLDER = path.resolve(
 	__dirname,
@@ -55,12 +44,12 @@ const versions = async (): Promise<StoreVersion[]> => {
 			manifestText: await readFile(path.join(OLDER, 'manifest.json'), 'utf8'),
 			bundle: await readFile(path.join(OLDER, 'bundle.cjs'), 'utf8'),
 		},
-		{ manifestText: sdk.manifestTextOf(head.manifest), bundle: await head.readBundle() },
+		{ manifestText: manifestTextOf(head.manifest), bundle: await head.readBundle() },
 	];
 	return texts.map((text) => ({
 		...text,
 		fixtures: '{"executions":[]}\n',
-		signatures: [sdk.signStoreManifest(text.manifestText, keys.privateKey)],
+		signatures: [signStoreManifest(text.manifestText, keys.privateKey)],
 		published: '2026-10-02T12:00:00.000Z',
 	}));
 };
@@ -183,7 +172,7 @@ describe('NodeContractVersionRepository', () => {
 
 	it('exports the same layout bytes that it imported', async () => {
 		const source = path.join(state.dir, 'source');
-		await sdk.addToStore(source, await versions());
+		await addToStore(source, await versions());
 		const { rows } = Container.get(NodeContractsStore);
 
 		const added = await importContractStore(storeReader(storeFilesOfDir(source)), rows, {

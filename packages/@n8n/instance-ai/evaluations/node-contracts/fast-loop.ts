@@ -59,14 +59,8 @@ import { createRequire } from 'node:module';
 import path from 'node:path';
 import pLimit from 'p-limit';
 
-import {
-	actionOfNode,
-	isContractNodeType,
-	migratedSlotOf,
-	nodeTypeOf,
-	toVersionedNodeType,
-	versionsOf,
-} from '@n8n/nodes-integrations';
+import { hostRuntime, toVersionedNodeType } from '@n8n/node-sdk/host';
+import { embeddedStoreDirOf, versionsOf } from '@n8n/node-sdk/registry';
 
 import type { InstanceAiRunDebugResponse } from '@n8n/api-types';
 
@@ -77,6 +71,13 @@ import {
 	type TokenComposition,
 } from './token-composition';
 import { N8nClient, type WorkflowNodeResponse, type WorkflowResponse } from '../clients/n8n-client';
+import {
+	actionOfNode,
+	firstPartyCatalog,
+	isContractNodeType,
+	migratedSlotOf,
+	nodeTypeOf,
+} from '../../src/tools/contract-catalog';
 import { loadWorkflowTestCasesWithFiles, type WorkflowTestCaseWithFile } from '../data/workflows';
 import { buildWorkflow } from '../harness/build-workflow';
 import { ConversationSeedSchema } from '../harness/conversation-seed';
@@ -586,7 +587,11 @@ async function runJavaScriptJob(
 function nextNodeClass(node: WorkflowNodeResponse) {
 	const action = actionOfNode(node);
 	if (!action) throw new Error(`${node.type} is not a contract node type`);
-	return toVersionedNodeType(versionsOf(action.id));
+	const pkg = firstPartyCatalog().packageOf(action.id);
+	return toVersionedNodeType(
+		pkg ? versionsOf(action.id, embeddedStoreDirOf(pkg)) : [],
+		hostRuntime(),
+	);
 }
 
 /** The node class of a nodes-base node, found in `known/nodes.json` as the node loader does. */

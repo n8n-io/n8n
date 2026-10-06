@@ -305,23 +305,11 @@ export function dataTableHostOf(
 	};
 }
 
-const CODE_LANGUAGES = new Map<'languages', ReadonlySet<CodeRequest['language']>>();
-
 /**
  * Reads the content of a file for the `parsers` import. The executor checks the shape of the
  * answer for the format, so a host can give its parser output as it is.
  */
 export type FileExtractor = (file: Binary, request: FileExtractRequest) => Promise<unknown>;
-
-// One slot: the host sets its parsers once at start.
-const FILE_EXTRACTOR = new Map<'extractor', FileExtractor>();
-
-/** Sets the parsers of the `parsers` import of every node run. Without it, `parsers` fails. */
-export const setFileExtractor = (extractor: FileExtractor) => {
-	FILE_EXTRACTOR.set('extractor', extractor);
-};
-
-export const fileExtractor = (): FileExtractor | undefined => FILE_EXTRACTOR.get('extractor');
 
 type OptionCheck = (value: unknown) => boolean;
 
@@ -411,15 +399,6 @@ export function isFileResult<F extends FileFormat>(
 	}
 }
 
-/** The languages the instance allows, e.g. without Python when `N8N_PYTHON_ENABLED` is false. */
-export const setCodeLanguages = (languages: ReadonlyArray<CodeRequest['language']>) => {
-	CODE_LANGUAGES.set('languages', new Set(languages));
-};
-
-// Until the host sets the languages, only JavaScript runs: a host that skips the switch must not run Python.
-const allows = (language: CodeRequest['language']) =>
-	CODE_LANGUAGES.get('languages')?.has(language) ?? language === 'javascript';
-
 /** An error from the runner is JSON, not an `Error`; the Code node wraps it the same way. */
 function runnerError(context: IExecuteFunctions, error: unknown): Error {
 	if (error instanceof Error) return error;
@@ -439,7 +418,10 @@ function runnerError(context: IExecuteFunctions, error: unknown): Error {
 const CHUNK_SIZE = 1000;
 
 /** User code in the n8n task runner, with the settings the Code node sends. */
-export function codeRunnerOf(context: IExecuteFunctions): CodeRunner {
+export function codeRunnerOf(
+	context: IExecuteFunctions,
+	languages: ReadonlySet<CodeRequest['language']>,
+): CodeRunner {
 	const resultOf = async (language: string, settings: Record<string, unknown>) => {
 		const result = await context.startJob(language, settings, 0);
 		if (!result.ok) throw runnerError(context, 'error' in result ? result.error : {});
@@ -447,7 +429,7 @@ export function codeRunnerOf(context: IExecuteFunctions): CodeRunner {
 	};
 	return {
 		async run({ language, code, mode }) {
-			if (!allows(language)) {
+			if (!languages.has(language)) {
 				throw new UserError(`This instance does not allow ${language} code`);
 			}
 			const nodeMode = mode === 'all' ? 'runOnceForAllItems' : 'runOnceForEachItem';

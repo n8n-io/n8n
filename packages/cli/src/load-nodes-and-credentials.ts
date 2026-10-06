@@ -147,29 +147,17 @@ export class LoadNodesAndCredentials {
 		await this.postProcessLoaders();
 	}
 
-	/**
-	 * One contract loader for each first-party package. It sets the runtime of the node contracts
-	 * before the loaders project node types.
-	 */
+	/** One contract loader for each first-party package, all with one host runtime. */
 	private async contractNodeLoaders() {
-		const [{ ContractNodeLoader, useNodeContractsRegistry }, { FIRST_PARTY_PACKAGES }] =
-			await Promise.all([
-				import('@/node-contracts-registry.js'),
-				import('@n8n/nodes-integrations'),
-			]);
-		await useNodeContractsRegistry();
-		return FIRST_PARTY_PACKAGES.map(
-			(source) =>
-				new ContractNodeLoader(
-					this.excludeNodes,
-					this.includeNodes,
-					undefined,
-					this.globalConfig.nodes.permissionsDeny,
-					undefined,
-					() => this.loaders,
-					source,
-				),
+		const { contractNodeLoadersOf, nodeContractsRuntime } = await import(
+			'@/node-contracts-registry.js'
 		);
+		return contractNodeLoadersOf(await nodeContractsRuntime(), {
+			excludeNodes: this.excludeNodes,
+			includeNodes: this.includeNodes,
+			deny: this.globalConfig.nodes.permissionsDeny,
+			legacyLoaders: () => this.loaders,
+		});
 	}
 
 	addPostProcessor(fn: () => Promise<void>) {

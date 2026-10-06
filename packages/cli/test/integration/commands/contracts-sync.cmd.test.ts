@@ -1,12 +1,18 @@
+import {
+	addToStore,
+	parseManifest,
+	signStoreManifest,
+	type VersionManifest as Manifest,
+} from '@n8n/node-sdk/registry';
 import { createWorkflow, testDb } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import { NodeContractVersionRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { packageOf } from '@n8n/nodes-integrations';
+import { hostRuntime } from '@n8n/node-sdk/host';
+import { packageOf } from '@test/first-party-contracts';
 import { createHash, generateKeyPairSync } from 'node:crypto';
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { createServer } from 'node:http';
-import { createRequire } from 'node:module';
 import type { AddressInfo } from 'node:net';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -17,22 +23,6 @@ import { ContractsSyncCommand } from '@/commands/contracts/sync';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { ContractNodeLoader } from '@/node-contracts-registry';
 import { setupTestCommand } from '@test-integration/utils/test-command';
-
-interface Manifest {
-	readonly id: string;
-	readonly semver: string;
-}
-
-// The cli does not depend on the node-sdk, so load it through the package that does.
-const sdkRequire = createRequire(createRequire(__filename).resolve('@n8n/nodes-integrations'));
-const sdk = sdkRequire('@n8n/node-sdk/registry') as {
-	parseManifest(text: string): Manifest;
-	addToStore(
-		dir: string,
-		versions: Array<{ manifestText: string; bundle: string; signatures: unknown[] }>,
-	): Promise<unknown>;
-	signStoreManifest(manifestText: string, privateKey: string): unknown;
-};
 
 const OLDER = path.resolve(
 	__dirname,
@@ -47,6 +37,7 @@ const keyPair = () =>
 const keys = keyPair();
 
 const contractLoader = new ContractNodeLoader(
+	hostRuntime(),
 	[],
 	[],
 	async () => ({ versions: async () => new Map(), credentials: async () => new Map() }),
@@ -85,12 +76,12 @@ beforeAll(async () => {
 	state.dir = await mkdtemp(path.join(tmpdir(), 'contracts-sync-'));
 	const manifestText = await readFile(path.join(OLDER, 'manifest.json'), 'utf8');
 	const bundle = await readFile(path.join(OLDER, 'bundle.cjs'), 'utf8');
-	state.manifest = sdk.parseManifest(manifestText);
+	state.manifest = parseManifest(manifestText);
 	state.digest = `sha256:${createHash('sha256').update(manifestText).digest('hex')}`;
 	await contractLoader.loadAll();
 	const publish = async (dir: string, key: string) =>
-		await sdk.addToStore(path.join(state.dir, dir), [
-			{ manifestText, bundle, signatures: [sdk.signStoreManifest(manifestText, key)] },
+		await addToStore(path.join(state.dir, dir), [
+			{ manifestText, bundle, signatures: [signStoreManifest(manifestText, key)] },
 		]);
 	await publish('signed', keys.privateKey);
 	await publish('untrusted', keyPair().privateKey);

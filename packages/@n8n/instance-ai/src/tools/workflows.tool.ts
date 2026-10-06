@@ -18,10 +18,10 @@ import { z } from 'zod';
 import { credentialOptionsOf, toTs } from '@n8n/node-sdk/codegen';
 import { advancedFieldsOf, jsonFieldPathsOf, toolUiOf } from '@n8n/node-sdk/host';
 import { toContract } from '@n8n/node-sdk/registry';
-import { migratedTargetOf, nodeTypeOf, toolActions, toolTypeOf } from '@n8n/nodes-integrations';
 import type { composedFactoryKey, ContractFactory } from '@n8n/workflow-sdk/next';
 
 import { approvalSummarySchema, formatApprovalMessage } from './approval-copy';
+import { migratedTargetOf, nodeTypeOf, toolActions, toolTypeOf } from './contract-catalog';
 import { derivedReadOf, factoryPathOf, nextActions, nextTriggerFactories } from './next-modules';
 import { sanitizeInputSchema } from '../agent/sanitize-mcp-schemas';
 import { WorkflowSnapshotChangedError } from '../errors/workflow-snapshot-changed.error';
@@ -861,7 +861,7 @@ const contractFactories = (composedKey: typeof composedFactoryKey) =>
 				return [nodeType, factory] as const;
 			},
 		),
-		...nextActions.flatMap((action) => {
+		...nextActions().flatMap((action) => {
 			const target = migratedTargetOf(action);
 			const selector = action.native ? [] : authenticationKeys(toContract(action));
 			const { inputSchema, ui } = action;
@@ -897,7 +897,7 @@ const contractFactories = (composedKey: typeof composedFactoryKey) =>
 			// The host makes a tool node type of a tool action; a `$fromAI()` field is `fromModel()`.
 			// Its form keeps every field at the top and each variant as JSON.
 			const { advancedKeys: _advanced, ...topLevel } = factory;
-			const tool = toolActions.includes(action)
+			const tool = toolActions().includes(action)
 				? [
 						[
 							toolTypeOf(action),

@@ -1,7 +1,8 @@
 import type { AuthenticationMethod, ProjectRelation, RedactionFloor } from '@n8n/api-types';
 import type { NodePermissionClass } from '@n8n/config';
 import type { AuthProviderType, User, IWorkflowDb } from '@n8n/db';
-import type { ContractInstall, RefusedPermission } from '@n8n/nodes-integrations';
+import type { RefusedPermission } from '@n8n/node-sdk/host';
+import type { ContractInstall } from '@n8n/node-sdk/registry';
 import type {
 	CancellationReason,
 	HitlResponseTelemetryPayload,

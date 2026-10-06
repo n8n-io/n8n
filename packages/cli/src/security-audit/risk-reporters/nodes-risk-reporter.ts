@@ -30,7 +30,7 @@ export class NodesRiskReporter implements RiskReporter {
 		if (!Container.get(GlobalConfig).instanceAi.nodeContractsEnabled) return [];
 		const [{ contractPermissionsOf }, { permissionClassesOf }] = await Promise.all([
 			import('@/node-contracts-registry.js'),
-			import('@n8n/nodes-integrations'),
+			import('@n8n/node-sdk/registry'),
 		]);
 		return getNodeTypes(workflows, (node) => {
 			const permissions = contractPermissionsOf(this.loadNodesAndCredentials.loaders, node);

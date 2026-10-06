@@ -1,7 +1,7 @@
 import { createWorkflow, mockInstance, testDb } from '@n8n/backend-test-utils';
-import { GlobalConfig } from '@n8n/config';
+import { GlobalConfig, type NodePermissionClass } from '@n8n/config';
 import { ExecutionRepository, type User } from '@n8n/db';
-import { packageOf, versionsOf } from '@n8n/nodes-integrations';
+import { packageOf, versionsOf } from '@test/first-party-contracts';
 import { Container } from '@n8n/di';
 import { createRunExecutionData, type INode } from 'n8n-workflow';
 import { existsSync } from 'node:fs';
@@ -15,7 +15,7 @@ import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import {
 	ContractNodeLoader,
 	NodeContractsRuntimes,
-	useNodeContractsRegistry,
+	nodeContractsRuntime,
 } from '@/node-contracts-registry';
 import { Push } from '@/push';
 import { WorkflowRunner } from '@/workflow-runner';
@@ -69,13 +69,28 @@ describe('node contracts in their runtimes', () => {
 			nodeContractSandboxCacheDir: cacheDir(),
 		});
 		await utils.initBinaryDataService();
+		await loadContracts();
+	});
+
+	/** Loads the contract nodes with a host runtime of the current config. */
+	async function loadContracts(deny: NodePermissionClass[] = []) {
 		const core = packageOf('httpRequest.send');
-		const next = new ContractNodeLoader([], [], undefined, [], undefined, undefined, core);
+		const runtime = await nodeContractsRuntime();
+		const next = new ContractNodeLoader(
+			runtime,
+			[],
+			[],
+			undefined,
+			deny,
+			undefined,
+			undefined,
+			core,
+		);
 		await next.loadAll();
 		const loadNodesAndCredentials = Container.get(LoadNodesAndCredentials);
 		loadNodesAndCredentials.loaders = { [next.packageName]: next };
 		await loadNodesAndCredentials.postProcessLoaders();
-	});
+	}
 
 	afterAll(async () => {
 		Container.get(NodeContractsRuntimes).close();
@@ -84,9 +99,12 @@ describe('node contracts in their runtimes', () => {
 		await testDb.terminate();
 	});
 
-	async function runSend(firstParty: GlobalConfig['instanceAi']['nodesNextRuntimesFirstParty']) {
+	async function runSend(
+		firstParty: GlobalConfig['instanceAi']['nodesNextRuntimesFirstParty'],
+		deny: NodePermissionClass[] = [],
+	) {
 		Container.get(GlobalConfig).instanceAi.nodesNextRuntimesFirstParty = firstParty;
-		await useNodeContractsRegistry();
+		await loadContracts(deny);
 		const node: INode = {
 			id: 'send',
 			name: 'Send',
@@ -156,30 +174,14 @@ describe('node contracts in their runtimes', () => {
 	}, 60_000);
 
 	it('does not run a version whose permission class is denied, whatever the runtime lists', async () => {
-		const loadNodesAndCredentials = Container.get(LoadNodesAndCredentials);
-		const { loaders } = loadNodesAndCredentials;
-		const core = packageOf('httpRequest.send');
-		const denied = new ContractNodeLoader(
-			[],
-			[],
-			undefined,
-			['egress-input'],
-			undefined,
-			undefined,
-			core,
-		);
-		await denied.loadAll();
-		loadNodesAndCredentials.loaders = { [denied.packageName]: denied };
-		await loadNodesAndCredentials.postProcessLoaders();
 		const made = vi.spyOn(Container.get(NodeContractsRuntimes), 'get');
 		try {
-			await expect(runSend(['in-process', 'worker'])).rejects.toThrow(
+			await expect(runSend(['in-process', 'worker'], ['egress-input'])).rejects.toThrow(
 				'Unrecognized node type: @n8n/nodes-core.httpRequestSend',
 			);
 			expect(made).not.toHaveBeenCalled();
 		} finally {
-			loadNodesAndCredentials.loaders = loaders;
-			await loadNodesAndCredentials.postProcessLoaders();
+			await loadContracts();
 		}
 	}, 60_000);
 

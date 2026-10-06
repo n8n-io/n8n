@@ -16,7 +16,6 @@
  *    recoverable; running a destructive operation against user data is not.
  */
 
-import { actionOfNode, toolActionOfNode } from '@n8n/nodes-integrations';
 import { isRecord } from '@n8n/utils/is-record';
 import { isAiRootNodeType, type WorkflowJSON } from '@n8n/workflow-sdk';
 import { z } from 'zod';
@@ -25,6 +24,7 @@ import { legacyTwinOf } from './legacy-twins';
 import { isTriggerNodeType } from './workflow-json-utils';
 import { AGENT_TOOL_NODE_TYPE, createVerificationGraph } from './verification-graph';
 import type { ModelConfig } from '../../types';
+import { actionOfNode, toolActionOfNode } from '../contract-catalog';
 import { HAIKU_MODEL } from '../../utils/eval-agents';
 import { generateValidatedJson } from '../../utils/generate-validated-json';
 import type { NodeSimulationVerdict } from '../../workflow-loop/workflow-loop-state';

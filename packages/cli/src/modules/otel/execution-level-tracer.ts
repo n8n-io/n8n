@@ -1,6 +1,6 @@
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
-import type { RunProfile } from '@n8n/nodes-integrations';
+import type { RunProfile } from '@n8n/node-sdk/host';
 import type { Attributes, Context, Exception, Span } from '@opentelemetry/api';
 import {
 	context,

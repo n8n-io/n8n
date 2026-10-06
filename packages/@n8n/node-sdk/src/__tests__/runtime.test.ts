@@ -34,6 +34,7 @@ import {
 import { toContract } from '../define';
 import {
 	executorOf,
+	hostRuntime,
 	lookupActionOf,
 	outputsPerEntryOf,
 	runLookup,
@@ -1809,7 +1810,7 @@ describe('resource lookups', () => {
 			readBundle: async () => await Promise.reject(new Error('the lookup read the bundle')),
 		};
 		expect(contract.baseUrl).toBe('https://directory.test/api');
-		const nodeType = new (toVersionedNodeType([frozen]))().getNodeType(1);
+		const nodeType = new (toVersionedNodeType([frozen], hostRuntime()))().getNodeType(1);
 		const context = {
 			getNode: () => credentialed,
 			getCurrentNodeParameter: () => undefined,

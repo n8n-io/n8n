@@ -1,6 +1,7 @@
 export { credentialOptionsOf } from '../define';
 export {
 	generatedTriggersOf,
+	generatedTriggersOfEntry,
 	generateNodeModule,
 	modelCatalogDeclaration,
 	outputItemSchema,

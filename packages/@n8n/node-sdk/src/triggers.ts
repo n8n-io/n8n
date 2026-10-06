@@ -30,15 +30,15 @@ import {
 	type Trigger,
 } from './define';
 import { compatTypeOfManifest, credentialDataOf } from './credentials';
-import { reportRefusal } from './egress';
+import { reportRefusal, type PermissionRefusalListener } from './egress';
 import {
 	assertManifestPermissions,
 	AUTHENTICATION,
 	cachedExecutorOf,
-	credentialManifestOf,
 	credentialTypeOf,
 	executorOf,
 	hostLimitsOf,
+	hostRuntime,
 	listSearchMethodsOf,
 	manifestLookupOwnerOf,
 	nativeRunError,
@@ -50,6 +50,7 @@ import {
 	type Executor,
 	type ExecutorHost,
 	type FrozenVersion,
+	type HostRuntime,
 } from './runtime';
 import { actionUiSchema } from './manifest';
 import { storedFieldOf, type StoredField } from './properties';
@@ -550,10 +551,11 @@ export function triggerRunOf(trigger: Trigger, egress: ContractEgress | undefine
 export function assertWebhookSignature(
 	{ id, semver, contract }: Pick<FrozenVersion['manifest'], 'id' | 'semver' | 'contract'>,
 	verify: unknown,
+	onRefusal: PermissionRefusalListener | undefined,
 ) {
 	if (canonicalJson(verify ?? null) === canonicalJson(contract.verify ?? null)) return;
 	const message = `The bundle of ${id}@${semver} checks another webhook signature than its manifest`;
-	reportRefusal({ action: id, version: semver, permission: 'manifest', message });
+	reportRefusal(onRefusal, { action: id, version: semver, permission: 'manifest', message });
 	throw new UserError(message);
 }
 
@@ -561,13 +563,18 @@ export function assertWebhookSignature(
  * The executor of a frozen trigger version with its bundle in this process. The egress comes
  * from the manifest, as for an action, and the bundle must grant what its manifest grants.
  */
-export async function loadTriggerExecutor(frozen: FrozenVersion): Promise<Executor> {
-	const exported = await verifiedBundleOf(frozen);
+export async function loadTriggerExecutor(
+	frozen: FrozenVersion,
+	runtime: HostRuntime,
+): Promise<Executor> {
+	const exported = await verifiedBundleOf(frozen, runtime.nodeContractRange);
 	if (!('kind' in exported))
 		throw new UnexpectedError(`${exported.id} is an action, not a trigger`);
-	assertManifestPermissions(frozen.manifest, exported);
-	if (exported.kind === 'webhook') assertWebhookSignature(frozen.manifest, exported.webhook.verify);
-	const trigger = await withCredentialHostsOf(exported);
+	assertManifestPermissions(frozen.manifest, exported, runtime.reportRefusal);
+	if (exported.kind === 'webhook') {
+		assertWebhookSignature(frozen.manifest, exported.webhook.verify, runtime.reportRefusal);
+	}
+	const trigger = await withCredentialHostsOf(exported, runtime.credentialManifestOf);
 	return executorOf(triggerRunOf(trigger, frozen.manifest.contract.egress));
 }
 
@@ -581,12 +588,13 @@ const triggerHostOf = (
 	context: TriggerContext,
 	call: TriggerCall,
 	fieldOf: (name: string) => StoredField,
+	runtime: HostRuntime,
 ): ExecutorHost => {
 	const node = context.getNode();
 	// A webhook call sends no request. Without a credential, n8n reads no credential per delivery.
 	const bare = call.call === 'webhook';
 	return {
-		...hostLimitsOf(),
+		...hostLimitsOf(runtime),
 		items: [{ json: call }],
 		node: bare ? { ...node, credentials: {} } : node,
 		parameter: (name) => {
@@ -648,12 +656,13 @@ async function secretOf(
 	signature: Signature,
 	data: IDataObject,
 	context: IWebhookFunctions,
+	runtime: HostRuntime,
 ): Promise<string | undefined> {
 	if (signature.secret === 'generated') return textOf(data[WEBHOOK_SECRET]);
 	const type = credentialTypeIn(contract, context);
 	if (!type) return undefined;
 	const stored = await context.getCredentials(type);
-	const manifest = await credentialManifestOf(type);
+	const manifest = await runtime.credentialManifestOf(type);
 	const fields = manifest ? credentialDataOf(compatTypeOfManifest(manifest), stored) : stored;
 	return textOf(fields[signature.secret.credential]);
 }
@@ -683,9 +692,12 @@ function triggerTypeOf(
 	description: INodeTypeDescription,
 	executor: () => Promise<Executor>,
 	fieldOf: (name: string) => StoredField,
+	runtime: HostRuntime,
 ): INodeType {
 	const run = async (context: TriggerContext, call: TriggerCall) => {
-		const [[result] = []] = await (await executor())(triggerHostOf(context, call, fieldOf));
+		const [[result] = []] = await (await executor())(
+			triggerHostOf(context, call, fieldOf, runtime),
+		);
 		if (!result) throw new UnexpectedError(`${contract.id} gave no result for ${call.call}`);
 		return result.json;
 	};
@@ -763,7 +775,7 @@ function triggerTypeOf(
 			const data = this.getWorkflowStaticData('node');
 			const { verify } = contract;
 			if (verify) {
-				const secret = await secretOf(contract, verify, data, this);
+				const secret = await secretOf(contract, verify, data, this, runtime);
 				if (!secret || !signatureMatches(verify, secret, this)) {
 					// Like the legacy GitHub trigger: no execution, and the sender sees 401.
 					this.getResponseObject().status(401).send('Unauthorized').end();
@@ -797,7 +809,10 @@ function triggerTypeOf(
 }
 
 /** An n8n node type for one trigger, with its bundle in this process. */
-export function toTriggerNodeType(trigger: Trigger): new () => INodeType {
+export function toTriggerNodeType(
+	trigger: Trigger,
+	runtime: HostRuntime = hostRuntime(),
+): new () => INodeType {
 	const contract = toContract(trigger);
 	const executor = executorOf(triggerRunOf(trigger, contract.egress));
 	const ui = matches(actionUiSchema, trigger.ui) ? trigger.ui : undefined;
@@ -806,13 +821,14 @@ export function toTriggerNodeType(trigger: Trigger): new () => INodeType {
 		nodeDescriptionOf({ contract, nodeContract: NODE_CONTRACT_VERSION, ui }),
 		async () => await Promise.resolve(executor),
 		storedFieldOf(contract.input, ui),
+		runtime,
 	);
 	const { id, node, version, credentialTypes } = trigger;
 	const owner = { id, node, version, credentialTypes, egress: contract.egress ?? { hosts: [] } };
 	return class implements INodeType {
 		description = type.description;
 
-		methods = listSearchMethodsOf(contract, ui, async () => await Promise.resolve(owner));
+		methods = listSearchMethodsOf(contract, ui, async () => await Promise.resolve(owner), runtime);
 
 		poll = type.poll;
 
@@ -826,21 +842,27 @@ export function toTriggerNodeType(trigger: Trigger): new () => INodeType {
  * One frozen trigger version. Its bundle loads at the first call, with the executor loader of
  * the host: in this process or in the sandbox, by origin.
  */
-const frozenTriggerType = (frozen: FrozenVersion): INodeType => {
+const frozenTriggerType = (frozen: FrozenVersion, runtime: HostRuntime): INodeType => {
 	const type = triggerTypeOf(
 		frozen.manifest.contract,
 		nodeDescriptionOf(frozen.manifest),
-		async () => (await cachedExecutorOf(frozen, loadTriggerExecutor)).executor,
+		async () => (await cachedExecutorOf(frozen, loadTriggerExecutor, runtime)).executor,
 		storedFieldOf(frozen.manifest.contract.input, frozen.manifest.ui),
+		runtime,
 	);
 	const methods = listSearchMethodsOf(
 		frozen.manifest.contract,
 		frozen.manifest.ui,
-		async () => await manifestLookupOwnerOf(frozen.manifest),
+		async () => await manifestLookupOwnerOf(frozen.manifest, runtime.credentialManifestOf),
+		runtime,
 	);
 	return methods ? { ...type, methods } : type;
 };
 
-/** The versioned node type of a trigger, from its frozen versions. */
-export const toVersionedTriggerType = (versions: readonly FrozenVersion[]) =>
-	versionedTypeOf(versions, frozenTriggerType);
+/** The versioned node type of a trigger, from its frozen versions. Every call uses `runtime`. */
+export const toVersionedTriggerType = (versions: readonly FrozenVersion[], runtime: HostRuntime) =>
+	versionedTypeOf(
+		versions,
+		(frozen) => frozenTriggerType(frozen, runtime),
+		runtime.nodeContractRange,
+	);

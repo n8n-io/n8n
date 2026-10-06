@@ -1,6 +1,6 @@
 import type { Logger } from '@n8n/backend-common';
 import type { TextMapPropagator } from '@opentelemetry/api';
-import type { RunProfile } from '@n8n/nodes-integrations';
+import type { RunProfile } from '@n8n/node-sdk/host';
 import { context, propagation, SpanKind, SpanStatusCode, trace } from '@opentelemetry/api';
 import { hrTimeToMilliseconds } from '@opentelemetry/core';
 import { mock } from 'vitest-mock-extended';

@@ -1,4 +1,4 @@
-import { setFileExtractor } from '@n8n/node-sdk/host';
+import { hostRuntime } from '@n8n/node-sdk/host';
 import { extractFile } from 'n8n-nodes-base/dist/nodes/Files/ExtractFromFile/extractFile';
 import { ExtractFromFile } from 'n8n-nodes-base/dist/nodes/Files/ExtractFromFile/ExtractFromFile.node';
 import { readFileSync } from 'node:fs';
@@ -88,12 +88,15 @@ const emptyBinary: AllowedDifference = {
 
 const equal = { unexplained: [], stale: [] };
 
-beforeAll(() => setFileExtractor(extractFile));
+const parsing = hostRuntime({ fileExtractor: extractFile });
 
 describe('extractFromFile parity with Extract from File v1.1', () => {
 	it('gives one item per CSV row', async () => {
 		const legacy = await runNode(legacyNode('csv'), caseOf('csv'));
-		const next = await runNode(actionNode(extractCsv, { file: 'data' }), caseOf('csv'));
+		const next = await runNode(
+			actionNode(extractCsv, { file: 'data' }, undefined, parsing),
+			caseOf('csv'),
+		);
 		expect(legacy.error).toBeUndefined();
 		expect(next.items.map(({ json }) => json)).toEqual([
 			{ name: 'Ada', plan: 'pro', seats: '3' },
@@ -104,7 +107,10 @@ describe('extractFromFile parity with Extract from File v1.1', () => {
 
 	it('gives one item per row of the first sheet of an XLSX file', async () => {
 		const legacy = await runNode(legacyNode('xlsx'), caseOf('xlsx'));
-		const next = await runNode(actionNode(extractXlsx, { file: 'data' }), caseOf('xlsx'));
+		const next = await runNode(
+			actionNode(extractXlsx, { file: 'data' }, undefined, parsing),
+			caseOf('xlsx'),
+		);
 		expect(legacy.error).toBeUndefined();
 		expect(next.items.map(({ json }) => json)).toEqual([
 			{ name: 'Ada', score: 3, active: true },
@@ -115,7 +121,10 @@ describe('extractFromFile parity with Extract from File v1.1', () => {
 
 	it('parses a JSON file into data', async () => {
 		const legacy = await runNode(legacyNode('fromJson'), caseOf('json'));
-		const next = await runNode(actionNode(extractJson, { file: 'data' }), caseOf('json'));
+		const next = await runNode(
+			actionNode(extractJson, { file: 'data' }, undefined, parsing),
+			caseOf('json'),
+		);
 		expect(legacy.error).toBeUndefined();
 		expect(next.items[0]?.json).toEqual({ data: { orders: [{ id: 1, total: 9.5 }], next: null } });
 		expect(compareRuns(legacy, next, [emptyBinary])).toEqual(equal);
@@ -123,7 +132,10 @@ describe('extractFromFile parity with Extract from File v1.1', () => {
 
 	it('reads a text file into data', async () => {
 		const legacy = await runNode(legacyNode('text', { encoding: 'utf8' }), caseOf('text'));
-		const next = await runNode(actionNode(extractText, { file: 'data' }), caseOf('text'));
+		const next = await runNode(
+			actionNode(extractText, { file: 'data' }, undefined, parsing),
+			caseOf('text'),
+		);
 		expect(legacy.error).toBeUndefined();
 		expect(next.items[0]?.json).toEqual({ data: 'First line\nSecond line: café\n' });
 		expect(compareRuns(legacy, next, [emptyBinary])).toEqual(equal);
@@ -131,7 +143,10 @@ describe('extractFromFile parity with Extract from File v1.1', () => {
 
 	it('reads the text and the document information of a PDF file', async () => {
 		const legacy = await runNode(legacyNode('pdf'), caseOf('pdf'));
-		const next = await runNode(actionNode(extractPdf, { file: 'data' }), caseOf('pdf'));
+		const next = await runNode(
+			actionNode(extractPdf, { file: 'data' }, undefined, parsing),
+			caseOf('pdf'),
+		);
 		expect(legacy.error).toBeUndefined();
 		expect(next.items[0]?.json).toMatchObject({
 			text: expect.stringContaining('Sample PDF'),

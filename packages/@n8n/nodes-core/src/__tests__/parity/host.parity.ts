@@ -6,7 +6,7 @@ import { NoOp } from 'n8n-nodes-base/dist/nodes/NoOp/NoOp.node';
 import { StopAndError } from 'n8n-nodes-base/dist/nodes/StopAndError/StopAndError.node';
 import { Wait } from 'n8n-nodes-base/dist/nodes/Wait/Wait.node';
 import type { Action } from '@n8n/node-sdk';
-import { setCodeLanguages } from '@n8n/node-sdk/host';
+import { hostRuntime } from '@n8n/node-sdk/host';
 import { compileFunction } from 'node:vm';
 import type {
 	DataTableColumn,
@@ -764,6 +764,7 @@ async function expectCodeParity(
 	mode: 'runOnceForAllItems' | 'runOnceForEachItem',
 	allowed: readonly AllowedDifference[] = [],
 	python: Readonly<Record<string, unknown>> = {},
+	runtime = hostRuntime(),
 ) {
 	const tasks: { legacy: Task[]; next: Task[] } = { legacy: [], next: [] };
 	const caseOf = (into: Task[]) => (): ParityCase => ({
@@ -781,7 +782,12 @@ async function expectCodeParity(
 	);
 	const action = language === 'python' ? runPython : runJavaScript;
 	const after = await runNode(
-		actionNode(action, { code, mode: mode === 'runOnceForAllItems' ? 'allItems' : 'eachItem' }),
+		actionNode(
+			action,
+			{ code, mode: mode === 'runOnceForAllItems' ? 'allItems' : 'eachItem' },
+			undefined,
+			runtime,
+		),
 		caseOf(tasks.next)(),
 	);
 	expect(compareRuns(before, after, allowed)).toEqual({ unexplained: [], stale: [] });
@@ -830,11 +836,15 @@ describe('code parity', () => {
 	});
 
 	it('runs Python with the items in the task', async () => {
-		setCodeLanguages(['javascript', 'python']);
 		const code = "return [{'count': len(_items)}]";
-		await expectCodeParity('python', code, 'runOnceForAllItems', [], {
-			[code]: [{ json: { count: 3 } }],
-		});
+		await expectCodeParity(
+			'python',
+			code,
+			'runOnceForAllItems',
+			[],
+			{ [code]: [{ json: { count: 3 } }] },
+			hostRuntime({ codeLanguages: ['javascript', 'python'] }),
+		);
 	});
 });
 

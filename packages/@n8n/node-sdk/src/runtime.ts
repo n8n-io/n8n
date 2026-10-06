@@ -49,7 +49,6 @@ import {
 	codeRunnerOf,
 	dataTableHostOf,
 	dataTablesOf,
-	fileExtractor,
 	fileRequestIssues,
 	isFileExtractRequest,
 	isFileResult,
@@ -62,6 +61,7 @@ import {
 	permissionsOf,
 	reportRedirectRefusal,
 	reportRefusal,
+	type PermissionRefusalListener,
 } from './egress';
 import { actionUiSchema, type CredentialManifest } from './manifest';
 import {
@@ -77,9 +77,10 @@ import {
 import {
 	bytesOf,
 	payloadOf,
-	runProfileListener,
 	runRecorder,
+	type PayloadCapture,
 	type RunProfile,
+	type RunProfileListener,
 	type RunRecorder,
 	type RunRequest,
 } from './profile';
@@ -93,6 +94,7 @@ import {
 	type Action,
 	type ActionOutputs,
 	type Binaries,
+	type CodeRequest,
 	type CodeRunner,
 	type DataTable,
 	type DataTables,
@@ -157,7 +159,10 @@ import {
 	implementsNodeContract,
 	IMPLEMENTED_NODE_CONTRACTS,
 	NODE_CONTRACT_VERSION,
+	nodeContractRangeOf,
+	runsNodeContract,
 	sha256,
+	type NodeContractRange,
 	type NodeContractVersion,
 	type VersionManifest,
 } from './version';
@@ -650,6 +655,8 @@ export interface ExecutorHost {
 	supplied?(kind: ProviderKind): Promise<unknown>;
 	/** Records the run profile. Set only when the host has a run profile listener. */
 	readonly recorder?: RunRecorder;
+	/** Gets each permission refusal of the run. */
+	readonly onRefusal?: PermissionRefusalListener;
 }
 
 /** The n8n context of a node run: `execute()` of a root node, `supplyData()` of a sub-node. */
@@ -680,37 +687,19 @@ const binaryStoreOf = (context: NodeContext): BinaryStore => ({
 		await context.helpers.prepareBinaryData(bytes, fileName, mimeType),
 });
 
-// One slot: the host sets the admin list once at start, as the executor loader.
-const egressInputHosts = new Map<'hosts', readonly string[]>();
-const maxResponseBytesSlot = new Map<'bytes', number | undefined>();
-
-/**
- * Sets the most bytes of one HTTP response body in every node run. `Infinity` is no limit.
- * `undefined` is the default of `ExecutorHost.maxResponseBytes`.
- */
-export const setMaxResponseBytes = (bytes: number | undefined) => {
-	maxResponseBytesSlot.set('bytes', bytes);
-};
-
-/** Sets the hosts that a URL from input may reach in every node run. Empty is no limit. */
-export const setEgressInputHosts = (hosts: readonly string[]) => {
-	// The matcher compares lowercase hosts, and an admin list can have spaces after the commas.
-	egressInputHosts.set(
-		'hosts',
-		hosts.map((host) => host.trim().toLowerCase()).filter((host) => host.length > 0),
-	);
-};
-
-/** The limits that the host sets once at start, for the `ExecutorHost` of every node run. */
-export const hostLimitsOf = (): Pick<ExecutorHost, 'egressInputHosts' | 'maxResponseBytes'> => ({
-	egressInputHosts: egressInputHosts.get('hosts'),
-	maxResponseBytes: maxResponseBytesSlot.get('bytes'),
+/** The parts of the `ExecutorHost` of every node run that come from the host runtime. */
+export const hostLimitsOf = (
+	runtime: HostRuntime,
+): Pick<ExecutorHost, 'egressInputHosts' | 'maxResponseBytes' | 'onRefusal'> => ({
+	egressInputHosts: runtime.egressInputHosts,
+	maxResponseBytes: runtime.maxResponseBytes,
+	onRefusal: runtime.reportRefusal,
 });
 
 /** The host parts that do not depend on the items of the run. */
-const hostBaseOf = (context: NodeContext) => ({
+const hostBaseOf = (context: NodeContext, runtime: HostRuntime) => ({
 	node: context.getNode(),
-	...hostLimitsOf(),
+	...hostLimitsOf(runtime),
 	request: async (options: IHttpRequestOptions, credentialType: string | undefined) => {
 		const response: unknown = credentialType
 			? await context.helpers.httpRequestWithAuthentication.call(context, credentialType, options)
@@ -745,9 +734,10 @@ const plainField = (name: string): StoredField => ({ path: name, read: (value) =
 /** `fieldOf` gives where the form stores an input field, see `storedFieldOf`. */
 const hostOf = (
 	context: IExecuteFunctions,
+	runtime: HostRuntime,
 	fieldOf: (name: string) => StoredField = plainField,
 ): ExecutorHost => ({
-	...hostBaseOf(context),
+	...hostBaseOf(context, runtime),
 	items: context.getInputData(),
 	parameter: (name, itemIndex, raw) => {
 		const { path, read } = fieldOf(name);
@@ -770,8 +760,8 @@ const hostOf = (
 		}
 	},
 	dataTables: dataTablesOf(dataTableHostOf(context)),
-	extractFile: fileExtractor(),
-	code: codeRunnerOf(context),
+	extractFile: runtime.fileExtractor,
+	code: codeRunnerOf(context, runtime.codeLanguages),
 	// A time wait gives no resume URL, as the Wait node does for a time interval.
 	waitUntil: async (at) => await context.putExecutionToWait(at, { acceptsResumeRequest: false }),
 	supplied: async (kind) =>
@@ -784,10 +774,11 @@ const hostOf = (
  */
 const supplyHostOf = (
 	context: ISupplyDataFunctions,
+	runtime: HostRuntime,
 	itemIndex: number,
 	fieldOf: (name: string) => StoredField = plainField,
 ): ExecutorHost => ({
-	...hostBaseOf(context),
+	...hostBaseOf(context, runtime),
 	items: [{ json: {} }],
 	parameter: (name, _itemIndex, raw) => {
 		const { path, read } = fieldOf(name);
@@ -1284,6 +1275,7 @@ export function executorOf<S extends Shape, O extends AnySchema>(
 						inputHosts: host.egressInputHosts ?? [],
 						node: host.node,
 						actionId: action.id,
+						onRefusal: host.onRefusal,
 					}),
 					credential: credentialType
 						? credentialHostsOf(credentialValue, data, {
@@ -1341,7 +1333,11 @@ export function executorOf<S extends Shape, O extends AnySchema>(
 				const delay = retryable ? retryDelay(error, retry) : undefined;
 				if (delay === undefined) {
 					// Before the redaction, which replaces the causes with plain errors.
-					reportRedirectRefusal(error, { node: host.node, actionId: action.id });
+					reportRedirectRefusal(error, {
+						node: host.node,
+						actionId: action.id,
+						onRefusal: host.onRefusal,
+					});
 					throw redactedError(error, refreshed ?? (await redactNow()));
 				}
 				// The failed attempt is not read, so free its connection.
@@ -1449,6 +1445,7 @@ export function executorOf<S extends Shape, O extends AnySchema>(
 					node: host.node,
 					actionId: action.id,
 					itemIndex,
+					onRefusal: host.onRefusal,
 				});
 				// The client stops a buffered body at the limit. The executor counts a binary stream.
 				const withLimit =
@@ -1559,7 +1556,12 @@ export function executorOf<S extends Shape, O extends AnySchema>(
 		const openTables = new Map<string, Promise<DataTable>>();
 		const refuse = (name: HostImport) => {
 			const message = `${action.id} does not list "${name}" in its imports`;
-			reportRefusal({ action: action.id, node: host.node, permission: name, message });
+			reportRefusal(host.onRefusal, {
+				action: action.id,
+				node: host.node,
+				permission: name,
+				message,
+			});
 			throw new UnexpectedError(message);
 		};
 		const hostService = <T>(name: HostImport, service: T | undefined): T => {
@@ -2312,10 +2314,11 @@ export async function runLookup(
 function lookupHostOf(
 	context: ILoadOptionsFunctions,
 	input: Readonly<Record<string, unknown>>,
+	runtime: HostRuntime,
 ): ExecutorHost {
 	return {
 		node: context.getNode(),
-		...hostLimitsOf(),
+		...hostLimitsOf(runtime),
 		items: [{ json: {} }],
 		parameter: (name) =>
 			name === AUTHENTICATION ? context.getCurrentNodeParameter(AUTHENTICATION) : input[name],
@@ -2355,6 +2358,7 @@ export function listSearchMethodsOf(
 	contract: Pick<ContractDocument, 'input'>,
 	ui: ActionUiDocument | undefined,
 	ownerOf: () => Promise<LookupOwner>,
+	runtime: HostRuntime,
 ): INodeType['methods'] | undefined {
 	const lookups = lookupsOf(contract.input);
 	if (lookups.size === 0) return undefined;
@@ -2374,7 +2378,7 @@ export function listSearchMethodsOf(
 			};
 			return await runLookup(
 				lookupActionOf(await ownerOf(), resourceId, lookup),
-				lookupHostOf(this, input),
+				lookupHostOf(this, input, runtime),
 			);
 		}
 		return [resourceId, listSearch] as const;
@@ -2386,7 +2390,10 @@ export function listSearchMethodsOf(
  * The lookup owner of a frozen version, without its bundle: the credential types from the
  * credential manifests of the host, else as n8n defines them, and the egress of the manifest.
  */
-export async function manifestLookupOwnerOf({ contract }: VersionManifest): Promise<LookupOwner> {
+export async function manifestLookupOwnerOf(
+	{ contract }: VersionManifest,
+	credentialManifestOf: CredentialManifestOf,
+): Promise<LookupOwner> {
 	const types = await Promise.all(
 		contract.credentials.map(async (name) => {
 			const stored = await credentialManifestOf(name);
@@ -2467,6 +2474,7 @@ export function nodeDescriptionOf({
 /** An n8n node type for one action; the platform part is `executorOf`. */
 export function toNodeType<S extends Shape, O extends AnySchema>(
 	action: Action<S, O>,
+	runtime: HostRuntime = hostRuntime(),
 ): new () => INodeType {
 	if (action.native) throw nativeRunError(action);
 	const ui = matches(actionUiSchema, action.ui) ? action.ui : undefined;
@@ -2479,7 +2487,12 @@ export function toNodeType<S extends Shape, O extends AnySchema>(
 	const run = executorOf(action);
 	const fieldOf = storedFieldOf(action.inputSchema, ui);
 	const kind = providedKindOf(action.output.json);
-	const methods = listSearchMethodsOf({ input: action.inputSchema }, ui, async () => action);
+	const methods = listSearchMethodsOf(
+		{ input: action.inputSchema },
+		ui,
+		async () => action,
+		runtime,
+	);
 	if (kind) {
 		return class implements INodeType {
 			description = description;
@@ -2487,7 +2500,7 @@ export function toNodeType<S extends Shape, O extends AnySchema>(
 			methods = methods;
 
 			async supplyData(this: ISupplyDataFunctions, itemIndex: number) {
-				const outputs = await run(supplyHostOf(this, itemIndex, fieldOf));
+				const outputs = await run(supplyHostOf(this, runtime, itemIndex, fieldOf));
 				return supplyDataOf(action.id, kind, outputs, this);
 			}
 		};
@@ -2498,7 +2511,7 @@ export function toNodeType<S extends Shape, O extends AnySchema>(
 		methods = methods;
 
 		async execute(this: IExecuteFunctions) {
-			return await run(hostOf(this, fieldOf));
+			return await run(hostOf(this, runtime, fieldOf));
 		}
 	};
 }
@@ -2572,8 +2585,11 @@ export function evaluateBundle(code: string, nodeContract: NodeContractVersion):
 }
 
 /** The code of a frozen version, after its Node Contract version and its hash are checked. */
-export async function verifiedCodeOf({ manifest, readBundle }: FrozenVersion) {
-	assertNodeContract(manifest);
+export async function verifiedCodeOf(
+	{ manifest, readBundle }: FrozenVersion,
+	range: NodeContractRange,
+) {
+	assertNodeContract(range, manifest);
 	const { id, semver, bundleHash } = manifest;
 	const code = await readBundle();
 	if (sha256(code) !== bundleHash) {
@@ -2583,35 +2599,15 @@ export async function verifiedCodeOf({ manifest, readBundle }: FrozenVersion) {
 }
 
 /** The bundle of a frozen version, after its Node Contract version and its hash are checked. */
-export async function verifiedBundleOf(frozen: FrozenVersion) {
-	return evaluateBundle(await verifiedCodeOf(frozen), frozen.manifest.nodeContract);
+export async function verifiedBundleOf(frozen: FrozenVersion, range: NodeContractRange) {
+	return evaluateBundle(await verifiedCodeOf(frozen, range), frozen.manifest.nodeContract);
 }
 
 /** The executor of the action interface for one node execution. */
 export type Executor = (host: ExecutorHost) => Promise<INodeExecutionData[][]>;
 
-/** Executors by bundle hash. A bundle loads on its first execution only. */
-const executors = new Map<string, Promise<Executor>>();
-
 /** The credential manifest that the host has for an n8n credential type name, if any. */
 export type CredentialManifestOf = (name: string) => Promise<CredentialManifest | undefined>;
-
-// One slot: the host sets its credential manifests once at start.
-const credentialManifests = new Map<'lookup', CredentialManifestOf>();
-
-/**
- * Sets where the host finds the credential manifest of a name, e.g. its store. The host calls it
- * once at start. Without it, each bundle keeps the hosts of its own credential types.
- */
-export const setCredentialManifests = (lookup: CredentialManifestOf) => {
-	credentialManifests.set('lookup', lookup);
-	// An executor with the old hosts must not run on.
-	executors.clear();
-};
-
-/** The credential manifest of a name from the lookup of the host. */
-export const credentialManifestOf: CredentialManifestOf = async (name) =>
-	await credentialManifests.get('lookup')?.(name);
 
 /**
  * n8n has one credential type for each name and signs with it, so the hosts and the base URL of
@@ -2620,7 +2616,7 @@ export const credentialManifestOf: CredentialManifestOf = async (name) =>
  */
 export async function withCredentialHostsOf<C extends Pick<Action, 'node'>>(
 	contract: C,
-	manifestOf: CredentialManifestOf = credentialManifestOf,
+	manifestOf: CredentialManifestOf,
 ): Promise<C> {
 	const credential = contract.node.credential;
 	if (!credential) return contract;
@@ -2640,6 +2636,7 @@ export async function withCredentialHostsOf<C extends Pick<Action, 'node'>>(
 export function assertManifestPermissions(
 	{ id, semver, contract }: VersionManifest,
 	exported: Action | Trigger,
+	onRefusal: PermissionRefusalListener | undefined,
 ) {
 	const signed = new Map(Object.entries(permissionsOf(contract)));
 	const granted = new Map(Object.entries(permissionsOf(toContract(exported))));
@@ -2654,7 +2651,7 @@ export function assertManifestPermissions(
 	});
 	if (differences.length > 0) {
 		const message = `The bundle of ${id}@${semver} grants other permissions than its manifest. ${differences.join('; ')}`;
-		reportRefusal({ action: id, version: semver, permission: 'manifest', message });
+		reportRefusal(onRefusal, { action: id, version: semver, permission: 'manifest', message });
 		throw new UserError(message);
 	}
 }
@@ -2664,12 +2661,12 @@ export function assertManifestPermissions(
  * egress comes from the manifest, as in the sandbox. The credential hosts come from the
  * credential manifests. `loadTriggerExecutor` loads a trigger version.
  */
-export async function loadExecutor(frozen: FrozenVersion): Promise<Executor> {
-	const exported = await verifiedBundleOf(frozen);
+export async function loadExecutor(frozen: FrozenVersion, runtime: HostRuntime): Promise<Executor> {
+	const exported = await verifiedBundleOf(frozen, runtime.nodeContractRange);
 	if ('kind' in exported) throw new UnexpectedError(`${exported.id} is a trigger, not an action`);
-	assertManifestPermissions(frozen.manifest, exported);
+	assertManifestPermissions(frozen.manifest, exported, runtime.reportRefusal);
 	const action: Action = { ...exported, egress: frozen.manifest.contract.egress ?? { hosts: [] } };
-	const executor = executorOf(await withCredentialHostsOf(action));
+	const executor = executorOf(await withCredentialHostsOf(action, runtime.credentialManifestOf));
 	return async (host) => {
 		host.recorder?.path('in_process');
 		return await executor(host);
@@ -2677,49 +2674,131 @@ export async function loadExecutor(frozen: FrozenVersion): Promise<Executor> {
 }
 
 /**
- * Makes the executor of a frozen action, provider or trigger version, e.g. in a sandbox. The
- * default is `loadExecutor`, and `loadTriggerExecutor` for a trigger.
+ * Makes the executor of a frozen action, provider or trigger version under a host runtime, e.g. in
+ * a sandbox. The default is `loadExecutor`, and `loadTriggerExecutor` for a trigger.
  */
-export type ExecutorLoader = (frozen: FrozenVersion) => Promise<Executor>;
-
-// One slot: the host sets it once at start, as the version loader.
-const executorLoader = new Map<'loader', ExecutorLoader>();
-
-/** Sets the executor loader, e.g. the sandbox. The host calls it once at start. */
-export const setExecutorLoader = (loader: ExecutorLoader) => {
-	executorLoader.set('loader', loader);
-	// An executor of the old loader must not run on.
-	executors.clear();
-};
+export type ExecutorLoader = (frozen: FrozenVersion, runtime: HostRuntime) => Promise<Executor>;
 
 /**
  * Picks the version a node runs. `head` is the bundled version of the node's major. The
- * result must have the same major. The host sets it once at start.
+ * result must have the same major.
  */
 export type ContractVersionLoader = (
 	context: NodeContext,
 	head: FrozenVersion,
 ) => Promise<FrozenVersion>;
 
-// One slot: the host replaces the default, which runs the bundled HEAD.
-const versionLoader = new Map<'loader', ContractVersionLoader>();
+/**
+ * What the host gives every node contract run: its configuration, its lookups and its listeners.
+ * The host makes one with `hostRuntime` and passes it to each node type that it projects, so two
+ * hosts in one process, or two tests, do not share state.
+ */
+export interface HostRuntime {
+	/** The Node Contract versions this host runs. */
+	readonly nodeContractRange: NodeContractRange;
+	/** In the configured range, and implemented by this host. */
+	readonly runsNodeContract: (version: NodeContractVersion) => boolean;
+	/** Picks the version a node runs. Without it, a node runs the bundled version of its major. */
+	readonly versionLoader?: ContractVersionLoader;
+	/**
+	 * The credential manifest of a name, e.g. from the store of the host. Without a manifest, each
+	 * bundle keeps the hosts of its own credential types.
+	 */
+	readonly credentialManifestOf: CredentialManifestOf;
+	/** Makes the executor of a version, e.g. in the sandbox. Without it, the bundle runs in this process. */
+	readonly executorLoader?: ExecutorLoader;
+	/** Gets the profile of each node run. Without it, the runtime records nothing. */
+	readonly runProfile?: {
+		/** Gets the profile. It runs before n8n ends the node run. */
+		readonly listener: RunProfileListener;
+		/**
+		 * The profile also keeps the input, the output and the HTTP bodies of each run, cut to 2048
+		 * characters each. Use it in development only: the data goes to the listener.
+		 */
+		readonly payloads?: PayloadCapture;
+	};
+	/** Tells the host about a permission refusal. It never throws. */
+	readonly reportRefusal: PermissionRefusalListener;
+	/** The hosts that a URL from input may reach in every node run. Empty is no limit. */
+	readonly egressInputHosts: readonly string[];
+	/** The most bytes of one HTTP response body. `undefined` is the default of `ExecutorHost.maxResponseBytes`. */
+	readonly maxResponseBytes?: number;
+	/** The code languages the instance allows, e.g. without Python when `N8N_PYTHON_ENABLED` is false. */
+	readonly codeLanguages: ReadonlySet<CodeRequest['language']>;
+	/** The parsers of the `parsers` import. Without them, `parsers` fails. */
+	readonly fileExtractor?: FileExtractor;
+	/** Executors by bundle hash. A bundle loads on its first execution only. */
+	readonly executors: Map<string, Promise<Executor>>;
+}
 
-/** Sets the loader that picks the version a node runs. The host calls it once at start. */
-export const setContractVersionLoader = (loader: ContractVersionLoader) => {
-	versionLoader.set('loader', loader);
-};
+/** The options of `hostRuntime`. */
+export interface HostRuntimeOptions {
+	/** The range text, e.g. `>=2.0.0 <3.0.0`. Default: `DEFAULT_NODE_CONTRACT_RANGE`. Throws for a bad range. */
+	readonly nodeContractRange?: string;
+	/** Picks the version a node runs, e.g. from its pin. */
+	readonly versionLoader?: ContractVersionLoader;
+	/** The credential manifest of a name. Default: none. */
+	readonly credentialManifestOf?: CredentialManifestOf;
+	/** Makes the executor of a version, e.g. by the runtime policy. */
+	readonly executorLoader?: ExecutorLoader;
+	/** Gets the profile of each node run. */
+	readonly onRunProfile?: RunProfileListener;
+	/** The payloads that the run profile keeps. Default: none. */
+	readonly tracePayloads?: PayloadCapture;
+	/** Gets each permission refusal. */
+	readonly onPermissionRefused?: PermissionRefusalListener;
+	/** The hosts that a URL from input may reach, as an admin lists them. Default: no limit. */
+	readonly egressInputHosts?: readonly string[];
+	/** The most bytes of one HTTP response body. `Infinity` is no limit. */
+	readonly maxResponseBytes?: number;
+	/** Default: JavaScript only, so a host that skips the switch does not run Python. */
+	readonly codeLanguages?: ReadonlyArray<CodeRequest['language']>;
+	/** The parsers of the `parsers` import. */
+	readonly fileExtractor?: FileExtractor;
+}
+
+/** A host runtime with its own executor cache. */
+export function hostRuntime(options: HostRuntimeOptions = {}): HostRuntime {
+	const nodeContractRange = nodeContractRangeOf(options.nodeContractRange);
+	const listener = options.onPermissionRefused;
+	return {
+		nodeContractRange,
+		runsNodeContract: (version) => runsNodeContract(nodeContractRange, version),
+		...(options.versionLoader ? { versionLoader: options.versionLoader } : {}),
+		credentialManifestOf:
+			options.credentialManifestOf ?? (async () => await Promise.resolve(undefined)),
+		...(options.executorLoader ? { executorLoader: options.executorLoader } : {}),
+		...(options.onRunProfile
+			? { runProfile: { listener: options.onRunProfile, payloads: options.tracePayloads } }
+			: {}),
+		reportRefusal: (refusal) => reportRefusal(listener, refusal),
+		// The matcher compares lowercase hosts, and an admin list can have spaces after the commas.
+		egressInputHosts: (options.egressInputHosts ?? [])
+			.map((host) => host.trim().toLowerCase())
+			.filter((host) => host.length > 0),
+		maxResponseBytes: options.maxResponseBytes,
+		codeLanguages: new Set(options.codeLanguages ?? ['javascript']),
+		...(options.fileExtractor ? { fileExtractor: options.fileExtractor } : {}),
+		executors: new Map(),
+	};
+}
 
 /**
- * The executor of a frozen version from the executor loader that the host set, else from
- * `load`. A bundle loads once: the executor stays by bundle hash.
+ * The executor of a frozen version from the executor loader of the runtime, else from `load`.
+ * A bundle loads once: the executor stays by bundle hash.
  */
-export async function cachedExecutorOf(frozen: FrozenVersion, load: ExecutorLoader) {
+export async function cachedExecutorOf(
+	frozen: FrozenVersion,
+	load: ExecutorLoader,
+	runtime: HostRuntime,
+) {
 	const { bundleHash } = frozen.manifest;
+	const { executors } = runtime;
 	// A failed read, for example a registry outage, must not stay in the cache.
 	const cached = executors.has(bundleHash);
 	const executor =
 		executors.get(bundleHash) ??
-		(executorLoader.get('loader') ?? load)(frozen).catch((error: unknown) => {
+		(runtime.executorLoader ?? load)(frozen, runtime).catch((error: unknown) => {
 			executors.delete(bundleHash);
 			throw error;
 		});
@@ -2728,8 +2807,8 @@ export async function cachedExecutorOf(frozen: FrozenVersion, load: ExecutorLoad
 }
 
 /** The executor of the version a node runs, and its manifest. */
-async function versionExecutorOf(context: NodeContext, head: FrozenVersion) {
-	const loader = versionLoader.get('loader');
+async function versionExecutorOf(context: NodeContext, head: FrozenVersion, runtime: HostRuntime) {
+	const loader = runtime.versionLoader;
 	const frozen = loader ? await loader(context, head) : head;
 	const { id, semver, contract } = frozen.manifest;
 	if (contract.version !== head.manifest.contract.version || id !== head.manifest.id) {
@@ -2737,8 +2816,8 @@ async function versionExecutorOf(context: NodeContext, head: FrozenVersion) {
 			`${id}@${semver} cannot run as ${head.manifest.id}@${head.manifest.semver}`,
 		);
 	}
-	assertNodeContract(frozen.manifest);
-	const { executor, cached } = await cachedExecutorOf(frozen, loadExecutor);
+	assertNodeContract(runtime.nodeContractRange, frozen.manifest);
+	const { executor, cached } = await cachedExecutorOf(frozen, loadExecutor, runtime);
 	return { executor, manifest: frozen.manifest, cached };
 }
 
@@ -2746,19 +2825,23 @@ async function versionExecutorOf(context: NodeContext, head: FrozenVersion) {
 const headFieldOf = ({ manifest }: FrozenVersion) =>
 	storedFieldOf(manifest.contract.input, manifest.ui);
 
-async function executeVersion(context: IExecuteFunctions, head: FrozenVersion) {
-	const slot = runProfileListener();
+async function executeVersion(
+	context: IExecuteFunctions,
+	head: FrozenVersion,
+	runtime: HostRuntime,
+) {
+	const slot = runtime.runProfile;
 	if (!slot) {
-		const { executor, manifest } = await versionExecutorOf(context, head);
-		const outputs = await executor(hostOf(context, headFieldOf(head)));
+		const { executor, manifest } = await versionExecutorOf(context, head, runtime);
+		const outputs = await executor(hostOf(context, runtime, headFieldOf(head)));
 		recordVersion(context, manifest);
 		return outputs;
 	}
 	const { listener, payloads } = slot;
-	const host = hostOf(context, headFieldOf(head));
+	const host = hostOf(context, runtime, headFieldOf(head));
 	const { recorder, profile } = runRecorder(host.items.length, payloads);
 	const loadStart = recorder.now();
-	const { executor, manifest, cached } = await versionExecutorOf(context, head);
+	const { executor, manifest, cached } = await versionExecutorOf(context, head, runtime);
 	recorder.phase({ name: 'load', startMs: loadStart, endMs: recorder.now(), cached });
 	const { id, semver, bundleHash, nodeContract } = manifest;
 	const identity = { action: id, version: semver, bundleHash, nodeContract };
@@ -2796,11 +2879,12 @@ function recordVersion(
 async function supplyVersion(
 	context: ISupplyDataFunctions,
 	head: FrozenVersion,
+	runtime: HostRuntime,
 	kind: ProviderKind,
 	itemIndex: number,
 ) {
-	const { executor, manifest } = await versionExecutorOf(context, head);
-	const outputs = await executor(supplyHostOf(context, itemIndex, headFieldOf(head)));
+	const { executor, manifest } = await versionExecutorOf(context, head, runtime);
+	const outputs = await executor(supplyHostOf(context, runtime, itemIndex, headFieldOf(head)));
 	return supplyDataOf(manifest.id, kind, outputs, context);
 }
 
@@ -2811,8 +2895,9 @@ async function supplyVersion(
 export function versionedTypeOf(
 	versions: readonly FrozenVersion[],
 	typeOf: (frozen: FrozenVersion) => INodeType,
+	range: NodeContractRange,
 ): new () => VersionedNodeType {
-	versions.forEach(({ manifest }) => assertNodeContract(manifest));
+	versions.forEach(({ manifest }) => assertNodeContract(range, manifest));
 	const majorOf = ({ manifest }: FrozenVersion) => manifest.contract.version;
 	const latest = versions.reduce<FrozenVersion | undefined>(
 		(best, frozen) => (best && majorOf(best) > majorOf(frozen) ? best : frozen),
@@ -2833,36 +2918,43 @@ export function versionedTypeOf(
 
 /**
  * The versioned node type of an action. The bundle loads on the first execution of its version.
- * A sub-node action supplies its capability instead.
+ * A sub-node action supplies its capability instead. Every run uses `runtime`.
  */
-export const toVersionedNodeType = (versions: readonly FrozenVersion[]) =>
-	versionedTypeOf(versions, (frozen): INodeType => {
-		const { contract, ui } = frozen.manifest;
-		const description = nodeDescriptionOf(frozen.manifest);
-		const kind = providedKindOf(contract.output);
-		const methods = listSearchMethodsOf(
-			contract,
-			ui,
-			async () => await manifestLookupOwnerOf(frozen.manifest),
-		);
-		if (kind) {
+export const toVersionedNodeType = (versions: readonly FrozenVersion[], runtime: HostRuntime) =>
+	versionedTypeOf(
+		versions,
+		(frozen): INodeType => {
+			const { contract, ui } = frozen.manifest;
+			const description = nodeDescriptionOf(frozen.manifest);
+			const kind = providedKindOf(contract.output);
+			const methods = listSearchMethodsOf(
+				contract,
+				ui,
+				async () => await manifestLookupOwnerOf(frozen.manifest, runtime.credentialManifestOf),
+				runtime,
+			);
+			if (kind) {
+				return {
+					description,
+					...(methods ? { methods } : {}),
+					async supplyData(this: ISupplyDataFunctions, itemIndex: number) {
+						return await supplyVersion(this, frozen, runtime, kind, itemIndex);
+					},
+				};
+			}
 			return {
-				description,
+				// The host generates the tool node types from this flag, as for a legacy node.
+				description: isToolContract(contract)
+					? { ...description, usableAsTool: true }
+					: description,
 				...(methods ? { methods } : {}),
-				async supplyData(this: ISupplyDataFunctions, itemIndex: number) {
-					return await supplyVersion(this, frozen, kind, itemIndex);
+				async execute(this: IExecuteFunctions) {
+					return await executeVersion(this, frozen, runtime);
 				},
 			};
-		}
-		return {
-			// The host generates the tool node types from this flag, as for a legacy node.
-			description: isToolContract(contract) ? { ...description, usableAsTool: true } : description,
-			...(methods ? { methods } : {}),
-			async execute(this: IExecuteFunctions) {
-				return await executeVersion(this, frozen);
-			},
-		};
-	});
+		},
+		runtime.nodeContractRange,
+	);
 
 /**
  * The description of a field that the model fills: its value is one `$fromAI()` call. A field
@@ -2917,7 +3009,12 @@ function toolInputOf(input: JsonSchema, descriptions: ReadonlyMap<string, string
  * and the workflow fixes the others. A call runs the version the node runs, with the same
  * credential, egress, limits and data tables as a step. The bundle loads on the first call.
  */
-function toolOf(context: NodeContext, frozen: FrozenVersion, itemIndex: number) {
+function toolOf(
+	context: NodeContext,
+	frozen: FrozenVersion,
+	runtime: HostRuntime,
+	itemIndex: number,
+) {
 	const node = context.getNode();
 	const { contract } = frozen.manifest;
 	const descriptions = new Map(
@@ -2937,9 +3034,9 @@ function toolOf(context: NodeContext, frozen: FrozenVersion, itemIndex: number) 
 			typeof description === 'string' && description.trim() ? description : contract.summary,
 		input: toolInputOf(contract.input, descriptions),
 		async call(args: Readonly<Record<string, unknown>>) {
-			const { executor } = await versionExecutorOf(context, frozen);
+			const { executor } = await versionExecutorOf(context, frozen, runtime);
 			const outputs = await executor({
-				...hostBaseOf(context),
+				...hostBaseOf(context, runtime),
 				items: [{ json: {} }],
 				// Only the model fields come from the model, so it cannot change a fixed field.
 				parameter: (name, _index, raw) =>
@@ -2962,10 +3059,12 @@ function toolOf(context: NodeContext, frozen: FrozenVersion, itemIndex: number) 
 /**
  * The versioned node type of the agent tool of an action, with one version per major.
  * `describe` makes the tool description of a version, so the host names all its tools one way.
+ * Every call uses `runtime`.
  */
 export const toVersionedToolType = (
 	versions: readonly FrozenVersion[],
 	describe: (description: INodeTypeDescription) => INodeTypeDescription,
+	runtime: HostRuntime,
 ) =>
 	versionedTypeOf(
 		versions,
@@ -2977,7 +3076,7 @@ export const toVersionedToolType = (
 				}),
 			),
 			async supplyData(this: ISupplyDataFunctions, itemIndex: number) {
-				const tool = toolOf(this, frozen, itemIndex);
+				const tool = toolOf(this, frozen, runtime, itemIndex);
 				return { response: recordedSupply(tool, 'tool', this, toolTriesOf(this.getNode())) };
 			},
 			// An agent that has the engine run its tool calls runs this node: each item is one call.
@@ -2985,7 +3084,7 @@ export const toVersionedToolType = (
 			async execute(this: IExecuteFunctions) {
 				const outputs = await this.getInputData().reduce<Promise<INodeExecutionData[]>>(
 					async (done, item, index) => {
-						const results = await toolOf(this, frozen, index).call(item.json);
+						const results = await toolOf(this, frozen, runtime, index).call(item.json);
 						return [
 							...(await done),
 							...results.map((json) => ({ json, pairedItem: { item: index } })),
@@ -2993,8 +3092,9 @@ export const toVersionedToolType = (
 					},
 					Promise.resolve([]),
 				);
-				recordVersion(this, (await versionExecutorOf(this, frozen)).manifest);
+				recordVersion(this, (await versionExecutorOf(this, frozen, runtime)).manifest);
 				return [outputs];
 			},
 		}),
+		runtime.nodeContractRange,
 	);

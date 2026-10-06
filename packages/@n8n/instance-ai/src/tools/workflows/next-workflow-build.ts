@@ -1,6 +1,12 @@
 import { getWorkspaceRoot } from '@n8n/agents/sandbox';
 import { TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE } from '@n8n/api-types';
-import { hasPageValue, validate, type JsonSchema, type ResourceField } from '@n8n/node-sdk';
+import {
+	hasPageValue,
+	validate,
+	type Action,
+	type JsonSchema,
+	type ResourceField,
+} from '@n8n/node-sdk';
 import {
 	isProviderConnection,
 	modelCatalogDeclaration,
@@ -21,12 +27,6 @@ import {
 	type ResourceLookupCall,
 } from '@n8n/node-sdk/host';
 import { toContract } from '@n8n/node-sdk/registry';
-import {
-	actionOfNode,
-	actions,
-	isContractNodeType,
-	toolActionOfNode,
-} from '@n8n/nodes-integrations';
 import { isRecord } from '@n8n/utils/is-record';
 import { hasPlaceholderDeep } from '@n8n/utils/placeholder';
 import { sublimeSearch } from '@n8n/utils/search/sublime-search';
@@ -43,6 +43,12 @@ import {
 import { z } from 'zod';
 
 import type { ValidationWarning } from './workflow-validation-warnings';
+import {
+	actionOfNode,
+	contractActions,
+	isContractNodeType,
+	toolActionOfNode,
+} from '../contract-catalog';
 import type { InstanceAiContext } from '../../types';
 import type { FixtureOrigin } from '../../workflow-loop/workflow-loop-state';
 import {
@@ -160,7 +166,7 @@ export function nextWorkspaceFiles(
 /** The model catalog providers that the model fields of the imported modules name. */
 export const catalogProvidersOf = (source: string) => [
 	...new Set(
-		actions
+		contractActions()
 			.filter(({ node }) => usedNodeIds(source).includes(node.id))
 			.flatMap(({ inputSchema }) =>
 				Object.values(inputSchema.properties ?? {}).flatMap((field) =>
@@ -191,14 +197,12 @@ export async function modelCatalogFile(
 type WorkflowNode = WorkflowJSON['nodes'][number];
 
 /** The form of a contract node: a tool node has the tool form. */
-const formOf = (node: Pick<WorkflowNode, 'type'>, action: (typeof actions)[number]) =>
+const formOf = (node: Pick<WorkflowNode, 'type'>, action: Action) =>
 	toolActionOfNode(node) === action ? toolUiOf(action.inputSchema, action.ui) : action.ui;
 
 /** The contract input of a node, decoded from its stored parameters as the run reads them. */
-export const nodeInputOf = (
-	node: Pick<WorkflowNode, 'type' | 'parameters'>,
-	action: (typeof actions)[number],
-) => contractInputOf(node.parameters ?? {}, action.inputSchema, formOf(node, action));
+export const nodeInputOf = (node: Pick<WorkflowNode, 'type' | 'parameters'>, action: Action) =>
+	contractInputOf(node.parameters ?? {}, action.inputSchema, formOf(node, action));
 
 // n8n node parameters are JSON values.
 const isDataObject = (value: unknown): value is IDataObject => isRecord(value);
@@ -236,7 +240,7 @@ export const contractWorkflowOf = (workflow: WorkflowJSON) =>
  * read them keeps the default.
  */
 export function outputOf(
-	action: (typeof actions)[number],
+	action: Action,
 	input: Record<string, unknown>,
 	fields?: readonly ResourceField[],
 ): JsonSchema {
@@ -406,7 +410,7 @@ const scriptsOf = (node: WorkflowJSON['nodes'][number]) => [
  * n8n runs the action on its input without a credential or a request of its own, e.g. Set,
  * Filter or Code. Verification runs such a node, so it gets no synthesized fixture.
  */
-export const runsLocally = ({ flow, output, credentialTypes, egress }: (typeof actions)[number]) =>
+export const runsLocally = ({ flow, output, credentialTypes, egress }: Action) =>
 	credentialTypes.length === 0 &&
 	egress === undefined &&
 	(flow.effect === 'transform' || output.json['x-n8n-passed'] === true);
@@ -562,11 +566,11 @@ export function fixtureOriginsOf(
 }
 
 /** A read that build verification can do once: idempotent. */
-const readsOnce = (action: (typeof actions)[number]) =>
+const readsOnce = (action: Action) =>
 	action.flow.effect === 'read' && action.flow.idempotent === true;
 
 /** The set inputs that follow pages, e.g. HTTP `pages`: a page value below their top level. */
-const pageInputsOf = (action: (typeof actions)[number], input: Record<string, unknown>) =>
+const pageInputsOf = (action: Action, input: Record<string, unknown>) =>
 	Object.entries(action.inputSchema.properties ?? {}).flatMap(([key, field]) =>
 		input[key] !== undefined && field['x-n8n-page'] === undefined && hasPageValue(field)
 			? [key]
@@ -1140,7 +1144,7 @@ const unionTypeMessage = {
 function moduleImportHint(error: string): string | undefined {
 	const name = /has no exported member '(\w+)'/.exec(error)?.[1];
 	if (name === undefined || !nextNodeIds.includes(name)) return undefined;
-	const step = actions.find((action) => action.node.id === name && !action.inputs);
+	const step = contractActions().find((action) => action.node.id === name && !action.inputs);
 	const call = step ? ` Call its steps as members, e.g. \`${step.id}({ name })\`.` : '';
 	return `\`${name}\` is a typed module, not part of the flow API: \`import { ${name} } from '@n8n/nodes/${name}'\`.${call}`;
 }
@@ -1151,7 +1155,7 @@ function moduleNameHint(error: string): string | undefined {
 	const id = nextNodeIds.find((nodeId) => name === nodeId || name?.startsWith(`${nodeId}_`));
 	if (name === undefined || id === undefined) return undefined;
 	const path = name.split('_').join('.');
-	const step = actions.some((action) => action.id === path) ? path : `${id}.<step>`;
+	const step = contractActions().some((action) => action.id === path) ? path : `${id}.<step>`;
 	return `\`${id}\` is a typed module: \`import { ${id} } from '@n8n/nodes/${id}'\`. Call its steps as members, e.g. \`${step}({ name, … })\`.`;
 }
 

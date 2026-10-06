@@ -1,10 +1,4 @@
-import {
-	setContractVersionLoader,
-	setNodeContractRange,
-	toNodeType,
-	toVersionedNodeType,
-	type FrozenVersion,
-} from '@n8n/node-sdk/host';
+import { hostRuntime, toVersionedNodeType, type FrozenVersion } from '../entry/host';
 import {
 	addStatusToStore,
 	addToStore,
@@ -18,23 +12,16 @@ import {
 	storeReader,
 	type NodeContractLock,
 	type StoreStatusRecord,
-} from '@n8n/node-sdk/registry';
-import { defineNode, t } from '@n8n/node-sdk';
-import { credential, defineCredential, field } from '@n8n/node-sdk/credentials';
-import {
-	freezeAction,
-	freezeCredential,
-	freezeNative,
-	type FrozenAction,
-} from '@n8n/node-sdk/freeze';
-import { policyExecutorLoader } from '@n8n/node-sdk/sandbox';
+} from '../entry/registry';
+import { defineNode, t } from '../index';
+import { credential, defineCredential, field } from '../entry/credentials';
+import { freezeAction, freezeCredential, freezeNative, type FrozenAction } from '../freeze';
 import { createHash, generateKeyPairSync } from 'node:crypto';
 import { link, mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { createServer, type Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { getRequest } from '@n8n/nodes-core';
 import {
 	LoggerProxy,
 	type IExecuteFunctions,
@@ -50,33 +37,30 @@ import {
 	credentialManifestsOf,
 	exportContractStore,
 	importContractStore,
+	embeddedContractsOf,
 	syncContractStore,
-	useContractRegistry,
 	originOf,
 	type ContractInstall,
 	type ContractKeys,
-	type ContractRegistryOptions,
 	type ContractStoreOptions,
+	type ContractVersionLoaderOptions,
 	type InstanceStore,
 	type StoredVersion,
 } from '../contract-registry';
-import { versionsOf } from '../registry';
+
+// The built embedded stores of the first-party packages.
+const embedded = embeddedContractsOf(
+	['nodes-core', 'nodes-integrations'].map((name) => ({
+		name: `@n8n/${name}`,
+		dir: path.resolve(__dirname, '../../..', name),
+	})),
+);
+const versionsOf = (id: string) => embedded.versionsOf(id);
 
 vi.mock('node:fs/promises', async (importOriginal) => {
 	const fs = await importOriginal<typeof import('node:fs/promises')>();
 	return { ...fs, link: vi.fn(fs.link) };
 });
-
-vi.mock('@n8n/node-sdk/host', async (importOriginal) => ({
-	...(await importOriginal<typeof import('@n8n/node-sdk/host')>()),
-	setExecutorLoader: vi.fn(),
-	setTriggerPolicy: vi.fn(),
-}));
-
-vi.mock('@n8n/node-sdk/sandbox', async (importOriginal) => ({
-	...(await importOriginal<typeof import('@n8n/node-sdk/sandbox')>()),
-	policyExecutorLoader: vi.fn(),
-}));
 
 const echoSource = (minor: number, text: string, imports = '') => `
 import { defineNode, t } from '@n8n/node-sdk';
@@ -169,6 +153,7 @@ const memoryStore = () => {
 	const rows = new Map<string, StoredVersion>();
 	const statuses = new Map<string, StoreStatusRecord>();
 	const store: InstanceStore = {
+		embedded,
 		statuses: async (id) =>
 			[...statuses.values()].filter((status) => id === undefined || status.id === id),
 		insertStatuses: async (lines) => {
@@ -282,7 +267,6 @@ beforeEach(async () => {
 });
 
 afterAll(async () => {
-	setContractVersionLoader(async (_context, head) => head);
 	registry.server.close();
 	await rm(dirs.root, { recursive: true, force: true });
 });
@@ -332,27 +316,25 @@ const storeOf = (options: Partial<ContractStoreOptions> = {}) =>
 		keys: vettingKeys,
 		store: instance.current.store,
 		fetch: async (url, init) => await fetch(url, init),
+		runsNodeContract: hostRuntime().runsNodeContract,
 		...options,
 	});
 
 const run = async (
 	{ contract, meta }: Target,
 	options: Partial<
-		Omit<ContractRegistryOptions, 'store'> & Omit<ContractStoreOptions, 'store'>
+		Omit<ContractVersionLoaderOptions, 'store'> & Omit<ContractStoreOptions, 'store'>
 	> = {},
 	metadata: ITaskMetadata[] = [],
 	head = bundled('1.1.0'),
 ) => {
-	setContractVersionLoader(
-		contractVersionLoader({
-			policy: 'tolerant',
-			store: storeOf(options),
-			metaOf: async () => meta,
-			nodeContractRange: '>=2.0.0 <3.0.0',
-			...options,
-		}),
-	);
-	const NodeType = toVersionedNodeType([head]);
+	const versionLoader = contractVersionLoader({
+		policy: 'tolerant',
+		store: storeOf(options),
+		metaOf: async () => meta,
+		...options,
+	});
+	const NodeType = toVersionedNodeType([head], hostRuntime({ versionLoader }));
 	const result = await new NodeType().getNodeType(1).execute?.call(contextOf(metadata, contract));
 	const [items = []]: INodeExecutionData[][] = Array.isArray(result) ? result : [];
 	return items.map((item) => item.json.text);
@@ -1270,92 +1252,22 @@ describe('syncContractStore', () => {
 	});
 
 	it('reports nodes whose pinned version needs a Node Contract version the host does not run', async () => {
-		setNodeContractRange('>=3.0.0 <4.0.0');
-		try {
-			const result = await syncContractStore(storeOf(), [nodeOf('1.0.0')]);
-			expect(result.unsupported).toEqual([{ ...nodeOf('1.0.0'), nodeContract: '2.1.0' }]);
-		} finally {
-			setNodeContractRange('>=2.0.0 <3.0.0');
-		}
+		const { runsNodeContract } = hostRuntime({ nodeContractRange: '>=3.0.0 <4.0.0' });
+		const result = await syncContractStore(storeOf({ runsNodeContract }), [nodeOf('1.0.0')]);
+		expect(result.unsupported).toEqual([{ ...nodeOf('1.0.0'), nodeContract: '2.1.0' }]);
 	});
 });
 
-describe('useContractRegistry', () => {
-	const use = (options: Partial<ContractRegistryOptions> = {}) =>
-		useContractRegistry({
-			policy: 'tolerant',
-			store: storeOf(),
-			metaOf: async () => undefined,
-			nodeContractRange: '>=2.0.0 <3.0.0',
-			runtimes: {
-				lists: { 'first-party': ['in-process'], community: ['wasm'], private: ['wasm'] },
-				available: { missing: {} },
-				runtimes: {},
-			},
-			sandbox: { cacheDir: '', credentialType: () => undefined },
-			...options,
-		});
-
-	it('gives the runtime policy to the version loader', () => {
-		const runtimes = {
-			lists: { 'first-party': ['worker'], community: ['wasm'], private: ['container'] },
-			available: { missing: {} },
-			runtimes: {},
-		} as const;
-		vi.mocked(policyExecutorLoader).mockClear();
-		use({ runtimes });
-		expect(policyExecutorLoader).toHaveBeenCalledWith(runtimes, expect.anything());
-	});
-
-	it('gives a bundled version and a version that the first-party key signs the first-party origin', async () => {
-		const [embedded] = versionsOf('httpRequest.send');
-		expect(embedded?.origin).toBe('first-party');
+describe('embedded contracts', () => {
+	it('give a bundled version and a version that the first-party key signs the first-party origin', async () => {
+		const [version] = versionsOf('httpRequest.send');
+		expect(version?.origin).toBe('first-party');
 		await publish(frozenOf('1.0.0'), firstParty.privateKey);
-		const version = await storeOf({ keys: bothKeys }).locked('demo.echo', pinOf('1.0.0'));
-		expect(version.origin).toBe('first-party');
+		const signed = await storeOf({ keys: bothKeys }).locked('demo.echo', pinOf('1.0.0'));
+		expect(signed.origin).toBe('first-party');
 	});
 
-	it('refuses a URL from input outside the input hosts in a node run', async () => {
-		const onPermissionRefused = vi.fn();
-		use({ egressInputHosts: [' Allowed.test'], onPermissionRefused });
-		const httpRequest = vi.fn();
-		const context = {
-			getInputData: () => [{ json: {} }],
-			getNode: () => ({ name: 'GET', credentials: {} }),
-			getNodeParameter: (name: string) => (name === 'url' ? 'https://other.test/x' : undefined),
-			continueOnFail: () => false,
-			helpers: { httpRequest },
-		} as unknown as IExecuteFunctions;
-		const NodeType = toNodeType(getRequest);
-
-		await expect(new NodeType().execute?.call(context)).rejects.toThrow(
-			'this n8n instance lets a URL from input reach only allowed.test, not other.test',
-		);
-		expect(httpRequest).not.toHaveBeenCalled();
-		expect(onPermissionRefused).toHaveBeenCalledWith(
-			expect.objectContaining({
-				action: 'httpRequest.get',
-				permission: 'egress-input',
-				host: 'other.test',
-			}),
-		);
-		use();
-	});
-
-	it('gives the response limit to each request of a node run', async () => {
-		use({ maxResponseBytes: 1024 });
-		const httpRequest = vi.fn().mockResolvedValue([]);
-		const context = {
-			getInputData: () => [{ json: {} }],
-			getNode: () => ({ name: 'GET', credentials: {} }),
-			getNodeParameter: (name: string) => (name === 'url' ? 'https://api.test/x' : undefined),
-			continueOnFail: () => false,
-			helpers: { httpRequest },
-		} as unknown as IExecuteFunctions;
-		const NodeType = toNodeType(getRequest);
-
-		await new NodeType().execute?.call(context);
-		expect(httpRequest).toHaveBeenCalledWith(expect.objectContaining({ maxResponseBytes: 1024 }));
-		use();
+	it('give no version of an id that no package ships', () => {
+		expect(versionsOf('demo.echo')).toEqual([]);
 	});
 });

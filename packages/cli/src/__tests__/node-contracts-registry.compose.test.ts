@@ -1,5 +1,5 @@
 import type { GlobalConfig } from '@n8n/config';
-import { FIRST_PARTY_PACKAGES, isContractNodeType, versionsOf } from '@n8n/nodes-integrations';
+import { hostRuntime } from '@n8n/node-sdk/host';
 import { LazyPackageDirectoryLoader } from 'n8n-core';
 import type { INodeProperties, INodeTypeDescription, IVersionedNodeType } from 'n8n-workflow';
 import path from 'node:path';
@@ -7,7 +7,10 @@ import { mock } from 'vitest-mock-extended';
 
 import { LoadNodesAndCredentials } from '../load-nodes-and-credentials';
 import { NodeTypes } from '../node-types';
+import { isContractNodeType } from '../node-contracts-catalog';
 import { ContractNodeLoader } from '../node-contracts-registry';
+
+import { FIRST_PARTY_PACKAGES, versionsOf } from '@test/first-party-contracts';
 
 const PACKAGES = path.resolve(__dirname, '../../..');
 const NOTION = 'n8n-nodes-base.notion';
@@ -35,6 +38,7 @@ async function postProcessed(nodeContractsEnabled: boolean, excludeContractNodes
 		const contracts = FIRST_PARTY_PACKAGES.map(
 			(pkg) =>
 				new ContractNodeLoader(
+					hostRuntime(),
 					excludeContractNodes,
 					[],
 					async () => ({ versions: async () => new Map(), credentials: async () => new Map() }),

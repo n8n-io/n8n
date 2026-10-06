@@ -1,4 +1,4 @@
-import type { RunProfile } from '@n8n/nodes-integrations';
+import type { RunProfile } from '@n8n/node-sdk/host';
 
 /**
  * Events of contract nodes. The otel module turns the profile into child spans of the node span.

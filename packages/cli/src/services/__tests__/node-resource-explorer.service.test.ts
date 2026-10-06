@@ -6,7 +6,8 @@ import type {
 	SharedWorkflowRepository,
 	User,
 } from '@n8n/db';
-import { toVersionedNodeType, versionsOf } from '@n8n/nodes-integrations';
+import { hostRuntime, toVersionedNodeType } from '@n8n/node-sdk/host';
+import { versionsOf } from '@test/first-party-contracts';
 import type { EvalLlmMockHandler } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 import {
@@ -842,7 +843,10 @@ describe('NodeResourceExplorerService', () => {
 
 describe('NodeResourceExplorerService with a contract node', () => {
 	it('lists the channels of a contract resource by its resource id, with the eval mock', async () => {
-		const nodeType = new (toVersionedNodeType(versionsOf('slack.message.delete')))().getNodeType(1);
+		const nodeType = new (toVersionedNodeType(
+			versionsOf('slack.message.delete'),
+			hostRuntime(),
+		))().getNodeType(1);
 		const nodeTypes = mock<NodeTypes>();
 		nodeTypes.getByNameAndVersion.mockReturnValue(nodeType);
 		vi.spyOn(Expression.prototype, 'acquireIsolate').mockResolvedValue(true);

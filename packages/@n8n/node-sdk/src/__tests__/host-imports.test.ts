@@ -21,18 +21,13 @@ import {
 	type InputItem,
 	type JsonSchema,
 } from '../index';
-import { setPermissionRefusalListener, type PermissionRefusal } from '../egress';
+import type { PermissionRefusal } from '../egress';
 import { versionManifestSchema } from '../manifest';
-import {
-	codeRunnerOf,
-	dataTablesOf,
-	setCodeLanguages,
-	tableIdByName,
-	type DataTableHost,
-} from '../host-imports';
+import { codeRunnerOf, dataTablesOf, tableIdByName, type DataTableHost } from '../host-imports';
 import {
 	countedInputsOf,
 	executorOf,
+	hostRuntime,
 	toNodeType,
 	type BinaryStore,
 	type ExecutorHost,
@@ -362,9 +357,8 @@ describe('imports', () => {
 				yield* [];
 			},
 		});
-		setPermissionRefusalListener((refusal) => refusals.push(refusal));
-		await expect(executorOf(sneaky)(hostOf({}))).rejects.toThrow();
-		setPermissionRefusalListener(undefined);
+		const onRefusal = (refusal: PermissionRefusal) => refusals.push(refusal);
+		await expect(executorOf(sneaky)(hostOf({ onRefusal }))).rejects.toThrow();
 		expect(refusals).toEqual([
 			expect.objectContaining({ node, action: 'demo.sneakyCode', permission: 'code' }),
 		]);
@@ -816,7 +810,7 @@ describe('code', () => {
 		return { jobs, context: context as unknown as IExecuteFunctions };
 	}
 
-	beforeEach(() => setCodeLanguages(['javascript', 'python']));
+	const BOTH = new Set(['javascript', 'python'] as const);
 
 	it('runs each item in chunks of 1000 and joins the results in order', async () => {
 		const { jobs, context } = contextOf(2500, (settings) => {
@@ -825,7 +819,7 @@ describe('code', () => {
 				json: { at: chunk.startIndex + i },
 			}));
 		});
-		const result = await codeRunnerOf(context).run({
+		const result = await codeRunnerOf(context, BOTH).run({
 			language: 'javascript',
 			code: 'return $json',
 			mode: 'each',
@@ -846,34 +840,48 @@ describe('code', () => {
 
 	it('sends the items to the Python runner, and refuses a language the instance disables', async () => {
 		const { jobs, context } = contextOf(2, () => []);
-		await codeRunnerOf(context).run({ language: 'python', code: 'return []', mode: 'all' });
+		await codeRunnerOf(context, BOTH).run({ language: 'python', code: 'return []', mode: 'all' });
 		expect(jobs[0]).toMatchObject({
 			type: 'python',
 			settings: { nodeMode: 'runOnceForAllItems', nodeName: 'Demo', workflowId: 'w1' },
 		});
 		expect((jobs[0]?.settings.items as unknown[]).length).toBe(2);
 
-		setCodeLanguages(['javascript']);
 		await expect(
-			codeRunnerOf(context).run({ language: 'python', code: 'return []', mode: 'all' }),
+			codeRunnerOf(context, new Set(['javascript'] as const)).run({
+				language: 'python',
+				code: 'return []',
+				mode: 'all',
+			}),
 		).rejects.toThrow('This instance does not allow python code');
 	});
 
-	it('runs only JavaScript until the host sets the languages', async () => {
-		vi.resetModules();
-		const fresh = await import('../host-imports.js');
+	it('runs only JavaScript when the host runtime sets no languages', async () => {
 		const { context } = contextOf(1, () => []);
+		const { codeLanguages } = hostRuntime();
 		await expect(
-			fresh.codeRunnerOf(context).run({ language: 'python', code: 'return []', mode: 'all' }),
+			codeRunnerOf(context, codeLanguages).run({
+				language: 'python',
+				code: 'return []',
+				mode: 'all',
+			}),
 		).rejects.toThrow('This instance does not allow python code');
 		await expect(
-			fresh.codeRunnerOf(context).run({ language: 'javascript', code: 'return []', mode: 'all' }),
+			codeRunnerOf(context, codeLanguages).run({
+				language: 'javascript',
+				code: 'return []',
+				mode: 'all',
+			}),
 		).resolves.toEqual([]);
 	});
 
 	it('throws the runner error with its description', async () => {
 		const { context } = contextOf(1, () => new Error('x is not defined [line 1]'));
-		const failure = codeRunnerOf(context).run({ language: 'javascript', code: 'x', mode: 'all' });
+		const failure = codeRunnerOf(context, BOTH).run({
+			language: 'javascript',
+			code: 'x',
+			mode: 'all',
+		});
 		await expect(failure).rejects.toThrow('x is not defined [line 1]');
 		await expect(failure).rejects.toMatchObject({ description: 'from the runner' });
 	});

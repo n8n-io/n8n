@@ -34,17 +34,21 @@ import type {
 	IWorkflowExecuteAdditionalData,
 	IWorkflowSettings,
 } from 'n8n-workflow';
-import { actionOfNode, FIRST_PARTY_PACKAGES, storedParametersOf } from '@n8n/nodes-integrations';
+import { hostRuntime, storedParametersOf } from '@n8n/node-sdk/host';
 import { createRunExecutionData, NodeHelpers, Workflow } from 'n8n-workflow';
 import path from 'node:path';
 import { mock } from 'vitest-mock-extended';
 
+import { actionOfNode } from '../node-contracts-catalog';
 import { ContractNodeLoader } from '../node-contracts-registry';
+
+import { FIRST_PARTY_PACKAGES } from '@test/first-party-contracts';
 
 const nodesBase = new LazyPackageDirectoryLoader(path.resolve(__dirname, '../../../nodes-base'));
 const contractLoaders = FIRST_PARTY_PACKAGES.map(
 	(source) =>
 		new ContractNodeLoader(
+			hostRuntime(),
 			[],
 			[],
 			async () => ({ versions: async () => new Map(), credentials: async () => new Map() }),

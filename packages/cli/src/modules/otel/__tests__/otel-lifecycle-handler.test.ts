@@ -8,7 +8,7 @@ import type {
 	WorkflowExecuteBeforeContext,
 } from '@n8n/decorators';
 import { Container } from '@n8n/di';
-import type { RunProfile } from '@n8n/nodes-integrations';
+import type { RunProfile } from '@n8n/node-sdk/host';
 import { mock } from 'vitest-mock-extended';
 import { Workflow } from 'n8n-workflow';
 import type { INodeTypes, IRun, IRunExecutionData, WorkflowExecuteMode } from 'n8n-workflow';

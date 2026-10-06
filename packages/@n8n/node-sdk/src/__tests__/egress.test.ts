@@ -2,6 +2,7 @@ import {
 	assertUrlAllowed,
 	DomainNotAllowedError,
 	type IDataObject,
+	type IExecuteFunctions,
 	type IHttpRequestOptions,
 	type INode,
 	type INodeType,
@@ -11,7 +12,6 @@ import { generateNodeModule } from '../entry/codegen';
 import { compat, credential, defineCredential } from '../entry/credentials';
 import {
 	permissionsOf,
-	setPermissionRefusalListener,
 	toCredentialType,
 	toTriggerNodeType,
 	type ContractPermissions,
@@ -30,7 +30,8 @@ import type { CredentialManifest } from '../manifest';
 import { allowsHost, credentialHostsOf, egressIssuesOf, narrowHosts } from '../egress';
 import {
 	executorOf,
-	setCredentialManifests,
+	hostRuntime,
+	toNodeType,
 	toRequestOptions,
 	withCredentialHostsOf,
 	type ExecutorHost,
@@ -392,16 +393,17 @@ describe('host egress', () => {
 
 describe('permission refusals', () => {
 	const refusals: PermissionRefusal[] = [];
+	const reporting = (base: ReturnType<typeof hostOf>) => ({
+		...base,
+		host: { ...base.host, onRefusal: (refusal: PermissionRefusal) => refusals.push(refusal) },
+	});
 
 	beforeEach(() => {
 		refusals.length = 0;
-		setPermissionRefusalListener((refusal) => refusals.push(refusal));
 	});
 
-	afterEach(() => setPermissionRefusalListener(undefined));
-
 	it('reports one refused request with the node, the action, the permission and the host', async () => {
-		const { host } = hostOf({ credentialType: 'echoApi' });
+		const { host } = reporting(hostOf({ credentialType: 'echoApi' }));
 		await expect(executorOf(sender([{ url: 'https://other.test/x' }]))(host)).rejects.toThrow();
 		expect(refusals).toEqual([
 			{
@@ -416,7 +418,7 @@ describe('permission refusals', () => {
 	});
 
 	it('reports a host from input outside the input hosts of the host', async () => {
-		const { host } = hostOf({ parameters: { url: 'https://other.test/x' } });
+		const { host } = reporting(hostOf({ parameters: { url: 'https://other.test/x' } }));
 		await expect(
 			executorOf(fetchUrl)({ ...host, egressInputHosts: ['allowed.test'] }),
 		).rejects.toThrow();
@@ -431,11 +433,13 @@ describe('permission refusals', () => {
 	});
 
 	it('reports a host outside the hosts of the credential', async () => {
-		const { host } = hostOf({
-			credentialType: 'httpHeaderAuth',
-			data: DOMAINS,
-			parameters: { url: 'https://other.test/x' },
-		});
+		const { host } = reporting(
+			hostOf({
+				credentialType: 'httpHeaderAuth',
+				data: DOMAINS,
+				parameters: { url: 'https://other.test/x' },
+			}),
+		);
 		await expect(executorOf(fetchUrl)(host)).rejects.toThrow('Domain not allowed');
 		expect(refusals).toEqual([
 			expect.objectContaining({ permission: 'credential-hosts', host: 'other.test' }),
@@ -447,7 +451,7 @@ describe('permission refusals', () => {
 		const wrapped = new Error('The service refused the request', {
 			cause: new Error('Redirected request failed', { cause: hop }),
 		});
-		const { host } = hostOf({ credentialType: 'echoApi', replies: [wrapped] });
+		const { host } = reporting(hostOf({ credentialType: 'echoApi', replies: [wrapped] }));
 		await expect(executorOf(sender([{ path: path`/a` }]))(host)).rejects.toThrow();
 		expect(refusals).toEqual([
 			{
@@ -461,19 +465,57 @@ describe('permission refusals', () => {
 	});
 
 	it('reports nothing for an allowed request', async () => {
-		const { host } = hostOf({ credentialType: 'echoApi' });
+		const { host } = reporting(hostOf({ credentialType: 'echoApi' }));
 		await executorOf(sender([{ path: path`/a` }]))(host);
 		expect(refusals).toEqual([]);
 	});
 
 	it('refuses the request with its own error when the listener throws', async () => {
-		setPermissionRefusalListener(() => {
-			throw new Error('listener failed');
-		});
 		const { host } = hostOf({ credentialType: 'echoApi' });
-		await expect(executorOf(sender([{ url: 'https://other.test/x' }]))(host)).rejects.toThrow(
-			'Host not allowed',
+		const onRefusal = () => {
+			throw new Error('listener failed');
+		};
+		await expect(
+			executorOf(sender([{ url: 'https://other.test/x' }]))({ ...host, onRefusal }),
+		).rejects.toThrow('Host not allowed');
+	});
+});
+
+describe('hostRuntime', () => {
+	const contextOf = (url: string, httpRequest: ReturnType<typeof vi.fn>) =>
+		({
+			getInputData: () => [{ json: {} }],
+			getNode: () => ({ ...node, credentials: {} }),
+			getNodeParameter: (name: string) => (name === 'url' ? url : undefined),
+			continueOnFail: () => false,
+			helpers: { httpRequest },
+		}) as unknown as IExecuteFunctions;
+
+	it('limits a URL from input in a node run to the input hosts, and reports the refusal', async () => {
+		const onPermissionRefused = vi.fn();
+		const runtime = hostRuntime({ egressInputHosts: [' Allowed.test'], onPermissionRefused });
+		const httpRequest = vi.fn();
+		const type = new (toNodeType(fetchUrl, runtime))();
+		await expect(
+			type.execute?.call(contextOf('https://other.test/x', httpRequest)),
+		).rejects.toThrow(
+			'this n8n instance lets a URL from input reach only allowed.test, not other.test',
 		);
+		expect(httpRequest).not.toHaveBeenCalled();
+		expect(onPermissionRefused).toHaveBeenCalledWith(
+			expect.objectContaining({
+				action: 'echo.fetch',
+				permission: 'egress-input',
+				host: 'other.test',
+			}),
+		);
+	});
+
+	it('gives the response limit to each request of a node run', async () => {
+		const httpRequest = vi.fn().mockResolvedValue({ ok: 'yes' });
+		const type = new (toNodeType(fetchUrl, hostRuntime({ maxResponseBytes: 1024 })))();
+		await type.execute?.call(contextOf('https://api.test/x', httpRequest));
+		expect(httpRequest).toHaveBeenCalledWith(expect.objectContaining({ maxResponseBytes: 1024 }));
 	});
 });
 
@@ -614,18 +656,6 @@ describe('credential hosts of a frozen version', () => {
 		const after = hostOf({ credentialType: 'echoApi', data: none });
 		await expect(executorOf(moved)(after.host)).rejects.toThrow('api.echo.test');
 		expect(after.sent).toEqual([]);
-	});
-
-	it('come from the credential manifests that the host sets', async () => {
-		setCredentialManifests(async (name) =>
-			name === 'echoApi' ? manifestWith(['api.host.test']) : undefined,
-		);
-		try {
-			const types = (await withCredentialHostsOf(frozenGet)).node.credential?.types;
-			expect(types?.[0]?.hosts).toEqual(['api.host.test']);
-		} finally {
-			setCredentialManifests(async () => undefined);
-		}
 	});
 
 	it('stay the frozen ones for a type without a credential manifest', async () => {

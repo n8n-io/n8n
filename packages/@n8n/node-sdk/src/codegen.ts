@@ -9,6 +9,7 @@ import {
 	type ContractDocument,
 	type Trigger,
 } from './define';
+import type { CatalogEntry } from './catalog';
 import { permissionsOf } from './egress';
 import { advancedFieldsOf, type ActionUiDocument } from './properties';
 import { hasBinary, type EntryFields as EntryFieldsSpec, type JsonSchema } from './schema';
@@ -506,6 +507,44 @@ export function generatedTriggersOf(trigger: Trigger, nodeType: string): Generat
 						typeVersion: reply.native.version,
 						resource,
 						operation: reply.operation,
+						pairing,
+					},
+				]
+			: []),
+	];
+}
+
+/**
+ * The factories of a trigger from its catalog entry, as `generatedTriggersOf` makes them from the
+ * source: the trigger, and the reply step of a native trigger. A trigger with a bundle emits
+ * `entry.nodeType`; a native trigger emits its legacy node. The id of a reply contract ends with
+ * the operation of the reply step.
+ */
+export function generatedTriggersOfEntry({
+	manifest,
+	nodeType,
+	resource,
+	operation,
+}: Pick<CatalogEntry, 'manifest' | 'nodeType' | 'resource' | 'operation'>): GeneratedAction[] {
+	const { contract } = manifest;
+	if (!('native' in manifest)) return [{ contract, nodeType, resource, operation }];
+	const { native, reply } = manifest;
+	const pairing = reply && {
+		trigger: native.type,
+		reply: reply.native.type,
+		...(reply.awaits ? { field: reply.awaits.field, value: reply.awaits.value } : {}),
+	};
+	const own = { contract, nodeType: native.type, typeVersion: native.version, resource };
+	return [
+		{ ...own, operation, ...(pairing ? { pairing } : {}) },
+		...(reply && pairing
+			? [
+					{
+						contract: reply.contract,
+						nodeType: reply.native.type,
+						typeVersion: reply.native.version,
+						resource,
+						operation: reply.contract.id.slice(reply.contract.id.lastIndexOf('.') + 1),
 						pairing,
 					},
 				]

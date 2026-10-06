@@ -10,7 +10,8 @@ import { ExecutionsConfig, InstanceAiConfig } from '@n8n/config';
 import { ProcessedDataRepository, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { currentBuildTracingContext } from '@n8n/instance-ai';
-import { actionOfNode, exampleOf, matches } from '@n8n/nodes-integrations';
+import { matches } from '@n8n/node-sdk';
+import { exampleOf } from '@n8n/node-sdk/host';
 import { isRecord } from '@n8n/utils/is-record';
 import { sleep } from '@n8n/utils/sleep';
 import type { DataTableColumnInfo, WorkflowJSON } from '@n8n/workflow-sdk';
@@ -49,6 +50,7 @@ import { randomUUID } from 'node:crypto';
 
 import { ActiveExecutions } from '@/active-executions';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { actionOfNode } from '@/node-contracts-catalog';
 import { DataTableService } from '@/modules/data-table/data-table.service';
 import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';

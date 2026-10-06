@@ -21,11 +21,12 @@ import {
 	ProjectRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { hostRuntime } from '@n8n/node-sdk/host';
 import type { INode, INodeType } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 import { mock } from 'vitest-mock-extended';
 
-import { packageOf, versionsOf } from '@n8n/nodes-integrations';
+import { packageOf, versionsOf } from '@test/first-party-contracts';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import type { ExternalHooks } from '@/external-hooks';
@@ -385,6 +386,7 @@ describe('update() with node contracts', () => {
 
 	beforeAll(async () => {
 		const loader = new ContractNodeLoader(
+			hostRuntime(),
 			[],
 			[],
 			async () => ({ versions: async () => new Map(), credentials: async () => new Map() }),

@@ -9,7 +9,14 @@ import type {
 	ISupplyDataFunctions,
 } from 'n8n-workflow';
 
-import { toolActions, toolTypeOf, toVersionedToolType, versionsOf } from '../index';
+import { hostRuntime, isToolContract, toVersionedToolType } from '@n8n/node-sdk/host';
+import { contractCatalogOf, isVersionManifest } from '@n8n/node-sdk/registry';
+
+import { FIRST_PARTY_PACKAGES, versionsOf } from './first-party';
+
+const catalog = contractCatalogOf(FIRST_PARTY_PACKAGES);
+const toolTypeOf = ({ id }: { id: string }) =>
+	`${catalog.entries.find(({ manifest }) => manifest.id === id)?.nodeType ?? id}Tool`;
 
 const DATE = '2026-09-15T09:30:00.000Z';
 
@@ -76,7 +83,11 @@ const supplyTool = async (
 			recorded.push(['output', data instanceof Error ? data.message : data[0]?.[0]?.json]);
 		},
 	};
-	const NodeType = toVersionedToolType(versionsOf(action), (description) => description);
+	const NodeType = toVersionedToolType(
+		versionsOf(action),
+		(description) => description,
+		hostRuntime(),
+	);
 	const version = new NodeType().getNodeType();
 	const supply = await version.supplyData?.call(context as unknown as ISupplyDataFunctions, 0);
 	const metadata: unknown[] = [];
@@ -151,7 +162,9 @@ describe('contract actions as agent tools', () => {
 	});
 
 	it('give a tool node type for each action that reads or writes one call at a time', () => {
-		const ids = toolActions.map(({ id }) => id);
+		const ids = catalog.entries.flatMap(({ manifest }) =>
+			isVersionManifest(manifest) && isToolContract(manifest.contract) ? [manifest.id] : [],
+		);
 		expect(ids).toEqual(
 			expect.arrayContaining(['httpRequest.get', 'slack.message.send', 'dataTable.row.get']),
 		);

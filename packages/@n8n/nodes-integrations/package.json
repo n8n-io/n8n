@@ -3,12 +3,10 @@
   "version": "0.1.0",
   "private": true,
   "description": "n8n integration nodes defined as node contracts",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
   "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "default": "./dist/index.js"
+    "./catalog": {
+      "types": "./dist/catalog.d.ts",
+      "default": "./dist/catalog.js"
     },
     "./package.json": "./package.json"
   },
@@ -32,13 +30,12 @@
     "test:unit": "vitest run"
   },
   "dependencies": {
-    "@n8n/node-contract-compat": "workspace:*",
     "@n8n/node-sdk": "workspace:*",
-    "@n8n/nodes-core": "workspace:*",
     "n8n-workflow": "workspace:*"
   },
   "devDependencies": {
     "@n8n/eslint-config": "workspace:*",
+    "@n8n/nodes-core": "workspace:*",
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
     "n8n-nodes-base": "workspace:*",

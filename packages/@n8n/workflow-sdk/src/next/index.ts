@@ -42,6 +42,7 @@ import {
 } from './flow';
 
 export {
+	FIRST_PARTY_PACKAGES,
 	workflow,
 	steps,
 	route,

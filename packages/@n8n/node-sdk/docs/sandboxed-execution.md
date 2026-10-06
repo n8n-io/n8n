@@ -77,8 +77,8 @@ flowchart LR
   sidecar through `n8n:js-guest/bundle` (`sandbox/wit/guest.wit`). That interface is not a
   capability and the host never answers it. The bundle runs in the same JS realm as the guest, so
   the guest is not a trust boundary: the sidecar and the host are.
-- `src/sandbox.ts`: `policyExecutorLoader(policy, options)` gives the `ExecutorLoader` of
-  `setExecutorLoader` (`src/runtime.ts`). It runs each version in the runtime that
+- `src/sandbox.ts`: `policyExecutorLoader(policy, options)` gives the `executorLoader` of a
+  `HostRuntime` (`src/runtime.ts`). It runs each version in the runtime that
   `runtimeNameOf` (`src/runtime-policy.ts`) gives: `in-process` through `loadExecutor`, every
   other runtime through `sandboxedVersionOf` with that `GuestRuntime`. `policy.log` gets one
   line for each version it loads, e.g. `items.set@1.0.0 (first-party) runs in worker`, for a
@@ -214,9 +214,10 @@ The policy (`src/runtime-policy.ts`):
   missing, or docker does not answer. n8n starts. Only the versions that need that runtime fail.
 - With the defaults and no sidecar, community and private versions do not run: n8n does not ship
   the sidecar yet.
-- `useNodeContractsRegistry` (`packages/cli/src/node-contracts-registry.ts`) makes each runtime
+- `nodeContractsRuntime` (`packages/cli/src/node-contracts-registry.ts`) makes each runtime
   at its first use and closes the pools and the parked sidecars at shutdown.
-- The credential types come from the shipped nodes, else a `compat` type for a name that n8n has.
+- The credential types come from the credential manifests, else from the embedded bundle that
+  lists a compat type (`embeddedCompatTypeOf`), else a `compat` type for a name that n8n has.
 
 ### Measured costs
 
@@ -348,7 +349,7 @@ Measured on macOS arm64 (load 9 to 12), medians, for `slack.message.send`,
 
 A real API call takes 50 to 500 ms, so the sandbox adds little to an HTTP-bound action.
 
-`useContractRegistry` of nodes-integrations calls `warmSandbox(options)` when the sandbox is on. It
+`nodeContractsRuntime` of the cli calls `warmSandbox(options)` when the sandbox is on. It
 compiles `action.wasm`, `provider.wasm` and `trigger.wasm` into the cache directory, one after the other, and n8n
 does not wait for it. A sidecar without `--bundle` compiles the guest at `[initialize]`. A run
 that starts before the compile ends, or after a failed warm-up, compiles the guest itself. Two

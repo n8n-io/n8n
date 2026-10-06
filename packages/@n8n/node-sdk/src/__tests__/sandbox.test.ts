@@ -10,7 +10,7 @@ import { isRecord } from '@n8n/utils/is-record';
 import type { IDataObject, IHttpRequestOptions, INode, INodeType } from 'n8n-workflow';
 
 import { compat, defineCredential, field } from '../credentials';
-import { setPermissionRefusalListener, type PermissionRefusal } from '../egress';
+import type { PermissionRefusal } from '../egress';
 import { escapeProbes } from './escape-probes';
 import { freezeAction } from '../freeze';
 import { defineNode, t } from '../index';
@@ -27,8 +27,7 @@ import {
 } from '../sandbox';
 import {
 	executorOf,
-	setCredentialManifests,
-	setExecutorLoader,
+	hostRuntime,
 	type BinaryStore,
 	type ContractOrigin,
 	type ExecutorHost,
@@ -171,17 +170,27 @@ describe.skipIf(!existsSync(SIDECAR) || !existsSync(GUEST))('the sandbox', () =>
 		continueOnFail: () => false,
 	});
 
-	const outputOf = async (name: ProbeName, host = hostOf(), sandbox = options()) => {
+	const outputOf = async (
+		name: ProbeName,
+		host = hostOf(),
+		sandbox = options(),
+		runtime = hostRuntime(),
+	) => {
 		const frozen = await freezeAction(path.join(dirs.root, 'probes.ts'), name);
 		const { executor } = await sandboxedVersionOf(
 			{ manifest: frozen.manifest, origin: 'community', readBundle: async () => frozen.bundle },
 			sandbox,
+			runtime,
 		);
 		const [[output] = []] = await executor(host);
 		return output;
 	};
-	const run = async (name: ProbeName, host = hostOf(), sandbox = options()) =>
-		(await outputOf(name, host, sandbox))?.json.value;
+	const run = async (
+		name: ProbeName,
+		host = hostOf(),
+		sandbox = options(),
+		runtime = hostRuntime(),
+	) => (await outputOf(name, host, sandbox, runtime))?.json.value;
 
 	beforeAll(async () => {
 		dirs.root = await mkdtemp(path.join(tmpdir(), 'node-sdk-sandbox-'));
@@ -332,28 +341,25 @@ describe.skipIf(!existsSync(SIDECAR) || !existsSync(GUEST))('the sandbox', () =>
 	});
 
 	it('takes the credential hosts from the credential manifest before the host type', async () => {
-		setCredentialManifests(async (name) =>
-			name === 'slackApi'
-				? {
-						kind: 'credential',
-						id: 'slack.token',
-						name: 'slackApi',
-						semver: '1.0.0',
-						nodeContract: '2.5.0',
-						sdk: '0.0.0',
-						displayName: 'Slack',
-						fields: { type: 'object', properties: {} },
-						scheme: { kind: 'none' },
-						hosts: ['evil.example'],
-					}
-				: undefined,
-		);
-		try {
-			await run('credentialHostProbe');
-			expect(requests.map(({ url }) => url)).toEqual(['https://evil.example/steal']);
-		} finally {
-			setCredentialManifests(async () => undefined);
-		}
+		const runtime = hostRuntime({
+			credentialManifestOf: async (name) =>
+				name === 'slackApi'
+					? {
+							kind: 'credential',
+							id: 'slack.token',
+							name: 'slackApi',
+							semver: '1.0.0',
+							nodeContract: '2.5.0',
+							sdk: '0.0.0',
+							displayName: 'Slack',
+							fields: { type: 'object', properties: {} },
+							scheme: { kind: 'none' },
+							hosts: ['evil.example'],
+						}
+					: undefined,
+		});
+		await run('credentialHostProbe', hostOf(), options(), runtime);
+		expect(requests.map(({ url }) => url)).toEqual(['https://evil.example/steal']);
 	});
 
 	it('refuses a bundle that names a base URL outside the egress hosts of its manifest', async () => {
@@ -371,6 +377,7 @@ describe.skipIf(!existsSync(SIDECAR) || !existsSync(GUEST))('the sandbox', () =>
 					readBundle: async () => bundle,
 				},
 				options(),
+				hostRuntime(),
 			),
 		).rejects.toThrow(
 			'names the base URL https://evil.example. Its host is not an egress host of its manifest',
@@ -793,6 +800,7 @@ describe.skipIf(!existsSync(SIDECAR) || !existsSync(GUEST))('the sandbox', () =>
 			const loaded = await sandboxedVersionOf(
 				{ manifest: frozen.manifest, origin: 'community', readBundle: async () => frozen.bundle },
 				options(),
+				hostRuntime(),
 			);
 			return await replayFixtures(
 				frozen,
@@ -889,8 +897,11 @@ describe.skipIf(!existsSync(SIDECAR) || !existsSync(TRIGGER_GUEST))(
 			);
 		/** The node type of a trigger with the default runtime lists. */
 		const typeOf = async (version: FrozenVersion, sandbox = options()): Promise<INodeType> => {
-			setExecutorLoader(loaderOf(sandbox));
-			return new (toVersionedTriggerType([version]))().getNodeType(1);
+			const runtime = hostRuntime({
+				executorLoader: loaderOf(sandbox),
+				onPermissionRefused: (refusal) => refusals.push(refusal),
+			});
+			return new (toVersionedTriggerType([version], runtime))().getNodeType(1);
 		};
 		const contextOf = (staticData: IDataObject, replies: unknown[]) => ({
 			getNode: () => node,
@@ -917,27 +928,13 @@ describe.skipIf(!existsSync(SIDECAR) || !existsSync(TRIGGER_GUEST))(
 		});
 
 		afterAll(async () => {
-			const inProcess = ['in-process' as const];
-			setExecutorLoader(
-				policyExecutorLoader(
-					{
-						lists: { 'first-party': inProcess, community: inProcess, private: inProcess },
-						available: { missing: {} },
-						runtimes: {},
-					},
-					options(),
-				),
-			);
 			await rm(dirs.root, { recursive: true, force: true });
 		});
 
 		beforeEach(() => {
 			sent.length = 0;
 			refusals.length = 0;
-			setPermissionRefusalListener((refusal) => refusals.push(refusal));
 		});
-
-		afterEach(() => setPermissionRefusalListener(undefined));
 
 		it('polls a community trigger in the sandbox, and the host keeps its cursor', async () => {
 			const type = await typeOf(await versionOf('changed', 'community'));

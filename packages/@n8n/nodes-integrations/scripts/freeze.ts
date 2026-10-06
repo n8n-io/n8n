@@ -1,5 +1,6 @@
 import { freezePackage } from '@n8n/node-sdk/freeze';
+import path from 'node:path';
 
-import { nodesIntegrations } from '../src/nodes';
-
-if (require.main === module) void freezePackage(nodesIntegrations);
+if (require.main === module) {
+	void freezePackage({ name: '@n8n/nodes-integrations', dir: path.resolve(__dirname, '..') });
+}

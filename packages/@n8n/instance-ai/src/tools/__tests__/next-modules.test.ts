@@ -1,12 +1,8 @@
 import { validate } from '@n8n/node-sdk';
-import {
-	FIRST_PARTY_PACKAGES,
-	flowNatives,
-	migratedTargetOf,
-	nodeTypeOf,
-} from '@n8n/nodes-integrations';
 import * as flowSdk from '@n8n/workflow-sdk/next';
-import { forEach, manual, set, workflow } from '@n8n/workflow-sdk/next';
+import { FIRST_PARTY_PACKAGES, forEach, manual, set, workflow } from '@n8n/workflow-sdk/next';
+
+import { entryOf, firstPartyCatalog, migratedTargetOf, nodeTypeOf } from '../contract-catalog';
 
 import {
 	CORE_NODE_STEPS,
@@ -30,7 +26,9 @@ import {
 
 describe('next-modules', () => {
 	it.each(
-		nextActions.filter(({ inputs }) => !inputs).map((action) => [action.id, action] as const),
+		nextActions()
+			.filter(({ inputs }) => !inputs)
+			.map((action) => [action.id, action] as const),
 	)('generates the %s factory into its node module', (_id, action) => {
 		const text = nodeModuleText(action.node.id);
 
@@ -40,15 +38,16 @@ describe('next-modules', () => {
 		);
 	});
 
-	it.each(nextActions.filter(({ inputs }) => inputs).map((action) => [action.id, action] as const))(
-		'names the %s join in its node module, which a flow region builds',
-		(_id, action) => {
-			const text = nodeModuleText(action.node.id);
+	it.each(
+		nextActions()
+			.filter(({ inputs }) => inputs)
+			.map((action) => [action.id, action] as const),
+	)('names the %s join in its node module, which a flow region builds', (_id, action) => {
+		const text = nodeModuleText(action.node.id);
 
-			expect(text).toContain(`// ${action.id}: ${action.action}.`);
-			expect(text).not.toContain(nodeTypeOf(action));
-		},
-	);
+		expect(text).toContain(`// ${action.id}: ${action.action}.`);
+		expect(text).not.toContain(nodeTypeOf(action));
+	});
 
 	it('names the inputs of each Merge join: a count of 2 to 10, or left and right', () => {
 		const text = nodeModuleText('merge') ?? '';
@@ -319,7 +318,7 @@ describe('next-modules', () => {
 	});
 
 	it('types at most three actions of a module in a search view', () => {
-		const slack = nextActions.filter(({ node }) => node.id === 'slack');
+		const slack = nextActions().filter(({ node }) => node.id === 'slack');
 		const typedOf = (view: string | undefined) =>
 			slack.filter(({ id }) => !view?.includes(`// ${id}(config:`)).map(({ id }) => id);
 
@@ -389,20 +388,27 @@ describe('next-modules', () => {
 				set({ name: 'Mark', fields: { n: (item) => item.n } }),
 			),
 		).toJSON();
-		const issues = flowNatives.map((contract) => {
-			const emitted = json.nodes.find(({ type }) => type === contract.native?.type);
+		const flowNatives = ['manual.trigger', 'loop.batches'].flatMap((id) => {
+			const manifest = entryOf(id)?.manifest;
+			return manifest && 'native' in manifest ? [manifest] : [];
+		});
+		const issues = flowNatives.map((native) => {
+			const emitted = json.nodes.find(({ type }) => type === native.native.type);
 			return [
-				contract.id,
-				emitted?.typeVersion === contract.native?.version,
-				validate(emitted?.parameters ?? {}, contract.inputSchema, { allowExpressions: true }),
+				native.id,
+				emitted?.typeVersion === native.native.version,
+				validate(emitted?.parameters ?? {}, native.contract.input, { allowExpressions: true }),
 			];
 		});
 		expect(issues[0]).toEqual(['manual.trigger', true, []]);
-		expect(json.nodes.some(({ type }) => type === flowNatives[1].native?.type)).toBe(false);
+		expect(json.nodes.some(({ type }) => type === flowNatives[1]?.native.type)).toBe(false);
 		expect(json.nodeGroups).toEqual([
 			expect.objectContaining({ name: 'Each', repeat: expect.objectContaining({ batchSize: 1 }) }),
 		]);
-		expect(flowNatives.map(({ node }) => nodeModuleText(node.id))).toEqual([undefined, undefined]);
+		expect(flowNatives.map(({ contract }) => nodeModuleText(contract.node))).toEqual([
+			undefined,
+			undefined,
+		]);
 	});
 });
 
@@ -419,12 +425,16 @@ describe('next-modules of the first-party packages', () => {
 
 	it('lists the node of each action and trigger of each first-party package', () => {
 		// A flow step replaces every action of these nodes; flow natives have no module.
-		const replaced = new Set(['merge', 'loopState', ...flowNatives.map(({ node }) => node.id)]);
-		const nodeIdsOf = ({ actions, triggers, natives }: (typeof FIRST_PARTY_PACKAGES)[number]) => [
-			...new Set([...actions, ...triggers, ...natives].map(({ node }) => node.id)),
+		const replaced = new Set(['merge', 'loopState', 'manual', 'loop']);
+		const nodeIdsOf = (name: string) => [
+			...new Set(
+				firstPartyCatalog()
+					.entries.filter((entry) => entry.package === name)
+					.map(({ manifest }) => manifest.contract.node),
+			),
 		];
-		const listed = FIRST_PARTY_PACKAGES.map((pkg) =>
-			nodeIdsOf(pkg).filter((nodeId) => !replaced.has(nodeId)),
+		const listed = FIRST_PARTY_PACKAGES.map((name) =>
+			nodeIdsOf(name).filter((nodeId) => !replaced.has(nodeId)),
 		);
 		expect(listed.every((nodeIds) => nodeIds.length > 0)).toBe(true);
 		expect([...nextNodeIds].sort()).toEqual(listed.flat().sort());
@@ -438,18 +448,10 @@ describe('next-modules of the first-party packages', () => {
 	});
 
 	it('does not ask to install a first-party package for a node type that it does not have', () => {
-		for (const { name } of FIRST_PARTY_PACKAGES) {
+		for (const name of FIRST_PARTY_PACKAGES) {
 			expect(missingNodeTypeIssue(`${name}.nope`, {})).toBe(
 				`n8n has no node type ${name}.nope. Find the type with nodes(action="search").`,
 			);
 		}
-	});
-
-	it('pins the sample of a contract step of each first-party package in the flow SDK', () => {
-		expect(
-			FIRST_PARTY_PACKAGES.map(
-				({ name }) => flowSdk.contractStep(`${name}.anyAction`, { name: 'Step' }).spec.pinsSample,
-			),
-		).toEqual(FIRST_PARTY_PACKAGES.map(() => true));
 	});
 });

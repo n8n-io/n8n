@@ -29,7 +29,7 @@ const flagsSchema = z.object({
 export class ContractsExportCommand extends BaseCommand<z.infer<typeof flagsSchema>> {
 	async run() {
 		assertNodeContractsEnabled('contracts:export');
-		const { exportContractStore } = await import('@n8n/nodes-integrations');
+		const { exportContractStore } = await import('@n8n/node-sdk/registry');
 		const { output, pinned } = this.flags;
 		const nodes = pinned ? await Container.get(NodeContractsSync).pinnedNodes() : undefined;
 		const digests = nodes && new Set(nodes.map(({ pin }) => pin.digest));

@@ -67,19 +67,13 @@ export interface PermissionRefusal {
 /** Gets each permission refusal. It must not throw. */
 export type PermissionRefusalListener = (refusal: PermissionRefusal) => void;
 
-// One slot: the host sets it once at start, as the run profile listener.
-const refusalListeners = new Map<'listener', PermissionRefusalListener>();
-
-/** Sets the listener of permission refusals, in-process and in the sandbox. `undefined` removes it. */
-export const setPermissionRefusalListener = (listener: PermissionRefusalListener | undefined) => {
-	if (listener) refusalListeners.set('listener', listener);
-	else refusalListeners.delete('listener');
-};
-
-/** Tells the listener about a refusal. The caller still throws its error, also when the listener fails. */
-export const reportRefusal = (refusal: PermissionRefusal) => {
+/** Tells `listener` about a refusal. The caller still throws its error, also when the listener fails. */
+export const reportRefusal = (
+	listener: PermissionRefusalListener | undefined,
+	refusal: PermissionRefusal,
+) => {
 	try {
-		refusalListeners.get('listener')?.(refusal);
+		listener?.(refusal);
 	} catch (error) {
 		LoggerProxy.warn(
 			`The permission refusal of ${refusal.action} was not reported: ${getErrorMessage(error)}`,
@@ -199,6 +193,7 @@ export function actionHostsOf(
 		/** For the refusal report. */
 		readonly node: INode;
 		readonly actionId: string;
+		readonly onRefusal?: PermissionRefusalListener;
 	},
 ): Pick<EgressPolicy, 'action' | 'redirect'> {
 	const inputHosts = limit?.inputHosts ?? [];
@@ -213,7 +208,7 @@ export function actionHostsOf(
 	const limited = inputHosts.length > 0;
 	if (limit && limited && fromInput && !allowsHost(inputHosts, fromInput)) {
 		const message = `Host not allowed: this n8n instance lets a URL from input reach only ${inputHosts.join(', ')}, not ${fromInput}`;
-		reportRefusal({
+		reportRefusal(limit.onRefusal, {
 			action: limit.actionId,
 			node: limit.node,
 			permission: 'egress-input',
@@ -239,13 +234,19 @@ export function egressOf(
 		node,
 		actionId,
 		itemIndex,
-	}: { readonly node: INode; readonly actionId: string; readonly itemIndex?: number },
+		onRefusal,
+	}: {
+		readonly node: INode;
+		readonly actionId: string;
+		readonly itemIndex?: number;
+		readonly onRefusal?: PermissionRefusalListener;
+	},
 ): string | undefined {
 	const fail = (message: string) => new NodeOperationError(node, message, { itemIndex });
 	const host = urlHostOf(url);
 	if (!host) throw fail(`${actionId} cannot send a request to a URL without a host`);
 	const refuse = (permission: RefusedPermission, message: string) => {
-		reportRefusal({ action: actionId, node, permission, host, message });
+		reportRefusal(onRefusal, { action: actionId, node, permission, host, message });
 		return fail(message);
 	};
 	if (policy.action && !allowsHost(policy.action, host)) {
@@ -266,7 +267,13 @@ export function egressOf(
 			assertUrlAllowed({ url, allowedDomains: policy.credential.join(', '), node });
 		} catch (error) {
 			const message = error instanceof Error ? error.message : String(error);
-			reportRefusal({ action: actionId, node, permission: 'credential-hosts', host, message });
+			reportRefusal(onRefusal, {
+				action: actionId,
+				node,
+				permission: 'credential-hosts',
+				host,
+				message,
+			});
 			throw error;
 		}
 	}
@@ -286,13 +293,21 @@ export function egressOf(
  */
 export function reportRedirectRefusal(
 	error: unknown,
-	{ node, actionId }: { readonly node: INode; readonly actionId: string },
+	{
+		node,
+		actionId,
+		onRefusal,
+	}: {
+		readonly node: INode;
+		readonly actionId: string;
+		readonly onRefusal?: PermissionRefusalListener;
+	},
 ) {
 	const [refused] = errorChain(error).flatMap((link) =>
 		link instanceof DomainNotAllowedError ? [link] : [],
 	);
 	if (!refused) return;
-	reportRefusal({
+	reportRefusal(onRefusal, {
 		action: actionId,
 		node,
 		permission: 'egress',

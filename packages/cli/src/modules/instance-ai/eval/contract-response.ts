@@ -1,4 +1,4 @@
-import { actionOfNode, type WorkflowNodeRef } from '@n8n/nodes-integrations';
+import { actionOfNode, type WorkflowNodeRef } from '@/node-contracts-catalog';
 
 import { truncateForLlm } from './request-sanitizer';
 

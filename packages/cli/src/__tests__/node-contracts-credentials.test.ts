@@ -1,5 +1,6 @@
 import type { CommaSeparatedStringArray, GlobalConfig } from '@n8n/config';
-import { bundledCredentialsOf } from '@n8n/nodes-integrations';
+import { hostRuntime } from '@n8n/node-sdk/host';
+import { bundledCredentialsOf } from '@test/first-party-contracts';
 import { LazyPackageDirectoryLoader } from 'n8n-core';
 import type {
 	ICredentialDataDecryptedObject,
@@ -34,7 +35,7 @@ async function loaded(nodeContractsEnabled: boolean) {
 		mock(),
 		mock(),
 	);
-	const next = new ContractNodeLoader([], [], async () => ({
+	const next = new ContractNodeLoader(hostRuntime(), [], [], async () => ({
 		versions: async () => new Map(),
 		credentials: async () => new Map(),
 	}));

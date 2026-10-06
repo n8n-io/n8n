@@ -8,16 +8,11 @@ import {
 	MAX_PAYLOADS,
 	payloadOf,
 	runRecorder,
-	setRunProfileListener,
+	type PayloadCapture,
 	type RunProfile,
 	type RunProfileMeta,
 } from '../profile';
-import {
-	loadExecutor,
-	setExecutorLoader,
-	toVersionedNodeType,
-	type FrozenVersion,
-} from '../runtime';
+import { hostRuntime, toVersionedNodeType, type FrozenVersion, type HostRuntime } from '../runtime';
 import { NODE_CONTRACT_VERSION, sha256 } from '../version';
 
 const query = defineNode({
@@ -96,8 +91,8 @@ const contextOf = (replies: unknown[]) => {
 	return { context, requests };
 };
 
-const execute = async (context: IExecuteFunctions) => {
-	const NodeType = toVersionedNodeType([frozen]);
+const execute = async (context: IExecuteFunctions, runtime: HostRuntime) => {
+	const NodeType = toVersionedNodeType([frozen], runtime);
 	const result = await new NodeType().getNodeType(1).execute?.call(context);
 	return Array.isArray(result) ? (result as INodeExecutionData[][]) : [];
 };
@@ -109,21 +104,25 @@ describe('run profile', () => {
 		Reflect.set(globalThis, 'profileQuery', query);
 	});
 
+	const recording = (tracePayloads?: PayloadCapture) =>
+		hostRuntime({
+			onRunProfile: (meta, profile) => profiles.push([meta, profile]),
+			tracePayloads,
+		});
+
 	beforeEach(() => {
 		profiles.length = 0;
-		setExecutorLoader(loadExecutor);
-		setRunProfileListener((meta, profile) => profiles.push([meta, profile]));
 	});
 
 	afterAll(() => {
-		setRunProfileListener(undefined);
 		Reflect.deleteProperty(globalThis, 'profileQuery');
 	});
 
 	it('records the load, the credential, each page with its retry, and the item sums', async () => {
 		const { context, requests } = contextOf([unavailable, ...pages]);
+		const runtime = recording();
 
-		const [outputs = []] = await execute(context);
+		const [outputs = []] = await execute(context, runtime);
 
 		expect(outputs.map(({ json }) => json.id)).toEqual(['a', 'b', 'c']);
 		expect(requests).toHaveLength(3);
@@ -195,7 +194,7 @@ describe('run profile', () => {
 		expect(profile.inputMs).toBeGreaterThan(0);
 		expect(profile.outputValidateMs).toBeGreaterThan(0);
 
-		await execute(contextOf([...pages]).context);
+		await execute(contextOf([...pages]).context, runtime);
 		expect(profiles[1]?.[1].phases[0]).toMatchObject({ name: 'load', cached: true });
 	});
 
@@ -204,7 +203,7 @@ describe('run profile', () => {
 			Object.assign(new Error('Not Found'), { response: { status: 404, headers: {}, data: {} } }),
 		]);
 
-		await expect(execute(context)).rejects.toThrow('Not Found');
+		await expect(execute(context, recording())).rejects.toThrow('Not Found');
 
 		const [[, profile]] = profiles as [[RunProfileMeta, RunProfile]];
 		expect(profile).toMatchObject({ errorType: 'Error', requestCount: 1, outputItems: 0 });
@@ -269,10 +268,10 @@ describe('run profile', () => {
 		};
 
 		it('records shapes and no secret in shape mode', async () => {
-			setRunProfileListener((meta, profile) => profiles.push([meta, profile]), 'shape');
+			const runtime = recording('shape');
 			const { context, signed } = canaryContext();
 
-			const [outputs = []] = await execute(context);
+			const [outputs = []] = await execute(context, runtime);
 
 			expect(signed).toEqual([`Bearer ${CANARY}`, `Bearer ${CANARY}`]);
 			expect(outputs.map(({ json }) => json.id)).toEqual([`Bearer ${CANARY}`, 'c']);
@@ -292,10 +291,10 @@ describe('run profile', () => {
 		});
 
 		it('records values without the secret in redacted mode', async () => {
-			setRunProfileListener((meta, profile) => profiles.push([meta, profile]), 'redacted');
+			const runtime = recording('redacted');
 			const { context } = canaryContext();
 
-			await execute(context);
+			await execute(context, runtime);
 
 			const [[, profile]] = profiles as [[RunProfileMeta, RunProfile]];
 			expect(JSON.stringify(profile)).not.toContain(CANARY);
@@ -318,22 +317,25 @@ describe('run profile', () => {
 		});
 
 		it('redacts a token that n8n stores during the run', async () => {
-			setRunProfileListener((meta, profile) => profiles.push([meta, profile]), 'redacted');
+			const runtime = recording('redacted');
 			const REFRESHED = 'refreshed-8c2e4a6b0d1f3579';
 			const stored = new Map([['token', CANARY]]);
 			const { context } = canaryContext();
 			const replies = [{ results: [{ id: 'a' }], next_cursor: REFRESHED }, { results: [] }];
 
-			await execute({
-				...context,
-				getCredentials: async () => Object.fromEntries(stored),
-				helpers: {
-					httpRequestWithAuthentication: async () => {
-						stored.set('token', REFRESHED);
-						return replies.shift();
+			await execute(
+				{
+					...context,
+					getCredentials: async () => Object.fromEntries(stored),
+					helpers: {
+						httpRequestWithAuthentication: async () => {
+							stored.set('token', REFRESHED);
+							return replies.shift();
+						},
 					},
-				},
-			} as unknown as IExecuteFunctions);
+				} as unknown as IExecuteFunctions,
+				runtime,
+			);
 
 			const [[, profile]] = profiles as [[RunProfileMeta, RunProfile]];
 			expect(profile.requests[0]?.responseBody).toContain('[REDACTED]');
@@ -343,7 +345,7 @@ describe('run profile', () => {
 		it('records no payload without a capture mode', async () => {
 			const { context } = canaryContext();
 
-			await execute(context);
+			await execute(context, recording());
 
 			const [[, profile]] = profiles as [[RunProfileMeta, RunProfile]];
 			expect(profile.payloads).toBeUndefined();
@@ -407,12 +409,14 @@ describe('run profile', () => {
 	});
 
 	it('logs a listener failure and keeps the outputs', async () => {
-		setRunProfileListener(() => {
-			throw new Error('listener down');
+		const runtime = hostRuntime({
+			onRunProfile: () => {
+				throw new Error('listener down');
+			},
 		});
 		const { context } = contextOf([...pages]);
 
-		const [outputs = []] = await execute(context);
+		const [outputs = []] = await execute(context, runtime);
 
 		expect(outputs).toHaveLength(3);
 		expect(context.logger.warn).toHaveBeenCalledWith(

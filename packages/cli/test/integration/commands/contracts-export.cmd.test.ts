@@ -1,6 +1,7 @@
 import { createWorkflow, testDb } from '@n8n/backend-test-utils';
 import { Container } from '@n8n/di';
-import { packageOf, versionsOf } from '@n8n/nodes-integrations';
+import { hostRuntime } from '@n8n/node-sdk/host';
+import { packageOf, versionsOf } from '@test/first-party-contracts';
 import { createHash } from 'node:crypto';
 import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -18,6 +19,7 @@ const OLDER = path.resolve(
 );
 
 const contractLoader = new ContractNodeLoader(
+	hostRuntime(),
 	[],
 	[],
 	async () => ({ versions: async () => new Map(), credentials: async () => new Map() }),

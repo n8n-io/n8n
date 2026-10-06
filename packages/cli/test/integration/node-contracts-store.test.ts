@@ -1,8 +1,15 @@
+import {
+	addToStore,
+	manifestTextOf,
+	parseManifest,
+	signStoreManifest,
+	type VersionManifest as Manifest,
+} from '@n8n/node-sdk/registry';
 import { createWorkflow, mockInstance, testDb } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import { ExecutionRepository, NodeContractVersionRepository, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { packageOf, versionsOf } from '@n8n/nodes-integrations';
+import { packageOf, versionsOf } from '@test/first-party-contracts';
 import {
 	createRunExecutionData,
 	type INode,
@@ -13,7 +20,6 @@ import { createHash, generateKeyPairSync } from 'node:crypto';
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { createServer } from 'node:http';
 import type { AddressInfo } from 'node:net';
-import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
@@ -21,7 +27,7 @@ import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import {
 	ContractNodeLoader,
 	NodeContractsStore,
-	useNodeContractsRegistry,
+	nodeContractsRuntime,
 } from '@/node-contracts-registry';
 import { NodeContractsSync } from '@/node-contracts-sync';
 import { Push } from '@/push';
@@ -29,34 +35,6 @@ import { WorkflowRunner } from '@/workflow-runner';
 
 import { createOwner } from './shared/db/users';
 import * as utils from './shared/utils';
-
-interface Manifest {
-	readonly id: string;
-	readonly semver: string;
-	readonly nodeContract: string;
-	readonly bundleHash: string;
-	readonly contractHash: string;
-}
-
-interface StoreSignature {
-	readonly key: string;
-	readonly sig: string;
-}
-
-interface StoreVersion {
-	readonly manifestText: string;
-	readonly bundle: string;
-	readonly signatures?: StoreSignature[];
-}
-
-// The cli does not depend on the node-sdk, so load it through the package that does.
-const sdkRequire = createRequire(createRequire(__filename).resolve('@n8n/nodes-integrations'));
-const sdk = sdkRequire('@n8n/node-sdk/registry') as {
-	parseManifest(text: string): Manifest;
-	addToStore(dir: string, versions: StoreVersion[]): Promise<unknown>;
-	manifestTextOf(manifest: Manifest): string;
-	signStoreManifest(manifestText: string, privateKey: string): StoreSignature;
-};
 
 const GET = '@n8n/nodes-core.httpRequestGet';
 const OLDER = '2.0.0';
@@ -68,11 +46,11 @@ const keys = generateKeyPairSync('ed25519', {
 
 /** A frozen version, signed by the publisher key. */
 const signed = (manifestText: string, bundle: string) => ({
-	manifest: sdk.parseManifest(manifestText),
+	manifest: parseManifest(manifestText),
 	version: {
 		manifestText,
 		bundle,
-		signatures: [sdk.signStoreManifest(manifestText, keys.privateKey)],
+		signatures: [signStoreManifest(manifestText, keys.privateKey)],
 	},
 });
 
@@ -89,7 +67,7 @@ const state = { dir: '', owner: undefined as unknown as User };
 /** Writes the registry store again from `registry.versions`. */
 const writeRegistry = async () => {
 	await rm(registry.dir, { recursive: true, force: true });
-	await sdk.addToStore(
+	await addToStore(
 		registry.dir,
 		[...registry.versions.values()].map(({ version }) => version),
 	);
@@ -128,7 +106,7 @@ beforeAll(async () => {
 	);
 	const [headVersion] = versionsOf('httpRequest.get');
 	if (!headVersion) throw new Error('httpRequest.get is not bundled');
-	const head = signed(sdk.manifestTextOf(headVersion.manifest), await headVersion.readBundle());
+	const head = signed(manifestTextOf(headVersion.manifest), await headVersion.readBundle());
 	registry.versions.set(OLDER, older);
 	registry.versions.set(head.manifest.semver, head);
 	registry.dir = path.join(state.dir, 'registry');
@@ -176,15 +154,20 @@ beforeAll(async () => {
 			origin: 'community',
 		},
 	]);
-	await useNodeContractsRegistry();
 	await utils.initBinaryDataService();
+	await loadContracts();
+});
+
+/** Loads the contract nodes with a host runtime of the current config. */
+async function loadContracts() {
 	const core = packageOf('httpRequest.get');
-	const next = new ContractNodeLoader([], [], undefined, [], undefined, undefined, core);
+	const runtime = await nodeContractsRuntime();
+	const next = new ContractNodeLoader(runtime, [], [], undefined, [], undefined, undefined, core);
 	await next.loadAll();
 	const loadNodesAndCredentials = Container.get(LoadNodesAndCredentials);
 	loadNodesAndCredentials.loaders = { [next.packageName]: next };
 	await loadNodesAndCredentials.postProcessLoaders();
-});
+}
 
 afterAll(async () => {
 	registry.server.close();
@@ -336,7 +319,6 @@ describe('node contracts store', () => {
 		await unstore(publishedOlder().manifest);
 		await loadNodesAndCredentials.refreshNodeTypes();
 		instanceAi.nodeContractRange = '>=2.2.0 <3.0.0';
-		await useNodeContractsRegistry();
 		const refresh = vi.spyOn(loadNodesAndCredentials, 'refreshNodeTypes');
 		try {
 			expect(majorsOfGet()).toEqual(['3']);
@@ -350,7 +332,6 @@ describe('node contracts store', () => {
 		} finally {
 			refresh.mockRestore();
 			instanceAi.nodeContractRange = '>=2.0.0 <3.0.0';
-			await useNodeContractsRegistry();
 			await loadNodesAndCredentials.refreshNodeTypes();
 		}
 	});
@@ -359,7 +340,6 @@ describe('node contracts store', () => {
 		const workflow = await createOlderWorkflow();
 		const { instanceAi } = Container.get(GlobalConfig);
 		instanceAi.nodeContractRange = '>=2.2.0 <3.0.0';
-		await useNodeContractsRegistry();
 		try {
 			const { unsupported } = await Container.get(NodeContractsSync).run({
 				refreshNodeTypes: false,
@@ -373,7 +353,6 @@ describe('node contracts store', () => {
 			);
 		} finally {
 			instanceAi.nodeContractRange = '>=2.0.0 <3.0.0';
-			await useNodeContractsRegistry();
 		}
 	});
 });

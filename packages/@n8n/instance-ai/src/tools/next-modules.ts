@@ -11,13 +11,14 @@ import {
 	type DerivedAction,
 } from '@n8n/node-contract-compat';
 import { isRecord } from '@n8n/utils/is-record';
+import { once } from '@n8n/utils/once';
 import { sublimeSearch } from '@n8n/utils/search/sublime-search';
 import type { OutputSchemaLookup } from '@n8n/workflow-sdk';
-import type { ContractRead } from '@n8n/workflow-sdk/next';
+import { FIRST_PARTY_PACKAGES, type ContractRead } from '@n8n/workflow-sdk/next';
 import { isNodeParameters, type INodeTypeDescription, type INodeTypes } from 'n8n-workflow';
-import type { Action, Trigger } from '@n8n/node-sdk';
+import type { Action } from '@n8n/node-sdk';
 import {
-	generatedTriggersOf,
+	generatedTriggersOfEntry,
 	generateNodeModule,
 	providedKindOf,
 	PROVIDER_CONNECTIONS,
@@ -25,20 +26,19 @@ import {
 	type GeneratedAction,
 } from '@n8n/node-sdk/codegen';
 import { toContract } from '@n8n/node-sdk/registry';
+
 import {
-	actions,
-	FIRST_PARTY_PACKAGES,
+	contractActions,
+	firstPartyCatalog,
 	isContractNodeType,
 	migratedTargetOf,
-	nativeTriggers,
 	nodeTypeOf,
 	toolActions,
 	toolTypeOf,
-	triggers,
-} from '@n8n/nodes-integrations';
+} from './contract-catalog';
 
 /** Every action, as the sandbox modules and get-as-code read them. */
-export const nextActions: readonly Action[] = actions;
+export const nextActions = (): readonly Action[] => contractActions();
 
 /**
  * Module actions that a flow step emits with better types, with the catalog node type of that
@@ -54,7 +54,27 @@ const FLOW_STEP_OF_ACTION: ReadonlyMap<string, string> = new Map([
 ]);
 
 /** The actions that discovery offers. */
-const offeredActions = nextActions.filter(({ id }) => !FLOW_STEP_OF_ACTION.has(id));
+const offeredActions = once(() => nextActions().filter(({ id }) => !FLOW_STEP_OF_ACTION.has(id)));
+
+/**
+ * The native contracts that a construct of the typed flow emits, so no module has a factory for
+ * them: `manual()` emits the Manual Trigger, and `forEach` emits Loop Over Items.
+ */
+const FLOW_NATIVES: ReadonlySet<string> = new Set(['manual.trigger', 'loop.batches']);
+
+/** A trigger of a module, from its manifest: a trigger with a bundle, or a native trigger. */
+interface ModuleTrigger {
+	readonly id: string;
+	readonly node: { readonly id: string; readonly displayName: string };
+	readonly trigger: string;
+	readonly summary: string;
+	/** The node type of a trigger with a bundle, e.g. `@n8n/nodes-integrations.githubRepositoryEvent`. */
+	readonly nodeType: string;
+	/** The legacy node types that a native trigger and its reply step emit. */
+	readonly nativeTypes: readonly string[];
+	/** The factories of the trigger and of the reply step of a native trigger. */
+	readonly factories: readonly GeneratedAction[];
+}
 
 export interface NextNodeModule {
 	readonly node: string;
@@ -62,15 +82,44 @@ export interface NextNodeModule {
 	readonly module: string;
 }
 
-const allTriggers = [...triggers, ...nativeTriggers];
+/** The triggers of all modules, from the catalog. */
+const allTriggers: readonly ModuleTrigger[] = firstPartyCatalog().entries.flatMap((entry) => {
+	const { manifest, nodeType } = entry;
+	const { contract } = manifest;
+	if (manifest.kind !== 'trigger' || FLOW_NATIVES.has(manifest.id)) return [];
+	const nativeTypes =
+		'native' in manifest
+			? [manifest.native.type, ...(manifest.reply ? [manifest.reply.native.type] : [])]
+			: [];
+	return [
+		{
+			id: manifest.id,
+			node: { id: contract.node, displayName: contract.nodeDisplayName },
+			trigger: contract.action,
+			summary: contract.summary,
+			nodeType,
+			nativeTypes,
+			factories: generatedTriggersOfEntry(entry),
+		},
+	];
+});
 
 /** The ids of the typed node modules that discovery offers: `@n8n/nodes/<id>`. */
 export const nextNodeIds: readonly string[] = [
-	...new Set([...offeredActions, ...allTriggers].map(({ node }) => node.id)),
+	...new Set([
+		...firstPartyCatalog().entries.flatMap(({ manifest }) => {
+			const offered =
+				'bundleHash' in manifest &&
+				manifest.kind !== 'trigger' &&
+				!FLOW_STEP_OF_ACTION.has(manifest.id);
+			return offered ? [manifest.contract.node] : [];
+		}),
+		...allTriggers.map(({ node }) => node.id),
+	]),
 ];
 
 const actionsOfNode = (nodeId: string) =>
-	offeredActions.filter((action) => action.node.id === nodeId);
+	offeredActions().filter((action) => action.node.id === nodeId);
 
 const triggersOfNode = (nodeId: string) =>
 	allTriggers.filter((trigger) => trigger.node.id === nodeId);
@@ -86,30 +135,22 @@ function generatedActionOf(action: Action): GeneratedAction {
 }
 
 /** The trigger factories of all modules, with the reply steps of native triggers. */
-export const nextTriggerFactories: readonly GeneratedAction[] = allTriggers.flatMap((trigger) =>
-	generatedTriggersOf(trigger, nodeTypeOf(trigger)),
+export const nextTriggerFactories: readonly GeneratedAction[] = allTriggers.flatMap(
+	({ factories }) => factories,
 );
 
 /** A module has the given actions and every trigger of the node: a workflow starts at one. */
 const moduleOf = (nodeId: string, own: readonly Action[]) =>
 	generateNodeModule(nodeId, [
 		...own.map(generatedActionOf),
-		...triggersOfNode(nodeId).flatMap((trigger) =>
-			generatedTriggersOf(trigger, nodeTypeOf(trigger)),
-		),
+		...triggersOfNode(nodeId).flatMap(({ factories }) => factories),
 	]);
 
 /** The sandbox module: every action and trigger of one node, also the actions discovery hides. */
 export function nodeModuleText(nodeId: string): string | undefined {
-	const own = nextActions.filter((action) => action.node.id === nodeId);
+	const own = nextActions().filter((action) => action.node.id === nodeId);
 	return own.length || triggersOfNode(nodeId).length ? moduleOf(nodeId, own) : undefined;
 }
-
-/** The legacy node types that a native trigger and its reply step emit. */
-const nativeTypesOf = (trigger: (typeof allTriggers)[number]) =>
-	trigger.kind === 'native'
-		? [trigger.native.type, ...(trigger.reply ? [trigger.reply.native.type] : [])]
-		: [];
 
 /**
  * The node id for a node id, an action id, an executable node type of a contract package, or a
@@ -117,13 +158,17 @@ const nativeTypesOf = (trigger: (typeof allTriggers)[number]) =>
  */
 function nextNodeIdOf(ref: string): string | undefined {
 	return (
-		[...nextActions, ...allTriggers].find(
-			(contract) =>
-				contract.node.id === ref ||
-				contract.id === ref ||
-				nodeTypeOf(contract) === ref ||
-				('kind' in contract && nativeTypesOf(contract).includes(ref)),
-		)?.node.id ?? toolActions.find((action) => toolTypeOf(action) === ref)?.node.id
+		nextActions().find(
+			(action) => action.node.id === ref || action.id === ref || nodeTypeOf(action) === ref,
+		)?.node.id ??
+		allTriggers.find(
+			(trigger) =>
+				trigger.node.id === ref ||
+				trigger.id === ref ||
+				trigger.nodeType === ref ||
+				trigger.nativeTypes.includes(ref),
+		)?.node.id ??
+		toolActions().find((action) => toolTypeOf(action) === ref)?.node.id
 	);
 }
 
@@ -145,7 +190,7 @@ export function nextNodeModule(ref: string): NextNodeModule | undefined {
  * node type, or a node id without other actions, e.g. `loopState`.
  */
 export function flowStepRowOf(ref: string): string | undefined {
-	const replaced = nextActions.find(
+	const replaced = nextActions().find(
 		(action) =>
 			FLOW_STEP_OF_ACTION.has(action.id) &&
 			(action.id === ref ||
@@ -196,7 +241,7 @@ export function nextNodeView(
 
 /** The module node of a native trigger that types the legacy node type, e.g. `webhook`. */
 const nativeNodeIdOf = (nodeType: string) =>
-	allTriggers.find((trigger) => nativeTypesOf(trigger).includes(nodeType))?.node.id;
+	allTriggers.find((trigger) => trigger.nativeTypes.includes(nodeType))?.node.id;
 
 /**
  * The module node that replaces a catalog node type. The legacy node of the same service
@@ -210,7 +255,7 @@ export function nextNodeIdOfNodeType(nodeType: string): string | undefined {
 	if (toolNodeId) return toolNodeId;
 	const native = nativeNodeIdOf(nodeType);
 	if (native) return native;
-	const replacing = nextActions.find(({ node }) => node.replaces?.includes(nodeType));
+	const replacing = nextActions().find(({ node }) => node.replaces?.includes(nodeType));
 	if (replacing) return replacing.node.id;
 	const [, nodeId] = /^n8n-nodes-base\.(\w+)$/.exec(nodeType) ?? [];
 	return nodeId !== undefined && actionsOfNode(nodeId).length ? nodeId : undefined;
@@ -245,7 +290,7 @@ export function contractReplacementOf(node: {
 }): ContractReplacement | undefined {
 	const [, name] = LEGACY_TYPE.exec(node.type) ?? [];
 	if (name === undefined) return undefined;
-	const named = offeredActions.find(
+	const named = offeredActions().find(
 		(action) => LEGACY_NAMED_NODE_IDS.includes(action.node.id) && action.operation === name,
 	);
 	if (named) return { nodeId: named.node.id, actions: [named], exact: true };
@@ -345,9 +390,14 @@ const hits = (term: string, vocabulary: readonly string[]) =>
 			(term.length >= 3 && word.length >= 3 && (isWordForm(word, term) || isWordForm(term, word))),
 	);
 
-const nodeWords = (step: Action | Trigger) => words(`${step.node.id} ${step.node.displayName}`);
+/** An action or a trigger of a module, as the search reads it. */
+type Step = Pick<Action, 'id' | 'summary'> & {
+	readonly node: Pick<Action['node'], 'id' | 'displayName'>;
+} & ({ readonly action: string } | { readonly trigger: string });
 
-const actionWords = (step: Action | Trigger) =>
+const nodeWords = (step: Step) => words(`${step.node.id} ${step.node.displayName}`);
+
+const actionWords = (step: Step) =>
 	words(`${step.id} ${'action' in step ? step.action : step.trigger} ${step.summary}`);
 
 const stepsOfNode = (nodeId: string) => [...actionsOfNode(nodeId), ...triggersOfNode(nodeId)];
@@ -390,7 +440,7 @@ function actionsNamedBy(nodeId: string, terms: readonly string[]): Action[] {
 /** Actions that share words with the query. Node words weigh more than action words. */
 export function findNextActions(query: string): Action[] {
 	const terms = termsOf(query);
-	return offeredActions
+	return offeredActions()
 		.map((action) => ({ action, score: scoreOf(action, terms) }))
 		.filter(({ score }) => score > 0)
 		.sort((a, b) => b.score - a.score)
@@ -463,7 +513,7 @@ export function supplierActionsOf(nodeIds: readonly string[], connectionType: st
 		actionsOfNode(nodeId).filter((action) => {
 			const kind = providedKindOf(action.output.json);
 			if (kind !== undefined) return PROVIDER_CONNECTIONS[kind] === connectionType;
-			return connectionType === PROVIDER_CONNECTIONS.tool && toolActions.includes(action);
+			return connectionType === PROVIDER_CONNECTIONS.tool && toolActions().includes(action);
 		}),
 	);
 }
@@ -519,7 +569,7 @@ export function nearestNextActions(id: string, limit = 3): Action[] {
 	const operation = rest.at(-1);
 	const score = (action: Action) =>
 		(action.node.id === node ? 2 : 0) + (operation && action.id.endsWith(`.${operation}`) ? 1 : 0);
-	return offeredActions
+	return offeredActions()
 		.filter((action) => score(action) > 0)
 		.sort((a, b) => score(b) - score(a))
 		.slice(0, limit);
@@ -626,7 +676,7 @@ export function isInstalledNodeType(nodeType: string, source: DeriveSource): boo
 const SHIPPED_PACKAGES: ReadonlySet<string> = new Set([
 	'n8n-nodes-base',
 	'@n8n/n8n-nodes-langchain',
-	...FIRST_PARTY_PACKAGES.map(({ name }) => name),
+	...FIRST_PARTY_PACKAGES,
 ]);
 
 const NEAREST_NODE_TYPES = 3;

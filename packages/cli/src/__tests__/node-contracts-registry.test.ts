@@ -12,11 +12,10 @@ import {
 } from '@n8n/db';
 import { PubSubMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
-import type {
-	ContractRegistryOptions,
-	ContractStoreOptions,
-	RunProfile,
-} from '@n8n/nodes-integrations';
+import type { HostRuntimeOptions, RunProfile } from '@n8n/node-sdk/host';
+import type { ContractStoreOptions, ContractVersionLoaderOptions } from '@n8n/node-sdk/registry';
+import type { RuntimePolicy } from '@n8n/node-sdk/runtimes';
+import type { SandboxOptions } from '@n8n/node-sdk/sandbox';
 import { mock } from 'vitest-mock-extended';
 import { InstanceSettings } from 'n8n-core';
 import type { IExecuteFunctions, INode } from 'n8n-workflow';
@@ -32,38 +31,65 @@ import {
 	ContractNodeLoader,
 	NodeContractsRuntimes,
 	NodeContractsStore,
-	useNodeContractsRegistry,
+	nodeContractsRuntime,
 } from '../node-contracts-registry';
 import { NodeContractsSync } from '../node-contracts-sync';
 
-const registered: ContractRegistryOptions[] = [];
-const languages: string[][] = [];
-const extractors: Array<(file: unknown, request: unknown) => Promise<unknown>> = [];
+/** The options of one host runtime, with those of its version loader and runtime policy. */
+type Registered = HostRuntimeOptions &
+	ContractVersionLoaderOptions & { runtimes: RuntimePolicy; sandbox: SandboxOptions };
+
+const registered: Registered[] = [];
+const loaderOptions: ContractVersionLoaderOptions[] = [];
+const policies: Array<[RuntimePolicy, SandboxOptions]> = [];
 const closed: string[] = [];
 const warmed: object[] = [];
-vi.mock('@n8n/nodes-integrations', () => ({
-	sandboxCredentialTypeOf: (known: (name: string) => boolean) => (name: string) =>
-		known(name) ? { name } : undefined,
-	useContractRegistry: (options: ContractRegistryOptions) => registered.push(options),
+vi.mock('@n8n/node-sdk/host', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('@n8n/node-sdk/host')>();
+	return {
+		...actual,
+		hostRuntime: (options: HostRuntimeOptions = {}) => {
+			const [policy, sandbox] = policies.at(-1) ?? [];
+			const loader = loaderOptions.at(-1);
+			if (policy && sandbox && loader) {
+				registered.push({ ...loader, ...options, runtimes: policy, sandbox });
+			}
+			return actual.hostRuntime(options);
+		},
+	};
+});
+vi.mock('@n8n/node-sdk/registry', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@n8n/node-sdk/registry')>()),
 	isStoreStatusRecord: (value: unknown) =>
 		typeof value === 'object' && value !== null && 'yank' in value,
-	setCodeLanguages: (allowed: string[]) => languages.push(allowed),
-	setFileExtractor: (extractor: (typeof extractors)[number]) => extractors.push(extractor),
-	contractStore: (options: ContractStoreOptions) => options,
+	contractStore: (options: ContractStoreOptions) => ({
+		...options,
+		embedded: options.store.embedded,
+	}),
+	contractVersionLoader: (options: ContractVersionLoaderOptions) => {
+		loaderOptions.push(options);
+		return async (_context: unknown, head: unknown) => head;
+	},
 	isNodeContractPin: () => true,
-	migratedSlotOf: () => undefined,
-	toolActionOfNode: () => undefined,
 	syncContractStore: async () => ({
 		added: [{ id: 'demo.echo', semver: '1.0.0', bundleHash: 'a' }],
 		failed: [],
 		unsupported: [],
 	}),
-	workerRuntime: () => ({ name: 'worker' }),
-	containerRuntime: (options: object) => ({ name: 'container', options }),
+}));
+vi.mock('@n8n/node-sdk/sandbox', () => ({
+	policyExecutorLoader: (policy: RuntimePolicy, sandbox: SandboxOptions) => {
+		policies.push([policy, sandbox]);
+		return async () => await Promise.reject(new Error('no executor in this test'));
+	},
 	warmSandbox: async (options: object) => {
 		warmed.push(options);
 		if (warmed.length > 1) throw new Error('no sidecar');
 	},
+}));
+vi.mock('@n8n/node-sdk/runtimes', () => ({
+	workerRuntime: () => ({ name: 'worker' }),
+	containerRuntime: (options: object) => ({ name: 'container', options }),
 	wasmReuseRuntime: (options: object) => ({
 		name: 'wasm-reuse',
 		options,
@@ -81,7 +107,7 @@ const repository = mockInstance(NodeContractVersionRepository);
 const statusRepository = mockInstance(NodeContractStatusRepository);
 const publisher = mockInstance(Publisher);
 
-describe('useNodeContractsRegistry', () => {
+describe('nodeContractsRuntime', () => {
 	const globalConfig = mockInstance(GlobalConfig, {
 		instanceAi: {
 			nodeContractsUpdatePolicy: 'strict',
@@ -126,7 +152,7 @@ describe('useNodeContractsRegistry', () => {
 		});
 
 	it('passes the config and reads the workflow meta once per execution', async () => {
-		await useNodeContractsRegistry();
+		await nodeContractsRuntime();
 		const [options] = registered;
 
 		expect(options).toMatchObject({
@@ -148,19 +174,19 @@ describe('useNodeContractsRegistry', () => {
 		expect(workflowRepository.findByIds).toHaveBeenCalledTimes(2);
 		expect(workflowRepository.findByIds).toHaveBeenCalledWith(['wf'], { fields: ['meta'] });
 		// N8N_PYTHON_ENABLED=false turns Python off for the Code contracts too.
-		expect(languages).toEqual([['javascript']]);
-		const [extractor] = extractors;
+		expect(options?.codeLanguages).toEqual(['javascript']);
+		const extractor = options?.fileExtractor;
 		const file = {
 			async *read() {
 				yield Buffer.from('{"a":1}');
 			},
 		};
-		expect(await extractor?.(file, { format: 'json', options: {} })).toEqual({ a: 1 });
+		expect(await extractor?.(file as never, { format: 'json', options: {} })).toEqual({ a: 1 });
 	});
 
 	it('passes the default lists, a worker pool, and the runtimes that cannot start', async () => {
 		registered.length = 0;
-		await useNodeContractsRegistry();
+		await nodeContractsRuntime();
 		const runtimes = registered[0]?.runtimes;
 
 		expect(Array.from(runtimes?.lists['first-party'] ?? [])).toEqual([
@@ -193,7 +219,7 @@ describe('useNodeContractsRegistry', () => {
 		instanceAi.nodesNextRuntimesCommunity = ['wasm', 'worker', 'in-process'];
 		instanceAi.nodesNextRuntimesPrivate = ['in-process'];
 		try {
-			await useNodeContractsRegistry();
+			await nodeContractsRuntime();
 
 			expect(logger.warn).toHaveBeenCalledWith(
 				'N8N_NODES_NEXT_RUNTIMES_COMMUNITY has worker, in-process: community node code runs without a security boundary',
@@ -210,8 +236,8 @@ describe('useNodeContractsRegistry', () => {
 	it('makes each runtime once and closes it at shutdown', async () => {
 		closed.length = 0;
 		registered.length = 0;
-		await useNodeContractsRegistry();
-		await useNodeContractsRegistry();
+		await nodeContractsRuntime();
+		await nodeContractsRuntime();
 		const [first, second] = registered.map((options) => options.runtimes.runtimes.worker?.());
 
 		expect(first).toBe(second);
@@ -223,7 +249,7 @@ describe('useNodeContractsRegistry', () => {
 	it('relays each run profile on the event service', async () => {
 		const eventService = mockInstance(EventService);
 		registered.length = 0;
-		await useNodeContractsRegistry();
+		await nodeContractsRuntime();
 		const profile = mock<RunProfile>();
 
 		registered[0]?.onRunProfile?.({ executionId: '7', nodeName: 'Query' }, profile);
@@ -238,7 +264,7 @@ describe('useNodeContractsRegistry', () => {
 	it('relays each permission refusal and each install on the event service', async () => {
 		const eventService = mockInstance(EventService);
 		registered.length = 0;
-		await useNodeContractsRegistry();
+		await nodeContractsRuntime();
 		const node = mock<INode>({ name: 'GET', type: '@n8n/nodes-core.httpRequestGet' });
 		const install = {
 			id: 'demo.echo',
@@ -272,7 +298,7 @@ describe('useNodeContractsRegistry', () => {
 		logger.warn.mockClear();
 		registered.length = 0;
 
-		await useNodeContractsRegistry();
+		await nodeContractsRuntime();
 
 		expect(registered[0]?.tracePayloads).toBeUndefined();
 		expect(logger.warn).not.toHaveBeenCalledWith(expect.stringContaining('TRACE_PAYLOADS'));
@@ -285,7 +311,7 @@ describe('useNodeContractsRegistry', () => {
 		instanceAi.nodeContractTracePayloads = 'redacted';
 
 		try {
-			await useNodeContractsRegistry();
+			await nodeContractsRuntime();
 		} finally {
 			instanceAi.nodeContractTracePayloads = 'off';
 		}
@@ -311,7 +337,7 @@ describe('useNodeContractsRegistry', () => {
 			registered.length = 0;
 			warmed.length = 0;
 			Container.get(NodeContractsRuntimes).close();
-			await useNodeContractsRegistry();
+			await nodeContractsRuntime();
 			const [options] = registered;
 
 			expect(warmed).toEqual([
@@ -324,17 +350,20 @@ describe('useNodeContractsRegistry', () => {
 				options: { sidecar: files[0], guests: dir },
 			});
 			expect(options?.sandbox.cacheDir).toBe('/n8n/node-contracts/sandbox');
-			expect(options?.sandbox.credentialType('slackApi')).toEqual({ name: 'slackApi' });
+			expect(options?.sandbox.credentialType('slackApi')).toMatchObject({
+				name: 'slackApi',
+				scheme: { kind: 'compat' },
+			});
 			expect(options?.sandbox.credentialType('evilApi')).toBeUndefined();
 
-			await useNodeContractsRegistry();
+			await nodeContractsRuntime();
 			await vi.waitFor(() =>
 				expect(logger.debug).toHaveBeenCalledWith(
 					'The sandbox guests did not compile at start: no sidecar',
 				),
 			);
 			globalConfig.instanceAi.nodeContractSandboxGuests = path.join(dir, 'missing');
-			await useNodeContractsRegistry();
+			await nodeContractsRuntime();
 			expect(warmed).toHaveLength(2);
 			expect(registered[2]?.runtimes.runtimes.wasm).toBeUndefined();
 			expect(logger.warn).toHaveBeenCalledWith(
@@ -375,7 +404,7 @@ describe('useNodeContractsRegistry', () => {
 
 		it('uses runsc when docker lists it', async () => {
 			await fakeDocker("echo 'io.containerd.runc.v2 runc runsc '");
-			await useNodeContractsRegistry();
+			await nodeContractsRuntime();
 			const runtimes = registered[0]?.runtimes;
 
 			expect(runtimes?.available).toEqual({
@@ -390,14 +419,14 @@ describe('useNodeContractsRegistry', () => {
 
 		it('uses runc when docker does not list runsc', async () => {
 			await fakeDocker("echo 'io.containerd.runc.v2 runc '");
-			await useNodeContractsRegistry();
+			await nodeContractsRuntime();
 
 			expect(registered[0]?.runtimes.available.containerOci).toBe('runc');
 		});
 
 		it('is not available and warns when docker does not answer', async () => {
 			await fakeDocker('exit 1');
-			await useNodeContractsRegistry();
+			await nodeContractsRuntime();
 			const runtimes = registered[0]?.runtimes;
 
 			expect(runtimes?.available.missing.container).toBe(
@@ -413,7 +442,7 @@ describe('useNodeContractsRegistry', () => {
 
 	it('fetches from the registry only on a main that is not a follower', async () => {
 		registered.length = 0;
-		await useNodeContractsRegistry();
+		await nodeContractsRuntime();
 		const { mayFetch } = registered[0]?.store as unknown as ContractStoreOptions;
 		expect(mayFetch?.()).toBe(true);
 		Object.assign(instanceSettings, { isFollower: true });

@@ -14,43 +14,37 @@ import { createHash } from 'crypto';
 import { execFile } from 'child_process';
 import { readFile } from 'fs/promises';
 import {
-	actions,
-	bundledCredentialsOf,
-	bundledIdsOf,
 	credentialTypeOfManifest,
-	deniedPermissionClassOf,
-	embeddedStoreDirOf,
-	FALLBACK_PACKAGE,
-	isContractNodeType,
-	isStoreStatusRecord,
-	MIGRATED_NODES,
-	migratedSlotOf,
+	hostRuntime,
+	nodeContractRangeOf,
 	nodeNameOf,
-	nodeTypeOf,
-	packageOf,
 	permissionsOf,
 	runsNodeContract,
-	storeIndexFileOf,
-	toolActionOfNode,
-	toolActions,
-	toolTypeOf,
 	toVersionedNodeType,
 	toVersionedToolType,
 	toVersionedTriggerType,
-	triggers,
+	type FrozenVersion,
+	type HostRuntime,
+	type PermissionRefusal,
+} from '@n8n/node-sdk/host';
+import {
+	bundledCredentialsOf,
+	bundledIdsOf,
+	deniedPermissionClassOf,
+	embeddedContractsOf,
+	embeddedStoreDirOf,
+	isStoreStatusRecord,
+	storeIndexFileOf,
 	versionsOf,
-	withMigratedVersions,
 	type ContractKeys,
 	type ContractStore,
 	type CredentialManifest,
-	type FrozenVersion,
 	type InstanceStore,
 	type SourcePackage,
 	type StoreStatusRecord,
-	type GuestRuntime,
-	type RuntimeAvailability,
-	type RuntimeName,
-} from '@n8n/nodes-integrations';
+} from '@n8n/node-sdk/registry';
+import type { RuntimeAvailability, RuntimeName } from '@n8n/node-sdk/runtimes';
+import type { GuestRuntime } from '@n8n/node-sdk/sandbox';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { existsSync } from 'fs';
 import {
@@ -81,6 +75,20 @@ import { promisify } from 'util';
 
 import { CredentialTypes } from '@/credential-types';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import {
+	FALLBACK_PACKAGE,
+	fallbackPackage,
+	firstPartyCatalog,
+	firstPartyPackages,
+	isContractNodeType,
+	MIGRATED_NODES,
+	migratedSlotOf,
+	packageNameOf,
+	sandboxCredentialTypeOf,
+	toolEntries,
+	toolIdOf,
+	withMigratedVersions,
+} from '@/node-contracts-catalog';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { convertNodeToAiTool } from '@/tool-generation';
 
@@ -111,8 +119,9 @@ export class NodeContractsStore {
 		return path.join(this.instanceSettings.n8nFolder, 'node-contracts');
 	}
 
-	/** The rows of the table. */
+	/** The rows of the table, and the versions that ship in the release. */
 	readonly rows: InstanceStore = {
+		embedded: embeddedContractsOf(firstPartyPackages()),
 		manifests: async (id) => (await this.repository.findManifests(id)).map(storedManifestOf),
 		credentialManifests: async () =>
 			(await this.repository.findCredentialManifests()).map(storedManifestOf),
@@ -201,11 +210,14 @@ export class NodeContractsStore {
 	}
 
 	private async create(registryUrl: string) {
-		const { contractStore } = await import('@n8n/nodes-integrations');
+		const { contractStore } = await import('@n8n/node-sdk/registry');
+		const { instanceAi } = this.globalConfig;
 		return contractStore({
 			registryUrl,
 			keys: await this.keys(),
 			store: this.rows,
+			runsNodeContract: (version) =>
+				runsNodeContract(nodeContractRangeOf(instanceAi.nodeContractRange), version),
 			// A worker and a follower main read the rows that the leader main fetched.
 			mayFetch: () => this.mayFetch(),
 			// The registry URL is operator config, not user input, so the SSRF policy does not apply.
@@ -267,9 +279,8 @@ interface ContractNode extends LoadedClass<VersionedNodeType> {
 /** The packages of the legacy nodes that a contract node can stand for. */
 const LEGACY_PACKAGES = ['n8n-nodes-base', '@n8n/n8n-nodes-langchain'];
 
-/** The icon that a bundled node sets. A node that n8n does not bundle has none. */
-const nodeIconOf = (nodeId: string) =>
-	[...actions, ...triggers].find(({ node }) => node.id === nodeId)?.node.icon;
+/** The icon that a bundled node sets, from its embedded bundle. A node that n8n does not bundle has none. */
+const nodeIconOf = (id: string) => firstPartyCatalog().bundleOf(id)?.node.icon;
 
 /** What the editor shows of a node type besides its form: the icon, the panel categories, the color. */
 type Presentation = Pick<INodeTypeDescription, 'icon' | 'iconUrl' | 'iconColor' | 'codex'> & {
@@ -353,13 +364,14 @@ function legacyNodeTypeOf(
 function contractNodeTypeOf(
 	versions: readonly FrozenVersion[],
 	legacy: ReadonlyMap<string, INodeTypeDescription>,
+	runtime: HostRuntime,
 ) {
 	const [head] = versions;
 	const typeOf = head?.manifest.kind === 'trigger' ? toVersionedTriggerType : toVersionedNodeType;
-	const type = new (typeOf(versions))();
+	const type = new (typeOf(versions, runtime))();
 	const legacyNodeType = head && legacyNodeTypeOf(head.manifest.contract, legacy);
 	const twin = legacyNodeType && legacy.get(legacyNodeType);
-	const icon = head && nodeIconOf(head.manifest.contract.node);
+	const icon = head && !twin ? nodeIconOf(head.manifest.id) : undefined;
 	const presentation = twin ? presentationOf(twin) : icon && { icon };
 	const nodeCreatorItem = head?.manifest.kind === 'provider' ? undefined : legacyNodeType;
 	for (const version of Object.values(type.nodeVersions)) {
@@ -403,16 +415,18 @@ export class ContractNodeLoader implements NodeLoader {
 	 * `excludeNodes` and `includeNodes` hold full node type names, as `N8N_NODES_EXCLUDE` does.
 	 * `deny` holds the permission classes of `N8N_NODE_PERMISSIONS_DENY`. `legacyLoaders` gives the
 	 * loaders of the legacy nodes, whose icons and codex the contract nodes show. `source` is the
-	 * first-party package of the node types.
+	 * first-party package of the node types. Every node type runs with `runtime`, which the host
+	 * gives every contract loader, see `contractNodeLoadersOf`.
 	 */
 	constructor(
+		readonly runtime: HostRuntime,
 		private readonly excludeNodes: readonly string[] = [],
 		private readonly includeNodes: readonly string[] = [],
 		private readonly openStore: () => Promise<StoredContracts> = openContractStore,
 		private readonly deny: readonly NodePermissionClass[] = [],
 		private readonly hasOtherCredentialType = hasOtherCredentialTypeInN8n,
 		private readonly legacyLoaders: () => Readonly<Record<string, NodeLoader>> = () => ({}),
-		source: SourcePackage = FALLBACK_PACKAGE,
+		source: SourcePackage = fallbackPackage(),
 	) {
 		this.packageName = source.name;
 		this.storeDir = embeddedStoreDirOf(source);
@@ -425,7 +439,7 @@ export class ContractNodeLoader implements NodeLoader {
 			legacyDescriptionsOf(this.legacyLoaders()),
 		]);
 		const bundled = new Set(bundledIdsOf(this.storeDir));
-		const ownStored = [...stored.keys()].filter((id) => packageOf(id).name === this.packageName);
+		const ownStored = [...stored.keys()].filter((id) => packageNameOf(id) === this.packageName);
 		this.nodes = new Map(
 			[...new Set([...bundled, ...ownStored])].filter(this.loads).flatMap((id) => {
 				const head = bundled.has(id) ? versionsOf(id, this.storeDir) : [];
@@ -434,7 +448,8 @@ export class ContractNodeLoader implements NodeLoader {
 					...head,
 					...(stored.get(id) ?? []).filter(
 						(version) =>
-							!majors.has(majorOf(version)) && runsNodeContract(version.manifest.nodeContract),
+							!majors.has(majorOf(version)) &&
+							this.runtime.runsNodeContract(version.manifest.nodeContract),
 					),
 				].filter(this.permits);
 				if (versions.length === 0) return [];
@@ -442,7 +457,7 @@ export class ContractNodeLoader implements NodeLoader {
 					? path.join(this.storeDir, storeIndexFileOf(id))
 					: Container.get(NodeContractsStore).dir;
 				const node: ContractNode = {
-					type: contractNodeTypeOf(versions, legacy),
+					type: contractNodeTypeOf(versions, legacy, this.runtime),
 					sourcePath,
 					versions,
 				};
@@ -541,8 +556,12 @@ export class ContractNodeLoader implements NodeLoader {
 	 */
 	private credentialManifestsOf(stored: ReadonlyMap<string, CredentialManifest>) {
 		const bundled = bundledCredentialsOf(this.storeDir);
-		if (this.packageName !== FALLBACK_PACKAGE.name) return bundled;
-		const names = new Set(bundledCredentialsOf().map(({ manifest }) => manifest.name));
+		if (this.packageName !== FALLBACK_PACKAGE) return bundled;
+		const names = new Set(
+			firstPartyPackages().flatMap((pkg) =>
+				bundledCredentialsOf(embeddedStoreDirOf(pkg)).map(({ manifest }) => manifest.name),
+			),
+		);
 		const others = [...stored.values()].filter((manifest) => {
 			if (names.has(manifest.name) || this.hasOtherCredentialType(manifest.name)) return false;
 			if (manifest.scheme.kind !== 'custom') return true;
@@ -650,36 +669,26 @@ async function containerOciOf({
 }
 
 /**
- * Lets each contract node run the version that its pin (`INode.contract`) resolves to, in the
- * runtime that `N8N_NODES_NEXT_RUNTIMES_*` allows for its trust class. The workflow policy
- * `meta.nodeContractsPolicy` comes from the current saved workflow, also for a run of a history
- * version.
+ * The host runtime of the node contracts: each contract node runs the version that its pin
+ * (`INode.contract`) resolves to, in the runtime that `N8N_NODES_NEXT_RUNTIMES_*` allows for its
+ * trust class. The workflow policy `meta.nodeContractsPolicy` comes from the current saved
+ * workflow, also for a run of a history version. The host makes it once and gives it to every
+ * contract loader.
  */
-export async function useNodeContractsRegistry() {
+export async function nodeContractsRuntime(): Promise<HostRuntime> {
 	const globalConfig = Container.get(GlobalConfig);
 	const { instanceAi } = globalConfig;
 	const logger = Container.get(Logger);
 	const nodes = Container.get(NodesConfig);
-	const {
-		containerRuntime,
-		pooledRuntime,
-		sandboxCredentialTypeOf,
-		setCodeLanguages,
-		setFileExtractor,
-		useContractRegistry,
-		warmSandbox,
-		wasmReuseRuntime,
-		workerRuntime,
-	} = await import('@n8n/nodes-integrations');
-	// The Code contracts follow the same switch as the Code node.
-	setCodeLanguages(nodes.pythonEnabled ? ['javascript', 'python'] : ['javascript']);
-	// The `parsers` import uses the parsers of the Extract from File node. They load at the first read.
-	setFileExtractor(async (file, request) => {
-		const { extractFile } = await import(
-			'n8n-nodes-base/dist/nodes/Files/ExtractFromFile/extractFile.js'
-		);
-		return await extractFile(file, request);
-	});
+	const [
+		{ containerRuntime, pooledRuntime, wasmReuseRuntime, workerRuntime },
+		{ policyExecutorLoader, warmSandbox },
+		{ contractVersionLoader, credentialManifestsOf },
+	] = await Promise.all([
+		import('@n8n/node-sdk/runtimes'),
+		import('@n8n/node-sdk/sandbox'),
+		import('@n8n/node-sdk/registry'),
+	]);
 	const metaByExecution = new Map<string, Promise<unknown>>();
 
 	const metaOf = async (workflowId: string | undefined) => {
@@ -737,53 +746,18 @@ export async function useNodeContractsRegistry() {
 		);
 	}
 
-	useContractRegistry({
+	const store = await Container.get(NodeContractsStore).open();
+	const onPermissionRefused = ({ node, ...refusal }: PermissionRefusal) =>
+		Container.get(EventService).emit('node-permission-refused', {
+			...refusal,
+			...(node ? { nodeName: node.name, nodeType: node.type } : {}),
+		});
+	const versionLoader = contractVersionLoader({
 		policy: instanceAi.nodeContractsUpdatePolicy,
 		revokedAllowed: instanceAi.nodeContractsRevokedAllow,
-		nodeContractRange: instanceAi.nodeContractRange,
-		runtimes: {
-			lists,
-			available,
-			log: (message) => logger.debug(message),
-			runtimes: {
-				worker: () =>
-					runtimes.get('worker', () => pooledRuntime(workerRuntime(), { size: POOL_SIZE })),
-				...(!wasmMissing && {
-					wasm: () => runtimes.get('wasm', () => wasmReuseRuntime({ sidecar, guests })),
-				}),
-				...('oci' in container && {
-					container: () =>
-						runtimes.get('container', () =>
-							pooledRuntime(containerRuntime({ ociRuntime: container.oci }), { size: POOL_SIZE }),
-						),
-				}),
-			},
-		},
-		sandbox: {
-			cacheDir,
-			// The credential hosts and base URLs never come from a bundle.
-			credentialType: sandboxCredentialTypeOf((name) =>
-				Container.get(CredentialTypes).recognizes(name),
-			),
-		},
-		egressInputHosts: nodes.egressInputHosts,
 		permissionsDeny: nodes.permissionsDeny,
-		maxResponseBytes:
-			nodes.responseSizeMaxMiB === 0 ? Infinity : nodes.responseSizeMaxMiB * 1024 * 1024,
-		hasOtherCredentialType: hasOtherCredentialTypeInN8n,
-		store: await Container.get(NodeContractsStore).open(),
-		tracePayloads: tracePayloads === 'off' ? undefined : tracePayloads,
-		onRunProfile: ({ executionId, nodeName }, profile) =>
-			Container.get(EventService).emit('node-contract-run-profiled', {
-				executionId,
-				nodeName,
-				profile,
-			}),
-		onPermissionRefused: ({ node, ...refusal }) =>
-			Container.get(EventService).emit('node-permission-refused', {
-				...refusal,
-				...(node ? { nodeName: node.name, nodeType: node.type } : {}),
-			}),
+		store,
+		onPermissionRefused,
 		metaOf: async (context) => {
 			const { id } = context.getWorkflow();
 			const key = `${context.getExecutionId()}/${id ?? ''}`;
@@ -801,7 +775,88 @@ export async function useNodeContractsRegistry() {
 			});
 		},
 	});
+	const executorLoader = policyExecutorLoader(
+		{
+			lists,
+			available,
+			log: (message) => logger.debug(message),
+			runtimes: {
+				worker: () =>
+					runtimes.get('worker', () => pooledRuntime(workerRuntime(), { size: POOL_SIZE })),
+				...(!wasmMissing && {
+					wasm: () => runtimes.get('wasm', () => wasmReuseRuntime({ sidecar, guests })),
+				}),
+				...('oci' in container && {
+					container: () =>
+						runtimes.get('container', () =>
+							pooledRuntime(containerRuntime({ ociRuntime: container.oci }), { size: POOL_SIZE }),
+						),
+				}),
+			},
+		},
+		{
+			cacheDir,
+			// The credential hosts and base URLs never come from a bundle.
+			credentialType: sandboxCredentialTypeOf((name) =>
+				Container.get(CredentialTypes).recognizes(name),
+			),
+		},
+	);
+	return hostRuntime({
+		nodeContractRange: instanceAi.nodeContractRange,
+		versionLoader,
+		credentialManifestOf: credentialManifestsOf(store, hasOtherCredentialTypeInN8n),
+		executorLoader,
+		onRunProfile: ({ executionId, nodeName }, profile) =>
+			Container.get(EventService).emit('node-contract-run-profiled', {
+				executionId,
+				nodeName,
+				profile,
+			}),
+		tracePayloads: tracePayloads === 'off' ? undefined : tracePayloads,
+		onPermissionRefused,
+		egressInputHosts: nodes.egressInputHosts,
+		maxResponseBytes:
+			nodes.responseSizeMaxMiB === 0 ? Infinity : nodes.responseSizeMaxMiB * 1024 * 1024,
+		// The Code contracts follow the same switch as the Code node.
+		codeLanguages: nodes.pythonEnabled ? ['javascript', 'python'] : ['javascript'],
+		// The `parsers` import uses the parsers of the Extract from File node. They load at the first read.
+		fileExtractor: async (file, request) => {
+			const { extractFile } = await import(
+				'n8n-nodes-base/dist/nodes/Files/ExtractFromFile/extractFile.js'
+			);
+			return await extractFile(file, request);
+		},
+	});
 }
+
+/**
+ * One contract loader for each first-party package, all with the one host runtime `runtime`, so
+ * the node types of every package run with the same version loader, policy, listeners and
+ * executor cache.
+ */
+export const contractNodeLoadersOf = (
+	runtime: HostRuntime,
+	options: {
+		readonly excludeNodes: readonly string[];
+		readonly includeNodes: readonly string[];
+		readonly deny: readonly NodePermissionClass[];
+		readonly legacyLoaders: () => Readonly<Record<string, NodeLoader>>;
+	},
+) =>
+	firstPartyPackages().map(
+		(source) =>
+			new ContractNodeLoader(
+				runtime,
+				options.excludeNodes,
+				options.includeNodes,
+				undefined,
+				options.deny,
+				undefined,
+				options.legacyLoaders,
+				source,
+			),
+	);
 
 /**
  * The permissions of the contract version that a node type, or its agent tool type, projects for
@@ -814,8 +869,8 @@ export function contractPermissionsOf(
 	const separator = type.lastIndexOf('.');
 	const contracts = loaders[type.slice(0, separator)];
 	if (!(contracts instanceof ContractNodeLoader)) return undefined;
-	const tool = toolActionOfNode({ type });
-	const name = tool ? nodeNameOf(tool.id) : type.slice(separator + 1);
+	const tool = toolIdOf(type);
+	const name = tool ? nodeNameOf(tool) : type.slice(separator + 1);
 	const version = contracts
 		.frozenVersionsOf(name)
 		.find(({ manifest }) => manifest.contract.version === typeVersion);
@@ -832,14 +887,14 @@ export function contractActionOf(
 	node: Pick<INode, 'type' | 'typeVersion' | 'parameters'>,
 ): { readonly id: string; readonly major: number } | undefined {
 	const slot = migratedSlotOf(node);
-	if (slot) return { id: slot.action.id, major: slot.major };
+	if (slot) return { id: slot.id, major: slot.major };
 	const separator = node.type.lastIndexOf('.');
 	const contracts = loaders[node.type.slice(0, separator)];
 	if (!(contracts instanceof ContractNodeLoader)) return undefined;
-	const tool = toolActionOfNode(node);
+	const tool = toolIdOf(node.type);
 	// Any major gives the id, also when the node type does not list the major of the node.
 	const [version] = contracts.frozenVersionsOf(
-		tool ? nodeNameOf(tool.id) : node.type.slice(separator + 1),
+		tool ? nodeNameOf(tool) : node.type.slice(separator + 1),
 	);
 	if (!version || version.manifest.kind === 'trigger') return undefined;
 	return { id: version.manifest.id, major: node.typeVersion };
@@ -894,7 +949,7 @@ export const contractImportsOf = (
 
 /** The contract loader of the package of an id, when n8n loads it. */
 function contractLoaderOf(loaders: Readonly<Record<string, NodeLoader>>, id: string) {
-	const loader = loaders[packageOf(id).name];
+	const loader = loaders[packageNameOf(id)];
 	return loader instanceof ContractNodeLoader ? loader : undefined;
 }
 
@@ -913,20 +968,19 @@ function versionedNodeOf(loaders: Readonly<Record<string, NodeLoader>>, nodeType
  * host generates them as the tool variants of legacy nodes, with the same description changes.
  * A tool supplies the action itself, so the tool schema is the action input schema.
  */
-function toolNodesOf(loaders: Readonly<Record<string, NodeLoader>>) {
-	return toolActions.flatMap((action) => {
-		const base = versionedNodeOf(loaders, nodeTypeOf(action));
-		const versions =
-			contractLoaderOf(loaders, action.id)?.frozenVersionsOf(nodeNameOf(action.id)) ?? [];
-		if (!base || versions.length === 0) return [];
-		const nodeType = toolTypeOf(action);
+function toolNodesOf(loaders: Readonly<Record<string, NodeLoader>>, runtime: HostRuntime) {
+	return toolEntries().flatMap(({ manifest: { id }, nodeType: actionType, toolType }) => {
+		const base = versionedNodeOf(loaders, actionType);
+		const versions = contractLoaderOf(loaders, id)?.frozenVersionsOf(nodeNameOf(id)) ?? [];
+		if (!base || !toolType || versions.length === 0) return [];
+		const nodeType = toolType;
 		const presentation = presentationOf(base.type.getNodeType().description);
 		const describe = (description: INodeTypeDescription): INodeTypeDescription => ({
 			...convertNodeToAiTool({ description: deepCopy(presented(description, presentation)) })
 				.description,
 			name: nodeType,
 		});
-		const type = new (toVersionedToolType(versions, describe))();
+		const type = new (toVersionedToolType(versions, describe, runtime))();
 		return [[nodeType, { sourcePath: base.sourcePath, type }] as const];
 	});
 }
@@ -944,18 +998,26 @@ export function composeContractNodes(
 	// The slots run the versions that the contract loader loads, so its settings apply to them too.
 	const loadedVersionsOf = (actionId: string) =>
 		contractLoaderOf(loaders, actionId)?.frozenVersionsOf(nodeNameOf(actionId)) ?? [];
-	const nodes = new Map<string, LoadedClass<IVersionedNodeType>>([
-		...toolNodesOf(loaders),
-		...Object.keys(MIGRATED_NODES).flatMap((nodeType) => {
-			const legacy = versionedNodeOf(loaders, nodeType);
-			if (!legacy) return [];
-			const composed: LoadedClass<IVersionedNodeType> = {
-				...legacy,
-				type: withMigratedVersions(nodeType, legacy.type, loadedVersionsOf),
-			};
-			return [[nodeType, composed] as const];
-		}),
-	]);
+	// Every contract loader has the one host runtime of the host.
+	const runtime = Object.values(loaders).find(
+		(loader): loader is ContractNodeLoader => loader instanceof ContractNodeLoader,
+	)?.runtime;
+	const nodes = new Map<string, LoadedClass<IVersionedNodeType>>(
+		runtime
+			? [
+					...toolNodesOf(loaders, runtime),
+					...Object.keys(MIGRATED_NODES).flatMap((nodeType) => {
+						const legacy = versionedNodeOf(loaders, nodeType);
+						if (!legacy) return [];
+						const composed: LoadedClass<IVersionedNodeType> = {
+							...legacy,
+							type: withMigratedVersions(nodeType, legacy.type, loadedVersionsOf, runtime),
+						};
+						return [[nodeType, composed] as const];
+					}),
+				]
+			: [],
+	);
 	// A copy, because later steps add options to the properties of the newest version.
 	const added = [...nodes].flatMap(([name, { type }]) =>
 		Object.keys(MIGRATED_NODES[name] ?? {})

@@ -1,7 +1,9 @@
-import { freezePackage } from '@n8n/node-sdk/freeze';
-import type { FrozenVersion } from '@n8n/node-sdk/host';
+import type { Action } from '@n8n/node-sdk';
+import { contractsOfPackage, freezePackage } from '@n8n/node-sdk/freeze';
+import { hostRuntime, type FrozenVersion } from '@n8n/node-sdk/host';
 import { replayFixtures } from '@n8n/node-sdk/publish';
 import {
+	contractCatalogOf,
 	embeddedStoreDirOf,
 	isVersionManifest,
 	parseFixtures,
@@ -13,7 +15,18 @@ import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync } 
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
-import { nodesCore } from '../index';
+import { ACTION_ORDER } from '../catalog';
+
+const nodesCore = { name: '@n8n/nodes-core', dir: path.resolve(__dirname, '../..') };
+// The actions with a bundle, as freeze finds them in the action files.
+const actions: Action[] = [];
+
+beforeAll(async () => {
+	const { entries } = await contractsOfPackage(nodesCore);
+	actions.push(
+		...entries.flatMap(({ action }) => ('kind' in action ? [] : [action satisfies Action])),
+	);
+});
 
 const STORE_DIR = embeddedStoreDirOf(nodesCore);
 
@@ -35,6 +48,14 @@ async function headOf(id: string): Promise<FrozenVersion> {
 	};
 }
 
+describe('catalog data', () => {
+	it('orders only contracts of the embedded store, each once', () => {
+		const ids = new Set(contractCatalogOf([nodesCore]).entries.map(({ manifest }) => manifest.id));
+		expect(ACTION_ORDER.filter((id) => !ids.has(id))).toEqual([]);
+		expect(new Set(ACTION_ORDER).size).toBe(ACTION_ORDER.length);
+	});
+});
+
 describe('bundled versions', () => {
 	it('are the same bytes as the embedded store of the build', async () => {
 		const copy = mkdtempSync(path.join(tmpdir(), 'nodes-core-versions-'));
@@ -45,9 +66,7 @@ describe('bundled versions', () => {
 					.filter((file) => statSync(path.join(dir, file)).isFile())
 					.sort()
 					.map((file) => [file, readFileSync(path.join(dir, file), 'base64')]);
-			expect(manifests.map(({ id }) => id).sort()).toEqual(
-				nodesCore.actions.map(({ id }) => id).sort(),
-			);
+			expect(manifests.map(({ id }) => id).sort()).toEqual(actions.map(({ id }) => id).sort());
 			expect(filesOf(copy)).toEqual(filesOf(STORE_DIR));
 		} finally {
 			rmSync(copy, { recursive: true, force: true });
@@ -56,7 +75,7 @@ describe('bundled versions', () => {
 
 	it('replay the fixtures of the HEAD through the current executor', async () => {
 		const issues = await Promise.all(
-			nodesCore.actions.map(async ({ id }) => {
+			actions.map(async ({ id }) => {
 				const head = await headOf(id);
 				const bundle = await head.readBundle();
 				return await replayFixtures({ manifest: head.manifest, bundle }, fixturesOf(id));
@@ -68,15 +87,11 @@ describe('bundled versions', () => {
 
 const SANDBOX = path.resolve(__dirname, '../../node_modules/@n8n/node-sdk/sandbox');
 // The credential types of the shipped nodes stand in for the registry of n8n.
-const shippedCredentialTypes = new Map(
-	nodesCore.actions
-		.flatMap(({ node }) => node.credential?.types ?? [])
-		.map((type) => [type.name, type]),
-);
 const sandbox = {
 	sidecar: path.join(SANDBOX, 'sidecar/target/release/n8n-sandbox'),
 	guests: path.join(SANDBOX, 'dist'),
-	credentialType: (name: string) => shippedCredentialTypes.get(name),
+	credentialType: (name: string) =>
+		actions.flatMap(({ node }) => node.credential?.types ?? []).find((type) => type.name === name),
 };
 // `pnpm --filter @n8n/node-sdk sandbox:build` builds them.
 const sandboxBuilt = [sandbox.sidecar, path.join(sandbox.guests, 'action.wasm')].every(existsSync);
@@ -88,9 +103,9 @@ describe.skipIf(!sandboxBuilt)('bundled versions in the sandbox', () => {
 	it('replay the fixtures of the HEAD of each action', async () => {
 		const issues: string[] = [];
 		// One at a time: the first load compiles the guest for all.
-		for (const { id } of nodesCore.actions) {
+		for (const { id } of actions) {
 			const head = await headOf(id);
-			const loaded = await sandboxedVersionOf(head, { ...sandbox, cacheDir });
+			const loaded = await sandboxedVersionOf(head, { ...sandbox, cacheDir }, hostRuntime());
 			const bundle = await head.readBundle();
 			issues.push(
 				...(await replayFixtures({ manifest: head.manifest, bundle }, fixturesOf(id), {

@@ -5,8 +5,12 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import type { INode } from 'n8n-workflow';
 
-import { actions } from '../../../nodes-integrations/dist/index.js';
-import { packageOf, versionsOf } from '../../../nodes-integrations/dist/registry.js';
+import {
+	firstPartyCredentialType,
+	firstPartyRuntime,
+	firstPartyVersionsOf as versionsOf,
+	fixturesFileOf,
+} from './first-party';
 import { freezeAction } from '../freeze';
 import { replayFixtures } from '../publish';
 import type { ExecutorHost } from '../runtime';
@@ -20,10 +24,6 @@ const SIDECAR =
 	process.env.N8N_NODE_CONTRACT_SANDBOX_SIDECAR ??
 	path.join(SANDBOX, 'sidecar', 'target', 'release', 'n8n-sandbox');
 const GUESTS = path.join(SANDBOX, 'dist');
-
-const credentialTypes = new Map(
-	actions.flatMap(({ node }) => node.credential?.types ?? []).map((type) => [type.name, type]),
-);
 
 const node: INode = {
 	id: '1',
@@ -185,6 +185,7 @@ describe.skipIf(!existsSync(SIDECAR) || !existsSync(path.join(GUESTS, 'action-sn
 			const { executor } = await sandboxedVersionOf(
 				{ manifest: frozen.manifest, origin: 'private', readBundle: async () => frozen.bundle },
 				{ runtime, cacheDir: cacheDir(), credentialType: () => undefined },
+				firstPartyRuntime(),
 			);
 			const host: ExecutorHost = {
 				items: [{ json: {} }],
@@ -255,14 +256,16 @@ describe.skipIf(!existsSync(SIDECAR) || !existsSync(path.join(GUESTS, 'action-sn
 				if (!head) throw new Error(`${id} has no bundled HEAD`);
 				const runtime = snapshotRuntime();
 				try {
-					const loaded = await sandboxedVersionOf(head, {
-						runtime,
-						cacheDir: cacheDir(),
-						credentialType: (name) => credentialTypes.get(name),
-					});
-					const fixtures = parseFixtures(
-						readFileSync(path.join(packageOf(id).dir, 'fixtures', `${id}.json`), 'utf8'),
+					const loaded = await sandboxedVersionOf(
+						head,
+						{
+							runtime,
+							cacheDir: cacheDir(),
+							credentialType: firstPartyCredentialType,
+						},
+						firstPartyRuntime(),
 					);
+					const fixtures = parseFixtures(readFileSync(fixturesFileOf(id), 'utf8'));
 					expect(
 						await replayFixtures(
 							{ manifest: head.manifest, bundle: await head.readBundle() },

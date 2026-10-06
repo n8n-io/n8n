@@ -5,7 +5,7 @@ import path from 'node:path';
 import type { INode } from 'n8n-workflow';
 
 import { freezeAction } from '../freeze';
-import type { ExecutorHost } from '../runtime';
+import { hostRuntime, type ExecutorHost } from '../runtime';
 import { wasmReuseRuntime } from '../runtimes/wasm-reuse';
 import { sandboxedVersionOf, type SandboxLimits } from '../sandbox';
 
@@ -77,6 +77,7 @@ describe.skipIf(!existsSync(SIDECAR) || !existsSync(path.join(GUESTS, 'action.wa
 					credentialType: () => undefined,
 					limits,
 				},
+				hostRuntime(),
 			);
 			return async (mode: string) => {
 				const host: ExecutorHost = {

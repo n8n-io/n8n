@@ -2,8 +2,13 @@ import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 
-import { actions } from '../../../nodes-integrations/dist/index.js';
-import { packageOf, versionsOf } from '../../../nodes-integrations/dist/registry.js';
+import {
+	firstPartyActionIds,
+	firstPartyCredentialType,
+	firstPartyRuntime,
+	firstPartyVersionsOf as versionsOf,
+	fixturesFileOf,
+} from './first-party';
 import { freezeAction } from '../freeze';
 import { replayFixtures } from '../publish';
 import type { ExecutorHost } from '../runtime';
@@ -25,10 +30,6 @@ const runtime = (() => {
 	}
 })();
 
-const credentialTypes = new Map(
-	actions.flatMap(({ node }) => node.credential?.types ?? []).map((type) => [type.name, type]),
-);
-
 mkdirSync(CACHE_ROOT, { recursive: true });
 const cacheDir = mkdtempSync(path.join(CACHE_ROOT, 'container-runtime-'));
 afterAll(() => rmSync(cacheDir, { recursive: true, force: true }));
@@ -41,18 +42,18 @@ const options = (
 	sidecar: SIDECAR,
 	guests: path.join(SANDBOX, 'dist'),
 	cacheDir,
-	credentialType: (name) => credentialTypes.get(name),
+	credentialType: firstPartyCredentialType,
 	limits,
 });
 
 async function replay(id: string, sandbox: SandboxOptions): Promise<string[]> {
 	const [head] = versionsOf(id);
 	if (!head) return [`${id} has no bundled HEAD`];
-	const loaded = await sandboxedVersionOf(head, sandbox).catch((error: Error) => error);
-	if (loaded instanceof Error) return [`${id} refused: ${loaded.message}`];
-	const fixtures = parseFixtures(
-		readFileSync(path.join(packageOf(id).dir, 'fixtures', `${id}.json`), 'utf8'),
+	const loaded = await sandboxedVersionOf(head, sandbox, firstPartyRuntime()).catch(
+		(error: Error) => error,
 	);
+	if (loaded instanceof Error) return [`${id} refused: ${loaded.message}`];
+	const fixtures = parseFixtures(readFileSync(fixturesFileOf(id), 'utf8'));
 	return await replayFixtures(
 		{ manifest: head.manifest, bundle: await head.readBundle() },
 		fixtures,
@@ -98,6 +99,7 @@ const probe = async (name: string, limits?: SandboxOptions['limits']) => {
 	const { executor } = await sandboxedVersionOf(
 		{ manifest, origin: 'private', readBundle: async () => bundle },
 		options(runtime, limits),
+		firstPartyRuntime(),
 	);
 	return { manifest, run: async () => await executor(host) };
 };
@@ -131,9 +133,9 @@ describe.skipIf(!runtime)('container runtime', () => {
 			...head!.manifest,
 			contract: { ...head!.manifest.contract, runtime: { image } },
 		};
-		await expect(sandboxedVersionOf({ ...head!, manifest }, options(runtime))).rejects.toThrow(
-			`The container runtime needs the image ${image}`,
-		);
+		await expect(
+			sandboxedVersionOf({ ...head!, manifest }, options(runtime), firstPartyRuntime()),
+		).rejects.toThrow(`The container runtime needs the image ${image}`);
 	}, 60_000);
 
 	it('passes the OCI runtime to docker', async () => {
@@ -181,7 +183,7 @@ describe.skipIf(!runtime)('container runtime', () => {
 
 	it('replays the fixtures of every action', async () => {
 		const issues: string[] = [];
-		for (const { id } of actions) issues.push(...(await replay(id, options(runtime))));
+		for (const id of firstPartyActionIds) issues.push(...(await replay(id, options(runtime))));
 		expect(issues).toEqual([]);
 	}, 900_000);
 });

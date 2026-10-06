@@ -9,19 +9,28 @@ import { parseArgs } from 'node:util';
 import type { IHttpRequestOptions } from 'n8n-workflow';
 
 import {
-	actions,
-	packageOf,
-	sandboxCredentialTypeOf,
-	versionsOf,
-} from '../../nodes-integrations/dist/index.js';
+	firstPartyActionIds,
+	firstPartyCredentialType,
+	firstPartyVersionsOf as versionsOf,
+	fixturesFileOf,
+} from '../src/__tests__/first-party';
 import { escapeProbes } from '../src/__tests__/escape-probes';
-import { defineCredential, field } from '../src/credentials';
+import { compat, defineCredential, field } from '../src/credentials';
 import { freezeAction } from '../src/freeze';
 import { replayFixtures } from '../src/publish';
-import { loadExecutor, type Executor, type ExecutorHost, type FrozenVersion } from '../src/runtime';
+import {
+	hostRuntime,
+	loadExecutor,
+	type Executor,
+	type ExecutorHost,
+	type FrozenVersion,
+} from '../src/runtime';
 import { sandboxedVersionOf, type GuestRuntime, type SandboxOptions } from '../src/sandbox';
 import { parseFixtures } from '../src/version';
 import { RUNTIME_NAMES, runtimeByName } from './runtimes';
+
+// One host runtime for every run of the script.
+const HOST = hostRuntime();
 
 const LIMITS = { cpuMs: 1_000, memoryMb: 64, wallMs: 3_000 };
 /** A probe that runs longer than this was not stopped by its runtime. */
@@ -37,7 +46,7 @@ const acmeToken = defineCredential({
 	baseUrl: 'https://api.acme.test',
 	auth: (a) => a.bearer('apiKey'),
 });
-const shippedCredentialType = sandboxCredentialTypeOf(() => true);
+const shippedCredentialType = (name: string) => firstPartyCredentialType(name) ?? compat(name);
 const credentialType = (name: string) =>
 	name === 'acmeApi' ? acmeToken : shippedCredentialType(name);
 
@@ -83,7 +92,7 @@ type Budget = ReturnType<typeof budgetOf>;
 /** The replay issues of every action, as in `versions.test.ts`. Stops at the end of `budget`. */
 async function replayAll({ runtime }: Runtime, budget: Budget) {
 	const issues: string[] = [];
-	for (const { id } of actions) {
+	for (const id of firstPartyActionIds) {
 		if (budget.expired()) return [...issues, TIMEOUT];
 		const [head] = versionsOf(id);
 		if (!head) {
@@ -92,16 +101,14 @@ async function replayAll({ runtime }: Runtime, budget: Budget) {
 		}
 		const loaded = runtime
 			? await budget
-					.within(sandboxedVersionOf(head, sandboxOptions(runtime)))
+					.within(sandboxedVersionOf(head, sandboxOptions(runtime), HOST))
 					.catch((error: unknown) => new Error(messageOf(error)))
 			: undefined;
 		if (loaded instanceof Error) {
 			issues.push(`${id} refused: ${loaded.message}`);
 			continue;
 		}
-		const fixtures = parseFixtures(
-			readFileSync(path.join(packageOf(id).dir, 'fixtures', `${id}.json`), 'utf8'),
-		);
+		const fixtures = parseFixtures(readFileSync(fixturesFileOf(id), 'utf8'));
 		const replayed = await budget
 			.within(
 				replayFixtures(
@@ -237,8 +244,9 @@ async function probeCell(
 	const before = { ...observed };
 	const requests: IHttpRequestOptions[] = [];
 	const executor: Executor = runtime
-		? (await budget.within(sandboxedVersionOf(frozen, sandboxOptions(runtime, LIMITS)))).executor
-		: await loadExecutor(frozen);
+		? (await budget.within(sandboxedVersionOf(frozen, sandboxOptions(runtime, LIMITS), HOST)))
+				.executor
+		: await loadExecutor(frozen, HOST);
 	const ran: Promise<Outcome> = executor(hostOf(requests)).then(
 		(out) => ({ value: out[0]?.[0]?.json.value }),
 		(error: unknown) => ({ error: messageOf(error) }),
@@ -306,7 +314,7 @@ async function main() {
 		const replay = issues.includes(TIMEOUT)
 			? `**timeout** after ${values.timeout} s`
 			: issues.length === 0
-				? `pass: ${actions.length} actions`
+				? `pass: ${firstPartyActionIds.length} actions`
 				: `**FAIL**: ${issues.length} issues`;
 		const probes: string[] = [];
 		for (const { judge, stopsHost, frozen } of probeRuns) {

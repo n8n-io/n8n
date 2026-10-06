@@ -1,15 +1,16 @@
+import { hostRuntime } from '@n8n/node-sdk/host';
 import { Notion } from 'n8n-nodes-base/dist/nodes/Notion/Notion.node';
 import type { IExecuteFunctions, IHttpRequestOptions, INodeProperties } from 'n8n-workflow';
 
 import {
+	actionOfNode,
+	firstPartyCatalog,
 	MIGRATED_NODES,
 	migratedSlotOf,
-	migratedTargetOf,
 	withMigratedVersions,
-} from '../migrated';
-import { actionOfNode, actions } from '../index';
-import { getManyDatabasePages } from '../nodes/notion/actions/database-page.get-all';
-import { versionsOf } from '../registry';
+} from '../node-contracts-catalog';
+
+import { versionsOf } from '@test/first-party-contracts';
 
 const NOTION = 'n8n-nodes-base.notion';
 const owned = { resource: ['databasePage'], operation: ['getAll'] };
@@ -18,9 +19,9 @@ const showsOnOwnedSlot = ({ displayOptions }: INodeProperties) =>
 	[displayOptions?.show?.resource ?? ['databasePage']].flat().includes('databasePage') &&
 	[displayOptions?.show?.operation ?? ['getAll']].flat().includes('getAll');
 
-describe('migrated nodes', () => {
+describe('migrated nodes of the first-party catalog', () => {
 	const legacy = new Notion();
-	const migrated = withMigratedVersions(NOTION, legacy, versionsOf);
+	const migrated = withMigratedVersions(NOTION, legacy, versionsOf, hostRuntime());
 	const v4 = migrated.getNodeType(4);
 
 	it('add Notion v4 as the default version and keep v1 to v3', () => {
@@ -31,7 +32,7 @@ describe('migrated nodes', () => {
 	});
 
 	it('keep only the legacy versions when the host does not load the action major of a slot', () => {
-		expect(withMigratedVersions(NOTION, legacy, () => [])).toBe(legacy);
+		expect(withMigratedVersions(NOTION, legacy, () => [], hostRuntime())).toBe(legacy);
 	});
 
 	it('show the action fields on the owned slot and the legacy fields elsewhere', () => {
@@ -64,7 +65,7 @@ describe('migrated nodes', () => {
 				name === 'operation' && displayOptions?.show?.resource?.includes('databasePage'),
 		);
 		expect(operation?.options).toContainEqual(
-			expect.objectContaining({ value: 'getAll', action: getManyDatabasePages.action }),
+			expect.objectContaining({ value: 'getAll', action: 'Get many database pages' }),
 		);
 		expect(v4.description.credentials).toEqual(legacy.getNodeType(3).description.credentials);
 	});
@@ -129,30 +130,31 @@ describe('migrated nodes', () => {
 			typeVersion: 4,
 			parameters: { resource: 'databasePage', operation: 'getAll' },
 		};
-		expect(migratedTargetOf(getManyDatabasePages)).toEqual({
-			nodeType: NOTION,
-			typeVersion: 4,
+		expect(migratedSlotOf(node)).toEqual({
+			id: 'notion.databasePage.getAll',
+			major: 1,
 			resource: 'databasePage',
 			operation: 'getAll',
 		});
-		expect(actionOfNode(node)).toBe(getManyDatabasePages);
+		expect(actionOfNode(node)?.id).toBe('notion.databasePage.getAll');
 		expect(actionOfNode({ ...node, parameters: { resource: 'page', operation: 'create' } })).toBe(
 			undefined,
 		);
 		expect(migratedSlotOf({ ...node, typeVersion: 3 })).toBeUndefined();
 		expect(
 			actionOfNode({ type: '@n8n/nodes-integrations.notionDatabasePageGetAll', typeVersion: 1 }),
-		).toBe(getManyDatabasePages);
+		).toBe(actionOfNode(node));
 	});
 
 	it('run only actions with a bundled version of the slot major', () => {
 		const slots = Object.values(MIGRATED_NODES).flatMap((versions) =>
 			Object.values(versions).flatMap(({ slots: own }) => own),
 		);
+		const shipped = new Set(firstPartyCatalog().entries.map(({ manifest }) => manifest.id));
 		const missing = slots.filter(
 			({ action, major }) =>
-				!actions.includes(action) ||
-				!versionsOf(action.id).some(({ manifest }) => manifest.contract.version === major),
+				!shipped.has(action) ||
+				!versionsOf(action).some(({ manifest }) => manifest.contract.version === major),
 		);
 		expect(missing).toEqual([]);
 	});

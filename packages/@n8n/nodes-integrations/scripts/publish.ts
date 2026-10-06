@@ -1,12 +1,10 @@
 import { publishPackage } from '@n8n/node-sdk/publish';
-
-import { nodesIntegrations } from '../src/nodes';
+import path from 'node:path';
 
 if (require.main === module) {
-	void publishPackage(nodesIntegrations, process.argv.slice(2), console.log).catch(
-		(error: unknown) => {
-			console.error(error);
-			process.exitCode = 1;
-		},
-	);
+	const pkg = { name: '@n8n/nodes-integrations', dir: path.resolve(__dirname, '..') };
+	void publishPackage(pkg, process.argv.slice(2), console.log).catch((error: unknown) => {
+		console.error(error);
+		process.exitCode = 1;
+	});
 }

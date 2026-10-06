@@ -2,19 +2,13 @@ import { Logger } from '@n8n/backend-common';
 import { EventService } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { GlobalConfig, NodePermissionClass } from '@n8n/config';
+import { hostRuntime, nodeDescriptionOf, type FrozenVersion } from '@n8n/node-sdk/host';
 import {
-	bundledCredentialsOf,
 	bundledIdsOf,
 	embeddedStoreDirOf,
-	FIRST_PARTY_PACKAGES,
-	isContractNodeType,
-	nodeDescriptionOf,
-	packageOf,
-	versionsOf,
 	type ContractPermissionClass,
 	type CredentialManifest,
-	type FrozenVersion,
-} from '@n8n/nodes-integrations';
+} from '@n8n/node-sdk/registry';
 import { LazyPackageDirectoryLoader } from 'n8n-core';
 import {
 	deepCopy,
@@ -30,7 +24,19 @@ import { expectTypeOf } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import { LoadNodesAndCredentials } from '../load-nodes-and-credentials';
-import { ContractNodeLoader, NodeContractsStore } from '../node-contracts-registry';
+import { isContractNodeType } from '../node-contracts-catalog';
+import {
+	ContractNodeLoader,
+	contractNodeLoadersOf,
+	NodeContractsStore,
+} from '../node-contracts-registry';
+
+import {
+	bundledCredentialsOf,
+	FIRST_PARTY_PACKAGES,
+	packageOf,
+	versionsOf,
+} from '@test/first-party-contracts';
 
 const PACKAGES = path.resolve(__dirname, '../../..');
 const nodesCore = packageOf('noOp.pass');
@@ -134,7 +140,8 @@ describe('ContractNodeLoader', () => {
 	it('serves the node and credential types that the generated class files served', async () => {
 		const value = await served(
 			FIRST_PARTY_PACKAGES.map(
-				(pkg) => new ContractNodeLoader([], [], noStore, [], undefined, undefined, pkg),
+				(pkg) =>
+					new ContractNodeLoader(hostRuntime(), [], [], noStore, [], undefined, undefined, pkg),
 			),
 		);
 		const recorded: unknown = JSON.parse(
@@ -146,7 +153,16 @@ describe('ContractNodeLoader', () => {
 	it.each(FIRST_PARTY_PACKAGES)(
 		'projects one node type for each bundled manifest of $name, with Poll Times for a polling trigger',
 		async (pkg) => {
-			const loader = new ContractNodeLoader([], [], noStore, [], undefined, undefined, pkg);
+			const loader = new ContractNodeLoader(
+				hostRuntime(),
+				[],
+				[],
+				noStore,
+				[],
+				undefined,
+				undefined,
+				pkg,
+			);
 			await loader.loadAll();
 			const ids = bundledIdsOf(embeddedStoreDirOf(pkg));
 
@@ -183,7 +199,12 @@ describe('ContractNodeLoader', () => {
 		};
 		const storedManifest = deepCopy(stored.manifest);
 		const sameMajor: FrozenVersion = { ...head, manifest: { ...manifest, semver: '9.9.9' } };
-		const loader = new ContractNodeLoader([], [], storeOf(new Map([[id, [stored, sameMajor]]])));
+		const loader = new ContractNodeLoader(
+			hostRuntime(),
+			[],
+			[],
+			storeOf(new Map([[id, [stored, sameMajor]]])),
+		);
 		await loader.loadAll();
 
 		const { name } = nodeDescriptionOf(manifest);
@@ -211,6 +232,7 @@ describe('ContractNodeLoader', () => {
 			['legacyApi', { ...ping, id: 'legacy.token', name: 'legacyApi' }],
 		]);
 		const loader = new ContractNodeLoader(
+			hostRuntime(),
 			[],
 			[],
 			storeOf(new Map(), stored),
@@ -233,7 +255,16 @@ describe('ContractNodeLoader', () => {
 
 	it('loads only the node types that the node settings allow', async () => {
 		const coreLoader = (exclude: string[], include: string[]) =>
-			new ContractNodeLoader(exclude, include, noStore, [], undefined, undefined, nodesCore);
+			new ContractNodeLoader(
+				hostRuntime(),
+				exclude,
+				include,
+				noStore,
+				[],
+				undefined,
+				undefined,
+				nodesCore,
+			);
 		const excluded = coreLoader(['@n8n/nodes-core.httpRequestGet'], []);
 		const included = coreLoader([], ['@n8n/nodes-core.httpRequestGet']);
 		const otherPackage = coreLoader([], ['n8n-nodes-base.httpRequest']);
@@ -249,7 +280,7 @@ describe('ContractNodeLoader', () => {
 		const logger = mockInstance(Logger);
 		const events = mockInstance(EventService);
 		const coreLoader = (deny: NodePermissionClass[]) =>
-			new ContractNodeLoader([], [], noStore, deny, undefined, undefined, nodesCore);
+			new ContractNodeLoader(hostRuntime(), [], [], noStore, deny, undefined, undefined, nodesCore);
 		const all = coreLoader([]);
 		const egressInput = coreLoader(['egress-input']);
 		const code = coreLoader(['code']);
@@ -290,8 +321,17 @@ describe('ContractNodeLoader', () => {
 			manifest: { ...manifest, contract: { ...manifest.contract, version: 2 } },
 		};
 		const store = storeOf(new Map([[id, [stored]]]));
-		const next = new ContractNodeLoader([], [], store);
-		const core = new ContractNodeLoader([], [], store, [], undefined, undefined, nodesCore);
+		const next = new ContractNodeLoader(hostRuntime(), [], [], store);
+		const core = new ContractNodeLoader(
+			hostRuntime(),
+			[],
+			[],
+			store,
+			[],
+			undefined,
+			undefined,
+			nodesCore,
+		);
 		const instance = new LoadNodesAndCredentials(
 			mock(),
 			mock(),
@@ -343,6 +383,50 @@ describe('ContractNodeLoader', () => {
 		expect(result).toEqual([[{ json: { a: 1 }, pairedItem: { item: 0 } }]]);
 	});
 
+	it('gives the loader of each first-party package the one host runtime, and runs both with it', async () => {
+		mockInstance(NodeContractsStore).open.mockResolvedValue({
+			versions: async () => new Map(),
+			credentials: async () => new Map(),
+		} as never);
+		const runtime = hostRuntime();
+		const loaders = contractNodeLoadersOf(runtime, {
+			excludeNodes: [],
+			includeNodes: [],
+			deny: [],
+			legacyLoaders: () => ({}),
+		});
+		await Promise.all(loaders.map(async (loader) => await loader.loadAll()));
+		expect(loaders.map((loader) => [loader.packageName, loader.runtime === runtime])).toEqual([
+			['@n8n/nodes-core', true],
+			['@n8n/nodes-integrations', true],
+		]);
+		const [core, integrations] = loaders;
+		const run = async (loader: ContractNodeLoader | undefined, name: string) => {
+			const context = {
+				getInputData: () => [{ json: {} }],
+				getNode: () => ({ name, credentials: { notionApi: { id: '1', name: 'Notion' } } }),
+				getNodeParameter: (parameter: string) =>
+					parameter === 'user' ? '0123456789abcdef0123456789abcdef' : undefined,
+				getCredentials: async () => ({}),
+				continueOnFail: () => false,
+				setMetadata: () => {},
+				helpers: {
+					httpRequestWithAuthentication: async () => ({ object: 'user', id: 'u' }),
+				},
+			} as unknown as IExecuteFunctions;
+			const type = loader?.getNode(name).type as IVersionedNodeType;
+			return await type.getNodeType(1).execute?.call(context);
+		};
+		// A node without a legacy twin shows the icon of its embedded bundle.
+		const prompt = core?.getNode('aiPrompt').type as IVersionedNodeType;
+		expect(prompt.getNodeType(1).description.icon).toBe('node:basic-llm-chain');
+		await run(core, 'noOpPass');
+		await run(integrations, 'notionUserGet');
+		expect([...runtime.executors.keys()].sort()).toEqual(
+			['noOp.pass', 'notion.user.get'].map((id) => versionsOf(id)[0]?.manifest.bundleHash).sort(),
+		);
+	});
+
 	it('maps each config permission class that a contract version can have', () => {
 		expectTypeOf<ContractPermissionClass>().toEqualTypeOf<
 			Exclude<NodePermissionClass, 'files' | 'full-community'>
@@ -363,9 +447,13 @@ describe('ContractNodeLoader', () => {
 				contract: { ...manifest.contract, version: major, egress: { fromInput: 'url' } },
 			},
 		};
-		const loader = new ContractNodeLoader([], [], storeOf(new Map([[id, [stored]]])), [
-			'egress-input',
-		]);
+		const loader = new ContractNodeLoader(
+			hostRuntime(),
+			[],
+			[],
+			storeOf(new Map([[id, [stored]]])),
+			['egress-input'],
+		);
 		await loader.loadAll();
 
 		const majors = (versions: readonly FrozenVersion[]) =>

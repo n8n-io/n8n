@@ -1,4 +1,9 @@
-import { toCredentialType, toTriggerNodeType, toVersionedTriggerType } from '@n8n/node-sdk/host';
+import {
+	hostRuntime,
+	toCredentialType,
+	toTriggerNodeType,
+	toVersionedTriggerType,
+} from '@n8n/node-sdk/host';
 import { NotionApi } from 'n8n-nodes-base/dist/credentials/NotionApi.credentials';
 import { GithubTrigger } from 'n8n-nodes-base/dist/nodes/Github/GithubTrigger.node';
 import { Notion } from 'n8n-nodes-base/dist/nodes/Notion/Notion.node';
@@ -10,7 +15,7 @@ import { repositoryEvent } from '../../nodes/github/actions/repository.event';
 import { notionToken } from '../../nodes/notion/credentials';
 import { pageAdded } from '../../nodes/notion/actions/data-source.page-added';
 import { getUser } from '../../nodes/notion/actions/user.get';
-import { versionsOf } from '../../registry';
+import { versionsOf } from '../first-party';
 import {
 	actionNode,
 	compareRuns,
@@ -128,7 +133,10 @@ const DATA_SOURCE = '2a3b4c5d6e7f40818293a4b5c6d7e8f9';
 describe('notion.dataSource.pageAdded against the legacy Notion trigger', () => {
 	afterEach(() => vi.useRealTimers());
 
-	const frozen = new (toVersionedTriggerType(versionsOf(pageAdded.id)))().getNodeType(1);
+	const frozen = new (toVersionedTriggerType(
+		versionsOf(pageAdded.id),
+		hostRuntime(),
+	))().getNodeType(1);
 
 	it.each([
 		['the source', new (toTriggerNodeType(pageAdded))()],

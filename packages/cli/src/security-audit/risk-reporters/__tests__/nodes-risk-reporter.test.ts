@@ -2,7 +2,9 @@ import { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
-import { FIRST_PARTY_PACKAGES, nodeTypeOf, toolTypeOf, versionsOf } from '@n8n/nodes-integrations';
+import { hostRuntime } from '@n8n/node-sdk/host';
+import { nodeTypeOf } from '@/node-contracts-catalog';
+import { FIRST_PARTY_PACKAGES, versionsOf } from '@test/first-party-contracts';
 import type { INode, IWorkflowBase } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
@@ -13,7 +15,7 @@ import { NodesRiskReporter } from '@/security-audit/risk-reporters/nodes-risk-re
 import type { PackagesRepository } from '@/security-audit/security-audit.repository';
 import type { Risk } from '@/security-audit/types';
 
-const nodeOf = (name: string, id: string, type = nodeTypeOf({ id })): INode => ({
+const nodeOf = (name: string, id: string, type = nodeTypeOf(id)): INode => ({
 	id: name,
 	name,
 	type,
@@ -27,6 +29,7 @@ const auditContractNodes = async () => {
 	const loaders = FIRST_PARTY_PACKAGES.map(
 		(pkg) =>
 			new ContractNodeLoader(
+				hostRuntime(),
 				[],
 				[],
 				async () => ({ versions: async () => new Map(), credentials: async () => new Map() }),
@@ -48,7 +51,7 @@ const auditContractNodes = async () => {
 		name: 'Audit',
 		nodes: [
 			nodeOf('GET', 'httpRequest.get'),
-			nodeOf('GET tool', 'httpRequest.get', toolTypeOf({ id: 'httpRequest.get' })),
+			nodeOf('GET tool', 'httpRequest.get', `${nodeTypeOf('httpRequest.get')}Tool`),
 			nodeOf('Code', 'code.javaScript'),
 			nodeOf('Notion', 'notion.databasePage.getAll'),
 		],

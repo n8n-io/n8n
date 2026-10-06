@@ -27,7 +27,7 @@ export class ContractsImportCommand extends BaseCommand<z.infer<typeof flagsSche
 	async run() {
 		assertNodeContractsEnabled('contracts:import');
 		const { importContractStore, STORE_CATALOG_FILE, storeFilesOfDir, storeReader } = await import(
-			'@n8n/nodes-integrations'
+			'@n8n/node-sdk/registry'
 		);
 		const { input } = this.flags;
 		if (input.includes('://') && !input.startsWith('file:')) {

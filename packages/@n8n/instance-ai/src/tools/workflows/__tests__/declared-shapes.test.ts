@@ -1,6 +1,6 @@
 import { wrapUntrustedData } from '@n8n/agents';
 import { mockHttp, runAction } from '@n8n/node-sdk/testing';
-import { actionOfNode } from '@n8n/nodes-integrations';
+import { actionOfNode } from '../../contract-catalog';
 import type { IDataObject, WorkflowJSON } from '@n8n/workflow-sdk';
 
 import type { NodeOutputResult } from '../../../types';

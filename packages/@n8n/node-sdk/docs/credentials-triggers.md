@@ -132,7 +132,7 @@ with `credentialChangeOf` and refuses a smaller bump:
 | Another name, scheme or base URL, a new host, a removed field, a new required field | major |
 
 The hosts and the base URL of a credential type come from its credential manifest, never from a
-bundle: `setCredentialManifests` gives the host lookup, and `loadExecutor`, the trigger loader
+bundle: `HostRuntime.credentialManifestOf` gives the host lookup, and `loadExecutor`, the trigger loader
 and the sandbox read it. n8n registers one type for each name, so the lookup gives the bundled
 manifest first, and then the newest one in the instance store. A compat type has no manifest:
 it keeps the hosts of the bundle that runs.

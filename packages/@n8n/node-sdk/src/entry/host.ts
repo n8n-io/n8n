@@ -2,7 +2,6 @@ export {
 	credentialHostsOf,
 	egressIssuesOf,
 	permissionsOf,
-	setPermissionRefusalListener,
 	type ContractPermissions,
 	type EgressIssues,
 	type PermissionRefusal,
@@ -11,7 +10,7 @@ export {
 } from '../egress';
 export { isToolContract, lookupsOf, resourceLookupsOf, type ResourceLookupCall } from '../define';
 export { credentialTypeOfManifest, toCredentialType } from '../credentials';
-export { setCodeLanguages, setFileExtractor, type FileExtractor } from '../host-imports';
+export type { FileExtractor } from '../host-imports';
 export {
 	advancedFieldsOf,
 	contractInputOf,
@@ -26,14 +25,10 @@ export {
 } from '../properties';
 export {
 	AUTHENTICATION,
+	hostRuntime,
 	lookupActionOf,
 	nodeDescriptionOf,
 	nodeNameOf,
-	setContractVersionLoader,
-	setCredentialManifests,
-	setEgressInputHosts,
-	setExecutorLoader,
-	setMaxResponseBytes,
 	toNodeType,
 	toVersionedNodeType,
 	toVersionedToolType,
@@ -43,21 +38,26 @@ export {
 	type Executor,
 	type ExecutorLoader,
 	type FrozenVersion,
+	type HostRuntime,
+	type HostRuntimeOptions,
 	type LookupOwner,
 } from '../runtime';
-export {
-	setRunProfileListener,
-	type PayloadCapture,
-	type RunPayloads,
-	type RunPhase,
-	type RunProfile,
-	type RunProfileListener,
-	type RunProfileMeta,
-	type RunRequest,
-	type RunRpc,
-	type RunSandboxStats,
-	type RpcDirection,
+export type {
+	PayloadCapture,
+	RunPayloads,
+	RunPhase,
+	RunProfile,
+	RunProfileListener,
+	RunProfileMeta,
+	RunRequest,
+	RunRpc,
+	RunSandboxStats,
+	RpcDirection,
 } from '../profile';
 export { toTriggerNodeType, toVersionedTriggerType } from '../triggers';
 export { exampleOf } from '../validate';
-export { runsNodeContract, setNodeContractRange } from '../version';
+export {
+	nodeContractRangeOf,
+	runsNodeContract,
+	type NodeContractRange,
+} from '../version';

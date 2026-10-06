@@ -58,9 +58,11 @@ flowchart BT
 | `cli` | Loads the node types, pins each contract node at save, keeps the store in the database, makes the runtimes, syncs from the registry, and has the `contracts:*` commands | `src/load-nodes-and-credentials.ts`, `src/node-contracts-*.ts`, `src/commands/contracts/` |
 | `@n8n/config`, `@n8n/db` | The settings (`instance-ai.config.ts`, `nodes.config.ts`) and the tables `node_contract_version` and `node_contract_status` | — |
 
-`@n8n/nodes-integrations` keeps n8n-specific code out: `cli` gives it the database rows, the keys,
-the runtimes and the logger through `useContractRegistry`. So the same logic runs in tests and
-scripts without n8n.
+The node packages hold node code and plain catalog data only (`src/catalog.ts`). The host code is
+generic and lives in `@n8n/node-sdk`: the store, the version loader and the catalog of the
+embedded stores (`src/contract-registry.ts`, `src/catalog.ts`). `cli` gives it the database rows,
+the keys, the runtimes and the logger in one `HostRuntime` (`hostRuntime`, `src/runtime.ts`). So
+the same logic runs in tests and scripts without n8n.
 
 ## Contract nodes and legacy nodes
 
@@ -76,7 +78,7 @@ scripts without n8n.
 
 The engine sees both as `INodeType` in one registry (`LoadNodesAndCredentials`). Bridges:
 
-- **Composed versions.** `MIGRATED_NODES` (`nodes-integrations/src/migrated.ts`) adds a new
+- **Composed versions.** `MIGRATED_NODES` (`nodes-integrations/src/catalog.ts`) adds a new
   version of a legacy node, for example Notion v4. A contract action runs some operations, and
   the legacy version runs the rest (`migrateVersion` of compat). A user sees one Notion node.
 - **Hidden single types.** The nodes panel hides the type of each single action
@@ -213,9 +215,9 @@ sequenceDiagram
   application, response size, binary data. The manifest is the source of the permissions on
   every path. See [node-contract.md, Rules](node-contract.md#rules).
 
-The seams are two setters in `@n8n/node-sdk/src/runtime.ts`: `setContractVersionLoader` and
-`setExecutorLoader`. `useContractRegistry` (`nodes-integrations`) sets both at start, and
-`useNodeContractsRegistry` (`cli`) calls it with the n8n settings.
+The seams are two fields of the `HostRuntime` (`@n8n/node-sdk/src/runtime.ts`): `versionLoader` and
+`executorLoader`. `nodeContractsRuntime` (`cli`) makes one runtime with the n8n settings at start,
+and `contractNodeLoadersOf` gives it to the loader of each first-party package.
 
 ## Versions in one view
 

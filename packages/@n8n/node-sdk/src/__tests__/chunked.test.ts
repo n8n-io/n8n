@@ -5,7 +5,7 @@ import path from 'node:path';
 import type { INode } from 'n8n-workflow';
 
 import { freezeAction, type FrozenAction } from '../freeze';
-import type { ExecutorHost } from '../runtime';
+import { hostRuntime, type ExecutorHost } from '../runtime';
 import { WORKER_GUEST, workerRuntime } from '../runtimes/worker';
 import {
 	sandboxedVersionOf,
@@ -121,6 +121,7 @@ describe('chunked item runs', () => {
 				credentialType: () => undefined,
 				limits: { wallMs: 60_000 },
 			},
+			hostRuntime(),
 		);
 		return executor;
 	};

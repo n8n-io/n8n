@@ -4,11 +4,12 @@ import path from 'node:path';
 import type { IHttpRequestOptions } from 'n8n-workflow';
 
 import type { Action } from '../define';
-import { setPermissionRefusalListener, type PermissionRefusal } from '../egress';
+import type { PermissionRefusal } from '../egress';
 import { defineCredential, field } from '../entry/credentials';
 import { credentialTypesOf, freezeAction, GUEST_LACKS, type FrozenAction } from '../freeze';
 import {
 	executorOf,
+	hostRuntime,
 	loadExecutor,
 	nodeDescriptionOf,
 	toNodeType,
@@ -278,7 +279,7 @@ describe('the manifest as the permission source', () => {
 	});
 
 	it('loads a bundle that grants what its manifest grants', async () => {
-		await expect(loadExecutor(versionOf())).resolves.toBeTypeOf('function');
+		await expect(loadExecutor(versionOf(), hostRuntime())).resolves.toBeTypeOf('function');
 	});
 
 	it.each([
@@ -300,16 +301,15 @@ describe('the manifest as the permission source', () => {
 		],
 		['a scope', { scopes: ['x'] }, 'scopes: the bundle grants undefined, the manifest ["x"]'],
 	])('refuses a bundle whose manifest grants %s', async (_what, contract, difference) => {
-		await expect(loadExecutor(versionOf(contract))).rejects.toThrow(
+		await expect(loadExecutor(versionOf(contract), hostRuntime())).rejects.toThrow(
 			`The bundle of api.get@1.0.0 grants other permissions than its manifest. ${difference}`,
 		);
 	});
 
 	it('reports a refused bundle with its version', async () => {
 		const refusals: PermissionRefusal[] = [];
-		setPermissionRefusalListener((refusal) => refusals.push(refusal));
-		await expect(loadExecutor(versionOf({ imports: ['dataTables'] }))).rejects.toThrow();
-		setPermissionRefusalListener(undefined);
+		const runtime = hostRuntime({ onPermissionRefused: (refusal) => refusals.push(refusal) });
+		await expect(loadExecutor(versionOf({ imports: ['dataTables'] }), runtime)).rejects.toThrow();
 		expect(refusals).toEqual([
 			expect.objectContaining({ action: 'api.get', version: '1.0.0', permission: 'manifest' }),
 		]);
@@ -384,7 +384,7 @@ describe('the manifest of a trigger as the permission source', () => {
 			origin: 'first-party',
 			readBundle: async () => bundle,
 		};
-		const type = new (toVersionedTriggerType([version]))().getNodeType(1);
+		const type = new (toVersionedTriggerType([version], hostRuntime()))().getNodeType(1);
 		expect(type.description.properties.map(({ name, type: kind }) => [name, kind])).toEqual([
 			['options', 'collection'],
 		]);
@@ -407,7 +407,7 @@ describe('the manifest of a trigger as the permission source', () => {
 	});
 
 	it('loads a trigger bundle that grants what its manifest grants', async () => {
-		await expect(loadTriggerExecutor(versionOf())).resolves.toBeTypeOf('function');
+		await expect(loadTriggerExecutor(versionOf(), hostRuntime())).resolves.toBeTypeOf('function');
 	});
 
 	it.each([
@@ -419,11 +419,10 @@ describe('the manifest of a trigger as the permission source', () => {
 		['no signature', { verify: undefined }, 'checks another webhook signature than its manifest'],
 	])('refuses a trigger bundle whose manifest has %s', async (_what, contract, message) => {
 		const refusals: PermissionRefusal[] = [];
-		setPermissionRefusalListener((refusal) => refusals.push(refusal));
-		await expect(loadTriggerExecutor(versionOf(contract))).rejects.toThrow(
+		const runtime = hostRuntime({ onPermissionRefused: (refusal) => refusals.push(refusal) });
+		await expect(loadTriggerExecutor(versionOf(contract), runtime)).rejects.toThrow(
 			`The bundle of api.hooked@1.0.0 ${message}`,
 		);
-		setPermissionRefusalListener(undefined);
 		expect(refusals).toEqual([
 			expect.objectContaining({ action: 'api.hooked', version: '1.0.0', permission: 'manifest' }),
 		]);

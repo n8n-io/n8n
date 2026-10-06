@@ -1,37 +1,65 @@
-import { checkAction, lintContract, replyContractOf } from '@n8n/node-sdk/registry';
+import type { Trigger } from '@n8n/node-sdk';
+import { generatedTriggersOf, generatedTriggersOfEntry } from '@n8n/node-sdk/codegen';
+import {
+	checkAction,
+	contractCatalogOf,
+	lintContract,
+	replyContractOf,
+} from '@n8n/node-sdk/registry';
 
-import { actions, flowNatives, nativeTriggers, triggers } from '../index';
+import { bundledIdsOf, FIRST_PARTY_PACKAGES, sourceOf } from './first-party';
 
-describe('native triggers', () => {
-	it('run as legacy nodes, so nothing freezes or registers them', () => {
-		expect(nativeTriggers.map((trigger) => [trigger.id, trigger.kind])).toEqual([
-			['webhook.trigger', 'native'],
-			['schedule.trigger', 'native'],
-			['form.trigger', 'native'],
-			['whatsAppTrigger.trigger', 'native'],
-			['facebookTrigger.trigger', 'native'],
-			['googleSheetsTrigger.trigger', 'native'],
+const natives: Array<Awaited<ReturnType<typeof sourceOf>>['natives'][number]> = [];
+const triggers: Trigger[] = [];
+
+beforeAll(async () => {
+	const found = await Promise.all(FIRST_PARTY_PACKAGES.map(async (pkg) => await sourceOf(pkg)));
+	natives.push(...found.flatMap((pkg) => pkg.natives));
+	triggers.push(...found.flatMap((pkg) => pkg.triggers));
+});
+
+describe('native contracts', () => {
+	it('run as legacy nodes, so nothing bundles them', () => {
+		expect(natives.map(({ id, native }) => [id, native?.type]).sort()).toEqual([
+			['facebookTrigger.trigger', 'n8n-nodes-base.facebookTrigger'],
+			['form.trigger', 'n8n-nodes-base.formTrigger'],
+			['googleSheetsTrigger.trigger', 'n8n-nodes-base.googleSheetsTrigger'],
+			['loop.batches', 'n8n-nodes-base.splitInBatches'],
+			['manual.trigger', 'n8n-nodes-base.manualTrigger'],
+			['schedule.trigger', 'n8n-nodes-base.scheduleTrigger'],
+			['webhook.trigger', 'n8n-nodes-base.webhook'],
+			['whatsAppTrigger.trigger', 'n8n-nodes-base.whatsAppTrigger'],
 		]);
-		const frozen = new Set([...actions, ...triggers].map(({ id }) => id));
-		expect(nativeTriggers.filter(({ id }) => frozen.has(id))).toEqual([]);
+		const bundled = new Set(bundledIdsOf());
+		expect(natives.filter(({ id }) => bundled.has(id))).toEqual([]);
 	});
 
 	it('pass the checks of n8n-node-next check, and their replies the contract lint', () => {
-		const replies = nativeTriggers.flatMap((trigger) => {
-			const reply = trigger.kind === 'native' ? replyContractOf(trigger) : undefined;
+		const replies = natives.flatMap((native) => {
+			const reply =
+				'kind' in native && native.kind === 'native'
+					? replyContractOf(native satisfies Trigger)
+					: undefined;
 			return reply ? [reply] : [];
 		});
-		expect(replies.map(({ id }) => id)).toContain('webhook.respond');
-		expect([...nativeTriggers.flatMap(checkAction), ...replies.flatMap(lintContract)]).toEqual([]);
+		expect(replies.map(({ id }) => id).sort()).toEqual(['form.page', 'webhook.respond']);
+		expect([...natives.flatMap(checkAction), ...replies.flatMap(lintContract)]).toEqual([]);
 	});
 
-	it('include the flow natives, which run as legacy nodes too', () => {
-		expect(flowNatives.map(({ id, native }) => [id, native?.type])).toEqual([
-			['manual.trigger', 'n8n-nodes-base.manualTrigger'],
-			['loop.batches', 'n8n-nodes-base.splitInBatches'],
-		]);
-		const frozen = new Set([...actions, ...triggers].map(({ id }) => id));
-		expect(flowNatives.filter(({ id }) => frozen.has(id))).toEqual([]);
-		expect(flowNatives.flatMap(checkAction)).toEqual([]);
+	it('give the same module factories from the catalog as from the source', () => {
+		const { entries } = contractCatalogOf(FIRST_PARTY_PACKAGES);
+		const sources = [
+			...triggers,
+			...natives.filter((native): native is Trigger => 'kind' in native),
+		];
+		expect(sources.length).toBeGreaterThan(8);
+		const pairs = sources.map((trigger) => {
+			const entry = entries.find(({ manifest }) => manifest.id === trigger.id);
+			if (!entry) throw new Error(`${trigger.id} is not in the catalog`);
+			return [generatedTriggersOfEntry(entry), generatedTriggersOf(trigger, entry.nodeType)];
+		});
+		expect(pairs.map(([fromCatalog]) => fromCatalog)).toEqual(
+			pairs.map(([, fromSource]) => fromSource),
+		);
 	});
 });

@@ -1,18 +1,14 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
-import {
-	contractStore,
-	FIRST_PARTY_PACKAGES,
-	nodeTypeOf,
-	toolTypeOf,
-	versionsOf,
-	type InstanceStore,
-} from '@n8n/nodes-integrations';
+import { hostRuntime } from '@n8n/node-sdk/host';
+import { contractStore, embeddedContractsOf, type InstanceStore } from '@n8n/node-sdk/registry';
+import { FIRST_PARTY_PACKAGES, versionsOf } from '@test/first-party-contracts';
 import type { INode } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { nodeTypeOf } from '@/node-contracts-catalog';
 import { ContractNodeLoader, NodeContractsStore } from '@/node-contracts-registry';
 import { nodeGroupsForRun, pinNodeContracts, prepareNodeContractsRun } from '@/node-contracts-run';
 import { NodeContractsSync } from '@/node-contracts-sync';
@@ -66,6 +62,7 @@ describe('prepareNodeContractsRun', () => {
 describe('pinNodeContracts', () => {
 	const { instanceAi } = Container.get(GlobalConfig);
 	const emptyStore: InstanceStore = {
+		embedded: embeddedContractsOf(FIRST_PARTY_PACKAGES),
 		manifests: async () => [],
 		credentialManifests: async () => [],
 		has: async () => false,
@@ -90,18 +87,19 @@ describe('pinNodeContracts', () => {
 		parameters: {},
 		...extra,
 	});
-	const get = nodeOf('Get', nodeTypeOf({ id: 'httpRequest.get' }), 3);
-	const tool = nodeOf('Tool', toolTypeOf({ id: 'httpRequest.get' }), 3);
+	const get = nodeOf('Get', nodeTypeOf('httpRequest.get'), 3);
+	const tool = nodeOf('Tool', `${nodeTypeOf('httpRequest.get')}Tool`, 3);
 	const notion = nodeOf('Notion', 'n8n-nodes-base.notion', 4, {
 		parameters: { resource: 'databasePage', operation: 'getAll' },
 	});
-	const trigger = nodeOf('Trigger', nodeTypeOf({ id: 'github.repository.event' }), 1);
+	const trigger = nodeOf('Trigger', nodeTypeOf('github.repository.event'), 1);
 	const legacy = nodeOf('Set', 'n8n-nodes-base.set', 3);
 
 	beforeAll(async () => {
 		const loaders = FIRST_PARTY_PACKAGES.map(
 			(pkg) =>
 				new ContractNodeLoader(
+					hostRuntime(),
 					[],
 					[],
 					async () => ({ versions: async () => new Map(), credentials: async () => new Map() }),
@@ -124,6 +122,7 @@ describe('pinNodeContracts', () => {
 				keys: { firstParty: undefined, vetting: undefined },
 				store: emptyStore,
 				fetch: async () => new Response(null, { status: 404 }),
+				runsNodeContract: hostRuntime().runsNodeContract,
 			}),
 		);
 	});

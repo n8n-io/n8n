@@ -819,11 +819,11 @@ export const MANUAL_NODE = { type: 'n8n-nodes-base.manualTrigger', version: 1 };
 export const BRANCH_NODE = { type: '@n8n/nodes-core.conditionIf', version: 1 };
 export const SET_NODE = { type: '@n8n/nodes-core.itemsSet', version: 1 };
 /**
- * The first-party contract packages. Their names are the node type prefixes of their contracts.
- * This SDK cannot import `FIRST_PARTY_PACKAGES` of `@n8n/nodes-integrations`, so a test in
- * `@n8n/instance-ai` (`next-modules.test.ts`) checks that this list holds each of them.
+ * The first-party contract packages that n8n ships, in catalog order. Each name is the node type
+ * prefix of its contracts.
  */
-const CONTRACT_PACKAGES = ['@n8n/nodes-core', '@n8n/nodes-integrations'];
+// The list is here because the flow SDK names first-party node types, and every host reads it.
+export const FIRST_PARTY_PACKAGES = ['@n8n/nodes-core', '@n8n/nodes-integrations'] as const;
 
 /** The IF contract parameters of `when` for the compiled JavaScript of its condition. */
 export const branchParameters = (condition: string) => ({
@@ -2011,7 +2011,9 @@ export function contractStep<In, Ctx, Out, N extends string>(
 			type: id,
 			version,
 			sample,
-			...(CONTRACT_PACKAGES.some((name) => id.startsWith(`${name}.`)) ? { pinsSample: true } : {}),
+			...(FIRST_PARTY_PACKAGES.some((name) => id.startsWith(`${name}.`))
+				? { pinsSample: true }
+				: {}),
 			...(settings ? { settings } : {}),
 			...(requires ? { requires } : {}),
 			...(Object.keys(providers).length > 0 ? { providers } : {}),

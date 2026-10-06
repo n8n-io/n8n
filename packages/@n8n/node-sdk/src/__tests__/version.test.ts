@@ -7,10 +7,11 @@ import type { IExecuteFunctions, INodeExecutionData, ITaskMetadata } from 'n8n-w
 import { freezeAction, freezePackage, type FrozenAction } from '../freeze';
 import { generateNodeModule } from '../entry/codegen';
 import {
-	setContractVersionLoader,
-	setNodeContractRange,
+	hostRuntime,
+	nodeContractRangeOf,
 	toVersionedNodeType,
 	type FrozenVersion,
+	type HostRuntime,
 } from '../entry/host';
 import {
 	addedPermissionsOf,
@@ -45,13 +46,7 @@ import { isVersionManifest, parseStoreIndex, storeFilesOfDir, storeReader } from
 import { evaluateBundle } from '../runtime';
 import type { AnySchema } from '../schema';
 import type { MockRoute } from '../testing';
-import {
-	DEFAULT_NODE_CONTRACT_RANGE,
-	NODE_CONTRACT_VERSION,
-	requiredNodeContractOf,
-	semverRange,
-	sha256,
-} from '../version';
+import { NODE_CONTRACT_VERSION, requiredNodeContractOf, semverRange, sha256 } from '../version';
 
 const demo = defineNode({ id: 'demo', displayName: 'Demo' });
 const FLOW: ActionFlow = { effect: 'transform', cardinality: 'per-item' };
@@ -833,8 +828,12 @@ describe('resolveContractVersion', () => {
 });
 
 describe('published versions', () => {
-	const run = async (frozen: FrozenVersion, metadata: ITaskMetadata[] = []) => {
-		const NodeType = toVersionedNodeType([frozen]);
+	const run = async (
+		frozen: FrozenVersion,
+		metadata: ITaskMetadata[] = [],
+		runtime: HostRuntime = hostRuntime(),
+	) => {
+		const NodeType = toVersionedNodeType([frozen], runtime);
 		const result = await new NodeType().getNodeType(1).execute?.call(contextOf(metadata));
 		const [items = []]: INodeExecutionData[][] = Array.isArray(result) ? result : [];
 		return items.map((item) => item.json.text);
@@ -844,8 +843,6 @@ describe('published versions', () => {
 		origin: 'first-party',
 		readBundle: async () => bundle,
 	});
-
-	afterEach(() => setContractVersionLoader(async (_context, head) => head));
 
 	it('keep their behaviour when a shared helper changes', async () => {
 		const publish = async (fixtures: ContractFixtures) =>
@@ -907,9 +904,9 @@ describe('published versions', () => {
 		const head = await freezeAction(dirs.entry, 'echo', lastPublishedIn(indexOnly));
 		expect(head.manifest).toEqual(v101);
 		if (!old) throw new Error('1.0.0 is not published');
-		setContractVersionLoader(async () => frozenOf(old.manifest, old.bundle));
+		const pinned = hostRuntime({ versionLoader: async () => frozenOf(old.manifest, old.bundle) });
 		const metadata: ITaskMetadata[] = [];
-		expect(await run(frozenOf(head.manifest, head.bundle), metadata)).toEqual(['HELLO!']);
+		expect(await run(frozenOf(head.manifest, head.bundle), metadata, pinned)).toEqual(['HELLO!']);
 		expect(metadata).toEqual([
 			{
 				nodeContract: {
@@ -920,7 +917,6 @@ describe('published versions', () => {
 				},
 			},
 		]);
-		setContractVersionLoader(async (_context, bundled) => bundled);
 		expect(await run(frozenOf(head.manifest, head.bundle))).toEqual(['hello!?']);
 	});
 
@@ -946,14 +942,13 @@ describe('published versions', () => {
 			},
 		};
 
-		await expect(run(flaky)).rejects.toThrow('offline');
-		expect(await run(flaky)).toEqual(['hello!']);
+		const runtime = hostRuntime();
+		await expect(run(flaky, [], runtime)).rejects.toThrow('offline');
+		expect(await run(flaky, [], runtime)).toEqual(['hello!']);
 		expect(reads.count).toBe(2);
 	});
 
 	describe('nodeContract', () => {
-		afterEach(() => setNodeContractRange(DEFAULT_NODE_CONTRACT_RANGE));
-
 		it('is the version freezeAction writes: 2.1.0 without binary data', async () => {
 			await writeShout('text');
 			const { manifest } = await freeze();
@@ -989,8 +984,8 @@ describe('published versions', () => {
 		it('refuse a bundle outside the range, or of a minor this host lacks', async () => {
 			await writeShout('text');
 			const { manifest, bundle } = await freeze();
-			const typeOf = (nodeContract: NodeContractVersion) =>
-				toVersionedNodeType([frozenOf({ ...manifest, nodeContract }, bundle)]);
+			const typeOf = (nodeContract: NodeContractVersion, runtime = hostRuntime()) =>
+				toVersionedNodeType([frozenOf({ ...manifest, nodeContract }, bundle)], runtime);
 
 			expect(() => typeOf('3.0.0')).toThrow(
 				'demo.echo@1.0.0 needs Node Contract 3.0.0. This host runs >=2.0.0 <3.0.0 and implements 2.9.0.',
@@ -1007,14 +1002,15 @@ describe('published versions', () => {
 			expect(() => typeOf('2.1.0')).not.toThrow();
 			expect(() => typeOf('2.0.3')).not.toThrow();
 
-			setNodeContractRange('>=1.0.0 <3.0.0');
-			expect(() => typeOf('1.0.0')).toThrow(
+			expect(() => typeOf('1.0.0', hostRuntime({ nodeContractRange: '>=1.0.0 <3.0.0' }))).toThrow(
 				'needs Node Contract 1.0.0. This host runs >=1.0.0 <3.0.0 and implements 2.9.0.',
 			);
 			// The range also applies at run time, to a version the registry loader picks.
-			setNodeContractRange(DEFAULT_NODE_CONTRACT_RANGE);
-			const NodeType = typeOf('2.0.0');
-			setNodeContractRange('>=1.0.0 <2.0.0');
+			const picking = hostRuntime({
+				nodeContractRange: '>=2.1.0 <3.0.0',
+				versionLoader: async () => frozenOf({ ...manifest, nodeContract: '2.0.0' }, bundle),
+			});
+			const NodeType = typeOf('2.9.0', picking);
 			await expect(new NodeType().getNodeType(1).execute?.call(contextOf([]))).rejects.toThrow(
 				'needs Node Contract 2.0.0',
 			);
@@ -1081,7 +1077,7 @@ describe('semverRange', () => {
 	it('refuses a range it cannot read', () => {
 		expect(() => semverRange('^2.0.0')).toThrow('is not a semver range');
 		expect(() => semverRange('')).toThrow('is not a semver range');
-		expect(() => setNodeContractRange('>=2')).toThrow('is not a semver range');
+		expect(() => nodeContractRangeOf('>=2')).toThrow('is not a semver range');
 	});
 });
 

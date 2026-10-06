@@ -3122,6 +3122,9 @@ importers:
       '@n8n/node-sdk':
         specifier: workspace:*
         version: link:../node-sdk
+      '@n8n/nodes-core':
+        specifier: workspace:*
+        version: link:../nodes-core
       '@n8n/nodes-integrations':
         specifier: workspace:*
         version: link:../nodes-integrations
@@ -3766,15 +3769,9 @@ importers:
 
   packages/@n8n/nodes-integrations:
     dependencies:
-      '@n8n/node-contract-compat':
-        specifier: workspace:*
-        version: link:../node-contract-compat
       '@n8n/node-sdk':
         specifier: workspace:*
         version: link:../node-sdk
-      '@n8n/nodes-core':
-        specifier: workspace:*
-        version: link:../nodes-core
       n8n-workflow:
         specifier: workspace:*
         version: link:../../workflow
@@ -3782,6 +3779,9 @@ importers:
       '@n8n/eslint-config':
         specifier: workspace:*
         version: link:../eslint-config
+      '@n8n/nodes-core':
+        specifier: workspace:*
+        version: link:../nodes-core
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
@@ -4898,9 +4898,18 @@ importers:
       '@n8n/n8n-nodes-langchain':
         specifier: workspace:*
         version: link:../@n8n/nodes-langchain
+      '@n8n/node-contract-compat':
+        specifier: workspace:*
+        version: link:../@n8n/node-contract-compat
       '@n8n/node-engine-compatibility':
         specifier: workspace:*
         version: link:../@n8n/node-engine-compatibility
+      '@n8n/node-sdk':
+        specifier: workspace:*
+        version: link:../@n8n/node-sdk
+      '@n8n/nodes-core':
+        specifier: workspace:*
+        version: link:../@n8n/nodes-core
       '@n8n/nodes-integrations':
         specifier: workspace:*
         version: link:../@n8n/nodes-integrations

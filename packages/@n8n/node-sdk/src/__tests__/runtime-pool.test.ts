@@ -5,7 +5,7 @@ import path from 'node:path';
 import type { INode } from 'n8n-workflow';
 
 import { freezeAction } from '../freeze';
-import type { ExecutorHost } from '../runtime';
+import { hostRuntime, type ExecutorHost } from '../runtime';
 import { pooledRuntime } from '../runtimes/pool';
 import {
 	sandboxedVersionOf,
@@ -220,6 +220,7 @@ describe.skipIf(!existsSync(SIDECAR) || !existsSync(path.join(GUESTS, 'action.wa
 					credentialType: () => undefined,
 					limits: { cpuMs: 1_000, memoryMb: 64, wallMs: 20_000 },
 				},
+				hostRuntime(),
 			);
 			const host: ExecutorHost = {
 				items: [{ json: {} }],
