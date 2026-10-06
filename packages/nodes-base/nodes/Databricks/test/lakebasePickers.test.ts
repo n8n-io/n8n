@@ -550,6 +550,36 @@ describe('resolveLakebaseRestBase', () => {
 	});
 });
 
+describe('resolveLakebaseRestBase memo', () => {
+	it('resolves each project and branch pair once per context', async () => {
+		const context = createExecuteContext(defaultLocators());
+		apiMock(context).mockResolvedValue(endpointsResponse);
+
+		await resolveLakebaseRestBase(context, 'spike-test', 'production');
+		await resolveLakebaseRestBase(context, 'spike-test', 'production');
+		await resolveLakebaseRestBase(context, 'spike-test', 'staging');
+		expect(apiMock(context)).toHaveBeenCalledTimes(2);
+
+		const otherRun = createExecuteContext(defaultLocators());
+		apiMock(otherRun).mockResolvedValue(endpointsResponse);
+		await resolveLakebaseRestBase(otherRun, 'spike-test', 'production');
+		expect(apiMock(otherRun)).toHaveBeenCalledTimes(1);
+	});
+
+	it('does not keep a failed lookup', async () => {
+		const context = createExecuteContext(defaultLocators());
+		apiMock(context)
+			.mockRejectedValueOnce(apiErrorFromBody(503, {}))
+			.mockResolvedValueOnce(endpointsResponse);
+
+		await expect(resolveLakebaseRestBase(context, 'spike-test', 'production')).rejects.toThrow();
+		await expect(resolveLakebaseRestBase(context, 'spike-test', 'production')).resolves.toBe(
+			REST_BASE,
+		);
+		expect(apiMock(context)).toHaveBeenCalledTimes(2);
+	});
+});
+
 describe('resolveLakebaseSchemaUrl', () => {
 	it('reads the four locators of the item and returns the encoded schema URL', async () => {
 		const context = createExecuteContext({ ...defaultLocators(), lakebaseSchema: 'my schema' });

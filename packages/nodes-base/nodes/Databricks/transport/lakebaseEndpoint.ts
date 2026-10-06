@@ -16,8 +16,29 @@ type EndpointsResponse = {
 
 const HOSTNAME = /^[A-Za-z0-9.-]+$/;
 
+// A context lives for one node execution or one picker request, so this memo lasts exactly that long
+const memo = new WeakMap<DatabricksContext, Map<string, Promise<string>>>();
+
 /** Data API base of the branch: `https://{read-write endpoint host}/api/2.0/workspace/{workspace id}/rest` */
 export async function resolveLakebaseRestBase(
+	context: DatabricksContext,
+	project: string,
+	branch: string,
+): Promise<string> {
+	let cache = memo.get(context);
+	if (!cache) memo.set(context, (cache = new Map()));
+	const key = `${project}\0${branch}`;
+	let pending = cache.get(key);
+	if (!pending) {
+		pending = fetchLakebaseRestBase(context, project, branch);
+		cache.set(key, pending);
+		// A failed lookup is not pinned on the run, so the next item asks Databricks again
+		pending.catch(() => cache.delete(key));
+	}
+	return await pending;
+}
+
+async function fetchLakebaseRestBase(
 	context: DatabricksContext,
 	project: string,
 	branch: string,
