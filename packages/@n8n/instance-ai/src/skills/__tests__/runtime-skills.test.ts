@@ -648,6 +648,22 @@ describe('warmRuntimeSkills', () => {
 		expect(preparedInsideSpan).toBe(true);
 	});
 
+	it('keeps the chat trace open until the background preparation settles', () => {
+		const preparation = Promise.resolve();
+		const keepOpenUntilSettled = vi.fn();
+		const tracing = {
+			actorRun: { id: 'actor-run' },
+			withActiveSpan: vi.fn(async () => await preparation),
+			keepOpenUntilSettled,
+		};
+
+		warmRuntimeSkills({ registry, prepare: vi.fn(), loadSkill: vi.fn() } as never, {
+			tracing: tracing as never,
+		});
+
+		expect(keepOpenUntilSettled).toHaveBeenCalledWith(tracing.withActiveSpan.mock.results[0].value);
+	});
+
 	it('prepares the source without a span when tracing is off', async () => {
 		const prepare = vi.fn(async () => {});
 

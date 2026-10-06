@@ -70,7 +70,8 @@ export function hasRuntimeSkills(
 /**
  * Prepare the skill source in the background so it overlaps with the first model
  * call. load_skill awaits the same promise and retries if this one fails. It runs
- * in the actor span so the sandbox spans stay in the chat trace.
+ * in the actor span, and keeps the trace open until it settles, so the sandbox
+ * spans stay in the chat trace even when the reply finishes first.
  */
 export function warmRuntimeSkills(
 	source: RuntimeSkillSource,
@@ -82,6 +83,7 @@ export function warmRuntimeSkills(
 	const preparation = tracing
 		? tracing.withActiveSpan(tracing.actorRun, async () => await prepare.call(source))
 		: prepare.call(source);
+	tracing?.keepOpenUntilSettled?.(preparation);
 	preparation.catch((error: unknown) => {
 		logger?.warn('Failed to warm runtime skills in the background', {
 			error: getErrorMessage(error),
