@@ -57,7 +57,7 @@ const apiErrorFromBody = (status: number, data: unknown) =>
 	);
 
 const endpointsPage = {
-	endpoints: [{ status: { endpoint_type: 'READ_WRITE', hosts: { host: EP_HOST } } }],
+	endpoints: [{ status: { endpoint_type: 'ENDPOINT_TYPE_READ_WRITE', hosts: { host: EP_HOST } } }],
 };
 const meResponse = { body: {}, headers: { 'x-databricks-org-id': WORKSPACE_ID }, statusCode: 200 };
 
@@ -76,6 +76,7 @@ const createLoadOptionsContext = (params: Record<string, Locator> = {}) => {
 
 const createExecuteContext = (locators: Record<string, string>) => {
 	const context = mockDeep<IExecuteFunctions>();
+	// Also satisfies the `'getInputData' in context` guard in getActiveCredentialType
 	context.getInputData.mockReturnValue([]);
 	context.getCredentials.mockResolvedValue({ host: HOST });
 	context.getNode.mockReturnValue(node);
@@ -101,6 +102,7 @@ const project = (value: string): Locator => ({ mode: 'list', value });
 const selectedProject = { lakebaseProject: project('spike-test') };
 const selectedBranch = { ...selectedProject, lakebaseBranch: project('production') };
 const selectedDatabase = { ...selectedBranch, lakebaseDatabase: project('databricks_postgres') };
+const selectedSchema = { ...selectedDatabase, lakebaseSchema: project('public') };
 
 describe('listSearch -> getLakebaseProjects', () => {
 	const projectsPage = {
@@ -186,14 +188,17 @@ describe('listSearch -> getLakebaseProjects', () => {
 });
 
 describe('listSearch -> getLakebaseBranches', () => {
-	it('asks for a project first', async () => {
-		const context = createLoadOptionsContext();
+	it.each<Record<string, Locator>>([{}, { lakebaseProject: project('') }])(
+		'asks for a project first (%j)',
+		async (params) => {
+			const context = createLoadOptionsContext(params);
 
-		const result = await getLakebaseBranches.call(context);
+			const result = await getLakebaseBranches.call(context);
 
-		expect(result).toEqual({ results: [{ name: 'Please Select a Project First', value: '' }] });
-		expect(apiMock(context)).not.toHaveBeenCalled();
-	});
+			expect(result).toEqual({ results: [{ name: 'Please Select a Project First', value: '' }] });
+			expect(apiMock(context)).not.toHaveBeenCalled();
+		},
+	);
 
 	it('lists branches of the selected project with the default branch first and hands back the next token', async () => {
 		const context = createLoadOptionsContext(selectedProject);
@@ -242,6 +247,7 @@ describe('listSearch -> getLakebaseDatabases', () => {
 	it.each([
 		[{}, 'Please Select a Project First'],
 		[selectedProject, 'Please Select a Branch First'],
+		[{ ...selectedProject, lakebaseBranch: project('') }, 'Please Select a Branch First'],
 	])('asks for a project, then a branch', async (params, placeholder) => {
 		const context = createLoadOptionsContext(params);
 
@@ -297,9 +303,6 @@ describe('listSearch -> getLakebaseTables', () => {
 			schemas: {
 				orders: {},
 				databricks_auth_metrics: {},
-				pg_databricks_x: {},
-				_dbx_y: {},
-				grant_z: {},
 				my_databricks_sync: {},
 				customers: {},
 			},
@@ -315,7 +318,9 @@ describe('listSearch -> getLakebaseTables', () => {
 		[{}, 'Please Select a Project First'],
 		[selectedProject, 'Please Select a Branch First'],
 		[selectedBranch, 'Please Select a Database First'],
-	])('asks for a project, branch and database first', async (params, placeholder) => {
+		[{ ...selectedBranch, lakebaseDatabase: project('') }, 'Please Select a Database First'],
+		[selectedDatabase, 'Please Select a Schema First'],
+	])('asks for a project, branch, database and schema first', async (params, placeholder) => {
 		const context = createLoadOptionsContext(params);
 
 		const result = await getLakebaseTables.call(context);
@@ -325,7 +330,7 @@ describe('listSearch -> getLakebaseTables', () => {
 	});
 
 	it('refuses personal access token auth before any request', async () => {
-		const context = createLoadOptionsContext(selectedDatabase);
+		const context = createLoadOptionsContext(selectedSchema);
 		context.getNodeParameter.mockReturnValue('accessToken');
 
 		const promise = getLakebaseTables.call(context);
@@ -333,13 +338,13 @@ describe('listSearch -> getLakebaseTables', () => {
 		await expect(promise).rejects.toBeInstanceOf(NodeOperationError);
 		await expect(promise).rejects.toMatchObject({
 			message:
-				'Lakebase requires OAuth2 authentication. Set Authentication to OAuth2 to list tables, or enter the table name By ID.',
+				'Set Authentication to OAuth2 to list Lakebase tables, or enter the table name By ID',
 		});
 		expect(apiMock(context)).not.toHaveBeenCalled();
 	});
 
 	it('lists the tables of the schema document, skipping internal objects', async () => {
-		const context = createLoadOptionsContext(selectedDatabase);
+		const context = createLoadOptionsContext(selectedSchema);
 		mockChain(context, schemaDocument);
 
 		const result = await getLakebaseTables.call(context);
@@ -363,19 +368,6 @@ describe('listSearch -> getLakebaseTables', () => {
 		});
 	});
 
-	it('defaults the schema to public when none is selected', async () => {
-		const context = createLoadOptionsContext(selectedDatabase);
-		mockChain(context, {});
-
-		await getLakebaseTables.call(context);
-
-		expect(apiMock(context)).toHaveBeenNthCalledWith(
-			3,
-			'databricksOAuth2Api',
-			expect.objectContaining({ url: expect.stringMatching(/\/public\/openapi\.json$/) }),
-		);
-	});
-
 	it('uses the selected schema and encodes it', async () => {
 		const context = createLoadOptionsContext({
 			...selectedDatabase,
@@ -393,7 +385,7 @@ describe('listSearch -> getLakebaseTables', () => {
 	});
 
 	it('filters the table list', async () => {
-		const context = createLoadOptionsContext(selectedDatabase);
+		const context = createLoadOptionsContext(selectedSchema);
 		mockChain(context, schemaDocument);
 
 		const { results } = await getLakebaseTables.call(context, 'ord');
@@ -402,7 +394,7 @@ describe('listSearch -> getLakebaseTables', () => {
 	});
 
 	it('rewrites a PGRST205 error to name the OpenAPI specification setting', async () => {
-		const context = createLoadOptionsContext(selectedDatabase);
+		const context = createLoadOptionsContext(selectedSchema);
 		const error = apiErrorFromBody(404, {
 			code: 'PGRST205',
 			message: "Could not find the table 'public.openapi.json' in the schema cache",
@@ -425,9 +417,9 @@ describe('listSearch -> getLakebaseTables', () => {
 	});
 
 	it('rethrows other Data API errors untouched', async () => {
-		const context = createLoadOptionsContext(selectedDatabase);
+		const context = createLoadOptionsContext(selectedSchema);
 		const error = apiErrorFromBody(401, { code: 'PGRST301', message: 'invalid token permissions' });
-		const originalMessage = error.message;
+		const { message: originalMessage, description: originalDescription } = error;
 		apiMock(context)
 			.mockResolvedValueOnce(endpointsPage)
 			.mockResolvedValueOnce(meResponse)
@@ -436,10 +428,11 @@ describe('listSearch -> getLakebaseTables', () => {
 		await expect(getLakebaseTables.call(context)).rejects.toBe(error);
 
 		expect(error.message).toBe(originalMessage);
+		expect(error.description).toBe(originalDescription);
 	});
 
 	it('surfaces a legible PERMISSION_DENIED from the endpoints lookup', async () => {
-		const context = createLoadOptionsContext(selectedDatabase);
+		const context = createLoadOptionsContext(selectedSchema);
 		apiMock(context).mockRejectedValueOnce(
 			apiErrorFromBody(403, { error_code: 'PERMISSION_DENIED', message: PERMISSION_MESSAGE }),
 		);
@@ -451,7 +444,7 @@ describe('listSearch -> getLakebaseTables', () => {
 	});
 
 	it('returns no rows for a document without schemas', async () => {
-		const context = createLoadOptionsContext(selectedDatabase);
+		const context = createLoadOptionsContext(selectedSchema);
 		mockChain(context, {});
 
 		const result = await getLakebaseTables.call(context);
@@ -461,13 +454,13 @@ describe('listSearch -> getLakebaseTables', () => {
 });
 
 describe('resolveLakebaseRestBase', () => {
-	it('builds the base from the READ_WRITE endpoint host and the workspace id header', async () => {
+	it('builds the base from the ENDPOINT_TYPE_READ_WRITE endpoint host and the workspace id header', async () => {
 		const context = createExecuteContext(defaultLocators());
 		apiMock(context)
 			.mockResolvedValueOnce({
 				endpoints: [
-					{ status: { endpoint_type: 'READ_ONLY', hosts: { host: 'ro.example' } } },
-					{ status: { endpoint_type: 'READ_WRITE', hosts: { host: EP_HOST } } },
+					{ status: { endpoint_type: 'ENDPOINT_TYPE_READ_ONLY', hosts: { host: 'ro.example' } } },
+					{ status: { endpoint_type: 'ENDPOINT_TYPE_READ_WRITE', hosts: { host: EP_HOST } } },
 				],
 			})
 			.mockResolvedValueOnce(meResponse);
@@ -512,8 +505,12 @@ describe('resolveLakebaseRestBase', () => {
 		{},
 		{ endpoints: [] },
 		{ endpoints: [{ status: {} }] },
-		{ endpoints: [{ status: { endpoint_type: 'READ_ONLY', hosts: { host: 'ro.example' } } }] },
-		{ endpoints: [{ status: { endpoint_type: 'READ_WRITE', hosts: {} } }] },
+		{
+			endpoints: [
+				{ status: { endpoint_type: 'ENDPOINT_TYPE_READ_ONLY', hosts: { host: 'ro.example' } } },
+			],
+		},
+		{ endpoints: [{ status: { endpoint_type: 'ENDPOINT_TYPE_READ_WRITE', hosts: {} } }] },
 	])('fails when the branch has no read-write endpoint with a host (%j)', async (page) => {
 		const context = createExecuteContext(defaultLocators());
 		apiMock(context).mockResolvedValueOnce(page);
@@ -532,7 +529,7 @@ describe('resolveLakebaseRestBase', () => {
 		async (host) => {
 			const context = createExecuteContext(defaultLocators());
 			apiMock(context).mockResolvedValueOnce({
-				endpoints: [{ status: { endpoint_type: 'READ_WRITE', hosts: { host } } }],
+				endpoints: [{ status: { endpoint_type: 'ENDPOINT_TYPE_READ_WRITE', hosts: { host } } }],
 			});
 
 			await expect(resolveLakebaseRestBase(context, 'spike-test', 'production')).rejects.toThrow(

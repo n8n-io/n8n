@@ -93,7 +93,8 @@ export const lakebaseParameters: INodeProperties[] = [
 		type: 'resourceLocator',
 		default: { mode: 'list', value: 'public', cachedResultName: 'public' },
 		required: true,
-		description: 'The Postgres schema. Enter other schemas than public By ID.',
+		description:
+			'The Postgres schema. To use a schema other than public, select By ID and enter its name.',
 		displayOptions: {
 			show: showForLakebase,
 		},

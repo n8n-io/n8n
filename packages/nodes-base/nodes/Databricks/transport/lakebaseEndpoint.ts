@@ -31,8 +31,8 @@ export async function resolveLakebaseRestBase(
 		headers: { Accept: 'application/json' },
 		json: true,
 	});
-	const endpointHost = endpoints.find((e) => e.status?.endpoint_type === 'READ_WRITE')?.status
-		?.hosts?.host;
+	const endpointHost = endpoints.find((e) => e.status?.endpoint_type === 'ENDPOINT_TYPE_READ_WRITE')
+		?.status?.hosts?.host;
 	if (!endpointHost) {
 		throw new NodeOperationError(
 			context.getNode(),

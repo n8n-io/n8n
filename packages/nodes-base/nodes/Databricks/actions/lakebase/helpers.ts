@@ -9,8 +9,8 @@ function readLocator(
 	name: string,
 	label: string,
 ): string {
-	const value = String(context.getNodeParameter(name, itemIndex, '', { extractValue: true }));
-	if (!value) {
+	const value = context.getNodeParameter(name, itemIndex, '', { extractValue: true });
+	if (typeof value !== 'string' || !value) {
 		throw new NodeOperationError(context.getNode(), `Select a Lakebase ${label}`, { itemIndex });
 	}
 	return value;

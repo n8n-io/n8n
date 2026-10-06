@@ -566,20 +566,12 @@ export async function getRuns(
 }
 
 const LAKEBASE_PAGE_SIZE = 100;
-const INTERNAL_TABLE_PREFIX = /^(databricks_|pg_databricks_|_dbx_|grant_)/;
-
-type LakebaseListItem = { name: string; value: string; description?: string };
+// Internal tables the Data API lists under Ignore privileges; a user table named databricks_* is still reachable By ID
+const INTERNAL_TABLE_PREFIX = /^databricks_/;
 
 function getSelectedLakebaseTarget(context: ILoadOptionsFunctions) {
-	const read = (name: string) => {
-		try {
-			return (
-				extractResourceLocatorValue(context.getCurrentNodeParameter(name) as unknown) || undefined
-			);
-		} catch {
-			return undefined;
-		}
-	};
+	const read = (name: string) =>
+		extractResourceLocatorValue(context.getCurrentNodeParameter(name)) || undefined;
 	return {
 		project: read('lakebaseProject'),
 		branch: read('lakebaseBranch'),
@@ -588,10 +580,13 @@ function getSelectedLakebaseTarget(context: ILoadOptionsFunctions) {
 	};
 }
 
-const byText = (filter: string | undefined) => (item: LakebaseListItem) =>
-	!filter ||
-	item.name.toLowerCase().includes(filter.toLowerCase()) ||
-	item.value.toLowerCase().includes(filter.toLowerCase());
+const byText = (filter: string | undefined) => {
+	const needle = filter?.toLowerCase();
+	return (item: { name: string; value: string }) =>
+		!needle ||
+		item.name.toLowerCase().includes(needle) ||
+		item.value.toLowerCase().includes(needle);
+};
 
 async function fetchLakebasePage<T>(
 	context: ILoadOptionsFunctions,
@@ -641,7 +636,7 @@ export async function getLakebaseBranches(
 	}>(this, `/api/2.0/postgres/projects/${encodeURIComponent(project)}/branches`, paginationToken);
 	// Locators cannot preselect, so the default branch leads the list instead
 	const results = (page.branches ?? [])
-		.sort((a, b) => Number(Boolean(b.status?.default)) - Number(Boolean(a.status?.default)))
+		.sort((a, b) => (b.status?.default ? 1 : 0) - (a.status?.default ? 1 : 0))
 		.map((b) => ({
 			name: b.branch_id,
 			value: b.branch_id,
@@ -691,7 +686,7 @@ export async function getLakebaseTables(
 	this: ILoadOptionsFunctions,
 	filter?: string,
 ): Promise<INodeListSearchResult> {
-	const { project, branch, database, schema = 'public' } = getSelectedLakebaseTarget(this);
+	const { project, branch, database, schema } = getSelectedLakebaseTarget(this);
 	if (!project) {
 		return { results: [{ name: 'Please Select a Project First', value: '' }] };
 	}
@@ -701,10 +696,13 @@ export async function getLakebaseTables(
 	if (!database) {
 		return { results: [{ name: 'Please Select a Database First', value: '' }] };
 	}
+	if (!schema) {
+		return { results: [{ name: 'Please Select a Schema First', value: '' }] };
+	}
 	if (getActiveCredentialType(this) === 'databricksApi') {
 		throw new NodeOperationError(
 			this.getNode(),
-			'Lakebase requires OAuth2 authentication. Set Authentication to OAuth2 to list tables, or enter the table name By ID.',
+			'Set Authentication to OAuth2 to list Lakebase tables, or enter the table name By ID',
 		);
 	}
 
