@@ -3,7 +3,7 @@ import { ensureError } from '@n8n/utils/errors/ensure-error';
 
 import { backoff } from './backoff';
 import { LeaseLostError } from '../errors';
-import { LONG_RUN_THRESHOLD_IN_LEASES } from './lease-constants';
+import { LONG_RUN_THRESHOLD_IN_LEASES, MIN_RENEWAL_INTERVAL_MS } from './lease-constants';
 import { LeaseHeartbeat } from './lease-heartbeat';
 import type { LeaseRenewalResult } from './lease-heartbeat';
 import { DEFAULT_EXECUTOR_OPTIONS, type ExecutorOptions } from './options';
@@ -36,6 +36,15 @@ export interface ExecutorHooks {
 	 * raised once, at construction.
 	 */
 	onLeaseShorterThanLookahead?: (context: { lookaheadMs: number; leaseMs: number }) => void;
+
+	/**
+	 * The lease is too short to be renewed, so a task that runs longer than the
+	 * lease may be stopped and run again. Raised once, at construction.
+	 */
+	onLeaseShorterThanRenewalInterval?: (context: {
+		leaseMs: number;
+		minRenewalIntervalMs: number;
+	}) => void;
 
 	/**
 	 * A claimed task's type had no handler at fire time (e.g. a rolling restart
@@ -148,6 +157,13 @@ export class Executor {
 			this.hooks.onLeaseShorterThanLookahead?.({
 				lookaheadMs: this.lookaheadMs,
 				leaseMs: this.leaseMs,
+			});
+		}
+
+		if (this.leaseMs <= MIN_RENEWAL_INTERVAL_MS) {
+			this.hooks.onLeaseShorterThanRenewalInterval?.({
+				leaseMs: this.leaseMs,
+				minRenewalIntervalMs: MIN_RENEWAL_INTERVAL_MS,
 			});
 		}
 	}

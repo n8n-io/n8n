@@ -404,7 +404,7 @@ The design leans on a few ideas working together.
   its runs forever. While a handler runs, a heartbeat renews its lease every quarter
   of the lease, but never more often than every five seconds, so a long run keeps
   its claim while its renewals succeed. A lease of five seconds or less
-  expires before its first renewal, and n8n warns about it at startup.
+  expires before its first renewal, and the scheduler warns about it at startup.
   If a renewal finds the claim gone, or no renewal succeeds for a whole lease, the
   handler's signal aborts, unless the run is already recorded as dispatched.
   A handler that stops on this abort uses up an attempt, as when the reaper takes
@@ -553,7 +553,7 @@ A few things that are not obvious from the code but save a lot of confusion.
   All three default to no-ops, and a throwing hook is swallowed so a broken logger
   or exporter can never break the scheduling it was only meant to observe.
 
-- **Two event-sink warnings tell an operator their timing is off.** Both arrive
+- **Three event-sink warnings tell an operator their timing is off.** All arrive
   through the event sink at `warn` level, so they land in the host's logs:
   - a **clock-skew warning** at start-up. Due-ness and leases are judged on the
     clock the scheduler coordinates on (the host supplies it via `now`, e.g. the
@@ -568,6 +568,9 @@ A few things that are not obvious from the code but save a lot of confusion.
     `DEFAULT_DISPATCH_LAG_WARN_THRESHOLD_SECONDS` (default `30s`) past its scheduled
     time, once per late fire. This flags a genuinely late dispatch (a blocked event
     loop, a skewed clock), not routine sub-second jitter.
+  - a **short-lease warning** at start-up when the lease is
+    `MIN_RENEWAL_INTERVAL_MS` (`5s`) or shorter. Such a lease expires before its
+    first renewal, so every run longer than the lease loses its claim.
 
 - **Runs are recorded ahead of time, within a window.** Because upcoming runs are
   queued in advance, a frequent schedule does not need one planning pass per fire.

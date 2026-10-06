@@ -43,6 +43,7 @@ const setup = (options?: Partial<ExecutorOptions>) => {
 	const timer = mock<PrecisionTimer>();
 	const hooks = {
 		onLeaseShorterThanLookahead: vi.fn(),
+		onLeaseShorterThanRenewalInterval: vi.fn(),
 		onMissingHandler: vi.fn(),
 		onFireError: vi.fn(),
 		onReleaseError: vi.fn(),
@@ -91,6 +92,22 @@ describe('Executor construction', () => {
 		const { hooks } = setup();
 
 		expect(hooks.onLeaseShorterThanLookahead).not.toHaveBeenCalled();
+	});
+
+	it('flags a lease that ends before its first renewal, once, at construction', () => {
+		const { hooks } = setup({ leaseSeconds: 5, lookaheadSeconds: 1 });
+
+		expect(hooks.onLeaseShorterThanRenewalInterval).toHaveBeenCalledTimes(1);
+		expect(hooks.onLeaseShorterThanRenewalInterval).toHaveBeenCalledWith({
+			leaseMs: 5_000,
+			minRenewalIntervalMs: 5_000,
+		});
+	});
+
+	it('stays silent when the lease renews before it ends', () => {
+		const { hooks } = setup({ leaseSeconds: 6, lookaheadSeconds: 1 });
+
+		expect(hooks.onLeaseShorterThanRenewalInterval).not.toHaveBeenCalled();
 	});
 });
 
