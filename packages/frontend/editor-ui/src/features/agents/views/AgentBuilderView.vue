@@ -346,13 +346,21 @@ const queuedAiHandoff = ref<{
 	context: InstanceAiHandoffContext;
 	initialDraft?: PendingComposerDraft;
 	onAccepted?: () => void;
+	resolve: (accepted: boolean) => void;
 } | null>(null);
+function cancelQueuedAiHandoff() {
+	const queued = queuedAiHandoff.value;
+	queuedAiHandoff.value = null;
+	queued?.resolve(false);
+}
+watch([projectId, agentId], cancelQueuedAiHandoff);
 watch(aiPanelRef, (panel) => {
 	if (!panel || !queuedAiHandoff.value) return;
-	const { context, initialDraft, onAccepted } = queuedAiHandoff.value;
+	const { context, initialDraft, onAccepted, resolve } = queuedAiHandoff.value;
 	queuedAiHandoff.value = null;
 	const handed = panel.handoff(context, initialDraft);
 	if (handed) onAccepted?.();
+	resolve(handed);
 });
 
 async function handoffToAssistantPanel(
@@ -372,8 +380,11 @@ async function handoffToAssistantPanel(
 		onAccepted?.();
 		if (isPreviewActive.value) closePreviewDock();
 	} else {
-		queuedAiHandoff.value = { context, initialDraft, onAccepted };
-		closePreviewDock();
+		cancelQueuedAiHandoff();
+		return await new Promise<boolean>((resolve) => {
+			queuedAiHandoff.value = { context, initialDraft, onAccepted, resolve };
+			closePreviewDock();
+		});
 	}
 	return true;
 }
@@ -387,19 +398,18 @@ function onCredentialHelpRequested(request: AgentCredentialHelpRequest) {
 		return;
 	}
 	request.handle = async () => {
-		const accepted = await handoffToAssistantPanel(
+		return await handoffToAssistantPanel(
 			buildInstanceAiCredentialHandoffContext(request.credential),
 			{
 				text: buildInstanceAiCredentialQuestion(request.credential),
 				prefillType: 'handoff_credential_setup',
 			},
+			() => {
+				for (const { key } of AGENTS_MODALS) {
+					if (uiStore.modalsById[key]?.open) uiStore.closeModal(key);
+				}
+			},
 		);
-		if (accepted) {
-			for (const { key } of AGENTS_MODALS) {
-				if (uiStore.modalsById[key]?.open) uiStore.closeModal(key);
-			}
-		}
-		return accepted;
 	};
 }
 agentsEventBus.on('credentialHelpRequested', onCredentialHelpRequested);
@@ -2664,6 +2674,7 @@ useEventListener(window, 'beforeunload', () => {
 
 onBeforeUnmount(async () => {
 	disposed = true;
+	cancelQueuedAiHandoff();
 	latestSessionsFetchRequestId++;
 	agentsEventBus.off('agentUpdated', onExternalAgentUpdated);
 	agentsEventBus.off('credentialHelpRequested', onCredentialHelpRequested);

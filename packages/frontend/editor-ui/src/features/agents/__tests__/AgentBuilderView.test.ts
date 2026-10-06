@@ -1485,6 +1485,60 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 		},
 	);
 
+	it.each([true, false])(
+		'waits for queued credential help before closing configuration dialogs (accepted: %s)',
+		async (accepted) => {
+			routeState.name = AGENT_PREVIEW_VIEW;
+			handoffMock.mockReturnValueOnce(accepted);
+			modalsByIdMock[AGENT_TOOL_CONFIG_MODAL_KEY] = { open: true };
+			const wrapper = await renderView();
+			const request: AgentCredentialHelpRequest = {
+				projectId: 'p1',
+				agentId: 'a1',
+				credential: { credentialType: 'openAiApi', displayName: 'OpenAI' },
+			};
+			agentsEventBus.emit('credentialHelpRequested', request);
+			const result = request.handle?.();
+			const settled = vi.fn();
+			void result?.then(settled);
+			await flushPromises();
+
+			expect(routerPush).toHaveBeenCalledWith(
+				expect.objectContaining({ name: AGENT_BUILDER_VIEW }),
+			);
+			expect(handoffMock).not.toHaveBeenCalled();
+			expect(closeModalMock).not.toHaveBeenCalled();
+			expect(settled).not.toHaveBeenCalled();
+
+			routeState.name = AGENT_BUILDER_VIEW;
+			await flushPromises();
+
+			expect(await result).toBe(accepted);
+			expect(wrapper.find('[data-testid="agent-ai-dock"]').exists()).toBe(true);
+			expect(handoffMock).toHaveBeenCalledOnce();
+			expect(closeModalMock).toHaveBeenCalledTimes(accepted ? 1 : 0);
+			if (accepted) expect(closeModalMock).toHaveBeenCalledWith(AGENT_TOOL_CONFIG_MODAL_KEY);
+		},
+	);
+
+	it('refuses queued credential help when its builder unmounts', async () => {
+		routeState.name = AGENT_PREVIEW_VIEW;
+		const wrapper = await renderView();
+		const request: AgentCredentialHelpRequest = {
+			projectId: 'p1',
+			agentId: 'a1',
+			credential: { credentialType: 'openAiApi', displayName: 'OpenAI' },
+		};
+		agentsEventBus.emit('credentialHelpRequested', request);
+		const result = request.handle?.();
+		await flushPromises();
+		wrapper.unmount();
+
+		expect(await result).toBe(false);
+		expect(handoffMock).not.toHaveBeenCalled();
+		expect(closeModalMock).not.toHaveBeenCalled();
+	});
+
 	it('ignores credential help for another Agent and after the builder unmounts', async () => {
 		const wrapper = await renderView();
 		const request: AgentCredentialHelpRequest = {
