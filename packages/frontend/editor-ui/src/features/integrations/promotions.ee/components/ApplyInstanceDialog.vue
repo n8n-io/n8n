@@ -45,25 +45,27 @@ function onOpenChange(value: boolean) {
 }
 
 function reportApplied(result: AppliedResult) {
-	const { workflows } = result.counts;
+	const { projects, workflows } = result.counts;
 	const notPublished = workflows.publishing.failed + workflows.publishing.blocked;
-	const summary = i18n.baseText('settings.promotions.apply.toast.success.message', {
-		interpolate: {
-			created: String(workflows.created),
-			updated: String(workflows.updated),
-			archived: String(workflows.archived),
-			deleted: String(workflows.deleted),
-		},
-	});
+	const interpolate = {
+		projectsCreated: String(projects.created),
+		projectsDeleted: String(projects.deleted),
+		created: String(workflows.created),
+		updated: String(workflows.updated),
+		archived: String(workflows.archived),
+		deleted: String(workflows.deleted),
+		notPublished: String(notPublished),
+	};
 
 	// A workflow can be imported and still fail to publish, so success alone would mislead.
 	toast.showMessage({
 		title: i18n.baseText('settings.promotions.apply.toast.success.title'),
-		message: notPublished
-			? `${summary} ${i18n.baseText('settings.promotions.apply.toast.notPublished', {
-					interpolate: { count: String(notPublished) },
-				})}`
-			: summary,
+		message: i18n.baseText(
+			notPublished
+				? 'settings.promotions.apply.toast.success.messageNotPublished'
+				: 'settings.promotions.apply.toast.success.message',
+			{ interpolate },
+		),
 		type: notPublished ? 'warning' : 'success',
 	});
 }
@@ -87,7 +89,9 @@ async function onApplied(result: AppliedResult) {
 function reportSourceChanged() {
 	toast.showMessage({
 		title: i18n.baseText('settings.promotions.apply.toast.sourceChanged.title'),
-		message: i18n.baseText('settings.promotions.apply.toast.sourceChanged.message'),
+		message: i18n.baseText('settings.promotions.apply.toast.sourceChanged.message', {
+			interpolate: { branch: props.branchName },
+		}),
 		type: 'warning',
 	});
 }

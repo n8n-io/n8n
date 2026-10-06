@@ -82,21 +82,19 @@ const promoteResult = (branchName = 'main'): PromotePackageResultDto =>
 		git: { commitSha: 'abc123', branchName },
 	}) satisfies PromotePackageResultDto;
 
-const renderComponent = createComponentRenderer(PromotionSelectModal, {
-	global: {
-		stubs: {
-			N8nDialog: { props: ['open'], template: '<div v-if="open"><slot /></div>' },
-			Modal: {
-				template: `
-					<div>
-						<slot name="content" />
-						<slot name="footer" />
-					</div>
-				`,
-			},
-		},
+const stubs = {
+	N8nDialog: { props: ['open'], template: '<div v-if="open"><slot /></div>' },
+	Modal: {
+		template: `
+			<div>
+				<slot name="content" />
+				<slot name="footer" />
+			</div>
+		`,
 	},
-});
+};
+
+const renderComponent = createComponentRenderer(PromotionSelectModal, { global: { stubs } });
 
 describe('PromotionSelectModal', () => {
 	let pinia: ReturnType<typeof createTestingPinia>;
@@ -624,6 +622,43 @@ describe('PromotionSelectModal', () => {
 			expect(useUIStore().closeModal).not.toHaveBeenCalled();
 			expect(applied).not.toHaveBeenCalled();
 			expect(showMessage).not.toHaveBeenCalled();
+		});
+
+		it('should lock the selection during apply and continue with the submitted one', async () => {
+			let resolveApply: (value: unknown) => void = () => {};
+			server.post(
+				'/api/v1/promotions/projects/project-1/apply',
+				async () => await new Promise((resolve) => (resolveApply = resolve)),
+			);
+			const { findAllByTestId, findByTestId } = renderComponent({
+				pinia,
+				props: applyProps,
+				global: {
+					stubs: {
+						...stubs,
+						PromotionBindingsFlow: {
+							props: ['continueWith'],
+							template:
+								'<div data-test-id="continue-with">{{ continueWith.workflowIds.join(",") }}</div>',
+						},
+					},
+				},
+			});
+			const rows = await findAllByTestId('promotion-change-row');
+			await userEvent.click(rows[0]);
+			const applyButton = await findByTestId('promotion-apply-selected');
+
+			await userEvent.click(applyButton);
+			await waitFor(() => expect(applyButton).toHaveAttribute('aria-busy', 'true'));
+			await userEvent.click(rows[1]);
+			await userEvent.click(await findByTestId('promotion-select-all'));
+
+			// Clicks during the request do not change what is applied.
+			expect(applyButton).toHaveTextContent('Apply 1 change');
+			resolveApply(blocked({ missingBindings: [credential] }));
+
+			expect(await findByTestId('continue-with')).toHaveTextContent('wf-001');
+			expect(await findByTestId('continue-with')).not.toHaveTextContent('wf-002');
 		});
 
 		it.each([

@@ -40,6 +40,7 @@ describe('ApplyInstanceDialog', () => {
 			...applied,
 			counts: {
 				...applied.counts,
+				projects: { created: 1, updated: 0, skipped: 0, deleted: 2 },
 				workflows: {
 					...applied.counts.workflows,
 					publishing: { published: 3, unpublished: 0, unchanged: 0, blocked: 0, failed: 0 },
@@ -54,8 +55,14 @@ describe('ApplyInstanceDialog', () => {
 		await waitFor(() =>
 			expect(api.applyPromotion).toHaveBeenCalledWith(expect.anything(), 'connection-1'),
 		);
+		// Project counts are reported too, because an instance apply can delete projects.
 		expect(mockShowMessage).toHaveBeenCalledWith(
-			expect.objectContaining({ type: 'success', title: 'Instance updated' }),
+			expect.objectContaining({
+				type: 'success',
+				title: 'Instance updated',
+				message:
+					'Projects: 1 created, 2 deleted. Workflows: 1 created, 2 updated, 0 archived, 0 deleted.',
+			}),
 		);
 		await waitFor(() => expect(emitted('update:open')).toEqual([[false]]));
 	});
@@ -130,7 +137,8 @@ describe('ApplyInstanceDialog', () => {
 				expect.objectContaining({
 					type: 'warning',
 					title: 'Instance updated',
-					message: expect.stringContaining('2 could not be published.'),
+					message:
+						'Projects: 0 created, 0 deleted. Workflows: 1 created, 2 updated, 0 archived, 0 deleted. 2 could not be published.',
 				}),
 			),
 		);
@@ -165,7 +173,12 @@ describe('ApplyInstanceDialog', () => {
 
 		await waitFor(() =>
 			expect(mockShowMessage).toHaveBeenCalledWith(
-				expect.objectContaining({ type: 'warning', title: 'Apply paused' }),
+				expect.objectContaining({
+					type: 'warning',
+					title: 'Apply paused',
+					message:
+						'The main branch changed before Apply finished. Start Apply again to use the latest version.',
+				}),
 			),
 		);
 		expect(mockShowMessage).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'success' }));

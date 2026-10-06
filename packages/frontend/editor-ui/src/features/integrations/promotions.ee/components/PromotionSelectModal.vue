@@ -50,6 +50,8 @@ const { direction } = props.data;
 const isIncoming = direction === 'apply';
 const isApplying = ref(false);
 const blockedResult = shallowRef<BlockedApplyResult>();
+// Continue must apply the selection that produced the preflight, not the live one.
+const blockedWorkflowIds = shallowRef<string[]>([]);
 
 const {
 	changes,
@@ -69,6 +71,19 @@ const {
 	toggleSelected,
 	toggleSelectAll,
 } = usePromotionChanges(props.data.projectId, direction);
+
+// The selection is locked while a promote or an apply request runs.
+const isSelectionLocked = computed(() => isSubmitting.value || isApplying.value);
+
+function onToggleSelected(id: string) {
+	if (isSelectionLocked.value) return;
+	toggleSelected(id);
+}
+
+function onToggleSelectAll() {
+	if (isSelectionLocked.value) return;
+	toggleSelectAll();
+}
 
 const title = i18n.baseText(
 	isIncoming ? 'promotions.modal.incoming.title' : 'promotions.modal.title',
@@ -218,22 +233,22 @@ async function announceApplied() {
 async function onApplied(result: AppliedResult) {
 	const { workflows } = result.counts;
 	const notPublished = workflows.publishing.failed + workflows.publishing.blocked;
-	const summary = i18n.baseText('promotions.modal.incoming.applied.message', {
-		interpolate: {
-			created: String(workflows.created),
-			updated: String(workflows.updated),
-			archived: String(workflows.archived),
-			deleted: String(workflows.deleted),
-		},
-	});
+	const interpolate = {
+		created: String(workflows.created),
+		updated: String(workflows.updated),
+		archived: String(workflows.archived),
+		deleted: String(workflows.deleted),
+		notPublished: String(notPublished),
+	};
 	// A workflow can be imported and still fail to publish, so success alone would mislead.
 	toast.showMessage({
 		title: i18n.baseText('promotions.modal.incoming.applied.title'),
-		message: notPublished
-			? `${summary} ${i18n.baseText('promotions.modal.incoming.applied.notPublished', {
-					interpolate: { count: String(notPublished) },
-				})}`
-			: summary,
+		message: i18n.baseText(
+			notPublished
+				? 'promotions.modal.incoming.applied.messageNotPublished'
+				: 'promotions.modal.incoming.applied.message',
+			{ interpolate },
+		),
 		type: notPublished ? 'warning' : 'success',
 	});
 	// Close before the project lookup, so the stale change list does not show again.
@@ -268,13 +283,14 @@ async function onApplySelected() {
 	);
 	if (confirmed !== MODAL_CONFIRM) return;
 	isApplying.value = true;
+	const workflowIds = Array.from(selectedIds.value);
 	try {
 		// Pin the reviewed commit: a branch that moved since the preview is reported, not applied.
 		const expectedSource = commitSha.value
 			? { configId: apply.configId, branchName: apply.branchName, commitSha: commitSha.value }
 			: undefined;
 		const result = await applyProjectSelection(rootStore.publicApiContext, props.data.projectId, {
-			workflowIds: Array.from(selectedIds.value),
+			workflowIds,
 			expectedSource,
 		});
 		if (result.status === 'applied') {
@@ -282,6 +298,7 @@ async function onApplySelected() {
 			return;
 		}
 		if (result.status === 'blocked') {
+			blockedWorkflowIds.value = workflowIds;
 			blockedResult.value = result;
 			return;
 		}
@@ -326,9 +343,9 @@ onMounted(async () => {
 					<N8nCheckbox
 						:model-value="allSelected"
 						:indeterminate="someSelected"
-						:disabled="isSubmitting"
+						:disabled="isSelectionLocked"
 						data-test-id="promotion-select-all"
-						@update:model-value="toggleSelectAll"
+						@update:model-value="onToggleSelectAll"
 					/>
 					<N8nInput
 						v-model="searchQuery"
@@ -413,17 +430,17 @@ onMounted(async () => {
 								:class="[
 									$style.row,
 									isSelected(change.id) && $style.rowSelected,
-									isSubmitting && $style.rowDisabled,
+									isSelectionLocked && $style.rowDisabled,
 									index === 0 && $style.rowFirst,
 									index === filteredChanges.length - 1 && $style.rowLast,
 								]"
 								data-test-id="promotion-change-row"
-								@click="toggleSelected(change.id)"
+								@click="onToggleSelected(change.id)"
 							>
 								<N8nCheckbox
 									:model-value="isSelected(change.id)"
-									:disabled="isSubmitting"
-									@update:model-value="toggleSelected(change.id)"
+									:disabled="isSelectionLocked"
+									@update:model-value="onToggleSelected(change.id)"
 									@click.stop
 								/>
 
@@ -514,7 +531,7 @@ onMounted(async () => {
 		v-else
 		:open="true"
 		:blocked-result="blockedResult"
-		:continue-with="{ projectId: props.data.projectId, workflowIds: Array.from(selectedIds) }"
+		:continue-with="{ projectId: props.data.projectId, workflowIds: blockedWorkflowIds }"
 		@update:open="
 			(open) => {
 				if (!open) blockedResult = undefined;
