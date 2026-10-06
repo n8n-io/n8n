@@ -1,15 +1,8 @@
 import { N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api-types';
 import type { AgentIntegrationConfig, ListAgentsQueryDto } from '@n8n/api-types';
+import { BaseRepository, TransactionRunner, type OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
-import {
-	DataSource,
-	In,
-	IsNull,
-	Not,
-	Repository,
-	type EntityManager,
-	type SelectQueryBuilder,
-} from '@n8n/typeorm';
+import { DataSource, In, IsNull, Not, type SelectQueryBuilder } from '@n8n/typeorm';
 import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 
 import { Agent } from '../entities/agent.entity';
@@ -35,9 +28,9 @@ export type AgentSummaryFilters = {
 };
 
 @Service()
-export class AgentRepository extends Repository<Agent> {
-	constructor(dataSource: DataSource) {
-		super(Agent, dataSource.manager);
+export class AgentRepository extends BaseRepository<Agent> {
+	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
+		super(Agent, dataSource.manager, transactionRunner);
 	}
 
 	/**
@@ -465,9 +458,9 @@ export class AgentRepository extends Repository<Agent> {
 		id: string,
 		expectedRevision: number,
 		next: { activeVersionId: string | null; versionId: string },
-		trx?: EntityManager,
+		ctx: OperationContext = {},
 	): Promise<boolean> {
-		const result = await (trx ?? this)
+		const result = await this.managerFor(ctx)
 			.createQueryBuilder()
 			.update(Agent)
 			.set({
@@ -489,12 +482,12 @@ export class AgentRepository extends Repository<Agent> {
 	 * `updatedAt` are synced to what was written. Returns whether this caller
 	 * won the fence.
 	 */
-	async saveDraftFenced(agent: Agent, trx?: EntityManager): Promise<boolean> {
+	async saveDraftFenced(agent: Agent, ctx: OperationContext = {}): Promise<boolean> {
 		const expectedRevision = agent.revision;
 		// Written explicitly (instead of the builder's CURRENT_TIMESTAMP default)
 		// so the in-memory entity can report the exact persisted timestamp.
 		const updatedAt = new Date();
-		const result = await (trx ?? this)
+		const result = await this.managerFor(ctx)
 			.createQueryBuilder()
 			.update(Agent)
 			.set({

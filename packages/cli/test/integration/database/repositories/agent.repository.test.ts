@@ -1,16 +1,30 @@
 import { N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api-types';
 import type { AgentIntegrationConfig, AgentJsonConfig } from '@n8n/api-types';
-import { createTeamProject, testDb, testModules } from '@n8n/backend-test-utils';
+import { createTeamProject, mockLogger, testDb, testModules } from '@n8n/backend-test-utils';
+import { TransactionRunner, type User, type WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { v4 as uuid } from 'uuid';
+import { mock } from 'vitest-mock-extended';
 
+import type { CredentialsService } from '@/credentials/credentials.service';
+import { AgentConfigService } from '@/modules/agents/agent-config.service';
+import type { AgentSaveCompletionService } from '@/modules/agents/agent-save-completion.service';
+import type { AgentSetupCompletionService } from '@/modules/agents/agent-setup-completion.service';
+import type { AgentSkillsService } from '@/modules/agents/agent-skills.service';
 import type { Agent } from '@/modules/agents/entities/agent.entity';
+import { composeJsonConfig } from '@/modules/agents/json-config/agent-config-composition';
+import type { NodeToolAiGatewayService } from '@/modules/agents/json-config/node-tool-ai-gateway.service';
 import { AgentHistoryRepository } from '@/modules/agents/repositories/agent-history.repository';
+import { AgentTaskRepository } from '@/modules/agents/repositories/agent-task.repository';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
+import { getAgentConfigHash } from '@/modules/agents/utils/agent-config-hash';
+import { saveAgentDraftFenced } from '@/modules/agents/utils/agent-draft.utils';
 
 describe('AgentRepository', () => {
 	let agentRepo: AgentRepository;
 	let agentHistoryRepo: AgentHistoryRepository;
+	let taskRepo: AgentTaskRepository;
+	let transactionRunner: TransactionRunner;
 	let projectId: string;
 
 	async function createAgent(overrides: Partial<Agent> = {}): Promise<Agent> {
@@ -45,6 +59,8 @@ describe('AgentRepository', () => {
 		await testDb.init();
 		agentRepo = Container.get(AgentRepository);
 		agentHistoryRepo = Container.get(AgentHistoryRepository);
+		taskRepo = Container.get(AgentTaskRepository);
+		transactionRunner = Container.get(TransactionRunner);
 	});
 
 	beforeEach(async () => {
@@ -53,8 +69,129 @@ describe('AgentRepository', () => {
 	});
 
 	afterEach(async () => {
+		vi.restoreAllMocks();
 		await agentHistoryRepo.delete({});
 		await agentRepo.delete({});
+	});
+
+	describe('draft definition writes', () => {
+		const taskBody = {
+			name: 'Daily task',
+			objective: 'Summarize notes',
+			cronExpression: '0 9 * * *',
+			timezone: null,
+		};
+
+		it('rolls back a config save when task cleanup fails and can retry the complete write', async () => {
+			const schema: AgentJsonConfig = {
+				name: 'Agent',
+				model: 'anthropic/claude-sonnet-4-5',
+				instructions: 'Help users',
+				tasks: [{ type: 'task', id: 'task-remove', enabled: false }],
+			};
+			const agent = await createAgent({ schema });
+			await taskRepo.insert({ id: 'task-remove', agentId: agent.id, ...taskBody });
+			const credentials = mock<CredentialsService>();
+			credentials.findAllCredentialIdsForProject.mockResolvedValue([]);
+			credentials.findAllGlobalCredentialIds.mockResolvedValue([]);
+			credentials.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([]);
+			const setup = mock<AgentSetupCompletionService>();
+			setup.recordIfSetupComplete.mockResolvedValue(null);
+			const completion = mock<AgentSaveCompletionService>();
+			const service = new AgentConfigService(
+				mockLogger(),
+				agentRepo,
+				taskRepo,
+				mock<AgentSkillsService>(),
+				credentials,
+				mock<WorkflowRepository>(),
+				mock<NodeToolAiGatewayService>(),
+				setup,
+				transactionRunner,
+				completion,
+			);
+			const deleteTasks = taskRepo.deleteForAgent.bind(taskRepo);
+			vi.spyOn(taskRepo, 'deleteForAgent').mockImplementationOnce(async (id, ids, ctx) => {
+				await deleteTasks(id, ids, ctx);
+				throw new Error('Task cleanup failed');
+			});
+			const config = { ...schema, name: 'Updated agent', tasks: [] };
+			const options = {
+				baseConfigHash: getAgentConfigHash(composeJsonConfig(agent)),
+				modifiedBy: 'user',
+			} as const;
+			await expect(
+				service.updateConfig(agent.id, projectId, config, mock<User>(), options),
+			).rejects.toThrow('Task cleanup failed');
+			expect(await agentRepo.findById(agent.id)).toMatchObject({
+				schema,
+				revision: agent.revision,
+			});
+			expect(await taskRepo.findByAgentId(agent.id)).toMatchObject([{ id: 'task-remove' }]);
+			expect(completion.configurationSaved).not.toHaveBeenCalled();
+
+			const saved = await service.updateConfig(agent.id, projectId, config, mock<User>(), options);
+			expect(saved.config).toMatchObject({ name: 'Updated agent', tasks: [] });
+			expect(await agentRepo.findById(agent.id)).toMatchObject({
+				schema: { name: 'Updated agent', tasks: [] },
+			});
+			expect(await taskRepo.findByAgentId(agent.id)).toEqual([]);
+			expect(completion.configurationSaved).toHaveBeenCalled();
+		});
+
+		it('restores task bodies without resetting creation time and detects unchanged content', async () => {
+			const agent = await createAgent();
+			const createdAt = new Date('2025-01-01T00:00:00.000Z');
+			await taskRepo.insert([
+				{ id: 'task-keep', agentId: agent.id, ...taskBody, createdAt },
+				{ id: 'task-remove', agentId: agent.id, ...taskBody },
+			]);
+			const definitions = new Map([
+				['task-keep', { ...taskBody, objective: 'Restored objective' }],
+				['task-new', taskBody],
+			]);
+			const restore = async () =>
+				await transactionRunner.run({}, async (ctx) => {
+					await saveAgentDraftFenced(agentRepo, agent, ctx);
+					return await taskRepo.replaceForAgent(agent.id, definitions, ctx);
+				});
+			expect(await restore()).toBe(true);
+			const tasks = await taskRepo.findByAgentId(agent.id);
+			expect(tasks).toHaveLength(2);
+			expect(tasks).toEqual(
+				expect.arrayContaining([
+					expect.objectContaining({ id: 'task-keep', objective: 'Restored objective', createdAt }),
+					expect.objectContaining({ id: 'task-new', objective: taskBody.objective }),
+				]),
+			);
+			expect(await restore()).toBe(false);
+		});
+
+		it('rolls back draft and task changes when a restored task ID belongs to another agent', async () => {
+			const agent = await createAgent();
+			const other = await createAgent();
+			await taskRepo.insert([
+				{ id: 'own-task', agentId: agent.id, ...taskBody },
+				{ id: 'other-task', agentId: other.id, ...taskBody },
+			]);
+			const originalName = agent.name;
+			const originalRevision = agent.revision;
+			agent.name = 'Restored agent';
+			await expect(
+				transactionRunner.run({}, async (ctx) => {
+					await saveAgentDraftFenced(agentRepo, agent, ctx);
+					await taskRepo.replaceForAgent(agent.id, new Map([['other-task', taskBody]]), ctx);
+				}),
+			).rejects.toThrow();
+			expect(await agentRepo.findById(agent.id)).toMatchObject({
+				name: originalName,
+				revision: originalRevision,
+			});
+			expect(await taskRepo.findByAgentId(agent.id)).toMatchObject([{ id: 'own-task' }]);
+			expect(await taskRepo.findByAgentId(other.id)).toMatchObject([
+				{ id: 'other-task', ...taskBody },
+			]);
+		});
 	});
 
 	afterAll(async () => {

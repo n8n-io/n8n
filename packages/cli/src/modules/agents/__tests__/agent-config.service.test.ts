@@ -6,7 +6,8 @@ import {
 	type AgentJsonConfig,
 } from '@n8n/api-types';
 import { mockLogger } from '@n8n/backend-test-utils';
-import type { User, WorkflowRepository } from '@n8n/db';
+import type { User, WorkflowRepository, TransactionRunner } from '@n8n/db';
+import { Container } from '@n8n/di';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { mock } from 'vitest-mock-extended';
 
@@ -16,7 +17,8 @@ import type { Telemetry } from '@/telemetry';
 
 import { AgentConfigService } from '../agent-config.service';
 import { AgentModificationTelemetryService } from '../agent-modification-telemetry.service';
-import type { AgentRuntimeCacheService } from '../agent-runtime-cache.service';
+import { AgentSaveCompletionService } from '../agent-save-completion.service';
+import { AgentRuntimeCacheService } from '../agent-runtime-cache.service';
 import { AgentSetupCompletionService } from '../agent-setup-completion.service';
 import type { AgentSkillsService } from '../agent-skills.service';
 import type { AgentUpdateBroadcaster } from '../agent-update-broadcaster';
@@ -102,19 +104,24 @@ function makeService() {
 		);
 	});
 
+	const transactionRunner = mock<TransactionRunner>();
+	transactionRunner.run.mockImplementation(async (ctx, fn) => await fn(ctx));
+	Container.set(AgentRuntimeCacheService, runtimeCacheService);
 	const service = new AgentConfigService(
 		mockLogger(),
 		agentRepository,
 		agentTaskRepository,
 		agentSkillsService,
-		runtimeCacheService,
 		credentialsService,
 		workflowRepository,
 		nodeToolAiGatewayService,
-		eventService,
 		new AgentSetupCompletionService(agentValidationService, telemetry, agentRepository),
-		new AgentModificationTelemetryService(telemetry),
-		agentUpdateBroadcaster,
+		transactionRunner,
+		new AgentSaveCompletionService(
+			eventService,
+			agentUpdateBroadcaster,
+			new AgentModificationTelemetryService(telemetry),
+		),
 	);
 
 	return {
@@ -625,7 +632,7 @@ describe('AgentConfigService', () => {
 			const saved = agentRepository.saveDraftFenced.mock.calls.at(-1)?.[0] as Agent;
 			expect(saved.tools).toEqual({});
 			expect(saved.skills).toEqual({});
-			expect(agentTaskRepository.delete).toHaveBeenCalledWith(['task-1']);
+			expect(agentTaskRepository.deleteForAgent).toHaveBeenCalledWith(agentId, ['task-1'], {});
 		});
 
 		it('keeps the resources of omitted tools, skills, and tasks by default', async () => {
@@ -646,7 +653,7 @@ describe('AgentConfigService', () => {
 			const saved = agentRepository.saveDraftFenced.mock.calls.at(-1)?.[0] as Agent;
 			expect(saved.tools).toEqual(storedCustomTool);
 			expect(Object.keys(saved.skills ?? {})).toEqual(['skill-1']);
-			expect(agentTaskRepository.delete).not.toHaveBeenCalled();
+			expect(agentTaskRepository.deleteForAgent).not.toHaveBeenCalled();
 		});
 
 		it('resolves accessible credentials via the user when one is provided', async () => {
@@ -809,7 +816,7 @@ describe('AgentConfigService', () => {
 			]);
 			expect(saved.schema?.tasks).toEqual([{ type: 'task', id: 'task-1', enabled: true }]);
 			expect(Object.keys(saved.tools)).toEqual(['tool_1']);
-			expect(agentTaskRepository.delete).toHaveBeenCalledWith(['task-2']);
+			expect(agentTaskRepository.deleteForAgent).toHaveBeenCalledWith(agentId, ['task-2'], {});
 			expect(agentSkillsService.removeUnreferencedSkills).toHaveBeenCalled();
 			expect(runtimeCacheService.clearRuntimes).toHaveBeenCalledWith(agentId);
 		});
@@ -1168,7 +1175,14 @@ describe('AgentConfigService', () => {
 		});
 
 		it('surfaces a lost revision fence as a retryable conflict without side effects', async () => {
-			const { service, agentRepository, telemetry, eventService } = makeService();
+			const {
+				service,
+				agentRepository,
+				telemetry,
+				eventService,
+				runtimeCacheService,
+				agentUpdateBroadcaster,
+			} = makeService();
 			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
 			// A concurrent publish/unpublish/edit bumped `revision` between this
 			// request's load and its save.
@@ -1180,6 +1194,8 @@ describe('AgentConfigService', () => {
 
 			expect(telemetry.track).not.toHaveBeenCalled();
 			expect(eventService.emit).not.toHaveBeenCalled();
+			expect(runtimeCacheService.clearRuntimes).not.toHaveBeenCalled();
+			expect(agentUpdateBroadcaster.notify).not.toHaveBeenCalled();
 		});
 	});
 

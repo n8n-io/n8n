@@ -7,6 +7,7 @@ import type { NodeTypes } from '@/node-types';
 import type { AiGatewayService } from '@/services/ai-gateway.service';
 
 import type { AgentSkillsService } from '../agent-skills.service';
+import { AgentDefinitionService } from '../agent-definition.service';
 import { AgentValidationService } from '../agent-validation.service';
 import type { Agent } from '../entities/agent.entity';
 import type { ChatIntegrationRegistry } from '../integrations/agent-chat-integration';
@@ -78,8 +79,7 @@ function makeService() {
 	return {
 		service: new AgentValidationService(
 			agentRepository,
-			agentTaskRepository,
-			agentTaskSnapshotRepository,
+			new AgentDefinitionService(agentTaskRepository, agentTaskSnapshotRepository),
 			nodeTypes,
 			workflowRepository,
 			chatIntegrationRegistry,
@@ -1231,12 +1231,14 @@ describe('AgentValidationService — structured issues', () => {
 			makeCredentialProvider([{ id: 'openai-main', type: 'openAiApi' }]),
 			'publish',
 		);
+		agentTaskRepository.findByAgentId.mockClear();
 		const runtimeResult = await service.validateAgentIsRunnable(
 			agentId,
 			projectId,
 			makeCredentialProvider([{ id: 'openai-main', type: 'openAiApi' }]),
 		);
 
+		expect(agentTaskRepository.findByAgentId).not.toHaveBeenCalled();
 		expect(publishResult.status).toBe('invalid');
 		expect(publishResult.issues).toEqual(
 			expect.arrayContaining([

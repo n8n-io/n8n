@@ -1,3 +1,5 @@
+import type { EventService } from '@n8n/backend-services';
+import { Container } from '@n8n/di';
 import type { ToolDescriptor } from '@n8n/agents';
 import { mockLogger } from '@n8n/backend-test-utils';
 import { mock } from 'vitest-mock-extended';
@@ -6,7 +8,8 @@ import { UserError } from 'n8n-workflow';
 import { NotFoundError } from '@n8n/errors';
 
 import type { AgentModificationTelemetryService } from '../agent-modification-telemetry.service';
-import type { AgentRuntimeCacheService } from '../agent-runtime-cache.service';
+import { AgentSaveCompletionService } from '../agent-save-completion.service';
+import { AgentRuntimeCacheService } from '../agent-runtime-cache.service';
 import { AgentCustomToolsService } from '../agent-custom-tools.service';
 import type { AgentUpdateBroadcaster } from '../agent-update-broadcaster';
 import type { Agent } from '../entities/agent.entity';
@@ -54,12 +57,15 @@ function makeService() {
 	const modificationTelemetry = mock<AgentModificationTelemetryService>();
 	agentRepository.saveDraftFenced.mockResolvedValue(true);
 
+	Container.set(AgentRuntimeCacheService, runtimeCacheService);
 	const service = new AgentCustomToolsService(
 		mockLogger(),
 		agentRepository,
-		runtimeCacheService,
-		modificationTelemetry,
-		mock<AgentUpdateBroadcaster>(),
+		new AgentSaveCompletionService(
+			mock<EventService>(),
+			mock<AgentUpdateBroadcaster>(),
+			modificationTelemetry,
+		),
 	);
 
 	return { service, agentRepository, runtimeCacheService, modificationTelemetry };
@@ -92,7 +98,7 @@ describe('AgentCustomToolsService', () => {
 		expect(agent.tools[result.id]).toEqual({ code: 'return 1;', descriptor });
 		expect(agent.versionId).not.toBe(agent.activeVersionId);
 		expect(runtimeCacheService.clearRuntimes).toHaveBeenCalledWith(agentId);
-		expect(agentRepository.saveDraftFenced).toHaveBeenCalledWith(agent, undefined);
+		expect(agentRepository.saveDraftFenced).toHaveBeenCalledWith(agent, {});
 	});
 
 	it('throws when building a tool for a missing agent', async () => {
@@ -169,7 +175,7 @@ describe('AgentCustomToolsService', () => {
 		]);
 		expect(agent.versionId).not.toBe(agent.activeVersionId);
 		expect(runtimeCacheService.clearRuntimes).toHaveBeenCalledWith(agentId);
-		expect(agentRepository.saveDraftFenced).toHaveBeenCalledWith(agent, undefined);
+		expect(agentRepository.saveDraftFenced).toHaveBeenCalledWith(agent, {});
 	});
 
 	it('snapshots only configured custom tools', () => {
