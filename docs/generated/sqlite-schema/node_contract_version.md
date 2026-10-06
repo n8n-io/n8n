@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "node_contract_version" ("digest" varchar(71) PRIMARY KEY NOT NULL, "contractId" varchar(255) NOT NULL, "version" varchar(32) NOT NULL, "kind" varchar(16) NOT NULL, "manifest" text NOT NULL, "bundle" text, "fixtures" text, "signatures" text NOT NULL, "published" datetime(3), "origin" varchar(16) NOT NULL, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "CHK_node_contract_version_kind" CHECK ("kind" IN ('action', 'trigger', 'provider', 'credential')), CONSTRAINT "CHK_node_contract_version_origin" CHECK ("origin" IN ('first-party', 'community', 'private')))
+CREATE TABLE "node_contract_version" ("digest" varchar(71) PRIMARY KEY NOT NULL, "contractId" varchar(255) NOT NULL, "version" varchar(32) NOT NULL, "kind" varchar(16) NOT NULL, "manifest" text NOT NULL, "bundle" text, "fixtures" text, "signatures" text NOT NULL, "published" datetime(3), "origin" varchar(16) NOT NULL, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "createdById" varchar, CONSTRAINT "CHK_node_contract_version_kind" CHECK (("kind" IN ('action', 'trigger', 'provider', 'credential'))), CONSTRAINT "CHK_node_contract_version_origin" CHECK (("origin" IN ('first-party', 'community', 'private'))), CONSTRAINT "FK_842ea5efdd7093aa855e6327831" FOREIGN KEY ("createdById") REFERENCES "user" ("id") ON DELETE SET NULL)
 ```
 
 </details>
@@ -18,6 +18,7 @@ CREATE TABLE "node_contract_version" ("digest" varchar(71) PRIMARY KEY NOT NULL,
 | bundle | TEXT |  | true |  |  |  |
 | contractId | varchar(255) |  | false |  |  |  |
 | createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
+| createdById | varchar |  | true |  | [user](user.md) |  |
 | digest | varchar(71) |  | false |  |  |  |
 | fixtures | TEXT |  | true |  |  |  |
 | kind | varchar(16) |  | false |  |  |  |
@@ -31,8 +32,9 @@ CREATE TABLE "node_contract_version" ("digest" varchar(71) PRIMARY KEY NOT NULL,
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| - | CHECK | CHECK ("kind" IN ('action', 'trigger', 'provider', 'credential')) |
-| - | CHECK | CHECK ("origin" IN ('first-party', 'community', 'private')) |
+| - | CHECK | CHECK (("kind" IN ('action', 'trigger', 'provider', 'credential'))) |
+| - | CHECK | CHECK (("origin" IN ('first-party', 'community', 'private'))) |
+| - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (createdById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE |
 | digest | PRIMARY KEY | PRIMARY KEY (digest) |
 | sqlite_autoindex_node_contract_version_1 | PRIMARY KEY | PRIMARY KEY (digest) |
 
@@ -48,11 +50,13 @@ CREATE TABLE "node_contract_version" ("digest" varchar(71) PRIMARY KEY NOT NULL,
 ```mermaid
 erDiagram
 
+"node_contract_version" }o--o| "user" : "FOREIGN KEY (createdById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 
 "node_contract_version" {
   TEXT bundle
   varchar_255_ contractId
   datetime_3_ createdAt
+  varchar createdById FK
   varchar_71_ digest PK
   TEXT fixtures
   varchar_16_ kind
@@ -61,6 +65,23 @@ erDiagram
   datetime_3_ published
   TEXT signatures
   varchar_32_ version
+}
+"user" {
+  datetime_3_ createdAt
+  boolean disabled
+  varchar_255_ email
+  varchar_32_ firstName
+  varchar id PK
+  date lastActiveAt
+  varchar_32_ lastName
+  boolean mfaEnabled
+  TEXT mfaRecoveryCodes
+  TEXT mfaSecret
+  varchar password
+  TEXT personalizationAnswers
+  varchar_128_ roleSlug FK
+  TEXT settings
+  datetime_3_ updatedAt
 }
 ```
 

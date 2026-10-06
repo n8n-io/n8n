@@ -98,6 +98,8 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.mcp_registry_server](public.mcp_registry_server.md) | 7 |  | BASE TABLE |
 | [public.migration_finding](public.migration_finding.md) | 10 |  | BASE TABLE |
 | [public.migration_finding_sync](public.migration_finding_sync.md) | 3 |  | BASE TABLE |
+| [public.node_contract_status](public.node_contract_status.md) | 4 |  | BASE TABLE |
+| [public.node_contract_version](public.node_contract_version.md) | 12 |  | BASE TABLE |
 | [public.oauth_access_tokens](public.oauth_access_tokens.md) | 3 |  | BASE TABLE |
 | [public.oauth_authorization_codes](public.oauth_authorization_codes.md) | 13 |  | BASE TABLE |
 | [public.oauth_clients](public.oauth_clients.md) | 10 |  | BASE TABLE |
@@ -320,6 +322,7 @@ erDiagram
 "public.instance_ai_threads" }o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
 "public.instance_credential_assignment" }o--|| "public.credentials_entity" : "FOREIGN KEY (#quot;credentialId#quot;) REFERENCES credentials_entity(id) ON DELETE RESTRICT"
 "public.migration_finding" }o--|| "public.workflow_entity" : "FOREIGN KEY (#quot;workflowId#quot;) REFERENCES workflow_entity(id) ON DELETE CASCADE"
+"public.node_contract_version" }o--o| "public.user" : "FOREIGN KEY (#quot;createdById#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
 "public.oauth_access_tokens" }o--|| "public.user" : "FOREIGN KEY (#quot;userId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE CASCADE"
 "public.oauth_access_tokens" }o--|| "public.oauth_clients" : "FOREIGN KEY (#quot;clientId#quot;) REFERENCES oauth_clients(id) ON DELETE CASCADE"
 "public.oauth_authorization_codes" }o--|| "public.user" : "FOREIGN KEY (#quot;userId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE CASCADE"
@@ -1328,6 +1331,26 @@ erDiagram
   varchar_128_ ruleSetFingerprint
   timestamp_3__with_time_zone syncedAt
   varchar_16_ targetVersion
+}
+"public.node_contract_status" {
+  varchar_255_ contractId
+  timestamp_3__with_time_zone createdAt
+  varchar_71_ digest
+  text line
+}
+"public.node_contract_version" {
+  text bundle
+  varchar_255_ contractId
+  timestamp_3__with_time_zone createdAt
+  uuid createdById FK
+  varchar_71_ digest
+  text fixtures
+  varchar_16_ kind
+  text manifest
+  varchar_16_ origin
+  timestamp_3__with_time_zone published
+  json signatures
+  varchar_32_ version
 }
 "public.oauth_access_tokens" {
   varchar clientId FK
