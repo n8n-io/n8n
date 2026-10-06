@@ -1099,9 +1099,6 @@ export class Agent implements BuiltAgent, AgentBuilder {
 
 		let instructions = this.instructionsText;
 		if (this.skillSource) {
-			// Do not call prepare() here: it can provision a sandbox, which would block
-			// the first token. The catalog only needs registry metadata; load_skill
-			// prepares the source on first use.
 			instructions = appendSkillCatalogToInstructions(instructions, this.skillSource.registry);
 		}
 		if (this.workspaceInstance) {

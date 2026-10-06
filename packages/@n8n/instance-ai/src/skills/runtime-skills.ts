@@ -8,6 +8,7 @@ import { resolve } from 'node:path';
 import { isAgentFeatureEnabled } from '@/utils/agent-feature-enabled';
 
 import type { Logger } from '../logger';
+import type { InstanceAiTraceContext } from '../types';
 import {
 	PROMPT_FRAGMENT_SKILLS,
 	resolvePromptProfile,
@@ -67,13 +68,21 @@ export function hasRuntimeSkills(
 }
 
 /**
- * Start preparing the skill source (sandbox + skill files) without waiting for it,
- * so it overlaps with the first model call instead of delaying the first token.
- * load_skill awaits the same in-flight preparation, and retries it if this one fails.
+ * Prepare the skill source in the background so it overlaps with the first model
+ * call. load_skill awaits the same promise and retries if this one fails. It runs
+ * in the actor span so the sandbox spans stay in the chat trace.
  */
-export function warmRuntimeSkills(source: RuntimeSkillSource, logger?: Logger): void {
-	if (!source.prepare) return;
-	source.prepare().catch((error: unknown) => {
+export function warmRuntimeSkills(
+	source: RuntimeSkillSource,
+	options: { logger?: Logger; tracing?: InstanceAiTraceContext } = {},
+): void {
+	const { prepare } = source;
+	if (!prepare) return;
+	const { logger, tracing } = options;
+	const preparation = tracing
+		? tracing.withActiveSpan(tracing.actorRun, async () => await prepare.call(source))
+		: prepare.call(source);
+	preparation.catch((error: unknown) => {
 		logger?.warn('Failed to warm runtime skills in the background', {
 			error: getErrorMessage(error),
 		});

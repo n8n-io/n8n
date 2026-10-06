@@ -473,7 +473,6 @@ describe('createInstanceAgent', () => {
 			loadSkill: vi.fn(),
 		};
 
-		// Resolves even though prepare() is still pending.
 		await createInstanceAgent({
 			modelId: 'test-model',
 			context: {},

@@ -254,7 +254,10 @@ export async function createInstanceAgent(
 	const runtimeSkills = orchestrationContext?.runtimeSkills;
 	if (hasRuntimeSkills(runtimeSkills)) {
 		agent.skills(runtimeSkills);
-		warmRuntimeSkills(runtimeSkills, orchestrationContext?.logger);
+		warmRuntimeSkills(runtimeSkills, {
+			logger: orchestrationContext?.logger,
+			tracing: orchestrationContext?.tracing,
+		});
 	}
 	if (telemetry) {
 		agent.telemetry(telemetry);

@@ -7,6 +7,7 @@ import {
 	INSTANCE_AI_SKILLS_DIR,
 	loadInstanceAiRuntimeSkillSource,
 	loadInstanceAiRuntimeSkillSourceForBuildMode,
+	warmRuntimeSkills,
 } from '../runtime-skills';
 import { CONFIG_EVALS_SKILL_ID, disabledInstanceAiSkillIds } from '../skill-gates';
 
@@ -614,3 +615,44 @@ async function loadRuntimeSkillSourceWithEnabledModules(enabledModules: string |
 	const { loadInstanceAiRuntimeSkillSource } = await import('../runtime-skills.js');
 	return loadInstanceAiRuntimeSkillSource();
 }
+
+describe('warmRuntimeSkills', () => {
+	const registry = {
+		schemaVersion: 1 as const,
+		skillsHash: 'skills-hash',
+		skills: [{ id: 'data-table-manager', name: 'data-table-manager', description: 'x' }],
+	};
+
+	it('runs the background preparation in the actor span of the chat trace', async () => {
+		let insideSpan = false;
+		let preparedInsideSpan = false;
+		const actorRun = { id: 'actor-run' };
+		const withActiveSpan = vi.fn(async (_run: unknown, fn: () => Promise<unknown>) => {
+			insideSpan = true;
+			try {
+				return await fn();
+			} finally {
+				insideSpan = false;
+			}
+		});
+		const prepare = vi.fn(async () => {
+			preparedInsideSpan = insideSpan;
+		});
+
+		warmRuntimeSkills({ registry, prepare, loadSkill: vi.fn() } as never, {
+			tracing: { actorRun, withActiveSpan } as never,
+		});
+
+		await vi.waitFor(() => expect(prepare).toHaveBeenCalledTimes(1));
+		expect(withActiveSpan).toHaveBeenCalledWith(actorRun, expect.any(Function));
+		expect(preparedInsideSpan).toBe(true);
+	});
+
+	it('prepares the source without a span when tracing is off', async () => {
+		const prepare = vi.fn(async () => {});
+
+		warmRuntimeSkills({ registry, prepare, loadSkill: vi.fn() } as never);
+
+		await vi.waitFor(() => expect(prepare).toHaveBeenCalledTimes(1));
+	});
+});

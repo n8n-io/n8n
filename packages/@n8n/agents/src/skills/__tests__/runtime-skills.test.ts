@@ -512,7 +512,6 @@ Use the workflow SDK.`,
 		const { instructions } = runtimeConfig;
 		expect(runtimeConfig.skillSource).toBe(source);
 
-		// prepare() can provision a sandbox, so building the agent must not wait on it.
 		expect(prepare).not.toHaveBeenCalled();
 		expect(instructions).toContain('name: "Summarize notes"');
 		expect(instructions).toContain('id: "summarize_notes"');
