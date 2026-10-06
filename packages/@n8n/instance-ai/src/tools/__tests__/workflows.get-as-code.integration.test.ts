@@ -4,6 +4,7 @@ import { mock } from 'vitest-mock-extended';
 import { executeTool } from '../../__tests__/tool-test-utils';
 import type { InstanceAiContext } from '../../types';
 import { derivedNodeTypes } from './derived-node-types';
+import { storedWorkflowOf } from '../workflows/next-workflow-build';
 import {
 	getWorkflowSourceFileBinding,
 	saveWorkflowSourceFileBinding,
@@ -308,6 +309,51 @@ describe('workflows get-as-code integration', () => {
 			expect(result.code).toMatch(/^import \{[^}]+\} from '@n8n\/workflow-sdk\/next';\n/);
 			expect(result.code).toContain('notion.databasePage.getAll({');
 			expect(result.code.match(/settings: \{\n\s+retryOnFail: true,/g)).toHaveLength(3);
+		});
+
+		it('reads the stored widget values of the condition nodes back as the same source', async () => {
+			const { workflow, manual, when, filter, set } = await import('@n8n/workflow-sdk/next');
+			const built = workflow(
+				'Adults',
+				manual({ name: 'Run', sample: [{ name: 'Ada', age: 36 }] }),
+				filter({ name: 'Named', if: (item) => item.name !== '' }),
+				when(
+					{ name: 'Adult?', if: (item) => item.age >= 18 },
+					{ then: set({ name: 'Adult', fields: { adult: true } }) },
+				),
+			).toJSON();
+			const stored = storedWorkflowOf(built);
+			const where = (json: WorkflowJSON, name: string) =>
+				json.nodes.find((node) => node.name === name)?.parameters?.where;
+			expect(where(stored, 'Adult?')).toEqual({
+				conditions: [
+					{
+						id: '0',
+						leftValue: '={{ $json.age >= 18 }}',
+						rightValue: '',
+						operator: { type: 'boolean', operation: 'true', singleValue: true },
+					},
+				],
+				combinator: 'and',
+				options: { caseSensitive: true, leftValue: '', typeValidation: 'strict', version: 2 },
+			});
+			expect(where(stored, 'Named')).toMatchObject({ combinator: 'and' });
+			expect(storedWorkflowOf(stored)).toEqual(stored);
+
+			const codeOf = async (json: WorkflowJSON) => {
+				const context = makeContext(json, new Map());
+				context.nodeContractsEnabled = true;
+				return (
+					await executeTool<GetAsCodeResult>(createWorkflowsTool(context), {
+						action: 'get-as-code',
+						workflowId: 'wf-managed',
+					})
+				).code;
+			};
+			const code = await codeOf(stored);
+			expect(code).toContain('filter({');
+			expect(code).toContain('when({');
+			expect(code).toBe(await codeOf(built));
 		});
 
 		it('returns SDK code when the typed format cannot express the workflow', async () => {

@@ -649,8 +649,9 @@ export interface InstanceAiExecutionService {
 			 */
 			readOnceNodeNames?: string[];
 			/**
-			 * Parameters removed from nodes in this run's ephemeral workflow copy. Verification removes
-			 * the inputs of a live read that follow pages, so the read gets the first page only.
+			 * Parameters removed from nodes in this run's ephemeral workflow copy, by parameter path
+			 * (`pages`, `options.pages`). Verification removes the inputs of a live read that follow
+			 * pages, so the read gets the first page only.
 			 */
 			omitParameters?: Array<{ nodeName: string; parameter: string }>;
 			/**

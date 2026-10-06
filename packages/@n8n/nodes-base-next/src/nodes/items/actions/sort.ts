@@ -37,6 +37,7 @@ export const sortItems = itemsNode.action('sort', {
 			)
 			.with({ minItems: 1 }),
 	},
+	ui: { fields: { by: { widget: 'list' } } },
 	output: t.passedItem(),
 	run({ input, items }) {
 		const keys = input.by.map(({ field, order }) => ({

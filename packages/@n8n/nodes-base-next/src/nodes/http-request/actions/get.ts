@@ -14,6 +14,7 @@ import { httpRequest } from '../http-request.node';
 import {
 	bodySchema,
 	common,
+	commonUi,
 	responseOf,
 	responseOptions,
 	responseOutputOf,
@@ -120,6 +121,7 @@ export const getRequest = httpRequest.action('get', {
 		...responseOptions,
 		schema: bodySchema,
 	},
+	ui: commonUi,
 	output,
 	deriveOutput: responseOutputOf(output.json),
 	migrate: (fromMajor, params) => {

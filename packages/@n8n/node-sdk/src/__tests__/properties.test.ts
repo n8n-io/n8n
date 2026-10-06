@@ -9,9 +9,12 @@ import {
 
 import {
 	advancedFieldsOf,
+	contractInputOf,
+	contractParametersOf,
 	jsonFieldPathsOf,
 	nodeDescriptionOf,
 	nodeParametersOf,
+	storedParametersOf,
 	toolUiOf,
 } from '../entry/host';
 import {
@@ -21,7 +24,7 @@ import {
 	parseManifest,
 	toContract,
 } from '../entry/registry';
-import { defineNode, defineResource, ref, t, type Action } from '../index';
+import { defineNode, defineResource, ref, t, where, type Action, type Where } from '../index';
 import { toNodeType } from '../runtime';
 
 const slack = defineNode({ id: 'slack', displayName: 'Slack', baseUrl: 'https://slack.com/api' });
@@ -111,6 +114,59 @@ const sendRequestJson = web.action('sendJson', {
 	flow: { effect: 'write', cardinality: 'per-item' },
 	input: requestInput,
 	ui: { fields: { body: { widget: 'json' } } },
+	output: t.json(),
+	async run({ input }) {
+		return await Promise.resolve({ ...input });
+	},
+});
+
+/** Routes by `where` in the n8n filter. It echoes its input. */
+const route = web.action('route', {
+	action: 'Route items',
+	summary: 'Route items by conditions.',
+	flow: { effect: 'transform', cardinality: 'per-item' },
+	input: { where },
+	ui: { fields: { where: { widget: 'filter' } } },
+	output: t.json(),
+	async run({ input }) {
+		return await Promise.resolve({ ...input });
+	},
+});
+
+/** Sets fields, with headers as one more record. It echoes its input. */
+const edit = web.action('edit', {
+	action: 'Edit fields',
+	summary: 'Set fields on each item.',
+	flow: { effect: 'transform', cardinality: 'per-item' },
+	input: { fields: t.record(t.jsonValue()), headers: t.record(t.str()).optional() },
+	ui: { fields: { fields: { widget: 'assignments' }, headers: { widget: 'assignments' } } },
+	output: t.json(),
+	async run({ input }) {
+		return await Promise.resolve({ ...input });
+	},
+});
+
+/** Sorts by fields and routes by cases, each case with a filter. It echoes its input. */
+const sortRoute = web.action('sortRoute', {
+	action: 'Sort and route',
+	summary: 'Sort items, then route them by cases.',
+	flow: { effect: 'transform', cardinality: 'per-item' },
+	input: {
+		by: t.arr(
+			t.obj({
+				field: t.str(),
+				order: t.oneOf('ascending', 'descending').default('ascending'),
+			}),
+		),
+		cases: t.arr(t.obj({ output: t.str(), where })).optional(),
+	},
+	ui: {
+		fields: {
+			by: { widget: 'list' },
+			cases: { widget: 'list' },
+			'cases.where': { widget: 'filter' },
+		},
+	},
 	output: t.json(),
 	async run({ input }) {
 		return await Promise.resolve({ ...input });
@@ -512,6 +568,276 @@ describe('jsonFieldPathsOf', () => {
 		const edited = { channel: '#general', text: 'Hi', options: { blocks: '[{"type":"divider"}]' } };
 		const { input } = await runInputOf(sendMessage, edited);
 		expect(input).toMatchObject({ blocks: [{ type: 'divider' }] });
+	});
+});
+
+describe('contractInputOf', () => {
+	it('reads a JSON-text field, an Options field and a plain field as the run reads them', async () => {
+		const stored = {
+			channel: '#general',
+			text: '={{ $json.text }}',
+			options: { blocks: '[{"type":"divider"}]', threadTs: '', replyBroadcast: true },
+			authentication: 'slackApi',
+		};
+		const expected = {
+			channel: '#general',
+			text: '={{ $json.text }}',
+			blocks: [{ type: 'divider' }],
+			replyBroadcast: true,
+		};
+		expect(contractInputOf(stored, sendMessage.inputSchema, sendMessage.ui)).toEqual(expected);
+		const { input } = await runInputOf(sendMessage, { ...stored, text: 'Hi' });
+		expect(input).toMatchObject({ ...expected, text: 'Hi' });
+	});
+
+	it('reads a tool form, which keeps every field at the top and a variant as JSON text', () => {
+		const toolUi = toolUiOf(sendRequest.inputSchema, sendRequest.ui);
+		const stored = { method: 'PUT', body: '{"kind":"json","json":{"a":1}}', timeout: '' };
+		expect(contractInputOf(stored, sendRequest.inputSchema, toolUi)).toEqual({
+			method: 'PUT',
+			body: { kind: 'json', json: { a: 1 } },
+		});
+	});
+});
+
+describe('the filter widget', () => {
+	const value: Where = {
+		match: 'any',
+		conditions: [
+			{ type: 'number', left: 20, test: { op: 'gte', right: 18 } },
+			{ type: 'string', left: '={{ $json.name }}', test: { op: 'notEmpty' } },
+			{ type: 'array', left: ['a', 'b'], test: { op: 'lengthGt', right: 1 } },
+			{ type: 'boolean', left: null, test: { op: 'true' } },
+		],
+		ignoreCase: true,
+	};
+	const filterValue = {
+		conditions: [
+			{
+				id: '0',
+				leftValue: 20,
+				rightValue: 18,
+				operator: { type: 'number', operation: 'gte' },
+			},
+			{
+				id: '1',
+				leftValue: '={{ $json.name }}',
+				rightValue: '',
+				operator: { type: 'string', operation: 'notEmpty', singleValue: true },
+			},
+			{
+				id: '2',
+				leftValue: ['a', 'b'],
+				rightValue: 1,
+				operator: { type: 'array', operation: 'lengthGt', rightType: 'number' },
+			},
+			{
+				id: '3',
+				leftValue: null,
+				rightValue: '',
+				operator: { type: 'boolean', operation: 'true', singleValue: true },
+			},
+		],
+		combinator: 'or',
+		options: { caseSensitive: false, leftValue: '', typeValidation: 'strict', version: 2 },
+	};
+
+	it('shows the n8n filter and stores its value', () => {
+		expect(rowsOf(descriptionOf(route).properties)).toEqual(['where | where | filter']);
+		expect(nodeParametersOf({ where: value }, route.inputSchema, route.ui)).toEqual({
+			where: filterValue,
+		});
+	});
+
+	it('reads the stored filter value, its JSON text, a where value, and where JSON text as the where value', async () => {
+		const stored = [
+			{ where: filterValue },
+			{ where: JSON.stringify(filterValue) },
+			{ where: value },
+			{ where: JSON.stringify(value) },
+		];
+		for (const parameters of stored) {
+			expect(contractInputOf(parameters, route.inputSchema, route.ui)).toEqual({ where: value });
+			expect((await runInputOf(route, parameters)).input).toEqual({ where: value });
+		}
+		const none = { ...value, conditions: [] };
+		expect((await runInputOf(route, { where: none })).input).toEqual({ where: none });
+	});
+
+	it('reads a condition that the editor adds with the defaults of where', async () => {
+		const added = {
+			conditions: [
+				{
+					id: 'b1c4',
+					leftValue: '',
+					rightValue: 'Ada',
+					operator: { type: 'string', operation: 'equals' },
+				},
+			],
+			combinator: 'and',
+			options: { caseSensitive: true, leftValue: '', typeValidation: 'strict', version: 2 },
+		};
+		const read = { conditions: [{ type: 'string', test: { op: 'equals', right: 'Ada' } }] };
+		expect(contractInputOf({ where: added }, route.inputSchema, route.ui)).toEqual({ where: read });
+		expect((await runInputOf(route, { where: added })).input).toEqual({
+			where: { ...read, match: 'all', ignoreCase: false },
+		});
+	});
+
+	it('stores the where value in the node parameters and reads it back, and keeps other parameters', () => {
+		const { inputSchema, ui } = route;
+		for (const where of [value, filterValue, JSON.stringify(value)]) {
+			expect(storedParametersOf({ where, note: 'a' }, inputSchema, ui)).toEqual({
+				where: filterValue,
+				note: 'a',
+			});
+		}
+		expect(contractParametersOf({ where: filterValue, note: 'a' }, inputSchema, ui)).toEqual({
+			where: value,
+			note: 'a',
+		});
+		expect(storedParametersOf({ where: '={{ $json.where }}' }, inputSchema, ui)).toEqual({
+			where: '={{ $json.where }}',
+		});
+	});
+
+	it('keeps the field JSON in the tool form', () => {
+		const toolUi = toolUiOf(route.inputSchema, route.ui);
+		expect(toolUi.fields).toEqual({ where: { widget: 'json' } });
+		expect(contractInputOf({ where: JSON.stringify(value) }, route.inputSchema, toolUi)).toEqual({
+			where: value,
+		});
+	});
+});
+
+describe('the assignments widget', () => {
+	const fields = {
+		name: 'Ada',
+		age: 36,
+		admin: false,
+		tags: ['a'],
+		address: { city: 'London' },
+		manager: null,
+		email: '={{ $json.email }}',
+	};
+	const assignments = [
+		{ id: '0', name: 'name', value: 'Ada', type: 'string' },
+		{ id: '1', name: 'age', value: 36, type: 'number' },
+		{ id: '2', name: 'admin', value: false, type: 'boolean' },
+		{ id: '3', name: 'tags', value: '["a"]', type: 'array' },
+		{ id: '4', name: 'address', value: '{"city":"London"}', type: 'object' },
+		{ id: '5', name: 'manager', value: 'null', type: 'object' },
+		{ id: '6', name: 'email', value: '={{ $json.email }}', type: 'string' },
+	];
+
+	it('shows n8n assignments and stores one per key', () => {
+		expect(rowsOf(descriptionOf(edit).properties)).toEqual([
+			'fields | fields | assignmentCollection',
+			'headers | headers | assignmentCollection',
+		]);
+		expect(descriptionOf(edit).properties.map((property) => property.default)).toEqual([{}, '']);
+		expect(nodeParametersOf({ fields }, edit.inputSchema, edit.ui)).toEqual({
+			fields: { assignments },
+		});
+	});
+
+	it('reads the stored assignments, a record and record JSON text as the record', async () => {
+		const read = { ...fields, email: '={{ $json.email }}' };
+		for (const stored of [{ assignments }, fields, JSON.stringify(fields)]) {
+			expect(contractInputOf({ fields: stored }, edit.inputSchema, edit.ui)).toEqual({
+				fields: read,
+			});
+			expect((await runInputOf(edit, { fields: stored })).input).toEqual({ fields: read });
+		}
+		const typed = [{ id: 'x', name: 'Accept', value: 'json', type: 'string' }];
+		const { input } = await runInputOf(edit, {
+			fields: { assignments: [] },
+			headers: { assignments: typed },
+		});
+		expect(input).toEqual({ fields: {}, headers: { Accept: 'json' } });
+	});
+
+	it('finds no issue in the stored parameters', () => {
+		const description = descriptionOf(edit);
+		const node = {
+			id: '1',
+			name: 'Edit',
+			type: description.name,
+			typeVersion: 1,
+			position: [0, 0] as [number, number],
+			parameters: nodeParametersOf({ fields }, edit.inputSchema, edit.ui) as INodeParameters,
+		};
+		expect(getNodeParametersIssues(description.properties, node, description)).toBeNull();
+	});
+});
+
+describe('the list widget', () => {
+	const by = [{ field: 'name' }, { field: 'age', order: 'descending' }];
+	const where: Where = {
+		conditions: [{ type: 'string', left: 'a', test: { op: 'equals', right: 'a' } }],
+	};
+	const filterValue = {
+		conditions: [
+			{
+				id: '0',
+				leftValue: 'a',
+				rightValue: 'a',
+				operator: { type: 'string', operation: 'equals' },
+			},
+		],
+		combinator: 'and',
+		options: { caseSensitive: true, leftValue: '', typeValidation: 'strict', version: 2 },
+	};
+
+	it('shows rows of the item fields, with the widget of an item field', () => {
+		const [byProperty, casesProperty] = descriptionOf(sortRoute).properties;
+		expect(byProperty).toMatchObject({
+			name: 'by',
+			type: 'fixedCollection',
+			typeOptions: { multipleValues: true, sortable: true },
+			default: {},
+		});
+		const rows = (property: INodeProperties | undefined) =>
+			(property?.options ?? []).flatMap((option) =>
+				'values' in option ? option.values.map(({ name, type }) => `${name} | ${type}`) : [],
+			);
+		expect(rows(byProperty)).toEqual(['field | string', 'order | options']);
+		expect(rows(casesProperty)).toEqual(['output | string', 'where | filter']);
+	});
+
+	it('stores the rows and reads them back, with the stored value of an item widget', async () => {
+		const cases = [{ output: 'a', where }];
+		const stored = nodeParametersOf({ by, cases }, sortRoute.inputSchema, sortRoute.ui);
+		expect(stored).toEqual({
+			by: { values: by },
+			cases: { values: [{ output: 'a', where: filterValue }] },
+		});
+		const expected = {
+			by: [{ field: 'name', order: 'ascending' }, by[1]],
+			cases: [{ output: 'a', where: { ...where, match: 'all', ignoreCase: false } }],
+		};
+		expect((await runInputOf(sortRoute, stored)).input).toEqual(expected);
+		expect(contractInputOf(stored, sortRoute.inputSchema, sortRoute.ui)).toEqual({ by, cases });
+	});
+
+	it('reads a list stored as an array, but n8n drops it before a run', () => {
+		expect(contractInputOf({ by }, sortRoute.inputSchema, sortRoute.ui)).toEqual({ by });
+		const loaded = getNodeParameters(
+			descriptionOf(sortRoute).properties,
+			{ by } as INodeParameters,
+			true,
+			false,
+			null,
+			descriptionOf(sortRoute),
+		);
+		expect(loaded?.by).toEqual({});
+	});
+
+	it('reads a list without rows as unset when the field is optional', () => {
+		expect(
+			contractInputOf({ by: { values: by }, cases: {} }, sortRoute.inputSchema, sortRoute.ui),
+		).toEqual({ by });
+		expect(contractInputOf({ by: {} }, sortRoute.inputSchema, sortRoute.ui)).toEqual({ by: [] });
 	});
 });
 

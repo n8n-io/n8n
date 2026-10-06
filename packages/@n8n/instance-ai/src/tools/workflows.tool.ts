@@ -77,6 +77,7 @@ import {
 	refreshWorkflowSourceFileBindingFromSave,
 	refreshWorkflowSourceFileBindingFromWorkflow,
 } from './workflows/workflow-file-bindings';
+import { contractWorkflowOf } from './workflows/next-workflow-build';
 import { getReferencedWorkflowIds } from './workflows/workflow-json-utils';
 import { workflowSourceSdk } from './workflows/workflow-source-compiler';
 import {
@@ -950,7 +951,7 @@ async function handleGetAsCode(
 		const { composedFactoryKey, decompileWorkflow } = await import('@n8n/workflow-sdk/next');
 		// A node of a derived module reads back as its factory call when the read is lossless.
 		return decompileWorkflow(
-			json,
+			contractWorkflowOf(json),
 			contractFactories(composedFactoryKey),
 			(node) => {
 				const read = derivedReadOf(node, context);

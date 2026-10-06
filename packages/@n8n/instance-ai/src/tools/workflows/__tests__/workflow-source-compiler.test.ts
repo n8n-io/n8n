@@ -234,6 +234,39 @@ describe('compileWorkflowSource', () => {
 			);
 		});
 
+		it('saves a codec widget field as the widget stores it, and only with the flag', async () => {
+			const sort = (by: unknown) =>
+				JSON.stringify({
+					name: 'Sorted',
+					nodes: [
+						{
+							id: 'sort',
+							name: 'Sort',
+							type: '@n8n/nodes-base-next.itemsSort',
+							typeVersion: 1,
+							position: [0, 0],
+							parameters: { by },
+						},
+					],
+					connections: {},
+				});
+			const by = [{ field: 'name' }];
+			const parametersOf = (result: Awaited<ReturnType<typeof compileWorkflowSource>>) =>
+				result.success ? result.workflow.nodes[0]?.parameters : undefined;
+			const on = await compileWorkflowSource(
+				makeContext({ nodeContractsEnabled: true }),
+				'src/workflows/sort.workflow.json',
+				sort(by),
+			);
+			expect(parametersOf(on)).toEqual({ by: { values: by } });
+			const off = await compileWorkflowSource(
+				makeContext(),
+				'src/workflows/sort.workflow.json',
+				sort(by),
+			);
+			expect(parametersOf(off)).toEqual({ by });
+		});
+
 		it('keeps the JSON as written without the flag', async () => {
 			const result = await compileWorkflowSource(
 				makeContext(),

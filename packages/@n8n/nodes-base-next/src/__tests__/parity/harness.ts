@@ -26,7 +26,7 @@ import { isDeepStrictEqual } from 'node:util';
 import type * as Core from '../../../../../core/dist/index.js';
 import type Nock from '../../../../../core/node_modules/nock';
 import type { Action } from '@n8n/node-sdk';
-import { toNodeType } from '@n8n/node-sdk/host';
+import { nodeParametersOf, toNodeType } from '@n8n/node-sdk/host';
 import { parseFixtures } from '@n8n/node-sdk/registry';
 import type { MockRoute } from '@n8n/node-sdk/testing';
 import type * as N8nWorkflow from 'n8n-workflow';
@@ -150,7 +150,8 @@ export const actionNode = (
 		nodeType: new NodeType(),
 		type: nodeTypeOf(action),
 		typeVersion: action.version,
-		parameters: { ...parameters } as INodeParameters,
+		// As the form stores them, e.g. a list as rows.
+		parameters: nodeParametersOf(parameters, action.inputSchema, action.ui) as INodeParameters,
 		...(credential ? { credential } : {}),
 	};
 };

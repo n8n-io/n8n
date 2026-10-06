@@ -146,6 +146,7 @@ import {
 	TimeoutExecutionCancelledError,
 	UnexpectedError,
 	UserError,
+	isNodeParameters,
 	isTriggerNodeType,
 	jsonParse,
 	createRunExecutionData,
@@ -333,6 +334,17 @@ function collectCredentialProperties(
 		}
 	}
 	return properties;
+}
+
+/** The parameters without the one at `path`, e.g. `['options', 'pages']`. */
+function withoutParameter(parameters: INodeParameters, path: readonly string[]): INodeParameters {
+	const [head, ...rest] = path;
+	if (head === undefined || !(head in parameters)) return parameters;
+	const { [head]: value, ...kept } = parameters;
+	if (rest.length === 0) return kept;
+	return isNodeParameters(value)
+		? { ...parameters, [head]: withoutParameter(value, rest) }
+		: parameters;
 }
 
 /**
@@ -2149,21 +2161,17 @@ export class InstanceAiAdapterService {
 				const runNodes =
 					readOnce.size > 0 || omitted.length > 0
 						? nodes.map((node) => {
-								const drop = new Set(
-									omitted.flatMap(({ nodeName, parameter }) =>
-										nodeName === node.name ? [parameter] : [],
-									),
+								const drop = omitted.flatMap(({ nodeName, parameter }) =>
+									nodeName === node.name ? [parameter] : [],
 								);
-								const parameters =
-									drop.size > 0
-										? Object.fromEntries(
-												Object.entries(node.parameters).filter(([key]) => !drop.has(key)),
-											)
-										: node.parameters;
+								const parameters = drop.reduce(
+									(kept, path) => withoutParameter(kept, path.split('.')),
+									node.parameters,
+								);
 								if (readOnce.has(node.name)) {
 									return { ...node, parameters, executeOnce: true, retryOnFail: false };
 								}
-								return drop.size > 0 ? { ...node, parameters } : node;
+								return drop.length > 0 ? { ...node, parameters } : node;
 							})
 						: workflow.nodes;
 

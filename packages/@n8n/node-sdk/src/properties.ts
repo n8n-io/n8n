@@ -9,6 +9,7 @@ import {
 	type Schema,
 	type Shape,
 } from './schema';
+import type { Where } from './where';
 
 /**
  * The widgets of the n8n form, by name: the value type that each one edits and its config. A
@@ -35,6 +36,24 @@ export interface Widgets {
 	 * between them is a major.
 	 */
 	readonly json: Widget<object, Readonly<Record<never, never>>>;
+	/**
+	 * The n8n filter, for a `where` field. It stores the n8n filter value; the run and the build
+	 * read it back as `where`, and they also read a `where` value that it did not store.
+	 */
+	readonly filter: Widget<Where, Readonly<Record<never, never>>>;
+	/**
+	 * The n8n field assignments (as in Edit Fields), for a record: one name, type and value for
+	 * each key. The run and the build read the record back.
+	 */
+	readonly assignments: Widget<Readonly<Record<string, unknown>>, Readonly<Record<never, never>>>;
+	/**
+	 * Rows of the same fields (an n8n fixed collection), for a list of objects. Each row shows the
+	 * fields of one item; `fields` takes the UI of an item field as `field.itemField`.
+	 */
+	readonly list: Widget<
+		ReadonlyArray<Readonly<Record<string, unknown>>>,
+		Readonly<Record<never, never>>
+	>;
 }
 
 /** One entry of `Widgets`. */
@@ -92,19 +111,30 @@ type BranchPaths<K extends string, T> = true extends IsUnion<T>
 		? `${K}.${keyof T & string}`
 		: never
 	: never;
+/** `field.itemField` for each field of the items of a list of objects. */
+type ItemPaths<K extends string, T> = T extends ReadonlyArray<infer I>
+	? I extends Readonly<Record<string, unknown>>
+		? `${K}.${keyof I & string}`
+		: never
+	: never;
 type FieldPath<S extends Shape> = {
-	[K in keyof S & string]: K | BranchPaths<K, Infer<S[K]>>;
+	[K in keyof S & string]: K | BranchPaths<K, Infer<S[K]>> | ItemPaths<K, Infer<S[K]>>;
 }[keyof S & string];
 type BranchValue<T, F extends string> = T extends unknown
 	? F extends keyof T
 		? T[F]
 		: never
 	: never;
+type ItemValue<T, F extends string> = T extends ReadonlyArray<infer I>
+	? F extends keyof I
+		? I[F]
+		: never
+	: never;
 type ValueAt<S extends Shape, P extends string> = P extends keyof S
 	? Infer<S[P]>
 	: P extends `${infer K}.${infer F}`
 		? K extends keyof S
-			? BranchValue<Infer<S[K]>, F>
+			? BranchValue<Infer<S[K]>, F> | ItemValue<Infer<S[K]>, F>
 			: never
 		: never;
 type OptionalKey<S extends Shape> = {
@@ -192,9 +222,122 @@ export function parameterPathOf(
 	return (name) => (advanced.has(name) ? `${OPTIONS}.${name}` : name);
 }
 
+/** Where the form stores an input field. */
+export interface StoredField {
+	/** The n8n parameter path, see `parameterPathOf`. */
+	readonly path: string;
+	/** Reads the stored value of the widget as the contract value. Any other value stays. */
+	readonly read: (value: unknown) => unknown;
+}
+
+const asIs = (value: unknown) => value;
+
+/** The parameter path and the widget read of each input field. */
+export function storedFieldOf(
+	input: JsonSchema,
+	ui: ActionUiDocument = {},
+): (name: string) => StoredField {
+	const pathOf = parameterPathOf(input, ui);
+	const shape = shapeOf(input);
+	return (name) => ({
+		path: pathOf(name),
+		read: fieldCodecOf(ui.fields, name, shape[name])?.read ?? asIs,
+	});
+}
+
 /**
- * The n8n parameters of a contract input, as the generated form stores them: each advanced field
- * goes into the Options collection, and every other value stays as it is.
+ * The contract input in the stored parameters of a node, as the run reads it before the defaults:
+ * each field from its parameter path, decoded from the form that stores it. An unset field (`''`
+ * or no value) is not in the result. Expressions stay text. For an agent tool node, give
+ * `toolUiOf(input, ui)`.
+ *
+ * @example
+ * ```ts
+ * contractInputOf({ text: 'Hi', options: { blocks: '[]' } }, input, { advanced: ['blocks'] });
+ * // { text: 'Hi', blocks: [] }
+ * ```
+ */
+export function contractInputOf(
+	parameters: Readonly<Record<string, unknown>>,
+	input: JsonSchema,
+	ui: ActionUiDocument = {},
+): Record<string, unknown> {
+	const fieldOf = storedFieldOf(input, ui);
+	return Object.fromEntries(
+		Object.entries(shapeOf(input)).flatMap(([name, schema]) => {
+			const { path, read } = fieldOf(name);
+			const value = inputReaderOf(schema)(read(valueAt(parameters, path.split('.'))));
+			return value === undefined || value === '' ? [] : [[name, value]];
+		}),
+	);
+}
+
+const valueAt = (parameters: Readonly<Record<string, unknown>>, path: readonly string[]) =>
+	path.reduce<unknown>((at, key) => (isRecord(at) ? at[key] : undefined), parameters);
+
+function withValueAt(
+	parameters: Readonly<Record<string, unknown>>,
+	[key, ...rest]: readonly string[],
+	value: unknown,
+): Record<string, unknown> {
+	if (key === undefined) return { ...parameters };
+	const inner = parameters[key];
+	return {
+		...parameters,
+		[key]: rest.length === 0 ? value : withValueAt(isRecord(inner) ? inner : {}, rest, value),
+	};
+}
+
+/** The parameters with `map` applied to the value of each field that a codec widget stores. */
+function mapWidgetFields(
+	parameters: Readonly<Record<string, unknown>>,
+	input: JsonSchema,
+	ui: ActionUiDocument,
+	map: (codec: FieldCodec, value: unknown) => unknown,
+): Record<string, unknown> {
+	const pathOf = parameterPathOf(input, ui);
+	return Object.entries(shapeOf(input)).reduce<Record<string, unknown>>(
+		(result, [name, schema]) => {
+			const codec = fieldCodecOf(ui.fields, name, schema);
+			const path = pathOf(name).split('.');
+			const value = valueAt(result, path);
+			return codec === undefined || value === undefined
+				? result
+				: withValueAt(result, path, map(codec, value));
+		},
+		{ ...parameters },
+	);
+}
+
+/**
+ * The parameters of a node with the value of each codec widget field in the form that the widget
+ * stores, as the editor saves it. A contract value, JSON text and a stored value all give the
+ * stored value. Other parameters stay.
+ */
+export function storedParametersOf(
+	parameters: Readonly<Record<string, unknown>>,
+	input: JsonSchema,
+	ui: ActionUiDocument = {},
+): Record<string, unknown> {
+	return mapWidgetFields(parameters, input, ui, ({ read, store }, value) => store(read(value)));
+}
+
+/**
+ * The parameters of a node with the value of each codec widget field as its contract value, at
+ * its parameter path, so that a reader of contract values reads them. Other parameters stay.
+ */
+export function contractParametersOf(
+	parameters: Readonly<Record<string, unknown>>,
+	input: JsonSchema,
+	ui: ActionUiDocument = {},
+): Record<string, unknown> {
+	return mapWidgetFields(parameters, input, ui, ({ read }, value) => read(value));
+}
+
+/**
+ * The n8n parameters of a contract input, as the generated form stores them: a field with a
+ * codec widget in its stored form, each advanced field in the Options collection, and every
+ * other value as it is.
  */
 export function nodeParametersOf(
 	value: Readonly<Record<string, unknown>>,
@@ -202,7 +345,11 @@ export function nodeParametersOf(
 	ui: ActionUiDocument = {},
 ): Record<string, unknown> {
 	const advanced = advancedOf(input, ui);
-	const entries = Object.entries(value);
+	const shape = shapeOf(input);
+	const entries = Object.entries(value).map(([name, field]) => {
+		const codec = fieldCodecOf(ui.fields, name, shape[name]);
+		return [name, codec ? codec.store(field) : field] as const;
+	});
 	const options = entries.filter(([name]) => advanced.has(name));
 	return {
 		...Object.fromEntries(entries.filter(([name]) => !advanced.has(name))),
@@ -212,11 +359,12 @@ export function nodeParametersOf(
 
 /**
  * The form of an agent tool. The model fills a whole field with one `$fromAI()` expression, which
- * is text, so a variant stays JSON and no field goes into the Options collection.
+ * is text, so a variant and a field with a codec widget stay JSON, and no field goes into the
+ * Options collection.
  */
 export function toolUiOf(input: JsonSchema, ui: ActionUiDocument = {}): ActionUiDocument {
 	const variants = Object.entries(input.properties ?? {})
-		.filter(([, field]) => isVariant(field))
+		.filter(([name, field]) => isVariant(field) || isCodecWidget(ui.fields?.[name]?.widget))
 		.map(([name]) => [name, { ...ui.fields?.[name], widget: 'json' }]);
 	return {
 		...(ui.order ? { order: ui.order } : {}),
@@ -248,29 +396,345 @@ export function formPropertiesOf(input: JsonSchema, ui: ActionUiDocument = {}): 
 	];
 }
 
+/** A field of the form: its schema, the `ui` fields of the action, and its path in them. */
+interface FormField {
+	readonly schema: AnySchema;
+	readonly fields: Readonly<Record<string, FieldUiDocument>>;
+	readonly path: string;
+}
+
 type WidgetRenderer = (
 	property: INodeProperties,
 	config: Readonly<Record<string, unknown>>,
-	schema: AnySchema,
+	field: FormField,
 ) => INodeProperties;
 
+/** How a widget stores a value in another form than the contract value. */
+interface ValueCodec {
+	/** The stored form of a contract value. Any other value stays. */
+	readonly store: (value: unknown, field: FormField) => unknown;
+	/** The contract value of a stored value. Any other value stays, so an older stored form reads. */
+	readonly read: (value: unknown, field: FormField) => unknown;
+}
+
+/** The codec of one field. */
+interface FieldCodec {
+	readonly store: (value: unknown) => unknown;
+	readonly read: (value: unknown) => unknown;
+}
+
+/** How the host shows a widget, and its codec when it stores another form. */
+interface WidgetEntry {
+	/** The n8n property of the field. */
+	readonly render: WidgetRenderer;
+	readonly codec?: ValueCodec;
+}
+
 /** The built-in entries of `Widgets`. */
-const WIDGETS: Readonly<Record<keyof Widgets, WidgetRenderer>> = {
-	textarea: (property, { rows }) =>
-		property.type === 'string'
-			? {
-					...property,
-					typeOptions: { ...property.typeOptions, rows: typeof rows === 'number' ? rows : 4 },
-				}
-			: property,
-	json: ({ options: _options, typeOptions: _typeOptions, ...property }, _config, schema) => ({
-		...property,
-		type: 'json',
-		default: jsonDefaultOf(schema),
-	}),
+const WIDGETS: Readonly<Record<keyof Widgets, WidgetEntry>> = {
+	textarea: {
+		render: (property, { rows }) =>
+			property.type === 'string'
+				? {
+						...property,
+						typeOptions: { ...property.typeOptions, rows: typeof rows === 'number' ? rows : 4 },
+					}
+				: property,
+	},
+	json: {
+		render: (
+			{ options: _options, typeOptions: _typeOptions, ...property },
+			_config,
+			{ schema },
+		) => ({
+			...property,
+			type: 'json',
+			default: jsonDefaultOf(schema),
+		}),
+	},
+	filter: {
+		render: ({ options: _options, typeOptions: _typeOptions, placeholder: _p, ...property }) => ({
+			...property,
+			type: 'filter',
+			default: {},
+		}),
+		codec: {
+			store: (value) => (isWhere(value) ? filterValueOf(value) : value),
+			read: (value) => {
+				if (isFilterValue(value)) return whereOf(value);
+				if (!isWhere(value)) return value;
+				// n8n adds the filter defaults to any object that a filter parameter holds.
+				const { combinator: _combinator, options: _options, ...stored } = value;
+				return stored;
+			},
+		},
+	},
+	list: {
+		render: (
+			{ options: _options, typeOptions: _typeOptions, placeholder: _p, ...property },
+			_config,
+			field,
+		) => ({
+			...property,
+			type: 'fixedCollection',
+			typeOptions: { multipleValues: true, sortable: true },
+			placeholder: 'Add item',
+			default: {},
+			options: [
+				{ name: LIST_ITEMS, displayName: property.displayName, values: itemPropertiesOf(field) },
+			],
+		}),
+		codec: {
+			store: (value, field) =>
+				Array.isArray(value)
+					? {
+							[LIST_ITEMS]: value.map((item) =>
+								isRecord(item) ? storedItemOf(item, field) : item,
+							),
+						}
+					: value,
+			read: (value, field) => {
+				const items = listItemsOf(value);
+				if (items) return items.map((item) => (isRecord(item) ? readItemOf(item, field) : item));
+				// A list without rows: an optional field is unset.
+				const empty = isRecord(value) && Object.keys(value).length === 0;
+				return empty ? (field.schema.isOptional ? '' : []) : value;
+			},
+		},
+	},
+	assignments: {
+		render: ({ options: _options, typeOptions: _typeOptions, placeholder: _p, ...property }) => ({
+			...property,
+			type: 'assignmentCollection',
+			// An optional field without a value stays unset, as a `json` field does.
+			default: property.default === '' ? '' : {},
+		}),
+		codec: {
+			store: (value) => (isRecord(value) && !isAssignments(value) ? assignmentsOf(value) : value),
+			read: (value) => (isAssignments(value) ? recordOf(value.assignments) : value),
+		},
+	},
 };
 
+/** The n8n parameter of the rows of a `list` widget. */
+const LIST_ITEMS = 'values';
+
+const itemShapeOf = ({ schema }: FormField) =>
+	isRecord(schema.json.items) ? shapeOf(schema.json.items) : {};
+
+/** One row of a list: each item field, with its widget at `field.itemField`. */
+const itemPropertiesOf = (field: FormField): INodeProperties[] =>
+	Object.entries(itemShapeOf(field)).map(([name, child]) => ({
+		...toProperty(name, child, field.fields, `${field.path}.${name}`),
+		// As in a variant collection, the run checks a required item field.
+		required: false,
+	}));
+
+const listItemsOf = (value: unknown): readonly unknown[] | undefined => {
+	if (Array.isArray(value)) return value;
+	if (!isRecord(value) || Object.keys(value).length !== 1) return undefined;
+	const items = value[LIST_ITEMS];
+	return Array.isArray(items) ? items : undefined;
+};
+
+const storedItemOf = (item: Readonly<Record<string, unknown>>, field: FormField) => {
+	const shape = itemShapeOf(field);
+	return Object.fromEntries(
+		Object.entries(item).map(([name, value]) => {
+			const codec = fieldCodecOf(field.fields, `${field.path}.${name}`, shape[name]);
+			return [name, codec ? codec.store(value) : value];
+		}),
+	);
+};
+
+/** An item of a row: n8n fills each field default into a row, and `''` is an unset field. */
+const readItemOf = (item: Readonly<Record<string, unknown>>, field: FormField) => {
+	const shape = itemShapeOf(field);
+	return Object.fromEntries(
+		Object.entries(item).flatMap(([name, stored]) => {
+			const child = shape[name];
+			if (!child) return [[name, stored]];
+			const codec = fieldCodecOf(field.fields, `${field.path}.${name}`, child);
+			const value = inputReaderOf(child)(codec ? codec.read(stored) : stored);
+			return value === undefined || value === '' ? [] : [[name, value]];
+		}),
+	);
+};
+
+/** The type of an n8n assignment for a value. The editor edits a list or an object as JSON text. */
+const assignmentOf = (name: string, value: unknown, index: number) => {
+	const id = String(index);
+	if (typeof value === 'number' || typeof value === 'boolean') {
+		return { id, name, value, type: typeof value };
+	}
+	if (typeof value === 'string') return { id, name, value, type: 'string' };
+	return {
+		id,
+		name,
+		value: JSON.stringify(value),
+		type: Array.isArray(value) ? 'array' : 'object',
+	};
+};
+
+/** The n8n assignments of a record. Each ID is its index, so a build is the same each time. */
+const assignmentsOf = (record: Readonly<Record<string, unknown>>) => ({
+	assignments: Object.entries(record).map(([name, value], index) =>
+		assignmentOf(name, value, index),
+	),
+});
+
+interface StoredAssignment {
+	readonly name: string;
+	readonly value?: unknown;
+	readonly type?: unknown;
+}
+
+const isStoredAssignment = (value: unknown): value is StoredAssignment =>
+	isRecord(value) && typeof value.name === 'string' && typeof value.id === 'string';
+
+const isAssignments = (value: unknown): value is { assignments: StoredAssignment[] } =>
+	isRecord(value) &&
+	Object.keys(value).length === 1 &&
+	Array.isArray(value.assignments) &&
+	value.assignments.every(isStoredAssignment);
+
+const parsedOrText = (text: string): unknown => {
+	try {
+		const parsed: unknown = JSON.parse(text);
+		return parsed;
+	} catch {
+		return text;
+	}
+};
+
+/** The record of n8n assignments. A list or an object typed as text reads as its JSON value. */
+const recordOf = (assignments: readonly StoredAssignment[]) =>
+	Object.fromEntries(
+		assignments.map(({ name, value, type }) => [
+			name,
+			(type === 'array' || type === 'object') && typeof value === 'string' && !value.startsWith('=')
+				? parsedOrText(value)
+				: value,
+		]),
+	);
+
 const isWidget = (name: string): name is keyof Widgets => Object.hasOwn(WIDGETS, name);
+
+const isCodecWidget = (widget: string | undefined) =>
+	widget !== undefined && isWidget(widget) && WIDGETS[widget].codec !== undefined;
+
+/** The codec of the widget of the field at `path`, when its widget stores another form. */
+function fieldCodecOf(
+	fields: Readonly<Record<string, FieldUiDocument>> = {},
+	path: string,
+	schema: AnySchema | undefined,
+): FieldCodec | undefined {
+	const widget = fields[path]?.widget;
+	const codec = widget !== undefined && isWidget(widget) ? WIDGETS[widget].codec : undefined;
+	if (!codec || !schema) return undefined;
+	const field = { schema, fields, path };
+	return {
+		store: (value) => codec.store(value, field),
+		// A codec field holds an object or a list, which can also be JSON text.
+		read: (value) => codec.read(parameterValue(value, true), field),
+	};
+}
+
+/** The n8n filter operations that compare with a value of another type than the tested one. */
+const RIGHT_TYPES: Readonly<Record<string, string>> = {
+	contains: 'any',
+	notContains: 'any',
+	lengthEquals: 'number',
+	lengthNotEquals: 'number',
+	lengthGt: 'number',
+	lengthGte: 'number',
+	lengthLt: 'number',
+	lengthLte: 'number',
+};
+
+/** A `where` value before validation: the run checks the conditions. */
+interface WhereValue {
+	readonly [key: string]: unknown;
+	readonly match?: unknown;
+	readonly conditions: ReadonlyArray<{
+		readonly type?: unknown;
+		readonly left?: unknown;
+		readonly test: Readonly<Record<string, unknown>>;
+	}>;
+	readonly ignoreCase?: unknown;
+}
+
+const isWhere = (value: unknown): value is WhereValue =>
+	isRecord(value) &&
+	Array.isArray(value.conditions) &&
+	value.conditions.every((entry) => isRecord(entry) && isRecord(entry.test));
+
+/** The n8n filter value of a `where`. Each condition ID is its index, so a build is the same each time. */
+const filterValueOf = ({ match, conditions, ignoreCase }: WhereValue) => ({
+	conditions: conditions.map(({ type, left, test }, index) => ({
+		id: String(index),
+		leftValue: left === undefined ? '' : left,
+		rightValue: 'right' in test ? test.right : '',
+		operator: {
+			type,
+			operation: test.op,
+			...(type === 'array' && typeof test.op === 'string' && Object.hasOwn(RIGHT_TYPES, test.op)
+				? { rightType: RIGHT_TYPES[test.op] }
+				: {}),
+			...('right' in test ? {} : { singleValue: true }),
+		},
+	})),
+	combinator: match === 'any' ? 'or' : 'and',
+	options: {
+		caseSensitive: ignoreCase !== true,
+		leftValue: '',
+		typeValidation: 'strict',
+		version: 2,
+	},
+});
+
+interface StoredCondition {
+	readonly leftValue?: unknown;
+	readonly rightValue?: unknown;
+	readonly operator: Readonly<Record<string, unknown>>;
+}
+
+const isStoredCondition = (value: unknown): value is StoredCondition =>
+	isRecord(value) && isRecord(value.operator);
+
+const isFilterValue = (
+	value: unknown,
+): value is { conditions: StoredCondition[]; combinator?: unknown; options?: unknown } =>
+	isRecord(value) &&
+	!('match' in value) &&
+	!('ignoreCase' in value) &&
+	Array.isArray(value.conditions) &&
+	value.conditions.every(isStoredCondition);
+
+/**
+ * The `where` of an n8n filter value. A default (`all`, case sensitive) and an empty left value
+ * stay out, as in the value that the build writes.
+ */
+const whereOf = ({
+	conditions,
+	combinator,
+	options,
+}: {
+	conditions: readonly StoredCondition[];
+	combinator?: unknown;
+	options?: unknown;
+}) => ({
+	...(combinator === 'or' ? { match: 'any' } : {}),
+	conditions: conditions.map(({ leftValue, rightValue, operator }) => ({
+		type: operator.type,
+		...(leftValue === '' || leftValue === undefined ? {} : { left: leftValue }),
+		test: {
+			op: operator.operation,
+			...(operator.singleValue === true ? {} : { right: rightValue }),
+		},
+	})),
+	...(isRecord(options) && options.caseSensitive === false ? { ignoreCase: true } : {}),
+});
 
 /** A `json` property keeps the JSON value; n8n resolves expressions inside it per item. */
 const jsonDefaultOf = ({ json, isOptional }: AnySchema) =>
@@ -297,7 +761,7 @@ export function toProperty(
 	const { widget, config = {} } = fields[path] ?? {};
 	const property = basePropertyOf(name, schema, fields, path);
 	return widget !== undefined && isWidget(widget)
-		? WIDGETS[widget](property, config, schema)
+		? WIDGETS[widget].render(property, config, { schema, fields, path })
 		: property;
 }
 

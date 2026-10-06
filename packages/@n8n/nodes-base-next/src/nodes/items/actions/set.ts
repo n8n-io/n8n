@@ -16,6 +16,7 @@ export const editFields = itemsNode.action('set', {
 			.default({ mode: 'none' })
 			.hint('Input fields to keep beside the set fields'),
 	},
+	ui: { fields: { fields: { widget: 'assignments' } } },
 	output: t.json(),
 	async run({ input, item }) {
 		const { include } = input;

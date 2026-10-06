@@ -9,7 +9,13 @@ import {
 	safeRegex,
 } from 'n8n-workflow';
 
-import { fieldReadsOf, outputOf, runsLocally, type FieldRead } from './next-workflow-build';
+import {
+	fieldReadsOf,
+	nodeInputOf,
+	outputOf,
+	runsLocally,
+	type FieldRead,
+} from './next-workflow-build';
 import { isTriggerNodeType } from './workflow-json-utils';
 import type { ResolvedNodeParametersResult } from '../../types';
 import type { WorkflowBuildOutcome } from '../../workflow-loop/workflow-loop-state';
@@ -191,10 +197,11 @@ function sourceOf(
 		return sourceOf(view, nodeName, { key: read.key }, hops + 1);
 	}
 	if (action.id !== 'items.set') return here;
-	const fields = isRecord(node.parameters?.fields) ? node.parameters.fields : {};
+	const input = nodeInputOf(node, action);
+	const fields = isRecord(input.fields) ? input.fields : {};
 	const value = fields[read.key];
 	if (value === undefined) {
-		return keepsInputField(node.parameters?.include, read.key)
+		return keepsInputField(input.include, read.key)
 			? sourceOf(view, nodeName, { key: read.key }, hops + 1)
 			: here;
 	}
@@ -206,7 +213,7 @@ function fieldSchemaOf(view: WorkflowView, { nodeName, key }: FieldSource) {
 	const node = view.node(nodeName);
 	const action = node && actionOfNode(node);
 	if (!node || !action) return undefined;
-	const schema = outputOf(action, node.parameters ?? {});
+	const schema = outputOf(action, nodeInputOf(node, action));
 	return { schema, field: schema.properties?.[key] };
 }
 

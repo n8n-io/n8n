@@ -69,8 +69,10 @@ import {
 	inputReaderOf,
 	locatorValueOf,
 	parameterPathOf,
+	storedFieldOf,
 	toolUiOf,
 	type ActionUiDocument,
+	type StoredField,
 } from './properties';
 import {
 	bytesOf,
@@ -737,20 +739,27 @@ const SUPPLY_ITEM = 0;
  */
 const unsetValueOf = (name: string, path: string) => (path === name ? undefined : '');
 
-/** `pathOf` gives the n8n parameter of an input field, see `parameterPathOf`. */
+/** The stored field of an input in a form without a `ui` block. */
+const plainField = (name: string): StoredField => ({ path: name, read: (value) => value });
+
+/** `fieldOf` gives where the form stores an input field, see `storedFieldOf`. */
 const hostOf = (
 	context: IExecuteFunctions,
-	pathOf: (name: string) => string = (name) => name,
+	fieldOf: (name: string) => StoredField = plainField,
 ): ExecutorHost => ({
 	...hostBaseOf(context),
 	items: context.getInputData(),
-	parameter: (name, itemIndex, raw) =>
-		context.getNodeParameter(
-			pathOf(name),
-			itemIndex,
-			unsetValueOf(name, pathOf(name)),
-			raw ? { rawExpressions: true } : {},
-		),
+	parameter: (name, itemIndex, raw) => {
+		const { path, read } = fieldOf(name);
+		return read(
+			context.getNodeParameter(
+				path,
+				itemIndex,
+				unsetValueOf(name, path),
+				raw ? { rawExpressions: true } : {},
+			),
+		);
+	},
 	continueOnFail: () => context.continueOnFail(),
 	inputItems: (index) => {
 		try {
@@ -776,17 +785,21 @@ const hostOf = (
 const supplyHostOf = (
 	context: ISupplyDataFunctions,
 	itemIndex: number,
-	pathOf: (name: string) => string = (name) => name,
+	fieldOf: (name: string) => StoredField = plainField,
 ): ExecutorHost => ({
 	...hostBaseOf(context),
 	items: [{ json: {} }],
-	parameter: (name, _itemIndex, raw) =>
-		context.getNodeParameter(
-			pathOf(name),
-			itemIndex,
-			unsetValueOf(name, pathOf(name)),
-			raw ? { rawExpressions: true } : {},
-		),
+	parameter: (name, _itemIndex, raw) => {
+		const { path, read } = fieldOf(name);
+		return read(
+			context.getNodeParameter(
+				path,
+				itemIndex,
+				unsetValueOf(name, path),
+				raw ? { rawExpressions: true } : {},
+			),
+		);
+	},
 	continueOnFail: () => false,
 	supplied: async (kind) =>
 		await context.getInputConnectionData(PROVIDER_CONNECTIONS[kind], itemIndex),
@@ -1932,7 +1945,7 @@ const GROUPS = { read: 'input', write: 'output', transform: 'transform' } as con
 
 /**
  * The n8n outputs of `outputs`. n8n evaluates this function as an expression in the editor;
- * it reads the list as the editor stores a `json` parameter: as text.
+ * it reads the list as the editor stores a `json` parameter (text) or a `list` widget (rows).
  */
 function outputsPerEntry(parameters: Record<string, unknown>, each: string, then: string[]) {
 	const value = parameters[each];
@@ -1943,7 +1956,15 @@ function outputsPerEntry(parameters: Record<string, unknown>, each: string, then
 			return [];
 		}
 	})();
-	const entries: unknown[] = Array.isArray(parsed) ? parsed : [];
+	const rows: unknown =
+		typeof parsed === 'object' &&
+		parsed !== null &&
+		!Array.isArray(parsed) &&
+		'values' in parsed &&
+		Object.keys(parsed).length === 1
+			? parsed.values
+			: parsed;
+	const entries: unknown[] = Array.isArray(rows) ? rows : [];
 	const names = entries.map((entry, index) =>
 		typeof entry === 'object' &&
 		entry !== null &&
@@ -2456,7 +2477,7 @@ export function toNodeType<S extends Shape, O extends AnySchema>(
 	});
 
 	const run = executorOf(action);
-	const pathOf = parameterPathOf(action.inputSchema, ui);
+	const fieldOf = storedFieldOf(action.inputSchema, ui);
 	const kind = providedKindOf(action.output.json);
 	const methods = listSearchMethodsOf({ input: action.inputSchema }, ui, async () => action);
 	if (kind) {
@@ -2466,7 +2487,7 @@ export function toNodeType<S extends Shape, O extends AnySchema>(
 			methods = methods;
 
 			async supplyData(this: ISupplyDataFunctions, itemIndex: number) {
-				const outputs = await run(supplyHostOf(this, itemIndex, pathOf));
+				const outputs = await run(supplyHostOf(this, itemIndex, fieldOf));
 				return supplyDataOf(action.id, kind, outputs, this);
 			}
 		};
@@ -2477,7 +2498,7 @@ export function toNodeType<S extends Shape, O extends AnySchema>(
 		methods = methods;
 
 		async execute(this: IExecuteFunctions) {
-			return await run(hostOf(this, pathOf));
+			return await run(hostOf(this, fieldOf));
 		}
 	};
 }
@@ -2721,20 +2742,20 @@ async function versionExecutorOf(context: NodeContext, head: FrozenVersion) {
 	return { executor, manifest: frozen.manifest, cached };
 }
 
-/** The n8n parameter paths follow the form of `head`, which the editor shows and stores. */
-const headPathOf = ({ manifest }: FrozenVersion) =>
-	parameterPathOf(manifest.contract.input, manifest.ui);
+/** The stored fields follow the form of `head`, which the editor shows and stores. */
+const headFieldOf = ({ manifest }: FrozenVersion) =>
+	storedFieldOf(manifest.contract.input, manifest.ui);
 
 async function executeVersion(context: IExecuteFunctions, head: FrozenVersion) {
 	const slot = runProfileListener();
 	if (!slot) {
 		const { executor, manifest } = await versionExecutorOf(context, head);
-		const outputs = await executor(hostOf(context, headPathOf(head)));
+		const outputs = await executor(hostOf(context, headFieldOf(head)));
 		recordVersion(context, manifest);
 		return outputs;
 	}
 	const { listener, payloads } = slot;
-	const host = hostOf(context, headPathOf(head));
+	const host = hostOf(context, headFieldOf(head));
 	const { recorder, profile } = runRecorder(host.items.length, payloads);
 	const loadStart = recorder.now();
 	const { executor, manifest, cached } = await versionExecutorOf(context, head);
@@ -2779,7 +2800,7 @@ async function supplyVersion(
 	itemIndex: number,
 ) {
 	const { executor, manifest } = await versionExecutorOf(context, head);
-	const outputs = await executor(supplyHostOf(context, itemIndex, headPathOf(head)));
+	const outputs = await executor(supplyHostOf(context, itemIndex, headFieldOf(head)));
 	return supplyDataOf(manifest.id, kind, outputs, context);
 }
 

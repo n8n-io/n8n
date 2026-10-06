@@ -470,8 +470,10 @@ describe('condition.switch parity with Switch v3.2', () => {
 		renameOutput: true,
 		conditions: legacyConditions([{ left: '={{ $json.age }}', type: 'number', operation, right }]),
 	});
-	const contractCase = (output: string, op: string, right: number) =>
-		`{ output: "${output}", where: { conditions: [{ type: "number", left: $json.age, test: { op: "${op}", right: ${right} } }] } }`;
+	const contractCase = (output: string, op: string, right: number) => ({
+		output,
+		where: { conditions: [{ type: 'number', left: '={{ $json.age }}', test: { op, right } }] },
+	});
 
 	it('routes to the first matching case, else to fallback', async () => {
 		await expectParity(
@@ -482,7 +484,7 @@ describe('condition.switch parity with Switch v3.2', () => {
 			}),
 			switchCases,
 			{
-				cases: `={{ [${contractCase('young', 'lt', 18)}, ${contractCase('senior', 'gte', 65)}] }}`,
+				cases: [contractCase('young', 'lt', 18), contractCase('senior', 'gte', 65)],
 			},
 		);
 	});
@@ -496,7 +498,7 @@ describe('condition.switch parity with Switch v3.2', () => {
 			}),
 			switchCases,
 			{
-				cases: `={{ [${contractCase('adult', 'gte', 18)}, ${contractCase('senior', 'gte', 65)}] }}`,
+				cases: [contractCase('adult', 'gte', 18), contractCase('senior', 'gte', 65)],
 				allMatches: true,
 			},
 		);

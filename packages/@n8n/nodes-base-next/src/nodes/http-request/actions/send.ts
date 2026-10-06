@@ -4,6 +4,7 @@ import { httpRequest } from '../http-request.node';
 import {
 	bodySchema,
 	common,
+	commonUi,
 	responseOf,
 	responseOptions,
 	responseOutputOf,
@@ -41,6 +42,7 @@ export const sendRequest = httpRequest.action('send', {
 		...responseOptions,
 		schema: bodySchema,
 	},
+	ui: commonUi,
 	output,
 	deriveOutput: responseOutputOf(output.json),
 	async *run({ input, http }) {

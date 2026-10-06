@@ -923,7 +923,11 @@ export default workflow(
 		expect(right.success ? [] : right.errors).toEqual([]);
 		if (right.success) {
 			expect(right.workflow.nodes.find((node) => node.name === 'Contact')?.parameters).toEqual({
-				fields: { 'contact.city': '={{ $json.profile.city }}' },
+				fields: {
+					assignments: [
+						{ id: '0', name: 'contact.city', value: '={{ $json.profile.city }}', type: 'string' },
+					],
+				},
 				include: { mode: 'selected', fields: ['id'] },
 			});
 		}

@@ -13,6 +13,7 @@ export const renameKeys = itemsNode.action('renameKeys', {
 	input: {
 		keys: t.arr(t.obj({ from: field(), to: field() })).with({ minItems: 1 }),
 	},
+	ui: { fields: { keys: { widget: 'list' } } },
 	output: t.json(),
 	async run({ input, item }) {
 		const renamed = input.keys.reduce<Readonly<Record<string, unknown>>>((result, { from, to }) => {

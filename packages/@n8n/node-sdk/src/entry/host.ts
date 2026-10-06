@@ -14,8 +14,12 @@ export { credentialTypeOfManifest, toCredentialType } from '../credentials';
 export { setCodeLanguages, setFileExtractor, type FileExtractor } from '../host-imports';
 export {
 	advancedFieldsOf,
+	contractInputOf,
+	contractParametersOf,
 	jsonFieldPathsOf,
 	nodeParametersOf,
+	parameterPathOf,
+	storedParametersOf,
 	toolUiOf,
 	type ActionUiDocument,
 	type FieldUiDocument,

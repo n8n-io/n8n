@@ -185,6 +185,17 @@ host without a registry, import a copy of the registry folder.
   the `Widgets` interface: the value type it edits and its config. The host shows an unknown
   widget as the default field. The form of an agent tool keeps each field at the top and a variant as JSON,
   because the model fills a whole field with one `$fromAI()` expression.
+- Codec widgets store another form than the contract value. `filter` (a `where` field, the
+  standard `where` schema) stores the n8n filter value. `assignments` (a record) stores n8n
+  field assignments. `list` (a list of objects) stores rows of a fixed collection; an item
+  field takes its widget at `field.itemField`, e.g. `'cases.where': { widget: 'filter' }`.
+  The host owns the stored form: the runtime, `contractInputOf` and `contractParametersOf`
+  read it back with the widget of the newest version, and also read the contract value and
+  JSON text. `storedParametersOf` and `nodeParametersOf` write it. The typed flow build
+  writes contract values; the host stores them before it saves the workflow.
+- The limit of a `list`: n8n drops an array or a string under a fixed collection when it
+  loads a node. So a list stored as an array or as one whole-field expression is lost before
+  a run. The typed flow never writes either; read and rebuild a saved workflow to move it.
 - The JSON editor of a `json` field keeps the value as text after an edit. The runtime reads
   the text as its value, and so does the typed source of a saved workflow (`jsonFieldPathsOf`).
 - A node with a credential selector stores the picked type in the `authentication` parameter.
@@ -231,7 +242,7 @@ The publish gate (`checkPublish`) refuses a smaller bump. A patch must keep the 
 | Other `loadOptions` calls in `x-n8n-resource`, with the same `method` and `input` | minor |
 | An added key pattern (`patternProperties`, e.g. `t.indexedBinaries()`); its first binary is binary data access, a major | minor |
 | A new required input, or a narrower input | major |
-| A `ui` change that moves a stored parameter: a field into or out of `advanced`, a variant to or from the `json` widget | major |
+| A `ui` change that moves a stored parameter: a field into or out of `advanced`, a variant to or from the `json` widget, a field to or from the `list` widget | major |
 | A removed output field, a removed key pattern, or an output field that becomes optional (from required or typical) | major |
 | An added or removed `x-n8n-resource`, or another `method` or `input` in it | major |
 | A removed or other `x-n8n-ref`: the runtime reads a stored resource locator only for a ref field | major |

@@ -57,6 +57,7 @@ export {
 	runsNodeContract,
 	setCodeLanguages,
 	setFileExtractor,
+	storedParametersOf,
 	toVersionedNodeType,
 	toVersionedToolType,
 	toVersionedTriggerType,

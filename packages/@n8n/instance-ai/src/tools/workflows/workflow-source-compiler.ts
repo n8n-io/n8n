@@ -39,6 +39,7 @@ import {
 	nextWorkspaceFiles,
 	nodeOutputsDeclaration,
 	staticInputIssues,
+	storedWorkflowOf,
 	synthesizedFixtures,
 	typecheckWorkflowSource,
 	untypedNodeIssues,
@@ -664,6 +665,10 @@ export async function compileWorkflowSource(
 			}
 
 			if (!result.success) return result;
+			// The editor shows a codec widget field only in the form that the widget stores.
+			if (context.nodeContractsEnabled) {
+				result = { ...result, workflow: storedWorkflowOf(result.workflow) };
+			}
 
 			const warnings = validateCompiledWorkflow(result.workflow, context, result.warnings);
 			const credentialWarnings = await collectCredentialResolutionWarnings(

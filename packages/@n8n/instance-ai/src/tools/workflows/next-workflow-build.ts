@@ -9,10 +9,15 @@ import {
 	toTs,
 } from '@n8n/node-sdk/codegen';
 import {
+	contractInputOf,
+	contractParametersOf,
 	credentialHostsOf,
 	egressIssuesOf,
 	exampleOf,
+	parameterPathOf,
 	resourceLookupsOf,
+	storedParametersOf,
+	toolUiOf,
 	type ResourceLookupCall,
 } from '@n8n/node-sdk/host';
 import { toContract } from '@n8n/node-sdk/registry';
@@ -20,7 +25,7 @@ import { actionOfNode, actions, isContractNodeType, toolActionOfNode } from '@n8
 import { isRecord } from '@n8n/utils/is-record';
 import { hasPlaceholderDeep } from '@n8n/utils/placeholder';
 import { sublimeSearch } from '@n8n/utils/search/sublime-search';
-import { toEngineConnections, type WorkflowJSON } from '@n8n/workflow-sdk';
+import { toEngineConnections, type IDataObject, type WorkflowJSON } from '@n8n/workflow-sdk';
 import {
 	getChildNodes,
 	isFromAIOnlyExpression,
@@ -178,20 +183,63 @@ export async function modelCatalogFile(
 	return modelCatalogDeclaration(Object.fromEntries(entries));
 }
 
+type WorkflowNode = WorkflowJSON['nodes'][number];
+
+/** The form of a contract node: a tool node has the tool form. */
+const formOf = (node: Pick<WorkflowNode, 'type'>, action: (typeof actions)[number]) =>
+	toolActionOfNode(node) === action ? toolUiOf(action.inputSchema, action.ui) : action.ui;
+
+/** The contract input of a node, decoded from its stored parameters as the run reads them. */
+export const nodeInputOf = (
+	node: Pick<WorkflowNode, 'type' | 'parameters'>,
+	action: (typeof actions)[number],
+) => contractInputOf(node.parameters ?? {}, action.inputSchema, formOf(node, action));
+
+// n8n node parameters are JSON values.
+const isDataObject = (value: unknown): value is IDataObject => isRecord(value);
+
+/** The workflow with `map` applied to the parameters of each contract node. */
+const mapContractParameters = (
+	workflow: WorkflowJSON,
+	map: typeof storedParametersOf,
+): WorkflowJSON => ({
+	...workflow,
+	nodes: workflow.nodes.map((node) => {
+		const action = actionOfNode(node) ?? toolActionOfNode(node);
+		const parameters =
+			action && map(node.parameters ?? {}, action.inputSchema, formOf(node, action));
+		return parameters && isDataObject(parameters) ? { ...node, parameters } : node;
+	}),
+});
+
 /**
- * The action's output for this node's parameters and its resource fields. A hatch that cannot
+ * The workflow as the editor saves it: each field of a contract node that a codec widget edits
+ * holds the value of the widget, e.g. the n8n filter value of a `where`.
+ */
+export const storedWorkflowOf = (workflow: WorkflowJSON) =>
+	mapContractParameters(workflow, storedParametersOf);
+
+/**
+ * The workflow with each field of a contract node that a codec widget edits as its contract
+ * value, for the readers of contract values, e.g. `decompileWorkflow`.
+ */
+export const contractWorkflowOf = (workflow: WorkflowJSON) =>
+	mapContractParameters(workflow, contractParametersOf);
+
+/**
+ * The action's output for this node's input and its resource fields. A hatch that cannot
  * read them keeps the default.
  */
 export function outputOf(
 	action: (typeof actions)[number],
-	parameters: Record<string, unknown>,
+	input: Record<string, unknown>,
 	fields?: readonly ResourceField[],
 ): JsonSchema {
 	try {
 		if (fields?.length && action.resourceOutput) {
-			return action.resourceOutput.toOutput(fields, parameters);
+			return action.resourceOutput.toOutput(fields, input);
 		}
-		return action.deriveOutput?.(parameters) ?? action.output.json;
+		return action.deriveOutput?.(input) ?? action.output.json;
 	} catch {
 		return action.output.json;
 	}
@@ -203,12 +251,12 @@ export function outputOf(
  */
 export function declaredOutputOf(node: WorkflowJSON['nodes'][number]): JsonSchema | undefined {
 	const action = actionOfNode(node);
-	const parameters = node.parameters ?? {};
 	if (!action) return undefined;
+	const input = nodeInputOf(node, action);
 	const declares = Object.entries(action.inputSchema.properties ?? {}).some(
-		([key, field]) => field['x-n8n-declared'] === true && isRecord(parameters[key]),
+		([key, field]) => field['x-n8n-declared'] === true && isRecord(input[key]),
 	);
-	const output = declares ? outputOf(action, parameters) : undefined;
+	const output = declares ? outputOf(action, input) : undefined;
 	return output === action.output.json ? undefined : output;
 }
 
@@ -264,7 +312,7 @@ export async function fetchResourceFields(
 		const action = actionOfNode(node);
 		const contract = action && toContract(action);
 		const method = contract?.output['x-n8n-resource']?.method;
-		const calls = contract ? resourceLookupsOf(contract, node.parameters ?? {}) : [];
+		const calls = contract ? resourceLookupsOf(contract, nodeInputOf(node, action)) : [];
 		return action && node.name && calls.length > 0
 			? [{ name: node.name, node, action, method, calls }]
 			: [];
@@ -464,7 +512,7 @@ export function synthesizedFixtures(
 		const action = actionOfNode(node);
 		if (!action || !node.name || local.has(node.name)) return [];
 		const given = declared[node.name];
-		const schema = outputOf(action, node.parameters ?? {}, resourceFields.get(node.name));
+		const schema = outputOf(action, nodeInputOf(node, action), resourceFields.get(node.name));
 		const example = exampleOf(schema);
 		if (!isRecord(example)) return given ? [[node.name, given]] : [];
 		const item = {
@@ -513,9 +561,9 @@ const readsOnce = (action: (typeof actions)[number]) =>
 	action.flow.effect === 'read' && action.flow.idempotent === true;
 
 /** The set inputs that follow pages, e.g. HTTP `pages`: a page value below their top level. */
-const pageInputsOf = (action: (typeof actions)[number], parameters: Record<string, unknown>) =>
+const pageInputsOf = (action: (typeof actions)[number], input: Record<string, unknown>) =>
 	Object.entries(action.inputSchema.properties ?? {}).flatMap(([key, field]) =>
-		parameters[key] !== undefined && field['x-n8n-page'] === undefined && hasPageValue(field)
+		input[key] !== undefined && field['x-n8n-page'] === undefined && hasPageValue(field)
 			? [key]
 			: [],
 	);
@@ -547,7 +595,10 @@ export function firstPageOmissions(
 		const nodeName = node.name;
 		const action = nodeName && liveReads.includes(nodeName) ? actionOfNode(node) : undefined;
 		return action && nodeName
-			? pageInputsOf(action, node.parameters ?? {}).map((parameter) => ({ nodeName, parameter }))
+			? pageInputsOf(action, nodeInputOf(node, action)).map((key) => ({
+					nodeName,
+					parameter: parameterPathOf(action.inputSchema, action.ui)(key),
+				}))
 			: [];
 	});
 }
@@ -563,11 +614,10 @@ export function sampledReadIssues(
 	return workflow.nodes.flatMap((node): ValidationWarning[] => {
 		const action = actionOfNode(node);
 		if (!action || !node.name || node.disabled || !declared[node.name]?.length) return [];
-		const parameters = node.parameters ?? {};
 		const key = Object.entries(action.inputSchema.properties ?? {}).find(
 			([, field]) => field['x-n8n-declared'] === true,
 		)?.[0];
-		if (key === undefined || parameters[key] !== undefined || !readsOnce(action)) {
+		if (key === undefined || nodeInputOf(node, action)[key] !== undefined || !readsOnce(action)) {
 			return [];
 		}
 		return [
@@ -629,7 +679,7 @@ export function nodeOutputsDeclaration(
 		if (!action || !node.name || !(action.deriveOutput || (fields && action.resourceOutput))) {
 			return [];
 		}
-		const schema = outputOf(action, node.parameters ?? {}, fields);
+		const schema = outputOf(action, nodeInputOf(node, action), fields);
 		// The default output types the node already.
 		if (schema === action.output.json) return [];
 		// A binary leaves the JSON, as in the generated `<Name>Output` type.
@@ -667,8 +717,7 @@ export async function contractEgressWarnings(
 		workflow.nodes.map(async (node): Promise<ValidationWarning[]> => {
 			const action = actionOfNode(node) ?? toolActionOfNode(node);
 			if (!action?.egress || !node.name || node.disabled) return [];
-			const parameters = node.parameters ?? {};
-			const { authentication } = parameters;
+			const authentication = node.parameters?.authentication;
 			const [bound] = Object.entries(node.credentials ?? {}).filter(
 				([type]) =>
 					action.credentialTypes.includes(type) &&
@@ -689,7 +738,10 @@ export async function contractEgressWarnings(
 			try {
 				const hosts = credentialHostsOf(type, stored ?? {}, { surface: action.node.displayName });
 				if (!hosts) return [];
-				const { errors, warnings } = egressIssuesOf(action.egress, parameters, { name, hosts });
+				const { errors, warnings } = egressIssuesOf(action.egress, nodeInputOf(node, action), {
+					name,
+					hosts,
+				});
 				return [
 					...errors.map((message) => issue('error', message)),
 					...warnings.map((message) => issue('warning', message)),
@@ -744,25 +796,6 @@ export function workflowExpressions(workflow: WorkflowJSON): string {
 		: `${JSON.stringify({ expressions, code })}\n`;
 }
 
-const SCALAR_TYPES: ReadonlySet<unknown> = new Set(['string', 'number', 'integer', 'boolean']);
-
-/**
- * A `json` field holds JSON text that the run parses before it validates: as node-sdk
- * `toProperty` and `parameterValue` (properties.ts), every field that is not a binary, an enum,
- * or a scalar.
- */
-function asRun(value: unknown, schema: JsonSchema | undefined): unknown {
-	if (typeof value !== 'string' || !/^\s*[[{]/.test(value)) return value;
-	if (!schema || schema['x-n8n-binary'] || schema.enum || SCALAR_TYPES.has(schema.type)) {
-		return value;
-	}
-	try {
-		return JSON.parse(value);
-	} catch {
-		return value;
-	}
-}
-
 /**
  * The run-time input validator on the fixed values of each contract node, so a value that the
  * action rejects (a pattern, a range, an enum, an expression in a plain field) fails the build
@@ -774,18 +807,14 @@ export function staticInputIssues(workflow: WorkflowJSON): string[] {
 		const tool = toolActionOfNode(node);
 		const action = actionOfNode(node) ?? tool;
 		if (!action || !node.name || node.disabled) return [];
-		const parameters = node.parameters ?? {};
 		const fields = action.inputSchema.properties ?? {};
 		// The model fills a tool field that is one `$fromAI()` call, and the tool checks it.
 		const fromModel = (value: unknown) =>
 			tool !== undefined && typeof value === 'string' && isFromAIOnlyExpression(value);
 		const input = Object.fromEntries(
-			Object.keys(fields).flatMap((key) => {
-				const value = parameters[key];
-				return value === undefined || value === '' || hasPlaceholderDeep(value) || fromModel(value)
-					? []
-					: [[key, asRun(value, fields[key])]];
-			}),
+			Object.entries(nodeInputOf(node, action)).filter(
+				([, value]) => !hasPlaceholderDeep(value) && !fromModel(value),
+			),
 		);
 		return validate(input, action.inputSchema, { allowExpressions: true })
 			.filter((issue) => !issue.endsWith(': is required'))

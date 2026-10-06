@@ -5313,7 +5313,11 @@ describe('createExecutionAdapter run()', () => {
 			name: 'Fetch',
 			type: '@n8n/nodes-base-next.httpRequestGet',
 			typeVersion: 3,
-			parameters: { url: 'https://api.example.com/items', pages: { style: 'link' } },
+			parameters: {
+				url: 'https://api.example.com/items',
+				pages: { style: 'link' },
+				options: { pages: { style: 'link' }, timeout: 5 },
+			},
 			position: [0, 0] as [number, number],
 			retryOnFail: true,
 		};
@@ -5323,7 +5327,10 @@ describe('createExecutionAdapter run()', () => {
 
 		await adapter.run('wf-1', undefined, {
 			readOnceNodeNames: ['Fetch'],
-			omitParameters: [{ nodeName: 'Fetch', parameter: 'pages' }],
+			omitParameters: [
+				{ nodeName: 'Fetch', parameter: 'pages' },
+				{ nodeName: 'Fetch', parameter: 'options.pages' },
+			],
 		});
 		await adapter.run('wf-1');
 
@@ -5331,7 +5338,7 @@ describe('createExecutionAdapter run()', () => {
 		expect(readOnce.workflowData.nodes).toEqual([
 			{
 				...fetch,
-				parameters: { url: 'https://api.example.com/items' },
+				parameters: { url: 'https://api.example.com/items', options: { timeout: 5 } },
 				executeOnce: true,
 				retryOnFail: false,
 			},

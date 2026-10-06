@@ -34,7 +34,7 @@ import type {
 	IWorkflowExecuteAdditionalData,
 	IWorkflowSettings,
 } from 'n8n-workflow';
-import { FIRST_PARTY_PACKAGES } from '@n8n/nodes-base-next';
+import { actionOfNode, FIRST_PARTY_PACKAGES, storedParametersOf } from '@n8n/nodes-base-next';
 import { createRunExecutionData, NodeHelpers, Workflow } from 'n8n-workflow';
 import path from 'node:path';
 import { mock } from 'vitest-mock-extended';
@@ -83,10 +83,22 @@ type Built = ReturnType<ReturnType<typeof workflow>['toJSON']>;
 
 type ExecutionOrder = NonNullable<IWorkflowSettings['executionOrder']>;
 
+/** The nodes as the editor saves them: a field with a codec widget holds the widget value. */
+const savedNodes = (json: Built) =>
+	json.nodes.map((node) => {
+		const action = actionOfNode(node);
+		return action
+			? {
+					...node,
+					parameters: storedParametersOf(node.parameters ?? {}, action.inputSchema, action.ui),
+				}
+			: node;
+	});
+
 const toWorkflow = (executionOrder: ExecutionOrder, json: Built) =>
 	new Workflow({
 		id: 'regions',
-		nodes: json.nodes as INode[],
+		nodes: savedNodes(json) as INode[],
 		connections: json.connections as IConnections,
 		nodeGroups: json.nodeGroups,
 		nodeTypes,

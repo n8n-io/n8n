@@ -1,6 +1,6 @@
-import { t } from '@n8n/node-sdk';
+import { t, where } from '@n8n/node-sdk';
 
-import { where, whereMatches } from '../condition';
+import { whereMatches } from '../condition';
 import { conditionNode } from '../condition.node';
 
 export const switchCases = conditionNode.action('switch', {
@@ -20,6 +20,7 @@ export const switchCases = conditionNode.action('switch', {
 			}),
 		allMatches: t.bool().default(false).hint('Send an item to every case it matches'),
 	},
+	ui: { fields: { cases: { widget: 'list' }, 'cases.where': { widget: 'filter' } } },
 	output: t.passedItem(),
 	outputs: { each: 'cases', then: ['fallback'] },
 	async *run({ input, item }) {

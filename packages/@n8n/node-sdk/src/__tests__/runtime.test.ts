@@ -1267,6 +1267,19 @@ describe('batch and named outputs', () => {
 			{ type: 'main', displayName: '1' },
 			{ type: 'main', displayName: 'fallback' },
 		]);
+		const rows = { cases: { values: [{ output: 'high' }, { output: 'low' }] } };
+		expect(
+			outputsPerEntryOf(rows, 'cases', ['fallback']).map((output) => output.displayName),
+		).toEqual(['high', 'low', 'fallback']);
+		const notRows = { cases: { values: [{ output: 'high' }], output: 'x' } };
+		expect(
+			outputsPerEntryOf(notRows, 'cases', ['fallback']).map((output) => output.displayName),
+		).toEqual(['fallback']);
+		expect(
+			outputsPerEntryOf({ cases: [{ output: 'only' }] }, 'cases', []).map(
+				(output) => output.displayName,
+			),
+		).toEqual(['only']);
 	});
 });
 

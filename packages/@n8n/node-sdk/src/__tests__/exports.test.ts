@@ -52,6 +52,7 @@ describe('the root of @n8n/node-sdk', () => {
 			'replySchema',
 			't',
 			'validate',
+			'where',
 		]);
 	});
 
@@ -78,6 +79,7 @@ describe('the root of @n8n/node-sdk', () => {
 			'ChatUsage',
 			'CodeRequest',
 			'CodeRunner',
+			'Condition',
 			'ContextOf',
 			'CountedInputsContext',
 			'CredentialTypeOf',
@@ -188,6 +190,7 @@ describe('the root of @n8n/node-sdk', () => {
 			'WebhookConfig',
 			'WebhookEndpoint',
 			'WebhookRequest',
+			'Where',
 			'Widgets',
 		]);
 	});

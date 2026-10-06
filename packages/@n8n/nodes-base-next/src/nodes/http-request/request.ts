@@ -2,6 +2,7 @@ import {
 	isHttpError,
 	isRecord,
 	t,
+	type FieldUi,
 	type Http,
 	type HttpRequest,
 	type JsonSchema,
@@ -19,6 +20,11 @@ export const common = {
 	query: t.record(t.str()).hint('Never put secrets here; attach a credential').optional(),
 	headers: t.record(t.str()).hint('Never put secrets here; attach a credential').optional(),
 };
+
+const assignments: FieldUi<Readonly<Record<string, string>>> = { widget: 'assignments' };
+
+/** The form of `common`: the query and the headers as n8n assignments. */
+export const commonUi = { fields: { query: assignments, headers: assignments } };
 
 /** The response options of the legacy node. A fixed value, so the build types the output. */
 export const responseOptions = {

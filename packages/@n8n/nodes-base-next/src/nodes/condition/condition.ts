@@ -1,87 +1,7 @@
-import { t, UserError, type Infer } from '@n8n/node-sdk';
+import { UserError, type Condition, type Where } from '@n8n/node-sdk';
 import { safeRegex } from 'n8n-workflow';
 
-/** Tests on a value that may be absent. `empty` also holds for an empty string or list. */
-const presence = { exists: {}, notExists: {}, empty: {}, notEmpty: {} };
-
-const text = { right: t.str() };
-const pattern = { right: t.str().hint('A pattern, or /pattern/flags') };
-const stringTest = t.variant('op', {
-	equals: text,
-	notEquals: text,
-	contains: text,
-	notContains: text,
-	startsWith: text,
-	notStartsWith: text,
-	endsWith: text,
-	notEndsWith: text,
-	regex: pattern,
-	notRegex: pattern,
-	...presence,
-});
-
-const amount = { right: t.num() };
-const numberTest = t.variant('op', {
-	equals: amount,
-	notEquals: amount,
-	gt: amount,
-	gte: amount,
-	lt: amount,
-	lte: amount,
-	...presence,
-});
-
-const moment = { right: t.str().hint('ISO 8601, e.g. 2026-09-01T10:00:00Z') };
-const dateTimeTest = t.variant('op', {
-	equals: moment,
-	notEquals: moment,
-	after: moment,
-	afterOrEquals: moment,
-	before: moment,
-	beforeOrEquals: moment,
-	...presence,
-});
-
-const flag = { right: t.bool() };
-const booleanTest = t.variant('op', {
-	true: {},
-	false: {},
-	equals: flag,
-	notEquals: flag,
-	...presence,
-});
-
-const member = { right: t.jsonValue() };
-const length = { right: t.int().with({ minimum: 0 }) };
-const arrayTest = t.variant('op', {
-	contains: member,
-	notContains: member,
-	lengthEquals: length,
-	lengthNotEquals: length,
-	lengthGt: length,
-	lengthGte: length,
-	lengthLt: length,
-	lengthLte: length,
-	...presence,
-});
-
-/** `left` is the tested value, usually an expression such as `={{ $json.age }}`. */
-export const condition = t.variant('type', {
-	['string']: { left: t.nullable(t.str()).optional(), test: stringTest },
-	['number']: { left: t.nullable(t.num()).optional(), test: numberTest },
-	dateTime: { left: t.nullable(t.str()).optional(), test: dateTimeTest },
-	['boolean']: { left: t.nullable(t.bool()).optional(), test: booleanTest },
-	array: { left: t.nullable(t.arr(t.jsonValue())).optional(), test: arrayTest },
-});
-
-export const where = t.obj({
-	match: t.oneOf('all', 'any').default('all'),
-	conditions: t.arr(condition),
-	ignoreCase: t.bool().default(false),
-});
-
-export type Condition = Infer<typeof condition>;
-export type Where = Infer<typeof where>;
+type TestOf<T extends Condition['type']> = Extract<Condition, { type: T }>['test'];
 
 const fold = (value: string, ignoreCase: boolean) =>
 	ignoreCase ? value.toLocaleLowerCase() : value;
@@ -100,7 +20,7 @@ function millisOf(value: string): number {
 	return millis;
 }
 
-function stringMatches(left: string, test: Infer<typeof stringTest>, ignoreCase: boolean) {
+function stringMatches(left: string, test: TestOf<'string'>, ignoreCase: boolean) {
 	if (!('right' in test)) return undefined;
 	const value = fold(left, ignoreCase);
 	switch (test.op) {
@@ -128,7 +48,7 @@ function stringMatches(left: string, test: Infer<typeof stringTest>, ignoreCase:
 	}
 }
 
-function numberMatches(left: number, test: Infer<typeof numberTest>) {
+function numberMatches(left: number, test: TestOf<'number'>) {
 	if (!('right' in test)) return undefined;
 	const { right } = test;
 	const results = {
@@ -142,7 +62,7 @@ function numberMatches(left: number, test: Infer<typeof numberTest>) {
 	return results[test.op];
 }
 
-function dateTimeMatches(left: string, test: Infer<typeof dateTimeTest>) {
+function dateTimeMatches(left: string, test: TestOf<'dateTime'>) {
 	if (!('right' in test)) return undefined;
 	const [a, b] = [millisOf(left), millisOf(test.right)];
 	const results = {
@@ -156,11 +76,7 @@ function dateTimeMatches(left: string, test: Infer<typeof dateTimeTest>) {
 	return results[test.op];
 }
 
-function arrayMatches(
-	left: readonly unknown[],
-	test: Infer<typeof arrayTest>,
-	ignoreCase: boolean,
-) {
+function arrayMatches(left: readonly unknown[], test: TestOf<'array'>, ignoreCase: boolean) {
 	if (!('right' in test)) return undefined;
 	const { right } = test;
 	const has = () =>

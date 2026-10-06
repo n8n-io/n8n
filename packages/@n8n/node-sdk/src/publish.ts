@@ -367,17 +367,18 @@ type FormVersion = Pick<VersionManifest, 'contract' | 'ui'>;
 
 /**
  * The input fields that the next form stores in another place or shape: a parameter path, or a
- * collection against one value. The editor form of a major comes from its newest version, so a
- * stored workflow loses the value of such a field.
+ * collection or fixed collection against one value, which n8n empties when it holds another
+ * form. The editor form of a major comes from its newest version, so a stored workflow loses the
+ * value of such a field.
  */
 function movedParametersOf(previous: FormVersion, next: FormVersion): string[] {
 	const storageOf = ({ contract: { input }, ui }: FormVersion) => {
 		const pathOf = parameterPathOf(input, ui);
 		return new Map(
-			Object.entries(shapeOf(input)).map(([name, schema]) => [
-				name,
-				`${pathOf(name)} ${toProperty(name, schema, ui?.fields).type === 'collection'}`,
-			]),
+			Object.entries(shapeOf(input)).map(([name, schema]) => {
+				const { type } = toProperty(name, schema, ui?.fields);
+				return [name, `${pathOf(name)} ${type === 'collection' || type === 'fixedCollection'}`];
+			}),
 		);
 	};
 	const after = storageOf(next);

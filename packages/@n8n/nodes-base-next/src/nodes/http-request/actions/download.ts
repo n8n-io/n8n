@@ -1,7 +1,7 @@
 import { t } from '@n8n/node-sdk';
 
 import { httpRequest } from '../http-request.node';
-import { common } from '../request';
+import { common, commonUi } from '../request';
 
 // An own action, not a `get` option: `get` gives JSON items, this gives one file per item.
 export const downloadFile = httpRequest.action('download', {
@@ -12,6 +12,7 @@ export const downloadFile = httpRequest.action('download', {
 	flow: { effect: 'read', cardinality: 'per-item', idempotent: true },
 	egress: { fromInput: 'url' },
 	input: common,
+	ui: commonUi,
 	output: t.obj({
 		data: t.binary().hint('The response body; file name and MIME type come from the response'),
 	}),

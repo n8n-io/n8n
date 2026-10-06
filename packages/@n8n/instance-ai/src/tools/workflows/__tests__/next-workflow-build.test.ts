@@ -1,3 +1,4 @@
+import type { WorkflowNodeRef } from '@n8n/nodes-base-next';
 import type { IDataObject, WorkflowJSON } from '@n8n/workflow-sdk';
 import * as flowSdk from '@n8n/workflow-sdk/next';
 import {
@@ -18,9 +19,13 @@ import {
 } from '../../__tests__/derived-node-types';
 import {
 	contractEgressWarnings,
+	declaredOutputOf,
 	EMPTY_OUTPUTS,
 	fetchResourceFields,
+	firstPageOmissions,
 	fixtureOriginsOf,
+	liveReadNodeNames,
+	sampledReadIssues,
 	sampledKeysOf,
 	catalogProvidersOf,
 	legacyNodeIssues,
@@ -37,6 +42,18 @@ import {
 	withTscHints,
 	workflowExpressions,
 } from '../next-workflow-build';
+
+// The HTTP GET action with its body schema and pages in the Options collection of the form.
+vi.mock('@n8n/nodes-base-next', async (importOriginal) => {
+	const original = await importOriginal<typeof import('@n8n/nodes-base-next')>();
+	const get = original.actions.find(({ id }) => id === 'httpRequest.get');
+	const advanced = get && { ...get, ui: { advanced: ['schema', 'pages'] } };
+	return {
+		...original,
+		actionOfNode: (node: WorkflowNodeRef) =>
+			node.type === 'test.httpRequestGetAdvanced' ? advanced : original.actionOfNode(node),
+	};
+});
 
 const source = `import { workflow, manual } from '@n8n/workflow-sdk/next';
 import { notion } from '@n8n/nodes/notion';
@@ -905,6 +922,53 @@ import { googleGemini } from '@n8n/nodes/googleGemini';`;
 			const unbound = { name: 'wf', connections: {}, nodes: [getNode('https://other.test', {})] };
 			expect(await contractEgressWarnings(contextOf(DOMAINS), unbound)).toEqual([]);
 		});
+	});
+});
+
+describe('contract input readers', () => {
+	const schema = { type: 'object', properties: { id: { type: 'integer' } } };
+	const pages = { style: 'link', maxPages: 5 };
+	const fetchOf = (type: string, parameters: IDataObject): WorkflowJSON => ({
+		name: 'Fetch',
+		connections: {},
+		nodes: [
+			{
+				id: '1',
+				name: 'Fetch',
+				type,
+				typeVersion: 3,
+				position: [0, 0],
+				parameters: { url: 'https://api.example.com/issues', ...parameters },
+			},
+		],
+	});
+	const GET = '@n8n/nodes-base-next.httpRequestGet';
+	const stored = {
+		plain: (paging: IDataObject) => fetchOf(GET, { schema, pages: paging }),
+		'JSON text': (paging: IDataObject) =>
+			fetchOf(GET, { schema: JSON.stringify(schema), pages: JSON.stringify(paging) }),
+		options: (paging: IDataObject) =>
+			fetchOf('test.httpRequestGetAdvanced', { options: { schema, pages: paging } }),
+	};
+
+	it.each(Object.entries(stored))('reads the %s form as the run reads it', (form, flowOf) => {
+		const flow = flowOf(pages);
+		const [fetch] = flow.nodes;
+		expect(fetch && declaredOutputOf(fetch)).toMatchObject({
+			type: 'object',
+			properties: { id: { type: 'integer' } },
+		});
+		expect(liveReadNodeNames(flow)).toEqual(['Fetch']);
+		expect(firstPageOmissions(flow, ['Fetch'])).toEqual([
+			{ nodeName: 'Fetch', parameter: form === 'options' ? 'options.pages' : 'pages' },
+		]);
+		expect(sampledReadIssues(flow, { Fetch: [{ id: 1 }] })).toEqual([]);
+		expect(nodeOutputsDeclaration(flow)).toContain('"Fetch": {');
+		expect(synthesizedFixtures(flow)).toEqual({ Fetch: [{ id: 1 }] });
+		expect(staticInputIssues(flow)).toEqual([]);
+		expect(staticInputIssues(flowOf({ ...pages, maxPages: 0 }))).toEqual([
+			expect.stringMatching(/^Node "Fetch": input\.pages\.maxPages: must be at least 1/),
+		]);
 	});
 });
 

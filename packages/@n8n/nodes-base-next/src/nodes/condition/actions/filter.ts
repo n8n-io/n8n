@@ -1,6 +1,6 @@
-import { t } from '@n8n/node-sdk';
+import { t, where } from '@n8n/node-sdk';
 
-import { where, whereMatches } from '../condition';
+import { whereMatches } from '../condition';
 import { conditionNode } from '../condition.node';
 
 export const filterItems = conditionNode.action('filter', {
@@ -8,6 +8,7 @@ export const filterItems = conditionNode.action('filter', {
 	summary: 'Keep the items that match the conditions. Other items go to discarded, unchanged.',
 	flow: { effect: 'transform', cardinality: 'per-item' },
 	input: { where },
+	ui: { fields: { where: { widget: 'filter' } } },
 	output: t.passedItem(),
 	outputs: ['kept', 'discarded'],
 	run: async ({ input, item }) =>
