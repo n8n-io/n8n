@@ -4,7 +4,6 @@ import {
 } from '@n8n/backend-services';
 import type {
 	CredentialsEntity,
-	SharedCredentials,
 	SharedCredentialsRepository,
 	SharedWorkflow,
 	SharedWorkflowRepository,
@@ -71,19 +70,16 @@ describe('OwnershipTransferService', () => {
 			mock<WorkflowEntity>({ id: 'wf-1', name: 'One', nodes: [] }),
 			mock<WorkflowEntity>({ id: 'wf-2', name: 'Two', nodes: [] }),
 		];
-		const credentials = [
-			mock<SharedCredentials>({
-				credentials: mock<CredentialsEntity>({ id: 'cred-1', type: 'slackApi' }),
-			}),
-		];
+		const credentials = [mock<CredentialsEntity>({ id: 'cred-1', type: 'slackApi' })];
 
 		beforeEach(() => {
+			policyEnforcementService.hasChecksFor.mockReturnValue(true);
 			sharedWorkflowRepository.find.mockResolvedValue([
 				mock<SharedWorkflow>({ workflowId: 'wf-1' }),
 				mock<SharedWorkflow>({ workflowId: 'wf-2' }),
 			]);
 			workflowRepository.findByIds.mockResolvedValue(workflows);
-			sharedCredentialsRepository.find.mockResolvedValue(credentials);
+			sharedCredentialsRepository.findOwnedCredentialsByProjects.mockResolvedValue(credentials);
 			policyEnforcementService.enforceWorkflowTransfer.mockResolvedValue(mock());
 			policyEnforcementService.enforceCredentialTransfer.mockResolvedValue(mock());
 		});
@@ -98,11 +94,9 @@ describe('OwnershipTransferService', () => {
 			expect(workflowRepository.findByIds).toHaveBeenCalledWith(['wf-1', 'wf-2'], {
 				fields: ['name', 'nodes'],
 			});
-			expect(sharedCredentialsRepository.find).toHaveBeenCalledWith({
-				select: { credentialsId: true, credentials: { id: true, type: true } },
-				where: { projectId: 'from', role: 'credential:owner' },
-				relations: { credentials: true },
-			});
+			expect(sharedCredentialsRepository.findOwnedCredentialsByProjects).toHaveBeenCalledWith([
+				'from',
+			]);
 			for (const workflow of workflows) {
 				expect(policyEnforcementService.enforceWorkflowTransfer).toHaveBeenCalledWith(
 					{ workflow, targetProjectId: 'to' },
@@ -123,6 +117,18 @@ describe('OwnershipTransferService', () => {
 			await expect(service.enforceTransferPolicy('from', 'to', actor)).rejects.toThrow(violation);
 
 			expect(policyEnforcementService.enforceWorkflowTransfer).toHaveBeenCalledTimes(1);
+			expect(policyEnforcementService.enforceCredentialTransfer).not.toHaveBeenCalled();
+		});
+
+		it('loads nothing when no check is registered for either point', async () => {
+			policyEnforcementService.hasChecksFor.mockReturnValue(false);
+
+			await service.enforceTransferPolicy('from', 'to', actor);
+
+			expect(sharedWorkflowRepository.find).not.toHaveBeenCalled();
+			expect(workflowRepository.findByIds).not.toHaveBeenCalled();
+			expect(sharedCredentialsRepository.findOwnedCredentialsByProjects).not.toHaveBeenCalled();
+			expect(policyEnforcementService.enforceWorkflowTransfer).not.toHaveBeenCalled();
 			expect(policyEnforcementService.enforceCredentialTransfer).not.toHaveBeenCalled();
 		});
 	});

@@ -728,6 +728,7 @@ describe('EnterpriseWorkflowService', () => {
 			folderRepository.getAllFolderIdsInHierarchy.mockResolvedValue([]);
 			workflowRepository.find.mockResolvedValue(workflows);
 			projectService.getProjectWithScope.mockResolvedValue(destinationProject);
+			policyEnforcementService.hasChecksFor.mockReturnValue(true);
 			policyEnforcementService.enforceWorkflowTransfer.mockResolvedValue(mock());
 			activeWorkflowManager.remove.mockResolvedValue(undefined);
 			activeWorkflowManager.add.mockResolvedValue({ webhooks: true, triggersAndPollers: true });
@@ -749,6 +750,18 @@ describe('EnterpriseWorkflowService', () => {
 			expect(workflowRepository.find).toHaveBeenCalledWith(
 				expect.objectContaining({ select: expect.arrayContaining(['name', 'nodes']) }),
 			);
+		});
+
+		it('skips the nodes and the check when no check is registered', async () => {
+			policyEnforcementService.hasChecksFor.mockReturnValue(false);
+
+			await service.transferFolder(user, 'proj-source', 'folder-1', 'proj-dest', '0');
+
+			expect(workflowRepository.find).toHaveBeenCalledWith(
+				expect.objectContaining({ select: expect.not.arrayContaining(['nodes']) }),
+			);
+			expect(policyEnforcementService.enforceWorkflowTransfer).not.toHaveBeenCalled();
+			expect(transferOwnershipSpy).toHaveBeenCalledTimes(1);
 		});
 
 		it('calls enforceWorkflowTransfer once per workflow with the target project', async () => {

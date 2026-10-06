@@ -44,34 +44,33 @@ export class OwnershipTransferService {
 		toProjectId: string,
 		actor: PolicyActor,
 	): Promise<void> {
-		const ownedWorkflows = await this.sharedWorkflowRepository.find({
-			select: { workflowId: true },
-			where: { projectId: fromProjectId, role: 'workflow:owner' },
-		});
-		const workflows = await this.workflowRepository.findByIds(
-			ownedWorkflows.map(({ workflowId }) => workflowId),
-			{ fields: ['name', 'nodes'] },
-		);
-		for (const workflow of workflows) {
-			await this.policyEnforcementService.enforceWorkflowTransfer(
-				{ workflow, targetProjectId: toProjectId },
-				actor,
+		if (this.policyEnforcementService.hasChecksFor('workflowTransfer')) {
+			const ownedWorkflows = await this.sharedWorkflowRepository.find({
+				select: { workflowId: true },
+				where: { projectId: fromProjectId, role: 'workflow:owner' },
+			});
+			const workflows = await this.workflowRepository.findByIds(
+				ownedWorkflows.map(({ workflowId }) => workflowId),
+				{ fields: ['name', 'nodes'] },
 			);
+			for (const workflow of workflows) {
+				await this.policyEnforcementService.enforceWorkflowTransfer(
+					{ workflow, targetProjectId: toProjectId },
+					actor,
+				);
+			}
 		}
 
-		const ownedCredentials = await this.sharedCredentialsRepository.find({
-			select: { credentialsId: true, credentials: { id: true, type: true } },
-			where: { projectId: fromProjectId, role: 'credential:owner' },
-			relations: { credentials: true },
-		});
-		for (const { credentials } of ownedCredentials) {
-			await this.policyEnforcementService.enforceCredentialTransfer(
-				{
-					credential: { id: credentials.id, type: credentials.type },
-					targetProjectId: toProjectId,
-				},
-				actor,
-			);
+		if (this.policyEnforcementService.hasChecksFor('credentialTransfer')) {
+			const credentials = await this.sharedCredentialsRepository.findOwnedCredentialsByProjects([
+				fromProjectId,
+			]);
+			for (const { id, type } of credentials) {
+				await this.policyEnforcementService.enforceCredentialTransfer(
+					{ credential: { id, type }, targetProjectId: toProjectId },
+					actor,
+				);
+			}
 		}
 	}
 
