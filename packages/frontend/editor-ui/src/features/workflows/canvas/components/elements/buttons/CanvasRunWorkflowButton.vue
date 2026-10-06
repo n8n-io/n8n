@@ -114,6 +114,8 @@ const triggerIconSize = computed(() => (buttonSize.value === 'large' ? 20 : 16))
 const TRIGGER_ICON_LUMA_FLOOR = 0.7;
 const triggerIconFilterId = useId();
 const triggerIconSource = useNodeIconSource(() => currentTriggerNodeType.value);
+// Font icons already use the button text color, so only image icons get a treatment
+const isTriggerIconImage = computed(() => triggerIconSource.value?.type === 'file');
 const triggerIconRemapSrc = computed(() =>
 	props.type === 'primary' && triggerIconSource.value?.type === 'file'
 		? triggerIconSource.value.src
@@ -184,7 +186,10 @@ function onSelectTriggerNode(name: string) {
 			>
 				<template v-if="currentTriggerNodeType" #icon>
 					<NodeIcon
-						:class="[$style.triggerIcon, { [$style.secondaryTriggerIcon]: type === 'secondary' }]"
+						:class="[
+							$style.triggerIcon,
+							{ [$style.secondaryTriggerIcon]: type === 'secondary' && isTriggerIconImage },
+						]"
 						:style="triggerIconRemapSrc ? { filter: `url(#${triggerIconFilterId})` } : undefined"
 						:size="triggerIconSize"
 						:node-type="currentTriggerNodeType"
