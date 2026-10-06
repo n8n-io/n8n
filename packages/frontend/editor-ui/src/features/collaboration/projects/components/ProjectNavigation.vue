@@ -149,7 +149,7 @@ const hasFavorites = computed(() => favoritesStore.favorites.length > 0);
 
 const instanceAi = computed<IMenuItem>(() => ({
 	id: 'instance-ai',
-	icon: 'sparkles',
+	icon: 'n8n-assistant',
 	label: locale.baseText('projects.menu.instanceAi'),
 	route: { to: { name: INSTANCE_AI_VIEW } },
 	preview: true,

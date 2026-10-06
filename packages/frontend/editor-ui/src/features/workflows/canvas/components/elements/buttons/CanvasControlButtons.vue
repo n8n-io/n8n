@@ -67,7 +67,7 @@ function handleClickCollapseAll() {
 				<N8nIconButton
 					variant="ghost"
 					size="large"
-					icon="maximize"
+					icon="corners"
 					:aria-label="i18n.baseText('nodeView.zoomToFit')"
 					data-test-id="zoom-to-fit"
 					@click="onZoomToFit"

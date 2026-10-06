@@ -85,7 +85,7 @@ export const InstanceAiModule = defineFrontendModule({
 	id: 'instance-ai',
 	name: 'n8n Assistant',
 	description: 'Chat with your n8n instance.',
-	icon: 'sparkles',
+	icon: 'n8n-assistant',
 	routes: [
 		{
 			path: '/assistant',
@@ -259,7 +259,7 @@ export const InstanceAiModule = defineFrontendModule({
 	settingsPages: [
 		{
 			id: 'settings-instance-ai',
-			icon: 'sparkles',
+			icon: 'n8n-assistant',
 			label: i18n.baseText('settings.n8nAgent'),
 			position: 'top',
 			route: { to: { name: INSTANCE_AI_SETTINGS_VIEW } },

@@ -110,7 +110,7 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 	{
 		// Link to in-app templates, available if custom templates are enabled and resource center is disabled
 		id: 'templates',
-		icon: 'package-open',
+		icon: 'grid-2x2',
 		label: i18n.baseText('generic.templates'),
 		position: 'bottom',
 		available:
@@ -122,7 +122,7 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 	{
 		// Link to website templates, available if custom templates host is not configured and resource center is disabled
 		id: 'templates',
-		icon: 'package-open',
+		icon: 'grid-2x2',
 		label: i18n.baseText('generic.templates'),
 		position: 'bottom',
 		available:
@@ -162,7 +162,7 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 			},
 			{
 				id: 'docs',
-				icon: 'book',
+				icon: 'book-open',
 				label: i18n.baseText('mainSidebar.helpMenuItems.documentation'),
 				link: {
 					href: EXTERNAL_LINKS.DOCUMENTATION,
@@ -217,7 +217,7 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 	{
 		id: 'settings',
 		label: i18n.baseText('mainSidebar.settings'),
-		icon: 'settings',
+		icon: 'wrench',
 		available: true,
 		children: settingsItems.value,
 	},

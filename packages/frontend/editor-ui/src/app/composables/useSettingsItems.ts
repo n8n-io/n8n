@@ -36,7 +36,7 @@ export function useSettingsItems() {
 			},
 			{
 				id: 'settings-personal',
-				icon: 'circle-user-round',
+				icon: 'user',
 				label: i18n.baseText('settings.personal'),
 				position: 'top',
 				available: canUserAccessRouteByName(VIEWS.PERSONAL_SETTINGS),
@@ -44,7 +44,7 @@ export function useSettingsItems() {
 			},
 			{
 				id: 'settings-users',
-				icon: 'user',
+				icon: 'users',
 				label: i18n.baseText('settings.users'),
 				position: 'top',
 				available: canUserAccessRouteByName(VIEWS.USERS_SETTINGS),
@@ -132,7 +132,7 @@ export function useSettingsItems() {
 			},
 			{
 				id: 'settings-sso',
-				icon: 'user-lock',
+				icon: 'lock',
 				label: i18n.baseText('settings.sso'),
 				position: 'top',
 				available: canUserAccessRouteByName(VIEWS.SSO_SETTINGS),
@@ -166,7 +166,7 @@ export function useSettingsItems() {
 			},
 			{
 				id: 'settings-workersview',
-				icon: 'waypoints',
+				icon: 'wrench',
 				label: i18n.baseText('mainSidebar.workersView'),
 				position: 'top',
 				available:
@@ -197,7 +197,7 @@ export function useSettingsItems() {
 		if (MIGRATION_REPORT_TARGET_VERSION) {
 			menuItems.push({
 				id: 'settings-migration-report',
-				icon: 'list-checks',
+				icon: 'clipboard',
 				label: i18n.baseText('settings.migrationReport'),
 				position: 'top',
 				available: canUserAccessRouteByName(VIEWS.MIGRATION_REPORT),
