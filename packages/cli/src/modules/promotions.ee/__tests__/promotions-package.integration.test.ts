@@ -395,7 +395,7 @@ async function inspectBranch(
 
 async function readBranchEntities(
 	inspectionDir: string,
-	fileName: 'workflow.json' | 'folder.json' | 'project.json',
+	fileName: 'workflow.json' | 'folder.json' | 'project.json' | 'agent.json',
 ): Promise<Array<{ id: string; name: string; target: string }>> {
 	const exportRoot = path.join(inspectionDir, 'n8n-export');
 	const found: Array<{ id: string; name: string; target: string }> = [];
@@ -572,17 +572,6 @@ describe('Promote and Apply', () => {
 			await service.clone(connection.id, 'promote');
 			const originalHead = (await simpleGit(remote.bareDir).revparse(['main'])).trim();
 			const project = await createTeamProject('Orders', owner);
-			await Container.get(AgentRepository).save({
-				id: 'local-agent',
-				name: 'Local Agent',
-				projectId: project.id,
-				schema: AgentJsonConfigSchema.parse({
-					name: 'Local Agent',
-					model: '',
-					instructions: '',
-					subAgents: { agents: [{ agentId: 'external-agent' }] },
-				}),
-			});
 			await createVariable('API_URL', 'https://api.example.com');
 			await buildWorkflowReferencingVariables({
 				name: 'Process order',
@@ -611,6 +600,17 @@ describe('Promote and Apply', () => {
 		await service.clone(connection.id, 'promote');
 
 		const project = await createTeamProject('Orders', owner);
+		await Container.get(AgentRepository).save({
+			id: 'local-agent',
+			name: 'Local Agent',
+			projectId: project.id,
+			schema: AgentJsonConfigSchema.parse({
+				name: 'Local Agent',
+				model: '',
+				instructions: '',
+				subAgents: { agents: [{ agentId: 'external-agent' }] },
+			}),
+		});
 		const workflow = await createWorkflow(
 			{ name: 'Process order', nodes: [], connections: {} },
 			project,
@@ -655,6 +655,7 @@ describe('Promote and Apply', () => {
 		expect(result.git).toEqual({ commitSha: remoteHead, branchName: 'main' });
 		expect(result.counts.workflows).toBe(1);
 		expect(manifest.agents).toBeUndefined();
+		await expect(readBranchEntities(inspectionDir, 'agent.json')).resolves.toEqual([]);
 	});
 
 	it('creates one timestamped branch for each promotion', async () => {
@@ -1879,6 +1880,12 @@ describe('Promote a project selection — branch effects', () => {
 			commitMessage: 'Full promote',
 		});
 
+		await Container.get(AgentRepository).save({
+			id: 'uT9LdQx7rK2MvB4f',
+			name: 'Local Agent',
+			projectId: project.id,
+			schema: null,
+		});
 		const w4 = await createWorkflow({ name: 'w4', nodes: [], connections: {} }, project);
 		const result = await service.promoteProjectSelection(project.id, owner, {
 			workflowIds: [w4.id],
@@ -1896,6 +1903,7 @@ describe('Promote a project selection — branch effects', () => {
 			expect(workflowIds).toContain(w.id);
 		}
 		expect(result.counts.workflows).toBe(1);
+		await expect(readBranchEntities(dir, 'agent.json')).resolves.toEqual([]);
 	});
 
 	it('pushes a branched selection to a new branch and leaves the base untouched', async () => {

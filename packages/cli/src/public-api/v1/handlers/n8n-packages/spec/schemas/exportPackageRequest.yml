@@ -14,7 +14,7 @@ properties:
       type: string
       minLength: 1
     example:
-      - support_agent
+      - uT9LdQx7rK2MvB4f
   workflowIds:
     type: array
     maxItems: 300

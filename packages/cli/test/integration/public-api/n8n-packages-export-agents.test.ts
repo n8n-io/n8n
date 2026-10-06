@@ -152,10 +152,10 @@ it.each(['agents', 'mixed', 'project'] as const)(
 		expect(manifest.agents?.map(({ id }) => id)).toEqual([agent.id, dependency.id]);
 		expect(manifest.workflows?.map(({ id }) => id)).toEqual([workflow.id]);
 		expect(manifest.requirements?.agents).toEqual([
-			{ id: dependency.id, name: dependency.name, usedByWorkflows: [], usedByAgents: [agent.id] },
+			{ id: dependency.id, name: dependency.name, usedBy: [{ kind: 'agent', id: agent.id }] },
 		]);
 		expect(manifest.requirements?.workflows).toEqual([
-			{ id: workflow.id, name: workflow.name, usedByWorkflows: [], usedByAgents: [agent.id] },
+			{ id: workflow.id, name: workflow.name, usedBy: [{ kind: 'agent', id: agent.id }] },
 		]);
 		expect(counts).toMatchObject({ agents: 2, workflows: 1 });
 		expect(emit).toHaveBeenCalledWith(
@@ -327,7 +327,7 @@ it('requires variable:list only when Agent variable values are included', async 
 		caller,
 	);
 	expect(manifest.requirements?.variables).toEqual([
-		{ name: 'REGION', usedByWorkflows: [], usedByAgents: [agent.id] },
+		{ name: 'REGION', usedBy: [{ kind: 'agent', id: agent.id }] },
 	]);
 	const variables = await Container.get(N8nPackageParser).getVariables(reader);
 	expect([...variables.values()]).toEqual([{ name: 'REGION', type: 'string' }]);
