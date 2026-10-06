@@ -43,6 +43,8 @@ const workflow = (name: string) => ({
 		stamp('C', 'c'),
 	],
 	connections: chain(TRIGGER_NAME, 'A', 'B', 'C'),
+	// Explicit: the editor always sends one, and a partial run reads it.
+	pinData: {},
 });
 
 const runDataOf = (execution: { data: string }): IRunData =>
