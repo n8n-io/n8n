@@ -1,0 +1,29 @@
+packages/frontend/editor-ui/src/app/views/OAuthConsentView.vue
+  s_ccb9b0a9bbef89::t_d256e56487e197 191
+  s_ccb9b0a9bbef89::t_c90f71c74b025b 179-190
+packages/@n8n/api-types/src/consent.ts
+  s_ccb9b0a9bbef89::t_ae2e3ee8b42c07 2
+packages/cli/src/services/protected-resource.registry.ts
+  s_ccb9b0a9bbef89::t_ae2e3ee8b42c07 23
+packages/frontend/editor-ui/src/app/views/OAuthConsentView.test.ts
+  s_ccb9b0a9bbef89::t_454516b67d6e81 250-263,265-272,274-275,277-278,280-281,284-289
+  s_ccb9b0a9bbef89::t_21b0ea6a252bce 264
+  s_ccb9b0a9bbef89::t_67580f4f8170bc 282-283,290-300
+  s_ccb9b0a9bbef89::t_85e397ca5ffca8 249,273,276,279,301-302
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "5e662a644e39f351ccd1c36e42ce7b3ca5114d64",
+  "prompts": {},
+  "sessions": {
+    "s_ccb9b0a9bbef89": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ae5c9b9c-c8a4-401d-8415-3fd62545d682",
+        "model": "claude-opus-5"
+      },
+      "human_author": null
+    }
+  }
+}

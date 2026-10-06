@@ -1,0 +1,29 @@
+packages/cli/src/modules/n8n-packages/entities/data-table/data-table-compat.ts
+  s_a5c113d3dab7cc::t_a79b825ff66102 60,66-72,76-78,84,86-91
+packages/cli/src/modules/n8n-packages/__tests__/import-data-tables.integration.test.ts
+  s_a5c113d3dab7cc::t_a79b825ff66102 378-380,414-416
+packages/cli/src/modules/n8n-packages/entities/data-table/data-table.types.ts
+  s_a5c113d3dab7cc::t_a79b825ff66102 80,82-83,89,91-92
+packages/cli/src/modules/n8n-packages/entities/data-table/__tests__/data-table-compat.test.ts
+  s_a5c113d3dab7cc::t_a79b825ff66102 101-111,125-126,139
+packages/@n8n/cli/src/commands/package/package-error.ts
+  s_a5c113d3dab7cc::t_a79b825ff66102 71,76-77,84,86,166
+packages/@n8n/cli/src/__tests__/package-error.test.ts
+  s_a5c113d3dab7cc::t_a79b825ff66102 58-59
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d7c975d90f67e5f5451f0abc9f83e560c467c31c",
+  "prompts": {},
+  "sessions": {
+    "s_a5c113d3dab7cc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8aff32f9-b97d-43bb-b0cd-f1499312b90b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}

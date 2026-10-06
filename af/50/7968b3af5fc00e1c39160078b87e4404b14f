@@ -1,0 +1,25 @@
+packages/cli/test/integration/public-api/data-tables.test.ts
+  s_101038ccbc858a::t_0ce6e50916d8eb 1725-1764
+  s_101038ccbc858a::t_aa615670df686d 1571,1574,1584,1586-1588
+packages/@n8n/api-types/src/dto/data-table/data-table-public.dto.ts
+  s_101038ccbc858a::t_60b62a30ce8689 22,25
+  s_101038ccbc858a::t_48648f13b6581d 287,296-305,311-318
+packages/cli/src/public-api/v1/handlers/data-tables/spec/paths/deleteDataTableRows.generated.yml
+  s_101038ccbc858a::t_13f97b7ab60dfb 28-32,38-42
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "af507968b3af5fc00e1c39160078b87e4404b14f",
+  "prompts": {},
+  "sessions": {
+    "s_101038ccbc858a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "130a5205-9941-4829-b850-89ce897499f4",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

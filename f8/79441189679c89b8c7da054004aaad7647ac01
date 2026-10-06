@@ -1,0 +1,63 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChannelModal.test.ts
+  s_3ee4700369edb0::t_cae1e2377d5a57 12,233,361,1009-1016
+  s_3ee4700369edb0::t_7caded0a3bdd62 15
+  s_3ee4700369edb0::t_02cb38af93b3e2 145-164,172-181
+  s_3ee4700369edb0::t_ebee25ad34cf58 216-220,362,999-1008
+  s_3ee4700369edb0::t_2446af73d87591 239-243,252-253,308-309,311,315,321,325
+  s_3ee4700369edb0::t_98311c8a115e67 365
+  s_3ee4700369edb0::t_6930d0129d007c 371-373,399-401,408,417-419,488-490,828-830,879-881
+  s_3ee4700369edb0::t_c2f2e0ab97d036 997-998,1017-1069,1071-1076,1079-1080,1083-1087,1089-1121
+  s_3ee4700369edb0::t_5fa01ce441d056 1081-1082,1088
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentsN8nChatFlag.test.ts
+  s_3ee4700369edb0::t_2bb4b08a9318ae 1-22
+packages/frontend/editor-ui/src/features/agents/components/AgentChannelModal.vue
+  s_3ee4700369edb0::t_e7308f926fbcb3 3,5
+  s_3ee4700369edb0::t_3900ec35bcc593 39-40,42
+  s_3ee4700369edb0::t_884d4675561071 111-112,133-136,140
+  s_3ee4700369edb0::t_e1374f1a3008a3 121,633
+  s_3ee4700369edb0::t_84a1a506549adc 122-132,474-477,484,488,490-494,523-524,533,696,772,782,794
+  s_3ee4700369edb0::t_63e4cf98b3b1a8 312-318
+  s_3ee4700369edb0::t_000f2c1ce3d2e2 497-509,511-522,525-529
+  s_3ee4700369edb0::t_9e744fb5f65d6d 624-628
+  s_3ee4700369edb0::t_66279834adaaf1 632
+  s_3ee4700369edb0::t_c3d2d98ce5e992 665
+  s_3ee4700369edb0::t_1af7370d9cb342 686,695,697-700,703
+  s_3ee4700369edb0::t_136ff4e9f455c1 738,762,771,776-781,783-793,795-796,798
+packages/frontend/editor-ui/src/features/agents/components/AgentChannelListItem.vue
+  s_3ee4700369edb0::t_bc136e75728da1 4,10,31-42,50,60,66-72
+  s_3ee4700369edb0::t_199fd133a608fa 114-116,118-132,134
+  s_3ee4700369edb0::t_80eb6d07897085 117
+packages/frontend/editor-ui/src/features/agents/composables/useAgentsN8nChatFlag.ts
+  s_3ee4700369edb0::t_e1374f1a3008a3 1-5,10
+  s_3ee4700369edb0::t_fe818dc072fef6 6-9,12-15
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChannelListItem.test.ts
+  s_3ee4700369edb0::t_496d3f3dd311f5 105-117,136-147,152-200
+  s_3ee4700369edb0::t_42576bde375843 118-135,148-151
+packages/@n8n/api-types/src/agents/types.ts
+  s_c5954c3047b5ed::t_1a4ffbdd0b2a90 384-394
+  s_3ee4700369edb0::t_fe818dc072fef6 416-419
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "f879441189679c89b8c7da054004aaad7647ac01",
+  "prompts": {},
+  "sessions": {
+    "s_3ee4700369edb0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7da616ef-d7d8-46e7-b647-0d6f7197e3e7",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    },
+    "s_c5954c3047b5ed": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0cf61-9581-7951-a01f-21637c8a6267",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

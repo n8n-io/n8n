@@ -1,0 +1,35 @@
+.github/scripts/sync-bundle-branch.test.mjs
+  s_b90fc112692e98::t_d73aa6edc213f0 54,59,62-64,99,106,230,237,242
+  s_b90fc112692e98::t_65277f3f964a8d 213-214
+.github/workflows/sec-sync-public-to-private.yml
+  s_b90fc112692e98::t_416241d7335bfd 107
+  s_b90fc112692e98::t_01558bbc83c7ea 11-12,106
+.github/workflows/sec-sync-bundle-branches.yml
+  s_b90fc112692e98::t_d24d0a7cd4fa67 15-16,19
+  s_b90fc112692e98::t_01558bbc83c7ea 4-5
+.github/scripts/sync-bundle-branch.mjs
+  s_b90fc112692e98::t_01558bbc83c7ea 15,29-31,34-35,72,86,89,94,120-122,154
+.github/workflows/sec-publish-fix.yml
+  s_b90fc112692e98::t_65277f3f964a8d 61
+.github/WORKFLOWS.md
+  s_b90fc112692e98::t_01558bbc83c7ea 1164-1176,1184,1197
+  s_b90fc112692e98::t_d24d0a7cd4fa67 1198-1199,1201,1206-1209
+.github/workflows/sec-publish-fix-1x.yml
+  s_b90fc112692e98::t_65277f3f964a8d 71
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "82580407f9c7317c7b30ffd996b733882e68520a",
+  "prompts": {},
+  "sessions": {
+    "s_b90fc112692e98": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f09db15d8ffeJbUBUQqDMQ3uh3",
+        "model": "openai/gpt-5.6-sol"
+      },
+      "human_author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}

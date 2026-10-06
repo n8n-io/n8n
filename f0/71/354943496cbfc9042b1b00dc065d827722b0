@@ -1,0 +1,40 @@
+packages/cli/src/node-catalog/module-gated-node-types.ts
+  s_dd64aae38c8902::t_2f818377a420fa 9-10,12-14
+  s_dd64aae38c8902::t_a52ff9b06159ab 32,36
+  s_dd64aae38c8902::t_2bd1e0739da54f 2-6,8,29,31
+  h_2f80f0e06f710c 33-35
+packages/@n8n/constants/src/nodes.ts
+  s_dd64aae38c8902::t_8835761a23d7be 12,17-28
+packages/cli/src/node-catalog/__tests__/node-catalog.service.test.ts
+  s_dd64aae38c8902::t_2bd1e0739da54f 87
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.adapter.service.test.ts
+  ai_agent 2166
+  s_dd64aae38c8902::t_e2eb36562a1cfe 2116-2123,2125,2139,2152,2162,2171
+  s_dd64aae38c8902::t_2bd1e0739da54f 2127-2129
+  s_dd64aae38c8902::t_90b479afa2ca75 2177
+  s_dd64aae38c8902::t_2f818377a420fa 2161,2163-2165,2167-2168,2176,2178
+  s_dd64aae38c8902::t_a52ff9b06159ab 2182
+packages/frontend/editor-ui/src/app/stores/nodeTypes.store.ts
+  s_dd64aae38c8902::t_2bd1e0739da54f 10,110
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "f071354943496cbfc9042b1b00dc065d827722b0",
+  "prompts": {},
+  "humans": {
+    "h_2f80f0e06f710c": {
+      "author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_dd64aae38c8902": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4c6dc1ab-2fad-4bdb-8e7b-175fcf16ad2e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

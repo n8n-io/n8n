@@ -1,0 +1,51 @@
+scripts/lint-parity/OXLINT_MIGRATION_BLOCKERS.md
+  s_4d4515bb8fac55::t_5df79b50c2e0b0 44-48,50
+  s_4d4515bb8fac55::t_c7c55d7c94d8a3 49
+packages/@n8n/eslint-config/src/rules/index.ts
+  s_4d4515bb8fac55::t_5d9343ae5cf248 36,73
+turbo.json
+  s_4d4515bb8fac55::t_54b43a857dc461 65-67,116-118
+packages/@n8n/agents/oxlint.config.mts
+  s_4d4515bb8fac55::t_5d9343ae5cf248 20,35
+  s_4d4515bb8fac55::t_5df79b50c2e0b0 1-19,21-34,36-45
+packages/@n8n/instance-ai/eslint.config.mjs
+  s_4d4515bb8fac55::t_932bda8eccd16f 39
+packages/@n8n/agents/src/runtime/model/__tests__/prompt-cache.test.ts
+  s_4d4515bb8fac55::t_62a1d22d56602b 79-80,124-125
+packages/@n8n/instance-ai/package.json
+  s_4d4515bb8fac55::t_5df79b50c2e0b0 14-15,103,113-114
+packages/@n8n/eslint-config/src/rules/no-static-runtime-import.test.ts
+  s_4d4515bb8fac55::t_20a2e3466acd1e 5-7
+  s_4d4515bb8fac55::t_5d9343ae5cf248 1-4,8-33
+packages/@n8n/eslint-config/src/rules/no-static-runtime-import.ts
+  s_4d4515bb8fac55::t_5d9343ae5cf248 1-55
+packages/@n8n/agents/package.json
+  s_4d4515bb8fac55::t_5df79b50c2e0b0 82-83,162,176-177
+packages/@n8n/instance-ai/oxlint.config.mts
+  s_4d4515bb8fac55::t_5df79b50c2e0b0 1-22,24-34,39-42,44-66,73-82
+  s_4d4515bb8fac55::t_c7c55d7c94d8a3 23
+  s_4d4515bb8fac55::t_62a1d22d56602b 36-38,67-72
+  s_4d4515bb8fac55::t_5d9343ae5cf248 35,43
+packages/@n8n/agents/src/runtime/__tests__/agent-runtime.test.ts
+  s_4d4515bb8fac55::t_62a1d22d56602b 1572-1573
+packages/@n8n/agents/eslint.config.mjs
+  s_4d4515bb8fac55::t_932bda8eccd16f 21
+pnpm-lock.yaml
+  s_4d4515bb8fac55::t_529be9df2900ce 1258-1260,1288-1290,1303-1308,3156-3158,3174-3176,3183-3188,32882-32897,32910-32921,32959-32967,33015-33018,33031-33042,33112-33126,33161-33171,43619-43622
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ba90b206b7eb4f66f1661709eff8ac6581ca114c",
+  "prompts": {},
+  "sessions": {
+    "s_4d4515bb8fac55": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f14552f87ffereMDSk0BMf7UFE",
+        "model": "openai/gpt-5.6-sol"
+      },
+      "human_author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}

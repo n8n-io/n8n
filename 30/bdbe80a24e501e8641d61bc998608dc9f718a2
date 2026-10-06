@@ -1,0 +1,36 @@
+packages/testing/playwright/expectations/instance-ai/arms-the-webhook-test-url-receives-a-real-request-and-reads-back-the-execution/0001-1789123258360-unknown-host-POST-_v1_messages-1bd787fd.json
+  s_f4876d43d1babd::t_ab31dbf61a2181 7
+packages/cli/src/modules/instance-ai/instance-ai.adapter.service.ts
+  s_f4876d43d1babd::t_ab31dbf61a2181 2029-2046,2808-2809,2811-2812,2822-2826,2829-2838,2843
+packages/cli/src/modules/instance-ai/internal-messages.ts
+  s_f4876d43d1babd::t_ab31dbf61a2181 82
+packages/cli/src/modules/instance-ai/__tests__/internal-messages.test.ts
+  s_f4876d43d1babd::t_ab31dbf61a2181 94
+packages/@n8n/instance-ai/docs/tools.md
+  s_f4876d43d1babd::t_ab31dbf61a2181 54,586
+packages/@n8n/instance-ai/evaluations/harness/stub-services.ts
+  s_f4876d43d1babd::t_ab31dbf61a2181 276,279-280
+packages/@n8n/instance-ai/src/index.ts
+  s_f4876d43d1babd::t_ab31dbf61a2181 745-747
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.adapter.service.test.ts
+  s_f4876d43d1babd::t_ab31dbf61a2181 162,177,5235-5239,5243-5247,5252-5253,5258,5264-5316
+  s_f4876d43d1babd::t_4611c3ecde7b88 5317
+packages/@n8n/instance-ai/evaluations/__tests__/stub-services.test.ts
+  s_f4876d43d1babd::t_ab31dbf61a2181 144-183
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "30bdbe80a24e501e8641d61bc998608dc9f718a2",
+  "prompts": {},
+  "sessions": {
+    "s_f4876d43d1babd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "af51ae32-1546-4f05-b981-05e15fb39150",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}
