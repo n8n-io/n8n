@@ -1,6 +1,8 @@
 import type {
 	BreakingChangeAffectedWorkflow,
 	BreakingChangeLightReportResult,
+	BreakingChangeRuleDetailResult,
+	BreakingChangeRuleDetailWorkflow,
 	BreakingChangeVersion,
 	BreakingChangeWorkflowIssue,
 	BreakingChangeWorkflowRuleResult,
@@ -105,17 +107,20 @@ export class MigrationFindingQueryService {
 		};
 	}
 
-	/** The detail of one workflow rule: every open finding with its workflow, statistics and issues. */
+	/**
+	 * The detail of one workflow rule: every open and won't fix finding with its
+	 * status, workflow, statistics and issues.
+	 */
 	async getRuleFindings(
 		targetVersion: BreakingChangeVersion,
 		ruleId: string,
-	): Promise<BreakingChangeWorkflowRuleResult> {
+	): Promise<BreakingChangeRuleDetailResult> {
 		const rule = this.ruleRegistry.getRule(ruleId);
 		if (!rule || !isWorkflowLevelRule(rule)) {
 			throw new NotFoundError(`Breaking change rule with ID '${ruleId}' not found.`);
 		}
 
-		const findings = await this.findingRepository.listOpenForRule(targetVersion, ruleId, {});
+		const findings = await this.findingRepository.listTriageableForRule(targetVersion, ruleId, {});
 		const workflowIds = findings.map((finding) => finding.workflowId);
 		const [workflows, statistics] = await Promise.all([
 			this.workflowRepository.findByIds(workflowIds, { fields: WORKFLOW_FIELDS }),
@@ -128,7 +133,7 @@ export class MigrationFindingQueryService {
 				? await this.issuesFromScan(targetVersion, rule)
 				: await this.issuesFromRecheck(rule, workflows);
 
-		const affectedWorkflows: BreakingChangeAffectedWorkflow[] = [];
+		const affectedWorkflows: BreakingChangeRuleDetailWorkflow[] = [];
 		for (const finding of findings) {
 			affectedWorkflows.push({
 				id: finding.workflowId,
@@ -138,6 +143,7 @@ export class MigrationFindingQueryService {
 				...summarizeExecutionStatistics(statisticsByWorkflow.get(finding.workflowId) ?? []),
 				// A workflow the rule no longer flags stays listed, without issues, until the next sync.
 				issues: issuesByWorkflow.get(finding.workflowId) ?? [],
+				status: finding.status,
 			});
 		}
 

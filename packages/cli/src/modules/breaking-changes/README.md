@@ -30,6 +30,8 @@ breaking-changes/
       migration-finding-sync.listener.ts # Re-checks one workflow on create, save, publish, and pull
    query/
       migration-finding-query.service.ts  # Shapes finding table reads into the report response types
+   triage/
+      migration-finding-triage.service.ts # Sets the status a user picks for a finding
    group-nodes-by-type.ts                   # Nodes grouped by type, as workflow rules expect
    summarize-execution-statistics.ts        # Run count and last run from statistics rows
    breaking-changes.service.ts              # Detection orchestration
@@ -129,6 +131,24 @@ Returns:
  "shouldCache": false
 }
 ```
+
+### Set the Status of a Finding
+```
+PATCH /breaking-changes/report/:ruleId/workflows/:workflowId
+```
+
+Body:
+```json
+{ "status": "wont_fix" }
+```
+
+Sets the status of the finding of one workflow rule on one workflow. A user can set `open` or `wont_fix`. The rule's metadata gives the target version. The route needs the `breakingChanges:migrate` scope and returns no data.
+
+- A `wont_fix` finding counts as resolved. The overview counts only `open` findings.
+- The rule detail lists `open` and `wont_fix` findings, each with its `status`.
+- When a scan no longer detects a `wont_fix` finding, the sync marks it `fixed`.
+- The route returns 404 when the rule is unknown or is not a workflow rule.
+- The route returns 404 when the finding does not exist or is in a status that only the scan sets, for example `fixed`.
 
 ## Rule Impact
 

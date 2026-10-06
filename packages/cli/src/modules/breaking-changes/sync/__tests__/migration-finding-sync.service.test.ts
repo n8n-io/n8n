@@ -213,6 +213,18 @@ describe('MigrationFindingSyncService', () => {
 		expect(findingRepository.insertMany).not.toHaveBeenCalled();
 	});
 
+	it('marks a wont_fix finding fixed when the scan no longer detects it', async () => {
+		givenWorkflows(1);
+		findingRepository.listForWorkflows.mockResolvedValue([
+			findingRow(1, 'rule-a', 'wf-0000', 'wont_fix'),
+		]);
+
+		await service.sync(TARGET_VERSION);
+
+		expect(findingRepository.markFixedForIds).toHaveBeenCalledWith([1], expect.anything());
+		expect(findingRepository.updateStatusForIds).not.toHaveBeenCalled();
+	});
+
 	it('leaves the finding of a rule check that threw untouched', async () => {
 		givenWorkflows(3);
 		breakingChangeService.detect.mockResolvedValue(
