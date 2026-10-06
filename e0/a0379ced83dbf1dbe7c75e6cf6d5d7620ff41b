@@ -1,0 +1,21 @@
+packages/cli/src/modules/agents/agent-message-queue.service.ts
+  s_db74c72b258827::t_b57dc979c7f261 205-206
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-tracing.service.test.ts
+  s_db74c72b258827::t_8d8529cb87335d 65
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "e0a0379ced83dbf1dbe7c75e6cf6d5d7620ff41b",
+  "prompts": {},
+  "sessions": {
+    "s_db74c72b258827": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "623f2f12-b478-4119-a5b9-9b84971b2bbe",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}
