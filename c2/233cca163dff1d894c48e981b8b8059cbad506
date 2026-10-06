@@ -1,0 +1,20 @@
+packages/cli/src/modules/agents/__tests__/agent-chat.controller.test.ts
+  ai_agent 1333-1339
+  s_f3d2ec4529fb2a::t_e2c33503e85447 1332,1340-1360
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "c2233cca163dff1d894c48e981b8b8059cbad506",
+  "prompts": {},
+  "sessions": {
+    "s_f3d2ec4529fb2a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c28c4414-1c5b-4167-98ad-d5188b3d2601",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}
