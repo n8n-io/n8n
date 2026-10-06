@@ -106,7 +106,7 @@ callback end one wait only.
    stop an outstanding resume URL. Processes with the old configuration and the new configuration
    can run side by side.
 9. **The control plane sends each resume request to the engine that runs the execution.** It picks
-   engine v1 or engine 2.0, and it does not read the token to do so.
+   engine v1 or engine v2, and it does not read the token to do so.
 
 ## Alternatives Considered
 
@@ -155,7 +155,7 @@ callback end one wait only.
   data plane compares the same string when the request arrives. It does not rebuild the query from
   parsed values, because two different queries can parse to the same values.
 - Every data-plane process needs the resume secrets. A process signs only with a secret that every
-  other process accepts. The operator sets them in every deployment that enables engine 2.0, also
+  other process accepts. The operator sets them in every deployment that enables engine v2, also
   where both planes run in one process. The engine does not generate them. A process without them
   fails at start, so a resume request never fails without a log entry.
 - Where both planes run in one process, the control plane can read the resume secret. The control
@@ -205,6 +205,6 @@ callback end one wait only.
 
 RFC: -
 
-Documentation: Engine 2.0 — Detailed Design, §3.3 https://app.notion.com/p/n8n/34b5b6e0c94f81feba4bdb59a65d55dc; Engine 2.0: Trust Layer: CP ↔ DP — Design Overview https://app.notion.com/p/n8n/3725b6e0c94f8077a562cb2e2c821e9c
+Documentation: Engine v2 — Detailed Design, §3.3 https://app.notion.com/p/n8n/34b5b6e0c94f81feba4bdb59a65d55dc; Engine v2: Trust Layer: CP ↔ DP — Design Overview https://app.notion.com/p/n8n/3725b6e0c94f8077a562cb2e2c821e9c
 
 Related ADRs: ADR-20260902-steps-declare-waits
