@@ -20,6 +20,7 @@ import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { DeprecationService } from '@/deprecation/deprecation.service';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { ActivityEventRelay } from '@/events/relays/activity.event-relay';
+import { LogStreamingEventRelay } from '@/events/relays/log-streaming.event-relay';
 import { TelemetryEventRelay } from '@/events/relays/telemetry.event-relay';
 import { WorkflowFailureNotificationEventRelay } from '@/events/relays/workflow-failure-notification.event-relay';
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
@@ -75,6 +76,7 @@ mockInstance(PostHogClient);
 mockInstance(OtelService);
 mockInstance(TelemetryEventRelay);
 mockInstance(ActivityEventRelay);
+mockInstance(LogStreamingEventRelay);
 mockInstance(WorkflowFailureNotificationEventRelay);
 mockInstance(DeprecationService);
 mockInstance(CredentialsOverwrites);
@@ -227,6 +229,32 @@ describe('Worker', () => {
 				expect(worker.globalConfig.generic.gracefulShutdownTimeout).toBe(expected);
 			},
 		);
+	});
+
+	describe('startup recovery', () => {
+		it('should recover unfinished executions only after the modules are initialized', async () => {
+			const eventBus = Container.get(MessageEventBus);
+			const worker = createWorkerForInit();
+
+			await worker.init();
+
+			// @ts-expect-error - Accessing protected property for testing
+			const { initModules } = worker.moduleRegistry;
+			expect(eventBus.recoverUnfinishedExecutions).toHaveBeenCalledTimes(1);
+			expect(vi.mocked(initModules).mock.invocationCallOrder[0]).toBeLessThan(
+				vi.mocked(eventBus.recoverUnfinishedExecutions).mock.invocationCallOrder[0],
+			);
+		});
+
+		it('should defer execution recovery when initializing the event bus', async () => {
+			const eventBus = Container.get(MessageEventBus);
+
+			await new Worker().initEventBus();
+
+			expect(eventBus.initialize).toHaveBeenCalledWith(
+				expect.objectContaining({ deferExecutionRecovery: true }),
+			);
+		});
 	});
 
 	describe('stopProcess', () => {
