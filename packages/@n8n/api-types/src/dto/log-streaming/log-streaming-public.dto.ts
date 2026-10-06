@@ -187,11 +187,7 @@ export type CreateLogStreamingDestinationPublic = z.infer<
 
 export type LogStreamingDestinationPublicType = CreateLogStreamingDestinationPublic['type'];
 
-/**
- * A discriminated union has no object shape, so this cannot extend `Z.class`. The type and the
- * class share one name: `@Body` reads the class from the decorator metadata, and the handler
- * receives the union.
- */
+// `@Body` reads the class from the decorator metadata; the same-named type gives the handler the union.
 export type CreateLogStreamingDestinationPublicDto = CreateLogStreamingDestinationPublic;
 export const CreateLogStreamingDestinationPublicDto = class {
 	static schema = createLogStreamingDestinationPublicSchema;

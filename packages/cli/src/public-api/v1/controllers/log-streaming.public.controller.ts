@@ -141,7 +141,7 @@ export class LogStreamingPublicController {
 		this.assertNotManagedByEnv();
 		await this.findDestinationOrFail(id);
 
-		// the path id is the update target; addDestination upserts on it
+		// `addDestination` replaces the stored destination that has this id.
 		return await this.saveDestination(req, { ...toInternalDestinationOptions(body), id });
 	}
 
