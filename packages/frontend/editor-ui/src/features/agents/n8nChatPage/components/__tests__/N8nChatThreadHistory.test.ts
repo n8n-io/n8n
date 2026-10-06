@@ -219,6 +219,25 @@ describe('N8nChatThreadHistory', () => {
 		);
 	});
 
+	it('does not navigate when the user moved to another thread while the delete ran', async () => {
+		route.params = { agentThreadId: 't1' };
+		listN8nChatThreadsMock.mockResolvedValue({ data: [thread('t1')], nextCursor: null });
+		const { getByTestId } = await renderAndOpen();
+		await waitFor(() => expect(getByTestId('agent-n8n-chat-history-item')).toBeTruthy());
+		const threadsStore = mockedStore(useAgentN8nChatThreadsStore);
+		threadsStore.deleteThread.mockImplementation(async () => {
+			route.params = { agentThreadId: 't2' };
+			return true;
+		});
+
+		await userEvent.click(
+			within(getByTestId('agent-n8n-chat-history-item')).getByTestId('thread-delete'),
+		);
+
+		await waitFor(() => expect(threadsStore.deleteThread).toHaveBeenCalled());
+		expect(pushMock).not.toHaveBeenCalled();
+	});
+
 	it.each([
 		{
 			name: 'navigates to a new chat for the same agent when the open thread is deleted',

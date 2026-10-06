@@ -68,7 +68,7 @@ function thread(id: string, metadata?: Record<string, unknown>): InstanceAiThrea
 const actionDropdownStub = {
 	name: 'ActionDropdown',
 	template:
-		'<div @click="$emit(\'select\', \'rename\')"><slot name="activator" /><button data-test-id="thread-actions" :disabled="disabled" @click.stop="$emit(\'select\', \'delete\')">Delete</button></div>',
+		'<div @click="$emit(\'select\', \'rename\')"><slot name="activator" /><button data-test-id="thread-actions" :data-action-ids="(items ?? []).map((item) => item.id).join(\',\')" :disabled="disabled" @click.stop="$emit(\'select\', \'delete\')">Delete</button></div>',
 	props: ['items', 'disabled', 'placement'],
 	emits: ['select'],
 };
@@ -468,7 +468,11 @@ describe('InstanceAiThreadList', () => {
 			expect(
 				agentRows[0].querySelector('[data-test-id="agent-personalisation-icon-tile"]'),
 			).not.toBeNull();
-			expect(agentRows[0].querySelector('button')).not.toBeNull();
+			expect(
+				agentRows[0]
+					.querySelector('[data-test-id="thread-actions"]')
+					?.getAttribute('data-action-ids'),
+			).toBe('delete');
 
 			const assistantRows = queryAllByTestId('instance-ai-thread-item');
 			expect(assistantRows).toHaveLength(1);

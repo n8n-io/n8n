@@ -49,10 +49,10 @@ const paged = usePagedN8nChatThreads({
 });
 
 async function handleDeleteThread(thread: AgentN8nChatThreadSummary): Promise<void> {
-	const wasOpen = thread.id === currentThreadId.value;
 	if (!(await threadsStore.deleteThread(thread))) return;
 	// Mirrors the Assistant: deleting the open thread lands on a new chat for the same agent.
-	if (!wasOpen) return;
+	// Read the route after the await: the user may have moved to another thread meanwhile.
+	if (thread.id !== currentThreadId.value) return;
 	void router.push({ name: AGENT_N8N_CHAT_VIEW, params: { agentId: props.agentId } });
 }
 

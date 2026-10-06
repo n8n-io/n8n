@@ -272,13 +272,19 @@ describe('usePagedN8nChatThreads', () => {
 	});
 
 	it('disabled: a search change clears items but does not request; enabling later allows loadNext to fetch', async () => {
-		const enabled = ref(false);
+		const enabled = ref(true);
 		const search = ref<string | undefined>(undefined);
-		listN8nChatThreadsMock.mockResolvedValueOnce({ data: [thread('t1')], nextCursor: null });
+		listN8nChatThreadsMock.mockResolvedValueOnce({ data: [thread('old')], nextCursor: null });
 		const wrapper = mountComposable({ enabled: () => enabled.value, search: () => search.value });
+		wrapper.vm.loadNext();
+		await vi.waitFor(() => expect(wrapper.vm.items).toEqual([thread('old')]));
+		listN8nChatThreadsMock.mockClear();
+		listN8nChatThreadsMock.mockResolvedValueOnce({ data: [thread('t1')], nextCursor: null });
 
+		enabled.value = false;
 		search.value = 'refund';
 		await wrapper.vm.$nextTick();
+		expect(wrapper.vm.items).toEqual([]);
 		expect(listN8nChatThreadsMock).not.toHaveBeenCalled();
 
 		// A manual loadNext() while disabled is also a no-op.
