@@ -8176,6 +8176,8 @@
 	"agents.n8nChatPage.library.loadFailed.title": "Couldn't load agents",
 	"agents.n8nChatPage.library.empty.noAgents.title": "No agents available to chat with yet",
 	"agents.n8nChatPage.library.empty.noResults.title": "No agents match your search",
+	"agents.n8nChatPage.chooseAgent": "Talk to your agents",
+	"agents.n8nChatPage.viewAllAgents": "View all agents",
 	"agents.backToWorkflow": "Back to workflow",
 	"agents.heading": "Agents",
 	"agents.list.published": "Published",
