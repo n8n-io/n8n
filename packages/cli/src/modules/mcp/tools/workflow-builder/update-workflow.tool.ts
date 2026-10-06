@@ -723,6 +723,26 @@ const isTagOperation = (op: PartialUpdateOperation) =>
 const isSettingsOperation = (op: PartialUpdateOperation) => op.type === 'setWorkflowSettings';
 
 /**
+ * Operations that cannot leave a required subnode input unsatisfied: they touch
+ * neither connections nor the parameters a conditional `inputs` expression reads.
+ * Node-level execution settings qualify, since `inputs` only sees `$parameter`.
+ */
+const GRAPH_NEUTRAL_OPERATIONS = new Set<PartialUpdateOperation['type']>([
+	'addTags',
+	'removeTags',
+	'setNodeSettings',
+	'setWorkflowSettings',
+	'setWorkflowMetadata',
+	'addNodeGroup',
+	'removeNodeGroup',
+	'updateNodeGroup',
+	'setNodeGroups',
+	'setNodePosition',
+]);
+
+const touchesGraph = (op: PartialUpdateOperation) => !GRAPH_NEUTRAL_OPERATIONS.has(op.type);
+
+/**
  * Group rules depend on how the workflow looks after the whole batch, so they
  * are checked once here rather than per operation. A broken group is dropped
  * and reported; the update still goes through.
