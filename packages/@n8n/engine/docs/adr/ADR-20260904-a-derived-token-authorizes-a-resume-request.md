@@ -67,9 +67,8 @@ token, and the data plane rejects a request without one. Engine v1 skips its che
 from before it stored tokens. Engine v2 has no such executions.
 
 The bar this decision must meet is parity with engine v1: a resume request is as hard to forge here
-as it is there. The decision meets that bar. It goes past v1 in two places. Where the planes run as
-separate processes, the control plane cannot build a token. A step-bound resume URL and an approval
-callback end one wait only.
+as it is there. The decision meets that bar. It goes past v1 in two places. No control-plane code
+can build a token. A step-bound resume URL and an approval callback end one wait only.
 
 1. **The token has its own spec.** A third `SharedSecretTokenSpec` holds its own issuer and
    audience. Therefore a resume token is not valid at the other endpoints of either plane, and the
@@ -98,10 +97,10 @@ callback end one wait only.
    request still applies. `resumeStep` moves a step out of `waiting`, or it does nothing. A token
    for a wait that is already resolved, timed out, or cancelled has no effect.
 7. **The data plane owns the resume secret.** The resume secret is not the shared secret of the two
-   planes, and the control plane never holds it. The data plane mints every resume token and
-   verifies every resume request. No node code runs for a resume request before the data plane
-   accepts its token. The control plane passes the token to the data plane and does not read it. The
-   engine does not start without the resume secret.
+   planes, and no control-plane code reads it. The data plane mints every resume token and verifies
+   every resume request. No node code runs for a resume request before the data plane accepts its
+   token. The control plane passes the token to the data plane and does not read it. The engine does
+   not start without the resume secret.
 8. **A rolling rollout rotates the resume secret.** A rotation rejects no valid token and does not
    stop an outstanding resume URL. Processes with the old configuration and the new configuration
    can run side by side.
@@ -158,8 +157,7 @@ callback end one wait only.
   other process accepts. The operator sets them in every deployment that enables engine v2, also
   where both planes run in one process. The engine does not generate them. A process without them
   fails at start, so a resume request never fails without a log entry.
-- Where both planes run in one process, the control plane can read the resume secret. The control
-  plane is excluded only where the planes run as separate processes.
+
 - The Slack and Telegram approval callback reaches a fixed URL, with its signed reference in the
   request body. Engine v1 verifies that reference in the control plane. Here the data plane verifies
   it. The control plane reads only the id in the reference, to pick the engine, and forwards the
