@@ -40,18 +40,28 @@ export const waitParameters = ({ amount, unit }: Interval) => ({ amount, unit })
 /** The Filter contract parameters of `filter` for the compiled JavaScript of its condition. */
 export const filterParameters = (condition: string) => ({ where: trueWhere(condition) });
 
-const equalsCase = (field: string, value: string) => ({
+const equalsCase = (field: string, value: string, asText: boolean) => ({
 	output: value,
 	where: {
 		conditions: [
 			{
 				type: 'string',
-				left: `={{ $json[${JSON.stringify(field)}] }}`,
+				left: asText
+					? `={{ String($json[${JSON.stringify(field)}] ?? '') }}`
+					: `={{ $json[${JSON.stringify(field)}] }}`,
 				test: { op: 'equals', right: value },
 			},
 		],
 	},
 });
+
+/**
+ * A case key that spells a number or a boolean, e.g. `2` or `true`. The field can then hold a
+ * number or a boolean, which a string condition refuses, so the router compares the text of
+ * the value. A string field with such keys routes the same.
+ */
+const isValueKey = (key: string) =>
+	key === 'true' || key === 'false' || String(Number(key)) === key;
 
 /** The Switch contract names its last output `fallback`, so a case cannot have that name. */
 export const FALLBACK_OUTPUT = 'fallback';
@@ -76,21 +86,28 @@ export function caseRouter(
 	field: string,
 	keys: readonly string[],
 	hasDefault: boolean,
+	asText = keys.some(isValueKey),
 ): CaseRouter {
 	return {
 		...SWITCH_NODE,
-		parameters: { cases: keys.map((key) => equalsCase(field, key)) },
+		parameters: { cases: keys.map((key) => equalsCase(field, key, asText)) },
 		outputs: keys.length + 1,
 		caseOutputs: keys.map((_key, index) => index),
 		defaultOutput: hasDefault ? keys.length : undefined,
 	};
 }
 
-export type MergeJoin = 'append' | 'position' | { readonly left: string; readonly right: string };
+export type MergeJoin =
+	| 'append'
+	| 'position'
+	| 'all'
+	| { readonly left: string; readonly right: string }
+	| { readonly branch: number };
 
 /**
- * `merge` builds the Merge node contracts. Append and combine by position count their inputs
- * (`inputs`, 2 when unset); combine by fields has the inputs left and right.
+ * `merge` builds the Merge node contracts. Append, combine by position and choose branch count
+ * their inputs (`inputs`, 2 when unset); combine by fields or all pairs has the inputs left and
+ * right.
  */
 export const MERGE_APPEND_NODE = { type: '@n8n/nodes-core.mergeAppend', version: 2 };
 export const MERGE_POSITION_NODE = {
@@ -98,6 +115,7 @@ export const MERGE_POSITION_NODE = {
 	version: 1,
 };
 export const MERGE_COMBINE_NODE = { type: '@n8n/nodes-core.mergeCombine', version: 1 };
+export const MERGE_CHOOSE_NODE = { type: '@n8n/nodes-core.mergeChooseBranch', version: 1 };
 /** The most inputs of the Merge contracts. */
 export const MERGE_MAX_INPUTS = 10;
 
@@ -106,14 +124,20 @@ export const mergeNodeOf = (join: MergeJoin) =>
 		? MERGE_APPEND_NODE
 		: join === 'position'
 			? MERGE_POSITION_NODE
-			: MERGE_COMBINE_NODE;
+			: typeof join === 'object' && 'branch' in join
+				? MERGE_CHOOSE_NODE
+				: MERGE_COMBINE_NODE;
 
-/** The parameters of the Merge contract. n8n stores no default, so 2 inputs set no count. */
+/**
+ * The parameters of the Merge contract. n8n stores no default, so 2 inputs set no count and
+ * branch 1 sets no `use`.
+ */
 export function mergeParameters(join: MergeJoin, inputs = 2) {
-	if (typeof join === 'object') {
-		return { by: { by: 'fields', left: join.left, right: join.right, join: 'inner' } };
-	}
-	return inputs === 2 ? {} : { inputs };
+	const count = inputs === 2 ? {} : { inputs };
+	if (join === 'all') return { by: { by: 'all' } };
+	if (typeof join !== 'object') return count;
+	if ('branch' in join) return { ...count, ...(join.branch === 1 ? {} : { use: join.branch }) };
+	return { by: { by: 'fields', left: join.left, right: join.right, join: 'inner' } };
 }
 
 export const splitOutParameters = (field: string) => ({ field });

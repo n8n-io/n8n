@@ -50,9 +50,13 @@ import {
 	FILTER_NODE,
 	filterParameters,
 	MERGE_APPEND_NODE,
+	MERGE_CHOOSE_NODE,
 	MERGE_POSITION_NODE,
 	mergeNodeOf,
 	mergeParameters,
+	NO_OP_NODE,
+	SPLIT_OUT_NODE,
+	splitOutParameters,
 	WAIT_NODE,
 	waitParameters,
 	type Interval,
@@ -169,6 +173,7 @@ type Shape =
 	| { readonly kind: 'branch'; readonly condition: string }
 	| { readonly kind: 'filter'; readonly condition: string }
 	| { readonly kind: 'set'; readonly fields: Tree; readonly keep: SetKeep }
+	| { readonly kind: 'splitOut'; readonly field: string }
 	| { readonly kind: 'contract'; readonly factory: ContractFactory; readonly parameters: Tree }
 	| { readonly kind: 'node'; readonly parameters: Tree }
 	| {
@@ -237,6 +242,8 @@ interface GroupRead {
 	readonly members: ReadonlySet<string>;
 	/** The one member that takes main input from outside the group. */
 	readonly entry: string;
+	/** The join node that `group()` adds when its body ends in several branches. */
+	readonly join?: string;
 }
 
 /** A provider and the slot of its parent that it fills. */
@@ -559,8 +566,8 @@ function switchShape(node: NamedNode, edges: readonly Edge[]): Shape | undefined
 	const where = isRecord(first) && isRecord(first.where) ? first.where : undefined;
 	const condition = firstOf(where?.conditions);
 	const left = isRecord(condition) ? condition.left : undefined;
-	const quoted = between(left, '={{ $json[', '] }}');
-	const field = parseJson(quoted);
+	const asText = between(left, '={{ String($json[', "] ?? '') }}");
+	const field = parseJson(asText ?? between(left, '={{ $json[', '] }}'));
 	const caseKeys = keys.filter((key): key is string => typeof key === 'string');
 	// switchOn takes the part for no case under the output name of the fallback.
 	if (
@@ -573,10 +580,13 @@ function switchShape(node: NamedNode, edges: readonly Edge[]): Shape | undefined
 	const hasDefault = edges.some(
 		(edge) => edge.from === node.name && edge.output === caseKeys.length,
 	);
-	const router = caseRouter(field, caseKeys, hasDefault);
-	return isNodeType(node, router) && isEqual(router.parameters, node.parameters)
-		? { kind: 'switch', field, keys: caseKeys, router }
-		: undefined;
+	// Also read the string shape that earlier builds wrote for keys like "1"; the next build
+	// writes the text shape, which routes the same.
+	const router = [
+		caseRouter(field, caseKeys, hasDefault),
+		caseRouter(field, caseKeys, hasDefault, false),
+	].find((each) => isNodeType(node, each) && isEqual(each.parameters, node.parameters));
+	return router ? { kind: 'switch', field, keys: caseKeys, router } : undefined;
 }
 
 function mergeShape(node: NamedNode): Shape | undefined {
@@ -587,9 +597,13 @@ function mergeShape(node: NamedNode): Shape | undefined {
 		? 'append'
 		: isNodeType(node, MERGE_POSITION_NODE)
 			? 'position'
-			: isRecord(by) && typeof by.left === 'string' && typeof by.right === 'string'
-				? { left: by.left, right: by.right }
-				: undefined;
+			: isNodeType(node, MERGE_CHOOSE_NODE)
+				? { branch: typeof parameters.use === 'number' ? parameters.use : 1 }
+				: isRecord(by) && by.by === 'all'
+					? 'all'
+					: isRecord(by) && typeof by.left === 'string' && typeof by.right === 'string'
+						? { left: by.left, right: by.right }
+						: undefined;
 	return join &&
 		isNodeType(node, mergeNodeOf(join)) &&
 		isEqual(mergeParameters(join, inputs), parameters)
@@ -632,6 +646,17 @@ function setShape(node: NamedNode, names: ReadonlySet<string>): Shape | undefine
 	if (keep === undefined || converted.length !== Object.keys(fields).length) return undefined;
 	if (!isEqual(setParameters(fields, keep), parameters)) return undefined;
 	return { kind: 'set', fields: Object.fromEntries(converted), keep };
+}
+
+/** The Split Out contract that `splitOut` built. A field expression has no `splitOut` form. */
+function splitOutShape(node: NamedNode): Shape | undefined {
+	const field: unknown = node.parameters?.field;
+	return isNodeType(node, SPLIT_OUT_NODE) &&
+		typeof field === 'string' &&
+		!field.startsWith('=') &&
+		isEqual(splitOutParameters(field), node.parameters)
+		? { kind: 'splitOut', field }
+		: undefined;
 }
 
 type ContractShape = Extract<Shape, { kind: 'contract' }>;
@@ -782,6 +807,7 @@ function shapeOf(
 		switchShape(node, edges) ??
 		mergeShape(node) ??
 		setShape(node, names) ??
+		splitOutShape(node) ??
 		// A node() item is Loose, so a lambda over it can fail tsc (an implicit any) where the
 		// saved expression is correct. The expression check reads a string in place.
 		contractShape(node, names, contractReadOf(node, factories)) ??
@@ -1141,8 +1167,11 @@ function groupChain(
 ): Chain {
 	const outside = [...graph.nodes.keys()].filter((name) => !group.members.has(name));
 	const inside = [...seen, groupKey(group.name)];
-	const body = chain(graph, tails, new Set([...inside, ...outside]));
-	const rest = chain(graph, body.tails, new Set([...inside, ...group.members]));
+	// The body ends before the join node, which the build adds again.
+	const join = group.join === undefined ? [] : [group.join];
+	const body = chain(graph, tails, new Set([...inside, ...outside, ...join]));
+	const after = group.join === undefined ? body.tails : [{ node: group.join, output: 0 }];
+	const rest = chain(graph, after, new Set([...inside, ...group.members]));
 	return {
 		segments: [{ kind: 'group', group, body: body.segments }, ...rest.segments],
 		tails: rest.tails,
@@ -1450,6 +1479,8 @@ function callTree(
 				...(shape.keep === 'none' ? {} : { keep: plainTree(shape.keep) }),
 				...settingsField(node),
 			});
+		case 'splitOut':
+			return new Call('splitOut', { name: node.name, field: shape.field });
 		case 'contract':
 			return contractCall(graph, node, shape);
 		case 'node':
@@ -1640,6 +1671,7 @@ const HELPERS = [
 	'manual',
 	'trigger',
 	'set',
+	'splitOut',
 	'filter',
 	'node',
 	'provider',
@@ -1807,9 +1839,10 @@ function render(
  * `@n8n/workflow-sdk/next` source for a saved workflow, or `undefined` when the typed format
  * cannot express it (for example a sticky note, or a disabled node). Node settings such as
  * `retryOnFail` read back as `settings`. IF, Switch, Filter, and Merge nodes read back as
- * macros when their wiring and parameters are what the macro builds. A region reads back as
- * `forEach`, `loop`, `paginate` or `pollUntil`, a node group as `group()`, and workflow
- * settings as `workflow({ name, settings })`.
+ * macros when their wiring and parameters are what the macro builds, and a Split Out node as
+ * `splitOut`. A region reads back as `forEach`, `loop`, `paginate` or `pollUntil`, a node group
+ * as `group()` without the join node that `group()` adds, and workflow settings as
+ * `workflow({ name, settings })`.
  * An expression without a lambda form reads back as `expr()`; in `node()` and `provider()` every
  * expression does, as their items are untyped. An error output reads back as `onError`, or as
  * `recover` when the handler continues. `factories` maps
@@ -2041,9 +2074,41 @@ function groupsOf(
 				return undefined;
 			}
 			const { name, description } = group;
-			return { name, ...(description ? { description } : {}), members, entry };
+			const join = joinOf(json, main, name, members);
+			return {
+				name,
+				...(description ? { description } : {}),
+				members,
+				entry,
+				...(join ? { join } : {}),
+			};
 		});
 	return groups.every((group) => group !== undefined) ? groups : undefined;
+}
+
+/**
+ * The No Operation node `<group> join` that `group()` adds when its body ends in several tails:
+ * a member without parameters or settings, the only exit of the group, with each main input from
+ * another member. Another node gives `undefined` and stays a step.
+ */
+function joinOf(
+	json: WorkflowJSON,
+	main: readonly Edge[],
+	group: string,
+	members: ReadonlySet<string>,
+): string | undefined {
+	const join = `${group} join`;
+	const node = json.nodes.find((each) => each.name === join);
+	const inputs = main.filter((edge) => edge.to === join);
+	const leavesGroup = (edge: Edge) => members.has(edge.from) && !members.has(edge.to);
+	const fits =
+		members.has(join) &&
+		isNodeType(node, NO_OP_NODE) &&
+		Object.keys(node?.parameters ?? {}).length === 0 &&
+		inputs.length > 1 &&
+		inputs.every((edge) => edge.input === 0 && edge.from !== join && members.has(edge.from)) &&
+		main.every((edge) => leavesGroup(edge) === (edge.from === join));
+	return fits ? join : undefined;
 }
 
 const NODE_TYPE_CALLS = new Set(['node', 'provider', 'trigger']);

@@ -1,0 +1,217 @@
+{
+	"executions": [
+		{
+			"name": "chat message",
+			"params": {
+				"authentication": "microsoftTeamsOAuth2Api",
+				"chatId": "19:ebed9ad42c904d6c83adf0db360053ec@thread.v2",
+				"message": "Build passed",
+				"appendAttribution": false
+			},
+			"legacy": {
+				"type": "n8n-nodes-base.microsoftTeams",
+				"version": 2,
+				"parameters": {
+					"authentication": "microsoftTeamsOAuth2Api",
+					"resource": "chatMessage",
+					"operation": "create",
+					"chatId": {
+						"__rl": true,
+						"mode": "id",
+						"value": "19:ebed9ad42c904d6c83adf0db360053ec@thread.v2"
+					},
+					"contentType": "text",
+					"message": "Build passed",
+					"options": {
+						"includeLinkToWorkflow": false
+					}
+				}
+			},
+			"routes": [
+				{
+					"method": "POST",
+					"path": "/messages",
+					"reply": {
+						"json": {
+							"@odata.context": "https://graph.microsoft.com/v1.0/$metadata#chats('19%3Aebed9ad42c904d6c83adf0db360053ec%40thread.v2')/messages/$entity",
+							"id": "1756717200000",
+							"replyToId": null,
+							"etag": "1756717200000",
+							"messageType": "message",
+							"createdDateTime": "2026-09-01T09:00:00.000Z",
+							"lastModifiedDateTime": "2026-09-01T09:00:00.000Z",
+							"lastEditedDateTime": null,
+							"deletedDateTime": null,
+							"subject": null,
+							"summary": null,
+							"chatId": "19:ebed9ad42c904d6c83adf0db360053ec@thread.v2",
+							"importance": "normal",
+							"locale": "en-us",
+							"webUrl": null,
+							"channelIdentity": null,
+							"from": {
+								"application": null,
+								"device": null,
+								"user": {
+									"@odata.type": "#microsoft.graph.teamworkUserIdentity",
+									"id": "8c2f9b1e-3f4d-4e5a-9b6c-7d8e9f0a1b2c",
+									"displayName": "Ada Lovelace",
+									"userIdentityType": "aadUser"
+								}
+							},
+							"body": {
+								"contentType": "text",
+								"content": "Build passed"
+							},
+							"attachments": [],
+							"mentions": [],
+							"reactions": []
+						}
+					}
+				}
+			],
+			"output": [
+				{
+					"@odata.context": "https://graph.microsoft.com/v1.0/$metadata#chats('19%3Aebed9ad42c904d6c83adf0db360053ec%40thread.v2')/messages/$entity",
+					"id": "1756717200000",
+					"replyToId": null,
+					"etag": "1756717200000",
+					"messageType": "message",
+					"createdDateTime": "2026-09-01T09:00:00.000Z",
+					"lastModifiedDateTime": "2026-09-01T09:00:00.000Z",
+					"lastEditedDateTime": null,
+					"deletedDateTime": null,
+					"subject": null,
+					"summary": null,
+					"chatId": "19:ebed9ad42c904d6c83adf0db360053ec@thread.v2",
+					"importance": "normal",
+					"locale": "en-us",
+					"webUrl": null,
+					"channelIdentity": null,
+					"from": {
+						"application": null,
+						"device": null,
+						"user": {
+							"@odata.type": "#microsoft.graph.teamworkUserIdentity",
+							"id": "8c2f9b1e-3f4d-4e5a-9b6c-7d8e9f0a1b2c",
+							"displayName": "Ada Lovelace",
+							"userIdentityType": "aadUser"
+						}
+					},
+					"body": {
+						"contentType": "text",
+						"content": "Build passed"
+					},
+					"attachments": [],
+					"mentions": [],
+					"reactions": []
+				}
+			]
+		},
+		{
+			"name": "text message with attribution",
+			"params": {
+				"authentication": "microsoftTeamsOAuth2Api",
+				"chatId": "19:ebed9ad42c904d6c83adf0db360053ec@thread.v2",
+				"message": "Build passed"
+			},
+			"legacy": {
+				"type": "n8n-nodes-base.microsoftTeams",
+				"version": 2,
+				"parameters": {
+					"authentication": "microsoftTeamsOAuth2Api",
+					"resource": "chatMessage",
+					"operation": "create",
+					"chatId": {
+						"__rl": true,
+						"mode": "id",
+						"value": "19:ebed9ad42c904d6c83adf0db360053ec@thread.v2"
+					},
+					"contentType": "text",
+					"message": "Build passed",
+					"options": {}
+				}
+			},
+			"routes": [
+				{
+					"method": "POST",
+					"path": "/messages",
+					"reply": {
+						"json": {
+							"@odata.context": "https://graph.microsoft.com/v1.0/$metadata#chats('19%3Aebed9ad42c904d6c83adf0db360053ec%40thread.v2')/messages/$entity",
+							"id": "1756717260000",
+							"replyToId": null,
+							"etag": "1756717260000",
+							"messageType": "message",
+							"createdDateTime": "2026-09-01T09:00:00.000Z",
+							"lastModifiedDateTime": "2026-09-01T09:00:00.000Z",
+							"lastEditedDateTime": null,
+							"deletedDateTime": null,
+							"subject": null,
+							"summary": null,
+							"chatId": "19:ebed9ad42c904d6c83adf0db360053ec@thread.v2",
+							"importance": "normal",
+							"locale": "en-us",
+							"webUrl": null,
+							"channelIdentity": null,
+							"from": {
+								"application": null,
+								"device": null,
+								"user": {
+									"@odata.type": "#microsoft.graph.teamworkUserIdentity",
+									"id": "8c2f9b1e-3f4d-4e5a-9b6c-7d8e9f0a1b2c",
+									"displayName": "Ada Lovelace",
+									"userIdentityType": "aadUser"
+								}
+							},
+							"body": {
+								"contentType": "html",
+								"content": "Build passed<br><br><em> Powered by <a href=\"https://n8n.io/?utm_source=n8n-internal&utm_medium=powered_by&utm_campaign=n8n-nodes-base.microsoftTeams\">n8n</a> </em>"
+							},
+							"attachments": [],
+							"mentions": [],
+							"reactions": []
+						}
+					}
+				}
+			],
+			"output": [
+				{
+					"@odata.context": "https://graph.microsoft.com/v1.0/$metadata#chats('19%3Aebed9ad42c904d6c83adf0db360053ec%40thread.v2')/messages/$entity",
+					"id": "1756717260000",
+					"replyToId": null,
+					"etag": "1756717260000",
+					"messageType": "message",
+					"createdDateTime": "2026-09-01T09:00:00.000Z",
+					"lastModifiedDateTime": "2026-09-01T09:00:00.000Z",
+					"lastEditedDateTime": null,
+					"deletedDateTime": null,
+					"subject": null,
+					"summary": null,
+					"chatId": "19:ebed9ad42c904d6c83adf0db360053ec@thread.v2",
+					"importance": "normal",
+					"locale": "en-us",
+					"webUrl": null,
+					"channelIdentity": null,
+					"from": {
+						"application": null,
+						"device": null,
+						"user": {
+							"@odata.type": "#microsoft.graph.teamworkUserIdentity",
+							"id": "8c2f9b1e-3f4d-4e5a-9b6c-7d8e9f0a1b2c",
+							"displayName": "Ada Lovelace",
+							"userIdentityType": "aadUser"
+						}
+					},
+					"body": {
+						"contentType": "html",
+						"content": "Build passed<br><br><em> Powered by <a href=\"https://n8n.io/?utm_source=n8n-internal&utm_medium=powered_by&utm_campaign=n8n-nodes-base.microsoftTeams\">n8n</a> </em>"
+					},
+					"attachments": [],
+					"mentions": [],
+					"reactions": []
+				}
+			]
+		}
+	]
+}

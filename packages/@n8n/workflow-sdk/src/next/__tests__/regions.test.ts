@@ -7,7 +7,9 @@ import {
 	trigger as legacyTrigger,
 } from '../../workflow-builder/node-builders/node-builder';
 import { loopWiringIssues } from '../../workflow-builder/plugins/validators/loop-wiring-validator';
+import { dropInvalidWorkflowJsonGroups } from '../../utils/workflow-json-engine-helpers';
 import { decompileWorkflow } from '../decompile';
+import type { MergeJoin } from '../regions';
 import * as next from '../index';
 import {
 	contractStep,
@@ -60,6 +62,8 @@ const customers = source<Customer>();
 const requests = source<{ body: { orders: Order[]; tags: string[]; note: string } }>();
 const hooks = source<{ headers: Record<string, string>; body: next.Loose }>();
 const tickets = source<Ticket>();
+const levels = source<{ level: 1 | 2; urgent: boolean; count: number }>();
+const results = source<{ ok: true; data: string } | { ok: false; error: string }>();
 
 const forEachWorkflow = () =>
 	workflow(
@@ -227,7 +231,7 @@ const switchDefaultWorkflow = () =>
 		),
 	);
 
-const mergeJoinWorkflow = (join: 'append' | 'position') =>
+const mergeJoinWorkflow = (join: 'append' | 'position' | 'all' | { branch: 2 }) =>
 	workflow(
 		'Both',
 		manual(),
@@ -236,6 +240,20 @@ const mergeJoinWorkflow = (join: 'append' | 'position') =>
 			set({ name: 'Names', fields: { name: (c) => c.name } }),
 			set({ name: 'Counts', fields: { count: (c) => c.orders.length } }),
 		]),
+	);
+
+const numberSwitchWorkflow = () =>
+	workflow(
+		'Levels',
+		manual(),
+		levels('Tickets'),
+		switchOn(
+			{ name: 'By level', on: 'level' },
+			{
+				1: set({ name: 'Low', fields: { low: true } }),
+				2: set({ name: 'High', fields: { high: true } }),
+			},
+		),
 	);
 
 /** A loop that walks up to 3 levels: the body output is the next state, the limit ends it. */
@@ -292,6 +310,22 @@ const guardedEachWorkflow = (rejoins: boolean) =>
 			: onError(set({ name: 'Log', fields: { failed: (e) => e.error } })),
 		set({ name: 'Report', fields: { done: true } }),
 	);
+
+/** A group whose body ends in the two branches of a `when`, or the same flow without the group. */
+const branchGroupWorkflow = (grouped: boolean) => {
+	const size = () =>
+		when(
+			{ name: 'Big?', if: () => true },
+			{
+				then: set({ name: 'Big', fields: { big: true } }),
+				else: set({ name: 'Small', fields: { big: false } }),
+			},
+		);
+	const after = () => set({ name: 'After', fields: { done: true } });
+	return grouped
+		? workflow('Enrich', manual(), customers('Customers'), group('Enrich', size()), after())
+		: workflow('Enrich', manual(), customers('Customers'), size(), after());
+};
 
 /** Canvas groups: one with a description, one around a forEach, one in it, one with an AI node. */
 const groupWorkflow = () =>
@@ -624,6 +658,84 @@ describe('regions compile to node contracts', () => {
 			merge({ name: 'J', join: { left: 'id', right: 'id' } } as never, [steps(), steps(), steps()]),
 		);
 		expect(() => three.toJSON()).toThrow(/J: merge by matching fields takes 2 branches, not 3/);
+	});
+
+	it('routes a number or boolean field by the text of its value, and a string field as before', () => {
+		const caseOf = (left: string, value: string) => ({
+			output: value,
+			where: { conditions: [{ type: 'string', left, test: { op: 'equals', right: value } }] },
+		});
+		const json = workflow(
+			'Levels',
+			manual(),
+			levels('Tickets'),
+			switchOn(
+				{ name: 'By level', on: 'level' },
+				{
+					1: set({ name: 'Low', fields: { low: true } }),
+					2: set({ name: 'High', fields: { high: (t) => t.level === 2 } }),
+				},
+			),
+		).toJSON();
+		const urgentJson = workflow(
+			'Urgency',
+			manual(),
+			levels('Tickets'),
+			switchOn(
+				{ name: 'Urgent?', on: 'urgent' },
+				{
+					true: set({ name: 'Now', fields: { now: true } }),
+					false: set({ name: 'Later', fields: { now: false } }),
+				},
+			),
+		).toJSON();
+		const level = '={{ String($json["level"] ?? \'\') }}';
+		const urgent = '={{ String($json["urgent"] ?? \'\') }}';
+		expect(json.nodes.find((n) => n.name === 'By level')?.parameters).toEqual({
+			cases: [caseOf(level, '1'), caseOf(level, '2')],
+		});
+		expect(urgentJson.nodes.find((n) => n.name === 'Urgent?')?.parameters).toEqual({
+			cases: [caseOf(urgent, 'true'), caseOf(urgent, 'false')],
+		});
+		expect(connections(json, 'By level')).toEqual([['Low#0'], ['High#0']]);
+		const kind = switchWorkflow()
+			.toJSON()
+			.nodes.find((n) => n.name === 'By kind');
+		expect(kind?.parameters).toEqual({
+			cases: ['bug', 'feature', 'chore'].map((value) => caseOf('={{ $json["kind"] }}', value)),
+		});
+	});
+
+	it('merges all pairs of two branches, or continues with the items of one branch', () => {
+		const mergeNode = (join: MergeJoin, branches: number) =>
+			workflow(
+				'Pick',
+				manual(),
+				customers('Customers'),
+				merge(
+					{ name: 'Pick', join } as never,
+					Array.from({ length: branches }, (_, index) =>
+						set({ name: `B${index + 1}`, fields: { index } }),
+					) as never,
+				),
+			)
+				.toJSON()
+				.nodes.find((n) => n.name === 'Pick');
+		expect(mergeNode('all', 2)).toMatchObject({
+			type: '@n8n/nodes-core.mergeCombine',
+			typeVersion: 1,
+			parameters: { by: { by: 'all' } },
+		});
+		expect(mergeNode({ branch: 1 }, 2)).toMatchObject({
+			type: '@n8n/nodes-core.mergeChooseBranch',
+			typeVersion: 1,
+			parameters: {},
+		});
+		expect(mergeNode({ branch: 3 }, 3)?.parameters).toEqual({ inputs: 3, use: 3 });
+		expect(() => mergeNode({ branch: 3 }, 2)).toThrow(
+			/Pick: merge branch must be a branch number from 1 to 2, not 3/,
+		);
+		expect(() => mergeNode('all', 3)).toThrow(/Pick: merge by all pairs takes 2 branches, not 3/);
 	});
 
 	it('starts a forEach body that splits into branches with a No Operation node', () => {
@@ -979,6 +1091,103 @@ describe('regions compile to node contracts', () => {
 			),
 		);
 	});
+
+	it('types number and boolean switch cases, and the merge joins all and branch', () => {
+		workflow(
+			'Unknown level',
+			manual(),
+			levels('Tickets'),
+			switchOn(
+				{ name: 'By level', on: 'level' },
+				// @ts-expect-error 3 is no level
+				{ 1: steps(), 2: steps(), 3: steps() },
+			),
+		);
+		workflow(
+			'Missing level',
+			manual(),
+			levels('Tickets'),
+			switchOn(
+				{ name: 'By level', on: 'level' },
+				// @ts-expect-error the level 2 case is missing
+				{ 1: steps() },
+			),
+		);
+		workflow(
+			'No count fallback',
+			manual(),
+			levels('Tickets'),
+			// @ts-expect-error a plain number field needs a fallback
+			switchOn({ name: 'By count', on: 'count' }, { 1: steps() }),
+		);
+		workflow(
+			'Count fallback',
+			manual(),
+			levels('Tickets'),
+			switchOn({ name: 'By count', on: 'count' }, { 0: steps(), fallback: steps() }),
+		);
+		workflow(
+			'Result',
+			manual(),
+			results('Results'),
+			switchOn(
+				{ name: 'Ok?', on: 'ok' },
+				{
+					true: set({ name: 'Data', fields: { data: (r) => r.data } }),
+					false: set({
+						name: 'Error',
+						fields: {
+							error: (r) => r.error,
+							// @ts-expect-error a failed result has no data
+							data: (r) => r.data,
+						},
+					}),
+				},
+			),
+		);
+
+		workflow(
+			'Pairs',
+			manual(),
+			customers('Customers'),
+			merge({ name: 'J', join: 'all' }, [
+				set({ name: 'A', fields: { a: 1 } }),
+				set({ name: 'B', fields: { b: 'x' } }),
+			]),
+			set({ name: 'AB', fields: { ab: (row) => `${row.a}${row.b}` } }),
+		);
+		workflow(
+			'Three pairs',
+			manual(),
+			customers('Customers'),
+			// @ts-expect-error all pairs join 2 branches only
+			merge({ name: 'J', join: 'all' }, [steps(), steps(), steps()]),
+		);
+		workflow(
+			'Second',
+			manual(),
+			customers('Customers'),
+			merge({ name: 'J', join: { branch: 2 } }, [
+				set({ name: 'A', fields: { a: 1 } }),
+				set({ name: 'B', fields: { b: 'x' } }),
+			]),
+			set({
+				name: 'B only',
+				fields: {
+					b: (row) => row.b,
+					// @ts-expect-error the items of branch 2 have no a
+					a: (row) => row.a,
+				},
+			}),
+		);
+		workflow(
+			'No third',
+			manual(),
+			customers('Customers'),
+			// @ts-expect-error there is no branch 3
+			merge({ name: 'J', join: { branch: 3 } }, [steps(), steps()]),
+		);
+	});
 });
 
 const modules: Record<string, unknown> = { '@n8n/workflow-sdk/next': next };
@@ -1027,6 +1236,9 @@ describe('regions round-trip through decompile', () => {
 		['merge', mergeWorkflow, '  merge({'],
 		['merge append', () => mergeJoinWorkflow('append'), 'join: "append"'],
 		['merge position', () => mergeJoinWorkflow('position'), 'join: "position"'],
+		['merge all pairs', () => mergeJoinWorkflow('all'), 'join: "all"'],
+		['merge choose branch', () => mergeJoinWorkflow({ branch: 2 }), 'branch: 2'],
+		['switch on a number', numberSwitchWorkflow, '  switchOn({'],
 		['loop without next to its limit', cappedLoopWorkflow, 'onLimit: "continue",'],
 		['paginate that emits each page', paginateEachWorkflow, 'emit: "each",'],
 		['loop in forEach', loopInForEachWorkflow, 'name: "Each start"'],
@@ -1034,6 +1246,7 @@ describe('regions round-trip through decompile', () => {
 		['merge of three by position', () => mergeThreeWorkflow('position'), 'join: "position"'],
 		['forEach of branches', forEachBranchesWorkflow, 'name: "Each start"'],
 		['groups and settings', groupWorkflow, '  group({'],
+		['group that ends in a branch', () => branchGroupWorkflow(true), '  group('],
 		['forEach with onError', () => guardedEachWorkflow(false), '  forEach({'],
 		['forEach with recover', () => guardedEachWorkflow(true), '  forEach({'],
 	])('%s: compile, decompile, compile is stable', (_kind, make, call) => {
@@ -1343,6 +1556,134 @@ describe('group', () => {
 			['Fetch', ['A', 'B']],
 		]);
 		expect(connections(json, 'B')).toEqual([[], ['Log#0']]);
+	});
+
+	it('takes the group name as a string', () => {
+		const noOp = (name: string) => node({ name, type: 'n8n-nodes-base.noOp', version: 1 });
+		const byName = workflow('Grouped', manual(), group('Stage', steps(noOp('A'), noOp('B'))));
+		expect(named(byName.toJSON())).toEqual([
+			{ id: expect.any(String), name: 'Stage', nodeIds: ['A', 'B'] },
+		]);
+	});
+
+	it('joins the branch ends of a body in one No Operation node, the only exit of the group', () => {
+		const json = branchGroupWorkflow(true).toJSON();
+		expect(json.nodes.find((n) => n.name === 'Enrich join')).toMatchObject({
+			type: '@n8n/nodes-core.noOpPass',
+			typeVersion: 1,
+			parameters: {},
+		});
+		expect(named(json)).toEqual([
+			{ id: expect.any(String), name: 'Enrich', nodeIds: ['Big?', 'Big', 'Small', 'Enrich join'] },
+		]);
+		expect(connections(json, 'Big')).toEqual([['Enrich join#0']]);
+		expect(connections(json, 'Small')).toEqual([['Enrich join#0']]);
+		expect(connections(json, 'Enrich join')).toEqual([['After#0']]);
+		expect(dropInvalidWorkflowJsonGroups(structuredClone(json), () => null)).toEqual([]);
+	});
+
+	it('runs the step after the group once per branch run, as without the group', () => {
+		const grouped = branchGroupWorkflow(true).toJSON();
+		const plain = branchGroupWorkflow(false).toJSON();
+		const join = 'Enrich join';
+		const afterJoin = grouped.connections[join]?.main[0] ?? [];
+		const bypassed = Object.fromEntries(
+			Object.entries(grouped.connections)
+				.filter(([from]) => from !== join)
+				.map(([from, outputs]) => [
+					from,
+					{
+						...outputs,
+						main: outputs.main.map((targets) =>
+							(targets ?? []).flatMap((target) => (target.node === join ? afterJoin : [target])),
+						),
+					},
+				]),
+		);
+		expect(bypassed).toEqual(plain.connections);
+		expect(grouped.nodes.map((n) => n.name)).toEqual([
+			...plain.nodes.map((n) => n.name).filter((name) => name !== 'After'),
+			join,
+			'After',
+		]);
+	});
+
+	it('gives the nodes before the join the error output of an error branch after the group', () => {
+		const json = workflow(
+			'Guarded',
+			manual(),
+			customers('Customers'),
+			group(
+				'Enrich',
+				when(
+					{ name: 'Big?', if: () => true },
+					{
+						then: set({ name: 'Big', fields: { big: true } }),
+						else: set({ name: 'Small', fields: { big: false } }),
+					},
+				),
+			),
+			onError(set({ name: 'Log', fields: { failed: true } })),
+		).toJSON();
+		expect(connections(json, 'Big')).toEqual([['Enrich join#0'], ['Log#0']]);
+		expect(connections(json, 'Small')).toEqual([['Enrich join#0'], ['Log#0']]);
+		expect(json.nodes.find((n) => n.name === 'Enrich join')?.onError).toBeUndefined();
+	});
+
+	it('adds no join node to a body with one open end, nor to a forEach body', () => {
+		const json = workflow(
+			'One end',
+			manual(),
+			customers('Customers'),
+			group(
+				'Stage',
+				when(
+					{ name: 'Big?', if: () => true },
+					{ then: set({ name: 'Big', fields: { big: true } }) },
+				),
+			),
+			forEach(
+				{ name: 'Each', batchSize: 1 },
+				when(
+					{ name: 'Has orders?', if: () => true },
+					{
+						then: set({ name: 'Keep', fields: { keep: true } }),
+						else: set({ name: 'Drop', fields: { keep: false } }),
+					},
+				),
+			),
+		).toJSON();
+		expect(json.nodes.map((n) => n.name)).toEqual([
+			'Start',
+			'Customers',
+			'Big?',
+			'Big',
+			'Has orders?',
+			'Keep',
+			'Drop',
+		]);
+		expect(regionOf(json, 'Each')?.exits).toEqual(['Keep#0', 'Drop#0']);
+	});
+
+	it('fails the build when the name of the join node is taken', () => {
+		const taken = workflow(
+			'Taken',
+			manual(),
+			set({ name: 'Enrich join', fields: { id: 1 } }),
+			group(
+				'Enrich',
+				when(
+					{ name: 'Big?', if: () => true },
+					{
+						then: set({ name: 'Big', fields: { big: true } }),
+						else: set({ name: 'Small', fields: { big: false } }),
+					},
+				),
+			),
+		);
+		expect(() => taken.toJSON()).toThrow(
+			'Enrich: group ends in several branches, and its join node "Enrich join" has the name of another node',
+		);
 	});
 
 	it('reads back no group that group() cannot build', () => {

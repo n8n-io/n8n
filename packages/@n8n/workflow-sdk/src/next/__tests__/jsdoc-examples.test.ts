@@ -157,6 +157,7 @@ describe('next JSDoc examples', () => {
 						set({ name: 'Score', fields: { score: 1 } }),
 					),
 				),
+				group('Notify', set({ name: 'Mail', fields: { score: (s) => s.score } })),
 			),
 			workflow(
 				'Tool',

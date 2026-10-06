@@ -240,6 +240,8 @@ describe('bundled versions', () => {
 			'gmail.message.send',
 			'googleSheets.sheet.read',
 			'httpRequest.get',
+			'microsoftTeams.channelMessage.create',
+			'microsoftTeams.chatMessage.create',
 			'notion.databasePage.getAll',
 			'openAi.text.message',
 			'slack.channel.getAll',
@@ -275,7 +277,11 @@ describe('bundled versions', () => {
 			'extractFromFile.text',
 			'extractFromFile.xlsx',
 		]);
-		expect(withVersion('2.6.0')).toEqual(['merge.append', 'merge.combineByPosition']);
+		expect(withVersion('2.6.0')).toEqual([
+			'merge.append',
+			'merge.chooseBranch',
+			'merge.combineByPosition',
+		]);
 		expect(withVersion('2.5.0')).toEqual([]);
 		expect(withVersion('2.4.0')).toEqual([
 			'github.issue.getAll',

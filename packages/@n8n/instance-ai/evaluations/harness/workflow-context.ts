@@ -4,8 +4,18 @@ import type { WorkflowResponse } from '../clients/n8n-client';
 
 // Judges read a group as a canvas frame unless told otherwise. The note shows only
 // with a `repeat` group, so the context of other workflows does not change.
-const REPEAT_GROUP_NOTE =
-	'A group with `repeat` is a loop, not only a visual frame. With `kind: "forEach"`, the engine runs the nodes of the group once for each batch of at most `batchSize` items that arrive at `entry`. The batches run one after the other, so a Wait node in the group pauses once for each batch. The items of all batches leave the group one time, on `exits`, after the last batch.';
+const REPEAT_GROUP_NOTE = 'A group with `repeat` is a loop, not only a visual frame.';
+
+// One sentence for each kind in the workflow. The semantics are in core execution-engine/regions.ts.
+const REPEAT_KIND_NOTES: Record<WorkflowGroupRepeat['kind'], string> = {
+	forEach:
+		'With `kind: "forEach"`, the engine runs the nodes of the group once for each batch of at most `batchSize` items that arrive at `entry`. The batches run one after the other, so a Wait node in the group pauses once for each batch. The items of all batches leave the group one time, on `exits`, after the last batch.',
+	loop: 'With `kind: "loop"`, the engine runs the group again on its own output: an item on `exits` for which `until` is true leaves the loop, any other item goes into the next pass, as is or as `next` maps it. After `maxIterations` passes the run fails, or with `onLimit: "continue"` the remaining items leave. The items that leave all passes go on one time after the last pass, or after each pass with `emit: "each"`. The pass count is engine state, not a field of the items.',
+	paginate:
+		'With `kind: "paginate"`, the engine runs the group once for each page: every item on `exits` leaves, and `next` gives the input of the next page, or null after the last page. After `maxPages` pages the run fails, or with `onLimit: "continue"` it stops. The items of all pages go on one time after the last page, or after each page with `emit: "each"`.',
+	pollUntil:
+		'With `kind: "pollUntil"`, the engine runs the group again until `until` is true for an item on `exits`: that item leaves, any other item starts the next attempt with the same input. The `entry` node (for example a Wait node) runs before each attempt except the first. After `maxAttempts` attempts the run fails, or with `onLimit: "continue"` the last items leave.',
+};
 
 /** The settings of a `repeat`, e.g. `kind` and `batchSize`, without its node ids. */
 const settingsOf = ({ entry: _entry, exits: _exits, ...settings }: WorkflowGroupRepeat) => settings;
@@ -51,8 +61,16 @@ function renderNodeGroupLines(wf: WorkflowResponse): string[] {
 			2,
 		),
 		'```',
-		...(groups.some((group) => group.repeat !== undefined) ? ['', REPEAT_GROUP_NOTE] : []),
+		...repeatNoteLines(groups.flatMap((group) => (group.repeat ? [group.repeat.kind] : []))),
 	];
+}
+
+function repeatNoteLines(kinds: Array<WorkflowGroupRepeat['kind']>): string[] {
+	if (kinds.length === 0) return [];
+	const notes = Object.entries(REPEAT_KIND_NOTES).flatMap(([kind, note]) =>
+		kinds.some((present) => present === kind) ? [note] : [],
+	);
+	return ['', [REPEAT_GROUP_NOTE, ...notes].join(' ')];
 }
 
 /** Render the per-build workflow structure: nodes, connections, all configs, node groups. */

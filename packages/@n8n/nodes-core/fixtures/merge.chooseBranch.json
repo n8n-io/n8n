@@ -1,0 +1,79 @@
+{
+	"executions": [
+		{
+			"name": "emits the items of input 1",
+			"params": {},
+			"inputs": [
+				[
+					{
+						"a": 1
+					},
+					{
+						"a": 2
+					}
+				],
+				[
+					{
+						"b": 3
+					}
+				]
+			],
+
+			"output": [
+				{
+					"a": 1
+				},
+				{
+					"a": 2
+				}
+			]
+		},
+		{
+			"name": "emits the items of input 3 of 3",
+			"params": {
+				"inputs": 3,
+				"use": 3
+			},
+			"inputs": [
+				[
+					{
+						"a": 1
+					}
+				],
+				[],
+				[
+					{
+						"c": 3
+					}
+				]
+			],
+
+			"output": [
+				{
+					"c": 3
+				}
+			]
+		},
+		{
+			"name": "fails on an input that the node does not have",
+			"params": {
+				"use": 3
+			},
+			"inputs": [
+				[
+					{
+						"a": 1
+					}
+				],
+				[
+					{
+						"b": 2
+					}
+				]
+			],
+
+			"output": [],
+			"error": "Input 3 does not exist: the node has 2 inputs"
+		}
+	]
+}

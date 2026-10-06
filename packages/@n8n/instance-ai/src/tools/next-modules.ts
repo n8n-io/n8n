@@ -48,6 +48,7 @@ export const nextActions = (): readonly Action[] => contractActions();
 const FLOW_STEP_OF_ACTION: ReadonlyMap<string, string> = new Map([
 	['items.set', 'n8n-nodes-base.set'],
 	['merge.append', 'n8n-nodes-base.merge'],
+	['merge.chooseBranch', 'n8n-nodes-base.merge'],
 	['merge.combine', 'n8n-nodes-base.merge'],
 	['merge.combineByPosition', 'n8n-nodes-base.merge'],
 ]);
@@ -339,12 +340,12 @@ export const CORE_NODE_STEPS: ReadonlyArray<{
 	{
 		nodeType: 'n8n-nodes-base.switch',
 		steps: ['switchOn'],
-		row: "switchOn({ name, on: 'field' }, { value: part, fallback: part }): Routes each item by a string field.",
+		row: "switchOn({ name, on: 'field' }, { value: part, fallback: part }): Routes each item by a string, number or boolean field.",
 	},
 	{
 		nodeType: 'n8n-nodes-base.merge',
 		steps: ['merge'],
-		row: "merge({ name, join: 'append' | 'position' | { left, right } }, [part, part, …]): Runs 2 to 10 branches on the same items and joins them; { left, right } joins 2.",
+		row: "merge({ name, join: 'append' | 'position' | 'all' | { left, right } | { branch } }, [part, part, …]): Runs 2 to 10 branches on the same items and joins them; 'all' and { left, right } join 2; { branch: n } waits for all and continues with the items of branch n.",
 	},
 	{
 		nodeType: 'n8n-nodes-base.splitInBatches',

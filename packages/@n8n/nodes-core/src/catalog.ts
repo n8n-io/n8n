@@ -39,6 +39,7 @@ export const ACTION_ORDER: readonly string[] = [
 	'merge.append',
 	'merge.combine',
 	'merge.combineByPosition',
+	'merge.chooseBranch',
 	'wait.interval',
 	'wait.until',
 	'stopAndError.stop',

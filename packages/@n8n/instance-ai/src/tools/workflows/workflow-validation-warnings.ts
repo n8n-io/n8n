@@ -24,9 +24,9 @@ export const REGION_DROPPED_CODE = 'REGION_DROPPED';
 
 /** How a `@n8n/workflow-sdk/next` source frames a stage as a node group. */
 const NEXT_GROUP_CALL = '`group({ name, description }, steps(…))`';
-/** The usual invalid group ends on the open paths of a branch, so the hint names the join step. */
+/** The flow SDK joins the paths of a branch at the end of a group, so a group can end in one. */
 const NEXT_GROUP_BOUNDARY =
-	'A group has one entry and one exit: the paths of a `when` or `switchOn` join at the next step, so put that step in the same group or end the group before the branch.';
+	'A group has one entry and one exit. A group can end in a `when` or `switchOn`: the build joins its paths in one step in the group.';
 
 /**
  * What the agent tells build-workflow about groups.

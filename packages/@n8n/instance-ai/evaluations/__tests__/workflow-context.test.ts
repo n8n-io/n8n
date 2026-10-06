@@ -108,8 +108,45 @@ describe('buildWorkflowContextBlock', () => {
 				{ name: 'Report', nodes: ['Summary'] },
 			]),
 		);
-		expect(block).toContain('A group with `repeat` is a loop, not only a visual frame.');
+		expect(block).toContain(
+			'\n\nA group with `repeat` is a loop, not only a visual frame. With `kind: "forEach"`, the engine runs the nodes of the group once for each batch of at most `batchSize` items that arrive at `entry`. The batches run one after the other, so a Wait node in the group pauses once for each batch. The items of all batches leave the group one time, on `exits`, after the last batch.',
+		);
+		expect(block).not.toContain('kind: "loop"');
 		expect(block).not.toContain('id-a');
+	});
+
+	it('explains each repeat kind of the workflow once', () => {
+		const exits = [{ node: 'id-a', output: 0 }];
+		const wf = workflow('wf-1', {
+			nodes: [node('id-a', 'Fetch Manager'), node('id-b', 'Check'), node('id-c', 'Again')],
+			nodeGroups: [
+				{
+					id: 'g-1',
+					name: 'Walk',
+					nodeIds: ['id-a'],
+					repeat: { kind: 'loop', entry: 'id-a', exits, maxIterations: 10, until: '={{ true }}' },
+				},
+				{
+					id: 'g-2',
+					name: 'Poll',
+					nodeIds: ['id-b'],
+					repeat: { kind: 'pollUntil', entry: 'id-b', exits, maxAttempts: 5, until: '={{ true }}' },
+				},
+				{
+					id: 'g-3',
+					name: 'Walk again',
+					nodeIds: ['id-c'],
+					repeat: { kind: 'loop', entry: 'id-c', exits, maxIterations: 3, until: '={{ true }}' },
+				},
+			],
+		});
+
+		const block = buildWorkflowContextBlock(wf);
+
+		expect(block.split('kind: "loop"`').length).toBe(2);
+		expect(block).toContain('With `kind: "pollUntil"`');
+		expect(block).not.toContain('With `kind: "forEach"`');
+		expect(block).not.toContain('With `kind: "paginate"`');
 	});
 
 	it('adds no repeat note when no group repeats', () => {

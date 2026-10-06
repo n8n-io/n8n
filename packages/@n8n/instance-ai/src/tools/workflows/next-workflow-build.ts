@@ -1417,7 +1417,7 @@ const parseTypecheckErrors = (stdout: string): string[] | undefined => {
 const STDERR_TAIL = 1_000;
 
 const UNTYPED_HINT =
-	'This value has no type. Fix the first error before it first. Else type the node before it: a webhook or HTTP `schema`, `sample` items, or `returns` on a code step.';
+	'This value has no type. If an error comes before this one, fix that error first. Else give the step that outputs the value a type: a webhook or HTTP `schema`, `sample` items, or `returns` on a code step.';
 
 /** The macros of `@n8n/workflow-sdk/next`, for the hint on a step method. */
 export const FLOW_MACROS = [
@@ -1576,13 +1576,13 @@ const TSC_HINTS: ReadonlyArray<{
 	},
 	{
 		codes: [2322, 2559],
-		message: /^Type '.*\[\]' has no properties in common with type 'Part</,
+		message: /^Type '.*\[\]' has no properties in common with type '(?:Part|Region)</,
 		hint: () =>
 			'A branch or a body takes one part. Put several parts in `steps(a, b)`, not in an array `[a, b]`.',
 	},
 	{
 		codes: [2322, 2559],
-		message: /has no properties in common with type 'Part</,
+		message: /has no properties in common with type '(?:Part|Region)</,
 		hint: () =>
 			'A branch or a body takes one part: a step, a macro, or `steps(a, b)` for several. It is not a function.',
 	},
@@ -1753,7 +1753,40 @@ const TSC_HINTS: ReadonlyArray<{
 
 const TSC_ERROR = /error TS(\d+): ([^\n]*)/;
 
-const IMPLICIT_ANY_CODE = '7006';
+const TSC_LOCATION = /^(.*)\((\d+),\d+\): error TS\d+:/;
+
+/** The errors that an earlier error can cause: a value without a type, and a `$('…')` after it. */
+const FOLLOW_UP_ERRORS: ReadonlyArray<{ readonly code: string; readonly message: RegExp }> = [
+	{ code: '18046', message: /is of type 'unknown'/ },
+	{ code: '2571', message: /is of type 'unknown'/ },
+	{ code: '7006', message: /^Parameter '[\w$]+' implicitly has an 'any' type/ },
+	{
+		code: '2345',
+		message: /^Argument of type '"[^"]*"' is not assignable to parameter of type 'never'/,
+	},
+];
+
+/** The flow SDK build problems that leave the types after them `unknown`. */
+const UNTYPED_BODY_PROBLEM = / takes one part| needs a body/;
+
+const isFollowUpKind = (error: string) => {
+	const [, code, message = ''] = TSC_ERROR.exec(error) ?? [];
+	return FOLLOW_UP_ERRORS.some((each) => each.code === code && each.message.test(message));
+};
+
+/** The lines of the errors, by file, e.g. `src/a.ts line 4, 9`. */
+const errorLinesOf = (errors: readonly string[]) => {
+	const located = errors.flatMap((error) => {
+		const [, file, line] = TSC_LOCATION.exec(error) ?? [];
+		return file === undefined || line === undefined ? [] : [{ file, line }];
+	});
+	return [...new Set(located.map(({ file }) => file))]
+		.map((file) => {
+			const lines = new Set(located.filter((each) => each.file === file).map(({ line }) => line));
+			return `${file} line ${[...lines].join(', ')}`;
+		})
+		.join('; ');
+};
 
 /** The hint for one `tsc` error of a workflow source, if a rule matches. */
 export function tscHintOf(
@@ -1773,32 +1806,53 @@ export function tscHintOf(
 
 /**
  * Each `tsc` error with a hint line after it. A hint comes once, after the first error it fits:
- * the later errors with the same cause need no copy. Implicit `any` parameters (TS7006) are
- * left out when another `tsc` error is present: most follow from it.
+ * the later errors with the same cause need no copy.
+ *
+ * One error can make many values `unknown`. A follow-up error ({@link FOLLOW_UP_ERRORS} after a
+ * `tsc` error of another kind) shows only once: one line gives the count and lines of the others.
+ * After a flow SDK problem that leaves a body without a type, every `tsc` error is a follow-up.
  */
-export function withTscHints(errors: readonly string[]): string[] {
-	const codes = errors.map((error) => TSC_ERROR.exec(error)?.[1]);
-	const cascade = codes.some((code) => code !== undefined && code !== IMPLICIT_ANY_CODE);
-	const shown = cascade
-		? errors.filter((_error, index) => codes[index] !== IMPLICIT_ANY_CODE)
-		: errors;
+export function withTscHints(
+	errors: readonly string[],
+	buildErrors: readonly string[] = [],
+): string[] {
+	const untypedBody = buildErrors.some((error) => UNTYPED_BODY_PROBLEM.test(error));
+	const firstCause = errors.findIndex((error) => TSC_ERROR.test(error) && !isFollowUpKind(error));
+	const followsUp = errors.map((error, index) =>
+		untypedBody
+			? TSC_ERROR.test(error)
+			: firstCause !== -1 && firstCause < index && isFollowUpKind(error),
+	);
+	const firstFollowUp = followsUp.indexOf(true);
+	const hidden = errors.filter((_error, index) => followsUp[index] && index !== firstFollowUp);
+	const shown = errors.filter((_error, index) => !followsUp[index] || index === firstFollowUp);
 	const hints = shown.map((error) => tscHintOf(error));
-	return shown.map((error, index) => {
+	const hinted = shown.map((error, index) => {
 		const hint = hints[index];
 		return hint === undefined || hints.indexOf(hint) < index ? error : `${error}\nHint: ${hint}`;
 	});
+	if (hidden.length === 0) return hinted;
+	const cause = untypedBody ? 'the workflow problem above' : 'an earlier error';
+	const fix = untypedBody ? 'that problem' : 'the first error';
+	const where = errorLinesOf(hidden);
+	return [
+		...hinted,
+		`Not shown: ${hidden.length} more type error(s) that follow from ${cause}${where ? ` (${where})` : ''}. Fix ${fix}, then build again.`,
+	];
 }
 
 /**
  * Type-check a workflow source with the node contracts tsconfig in the sandbox, with the n8n
  * expressions of {@link EXPRESSIONS_PATH}. A check that does not complete (no worker, out of
  * memory, the deadline, an expression check that cannot start) is `incomplete`, so the build
- * fails instead of saving a workflow without the check.
+ * fails instead of saving a workflow without the check. `buildErrors` are the problems of the
+ * sandbox build before it: some make the `tsc` errors follow-ups.
  */
 export async function typecheckWorkflowSource(
 	context: InstanceAiContext,
 	filePath: string,
 	abortSignal?: AbortSignal,
+	buildErrors: readonly string[] = [],
 ): Promise<WorkflowTypecheck> {
 	const workspace = context.workspace;
 	if (!workspace) return { errors: [], incomplete: 'The type check needs the sandbox workspace.' };
@@ -1810,7 +1864,7 @@ export async function typecheckWorkflowSource(
 		{ cwd: root, abortSignal, timeout: TYPECHECK_TIMEOUT_MS },
 	);
 	const parsed = parseTypecheckErrors(result.stdout);
-	const errors = parsed && withTscHints(parsed);
+	const errors = parsed && withTscHints(parsed, buildErrors);
 	if (result.exitCode === 0 && errors) return { errors };
 	context.logger.warn('Workflow type check did not complete', {
 		exitCode: result.exitCode,

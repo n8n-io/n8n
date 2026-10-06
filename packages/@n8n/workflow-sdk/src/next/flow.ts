@@ -1032,7 +1032,15 @@ const countSettingOf = (repeat: RegionRepeatSpec): readonly [string, number] => 
 	}
 };
 
-/** @internal A canvas group of the nodes that `body` adds. The run is the run of `body`. */
+/** The name of the No Operation node that joins the open ends of a group body. */
+const groupJoin = (group: string) => `${group} join`;
+
+/**
+ * @internal A canvas group of the nodes that `body` adds. The run is the run of `body`. A group
+ * has one exit node, so a body that ends in several open ends, e.g. a branch, gets a No
+ * Operation node after them. The next node runs once for each run of that node, as it ran
+ * once for each run of each open end.
+ */
 export function groupFragment(
 	from: Fragment,
 	name: string,
@@ -1041,15 +1049,38 @@ export function groupFragment(
 ): Fragment {
 	const before = new Set(from.graph.nodes.map((spec) => spec.name));
 	const inner = body(from);
-	const members = inner.graph.nodes.map((spec) => spec.name).filter((node) => !before.has(node));
+	const joinName = groupJoin(name);
+	const taken = [...inner.graph.nodes, ...(inner.graph.regions ?? [])].some(
+		(each) => each.name === joinName,
+	);
+	const join: NodeSpec = { name: joinName, ...NO_OP_NODE, parameters: () => ({}) };
+	const joined: Fragment =
+		inner.tails.length < 2
+			? inner
+			: taken
+				? {
+						graph: unionGraphs([
+							inner.graph,
+							{
+								nodes: [],
+								edges: [],
+								problems: [
+									`${name}: group ends in several branches, and its join node "${joinName}" has the name of another node. Rename that node`,
+								],
+							},
+						]),
+						tails: inner.tails,
+					}
+				: { graph: attach(inner.graph, inner.tails, join), tails: tail(joinName, 0) };
+	const members = joined.graph.nodes.map((spec) => spec.name).filter((node) => !before.has(node));
 	const group: GroupSpec = { name, ...(description ? { description } : {}), members };
 	return {
-		graph: { ...inner.graph, groups: [...(inner.graph.groups ?? []), group] },
-		tails: inner.tails,
+		graph: { ...joined.graph, groups: [...(joined.graph.groups ?? []), group] },
+		tails: joined.tails,
 	};
 }
 
-/** @internal Route each item by the string value of `field`: one flow per case. */
+/** @internal Route each item by the value of `field`: one flow per case. */
 export function switchFragment(
 	from: Fragment,
 	name: string,
@@ -1107,9 +1138,15 @@ export function mergeFragment(
 		parameters: (compiler) => {
 			if (inputs < 2 || inputs > MERGE_MAX_INPUTS) {
 				compiler.issue(`merge takes 2 to ${MERGE_MAX_INPUTS} branches, not ${inputs}`);
-			} else if (typeof join === 'object' && inputs > 2) {
+			} else if (typeof join === 'object' && 'branch' in join) {
+				if (!Number.isInteger(join.branch) || join.branch < 1 || join.branch > inputs) {
+					compiler.issue(
+						`merge branch must be a branch number from 1 to ${inputs}, not ${join.branch}`,
+					);
+				}
+			} else if ((typeof join === 'object' || join === 'all') && inputs > 2) {
 				compiler.issue(
-					`merge by matching fields takes 2 branches, not ${inputs}. Use join "append" or "position", or merge twice`,
+					`merge by ${join === 'all' ? 'all pairs' : 'matching fields'} takes 2 branches, not ${inputs}. Use join "append" or "position", or merge twice`,
 				);
 			}
 			return mergeParameters(join, inputs);
@@ -1164,17 +1201,35 @@ export function routeFragment(
 	};
 }
 
-/** Keys of `Item` whose value is a string, so `switchOn` can route on them. */
+/** Keys of `Item` whose value is a string, a number or a boolean, so `switchOn` can route on them. */
 export type CaseField<Item> = {
-	[K in keyof Item]-?: Item[K] extends string ? K : never;
+	[K in keyof Item]-?: Item[K] extends string | number | boolean ? K : never;
 }[keyof Item] &
 	string;
 
+/**
+ * The value of a field of type `V` that case key `K` names: the key itself, or the number or
+ * boolean that it spells, e.g. key `'true'` names `true`.
+ */
+type CaseValue<V, K> = V extends unknown
+	? K extends V
+		? K
+		: K extends `${infer L extends number}`
+			? L extends V
+				? L
+				: never
+			: K extends `${infer L extends boolean}`
+				? L extends V
+					? L
+					: never
+				: never
+	: never;
+
 /** The items of case `K`: union members whose `F` can be `K`, with `F` narrowed to `K`. */
 export type CaseItem<Item, F extends keyof Item, K> = Item extends unknown
-	? K extends Item[F]
-		? Item & { readonly [P in F]: K }
-		: never
+	? [CaseValue<Item[F], K>] extends [never]
+		? never
+		: Item & { readonly [P in F]: CaseValue<Item[F], K> }
 	: never;
 
 // ── Parts ───────────────────────────────────────────────────────────────────
@@ -1367,28 +1422,34 @@ export function route(
 /**
  * One part per case of `switchOn`: each reads the items of its case, with `F` narrowed. The
  * part `fallback` takes the items of no case. A literal union field needs a part for each
- * value; a plain `string` field needs `fallback`.
+ * value; a plain `string` or `number` field needs `fallback`.
  */
 export type SwitchParts<In, Ctx, F extends keyof In, R> = {
 	readonly [K in keyof R]: K extends typeof FALLBACK_OUTPUT
 		? Part<NoInfer<In>, NoInfer<Ctx>, R[K], unknown>
 		: string extends In[F]
 			? Part<NoInfer<In>, NoInfer<Ctx>, R[K], unknown>
-			: K extends In[F]
-				? Part<NoInfer<CaseItem<In, F, K>>, NoInfer<Ctx>, R[K], unknown>
-				: never;
+			: [CaseValue<In[F], K>] extends [never]
+				? never
+				: Part<NoInfer<CaseItem<In, F, K>>, NoInfer<Ctx>, R[K], unknown>;
 	// A mapped type, not a conditional object: tsc then still types the parts in `cases`.
 } & { readonly [K in NeededCases<In, F>]: object };
 
-/** The cases that `switchOn` needs: each value of a literal union, or `fallback` for a string. */
+/**
+ * The cases that `switchOn` needs: each value of a literal union, `true` and `false` for a
+ * boolean, or `fallback` for a string or a number.
+ */
 type NeededCases<In, F extends keyof In> = string extends In[F]
 	? typeof FALLBACK_OUTPUT
-	: In[F] & string;
+	: number extends In[F]
+		? typeof FALLBACK_OUTPUT
+		: `${In[F] & (string | number | boolean)}`;
 
 /**
- * Route each item by the string field `on` (a Switch node). Each case gets the items of its
- * value, with the item type narrowed; `fallback` gets the items of no case. The open ends of
- * all cases continue.
+ * Route each item by the field `on` (a Switch node): a string, a number or a boolean. Each case
+ * gets the items of its value, with the item type narrowed; `fallback` gets the items of no
+ * case. A number or boolean case is its text, e.g. `{ 1: …, 2: … }` or `{ true: …, false: … }`.
+ * The open ends of all cases continue.
  *
  * @example
  * ```ts
@@ -1402,7 +1463,7 @@ export function switchOn<In, Ctx, const N extends string, const F extends CaseFi
 	config: {
 		/** The node name, unique in the workflow. */
 		name: N;
-		/** The string field whose value picks the case. */
+		/** The string, number or boolean field whose value picks the case. */
 		on: F;
 	},
 	cases: SwitchParts<In, Ctx & Record<N, In>, F, R>,
@@ -1635,13 +1696,24 @@ type AllOf<T extends readonly unknown[]> = T extends readonly [infer H, ...infer
 	? H & AllOf<R>
 	: unknown;
 
-/** The item after `merge`: any branch item for `append`, else the joined item. */
-type Joined<J, T extends readonly unknown[]> = J extends 'append' ? T[number] : AllOf<T>;
+/** The number of a branch of `T`, from 1. */
+type BranchNumber<T extends readonly unknown[]> = Exclude<Partial<T>['length'], 0>;
+
+/**
+ * The item after `merge`: any branch item for `append`, the item of the chosen branch for
+ * `{ branch }`, else the joined item.
+ */
+type Joined<J, T extends readonly unknown[]> = J extends 'append'
+	? T[number]
+	: J extends { readonly branch: infer B extends number }
+		? [unknown, ...T][B]
+		: AllOf<T>;
 
 /**
  * Run 2 to 10 branches on the same items and join them (a Merge node). `append` emits the
  * items of all; `position` joins item i of each; `{ left, right }` joins the items of two
- * branches whose fields match.
+ * branches whose fields match; `all` joins every item of one of two branches with every item
+ * of the other; `{ branch: 2 }` waits for all branches, then emits the items of branch 2 only.
  *
  * @example
  * ```ts
@@ -1659,19 +1731,28 @@ export function merge<
 	const J extends
 		| 'append'
 		| 'position'
+		| {
+				/** The branch whose items continue, from 1. */
+				branch: BranchNumber<T>;
+		  }
 		| (T extends readonly [infer A, infer B]
-				? {
-						/** The field of the first branch item. */
-						left: keyof A & string;
-						/** The field of the second branch item that must match `left`. */
-						right: keyof B & string;
-					}
+				?
+						| 'all'
+						| {
+								/** The field of the first branch item. */
+								left: keyof A & string;
+								/** The field of the second branch item that must match `left`. */
+								right: keyof B & string;
+						  }
 				: never),
 >(
 	config: {
 		/** The node name, unique in the workflow. */
 		name: N;
-		/** How the branches join: `append`, `position`, or matching fields of 2 branches. */
+		/**
+		 * How the branches join: `append`, `position`, one `branch`, or for 2 branches `all` pairs
+		 * or matching fields.
+		 */
 		join: J;
 	},
 	branches: { readonly [K in keyof T]: Part<NoInfer<In>, NoInfer<Ctx>, T[K], unknown> },
@@ -1687,7 +1768,9 @@ export function merge(
 /**
  * Frame the nodes of `body` as one group on the canvas, for example one stage of the
  * workflow. The run does not change: the flow after the group continues from `body`, and
- * `$()` reads each node in it. With every group collapsed, aim for 7 boxes or fewer.
+ * `$()` reads each node in it. With every group collapsed, aim for 7 boxes or fewer. The
+ * config is the group name, or the name and a description. A body may end in a branch: its
+ * paths join in a No Operation node `<name> join` in the group.
  *
  * @example
  * ```ts
@@ -1695,19 +1778,26 @@ export function merge(
  *   { name: 'Enrich', description: 'Looks up each lead and scores it' },
  *   steps(lookUp, score),
  * ),
+ * group('Notify', sendMail),
  * ```
  */
 export function group<In, Ctx, B, CB>(
-	config: {
-		/** The group name, unique among groups and `forEach` regions. */
-		name: string;
-		/** The text the canvas shows when the group is collapsed, up to 145 characters. */
-		description?: string;
-	},
+	config:
+		| string
+		| {
+				/** The group name, unique among groups and `forEach` regions. */
+				name: string;
+				/** The text the canvas shows when the group is collapsed, up to 145 characters. */
+				description?: string;
+		  },
 	body: Part<NoInfer<In>, NoInfer<Ctx>, B, CB>,
 ): Region<In, Ctx, B, CB>;
-export function group(config: { name: string; description?: string }, body: AnyPart): AnyRegion {
-	const { name, description } = config;
+export function group(
+	config: string | { name: string; description?: string },
+	body: AnyPart,
+): AnyRegion {
+	const { name, description } =
+		typeof config === 'string' ? { name: config, description: undefined } : config;
 	return region((from) => groupFragment(from, name, description, run(body)));
 }
 
@@ -1892,7 +1982,19 @@ export function errorFragment(
 	handle: (flow: Fragment) => Fragment,
 	rejoins: boolean,
 ): Fragment {
-	const failing = new Set(from.tails.map((each) => each.node));
+	// The join node of a group never fails, so the nodes before it get the error output.
+	const isGroupJoin = (node: string) =>
+		from.graph.nodes.some((spec) => spec.name === node && spec.type === NO_OP_NODE.type) &&
+		(from.graph.groups ?? []).some(
+			(group) => groupJoin(group.name) === node && group.members.includes(node),
+		);
+	const failing = new Set(
+		from.tails.flatMap(({ node }) =>
+			isGroupJoin(node)
+				? from.graph.edges.filter((edge) => edge.to === node).map((edge) => edge.from)
+				: [node],
+		),
+	);
 	const nodes = from.graph.nodes.map((spec) =>
 		failing.has(spec.name) ? { ...spec, onError: 'continueErrorOutput' as const } : spec,
 	);

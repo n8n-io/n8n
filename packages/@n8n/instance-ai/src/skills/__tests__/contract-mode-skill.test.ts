@@ -246,7 +246,7 @@ describe('contract-mode skill', () => {
 		expect(skill).toContain('`forEach`, `loop` or `group`.');
 		expect(flowControl).toContain('`group({ name, description }, steps(…))`');
 		expect(flowControl).toContain(
-			'The paths of a `when` or `switchOn`\n  join at the next step: put that step in the same group',
+			'A group can end in a `when` or\n  `switchOn`: the build joins its paths in one step in the group.',
 		);
 		expect(flowControl).toContain("`groupingDecision: 'not_warranted'` and a `groupingReason`.");
 	});

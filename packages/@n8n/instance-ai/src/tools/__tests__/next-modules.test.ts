@@ -54,7 +54,8 @@ describe('next-modules', () => {
 
 		expect(text).toContain('// merge.append: Append items.');
 		expect(text).toContain('// merge.combineByPosition: Combine items by position.');
-		expect(text.match(/\(inputs: 2 to 10, set by inputs\)/g)).toHaveLength(2);
+		expect(text).toContain('// merge.chooseBranch: Choose branch.');
+		expect(text.match(/\(inputs: 2 to 10, set by inputs\)/g)).toHaveLength(3);
 		expect(text).toContain('(inputs: left, right)');
 	});
 
@@ -95,7 +96,13 @@ describe('next-modules', () => {
 	});
 
 	it('offers the flow step, not the module action that the step emits', () => {
-		const hidden = ['items.set', 'merge.append', 'merge.combine', 'merge.combineByPosition'];
+		const hidden = [
+			'items.set',
+			'merge.append',
+			'merge.chooseBranch',
+			'merge.combine',
+			'merge.combineByPosition',
+		];
 		expect(nextNodeIds).toContain('items');
 		expect(nextNodeIds).not.toContain('merge');
 		expect(searchNextActions('merge branches').nodes).toEqual([]);

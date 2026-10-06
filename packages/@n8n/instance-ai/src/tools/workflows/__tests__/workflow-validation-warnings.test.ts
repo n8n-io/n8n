@@ -260,7 +260,7 @@ describe('groupingDecisionBlocker', () => {
 
 	it('names the join step of a branch for a next source only', () => {
 		const summary = summarizeWorkflowTopLevelItems(workflow(8));
-		const boundary = 'the paths of a `when` or `switchOn` join at the next step';
+		const boundary = 'A group can end in a `when` or `switchOn`';
 		const messageOf = (nextSource: boolean, droppedGroupWarnings: typeof dropped) =>
 			groupingDecisionBlocker({
 				summary,

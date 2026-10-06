@@ -38,6 +38,8 @@ export const ACTION_ORDER: readonly string[] = [
 	'slack.file.upload',
 	'whatsApp.message.send',
 	'whatsApp.message.sendTemplate',
+	'microsoftTeams.channelMessage.create',
+	'microsoftTeams.chatMessage.create',
 	'github.issue.getAll',
 	'github.issue.get',
 	'github.issue.create',

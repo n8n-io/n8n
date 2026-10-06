@@ -523,7 +523,12 @@ async function compileNextWorkflowSource(
 		[...revealed].filter(([, text]) => text !== EMPTY_OUTPUTS && text !== EMPTY_EXPRESSIONS),
 	);
 	if (changed.size > 0) await writeWorkspaceFileMap(workspace, changed, fileOptions);
-	const typecheck = await typecheckWorkflowSource(context, filePath, abortSignal);
+	const typecheck = await typecheckWorkflowSource(
+		context,
+		filePath,
+		abortSignal,
+		built.success ? [] : built.errors,
+	);
 	const inputIssues = built.success ? staticInputIssues(built.workflow) : [];
 	const errors = [...typecheck.errors, ...inputIssues];
 	if (typecheck.incomplete !== undefined) {

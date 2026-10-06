@@ -1100,6 +1100,10 @@ describe('tsc hints', () => {
 		"The lambda can return undefined, but the field takes no undefined. Give the missing case a value, e.g. `item.f ?? ''`. A field of an item can be missing: a file name of a `binary`, a webhook `schema` field without `required`, an output field of a failed item (`onError: 'continueRegularOutput'`).";
 	const loopStateHint =
 		'The loop state has the type of the item before `loop`, and `next` returns it. Put a `set` of only the state fields before `loop`. Then end the body with a `set` of the same fields, or return them from `next`.';
+	const untypedHint =
+		'This value has no type. If an error comes before this one, fix that error first. Else give the step that outputs the value a type: a webhook or HTTP `schema`, `sample` items, or `returns` on a code step.';
+	const arrayHint =
+		'A branch or a body takes one part. Put several parts in `steps(a, b)`, not in an array `[a, b]`.';
 
 	it.each([
 		[
@@ -1120,7 +1124,15 @@ describe('tsc hints', () => {
 		],
 		[
 			"TS2559: Type '(Step<unknown, unknown, ExtractFromFilePdfOutput, \"Read PDF\"> | Step<...>)[]' has no properties in common with type 'Part<NoInfer<GmailTriggerTriggerOutput>, NoInfer<Record<...>>, unknown, unknown>'.",
-			'A branch or a body takes one part. Put several parts in `steps(a, b)`, not in an array `[a, b]`.',
+			arrayHint,
+		],
+		[
+			'TS2559: Type \'(Step<unknown, unknown, unknown, "Pause 1 Second"> | Step<unknown, unknown, GmailMessageSendOutput, "Send Welcome Email">)[]\' has no properties in common with type \'Part<NoInfer<CodeJavaScriptOutput & { ...; }>, NoInfer<NoInfer<NoInfer<Record<...>> & Record<...>> & Record<...>>, unknown, unknown>\'.',
+			arrayHint,
+		],
+		[
+			'TS2559: Type \'(Step<unknown, unknown, AiPromptOutput, "Classify"> | Step<unknown, unknown, SlackMessageSendOutput, "Notify">)[]\' has no properties in common with type \'Region<NoInfer<{ id: string; }>, NoInfer<Record<...>>, unknown, unknown>\'.',
+			arrayHint,
 		],
 		[
 			'TS2554: Expected 1 arguments, but got 2.',
@@ -1146,17 +1158,11 @@ describe('tsc hints', () => {
 			"TS2339: Property 'tableName' does not exist on type 'never'.",
 			'This value has no fields. Items are plain JSON: write `item.field`, not `item.json.field`. Give the trigger `sample` items to type its fields.',
 		],
-		[
-			"TS18046: 'item' is of type 'unknown'.",
-			'This value has no type. Fix the first error before it first. Else type the node before it: a webhook or HTTP `schema`, `sample` items, or `returns` on a code step.',
-		],
-		[
-			"TS2571: Object is of type 'unknown'.",
-			'This value has no type. Fix the first error before it first. Else type the node before it: a webhook or HTTP `schema`, `sample` items, or `returns` on a code step.',
-		],
+		["TS18046: 'item' is of type 'unknown'.", untypedHint],
+		["TS2571: Object is of type 'unknown'.", untypedHint],
 		[
 			"TS2322: The expression result does not fit the field: Type 'unknown' is not assignable to type 'string'.",
-			'This value has no type. Fix the first error before it first. Else type the node before it: a webhook or HTTP `schema`, `sample` items, or `returns` on a code step.',
+			untypedHint,
 		],
 		[
 			"TS18046: 'item.client_numbers' is of type 'unknown'.",
@@ -1326,7 +1332,7 @@ describe('tsc hints', () => {
 	it('adds each hint once, after the first error it fits, with the real macros', async () => {
 		const unknownItem = `${at}TS18046: 'item' is of type 'unknown'.`;
 		const onStep = `${at}TS2339: Property 'orElse' does not exist on type 'Step<unknown, unknown, Loose, "Post">'.`;
-		const [step, first, second] = withTscHints([onStep, unknownItem, unknownItem]);
+		const [first, second, step] = withTscHints([unknownItem, unknownItem, onStep]);
 		expect(step).toMatch(
 			/^.+\nHint: A step has no methods\. .+ Macros: steps, route, when, .*onError, recover, group\.$/,
 		);
@@ -1339,13 +1345,15 @@ describe('tsc hints', () => {
 		expect(exported).toEqual(expect.arrayContaining([...FLOW_MACROS]));
 	});
 
-	it('leaves out implicit any parameters when another tsc error is present', () => {
+	it('shows implicit any parameters once after another tsc error', () => {
 		const overload = `${at}TS2769: No overload matches this call.\n  Object literal may only specify known properties, and 'config' does not exist in type 'NodeConfig<Loose>'.`;
 		const implicitAny = `${at}TS7006: Parameter 'item' implicitly has an 'any' type.`;
 		const expression = `${at.replace('error ', '')}n8n: Code cannot read process.`;
 
-		expect(withTscHints([implicitAny, overload, implicitAny])).toEqual([
+		expect(withTscHints([overload, implicitAny, implicitAny])).toEqual([
 			`${overload}\nHint: ${tscHintOf(overload)}`,
+			`${implicitAny}\nHint: ${tscHintOf(implicitAny)}`,
+			'Not shown: 1 more type error(s) that follow from an earlier error (src/workflows/main.workflow.ts line 12). Fix the first error, then build again.',
 		]);
 		expect(withTscHints([implicitAny, expression])).toEqual([
 			`${implicitAny}\nHint: ${tscHintOf(implicitAny)}`,
@@ -1372,6 +1380,82 @@ describe('tsc hints', () => {
 			'src/workflow.ts',
 		);
 		expect(result.errors).toEqual([`${error}\nHint: ${tscHintOf(error, [])}`]);
+	});
+
+	it('shows the first unknown follow-up error and counts the others by line', () => {
+		const file = 'src/workflows/invoice-tracker.workflow.ts';
+		const array = `${file}(22,7): error TS2559: Type '(Step<unknown, unknown, ExtractFromFilePdfOutput, "Read PDF"> | Step<unknown, unknown, GoogleSheetsSheetAppendOutput, "Add Row"> | Step<...>)[]' has no properties in common with type 'Part<NoInfer<GmailTriggerTriggerOutput>, NoInfer<NoInfer<Record<...>> & Record<...>>, unknown, unknown>'.`;
+		const firstUnknown = `${file}(33,107): error TS18046: 'item' is of type 'unknown'.`;
+		const unrelated = `${file}(60,9): error TS2339: Property 'idd' does not exist on type '{ id: string; }'.`;
+		const errors = [
+			array,
+			firstUnknown,
+			`${file}(49,41): error TS18046: 'item' is of type 'unknown'.`,
+			`${file}(51,36): error TS2571: Object is of type 'unknown'.`,
+			`${file}(51,38): error TS2345: Argument of type '"New Email"' is not assignable to parameter of type 'never'.`,
+			unrelated,
+			`${file}(70,12): error TS7006: Parameter 'row' implicitly has an 'any' type.`,
+		];
+
+		expect(withTscHints(errors)).toEqual([
+			`${array}\nHint: ${arrayHint}`,
+			`${firstUnknown}\nHint: ${untypedHint}`,
+			unrelated,
+			`Not shown: 4 more type error(s) that follow from an earlier error (${file} line 49, 51, 70). Fix the first error, then build again.`,
+		]);
+	});
+
+	it('reads every tsc error as a follow-up of a flow SDK problem that leaves a body untyped', () => {
+		const file = 'src/workflows/org-chain.workflow.ts';
+		const problem =
+			'Workflow has 2 problem(s):\n- A branch or a body takes one part, not an array: put several parts in steps(a, b)\n- Walk Org Chart until: Walk Org Chart needs a body that runs a node';
+		const loopConfig = `${file}(34,5): error TS2345: Argument of type '{ name: "Walk Org Chart"; maxIterations: number; onLimit: "continue"; until: (state: unknown) => boolean; }' is not assignable to parameter of type 'LoopConfig<"Walk Org Chart", unknown, unknown> & { next?: ((out: unknown, $: Dollar<unknown>) => never) | undefined; } & { next: (out: unknown, $: Dollar<unknown>) => NoInfer<{ chain: string[]; current_id: string; depth: number; employee_id: string; }>; }'.\n  Property 'next' is missing in type '{ name: "Walk Org Chart"; maxIterations: number; onLimit: "continue"; until: (state: unknown) => boolean; }' but required in type '{ next: (out: unknown, $: Dollar<unknown>) => NoInfer<{ chain: string[]; current_id: string; depth: number; employee_id: string; }>; }'.`;
+		const expression = `${file}(80,3): n8n: Code cannot read process.`;
+		const errors = [
+			loopConfig,
+			`${file}(38,26): error TS18046: 'state' is of type 'unknown'.`,
+			`${file}(43,65): error TS2571: Object is of type 'unknown'.`,
+			`${file}(43,67): error TS2345: Argument of type '"Walk Org Chart"' is not assignable to parameter of type 'never'.`,
+			`${file}(64,22): error TS18046: 'state' is of type 'unknown'.`,
+			`${file}(70,9): error TS2339: Property 'idd' does not exist on type '{ id: string; }'.`,
+			expression,
+		];
+
+		expect(withTscHints(errors, [problem])).toEqual([
+			`${loopConfig}\nHint: ${tscHintOf(loopConfig)}`,
+			expression,
+			`Not shown: 5 more type error(s) that follow from the workflow problem above (${file} line 38, 43, 64, 70). Fix that problem, then build again.`,
+		]);
+		expect(
+			withTscHints(errors, ['Workflow has 1 problem(s):\n- Fetch: only output "a" continues']),
+		).toEqual(withTscHints(errors));
+	});
+
+	it('passes the build problems to the type check hints', async () => {
+		const first = "src/workflow.ts(1,1): error TS18046: 'item' is of type 'unknown'.";
+		const second = "src/workflow.ts(2,1): error TS18046: 'item' is of type 'unknown'.";
+		const result = await typecheckWorkflowSource(
+			{
+				workspace: {
+					filesystem: { provider: 'local', basePath: '/workspace' },
+					sandbox: {
+						executeCommand: vi.fn(async () => ({
+							exitCode: 0,
+							stdout: JSON.stringify([first, second]),
+							stderr: '',
+						})),
+					},
+				},
+				logger: { warn: vi.fn() },
+			} as unknown as InstanceAiContext,
+			'src/workflow.ts',
+			undefined,
+			['Workflow has 1 problem(s):\n- Batches: forEach needs a body that runs a node'],
+		);
+		expect(result.errors).toEqual([
+			`${first}\nHint: ${untypedHint}`,
+			'Not shown: 1 more type error(s) that follow from the workflow problem above (src/workflow.ts line 2). Fix that problem, then build again.',
+		]);
 	});
 });
 

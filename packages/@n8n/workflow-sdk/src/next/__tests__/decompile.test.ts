@@ -16,6 +16,7 @@ import {
 	contractProvider,
 	contractTrigger,
 	expr,
+	group,
 	manual,
 	node,
 	onError,
@@ -23,6 +24,7 @@ import {
 	route,
 	set,
 	provider,
+	splitOut,
 	steps,
 	when,
 	workflow,
@@ -80,8 +82,14 @@ const composedNotion = {
 };
 
 const GET_TOOL_TYPE = '@n8n/nodes-core.httpRequestGetTool';
+const GET_TYPE = '@n8n/nodes-core.httpRequestGet';
 
 const httpRequest = {
+	get: <In, Ctx, const N extends string>(config: {
+		name: N;
+		url: string;
+		schema?: Record<string, unknown>;
+	}): Step<In, Ctx, { id: string }, N> => contractStep(GET_TYPE, config, 3),
 	getTool: <In, Ctx>(
 		config: next.ToolConfig<{ url: string; query?: Record<string, string> }>,
 	): Provider<In, Ctx, 'tool'> => next.contractTool(GET_TOOL_TYPE, config, 3),
@@ -206,6 +214,18 @@ const factories = new Map<string, ContractFactory>([
 			inputKeys: ['toolDescription', 'url', 'query'],
 			expressionKeys: ['url'],
 			tool: true,
+		},
+	],
+	[
+		GET_TYPE,
+		{
+			module: 'httpRequest',
+			from: '@n8n/nodes/httpRequest',
+			path: 'get',
+			version: 3,
+			inputKeys: ['url', 'schema'],
+			expressionKeys: ['url'],
+			jsonPaths: [['schema']],
 		},
 	],
 	[
@@ -1480,6 +1500,113 @@ describe('decompileWorkflow', () => {
 		expect(source).toContain('set({');
 		expect(source).toContain('notes: "About Fields",');
 		expect(withoutIds(rebuilt)).toEqual(withoutIds(withNotes));
+	});
+
+	it('round-trips splitOut, and keeps a Split Out node with another parameter out of it', () => {
+		const json = workflow(
+			'Owners',
+			manual(),
+			notion.databasePage.getAll({ name: 'Tasks', database: DATABASE }),
+			splitOut({ name: 'Owners', field: 'property_owners' }),
+		).toJSON();
+		const { source, rebuilt, again } = roundTrip(json);
+
+		expect(withoutIds(rebuilt)).toEqual(withoutIds(json));
+		expect(again).toBe(source);
+		expect(source).toContain(
+			"import { workflow, manual, splitOut } from '@n8n/workflow-sdk/next';",
+		);
+		expect(source).toContain(
+			'  splitOut({\n    name: "Owners",\n    field: "property_owners",\n  }),',
+		);
+
+		const into = {
+			...json,
+			nodes: json.nodes.map((n) =>
+				n.name === 'Owners' ? { ...n, parameters: { ...n.parameters, into: 'owner' } } : n,
+			),
+		};
+		const kept = roundTrip(into);
+		expect(kept.source).not.toContain('splitOut(');
+		expect(withoutIds(kept.rebuilt)).toEqual(withoutIds(into));
+	});
+
+	it('round-trips the declared response schema of an HTTP step', () => {
+		const schema = {
+			type: 'object',
+			properties: { id: { type: 'string' }, tags: { type: 'array', items: { type: 'string' } } },
+			required: ['id'],
+		};
+		const json = workflow(
+			'Get',
+			manual(),
+			httpRequest.get({ name: 'Get', url: 'https://api.example.com/items', schema }),
+		).toJSON();
+		const { source, rebuilt, again } = roundTrip(json);
+
+		expect(json.nodes.find((n) => n.name === 'Get')?.parameters?.schema).toEqual(schema);
+		expect(withoutIds(rebuilt)).toEqual(withoutIds(json));
+		expect(again).toBe(source);
+		expect(source).toContain('httpRequest.get({');
+		expect(source).toContain('    schema: {\n      type: "object",');
+	});
+
+	describe('the join node of a group', () => {
+		const named = (json: WorkflowJSON) => {
+			const nameOf = new Map(json.nodes.map((n) => [n.id, n.name]));
+			return {
+				...withoutIds(json),
+				nodeGroups: json.nodeGroups?.map(({ id: _id, nodeIds, ...rest }) => ({
+					...rest,
+					nodeIds: nodeIds.map((id) => nameOf.get(id)),
+				})),
+			};
+		};
+		const noOp = <In, Ctx, const N extends string>(name: N): Step<In, Ctx, In, N> =>
+			contractStep('@n8n/nodes-core.noOpPass', { name });
+
+		it('reads the join that group() adds after branches as the end of the body', () => {
+			const json = workflow(
+				'Enrich',
+				manual(),
+				notion.databasePage.getAll({ name: 'Tasks', database: DATABASE }),
+				group(
+					{ name: 'Enrich' },
+					when(
+						{ name: 'Has owner?', if: (page) => page.property_owners.length > 0 },
+						{
+							then: set({ name: 'Owned', fields: { owned: true } }),
+							else: set({ name: 'Unowned', fields: { owned: false } }),
+						},
+					),
+				),
+				set({ name: 'After', fields: { done: true } }),
+			).toJSON();
+			const { source, rebuilt, again } = roundTrip(json);
+
+			expect(json.nodes.find((n) => n.name === 'Enrich join')).toMatchObject({
+				type: '@n8n/nodes-core.noOpPass',
+				typeVersion: 1,
+			});
+			expect(named(rebuilt)).toEqual(named(json));
+			expect(again).toBe(source);
+			expect(source).not.toContain('Enrich join');
+			expect(source).toContain('  group({\n    name: "Enrich",\n  }, when({');
+		});
+
+		it('keeps a No Operation node with the join name outside the group as a step', () => {
+			const json = workflow(
+				'Enrich',
+				manual(),
+				notion.databasePage.getAll({ name: 'Tasks', database: DATABASE }),
+				group({ name: 'Enrich' }, set({ name: 'Owned', fields: { owned: true } })),
+				noOp('Enrich join'),
+			).toJSON();
+			const { source, rebuilt } = roundTrip(json);
+
+			expect(named(rebuilt)).toEqual(named(json));
+			expect(source).toContain('name: "Enrich join"');
+		});
 	});
 
 	it('gives undefined for provider wiring the typed format cannot express', () => {

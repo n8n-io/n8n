@@ -11,7 +11,8 @@ Import these steps from `@n8n/workflow-sdk/next`.
   the false items only, negate the condition.
 - `route(step, { a: part, b: part })` follows each named output; the next
   part only the first.
-- `switchOn({ name, on }, { value: part, fallback: part })` adds a Switch node.
+- `switchOn({ name, on }, { value: part, fallback: part })`: a Switch;
+  `on` is a string, number or boolean field.
 - A later trigger in the list starts another flow.
 
 ## Merge
@@ -53,9 +54,8 @@ Over the box ceiling, before the build:
 
 - Wrap each stage (not a lone `forEach`) in
   `group({ name, description }, steps(…))`.
-- A group has one entry and one exit. The paths of a `when` or `switchOn`
-  join at the next step: put that step in the same group, or end the
-  group before the branch.
+- A group has one entry and one exit. A group can end in a `when` or
+  `switchOn`: the build joins its paths in one step in the group.
 - If no valid group can hold the rest, pass
   `groupingDecision: 'not_warranted'` and a `groupingReason`.
 
