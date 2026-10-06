@@ -16,11 +16,13 @@ import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { VIEWS } from '@/app/constants';
 
 import { useContextStore } from '../context.store';
+import { useSkillsHubStore } from '../skills.store';
 
 const i18n = useI18n();
 const router = useRouter();
 const documentTitle = useDocumentTitle();
 const contextStore = useContextStore();
+const skillsStore = useSkillsHubStore();
 const { showError } = useToast();
 
 const preferenceCount = computed(() =>
@@ -30,18 +32,32 @@ const preferenceCount = computed(() =>
 	}),
 );
 
+const skillCount = computed(() =>
+	i18n.baseText('settings.context.skills.count', {
+		interpolate: { count: skillsStore.count },
+		adjustToNumber: skillsStore.count,
+	}),
+);
+
 async function openPreferences() {
 	await router.push({ name: VIEWS.SETTINGS_CONTEXT_PREFERENCES });
 }
 
+async function openSkills() {
+	await router.push({ name: VIEWS.SETTINGS_CONTEXT_SKILLS });
+}
+
 onMounted(async () => {
 	documentTitle.set(i18n.baseText('settings.context.title'));
-	try {
-		await contextStore.fetchPreferenceCount();
-	} catch (error) {
-		// The row would otherwise sit at "0 preferences" as though the count were real.
-		showError(error, i18n.baseText('settings.context.preferences.error.load'));
-	}
+	// Each row reports its own failure; a zero would otherwise read as a real count.
+	await Promise.all([
+		contextStore.fetchPreferenceCount().catch((error: unknown) => {
+			showError(error, i18n.baseText('settings.context.preferences.error.load'));
+		}),
+		skillsStore.fetchSkills().catch((error: unknown) => {
+			showError(error, i18n.baseText('settings.context.skills.error.load'));
+		}),
+	]);
 });
 </script>
 
@@ -71,10 +87,16 @@ onMounted(async () => {
 			</N8nSettingsRow>
 
 			<N8nSettingsRow
+				clickable
 				:title="i18n.baseText('settings.context.skills.title')"
-				:description="i18n.baseText('settings.context.comingSoon')"
+				:description="i18n.baseText('settings.context.skills.subtitle')"
 				data-test-id="settings-context-skills-row"
-			/>
+				@click="openSkills"
+			>
+				<template #action>
+					<N8nSettingsRowConfigure :value="skillCount" />
+				</template>
+			</N8nSettingsRow>
 
 			<N8nSettingsRow
 				:title="i18n.baseText('settings.context.sources.title')"

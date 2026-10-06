@@ -1,5 +1,7 @@
 <script setup lang="ts">
-import { N8nButton, N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
+import { N8nText } from '@n8n/design-system';
+
+import AgentChipAddButton from './AgentChipAddButton.vue';
 
 const props = withDefaults(
 	defineProps<{
@@ -20,6 +22,8 @@ const props = withDefaults(
 defineSlots<{
 	default?: () => unknown;
 	extra?: () => unknown;
+	/** Replaces the add button, e.g. with a menu trigger. `compact` is true when the row has items. */
+	add?: (props: { compact: boolean }) => unknown;
 }>();
 
 const emit = defineEmits<{
@@ -37,33 +41,15 @@ const emit = defineEmits<{
 			<div :class="$style.chips">
 				<slot />
 
-				<N8nTooltip v-if="props.itemCount > 0" :content="props.addLabel" placement="top">
-					<N8nButton
-						variant="ghost"
-						size="medium"
-						icon-only
-						:aria-label="props.addLabel"
+				<slot name="add" :compact="props.itemCount > 0">
+					<AgentChipAddButton
+						:label="props.addLabel"
+						:compact="props.itemCount > 0"
 						:disabled="props.disabled"
-						:data-testid="props.addButtonTestId"
+						:test-id="props.addButtonTestId"
 						@click="emit('add')"
-					>
-						<template #icon>
-							<N8nIcon icon="plus" :size="16" color="text-light" />
-						</template>
-					</N8nButton>
-				</N8nTooltip>
-
-				<N8nButton
-					v-else
-					:class="$style.emptyAddButton"
-					variant="ghost"
-					size="medium"
-					:disabled="props.disabled"
-					:data-testid="props.addButtonTestId"
-					@click="emit('add')"
-				>
-					{{ props.addLabel }}
-				</N8nButton>
+					/>
+				</slot>
 			</div>
 
 			<div v-if="$slots.extra" :class="$style.extra">
@@ -100,18 +86,6 @@ const emit = defineEmits<{
 	flex-wrap: wrap;
 	gap: var(--spacing--3xs);
 	min-width: 0;
-}
-
-.emptyAddButton {
-	--button--color: var(--text-color--subtler);
-	margin-left: calc(-1 * var(--spacing--xs));
-	margin-top: calc(-1 * var(--spacing--4xs));
-
-	/** TODO: Consider making this style a generic N8nButton style. DS-652 **/
-	&:hover {
-		--button--color: var(--text-color);
-		background-color: transparent;
-	}
 }
 
 .extra {

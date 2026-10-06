@@ -14,6 +14,7 @@ import { AgentCustomToolsService } from './agent-custom-tools.service';
 import { AgentValidationService } from './agent-validation.service';
 import { AgentSpendLedger } from './budget-guardrail';
 import { AgentRepository } from './repositories/agent.repository';
+import { SkillHubService } from './skills-hub/skill-hub.service';
 import { getAgentConfigHash } from './utils/agent-config-hash';
 import { CollaborationService } from '@/collaboration/collaboration.service';
 import { CredentialsService } from '@/credentials/credentials.service';
@@ -29,6 +30,7 @@ export class AgentsConfigController {
 		private readonly agentRepository: AgentRepository,
 		private readonly collaborationService: CollaborationService,
 		private readonly agentSpendLedger: AgentSpendLedger,
+		private readonly skillHub: SkillHubService,
 	) {}
 
 	@Get('/:agentId/budget')
@@ -76,11 +78,16 @@ export class AgentsConfigController {
 			req.user,
 			agentId,
 		);
-		return await this.agentValidationService.validateLoadedAgentConfiguration(
-			agent,
-			projectId,
-			credentialProvider,
-		);
+		const [validation, warnings] = await Promise.all([
+			this.agentValidationService.validateLoadedAgentConfiguration(
+				agent,
+				projectId,
+				credentialProvider,
+			),
+			this.skillHub.validationWarnings(agent.schema),
+		]);
+		// Additive: the field is absent when there is nothing to warn about.
+		return warnings.length > 0 ? { ...validation, warnings } : validation;
 	}
 
 	@Put('/:agentId/config')

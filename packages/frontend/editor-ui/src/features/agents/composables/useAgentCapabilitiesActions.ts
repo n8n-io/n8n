@@ -2,7 +2,7 @@ import { computed, type ComputedRef, type Ref } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useToast } from '@n8n/composables/useToast';
-import type { AgentConfigValidationIssue } from '@n8n/api-types';
+import type { AgentConfigValidationIssue, HubSkillListItem } from '@n8n/api-types';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { AI_MCP_TOOL_NODE_TYPE } from '@/app/constants/nodeTypes';
@@ -535,6 +535,57 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 		});
 	}
 
+	/**
+	 * Attaches an existing skills-hub skill: one ref in the config, no body to create.
+	 * The pending config save is flushed and the agent reloaded so the chip shows the
+	 * skill's name from the hub instead of its id.
+	 */
+	async function onAttachSkill(hubSkill: HubSkillListItem) {
+		if (localSkills || !localConfig.value) return;
+		if ((localConfig.value.skills ?? []).some((ref) => ref.id === hubSkill.id)) return;
+		const targetProjectId = projectId.value;
+		const targetAgentId = agentId.value;
+		const isCurrentTarget = () =>
+			projectId.value === targetProjectId && agentId.value === targetAgentId;
+		try {
+			await ensureAgentPersisted?.();
+		} catch (error) {
+			showError(error, locale.baseText('agents.builder.skills.create.error'));
+			return;
+		}
+		if (!isCurrentTarget() || !localConfig.value) return;
+		scheduleConfigUpdate({
+			skills: [...(localConfig.value.skills ?? []), { type: 'skill', id: hubSkill.id }],
+		});
+		// Until the reload lands, the chip shows the hub name instead of the raw id.
+		if (agent.value && !agent.value.skills?.[hubSkill.id]) {
+			agent.value = {
+				...agent.value,
+				skills: {
+					...(agent.value.skills ?? {}),
+					[hubSkill.id]: {
+						name: hubSkill.name,
+						description: hubSkill.description,
+						instructions: '',
+					},
+				},
+			};
+		}
+		try {
+			await beforeAgentMutation?.();
+		} catch {
+			// The host owns the autosave error message (an attach the backend refuses
+			// lands there, e.g. a name clash).
+			return;
+		}
+		if (!isCurrentTarget()) return;
+		try {
+			await refreshAgentAfterMutation?.(targetProjectId, targetAgentId);
+		} catch (error) {
+			showError(error, locale.baseText('agents.builder.loadError'));
+		}
+	}
+
 	function onConnectedTriggersUpdate(triggers: string[]) {
 		connectedTriggers.value = triggers;
 	}
@@ -550,6 +601,7 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 		onOpenToolFromList,
 		onRemoveTool,
 		onOpenAddSkillModal,
+		onAttachSkill,
 		onOpenSkillFromList,
 		onRemoveSkill,
 		onToggleTask,

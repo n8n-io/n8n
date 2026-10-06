@@ -197,6 +197,12 @@ const AgentJsonSkillConfigSchema = z.object({
 			/^[A-Za-z0-9_-]+$/,
 			'Skill id can only contain letters, numbers, hyphens, and underscores',
 		),
+	/**
+	 * A saved skill version this agent's draft reads instead of the skill's live
+	 * draft. Set by an agent revert so the agent gets back the exact skill text it had;
+	 * cleared when the skill is edited from this agent or the ref is saved without it.
+	 */
+	versionId: z.string().uuid().optional(),
 });
 
 const AgentJsonTaskConfigSchema = z.object({

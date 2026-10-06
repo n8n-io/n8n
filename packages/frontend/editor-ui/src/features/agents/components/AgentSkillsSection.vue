@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { AgentConfigValidationIssue } from '@n8n/api-types';
+import type { AgentConfigValidationIssue, HubSkillListItem } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
 
@@ -8,6 +8,7 @@ import type { AgentSkill } from '../types';
 import AgentChipButton from './AgentChipButton.vue';
 import AgentChipRow from './AgentChipRow.vue';
 import AgentItemContextMenu from './AgentItemContextMenu.vue';
+import AgentSkillPicker from './AgentSkillPicker.vue';
 
 const props = withDefaults(
 	defineProps<{
@@ -16,18 +17,25 @@ const props = withDefaults(
 		disabled?: boolean;
 		showLabel?: boolean;
 		validationIssues?: AgentConfigValidationIssue[];
+		/**
+		 * The agent's project. When set, "Add skill" opens a picker of existing skills
+		 * from the skills hub; hosts without hub skills (inline agents) leave it unset.
+		 */
+		hubProjectId?: string;
 	}>(),
 	{
 		disabled: false,
 		showLabel: true,
 		supportsActivation: false,
 		validationIssues: () => [],
+		hubProjectId: undefined,
 	},
 );
 
 const emit = defineEmits<{
 	'open-skill': [id: string];
 	'add-skill': [];
+	'attach-skill': [skill: HubSkillListItem];
 	'remove-skill': [id: string];
 	'toggle-skill': [payload: { id: string; enabled: boolean }];
 }>();
@@ -49,6 +57,18 @@ const skillIssueMessages = computed(() =>
 		:show-label="props.showLabel"
 		@add="emit('add-skill')"
 	>
+		<template v-if="props.hubProjectId" #add="{ compact }">
+			<AgentSkillPicker
+				:project-id="props.hubProjectId"
+				:attached-ids="skills.map(({ id }) => id)"
+				:add-label="i18n.baseText('agents.builder.skills.add')"
+				:compact="compact"
+				:disabled="props.disabled"
+				add-button-test-id="agent-capabilities-add-skill"
+				@attach="emit('attach-skill', $event)"
+				@create="emit('add-skill')"
+			/>
+		</template>
 		<div v-for="{ id, skill, enabled } in skills" :key="id" :class="$style.chipGroup">
 			<AgentItemContextMenu
 				:disabled="props.disabled"

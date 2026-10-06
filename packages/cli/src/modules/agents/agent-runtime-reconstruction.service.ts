@@ -91,6 +91,9 @@ import { WorkflowToolUnavailableError } from './tools/workflow-tool-unavailable-
 import { findWorkflowToolWorkflow } from './tools/workflow-tool-workflow-resolver';
 import { WorkflowToolWorkflowLoader } from './tools/workflow-tool-workflow-loader.service';
 import { getAgentRuntimeAssets, type AgentRuntimeAssets } from './utils/agent-runtime-assets';
+import { recordSkillsHubProbe } from './utils/skills-hub-e2e-probe';
+import { publishedSnapshotVersionOf } from './utils/agent-published-snapshot';
+import { SkillHubService } from './skills-hub/skill-hub.service';
 import { resolveUniqueSubAgents } from './utils/sub-agent-resolver';
 /**
  * `inline` runs an agent defined in a workflow node's parameters: no entity
@@ -286,6 +289,7 @@ export class AgentRuntimeReconstructionService {
 		private readonly credentialsFinderService: CredentialsFinderService,
 		private readonly workflowFinderService: WorkflowFinderService,
 		private readonly agentChatAttachmentService: AgentChatAttachmentService,
+		private readonly skillHub: SkillHubService,
 	) {}
 
 	async reconstructFromAgentEntity(
@@ -332,6 +336,11 @@ export class AgentRuntimeReconstructionService {
 		}
 
 		const { toolDescriptors, toolCodeByName } = getAgentRuntimeAssets(agentEntity);
+		// Drafts read the hub draft rows; published snapshots read their pinned versions.
+		const publishedVersionId = publishedSnapshotVersionOf(agentEntity);
+		const skills = publishedVersionId
+			? await this.skillHub.resolvePinnedSkills(publishedVersionId)
+			: await this.skillHub.resolveDraftSkills(agentEntity.schema);
 		const subAgentDelegation = await this.createSubAgentDelegationConfig(
 			config,
 			agentEntity.projectId,
@@ -344,7 +353,7 @@ export class AgentRuntimeReconstructionService {
 			credentialProvider,
 			toolDescriptors,
 			toolCodeByName,
-			skills: agentEntity.skills ?? {},
+			skills,
 			runtimeProfile: 'top-level',
 			supportsHitl,
 			runType,
@@ -539,6 +548,13 @@ export class AgentRuntimeReconstructionService {
 	private async reconstructRuntime(
 		options: RuntimeReconstructionOptions,
 	): Promise<ReconstructedAgentRuntime> {
+		await recordSkillsHubProbe({
+			agentId: options.memoryOwnerAgentId,
+			runType: options.runType,
+			runtimeProfile: options.runtimeProfile,
+			config: options.config,
+			skills: options.skills,
+		});
 		const unavailable = [...(options.unavailableTools ?? [])];
 		const backgroundTasksEnabled =
 			options.runtimeProfile === 'top-level' &&

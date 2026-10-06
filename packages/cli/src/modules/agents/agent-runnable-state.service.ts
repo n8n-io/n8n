@@ -12,6 +12,7 @@ import { AgentValidationService } from './agent-validation.service';
 import type { Agent } from './entities/agent.entity';
 import { composeJsonConfig } from './json-config/agent-config-composition';
 import { getAgentConfigHash, getAgentSkillHash } from './utils/agent-config-hash';
+import { SkillHubService } from './skills-hub/skill-hub.service';
 
 @Service()
 export class AgentRunnableStateService {
@@ -19,6 +20,7 @@ export class AgentRunnableStateService {
 		private readonly credentialsService: CredentialsService,
 		private readonly agentValidationService: AgentValidationService,
 		private readonly agentPublishService: AgentPublishService,
+		private readonly skillHub: SkillHubService,
 	) {}
 
 	/**
@@ -45,8 +47,12 @@ export class AgentRunnableStateService {
 	> {
 		// Base hashes for the optimistic-concurrency checks on config and skill writes.
 		const configHash = getAgentConfigHash(composeJsonConfig(agent));
+		// API responses carry the editor's view (the hub draft rows), never the legacy
+		// `skills` column. `skillHashes` fence the PATCH autosave against that view.
+		const skills = await this.skillHub.resolveEditableSkills(agent.schema);
+		agent.skills = skills;
 		const skillHashes = Object.fromEntries(
-			Object.entries(agent.skills ?? {}).map(([id, skill]) => [id, getAgentSkillHash(skill)]),
+			Object.entries(skills).map(([id, skill]) => [id, getAgentSkillHash(skill)]),
 		);
 		if (draftValidation) {
 			const hasPublishHistory = await this.agentPublishService.hasPublishHistory(agent.id);

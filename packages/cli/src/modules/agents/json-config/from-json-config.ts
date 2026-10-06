@@ -377,7 +377,7 @@ function buildFallbackWebSearchTool(
 	};
 }
 
-function getConfiguredSkillSource(
+export function getConfiguredSkillSource(
 	refs: AgentJsonSkillConfig[],
 	skills: Record<string, AgentSkill>,
 	createRegistry: (skills: RuntimeSkill[]) => RuntimeSkillSource['registry'],

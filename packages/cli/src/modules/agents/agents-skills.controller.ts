@@ -98,6 +98,31 @@ export class AgentsSkillsController {
 		);
 	}
 
+	/** Save: the draft row becomes the version agents read. See `AgentSkillsService.saveSkill`. */
+	@Post('/:agentId/skills/:skillId/save')
+	@ProjectScope('agent:update')
+	async saveSkill(
+		req: AuthenticatedRequest<{ projectId: string; agentId: string; skillId: string }>,
+		_res: Response,
+		@Param('agentId') agentId: string,
+		@Param('skillId') skillId: string,
+	) {
+		const { projectId } = req.params;
+		const clientId = req.headers?.['push-ref'];
+		await this.collaborationService.validateAgentWriteLock(
+			req.user.id,
+			clientId,
+			projectId,
+			agentId,
+			'save skill for',
+		);
+		return await this.agentSkillsService.saveSkill(agentId, projectId, skillId, {
+			user: req.user,
+			modifiedBy: 'user',
+			pushRef: req.headers?.['push-ref'],
+		});
+	}
+
 	@Delete('/:agentId/skills/:skillId')
 	@ProjectScope('agent:update')
 	async deleteSkill(

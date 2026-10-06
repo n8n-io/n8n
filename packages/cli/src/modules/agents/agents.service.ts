@@ -45,6 +45,7 @@ import {
 	type AgentListResult,
 	type AgentSummaryFilters,
 } from './repositories/agent.repository';
+import { SkillHubService } from './skills-hub/skill-hub.service';
 import { SubAgentCleanupService } from './sub-agents/sub-agent-cleanup.service';
 import { createAgentCredentialProvider } from './utils/agent-credential-provider';
 
@@ -138,13 +139,22 @@ export class AgentsService {
 			defaultModel,
 		});
 
+		// A duplicate keeps its refs, so it uses the same hub skills as the original; the
+		// copied bodies are ignored. Only a ref with no hub skill yet gets one.
+		const skillHub = Container.get(SkillHubService);
+		let copiedSkillIds: string[] = [];
+		if (skills && schemaConfig?.skills?.length) {
+			copiedSkillIds = (
+				await skillHub.prepareSkillRefsForCreate(projectId, schemaConfig, skills, user?.id ?? null)
+			).createdSkillIds;
+		}
+
 		const agent = this.agentRepository.create({
 			...(id ? { id } : {}),
 			name,
 			projectId,
 			schema: schemaConfig,
 			...(integrations.length > 0 ? { integrations } : {}),
-			...(skills ? { skills } : {}),
 			...(tools ? { tools: tools as Agent['tools'] } : {}),
 			versionId: uuid(),
 			availableInMCP,
@@ -157,11 +167,13 @@ export class AgentsService {
 			await this.agentRepository.insertNew(agent);
 			saved = agent;
 		} catch (error) {
+			for (const skillId of copiedSkillIds) await skillHub.deleteSkill(skillId).catch(() => {});
 			return {
 				agent: await this.adoptExistingAgent(id, projectId, adoptOnCollision, error),
 				adopted: true,
 			};
 		}
+		await skillHub.refreshDependencies(saved);
 
 		this.logger.debug('Created SDK agent', { agentId: saved.id, projectId });
 
@@ -259,9 +271,10 @@ export class AgentsService {
 
 		const mcpServers = (schema?.mcpServers ?? []).map((server) => ({ name: server.name }));
 
+		const skillBodies = await Container.get(SkillHubService).resolveDraftSkills(schema);
 		const skills = (schema?.skills ?? []).map((skill) => ({
 			id: skill.id,
-			name: entity.skills[skill.id]?.name ?? skill.id,
+			name: skillBodies[skill.id]?.name ?? skill.id,
 		}));
 
 		const tasks = await this.getCapabilityTasks(entity);

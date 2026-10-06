@@ -14,6 +14,7 @@ import { getAgentOrThrow } from '../utils/get-agent-or-throw';
 import { AgentHistoryRepository } from '../repositories/agent-history.repository';
 import { AgentRepository } from '../repositories/agent.repository';
 import { getAgentRuntimeAssets, type AgentRuntimeAssets } from '../utils/agent-runtime-assets';
+import { SkillHubService } from '../skills-hub/skill-hub.service';
 
 export interface ResolveSubAgentSourceContext {
 	projectId: string;
@@ -36,6 +37,7 @@ export class SubAgentSourceResolver {
 	constructor(
 		private readonly agentRepository: AgentRepository,
 		private readonly agentHistoryRepository: AgentHistoryRepository,
+		private readonly skillHub: SkillHubService,
 	) {}
 
 	/**
@@ -97,6 +99,7 @@ export class SubAgentSourceResolver {
 					config: this.toRunnableConfig(version.schema),
 				},
 				...getAgentRuntimeAssets(version),
+				skills: await this.skillHub.resolvePinnedSkills(version.versionId),
 			};
 		}
 
@@ -115,6 +118,7 @@ export class SubAgentSourceResolver {
 					config: this.toRunnableConfig(activeVersion.schema),
 				},
 				...getAgentRuntimeAssets(activeVersion),
+				skills: await this.skillHub.resolvePinnedSkills(activeVersion.versionId),
 			};
 		}
 
@@ -128,6 +132,7 @@ export class SubAgentSourceResolver {
 				config: this.toRunnableConfig(agent.schema),
 			},
 			...getAgentRuntimeAssets(agent),
+			skills: await this.skillHub.resolveDraftSkills(agent.schema),
 		};
 	}
 

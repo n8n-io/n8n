@@ -3059,6 +3059,7 @@ useKeybindings({
 					@open-skill="caps.onOpenSkillFromList"
 					@add-tool="caps.onOpenAddToolModal"
 					@add-skill="caps.onOpenAddSkillModal"
+					@attach-skill="caps.onAttachSkill"
 					@upload-files="onUploadAgentFiles"
 					@delete-file="onDeleteAgentFile"
 					@add-vector-store="onOpenAddVectorStoreModal"

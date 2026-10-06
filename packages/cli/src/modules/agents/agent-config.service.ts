@@ -36,6 +36,7 @@ import { NodeToolAiGatewayService } from './json-config/node-tool-ai-gateway.ser
 import { sanitizeUnknownAgentCredentials } from './json-config/sanitize-unknown-agent-credentials';
 import { AgentTaskRepository } from './repositories/agent-task.repository';
 import { AgentRepository } from './repositories/agent.repository';
+import { SkillHubService } from './skills-hub/skill-hub.service';
 import { getAgentOrThrow } from './utils/get-agent-or-throw';
 import { normalizeWorkflowToolRefs } from './tools/workflow-tool-workflow-resolver';
 import { createAgentCredentialProvider } from './utils/agent-credential-provider';
@@ -81,6 +82,7 @@ export class AgentConfigService {
 		private readonly setupCompletionService: AgentSetupCompletionService,
 		private readonly modificationTelemetry: AgentModificationTelemetryService,
 		private readonly agentUpdateBroadcaster: AgentUpdateBroadcaster,
+		private readonly skillHub: SkillHubService,
 	) {}
 
 	/**
@@ -266,6 +268,7 @@ export class AgentConfigService {
 		);
 
 		const saved = await saveAgentDraftFenced(this.agentRepository, entity);
+		await this.skillHub.refreshDependencies(saved);
 		this.eventService.emit('agent-saved', { agentId });
 		// Every config writer (editor, builder, MCP) lands here, so this is where
 		// other open Agent Builder tabs learn that their loaded config is stale.
@@ -437,11 +440,8 @@ export class AgentConfigService {
 		existingTaskIds: ReadonlySet<string>,
 	): Promise<ResolvedSubAgentRef[]> {
 		if (config.skills !== undefined) {
-			const skills = entity.skills ?? {};
-			const existingSkillIds = new Set((entity.schema?.skills ?? []).map((ref) => ref.id));
-			config.skills = config.skills.filter(
-				(ref) => ref.enabled === false || existingSkillIds.has(ref.id) || Boolean(skills[ref.id]),
-			);
+			// Skill bodies live in the skills hub; this also applies the attach rule.
+			config.skills = await this.skillHub.filterAndCheckRefs(entity, config.skills);
 		}
 
 		if (config.tools !== undefined) {

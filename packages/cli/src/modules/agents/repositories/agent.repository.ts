@@ -1,6 +1,7 @@
 import { N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api-types';
 import type { AgentIntegrationConfig, ListAgentsQueryDto } from '@n8n/api-types';
 import { Service } from '@n8n/di';
+import { randomUUID } from 'node:crypto';
 import {
 	DataSource,
 	In,
@@ -201,6 +202,40 @@ export class AgentRepository extends Repository<Agent> {
 			where: { id, projectId },
 			relations: { activeVersion: true },
 		});
+	}
+
+	/**
+	 * A shared skill changed: give every agent that is in sync with its published
+	 * version a new draft version id, so it shows unpublished changes and republish is
+	 * not skipped. One conditional UPDATE per agent, no read-modify-write. It does not
+	 * bump `revision`: only `versionId` moves, and a concurrent draft edit of the same
+	 * agent also moves it away from `activeVersionId`, so neither write can undo the
+	 * other. Returns the agents it changed.
+	 */
+	async markDraftChangedIfInSync(agentIds: string[], trx?: EntityManager): Promise<string[]> {
+		const changed: string[] = [];
+		for (const id of agentIds) {
+			const result = await (trx ?? this.manager)
+				.createQueryBuilder()
+				.update(Agent)
+				.set({ versionId: randomUUID() })
+				.where('id = :id', { id })
+				.andWhere('"versionId" = "activeVersionId"')
+				.execute();
+			if ((result.affected ?? 0) > 0) changed.push(id);
+		}
+		return changed;
+	}
+
+	/** The project of each agent, for broadcasting an update to the right project. */
+	async findProjectIdsByIds(ids: string[]): Promise<Array<Pick<Agent, 'id' | 'projectId'>>> {
+		if (ids.length === 0) return [];
+		return await this.find({ where: { id: In(ids) }, select: ['id', 'projectId'] });
+	}
+
+	/** Loads the row a fenced draft write needs, inside the caller's transaction. */
+	async findByIdForDraftWrite(id: string, trx?: EntityManager): Promise<Agent | null> {
+		return await (trx ?? this.manager).findOne(Agent, { where: { id } });
 	}
 
 	async isN8nChatPublished(id: string, projectId: string): Promise<boolean> {
@@ -502,7 +537,7 @@ export class AgentRepository extends Repository<Agent> {
 				schema: agent.schema,
 				integrations: agent.integrations,
 				tools: agent.tools,
-				skills: agent.skills,
+				// The legacy `skills` column is frozen: skill bodies live in the skills hub.
 				versionId: agent.versionId,
 				updatedAt,
 				revision: () => 'revision + 1',

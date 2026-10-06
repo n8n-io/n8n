@@ -4,7 +4,7 @@ import {
 	AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH,
 	AGENT_SKILL_REFERENCE_MAX_COUNT,
 } from '@n8n/api-types';
-import { N8nButton, N8nCallout, N8nIcon } from '@n8n/design-system';
+import { N8nButton, N8nCallout, N8nIcon, N8nOption, N8nSelect, N8nText } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 
 import { useUIStore } from '@/app/stores/ui.store';
@@ -18,9 +18,12 @@ import AgentModal from './modals/AgentModal.vue';
 
 const SKILL_FILE = 'SKILL.md';
 
+export type AgentSkillModalScopeOption = { value: string; label: string };
+
 export type AgentSkillModalData = {
-	projectId: string;
-	agentId: string;
+	/** Set when opened from an agent. Absent when opened from the skills hub in Settings. */
+	projectId?: string;
+	agentId?: string;
 	skill?: AgentSkill;
 	skillId?: string;
 	availableTools?: AgentSkillAllowedToolOption[];
@@ -29,7 +32,13 @@ export type AgentSkillModalData = {
 	 * the modal is still open — skill names must be unique per agent.
 	 */
 	existingSkillNames?: string[];
-	onConfirm: (payload: { id?: string; skill: AgentSkill }) => void;
+	/**
+	 * Skills hub only: lets the user choose who can use a new skill. The chosen value
+	 * is passed back in `onConfirm`. Absent when the scope is fixed (agent builder, edit).
+	 */
+	scopeOptions?: AgentSkillModalScopeOption[];
+	initialScope?: string;
+	onConfirm: (payload: { id?: string; skill: AgentSkill; scope?: string }) => void;
 	onRemove?: (id: string) => void;
 };
 
@@ -70,6 +79,8 @@ const selectedPath = ref(SKILL_FILE);
 const step = ref<'upload' | 'manual' | 'edit'>(
 	props.data.skill || props.data.skillId ? 'edit' : 'upload',
 );
+const scope = ref(props.data.initialScope ?? props.data.scopeOptions?.[0]?.value ?? '');
+const showScope = computed(() => !!props.data.scopeOptions?.length && !props.data.skillId);
 const isImporting = ref(false);
 
 const isEditing = computed(() => !!props.data.skillId);
@@ -205,6 +216,8 @@ function onImportSkill(payload: {
 	referenceCount?: number;
 	error?: string;
 }) {
+	// The import event is an agent builder event; the hub has no agent to attribute it to.
+	if (!props.data.agentId) return;
 	agentTelemetry.trackImportedSkill({
 		agentId: props.data.agentId,
 		...payload,
@@ -227,7 +240,11 @@ function onSave() {
 		...(skill.value.references ? { references: skill.value.references } : {}),
 	});
 
-	props.data.onConfirm({ id: props.data.skillId, skill: payload });
+	props.data.onConfirm({
+		id: props.data.skillId,
+		skill: payload,
+		...(showScope.value ? { scope: scope.value } : {}),
+	});
 	closeModal();
 }
 
@@ -284,6 +301,7 @@ function onRemove() {
 				<AgentSkillViewer
 					:skill="skill"
 					:available-tools="props.data.availableTools ?? []"
+					:show-allowed-tools="!!props.data.agentId"
 					:selected-path="selectedPath"
 					:errors="visibleErrors"
 					:show-validation-warnings="submitted || openedWithMissingContent"
@@ -294,11 +312,29 @@ function onRemove() {
 			</template>
 		</div>
 
-		<template v-if="isEditing && data.onRemove" #footerLeft>
-			<N8nButton variant="ghost" data-testid="agent-skill-remove" @click="onRemove">
+		<template v-if="(isEditing && data.onRemove) || (showScope && step !== 'upload')" #footerLeft>
+			<N8nButton
+				v-if="isEditing && data.onRemove"
+				variant="ghost"
+				data-testid="agent-skill-remove"
+				@click="onRemove"
+			>
 				<template #icon><N8nIcon icon="trash-2" :size="16" /></template>
 				{{ i18n.baseText('agents.builder.skills.remove') }}
 			</N8nButton>
+			<div v-else :class="$style.scope" data-testid="agent-skill-scope">
+				<N8nText size="small" color="text-light">
+					{{ i18n.baseText('settings.context.skills.modal.scope.label') }}
+				</N8nText>
+				<N8nSelect v-model="scope" size="small" data-testid="agent-skill-scope-select">
+					<N8nOption
+						v-for="option in props.data.scopeOptions"
+						:key="option.value"
+						:value="option.value"
+						:label="option.label"
+					/>
+				</N8nSelect>
+			</div>
 		</template>
 		<template #footerActions>
 			<N8nButton variant="solid" data-testid="agent-skill-create-save" @click="onSave">
@@ -321,6 +357,12 @@ function onRemove() {
 
 .missingContentCallout {
 	margin: var(--spacing--md) var(--spacing--lg) 0;
+}
+
+.scope {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
 }
 
 @media (max-width: 480px) {

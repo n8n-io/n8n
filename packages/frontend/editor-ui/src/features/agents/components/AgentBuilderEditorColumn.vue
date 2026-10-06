@@ -2,7 +2,7 @@
 import { computed, ref } from 'vue';
 import { N8nCard, N8nIcon, N8nTabs, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import type { AgentConfigValidationIssue, AgentFileDto } from '@n8n/api-types';
+import type { AgentConfigValidationIssue, AgentFileDto, HubSkillListItem } from '@n8n/api-types';
 
 import type { AgentBuilderMainTab } from '../composables/useAgentBuilderMainTabs';
 import type {
@@ -82,6 +82,7 @@ const emit = defineEmits<{
 	'open-skill': [id: string];
 	'add-tool': [mode: ToolPickerMode];
 	'add-skill': [];
+	'attach-skill': [skill: HubSkillListItem];
 	'remove-tool': [index: number];
 	'remove-skill': [id: string];
 	'toggle-skill': [payload: { id: string; enabled: boolean }];
@@ -151,8 +152,10 @@ const i18n = useI18n();
 							:disabled="childrenDisabled"
 							:show-label="false"
 							:validation-issues="configValidationIssues ?? []"
+							:hub-project-id="projectId"
 							@open-skill="emit('open-skill', $event)"
 							@add-skill="emit('add-skill')"
+							@attach-skill="emit('attach-skill', $event)"
 							@remove-skill="emit('remove-skill', $event)"
 							@toggle-skill="emit('toggle-skill', $event)"
 						/>

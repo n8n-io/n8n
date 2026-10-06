@@ -61,5 +61,10 @@ export type AgentConfigValidationIssue = z.infer<typeof agentConfigValidationIss
 export const agentConfigValidationResponseSchema = z.object({
 	status: z.enum(['valid', 'invalid']),
 	issues: z.array(agentConfigValidationIssueSchema),
+	/**
+	 * Human-readable notes that do not block running or publishing, for example skill
+	 * names that are hard to tell apart. Absent when there are none.
+	 */
+	warnings: z.array(z.string()).optional(),
 });
 export type AgentConfigValidationResponse = z.infer<typeof agentConfigValidationResponseSchema>;

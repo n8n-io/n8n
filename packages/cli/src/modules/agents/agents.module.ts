@@ -23,6 +23,7 @@ export class AgentsModule implements ModuleInterface {
 		await import('./agents-settings.controller.js');
 		await import('./agents-config.controller.js');
 		await import('./agents-skills.controller.js');
+		await import('./skills-hub.controller.js');
 		await import('./agent-knowledge.controller.js');
 		await import('./agent-publish.controller.js');
 		await import('./agent-chat.controller.js');
@@ -273,6 +274,11 @@ export class AgentsModule implements ModuleInterface {
 		const { AgentMemoryEntrySourceEntity } = await import(
 			'./entities/agent-memory-entry-source.entity.js'
 		);
+		const { Skill } = await import('./entities/skill.entity.js');
+		const { SkillVersion } = await import('./entities/skill-version.entity.js');
+		const { SkillFile } = await import('./entities/skill-file.entity.js');
+		const { AgentSkillDependency } = await import('./entities/agent-skill-dependency.entity.js');
+		const { AgentHistorySkill } = await import('./entities/agent-history-skill.entity.js');
 
 		return [
 			Agent,
@@ -303,6 +309,11 @@ export class AgentsModule implements ModuleInterface {
 			AgentMemoryEntryCandidateEntity,
 			AgentMemoryEntryLockEntity,
 			AgentMemoryEntrySourceEntity,
+			Skill,
+			SkillVersion,
+			SkillFile,
+			AgentSkillDependency,
+			AgentHistorySkill,
 		];
 	}
 

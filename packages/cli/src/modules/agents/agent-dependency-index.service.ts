@@ -6,6 +6,7 @@ import { AgentRuntimeCacheService } from './agent-runtime-cache.service';
 import { AgentCredentialDependencyRepository } from './repositories/agent-credential-dependency.repository';
 import { AgentWorkflowDependencyRepository } from './repositories/agent-workflow-dependency.repository';
 import { AgentRepository } from './repositories/agent.repository';
+import { SkillHubService } from './skills-hub/skill-hub.service';
 
 @Service()
 export class AgentDependencyIndexService {
@@ -18,6 +19,7 @@ export class AgentDependencyIndexService {
 		private readonly workflowDependencyRepository: AgentWorkflowDependencyRepository,
 		private readonly agentRepository: AgentRepository,
 		private readonly runtimeCache: AgentRuntimeCacheService,
+		private readonly skillHub: SkillHubService,
 		logger: Logger,
 		workflowsConfig: WorkflowsConfig,
 	) {
@@ -33,6 +35,8 @@ export class AgentDependencyIndexService {
 	async refresh(agentId: string): Promise<void> {
 		await this.credentialDependencyRepository.refreshForAgent(agentId);
 		await this.workflowDependencyRepository.refreshForAgent(agentId);
+		const agent = await this.agentRepository.findByIdForDraftWrite(agentId);
+		if (agent) await this.skillHub.refreshDependencies(agent);
 	}
 
 	/**

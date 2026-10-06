@@ -44,6 +44,7 @@ import { AgentHistoryRepository } from './repositories/agent-history.repository'
 import { AgentTaskSnapshotRepository } from './repositories/agent-task-snapshot.repository';
 import { AgentTaskRepository } from './repositories/agent-task.repository';
 import { AgentRepository } from './repositories/agent.repository';
+import { SkillHubService } from './skills-hub/skill-hub.service';
 import { getAgentOrThrow } from './utils/get-agent-or-throw';
 import { saveAgentDraftFenced } from './utils/agent-draft.utils';
 
@@ -118,6 +119,7 @@ export class AgentPublishService {
 		private readonly setupCompletionService: AgentSetupCompletionService,
 		private readonly modificationTelemetry: AgentModificationTelemetryService,
 		private readonly agentUpdateBroadcaster: AgentUpdateBroadcaster,
+		private readonly skillHub: SkillHubService,
 	) {}
 
 	/** `pushRef`: push connection of the tab that made the change; excluded from the `agentUpdated` broadcast. */
@@ -371,13 +373,19 @@ export class AgentPublishService {
 
 		const previousSchema = agent.schema;
 		const previousTools = agent.tools ?? {};
-		const previousSkills = agent.skills ?? {};
+		const previousSkills = await this.skillHub.resolveDraftSkills(agent.schema);
 
 		let tasksChanged = false;
 		await this.agentRepository.manager.transaction(async (trx) => {
-			agent.schema = draftSchemaFromVersion(activeVersion.schema);
+			// Restores the refs and pins each one to the skill version this agent version
+			// published with. No skill row changes, so other agents are not affected.
+			const restored = await this.skillHub.restoreFromVersion(
+				activeVersion,
+				draftSchemaFromVersion(activeVersion.schema),
+				trx,
+			);
+			agent.schema = restored.schema;
 			agent.tools = deepCopy(activeVersion.tools ?? {});
-			agent.skills = deepCopy(activeVersion.skills ?? {});
 			agent.versionId = activeVersion.versionId;
 
 			if (agent.schema) {
@@ -385,6 +393,7 @@ export class AgentPublishService {
 			}
 
 			await saveAgentDraftFenced(this.agentRepository, agent, trx);
+			await this.skillHub.refreshDependencies(agent, trx);
 			tasksChanged = await this.restoreTasksFromSnapshot(trx, agentId, activeVersion.versionId);
 		});
 		this.eventService.emit('agent-saved', { agentId });
@@ -393,7 +402,7 @@ export class AgentPublishService {
 		this.runtimeCacheService.clearRuntimes(agentId);
 		await this.recordRevert(agent, projectId, user, modifiedBy, previousSchema, {
 			tools: !isEqual(previousTools, agent.tools ?? {}),
-			skills: !isEqual(previousSkills, agent.skills ?? {}),
+			skills: !isEqual(previousSkills, await this.skillHub.resolveDraftSkills(agent.schema)),
 			tasks: tasksChanged,
 		});
 
@@ -413,7 +422,7 @@ export class AgentPublishService {
 
 		const previousSchema = agent.schema;
 		const previousTools = agent.tools ?? {};
-		const previousSkills = agent.skills ?? {};
+		const previousSkills = await this.skillHub.resolveDraftSkills(agent.schema);
 
 		let tasksChanged = false;
 		await this.agentRepository.manager.transaction(async (trx) => {
@@ -426,9 +435,14 @@ export class AgentPublishService {
 				throw new NotFoundError(`Version "${versionId}" not found`);
 			}
 
-			agent.schema = draftSchemaFromVersion(target.schema);
+			// Pins each skill ref to the version that agent version published with.
+			const restored = await this.skillHub.restoreFromVersion(
+				target,
+				draftSchemaFromVersion(target.schema),
+				trx,
+			);
+			agent.schema = restored.schema;
 			agent.tools = deepCopy(target.tools ?? {});
-			agent.skills = deepCopy(target.skills ?? {});
 			agent.versionId = uuid();
 
 			if (agent.schema) {
@@ -436,6 +450,7 @@ export class AgentPublishService {
 			}
 
 			await saveAgentDraftFenced(this.agentRepository, agent, trx);
+			await this.skillHub.refreshDependencies(agent, trx);
 			tasksChanged = await this.restoreTasksFromSnapshot(trx, agentId, target.versionId);
 		});
 		this.eventService.emit('agent-saved', { agentId });
@@ -444,7 +459,7 @@ export class AgentPublishService {
 		this.runtimeCacheService.clearRuntimes(agentId);
 		await this.recordRevert(agent, projectId, user, modifiedBy, previousSchema, {
 			tools: !isEqual(previousTools, agent.tools ?? {}),
-			skills: !isEqual(previousSkills, agent.skills ?? {}),
+			skills: !isEqual(previousSkills, await this.skillHub.resolveDraftSkills(agent.schema)),
 			tasks: tasksChanged,
 		});
 
@@ -578,24 +593,15 @@ export class AgentPublishService {
 		);
 	}
 
-	private pickConfiguredSkillBodies(
+	private assertNoMissingSkills(
 		config: AgentJsonConfig | null,
 		skills: Record<string, AgentSkill>,
-	): Record<string, AgentSkill> | null {
-		if (!config) return null;
-
+	): void {
+		if (!config) return;
 		const missing = getMissingSkillIds(config, skills);
 		if (missing.length > 0) {
 			throw new UserError(`Cannot publish agent with missing skill bodies: ${missing.join(', ')}`);
 		}
-
-		const snapshot: Record<string, AgentSkill> = {};
-		for (const ref of config.skills ?? []) {
-			const skill = skills[ref.id];
-			if (skill) snapshot[ref.id] = deepCopy(skill);
-		}
-
-		return snapshot;
 	}
 
 	/**
@@ -742,7 +748,14 @@ export class AgentPublishService {
 
 	private async saveDraftHistory(trx: EntityManager, agent: Agent, user: User, versionId: string) {
 		try {
-			return await this.agentHistoryRepository.saveVersion(
+			this.assertNoMissingSkills(
+				agent.schema,
+				await this.skillHub.resolveDraftSkills(agent.schema, trx),
+			);
+			// Each referenced skill (disabled refs too) resolves to a saved version to pin.
+			// The agent_history.skills copy keeps today's shape during the expand phase.
+			const { skills, versionByRef } = await this.skillHub.snapshotForPublish(agent.schema, trx);
+			const history = await this.agentHistoryRepository.saveVersion(
 				{
 					versionId,
 					agentId: agent.id,
@@ -755,11 +768,13 @@ export class AgentPublishService {
 							}
 						: null,
 					tools: this.customToolsService.snapshotConfiguredTools(agent.schema, agent.tools ?? {}),
-					skills: this.pickConfiguredSkillBodies(agent.schema, agent.skills ?? {}),
+					skills: agent.schema ? skills : null,
 					publishedBy: user,
 				},
 				trx,
 			);
+			await this.skillHub.pinForPublish(versionId, versionByRef, trx);
+			return history;
 		} catch (error) {
 			// Concurrent publishes of one draft can collide before they reach the revision fence.
 			if (isUniqueConstraintError(error)) {

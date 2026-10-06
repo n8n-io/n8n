@@ -41,12 +41,18 @@ const props = withDefaults(
 		errors?: Partial<Record<keyof AgentSkill, string>>;
 		selectedPath?: string;
 		showValidationWarnings?: boolean;
+		/**
+		 * The allowed tools list is an agent builder hint that nothing enforces yet. The
+		 * skills hub hides it: a hub skill has no agent whose tools it could name.
+		 */
+		showAllowedTools?: boolean;
 	}>(),
 	{
 		availableTools: () => [],
 		disabled: false,
 		selectedPath: SKILL_FILE,
 		showValidationWarnings: false,
+		showAllowedTools: true,
 	},
 );
 
@@ -366,7 +372,7 @@ watch(formIsValid, (valid) => emit('update:valid', valid), { immediate: true });
 				</N8nInputLabel>
 			</div>
 
-			<div :class="$style.field">
+			<div v-if="props.showAllowedTools" :class="$style.field">
 				<N8nInputLabel
 					:label="i18n.baseText('agents.builder.skills.allowedTools.label')"
 					size="small"

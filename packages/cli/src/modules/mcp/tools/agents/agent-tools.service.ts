@@ -21,7 +21,7 @@ import {
 } from '@n8n/api-types';
 import { OutboundHttp } from '@n8n/backend-network';
 import type { User } from '@n8n/db';
-import { Service } from '@n8n/di';
+import { Container, Service } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
 import { isRecord } from '@n8n/utils/is-record';
 import { UserError } from 'n8n-workflow';
@@ -36,6 +36,7 @@ import { AgentIntegrationPersistenceService } from '@/modules/agents/agent-integ
 import { AgentModelCatalogService } from '@/modules/agents/agent-model-catalog.service';
 import { AgentPublishService } from '@/modules/agents/agent-publish.service';
 import { AgentSkillsService } from '@/modules/agents/agent-skills.service';
+import { SkillHubService } from '@/modules/agents/skills-hub/skill-hub.service';
 import { AgentTaskService } from '@/modules/agents/agent-task.service';
 import {
 	AgentTestRunService,
@@ -1180,7 +1181,7 @@ export class McpAgentToolsService {
 				isActive: version.versionId === agent.activeVersionId,
 			},
 			config: editableConfig,
-			skills: version.skills ?? {},
+			skills: await Container.get(SkillHubService).resolvePinnedSkills(version.versionId),
 			tasks: tasks.map((task) => ({
 				id: task.taskId,
 				name: task.name,
@@ -1393,6 +1394,8 @@ export class McpAgentToolsService {
 			}
 			case 'skill.upsert':
 				if (operation.skillId) {
+					// MCP has no draft step: an upsert writes the draft and saves the version
+					// agents read in one go.
 					const result = await this.agentSkillsService.updateSkill(
 						agentId,
 						projectId,
@@ -1400,6 +1403,12 @@ export class McpAgentToolsService {
 						operation.skill,
 						telemetryContext,
 						operation.baseSkillHash,
+					);
+					await this.agentSkillsService.saveSkill(
+						agentId,
+						projectId,
+						operation.skillId,
+						telemetryContext,
 					);
 					return { resource: { type: 'skill', id: result.id } };
 				} else {
@@ -1617,10 +1626,12 @@ export class McpAgentToolsService {
 				),
 			),
 		];
+		const warnings = await Container.get(SkillHubService).validationWarnings(agent.schema);
 		return {
 			valid: errors.length === 0 && missing.length === 0,
 			errors,
 			missing,
+			...(warnings.length > 0 ? { warnings } : {}),
 		};
 	}
 

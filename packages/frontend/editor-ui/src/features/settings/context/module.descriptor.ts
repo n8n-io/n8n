@@ -41,5 +41,18 @@ export const ContextModule: FrontendModuleDescription = {
 			beforeEnter: async () =>
 				(await isContextPreferencesEnabledOnceEvaluated()) || { name: VIEWS.HOMEPAGE },
 		},
+		{
+			path: 'context/skills',
+			name: VIEWS.SETTINGS_CONTEXT_SKILLS,
+			component: async () => await import('./views/SettingsSkillsView.vue'),
+			meta: {
+				middleware: ['authenticated'],
+				telemetry: {
+					pageCategory: 'settings',
+				},
+			},
+			beforeEnter: async () =>
+				(await isContextPreferencesEnabledOnceEvaluated()) || { name: VIEWS.HOMEPAGE },
+		},
 	],
 };

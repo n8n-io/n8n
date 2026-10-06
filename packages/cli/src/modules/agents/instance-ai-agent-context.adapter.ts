@@ -181,8 +181,9 @@ export class InstanceAiAgentContextAdapterService {
 					configHash: getAgentConfigHash(config),
 				};
 			case 'skills': {
+				const bodies = await this.agentSkillsService.listSkills(agent.id, projectId);
 				return {
-					skills: Object.entries(agent.skills ?? {}).map(([id, skill]) => ({
+					skills: Object.entries(bodies).map(([id, skill]) => ({
 						id,
 						name: skill.name,
 						description: skill.description,

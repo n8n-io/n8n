@@ -41,6 +41,7 @@ import { isValidCronExpression } from './integrations/cron-validation';
 import { AgentTaskSnapshotRepository } from './repositories/agent-task-snapshot.repository';
 import { AgentTaskRepository } from './repositories/agent-task.repository';
 import { AgentRepository } from './repositories/agent.repository';
+import { SkillHubService } from './skills-hub/skill-hub.service';
 import { findWorkflowToolWorkflows } from './tools/workflow-tool-workflow-resolver';
 import { extractAgentWorkflowRefs } from './utils/extract-agent-workflow-refs';
 import { findHttpRequestToolUrlFromAiViolations } from './utils/node-tool-validation';
@@ -91,6 +92,7 @@ export class AgentValidationService {
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly chatIntegrationRegistry: ChatIntegrationRegistry,
 		private readonly aiGatewayService: AiGatewayService,
+		private readonly skillHub: SkillHubService,
 	) {}
 
 	/**
@@ -197,7 +199,7 @@ export class AgentValidationService {
 				agentId: agent.id,
 				projectId,
 				config: agent.schema,
-				skills: agent.skills ?? {},
+				skills: await this.skillHub.resolveDraftSkills(agent.schema),
 				customTools: agent.tools ?? {},
 				integrations: agent.integrations ?? [],
 				tasks,
@@ -231,7 +233,7 @@ export class AgentValidationService {
 				agentId,
 				projectId,
 				config: history.schema,
-				skills: history.skills ?? {},
+				skills: await this.skillHub.resolvePinnedSkills(history.versionId),
 				customTools: history.tools ?? {},
 				integrations: currentIntegrations,
 				tasks,
