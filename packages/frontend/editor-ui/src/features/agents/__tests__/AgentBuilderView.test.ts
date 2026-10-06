@@ -603,6 +603,7 @@ const commonStubs = {
 			'configValidationStatus',
 			'saveStatus',
 			'beforePublish',
+			'tasks',
 		],
 		emits: [
 			'header-action',
@@ -2667,12 +2668,12 @@ describe('AgentBuilderView — configuration validation', () => {
 		'completes the add-tool setup task when adding %s',
 		async (kind) => {
 			const wrapper = await renderView();
-			const setupTasks = wrapper.findComponent({ name: 'AgentSetupTasks' });
+			const header = wrapper.findComponent({ name: 'AgentBuilderHeader' });
 			const vm = wrapper.vm as unknown as {
 				onConfigFieldUpdate: (updates: Partial<AgentJsonConfig>) => void;
 			};
 
-			expect(setupTasks.props('tasks')).toEqual(
+			expect(header.props('tasks')).toEqual(
 				expect.arrayContaining([expect.objectContaining({ id: 'add-tool', state: 'todo' })]),
 			);
 
@@ -2692,39 +2693,40 @@ describe('AgentBuilderView — configuration validation', () => {
 			});
 			await nextTick();
 
-			expect(setupTasks.props('tasks')).toEqual(
+			expect(header.props('tasks')).toEqual(
 				expect.arrayContaining([expect.objectContaining({ id: 'add-tool', state: 'complete' })]),
 			);
 
 			vm.onConfigFieldUpdate({ tools: [], mcpServers: [] });
 			await nextTick();
 
-			expect(setupTasks.props('tasks')).toEqual(
+			expect(header.props('tasks')).toEqual(
 				expect.arrayContaining([expect.objectContaining({ id: 'add-tool', state: 'todo' })]),
 			);
 		},
 	);
 
-	it('shows the publish setup task only when the publish button is ready', async () => {
+	it('shows the publish setup task for a tested agent only when the publish button is ready', async () => {
+		fetchedSessionThreads.push({ id: 'thread-tested', updatedAt: '2026-01-02T00:00:00Z' });
+
 		const wrapper = await renderView();
 		const header = wrapper.findComponent({ name: 'AgentBuilderHeader' });
-		const setupTasks = wrapper.findComponent({ name: 'AgentSetupTasks' });
 
-		expect(setupTasks.props('tasks')).toEqual(
+		expect(header.props('tasks')).toEqual(
 			expect.arrayContaining([expect.objectContaining({ id: 'publish-agent', visible: false })]),
 		);
 
 		header.vm.$emit('publish-ready', true);
 		await nextTick();
 
-		expect(setupTasks.props('tasks')).toEqual(
+		expect(header.props('tasks')).toEqual(
 			expect.arrayContaining([expect.objectContaining({ id: 'publish-agent', visible: true })]),
 		);
 
 		header.vm.$emit('publish-ready', false);
 		await nextTick();
 
-		expect(setupTasks.props('tasks')).toEqual(
+		expect(header.props('tasks')).toEqual(
 			expect.arrayContaining([expect.objectContaining({ id: 'publish-agent', visible: false })]),
 		);
 	});
