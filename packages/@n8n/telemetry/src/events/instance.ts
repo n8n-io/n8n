@@ -17,6 +17,14 @@ export const INSTANCE_TELEMETRY = defineTelemetryEvents({
 					'Postgres server version, or SQLite library version. Null when it could not be determined, which for `postgresdb` means the query failed rather than that the instance runs SQLite.',
 				),
 			n8n_version_notifications_enabled: z.boolean(),
+			db_vendor: z
+				.enum(['aurora', 'rds', 'azure', 'cloud-sql', 'other'])
+				.optional()
+				.describe('Managed Postgres service n8n runs on. Absent on SQLite'),
+			redis_vendor: z
+				.enum(['elasticache', 'azure-cache', 'other'])
+				.optional()
+				.describe('Managed Redis service n8n uses. Absent outside queue mode'),
 			n8n_disable_production_main_process: z.boolean(),
 			system_info: z.object({
 				os: z.object({
