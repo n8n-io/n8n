@@ -125,7 +125,7 @@ export class InstanceAiConfig {
 	 * Marks an instance that serves the Instance AI eval harness. Only then may an eval run
 	 * reset per-workflow state (Remove Duplicates history) around a scenario: on a normal
 	 * instance an eval pointed at a real workflow must leave its history alone. An eval
-	 * instance also skips PostHog, so feature flags come only from env overrides.
+	 * instance also skips PostHog, so feature flags resolve from their defaults plus env overrides.
 	 */
 	@Env('N8N_INSTANCE_AI_EVAL_INSTANCE')
 	evalInstance: boolean = false;
