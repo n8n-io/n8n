@@ -10,7 +10,7 @@ import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 import { randomUUID } from 'node:crypto';
 
-const MIGRATION_NAME = 'AddVerdictToAgentEvalResult1791215724752';
+const MIGRATION_NAME = 'AddVerdictToAgentEvalResult1791286443000';
 
 describe('AddVerdictToAgentEvalResult migration', () => {
 	let dataSource: DataSource;
