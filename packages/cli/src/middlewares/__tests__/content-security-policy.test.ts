@@ -78,6 +78,16 @@ const setupApp = (policies: ContentSecurityPolicies) => {
 		res.end('export {};');
 	});
 
+	app.get('/empty-type', (_req, res) => {
+		res.setHeader('Content-Type', []);
+		res.end('<p>page</p>');
+	});
+
+	app.get('/raw-empty-type', (_req, res) => {
+		res.writeHead(200, { 'Content-Type': [] });
+		res.end('<p>page</p>');
+	});
+
 	app.get('/error', (_req, res) => {
 		res.status(500).json({ message: 'error' });
 	});
@@ -230,6 +240,17 @@ describe('createContentSecurityPolicyMiddleware', () => {
 			expect(response.headers[ENFORCED]).toBeUndefined();
 			expect(response.headers[REPORT_ONLY]).toBeUndefined();
 		});
+
+		it.each(['/empty-type', '/raw-empty-type'])(
+			'should serve both headers when the content type header has no value (%s)',
+			async (path) => {
+				const response = await request(app).get(path);
+
+				expect(response.headers['content-type']).toBeUndefined();
+				expect(response.headers[ENFORCED]).toContain("'strict-dynamic'");
+				expect(response.headers[REPORT_ONLY]).toContain("object-src 'none'");
+			},
+		);
 
 		it('should serve neither header when every content type value is JavaScript', async () => {
 			const response = await request(app).get('/scripts');

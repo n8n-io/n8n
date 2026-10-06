@@ -28,16 +28,15 @@ const essenceOf = (contentType: string) => contentType.split(';')[0].trim().toLo
 /**
  * Whether the response is a script, the one type that gets no policy. Any other response
  * gets it, one without a type included, because a browser can render it as a page. A
- * header with several values counts as a script only when every value is one.
+ * header with several values counts as a script only when every value is one, and a
+ * header with no value, which sends no type at all, never counts as one.
  */
 const isJavaScriptResponse = (res: Response) => {
 	const contentType = res.getHeader('content-type');
 	if (contentType === undefined) return false;
 
-	return [contentType]
-		.flat()
-		.flatMap((value) => String(value).split(','))
-		.every((value) => JAVASCRIPT_TYPES.has(essenceOf(value)));
+	const values = [contentType].flat().flatMap((value) => String(value).split(','));
+	return values.length > 0 && values.every((value) => JAVASCRIPT_TYPES.has(essenceOf(value)));
 };
 
 const hasOwnPolicy = (res: Response) =>
