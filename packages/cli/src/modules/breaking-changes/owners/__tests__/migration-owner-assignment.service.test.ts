@@ -1,5 +1,6 @@
+import type { WorkflowSharingService } from '@n8n/backend-services';
 import type { User, UserRepository, WorkflowRepository } from '@n8n/db';
-import { NotFoundError } from '@n8n/errors';
+import { BadRequestError, NotFoundError } from '@n8n/errors';
 import type { MockProxy } from 'vitest-mock-extended';
 import { mock } from 'vitest-mock-extended';
 
@@ -21,6 +22,7 @@ describe('MigrationOwnerAssignmentService', () => {
 	let userRepository: MockProxy<UserRepository>;
 	let ownerRepository: MockProxy<MigrationWorkflowOwnerRepository>;
 	let suggestionService: MockProxy<MigrationOwnerSuggestionService>;
+	let workflowSharingService: MockProxy<WorkflowSharingService>;
 	let service: MigrationOwnerAssignmentService;
 
 	beforeEach(() => {
@@ -28,14 +30,17 @@ describe('MigrationOwnerAssignmentService', () => {
 		userRepository = mock<UserRepository>();
 		ownerRepository = mock<MigrationWorkflowOwnerRepository>();
 		suggestionService = mock<MigrationOwnerSuggestionService>();
+		workflowSharingService = mock<WorkflowSharingService>();
 		workflowRepository.findExistingIds.mockResolvedValue([WORKFLOW_ID]);
 		userRepository.findManyByIds.mockResolvedValue([alice]);
 		suggestionService.suggestOwners.mockResolvedValue([]);
+		workflowSharingService.getUserIdsWithAccessToWorkflow.mockResolvedValue([alice.id]);
 		service = new MigrationOwnerAssignmentService(
 			workflowRepository,
 			userRepository,
 			ownerRepository,
 			suggestionService,
+			workflowSharingService,
 		);
 	});
 
@@ -67,6 +72,15 @@ describe('MigrationOwnerAssignmentService', () => {
 			expect(ownerRepository.assign).not.toHaveBeenCalled();
 		});
 
+		it('rejects a user who cannot access the workflow before writing', async () => {
+			workflowSharingService.getUserIdsWithAccessToWorkflow.mockResolvedValue(['someone-else']);
+
+			await expect(service.assign(WORKFLOW_ID, alice.id, admin)).rejects.toBeInstanceOf(
+				BadRequestError,
+			);
+			expect(ownerRepository.assign).not.toHaveBeenCalled();
+		});
+
 		it('rejects an unknown user before writing', async () => {
 			userRepository.findManyByIds.mockResolvedValue([]);
 
@@ -78,39 +92,45 @@ describe('MigrationOwnerAssignmentService', () => {
 	});
 
 	describe('unassign', () => {
-		it('drops the owner, puts the suggestion back and returns it', async () => {
+		it('replaces the owner with the suggestion in one step and returns it', async () => {
 			suggestionService.suggestOwners.mockResolvedValue([
 				{ workflowId: WORKFLOW_ID, userId: alice.id },
 			]);
 
 			const owner = await service.unassign(WORKFLOW_ID);
 
-			expect(ownerRepository.removeOwner).toHaveBeenCalledWith(WORKFLOW_ID, expect.anything());
 			expect(suggestionService.suggestOwners).toHaveBeenCalledWith([WORKFLOW_ID]);
-			expect(ownerRepository.replaceSuggestions).toHaveBeenCalledWith(
-				[WORKFLOW_ID],
-				[{ workflowId: WORKFLOW_ID, userId: alice.id }],
+			expect(ownerRepository.resetToSuggestion).toHaveBeenCalledWith(
+				WORKFLOW_ID,
+				alice.id,
 				expect.anything(),
 			);
 			expect(owner).toMatchObject({ id: alice.id, source: 'suggested' });
 		});
 
-		it('returns no owner when the heuristic has no suggestion', async () => {
+		it('leaves the workflow without an owner when the heuristic has no suggestion', async () => {
 			const owner = await service.unassign(WORKFLOW_ID);
 
-			expect(ownerRepository.replaceSuggestions).toHaveBeenCalledWith(
-				[WORKFLOW_ID],
-				[],
+			expect(ownerRepository.resetToSuggestion).toHaveBeenCalledWith(
+				WORKFLOW_ID,
+				undefined,
 				expect.anything(),
 			);
 			expect(owner).toBeNull();
+		});
+
+		it('keeps the assignment when the heuristic fails', async () => {
+			suggestionService.suggestOwners.mockRejectedValue(new Error('activity log unavailable'));
+
+			await expect(service.unassign(WORKFLOW_ID)).rejects.toThrow('activity log unavailable');
+			expect(ownerRepository.resetToSuggestion).not.toHaveBeenCalled();
 		});
 
 		it('rejects an unknown workflow before writing', async () => {
 			workflowRepository.findExistingIds.mockResolvedValue([]);
 
 			await expect(service.unassign(WORKFLOW_ID)).rejects.toBeInstanceOf(NotFoundError);
-			expect(ownerRepository.removeOwner).not.toHaveBeenCalled();
+			expect(ownerRepository.resetToSuggestion).not.toHaveBeenCalled();
 		});
 	});
 });

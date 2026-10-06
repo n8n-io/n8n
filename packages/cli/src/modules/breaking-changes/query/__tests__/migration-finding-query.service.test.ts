@@ -7,6 +7,8 @@ import type {
 } from '@n8n/api-types';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type {
+	Project,
+	SharedWorkflowRepository,
 	User,
 	UserRepository,
 	WorkflowEntity,
@@ -138,6 +140,7 @@ describe('MigrationFindingQueryService', () => {
 	let syncRepository: MockProxy<MigrationFindingSyncRepository>;
 	let ownerRepository: MockProxy<MigrationWorkflowOwnerRepository>;
 	let userRepository: MockProxy<UserRepository>;
+	let sharedWorkflowRepository: MockProxy<SharedWorkflowRepository>;
 	let errorReporter: MockProxy<ErrorReporter>;
 	let service: MigrationFindingQueryService;
 
@@ -151,6 +154,7 @@ describe('MigrationFindingQueryService', () => {
 		syncRepository = mock<MigrationFindingSyncRepository>();
 		ownerRepository = mock<MigrationWorkflowOwnerRepository>();
 		userRepository = mock<UserRepository>();
+		sharedWorkflowRepository = mock<SharedWorkflowRepository>();
 		errorReporter = mock<ErrorReporter>();
 
 		ruleRegistry.getRules.mockReturnValue(allRules);
@@ -167,6 +171,7 @@ describe('MigrationFindingQueryService', () => {
 		syncRepository.getForVersion.mockResolvedValue(null);
 		ownerRepository.findByWorkflowIds.mockResolvedValue([]);
 		userRepository.findManyByIds.mockResolvedValue([]);
+		sharedWorkflowRepository.findOwnerProjectsByWorkflowIds.mockResolvedValue(new Map());
 
 		service = new MigrationFindingQueryService(
 			ruleRegistry,
@@ -178,6 +183,7 @@ describe('MigrationFindingQueryService', () => {
 			syncRepository,
 			ownerRepository,
 			userRepository,
+			sharedWorkflowRepository,
 			mockLogger(),
 			errorReporter,
 		);
@@ -404,6 +410,27 @@ describe('MigrationFindingQueryService', () => {
 				source: 'suggested',
 			});
 			expect(result.affectedWorkflows[1].owner).toBeUndefined();
+		});
+
+		it('adds the id of the project that owns each workflow', async () => {
+			findingRepository.listOpenForRule.mockResolvedValue([
+				openFinding(1, 'rule-a', {
+					id: 'wf-1',
+					name: 'First',
+					activeVersionId: null,
+					updatedAt: UPDATED_AT,
+				}),
+			]);
+			sharedWorkflowRepository.findOwnerProjectsByWorkflowIds.mockResolvedValue(
+				new Map([['wf-1', { id: 'project-1' } as Project]]),
+			);
+
+			const result = await service.getRuleFindings(TARGET_VERSION, 'rule-a');
+
+			expect(sharedWorkflowRepository.findOwnerProjectsByWorkflowIds).toHaveBeenCalledWith([
+				'wf-1',
+			]);
+			expect(result.affectedWorkflows[0].homeProjectId).toBe('project-1');
 		});
 
 		it('lists a workflow without an owner when its owner row has no user any more', async () => {

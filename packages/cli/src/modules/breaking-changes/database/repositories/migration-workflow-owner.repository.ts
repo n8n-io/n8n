@@ -26,28 +26,44 @@ export class MigrationWorkflowOwnerRepository extends BaseRepository<MigrationWo
 		});
 	}
 
-	/** Sets the owner a person chose. It replaces a suggestion or an earlier assignment. */
+	/**
+	 * Sets the owner a person chose, over a suggestion or an earlier assignment.
+	 * One statement, so a sync that writes a suggestion at the same time cannot
+	 * slip a row in between and fail the assignment.
+	 */
 	async assign(
 		workflowId: string,
 		userId: string,
 		assignedById: string,
 		ctx: OperationContext,
 	): Promise<void> {
-		await this.runInTransaction(ctx, async (manager) => {
-			await manager.delete(MigrationWorkflowOwner, { workflowId });
-			await manager.insert(MigrationWorkflowOwner, {
-				workflowId,
-				userId,
-				source: 'assigned',
-				assignedById,
-				assignedAt: new Date(),
-			});
-		});
+		await this.managerFor(ctx).upsert(
+			MigrationWorkflowOwner,
+			{ workflowId, userId, source: 'assigned', assignedById, assignedAt: new Date() },
+			['workflowId'],
+		);
 	}
 
-	/** Removes the owner of the workflow, assigned or suggested. */
-	async removeOwner(workflowId: string, ctx: OperationContext): Promise<void> {
-		await this.managerFor(ctx).delete(MigrationWorkflowOwner, { workflowId });
+	/**
+	 * Replaces whatever owner the workflow has with the heuristic's suggestion,
+	 * or leaves it without one. Both steps succeed or fail together.
+	 */
+	async resetToSuggestion(
+		workflowId: string,
+		suggestedUserId: string | undefined,
+		ctx: OperationContext,
+	): Promise<void> {
+		await this.runInTransaction(ctx, async (manager) => {
+			await manager.delete(MigrationWorkflowOwner, { workflowId });
+			if (!suggestedUserId) return;
+			await manager.insert(MigrationWorkflowOwner, {
+				workflowId,
+				userId: suggestedUserId,
+				source: 'suggested',
+				assignedById: null,
+				assignedAt: null,
+			});
+		});
 	}
 
 	/**

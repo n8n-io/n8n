@@ -107,6 +107,8 @@ const affectedWorkflowSchema = z.object({
 	issues: z.array(workflowIssueSchema),
 	// Absent when no owner is known for the workflow.
 	owner: workflowOwnerSchema.optional(),
+	// The project that owns the workflow, so an owner picker can list its members.
+	homeProjectId: z.string().optional(),
 });
 export type BreakingChangeAffectedWorkflow = z.infer<typeof affectedWorkflowSchema>;
 

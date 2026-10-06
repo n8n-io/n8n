@@ -7,8 +7,8 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
 import { useRBACStore } from '@n8n/stores/rbac.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { useUsersStore } from '@n8n/stores/users.store';
 import { useUIStore } from '@/app/stores/ui.store';
+import * as usersApi from '@n8n/rest-api-client/api/users';
 import { MIGRATE_WORKFLOW_MODAL_KEY } from '@/app/constants';
 import MigrationRuleDetail from './MigrationRuleDetail.vue';
 import * as breakingChangesApi from '@n8n/rest-api-client/api/breaking-changes';
@@ -21,6 +21,16 @@ vi.mock('@n8n/rest-api-client/api/breaking-changes', () => ({
 	assignWorkflowOwner: vi.fn(),
 	unassignWorkflowOwner: vi.fn(),
 }));
+vi.mock('@n8n/rest-api-client/api/users', () => ({
+	getUsers: vi.fn(),
+}));
+
+const grace = {
+	id: 'user-2',
+	firstName: 'Grace',
+	lastName: 'Hopper',
+	email: 'grace@example.com',
+};
 
 const { showError, resolveRoute } = vi.hoisted(() => ({
 	showError: vi.fn(),
@@ -41,7 +51,6 @@ vi.mock('vue-router', async (importOriginal) => ({
 let rootStore: ReturnType<typeof mockedStore<typeof useRootStore>>;
 let uiStore: ReturnType<typeof mockedStore<typeof useUIStore>>;
 let rbacStore: ReturnType<typeof mockedStore<typeof useRBACStore>>;
-let usersStore: ReturnType<typeof mockedStore<typeof useUsersStore>>;
 let renderComponent: ReturnType<typeof createComponentRenderer>;
 
 const mockWorkflowWithIssue = {
@@ -141,8 +150,7 @@ describe('MigrationRuleDetail', () => {
 		uiStore = mockedStore(useUIStore);
 		rbacStore = mockedStore(useRBACStore);
 		rbacStore.hasScope.mockImplementation((scope) => scope === 'breakingChanges:migrate');
-		usersStore = mockedStore(useUsersStore);
-		usersStore.allUsers = [];
+		vi.mocked(usersApi.getUsers).mockResolvedValue({ count: 1, items: [grace] });
 
 		vi.mocked(breakingChangesApi.getReportForRule).mockResolvedValue(mockRuleResult);
 	});
@@ -464,62 +472,90 @@ describe('MigrationRuleDetail', () => {
 			});
 		});
 
-		it('should offer an owner picker per row to a user with the migrate scope, loading users once', async () => {
+		it('should offer an owner picker per row to a user with the migrate scope, showing the current owner', async () => {
 			renderComponent({ props: { migrationRuleId: 'rule-1' } });
 
 			await waitFor(() => {
 				expect(screen.getAllByTestId('migration-owner-select')).toHaveLength(2);
 			});
-			expect(usersStore.fetchUsers).toHaveBeenCalledTimes(1);
-			// The picker shows the current owner, who is not in the loaded user list.
+			// No picker was opened yet, so no member search ran.
+			expect(usersApi.getUsers).not.toHaveBeenCalled();
 			expect(screen.getByDisplayValue('Ada Lovelace (ada@example.com)')).toBeInTheDocument();
 		});
 
-		it('should show a plain label and load no users for a user without the migrate scope', async () => {
+		it('should show a plain label for a user without the migrate scope', async () => {
 			rbacStore.hasScope.mockReturnValue(false);
 			renderComponent({ props: { migrationRuleId: 'rule-1' } });
 
 			await waitFor(() => expect(screen.getByText('Ada Lovelace')).toBeInTheDocument());
 			expect(screen.queryByTestId('migration-owner-select')).not.toBeInTheDocument();
-			expect(usersStore.fetchUsers).not.toHaveBeenCalled();
 		});
 
-		it('assigns the picked user and shows the returned owner', async () => {
-			usersStore.allUsers = [
-				{
-					id: 'user-2',
-					firstName: 'Grace',
-					lastName: 'Hopper',
-					fullName: 'Grace Hopper',
-					email: 'grace@example.com',
-				},
-			];
+		it("searches the members of the row's project, assigns the picked user and shows the returned owner", async () => {
 			vi.mocked(breakingChangesApi.assignWorkflowOwner).mockResolvedValue({
-				owner: {
-					id: 'user-2',
-					firstName: 'Grace',
-					lastName: 'Hopper',
-					email: 'grace@example.com',
-					source: 'assigned',
-				},
+				owner: { ...grace, source: 'assigned' },
 			});
 			vi.mocked(breakingChangesApi.getReportForRule).mockResolvedValue(
-				createMockRuleResult({ affectedWorkflows: [mockWorkflowWithMultipleNodes] }),
+				createMockRuleResult({
+					affectedWorkflows: [{ ...mockWorkflowWithMultipleNodes, homeProjectId: 'project-1' }],
+				}),
 			);
 			const { baseElement } = renderComponent({ props: { migrationRuleId: 'rule-1' } });
 			await waitFor(() => expect(screen.getByTestId('migration-owner-select')).toBeInTheDocument());
 
 			await userEvent.click(screen.getByRole('combobox'));
+			await waitFor(() => {
+				expect(usersApi.getUsers).toHaveBeenCalledWith(
+					expect.anything(),
+					expect.objectContaining({ filter: { projectId: 'project-1' } }),
+				);
+			});
 			await waitFor(() => expect(screen.getByRole('listbox')).toBeInTheDocument());
-			await userEvent.click(
-				baseElement.querySelector('#user-select-option-id-user-2') as HTMLElement,
-			);
+			const option = await waitFor(() => {
+				const found = baseElement.querySelector('#user-select-option-id-user-2');
+				expect(found).not.toBeNull();
+				return found as HTMLElement;
+			});
+			await userEvent.click(option);
 
 			await waitFor(() => {
 				expect(breakingChangesApi.assignWorkflowOwner).toHaveBeenCalledWith(
 					expect.anything(),
 					'workflow-2',
 					'user-2',
+				);
+			});
+			await waitFor(() => {
+				expect(screen.getByDisplayValue('Grace Hopper (grace@example.com)')).toBeInTheDocument();
+			});
+		});
+
+		it('clears the assignment and shows the suggestion that comes back', async () => {
+			vi.mocked(breakingChangesApi.unassignWorkflowOwner).mockResolvedValue({
+				owner: { ...grace, source: 'suggested' },
+			});
+			vi.mocked(breakingChangesApi.getReportForRule).mockResolvedValue(
+				createMockRuleResult({ affectedWorkflows: [mockWorkflowWithIssue] }),
+			);
+			renderComponent({ props: { migrationRuleId: 'rule-1' } });
+			await waitFor(() => {
+				expect(screen.getByDisplayValue('Ada Lovelace (ada@example.com)')).toBeInTheDocument();
+			});
+
+			// The clear icon replaces the caret while the trigger is hovered and has a value.
+			const picker = screen.getByTestId('migration-owner-select');
+			await userEvent.hover(picker.querySelector('.select-trigger') as HTMLElement);
+			const clearButton = await waitFor(() => {
+				const found = picker.querySelector('.el-select__caret');
+				expect(found).not.toBeNull();
+				return found as HTMLElement;
+			});
+			await userEvent.click(clearButton);
+
+			await waitFor(() => {
+				expect(breakingChangesApi.unassignWorkflowOwner).toHaveBeenCalledWith(
+					expect.anything(),
+					'workflow-1',
 				);
 			});
 			await waitFor(() => {

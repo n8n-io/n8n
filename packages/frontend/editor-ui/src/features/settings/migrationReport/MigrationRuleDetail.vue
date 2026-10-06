@@ -11,7 +11,7 @@ import type {
 	MigrationFindingTriageStatus,
 } from '@n8n/api-types';
 import { useUIStore } from '@/app/stores/ui.store';
-import { useUsersStore } from '@n8n/stores/users.store';
+import { getUsers } from '@n8n/rest-api-client/api/users';
 import {
 	N8nBadge,
 	N8nButton,
@@ -36,14 +36,13 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { useAsyncState, useDebounceFn } from '@vueuse/core';
 import orderBy from 'lodash/orderBy';
-import { computed, onMounted, ref } from 'vue';
+import { computed, nextTick, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import FindingStateSelect from './components/FindingStateSelect.vue';
 import ImpactTag from './components/ImpactTag.vue';
 
 const i18n = useI18n();
 const uiStore = useUIStore();
-const usersStore = useUsersStore();
 const rootStore = useRootStore();
 const rbacStore = useRBACStore();
 const toast = useToast();
@@ -80,36 +79,55 @@ const { state, isLoading } = useAsyncState<BreakingChangeRuleDetailResult>(
 
 type AffectedWorkflow = BreakingChangeRuleDetailWorkflow;
 
-// The picker lists the users loaded so far plus every owner already shown, so a
-// row never displays a bare id while the user list is still loading.
+// The picker searches the members of the focused row's project. One result list
+// serves every row, since only one picker is open at a time.
 const isLoadingUsers = ref(false);
-const ownerOptions = computed<IUser[]>(() => {
-	const byId = new Map<string, IUser>(usersStore.allUsers.map((user) => [user.id, user]));
-	for (const workflow of state.value.affectedWorkflows) {
-		const owner = workflow.owner;
-		if (owner && !byId.has(owner.id)) byId.set(owner.id, ownerAsUser(owner));
-	}
-	return [...byId.values()];
-});
+const activeProjectId = ref<string | undefined>();
+const memberOptions = ref<IUser[]>([]);
 
-function ownerAsUser(owner: BreakingChangeWorkflowOwner): IUser {
-	const fullName = [owner.firstName, owner.lastName].filter(Boolean).join(' ');
+function userOption(user: {
+	id: string;
+	firstName?: string | null;
+	lastName?: string | null;
+	email?: string | null;
+}): IUser {
+	const fullName = [user.firstName, user.lastName].filter(Boolean).join(' ');
 	return {
-		id: owner.id,
-		firstName: owner.firstName,
-		lastName: owner.lastName,
-		email: owner.email,
+		id: user.id,
+		firstName: user.firstName,
+		lastName: user.lastName,
+		email: user.email,
 		fullName: fullName || undefined,
 	};
 }
 
-async function loadUsers(query = '') {
+// An owner that just came back from the server, registered as an option one
+// tick before the row takes it as its value, so the picker can resolve the label.
+const incomingOwners = ref(new Map<string, BreakingChangeWorkflowOwner>());
+
+/** The members found for the row's project, plus the row's owner so the picker never shows a bare id. */
+function ownerOptionsFor(workflow: AffectedWorkflow): IUser[] {
+	const options = workflow.homeProjectId === activeProjectId.value ? [...memberOptions.value] : [];
+	for (const owner of [workflow.owner, incomingOwners.value.get(workflow.id)]) {
+		// The picker needs an email on every option; an owner without one is left out.
+		if (owner?.email && !options.some((option) => option.id === owner.id)) {
+			options.push(userOption(owner));
+		}
+	}
+	return options;
+}
+
+async function loadMembers(projectId: string | undefined, query = '') {
 	isLoadingUsers.value = true;
 	try {
-		await usersStore.fetchUsers({
+		const { items } = await getUsers(rootStore.restApiContext, {
 			take: 50,
-			filter: query.trim() ? { fullText: query.trim() } : undefined,
+			filter: {
+				...(projectId ? { projectId } : {}),
+				...(query.trim() ? { fullText: query.trim() } : {}),
+			},
 		});
+		memberOptions.value = items.map(userOption);
 	} catch (error) {
 		toast.showError(
 			error,
@@ -119,17 +137,34 @@ async function loadUsers(query = '') {
 		isLoadingUsers.value = false;
 	}
 }
-const searchUsers = useDebounceFn(loadUsers, getDebounceTime(DEBOUNCE_TIME.INPUT.SEARCH));
 
-onMounted(() => {
-	if (canAssignOwner.value) void loadUsers();
-});
+function onOwnerPickerFocus(workflow: AffectedWorkflow) {
+	if (activeProjectId.value === workflow.homeProjectId && memberOptions.value.length > 0) return;
+	activeProjectId.value = workflow.homeProjectId;
+	memberOptions.value = [];
+	void loadMembers(workflow.homeProjectId);
+}
+
+const searchMembers = useDebounceFn(
+	async (query: string) => await loadMembers(activeProjectId.value, query),
+	getDebounceTime(DEBOUNCE_TIME.INPUT.SEARCH),
+);
+
+// A quick second change can answer before the first; only the latest answer may land.
+const ownerRequestSequence = new Map<string, number>();
 
 async function onOwnerChange(workflow: AffectedWorkflow, userId: string) {
+	const sequence = (ownerRequestSequence.get(workflow.id) ?? 0) + 1;
+	ownerRequestSequence.set(workflow.id, sequence);
 	try {
 		const { owner } = userId
 			? await breakingChangesApi.assignWorkflowOwner(rootStore.restApiContext, workflow.id, userId)
 			: await breakingChangesApi.unassignWorkflowOwner(rootStore.restApiContext, workflow.id);
+		if (ownerRequestSequence.get(workflow.id) !== sequence) return;
+		if (owner) {
+			incomingOwners.value = new Map(incomingOwners.value).set(workflow.id, owner);
+			await nextTick();
+		}
 		// The async state is shallow, so the list is replaced rather than mutated.
 		state.value = {
 			...state.value,
@@ -137,6 +172,9 @@ async function onOwnerChange(workflow: AffectedWorkflow, userId: string) {
 				row.id === workflow.id ? { ...row, owner: owner ?? undefined } : row,
 			),
 		};
+		const remaining = new Map(incomingOwners.value);
+		remaining.delete(workflow.id);
+		incomingOwners.value = remaining;
 	} catch (error) {
 		toast.showError(error, i18n.baseText('settings.migrationReport.detail.owner.error.title'));
 	}
@@ -511,14 +549,15 @@ const sortedWorkflows = computed(() => {
 				<div v-if="canAssignOwner" @click.stop>
 					<N8nUserSelect
 						size="small"
-						:users="ownerOptions"
+						:users="ownerOptionsFor(item)"
 						:model-value="item.owner?.id ?? ''"
 						:placeholder="i18n.baseText('settings.migrationReport.detail.table.unassigned')"
 						remote
-						:remote-method="searchUsers"
+						:remote-method="searchMembers"
 						:loading="isLoadingUsers"
 						clearable
 						data-test-id="migration-owner-select"
+						@focus="onOwnerPickerFocus(item)"
 						@update:model-value="(userId: string) => onOwnerChange(item, userId)"
 					/>
 				</div>
