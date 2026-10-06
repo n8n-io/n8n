@@ -1,5 +1,6 @@
 import type { AuthenticationMethod, ProjectRelation, RedactionFloor } from '@n8n/api-types';
 import type { AuthProviderType, User, IWorkflowDb } from '@n8n/db';
+import type { AssignableProjectRole } from '@n8n/permissions';
 import type {
 	CancellationReason,
 	HitlResponseTelemetryPayload,
@@ -729,6 +730,12 @@ export type RelayEventMap = {
 		userId: string;
 		role: string;
 		uiContext?: string;
+	};
+
+	'team-project-shared': {
+		sharer: User;
+		newSharees: Array<{ userId: string; role: AssignableProjectRole }>;
+		project: { id: string; name: string };
 	};
 
 	// #endregion

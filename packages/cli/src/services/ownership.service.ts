@@ -169,19 +169,6 @@ export class OwnershipService {
 		}
 	}
 
-	async invalidateWorkflowProjectCacheForProject(projectId: string): Promise<void> {
-		const rows = await this.sharedWorkflowRepository.find({
-			where: { projectId, role: 'workflow:owner' },
-			select: ['workflowId'],
-		});
-		await Promise.all(
-			rows.map(
-				async ({ workflowId }) =>
-					await this.cacheService.deleteFromHash('workflow-project', workflowId),
-			),
-		);
-	}
-
 	/**
 	 * Invalidate the cached project for specific workflows. Use after a bulk
 	 * ownership change where the workflow IDs are already known and their

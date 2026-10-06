@@ -1,6 +1,6 @@
 import type { Logger } from '@n8n/backend-common';
 import { EventService } from '@n8n/backend-services';
-import type { UserRepository } from '@n8n/db';
+import type { User, UserRepository } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
 import type { RelayEventMap } from '@/events/maps/relay.event-map';
@@ -13,12 +13,13 @@ describe('WorkflowFailureNotificationEventRelay', () => {
 	const mailer = mock<UserManagementMailer>({ isEmailSetUp: false });
 	const userRepository = mock<UserRepository>();
 	const logger = mock<Logger>();
-	const eventService = new EventService();
 
+	let eventService: EventService;
 	let relay: WorkflowFailureNotificationEventRelay;
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		eventService = new EventService();
 		relay = new WorkflowFailureNotificationEventRelay(eventService, mailer, userRepository, logger);
 		relay.init();
 	});
@@ -154,6 +155,47 @@ describe('WorkflowFailureNotificationEventRelay', () => {
 				workflowId: 'workflow123',
 				userId: 'user123',
 				error: 'string error',
+			});
+		});
+	});
+
+	describe('team-project-shared event', () => {
+		const event: RelayEventMap['team-project-shared'] = {
+			sharer: mock<User>({ id: 'sharer-1' }),
+			newSharees: [{ userId: 'user-1', role: 'project:viewer' }],
+			project: { id: 'project-1', name: 'Project' },
+		};
+
+		it('sends the project notification', async () => {
+			eventService.emit('team-project-shared', event);
+			await flushPromises();
+
+			expect(mailer.notifyProjectShared).toHaveBeenCalledWith(event);
+		});
+
+		it('logs an error when the notification fails', async () => {
+			mailer.notifyProjectShared.mockRejectedValueOnce(new Error('Template failed'));
+
+			eventService.emit('team-project-shared', event);
+			await flushPromises();
+
+			expect(logger.error).toHaveBeenCalledWith('Failed to send project shared email', {
+				projectId: 'project-1',
+				sharerId: 'sharer-1',
+				error: 'Template failed',
+			});
+		});
+
+		it('logs a non-error notification failure', async () => {
+			mailer.notifyProjectShared.mockRejectedValueOnce('Template failed');
+
+			eventService.emit('team-project-shared', event);
+			await flushPromises();
+
+			expect(logger.error).toHaveBeenCalledWith('Failed to send project shared email', {
+				projectId: 'project-1',
+				sharerId: 'sharer-1',
+				error: 'Template failed',
 			});
 		});
 	});

@@ -16,6 +16,8 @@ export {
 } from './services/role-deletion-check-proxy.service';
 export { RoleService } from './services/role.service';
 export { ProjectScopeService } from './services/project-scope.service';
+export { ProjectNotFoundError } from './errors/project-not-found.error';
+export { WorkflowProjectCacheService } from './services/workflow-project-cache.service';
 export {
 	OwnershipTransferHandlerRegistry,
 	type ProjectOwnershipTransferHandler,

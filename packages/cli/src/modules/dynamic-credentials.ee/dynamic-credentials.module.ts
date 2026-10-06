@@ -58,6 +58,11 @@ export class DynamicCredentialsModule implements ModuleInterface {
 			Container.get(CredentialConnectionStatusService),
 		);
 
+		const { CredentialConnectionStatusCleanupListener } = await import(
+			'./services/credential-connection-status-cleanup-listener.js'
+		);
+		Container.get(CredentialConnectionStatusCleanupListener).init();
+
 		// Register the executing-user identifier so the redaction layer can attribute
 		// a run to its user from the established identity carrier — the same source
 		// credential resolution uses.

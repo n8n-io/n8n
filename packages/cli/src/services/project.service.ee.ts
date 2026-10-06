@@ -1,6 +1,11 @@
 import type { CreateProjectDto, ProjectType, UpdateProjectDto } from '@n8n/api-types';
 import { LicenseState, Logger, ModuleRegistry } from '@n8n/backend-common';
-import { EventService, RoleService } from '@n8n/backend-services';
+import {
+	EventService,
+	ProjectNotFoundError,
+	RoleService,
+	WorkflowProjectCacheService,
+} from '@n8n/backend-services';
 import {
 	type User,
 	FolderRepository,
@@ -35,9 +40,8 @@ import { In } from '@n8n/typeorm';
 import { UserError } from 'n8n-workflow';
 
 import { BadRequestError, ConflictError, ForbiddenError, NotFoundError } from '@n8n/errors';
-import { UserManagementMailer } from '@/user-management/email';
 
-import { OwnershipService } from './ownership.service';
+export { ProjectNotFoundError } from '@n8n/backend-services';
 
 const INSTANCE_ACCESS_ROLE_ERROR =
 	"This user has access through their instance role. Project roles can't change their access in this project.";
@@ -55,21 +59,6 @@ export class TeamProjectOverQuotaError extends UserError {
 export class UnlicensedProjectRoleError extends UserError {
 	constructor(role: AssignableProjectRole) {
 		super(`Your instance is not licensed to use role "${role}".`);
-	}
-}
-
-export class ProjectNotFoundError extends NotFoundError {
-	constructor(readonly projectId: string) {
-		super(`Could not find project with ID: ${projectId}`);
-	}
-
-	static isDefinedAndNotNull<T>(
-		value: T | undefined | null,
-		projectId: string,
-	): asserts value is T {
-		if (value === undefined || value === null) {
-			throw new ProjectNotFoundError(projectId);
-		}
 	}
 }
 
@@ -95,13 +84,32 @@ export class ProjectService {
 		private readonly folderRepository: FolderRepository,
 		private readonly licenseState: LicenseState,
 		private readonly moduleRegistry: ModuleRegistry,
-		private readonly ownershipService: OwnershipService,
+		private readonly workflowProjectCacheService: WorkflowProjectCacheService,
 		private readonly logger: Logger,
 		private readonly eventService: EventService,
-		private readonly userManagementMailer: UserManagementMailer,
 		private readonly userRepository: UserRepository,
 		private readonly roleRepository: RoleRepository,
 	) {}
+
+	private async cleanupCredentialConnectionStatus(
+		userIds: string[],
+		entityManager?: EntityManager,
+	): Promise<void> {
+		if (userIds.length === 0) return;
+
+		await new Promise<void>((resolve, reject) => {
+			const hasListener = this.eventService.emit('credential-connection-status-cleanup-requested', {
+				userIds,
+				entityManager,
+				complete: (error) => {
+					if (error) reject(error);
+					else resolve();
+				},
+			});
+
+			if (!hasListener) resolve();
+		});
+	}
 
 	private get workflowService() {
 		return import('@/workflows/workflow.service.js').then(({ WorkflowService }) =>
@@ -148,12 +156,6 @@ export class ProjectService {
 	private get agentChatAttachmentService() {
 		return import('@/modules/agents/agent-chat-attachment.service.js').then(
 			({ AgentChatAttachmentService }) => Container.get(AgentChatAttachmentService),
-		);
-	}
-
-	private get connectionStatusProxy() {
-		return import('@/credentials/credential-connection-status-proxy.js').then(
-			({ CredentialConnectionStatusProxy }) => Container.get(CredentialConnectionStatusProxy),
 		);
 	}
 
@@ -321,8 +323,7 @@ export class ProjectService {
 
 		// 11. delete orphaned per-user credential entries for former members
 		if (memberUserIds.length > 0) {
-			const proxy = await this.connectionStatusProxy;
-			await proxy.cleanupOrphanedEntriesForUsers(memberUserIds);
+			await this.cleanupCredentialConnectionStatus(memberUserIds);
 		}
 
 		this.eventService.emit('team-project-deleted', {
@@ -543,7 +544,7 @@ export class ProjectService {
 		}
 
 		// Ensure OTel spans pick up the updated customTelemetryTags on the next execution.
-		await this.ownershipService.invalidateWorkflowProjectCacheForProject(projectId);
+		await this.workflowProjectCacheService.invalidateForProject(projectId);
 
 		this.eventService.emit('team-project-updated', {
 			userId: user.id,
@@ -601,15 +602,10 @@ export class ProjectService {
 
 		const affectedUserIds = [...new Set([...removedUserIds, ...roleChangedUserIds])];
 
-		const proxy = await this.connectionStatusProxy;
-
 		await this.projectRelationRepository.manager.transaction(async (em) => {
 			await this.pruneRelations(em, project);
 			await this.addManyRelations(em, project, relations);
-
-			if (affectedUserIds.length > 0) {
-				await proxy.cleanupOrphanedEntriesForUsers(affectedUserIds, em);
-			}
+			await this.cleanupCredentialConnectionStatus(affectedUserIds, em);
 		});
 
 		const newRelations = relations.filter(
@@ -625,7 +621,7 @@ export class ProjectService {
 		newSharees: Array<{ userId: string; role: AssignableProjectRole }>,
 	) {
 		if (newSharees.length === 0) return;
-		await this.userManagementMailer.notifyProjectShared({
+		this.eventService.emit('team-project-shared', {
 			sharer,
 			newSharees,
 			project: { id: project.id, name: project.name },
@@ -826,11 +822,9 @@ export class ProjectService {
 
 		await this.assertNoInstanceAdmins([userId], INSTANCE_ACCESS_REMOVE_ERROR);
 
-		const proxy = await this.connectionStatusProxy;
-
 		await this.projectRelationRepository.manager.transaction(async (em) => {
 			await em.delete(ProjectRelation, { projectId: project.id, userId });
-			await proxy.cleanupOrphanedEntriesForUsers([userId], em);
+			await this.cleanupCredentialConnectionStatus([userId], em);
 		});
 
 		await this.emitProjectMembersUpdated(user, projectId);
@@ -869,11 +863,9 @@ export class ProjectService {
 			throw new UnlicensedProjectRoleError(role);
 		}
 
-		const proxy = await this.connectionStatusProxy;
-
 		await this.projectRelationRepository.manager.transaction(async (em) => {
 			await em.update(ProjectRelation, { projectId, userId }, { role: { slug: role } });
-			await proxy.cleanupOrphanedEntriesForUsers([userId], em);
+			await this.cleanupCredentialConnectionStatus([userId], em);
 		});
 
 		await this.emitProjectMembersUpdated(user, projectId);

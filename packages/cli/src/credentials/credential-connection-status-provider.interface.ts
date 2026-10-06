@@ -1,5 +1,13 @@
 import type { EntityManager } from '@n8n/typeorm';
 
+export interface CredentialConnectionStatusEventMap {
+	'credential-connection-status-cleanup-requested': {
+		userIds: string[];
+		entityManager?: EntityManager;
+		complete: (error?: unknown) => void;
+	};
+}
+
 /** One user's connection to one credential. */
 export type UserConnection = {
 	/**
