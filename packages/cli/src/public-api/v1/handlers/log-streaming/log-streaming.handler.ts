@@ -10,7 +10,8 @@ import { createMessageEventBusDestination } from '@/modules/log-streaming.ee/cre
 import { assertUserCanUseDestinationCredentials } from '@/modules/log-streaming.ee/destinations/destination-credentials-access';
 import { LogStreamingDestinationService } from '@/modules/log-streaming.ee/log-streaming-destination.service';
 
-import { toInternalDestinationOptions, toPublicDestination } from './log-streaming.mapper';
+import { toInternalDestinationOptions } from './log-streaming.mapper';
+import { toLogStreamingDestinationPublic } from '../../controllers/log-streaming.mapper';
 import type { LogStreamingRequest } from '../../../types';
 import type { PublicAPIEndpoint } from '../../shared/handler.types';
 import {
@@ -40,8 +41,6 @@ const getCredentialsFinderService = async () => {
 };
 
 type LogStreamingHandlers = {
-	getDestinations: PublicAPIEndpoint<LogStreamingRequest.GetDestinations>;
-	getDestination: PublicAPIEndpoint<LogStreamingRequest.GetDestination>;
 	createDestination: PublicAPIEndpoint<LogStreamingRequest.CreateDestination>;
 	updateDestination: PublicAPIEndpoint<LogStreamingRequest.UpdateDestination>;
 	testDestination: PublicAPIEndpoint<LogStreamingRequest.TestDestination>;
@@ -49,24 +48,6 @@ type LogStreamingHandlers = {
 };
 
 const logStreamingHandlers: LogStreamingHandlers = {
-	getDestinations: [
-		isLicensed('feat:logStreaming'),
-		apiKeyHasScopeWithGlobalScopeFallback({ scope: 'eventBusDestination:list' }),
-		async (_req, res) => {
-			const destinations = await Container.get(LogStreamingDestinationService).findDestination();
-			return res.json({ data: destinations.map(toPublicDestination) });
-		},
-	],
-
-	getDestination: [
-		isLicensed('feat:logStreaming'),
-		apiKeyHasScopeWithGlobalScopeFallback({ scope: 'eventBusDestination:read' }),
-		async (req, res) => {
-			const destination = await findDestinationOrFail(req.params.id);
-			return res.json(toPublicDestination(destination));
-		},
-	],
-
 	createDestination: [
 		isLicensed('feat:logStreaming'),
 		apiKeyHasScopeWithGlobalScopeFallback({ scope: 'eventBusDestination:create' }),
@@ -95,7 +76,7 @@ const logStreamingHandlers: LogStreamingHandlers = {
 				destination,
 			);
 
-			return res.json(toPublicDestination(result.serialize()));
+			return res.json(toLogStreamingDestinationPublic(result.serialize()));
 		},
 	],
 
@@ -129,7 +110,7 @@ const logStreamingHandlers: LogStreamingHandlers = {
 				destination,
 			);
 
-			return res.json(toPublicDestination(result.serialize()));
+			return res.json(toLogStreamingDestinationPublic(result.serialize()));
 		},
 	],
 
@@ -163,7 +144,7 @@ const logStreamingHandlers: LogStreamingHandlers = {
 			assertNotManagedByEnv();
 			const destination = await findDestinationOrFail(req.params.id);
 			await Container.get(LogStreamingDestinationService).removeDestination(req.params.id);
-			return res.json(toPublicDestination(destination));
+			return res.json(toLogStreamingDestinationPublic(destination));
 		},
 	],
 };

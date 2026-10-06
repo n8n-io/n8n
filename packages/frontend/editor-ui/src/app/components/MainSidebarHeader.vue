@@ -2,7 +2,7 @@
 import { onClickOutside, type VueInstance } from '@vueuse/core';
 import { computed, ref, type Ref } from 'vue';
 import { useMcpDiscovery } from '@/experiments/surfaceMcpToClaudeTrialUsers/useMcpDiscovery';
-import ClaudeLogo from '@/features/ai/mcpAccess/components/ClaudeLogo.vue';
+import { ClaudeLogo } from '@n8n/frontend-module-mcp';
 import { I18nT } from 'vue-i18n';
 import { RouterLink } from 'vue-router';
 import {

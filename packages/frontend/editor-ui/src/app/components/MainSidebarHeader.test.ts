@@ -8,7 +8,7 @@ import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import MainSidebarHeader from './MainSidebarHeader.vue';
 import { useMcpDiscoveryStore } from '@/experiments/surfaceMcpToClaudeTrialUsers/mcpDiscovery.store';
-import { MCP_SETTINGS_VIEW } from '@/features/ai/mcpAccess/mcp.constants';
+import { MCP_SETTINGS_VIEW } from '@n8n/frontend-module-mcp';
 
 const mocks = vi.hoisted(() => ({ push: vi.fn() }));
 

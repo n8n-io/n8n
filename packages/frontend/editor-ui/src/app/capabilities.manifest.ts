@@ -8,6 +8,7 @@ import {
 } from '@/app/stores/workflowDocument.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useExposeAllWorkflowsToMcpStore } from '@/experiments/exposeAllWorkflowsToMcp/stores/exposeAllWorkflowsToMcp.store';
+import { useMcpDiscoveryStore } from '@/experiments/surfaceMcpToClaudeTrialUsers/mcpDiscovery.store';
 
 /**
  * Shell actions that a module calls but cannot import — the counterpart to
@@ -54,8 +55,23 @@ const mcpExposeAllOffer = {
 	},
 };
 
+const mcpDiscoverySettings = {
+	isEnabled: () => useMcpDiscoveryStore().isTreatment,
+	shouldShowCoachmark: () => {
+		const discovery = useMcpDiscoveryStore();
+		return (
+			discovery.isTreatment &&
+			!discovery.coachmarkDismissed &&
+			!discovery.state.hasConnectedClaude &&
+			!discovery.state.hasUsedClaudeMcp
+		);
+	},
+	dismissCoachmark: async () => await useMcpDiscoveryStore().dismissCoachmark(),
+};
+
 export const registerShellCapabilities = () => {
 	capabilityRegistry.provide(capabilities.modalOpeners, modalOpeners);
 	capabilityRegistry.provide(capabilities.workflowMcpAccessSync, syncWorkflowMcpAccess);
 	capabilityRegistry.provide(capabilities.mcpExposeAllOffer, mcpExposeAllOffer);
+	capabilityRegistry.provide(capabilities.mcpDiscoverySettings, mcpDiscoverySettings);
 };

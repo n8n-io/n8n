@@ -6,7 +6,7 @@ import { useI18n } from '@n8n/i18n';
 import { computed, watch } from 'vue';
 import { useRouter } from 'vue-router';
 
-import { MCP_SETTINGS_VIEW } from '@/features/ai/mcpAccess/mcp.constants';
+import { MCP_SETTINGS_VIEW } from '@n8n/frontend-module-mcp';
 
 import { useMcpDiscoveryStore, type McpDiscoveryPlacement } from './mcpDiscovery.store';
 

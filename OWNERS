@@ -52,7 +52,6 @@ packages/@n8n/db/src/migrations/                        @n8n-io/migrations-revie
 # Top-level paths
 scripts/                                                @n8n-io/qa-dx
 patches/                                                @n8n-io/qa-dx
-assets/                                                 @n8n-io/adore
 security/                                               @n8n-io/qa-dx
 .code-health-baseline.json                              @n8n-io/qa-dx required
 OWNERS                                                  @n8n-io/qa-dx required
@@ -113,7 +112,7 @@ packages/modules/insights/                              @n8n-io/ligo
 
 packages/cli/src/collaboration/                         @n8n-io/catalysts
 packages/cli/src/binary-data/                           @n8n-io/catalysts
-packages/cli/src/posthog/                               @n8n-io/adore
+packages/cli/src/posthog/                               @n8n-io/growth
 packages/cli/src/modules/data-table/                    @n8n-io/adore
 
 packages/cli/src/evaluation.ee/                         @n8n-io/ai
@@ -121,6 +120,7 @@ packages/cli/src/chat/                                  @n8n-io/ai
 packages/cli/src/tool-generation/                       @n8n-io/ai
 packages/cli/src/modules/workflow-builder/              @n8n-io/ai-assistant
 packages/cli/src/modules/mcp/                           @n8n-io/adore
+packages/modules/mcp/                                   @n8n-io/adore
 packages/cli/src/modules/quick-connect/                 @n8n-io/ai
 packages/cli/src/modules/chat-hub/                      @n8n-io/ai-assistant
 packages/cli/src/modules/instance-ai/                   @n8n-io/ai-assistant
@@ -147,7 +147,7 @@ packages/cli/src/controllers/folder.controller.ts       						@n8n-io/adore
 packages/cli/src/controllers/tags.controller.ts         						@n8n-io/adore
 packages/cli/src/controllers/binary-data.controller.ts  						@n8n-io/adore
 packages/cli/src/controllers/posthog.controller.ts      						@n8n-io/adore
-packages/cli/src/controllers/translation.controller.ts  						@n8n-io/adore
+packages/cli/src/controllers/translation.controller.ts  						@n8n-io/catalysts
 packages/cli/src/controllers/project.controller.ts      						@n8n-io/ligo
 packages/cli/src/controllers/workflow-statistics.controller.ts 			@n8n-io/ligo
 packages/cli/src/controllers/node-types.controller.ts   						@n8n-io/nodes
@@ -169,7 +169,7 @@ packages/cli/src/services/annotation-tag.service.ee.ts  @n8n-io/ai
 packages/cli/src/services/folder.service.ts             @n8n-io/adore
 packages/cli/src/services/tag.service.ts                @n8n-io/adore
 packages/cli/src/services/cta.service.ts                @n8n-io/adore
-packages/cli/src/services/frontend.service.ts           @n8n-io/adore
+packages/cli/src/services/frontend.service.ts           @n8n-io/catalysts
 packages/cli/src/services/banner.service.ts             @n8n-io/adore
 packages/cli/src/services/project.service.ee.ts         @n8n-io/ligo
 packages/cli/src/services/workflow-statistics.service.ts @n8n-io/ligo
