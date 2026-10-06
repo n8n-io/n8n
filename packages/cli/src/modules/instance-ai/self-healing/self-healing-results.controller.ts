@@ -48,20 +48,6 @@ export class SelfHealingResultsController {
 		);
 	}
 
-	@Post('/:resultId/discard')
-	@ProjectScope('workflow:update')
-	async discard(req: ResultRequest) {
-		const { projectId, workflowId, resultId } = req.params;
-		return await this.results.act(
-			req.user,
-			projectId,
-			workflowId,
-			resultId,
-			'discard',
-			req.headers['push-ref'],
-		);
-	}
-
 	@Post('/:resultId/dismiss')
 	@ProjectScope('workflow:update')
 	async dismiss(req: ResultRequest) {

@@ -297,21 +297,24 @@ it('keeps the report and unknown usage after the execution is removed', async ()
 	});
 });
 
-it('dismisses an informational result for every editor without changing its workflow', async () => {
-	const { user, project, original, result, url } = await fixture();
-	const editor = await createUser();
-	await shareWorkflowWithUsers(original, [editor]);
-	const response = await testServer.authAgentFor(user).post(`${url}/dismiss`);
-	expect(response.status).toBe(200);
-	expect(response.body.data.reviewState).toBe('dismissed');
-	const firstDismissal = await results.findOneByOrFail({ id: result.id });
-	await service.dismiss(editor, project.id, original.id, result.id);
-	expect(await results.findOneByOrFail({ id: result.id })).toEqual(firstDismissal);
-	expect((await service.getDetail(editor, project.id, original.id, result.id)).reviewState).toBe(
-		'dismissed',
-	);
-	expect(await workflows.findOneByOrFail({ id: original.id })).toEqual(original);
-});
+it.each(['needs_you', 'could_not_fix'] as const)(
+	'dismisses a %s result for every editor without changing its workflow',
+	async (outcome) => {
+		const { user, project, original, result, url } = await fixture(outcome);
+		const editor = await createUser();
+		await shareWorkflowWithUsers(original, [editor]);
+		const response = await testServer.authAgentFor(user).post(`${url}/dismiss`);
+		expect(response.status).toBe(200);
+		expect(response.body.data.reviewState).toBe('dismissed');
+		const firstDismissal = await results.findOneByOrFail({ id: result.id });
+		await service.dismiss(editor, project.id, original.id, result.id);
+		expect(await results.findOneByOrFail({ id: result.id })).toEqual(firstDismissal);
+		expect((await service.getDetail(editor, project.id, original.id, result.id)).reviewState).toBe(
+			'dismissed',
+		);
+		expect(await workflows.findOneByOrFail({ id: original.id })).toEqual(original);
+	},
+);
 
 it('rolls back shared dismissal when result storage fails', async () => {
 	const { user, project, original, result } = await fixture('needs_you', true);
@@ -328,19 +331,25 @@ it('rolls back shared dismissal when result storage fails', async () => {
 	expect(await suggestions.getActivity(suggestionId)).toEqual(beforeActivity);
 });
 
-it('dismisses the result and its pending suggestion together', async () => {
-	const { user, project, original, result, getDetail } = await fixture('needs_you', true);
-	await service.dismiss(user, project.id, original.id, result.id);
-	expect(await getDetail()).toMatchObject({
-		reviewState: 'dismissed',
-		dismissedById: user.id,
-		suggestion: { state: 'closed', closedReason: 'discarded' },
-	});
-	expect((await suggestions.getActivity(result.suggestionId!)).map(({ action }) => action)).toEqual(
-		['submitted', 'discarded'],
-	);
-	expect(await workflows.findOneByOrFail({ id: original.id })).toEqual(original);
-});
+it.each([
+	['fix_ready', 'discarded'],
+	['needs_you', 'dismissed'],
+] as const)(
+	'closes a %s result and its pending suggestion together',
+	async (outcome, reviewState) => {
+		const { user, project, original, result, getDetail } = await fixture(outcome, true);
+		await service.dismiss(user, project.id, original.id, result.id);
+		expect(await getDetail()).toMatchObject({
+			reviewState,
+			dismissedById: outcome === 'fix_ready' ? null : user.id,
+			suggestion: { state: 'closed', closedReason: 'discarded' },
+		});
+		expect(
+			(await suggestions.getActivity(result.suggestionId!)).map(({ action }) => action),
+		).toEqual(['submitted', 'discarded']);
+		expect(await workflows.findOneByOrFail({ id: original.id })).toEqual(original);
+	},
+);
 
 it.each(['before', 'after'] as const)(
 	'returns shared dismissal when it commits %s the proposal read',
@@ -383,12 +392,20 @@ it('keeps the winner when informational dismissal races another discard', async 
 	expect(await workflows.findOneByOrFail({ id: original.id })).toEqual(original);
 });
 
-it.each(['discarded', 'outdated'] as const)(
-	'keeps a prior %s disposition when informational dismissal is requested',
-	async (reason) => {
-		const { user, project, original, result, getDetail } = await fixture('needs_you', true);
+it.each([
+	['needs_you', 'discarded'],
+	['needs_you', 'outdated'],
+	['fix_ready', 'discarded'],
+	['fix_ready', 'outdated'],
+	['fix_ready', 'applied'],
+] as const)(
+	'keeps a %s result closed as %s when dismissal is requested',
+	async (outcome, reason) => {
+		const { user, project, original, result, getDetail } = await fixture(outcome, true);
 		if (reason === 'discarded') {
 			await actions.discard(user, project.id, original.id, result.suggestionId!);
+		} else if (reason === 'applied') {
+			await actions.apply(user, project.id, original.id, result.suggestionId!);
 		} else {
 			await workflows.update(original.id, { settings: { executionTimeout: 60 } });
 		}
@@ -469,11 +486,21 @@ it('returns Applied and a request error when publication fails', async () => {
 	expect(await getDetail()).not.toHaveProperty('publishError');
 });
 
-it('discards Fix ready through the result route without saving the graph', async () => {
-	const { user, original, url } = await fixture('fix_ready', true);
-	const response = await testServer.authAgentFor(user).post(`${url}/discard`);
+it('dismisses Fix ready by discarding its suggestion without saving the graph', async () => {
+	const { user, original, result, url } = await fixture('fix_ready', true);
+	const agent = testServer.authAgentFor(user);
+	const response = await agent.post(`${url}/dismiss`);
 	expect(response.status).toBe(200);
-	expect(response.body.data).toMatchObject({ reviewState: 'discarded', dismissedAt: null });
+	expect(response.body.data).toMatchObject({
+		reviewState: 'discarded',
+		dismissedAt: null,
+		suggestion: { state: 'closed', closedReason: 'discarded' },
+	});
+	const repeated = await agent.post(`${url}/dismiss`).expect(200);
+	expect(repeated.body.data).toEqual(response.body.data);
+	expect((await suggestions.getActivity(result.suggestionId!)).map(({ action }) => action)).toEqual(
+		['submitted', 'discarded'],
+	);
 	expect(await workflows.findOneByOrFail({ id: original.id })).toEqual(original);
 });
 
@@ -488,7 +515,7 @@ it('does not report Apply when reconciliation finds an outdated proposal', async
 	});
 });
 
-it.each(['apply', 'approve-and-publish', 'discard'] as const)(
+it.each(['apply', 'approve-and-publish'] as const)(
 	'rejects %s for Needs attention',
 	async (action) => {
 		const { user, original, url } = await fixture('needs_you', true);
@@ -517,27 +544,30 @@ it('allows shared editors to review without membership in the owning project', a
 	await expect(service.getDetail(editor, project.id, original.id, result.id)).rejects.toThrow();
 });
 
-it('keeps detail and non-publish actions available without publish scope', async () => {
-	testServer.license.enable('feat:advancedPermissions');
-	const { user, original, result } = await fixture('fix_ready', true);
-	const editor = await createUser();
-	const project = await createTeamProject(undefined, user);
-	const role = await createCustomRoleWithScopeSlugs(['workflow:read', 'workflow:update']);
-	await linkUserToProject(editor, project, role.slug);
-	await Container.get(SharedWorkflowRepository).save({
-		workflowId: original.id,
-		projectId: project.id,
-		role: 'workflow:editor',
-	});
-	const ownerProject = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
-		user.id,
-	);
-	const url = `/projects/${ownerProject.id}/workflows/${original.id}/self-healing-results/${result.id}`;
-	const agent = testServer.authAgentFor(editor);
-	await agent.get(url).expect(200);
-	await agent.post(`${url}/approve-and-publish`).expect(403);
-	await agent.post(`${url}/apply`).expect(200);
-});
+it.each(['apply', 'dismiss'] as const)(
+	'keeps detail and %s available without publish scope',
+	async (action) => {
+		testServer.license.enable('feat:advancedPermissions');
+		const { user, original, result } = await fixture('fix_ready', true);
+		const editor = await createUser();
+		const project = await createTeamProject(undefined, user);
+		const role = await createCustomRoleWithScopeSlugs(['workflow:read', 'workflow:update']);
+		await linkUserToProject(editor, project, role.slug);
+		await Container.get(SharedWorkflowRepository).save({
+			workflowId: original.id,
+			projectId: project.id,
+			role: 'workflow:editor',
+		});
+		const ownerProject = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
+			user.id,
+		);
+		const url = `/projects/${ownerProject.id}/workflows/${original.id}/self-healing-results/${result.id}`;
+		const agent = testServer.authAgentFor(editor);
+		await agent.get(url).expect(200);
+		await agent.post(`${url}/approve-and-publish`).expect(403);
+		await agent.post(`${url}/${action}`).expect(200);
+	},
+);
 
 it('keeps the report readable when a reviewer loses execution read access', async () => {
 	testServer.license.enable('feat:advancedPermissions');

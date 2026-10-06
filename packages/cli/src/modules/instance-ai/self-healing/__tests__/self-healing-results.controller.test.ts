@@ -10,7 +10,6 @@ describe('SelfHealingResultsController route access', () => {
 			'/:resultId',
 			'/:resultId/apply',
 			'/:resultId/approve-and-publish',
-			'/:resultId/discard',
 			'/:resultId/dismiss',
 		]);
 	});

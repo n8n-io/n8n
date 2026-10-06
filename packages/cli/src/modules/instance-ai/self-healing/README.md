@@ -40,7 +40,6 @@ Routes use `/projects/:projectId/workflows/:workflowId/self-healing-results`:
 - `GET /:resultId`
 - `POST /:resultId/approve-and-publish`
 - `POST /:resultId/apply`
-- `POST /:resultId/discard`
 - `POST /:resultId/dismiss`
 
 Current workflow editors can review results. Approval also requires publish access.
@@ -51,8 +50,10 @@ Apply saves the proposed fix without publishing; the UI opens the editor when `r
 Detail reads do not change suggestion state. Workflow events reconcile stale suggestions, and actions
 check the current workflow before writing. If Apply fails, keep the review open and show the error.
 
-The suggestion owns applied, discarded, and outdated closure. The result stores explicit dismissal.
-Dismissal closes an attached pending suggestion in the same transaction.
+Both Discard and Dismiss buttons call `POST /:resultId/dismiss`.
+Dismissal discards an attached pending suggestion. Fix-ready results derive their discarded state
+from the suggestion; informational results also record dismissal in the same transaction.
+Already applied, discarded, or outdated suggestions keep their existing closure.
 Apply uses the existing suggestion action service. An applied result stays applied if publication
 returns an error. `publishError` describes that request only. The response includes the workflow
 ID and the suggestion's recorded applied version. Open the normal editor for publication status

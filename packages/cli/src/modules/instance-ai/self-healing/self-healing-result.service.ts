@@ -4,8 +4,7 @@ import {
 	type SelfHealingResultContent,
 	type SelfHealingResultDetail,
 	type SelfHealingResultActionResponse,
-	type WorkflowSuggestionAction,
-	type WorkflowSuggestionActionResult,
+	type WorkflowSuggestionAppliedVersion,
 	type WorkflowSuggestionProposalDetail,
 } from '@n8n/api-types';
 import {
@@ -190,7 +189,7 @@ export class SelfHealingResultService {
 		projectId: string,
 		workflowId: string,
 		resultId: string,
-		action: WorkflowSuggestionAction,
+		action: WorkflowSuggestionAppliedVersion['action'],
 		clientId?: string,
 	): Promise<SelfHealingResultActionResponse> {
 		const { result, reviewer } = await this.getResultForEditor(
@@ -202,36 +201,16 @@ export class SelfHealingResultService {
 		if (result.outcome !== 'fix_ready' || !result.suggestionId) {
 			throw new ConflictError('Only a Fix ready result permits this action.');
 		}
-		let actionResult: WorkflowSuggestionActionResult;
-		switch (action) {
-			case 'approve-and-publish':
-				actionResult = await this.actions.approveAndPublish(
-					reviewer,
-					projectId,
-					workflowId,
-					result.suggestionId,
-					clientId,
-				);
-				break;
-			case 'apply':
-				actionResult = await this.actions.apply(
-					reviewer,
-					projectId,
-					workflowId,
-					result.suggestionId,
-					clientId,
-				);
-				break;
-			case 'discard':
-				actionResult = await this.actions.discard(
-					reviewer,
-					projectId,
-					workflowId,
-					result.suggestionId,
-				);
-				break;
-		}
-		const { publishError, ...suggestion } = actionResult;
+		const { publishError, ...suggestion } =
+			action === 'approve-and-publish'
+				? await this.actions.approveAndPublish(
+						reviewer,
+						projectId,
+						workflowId,
+						result.suggestionId,
+						clientId,
+					)
+				: await this.actions.apply(reviewer, projectId, workflowId, result.suggestionId, clientId);
 		const execution = await this.executionReferences.getReference(
 			reviewer,
 			workflowId,
@@ -252,9 +231,6 @@ export class SelfHealingResultService {
 				resultId,
 				ctx,
 			);
-			if (result.outcome === 'fix_ready') {
-				throw new ConflictError('Use Discard for a Fix ready result.');
-			}
 			if (result.dismissedAt) return true;
 			if (result.suggestionId) {
 				const outcome = await this.actions.discardPending(
@@ -269,7 +245,9 @@ export class SelfHealingResultService {
 			} else {
 				await this.requireCurrentProject(workflowId, projectId, ctx);
 			}
-			await this.results.dismissResult(result.id, user.id, ctx);
+			if (result.outcome !== 'fix_ready') {
+				await this.results.dismissResult(result.id, user.id, ctx);
+			}
 			return true;
 		});
 		// Commit outdated reconciliation before rejecting a stale project route.
