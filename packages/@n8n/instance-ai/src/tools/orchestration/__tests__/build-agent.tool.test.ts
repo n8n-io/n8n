@@ -1,16 +1,11 @@
-import type { BuiltTool } from '@n8n/agents';
-import {
-	BUILDER_CHECKPOINT_UNAVAILABLE_CODE,
-	type InstanceAiEvent,
-	type QuestionAnswer,
-} from '@n8n/api-types';
+import { AgentEvent, type BuiltTool } from '@n8n/agents';
+import { BUILDER_CHECKPOINT_UNAVAILABLE_CODE, type QuestionAnswer } from '@n8n/api-types';
 import { UserError } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 import type { z } from 'zod';
 
 import { executeTool } from '../../../__tests__/tool-test-utils';
-import type { InstanceAiEventBus } from '../../../event-bus/event-bus.interface';
 import type {
 	BuilderTurnStream,
 	InstanceAiBuilderDelegate,
@@ -219,9 +214,7 @@ function makeTracingStub() {
 function makeContext(overrides: { delegate?: InstanceAiBuilderDelegate } = {}): {
 	context: OrchestrationContext;
 	delegate: InstanceAiBuilderDelegate;
-	publishedEvents: InstanceAiEvent[];
 } {
-	const publishedEvents: InstanceAiEvent[] = [];
 	const delegate = overrides.delegate ?? mock<InstanceAiBuilderDelegate>();
 
 	const domainContext = mock<InstanceAiContext>();
@@ -235,11 +228,6 @@ function makeContext(overrides: { delegate?: InstanceAiBuilderDelegate } = {}): 
 	domainContext.agentPreviewSession = undefined;
 	domainContext.currentUserAttachments = undefined;
 	domainContext.resolvedUserDecisions = undefined;
-
-	const eventBus = mock<InstanceAiEventBus>();
-	eventBus.publish.mockImplementation((_threadId: string, event: InstanceAiEvent) => {
-		publishedEvents.push(event);
-	});
 
 	const logger = {
 		debug: vi.fn(),
@@ -256,7 +244,6 @@ function makeContext(overrides: { delegate?: InstanceAiBuilderDelegate } = {}): 
 	context.userId = 'user-1';
 	context.orchestratorAgentId = 'root-agent';
 	context.abortSignal = new AbortController().signal;
-	context.eventBus = eventBus;
 	context.logger = logger;
 	// Sentinel model — the orchestrator's own resolved model, which the
 	// builder sub-agent session must inherit (see `session.modelConfig`).
@@ -272,7 +259,7 @@ function makeContext(overrides: { delegate?: InstanceAiBuilderDelegate } = {}): 
 	// Deep mocks make currentUserMessage truthy; an empty handoff must stay empty.
 	context.currentUserMessage = undefined;
 
-	return { context, delegate, publishedEvents };
+	return { context, delegate };
 }
 
 async function runTool(context: OrchestrationContext, input: Record<string, unknown>) {
@@ -371,37 +358,64 @@ describe('build-agent tool', () => {
 		expect(result.builderReply).toBe('Hello world');
 	});
 
-	it('publishes agent-spawned (with projectId + name on targetResource), then stream chunk events, then agent-completed in order', async () => {
-		const { context, delegate, publishedEvents } = makeContext();
+	it('forwards builder progress chunks as SDK sub-agent chunks under the tool call', async () => {
+		const { context, delegate } = makeContext();
+		vi.mocked(delegate.createAgent).mockResolvedValue({ agentId: 'agent-1', projectId: 'proj-1' });
+		const forwarded = [
+			{ type: 'text-delta', id: 'a', delta: 'hi' },
+			{ type: 'reasoning-start', id: 'r' },
+			{ type: 'reasoning-delta', id: 'r', delta: 'thinking' },
+			{ type: 'reasoning-end', id: 'r' },
+			{ type: 'tool-input-start', id: 'call-1', toolName: 'write_config' },
+			{ type: 'tool-execution-start', toolCallId: 'call-1', toolName: 'write_config' },
+			{ type: 'tool-execution-end', toolCallId: 'call-1', toolName: 'write_config' },
+		];
+		vi.mocked(delegate.streamBuild).mockResolvedValue(
+			fakeStream(
+				[
+					...forwarded,
+					toolCallChunk('call-1', 'write_config'),
+					toolResultChunk('call-1'),
+					finishChunk(),
+				],
+				'hi',
+			),
+		);
+		const emitEvent = vi.fn();
+
+		await runToolWithCtx(
+			context,
+			{ message: 'Build it', name: 'New Agent' },
+			{ emitEvent, toolCallId: 'orch-call-1' },
+		);
+
+		expect(emitEvent.mock.calls.map(([event]) => event)).toEqual(
+			forwarded.map((chunk) => ({
+				type: AgentEvent.SubAgentChunk,
+				taskName: 'agent-builder',
+				taskPath: 'agent-builder',
+				parentToolCallId: 'orch-call-1',
+				chunk,
+			})),
+		);
+	});
+
+	it('does not forward builder chunks when the tool call has no id', async () => {
+		const { context, delegate } = makeContext();
 		vi.mocked(delegate.createAgent).mockResolvedValue({ agentId: 'agent-1', projectId: 'proj-1' });
 		vi.mocked(delegate.streamBuild).mockResolvedValue(
 			fakeStream([{ type: 'text-delta', id: 'a', delta: 'hi' }], 'hi'),
 		);
+		const emitEvent = vi.fn();
 
-		await runTool(context, { message: 'Build it', name: 'New Agent' });
+		const result = await runToolWithCtx(
+			context,
+			{ message: 'Build it', name: 'New Agent' },
+			{ emitEvent },
+		);
 
-		expect(publishedEvents.map((event) => event.type)).toEqual([
-			'agent-spawned',
-			'text-delta',
-			'agent-completed',
-		]);
-		const spawned = publishedEvents[0];
-		expect(spawned).toMatchObject({ type: 'agent-spawned', agentId: 'agent-builder:agent-1' });
-		expect(spawned && 'payload' in spawned ? spawned.payload : undefined).toMatchObject({
-			role: 'agent-builder',
-			kind: 'agent-builder',
-			activity: 'creating',
-			// projectId + name are required for the FE to surface the agent as a
-			// conversation artifact (list entry + preview).
-			targetResource: { type: 'agent', id: 'agent-1', projectId: 'proj-1', name: 'New Agent' },
-		});
-
-		const completed = publishedEvents[2];
-		expect(completed).toMatchObject({ type: 'agent-completed', agentId: 'agent-builder:agent-1' });
-		expect(completed && 'payload' in completed ? completed.payload : undefined).toMatchObject({
-			role: 'agent-builder',
-			result: 'hi',
-		});
+		expect(result.ok).toBe(true);
+		expect(emitEvent).not.toHaveBeenCalled();
 	});
 
 	it('errors when there is no bound target and neither name nor agentId is given', async () => {
@@ -417,12 +431,12 @@ describe('build-agent tool', () => {
 		expect(delegate.streamBuild).not.toHaveBeenCalled();
 	});
 
-	it('maps a builder-not-configured error thrown mid-stream (during first-call streaming) to a friendly message and publishes agent-completed', async () => {
+	it('maps a builder-not-configured error thrown mid-stream (during first-call streaming) to a friendly message', async () => {
 		// The real delegate's `streamBuild`/`resumeBuild` are async generators: the call
 		// itself never rejects — errors from their bodies only surface once the returned
 		// stream is consumed. A call-time rejection (as this test used to simulate) cannot
 		// happen in production; see build-agent.tool.ts's `runBuilderConsumeLoop` catch.
-		const { context, delegate, publishedEvents } = makeContext();
+		const { context, delegate } = makeContext();
 		context.domainContext!.resolvedUserDecisions = [{ question: 'Which model?', answer: 'Claude' }];
 		vi.mocked(delegate.createAgent).mockResolvedValue({ agentId: 'agent-1', projectId: 'proj-1' });
 		vi.mocked(delegate.streamBuild).mockResolvedValue(
@@ -444,22 +458,13 @@ describe('build-agent tool', () => {
 			agentName: 'New Agent',
 			agentChange: 'created',
 		});
-		expect(publishedEvents.map((event) => event.type)).toEqual([
-			'agent-spawned',
-			'agent-completed',
-		]);
-		const completed = publishedEvents[1];
-		expect(completed && 'payload' in completed ? completed.payload : undefined).toMatchObject({
-			role: 'agent-builder',
-			error: friendlyMessage,
-		});
 		expect(context.domainContext!.resolvedUserDecisions).toEqual([
 			{ question: 'Which model?', answer: 'Claude' },
 		]);
 	});
 
-	it('publishes agent-completed and rethrows when streamBuild throws an unknown error', async () => {
-		const { context, delegate, publishedEvents } = makeContext();
+	it('rethrows when streamBuild throws an unknown error', async () => {
+		const { context, delegate } = makeContext();
 		context.domainContext!.resolvedUserDecisions = [{ question: 'Which model?', answer: 'Claude' }];
 		vi.mocked(delegate.createAgent).mockResolvedValue({ agentId: 'agent-1', projectId: 'proj-1' });
 		vi.mocked(delegate.streamBuild).mockRejectedValue(new Error('boom'));
@@ -468,38 +473,19 @@ describe('build-agent tool', () => {
 			'boom',
 		);
 
-		expect(publishedEvents.map((event) => event.type)).toEqual([
-			'agent-spawned',
-			'agent-completed',
-		]);
-		const completed = publishedEvents[1];
-		expect(completed && 'payload' in completed ? completed.payload : undefined).toMatchObject({
-			role: 'agent-builder',
-			error: 'boom',
-		});
 		expect(context.domainContext!.resolvedUserDecisions).toEqual([
 			{ question: 'Which model?', answer: 'Claude' },
 		]);
 	});
 
-	it('publishes agent-completed and rethrows when consumeStreamCascading itself throws mid-loop', async () => {
-		const { context, delegate, publishedEvents } = makeContext();
+	it('rethrows when consumeStreamCascading itself throws mid-loop', async () => {
+		const { context, delegate } = makeContext();
 		vi.mocked(delegate.createAgent).mockResolvedValue({ agentId: 'agent-1', projectId: 'proj-1' });
 		vi.mocked(delegate.streamBuild).mockResolvedValue(throwingStream(new Error('stream exploded')));
 
 		await expect(runTool(context, { message: 'Build it', name: 'New Agent' })).rejects.toThrow(
 			'stream exploded',
 		);
-
-		expect(publishedEvents.map((event) => event.type)).toEqual([
-			'agent-spawned',
-			'agent-completed',
-		]);
-		const completed = publishedEvents[1];
-		expect(completed && 'payload' in completed ? completed.payload : undefined).toMatchObject({
-			role: 'agent-builder',
-			error: 'stream exploded',
-		});
 	});
 
 	it('binds directly to an existing agentId without creating a new agent', async () => {
@@ -519,7 +505,7 @@ describe('build-agent tool', () => {
 	});
 
 	it('errors without persisting a target when agentId is given but no projectId', async () => {
-		const { context, delegate, publishedEvents } = makeContext();
+		const { context, delegate } = makeContext();
 		context.domainContext!.projectId = undefined;
 
 		const result = await runTool(context, { message: 'Add a tool', agentId: 'agent-existing' });
@@ -530,11 +516,11 @@ describe('build-agent tool', () => {
 				'Cannot bind to agentId without an active project context. Start this conversation from within a project.',
 		});
 		expect(delegate.streamBuild).not.toHaveBeenCalled();
-		expect(publishedEvents).toEqual([]);
+		expect(saveAgentBuilderTarget).not.toHaveBeenCalled();
 	});
 
 	it('returns a failure result when the builder run does not complete', async () => {
-		const { context, delegate, publishedEvents } = makeContext();
+		const { context, delegate } = makeContext();
 		vi.mocked(delegate.createAgent).mockResolvedValue({ agentId: 'agent-1', projectId: 'proj-1' });
 		vi.mocked(delegate.streamBuild).mockResolvedValue(
 			fakeStream([{ type: 'error', error: 'boom' }], ''),
@@ -544,12 +530,6 @@ describe('build-agent tool', () => {
 
 		expect(result.ok).toBe(false);
 		expect(result.error).toBe('The agent builder run errored.');
-		const last = publishedEvents.at(-1);
-		expect(last).toMatchObject({ type: 'agent-completed' });
-		expect(last && 'payload' in last ? last.payload : undefined).toMatchObject({
-			role: 'agent-builder',
-			error: 'The agent builder run errored.',
-		});
 	});
 
 	describe('cancellation', () => {
@@ -566,7 +546,7 @@ describe('build-agent tool', () => {
 		});
 
 		it('throws an abort error and still claims usage when the builder turn is cancelled mid-stream', async () => {
-			const { context, delegate, publishedEvents } = makeContext();
+			const { context, delegate } = makeContext();
 			const controller = new AbortController();
 			context.abortSignal = controller.signal;
 			context.claimSubAgentUsage = vi.fn().mockResolvedValue(undefined);
@@ -596,12 +576,6 @@ describe('build-agent tool', () => {
 				'cancelled',
 			);
 			expect(delegate.resolveAgentName).not.toHaveBeenCalled();
-			const completed = publishedEvents.find((event) => event.type === 'agent-completed');
-			expect(completed && 'payload' in completed ? completed.payload : undefined).toEqual({
-				role: 'agent-builder',
-				result: '',
-				status: 'cancelled',
-			});
 		});
 	});
 
@@ -933,35 +907,23 @@ describe('build-agent tool', () => {
 	});
 
 	describe('agent display-name refresh', () => {
-		it('labels the first agent-spawned with the resolved name on the agentId path and stamps it on the output', async () => {
-			const { context, delegate, publishedEvents } = makeContext();
+		it('stamps the resolved name on the output on the agentId path', async () => {
+			const { context, delegate } = makeContext();
 			vi.mocked(delegate.resolveAgentName).mockResolvedValue('Existing Agent');
 			vi.mocked(delegate.streamBuild).mockResolvedValue(fakeStream([], 'Editing it.'));
 
 			const result = await runTool(context, { message: 'Add a tool', agentId: 'agent-existing' });
 
-			const spawned = publishedEvents[0];
-			expect(spawned).toMatchObject({ type: 'agent-spawned' });
-			expect(spawned && 'payload' in spawned ? spawned.payload : undefined).toMatchObject({
-				targetResource: {
-					type: 'agent',
-					id: 'agent-existing',
-					projectId: 'proj-1',
-					name: 'Existing Agent',
-				},
-			});
 			expect(result).toMatchObject({
 				ok: true,
 				agentId: 'agent-existing',
 				agentRef: 'existing-agent',
 				agentName: 'Existing Agent',
 			});
-			// Name already fresh — no second agent-spawned republish.
-			expect(publishedEvents.filter((event) => event.type === 'agent-spawned')).toHaveLength(1);
 		});
 
-		it('leaves the spawn event unnamed and proceeds when the upfront lookup fails on the agentId path', async () => {
-			const { context, delegate, publishedEvents } = makeContext();
+		it('leaves the output unnamed and proceeds when the upfront lookup fails on the agentId path', async () => {
+			const { context, delegate } = makeContext();
 			vi.mocked(delegate.resolveAgentName).mockRejectedValue(new Error('db down'));
 			vi.mocked(delegate.streamBuild).mockResolvedValue(fakeStream([], 'Editing it.'));
 
@@ -970,18 +932,10 @@ describe('build-agent tool', () => {
 			expect(result).toMatchObject({ ok: true, agentId: 'agent-existing' });
 			expect(result.agentName).toBeUndefined();
 			expect(result.agentRef).toBeUndefined();
-			const spawned = publishedEvents[0];
-			const payload = spawned && 'payload' in spawned ? spawned.payload : undefined;
-			expect(payload).toMatchObject({
-				targetResource: { type: 'agent', id: 'agent-existing', projectId: 'proj-1' },
-			});
-			expect(
-				(payload as { targetResource?: { name?: string } }).targetResource?.name,
-			).toBeUndefined();
 		});
 
-		it('picks up a builder rename after the turn: fresh agentName on the output, a republished agent-spawned, and a re-saved binding', async () => {
-			const { context, delegate, publishedEvents } = makeContext();
+		it('picks up a builder rename after the turn: fresh agentName on the output and a re-saved binding', async () => {
+			const { context, delegate } = makeContext();
 			vi.mocked(delegate.createAgent).mockResolvedValue({
 				agentId: 'agent-1',
 				projectId: 'proj-1',
@@ -1002,19 +956,6 @@ describe('build-agent tool', () => {
 				agentRef: 'new-agent',
 				agentName: 'Renamed Agent',
 			});
-			const spawnedEvents = publishedEvents.filter((event) => event.type === 'agent-spawned');
-			expect(spawnedEvents).toHaveLength(2);
-			const republished = spawnedEvents[1];
-			expect(
-				republished && 'payload' in republished ? republished.payload : undefined,
-			).toMatchObject({
-				targetResource: {
-					type: 'agent',
-					id: 'agent-1',
-					projectId: 'proj-1',
-					name: 'Renamed Agent',
-				},
-			});
 			expect(saveAgentBuilderTarget).toHaveBeenLastCalledWith(context.domainContext, {
 				agentId: 'agent-1',
 				projectId: 'proj-1',
@@ -1023,8 +964,8 @@ describe('build-agent tool', () => {
 			});
 		});
 
-		it('does not republish or re-save when the resolved name matches the current target name', async () => {
-			const { context, delegate, publishedEvents } = makeContext();
+		it('does not re-save when the resolved name matches the current target name', async () => {
+			const { context, delegate } = makeContext();
 			vi.mocked(delegate.createAgent).mockResolvedValue({
 				agentId: 'agent-1',
 				projectId: 'proj-1',
@@ -1034,13 +975,12 @@ describe('build-agent tool', () => {
 
 			await runTool(context, { message: 'Build it', name: 'New Agent' });
 
-			expect(publishedEvents.filter((event) => event.type === 'agent-spawned')).toHaveLength(1);
 			// Only the create-path bind — no refresh save.
 			expect(saveAgentBuilderTarget).toHaveBeenCalledTimes(1);
 		});
 
 		it('keeps a successful turn intact and logs a warning when the post-turn refresh fails', async () => {
-			const { context, delegate, publishedEvents } = makeContext();
+			const { context, delegate } = makeContext();
 			vi.mocked(delegate.createAgent).mockResolvedValue({
 				agentId: 'agent-1',
 				projectId: 'proj-1',
@@ -1056,7 +996,7 @@ describe('build-agent tool', () => {
 				agentRef: 'new-agent',
 				agentName: 'New Agent',
 			});
-			expect(publishedEvents.filter((event) => event.type === 'agent-spawned')).toHaveLength(1);
+			expect(saveAgentBuilderTarget).toHaveBeenCalledTimes(1);
 			expect(context.logger.warn).toHaveBeenCalledWith(
 				'Failed to refresh agent name after builder turn',
 				expect.objectContaining({ agentId: 'agent-1' }),
@@ -1595,7 +1535,7 @@ describe('build-agent tool', () => {
 		});
 
 		it('fails the turn and cancels the builder checkpoint when the suspend payload does not match the shared contract', async () => {
-			const { context, delegate, publishedEvents } = makeContext();
+			const { context, delegate } = makeContext();
 			vi.mocked(delegate.createAgent).mockResolvedValue({
 				agentId: 'agent-1',
 				projectId: 'proj-1',
@@ -1616,8 +1556,6 @@ describe('build-agent tool', () => {
 			expect(result.error).toContain('could not be shown');
 			expect(result.configUpdated).toBe(false);
 			expect(delegate.cancelOpenSuspension).toHaveBeenCalledWith('agent-1', 'builder-run-1');
-			const last = publishedEvents.at(-1);
-			expect(last).toMatchObject({ type: 'agent-completed' });
 		});
 	});
 
@@ -2028,26 +1966,6 @@ describe('build-agent tool', () => {
 
 			expect(result.ok).toBe(false);
 			expect(result.configUpdated).toBe(true);
-		});
-
-		it('republishes agent-spawned on resume', async () => {
-			const { context, delegate, publishedEvents } = makeContext();
-			context.domainContext!.agentBuilderTarget = { agentId: 'agent-1', projectId: 'proj-1' };
-			vi.mocked(delegate.findOpenSuspensions).mockResolvedValue([
-				{ runId: 'builder-run-1', toolCallId: 'builder-call-1' },
-			]);
-			vi.mocked(delegate.resumeBuild).mockResolvedValue(fakeStream([], 'Done.'));
-
-			await runToolWithCtx(
-				context,
-				{ message: 'Build it', name: 'New Agent' },
-				{ resumeData: { approved: true }, suspendPayload: suspendPayloadWithCheckpoint() },
-			);
-
-			expect(publishedEvents[0]).toMatchObject({
-				type: 'agent-spawned',
-				agentId: 'agent-builder:agent-1',
-			});
 		});
 
 		it('maps a builder-not-configured error thrown mid-stream (during resume streaming) to a friendly message', async () => {

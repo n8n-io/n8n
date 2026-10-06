@@ -112,6 +112,12 @@ describe('createPlanTool — planning context guard', () => {
 			validTasks(),
 			expect.objectContaining({ planRunId: 'test-run' }),
 		);
+		expect(context.taskStorage.save).toHaveBeenCalledWith('test-thread', {
+			tasks: [{ id: 't1', description: 'Build Slack notifier', status: 'todo' }],
+		});
+		expect(vi.mocked(context.taskStorage.save).mock.invocationCallOrder[0]).toBeLessThan(
+			suspend.mock.invocationCallOrder[0],
+		);
 		expect(suspend).toHaveBeenCalledWith(
 			expect.objectContaining({
 				inputType: 'plan-review',
@@ -357,13 +363,6 @@ describe('createPlanTool — approval and revision flow', () => {
 		expect(context.schedulePlannedTasks).not.toHaveBeenCalled();
 		expect(context.plannedTaskService!.approvePlan).not.toHaveBeenCalled();
 		expect(context.taskStorage.save).toHaveBeenCalledWith('test-thread', { tasks: [] });
-		expect(context.eventBus.publish).toHaveBeenCalledWith(
-			'test-thread',
-			expect.objectContaining({
-				type: 'tasks-update',
-				payload: { tasks: { tasks: [] }, planItems: [] },
-			}),
-		);
 	});
 
 	it('allows a same-turn revision after rejection with planning-skill context', async () => {

@@ -40,7 +40,7 @@ describe('task-control tool', () => {
 	// ── update-checklist ────────────────────────────────────────────────────
 
 	describe('update-checklist action', () => {
-		it('should save tasks to taskStorage and publish event', async () => {
+		it('should save tasks to taskStorage', async () => {
 			const context = createMockContext();
 			const tasks = [
 				{ id: 'task-1', description: 'Build workflow', status: 'in_progress' as const },
@@ -55,12 +55,6 @@ describe('task-control tool', () => {
 			);
 
 			expect(context.taskStorage.save).toHaveBeenCalledWith('thread-1', { tasks });
-			expect(context.eventBus.publish).toHaveBeenCalledWith('thread-1', {
-				type: 'tasks-update',
-				runId: 'run-1',
-				agentId: 'orchestrator-1',
-				payload: { tasks: { tasks } },
-			});
 			expect(result).toEqual({ saved: true });
 		});
 
@@ -75,7 +69,6 @@ describe('task-control tool', () => {
 			);
 
 			expect(context.taskStorage.save).toHaveBeenCalledWith('thread-1', { tasks: [] });
-			expect(context.eventBus.publish).toHaveBeenCalled();
 			expect(result).toEqual({ saved: true });
 		});
 	});

@@ -1,4 +1,3 @@
-import type { InstanceAiEventBus } from '../../event-bus/event-bus.interface';
 import { consumeStreamCascading } from '../consume-with-hitl';
 
 async function* fromChunks(chunks: unknown[]) {
@@ -6,13 +5,6 @@ async function* fromChunks(chunks: unknown[]) {
 		await Promise.resolve();
 		yield chunk;
 	}
-}
-
-function createEventBus(): InstanceAiEventBus {
-	return {
-		publish: vi.fn(),
-		subscribe: vi.fn().mockReturnValue(() => {}),
-	};
 }
 
 function createLogger() {
