@@ -53,7 +53,8 @@ export class AgentDefinitionService {
 		ctx: OperationContext = {},
 	): Promise<boolean> {
 		return await this.transactionRunner.run(ctx, async (txCtx) => {
-			agent.schema = deepCopy(definition.schema);
+			// Preserve workflow input names in the JSON configuration.
+			agent.schema = structuredClone(definition.schema);
 			agent.tools = deepCopy(definition.tools);
 			agent.skills = deepCopy(definition.skills);
 			if (agent.schema) agent.name = agent.schema.name;
