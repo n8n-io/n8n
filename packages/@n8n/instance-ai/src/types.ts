@@ -24,6 +24,7 @@ import type {
 	ComputerUseChannel,
 	InstanceAiPermissions,
 	InstanceAiSetupItem,
+	InstanceAiThreadArtifact,
 	McpTool,
 	McpToolPermissions,
 	McpToolCallRequest,
@@ -1563,6 +1564,12 @@ export interface InstanceAiAgentContextReader {
 
 // ── Context bundle ───────────────────────────────────────────────────────────
 
+/** An artifact that a tool created or changed. Tools pass the name when they know it. */
+export type InstanceAiChangedArtifact = Pick<
+	InstanceAiThreadArtifact,
+	'type' | 'id' | 'name' | 'projectId'
+>;
+
 export interface InstanceAiContext {
 	/** Instance-wide gate for credential description output and guidance. */
 	credentialDescriptionsEnabled?: boolean;
@@ -1705,6 +1712,13 @@ export interface InstanceAiContext {
 	 * Wired by the host only while the setup panel flag is on.
 	 */
 	markWorkflowSetupHandled?: (workflowId: string) => Promise<void>;
+	/**
+	 * Called after a tool creates or changes a workflow, data table, or agent,
+	 * and after it reads a data table, as the frontend previews those too.
+	 * The host shows the artifact's tab also when no browser shows the run.
+	 * Never throws.
+	 */
+	onArtifactChanged?: (artifact: InstanceAiChangedArtifact) => Promise<void>;
 	/**
 	 * IDs of workflows the agent created during the **current run**. Populated by
 	 * build-workflow on every successful create (via `recordSessionOwnedWorkflow`).

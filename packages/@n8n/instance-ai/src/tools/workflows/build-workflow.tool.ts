@@ -1658,6 +1658,11 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 					});
 
 					failureTracker.clear(workItemKey);
+					await context.onArtifactChanged?.({
+						type: 'workflow',
+						id: saved.id,
+						...(json.name ? { name: json.name } : {}),
+					});
 
 					trackWorkflowSourceBuild(context, {
 						result: 'success',
