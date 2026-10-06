@@ -93,7 +93,7 @@ Known limits:
 - Oxlint rejects a JS plugin location outside the script block. A template diagnostic points at the start of the script block, and its message ends with the real position, for example `(at <template>:12:5)`.
 - Vize skips an SFC without a `<script>` block. The `oxlint-vize` wrapper fixes this, but it shifts every script diagnostic, so we do not use it.
 - Oxlint does not pass `settings` or `ignorePatterns` through `extends`. A package config must repeat `settings: vueConfig.settings`. Without it, Vize applies its default preset and silently skips rules.
-- To suppress a template rule, put the `eslint-disable` comment inside `<template>`. Vize does not read comments in the script block or before `<template>`.
+- To suppress a template rule, add a scoped `overrides` entry. Vize reads `eslint-disable` comments only inside `<template>`, and Vue keeps those comments in dev builds and snapshots. Vize does not read comments in the script block or before `<template>`.
 - `vue/attribute-hyphenation` stays at `warn` in editor-ui, as it was in ESLint.
 - Vize is experimental and releases often. The catalog pins one version, and `minimumReleaseAge` applies.
 

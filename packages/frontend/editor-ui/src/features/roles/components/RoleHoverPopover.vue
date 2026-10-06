@@ -76,8 +76,8 @@ const onButtonClick = () => {
 };
 </script>
 
+<!-- eslint-disable vue/no-multiple-template-root -->
 <template>
-	<!-- eslint-disable vue/no-multiple-template-root -->
 	<N8nTooltip
 		placement="right"
 		:show-after="300"

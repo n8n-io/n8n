@@ -264,7 +264,7 @@ Vue rules do not run in ESLint. Oxlint runs them through Vize, from
 `@n8n/oxlint-config/vue` (or `@n8n/oxlint-config/frontend` in a package that has
 moved to Oxlint). Oxlint does not inherit `settings` through `extends`, so the
 package config repeats `settings: vueConfig.settings`. To suppress a template
-rule, put the `eslint-disable` comment inside `<template>`. See
+rule, add a scoped `overrides` entry. See
 `scripts/lint-parity/OXLINT_MIGRATION_BLOCKERS.md`.
 
 A package config may add `ignores`, an additive plugin config, a block that

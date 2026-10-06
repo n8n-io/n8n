@@ -19,8 +19,9 @@ const designSystemPlugin = createRequire(import.meta.url).resolve(
  * position, for example `(at <template>:12:5)`. A `.vue` file without a
  * `<script>` block gets no Vize diagnostics.
  *
- * To suppress a template rule, put `<!-- eslint-disable-next-line vue/<rule> -->`
- * in the template. Vize reads that comment itself.
+ * To suppress a template rule, prefer a scoped `overrides` entry. Vize also
+ * reads `<!-- eslint-disable-next-line vue/<rule> -->` inside `<template>`, but
+ * Vue keeps that comment in dev builds and in snapshots.
  *
  * oxlint does not pass `settings` or `ignorePatterns` through `extends`. A
  * package config that extends this layer must set `settings: vueConfig.settings`

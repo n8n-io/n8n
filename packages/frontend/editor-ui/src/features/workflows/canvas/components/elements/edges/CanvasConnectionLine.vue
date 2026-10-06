@@ -59,7 +59,6 @@ onMounted(() => {
 </script>
 
 <template>
-	<!-- eslint-disable vue/no-multiple-template-root -->
 	<BaseEdge
 		v-for="segment in segments"
 		:key="segment[0]"

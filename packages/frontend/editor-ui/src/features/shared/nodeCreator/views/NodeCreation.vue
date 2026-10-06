@@ -185,7 +185,6 @@ function openCommandBar(event: MouseEvent) {
 </script>
 
 <template>
-	<!-- eslint-disable vue/no-multiple-template-root -->
 	<N8nButtonList
 		v-if="!createNodeActive"
 		orientation="vertical"

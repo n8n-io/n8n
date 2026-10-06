@@ -17,4 +17,19 @@ export default defineConfig({
 		// TODO: Remove this
 		'vize/vue/attribute-hyphenation': 'warn',
 	},
+	overrides: [
+		...editorUiConfig.overrides,
+		{
+			// These components render several roots on purpose. A disable comment in the
+			// template would add a comment node to dev builds and to snapshots.
+			files: [
+				'src/features/roles/components/RoleHoverPopover.vue',
+				'src/features/shared/nodeCreator/views/NodeCreation.vue',
+				'src/features/workflows/canvas/components/elements/edges/CanvasConnectionLine.vue',
+				'src/features/workflows/canvas/components/elements/edges/CanvasEdge.vue',
+				'src/features/workflows/canvas/components/elements/nodes/render-types/CanvasNodeStickyNote.vue',
+			],
+			rules: { 'vize/vue/no-multiple-template-root': 'off' },
+		},
+	],
 });

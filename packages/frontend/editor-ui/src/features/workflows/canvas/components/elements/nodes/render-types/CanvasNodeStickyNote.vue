@@ -96,7 +96,6 @@ onBeforeUnmount(() => {
 });
 </script>
 <template>
-	<!-- eslint-disable vue/no-multiple-template-root -->
 	<NodeResizer
 		:min-height="80"
 		:min-width="150"

@@ -150,7 +150,6 @@ function onEdgeLabelMouseLeave() {
 </script>
 
 <template>
-	<!-- eslint-disable vue/no-multiple-template-root -->
 	<g
 		data-test-id="edge"
 		:data-source-node-name="data.source?.node"
