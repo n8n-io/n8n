@@ -788,6 +788,27 @@ export class AgentChatController {
 		return { resumed };
 	}
 
+	@Delete('/:agentId/n8n-chat/:threadId')
+	@ProjectScope('agent:execute')
+	async deleteProductionChatThread(
+		req: AuthenticatedRequest<{ projectId: string }>,
+		_res: Response,
+		@Param('agentId') agentId: string,
+		@Param('threadId') threadId: string,
+	) {
+		const { projectId } = req.params;
+		await this.requireProductionChat(agentId, projectId);
+		await this.requireProductionThread(threadId, projectId, agentId, req.user.id);
+		const deleted = await this.agentExecutionService.deleteThread(
+			projectId,
+			agentId,
+			threadId,
+			req.user.id,
+		);
+		if (!deleted) throw new NotFoundError(`Thread "${threadId}" not found`);
+		return { success: true };
+	}
+
 	@Get('/:agentId/chat/:threadId/queue')
 	@ProjectScope('agent:read')
 	async getQueuedMessages(

@@ -181,6 +181,7 @@ describe('AgentChatController route access scopes', () => {
 		['reorderProductionQueuedMessage', 'agent:execute'],
 		['steerProductionQueuedMessage', 'agent:execute'],
 		['removeProductionQueuedMessage', 'agent:execute'],
+		['deleteProductionChatThread', 'agent:execute'],
 		['chat', 'agent:execute'],
 		['chatResume', 'agent:execute'],
 		['cancelChatRun', 'agent:execute'],
@@ -1429,6 +1430,60 @@ describe('AgentChatController production n8n Chat', () => {
 					} as never,
 				),
 			).rejects.toThrow(BadRequestError);
+		});
+	});
+
+	describe('deleteProductionChatThread', () => {
+		const req = {
+			params: { projectId: 'project-1' },
+			user: { id: 'user-1' },
+		} as never;
+
+		it("deletes the requesting user's own thread", async () => {
+			const { controller, agentsService, agentExecutionService } = makeController();
+			agentsService.isN8nChatPublished.mockResolvedValue(true);
+			agentExecutionService.deleteThread.mockResolvedValue(true);
+
+			const result = await controller.deleteProductionChatThread(
+				req,
+				undefined as never,
+				'agent-1',
+				'thread-1',
+			);
+
+			expect(agentExecutionService.canUseProductionChatThread).toHaveBeenCalledWith(
+				'thread-1',
+				'project-1',
+				'agent-1',
+				'user-1',
+				'existing',
+			);
+			expect(agentExecutionService.deleteThread).toHaveBeenCalledWith(
+				'project-1',
+				'agent-1',
+				'thread-1',
+				'user-1',
+			);
+			expect(result).toEqual({ success: true });
+		});
+
+		it('404s when the agent is not published to n8n Chat', async () => {
+			const { controller, agentsService } = makeController();
+			agentsService.isN8nChatPublished.mockResolvedValue(false);
+
+			await expect(
+				controller.deleteProductionChatThread(req, undefined as never, 'agent-1', 'thread-1'),
+			).rejects.toThrow(NotFoundError);
+		});
+
+		it('404s when the service finds nothing to delete', async () => {
+			const { controller, agentsService, agentExecutionService } = makeController();
+			agentsService.isN8nChatPublished.mockResolvedValue(true);
+			agentExecutionService.deleteThread.mockResolvedValue(false);
+
+			await expect(
+				controller.deleteProductionChatThread(req, undefined as never, 'agent-1', 'thread-1'),
+			).rejects.toThrow(NotFoundError);
 		});
 	});
 });
