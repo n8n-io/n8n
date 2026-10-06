@@ -7048,6 +7048,9 @@ importers:
       '@vitest/coverage-v8':
         specifier: 'catalog:'
         version: 5.0.1(@vitest/browser@5.0.1)(vitest@5.0.1)
+      n8n-containers:
+        specifier: workspace:*
+        version: link:../../../quality/environments/containers
       oxlint:
         specifier: 'catalog:'
         version: 1.78.0(oxlint-tsgolint@0.21.1)

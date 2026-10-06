@@ -54,6 +54,7 @@
     "lint:fix": "oxlint --type-aware . --fix",
     "watch": "tsc -p tsconfig.build.json --watch",
     "test": "vitest run",
+    "test:postgres": "N8N_LOG_LEVEL=silent vitest run --config vitest.config.postgres.ts",
     "test:unit": "vitest run",
     "test:dev": "vitest --silent=false"
   },
@@ -83,6 +84,7 @@
     "@n8n/vitest-config": "workspace:*",
     "@types/luxon": "catalog:",
     "@vitest/coverage-v8": "catalog:",
+    "n8n-containers": "workspace:*",
     "oxlint": "catalog:",
     "oxlint-tsgolint": "catalog:",
     "typescript": "catalog:typescript",
