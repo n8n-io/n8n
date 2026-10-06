@@ -564,6 +564,52 @@ For data-table routing, look for `load_skill(skillId="data-table-manager")`
 and `data-tables(action="list")`, and verify there are no planning,
 workflow-builder, or spawned-agent entries in the spawned-agent section.
 
+### Routing mode
+
+Routing mode measures which route the orchestrator takes for a request: build
+an Agent, build a workflow, do the task once, debug, answer, ask a question,
+do many tasks, or decline. It stops each trial at the first call that commits
+to a route, so a trial takes seconds, not minutes.
+
+```bash
+pnpm eval:discovery --cases-dir <dir> --stop-on-route --timeout 120000
+```
+
+The runner reads each `route-<slug>.json` file in `<dir>`. A case is in the
+format that LangTracer exports. The tags give the expected route:
+
+- `routing` marks the file as a routing case.
+- `bucket:<route>` is the main expected route. The summary groups cases by it.
+- `accepts:<token>` is a route that passes. A case can have more than one.
+
+A case can start with state. The stub instance and the thread then hold it
+before the turn:
+
+```json
+{
+	"tags": ["routing", "bucket:debug", "accepts:debug"],
+	"seed": {
+		"mode": "inline",
+		"workflows": [{ "id": "wf-1", "name": "Sync orders", "nodes": [], "connections": {} }],
+		"priorRuns": [{ "workflow": "wf-1", "hints": "The HTTP Request node returned 401." }]
+	},
+	"credentials": [{ "type": "slackApi" }],
+	"conversation": [{ "role": "user", "text": "It failed again.", "attach": { "workflow": "wf-1" } }]
+}
+```
+
+- `seed.messages` are earlier messages in the thread.
+- `seed.workflows` and `seed.dataTables` are on the instance.
+- `seed.priorRuns` are failed runs. `hints` is the error of the run.
+- `attach` is the workflow or Agent (from `seed.agents`) the user has open. The
+  turn sends it in the same `<thread-context>` block as production.
+- `credentials` are accounts. Each account passes its connection test, unless
+  it is `blank` or `valid: false`.
+
+The stub instance cannot replay a LangSmith thread, sign in to a browser, or
+hold folders or projects. The runner skips cases that need them and prints
+their ids.
+
 ## Pairwise evals
 
 Pairwise evals score a built workflow against the dataset's `dos` / `donts`

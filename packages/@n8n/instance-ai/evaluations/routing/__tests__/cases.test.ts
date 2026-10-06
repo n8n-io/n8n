@@ -75,24 +75,49 @@ describe('loadRoutingCases', () => {
 		]);
 	});
 
-	it('returns the cases that need setup without running them', () => {
+	it('loads the seed, the open workflow and the accounts of a case', () => {
+		const dir = caseDir({
+			'route-debug-seeded.json': exportedCase([], {
+				seed: {
+					mode: 'inline',
+					messages: [{ role: 'user', text: 'Build me a daily report.' }],
+					workflows: [{ id: 'wf-report', name: 'Daily report', nodes: [], connections: {} }],
+					priorRuns: [{ workflow: 'wf-report' }],
+				},
+				conversation: [
+					{ role: 'user', text: 'It failed again.', attach: { workflow: 'wf-report' } },
+				],
+				credentials: [{ type: 'slackApi' }],
+			}),
+		});
+
+		const [seeded] = loadRoutingCases(dir).cases;
+
+		expect(seeded.attach).toEqual({ workflow: 'wf-report' });
+		expect(seeded.credentials).toEqual([{ type: 'slackApi' }]);
+		expect(seeded.seed?.messages).toHaveLength(1);
+		expect(seeded.seed?.priorRuns).toEqual([{ workflow: 'wf-report' }]);
+	});
+
+	it('returns the cases that need setup the stub instance cannot do, without running them', () => {
 		const dir = caseDir({
 			'route-debug-ok.json': exportedCase(),
-			'route-debug-no-accounts.json': exportedCase([], { credentials: [] }),
-			'route-debug-seeded.json': exportedCase([], {
-				seed: { mode: 'inline', messages: [{ role: 'user', text: 'Build me a daily report.' }] },
+			'route-debug-replay.json': exportedCase([], {
+				seed: { mode: 'replay', threadId: 'thread-1' },
 			}),
-			'route-debug-with-account.json': exportedCase([], { credentials: [{ type: 'slackApi' }] }),
+			'route-debug-in-folder.json': exportedCase([], {
+				seed: { mode: 'inline', folders: [{ id: 'folder-1', name: 'Reports' }] },
+			}),
 			'route-debug-in-browser.json': exportedCase([], { credentialFixture: 'local' }),
 		});
 
 		const { cases, needsSetup } = loadRoutingCases(dir);
 
-		expect(cases.map((c) => c.id)).toEqual(['route-debug-no-accounts', 'route-debug-ok']);
+		expect(cases.map((c) => c.id)).toEqual(['route-debug-ok']);
 		expect(needsSetup).toEqual([
 			'route-debug-in-browser',
-			'route-debug-seeded',
-			'route-debug-with-account',
+			'route-debug-in-folder',
+			'route-debug-replay',
 		]);
 	});
 

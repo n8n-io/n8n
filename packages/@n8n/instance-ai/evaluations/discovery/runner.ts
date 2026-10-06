@@ -17,7 +17,8 @@
 //
 // Routing mode (`stopOnRoute`) aborts the run at the orchestrator's first
 // committing call (see ../routing/route-rules.ts). Routing cases have no tool
-// expectations, so they call `runOrchestratorTurn` and skip the check.
+// expectations, so they call `runOrchestratorTurn` and skip the check. A routing
+// case can seed the stub instance and the thread (see ./seeded-turn.ts).
 // ---------------------------------------------------------------------------
 
 import type { InstanceAiEvent, TaskList } from '@n8n/api-types';
@@ -32,6 +33,7 @@ import {
 import { credentialAutoSetupResponder } from './credential-approval';
 import { evaluateDiscoveryTrial } from './expected-tools-invoked';
 import { resolveStreamStatus } from './stream-status';
+import { buildTurnMessage, createSeededMemory } from './seeded-turn';
 import { createStubLocalMcpServer } from './stub-local-mcp';
 import {
 	createMcpConnectResponder,
@@ -181,7 +183,11 @@ export async function runOrchestratorTurn(
 	let routeFound = false;
 
 	try {
-		const services = await createStubServices({ nodesJsonPath });
+		const services = await createStubServices({
+			nodesJsonPath,
+			seed: options.scenario.seed,
+			credentials: options.scenario.credentials,
+		});
 		const mcpState = options.scenario.instanceState?.mcp;
 		const mcpRegistry = mcpState ? createStubMcpRegistry(mcpState) : undefined;
 		const context: InstanceAiContext = {
@@ -194,6 +200,11 @@ export async function runOrchestratorTurn(
 		mcpManager = new StubMcpClientManager(createStubMcpToolRegistry(mcpState ?? {}));
 		const threadId = 'discovery-thread-' + nanoid(6);
 		const runId = 'discovery-run-' + nanoid(6);
+		const memory = await createSeededMemory(
+			threadId,
+			context.userId,
+			options.scenario.seed?.messages,
+		);
 
 		const approvalResponders: ApprovalResponder[] = [
 			credentialAutoSetupResponder,
@@ -234,14 +245,16 @@ export async function runOrchestratorTurn(
 			orchestrationContext,
 			mcpServers: stubMcpServerConfigs(mcpState ?? {}),
 			mcpManager,
-			// No memory: discovery measures stateless first-step tool dispatch.
+			// Memory only for seeded earlier messages: discovery measures first-step tool dispatch.
 			memoryConfig: {},
+			...(memory ? { memory } : {}),
 			thinkingEnabled: false,
 		});
 
 		const streamSource = normalizeStreamSource(
-			await agent.stream(options.scenario.userMessage, {
+			await agent.stream(buildTurnMessage(options.scenario), {
 				maxIterations: maxSteps,
+				...(memory ? { persistence: { threadId, resourceId: context.userId } } : {}),
 				abortSignal: abortController.signal,
 				providerOptions: {
 					anthropic: { cacheControl: { type: 'ephemeral' as const } },

@@ -5,12 +5,17 @@
 // The routing labels are tags: `routing`, one `bucket:<route>`, and one
 // `accepts:<token>` for each accepted route. The grader resolves the route from
 // the recorded calls after the run (see grade.ts).
+//
+// An inline `seed` and `credentials` set up the stub instance and the thread
+// before the turn: earlier messages, an open workflow or Agent, failed runs,
+// data tables, and accounts (see ../discovery/seeded-turn.ts).
 // ---------------------------------------------------------------------------
 
 import { readFileSync } from 'fs';
 import { basename, resolve } from 'path';
 import { z } from 'zod';
 
+import type { DiscoveryScenario } from '../discovery/types';
 import { EvalTestCaseSchema } from '../harness/schema';
 import { normalizeExportedCase } from '../langtracer/normalize';
 import { getJsonFiles } from '../utils/get-json-files';
@@ -40,7 +45,8 @@ const routingTagsSchema = z.object({
 	accepts: z.array(z.enum(ROUTING_ACCEPT_TOKENS)).min(1, 'needs an accepts:<route> tag'),
 });
 
-export type RoutingCase = z.infer<typeof routingTagsSchema> & { id: string; userMessage: string };
+export type RoutingCase = z.infer<typeof routingTagsSchema> &
+	Pick<DiscoveryScenario, 'seed' | 'attach' | 'credentials'> & { id: string; userMessage: string };
 
 type ParsedFile = { kind: 'case'; routingCase: RoutingCase } | { kind: 'needs-setup'; id: string };
 
@@ -68,8 +74,12 @@ function parseRoutingCaseFile(filePath: string): ParsedFile {
 
 	const { tags, conversation = [], seed, credentials, credentialFixture } = parsed.data;
 	if (!tags.includes('routing')) throw new Error(`${filePath}: has no "routing" tag`);
-	// ponytail: the runner cannot create earlier messages, an open workflow or Agent, or accounts yet.
-	if (seed || credentials?.length || credentialFixture) {
+	// ponytail: the stub instance has no thread replay, browser sign-in, folders or projects.
+	if (
+		seed?.mode === 'replay' ||
+		credentialFixture ||
+		(seed && (seed.folders.length > 0 || seed.projects.length > 0))
+	) {
 		return { kind: 'needs-setup', id };
 	}
 	if (conversation.length !== 1 || conversation[0].role !== 'user') {
@@ -81,7 +91,11 @@ function parseRoutingCaseFile(filePath: string): ParsedFile {
 		accepts: tagValues(tags, 'accepts:'),
 	});
 	if (!labels.success) throw new Error(`${filePath}: ${formatIssues(labels.error)}`);
-	return { kind: 'case', routingCase: { id, userMessage: conversation[0].text, ...labels.data } };
+	const { text: userMessage, attach } = conversation[0];
+	return {
+		kind: 'case',
+		routingCase: { id, userMessage, ...labels.data, seed, attach, credentials },
+	};
 }
 
 /**

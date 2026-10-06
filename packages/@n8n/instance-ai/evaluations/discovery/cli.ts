@@ -306,7 +306,7 @@ async function runRoutingMode(args: CliArgs, casesDir: string): Promise<void> {
 	const { cases, needsSetup } = loadRoutingCases(casesDir, args.filter);
 	if (needsSetup.length > 0) {
 		console.log(
-			`Skipping ${String(needsSetup.length)} case(s) that need setup (earlier messages, an open workflow or Agent, or accounts): ${needsSetup.join(', ')}`,
+			`Skipping ${String(needsSetup.length)} case(s) that need setup the stub instance cannot do (thread replay, browser sign-in, folders, or projects): ${needsSetup.join(', ')}`,
 		);
 	}
 	if (cases.length === 0) {
