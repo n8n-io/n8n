@@ -23,7 +23,9 @@ There are four constraints:
 2. `BinaryDataConfig.initialize()` reads the signing secret from the CP database, and only the CP
    commands call it. The constructor itself needs no CP database: `InstanceSettings` generates a
    local key when the process has no encryption key, as `n8n engine` requires. So the DP host can
-   create the configuration, but it can never get the CP signing secret.
+   create the configuration, but it cannot read the secret that the CP keeps in its database. An
+   operator could set the same `N8N_BINARY_DATA_SIGNING_SECRET` on both processes instead. That is
+   alternative 3 below, and it is rejected.
 3. `createBinarySignedUrl()` signs a token with that secret. No node in this repository calls it.
    It is part of `BinaryHelperFunctions` in `n8n-workflow`, so community nodes can call it.
 4. The `database` mode stores the bytes in the CP database.
