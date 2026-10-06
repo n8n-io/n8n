@@ -8,20 +8,17 @@ import { randomUUID } from 'node:crypto';
 import { N8N_VERSION } from '@/constants';
 import { resolveWorkerPoolName } from '@/scaling/queue-name';
 
-import { REGISTRY_CONSTANTS } from './instance-registry.types';
 import type { InstanceStorage } from './storage/instance-storage.interface';
 
 /**
  * Core service for instance lifecycle management in the Instance Registry.
  *
  * Handles backend selection (Redis vs memory), instance registration,
- * periodic heartbeat, and graceful shutdown/unregistration.
+ * the heartbeat write, and graceful shutdown/unregistration.
  */
 @Service()
 export class InstanceRegistryService {
 	private storage!: InstanceStorage;
-
-	private heartbeatInterval: ReturnType<typeof setInterval> | null = null;
 
 	private readonly instanceKey = randomUUID();
 
@@ -42,7 +39,6 @@ export class InstanceRegistryService {
 
 		const registration = this.buildRegistration();
 		await this.storage.register(registration);
-		this.startHeartbeat();
 
 		this.logger.info('Instance registered', {
 			instanceKey: this.instanceKey,
@@ -53,8 +49,6 @@ export class InstanceRegistryService {
 
 	async shutdown() {
 		if (!this.storage) return;
-
-		this.stopHeartbeat();
 
 		try {
 			await this.storage.unregister(this.instanceKey);
@@ -69,6 +63,10 @@ export class InstanceRegistryService {
 		}
 
 		this.logger.debug('Instance unregistered');
+	}
+
+	async heartbeat(): Promise<void> {
+		await this.storage.heartbeat(this.buildRegistration());
 	}
 
 	/** Returns an empty list when the storage read fails. */
@@ -147,23 +145,5 @@ export class InstanceRegistryService {
 
 		const { MemoryInstanceStorage } = await import('./storage/memory-storage.js');
 		return new MemoryInstanceStorage();
-	}
-
-	private startHeartbeat() {
-		this.heartbeatInterval = setInterval(async () => {
-			try {
-				await this.storage.heartbeat(this.buildRegistration());
-				this.logger.debug('Heartbeat updated');
-			} catch (error) {
-				this.logger.warn('Heartbeat failed', { error });
-			}
-		}, REGISTRY_CONSTANTS.HEARTBEAT_INTERVAL_MS);
-	}
-
-	private stopHeartbeat() {
-		if (this.heartbeatInterval) {
-			clearInterval(this.heartbeatInterval);
-			this.heartbeatInterval = null;
-		}
 	}
 }

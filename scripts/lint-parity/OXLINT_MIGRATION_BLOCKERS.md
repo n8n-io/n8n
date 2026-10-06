@@ -5,6 +5,8 @@ Oxlint version: 1.78.0
 
 This file is the working backlog for the ESLint to Oxlint migration. It focuses on rules that block an Oxlint-only lint command for many packages. `oxlint-gap.json` is the machine-readable source of truth for shared-layer parity.
 
+Oxlint configs are the executable policy for migrated packages. ESLint policy twins may remain temporarily for parity review, but migration tooling must also support packages that have removed them.
+
 ## Completion criteria
 
 A blocker is complete when all of these conditions are true:
@@ -53,6 +55,17 @@ Phase 3 decisions:
 - `@n8n/rules-engine`, `@n8n/code-health`, and `@n8n/playwright-janitor`: retire the exemption-only rule-ID selectors. They enforce no positive naming contract.
 - `n8n-containers`: retire the Docker label exemption. Object literal keys are data, not identifier contracts.
 - `n8n-playwright`: retire the broad style selectors. Workflow names, fixture keys, and spec paths are data, while identifier casing has no runtime contract.
+
+### Workflow SDK decisions
+
+- Retire the package naming selectors. They enforce style only and exempt node names, AST types, and API fields.
+- Retire the stale `adm-zip` restriction. Its referenced lazy loader no longer exists, and the shared dependency rule already rejects the dev-only package from production source.
+- Keep `@n8n/eslint-plugin-community-nodes` on ESLint as external tooling. Validate its `no-builder-hint-leakage` rule through the Oxlint bridge when Workflow SDK consumes it.
+
+### Backend storage decisions
+
+- `@n8n/backend-network`: retire the package naming selectors. They enforce style only and exempt protocol-defined header and charset names.
+- `@n8n/blob-storage`: retire the package naming selectors. They enforce style only and exempt AWS and HTTP field names.
 
 ## Retirement exceptions
 

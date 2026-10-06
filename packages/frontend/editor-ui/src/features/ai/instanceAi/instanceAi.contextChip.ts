@@ -8,7 +8,6 @@ export type AgentArtifactContextChip = ContextChipBase & {
 	type: 'agent-artifact';
 	agentId: string;
 	projectId: string;
-	isNewAgent: boolean;
 };
 
 export type AgentPreviewSessionContextChip = ContextChipBase & {

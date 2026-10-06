@@ -31,6 +31,7 @@ export interface AzureOpenAIOptions {
 	temperature?: number;
 	topP?: number;
 	responseFormat?: 'text' | 'json_object';
+	extraBody?: string;
 }
 
 /**
@@ -41,7 +42,7 @@ export interface AzureOpenAIBaseModelConfig {
 	azureOpenAIApiVersion: string;
 	azureOpenAIEndpoint?: string;
 	/**
-	 * Full OpenAI-compatible base URL for Azure AI Foundry
+	 * Full OpenAI-compatible base URL for Microsoft Foundry
 	 * (`*.services.ai.azure.com/openai/v1`). When set, the node uses ChatOpenAI
 	 * against this URL instead of AzureChatOpenAI's deployment-based path.
 	 */

@@ -171,6 +171,29 @@ describe('AgentIntegrationsController integration management', () => {
 		);
 	});
 
+	it('delegates a credential-less n8n Chat connect', async () => {
+		const { controller, managementService, agentRepository } = makeController();
+		const integration = { type: 'n8n_chat', credentialId: '' } satisfies AgentIntegrationConfig;
+		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+		managementService.connect.mockResolvedValue({ integration, savedAgent: agent });
+
+		const result = await controller.connectIntegration(
+			{
+				params: { projectId: agent.projectId },
+				user,
+				body: integration,
+			} as never,
+			undefined as never,
+			agent.id,
+			integration as never,
+		);
+
+		expect(managementService.connect).toHaveBeenCalledWith(
+			expect.objectContaining({ agent, user, integration }),
+		);
+		expect(result).toEqual({ status: 'connected' });
+	});
+
 	it('reports configured when the saved agent is unpublished', async () => {
 		const { controller, managementService, agentRepository } = makeController();
 		const integration = {

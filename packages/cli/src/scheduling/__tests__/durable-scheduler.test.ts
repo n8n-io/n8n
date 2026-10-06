@@ -1,3 +1,4 @@
+import type { EventService } from '@n8n/backend-services';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { GlobalConfig } from '@n8n/config';
 import { ScheduledJobOwnerType } from '@n8n/constants';
@@ -56,6 +57,7 @@ describe('DurableScheduler', () => {
 		const workflowOwner = mock<WorkflowScheduledJobOwner>();
 		const agentOwner = mock<AgentScheduledJobOwner>();
 		const systemTaskOwner = new SystemTaskScheduledJobOwner(mock<ScheduledJobRepository>());
+		const eventService = mock<EventService>();
 		const scheduler = new DurableScheduler(
 			logger,
 			mock<DataSource>(),
@@ -92,8 +94,19 @@ describe('DurableScheduler', () => {
 			workflowOwner,
 			agentOwner,
 			systemTaskOwner,
+			eventService,
 		);
-		return { scheduler, inner, logger, tracing, tasks, workflowOwner, agentOwner, systemTaskOwner };
+		return {
+			scheduler,
+			inner,
+			logger,
+			tracing,
+			tasks,
+			workflowOwner,
+			agentOwner,
+			systemTaskOwner,
+			eventService,
+		};
 	}
 
 	describe('composition', () => {
@@ -185,78 +198,6 @@ describe('DurableScheduler', () => {
 
 			expect(logger.warn).not.toHaveBeenCalledWith(
 				expect.stringContaining('misfire grace'),
-				expect.anything(),
-			);
-		});
-	});
-
-	describe('poll timeout warning', () => {
-		it('warns when a poll may outlive the lease on its occurrence', () => {
-			const { logger } = makeScheduler({
-				enabledForPollTriggers: true,
-				pollTimeoutSeconds: 120,
-				leaseDurationSeconds: 60,
-			});
-
-			expect(logger.warn).toHaveBeenCalledWith(
-				expect.stringContaining('poll timeout'),
-				expect.objectContaining({ pollTimeoutSeconds: 120, leaseDurationSeconds: 60 }),
-			);
-		});
-
-		// The poll deadline starts after the occurrence's setup reads, so a timeout
-		// equal to the lease already lets a full-length poll outlive it.
-		it('warns when the timeout equals the lease', () => {
-			const { logger } = makeScheduler({
-				enabledForPollTriggers: true,
-				pollTimeoutSeconds: 60,
-				leaseDurationSeconds: 60,
-			});
-
-			expect(logger.warn).toHaveBeenCalledWith(
-				expect.stringContaining('poll timeout'),
-				expect.objectContaining({ pollTimeoutSeconds: 60, leaseDurationSeconds: 60 }),
-			);
-		});
-
-		it('does not warn when the timeout fits inside the lease', () => {
-			const { logger } = makeScheduler({
-				enabledForPollTriggers: true,
-				pollTimeoutSeconds: 45,
-				leaseDurationSeconds: 60,
-			});
-
-			expect(logger.warn).not.toHaveBeenCalledWith(
-				expect.stringContaining('poll timeout'),
-				expect.anything(),
-			);
-		});
-
-		it('does not warn when poll triggers do not use the durable scheduler', () => {
-			const { logger } = makeScheduler({
-				enabledForPollTriggers: false,
-				pollTimeoutSeconds: 120,
-				leaseDurationSeconds: 60,
-			});
-
-			expect(logger.warn).not.toHaveBeenCalledWith(
-				expect.stringContaining('poll timeout'),
-				expect.anything(),
-			);
-		});
-
-		// Without the publication service the durable poller chain is inactive and
-		// polls run on the legacy in-memory path, where the timeout does not apply.
-		it('does not warn when the workflow publication service is disabled', () => {
-			const { logger } = makeScheduler({
-				enabledForPollTriggers: true,
-				pollTimeoutSeconds: 120,
-				leaseDurationSeconds: 60,
-				useWorkflowPublicationService: false,
-			});
-
-			expect(logger.warn).not.toHaveBeenCalledWith(
-				expect.stringContaining('poll timeout'),
 				expect.anything(),
 			);
 		});

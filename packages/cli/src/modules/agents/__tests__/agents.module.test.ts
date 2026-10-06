@@ -11,6 +11,7 @@ import { FavoriteResourceResolverRegistry } from '@/modules/favorites/favorite-r
 import { SandboxSettingsService } from '@/services/sandbox-settings.service';
 import { AgentUsageProviderProxy } from '@/modules/workflow-index/agent-usage-provider-proxy.service';
 
+import { AgentsSettingsService } from '../agents-settings.service';
 import { AgentsModule } from '../agents.module';
 import { AgentDependencyIndexListener } from '../agent-dependency-index.listener';
 import { AgentExecutionService } from '../agent-execution.service';
@@ -100,6 +101,10 @@ describe('AgentsModule', () => {
 
 	beforeEach(() => {
 		Container.reset();
+		Container.set(
+			AgentsSettingsService,
+			mock<AgentsSettingsService>({ getEnabled: async () => true }),
+		);
 		module = new AgentsModule();
 	});
 

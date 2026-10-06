@@ -1,6 +1,8 @@
 import {
 	OtelSettingsPublicDto,
 	OtelSettingsQueryPublicDto,
+	OtelTestTraceRequestPublicDto,
+	OtelTestTraceResultPublicDto,
 	UpdateOtelSettingsPublicDto,
 } from '@n8n/api-types';
 import { ModuleRegistry } from '@n8n/backend-common';
@@ -14,6 +16,7 @@ import {
 	ApiTags,
 	Body,
 	Get,
+	Post,
 	PublicApiController,
 	Put,
 	Query,
@@ -88,5 +91,24 @@ export class OtelPublicController {
 		const updated = this.settingsService.getSettings();
 
 		return toOtelSettingsResponse(updated);
+	}
+
+	@Post('/test-trace')
+	@ApiKeyScope('otel:manage')
+	@ApiSummary('Test the connection to an OTLP collector')
+	@ApiDescription(
+		'Send a single test span to the given OTLP collector and report whether it was accepted. This tests the supplied connection details without changing the stored configuration. Fields managed declaratively via environment variables are overridden with their effective value before the test is sent. Requires the `otel:manage` scope.',
+	)
+	@ApiTags(tags)
+	@ApiResponse(200, OtelTestTraceResultPublicDto)
+	async testOtelTrace(
+		_req: AuthenticatedRequest,
+		_res: Response,
+		@Body body: OtelTestTraceRequestPublicDto,
+		@Query _query: OtelSettingsQueryPublicDto,
+	): Promise<OtelTestTraceResultPublicDto> {
+		const connection = this.settingsService.resolveTestConnection(body);
+
+		return await this.otelService.sendTestTrace(connection);
 	}
 }

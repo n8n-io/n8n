@@ -4,6 +4,8 @@ import { describe, it, expect, vi, afterEach } from 'vitest';
 import type { N8nClient } from '../client';
 import PromotionConnectionApply from '../commands/promotion-connection/apply';
 import PromotionConnectionApplyContinue from '../commands/promotion-connection/apply-continue';
+import PromotionConnectionApplySelection from '../commands/promotion-connection/apply-selection';
+import PromotionConnectionApplySelectionContinue from '../commands/promotion-connection/apply-selection-continue';
 import {
 	parseCommitSha,
 	parseNonEmpty,
@@ -354,5 +356,121 @@ describe('promotion-connection promote-selection command', () => {
 			['wf-1'],
 			'Promote checkout flow',
 		);
+	});
+});
+
+describe('promotion-connection apply-selection command', () => {
+	afterEach(() => {
+		vi.restoreAllMocks();
+	});
+
+	function runApplySelection(
+		result: unknown,
+		flags: Record<string, unknown> = { format: 'table', workflow: ['wf-1', 'wf-2'] },
+	) {
+		const command = new PromotionConnectionApplySelection([], {} as Config);
+		const applyProjectSelection = vi.fn().mockResolvedValue(result);
+		const internals = command as unknown as ApplyInternals & {
+			parse: () => Promise<{ args: { projectId: string }; flags: Record<string, unknown> }>;
+		};
+		vi.spyOn(internals, 'parse').mockResolvedValue({ args: { projectId: 'proj-1' }, flags });
+		vi.spyOn(internals, 'getClient').mockReturnValue({
+			applyProjectSelection,
+		} as unknown as N8nClient);
+		const succeed = vi.spyOn(internals, 'succeed').mockImplementation(() => {});
+		const output = vi.spyOn(internals, 'output').mockImplementation(() => {});
+		const logToStderr = vi.spyOn(internals, 'logToStderr').mockImplementation(() => {});
+		const exit = vi.spyOn(internals, 'exit').mockImplementation(() => undefined as never);
+		return {
+			run: async () => await command.run(),
+			applyProjectSelection,
+			succeed,
+			output,
+			logToStderr,
+			exit,
+		};
+	}
+
+	it('sends the project id, the workflow ids, and no source by default', async () => {
+		const { run, applyProjectSelection } = runApplySelection(APPLY_RESULT);
+
+		await run();
+
+		expect(applyProjectSelection).toHaveBeenCalledWith('proj-1', ['wf-1', 'wf-2'], undefined);
+	});
+
+	it('sends the reviewed source built from the three expected flags', async () => {
+		const { run, applyProjectSelection } = runApplySelection(APPLY_RESULT, {
+			format: 'table',
+			workflow: ['wf-1'],
+			...PINNED_FLAGS,
+		});
+
+		await run();
+
+		expect(applyProjectSelection).toHaveBeenCalledWith('proj-1', ['wf-1'], EXPECTED_SOURCE);
+	});
+
+	it('names the branch and commit it applied, and exits through succeed', async () => {
+		const { run, succeed, exit } = runApplySelection(APPLY_RESULT);
+
+		await run();
+
+		expect(succeed).toHaveBeenCalledWith(
+			`Applied release at commit ${SHA} to the instance.`,
+			expect.anything(),
+			APPLY_RESULT,
+		);
+		expect(exit).not.toHaveBeenCalled();
+	});
+
+	it('exits 3 without reporting success when the source changed since the review', async () => {
+		const { run, succeed, exit } = runApplySelection(SOURCE_CHANGED_RESULT);
+
+		await run();
+
+		expect(succeed).not.toHaveBeenCalled();
+		expect(exit).toHaveBeenCalledWith(3);
+	});
+
+	it('exits 4 with a Continue command that resends the same workflow ids', async () => {
+		const { run, logToStderr, exit } = runApplySelection(BLOCKED_RESULT);
+
+		await run();
+
+		expect(logToStderr.mock.calls[0][0]).toContain(
+			`n8n-cli promotion-connection apply-selection-continue proj-1 -w wf-1 -w wf-2 --expected-config-id=cfg-2 --expected-branch=release --expected-commit-sha=${SHA}`,
+		);
+		expect(exit).toHaveBeenCalledWith(4);
+	});
+});
+
+describe('promotion-connection apply-selection-continue command', () => {
+	afterEach(() => {
+		vi.restoreAllMocks();
+	});
+
+	it('continues with the reviewed source and the same workflow ids', async () => {
+		const command = new PromotionConnectionApplySelectionContinue([], {} as Config);
+		const continueApplyProjectSelection = vi.fn().mockResolvedValue(SOURCE_CHANGED_RESULT);
+		const internals = command as unknown as ApplyInternals & {
+			parse: () => Promise<{ args: { projectId: string }; flags: Record<string, unknown> }>;
+		};
+		vi.spyOn(internals, 'parse').mockResolvedValue({
+			args: { projectId: 'proj-1' },
+			flags: { format: 'table', workflow: ['wf-1'], ...PINNED_FLAGS },
+		});
+		vi.spyOn(internals, 'getClient').mockReturnValue({
+			continueApplyProjectSelection,
+		} as unknown as N8nClient);
+		vi.spyOn(internals, 'succeed').mockImplementation(() => {});
+		vi.spyOn(internals, 'output').mockImplementation(() => {});
+		vi.spyOn(internals, 'logToStderr').mockImplementation(() => {});
+		const exit = vi.spyOn(internals, 'exit').mockImplementation(() => undefined as never);
+
+		await command.run();
+
+		expect(continueApplyProjectSelection).toHaveBeenCalledWith('proj-1', ['wf-1'], EXPECTED_SOURCE);
+		expect(exit).toHaveBeenCalledWith(3);
 	});
 });
