@@ -1,5 +1,5 @@
 /* eslint-disable import-x/no-extraneous-dependencies -- test-only pattern: @vue/test-utils and @pinia/testing are transitive devDeps */
-import { inject, reactive } from 'vue';
+import { inject, nextTick, reactive } from 'vue';
 import { mount, flushPromises } from '@vue/test-utils';
 import { createTestingPinia } from '@pinia/testing';
 import { i18nInstance } from '@n8n/i18n';
@@ -368,6 +368,25 @@ describe('AgentN8nChatView', () => {
 
 		expect(wrapper.find('[data-testid="agent-n8n-chat-unavailable"]').exists()).toBe(true);
 		expect(wrapper.find('[data-testid="chat-panel-stub"]').exists()).toBe(false);
+	});
+
+	it("ignores a late unavailable event from the previous agent's panel while the next agent loads", async () => {
+		const wrapper = renderView();
+		await flushPromises();
+		const oldPanel = wrapper.findComponent({ name: 'AgentChatPanel' });
+
+		const nextAgent = createDeferredPromise<AgentChatListItem>();
+		getN8nChatAgentMock.mockReturnValueOnce(nextAgent.promise);
+		const rerender = wrapper.setProps({ agentId: 'agent-2' });
+		// The old panel is still mounted until the re-render after the agent change.
+		await nextTick();
+		oldPanel.vm.$emit('agent-unavailable');
+		await rerender;
+		nextAgent.resolve({ ...agentItem, id: 'agent-2', name: 'Other Agent' });
+		await flushPromises();
+
+		expect(wrapper.find('[data-testid="agent-n8n-chat-unavailable"]').exists()).toBe(false);
+		expect(wrapper.find('[data-testid="chat-panel-stub"]').exists()).toBe(true);
 	});
 
 	it('toasts on a non-404 load failure instead of showing the unavailable state', async () => {

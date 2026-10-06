@@ -2001,6 +2001,7 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 		// Only user message — no inline error bubble
 		expect(hook.messages.value).toHaveLength(1);
 		expect(onAgentUnavailable).toHaveBeenCalledOnce();
+		expect(showQueueErrorMock).not.toHaveBeenCalled();
 		expect(hook.fatalError.value).toBeNull();
 	});
 
