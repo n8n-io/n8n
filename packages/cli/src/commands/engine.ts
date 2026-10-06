@@ -77,6 +77,7 @@ export class Engine extends BaseCommand {
 				await this.responseSender?.stop();
 			}
 			await Expression.disposeExpressionEngine();
+			if (this.needsRegexEngine) this.regexEngineService.shutdown();
 		} catch (error) {
 			await this.exitWithCrash('There was an error shutting down the engine.', error);
 		}

@@ -115,7 +115,8 @@ export abstract class BaseCommand<F = never> {
 	/**
 	 * Whether to init the regex engine. Defaults to `needsExpressionEngine`: a command
 	 * that evaluates workflow expressions also evaluates a user's regexes. Override only
-	 * where the two genuinely diverge.
+	 * where the two genuinely diverge, and as a getter (`override get needsRegexEngine()`):
+	 * unlike the other `needs*` flags, this one can't be overridden as a field.
 	 */
 	get needsRegexEngine(): boolean {
 		return this.needsExpressionEngine;
@@ -612,6 +613,7 @@ export abstract class BaseCommand<F = never> {
 	async finally(error: Error | undefined) {
 		if (error?.message) this.logger.error(error.message);
 		if (inTest || this.constructor.name === 'Start') return;
+		if (this.needsRegexEngine) this.regexEngineService.shutdown();
 		if (this.dbConnection.connectionState.connected) {
 			await sleep(100); // give any in-flight query some time to finish
 			await this.dbConnection.close();
