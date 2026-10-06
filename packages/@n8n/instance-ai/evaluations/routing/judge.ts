@@ -71,7 +71,7 @@ route:
 - debug: The Assistant looks for why a run failed or gave a wrong result. It reads the executions of the run, or it reads the workflow or the Agent to find the cause.
 - multi: The Assistant plans two or more separate pieces of work, for example two workflows, or an Agent and a workflow. A plan for one artifact has the route of that artifact.
 - clarify: The Assistant asks the user for a decision or a missing detail and waits. It shows a question card, or its reply ends with questions that it must have answered before it continues.
-- answer: The Assistant gives information, instructions, an explanation, or a result, and it needs nothing from the user to continue. An answer that ends with an optional offer ("Do you want me to build this?") is still an answer. But when the reply asks the user to pick one of the options that it lists, or asks for details that it needs before it builds, it is clarify.
+- answer: The Assistant gives information, instructions, an explanation, or a result, and it needs nothing from the user to continue. An answer that ends with an optional offer ("Do you want me to build this?") is still an answer. But when the reply asks the user to pick one of the options that it lists, asks what the user wants to build or do ("What do you want to build?"), or asks for details that it needs before it builds, it is clarify.
 - decline: The Assistant refuses the request, or it says that it cannot help with it. It can suggest an alternative.
 - none: None of the routes above.
 
