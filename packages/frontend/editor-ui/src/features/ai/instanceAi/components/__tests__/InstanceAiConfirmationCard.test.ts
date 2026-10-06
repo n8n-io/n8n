@@ -99,6 +99,40 @@ describe('InstanceAiConfirmationCard', () => {
 		expect(emitted().submit).toHaveLength(1);
 	});
 
+	it('offers always allow for a scoped tool and submits a session approval', async () => {
+		const { getByTestId, emitted } = renderComponent({
+			props: {
+				input: {
+					requestId: 'req-aa',
+					message: 'Run the workflow',
+					severity: 'info',
+					toolName: 'executions',
+					args: { action: 'run', workflowId: 'wf-1' },
+				},
+			},
+		});
+
+		await fireEvent.click(getByTestId('approval-card-always-allow'));
+
+		expect(emitted().submit).toEqual([[{ kind: 'approval', approved: true, scope: 'session' }]]);
+	});
+
+	it('does not offer always allow for a destructive action', () => {
+		const { queryByTestId } = renderComponent({
+			props: {
+				input: {
+					requestId: 'req-d',
+					message: 'Delete the workflow',
+					severity: 'destructive',
+					toolName: 'workflows',
+					args: { action: 'delete', workflowId: 'wf-1' },
+				},
+			},
+		});
+
+		expect(queryByTestId('approval-card-always-allow')).not.toBeInTheDocument();
+	});
+
 	it('renders the approval card when no card field is set', () => {
 		const { getByTestId } = renderComponent({
 			props: {

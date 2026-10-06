@@ -183,8 +183,14 @@ export function rebuildInteractiveFromHistory(tc: ToolCall): InteractivePayload 
 
 	// An n8n Assistant confirmation: many Assistant tools suspend with the same
 	// confirmation payload, so the payload shape is the discriminator.
-	const assistantInput = parseAssistantConfirmationInput(tc.suspendPayload);
-	if (assistantInput) {
+	const parsedAssistantInput = parseAssistantConfirmationInput(tc.suspendPayload);
+	if (parsedAssistantInput) {
+		// The suspend payload often omits the tool, which "Always allow" keys on.
+		const assistantInput = {
+			...parsedAssistantInput,
+			toolName: parsedAssistantInput.toolName ?? tc.tool,
+			args: parsedAssistantInput.args ?? (isRecord(tc.input) ? tc.input : {}),
+		};
 		const resolved = tc.output !== undefined;
 		return {
 			toolCallId: tc.toolCallId,

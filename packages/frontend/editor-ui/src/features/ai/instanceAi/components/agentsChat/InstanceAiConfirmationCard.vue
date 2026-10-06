@@ -16,6 +16,7 @@ import {
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useApprovalCardLabels } from '@/app/composables/useApprovalCardLabels';
+import { buildAlwaysAllowKey } from '../../alwaysAllow';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import type { AssistantConfirmationInput } from '@/features/ai/shared/agentsChat/assistantConfirmation';
 import InstanceAiQuestions, { type QuestionAnswer } from '../InstanceAiQuestions.vue';
@@ -181,7 +182,22 @@ if (props.input.testListener) {
 	onBeforeUnmount(removePushListener);
 }
 
+/** Same rule as the legacy panel: never for destructive or cross-target actions, or unscoped keys. */
+const canAlwaysAllow = computed(() => {
+	const { toolName, args, severity, targetApproval, credentialDestination, workflowId } =
+		props.input;
+	if (!toolName || severity === 'destructive' || targetApproval || credentialDestination) {
+		return false;
+	}
+	return buildAlwaysAllowKey(toolName, args ?? {}, workflowId) !== null;
+});
+
 function onApprovalSelect(key: string) {
+	if (key === 'always-allow' && canAlwaysAllow.value) {
+		// The tool stores a thread grant, so later matching calls skip the card.
+		submit({ kind: 'approval', approved: true, scope: 'session' });
+		return;
+	}
 	if (key === 'allow-once' || key === 'deny') {
 		submit({ kind: 'approval', approved: key === 'allow-once' });
 	}
@@ -382,6 +398,7 @@ function onApprovalSelect(key: string) {
 		:description="input.message"
 		:args="input.targetApproval?.args ?? input.args"
 		:destructive="input.severity === 'destructive'"
+		:supports-session-approval="canAlwaysAllow"
 		:disabled="isInactive"
 		data-test-id="instance-ai-agents-chat-approval"
 		@select="onApprovalSelect"
