@@ -80,6 +80,20 @@ const workflowIssueSchema = instanceIssueSchema.extend({
 });
 export type BreakingChangeWorkflowIssue = z.infer<typeof workflowIssueSchema>;
 
+/** `suggested` by the owner heuristic, or `assigned` by a person. */
+export const migrationOwnerSourceSchema = z.enum(['suggested', 'assigned']);
+export type MigrationOwnerSource = z.infer<typeof migrationOwnerSourceSchema>;
+
+/** The user responsible for fixing a workflow's findings. */
+const workflowOwnerSchema = z.object({
+	id: z.string(),
+	firstName: z.string(),
+	lastName: z.string(),
+	email: z.string(),
+	source: migrationOwnerSourceSchema,
+});
+export type BreakingChangeWorkflowOwner = z.infer<typeof workflowOwnerSchema>;
+
 const affectedWorkflowSchema = z.object({
 	id: z.string(),
 	name: z.string(),
@@ -88,6 +102,8 @@ const affectedWorkflowSchema = z.object({
 	lastUpdatedAt: z.date(),
 	lastExecutedAt: z.date().optional(),
 	issues: z.array(workflowIssueSchema),
+	// Absent when no owner is known for the workflow.
+	owner: workflowOwnerSchema.optional(),
 });
 export type BreakingChangeAffectedWorkflow = z.infer<typeof affectedWorkflowSchema>;
 
