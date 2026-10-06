@@ -12,7 +12,9 @@ const label = t.obj({
 /**
  * An issue with the fields a workflow reads. The output is closed, so a misspelt field fails
  * `tsc`; the action drops the other fields of the API response. GitHub may leave out any field,
- * e.g. `locked`, or send `pull_request: null`, so each field is optional and nullable.
+ * e.g. `locked`, so each field is typical. GitHub sends `null` for an empty body, an open issue
+ * and no milestone, so these fields stay optional and nullable. GitHub sends `pull_request`
+ * only for a pull request.
  */
 export const issue = t.loose(
 	t.obj({
@@ -20,19 +22,19 @@ export const issue = t.loose(
 		['number']: t.int(),
 		title: t.str(),
 		state: t.oneOf('open', 'closed'),
-		state_reason: t.str(),
+		state_reason: t.nullable(t.str()),
 		html_url: t.str(),
-		body: t.str(),
+		body: t.nullable(t.str()),
 		user,
 		labels: t.arr(label),
 		assignees: t.arr(user),
-		milestone: t.obj({ ['number']: t.int(), title: t.str() }),
+		milestone: t.nullable(t.obj({ ['number']: t.int(), title: t.str() })),
 		comments: t.int(),
 		locked: t.bool(),
 		created_at: t.str(),
 		updated_at: t.str(),
-		closed_at: t.str(),
-		pull_request: t.obj({ html_url: t.str() }),
+		closed_at: t.nullable(t.str()),
+		pull_request: t.obj({ html_url: t.str() }).optional(),
 	}),
 );
 

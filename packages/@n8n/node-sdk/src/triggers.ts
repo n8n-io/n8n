@@ -43,6 +43,7 @@ import {
 	manifestLookupOwnerOf,
 	nativeRunError,
 	nodeDescriptionOf,
+	unsetValueOf,
 	verifiedBundleOf,
 	versionedTypeOf,
 	withCredentialHostsOf,
@@ -50,8 +51,10 @@ import {
 	type ExecutorHost,
 	type FrozenVersion,
 } from './runtime';
+import { actionUiSchema } from './manifest';
+import { storedFieldOf, type StoredField } from './properties';
 import { canonicalJson, Schema, type Shape } from './schema';
-import { readAs } from './validate';
+import { matches, readAs } from './validate';
 import { validate } from './validator';
 import { NODE_CONTRACT_VERSION } from './version';
 
@@ -573,8 +576,12 @@ export async function loadTriggerExecutor(frozen: FrozenVersion): Promise<Execut
 /** The context methods every trigger entry point has. */
 type TriggerContext = IHookFunctions | IPollFunctions | IWebhookFunctions;
 
-/** The executor host of one trigger call: the call is its one item. */
-const triggerHostOf = (context: TriggerContext, call: TriggerCall): ExecutorHost => {
+/** The executor host of one trigger call: the call is its one item. `fieldOf`, see `storedFieldOf`. */
+const triggerHostOf = (
+	context: TriggerContext,
+	call: TriggerCall,
+	fieldOf: (name: string) => StoredField,
+): ExecutorHost => {
 	const node = context.getNode();
 	// A webhook call sends no request. Without a credential, n8n reads no credential per delivery.
 	const bare = call.call === 'webhook';
@@ -582,8 +589,11 @@ const triggerHostOf = (context: TriggerContext, call: TriggerCall): ExecutorHost
 		...hostLimitsOf(),
 		items: [{ json: call }],
 		node: bare ? { ...node, credentials: {} } : node,
-		parameter: (name) =>
-			bare && name === AUTHENTICATION ? 'none' : context.getNodeParameter(name, undefined),
+		parameter: (name) => {
+			if (bare && name === AUTHENTICATION) return 'none';
+			const { path, read } = fieldOf(name);
+			return read(context.getNodeParameter(path, unsetValueOf(name, path)));
+		},
 		request: async (options, type) => {
 			const response: unknown = type
 				? await context.helpers.httpRequestWithAuthentication.call(context, type, options)
@@ -672,9 +682,10 @@ function triggerTypeOf(
 	contract: ContractDocument,
 	description: INodeTypeDescription,
 	executor: () => Promise<Executor>,
+	fieldOf: (name: string) => StoredField,
 ): INodeType {
 	const run = async (context: TriggerContext, call: TriggerCall) => {
-		const [[result] = []] = await (await executor())(triggerHostOf(context, call));
+		const [[result] = []] = await (await executor())(triggerHostOf(context, call, fieldOf));
 		if (!result) throw new UnexpectedError(`${contract.id} gave no result for ${call.call}`);
 		return result.json;
 	};
@@ -789,17 +800,19 @@ function triggerTypeOf(
 export function toTriggerNodeType(trigger: Trigger): new () => INodeType {
 	const contract = toContract(trigger);
 	const executor = executorOf(triggerRunOf(trigger, contract.egress));
+	const ui = matches(actionUiSchema, trigger.ui) ? trigger.ui : undefined;
 	const type = triggerTypeOf(
 		contract,
-		nodeDescriptionOf({ contract, nodeContract: NODE_CONTRACT_VERSION }),
+		nodeDescriptionOf({ contract, nodeContract: NODE_CONTRACT_VERSION, ui }),
 		async () => await Promise.resolve(executor),
+		storedFieldOf(contract.input, ui),
 	);
 	const { id, node, version, credentialTypes } = trigger;
 	const owner = { id, node, version, credentialTypes, egress: contract.egress ?? { hosts: [] } };
 	return class implements INodeType {
 		description = type.description;
 
-		methods = listSearchMethodsOf(contract, undefined, async () => await Promise.resolve(owner));
+		methods = listSearchMethodsOf(contract, ui, async () => await Promise.resolve(owner));
 
 		poll = type.poll;
 
@@ -818,6 +831,7 @@ const frozenTriggerType = (frozen: FrozenVersion): INodeType => {
 		frozen.manifest.contract,
 		nodeDescriptionOf(frozen.manifest),
 		async () => (await cachedExecutorOf(frozen, loadTriggerExecutor)).executor,
+		storedFieldOf(frozen.manifest.contract.input, frozen.manifest.ui),
 	);
 	const methods = listSearchMethodsOf(
 		frozen.manifest.contract,

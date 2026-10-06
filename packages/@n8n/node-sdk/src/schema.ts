@@ -113,7 +113,9 @@ export interface JsonSchema {
 	'x-n8n-aggregate'?: string;
 	/**
 	 * On an output field outside `required`: the service sends it as a rule, but a plan, a
-	 * permission or an API version can leave it out. Without it, absence is normal.
+	 * permission or an API version can leave it out. Without it, absence is normal. The generated
+	 * workflow types show it as `T`: not optional, and without a `null` branch beside the value
+	 * (`anyOf: [value, { type: 'null' }]`, as `t.loose` writes it). That `null` is drift too.
 	 */
 	'x-n8n-claim'?: 'typical';
 	/** On an action output: the output fields come from a resource, see `resourceOutput`. */
@@ -196,19 +198,29 @@ export interface ResourcePointer<K extends string = string> {
 declare const phantom: unique symbol;
 declare const hasDefault: unique symbol;
 declare const filled: unique symbol;
+declare const variantTag: unique symbol;
 
 /**
  * A schema for values of type `T`. `Opt` marks a field the author may omit. `Def` is `true`
  * only after `.default(v)`: n8n fills in the default, so `run()` always gets the field.
- * `Run` is the value `run()` gets: `applyDefaults` fills nested defaults too.
+ * `Run` is the value `run()` gets: `applyDefaults` fills nested defaults too. `Tag` is the tag
+ * field of a `t.variant`, and `string` for any other schema.
  */
-export class Schema<T, Opt extends boolean = false, Def extends boolean = boolean, Run = T> {
+export class Schema<
+	T,
+	Opt extends boolean = false,
+	Def extends boolean = boolean,
+	Run = T,
+	Tag extends string = string,
+> {
 	/** Holds `T` for the types. It has no value at run time. */
 	declare readonly [phantom]?: T;
 	/** Holds `Def` for the types. It has no value at run time. */
 	declare readonly [hasDefault]?: Def;
 	/** Holds `Run` for the types. It has no value at run time. */
 	declare readonly [filled]?: Run;
+	/** Holds `Tag` for the types: a variant with one branch has the type of an object. */
+	declare readonly [variantTag]?: Tag;
 
 	constructor(
 		/** The JSON Schema that the contract document holds. */
@@ -218,13 +230,13 @@ export class Schema<T, Opt extends boolean = false, Def extends boolean = boolea
 	) {}
 
 	/** The field may be absent. `run()` gets `undefined` then. */
-	optional(): Schema<T, true, boolean, Run> {
-		return new Schema<T, true, boolean, Run>(this.json, true);
+	optional(): Schema<T, true, boolean, Run, Tag> {
+		return new Schema<T, true, boolean, Run, Tag>(this.json, true);
 	}
 
 	/** A default value also makes the field optional. */
-	default(value: T): Schema<T, true, true, Run> {
-		return new Schema<T, true, true, Run>({ ...this.json, default: value }, true);
+	default(value: T): Schema<T, true, true, Run, Tag> {
+		return new Schema<T, true, true, Run, Tag>({ ...this.json, default: value }, true);
 	}
 
 	/**
@@ -235,13 +247,13 @@ export class Schema<T, Opt extends boolean = false, Def extends boolean = boolea
 	 * model: t.str().hint('A model ID from the catalog; never invent one'),
 	 * ```
 	 */
-	hint(text: string): Schema<T, Opt, Def, Run> {
-		return new Schema<T, Opt, Def, Run>({ ...this.json, 'x-n8n-hint': text }, this.isOptional);
+	hint(text: string): Schema<T, Opt, Def, Run, Tag> {
+		return new Schema<T, Opt, Def, Run, Tag>({ ...this.json, 'x-n8n-hint': text }, this.isOptional);
 	}
 
 	/** What the field is for (`description`). Agents and the n8n UI show it. */
-	describe(text: string): Schema<T, Opt, Def, Run> {
-		return new Schema<T, Opt, Def, Run>({ ...this.json, description: text }, this.isOptional);
+	describe(text: string): Schema<T, Opt, Def, Run, Tag> {
+		return new Schema<T, Opt, Def, Run, Tag>({ ...this.json, description: text }, this.isOptional);
 	}
 
 	/**
@@ -252,8 +264,8 @@ export class Schema<T, Opt extends boolean = false, Def extends boolean = boolea
 	 * replyBroadcast: t.bool().default(false).title('Also send to channel'),
 	 * ```
 	 */
-	title(text: string): Schema<T, Opt, Def, Run> {
-		return new Schema<T, Opt, Def, Run>({ ...this.json, title: text }, this.isOptional);
+	title(text: string): Schema<T, Opt, Def, Run, Tag> {
+		return new Schema<T, Opt, Def, Run, Tag>({ ...this.json, title: text }, this.isOptional);
 	}
 
 	/**
@@ -267,16 +279,16 @@ export class Schema<T, Opt extends boolean = false, Def extends boolean = boolea
 	 */
 	options(
 		labels: { readonly [V in Extract<T, string>]?: string | OptionLabel },
-	): Schema<T, Opt, Def, Run> {
-		return new Schema<T, Opt, Def, Run>(
+	): Schema<T, Opt, Def, Run, Tag> {
+		return new Schema<T, Opt, Def, Run, Tag>(
 			{ ...this.json, 'x-n8n-options': optionLabelsOf(labels) },
 			this.isOptional,
 		);
 	}
 
 	/** Extra JSON Schema keywords (`pattern`, `minLength`, `format`, …). */
-	with(keywords: JsonSchema): Schema<T, Opt, Def, Run> {
-		return new Schema<T, Opt, Def, Run>({ ...this.json, ...keywords }, this.isOptional);
+	with(keywords: JsonSchema): Schema<T, Opt, Def, Run, Tag> {
+		return new Schema<T, Opt, Def, Run, Tag>({ ...this.json, ...keywords }, this.isOptional);
 	}
 }
 
@@ -410,13 +422,18 @@ const acceptsNull = (schema: JsonSchema): boolean =>
 
 /** `tag` is the discriminator of the union that `schema` is a branch of. */
 function looseJson(schema: JsonSchema, tag?: string): JsonSchema {
-	const field = (child: JsonSchema): JsonSchema => {
+	const required = new Set(schema.required ?? []);
+	const field = (key: string, child: JsonSchema): JsonSchema => {
 		const inner = looseJson(child);
+		// The TS view drops the `null` branch of a typical field. A field that already accepts
+		// `null` keeps it, so it is not typical.
 		if (acceptsNull(inner)) return inner;
+		const claim: JsonSchema = required.has(key) ? { 'x-n8n-claim': 'typical' } : {};
 		// The docs stay on the field, where the generated types read them.
 		const { description, 'x-n8n-hint': hint } = inner;
 		return {
 			anyOf: [inner, { type: 'null' }],
+			...claim,
 			...(description === undefined ? {} : { description }),
 			...(hint === undefined ? {} : { 'x-n8n-hint': hint }),
 		};
@@ -429,7 +446,7 @@ function looseJson(schema: JsonSchema, tag?: string): JsonSchema {
 					properties: Object.fromEntries(
 						Object.entries(schema.properties).map(([key, child]) => [
 							key,
-							key === tag ? child : field(child),
+							key === tag ? child : field(key, child),
 						]),
 					),
 				}
@@ -454,6 +471,10 @@ function looseJson(schema: JsonSchema, tag?: string): JsonSchema {
 /**
  * The schema with each object field optional and nullable, at any depth. Use it for the output
  * of an API object: the host passes drift on, so a field the API leaves out is no error.
+ * A required field becomes typical (`x-n8n-claim`): the generated workflow types show it as
+ * `T`, so a builder reads it without a check. Write a `null` that the API sends as a rule as
+ * `t.nullable` (the field then stays optional and nullable), and a field that the API often
+ * leaves out as `.optional()`.
  *
  * @example
  * ```ts
@@ -559,9 +580,9 @@ function variant<const Tag extends string, B extends Record<string, Shape>>(
 	tag: Tag,
 	branches: B,
 	labels: { readonly [K in keyof B & string]?: string | OptionLabel } = {},
-): Schema<VariantOf<Tag, B>, false, boolean, RunVariantOf<Tag, B>> {
+): Schema<VariantOf<Tag, B>, false, boolean, RunVariantOf<Tag, B>, Tag> {
 	const named = optionLabelsOf(labels);
-	return new Schema<VariantOf<Tag, B>, false, boolean, RunVariantOf<Tag, B>>(
+	return new Schema<VariantOf<Tag, B>, false, boolean, RunVariantOf<Tag, B>, Tag>(
 		{
 			type: 'object',
 			discriminator: { propertyName: tag },

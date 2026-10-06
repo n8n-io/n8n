@@ -118,6 +118,23 @@ interface Tag {
 	readonly optional?: boolean;
 }
 
+/**
+ * The schema that the TS view of an output field prints. A typical field is `T`: its `null`
+ * branch is drift, as an absent value is.
+ */
+function outputFieldOf(schema: JsonSchema): JsonSchema {
+	const [value, other] = schema.anyOf ?? [];
+	return schema['x-n8n-claim'] === 'typical' &&
+		schema.anyOf?.length === 2 &&
+		value &&
+		other?.type === 'null'
+		? value
+		: schema;
+}
+
+const isTypical = (schema: JsonSchema, mode: Mode) =>
+	!mode.input && schema['x-n8n-claim'] === 'typical';
+
 /** `hiddenDocs` holds `name: doc` pairs that an earlier branch of the same union shows. */
 function objectTs(
 	schema: JsonSchema,
@@ -135,6 +152,7 @@ function objectTs(
 		return text && !hiddenDocs.has(docKey) && !mode.hiddenDocs?.has(docKey) ? text : undefined;
 	};
 	const fieldTs = (name: string, child: JsonSchema) => {
+		if (isTypical(child, mode)) return `${key(name)}: ${toTs(outputFieldOf(child), childMode)}`;
 		const optional = mode.absentUndefined === true && !required.has(name);
 		const text = toTs(child, { ...childMode, optional });
 		if (required.has(name) || mode.input)
@@ -160,7 +178,9 @@ function objectTs(
 	if (typeof additionalProperties === 'object') {
 		// tsc checks an optional field against the index type, and its value can be undefined.
 		const optional = properties.some(
-			([name]) => !required.has(name) && (mode.input || mode.optionalOutputs),
+			([name, child]) =>
+				!required.has(name) &&
+				(mode.input || (mode.optionalOutputs === true && !isTypical(child, mode))),
 		);
 		members.push({
 			doc: '',
@@ -465,7 +485,8 @@ export function generatedTriggersOf(trigger: Trigger, nodeType: string): Generat
 	const { resource } = trigger;
 	const contract = toContract(trigger);
 	if (trigger.kind !== 'native') {
-		return [{ contract, nodeType, resource, operation: trigger.operation }];
+		const { ui } = trigger;
+		return [{ contract, nodeType, resource, operation: trigger.operation, ...(ui ? { ui } : {}) }];
 	}
 	const { native, reply } = trigger;
 	const replyContract = replyContractOf(trigger);
@@ -616,7 +637,10 @@ function nest(entries: readonly Factory[], indent: string): string {
 function subSchemas(schema: JsonSchema, mode: Mode, owner: string, name: string) {
 	if (schema.const !== undefined || schema.enum) return [];
 	const named = (properties: Record<string, JsonSchema> = {}): Array<[string, JsonSchema]> =>
-		Object.entries(properties).map(([field, child]) => [`${owner}${pascal(field)}`, child]);
+		Object.entries(properties).map(([field, child]) => [
+			`${owner}${pascal(field)}`,
+			isTypical(child, mode) ? outputFieldOf(child) : child,
+		]);
 	if (schema.discriminator && schema.oneOf) {
 		return variantGroups(schema, schema.oneOf, mode).groups.flatMap(({ branch }) =>
 			named(branch.properties),
@@ -977,10 +1001,11 @@ export function generateNodeModule(nodeId: string, contracts: readonly Generated
 		].join('\n');
 	});
 	const triggerFactories = triggers.map(
-		({ contract, nodeType, resource, operation, typeVersion, slot, pairing }): Factory => {
+		({ contract, nodeType, resource, operation, typeVersion, slot, pairing, ui }): Factory => {
 			const path = resource === undefined ? [operation] : [resource, operation];
 			const name = typeName(contract.id);
 			const declared = declaredFieldsOf(contract.output);
+			const advanced = advancedFieldsOf(contract.input, ui);
 			const entries = contract.output['x-n8n-entry-fields'];
 			const own = entries ? `${name}Output & ${name}Fields<C>` : `${name}Output`;
 			const item = declared.length ? `Declared<${own}, S>` : own;
@@ -995,6 +1020,7 @@ export function generateNodeModule(nodeId: string, contracts: readonly Generated
 				example: jsonExampleOf(contract.output),
 				...(declared.length ? { takesSchema: true } : {}),
 				...(slot ? { slot: { resource: slot.resource, operation: slot.operation } } : {}),
+				...(advanced.length > 0 ? { advanced } : {}),
 			});
 			const args = [String(nodeVersion), requires ?? 'undefined', options];
 			const schemas = declared.map((field) => `${key(field)}?: ValueSchema`).join('; ');

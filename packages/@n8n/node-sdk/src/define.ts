@@ -1943,8 +1943,10 @@ export type TriggerSpec<
 	K extends string = string,
 	T = unknown,
 	P = unknown,
-> = TriggerHead<Own, O, Sc> &
-	(
+> = TriggerHead<Own, O, Sc> & {
+	/** The layout and widgets of the n8n form, as the `ui` of an action. */
+	readonly ui?: ActionUi<NoInfer<Full>>;
+} & (
 		| (WebhookSource<RunInput<Full>, Infer<O>, K> & EmitRule<RunInput<Full>, Infer<O>>)
 		| PollSource<RunInput<Full>, T, Infer<O>, P>
 		| NativeSource<keyof Full & string>
@@ -1956,8 +1958,10 @@ export type Trigger<S extends Shape = Shape, O extends AnySchema = AnySchema> = 
 	O,
 	string
 > &
-	Built &
-	(
+	Built & {
+		/** The layout and widgets of the n8n form, as the `ui` of an action. */
+		readonly ui?: ActionUi<S>;
+	} & (
 		| ({
 				/** The service calls a webhook. */
 				readonly kind: 'webhook';
@@ -2088,6 +2092,8 @@ export type ProviderSpec<
 	readonly provides: K;
 	/** More hosts that the capability may send requests to. Without it, only the base URL hosts. */
 	readonly egress?: Egress<RunInput<Full>, H>;
+	/** The layout and widgets of the n8n form, as the `ui` of an action. */
+	readonly ui?: ActionUi<NoInfer<Full>>;
 	/** Requests of the capability use the credential and the egress of the provider. */
 	provide(context: RunContext<RunInput<Full>>): Promise<ProviderCapabilities[K]>;
 };

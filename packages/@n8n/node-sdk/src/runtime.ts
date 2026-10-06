@@ -737,7 +737,7 @@ const SUPPLY_ITEM = 0;
  * n8n does not fill the defaults of collection options, so an unset advanced field has no
  * parameter. The runtime reads '' as unset. A top-level field always has its default.
  */
-const unsetValueOf = (name: string, path: string) => (path === name ? undefined : '');
+export const unsetValueOf = (name: string, path: string) => (path === name ? undefined : '');
 
 /** The stored field of an input in a form without a `ui` block. */
 const plainField = (name: string): StoredField => ({ path: name, read: (value) => value });

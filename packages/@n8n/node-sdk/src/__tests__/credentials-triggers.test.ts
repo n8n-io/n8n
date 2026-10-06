@@ -382,6 +382,38 @@ describe('triggers', () => {
 		]);
 	});
 
+	it('show the advanced fields of a trigger in Options, and read them from there', async () => {
+		const labelled = task.trigger('labelled', {
+			trigger: 'On task labelled',
+			summary: 'Starts when a task gets a label.',
+			input: { label: t.str().optional() },
+			output: taskEvent,
+			ui: { advanced: ['label'] },
+			poll: {
+				request: ({ input, since }) => ({
+					path: path`/projects/${input.project}/tasks`,
+					query: { after: since, label: input.label },
+				}),
+				response: t.arr(taskEvent),
+				items: (page) => page,
+				cursor: { id: (item) => Number(item.id) },
+			},
+		});
+		const type: INodeType = new (toTriggerNodeType(labelled))();
+		expect(type.description.properties.map(({ name, type: kind }) => [name, kind])).toEqual([
+			['project', 'string'],
+			['options', 'collection'],
+		]);
+		const sent: IHttpRequestOptions[] = [];
+		const parameters: Record<string, string> = { project: 'p1', 'options.label': 'urgent' };
+		const context = {
+			...pollContext({}, [[{ id: '1', title: 'A' }]], sent),
+			getNodeParameter: (name: string) => parameters[name],
+		};
+		await type.poll?.call(context as never);
+		expect(sent.map(({ qs }) => qs)).toEqual([{ label: 'urgent' }]);
+	});
+
 	it('poll a page whose unread fields drift with a log warning, and fail on a cursor field', async () => {
 		const warnings: string[] = [];
 		const replies = [[{ id: '1' }], [{ id: '2' }, { title: 'no id' }]];

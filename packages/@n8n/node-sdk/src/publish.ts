@@ -3,7 +3,13 @@ import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { Readable } from 'node:stream';
 import { fileURLToPath } from 'node:url';
-import { UnexpectedError, UserError, type INode, type INodeExecutionData } from 'n8n-workflow';
+import {
+	UnexpectedError,
+	UserError,
+	type INode,
+	type INodeExecutionData,
+	type INodeProperties,
+} from 'n8n-workflow';
 
 import { isSecretField, type AnyCredentialType } from './credentials';
 import {
@@ -365,20 +371,45 @@ function checkContractBump(previous: ContractVersion, manifest: ContractVersion)
 
 type FormVersion = Pick<VersionManifest, 'contract' | 'ui'>;
 
+const isCollection = ({ type }: INodeProperties) =>
+	type === 'collection' || type === 'fixedCollection';
+
+/**
+ * `[field path, is a collection]` of a property and of each property in it, e.g. a branch field
+ * of a variant collection as `body.inner`.
+ */
+function storedFormsOf(property: INodeProperties, path: string): Array<[string, boolean]> {
+	const children = isCollection(property)
+		? (property.options ?? []).flatMap(
+				(option): Array<[INodeProperties, string]> =>
+					'values' in option
+						? option.values.map((value) => [value, `${path}.${option.name}.${value.name}`])
+						: 'type' in option
+							? [[option, `${path}.${option.name}`]]
+							: [],
+			)
+		: [];
+	return [
+		[path, isCollection(property)],
+		...children.flatMap(([child, at]) => storedFormsOf(child, at)),
+	];
+}
+
 /**
  * The input fields that the next form stores in another place or shape: a parameter path, or a
- * collection or fixed collection against one value, which n8n empties when it holds another
- * form. The editor form of a major comes from its newest version, so a stored workflow loses the
- * value of such a field.
+ * collection or fixed collection against one value, at any depth, which n8n empties when it
+ * holds another form. The editor form of a major comes from its newest version, so a stored
+ * workflow loses the value of such a field.
  */
 function movedParametersOf(previous: FormVersion, next: FormVersion): string[] {
 	const storageOf = ({ contract: { input }, ui }: FormVersion) => {
 		const pathOf = parameterPathOf(input, ui);
 		return new Map(
-			Object.entries(shapeOf(input)).map(([name, schema]) => {
-				const { type } = toProperty(name, schema, ui?.fields);
-				return [name, `${pathOf(name)} ${type === 'collection' || type === 'fixedCollection'}`];
-			}),
+			Object.entries(shapeOf(input)).flatMap(([name, schema]) =>
+				storedFormsOf(toProperty(name, schema, ui?.fields), name).map(
+					([path, collection]): [string, string] => [path, `${pathOf(name)} ${collection}`],
+				),
+			),
 		);
 	};
 	const after = storageOf(next);

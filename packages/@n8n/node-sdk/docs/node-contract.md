@@ -174,14 +174,14 @@ host without a registry, import a copy of the registry folder.
   turns a string under a collection into `{}`. So JSON text or one whole-field expression
   (`={{ … }}`) for a variant is not kept. An expression inside a branch field works. The form
   of an agent tool keeps a variant as JSON.
-- The `ui` block (`ui` of an action, `manifest.ui`) is for the n8n form only: `order`,
+- The `ui` block (`ui` of an action, a trigger or a provider, `manifest.ui`) is for the n8n form only: `order`,
   `advanced` and `fields` (a placeholder and a widget per field, `field.branchField` in a
   variant). Agents and MCP do not read it, and it is outside the contract hash. An `advanced`
   field goes into one "Options" collection, so its n8n parameter is `options.<field>`
   (`nodeParametersOf` writes a contract value so, and the typed flow build does the same with
   `advancedFieldsOf`). n8n stores the parameters in the form of the
   newest version of a major. So a change that moves where or how a field is stored (into or out
-  of `advanced`, a variant to or from the `json` widget) is a major. A widget is an entry of
+  of `advanced`, a variant to or from the `json` widget, also of a nested branch field) is a major. A widget is an entry of
   the `Widgets` interface: the value type it edits and its config. The host shows an unknown
   widget as the default field. The form of an agent tool keeps each field at the top and a variant as JSON,
   because the model fills a whole field with one `$fromAI()` expression.
@@ -253,8 +253,12 @@ Output claims:
 
 - **required**: the field is in `required`. Code can read it without a check.
 - **typical**: the service sends the field as a rule, but a plan, a permission or an API
-  version can leave it out. Write `.with({ 'x-n8n-claim': 'typical' }).optional()`. A required
-  field cannot be typical (`lintContract`).
+  version can leave it out. `t.loose` makes each required field typical, or write
+  `.with({ 'x-n8n-claim': 'typical' }).optional()`. A required field cannot be typical
+  (`lintContract`). The generated workflow types show a typical field as `T`, without `?` and
+  without the `null` branch beside the value. So write a `null` that the service
+  sends as a rule as `t.nullable`: `t.loose` keeps such a field optional and nullable. The run accepts an absent typical value, and the `null` of
+  `t.loose`, with no warning.
 - **optional**: absence is normal.
 
 Resource pointer: `resourceOutput` writes `output['x-n8n-resource']`. It names the input field

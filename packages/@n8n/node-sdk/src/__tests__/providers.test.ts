@@ -191,6 +191,43 @@ describe('provider contracts', () => {
 		]);
 	});
 
+	it('show the advanced fields of a provider in Options, and read them from there', async () => {
+		const tuned = llm.provider('tunedModel', {
+			action: 'Tuned Chat Model',
+			summary: 'A chat model with a temperature.',
+			provides: 'chatModel',
+			input: { model: t.modelId('llm'), temperature: t.num().optional() },
+			ui: { advanced: ['temperature'] },
+			async provide({ input }) {
+				return await Promise.resolve({
+					...fakeModel('x'),
+					model: `${input.model} at ${input.temperature}`,
+				});
+			},
+		});
+		const NodeType = toNodeType(tuned);
+		expect(new NodeType().description.properties.map(({ name }) => name)).toEqual([
+			'model',
+			'options',
+		]);
+		const parameters: Record<string, unknown> = { model: 'llm-1', 'options.temperature': 0.7 };
+		const context = {
+			getNode: () => ({ ...node, name: 'Model', credentials: { llmApi: { id: '1', name: 'L' } } }),
+			getNodeParameter: (name: string) => parameters[name],
+			getCredentials: async () => ({}),
+			getExecutionCancelSignal: () => undefined,
+			logger: { debug: () => {}, info: () => {}, warn: () => {}, error: () => {} },
+			helpers: {},
+		};
+		const supply = await new NodeType().supplyData?.call(
+			context as unknown as ISupplyDataFunctions,
+			0,
+		);
+		const model = supply?.response;
+		if (!provider.is('chatModel', model)) throw new Error('no chat model');
+		expect(model.model).toBe('llm-1 at 0.7');
+	});
+
 	it('read a LangChain tool with a JSON Schema back as a tool, and keep a zod one out', async () => {
 		const calls: unknown[] = [];
 		const langChainTool = {

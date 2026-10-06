@@ -826,7 +826,8 @@ const authenticationKeys = (contract: Parameters<typeof credentialOptionsOf>[0])
 const contractFactories = (composedKey: typeof composedFactoryKey) =>
 	new Map<string, ContractFactory>([
 		...nextTriggerFactories.map(
-			({ contract, nodeType, typeVersion, slot, resource, operation }) => {
+			({ contract, nodeType, typeVersion, slot, resource, operation, ui }) => {
+				const advancedKeys = advancedFieldsOf(contract.input, ui);
 				// A variant input, e.g. Respond to Webhook, has its fields in its branches.
 				const fields = [contract.input, ...(contract.input.oneOf ?? [])].flatMap((schema) =>
 					Object.entries(schema.properties ?? {}),
@@ -854,7 +855,8 @@ const contractFactories = (composedKey: typeof composedFactoryKey) =>
 								),
 							],
 					binaryKeys: fields.flatMap(([key, schema]) => (schema['x-n8n-binary'] ? [key] : [])),
-					...(typeVersion === undefined ? { jsonPaths: jsonFieldPathsOf(contract.input) } : {}),
+					...(advancedKeys.length > 0 ? { advancedKeys } : {}),
+					...(typeVersion === undefined ? { jsonPaths: jsonFieldPathsOf(contract.input, ui) } : {}),
 				};
 				return [nodeType, factory] as const;
 			},

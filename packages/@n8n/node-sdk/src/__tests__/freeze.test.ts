@@ -1,6 +1,7 @@
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import type { IHttpRequestOptions } from 'n8n-workflow';
 
 import type { Action } from '../define';
 import { setPermissionRefusalListener, type PermissionRefusal } from '../egress';
@@ -14,7 +15,7 @@ import {
 	type ExecutorHost,
 	type FrozenVersion,
 } from '../runtime';
-import { loadTriggerExecutor } from '../triggers';
+import { loadTriggerExecutor, toVersionedTriggerType } from '../triggers';
 
 it('GUEST_LACKS are globals of Node, besides the CommonJS names', () => {
 	expect(GUEST_LACKS.filter((name) => !(name in globalThis))).toEqual(['__dirname', '__filename']);
@@ -315,7 +316,7 @@ describe('the manifest as the permission source', () => {
 	});
 });
 
-const triggerSource = `import { defineNode, t } from '@n8n/node-sdk';
+const triggerSource = `import { defineNode, path, t } from '@n8n/node-sdk';
 const api = defineNode({ id: 'api', displayName: 'API', baseUrl: 'https://api.probe.test/v1' });
 export const hookTrigger = api.trigger('hooked', {
 	trigger: 'On hook',
@@ -325,6 +326,20 @@ export const hookTrigger = api.trigger('hooked', {
 	webhook: {
 		verify: { algorithm: 'sha256', header: 'x-signature', secret: 'generated' },
 		emit: () => [{ value: 'ok' }],
+	},
+});
+export const labelTrigger = api.trigger('labelled', {
+	trigger: 'On label',
+	summary: 'Starts on a label.',
+	input: { label: t.str().optional() },
+	output: t.obj({ id: t.str() }),
+	ui: { advanced: ['label'] },
+	poll: {
+		request: ({ input, since }) => ({ path: path\`/labels\`, query: { since, label: input.label } }),
+		response: t.arr(t.obj({ id: t.str() })),
+		items: (page) => page,
+		cursor: { id: (item) => Number(item.id) },
+		firstRun: 'emit',
 	},
 });
 `;
@@ -357,6 +372,38 @@ describe('the manifest of a trigger as the permission source', () => {
 			egress: { hosts: ['api.probe.test'] },
 			verify: { algorithm: 'sha256', header: 'x-signature', secret: 'generated' },
 		});
+	});
+
+	it('shows the advanced fields of a frozen trigger in Options, and reads them from there', async () => {
+		const { manifest, bundle } = await freezeAction(
+			path.join(state.root, 'hook.ts'),
+			'labelTrigger',
+		);
+		const version: FrozenVersion = {
+			manifest,
+			origin: 'first-party',
+			readBundle: async () => bundle,
+		};
+		const type = new (toVersionedTriggerType([version]))().getNodeType(1);
+		expect(type.description.properties.map(({ name, type: kind }) => [name, kind])).toEqual([
+			['options', 'collection'],
+		]);
+		const sent: IHttpRequestOptions[] = [];
+		const context = {
+			getNode: () => ({ name: 'Labels', credentials: {} }),
+			getNodeParameter: (name: string) => (name === 'options.label' ? 'urgent' : undefined),
+			getWorkflowStaticData: () => ({}),
+			getMode: () => 'trigger',
+			logger: { warn: () => undefined },
+			helpers: {
+				httpRequest: async (request: IHttpRequestOptions) => {
+					sent.push(request);
+					return await Promise.resolve([{ id: '1' }]);
+				},
+			},
+		};
+		await type.poll?.call(context as never);
+		expect(sent.map(({ qs }) => qs)).toEqual([{ label: 'urgent' }]);
 	});
 
 	it('loads a trigger bundle that grants what its manifest grants', async () => {

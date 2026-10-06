@@ -1482,6 +1482,17 @@ describe('native triggers', () => {
 			schema: 'public',
 		} as never);
 		expect(workflow('Table', table).toJSON().nodes[0]?.parameters).toEqual({ schema: 'public' });
+		const labelled = contractTrigger(
+			'@n8n/nodes-integrations.tasksTaskLabelled',
+			{ name: 'Labelled', project: 'p1', label: 'urgent' } as never,
+			1,
+			undefined,
+			{ advanced: ['label'] },
+		);
+		expect(workflow('Labelled', labelled).toJSON().nodes[0]?.parameters).toEqual({
+			project: 'p1',
+			options: { label: 'urgent' },
+		});
 		workflow(
 			'Typo',
 			hook({ name: 'Hook', path: 'p', schema: { body: incident } }),

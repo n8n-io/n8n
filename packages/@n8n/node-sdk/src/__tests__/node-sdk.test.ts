@@ -7,7 +7,7 @@ import {
 	type JsonObject,
 } from 'n8n-workflow';
 
-import { generateNodeModule } from '../entry/codegen';
+import { generatedTriggersOf, generateNodeModule } from '../entry/codegen';
 import { compat, credential } from '../entry/credentials';
 import { exampleOf, nodeDescriptionOf, resourceLookupsOf, toNodeType } from '../entry/host';
 import {
@@ -1121,6 +1121,29 @@ describe('generateNodeModule', () => {
 		expect(generateNodeModule('todo', [generated])).not.toContain('["status"]');
 	});
 
+	it('passes the advanced fields of a trigger form to the trigger, which stores them in options', () => {
+		const labelled = todo.resource('task').trigger('labelled', {
+			trigger: 'On task labelled',
+			summary: 'Starts when a task gets a label.',
+			input: { label: t.str().optional() },
+			output: t.obj({ id: t.str() }),
+			ui: { advanced: ['label'] },
+			poll: {
+				request: () => ({ path: path`/tasks` }),
+				response: t.arr(t.obj({ id: t.str() })),
+				items: (page) => page,
+				cursor: { id: (item) => Number(item.id) },
+			},
+		});
+		const nodeType = '@n8n/nodes-integrations.todo.task.labelled';
+		expect(generateNodeModule('todo', generatedTriggersOf(labelled, nodeType))).toContain(
+			'"advanced":["label"]',
+		);
+		expect(
+			generateNodeModule('todo', generatedTriggersOf({ ...labelled, ui: undefined }, nodeType)),
+		).not.toContain('advanced');
+	});
+
 	it('emits the operation-only slot of a derived action', () => {
 		const text = generateNodeModule('todo', [
 			{
@@ -1315,7 +1338,7 @@ describe('generateNodeModule', () => {
 		expect(text).toContain('export type TodoTaskFindOutput = TodoTaskSearchOutput;');
 	});
 
-	it('prints an optional output field as optional and nullable, a loose object all fields', () => {
+	it('prints a guaranteed output field as T, a typical one as T, an optional or nullable one as optional and nullable', () => {
 		const outputAction = (operation: string, output: AnySchema) =>
 			todo.resource('task').action(operation, {
 				action: 'Get a task',
@@ -1332,13 +1355,39 @@ describe('generateNodeModule', () => {
 				'get',
 				t.obj({ id: t.str(), note: t.str().optional(), due: t.nullable(t.str()).optional() }),
 			),
-			outputAction('peek', t.loose(t.obj({ id: t.str(), done: t.bool() }))),
+			outputAction(
+				'peek',
+				t.loose(
+					t.obj({
+						id: t.str(),
+						owner: t.obj({ login: t.str() }),
+						closedAt: t.nullable(t.str()),
+						label: t.str().optional(),
+					}),
+				),
+			),
+			outputAction(
+				'lock',
+				t.obj({ locked: t.bool().with({ 'x-n8n-claim': 'typical' }).optional() }),
+			),
 		);
 		expect(text).toContain(
 			'export type TodoTaskGetOutput = { id: string; note?: string | null; due?: string | null };',
 		);
 		expect(text).toContain(
-			'export type TodoTaskPeekOutput = { id?: string | null; done?: boolean | null };',
+			'export type TodoTaskPeekOutput = {\n id: string;\n owner: { login: string };\n closedAt?: string | null;\n label?: string | null;\n};',
 		);
+		expect(text).toContain('export type TodoTaskLockOutput = { locked: boolean };');
+	});
+
+	it('keeps the null branch of a typical loose field in the schema, so the run accepts null', () => {
+		const { properties } = t.loose(
+			t.obj({ id: t.str(), closedAt: t.nullable(t.str()), label: t.str().optional() }),
+		).json;
+		expect(properties).toEqual({
+			id: { anyOf: [{ type: 'string' }, { type: 'null' }], 'x-n8n-claim': 'typical' },
+			closedAt: { anyOf: [{ type: 'string' }, { type: 'null' }] },
+			label: { anyOf: [{ type: 'string' }, { type: 'null' }] },
+		});
 	});
 });

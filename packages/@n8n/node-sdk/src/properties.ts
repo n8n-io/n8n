@@ -104,12 +104,24 @@ export type FieldUi<T> = {
 	readonly placeholder?: string;
 } & (WidgetOf<T> | { readonly widget?: never; readonly config?: never });
 
-type IsUnion<T, U = T> = T extends unknown ? ([U] extends [T] ? false : true) : never;
-/** `field.branchField` for each field of each branch of a variant. */
-type BranchPaths<K extends string, T> = true extends IsUnion<T>
-	? T extends Readonly<Record<string, unknown>>
-		? `${K}.${keyof T & string}`
-		: never
+/**
+ * `field.branchField` for each field of each branch of a `t.variant`, also of one branch. A union
+ * or a nullable object renders as JSON, so it has none.
+ */
+type BranchPaths<K extends string, S> = S extends Schema<
+	infer T,
+	boolean,
+	boolean,
+	unknown,
+	infer Tag
+>
+	? string extends Tag
+		? never
+		: FieldPaths<K, T>
+	: never;
+/** `field.subField` for each field of each object in `T`. */
+type FieldPaths<K extends string, T> = T extends Readonly<Record<string, unknown>>
+	? `${K}.${keyof T & string}`
 	: never;
 /** `field.itemField` for each field of the items of a list of objects. */
 type ItemPaths<K extends string, T> = T extends ReadonlyArray<infer I>
@@ -118,7 +130,7 @@ type ItemPaths<K extends string, T> = T extends ReadonlyArray<infer I>
 		: never
 	: never;
 type FieldPath<S extends Shape> = {
-	[K in keyof S & string]: K | BranchPaths<K, Infer<S[K]>> | ItemPaths<K, Infer<S[K]>>;
+	[K in keyof S & string]: K | BranchPaths<K, S[K]> | ItemPaths<K, Infer<S[K]>>;
 }[keyof S & string];
 type BranchValue<T, F extends string> = T extends unknown
 	? F extends keyof T

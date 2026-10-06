@@ -545,7 +545,7 @@ describe('checkPublish', () => {
 	it('needs a major for a ui change that moves the stored parameters', async () => {
 		await writeShout('text.toUpperCase()');
 		const input =
-			"{ text: str(), note: str().optional(), body: t.variant('kind', { a: { a: str() } }).optional(), rows: t.arr(t.obj({ a: str() })).optional(), meta: t.record(str()).optional() }";
+			"{ text: str(), note: str().optional(), body: t.variant('kind', { a: { a: str(), inner: t.variant('mode', { x: { x: str() } }).optional() } }).optional(), rows: t.arr(t.obj({ a: str() })).optional(), meta: t.record(str()).optional() }";
 		const prev = (await freeze({ input })).manifest;
 		const next = await freeze({ input }, olderBundleOf(prev));
 		const withUi = (ui: VersionManifest['ui']): FrozenAction => ({
@@ -561,6 +561,13 @@ describe('checkPublish', () => {
 		await expect(
 			checkPublish(prev, withUi({ fields: { body: { widget: 'json' } } }), fixturesOf('HELLO!')),
 		).rejects.toThrow('the form moves the stored parameters of body');
+		await expect(
+			checkPublish(
+				prev,
+				withUi({ fields: { 'body.inner': { widget: 'json' } } }),
+				fixturesOf('HELLO!'),
+			),
+		).rejects.toThrow('the form moves the stored parameters of body.inner');
 		await expect(
 			checkPublish(prev, withUi({ fields: { rows: { widget: 'list' } } }), fixturesOf('HELLO!')),
 		).rejects.toThrow('the form moves the stored parameters of rows');

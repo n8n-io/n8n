@@ -715,6 +715,29 @@ export default workflow(
 		expect(sampled.sampledKeys).toEqual({ Fetch: ['statusCode', 'body'] });
 	}, 180_000);
 
+	it('reads a typical output field without a check, but not a nullable one', async () => {
+		const source = (fields: string) => `import { workflow, manual, set } from '@n8n/workflow-sdk/next';
+import { github } from '@n8n/nodes/github';
+
+export default workflow(
+	'Issue',
+	manual(),
+	github.issue.get({ name: 'Issue', owner: 'acme', repository: 'widgets', issueNumber: 1 }),
+	set({ name: 'Read', fields: { ${fields} } }),
+);
+`;
+		const typical = await build(
+			source(
+				'author: (item) => item.user.login.toUpperCase(), locked: (item) => !item.locked, label: (item) => item.labels[0]?.name ?? ""',
+			),
+		);
+		expect(typical.success ? [] : typical.errors).toEqual([]);
+		const nullable = await build(source('size: (item) => item.body.length'));
+		expect(nullable.success ? [] : nullable.errors).toEqual([
+			expect.stringContaining("'item.body' is possibly 'null'"),
+		]);
+	}, 120_000);
+
 	it('fails a read of a field that the step before does not output, on each surface', async () => {
 		const source = (read: string) => `import { workflow, manual, set, node, expr } from '@n8n/workflow-sdk/next';
 import { code } from '@n8n/nodes/code';

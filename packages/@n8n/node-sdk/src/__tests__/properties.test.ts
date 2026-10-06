@@ -447,6 +447,8 @@ describe('ui', () => {
 				text: t.str(),
 				count: t.int().optional(),
 				body: t.variant('kind', { text: { text: t.str() }, json: { json: t.json() } }).optional(),
+				auth: t.variant('type', { key: { key: t.str() } }).default({ type: 'key', key: '' }),
+				pair: t.nullable(t.obj({ left: t.str() })).optional(),
 			},
 			output: t.json(),
 			async run() {
@@ -470,8 +472,11 @@ describe('ui', () => {
 				// @ts-expect-error a textarea has no `lines`
 				ui: { fields: { text: { widget: 'textarea', config: { lines: 2 } } } },
 			}),
+			web.action('i', { ...spec, ui: { fields: { 'auth.key': { widget: 'textarea' } } } }),
+			// @ts-expect-error a nullable object renders as JSON, so it has no sub-field
+			web.action('j', { ...spec, ui: { fields: { 'pair.left': { placeholder: 'x' } } } }),
 		];
-		expect(typed).toHaveLength(8);
+		expect(typed).toHaveLength(10);
 	});
 });
 

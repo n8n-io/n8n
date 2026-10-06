@@ -2239,6 +2239,8 @@ export interface TriggerOptions {
 	readonly takesSchema?: true;
 	/** The resource and operation of a derived trigger. */
 	readonly slot?: Selector;
+	/** The input fields that the n8n form stores in its `options` collection. */
+	readonly advanced?: readonly string[];
 }
 
 /** `sample` with the fields it leaves out taken from `example`, at any depth. */
@@ -2276,7 +2278,7 @@ export function contractTrigger<Out, const N extends string>(
 	options: TriggerOptions = {},
 ): Trigger<Out, N> {
 	const { name, sample: given, settings, providers: grouped, ...input } = config;
-	const { pairing, example, takesSchema, slot } = options;
+	const { pairing, example, takesSchema, slot, advanced = [] } = options;
 	const providers = grouped && providerSpecs(grouped);
 	// Only a trigger with declared output fields takes `schema`; for another it is a parameter.
 	const { schema, ...withoutSchema } = input;
@@ -2301,7 +2303,7 @@ export function contractTrigger<Out, const N extends string>(
 		...(providers && Object.keys(providers).length > 0 ? { providers } : {}),
 		parameters: (compiler) => {
 			const compiled = compiler.value(parameters);
-			return { ...(isDataObject(compiled) ? compiled : {}), ...slot };
+			return { ...withOptions(isDataObject(compiled) ? compiled : {}, advanced), ...slot };
 		},
 	});
 }
