@@ -3,9 +3,13 @@ import { computed, ref } from 'vue';
 import { PROMOTIONS_SETTINGS_VIEW } from '@/features/integrations/promotions.ee/promotions.constants';
 import { useSettingsItems } from './useSettingsItems';
 import { VIEWS } from '../constants';
+import { hasPermission } from '../utils/rbac/permissions';
 
 const isAiGatewayCloudUbbEnabled = ref(false);
 const isAiGatewayEnabled = ref(true);
+const isAiAssistantEnabled = ref(false);
+const isPublicApiEnabled = ref(false);
+const isQueueModeEnabled = ref(false);
 const balance = ref<number>();
 const moduleSettings = ref<Record<string, unknown>>({});
 // `ui.store` stamps `available: true` onto every module item before exposing it.
@@ -39,15 +43,21 @@ vi.mock('../stores/ui.store', () => ({
 }));
 vi.mock('@n8n/stores/settings.store', () => ({
 	useSettingsStore: vi.fn(() => ({
-		isAiAssistantEnabled: false,
+		get isAiAssistantEnabled() {
+			return isAiAssistantEnabled.value;
+		},
 		get isAiGatewayEnabled() {
 			return isAiGatewayEnabled.value;
 		},
 		get isAiGatewayCloudUbbEnabled() {
 			return isAiGatewayCloudUbbEnabled.value;
 		},
-		isPublicApiEnabled: false,
-		isQueueModeEnabled: false,
+		get isPublicApiEnabled() {
+			return isPublicApiEnabled.value;
+		},
+		get isQueueModeEnabled() {
+			return isQueueModeEnabled.value;
+		},
 		isModuleActive: (name: string) => activeModules.value.includes(name),
 		get settings() {
 			return { envFeatureFlags: { N8N_ENV_FEAT_PROMOTIONS: promotionsFlag.value } };
@@ -64,6 +74,9 @@ describe('useSettingsItems', () => {
 		vi.clearAllMocks();
 		isAiGatewayEnabled.value = true;
 		isAiGatewayCloudUbbEnabled.value = false;
+		isAiAssistantEnabled.value = false;
+		isPublicApiEnabled.value = false;
+		isQueueModeEnabled.value = false;
 		balance.value = undefined;
 		moduleSettings.value = {};
 		settingsSidebarItems.value = [];
@@ -71,6 +84,52 @@ describe('useSettingsItems', () => {
 		promotionsFlag.value = 'false';
 		canUserAccessRouteByName.mockReturnValue(true);
 		contextPreferencesEnabled.value = true;
+	});
+
+	describe('sidebar order', () => {
+		it('lists every link in the established order when all are available', () => {
+			isAiAssistantEnabled.value = true;
+			isPublicApiEnabled.value = true;
+			isQueueModeEnabled.value = true;
+			moduleSettings.value = { 'encryption-key-manager': { rotationEnabled: true } };
+			activeModules.value = ['promotions'];
+			promotionsFlag.value = 'true';
+			vi.mocked(hasPermission).mockReturnValue(true);
+			// Module items arrive in module registration order.
+			settingsSidebarItems.value = [
+				{ id: 'settings-chat-hub', available: true },
+				{ id: 'settings-instance-ai', available: true },
+				{ id: 'settings-agents', available: true },
+			];
+
+			const ids = useSettingsItems().settingsItems.value.map(({ id }) => id);
+
+			expect(ids).toEqual([
+				'settings-usage-and-plan',
+				'settings-personal',
+				'settings-users',
+				'settings-ai',
+				'settings-n8n-connect',
+				'settings-roles',
+				'settings-api',
+				'settings-external-secrets',
+				'settings-credential-resolvers',
+				'settings-source-control',
+				'settings-promotions',
+				'settings-sso',
+				'settings-encryption-keys',
+				'settings-security',
+				'settings-ldap',
+				'settings-workersview',
+				'settings-log-streaming',
+				'settings-community-nodes',
+				'settings-migration-report',
+				'settings-chat-hub',
+				'settings-instance-ai',
+				'settings-agents',
+				'settings-context',
+			]);
+		});
 	});
 
 	describe('the Context item', () => {
