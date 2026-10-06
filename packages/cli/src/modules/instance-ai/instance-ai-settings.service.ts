@@ -1497,7 +1497,13 @@ export class InstanceAiSettingsService {
 		const id: `${string}/${string}` = `${provider}/${modelName}`;
 		if (!baseUrl && !apiKey) return null;
 		const headers = modelCredentialHeaders(credentialType, data);
-		return { id, url: baseUrl, ...(apiKey ? { apiKey } : {}), ...(headers ? { headers } : {}) };
+		return {
+			id,
+			url: baseUrl,
+			...(apiKey ? { apiKey } : {}),
+			...(headers ? { headers } : {}),
+			...this.customModelOptionsFor(id),
+		};
 	}
 
 	// ── Private helpers ───────────────────────────────────────────────────

@@ -1419,10 +1419,16 @@ describe('InstanceAiSettingsService', () => {
 		});
 
 		it.each([
-			['no URL', '', 'openai/model-x'],
-			['the official OpenAI URL', 'https://api.openai.com/v1', 'openai/model-x'],
-			['a self-hosted URL', 'https://kimi.example/v1', 'custom/model-x'],
-		])('builds an OpenAI credential with %s as %s', async (_, url, id) => {
+			['no URL', '', 'model-x', { id: 'openai/model-x' }],
+			['the official OpenAI URL', 'https://api.openai.com/v1', 'model-x', { id: 'openai/model-x' }],
+			['a self-hosted URL', 'https://kimi.example/v1', 'model-x', { id: 'custom/model-x' }],
+			[
+				'a self-hosted URL and a known model',
+				'https://kimi.example/v1',
+				'moonshotai/Kimi-K3',
+				{ id: 'custom/moonshotai/Kimi-K3', supportsStructuredOutputs: true },
+			],
+		])('builds an OpenAI credential with %s', async (_, url, modelName, expected) => {
 			const credential = mock<CredentialsEntity>({
 				id: 'cred-1',
 				name: 'Admin model',
@@ -1441,10 +1447,10 @@ describe('InstanceAiSettingsService', () => {
 				type: credential.type,
 			});
 
-			await service.updateAdminSettings({ modelCredentialId: credential.id, modelName: 'model-x' });
+			await service.updateAdminSettings({ modelCredentialId: credential.id, modelName });
 
 			await expect(service.resolveModelConfig(mock<User>())).resolves.toEqual({
-				id,
+				...expected,
 				url,
 				apiKey: 'admin-key',
 			});
