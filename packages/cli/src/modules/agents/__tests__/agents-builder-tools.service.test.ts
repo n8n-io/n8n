@@ -1824,7 +1824,9 @@ describe('AgentsBuilderToolsService', () => {
 			it('returns the edit error message from the skills service', async () => {
 				const { service, agentsService } = makeService();
 				agentsService.updateSkill.mockRejectedValue(
-					new UserError('instructionEdits[0]: oldText was not found in the current instructions.'),
+					new UserError(
+						'instructionEdits[0]: oldText matches 0 places; it must match exactly one.',
+					),
 				);
 
 				const result = await getUpdateSkillTool(service).handler!(
@@ -1838,7 +1840,7 @@ describe('AgentsBuilderToolsService', () => {
 
 				expect(result).toEqual({
 					ok: false,
-					errors: [{ message: expect.stringContaining('was not found') }],
+					errors: [{ message: expect.stringContaining('matches 0 places') }],
 				});
 			});
 

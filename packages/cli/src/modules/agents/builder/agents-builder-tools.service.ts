@@ -153,7 +153,7 @@ const updateSkillFieldsSchema = z
 							.string()
 							.min(1)
 							.describe(
-								'Text from the current instructions. It must match exactly one place; whitespace differences are ignored when there is no exact match.',
+								'Exact text from the current instructions. It must match exactly one place.',
 							),
 						newText: z.string().describe('Replacement text. Use an empty string to delete.'),
 					})
@@ -1014,8 +1014,8 @@ export class AgentsBuilderToolsService {
 					'instead of rewriting instructions. Pass null for allowedTools to remove the tool restriction, ' +
 					'or null for references to remove all references; empty arrays are invalid. Returns ' +
 					'{ ok: true, id, name, configMutated: true, agentId } or { ok: false, errors }. A failed edit ' +
-					'saves nothing and its error quotes the closest text in the skill: copy that text into oldText ' +
-					'and retry with the same baseSkillHash. On a stale skill error, ' +
+					'saves nothing: fix oldText so it matches exactly one place and retry with the same ' +
+					'baseSkillHash. On a stale skill error, ' +
 					'call agent-context with type "skill" and retry once with its fresh skillHash.',
 			)
 			.input(updateSkillInputSchema)

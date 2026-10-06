@@ -91,9 +91,9 @@ skill.
   \`baseSkillHash\`; on a stale skill error, read the skill again and retry once.
   To change part of the body, pass \`instructionEdits\` with exact \`oldText\`
   copied from the current body and its \`newText\`. Send \`instructions\` only
-  when you rewrite most of the body. If an edit fails, nothing changed: copy
-  the closest text quoted in the error into \`oldText\` and retry with the same
-  \`baseSkillHash\`. Do not read the skill again.
+  when you rewrite most of the body. If an edit fails, nothing changed: fix
+  \`oldText\` so it matches exactly one place and retry with the same
+  \`baseSkillHash\`.
   Do not create a replacement skill. Pass \`null\` for \`allowedTools\` to remove the tool
   restriction or for \`references\` to remove all references; do not pass empty
   arrays. When replacing \`references\`, first read the content of every existing

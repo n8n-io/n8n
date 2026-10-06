@@ -169,9 +169,7 @@ export class AgentSkillsService {
 			if (updates.instructions !== undefined) {
 				throw new UserError('Pass either instructions or instructionEdits, not both.');
 			}
-			const edited = applySkillInstructionEdits(existing.instructions, instructionEdits);
-			if (!edited.ok) throw new UserError(edited.message);
-			updated.instructions = edited.instructions;
+			updated.instructions = applySkillInstructionEdits(existing.instructions, instructionEdits);
 		}
 		if ('allowedTools' in updates && !updates.allowedTools?.length) delete updated.allowedTools;
 		if ('references' in updates && !updates.references?.length) delete updated.references;

@@ -381,7 +381,7 @@ describe('AgentSkillsService', () => {
 					getAgentSkillHash(editableSkill),
 					[{ oldText: 'Extract risks.', newText: 'x' }],
 				),
-			).rejects.toThrow('instructionEdits[0]: oldText was not found');
+			).rejects.toThrow('instructionEdits[0]: oldText matches 0 places');
 			expect(agentRepository.saveDraftFenced).not.toHaveBeenCalled();
 		});
 
