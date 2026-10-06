@@ -73,6 +73,28 @@ describe('toPackagesError', () => {
 		);
 	});
 
+	it('explains a data table rename to a name another table has', () => {
+		const result = toPackagesError(
+			new ApiError(409, 'Import blocked', undefined, {
+				issues: [
+					{
+						type: 'data-table-unresolved',
+						kind: 'name-conflict',
+						sourceId: 'orders1',
+						name: 'Sales',
+						currentName: 'Orders',
+						conflictingTableId: 'sales1',
+						usedByWorkflows: ['wf1'],
+					},
+				],
+			}),
+		);
+
+		expect((result as ApiError).hint ?? '').toContain(
+			'data table "Orders" (orders1) cannot be renamed to "Sales": the name is also used by table sales1, used by workflow(s) wf1',
+		);
+	});
+
 	it('returns non-ApiError values unchanged', () => {
 		const error = new Error('boom');
 		expect(toPackagesError(error)).toBe(error);

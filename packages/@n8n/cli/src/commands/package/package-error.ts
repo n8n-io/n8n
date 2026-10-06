@@ -65,6 +65,8 @@ type BlockingIssue =
 			typeMismatches?: Array<{ column: string }>;
 			extraColumns?: string[];
 			overwriteChanges?: DataTableSchemaChange[];
+			currentName?: string;
+			conflictingTableId?: string;
 			usedByWorkflows: string[];
 	  };
 
@@ -166,6 +168,12 @@ function formatIssue(issue: unknown): string {
 				? `\n      --data-table-schema-conflict-policy=overwrite would: ${it.overwriteChanges.map((change) => (change.destructive ? `${describeSchemaChange(change)} (data lost)` : describeSchemaChange(change))).join(', ')}`
 				: '';
 			return `data table "${it.name}" (${it.sourceId}) does not match the package schema (${reasons.join('; ')}), used by workflow(s) ${usedBy}${changes}`;
+		}
+		if (it.kind === 'name-conflict') {
+			const action = it.currentName
+				? `"${it.currentName}" (${it.sourceId}) cannot be renamed to "${it.name}"`
+				: `"${it.name}" (${it.sourceId}) cannot be created`;
+			return `data table ${action}: the name is also used by table ${it.conflictingTableId}, used by workflow(s) ${usedBy}`;
 		}
 		return `data table "${it.name}" (${it.sourceId}) unresolved (${it.kind}), used by workflow(s) ${usedBy}`;
 	}
