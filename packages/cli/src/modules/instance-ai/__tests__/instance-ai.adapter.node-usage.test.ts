@@ -33,6 +33,7 @@ import {
 	type EventService,
 	type RoleService,
 	type CredentialsFinderService,
+	type InstanceWriteAccessService,
 } from '@n8n/backend-services';
 import type { GlobalConfig } from '@n8n/config';
 import type {
@@ -63,7 +64,6 @@ import { PostHogClient } from '@/posthog';
 import type { AiGatewayService } from '@/services/ai-gateway.service';
 import type { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
 import type { FolderService } from '@/services/folder.service';
-import type { InstanceWriteAccessService } from '@/services/instance-write-access.service';
 import { NodeResourceExplorerService } from '@/services/node-resource-explorer.service';
 import type { ProjectService } from '@/services/project.service.ee';
 

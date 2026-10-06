@@ -1805,10 +1805,13 @@ import type {
 } from '@n8n/db';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { UserError, UnexpectedError } from 'n8n-workflow';
-import { type CredentialsFinderService, type RoleService } from '@n8n/backend-services';
+import {
+	type CredentialsFinderService,
+	type InstanceWriteAccessService,
+	type RoleService,
+} from '@n8n/backend-services';
 import type { DataTableRepository } from '@/modules/data-table/data-table.repository';
 import type { DataTableService } from '@/modules/data-table/data-table.service';
-import type { InstanceWriteAccessService } from '@/services/instance-write-access.service';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import {
 	WorkflowEditorLockedError,

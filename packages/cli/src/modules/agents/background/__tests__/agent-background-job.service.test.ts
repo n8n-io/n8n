@@ -92,7 +92,7 @@ function setup(options: { backgroundTasksEnabled?: boolean } = {}) {
 	jobRepository.findSettledSubAgentsWithCheckpoints.mockResolvedValue([]);
 	jobRepository.findRequestedPauses.mockResolvedValue([]);
 	jobRepository.findPausedWithoutCheckpoint.mockResolvedValue([]);
-	jobRepository.retainLatestPausedGroup.mockResolvedValue([]);
+	jobRepository.retainLatestStopGroup.mockResolvedValue([]);
 	jobRepository.reservePausedGroup.mockResolvedValue('reserved');
 	executionRepository.findRunningByThread.mockResolvedValue([]);
 	executionRepository.findLatestStatusesByThreadIds.mockResolvedValue(new Map());
@@ -156,6 +156,97 @@ describe('markMailConsumed', () => {
 });
 
 describe('user pause', () => {
+	afterEach(() => Container.reset());
+
+	it('attempts every selected workflow and keeps a failed cancellation available for retry', async () => {
+		const { service, jobRepository, executionPersistence } = setup();
+		const first = makeWorkflowJob({ pauseRequestId: 'stop-1' });
+		const second = makeWorkflowJob({
+			id: 'wf-job-2',
+			childExecutionId: 'exec-2',
+			pauseRequestId: 'stop-1',
+		});
+		const child = makeJob({ status: 'suspended', pauseRequestId: 'stop-1' });
+		const jobs = [first, second, child];
+		jobRepository.findByParentThread.mockResolvedValue([
+			...jobs,
+			makeWorkflowJob({ id: 'later', childExecutionId: 'later-execution' }),
+			makeWorkflowJob({
+				id: 'other-author',
+				childExecutionId: 'other-execution',
+				parentResourceId: 'draft-chat:other',
+				pauseRequestId: 'other-stop',
+			}),
+		]);
+		jobRepository.findById.mockImplementation(
+			async (id) => jobs.find((job) => job.id === id) ?? null,
+		);
+		jobRepository.settleIfActive.mockImplementation(async (id, settlement) => {
+			Object.assign(jobs.find((job) => job.id === id)!, settlement);
+			return true;
+		});
+		const pause = vi.spyOn(service, 'pause').mockResolvedValue(true);
+		const executionService = mock<ExecutionService>();
+		executionService.stop.mockRejectedValueOnce(new Error('Stop failed'));
+		Container.set(ExecutionService, executionService);
+		executionPersistence.findSingleExecution.mockResolvedValue({
+			data: {
+				resultData: {
+					runData: {
+						Send: [{ data: { main: [[{ json: { sent: true } }]] } }],
+						Wait: [{ data: { main: [[]] } }],
+					},
+				},
+			},
+		} as never);
+
+		await expect(service.requestPause('agent-1', 'thread-1', 'draft-chat:user-1')).rejects.toThrow(
+			'Stop failed',
+		);
+		expect(executionService.stop.mock.calls).toEqual([
+			['exec-1', ['workflow-1']],
+			['exec-2', ['workflow-1']],
+		]);
+		expect(jobRepository.requestPause.mock.invocationCallOrder[0]).toBeLessThan(
+			executionService.stop.mock.invocationCallOrder[0],
+		);
+		expect(pause).toHaveBeenCalledWith(child.id);
+		expect(first).toMatchObject({ status: 'running', pauseRequestId: 'stop-1', notifiedAt: null });
+		expect(second).toMatchObject({
+			status: 'cancelled',
+			result: '{"Send":[{"sent":true}]}',
+			notifiedAt: null,
+		});
+		expect(jobRepository.markMailConsumed).not.toHaveBeenCalled();
+
+		await service.requestPause('agent-1', 'thread-1', 'draft-chat:user-1');
+		expect(executionService.stop).toHaveBeenCalledTimes(3);
+		expect(executionService.stop).toHaveBeenLastCalledWith('exec-1', ['workflow-1']);
+		expect(first.status).toBe('cancelled');
+	});
+
+	it.each(['success', 'error'] as const)(
+		'keeps a workflow outcome that reaches %s before cancellation',
+		async (status) => {
+			const { service, jobRepository, executionPersistence } = setup();
+			const job = makeWorkflowJob({ pauseRequestId: 'stop-1' });
+			jobRepository.findByParentThread.mockResolvedValue([job]);
+			const executionService = mock<ExecutionService>();
+			executionService.stop.mockRejectedValue(new WorkflowOperationError('Already finished'));
+			Container.set(ExecutionService, executionService);
+			executionPersistence.findStatusesByIds.mockResolvedValue([{ id: 'exec-1', status }]);
+
+			await service.requestPause('agent-1', 'thread-1', 'draft-chat:user-1');
+
+			expect(jobRepository.settleIfActive).toHaveBeenCalledExactlyOnceWith(
+				job.id,
+				expect.objectContaining({ status: status === 'success' ? 'completed' : 'failed' }),
+				undefined,
+			);
+			expect(jobRepository.markMailConsumed).not.toHaveBeenCalled();
+		},
+	);
+
 	it.each([
 		{
 			name: 'a retained checkpoint',
@@ -227,6 +318,28 @@ describe('user pause', () => {
 		{ name: 'an unreported pause', job: { notifiedAt: null }, expected: 'stopping' },
 		{ name: 'input received before the report', receivedAt: 1000, expected: 'stopping' },
 		{ name: 'input received after the report', expected: 'ready' },
+		{
+			name: 'a cancelled workflow after its report',
+			job: {
+				kind: 'workflow',
+				status: 'cancelled',
+				workflowId: 'workflow-1',
+				childExecutionId: 'exec-1',
+			},
+			expected: 'ready',
+		},
+		{
+			name: 'a cancelled workflow before its report',
+			job: { kind: 'workflow', status: 'cancelled', notifiedAt: null },
+			expected: 'stopping',
+		},
+		{
+			name: 'a workflow Continue queued before the report',
+			job: { kind: 'workflow', status: 'cancelled' },
+			receivedAt: 1000,
+			execution: { startedAt: new Date(4000) },
+			expected: 'stopping',
+		},
 		{ name: 'too few active slots', admission: 'limit-reached', expected: 'limit-reached' },
 		{
 			name: 'a resume reservation from an earlier parent turn',
@@ -311,11 +424,108 @@ describe('user pause', () => {
 				'draft-chat:user-1',
 				'execution-1',
 			);
-			expect(result).toMatchObject({ status: expected, jobs: expected === 'ready' ? [job] : [] });
+			expect(result).toMatchObject({
+				status: expected,
+				jobs: expected === 'ready' && job.kind === 'subagent' ? [job] : [],
+			});
+			if (expected === 'ready' && job.kind === 'workflow') {
+				expect(result).toMatchObject({
+					workflowsToRestart: [
+						{ jobId: job.id, workflowId: 'workflow-1', previousExecutionId: 'exec-1' },
+					],
+				});
+				expect(jobRepository.reservePausedGroup).not.toHaveBeenCalled();
+			}
 			if (expected === 'stopping' || expected === 'unavailable')
 				expect(jobRepository.reservePausedGroup).not.toHaveBeenCalled();
 		},
 	);
+
+	it.each(['stop-1', 'stop-2'])('continues the latest stop group (%s)', async (pausedGroup) => {
+		const { service, jobRepository, executionRepository, messageRepository } = setup();
+		const paused = makeJob({
+			status: 'paused',
+			pauseRequestId: pausedGroup,
+			notifiedAt: new Date(2000),
+		});
+		const workflow = makeWorkflowJob({
+			status: 'cancelled',
+			pauseRequestId: 'stop-2',
+			notifiedAt: new Date(2000),
+		});
+		jobRepository.findByParentThread.mockResolvedValue([
+			paused,
+			workflow,
+			makeWorkflowJob({
+				id: 'old-workflow',
+				status: 'cancelled',
+				pauseRequestId: 'stop-1',
+				notifiedAt: new Date(1000),
+			}),
+			makeWorkflowJob({
+				id: 'completed-workflow',
+				status: 'completed',
+				pauseRequestId: 'stop-2',
+				notifiedAt: new Date(2000),
+			}),
+			makeWorkflowJob({
+				id: 'failed-workflow',
+				status: 'failed',
+				pauseRequestId: 'stop-2',
+				notifiedAt: new Date(2000),
+			}),
+		]);
+		executionRepository.findExecution.mockResolvedValue(
+			mock<AgentExecution>({ threadId: 'thread-1', status: 'running' }),
+		);
+		messageRepository.findExecutionInputs.mockResolvedValue(
+			new Map([
+				[
+					'execution-1',
+					[
+						mock<AgentMessageEntity>({
+							role: 'user',
+							origin: null,
+							threadId: 'thread-1',
+							resourceId: 'draft-chat:user-1',
+							createdAt: new Date(3000),
+						}),
+					],
+				],
+			]),
+		);
+
+		const result = await service.preparePausedResume(
+			'agent-1',
+			'thread-1',
+			'draft-chat:user-1',
+			'execution-1',
+		);
+
+		expect(result).toMatchObject({
+			status: 'ready',
+			jobs: pausedGroup === 'stop-2' ? [paused] : [],
+			workflowsToRestart: [
+				{
+					jobId: workflow.id,
+					title: workflow.title,
+					workflowId: workflow.workflowId,
+					previousExecutionId: workflow.childExecutionId,
+				},
+			],
+		});
+		if (pausedGroup === 'stop-2') {
+			expect(jobRepository.reservePausedGroup).toHaveBeenCalledWith(
+				'thread-1',
+				'stop-2',
+				[paused.id],
+				expect.any(Date),
+				MAX_RUNNING_JOBS_PER_THREAD,
+			);
+		} else {
+			expect(jobRepository.reservePausedGroup).not.toHaveBeenCalled();
+		}
+	});
 
 	it('keeps stopped children visible until their stop group settles and retains other tasks', async () => {
 		const { service, jobRepository } = setup();
@@ -326,7 +536,12 @@ describe('user pause', () => {
 			pauseRequestId: 'stop-1',
 			createdAt: new Date(2000),
 		});
-		const workflow = makeWorkflowJob({ createdAt: new Date(3000) });
+		const workflow = makeWorkflowJob({
+			createdAt: new Date(3000),
+			status: 'cancelled',
+			pauseRequestId: 'stop-1',
+			settledAt: new Date(4000),
+		});
 		jobRepository.findGroupCandidates.mockResolvedValue([stopping, last, workflow]);
 		expect(await service.listCurrentGroupForThread('agent-1', 'thread-1')).toEqual([
 			stopping,
@@ -348,10 +563,7 @@ describe('user pause', () => {
 				workflow,
 				later,
 			]);
-			expect(await service.listCurrentGroupForThread('agent-1', 'thread-1')).toEqual([
-				workflow,
-				later,
-			]);
+			expect(await service.listCurrentGroupForThread('agent-1', 'thread-1')).toEqual([later]);
 		}
 		jobRepository.findGroupCandidates.mockResolvedValue([paused]);
 		expect(await service.listCurrentGroupForThread('agent-1', 'thread-1')).toEqual([]);
@@ -982,6 +1194,31 @@ describe('registerWorkflowJob', () => {
 });
 
 describe('settleWorkflowJobByExecutionId', () => {
+	it('retains partial progress when the workflow hook settles a selected cancellation', async () => {
+		const { service, jobRepository } = setup();
+		jobRepository.findRunningWorkflowJobByExecutionId.mockResolvedValue(
+			makeWorkflowJob({ pauseRequestId: 'stop-1' }),
+		);
+
+		await service.settleWorkflowJobByExecutionId(
+			'exec-1',
+			{ status: 'cancelled', result: null },
+			{
+				Send: [{ data: { main: [[{ json: { sent: true } }]] } } as never],
+				Wait: [{ data: { main: [[]] } } as never],
+			},
+		);
+
+		expect(jobRepository.settleIfActive).toHaveBeenCalledWith(
+			'wf-job-1',
+			{
+				status: 'cancelled',
+				result: '{"Send":[{"sent":true}]}',
+			},
+			undefined,
+		);
+	});
+
 	it('settles the running job tracking the execution', async () => {
 		const { service, jobRepository } = setup();
 		jobRepository.findRunningWorkflowJobByExecutionId.mockResolvedValue(makeWorkflowJob());
@@ -1088,6 +1325,37 @@ describe('cancel — workflow jobs', () => {
 });
 
 describe('reconcile — workflow jobs', () => {
+	afterEach(() => Container.reset());
+
+	it('retries persisted workflow stops after restart even with background tasks disabled', async () => {
+		const { service, jobRepository, executionPersistence } = setup();
+		const jobs = [
+			makeWorkflowJob({ pauseRequestId: 'stop-1' }),
+			makeWorkflowJob({ id: 'wf-job-2', childExecutionId: 'exec-2', pauseRequestId: 'stop-1' }),
+			makeWorkflowJob({ id: 'other-job', childExecutionId: 'other-execution' }),
+		];
+		jobRepository.findRunningJobs.mockResolvedValue(jobs);
+		executionPersistence.findStatusesByIds.mockResolvedValue(
+			jobs.map((job) => ({ id: job.childExecutionId!, status: 'waiting' })),
+		);
+		const executionService = mock<ExecutionService>();
+		executionService.stop.mockRejectedValueOnce(new Error('Worker unavailable'));
+		Container.set(ExecutionService, executionService);
+
+		await service.reconcileWorkflowJobs();
+
+		expect(executionService.stop.mock.calls).toEqual([
+			['exec-1', ['workflow-1']],
+			['exec-2', ['workflow-1']],
+		]);
+		expect(jobRepository.settleIfActive).toHaveBeenCalledExactlyOnceWith(
+			'wf-job-2',
+			{ status: 'cancelled', result: null },
+			undefined,
+		);
+		expect(jobRepository.markMailConsumed).not.toHaveBeenCalled();
+	});
+
 	it('settles a job whose execution already reached a terminal state, carrying its output', async () => {
 		const { service, jobRepository, executionPersistence } = setup();
 		jobRepository.findRunningJobs.mockImplementation(async (kind) =>
