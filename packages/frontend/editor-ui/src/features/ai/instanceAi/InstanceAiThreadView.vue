@@ -1,13 +1,7 @@
 <script lang="ts" setup>
 import { computed, onMounted, onUnmounted, provide, ref, useTemplateRef, watch } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
-import {
-	N8nIconButton,
-	N8nResizeWrapper,
-	N8nText,
-	N8nTooltip,
-	TOOLTIP_DELAY_MS,
-} from '@n8n/design-system';
+import { useRouter } from 'vue-router';
+import { N8nIconButton, N8nResizeWrapper, N8nTooltip, TOOLTIP_DELAY_MS } from '@n8n/design-system';
 import {
 	onClickOutside,
 	useDebounceFn,
@@ -38,16 +32,13 @@ import type { AgentPreviewHandoffParams } from './composables/useInstanceAiAgent
 import { useTransitionGate } from './useTransitionGate';
 import { INSTANCE_AI_VIEW } from './constants';
 import { getDismissedContextKeys } from './instanceAi.handoffContext';
-import InstanceAiDebugPanel from './components/InstanceAiDebugPanel.vue';
 import InstanceAiArtifactsPanel from './components/InstanceAiArtifactsPanel.vue';
 import InstanceAiFixWithAiPanel from './components/InstanceAiFixWithAiPanel.vue';
 import InstanceAiSetupPanel from './components/setupPanel/InstanceAiSetupPanel.vue';
 import InstanceAiTestAgentPanel from './components/InstanceAiTestAgentPanel.vue';
 import InstanceAiPreviewTabBar from './components/InstanceAiPreviewTabBar.vue';
 import InstanceAiViewHeader from './components/InstanceAiViewHeader.vue';
-import InstanceAiConversation from './components/InstanceAiConversation.vue';
 import InstanceAiAgentsConversation from './components/InstanceAiAgentsConversation.vue';
-import { isLegacyAssistantChat } from './agentsChatMode';
 // Experiment cleanup: remove with openWorkflowInAssistant.
 import OpenWorkflowInAssistantNotification from '@/experiments/openWorkflowInAssistant/components/OpenWorkflowInAssistantNotification.vue';
 import InstanceAiWorkflowPreview, {
@@ -64,7 +55,6 @@ import { useAgentEvalsStore } from '@/features/agents/agentEvals.store';
 import { useIsAgentWorking } from './composables/useIsAgentWorking';
 import { useAgentReturnContextStore } from '@/features/agents/agentReturnContext.store';
 import { useRecentWorkflowsStore } from '@/app/stores/recentWorkflows.store';
-import { useIsAssistantAtMentionsEnabled } from '@/features/ai/assistant-at-mentions/composables/useIsAssistantAtMentionsEnabled';
 
 const props = defineProps<{ threadId: string }>();
 
@@ -74,16 +64,13 @@ const thread = provideThread(props.threadId);
 const rootStore = useRootStore();
 const i18n = useI18n();
 const router = useRouter();
-const route = useRoute();
-// PoC: the Agents chat core renders the thread unless `?chat=legacy` is set.
-const useLegacyChat = computed(() => isLegacyAssistantChat(route.query));
 const { width: windowWidth } = useWindowSize();
 const { isCollapsed: isMainSidebarCollapsed, sidebarWidth: mainSidebarWidth } = useSidebarLayout();
 const toast = useToast();
 const recentWorkflowsStore = useRecentWorkflowsStore();
-const mentionsEnabled = useIsAssistantAtMentionsEnabled();
 
-const conversationRef = useTemplateRef<InstanceType<typeof InstanceAiConversation>>('conversation');
+const conversationRef =
+	useTemplateRef<InstanceType<typeof InstanceAiAgentsConversation>>('conversation');
 
 // The conversation owns the composer-handoff state; read it through the
 // template ref for the agent-preview session id below and for
@@ -244,7 +231,6 @@ const setupPanelProjectId = computed(() =>
 		? thread.producedArtifacts.get(setupPanelWorkflowId.value)?.projectId
 		: undefined,
 );
-const setupOverlapHeight = ref(0);
 const setupPanelRef = useTemplateRef<InstanceType<typeof InstanceAiSetupPanel>>('setupPanel');
 onUnmounted(
 	thread.registerSetupChatTelemetryContext(() => {
@@ -308,8 +294,6 @@ provide(
 );
 
 // --- Side panels ---
-const showDebugPanel = ref(false);
-const isDebugEnabled = computed(() => localStorage.getItem('instanceAi.debugMode') === 'true');
 const hasPreviewTabs = computed(() => preview.openTabs.value.length > 0);
 const isArtifactsPanelRevealed = ref(false);
 const isArtifactsPanelDismissedInLayout = ref(false);
@@ -652,10 +636,7 @@ function handleFixWithAiFromOffer() {
 	conversationRef.value?.resetScroll();
 	void thread.sendMessage(
 		buildFixWithAiPrompt({ workflowName: offer.workflowName, errors: offer.errors }),
-		{
-			authorship: { kind: 'prefill', prefillType: 'handoff_fix_with_ai' },
-			pushRef: rootStore.pushRef,
-		},
+		{ authorship: { kind: 'prefill', prefillType: 'handoff_fix_with_ai' } },
 	);
 }
 
@@ -762,16 +743,6 @@ function handleNewThreadClick() {
 				data-test-id="instance-ai-builder-chat-header"
 			>
 				<InstanceAiViewHeader :title="currentThreadTitle">
-					<template #status>
-						<N8nText
-							v-if="thread.sseState === 'reconnecting'"
-							size="small"
-							color="text-light"
-							:class="$style.reconnecting"
-						>
-							{{ i18n.baseText('instanceAi.view.reconnecting') }}
-						</N8nText>
-					</template>
 					<template #actions>
 						<N8nTooltip
 							:content="i18n.baseText('instanceAi.thread.new')"
@@ -788,18 +759,6 @@ function handleNewThreadClick() {
 								@click="handleNewThreadClick"
 							/>
 						</N8nTooltip>
-						<N8nIconButton
-							v-if="isDebugEnabled"
-							icon="bug"
-							variant="ghost"
-							size="small"
-							icon-size="large"
-							:class="{ [$style.activeButton]: showDebugPanel }"
-							@click="
-								showDebugPanel = !showDebugPanel;
-								store.debugMode = showDebugPanel;
-							"
-						/>
 						<N8nTooltip
 							:content="artifactsPanelToggleLabel"
 							placement="bottom"
@@ -857,15 +816,8 @@ function handleNewThreadClick() {
 				data-test-id="instance-ai-content-area"
 			>
 				<InstanceAiAgentsConversation
-					v-if="!useLegacyChat"
 					:key="threadId"
-					@thread-missing="onThreadMissing"
-				/>
-				<InstanceAiConversation
-					v-else
 					ref="conversation"
-					:above-input-overlap-height="setupPanelWorkflowId ? setupOverlapHeight : undefined"
-					:mentions-enabled="mentionsEnabled"
 					@thread-missing="onThreadMissing"
 					@agent-attachment-restored="onAgentAttachmentRestored"
 				>
@@ -875,7 +827,6 @@ function handleNewThreadClick() {
 							ref="setupPanel"
 							:workflow-id="setupPanelWorkflowId"
 							:project-id="setupPanelProjectId"
-							@update:overlap-height="setupOverlapHeight = $event"
 						/>
 					</template>
 					<template #inline-offers>
@@ -897,7 +848,7 @@ function handleNewThreadClick() {
 							/>
 						</Transition>
 					</template>
-				</InstanceAiConversation>
+				</InstanceAiAgentsConversation>
 
 				<!-- Artifacts panel (below header, beside chat) -->
 				<Transition :name="artifactsPanelTransitionName" :css="shouldAnimateArtifactsPanel">
@@ -913,15 +864,6 @@ function handleNewThreadClick() {
 						<InstanceAiArtifactsPanel />
 					</div>
 				</Transition>
-
-				<!-- Overlay panels -->
-				<InstanceAiDebugPanel
-					v-if="showDebugPanel"
-					@close="
-						showDebugPanel = false;
-						store.debugMode = false;
-					"
-				/>
 			</div>
 		</div>
 
@@ -1077,14 +1019,6 @@ function handleNewThreadClick() {
 	z-index: 4;
 	border-left: none;
 	background-color: var(--color--background--light-2);
-}
-
-.activeButton {
-	color: var(--color--primary);
-}
-
-.reconnecting {
-	font-style: italic;
 }
 
 .contentArea {

@@ -31,8 +31,8 @@ const props = defineProps<{
 	resource: string;
 	description: string;
 	options: InstanceGatewayResourceDecision[];
-	/** Sends the decision through the caller (Agents chat resume) instead of the thread. */
-	submit?: ConfirmationSubmit;
+	/** Sends the decision through the caller (Agents chat resume). */
+	submit: ConfirmationSubmit;
 }>();
 
 const i18n = useI18n();
@@ -90,10 +90,6 @@ async function confirm(decision: InstanceGatewayResourceDecision) {
 	// hostname or a URL, so it goes through the egress policy like any other
 	// free-form value.
 	telemetry.track('User finished providing input', redactTelemetryProperties(eventProps));
-	if (!transport.isAgentsChat && thread) {
-		await thread.confirmResourceDecision(props.requestId, decision);
-		return;
-	}
 	await transport.confirm(props.requestId, { kind: 'resourceDecision', resourceDecision: decision });
 }
 </script>

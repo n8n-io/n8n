@@ -45,7 +45,7 @@ import {
 } from './instanceAi.threadRuntime';
 import { mergeNodeSets } from './utils/buildNodesAttachment';
 
-export type { PendingConfirmationItem, ThreadRuntime } from './instanceAi.threadRuntime';
+export type { ThreadRuntime } from './instanceAi.threadRuntime';
 
 type InstanceAiCreditsPushData = Extract<PushMessage, { type: 'updateInstanceAiCredits' }>['data'];
 
@@ -70,7 +70,6 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 	const threads = ref<InstanceAiThreadSummary[]>([]);
 	// The chat history page: cursor-paginated and searchable, kept apart from the sidebar list.
 	const threadHistory = ref(emptyThreadHistory());
-	const debugMode = ref(false);
 	// Credits are instance-level state (not per-thread). Re-fetched on mount via fetchCredits(),
 	// and updated in real-time via the 'updateInstanceAiCredits' push event.
 	// No reset needed on thread switch — login/logout reloads the page.
@@ -87,14 +86,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 	// (e.g. the resource registry) down with it.
 	const runtimeScopes = new Map<string, EffectScope>();
 	const runtimeHooks = {
-		onTitleUpdated: (threadId, title) => {
-			for (const thread of localThreadEntries(threadId)) thread.title = title;
-		},
-		// Refresh thread list to pick up auto-generated titles
-		onRunFinish: () => {
-			void loadThreads();
-		},
-		getThreadMetadata: (threadId) => threads.value.find((t) => t.id === threadId)?.metadata,
+		getThreadMetadata: (threadId) => localThreadEntries(threadId)[0]?.metadata,
 		onOnboardingLeft: leaveOnboarding,
 	} satisfies Parameters<typeof createThreadRuntime>[1];
 
@@ -494,7 +486,6 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 	return {
 		// Instance-level state
 		threads,
-		debugMode,
 		creditsQuota,
 		creditsClaimed,
 

@@ -58,7 +58,7 @@ interface ProvideOptions {
 	workflowId: Ref<string | undefined>;
 	credentialFlow: Ref<InstanceAiCredentialFlow | undefined>;
 	/** Sends the answer through the caller (Agents chat resume) instead of the thread. */
-	submit?: ConfirmationSubmit;
+	submit: ConfirmationSubmit;
 }
 
 export function provideWorkflowSetupContext(opts: ProvideOptions): WorkflowSetupContext {
@@ -76,11 +76,7 @@ export function provideWorkflowSetupContext(opts: ProvideOptions): WorkflowSetup
 
 	const { sections } = useWorkflowSetupSections(opts.setupRequests);
 	const bootstrap = useWorkflowSetupBootstrap(opts.workflowId);
-	const applyMachine = useWorkflowSetupApply({
-		requestId: opts.requestId,
-		thread,
-		submit: opts.submit,
-	});
+	const applyMachine = useWorkflowSetupApply({ submit: opts.submit });
 
 	const currentStepIndex = ref(0);
 	const activeSection = computed(() => sections.value[currentStepIndex.value]);

@@ -97,6 +97,18 @@ const props = withDefaults(
 		 * resume data, or `undefined` to keep the default cancel-and-steer.
 		 */
 		composerResumeData?: (payload: InteractivePayload, text: string) => unknown;
+		/**
+		 * Builds per-message context that the host sends with each new message
+		 * (for example the n8n Assistant time zone and hand-off context).
+		 */
+		hostContext?: () => Record<string, unknown> | undefined;
+		/**
+		 * Enables file attachments without an agent config. The value is the
+		 * accepted MIME types for the file picker; an empty string accepts any file.
+		 */
+		attachmentAccept?: string;
+		/** Overrides the default composer placeholder. */
+		placeholder?: string;
 	}>(),
 	{
 		visible: true,
@@ -111,6 +123,9 @@ const props = withDefaults(
 		budgetCards: false,
 		increaseBudget: undefined,
 		composerResumeData: undefined,
+		hostContext: undefined,
+		attachmentAccept: undefined,
+		placeholder: undefined,
 	},
 );
 
@@ -123,6 +138,22 @@ const emit = defineEmits<{
 	back: [];
 	'open-build': [];
 	'send-to-assistant': [event?: AgentSendToAssistantEvent];
+	/** A new message was accepted by the server, with the host context it carried. */
+	'message-accepted': [
+		payload: { text: string; files: File[]; hostContext?: Record<string, unknown> },
+	];
+}>();
+
+defineSlots<{
+	'footer-start'?: () => unknown;
+	/** Replaces the default empty state. */
+	empty?: () => unknown;
+	/** Content docked above the composer (for example a setup checklist). */
+	'above-input'?: () => unknown;
+	/** Offers that sit between the transcript and the composer. */
+	'inline-offers'?: () => unknown;
+	/** Extra chips in the composer attachment strip (for example hand-off context). */
+	'composer-attachments'?: () => unknown;
 }>();
 
 const locale = useI18n();
@@ -596,10 +627,12 @@ const attachmentCapabilities = computed(() => {
 	return provider ? PROVIDER_CAPABILITIES[provider]?.attachments : undefined;
 });
 const showAttach = computed(() => {
+	if (props.attachmentAccept !== undefined) return true;
 	const capabilities = attachmentCapabilities.value;
 	return !!capabilities && (capabilities.image || capabilities.pdf || capabilities.audio);
 });
 const acceptedMimeTypes = computed(() => {
+	if (props.attachmentAccept !== undefined) return props.attachmentAccept || undefined;
 	const capabilities = attachmentCapabilities.value;
 	if (!capabilities) return undefined;
 	return [
@@ -752,6 +785,7 @@ const chatPlaceholder = computed(() => {
 	if (hasOpenInteractiveQuestion.value) {
 		return locale.baseText('agents.chat.answerQuestionPlaceholder');
 	}
+	if (props.placeholder) return props.placeholder;
 
 	const agentName = props.agentConfig?.name?.trim();
 	return agentName
@@ -850,8 +884,10 @@ async function onSubmit(): Promise<SubmitResult> {
 		);
 		if (!isCurrentTarget()) return 'rejected';
 
-		const sending = sendMessage(text, files.length > 0 ? files : undefined, () => {
+		const hostContext = props.hostContext?.();
+		const onAccepted = () => {
 			if (!isCurrentTarget()) return;
+			emit('message-accepted', { text, files, hostContext });
 			agentTelemetry.trackSubmittedMessage({
 				agentId: props.agentId,
 				status: props.agentStatus,
@@ -860,7 +896,11 @@ async function onSubmit(): Promise<SubmitResult> {
 			if (inputText.value.trim() === text) inputText.value = '';
 			attachedFiles.value = attachedFiles.value.filter((file) => !files.includes(file));
 			consumeQueuedExternalMessage(text);
-		});
+		};
+		const sentFiles = files.length > 0 ? files : undefined;
+		const sending = hostContext
+			? sendMessage(text, sentFiles, onAccepted, hostContext)
+			: sendMessage(text, sentFiles, onAccepted);
 		isPreparingToSend.value = false;
 		const result = await sending;
 		if (result === 'busy') return 'busy';
@@ -903,15 +943,21 @@ async function onIncreaseBudget(payload: { field: BudgetAmountField; amount: num
 	}
 }
 
-function sendMessageFromOutside(message: string) {
+/**
+ * Sends a message the host wrote. Resolves to `false` when the message was
+ * rejected. A message that waits for the chat to be ready counts as sent.
+ */
+async function sendMessageFromOutside(message: string, files?: File[]): Promise<boolean> {
 	queuedExternalMessage = message;
 	inputText.value = message;
-	void submitQueuedExternalMessage();
+	if (files?.length) attachedFiles.value = [...attachedFiles.value, ...files];
+	const result = await submitQueuedExternalMessage();
+	return result !== 'rejected';
 }
 
-async function submitQueuedExternalMessage() {
+async function submitQueuedExternalMessage(): Promise<SubmitResult | undefined> {
 	const message = queuedExternalMessage;
-	if (!message || submittingQueuedExternalMessage || isSubmissionBlocked.value) return;
+	if (!message || submittingQueuedExternalMessage || isSubmissionBlocked.value) return undefined;
 
 	submittingQueuedExternalMessage = true;
 	let result: SubmitResult = 'rejected';
@@ -929,6 +975,7 @@ async function submitQueuedExternalMessage() {
 		await nextTick();
 		void submitQueuedExternalMessage();
 	}
+	return result;
 }
 
 function getConversationMarkdown(): string {
@@ -941,10 +988,21 @@ function getConversationMarkdown(): string {
 		.join('\n\n---\n\n');
 }
 
+function isDirty(): boolean {
+	return hasDraft.value;
+}
+
+/** Puts text into the composer without sending it. */
+function setDraft(text: string) {
+	inputText.value = text;
+}
+
 defineExpose({
 	focusInput,
 	getConversationMarkdown,
 	sendMessageFromOutside,
+	isDirty,
+	setDraft,
 	clearBudgetStops,
 	// Read-only views of the chat state, for hosts that derive side panels from it.
 	messages: computed(() => messages.value),
@@ -1022,7 +1080,11 @@ onBeforeUnmount(() => {
 			</N8nCallout>
 		</div>
 
-		<AgentChatEmptyState v-if="messages.length === 0 && !isStreaming" :agent-config="agentConfig" />
+		<template v-if="messages.length === 0 && !isStreaming">
+			<slot name="empty">
+				<AgentChatEmptyState :agent-config="agentConfig" />
+			</slot>
+		</template>
 		<AgentChatMessageList
 			v-else
 			:messages="messages"
@@ -1039,7 +1101,10 @@ onBeforeUnmount(() => {
 			@increase-budget="onIncreaseBudget"
 		/>
 
+		<slot name="inline-offers" />
+
 		<div :class="$style.inputArea">
+			<slot name="above-input" />
 			<div
 				v-if="showBackgroundJobs"
 				ref="backgroundJobCard"
@@ -1393,8 +1458,9 @@ onBeforeUnmount(() => {
 						</N8nAiActivityStepButton>
 					</div>
 				</template>
-				<template v-if="attachedFiles.length > 0" #attachments>
+				<template v-if="attachedFiles.length > 0 || $slots['composer-attachments']" #attachments>
 					<div :class="$style.attachmentsStrip">
+						<slot name="composer-attachments" />
 						<AttachmentPreview
 							v-for="(file, index) in attachedFiles"
 							:key="`${file.name}-${index}`"

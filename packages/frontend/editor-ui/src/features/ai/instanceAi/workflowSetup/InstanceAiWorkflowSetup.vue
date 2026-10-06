@@ -14,7 +14,7 @@ const props = defineProps<{
 	workflowId?: string;
 	credentialFlow?: InstanceAiCredentialFlow;
 	/** Sends the answer through the caller (Agents chat resume) instead of the thread. */
-	submit?: ConfirmationSubmit;
+	submit: ConfirmationSubmit;
 }>();
 
 provide(ResourceLocatorDropdownTeleportedKey, true);

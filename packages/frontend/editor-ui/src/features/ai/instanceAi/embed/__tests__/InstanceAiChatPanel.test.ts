@@ -75,7 +75,7 @@ const setPrefillMock = vi.hoisted(() => vi.fn());
 const submitSuggestionMock = vi.hoisted(() => vi.fn());
 
 const InstanceAiConversationStub = defineComponent({
-	name: 'InstanceAiConversation',
+	name: 'InstanceAiAgentsConversation',
 	props: ['beforeSend'],
 	emits: ['thread-missing', 'agent-attachment-restored'],
 	methods: {
@@ -93,7 +93,7 @@ const InstanceAiConversationStub = defineComponent({
 
 const panelStubs = {
 	InstanceAiViewHeader: InstanceAiViewHeaderStub,
-	InstanceAiConversation: InstanceAiConversationStub,
+	InstanceAiAgentsConversation: InstanceAiConversationStub,
 };
 
 const renderPanel = createComponentRenderer(InstanceAiChatPanel, {
@@ -476,7 +476,7 @@ describe('InstanceAiChatPanel', () => {
 		});
 		await flushPromises();
 		const prepareSend = wrapper
-			.findComponent({ name: 'InstanceAiConversation' })
+			.findComponent({ name: 'InstanceAiAgentsConversation' })
 			.props('beforeSend') as () => Promise<void>;
 
 		const send = prepareSend();

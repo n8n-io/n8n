@@ -1442,6 +1442,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		files?: File[],
 		onAccepted?: () => void,
 		userMessage?: ChatMessage,
+		hostContext?: Record<string, unknown>,
 	) {
 		const target = targetKey();
 		const { baseUrl } = rootStore.restApiContext;
@@ -1454,6 +1455,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			body.messageId = userMessage?.id;
 			if (newSession) body.newSession = true;
 		}
+		if (hostContext) body.hostContext = hostContext;
 		if (files?.length) {
 			body.attachments = await Promise.all(
 				files.map(async (file) => {
@@ -1622,10 +1624,15 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		);
 	}
 
+	/**
+	 * `hostContext` is per-message context the host passes through to the agent
+	 * provider (for example the n8n Assistant hand-off context).
+	 */
 	async function sendMessage(
 		text: string,
 		files?: File[],
 		onAccepted?: () => void,
+		hostContext?: Record<string, unknown>,
 	): Promise<'sent' | 'busy'> {
 		const trimmed = text.trim();
 		if ((!trimmed && !files?.length) || isSubmitting.value || isLoadingHistory.value) return 'busy';
@@ -1661,6 +1668,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 					release();
 				},
 				userMessage,
+				hostContext,
 			)
 				.then(({ outcome }) => {
 					release(outcome === 'busy' ? 'busy' : 'sent');

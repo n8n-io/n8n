@@ -4,10 +4,13 @@ import { storeToRefs } from 'pinia';
 import { useRoute, useRouter } from 'vue-router';
 import { useResizeObserver } from '@vueuse/core';
 import { v4 as uuidv4 } from 'uuid';
-import type { InstanceAiAttachment, InstanceAiThreadSource } from '@n8n/api-types';
+import type {
+	InstanceAiAttachment,
+	InstanceAiResourceAttachment,
+	InstanceAiThreadSource,
+} from '@n8n/api-types';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { useChatInputAutoFocus } from '@n8n/design-system';
-import { useRootStore } from '@n8n/stores/useRootStore';
 import { useToast } from '@n8n/composables/useToast';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
@@ -30,8 +33,11 @@ import {
 	INSTANCE_AI_SOURCE_QUERY,
 	isInstanceAiThreadSource,
 } from './constants';
-import { isLegacyAssistantChat, LEGACY_ASSISTANT_CHAT_QUERY } from './agentsChatMode';
-import { stashPendingFirstMessage } from './composables/useInstanceAiHandoff';
+import {
+	stashPendingFirstMessage,
+	stashPendingFirstMessageFiles,
+} from './composables/useInstanceAiHandoff';
+import { fileAttachmentToFile } from './utils/fileAttachments';
 import { useCreditWarningBanner } from './composables/useCreditWarningBanner';
 import {
 	InstanceAiProactiveStarterMessage,
@@ -141,7 +147,6 @@ const canSelectProject = computed(
 );
 const settingsStore = useInstanceAiSettingsStore();
 const { showCreditWarning, quotaLocked } = storeToRefs(store);
-const rootStore = useRootStore();
 const toast = useToast();
 const telemetry = useTelemetry();
 const i18n = useI18n();
@@ -563,8 +568,8 @@ async function handleSubmit(
 	authorship: InstanceAiMessageAuthorship,
 	responseStartedAtEpochMs?: number,
 	acceptDraft: () => void = () => {},
-	mentionCounts: AssistantMentionCounts = EMPTY_ASSISTANT_MENTION_COUNTS,
-	mentionedWorkflowIds: readonly string[] = [],
+	_mentionCounts: AssistantMentionCounts = EMPTY_ASSISTANT_MENTION_COUNTS,
+	_mentionedWorkflowIds: readonly string[] = [],
 ) {
 	if (!settingsStore.isWorkflowBuilderAvailable) {
 		return;
@@ -594,55 +599,21 @@ async function handleSubmit(
 		return;
 	}
 
-	const thread = store.getOrCreateRuntime(threadId, selectedProject.value);
-	// Agents chat mode: the thread view sends the opener through the Agents chat,
-	// so it streams there. Attachments still need the legacy endpoint.
-	const legacyChat = isLegacyAssistantChat(route.query);
-	const sendViaAgentsChat = !legacyChat && !attachments?.length;
-	if (sendViaAgentsChat) {
-		stashPendingFirstMessage(threadId, {
-			message,
-			authorship,
-			...(responseStartedAtEpochMs !== undefined ? { responseStartedAtEpochMs } : {}),
-		});
-	}
-	// Await admission before navigating. A refused send (e.g. a concurrency cap) must not
-	// drop the user into a blank thread, and handing the draft to the destination view is
-	// not an option: it reads its composer draft from localStorage once, synchronously, on
-	// mount, which always precedes this response. `sendMessage` has already surfaced the
-	// reason, so restore what was typed and stay put.
-	const sent = sendViaAgentsChat
-		? true
-		: await thread.sendMessage(message, {
-				authorship,
-				attachments,
-				pushRef: rootStore.pushRef,
-				...(responseStartedAtEpochMs !== undefined ? { responseStartedAtEpochMs } : {}),
-				...(mentionCounts.total > 0 ? { mentionCounts } : {}),
-				...(mentionedWorkflowIds.length > 0 ? { mentionedWorkflowIds } : {}),
-			});
-	if (!sent) {
-		isStartingThread.value = false;
-		restoreDraftAfterFailedSubmit(restoreDraft);
-		// `syncThread` already persisted the thread and `sendMessage` already opened its SSE,
-		// so without this every refusal would strand a blank thread in the sidebar and leave
-		// an EventSource open behind it (deleting disposes the runtime, which closes it).
-		// Discarding it also keeps the server's view matching what the user was just told: if
-		// a run did start but its response never arrived, this tears it down rather than
-		// leaving it burning credits on a conversation they believe never began. Runs after
-		// the restore is queued so cleanup can never delay giving the draft back.
-		//
-		// Silent because the refusal was already reported; a second "delete failed" for
-		// cleanup the user never asked for would only confuse. A refused delete returns
-		// early, before the store's own teardown, so dispose the runtime here -- the thread
-		// itself does still exist and rightly stays listed, but its EventSource was opened
-		// for a turn that never started and nothing else would ever close it.
-		if (!(await store.deleteThread(threadId, { silent: true }))) {
-			store.disposeRuntime(threadId);
-		}
-		return;
-	}
-
+	// The thread view sends the opener through the Agents chat, so it streams
+	// there. Files wait in memory: they are too large for the localStorage stash.
+	const references = (attachments ?? []).filter(
+		(attachment): attachment is InstanceAiResourceAttachment => attachment.type !== 'file',
+	);
+	const files = (attachments ?? []).flatMap((attachment) =>
+		attachment.type === 'file' ? [fileAttachmentToFile(attachment)] : [],
+	);
+	stashPendingFirstMessage(threadId, {
+		message,
+		authorship,
+		...(references.length ? { attachments: references } : {}),
+		...(responseStartedAtEpochMs !== undefined ? { responseStartedAtEpochMs } : {}),
+	});
+	stashPendingFirstMessageFiles(threadId, files);
 	// Track message-with-nodes only after a successful send, so refused sends and
 	// retries don't inflate the node-count metric.
 	const nodeCount = countAttachedNodes(attachments);
@@ -654,11 +625,7 @@ async function handleSubmit(
 	acceptDraft();
 
 	try {
-		await router.replace({
-			name: INSTANCE_AI_THREAD_VIEW,
-			params: { threadId },
-			...(legacyChat ? { query: LEGACY_ASSISTANT_CHAT_QUERY } : {}),
-		});
+		await router.replace({ name: INSTANCE_AI_THREAD_VIEW, params: { threadId } });
 	} catch (error) {
 		toast.showError(error, i18n.baseText('generic.error'));
 	} finally {

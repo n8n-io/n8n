@@ -7,7 +7,7 @@
  * artifact; "open in n8n Assistant" is the escape hatch to the full UI.
  *
  * Router-free except for that one hand-off. Provides the thread runtime
- * itself, so `InstanceAiConversation` works unchanged. Its history lives in
+ * itself, so `InstanceAiAgentsConversation` works unchanged. Its history lives in
  * `InstanceAiViewHeader`'s popover — scoped and non-navigating via `threadList` —
  * rather than a sidebar.
  */
@@ -47,7 +47,7 @@ import {
 	type PendingComposerDraft,
 } from '../composables/useInstanceAiHandoff';
 import InstanceAiViewHeader from '../components/InstanceAiViewHeader.vue';
-import InstanceAiConversation from '../components/InstanceAiConversation.vue';
+import InstanceAiAgentsConversation from '../components/InstanceAiAgentsConversation.vue';
 import type { SuggestionSelectionPayload } from '../components/InstanceAiInput.vue';
 import { useInstanceAiEmbedThreads } from './useInstanceAiEmbedThreads';
 import {
@@ -103,10 +103,10 @@ function threadFilter(thread: InstanceAiThreadSummary): boolean {
 	return threadTargetsSubject(thread.metadata, props.subject);
 }
 
-/** The template ref onto the mounted `InstanceAiConversation` — wired through
+/** The template ref onto the mounted `InstanceAiAgentsConversation` — wired through
  * `ThreadScope`'s render (it's created with `h()`, so the ref is passed as a
  * vnode prop rather than a template attribute), null while no thread is mounted. */
-const conversationRef = ref<InstanceType<typeof InstanceAiConversation> | null>(null);
+const conversationRef = ref<InstanceType<typeof InstanceAiAgentsConversation> | null>(null);
 
 /**
  * A hand-off requested before the conversation for the target thread exists
@@ -451,7 +451,7 @@ const ThreadScope = defineComponent({
 		);
 		return () =>
 			h(
-				InstanceAiConversation,
+				InstanceAiAgentsConversation,
 				{
 					// Closes over the outer scope's ref directly — `ThreadScope` is
 					// defined inside the panel's own `<script setup>`, and this is the

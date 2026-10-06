@@ -308,6 +308,8 @@ describe('AgentChatPanel', () => {
 			continueSessionId: string;
 			agentConfig: AgentJsonConfig | null;
 			beforeSend: () => Promise<void> | void;
+			hostContext: () => Record<string, unknown> | undefined;
+			attachmentAccept: string;
 			backgroundJobsActive: boolean;
 			increaseBudget: (payload: {
 				field: 'monthlyBudgetUsd' | 'sessionCostCapUsd';
@@ -1419,6 +1421,41 @@ describe('AgentChatPanel', () => {
 
 		expect(sendMessageMock).toHaveBeenCalledWith('update config', undefined, expect.any(Function));
 		expect(events).toEqual(['beforeSend', 'sendMessage']);
+	});
+
+	it('sends the host context with a message and reports it on acceptance', async () => {
+		const hostContext = { timeZone: 'Europe/Helsinki' };
+		sendMessageMock.mockImplementationOnce(
+			async (_text: string, _files: File[] | undefined, onAccepted: () => void) => {
+				onAccepted();
+				return 'sent';
+			},
+		);
+		const wrapper = mountPanel({ hostContext: () => hostContext });
+
+		const sent = await (
+			wrapper.vm as unknown as { sendMessageFromOutside: (message: string) => Promise<boolean> }
+		).sendMessageFromOutside('hello');
+		await flushPromises();
+
+		expect(sent).toBe(true);
+		expect(sendMessageMock).toHaveBeenCalledWith(
+			'hello',
+			undefined,
+			expect.any(Function),
+			hostContext,
+		);
+		expect(wrapper.emitted('message-accepted')?.[0]).toEqual([
+			{ text: 'hello', files: [], hostContext },
+		]);
+	});
+
+	it('enables attachments without an agent config when the host accepts files', () => {
+		const wrapper = mountPanel({ agentConfig: null, attachmentAccept: '' });
+		const input = wrapper.findComponent({ name: 'ChatInputBase' });
+
+		expect(input.attributes('show-attach')).toBe('true');
+		expect(input.attributes('accepted-mime-types')).toBeUndefined();
 	});
 
 	it('retains an outside prompt during initial loading and consumes it only after acceptance', async () => {

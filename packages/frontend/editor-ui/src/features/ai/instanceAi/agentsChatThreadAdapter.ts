@@ -64,11 +64,11 @@ function readChecklist(input: unknown): TaskList | undefined {
 }
 
 /**
- * The visible checklist, derived from the tool calls in order. `task-control`
+ * The agent's own checklist, derived from the tool calls in order. `task-control`
  * writes the whole checklist in its input, so its latest successful call is the
- * state. A `create-tasks` plan replaces the checklist with planned tasks whose
- * progress the background scheduler reports only on the legacy stream, so the
- * list is hidden from that point on rather than shown with stale statuses.
+ * state. A `create-tasks` plan replaces it with planned tasks, which the backend
+ * keeps in thread metadata (`instanceAiTasks`), so the runtime reads those
+ * instead and this checklist clears.
  */
 export function deriveTasksFromAgentsChat(messages: readonly ChatMessage[]): TaskList | null {
 	let tasks: TaskList | null = null;

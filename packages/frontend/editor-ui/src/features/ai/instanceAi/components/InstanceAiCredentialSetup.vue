@@ -40,8 +40,8 @@ const props = defineProps<{
 	projectId?: string;
 	credentialFlow?: InstanceAiCredentialFlow;
 	requireUserSelection?: boolean;
-	/** Sends the answer through the caller (Agents chat resume) instead of the thread. */
-	submit?: ConfirmationSubmit;
+	/** Sends the answer through the caller (Agents chat resume). */
+	submit: ConfirmationSubmit;
 }>();
 
 const i18n = useI18n();
@@ -541,9 +541,7 @@ async function handleContinue() {
 		kind: 'credentialSelection',
 		credentials,
 	});
-	if (success) {
-		transport.resolve(props.requestId, 'approved');
-	} else {
+	if (!success) {
 		isSubmitted.value = false;
 	}
 }
@@ -557,9 +555,7 @@ async function deferWholeCard() {
 		kind: 'approval',
 		approved: false,
 	});
-	if (success) {
-		transport.resolve(props.requestId, 'deferred');
-	} else {
+	if (!success) {
 		isSubmitted.value = false;
 		isDeferred.value = false;
 	}
@@ -668,9 +664,7 @@ async function submitAutoSetup(credentialType: string, attemptId: string) {
 		credentialType,
 		attemptId,
 	});
-	if (success) {
-		transport.resolve(props.requestId, 'approved');
-	} else {
+	if (!success) {
 		isSubmitted.value = false;
 	}
 }

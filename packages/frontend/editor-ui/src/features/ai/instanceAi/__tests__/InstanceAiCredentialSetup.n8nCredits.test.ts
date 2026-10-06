@@ -9,7 +9,7 @@ import type { InstanceAiCredentialRequest } from '@n8n/api-types';
 
 import { createThreadComponentRenderer } from './createThreadComponentRenderer';
 import InstanceAiCredentialSetup from '../components/InstanceAiCredentialSetup.vue';
-import { useInstanceAiStore, type ThreadRuntime } from '../instanceAi.store';
+import { useInstanceAiStore } from '../instanceAi.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import type { ICredentialsResponse } from '@/features/credentials/credentials.types';
 import { AI_GATEWAY_MANAGED_TAG } from '../constants';
@@ -77,7 +77,10 @@ const existingCred2 = {
 } as ICredentialsResponse;
 const usableCreds = [existingCred, existingCred2];
 
-const renderComponent = createThreadComponentRenderer(InstanceAiCredentialSetup);
+const submitSpy = vi.fn();
+const renderComponent = createThreadComponentRenderer(InstanceAiCredentialSetup, {
+	props: { submit: (body: unknown) => submitSpy(body) },
+});
 
 function makeRequest(): InstanceAiCredentialRequest[] {
 	// Two credentials prevent auto-selection on init.
@@ -91,13 +94,12 @@ function makeRequest(): InstanceAiCredentialRequest[] {
 }
 
 describe('InstanceAiCredentialSetup - with real NodeCredentials', () => {
-	let thread: ThreadRuntime;
-
 	beforeEach(() => {
+		submitSpy.mockReset();
 		const pinia = createTestingPinia({ stubActions: false });
 		setActivePinia(pinia);
 		const store = useInstanceAiStore();
-		thread = store.getOrCreateRuntime('thread-1');
+		store.getOrCreateRuntime('thread-1');
 
 		const credentialsStore = useCredentialsStore();
 		credentialsStore.state.credentialTypes = { openAiApi: openAiApiCredType };
@@ -125,7 +127,7 @@ describe('InstanceAiCredentialSetup - with real NodeCredentials', () => {
 	});
 
 	it('registers n8n credits selection and submits the managed tag', async () => {
-		const confirmSpy = vi.spyOn(thread, 'confirmAction').mockResolvedValue(true);
+		const confirmSpy = submitSpy;
 
 		renderComponent({
 			props: {
@@ -148,7 +150,7 @@ describe('InstanceAiCredentialSetup - with real NodeCredentials', () => {
 
 		expect(continueBtn).not.toBeDisabled();
 		await userEvent.click(continueBtn);
-		expect(confirmSpy).toHaveBeenCalledWith('req-1', {
+		expect(confirmSpy).toHaveBeenCalledWith({
 			kind: 'credentialSelection',
 			credentials: { openAiApi: AI_GATEWAY_MANAGED_TAG },
 		});
@@ -172,7 +174,7 @@ describe('InstanceAiCredentialSetup - with real NodeCredentials', () => {
 			configurable: true,
 			get: () => ({}),
 		});
-		const confirmSpy = vi.spyOn(thread, 'confirmAction').mockResolvedValue(true);
+		const confirmSpy = submitSpy;
 
 		renderComponent({
 			props: {
@@ -192,7 +194,7 @@ describe('InstanceAiCredentialSetup - with real NodeCredentials', () => {
 		await userEvent.click(await screen.findByTestId('node-credentials-select-item-cred-1'));
 		await userEvent.click(screen.getByTestId('instance-ai-credential-continue-button'));
 
-		expect(confirmSpy).toHaveBeenCalledWith('req-1', {
+		expect(confirmSpy).toHaveBeenCalledWith({
 			kind: 'credentialSelection',
 			credentials: { openAiApi: 'cred-1' },
 		});

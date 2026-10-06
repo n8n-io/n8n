@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { defineComponent, h, nextTick, reactive, ref } from 'vue';
+import { defineComponent, h, reactive, ref } from 'vue';
 import { USER_TYPED_MESSAGE, type InstanceAiPrefillType } from '../prefills';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { createTestingPinia } from '@pinia/testing';
@@ -436,8 +436,6 @@ describe('InstanceAiEmptyView', () => {
 
 	beforeEach(() => {
 		for (const key of Object.keys(routeQuery)) delete routeQuery[key];
-		// These tests cover the legacy send path (Assistant endpoint).
-		routeQuery.chat = 'legacy';
 		vi.stubGlobal('localStorage', {
 			getItem: vi.fn(),
 			setItem: vi.fn(),
@@ -856,27 +854,13 @@ describe('InstanceAiEmptyView', () => {
 			source: 'assistant_page',
 			origin: 'internal',
 		});
-		expect(store.getOrCreateRuntime).toHaveBeenCalledWith(
-			'thread-placeholder',
-			PERSONAL_PROJECT_ID,
-		);
-		expect(thread.sendMessage).toHaveBeenCalledWith(
-			'When a new lead is created in my CRM, enrich it with Lemlist, score it based on fit, then update the lead if qualified and notify the sales team on Slack.',
-			{
-				authorship: {
-					kind: 'prefill',
-					prefillType: 'suggestion_catalog',
-					prefillId: 'score-my-leads',
-					promptModified: false,
-				},
-				attachments: undefined,
-				pushRef: 'test-push-ref',
-			},
+		expect(localStorage.setItem).toHaveBeenCalledWith(
+			expect.stringContaining('thread-placeholder'),
+			expect.stringContaining('"prefillId":"score-my-leads"'),
 		);
 		expect(replaceMock).toHaveBeenCalledWith({
 			name: INSTANCE_AI_THREAD_VIEW,
 			params: { threadId: 'thread-placeholder' },
-			query: { chat: 'legacy' },
 		});
 		expect(showErrorMock).not.toHaveBeenCalled();
 	});
@@ -1074,8 +1058,7 @@ describe('InstanceAiEmptyView', () => {
 		expect(store.getOrCreateRuntime).not.toHaveBeenCalled();
 	});
 
-	it('stashes the opener for the Agents chat instead of sending it in Agents chat mode', async () => {
-		delete routeQuery.chat;
+	it('stashes the opener for the Agents chat instead of sending it', async () => {
 		store.syncThread.mockResolvedValue(undefined);
 		const { getByTestId } = renderView();
 
@@ -1091,76 +1074,6 @@ describe('InstanceAiEmptyView', () => {
 			name: INSTANCE_AI_THREAD_VIEW,
 			params: { threadId: 'thread-placeholder' },
 		});
-	});
-
-	it('navigates to the thread view and dispatches sendMessage when syncThread succeeds', async () => {
-		store.syncThread.mockResolvedValue(undefined);
-		const { getByTestId } = renderView();
-
-		await fireEvent.click(getByTestId('instance-ai-input-stub-submit'));
-		await flushPromises();
-
-		expect(store.syncThread).toHaveBeenCalledWith('thread-placeholder', PERSONAL_PROJECT_ID, {
-			source: 'assistant_page',
-			origin: 'internal',
-		});
-		expect(store.getOrCreateRuntime).toHaveBeenCalledWith(
-			'thread-placeholder',
-			PERSONAL_PROJECT_ID,
-		);
-		expect(thread.sendMessage).toHaveBeenCalledWith('hello', {
-			authorship: USER_TYPED_MESSAGE,
-			attachments: undefined,
-			pushRef: 'test-push-ref',
-		});
-		expect(replaceMock).toHaveBeenCalledWith({
-			name: INSTANCE_AI_THREAD_VIEW,
-			params: { threadId: 'thread-placeholder' },
-			query: { chat: 'legacy' },
-		});
-		expect(showErrorMock).not.toHaveBeenCalled();
-	});
-
-	it('stays on the empty view and restores the draft when the send is refused', async () => {
-		store.syncThread.mockResolvedValue(undefined);
-		vi.mocked(thread.sendMessage).mockResolvedValue(false);
-		const { getByTestId } = renderView();
-
-		await fireEvent.click(getByTestId('instance-ai-input-stub-submit'));
-		await flushPromises();
-		await nextTick();
-
-		expect(thread.sendMessage).toHaveBeenCalledWith('hello', {
-			authorship: USER_TYPED_MESSAGE,
-			attachments: undefined,
-			pushRef: 'test-push-ref',
-		});
-		// Navigating would drop the user into a blank thread, and the destination cannot be
-		// handed the draft either: it reads localStorage once, synchronously, on mount.
-		expect(replaceMock).not.toHaveBeenCalled();
-		expect(getByTestId('instance-ai-input-text')).toHaveTextContent('hello');
-		// syncThread already persisted the thread and sendMessage opened its SSE; leaving
-		// them behind would strand a blank sidebar entry and an EventSource per attempt.
-		// Silent: the refusal was already reported, so a second toast would only confuse.
-		expect(store.deleteThread).toHaveBeenCalledWith('thread-placeholder', { silent: true });
-		expect(store.disposeRuntime).not.toHaveBeenCalled();
-	});
-
-	// A refused delete returns before the store's own teardown, so the SSE would otherwise
-	// stay open -- the exact leak this cleanup exists to prevent.
-	it('still disposes the runtime when the cleanup delete is refused', async () => {
-		store.syncThread.mockResolvedValue(undefined);
-		vi.mocked(thread.sendMessage).mockResolvedValue(false);
-		store.deleteThread.mockResolvedValue(false);
-		const { getByTestId } = renderView();
-
-		await fireEvent.click(getByTestId('instance-ai-input-stub-submit'));
-		await flushPromises();
-		await nextTick();
-
-		expect(store.disposeRuntime).toHaveBeenCalledWith('thread-placeholder');
-		// The draft still comes back: cleanup must never cost the user their message.
-		expect(getByTestId('instance-ai-input-text')).toHaveTextContent('hello');
 	});
 
 	it('keeps the provisional thread when the send is accepted', async () => {

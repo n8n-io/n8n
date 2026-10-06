@@ -7,12 +7,23 @@ import { createComponentRenderer } from '@/__tests__/render';
 import type { ChatMessage } from '@/features/ai/shared/agentsChat/types';
 import InstanceAiAgentsConversation from '../InstanceAiAgentsConversation.vue';
 import { provideThread, useInstanceAiStore, type ThreadRuntime } from '../../instanceAi.store';
-import { fetchThread, fetchThreadMessages } from '../../instanceAi.memory.api';
+import { fetchThread } from '../../instanceAi.memory.api';
+import {
+	stashPendingFirstMessage,
+	stashPendingFirstMessageFiles,
+	stashPendingHandoffContext,
+} from '../../composables/useInstanceAiHandoff';
 
 const chatState = vi.hoisted(() => ({
 	messages: null as unknown as { value: ChatMessage[] },
 	isStreaming: null as unknown as { value: boolean },
 	isLoadingHistory: null as unknown as { value: boolean },
+	hostContext: undefined as (() => Record<string, unknown> | undefined) | undefined,
+	emitAccepted: undefined as
+		| ((payload: { text: string; files: File[]; hostContext?: Record<string, unknown> }) => void)
+		| undefined,
+	sendMessageFromOutside: undefined as unknown as ReturnType<typeof vi.fn>,
+	setDraft: undefined as unknown as ReturnType<typeof vi.fn>,
 }));
 
 vi.mock('@/features/agents/components/AgentChatPanel.vue', async () => {
@@ -20,33 +31,54 @@ vi.mock('@/features/agents/components/AgentChatPanel.vue', async () => {
 	return {
 		default: define({
 			name: 'AgentChatPanelStub',
-			props: { projectId: { type: String, required: true } },
-			setup(props, { expose }) {
+			props: {
+				projectId: { type: String, required: true },
+				hostContext: { type: Function, required: false },
+				attachmentAccept: { type: String, required: false },
+			},
+			emits: ['message-accepted'],
+			setup(props, { expose, emit, slots }) {
+				chatState.hostContext = props.hostContext as typeof chatState.hostContext;
+				chatState.emitAccepted = (payload) => emit('message-accepted', payload);
 				expose({
 					messages: chatState.messages,
 					isStreaming: chatState.isStreaming,
 					isLoadingHistory: chatState.isLoadingHistory,
-					sendMessageFromOutside: vi.fn(),
+					sendMessageFromOutside: chatState.sendMessageFromOutside,
+					setDraft: chatState.setDraft,
+					focusInput: vi.fn(),
+					isDirty: () => false,
 				});
-				return () => render('div', { 'data-test-id': 'chat-panel' }, props.projectId);
+				return () =>
+					render('div', { 'data-test-id': 'chat-panel', 'data-accept': props.attachmentAccept }, [
+						props.projectId,
+						slots['above-input']?.(),
+						slots['inline-offers']?.(),
+						slots['composer-attachments']?.(),
+					]);
 			},
 		}),
 	};
 });
 
+vi.mock('@/features/agents/composables/useAgentExecutionUpdates', () => ({
+	useAgentExecutionUpdates: vi.fn(() => vi.fn()),
+}));
+
 vi.mock('../../instanceAi.memory.api', async (importOriginal) => ({
 	...(await importOriginal<typeof import('../../instanceAi.memory.api')>()),
 	fetchThread: vi.fn(),
-	fetchThreadMessages: vi.fn(),
 }));
 
-const threadInfo = (title: string) => ({
+const threadInfo = (title: string, metadata?: Record<string, unknown>) => ({
 	thread: {
 		id: 'thread-1',
 		title,
 		resourceId: 'user-1',
+		projectId: 'project-1',
 		createdAt: '2026-01-01T00:00:00.000Z',
 		updatedAt: '2026-01-01T00:00:00.000Z',
+		...(metadata ? { metadata } : {}),
 	},
 });
 
@@ -55,7 +87,11 @@ let runtime: ThreadRuntime;
 const Host = defineComponent({
 	setup() {
 		runtime = provideThread('thread-1');
-		return () => h(InstanceAiAgentsConversation);
+		return () =>
+			h(InstanceAiAgentsConversation, null, {
+				'above-input': () => h('div', { 'data-test-id': 'above-input-slot' }),
+				'inline-offers': () => h('div', { 'data-test-id': 'inline-offers-slot' }),
+			});
 	},
 });
 
@@ -65,16 +101,14 @@ describe('InstanceAiAgentsConversation', () => {
 	beforeEach(() => {
 		vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
 		setActivePinia(createTestingPinia({ stubActions: false }));
+		localStorage.clear();
 		chatState.messages = ref<ChatMessage[]>([]);
 		chatState.isStreaming = ref(false);
 		chatState.isLoadingHistory = ref(true);
+		chatState.hostContext = undefined;
+		chatState.sendMessageFromOutside = vi.fn().mockResolvedValue(true);
+		chatState.setDraft = vi.fn();
 		vi.mocked(fetchThread).mockResolvedValue(threadInfo('First title'));
-		vi.mocked(fetchThreadMessages).mockResolvedValue({
-			threadId: 'thread-1',
-			projectId: 'project-1',
-			messages: [],
-			nextEventId: 0,
-		});
 	});
 
 	afterEach(() => {
@@ -83,19 +117,20 @@ describe('InstanceAiAgentsConversation', () => {
 		vi.clearAllMocks();
 	});
 
-	it('resolves the project without the legacy history and mounts the chat', async () => {
-		const { findByTestId } = renderComponent();
-		expect(runtime.agentsChatMode).toBe(true);
+	it('should resolve the project from the thread info and mount the chat', async () => {
+		const { findByTestId, getByTestId } = renderComponent();
 		expect(runtime.hydrationStatus).toBe('hydrating');
 
-		expect((await findByTestId('chat-panel')).textContent).toBe('project-1');
+		const panel = await findByTestId('chat-panel');
+		expect(panel.textContent).toBe('project-1');
+		expect(panel.dataset.accept).toBe('');
 		expect(runtime.projectId).toBe('project-1');
-		expect(fetchThreadMessages).toHaveBeenCalledWith(expect.anything(), 'thread-1', 1);
 		expect(useInstanceAiStore().threads[0].title).toBe('First title');
-		expect(runtime.sseState).toBe('disconnected');
+		expect(getByTestId('above-input-slot')).toBeInTheDocument();
+		expect(getByTestId('inline-offers-slot')).toBeInTheDocument();
 	});
 
-	it('mirrors the chat into the thread runtime once the history has loaded', async () => {
+	it('should mirror the chat into the thread runtime once the history has loaded', async () => {
 		const { findByTestId } = renderComponent();
 		await findByTestId('chat-panel');
 
@@ -129,7 +164,7 @@ describe('InstanceAiAgentsConversation', () => {
 		expect(runtime.isStreaming).toBe(true);
 	});
 
-	it('refreshes the thread title when a turn finishes and again after the refine delay', async () => {
+	it('should refresh the thread info when a turn finishes and again after the refine delay', async () => {
 		const { findByTestId } = renderComponent();
 		await findByTestId('chat-panel');
 		chatState.isLoadingHistory.value = false;
@@ -140,11 +175,16 @@ describe('InstanceAiAgentsConversation', () => {
 		await flushPromises();
 		expect(fetchThread).not.toHaveBeenCalled();
 
-		vi.mocked(fetchThread).mockResolvedValue(threadInfo('Heuristic title'));
+		vi.mocked(fetchThread).mockResolvedValue(
+			threadInfo('Heuristic title', {
+				instanceAiTasks: { tasks: [{ id: 't-1', description: 'Build A', status: 'todo' }] },
+			}),
+		);
 		chatState.isStreaming.value = false;
 		await flushPromises();
 		expect(fetchThread).toHaveBeenCalledTimes(1);
 		expect(useInstanceAiStore().threads[0].title).toBe('Heuristic title');
+		expect(runtime.currentTasks?.tasks[0].description).toBe('Build A');
 
 		vi.mocked(fetchThread).mockResolvedValue(threadInfo('Refined title'));
 		await vi.advanceTimersByTimeAsync(5_000);
@@ -152,7 +192,83 @@ describe('InstanceAiAgentsConversation', () => {
 		expect(useInstanceAiStore().threads[0].title).toBe('Refined title');
 	});
 
-	it('reports a missing thread', async () => {
+	it('should send the client context as host context', async () => {
+		const { findByTestId } = renderComponent();
+		await findByTestId('chat-panel');
+
+		const hostContext = chatState.hostContext?.();
+		expect(hostContext).toEqual(
+			expect.objectContaining({
+				timeZone: expect.any(String),
+				computerUseChannels: expect.any(Array),
+			}),
+		);
+		expect(hostContext).not.toHaveProperty('context');
+	});
+
+	it('should send a stashed opener with its hand-off context and files through the chat', async () => {
+		const file = new File(['x'], 'a.png', { type: 'image/png' });
+		stashPendingFirstMessage('thread-1', {
+			message: 'Help with this credential',
+			authorship: { kind: 'prefill', prefillType: 'handoff_credential_setup' },
+			context: {
+				source: 'credential-modal',
+				credential: { credentialType: 'slackApi', displayName: 'Slack' },
+			},
+			attachments: [{ type: 'workflow', id: 'wf-1', name: 'Orders' }],
+		});
+		stashPendingFirstMessageFiles('thread-1', [file]);
+
+		const { findByTestId } = renderComponent();
+		await findByTestId('chat-panel');
+		await flushPromises();
+
+		expect(chatState.sendMessageFromOutside).toHaveBeenCalledWith('Help with this credential', [
+			file,
+		]);
+		const hostContext = chatState.hostContext?.();
+		expect(hostContext?.context).toEqual(
+			expect.objectContaining({ source: 'credential-modal' }),
+		);
+		expect(hostContext?.attachments).toEqual([{ type: 'workflow', id: 'wf-1', name: 'Orders' }]);
+		// The one-shot context does not leak into the next message.
+		expect(chatState.hostContext?.()).not.toHaveProperty('context');
+	});
+
+	it('should route programmatic sends through the mounted chat', async () => {
+		const { findByTestId } = renderComponent();
+		await findByTestId('chat-panel');
+		await flushPromises();
+
+		const sent = await runtime.sendMessage('Fix it', {
+			authorship: { kind: 'prefill', prefillType: 'handoff_fix_with_ai' },
+		});
+
+		expect(sent).toBe(true);
+		expect(chatState.sendMessageFromOutside).toHaveBeenCalledWith('Fix it', undefined);
+	});
+
+	it('should carry a pending hand-off context until a message is accepted', async () => {
+		stashPendingHandoffContext('thread-1', {
+			source: 'agent-preview',
+			agentId: 'agent-1',
+			threadId: 'preview-1',
+			agentName: 'Support bot',
+		});
+		const { findByTestId, getByTestId } = renderComponent();
+		await findByTestId('chat-panel');
+
+		expect(getByTestId('instance-ai-handoff-context-chip')).toBeInTheDocument();
+		const hostContext = chatState.hostContext?.();
+		expect(hostContext?.context).toEqual(expect.objectContaining({ source: 'agent-preview' }));
+
+		chatState.emitAccepted?.({ text: 'Why did it fail?', files: [], hostContext });
+		await flushPromises();
+
+		expect(chatState.hostContext?.()).not.toHaveProperty('context');
+	});
+
+	it('should report a missing thread', async () => {
 		const { ResponseError } = await import('@n8n/rest-api-client');
 		const error = new ResponseError('Not found', { httpStatusCode: 404 });
 		vi.mocked(fetchThread).mockRejectedValue(error);

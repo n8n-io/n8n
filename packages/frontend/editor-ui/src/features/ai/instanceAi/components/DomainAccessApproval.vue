@@ -3,15 +3,14 @@ import { N8nApprovalCard, type ApprovalOption } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { InstanceAiConfirmRequest } from '@n8n/api-types';
 import { computed, ref } from 'vue';
-import { useThread } from '../instanceAi.store';
 
 type DomainAction = 'allow_once' | 'allow_domain' | 'allow_all';
 
 interface DomainProps {
 	requestId: string;
 	severity?: string;
-	/** Sends the decision through the caller (Agents chat resume) instead of the thread. */
-	submit?: (body: InstanceAiConfirmRequest) => void;
+	/** Sends the decision through the caller (Agents chat resume). */
+	submit: (body: InstanceAiConfirmRequest) => void;
 	url: string;
 	host: string;
 	query?: never;
@@ -20,7 +19,7 @@ interface DomainProps {
 interface WebSearchProps {
 	requestId: string;
 	severity?: string;
-	submit?: (body: InstanceAiConfirmRequest) => void;
+	submit: (body: InstanceAiConfirmRequest) => void;
 	query: string;
 	url?: never;
 	host?: never;
@@ -29,8 +28,6 @@ interface WebSearchProps {
 const props = defineProps<DomainProps | WebSearchProps>();
 
 const i18n = useI18n();
-// The Agents chat passes `submit` and renders outside a thread provider.
-const thread = props.submit ? undefined : useThread();
 const resolved = ref(false);
 
 const isWebSearch = computed(() => props.query !== undefined);
@@ -90,12 +87,7 @@ function handleAction(approved: boolean, domainAccessAction?: DomainAction) {
 		approved && domainAccessAction
 			? { kind: 'domainAccessApprove', domainAccessAction }
 			: { kind: 'domainAccessDeny' };
-	if (props.submit) {
-		props.submit(body);
-		return;
-	}
-	thread?.resolveConfirmation(props.requestId, approved ? 'approved' : 'denied');
-	void thread?.confirmAction(props.requestId, body);
+	props.submit(body);
 }
 
 function onSelect(key: string) {

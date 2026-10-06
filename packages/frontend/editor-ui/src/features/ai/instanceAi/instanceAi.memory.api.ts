@@ -5,10 +5,6 @@ import type {
 	InstanceAiThreadListResponse,
 	InstanceAiThreadHistoryQuery,
 	InstanceAiThreadHistoryResponse,
-	InstanceAiRichMessagesResponse,
-	InstanceAiThreadStatusResponse,
-	InstanceAiRunDebugResponse,
-	InstanceAiThreadDebugRunsResponse,
 	InstanceAiThreadTabsResponse,
 	InstanceAiThreadTabsState,
 } from '@n8n/api-types';
@@ -90,42 +86,4 @@ export async function persistPendingAgent(
 		`/instance-ai/threads/${threadId}/agent`,
 		payload,
 	);
-}
-
-export async function fetchThreadMessages(
-	context: IRestApiContext,
-	threadId: string,
-	limit?: number,
-	page?: number,
-): Promise<InstanceAiRichMessagesResponse> {
-	const params = new URLSearchParams();
-	if (limit !== undefined) params.set('limit', String(limit));
-	if (page !== undefined) params.set('page', String(page));
-	const qs = params.toString();
-	return await makeRestApiRequest(
-		context,
-		'GET',
-		`/instance-ai/threads/${threadId}/messages${qs ? `?${qs}` : ''}`,
-	);
-}
-
-export async function fetchThreadStatus(
-	context: IRestApiContext,
-	threadId: string,
-): Promise<InstanceAiThreadStatusResponse> {
-	return await makeRestApiRequest(context, 'GET', `/instance-ai/threads/${threadId}/status`);
-}
-
-export async function fetchRunDebug(
-	context: IRestApiContext,
-	runId: string,
-): Promise<InstanceAiRunDebugResponse> {
-	return await makeRestApiRequest(context, 'GET', `/instance-ai/debug/runs/${runId}`);
-}
-
-export async function fetchThreadDebugRuns(
-	context: IRestApiContext,
-	threadId: string,
-): Promise<InstanceAiThreadDebugRunsResponse> {
-	return await makeRestApiRequest(context, 'GET', `/instance-ai/debug/threads/${threadId}/runs`);
 }

@@ -1,4 +1,4 @@
-import { computed, ref, toValue, watch, type MaybeRefOrGetter } from 'vue';
+import { computed, ref, watch, type MaybeRefOrGetter } from 'vue';
 import { useRouter } from 'vue-router';
 import type { AiPreferencesAppliedPayload } from '@n8n/api-types';
 import type { DropdownMenuItemProps, IconName } from '@n8n/design-system';
@@ -12,7 +12,6 @@ import {
 	INSTANCE_AI_COMPUTER_USE_SETUP_MODAL_KEY,
 	INSTANCE_AI_TOOLS_CONNECTION_MODAL_KEY,
 } from '../constants';
-import { useInstanceAiStore } from '../instanceAi.store';
 import { useInstanceAiMcpStore } from '../instanceAiMcp.store';
 import { useInstanceAiMcpTelemetry } from '../instanceAiMcp.telemetry';
 import { useInstanceAiComputerUseTelemetry } from '../instanceAiComputerUse.telemetry';
@@ -39,14 +38,13 @@ type AppliedPreference = AiPreferencesAppliedPayload['preferences'][number];
 export function useInstanceAiInputMenuItems(
 	attachFiles: () => void,
 	/** The thread whose applied preferences the menu reports. None before a thread exists. */
-	threadId: MaybeRefOrGetter<string | undefined> = undefined,
+	_threadId: MaybeRefOrGetter<string | undefined> = undefined,
 ) {
 	const i18n = useI18n();
 	const router = useRouter();
 	const uiStore = useUIStore();
 	const settingsStore = useInstanceAiSettingsStore();
 	const mcpStore = useInstanceAiMcpStore();
-	const instanceAiStore = useInstanceAiStore();
 	const contextStore = useContextStore();
 	const { ignorePendingConnectResult } = useMcpServerConnect();
 	const mcpTelemetry = useInstanceAiMcpTelemetry();
@@ -152,11 +150,9 @@ export function useInstanceAiInputMenuItems(
 	// a flag that is off), and a menu that disagrees with what the assistant received
 	// is worse than no menu. Only the display text is looked up, by id.
 	const isPreferencesAvailable = computed(() => isContextPreferencesEnabled());
-	const appliedPreferences = computed<AiPreferencesAppliedPayload | null>(() => {
-		const id = toValue(threadId);
-		if (!id) return null;
-		return instanceAiStore.getRuntime(id)?.appliedPreferences ?? null;
-	});
+	// The Agents chat does not report the `preferences-applied` payload yet, so the
+	// menu lists none rather than a list that may disagree with the turn.
+	const appliedPreferences = computed<AiPreferencesAppliedPayload | null>(() => null);
 	const appliedPreferenceIds = computed(() =>
 		(appliedPreferences.value?.preferences ?? []).map(({ id }) => id),
 	);
