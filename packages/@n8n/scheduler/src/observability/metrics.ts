@@ -1,3 +1,4 @@
+import type { LeaseRenewalResult } from '../core/executor/lease-heartbeat';
 import type { MisfireCount } from '../core/materializer/materialize';
 
 /**
@@ -20,6 +21,11 @@ export interface SchedulerMetrics {
 	 * have run the same occurrence concurrently.
 	 */
 	recordLeaseLost(taskType: string): void;
+	/**
+	 * A running handler's lease was renewed, a renewal found its claim gone
+	 * ('lost'), or no renewal succeeded for a whole lease ('expired').
+	 */
+	recordLeaseRenewal(taskType: string, result: LeaseRenewalResult): void;
 
 	/** Outcome of one materialization pass. */
 	recordMaterialized(occurrences: number, deferredJobs: number): void;
@@ -48,6 +54,7 @@ export const noopMetrics: SchedulerMetrics = {
 	recordRetry() {},
 	observeDispatchLagSeconds() {},
 	recordLeaseLost() {},
+	recordLeaseRenewal() {},
 	recordMaterialized() {},
 	recordMisfired() {},
 	recordRetired() {},

@@ -165,6 +165,9 @@ paths:
       $ref: ./handlers/settings/spec/paths/getLdapSync.generated.yml
     post:
       $ref: ./handlers/settings/spec/paths/runLdapSync.generated.yml
+  /settings/log-streaming/event-types:
+    get:
+      $ref: ./handlers/settings/spec/paths/getLogStreamingEventTypes.generated.yml
   /node-type-policies/instance:
     get:
       $ref: ./handlers/node-type-policies/spec/paths/getNodeTypeInstancePolicy.generated.yml
@@ -414,3 +417,6 @@ paths:
       $ref: ./handlers/workflows/spec/paths/getWorkflowTags.generated.yml
     put:
       $ref: ./handlers/workflows/spec/paths/updateWorkflowTags.generated.yml
+  /workflows/{workflowId}/{workflowVersionId}:
+    get:
+      $ref: ./handlers/workflows/spec/paths/getDeprecatedWorkflowVersion.generated.yml

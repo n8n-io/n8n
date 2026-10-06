@@ -19,16 +19,6 @@ export type PaginatedRequest = AuthenticatedRequest<
 		lastId?: string;
 	}
 >;
-export declare namespace WorkflowRequest {
-	type Activate = AuthenticatedRequest<
-		{ id: string },
-		{},
-		{ versionId?: string; name?: string; description?: string },
-		{}
-	>;
-	type GetVersion = AuthenticatedRequest<{ id: string; versionId: string }, {}, {}, {}>;
-}
-
 export declare namespace PackageRequest {
 	type Import = AuthenticatedRequest<
 		{},
@@ -125,7 +115,6 @@ export declare namespace CommunityPackageRequest {
 }
 
 export declare namespace LogStreamingRequest {
-	type GetEventTypes = AuthenticatedRequest;
 	type GetDestinations = AuthenticatedRequest;
 	type GetDestination = AuthenticatedRequest<{ id: string }>;
 	type CreateDestination = AuthenticatedRequest<{}, {}, PublicCreateDestination>;
