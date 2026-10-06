@@ -79,11 +79,13 @@ export function readCaseRequest(input: JsonObject | null | undefined): string {
 
 /** The case's "what to check" criteria, written into the snapshot under `criteria`.
  *  Null when the dataset maps no criteria column — a valid dataset, just one with
- *  no per-case rule. */
+ *  no per-case rule. Like the request, the cell comes from a Data Table, so a
+ *  number or boolean reads as its text rather than vanishing. */
 export function readCaseWhatToCheck(input: JsonObject | null | undefined): string | null {
 	if (!isRecord(input)) return null;
 	const value = input.criteria;
 	if (typeof value === 'string' && value.length > 0) return value;
+	if (typeof value === 'number' || typeof value === 'boolean') return String(value);
 	return null;
 }
 

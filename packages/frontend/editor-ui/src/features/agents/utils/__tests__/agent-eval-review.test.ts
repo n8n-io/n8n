@@ -10,6 +10,7 @@ import {
 	canSaveDraft,
 	readAgentAnswer,
 	readCaseRequest,
+	readCaseWhatToCheck,
 	readCorrectionText,
 	readErrorMessage,
 	readVerdictReasoning,
@@ -80,6 +81,30 @@ describe.each([
 		['undefined', undefined],
 	])('returns null for %s', (_case, input) => {
 		expect(read(input)).toBeNull();
+	});
+});
+
+describe('readCaseWhatToCheck', () => {
+	// The criteria cell comes from a Data Table, so every scalar it can hold has
+	// to read back — a rule written as `1` or `true` must not disappear.
+	test.each([
+		['a string', { criteria: 'Names the ticket.' }, 'Names the ticket.'],
+		['a number', { criteria: 42 }, '42'],
+		['zero', { criteria: 0 }, '0'],
+		['a boolean', { criteria: false }, 'false'],
+		['an empty string', { criteria: '' }, null],
+		['a null cell', { criteria: null }, null],
+		['a missing key', {}, null],
+		['an object cell', { criteria: { nested: 1 } }, null],
+	])('reads %s', (_label, input, expected) => {
+		expect(readCaseWhatToCheck(input as JsonObject)).toBe(expected);
+	});
+
+	test.each([
+		['null', null],
+		['undefined', undefined],
+	])('returns null for %s', (_label, input) => {
+		expect(readCaseWhatToCheck(input)).toBeNull();
 	});
 });
 
