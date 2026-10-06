@@ -9,17 +9,17 @@ describe('SharePoint trigger: delta entries', () => {
 			// Both feed shapes, because only the key's presence may be tested. The
 			// drive feed sends {}, so a test on `deleted.state` would pass the list
 			// row below and miss every delete on the drive feed.
-			['a drive-feed tombstone', { id: '1', deleted: {} }, 'deleted'],
-			['a list-feed tombstone', { id: '1', deleted: { state: 'deleted' } }, 'deleted'],
-			['a changed file', { id: '1', file: {} }, 'changed'],
+			['a drive-feed tombstone', 'deleted', { id: '1', deleted: {} }],
+			['a list-feed tombstone', 'deleted', { id: '1', deleted: { state: 'deleted' } }],
+			['a changed file', 'changed', { id: '1', file: {} }],
 			// A deleted folder keeps its facet, so it can still be told apart.
-			['a deleted folder', { id: '1', deleted: {}, folder: {} }, undefined],
-			['a folder', { id: '1', folder: {} }, undefined],
-			['the drive root', { id: '1', root: {}, folder: {} }, undefined],
-			['an entry carrying neither facet', { id: '1' }, undefined],
-		] as Array<[string, IDataObject, SharePointEvent | undefined]>)(
+			['a deleted folder', undefined, { id: '1', deleted: {}, folder: {} }],
+			['a folder', undefined, { id: '1', folder: {} }],
+			['the drive root', undefined, { id: '1', root: {}, folder: {} }],
+			['an entry carrying neither facet', undefined, { id: '1' }],
+		] as Array<[string, SharePointEvent | undefined, IDataObject]>)(
 			'reads %s as %s',
-			(_name, entry, expected) => {
+			(_name, expected, entry) => {
 				expect(classifyEntry(entry)).toBe(expected);
 			},
 		);
