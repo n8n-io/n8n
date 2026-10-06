@@ -8366,6 +8366,7 @@
 	"agents.builder.budget.session.suffix": "per session",
 	"agents.builder.budget.session.stop": "The agent stops when a session reaches this cap.",
 	"agents.builder.budget.notSet": "Not set",
+	"agents.builder.budget.currencyPrefix": "$",
 	"agents.chat.budget.notNow": "Not now",
 	"agents.chat.budget.increase": "Increase cap",
 	"agents.chat.budget.monthly.title": "You've reached your monthly budget.",
