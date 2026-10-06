@@ -21,7 +21,6 @@ import { mock } from 'vitest-mock-extended';
 
 import { BadRequestError, ForbiddenError } from '@n8n/errors';
 import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
-import { ScimConfig } from '@/modules/scim/scim.config';
 import { type RoleMappingRuleService } from '@/modules/provisioning.ee/role-mapping-rule.service.ee';
 import { type RoleResolverService } from '@/modules/provisioning.ee/role-resolver.service.ee';
 import { type Publisher } from '@/scaling/pubsub/publisher.service';
@@ -49,9 +48,7 @@ const roleResolverService = mock<RoleResolverService>();
 const roleMappingRuleService = mock<RoleMappingRuleService>();
 
 const moduleRegistry = mock<ModuleRegistry>();
-const scimConfig = { rateLimit: 600, roleProvisioningEnabled: false } as ScimConfig;
 Container.set(ModuleRegistry, moduleRegistry);
-Container.set(ScimConfig, scimConfig);
 
 const provisioningService = new ProvisioningService(
 	eventService,
@@ -1309,13 +1306,11 @@ describe('ProvisioningService', () => {
 			// Mock getPreviousProjectRoles — no existing project access
 			projectRepository.find.mockResolvedValue([]);
 			moduleRegistry.isActive.mockReturnValue(false);
-			scimConfig.roleProvisioningEnabled = false;
 		});
 
-		describe('when SCIM role provisioning is active', () => {
+		describe('when the SCIM module is active', () => {
 			beforeEach(() => {
 				moduleRegistry.isActive.mockImplementation((name) => name === 'scim');
-				scimConfig.roleProvisioningEnabled = true;
 			});
 
 			it('should not apply the mapped instance role at login', async () => {

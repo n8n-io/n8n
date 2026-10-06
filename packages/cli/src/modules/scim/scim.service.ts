@@ -16,7 +16,6 @@ import { EventService, UrlService } from '@n8n/backend-services';
 import { PasswordUtility } from '@/services/password.utility';
 
 import { ScimUserRepository } from './database/scim-user.repository';
-import { ScimConfig } from './scim.config';
 import {
 	ScimConflictError,
 	ScimInvalidFilterError,
@@ -41,7 +40,6 @@ export class ScimService {
 		private readonly roleRepository: RoleRepository,
 		private readonly urlService: UrlService,
 		private readonly globalConfig: GlobalConfig,
-		private readonly scimConfig: ScimConfig,
 		private readonly passwordUtility: PasswordUtility,
 		private readonly eventService: EventService,
 	) {}
@@ -161,13 +159,13 @@ export class ScimService {
 
 	/**
 	 * Resolve the SCIM `roles` attribute to an n8n global role.
-	 * Returns null when role provisioning is disabled or no role was sent,
-	 * in which case the caller keeps the current/default role. n8n users
-	 * have exactly one global role, so multiple entries are rejected rather
-	 * than silently picking one. The owner role can never be assigned.
+	 * Returns null when no role was sent, in which case the caller keeps
+	 * the current/default role. n8n users have exactly one global role, so
+	 * multiple entries are rejected rather than silently picking one. The
+	 * owner role can never be assigned.
 	 */
 	private async resolveRequestedRole(roles: ScimRole[] | undefined): Promise<Role | null> {
-		if (!this.scimConfig.roleProvisioningEnabled || !roles?.length) return null;
+		if (!roles?.length) return null;
 
 		if (roles.length > 1) {
 			throw new ScimInvalidValueError(
@@ -443,8 +441,8 @@ export class ScimService {
 	}
 
 	/**
-	 * Apply an IdP-requested role change to the user entity. No-op when role
-	 * provisioning is disabled, no role was sent, or the role is unchanged.
+	 * Apply an IdP-requested role change to the user entity. No-op when no
+	 * role was sent or the role is unchanged.
 	 * The instance owner's role can never be changed through SCIM.
 	 */
 	private async applyRoleChange(

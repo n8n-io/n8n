@@ -497,16 +497,13 @@ export class ProvisioningService {
 	 * as managed when rules for that specific scope actually exist.
 	 */
 	/**
-	 * When SCIM role provisioning is enabled, the IdP's SCIM push is the
-	 * system of record for the instance role, and login-time role mapping
-	 * must not overwrite it. This matches IdP vendor guidance: with both
-	 * SSO and SCIM active, SCIM owns attributes and SSO only authenticates.
+	 * When the SCIM module is active, the IdP's SCIM push is the system of
+	 * record for the instance role, and login-time role mapping must not
+	 * overwrite it. This matches IdP vendor guidance: with both SSO and
+	 * SCIM active, SCIM owns attributes and SSO only authenticates.
 	 */
-	private async isScimRoleProvisioningActive(): Promise<boolean> {
-		if (!Container.get(ModuleRegistry).isActive('scim')) return false;
-
-		const { ScimConfig } = await import('@/modules/scim/scim.config.js');
-		return Container.get(ScimConfig).roleProvisioningEnabled;
+	private isScimActive(): boolean {
+		return Container.get(ModuleRegistry).isActive('scim');
 	}
 
 	private async hasRoleMappingRulesOfType(type: 'instance' | 'project'): Promise<boolean> {
@@ -813,14 +810,13 @@ export class ProvisioningService {
 		const resolved = await this.roleResolverService.resolveRoles(config, context);
 
 		// Only reconcile a scope whose mapping rules exist, matching the manual-management guards.
-		const [instanceRolesManaged, projectRolesManaged, scimOwnsInstanceRole] = await Promise.all([
+		const [instanceRolesManaged, projectRolesManaged] = await Promise.all([
 			this.hasRoleMappingRulesOfType('instance'),
 			this.hasRoleMappingRulesOfType('project'),
-			this.isScimRoleProvisioningActive(),
 		]);
 
-		// SCIM is the system of record for the instance role when it provisions roles.
-		const skipInstanceRole = scimOwnsInstanceRole;
+		// SCIM is the system of record for the instance role while it is active.
+		const skipInstanceRole = this.isScimActive();
 		const applyInstanceRole = instanceRolesManaged && !skipInstanceRole;
 
 		this.logger.debug('SSO role resolution complete', {
