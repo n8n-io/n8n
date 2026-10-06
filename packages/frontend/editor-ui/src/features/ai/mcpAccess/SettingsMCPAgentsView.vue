@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useLatestFetch } from '@/app/composables/useLatestFetch';
 import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
@@ -17,11 +18,7 @@ import { useToast } from '@n8n/composables/useToast';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import type { McpAgent } from '@/features/ai/mcpAccess/mcp.types';
 import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
-import {
-	LOADING_INDICATOR_TIMEOUT,
-	MCP_DOCS_PAGE_URL,
-	MCP_SETTINGS_VIEW,
-} from '@/features/ai/mcpAccess/mcp.constants';
+import { MCP_DOCS_PAGE_URL, MCP_SETTINGS_VIEW } from '@/features/ai/mcpAccess/mcp.constants';
 import AgentsTable from '@/features/ai/mcpAccess/components/tabs/AgentsTable.vue';
 import MCPConnectAgentsModal from '@/features/ai/mcpAccess/modals/MCPConnectAgentsModal.vue';
 
@@ -35,7 +32,7 @@ const documentTitle = useDocumentTitle({
 const mcpStore = useMCPStore();
 const settingsStore = useSettingsStore();
 
-const agentsLoading = ref(false);
+const agentsLoading = ref(true);
 const showConnectAgentsDialog = ref(false);
 const availableAgents = ref<McpAgent[]>([]);
 const availableAgentsTotal = ref(0);
@@ -63,24 +60,27 @@ const showMcpAccessUpdatedToast = (count: number, enabled: boolean) => {
 	});
 };
 
+const { next: nextFetch } = useLatestFetch();
+
 const fetchAvailableAgents = async () => {
+	const isCurrent = nextFetch();
 	agentsLoading.value = true;
 	try {
 		const response = await mcpStore.fetchAgentsAvailableForMCPPage(
 			agentsTableState.value.page + 1,
 			agentsTableState.value.itemsPerPage,
 		);
+		if (!isCurrent()) return;
 		if (response.page !== agentsTableState.value.page + 1) {
 			agentsTableState.value = { ...agentsTableState.value, page: response.page - 1 };
 		}
 		availableAgents.value = response.data;
 		availableAgentsTotal.value = response.count;
 	} catch (error) {
+		if (!isCurrent()) return;
 		toast.showError(error, i18n.baseText('settings.mcp.agents.list.error.fetching'));
 	} finally {
-		setTimeout(() => {
-			agentsLoading.value = false;
-		}, LOADING_INDICATOR_TIMEOUT);
+		if (isCurrent()) agentsLoading.value = false;
 	}
 };
 

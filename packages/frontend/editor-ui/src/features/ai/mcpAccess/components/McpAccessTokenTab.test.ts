@@ -1,3 +1,6 @@
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
+import { flushPromises } from '@vue/test-utils';
+import { fireEvent, within } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { waitFor } from '@testing-library/vue';
 import { createComponentRenderer } from '@n8n/frontend-test-utils';
@@ -38,6 +41,7 @@ vi.mock('./ConnectionParameter.vue', () => ({
 			<div :data-test-id="'connection-parameter-' + id">
 				<span data-test-id="connection-parameter-label">{{ label }}</span>
 				<span data-test-id="connection-parameter-value">{{ value }}</span>
+				<slot name="customActions" />
 				<button data-test-id="connection-parameter-copy-button" @click="$emit('copy', value)">Copy</button>
 			</div>
 		`,
@@ -61,6 +65,20 @@ describe('McpAccessTokenTab', () => {
 	afterEach(() => {
 		vi.clearAllMocks();
 		vi.useRealTimers();
+	});
+
+	it('ends token rotation as soon as the request completes', async () => {
+		const pending = createDeferredPromise<{ apiKey: string }>();
+		mockGenerateNewApiKey.mockReturnValueOnce(pending.promise);
+		const { getByTestId } = renderComponent({ props: { serverUrl: 'http://localhost:5678/mcp' } });
+		await flushPromises();
+		const parameter = getByTestId('connection-parameter-access-token');
+		const rotate = within(parameter).getByRole('button', { name: '' });
+		await fireEvent.click(rotate);
+		expect(rotate).toBeDisabled();
+		pending.resolve({ apiKey: 'new-api-key' });
+		await flushPromises();
+		expect(rotate).toBeEnabled();
 	});
 
 	describe('Rendering', () => {
@@ -87,8 +105,7 @@ describe('McpAccessTokenTab', () => {
 				},
 			});
 
-			// Advance timers to complete loading timeout
-			await vi.runAllTimersAsync();
+			await flushPromises();
 
 			await waitFor(() => {
 				const accessTokenParam = getByTestId('connection-parameter-access-token');

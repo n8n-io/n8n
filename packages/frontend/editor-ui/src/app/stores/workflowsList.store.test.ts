@@ -1,3 +1,4 @@
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { setActivePinia, createPinia } from 'pinia';
 import * as workflowsApi from '@/app/api/workflows';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
@@ -33,6 +34,24 @@ describe('useWorkflowsListStore', () => {
 
 	afterEach(() => {
 		vi.clearAllMocks();
+	});
+
+	it('keeps the latest list count and cached rows when requests finish out of order', async () => {
+		const older = createDeferredPromise<{ count: number; data: WorkflowListResource[] }>();
+		const latest = {
+			...createTestWorkflow({ id: 'workflow-1', name: 'Latest' }),
+			resource: 'workflow' as const,
+			description: undefined,
+		};
+		vi.mocked(workflowsApi.getWorkflowsAndFolders)
+			.mockReturnValueOnce(older.promise)
+			.mockResolvedValueOnce({ count: 1, data: [latest] });
+		const pending = workflowsListStore.fetchWorkflowsPage('project-1', 2, 10);
+		await workflowsListStore.fetchWorkflowsPage('project-1', 3, 10);
+		older.resolve({ count: 30, data: [{ ...latest, name: 'Older' }] });
+		await pending;
+		expect(workflowsListStore.totalWorkflowCount).toBe(1);
+		expect(workflowsListStore.getWorkflowById('workflow-1')?.name).toBe('Latest');
 	});
 
 	describe('initial state', () => {

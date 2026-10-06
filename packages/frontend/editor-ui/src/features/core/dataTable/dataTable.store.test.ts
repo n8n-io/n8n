@@ -1,3 +1,4 @@
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { useDataTableStore } from '@/features/core/dataTable/dataTable.store';
 import { faker } from '@faker-js/faker';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -61,6 +62,20 @@ describe('dataTable.store', () => {
 				createTable({ id: 'dt-2', name: 'Table 2' }),
 			],
 		};
+
+		it('keeps the latest list when requests finish out of order', async () => {
+			const older = createDeferredPromise<typeof mockResponse>();
+			const latest = { count: 1, data: [createTable({ id: 'latest' })] };
+			vi.spyOn(dataTableApi, 'fetchDataTablesApi')
+				.mockReturnValueOnce(older.promise)
+				.mockResolvedValueOnce(latest);
+			const pending = dataTableStore.fetchDataTables('project-1', 2, 10);
+			await dataTableStore.fetchDataTables('project-1', 3, 10);
+			older.resolve(mockResponse);
+			await pending;
+			expect(dataTableStore.dataTables).toEqual(latest.data);
+			expect(dataTableStore.totalCount).toBe(1);
+		});
 
 		it('should fetch data tables with pagination', async () => {
 			vi.spyOn(dataTableApi, 'fetchDataTablesApi').mockResolvedValue(mockResponse);

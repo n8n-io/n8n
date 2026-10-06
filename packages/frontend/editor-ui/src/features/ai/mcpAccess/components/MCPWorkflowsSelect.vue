@@ -1,6 +1,6 @@
 <script setup lang="ts">
+import { useLatestFetch } from '@/app/composables/useLatestFetch';
 import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
-import { LOADING_INDICATOR_TIMEOUT } from '@/features/ai/mcpAccess/mcp.constants';
 import { N8nSelect, N8nOption } from '@n8n/design-system';
 import { computed, onMounted, ref, useCssModule } from 'vue';
 import type { McpWorkflow } from '@/features/ai/mcpAccess/mcp.types';
@@ -30,7 +30,7 @@ const hasFetched = ref(false);
 const isDropdownVisible = ref(false);
 const selectRef = ref<InstanceType<typeof N8nSelect>>();
 const workflowOptions = ref<McpWorkflow[]>([]);
-let loadingTimeoutId: ReturnType<typeof setTimeout> | null = null;
+const { next: nextFetch } = useLatestFetch();
 
 const showEmptyState = computed(() => {
 	return !isLoading.value && hasFetched.value && workflowOptions.value.length === 0;
@@ -50,10 +50,7 @@ const popperClass = computed(() =>
 );
 
 async function searchWorkflows(query?: string) {
-	if (loadingTimeoutId) {
-		clearTimeout(loadingTimeoutId);
-		loadingTimeoutId = null;
-	}
+	const isCurrent = nextFetch();
 	isLoading.value = true;
 	hasFetched.value = false;
 	try {
@@ -61,22 +58,15 @@ async function searchWorkflows(query?: string) {
 			take: 10,
 			query: query ?? undefined,
 		});
-		workflowOptions.value = response?.data ?? [];
+		if (isCurrent()) workflowOptions.value = response?.data ?? [];
 	} catch (e) {
-		toast.showError(e, i18n.baseText('settings.mcp.connectWorkflows.error'));
+		if (isCurrent()) toast.showError(e, i18n.baseText('settings.mcp.connectWorkflows.error'));
 	} finally {
-		await waitFor(LOADING_INDICATOR_TIMEOUT);
-		isLoading.value = false;
-		hasFetched.value = true;
+		if (isCurrent()) {
+			isLoading.value = false;
+			hasFetched.value = true;
+		}
 	}
-}
-
-async function waitFor(timeout: number) {
-	await new Promise<void>((resolve) => {
-		setTimeout(() => {
-			resolve();
-		}, timeout);
-	});
 }
 
 function focusOnInput() {

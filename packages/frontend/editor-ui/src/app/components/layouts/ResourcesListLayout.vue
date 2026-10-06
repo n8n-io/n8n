@@ -9,6 +9,7 @@ import ResourcesListEmptyState, {
 } from '@/app/components/layouts/ResourcesListEmptyState.vue';
 import type { DatatableColumn } from '@n8n/design-system';
 import { useDebounce } from '@n8n/composables/useDebounce';
+import { useDelayedLoading } from '@n8n/composables/useDelayedLoading';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useRoute, useRouter } from 'vue-router';
 
@@ -145,6 +146,17 @@ const slots = defineSlots<{
 	breadcrumbs(): unknown;
 }>();
 
+const refreshRevealed = useDelayedLoading(() => props.resourcesRefreshing);
+const hasLoaded = ref(false);
+
+watch(
+	() => props.loading || props.resourcesRefreshing,
+	(loading) => {
+		if (!loading) hasLoaded.value = true;
+	},
+	{ immediate: true },
+);
+
 //computed
 const filtersModel = computed({
 	get: () => props.filters,
@@ -162,12 +174,12 @@ const showEmptyState = computed(() => {
 	);
 });
 
-// Skeleton instead of list chrome while a refresh is deciding whether an
-// unfiltered list is empty — prevents a chrome flash before the empty state.
+// Keep controls mounted after the first load, including refreshes with no rows.
 const showLoadingState = computed(() => {
 	return (
 		props.loading ||
-		(props.resourcesRefreshing &&
+		(!hasLoaded.value &&
+			props.resourcesRefreshing &&
 			props.resources.length === 0 &&
 			!hasFilters.value &&
 			!filtersModel.value.search)
@@ -699,8 +711,9 @@ defineExpose({
 
 				<slot name="preamble" />
 
-				<div v-if="resourcesRefreshing" class="resource-list-loading resource-list-loading-instant">
-					<N8nLoading :rows="rowsPerPage" :shrink-last="false" />
+				<div v-if="resourcesRefreshing && refreshRevealed" class="resource-list-loading">
+					<!-- The layout owns the delay so existing rows stay visible until reveal. -->
+					<N8nLoading :rows="rowsPerPage" :shrink-last="false" :delay="0" />
 				</div>
 				<div
 					v-else-if="filteredAndSortedResources.length > 0"
@@ -768,7 +781,7 @@ defineExpose({
 				</div>
 
 				<N8nText
-					v-else-if="hasAppliedFilters() || filtersModel.search !== ''"
+					v-else-if="!resourcesRefreshing && (hasAppliedFilters() || filtersModel.search !== '')"
 					color="text-base"
 					size="medium"
 					data-test-id="resources-list-empty"
@@ -876,13 +889,9 @@ defineExpose({
 <style lang="scss" scoped>
 .resource-list-loading {
 	position: relative;
-	height: 0;
+	height: 100%;
 	width: 100%;
 	overflow: hidden;
-	/*
-	Show the loading skeleton only if the loading takes longer than 300ms
-	*/
-	animation: 0.01s linear 0.3s forwards changeVisibility;
 	:deep(.el-skeleton) {
 		position: absolute;
 		height: 100%;
@@ -901,18 +910,6 @@ defineExpose({
 		.el-skeleton__item {
 			height: 69px;
 		}
-	}
-}
-.resource-list-loading-instant {
-	animation: 0.01s linear 0s forwards changeVisibility;
-}
-
-@keyframes changeVisibility {
-	from {
-		height: 0;
-	}
-	to {
-		height: 100%;
 	}
 }
 </style>

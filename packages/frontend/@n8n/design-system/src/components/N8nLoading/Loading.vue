@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import { ElSkeleton, ElSkeletonItem } from 'element-plus';
+import { SKELETON_DELAY, useDelayedLoading } from '@n8n/composables/useDelayedLoading';
 
 const VARIANT = [
 	'custom',
@@ -18,20 +19,28 @@ const VARIANT = [
 interface LoadingProps {
 	animated?: boolean;
 	loading?: boolean;
+	/** Time in milliseconds before the skeleton becomes visible. Use zero for immediate feedback. */
+	delay?: number;
 	rows?: number;
 	cols?: number;
 	shrinkLast?: boolean;
 	variant?: (typeof VARIANT)[number];
 }
 
-withDefaults(defineProps<LoadingProps>(), {
+const props = withDefaults(defineProps<LoadingProps>(), {
 	animated: true,
 	loading: true,
+	delay: SKELETON_DELAY,
 	rows: 1,
 	cols: 0,
 	shrinkLast: true,
 	variant: 'p',
 });
+
+const revealed = useDelayedLoading(
+	() => props.loading,
+	() => props.delay,
+);
 </script>
 
 <template>
@@ -39,6 +48,8 @@ withDefaults(defineProps<LoadingProps>(), {
 		:loading="loading"
 		:animated="animated"
 		:class="['n8n-loading', `n8n-loading-${variant}`]"
+		:style="{ visibility: revealed ? undefined : 'hidden' }"
+		aria-hidden="true"
 	>
 		<template v-if="cols" #template>
 			<ElSkeletonItem v-for="i in cols" :key="i" />

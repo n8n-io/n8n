@@ -38,8 +38,6 @@ export const MAX_COLUMN_NAME_LENGTH = 128;
 
 export const COLUMN_NAME_REGEX = DATA_TABLE_COLUMN_REGEX;
 
-export const MIN_LOADING_TIME = 500; // ms
-
 export const NULL_VALUE = 'Null';
 export const EMPTY_VALUE = 'Empty';
 export const MAX_CELL_DISPLAY_LENGTH = 10000;

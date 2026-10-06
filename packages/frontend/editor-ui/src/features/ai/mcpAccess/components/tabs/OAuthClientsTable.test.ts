@@ -58,17 +58,52 @@ describe('OAuthClientsTable', () => {
 	});
 
 	describe('Loading state', () => {
-		it('should render loading skeleton when loading is true', () => {
-			const { container, queryByTestId } = createComponent({
-				props: {
-					clients: [],
-					loading: true,
-				},
+		beforeEach(() => vi.useFakeTimers());
+		afterEach(() => vi.useRealTimers());
+		it('keeps the skeleton hidden when the initial load finishes before 300 ms', async () => {
+			const { container, rerender, getByTestId } = createComponent({
+				props: { clients: [], loading: true },
 			});
-
-			expect(container.querySelector('.n8n-loading')).toBeInTheDocument();
-			expect(queryByTestId('oauth-clients-data-table')).not.toBeInTheDocument();
+			await vi.advanceTimersByTimeAsync(100);
+			expect(container.querySelector('.n8n-loading')).not.toBeVisible();
+			await rerender({ loading: false });
+			await vi.advanceTimersByTimeAsync(300);
+			expect(container.querySelector('.n8n-loading')).not.toBeInTheDocument();
+			expect(getByTestId('mcp-clients-empty')).toBeVisible();
 		});
+
+		it('reveals the skeleton after 300 ms during the initial load', async () => {
+			const { container } = createComponent({ props: { clients: [], loading: true } });
+			await vi.advanceTimersByTimeAsync(299);
+			expect(container.querySelector('.n8n-loading')).not.toBeVisible();
+			await vi.advanceTimersByTimeAsync(1);
+			expect(container.querySelector('.n8n-loading')).toBeVisible();
+		});
+
+		it.each([false, true])(
+			'retains completed content during a short refresh (has rows: %s)',
+			async (hasRows) => {
+				const clients = hasRows ? [createOAuthClient()] : [];
+				mockMcpStore.oauthClientsCount = clients.length;
+				const testId = hasRows ? 'mcp-client-name' : 'mcp-clients-empty';
+				const { container, rerender, getByTestId } = createComponent({
+					props: { clients, loading: false },
+				});
+				const content = getByTestId(testId);
+				await rerender({ loading: true });
+				await vi.advanceTimersByTimeAsync(100);
+				expect(content).toBeVisible();
+				expect(container.querySelector('.n8n-loading')).not.toBeInTheDocument();
+				await rerender({ loading: false });
+				expect(getByTestId(testId)).toBe(content);
+				await rerender({ loading: true });
+				await vi.advanceTimersByTimeAsync(300);
+				expect(content).not.toBeInTheDocument();
+				expect(container.querySelector('.n8n-loading')).toBeVisible();
+				await rerender({ loading: false });
+				expect(getByTestId(testId)).toBeVisible();
+			},
+		);
 	});
 
 	describe('Empty state', () => {

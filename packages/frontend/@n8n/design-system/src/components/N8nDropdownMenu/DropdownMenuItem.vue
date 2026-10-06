@@ -384,6 +384,7 @@ onBeforeUnmount(() => {
 						<template #default="searchableContent">
 							<div v-if="loading" :class="$style['loading-container']">
 								<N8nLoading
+									:delay="0"
 									v-for="i in loadingItemCount"
 									:key="i"
 									:rows="1"
@@ -433,6 +434,7 @@ onBeforeUnmount(() => {
 					<template v-else>
 						<div v-if="loading" :class="$style['loading-container']">
 							<N8nLoading
+								:delay="0"
 								v-for="i in loadingItemCount"
 								:key="i"
 								:rows="1"

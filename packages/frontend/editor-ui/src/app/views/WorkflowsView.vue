@@ -92,7 +92,6 @@ import type { PathItem } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { getResourcePermissions } from '@n8n/permissions';
 import { createEventBus } from '@n8n/utils/event-bus';
-import debounce from 'lodash/debounce';
 import { type IUser, PROJECT_ROOT } from 'n8n-workflow';
 import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue';
 import { type LocationQueryRaw, useRoute, useRouter } from 'vue-router';
@@ -187,8 +186,7 @@ const deferChromeForOnboarding = computed(
 		projectPages.isOverviewSubPage && !hasKnownInstanceContent.value && !emptinessResolved.value,
 );
 
-// We render component in a loading state until initialization is done
-// This will prevent any additional workflow fetches while initializing
+// Keep request state separate from initialization readiness.
 const loading = ref(true);
 const breadcrumbsLoading = ref(false);
 const filters = ref<Filters>({
@@ -567,7 +565,7 @@ const showReadyToRunWorkflowsCallout = computed(() => {
 	return (
 		isEnabled &&
 		!isDismissed &&
-		!loading.value &&
+		emptinessResolved.value &&
 		!readOnlyEnv.value &&
 		(projectPages.isOverviewSubPage ||
 			(hasPermissionToCreateFolders.value && hasPermissionToCreateWorkflows.value))
@@ -606,7 +604,7 @@ const showRegisteredCommunityCTA = computed(
 
 const showAIStarterCollectionCallout = computed(() => {
 	return (
-		!loading.value &&
+		emptinessResolved.value &&
 		aiStarterTemplatesStore.isFeatureEnabled &&
 		!aiStarterTemplatesStore.calloutDismissed &&
 		!readOnlyEnv.value &&
@@ -618,12 +616,12 @@ const showAIStarterCollectionCallout = computed(() => {
 });
 
 const showPersonalizedTemplates = computed(
-	() => !loading.value && personalizedTemplatesStore.isFeatureEnabled(),
+	() => emptinessResolved.value && personalizedTemplatesStore.isFeatureEnabled(),
 );
 
 const shouldUseSimplifiedLayout = computed(() => {
 	const simplifiedLayoutVisible = readyToRunStore.getSimplifiedLayoutVisibility(route);
-	return !loading.value && simplifiedLayoutVisible;
+	return emptinessResolved.value && simplifiedLayoutVisible;
 });
 
 const hasActiveCallouts = computed(() => {
@@ -728,11 +726,11 @@ const showInsights = computed(() => {
 });
 
 const showTemplateRecommendationV2 = computed(() => {
-	return personalizedTemplatesV2Store.isFeatureEnabled() && !loading.value;
+	return personalizedTemplatesV2Store.isFeatureEnabled() && emptinessResolved.value;
 });
 
 const showTemplateRecommendationV3 = computed(() => {
-	return personalizedTemplatesV3Store.isFeatureEnabled() && !loading.value;
+	return personalizedTemplatesV3Store.isFeatureEnabled() && emptinessResolved.value;
 });
 
 /**
@@ -838,7 +836,7 @@ const initialize = async () => {
 	} finally {
 		loading.value = false;
 		isInitializing.value = false;
-		emptinessResolved.value = true;
+		emptinessResolved.value = !initializeQueued;
 		if (initializeQueued) {
 			initializeQueued = false;
 			void initialize();
@@ -855,11 +853,7 @@ const initialize = async () => {
 const fetchWorkflows = async () => {
 	const isCurrent = nextFetch();
 
-	// We debounce here so that fast enough fetches don't trigger
-	// the placeholder graphics for a few milliseconds, which would cause a flicker
-	const delayedLoading = debounce(() => {
-		loading.value = true;
-	}, 300);
+	loading.value = true;
 
 	const routeProjectId = route.params?.projectId as string | undefined;
 	const homeProjectFilter = filters.value.homeProject || undefined;
@@ -911,8 +905,11 @@ const fetchWorkflows = async () => {
 		if (needToFetchFolderPath) {
 			breadcrumbsLoading.value = true;
 			await foldersStore.getFolderPath(routeProjectId, parentFolder);
+			if (!isCurrent()) return [];
 			breadcrumbsLoading.value = false;
 		}
+
+		if (!isCurrent()) return [];
 
 		workflowsAndFolders.value = fetchedResources;
 
@@ -940,7 +937,6 @@ const fetchWorkflows = async () => {
 		void router.push({ name: VIEWS.PROJECTS_FOLDERS, params: { projectId: routeProjectId } });
 		return [];
 	} finally {
-		delayedLoading.cancel();
 		if (isCurrent()) {
 			loading.value = false;
 			if (breadcrumbsLoading.value) {
@@ -977,7 +973,7 @@ const getParentFolderId = (routeId?: string) => {
 const onFiltersUpdated = async () => {
 	currentPage.value = 1;
 	saveFiltersOnQueryString();
-	if (!loading.value) {
+	if (emptinessResolved.value) {
 		await callDebounced(fetchWorkflows, { debounceTime: FILTERS_DEBOUNCE_TIME, trailing: true });
 	}
 };
@@ -1004,10 +1000,8 @@ const setPaginationAndSort = async (payload: SortingAndPaginationUpdates) => {
 		currentSort.value =
 			WORKFLOWS_SORT_MAP[payload.sort as keyof typeof WORKFLOWS_SORT_MAP] ?? 'updatedAt:desc';
 	}
-	// Don't fetch workflows if we are loading
-	// This will prevent unnecessary API calls when changing sort and pagination from url/local storage
-	// when switching between projects
-	if (!loading.value) {
+	// Initialization fetches the saved options. Later selections can start a new request.
+	if (emptinessResolved.value) {
 		await callDebounced(fetchWorkflows, { debounceTime: FILTERS_DEBOUNCE_TIME, trailing: true });
 	}
 };

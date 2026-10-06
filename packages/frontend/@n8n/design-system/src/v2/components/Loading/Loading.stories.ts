@@ -15,6 +15,10 @@ const meta = {
 		},
 	},
 	argTypes: {
+		delay: {
+			control: { type: 'number', min: 0 },
+			description: 'Wait before showing the skeleton, in milliseconds. Zero shows it immediately.',
+		},
 		variant: {
 			control: { type: 'select' },
 			options: SKELETON_VARIANTS,
@@ -47,6 +51,8 @@ const meta = {
 export default meta;
 
 type Story = StoryObj<typeof meta>;
+
+export const Immediate: Story = { args: { delay: 0 } };
 
 export const Default: Story = {
 	args: {

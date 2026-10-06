@@ -393,7 +393,7 @@ watch(
 				</div>
 				<div v-if="props.loading && !props.errorView">
 					<div v-for="i in 3" :key="i" :class="$style.loadingItem">
-						<N8nLoading :class="$style.loader" variant="p" :rows="1" />
+						<N8nLoading :class="$style.loader" variant="p" :rows="1" :delay="0" />
 					</div>
 					<div
 						v-if="props.showSlowLoadNotice && props.slowLoadNotice"

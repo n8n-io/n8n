@@ -1,3 +1,5 @@
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
+import { flushPromises } from '@vue/test-utils';
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore, waitAllPromises } from '@/__tests__/utils';
 import { fireEvent, waitFor } from '@testing-library/vue';
@@ -139,6 +141,51 @@ describe('DataTableView', () => {
 
 		projectsStore.currentProjectId = '';
 		sourceControlStore.isProjectShared = vi.fn(() => false);
+	});
+
+	it('fetches a new page while a refresh is pending', async () => {
+		const pending = createDeferredPromise<void>();
+		const { getByTestId } = renderComponent({
+			pinia,
+			global: {
+				stubs: {
+					ResourcesListLayout: {
+						props: ['initialize', 'resourcesRefreshing'],
+						async mounted() {
+							await this.initialize();
+						},
+						template: `<div>
+					<button data-test-id="page-2" @click="$emit('update:pagination-and-sort', { page: 2 })">2</button>
+					<button data-test-id="page-3" @click="$emit('update:pagination-and-sort', { page: 3 })">3</button>
+				</div>`,
+					},
+				},
+			},
+		});
+		await flushPromises();
+		dataTableStore.fetchDataTables.mockReturnValueOnce(pending.promise);
+		await fireEvent.click(getByTestId('page-2'));
+		await waitFor(() =>
+			expect(dataTableStore.fetchDataTables).toHaveBeenLastCalledWith(
+				expect.anything(),
+				2,
+				expect.any(Number),
+				expect.any(Object),
+				expect.any(String),
+			),
+		);
+		await fireEvent.click(getByTestId('page-3'));
+		await waitFor(() =>
+			expect(dataTableStore.fetchDataTables).toHaveBeenLastCalledWith(
+				expect.anything(),
+				3,
+				expect.any(Number),
+				expect.any(Object),
+				expect.any(String),
+			),
+		);
+		pending.resolve(undefined);
+		await flushPromises();
 	});
 
 	describe('initialization', () => {

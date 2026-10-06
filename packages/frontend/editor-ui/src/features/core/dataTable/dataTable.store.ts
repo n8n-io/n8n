@@ -1,3 +1,4 @@
+import { useLatestFetch } from '@/app/composables/useLatestFetch';
 import { defineStore } from 'pinia';
 import { DATA_TABLE_STORE } from '@/features/core/dataTable/constants';
 import { computed, ref } from 'vue';
@@ -36,6 +37,7 @@ import type { DataTableListSortBy } from '@n8n/api-types';
 
 export const useDataTableStore = defineStore(DATA_TABLE_STORE, () => {
 	const rootStore = useRootStore();
+	const { next: nextListFetch } = useLatestFetch();
 	const projectStore = useProjectsStore();
 	const settingsStore = useSettingsStore();
 
@@ -84,6 +86,7 @@ export const useDataTableStore = defineStore(DATA_TABLE_STORE, () => {
 		},
 		sortBy?: DataTableListSortBy,
 	) => {
+		const isCurrent = nextListFetch();
 		const response = await fetchDataTablesApi(
 			rootStore.restApiContext,
 			projectId,
@@ -94,6 +97,7 @@ export const useDataTableStore = defineStore(DATA_TABLE_STORE, () => {
 			filter,
 			sortBy,
 		);
+		if (!isCurrent()) return;
 		dataTables.value = response.data;
 		totalCount.value = response.count;
 	};

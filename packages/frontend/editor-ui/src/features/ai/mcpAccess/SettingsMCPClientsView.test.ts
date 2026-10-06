@@ -1,6 +1,9 @@
+import { flushPromises } from '@vue/test-utils';
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
+import type { OAuthClientResponseDto } from '@n8n/api-types';
 import { nextTick } from 'vue';
 import { createTestingPinia } from '@pinia/testing';
-import { waitFor, within } from '@testing-library/vue';
+import { fireEvent, waitFor, within } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { createComponentRenderer, mockedStore, type MockedStore } from '@n8n/frontend-test-utils';
 import SettingsMCPClientsView from '@/features/ai/mcpAccess/SettingsMCPClientsView.vue';
@@ -127,6 +130,38 @@ describe('SettingsMCPClientsView', () => {
 
 		expect(getByTestId('mcp-oauth-clients-table')).toBeVisible();
 		expect(mcpStore.getAllOAuthClients).toHaveBeenCalled();
+	});
+
+	it('keeps loading until the latest tab request finishes', async () => {
+		const initial = createDeferredPromise<OAuthClientResponseDto[]>();
+		const all = createDeferredPromise<void>();
+		const mine = createDeferredPromise<void>();
+		mcpStore.getAllOAuthClients.mockReturnValueOnce(initial.promise);
+		mcpStore.setOAuthClientsOwnership
+			.mockReturnValueOnce(all.promise)
+			.mockReturnValueOnce(mine.promise);
+		const { getByTestId } = createComponent({
+			pinia,
+			global: {
+				stubs: {
+					OAuthClientsTable: {
+						props: ['loading'],
+						template: `<div><span data-test-id="loading">{{ loading }}</span><button data-test-id="all" @click="$emit('update:ownership', 'all')" /><button data-test-id="mine" @click="$emit('update:ownership', 'mine')" /></div>`,
+					},
+				},
+			},
+		});
+		await fireEvent.click(getByTestId('all'));
+		initial.resolve([]);
+		await flushPromises();
+		expect(getByTestId('loading')).toHaveTextContent('true');
+		await fireEvent.click(getByTestId('mine'));
+		all.resolve();
+		await flushPromises();
+		expect(getByTestId('loading')).toHaveTextContent('true');
+		mine.resolve();
+		await flushPromises();
+		expect(getByTestId('loading')).toHaveTextContent('false');
 	});
 
 	it('should confirm before revoking and pass the consent owner to the store', async () => {

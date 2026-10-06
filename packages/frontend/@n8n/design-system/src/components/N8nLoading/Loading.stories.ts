@@ -1,13 +1,20 @@
 import type { StoryFn } from '@storybook/vue3-vite';
+import { useTimeoutFn } from '@vueuse/core';
+import { ref } from 'vue';
 
 import N8nLoading from './Loading.vue';
 import N8nCircleLoader from '../N8nCircleLoader/CircleLoader.vue';
 import N8nSpinner from '../N8nSpinner/Spinner.vue';
+import N8nButton from '../N8nButton/Button.vue';
 
 export default {
 	title: 'Core/Loading',
 	component: N8nLoading,
 	argTypes: {
+		delay: {
+			control: { type: 'number', min: 0 },
+			description: 'Wait before showing the skeleton, in milliseconds. Zero shows it immediately.',
+		},
 		animated: {
 			control: {
 				type: 'boolean',
@@ -53,6 +60,40 @@ export const Default = Template.bind({});
 Default.args = {
 	variant: 'p',
 };
+
+export const Immediate = Template.bind({});
+Immediate.args = { delay: 0 };
+
+function requestStory(duration: number): StoryFn {
+	return () => ({
+		components: { N8nLoading, N8nButton },
+		setup() {
+			const loading = ref(false);
+			const { start } = useTimeoutFn(
+				() => {
+					loading.value = false;
+				},
+				duration,
+				{ immediate: false },
+			);
+			function load() {
+				loading.value = true;
+				start();
+			}
+			return { loading, load };
+		},
+		template: `
+			<div>
+				<N8nButton :disabled="loading" @click="load">Load content</N8nButton>
+				<N8nLoading v-if="loading" :rows="3" />
+				<p v-else>Content is ready.</p>
+			</div>
+		`,
+	});
+}
+
+export const FastRequest = requestStory(100);
+export const SlowRequest = requestStory(1500);
 
 export const Variants: StoryFn = () => ({
 	components: { N8nLoading },

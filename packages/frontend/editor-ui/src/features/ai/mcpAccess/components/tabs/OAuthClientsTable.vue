@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useDelayedLoading } from '@n8n/composables/useDelayedLoading';
 import { useI18n } from '@n8n/i18n';
 import type { BaseTextKey } from '@n8n/i18n';
 import type { OAuthClientResponseDto } from '@n8n/api-types';
@@ -13,7 +14,7 @@ import {
 	N8nTimeAgo,
 } from '@n8n/design-system';
 import type { IUser, TabOptions } from '@n8n/design-system';
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import debounce from 'lodash/debounce';
 import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
 import { useRBACStore } from '@n8n/stores/rbac.store';
@@ -42,6 +43,16 @@ type Props = {
 };
 
 const props = defineProps<Props>();
+const loadingRevealed = useDelayedLoading(() => props.loading);
+const hasLoaded = ref(false);
+
+watch(
+	() => props.loading,
+	(loading) => {
+		if (!loading) hasLoaded.value = true;
+	},
+	{ immediate: true },
+);
 
 const emit = defineEmits<{
 	revokeClient: [client: OAuthClientResponseDto];
@@ -230,9 +241,12 @@ function onRevoke(item: OAuthClientResponseDto) {
 
 <template>
 	<div data-test-id="oauth-clients-table">
-		<div v-if="props.loading">
-			<N8nLoading :loading="props.loading" variant="h1" class="mb-l" />
-			<N8nLoading :loading="props.loading" variant="p" :rows="5" :shrink-last="false" />
+		<div
+			v-if="props.loading && ((!hasLoaded && props.clients.length === 0) || loadingRevealed)"
+			:style="{ visibility: loadingRevealed ? undefined : 'hidden' }"
+		>
+			<N8nLoading :delay="0" :loading="props.loading" variant="h1" class="mb-l" />
+			<N8nLoading :delay="0" :loading="props.loading" variant="p" :rows="5" :shrink-last="false" />
 		</div>
 		<McpEmptyStateCard
 			v-else-if="showEmptyState"

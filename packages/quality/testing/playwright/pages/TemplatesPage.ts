@@ -63,10 +63,6 @@ export class TemplatesPage extends BasePage {
 		return this.page.getByTestId('collection-count-label');
 	}
 
-	getSkeletonLoader(): Locator {
-		return this.page.locator('.el-skeleton.n8n-loading');
-	}
-
 	async clickUseTemplateButton(): Promise<void> {
 		await this.getUseTemplateButton().click();
 	}
