@@ -1100,6 +1100,15 @@ export type RelayEventMap = {
 		jobId: string;
 	};
 
+	'execution-suspended-at-shutdown': {
+		executionId: string;
+		workflowId: string;
+		hostId: string;
+		jobId: string;
+		executionMode: WorkflowExecuteMode;
+		nodesExecuted: number;
+	};
+
 	// #endregion
 
 	// #region workflow history compaction

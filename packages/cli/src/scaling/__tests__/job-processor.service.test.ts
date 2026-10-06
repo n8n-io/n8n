@@ -490,6 +490,60 @@ describe('JobProcessor', () => {
 			await finish();
 		});
 
+		it('should report a run that came back parked for shutdown', async () => {
+			const executionPersistence = mock<ExecutionPersistence>();
+			executionPersistence.findSingleExecution.mockResolvedValue(
+				mock<IExecutionResponse>({
+					mode: 'trigger',
+					workflowData: { id: 'wf-1', nodes: [], staticData: {} },
+					data: mock<IRunExecutionData>(),
+				}),
+			);
+			vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(
+				mock<IWorkflowExecuteAdditionalData>(),
+			);
+			const eventService = mock<EventService>();
+			const jobProcessor = new JobProcessor(
+				logger,
+				mock(),
+				executionPersistence,
+				mock(),
+				mock(),
+				mock(),
+				createManualExecutionServiceMock(),
+				executionsConfig,
+				eventService,
+				mock(),
+			);
+			processRunExecutionDataMock.mockResolvedValue(
+				mock<IRun>({
+					status: 'waiting',
+					stoppedAt: new Date(),
+					data: mock<IRunExecutionData>({
+						waitReason: 'suspended',
+						resultData: { runData: { trigger: [], node1: [] }, error: undefined },
+					}),
+				}),
+			);
+
+			await jobProcessor.processJob(
+				mock<Job>({
+					id: 'job-1',
+					data: { executionId: 'exec-1', workflowId: 'wf-1', loadStaticData: false },
+				}),
+			);
+
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'execution-suspended-at-shutdown',
+				expect.objectContaining({
+					executionId: 'exec-1',
+					workflowId: 'wf-1',
+					executionMode: 'trigger',
+					nodesExecuted: 2,
+				}),
+			);
+		});
+
 		it('should not attach a suspend handle to a non-suspendable job', async () => {
 			const executionPersistence = mock<ExecutionPersistence>();
 			executionPersistence.findSingleExecution.mockResolvedValue(

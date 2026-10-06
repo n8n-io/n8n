@@ -436,6 +436,17 @@ export class JobProcessor {
 				: new ManualExecutionCancelledError(executionId);
 		}
 
+		if (run.data.waitReason === 'suspended') {
+			this.eventService.emit('execution-suspended-at-shutdown', {
+				executionId,
+				workflowId,
+				hostId: this.instanceSettings.hostId,
+				jobId: job.id.toString(),
+				executionMode: execution.mode,
+				nodesExecuted: Object.keys(run.data.resultData.runData).length,
+			});
+		}
+
 		const props = this.deriveJobFinishedProps(run, startedAt);
 
 		this.logger.info(`Worker finished execution ${executionId} (job ${job.id})`, {

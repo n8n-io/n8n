@@ -23,4 +23,18 @@ export const PLATFORM_TELEMETRY = defineTelemetryEvents({
 			mode: z.enum(['internal', 'external']).describe('Task runners deployment mode'),
 		}),
 	},
+	WORKER_SUSPENDED_EXECUTION: {
+		name: 'Worker suspended execution at shutdown',
+		description:
+			'A queue-mode worker that received a shutdown signal parked a running production execution at a node boundary instead of finishing or losing it. The execution is persisted as waiting and resumed on another worker. Reported once per parked execution, only when N8N_WORKER_SUSPEND_EXECUTIONS_ON_SHUTDOWN is enabled.',
+		properties: z.object({
+			workflow_id: z.string(),
+			execution_mode: z.string().describe('webhook, trigger or retry'),
+			nodes_executed: z
+				.number()
+				.describe(
+					'How many nodes had run on the shutting-down worker when it parked the execution',
+				),
+		}),
+	},
 });

@@ -337,6 +337,7 @@ export class TelemetryEventRelay extends EventRelay {
 				this.instanceAiMcpRegistryConnectionDeleted(event),
 			'hitl-response-actioned': (event) => this.hitlResponseActioned(event),
 			'runner-disconnected': (event) => this.runnerDisconnected(event),
+			'execution-suspended-at-shutdown': (event) => this.executionSuspendedAtShutdown(event),
 		});
 	}
 
@@ -2014,6 +2015,18 @@ export class TelemetryEventRelay extends EventRelay {
 
 	private runnerDisconnected({ reason, mode }: RelayEventMap['runner-disconnected']) {
 		this.telemetry.track(TELEMETRY_EVENT.PLATFORM.TASK_RUNNER_DISCONNECTED, { reason, mode });
+	}
+
+	private executionSuspendedAtShutdown({
+		workflowId,
+		executionMode,
+		nodesExecuted,
+	}: RelayEventMap['execution-suspended-at-shutdown']) {
+		this.telemetry.track(TELEMETRY_EVENT.PLATFORM.WORKER_SUSPENDED_EXECUTION, {
+			workflow_id: workflowId,
+			execution_mode: executionMode,
+			nodes_executed: nodesExecuted,
+		});
 	}
 
 	private async instanceOwnerSetup({ userId }: RelayEventMap['instance-owner-setup']) {

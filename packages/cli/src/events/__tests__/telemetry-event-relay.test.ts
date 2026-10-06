@@ -4937,4 +4937,24 @@ describe('TelemetryEventRelay', () => {
 			);
 		});
 	});
+
+	describe('worker shutdown events', () => {
+		it('should track on `execution-suspended-at-shutdown` event', () => {
+			const event: RelayEventMap['execution-suspended-at-shutdown'] = {
+				executionId: 'exec-1',
+				workflowId: 'wf-1',
+				hostId: 'worker-1',
+				jobId: 'job-1',
+				executionMode: 'webhook',
+				nodesExecuted: 3,
+			};
+
+			eventService.emit('execution-suspended-at-shutdown', event);
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.PLATFORM.WORKER_SUSPENDED_EXECUTION,
+				{ workflow_id: 'wf-1', execution_mode: 'webhook', nodes_executed: 3 },
+			);
+		});
+	});
 });
