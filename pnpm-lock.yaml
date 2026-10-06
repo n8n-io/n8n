@@ -242,6 +242,9 @@ catalogs:
     '@chat-adapter/telegram':
       specifier: 4.37.0
       version: 4.37.0
+    '@chat-adapter/whatsapp':
+      specifier: 4.37.0
+      version: 4.37.0
     '@codemirror/autocomplete':
       specifier: 6.20.0
       version: 6.20.0
@@ -1057,6 +1060,7 @@ overrides:
 
 patchedDependencies:
   '@chat-adapter/teams@4.37.0': af5fb1d38a2af55399bd8b6934e77348a9b061fec6177c101dd9d7a787ae8a6c
+  '@chat-adapter/whatsapp@4.37.0': 950356dafb986b5cc9bd53069f7653b47b790a60b3590495cf53392ea4df2de4
   '@confluentinc/kafka-javascript@1.9.1': c597d3e3d9d6d0d33588b7dc1e88d55f270ba155721aad464bd7fb03e28f5003
   '@langchain/google-common@2.1.24': b50436a6c7b0a82d54472dff331ba1b42ab8b816995f83295eef2ee4b482a87d
   '@langchain/openai@1.4.4': e16bcc93cf9037198faacf494fb81afba6e9abba749dc9a09c3abfb33e68d5c2
@@ -4744,6 +4748,9 @@ importers:
       '@chat-adapter/telegram':
         specifier: 'catalog:'
         version: 4.37.0(ai@7.0.74(zod@3.25.76))(supports-color@8.1.1)(zod@3.25.76)
+      '@chat-adapter/whatsapp':
+        specifier: 'catalog:'
+        version: 4.37.0(patch_hash=950356dafb986b5cc9bd53069f7653b47b790a60b3590495cf53392ea4df2de4)(ai@7.0.74(zod@3.25.76))(supports-color@8.1.1)(zod@3.25.76)
       '@google-cloud/secret-manager':
         specifier: 5.6.0
         version: 5.6.0(encoding@0.1.13)(supports-color@8.1.1)
@@ -9811,6 +9818,10 @@ packages:
 
   '@chat-adapter/telegram@4.37.0':
     resolution: {integrity: sha512-A/lBDH7QUdGzxn+aBUyfg0Dp3uO9AW04Q2iXd4SwAz1t14wVb/gQ+KeI1QB287thgx+uLfr13f0/5Ss58ET11w==}
+    engines: {node: '>=20'}
+
+  '@chat-adapter/whatsapp@4.37.0':
+    resolution: {integrity: sha512-+PjjwUmz5I/FL7U7zEnf48DiElw6tyvdvLUdMC81YoUBHkbirLBI9prcOYgXoO0H6hodJRuXTACXqMemzJRNng==}
     engines: {node: '>=20'}
 
   '@chromatic-com/storybook@4.1.3':
@@ -27530,6 +27541,16 @@ snapshots:
       - zod
 
   '@chat-adapter/telegram@4.37.0(ai@7.0.74(zod@3.25.76))(supports-color@8.1.1)(zod@3.25.76)':
+    dependencies:
+      '@chat-adapter/shared': 4.37.0(ai@7.0.74(zod@3.25.76))(supports-color@8.1.1)(zod@3.25.76)
+      chat: 4.37.0(ai@7.0.74(zod@3.25.76))(supports-color@8.1.1)(zod@3.25.76)
+    transitivePeerDependencies:
+      - ai
+      - supports-color
+      - workflow
+      - zod
+
+  '@chat-adapter/whatsapp@4.37.0(patch_hash=950356dafb986b5cc9bd53069f7653b47b790a60b3590495cf53392ea4df2de4)(ai@7.0.74(zod@3.25.76))(supports-color@8.1.1)(zod@3.25.76)':
     dependencies:
       '@chat-adapter/shared': 4.37.0(ai@7.0.74(zod@3.25.76))(supports-color@8.1.1)(zod@3.25.76)
       chat: 4.37.0(ai@7.0.74(zod@3.25.76))(supports-color@8.1.1)(zod@3.25.76)

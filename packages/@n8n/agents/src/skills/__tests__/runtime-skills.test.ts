@@ -490,25 +490,16 @@ Use the workflow SDK.`,
 		expect(prepare).toHaveBeenCalledTimes(1);
 	});
 
-	it('prepares the runtime skill source before injecting the agent skill catalog', async () => {
+	it('injects the agent skill catalog without preparing the runtime skill source', async () => {
 		const source = createRuntimeSkillSource([
 			{
 				id: 'summarize_notes',
 				name: 'Summarize notes',
 				description: 'Use for meeting notes.',
-				instructions: 'Extract decisions.',
+				instructions: 'Full private skill body: Extract decisions.',
 			},
 		]);
-		const prepare = vi.fn(async () => {
-			await Promise.resolve();
-			source.registry = {
-				...source.registry,
-				skills: source.registry.skills.map((skill) => ({
-					...skill,
-					description: 'Use for materialized meeting notes.',
-				})),
-			};
-		});
+		const prepare = vi.fn(async () => {});
 		source.prepare = prepare;
 
 		const agent = new Agent('assistant')
@@ -521,11 +512,10 @@ Use the workflow SDK.`,
 		const { instructions } = runtimeConfig;
 		expect(runtimeConfig.skillSource).toBe(source);
 
-		expect(prepare).toHaveBeenCalledTimes(1);
+		expect(prepare).not.toHaveBeenCalled();
 		expect(instructions).toContain('name: "Summarize notes"');
 		expect(instructions).toContain('id: "summarize_notes"');
-		expect(instructions).toContain('description: "Use for materialized meeting notes."');
-		expect(instructions).not.toContain('description: "Use for meeting notes."');
+		expect(instructions).toContain('description: "Use for meeting notes."');
 		expect(instructions).not.toContain('Full private skill body');
 	});
 
