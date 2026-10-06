@@ -65,25 +65,23 @@ async function savedResult() {
 	);
 	const execution = await createExecution({ status: 'error' }, workflow);
 	const service = Container.get(SelfHealingResultService);
-	const result = await service.create(
-		await service.prepare({
-			workflowId: workflow.id,
-			projectId: ownerProject.id,
-			backgroundUserId: backgroundUser.id,
-			executionId: execution.id,
-			usage: {
-				credits: 1,
-				turns: 2,
-				durationSeconds: 30,
-				promptTokens: 1000,
-				completionTokens: 200,
-				totalTokens: 1200,
-			},
-			outcome: 'needs_you',
-			summary: 'Review the failed request.',
-			report: 'The request failed. Check the connection settings, then retry the workflow.',
-		}),
-	);
+	const result = await service.complete({
+		workflowId: workflow.id,
+		projectId: ownerProject.id,
+		backgroundUserId: backgroundUser.id,
+		executionId: execution.id,
+		usage: {
+			credits: 1,
+			turns: 2,
+			durationSeconds: 30,
+			promptTokens: 1000,
+			completionTokens: 200,
+			totalTokens: 1200,
+		},
+		outcome: 'needs_you',
+		summary: 'Review the failed request.',
+		report: 'The request failed. Check the connection settings, then retry the workflow.',
+	});
 	const url = `/projects/${ownerProject.id}/workflows/${workflow.id}/self-healing-results/${result.id}`;
 	return { backgroundUser, workflow, ownerProject, execution, result, url };
 }

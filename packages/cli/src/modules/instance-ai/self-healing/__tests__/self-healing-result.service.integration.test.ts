@@ -12,7 +12,6 @@ import {
 	GLOBAL_OWNER_ROLE,
 	ProjectRepository,
 	SharedWorkflowRepository,
-	TransactionRunner,
 	UserRepository,
 	WorkflowHistoryRepository,
 	WorkflowPublicationTriggerStatusRepository,
@@ -39,6 +38,7 @@ import { WorkflowSuggestionRepository } from '../../workflow-suggestions/databas
 import { WorkflowSuggestionActionsService } from '../../workflow-suggestions/workflow-suggestion-actions.service';
 import { WorkflowSuggestionService } from '../../workflow-suggestions/workflow-suggestion.service';
 import { SelfHealingResultRepository } from '../database/self-healing-result.repository';
+import { SelfHealingExecutionReferenceService } from '../self-healing-execution-reference.service';
 import { SelfHealingResultService } from '../self-healing-result.service';
 
 mockInstance(ActiveWorkflowManager);
@@ -143,7 +143,7 @@ async function prepareFixture(outcome: Outcome = 'needs_you', withSuggestion = f
 
 async function fixture(outcome: Outcome = 'needs_you', withSuggestion = false) {
 	const prepared = await prepareFixture(outcome, withSuggestion);
-	const result = await service.create(await service.prepare(prepared.input));
+	const result = await service.complete(prepared.input);
 	const { user, project, original } = prepared;
 	const url = `/projects/${project.id}/workflows/${original.id}/self-healing-results/${result.id}`;
 	const getDetail = async () => await service.getDetail(user, project.id, original.id, result.id);
@@ -182,7 +182,7 @@ it.each([
 it.each([undefined, null])('rejects an absent execution ID (%s)', async (executionId) => {
 	const { input } = await prepareFixture();
 	await expect(
-		service.prepare({ ...input, executionId } as unknown as typeof input),
+		service.complete({ ...input, executionId } as unknown as typeof input),
 	).rejects.toThrow();
 	expect(await results.count()).toBe(0);
 });
@@ -192,7 +192,7 @@ it.each([
 	['could_not_fix', true],
 ] as const)('rejects %s with suggestion=%s without partial records', async (outcome, attached) => {
 	const { input } = await prepareFixture(outcome, attached);
-	await expect(service.prepare(input)).rejects.toThrow();
+	await expect(service.complete(input)).rejects.toThrow();
 	expect(await results.count()).toBe(0);
 	expect(await suggestions.count()).toBe(0);
 });
@@ -201,7 +201,7 @@ it('rejects prepared suggestion identities that do not match the result', async 
 	const first = await prepareFixture('fix_ready', true);
 	const second = await prepareFixture('fix_ready', true);
 	await expect(
-		service.prepare({ ...first.input, suggestion: second.input.suggestion }),
+		service.complete({ ...first.input, suggestion: second.input.suggestion }),
 	).rejects.toThrow();
 	expect(await results.count()).toBe(0);
 	expect(await suggestions.count()).toBe(0);
@@ -210,7 +210,7 @@ it('rejects prepared suggestion identities that do not match the result', async 
 it('rejects a suggestion outcome that differs from the result', async () => {
 	const { input } = await prepareFixture('fix_ready', true);
 	input.suggestion!.resultKind = 'needs_you';
-	await expect(service.prepare(input)).rejects.toThrow();
+	await expect(service.complete(input)).rejects.toThrow();
 	expect(await results.count()).toBe(0);
 	expect(await suggestions.count()).toBe(0);
 });
@@ -220,7 +220,7 @@ it('does not require a published workflow for an informational result', async ()
 	const workflow = await createWorkflowWithHistory({}, user);
 	const project = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(user.id);
 	const execution = await createExecution({ status: 'error' }, workflow);
-	const prepared = await service.prepare({
+	const result = await service.complete({
 		workflowId: workflow.id,
 		projectId: project.id,
 		backgroundUserId: user.id,
@@ -237,7 +237,6 @@ it('does not require a published workflow for an informational result', async ()
 		summary: 'The investigation could not produce a fix.',
 		report: 'The workflow needs human input.',
 	});
-	const result = await service.create(prepared);
 	expect(await service.getDetail(user, project.id, workflow.id, result.id)).toMatchObject({
 		outcome: 'could_not_fix',
 		suggestion: null,
@@ -245,11 +244,15 @@ it('does not require a published workflow for an informational result', async ()
 	});
 });
 
-it('rechecks the background user when prepared content is committed', async () => {
+it('rechecks the background user after execution validation', async () => {
 	const { input, user } = await prepareFixture('fix_ready', true);
-	const prepared = await service.prepare(input);
-	await Container.get(UserRepository).update(user.id, { disabled: true });
-	await expect(service.create(prepared)).rejects.toThrow('edit access');
+	const references = Container.get(SelfHealingExecutionReferenceService);
+	const validateReference = references.validateReference.bind(references);
+	vi.spyOn(references, 'validateReference').mockImplementationOnce(async (...args) => {
+		await validateReference(...args);
+		await Container.get(UserRepository).update(user.id, { disabled: true });
+	});
+	await expect(service.complete(input)).rejects.toThrow('edit access');
 	expect(await results.count()).toBe(0);
 	expect(await suggestions.count()).toBe(0);
 });
@@ -265,40 +268,33 @@ it.each([0, null])('preserves report text and measured usage with credits=%s', a
 		completionTokens: 0,
 		totalTokens: 1200,
 	};
-	const prepared = await service.prepare({
+	const result = await service.complete({
 		...input,
 		report,
 		usage,
 	});
-	const result = await service.create(prepared);
 	const detail = await service.getDetail(user, project.id, original.id, result.id);
 	expect(detail.report).toBe(report);
 	expect(detail.usage).toEqual(usage);
 });
 
-it('rolls back the result, suggestion, and activity with the caller transaction', async () => {
-	const { input, original } = await prepareFixture('fix_ready', true);
-	const execution = await createExecution({ status: 'error' }, original);
-	const prepared = await service.prepare({ ...input, executionId: execution.id });
-	await expect(
-		Container.get(TransactionRunner).run({}, async (ctx) => {
-			await service.create(prepared, ctx);
-			throw new Error('Completion failed.');
-		}),
-	).rejects.toThrow('Completion failed.');
-	expect(await results.count()).toBe(0);
-	expect(await suggestions.count()).toBe(0);
-	expect(await Container.get(DataSource).getRepository(WorkflowSuggestionActivity).count()).toBe(0);
-});
-
-it('rolls back suggestion storage when result insertion fails', async () => {
-	const { input } = await prepareFixture('fix_ready', true);
-	const prepared = await service.prepare(input);
-	vi.spyOn(results, 'createResult').mockRejectedValueOnce(new Error('Result unavailable.'));
-	await expect(service.create(prepared)).rejects.toThrow('Result unavailable.');
-	expect(await suggestions.count()).toBe(0);
-	expect(await Container.get(DataSource).getRepository(WorkflowSuggestionActivity).count()).toBe(0);
-});
+it.each(['before', 'after'] as const)(
+	'rolls back completion when result storage fails %s insertion',
+	async (failureTiming) => {
+		const { input } = await prepareFixture('fix_ready', true);
+		const createResult = results.createResult.bind(results);
+		vi.spyOn(results, 'createResult').mockImplementationOnce(async (...args) => {
+			if (failureTiming === 'after') await createResult(...args);
+			throw new Error('Result unavailable.');
+		});
+		await expect(service.complete(input)).rejects.toThrow('Result unavailable.');
+		expect(await results.count()).toBe(0);
+		expect(await suggestions.count()).toBe(0);
+		expect(await Container.get(DataSource).getRepository(WorkflowSuggestionActivity).count()).toBe(
+			0,
+		);
+	},
+);
 
 it('keeps the report and unknown usage after the execution is removed', async () => {
 	const { user, project, original, input } = await prepareFixture();
@@ -311,12 +307,11 @@ it('keeps the report and unknown usage after the execution is removed', async ()
 		completionTokens: null,
 		totalTokens: null,
 	};
-	const prepared = await service.prepare({
+	const result = await service.complete({
 		...input,
 		executionId: execution.id,
 		usage,
 	});
-	const result = await service.create(prepared);
 	await Container.get(ExecutionRepository).delete(execution.id);
 	expect((await results.findOneByOrFail({ id: result.id })).executionId).toBe(execution.id);
 	const detail = await service.getDetail(user, project.id, original.id, result.id);
@@ -603,9 +598,7 @@ it('keeps the report readable when a reviewer loses execution read access', asyn
 	testServer.license.enable('feat:advancedPermissions');
 	const { user, project: ownerProject, original, input } = await prepareFixture();
 	const execution = await createExecution({ status: 'error' }, original);
-	const result = await service.create(
-		await service.prepare({ ...input, executionId: execution.id }),
-	);
+	const result = await service.complete({ ...input, executionId: execution.id });
 	const editor = await createUser();
 	const project = await createTeamProject(undefined, user);
 	const readerRole = await createCustomRoleWithScopeSlugs([
@@ -637,9 +630,7 @@ it('keeps the report readable when a reviewer loses execution read access', asyn
 it('checks execution access against the stored role when the supplied user is stale', async () => {
 	const { user, project: ownerProject, original, input } = await prepareFixture();
 	const execution = await createExecution({ status: 'error' }, original);
-	const result = await service.create(
-		await service.prepare({ ...input, executionId: execution.id }),
-	);
+	const result = await service.complete({ ...input, executionId: execution.id });
 	const reviewer = await createUser({ role: GLOBAL_OWNER_ROLE });
 	const project = await createTeamProject(undefined, user);
 	const role = await createCustomRoleWithScopeSlugs(['workflow:read', 'workflow:update']);

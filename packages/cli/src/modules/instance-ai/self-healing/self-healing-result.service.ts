@@ -37,18 +37,12 @@ const referenceSchema = z.object({
 		.default(() => new Date()),
 });
 
-export type CreateSelfHealingResult = SelfHealingResultContent & {
+export type CompleteSelfHealingResult = SelfHealingResultContent & {
 	workflowId: string;
 	projectId: string;
 	backgroundUserId: string;
 	executionId: string;
 	completedAt?: Date;
-	suggestion?: PreparedWorkflowSuggestion;
-};
-
-export type PreparedSelfHealingResult = {
-	references: z.infer<typeof referenceSchema>;
-	content: SelfHealingResultContent;
 	suggestion?: PreparedWorkflowSuggestion;
 };
 
@@ -70,7 +64,7 @@ export class SelfHealingResultService {
 		private readonly txRunner: TransactionRunner,
 	) {}
 
-	async prepare(input: CreateSelfHealingResult): Promise<PreparedSelfHealingResult> {
+	private async prepare(input: CompleteSelfHealingResult) {
 		const references = referenceSchema.parse(input);
 		const content = selfHealingResultContentSchema.parse({
 			outcome: input.outcome,
@@ -106,10 +100,11 @@ export class SelfHealingResultService {
 		return { references, content, suggestion: prepared };
 	}
 
-	// Prepare before opening the caller's transaction so evidence reads cannot hold it open.
-	async create(prepared: PreparedSelfHealingResult, ctx: OperationContext = {}) {
+	async complete(input: CompleteSelfHealingResult) {
+		// Validate execution evidence before opening the completion transaction.
+		const prepared = await this.prepare(input);
 		const { references, content } = prepared;
-		return await this.txRunner.run(ctx, async (ctx) => {
+		return await this.txRunner.run({}, async (ctx) => {
 			await this.suggestions.requireEditor(references.backgroundUserId, references.workflowId, ctx);
 			await this.requireCurrentProject(references.workflowId, references.projectId, ctx);
 			const suggestion = prepared.suggestion
