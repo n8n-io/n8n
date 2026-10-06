@@ -5,7 +5,7 @@ import { mockLogger } from '@n8n/backend-test-utils';
 import { mock } from 'vitest-mock-extended';
 import { UserError } from 'n8n-workflow';
 
-import { NotFoundError } from '@n8n/errors';
+import { ConflictError, NotFoundError } from '@n8n/errors';
 
 import type { AgentModificationTelemetryService } from '../agent-modification-telemetry.service';
 import { AgentSaveCompletionService } from '../agent-save-completion.service';
@@ -55,6 +55,7 @@ function makeService() {
 	const agentRepository = mock<AgentRepository>();
 	const runtimeCacheService = mock<AgentRuntimeCacheService>();
 	const modificationTelemetry = mock<AgentModificationTelemetryService>();
+	const agentUpdateBroadcaster = mock<AgentUpdateBroadcaster>();
 	agentRepository.saveDraftFenced.mockResolvedValue(true);
 
 	Container.set(AgentRuntimeCacheService, runtimeCacheService);
@@ -63,17 +64,24 @@ function makeService() {
 		agentRepository,
 		new AgentSaveCompletionService(
 			mock<EventService>(),
-			mock<AgentUpdateBroadcaster>(),
+			agentUpdateBroadcaster,
 			modificationTelemetry,
 		),
 	);
 
-	return { service, agentRepository, runtimeCacheService, modificationTelemetry };
+	return {
+		service,
+		agentRepository,
+		runtimeCacheService,
+		modificationTelemetry,
+		agentUpdateBroadcaster,
+	};
 }
 
 describe('AgentCustomToolsService', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		Container.reset();
 	});
 
 	it('builds and stores a custom tool, marks the draft dirty, and clears runtime cache', async () => {
@@ -99,6 +107,25 @@ describe('AgentCustomToolsService', () => {
 		expect(agent.versionId).not.toBe(agent.activeVersionId);
 		expect(runtimeCacheService.clearRuntimes).toHaveBeenCalledWith(agentId);
 		expect(agentRepository.saveDraftFenced).toHaveBeenCalledWith(agent, {});
+	});
+
+	it('keeps save effects silent when a custom tool loses the revision fence', async () => {
+		const {
+			service,
+			agentRepository,
+			runtimeCacheService,
+			modificationTelemetry,
+			agentUpdateBroadcaster,
+		} = makeService();
+		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+		agentRepository.saveDraftFenced.mockResolvedValue(false);
+
+		await expect(
+			service.buildCustomTool(agentId, projectId, 'return 1;', descriptor, telemetryContext),
+		).rejects.toThrow(ConflictError);
+		expect(runtimeCacheService.clearRuntimes).not.toHaveBeenCalled();
+		expect(agentUpdateBroadcaster.notify).not.toHaveBeenCalled();
+		expect(modificationTelemetry.record).not.toHaveBeenCalled();
 	});
 
 	it('throws when building a tool for a missing agent', async () => {

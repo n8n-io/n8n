@@ -192,6 +192,9 @@ describe('AgentPublishService', () => {
 			taskSnapshotRepository,
 			agentValidationService,
 			runtimeCacheService,
+			eventService,
+			agentUpdateBroadcaster,
+			telemetry,
 		} = makeService();
 		const agent = makeAgent();
 		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
@@ -214,6 +217,9 @@ describe('AgentPublishService', () => {
 		expect(agentHistoryRepository.saveVersion).not.toHaveBeenCalled();
 		expect(taskSnapshotRepository.saveForVersion).not.toHaveBeenCalled();
 		expect(runtimeCacheService.clearRuntimes).not.toHaveBeenCalled();
+		expect(eventService.emit).not.toHaveBeenCalled();
+		expect(agentUpdateBroadcaster.notify).not.toHaveBeenCalled();
+		expect(telemetry.track).not.toHaveBeenCalled();
 		expect(agent.activeVersionId).toBeNull();
 	});
 
@@ -257,6 +263,9 @@ describe('AgentPublishService', () => {
 				agentHistoryRepository,
 				chatIntegrationService,
 				runtimeCacheService,
+				eventService,
+				agentUpdateBroadcaster,
+				telemetry,
 			} = makeService();
 			const agent = makeAgent({ integrations: [telegram] });
 			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
@@ -271,6 +280,9 @@ describe('AgentPublishService', () => {
 			expect(agentHistoryRepository.saveVersion).not.toHaveBeenCalled();
 			expect(runtimeCacheService.clearRuntimes).not.toHaveBeenCalled();
 			expect(chatIntegrationService.syncToConfig).not.toHaveBeenCalled();
+			expect(eventService.emit).not.toHaveBeenCalled();
+			expect(agentUpdateBroadcaster.notify).not.toHaveBeenCalled();
+			expect(telemetry.track).not.toHaveBeenCalled();
 			expect(agent.activeVersionId).toBeNull();
 		});
 
@@ -943,7 +955,15 @@ describe('AgentPublishService', () => {
 	});
 
 	it('loses the fence and conflicts when a concurrent edit bumped revision before publish', async () => {
-		const { service, agentRepository, agentHistoryRepository, telemetry, ctx } = makeService();
+		const {
+			service,
+			agentRepository,
+			agentHistoryRepository,
+			telemetry,
+			eventService,
+			agentUpdateBroadcaster,
+			ctx,
+		} = makeService();
 		const agent = makeAgent({ revision: 5 });
 		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
 		agentRepository.setActiveVersionFenced.mockResolvedValue(false);
@@ -960,6 +980,8 @@ describe('AgentPublishService', () => {
 		);
 		expect(agentHistoryRepository.saveVersion).toHaveBeenCalled();
 		expect(telemetry.track).not.toHaveBeenCalled();
+		expect(eventService.emit).not.toHaveBeenCalled();
+		expect(agentUpdateBroadcaster.notify).not.toHaveBeenCalled();
 		expect(agent.activeVersionId).toBeNull();
 		expect(agent.activeVersion).toBeNull();
 		expect(agent.versionId).toBe(versionId);
@@ -967,7 +989,14 @@ describe('AgentPublishService', () => {
 	});
 
 	it('conflicts when a second publish races the same agent', async () => {
-		const { service, agentRepository, agentHistoryRepository, telemetry } = makeService();
+		const {
+			service,
+			agentRepository,
+			agentHistoryRepository,
+			telemetry,
+			eventService,
+			agentUpdateBroadcaster,
+		} = makeService();
 		const agent = makeAgent({ revision: 1 });
 		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
 		agentHistoryRepository.findByVersionAndAgentId.mockResolvedValue(
@@ -984,13 +1013,22 @@ describe('AgentPublishService', () => {
 		// entity must stay on the pre-publish active version.
 		expect(agentHistoryRepository.saveVersion).not.toHaveBeenCalled();
 		expect(telemetry.track).not.toHaveBeenCalled();
+		expect(eventService.emit).not.toHaveBeenCalled();
+		expect(agentUpdateBroadcaster.notify).not.toHaveBeenCalled();
 		expect(agent.activeVersionId).toBeNull();
 		expect(agent.versionId).toBe(versionId);
 		expect(agent.revision).toBe(1);
 	});
 
 	it('conflicts when a concurrent publish already inserted the same draft version snapshot', async () => {
-		const { service, agentRepository, agentHistoryRepository, telemetry } = makeService();
+		const {
+			service,
+			agentRepository,
+			agentHistoryRepository,
+			telemetry,
+			eventService,
+			agentUpdateBroadcaster,
+		} = makeService();
 		const agent = makeAgent({ revision: 2 });
 		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
 		// Both racers share the draft's versionId as the history primary key,
@@ -1009,6 +1047,8 @@ describe('AgentPublishService', () => {
 
 		expect(agentRepository.setActiveVersionFenced).not.toHaveBeenCalled();
 		expect(telemetry.track).not.toHaveBeenCalled();
+		expect(eventService.emit).not.toHaveBeenCalled();
+		expect(agentUpdateBroadcaster.notify).not.toHaveBeenCalled();
 		expect(agent.activeVersionId).toBeNull();
 		expect(agent.revision).toBe(2);
 	});
@@ -1022,7 +1062,8 @@ describe('AgentPublishService', () => {
 	});
 
 	it('unpublish conflicts on a stale revision and skips telemetry', async () => {
-		const { service, agentRepository, telemetry } = makeService();
+		const { service, agentRepository, telemetry, eventService, agentUpdateBroadcaster } =
+			makeService();
 		const agent = makeAgent({ activeVersionId: 'v1', revision: 3 });
 		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
 		agentRepository.setActiveVersionFenced.mockResolvedValue(false);
@@ -1034,6 +1075,8 @@ describe('AgentPublishService', () => {
 		// Losing the fence means the active version is left untouched and no
 		// unpublish side effects or telemetry run.
 		expect(telemetry.track).not.toHaveBeenCalled();
+		expect(eventService.emit).not.toHaveBeenCalled();
+		expect(agentUpdateBroadcaster.notify).not.toHaveBeenCalled();
 		expect(agent.activeVersionId).toBe('v1');
 	});
 

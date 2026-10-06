@@ -99,7 +99,9 @@ export class AgentConfigPreparationService {
 			};
 		}
 
-		const urlViolations = findHttpRequestToolUrlFromAiViolations(config.tools);
+		const urlViolations = findHttpRequestToolUrlFromAiViolations(config.tools).filter(
+			({ toolIndex }) => config.tools?.[toolIndex].enabled !== false,
+		);
 		if (urlViolations.length > 0) {
 			return {
 				valid: false,

@@ -12,7 +12,7 @@ export function pruneMissingConfigReferences(
 		const existingIds = new Set((previousSchema?.skills ?? []).map((ref) => ref.id));
 		config.skills = config.skills.filter(
 			(ref) =>
-				ref.enabled === false || existingIds.has(ref.id) || Boolean(available.skills[ref.id]),
+				ref.enabled === false || existingIds.has(ref.id) || Object.hasOwn(available.skills, ref.id),
 		);
 	}
 	if (config.tools !== undefined) {
@@ -24,7 +24,7 @@ export function pruneMissingConfigReferences(
 				ref.enabled === false ||
 				ref.type !== 'custom' ||
 				existingIds.has(ref.id) ||
-				Boolean(available.tools[ref.id]),
+				Object.hasOwn(available.tools, ref.id),
 		);
 	}
 	if (config.tasks !== undefined) {

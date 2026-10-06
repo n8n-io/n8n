@@ -300,40 +300,44 @@ describe('AgentConfigService', () => {
 			},
 		);
 
-		it('rejects saving an HTTP Request URL controlled by $fromAI', async () => {
-			const { service, agentRepository } = makeService();
-			const agent = makeAgent();
-			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+		it.each([undefined, true, false])(
+			'validates HTTP Request URLs with enabled=%s',
+			async (enabled) => {
+				const { service, agentRepository } = makeService();
+				const agent = makeAgent();
+				agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
 
-			await expect(
-				service.updateConfig(
-					agentId,
-					projectId,
-					{
-						...baseConfig,
-						tools: [
-							{
-								type: 'node',
-								name: 'Fetch page',
-								node: {
-									nodeType: 'n8n-nodes-base.httpRequestTool',
-									nodeTypeVersion: 4.5,
-									nodeParameters: {
-										url: "={{ $fromAI('url', 'The URL to inspect', 'string') }}",
-									},
+				const config: AgentJsonConfig = {
+					...baseConfig,
+					tools: [
+						{
+							type: 'node',
+							name: 'Fetch page',
+							enabled,
+							node: {
+								nodeType: 'n8n-nodes-base.httpRequestTool',
+								nodeTypeVersion: 4.5,
+								nodeParameters: {
+									url: "={{ $fromAI('url', 'The URL to inspect', 'string') }}",
 								},
 							},
-						],
-					},
-					user,
-					byUser,
-				),
-			).rejects.toThrow(
-				'HTTP Request tool "Fetch page" cannot use $fromAI in tools.0.node.nodeParameters.url. Enter a fixed URL.',
-			);
-			expect(agent.schema).toBe(baseConfig);
-			expect(agentRepository.save).not.toHaveBeenCalled();
-		});
+						},
+					],
+				};
+				const save = service.updateConfig(agentId, projectId, config, user, byUser);
+
+				if (enabled === false) {
+					await expect(save).resolves.toMatchObject({ config: { tools: config.tools } });
+					return;
+				}
+
+				await expect(save).rejects.toThrow(
+					'HTTP Request tool "Fetch page" cannot use $fromAI in tools.0.node.nodeParameters.url. Enter a fixed URL.',
+				);
+				expect(agent.schema).toBe(baseConfig);
+				expect(agentRepository.saveDraftFenced).not.toHaveBeenCalled();
+			},
+		);
 
 		it('persists an explicit web-search disable and clears native provider tools', async () => {
 			// Regression: previously the disable was stripped on write and resurrected
@@ -792,11 +796,13 @@ describe('AgentConfigService', () => {
 					tools: [
 						{ type: 'custom', id: 'tool_1', enabled: false, requireApproval: true },
 						{ type: 'custom', id: 'missing_tool' },
+						{ type: 'custom', id: 'toString' },
 						{ type: 'custom', id: 'disabled_missing_tool', enabled: false },
 					],
 					skills: [
 						{ type: 'skill', id: 'skill-1', enabled: false },
 						{ type: 'skill', id: 'missing-skill' },
+						{ type: 'skill', id: 'toString' },
 						{ type: 'skill', id: 'disabled-missing-skill', enabled: false },
 					],
 					tasks: [
