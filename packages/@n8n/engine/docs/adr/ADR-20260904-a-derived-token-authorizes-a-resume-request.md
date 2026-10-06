@@ -107,6 +107,35 @@ can build a token. A step-bound resume URL and an approval callback end one wait
 9. **The control plane sends each resume request to the engine that runs the execution.** It picks
    engine v1 or engine v2, and it does not read the token to do so.
 
+This diagram shows how a resume request moves through the decisions above.
+
+```mermaid
+sequenceDiagram
+  participant Caller
+  participant CP as Control plane
+  participant DP as Data plane
+
+  Note over DP: A node builds a resume URL,<br/>and the data plane mints its token.
+  DP-->>Caller: Resume URL, sent by the node (for example in an email)
+  Note over DP: The step waits.
+  Caller->>CP: Resume request with the token
+  Note over CP: An approval callback comes to a fixed URL.<br/>The control plane reads only its id.
+  CP->>CP: Pick the engine by the shape of the id
+  CP->>DP: Pass on the token, with the identity token of the control plane
+  DP->>DP: Verify the token, its kind and binding.<br/>Check the tenant. Find the waiting step.
+  alt The data plane rejects the request
+    DP-->>CP: Rejected
+    CP-->>Caller: Error response
+  else The data plane accepts the request
+    DP-->>CP: The waiting step
+    CP->>CP: Run the webhook method of the node
+    CP->>DP: Resume the step with the output of the node
+    DP->>DP: Move the step out of waiting (compare-and-set)
+    DP-->>CP: Resumed
+    CP-->>Caller: Response
+  end
+```
+
 ## Alternatives Considered
 
 - **Add a scope to `ActionScope`.** We rejected it because almost none of the spec of the action
