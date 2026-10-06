@@ -3,6 +3,7 @@ import { waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
+import { registerToastNotifier } from '@/app/init/toastNotifier';
 import WorkflowPublishTimelineContent from './WorkflowPublishTimelineContent.vue';
 import { useWorkflowHistoryStore } from '../workflowHistory.store';
 import type { PublishTimelineEvent } from '@n8n/rest-api-client/api/workflowHistory';
@@ -241,17 +242,25 @@ describe('WorkflowPublishTimelineContent', () => {
 			vi.stubGlobal(
 				'IntersectionObserver',
 				class {
+					isObserving = false;
+
 					constructor(callback: IntersectionObserverCallback) {
-						scrollToEnd = () =>
+						scrollToEnd = () => {
+							if (!this.isObserving) return;
 							callback(
 								[{ isIntersecting: true } as IntersectionObserverEntry],
 								this as unknown as IntersectionObserver,
 							);
+						};
 					}
 
-					observe = vi.fn();
+					observe = vi.fn(() => {
+						this.isObserving = true;
+					});
 
-					disconnect = vi.fn();
+					disconnect = vi.fn(() => {
+						this.isObserving = false;
+					});
 
 					unobserve = vi.fn();
 
@@ -299,6 +308,34 @@ describe('WorkflowPublishTimelineContent', () => {
 				skip: 100,
 			});
 			await waitFor(() => expect(getAllByText('Published')).toHaveLength(101));
+		});
+
+		it('should retry a failed page on the next scroll without advancing the offset', async () => {
+			registerToastNotifier();
+			const newest = new Date('2026-03-01T10:00:00Z');
+			const { findByText, findAllByText, getAllByText, workflowHistoryStore } = renderWithPages(
+				buildPage(100, 1, newest),
+			);
+			const error = new Error('Failed to load page');
+			workflowHistoryStore.getPublishTimeline
+				.mockRejectedValueOnce(error)
+				.mockResolvedValueOnce(buildPage(1, 101, new Date(newest.getTime() - 100 * 60_000)));
+			expect(await findAllByText('Published')).toHaveLength(100);
+
+			scrollToEnd();
+			expect(await findByText(error.message)).toBeInTheDocument();
+
+			expect(workflowHistoryStore.getPublishTimeline).toHaveBeenCalledTimes(2);
+			expect(getAllByText('Published')).toHaveLength(100);
+
+			scrollToEnd();
+			await waitFor(() => expect(getAllByText('Published')).toHaveLength(101));
+
+			expect(workflowHistoryStore.getPublishTimeline).toHaveBeenCalledTimes(3);
+			expect(workflowHistoryStore.getPublishTimeline.mock.calls.slice(1)).toEqual([
+				[workflowId, { take: 100, skip: 100 }],
+				[workflowId, { take: 100, skip: 100 }],
+			]);
 		});
 
 		it('should not request another page after a page that is not full', async () => {

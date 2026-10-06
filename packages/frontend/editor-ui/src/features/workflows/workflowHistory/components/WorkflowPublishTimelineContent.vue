@@ -2,6 +2,7 @@
 import { ref, computed, onMounted, watch } from 'vue';
 import dateformat from 'dateformat';
 import { useI18n } from '@n8n/i18n';
+import { useToast } from '@n8n/composables/useToast';
 import { N8nText, N8nLoading, N8nIcon, N8nTooltip } from '@n8n/design-system';
 import type { PublishTimelineEvent } from '@n8n/rest-api-client/api/workflowHistory';
 import { useIntersectionObserver } from '@/app/composables/useIntersectionObserver';
@@ -26,6 +27,7 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
+const toast = useToast();
 const workflowHistoryStore = useWorkflowHistoryStore();
 
 const isLoading = ref(true);
@@ -238,6 +240,8 @@ const loadMore = async () => {
 	isLoadingMore.value = true;
 	try {
 		await fetchNextPage();
+	} catch (error) {
+		toast.showError(error, i18n.baseText('workflowHistory.title'));
 	} finally {
 		isLoadingMore.value = false;
 	}
@@ -246,6 +250,8 @@ const loadMore = async () => {
 const { observe: observeForLoadMore } = useIntersectionObserver({
 	root: contentElement,
 	onIntersect: async () => await loadMore(),
+	// Keep observing so a later scroll can retry a failed page.
+	once: false,
 });
 
 watch([loadMoreSentinel, hasMore, fetchedCount], ([sentinel, canLoadMore]) => {
