@@ -60,6 +60,7 @@ describe('StartExecutionService', () => {
 			workflowId: 'wf-1',
 			status: 'queued',
 			mode: 'production',
+			seededSteps: null,
 			graph: sampleGraph,
 			workflow: sampleWorkflow,
 			triggerOutputs: [[{ json: { hello: 'world' } }]],
@@ -201,5 +202,70 @@ describe('StartExecutionService', () => {
 
 		expect(store.createExecution).not.toHaveBeenCalled();
 		expect(queue.publish).not.toHaveBeenCalled();
+	});
+
+	describe('seeded steps', () => {
+		const graph: WorkflowGraph = {
+			nodes: [
+				{ id: 'trigger', name: 'Manual Trigger', type: 'trigger', config: {} },
+				{ id: 'a', name: 'A', type: 'v1-node', config: {} },
+				{ id: 'b', name: 'B', type: 'v1-node', config: {} },
+			],
+			edges: [
+				{ from: 'trigger', to: 'a', outputIndex: 0, inputIndex: 0 },
+				{ from: 'a', to: 'b', outputIndex: 0, inputIndex: 0 },
+			],
+		};
+		const admittance: AdmittanceService = {
+			evaluate: vi.fn().mockResolvedValue({ accept: true }),
+		};
+		const base = {
+			workflowId: 'wf-1',
+			graph,
+			workflow: sampleWorkflow,
+			executionId: 'exec-id-1',
+			callerContext: { hostMode: 'manual' },
+		};
+
+		it('persists the seeded steps with the execution', async () => {
+			const store = makeStore();
+			const service = new StartExecutionService(admittance, store, makeQueue());
+			const seededSteps = [{ nodeId: 'a', outputs: [[{ json: { from: 'earlier' } }]] }];
+
+			await service.start({ ...base, seededSteps });
+
+			expect(store.createExecution).toHaveBeenCalledWith(expect.objectContaining({ seededSteps }));
+		});
+
+		it.each([
+			{ name: 'a node that is not in the graph', nodeId: 'ghost' },
+			{ name: 'the trigger', nodeId: 'trigger' },
+		])('rejects seeding $name without persisting or publishing', async ({ nodeId }) => {
+			const store = makeStore();
+			const queue = makeQueue();
+			const service = new StartExecutionService(admittance, store, queue);
+
+			await expect(
+				service.start({ ...base, seededSteps: [{ nodeId, outputs: [] }] }),
+			).rejects.toThrow(GraphValidationError);
+			expect(store.createExecution).not.toHaveBeenCalled();
+			expect(queue.publish).not.toHaveBeenCalled();
+		});
+
+		it('rejects the same node seeded twice', async () => {
+			const store = makeStore();
+			const service = new StartExecutionService(admittance, store, makeQueue());
+
+			await expect(
+				service.start({
+					...base,
+					seededSteps: [
+						{ nodeId: 'a', outputs: [] },
+						{ nodeId: 'a', outputs: [] },
+					],
+				}),
+			).rejects.toThrow(GraphValidationError);
+			expect(store.createExecution).not.toHaveBeenCalled();
+		});
 	});
 });

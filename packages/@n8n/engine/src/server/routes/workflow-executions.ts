@@ -51,6 +51,16 @@ const StartExecutionBody = z.object({
 	workflow: jsonObjectSchema,
 	/** Trigger output slots. Empty means "no payload" — send `null` or omit instead. */
 	triggerOutputs: z.array(jsonValueSchema).min(1).max(MAX_TRIGGER_SLOTS).nullable().optional(),
+	/** Steps to record as completed at start. Each carries slots like `triggerOutputs`. */
+	seededSteps: z
+		.array(
+			z.object({
+				nodeId: z.string().min(1),
+				outputs: z.array(jsonValueSchema).max(MAX_TRIGGER_SLOTS),
+			}),
+		)
+		.nullable()
+		.optional(),
 	mode: z.enum(['production', 'manual']).optional(),
 	// `strict`, so a misspelled key fails loudly instead of running the step
 	// without the fact the caller meant to supply.

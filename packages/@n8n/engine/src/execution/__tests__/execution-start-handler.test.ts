@@ -271,4 +271,67 @@ describe('ExecutionStartHandler lifecycle events', () => {
 
 		expect(lifecycleEventPublisher.publish).not.toHaveBeenCalled();
 	});
+
+	describe('seeded steps', () => {
+		const graph: WorkflowGraph = {
+			nodes: [
+				{ id: 'trigger', name: 'T', type: 'trigger' },
+				{ id: 'a', name: 'A', type: 'v1-node' },
+				{ id: 'b', name: 'B', type: 'v1-node' },
+			],
+			edges: [
+				{ from: 'trigger', to: 'a', outputIndex: 0, inputIndex: 0 },
+				{ from: 'a', to: 'b', outputIndex: 0, inputIndex: 0 },
+			],
+		};
+		const seededSteps = [{ nodeId: 'a', outputs: [[{ json: { reused: true } }]] }];
+
+		it('records seeded steps as completed beside the trigger and announces each one', async () => {
+			const executionStore = makeExecutionStore({
+				loadExecution: vi.fn().mockResolvedValue(record(graph, { seededSteps })),
+			});
+			const createSteps = vi.fn().mockResolvedValue([
+				{ id: 'step-trigger', nodeId: 'trigger', iteration: 0 },
+				{ id: 'step-a', nodeId: 'a', iteration: 0 },
+			]);
+			const stepStore = makeStepStore(createSteps);
+			const queue = makeOrchestrationQueue();
+			const handler = makeHandler(executionStore, stepStore, queue);
+
+			await handler.handle({ type: 'execution:enqueued', executionId: 'exec-1' });
+
+			// One batch, so the seeded rows exist before any planner can queue them.
+			expect(createSteps).toHaveBeenCalledExactlyOnceWith('exec-1', [
+				{ nodeId: 'trigger', iteration: 0, status: 'completed', outputs: [] },
+				{ nodeId: 'a', iteration: 0, status: 'completed', outputs: [[{ json: { reused: true } }]] },
+			]);
+			expect(queue.publish).toHaveBeenCalledTimes(2);
+			expect(queue.publish).toHaveBeenCalledWith({
+				type: 'step:settled',
+				executionId: 'exec-1',
+				stepId: 'step-trigger',
+			});
+			expect(queue.publish).toHaveBeenCalledWith({
+				type: 'step:settled',
+				executionId: 'exec-1',
+				stepId: 'step-a',
+			});
+		});
+
+		it('throws instead of announcing when a seeded row was not inserted', async () => {
+			const executionStore = makeExecutionStore({
+				loadExecution: vi.fn().mockResolvedValue(record(graph, { seededSteps })),
+			});
+			const stepStore = makeStepStore(
+				vi.fn().mockResolvedValue([{ id: 'step-trigger', nodeId: 'trigger', iteration: 0 }]),
+			);
+			const queue = makeOrchestrationQueue();
+			const handler = makeHandler(executionStore, stepStore, queue);
+
+			await expect(
+				handler.handle({ type: 'execution:enqueued', executionId: 'exec-1' }),
+			).rejects.toMatchObject({ name: 'UnexpectedError' });
+			expect(queue.publish).not.toHaveBeenCalled();
+		});
+	});
 });

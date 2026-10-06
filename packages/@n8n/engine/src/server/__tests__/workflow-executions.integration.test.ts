@@ -464,6 +464,47 @@ describe('POST /api/workflow-executions (integration)', () => {
 		expect((response.body as { error: string }).error).toBe('invalid_request');
 	});
 
+	it('stores the seeded steps with the row', async () => {
+		const seededSteps = [{ nodeId: 'a', outputs: [[{ json: { reused: true } }]] }];
+		const body = startBody({
+			graph: {
+				nodes: [
+					{ id: 'trigger', name: 'T', type: 'trigger' },
+					{ id: 'a', name: 'A', type: 'v1-node' },
+				],
+				edges: [{ from: 'trigger', to: 'a', outputIndex: 0, inputIndex: 0 }],
+			},
+			seededSteps,
+		});
+
+		const response = await request(url)
+			.post('/api/workflow-executions')
+			.set(authHeader())
+			.send(body);
+
+		expect(response.status).toBe(201);
+		const row = await dataSource
+			.getRepository(WorkflowExecution)
+			.findOneOrFail({ where: { id: body.executionId } });
+		expect(row.seededSteps).toEqual(seededSteps);
+	});
+
+	it('rejects a seeded step for a node outside the graph with 400, creating nothing', async () => {
+		const body = startBody({ seededSteps: [{ nodeId: 'ghost', outputs: [] }] });
+
+		const response = await request(url)
+			.post('/api/workflow-executions')
+			.set(authHeader())
+			.send(body);
+
+		expect(response.status).toBe(400);
+		expect((response.body as { error: string }).error).toBe('invalid_graph');
+		const row = await dataSource
+			.getRepository(WorkflowExecution)
+			.findOne({ where: { id: body.executionId } });
+		expect(row).toBeNull();
+	});
+
 	it('rejects a graph without a trigger with 400, creating nothing', async () => {
 		const response = await request(url)
 			.post('/api/workflow-executions')

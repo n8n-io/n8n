@@ -1,11 +1,17 @@
 import { AdmittanceRejectedError, type AdmittanceService } from '../admittance';
-import { validateExecutableGraph, type WorkflowGraph } from '../graph';
+import {
+	findTriggerNode,
+	GraphValidationError,
+	validateExecutableGraph,
+	type WorkflowGraph,
+} from '../graph';
 import type { OrchestrationMessage, WorkQueue } from '../queue';
 import type { ResponseExpectation } from '../response-channel';
 import type { ExecutionStore } from './execution-store';
 import type {
 	CallerContext,
 	ExecutionMode,
+	SeededStep,
 	TriggerOutputs,
 	WorkflowDocument,
 } from './execution.types';
@@ -20,6 +26,8 @@ export interface StartExecutionRequest {
 	workflow: WorkflowDocument;
 	/** Trigger step's output slots, one entry per output. */
 	triggerOutputs?: TriggerOutputs | null;
+	/** Steps to record as completed at start, with the outputs the caller holds. */
+	seededSteps?: SeededStep[] | null;
 	mode?: ExecutionMode;
 	/** Stored with the execution and handed to every step executor. */
 	callerContext: CallerContext;
@@ -48,6 +56,7 @@ export class StartExecutionService {
 		// Rejected before admittance: a graph that can never run shouldn't spend
 		// admittance capacity, and nothing is persisted for it.
 		this.validateGraph(request.graph);
+		validateSeededSteps(request.graph, request.seededSteps ?? []);
 
 		const decision = await this.admittance.evaluate({ workflowId: request.workflowId });
 		if (!decision.accept) {
@@ -67,6 +76,7 @@ export class StartExecutionService {
 			graph: request.graph,
 			workflow: request.workflow,
 			triggerOutputs: request.triggerOutputs ?? null,
+			seededSteps: request.seededSteps ?? null,
 			callerContext: request.callerContext,
 			responseExpectation: request.responseExpectation ?? { kind: 'none' },
 		});
@@ -80,5 +90,30 @@ export class StartExecutionService {
 		});
 
 		return { executionId };
+	}
+}
+
+/**
+ * A seeded step names a graph node other than the trigger, once. The trigger
+ * carries its payload as `triggerOutputs`, and the store drops a second row
+ * for one node, so the caller would not get what it asked for.
+ */
+function validateSeededSteps(graph: WorkflowGraph, seededSteps: SeededStep[]): void {
+	const trigger = findTriggerNode(graph);
+	const nodeIds = new Set(graph.nodes.map((node) => node.id));
+	const seen = new Set<string>();
+	for (const { nodeId } of seededSteps) {
+		if (!nodeIds.has(nodeId)) {
+			throw new GraphValidationError(`Seeded step names node ${nodeId}, which is not in the graph`);
+		}
+		if (nodeId === trigger?.id) {
+			throw new GraphValidationError(
+				'The trigger cannot be seeded; send its payload as triggerOutputs',
+			);
+		}
+		if (seen.has(nodeId)) {
+			throw new GraphValidationError(`Node ${nodeId} is seeded more than once`);
+		}
+		seen.add(nodeId);
 	}
 }

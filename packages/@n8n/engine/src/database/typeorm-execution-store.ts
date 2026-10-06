@@ -36,6 +36,7 @@ export class TypeOrmExecutionStore implements ExecutionStore {
 			.addSelect('execution.mode', 'mode')
 			.addSelect('execution.graph', 'graph')
 			.addSelect('execution.trigger_outputs', 'triggerOutputs')
+			.addSelect('execution.seeded_steps', 'seededSteps')
 			.addSelect('execution.caller_context', 'callerContext')
 			.addSelect('execution.response_expectation', 'responseExpectation')
 			.addSelect('execution.finished_at', 'finishedAt')
