@@ -458,14 +458,14 @@ describe('AgentEvalsSection', () => {
 						columnMapping: { input: 'input', criteria: 'criteria' },
 					});
 					vi.mocked(store.createCase).mockRejectedValue(new Error('row insert failed'));
-					vi.mocked(store.deleteDataset).mockResolvedValue(undefined as never);
+					vi.mocked(store.deleteDraftDataset).mockResolvedValue(undefined as never);
 				},
 			);
 
 			await userEvent.click(getByTestId('stub-add-checks'));
 			await flushPromises();
 
-			expect(store.deleteDataset).toHaveBeenCalledWith(PROJECT_ID, AGENT_ID, 'committed-1');
+			expect(store.deleteDraftDataset).toHaveBeenCalledWith(PROJECT_ID, AGENT_ID, 'committed-1');
 			expect(store.startRun).not.toHaveBeenCalled();
 		});
 
@@ -489,7 +489,7 @@ describe('AgentEvalsSection', () => {
 			await userEvent.click(getByTestId('stub-add-checks'));
 			await flushPromises();
 
-			expect(store.deleteDataset).not.toHaveBeenCalled();
+			expect(store.deleteDraftDataset).not.toHaveBeenCalled();
 		});
 	});
 });

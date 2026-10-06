@@ -7706,6 +7706,8 @@
 	"instanceAi.testAgentPreview.showFewerExamples": "Show fewer",
 	"instanceAi.testAgentPreview.checkYourAgent": "Check your agent",
 	"instanceAi.testAgentPreview.checkingLeft": "Checking, {count} left",
+	"instanceAi.testAgentPreview.runNotStarted": "Your checks are saved, but they did not start.",
+	"instanceAi.testAgentPreview.retryRun": "Try again",
 	"instanceAi.testAgentPreview.wentWellNeedWork": "{passed} of {total} went well, {needsWork} need work",
 	"instanceAi.testAgentPreview.tryAgentYourself": "Try agent yourself",
 	"instanceAi.testAgentPreview.savedChecks": "Saved {count} check | Saved {count} checks",

@@ -182,18 +182,34 @@ const activeTestAgentOffer = computed(() => {
 	return target;
 });
 
-// Latches the offer once it starts showing, so the panel's own generation
-// side effect (which populates the dataset cache activeTestAgentOffer checks)
-// can't reactively tear the panel down mid-flow. Cleared only by an explicit
-// dismiss/confirm/open-evals action below, never by activeTestAgentOffer
-// changing on its own.
+// Latches the offer once it starts showing, so the preview panel's own commit
+// (which persists the dismissal and fills the dataset cache `activeTestAgentOffer`
+// checks) can't tear it down mid-flow.
+//
+// Scoped to one target: the latch moves to a different agent as soon as that
+// agent becomes the offer, and it drops when the offer is lost (the agent starts
+// working again, or datasets appear from the Evals tab) — except once the panel
+// has committed ("Looks good"), which is the only time it must outlive the offer.
+// Cleared by an explicit dismiss or open-evals action.
 const latchedTestAgentOffer = ref<typeof activeTestAgentOffer.value>(null);
+const isTestAgentOfferCommitted = ref(false);
+
+function clearTestAgentOfferLatch() {
+	latchedTestAgentOffer.value = null;
+	isTestAgentOfferCommitted.value = false;
+}
+
 watch(
 	activeTestAgentOffer,
 	(offer) => {
-		if (offer && !latchedTestAgentOffer.value) {
+		const latched = latchedTestAgentOffer.value;
+		if (offer) {
+			if (latched?.agentId === offer.agentId) return;
 			latchedTestAgentOffer.value = offer;
+			isTestAgentOfferCommitted.value = false;
+			return;
 		}
+		if (latched && !isTestAgentOfferCommitted.value) clearTestAgentOfferLatch();
 	},
 	{ immediate: true },
 );
@@ -758,14 +774,14 @@ async function handleGenerateTestCasesFromOffer() {
 	agentEvalsStore.requestEvalsFocus(target.agentId, true);
 	preview.openAgentPreview(target.agentId, target.projectId);
 	await persistTestAgentOfferDismissal(target.agentId);
-	latchedTestAgentOffer.value = null;
+	clearTestAgentOfferLatch();
 }
 
 async function dismissTestAgentOffer() {
 	const target = latchedTestAgentOffer.value;
 	if (!target) return;
 	await persistTestAgentOfferDismissal(target.agentId);
-	latchedTestAgentOffer.value = null;
+	clearTestAgentOfferLatch();
 }
 
 /**
@@ -779,6 +795,9 @@ async function dismissTestAgentOffer() {
 async function handleConfirmTestAgentPreview() {
 	const target = latchedTestAgentOffer.value;
 	if (!target) return;
+	// Set before the await: persisting the dismissal is what makes the live offer
+	// disappear, and the latch has to already be committed by then.
+	isTestAgentOfferCommitted.value = true;
 	await persistTestAgentOfferDismissal(target.agentId);
 }
 
@@ -794,7 +813,7 @@ function handleOpenEvalsFromPreview(resultId: string | null) {
 	agentEvalsStore.requestEvalsFocus(target.agentId, false, resultId ?? undefined);
 	preview.openAgentPreview(target.agentId, target.projectId);
 	// Opening a single case is a peek: the chat panel stays so the user can come back.
-	if (!resultId) latchedTestAgentOffer.value = null;
+	if (!resultId) clearTestAgentOfferLatch();
 }
 
 function handleTryAgentFromPreview() {
@@ -968,7 +987,7 @@ function handleNewThreadClick() {
 						</Transition>
 						<Transition name="confirmation-slide">
 							<InstanceAiTestAgentPanel
-								v-if="latchedTestAgentOffer && !isTestAgentPreviewVariant"
+								v-if="activeTestAgentOffer && !isTestAgentPreviewVariant"
 								@generate="handleGenerateTestCasesFromOffer"
 								@dismiss="dismissTestAgentOffer"
 							/>
@@ -976,6 +995,7 @@ function handleNewThreadClick() {
 						<Transition name="confirmation-slide">
 							<InstanceAiTestAgentPreviewPanel
 								v-if="latchedTestAgentOffer && isTestAgentPreviewVariant"
+								:key="latchedTestAgentOffer.agentId"
 								:target="latchedTestAgentOffer"
 								:initial-case="latestCallAgentResult"
 								@confirm="handleConfirmTestAgentPreview"

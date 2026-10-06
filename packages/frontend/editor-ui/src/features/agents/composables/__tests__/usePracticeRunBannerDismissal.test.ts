@@ -43,6 +43,9 @@ describe('usePracticeRunBannerDismissal', () => {
 	it('is shared across every instance, not scoped to the one that dismissed it', () => {
 		const { api: rowOne } = mountDismissal();
 		const { api: rowTwo } = mountDismissal();
+		// Read before dismissing, so the computed is already live and must be
+		// invalidated by the dismissal rather than first evaluated after it.
+		expect(rowTwo.dismissed.value).toBe(false);
 
 		rowOne.dismiss();
 

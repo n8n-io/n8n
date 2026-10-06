@@ -14,6 +14,7 @@ const {
 	generateDraftCases,
 	createDraftDataset,
 	deleteDataset,
+	deleteDraftDataset,
 	previewRun,
 	listRuns,
 	getRunDetail,
@@ -23,11 +24,13 @@ const {
 	startRun,
 	rerunResult,
 	acceptResult,
+	deleteResult,
 } = vi.hoisted(() => ({
 	getDatasets: vi.fn(),
 	generateDraftCases: vi.fn(),
 	createDraftDataset: vi.fn(),
 	deleteDataset: vi.fn(),
+	deleteDraftDataset: vi.fn(),
 	previewRun: vi.fn(),
 	listRuns: vi.fn(),
 	getRunDetail: vi.fn(),
@@ -37,6 +40,7 @@ const {
 	startRun: vi.fn(),
 	rerunResult: vi.fn(),
 	acceptResult: vi.fn(),
+	deleteResult: vi.fn(),
 }));
 
 vi.mock('../agentEvals.api', () => ({
@@ -44,6 +48,7 @@ vi.mock('../agentEvals.api', () => ({
 	generateDraftCases,
 	createDraftDataset,
 	deleteDataset,
+	deleteDraftDataset,
 	previewRun,
 	listRuns,
 	getRunDetail,
@@ -53,6 +58,7 @@ vi.mock('../agentEvals.api', () => ({
 	startRun,
 	rerunResult,
 	acceptResult,
+	deleteResult,
 }));
 
 vi.mock('@n8n/stores/useRootStore', () => ({
@@ -265,6 +271,48 @@ describe('useAgentEvalsStore', () => {
 				columnMapping: { input: 'input', criteria: 'criteria' },
 			});
 			expect(store.getDatasets(AGENT_ID).map((d) => d.id)).toEqual(['d1']);
+		});
+	});
+
+	describe('deleteDraftDataset', () => {
+		it('discards the draft through its own endpoint and evicts it from a loaded cache', async () => {
+			deleteDraftDataset.mockResolvedValue({ success: true });
+			getDatasets.mockResolvedValue([dataset('d1'), dataset('d2')]);
+			const store = useAgentEvalsStore();
+			await store.fetchDatasets(PROJECT_ID, AGENT_ID);
+
+			await store.deleteDraftDataset(PROJECT_ID, AGENT_ID, 'd1');
+
+			expect(deleteDraftDataset).toHaveBeenCalledWith(
+				{ instanceId: 'test-instance-id' },
+				PROJECT_ID,
+				AGENT_ID,
+				'd1',
+			);
+			expect(deleteDataset).not.toHaveBeenCalled();
+			expect(store.getDatasets(AGENT_ID).map((d) => d.id)).toEqual(['d2']);
+		});
+
+		it('keeps the cached dataset when the request fails', async () => {
+			deleteDraftDataset.mockRejectedValue(new Error('has runs'));
+			getDatasets.mockResolvedValue([dataset('d1')]);
+			const store = useAgentEvalsStore();
+			await store.fetchDatasets(PROJECT_ID, AGENT_ID);
+
+			await expect(store.deleteDraftDataset(PROJECT_ID, AGENT_ID, 'd1')).rejects.toThrow(
+				'has runs',
+			);
+
+			expect(store.getDatasets(AGENT_ID).map((d) => d.id)).toEqual(['d1']);
+		});
+
+		it('leaves an unloaded cache alone', async () => {
+			deleteDraftDataset.mockResolvedValue({ success: true });
+			const store = useAgentEvalsStore();
+
+			await store.deleteDraftDataset(PROJECT_ID, AGENT_ID, 'd1');
+
+			expect(store.isLoaded(AGENT_ID)).toBe(false);
 		});
 	});
 
@@ -1189,6 +1237,67 @@ describe('useAgentEvalsStore', () => {
 			store.removeCachedResult(RUN_ID, 'c1');
 
 			expect(Object.keys(store.getReview(RUN_ID).ratingsByResultId)).toEqual(['c2']);
+		});
+	});
+
+	describe('deleteResult', () => {
+		it('calls the API with the request context and ids, then drops the cached result', async () => {
+			mockRun({ results: [result('c1'), result('c2')], count: 2, ratings: [] });
+			const store = useAgentEvalsStore();
+			await store.openRun(PROJECT_ID, AGENT_ID, RUN_ID);
+			deleteResult.mockResolvedValue({ success: true });
+
+			await store.deleteResult(PROJECT_ID, AGENT_ID, 'c1');
+
+			expect(deleteResult).toHaveBeenCalledWith(REST_CONTEXT, PROJECT_ID, AGENT_ID, 'c1');
+			const review = store.getReview(RUN_ID);
+			expect(review.results.map((r) => r.id)).toEqual(['c2']);
+			expect(review.resultsCount).toBe(1);
+		});
+
+		it('keeps the cached result until the request has succeeded', async () => {
+			mockRun({ results: [result('c1')], count: 1, ratings: [] });
+			const store = useAgentEvalsStore();
+			await store.openRun(PROJECT_ID, AGENT_ID, RUN_ID);
+
+			let resolveDelete!: (value: { success: true }) => void;
+			deleteResult.mockImplementation(
+				async () => await new Promise<{ success: true }>((resolve) => (resolveDelete = resolve)),
+			);
+
+			const pending = store.deleteResult(PROJECT_ID, AGENT_ID, 'c1');
+			expect(store.getReview(RUN_ID).results.map((r) => r.id)).toEqual(['c1']);
+
+			resolveDelete({ success: true });
+			await pending;
+
+			expect(store.getReview(RUN_ID).results).toEqual([]);
+		});
+
+		it('keeps the cached result and rethrows when the request fails', async () => {
+			mockRun({ results: [result('c1')], count: 1, ratings: [] });
+			const store = useAgentEvalsStore();
+			await store.openRun(PROJECT_ID, AGENT_ID, RUN_ID);
+			deleteResult.mockRejectedValue(new Error('forbidden'));
+
+			await expect(store.deleteResult(PROJECT_ID, AGENT_ID, 'c1')).rejects.toThrow('forbidden');
+
+			const review = store.getReview(RUN_ID);
+			expect(review.results.map((r) => r.id)).toEqual(['c1']);
+			expect(review.resultsCount).toBe(1);
+		});
+
+		it('still sends the request for a result that is not cached, without touching any run', async () => {
+			mockRun({ results: [result('c1')], count: 1, ratings: [] });
+			const store = useAgentEvalsStore();
+			await store.openRun(PROJECT_ID, AGENT_ID, RUN_ID);
+			deleteResult.mockResolvedValue({ success: true });
+
+			await store.deleteResult(PROJECT_ID, AGENT_ID, 'not-cached');
+
+			expect(deleteResult).toHaveBeenCalledWith(REST_CONTEXT, PROJECT_ID, AGENT_ID, 'not-cached');
+			expect(store.getReview(RUN_ID).results.map((r) => r.id)).toEqual(['c1']);
+			expect(store.getReview(RUN_ID).resultsCount).toBe(1);
 		});
 	});
 

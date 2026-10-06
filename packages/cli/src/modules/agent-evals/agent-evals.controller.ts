@@ -127,6 +127,17 @@ export class AgentEvalsController {
 		return await this.service.updateDataset(agentId, projectId, datasetId, payload);
 	}
 
+	// Discards a draft dataset and its backing table, which plain deletion leaves
+	// alone. For rolling back a commit that failed before anything ran.
+	@Delete('/:agentId/evals/datasets/:datasetId/draft')
+	@ProjectScope('agent:update')
+	async deleteDraftDataset(req: AuthenticatedRequest<DatasetParam>): Promise<{ success: true }> {
+		await this.flagGate.assertEnabled(req.user);
+		const { agentId, projectId, datasetId } = req.params;
+		await this.service.deleteDraftDataset(agentId, projectId, datasetId);
+		return { success: true };
+	}
+
 	@Delete('/:agentId/evals/datasets/:datasetId')
 	@ProjectScope('agent:update')
 	async deleteDataset(req: AuthenticatedRequest<DatasetParam>): Promise<{ success: true }> {
@@ -232,7 +243,9 @@ export class AgentEvalsController {
 
 	// Re-executes one already-settled case in place — no new run, and no effect
 	// on any other row in the run. `agent:execute`, same as `startRun`: running a
-	// case is the same action, just scoped to one of them.
+	// case is the same action, just scoped to one of them. A rerun that also edits
+	// the rule (`whatToCheck`) writes eval data, so the runner additionally
+	// requires `agent:update` for that case.
 	@Post('/:agentId/evals/results/:resultId/rerun')
 	@ProjectScope('agent:execute')
 	async rerunResult(
@@ -245,7 +258,8 @@ export class AgentEvalsController {
 		return await this.service.rerunResult(req.user, agentId, projectId, resultId, payload);
 	}
 
-	// Marks a finished case as passing, overriding the judge. `agent:update`: it
+	// Marks a finished case as passing, overriding the judge or an execution error.
+	// `agent:update`: it
 	// edits the eval outcome, which a chat-only `agent:execute` member must not.
 	@Post('/:agentId/evals/results/:resultId/accept')
 	@ProjectScope('agent:update')

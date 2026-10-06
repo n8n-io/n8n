@@ -169,6 +169,12 @@ describe('AgentEvalService', () => {
 				'rerunResult',
 				async () => await service.rerunResult(user, AGENT_ID, PROJECT_ID, 'result-1'),
 			],
+			['acceptResult', async () => await service.acceptResult(AGENT_ID, PROJECT_ID, 'result-1')],
+			['deleteResult', async () => await service.deleteResult(AGENT_ID, PROJECT_ID, 'result-1')],
+			[
+				'deleteDraftDataset',
+				async () => await service.deleteDraftDataset(AGENT_ID, PROJECT_ID, 'ds-1'),
+			],
 		];
 
 		it.each(callsRequiringAnAgent)(
@@ -308,17 +314,31 @@ describe('AgentEvalService', () => {
 			expect(record.verdict).toEqual(verdict);
 		});
 
-		it.each(['new', 'running', 'error', 'cancelled'] as const)(
-			'rejects a result that is %s',
+		// The user's call outranks an execution error, so an errored or cancelled
+		// case can be accepted too — it is the only way it ends up with a pass.
+		it.each(['error', 'cancelled'] as const)(
+			'records a passing verdict on a %s result',
 			async (status) => {
-				resultRepository.findById.mockResolvedValue(makeResult({ status }));
+				const verdict = { status: 'completed', outcome: 'pass', reasoning: null };
+				resultRepository.findById
+					.mockResolvedValueOnce(makeResult({ status }))
+					.mockResolvedValueOnce(makeResult({ status, verdict }));
 
-				await expect(service.acceptResult(AGENT_ID, PROJECT_ID, 'result-1')).rejects.toThrow(
-					BadRequestError,
-				);
-				expect(resultRepository.updateVerdict).not.toHaveBeenCalled();
+				const record = await service.acceptResult(AGENT_ID, PROJECT_ID, 'result-1');
+
+				expect(resultRepository.updateVerdict).toHaveBeenCalledWith('result-1', verdict);
+				expect(record.verdict).toEqual(verdict);
 			},
 		);
+
+		it.each(['new', 'running'] as const)('rejects a result that is %s', async (status) => {
+			resultRepository.findById.mockResolvedValue(makeResult({ status }));
+
+			await expect(service.acceptResult(AGENT_ID, PROJECT_ID, 'result-1')).rejects.toThrow(
+				BadRequestError,
+			);
+			expect(resultRepository.updateVerdict).not.toHaveBeenCalled();
+		});
 
 		it('404s when the result belongs to another agent', async () => {
 			resultRepository.findById.mockResolvedValue(makeResult());
@@ -342,12 +362,143 @@ describe('AgentEvalService', () => {
 			expect(resultRepository.deleteById).toHaveBeenCalledWith('result-1', 'run-1');
 		});
 
+		it('404s without deleting when the result belongs to another agent’s run', async () => {
+			resultRepository.findById.mockResolvedValue(
+				makeResult({ status: 'success', runId: 'run-9' }),
+			);
+			runRepository.findByIdAndAgentId.mockResolvedValue(null);
+
+			await expect(service.deleteResult(AGENT_ID, PROJECT_ID, 'result-1')).rejects.toThrow(
+				NotFoundError,
+			);
+			expect(runRepository.findByIdAndAgentId).toHaveBeenCalledWith('run-9', AGENT_ID);
+			expect(resultRepository.deleteById).not.toHaveBeenCalled();
+		});
+
+		it('404s without deleting when the result does not exist', async () => {
+			resultRepository.findById.mockResolvedValue(null);
+
+			await expect(service.deleteResult(AGENT_ID, PROJECT_ID, 'result-1')).rejects.toThrow(
+				NotFoundError,
+			);
+			expect(resultRepository.deleteById).not.toHaveBeenCalled();
+		});
+
 		it('404s when nothing was removed', async () => {
 			resultRepository.deleteById.mockResolvedValue(false);
 
 			await expect(service.deleteResult(AGENT_ID, PROJECT_ID, 'result-1')).rejects.toThrow(
 				NotFoundError,
 			);
+		});
+
+		// A pending or running case keeps writing to its row, so deleting it would
+		// drop work the run then reports as done.
+		it.each(['new', 'running'] as const)('rejects a result that is still %s', async (status) => {
+			resultRepository.findById.mockResolvedValue(makeResult({ status }));
+
+			await expect(service.deleteResult(AGENT_ID, PROJECT_ID, 'result-1')).rejects.toThrow(
+				BadRequestError,
+			);
+			expect(resultRepository.deleteById).not.toHaveBeenCalled();
+		});
+
+		it('brings a settled run’s recorded counts back in line, keeping the rest of its metrics', async () => {
+			resultRepository.findById.mockResolvedValue(makeResult({ runId: 'run-1' }));
+			resultRepository.deleteById.mockResolvedValue(true);
+			// A plain object: `mock()` proxies don't enumerate nested values when spread.
+			runRepository.findById.mockResolvedValue({
+				id: 'run-1',
+				status: 'completed',
+				metrics: { total: 3, success: 3, error: 0, cancelled: 0, pending: 0, usage: { x: 1 } },
+			} as unknown as AgentEvalRun);
+			runner.getRunSummary.mockResolvedValue({
+				runId: 'run-1',
+				status: 'completed',
+				counts: { total: 2, success: 2, error: 0, cancelled: 0, pending: 0 },
+			});
+
+			await service.deleteResult(AGENT_ID, PROJECT_ID, 'result-1');
+
+			expect(runRepository.updateMetrics).toHaveBeenCalledWith('run-1', {
+				total: 2,
+				success: 2,
+				error: 0,
+				cancelled: 0,
+				pending: 0,
+				usage: { x: 1 },
+			});
+		});
+
+		it('leaves the metrics of a run that is still going alone, since it records them when it settles', async () => {
+			resultRepository.findById.mockResolvedValue(makeResult({ runId: 'run-1' }));
+			resultRepository.deleteById.mockResolvedValue(true);
+			runRepository.findById.mockResolvedValue(makeRun({ status: 'running', metrics: null }));
+
+			await service.deleteResult(AGENT_ID, PROJECT_ID, 'result-1');
+
+			expect(runRepository.updateMetrics).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('deleteDraftDataset', () => {
+		beforeEach(() => {
+			datasetRepository.findByIdAndAgentId.mockResolvedValue(makeDataset());
+			datasetRepository.findByAgentId.mockResolvedValue([makeDataset()]);
+			datasetRepository.deleteDataset.mockResolvedValue(true);
+			runRepository.findByDatasetId.mockResolvedValue([]);
+		});
+
+		it('removes the dataset and the table that was made for it', async () => {
+			await service.deleteDraftDataset(AGENT_ID, PROJECT_ID, 'ds-1');
+
+			expect(datasetRepository.deleteDataset).toHaveBeenCalledWith('ds-1', AGENT_ID);
+			expect(caseGenerationService.deleteDraftTable).toHaveBeenCalledWith('dt-1', PROJECT_ID);
+		});
+
+		it('keeps a table another dataset still reads from', async () => {
+			datasetRepository.findByAgentId.mockResolvedValue([
+				makeDataset(),
+				makeDataset({ id: 'ds-2' }),
+			]);
+
+			await service.deleteDraftDataset(AGENT_ID, PROJECT_ID, 'ds-1');
+
+			expect(datasetRepository.deleteDataset).toHaveBeenCalledWith('ds-1', AGENT_ID);
+			expect(caseGenerationService.deleteDraftTable).not.toHaveBeenCalled();
+		});
+
+		it('refuses a dataset that has runs, since that is history rather than a draft', async () => {
+			runRepository.findByDatasetId.mockResolvedValue([makeRun()]);
+
+			await expect(service.deleteDraftDataset(AGENT_ID, PROJECT_ID, 'ds-1')).rejects.toThrow(
+				BadRequestError,
+			);
+			expect(datasetRepository.deleteDataset).not.toHaveBeenCalled();
+			expect(caseGenerationService.deleteDraftTable).not.toHaveBeenCalled();
+		});
+
+		it('404s without touching the table when the dataset belongs to another agent', async () => {
+			datasetRepository.findByIdAndAgentId.mockResolvedValue(null);
+
+			await expect(service.deleteDraftDataset(AGENT_ID, PROJECT_ID, 'ds-1')).rejects.toThrow(
+				NotFoundError,
+			);
+			expect(caseGenerationService.deleteDraftTable).not.toHaveBeenCalled();
+		});
+
+		it('leaves a dataset without a Data Table to the plain delete', async () => {
+			datasetRepository.findByIdAndAgentId.mockResolvedValue(
+				makeDataset({
+					datasetSource: 'google_sheets',
+					datasetRef: { credentialId: 'cred-1', spreadsheetId: 'sheet-1', sheetName: 'Cases' },
+				}),
+			);
+
+			await service.deleteDraftDataset(AGENT_ID, PROJECT_ID, 'ds-1');
+
+			expect(datasetRepository.deleteDataset).toHaveBeenCalled();
+			expect(caseGenerationService.deleteDraftTable).not.toHaveBeenCalled();
 		});
 	});
 

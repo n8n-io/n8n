@@ -96,6 +96,7 @@ describe('AgentEvalsController', () => {
 			createDraftDataset: 'agent:update',
 			updateDataset: 'agent:update',
 			deleteDataset: 'agent:update',
+			deleteDraftDataset: 'agent:update',
 			deleteResult: 'agent:update',
 			acceptResult: 'agent:update',
 			generateDraftCases: 'agent:update',
@@ -152,6 +153,7 @@ describe('AgentEvalsController', () => {
 				async () => await controller.updateDataset(datasetReq(), undefined, { name: 'x' }),
 			],
 			['deleteDataset', async () => await controller.deleteDataset(datasetReq())],
+			['deleteDraftDataset', async () => await controller.deleteDraftDataset(datasetReq())],
 			[
 				'generateDraftCases',
 				async () => await controller.generateDraftCases(agentReq(), undefined, {}),
@@ -265,6 +267,14 @@ describe('AgentEvalsController', () => {
 			await expect(controller.deleteDataset(datasetReq())).resolves.toEqual({ success: true });
 
 			expect(service.deleteDataset).toHaveBeenCalledWith(AGENT_ID, PROJECT_ID, 'ds-1');
+		});
+
+		it('discards a draft dataset scoped to the path agent and reports a success envelope', async () => {
+			await expect(controller.deleteDraftDataset(datasetReq())).resolves.toEqual({
+				success: true,
+			});
+
+			expect(service.deleteDraftDataset).toHaveBeenCalledWith(AGENT_ID, PROJECT_ID, 'ds-1');
 		});
 
 		it('reads a run summary scoped to the path agent', async () => {

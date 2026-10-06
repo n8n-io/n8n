@@ -86,6 +86,9 @@ const suiteCaseRows = ref<AgentEvalCase[] | null>(null);
 const suiteCaseLabels = ref<Record<number, string>>({});
 const suiteRunId = ref<string | null>(null);
 const startingSuiteRun = ref(false);
+// The cases are committed but no run could be started or followed — shown as a
+// retry, since the rows would otherwise sit "waiting" for a run that isn't there.
+const suiteRunFailed = ref(false);
 const stoppingSuiteRun = ref(false);
 const sampleInput = ref('');
 // Cleared once the user submits their own sample, so the display switches
@@ -94,6 +97,9 @@ const useInitialCase = ref(Boolean(props.initialCase));
 // The generated preview case's scenario tag. Null when reusing the builder's
 // own test result (`initialCase`), which was never scenario-generated.
 const previewScenario = ref<string | null>(null);
+// The rule the generated preview case was drafted with — empty when reusing the
+// builder's own test result, which came with none.
+const previewWhatToCheck = ref('');
 
 const previewInput = computed(() =>
 	useInitialCase.value ? (props.initialCase?.message ?? '') : (previewRequest.value ?? ''),
@@ -171,6 +177,7 @@ async function runGeneratedPreview(revision?: PreviewRevision) {
 			return;
 		}
 		previewScenario.value = result.scenario || null;
+		previewWhatToCheck.value = result.whatToCheck;
 		previewRequest.value = result.input;
 		previewAnswer.value = result.response;
 		phase.value = 'awaiting-confirmation';
@@ -257,10 +264,15 @@ async function onCheckAgent(count: number) {
 		const source = { datasetId: created.datasetId, dataTableId: created.dataTableId, columns };
 
 		const selectedCases = suiteCases.value.slice(0, count);
+		// The confirmed try is the first saved check, ahead of the picked extras.
+		const confirmedTry = { input: previewInput.value, whatToCheck: previewWhatToCheck.value };
 		const toCreate = [
 			...selectedCases.map((c) => ({ input: c.input, whatToCheck: c.whatToCheck })),
 			...suiteOwnExamples.value.map((input) => ({ input, whatToCheck: '' })),
 		];
+		// Created on its own first so it gets the lowest row id; the rest don't
+		// depend on each other.
+		await store.createCase(projectId, source, confirmedTry);
 		await Promise.all(toCreate.map((value) => store.createCase(projectId, source, value)));
 		if (!isMounted) return;
 
@@ -272,6 +284,10 @@ async function onCheckAgent(count: number) {
 		const customLabel = i18n.baseText('instanceAi.testAgentPreview.customExampleLabel');
 		const labelByInput = new Map<string, string>(selectedCases.map((c) => [c.input, c.scenario]));
 		for (const input of suiteOwnExamples.value) labelByInput.set(input, customLabel);
+		labelByInput.set(
+			confirmedTry.input,
+			previewScenario.value ?? i18n.baseText('instanceAi.testAgentPreview.yourTry'),
+		);
 		suiteCaseLabels.value = Object.fromEntries(
 			cases.map((c) => [c.rowId, labelByInput.get(c.input) ?? '']),
 		);
@@ -281,21 +297,83 @@ async function onCheckAgent(count: number) {
 		const run = await store.startRun(projectId, agentId, created.datasetId);
 		if (!isMounted) return;
 		suiteRunId.value = run.id;
-		await store.openRun(projectId, agentId, run.id);
-		if (!isMounted) return;
-		if (store.isRunInFlight(run.id)) {
-			store.startPollingRun(projectId, agentId, run.id);
-		}
+		await followSuiteRun();
 	} catch (error) {
 		if (suiteDatasetId.value && !runSubmitted) {
 			// A partial insert leaves a persisted-but-incomplete dataset behind —
 			// delete it rather than let a retry pile up another one alongside it.
 			// Runs regardless of `isMounted`: the dataset already exists
 			// server-side either way.
-			await store.deleteDataset(projectId, agentId, suiteDatasetId.value).catch(() => null);
+			await store.deleteDraftDataset(projectId, agentId, suiteDatasetId.value).catch(() => null);
 			suiteDatasetId.value = null;
 		}
 		if (!isMounted) return;
+		// A recovered run is already being followed — nothing to tell the user.
+		if (runSubmitted && (await recoverSuiteRun())) return;
+		toast.showError(error, i18n.baseText('agents.builder.agentEvals.run.startError'));
+	} finally {
+		if (isMounted) startingSuiteRun.value = false;
+	}
+}
+
+/** Loads the committed run's results and follows it until every case settles. */
+async function followSuiteRun() {
+	const { projectId, agentId } = props.target;
+	const runId = suiteRunId.value;
+	if (!runId) return;
+	await store.openRun(projectId, agentId, runId);
+	if (!isMounted) return;
+	if (store.isRunInFlight(runId)) {
+		store.startPollingRun(projectId, agentId, runId);
+	}
+}
+
+/**
+ * Picks the committed dataset's run back up after the start or the first read
+ * failed. A start whose response was lost may still have seeded a real run, so
+ * it looks for that run before concluding there is none — starting another
+ * would run every case twice. With none found, it flags the failure so the
+ * user can retry instead of watching rows wait for a run that does not exist.
+ */
+async function recoverSuiteRun(): Promise<boolean> {
+	const { projectId, agentId } = props.target;
+	if (!suiteDatasetId.value) return false;
+	try {
+		if (!suiteRunId.value) {
+			suiteRunId.value = await store.resolveLatestRunId(projectId, agentId, suiteDatasetId.value);
+		}
+		if (suiteRunId.value) {
+			suiteRunFailed.value = false;
+			await followSuiteRun();
+			return true;
+		}
+	} catch {
+		// Reconciling failed too; fall through to the retry state.
+	}
+	if (isMounted) suiteRunFailed.value = true;
+	return false;
+}
+
+async function onRetrySuiteRun() {
+	const datasetId = suiteDatasetId.value;
+	if (!datasetId || startingSuiteRun.value) return;
+	const { projectId, agentId } = props.target;
+	startingSuiteRun.value = true;
+	try {
+		if (!suiteRunId.value) {
+			// A retry that raced a slow earlier start must not run the cases twice.
+			suiteRunId.value = await store.resolveLatestRunId(projectId, agentId, datasetId);
+		}
+		if (!suiteRunId.value) {
+			const run = await store.startRun(projectId, agentId, datasetId);
+			if (!isMounted) return;
+			suiteRunId.value = run.id;
+		}
+		suiteRunFailed.value = false;
+		await followSuiteRun();
+	} catch (error) {
+		if (!isMounted) return;
+		suiteRunFailed.value = true;
 		toast.showError(error, i18n.baseText('agents.builder.agentEvals.run.startError'));
 	} finally {
 		if (isMounted) startingSuiteRun.value = false;
@@ -461,9 +539,11 @@ function onDontCreateEvals() {
 				:case-runs="suiteCaseRuns"
 				:starting-run="startingSuiteRun"
 				:stopping-run="stoppingSuiteRun"
+				:run-failed="suiteRunFailed"
 				@add-example="onAddExample"
 				@check-agent="onCheckAgent"
 				@stop-run="onStopSuiteRun"
+				@retry-run="onRetrySuiteRun"
 				@try-agent="emit('try-agent')"
 				@open-case="emit('open-evals', $event)"
 			/>

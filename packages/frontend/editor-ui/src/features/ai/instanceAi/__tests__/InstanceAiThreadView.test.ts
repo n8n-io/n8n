@@ -2590,23 +2590,19 @@ describe('InstanceAiThreadView', () => {
 			expect(evalsStore.requestEvalsFocus).not.toHaveBeenCalled();
 		});
 
-		it('keeps the preview panel visible if the dataset cache populates from elsewhere mid-flow', async () => {
+		it('drops the preview panel if the dataset cache populates from elsewhere before the user commits', async () => {
 			seedReadyAgent();
 			const evalsStore = seedPreviewVariant();
 
 			// `isLoaded`/`getDatasets` are automocked vi.fn()s, so a plain
 			// `mockReturnValue` change is invisible to Vue's reactivity system —
-			// `activeTestAgentOffer` would never re-run and the bug this test
-			// targets could never reproduce. Backing the mocks with real refs makes
-			// reading them inside the computed register a dependency, so flipping
-			// the refs reactively re-triggers the computed.
+			// backing them with real refs makes reading them inside the computed
+			// register a dependency, so flipping the refs re-triggers it.
 			//
-			// Neither the preview's own `previewRun` nor the suite's `save: false`
-			// generation touch the dataset cache anymore — the only way it can now
-			// populate mid-flow is externally, e.g. the user generating cases from
-			// the Evals tab in another view while this offer is still showing. The
-			// latch (`latchedTestAgentOffer`) must keep the already-offered panel up
-			// regardless.
+			// The only way the cache can populate before "Looks good" is externally,
+			// e.g. the user generating cases from the Evals tab while this offer is
+			// still showing. The card would then offer to test an agent that already
+			// has checks, so it goes. (After "Looks good" it stays: see the latch tests.)
 			const isLoadedRef = ref(false);
 			const datasetsRef = ref<Array<{ id: string }>>([]);
 			evalsStore.isLoaded.mockImplementation(() => isLoadedRef.value);
@@ -2620,7 +2616,9 @@ describe('InstanceAiThreadView', () => {
 			datasetsRef.value = [{ id: 'dataset-1' }];
 			await flushPromises();
 
-			expect(await findByTestId('instance-ai-test-agent-preview-panel')).toBeInTheDocument();
+			await vi.waitFor(() =>
+				expect(queryByTestId('instance-ai-test-agent-preview-panel')).not.toBeInTheDocument(),
+			);
 			expect(queryByTestId('instance-ai-test-agent-panel')).not.toBeInTheDocument();
 		});
 
@@ -2979,6 +2977,136 @@ describe('InstanceAiThreadView', () => {
 			expect(agentPreview).toHaveAttribute('data-agent-id', 'agent-1');
 			// Opening one case is a peek, so the chat panel stays.
 			expect(queryByTestId('instance-ai-test-agent-preview-open-evals-stub')).toBeInTheDocument();
+		});
+
+		describe('the offer latch', () => {
+			// Exposes the target it was given and a way to fire `confirm`, which is
+			// what commits the latch in the real panel.
+			const PreviewPanelStub = defineComponent({
+				name: 'InstanceAiTestAgentPreviewPanelStub',
+				props: { target: { type: Object as PropType<{ agentId: string }>, required: true } },
+				emits: ['confirm', 'dismiss', 'open-evals', 'try-agent'],
+				setup(props, { emit }) {
+					return () =>
+						h('div', { 'data-test-id': 'preview-stub', 'data-agent-id': props.target.agentId }, [
+							h('button', {
+								'data-test-id': 'preview-stub-confirm',
+								onClick: () => emit('confirm'),
+							}),
+						]);
+				},
+			});
+
+			const renderWithStub = () =>
+				renderView({
+					props: { threadId: 'thread-1' },
+					global: {
+						stubs: { ...defaultViewStubs, InstanceAiTestAgentPreviewPanel: PreviewPanelStub },
+					},
+				});
+
+			it('drops the card when the agent starts working again before the user commits', async () => {
+				seedReadyAgent();
+				seedPreviewVariant();
+				const { findByTestId, queryByTestId } = renderWithStub();
+				await findByTestId('preview-stub');
+
+				thread.isStreaming = true;
+
+				await vi.waitFor(() => expect(queryByTestId('preview-stub')).not.toBeInTheDocument());
+			});
+
+			it('keeps the card once the user has committed, even though the live offer is gone', async () => {
+				seedReadyAgent();
+				seedPreviewVariant();
+				const user = userEvent.setup();
+				const { findByTestId, queryByTestId } = renderWithStub();
+				await user.click(await findByTestId('preview-stub-confirm'));
+
+				thread.isStreaming = true;
+				await nextTick();
+
+				expect(queryByTestId('preview-stub')).toBeInTheDocument();
+			});
+
+			it('retargets to another agent built in the same thread, instead of staying on the first', async () => {
+				seedReadyAgent();
+				seedPreviewVariant();
+				const metadata = ref<Record<string, unknown>>({
+					instanceAiAgentBuilderTarget: AGENT_TARGET,
+				});
+				store.getThreadMetadata.mockImplementation(() => metadata.value);
+				const { findByTestId } = renderWithStub();
+				expect(await findByTestId('preview-stub')).toHaveAttribute('data-agent-id', 'agent-1');
+
+				metadata.value = {
+					instanceAiAgentBuilderTarget: {
+						agentId: 'agent-2',
+						projectId: 'project-1',
+						name: 'Other',
+					},
+				};
+
+				await vi.waitFor(async () =>
+					expect(await findByTestId('preview-stub')).toHaveAttribute('data-agent-id', 'agent-2'),
+				);
+			});
+
+			it('shows the generic offer only while the live offer exists', async () => {
+				seedReadyAgent();
+				const { findByTestId, queryByTestId } = renderView({ props: { threadId: 'thread-1' } });
+				expect(await findByTestId('instance-ai-test-agent-panel')).toBeInTheDocument();
+
+				thread.isStreaming = true;
+
+				await vi.waitFor(() =>
+					expect(queryByTestId('instance-ai-test-agent-panel')).not.toBeInTheDocument(),
+				);
+			});
+		});
+
+		it('opens the offered agent’s chat preview from "Try agent yourself", keeping the panel and not touching evals', async () => {
+			seedReadyAgent();
+			const evalsStore = seedPreviewVariant();
+			const user = userEvent.setup();
+			const { findByTestId, queryByTestId } = renderView({
+				props: { threadId: 'thread-1' },
+				global: {
+					stubs: {
+						...defaultViewStubs,
+						InstanceAiTestAgentPreviewPanel: defineComponent({
+							name: 'InstanceAiTestAgentPreviewPanelStub',
+							emits: ['confirm', 'dismiss', 'open-evals', 'try-agent'],
+							setup(_, { emit }) {
+								return () =>
+									h(
+										'button',
+										{
+											'data-test-id': 'instance-ai-test-agent-preview-try-agent-stub',
+											onClick: () => emit('try-agent'),
+										},
+										'Try agent yourself',
+									);
+							},
+						}),
+					},
+				},
+			});
+			const tryAgent = await findByTestId('instance-ai-test-agent-preview-try-agent-stub');
+			expect(queryByTestId('instance-ai-agent-preview-stub')).not.toBeInTheDocument();
+
+			await user.click(tryAgent);
+
+			// `openAgentChatPreview(agentId, projectId)` switches the canvas to that
+			// agent and opens its chat dock — visible through the preview stub's props.
+			const agentPreview = await findByTestId('instance-ai-agent-preview-stub');
+			expect(agentPreview).toHaveAttribute('data-agent-id', 'agent-1');
+			expect(agentPreview).toHaveAttribute('data-project-id', 'project-1');
+			expect(agentPreview).toHaveAttribute('data-preview-open', 'true');
+			// It's a handoff to chat, not a trip to evals: the panel stays and no evals
+			// focus is requested.
+			expect(queryByTestId('instance-ai-test-agent-preview-try-agent-stub')).toBeInTheDocument();
+			expect(evalsStore.requestEvalsFocus).not.toHaveBeenCalled();
 		});
 	});
 

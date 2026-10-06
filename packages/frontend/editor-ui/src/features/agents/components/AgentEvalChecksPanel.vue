@@ -50,11 +50,6 @@ const results = computed(() => review.value.results);
 const hasMore = computed(() => results.value.length < review.value.resultsCount);
 const inFlight = computed(() => store.isRunInFlight(props.runId));
 
-// Only covers cases that didn't finish successfully (errored or cancelled):
-// the backend records "Actually fine" as a verdict, which only exists for a
-// case that ran to completion.
-const manualStatusOverrides = ref<Record<string, AgentAvatarKind>>({});
-
 type CheckRow = {
 	id: string;
 	/** The Data Table row this result came from — null if the run predates
@@ -72,11 +67,10 @@ type CheckRow = {
 
 const rows = computed<CheckRow[]>(() =>
 	results.value.map((result) => {
-		const override = manualStatusOverrides.value[result.id];
 		return {
 			id: result.id,
 			sourceRowId: result.sourceRowId,
-			status: override ?? toAvatarKind(result.status, result.verdict),
+			status: toAvatarKind(result.status, result.verdict),
 			input: readCaseRequest(result.input),
 			output: readAgentAnswer(result.output),
 			runAt: result.runAt,
@@ -190,11 +184,6 @@ watch(
 );
 
 async function onActuallyFine(resultId: string) {
-	const result = results.value.find((r) => r.id === resultId);
-	if (result?.status !== 'success') {
-		manualStatusOverrides.value = { ...manualStatusOverrides.value, [resultId]: 'pass' };
-		return;
-	}
 	try {
 		await store.acceptResult(props.projectId, props.agentId, resultId);
 	} catch (error) {
@@ -413,6 +402,7 @@ onBeforeUnmount(store.stopPollingRun);
 				:what-to-check="row.whatToCheck"
 				:disabled="disabled"
 				:running-check="row.status === 'waiting'"
+				hide-revise
 				view="complete"
 				:focused="row.id === focusedResultId"
 				:test-id="`agent-eval-check-${row.id}`"

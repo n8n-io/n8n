@@ -129,12 +129,23 @@ describe('AgentEvalTryRow', () => {
 
 	describe('focused', () => {
 		it('starts expanded and scrolls into view when focused', async () => {
+			// jsdom has no `scrollIntoView`; put back exactly what was there (including
+			// "nothing") so the mock can't leak into later tests.
+			const original = Object.getOwnPropertyDescriptor(Element.prototype, 'scrollIntoView');
 			const scrollIntoView = vi.fn();
 			Element.prototype.scrollIntoView = scrollIntoView;
-			const { findByTestId } = renderComponent({ props: { focused: true, testId: 'row' } });
+			try {
+				const { findByTestId } = renderComponent({ props: { focused: true, testId: 'row' } });
 
-			expect(await findByTestId('row-placeholder')).toBeInTheDocument();
-			await vi.waitFor(() => expect(scrollIntoView).toHaveBeenCalled());
+				expect(await findByTestId('row-placeholder')).toBeInTheDocument();
+				await vi.waitFor(() => expect(scrollIntoView).toHaveBeenCalled());
+			} finally {
+				if (original) {
+					Object.defineProperty(Element.prototype, 'scrollIntoView', original);
+				} else {
+					Reflect.deleteProperty(Element.prototype, 'scrollIntoView');
+				}
+			}
 		});
 
 		it('expands when focus arrives after mount', async () => {
@@ -226,6 +237,14 @@ describe('AgentEvalTryRow', () => {
 			renderComponent({
 				props: { status: 'pass', output: 'Order #123 ships tomorrow.', ...overrides },
 			});
+
+		it('keeps "Run check" on a row that needs no correction when hideRevise is set', async () => {
+			const user = userEvent.setup();
+			const { getByTestId } = renderPassing({ testId: 'row', hideRevise: true });
+			await user.click(getByTestId('row-toggle'));
+
+			expect(getByTestId('row-run-check')).toBeInTheDocument();
+		});
 
 		it('shows "Run check" instead of the correction controls for a row that needs no correction', async () => {
 			const user = userEvent.setup();
@@ -356,6 +375,14 @@ describe('AgentEvalTryRow', () => {
 			renderComponent({
 				props: { whatToCheck: 'Names the ticket and the priority.', ...overrides },
 			});
+
+		it('disables the rule editor while the case is running, so an edit cannot be dropped', async () => {
+			const user = userEvent.setup();
+			const { getByTestId } = renderWithRule({ testId: 'row', runningCheck: true });
+			await user.click(getByTestId('row-toggle'));
+
+			expect(getByTestId('row-edit-rule')).toBeDisabled();
+		});
 
 		it('asks for confirmation naming the case, and emits delete-check once confirmed', async () => {
 			openAgentConfirmationModal.mockResolvedValue(MODAL_CONFIRM);

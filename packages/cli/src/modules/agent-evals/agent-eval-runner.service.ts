@@ -226,10 +226,24 @@ export class AgentEvalRunnerService {
 		if (!(await userHasScopes(user, ['agent:execute'], false, { projectId }))) {
 			throw new ForbiddenError('You do not have permission to run agents in this project.');
 		}
+		// Editing the rule rewrites eval data, so it needs more than running does —
+		// a chat-only member holds `agent:execute` but not `agent:update`.
+		if (
+			options.whatToCheck !== undefined &&
+			!(await userHasScopes(user, ['agent:update'], false, { projectId }))
+		) {
+			throw new ForbiddenError('You do not have permission to edit checks in this project.');
+		}
 
 		const input = readResultInputText(result.input);
 		if (!input) {
 			throw new BadRequestError('This case has no input to rerun.');
+		}
+
+		// Atomic, unlike the caller's snapshot status check: of two concurrent
+		// requests for the same result, only one wins the claim and executes.
+		if (!(await this.resultRepository.claimForRerun(result.id))) {
+			throw new BadRequestError(`Agent eval result ${result.id} is already running.`);
 		}
 
 		// An edited rule has no case row of its own to write back to here (the
@@ -237,9 +251,18 @@ export class AgentEvalRunnerService {
 		// persisted onto that snapshot directly, ahead of the rerun that uses it.
 		let caseToRun = result;
 		if (options.whatToCheck !== undefined) {
-			const snapshot = toJsonObject({ ...(result.input ?? {}), criteria: options.whatToCheck });
-			await this.resultRepository.updateInput(result.id, snapshot);
-			caseToRun = { ...result, input: snapshot };
+			try {
+				const snapshot = toJsonObject({ ...(result.input ?? {}), criteria: options.whatToCheck });
+				await this.resultRepository.updateInput(result.id, snapshot);
+				caseToRun = { ...result, input: snapshot };
+			} catch (error) {
+				// The claim already moved the row to `running`; settle it instead of
+				// leaving it stuck there.
+				await this.resultRepository.markAsError(result.id, 'rerun_failed', {
+					message: error instanceof Error ? error.message : String(error),
+				});
+				throw error;
+			}
 		}
 
 		await this.runCase(

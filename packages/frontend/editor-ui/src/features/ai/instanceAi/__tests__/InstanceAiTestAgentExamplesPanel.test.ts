@@ -165,6 +165,21 @@ describe('InstanceAiTestAgentExamplesPanel', () => {
 			expect(queryByText(/Saved as your first check/)).not.toBeInTheDocument();
 		});
 
+		it('replaces the progress line and Stop with a retry once the run could not start', async () => {
+			const user = userEvent.setup();
+			const { getByTestId, queryByTestId, queryByText, emitted } = renderComponent({
+				props: { caseRuns, runFailed: true },
+			});
+
+			expect(getByTestId('instance-ai-test-agent-examples-run-failed')).toBeInTheDocument();
+			expect(queryByText(/Checking, \d+ left/)).not.toBeInTheDocument();
+			expect(queryByTestId('instance-ai-test-agent-examples-stop')).not.toBeInTheDocument();
+
+			await user.click(getByTestId('instance-ai-test-agent-examples-retry-run'));
+
+			expect(emitted('retry-run')).toHaveLength(1);
+		});
+
 		it('shows a stop button that emits stop-run', async () => {
 			const user = userEvent.setup();
 			const { getByTestId, emitted } = renderComponent({ props: { caseRuns } });

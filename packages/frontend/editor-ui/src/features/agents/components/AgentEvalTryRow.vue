@@ -252,7 +252,7 @@ watch(
 							variant="subtle"
 							size="small"
 							icon-only
-							:disabled="disabled"
+							:disabled="disabled || runningCheck"
 							:aria-label="i18n.baseText('instanceAi.testAgentPreview.editRule')"
 							:data-test-id="testId && `${testId}-edit-rule`"
 							@click="onStartEditWhatToCheck"
@@ -377,7 +377,7 @@ watch(
 					</N8nButton>
 				</div>
 			</template>
-			<template v-else-if="!hideRevise">
+			<template v-else>
 				<div :class="$style.correctionActions">
 					<N8nButton
 						size="small"

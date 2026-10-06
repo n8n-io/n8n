@@ -148,6 +148,24 @@ describe('AgentEvalResultRepository', () => {
 		});
 	});
 
+	describe('claimForRerun', () => {
+		it('claims only a settled row, clearing the previous attempt', async () => {
+			entityManager.update.mockResolvedValueOnce({ affected: 1, generatedMaps: [], raw: [] });
+
+			await expect(repo.claimForRerun('res-1')).resolves.toBe(true);
+
+			const [, where, patch] = entityManager.update.mock.calls[0] ?? [];
+			expect(where).toMatchObject({ id: 'res-1' });
+			expect(patch).toMatchObject({ status: 'running', output: null, errorCode: null });
+		});
+
+		it('reports false when no row matched, because it was already running or claimed', async () => {
+			entityManager.update.mockResolvedValueOnce({ affected: 0, generatedMaps: [], raw: [] });
+
+			await expect(repo.claimForRerun('res-1')).resolves.toBe(false);
+		});
+	});
+
 	describe('markAsCancelled', () => {
 		it('marks the case cancelled and stamps completedAt', async () => {
 			entityManager.update.mockResolvedValueOnce({ affected: 1, generatedMaps: [], raw: [] });

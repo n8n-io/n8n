@@ -47,12 +47,16 @@ const props = defineProps<{
 	startingRun?: boolean;
 	/** True from the "Stop" click until the cancel request resolves. */
 	stoppingRun?: boolean;
+	/** The cases are saved but their run could not be started or followed. */
+	runFailed?: boolean;
 }>();
 
 const emit = defineEmits<{
 	'add-example': [input: string];
 	'check-agent': [count: number];
 	'stop-run': [];
+	/** "Try again" after the run could not be started or followed. */
+	'retry-run': [];
 	/** "Try agent yourself": open the agent's own chat once every check passed. */
 	'try-agent': [];
 	/** A row's chevron: open the eval view on that case. Null for the confirmed
@@ -135,7 +139,15 @@ function onCheckYourAgent() {
 		</template>
 
 		<template v-else>
-			<N8nText v-if="!runSettled" color="text-dark" :class="$style.runStatus">
+			<N8nText
+				v-if="runFailed"
+				color="text-dark"
+				:class="$style.runStatus"
+				data-test-id="instance-ai-test-agent-examples-run-failed"
+			>
+				{{ i18n.baseText('instanceAi.testAgentPreview.runNotStarted') }}
+			</N8nText>
+			<N8nText v-else-if="!runSettled" color="text-dark" :class="$style.runStatus">
 				{{
 					i18n.baseText('instanceAi.testAgentPreview.checkingLeft', {
 						interpolate: { count: String(waitingCount) },
@@ -208,7 +220,17 @@ function onCheckYourAgent() {
 			</div>
 
 			<N8nButton
-				v-if="!runSettled"
+				v-if="runFailed"
+				variant="solid"
+				size="small"
+				:loading="startingRun"
+				data-test-id="instance-ai-test-agent-examples-retry-run"
+				@click="emit('retry-run')"
+			>
+				{{ i18n.baseText('instanceAi.testAgentPreview.retryRun') }}
+			</N8nButton>
+			<N8nButton
+				v-else-if="!runSettled"
 				variant="ghost"
 				size="small"
 				:loading="stoppingRun"
@@ -271,7 +293,7 @@ function onCheckYourAgent() {
 }
 
 .summaryAvatar:not(:first-child) {
-	margin-left: -6px;
+	margin-left: calc(var(--spacing--3xs) * -1);
 }
 
 .summaryChevron {

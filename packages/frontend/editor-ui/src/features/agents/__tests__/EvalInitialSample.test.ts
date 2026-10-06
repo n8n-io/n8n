@@ -1,4 +1,7 @@
+import { createTestingPinia } from '@pinia/testing';
 import { describe, expect, it } from 'vitest';
+
+import type { ToolCall } from '@/features/ai/shared/agentsChat/types';
 
 import { createComponentRenderer } from '@/__tests__/render';
 import EvalInitialSample from '../components/EvalInitialSample.vue';
@@ -60,5 +63,61 @@ describe('EvalInitialSample', () => {
 
 		expect(getByText('Follows the rule.')).toBeInTheDocument();
 		expect(queryByText("Couldn't verify the rule.")).not.toBeInTheDocument();
+	});
+
+	describe('tool calls', () => {
+		const toolCalls: ToolCall[] = [
+			{ tool: 'lookup_order', toolCallId: 'call-1', state: 'done', input: {}, output: {} },
+		];
+
+		it('renders tool calls between the input and the answer', () => {
+			// The tool-step renderer reads stores (sub-agent names), so it needs a pinia.
+			const { container, getByText } = renderComponent({
+				pinia: createTestingPinia(),
+				props: { previewInput: 'Where is my order?', previewOutput: 'Ships tomorrow.', toolCalls },
+			});
+
+			const tools = container.querySelector('[data-testid="agent-eval-tool-calls"]');
+			const answer = container.querySelector(
+				'[data-test-id="instance-ai-test-agent-preview-output"]',
+			);
+			expect(tools).toBeInTheDocument();
+			expect(answer).toBeInTheDocument();
+			// The input bubble precedes the tools, which precede the answer card.
+			expect(getByText('Where is my order?').compareDocumentPosition(tools!)).toBe(
+				Node.DOCUMENT_POSITION_FOLLOWING,
+			);
+			expect(tools!.compareDocumentPosition(answer!)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+		});
+
+		it.each([
+			['undefined', undefined],
+			['empty', []],
+		])('renders no tool section when toolCalls is %s', (_label, value) => {
+			const { container } = renderComponent({
+				props: { previewOutput: 'Ships tomorrow.', toolCalls: value },
+			});
+
+			expect(container.querySelector('[data-testid="agent-eval-tool-calls"]')).toBeNull();
+		});
+	});
+
+	describe('rule callout visibility', () => {
+		it('hides the callout for hideBanner, even with an output and a status', () => {
+			const { queryByText } = renderComponent({
+				props: { previewOutput: 'Ships tomorrow.', status: 'pass', hideBanner: true },
+			});
+
+			expect(queryByText('Follows the rule.')).not.toBeInTheDocument();
+		});
+
+		it('hides the callout while the case is waiting, even with an output', () => {
+			const { queryByText } = renderComponent({
+				props: { previewOutput: 'Ships tomorrow.', status: 'waiting' },
+			});
+
+			expect(queryByText('Follows the rule.')).not.toBeInTheDocument();
+			expect(queryByText("Couldn't verify the rule.")).not.toBeInTheDocument();
+		});
 	});
 });

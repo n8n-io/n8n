@@ -258,11 +258,30 @@ describe('toAvatarKind', () => {
 	describe.each(EXECUTION_ONLY_CASES)('status "%s"', (status, expectedKind) => {
 		test.each([
 			['no verdict', null],
-			['a completed pass verdict', verdict({ status: 'completed', outcome: 'pass' })],
 			['a completed fail verdict', verdict({ status: 'completed', outcome: 'fail' })],
 		])('reads as "%s" regardless of %s', (_label, givenVerdict) => {
 			expect(toAvatarKind(status, givenVerdict)).toBe(expectedKind);
 		});
+	});
+
+	// "Actually fine" on a case that did not run to completion: the judge never
+	// grades those, so a completed pass can only be the user's call, and it wins.
+	describe.each([['error'], ['cancelled']] as const)(
+		'status "%s" with a completed pass',
+		(status) => {
+			it('reads as "pass"', () => {
+				expect(toAvatarKind(status, verdict({ status: 'completed', outcome: 'pass' }))).toBe(
+					'pass',
+				);
+			});
+		},
+	);
+
+	// A pass on a case that has not finished cannot be real.
+	it.each([['new'], ['running']] as const)('ignores a pass verdict on a "%s" row', (status) => {
+		expect(toAvatarKind(status, verdict({ status: 'completed', outcome: 'pass' }))).toBe(
+			status === 'new' ? 'idle' : 'waiting',
+		);
 	});
 
 	describe('status "success"', () => {

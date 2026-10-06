@@ -33,13 +33,13 @@ const renderComponent = createComponentRenderer(InstanceAiTestAgentPreviewPanel,
 
 // Replaces the real examples panel for guards that have no reachable UI path
 // of their own (e.g. a second "Check your agent" once the suite has already
-// started, or a "Save check" on a row the suite no longer has) — it mirrors
+// started) — it mirrors
 // the real component's props/emits so the parent's handlers wire up exactly
 // the same way.
 const ExamplesPanelStub = defineComponent({
 	name: 'InstanceAiTestAgentExamplesPanelStub',
 	props: ['examples'],
-	emits: ['add-example', 'check-agent', 'stop-run', 'revise-case'],
+	emits: ['add-example', 'check-agent', 'stop-run'],
 	setup(props, { emit }) {
 		return () =>
 			h('div', { 'data-test-id': 'examples-panel-stub' }, [
@@ -58,14 +58,6 @@ const ExamplesPanelStub = defineComponent({
 					'Check',
 				),
 				h('button', { 'data-test-id': 'stub-stop-run', onClick: () => emit('stop-run') }, 'Stop'),
-				h(
-					'button',
-					{
-						'data-test-id': 'stub-revise-missing-row',
-						onClick: () => emit('revise-case', { rowId: 999, suggestion: 'fix it' }),
-					},
-					'Revise missing',
-				),
 			]);
 	},
 });
@@ -346,7 +338,14 @@ describe('InstanceAiTestAgentPreviewPanel', () => {
 		await user.click(getByTestId('instance-ai-test-agent-examples-check-agent'));
 
 		expect(store.createDraftDataset).toHaveBeenCalledWith('project-1', 'agent-1');
-		expect(store.createCase).toHaveBeenCalledTimes(2);
+		// The confirmed try is saved too, as the first check — ahead of the extras.
+		expect(store.createCase).toHaveBeenCalledTimes(3);
+		expect(store.createCase).toHaveBeenNthCalledWith(
+			1,
+			'project-1',
+			expect.objectContaining({ datasetId: 'dataset-2' }),
+			{ input: 'Summarize the thread', whatToCheck: 'mentions the outage' },
+		);
 		expect(store.createCase).toHaveBeenCalledWith(
 			'project-1',
 			expect.objectContaining({ datasetId: 'dataset-2' }),
@@ -413,9 +412,9 @@ describe('InstanceAiTestAgentPreviewPanel', () => {
 
 		await user.click(getByTestId('instance-ai-test-agent-examples-check-agent'));
 
-		// Default slider value (2) caps the generated batch of 10 — only those
-		// two are ever created; the other 8 are never written anywhere.
-		await waitFor(() => expect(store.createCase).toHaveBeenCalledTimes(2));
+		// Default slider value (2) caps the generated batch of 10 — only those two
+		// (plus the confirmed try) are ever created; the other 8 are never written.
+		await waitFor(() => expect(store.createCase).toHaveBeenCalledTimes(3));
 		expect(store.createCase).toHaveBeenCalledWith('project-1', expect.anything(), {
 			input: 'case-0',
 			whatToCheck: 'check',
@@ -448,7 +447,9 @@ describe('InstanceAiTestAgentPreviewPanel', () => {
 			columnMapping: { input: 'input', criteria: 'criteria' },
 		});
 		vi.spyOn(store, 'createCase').mockRejectedValue(new Error('row insert failed'));
-		const deleteDataset = vi.spyOn(store, 'deleteDataset').mockResolvedValue(undefined as never);
+		const deleteDraftDataset = vi
+			.spyOn(store, 'deleteDraftDataset')
+			.mockResolvedValue(undefined as never);
 		const startRun = vi.spyOn(store, 'startRun');
 
 		const user = userEvent.setup();
@@ -462,7 +463,7 @@ describe('InstanceAiTestAgentPreviewPanel', () => {
 		await user.click(getByTestId('instance-ai-test-agent-examples-check-agent'));
 
 		await waitFor(() =>
-			expect(deleteDataset).toHaveBeenCalledWith('project-1', 'agent-1', 'dataset-2'),
+			expect(deleteDraftDataset).toHaveBeenCalledWith('project-1', 'agent-1', 'dataset-2'),
 		);
 		expect(startRun).not.toHaveBeenCalled();
 		await waitFor(() => expect(showErrorMock).toHaveBeenCalled());
@@ -486,7 +487,7 @@ describe('InstanceAiTestAgentPreviewPanel', () => {
 		vi.spyOn(store, 'createCase').mockResolvedValue(null);
 		vi.spyOn(store, 'fetchCases').mockResolvedValue([{ rowId: 1, input: 'a', whatToCheck: 'b' }]);
 		vi.spyOn(store, 'startRun').mockRejectedValue(new Error('timeout'));
-		const deleteDataset = vi.spyOn(store, 'deleteDataset');
+		const deleteDraftDataset = vi.spyOn(store, 'deleteDraftDataset');
 
 		const user = userEvent.setup();
 		const { getByTestId, findByTestId } = renderComponent();
@@ -499,7 +500,90 @@ describe('InstanceAiTestAgentPreviewPanel', () => {
 		await user.click(getByTestId('instance-ai-test-agent-examples-check-agent'));
 
 		await waitFor(() => expect(showErrorMock).toHaveBeenCalled());
-		expect(deleteDataset).not.toHaveBeenCalled();
+		expect(deleteDraftDataset).not.toHaveBeenCalled();
+	});
+
+	describe('when the run cannot be started', () => {
+		/** Commits one case and clicks "Check your agent", with `startRun` rejecting. */
+		async function commitWithFailingStart(
+			latestRunId: string | null,
+		): Promise<
+			{ store: ReturnType<typeof useAgentEvalsStore> } & ReturnType<typeof renderComponent>
+		> {
+			const store = useAgentEvalsStore();
+			mockPreviewRun(store);
+			vi.spyOn(store, 'generateDraftCases').mockResolvedValue({
+				cases: [{ input: 'a', whatToCheck: 'b', scenario: 'Vague' }],
+			});
+			mockCommit(store, { rows: [{ rowId: 1, input: 'a', whatToCheck: 'b' }] });
+			vi.spyOn(store, 'startRun').mockRejectedValue(new Error('timeout'));
+			// The store types this as `string`, but it resolves `null` for a never-run dataset.
+			vi.spyOn(store, 'resolveLatestRunId').mockResolvedValue(latestRunId as string);
+			vi.spyOn(store, 'isRunInFlight').mockReturnValue(false);
+			vi.spyOn(store, 'getReview').mockReturnValue({
+				run: { status: 'completed' } as never,
+				results: [],
+				resultsCount: 0,
+				ratingsByResultId: {},
+				pendingByResultId: {},
+				draftsByResultId: {},
+				counts: null,
+				loading: false,
+				loadingMore: false,
+			});
+
+			const user = userEvent.setup();
+			const view = renderComponent();
+			await waitFor(() =>
+				expect(view.getByTestId('instance-ai-test-agent-preview-looks-good')).toBeEnabled(),
+			);
+			await user.click(view.getByTestId('instance-ai-test-agent-preview-looks-good'));
+			await view.findByTestId('instance-ai-test-agent-examples-check-agent');
+			await user.click(view.getByTestId('instance-ai-test-agent-examples-check-agent'));
+			return { store, ...view };
+		}
+
+		// The response may have been lost after the server already seeded a run.
+		it('picks up a run the server did create, instead of showing a failure', async () => {
+			const { store, queryByTestId } = await commitWithFailingStart('suite-run-from-server');
+
+			await waitFor(() =>
+				expect(store.openRun).toHaveBeenCalledWith('project-1', 'agent-1', 'suite-run-from-server'),
+			);
+			expect(queryByTestId('instance-ai-test-agent-examples-run-failed')).not.toBeInTheDocument();
+			expect(showErrorMock).not.toHaveBeenCalled();
+		});
+
+		it('offers a retry when no run exists, and starts one on retry', async () => {
+			const { store, findByTestId, getByTestId, queryByTestId } =
+				await commitWithFailingStart(null);
+
+			expect(await findByTestId('instance-ai-test-agent-examples-run-failed')).toBeInTheDocument();
+			expect(showErrorMock).toHaveBeenCalled();
+			expect(store.deleteDraftDataset).not.toHaveBeenCalled();
+
+			vi.spyOn(store, 'startRun').mockResolvedValue({ id: 'retried-run' } as never);
+			await userEvent.setup().click(getByTestId('instance-ai-test-agent-examples-retry-run'));
+
+			await waitFor(() =>
+				expect(store.openRun).toHaveBeenCalledWith('project-1', 'agent-1', 'retried-run'),
+			);
+			expect(queryByTestId('instance-ai-test-agent-examples-run-failed')).not.toBeInTheDocument();
+		});
+
+		it('does not start a second run when a retry finds the first one landed late', async () => {
+			const { store, findByTestId, getByTestId } = await commitWithFailingStart(null);
+			await findByTestId('instance-ai-test-agent-examples-run-failed');
+
+			vi.spyOn(store, 'resolveLatestRunId').mockResolvedValue('late-run');
+			const startRun = vi.spyOn(store, 'startRun').mockClear();
+			await userEvent.setup().click(getByTestId('instance-ai-test-agent-examples-retry-run'));
+
+			await waitFor(() =>
+				expect(store.openRun).toHaveBeenCalledWith('project-1', 'agent-1', 'late-run'),
+			);
+			expect(startRun).not.toHaveBeenCalled();
+		});
 	});
 
 	it('hides the confirmed try, shows how many are left, and stops the run on request', async () => {

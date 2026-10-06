@@ -307,6 +307,19 @@ export const useAgentEvalsStore = defineStore(STORES.AGENT_EVALS, () => {
 			);
 	};
 
+	// Discards a draft dataset together with its backing Data Table — for rolling
+	// back a failed commit. Drops it from an already-loaded cache the same way
+	// `deleteDataset` does.
+	const deleteDraftDataset = async (projectId: string, agentId: string, datasetId: string) => {
+		await agentEvalsApi.deleteDraftDataset(rootStore.restApiContext, projectId, agentId, datasetId);
+		const current = datasetsByAgentId.value[agentId];
+		if (current)
+			setDatasets(
+				agentId,
+				current.filter((d) => d.id !== datasetId),
+			);
+	};
+
 	// Drafts one case and runs it against the agent directly — no Data Table, no
 	// dataset, no eval-run row, so nothing here needs a cache refresh.
 	const previewRun = async (
@@ -1187,6 +1200,7 @@ export const useAgentEvalsStore = defineStore(STORES.AGENT_EVALS, () => {
 		generateDraftCases,
 		createDraftDataset,
 		deleteDataset,
+		deleteDraftDataset,
 		previewRun,
 		getReview,
 		removeCachedResult,

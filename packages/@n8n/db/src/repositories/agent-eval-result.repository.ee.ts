@@ -1,5 +1,5 @@
 import { Service } from '@n8n/di';
-import { DataSource, Repository } from '@n8n/typeorm';
+import { DataSource, In, Repository } from '@n8n/typeorm';
 import type { IDataObject, JsonObject } from 'n8n-workflow';
 
 import { AgentEvalResult } from '../entities';
@@ -17,6 +17,18 @@ export type AgentEvalResultStatusCounts = Record<AgentEvalResultStatus, number>;
 // Insert seeded rows in chunks so a large dataset stays under the driver's bound
 // parameter limit (SQLite in particular).
 const SEED_CHUNK_SIZE = 100;
+
+const startedAttempt = () => ({
+	status: 'running' as const,
+	runAt: new Date(),
+	completedAt: null,
+	output: null,
+	toolCalls: null,
+	metrics: null,
+	verdict: null,
+	errorCode: null,
+	errorDetails: null,
+});
 
 @Service()
 export class AgentEvalResultRepository extends Repository<AgentEvalResult> {
@@ -72,17 +84,20 @@ export class AgentEvalResultRepository extends Repository<AgentEvalResult> {
 	/** Starts an attempt. Clears whatever a previous attempt left behind, so a
 	 *  rerun can't settle with an old error next to a new answer (or the reverse). */
 	async markAsRunning(id: string) {
-		return await this.update(id, {
-			status: 'running',
-			runAt: new Date(),
-			completedAt: null,
-			output: null,
-			toolCalls: null,
-			metrics: null,
-			verdict: null,
-			errorCode: null,
-			errorDetails: null,
-		});
+		return await this.update(id, startedAttempt());
+	}
+
+	/**
+	 * Atomically moves a settled result to `running`. Returns false when it was
+	 * not settled — already running, or claimed by a concurrent request — so only
+	 * one caller ever executes a given rerun.
+	 */
+	async claimForRerun(id: string): Promise<boolean> {
+		const claimed = await this.update(
+			{ id, status: In<AgentEvalResultStatus>(['success', 'error', 'cancelled']) },
+			startedAttempt(),
+		);
+		return (claimed.affected ?? 0) > 0;
 	}
 
 	async markAsCancelled(id: string) {

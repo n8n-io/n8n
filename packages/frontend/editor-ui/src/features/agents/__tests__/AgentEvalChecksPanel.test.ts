@@ -11,6 +11,12 @@ import AgentEvalChecksPanel from '../components/AgentEvalChecksPanel.vue';
 
 configure({ testIdAttribute: 'data-testid' });
 
+const { showError } = vi.hoisted(() => ({ showError: vi.fn() }));
+
+vi.mock('@n8n/composables/useToast', () => ({
+	useToast: () => ({ showError }),
+}));
+
 // The rows have their own suite; this one is about the panel around them.
 // Typed (not array) prop declarations so a bare `hide-revise` attribute
 // coerces to boolean `true`, same as the real component the mock stands in for.
@@ -337,15 +343,48 @@ describe('AgentEvalChecksPanel', () => {
 			expect(store.acceptResult).toHaveBeenCalledWith('project-1', 'agent-1', 'c1');
 		});
 
-		it('keeps the override local for a case that errored, which has no verdict to record', async () => {
+		// The judge never grades a case that errored, so the backend takes the user's
+		// call as a completed pass and the row reads as passing from it alone.
+		it('persists a pass for a case that errored too, instead of keeping it local', async () => {
 			const user = userEvent.setup();
 			const { getByTestId, store } = render({ results: [result('c1', 'error')] });
 
 			await user.click(within(getByTestId('agent-eval-check-c1')).getByText('actually fine'));
 
-			expect(store.acceptResult).not.toHaveBeenCalled();
+			expect(store.acceptResult).toHaveBeenCalledWith('project-1', 'agent-1', 'c1');
+		});
+
+		it('shows an errored case as passing once its accepted verdict is stored', () => {
+			const accepted = {
+				...result('c1', 'error'),
+				verdict: { status: 'completed' as const, outcome: 'pass' as const, reasoning: null },
+			};
+			const { getByTestId } = render({ results: [accepted] });
+
 			expect(getByTestId('agent-eval-check-c1')).toHaveAttribute('data-status', 'pass');
 		});
+
+		it('toasts and leaves the row alone when accepting fails', async () => {
+			const user = userEvent.setup();
+			const { getByTestId, store } = render({ results: [result('c1', 'error')] });
+			vi.mocked(store.acceptResult).mockRejectedValueOnce(new Error('forbidden'));
+
+			await user.click(within(getByTestId('agent-eval-check-c1')).getByText('actually fine'));
+
+			await vi.waitFor(() => expect(showError).toHaveBeenCalled());
+			expect(getByTestId('agent-eval-check-c1')).toHaveAttribute('data-status', 'fail');
+		});
+	});
+
+	// The checks view has no flow behind the row's Save check button, so the row
+	// must not offer it.
+	it('hides the correction note and Save check on every row', () => {
+		const { getByTestId } = render({
+			results: [result('c1', 'success'), result('c2', 'error')],
+		});
+
+		expect(getByTestId('agent-eval-check-c1')).toHaveAttribute('data-hide-revise', 'true');
+		expect(getByTestId('agent-eval-check-c2')).toHaveAttribute('data-hide-revise', 'true');
 	});
 
 	describe('deleting a check', () => {
@@ -428,6 +467,8 @@ describe('AgentEvalChecksPanel', () => {
 
 			await vi.waitFor(() => expect(store.deleteCase).toHaveBeenCalled());
 			expect(store.deleteResult).not.toHaveBeenCalled();
+			expect(showError).toHaveBeenCalledTimes(1);
+			expect(showError).toHaveBeenCalledWith(expect.any(Error), "Couldn't remove the test case");
 		});
 
 		it('toasts an error without calling deleteCase when the dataset cannot be resolved', async () => {
@@ -438,6 +479,8 @@ describe('AgentEvalChecksPanel', () => {
 			await user.click(within(getByTestId('agent-eval-check-c1')).getByText('delete check'));
 
 			expect(store.deleteCase).not.toHaveBeenCalled();
+			expect(showError).toHaveBeenCalledTimes(1);
+			expect(showError).toHaveBeenCalledWith(expect.any(Error), "Couldn't remove the test case");
 		});
 	});
 
@@ -708,10 +751,33 @@ describe('AgentEvalChecksPanel', () => {
 	// resetting `statusFilter` itself, no pill would read as selected even
 	// though every row is now showing.
 	it('resets the filter to "all" once marking the last needs-work row "actually fine" empties it', async () => {
-		const user = userEvent.setup();
-		const { getByTestId, getAllByTestId, queryByTestId } = render({
-			results: [result('pass-1', 'success'), result('fail-1', 'error')],
+		const pinia = createTestingPinia({ stubActions: true });
+		const store = useAgentEvalsStore();
+		const results = ref([result('pass-1', 'success'), result('fail-1', 'error')]);
+		vi.mocked(store.getReview).mockImplementation(() => ({
+			run: null,
+			results: results.value,
+			resultsCount: results.value.length,
+			ratingsByResultId: {},
+			pendingByResultId: {},
+			draftsByResultId: {},
+			counts: null,
+			loading: false,
+			loadingMore: false,
+		}));
+		vi.mocked(store.isRunInFlight).mockReturnValue(false);
+		vi.mocked(store.isStartingRun).mockReturnValue(false);
+		// What the real action does: the accepted verdict lands on the cached row.
+		vi.mocked(store.acceptResult).mockImplementation(async (_project, _agent, id) => {
+			results.value = results.value.map((r) =>
+				r.id === id
+					? { ...r, verdict: { status: 'completed', outcome: 'pass', reasoning: null } }
+					: r,
+			);
+			return results.value.find((r) => r.id === id) as AgentEvalResultRecord;
 		});
+		const user = userEvent.setup();
+		const { getByTestId, getAllByTestId, queryByTestId } = renderComponent({ pinia });
 
 		await user.click(getByTestId('agent-eval-checks-filter-needs-work'));
 		expect(getAllByTestId(/agent-eval-check-/)).toHaveLength(1);
@@ -721,7 +787,9 @@ describe('AgentEvalChecksPanel', () => {
 
 		// The needs-work pill is gone (nothing needs work anymore) and every row
 		// shows again — "all" is active, not a stale "needs-work" with no pill lit.
-		expect(queryByTestId('agent-eval-checks-filter-needs-work')).not.toBeInTheDocument();
+		await vi.waitFor(() =>
+			expect(queryByTestId('agent-eval-checks-filter-needs-work')).not.toBeInTheDocument(),
+		);
 		expect(getAllByTestId(/agent-eval-check-/)).toHaveLength(2);
 	});
 });

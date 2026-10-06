@@ -1002,6 +1002,10 @@ describe('AgentEvalRunnerService', () => {
 			status: 'error',
 		});
 
+		beforeEach(() => {
+			resultRepository.claimForRerun.mockResolvedValue(true);
+		});
+
 		it('refuses when the flag is off for the requesting user', async () => {
 			flagGate.assertEnabled.mockRejectedValue(new NotFoundError('Not found'));
 
@@ -1035,6 +1039,60 @@ describe('AgentEvalRunnerService', () => {
 				),
 			).rejects.toThrow('no input to rerun');
 			expect(evalAgentExecutionService.executeWithLlmMock).not.toHaveBeenCalled();
+		});
+
+		it('executes only when it wins the atomic claim, so concurrent requests run the case once', async () => {
+			resultRepository.claimForRerun.mockResolvedValue(false);
+
+			await expect(service.rerunResult(result, 'agent-1', 'proj-1', user)).rejects.toThrow(
+				'already running',
+			);
+
+			expect(resultRepository.claimForRerun).toHaveBeenCalledWith('res-1');
+			expect(evalAgentExecutionService.executeWithLlmMock).not.toHaveBeenCalled();
+		});
+
+		describe('editing the rule', () => {
+			it('needs agent:update on top of agent:execute, and changes nothing without it', async () => {
+				vi.mocked(userHasScopes).mockImplementation(
+					async (_user, scopes) => !scopes.includes('agent:update'),
+				);
+
+				await expect(
+					service.rerunResult(result, 'agent-1', 'proj-1', user, { whatToCheck: 'New rule' }),
+				).rejects.toThrow(ForbiddenError);
+
+				expect(resultRepository.claimForRerun).not.toHaveBeenCalled();
+				expect(resultRepository.updateInput).not.toHaveBeenCalled();
+				expect(evalAgentExecutionService.executeWithLlmMock).not.toHaveBeenCalled();
+			});
+
+			it('lets an execute-only user rerun as-is, since nothing is written', async () => {
+				vi.mocked(userHasScopes).mockImplementation(
+					async (_user, scopes) => !scopes.includes('agent:update'),
+				);
+				evalAgentExecutionService.executeWithLlmMock.mockResolvedValue(successExec() as never);
+				resultRepository.findById.mockResolvedValue(
+					mock<AgentEvalResult>({ ...result, status: 'success' }),
+				);
+
+				await service.rerunResult(result, 'agent-1', 'proj-1', user);
+
+				expect(evalAgentExecutionService.executeWithLlmMock).toHaveBeenCalled();
+			});
+
+			it('settles the claimed row as an error instead of leaving it running when saving the rule fails', async () => {
+				resultRepository.updateInput.mockRejectedValue(new Error('db down'));
+
+				await expect(
+					service.rerunResult(result, 'agent-1', 'proj-1', user, { whatToCheck: 'New rule' }),
+				).rejects.toThrow('db down');
+
+				expect(resultRepository.markAsError).toHaveBeenCalledWith('res-1', 'rerun_failed', {
+					message: 'db down',
+				});
+				expect(evalAgentExecutionService.executeWithLlmMock).not.toHaveBeenCalled();
+			});
 		});
 
 		it('rejects a whitespace-only input, like the batch path does', async () => {

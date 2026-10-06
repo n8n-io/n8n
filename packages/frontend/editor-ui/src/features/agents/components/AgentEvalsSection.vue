@@ -197,7 +197,9 @@ const onAddChecks = async (count: number) => {
 		if (createdDatasetId && !runSubmitted) {
 			// A partial insert leaves a persisted-but-incomplete dataset behind —
 			// delete it rather than let a retry pile up another one alongside it.
-			await store.deleteDataset(props.projectId, props.agentId, createdDatasetId).catch(() => null);
+			await store
+				.deleteDraftDataset(props.projectId, props.agentId, createdDatasetId)
+				.catch(() => null);
 		}
 		toast.showError(error, i18n.baseText('agents.builder.agentEvals.run.startError'));
 	} finally {

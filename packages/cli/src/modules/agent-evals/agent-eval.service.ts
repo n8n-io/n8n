@@ -128,6 +128,32 @@ export class AgentEvalService {
 		if (!deleted) throw new NotFoundError(`Agent eval dataset ${datasetId} not found.`);
 	}
 
+	// Discards a draft dataset *and* the Data Table `createDraftDataset` made for it
+	// — what a failed "commit this preview" has to clean up. Only for a draft that
+	// never ran: a dataset with runs is real history, and a table another dataset
+	// also reads from is not this draft's to remove, so that one stays.
+	async deleteDraftDataset(agentId: string, projectId: string, datasetId: string): Promise<void> {
+		await this.assertAgentInProject(agentId, projectId);
+		const dataset = await this.resolveDataset(agentId, datasetId);
+
+		if ((await this.runRepository.findByDatasetId(datasetId)).length > 0) {
+			throw new BadRequestError(`Agent eval dataset ${datasetId} already has runs.`);
+		}
+
+		const dataTableId = getDataTableId(dataset);
+		const sharesTable =
+			dataTableId !== null &&
+			(await this.datasetRepository.findByAgentId(agentId)).some(
+				(other) => other.id !== datasetId && getDataTableId(other) === dataTableId,
+			);
+
+		const deleted = await this.datasetRepository.deleteDataset(datasetId, agentId);
+		if (!deleted) throw new NotFoundError(`Agent eval dataset ${datasetId} not found.`);
+		if (dataTableId !== null && !sharesTable) {
+			await this.caseGenerationService.deleteDraftTable(dataTableId, projectId);
+		}
+	}
+
 	// ---- case generation ----
 
 	async generateDraftCases(
@@ -254,9 +280,11 @@ export class AgentEvalService {
 		return toResultRecord(updated);
 	}
 
-	// "Actually fine": the user overrides the judge's call on a finished case.
-	// Recorded as a passing verdict so every reader of the result (the checks
-	// view, reopened runs) sees the same status without a second source of truth.
+	// "Actually fine": the user overrides the judge's call — or an execution error —
+	// on a settled case. Recorded as a passing verdict so every reader of the
+	// result (the checks view, reopened runs) sees the same status without a second
+	// source of truth. Only a user can leave a completed pass on an errored or
+	// cancelled case, since the judge only ever grades cases that succeeded.
 	async acceptResult(
 		agentId: string,
 		projectId: string,
@@ -265,8 +293,8 @@ export class AgentEvalService {
 		await this.assertAgentInProject(agentId, projectId);
 		const result = await this.resolveResult(agentId, resultId);
 
-		if (result.status !== 'success') {
-			throw new BadRequestError(`Agent eval result ${resultId} has not finished successfully.`);
+		if (result.status === 'new' || result.status === 'running') {
+			throw new BadRequestError(`Agent eval result ${resultId} has not finished.`);
 		}
 
 		const verdict: AgentEvalVerdict = { status: 'completed', outcome: 'pass', reasoning: null };
@@ -277,14 +305,28 @@ export class AgentEvalService {
 		return toResultRecord(refreshed);
 	}
 
-	// Drops one case's result from its run. The run's own recorded counts and
-	// metrics are left as they were — this edits the suite going forward, not
-	// the history of what that run measured.
+	// Drops one case's result from its run, and brings a settled run's recorded
+	// counts back in line with the rows that remain.
 	async deleteResult(agentId: string, projectId: string, resultId: string): Promise<void> {
 		await this.assertAgentInProject(agentId, projectId);
 		const result = await this.resolveResult(agentId, resultId);
+
+		// A case that is still pending or running will keep writing to its row, so
+		// removing it would drop work the run then reports as done.
+		if (result.status === 'new' || result.status === 'running') {
+			throw new BadRequestError(`Agent eval result ${resultId} is still running.`);
+		}
+
 		const deleted = await this.resultRepository.deleteById(resultId, result.runId);
 		if (!deleted) throw new NotFoundError(`Agent eval result ${resultId} not found.`);
+
+		// A run that is still going records its tally when it settles; only a
+		// settled run has stored counts to correct.
+		const run = await this.runRepository.findById(result.runId);
+		if (run?.metrics) {
+			const { counts } = await this.runner.getRunSummary(run.id, agentId);
+			await this.runRepository.updateMetrics(run.id, { ...run.metrics, ...counts });
+		}
 	}
 
 	// Sets the flag rather than stopping anything: running cases abort at their next
@@ -345,4 +387,9 @@ export class AgentEvalService {
 
 		return result;
 	}
+}
+
+function getDataTableId(dataset: AgentEvalDataset): string | null {
+	if (dataset.datasetSource !== 'data_table') return null;
+	return 'dataTableId' in dataset.datasetRef ? dataset.datasetRef.dataTableId : null;
 }
