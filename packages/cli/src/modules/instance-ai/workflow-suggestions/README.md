@@ -29,7 +29,7 @@ Call the matching method on `WorkflowSuggestionActionsService` with the acting u
 | Method | Behavior |
 | --- | --- |
 | `approveAndPublish()` | Save the reviewed fix once. Request normal publication of that saved version. |
-| `applyAndOpenInEditor()` | Save the reviewed fix once without publication. The caller opens the editor. |
+| `apply()` | Save the reviewed fix once without publication. The caller decides whether to open the editor. |
 | `discard()` | Close a pending suggestion without changing the workflow. |
 
 Use **Approve and publish** as the action label. Only `fix_ready` permits Apply. All actions require current edit access. Approval also requires publish access. Save and publication respect editor write locks. Publication keeps the normal credential checks and enterprise review guards.

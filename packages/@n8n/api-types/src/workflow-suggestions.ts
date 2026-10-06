@@ -38,7 +38,7 @@ export type WorkflowSuggestionAction = WorkflowSuggestionAppliedVersion['action'
 export type WorkflowSuggestionAppliedVersion = {
 	versionId: string;
 	checksum: string;
-	action: 'approve-and-publish' | 'apply-and-open-in-editor';
+	action: 'approve-and-publish' | 'apply';
 	actorId: string;
 };
 

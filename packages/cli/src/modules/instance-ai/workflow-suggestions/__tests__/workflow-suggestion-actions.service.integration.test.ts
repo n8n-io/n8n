@@ -118,8 +118,8 @@ async function fixture(resultKind: 'fix_ready' | 'needs_you' = 'fix_ready') {
 	const suggestion = await suggestionService.createSuggestion(prepared);
 	const act = async (action: WorkflowSuggestionAction, actor = user) => {
 		switch (action) {
-			case 'apply-and-open-in-editor':
-				return await actions.applyAndOpenInEditor(actor, project.id, workflow.id, suggestion.id);
+			case 'apply':
+				return await actions.apply(actor, project.id, workflow.id, suggestion.id);
 			case 'approve-and-publish':
 				return await actions.approveAndPublish(actor, project.id, workflow.id, suggestion.id);
 			case 'discard':
@@ -129,11 +129,11 @@ async function fixture(resultKind: 'fix_ready' | 'needs_you' = 'fix_ready') {
 	return { user, workflow, original, project, graph, suggestion, act };
 }
 
-it('opens the applied version in the editor without changing the published version', async () => {
+it('saves the applied version without changing the published version', async () => {
 	const { original, graph, suggestion, act } = await fixture();
 	const beforeHistory = await history.countBy({ workflowId: original.id });
 
-	const detail = await act('apply-and-open-in-editor');
+	const detail = await act('apply');
 
 	const saved = await workflows.findOneByOrFail({ id: original.id });
 	expect(saved.nodes).toEqual(graph.nodes);
@@ -151,12 +151,12 @@ it('opens the applied version in the editor without changing the published versi
 it('returns the applied version when the same action is repeated', async () => {
 	const { original, suggestion, act } = await fixture();
 	const notify = vi.spyOn(Container.get(CollaborationService), 'broadcastWorkflowUpdate');
-	await act('apply-and-open-in-editor');
+	await act('apply');
 	const saved = await workflows.findOneByOrFail({ id: original.id });
 	const beforeHistory = await history.countBy({ workflowId: original.id });
 	const beforeActivity = await suggestions.getActivity(suggestion.id);
 
-	await act('apply-and-open-in-editor');
+	await act('apply');
 
 	expect(await workflows.findOneByOrFail({ id: original.id })).toEqual(saved);
 	expect(await history.countBy({ workflowId: original.id })).toBe(beforeHistory);
@@ -168,10 +168,7 @@ it('saves one version when two requests apply the same proposal at once', async 
 	const { original, suggestion, act } = await fixture();
 	const beforeHistory = await history.countBy({ workflowId: original.id });
 
-	const results = await Promise.allSettled([
-		act('apply-and-open-in-editor'),
-		act('apply-and-open-in-editor'),
-	]);
+	const results = await Promise.allSettled([act('apply'), act('apply')]);
 	const saved = await workflows.findOneByOrFail({ id: original.id });
 
 	expect(results.some(({ status }) => status === 'fulfilled')).toBe(true);
@@ -218,7 +215,7 @@ it('rejects applying a Needs attention result', async () => {
 	const { original, suggestion, act } = await fixture('needs_you');
 	const beforeHistory = await history.countBy({ workflowId: original.id });
 
-	await expect(act('apply-and-open-in-editor')).rejects.toThrow();
+	await expect(act('apply')).rejects.toThrow();
 
 	expect(await workflows.findOneByOrFail({ id: original.id })).toEqual(original);
 	expect(await history.countBy({ workflowId: original.id })).toBe(beforeHistory);
@@ -287,29 +284,26 @@ it('keeps a moved proposal outdated when discard rejects the old project', async
 	expect(await workflows.findOneByOrFail({ id: original.id })).toEqual(original);
 });
 
-describe.each(['apply-and-open-in-editor', 'approve-and-publish', 'discard'] as const)(
-	'%s permissions',
-	(action) => {
-		it.each(['disabled', 'unrelated'] as const)('rejects a %s user', async (access) => {
-			const { user, original, project, suggestion, act } = await fixture();
-			const actor = access === 'disabled' ? user : await createUser();
-			if (access === 'disabled') {
-				await Container.get(UserRepository).update(actor.id, { disabled: true });
-			}
-			const scope = { workflowId: original.id, projectId: project.id };
-			const beforeSuggestion = await suggestions.getSuggestion(suggestion.id, scope);
-			const beforeActivity = await suggestions.getActivity(suggestion.id);
+describe.each(['apply', 'approve-and-publish', 'discard'] as const)('%s permissions', (action) => {
+	it.each(['disabled', 'unrelated'] as const)('rejects a %s user', async (access) => {
+		const { user, original, project, suggestion, act } = await fixture();
+		const actor = access === 'disabled' ? user : await createUser();
+		if (access === 'disabled') {
+			await Container.get(UserRepository).update(actor.id, { disabled: true });
+		}
+		const scope = { workflowId: original.id, projectId: project.id };
+		const beforeSuggestion = await suggestions.getSuggestion(suggestion.id, scope);
+		const beforeActivity = await suggestions.getActivity(suggestion.id);
 
-			await expect(act(action, actor)).rejects.toThrow('edit access');
+		await expect(act(action, actor)).rejects.toThrow('edit access');
 
-			expect(await workflows.findOneByOrFail({ id: original.id })).toEqual(original);
-			expect(await suggestions.getSuggestion(suggestion.id, scope)).toEqual(beforeSuggestion);
-			expect(await suggestions.getActivity(suggestion.id)).toEqual(beforeActivity);
-		});
-	},
-);
+		expect(await workflows.findOneByOrFail({ id: original.id })).toEqual(original);
+		expect(await suggestions.getSuggestion(suggestion.id, scope)).toEqual(beforeSuggestion);
+		expect(await suggestions.getActivity(suggestion.id)).toEqual(beforeActivity);
+	});
+});
 
-it.each(['apply-and-open-in-editor', 'approve-and-publish'] as const)(
+it.each(['apply', 'approve-and-publish'] as const)(
 	'closes a proposal as outdated on %s after settings change without a new version',
 	async (action) => {
 		const { original, act } = await fixture();
@@ -343,7 +337,7 @@ it('closes a proposal after publication changes even if the original version is 
 		});
 	}
 
-	const detail = await act('apply-and-open-in-editor');
+	const detail = await act('apply');
 
 	expect(detail).toMatchObject({ state: 'closed', closedReason: 'outdated' });
 	expect(await workflows.findOneByOrFail({ id: original.id })).toEqual(original);
@@ -356,7 +350,7 @@ it('keeps the workflow, history, and proposal unchanged when save policy rejects
 		new Error('The workflow does not meet the save policy.'),
 	);
 
-	await expect(act('apply-and-open-in-editor')).rejects.toThrow('save policy');
+	await expect(act('apply')).rejects.toThrow('save policy');
 
 	expect(await workflows.findOneByOrFail({ id: original.id })).toEqual(original);
 	expect(await history.countBy({ workflowId: original.id })).toBe(beforeHistory);
@@ -381,7 +375,7 @@ it.each(['nodes', 'staticData'] as const)(
 			}
 		});
 
-		await expect(act('apply-and-open-in-editor')).rejects.toThrow('save preparation');
+		await expect(act('apply')).rejects.toThrow('save preparation');
 
 		expect(await workflows.findOneByOrFail({ id: original.id })).toEqual(original);
 		expect(await history.countBy({ workflowId: original.id })).toBe(beforeHistory);
@@ -399,7 +393,7 @@ it('leaves the proposal pending when another editor holds the write lock', async
 		new Error('The workflow is locked by another editor.'),
 	);
 
-	await expect(act('apply-and-open-in-editor')).rejects.toThrow('locked');
+	await expect(act('apply')).rejects.toThrow('locked');
 
 	expect(await workflows.findOneByOrFail({ id: original.id })).toEqual(original);
 	expect(await history.countBy({ workflowId: original.id })).toBe(beforeHistory);
@@ -426,7 +420,7 @@ it.each(['disabled user', 'removed membership'] as const)(
 			}
 		});
 
-		await expect(act('apply-and-open-in-editor')).rejects.toThrow('edit access');
+		await expect(act('apply')).rejects.toThrow('edit access');
 
 		expect(await workflows.findOneByOrFail({ id: original.id })).toEqual(original);
 		expect(await history.countBy({ workflowId: original.id })).toBe(beforeHistory);
@@ -441,7 +435,7 @@ it('keeps the workflow and suggestion unchanged when history cannot be saved', a
 	const error = new Error('History unavailable.');
 	vi.spyOn(history, 'insertVersion').mockRejectedValueOnce(error);
 
-	await expect(act('apply-and-open-in-editor')).rejects.toBe(error);
+	await expect(act('apply')).rejects.toBe(error);
 
 	expect(await workflows.findOneByOrFail({ id: original.id })).toEqual(original);
 	expect(await history.countBy({ workflowId: original.id })).toBe(beforeHistory);
@@ -456,7 +450,7 @@ it('rolls back the graph and history when the action activity cannot be saved', 
 	const beforeHistory = await history.countBy({ workflowId: original.id });
 	vi.spyOn(suggestions, 'appendActivity').mockRejectedValueOnce(new Error('Activity unavailable.'));
 
-	await expect(act('apply-and-open-in-editor')).rejects.toThrow('Activity unavailable.');
+	await expect(act('apply')).rejects.toThrow('Activity unavailable.');
 
 	expect(await workflows.findOneByOrFail({ id: original.id })).toEqual(original);
 	expect(await history.countBy({ workflowId: original.id })).toBe(beforeHistory);
@@ -471,7 +465,7 @@ it('resolves concurrent apply and discard actions to one terminal state', async 
 	const { original, graph, suggestion, act } = await fixture();
 	const beforeHistory = await history.countBy({ workflowId: original.id });
 
-	const outcomes = await Promise.allSettled([act('apply-and-open-in-editor'), act('discard')]);
+	const outcomes = await Promise.allSettled([act('apply'), act('discard')]);
 	const stored = await suggestions.findOneByOrFail({ id: suggestion.id });
 	const saved = await workflows.findOneByOrFail({ id: original.id });
 	expect(stored.state).toBe('closed');
@@ -528,9 +522,7 @@ it.skipIf(process.env.DB_TYPE !== 'postgresdb')(
 			return await closePending(...args);
 		});
 		try {
-			await expect(act('apply-and-open-in-editor')).rejects.toThrow(
-				'The suggestion has already closed.',
-			);
+			await expect(act('apply')).rejects.toThrow('The suggestion has already closed.');
 			expect(await suggestions.findOneByOrFail({ id: suggestion.id })).toMatchObject({
 				closedReason: 'discarded',
 				appliedVersion: null,
@@ -563,7 +555,7 @@ it('rejects an intervening edit and closes the suggestion on the next action', a
 		await resume.promise;
 	});
 	const beforeHistory = await history.countBy({ workflowId: original.id });
-	const apply = act('apply-and-open-in-editor');
+	const apply = act('apply');
 	const rejected = expect(apply).rejects.toThrow('no longer matches');
 	await prepared.promise;
 	try {
@@ -591,7 +583,7 @@ it('rejects an intervening edit and closes the suggestion on the next action', a
 		expect((await suggestions.getActivity(suggestion.id)).map(({ action }) => action)).toEqual([
 			'submitted',
 		]);
-		expect(await act('apply-and-open-in-editor')).toMatchObject({
+		expect(await act('apply')).toMatchObject({
 			state: 'closed',
 			closedReason: 'outdated',
 		});

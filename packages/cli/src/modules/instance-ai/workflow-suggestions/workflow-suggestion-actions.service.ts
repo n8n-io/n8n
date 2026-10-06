@@ -31,7 +31,7 @@ export class WorkflowSuggestionActionsService {
 		private readonly logger: Logger,
 	) {}
 
-	async applyAndOpenInEditor(
+	async apply(
 		actor: User,
 		projectId: string,
 		workflowId: string,
@@ -43,7 +43,7 @@ export class WorkflowSuggestionActionsService {
 			user,
 			{ workflowId, projectId },
 			suggestionId,
-			'apply-and-open-in-editor',
+			'apply',
 			clientId,
 		);
 		if (newlyAppliedVersion) await this.notifyEditors(workflowId, user.id);
