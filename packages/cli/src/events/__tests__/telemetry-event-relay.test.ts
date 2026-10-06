@@ -4554,6 +4554,66 @@ describe('TelemetryEventRelay', () => {
 			expect(telemetry.track).toHaveBeenCalledWith('User ran out of free AI credits');
 		});
 	});
+	describe('migration report events', () => {
+		it('tracks the overview counts when the report is viewed', () => {
+			const payload: RelayEventMap['migration-report-viewed'] = {
+				user: { id: 'user-1' },
+				targetVersion: 'v3',
+				refreshed: true,
+				report: {
+					report: {
+						generatedAt: new Date('2026-01-01T00:00:00.000Z'),
+						targetVersion: 'v3',
+						currentVersion: '2.0.0',
+						instanceResults: [
+							{
+								ruleId: 'docker-only-deployment-v3',
+								ruleTitle: 'Title',
+								ruleDescription: 'Description',
+								ruleImpact: 'upgradeBlocked',
+								ruleDocumentationUrl: 'https://docs.n8n.io',
+								recommendations: [],
+								migratable: false,
+								instanceIssues: [],
+							},
+						],
+						workflowResults: [
+							{
+								ruleId: 'removed-nodes-v3',
+								ruleTitle: 'Title',
+								ruleDescription: 'Description',
+								ruleImpact: 'executionsFail',
+								ruleDocumentationUrl: 'https://docs.n8n.io',
+								recommendations: [],
+								migratable: false,
+								nbAffectedWorkflows: 4,
+							},
+						],
+					},
+					totalWorkflows: 10,
+					totalAffectedWorkflows: 4,
+					shouldCache: false,
+				},
+			};
+
+			eventService.emit('migration-report-viewed', payload);
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.MIGRATION_REPORT.USER_VIEWED_MIGRATION_REPORT,
+				{
+					user_id: 'user-1',
+					target_version: 'v3',
+					refreshed: true,
+					total_workflows: 10,
+					affected_workflows: 4,
+					affected_instance_rules: 1,
+					rules: [{ rule_id: 'removed-nodes-v3', impact: 'executionsFail', affected_workflows: 4 }],
+					synced_at: '2026-01-01T00:00:00.000Z',
+				},
+			);
+		});
+	});
+
 	describe('workflow history compaction events', () => {
 		it('should call telemetry.track when compacting history finishes', async () => {
 			const payload = {
