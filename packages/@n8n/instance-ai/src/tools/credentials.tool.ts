@@ -15,6 +15,7 @@ import { z } from 'zod';
 
 import { sanitizeInputSchema } from '../agent/sanitize-mcp-schemas';
 import type { CredentialSummary, InstanceAiContext, SetupItemsEmitter } from '../types';
+import { contractCredentialOf } from './contract-catalog';
 import {
 	buildChatModelProviderHint,
 	isChatModelProviderCredentialType,
@@ -772,7 +773,11 @@ async function handleSearchTypes(
 	const allResults = await context.credentialService.searchCredentialTypes(input.query);
 
 	// Filter out generic auth types — the AI should use dedicated types
-	const results = allResults.filter((r) => !GENERIC_AUTH_CREDENTIAL_TYPES.has(r.type));
+	const dedicated = allResults.filter((r) => !GENERIC_AUTH_CREDENTIAL_TYPES.has(r.type));
+	// A type with a contract manifest keeps its n8n name, so setup and legacy nodes still use it.
+	const results = context.nodeContractsEnabled
+		? dedicated.map((result) => ({ ...result, ...contractCredentialOf(result.type) }))
+		: dedicated;
 
 	if (results.length === 0) {
 		return {

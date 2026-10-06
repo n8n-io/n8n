@@ -1,9 +1,12 @@
 import type { Action } from '@n8n/node-sdk';
 import {
+	bundledCredentialsOf,
 	contractCatalogOf,
 	contractNodeTypeOf,
+	embeddedStoreDirOf,
 	type CatalogEntry,
 	type ContractCatalog,
+	type CredentialManifest,
 } from '@n8n/node-sdk/registry';
 import { ACTION_ORDER as CORE_ORDER } from '@n8n/nodes-core/catalog';
 import {
@@ -158,6 +161,71 @@ export function actionOfNode(node: WorkflowNodeRef) {
 		? contractActions().find(({ id, version }) => id === slot.id && version === slot.major)
 		: contractActions().find((action) => nodeTypeOf(action) === node.type);
 }
+
+/**
+ * How a user authorizes a credential type: an OAuth2 grant, OIDC, entered fields, or nothing. A
+ * type that signs no request can still have fields, e.g. the app secret of a webhook signature.
+ */
+const authorizationOf = ({ scheme, fields }: CredentialManifest) =>
+	scheme.kind === 'oauth2'
+		? `oauth2.${scheme.grant}`
+		: scheme.kind === 'oidc'
+			? scheme.kind
+			: Object.keys(fields.properties ?? {}).length > 0
+				? 'fields'
+				: 'none';
+
+/** A credential type of the contract nodes, from its frozen manifest. */
+export interface ContractCredential {
+	/** The credential id, e.g. `notion.token`. */
+	readonly credential: string;
+	/** e.g. `oauth2.authorizationCode`, `oidc`, `fields` or `none`. */
+	readonly authorization: string;
+	/** The provider scopes that the OAuth2 or OIDC app asks for. */
+	readonly providerScopes?: readonly string[];
+	/** The user may replace the provider scopes in the form. */
+	readonly editableScopes?: true;
+	/** The contract nodes that accept the type, each with the scopes that its contracts need. */
+	readonly nodes: Readonly<Record<string, readonly string[]>>;
+}
+
+const contractCredentials = once(
+	(): ReadonlyMap<string, ContractCredential> =>
+		new Map(
+			firstPartyCatalog()
+				.packages.flatMap((pkg) => bundledCredentialsOf(embeddedStoreDirOf(pkg)))
+				.map(({ manifest }): [string, ContractCredential] => {
+					const { scheme } = manifest;
+					const providerScopes = 'scope' in scheme ? scheme.scope : [];
+					const nodes = firstPartyCatalog()
+						.entries.map(({ manifest: { contract } }) => contract)
+						.filter(({ credentials }) => credentials.includes(manifest.name))
+						.reduce<Record<string, readonly string[]>>(
+							(byNode, { node, scopes = [] }) => ({
+								...byNode,
+								[node]: [...new Set([...(byNode[node] ?? []), ...scopes])].sort(),
+							}),
+							{},
+						);
+					const credential: ContractCredential = {
+						credential: manifest.id,
+						authorization: authorizationOf(manifest),
+						...(providerScopes.length > 0 ? { providerScopes } : {}),
+						...('editableScopes' in scheme && scheme.editableScopes
+							? { editableScopes: true }
+							: {}),
+						nodes,
+					};
+					return [manifest.name, credential];
+				}),
+		),
+);
+
+/**
+ * The credential type of an n8n type name, e.g. `notionApi`, from the embedded manifests.
+ * `undefined` for a type without a manifest: a legacy or compat type.
+ */
+export const contractCredentialOf = (name: string) => contractCredentials().get(name);
 
 /** The action that a tool node of a contract package runs. */
 export const toolActionOfNode = (node: Pick<WorkflowNodeRef, 'type'>) =>

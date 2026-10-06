@@ -869,6 +869,84 @@ describe('nodes tool', () => {
 			expect(executeNodeService.execute).not.toHaveBeenCalled();
 		});
 
+		describe('contract node', () => {
+			const contractInput = (parameters: Record<string, unknown>) => ({
+				action: 'execute',
+				type: '@n8n/nodes-integrations.notionDatabasePageGetAll',
+				version: 1,
+				config: { parameters },
+			});
+
+			async function executeContractNode(
+				parameters: Record<string, unknown>,
+				nodeContractsEnabled: boolean,
+			) {
+				const executeNodeService = { execute: vi.fn() };
+				const suspend = vi.fn();
+				const tool = createNodesTool(
+					createMockContext({ executeNodeService, nodeContractsEnabled }),
+					'full',
+				);
+				const result = await executeTool(
+					tool,
+					contractInput(parameters) as never,
+					{
+						suspend,
+					} as never,
+				);
+				return { result, suspend, executeNodeService };
+			}
+
+			it('rejects parameters that fail the contract input schema', async () => {
+				const { result, suspend, executeNodeService } = await executeContractNode(
+					{ database: 'Invoices' },
+					true,
+				);
+
+				expect(result).toMatchObject({
+					status: 'error',
+					error: {
+						message:
+							'Node parameters do not match the schema for @n8n/nodes-integrations.notionDatabasePageGetAll v1',
+						issues: [
+							{ path: 'parameters.database', message: expect.stringContaining('"Invoices"') },
+						],
+					},
+				});
+				expect(validateNodeConfig).not.toHaveBeenCalled();
+				expect(suspend).not.toHaveBeenCalled();
+				expect(executeNodeService.execute).not.toHaveBeenCalled();
+			});
+
+			it('reports a missing required contract field', async () => {
+				const { result } = await executeContractNode({}, true);
+
+				expect(result).toMatchObject({
+					error: { issues: [{ path: 'parameters.database', message: 'is required' }] },
+				});
+			});
+
+			it('accepts parameters that match the contract input schema', async () => {
+				const { suspend } = await executeContractNode(
+					{ database: '0123456789abcdef0123456789abcdef', limit: '={{ $json.limit }}' },
+					true,
+				);
+
+				expect(suspend).toHaveBeenCalledTimes(1);
+			});
+
+			it('checks a contract node with the legacy schemas when node contracts are off', async () => {
+				const { suspend } = await executeContractNode({ database: 'Invoices' }, false);
+
+				expect(validateNodeConfig).toHaveBeenCalledWith(
+					'@n8n/nodes-integrations.notionDatabasePageGetAll',
+					1,
+					{ parameters: { database: 'Invoices' } },
+				);
+				expect(suspend).toHaveBeenCalledTimes(1);
+			});
+		});
+
 		it('should treat missing-discriminator-only validation errors as non-blocking', async () => {
 			const executeNodeService = { execute: vi.fn() };
 			const suspendFn = vi.fn();

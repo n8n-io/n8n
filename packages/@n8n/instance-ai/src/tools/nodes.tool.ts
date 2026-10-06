@@ -17,11 +17,14 @@ import {
 	instanceAiConfirmationSeveritySchema,
 	NODE_RESOURCE_GRANT_FALLBACK_KEYS,
 } from '@n8n/api-types';
+import { validate } from '@n8n/node-sdk';
+import { contractInputOf, parameterPathOf } from '@n8n/node-sdk/host';
 import { validateNodeConfig } from '@n8n/workflow-sdk';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
 import { sanitizeInputSchema } from '../agent/sanitize-mcp-schemas';
+import { actionOfNode, isContractNodeType } from './contract-catalog';
 import {
 	actionRow,
 	actionRowsOfNode,
@@ -974,6 +977,43 @@ async function buildExecuteNodeLabels(
 	};
 }
 
+// A contract input issue `input.<field><rest>: <message>`, e.g. `input.database: is required`.
+const CONTRACT_ISSUE = /^input(?:\.([^.[:]+))?(\S*): (.*)$/s;
+
+/**
+ * The parameter issues that block a run. With node contracts, a node that runs a contract action
+ * is checked against the input schema of that action major; the legacy schemas have no entry for
+ * it. Every other node is checked against its legacy schema.
+ */
+function executeInputIssues(
+	context: InstanceAiContext,
+	input: ExecuteInput,
+): Array<{ path: string; message: string }> {
+	const node = {
+		type: input.type,
+		typeVersion: input.version,
+		parameters: input.config.parameters,
+	};
+	const action = context.nodeContractsEnabled ? actionOfNode(node) : undefined;
+	// The catalog has the newest major of a contract type only, so an older major is not checked.
+	if (action && (!isContractNodeType(input.type) || action.version === input.version)) {
+		const contractInput = contractInputOf(input.config.parameters, action.inputSchema, action.ui);
+		const pathOf = parameterPathOf(action.inputSchema, action.ui);
+		// Report the parameter path that the agent wrote, as the legacy check does.
+		return validate(contractInput, action.inputSchema, { allowExpressions: true }).map((issue) => {
+			const [, field, rest = '', message = issue] = CONTRACT_ISSUE.exec(issue) ?? [];
+			return {
+				path: field ? `parameters.${pathOf(field)}${rest}` : `parameters${rest}`,
+				message,
+			};
+		});
+	}
+	// Missing discriminators fall back to node defaults at runtime, so they don't block.
+	return validateNodeConfig(input.type, input.version, input.config)
+		.errors.filter((error) => !error.missingDiscriminator)
+		.map(({ path, message }) => ({ path, message }));
+}
+
 async function handleExecute(
 	context: InstanceAiContext,
 	rawInput: ExecuteInput,
@@ -1003,15 +1043,13 @@ async function handleExecute(
 	}
 	const input = parsedInput.data;
 
-	const validation = validateNodeConfig(input.type, input.version, input.config);
-	// Missing discriminators fall back to node defaults at runtime, so they don't block.
-	const blockingErrors = validation.errors.filter((error) => !error.missingDiscriminator);
-	if (blockingErrors.length > 0) {
+	const issues = executeInputIssues(context, input);
+	if (issues.length > 0) {
 		return {
 			status: 'error' as const,
 			error: {
 				message: `Node parameters do not match the schema for ${input.type} v${input.version}`,
-				issues: blockingErrors.map(({ path, message }) => ({ path, message })),
+				issues,
 			},
 		};
 	}

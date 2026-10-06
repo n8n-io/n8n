@@ -1,6 +1,7 @@
 import { isZodSchema } from '@n8n/agents';
 import { zodToJsonSchema } from '@n8n/ai-utilities/json-schema';
 import type { InstanceAiPermissions } from '@n8n/api-types';
+import { createHash } from 'node:crypto';
 import type { Mock } from 'vitest';
 
 import { executeTool } from '../../__tests__/tool-test-utils';
@@ -103,6 +104,22 @@ function arrayItems(schema: JsonSchema): JsonSchema {
 // ── Tests ────────────────────────────────────────────────────────────────────
 
 describe('credentials tool', () => {
+	it('keeps the master description and input schema when node contracts are off', () => {
+		const tool = createCredentialsTool({
+			credentialService: {},
+			permissions: {},
+			nodeContractsEnabled: false,
+		} as unknown as InstanceAiContext);
+		const text = JSON.stringify({
+			description: getDescription(tool),
+			schema: inputJsonSchema(tool),
+		});
+
+		expect(createHash('sha256').update(text).digest('hex')).toBe(
+			'c97a31e811a5c31b223219c1e2e6e20c8b3962c344875cd9fad0e31ca293eaeb',
+		);
+	});
+
 	it.each([false, undefined])(
 		'omits descriptions and selection guidance when the flag is %s',
 		async (credentialDescriptionsEnabled) => {
@@ -888,6 +905,65 @@ describe('credentials tool', () => {
 			expect((result as { results: unknown[] }).results).toEqual([
 				{ type: 'slackApi', displayName: 'Slack API' },
 			]);
+		});
+
+		describe('contract credential manifests', () => {
+			const searchResults = [
+				{ type: 'notionApi', displayName: 'Notion API' },
+				{ type: 'gmailOAuth2', displayName: 'Gmail OAuth2 API' },
+				{ type: 'whatsAppTriggerApi', displayName: 'WhatsApp OAuth API' },
+				{ type: 'notionDeprecatedApi', displayName: 'Notion (legacy)' },
+			];
+
+			async function searchTypes(nodeContractsEnabled: boolean) {
+				const context = createMockContext({ nodeContractsEnabled });
+				vi.mocked(context.credentialService.searchCredentialTypes!).mockResolvedValue(
+					searchResults,
+				);
+				const tool = createCredentialsTool(context);
+				return await executeTool(
+					tool,
+					{ action: 'search-types' as const, query: 'notion' },
+					noSuspendCtx(),
+				);
+			}
+
+			it('adds the manifest, authorization and scopes of contract types', async () => {
+				const { results } = (await searchTypes(true)) as { results: unknown[] };
+
+				expect(results).toEqual([
+					{
+						type: 'notionApi',
+						displayName: 'Notion API',
+						credential: 'notion.token',
+						authorization: 'fields',
+						nodes: { notion: expect.arrayContaining(['content:read']) },
+					},
+					{
+						type: 'gmailOAuth2',
+						displayName: 'Gmail OAuth2 API',
+						credential: 'gmail.oauth2',
+						authorization: 'oauth2.authorizationCode',
+						providerScopes: expect.arrayContaining([
+							'https://www.googleapis.com/auth/gmail.modify',
+						]),
+						editableScopes: true,
+						nodes: { gmail: expect.any(Array) },
+					},
+					{
+						type: 'whatsAppTriggerApi',
+						displayName: 'WhatsApp OAuth API',
+						credential: 'whatsApp.app',
+						authorization: 'fields',
+						nodes: { whatsAppTrigger: [] },
+					},
+					{ type: 'notionDeprecatedApi', displayName: 'Notion (legacy)' },
+				]);
+			});
+
+			it('returns the adapter results unchanged when node contracts are off', async () => {
+				expect(await searchTypes(false)).toEqual({ results: searchResults });
+			});
 		});
 
 		it('should return empty results when searchCredentialTypes is not available', async () => {
