@@ -269,17 +269,16 @@ the top of the composer. Use `--background--subtle` for the queue background.
 Use `--color--neutral-600` for queue text and the Steer label in light mode.
 Use `--text-color--subtler` in dark mode. Use `--color--neutral-400` for all queue
 icons. Use `--border-color--subtle` for the dividers.
-Use `2xs` text and `large` icons. Keep the action targets at least 24 by 24 pixels.
-Keep the first two messages visible.
-Put the third and later messages in a collapsed activity group. Show the number
-of additional pending messages in its header. Keep messages in queue order when
-expanded.
+Use `xs` text and `medium` icons. Keep the action targets at least 24 by 24 pixels.
+Show a single queued message without a toggle or drag handle.
+Collapse the full list when the queue has two or more messages. Show the total
+message count in the header. Keep messages in queue order when expanded.
 Keep pending messages out of the conversation until processing starts. Give each
 message a Remove action. Hide an empty queue section. Removal discards the
 message. It does not restore the composer draft.
 
-Edit queued text in place. Use compact Save and Cancel icon actions. Enter saves, Shift+Enter adds a line, and Escape cancels. Keep attachments unchanged. Do not pause the queue during editing. If the message starts, disable Save and retain the draft until the user dismisses it.
+Edit removes the pending message from the queue and restores its text and attachments in the composer. Restore the draft only after removal succeeds. Disable Edit while the composer has a draft. Alt/Option+ArrowUp in the composer edits the last queued message. Ignore the shortcut if that message is busy or the composer has a draft. Send uses the normal message path and adds the message to the end of the queue if a turn is still running. Do not pause the queue.
 
-Put a six-dot drag handle on the left of each pending message. Drag the handle to move the message. Support the Up and Down arrow keys on the handle. Expand the queue when a drag starts or a message moves. Keep keyboard focus on the moved message. Show the new order during saving. Disable queue actions while the order saves. Messages reserved for steering cannot move. If the move no longer applies, refresh the queue and show an error.
+Show drag handles only when the queue has two or more messages. Put a six-dot drag handle on the left of each pending message in that queue. Drag the handle to move the message. Support the Up and Down arrow keys on the handle. Expand the queue when a drag starts or a message moves. Keep keyboard focus on the moved message. Show the new order during saving. Disable queue actions while the order saves. Messages reserved for steering cannot move. If the move no longer applies, refresh the queue and show an error.
 
-Put the action to send a message to the current execution immediately before Edit. Use the existing corner-down-right icon with the Steer label on its right. Use the existing button and tooltip. Enable it only when the server reports an eligible execution. Keep an accepted steering request in the panel with a waiting status. Disable its actions until the runtime consumes it or returns it to ordinary queue processing. Preserve an open edit draft if another client reserves the message, and disable Save. When the runtime consumes the message, show it between the surrounding assistant output. Keep Stop bound to the same execution.
+Put the action to send a message to the current execution immediately before Edit. Use the existing corner-down-right icon with the Steer label on its right. Use the existing button and tooltip. Enable it only when the server reports an eligible execution. Keep an accepted steering request in the panel with a waiting status. Disable its actions until the runtime consumes it or returns it to ordinary queue processing. When the runtime consumes the message, show it between the surrounding assistant output. Keep Stop bound to the same execution.

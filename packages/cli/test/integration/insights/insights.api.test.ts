@@ -10,8 +10,8 @@ import type { Project } from '@n8n/db';
 import { GLOBAL_ADMIN_ROLE, GLOBAL_MEMBER_ROLE, GLOBAL_OWNER_ROLE } from '@n8n/db';
 import { DateTime } from 'luxon';
 
-import { createCompactedInsightsEvent } from '@/modules/insights/database/entities/__tests__/db-utils';
-import type { InsightsByPeriod } from '@/modules/insights/database/entities/insights-by-period';
+import { createCompactedInsightsEvent } from '@n8n/backend-module-insights/testing';
+import type { InsightsByPeriod } from '@n8n/backend-module-insights';
 import { Telemetry } from '@/telemetry';
 
 import { createCustomRoleWithScopeSlugs } from '../shared/db/roles';
