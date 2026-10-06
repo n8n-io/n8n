@@ -122,7 +122,7 @@ packages/cli/src/tool-generation/                       @n8n-io/ai
 packages/cli/src/modules/workflow-builder/              @n8n-io/ai
 packages/cli/src/modules/mcp/                           @n8n-io/adore
 packages/cli/src/modules/quick-connect/                 @n8n-io/ai
-packages/cli/src/modules/chat-hub/                      @n8n-io/ai
+packages/cli/src/modules/chat-hub/                      @n8n-io/ai-assistant
 packages/cli/src/modules/instance-ai/                   @n8n-io/ai-assistant
 
 packages/cli/src/modules/community-packages/            @n8n-io/nodes
@@ -182,6 +182,7 @@ packages/cli/src/services/dynamic-node-parameters.service.ts @n8n-io/nodes
 
 packages/frontend/editor-ui/                            @n8n-io/frontend
 packages/frontend/editor-ui/src/features/ai/            @n8n-io/ai
+packages/frontend/editor-ui/src/features/ai/chatHub/    @n8n-io/ai-assistant
 packages/frontend/editor-ui/src/features/credentials/   @n8n-io/iam
 packages/frontend/editor-ui/src/features/execution/     @n8n-io/ligo
 packages/frontend/editor-ui/src/features/integrations/  @n8n-io/ligo
@@ -204,9 +205,21 @@ packages/@n8n/ai-workflow-builder.ee/                   @n8n-io/ai
 packages/@n8n/agents/                                   @n8n-io/ai
 packages/frontend/@n8n/chat/                            @n8n-io/ai
 
-# Chat
+# Chat Hub
 
-packages/@n8n/chat-hub/                                 @n8n-io/ai
+packages/@n8n/chat-hub/                                 @n8n-io/ai-assistant
+packages/@n8n/api-types/src/chat-hub.ts                 @n8n-io/ai-assistant
+packages/@n8n/api-types/src/push/chat-hub.ts            @n8n-io/ai-assistant
+packages/@n8n/config/src/configs/chat-hub.config.ts     @n8n-io/ai-assistant
+packages/@n8n/nodes-langchain/nodes/vector_store/ChatHubVectorStorePGVector/ @n8n-io/ai-assistant
+packages/@n8n/nodes-langchain/nodes/vector_store/ChatHubVectorStorePinecone/ @n8n-io/ai-assistant
+packages/@n8n/nodes-langchain/nodes/vector_store/ChatHubVectorStoreQdrant/ @n8n-io/ai-assistant
+packages/@n8n/nodes-langchain/nodes/vector_store/shared/chatHub.ts @n8n-io/ai-assistant
+packages/@n8n/nodes-langchain/credentials/ChatHubVectorStorePGVectorApi.credentials.ts @n8n-io/ai-assistant
+packages/@n8n/nodes-langchain/credentials/ChatHubVectorStorePineconeApi.credentials.ts @n8n-io/ai-assistant
+packages/@n8n/nodes-langchain/credentials/ChatHubVectorStoreQdrantApi.credentials.ts @n8n-io/ai-assistant
+packages/frontend/editor-ui/src/features/shared/commandBar/composables/useChatHubCommands.ts @n8n-io/ai-assistant
+packages/cli/src/modules/breaking-changes/rules/v3/chat-hub-deprecated.rule.ts @n8n-io/ai-assistant
 
 # Nodes
 
@@ -216,15 +229,19 @@ packages/@n8n/codemirror-lang-sql/                      @n8n-io/nodes
 packages/nodes-base/                                    @n8n-io/nodes
 packages/@n8n/decorators/                               @n8n-io/catalysts
 packages/@n8n/create-node/                              @n8n-io/nodes
-packages/@n8n/node-cli/                                 @n8n-io/nodes
+packages/@n8n/node-cli/                                 @n8n-io/community-engineering
 packages/@n8n/imap/                                     @n8n-io/iam
 packages/@n8n/syslog-client/                            @n8n-io/iam
-packages/@n8n/scan-community-package/                   @n8n-io/nodes
-packages/@n8n/eslint-plugin-community-nodes/            @n8n-io/nodes
+packages/@n8n/scan-community-package/                   @n8n-io/community-engineering
+packages/@n8n/eslint-plugin-community-nodes/            @n8n-io/community-engineering
 packages/@n8n/computer-use/                             @n8n-io/nodes
 packages/@n8n/local-gateway/                            @n8n-io/nodes
 packages/@n8n/mcp-browser/                              @n8n-io/nodes
 packages/@n8n/mcp-browser-extension/                    @n8n-io/nodes
+
+# Community engineering
+.agents/skills/create-community-node-lint-rule/         @n8n-io/community-engineering
+.agents/skills/community-pr-readiness-check/            @n8n-io/community-engineering
 
 # IAM
 
@@ -245,6 +262,7 @@ packages/cli/src/modules/type-availability-policies/    @n8n-io/governance-and-o
 
 .github/                                       					@n8n-io/qa-dx
 .github/workflows/                                      @n8n-io/qa-dx required
+.github/workflows/community-pr-close-stale.yml          @n8n-io/community-engineering
 .github/scripts/                                        @n8n-io/qa-dx required
 .github/actions/                                        @n8n-io/qa-dx required
 .github/poutine-rules/                                  @n8n-io/qa-dx required

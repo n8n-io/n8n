@@ -62,7 +62,7 @@ export interface RuntimeSkillMcpServerDependency {
 }
 
 export interface RuntimeSkillDependenciesContract {
-	/** Activate matching deferred tools while the skill is active. Tools must be registered on the agent. */
+	/** Keep matching deferred tools active for the whole run, so activating the skill never changes the tool list. Tools must be registered on the agent. */
 	tools?: string[];
 	secrets?: string[];
 	mcpServers?: RuntimeSkillMcpServerDependency[];

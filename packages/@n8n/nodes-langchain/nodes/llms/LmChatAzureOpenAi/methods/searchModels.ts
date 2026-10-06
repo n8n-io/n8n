@@ -23,6 +23,22 @@ function resolveFoundryBaseURL(node: INode, foundryEndpoint?: string): string {
 	return new URL(requireFoundryEndpoint(node, foundryEndpoint)).origin;
 }
 
+// The dropdown shows only the message, so it also says how to fix the problem.
+function classicCredentialError(node: INode): NodeOperationError {
+	return new NodeOperationError(
+		node,
+		"Only an Azure AI Foundry credential can list deployments. Select By ID and enter the deployment name, or set the credential's Endpoint Type to Azure AI Foundry.",
+	);
+}
+
+// Without this, the list call reports `Project "" was not found`.
+function missingProjectError(node: INode): NodeOperationError {
+	return new NodeOperationError(
+		node,
+		'Enter the Project to list its deployments. Or select By ID and enter the deployment name.',
+	);
+}
+
 export async function searchModels(
 	this: ILoadOptionsFunctions,
 	filter?: string,
@@ -42,18 +58,21 @@ export async function searchModels(
 			'azureOpenAiApi',
 		);
 		if (credential.endpointType !== 'foundry') {
-			return { results: [] };
+			throw classicCredentialError(this.getNode());
 		}
 		baseURL = resolveFoundryBaseURL(this.getNode(), credential.foundryEndpoint);
+		if (!project) throw missingProjectError(this.getNode());
 		headers = { 'api-key': credential.apiKey };
 	} else {
 		const credential = await this.getCredentials<AzureEntraCognitiveServicesOAuth2ApiCredential>(
 			'azureEntraCognitiveServicesOAuth2Api',
 		);
 		if (credential.endpointType !== 'foundry') {
-			return { results: [] };
+			throw classicCredentialError(this.getNode());
 		}
 		baseURL = resolveFoundryBaseURL(this.getNode(), credential.foundryEndpoint);
+		// Checked before the token request, so an empty Project does not cost a call to Entra.
+		if (!project) throw missingProjectError(this.getNode());
 		// Mints a token for the Foundry audience, which this call needs.
 		const token = await new N8nOAuth2TokenCredential(
 			this.getNode(),

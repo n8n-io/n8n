@@ -9,6 +9,7 @@ import {
 	getAgentChatQueue,
 	removeAgentQueuedMessage,
 	steerAgentQueuedMessage,
+	stopAgentBackgroundJobs,
 	updateAgentQueuedMessage,
 	getChatMessages,
 	listAgents,
@@ -87,13 +88,16 @@ describe('useAgentApi', () => {
 		});
 	});
 
-	it('encodes the background task route identifiers', async () => {
+	it.each([
+		{ request: getAgentBackgroundJobs, method: 'GET', suffix: '' },
+		{ request: stopAgentBackgroundJobs, method: 'POST', suffix: '/stop' },
+	])('encodes background task identifiers for $method', async ({ request, method, suffix }) => {
 		vi.mocked(makeRestApiRequest).mockResolvedValueOnce({ tasks: [] });
-		await getAgentBackgroundJobs(restApiContext, 'project/1', 'agent/1', 'agent:chat#1');
+		await request(restApiContext, 'project/1', 'agent/1', 'agent:chat#1');
 		expect(makeRestApiRequest).toHaveBeenCalledWith(
 			restApiContext,
-			'GET',
-			'/projects/project%2F1/agents/v2/agent%2F1/chat/agent%3Achat%231/background-tasks',
+			method,
+			`/projects/project%2F1/agents/v2/agent%2F1/chat/agent%3Achat%231/background-tasks${suffix}`,
 		);
 	});
 

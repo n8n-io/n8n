@@ -46,6 +46,10 @@ export class ModuleRegistry {
 		// policy-infrastructure leads: it registers the enforcement implementation
 		// that every policy feature's checks are run by.
 		'policy-infrastructure',
+		// inbound-auth-core binds the inbound-auth contracts that later modules inject. Modules
+		// initialize in this order, and an unbound abstract constructor parameter resolves to
+		// `undefined` in the container, so it has to run before every consumer.
+		'inbound-auth-core',
 		'insights',
 		'external-secrets',
 		'community-packages',
@@ -79,7 +83,6 @@ export class ModuleRegistry {
 		'workflow-reviews',
 		'instance-ai',
 		'agents',
-		'inbound-auth-core',
 	];
 
 	private readonly activeModules: string[] = [];

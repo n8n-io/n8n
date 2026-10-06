@@ -73,6 +73,16 @@ export interface IRunExecutionDataV1 {
 	 */
 	resumeToken?: string;
 	waitTill?: Date;
+	/**
+	 * Why the execution is waiting, when the last node did not pause it itself.
+	 * Absent: the head of `nodeExecutionStack` already executed and was pushed
+	 * back (Wait node, Form, send-and-wait), so resume disables it to pass its
+	 * input through and pops its duplicate runData entry. 'suspended': the
+	 * engine parked the run at a node boundary, so the head has not executed yet
+	 * and must run normally. The WaitTracker ignores this field and resumes
+	 * every due waiting execution; the resume endpoints refuse a suspended one.
+	 */
+	waitReason?: 'suspended';
 	pushRef?: string;
 
 	/** Data needed for a worker to run a manual execution. */

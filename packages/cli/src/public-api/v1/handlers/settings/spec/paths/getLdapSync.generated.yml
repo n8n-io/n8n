@@ -1,0 +1,97 @@
+operationId: getLdapSync
+tags:
+  - SettingsLdap
+summary: Retrieve LDAP synchronization history
+description: Retrieve the history of LDAP synchronizations, most recent first. Requires the `ldap:sync` scope and the LDAP feature to be licensed.
+x-required-scope: ldap:sync
+parameters:
+  - $ref: ../../../../shared/spec/parameters/limit.yml
+  - $ref: ../../../../shared/spec/parameters/cursor.yml
+x-eov-operation-id: unreachable
+x-eov-operation-handler: v1/handlers/decorator-routed.handler
+x-decorator-routed: true
+responses:
+  '200':
+    description: Operation successful.
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            data:
+              type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                    description: Unique identifier for this sync run.
+                    example: 1
+                  runMode:
+                    type: string
+                    enum:
+                      - dry
+                      - live
+                    description: Whether the sync was a dry run or applied live.
+                    example: live
+                  status:
+                    type: string
+                    description: Status of the synchronization (for example, success or error).
+                    example: success
+                  startedAt:
+                    type: string
+                    format: date-time
+                    description: Timestamp when the synchronization started.
+                    example: 2025-07-21T10:30:00Z
+                  endedAt:
+                    type: string
+                    format: date-time
+                    description: Timestamp when the synchronization completed.
+                    example: 2025-07-21T10:35:00Z
+                  scanned:
+                    type: integer
+                    description: Number of LDAP entries scanned during synchronization.
+                    example: 42
+                  created:
+                    type: integer
+                    description: Number of new users created during synchronization.
+                    example: 5
+                  updated:
+                    type: integer
+                    description: Number of existing users updated during synchronization.
+                    example: 3
+                  disabled:
+                    type: integer
+                    description: Number of users disabled during synchronization.
+                    example: 0
+                  error:
+                    type: string
+                    description: Error message if the synchronization failed. Empty string if successful.
+                    example: ''
+                required:
+                  - id
+                  - runMode
+                  - status
+                  - startedAt
+                  - endedAt
+                  - scanned
+                  - created
+                  - updated
+                  - disabled
+                  - error
+                description: LDAP synchronization history record.
+                additionalProperties: false
+            nextCursor:
+              type: string
+              nullable: true
+              description: Paginate through the synchronization history by setting the cursor parameter to the nextCursor attribute returned by the previous request. A null value means there are no more records.
+              example: MTIzZTQ1NjctZTg5Yi0xMmQzLWE0NTYtNDI2NjE0MTc0MDA
+          required:
+            - data
+            - nextCursor
+  '400':
+    $ref: ../../../../shared/spec/responses/badRequest.yml
+  '401':
+    $ref: ../../../../shared/spec/responses/unauthorized.yml
+  '403':
+    $ref: ../../../../shared/spec/responses/forbidden.yml
