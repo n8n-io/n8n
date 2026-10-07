@@ -1,9 +1,10 @@
+import { mockLogger } from '@n8n/backend-test-utils';
 import Bull from 'bull';
 import { Redis } from 'ioredis';
 import { once } from 'node:events';
 
 import { JOB_TYPE_NAME } from '../constants';
-import { returnJobToQueue } from '../job-return';
+import { throwJobBackToQueue } from '../job-return';
 import type { Job, JobData, JobId, JobQueue } from '../scaling.types';
 
 const REDIS_HOST = process.env.N8N_TEST_REDIS_HOST;
@@ -12,7 +13,7 @@ const REDIS_PORT = Number(process.env.N8N_TEST_REDIS_PORT);
 const PREFIX = `job-return-${process.pid}-${Date.now()}`;
 const QUEUE_NAME = 'jobs';
 
-describe.skipIf(!REDIS_HOST || !REDIS_PORT)('returnJobToQueue (real Redis)', () => {
+describe.skipIf(!REDIS_HOST || !REDIS_PORT)('throwJobBackToQueue (real Redis)', () => {
 	let control: Redis;
 	let queues: JobQueue[];
 
@@ -47,7 +48,7 @@ describe.skipIf(!REDIS_HOST || !REDIS_PORT)('returnJobToQueue (real Redis)', () 
 			await queue.pause(true, true);
 			markStarted(activeJob);
 			await released;
-			await returnJobToQueue(activeJob);
+			await throwJobBackToQueue(activeJob, mockLogger());
 		});
 
 		const heldJob = await started;
@@ -110,7 +111,7 @@ describe.skipIf(!REDIS_HOST || !REDIS_PORT)('returnJobToQueue (real Redis)', () 
 		const failedOnWorkerA = once(workerA, 'failed') as Promise<[Job, Error]>;
 		void workerA.process(JOB_TYPE_NAME, 1, async (activeJob: Job) => {
 			await workerA.pause(true, true);
-			await returnJobToQueue(activeJob);
+			await throwJobBackToQueue(activeJob, mockLogger());
 		});
 
 		const [returnedJob] = await failedOnWorkerA;
@@ -148,7 +149,7 @@ describe.skipIf(!REDIS_HOST || !REDIS_PORT)('returnJobToQueue (real Redis)', () 
 		void workerA.process(JOB_TYPE_NAME, 1, async (activeJob: Job) => {
 			markStarted(activeJob);
 			await released;
-			await returnJobToQueue(activeJob);
+			await throwJobBackToQueue(activeJob, mockLogger());
 		});
 
 		const activeJob = await started;
@@ -191,7 +192,7 @@ describe.skipIf(!REDIS_HOST || !REDIS_PORT)('returnJobToQueue (real Redis)', () 
 		const failedOnWorkerA = once(workerA, 'failed') as Promise<[Job, Error]>;
 		void workerA.process(JOB_TYPE_NAME, 1, async (activeJob: Job) => {
 			await workerA.pause(true, true);
-			await returnJobToQueue(activeJob);
+			await throwJobBackToQueue(activeJob, mockLogger());
 		});
 
 		const [returnedJob] = await failedOnWorkerA;
@@ -286,6 +287,21 @@ describe.skipIf(!REDIS_HOST || !REDIS_PORT)('returnJobToQueue (real Redis)', () 
 		expect(ran).toEqual([next.id, held.id, behind.id]);
 	});
 
+	it('removes the stored start time of a returned job', async () => {
+		const producer = createQueue();
+		const held = await addJob(producer, 'held', 100);
+
+		const workerA = createQueue();
+		const { heldJob, returnToQueue } = await holdNextJob(workerA);
+		expect(heldJob.id).toBe(held.id);
+		const jobKey = producer.toKey(String(held.id));
+		expect(await control.hexists(jobKey, 'processedOn')).toBe(1);
+
+		await returnToQueue();
+
+		expect(await control.hexists(jobKey, 'processedOn')).toBe(0);
+	});
+
 	describe('locally paused worker', () => {
 		const stateOf = async (queue: JobQueue, jobId: JobId) =>
 			await (await queue.getJob(jobId))?.getState();
@@ -327,7 +343,7 @@ describe.skipIf(!REDIS_HOST || !REDIS_PORT)('returnJobToQueue (real Redis)', () 
 			});
 			void worker.process(JOB_TYPE_NAME, 1, async (activeJob: Job) => {
 				handled.push(activeJob.id);
-				if (stopping) await returnJobToQueue(activeJob);
+				if (stopping) await throwJobBackToQueue(activeJob, mockLogger());
 			});
 
 			await returned;
@@ -358,7 +374,7 @@ describe.skipIf(!REDIS_HOST || !REDIS_PORT)('returnJobToQueue (real Redis)', () 
 				);
 			});
 			void worker.process(JOB_TYPE_NAME, 1, async (activeJob: Job) => {
-				if (stopping) await returnJobToQueue(activeJob);
+				if (stopping) await throwJobBackToQueue(activeJob, mockLogger());
 			});
 
 			await once(worker, 'completed');

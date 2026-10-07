@@ -1,3 +1,5 @@
+import type { Logger } from '@n8n/backend-common';
+
 import { JobReturnedToQueueError } from '@/errors/job-returned-to-queue.error';
 
 import type { Job } from './scaling.types';
@@ -8,20 +10,33 @@ function grantRetryAttempt(job: Job) {
 }
 
 /** Makes Bull's retry put the job ahead of the other jobs with the same priority. */
-async function moveToFrontOfPriority(job: Job) {
+async function moveToFrontOfPriority(job: Job, logger: Logger) {
 	try {
 		const { priority } = job.opts;
 		if (typeof priority !== 'number' || !(priority > 0)) return;
 		// Bull's retry reads the stored priority and inserts behind equal scores, so 0.5 less puts the job first.
 		await job.queue.client.hset(job.queue.toKey(String(job.id)), 'priority', priority - 0.5);
-	} catch {
-		// Without the write, Bull still retries the job, only behind the jobs with the same priority.
+	} catch (error) {
+		logger.warn(
+			`Could not move job ${job.id} to the front of its priority, so it will run after the jobs with the same priority`,
+			{ jobId: job.id, error },
+		);
 	}
 }
 
-/** Fails the job so that Bull retries it under the same id, without publishing a failure. */
-export async function returnJobToQueue(job: Job): Promise<never> {
+/** Removes the stored start time, so that the returned job looks like a job that never started. */
+async function clearProcessedOn(job: Job, logger: Logger) {
+	try {
+		await job.queue.client.hdel(job.queue.toKey(String(job.id)), 'processedOn');
+	} catch (error) {
+		logger.warn(`Could not clear the start time of job ${job.id}`, { jobId: job.id, error });
+	}
+}
+
+/** Always throws, failing the job so that Bull retries it under the same id without publishing a failure. */
+export async function throwJobBackToQueue(job: Job, logger: Logger): Promise<never> {
 	grantRetryAttempt(job);
-	await moveToFrontOfPriority(job);
+	await moveToFrontOfPriority(job, logger);
+	await clearProcessedOn(job, logger);
 	throw new JobReturnedToQueueError(job.id.toString());
 }
