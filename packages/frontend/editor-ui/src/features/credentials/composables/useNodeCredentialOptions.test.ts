@@ -524,6 +524,74 @@ describe('useNodeCredentialOptions', () => {
 		scope.stop();
 	});
 
+	it('keeps override credentials when delete fails', async () => {
+		credentialsStore.usableCredentials = {};
+		vi.spyOn(credentialsApi, 'deleteCredential').mockResolvedValue(false);
+		const override = [
+			createCredential({ id: 'override-1', name: 'Override Cred', type: 'slackApi' }),
+		];
+		const nodeWithCredential = computed(
+			() =>
+				({
+					...slackNode,
+					credentials: { slackApi: { id: 'override-1', name: 'Override Cred' } },
+				}) as INodeUi,
+		);
+
+		const scope = effectScope();
+		const { credentialTypesNodeDescriptionDisplayed, isCredentialExisting } = scope.run(() =>
+			useNodeCredentialOptions(
+				nodeWithCredential,
+				computed(() => slackNodeType),
+				'slackApi',
+				false,
+				override,
+			),
+		)!;
+
+		await credentialsStore.deleteCredential({ id: 'override-1' });
+
+		expect(credentialTypesNodeDescriptionDisplayed.value[0].options.map((o) => o.id)).toEqual([
+			'override-1',
+		]);
+		expect(isCredentialExisting(slackNodeType.credentials[0])).toBe(true);
+
+		scope.stop();
+	});
+
+	it('does not subscribe to credential deletes when called outside an effect scope', () => {
+		const onActionSpy = vi.spyOn(credentialsStore, '$onAction');
+		const override = [
+			createCredential({ id: 'override-1', name: 'Override Cred', type: 'slackApi' }),
+		];
+
+		useNodeCredentialOptions(
+			computed(() => slackNode),
+			computed(() => slackNodeType),
+			'slackApi',
+			false,
+			override,
+		);
+
+		expect(onActionSpy).not.toHaveBeenCalled();
+	});
+
+	it('does not subscribe to credential deletes when no override list is provided', () => {
+		const onActionSpy = vi.spyOn(credentialsStore, '$onAction');
+		const scope = effectScope();
+
+		scope.run(() =>
+			useNodeCredentialOptions(
+				computed(() => slackNode),
+				computed(() => slackNodeType),
+				'slackApi',
+			),
+		);
+
+		expect(onActionSpy).not.toHaveBeenCalled();
+		scope.stop();
+	});
+
 	it('disables mixed credential behavior when override is set', () => {
 		const slackApiDescription = slackNodeType.credentials[0];
 		const { showMixedCredentials } = setupOptions('slackApi');
