@@ -5207,6 +5207,7 @@
 	"workflows.dependencies.type.agents": "Used by agents",
 	"workflows.dependencies.search.placeholder": "Search...",
 	"workflows.dependencies.search.empty": "No matching dependencies",
+	"workflows.dependencies.unavailable.header": "Not available to you",
 	"workflows.dependencies.hiddenNotice": "+1 not accessible to you | +{count} not accessible to you",
 	"workflows.item.enableMCPAccess": "Enable MCP access",
 	"workflows.item.disableMCPAccess": "Disable MCP access",
