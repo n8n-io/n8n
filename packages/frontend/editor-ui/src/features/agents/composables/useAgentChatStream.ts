@@ -49,6 +49,7 @@ import { summariseToolCall } from '@/features/ai/shared/agentsChat/interactiveSu
 import { isBudgetStopCode, type BudgetNoticeCode } from '../utils/budget-config';
 import { isFailedDelegateOutput } from '../utils/delegate-tool';
 import { useAgentExecutionUpdates } from './useAgentExecutionUpdates';
+import { agentChatBasePath, agentChatSendPath } from '../utils/agentChatPath';
 
 export interface FatalAgentError {
 	message: string;
@@ -1457,7 +1458,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 	) {
 		const target = targetKey();
 		const { baseUrl } = rootStore.restApiContext;
-		const url = `${baseUrl}/projects/${params.projectId.value}/agents/v2/${params.agentId.value}/chat`;
+		const url = `${baseUrl}${agentChatSendPath(params.projectId.value, params.agentId.value)}`;
 		const body: Record<string, unknown> = { message };
 		const sessionId = params.continueSessionId?.value ?? acceptedSessionId.value;
 		const newSession = params.newSession?.value === true && sessionId !== acknowledgedSessionId;
@@ -1578,7 +1579,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		}
 
 		const { baseUrl } = rootStore.restApiContext;
-		const url = `${baseUrl}/projects/${params.projectId.value}/agents/v2/${params.agentId.value}/chat/resume`;
+		const url = `${baseUrl}${agentChatBasePath(params.projectId.value, params.agentId.value)}/chat/resume`;
 		const { outcome } = await postAndConsume(
 			url,
 			{ runId: payload.runId, toolCallId: payload.toolCallId, resumeData },

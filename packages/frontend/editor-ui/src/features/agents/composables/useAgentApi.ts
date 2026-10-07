@@ -32,6 +32,7 @@ import type {
 import { getFullApiResponse, makeRestApiRequest } from '@n8n/rest-api-client';
 import type { IRestApiContext } from '@n8n/rest-api-client';
 import type { AgentResource, AgentJsonConfig, CustomToolEntry } from '../types';
+import { agentChatBasePath } from '../utils/agentChatPath';
 
 export async function getAgentsSettings(context: IRestApiContext): Promise<AgentsSettingsDto> {
 	return await makeRestApiRequest(context, 'GET', '/agents/settings');
@@ -570,7 +571,7 @@ export const getAgentBackgroundJobs = async (
 	return await makeRestApiRequest<AgentBackgroundJobsResponse>(
 		context,
 		'GET',
-		`/projects/${encodeURIComponent(projectId)}/agents/v2/${encodeURIComponent(agentId)}/chat/${encodeURIComponent(threadId)}/background-tasks`,
+		`${agentChatBasePath(projectId, agentId)}/chat/${encodeURIComponent(threadId)}/background-tasks`,
 	);
 };
 
@@ -584,7 +585,7 @@ export const resumeAgentBackgroundJob = async (
 	await makeRestApiRequest(
 		context,
 		'POST',
-		`/projects/${encodeURIComponent(projectId)}/agents/v2/${encodeURIComponent(agentId)}/chat/${encodeURIComponent(threadId)}/background-tasks/resume`,
+		`${agentChatBasePath(projectId, agentId)}/chat/${encodeURIComponent(threadId)}/background-tasks/resume`,
 		payload,
 	);
 };
@@ -598,7 +599,7 @@ export const stopAgentBackgroundJobs = async (
 	return await makeRestApiRequest<AgentBackgroundJobsResponse>(
 		context,
 		'POST',
-		`/projects/${encodeURIComponent(projectId)}/agents/v2/${encodeURIComponent(agentId)}/chat/${encodeURIComponent(threadId)}/background-tasks/stop`,
+		`${agentChatBasePath(projectId, agentId)}/chat/${encodeURIComponent(threadId)}/background-tasks/stop`,
 	);
 };
 
@@ -611,7 +612,7 @@ export const getAgentChatQueue = async (
 	return await makeRestApiRequest(
 		context,
 		'GET',
-		`/projects/${encodeURIComponent(projectId)}/agents/v2/${encodeURIComponent(agentId)}/chat/${encodeURIComponent(threadId)}/queue`,
+		`${agentChatBasePath(projectId, agentId)}/chat/${encodeURIComponent(threadId)}/queue`,
 	);
 };
 
@@ -626,7 +627,7 @@ export const updateAgentQueuedMessage = async (
 	await makeRestApiRequest(
 		context,
 		'PATCH',
-		`/projects/${encodeURIComponent(projectId)}/agents/v2/${encodeURIComponent(agentId)}/chat/${encodeURIComponent(threadId)}/queue/${encodeURIComponent(queueId)}`,
+		`${agentChatBasePath(projectId, agentId)}/chat/${encodeURIComponent(threadId)}/queue/${encodeURIComponent(queueId)}`,
 		payload,
 	);
 };
@@ -642,7 +643,7 @@ export const reorderAgentQueuedMessage = async (
 	await makeRestApiRequest(
 		context,
 		'POST',
-		`/projects/${encodeURIComponent(projectId)}/agents/v2/${encodeURIComponent(agentId)}/chat/${encodeURIComponent(threadId)}/queue/${encodeURIComponent(queueId)}/reorder`,
+		`${agentChatBasePath(projectId, agentId)}/chat/${encodeURIComponent(threadId)}/queue/${encodeURIComponent(queueId)}/reorder`,
 		payload,
 	);
 };
@@ -657,7 +658,7 @@ export const removeAgentQueuedMessage = async (
 	return await makeRestApiRequest(
 		context,
 		'DELETE',
-		`/projects/${encodeURIComponent(projectId)}/agents/v2/${encodeURIComponent(agentId)}/chat/${encodeURIComponent(threadId)}/queue/${encodeURIComponent(queueId)}`,
+		`${agentChatBasePath(projectId, agentId)}/chat/${encodeURIComponent(threadId)}/queue/${encodeURIComponent(queueId)}`,
 	);
 };
 
@@ -672,7 +673,7 @@ export const steerAgentQueuedMessage = async (
 	await makeRestApiRequest(
 		context,
 		'POST',
-		`/projects/${encodeURIComponent(projectId)}/agents/v2/${encodeURIComponent(agentId)}/chat/${encodeURIComponent(threadId)}/queue/${encodeURIComponent(queueId)}/steer`,
+		`${agentChatBasePath(projectId, agentId)}/chat/${encodeURIComponent(threadId)}/queue/${encodeURIComponent(queueId)}/steer`,
 		payload,
 	);
 };
@@ -686,7 +687,7 @@ export const getChatMessages = async (
 	return await makeRestApiRequest<AgentChatMessagesResponse>(
 		context,
 		'GET',
-		`/projects/${encodeURIComponent(projectId)}/agents/v2/${encodeURIComponent(agentId)}/chat/${encodeURIComponent(threadId)}/messages`,
+		`${agentChatBasePath(projectId, agentId)}/chat/${encodeURIComponent(threadId)}/messages`,
 	);
 };
 
@@ -698,7 +699,7 @@ export const getTestChatMessages = async (
 	return await makeRestApiRequest<AgentChatMessagesResponse>(
 		context,
 		'GET',
-		`/projects/${projectId}/agents/v2/${agentId}/chat/messages`,
+		`${agentChatBasePath(projectId, agentId)}/chat/messages`,
 	);
 };
 
@@ -710,7 +711,7 @@ export const clearTestChatMessages = async (
 	await makeRestApiRequest(
 		context,
 		'DELETE',
-		`/projects/${projectId}/agents/v2/${agentId}/chat/messages`,
+		`${agentChatBasePath(projectId, agentId)}/chat/messages`,
 	);
 };
 
@@ -723,7 +724,7 @@ export const cancelAgentChatRun = async (
 	return await makeRestApiRequest<{ cancelled: boolean }>(
 		context,
 		'DELETE',
-		`/projects/${projectId}/agents/v2/${agentId}/chat/runs/${runId}`,
+		`${agentChatBasePath(projectId, agentId)}/chat/runs/${runId}`,
 	);
 };
 
@@ -737,7 +738,7 @@ export const cancelAgentChatExecution = async (
 	return await makeRestApiRequest(
 		context,
 		'DELETE',
-		`/projects/${encodeURIComponent(projectId)}/agents/v2/${encodeURIComponent(agentId)}/chat/${encodeURIComponent(threadId)}/executions/${encodeURIComponent(executionId)}`,
+		`${agentChatBasePath(projectId, agentId)}/chat/${encodeURIComponent(threadId)}/executions/${encodeURIComponent(executionId)}`,
 	);
 };
 
