@@ -1,9 +1,8 @@
-export function getLlmSelectionPrompt(modelRecommendationsSection: string | null): string {
-	const recommendationGuidance = modelRecommendationsSection
-		? `\n\n${modelRecommendationsSection}`
-		: '\n\nNo Recommended LLM models section is available; do not recommend or name current, best, latest, or fallback model IDs from memory. Ask via `ask_questions` when the user needs model guidance or choice.';
-
-	return `\
+/**
+ * Static: the live model recommendations are session context (see
+ * `buildBuilderSessionContext`), so this text stays byte-identical across builds.
+ */
+export const LLM_SELECTION_PROMPT = `\
 ## LLM Selection Guidance
 
 ### Purpose
@@ -43,6 +42,7 @@ Use this to resolve the target agent's main \`model\` and \`credential\`.
 - If the user explicitly asks for Brave or SearXNG, keep that provider even
   when the selected model also supports native search.
 - For "Anthropic via OpenRouter", pass \`provider: "openrouter"\`; if the user names a routed model, pass the routed id without adding another provider prefix.
+- Model recommendations are in the "Recommended LLM Models" part of the Session context section.
 - Prefer a provider the user already has credentials for when choosing from recommendations.
 - Never copy main LLM credential IDs from \`list_credentials\`.
 
@@ -59,5 +59,4 @@ Use this to resolve the target agent's main \`model\` and \`credential\`.
 
 - The persisted \`model\` is in \`provider/model\` form.
 - The persisted \`credential\` came from \`resolve_llm\`.
-- Existing Brave or SearXNG \`config.webSearch\` is preserved on model changes unless the user explicitly requested a web-search method change.${recommendationGuidance}`;
-}
+- Existing Brave or SearXNG \`config.webSearch\` is preserved on model changes unless the user explicitly requested a web-search method change.`;

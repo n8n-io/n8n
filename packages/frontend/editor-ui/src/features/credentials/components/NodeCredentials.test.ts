@@ -3587,11 +3587,11 @@ describe('NodeCredentials', () => {
 			issues: undefined,
 		});
 
-		const unusable = (id: string, name: string) => ({
+		const unusable = (id: string, name: string, currentUserCanUse = false) => ({
 			id,
 			name,
 			credentialType: 'openAiApi',
-			currentUserCanUse: false,
+			currentUserCanUse,
 			homeProject: {
 				id: 'alice-personal',
 				name: 'Alice Chen <alice@acme.io>',
@@ -3602,7 +3602,7 @@ describe('NodeCredentials', () => {
 			},
 		});
 
-		function setUp({ flag = true, usable = true } = {}) {
+		function setUp({ flag = true, usable = true, canUse = false } = {}) {
 			settingsStore.settings = {
 				...settingsStore.settings,
 				granularCredentialSharing: flag,
@@ -3626,7 +3626,7 @@ describe('NodeCredentials', () => {
 				: {};
 			// A second credential the user cannot use, which no node here references.
 			workflowDocumentStore.setUsedCredentials([
-				unusable('alice-cred', "Alice's OpenAi"),
+				unusable('alice-cred', "Alice's OpenAi", canUse),
 				unusable('bob-cred', "Bob's OpenAi"),
 			]);
 
@@ -3696,6 +3696,27 @@ describe('NodeCredentials', () => {
 			});
 			// The old credential is valid, just not this user's, so other nodes keep it.
 			expect(replaceInvalid).not.toHaveBeenCalled();
+		});
+
+		it('shows an owner or admin who can use it the current credential under "Available to you"', async () => {
+			// An instance-wide scope makes it usable, but the scoped options do not list it.
+			setUp({ canUse: true });
+
+			const select = screen.getByTestId('node-credentials-select');
+			await waitFor(() =>
+				expect(within(select).getByRole('combobox')).toHaveValue("Alice's OpenAi"),
+			);
+			expect(screen.queryByTestId('node-credentials-unusable-warning')).not.toBeInTheDocument();
+
+			await userEvent.click(select);
+
+			expect(
+				await screen.findByTestId('node-credentials-select-group-__credential-group-yours'),
+			).toHaveTextContent('Available to you');
+			const option = screen.getByTestId('node-credentials-select-item-alice-cred');
+			expect(option).not.toHaveClass('is-disabled');
+			expect(option).toHaveTextContent("Alice Chen's · not shared with Marketing");
+			expect(screen.queryByTestId(UNUSABLE_HEADER)).not.toBeInTheDocument();
 		});
 
 		it('changes nothing while the feature flag is off', async () => {
