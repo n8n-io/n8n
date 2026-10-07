@@ -2846,7 +2846,11 @@ export class InstanceAiAdapterService {
 					id: credential.id,
 					name: credential.name,
 					type: credential.type,
-					data: await credentialsService.decrypt(credential, true),
+					data: await credentialsService.decryptForUse(
+						credential,
+						{ kind: 'user', user },
+						boundProjectId,
+					),
 				};
 
 				const result = await credentialsService.test(user.id, credentialsToTest);
