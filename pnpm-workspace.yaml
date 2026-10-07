@@ -185,7 +185,7 @@ catalog:
   '@vitest/coverage-v8': 5.0.1
   agent-browser: 0.26.0
   ai: ^7.0.66
-  axios: 1.18.0
+  axios: 1.20.0
   basic-auth: 2.0.1
   cache-manager: 5.2.3
   callsites: 3.1.0
@@ -482,7 +482,6 @@ overrides:
   'strnum@<2.4.2': 2.4.2
 
 patchedDependencies:
-  axios: patches/axios.patch
   bull@4.16.4: patches/bull@4.16.4.patch
   element-plus@2.4.3: patches/element-plus@2.4.3.patch
   pdfjs-dist@5.4.296: patches/pdfjs-dist@5.4.296.patch
