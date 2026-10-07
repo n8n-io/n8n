@@ -284,6 +284,26 @@ describe('EngineV2ManualRunPlanner', () => {
 			).toThrow(`"${pinned.name}" is inside a loop`);
 		});
 
+		it('seeds a pinned parent when the run to its child drops the cycle through that child', () => {
+			// Trigger -> A -> B -> A. A run to B keeps one pass: the subgraph has no
+			// edge back to A, and the engine runs the same subgraph, so A is no loop
+			// member in the run that is planned.
+			const plan = planner.plan(
+				runData({
+					workflowData: workflow({
+						nodes: [TRIGGER, A, B],
+						connections: chain([TRIGGER, A], [A, B], [B, A]),
+					}),
+					destinationNode: { nodeName: B.name, mode: 'inclusive' },
+					runData: fullRunData(TRIGGER),
+					pinData: { [A.name]: [item({ pinned: true })] },
+				}),
+			);
+
+			expect(plan.seeded.map((s) => s.nodeId)).toEqual([A.id]);
+			expect(plan.workflow.connections[B.name]).toBeUndefined();
+		});
+
 		it('refuses to seed a node that ran more than once', () => {
 			const twice = {
 				...fullRunData(TRIGGER, A, B),
