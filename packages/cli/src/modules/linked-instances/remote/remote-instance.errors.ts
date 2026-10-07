@@ -1,15 +1,19 @@
 import { OperationalError } from '@n8n/errors';
 
 export const REMOTE_INSTANCE_ERROR_REASONS = [
-	/** No usable answer: network error, refused address, redirect, unexpected status or oversized response. */
+	/**
+	 * No usable answer: network error, refused address, redirect, unexpected status, oversized
+	 * response or closed connection. Also a timeout or a protocol error while the connection
+	 * is set up.
+	 */
 	'unreachable',
 	/** The instance answers, but its MCP access is turned off. */
 	'mcp-disabled',
 	/** The instance refused the access token. */
 	'unauthorised',
-	/** The remote tool reported a failure, or its result cannot be read. */
+	/** The remote returned an error to the tool call, or its result cannot be read. */
 	'tool-error',
-	/** The instance did not answer before the time limit. */
+	/** A request on an open connection got no answer before the time limit. */
 	'timeout',
 ] as const;
 

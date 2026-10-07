@@ -1,190 +1,44 @@
-import { createMcpHandler, McpServer } from '@modelcontextprotocol/server';
 import type { Logger } from '@n8n/backend-common';
-import type { CustomFetch, HttpTransport, OutboundHttp } from '@n8n/backend-network';
+import type { CustomFetch, OutboundHttp } from '@n8n/backend-network';
 import { SsrfBlockedIpError } from '@n8n/backend-network';
 import { UnexpectedError, UserError } from '@n8n/errors';
+import type { MockProxy } from 'vitest-mock-extended';
 import { mock } from 'vitest-mock-extended';
-import { z } from 'zod';
 
-import { shapeToStandardSchema } from '@/modules/mcp/tool-schema.util';
-
+import { IDEMPOTENCY_KEY_META, RemoteInstanceClientFactory } from '../remote-instance.client';
 import {
-	IDEMPOTENCY_KEY_META,
-	RemoteInstanceClientFactory,
-	type RemoteInstanceClient,
-} from '../remote-instance.client';
-import { RemoteInstanceError } from '../remote-instance.errors';
-
-const TOKEN = 'n8n-mcp-token-7f3c9e1a2b4d';
-const ORIGIN = 'https://cloud.example.com';
-const MCP_URL = `${ORIGIN}/mcp-server/http`;
-const BEARER_CHALLENGE = 'Bearer realm="n8n MCP Server", resource_metadata="https://x.test"';
-
-const TOOL_NAMES = [
-	'search_workflows',
-	'count_workflows',
-	'greet',
-	'publish_workflow',
-	'echo_failure',
-	'slow_tool',
-	'huge_tool',
-];
-
-interface SeenRequest {
-	method: string;
-	url: string;
-	authorization: string | null;
-}
-
-const rpcMethodSchema = z.object({ method: z.string() });
-
-/** An in-process remote n8n: the real v2 server SDK behind the same auth gate n8n uses. */
-function createRemote() {
-	const state = {
-		disabled: false,
-		seenMeta: [] as unknown[],
-		requests: [] as SeenRequest[],
-		rpcMethods: [] as string[],
-	};
-	let releaseSlowTool = () => {};
-	const slowToolDone = new Promise<void>((resolve) => {
-		releaseSlowTool = resolve;
-	});
-
-	const buildServer = () => {
-		const server = new McpServer({ name: 'remote-n8n', version: '1.0.0' });
-		const text = (value: string) => ({ content: [{ type: 'text' as const, text: value }] });
-		server.registerTool(
-			'search_workflows',
-			{ description: 'Search', inputSchema: shapeToStandardSchema({ query: z.string() }) },
-			async ({ query }, ctx) => {
-				state.seenMeta.push(ctx.mcpReq._meta);
-				const found = { workflows: [{ id: 'wf-1', name: `Match for ${query}` }] };
-				return { ...text('Found 1 workflow'), structuredContent: found };
-			},
-		);
-		server.registerTool('count_workflows', { description: 'Count' }, async () =>
-			text('{"count":2}'),
-		);
-		server.registerTool('greet', { description: 'Greet' }, async () => text('Hello there'));
-		server.registerTool('publish_workflow', { description: 'Publish' }, async () => ({
-			...text('Workflow wf-9 was not found'),
-			isError: true,
-		}));
-		server.registerTool('echo_failure', { description: 'Echo' }, async () => ({
-			...text(`Bad token ${TOKEN} ${'x'.repeat(800)}`),
-			isError: true,
-		}));
-		server.registerTool('slow_tool', { description: 'Slow' }, async () => {
-			await slowToolDone;
-			return text('done');
-		});
-		server.registerTool('huge_tool', { description: 'Huge' }, async () =>
-			text('y'.repeat(6 * 1024 * 1024)),
-		);
-		return server;
-	};
-	const handler = createMcpHandler(async () => buildServer(), { legacy: 'stateless' });
-
-	const fetch: CustomFetch = async (input, init) => {
-		const request = new Request(input, init);
-		const authorization = request.headers.get('authorization');
-		state.requests.push({ method: request.method, url: request.url, authorization });
-		if (request.method === 'POST') {
-			const message = rpcMethodSchema.safeParse(await request.clone().json());
-			if (message.success) state.rpcMethods.push(message.data.method);
-		}
-		if (state.disabled)
-			return Response.json({ message: 'MCP access is disabled' }, { status: 404 });
-		if (authorization !== `Bearer ${TOKEN}`) {
-			return Response.json(
-				{ message: 'Unauthorized' },
-				{ status: 401, headers: { 'WWW-Authenticate': BEARER_CHALLENGE } },
-			);
-		}
-		return await handler.fetch(request);
-	};
-
-	return { state, fetch, releaseSlowTool };
-}
-
-type Remote = ReturnType<typeof createRemote>;
-
-const jsonRpcMessageSchema = z.object({
-	id: z.number().optional(),
-	method: z.string(),
-	params: z.record(z.unknown()).optional(),
-});
-
-type ToolPage = { tools: string[]; nextCursor?: string };
-
-/** A bare JSON-RPC remote that pages its tool list, which the SDK server does not do. */
-function pagedToolsRemote(pageFor: (cursor: unknown) => ToolPage): CustomFetch {
-	const resultFor = (method: string, params: Record<string, unknown> = {}) => {
-		if (method === 'initialize') {
-			const serverInfo = { name: 'paged', version: '1.0.0' };
-			return { protocolVersion: params.protocolVersion, capabilities: { tools: {} }, serverInfo };
-		}
-		const { tools, nextCursor } = pageFor(params.cursor);
-		const toolList = tools.map((name) => ({ name, inputSchema: { type: 'object' } }));
-		return { tools: toolList, ...(nextCursor ? { nextCursor } : {}) };
-	};
-	return async (input, init) => {
-		const request = new Request(input, init);
-		if (request.method === 'HEAD') {
-			return new Response(null, { status: 401, headers: { 'WWW-Authenticate': BEARER_CHALLENGE } });
-		}
-		if (request.method !== 'POST') return new Response(null, { status: 405 });
-		const message = jsonRpcMessageSchema.parse(await request.json());
-		if (message.id === undefined) return new Response(null, { status: 202 });
-		const result = resultFor(message.method, message.params);
-		return Response.json({ jsonrpc: '2.0', id: message.id, result });
-	};
-}
+	BEARER_CHALLENGE,
+	catchError,
+	ClientHarness,
+	initializeResult,
+	MCP_URL,
+	ORIGIN,
+	pagedToolsRemote,
+	rpcMethodOf,
+	rpcRemote,
+	slowStages,
+	TOKEN,
+	TOOL_NAMES,
+	type Remote,
+} from './remote-instance.test-helpers';
 
 describe('RemoteInstanceClient', () => {
+	let harness: ClientHarness;
 	let remote: Remote;
 	let scopedLogger: Logger;
-	let outboundHttp: ReturnType<typeof mock<OutboundHttp>>;
-	let clients: RemoteInstanceClient[];
+	let outboundHttp: MockProxy<OutboundHttp>;
 
-	const useTransportFetch = (transportFetch: CustomFetch) => {
-		outboundHttp.transport.mockImplementation(() =>
-			mock<HttpTransport>({ asCustomFetch: () => transportFetch }),
-		);
-	};
+	const useTransportFetch = (transportFetch: CustomFetch) =>
+		harness.useTransportFetch(transportFetch);
 
-	const createClient = (token = TOKEN) => {
-		const logger = mock<Logger>({ scoped: vi.fn().mockReturnValue(scopedLogger) });
-		const client = new RemoteInstanceClientFactory(logger, outboundHttp).create({
-			origin: ORIGIN,
-			token,
-		});
-		clients.push(client);
-		return client;
-	};
-
-	const catchError = async (promise: Promise<unknown>): Promise<RemoteInstanceError> => {
-		const error = await promise.then(
-			() => undefined,
-			(caught: unknown) => caught,
-		);
-		expect(error).toBeInstanceOf(RemoteInstanceError);
-		return error as RemoteInstanceError;
-	};
+	const createClient = (token = TOKEN) => harness.createClient({ token });
 
 	beforeEach(() => {
-		remote = createRemote();
-		scopedLogger = mock<Logger>();
-		outboundHttp = mock<OutboundHttp>();
-		clients = [];
-		useTransportFetch(remote.fetch);
+		harness = new ClientHarness();
+		({ remote, scopedLogger, outboundHttp } = harness);
 	});
 
-	afterEach(async () => {
-		remote.releaseSlowTool();
-		await Promise.all(clients.map(async (client) => await client.close()));
-	});
+	afterEach(async () => await harness.dispose());
 
 	describe('probe', () => {
 		it('lists the remote tools when the token is accepted', async () => {
@@ -363,6 +217,20 @@ describe('RemoteInstanceClient', () => {
 			expect(error.reason).toBe(reason);
 		});
 
+		it('throws unreachable when the remote returns an error to the tool list', async () => {
+			useTransportFetch(
+				rpcRemote((method, params) =>
+					method === 'initialize'
+						? initializeResult(params)
+						: { error: { code: -32603, message: 'Internal error' } },
+				),
+			);
+
+			const error = await catchError(createClient().listToolNames());
+
+			expect(error.reason).toBe('unreachable');
+		});
+
 		it('stops after 20 pages when the remote always sends a cursor', async () => {
 			let page = 0;
 			useTransportFetch(
@@ -456,7 +324,126 @@ describe('RemoteInstanceClient', () => {
 			expect(error.message).toContain('5 MiB');
 		});
 
-		it('does not follow a redirect to another host', async () => {
+		it('reports unreachable, not tool-error, when the network fails during the call', async () => {
+			useTransportFetch(async (input, init) => {
+				const request = new Request(input, init);
+				if ((await rpcMethodOf(request)) === 'tools/call') throw new TypeError('fetch failed');
+				return await remote.fetch(request);
+			});
+
+			const error = await catchError(createClient().callTool('greet', {}));
+
+			expect(error.reason).toBe('unreachable');
+		});
+
+		describe('when the connection cannot be set up', () => {
+			it('reports unreachable, not tool-error, when the remote returns an error to initialize', async () => {
+				useTransportFetch(
+					rpcRemote((method) =>
+						method === 'initialize'
+							? { error: { code: -32603, message: 'Internal error' } }
+							: { result: {} },
+					),
+				);
+
+				const error = await catchError(createClient().callTool('greet', {}));
+
+				expect(error.reason).toBe('unreachable');
+			});
+
+			it.each([
+				['unauthorised', 'a 401', () => createClient('wrong-token')],
+				[
+					'unreachable',
+					'a 500',
+					() => {
+						useTransportFetch(async () => new Response('Boom', { status: 500 }));
+						return createClient();
+					},
+				],
+				[
+					'unreachable',
+					'a network failure',
+					() => {
+						useTransportFetch(async () => {
+							throw new TypeError('fetch failed');
+						});
+						return createClient();
+					},
+				],
+			])('reports %s for %s', async (reason, _label, makeClient) => {
+				const error = await catchError(makeClient().callTool('greet', {}));
+
+				expect(error.reason).toBe(reason);
+				expect(remote.state.rpcMethods).not.toContain('tools/call');
+			});
+
+			it('reports unreachable when initialize gets no answer in time', async () => {
+				useTransportFetch(slowStages(remote.fetch, 61_000).fetch);
+				vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+				try {
+					const pending = catchError(createClient().callTool('greet', {}));
+					await vi.advanceTimersByTimeAsync(60_000);
+
+					expect((await pending).reason).toBe('unreachable');
+				} finally {
+					vi.useRealTimers();
+				}
+			});
+		});
+	});
+
+	// createAuthFetch follows each hop itself and checks the hostname of each hop.
+	describe('redirects of a request with the token', () => {
+		type Hop = { method: string; url: string; authorization: string | null };
+
+		/** Redirects each POST to the MCP URL to `location`, and sends the other requests to the remote. */
+		const redirectTo = (location: string) => {
+			const hops: Hop[] = [];
+			useTransportFetch(async (input, init) => {
+				const request = new Request(input, init);
+				const authorization = request.headers.get('authorization');
+				hops.push({ method: request.method, url: request.url, authorization });
+				if (request.method === 'POST' && request.url === MCP_URL) {
+					return new Response(null, { status: 307, headers: { location } });
+				}
+				return await remote.fetch(request);
+			});
+			return hops;
+		};
+
+		it('keeps the Authorization header on a redirect within the origin', async () => {
+			const location = `${MCP_URL}?hop=2`;
+			const hops = redirectTo(location);
+
+			expect(await createClient().callTool('greet', {})).toBe('Hello there');
+
+			const secondHops = hops.filter((hop) => hop.url === location);
+			expect(secondHops.length).toBeGreaterThan(0);
+			for (const hop of secondHops) {
+				expect(hop).toEqual({ method: 'POST', url: location, authorization: `Bearer ${TOKEN}` });
+			}
+		});
+
+		it.each([
+			['another port', 'https://cloud.example.com:8443/mcp-server/http'],
+			['plain http', 'http://cloud.example.com/mcp-server/http'],
+		])(
+			'drops the Authorization header on a redirect to %s of the same host',
+			async (_label, location) => {
+				const hops = redirectTo(location);
+
+				const error = await catchError(createClient().callTool('greet', {}));
+
+				expect(error.reason).toBe('unauthorised');
+				expect(hops).toEqual([
+					{ method: 'POST', url: MCP_URL, authorization: `Bearer ${TOKEN}` },
+					{ method: 'POST', url: location, authorization: null },
+				]);
+			},
+		);
+
+		it('refuses a redirect to another host before it sends the request', async () => {
 			const seenHosts: string[] = [];
 			useTransportFetch(async (input, init) => {
 				const request = new Request(input, init);
