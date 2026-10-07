@@ -43,14 +43,20 @@ describe('AddTimeoutSecondsToScheduler Migration', () => {
 		);
 	}
 
-	async function insertTaskFor(context: TestMigrationContext, jobName: string) {
+	async function insertTaskFor(
+		context: TestMigrationContext,
+		jobName: string,
+		timeoutSeconds?: number,
+	) {
 		const [job] = (await context.queryRunner.query(
 			`SELECT "id" FROM ${context.escape.tableName('scheduled_job')} WHERE "name" = '${jobName}'`,
 		)) as Array<{ id: number }>;
+		const column = timeoutSeconds === undefined ? '' : ', "timeoutSeconds"';
+		const value = timeoutSeconds === undefined ? '' : `, ${timeoutSeconds}`;
 		await context.runQuery(
 			`INSERT INTO ${context.escape.tableName('scheduled_task')}
-			   ("jobId", "taskType", "scheduledFor", "runAt", "createdAt")
-			 VALUES (${job.id}, 'test', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
+			   ("jobId", "taskType", "scheduledFor", "runAt", "createdAt"${column})
+			 VALUES (${job.id}, 'test', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP${value})`,
 		);
 	}
 
@@ -122,6 +128,26 @@ describe('AddTimeoutSecondsToScheduler Migration', () => {
 			const context = createTestMigrationContext(dataSource);
 
 			await expect(insertJob(context, 'job', 1.5)).rejects.toThrow();
+
+			await context.queryRunner.release();
+		});
+
+		it.each([0, -1, 2147484])('rejects a task timeout of %s', async (timeoutSeconds) => {
+			await runSingleMigration(MIGRATION_NAME);
+			const context = createTestMigrationContext(dataSource);
+			await insertJob(context, 'job');
+
+			await expect(insertTaskFor(context, 'job', timeoutSeconds)).rejects.toThrow();
+
+			await context.queryRunner.release();
+		});
+
+		it.skipIf(!isSqlite)('rejects a fractional task timeout on SQLite', async () => {
+			await runSingleMigration(MIGRATION_NAME);
+			const context = createTestMigrationContext(dataSource);
+			await insertJob(context, 'job');
+
+			await expect(insertTaskFor(context, 'job', 1.5)).rejects.toThrow();
 
 			await context.queryRunner.release();
 		});
