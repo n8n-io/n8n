@@ -255,6 +255,34 @@ describe('StartExecutionService', () => {
 			expect(queue.publish).not.toHaveBeenCalled();
 		});
 
+		it.each([
+			{ name: 'a loop member', nodeId: 'x' },
+			{ name: 'the batch node of a loop', nodeId: 'loop' },
+		])('rejects seeding $name', async ({ nodeId }) => {
+			// trigger -> loop(batch) -> x -> loop (back-edge); loop's done slot -> d
+			const loopGraph: WorkflowGraph = {
+				nodes: [
+					{ id: 'trigger', name: 'Manual Trigger', type: 'trigger', config: {} },
+					{ id: 'loop', name: 'Loop', type: 'batch', config: { batchSize: 1 } },
+					{ id: 'x', name: 'X', type: 'v1-node', config: {} },
+					{ id: 'd', name: 'D', type: 'v1-node', config: {} },
+				],
+				edges: [
+					{ from: 'trigger', to: 'loop', outputIndex: 0, inputIndex: 0 },
+					{ from: 'loop', to: 'x', outputIndex: 1, inputIndex: 0 },
+					{ from: 'x', to: 'loop', outputIndex: 0, inputIndex: 0, isBackEdge: true },
+					{ from: 'loop', to: 'd', outputIndex: 0, inputIndex: 0 },
+				],
+			};
+			const store = makeStore();
+			const service = new StartExecutionService(admittance, store, makeQueue());
+
+			await expect(
+				service.start({ ...base, graph: loopGraph, seededSteps: [{ nodeId, outputs: [] }] }),
+			).rejects.toThrow(/inside the loop of loop/);
+			expect(store.createExecution).not.toHaveBeenCalled();
+		});
+
 		it('rejects the same node seeded twice', async () => {
 			const store = makeStore();
 			const service = new StartExecutionService(admittance, store, makeQueue());

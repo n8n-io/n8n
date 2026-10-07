@@ -1,5 +1,6 @@
 import { AdmittanceRejectedError, type AdmittanceService } from '../admittance';
 import {
+	deriveLoops,
 	findTriggerNode,
 	getDescendantNodeIds,
 	GraphValidationError,
@@ -95,16 +96,22 @@ export class StartExecutionService {
 }
 
 /**
- * A seeded step names a node the trigger reaches, other than the trigger, once.
- * The trigger carries its payload as `triggerOutputs`, and the store drops a
- * second row for one node, so the caller would not get what it asked for. A
- * node the trigger cannot reach is left out of the count of steps the run
- * owes, so its settled row would let the run finish with work outstanding.
+ * A seeded step names a node the trigger reaches, outside any loop, other than
+ * the trigger, once. The trigger carries its payload as `triggerOutputs`, and
+ * the store drops a second row for one node, so the caller would not get what
+ * it asked for. A node the trigger cannot reach is left out of the count of
+ * steps the run owes, so its settled row would let the run finish with work
+ * outstanding. A seeded row holds one pass, iteration 0, while a loop member
+ * runs once per pass; the later passes would run the node the caller meant to
+ * skip. TODO(CAT-4875): seed every iteration.
  */
 function validateSeededSteps(graph: WorkflowGraph, seededSteps: SeededStep[]): void {
 	// The graph was validated first, so the trigger exists.
 	const trigger = findTriggerNode(graph);
 	const reachable = new Set(trigger ? getDescendantNodeIds(graph, trigger.id) : []);
+	const loopByMember = new Map(
+		deriveLoops(graph).flatMap((loop) => [...loop.memberIds].map((id) => [id, loop] as const)),
+	);
 	const seen = new Set<string>();
 	for (const { nodeId } of seededSteps) {
 		if (nodeId === trigger?.id) {
@@ -115,6 +122,12 @@ function validateSeededSteps(graph: WorkflowGraph, seededSteps: SeededStep[]): v
 		if (!reachable.has(nodeId)) {
 			throw new GraphValidationError(
 				`Seeded step names node ${nodeId}, which the trigger does not reach`,
+			);
+		}
+		const loop = loopByMember.get(nodeId);
+		if (loop) {
+			throw new GraphValidationError(
+				`Seeded step names node ${nodeId}, which is inside the loop of ${loop.batchNodeId}; a loop member runs once per pass and cannot be seeded`,
 			);
 		}
 		if (seen.has(nodeId)) {
