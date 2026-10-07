@@ -298,7 +298,10 @@ Put the action to send a message to the current execution immediately before Edi
 
 ## Preview retries
 
-Show Resend message after the latest turn fails. Send the original message and
-its attachments through the normal send action. Keep the failed turn visible.
+Show Resend message inside the latest error callout only for errors that explicitly
+support retry. Use the subtle button style, as Fix with Assistant does. Support the
+saved empty-answer error and the stream-stall error. Do not offer resend for other
+failures. Send the original message and its attachments through the normal send
+action. Keep the failed turn visible. Move the button below the text when needed.
 Disable resend while a draft, queued message, active turn, or blocked send exists.
 Keep the message unchanged if an attachment cannot load.

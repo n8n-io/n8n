@@ -386,7 +386,12 @@ describe('AgentChatPanel', () => {
 	describe('resend after an error', () => {
 		const failedMessages = (attachments?: ChatMessage['attachments']): ChatMessage[] => [
 			{ id: 'user', role: 'user', content: 'Find the invoice', attachments },
-			{ id: 'error', role: 'assistant', content: 'Try again', status: 'error' },
+			{
+				id: 'error',
+				role: 'assistant',
+				content: 'The model finished without returning an answer. Try again or use another model.',
+				status: 'error',
+			},
 		];
 		it('sends the original text and attachment through the normal send action', async () => {
 			const beforeSend = vi.fn();
@@ -525,6 +530,35 @@ describe('AgentChatPanel', () => {
 			expect(
 				wrapper.findComponent({ name: 'AgentChatMessageList' }).props('retryMessageId'),
 			).toBeUndefined();
+			wrapper.unmount();
+		});
+
+		it('offers resend for the current stream-stall error', async () => {
+			messagesMock.value = failedMessages();
+			messagesMock.value[1].content =
+				'The model stream stalled: no data received for 90 seconds. This is usually a transient connection issue — please try again.';
+			const wrapper = mountPanel();
+			await flushPromises();
+			expect(wrapper.findComponent({ name: 'AgentChatMessageList' }).props('retryMessageId')).toBe(
+				'user',
+			);
+			wrapper.unmount();
+		});
+
+		it.each([
+			'Invalid API key. Check the credential and try again.',
+			'The model reached its output token limit before it returned an answer. Reduce the request scope or use another model.',
+			'Unknown error',
+		])('does not offer or submit a retry for %s', async (content) => {
+			messagesMock.value = failedMessages();
+			messagesMock.value[1].content = content;
+			const wrapper = mountPanel();
+			await flushPromises();
+			const list = wrapper.findComponent({ name: 'AgentChatMessageList' });
+			expect(list.props('retryMessageId')).toBeUndefined();
+			list.vm.$emit('retry', 'user');
+			await flushPromises();
+			expect(sendMessageMock).not.toHaveBeenCalled();
 			wrapper.unmount();
 		});
 	});

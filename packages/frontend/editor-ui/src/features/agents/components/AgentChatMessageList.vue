@@ -24,6 +24,7 @@ import AgentChatBackgroundJobSignal from './AgentChatBackgroundJobSignal.vue';
 import AgentChatMessageActions from './AgentChatMessageActions.vue';
 import AgentChatMessageAttachments from './AgentChatMessageAttachments.vue';
 import AgentChatToolSteps from './AgentChatToolSteps.vue';
+import AgentChatRetryError from './AgentChatRetryError.vue';
 import AgentMarkdownChunk from './AgentMarkdownChunk.vue';
 import AgentTypingIndicator from './AgentTypingIndicator.vue';
 import AgentBudgetNoticeCard from './AgentBudgetNoticeCard.vue';
@@ -31,6 +32,7 @@ import InteractiveCard from './interactive/InteractiveCard.vue';
 import type { AgentFixWithAssistantFailure, AgentSendToAssistantEvent } from '../types';
 import { looksLikeAgentChangeRequest } from '../utils/agent-change-request';
 import { buildAgentPlanDisplayGroups } from '../utils/agent-plan';
+import { isRetryableChatError } from '../utils/errors';
 import { isSameLocalDay, useChatDividerTimestamp } from '../utils/relative-time';
 import { CHAT_MESSAGE_STATUS, TOOL_CALL_STATE } from '../constants';
 
@@ -153,6 +155,10 @@ function getMessageRenderItems(message: ChatMessage): MessageRenderItem[] {
 const scrollRef = useTemplateRef<HTMLDivElement>('scrollRef');
 
 const displayGroups = computed(() => buildAgentPlanDisplayGroups(props.messages));
+const retryErrorMessageId = computed(() => {
+	const message = props.messages.at(-1);
+	return props.retryMessageId && isRetryableChatError(message) ? message?.id : undefined;
+});
 const streamingGroupId = computed(() =>
 	props.messages.at(-1)?.status === CHAT_MESSAGE_STATUS.STREAMING
 		? displayGroups.value.at(-1)?.id
@@ -496,8 +502,17 @@ watch(
 							@submit="onInteractiveSubmit(payload, $event)"
 						/>
 					</div>
+					<AgentChatRetryError
+						v-if="group.finalMessage && isRetryableChatError(group.finalMessage)"
+						:message="group.finalMessage.content"
+						:retry-message-id="
+							group.finalMessage.id === retryErrorMessageId ? retryMessageId : undefined
+						"
+						:retry-disabled="retryDisabled"
+						@retry="emit('retry', $event)"
+					/>
 					<div
-						v-if="group.finalMessage?.content"
+						v-else-if="group.finalMessage?.content"
 						:class="[
 							$style.chatMessage,
 							{ [$style.chatMessageError]: group.finalMessage.status === 'error' },
@@ -610,7 +625,16 @@ watch(
 						{{ group.message.content }}
 					</div>
 					<template v-else>
-						<template v-for="item in getMessageRenderItems(group.message)" :key="item.key">
+						<AgentChatRetryError
+							v-if="isRetryableChatError(group.message)"
+							:message="group.message.content"
+							:retry-message-id="
+								group.message.id === retryErrorMessageId ? retryMessageId : undefined
+							"
+							:retry-disabled="retryDisabled"
+							@retry="emit('retry', $event)"
+						/>
+						<template v-for="item in getMessageRenderItems(group.message)" v-else :key="item.key">
 							<div
 								v-if="item.type === 'text'"
 								:class="[
@@ -722,18 +746,6 @@ watch(
 			</div>
 		</template>
 
-		<div v-if="retryMessageId" :class="$style.message">
-			<N8nButton
-				variant="ghost"
-				size="small"
-				icon="refresh-cw"
-				:disabled="retryDisabled"
-				data-testid="agent-chat-retry"
-				@click="emit('retry', retryMessageId)"
-			>
-				{{ i18n.baseText('agents.chat.retry') }}
-			</N8nButton>
-		</div>
 		<div v-if="messagingState === 'waitingFirstChunk'" :class="$style.message">
 			<div :class="$style.content">
 				<AgentTypingIndicator :class="$style.typingIndicator" />

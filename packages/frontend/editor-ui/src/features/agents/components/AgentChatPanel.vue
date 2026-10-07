@@ -54,6 +54,7 @@ import { resolveFileMimeType } from '@/app/utils/fileUtils';
 import AgentChatMessageList from './AgentChatMessageList.vue';
 import AgentChatPlan from './AgentChatPlan.vue';
 import { selectLatestAgentPlan } from '../utils/agent-plan';
+import { isRetryableChatError } from '../utils/errors';
 import { formatAgentElapsedTime } from '../utils/agent-elapsed-time';
 import type {
 	AgentContinueLoadedEvent,
@@ -812,7 +813,7 @@ const isSubmissionBlocked = computed(
 		hasBudgetStop.value,
 );
 const retryMessageId = computed(() => {
-	if (messages.value.at(-1)?.status !== 'error') return undefined;
+	if (!isRetryableChatError(messages.value.at(-1))) return undefined;
 	return messages.value.findLast((message) => message.role === 'user')?.id;
 });
 const retryDisabled = computed(
