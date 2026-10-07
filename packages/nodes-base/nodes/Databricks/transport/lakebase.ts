@@ -4,6 +4,7 @@ import { sleep } from '@n8n/utils/sleep';
 import type { IExecuteFunctions, IHttpRequestOptions, JsonObject } from 'n8n-workflow';
 import { NodeApiError, NodeError, NodeOperationError } from 'n8n-workflow';
 
+import { makeLakebaseErrorLegible } from './lakebaseErrors';
 import {
 	databricksApiRequest,
 	getActiveCredentialType,
@@ -86,6 +87,7 @@ export async function lakebaseApiRequest(
 				await sleep(SCHEMA_CACHE_RETRY_DELAY_MS, abortSignal);
 				continue;
 			}
+			makeLakebaseErrorLegible(error, options);
 			throw error;
 		}
 	}
