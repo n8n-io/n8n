@@ -67,8 +67,8 @@ token, and the data plane rejects a request without one. Engine v1 skips its che
 from before it stored tokens. Engine v2 has no such executions.
 
 The bar this decision must meet is parity with engine v1: a resume request is as hard to forge here
-as it is there. The decision meets that bar. It goes past v1 in two places. No control-plane code
-can build a token. A step-bound resume URL and an approval callback end one wait only.
+as it is there. The decision meets that bar. It goes past v1 in two places. Only the runtime of the
+data plane can build a token. A step-bound resume URL and an approval callback end one wait only.
 
 1. **The token has its own spec.** A third `SharedSecretTokenSpec` holds its own issuer and
    audience. Therefore a resume token is not valid at the other endpoints of either plane, and the
@@ -97,10 +97,11 @@ can build a token. A step-bound resume URL and an approval callback end one wait
    request still applies. `resumeStep` moves a step out of `waiting`, or it does nothing. A token
    for a wait that is already resolved, timed out, or cancelled has no effect.
 7. **The data plane owns the resume secret.** The resume secret is not the shared secret of the two
-   planes, and no control-plane code reads it. The data plane mints every resume token and verifies
-   every resume request. No node code runs for a resume request before the data plane accepts its
-   token. The control plane passes the token to the data plane and does not read it. The engine does
-   not start without the resume secret.
+   planes. Only the runtime of the data plane reads it, also where the control plane hosts that
+   runtime in its own process. The data plane mints every resume token and verifies every resume
+   request. No node code runs for a resume request before the data plane accepts its token. The
+   control plane passes the token to the data plane and does not read it. The engine does not start
+   without the resume secret.
 8. **A rolling rollout rotates the resume secret.** A rotation rejects no valid token. Processes
    with the old configuration and the new configuration can run side by side. An outstanding resume
    URL keeps working until the operator removes the secret that signed it.
