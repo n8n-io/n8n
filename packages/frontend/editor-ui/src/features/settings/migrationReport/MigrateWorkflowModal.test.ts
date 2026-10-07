@@ -8,6 +8,7 @@ import { mockedStore } from '@/__tests__/utils';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { ResponseError } from '@n8n/rest-api-client';
+import { STORES } from '@n8n/stores';
 import { MIGRATE_WORKFLOW_MODAL_KEY } from '@/app/constants';
 import * as breakingChangesApi from '@n8n/rest-api-client/api/breaking-changes';
 import MigrateWorkflowModal from './MigrateWorkflowModal.vue';
@@ -51,15 +52,25 @@ let workflowsStore: ReturnType<typeof mockedStore<typeof useWorkflowsStore>>;
 let eventBus: EventBus;
 
 const renderComponent = createComponentRenderer(MigrateWorkflowModal, {
-	pinia: createTestingPinia(),
+	pinia: createTestingPinia({
+		initialState: {
+			[STORES.UI]: {
+				modalStateById: {
+					[MIGRATE_WORKFLOW_MODAL_KEY]: { open: true },
+				},
+			},
+		},
+	}),
 	global: {
 		stubs: {
-			// Render all slots directly so the modal body/footer are queryable
-			// without the open-state + teleport machinery of the real Modal.
-			Modal: {
-				template:
-					'<div role="dialog"><slot name="header" /><slot name="content" /><slot name="footer" /></div>',
+			// Render the dialog body directly so it is queryable without the open-state portal.
+			Dialog: {
+				template: '<div role="dialog"><slot /></div>',
 			},
+			DialogHeader: { template: '<div><slot /></div>' },
+			DialogTitle: { template: '<h2><slot /></h2>' },
+			DialogDescription: { template: '<p><slot /></p>' },
+			DialogFooter: { template: '<div><slot /></div>' },
 		},
 	},
 });
@@ -86,7 +97,7 @@ describe('MigrateWorkflowModal', () => {
 	it('closes without migrating when cancelled', async () => {
 		const onClose = vi.fn();
 		render();
-		eventBus.on('close', onClose);
+		eventBus.on('closed', onClose);
 
 		await userEvent.click(screen.getByTestId('migrate-modal-cancel-button'));
 
