@@ -583,14 +583,18 @@ format that LangTracer exports. The tags give the expected route:
 - `bucket:<route>` is the main expected route. The summary groups cases by it.
 - `accepts:<token>` is another route that passes. A case can have more than
   one. The bucket always passes, except `bucket:clarify`: a clarify case must
-  list the questions that pass, for example `accepts:clarify:open`.
+  list the questions that pass, for example `accepts:clarify:open`. A token
+  can add a steer: `<route>:agent` passes a steer toward an Agent, and
+  `<route>:open` passes any steer except workflow only. This works for
+  `clarify` and `answer`.
 
 A case can add a second user turn with only `[stage directions]`: the facts
 that a user proxy uses to answer a question, for example
 `[Customers message the shop all day and want answers.]`. The proxy answers
 up to 2 accepted questions, and the trial passes only on the route after the
-last answer. A third question fails. `after:<route>` gives the routes that pass
-after an answer. Without it, the accepted routes that are not questions pass.
+last answer. `after:<route>` gives the routes that pass after an answer.
+Without it, the accepted routes without a steer pass. A further question passes
+when it steers to an `after` artifact.
 A `bucket:clarify` case with stage directions needs an `after:<route>` tag.
 
 A case can start with state. The stub instance and the thread then hold it

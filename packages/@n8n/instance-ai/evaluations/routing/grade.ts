@@ -212,8 +212,11 @@ export function canReplyTo(routingCase: RoutingCase, question: RouteResolution):
 }
 
 export function trialPasses(routingCase: RoutingCase, resolution: RouteResolution): boolean {
-	// After an answer, only the route that the user's facts point to passes. A question after the last answer fails.
-	if (resolution.question) return routingCase.after.some((route) => route === resolution.route);
+	// After an answer, only the route that the user's facts point to passes, or a further question that steers to it.
+	if (resolution.question) {
+		const { route, steer } = resolution;
+		return routingCase.after.some((after) => after === route || (route === 'clarify' && after === steer));
+	}
 	return routingCase.accepts.some((token) => acceptTokenMatches(token, resolution));
 }
 

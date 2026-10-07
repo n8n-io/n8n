@@ -39,7 +39,7 @@ describe('loadRoutingCases', () => {
 				tags: ['routing', 'bucket:clarify', 'accepts:clarify:open'],
 			}),
 			'route-prod-agent-one.json': exportedCase([], {
-				tags: ['routing', 'bucket:agent', 'accepts:clarify:agent'],
+				tags: ['routing', 'bucket:agent', 'accepts:clarify:agent', 'accepts:answer:agent'],
 				conversation: [{ role: 'user', text: ['Answer our support inbox.', 'Use our FAQ.'] }],
 			}),
 			'results.json': '{}',
@@ -66,7 +66,7 @@ describe('loadRoutingCases', () => {
 			{
 				id: 'route-prod-agent-one',
 				bucket: 'agent',
-				accepts: ['agent', 'clarify:agent'],
+				accepts: ['agent', 'clarify:agent', 'answer:agent'],
 				after: ['agent'],
 				userMessage: 'Answer our support inbox.\nUse our FAQ.',
 			},

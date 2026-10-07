@@ -333,6 +333,7 @@ describe('trialPasses', () => {
 		expect(trialPasses(openCase, answered({ route: 'agent', evidence: 'build-agent' }))).toBe(true);
 		expect(trialPasses(openCase, answered({ route: 'workflow', evidence: 'build' }))).toBe(false);
 		expect(trialPasses(openCase, answered(clarify('none')))).toBe(false);
+		expect(trialPasses(openCase, answered(clarify('agent')))).toBe(true);
 	});
 });
 

@@ -425,7 +425,13 @@ async function runRoutingMode(args: CliArgs, casesDir: string): Promise<void> {
 
 	for (const routingCase of cases) {
 		process.stdout.write(`▸ ${routingCase.id} ... `);
-		const trials = await runTrials(args, async () => await runRoutingTrial(args, routingCase));
+		const trials = await runTrials(args, async () => {
+			const trial = await runRoutingTrial(args, routingCase);
+			// No route from an unfinished turn (a timeout or an empty trace) says nothing about routing, so it runs once more.
+			return trial.resolution.route === 'none' && trial.turn.streamStatus !== 'completed'
+				? await runRoutingTrial(args, routingCase)
+				: trial;
+		});
 
 		const passed = casePasses(trials.filter((t) => t.passed).length, trials.length);
 		const after = routingCase.direction ? `; after a reply ${routingCase.after.join(' | ')}` : '';

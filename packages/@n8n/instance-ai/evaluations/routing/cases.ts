@@ -7,9 +7,10 @@
 // each trial (see grade.ts).
 //
 // An optional second user turn holds only [stage directions]: the facts that
-// the user proxy uses to answer a question. The proxy answers one accepted
-// question, and the route after the answer must be an `after:<route>` tag, or
-// else an accepted route that is not a question.
+// the user proxy uses to answer a question. The proxy answers up to two
+// accepted questions. The route after the last answer must be an `after:<route>`
+// tag, or else an accepted route without a steer. A further question passes
+// when it steers to an `after` artifact.
 //
 // An inline `seed` and `credentials` set up the stub instance and the thread
 // before the turn: earlier messages, an open workflow or Agent, failed runs,
@@ -66,7 +67,7 @@ const routingTagsSchema = z
 		return {
 			bucket,
 			accepts,
-			after: after.length > 0 ? after : accepts.filter((token) => !token.startsWith('clarify')),
+			after: after.length > 0 ? after : accepts.filter((token) => token !== 'clarify' && !token.includes(':')),
 		};
 	})
 	.refine(({ accepts }) => accepts.length > 0, {
