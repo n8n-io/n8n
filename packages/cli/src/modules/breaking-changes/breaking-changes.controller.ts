@@ -8,16 +8,7 @@ import {
 } from '@n8n/api-types';
 import { WorkflowSharingService } from '@n8n/backend-services';
 import { AuthenticatedRequest, type User } from '@n8n/db';
-import {
-	Body,
-	Get,
-	RestController,
-	GlobalScope,
-	Query,
-	Patch,
-	Post,
-	Param,
-} from '@n8n/decorators';
+import { Body, Get, RestController, GlobalScope, Query, Patch, Post, Param } from '@n8n/decorators';
 import { ForbiddenError, NotFoundError } from '@n8n/errors';
 import { hasGlobalScope } from '@n8n/permissions';
 import { Response } from 'express';

@@ -350,7 +350,9 @@ describe('MigrationFindingRepository', () => {
 				{ status: 'wont_fix' },
 			);
 
-			expect(await findingRepository.listRuleIdsWithWontFix('v3', undefined, ctx)).toEqual(['rule-a']);
+			expect(await findingRepository.listRuleIdsWithWontFix('v3', undefined, ctx)).toEqual([
+				'rule-a',
+			]);
 		});
 	});
 
@@ -444,7 +446,9 @@ describe('MigrationFindingRepository', () => {
 			);
 			await setStatus(fixed.id, 'rule-a', 'fixed');
 
-			expect(await findingRepository.listTriageableForRule('v3', 'rule-a', undefined, ctx)).toEqual([]);
+			expect(await findingRepository.listTriageableForRule('v3', 'rule-a', undefined, ctx)).toEqual(
+				[],
+			);
 		});
 	});
 
