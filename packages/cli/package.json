@@ -1,6 +1,6 @@
 {
   "name": "n8n",
-  "version": "2.42.0",
+  "version": "2.43.0",
   "private": true,
   "description": "n8n Workflow Automation Tool",
   "main": "dist/index",
@@ -145,6 +145,7 @@
     "@chat-adapter/state-memory": "catalog:",
     "@chat-adapter/teams": "catalog:",
     "@chat-adapter/telegram": "catalog:",
+    "@chat-adapter/whatsapp": "catalog:",
     "@google-cloud/secret-manager": "5.6.0",
     "@grpc/grpc-js": "^1.14.3",
     "@joplin/turndown-plugin-gfm": "catalog:",
@@ -159,6 +160,7 @@
     "@n8n/ai-workflow-builder": "workspace:*",
     "@n8n/api-types": "workspace:*",
     "@n8n/backend-common": "workspace:*",
+    "@n8n/backend-module-insights": "workspace:*",
     "@n8n/backend-network": "workspace:*",
     "@n8n/backend-services": "workspace:*",
     "@n8n/blob-storage": "workspace:*",

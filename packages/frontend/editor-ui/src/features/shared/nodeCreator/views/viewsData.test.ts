@@ -22,11 +22,12 @@ import { useTemplatesStore } from '@/features/workflows/templates/templates.stor
 import type { SimplifiedNodeType } from '@/Interface';
 
 const getNodeType = vi.fn();
+const isNodeTypeModuleDisabled = vi.fn();
 
 const messageAnAgentNode = mockNodeTypeDescription({
 	name: MESSAGE_AN_AGENT_NODE_TYPE,
-	displayName: 'AI Agent V2',
-	hidden: true,
+	displayName: 'Message an Agent',
+	codex: { subcategories: { AI: [AI_CATEGORY_AGENTS] } },
 });
 
 const otherNodes = (
@@ -60,7 +61,8 @@ const otherNodes = (
 vi.mock('@/app/stores/nodeTypes.store', () => ({
 	useNodeTypesStore: vi.fn(() => ({
 		getNodeType,
-		allLatestNodeTypes: otherNodes,
+		allLatestNodeTypes: [...otherNodes, messageAnAgentNode],
+		isNodeTypeModuleDisabled,
 		getAllNodeTypes: vi.fn().mockReturnValue({
 			nodeTypes: {},
 			init: async () => {},
@@ -89,6 +91,7 @@ describe('viewsData', () => {
 
 			return null;
 		});
+		isNodeTypeModuleDisabled.mockReturnValue(false);
 	});
 
 	afterEach(() => {
@@ -100,10 +103,7 @@ describe('viewsData', () => {
 			expect(AIView([])).toMatchSnapshot();
 		});
 
-		test('should include Message an Agent node before the agent node when agents module is active', () => {
-			const settingsStore = useSettingsStore();
-			vi.spyOn(settingsStore, 'isAgentsEnabled', 'get').mockReturnValue(true);
-
+		test('should list Message an Agent first among the agent nodes', () => {
 			const result = AIView([]);
 			const messageAgentItem = result.items.find((item) => item.key === MESSAGE_AN_AGENT_NODE_TYPE);
 
@@ -115,9 +115,10 @@ describe('viewsData', () => {
 			expect(messageIdx).toBeLessThan(agentIdx);
 		});
 
-		test('should not include Message an Agent node when agents module is inactive', () => {
-			const settingsStore = useSettingsStore();
-			vi.spyOn(settingsStore, 'isAgentsEnabled', 'get').mockReturnValue(false);
+		test('should not include Message an Agent node when its module is disabled', () => {
+			isNodeTypeModuleDisabled.mockImplementation(
+				(nodeType: string) => nodeType === MESSAGE_AN_AGENT_NODE_TYPE,
+			);
 
 			const result = AIView([]);
 			const messageAgentItem = result.items.find((item) => item.key === MESSAGE_AN_AGENT_NODE_TYPE);

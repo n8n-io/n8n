@@ -384,6 +384,42 @@ export class EphemeralNodeExecutor {
 		}
 	}
 
+	/** Resolve input expressions in the same context as a standalone node tool. */
+	async evaluateExpressions(
+		tool: EphemeralWorkflowToolLike,
+		expressions: Record<string, string>,
+		inputItems: INodeExecutionData[],
+	): Promise<Record<string, unknown>> {
+		const parts = await this.buildEphemeralContextParts(tool, inputItems);
+		const context = new ExecuteContext(
+			parts.workflow,
+			parts.node,
+			parts.additionalData,
+			parts.mode,
+			parts.runExecutionData,
+			0,
+			inputItems,
+			parts.inputData,
+			parts.executeData,
+			[],
+		);
+
+		return await withExpressionIsolate(parts.workflow, async () => {
+			const resolved: Record<string, unknown> = {};
+			for (const [name, expression] of Object.entries(expressions)) {
+				try {
+					// evaluateExpression adds the leading '=' itself.
+					resolved[name] = context.evaluateExpression(expression.slice(1));
+				} catch (error) {
+					throw new UserError(`Cannot resolve input "${name}": ${getErrorMessage(error)}`, {
+						cause: error,
+					});
+				}
+			}
+			return resolved;
+		});
+	}
+
 	async executeInline(request: InlineNodeExecutionRequest): Promise<NodeExecutionResult> {
 		// Validation failures (unknown node type, trigger nodes, blacklisted
 		// operations like send-and-wait) need to surface to the agent as a

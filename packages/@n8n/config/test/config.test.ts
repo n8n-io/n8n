@@ -1003,6 +1003,26 @@ describe('GlobalConfig', () => {
 		});
 	});
 
+	describe('data table cleanup interval config validation', () => {
+		it('should accept a positive N8N_DATA_TABLES_CLEANUP_INTERVAL_MS', () => {
+			process.env = { N8N_DATA_TABLES_CLEANUP_INTERVAL_MS: '30000' };
+			const config = Container.get(GlobalConfig);
+			expect(config.dataTable.cleanupIntervalMs).toBe(30000);
+		});
+
+		it.each(['0', '-5', '1500.5'])(
+			'should reject a data table cleanup interval of %s and fall back to the default',
+			(value) => {
+				process.env = { N8N_DATA_TABLES_CLEANUP_INTERVAL_MS: value };
+				const config = Container.get(GlobalConfig);
+				expect(config.dataTable.cleanupIntervalMs).toBe(60000);
+				expect(consoleWarnMock).toHaveBeenCalledWith(
+					expect.stringContaining('N8N_DATA_TABLES_CLEANUP_INTERVAL_MS'),
+				);
+			},
+		);
+	});
+
 	describe('workflow publication outbox cleanup config validation', () => {
 		it('should reject a cleanup interval of 0 and fall back to the default', () => {
 			process.env = { N8N_WORKFLOW_PUBLICATION_OUTBOX_CLEANUP_INTERVAL_SECONDS: '0' };

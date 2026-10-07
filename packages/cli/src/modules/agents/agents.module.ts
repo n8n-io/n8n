@@ -94,6 +94,9 @@ export class AgentsModule implements ModuleInterface {
 		);
 		const { LinearIntegration } = await import('./integrations/platforms/linear-integration.js');
 		const { DiscordIntegration } = await import('./integrations/platforms/discord-integration.js');
+		const { WhatsAppIntegration } = await import(
+			'./integrations/platforms/whatsapp-integration.js'
+		);
 		const { TeamsIntegration } = await import(
 			'./integrations/platforms/teams/teams-integration.js'
 		);
@@ -103,6 +106,7 @@ export class AgentsModule implements ModuleInterface {
 		registry.register(Container.get(TelegramIntegration));
 		registry.register(Container.get(LinearIntegration));
 		registry.register(Container.get(DiscordIntegration));
+		registry.register(Container.get(WhatsAppIntegration));
 		registry.register(Container.get(TeamsIntegration));
 		registry.register(Container.get(N8nChatIntegration));
 

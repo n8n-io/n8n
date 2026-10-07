@@ -11,6 +11,7 @@ import {
 	SCHEDULE_TRIGGER_NODE_TYPE,
 } from '@/app/constants';
 import { createPinia, setActivePinia } from 'pinia';
+import type { INodeTypeDescription } from 'n8n-workflow';
 
 describe('CanvasRunWorkflowButton', () => {
 	const renderComponent = createComponentRenderer(CanvasRunWorkflowButton, {
@@ -197,5 +198,47 @@ describe('CanvasRunWorkflowButton', () => {
 		await fireEvent.click(menuItems[1]);
 		expect(wrapper.emitted('selectTriggerNode')).toEqual([['B']]);
 		expect(wrapper.emitted('execute')).toEqual([[]]);
+	});
+
+	describe('trigger icon treatment on the secondary button', () => {
+		const imageIconType = {
+			name: 'test.imageTrigger',
+			displayName: 'Image Trigger',
+			iconUrl: 'icons/image-trigger.svg',
+		} as unknown as INodeTypeDescription;
+		const fontIconType = {
+			name: 'test.fontTrigger',
+			displayName: 'Font Trigger',
+			icon: 'fa:clock',
+			iconBasePath: '',
+		} as unknown as INodeTypeDescription;
+
+		it('should add contrast to an image icon', () => {
+			const wrapper = renderComponent({
+				props: {
+					type: 'secondary',
+					triggerNodes: [createTestNode({ type: imageIconType.name })],
+					getNodeType: () => imageIconType,
+				},
+			});
+
+			expect(wrapper.getByTestId('execute-workflow-button-trigger-icon')).toHaveClass(
+				'secondaryTriggerIcon',
+			);
+		});
+
+		it('should not change a font icon', () => {
+			const wrapper = renderComponent({
+				props: {
+					type: 'secondary',
+					triggerNodes: [createTestNode({ type: fontIconType.name })],
+					getNodeType: () => fontIconType,
+				},
+			});
+
+			expect(wrapper.getByTestId('execute-workflow-button-trigger-icon')).not.toHaveClass(
+				'secondaryTriggerIcon',
+			);
+		});
 	});
 });

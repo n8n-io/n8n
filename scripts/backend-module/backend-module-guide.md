@@ -18,7 +18,9 @@ To set up a backend module, run this command at monorepo root:
 pnpm setup-backend-module
 ```
 
-Your new module will be located at `packages/cli/src/modules/my-feature`. Rename `my-feature` in the dirname and in the filenames to your actual feature name. Use kebab-case.
+The setup command creates a module at `packages/cli/src/modules/my-feature`. Rename `my-feature` in the directory name and file names. Use kebab-case.
+
+A decoupled module can instead use a built workspace package at `packages/modules/my-feature/backend`. The package name uses the `@n8n/backend-module-<name>` pattern. Add a lazy package import to `packages/cli/src/modules/modules.manifest.ts`. Add the package as a runtime dependency of `n8n`.
 
 A module’s file structure is as follows:
 
@@ -38,12 +40,14 @@ A module’s file structure is as follows:
 
 This is only a template - your module may not need all of these files, or it may need more than these and also subdirs to keep things organized. Infixes are currently not required (except for the `.module.ts` entrypoint), but infixes are strongly recommended as they make the contents searchable and discoverable.
 
-Backend modules currently live at `packages/cli/src/modules`, so imports can be:
+Modules inside CLI can import:
 
 - from inside the module dir
 - from common packages like `@n8n/db`, `@n8n/backend-common`, `@n8n/backend-services`, `@n8n/backend-test-utils`, etc.
-- from `cli`
-- from third-party libs available in, or added to, `cli`
+- from CLI
+- from third-party libraries available in, or added to, CLI
+
+A packaged backend module must not import CLI. Declare each third-party and workspace dependency in the module package. Export APIs for CLI consumers from the package root. Use a separate `./testing` export for shared test helpers.
 
 Modules are managed via env vars:
 
@@ -334,9 +338,9 @@ Occasionally, a module may need to define a module-specific CLI command. To do s
 
 ## Tests
 
-Place unit and integration tests for a backend module at `packages/cli/src/modules/{featureName}/__tests__`. Use the `.test.ts` infix.
+Place tests with the module that owns them. A packaged module keeps its tests under `packages/modules/{featureName}/backend/src`. Keep tests in CLI only when they verify CLI wiring or use CLI-owned fixtures.
 
-Currently, testing utilities live partly at `cli` and partly at `@n8n/backend-test-utils`. In future, all testing utilities will be moved to common packages, to make modules more decoupled from `cli`.
+Use `@n8n/backend-test-utils` for shared database and module helpers. Pass packaged module import thunks to `testModules.loadModules`. Use `tscDecoratorTransform` from `@n8n/vitest-config/tsc-decorator-transform` when a package owns TypeORM entities.
 
 ## Future work
 
@@ -357,10 +361,10 @@ Currently, testing utilities live partly at `cli` and partly at `@n8n/backend-te
 
 ## FAQs
 
-- **What is a good example of a backend module?** Our first backend module is the `insights` module at `packages/@n8n/modules/insights`.
+- **What is a good example of a backend module?** Use the Insights backend package at `packages/modules/insights/backend`.
 - **My feature is already a separate _package_ at `packages/@n8n/{feature}`. How does this work with modules?** If your feature is already fully decoupled from `cli`, or if you know in advance that your feature will have zero dependencies on `cli`, then you already stand to gain most of the benefits of modularity. In this case, you can add a thin module to `cli` containing an entrypoint to your feature imported from your package, so that your feature is loaded only when needed.
 - **Does all new functionality need to be added as a module?** If your feature relies heavily on internals, e.g. workflow archival, then a module may not be a good fit. Consider a module first, but use your best judgment. Reach out if unsure.
 - **Are backend modules meant for use by external contributors?** No, they are meant for features developed by the core team.
-- **How do I hot reload a module?** Modules are part of `cli` so you can use the usual `watch` command.
+- **How do I hot reload a module?** Run the package watch command together with the CLI watch command.
 - **How do modules interoperate with each other?** This is not supported at this time. Reach out if you need this.
-- **I have a use case that is not covered by modules. What should I do?** Modules live in `cli` so any imports from `cli` remain available, i.e. aim for decoupling but do not consider it a blocker for progress. Reach out if you think the module system needs expanding.
+- **I have a use case that is not covered by modules. What should I do?** A module can stay in CLI until its dependencies have package-level interfaces. Reach out if the module system needs a new interface.

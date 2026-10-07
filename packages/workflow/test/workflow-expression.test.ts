@@ -1,5 +1,5 @@
 import * as Helpers from './helpers';
-import type { NodeParameterValueType } from '../src';
+import type { INodeExecutionData, NodeParameterValueType } from '../src';
 import { Workflow } from '../src/workflow';
 
 describe('WorkflowExpression', () => {
@@ -30,8 +30,18 @@ describe('WorkflowExpression', () => {
 			await expression.releaseIsolate();
 		});
 
-		const evaluate = (value: NodeParameterValueType) =>
-			expression.getParameterValue(value, null, 0, 0, 'node', [], 'manual', {});
+		const evaluate = (value: NodeParameterValueType, inputData: INodeExecutionData[] = []) =>
+			expression.getParameterValue(value, null, 0, 0, 'node', inputData, 'manual', {});
+
+		it('preserves own input fields when copying expression results', () => {
+			const input = {
+				constructor: 'Constructor value',
+				toString: 'String value',
+				hasOwnProperty: 'Own value',
+			};
+
+			expect(evaluate('={{ { payload: $json } }}', [{ json: input }])).toEqual({ payload: input });
+		});
 
 		it('should resolve $parameter["&key"] sibling reference within an object', () => {
 			// n8n uses the `&`-prefixed syntax internally (e.g. in node parameter definitions)

@@ -188,19 +188,6 @@ function getEvaluationNode(
 	];
 }
 
-function getMessageAnAgentNode(
-	nodeTypesStore: ReturnType<typeof useNodeTypesStore>,
-	settingsStore: ReturnType<typeof useSettingsStore>,
-) {
-	if (!settingsStore.isAgentsEnabled) return [];
-
-	const node = nodeTypesStore.getNodeType(MESSAGE_AN_AGENT_NODE_TYPE);
-	if (!node) return [];
-
-	// The early-preview tag is attached centrally in `applyNodeTags`.
-	return [getNodeView(node)];
-}
-
 export function AIView(_nodes: SimplifiedNodeType[]): NodeView {
 	const i18n = useI18n();
 	const nodeTypesStore = useNodeTypesStore();
@@ -211,9 +198,15 @@ export function AIView(_nodes: SimplifiedNodeType[]): NodeView {
 
 	const evaluationNode = getEvaluationNode(nodeTypesStore, isEvaluationEnabled);
 
-	const chainNodes = getAiNodesBySubcategory(nodeTypesStore.allLatestNodeTypes, AI_CATEGORY_CHAINS);
-	const agentNodes = getAiNodesBySubcategory(nodeTypesStore.allLatestNodeTypes, AI_CATEGORY_AGENTS);
-	const messageAnAgentNode = getMessageAnAgentNode(nodeTypesStore, settingsStore);
+	const aiNodeTypes = nodeTypesStore.allLatestNodeTypes.filter(
+		(node) => !nodeTypesStore.isNodeTypeModuleDisabled(node.name),
+	);
+	const chainNodes = getAiNodesBySubcategory(aiNodeTypes, AI_CATEGORY_CHAINS);
+	// Message an Agent leads the agents list
+	const agentNodes = getAiNodesBySubcategory(aiNodeTypes, AI_CATEGORY_AGENTS).sort(
+		(a, b) =>
+			Number(b.key === MESSAGE_AN_AGENT_NODE_TYPE) - Number(a.key === MESSAGE_AN_AGENT_NODE_TYPE),
+	);
 
 	const websiteCategoryURLParams = new URLSearchParams(
 		templatesStore.websiteTemplateRepositoryParameters,
@@ -234,9 +227,6 @@ export function AIView(_nodes: SimplifiedNodeType[]): NodeView {
 		subtitle: i18n.baseText('nodeCreator.aiPanel.selectAiNode'),
 		items: [
 			...callouts,
-			// shown only when agents module is active
-			// TODO: revert before GA release
-			...messageAnAgentNode,
 			...agentNodes,
 			...chainNodes,
 			...evaluationNode,

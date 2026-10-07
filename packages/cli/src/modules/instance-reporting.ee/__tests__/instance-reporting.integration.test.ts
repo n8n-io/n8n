@@ -15,9 +15,9 @@ import { InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
 import type { License } from '@/license';
-import { createCompactedInsightsEvent } from '@/modules/insights/database/entities/__tests__/db-utils';
-import { InsightsConfig } from '@/modules/insights/insights.config';
-import { InsightsService } from '@/modules/insights/insights.service';
+import { createCompactedInsightsEvent } from '@n8n/backend-module-insights/testing';
+import { InsightsConfig, InsightsService } from '@n8n/backend-module-insights';
+import { packagedModules } from '@/modules/modules.manifest';
 
 import type {
 	InstanceMonitoringReport,
@@ -71,7 +71,7 @@ describe('instance reporting retries', () => {
 	let repository: InstanceMonitoringReportRepository;
 
 	beforeAll(async () => {
-		await testModules.loadModules(['insights', 'instance-reporting']);
+		await testModules.loadModules(['insights', 'instance-reporting'], packagedModules);
 		await testDb.init();
 
 		repository = Container.get(InstanceMonitoringReportRepository);
