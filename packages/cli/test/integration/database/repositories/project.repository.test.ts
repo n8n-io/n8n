@@ -423,6 +423,24 @@ describe('ProjectRepository', () => {
 		});
 	});
 
+	describe('findPage', () => {
+		it('orders projects by creation time and then id', async () => {
+			const repository = Container.get(ProjectRepository);
+			const earlier = new Date('2026-01-01T00:00:00.000Z');
+			const later = new Date('2026-01-02T00:00:00.000Z');
+			await repository.insert([
+				repository.create({ id: 'project-c', name: 'Project C', type: 'team', createdAt: later }),
+				repository.create({ id: 'project-b', name: 'Project B', type: 'team', createdAt: earlier }),
+				repository.create({ id: 'project-a', name: 'Project A', type: 'team', createdAt: earlier }),
+			]);
+
+			const [projects, count] = await repository.findPage({ offset: 0, limit: 3 });
+
+			expect(count).toBe(3);
+			expect(projects.map(({ id }) => id)).toEqual(['project-a', 'project-b', 'project-c']);
+		});
+	});
+
 	describe('update personal project name', () => {
 		// TypeORM enters an infinite loop if you create entities with circular
 		// references and pass this to the `Repository.create` function.

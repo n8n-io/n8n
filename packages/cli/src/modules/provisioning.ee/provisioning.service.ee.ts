@@ -14,8 +14,9 @@ import {
 	User,
 	UserRepository,
 	Role,
+	ProjectRelationRepository,
 	ProjectRepository,
-	ProjectRelation,
+	TransactionRunner,
 } from '@n8n/db';
 import { OnPubSubEvent } from '@n8n/decorators';
 import { Service } from '@n8n/di';
@@ -27,7 +28,6 @@ import { ZodError } from 'zod';
 
 import { BadRequestError } from '@n8n/errors';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
-import { ProjectService } from '@/services/project.service.ee';
 import { UserService } from '@/services/user.service';
 
 import { PROVISIONING_PREFERENCES_DB_KEY } from './constants';
@@ -45,7 +45,7 @@ export class ProvisioningService {
 		private readonly globalConfig: GlobalConfig,
 		private readonly settingsRepository: SettingsRepository,
 		private readonly projectRepository: ProjectRepository,
-		private readonly projectService: ProjectService,
+		private readonly projectRelationRepository: ProjectRelationRepository,
 		private readonly roleRepository: RoleRepository,
 		private readonly userRepository: UserRepository,
 		private readonly userService: UserService,
@@ -55,6 +55,7 @@ export class ProvisioningService {
 		private readonly roleMappingRuleRepository: RoleMappingRuleRepository,
 		private readonly roleResolverService: RoleResolverService,
 		private readonly roleMappingRuleService: RoleMappingRuleService,
+		private readonly transactionRunner: TransactionRunner,
 	) {}
 
 	async init() {
@@ -288,13 +289,13 @@ export class ProvisioningService {
 			(project) => !validProjectIds.has(project.id),
 		);
 
-		await this.projectRepository.manager.transaction(async (tx) => {
+		await this.transactionRunner.run({}, async (ctx) => {
 			for (const project of projectsToRemoveAccessFrom) {
-				await tx.delete(ProjectRelation, { projectId: project.id, userId });
+				await this.projectRelationRepository.deleteProjectMember(project.id, userId, ctx);
 			}
 
 			for (const { projectId, roleSlug } of validProjectToRoleMappings) {
-				await this.projectService.addUser(projectId, { userId, role: roleSlug }, tx);
+				await this.projectRelationRepository.addProjectMember(projectId, userId, roleSlug, ctx);
 			}
 		});
 
@@ -705,12 +706,12 @@ export class ProvisioningService {
 
 		if (projectsToRemoveAccessFrom.length === 0 && validMappings.length === 0) return;
 
-		await this.projectRepository.manager.transaction(async (tx) => {
+		await this.transactionRunner.run({}, async (ctx) => {
 			for (const project of projectsToRemoveAccessFrom) {
-				await tx.delete(ProjectRelation, { projectId: project.id, userId });
+				await this.projectRelationRepository.deleteProjectMember(project.id, userId, ctx);
 			}
 			for (const { projectId, roleSlug } of validMappings) {
-				await this.projectService.addUser(projectId, { userId, role: roleSlug }, tx);
+				await this.projectRelationRepository.addProjectMember(projectId, userId, roleSlug, ctx);
 			}
 		});
 

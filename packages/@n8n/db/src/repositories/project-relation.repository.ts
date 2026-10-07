@@ -1,14 +1,123 @@
 import { Service } from '@n8n/di';
 import { PROJECT_OWNER_ROLE_SLUG, type ProjectRole } from '@n8n/permissions';
-import { DataSource, In, Repository } from '@n8n/typeorm';
+import { DataSource, In } from '@n8n/typeorm';
 
+import { BaseRepository } from './base-repository';
 import { ProjectRelation, Role } from '../entities';
+import type { OperationContext } from '../services/transaction';
+import { TransactionRunner } from '../services/transaction';
 import { chunkIds } from '../utils/chunk-ids';
 
 @Service()
-export class ProjectRelationRepository extends Repository<ProjectRelation> {
-	constructor(dataSource: DataSource) {
-		super(ProjectRelation, dataSource.manager);
+export class ProjectRelationRepository extends BaseRepository<ProjectRelation> {
+	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
+		super(ProjectRelation, dataSource.manager, transactionRunner);
+	}
+
+	async findForUserInProjects(userId: string, projectIds: string[]): Promise<ProjectRelation[]> {
+		if (projectIds.length === 0) return [];
+		const relations: ProjectRelation[] = [];
+		for (const projectIdChunk of chunkIds([...new Set(projectIds)])) {
+			relations.push(
+				...(await this.find({
+					where: { userId, projectId: In(projectIdChunk) },
+					relations: ['role'],
+					loadEagerRelations: false,
+				})),
+			);
+		}
+		await this.attachRoleScopes(relations);
+		return relations;
+	}
+
+	async replaceProjectMembers(
+		projectId: string,
+		relations: Array<{ userId: string; role: string }>,
+		ctx: OperationContext,
+	): Promise<void> {
+		const manager = this.managerFor(ctx);
+		await manager.delete(ProjectRelation, { projectId });
+		await manager.insert(
+			ProjectRelation,
+			relations.map(({ userId, role }) => ({ projectId, userId, role: { slug: role } })),
+		);
+	}
+
+	async deleteProjectMember(
+		projectId: string,
+		userId: string,
+		ctx: OperationContext,
+	): Promise<void> {
+		await this.managerFor(ctx).delete(ProjectRelation, { projectId, userId });
+	}
+
+	async updateProjectMemberRole(
+		projectId: string,
+		userId: string,
+		role: string,
+		ctx: OperationContext,
+	): Promise<void> {
+		await this.managerFor(ctx).update(
+			ProjectRelation,
+			{ projectId, userId },
+			{ role: { slug: role } },
+		);
+	}
+
+	async addProjectMember(
+		projectId: string,
+		userId: string,
+		role: string,
+		ctx: OperationContext = {},
+	): Promise<ProjectRelation> {
+		return await this.managerFor(ctx).save(ProjectRelation, {
+			projectId,
+			userId,
+			role: { slug: role },
+		});
+	}
+
+	async saveProjectMembers(
+		projectId: string,
+		relations: Array<{ userId: string; role: string }>,
+	): Promise<void> {
+		await this.save(
+			relations.map(({ userId, role }) => ({ projectId, userId, role: { slug: role } })),
+		);
+	}
+
+	async insertProjectMembers(
+		projectId: string,
+		relations: Array<{ userId: string; role: string }>,
+	): Promise<void> {
+		if (relations.length === 0) return;
+		await this.insert(
+			relations.map(({ userId, role }) => ({ projectId, userId, role: { slug: role } })),
+		);
+	}
+
+	async findWithUserAndRole(projectId: string): Promise<ProjectRelation[]> {
+		return await this.find({ where: { projectId }, relations: { user: true, role: true } });
+	}
+
+	async findOneWithUserAndRole(projectId: string, userId: string): Promise<ProjectRelation | null> {
+		return await this.findOne({
+			where: { projectId, userId },
+			relations: { user: true, role: true },
+		});
+	}
+
+	async findMembersAndCount(
+		projectId: string,
+		{ offset, limit }: { offset: number; limit: number },
+	): Promise<[ProjectRelation[], number]> {
+		return await this.findAndCount({
+			where: { projectId },
+			relations: { user: true, role: true },
+			order: { createdAt: 'ASC', userId: 'ASC' },
+			skip: offset,
+			take: limit,
+		});
 	}
 
 	async findPersonalOwnerEmails(projectIds: string[]): Promise<Map<string, string>> {

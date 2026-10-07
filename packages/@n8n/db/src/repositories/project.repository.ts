@@ -1,11 +1,13 @@
 import { UNLIMITED_LICENSE_QUOTA } from '@n8n/constants';
 import { Service } from '@n8n/di';
+import { PROJECT_ADMIN_ROLE_SLUG, PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
 import type { EntityManager, SelectQueryBuilder } from '@n8n/typeorm';
 import { Brackets, DataSource, In, Not } from '@n8n/typeorm';
 import { UserError } from 'n8n-workflow';
 
 import { BaseRepository } from './base-repository';
-import { Project, ProjectRelation } from '../entities';
+import { Project, ProjectRelation, Role } from '../entities';
+import type { OperationContext } from '../services/transaction';
 import { TransactionRunner } from '../services/transaction';
 import { chunkIds } from '../utils/chunk-ids';
 import { isUniqueConstraintError } from '../utils/is-unique-constraint-error';
@@ -105,6 +107,133 @@ export class ProjectRepository extends BaseRepository<Project> {
 			rows.push(...(await this.find({ where: { id: In(batch) }, select: ['id', 'type'] })));
 		}
 		return rows;
+	}
+
+	async findTeamWithRelations(projectId: string): Promise<Project | null> {
+		return await this.findOne({
+			where: { id: projectId, type: 'team' },
+			relations: { projectRelations: { role: true } },
+		});
+	}
+
+	async findById(projectId: string): Promise<Project | null> {
+		return await this.findOneBy({ id: projectId });
+	}
+
+	async findByIdOrFail(projectId: string): Promise<Project> {
+		return await this.findOneByOrFail({ id: projectId });
+	}
+
+	async findByIdForUserWithRoles(
+		projectId: string,
+		userId?: string,
+		projectRoles?: string[],
+		ctx: OperationContext = {},
+	): Promise<Project | null> {
+		return await this.managerFor(ctx).findOne(Project, {
+			where: {
+				id: projectId,
+				...(userId && projectRoles ? { projectRelations: { userId, role: In(projectRoles) } } : {}),
+			},
+		});
+	}
+
+	async loadRolesForProjectScopeCheck(ctx: OperationContext): Promise<Role[]> {
+		return await this.managerFor(ctx).find(Role, { relations: ['scopes'] });
+	}
+
+	async findIdsForUserWithRoles({
+		userId,
+		projectRoles,
+		projectIds,
+		restrictToTeamProjects,
+	}: {
+		userId?: string;
+		projectRoles?: string[];
+		projectIds?: string[];
+		restrictToTeamProjects?: boolean;
+	}): Promise<string[]> {
+		const batches = projectIds ? chunkIds([...new Set(projectIds)]) : [undefined];
+		const result: string[] = [];
+		for (const projectIdBatch of batches) {
+			const projects = await this.find({
+				where: {
+					...(projectIdBatch ? { id: In(projectIdBatch) } : {}),
+					...(restrictToTeamProjects ? { type: 'team' as const } : {}),
+					...(userId && projectRoles
+						? { projectRelations: { userId, role: In(projectRoles) } }
+						: {}),
+				},
+				select: ['id'],
+			});
+			result.push(...projects.map(({ id }) => id));
+		}
+		return result;
+	}
+
+	async findByIdsForUserWithRoles(
+		projectIds: string[],
+		userId?: string,
+		projectRoles?: string[],
+	): Promise<Project[]> {
+		if (projectIds.length === 0) return [];
+		const projects: Project[] = [];
+		for (const projectIdChunk of chunkIds([...new Set(projectIds)])) {
+			projects.push(
+				...(await this.find({
+					where: {
+						id: In(projectIdChunk),
+						...(userId && projectRoles
+							? { projectRelations: { userId, role: In(projectRoles) } }
+							: {}),
+					},
+				})),
+			);
+		}
+		return projects.sort(
+			(a, b) =>
+				a.createdAt.getTime() - b.createdAt.getTime() || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0),
+		);
+	}
+
+	async findExistingIds(projectIds: string[]): Promise<string[]> {
+		if (projectIds.length === 0) return [];
+		const result: string[] = [];
+		for (const projectIdChunk of chunkIds([...new Set(projectIds)])) {
+			const projects = await this.find({ select: ['id'], where: { id: In(projectIdChunk) } });
+			result.push(...projects.map(({ id }) => id));
+		}
+		return result;
+	}
+
+	async findOwnedOrAdminByUser(userId: string): Promise<Project[]> {
+		return await this.find({
+			where: {
+				projectRelations: {
+					userId,
+					role: In([PROJECT_OWNER_ROLE_SLUG, PROJECT_ADMIN_ROLE_SLUG]),
+				},
+			},
+		});
+	}
+
+	async findPage({
+		offset,
+		limit,
+	}: { offset: number; limit: number }): Promise<[Project[], number]> {
+		return await this.findAndCount({
+			skip: offset,
+			take: limit,
+			order: { createdAt: 'ASC', id: 'ASC' },
+		});
+	}
+
+	async updateTeamProject(
+		projectId: string,
+		changes: Partial<Pick<Project, 'name' | 'icon' | 'description' | 'customTelemetryTags'>>,
+	): Promise<boolean> {
+		const result = await this.update({ id: projectId, type: 'team' }, changes);
+		return Boolean(result.affected);
 	}
 
 	async getAccessibleProjects(userId: string) {
