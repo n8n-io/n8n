@@ -388,7 +388,7 @@ onBeforeUnmount(() => {
 							>
 								<template #trigger>
 									<N8nButton
-										:variant="showMcpDiscovery ? 'solid' : 'outline'"
+										:variant="connectedClientsTotal > 0 ? 'outline' : 'solid'"
 										size="medium"
 										icon="mcp"
 										:label="i18n.baseText('settings.mcp.yourClient.connect')"
