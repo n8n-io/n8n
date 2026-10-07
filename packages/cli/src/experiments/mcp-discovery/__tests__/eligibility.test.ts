@@ -9,7 +9,7 @@ import {
 const firstVisit = Date.UTC(2026, 9, 2, 12);
 const eligible: McpDiscoveryEligibilityInput = {
 	now: firstVisit + MCP_DISCOVERY_DELAY_MS,
-	planName: 'Trial',
+	isTrial: true,
 	firstLoginAt: firstVisit,
 	assistantMutationAt: null,
 	pickedClaude: true,
@@ -46,26 +46,14 @@ describe('MCP discovery eligibility', () => {
 		});
 	});
 
-	it.each(['Free', 'Starter', 'Pro', 'Enterprise', 'Community', 'trial'])(
-		'excludes the current %s license plan',
-		(planName) => {
-			expect(evaluateMcpDiscoveryEligibility({ ...eligible, planName })).toEqual({
-				status: 'excluded',
-				reason: 'trial',
-			});
-		},
-	);
-
-	it('uses the Trial license without reconstructing a trial expiration date', () => {
-		expect(
-			evaluateMcpDiscoveryEligibility({
-				...eligible,
-				now: firstVisit + 30 * 24 * 60 * 60 * 1000,
-			}),
-		).toEqual({ status: 'eligible', eligibleAt: eligible.now });
+	it('excludes an account that is not trialing', () => {
+		expect(evaluateMcpDiscoveryEligibility({ ...eligible, isTrial: false })).toEqual({
+			status: 'excluded',
+			reason: 'trial',
+		});
 	});
 
-	it.each(['planName', 'firstLoginAt', 'assistantMutationAt', 'pickedClaude'] as const)(
+	it.each(['isTrial', 'firstLoginAt', 'assistantMutationAt', 'pickedClaude'] as const)(
 		'does not infer eligibility when %s is unknown',
 		(key) => {
 			expect(evaluateMcpDiscoveryEligibility({ ...eligible, [key]: undefined })).toEqual({

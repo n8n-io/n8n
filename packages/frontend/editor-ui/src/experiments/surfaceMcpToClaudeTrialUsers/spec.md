@@ -7,8 +7,13 @@
 - Read the answer through the existing owner-only Cloud account API. The editor
   waits for the Cloud store's owner check to be ready, then sends `pickedClaude`
   to the backend. This boolean controls experiment targeting, not MCP permissions.
-- Require the local license plan name `Trial` at assignment. This does not verify
-  an expiry date. Saved assignments survive later plan changes.
+- Read `metadata.group` from the existing owner-only `/admin/cloud-plan` API
+  before each visit until assignment. Only `trial` qualifies; Free and paid plans
+  do not. Send the result as `isTrial` to the backend with `pickedClaude`.
+  Do not use `userIsTrialing`: Cloud also sets it for Free accounts.
+  These values control targeting, not access permissions. Missing plan data or
+  request failures remain unknown and retry. Do not use the license plan name:
+  Cloud certificates can omit it. Saved assignments survive later plan changes.
 - Use PostHog instance-date targeting to select new instances. The backend does
   not repeat the date filter.
 - Evaluate Assistant activity at first login plus 30 minutes. A successful

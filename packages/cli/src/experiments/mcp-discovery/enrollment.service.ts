@@ -2,13 +2,13 @@ import {
 	MCP_DISCOVERY_EXPERIMENT_KEY,
 	mcpDiscoveryAssignmentSchema,
 	type McpDiscoveryState,
+	type McpDiscoveryVisitRequestDto,
 } from '@n8n/api-types';
 import { GlobalConfig } from '@n8n/config';
 import { ApiKeyRepository, SettingsRepository } from '@n8n/db';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 
-import { License } from '@/license';
 import { UserConsentRepository } from '@/modules/oauth-server/database/repositories/oauth-user-consent.repository';
 import { PostHogClient } from '@/posthog';
 
@@ -25,14 +25,16 @@ export class McpDiscoveryEnrollmentService {
 		private readonly posthog: PostHogClient,
 		private readonly consents: UserConsentRepository,
 		private readonly apiKeys: ApiKeyRepository,
-		private readonly license: License,
 	) {}
 
 	async dismissCoachmark(userId: string): Promise<void> {
 		await this.settings.claimKey(discoveryUserKey(userId, 'coachmarkDismissed'), 'true');
 	}
 
-	async visit(user: Pick<User, 'id' | 'role'>, pickedClaude?: boolean): Promise<McpDiscoveryState> {
+	async visit(
+		user: Pick<User, 'id' | 'role'>,
+		{ pickedClaude, isTrial }: McpDiscoveryVisitRequestDto = {},
+	): Promise<McpDiscoveryState> {
 		const inactive: McpDiscoveryState = { status: 'inactive', coachmarkDismissed: false };
 		if (this.config.deployment.type !== 'cloud') return inactive;
 		if (user.role.slug !== 'global:owner') return inactive;
@@ -43,8 +45,10 @@ export class McpDiscoveryEnrollmentService {
 		const unknown: McpDiscoveryState = { ...base, status: 'unknown' };
 		const enrolled = await this.settings.findByKey(discoveryUserKey(userId, 'assignment'));
 
-		const planName = this.license.getPlanName();
-		if (!enrolled?.value && planName !== 'Trial') return { ...base, status: 'excluded' };
+		if (!enrolled?.value) {
+			if (isTrial === undefined) return unknown;
+			if (!isTrial) return { ...base, status: 'excluded' };
+		}
 
 		// A disabled flag remains a kill switch. It never removes the saved assignment.
 		const evaluation = await this.posthog.getFeatureFlagForInstanceWithStatus(
@@ -77,7 +81,7 @@ export class McpDiscoveryEnrollmentService {
 		const eligibility = evaluateMcpDiscoveryEligibility({
 			pickedClaude,
 			now,
-			planName,
+			isTrial,
 			firstLoginAt: this.parseTimestamp(firstVisit?.value),
 			assistantMutationAt: mutation ? this.parseTimestamp(mutation.value) : null,
 		});

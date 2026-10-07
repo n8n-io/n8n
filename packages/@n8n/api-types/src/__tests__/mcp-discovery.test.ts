@@ -12,6 +12,14 @@ describe('McpDiscoveryVisitRequestDto', () => {
 		},
 	);
 
+	it.each([true, false, undefined])('accepts a trial status of %s', (isTrial) => {
+		expect(McpDiscoveryVisitRequestDto.safeParse({ isTrial }).success).toBe(true);
+	});
+
+	it.each(['true', 'false', null, 1, {}])('rejects an invalid trial status: %s', (isTrial) => {
+		expect(McpDiscoveryVisitRequestDto.safeParse({ isTrial }).success).toBe(false);
+	});
+
 	it('does not accept role or assignment values from the client', () => {
 		expect(
 			McpDiscoveryVisitRequestDto.parse({

@@ -27,6 +27,8 @@ Before rollout, verify:
 
 - A real Cloud owner with a Claude onboarding answer can qualify. Admins and
   members cannot. Missing and unsupported answers do not qualify.
+- A Cloud trial can qualify even if its license reports `Community`. A non-trial
+  account cannot qualify. Missing trial status and Cloud API failures retry.
 - The first eligibility check runs after Cloud owner initialization, without
   waiting for the next poll.
 - A qualifying owner sees entry points after the cutoff without refreshing.

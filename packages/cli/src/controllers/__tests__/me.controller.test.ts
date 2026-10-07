@@ -51,7 +51,7 @@ describe('MeController', () => {
 		getCurrentAuthenticationMethodMock.mockReturnValue('email');
 	});
 
-	it('passes the authenticated user and validated Claude choice to enrollment', async () => {
+	it('passes the authenticated user and validated Cloud targeting data to enrollment', async () => {
 		const user = mock<User>({ id: 'owner', role: GLOBAL_OWNER_ROLE });
 		const req = mock<AuthenticatedRequest>({ user });
 		const state = { status: 'unknown', coachmarkDismissed: false } as const;
@@ -60,10 +60,13 @@ describe('MeController', () => {
 			await controller.visitMcpDiscovery(
 				req,
 				mock<Response>(),
-				new McpDiscoveryVisitRequestDto({ pickedClaude: true }),
+				new McpDiscoveryVisitRequestDto({ pickedClaude: true, isTrial: true }),
 			),
 		).toEqual(state);
-		expect(discoveryEnrollment.visit).toHaveBeenCalledWith(user, true);
+		expect(discoveryEnrollment.visit).toHaveBeenCalledWith(user, {
+			pickedClaude: true,
+			isTrial: true,
+		});
 	});
 
 	describe('updateCurrentUser', () => {

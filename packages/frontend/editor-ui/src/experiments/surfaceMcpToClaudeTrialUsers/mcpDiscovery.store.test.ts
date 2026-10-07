@@ -1,4 +1,5 @@
 import { reactive } from 'vue';
+import { flushPromises } from '@vue/test-utils';
 import { createPinia, setActivePinia } from 'pinia';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 
@@ -11,12 +12,16 @@ const mocks = vi.hoisted(() => ({
 	cloud: {
 		currentUserCloudInfo: null as { information?: Record<string, unknown> } | null,
 		fetchUserCloudAccount: vi.fn(),
+		getOwnerCurrentPlan: vi.fn(),
 	},
 	track: vi.fn(),
 	setAssignment: vi.fn(),
 	getVariant: vi.fn(),
 	users: { isInstanceOwner: true, currentUser: { id: 'member' } },
-	settings: { moduleSettings: { mcp: { mcpAccessEnabled: false } } },
+	settings: {
+		moduleSettings: { mcp: { mcpAccessEnabled: false } },
+		settings: { license: { planName: 'Community' } },
+	},
 }));
 
 vi.mock('@n8n/stores/cloudPlan.store', () => ({ useCloudPlanStore: () => mocks.cloud }));
@@ -43,6 +48,7 @@ describe('MCP discovery store', () => {
 	beforeEach(() => {
 		vi.resetAllMocks();
 		mocks.users.isInstanceOwner = true;
+		mocks.cloud.getOwnerCurrentPlan.mockResolvedValue({ metadata: { group: 'trial' } });
 		mocks.cloud.currentUserCloudInfo = {
 			information: {
 				surveyId: 'OArzTwNz',
@@ -88,7 +94,7 @@ describe('MCP discovery store', () => {
 		expect(mocks.track).not.toHaveBeenCalled();
 	});
 
-	it('reads the existing Cloud account API once and sends only the Claude choice', async () => {
+	it('reads the existing Cloud account API once and sends the Claude choice with the Cloud trial status', async () => {
 		mocks.cloud.currentUserCloudInfo = null;
 		mocks.cloud.fetchUserCloudAccount.mockImplementation(async () => {
 			mocks.cloud.currentUserCloudInfo = {
@@ -109,9 +115,98 @@ describe('MCP discovery store', () => {
 		expect(mocks.request).toHaveBeenLastCalledWith(
 			expect.objectContaining({
 				url: '/me/mcp-discovery/visit',
-				data: { pickedClaude: true },
+				data: { pickedClaude: true, isTrial: true },
 			}),
 		);
+	});
+
+	it('retries a failed plan request without using the Community license fallback', async () => {
+		mocks.cloud.getOwnerCurrentPlan.mockRejectedValueOnce(new Error('Unavailable'));
+		const store = useMcpDiscoveryStore();
+		await store.refresh();
+		expect(store.state.status).toBe('unknown');
+		expect(mocks.request).not.toHaveBeenCalled();
+
+		mocks.request.mockResolvedValue({
+			status: 'assigned',
+			assignment: { variant: 'variant', assignedAt: 123 },
+			coachmarkDismissed: false,
+		});
+		await store.refresh();
+		expect(store.isEnabled).toBe(true);
+		expect(mocks.request).toHaveBeenLastCalledWith(
+			expect.objectContaining({ data: { pickedClaude: true, isTrial: true } }),
+		);
+	});
+
+	it('does not infer false when Cloud omits trial status', async () => {
+		mocks.cloud.getOwnerCurrentPlan.mockResolvedValueOnce({});
+		mocks.request.mockResolvedValue({ status: 'unknown', coachmarkDismissed: false });
+		const store = useMcpDiscoveryStore();
+		await store.refresh();
+		expect(mocks.request.mock.calls[0]?.[0].data.isTrial).toBeUndefined();
+		expect(store.state.status).toBe('unknown');
+		await store.refresh();
+		expect(mocks.request).toHaveBeenLastCalledWith(
+			expect.objectContaining({ data: { pickedClaude: true, isTrial: true } }),
+		);
+	});
+
+	it('refreshes the trial status before assignment and sends an upgrade to enrollment', async () => {
+		mocks.cloud.getOwnerCurrentPlan
+			.mockResolvedValueOnce({ metadata: { group: 'trial' } })
+			.mockResolvedValueOnce({ metadata: { group: 'opt-in' } });
+		mocks.request
+			.mockResolvedValueOnce({ status: 'waiting', coachmarkDismissed: false })
+			.mockResolvedValueOnce({ status: 'excluded', coachmarkDismissed: false });
+		const store = useMcpDiscoveryStore();
+		await store.refresh();
+		await store.refresh();
+		expect(mocks.request).toHaveBeenLastCalledWith(
+			expect.objectContaining({ data: { pickedClaude: true, isTrial: false } }),
+		);
+		expect(store.state.status).toBe('excluded');
+	});
+
+	it.each([
+		{ metadata: { group: 'free' }, userIsTrialing: true },
+		{ metadata: { group: 'opt-in' } },
+	])('excludes a non-trial Cloud plan: %j', async (plan) => {
+		mocks.cloud.getOwnerCurrentPlan.mockResolvedValue(plan);
+		mocks.cloud.currentUserCloudInfo = null;
+		mocks.request.mockResolvedValue({ status: 'excluded', coachmarkDismissed: false });
+		const store = useMcpDiscoveryStore();
+		await store.refresh();
+		expect(mocks.request.mock.calls[0]?.[0].data.isTrial).toBe(false);
+		expect(mocks.cloud.fetchUserCloudAccount).not.toHaveBeenCalled();
+		expect(store.state.status).toBe('excluded');
+	});
+
+	it('does not fetch the plan again after assignment', async () => {
+		mocks.request.mockResolvedValue({
+			status: 'assigned',
+			assignment: { variant: 'variant', assignedAt: 123 },
+			coachmarkDismissed: false,
+		});
+		const store = useMcpDiscoveryStore();
+		await store.refresh();
+		mocks.cloud.getOwnerCurrentPlan.mockRejectedValue(new Error('Unavailable'));
+		await store.refresh();
+		expect(mocks.cloud.getOwnerCurrentPlan).toHaveBeenCalledTimes(1);
+		expect(mocks.request).toHaveBeenCalledTimes(2);
+		expect(store.isEnabled).toBe(true);
+	});
+
+	it('ignores a plan response after resetting the same user', async () => {
+		const plan = Promise.withResolvers<{ metadata: { group: string } }>();
+		mocks.cloud.getOwnerCurrentPlan.mockReturnValueOnce(plan.promise);
+		const store = useMcpDiscoveryStore();
+		const pending = store.refresh();
+		store.reset();
+		plan.resolve({ metadata: { group: 'trial' } });
+		await pending;
+		expect(mocks.request).not.toHaveBeenCalled();
+		expect(store.state.status).toBe('inactive');
 	});
 
 	it('does not request Cloud data or enrollment for a non-owner', async () => {
@@ -120,6 +215,7 @@ describe('MCP discovery store', () => {
 		await useMcpDiscoveryStore().refresh();
 
 		expect(mocks.cloud.fetchUserCloudAccount).not.toHaveBeenCalled();
+		expect(mocks.cloud.getOwnerCurrentPlan).not.toHaveBeenCalled();
 		expect(mocks.request).not.toHaveBeenCalled();
 		expect(mocks.track).not.toHaveBeenCalled();
 	});
@@ -140,7 +236,7 @@ describe('MCP discovery store', () => {
 		mocks.request.mockResolvedValue({ status: 'excluded', coachmarkDismissed: false });
 		await store.refresh();
 		expect(mocks.request).toHaveBeenLastCalledWith(
-			expect.objectContaining({ data: { pickedClaude: false } }),
+			expect.objectContaining({ data: { pickedClaude: false, isTrial: true } }),
 		);
 		expect(store.state.status).toBe('excluded');
 	});
@@ -160,7 +256,7 @@ describe('MCP discovery store', () => {
 		});
 		await store.refresh();
 		expect(mocks.request).toHaveBeenLastCalledWith(
-			expect.objectContaining({ data: { pickedClaude: true } }),
+			expect.objectContaining({ data: { pickedClaude: true, isTrial: true } }),
 		);
 	});
 	it('tracks visible placements once and clicks with experiment metadata', async () => {
@@ -287,6 +383,7 @@ describe('MCP discovery store', () => {
 		);
 		const store = useMcpDiscoveryStore();
 		const pending = store.refresh();
+		await flushPromises();
 		store.reset();
 		mocks.users.currentUser = { id: 'other' };
 		resolve({

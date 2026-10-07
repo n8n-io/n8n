@@ -11,6 +11,7 @@ const mocks = vi.hoisted(() => ({
 		hasCloudPlan: true,
 		currentUserCloudInfo: null as { information?: Record<string, unknown> } | null,
 		fetchUserCloudAccount: vi.fn(),
+		getOwnerCurrentPlan: vi.fn(),
 	},
 	track: vi.fn(),
 	users: { isInstanceOwner: true, currentUser: { id: 'member' } as { id: string } | undefined },
@@ -48,6 +49,7 @@ describe('MCP discovery enrollment polling', () => {
 		vi.resetAllMocks();
 		mocks.users.isInstanceOwner = true;
 		mocks.cloud.hasCloudPlan = true;
+		mocks.cloud.getOwnerCurrentPlan.mockResolvedValue({ metadata: { group: 'trial' } });
 		mocks.cloud.currentUserCloudInfo = {
 			information: {
 				surveyId: 'OArzTwNz',
@@ -126,6 +128,19 @@ describe('MCP discovery enrollment polling', () => {
 		expect(mocks.request).toHaveBeenCalledTimes(4);
 		await vi.advanceTimersByTimeAsync(180_000);
 		expect(mocks.request).toHaveBeenCalledTimes(4);
+	});
+
+	it('retries the Cloud plan after a failure without a page reload', async () => {
+		mocks.cloud.getOwnerCurrentPlan.mockRejectedValueOnce(new Error('Unavailable'));
+		mocks.request.mockResolvedValue(assigned('control'));
+		await start();
+		expect(useMcpDiscoveryStore().state.status).toBe('unknown');
+		expect(mocks.request).not.toHaveBeenCalled();
+		await vi.advanceTimersByTimeAsync(60_000);
+		expect(mocks.cloud.getOwnerCurrentPlan).toHaveBeenCalledTimes(2);
+		expect(useMcpDiscoveryStore().state.status).toBe('assigned');
+		await vi.advanceTimersByTimeAsync(120_000);
+		expect(mocks.cloud.getOwnerCurrentPlan).toHaveBeenCalledTimes(2);
 	});
 
 	it('retries an unavailable eligibility check', async () => {

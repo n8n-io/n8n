@@ -2,7 +2,6 @@ import type { GlobalConfig } from '@n8n/config';
 import type { ApiKey, ApiKeyRepository, Settings, SettingsRepository, User, Role } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
-import type { License } from '@/license';
 import type { UserConsentRepository } from '@/modules/oauth-server/database/repositories/oauth-user-consent.repository';
 import type { UserConsent } from '@/modules/oauth-server/database/entities/oauth-user-consent.entity';
 import type { PostHogClient } from '@/posthog';
@@ -13,7 +12,6 @@ import { McpDiscoveryEnrollmentService } from '../enrollment.service';
 vi.mock('@n8n/db', () => ({ SettingsRepository: class {}, ApiKeyRepository: class {} }));
 vi.mock('@n8n/config', () => ({ GlobalConfig: class {} }));
 
-vi.mock('@/license', () => ({ License: class {} }));
 vi.mock('@/posthog', () => ({ PostHogClient: class {} }));
 vi.mock('@/modules/oauth-server/database/repositories/oauth-user-consent.repository', () => ({
 	UserConsentRepository: class {},
@@ -25,13 +23,13 @@ describe('MCP discovery enrollment', () => {
 	const posthog = mock<PostHogClient>();
 	const consents = mock<UserConsentRepository>();
 	const apiKeys = mock<ApiKeyRepository>();
-	const license = mock<License>();
 	const rows = new Map<string, string>();
 	let service: McpDiscoveryEnrollmentService;
 	const start = Date.UTC(2026, 9, 2, 12);
 
 	const owner = (id: string) => mock<User>({ id, role: mock<Role>({ slug: 'global:owner' }) });
-	const visit = async (id: string) => await service.visit(owner(id), true);
+	const visit = async (id: string) =>
+		await service.visit(owner(id), { pickedClaude: true, isTrial: true });
 
 	beforeEach(() => {
 		vi.resetAllMocks();
@@ -54,17 +52,9 @@ describe('MCP discovery enrollment', () => {
 			status: 'available',
 			value: 'variant',
 		});
-		license.getPlanName.mockReturnValue('Trial');
 		consents.findConnectedClients.mockResolvedValue({ rows: [], total: 0 });
 		apiKeys.find.mockResolvedValue([]);
-		service = new McpDiscoveryEnrollmentService(
-			settings,
-			config,
-			posthog,
-			consents,
-			apiKeys,
-			license,
-		);
+		service = new McpDiscoveryEnrollmentService(settings, config, posthog, consents, apiKeys);
 	});
 
 	afterEach(() => vi.useRealTimers());
@@ -77,7 +67,9 @@ describe('MCP discovery enrollment', () => {
 			const user = mock<User>({ id: 'owner', role: mock<Role>({ slug }) });
 			posthog.getFeatureFlagForInstanceWithStatus.mockClear();
 
-			expect((await service.visit(user, true)).status).toBe('inactive');
+			expect((await service.visit(user, { pickedClaude: true, isTrial: true })).status).toBe(
+				'inactive',
+			);
 			expect(posthog.getFeatureFlagForInstanceWithStatus).not.toHaveBeenCalled();
 			expect(rows.get(discoveryUserKey('owner', 'assignment'))).toBe(
 				JSON.stringify(saved.assignment),
@@ -106,15 +98,18 @@ describe('MCP discovery enrollment', () => {
 	it('keeps an existing assignment after upgrade', async () => {
 		vi.setSystemTime(start + 30 * 60 * 1000);
 		const assigned = await visit('owner');
-		license.getPlanName.mockReturnValue('Pro');
-		expect(await visit('owner')).toEqual(assigned);
+		expect(await service.visit(owner('owner'), { pickedClaude: true, isTrial: false })).toEqual(
+			assigned,
+		);
+		expect(await service.visit(owner('owner'))).toEqual(assigned);
 	});
 
 	it('does not assign a user who upgraded before returning', async () => {
 		await visit('owner');
 		vi.setSystemTime(start + 60 * 60 * 1000);
-		license.getPlanName.mockReturnValue('Pro');
-		expect(await visit('owner')).toMatchObject({ status: 'excluded' });
+		expect(
+			await service.visit(owner('owner'), { pickedClaude: true, isTrial: false }),
+		).toMatchObject({ status: 'excluded' });
 	});
 
 	it('uses the winning instance assignment for a later eligible owner', async () => {
@@ -205,7 +200,9 @@ describe('MCP discovery enrollment', () => {
 
 	it('excludes an owner whose onboarding answer does not include Claude', async () => {
 		vi.setSystemTime(start + 30 * 60 * 1000);
-		expect((await service.visit(owner('owner'), false)).status).toBe('excluded');
+		expect(
+			(await service.visit(owner('owner'), { pickedClaude: false, isTrial: true })).status,
+		).toBe('excluded');
 	});
 
 	it('enrolls a user who already connected an MCP client', async () => {
@@ -281,21 +278,20 @@ describe('MCP discovery enrollment', () => {
 
 	it('leaves a missing onboarding answer unknown', async () => {
 		vi.setSystemTime(start + 30 * 60 * 1000);
-		expect((await service.visit(owner('owner'))).status).toBe('unknown');
+		expect((await service.visit(owner('owner'), { isTrial: true })).status).toBe('unknown');
 	});
 
 	it('keeps dismissal in shared storage across service instances', async () => {
 		await service.dismissCoachmark('owner');
-		const another = new McpDiscoveryEnrollmentService(
-			settings,
-			config,
-			posthog,
-			consents,
-			apiKeys,
-			license,
-		);
-		expect((await another.visit(owner('owner'), true)).coachmarkDismissed).toBe(true);
-		expect((await another.visit(owner('other'), true)).coachmarkDismissed).toBe(false);
+		const another = new McpDiscoveryEnrollmentService(settings, config, posthog, consents, apiKeys);
+		expect(
+			(await another.visit(owner('owner'), { pickedClaude: true, isTrial: true }))
+				.coachmarkDismissed,
+		).toBe(true);
+		expect(
+			(await another.visit(owner('other'), { pickedClaude: true, isTrial: true }))
+				.coachmarkDismissed,
+		).toBe(false);
 	});
 
 	it('does not assign an instance outside the PostHog cohort', async () => {
@@ -357,10 +353,20 @@ describe('MCP discovery enrollment', () => {
 		},
 	);
 
-	it.each(['Free', 'Pro', 'Community'])('excludes a %s plan', async (planName) => {
-		license.getPlanName.mockReturnValue(planName);
-		expect((await visit('owner')).status).toBe('excluded');
+	it('excludes an account that is not trialing', async () => {
+		expect(
+			(await service.visit(owner('owner'), { pickedClaude: true, isTrial: false })).status,
+		).toBe('excluded');
 		expect(posthog.getFeatureFlagForInstanceWithStatus).not.toHaveBeenCalled();
+	});
+
+	it('retries missing trial data and assigns when Cloud confirms a trial', async () => {
+		vi.setSystemTime(start + 31 * 60 * 1000);
+		expect(await service.visit(owner('owner'), { pickedClaude: true })).toMatchObject({
+			status: 'unknown',
+		});
+		expect(settings.claimKey).not.toHaveBeenCalled();
+		expect((await visit('owner')).status).toBe('assigned');
 	});
 
 	it('honors the kill switch without erasing assignments', async () => {

@@ -59,7 +59,15 @@ export const useMcpDiscoveryStore = defineStore(STORES.EXPERIMENT_MCP_DISCOVERY,
 		const requestGeneration = generation;
 		loading.value = true;
 		try {
-			if (state.value.status !== 'assigned' && pickedClaude === undefined) {
+			// Refresh the Cloud plan until assignment. License certificates can omit the plan name.
+			let isTrial: boolean | undefined;
+			if (state.value.status !== 'assigned') {
+				const plan = await cloudPlan.getOwnerCurrentPlan();
+				if (requestGeneration !== generation || users.currentUser?.id !== userId) return;
+				const group = plan.metadata?.group;
+				isTrial = group ? group === 'trial' : undefined;
+			}
+			if (isTrial === true && pickedClaude === undefined) {
 				let answer = pickedClaudeInOnboarding(cloudPlan.currentUserCloudInfo?.information);
 				if (answer === undefined) {
 					await cloudPlan.fetchUserCloudAccount();
@@ -72,7 +80,7 @@ export const useMcpDiscoveryStore = defineStore(STORES.EXPERIMENT_MCP_DISCOVERY,
 				root.restApiContext,
 				'POST',
 				'/me/mcp-discovery/visit',
-				{ pickedClaude },
+				{ pickedClaude, isTrial },
 			);
 			if (requestGeneration !== generation || users.currentUser?.id !== userId) return;
 			const nextState = mcpDiscoveryStateSchema.parse(response);
@@ -99,7 +107,7 @@ export const useMcpDiscoveryStore = defineStore(STORES.EXPERIMENT_MCP_DISCOVERY,
 				);
 			}
 		} catch {
-			// Retry later. Never infer a negative activity history from an unavailable API.
+			// Retry later. Do not infer eligibility from an unavailable API.
 			if (requestGeneration === generation && !isEnabled.value) {
 				state.value = { status: 'unknown', coachmarkDismissed: false };
 			}

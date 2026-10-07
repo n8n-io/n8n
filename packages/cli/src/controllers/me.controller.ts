@@ -49,7 +49,7 @@ export class MeController {
 		_: Response,
 		@Body payload: McpDiscoveryVisitRequestDto,
 	) {
-		return await this.mcpDiscovery.visit(req.user, payload.pickedClaude);
+		return await this.mcpDiscovery.visit(req.user, payload);
 	}
 
 	@Post('/mcp-discovery/dismiss')

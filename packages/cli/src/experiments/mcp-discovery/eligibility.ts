@@ -1,8 +1,8 @@
-/** PostHog selects new instances; the local license identifies the Trial plan. */
+/** PostHog selects new instances; the Cloud plan API identifies trials. */
 export type McpDiscoveryEligibilityInput = {
 	pickedClaude?: boolean;
 	now: number;
-	planName?: string;
+	isTrial?: boolean;
 	firstLoginAt?: number;
 	/** Null means no recorded Assistant change. */
 	assistantMutationAt?: number | null;
@@ -15,13 +15,13 @@ export type McpDiscoveryEligibility =
 	| { status: 'waiting'; eligibleAt: number }
 	| { status: 'eligible'; eligibleAt: number };
 
-/** Freeze Assistant history at the deadline; require a Trial license at assignment. */
+/** Freeze Assistant history at the deadline; require a Cloud trial at assignment. */
 export function evaluateMcpDiscoveryEligibility(
 	input: McpDiscoveryEligibilityInput,
 ): McpDiscoveryEligibility {
-	const { now, planName, firstLoginAt, assistantMutationAt, pickedClaude } = input;
-	if (!planName) return { status: 'unknown' };
-	if (planName !== 'Trial') return { status: 'excluded', reason: 'trial' };
+	const { now, isTrial, firstLoginAt, assistantMutationAt, pickedClaude } = input;
+	if (isTrial === undefined) return { status: 'unknown' };
+	if (!isTrial) return { status: 'excluded', reason: 'trial' };
 	if (
 		firstLoginAt === undefined ||
 		![now, firstLoginAt].every(Number.isFinite) ||

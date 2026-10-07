@@ -22,4 +22,5 @@ export type McpDiscoveryState = z.infer<typeof mcpDiscoveryStateSchema>;
 
 export class McpDiscoveryVisitRequestDto extends Z.class({
 	pickedClaude: z.boolean().optional(),
+	isTrial: z.boolean().optional(),
 }) {}
