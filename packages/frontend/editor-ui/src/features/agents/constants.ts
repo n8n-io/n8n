@@ -17,6 +17,13 @@ export const AGENT_N8N_CHAT_VIEW = 'AgentN8nChatView';
 /** The "browse agents available over n8n Chat" library screen. */
 export const AGENT_N8N_CHAT_LIBRARY_VIEW = 'AgentN8nChatLibraryView';
 
+/**
+ * n8n Chat agent search cap, shared by the library view and the "Chat with"
+ * picker. Matches the backend filter (`agentListFilterSchema.query` `.max(128)`,
+ * `@n8n/api-types`), so a longer search term never reaches the API.
+ */
+export const AGENT_N8N_CHAT_SEARCH_MAX_LENGTH = 128;
+
 export const AGENT_TOOLS_MODAL_KEY = 'agentToolsModal';
 export const AGENT_TOOL_CONFIG_MODAL_KEY = 'agentToolConfigModal';
 export const AGENT_SKILL_MODAL_KEY = 'agentSkillModal';

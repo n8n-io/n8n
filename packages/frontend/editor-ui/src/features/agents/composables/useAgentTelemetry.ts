@@ -14,7 +14,7 @@ export type AgentCreateSource =
 	| 'empty_state_blank'
 	| 'empty_state_prompt'
 	| 'empty_state_template';
-export type N8nChatAgentSource = 'card' | 'library';
+export type N8nChatAgentSource = 'card' | 'library' | 'dropdown';
 
 export function useAgentTelemetry() {
 	const telemetry = useTelemetry();

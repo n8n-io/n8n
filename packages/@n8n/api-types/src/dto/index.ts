@@ -336,12 +336,14 @@ export {
 export { TestDestinationQueryDto } from './log-streaming/test-destination-query.dto';
 export { DeleteDestinationQueryDto } from './log-streaming/delete-destination-query.dto';
 export {
+	LogStreamingDestinationListPublicDto,
+	LogStreamingDestinationPublicDto,
+	LogStreamingEventTypesPublicDto,
 	PublicCreateDestinationDto,
-	PublicDestinationResponseDto,
+	type LogStreamingDestinationPublic,
 	type PublicCreateDestination,
 	type PublicDestinationType,
-} from './log-streaming/public-destination.dto';
-export { LogStreamingEventTypesPublicDto } from './log-streaming/log-streaming-public.dto';
+} from './log-streaming/log-streaming-public.dto';
 
 export { PaginationDto, MAX_ITEMS_PER_PAGE } from './pagination/pagination.dto';
 
@@ -526,7 +528,9 @@ export {
 	workflowVersionListItemPublicSchema,
 } from './workflow-history/workflow-version-history-public.dto';
 export {
+	DeprecatedWorkflowVersionPublicDto,
 	WorkflowVersionPublicDto,
+	deprecatedWorkflowVersionPublicSchema,
 	workflowVersionPublicSchema,
 } from './workflow-history/workflow-version-public.dto';
 
@@ -733,3 +737,5 @@ export {
 	promotePackageResultSchema,
 	promotionGitResultSchema,
 } from './promotions/promotion-operations.dto';
+
+export { ScimConfigPatchDto } from './scim';

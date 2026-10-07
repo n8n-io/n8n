@@ -184,6 +184,7 @@ export class WaitTracker {
 		await this.workflowRunner.run(data, false, false, {
 			executionId,
 			expectedStatus: 'waiting',
+			storedAt: fullExecutionData.storedAt,
 		});
 
 		const { parentExecution } = fullExecutionData.data;

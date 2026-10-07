@@ -676,10 +676,10 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 	USER_SELECTED_N8N_CHAT_AGENT: {
 		name: 'User selected n8n chat agent',
 		description:
-			'The user picked a published agent to chat with over n8n Chat, from a card or the agents library.',
+			'The user picked a published agent to chat with over n8n Chat, from a card, the agents library, or the chat-page agent picker dropdown.',
 		properties: z.object({
 			agent_id: z.string(),
-			source: z.enum(['card', 'library']),
+			source: z.enum(['card', 'library', 'dropdown']),
 			variant: n8nChatVariant,
 			session_id: sessionId,
 		}),

@@ -1,45 +1,59 @@
 <script setup lang="ts">
+import { computed } from 'vue';
 import { RouterLink } from 'vue-router';
 import type { AgentChatListItem } from '@n8n/api-types';
 import { N8nText } from '@n8n/design-system';
 
+import { INSTANCE_AI_VIEW } from '@/features/ai/instanceAi/constants';
 import { AGENT_N8N_CHAT_VIEW } from '../../constants';
 import { useAgentTelemetry, type N8nChatAgentSource } from '../../composables/useAgentTelemetry';
 import AgentPersonalisationIcon from '../../components/AgentPersonalisationIcon.vue';
+import { useN8nAssistantIdentity } from '../composables/useN8nAssistantIdentity';
 
 const props = defineProps<{
-	agent: AgentChatListItem;
+	/** `null` renders the n8n Assistant, which links back to the Assistant page. */
+	agent: AgentChatListItem | null;
 	/** Where the card was shown, for the selection telemetry event. */
 	source: N8nChatAgentSource;
 }>();
 
+const assistant = useN8nAssistantIdentity();
 const agentTelemetry = useAgentTelemetry();
 
+const to = computed(() =>
+	props.agent
+		? { name: AGENT_N8N_CHAT_VIEW, params: { agentId: props.agent.id } }
+		: { name: INSTANCE_AI_VIEW },
+);
+const name = computed(() => props.agent?.name ?? assistant.name.value);
+const description = computed(() =>
+	props.agent ? props.agent.description : assistant.description.value,
+);
+
 function onClick(): void {
+	if (!props.agent) return;
 	agentTelemetry.trackSelectedN8nChatAgent({ agentId: props.agent.id, source: props.source });
 }
 </script>
 
 <template>
-	<RouterLink
-		:to="{ name: AGENT_N8N_CHAT_VIEW, params: { agentId: agent.id } }"
-		:class="$style.card"
-		data-test-id="n8n-chat-agent-card"
-		@click="onClick"
-	>
-		<AgentPersonalisationIcon :personalisation="agent.personalisation" :size="40" />
+	<RouterLink :to="to" :class="$style.card" data-test-id="n8n-chat-agent-card" @click="onClick">
+		<AgentPersonalisationIcon
+			:personalisation="agent ? agent.personalisation : assistant.personalisation"
+			:size="40"
+		/>
 		<div :class="$style.content">
 			<N8nText bold :class="$style.title" data-test-id="n8n-chat-agent-card-name">
-				{{ agent.name }}
+				{{ name }}
 			</N8nText>
 			<N8nText
-				v-if="agent.description"
+				v-if="description"
 				size="small"
 				color="text-light"
 				:class="$style.description"
 				data-test-id="n8n-chat-agent-card-description"
 			>
-				{{ agent.description }}
+				{{ description }}
 			</N8nText>
 		</div>
 	</RouterLink>

@@ -13,7 +13,7 @@ import type {
 	CustomToolEntry,
 } from '../types';
 import { getRandomAgentPersonalisationGradient } from '@n8n/api-types';
-import { agentsEventBus } from '../agents.eventBus';
+import { agentsEventBus, type AgentCredentialHelpRequest } from '../agents.eventBus';
 import { AGENT_TEMPLATES, AGENT_TEMPLATE_SUGGESTIONS_VERSION } from '../agentTemplates';
 import {
 	AGENT_BUILDER_VIEW,
@@ -21,6 +21,7 @@ import {
 	AGENT_SESSION_DETAIL_VIEW,
 	NEW_SESSION_PARAM,
 	OPEN_PREVIEW_PARAM,
+	AGENT_TOOL_CONFIG_MODAL_KEY,
 } from '../constants';
 
 const routerPush = vi.fn();
@@ -39,6 +40,7 @@ type RouteGuard = (to: { params: Record<string, string> }) => void | Promise<voi
 const routeGuards: { leave?: RouteGuard; update?: RouteGuard } = {};
 const openModalWithDataMock = vi.fn();
 const closeModalMock = vi.fn();
+const modalsByIdMock: Record<string, { open: boolean }> = {};
 const showMessageMock = vi.fn();
 const showErrorMock = vi.fn();
 const pushConnectMock = vi.fn();
@@ -140,6 +142,7 @@ vi.mock('@/app/stores/ui.store', () => ({
 	useUIStore: () => ({
 		openModalWithData: openModalWithDataMock,
 		closeModal: closeModalMock,
+		modalsById: modalsByIdMock,
 	}),
 }));
 
@@ -603,11 +606,13 @@ const commonStubs = {
 			'configValidationStatus',
 			'saveStatus',
 			'beforePublish',
+			'tasks',
 		],
 		emits: [
 			'header-action',
 			'open-preview',
 			'close-preview',
+			'publish-ready',
 			'published',
 			'unpublished',
 			'reverted',
@@ -809,6 +814,7 @@ function resetViewMocks() {
 	stopSessionAutoRefreshMock.mockReset();
 	openModalWithDataMock.mockReset();
 	closeModalMock.mockReset();
+	for (const key of Object.keys(modalsByIdMock)) delete modalsByIdMock[key];
 	routeParams.projectId = 'p1';
 	routeParams.agentId = 'a1';
 	routeState.name = AGENT_BUILDER_VIEW;
@@ -1423,7 +1429,7 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 		expect(localStorage.getItem('N8N_AGENT_PREVIEW_OPEN:p1:a1')).toBe(expectedStored);
 	});
 
-	it('routes to the assistant setup instead of handing off the preview session when Instance AI is not ready', async () => {
+	it('keeps the user in the Agent UI when Assistant setup is incomplete', async () => {
 		instanceAiReadyRef.value = false;
 		localStorage.setItem('N8N_AGENT_PREVIEW_OPEN:p1:a1', 'true');
 		routeQuery.continueSessionId = 'thread-1';
@@ -1433,9 +1439,136 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 		wrapper.findComponent({ name: 'AgentPreviewDock' }).vm.$emit('send-to-assistant');
 		await flushPromises();
 
-		expect(routerPush).toHaveBeenCalledWith({ name: 'InstanceAi' });
+		expect(wrapper.findComponent({ name: 'AgentPreviewDock' }).props('canSendToAssistant')).toBe(
+			false,
+		);
+		expect(routerPush).not.toHaveBeenCalled();
 		expect(handoffMock).not.toHaveBeenCalled();
 		expect(localStorage.getItem('N8N_AGENT_PREVIEW_OPEN:p1:a1')).toBe('true');
+	});
+
+	it.each([true, false])(
+		'hands credential help to the left panel (accepted: %s)',
+		async (accepted) => {
+			handoffMock.mockReturnValueOnce(accepted);
+			modalsByIdMock[AGENT_TOOL_CONFIG_MODAL_KEY] = { open: true };
+			const wrapper = await renderView();
+			const request: AgentCredentialHelpRequest = {
+				projectId: 'p1',
+				agentId: 'a1',
+				credential: {
+					credentialType: 'googleDriveOAuth2Api',
+					displayName: 'Google Drive',
+					id: 'cred-1',
+					nodeName: 'Find files',
+					documentationUrl: 'https://docs.n8n.io/integrations/builtin/credentials/google/',
+				},
+			};
+			agentsEventBus.emit('credentialHelpRequested', request);
+			expect(await request.handle?.()).toBe(accepted);
+			await flushPromises();
+
+			expect(wrapper.find('[data-testid="agent-ai-dock"]').exists()).toBe(true);
+			expect(handoffMock).toHaveBeenCalledWith(
+				{ source: 'credential-modal', credential: request.credential },
+				{
+					text: expect.stringContaining('Google Drive'),
+					prefillType: 'handoff_credential_setup',
+				},
+			);
+			expect(wrapper.findComponent({ name: 'InstanceAiChatPanel' }).props('subject')).toMatchObject(
+				{
+					id: 'a1',
+				},
+			);
+			expect(closeModalMock).toHaveBeenCalledTimes(accepted ? 1 : 0);
+			if (accepted) expect(closeModalMock).toHaveBeenCalledWith(AGENT_TOOL_CONFIG_MODAL_KEY);
+			expect(routerPush).not.toHaveBeenCalled();
+		},
+	);
+
+	it.each([true, false])(
+		'waits for queued credential help before closing configuration dialogs (accepted: %s)',
+		async (accepted) => {
+			routeState.name = AGENT_PREVIEW_VIEW;
+			handoffMock.mockReturnValueOnce(accepted);
+			modalsByIdMock[AGENT_TOOL_CONFIG_MODAL_KEY] = { open: true };
+			const wrapper = await renderView();
+			const request: AgentCredentialHelpRequest = {
+				projectId: 'p1',
+				agentId: 'a1',
+				credential: { credentialType: 'openAiApi', displayName: 'OpenAI' },
+			};
+			agentsEventBus.emit('credentialHelpRequested', request);
+			const result = request.handle?.();
+			const settled = vi.fn();
+			void result?.then(settled);
+			await flushPromises();
+
+			expect(routerPush).toHaveBeenCalledWith(
+				expect.objectContaining({ name: AGENT_BUILDER_VIEW }),
+			);
+			expect(handoffMock).not.toHaveBeenCalled();
+			expect(closeModalMock).not.toHaveBeenCalled();
+			expect(settled).not.toHaveBeenCalled();
+
+			routeState.name = AGENT_BUILDER_VIEW;
+			await flushPromises();
+
+			expect(await result).toBe(accepted);
+			expect(wrapper.find('[data-testid="agent-ai-dock"]').exists()).toBe(true);
+			expect(handoffMock).toHaveBeenCalledOnce();
+			expect(closeModalMock).toHaveBeenCalledTimes(accepted ? 1 : 0);
+			if (accepted) expect(closeModalMock).toHaveBeenCalledWith(AGENT_TOOL_CONFIG_MODAL_KEY);
+		},
+	);
+
+	it('refuses queued credential help when its builder unmounts', async () => {
+		routeState.name = AGENT_PREVIEW_VIEW;
+		const wrapper = await renderView();
+		const request: AgentCredentialHelpRequest = {
+			projectId: 'p1',
+			agentId: 'a1',
+			credential: { credentialType: 'openAiApi', displayName: 'OpenAI' },
+		};
+		agentsEventBus.emit('credentialHelpRequested', request);
+		const result = request.handle?.();
+		await flushPromises();
+		wrapper.unmount();
+
+		expect(await result).toBe(false);
+		expect(handoffMock).not.toHaveBeenCalled();
+		expect(closeModalMock).not.toHaveBeenCalled();
+	});
+
+	it('ignores credential help for another Agent and after the builder unmounts', async () => {
+		const wrapper = await renderView();
+		const request: AgentCredentialHelpRequest = {
+			projectId: 'p1',
+			agentId: 'a2',
+			credential: { credentialType: 'openAiApi', displayName: 'OpenAI' },
+		};
+		agentsEventBus.emit('credentialHelpRequested', request);
+		expect(request.handle).toBeUndefined();
+		wrapper.unmount();
+		request.agentId = 'a1';
+		agentsEventBus.emit('credentialHelpRequested', request);
+		expect(request.handle).toBeUndefined();
+		expect(handoffMock).not.toHaveBeenCalled();
+	});
+
+	it('keeps Agent artifacts out of the standalone credential handoff', async () => {
+		await renderView({
+			props: { artifactMode: true, artifactProjectId: 'p1', artifactAgentId: 'a1' },
+		});
+		const request: AgentCredentialHelpRequest = {
+			projectId: 'p1',
+			agentId: 'a1',
+			credential: { credentialType: 'openAiApi', displayName: 'OpenAI' },
+		};
+		agentsEventBus.emit('credentialHelpRequested', request);
+		expect(request.handle).toBeUndefined();
+		expect(handoffMock).not.toHaveBeenCalled();
 	});
 
 	it('queues a hand-off requested from the standalone preview route and applies it once the assistant panel mounts', async () => {
@@ -2361,7 +2494,7 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 			updatedIds: string[];
 			unchangedIds: string[];
 		}>();
-		const { useMCPStore } = await import('@/features/ai/mcpAccess/mcp.store');
+		const { useMCPStore } = await import('@n8n/frontend-module-mcp');
 		const toggleAgentMcpAccess = vi
 			.spyOn(useMCPStore(), 'toggleAgentMcpAccess')
 			.mockReturnValueOnce(mcpSave.promise);
@@ -2674,6 +2807,73 @@ describe('AgentBuilderView — configuration validation', () => {
 		);
 		const header = wrapper.find('[data-testid="stub-agent-builder-header"]');
 		expect(header.attributes('data-config-validation-status')).toBe('invalid');
+	});
+
+	it.each(['tool', 'MCP server', 'both'])(
+		'completes the add-tool setup task when adding %s',
+		async (kind) => {
+			const wrapper = await renderView();
+			const header = wrapper.findComponent({ name: 'AgentBuilderHeader' });
+			const vm = wrapper.vm as unknown as {
+				onConfigFieldUpdate: (updates: Partial<AgentJsonConfig>) => void;
+			};
+
+			expect(header.props('tasks')).toEqual(
+				expect.arrayContaining([expect.objectContaining({ id: 'add-tool', state: 'todo' })]),
+			);
+
+			vm.onConfigFieldUpdate({
+				tools: kind === 'MCP server' ? [] : [{ type: 'custom', id: 'custom_tool' }],
+				mcpServers:
+					kind === 'tool'
+						? []
+						: [
+								{
+									name: 'Example MCP',
+									url: 'https://mcp.example.com',
+									authentication: 'none',
+									transport: 'streamableHttp',
+								},
+							],
+			});
+			await nextTick();
+
+			expect(header.props('tasks')).toEqual(
+				expect.arrayContaining([expect.objectContaining({ id: 'add-tool', state: 'complete' })]),
+			);
+
+			vm.onConfigFieldUpdate({ tools: [], mcpServers: [] });
+			await nextTick();
+
+			expect(header.props('tasks')).toEqual(
+				expect.arrayContaining([expect.objectContaining({ id: 'add-tool', state: 'todo' })]),
+			);
+		},
+	);
+
+	it('shows the publish setup task for a tested agent only when the publish button is ready', async () => {
+		fetchedSessionThreads.push({ id: 'thread-tested', updatedAt: '2026-01-02T00:00:00Z' });
+
+		const wrapper = await renderView();
+		const header = wrapper.findComponent({ name: 'AgentBuilderHeader' });
+
+		expect(header.props('tasks')).toEqual(
+			expect.arrayContaining([expect.objectContaining({ id: 'publish-agent', visible: false })]),
+		);
+
+		header.vm.$emit('publish-ready', true);
+		await nextTick();
+
+		expect(header.props('tasks')).toEqual(
+			expect.arrayContaining([expect.objectContaining({ id: 'publish-agent', visible: true })]),
+		);
+
+		header.vm.$emit('publish-ready', false);
+		await nextTick();
+
+		expect(header.props('tasks')).toEqual(
+			expect.arrayContaining([expect.objectContaining({ id: 'publish-agent', visible: false })]),
+		);
 	});
 
 	it('flushes a pending config edit when the builder unmounts', async () => {
@@ -3955,7 +4155,7 @@ describe('AgentBuilderView — three-column shell', () => {
 				artifactEditingLocked: false,
 			},
 		});
-		const { useMCPStore } = await import('@/features/ai/mcpAccess/mcp.store');
+		const { useMCPStore } = await import('@n8n/frontend-module-mcp');
 		const toggleAgentMcpAccess = vi
 			.spyOn(useMCPStore(), 'toggleAgentMcpAccess')
 			.mockResolvedValue({ updatedCount: 1, updatedIds: ['a2'], unchangedIds: [] });
@@ -3988,7 +4188,7 @@ describe('AgentBuilderView — three-column shell', () => {
 				artifactEditingLocked: false,
 			},
 		});
-		const { useMCPStore } = await import('@/features/ai/mcpAccess/mcp.store');
+		const { useMCPStore } = await import('@n8n/frontend-module-mcp');
 		vi.spyOn(useMCPStore(), 'toggleAgentMcpAccess').mockResolvedValue({
 			updatedCount: 1,
 			updatedIds: ['a2'],
@@ -4032,7 +4232,7 @@ describe('AgentBuilderView — three-column shell', () => {
 				artifactAgentId: 'a1',
 			},
 		});
-		const { useMCPStore } = await import('@/features/ai/mcpAccess/mcp.store');
+		const { useMCPStore } = await import('@n8n/frontend-module-mcp');
 		const toggleAgentMcpAccess = vi.spyOn(useMCPStore(), 'toggleAgentMcpAccess').mockResolvedValue({
 			updatedCount: 1,
 			updatedIds: ['a1'],
@@ -4107,7 +4307,7 @@ describe('AgentBuilderView — three-column shell', () => {
 			},
 		});
 		const header = wrapper.findComponent({ name: 'AgentBuilderHeader' });
-		const { useMCPStore } = await import('@/features/ai/mcpAccess/mcp.store');
+		const { useMCPStore } = await import('@n8n/frontend-module-mcp');
 		vi.spyOn(useMCPStore(), 'toggleAgentMcpAccess').mockRejectedValue(new Error('mcp save failed'));
 
 		vi.useFakeTimers();
@@ -5845,7 +6045,7 @@ describe(
 			};
 			const wrapper = await renderView();
 			await flushPromises();
-			const { useMCPStore } = await import('@/features/ai/mcpAccess/mcp.store');
+			const { useMCPStore } = await import('@n8n/frontend-module-mcp');
 			vi.spyOn(useMCPStore(), 'toggleAgentMcpAccess').mockRejectedValue(
 				new Error('mcp save failed'),
 			);
