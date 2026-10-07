@@ -12,6 +12,7 @@ import {
 	pinDataOpenApi,
 	settingsOpenApi,
 	staticDataOpenApi,
+	workflowActiveDeprecationDocs,
 } from './workflow-public.openapi';
 import { nullableObjectGuardSchema, objectGuardSchema } from '../../schemas/object-guard.schema';
 import { Z } from '../../zod-class';
@@ -86,10 +87,7 @@ export const workflowPublicSchema = z.object({
 	id: z.string(),
 	name: z.string(),
 	description: z.string().nullable(),
-	active: z.boolean().openapi({
-		deprecated: true,
-		description: 'Deprecated. Check whether `activeVersionId` is not null instead.',
-	}),
+	active: z.boolean().openapi(workflowActiveDeprecationDocs),
 	activeVersionId: z.string().nullable(),
 	createdAt: z.string().datetime(),
 	updatedAt: z.string().datetime(),

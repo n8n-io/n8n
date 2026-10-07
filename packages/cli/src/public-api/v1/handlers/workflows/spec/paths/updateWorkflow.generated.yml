@@ -40,7 +40,9 @@ requestBody:
             example: Workflow 1
           active:
             type: boolean
+            description: Deprecated. Check whether `activeVersionId` is not null instead.
             readOnly: true
+            deprecated: true
           createdAt:
             type: string
             format: date-time
