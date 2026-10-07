@@ -1,0 +1,37 @@
+packages/cli/src/utils/__tests__/detect-managed-services.test.ts
+  s_1c3454caac6e1f::t_e164b208737be6 1-41
+  s_1c3454caac6e1f::t_28ad387821f57a 42-44
+  s_1c3454caac6e1f::t_cdb4b884aee750 45
+packages/cli/src/utils/detect-managed-services.ts
+  s_1c3454caac6e1f::t_220dd8b0299fd1 1-36
+packages/@n8n/db/src/connection/db-connection.ts
+  s_1c3454caac6e1f::t_58c1608079fb49 24-31
+  s_1c3454caac6e1f::t_2e17a1eb429efe 102-124
+  s_1c3454caac6e1f::t_6fbdc0bc322047 125-126
+packages/@n8n/db/src/index.ts
+  s_1c3454caac6e1f::t_92eef2d50f1540 47
+packages/@n8n/db/src/connection/__tests__/db-connection.test.ts
+  s_1c3454caac6e1f::t_9601f8bbc548aa 385-434
+packages/@n8n/telemetry/src/events/instance.ts
+  s_1c3454caac6e1f::t_0a91b062e43668 20-27
+packages/cli/src/events/relays/telemetry.event-relay.ts
+  s_1c3454caac6e1f::t_e5edb8562f062b 64,1780-1793,1799-1800
+packages/cli/src/events/__tests__/telemetry-event-relay.test.ts
+  s_1c3454caac6e1f::t_8d303d73aa73cc 3564-3603
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "34a690ef392920216aadee3f9a42dbf0e05cd4be",
+  "prompts": {},
+  "sessions": {
+    "s_1c3454caac6e1f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d254c449-dcec-42ba-b84b-c9e5c08ccf70",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,19 @@
+packages/cli/src/modules/promotions.ee/__tests__/import-manifest-bridge.test.ts
+  s_b1680ee198a948::t_47c9794d63f340 30-36
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "72b2dfe041720267dfd4e7990dfcdc7440cb0ca9",
+  "prompts": {},
+  "sessions": {
+    "s_b1680ee198a948": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a11166-00fe-7481-aef4-f4cde237287f",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}
