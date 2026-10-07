@@ -1,170 +1,205 @@
 # Test rig
 
-`@n8n/test-rig` runs real n8n stacks under test control. A test can pause or change any method inside a running n8n process, send signals, freeze containers, slow or cut the network between them, and read Postgres, Redis and logs. Scenarios use it to reproduce timing bugs on the image before a fix and check the image after it, to check failover, and to run seeded chaos against a steady workload.
+`@n8n/test-rig` runs a real n8n stack in Docker and gives a test full control over it. Use it when a bug depends on timing between processes: a worker that gets SIGTERM while it holds a job, a main that loses leadership, a database that stops answering for a few seconds. A scenario can pause any method inside a running n8n process at the exact moment it matters, then signal, freeze or restart containers, slow or cut the network, and read Postgres, Redis and the logs to see what happened.
 
-The rig needs no product change. It works on released images and on images built from any branch.
+Most scenarios run twice. The `before` variant runs on a release that has the bug and checks that the bug shows. The `after` variant runs on an image with the fix and checks that the bug is gone. Some scenarios have only an `after` variant; they check that n8n stays correct under a fault, for example that a follower takes over when the leader dies.
 
-## How it works
-
-```mermaid
-flowchart LR
-  spec[Scenario spec] --> rig[RigStack]
-  rig --> stack[n8n-containers stack]
-  rig -- NODE_OPTIONS preload --> n8n[main and worker processes]
-  spec -- arm, release via docker exec --> n8n
-  n8n -- hook lines in stdout --> spec
-  spec -- docker kill, pause, start --> n8n
-  spec -- tc netem sidecar --> net[container network]
-  spec -- psql, redis-cli --> probes[Postgres and Redis]
-```
-
-- **Hooks.** A preload goes into every n8n process through `NODE_OPTIONS` as a data URL. It wraps methods in compiled files as they load, from a list of hook specs in `TEST_RIG_HOOKS`. A hook can pause a call until the test releases it, log the call, make it fail, or skip it. The test arms and releases hooks by writing files in the container, and sees hits as `[test-rig]` lines in the container log.
-- **Process control.** `signal`, `freeze`, `startAgain` and `waitForExit` wrap `docker kill`, `docker pause` and `docker start`.
-- **Network faults.** `network.delay`, `network.cut` and `network.restore` run `tc netem` from a short-lived sidecar that joins the sender's network namespace. The rig builds the small `n8n-test-rig/netem` image the first time it needs it.
-- **Probes.** `rig.db` and `rig.redis` read executions, execution data, Bull lists and jobs, and the multi-main leader key.
-- **Scenarios.** `Scenario` records a timeline, collects container logs, runs checks for the variant under test, writes one JSONL line per run and always stops the stack.
-- **Workload and invariants.** `Workload` sends steady webhook traffic to a workflow that writes one row per run. The invariants check that executions finish, no accepted request is lost, no run writes twice, the queue drains and only one main leads at a time.
+The rig needs no change to n8n itself. It works on released images and on images that you build from any branch.
 
 ## Set up
 
-From the repository root:
+From the repository root, install and build the packages the Playwright suite depends on:
 
 ```bash
 pnpm install
 pnpm turbo build --filter='n8n-playwright^...' > build.log 2>&1
 ```
 
-Docker must be running. The scenarios start up to six containers each and run one at a time.
+Docker must be running. A scenario starts up to six containers, and the scenarios run one at a time.
 
-## Run scenarios
+## Run the scenarios
 
-Scenarios live in `packages/quality/testing/playwright/tests/infrastructure/test-rig/`. Each one is listed in `scenarios.json` there, with the issue it reproduces and its `before` and `after` images. The runner pulls released images, runs each variant several times and prints a pass table:
+The scenarios live in `packages/quality/testing/playwright/tests/infrastructure/test-rig/`. The file `scenarios.json` in that directory lists each one with its spec file and its `before` and `after` images. The `pnpm scenarios` command reads that list, pulls the released images it needs, runs each variant several times and prints a table of passes.
 
 ```bash
 cd packages/quality/testing/test-rig
-pnpm scenarios                                       # every scenario, both variants, 5 runs
-pnpm scenarios worker-drain-fetched-job --runs 1     # one scenario, one run each
+pnpm scenarios                                       # every scenario, both variants, 5 runs each
+pnpm scenarios worker-drain-fetched-job --runs 1     # one scenario, one run per variant
 pnpm scenarios --variant before                      # only the before images
 pnpm scenarios --after-image n8nio/n8n:my-build      # every after variant on one image
 ```
 
-- A variant passes when the image behaves as the spec expects for it: the bug on `before`, the fix on `after`. A `before` run that fails another way counts as a failure
-- A scenario with no image for a variant is skipped. A missing local build fails the run
-- Results go to `$TMPDIR/test-rig-results/<timestamp>/<scenario>.<variant>.jsonl`. Each line holds the outcome fields, the failed checks and a timeline
-- Container logs of each run are in `<results dir>/<scenario>.<variant>/*/logs/`
+A variant passes when the image behaves as the spec expects for that variant. A `before` run passes only when it shows the bug in the way the spec describes, so a `before` run that fails for some other reason counts as a failure. A scenario with no image for a variant shows `no image` and is skipped. An image tagged `rig-*` or `local` that is not on your machine shows `image missing` and fails the run, because the rig cannot pull a local build. The command exits with a non-zero code when any variant did not pass on every run.
 
-To run one spec by hand:
+## Read the results
+
+The command prints the results directory when it finishes. By default it is `test-rig-results/<timestamp>/` under your system temporary directory, and `--out` changes it. Each variant writes `<scenario>.<variant>.jsonl` there, with one line per run. A line holds whether the run passed, the values the scenario recorded, the names of the checks that failed, and a timeline of the steps with their times in milliseconds. When a run fails, the timeline and the failed checks are usually the fastest way to see what went wrong.
+
+The container logs of each run are in `<scenario>.<variant>/<test>/logs/`, one file for each n8n process: `main.log`, `worker-1.log` and so on.
+
+To run one spec by hand, without the table, run Playwright directly from the Playwright package:
 
 ```bash
 cd packages/quality/testing/playwright
-TEST_IMAGE_N8N=n8nio/n8n:2.42.2 TEST_RIG_VARIANT=before \
-npx playwright test --project=test-rig --reporter=line tests/infrastructure/test-rig/<spec>
+TEST_IMAGE_N8N=n8nio/n8n:2.42.2 TEST_RIG_VARIANT=before npx playwright test --project=test-rig --reporter=line tests/infrastructure/test-rig/<spec>
 ```
 
-The containers package reads `TEST_IMAGE_N8N` when it loads and derives the runners image from it (`n8nio/runners:<same tag>`), so set it on the command. The `test-rig` project is not one of the `*:infrastructure` projects, so `pnpm test:infrastructure` does not start these scenarios.
-
-### Multi-main scenarios
-
-A multi-main stack needs a licence that allows several mains. Set `N8N_LICENSE_ACTIVATION_KEY` or `N8N_LICENSE_CERT` in your shell before you run one. The stack uses the sandbox licence tenant by default, so use a sandbox key. Never commit a key or cert. Every fresh stack activates the key once, so prefer a cert when you run many: read it from the `settings` table (`key = 'license.cert'`) of a stack that activated, and export it as `N8N_LICENSE_CERT`.
-
-Single-main stacks always get an empty licence, so a licence in your shell cannot change their results.
-
-## Build an image from a branch
-
-An `after` image for an unmerged fix comes from a local build. `afterRef` in `scenarios.json` names the ref to build.
-
-1. Make a throwaway worktree at a short path. pnpm puts the absolute source path into its package directory names and cuts long names; under a long path the build fails with `No files left under *@file+*packages+*/dist/*.js.map`:
-
-   ```bash
-   git worktree add --detach ~/rb/<name> <ref>
-   ```
-
-2. Build under your own tag. Do not use the `local` tag, which other work on the machine uses:
-
-   ```bash
-   cd ~/rb/<name>
-   pnpm install --frozen-lockfile > install.log 2>&1
-   IMAGE_TAG=rig-<name> pnpm build:docker > build.log 2>&1
-   ```
-
-   This makes `n8nio/n8n:rig-<name>` and `n8nio/runners:rig-<name>` in about 15 minutes.
-
-3. Remove the worktree and images when you are done.
+Set `TEST_IMAGE_N8N` on the command itself, because the containers package reads it when it loads. The runners image follows it with the same tag (`n8nio/runners:<tag>`). Without `TEST_RIG_VARIANT`, a spec runs as `after`. A run by hand writes no JSONL file, but the logs still go to the Playwright output directory. The `test-rig` project is separate from the `*:infrastructure` projects, so `pnpm test:infrastructure` does not start these scenarios.
 
 ## Write a scenario
 
-```ts
-import { FILES, hook, is, RigStack, Scenario, signal, waitForExit } from '@n8n/test-rig';
-import { expect, test } from '@playwright/test';
+A scenario is a Playwright spec in the test-rig directory plus an entry in `scenarios.json`. The spec starts a stack with `RigStack.start`, declares the hooks it needs, drives the stack, and then checks the outcome for the variant under test. This example pauses a job on the worker, sends SIGTERM, releases the job and checks that the execution still finishes:
 
-test('worker drain: a fetched job runs before the worker exits', async () => {
+```ts
+import { expect, test } from '@playwright/test';
+import { chain, FILES, hook, is, nodes, RigStack, Scenario, signal, stopAllStacks, waitForExit, webhookPath } from '@n8n/test-rig';
+
+test.afterEach(async () => await stopAllStacks());
+
+test('worker drain: a running job finishes before the worker exits', async () => {
 	const rig = await RigStack.start({
-		name: 'fetched-job',
-		workers: 2,
+		name: 'drain-example',
+		workers: 1,
 		runners: 'internal',
 		scale: 6,
-		hooks: [{ point: 'job-start', file: FILES.jobProcessor, target: 'JobProcessor.prototype', method: 'processJob' }],
+		hooks: [
+			{
+				point: 'job-start',
+				file: FILES.jobProcessor,
+				target: 'JobProcessor.prototype',
+				method: 'processJob',
+				detail: { executionId: 'args.0.data.executionId' },
+			},
+		],
 	});
-	const s = new Scenario('worker-drain-fetched-job', rig, test.info().outputPath());
+	const s = new Scenario('drain-example', rig, test.info().outputPath());
+
 	await s.run(test.info(), async () => {
-		// drive the stack, then record and check the outcome
-		const failed = s.verify({ before: [...], after: [['execution status', status, is('success')]] });
+		await rig.api.signIn();
+		const path = webhookPath('drain');
+		await rig.api.createWorkflow(chain('drain', [nodes.webhook(path), nodes.code('Code', 'return [{ json: {} }];')]));
+
+		const worker = rig.worker(1);
+		const point = hook([worker], 'job-start');
+		await point.arm();
+		const hit = point.waitHit(30_000);
+		await rig.api.webhook(path);
+		const { detail } = await hit;
+
+		await signal(worker, 'SIGTERM');
+		await point.release(worker);
+		const exit = await waitForExit(worker, 90_000);
+		const execution = await rig.db.waitForExecution(String(detail.executionId), 90_000);
+
+		const failed = s.verify({
+			always: [['worker exit code', exit?.exitCode, is(0)]],
+			after: [['execution status', execution.status, is('success')]],
+		});
 		expect(failed).toEqual([]);
 	});
 });
 ```
 
-- `scale` divides the Bull lock, renew and stall timeouts and the shutdown window; `env` overrides any of them
-- `workflows.ts` builds workflows: `chain(name, [nodes.webhook(path), nodes.code(...), ...])`
-- Wait on product state: a log line naming an id, a process exit, a database or Bull state. Never wait a fixed time. Where log text differs between versions, add an `observe` hook and wait for its hit
-- Checks are data: `s.verify({ before, after, always })` takes `[label, value, expectation]` entries (`is`, `isNot`, `below`, `atMost`, `includes`, `excludes`, `anything`) and returns the failed ones. The JSONL result keeps them
+The `scale` option divides the Bull lock, lock renewal and stall timeouts and the graceful shutdown window, so a scenario that waits for a stalled job takes seconds rather than minutes. It must be 1 or more, and `env` can override any single value. The `workflows` helpers build simple workflows: `chain(name, nodes)` connects the nodes in order, and `nodes.webhook` and `nodes.code` cover most needs.
+
+Always wait on something the product does: a log line that names an execution id, a process exit, a row in Postgres, or a state in Bull. Never wait a fixed time, because Docker timing varies from run to run. Log text can change between versions, so when the line you need differs between the `before` and `after` images, add an `observe` hook on the method instead and wait for its hit.
+
+Checks are plain data. `s.verify` takes `before`, `after` and `always` lists of `[label, value, expectation]` entries, runs the lists for the current variant together with `always`, and returns the labels that failed. The expectations are `is`, `isNot`, `below`, `atMost`, `includes`, `excludes` and `anything`. Use `s.mark`, `s.step` and `s.race` to add steps to the timeline, and `s.set` to record values in the result. `s.run` records the result and stops the stack whatever happens, and `s.collectLogs` saves the container logs and returns them by container name.
+
+To add the scenario to `pnpm scenarios`, give it an entry in `scenarios.json`. The key is the scenario name, in lower case with dashes. The entry names the `spec` file, the `before` and `after` images (either can be `null`), and optionally the `issue` it reproduces, an `afterRef` that says what to build the `after` image from, and `env` values whose names start with `TEST_RIG_`. Two entries can share one spec and differ only in `env`; the external runner variants do this with `TEST_RIG_RUNNERS=external`.
 
 ### Hook specs
 
+A hook wraps one method in a compiled n8n file. By default it pauses the call until the test releases it, but it can also only log the call, make it fail, or skip it. The test arms a hook with `hook(containers, point).arm()`, waits for it with `waitHit`, and lets the call continue with `release`. `RigStack.start` checks every spec and fails at once if a hook did not install, so a wrong file or method name shows up before the scenario starts.
+
 | Field | Meaning |
 |---|---|
-| `point` | Name for arming, hits and logs |
+| `point` | Name of the hook, used to arm it and to match its hits |
 | `file` | Path suffix of the compiled file; `FILES` lists the known ones |
-| `target`, `method` | Dotted path inside `module.exports` (`JobProcessor.prototype`, `prototype` for a class export, `''` for the exports object) and the method to wrap |
-| `kind` | `pause` (wait for release, then call through), `observe` (log a hit only), `fault` (reject or throw), `drop` (return `returns` instead of calling) |
-| `arm` | `file` (default; enable with `hook(...).arm()`) or `always` (default for `observe`) |
-| `once` | Fire once per arm (default for all kinds but `drop`) |
-| `scope` | Fire only inside an async call of another method, once per call |
-| `where` | Filters: `[{ path: 'args.0.node.name', equals: 'Pause' }]` |
-| `detail` | Values to log with each hit: `{ executionId: 'args.0.executionId' }`. Paths start at `args`, `this`, `scope.args` or `result` |
-| `phase` | `before` the call or `after` it resolves; `where` and `detail` can then read `result`. Default `before`, except `fault`, which defaults to `after` (call through, then reject) |
-| `preserve` | For `fault` after: methods copied from the original return value onto the rejected promise |
-| `roles`, `lazy` | Containers that must show the hook installed before the scenario starts (default `worker`); `lazy` skips the check for files that load on first use |
+| `target`, `method` | Where the method lives inside the module exports, such as `JobProcessor.prototype`, `prototype` for a class export, or `''` for the exports object, and the method name |
+| `kind` | `pause` (default: wait for release, then call through), `observe` (log a hit only), `fault` (fail the call), or `drop` (return `returns` without calling) |
+| `arm` | `file` (default: the test arms it) or `always` (default for `observe`) |
+| `once` | Fire once each time the hook is armed; default for every kind except `drop` |
+| `scope` | Another method (`file`, `target`, `method`); fire only inside a call of it, once per call |
+| `where` | Conditions on the call, such as `[{ path: 'args.0.node.name', equals: 'Pause' }]`; a condition can use `truthy` instead of `equals` |
+| `detail` | Values to log with each hit, such as `{ executionId: 'args.0.executionId' }` |
+| `phase` | `before` the call or `after` it resolves, when `where` and `detail` can also read `result`; default `before`, except `fault`, which calls through and then rejects |
+| `message` | Error message for a `fault` |
+| `async` | Set to `false` when the method is synchronous, so `fault` throws and `drop` returns the value directly |
+| `preserve` | For a `fault` after the call: methods to copy from the original return value onto the rejected promise |
+| `roles`, `lazy` | Containers that must show the hook installed before the scenario starts (default `worker`); `lazy` skips that check for a file that loads only on first use |
 
-`RigStack.start` validates every spec and fails at once if a hook did not install. The preload validates them again, because it cannot import the schema.
+Paths in `where` and `detail` start at `args`, `this`, `scope.args` or `result`. A paused call continues by itself after two minutes if the test never releases it.
+
+## Multi-main scenarios
+
+A stack with more than one main needs a licence that allows several mains. Set `N8N_LICENSE_ACTIVATION_KEY` or `N8N_LICENSE_CERT` in your shell before you run one; the stack fails to start without one. The stack uses the sandbox licence tenant by default, so use a sandbox key, and never commit a key or a cert.
+
+Every new stack activates the key again. When you run many multi-main scenarios, a cert is faster: start one stack with the key, read the cert from the `settings` table where `key = 'license.cert'`, and export it as `N8N_LICENSE_CERT`.
+
+Single-main stacks always start with an empty licence, so a licence in your shell cannot change their results. The multi-main helpers `LEADER_HOOKS`, `fastLeaderElection`, `currentLeader` and `oneLeaderAtATime` cover the common leader checks.
 
 ## Chaos runs
 
-`pnpm chaos` starts a stack, runs the workload, and applies a seeded schedule of faults from a menu: signals, freezes, restarts, hook faults and network faults. It then checks the invariants. A failing seed replays the same schedule with `--seed`. `--shrink` removes faults one at a time, repeating each candidate, until the smallest failing schedule is left. See `pnpm chaos --help`.
+`pnpm chaos` starts a stack with one main and two workers, sends a steady webhook workload, and applies a random schedule of faults chosen from a seed. A fault can kill or stop a process, freeze it, delay or cut its link to Postgres or Redis, or arm a hook for a while that makes a worker skip its lock renewal or fail a job. After the schedule, the run checks that every execution finished, no accepted request was lost, no run wrote its row twice, every successful run wrote its row, and the queue drained.
 
-A seed fixes the schedule, not the outcome: Docker timing still varies, so the shrinker counts a candidate as failing only when it fails in enough of its repeats.
+```bash
+TEST_IMAGE_N8N=n8nio/n8n:2.42.2 pnpm chaos                       # random seed
+TEST_IMAGE_N8N=n8nio/n8n:2.42.2 pnpm chaos --seed 1234 --shrink  # replay a seed and shrink it
+```
+
+The run prints its seed and the schedule first, so you can replay a failing schedule with `--seed`. With `--shrink`, a failing run removes faults one at a time until the smallest failing schedule is left. A seed fixes the schedule but not the outcome, because Docker timing still varies, so the shrinker runs each candidate `--repeats` times and keeps it only when it fails at least `--min-failures` times. The logs and a `record.json` for each run go to `test-rig-chaos/` under your system temporary directory, or to `--out`. Run `pnpm chaos --help` for the other options.
+
+## Build an image from a branch
+
+An `after` image for a fix that is not released yet comes from a local build, and `afterRef` in `scenarios.json` says what to build.
+
+1. Make a throwaway worktree at a short path, such as a directory directly under your home. pnpm puts the absolute source path into package directory names and cuts long names, so under a long path the build fails with `No files left under *@file+*packages+*/dist/*.js.map`.
+
+   ```bash
+   git worktree add --detach <short-path> <ref>
+   ```
+
+2. Build the images under your own tag that starts with `rig-`. Do not use the `local` tag, because other work on the machine uses it.
+
+   ```bash
+   cd <short-path>
+   pnpm install --frozen-lockfile > install.log 2>&1
+   IMAGE_TAG=rig-<name> pnpm build:docker > build.log 2>&1
+   ```
+
+   This builds `n8nio/n8n:rig-<name>` and `n8nio/runners:rig-<name>` in about 15 minutes.
+
+3. Run the scenario with `--after-image n8nio/n8n:rig-<name>`, or put the tag in `scenarios.json`.
+
+4. Remove the worktree and the images when you are done.
 
 ## Clean up
 
-A stack stops when its scenario ends, after a timeout, and on Ctrl-C in `pnpm chaos`. If a process dies before that, remove what is left:
+A stack stops when its scenario ends, when its test times out, and when you press Ctrl-C in `pnpm chaos`. If a process dies before that, remove what is left:
 
 ```bash
 docker ps -aq --filter 'name=^rig-' | xargs docker rm -f
 docker network prune -f --filter 'label=org.testcontainers=true'
 ```
 
-## Tests of the rig
+## Test the rig
 
 ```bash
 pnpm test           # unit tests, no Docker
-pnpm test:docker    # contract tests: hook install matrix, smoke, network, workload
+pnpm test:docker    # contract tests against real stacks
 ```
 
-The hook install matrix starts one stack for each scenario image that exists locally, and checks that every method in `src/hooks/catalogue.ts` exists in it, from the release that first has it. Add a method to the catalogue when a spec hooks a new one; a unit test fails if a spec hooks a method the catalogue does not list.
+The Docker tests start real stacks one at a time. They check that every hooked method installs in each scenario image you have locally, and they cover a smoke run, network faults and the workload. When a spec hooks a method for the first time, add it to `src/hooks/catalogue.ts`, with `since` if older releases do not have it. A unit test fails when a spec hooks a method the catalogue does not list.
+
+## How it works
+
+The rig builds on the stacks from the `n8n-containers` package. It adds a small preload script to every n8n process through `NODE_OPTIONS`, and the preload wraps the methods named in the hook specs as their files load. The test arms and releases hooks by writing files inside the container, and it reads hits from `[test-rig]` lines in the container log. Signals, freezes and restarts use `docker kill`, `docker pause` and `docker start`. Network faults run `tc netem` from a short-lived sidecar container that shares the network of the target container; the rig builds the small `n8n-test-rig/netem` image the first time it needs it.
 
 ## Limits
 
-- Hooks depend on compiled file paths, class and method names. The install check and the matrix name any hook that does not install
-- Some anchors depend on product log text, which changes between versions
-- One Playwright process uses one image. The runners image follows `TEST_IMAGE_N8N`, so a per-stack `image` suits internal runners only
-- Scenarios shorten timeouts to keep runs short. They show the mechanism, not production timing
+Hooks depend on compiled file paths and on class and method names, so a refactor in n8n can break them. The install check and the Docker tests name every hook that does not install. Some scenarios also wait on log text, which can change between versions.
+
+One Playwright process uses one image, because the runners image follows `TEST_IMAGE_N8N`. The `image` option of `RigStack.start` changes only the n8n image, so use it only with internal runners.
+
+Scenarios shorten timeouts to keep runs short. They show the mechanism of a bug, not its timing in production.
