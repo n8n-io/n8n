@@ -958,7 +958,7 @@ describe('DurableJobProvisioner', () => {
 				taskType: 'schedule-trigger',
 				payload: {},
 				maxAttempts: 1,
-				timeoutSeconds: 300,
+				timeoutSeconds: 45,
 				misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
 				misfireGraceSeconds: 60,
 			}) as unknown as ScheduledJob;
@@ -973,7 +973,7 @@ describe('DurableJobProvisioner', () => {
 				scheduledFor: at(30),
 				runAt: at(30),
 				maxAttempts: 1,
-				timeoutSeconds: 300,
+				timeoutSeconds: 45,
 				// Its own instant plus the job's 60s grace.
 				missedAfter: at(90),
 			},
@@ -984,7 +984,7 @@ describe('DurableJobProvisioner', () => {
 				scheduledFor: at(60),
 				runAt: at(60),
 				maxAttempts: 1,
-				timeoutSeconds: 300,
+				timeoutSeconds: 45,
 				missedAfter: at(120),
 			},
 		];
