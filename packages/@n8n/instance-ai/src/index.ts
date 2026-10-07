@@ -558,11 +558,17 @@ export {
 	formatWorkflowSetupStateNote,
 	observeWorkflowSetupStates,
 } from './tools/workflows/setup-panel-state';
-export type { RunDebugRecord } from './debug/run-debug-buffer';
+export type {
+	RunDebugRecord,
+	RunDebugStepHooks,
+	RunDebugSubAgent,
+	RunDebugSubAgentOptions,
+} from './debug/run-debug-buffer';
 export {
 	RunDebugBuffer,
 	buildRunDebugLabel,
 	createRunDebugStepHooks,
+	createRunDebugSubAgentStepHooks,
 } from './debug/run-debug-buffer';
 export type {
 	ActiveRunState,

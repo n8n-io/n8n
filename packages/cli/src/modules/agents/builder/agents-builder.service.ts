@@ -25,6 +25,7 @@ import {
 	type InstanceAiCredentialService,
 	type InstanceAiToolRegistry,
 	type ReportRequiredArtifactInput,
+	type RunDebugStepHooks,
 } from '@n8n/instance-ai';
 
 import { NotFoundError } from '@n8n/errors';
@@ -86,6 +87,8 @@ export interface InstanceAiBuilderSessionOptions {
 	useEvalModelCatalog?: boolean;
 	/** Reports host-owned artifacts requested by the embedded builder. Omitted in the standalone builder. */
 	onRequiredArtifact?: (artifact: BuilderRequiredArtifact) => void;
+	/** Host run debug hooks that record each builder LLM step. Set only when run debug is on. */
+	stepHooks?: RunDebugStepHooks;
 }
 
 @Service()
@@ -132,6 +135,7 @@ export class AgentsBuilderService {
 			// Keep billing a stopped builder turn for the tokens it already spent.
 			recoverUsageOnAbort: true,
 			...modelStreamStallOptions(this.aiConfig),
+			...session.stepHooks,
 		});
 
 		yield* this.streamFromAgent(resultStream);
@@ -193,6 +197,7 @@ export class AgentsBuilderService {
 			// Keep billing a stopped builder turn for the tokens it already spent.
 			recoverUsageOnAbort: true,
 			...modelStreamStallOptions(this.aiConfig),
+			...session.stepHooks,
 		});
 
 		yield* this.streamFromAgent(resultStream);

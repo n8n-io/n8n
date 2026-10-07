@@ -648,6 +648,7 @@ export type {
 	InstanceAiThreadMessagesResponse,
 	InstanceAiRunDebugSummary,
 	InstanceAiRunDebugStep,
+	InstanceAiRunDebugSubAgent,
 	InstanceAiRunDebugWorkflowCodeSnapshot,
 	InstanceAiRunDebugResponse,
 	InstanceAiEvalThreadMemoryResponse,
@@ -771,6 +772,7 @@ export type {
 	ReadableStepTool,
 	ReadableUsageRow,
 	ReadableUsageSummary,
+	StepDebugSummary,
 } from './schemas/llm-step-display';
 
 export {

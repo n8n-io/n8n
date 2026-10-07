@@ -7632,6 +7632,8 @@
 	"instanceAi.debug.runDebug.toolInput": "input",
 	"instanceAi.debug.runDebug.toolOutput": "output",
 	"instanceAi.debug.runDebug.stepCount": "{count} steps",
+	"instanceAi.debug.runDebug.subAgentSteps": "Sub-agent steps",
+	"instanceAi.debug.runDebug.subAgentCount": "{count} sub-agent | {count} sub-agents",
 	"instanceAi.debug.runDebug.json": "JSON",
 	"instanceAi.debug.runDebug.toolCall": "tool-call",
 	"instanceAi.debug.runDebug.toolResult": "tool-result",

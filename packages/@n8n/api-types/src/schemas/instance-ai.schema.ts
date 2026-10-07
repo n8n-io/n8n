@@ -2235,12 +2235,28 @@ export interface InstanceAiRunDebugWorkflowCodeSnapshot {
 	capturedAt: number;
 }
 
+/** LLM steps of one sub-agent turn that an orchestrator tool call started. */
+export interface InstanceAiRunDebugSubAgent {
+	id: string;
+	/** Sub-agent role, e.g. `agent-builder`. */
+	role: string;
+	label?: string;
+	/** Orchestrator tool call that started the sub-agent. Links it to an orchestrator step. */
+	parentToolCallId?: string;
+	/** Last orchestrator step recorded before the sub-agent started. Fallback link. */
+	afterStepNumber?: number;
+	startedAt: number;
+	steps: InstanceAiRunDebugStep[];
+}
+
 export interface InstanceAiRunDebugResponse {
 	threadId: string;
 	runId: string;
 	startedAt: number;
 	label?: string;
 	steps: InstanceAiRunDebugStep[];
+	/** Absent in responses from older backends. */
+	subAgents?: InstanceAiRunDebugSubAgent[];
 	workflowCode: InstanceAiRunDebugWorkflowCodeSnapshot[];
 }
 
