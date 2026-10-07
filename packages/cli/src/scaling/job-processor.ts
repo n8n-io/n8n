@@ -308,7 +308,12 @@ export class JobProcessor {
 		const { startData, resultData, manualData } = execution.data;
 
 		if (execution.data?.executionData) {
-			workflowExecute = new WorkflowExecute(additionalData, execution.mode, execution.data);
+			workflowExecute = new WorkflowExecute(
+				additionalData,
+				execution.mode,
+				execution.data,
+				execution.storedAt,
+			);
 			workflowRun = workflowExecute.processRunExecutionData(workflow);
 		} else {
 			const data: IWorkflowExecutionDataProcess = {
@@ -331,6 +336,7 @@ export class JobProcessor {
 					additionalData,
 					executionId,
 					resultData.pinData,
+					execution.storedAt,
 				);
 			} catch (error) {
 				if (error instanceof WorkflowHasIssuesError) {
