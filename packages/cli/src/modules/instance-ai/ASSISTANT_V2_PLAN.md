@@ -92,6 +92,7 @@ Find the reference code with `git show <commit>` on the PoC branch.
 | Client context and attachments | `dae18013de9` | `@n8n/api-types` `agents/dto.ts`, `system-agent-execution.service.ts` |
 | Editor on the Agents chat | `1e90e2e53b4`, `e8ba910a1bb`, `9502710cb10`, `3028069fffe`, `737414f3982` | `InstanceAiAgentsConversation.vue`, `components/agentsChat/InstanceAiConfirmationCard.vue`, `agentsChatThreadAdapter.ts`, `AgentChatPanel.vue` |
 | System-agent routes, queue kind and access floor | `72a1e54777a`, `0ff0df89705` | `agents/system-agents/system-agent-chat.controller.ts`, `system-agent-access.ts`, `agents/agent-chat-relay.service.ts`, editor `features/agents/utils/agentChatPath.ts` |
+| Eval harness v2 mode and queued-turn status | `b19e53a4b64`, `dfc88bd7b39` | `@n8n/instance-ai/evaluations/harness/assistant-v2.ts`, `clients/n8n-client.ts`, `harness/chat-loop.ts`; `system-agent-execution.service.ts` (`getStatus`) |
 | Interaction extensions | `18da4fa2e8e` | `ai/shared/agentsChat/interactionRegistry.ts`, `messageMappers.ts`, `instanceAi/assistantConfirmation.ts` |
 | Fixes found in review | `abbb17d9d59`, `907953b7131`, `e27ea706d55` | See section 13 |
 | Removals (v1 deletion reference) | `a473877b05c`, `0e60c5106da`, `31c32401060`, `0589c56632f`, `e0a0379ced8` | Use only in the final phase |
@@ -138,10 +139,44 @@ assumptions were not tested on the PoC branch:
 | # | Exploration | Why | When |
 |---|---|---|---|
 | E1 | B1 spike on `master`: extract the shared turn setup from `InstanceAiService` with no behavior change | The plan assumes v1 and v2 can share one turn setup. If the extraction is tangled, Phase 2 grows. | Before Stack 2 |
-| E2 | Port the eval transport (C1) on the PoC branch and run a subset of the eval suite | All evals are broken on the PoC branch. This is the only quality signal before Phase 3. | Before committing to Phase 3 |
+| E2 | Port the eval transport (C1) on the PoC branch and run a subset of the eval suite | All evals are broken on the PoC branch. This is the only quality signal before Phase 3. | **Done on the PoC (first signal).** See "E2 results" below. More cases before Phase 3. |
 | E3 | One live turn with LangSmith tracing on the v2 path (EU endpoint) | The code path is wired, but no trace was seen. | Any time; cheap |
 | E4 | One live computer-use and one browser-use turn | Not tested in the PoC. | Any time; cheap |
 | E5 | Live two-main test | Multi-main is correct by design only. | Before Phase 4 rollout |
+
+### E2 results
+
+The PoC harness runs a case against Assistant v2 with
+`N8N_EVAL_ASSISTANT_V2=true` (commit `b19e53a4b64`,
+`evaluations/harness/assistant-v2.ts`). Two cases from the nightly suite,
+one iteration each, on a local PoC instance (SQLite, Daytona, ephemeral
+sandboxes):
+
+| Case | v2 result | Master nightly record |
+|---|---|---|
+| `http-url-expression-delimiters-not-url-encoded` (case 542) | 6/6 (2 scenarios, 4 expectations). Built in 161 s with one setup card. | Passes on every recent nightly. |
+| `reverify-after-node-swap` (case 321, multi-turn) | 4/6. All expectations pass, including both re-verification process checks. Both scenarios fail on an empty Discord webhook URL. | The scenarios pass on about 8 of 14 nightlies (Sep 23 – Oct 7); every failure is the same empty-URL cause. |
+
+This is consistent with no regression, and it exercises multi-turn proxy
+conversations, hidden follow-up turns, setup cards answered through
+`/chat/resume`, and re-verification. It is not a quality comparison: two
+cases, one iteration.
+
+Found on the way: thread status showed idle while a hidden follow-up waited
+in the queue. Fixed in commit `dfc88bd7b39` (see A9). The editor needs the
+same status to show "finished" correctly.
+
+Not available in the v2 harness mode yet:
+
+- Token and cost data. The run-debug endpoints are gone, so judged
+  expectations about cost and the run-debug report get no data. Read token
+  totals from the `agent_execution` records instead.
+- The observer-threshold override (one memory-compaction case). Map
+  `observerThresholdTokens` from `hostContext` into the turn options.
+- The builder sub-agent's internal steps. The outcome uses the parent tool
+  result, which was enough for these cases.
+- The inactivity timeout. The harness polls history and status, so "done" is
+  three quiet polls (about 4.5 s per turn).
 
 ### Handover notes
 
@@ -405,6 +440,11 @@ execution-service tests), routing in `agent-message-queue.service.ts`,
   `@ProjectScope('agent:execute')` guards stay unchanged. An existing thread
   keeps its working project; a new session takes `projectId` from the query.
 
+**Thread status:** `SystemAgentExecutionService.getStatus` reports a thread
+with a queued message (hidden follow-up turns included) as running, unless a
+suspension is open. Without this, a client sees the thread as idle between a
+turn and its follow-up. PoC commit `dfc88bd7b39`.
+
 **PoC alignment:** the PoC first reused the `preview` kind and the
 project-agent routes (so it required `agent:execute` by accident). Commits
 `72a1e54777a` (backend) and `0ff0df89705` (editor) align it with the
@@ -535,7 +575,7 @@ on its own.
 
 | # | Step | Detail |
 |---|---|---|
-| C1 | Eval harness with two transports | Add a transport interface to `@n8n/instance-ai/evaluations` (`clients/n8n-client.ts`, `harness/chat-loop.ts`, `harness/build-workflow.ts`, `outcome/workflow-discovery.ts`). v1 keeps the current endpoints. v2 uses the Agents chat endpoint, `/chat/resume`, cancel and status, reads `AgentSseEvent`s, auto-approves `tool-call-suspended` Assistant payloads, and waits for hidden follow-up turns. Land this early: every later step uses it. |
+| C1 | Eval harness with two transports | Make the PoC v2 mode (`evaluations/harness/assistant-v2.ts`, commit `b19e53a4b64`) production-ready. It sends and resumes through the system-agent routes, polls status and history until the thread is quiet, answers open cards with the existing confirmation strategies, and rebuilds the legacy event shapes from the Agents history, so the outcome, transcript and metrics code stay unchanged. Add: a CLI flag instead of the env var, tests, token totals from `agent_execution`, the observer-threshold mapping, and CI and LangTracer runs against a v2-flagged instance. Estimate: about one week (E2 showed the approach works). Land this early: every later step uses it. |
 | C2 | Provider and turn pipeline | Register `AssistantAgentProvider` in `instance-ai/runtime-v2/`. Port `prepareAssistantTurn` and `settleAssistantTurn` on top of B1–B3. Settle runs credits, planned tasks, verification follow-ups (as hidden turns) and title refinement. |
 | C3 | Flag and per-thread routing | A flag (PostHog or env, name to decide) selects v2 for new threads. Store the runtime on the thread. Route the controller and the editor by the thread's runtime. |
 | C4 | v2 thread services | Thread info, list, history, rename, delete and tabs on the Agents tables. The thread list, search and delete must merge v1 and v2 threads. Use the "turn still running" check of the Agents delete. |
@@ -641,4 +681,5 @@ Practical notes:
 | A1–A10 | Not started | |
 | B1–B5 | Not started | |
 | C1–C6 | Not started | |
-| E1–E5 | Not started | |
+| E1, E3–E5 | Not started | |
+| E2 | First signal done on the PoC (2 cases) | |
