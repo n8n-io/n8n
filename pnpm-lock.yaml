@@ -1600,6 +1600,9 @@ importers:
       '@n8n/permissions':
         specifier: workspace:*
         version: link:../permissions
+      '@n8n/utils':
+        specifier: workspace:*
+        version: link:../utils
       '@n8n_io/ai-assistant-sdk':
         specifier: 'catalog:'
         version: 1.27.0
@@ -4903,6 +4906,9 @@ importers:
       '@qdrant/js-client-rest':
         specifier: 'catalog:'
         version: 1.19.0(@typescript/typescript6@6.0.2)
+      '@resvg/resvg-wasm':
+        specifier: 2.6.2
+        version: 2.6.2
       '@rudderstack/rudder-sdk-node':
         specifier: 'catalog:'
         version: 3.0.5(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1)
@@ -13017,6 +13023,10 @@ packages:
       '@codemirror/language': ^6.0.0
       '@codemirror/state': ^6.0.0
       '@codemirror/view': ^6.0.0
+
+  '@resvg/resvg-wasm@2.6.2':
+    resolution: {integrity: sha512-FqALmHI8D4o6lk/LRWDnhw95z5eO+eAa6ORjVg09YRR7BkcM6oPHU9uyC0gtQG5vpFLvgpeU4+zEAz2H8APHNw==}
+    engines: {node: '>= 10'}
 
   '@rolldown/binding-android-arm64@1.0.0-beta.50':
     resolution: {integrity: sha512-XlEkrOIHLyGT3avOgzfTFSjG+f+dZMw+/qd+Y3HLN86wlndrB/gSimrJCk4gOhr1XtRtEKfszpadI3Md4Z4/Ag==}
@@ -30930,6 +30940,8 @@ snapshots:
       '@codemirror/language': 6.12.1
       '@codemirror/state': 6.5.3
       '@codemirror/view': 6.39.8
+
+  '@resvg/resvg-wasm@2.6.2': {}
 
   '@rolldown/binding-android-arm64@1.0.0-beta.50':
     optional: true

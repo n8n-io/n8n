@@ -1,3 +1,5 @@
+import { oklchToRgb, rgbToHex } from '@n8n/utils/color/oklch';
+
 import { DEFAULT_AGENT_PERSONALISATION, type AgentJsonConfig } from './agent-json-config.schema';
 
 export type AgentPersonalisation = NonNullable<AgentJsonConfig['personalisation']>;
@@ -17,42 +19,8 @@ const randomInRange = (random: () => number, min: number, max: number) =>
 const randomInteger = (random: () => number, min: number, max: number) =>
 	Math.round(randomInRange(random, min, max));
 
-function hexChannel(value: number) {
-	return value.toString(16).padStart(2, '0').toUpperCase();
-}
-
-function linearSrgbToSrgb(value: number) {
-	return value >= 0.0031308 ? 1.055 * Math.pow(value, 1 / 2.4) - 0.055 : 12.92 * value;
-}
-
-/** Returns 0..255 sRGB channels, clipped to the sRGB gamut. */
-export function oklchToRgb(
-	lightness: number,
-	chroma: number,
-	hue: number,
-): [number, number, number] {
-	const hueRadians = (hue * Math.PI) / 180;
-	const a = chroma * Math.cos(hueRadians);
-	const b = chroma * Math.sin(hueRadians);
-
-	const l_ = lightness + 0.3963377774 * a + 0.2158037573 * b;
-	const m_ = lightness - 0.1055613458 * a - 0.0638541728 * b;
-	const s_ = lightness - 0.0894841775 * a - 1.291485548 * b;
-
-	const l = l_ ** 3;
-	const m = m_ ** 3;
-	const s = s_ ** 3;
-
-	const channel = (value: number) => Math.round(clamp(linearSrgbToSrgb(value)) * 255);
-	return [
-		channel(4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s),
-		channel(-1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s),
-		channel(-0.0041960863 * l - 0.7034186147 * m + 1.707614701 * s),
-	];
-}
-
 function oklchToHex(lightness: number, chroma: number, hue: number) {
-	return `#${oklchToRgb(lightness, chroma, hue).map(hexChannel).join('')}`;
+	return rgbToHex(oklchToRgb([lightness, chroma, hue]));
 }
 
 function randomComplementaryColors(random: () => number) {

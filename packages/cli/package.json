@@ -200,6 +200,7 @@
     "@parcel/watcher": "^2.5.1",
     "@pinecone-database/pinecone": "catalog:",
     "@qdrant/js-client-rest": "catalog:",
+    "@resvg/resvg-wasm": "2.6.2",
     "@rudderstack/rudder-sdk-node": "catalog:",
     "@sentry/node": "catalog:sentry",
     "@supabase/supabase-js": "catalog:",

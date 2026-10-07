@@ -42,7 +42,8 @@
     "n8n-workflow": "workspace:*",
     "validator": "catalog:",
     "xss": "catalog:",
-    "@n8n/permissions": "workspace:*"
+    "@n8n/permissions": "workspace:*",
+    "@n8n/utils": "workspace:*"
   },
   "peerDependencies": {
     "zod": "catalog:"
