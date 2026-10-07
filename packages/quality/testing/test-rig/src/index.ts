@@ -25,3 +25,14 @@ export {
 export type { Check, Variant, VariantChecks } from './scenario';
 export { chain, nodes, webhookPath } from './workflows';
 export type { WorkflowNode } from './workflows';
+export { network, netemCommands } from './network';
+export type { LinkFault } from './network';
+export { Workload } from './workload';
+export type { Effect, WorkloadRequest } from './workload';
+export {
+	checkWorkload,
+	leaderOverlaps,
+	oneLeaderAtATime,
+	WORKLOAD_INVARIANTS,
+} from './invariants';
+export type { LeadershipEvent, Overlap, RunRecord, Violation } from './invariants';
