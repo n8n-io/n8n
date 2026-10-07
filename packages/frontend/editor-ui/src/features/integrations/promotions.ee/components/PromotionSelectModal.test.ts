@@ -85,15 +85,11 @@ const promoteResult = (branchName = 'main'): PromotePackageResultDto =>
 const renderComponent = createComponentRenderer(PromotionSelectModal, {
 	global: {
 		stubs: {
-			N8nDialog: { props: ['open'], template: '<div v-if="open"><slot /></div>' },
-			Modal: {
-				template: `
-					<div>
-						<slot name="content" />
-						<slot name="footer" />
-					</div>
-				`,
-			},
+			Dialog: { template: '<div role="dialog"><slot /></div>' },
+			DialogHeader: { template: '<div><slot /></div>' },
+			DialogTitle: { template: '<h2><slot /></h2>' },
+			DialogDescription: { template: '<p><slot /></p>' },
+			DialogFooter: { template: '<div><slot /></div>' },
 		},
 	},
 });
