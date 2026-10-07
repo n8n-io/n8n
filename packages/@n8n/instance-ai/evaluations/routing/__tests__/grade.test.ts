@@ -30,7 +30,10 @@ function callEvent(
 }
 
 /** The card of an ask-user call and the user's answer to it. */
-function answerEvents(toolCallId = 'ask-user'): InstanceAiEvent[] {
+function answerEvents(
+	toolCallId = 'ask-user',
+	result: unknown = { answered: true },
+): InstanceAiEvent[] {
 	return [
 		{
 			type: 'confirmation-request',
@@ -45,7 +48,7 @@ function answerEvents(toolCallId = 'ask-user'): InstanceAiEvent[] {
 				inputType: 'questions',
 			},
 		},
-		{ type: 'tool-result', ...base, payload: { toolCallId, result: { answered: true } } },
+		{ type: 'tool-result', ...base, payload: { toolCallId, result } },
 	];
 }
 
@@ -129,6 +132,15 @@ describe('traceSteps', () => {
 			{ kind: 'call', toolName: 'ask-user', args: {} },
 			{ kind: 'answer', result: { answered: true } },
 		]);
+	});
+
+	it('adds no user answer when the user skips the question card', () => {
+		const steps = traceSteps([
+			callEvent('ask-user'),
+			...answerEvents('ask-user', { answered: false }),
+		]);
+
+		expect(steps).toEqual([{ kind: 'call', toolName: 'ask-user', args: {} }]);
 	});
 
 	it('does not add the pending call twice when its event is already in', () => {
@@ -345,6 +357,14 @@ describe('routeLabel', () => {
 		expect(routeLabel(afterQuestion(route, clarify('none')))).toBe(
 			'clarify:none>clarify:agent>agent',
 		);
+	});
+});
+
+describe('afterQuestion', () => {
+	it('keeps the judge error of an earlier turn on the route', () => {
+		const earlier = { ...clarify('none'), judgeError: 'timeout' };
+
+		expect(afterQuestion({ route: 'agent', evidence: 'x' }, earlier).judgeError).toBe('timeout');
 	});
 });
 

@@ -12,6 +12,7 @@
 // ---------------------------------------------------------------------------
 
 import type { InstanceAiEvent } from '@n8n/api-types';
+import { isRecord } from '@n8n/utils/is-record';
 
 import type { AcceptToken, RoutingCase } from './cases';
 import type { JudgeInput, JudgeVerdict, Route, Steer, TraceStep } from './judge';
@@ -42,8 +43,11 @@ export function afterQuestion(
 	resolution: RouteResolution,
 	earlier: RouteResolution,
 ): RouteResolution {
+	// The summary counts only top-level judge errors, so the errors of earlier turns move up.
+	const judgeError = resolution.judgeError ?? earlier.judgeError;
 	return {
 		...resolution,
+		...(judgeError && { judgeError }),
 		question: resolution.question ? afterQuestion(resolution.question, earlier) : earlier,
 	};
 }
@@ -79,7 +83,9 @@ export function traceSteps(
 			continue;
 		}
 		if (event.type === 'tool-result' && questionCalls.has(event.payload.toolCallId)) {
-			steps.push({ kind: 'answer', result: event.payload.result });
+			// A skipped or dismissed card returns `{ answered: false }`: no facts reached the run.
+			const { result } = event.payload;
+			if (isRecord(result) && result.answered === true) steps.push({ kind: 'answer', result });
 			continue;
 		}
 		if (event.type !== 'tool-call') continue;
