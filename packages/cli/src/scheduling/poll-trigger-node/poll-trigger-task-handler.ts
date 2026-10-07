@@ -1,10 +1,9 @@
 import { Logger } from '@n8n/backend-common';
 import { EventService } from '@n8n/backend-services';
-import { GlobalConfig } from '@n8n/config';
-import { Time } from '@n8n/constants';
 import type { PollerFailureState } from '@n8n/db';
 import { WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { TaskTimeoutError } from '@n8n/scheduler';
 import type { ClaimedTask, DispatchDecision, DispatchReporter, TaskHandler } from '@n8n/scheduler';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import {
@@ -45,8 +44,6 @@ class PollTimeoutError extends OperationalError {
 export class PollTriggerTaskHandler implements TaskHandler {
 	readonly taskType = POLL_TRIGGER_TASK_TYPE;
 
-	private readonly pollTimeoutMs: number;
-
 	constructor(
 		private logger: Logger,
 		private readonly triggerExecutionContextFactory: TriggerExecutionContextFactory,
@@ -55,16 +52,15 @@ export class PollTriggerTaskHandler implements TaskHandler {
 		private readonly errorReporter: ErrorReporter,
 		private readonly pollBackoffService: PollBackoffService,
 		private readonly eventService: EventService,
-		globalConfig: GlobalConfig,
 	) {
 		this.logger = this.logger.scoped('scheduler');
-		this.pollTimeoutMs = globalConfig.scheduler.pollTimeoutSeconds * Time.seconds.toMilliseconds;
 	}
 
 	async execute(
 		task: ClaimedTask,
 		report: DispatchReporter,
 		leaseSignal: AbortSignal,
+		deadline: number,
 	): Promise<DispatchDecision> {
 		// A setup failure here retries to N8N_SCHEDULER_MAX_ATTEMPTS then dead-letters,
 		// unlike a `poll()` runtime failure below, which routes to the error workflow instead.
@@ -115,7 +111,11 @@ export class PollTriggerTaskHandler implements TaskHandler {
 			await this.triggerExecutionContextFactory.createPollExecutionContext(
 				workflowData,
 				node,
-				{ taskId: task.id, leaseEpoch: task.leaseEpoch },
+				{
+					fence: { taskId: task.id, leaseEpoch: task.leaseEpoch },
+					timeoutSeconds: task.timeoutSeconds,
+					deadline,
+				},
 				state?.cursor,
 			);
 
@@ -135,43 +135,21 @@ export class PollTriggerTaskHandler implements TaskHandler {
 			let polled = false;
 			try {
 				leaseSignal.throwIfAborted();
-				// `poll()` takes no abort signal, so the deadline abandons it rather than
-				// cancelling it: the call keeps running until it settles on its own, and its
-				// outcome is discarded. The cursor never moves on that path (it only moves
-				// through the staged commit or __emit below), so an abandoned tick leaves
-				// the poll window untouched for the next occurrence to cover.
-				const deadline = new AbortController();
-				const deadlineTimer = setTimeout(() => deadline.abort(), this.pollTimeoutMs).unref();
-				const abandon = AbortSignal.any([leaseSignal, deadline.signal]);
+				// `poll()` takes no abort signal, so the timeout of the occurrence or a lost
+				// claim abandons it rather than cancelling it: the call keeps running until
+				// it settles on its own, and its outcome is discarded. The cursor never moves
+				// on that path (it only moves through the staged commit or __emit below), so
+				// an abandoned tick leaves the poll window untouched for the next occurrence.
 				const poll = this.triggersAndPollers.runPollFunction(workflow, node, pollFunctions);
-
-				let pollResponse: Awaited<typeof poll>;
-				try {
-					await Promise.race([poll, aborted(abandon, pollFunctions)]);
-					leaseSignal.throwIfAborted();
-					if (deadline.signal.aborted) {
-						this.eventService.emit('poll-tick-timed-out', { nodeType: node.type });
-						this.logger.warn('Poll exceeded its timeout and was abandoned', {
-							...logContext,
-							pollTimeoutMs: this.pollTimeoutMs,
-						});
-						// Not routed to the error workflow: an abandoned poll produces no run, and
-						// an error run is one. It does count as a poll failure, so a source that
-						// keeps hanging is re-polled at a widening interval like any failing source.
-						await this.recordFailureIfActive(
-							workflowId,
-							nodeId,
-							new PollTimeoutError(),
-							state,
-							leaseSignal,
-						);
-						leaseSignal.throwIfAborted();
-						return report.notDispatched();
-					}
-					pollResponse = await poll;
-				} finally {
-					clearTimeout(deadlineTimer);
+				await Promise.race([poll, aborted(leaseSignal, pollFunctions)]);
+				if (leaseSignal.reason instanceof TaskTimeoutError) {
+					await this.recordPollTimeout(logContext, node.type, state);
+					// A retry would poll the hanging source again, and backoff may be off.
+					// The next occurrence covers the same window, so this one completes.
+					return report.notDispatched();
 				}
+				leaseSignal.throwIfAborted();
+				const pollResponse = await poll;
 				polled = true;
 
 				await this.pollBackoffService.recordSuccess({ workflowId, nodeId, state });
@@ -242,15 +220,31 @@ export class PollTriggerTaskHandler implements TaskHandler {
 		});
 	}
 
+	/**
+	 * Not routed to the error workflow: an abandoned poll produces no run, and an
+	 * error run is one. It does count as a poll failure, so a source that keeps
+	 * hanging is re-polled at a widening interval like any failing source.
+	 */
+	private async recordPollTimeout(
+		logContext: { taskId: string; jobId: number; workflowId: string; nodeId: string },
+		nodeType: string,
+		state: PollerFailureState | null,
+	): Promise<void> {
+		this.eventService.emit('poll-tick-timed-out', { nodeType });
+		this.logger.warn('Poll exceeded its timeout and was abandoned', logContext);
+		const { workflowId, nodeId } = logContext;
+		await this.recordFailureIfActive(workflowId, nodeId, new PollTimeoutError(), state);
+	}
+
 	private async recordFailureIfActive(
 		workflowId: string,
 		nodeId: string,
 		error: unknown,
 		state: PollerFailureState | null,
-		leaseSignal: AbortSignal,
+		leaseSignal?: AbortSignal,
 	): Promise<void> {
 		const isActive = await this.workflowRepository.isActive(workflowId).catch(() => true);
-		leaseSignal.throwIfAborted();
+		leaseSignal?.throwIfAborted();
 		if (isActive) {
 			await this.pollBackoffService.recordFailure({
 				workflowId,
