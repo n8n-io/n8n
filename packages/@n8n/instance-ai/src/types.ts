@@ -2160,16 +2160,39 @@ export interface BackgroundTaskResult {
 	outcome?: Record<string, unknown>;
 }
 
-/** PROTOTYPE (cloud browser): an event a background task has for the orchestrator. */
+/**
+ * PROTOTYPE (cloud browser): an event a background task has for the orchestrator. Only the
+ * end of a task is pushed. Everything in between is read with check-background-tasks.
+ */
 export interface BackgroundTaskInboxItem {
 	taskId: string;
 	role: string;
-	kind: 'needs-user' | 'user-replied' | 'approval-requested' | 'approval-answered' | 'finished';
+	kind: 'finished';
 	/** What the orchestrator should know or do, in a few sentences. */
 	text: string;
 	/** Start a run for it if the thread is idle. Otherwise it waits for the next delivery. */
 	wake: boolean;
 }
+
+/** PROTOTYPE (cloud browser): where a background task is, as check-background-tasks shows it. */
+export interface CloudBrowserTaskStatus {
+	taskId: string;
+	title: string;
+	state: 'working' | 'waiting-for-user' | 'waiting-for-approval' | 'finished';
+	/** What the task says it is doing, e.g. "Opening Ledgerly developer settings". */
+	activity?: string;
+	/** While waiting for the user: what they need to do. */
+	waitingFor?: string;
+	/** Once finished: how it ended, or "cancelled" when the user stopped it. */
+	outcome?: string;
+	/** Once finished: the task's result. */
+	summary?: string;
+	updatedAt: string;
+}
+
+export type CloudBrowserTaskStatusUpdate = Partial<
+	Omit<CloudBrowserTaskStatus, 'taskId' | 'updatedAt'>
+>;
 
 /** PROTOTYPE (cloud browser): restored subset of the spawn API removed in #36740. */
 export interface SpawnBackgroundTaskOptions {
@@ -2343,10 +2366,12 @@ export interface OrchestrationContext {
 	/** PROTOTYPE (cloud browser): why the cloud browser cannot start now, or undefined. */
 	checkCloudBrowser?: () => Promise<string | undefined>;
 	/**
-	 * PROTOTYPE (cloud browser): queue an event for the orchestrator. It is delivered when
-	 * the thread is idle (now, or when the current run ends), never dropped.
+	 * PROTOTYPE (cloud browser): records where a background task is, for check-background-tasks.
+	 * Merges into the task's current status.
 	 */
-	notifyFromBackgroundTask?: (item: BackgroundTaskInboxItem) => void;
+	reportCloudBrowserTaskStatus?: (taskId: string, update: CloudBrowserTaskStatusUpdate) => void;
+	/** PROTOTYPE (cloud browser): the status of every background task in this thread. */
+	getCloudBrowserTaskStatuses?: () => CloudBrowserTaskStatus[];
 	/**
 	 * PROTOTYPE (cloud browser): wait for the user's answer to an approval card a
 	 * background sub-agent raised. Resolved by the normal confirm endpoint.

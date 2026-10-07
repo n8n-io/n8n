@@ -25,7 +25,7 @@ function makeBuffer(): Mocked<SecretsBuffer> & { _store: Map<string, Map<string,
 
 function makeContext(
 	overrides: Partial<
-		Pick<ToolContext, 'secretsBuffer' | 'createCredential' | 'getSecretFields'>
+		Pick<ToolContext, 'secretsBuffer' | 'createCredential' | 'getSecretFields' | 'getJsonFields'>
 	> = {},
 ): ToolContext {
 	return { dir: '/test', ...overrides };
@@ -673,6 +673,100 @@ describe('browser_create_credential secret placement', () => {
 
 		await expect(call).rejects.toThrow('can only fill the secret fields');
 		expect(createCredential).not.toHaveBeenCalled();
+	});
+
+	it('fills a key inside a JSON secret field, written out as JSON', async () => {
+		const { buffer, createCredential } = setup();
+		const getSecretFields = vi.fn().mockResolvedValue(['placeholderValues.*']);
+		const template = '{"headers":{"Authorization":"Bearer {{api_key}}"}}';
+
+		await getTool().execute(
+			{
+				credentialsKey: 'k1',
+				type: 'httpTemplatedCustomAuth',
+				name: 'Ledgerly API',
+				data: { template, serviceHost: 'ledgerly.example.com' },
+				resolveData: { placeholderValues: { api_key: 'apiKey' } },
+			},
+			makeContext({ secretsBuffer: buffer, createCredential, getSecretFields }),
+		);
+
+		expect(createCredential).toHaveBeenCalledWith(
+			expect.objectContaining({
+				data: {
+					template,
+					serviceHost: 'ledgerly.example.com',
+					placeholderValues: JSON.stringify({ api_key: 'ldg_live_secret' }),
+				},
+			}),
+		);
+	});
+
+	it('writes JSON fields given as objects as JSON text', async () => {
+		const { buffer, createCredential } = setup();
+		const getSecretFields = vi.fn().mockResolvedValue(['placeholderValues.*']);
+		const getJsonFields = vi
+			.fn()
+			.mockResolvedValue(['template', 'placeholderDefs', 'placeholderValues']);
+		const template = { headers: { Authorization: 'Bearer {{api_key}}' } };
+		const placeholderDefs = [{ name: 'api_key', title: 'API key', type: 'password' }];
+
+		await getTool().execute(
+			{
+				credentialsKey: 'k1',
+				type: 'httpTemplatedCustomAuth',
+				name: 'Ledgerly API',
+				data: { template, placeholderDefs },
+				resolveData: { placeholderValues: { api_key: 'apiKey' } },
+			},
+			makeContext({ secretsBuffer: buffer, createCredential, getSecretFields, getJsonFields }),
+		);
+
+		expect(createCredential).toHaveBeenCalledWith(
+			expect.objectContaining({
+				data: {
+					template: JSON.stringify(template),
+					placeholderDefs: JSON.stringify(placeholderDefs),
+					placeholderValues: JSON.stringify({ api_key: 'ldg_live_secret' }),
+				},
+			}),
+		);
+	});
+
+	it('refuses a secret in a plain field next to a JSON secret field', async () => {
+		const { buffer, createCredential } = setup();
+		const getSecretFields = vi.fn().mockResolvedValue(['placeholderValues.*']);
+
+		const call = getTool().execute(
+			{
+				credentialsKey: 'k1',
+				type: 'httpTemplatedCustomAuth',
+				name: 'Ledgerly API',
+				resolveData: { serviceHost: 'apiKey' },
+			},
+			makeContext({ secretsBuffer: buffer, createCredential, getSecretFields }),
+		);
+
+		await expect(call).rejects.toThrow('can only fill the secret fields');
+		expect(createCredential).not.toHaveBeenCalled();
+	});
+
+	it('shows the template and the masked secret on the approval card', async () => {
+		const resources = await getTool().getAffectedResources?.(
+			{
+				credentialsKey: 'k1',
+				type: 'httpTemplatedCustomAuth',
+				name: 'Ledgerly API',
+				data: { template: '{"headers":{"Authorization":"Bearer {{api_key}}"}}' },
+				resolveData: { placeholderValues: { api_key: 'apiKey' } },
+			},
+			makeContext(),
+		);
+
+		expect(resources?.[0].description).toBe(
+			'Create credential "Ledgerly API" (httpTemplatedCustomAuth) · template ' +
+				'{"headers":{"Authorization":"Bearer {{api_key}}"}} · placeholderValues.api_key ← ••••',
+		);
 	});
 
 	it('shows which secret goes where on the approval card, masked', async () => {

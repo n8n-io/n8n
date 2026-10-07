@@ -262,6 +262,10 @@ export function createOrchestrationTools(context: OrchestrationContext): Instanc
 			ORCHESTRATION_TOOL_IDS.START_CLOUD_BROWSER,
 			loadCloudBrowserAgentTool().createStartCloudBrowserTool(context),
 		]);
+		tools.push([
+			ORCHESTRATION_TOOL_IDS.CHECK_BACKGROUND_TASKS,
+			loadCloudBrowserAgentTool().createCheckBackgroundTasksTool(context),
+		]);
 	}
 
 	if (context.domainContext?.agentPreviewSession && context.domainContext?.resolvePreviewSession) {

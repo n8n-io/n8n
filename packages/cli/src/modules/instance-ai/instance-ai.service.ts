@@ -145,7 +145,8 @@ import {
 	WorkflowTaskCoordinator,
 	WorkflowLoopStorage,
 	ThreadTaskStorage,
-	type BackgroundTaskInboxItem,
+	type CloudBrowserTaskStatus,
+	type CloudBrowserTaskStatusUpdate,
 } from '@n8n/instance-ai';
 import { buildResumeData, toConfirmationData } from '@n8n/instance-ai/confirmation-payload';
 import type { Scope } from '@n8n/permissions';
@@ -784,6 +785,12 @@ export class InstanceAiService {
 			payload: { items: this.backgroundInbox.snapshot(threadId) },
 		});
 	});
+
+	/**
+	 * PROTOTYPE (cloud browser): where each background task is, per thread, for
+	 * check-background-tasks. TBD: in memory, so lost on restart and local to one main.
+	 */
+	private readonly cloudBrowserTaskStatus = new Map<string, Map<string, CloudBrowserTaskStatus>>();
 
 	private readonly terminalOutcome: InstanceAiTerminalOutcomeService;
 
@@ -1655,6 +1662,11 @@ export class InstanceAiService {
 	 */
 	private noteCloudBrowserCancelled(task: ManagedBackgroundTask): void {
 		if (task.role !== 'cloud-browser') return;
+		this.reportCloudBrowserTaskStatus(task.threadId, task.taskId, {
+			state: 'finished',
+			outcome: 'cancelled',
+			summary: 'The user stopped this task.',
+		});
 		this.backgroundInbox?.push(task.threadId, {
 			messageGroupId: task.messageGroupId,
 			taskId: task.taskId,
@@ -1713,16 +1725,42 @@ export class InstanceAiService {
 			// No terminal outcome line here: it is a UI-only "task finished" text the model never
 			// sees. The sidebar shows the outcome and the follow-up run tells the orchestrator.
 			onSettled: async (task) => {
-				if (task.status === 'cancelled' || task.timeoutReason) return;
+				if (task.status === 'cancelled') return;
+				if (task.timeoutReason) {
+					this.reportCloudBrowserTaskStatus(threadId, task.taskId, {
+						state: 'finished',
+						outcome: 'failed',
+						summary: `Timed out (${task.timeoutReason}).`,
+					});
+					return;
+				}
 				const outcome = taskOutcome(task) ?? 'succeeded';
 				const detail = task.error ?? task.result ?? '';
+				this.reportCloudBrowserTaskStatus(threadId, task.taskId, {
+					state: 'finished',
+					outcome,
+					summary: detail,
+				});
 				this.backgroundInbox.push(threadId, {
 					messageGroupId: task.messageGroupId,
 					taskId: task.taskId,
 					role: task.role,
 					kind: 'finished',
 					wake: true,
-					text: `Finished with outcome "${outcome}".\n${detail}`.trim(),
+					text: [
+						`Finished with outcome "${outcome}".`,
+						detail,
+						// PROTOTYPE (cloud browser): the user already set the credential up in the
+						// browser, so the setup card would ask them for it a second time.
+						task.role === 'cloud-browser' && outcome === 'succeeded'
+							? 'If it created a credential, put that credential on the workflow nodes ' +
+								'that need it by its ID and run the workflow. Do not open credential setup ' +
+								'for it, and do not ask the user to connect it.'
+							: undefined,
+					]
+						.filter(Boolean)
+						.join('\n')
+						.trim(),
 				});
 				await this.deliverBackgroundInbox(user, threadId);
 			},
@@ -1741,17 +1779,26 @@ export class InstanceAiService {
 	}
 
 	/**
-	 * PROTOTYPE (cloud browser): queue a background task event and deliver it if the thread
-	 * is idle. While a run is live it waits in the inbox for the run's post-run step.
+	 * PROTOTYPE (cloud browser): merges an update into a task's status. A finished task keeps
+	 * its result: a late update from the task winding down does not make it "working" again.
 	 */
-	private notifyFromBackgroundTask(
-		user: User,
+	private reportCloudBrowserTaskStatus(
 		threadId: string,
-		messageGroupId: string | undefined,
-		item: BackgroundTaskInboxItem,
+		taskId: string,
+		update: CloudBrowserTaskStatusUpdate,
 	): void {
-		this.backgroundInbox.push(threadId, { ...item, messageGroupId });
-		void this.deliverBackgroundInbox(user, threadId);
+		let tasks = this.cloudBrowserTaskStatus.get(threadId);
+		if (!tasks) {
+			tasks = new Map();
+			this.cloudBrowserTaskStatus.set(threadId, tasks);
+		}
+		const current = tasks.get(taskId);
+		if (current?.state === 'finished') return;
+		tasks.set(taskId, {
+			...(current ?? { taskId, title: '', state: 'working' }),
+			...update,
+			updatedAt: new Date().toISOString(),
+		});
 	}
 
 	/**
@@ -1900,7 +1947,12 @@ export class InstanceAiService {
 	}
 
 	async routeCorrectionToTask(threadId: string, taskId: string, correction: string): Promise<void> {
-		await this.routeTaskControl({ threadId, taskId, action: 'correct', correction });
+		await this.routeTaskControl({
+			threadId,
+			taskId,
+			action: 'correct',
+			correction: labelForBrowserTask(taskId, 'user', correction),
+		});
 	}
 
 	async routeCancelBackgroundTask(threadId: string, taskId: string): Promise<void> {
@@ -2158,6 +2210,7 @@ export class InstanceAiService {
 		this.evalCredentialAllowlists.clearThread(threadId);
 		// Optional: unit tests build this service from partial objects.
 		this.backgroundInbox?.clearThread(threadId);
+		this.cloudBrowserTaskStatus?.delete(threadId);
 		this.threadPushRef.delete(threadId);
 		this.planRequestsByThread.delete(threadId);
 		this.memoryTaskRegistry.clearThread(threadId);
@@ -3071,7 +3124,11 @@ export class InstanceAiService {
 			schedulePlannedTasks: async () => await this.schedulePlannedTasks(user, threadId),
 			iterationLog,
 			sendCorrectionToTask: (taskId, correction) =>
-				this.sendCorrectionToTask(threadId, taskId, correction),
+				this.sendCorrectionToTask(
+					threadId,
+					taskId,
+					labelForBrowserTask(taskId, 'assistant', correction),
+				),
 			spawnBackgroundTask: (opts) =>
 				this.spawnBackgroundTask(user, threadId, runId, messageGroupId, opts),
 			createCloudBrowser: cloudBrowserTasks
@@ -3090,13 +3147,11 @@ export class InstanceAiService {
 					}
 				: undefined,
 			checkCloudBrowser: async () => await this.browserSessionService.checkCloudBrowser(),
-			notifyFromBackgroundTask: (item) =>
-				this.notifyFromBackgroundTask(
-					user,
-					threadId,
-					messageGroupId ?? this.runState.getMessageGroupId(threadId),
-					item,
-				),
+			reportCloudBrowserTaskStatus: (taskId, update) =>
+				this.reportCloudBrowserTaskStatus(threadId, taskId, update),
+			getCloudBrowserTaskStatuses: () => [
+				...(this.cloudBrowserTaskStatus.get(threadId)?.values() ?? []),
+			],
 			// PROTOTYPE: a background sub-agent's approval card is answered through the normal
 			// confirm endpoint, which resolves this pending entry (the "sub-agent HITL" path).
 			waitForConfirmation: async (requestId) =>
@@ -7612,4 +7667,14 @@ export class InstanceAiService {
 			]);
 		}
 	}
+}
+
+/**
+ * PROTOTYPE (cloud browser): says who a message to a browser task is from. The user's
+ * hand-back and the assistant's change of plan reach the task the same way, and the
+ * browser agent treats an unexpected instruction as untrusted unless it knows the
+ * assistant sent it. Other background tasks get the message as it is.
+ */
+function labelForBrowserTask(taskId: string, from: 'user' | 'assistant', text: string): string {
+	return taskId.startsWith('browser-') ? `[from the ${from}] ${text}` : text;
 }

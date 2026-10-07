@@ -6,8 +6,8 @@ function item(overrides: Partial<BackgroundTaskInboxItem> = {}): BackgroundTaskI
 	return {
 		taskId: 'browser-1',
 		role: 'cloud-browser',
-		kind: 'needs-user',
-		text: 'Sign in',
+		kind: 'finished',
+		text: 'Finished with outcome "succeeded".',
 		wake: true,
 		...overrides,
 	};
@@ -16,40 +16,40 @@ function item(overrides: Partial<BackgroundTaskInboxItem> = {}): BackgroundTaskI
 describe('BackgroundTaskInbox', () => {
 	it('keeps only the latest event per task, in arrival order', () => {
 		const inbox = new BackgroundTaskInbox();
-		inbox.push('t1', item({ taskId: 'a', kind: 'needs-user' }));
-		inbox.push('t1', item({ taskId: 'b', kind: 'approval-requested', wake: false }));
-		inbox.push('t1', item({ taskId: 'a', kind: 'finished' }));
+		inbox.push('t1', item({ taskId: 'a', text: 'first' }));
+		inbox.push('t1', item({ taskId: 'b' }));
+		inbox.push('t1', item({ taskId: 'a', text: 'second' }));
 
-		expect(inbox.drain('t1').map((i) => [i.taskId, i.kind])).toEqual([
-			['b', 'approval-requested'],
-			['a', 'finished'],
+		expect(inbox.drain('t1').map((i) => [i.taskId, i.text])).toEqual([
+			['b', 'Finished with outcome "succeeded".'],
+			['a', 'second'],
 		]);
 		expect(inbox.drain('t1')).toEqual([]);
 	});
 
 	it('wakes only when an event needs the orchestrator', () => {
 		const inbox = new BackgroundTaskInbox();
-		inbox.push('t1', item({ kind: 'needs-user', wake: true }));
-		expect(inbox.needsWake('t1')).toBe(true);
-
-		// The user finished the hand-off: nothing needs the orchestrator any more.
-		inbox.push('t1', item({ kind: 'user-replied', wake: false }));
+		// The user stopped the task: they know, so it does not need the orchestrator now.
+		inbox.push('t1', item({ wake: false, text: 'The user stopped this task.' }));
 		expect(inbox.needsWake('t1')).toBe(false);
+
+		inbox.push('t1', item({ taskId: 'b', wake: true }));
+		expect(inbox.needsWake('t1')).toBe(true);
 		expect(inbox.needsWake('other')).toBe(false);
 	});
 
 	it('restores undelivered events without overwriting newer ones', () => {
 		const inbox = new BackgroundTaskInbox();
-		inbox.push('t1', item({ taskId: 'a', kind: 'needs-user' }));
-		inbox.push('t1', item({ taskId: 'b', kind: 'needs-user' }));
+		inbox.push('t1', item({ taskId: 'a', text: 'old' }));
+		inbox.push('t1', item({ taskId: 'b', text: 'old' }));
 		const drained = inbox.drain('t1');
-		inbox.push('t1', item({ taskId: 'a', kind: 'finished' }));
+		inbox.push('t1', item({ taskId: 'a', text: 'new' }));
 
 		inbox.restore('t1', drained);
 
-		expect(inbox.drain('t1').map((i) => [i.taskId, i.kind])).toEqual([
-			['b', 'needs-user'],
-			['a', 'finished'],
+		expect(inbox.drain('t1').map((i) => [i.taskId, i.text])).toEqual([
+			['b', 'old'],
+			['a', 'new'],
 		]);
 	});
 
@@ -64,24 +64,24 @@ describe('BackgroundTaskInbox', () => {
 		const taken = inbox.drainForTurn('t1', 'turn-a');
 
 		expect(taken.map((i) => i.taskId)).toEqual(['mine', 'urgent']);
-		expect(inbox.snapshot('t1')).toEqual([{ taskId: 'other', kind: 'needs-user', sendNow: false }]);
+		expect(inbox.snapshot('t1')).toEqual([{ taskId: 'other', kind: 'finished', sendNow: false }]);
 		expect(onChange).toHaveBeenCalledWith('t1');
 	});
 
 	it('keeps minor events out of a finishing run, but not out of its next step', () => {
 		const inbox = new BackgroundTaskInbox();
 		inbox.push('t1', {
-			...item({ taskId: 'mine', kind: 'user-replied', wake: false }),
+			...item({ taskId: 'mine', wake: false }),
 			messageGroupId: 'turn-a',
 		});
 
 		expect(inbox.drainForTurn('t1', 'turn-a', { completing: true })).toEqual([]);
-		expect(inbox.drainForTurn('t1', 'turn-a').map((i) => i.kind)).toEqual(['user-replied']);
+		expect(inbox.drainForTurn('t1', 'turn-a').map((i) => i.taskId)).toEqual(['mine']);
 	});
 
 	it('wakes for events the user asked to send now', () => {
 		const inbox = new BackgroundTaskInbox();
-		inbox.push('t1', item({ kind: 'user-replied', wake: false }));
+		inbox.push('t1', item({ wake: false }));
 		expect(inbox.needsWake('t1')).toBe(false);
 
 		expect(inbox.markSendNow('t1')).toBe(true);
@@ -91,13 +91,13 @@ describe('BackgroundTaskInbox', () => {
 
 	it('renders events as one labelled automated message', () => {
 		const inbox = new BackgroundTaskInbox();
-		inbox.push('t1', item({ text: 'Live View: https://example.com' }));
+		inbox.push('t1', item({ text: 'Created credential abc.' }));
 
 		const message = renderInboxMessage(inbox.drain('t1'));
 
 		expect(message).toMatch(/^<background-task-events>\n/);
 		expect(message).toContain('not messages from the user');
-		expect(message).toContain('kind="needs-user"');
-		expect(message).toContain('Live View: https://example.com');
+		expect(message).toContain('kind="finished"');
+		expect(message).toContain('Created credential abc.');
 	});
 });

@@ -351,6 +351,13 @@ export class InstanceAiBrowserSessionService {
 				await this.createCredential(userId, payload),
 			getSecretFields: async (credentialType: string) =>
 				await Promise.resolve(this.getSecretFields(credentialType)),
+			getJsonFields: async (credentialType: string) =>
+				await Promise.resolve(
+					Container.get(CredentialsHelper)
+						.getCredentialsProperties(credentialType)
+						.filter((property) => property.type === 'json')
+						.map((property) => property.name),
+				),
 		};
 	}
 
@@ -488,11 +495,19 @@ export class InstanceAiBrowserSessionService {
 	}
 
 	/** PROTOTYPE: a credential type's password fields, inherited ones included. */
+	/**
+	 * The fields a captured secret may fill: password fields, and JSON fields whose leaves are
+	 * secrets (`redactJsonLeaves`), given as `name.*`, e.g. Simplified Custom Auth's
+	 * `placeholderValues.*`.
+	 */
 	private getSecretFields(credentialType: string): string[] {
 		return Container.get(CredentialsHelper)
 			.getCredentialsProperties(credentialType)
-			.filter((property) => property.typeOptions?.password === true)
-			.map((property) => property.name);
+			.flatMap((property) => {
+				if (property.typeOptions?.password === true) return [property.name];
+				if (property.typeOptions?.redactJsonLeaves === true) return [`${property.name}.*`];
+				return [];
+			});
 	}
 
 	private async createCredential(

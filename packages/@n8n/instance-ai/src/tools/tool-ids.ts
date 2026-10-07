@@ -42,6 +42,7 @@ export const ORCHESTRATION_TOOL_IDS = {
 	BUILD_AGENT: 'build-agent',
 	GET_SESSION: 'get-session',
 	START_CLOUD_BROWSER: 'start-cloud-browser',
+	CHECK_BACKGROUND_TASKS: 'check-background-tasks',
 } as const;
 
 export const WORKSPACE_TOOL_IDS = {
@@ -85,6 +86,7 @@ export const ALWAYS_LOADED_TOOL_NAMES = new Set<string>([
 	// PROTOTYPE: registered only in cloud browser sub-agent mode. The prompt hides the
 	// browser channel there, so a deferred tool would leave the agent with no browser at all.
 	ORCHESTRATION_TOOL_IDS.START_CLOUD_BROWSER,
+	ORCHESTRATION_TOOL_IDS.CHECK_BACKGROUND_TASKS,
 	DOMAIN_TOOL_IDS.CONVERSATION_HISTORY,
 	// The instance-context block hands the agent ids and tells it to expand them, so deferring
 	// this would price every expand at search_tools + load_tool. It is only registered when the

@@ -325,6 +325,11 @@ export interface ToolContext {
 	 * When set, `browser_create_credential` only puts captured secrets into these fields.
 	 */
 	getSecretFields?: (credentialType: string) => Promise<string[]>;
+	/**
+	 * PROTOTYPE (cloud browser): the names of a credential type's JSON fields. n8n stores them
+	 * as JSON text, so `browser_create_credential` writes an object given for one as text.
+	 */
+	getJsonFields?: (credentialType: string) => Promise<string[]>;
 }
 
 export interface ToolDefinition<TSchema extends z.ZodType = z.ZodType> {

@@ -499,13 +499,7 @@ export type InstanceAiBackgroundTaskOutcome = z.infer<typeof backgroundTaskOutco
 /** PROTOTYPE (cloud browser): a background task event waiting to reach the orchestrator. */
 export const backgroundInboxItemSchema = z.object({
 	taskId: z.string(),
-	kind: z.enum([
-		'needs-user',
-		'user-replied',
-		'approval-requested',
-		'approval-answered',
-		'finished',
-	]),
+	kind: z.enum(['finished']),
 	/** The user asked for it to reach the orchestrator now. */
 	sendNow: z.boolean(),
 });

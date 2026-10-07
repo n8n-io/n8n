@@ -209,11 +209,7 @@ export {
 	WorkflowEditorLockedError,
 	FolderResolutionError,
 } from './errors';
-export {
-	LEGACY_PLANNED_TASK_KINDS,
-	PLANNED_TASK_KINDS,
-	STORED_PLANNED_TASK_KINDS,
-} from './types';
+export { LEGACY_PLANNED_TASK_KINDS, PLANNED_TASK_KINDS, STORED_PLANNED_TASK_KINDS } from './types';
 export { deriveCredentialHosts } from './tools/workflows/credential-url-resolver';
 export { instanceAiBuilderThreadPrefix } from './tools/orchestration/builder-thread-id';
 export {
@@ -256,10 +252,7 @@ export type {
 
 export const emitAgentSnapshotTraceEvent: typeof AgentSnapshotEventMod.emitAgentSnapshotTraceEvent =
 	lazyFunction(() => loadAgentSnapshotEvent().emitAgentSnapshotTraceEvent);
-export type {
-	AgentSnapshotArtifact,
-	AgentSnapshotReason,
-} from './tracing/agent-snapshot-event';
+export type { AgentSnapshotArtifact, AgentSnapshotReason } from './tracing/agent-snapshot-event';
 
 // Plain re-export, not a lazyFunction: this is a pure mapping with no imports,
 // so it costs nothing to load eagerly.
@@ -624,11 +617,7 @@ export type {
 	InstanceAiLivenessSurface,
 	InstanceAiLivenessTimeoutReason,
 } from './runtime/liveness-policy';
-export type {
-	StreamableAgent,
-	StreamRunOptions,
-	StreamRunResult,
-} from './runtime/stream-runner';
+export type { StreamableAgent, StreamRunOptions, StreamRunResult } from './runtime/stream-runner';
 export type WorkflowTaskCoordinator = WorkflowLoopMod.WorkflowTaskCoordinator;
 export const WorkflowTaskCoordinator: typeof WorkflowLoopMod.WorkflowTaskCoordinator = lazyClass(
 	() => loadWorkflowLoop().WorkflowTaskCoordinator,
@@ -720,6 +709,8 @@ export type {
 	SpawnBackgroundTaskOptions,
 	SpawnBackgroundTaskResult,
 	BackgroundTaskInboxItem,
+	CloudBrowserTaskStatus,
+	CloudBrowserTaskStatusUpdate,
 	InstanceAiToolTraceOptions,
 	InstanceAiTraceContext,
 	InstanceAiTraceRun,

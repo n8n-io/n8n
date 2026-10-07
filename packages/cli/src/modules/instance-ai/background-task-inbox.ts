@@ -15,10 +15,9 @@ export interface QueuedItem extends BackgroundTaskInboxItem {
  * PROTOTYPE (cloud browser): what background tasks have to tell the orchestrator, per thread.
  *
  * Events are queued here instead of starting a run, so none is dropped while the
- * orchestrator is busy. A task's work is sequential (it blocks on the user or an approval
- * before it can do anything else), so only its latest event is current: a new event
- * replaces the task's older one. That keeps stale events, such as a sign-in request the
- * user already finished, from reaching the model.
+ * orchestrator is busy. Tasks only push how they ended (a result, or that the user stopped
+ * them). Where a task is in between, the orchestrator reads with check-background-tasks.
+ * A task has at most one event here: a newer one replaces it.
  *
  * TBD: in memory, so lost on restart and local to one main. Needs a table for multi-main.
  */
@@ -128,8 +127,8 @@ export function renderInboxMessage(items: QueuedItem[]): string {
 	);
 	return [
 		'<background-task-events>',
-		'Automated events from background tasks, not messages from the user. Only the latest event',
-		'of each task is shown, so it is the current state of that task.',
+		'Automated events from background tasks, not messages from the user. Each one says how a',
+		'task ended.',
 		...lines,
 		'</background-task-events>',
 		'',

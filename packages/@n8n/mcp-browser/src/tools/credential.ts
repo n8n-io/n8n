@@ -130,7 +130,9 @@ export const browserCreateCredentialSchema = z
 				'Same nested shape as data, but each leaf names a captured field. A leaf is either the ' +
 					'field name ("apiKey"), or { "field": "apiKey", "prefix": "Bearer " } when the ' +
 					'credential needs an auth scheme word before the secret. A prefix is one word and a ' +
-					"space, nothing else. Leaves may only fill the credential type's secret fields.",
+					"space, nothing else. Leaves may only fill the credential type's secret fields. For a " +
+					'JSON secret field, name the key inside it, e.g. { "placeholderValues": { "api_key": ' +
+					'"apiKey" } } for Simplified Custom Auth.',
 			),
 		projectId: z.string().optional().describe('Project to create the credential in'),
 		clear: z
@@ -146,7 +148,7 @@ function browserCreateCredential(
 	return {
 		name: 'browser_create_credential',
 		description:
-			'Assemble secrets captured with browser_capture_secret into a new n8n credential. Literal fields go in `data`; fields that must come from the buffer go in `resolveData` (leaf values are buffer field names, or { field, prefix } to put an auth scheme word such as "Bearer " before the secret). Captured secrets can only fill the credential type\'s secret fields. The buffer is cleared after success unless clear=false.',
+			'Assemble secrets captured with browser_capture_secret into a new n8n credential. Literal fields go in `data`; fields that must come from the buffer go in `resolveData` (leaf values are buffer field names, or { field, prefix } to put an auth scheme word such as "Bearer " before the secret). Captured secrets can only fill the credential type\'s secret fields, including keys inside a JSON secret field such as Simplified Custom Auth\'s placeholderValues. The buffer is cleared after success unless clear=false.',
 		inputSchema: browserCreateCredentialSchema,
 		async execute(args, context: ToolContext) {
 			requireSecretsBuffer(context);
@@ -159,15 +161,21 @@ function browserCreateCredential(
 				);
 			}
 
-			if (args.resolveData && context.getSecretFields) {
-				assertSecretsFillSecretFields(
-					args.type,
-					args.resolveData,
-					await context.getSecretFields(args.type),
-				);
+			const secretFields = context.getSecretFields
+				? await context.getSecretFields(args.type)
+				: undefined;
+			if (args.resolveData && secretFields) {
+				assertSecretsFillSecretFields(args.type, args.resolveData, secretFields);
 			}
 			const resolvedSecrets = args.resolveData ? resolveSecrets(args.resolveData, captured) : {};
-			const mergedData = deepMerge(args.data ?? {}, resolvedSecrets);
+			const jsonFields = [
+				...(secretFields ?? []).filter((f) => f.endsWith('.*')).map((f) => f.slice(0, -2)),
+				...((await context.getJsonFields?.(args.type)) ?? []),
+			];
+			const mergedData = serializeJsonFields(
+				deepMerge(args.data ?? {}, resolvedSecrets),
+				jsonFields,
+			);
 
 			const credential = await context.createCredential({
 				name: args.name,
@@ -190,7 +198,10 @@ function browserCreateCredential(
 					toolGroup: 'browser',
 					kind: 'credential-write',
 					resource: BROWSER_CREDENTIALS_RESOURCE,
-					description: `Create credential "${args.name}" (${args.type})${describeSecretMapping(args.resolveData)}`,
+					description:
+						`Create credential "${args.name}" (${args.type})` +
+						describeTemplate(args.data) +
+						describeSecretMapping(args.resolveData),
 				},
 			];
 		},
@@ -269,6 +280,45 @@ function describeSecretMapping(resolveData: Record<string, unknown> | undefined)
 }
 
 /**
+ * A secret field given as `name.*` is a JSON field whose leaves are secrets, e.g.
+ * `placeholderValues.*` for Simplified Custom Auth. Any key inside it may take a secret.
+ */
+function isAllowedSecretPath(path: string, secretFields: string[]): boolean {
+	return secretFields.some((field) =>
+		field.endsWith('.*') ? path.startsWith(field.slice(0, -1)) : path === field,
+	);
+}
+
+/**
+ * n8n stores JSON fields as text and parses them when the credential is used. An object or
+ * array given for one, by the agent in `data` or built from captured secrets, is written
+ * out as JSON, or the credential would fail with "invalid JSON" on every request.
+ */
+function serializeJsonFields(
+	data: Record<string, unknown>,
+	jsonFields: string[],
+): Record<string, unknown> {
+	const result = { ...data };
+	for (const name of new Set(jsonFields)) {
+		const value = result[name];
+		if (value !== null && typeof value === 'object') result[name] = JSON.stringify(value);
+	}
+	return result;
+}
+
+/**
+ * For the approval card: a template the credential applies, such as Simplified Custom Auth's
+ * `{"headers":{"Authorization":"Bearer {{api_key}}"}}`. It says where the secret is sent, so
+ * the user sees it before approving. It holds placeholders, never secrets.
+ */
+function describeTemplate(data: Record<string, unknown> | undefined): string {
+	const template = data?.template;
+	if (template === undefined || template === '') return '';
+	const text = typeof template === 'string' ? template : JSON.stringify(template);
+	return ` · template ${text.replace(/\s+/g, ' ')}`;
+}
+
+/**
  * A captured secret may only fill one of the credential type's secret fields, as captured.
  * It cannot go into a host, URL or any other plain field, where a workflow using the
  * credential could send it somewhere else. Formatting such as a "Bearer " prefix belongs to
@@ -279,10 +329,9 @@ function assertSecretsFillSecretFields(
 	resolveData: Record<string, unknown>,
 	secretFields: string[],
 ): void {
-	const allowed = new Set(secretFields);
 	const misplaced = resolveLeaves(resolveData)
 		.map(({ path }) => path)
-		.filter((path) => !allowed.has(path));
+		.filter((path) => !isAllowedSecretPath(path, secretFields));
 	if (misplaced.length === 0) return;
 	throw new Error(
 		`Captured secrets can only fill the secret fields of "${credentialType}" ` +
