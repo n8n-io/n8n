@@ -1229,9 +1229,14 @@ describe('AgentChatController production n8n Chat', () => {
 		expect(agentExecutionOrchestratorService.resumeForChat).toHaveBeenCalledWith(
 			expect.objectContaining({
 				usePublishedVersion: true,
-				source: 'n8n_chat_production',
+				chatSurface: 'n8n-chat',
 				expectedMemory: { resourceId: 'n8n-chat-production:user-1' },
 			}),
+		);
+		// The controller no longer stamps the source itself; the orchestrator
+		// derives it from the chat surface.
+		expect(agentExecutionOrchestratorService.resumeForChat).not.toHaveBeenCalledWith(
+			expect.objectContaining({ source: expect.anything() }),
 		);
 		expect(
 			writes.filter((line) => line.startsWith('data:')).map((line) => JSON.parse(line.slice(6))),
@@ -1370,7 +1375,7 @@ describe('AgentChatController production n8n Chat', () => {
 			expect(backgroundJobService.requestPause).not.toHaveBeenCalled();
 		});
 
-		it('resumes with the published production memory scope and source', async () => {
+		it('resumes with the published production memory scope and surface', async () => {
 			const { controller, agentsService, agentExecutionOrchestratorService } = makeController();
 			agentsService.isN8nChatPublished.mockResolvedValue(true);
 			agentExecutionOrchestratorService.resumeBackgroundForChat.mockResolvedValue(true);
@@ -1395,13 +1400,16 @@ describe('AgentChatController production n8n Chat', () => {
 					toolCallId: 'call-1',
 					resumeData: { approved: true },
 					usePublishedVersion: true,
-					source: N8N_CHAT_PRODUCTION_SOURCE,
+					chatSurface: 'n8n-chat',
 					integrationType: 'n8n_chat',
 					expectedMemory: {
 						threadId: 'thread-1',
 						resourceId: 'n8n-chat-production:user-1',
 					},
 				}),
+			);
+			expect(agentExecutionOrchestratorService.resumeBackgroundForChat).not.toHaveBeenCalledWith(
+				expect.objectContaining({ source: expect.anything() }),
 			);
 		});
 

@@ -319,7 +319,7 @@ export class AgentChatController {
 				user: req.user,
 				usePublishedVersion: true,
 				integrationType: N8N_CHAT_INTEGRATION_TYPE,
-				source: N8N_CHAT_PRODUCTION_SOURCE,
+				chatSurface: 'n8n-chat',
 				expectedMemory: { resourceId: productionChatMemoryResourceId(req.user.id) },
 				onExecutionStarted,
 				onExecutionRecorded: (id) => {
@@ -440,7 +440,7 @@ export class AgentChatController {
 				toolCallId,
 				resumeData,
 				user: req.user,
-				previewChat: true,
+				chatSurface: 'preview',
 				errorMode: 'forward',
 				onChunk,
 				onBudgetNotice: () => send({ type: 'budget-notice', code: 'budget.alert' }),
@@ -482,6 +482,7 @@ export class AgentChatController {
 			threadId,
 			executionId,
 			userId: req.user.id,
+			surface: 'preview',
 		});
 		return { cancelRequested };
 	}
@@ -524,7 +525,7 @@ export class AgentChatController {
 				threadId,
 				executionId,
 				userId: req.user.id,
-				productionN8nChat: true,
+				surface: 'n8n-chat',
 			}),
 		};
 	}
@@ -763,7 +764,7 @@ export class AgentChatController {
 			agentId,
 			user: req.user,
 			usePublishedVersion: true,
-			source: N8N_CHAT_PRODUCTION_SOURCE,
+			chatSurface: 'n8n-chat',
 			integrationType: N8N_CHAT_INTEGRATION_TYPE,
 			expectedMemory: { threadId, resourceId: productionChatMemoryResourceId(req.user.id) },
 		});
@@ -983,7 +984,7 @@ export class AgentChatController {
 			agentId,
 			user: req.user,
 			usePublishedVersion: false,
-			previewChat: true,
+			chatSurface: 'preview',
 			expectedMemory: { threadId, resourceId: draftChatMemoryResourceId(req.user.id) },
 		});
 		if (!resumed) throw new BadRequestError('This background approval is no longer available');

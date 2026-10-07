@@ -283,7 +283,7 @@ export class AgentTestRunService {
 				input.projectId,
 				input.agentId,
 				input.user.id,
-				{ previewChat: input.previewChat, sessionMode: 'existing' },
+				{ previewChat: input.chatSurface === 'preview', sessionMode: 'existing' },
 			))
 		) {
 			return { status: 'session_not_found' };
