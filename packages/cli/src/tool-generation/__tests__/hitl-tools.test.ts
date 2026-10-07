@@ -229,9 +229,19 @@ describe('hitl-tools', () => {
 		});
 
 		it('should keep the base builderHint fields', () => {
+			const relatedNodes = [{ nodeType: 'n8n-nodes-base.slackTrigger', relationHint: 'Trigger' }];
+			fullNodeWrapper.description.builderHint = { relatedNodes };
+			const result = convertNodeToHitlTool(fullNodeWrapper);
+			expect(result.description.builderHint?.relatedNodes).toEqual(relatedNodes);
+		});
+
+		it('should replace the base search hint with how to wire the HITL tool', () => {
 			fullNodeWrapper.description.builderHint = { searchHint: 'Use for Slack' };
 			const result = convertNodeToHitlTool(fullNodeWrapper);
-			expect(result.description.builderHint?.searchHint).toBe('Use for Slack');
+			const searchHint = result.description.builderHint?.searchHint;
+			expect(searchHint).not.toContain('Use for Slack');
+			expect(searchHint).toContain('subnodes.tools');
+			expect(searchHint).toContain('$tool.parameters');
 		});
 
 		describe('workflow validation', () => {
