@@ -205,11 +205,13 @@ describe('StartExecutionService', () => {
 	});
 
 	describe('seeded steps', () => {
+		// `island` is in the graph but the trigger does not reach it.
 		const graph: WorkflowGraph = {
 			nodes: [
 				{ id: 'trigger', name: 'Manual Trigger', type: 'trigger', config: {} },
 				{ id: 'a', name: 'A', type: 'v1-node', config: {} },
 				{ id: 'b', name: 'B', type: 'v1-node', config: {} },
+				{ id: 'island', name: 'Island', type: 'v1-node', config: {} },
 			],
 			edges: [
 				{ from: 'trigger', to: 'a', outputIndex: 0, inputIndex: 0 },
@@ -239,6 +241,7 @@ describe('StartExecutionService', () => {
 
 		it.each([
 			{ name: 'a node that is not in the graph', nodeId: 'ghost' },
+			{ name: 'a node the trigger does not reach', nodeId: 'island' },
 			{ name: 'the trigger', nodeId: 'trigger' },
 		])('rejects seeding $name without persisting or publishing', async ({ nodeId }) => {
 			const store = makeStore();

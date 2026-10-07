@@ -305,5 +305,24 @@ describe('EngineV2ManualRunPlanner', () => {
 				),
 			).toThrow(/"A" .*binary/);
 		});
+
+		it('refuses a root whose reused run data contains binary data', () => {
+			const withBinary = {
+				...fullRunData(A, B, C),
+				[A.name]: [
+					taskData([{ json: {}, binary: { data: { data: '', mimeType: 'text/plain' } } }]),
+				],
+			};
+
+			expect(() =>
+				planner.plan(
+					runData({
+						workflowData: workflow({ nodes: [{ ...TRIGGER, disabled: true }, A, B, C] }),
+						destinationNode: { nodeName: C.name, mode: 'inclusive' },
+						runData: withBinary,
+					}),
+				),
+			).toThrow(/"A" .*binary/);
+		});
 	});
 });

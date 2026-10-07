@@ -1,6 +1,7 @@
 import { AdmittanceRejectedError, type AdmittanceService } from '../admittance';
 import {
 	findTriggerNode,
+	getDescendantNodeIds,
 	GraphValidationError,
 	validateExecutableGraph,
 	type WorkflowGraph,
@@ -94,21 +95,26 @@ export class StartExecutionService {
 }
 
 /**
- * A seeded step names a graph node other than the trigger, once. The trigger
- * carries its payload as `triggerOutputs`, and the store drops a second row
- * for one node, so the caller would not get what it asked for.
+ * A seeded step names a node the trigger reaches, other than the trigger, once.
+ * The trigger carries its payload as `triggerOutputs`, and the store drops a
+ * second row for one node, so the caller would not get what it asked for. A
+ * node the trigger cannot reach is left out of the count of steps the run
+ * owes, so its settled row would let the run finish with work outstanding.
  */
 function validateSeededSteps(graph: WorkflowGraph, seededSteps: SeededStep[]): void {
+	// The graph was validated first, so the trigger exists.
 	const trigger = findTriggerNode(graph);
-	const nodeIds = new Set(graph.nodes.map((node) => node.id));
+	const reachable = new Set(trigger ? getDescendantNodeIds(graph, trigger.id) : []);
 	const seen = new Set<string>();
 	for (const { nodeId } of seededSteps) {
-		if (!nodeIds.has(nodeId)) {
-			throw new GraphValidationError(`Seeded step names node ${nodeId}, which is not in the graph`);
-		}
 		if (nodeId === trigger?.id) {
 			throw new GraphValidationError(
 				'The trigger cannot be seeded; send its payload as triggerOutputs',
+			);
+		}
+		if (!reachable.has(nodeId)) {
+			throw new GraphValidationError(
+				`Seeded step names node ${nodeId}, which the trigger does not reach`,
 			);
 		}
 		if (seen.has(nodeId)) {
