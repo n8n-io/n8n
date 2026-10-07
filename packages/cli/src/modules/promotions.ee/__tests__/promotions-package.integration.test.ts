@@ -1744,7 +1744,7 @@ describe('Apply data table changes', () => {
 	);
 
 	it.each([{ flow: 'full' as const }, { flow: 'selection' as const }])(
-		'applies a $flow data table change that deletes data only after Continue confirms it',
+		'applies a $flow column removal only after Continue confirms it and keeps the rows',
 		async ({ flow }) => {
 			const promoted = await promoteDataTableWorkflows();
 			const { connection, project, workflow, orders, dataTableService } = promoted;

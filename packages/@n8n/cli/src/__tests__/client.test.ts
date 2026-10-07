@@ -104,7 +104,7 @@ describe('N8nClient packages', () => {
 				body: { expectedSource },
 			},
 			{
-				title: 'posts continue with the confirmation of data table changes that delete data',
+				title: 'posts continue with the confirmation of destructive data table changes',
 				send: async () => await client.continueApplyPackage('conn-1', expectedSource, true),
 				path: 'apply/continue',
 				body: { expectedSource, confirmDestructiveChanges: true },
@@ -143,7 +143,7 @@ describe('N8nClient packages', () => {
 			},
 			{
 				title:
-					'continues a selection apply with the confirmation of data table changes that delete data',
+					'continues a selection apply with the confirmation of destructive data table changes',
 				send: async () =>
 					await client.continueApplyProjectSelection('proj-1', ['wf-1'], expectedSource, true),
 				path: 'apply/continue',

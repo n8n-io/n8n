@@ -2,7 +2,7 @@ operationId: continueApplyProjectSelection
 tags:
   - Promotions
 summary: Continue applying a selection after binding setup
-description: "Rechecks the project's Apply source and the current bindings for the selection. Resend the full selection in workflowIds. Send the required expectedSource with the configId, branchName, and full commitSha from the reviewed Apply result. Send `confirmDestructiveChanges: true` to apply data table changes that delete data. The server does not keep a session. Status `source-changed` requires a new Apply review. Status `blocked` returns fresh binding details before import writes. Status `applied` includes counts and warnings. Inspect status before reading counts. Unselected content stays unchanged. Requires the same cloned Apply direction and permissions as the initial selection apply. The API key needs the gitConnection:pull scope. The importer checks user write permissions."
+description: "Rechecks the project's Apply source and the current bindings for the selection. Resend the full selection in workflowIds. Send the required expectedSource with the configId, branchName, and full commitSha from the reviewed Apply result. Send `confirmDestructiveChanges: true` to also apply destructive data table changes. The server does not keep a session. Status `source-changed` requires a new Apply review. Status `blocked` returns fresh binding details before import writes. Status `applied` includes counts and warnings. Inspect status before reading counts. Unselected content stays unchanged. Requires the same cloned Apply direction and permissions as the initial selection apply. The API key needs the gitConnection:pull scope. The importer checks user write permissions."
 x-required-scope: gitConnection:pull
 x-eov-operation-id: unreachable
 x-eov-operation-handler: v1/handlers/decorator-routed.handler
@@ -48,7 +48,7 @@ requestBody:
             additionalProperties: false
           confirmDestructiveChanges:
             type: boolean
-            description: Applies data table changes that delete data, which a `destructive-change` conflict reports. The confirmation applies every change that deletes data when Continue runs, including changes that are not in the reviewed result.
+            description: 'Also applies destructive data table changes, which a `destructive-change` conflict reports: removed, renamed, or retyped columns. The values in those columns are removed. Rows and other columns are kept. The confirmation covers every such change when Continue runs, including changes that are not in the reviewed result.'
         required:
           - workflowIds
           - expectedSource

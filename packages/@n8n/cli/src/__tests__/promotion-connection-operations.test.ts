@@ -201,7 +201,7 @@ describe('promotion-connection apply command', () => {
 		expect(exit).toHaveBeenCalledWith(4);
 	});
 
-	it('exits 4 and tells how to confirm a data table change that deletes data', async () => {
+	it('exits 4 and tells how to confirm a destructive data table change', async () => {
 		const { run, logToStderr, exit } = runApply({
 			...BLOCKED_RESULT,
 			preflight: {
@@ -215,7 +215,7 @@ describe('promotion-connection apply command', () => {
 		const message = logToStderr.mock.calls[0][0];
 		expect(message).toContain(
 			`n8n-cli promotion-connection apply-continue conn-1 --expected-config-id=cfg-2 --expected-branch=release --expected-commit-sha=${SHA}\n` +
-				'To apply data table changes that delete data, add --confirm-destructive-changes.',
+				'To also apply destructive data table changes, add --confirm-destructive-changes. Rows are kept.',
 		);
 		expect(exit).toHaveBeenCalledWith(4);
 	});
@@ -281,7 +281,7 @@ describe('promotion-connection apply-continue command', () => {
 		expect(exit).toHaveBeenCalledWith(3);
 	});
 
-	it('sends the confirmation of data table changes that delete data', async () => {
+	it('sends the confirmation of destructive data table changes', async () => {
 		const command = new PromotionConnectionApplyContinue(
 			[
 				'conn-1',
@@ -523,7 +523,7 @@ describe('promotion-connection apply-selection-continue command', () => {
 		expect(exit).toHaveBeenCalledWith(3);
 	});
 
-	it('sends the confirmation of data table changes that delete data', async () => {
+	it('sends the confirmation of destructive data table changes', async () => {
 		const command = new PromotionConnectionApplySelectionContinue(
 			[
 				'proj-1',

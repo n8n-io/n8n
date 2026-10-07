@@ -76,7 +76,9 @@ function blockedMessage(
 		'Run with --json for the details. After you resolve them, run:',
 		`  ${continueCommand(result)}`,
 		...(preflight.conflicts.some(({ code }) => code === 'destructive-change')
-			? ['To apply data table changes that delete data, add --confirm-destructive-changes.']
+			? [
+					'To also apply destructive data table changes, add --confirm-destructive-changes. Rows are kept.',
+				]
 			: []),
 	].join('\n');
 }

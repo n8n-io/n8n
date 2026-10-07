@@ -40,7 +40,7 @@ describe('ContinueApplyPackageDto', () => {
 		});
 	});
 
-	it('accepts a confirmation of data table changes that delete data', () => {
+	it('accepts a confirmation of destructive data table changes', () => {
 		const body = { expectedSource, confirmDestructiveChanges: true };
 		expect(ContinueApplyPackageDto.parse(body)).toEqual(body);
 	});
@@ -149,7 +149,7 @@ describe('ApplySelectionDto', () => {
 		expect(ApplySelectionDto.parse({ workflowIds })).toEqual({ workflowIds });
 	});
 
-	it('rejects a confirmation of data table changes that delete data', () => {
+	it('rejects a confirmation of destructive data table changes', () => {
 		expect(
 			ApplySelectionDto.safeParse({ workflowIds: ['workflow1'], confirmDestructiveChanges: true })
 				.success,
@@ -162,7 +162,7 @@ describe('ContinueApplySelectionDto', () => {
 		expect(ContinueApplySelectionDto.safeParse({ workflowIds: ['workflow1'] }).success).toBe(false);
 	});
 
-	it('accepts a confirmation of data table changes that delete data', () => {
+	it('accepts a confirmation of destructive data table changes', () => {
 		const body = {
 			workflowIds: ['workflow1'],
 			expectedSource: { configId: 'config1', branchName: 'main', commitSha: 'a'.repeat(40) },

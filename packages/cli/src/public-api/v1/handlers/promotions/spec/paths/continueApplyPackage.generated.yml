@@ -2,7 +2,7 @@ operationId: continueApplyPackage
 tags:
   - Promotions
 summary: Continue Apply after binding setup
-description: 'Rechecks the configured source and current target bindings. Send expectedSource with the configId, branchName, and full commitSha from the reviewed Apply result. Send `confirmDestructiveChanges: true` to apply data table changes that delete data. Status `source-changed` requires a new Apply review. Status `blocked` returns fresh binding details without import writes. Status `applied` includes counts and warnings. Inspect status before reading counts. Existing target variable values are preserved. Requires the same cloned instance connection and permissions as Apply. The importer checks user write permissions; granular API-key write scopes are not passed to it. No server session or exactly-once guarantee is provided.'
+description: 'Rechecks the configured source and current target bindings. Send expectedSource with the configId, branchName, and full commitSha from the reviewed Apply result. Send `confirmDestructiveChanges: true` to also apply destructive data table changes. Status `source-changed` requires a new Apply review. Status `blocked` returns fresh binding details without import writes. Status `applied` includes counts and warnings. Inspect status before reading counts. Existing target variable values are preserved. Requires the same cloned instance connection and permissions as Apply. The importer checks user write permissions; granular API-key write scopes are not passed to it. No server session or exactly-once guarantee is provided.'
 x-required-scope: gitConnection:pull
 x-eov-operation-id: unreachable
 x-eov-operation-handler: v1/handlers/decorator-routed.handler
@@ -41,7 +41,7 @@ requestBody:
             additionalProperties: false
           confirmDestructiveChanges:
             type: boolean
-            description: Applies data table changes that delete data, which a `destructive-change` conflict reports. The confirmation applies every change that deletes data when Continue runs, including changes that are not in the reviewed result.
+            description: 'Also applies destructive data table changes, which a `destructive-change` conflict reports: removed, renamed, or retyped columns. The values in those columns are removed. Rows and other columns are kept. The confirmation covers every such change when Continue runs, including changes that are not in the reviewed result.'
         required:
           - expectedSource
         additionalProperties: false
