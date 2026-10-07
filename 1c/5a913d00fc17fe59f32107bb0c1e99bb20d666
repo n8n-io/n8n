@@ -1,0 +1,39 @@
+packages/frontend/@n8n/design-system/src/components/N8nToolsConnection/McpDetailBody.vue
+  s_27dbd88552503d::t_07617cf64acc38 3,79
+packages/frontend/editor-ui/src/features/shared/toolsConnection/__tests__/McpToolSettingsContent.test.ts
+  s_27dbd88552503d::t_07617cf64acc38 5
+packages/frontend/@n8n/design-system/src/components/N8nToolsConnection/ToolsConnectionModal.vue
+  s_27dbd88552503d::t_b858be3d0d6e4a 3-11,103,112,119,305-310,345,387-401,475-479,494-497,504-516,528-531,539,548,603-604
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/modals/InstanceAiToolsConnectionModalWrapper.vue
+  s_27dbd88552503d::t_07617cf64acc38 13-14,22-23
+packages/frontend/@n8n/design-system/src/components/N8nToolsConnection/__tests__/McpDetailBody.test.ts
+  s_27dbd88552503d::t_b858be3d0d6e4a 1
+packages/frontend/editor-ui/src/features/agents/components/AgentToolsConnectionModalWrapper.vue
+  s_27dbd88552503d::t_b858be3d0d6e4a 43,46,54-55,989-990
+packages/frontend/@n8n/design-system/src/components/N8nToolsConnection/ToolRow.vue
+  s_27dbd88552503d::t_07617cf64acc38 3-8,223
+packages/frontend/@n8n/design-system/src/components/N8nToolsConnection/index.ts
+  s_27dbd88552503d::t_07617cf64acc38 1-9
+packages/frontend/editor-ui/src/features/shared/toolsConnection/McpToolSettingsContent.vue
+  s_27dbd88552503d::t_07617cf64acc38 15,17
+packages/frontend/@n8n/design-system/src/components/N8nToolsConnection/ToolDetailView.vue
+  s_27dbd88552503d::t_07617cf64acc38 3-6,57-58,92,100-104,112-115,123-128,168-177
+packages/frontend/@n8n/design-system/package.json
+  s_27dbd88552503d::t_b858be3d0d6e4a 95
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1c5a913d00fc17fe59f32107bb0c1e99bb20d666",
+  "prompts": {},
+  "sessions": {
+    "s_27dbd88552503d": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a10c73-ca35-7222-a690-5806dabb3e22",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

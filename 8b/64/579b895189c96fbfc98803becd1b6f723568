@@ -1,0 +1,59 @@
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/promoteErrorMessage.ts
+  s_8987b8017e49de::t_df2766be16bd6e 36-42,44-45
+packages/cli/src/errors/http-error-serializers.ts
+  ai_agent 127
+  s_8987b8017e49de::t_966c4b12162d7e 133-141
+packages/cli/src/errors/__tests__/http-error-serializers.test.ts
+  s_8987b8017e49de::t_f47142c05000f1 90-92,98,102
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/promoteErrorMessage.test.ts
+  s_8987b8017e49de::t_f2bb7cd6a5ee2b 53-62,64-67,73-74,76-80
+  s_8987b8017e49de::t_ff013bd9a4d08c 48-52,63
+  ai_agent 68-72
+  s_8987b8017e49de::t_c4ed688fb983b4 9
+packages/cli/src/modules/promotions.ee/__tests__/promotion-changes.integration.test.ts
+  s_8987b8017e49de::t_c7c8e910f564de 255
+packages/cli/src/modules/promotions.ee/promotions-selective-push.error.ts
+  s_8987b8017e49de::t_63dc67af9ea77d 38-42,44,49
+packages/cli/src/modules/promotions.ee/branch-placement.ts
+  s_8987b8017e49de::t_172990370c7bc0 41,43-47,55
+  s_8987b8017e49de::t_b820297097fbc9 87-102,104-110,112,115-121,123-151,153
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_8987b8017e49de::t_9e543a82709fa6 9055
+packages/cli/src/modules/promotions.ee/working-copy-updater.ts
+  s_8987b8017e49de::t_26129913215cdd 19,22
+  s_8987b8017e49de::t_2bfa4380a7581c 383-387,389
+  s_8987b8017e49de::t_f200c578642747 330-334,340,344-349,351
+  s_8987b8017e49de::t_a50e4503025169 566-604
+  s_8987b8017e49de::t_dd7a52a6965e5a 423-436
+packages/cli/src/modules/promotions.ee/__tests__/branch-placement.test.ts
+  s_8987b8017e49de::t_bcae068bbbaf03 139-148,150-189,192-195,197-198
+  s_8987b8017e49de::t_0cb5d6f9a0466c 7
+packages/cli/src/modules/promotions.ee/__tests__/working-copy-updater.test.ts
+  ai_agent 537-539,578-583
+  s_8987b8017e49de::t_2163da2f096b03 478
+  s_8987b8017e49de::t_3ef5719dac22ed 480
+  s_8987b8017e49de::t_7f65ab663e3357 497-510,512-524,526-528,530-532,534-536,540-577,584-585,587
+  s_8987b8017e49de::t_f4634f2cd01fdb 439
+  s_8987b8017e49de::t_b848ff63bb2b08 479
+packages/@n8n/api-types/src/dto/promotions/promotable-resource.dto.ts
+  s_8987b8017e49de::t_cd0c39712c692b 109-112,119-120
+packages/cli/src/modules/promotions.ee/__tests__/promotions-package.integration.test.ts
+  s_8987b8017e49de::t_880971da5e629f 1343
+  s_8987b8017e49de::t_390ae59c13531b 1374-1376,1390-1409
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "8b64579b895189c96fbfc98803becd1b6f723568",
+  "prompts": {},
+  "sessions": {
+    "s_8987b8017e49de": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "ce582f0f-6915-4be7-93ac-a2ac38c09dc8",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}
