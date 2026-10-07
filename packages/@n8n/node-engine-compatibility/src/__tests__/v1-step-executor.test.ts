@@ -571,6 +571,19 @@ describe('V1StepExecutor', () => {
 			);
 		});
 
+		it('fails a send-and-wait step before the node sends its message', async () => {
+			const graph = graphWith('test.echoParam', { operation: 'sendAndWait' });
+			const echo = testNodeTypes.getByNameAndVersion('test.echoParam');
+			const execute = vi.spyOn(echo, 'execute');
+
+			const execution = testStepExecutor(graph).execute(stepRequest(graph, 'n', input));
+
+			await expect(execution).rejects.toThrow(
+				'Node "Subject" sends a message and waits for a response, and engine v2 cannot end that wait yet.',
+			);
+			expect(execute).not.toHaveBeenCalled();
+		});
+
 		// Sub-workflow steps do not exist, so completing the step would report a
 		// wait that never happened.
 		it('fails the step for the WAIT_FOR_SUB_EXECUTION sentinel', async () => {
