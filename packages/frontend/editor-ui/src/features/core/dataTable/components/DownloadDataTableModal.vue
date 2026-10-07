@@ -1,8 +1,14 @@
 <script lang="ts" setup>
 import { useI18n } from '@n8n/i18n';
-import { ref } from 'vue';
-import { N8nCheckbox, N8nButton } from '@n8n/design-system';
-import Modal from '@/app/components/Modal.vue';
+import { computed, ref } from 'vue';
+import {
+	N8nButton,
+	N8nCheckbox,
+	N8nDialog,
+	N8nDialogBody,
+	N8nDialogFooter,
+} from '@n8n/design-system';
+import { useUIStore } from '@/app/stores/ui.store';
 
 type Props = {
 	modalName: string;
@@ -17,24 +23,32 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
+const uiStore = useUIStore();
+const modalOpen = computed(() => uiStore.modalsById[props.modalName]?.open === true);
 
 const includeSystemColumns = ref(false);
 
 const onConfirm = () => {
 	emit('confirm', includeSystemColumns.value);
 };
+
+function closeDialog() {
+	uiStore.closeModal(props.modalName);
+}
+
+function onDialogOpenUpdate(open: boolean) {
+	if (!open) void closeDialog();
+}
 </script>
 
 <template>
-	<Modal
-		:name="props.modalName"
-		:title="i18n.baseText('dataTable.download.modal.title')"
-		:center="true"
-		width="460px"
-		:event-bus="undefined"
-		@enter="onConfirm"
+	<N8nDialog
+		:open="modalOpen"
+		size="medium"
+		:header="i18n.baseText('dataTable.download.modal.title')"
+		@update:open="onDialogOpenUpdate"
 	>
-		<template #content>
+		<N8nDialogBody>
 			<div :class="$style.content">
 				<N8nCheckbox
 					v-model="includeSystemColumns"
@@ -42,11 +56,12 @@ const onConfirm = () => {
 					data-test-id="download-include-system-columns"
 				/>
 			</div>
-		</template>
-		<template #footer>
+		</N8nDialogBody>
+		<N8nDialogFooter>
 			<div :class="$style.footer">
 				<N8nButton
 					size="large"
+					variant="subtle"
 					:label="i18n.baseText('dataTable.download.modal.cancel')"
 					data-test-id="download-modal-cancel"
 					@click="() => $emit('close')"
@@ -58,8 +73,8 @@ const onConfirm = () => {
 					@click="onConfirm"
 				/>
 			</div>
-		</template>
-	</Modal>
+		</N8nDialogFooter>
+	</N8nDialog>
 </template>
 
 <style module lang="scss">
