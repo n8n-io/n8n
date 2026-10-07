@@ -2598,6 +2598,155 @@ describe('AgentExecutionRepository', () => {
 			);
 		});
 
+		it('consumes a hidden turn without listing it and passes turn options through unchanged', async () => {
+			const services = recordingServices();
+			const threadId = uuid();
+			const target = { projectId, agentId, threadId, userId: owner.id, kind: 'preview' as const };
+			await enqueue(services, input(threadId, 'Visible', 'new'));
+			const active = await claim(services, threadId);
+			const options = { mode: 'plan', nested: { ids: ['a', 'b'] } };
+			const hiddenInput = {
+				...input(threadId, 'Machine follow-up'),
+				payload: {
+					kind: 'preview' as const,
+					message: 'Machine follow-up',
+					userId: owner.id,
+					resourceId: `draft-chat:${owner.id}`,
+					hidden: true,
+					options,
+				},
+			};
+			const hidden = await enqueue(services, hiddenInput);
+			const pending = await enqueue(services, input(threadId, 'Pending'));
+
+			expect((await services.queue.listPending(target)).items.map(({ id }) => id)).toEqual([
+				pending.id,
+			]);
+			expect(await services.queueRepository.findOneByOrFail({ id: hidden.id })).toMatchObject({
+				payload: { kind: 'preview', options },
+			});
+			expect(
+				await services.messageRepository.findOneByOrFail({ id: hidden.messageId }),
+			).toMatchObject({ origin: { source: 'chat', hidden: true } });
+			await expect(services.queue.removePending({ ...target, queueId: hidden.id })).rejects.toThrow(
+				'Queued message not found',
+			);
+			await expect(
+				services.queue.updatePending({ ...target, queueId: hidden.id, message: 'Edited' }),
+			).rejects.toThrow('Queued message not found');
+			await expect(
+				services.queue.steer({
+					...target,
+					queueId: hidden.id,
+					executionId: active.admission.executionId,
+				}),
+			).rejects.toThrow('no longer available');
+			// The client only knows the visible items. Reordering them leaves the hidden turn in place.
+			const reordered = await enqueue(services, input(threadId, 'Reordered'));
+			await services.queue.reorderPending({
+				...target,
+				queueId: reordered.id,
+				targetQueueId: pending.id,
+				expectedQueueIds: [pending.id, reordered.id],
+			});
+			expect((await services.queue.listPending(target)).items.map(({ id }) => id)).toEqual([
+				reordered.id,
+				pending.id,
+			]);
+
+			await finish(services, active);
+			const consumed = await claim(services, threadId);
+			expect(consumed.item.id).toBe(hidden.id);
+			expect(consumed.payload).toEqual({
+				kind: 'preview',
+				options,
+				hidden: true,
+				message: 'Machine follow-up',
+				resourceId: hiddenInput.payload.resourceId,
+				attachments: [],
+			});
+			await finish(services, consumed);
+			const detail = await services.executionService.getThreadDetail(
+				threadId,
+				projectId,
+				agentId,
+				owner.id,
+			);
+			expect(
+				executionsToMessagesDto(detail!.executions)
+					.filter(({ role }) => role === 'user')
+					.map(({ content }) => content),
+			).toEqual([[{ type: 'text', text: 'Visible' }]]);
+			expect((await claim(services, threadId)).item.id).toBe(reordered.id);
+		});
+
+		it('lets a user steer and reorder system agent input like Preview input', async () => {
+			const services = recordingServices();
+			const threadId = uuid();
+			const target = { projectId, agentId, threadId, userId: owner.id, kind: 'system' as const };
+			const systemInput = (message: string, sessionMode: 'new' | 'existing' = 'existing') => ({
+				...input(threadId, message, sessionMode),
+				payload: {
+					kind: 'system' as const,
+					message,
+					userId: owner.id,
+					resourceId: `draft-chat:${owner.id}`,
+				},
+			});
+			await enqueue(services, systemInput('Active', 'new'));
+			const active = await claim(services, threadId);
+			expect(active.recording.previewChat).toBe(true);
+			const b = await enqueue(services, systemInput('B'));
+			const c = await enqueue(services, systemInput('C'));
+			const steered = await enqueue(services, systemInput('Steer'));
+
+			expect(await services.queue.listPending({ ...target, kind: 'preview' })).toEqual({
+				items: [],
+				steerableExecutionId: active.admission.executionId,
+			});
+			const pending = await services.queue.listPending(target);
+			expect(pending.steerableExecutionId).toBe(active.admission.executionId);
+			expect(pending.items.map(({ id }) => id)).toEqual([b.id, c.id, steered.id]);
+			await expect(
+				services.queue.steer({
+					...target,
+					kind: 'preview',
+					queueId: steered.id,
+					executionId: active.admission.executionId,
+				}),
+			).rejects.toThrow('no longer available');
+			await services.queue.steer({
+				...target,
+				queueId: steered.id,
+				executionId: active.admission.executionId,
+			});
+			await services.queue.reorderPending({
+				...target,
+				queueId: c.id,
+				targetQueueId: b.id,
+				expectedQueueIds: [b.id, c.id],
+			});
+			expect((await services.queue.listPending(target)).items.map(({ id }) => id)).toEqual([
+				steered.id,
+				c.id,
+				b.id,
+			]);
+			const recorder = new ExecutionRecorder();
+			const consumed = await services.steering.consume(
+				{
+					...target,
+					executionId: active.admission.executionId,
+					resourceId: `draft-chat:${owner.id}`,
+				},
+				{ messages: [], lastCreatedAt: 0, completing: false, canContinue: true },
+				recorder,
+				new AbortController().signal,
+			);
+			expect(consumed.messages.map(({ id }) => id)).toEqual([steered.messageId]);
+			await finish(services, active, 'stop', recorder);
+			expect((await claim(services, threadId)).item.id).toBe(c.id);
+		});
+
 		it.each([
 			['claim', 'remove'],
 			['remove', 'remove'],

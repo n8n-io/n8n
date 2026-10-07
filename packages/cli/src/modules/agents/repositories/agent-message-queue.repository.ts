@@ -58,10 +58,13 @@ export class AgentMessageQueueRepository extends BaseRepository<AgentMessageQueu
 		ctx: OperationContext,
 	): Promise<boolean> {
 		const manager = this.managerFor(ctx);
-		const items = await manager.find(AgentMessageQueue, {
+		const pending = await manager.find(AgentMessageQueue, {
 			where: { threadId, executionId: IsNull(), steeringExecutionId: IsNull() },
+			relations: { message: true },
 			order: { position: 'ASC', id: 'ASC' },
 		});
+		// Clients do not see hidden machine turns, so they keep their positions.
+		const items = pending.filter((entry) => entry.message.origin?.hidden !== true);
 		if (
 			items.length !== expectedIds.length ||
 			items.some((item, index) => item.id !== expectedIds[index])
