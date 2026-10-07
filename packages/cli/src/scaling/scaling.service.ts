@@ -549,6 +549,15 @@ export class ScalingService {
 			if (msg.kind === 'abort-job') this.jobProcessor.stopJob(jobId);
 		});
 
+		// With maxStalledCount 0 the sweep fails every activated stall, so this event
+		// only ever reports a never-started job that went back to the queue
+		queue.on('stalled', (job: Job) => {
+			this.logger.warn('Returned a never-started job to the queue', {
+				jobId: job.id,
+				executionId: job.data.executionId,
+			});
+		});
+
 		queue.on('error', (error: Error) => {
 			if ('code' in error && error.code === 'ECONNREFUSED') return; // handled by RedisClientService.retryStrategy
 

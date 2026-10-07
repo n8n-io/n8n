@@ -236,6 +236,23 @@ describe('ScalingService', () => {
 				expect(registerWorkerListenersSpy).toHaveBeenCalled();
 				expect(registerMainOrWebhookListenersSpy).not.toHaveBeenCalled();
 			});
+
+			it('should log each job the stall sweep returned to the queue', async () => {
+				// @ts-expect-error readonly property
+				instanceSettings.instanceType = 'worker';
+
+				await scalingService.setupQueue();
+
+				const onStalled = queue.on.mock.calls.find(
+					([event]) => (event as string) === 'stalled',
+				)?.[1] as (job: Job) => void;
+				onStalled(mock<Job>({ id: 'job-1', data: { executionId: 'exec-1' } }));
+
+				expect(scopedLogger.warn).toHaveBeenCalledWith(
+					'Returned a never-started job to the queue',
+					{ jobId: 'job-1', executionId: 'exec-1' },
+				);
+			});
 		});
 
 		describe('webhook', () => {
